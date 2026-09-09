@@ -22,12 +22,13 @@ import type {
   SessionUsageBlock,
   SessionUsageMatchPoint,
   SessionUsageMetric,
+  SessionUsageOutcomes,
   SessionUsageSquadPlayer,
   SessionUsageSquadShare,
 } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
-import { deployedFamilyLabel, type UsageText } from './usageI18n'
+import { deployedFamilyLabel, equipmentFamilyLabel, type UsageText } from './usageI18n'
 
 // ─── Formatage (parts, cadences, comptes, durées) ────────────────────────────────
 
@@ -82,11 +83,20 @@ export type UsageMetricKind =
   | 'grapple'
   | 'dropped'
   | 'pads'
+  | 'equipment'
   | 'other'
 
 const DEPLOYED_PREFIX = 'deployed_'
+/**
+ * EQUIPMENT_PREFIX — LE BILAN D'ÉQUIPEMENT par famille (étape E4, jumeau web de
+ * `sessionusage.MetricEquipmentPrefix`). Sa valeur est un compte d'OBJETS
+ * (utilisé + gardé + lâché) et non de gestes ; c'est la seule famille de clés qui
+ * porte `SessionUsageMetric.outcomes` — voir `equipmentMetrics` pour la règle de
+ * substitution face à `deployed_<famille>` / `camo_episodes` / `overshield_episodes`.
+ */
+const EQUIPMENT_PREFIX = 'equipment_'
 
-/** metricKind classe une clé du contrat (ensemble ouvert côté `deployed_*`). */
+/** metricKind classe une clé du contrat (ensembles ouverts côté `deployed_*` et `equipment_*`). */
 export function metricKind(key: string): UsageMetricKind {
   switch (key) {
     case 'camo_episodes':
@@ -102,6 +112,7 @@ export function metricKind(key: string): UsageMetricKind {
     case 'pad_pickups':
       return 'pads'
     default:
+      if (key.startsWith(EQUIPMENT_PREFIX)) return 'equipment'
       return key.startsWith(DEPLOYED_PREFIX) ? 'deployed_other' : 'other'
   }
 }
@@ -110,11 +121,11 @@ export function metricKind(key: string): UsageMetricKind {
 const METRIC_RANK: Partial<Record<UsageMetricKind, number>> = {
   camo: 0,
   overshield: 1,
-  wall: 2,
-  deployed_other: 3,
-  grapple: 4,
-  dropped: 5,
-  other: 6,
+  equipment: 2,
+  wall: 3,
+  deployed_other: 4,
+  grapple: 5,
+  other: 7,
 }
 
 /** metricLabel — le libellé bilingue d'une grandeur (vocabulaire du handoff). */
@@ -132,10 +143,28 @@ export function metricLabel(key: string, t: UsageText): string {
       return t.metricDropped
     case 'pads':
       return t.metricPads
+    case 'equipment':
+      return equipmentFamilyLabel(key.slice(EQUIPMENT_PREFIX.length), t)
     case 'deployed_other':
       return deployedFamilyLabel(key.slice(DEPLOYED_PREFIX.length), t)
     case 'other':
       return key
+  }
+}
+
+/**
+ * equipmentBilanFamilyOf — l'identité de famille (vocabulaire du bilan) que porte
+ * une grandeur SUSCEPTIBLE D'ÊTRE SUPPLANTÉE par son équivalent `equipment_<famille>`
+ * (voir `equipmentMetrics`). `null` pour toute autre clé (grapple, pads, inconnue…).
+ */
+function equipmentBilanFamilyOf(key: string): string | null {
+  switch (key) {
+    case 'camo_episodes':
+      return 'powerup_camo'
+    case 'overshield_episodes':
+      return 'powerup_overshield'
+    default:
+      return key.startsWith(DEPLOYED_PREFIX) ? key.slice(DEPLOYED_PREFIX.length) : null
   }
 }
 
@@ -152,6 +181,10 @@ export const USAGE_METRIC_TOKENS: Record<UsageMetricKind, SemanticToken> = {
   overshield: 'frag-heavy', // violet — états actifs (même famille que camo)
   wall: 'frag-shoulder', // cyan — poses
   deployed_other: 'frag-shoulder', // cyan — poses
+  // Même jeton que le groupe fusionné `equipment` de la vue match
+  // (match-replay/equipmentUsageChart.ts, USAGE_GROUP_TOKENS, étape E2) : le bilan
+  // d'équipement se lit avec la même convention de couleur sur les deux écrans.
+  equipment: 'frag-shoulder',
   dropped: 'frag-melee', // rose — lâchés
   pads: 'frag-grenade', // ambre — libre ici (les grenades sont hors contrat)
   other: 'frag-unattributed', // gris — grandeur non cataloguée
@@ -173,12 +206,40 @@ export function roleToken(role: string): SemanticToken {
   return ROLE_TOKENS[role] ?? 'chart-series-4'
 }
 
-/** Les grandeurs du bloc ÉQUIPEMENT, dans l'ordre canonique (pad_pickups exclu). */
+/**
+ * Les grandeurs du bloc ÉQUIPEMENT, dans l'ordre canonique.
+ *
+ * TROIS EXCLUSIONS (étape E4) :
+ *   - `pad_pickups` (armes spéciales, sa propre carte) — inchangé ;
+ *   - `dropped_objects` (E4.5) — « une mort n'est pas un geste, elle est devenue un
+ *     segment » : le total des lâchers vit désormais DANS la pile de chaque famille
+ *     du bilan (`equipment_<famille>.outcomes.dropped`), une ligne à part le
+ *     compterait deux fois ;
+ *   - toute grandeur SUPPLANTÉE par son équivalent `equipment_<famille>` de LA MÊME
+ *     SESSION : `deployed_<famille>`, `camo_episodes`, `overshield_episodes` comptent
+ *     des GESTES (poses, épisodes), quand `equipment_<famille>` compte des OBJETS
+ *     (les trois issues, décision P1) — deux lignes pour une même famille
+ *     dupliqueraient la grandeur. Sans équivalent (grappin, propulseur — la table
+ *     `equipmentOutcomeStems` côté Go ne les nomme pas, cf. §6 du plan), la grandeur
+ *     GESTE reste seule, rendu STRICTEMENT INCHANGÉ (E1/E4.1 : absent de bilan =
+ *     comme avant).
+ */
 export function equipmentMetrics(
   metrics: SessionUsageMetric[] | null | undefined,
 ): SessionUsageMetric[] {
-  return (metrics ?? [])
+  const all = metrics ?? []
+  const bilanFamilies = new Set(
+    all
+      .filter((m) => metricKind(m.key) === 'equipment')
+      .map((m) => m.key.slice(EQUIPMENT_PREFIX.length)),
+  )
+  return all
     .filter((m) => metricKind(m.key) !== 'pads')
+    .filter((m) => metricKind(m.key) !== 'dropped')
+    .filter((m) => {
+      const family = equipmentBilanFamilyOf(m.key)
+      return family == null || !bilanFamilies.has(family)
+    })
     .sort((a, b) => {
       const ra = METRIC_RANK[metricKind(a.key)] ?? 9
       const rb = METRIC_RANK[metricKind(b.key)] ?? 9
@@ -230,6 +291,77 @@ export interface UsageGaugeModel {
   valueText: string
   honestyText: string
   tooltip: string
+  /**
+   * LA PILE DES TROIS ISSUES (P1, P6, étape E4) — remplit la TRANCHE (0..`valuePct`),
+   * jamais le reste du rail. Absent = rendu STRICTEMENT INCHANGÉ, un seul aplat
+   * (même contrat que `ValueGridCell.segments`, E1) : toute grandeur sans
+   * `SessionUsageOutcomes` (armes spéciales, objectifs, familles hors bilan) n'a
+   * jamais porté cette clé et continue de rendre exactement comme avant.
+   */
+  segments?: UsageGaugeOutcomeSegment[]
+  /**
+   * LES DEUX REPÈRES DE TAUX DANS LA TRANCHE (P7, décision produit du §3.2) : des
+   * MARQUES, jamais un chiffre affiché (E4.2) — le texte vit dans `tooltip`. Chacun
+   * est un pourcentage RELATIF À LA TRANCHE (même dénominateur que `segments`,
+   * PAS le rail entier) : `null` quand la référence n'a pas de scope à camp connu
+   * (P7 exclut le joueur — session FFA, aucune référence d'équipe ne se calcule),
+   * jamais un 0 % inventé.
+   */
+  teammatesRatePct: number | null
+  opponentsRatePct: number | null
+}
+
+/** L'ordre canonique des trois issues (P1, ratifié par le test E4.6). */
+const OUTCOME_ORDER = ['used', 'dropped', 'kept'] as const
+export type UsageOutcomeKind = (typeof OUTCOME_ORDER)[number]
+
+/** Le jeton d'une issue — table normative §3.1 du plan. */
+const OUTCOME_TOKENS: Record<UsageOutcomeKind, SemanticToken> = {
+  used: 'divergent-pos',
+  dropped: 'divergent-neg',
+  kept: 'divergent-neutral',
+}
+
+function outcomeKindLabel(kind: UsageOutcomeKind, t: UsageText): string {
+  switch (kind) {
+    case 'used':
+      return t.outcomeUsed
+    case 'dropped':
+      return t.outcomeDropped
+    case 'kept':
+      return t.outcomeKept
+  }
+}
+
+export interface UsageGaugeOutcomeSegment {
+  key: UsageOutcomeKind
+  /** Fraction 0..1 DE LA TRANCHE (used+kept+dropped = 100 %), jamais du rail entier. */
+  fraction: number
+  token: SemanticToken
+  label: string
+}
+
+/**
+ * buildOutcomeSegments — la pile utilisé → lâché → gardé (ordre P1/E4.6), UNIQUEMENT
+ * les issues NON NULLES (« une famille sans troisième issue rend deux segments »,
+ * E4.6) — un segment à fraction 0 ne se dessine pas. `outcomes` absent, ou dont la
+ * somme des trois issues est nulle (aucun objet mesuré) : PAS de pile — le rendu
+ * simple (un seul aplat) reste la vérité, jamais une pile à une seule couleur.
+ */
+function buildOutcomeSegments(
+  outcomes: SessionUsageOutcomes | null | undefined,
+  t: UsageText,
+): UsageGaugeOutcomeSegment[] | undefined {
+  if (outcomes == null) return undefined
+  const total = outcomes.used + outcomes.kept + outcomes.dropped
+  if (total <= 0) return undefined
+  const segments = OUTCOME_ORDER.filter((kind) => outcomes[kind] > 0).map((kind) => ({
+    key: kind,
+    fraction: outcomes[kind] / total,
+    token: OUTCOME_TOKENS[kind],
+    label: outcomeKindLabel(kind, t),
+  }))
+  return segments
 }
 
 /** Une ligne de jauges : la grandeur, et ses trois dénominateurs (§7 du handoff). */
@@ -266,6 +398,12 @@ export interface UsageGaugeRowInput {
   teamOfLobbyParityPct: number | null | undefined
   /** Cette grandeur est le total des lignes qui la précèdent (cf. `UsageGaugeRowModel`). */
   isTotal?: boolean
+  /**
+   * Les trois issues DU JOUEUR et les deux repères de taux (étape E4, contrat étendu
+   * en E3). Absent pour toute grandeur hors bilan d'équipement (armes spéciales,
+   * objectifs) — jamais posé à zéro.
+   */
+  outcomes?: SessionUsageOutcomes | null
   t: UsageText
   locale: Locale
 }
@@ -278,11 +416,20 @@ export interface UsageGaugeRowInput {
  *
  * L'ORDRE DES JAUGES EST UN CONTRAT DE RENDU : la 2e (`player-of-team`) est celle que la
  * grille montre seule quand le repli est fermé — `PRIMARY_GAUGE_INDEX`, SessionUsageForms.
+ *
+ * `outcomes` NE S'APPLIQUE QU'AUX DEUX JAUGES DE PART DU JOUEUR (`player-of-team`,
+ * `player-of-lobby`) — jamais à `team-of-lobby` : les trois issues sont une grandeur
+ * DU JOUEUR (domain.SessionUsageOutcomes ne porte que « mine »), quand la première
+ * jauge mesure la part de MON ÉQUIPE dans le lobby, une population entière sans
+ * porteur individuel.
  */
 export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
   const { shares, t, locale } = input
   const isDur = input.isDuration === true
   const count = (v: number | null | undefined) => formatUsageCount(v, locale, isDur)
+  const segments = buildOutcomeSegments(input.outcomes, t)
+  const teammatesRatePct = input.outcomes?.teammates_used_rate_pct ?? null
+  const opponentsRatePct = input.outcomes?.opponents_used_rate_pct ?? null
 
   const gauge = (
     key: string,
@@ -291,16 +438,39 @@ export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
     parityPct: number | null | undefined,
     numerator: number | null | undefined,
     denominator: number | null | undefined,
+    withOutcomes: boolean,
   ): UsageGaugeModel => {
     const valueText = formatUsagePct(valuePct, locale)
     const honestyText = t.honestyFmt(count(numerator), count(denominator))
+    let tooltip = t.gaugeTipFmt(input.label, gaugeLabel, valueText, honestyText)
+    const gaugeSegments = withOutcomes ? segments : undefined
+    if (gaugeSegments != null && input.outcomes != null) {
+      tooltip = t.gaugeOutcomeTipFmt(
+        tooltip,
+        count(input.outcomes.used),
+        count(input.outcomes.kept),
+        count(input.outcomes.dropped),
+      )
+    }
+    const gaugeTeammatesRatePct = withOutcomes ? teammatesRatePct : null
+    const gaugeOpponentsRatePct = withOutcomes ? opponentsRatePct : null
+    if (gaugeTeammatesRatePct != null || gaugeOpponentsRatePct != null) {
+      tooltip = t.gaugeReferenceTipFmt(
+        tooltip,
+        formatUsagePct(gaugeTeammatesRatePct, locale),
+        formatUsagePct(gaugeOpponentsRatePct, locale),
+      )
+    }
     return {
       key,
       valuePct: valuePct ?? null,
       parityPct: parityPct ?? null,
       valueText,
       honestyText,
-      tooltip: t.gaugeTipFmt(input.label, gaugeLabel, valueText, honestyText),
+      tooltip,
+      segments: gaugeSegments,
+      teammatesRatePct: gaugeTeammatesRatePct,
+      opponentsRatePct: gaugeOpponentsRatePct,
     }
   }
 
@@ -316,6 +486,7 @@ export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
         input.teamOfLobbyParityPct,
         shares.team_total,
         shares.lobby_total,
+        false,
       ),
       gauge(
         'player-of-team',
@@ -324,6 +495,7 @@ export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
         input.teamParityPct,
         shares.player_total,
         shares.team_total,
+        true,
       ),
       gauge(
         'player-of-lobby',
@@ -332,6 +504,7 @@ export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
         input.lobbyParityPct,
         shares.player_total,
         shares.lobby_total,
+        true,
       ),
     ],
   }

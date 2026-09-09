@@ -98,9 +98,28 @@ export interface UsageText {
   equipShroud: string
   equipSeeker: string
   equipField: string
+  /**
+   * Le translocateur quantique, famille du BILAN D'ÉQUIPEMENT (`equipment_translocator_beacon`,
+   * étape E4). PAS `equipRift` : cette clé habille `deployed_<famille>`, dont le suffixe
+   * réel ne vaut jamais « rift » (le manifeste écrit `translocator_beacon` — cf. §6 du plan,
+   * `deployedFamilyLabel` ne matche donc jamais ce cas, une clé morte antérieure à ce lot,
+   * non traitée ici).
+   */
+  equipTranslocator: string
   /** Famille déployée hors catalogue : la clé reste à l'écran — un nom approchant se
    *  lirait comme une certitude (même règle que le catalogue d'armes du rejeu). */
   metricDeployedFmt: (family: string) => string
+  /**
+   * LES TROIS ISSUES D'UN OBJET PRIS (P1, étape E4) : le remplissage de la jauge, en
+   * infobulle uniquement — jamais de chiffre affiché dans la barre (P7/E4.2).
+   */
+  outcomeUsed: string
+  outcomeKept: string
+  outcomeDropped: string
+  /** L'infobulle de jauge, augmentée du détail des trois issues quand la grandeur les porte. */
+  gaugeOutcomeTipFmt: (base: string, used: string, kept: string, dropped: string) => string
+  /** L'infobulle de jauge, augmentée des deux repères de taux qui EXCLUENT le joueur (P7). */
+  gaugeReferenceTipFmt: (base: string, teammates: string, opponents: string) => string
   /** Famille d'arme non nommée par le catalogue du titre : la clé reste à l'écran. */
   padFamilyFmt: (key: string) => string
   powerupCamo: string
@@ -180,7 +199,15 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     equipShroud: 'Écran occultant',
     equipSeeker: 'Traqueur de menaces',
     equipField: 'Champ de réparation',
+    equipTranslocator: 'Translocateur',
     metricDeployedFmt: (fam) => `Équipement ${fam}`,
+    outcomeUsed: 'Utilisé',
+    outcomeKept: "Gardé sans l'utiliser",
+    outcomeDropped: 'Lâché en mourant',
+    gaugeOutcomeTipFmt: (base, used, kept, dropped) =>
+      `${base} — utilisé ${used} · gardé ${kept} · lâché ${dropped}`,
+    gaugeReferenceTipFmt: (base, teammates, opponents) =>
+      `${base} (reste de mon équipe ${teammates} utilisé · eux ${opponents} utilisé)`,
     padFamilyFmt: (key) => `Arme ${key}`,
     powerupCamo: 'Camouflage',
     powerupOvershield: 'Surbouclier',
@@ -255,7 +282,15 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     equipShroud: 'Shroud screen',
     equipSeeker: 'Threat seeker',
     equipField: 'Repair field',
+    equipTranslocator: 'Translocator',
     metricDeployedFmt: (fam) => `Equipment ${fam}`,
+    outcomeUsed: 'Used',
+    outcomeKept: 'Kept, not used',
+    outcomeDropped: 'Dropped when killed',
+    gaugeOutcomeTipFmt: (base, used, kept, dropped) =>
+      `${base} — used ${used} · kept ${kept} · dropped ${dropped}`,
+    gaugeReferenceTipFmt: (base, teammates, opponents) =>
+      `${base} (rest of my team ${teammates} used · them ${opponents} used)`,
     padFamilyFmt: (key) => `Weapon ${key}`,
     powerupCamo: 'Camouflage',
     powerupOvershield: 'Overshield',
@@ -302,6 +337,40 @@ export function deployedFamilyLabel(family: string, t: UsageText): string {
       return t.equipSeeker
     case 'field':
       return t.equipField
+    default:
+      return t.metricDeployedFmt(family)
+  }
+}
+
+/**
+ * equipmentBilanFamilyLabel — le libellé d'une famille du BILAN D'ÉQUIPEMENT
+ * (`equipment_<famille>`, étape E4), la clé étant celle du RÉSUMÉ Go
+ * (`replay.EquipmentOutcomeFamilies`, vocabulaire des POSES : `translocator_beacon`,
+ * `shroud_screen`, `threat_seeker`, `repair_field`, PAS les alias courts de rendu
+ * `deployedFamilyLabel` ('rift'/'shroud'/'seeker'/'field') qui ne matchent AUCUNE
+ * clé réelle de `deployed_<famille>` (§6 du plan — bug préexistant, non traité ici).
+ *
+ * Familles reconnues : les huit de `equipmentOutcomeStems` (Go). Une famille NEUVE
+ * du bilan (manifeste étendu) garde sa clé à l'écran — jamais un nom approchant.
+ */
+export function equipmentFamilyLabel(family: string, t: UsageText): string {
+  switch (family) {
+    case 'wall':
+      return t.metricWall
+    case 'sensor':
+      return t.equipSensor
+    case 'translocator_beacon':
+      return t.equipTranslocator
+    case 'shroud_screen':
+      return t.equipShroud
+    case 'threat_seeker':
+      return t.equipSeeker
+    case 'repair_field':
+      return t.equipField
+    case 'powerup_camo':
+      return t.metricCamo
+    case 'powerup_overshield':
+      return t.metricOvershield
     default:
       return t.metricDeployedFmt(family)
   }
