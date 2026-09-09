@@ -1,3 +1,27 @@
+## [2026-09-09] Master plan, lot 2.6 — artefact interactif d'investigation Theater publie — Complete
+
+**Decision technique principale.** Une page HTML publiee (https://claude.ai/code/artifact/cf36cd85-9517-497d-adf3-e5441ed4c970) plutot qu'une liste : douze
+cas, chacun avec le match (date et heure locales, carte, mode, camps), les instants a regarder
+sur DEUX horloges (chrono du match = image x 100 ms + originMs - t0Ms ; position film = image
+x 100 ms + originMs, formules de `apps/web/src/lib/replay/matchClock.ts`), les joueurs
+impliques, ce qu'on s'attend a voir, et un champ de reponse persiste dans la base de la page
+(capability db, collection `releves`, un document par cas ; repli localStorage si la base
+est indisponible). Donnees : artefacts locaux (`equipmentChanges` rangs 10/19/22 : 85, 52 et
+48 prises sur 16, 15 et 14 matchs ; `identity.bipedSlots` non resolus de `4f77afc1` :
+18, index hors table ; residu `swap.sh` de `58864b3c`) et API authentifiee via le volet
+navigateur (en-tetes de match, t0_ms, camps du tableau d'equipe).
+
+**Resultats observes.** Publication OK, capability db declaree. Rendu non verifie de visu :
+la page exige la connexion claude.ai dans le volet, que je n'ai pas faite (jamais de saisie
+d'identifiants). Hypothese consignee dans le cas des corps hors table : trois bots 343 entres
+en cours de partie.
+
+**Conclusion / prochaine etape.** Relire les reponses (`read_db`, collection `releves`)
+au debut de la vague 3 avant de nommer les familles au manifeste. Reste de la vague 2 :
+E6.1bis en vol, puis 2.R.
+
+---
+
 ## [2026-09-09] Master plan, lot 0.5 — clotures administratives du registre (22 lignes) — Complete
 
 **Decision technique principale.** Les numeros de ligne du tri du matin (§5 du master plan)
