@@ -50,6 +50,25 @@ d'intégration complet — pas par lot.
 - [ ] Exposer un plafond de saturation optionnel (la maquette sature à trente points) — par défaut
       inchangé, pour ne rien casser chez les consommateurs existants
 - [ ] Tests : une case `null` produit la hachure ; deux cases voisines ne se touchent pas
+- [x] `components/charts/Heatmap2DChart.tsx` — ajouter le padding des cases (décision D2) :
+      `itemStyle` avec `borderWidth`, `borderColor` à l'encre du fond, `borderRadius`. Fait :
+      `borderWidth: CELL_BORDER_WIDTH (4)`, `borderColor: tc.card`, `borderRadius: CELL_BORDER_RADIUS (2)`
+      au niveau série (hérité par toutes les cases, mesurées ou vides)
+- [x] Même fichier — rendre l'absence VISIBLE (décision D3) : une case `value: null` reçoit une
+      hachure et un tiret, et la légende la nomme. Fait : fond `tc.splitLine` + `decal` (hachure
+      diagonale, encre `tc.axisLabel`) au niveau ITEM (seules les cases vides, pas les mesurées),
+      étiquette `—` (`EMPTY_CELL_LABEL`), légende FR/EN rendue par le composant
+      (`HEATMAP_EMPTY_CELL_TEXT`, pied de `ChartCard` via sa prop `legend`) uniquement quand la
+      série contient au moins une case vide
+- [x] Exposer un plafond de saturation optionnel (la maquette sature à trente points) — par défaut
+      inchangé, pour ne rien casser chez les consommateurs existants. Fait : prop `saturationCap?:
+      number`, ignorée si `valueRange` est fourni, absente par défaut (comportement historique
+      inchangé, testé en non-régression)
+- [x] Tests : une case `null` produit la hachure ; deux cases voisines ne se touchent pas. Fait,
+      répartis sur deux fichiers (voir note ci-dessous) : `Heatmap2DChart.test.ts` (étendu — hachure/
+      itemStyle/decal, tiret, borderWidth>0, plafond de saturation, non-régression) et
+      `Heatmap2DChart.test.tsx` (créé — légende FR/EN au niveau composant, absente quand aucune
+      case vide)
 
 **Ce que ce lot ne fait PAS** : toucher aux quatre consommateurs. Ils héritent gratuitement.
 
@@ -70,6 +89,23 @@ cd apps/web && npx vitest run src/components/charts/Heatmap2DChart
       `[~]` avec cette référence, et vérifier seulement que son `gap-[3px]` reste
 - [ ] **Garde-rail** (règle n°6 du dépôt : une factorisation sans garde-rail re-diverge) : un test
       grep qui échoue si un `type: 'heatmap'` ECharts apparaît hors de `Heatmap2DChart.tsx`
+- [!] `features/synthesis/SynthesisHeatmapChart.tsx` — construit son option ECharts à la main.
+      La faire passer par `Heatmap2DChart` en mode `divergent` (sa rampe autour de 50 % est
+      légitime et doit être préservée). **NON TRAITÉ dans cette exécution** : consigne explicite
+      du superviseur pour le lot 1.4 (« la migration de SynthesisHeatmapChart.tsx est REPORTÉE par
+      le superviseur, ne la fais pas ») — seul le garde-rail ci-dessous est livré. Le fichier reste
+      dans l'allowlist datée du garde-rail avec la mention « migration prévue »
+- [~] `features/session-detail/SessionUsageForms.tsx` → `UsageRegularityBand` — **NE PAS migrer**.
+      C'est une miniature DOM/CSS assumée (cases de 14 px, valeur impossible à écrire) ; statuée
+      `[~]` avec cette référence. Vérifié sur pièces (2026-09-09) : `gap-[3px]` toujours présent
+      ligne 276, aucune modification
+- [x] **Garde-rail** (règle n°6 du dépôt : une factorisation sans garde-rail re-diverge) : un test
+      grep qui échoue si une série heatmap ECharts apparaît hors de `Heatmap2DChart.tsx`. Fait :
+      `components/charts/heatmapSingleImpl.guard.test.ts`, allowlist DATÉE 2026-09-09 (les 5 sites
+      relevés par grep avant écriture : `SynthesisHeatmapChart.tsx`, `ActivityCalendarChart.tsx`,
+      `ExplorerActivityHeatmapChart.tsx`, `RelationsMomentsHeatmap.tsx`, `squadMapHeatmapChart.ts`).
+      Mordant PROUVÉ : ajout temporaire d'un 6e site (`features/tactical/_tmpHeatmapProbe.ts`),
+      test rouge confirmé, fichier supprimé, test revert au vert — détail au thought_log
 
 **Gate :**
 ```bash
@@ -77,6 +113,9 @@ cd apps/web && npx vitest run src/components/charts src/features/synthesis
 grep -rn "type: 'heatmap'" apps/web/src --include=*.ts --include=*.tsx | grep -v Heatmap2DChart
 # doit ne rendre que des lignes allowlistees par le garde-rail
 ```
+Exécuté (2026-09-09) : vitest 283/283 (charts) + suite complète synthesis/squad/tactical/
+session-detail 1089/1089 verts ; grep rend exactement les 5 sites ci-dessus ; `make check-types`
+(`tsc -b`) vert.
 
 ## Lot C3 — Le nuage d'isolement : ce qui manque
 
@@ -311,3 +350,13 @@ done
 ## Découvertes (à remplir — NE PAS TRAITER)
 
 _(vide au démarrage)_
+- **2026-09-09 (lot C1)** — `features/squad/squadEchange.logic.ts:200-203` documente l'ancien
+  comportement de `Heatmap2DChart` sur une case vide (« que le wrapper ne peint ni n'étiquette »).
+  Ce commentaire décrit maintenant l'ANCIEN défaut : depuis C1, le wrapper peint une hachure et un
+  tiret sur ces cases (décision D3). Fix hors périmètre C1 (le fichier est un consommateur, « ils
+  héritent » = ne pas y toucher) — à corriger quand `SquadEchangeMatrixCard` sera repris (lot C2
+  différé, ou tâche dédiée), pour éviter la doc inversée (CLAUDE.md, diagnostic n°9).
+- **2026-09-09 (lot C1)** — même remarque potentielle à vérifier sur tout AUTRE consommateur de
+  `ChartPointHeatmap` qui commenterait l'ancien rendu invisible des cases `value: null` (non
+  vérifié exhaustivement au-delà de `squadEchange.logic.ts`, seul cas trouvé par grep de
+  `ne peint`/`non peinte` dans `features/squad`).
