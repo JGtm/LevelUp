@@ -114,30 +114,55 @@ verifie a `git status`. Un ratchet qui ne peut pas echouer ne verrouille rien.
 
 ### Phase A1 — TDD backend : publier l'ecart
 
-- `[ ]` A1.1 **TEST ROUGE** `teammates_exact_composition_test.go` : sous
+- `[x]` A1.1 **TEST ROUGE** `teammates_exact_composition_test.go` : sous
   `FilterExactComposition=true`, la reponse doit porter, pour chaque session, le compte
   AVANT filtre exclusif et la liste des matchs ecartes avec le(s) coequipier(s) connu(s)
-  responsables, nommes. Echec attendu : les champs n'existent pas.
-- `[ ]` A1.2 `internal/domain/teammates.go` : type `CompositionSessionEntry` (embarque
+  responsables, nommes. Echec attendu : les champs n'existent pas. **Echec observe** (avant
+  tout code) : erreurs de COMPILATION —
+  `s1.MatchCountRoster undefined (type domain.SessionLabelEntry has no field or method
+  MatchCountRoster)`, idem `ExcludedByExactComposition`, et `undefined:
+  domain.CompositionExcludedMatch` (cf. A1.2, renommage). Test ajoute :
+  `TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches` + fixture
+  `newExactCompositionGapRepo` (session S1 : 1 match garde, 4 ecartes — Nilton410 seul,
+  passivemarquise seul, xuid sans gamertag resolu, Nilton410+passivemarquise ensemble).
+- `[x]` A1.2 `internal/domain/teammates.go` : type `CompositionSessionEntry` (embarque
   `SessionLabelEntry`) + champs `match_count_roster` et `excluded_by_exact_composition` ;
-  type `ExcludedMatch` (`match_id`, `start_time`, `map_ui`, `extra_gamertags`).
+  type `CompositionExcludedMatch` (`match_id`, `start_time`, `map_ui`, `extra_gamertags`).
   `TeammatesPageResponse.CompositionSessions` change de type.
-- `[ ]` A1.3 `teammates_service_intersect.go` : `filterExactComposition` rend
+  **DECOUVERTE traitee dans le perimetre** (pas hors-perimetre : c'est le choix du nom de
+  CET item) : `domain.ExcludedMatch` existe deja (`match_exclusion.go`, exclusion MANUELLE
+  d'un match par l'utilisateur — concept sans rapport). Renomme en
+  `CompositionExcludedMatch` pour eviter la collision ; justifie en commentaire GoDoc sur le
+  type.
+- `[x]` A1.3 `teammates_service_intersect.go` : `filterExactComposition` rend
   `(kept, excluded []domain.SquadMatchRow)` — un seul balayage, jamais deux regles.
   `matchHasExactComposition` gagne un frere `extraPresentOn(team, extraPool)` qui NOMME les
-  xuids fautifs (le predicat booleen reste, il est deja verrouille par ses tests).
-- `[ ]` A1.4 `teammates_service.go` : construction de `CompositionSessions` depuis le
+  xuids fautifs (le predicat booleen reste, il est deja verrouille par ses tests). Site
+  d'appel `no_raw_squad_intersection_test.go` (ratchet cablage) mis a jour sur les nouveaux
+  litteraux (`allSquadRows, _ = ...` / `allSquadRowsForTimeline, excludedForTimeline = ...`).
+- `[x]` A1.4 `teammates_service.go` : construction de `CompositionSessions` depuis le
   couple (gardes, ecartes) — `match_count` reste le compte POST-filtre (source unique),
-  `match_count_roster` est le compte PRE-filtre de la MEME session.
-- `[ ]` A1.5 Resolution xuid -> gamertag des fautifs via `topRows` (deja charge) ; un xuid
-  non resolu s'ecrit `Joueur <4 derniers>` (meme repli que `Q32b`), jamais vide.
-- `[ ]` A1.6 `slog.InfoContext` du denominateur : sessions, gardes, ecartes, fautifs
-  distincts. Aucune erreur avalee.
-- `[ ]` A1.7 OpenAPI : `api/openapi_manual_fragment.yaml` + `make openapi-gen` ;
-  `make generate-types` pour `apps/web/src/lib/api/generated.ts`.
+  `match_count_roster` est le compte PRE-filtre de la MEME session. Logique extraite dans un
+  nouveau fichier `teammates_service_composition_sessions.go` (limite 500 L, CLAUDE.md regle
+  5 — `teammates_service.go` etait deja a 508 L avant ce lot, dette gelee non accrue).
+- `[x]` A1.5 Resolution xuid -> gamertag des fautifs via `topRows` (deja charge) ; un xuid
+  non resolu s'ecrit `Joueur <4 derniers>` (meme repli que `Q32b`), jamais vide. Verifie par
+  le sous-cas "xuid0009" (Gamertag vide dans topRows) du test A1.1.
+- `[x]` A1.6 `slog.InfoContext` du denominateur : sessions, gardes, ecartes, fautifs
+  distincts. Aucune erreur avalee. Log `teammates.exact_composition_gap` (seulement si
+  excluded non vide) ; observe en sortie de test :
+  `sessions=1 kept_matches=1 excluded_matches=4 distinct_culprits=3`.
+- `[x]` A1.7 OpenAPI : `make openapi-gen` (reflexion Huma sur les nouveaux types domain,
+  aucune entree manuelle necessaire dans `openapi_manual_fragment.yaml` — la reponse
+  Teammates n'y est pas documentee a la main) ; `make generate-types` pour
+  `apps/web/src/lib/api/generated.ts`. **Blocage leve** : `node_modules/` absent du worktree
+  dedie (jamais installe) faisait echouer `openapi-typescript` — `make install-web` execute
+  (prerequis d'outillage, pas un fix hors perimetre) avant de regenerer.
 
-**Gate A1** : le test A1.1 passe · `go test ./internal/...` · `go vet ./...` ·
-`make go-api-lint` 0 nouveau · `make generate-types` sans diff residuel.
+**Gate A1 passe** : test A1.1 vert · `go test ./internal/...` 100% pass (repo complet,
+inclut la suite `internal/api` qui verifie `openapi.yaml` a jour) · `go vet ./...` exit 0 ·
+`make go-api-lint` 0 issue · `make generate-types` verifie IDEMPOTENT (2e run : diff
+identique, aucun residu).
 
 ### Phase A2 — TDD frontend : source unique pour la L2
 
@@ -283,6 +308,13 @@ phase non close. `git log --oneline -10` sur `wt/escouade-hors-cadre` pour l'eta
 
 - Vehicules occupes hors cadre : un pion embarque n'est pas dessine (`vehiclesLayer` porte
   l'info) ; sans bornage du vehicule, il disparait sans repere. Hors perimetre (D3).
+- Collision de nom `domain.ExcludedMatch` (A1.2) : traitee DANS le perimetre de l'item
+  (renommage en `CompositionExcludedMatch`), consignee ici pour memoire seulement — aucune
+  action restante.
+- Worktree dedie sans `node_modules/` (A1.7) : un worktree fraichement cree n'a jamais
+  `npm install` — `make generate-types`/`make check-types`/`make test-web` echouent tant que
+  `make install-web` n'a pas tourne une fois. Observation generale pour les prochains
+  chantiers en worktree dedie, pas une action a mener ici (deja fait pour ce worktree).
 - Socles d'EQUIPEMENT non publies : la voie `ti=37` filtre sur le prefixe `powerup_`, donc
   grappin / repulseur / mur / capteur / ecran / propulseur / translocateur poses sur un
   socle de carte ne sont publies nulle part. Le catalogue de cartes connait pourtant 407

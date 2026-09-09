@@ -315,6 +315,12 @@ func (s *TeammatesService) GetPage(
 	allSquadRows := intersectSquadRowsByMatchID(setsFiltered)
 	allSquadRowsForTimeline := intersectSquadRowsByMatchID(setsAllForTimeline)
 
+	// rosterRowsForTimeline : population AVANT l'option composition exacte
+	// (intersection du roster, historique complet) — publiée telle quelle en
+	// MatchCountRoster par session (ADR 0033 critère 3), indépendamment du
+	// résultat du filtre ci-dessous.
+	rosterRowsForTimeline := allSquadRowsForTimeline
+
 	// Option « composition exacte » (req.FilterExactComposition, défaut OFF —
 	// décision produit 2026-08-02) : restreint en plus aux matchs où AUCUN autre
 	// coéquipier connu (extraPool) n'était sur l'équipe alliée du main. On charge
@@ -325,6 +331,7 @@ func (s *TeammatesService) GetPage(
 	friendXUIDs := resolveFriendXUIDs(friendGTs, topRows)
 	extraPool := buildExtraPoolXUIDs(topRows, friendXUIDs, selectedXUIDs, playerXUID)
 	var mainTeamByMatch map[string]map[string]struct{}
+	var excludedForTimeline []domain.SquadMatchRow
 	if req.FilterExactComposition && len(allSquadRowsForTimeline) > 0 && len(selectedXUIDs) > 0 {
 		allies, err := s.repo.LoadMainTeamParticipants(
 			ctx, playerXUID, collectMatchIDs(allSquadRowsForTimeline, allSquadRows))
@@ -332,8 +339,8 @@ func (s *TeammatesService) GetPage(
 			issues.add(ctx, domain.DataIssueMainTeamParticipants, "", err)
 		} else {
 			mainTeamByMatch = buildMainTeamXUIDSet(allies)
-			allSquadRows = filterExactComposition(allSquadRows, mainTeamByMatch, extraPool, selectedXUIDs)
-			allSquadRowsForTimeline = filterExactComposition(allSquadRowsForTimeline, mainTeamByMatch, extraPool, selectedXUIDs)
+			allSquadRows, _ = filterExactComposition(allSquadRows, mainTeamByMatch, extraPool, selectedXUIDs)
+			allSquadRowsForTimeline, excludedForTimeline = filterExactComposition(allSquadRowsForTimeline, mainTeamByMatch, extraPool, selectedXUIDs)
 		}
 	}
 
@@ -418,12 +425,19 @@ func (s *TeammatesService) GetPage(
 
 	// Sessions de la composition exacte : dérivées de l'intersection NON filtrée
 	// par session (historique complet de la composition). Alimentent le
-	// SessionMultiSelect et le ré-ancrage front. Sans coéquipier sélectionné, on
-	// reprend les sessions squad du joueur principal (exploration inchangée).
-	var compositionSessions []domain.SessionLabelEntry
+	// SessionMultiSelect et le ré-ancrage front. MatchCount reste le compte
+	// POST-filtre (SOURCE UNIQUE, ADR 0033) ; MatchCountRoster (compte AVANT le
+	// filtre exclusif) et ExcludedByExactComposition (matchs écartés + coéquipier
+	// responsable nommé) publient l'écart sous l'option composition exacte
+	// (critère 3). Sans coéquipier sélectionné, on reprend les sessions squad du
+	// joueur principal (exploration inchangée) — pas d'écart à publier.
+	var compositionSessions []domain.CompositionSessionEntry
 	var latestCompositionSession string
 	if len(req.SelectedGamertags) > 0 {
-		compositionSessions = buildCompositionSessionLabels(allSquadRowsForTimeline)
+		compositionSessions = buildCompositionSessionEntries(
+			allSquadRowsForTimeline, rosterRowsForTimeline, excludedForTimeline,
+			mainTeamByMatch, extraPool, topRows,
+		)
 		if len(compositionSessions) > 0 {
 			latestCompositionSession = compositionSessions[0].Label
 		}
@@ -436,8 +450,21 @@ func (s *TeammatesService) GetPage(
 			"composition_sessions", len(compositionSessions),
 			"latest_session", latestCompositionSession,
 		)
+		// Dénominateur de l'écart composition exacte (ADR 0033 critère 3) : combien
+		// de sessions publient un écart, combien de matchs gardés/écartés, combien
+		// de coéquipiers distincts en sont responsables. Seulement si le filtre a
+		// effectivement écarté quelque chose (sinon rien à tracer).
+		if len(excludedForTimeline) > 0 {
+			slog.InfoContext(ctx, "teammates.exact_composition_gap",
+				"player", s.gamertag,
+				"sessions", len(compositionSessions),
+				"kept_matches", len(allSquadRowsForTimeline),
+				"excluded_matches", len(excludedForTimeline),
+				"distinct_culprits", countDistinctCulpritXUIDs(excludedForTimeline, mainTeamByMatch, extraPool),
+			)
+		}
 	} else {
-		compositionSessions = sessionLabels.Squad
+		compositionSessions = wrapSessionLabelsAsComposition(sessionLabels.Squad)
 	}
 
 	return domain.TeammatesPageResponse{

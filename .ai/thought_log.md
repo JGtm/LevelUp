@@ -1,3 +1,43 @@
+## [2026-09-09] Population escouade : l'ecart est publie par l'API — Phase A1 close
+
+**Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
+worktree dedie. Suite de la phase A0 (ADR 0033) : publier, sous l'option composition exacte,
+le compte AVANT filtre exclusif et les matchs ecartes avec le coequipier responsable nomme.
+
+**Decision technique principale** — `filterExactComposition` (auparavant un simple filtre)
+rend desormais `(kept, excluded []domain.SquadMatchRow)` en UN SEUL balayage plutot que deux
+regles paralleles (rejete un design "recalculer les ecartes a part" qui aurait pu diverger
+de `matchHasExactComposition`). Le predicat booleen existant reste verrouille par ses tests ;
+un nouveau frere `extraPresentOn(team, extraPool)` NOMME les xuids fautifs au lieu de rendre
+un simple bool. `teammates_service.go` etant deja a 508 lignes (dette gelee, seuil CLAUDE.md
+500L), toute la logique d'assemblage de `CompositionSessionEntry`
+(roster/gardes/ecartes -> par session) part dans un nouveau fichier
+`teammates_service_composition_sessions.go` plutot que de faire grossir le god-file.
+
+**Decouverte traitee dans le perimetre de A1.2** : le nom `ExcludedMatch` prescrit par le
+plan collisionne avec un type domain existant sans rapport (exclusion MANUELLE d'un match
+par l'utilisateur, `match_exclusion.go`). Renomme en `CompositionExcludedMatch`, justifie en
+GoDoc. Consigne en §8 Decouvertes du plan pour memoire (deja resolu, rien a re-traiter).
+
+**Resultats observes** — TDD respecte : le test A1.1
+(`TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches`) a d'abord ECHOUE en
+COMPILATION (`MatchCountRoster`/`ExcludedByExactComposition` inexistants,
+`domain.CompositionExcludedMatch` indefini), observe AVANT toute implementation. Apres code :
+vert, avec un scenario a 4 matchs ecartes (Nilton410 seul, passivemarquise seul, un xuid
+connu SANS gamertag resolu -> repli "Joueur 0009" meme convention que Q32b, et les deux
+ensemble -> `extra_gamertags` trie). Log `teammates.exact_composition_gap` observe :
+`sessions=1 kept_matches=1 excluded_matches=4 distinct_culprits=3`.
+
+**Gate A1** : test A1.1 vert · `go test ./internal/...` 100% pass (repo entier, y compris le
+golden test `openapi.yaml`) · `go vet ./...` exit 0 · `make go-api-lint` 0 issue ·
+`make generate-types` verifie IDEMPOTENT (deuxieme run : diff identique). Blocage leve en
+cours de route : le worktree dedie n'avait jamais eu `npm install` (`node_modules/` absent)
+— `make install-web` execute (prerequis d'outillage necessaire au gate, pas un fix hors
+perimetre).
+
+**Conclusion / prochaine etape** : phase A2 — cote web, source unique pour la L2
+(`squadSessionCounts.ts`), en TDD rouge.
+
 ## [2026-09-09] Population escouade : la regle est ecrite (ADR 0033) + deux ratchets — Phase A0 close
 
 **Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
