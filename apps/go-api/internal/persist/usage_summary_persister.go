@@ -167,7 +167,8 @@ func insertUsagePlayerRows(
 		}
 		// Les QUATRE ventilations d'issue (etape E3, revision us4) : prises,
 		// consommations, garde derive, lachers. Elles se serialisent comme
-		// deployed_json — `{}` et jamais NULL, la colonne est NOT NULL.
+		// deployed_json — `{}` et jamais NULL : la migration pose DEFAULT '{}' sans NOT NULL
+		// (DuckDB refuse les contraintes sur ADD COLUMN) et le lecteur fait COALESCE.
 		issues, err := usageOutcomeJSONsOf(r)
 		if err != nil {
 			return fmt.Errorf("persist: resume usage %s/%s: %w", matchID, r.XUID, err)

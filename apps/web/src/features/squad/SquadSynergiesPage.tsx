@@ -261,10 +261,9 @@ export function SquadSynergiesPage() {
       {/* Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09,
           E6.2-E6.4) — variante comptes (P9), une ligne par coéquipier suivi. Aucune
           requête neuve : lit `pageData.equipment_usage` de la même réponse déjà
-          chargée par `useTeammates`. La section se retire d'elle-même tant que ce champ
-          est absent — cf. `lib/api/types.ts` (TeammatesPageResponse.equipment_usage) : le
-          Go ne l'y publie pas encore (seul `SquadPageV2Response`, /pages/squad/v2, le
-          porte aujourd'hui, endpoint que cette page ne consomme pas). */}
+          chargée par `useTeammates`. Le Go le publie sur `TeammatesPageResponse`
+          (POST /pages/teammates, lot E6.1bis du 2026-09-09) ; la section se retire
+          d'elle-même si le champ est absent (titre sans résumé d'usage, scope vide). */}
       <EquipmentUsageSection usage={pageData?.equipment_usage} mode="squad" t={USAGE_TEXT[locale]} locale={locale} />
     </div>
   )

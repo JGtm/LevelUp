@@ -297,7 +297,7 @@ cd apps/web && npx tsc -b --force
       repères, FR **et** EN, parité par typage
 - [x] E4.5 La ligne « Objets lâchés » **disparaît de la liste des grandeurs** : une mort
       n'est pas un geste, elle est devenue un segment
-- [x] E4.6 Tests : la pile respecte l'ordre utilisé → lâché → gardé ; une famille sans
+- [x] E4.6 Tests : la pile respecte l'ordre utilisé → gardé → lâché (ordre de la table §3.1, décision S10 du master plan 2026-09-09 : cet item disait « utilisé → lâché → gardé », contradiction relevée par la revue de vague) ; une famille sans
       troisième issue rend deux segments ; le compte brut reste en infobulle
 
 **Gate** :

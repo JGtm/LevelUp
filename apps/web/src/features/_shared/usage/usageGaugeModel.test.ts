@@ -36,16 +36,16 @@ describe('buildGaugeRow — E4.3 : la pile des trois issues et les deux repères
     })
   }
 
-  it('la pile respecte l ordre utilise -> lache -> garde (P1, E4.6), fractions de LA TRANCHE', () => {
+  it('la pile respecte l ordre utilise -> garde -> lache (§3.1, S10), fractions de LA TRANCHE', () => {
     const row = rowWithOutcomes({ used: 6, dropped: 3, kept: 1, taken: 11 })
     const [, joueurEquipe, joueurLobby] = row.gauges
-    expect(joueurEquipe.segments?.map((s) => s.key)).toEqual(['used', 'dropped', 'kept'])
-    expect(joueurEquipe.segments?.map((s) => s.fraction)).toEqual([0.6, 0.3, 0.1])
+    expect(joueurEquipe.segments?.map((s) => s.key)).toEqual(['used', 'kept', 'dropped'])
+    expect(joueurEquipe.segments?.map((s) => s.fraction)).toEqual([0.6, 0.1, 0.3])
     // La jauge « mon equipe dans le lobby » ne porte AUCUN segment : Outcomes est une
     // grandeur du JOUEUR, pas de l equipe agregee.
     expect(row.gauges[0].segments).toBeUndefined()
     // La 3e jauge (joueur/lobby) porte les MEMES segments (meme joueur, meme partition).
-    expect(joueurLobby.segments?.map((s) => s.key)).toEqual(['used', 'dropped', 'kept'])
+    expect(joueurLobby.segments?.map((s) => s.key)).toEqual(['used', 'kept', 'dropped'])
   })
 
   it('une famille sans troisieme issue (ici : jamais garde) rend DEUX segments', () => {
