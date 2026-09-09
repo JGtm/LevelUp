@@ -23,7 +23,8 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument } from '@/lib/api/types'
 
-import { buildEquipmentUsage, equipmentChangeFamilyOf } from './equipmentUsageLogic'
+import { equipmentChangeFamilyOf } from './equipmentKeptLogic'
+import { buildEquipmentUsage } from './equipmentUsageLogic'
 import { pose, SB, temoin } from '../test/equipmentUsageFixtures'
 
 describe('equipmentChangeFamilyOf — la reconnaissance rang -> famille (E2)', () => {

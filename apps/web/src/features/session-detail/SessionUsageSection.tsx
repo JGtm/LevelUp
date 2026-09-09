@@ -31,8 +31,9 @@
  * survole pas. Ne pas re-déverser de méthode dans le corps : c'est exactement le pavé
  * qui a été retiré.
  *
- * Aucun calcul ici : projections dans `usageLogic.ts` / `usageGrids.ts`, formes
- * dans `SessionUsageForms.tsx`.
+ * Aucun calcul ici : projections dans `@/features/_shared/usage/` (déménagées de ce
+ * dossier le 2026-09-09, étape E5.1 — `usageGaugeModel.ts`, `usageGrids.ts`, etc.), formes
+ * dans `@/features/_shared/usage/UsageForms.tsx`.
  */
 import { useMemo } from 'react'
 
@@ -44,31 +45,30 @@ import type { SessionUsageBlock, SessionUsageMetric } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { UsageGaugeGrid, UsageLobbyTrack, UsageRegularityBand } from './SessionUsageForms'
-import { USAGE_TEXT, powerupLabel, roleLabel, type UsageText } from './usageI18n'
+import { usageAvailability } from '@/features/_shared/usage/usageAvailability'
+import { buildGaugeRow, type UsageGaugeRowModel } from '@/features/_shared/usage/usageGaugeModel'
 import {
   buildCadenceGrid,
   buildObjectiveFamilyGrid,
   buildSquadRoleGrid,
   usagePlayerInk,
   type UsageGridInks,
-} from './usageGrids'
+} from '@/features/_shared/usage/usageGrids'
+import { USAGE_TEXT, powerupLabel, roleLabel, type UsageText } from '@/features/_shared/usage/usageI18n'
+import { buildLobbyTrack } from '@/features/_shared/usage/usageLobbyTrackModel'
 import {
   USAGE_METRIC_TOKENS,
-  buildGaugeRow,
-  buildLobbyTrack,
-  buildRegularityBand,
   equipmentMetrics,
-  formatUsageRate,
   metricKind,
   metricLabel,
   padMetric,
   roleToken,
-  sortRoles,
-  teamOfLobbyParityPct,
-  usageAvailability,
-  type UsageGaugeRowModel,
-} from './usageLogic'
+} from '@/features/_shared/usage/usageMetricKinds'
+import { formatUsageRate } from '@/features/_shared/usage/usageFormat'
+import { sortRoles } from '@/features/_shared/usage/usageObjectives'
+import { teamOfLobbyParityPct } from '@/features/_shared/usage/usageParity'
+import { buildRegularityBand } from '@/features/_shared/usage/usageRegularityBandModel'
+import { UsageGaugeGrid, UsageLobbyTrack, UsageRegularityBand } from '@/features/_shared/usage/UsageForms'
 
 interface Props {
   /** Le bloc `usage` de la réponse — absent (vieux serveur) : rien ne se rend. */

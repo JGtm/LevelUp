@@ -1,7 +1,12 @@
 /**
- * SessionUsageForms — LE RENDU DES FORMES PROPRES de la grammaire session-usage
+ * UsageForms — LE RENDU DES FORMES PROPRES de la grammaire session-usage
  * (handoff §1) : « écart à la parité », « piste du lobby » et « bande de régularité ». Les grilles alignées, elles, passent par la
  * primitive partagée `components/charts/ValueGrid`.
+ *
+ * Déménagé de `session-detail/SessionUsageForms.tsx` vers ici le 2026-09-09 (étape E5.1,
+ * PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : le bloc devient importable par `features/synthesis`
+ * et `features/squad` sans violer `lint-cross-feature-imports` — déplacement pur, renommé
+ * (le fichier ne porte plus le préfixe « Session », le bloc n'étant plus propre à cette page).
  *
  * DOM ET CSS, PAS ECHARTS — le même choix mesuré que `ValueGrid` : ces formes sont
  * des problèmes de MISE EN PAGE (alignement de rails, segments en pourcentage,
@@ -21,7 +26,8 @@
  *     jamais affichée, elle n'existe que comme dénominateur (doctrine §1) ;
  *   - la bande de régularité = gamme `divergent-*` (au-dessus / à / sous la parité).
  *
- * Aucun calcul ici : tout vient de `usageLogic.ts`.
+ * Aucun calcul ici : tout vient de `usageGaugeModel.ts` / `usageLobbyTrackModel.ts` /
+ * `usageRegularityBandModel.ts`.
  */
 import { Fragment, useState, type CSSProperties } from 'react'
 
@@ -29,15 +35,11 @@ import { CollapsedItemsToggle } from '@/components/ui/collapsed-items-toggle'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
 
-import type { UsageText } from './usageI18n'
 import { usagePlayerInk } from './usageGrids'
-import type {
-  UsageBandCell,
-  UsageGaugeModel,
-  UsageGaugeOutcomeSegment,
-  UsageGaugeRowModel,
-  UsageTrackSegment,
-} from './usageLogic'
+import type { UsageGaugeModel, UsageGaugeOutcomeSegment, UsageGaugeRowModel } from './usageGaugeModel'
+import type { UsageText } from './usageI18n'
+import type { UsageTrackSegment } from './usageLobbyTrackModel'
+import type { UsageBandCell } from './usageRegularityBandModel'
 
 /** Largeur de la colonne des libellés de grandeur (alignée sur ValueGrid). */
 const LABEL_WIDTH = 152

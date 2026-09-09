@@ -14,6 +14,55 @@ l'extraction : `usageLogic.ts` 507 → 680 L, `equipmentUsageLogic.ts` 430 → 5
 
 **Conclusion / prochaine etape.** A la livraison des deux executants : verification, fusion
 des deux branches, puis E5.8-E5.13 (Synthese) et E6.2-E6.5 (Escouade) cote web.
+## [2026-09-09] Equipement gachis, etape E5.1-E5.3 + scissions obligatoires — le bloc usage demenage vers _shared — Complete
+
+**Decision technique principale.** Le bloc « usages d'equipement, armes speciales et
+objectifs » quitte `features/session-detail/` pour `apps/web/src/features/_shared/usage/`
+(E5.1), condition prealable a sa reutilisation par `features/synthesis`/`features/squad`
+(E5.8+/E6, lots suivants). Verifie sur pieces avant de coder : la regex de nom de feature du
+ratchet `lint-cross-feature-imports` (`tools/lint-cross-feature-imports.mjs`,
+`[a-z0-9-]+`) ne matche pas `_shared` (le `_` est hors classe) — ni comme consommateur ni
+comme cible importee, donc `_shared/` est structurellement hors scan, comme deja exploite par
+`firstBlood.ts`/`EncounterSplitBars.tsx`. Zero entree `ALLOWED_CROSS_IMPORTS` ajoutee.
+`usageLogic.ts` (680 L) est scinde EN MEME TEMPS que le demenagement (sous-item E5.1bis, pas
+apres — un fichier hors seuil ne peut pas etre deplace puis re-scinde sans doubler le churn
+d'imports) en 8 fichiers par responsabilite (formatage, classification, parite, jauge, piste
+du lobby, bande de regularite, objectifs, disponibilite), exports publics stables.
+`usageI18n.ts`/`usageGrids.ts` deja sous 500 L : deplaces sans reecriture. `SessionUsageForms.tsx`
+renomme `UsageForms.tsx` (plus de prefixe Session, convention deja en vigueur dans
+`_shared/`). Le test `usageLogic.test.ts` (518 L, deja hors seuil avant ce lot) scinde en
+miroir. Garde-rail E5.3 pose (`noLocalUsageCopies.guard.test.ts`, grep de definitions
+canoniques hors du dossier), mordant prouve par mutation (copie de `usageAvailability`
+inseree dans `features/squad/`, test rouge, fichier retire, test vert, rien committe).
+
+**Resultats observes.** `npx vitest run src/features/session-detail src/features/match-replay
+src/features/_shared src/components/charts` : 244 fichiers, 3083 tests, vert (1 skip
+preexistant). `npx tsc -b --force` silencieux. `node tools/lint-cross-feature-imports.mjs` :
+7 <= 7 (plafond inchange). `npx eslint src/features --max-warnings=0` echoue sur 28
+avertissements PREEXISTANTS dans 13 fichiers hors perimetre (verifie : aucun touche par ce
+lot) ; scope reel du lot -> 0 probleme ; `npm run lint` (script reel du depot) -> exit 0.
+`wc -l` de tous les fichiers crees/touches <= 500 L (max 463 L, inchange). Greps couleur
+(hex/tailwind) sur les fichiers crees/touches : 0 resultat.
+
+**Scission n2 (E5.1ter, sans rapport avec le demenagement).**
+`match-replay/model/equipmentUsageLogic.ts` (582 L) scinde en creant le fichier voisin
+`equipmentKeptLogic.ts` (142 L) : la troisieme issue (KEPT_FAMILIES,
+isEpisodeMeasuredFamily, equipmentChangeFamilyOf, deplaces tels quels) + une fonction neuve
+`deriveKeptFromTaken` qui encapsule les deux boucles autrefois inline dans
+`buildEquipmentUsage`. Fichier principal : 582 -> 488 L. Aucun autre consommateur externe de
+ces symboles (verifie par grep avant de coder) ; les exports consommes par match-view
+(EPISODE_FAMILIES, buildEquipmentUsage, tallyTotal) restent dans le fichier principal, donc
+l'entree ALLOWED_CROSS_IMPORTS nommee n'a pas bouge. `npx vitest run
+src/features/match-replay` : 179 fichiers / 2596 tests verts. `npx vitest run
+src/features/match-view` : 1 flake temporel non reproductible
+(xuidMeta.guard.test.ts, timeout sous charge), vert au rejeu isole et au rejeu du lot complet
+(410/410) - consigne, non traite. `tsc -b --force` silencieux. eslint scope (3 fichiers) exit
+0. Ratchet cross-feature inchange (7 <= 7). wc -l : 488/142/137, tous <= 500.
+
+**Conclusion / prochaine etape.** Toutes les cases du perimetre de cette session (E5.1,
+E5.1bis, E5.1ter, E5.2, E5.3) sont `[x]`. E5.4-E5.13 (Go, Synthese/Escouade) menes par un
+autre executant dans un autre worktree, non touches. Pas de push, pas de fusion (decision
+superviseur).
 
 ---
 
