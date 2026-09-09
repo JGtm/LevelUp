@@ -28,6 +28,7 @@ import { drawBombGlyph } from './bombGlyph'
 import { type XY } from '../../../lib/replay/replayLogic'
 
 import { type CanvasView, projectTo } from '../model/replayView'
+import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 import type { ReplayBombCarry } from '../../../lib/replay/replayNormalize'
 import { carriedGlyphAlpha } from './carriedGlyphPulse'
 import { covers } from '../model/replaySpans'
@@ -111,6 +112,10 @@ export function bombGroundAt(
  * ou au sol sur le dernier point de son lâcheur. Un joueur non localisable n'est PAS dessiné :
  * la bombe n'a pas de position propre, et l'inventer serait affirmer une place que le film ne
  * donne pas à cette image.
+ *
+ * BORNAGE HORS CADRE (plan escouade hors cadre, chantier B, décision D3, 2026-09-10) : SEULE la
+ * bombe PORTÉE (sur son porteur) est plaquée à la marge quand il sort du cadrage visible — au
+ * sol, elle est un objet de carte, comme un socle d'arme, hors du périmètre tranché pour ce lot.
  */
 export function drawBombCarrier(
   ctx: CanvasRenderingContext2D,
@@ -123,7 +128,10 @@ export function drawBombCarrier(
   for (const c of bombCarrierActiveAt(carries, frame)) {
     const w = layer.posOf(c.xuid, frame)
     if (!w) continue
-    const at = projectTo(view, w)
+    // ÉCHELLE 1 : ce calque ne met encore rien à l'échelle de l'écran (`k`), même convention
+    // que `flagCarriesLayer`/`skullCarrierLayer` (cf. leur en-tête).
+    const mark = edgeMarkFor(w, view, OFFSCREEN_MARGIN_PX, 1)
+    const at = mark ? mark.at : projectTo(view, w)
     // La bombe se pose AU-DESSUS du marqueur (celui-ci occupe le point) : le décalage est
     // appliqué ICI, le glyphe partagé ne connaît que son centre.
     drawBombGlyph(ctx, { x: at.x, y: at.y - BOMB_OFFSET_Y }, {

@@ -371,13 +371,36 @@ la ligne n'est pas dans le diff de ce lot).
 
 ### Phase B3 — porteurs d'objectif (D3)
 
-- `[ ]` B3.1 **TEST ROUGE** par calque : `flagCarriesLayer`, `bombCarrierLayer`,
-  `skullCarrierLayer` — le glyphe du porteur hors fenetre est plaque a la marge.
-- `[ ]` B3.2 Cablage des trois calques sur `edgeMarkFor` (jamais une copie de la regle).
-- `[ ]` B3.3 `vipCrownLayer` : statuer `[x]` (meme traitement) ou `[!]` (justifie) — la
-  couronne suit le marqueur du joueur, verifier sur piece avant de trancher.
+- `[x]` B3.1 **TEST ROUGE** par calque : `flagCarriesLayer`, `bombCarrierLayer`,
+  `skullCarrierLayer` — le glyphe du porteur hors fenetre est plaque a la marge. **Echec
+  observe** (avant tout code, les 3 cas) : la position brute non bornee (ex. `48030`,
+  `2000`) au lieu de la marge attendue (`518`, `184`). Chaque calque gagne aussi un cas
+  « au sol / a la base, hors cadre » prouvant le NON-bornage des positions de CARTE
+  (dropped/home pour le drapeau, sol pour la bombe) — ce sont des lieux fixes, pas des
+  porteurs, hors perimetre D3.
+- `[x]` B3.2 Cablage des trois calques sur `edgeMarkFor` (jamais une copie de la regle) :
+  seul le point RELU DU PORTEUR (`layer.posOf`) est borne — la position de span (dropped/
+  home/sol) reste projetee sans bornage, exactement comme avant ce lot. Echelle `1` partout
+  (**DECOUVERTE traitee dans le perimetre** : ces trois calques ne mettent encore RIEN a
+  l'echelle de l'ecran — `k`/`dpr` n'existe dans aucun des trois, contrairement a
+  `replayMarkers.ts` ; suivre leur convention existante plutot que d'introduire un `k` que
+  rien d'autre n'y consomme encore. Documente en commentaire dans les 3 fichiers et en
+  Decouvertes §8).
+- `[!]` B3.3 `vipCrownLayer` : **NON traite, justifie**. Verifie sur piece
+  (`vipCrownLayer.ts`/`.test.ts`) : la couronne se dessine SUR le point du marqueur du VIP
+  (`layer.posOf`, meme lecture que le pion), jamais a une position propre. D3 ne la liste
+  PAS (seuls drapeau/crane/bombe le sont) ; et la meme raison que D5 (« cumuler forme
+  d'identite + fleche rendrait la silhouette illisible a 12 px ») s'applique par analogie a
+  une couronne posee sur la fleche du joueur hors cadre. AUCUNE REGRESSION : hors cadre, la
+  couronne ne se dessine deja PAS (position projetee hors toile, canvas qui n'y peint rien) —
+  comportement IDENTIQUE avant/apres ce lot, ce n'est pas un defaut introduit ici. Consigne
+  en Decouvertes §8 pour un futur lot.
 
-**Gate B3** : `make test-web` · `make check-types`.
+**Gate B3 passe** (2026-09-10) : `npx vitest run src/features/match-replay` 181 fichiers /
+2622 tests verts, 1 skipped (inchange) · `npx tsc -b --force` (purge prealable) exit 0 ·
+`npx eslint --max-warnings=0` sur les 6 fichiers touches (3 calques + leurs tests) : 0
+avertissement · grep `#[0-9a-fA-F]\{6\}` et classes Tailwind de couleur sur les 6 fichiers de
+production touches B0-B3 : 0 occurrence.
 
 ### Phase B4 — parite export et finition
 
@@ -450,3 +473,14 @@ phase non close. `git log --oneline -10` sur `wt/escouade-hors-cadre` pour l'eta
   n'est maintenu, pas un changement de perimetre) — consigne ici pour memoire seulement,
   aucune action restante. A repercuter si un futur plan cite a nouveau `lib/replay/` pour le
   cadrage.
+- B3.2 : `flagCarriesLayer.ts`, `bombCarrierLayer.ts`, `skullCarrierLayer.ts` ne mettent
+  encore RIEN a l'echelle de l'ecran (pas de `k`/`dpr`, contrairement a `replayMarkers.ts` et
+  a `drawShotsLayer`/`drawKillFxLayer`) — leurs hooks (`useReplayFlagCarries` etc.) n'ont
+  jamais recu le 3e parametre `dpr` du contrat `LayerPaint`. La marge de bornage y est donc
+  fixee a `echelle=1`, coherente avec l'absence totale de mise a l'echelle existante, mais PAS
+  homogene avec les marqueurs joueurs (qui, eux, scalent par `k`). Observation, pas un defaut
+  de ce lot : threader `dpr` dans ces trois hooks est un lot a part (toucherait leurs
+  signatures `paint` et potentiellement d'autres cotes fixes de ces glyphes).
+- B3.3 : `vipCrownLayer` ne borne pas la couronne VIP hors cadre (justification `[!]` dans le
+  plan). Un futur lot pourrait envisager un petit anneau colore sur la fleche du joueur hors
+  cadre plutot qu'une couronne complete, si le produit le demande — non demande par ce plan.

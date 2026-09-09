@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { bombCarrierActiveAt, bombGroundAt, drawBombCarrier, type BombCarrierInput } from './bombCarrierLayer'
 import { type CanvasView } from '../model/replayView'
 import type { ReplayBombCarry } from '../../../lib/replay/replayNormalize'
+import { OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 
 const carry = (over: Partial<ReplayBombCarry>): ReplayBombCarry => ({
   xuid: '2533274806055812',
@@ -63,11 +64,12 @@ describe('drawBombCarrier', () => {
   }
   const makeCtx = () => {
     const fill = vi.fn()
+    const arc = vi.fn()
     const ctx = {
-      beginPath: vi.fn(), arc: vi.fn(), rect: vi.fn(), moveTo: vi.fn(),
+      beginPath: vi.fn(), arc, rect: vi.fn(), moveTo: vi.fn(),
       quadraticCurveTo: vi.fn(), fill, stroke: vi.fn(), lineCap: 'butt',
     } as unknown as CanvasRenderingContext2D
-    return { ctx, fill }
+    return { ctx, fill, arc }
   }
 
   it('ne dessine pas un porteur non localisable (aucune position propre à inventer)', () => {
@@ -101,5 +103,36 @@ describe('drawBombCarrier', () => {
     drawBombCarrier(ctx, layer, [carry({ xuid: 'a', t0: 0, t1: 50 })], [], view, 120)
     expect(fill).toHaveBeenCalledTimes(1)
     expect(posOf).toHaveBeenCalledWith('a', 50)
+  })
+
+  /**
+   * BORNAGE HORS CADRE (plan escouade hors cadre, chantier B, phase B3, décision D3,
+   * 2026-09-10). Vue : bornes 0..100, toile 200x200, `pad: 0` — 1 unité monde = 2 px canvas,
+   * `scaleOf(view)` sans ambiguïté.
+   */
+  it('PORTÉE ET HORS CADRE : la bombe est PLAQUÉE À LA MARGE, jamais projetée hors toile', () => {
+    const { ctx, arc } = makeCtx()
+    const layer: BombCarrierInput = {
+      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      // Monde (1000, 25) -> canvas brut (2000, 150) : très au-delà de la toile (200x200) sur
+      // l'axe X seul, pour garder un test à un seul axe borné.
+      posOf: () => ({ x: 1000, y: 25 }),
+    }
+    drawBombCarrier(ctx, layer, [carry({ t0: 0, t1: 100 })], [], view, 10)
+    // Le corps de la silhouette (`bombSilhouette`) trace son premier `arc` au centre du glyphe.
+    const [cx] = arc.mock.calls[0] as number[]
+    expect(cx).toBeCloseTo(view.width - OFFSCREEN_MARGIN_PX, 5)
+    expect(cx).toBeLessThan(2000)
+  })
+
+  it('AU SOL, hors cadre : reste à sa position PROJETÉE, pas bornée (hors périmètre D3)', () => {
+    // Une bombe au sol n'a plus de PORTEUR (D3 ne borne que les porteurs) : c'est un objet de
+    // carte comme un socle d'arme, hors du périmètre tranché pour ce lot.
+    const { ctx, arc } = makeCtx()
+    const posOf = vi.fn(() => ({ x: 1000, y: 25 }))
+    const layer: BombCarrierInput = { style: { ink: '#fff', outline: '#000', reducedMotion: true }, posOf }
+    drawBombCarrier(ctx, layer, [carry({ xuid: 'a', t0: 0, t1: 50 })], [], view, 120)
+    const [cx] = arc.mock.calls[0] as number[]
+    expect(cx).toBeCloseTo(2000, 5)
   })
 })
