@@ -87,6 +87,12 @@ type SharedBatch struct {
 
 	// KillPositions : positions monde tueur/victime par kill (Halo 5 natif,
 	// Infinite plus tard). Jointes au kill par (match_id, killer_xuid, time_ms).
+	//
+	// Table cible `kill_positions` : append-only, UNE PASSE par match — la vue
+	// `kill_positions_latest` (lecture obligatoire, ADR 0026) ne rend que la
+	// DERNIÈRE PASSE ENTIÈRE. Le `decode_pass` n'est pas porté par le batch : il
+	// est tiré à l'écriture (persist.persistKillPositionsPass), comme pour
+	// `kill_openings` et `match_kill_events`.
 	KillPositions []KillPositionInsert `json:"kill_positions,omitempty"`
 
 	// XUIDAliases : nouveaux mappings xuid→gamertag observés dans le match.

@@ -100,7 +100,15 @@ func applyAppendOnlyPveMatchStats(db *sql.DB) error {
 // applyAppendOnlyKillPositions délègue au helper commun (mécanisme written_at, dernière
 // version par match_id+killer_xuid+time_ms — LA clé fonctionnelle de la table depuis sa
 // création, cf. steps_shared_kill_positions.go : aucune colonne victim_xuid n'existe pour
-// affiner davantage). G.2 (2026-08-30) : la table est remplie par Halo 5 en prod
+// affiner davantage).
+//
+// ÉTAPE HISTORIQUE : la vue créée ICI a été REMPLACÉE le 2026-09-09 par
+// steps_shared_kill_positions_pass.go (arbitrage par DERNIÈRE PASSE ENTIÈRE par match, colonne
+// `decode_pass`) — l'arbitrage par clé ne savait pas rétracter une position qu'un re-décodage
+// ne retrouve plus. Ce step reste INTACT (name-keyed, déjà appliqué partout) et reste le
+// créateur de `id`/`written_at` ; c'est le step suivant qui recrée la vue.
+//
+// G.2 (2026-08-30) : la table est remplie par Halo 5 en prod
 // (`ingest.MapKillPositions`) — le CTAS swap PRÉSERVE ces lignes (avant=après vérifié par le
 // helper, rollback intégral sinon) ; Infinite est câblé ENSUITE (killcollector), sur ce même
 // schéma désormais append-only — sans cette conversion PRÉALABLE, un re-décodage de film

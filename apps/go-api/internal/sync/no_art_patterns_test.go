@@ -150,10 +150,12 @@ var tablesProtegees = []string{
 	// enrôlement :
 	//   - kill_positions : rebuild append-only G.2 (2026-08-30) par
 	//     games/halo_infinite/migrations/steps_appendonly_misc.go (id PK kill_positions_seq +
-	//     written_at + vue kill_positions_latest sur (match_id, killer_xuid, time_ms)) ; deux
-	//     écrivains, tous deux en INSERT pur : persist/kill_position_persister.go (passe film
-	//     Infinite) et persist/shared_persister.go persistKillPositions (chemin builder Halo 5).
-	//     Pas de decoder_rev sur cette table, et c'est voulu (written_at arbitre).
+	//     written_at), puis bascule sur un arbitrage PAR PASSE au lot 1.7 (2026-09-09,
+	//     steps_shared_kill_positions_pass.go : + decode_pass NOT NULL, vue
+	//     kill_positions_latest = DERNIÈRE PASSE ENTIÈRE par match) ; deux écrivains, tous deux
+	//     en INSERT pur : persist/kill_position_persister.go (passe film Infinite) et
+	//     persist/shared_persister.go persistKillPositionsPass (chemin builder Halo 5).
+	//     Pas de decoder_rev sur cette table, et c'est voulu (decode_pass discrimine déjà).
 	//   - match_weapon_hit_distance : CRÉÉE append-only (migration/steps_shared_weapon_hit_distance.go,
 	//     id PK seq + decode_pass + decoder_rev + written_at + vue _latest par PASSE) ; écrivain
 	//     unique persist/weapon_hit_distance_persister.go, un seul statement INSERT.
