@@ -46,8 +46,6 @@ export function getSquadEchangeText(locale: Locale) {
 
     delayTitle: m('squad.echange.delay_title'),
     delayLabel: m('squad.echange.delay_label'),
-    delayNarrative: (inWindow: number, outside: number, total: number, seconds: number) =>
-      m('squad.echange.delay_narrative', { inWindow, outside, total, seconds }),
     delayNarrativeEmpty: m('squad.echange.delay_narrative_empty'),
     delayXAxis: m('squad.echange.delay_x_axis'),
     delayYAxis: m('squad.echange.delay_y_axis'),

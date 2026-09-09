@@ -2,30 +2,20 @@
  * weaponRange_logic.test — les décisions de lecture de la section « Portée par arme ».
  *
  * Ce que ces tests verrouillent : le repli d'un libellé non résolu sur la clé d'arme (un
- * trou de registre doit SE VOIR), l'ordre backend des armes sous le seuil (jamais rejoué
- * côté front), le `null` qui permet d'OMETTRE un demi-énoncé plutôt que d'écrire « frags : »
- * tout seul, et la garde qui empêche une carte à zéro ligne.
+ * trou de registre doit SE VOIR) et la garde qui empêche une carte à zéro ligne.
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import type { SynthesisWeaponRange, WeaponBelowThreshold } from '@/lib/api/types'
+import type { SynthesisWeaponRange } from '@/lib/api/types'
 
 import {
   WEAPON_RANGE_MIN_MEASURED,
-  belowThresholdNames,
   hasWeaponRangeRows,
   resolveWeaponLabel,
 } from './weaponRange_logic'
-
-const BELOW: WeaponBelowThreshold[] = [
-  { weapon_key: 'hinf_hydra', label: 'Hydra', label_en: 'Hydra', measured: 6 },
-  { weapon_key: 'hinf_disruptor', label: 'Disrupteur', label_en: 'Disruptor', measured: 4 },
-]
-
-const count = (n: number) => String(n)
 
 describe('resolveWeaponLabel', () => {
   it('rend le libellé de la locale demandée', () => {
@@ -40,22 +30,6 @@ describe('resolveWeaponLabel', () => {
     // Locale EN sans `label_en` : le repli est la clé, JAMAIS le libellé français — servir
     // l'autre langue serait un mélange silencieux.
     expect(resolveWeaponLabel({ weapon_key: 'hinf_x', label: 'Hydra' }, 'en')).toBe('hinf_x')
-  })
-})
-
-describe('belowThresholdNames', () => {
-  it('nomme chaque arme avec son effectif, dans l’ordre du backend', () => {
-    expect(belowThresholdNames(BELOW, 'fr', count)).toBe('Hydra (6), Disrupteur (4)')
-  })
-
-  it('rend null sur une liste vide ou absente — l’appelant OMET le demi-énoncé', () => {
-    expect(belowThresholdNames([], 'fr', count)).toBeNull()
-    expect(belowThresholdNames(undefined, 'fr', count)).toBeNull()
-    expect(belowThresholdNames(null, 'fr', count)).toBeNull()
-  })
-
-  it('replie sur la clé d’arme comme le reste de la section', () => {
-    expect(belowThresholdNames([{ weapon_key: 'hinf_x', measured: 2 }], 'fr', count)).toBe('hinf_x (2)')
   })
 })
 

@@ -1,12 +1,12 @@
 /**
  * Le NUAGE « isolement x couverture » (item 7.7) — ce qu'il montre et ce qu'il tait.
  *
- * Ce que ces tests cadenassent : un état vide n'est jamais un nuage à zéro point ; le
- * pied de carte NOMME les deux planchers (session, échantillon) plutôt que de les
- * recopier en dur côté client ; et les deux langues rendent deux textes.
+ * Ce que ces tests cadenassent : un état vide n'est jamais un nuage à zéro point ; l'aide ⓘ
+ * du titre NOMME les deux planchers (session, échantillon) plutôt que de les recopier en dur
+ * côté client ; et les deux langues rendent deux textes.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -80,17 +80,19 @@ describe('SquadIsolementNuageCard', () => {
     expect(screen.getByTestId('chart-card')).toBeTruthy()
   })
 
-  it('le pied de carte NOMME les deux planchers (5 et 30), pas de valeur en dur', () => {
+  it('l’aide ⓘ NOMME les deux planchers (5 et 30), pas de valeur en dur', () => {
+    // Les deux paragraphes sont passés en infobulle le 2026-09-09 : ils ne sont dans le DOM
+    // qu'une fois l'aide ouverte.
     renderWithProviders(
       <SquadIsolementNuageCard
         nuage={nuageDe({ plancher_morts_session: 5, plancher_echantillon_faible: 30 })}
         joueurs={joueurs}
       />,
     )
-    const carte = screen.getByTestId('squad-isolement-nuage').closest('section')
-    const texte = carte?.textContent ?? ''
-    expect(texte).toContain('5')
-    expect(texte).toContain('30')
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /info/i }))
+    const aide = screen.getByRole('tooltip').textContent ?? ''
+    expect(aide).toContain('5')
+    expect(aide).toContain('30')
   })
 
   it('PARITÉ FR/EN : les deux langues rendent un titre, et deux titres différents', () => {

@@ -2,8 +2,8 @@
  * _weaponRangeChart.test — les deux bâtons p10→p90 et leurs losanges, en pur.
  *
  * Ce que ces tests verrouillent : la projection (libellé par locale, côté absent normalisé
- * en `null`, ORDRE DU BACKEND conservé), le libellé de ligne qui écrit TOUJOURS les deux
- * effectifs, l'inversion de l'axe Y au montage, la géométrie exacte du `renderItem` (deux
+ * en `null`, ORDRE DU BACKEND conservé, pseudo-armes sans portée écartées), le libellé de
+ * ligne réduit au nom de l'arme, l'inversion de l'axe Y au montage, la géométrie exacte du `renderItem` (deux
  * rectangles décalés de part et d'autre du centre de bande, un losange par médiane), le cas
  * « un seul côté mesuré » (un seul bâton, l'infobulle dit « aucune mesure »), et
  * l'échappement HTML des noms d'armes dans l'infobulle.
@@ -125,14 +125,29 @@ describe('weaponRangeLines — la projection du contrat', () => {
     expect(weaponRangeLines(null, 'fr')).toEqual([])
     expect(weaponRangeLines(undefined, 'fr')).toEqual([])
   })
+
+  it('écarte les pseudo-armes dont la DISTANCE n’a pas de sens (chute et environnement)', () => {
+    // Sans ce filtre la ligne « Chute et environnement » occupait une bande de l'axe avec
+    // une « portée » qui mesure la géométrie du décor, pas un engagement.
+    const rows: WeaponRangeRow[] = [
+      { weapon_key: 'hinf_environment', label: 'Chute et environnement', kills: side({}) },
+      ...ROWS,
+    ]
+    expect(weaponRangeLines(rows, 'fr').map((l) => l.weaponKey)).toEqual([
+      'hinf_melee',
+      'hinf_commando',
+      'hinf_s7',
+    ])
+  })
 })
 
-describe('weaponRangeCategoryLabel — les DEUX effectifs, toujours', () => {
-  it('écrit frags/morts, et un tiret pour le côté sans mesure', () => {
+describe('weaponRangeCategoryLabel — le nom de l’arme, nu', () => {
+  it('n’écrit QUE le libellé — les effectifs vivent dans l’infobulle et le tableau', () => {
     const [melee, commando, s7] = weaponRangeLines(ROWS, 'fr')
-    expect(weaponRangeCategoryLabel(melee)).toBe('Mêlée ×133/96')
-    expect(weaponRangeCategoryLabel(commando)).toBe('hinf_commando ×64/—')
-    expect(weaponRangeCategoryLabel(s7)).toBe('Fusil de précision S7 ×—/117')
+    expect(weaponRangeCategoryLabel(melee)).toBe('Mêlée')
+    // Repli sur la clé quand le registre n'a rien résolu : le trou doit rester VISIBLE.
+    expect(weaponRangeCategoryLabel(commando)).toBe('hinf_commando')
+    expect(weaponRangeCategoryLabel(s7)).toBe('Fusil de précision S7')
   })
 })
 
@@ -156,9 +171,9 @@ describe('buildWeaponRangeOption — l’axe et la série', () => {
   it('la première arme du backend est EN HAUT : l’axe Y inverse la liste', () => {
     const o = optionOf(weaponRangeLines(ROWS, 'fr'))
     expect(o.yAxis.data).toEqual([
-      'Fusil de précision S7 ×—/117',
-      'hinf_commando ×64/—',
-      'Mêlée ×133/96',
+      'Fusil de précision S7',
+      'hinf_commando',
+      'Mêlée',
     ])
     expect(o.xAxis.max).toBe(55)
     expect(o.series[0].type).toBe('custom')

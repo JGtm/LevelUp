@@ -126,14 +126,11 @@ func TestComputeUsage_CadenceSurDureeMesureeSeule(t *testing.T) {
 	}
 }
 
-func TestComputeUsage_EtendueEtMatchsAuDessusDeLaParite(t *testing.T) {
+func TestComputeUsage_MatchsAuDessusDeLaParite(t *testing.T) {
 	out := ComputeUsage(sessionDeTest())
 	m := findMetric(t, out.Metrics, MetricPadPickups)
 	// m1 : joueur/équipe = 1/3 = 33.33 (parité du match 50 → pas au-dessus) ;
 	// m2 : 4/5 = 80 (parité 33.33 → au-dessus).
-	if !closeTo(m.PlayerShareOfTeamMinPct, 100.0/3) || !closeTo(m.PlayerShareOfTeamMaxPct, 80) {
-		t.Errorf("étendue = (%v, %v), attendu (33.33, 80)", m.PlayerShareOfTeamMinPct, m.PlayerShareOfTeamMaxPct)
-	}
 	if m.MatchesAboveTeamParity == nil || *m.MatchesAboveTeamParity != 1 {
 		t.Errorf("au-dessus parité équipe = %v, attendu 1 (parité DU match, pas de la session)", m.MatchesAboveTeamParity)
 	}

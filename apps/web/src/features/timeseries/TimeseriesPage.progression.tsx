@@ -10,6 +10,7 @@ import { useMemo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
+import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatWinProb } from '@/lib/winProbCategory'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
@@ -241,7 +242,7 @@ export function TimeseriesProgressionTab({
           <div className="flex flex-col gap-0.5">
             <span className="flex items-center gap-1.5">
               {t('timeseries.progression.intensity_title')}
-              <InfoTooltip content={t('timeseries.progression.intensity_tooltip')} />
+              <InfoTooltip content={intensityTooltipText(locale)} />
             </span>
             <span className="text-xs font-normal text-muted-foreground">
               {t('timeseries.progression.intensity_subtitle')}

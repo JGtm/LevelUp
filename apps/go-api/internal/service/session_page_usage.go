@@ -34,30 +34,56 @@ type objectiveRoleRowsLoader interface {
 // du joueur suivi et le résolveur d'amis configurés (restriction des coéquipiers
 // suivis, même source que l'accueil). Câblé UNIQUEMENT pour les titres portant
 // film.usage_summary (registry_pages, jamais slug==) — nil ⇒ bloc indisponible.
+//
+// repoRoot sert au SEUL catalogue d'armes du titre (session_page_usage_labels.go) :
+// il voyage avec ce wiring-là parce qu'il n'a d'utilité que pour ce bloc. Vide ⇒ les
+// familles de socle gardent leur clé hexadécimale, rendu valide et sans erreur.
 func (s *SessionPageService) WithSessionUsage(
 	repo port.SessionUsageRepository, xuid string, friends teammates.FriendGamertagsResolver,
+	repoRoot string,
 ) *SessionPageService {
 	s.sessionUsageRepo = repo
 	s.usageXUID = xuid
 	s.usageFriends = friends
+	s.repoRoot = repoRoot
 	return s
 }
 
-// attachSessionUsage attache le bloc usage de la session COURANTE. Best-effort :
-// une erreur de lecture est loggée PUIS dégradée en Available=false (raison
-// machine) — jamais d'échec de la page. Session sans match ⇒ bloc nil.
+// attachSessionUsage attache le bloc usage de la session COURANTE et, en mode
+// comparaison, celui de la session COMPARÉE — MIROIR d'attachSessionEventBlocks, qui
+// sert déjà ses deux blocs event-based aux deux sessions.
+//
+// POURQUOI LES DEUX (revue de lisibilité 2026-09-09, D8) : le drawer de comparaison
+// montrait ces cartes à gauche et rien à droite, non par choix de lecture mais parce que
+// le bloc n'était jamais calculé pour la session comparée. Les deux blocs sont
+// comparables sans retraitement — toutes leurs grandeurs sont normalisées (cadences par
+// dix minutes, parts en pourcentage), aucune n'est un total de session.
+//
+// `compareMatches` vide (drawer fermé) ⇒ CompareUsage reste nil, et rien ne se rend à
+// droite : l'absence dit tout, aucun drapeau n'est nécessaire.
 func (s *SessionPageService) attachSessionUsage(
 	ctx context.Context, resp *domain.SessionPageResponse,
-	matches []legacymatch.StatsMatchRow, matchContext string,
+	matches, compareMatches []legacymatch.StatsMatchRow, matchContext, locale string,
 ) {
+	resp.Usage = s.buildSessionUsage(ctx, matches, matchContext, locale)
+	if len(compareMatches) > 0 {
+		resp.CompareUsage = s.buildSessionUsage(ctx, compareMatches, matchContext, locale)
+	}
+}
+
+// buildSessionUsage calcule le bloc usage d'UNE session. Best-effort : une erreur de
+// lecture est loggée PUIS dégradée en Available=false (raison machine) — jamais d'échec
+// de la page. Session sans match ⇒ nil.
+func (s *SessionPageService) buildSessionUsage(
+	ctx context.Context, matches []legacymatch.StatsMatchRow, matchContext, locale string,
+) *domain.SessionUsageBlock {
 	if len(matches) == 0 {
-		return
+		return nil
 	}
 	if s.sessionUsageRepo == nil || s.usageXUID == "" {
-		resp.Usage = &domain.SessionUsageBlock{
+		return &domain.SessionUsageBlock{
 			UnavailableReason: domain.SessionUsageUnsupported, MatchesTotal: len(matches),
 		}
-		return
 	}
 	ids := matchIDsFromStatsRows(matches)
 	films, filmsErr := s.sessionUsageRepo.LoadUsageFilms(ctx, ids)
@@ -67,10 +93,9 @@ func (s *SessionPageService) attachSessionUsage(
 		if err != nil {
 			slog.ErrorContext(ctx, "session page: usage block load failed", "err", err,
 				"match_count", len(ids))
-			resp.Usage = &domain.SessionUsageBlock{
+			return &domain.SessionUsageBlock{
 				UnavailableReason: domain.SessionUsageLoadFailed, MatchesTotal: len(matches),
 			}
-			return
 		}
 	}
 
@@ -92,7 +117,8 @@ func (s *SessionPageService) attachSessionUsage(
 	block := sessionusage.ComputeUsage(in)
 	block.SquadPlayers = squad
 	s.attachSessionObjectives(ctx, &block, ids, tc, in.SquadXUIDs)
-	resp.Usage = &block
+	s.resolvePadFamilyLabels(ctx, &block, locale)
+	return &block
 }
 
 // attachSessionObjectives renseigne le sous-bloc objectifs (lecture seule de

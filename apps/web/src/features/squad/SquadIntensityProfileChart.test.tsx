@@ -9,6 +9,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
+import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
 import type { SquadIntensityProfile } from '@/lib/api/types'
 import { getSquadText } from './i18n'
 import { SquadIntensityProfileChart } from './SquadIntensityProfileChart'
@@ -59,7 +60,7 @@ function renderChart(profile: SquadIntensityProfile, playerOrder?: string[]) {
     <SquadIntensityProfileChart
       title={T.intensity.title}
       subtitle={T.intensity.subtitle}
-      tooltip={T.intensity.tooltip}
+      tooltip={intensityTooltipText('fr', { withTeam: true })}
       medianLabel={T.intensity.medianLabel}
       envelopeLabel={T.intensity.envelopeLabel}
       refLabel={T.intensity.refLabel}

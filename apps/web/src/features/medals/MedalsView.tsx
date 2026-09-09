@@ -8,8 +8,11 @@
  * maîtrise (CitationProgressRing, doré si complète) + libellé + total, puis
  * grille de MedalCard.
  */
+import type { CSSProperties } from 'react'
+
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { EmptyStateCard } from '@/components/ui/empty-state'
+import { packBlockRows, rowGridTemplate } from '@/lib/layout/blockRowPacking'
 import { MedalCard } from './MedalCard'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import type { MedalSummaryItem } from '@/lib/api/types'
@@ -61,9 +64,21 @@ export function MedalsView({ vm, locale, emptyTitle, emptyDescription }: MedalsV
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {section.label}
           </h3>
+          {/* Largeur de chaque catégorie proportionnelle à SON contenu : une catégorie
+              de 2 médailles ne prend plus la même bande qu'une de 25 (retour
+              utilisateur 2026-09-09). L'ordre de tri de la barre d'outils est
+              préservé — cf. lib/layout/blockRowPacking. */}
           <div className="flex flex-col gap-6">
-            {section.categories.map((category) => (
-              <MedalCategoryCard key={category.key} category={category} locale={locale} />
+            {packBlockRows(section.categories, (c) => c.items.length).map((row) => (
+              <div
+                key={row.blocks[0].key}
+                className="block-row"
+                style={{ '--block-row-cols': rowGridTemplate(row) } as CSSProperties}
+              >
+                {row.blocks.map((category) => (
+                  <MedalCategoryCard key={category.key} category={category} locale={locale} />
+                ))}
+              </div>
             ))}
           </div>
         </section>

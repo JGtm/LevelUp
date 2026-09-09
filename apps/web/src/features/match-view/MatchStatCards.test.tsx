@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import type { MatchSummaryKpis, MatchExpectedStats } from '@/lib/api/types'
@@ -92,5 +92,41 @@ describe('MatchSummaryCardsSection — masquage des cards par capability (résid
     renderSection({ expected: { expected_win_prob: 0.62 } })
     expect(screen.getByText('Résultat attendu')).toBeInTheDocument()
     expect(screen.getByText('62 %')).toBeInTheDocument()
+  })
+})
+
+describe('MatchSummaryCardsSection — aides ⓘ Rendement / Résistance (2026-09-09)', () => {
+  beforeEach(() => {
+    caps.damageTaken = true
+    caps.teamMmr = true
+  })
+
+  /** L'icône ⓘ SŒUR d'un libellé donné — deux cartes en portent une, il faut viser la bonne. */
+  function infoIconOf(label: string): HTMLElement {
+    const ligne = screen.getByText(label).closest('p')
+    expect(ligne).not.toBeNull()
+    return within(ligne as HTMLElement).getByRole('button', { name: /info/i })
+  }
+
+  it('« Rendement » ouvre sa définition : un frag par vie de dégâts dépensée', () => {
+    renderSection()
+    fireEvent.mouseEnter(infoIconOf('Rendement'))
+    expect(screen.getByRole('tooltip').textContent).toMatch(/un frag par vie dépensée/i)
+  })
+
+  it('« Résistance » ouvre SA définition, pas celle du Rendement', () => {
+    // Le défaut d'origine : les deux cartes partageaient un texte unique qui définissait les
+    // deux indicateurs. Chacune porte désormais le sien.
+    renderSection()
+    fireEvent.mouseEnter(infoIconOf('Résistance'))
+    const aide = screen.getByRole('tooltip').textContent ?? ''
+    expect(aide).toMatch(/encaissés avant chaque mort/i)
+    expect(aide).not.toMatch(/un frag par vie dépensée/i)
+  })
+
+  it('les cartes SANS définition n’ajoutent aucune icône (rendu inchangé)', () => {
+    renderSection()
+    const vieMoyenne = screen.getByText('Vie moy.').closest('p') as HTMLElement
+    expect(within(vieMoyenne).queryByRole('button', { name: /info/i })).toBeNull()
   })
 })

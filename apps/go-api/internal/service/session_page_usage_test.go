@@ -79,7 +79,7 @@ func usageTestRepoMock() *mockSessionUsageRepo {
 func TestAttachSessionUsage_CapabilityAbsente(t *testing.T) {
 	svc := NewSessionPageService(nil) // repo usage jamais câblé
 	var resp domain.SessionPageResponse
-	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), domain.MatchContextSolo)
+	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), nil, domain.MatchContextSolo, "fr")
 	if resp.Usage == nil {
 		t.Fatal("Usage nil : le bloc doit être présent avec Available=false, pas absent")
 	}
@@ -92,9 +92,9 @@ func TestAttachSessionUsage_CapabilityAbsente(t *testing.T) {
 }
 
 func TestAttachSessionUsage_SessionSansMatch(t *testing.T) {
-	svc := NewSessionPageService(nil).WithSessionUsage(usageTestRepoMock(), "P", nil)
+	svc := NewSessionPageService(nil).WithSessionUsage(usageTestRepoMock(), "P", nil, "")
 	var resp domain.SessionPageResponse
-	svc.attachSessionUsage(context.Background(), &resp, nil, domain.MatchContextSolo)
+	svc.attachSessionUsage(context.Background(), &resp, nil, nil, domain.MatchContextSolo, "fr")
 	if resp.Usage != nil {
 		t.Errorf("Usage = %+v, attendu nil (session sans match)", resp.Usage)
 	}
@@ -103,9 +103,9 @@ func TestAttachSessionUsage_SessionSansMatch(t *testing.T) {
 func TestAttachSessionUsage_ErreurDeLectureDegrade(t *testing.T) {
 	repo := usageTestRepoMock()
 	repo.filmsErr = errors.New("boom")
-	svc := NewSessionPageService(nil).WithSessionUsage(repo, "P", nil)
+	svc := NewSessionPageService(nil).WithSessionUsage(repo, "P", nil, "")
 	var resp domain.SessionPageResponse
-	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), domain.MatchContextSolo)
+	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), nil, domain.MatchContextSolo, "fr")
 	if resp.Usage == nil || resp.Usage.Available || resp.Usage.UnavailableReason != domain.SessionUsageLoadFailed {
 		t.Errorf("bloc = %+v, attendu Available=false raison %q", resp.Usage, domain.SessionUsageLoadFailed)
 	}
@@ -113,13 +113,13 @@ func TestAttachSessionUsage_ErreurDeLectureDegrade(t *testing.T) {
 
 func TestAttachSessionUsage_ContexteEscouade(t *testing.T) {
 	svc := NewSessionPageService(nil).
-		WithSessionUsage(usageTestRepoMock(), "P", func(context.Context) []string { return []string{"Alpha"} })
+		WithSessionUsage(usageTestRepoMock(), "P", func(context.Context) []string { return []string{"Alpha"} }, "")
 	svc.objectiveIndex = &mockObjectiveIndexWithRoles{roleRows: []sessionusage.ObjectiveRow{
 		{MatchID: "m1", XUID: "P", Family: narrative.FamilyCTF, Take: 2},
 		{MatchID: "m1", XUID: "A", Family: narrative.FamilyCTF, Take: 1},
 	}}
 	var resp domain.SessionPageResponse
-	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), domain.MatchContextSquad)
+	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), nil, domain.MatchContextSquad, "fr")
 	u := resp.Usage
 	if u == nil || !u.Available {
 		t.Fatalf("Usage = %+v, attendu bloc disponible", u)
@@ -148,9 +148,9 @@ func TestAttachSessionUsage_ContexteEscouade(t *testing.T) {
 }
 
 func TestAttachSessionUsage_ContexteSoloSansLigneSquad(t *testing.T) {
-	svc := NewSessionPageService(nil).WithSessionUsage(usageTestRepoMock(), "P", nil)
+	svc := NewSessionPageService(nil).WithSessionUsage(usageTestRepoMock(), "P", nil, "")
 	var resp domain.SessionPageResponse
-	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), domain.MatchContextSolo)
+	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), nil, domain.MatchContextSolo, "fr")
 	u := resp.Usage
 	if u == nil || !u.Available {
 		t.Fatalf("Usage = %+v, attendu bloc disponible", u)
@@ -165,5 +165,40 @@ func TestAttachSessionUsage_ContexteSoloSansLigneSquad(t *testing.T) {
 	}
 	if u.Objectives != nil {
 		t.Errorf("objectifs = %+v, attendu nil (aucun loader câblé)", u.Objectives)
+	}
+}
+
+// ─── Session comparée (D8, plan de lisibilité 2026-09-09) ────────────────────────
+
+// Le drawer de comparaison n'affichait rien à droite parce que le bloc n'était calculé
+// que pour la session courante. Ces deux tests fixent la règle : le bloc comparé est
+// servi quand — et seulement quand — des matchs comparés sont passés.
+func TestAttachSessionUsage_SessionCompareeServieQuandLeDrawerEstOuvert(t *testing.T) {
+	svc := NewSessionPageService(nil).WithSessionUsage(usageTestRepoMock(), "P", nil, "")
+	var resp domain.SessionPageResponse
+	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), usageTestMatches(),
+		domain.MatchContextSolo, "fr")
+	if resp.Usage == nil || resp.CompareUsage == nil {
+		t.Fatalf("Usage = %v, CompareUsage = %v : les deux colonnes doivent porter un bloc",
+			resp.Usage, resp.CompareUsage)
+	}
+	// Les deux blocs sont calculés séparément : ce ne doit JAMAIS être le même pointeur
+	// (un bloc partagé se mettrait à mentir dès que les deux sessions divergent).
+	if resp.Usage == resp.CompareUsage {
+		t.Error("Usage et CompareUsage partagent le même bloc")
+	}
+	if resp.CompareUsage.MatchesTotal != len(usageTestMatches()) {
+		t.Errorf("compare matches_total = %d, attendu %d",
+			resp.CompareUsage.MatchesTotal, len(usageTestMatches()))
+	}
+}
+
+func TestAttachSessionUsage_DrawerFermeNeSertAucunBlocCompare(t *testing.T) {
+	svc := NewSessionPageService(nil).WithSessionUsage(usageTestRepoMock(), "P", nil, "")
+	var resp domain.SessionPageResponse
+	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), nil,
+		domain.MatchContextSolo, "fr")
+	if resp.CompareUsage != nil {
+		t.Errorf("CompareUsage = %+v, attendu nil hors comparaison", resp.CompareUsage)
 	}
 }

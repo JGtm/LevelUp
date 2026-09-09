@@ -10,9 +10,14 @@
  * la fenêtre coupe une population dense ou du vide — « 40 % de morts vengées » se lit
  * très différemment selon que les ripostes manquées arrivent à 5,2 s ou à 40 s.
  *
- * LA FENÊTRE EST MARQUÉE DANS LE PIED DE CARTE ET DANS LES ÉTIQUETTES DE BARRE
+ * LA FENÊTRE EST MARQUÉE DANS L'AIDE ⓘ DU TITRE ET DANS LES ÉTIQUETTES DE BARRE
  * (suffixe « hors fenêtre »), pas par une markLine : le wrapper `HistogramChart`
  * n'expose pas de markLine, et en fabriquer une exigerait un second wrapper.
+ *
+ * CE QUI A ÉTÉ RETIRÉ le 2026-09-09 (retour utilisateur) : la phrase narrative
+ * (« N ripostes sur M arrivent dans la fenêtre… ») et la note de couverture, qui redisaient
+ * en toutes lettres ce que la distribution montre déjà. La définition et la fenêtre, elles,
+ * ne se déduisent pas d'un graphe : elles passent en infobulle.
  *
  * Les intervalles sont PRÉ-BINNÉS par le serveur (ADR 0010) : ce composant ne
  * choisit aucune borne.
@@ -20,6 +25,7 @@
 import { useMemo } from 'react'
 
 import { HistogramChart, type ChartPointHistogram } from '@/components/charts/HistogramChart'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SquadEchange } from '@/lib/api/types'
@@ -75,36 +81,35 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
     [buckets],
   )
 
-  const footer = (
-    <div className="space-y-1 border-t border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground">{t.definition(secondes)}</p>
-      <p className="text-xs text-muted-foreground">{t.delayWindow(secondes)}</p>
-      <p className="text-xs text-muted-foreground" data-testid="squad-echange-delai-coverage">
-        {t.coverage(echange.matchs_mesures, echange.matchs_total)}
-      </p>
-    </div>
+  const help = (
+    <span className="space-y-1.5">
+      <span className="block">{t.definition(secondes)}</span>
+      <span className="block">{t.delayWindow(secondes)}</span>
+    </span>
   )
 
   return (
-    <SectionCard title={t.delayTitle} label={t.delayLabel} footer={footer}>
+    <SectionCard
+      title={t.delayTitle}
+      label={t.delayLabel}
+      titleAdornment={(label) => (
+        <span className="flex items-center gap-1.5">
+          {label}
+          <InfoTooltip content={help} />
+        </span>
+      )}
+    >
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-delai">
-        {/* La ligne narrative et l'état vide ne coexistent pas : dire deux fois
-            « aucune riposte mesurée » l'un sous l'autre n'informe pas deux fois. */}
         {resume.total === 0 ? (
           <EmptyStateNotice title={t.emptyTitle} description={t.delayNarrativeEmpty} />
         ) : (
-          <>
-            <p className="text-sm text-foreground" data-testid="squad-echange-delai-narrative">
-              {t.delayNarrative(resume.dansLaFenetre, resume.horsFenetre, resume.total, secondes)}
-            </p>
-            <HistogramChart
-              series={series}
-              xAxisLabel={t.delayXAxis}
-              yAxisLabel={t.delayYAxis}
-              formatBin={formatBin}
-              binAttenuated={binAttenuated}
-            />
-          </>
+          <HistogramChart
+            series={series}
+            xAxisLabel={t.delayXAxis}
+            yAxisLabel={t.delayYAxis}
+            formatBin={formatBin}
+            binAttenuated={binAttenuated}
+          />
         )}
       </div>
     </SectionCard>

@@ -170,18 +170,26 @@ describe('MatchCard', () => {
     expect(screen.queryByTestId('match-card-kda-bar')).toBeNull()
   })
 
-  // Lien rejeu 2D à droite de la playlist : rendu UNIQUEMENT si l'artefact existe
+  // Bouton rejeu 2D à droite du placement : rendu UNIQUEMENT si l'artefact existe
   // (has_replay) ET que la tuile connaît le joueur (playerSlug — route par joueur).
   describe('lien rejeu 2D', () => {
     const REPLAY_LABEL = 'Ouvrir le rejeu 2D du match'
 
-    it('affiche le lien vers le rejeu à côté de la playlist quand has_replay', () => {
+    it('affiche le bouton de rejeu quand has_replay', () => {
       render(<MatchCard match={{ ...WIN_MATCH, has_replay: true }} playerSlug="chief" />)
       const link = screen.getByLabelText(REPLAY_LABEL)
       expect(link.getAttribute('href')).toContain('/matches/match-001/replay')
       expect(link.getAttribute('href')).toContain('/players/chief/')
-      // À droite du label de playlist : même conteneur que le sous-titre.
-      expect(link.parentElement?.textContent).toContain('Arène classée')
+    })
+
+    // Le bouton vit dans la rangée « badge solo/escouade + placement », APRÈS le
+    // placement — pas dans la ligne de playlist où il passait inaperçu.
+    it('se pose à droite du placement, pas sur la ligne de playlist', () => {
+      const withRank: RecentMatchItem = { ...WIN_MATCH, has_replay: true, rank_in_team: 2 }
+      render(<MatchCard match={withRank} playerSlug="chief" />)
+      const row = screen.getByLabelText(REPLAY_LABEL).parentElement
+      expect(row?.textContent).toContain('2')
+      expect(row?.textContent).not.toContain('Arène classée')
     })
 
     it('n\'affiche rien sans artefact de rejeu (pas de lien mort)', () => {
@@ -194,7 +202,7 @@ describe('MatchCard', () => {
       expect(screen.queryByLabelText(REPLAY_LABEL)).toBeNull()
     })
 
-    it('affiche le lien même sans playlist (ligne dédiée)', () => {
+    it('affiche le bouton même sans playlist', () => {
       const noPlaylist: RecentMatchItem = { ...WIN_MATCH, playlist_ui: null, has_replay: true }
       render(<MatchCard match={noPlaylist} playerSlug="chief" />)
       expect(screen.getByLabelText(REPLAY_LABEL)).toBeTruthy()

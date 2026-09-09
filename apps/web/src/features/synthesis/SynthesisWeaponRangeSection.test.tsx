@@ -2,10 +2,10 @@
  * SynthesisWeaponRangeSection.test — la section « Portée des engagements ».
  *
  * Ce que ces tests verrouillent : les quatre tuiles AVEC leur dénominateur, les DEUX tuiles
- * d'entame qui n'apparaissent QUE si l'entame est mesurée (jamais un zéro — décision D5), la
- * ligne « sous le seuil » qui NOMME les armes écartées et disparaît quand il n'y en a pas, la
- * note de couverture, le tableau dépliable (les deux côtés, le tiret du côté non mesuré), et
- * le retrait complet de la section quand rien n'est publiable.
+ * d'entame qui n'apparaissent QUE si l'entame est mesurée (jamais un zéro — décision D5), les
+ * deux légendes (encres, noms accessibles distincts, position en pied de graphe), le tableau
+ * dépliable (les deux côtés, le tiret du côté non mesuré), et le retrait complet de la
+ * section quand rien n'est publiable.
  *
  * Les deux graphes sont testés PURS (`_weaponRangeChart.test.ts`,
  * `_weaponElevationChart.test.ts`) — ici ECharts est mocké (jsdom ne peint pas de canvas).
@@ -119,13 +119,32 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     expect(textOf(/^-1,7 m$/).length).toBeGreaterThan(0)
   })
 
-  it('les deux légendes nomment les séries ET leur position dans le graphe', () => {
+  it('les deux légendes nomment leurs séries, SANS mention de position', () => {
+    // Les mentions « (bâton du haut) » / « (bâton du bas, l'arme est celle du tueur) » ont
+    // été retirées le 2026-09-09 : elles doublaient un ordre déjà lisible sur le graphe et
+    // faisaient une ligne de légende deux fois plus longue que la légende.
     renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
-    expect(textOf(/^Mes frags \(bâton du haut\)$/).length).toBeGreaterThan(0)
-    expect(textOf(/^Mes morts \(bâton du bas, l'arme est celle du tueur\)$/).length).toBeGreaterThan(0)
+    // `within` la légende : « Mes frags » nomme AUSSI un groupe de colonnes du tableau.
+    const legend = screen.getByRole('list', { name: 'Légende' })
+    expect(within(legend).getByText('Mes frags')).toBeInTheDocument()
+    expect(within(legend).getByText('Mes morts')).toBeInTheDocument()
+    expect(screen.queryByText(/bâton du haut/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/bâton du bas/)).not.toBeInTheDocument()
     expect(screen.getByText("d'en haut (> +1 m)")).toBeInTheDocument()
     expect(screen.getByText('à niveau')).toBeInTheDocument()
     expect(screen.getByText("d'en bas (< −1 m)")).toBeInTheDocument()
+  })
+
+  it('les deux légendes sont rendues en PIED de leur graphe, par le composant commun', () => {
+    // « Ça ne suit pas la nomenclature des autres graphes » (2026-09-09) : les deux légendes
+    // passent désormais par <ChartLegend>, posé dans le pied de carte de leur ChartCard.
+    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    const legends = screen.getAllByTestId('chart-legend')
+    expect(legends).toHaveLength(2)
+    for (const legend of legends) {
+      expect(legend.className).toContain('justify-center')
+      expect(legend.closest('[data-testid="chart-card-legend"]')).not.toBeNull()
+    }
   })
 
   it('les deux légendes portent des noms accessibles DISTINCTS', () => {
@@ -136,31 +155,18 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     expect(screen.getByRole('list', { name: 'Légende du dénivelé' })).toBeInTheDocument()
   })
 
-  it('la légende de portée met ses libellés en avant, celle du dénivelé les rend nus', () => {
-    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
-    const range = screen.getByRole('list', { name: 'Légende' })
-    const elevation = screen.getByRole('list', { name: 'Légende du dénivelé' })
-    expect(within(range).getByText('Mes frags').tagName).toBe('B')
-    expect(within(elevation).getByText('à niveau').tagName).toBe('SPAN')
-  })
-
   it('les pastilles du dénivelé portent l’encre de leur classe', () => {
-    // La pastille et le segment du graphe lisent le MÊME token : « d'en haut » emprunte
-    // l'encre des morts, « d'en bas » celle des frags, et « à niveau » le gris des libellés
-    // d'axe — qui n'a pas de token d'accessibilité, d'où la classe sémantique.
+    // La pastille et le segment du graphe lisent la MÊME encre. La rampe du dénivelé est
+    // INDÉPENDANTE des encres frags/morts (elle dit d'OÙ, pas qui tue qui) ; « à niveau »
+    // emprunte le gris des libellés d'axe, qui n'a pas de token d'accessibilité — d'où la
+    // variable CSS brute.
     renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
     const legend = screen.getByRole('list', { name: 'Légende du dénivelé' })
     const swatch = (name: string) =>
-      within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden="true"]')!
-    expect((swatch("d'en haut (> +1 m)") as HTMLElement).style.backgroundColor).toBe(
-      tokenCssVar('chart-series-3'),
-    )
-    expect((swatch("d'en bas (< −1 m)") as HTMLElement).style.backgroundColor).toBe(
-      tokenCssVar('chart-series-1'),
-    )
-    const level = swatch('à niveau') as HTMLElement
-    expect(level.className).toContain('bg-muted-foreground')
-    expect(level.style.backgroundColor).toBe('')
+      within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden]') as HTMLElement
+    expect(swatch("d'en haut (> +1 m)").style.backgroundColor).toBe(tokenCssVar('chart-series-3'))
+    expect(swatch("d'en bas (< −1 m)").style.backgroundColor).toBe(tokenCssVar('chart-series-1'))
+    expect(swatch('à niveau').style.backgroundColor).toBe('var(--muted-foreground)')
   })
 
   it('les pastilles de la légende de PORTÉE portent l’encre de leur côté', () => {
@@ -171,11 +177,11 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
     const legend = screen.getByRole('list', { name: 'Légende' })
     const swatch = (name: string) =>
-      within(legend).getByText(name).parentElement!.querySelector(
-        'span[aria-hidden="true"]',
-      ) as HTMLElement
+      within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden]') as HTMLElement
     expect(swatch('Mes frags').style.backgroundColor).toBe(tokenCssVar('chart-series-1'))
-    expect(swatch('Mes morts').style.backgroundColor).toBe(tokenCssVar('chart-series-3'))
+    // `outcome-loss` : la convention frags/morts de toute l'app, et non `chart-series-3`
+    // qui est l'encre des ASSISTANCES ailleurs.
+    expect(swatch('Mes morts').style.backgroundColor).toBe(tokenCssVar('outcome-loss'))
   })
 
   it('les deux tuiles de portée portent l’accent de leur côté', () => {
@@ -187,7 +193,7 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
       (screen.getByText(label).closest('div.rounded-lg')!.firstElementChild as HTMLElement).style
         .backgroundColor
     expect(accentOf('Portée médiane de mes frags')).toBe(tokenCssVar('chart-series-1'))
-    expect(accentOf('Portée médiane de mes morts')).toBe(tokenCssVar('chart-series-3'))
+    expect(accentOf('Portée médiane de mes morts')).toBe(tokenCssVar('outcome-loss'))
   })
 
   it('le tableau groupe ses colonnes : mes frags D’ABORD, mes morts ensuite', () => {
@@ -199,14 +205,12 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     expect(groups).toEqual(['', 'Mes frags', 'Mes morts'])
   })
 
-  it('nomme les armes écartées par le seuil, des deux côtés, et publie la note de couverture', () => {
+  it('ne publie plus ni la ligne « sous le seuil » ni la note de couverture', () => {
+    // Retirées le 2026-09-09 (demande utilisateur) : deux paragraphes de texte gris sous la
+    // carte, qui répétaient une réserve déjà portée par les dénominateurs de chaque tuile.
     renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
-    expect(
-      textOf(/^Sous le seuil de 8 mesures — frags : Hydra \(6\), Disrupteur \(4\) · morts : Ravageur \(5\)$/).length,
-    ).toBeGreaterThan(0)
-    expect(
-      screen.getByText(/Ne compte que les frags et les morts dont la position du tueur ET de la victime/),
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/Sous le seuil/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/couverture partielle/)).not.toBeInTheDocument()
   })
 
   it('le tableau déplié redit les deux côtés, avec un tiret là où rien n’est mesuré', () => {
@@ -299,27 +303,6 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
     expect(flatCardOf('Entame → frag')).toContain('+1,7 m')
   })
 
-  it('sans arme sous le seuil, la ligne « sous le seuil » n’est pas rendue', () => {
-    renderWithProviders(
-      <SynthesisWeaponRangeSection
-        range={{ ...RANGE, below_threshold_kills: [], below_threshold_deaths: null }}
-      />,
-    )
-    expect(screen.queryByText(/Sous le seuil/)).not.toBeInTheDocument()
-    // La note de couverture, elle, reste : la mesure est partielle dans tous les cas.
-    expect(screen.getByText(/couverture partielle/)).toBeInTheDocument()
-  })
-
-  it('un seul côté sous le seuil : ce demi-énoncé seul, jamais « morts : » à vide', () => {
-    renderWithProviders(
-      <SynthesisWeaponRangeSection range={{ ...RANGE, below_threshold_deaths: [] }} />,
-    )
-    expect(
-      textOf(/^Sous le seuil de 8 mesures — frags : Hydra \(6\), Disrupteur \(4\)$/).length,
-    ).toBeGreaterThan(0)
-    expect(screen.queryByText(/morts : /)).not.toBeInTheDocument()
-  })
-
   it('sans bloc du tout, la section entière se retire', () => {
     const { container: nul } = renderWithProviders(<SynthesisWeaponRangeSection range={undefined} />)
     expect(nul).toBeEmptyDOMElement()
@@ -348,12 +331,7 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
     expect(
       screen.getByText(/Aucune arme n'atteint le seuil de 8 mesures sur cette période/),
     ).toBeInTheDocument()
-    // Les armes écartées sont nommées, la note de couverture reste, le tableau disparaît
-    // (il n'aurait aucune ligne à redire).
-    expect(
-      textOf(/^Sous le seuil de 8 mesures — frags : Hydra \(6\) · morts : Ravageur \(5\)$/).length,
-    ).toBeGreaterThan(0)
-    expect(screen.getByText(/couverture partielle/)).toBeInTheDocument()
+    // Le tableau disparaît aussi : il n'aurait aucune ligne à redire.
     expect(screen.queryByText('Voir en tableau')).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })

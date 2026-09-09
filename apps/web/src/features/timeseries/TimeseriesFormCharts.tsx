@@ -18,6 +18,7 @@ import {
   getGridBase,
   getLegendBase,
   getTooltipBase,
+  legendEntries,
   CHART_BG,
   escapeHtml,
 } from '@/components/charts/_utils'
@@ -51,6 +52,43 @@ function rollingMean(values: (number | null | undefined)[], window: number): (nu
     out[i] = n > 0 ? sum / n : null
   }
   return out
+}
+
+/**
+ * Seuil de lecture du FDA : autant de frags + assistances/3 que de morts (ADR 0006).
+ * En dessous le match coûte plus qu'il ne rapporte — c'est ce seuil qui coupe les barres
+ * du graphe FDA en deux séries (verte au-dessus, rouge en dessous) et qui porte la ligne
+ * de référence.
+ */
+const FDA_THRESHOLD = 1
+
+/** Entrée d'infobulle `trigger: 'axis'` — sous-ensemble des champs consommés ici. */
+interface AxisTooltipItem {
+  axisValueLabel?: string
+  marker?: string
+  seriesName?: string
+  value?: unknown
+}
+
+/**
+ * axisTooltipSkippingNulls — l'infobulle d'axe standard, MOINS les séries qui n'ont pas de
+ * valeur sur le point survolé.
+ *
+ * Nécessaire dès qu'un même fait est réparti sur plusieurs séries EXCLUSIVES (le FDA d'un
+ * match est soit au-dessus, soit en dessous du seuil) : l'infobulle par défaut listerait
+ * l'autre série avec un « — », qui se lit comme une donnée manquante alors que c'est une
+ * donnée qui n'a pas lieu d'être.
+ */
+function axisTooltipSkippingNulls(params: unknown): string {
+  const items = (Array.isArray(params) ? params : [params]) as AxisTooltipItem[]
+  const hits = items.filter((it) => typeof it.value === 'number' && Number.isFinite(it.value))
+  if (hits.length === 0) return ''
+  const header = escapeHtml((items[0]?.axisValueLabel ?? '').replace(/\n/g, ' · '))
+  // `marker` est la pastille HTML fabriquée par ECharts (pas une donnée) : pas d'échappement.
+  const lines = hits.map(
+    (it) => `${it.marker ?? ''}${escapeHtml(it.seriesName ?? '')}: <b>${String(it.value)}</b>`,
+  )
+  return [header, ...lines].join('<br/>')
 }
 
 interface CommonRenderProps {
@@ -103,24 +141,52 @@ export function TimeseriesKdaValueTrend({
     const colPositive = resolveToken('outcome-win')
     const smoothColor = resolveToken('chart-series-1')
     const categories = buildMatchCategories(rows)
-    const bars = rows.map((r) => {
-      if (r.kda == null || !Number.isFinite(r.kda)) return { value: null }
-      const v = Math.round(r.kda * 100) / 100
-      return {
-        value: v,
-        itemStyle: { color: v < 1 ? colNegative : colPositive, opacity: 0.85 },
-      }
-    })
-    const rawValues = rows.map((r) =>
-      r.kda != null && Number.isFinite(r.kda) ? r.kda : null,
+    const values = rows.map((r) =>
+      r.kda == null || !Number.isFinite(r.kda) ? null : Math.round(r.kda * 100) / 100,
     )
-    const smooth = rollingMean(rawValues, 5)
+    // DEUX SÉRIES PLUTÔT QU'UNE SÉRIE BICOLORE (décision utilisateur 2026-09-09) : une
+    // pastille de légende unique ne peut pas annoncer deux couleurs, et une série colorée
+    // au POINT ne donne aucune couleur de série à ECharts — sa légende retombait alors sur
+    // la palette par défaut du moteur, absente du graphe. Une série par côté du seuil :
+    // chaque pastille dit sa couleur, et chaque côté se masque d'un clic. `barGap: -100%`
+    // superpose les deux séries sur la même colonne — elles sont exclusives par
+    // construction (une valeur est d'un seul côté du seuil), donc jamais côte à côte.
+    const above = values.map((v) => (v == null || v < FDA_THRESHOLD ? null : v))
+    const below = values.map((v) => (v == null || v >= FDA_THRESHOLD ? null : v))
+    const smooth = rollingMean(
+      rows.map((r) => (r.kda != null && Number.isFinite(r.kda) ? r.kda : null)),
+      5,
+    )
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 100) / 100))
+    const aboveLabel = `${fdaLabel} ≥ ${FDA_THRESHOLD}`
+    const belowLabel = `${fdaLabel} < ${FDA_THRESHOLD}`
+    const bar = (name: string, data: (number | null)[], color: string) => ({
+      type: 'bar' as const,
+      name,
+      data,
+      barMaxWidth: 14,
+      barGap: '-100%',
+      itemStyle: { color, opacity: 0.85 },
+    })
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase(),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
-      legend: { ...getLegendBase(tc), bottom: 0 },
+      tooltip: {
+        ...getTooltipBase(tc),
+        trigger: 'axis',
+        // Une valeur n'existe que d'un côté du seuil : sans filtre, l'autre série ferait
+        // une ligne « — » dans chaque infobulle.
+        formatter: axisTooltipSkippingNulls,
+      },
+      legend: {
+        ...getLegendBase(tc),
+        bottom: 0,
+        data: legendEntries([
+          { name: aboveLabel, color: colPositive },
+          { name: belowLabel, color: colNegative },
+          { name: smoothingLabel, color: smoothColor },
+        ]),
+      },
       xAxis: {
         ...getAxisBase(tc),
         type: 'category',
@@ -130,18 +196,16 @@ export function TimeseriesKdaValueTrend({
       yAxis: { ...getAxisBase(tc), type: 'value' },
       series: [
         {
-          type: 'bar',
-          name: fdaLabel,
-          data: bars,
-          barMaxWidth: 14,
+          ...bar(aboveLabel, above, colPositive),
           markLine: {
             silent: true,
             symbol: 'none',
             // Seuil FDA = 1 : autant de frags+assists que de morts. Barre rouge gras.
             lineStyle: { color: colNegative, width: 2, type: 'solid' },
-            data: [{ yAxis: 1 }],
+            data: [{ yAxis: FDA_THRESHOLD }],
           },
         },
+        bar(belowLabel, below, colNegative),
         {
           type: 'line',
           name: smoothingLabel,
@@ -438,7 +502,11 @@ export function TimeseriesAvgLifeTrend({
   rows,
   title,
   emptyMessage,
-  height = 240,
+  // 320 et non 240 : cette carte partage sa rangée avec « Assistances » (320), et une
+  // grille CSS étire les deux cartes à la même hauteur. À 240 le graphe restait collé en
+  // haut d'une carte trop grande, avec un vide sous lui (retour utilisateur 2026-09-09 :
+  // « le graphe est juste ancré en haut, ça fait bizarre »).
+  height = 320,
   lifeLabel,
 }: TimeseriesAvgLifeTrendProps) {
   const themeVersion = useThemeVersion()

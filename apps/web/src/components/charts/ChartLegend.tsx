@@ -35,13 +35,26 @@ export interface ChartLegendProps {
   className?: string
   /** Survol lié optionnel : remonte la clé survolée (ou null en sortie). */
   onItemHover?: (key: string | null) => void
+  /**
+   * Nom accessible de la liste (`aria-label`). À poser dès qu'une page rend PLUSIEURS
+   * légendes : deux listes anonymes ne se distinguent pas au lecteur d'écran. Absent =
+   * liste sans nom, exactement le rendu historique.
+   */
+  ariaLabel?: string
 }
 
-export function ChartLegend({ items, align = 'center', className = '', onItemHover }: ChartLegendProps) {
+export function ChartLegend({
+  items,
+  align = 'center',
+  className = '',
+  onItemHover,
+  ariaLabel,
+}: ChartLegendProps) {
   if (items.length === 0) return null
   const justify = align === 'center' ? 'justify-center' : 'justify-start'
   return (
     <ul
+      aria-label={ariaLabel}
       className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground ${justify} ${className}`.trim()}
       data-testid="chart-legend"
     >

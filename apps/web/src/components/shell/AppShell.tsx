@@ -60,8 +60,17 @@ export function AppShell() {
       {/* Contenu principal scrollable — protégé contre les crashs de composants */}
       <ErrorBoundary>
         <main className="flex-1 overflow-y-auto">
-          <div className="app-shell-width mx-auto w-full">
-            <Outlet />
+          {/* Colonne pleine hauteur : le contenu prend au MINIMUM la hauteur visible
+              (`flex-1`), ce qui pousse le pied de page sous la ligne de flottaison.
+              Sans cela (retour utilisateur 2026-09-09), une page dont le contenu se
+              charge encore ne rend qu'un placeholder d'une ligne : le pied de page
+              remontait alors en haut de l'écran, seul visible, puis se faisait
+              repousser à l'arrivée des données — un saut de mise en page à chaque
+              navigation. */}
+          <div className="app-shell-width mx-auto flex min-h-full w-full flex-col">
+            <div className="flex-1">
+              <Outlet />
+            </div>
             {/* Pied de page — dans le flux scrollable, jamais fixé : la hauteur
                 verticale est comptée pour les tableaux denses. */}
             <AppFooter />

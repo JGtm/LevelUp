@@ -138,9 +138,13 @@ type SessionPageResponse struct {
 	// graphes — MIROIR du bloc Timeseries. Vide sans repo highlight events ni event.
 	FirstBlood        []FirstBloodPlayerSeries `json:"first_blood,omitempty"`
 	CompareFirstBlood []FirstBloodPlayerSeries `json:"compare_first_blood,omitempty"`
-	// Usage : bloc « usages d'équipement, socles et objectifs » de la session
-	// COURANTE (chantier session-usage S2). Best-effort : nil si la session n'a
-	// aucun match ; Available=false avec raison machine si le titre ne déclare
-	// pas film.usage_summary ou si la lecture échoue (jamais un 500).
-	Usage *SessionUsageBlock `json:"usage,omitempty"`
+	// Usage / CompareUsage : bloc « usages d'équipement, armes spéciales et
+	// objectifs », pour la session courante et pour la session comparée — MIROIR
+	// d'IntensityRows/CompareIntensityRows et de FirstBlood/CompareFirstBlood.
+	// Best-effort : nil si la session n'a aucun match ; Available=false avec raison
+	// machine si le titre ne déclare pas film.usage_summary ou si la lecture échoue
+	// (jamais un 500). CompareUsage reste nil hors comparaison : c'est cette
+	// absence, et non un drapeau, qui dit au client de ne rien rendre à droite.
+	Usage        *SessionUsageBlock `json:"usage,omitempty"`
+	CompareUsage *SessionUsageBlock `json:"compare_usage,omitempty"`
 }

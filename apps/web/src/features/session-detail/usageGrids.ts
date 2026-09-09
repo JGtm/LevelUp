@@ -1,6 +1,6 @@
 /**
- * usageGrids.ts — LES GRILLES ALIGNÉES du bloc « usages d'équipement, socles et
- * objectifs » (chantier session-usage S3) : trois projections de la primitive
+ * usageGrids.ts — LES GRILLES ALIGNÉES du bloc « usages d'équipement, armes
+ * spéciales et objectifs » (chantier session-usage S3) : trois projections de la primitive
  * partagée `components/charts/valueGridModel` (une échelle et un axe PAR COLONNE,
  * jamais une seconde grille — handoff §5/S3).
  *

@@ -50,6 +50,14 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		// l'oublier ici laissait la tuile afficher « 181 - 186 » là où la page du match
 		// affiche « 2 - 1 » — la jumelle HomeCtx ne sert que l'image OpenGraph.
 		WithRoundsDecide(r.roundsDecideFor(pdb)).
+		// Rejeu 2D des tuiles de match : MÊME service que l'endpoint /replay et l'Explorer.
+		// Câblé ici et pas seulement sur HomeCtx (2026-09-09) : le WithReplay d'origine
+		// n'existait QUE sur la jumelle, celle qui ne sert que l'image OpenGraph — donc
+		// `replaySvc` était nil sur /pages/home, `applyReplayAvailabilityToRecentItems`
+		// un no-op, et AUCUNE tuile n'a jamais porté has_replay. Exactement la bévue que
+		// décrit le commentaire de WithRoundsDecide ci-dessus, refaite. Parité des deux
+		// factories désormais tenue par home_factories_parity_test.go.
+		WithReplay(r.replayServiceFor(pdb)).
 		WithDemoMode(r.cfg.DemoMode)
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := forcePageIdentityXUID(r.enrichWithHaloTokens(ctx, pdb), pdb.XUID)

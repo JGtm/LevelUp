@@ -157,7 +157,7 @@ describe('FirstBloodLanes — barre d’avance', () => {
     expect(el.type).toBe('rect')
     expect(el.shape).toMatchObject({ x: 60, width: 60, height: 8, r: 4 })
     expect(el.shape.y).toBe(100 - 4)
-    expect(el.style).toMatchObject({ fill: 'tok:outcome-win', opacity: 0.32 })
+    expect(el.style).toMatchObject({ fill: 'tok:outcome-win', opacity: 0.5 })
   })
 
   it('vire au rouge quand la première mort précède le premier frag', async () => {

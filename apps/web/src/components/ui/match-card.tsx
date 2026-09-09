@@ -190,20 +190,8 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
               {heading}
             </p>
           )}
-          {(m.playlist_ui || (playerSlug && m.has_replay)) && (
-            <p className="inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground leading-tight">
-              {m.playlist_ui}
-              {/* Lien rejeu 2D à droite de la playlist — rendu UNIQUEMENT si
-                  l'artefact existe (has_replay) : jamais de lien vers un 404. */}
-              {playerSlug && (
-                <MatchReplayLink
-                  available={m.has_replay === true}
-                  matchId={m.match_id}
-                  playerSlug={playerSlug}
-                  label={t('common.match_card.replay_aria')}
-                />
-              )}
-            </p>
+          {m.playlist_ui && (
+            <p className="text-xs text-muted-foreground leading-tight">{m.playlist_ui}</p>
           )}
           <div
             data-testid="match-card-badges-row"
@@ -245,7 +233,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
           </p>
         </div>
 
-        {/* Badge solo/escouade + placement — zone réservée h fixe pour alignement */}
+        {/* Badge solo/escouade + placement + rejeu — zone réservée h fixe pour alignement */}
         <div className="min-h-[2rem] flex items-center justify-center gap-3">
           {hasMatchMeta && (
             <>
@@ -266,6 +254,20 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
               </span>
             )}
             </>
+          )}
+          {/* Bouton rejeu 2D, à DROITE du placement (retour utilisateur 2026-09-09) :
+              il vivait collé au nom de playlist, en icône nue de 20x16 px à 60 %
+              d'opacité — invisible en pratique sur une tuile. Rendu UNIQUEMENT si
+              l'artefact existe (has_replay) : jamais de lien vers un 404. Hors du
+              `hasMatchMeta` : un match sans placement ni badge garde son bouton. */}
+          {playerSlug && (
+            <MatchReplayLink
+              available={m.has_replay === true}
+              matchId={m.match_id}
+              playerSlug={playerSlug}
+              label={t('common.match_card.replay_aria')}
+              variant="button"
+            />
           )}
         </div>
 

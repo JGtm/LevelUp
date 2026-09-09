@@ -399,11 +399,15 @@ export function MatchSummaryCardsSection({
         primaryTitle={avgLifeTitle(kpis.average_life)}
         fixedAccent="divergent-neutral"
       />
+      {/* Aide ⓘ : un pourcentage rapporté à une vie de Spartan ne se lit pas sans sa
+          définition. MÊME texte que les cartes Escouade, moins la mention des zones de
+          fond — il n'y en a pas sur une tuile KPI. */}
       <MatchVsStatCard
         label={t('match_view.cards.rendement')}
         primary={formatOffensiveConversion(offensiveConversion)}
         primaryLabel={dmgPerKillLabel}
         fixedAccent={combatYieldToken(offensiveConversion, null)}
+        help={t('match_view.cards.rendement_help')}
       />
       {providesDamageTaken && (
         <MatchVsStatCard
@@ -411,6 +415,7 @@ export function MatchSummaryCardsSection({
           primary={formatDefensiveResistance(defensiveResistance)}
           primaryLabel={dmgPerDeathLabel}
           fixedAccent={combatYieldToken(null, defensiveResistance)}
+          help={t('match_view.cards.resistance_help')}
         />
       )}
       </div>

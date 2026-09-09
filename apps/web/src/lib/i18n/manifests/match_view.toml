@@ -281,6 +281,14 @@ en = "Yield"
 fr = "Résistance"
 en = "Resistance"
 
+[match_view.cards.rendement_help]
+fr = "Ce qu'une vie de dégâts infligés vous rapporte en frags effectifs (frags + assistances / 3). 100 % = un frag par vie dépensée. Au-dessus, vos dégâts portent ; en dessous, ils se dispersent."
+en = "What one life worth of damage dealt earns you in effective kills (kills + assists / 3). 100% = one kill per life spent. Above that, your damage lands; below it, it scatters."
+
+[match_view.cards.resistance_help]
+fr = "Les dégâts encaissés avant chaque mort, rapportés à une vie de Spartan. 100 % = une vie exactement. Au-dessus, vous survivez à plus que votre barre de vie ; en dessous, vous tombez plus tôt."
+en = "The damage absorbed before each death, measured against one Spartan life. 100% = exactly one life. Above that, you outlast your own health bar; below it, you go down sooner."
+
 [match_view.cards.yield_dmg_per_kill]
 fr = "{n} dégâts/frag"
 en = "{n} dmg/kill"

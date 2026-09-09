@@ -19,8 +19,10 @@
  * quand un point dépasse 50…200 %, via {@link oneLifeWindowBoundsForData} sur
  * l'ensemble des points tracés (tous joueurs) : DEC-5, retours utilisateur
  * 2026-08-29 pt.4, sinon une session courte voit sa courbe écrêtée par l'axe.
- * L'identité des courbes est portée par une ÉTIQUETTE DE FIN (nom du joueur, à
- * sa couleur), pas par une légende.
+ * L'identité des courbes est portée par une LÉGENDE en pied de graphe, comme partout
+ * ailleurs dans l'app (retour utilisateur 2026-09-09 : les étiquettes de fin de courbe
+ * étaient un canal d'identité que ces deux cartes étaient seules à employer). Elle rend
+ * aussi chaque joueur masquable d'un clic, ce que l'étiquette ne savait pas faire.
  *
  * Asymétrie assumée : la résistance vit généralement au-dessus de 100 % et le
  * rendement en dessous — c'est une information, pas un défaut d'axe.
@@ -31,8 +33,10 @@ import {
   escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
+  getLegendBase,
   getTooltipBase,
   hoverRevealSymbol,
+  legendEntries,
 } from '@/components/charts/_utils'
 import {
   ONE_LIFE_RATE_BOUNDS,
@@ -61,11 +65,6 @@ export const RATE_AXIS_MAX_PCT = RATE_BOUNDS.max
 /** Hauteur (px) d'une carte : une seule grille, indépendante du nombre de joueurs. */
 export const EFFICIENCY_CHART_HEIGHT = 300
 
-/** Gouttière droite réservée aux étiquettes de fin de courbe. */
-const END_LABEL_GUTTER = 84
-/** Longueur max d'un gamertag en étiquette de fin. */
-const PLAYER_LABEL_MAX = 13
-
 /** Libellés du chart (FR/EN fournis par la feature). */
 export interface EfficiencyChartLabels {
   /** Nom de l'indicateur offensif (« Rendement »). */
@@ -86,7 +85,7 @@ export interface EfficiencyChartLabels {
 
 export interface EfficiencyChartOpts {
   metric: EfficiencyMetric
-  /** gamertag → couleur hex résolue (trait + étiquette de fin). */
+  /** gamertag → couleur hex résolue (trait de la courbe + pastille de légende). */
   colorByPlayer: Record<string, string>
   labels: EfficiencyChartLabels
 }
@@ -239,16 +238,6 @@ export function buildSquadEfficiencyOption(
       showSymbol: drawn <= 1,
       lineStyle: { color, width: LINE_W },
       connectNulls: false,
-      // Canal d'identité qui remplace la légende : nom du joueur, à sa couleur,
-      // au bout de sa courbe.
-      endLabel: {
-        show: true,
-        formatter: truncateMap(player, PLAYER_LABEL_MAX),
-        color,
-        fontSize: 10,
-        fontWeight: 600 as const,
-        distance: 6,
-      },
       // Repère et zones rendus UNE SEULE fois (portés par la première courbe) :
       // ils décrivent la grille, pas un joueur.
       ...(idx === 0
@@ -279,7 +268,13 @@ export function buildSquadEfficiencyOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 16, right: END_LABEL_GUTTER, bottom: 32, left: 8, containLabel: true },
+    // Plus de gouttière droite (les étiquettes de fin ont disparu) ; `bottom: 48` réserve
+    // sa bande à la légende, qui se pose au ras du bas.
+    grid: { top: 16, right: 16, bottom: 48, left: 8, containLabel: true },
+    legend: {
+      ...getLegendBase(tc),
+      data: legendEntries(players.map((player) => ({ name: player, color: colorOf(player) }))),
+    },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',

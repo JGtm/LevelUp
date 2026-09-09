@@ -1,6 +1,6 @@
 /**
  * SessionUsageSection.gate.test.tsx — LES DEUX PORTES DU BLOC « usages d'équipement,
- * socles et objectifs » (règle du 2026-09-05, registre L4).
+ * armes spéciales et objectifs » (règle du 2026-09-05, registre L4).
  *
  * Le bloc affichait, sur un titre sans décodeur de film, une carte « Ce titre ne publie pas
  * de résumé d'usage des films » : `unsupported` était traité comme `empty` au lieu de
@@ -19,6 +19,7 @@ import { render, screen } from '@testing-library/react'
 import type { SessionUsageBlock } from '@/lib/api/types'
 
 import { SessionUsageSection } from './SessionUsageSection'
+import { USAGE_TEXT } from './usageI18n'
 
 const BASE: SessionUsageBlock = { available: true, matches_measured: 4, matches_total: 6 }
 
@@ -53,5 +54,43 @@ describe('SessionUsageSection — porte de donnée (le titre publie)', () => {
   it('aucun match mesuré : la carte le dit, avec le dénominateur', () => {
     render(<SessionUsageSection usage={{ ...BASE, matches_measured: 0 }} meLabel="moi" />)
     expect(screen.getByText(/Aucun match de cette session n'a de film mesuré/)).toBeInTheDocument()
+  })
+})
+
+/**
+ * Colonne divisée (drawer de comparaison ouvert) — D8 du plan de lisibilité 2026-09-09.
+ *
+ * Le compact retire des FORMES LARGES, jamais de la donnée : ce qu'on vient comparer
+ * (parts et cadences) reste des deux côtés. Ce test empêche la dérive inverse — remettre
+ * la piste du lobby ou la bande de régularité dans une demi-colonne, où elles ne feraient
+ * que défiler.
+ */
+describe('SessionUsageSection — version compacte du drawer', () => {
+  const MEASURED: SessionUsageBlock = {
+    ...BASE,
+    team_parity_pct: 25,
+    metrics: [
+      {
+        key: 'pad_pickups',
+        player_total: 9,
+        team_total: 20,
+        lobby_total: 43,
+        matches_above_lobby_parity: 1,
+        player_share_of_team_pct: 45,
+        per_match: [{ match_id: 'm1', player_share_of_team_pct: 45 }],
+      },
+    ],
+  }
+
+  it('pleine largeur : la piste du lobby et la régularité sont rendues', () => {
+    render(<SessionUsageSection usage={MEASURED} meLabel="moi" />)
+    expect(screen.getByLabelText(USAGE_TEXT.fr.viewRegularity)).toBeInTheDocument()
+  })
+
+  it('compact : les formes larges disparaissent, les parts restent', () => {
+    render(<SessionUsageSection usage={MEASURED} meLabel="moi" compact />)
+    expect(screen.queryByLabelText(USAGE_TEXT.fr.viewRegularity)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(USAGE_TEXT.fr.viewLobbyTrack)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(USAGE_TEXT.fr.viewShares)).toBeInTheDocument()
   })
 })

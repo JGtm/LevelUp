@@ -10580,6 +10580,7 @@ export interface components {
             compare_matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             compare_metrics: components["schemas"]["SessionCompareMetricRow"][] | null;
             compare_session?: components["schemas"]["SessionCompareEntry"];
+            compare_usage?: components["schemas"]["SessionUsageBlock"];
             current_session: components["schemas"]["SessionCompareEntry"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
@@ -10644,10 +10645,6 @@ export interface components {
             /** Format: double */
             player_share_of_lobby_pct?: number;
             /** Format: double */
-            player_share_of_team_max_pct?: number;
-            /** Format: double */
-            player_share_of_team_min_pct?: number;
-            /** Format: double */
             player_share_of_team_pct?: number;
             /** Format: double */
             player_total: number;
@@ -10661,6 +10658,7 @@ export interface components {
         };
         SessionUsagePadFamily: {
             family_key: string;
+            family_label?: string;
             /** Format: double */
             lobby_total: number;
             /** Format: double */

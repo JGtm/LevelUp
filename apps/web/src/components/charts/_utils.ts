@@ -105,6 +105,55 @@ export function getLegendBase(tc: EChartsThemeColors) {
 }
 
 /**
+ * Largeur d'icône de légende qui laisse LIRE un trait tireté.
+ *
+ * À la largeur de base (12 px) une icône de courbe pointillée n'affiche qu'un seul tiret :
+ * elle est indiscernable d'un trait plein, donc la légende ne dit plus QUELLE courbe elle
+ * nomme (retours utilisateur 2026-09-09 sur « MMR équipe » et « Rendement / Résistance »).
+ * À 30 px on voit la répétition du tiret. À poser sur toute légende qui contient au moins
+ * une entrée `dashed`.
+ */
+export const LEGEND_ITEM_WIDTH_LINE = 30
+
+/** Une entrée de légende qui porte SA couleur — celle réellement peinte dans le graphe. */
+export interface LegendEntry {
+  /** `name` de la série correspondante : c'est AUSSI la clé de sélection ECharts. */
+  name: string
+  /** Couleur DÉJÀ RÉSOLUE via token (hex/rgba) — jamais un littéral, jamais une CSS var. */
+  color: string
+  /** La série est tracée en tireté : l'icône reproduit le pointillé. */
+  dashed?: boolean
+}
+
+/**
+ * legendEntries — `legend.data` dont chaque pastille porte la couleur du graphe.
+ *
+ * POURQUOI CE HELPER EXISTE. ECharts peint l'icône d'une entrée de légende à partir du
+ * style de la SÉRIE. Une série `bar` dont la couleur ne vit que sur les points
+ * (`data: [{ value, itemStyle: { color } }]` — barres colorées par seuil, par palier de
+ * performance, par joueur…) n'a AUCUN style de série : ECharts retombe alors sur sa palette
+ * PAR DÉFAUT (`#5070dd`, `#b6d634`, `#505372`, …) et la légende annonce une couleur absente
+ * du graphe. Vérifié sur pièces par rendu SSR le 2026-09-09 (retours utilisateur : « les
+ * couleurs des légendes ne suivent pas les couleurs du graphe »).
+ *
+ * Passer la couleur ICI reprend la main dans tous les cas — série colorée au point, série
+ * colorée au niveau série, ou courbe. Une couleur de la palette ECharts qui réapparaîtrait
+ * dans un rendu est donc le signe d'une légende non migrée : garde-rail
+ * `legendPalette.guard.test.ts`.
+ *
+ * Source unique : ne jamais réécrire `{ name, itemStyle: { color } }` à la main.
+ */
+export function legendEntries(entries: readonly LegendEntry[]) {
+  return entries.map(({ name, color, dashed }) => ({
+    name,
+    // `borderColor` autant que `color` : sous certains thèmes l'icône est bordée, et une
+    // bordure restée à la couleur par défaut trahirait la pastille.
+    itemStyle: { color, borderColor: color },
+    lineStyle: { color, ...(dashed ? { type: 'dashed' as const } : {}) },
+  }))
+}
+
+/**
  * Couleurs des outcomes Halo (win/loss/tie/dnf).
  * Résolu côté composant via resolveToken (pas de hex direct).
  */

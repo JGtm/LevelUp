@@ -64,8 +64,19 @@ const NO_VALUE = '—'
 /** Taille des points de nuage / des marqueurs de médiane. */
 const CLOUD_SYMBOL_SIZE = 8
 const MEDIAN_SYMBOL_SIZE = 16
-/** Opacité des points de nuage. */
-const CLOUD_OPACITY = 0.55
+/**
+ * Opacité des points de nuage. Retour utilisateur (2026-09-09) : à 0.55 le vert et
+ * le rouge viraient au pastel sur fond de carte et ne se distinguaient plus l'un de
+ * l'autre au premier coup d'œil. 0.85 laisse encore lire la DENSITÉ (deux points
+ * superposés restent plus sombres qu'un seul) sans délaver la teinte.
+ */
+const CLOUD_OPACITY = 0.85
+/**
+ * Opacité de la barre d'avance. Même retour : c'est l'élément PRINCIPAL du graphe et
+ * il était le plus pâle des trois (0.32). 0.5 le pose devant le fond sans masquer les
+ * points de nuage qui la traversent.
+ */
+const GAP_BAR_OPACITY = 0.5
 /**
  * Sous ce nombre de matchs, une lane n'a pas de distribution à montrer (1-2
  * points valent la médiane elle-même) : le nuage est supprimé pour elle,
@@ -392,7 +403,7 @@ function buildGapSeries(bars: GapBar[], c: SeriesColors) {
           height: GAP_BAR_HEIGHT,
           r: GAP_BAR_HEIGHT / 2,
         },
-        style: { fill: bar.positive ? c.killColor : c.deathColor, opacity: 0.32 },
+        style: { fill: bar.positive ? c.killColor : c.deathColor, opacity: GAP_BAR_OPACITY },
       }
     },
     tooltip: {

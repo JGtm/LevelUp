@@ -163,7 +163,10 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
         ? [
             {
               id: 'waypoint',
-              header: '',
+              // En-tête « HW » (retour utilisateur 2026-09-09) : abrégé de Halo Waypoint,
+              // la colonne ne fait qu'une icône de large. Même traitement que sa voisine
+              // « Rejeu » — une colonne d'icône se nomme quand même.
+              header: labels.waypointHeader,
               // Lien externe : jamais triable (I16, comme ExplorerMatchesTable).
               enableSorting: false,
               cell: (ctx) => (
@@ -202,7 +205,9 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
         ? [
             {
               id: 'replay',
-              header: '',
+              // En-tête « Rejeu » / « Replay » (retour utilisateur 2026-09-09) : la
+              // colonne était servie anonyme — l'icône seule ne se nomme pas.
+              header: labels.replayHeader,
               // Lien INTERNE vers la page de rejeu 2D — jamais triable (I16). Composant
               // partagé avec le tableau Explorer (lib/match-nav/MatchReplayLink), qui
               // porte la règle par LIGNE : rien n'est rendu sans artefact.

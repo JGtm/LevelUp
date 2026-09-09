@@ -3,7 +3,7 @@
  * comptées, et la carte le dit en toutes lettres.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -15,11 +15,14 @@ beforeEach(() => useAppShellStore.setState({ locale: 'fr' }))
 afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
 describe('SquadEchangeDelaiCard', () => {
-  it('dit combien de ripostes tombent dans la fenêtre et combien sont hors comptage', () => {
+  it('ne redit plus en toutes lettres ce que la distribution montre', () => {
+    // La phrase narrative (« N ripostes sur M arrivent dans la fenêtre… ») et la note de
+    // couverture ont été retirées le 2026-09-09 : le graphe porte déjà la répartition, et
+    // les deux barres hors fenêtre sont nommées sur leur propre étiquette d'axe.
     renderWithProviders(<SquadEchangeDelaiCard echange={echangeDe()} />)
-    const narratif = screen.getByTestId('squad-echange-delai-narrative').textContent ?? ''
-    expect(narratif).toContain('6') // 2 + 4 dans la fenêtre
-    expect(narratif).toContain('4') // 3 + 1 hors fenêtre
+    expect(screen.queryByTestId('squad-echange-delai-narrative')).toBeNull()
+    expect(screen.queryByTestId('squad-echange-delai-coverage')).toBeNull()
+    expect(screen.queryByText(/Mesuré sur/i)).toBeNull()
   })
 
   it('ÉTAT VIDE quand aucune riposte n’a été mesurée', () => {
@@ -30,9 +33,11 @@ describe('SquadEchangeDelaiCard', () => {
     expect(screen.getByText(/Aucune riposte mesurée/i)).toBeTruthy()
   })
 
-  it('porte la définition de l’échange ET la couverture dans son pied de carte', () => {
+  it('porte la définition de l’échange et sa fenêtre dans l’aide ⓘ du titre', () => {
     renderWithProviders(<SquadEchangeDelaiCard echange={echangeDe()} />)
-    expect(screen.getByTestId('squad-echange-delai-coverage').textContent).toContain('9')
-    expect(screen.getByText(/dans les 5 s qui suivent votre mort/i)).toBeTruthy()
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /info/i }))
+    const aide = screen.getByRole('tooltip').textContent ?? ''
+    expect(aide).toMatch(/dans les 5 s qui suivent votre mort/i)
+    expect(aide).toMatch(/hors fenêtre/i)
   })
 })

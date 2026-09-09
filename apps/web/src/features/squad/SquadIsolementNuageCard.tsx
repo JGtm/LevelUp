@@ -23,8 +23,17 @@ import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  escapeHtml,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+  legendEntries,
+} from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { intlLocale } from '@/lib/formatters'
@@ -80,17 +89,27 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
     [playerColors, medianes, t, pctFmt],
   )
 
-  const footer = (
-    <div className="space-y-1 border-t border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground">
-        {t.floor(PLANCHER_MORTS_SESSION, nuage.plancher_echantillon_faible)}
-      </p>
-      <p className="text-xs text-muted-foreground">{t.definition}</p>
-    </div>
+  // Planchers et définition en infobulle ⓘ plutôt qu'en pied de carte (retour utilisateur
+  // 2026-09-09) : deux paragraphes de texte gris sous le nuage, lus une fois puis jamais,
+  // qui poussaient le graphe suivant hors de l'écran.
+  const help = (
+    <span className="space-y-1.5">
+      <span className="block">{t.floor(PLANCHER_MORTS_SESSION, nuage.plancher_echantillon_faible)}</span>
+      <span className="block">{t.definition}</span>
+    </span>
   )
 
   return (
-    <SectionCard title={t.sectionTitle} label={t.sectionLabel} footer={footer}>
+    <SectionCard
+      title={t.sectionTitle}
+      label={t.sectionLabel}
+      titleAdornment={(label) => (
+        <span className="flex items-center gap-1.5">
+          {label}
+          <InfoTooltip content={help} />
+        </span>
+      )}
+    >
       <div className="px-3 py-2" data-testid="squad-isolement-nuage">
         {vide ? (
           <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
@@ -205,7 +224,9 @@ function buildNuageOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 56, left: 56, right: 16 },
+    // `bottom: 78` : il faut la place du nom d'axe X (nameGap 32) ET de la légende, qui se
+    // pose au ras du bas comme sur tous les autres graphes.
+    grid: { top: 24, bottom: 78, left: 56, right: 16 },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',
@@ -229,7 +250,18 @@ function buildNuageOption(
         return withLowSampleNote(base, pointAttenue(p), t.lowSample, '<br/>')
       },
     },
-    legend: { ...getLegendNames(series), textStyle: { color: tc.axisLabel } },
+    // Socle de légende COMMUN à tous les graphes de l'app (`getLegendBase` : en pied,
+    // pastille et texte au même gabarit). Elle portait jusqu'ici sa propre mise en forme,
+    // et se lisait donc autrement que partout ailleurs (retour utilisateur 2026-09-09).
+    legend: {
+      ...getLegendBase(tc),
+      data: legendEntries(
+        series.map((s) => {
+          const gamertag = (s.meta as { gamertag?: string } | undefined)?.gamertag ?? s.key
+          return { name: gamertag, color: playerColors[gamertag] ?? resolveToken('info') }
+        }),
+      ),
+    },
     xAxis: {
       ...axis,
       type: 'value',
@@ -256,8 +288,3 @@ function buildNuageOption(
   }
 }
 
-function getLegendNames(series: ChartSeries<SquadIsolementPoint>[]) {
-  return {
-    data: series.map((s) => (s.meta as { gamertag?: string } | undefined)?.gamertag ?? s.key),
-  }
-}

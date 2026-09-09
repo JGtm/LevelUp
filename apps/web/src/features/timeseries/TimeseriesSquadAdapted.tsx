@@ -18,6 +18,7 @@ import {
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
+  LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
@@ -134,7 +135,10 @@ export function TimeseriesSessionPerformance({
       // de l'axe des pourcentages (B5), il faut la place pour ses étiquettes.
       grid: { top: 24, right: showMmr ? 116 : 60, bottom: 64, left: 56, containLabel: true },
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
-      legend: { ...getLegendBase(tc), bottom: 0 },
+      // Pastille élargie : la courbe « MMR équipe » est tiretée, et à 12 px son icône
+      // n'affiche qu'un seul tiret — impossible de deviner qu'elle nomme la courbe en
+      // pointillé (retour utilisateur 2026-09-09).
+      legend: { ...getLegendBase(tc), bottom: 0, itemWidth: LEGEND_ITEM_WIDTH_LINE },
       xAxis: {
         ...getAxisBase(tc),
         type: 'category',
