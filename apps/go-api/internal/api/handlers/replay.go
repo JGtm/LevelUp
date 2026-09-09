@@ -16,9 +16,7 @@ package handlers
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
@@ -168,13 +166,8 @@ func (h *ReplayHandler) handleGetBackgroundImage(w http.ResponseWriter, r *http.
 		writeError(ctx, w, http.StatusInternalServerError, "replay_error", err.Error())
 		return
 	}
-	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Content-Length", strconv.Itoa(len(blob)))
 	// Donnée de RÉFÉRENCE versionnée : elle ne change qu'à une re-cuisson, jamais en
 	// cours de session. `private` parce que la route est derrière l'ownership joueur.
-	w.Header().Set("Cache-Control", "private, max-age=3600")
-	if _, err := w.Write(blob); err != nil {
-		slog.WarnContext(ctx, "rejeu 2D : écriture de l'image de fond interrompue",
-			"err", err, "match_id", matchID, "player", slug)
-	}
+	// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9.
+	servirBlobAvecETag(w, r, blob, "image/png", "private, max-age=3600")
 }

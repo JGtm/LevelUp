@@ -55,6 +55,14 @@ donnée ; l'étape 5 est de la recette manuelle.
 | D9 | Nom du helper | `servirBlobAvecETag` dans `internal/api/handlers/cache_http.go`, en français comme `cleDeFondSure` / `ecritPNG` dans le code récent voisin |
 | D10 | Critère d'abandon | Si l'étape 0 mesure un gain < 20 % **ou** un aller-retour non identique au bit près, **les étapes 2 à 5 sont abandonnées** et statuées `[!]`. Seule l'étape 1 (ETag) est livrée. Ne pas « rattraper » avec du lossy — voir D1 |
 
+> **Amendement S5 (superviseur, 2026-09-09)** — fait foi sur D8/D9 ci-dessus et sur le
+> constat § enquête préalable qui affirmait qu'aucun 304 n'existait dans `handlers/` :
+> c'est faux, `writeJSONCached` (helpers.go) en posait déjà un, et `assets.go:217` posait
+> un ETag inerte (jamais honoré, faute de lecture d'`If-None-Match`). Conséquence : le
+> helper `servirBlobAvecETag` migre **les quatre** sites (replay.go, tactical.go,
+> assets.go **et** writeJSONCached), pas seulement les trois du plan initial. Détail dans
+> l'entrée `.ai/thought_log.md` du 2026-09-09 et le corps de l'étape 1 ci-dessous.
+
 ## Règles d'exécution
 
 - **Ordre strict.** L'étape N+1 ne commence pas avant que le gate de N soit passé.
@@ -128,6 +136,51 @@ Indépendante du WebP : livrable seule, et livrée **même si D10 abandonne la s
 cd apps/go-api && go test ./internal/api/handlers/
 cd apps/go-api && go build ./...
 ```
+- [x] Créé `apps/go-api/internal/api/handlers/cache_http.go` — `servirBlobAvecETag(w, r, blob,
+      contentType, cacheControl)` : calcule l'ETag (D7), pose `ETag` ; si `If-None-Match`
+      contient l'ETag **ou** `*` (`ifNoneMatchCorrespond`), répond `304` **sans corps ni
+      `Content-Length`** ; sinon pose `Content-Type`, `Cache-Control` (si non vide),
+      `Content-Length`, corps
+- [x] `ifNoneMatchCorrespond` (cache_http.go) : liste séparée par virgules (`strings.Split(",")`),
+      préfixe faible `W/` toléré (`strings.TrimPrefix`), wildcard `*`. En-tête absent/illisible →
+      `false` → 200, jamais une erreur. Couvert par
+      `TestServirBlobAvecETag_{ListeAvecPrefixeFaible,Wildcard,EnTeteIllisible}_*`
+- [x] `handlers/replay.go:148-180` (relu avant édition) — les trois `Header().Set` +
+      `Content-Length` + `Write` remplacés par un seul appel à `servirBlobAvecETag` ; imports
+      `strconv` et `log/slog` retirés (devenus inutilisés dans ce fichier)
+- [x] `handlers/tactical.go:281-316` (relu avant édition) — idem ; import `strconv` retiré
+      (`log/slog` reste utilisé ailleurs dans le fichier)
+- [x] `handlers/assets.go:217` (relu avant édition) — idem. **Amendement S5** : `p.ETag` (hash
+      amont précalculé par `internal/assets`, jamais lu côté `If-None-Match` donc inerte) n'est
+      plus posé tel quel ; le helper recalcule son propre ETag fort depuis `p.Bytes` (D7, source
+      unique = le contenu servi)
+- [x] Créé `apps/go-api/internal/api/handlers/cache_http_test.go` — garde-rail grep
+      `TestNoRawETagHandlingOutsideCacheHTTP` : aucun `Header().Set("ETag"` ni
+      `Header.Get("If-None-Match")` littéral ailleurs que dans `cache_http.go`, allowlist VIDE et
+      datée 2026-09-09. Discriminance prouvée par `TestETagGuardIsDiscriminant` (jumeau de
+      `TestRetryAfterGuardIsDiscriminant`) **et** par une mutation réelle et temporaire de
+      `replay.go` (ré-ajout d'un `Header().Set("ETag", ...)` littéral), qui a fait échouer le
+      garde-rail comme attendu, revertée aussitôt — sortie observée consignée au thought_log
+- [x] **Amendement S5** : `writeJSONCached` (helpers.go) migré vers `servirBlobAvecETag` — c'était
+      la copie n°1 du motif (avant même l'étape 1), pas seulement les 3 sites du plan initial ;
+      son format d'ETag change de `"%x"` (16 hex) vers `"sha256-<12 hex>"` (D7). Vérifié qu'aucun
+      test n'épingle l'ancien format : tous les tests ETag du paquet lisent
+      `w.Header().Get("ETag")` dynamiquement (grep sur `internal/api/handlers/*_test.go`), aucune
+      comparaison à un littéral
+- [x] Tests `httptest` sur les trois routes blob (`cache_http_routes_test.go`, réutilise les
+      mocks existants `mockReplayService`/`routeurFond`/`stubResolver`) + la route JSON cachée
+      (`writeJSONCached`, seul appelant JSON du helper — cf. Découvertes ci-dessous) : 1re requête
+      `200` + ETag non vide ; 2e avec `If-None-Match` = cet ETag → `304`, corps vide, pas de
+      `Content-Length` non nul ; liste `W/"x", "<etag>"` → `304` ; en-tête illisible → `200`
+
+**Gate — exécuté le 2026-09-09, sorties réelles :**
+```bash
+cd apps/go-api && go test ./internal/api/handlers/     # ok  levelup/go-api/internal/api/handlers  9.575s
+cd apps/go-api && go build ./...                       # BUILD_EXIT=0
+cd apps/go-api && go vet ./internal/api/...            # VET_EXIT=0 (ajouté à la demande du superviseur)
+cd apps/go-api && golangci-lint run --new-from-merge-base=origin/main ./internal/api/handlers/  # 0 issues.
+```
+Gate passé, les 4 commandes vertes.
 
 ---
 
@@ -271,3 +324,5 @@ ce chantier.
 |---|---|---|---|
 | 2026-09-09 | `handlers/assets.go:217` posait un ETag jamais honoré faute de gestion d'`If-None-Match` : l'en-tête était inerte | `handlers/assets.go:217` | Traité **dans** ce plan par D8 (règle de la 3e copie), pas reporté |
 | | | | |
+| 2026-09-09 | `writeJSONCached` (helpers.go) posait déjà SA PROPRE logique ETag/304 (format `"%x"` 16 hex, sans liste ni `W/`) — c'était donc la copie n°1 du motif avant même l'étape 1, pas 3 copies mais 4 en comptant assets.go et les 2 nouveaux sites | `handlers/helpers.go:95-121` (avant migration) | Traité **dans** ce plan, § amendement S5 : `writeJSONCached` migré vers `servirBlobAvecETag` dans le même commit |
+| 2026-09-09 | Les endpoints Huma (`capabilities.go`, `feature_matrix.go`, `field_mappings.go`, `home.go`) posent CHACUN leur propre calcul `sha256.Sum256(body)` + champ de sortie `ETag string \`header:"ETag"\`` — ils NE PEUVENT PAS appeler `servirBlobAvecETag` (qui écrit directement sur `http.ResponseWriter`), Huma sérialisant la réponse depuis la struct de sortie après le retour du handler. C'est 3 copies indépendantes du calcul SHA-256 (pas du branchement ETag/If-None-Match, qui reste propre à Huma) | `handlers/capabilities.go:108`, `handlers/feature_matrix.go:118`, `handlers/field_mappings.go:355` | Hors périmètre de l'étape 1 (contrat HTTP différent, pas un `Header().Set`/`Write` brut) — non traité, à évaluer dans un chantier séparé si la règle des 2 copies doit s'appliquer au calcul du hash lui-même |

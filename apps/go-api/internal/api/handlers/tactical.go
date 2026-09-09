@@ -32,7 +32,6 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -305,13 +304,8 @@ func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *
 		writeError(ctx, w, http.StatusInternalServerError, "tactical_error", err.Error())
 		return
 	}
-	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Content-Length", strconv.Itoa(len(blob)))
-	w.Header().Set("Cache-Control", "private, max-age=3600")
-	if _, err := w.Write(blob); err != nil {
-		slog.WarnContext(ctx, "tactique: ecriture de l'image de fond interrompue",
-			"err", err, "map_id", mapID, "player", slug)
-	}
+	// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9.
+	servirBlobAvecETag(w, r, blob, "image/png", "private, max-age=3600")
 }
 
 // replayPourCarte VALIDE le map_id puis resout le service de rejeu du joueur.
