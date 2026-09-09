@@ -53,10 +53,13 @@ func insertKillPos(t *testing.T, pdb *PlayerDB, matchID, killerXUID string, time
 	kx, ky, kz, vx, vy, vz any,
 ) {
 	t.Helper()
+	// `decode_pass` litteral : depuis le lot 1.7 la vue kill_positions_latest retient la
+	// DERNIERE PASSE ENTIERE par match, et la colonne est NOT NULL. Une valeur constante
+	// convient ici — chaque match du corpus n'a qu'une passe.
 	_, err := pdb.Shared.Exec(context.Background(), `
 		INSERT INTO kill_positions
-			(match_id, killer_xuid, time_ms, killer_x, killer_y, killer_z, victim_x, victim_y, victim_z)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			(match_id, decode_pass, killer_xuid, time_ms, killer_x, killer_y, killer_z, victim_x, victim_y, victim_z)
+		VALUES (?, 'pass_test', ?, ?, ?, ?, ?, ?, ?, ?)`,
 		matchID, killerXUID, timeMS, kx, ky, kz, vx, vy, vz)
 	if err != nil {
 		t.Fatalf("insert kill_positions: %v", err)

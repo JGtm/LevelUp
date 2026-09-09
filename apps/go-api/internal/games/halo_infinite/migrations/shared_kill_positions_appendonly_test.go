@@ -7,6 +7,13 @@
 // internal/migration/append_only_rebuild_test.go — ces tests verrouillent la SPEC de CETTE
 // table : la clé fonctionnelle (match_id, killer_xuid, time_ms) — PAS de victim_xuid, cf.
 // steps_shared_kill_positions.go — et la préservation des lignes Halo 5 déjà en prod.
+//
+// MISE À JOUR 2026-09-09 (lot 1.7) : l'ARBITRAGE de kill_positions_latest n'est plus par clé
+// mais par DERNIÈRE PASSE ENTIÈRE par match (colonne `decode_pass`, cf.
+// steps_shared_kill_positions_pass.go et shared_kill_positions_pass_test.go). Ce qui reste
+// verrouillé ICI, c'est G.2 : la forme append-only (id + written_at) et la préservation des
+// lignes Halo 5. La clé fonctionnelle, elle, n'a pas changé — elle reste celle de la JOINTURE,
+// et celle du dédoublonnage À L'INTÉRIEUR d'une passe.
 package migrations
 
 import (
@@ -134,25 +141,30 @@ func TestKillPositions_AppendOnlyPreservesExistingH5Rows(t *testing.T) {
 }
 
 // TestKillPositions_LatestViewDedupesReDecode : LE défaut que G.2 corrige. Un re-décodage du
-// même match (nouvelle passe, decoder_rev bumpé) écrit une SECONDE ligne pour la même clé
-// (match_id, killer_xuid, time_ms) — append-only, jamais un UPDATE. La vue _latest doit
-// EXPOSER LA PLUS RÉCENTE, jamais les deux (ce qui doublerait silencieusement les positions
-// lues, le défaut mesuré à 46,8 % sur killer_victim_pairs avant sa propre conversion). La
-// table brute, elle, garde les deux (append-only = zéro perte).
+// même match écrit une SECONDE ligne pour la même clé (match_id, killer_xuid, time_ms) —
+// append-only, jamais un UPDATE. La vue _latest doit EXPOSER LA PLUS RÉCENTE, jamais les deux
+// (ce qui doublerait silencieusement les positions lues, le défaut mesuré à 46,8 % sur
+// killer_victim_pairs avant sa propre conversion). La table brute, elle, garde les deux
+// (append-only = zéro perte).
+//
+// Depuis le lot 1.7 les deux écritures portent un `decode_pass` distinct — c'est ce que fait
+// `persist.KillPositionPersister`, une passe = une génération. La rétractation d'une position
+// que la passe neuve ne retrouve PLUS est testée à part
+// (shared_kill_positions_pass_test.go) : elle n'était pas couverte par G.2, et pour cause.
 func TestKillPositions_LatestViewDedupesReDecode(t *testing.T) {
 	db := setupKillPositionsSharedDB(t)
 
-	// Première "passe" (position mesurée initiale).
+	// Première passe (position mesurée initiale).
 	if _, err := db.Exec(`
-		INSERT INTO kill_positions (match_id, killer_xuid, time_ms, killer_x, killer_y, killer_z, written_at)
-		VALUES ('m1', 'K1', 1000, 1.0, 1.0, 0.0, TIMESTAMP '2026-08-01 00:00:00')`); err != nil {
+		INSERT INTO kill_positions (match_id, decode_pass, killer_xuid, time_ms, killer_x, killer_y, killer_z, written_at)
+		VALUES ('m1', 'passe-1', 'K1', 1000, 1.0, 1.0, 0.0, TIMESTAMP '2026-08-01 00:00:00')`); err != nil {
 		t.Fatalf("insert pass 1: %v", err)
 	}
-	// Re-décodage (decoder_rev bumpé) : MÊME clé fonctionnelle, coordonnées affinées,
-	// written_at postérieur — jamais un UPDATE/DELETE de la première ligne.
+	// Re-décodage : MÊME clé fonctionnelle, coordonnées affinées, written_at postérieur —
+	// jamais un UPDATE/DELETE de la première ligne.
 	if _, err := db.Exec(`
-		INSERT INTO kill_positions (match_id, killer_xuid, time_ms, killer_x, killer_y, killer_z, written_at)
-		VALUES ('m1', 'K1', 1000, 1.5, 1.5, 0.0, TIMESTAMP '2026-08-15 00:00:00')`); err != nil {
+		INSERT INTO kill_positions (match_id, decode_pass, killer_xuid, time_ms, killer_x, killer_y, killer_z, written_at)
+		VALUES ('m1', 'passe-2', 'K1', 1000, 1.5, 1.5, 0.0, TIMESTAMP '2026-08-15 00:00:00')`); err != nil {
 		t.Fatalf("insert pass 2 (re-decode): %v", err)
 	}
 
@@ -172,7 +184,7 @@ func TestKillPositions_LatestViewDedupesReDecode(t *testing.T) {
 		t.Fatalf("count/select latest: %v", err)
 	}
 	if latestN != 1 {
-		t.Fatalf("kill_positions_latest = %d lignes pour la clé, attendu 1 (dédoublonnage par written_at DESC)", latestN)
+		t.Fatalf("kill_positions_latest = %d lignes pour la clé, attendu 1 (la passe la plus récente fait foi)", latestN)
 	}
 	if kx != 1.5 {
 		t.Errorf("kill_positions_latest.killer_x = %v, attendu 1.5 (la passe la PLUS RÉCENTE, pas la première)", kx)
