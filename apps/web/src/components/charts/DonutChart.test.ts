@@ -100,4 +100,30 @@ describe('buildDonutOption', () => {
     expect(opt.series?.[0].data?.[0].itemStyle?.color).toBeDefined()
     expect(opt.series?.[0].data?.[1].itemStyle?.color).toBeDefined()
   })
+
+  // ── arcLabelKind='value' (PLAN_EQUIPEMENT_GACHIS_2026-09-09, décision P11 : « les
+  // valeurs sont sur les arcs, la légende ne dit que la couleur »). ──────────────────
+  describe('arcLabelKind="value" (P11)', () => {
+    it('affiche un label meme si showPercent=false (defaut inchange pour "percent")', () => {
+      const opt = buildDonutOption(makeSeries([{ name: 'a', value: 12 }]), {
+        showPercent: false,
+        arcLabelKind: 'value',
+      }) as OptionShape
+      expect(opt.series?.[0].label?.show).toBe(true)
+    })
+
+    it('le formatter ecrit le nom puis le compte brut (valueLabel si fourni, sinon value)', () => {
+      const opt = buildDonutOption(
+        makeSeries([{ name: 'Moi', value: 312, valueLabel: '312' }]),
+        { arcLabelKind: 'value' },
+      ) as unknown as { series: Array<{ label: { formatter: (p: unknown) => string } }> }
+      const text = opt.series[0].label.formatter({ name: 'Moi', value: 312, data: { valueLabel: '312' } })
+      expect(text).toBe('Moi\n312')
+    })
+
+    it('sans arcLabelKind (defaut "percent"), le comportement existant ne change pas', () => {
+      const opt = buildDonutOption(makeSeries([{ name: 'a', value: 1 }])) as OptionShape
+      expect(opt.series?.[0].label?.formatter).toBe('{b}\n{d}%')
+    })
+  })
 })
