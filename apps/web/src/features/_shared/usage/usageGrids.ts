@@ -4,6 +4,10 @@
  * partagée `components/charts/valueGridModel` (une échelle et un axe PAR COLONNE,
  * jamais une seconde grille — handoff §5/S3).
  *
+ * Déménagé de `session-detail/usageGrids.ts` vers ici le 2026-09-09 (étape E5.1,
+ * PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : le bloc devient importable par `features/synthesis`
+ * et `features/squad` sans violer `lint-cross-feature-imports` — déplacement pur.
+ *
  * 1. `buildCadenceGrid` — cadences par dix minutes : lignes = moi + coéquipiers
  *    suivis, puis les agrégats (mon équipe, lobby) derrière un filet ; colonnes =
  *    grandeurs d'équipement.
@@ -31,20 +35,17 @@ import type {
 } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
+import { formatUsageCount, formatUsagePct, formatUsageRate } from './usageFormat'
 import { familyLabel, roleLabel, type UsageText } from './usageI18n'
-import {
-  ROLE_ORDER,
-  formatUsageCount,
-  formatUsagePct,
-  formatUsageRate,
-  metricLabel,
-  sortRoles,
-} from './usageLogic'
+import { metricLabel } from './usageMetricKinds'
+import { ROLE_ORDER, sortRoles } from './usageObjectives'
 
 /**
  * L'encre d'identité d'un joueur suivi : moi = squad-player-1, coéquipiers = 2..4 —
  * la SOURCE UNIQUE d'affectation `features/squad/colors.ts` (import allowlisté
- * session-detail=>squad), pour qu'un joueur garde sa couleur d'une page à l'autre.
+ * session-detail=>squad avant le déménagement E5.1 ; `_shared/` n'entre pas dans le
+ * scan `lint-cross-feature-imports`, cf. sa regex de nom de feature), pour qu'un
+ * joueur garde sa couleur d'une page à l'autre.
  */
 export function usagePlayerInk(kind: 'me' | 'squad', squadIndex = 0): string {
   if (kind === 'me') return tokenCssVar(SQUAD_MAIN_PLAYER_TOKEN)

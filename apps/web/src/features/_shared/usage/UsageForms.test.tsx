@@ -1,6 +1,10 @@
 /**
- * SessionUsageForms.test.tsx — LES DEUX PROMESSES DE LA GRILLE DE JAUGES après la revue
- * de lisibilité du 2026-09-09 (`.ai/PLAN_SESSION_USAGE_LISIBILITE_2026-09-09.md`) :
+ * UsageForms.test.tsx — LES DEUX PROMESSES DE LA GRILLE DE JAUGES après la revue
+ * de lisibilité du 2026-09-09 (`.ai/PLAN_SESSION_USAGE_LISIBILITE_2026-09-09.md`).
+ *
+ * Déménagé (et renommé) de `session-detail/SessionUsageForms.test.tsx` le 2026-09-09
+ * (étape E5.1, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) — déplacement pur, assertions
+ * inchangées, seuls les chemins d'import bougent.
  *
  *   - D4 — UNE colonne rendue par défaut (« ma part dans mon équipe »), les deux autres
  *     dénominateurs derrière le repli. Trois rails par ligne rendaient la grille illisible ;
@@ -15,9 +19,9 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import type { SessionUsageOutcomes } from '@/lib/api/types'
 
-import { UsageGaugeGrid } from './SessionUsageForms'
+import { UsageGaugeGrid } from './UsageForms'
+import { buildGaugeRow } from './usageGaugeModel'
 import { USAGE_TEXT } from './usageI18n'
-import { buildGaugeRow } from './usageLogic'
 
 const t = USAGE_TEXT.fr
 
