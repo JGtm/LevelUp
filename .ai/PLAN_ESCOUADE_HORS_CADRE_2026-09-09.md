@@ -331,15 +331,43 @@ concurrente sur `features/squad/i18n.ts`.
 
 ### Phase B2 — cablage des marqueurs joueurs
 
-- `[ ]` B2.1 **TEST ROUGE** `replayMarkers.test.ts` : un joueur vivant hors fenetre dessine
+- `[x]` B2.1 **TEST ROUGE** `replayMarkers.test.ts` : un joueur vivant hors fenetre dessine
   la fleche a la marge, et NE dessine ni trainee, ni cone de visee, ni anneau d'apparition,
-  ni marqueur d'etage.
-- `[ ]` B2.2 `drawLivingTrack` : branche hors cadre.
-- `[ ]` B2.3 **TEST ROUGE** croix de mort hors fenetre : la croix est plaquee a la marge,
-  meme fondu, SANS nom ni distance (D6).
-- `[ ]` B2.4 `drawDeathMark` : branche hors cadre.
+  ni marqueur d'etage. **Echec observe** (avant tout code) : les 3 nouveaux cas echouent sur
+  `count(ops, 'rotate')` attendu a 1, obtenu 0 — le calque ne bornait encore rien. La distance
+  attendue est calculee via `edgeMarkFor` (meme fonction que `edgeClamp.test.ts`), jamais
+  recopiee a la main, pour ne tester que le CABLAGE. `OFFSCREEN_MARGIN_PX` (16 px ecran de
+  reference) devient la marge CANONIQUE, exportee depuis `edgeClamp.ts` pour que B3 la
+  reutilise sans copie.
+- `[x]` B2.2 `drawLivingTrack` : branche hors cadre — `edgeMarkFor` d'abord ; si hors fenetre,
+  `drawOffscreenChevron` + `drawOffscreenLabel` (si un nom est resolu) puis `return` immediat
+  (meme structure que la branche pion embarque juste au-dessus) : rien d'autre n'est atteint.
+- `[x]` B2.3 **TEST ROUGE** croix de mort hors fenetre : la croix est plaquee a la marge,
+  meme fondu, SANS nom ni distance (D6). **Echec observe** (avant tout code) : meme signature
+  (`rotate` attendu 1, obtenu 0).
+- `[x]` B2.4 `drawDeathMark` : branche hors cadre — `ctx.globalAlpha = DEATH_ALPHA * fade`
+  POSE AVANT `drawOffscreenChevron` (le chevron ne fixe pas l'alpha lui-meme, `save`/`restore`
+  la traverse) : meme calcul de fondu que la croix en X, aucune etiquette.
+  **DECOUVERTE traitee dans le perimetre** : `MarkerStyle` gagne un champ obligatoire
+  `offscreenLabelOf: (name, meters) => string` (texte deja compose, resolu par l'appelant —
+  meme convention que `ink`/`labelStroke`). Deux fichiers de test construisaient un
+  `MarkerStyle` complet (`replayMarkers.test.ts`, `replayAimCone.test.ts` — extrait de l'un a
+  l'autre le 2026-09-06) : les deux mis a jour. L'i18n de l'unite (B4.3) est resolue ICI, pas
+  reportee : `offscreenMarkerFmt: (name, meters) => string` ajoute a `i18nContract.ts` +
+  `i18n.ts` (FR/EN, meme valeur « m » — symbole international, pas un anglicisme, mais la
+  parite de typage CLAUDE.md n°1 est tenue) ; cable dans `ReplayCanvas.tsx`
+  (`offscreenLabelOf` resout `REPLAY_TEXT[locale].offscreenMarkerFmt`, `locale` ajoute aux
+  dependances du `useCallback`).
 
-**Gate B2** : `make test-web` · `ReplayTeams.perf.test.tsx` sans regression.
+**Gate B2 passe** (2026-09-10) : `npx vitest run src/features/match-replay` 181 fichiers /
+2617 tests verts, 1 skipped (aucune regression) · `npx tsc -b --force` (purge prealable)
+exit 0 · `ReplayTeams.perf.test.tsx` : 3 skipped — gate `REPLAY_PERF=1` + temoin
+`data/cache/replays/...` absent de ce worktree dedie (comportement inchange, aucun module
+qu'il importe n'est touche par ce lot — verifie par lecture de ses imports) ·
+`npx eslint --max-warnings=0` sur les 10 fichiers touches (B0-B2) : 1 avertissement
+PRE-EXISTANT et INCHANGE, `ReplayCanvas.tsx:532` (`zoneInk.outline` manquant aux
+dependances d'un AUTRE `useCallback`, sans rapport avec ce lot — confirme par `git diff`,
+la ligne n'est pas dans le diff de ce lot).
 
 ### Phase B3 — porteurs d'objectif (D3)
 
