@@ -1,3 +1,80 @@
+## [2026-09-09] Master plan — deux branches oubliees reprises : bornes aberrantes (code) et journal d'orchestration (docs) — Complete
+
+**Decision technique principale.** Question de l'utilisateur : `wt/bornes-aberrantes` et
+`wt/orchestration-0907` sont-elles reprises par le master plan ? Non. Verifie sur pieces : le
+correctif des bornes (`490dc595e`, rejet par centiles des echantillons aberrants dans `boundsOf`)
+n'etait porte par aucun autre chemin de `feat/v75`, et l'artefact `81c02726` recuit a 17:37 au
+schema 50 portait toujours `minZ = -325.4` — la decision S7 du master plan (« la recuisson
+couvre les 7 bornes fausses ») etait fausse. Decision utilisateur D11 : fusionner le code
+maintenant, recuire les 7 artefacts en vague 3 (lot 3.2).
+
+**Resultats observes.** Fusion `4bd2a7969` (code : `build.go` auto-fusionne avec E2,
+`geometry.go`, `bounds_aberrants_test.go` ; conflit `thought_log` resolu par union, l'entree
+du correctif re-inseree en tete). Fusion `2cc39f89b` (docs : plan d'orchestration, registre,
+thought_log par union ; 0 marqueur residuel ; lignes E2/E2-bis de `feat/v75` ET decisions
+D12-D14 de la branche toutes presentes). Gates : `go build ./...` OK, `go test
+./internal/analysis/replay/... ./internal/replaydiff/...` OK (replay 15 s), `go vet` par le
+hook. Reste = 0 sur les deux branches.
+
+**Conclusion / prochaine etape.** Lecon consignee au master plan (§6) : l'inventaire de reprise
+part de `git branch --no-merged` + `git worktree list`, pas des plans. Recuisson des 7
+artefacts (`0a44c6cc`, `30a23d15`, `3923bede`, `4f77afc1`, `81c02726`, `879a4dba`,
+`a4083bd2`) et verification navigateur d'Isolement au lot 3.2. Pas de push : une CI par vague.
+
+---
+
+## [2026-09-08] Bornes du rejeu — un echantillon aberrant ne definit plus le cadre — Complete
+
+**Le defaut, mesure.** `boundsOf` (`internal/analysis/replay/geometry.go`) etait un min/max
+BRUT sur toutes les positions. Sur l'artefact `81c02726` (Isolement, Bases), UN point sur
+16 064 — (x=-78.60, y=+46.38, z=-325.4) alors que le sol joue est a 117.8 en mediane —
+fixait a lui seul `MinX`, `MaxY` et `MinZ`. Consequence en aval : `coversPlayedArea` cote web
+comparait l'emprise de l'image (X [-61.33, 11.89], Y [-49.06, 3.43]) a des bornes gonflees
+(X [-78.60, -1.14], Y [-37.06, 46.38]) et ECARTAIT le fond de carte, alors que l'image couvre
+99,99 % des positions reellement jouees. C'est la cause du point 5 du registre de retours
+(« Isolement n'a pas de fond de carte ») — le fond existe, il etait rejete par une borne
+fausse.
+
+**Pourquoi des centiles et pas moyenne/ecart-type.** Un seul echantillon a -325 m empoisonne
+LA MOYENNE ET L'ECART-TYPE en meme temps : l'ecart-type gonfle assez pour que le point
+tombe sous les 3 sigma et se rende lui-meme invisible. Les centiles n'ont pas ce defaut.
+Regle retenue, par axe : etendue centrale p1..p99, rejet au-dela de `boundsRejectSpreads = 12`
+etendues de part et d'autre.
+
+**Calibrage sur pieces, pas au jugement.** Balayage du parc (128 artefacts) : les ecarts
+ARTEFACTUELS commencent a 17,7 etendues ; le plus grand ecart LEGITIME mesure est a 9,5
+(artefact `9e8fb31b` — un vrai perchoir). Le seuil de 12 se pose dans ce trou, sans le
+froler d'aucun cote. Deux planchers ferment les deux failles du procede : `boundsMinSamples`
+= 200 (sous ce volume les centiles ne veulent rien dire — les bornes restent brutes) et
+`boundsMinSpread` = 0,5 m (sur un terrain plat l'etendue de Z est nulle, et sans plancher la
+moindre marche passerait pour un artefact).
+
+**Innocuite verifiee sur tout le parc.** 10 points ecartes sur 2 131 593 examines, soit
+0,000469 %, repartis sur 7 artefacts (au plus 3 sur un meme artefact). Aucun artefact ne perd
+plus de 3 points. Le rejet ne mord pas sur le jeu.
+
+**Effet mesure, artefact par artefact.** `81c02726` X [-78.60, -1.14] -> [-49.19, -1.14] et
+Y [-37.06, 46.38] -> [-37.06, -6.46], et le fond de carte PASSE (`coversPlayedArea` :
+avant=faux, apres=vrai). Autres corrections : `3923bede` MaxX 1164.20 -> 30.35 ; `0a44c6cc`
+MinX -251.19 -> -24.58 ; `30a23d15` MinX -225.57 -> -19.24 ; `4f77afc1` MinY -186.79 ->
+-88.17 ; `a4083bd2` Y [-200.35, 191.08] -> [60.46, 113.55]. Cas a garder en tete :
+`879a4dba` ecarte 1 point sans que X ni Y ne bougent — l'aberration y est sur Z SEUL. Un
+rejet par axe conjoint (et non par axe independant) l'aurait manque.
+
+**Sequelle a traiter.** La regle s'applique a la CUISSON. Les artefacts deja cuits gardent
+leurs bornes fausses : il faut les recuire pour que le fond d'Isolement s'affiche. A
+rattacher a la tache de recuisson de la vague C.
+
+**Perimetre et gates.** Worktree dedie `LevelUp-wt-bornes`, branche `wt/bornes-aberrantes`
+(base `feat/v75`). `geometry.go` : `axisGuard`/`guardOf`/`axisValues`/`rawBounds`/
+`countRejected`, `boundsOf` rend desormais (bornes, nombre d'ecartes). `build.go` : trace
+`slog.Info` quand des points sont ecartes (jamais de rejet silencieux). Six tests neufs
+(`bounds_aberrants_test.go`) : le rejet existe, il porte sur le bon point, il epargne un
+ecart legitime de 9 etendues, il s'abstient sous le plancher d'echantillons, il ne mord pas
+sur un terrain plat, et l'absence de piste reste signalee par une etendue inversee.
+`make go-api-test` : 28 paquets ok, 0 FAIL.
+
+---
 ## [2026-09-09] P0 — match_lives refusait les voies de nommage du registre d'identite — Complete
 
 **Decision technique principale.** Le persister de `match_lives` valide `named_by` contre une liste
