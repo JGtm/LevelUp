@@ -111,6 +111,14 @@ func deathProgressionsForRound(recs []StatRecord, round int) map[int][]int {
 type RoundIdentity struct {
 	// byRound : manche -> slot -> xuid.
 	byRound map[int]map[int]string
+	// origins : manche -> slot -> VOIE qui a nomme le couple ([OriginDeathInstants],
+	// [OriginSheetTriplet], [OriginElimination]).
+	//
+	// POURQUOI ELLE VOYAGE AVEC LA TABLE : le registre d'identite publie la provenance de
+	// chaque lien, et « deduit » sans dire par quoi est inexploitable — trois voies qui n'ont
+	// pas la meme force de preuve se liraient comme une seule. Nil pour un resolveur fabrique
+	// a la main ([FlatRoundIdentity]) : [RoundIdentity.Origin] rend alors une chaine vide.
+	origins map[int]map[int]string
 	// starts : debut (ms, horloge des enregistrements) de chaque manche, TRIE. Sert a
 	// [RoundIdentity.At] a placer un instant dans sa manche. Vide ou singleton : `At` rend
 	// toujours l'unique manche.
@@ -127,7 +135,17 @@ type roundStart struct {
 // (en ms) qui permettent de placer un instant dans sa manche.
 func ResolveRoundIdentity(recs []StatRecord, deaths []DeathInstant) RoundIdentity {
 	byRound := SlotIdentityByRound(recs, deaths)
-	return RoundIdentity{byRound: byRound, starts: roundStartsOf(recs, byRound)}
+	// TOUT CE QUE CETTE VOIE NOMME VIENT DES INSTANTS DE MORT — mono-manche comprise, ou elle
+	// delegue au pont plat, qui apparie lui aussi des instants (`slotIdentityFromDeaths`).
+	origins := make(map[int]map[int]string, len(byRound))
+	for round, m := range byRound {
+		o := make(map[int]string, len(m))
+		for slot := range m {
+			o[slot] = OriginDeathInstants
+		}
+		origins[round] = o
+	}
+	return RoundIdentity{byRound: byRound, origins: origins, starts: roundStartsOf(recs, byRound)}
 }
 
 // FlatRoundIdentity fabrique un resolveur d'UNE seule manche a partir d'une table plate. Sert aux
@@ -249,9 +267,11 @@ func (ri RoundIdentity) CompletedByLines(recs []StatRecord, lines []PlayerLine) 
 		round, base = r, m
 	}
 	fusion := make(map[int]string, len(base)+len(triplet))
+	origins := make(map[int]string, len(base)+len(triplet))
 	pris := make(map[string]bool, len(base))
 	for slot, xuid := range base {
 		fusion[slot] = xuid
+		origins[slot] = ri.Origin(round, slot)
 		pris[xuid] = true
 	}
 	// Ordre STABLE : `triplet` est une map, et deux slots peuvent revendiquer le meme xuid.
@@ -267,9 +287,11 @@ func (ri RoundIdentity) CompletedByLines(recs []StatRecord, lines []PlayerLine) 
 			continue
 		}
 		fusion[slot] = xuid
+		origins[slot] = OriginSheetTriplet
 		pris[xuid] = true
 	}
-	return RoundIdentity{byRound: map[int]map[int]string{round: fusion}, starts: ri.starts}
+	return RoundIdentity{byRound: map[int]map[int]string{round: fusion},
+		origins: map[int]map[int]string{round: origins}, starts: ri.starts}
 }
 
 // AtRound rend le xuid du slot POUR UNE MANCHE connue — la voie du porteur, qui itere deja les

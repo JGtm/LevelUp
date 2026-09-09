@@ -193,7 +193,7 @@ func v4CoTop(m map[[3]uint32]*v4CoPaire, ctx v4Ctx) string {
 			break
 		}
 		nom := ""
-		if x, ok := ctx.own.SlotXUID[p.bipSlot]; ok {
+		if x, ok := ctx.own.PontParSlot()[p.bipSlot]; ok {
 			nom = fmt.Sprintf("/%d", x)
 		}
 		s += fmt.Sprintf(" veh%d.%d<-bip%d%s(%d,run%d,%.0fs)",

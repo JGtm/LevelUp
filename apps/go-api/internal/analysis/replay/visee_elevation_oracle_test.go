@@ -116,20 +116,20 @@ func aimOracle(t *testing.T, dir string, pos []filmdec.BipedPosition) {
 	t.Logf("COUT — ScanFilmPlayerIndices : %s", time.Since(debut).Round(time.Millisecond))
 	table, collisions := injectiveOrEmpty(idx)
 	tracks := indexBySlot(pos)
-	own := buildOwners(tracks, deaths, table, nil)
+	own := regDe(buildOwnersDeTest(tracks, deaths, table, nil))
 	t.Logf("ORACLE — fil : %d instants de kill, %d couples retenus, %d instants ambigus ecartes",
 		nKills, len(couples), ambigus)
 	t.Logf("  pont slot->xuid : %d slots nommes sur %d vies · decalage d'horloge %d ms"+
 		" (%d fins de vie appariees) · collisions d'index %d",
-		len(own.SlotXUID), own.LivesTotal, own.DeathOffsetMS, own.DeathOffsetMatches, collisions)
-	if len(own.SlotXUID) == 0 {
+		len(own.PontParSlot()), own.ViesTotal(), own.DeathOffsetMS(), own.DeathOffsetMatches(), collisions)
+	if len(own.PontParSlot()) == 0 {
 		t.Fatalf("pont vide : aucun kill ne peut etre situe sur la carte")
 	}
 	parXUID := map[uint64][]uint32{}
-	for slot, x := range own.SlotXUID {
+	for slot, x := range own.PontParSlot() {
 		parXUID[x] = append(parXUID[x], slot)
 	}
-	b := aimEvalueCouples(couples, tracks, parXUID, own.DeathOffsetMS)
+	b := aimEvalueCouples(couples, tracks, parXUID, own.DeathOffsetMS())
 	aimJournaliseOracle(t, b)
 	aimEcrisOracleTSV(t, dir, b)
 }

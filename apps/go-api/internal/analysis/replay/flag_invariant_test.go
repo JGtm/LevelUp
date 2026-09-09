@@ -130,6 +130,65 @@ func TestFlagInvariantSansCandidatNInventeRien(t *testing.T) {
 	}
 }
 
+// TestFlagInvariantAPlusDeDeuxSoclesRejoueLesRegles — LE FAIT `084a804d`, reduit au banc
+// (correctif E2-bis).
+//
+// La carte porte QUATRE socles, deux par camp. Un joueur de l'equipe 0 vole a son propre socle :
+// le repli geometrique designe SON drapeau, refuse — et le repli d'avant (« l'autre drapeau,
+// s'il est unique ») ne pouvait rien rendre, deux socles adverses restant en lice. Le portage
+// sortait NON ATTRIBUE. Les memes regles rejouees sur les seuls socles adverses le resolvent :
+// le plus proche des deux.
+//
+// MESURE : `084a804d` (six socles) — `unresolved` 0 -> 4 et quatre segments de portage perdus au
+// gate corpus, sur un film ou l'identite du porteur venait pourtant de s'ameliorer.
+//
+// MUTATION : rendre au refus son repli « unique autre drapeau » -> `unresolved = 1`, rouge.
+func TestFlagInvariantAPlusDeDeuxSoclesRejoueLesRegles(t *testing.T) {
+	tracks := []Track{flagTestTrack(12, "1", 0, 99, 2, 2)}
+	scan := FlagCarryScan{
+		Scanned: true, Signals: flagTestSignals(),
+		Events: []objectiveevents.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Spawns: []FlagSpawn{
+			{Team: 0, X: 0, Y: 0}, {Team: 0, X: 10, Y: 0},
+			{Team: 1, X: 100, Y: 100}, {Team: 1, X: 300, Y: 300},
+		},
+		TeamOf: map[string]int{"1": 0},
+	}
+
+	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
+	if cov.OwnFlagRefused != 1 {
+		t.Errorf("ownFlagRefused = %d, attendu 1 : le vol se fait au socle du porteur",
+			cov.OwnFlagRefused)
+	}
+	if cov.Unresolved != 0 {
+		t.Errorf("unresolved = %d, attendu 0 : deux socles ADVERSES restent, et la geometrie "+
+			"tranche entre eux comme elle l'aurait fait sans refus", cov.Unresolved)
+	}
+	if cov.Carries != 1 || !cov.Balanced() {
+		t.Fatalf("couverture %+v : 1 portage attendu", *cov)
+	}
+	// Le socle adverse LE PLUS PROCHE de la prise (100,100), pas l'autre (300,300).
+	var porte int
+	for _, fl := range got {
+		for _, s := range fl.Spans {
+			if !flagStateCarrying(s.State) {
+				continue
+			}
+			porte++
+			if fl.Team != 1 {
+				t.Errorf("le portage est publie sur un drapeau d'equipe %d — son propre camp",
+					fl.Team)
+			}
+		}
+	}
+	if porte != 1 {
+		t.Errorf("%d segment(s) porte(s) publie(s), attendu 1", porte)
+	}
+}
+
 // TestFlagRetourRemetLeSolEtEnJeu — CONSTAT C4 : les DEUX etats, jamais l'un sans l'autre.
 //
 // Un drapeau lache puis RENVOYE chez lui par un `flag_returns` credite n'est plus au sol. Tant
@@ -246,7 +305,7 @@ func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
 		},
 	}
 
-	attachFlagCarries(doc, Options{Flag: in}, OwnerReport{},
+	attachFlagCarries(doc, Options{Flag: in}, IdentityRegistry{},
 		replayClock{origin: 0, step: 100_000, frames: 100})
 
 	cov := doc.Coverage.FlagCarries

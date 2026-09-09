@@ -62,7 +62,7 @@ import "log/slog"
 // GARDE DE MODE : `opt.Bomb.CarryScanned`, posée par l'appelant (`replaybuild.isBombVariant`)
 // sur TOUTE la famille bomb, One Bomb comprise. Hors de la famille : ni calque, ni couverture —
 // la même règle que les autres calques d'objectif.
-func attachBombStats(doc *ReplayDocument, opt Options, own OwnerReport, carry HeldObjectCarry) {
+func attachBombStats(doc *ReplayDocument, opt Options, reg IdentityRegistry, carry HeldObjectCarry) {
 	if !opt.Bomb.CarryScanned {
 		return
 	}
@@ -74,7 +74,7 @@ func attachBombStats(doc *ReplayDocument, opt Options, own OwnerReport, carry He
 		Objectives:      opt.Objectives,
 		// Sans pont slot -> xuid, `attachBombCarries` ne reconstruit AUCUNE période : publier
 		// des zéros affirmerait une mesure qui n'a pas eu lieu.
-		CarryRead: len(own.SlotXUID) > 0,
+		CarryRead: len(reg.PontParSlot()) > 0,
 		Carry:     carry,
 		// ArmingsRead suit la CONFRONTATION LOCALE : un calque retenu à la source (garde 2,
 		// tout-ou-rien) n'est pas « zéro armement », c'est une absence de lecture.
@@ -87,7 +87,7 @@ func attachBombStats(doc *ReplayDocument, opt Options, own OwnerReport, carry He
 		Kills:     opt.MatchKills.Kills,
 		// LE RECALAGE, exactement la dérivation écrite en tête de bomb_arms.go :
 		// horlogeMatch = horlogeFilm + premierPaquetDuFilmUS/1000 − deathOffsetMS.
-		FilmToMatchOffsetMS: int(int64(opt.FilmClockOriginUS)/1000 - own.DeathOffsetMS),
+		FilmToMatchOffsetMS: int(int64(opt.FilmClockOriginUS)/1000 - reg.DeathOffsetMS()),
 	})
 	doc.BombStats = &stats
 	doc.BombEvents = events

@@ -63,11 +63,11 @@ func decodeFilmZoneReads(fc *filmdec.FilmContext, matchID string, zones int) []f
 // LES CAPTURES VIENNENT DE `doc.Objectives`, PAS D'UN SECOND DECODAGE : elles y sont deja posees
 // sur la grille de frames (origine du film retranchee) et filtrees aux joueurs dont une piste est
 // publiee. Les re-decoder ici en ferait un second lecteur du meme fait.
-func attachZoneStates(doc *ReplayDocument, opt Options, own OwnerReport, c replayClock) {
+func attachZoneStates(doc *ReplayDocument, opt Options, reg IdentityRegistry, c replayClock) {
 	states, cov := buildZoneStates(opt.Zone, zoneCtx{
 		origin: c.origin, step: c.step, frames: doc.FrameCount,
 		intervalMS: doc.FrameIntervalMS, tracks: doc.Tracks,
-		actions: doc.Objectives, slotXUID: own.NamingBridge(), matchID: doc.MatchID,
+		actions: doc.Objectives, slotXUID: reg.PontEpure(), matchID: doc.MatchID,
 	})
 	doc.ZoneStates = states
 	if doc.Coverage != nil {

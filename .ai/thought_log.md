@@ -820,6 +820,348 @@ drapeau concentriques a l'image 790).
 `delivery-checklist`. **Le point 5 (fond de carte d'Isolement) n'est PAS dans cette vague** — il
 est classe chantier dans le diagnostic, la regle de `coversPlayedArea` demandant une decision de
 forme (quel percentile, quelle marge, et faut-il journaliser).
+## [2026-09-09] Gate corpus complet E2 — 9 lignes de perte instruites, toutes acceptees — Complete
+
+**Decision technique principale.** Le gate `replay-corpus-gate --reference=base` (7 temoins,
+49 -> 50) rend PERTE sur 4 temoins (9 lignes). Chaque ligne a ete instruite sur pieces : huit
+sont deja documentees par les journaux E2 / E2-bis (vies d'humains nommees « bot » par le relais,
+index 8 hors table sur `c75f33b8`, portage du crane rogne d'une frame) ; la neuvieme
+(`fb1a1a72` `equipmentEpisodes.a/presents` 2 -> 1) a demande une re-cuisson du seul temoin avec
+`--keep-work` : les bornes des 4 episodes du slot 625 sont identiques, seul le PROPRIETAIRE de la
+piste change (lien direct), donc les frags credites passent de 2 a 3 et l'assistance suit l'ancien
+nom. C'est une des 27 vies que le pont par morts nommait a tort. Acceptation ecrite au registre.
+
+**Aussi dans ce commit.** Le correctif de polarite de `replaydiff` laisse en attente par la session
+precedente : une mesure ventilee `par-slot` (porteur sans nom) qui passe `par-xuid` (porteur nomme)
+forme UN groupe a somme conservee -> changement, pas perte. Tests `replaydiff` verts.
+
+**Prochaine etape.** Fusion de `feat/v2-decodeur-e2` dans `feat/v75`, `levelup backfill-killsource`
+(revision d'isolement bumpee ; couvre aussi le report L133 du registre), re-cuisson du parc
+(`backfill-replay --only-existing`, un film a la fois), puis `swap.sh` sur les 4 temoins de la
+vague B (preuve du P0 identites). Plan master `.ai/PLAN_MASTER_2026-09-09.md` lot 0.4.
+
+## [2026-09-08] Lot E2-bis — les pertes du gate corpus, instruites une par une et corrigées — Complété
+
+**Décision technique principale : le corps d'un joueur est la paire `(slot, génération)`, pas le
+slot.** Le lot E2 avait mesuré sur cinq films « un seul record de création par slot, génération
+invariante à 1 » et en avait tiré la règle « dans un film, un slot de bipède est UN CORPS du début
+à la fin ». Le gate corpus l'a réfutée sur le sixième : `084a804d` (Fortitude Heavies, 24 joueurs,
+16 min) porte **379 records pour 256 slots**, dont **123 slots à deux records** — `gen=1` en tête
+de film, `gen=2` après la 11e minute, avec des index de participant différents. Le pool de handles
+reboucle dès que le film est assez long. Le refus `lectures_divergentes`, écrit par E2 pour ce
+jour-là, refusait alors 59 vies EN BLOC au lieu de départager deux corps. La règle livrée est une
+lecture, pas une déduction : un record ouvre un corps, ce corps tient le slot jusqu'au record
+suivant, une vie revient au corps que le slot portait à son début.
+
+**La méthode qui a produit le résultat : reproduire le gate en local avant d'écrire une ligne.**
+La racine de cuisson de base du gate P2 était polluée — la mesure I5 du lot E2 y avait cuit ses
+cinq films au code E2 (schéma 50), écrasant cinq des dix artefacts de base. Elle a été refaite
+entièrement, et le binaire de base vérifié : les cinq artefacts 49 survivants sont reproduits à
+l'octet. Les 78 lignes de perte du gate se reproduisent alors exactement en local, ce qui donne la
+boucle courte — cuire, diffuser, instruire, corriger, re-cuire — sans jamais repasser par le parc.
+
+**Résultats observés.** Treize lignes de perte instruites, toutes tranchées :
+
+- **Sept sont des RÉATTRIBUTIONS à total constant, prouvées par la somme.** Ramassages :
+  totaux identiques sur les sept films, part attribuée 460 → 540, 285 → 332, 129 → 174…
+  Véhicules sur `084a804d` : **74 trajets avant, 74 après, 28 995 frames avant, 28 995 après**,
+  `ridesNamed` 52 → 74. Pistes : totaux identiques, anonymes 19 → 0 et 3 → 0. L'hypothèse du brief
+  (« le trajet tombe dans un trou entre deux vies ») est donc réfutée par la mesure : rien ne tombe.
+- **Deux « pertes de vie de bot » sont des lectures FAUSSES que le film corrige.** Le relais
+  (`successions.go`) ne réclame que les pistes anonymes ; il avait nommé « bot » deux corps
+  d'humains qui n'ont jamais quitté le match (`bcb6d393` slot 536, `c75f33b8` slot 578), et en base
+  ces deux joueurs portaient des chaînes de vies IMPOSSIBLES (trois vies simultanées).
+- **Trois lignes acceptées, confirmées sur pièces** : le portage de crâne qui ne survit plus d'une
+  frame à la mort de son porteur (vérifié : cette vie se termine bien par une mort) ; le portage de
+  drapeau coupé à 6753 par une PRISE DATÉE nouvelle (total porté 4049 → 4228) ; la voie
+  `homeByObject` remplacée par le marqueur.
+- **Deux P0 réels, corrigés.** (1) `trackFrameWindows` lisait « une mort ferme cette vie » dans
+  « la vie porte un nom » — proxy exact tant que le fil des morts était la seule voie de nommage,
+  faux depuis que le film nomme TOUTES les vies à leur création : l'épisode de camo `[3105..3672]`
+  du slot 620 retombait à 16 frames. La cause de fin est dans le registre (`CauseVieMort`), il la
+  sert désormais (`TracesCloturesParMort`). (2) L'invariant « jamais son propre drapeau » se
+  repliait sur « l'autre drapeau, s'il est unique » — règle qui ne sait trancher que sur DEUX
+  socles ; `084a804d` en porte SIX, et quatre portages y sortaient non attribués. Le refus rejoue
+  désormais les mêmes trois règles sur les seuls socles adverses.
+
+Mesure finale sur les dix témoins : `084a804d` `non_resolu` **59 → 1** sur 353 vies,
+`unnamedLives` 80 → 0, `equipmentEpisodes` durée **rétablie à 3676** (base), `flagCarries.spans`
+26 → **29**, `unresolved` **0**. Neuf films sur dix sont bit à bit identiques entre HEAD E2 et
+E2-bis ; seul `64e8adfa` bouge en plus (`assignedByPlay` 4 → 8, zéro perte). Cinq mutations jouées
+rouges. Goldens inchangés, tous les gates verts (`gofmt`, `build`, `vet`, tests des 54 paquets,
+intégration, `openapi-gen -check`, `golangci-lint --new-from-merge-base` 0 issue).
+
+**Conclusion / prochaine étape.** Le contenu cuit change sous le schéma **50** inchangé (le lot P
+n'est pas fusionné). Reste au superviseur, sur le poste principal : le gate corpus complet sur le
+parc, `backfill-killsource` (l'`IsolationDecoderRev` du lot E2 n'a pas rebumpé) et la re-cuisson du
+parc. Quatre découvertes portées au registre, dont deux qui commandent un lot ultérieur :
+`attachEpisodeKills` crédite encore par le pont APLATI (faux sur un slot recyclé), et les corps de
+bot réels — ceux dont l'index est hors `PlayerIndexTable` — n'ont plus aucune voie de nommage
+directe. Branche `feat/v2-decodeur-e2`, poussée, **non fusionnée**.
+
+---
+
+## [2026-09-08] P-décodeur E2 — le lien DIRECT corps ↔ joueur, intégré ; le pont par morts déclassé — Complété
+
+**Décision technique principale : « direct » se mesure sur le CORPS, pas sur la vie.** Le sondage
+avait établi la spécification bit-exacte du record de création (`ti=35`, index de participant à
+`+67`). Restait à savoir ce qu'on ferait des 5 à 13 % de vies qu'il ne désigne pas. Le brief
+initial prévoyait un repli par le pont par morts ; l'utilisateur l'a amendé en cours de lot — « je
+ne vois pas le besoin d'un repli ; il faut chercher à comprendre les 5 à 13 % restants ». C'est
+cet amendement qui a produit le résultat, parce qu'il a forcé l'instruction avant le code.
+
+**Le fait qui commande tout, et il a été trouvé SANS relire un film.** Les cinq TSV de mesure du
+sondage étaient versionnés ; confrontés aux artefacts cuits, ils disent : **un seul record de
+création par slot**, génération invariante à 1, et l'ensemble des slots qui portent des VIES égale
+EXACTEMENT l'ensemble des slots qui portent une LECTURE (160=160, 83=83, 138=138, 38=38, 80=80).
+Donc, dans un film, un slot de bipède est UN CORPS du début à la fin — le pool de handles ne
+reboucle pas à cette échelle. Les 53 vies du résidu se rangent alors en deux causes seulement :
+51 sont d'AUTRES SÉJOURS du même corps (une découpe à `lifeGapUS` a séparé un séjour continu :
+trou d'ouverture, embarquement en véhicule, occultation), et 2 lisent l'index 8 de `c75f33b8`, que
+la table publiée ne nomme pas. **Zéro « record présent mais non lu », zéro « record absent »** :
+il n'y avait pas de lecteur à améliorer.
+
+**Ce que cela change de doctrine.** Propager le record d'un corps à ses autres séjours n'est pas
+une déduction, c'est le MÊME record : le lien reste `direct`, avec une voie qui le dit
+(`creation_bipede_propagee`). Et le pont par morts, qui départageait par l'ordre des slots quand
+deux vies finissent au même instant, cesse de nommer : il pose la cause de fin — la seule chose
+que lui seul sache — et il VÉRIFIE. `nameLivesByDeaths` est supprimé.
+
+**Résultats observés, re-cuisson locale des cinq films (même schéma 50).**
+`identity.coverage.bipedSlot.direct` : **0 % → 100 / 100 / 100 / 100 / 97,7 %**.
+`coverage.bridge.unnamedLives` : **15 / 0 / 7 / 8 / 14 → 0 / 0 / 0 / 0 / 1**.
+`coverage.shots.noSlot` : **513 / 12 / 213 / 289 / 450 → 64 / 12 / 13 / 10 / 119**.
+**27 vies** portaient le joueur que le film écrit sur une AUTRE vie (13 + 4 + 10) — le direct les
+corrige, et les deux hausses de compteur d'échec que P2-bis avait dû faire accepter sur
+`d9781168` (`slotCollisions` +1, `unnamedLivesContested` +2) **redescendent à zéro** : le film ne
+porte qu'un corps par slot, la collision était une erreur du pont. Zéro compteur d'échec ne monte
+sur les cinq films. `scoreTimeline` et `identity.statborgSlots` sont identiques octet pour octet
+(l'écart K/D/A ne bouge pas : 0 / 0 / 16 / 0 / 21 — E2 ne touche pas le pont statborg).
+
+**La seule grandeur qui baisse, et pourquoi c'est un gain.** Le portage du crâne de `d9781168`
+passe de 172,5 à 172,4 s pour l'équipe 0 : UNE frame, sur UN portage. La vie du porteur était
+nommée par `exclusion_temporelle`, donc DÉDUITE, donc le gate de présence s'abstenait de la rogner
+(« une identité déduite ajoute une présence, elle n'en retire jamais une », règle de P2-bis). Elle
+est maintenant une LECTURE : le portage est rogné à la dernière frame de son porteur. Un portage
+ne survit plus d'une frame à son porteur.
+
+**Ce qui a résisté, et qui est écrit.** Une branche fait encore nommer le pont : quand le registre
+ne reçoit AUCUN record de création. Elle ne s'exécute sur aucun film (`bridgeNamedLives = 0`
+partout) ; elle existe pour le fixture d'assemblage `inputs_000d5950.bin.gz`, figé AVANT ce canal,
+dont le film n'est plus au parc (vérifié : 466 films, `000d5950` absent, donc pas régénérable).
+Sans elle le golden tomberait de 483/519 tirs à 0. Kill-switch daté, critère de retrait mesurable,
+inscrit au registre.
+
+**Conclusion / prochaine étape.** Le trou central de l'inventaire P1 (« E2 : zéro lien direct,
+cinq replis empilés ») est fermé, et quatre entrées du registre des reports avec lui. Reste au
+superviseur : le `replay-corpus-gate` complet sur le parc (une seule ligne à accepter,
+`flagCarries.homeByObject` sur `3372e7eb`), `levelup backfill-killsource` (la révision d'isolement
+a bougé), et la re-cuisson du parc. La suite du décodeur est nommée : le lien direct index de
+joueur ↔ slot de STATBORG, à sonder par la même voie (le default-state de `ti=5` porte lui aussi
+un index de joueur, en `R(6)`) — c'est lui qui tient les écarts K/D/A de `64e8adfa` et `c75f33b8`.
+
+Branche `feat/v2-decodeur-e2`, poussée, **non fusionnée**. Journal complet :
+`.ai/V7.5/v2/RESTES_E2_2026-09-08.md`.
+
+## [2026-09-08] Sondage E2 — le film NOMME le proprietaire d'un bipede — Complété
+
+**Le fait, et il retourne le point aveugle central de l'inventaire P1.** E2 y était classé « 0
+lien direct, 5 replis empilés » : rien dans `filmdec.BipedPosition` ne dit à qui appartient un
+corps. C'est vrai des POSITIONS, et faux du film. Le record de CRÉATION (type NEW) d'une entité
+bipède `ti=35` porte l'index de participant absolu de son propriétaire, sur 5 bits, dans son
+default-state (`FUN_140F44C38`, porté bit-exact dans `filmdec/default_state.go`) — troisième
+feuille du prologue, `ECS_ReadEntityRefIndex5` (`FUN_1407f2058` : `R(1)` porte INVERSÉE puis
+`R(5)`), à l'offset +67 de l'en-tête du record. Le décodeur la consommait déjà pour rester
+aligné ; il jetait sa valeur. C'est exactement le défaut corrigé pour `ti=37` le 2026-08-15, et
+l'hypothèse de l'utilisateur (« l'entité bipède avait l'index ») était juste.
+
+**La primitive n'est pas une inconnue : la production la lit déjà ailleurs.** `FUN_1407f2058`
+est la même que celle des deux champs du dead-state (`EnumA` victime, `EnumB` tueur), que
+`killsource/walk.go:224` traite comme des index de participant validés `< nPlay`. La note
+`NOTE_PROJECTILE_OWNER_2026-09-01.md` avait fermé la piste sur `ti=37` (503/503 porte FERMÉE) et
+sa réserve n°2 étendait le négatif « par référence » à d'autres archétypes. Sur `ti=35` la porte
+est OUVERTE **529 fois sur 529**. Le négatif ne s'étendait pas.
+
+**Décision de méthode, et c'est elle qui a fait la mesure.** Deux passes. La CHAÎNE séquentielle
+(World amorcé par images-clés + `DecodeFrameRecords`, recette de `game_entities_chain_test.go`)
+donne des records certains mais rares — 7, 2, 8 par film ; elle sert à établir la SIGNATURE du
+record (version 13, porte de représentation ouverte, mot `player-representation-name` =
+`0x1876BDA0`, constant sur les cinq films). L'ANCRAGE bit à bit reprend ensuite le balayage
+d'en-tête NEW d'`equipment_creation.go` avec cette signature de 32 bits pour gate. **Témoin
+fantôme (bande de même cardinalité, slots jamais occupés par un bipède) : 0 lecture sur les cinq
+films.** La voie qui semblait naturelle — le gate i0 de `decodeBipedI0Pos` — est RÉFUTÉE et c'est
+un acquis à garder : le default-state du bipède n'est porté qu'à ~120 bits sur ~380, donc l'ancre
+i0 calculée après lui est fausse par construction (1 847 ancres, 181 acceptées, 170 à plus de
+10 000 quanta de la trajectoire réelle de leur propre slot).
+
+**Résultats mesurés.** Vies de bipède nommées DIRECTEMENT : `d9781168` 159/176 (90,3 %),
+`bf15f7ab` 79/91 (86,8 %), `64e8adfa` 134/141 (95,0 %) — 372 sur 408. Sur 398 lectures, le champ
+de 5 bits (0..31 possibles) tombe **toujours** dans le roster publié (0..7) ; 14 vies portent
+deux lectures, **zéro divergence**. Contre le pont par morts : 329 concordants, 18 discordants,
+39 vies neuves (dont les vies d'ouverture, qu'un pont par morts ne peut structurellement pas
+nommer).
+
+**La découverte qui change le statut du pont.** Les discordances vont par PAIRES EXACTEMENT
+ÉCHANGÉES — sept, toutes entre deux vies qui se terminent à la même image (fin de manche, fin de
+film). C'est la signature du départage arbitraire de `nameLivesByDeaths` (`replay/lives.go:462`,
+`ps[i].li < ps[j].li` à écarts égaux), et c'est la famille « grappes de frontière de manche »
+déjà inscrite au registre par P2-bis. Le pont ne se contente pas de laisser des vies sans nom :
+sur ces paires, **il en nomme à tort**. La lecture directe tranche.
+
+**Conclusion / prochaine étape.** Critère d'arrêt du sondage atteint sur H1 (≥ 90 % sur un film) :
+H2 (flux `ti=5` complet) et H3 (propriétés gérées) restent fermées, statut `[!]` assumé. Aucune
+ligne de `filmdec` / `himap` / `analysis/replay` touchée, aucune sonde committée (elles
+déclencheraient `no_film_reread`, `no_rewritten_slot_band` et `no_unbounded_film_loop` — les
+garde-rails qui existent pour ça) ; la source de la sonde de mesure et les cinq TSV sont archivés
+sous `.ai/V7.5/film_re/mesures_e2_2026-09-08/`. Le plan d'intégration ADDITIF est écrit en cinq
+items (§4 du sondage, ~420 L Go + tests + recuisson des goldens), avec un préalable non
+négociable : trancher le cas des bots — sur `c75f33b8`, la lecture rend un index (8) que
+`identity.players` ne publie pas, et l'index 11 du bot déclaré n'apparaît jamais. Trois entrées
+au registre des reports.
+
+## [2026-09-08] Lot P2-bis — Le résidu de R2 sur `d9781168` : l'exclusion temporelle — Complété
+
+**Le fait.** P2 avait tenu trois de ses quatre engagements chiffrés, pas le quatrième :
+`d9781168` gardait `coverage.bridge.unnamedLives` à **19 → 19**, avec
+`identity.coverage.bipedSlot = {direct 0, deduit 142, non_resolu 34}` et `parElimination = 0`.
+
+**Ce que l'instruction a trouvé, et c'est la vraie découverte du lot : la prémisse de R2 était
+fausse.** R2 disait « 19 vies sans nom, toutes sur UN slot, un joueur qui ne meurt jamais du
+match ». La feuille dit le contraire en une ligne : morts par joueur 19, 21, 13, 23, 14, 19, 16,
+19 — **minimum 13, aucun joueur à zéro mort**. Les 19 vies sont sur **18 slots distincts**, et
+**18 slots muets** subsistent : l'unicité manque des DEUX côtés, donc `rosterSansVie` rend zéro
+candidat et l'élimination sur le roster sort avant même son journal. Le code de P2 n'était pas
+en panne — le cas qu'il ferme n'existe pas sur ce film. Le vrai cas « joueur à zéro mort » existe
+bien, mais PAR MANCHE, et c'est le pont statborg qui le résout déjà (`d9781168` manche 1, slot 12
+→ `elimination_roster`, parce que `DinoR00` n'a aucune mort en manche 1). La vérification de R2
+était statuée `[~]` « couverte ailleurs » et n'avait jamais été faite sur ce film : la leçon est
+qu'un `[~]` sur une VÉRIFICATION de fait n'est pas un statut, c'est un report.
+
+**Décision technique principale.** L'élimination sur le roster est portée de « tout le match » à
+« l'intervalle d'UNE VIE » — `resolveByTemporalExclusion`, quatrième étape de
+`BuildIdentityRegistry`, fonction pure. Un joueur n'occupe qu'un slot de bipède à la fois : les
+candidats d'une vie sans nom sont les xuids du roster qu'AUCUNE vie NOMMÉE ne place ailleurs
+pendant son intervalle. Un seul → c'est lui ; deux → on se tait ; **zéro → la lecture se
+contredit**, on se tait aussi et on alarme. Itérée jusqu'au point fixe (nommer une vie retire son
+occupant des candidats des vies qui la chevauchent — deux tours sur `d9781168`), avec abstention
+sur les conflits (deux vies forcées sur le même joueur et qui se chevauchent). Provenance
+`exclusion_temporelle`, vies marquées DÉDUITES, `cause` de fin jamais touchée : une déduction
+ajoute une présence, elle ne fabrique pas une mort.
+
+**Trois garde-fous, et ils refusent.** (1) roster de la feuille OBLIGATOIRE — sans lui l'univers
+des candidats se réduit aux joueurs que le fil des morts nomme, et un joueur absent de l'univers
+ferait passer un candidat FAUX pour unique ; (2) aucun bot déclaré — un bot occupe un slot sans
+porter de xuid, sa vie est « anonyme » au sens du registre ; (3) occupation simultanée ≤ roster —
+plus de vies que de joueurs, c'est que la découpe ou le roster est faux, la prémisse « un joueur,
+un slot » ne tient plus.
+
+**Corroboration indépendante.** Le pont statborg, qui ne partage aucune donnée avec le pont des
+bipèdes, nomme le slot 12 de la manche 1 par élimination (`DinoR00`, zéro mort en manche 1) ;
+l'exclusion temporelle attribue au même joueur la vie `575 [2773..4224]`, qui couvre toute la fin
+de cette manche. Deux méthodes, la même conclusion.
+
+**Résultats observés (re-cuisson locale des 10 témoins, avant = HEAD 50, après = P2-bis).**
+`d9781168` `unnamedLives` **19 → 15** et `bipedSlot` `142/34 → 152/24` (10 vies nommées,
+1 contradiction) ; `51ebbc0f` **8 → 3** (`76/11 → 84/3`) ; `64e8adfa` **11 → 7** ;
+`fb1a1a72` **3 → 2** ; `bf15f7ab` **1 → 0** ; `c0a82e88` `non_resolu` **1 → 0** ; `3372e7eb`,
+`084a804d`, `bcb6d393`, `c75f33b8` inchangés. **Aucun calque ne perd** : tirs rattachés
++187 (`d9781168`), +149 (`51ebbc0f`), +147 (`64e8adfa`), +28, +12 ; `shots.noSlot`
+700 → 513, 187 → 38, 360 → 213 ; ramassages sans auteur 47 → 24 et 26 → 1. **Le temps de portage
+du crâne par équipe ne bouge pas** : 172,5 / 158,8 s, 36 portages (feuille 191 / 196).
+`scoreTimeline` et `identity.statborgSlots` identiques octet pour octet : les écarts K/D/A fermés
+par P2 sont intacts. Golden `assembly_000d5950` inchangé.
+
+**Deux compteurs d'échec qui MONTENT, instruits.** `slotCollisions` 0 → 1 (`d9781168` slot 637,
+`fb1a1a72` slot 622) et `unnamedLivesContested` 0 → 2 (`d9781168`). Même cause : le registre EN
+SAIT DAVANTAGE. La collision de slot existait déjà et le pont aplati la servait en silence au
+premier occupant ; les deux pistes contestées étaient nommées « par la vie suivante » faute de
+voisine à gauche, et la voisine gauche désigne maintenant un AUTRE joueur. Le gate corpus les
+lira en PERTE (`internal/replaydiff/polarite.go`) : ils sont **à accepter**, les masquer
+demanderait d'écraser le pont aplati ou de garder un nommage par défaut d'alternative.
+
+**Structure.** Les POSEURS du registre sortent dans `identity_registry_mutations.go`
+(`identity_registry.go` était à 471 L pour un seuil de 500 — découverte 3 de P2) ; deuxième
+entrée DATÉE de l'allowlist `archlint/no_identity_bridge_outside_registry_test.go`, justifiée :
+ce sont les deux moitiés du même producteur, aucune règle de nommage n'y vit, et les deux
+décideurs restent hors allowlist. Un slot que deux joueurs se partagent devient AMBIGU au lieu
+d'être écrasé. La voie publiée se lit dans `nomPar`, plus dans `deducedLives` (avec deux voies de
+déduction, `deducedLives` ne dit plus laquelle).
+
+**Gates (exit codes).** `gofmt -l internal/ cmd/ contracttest/` vide (0) · `go build ./internal/...`
+0 · `go vet ./internal/analysis/replay/...` 0 · `go test -count=1` vert sur
+`analysis/replay`, `replaybuild`, `service/replayview`, `sync/killcollector`, plus `archlint`,
+`games/canonical` et `contracttest` · `golangci-lint run --new-from-merge-base=origin/main
+./internal/analysis/replay/...` **0 issues** · goldens : `git status --short -- testdata/` vide.
+**10 mutations jouées, toutes rouges.**
+
+**Conclusion / prochaine étape.** R2 est clos avec résidu ÉCRIT : 13 pistes de `d9781168` restent
+sans nom — 10 grappes de frontière de manche (les slots sont partitionnés par manche,
+512..557 / 558..601 / 602..671 : aucune continuité de slot à exploiter au titre du §0.4), 2 vies
+courtes en pleine manche, 1 contradiction (slot 641, zéro candidat). Trois entrées au registre
+des reports. La condition de reprise est la même pour toutes : le lien DIRECT slot de bipède ↔
+index de joueur (inventaire P1, E2 — `ti=5`, `ManagedPropertyFilmIndex`), plan décodeur d'après
+v7.5.0. Reste au superviseur : le gate corpus sur le parc (les deux hausses de compteur d'échec
+sont à accepter avec la ligne du registre), puis `backfill-killsource` et la re-cuisson au
+schéma 50.
+
+---
+
+## [2026-09-08] Lot P2 — Registre d'identité des joueurs (vague 3, lot P du plan v2) — Complété
+
+**Décision technique principale.** « L'INDEX EST L'INDEX » (décision utilisateur du 2026-09-07,
+plan v2 §0.7, amendée par D11) devient du code : `BuildIdentityRegistry(in IdentityInput)
+IdentityRegistry`, fonction PURE de `internal/analysis/replay` — aucune I/O, aucune base, aucun
+`filmsource.Film` — appelée par `replaybuild` À LA CUISSON **et** par `sync/killcollector` AU
+SYNC. L'amendement du §0.7 est porté au premier commit, comme le prescrivait P1.
+
+L'ordre des étapes est la doctrine et il est écrit dans le code : (1) les liens DIRECTS
+(`PlayerIndexTable` index ↔ xuid, `BotID` ↔ `bid(N.0)`) posés d'abord et à 100 % ; (2) le pont par
+morts en REPLI pour le seul lien que le film ne donne pas (slot de bipède ↔ joueur — le trou E2 de
+l'inventaire) et en VÉRIFICATION (désaccord d'index → `slog.Warn` + compteur, jamais un nom
+inventé) ; (3) l'ÉLIMINATION sur le roster quand il ne reste qu'une affectation possible ; (4) ce
+qui résiste est publié « non résolu » et COMPTÉ.
+
+**Ce que le lot ferme, avec la mesure de départ.** R1 : les actions d'objectif ne sont plus JETÉES
+quand leur auteur n'a pas de trajectoire publiée (`3372e7eb`, 35 sur 76 supprimées) — une lecture
+vraie du film ne se jette pas parce qu'un AUTRE calque est incomplet, et le client sait déjà s'en
+abstenir au rendu. R2 : un slot dont aucune vie n'est nommée, quand il ne reste qu'un joueur du
+roster sans aucune vie, est nommé par élimination (`d9781168`, 19 vies) — `deduced = true`, `cause`
+INCHANGÉE : une déduction ajoute une présence, elle ne fabrique jamais une mort (P0 de la ronde 2
+du 07/09). R4, reporté par le lot M4 : `RoundIdentity.CompletedByElimination` par manche, contrôlée
+par le RÉSIDU de la feuille, plus `Lines` enfin passé à `buildPlayerScores` en multi-manche, plus le
+même chaînage dans `pontParManche.identite()` — sans quoi les ACTIONS et les COMPTEURS auraient dit
+deux choses du même match.
+
+**Ce qui change structurellement.** `OwnerReport` devient un champ PRIVÉ du registre ; les quinze
+calques et les deux lecteurs hors rejeu passent par des accesseurs qui portent DÉJÀ leurs gardes
+(`PontEpure` retire les slots ambigus, `XUIDAt` préfère la vie qui couvre l'instant). Un lecteur ne
+peut plus oublier une garde : il n'a plus de quoi l'enfreindre. `killpos_bridge.go` est supprimé
+(règle 7). Garde-rail `archlint/no_identity_bridge_outside_registry_test.go`, allowlist DATÉE à UNE
+entrée. Effet de bord révélateur : le ratchet `no_player_index_identity_test.go` a refusé mon champ
+`IdentityCoverage.PlayerIndex` — renommé `FilmIndex`, le garde-rail existant a fait son travail
+dans le lot même.
+
+**Résultats observés.** Schéma 49 → 50 (le 49 était pris par M1b) avec chronique, cliquet de champs
+56 → 57, goldens régénérés : UN SEUL écart, « schema 49 » → « schema 50 » sur
+`assembly_000d5950.golden`, aucun autre octet — témoin de neutralité (ce film n'a ni slot muet
+unique ni action sans piste). Journal de cuisson du golden : 8 liens directs, 93 déduits, 12 non
+résolus. Sept mutations jouées ROUGE puis restaurées VERT (élimination retirée, « exactement un »
+relâché des deux côtés, contrôle du résidu retiré, `.own.` ajouté dans un calque, `RosterXUIDs`
+retiré de la couture du collecteur). `IsolationDecoderRev` bumpée : `match_lives` et
+`match_death_context` doivent être réécrits par `levelup backfill-killsource` (append-only, ADR
+0026 ; le journal des morts n'est PAS touché). Gates : `gofmt` vide, build, vet, 53 paquets `ok`,
+intégration `-p 1` 11 paquets `ok`, parité `replayview`, `openapi-gen -check`, lint
+`--new-from-merge-base` **0 issues**, web typecheck + vitest 658 fichiers / 7 024 tests.
+
+**Conclusion / prochaine étape.** Les témoins chiffrés (`3372e7eb` 35 → 0, `d9781168` 19 → 0,
+`51ebbc0f` écart 9 → 0, `fb1a1a72` sans perte, `bf15f7ab` identique hors numéro) et
+`make replay-corpus-gate` sont `[!]` — **à jouer par le superviseur** : ce worktree n'a aucun film,
+c'est une dépendance externe et non un report de commodité. Commandes exactes et chiffres attendus
+au §7 du journal `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`. `64e8adfa` reste à 16 d'écart et il faut le
+dire : 5 couples sans unicité, cas général qui appartient au lien direct index ↔ slot de statborg
+que le film ne porte pas (plan décodeur d'après v7.5.0). Suite : P3 (registre des objets
+d'objectif), qui n'ouvre qu'après la clôture de P2. Branche `feat/v2-p2-registre-joueurs` poussée,
+NON fusionnée.
 
 ## [2026-09-08] Lot M1b — corriger le décalage d'horloge du lien « voir dans le rejeu » — Complete
 

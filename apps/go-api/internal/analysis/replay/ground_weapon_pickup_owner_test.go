@@ -12,11 +12,11 @@ package replay
 // le MEME oracle, au MEME seuil, sur la population que la phase 2 a qualifiee, en passant par le
 // pont slot -> joueur.
 //
-// LE PONT EST CELUI DU CONSTRUCTEUR, PAS UN PONT MAISON. `buildOwners` (owners.go) aux MEMES
+// LE PONT EST CELUI DU CONSTRUCTEUR, PAS UN PONT MAISON. `BuildIdentityRegistry` (identity_registry.go) aux MEMES
 // entrees que `BuildFromFilm` : le fil des morts (`ScanFilmDeaths`), l'index de joueur lu dans
 // les chunks de replication (`ScanFilmPlayerIndices` + `injectiveOrEmpty`), les evenements de tir
 // (`ScanFilmFireEvents` -> `fireRefs`, dont les fermetures ont besoin) et les positions de bipede
-// deja lues par l'instrument (`indexBySlot`). C'est `own.SlotXUID` que le document publie sur
+// deja lues par l'instrument (`indexBySlot`). C'est `own.PontParSlot()` que le document publie sur
 // `Track.XUID` (`build.go`, `nameTracks`) : mesurer sur autre chose ne dirait rien de ce qui
 // serait publie en phase 3.
 //
@@ -225,16 +225,17 @@ func gwPickupOwners(t *testing.T, dir string, f *gwPickupFilm) map[uint32]uint64
 		t.Logf("2.5 PONT — events de tir illisibles (%v) : fermeture A privee de sa source", err)
 		fire = nil
 	}
-	own := buildOwners(indexBySlot(f.positions), deaths, table, fireRefs(fire))
+	own := BuildIdentityRegistry(IdentityInput{Positions: f.positions, Deaths: deaths,
+		PlayerIndices: table, Fire: fireRefs(fire)})
 	t.Logf("2.5 PONT (constructeur) — morts %d · slots ponts %d · vies nommees %d/%d ·"+
 		" par lecture %d · fermetures tir %d / reapparition %d (contestees %d, refusees %d) ·"+
 		" lectures d'index %d · desaccords d'index %d · collisions de slot %d ·"+
 		" index non injectif %d · joueurs distincts %d",
-		len(deaths), len(own.SlotXUID), own.DeathsNamed, own.LivesTotal, own.FromDeaths,
-		own.Closures.byShot, own.Closures.byRespawn, own.Closures.contested,
-		own.Closures.refused, own.IndexReadings, own.IndexDisagreements, own.SlotCollisions,
-		collisions, gwPickup25Distinct(own.SlotXUID))
-	return own.SlotXUID
+		len(deaths), len(own.PontParSlot()), own.ViesNommeesParLaLecture(), own.ViesTotal(), own.SlotsParLaLecture(),
+		own.FermeturesParTir(), own.FermeturesParReapparition(), own.FermeturesContestees(),
+		own.FermeturesRefusees(), own.LecturesIndex(), own.DesaccordsIndex(), own.CollisionsDeSlot(),
+		collisions, gwPickup25Distinct(own.PontParSlot()))
+	return own.PontParSlot()
 }
 
 // gwPickupXUIDLoadout rend le loadout de la VIE COURANTE de `xuid` a l'image-cle `kf` : les

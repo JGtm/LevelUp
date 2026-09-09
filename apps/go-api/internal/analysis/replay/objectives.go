@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"log/slog"
 	"sort"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
@@ -115,36 +116,37 @@ func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, unnamed int,
 	return out, cov
 }
 
-// dropUnpublishedActions retire les actions dont le joueur n'a AUCUNE track publiee, et les
-// compte a part.
+// countActionsWithoutTrack compte — SANS LES JETER — les actions dont l'auteur n'a aucune
+// trajectoire publiee.
 //
-// Ce n'est pas un echec de rattachement — l'action est bien identifiee — mais le client ne
-// pourrait pas la dessiner : il n'a pas de trajectoire ou l'accrocher. La compter sous
-// `Unpublished` plutot que sous `Attached` evite d'annoncer une couverture que l'ecran ne
-// tiendra pas.
+// # UNE ACTION EST UNE ACTION (doctrine du plan v2, lot R1, 2026-09-08)
 //
-// LE FILTRE CADENCE SUR LE JOUEUR DE LA PISTE, PAS SUR SON SEUL NOM LU (correctif du
-// 2026-09-06). Bati sur `tr.XUID != ""`, il supprimait TOUTES les actions d'un joueur dont
-// AUCUNE vie n'est nommee alors que le PONT nomme son slot, quand bien meme la trajectoire EST
-// publiee. Defaut DEMONTRE par mutation, mais NON CHIFFRE sur le parc local : les 35 actions sur
-// 76 de `3372e7eb` que la premiere redaction citait viennent de deux joueurs SANS AUCUNE piste
-// dans le film — le pont n'a rien a nommer, et le compte ne bouge pas (revue VIES-R1, C3).
-// Trois consommateurs perdaient la donnee, dont DEUX n'ont jamais eu besoin d'une trajectoire
-// (le SON d'objectif, qui ne lit que l'instant, et la garde tout-ou-rien de l'armement de
-// bombe). La resolution est celle du pont canonique, partagee (`xuidOfPublishedTrack`).
-func dropUnpublishedActions(actions []ObjectiveAction, tracks []Track,
-	slotXUID map[uint32]uint64, cov LayerCoverage) ([]ObjectiveAction, LayerCoverage) {
+// Cette fonction s'appelait `dropUnpublishedActions` et elle SUPPRIMAIT ces actions. Le
+// raisonnement etait « le client ne pourrait pas la dessiner, il n'a pas de trajectoire ou
+// l'accrocher » — mais une action d'objectif est un FAIT LU DU FILM, date a la milliseconde et
+// nomme par le pont d'identite. Le jeter parce que le calque des positions est incomplet fait
+// disparaitre une lecture vraie pour une raison de RENDU, et le compte publie n'a plus de
+// rapport avec ce que le film porte. Mesure : `3372e7eb`, 35 actions sur 76 supprimees,
+// toutes celles de deux joueurs sans aucune piste dans le film.
+//
+// LE CLIENT SAIT DEJA S'EN ABSTENIR : `buildObjectivePulses` ecarte une action dont il ne peut
+// pas relire la position (« Une action sans position relue est ECARTEE — un pulse pose au hasard
+// designerait la mauvaise zone »). L'abstention est donc au bon endroit — a l'affichage, pas
+// dans la donnee servie.
+//
+// LE COMPTE RESTE, dans le journal : une action sans piste signale un DEFAUT du calque des
+// positions, et le taire serait l'anti-patron que coverage.go interdit. Il n'entre plus dans
+// `Unpublished`, qui est une categorie de REJET : plus rien n'est rejete ici.
+func countActionsWithoutTrack(actions []ObjectiveAction, tracks []Track,
+	slotXUID map[uint32]uint64) int {
 	published := publishedXUIDs(tracks, slotXUID)
-	out := actions[:0:0]
+	n := 0
 	for _, a := range actions {
 		if !published[a.XUID] {
-			cov.Unpublished++
-			cov.Attached--
-			continue
+			n++
 		}
-		out = append(out, a)
 	}
-	return out, cov
+	return n
 }
 
 // attachObjectiveActions pose le calque des actions d'objectif sur le document et rend sa
@@ -155,9 +157,16 @@ func dropUnpublishedActions(actions []ObjectiveAction, tracks []Track,
 // ligne (cf. Options.Objectives) — aucune base, et JUSTE en multi-manche (le slot d'entite est
 // reattribue d'une manche a l'autre). L'horloge, elle, demande une soustraction — celle de
 // l'origine (cf. buildObjectiveActions et build_score.go).
-func attachObjectiveActions(doc *ReplayDocument, opt Options, own OwnerReport, c scoreClock) LayerCoverage {
+func attachObjectiveActions(doc *ReplayDocument, opt Options, reg IdentityRegistry,
+	c scoreClock) LayerCoverage {
 	actions, cov := buildObjectiveActions(opt.Objectives, opt.ObjectivesUnnamed, c)
-	doc.Objectives, cov = dropUnpublishedActions(actions, doc.Tracks, own.NamingBridge(), cov)
+	doc.Objectives = actions
+	if n := countActionsWithoutTrack(actions, doc.Tracks, reg.PontEpure()); n > 0 {
+		// PUBLIEES QUAND MEME, ET SIGNALEES : le defaut est dans le calque des POSITIONS, pas
+		// dans l'action. Le taire ferait disparaitre une lecture vraie sans laisser de trace.
+		slog.Warn("rejeu : actions d'objectif dont l'auteur n'a aucune trajectoire publiee",
+			"match_id", doc.MatchID, "actions", n, "publiees", len(actions))
+	}
 	cov.warnIfLossy("objectifs")
 	return cov
 }

@@ -318,55 +318,6 @@ type Coverage struct {
 	Bridge BridgeHealth `json:"bridge"`
 }
 
-// buildCoverage assemble la couverture publiée et ses verdicts. `originResolved` dit si
-// l'origine de la frame 0 a été établie — elle conditionne la justesse de l'axe de temps de
-// TOUS les calques datés depuis l'horloge du film (cf. Coverage.OriginResolved).
-func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport,
-	originResolved bool, score *ScoreCoverage) *Coverage {
-	b := BridgeHealth{
-		Slots: len(own.Owner), FromReading: own.FromDeaths,
-		LivesNamed: own.DeathsNamed, LivesTotal: own.LivesTotal,
-		IndexReadings:       own.IndexReadings,
-		IndexDisagreements:  own.IndexDisagreements,
-		SlotCollisions:      own.SlotCollisions,
-		DeathOffsetMatched:  own.DeathOffsetMatches,
-		DeathOffsetRunnerUp: own.DeathOffsetRunnerUp,
-		DeathOffsetMs:       deathOffsetMsIfKnown(own),
-		ClosedByShot:        own.Closures.byShot,
-		ClosedByRespawn:     own.Closures.byRespawn,
-		ClosedContested:     own.Closures.contested,
-		ClosedRefused:       own.Closures.refused,
-	}
-	b.warnIfCalageEtroit()
-	return &Coverage{
-		Shots: shots, Grenades: grenades, Objectives: objectives, Bridge: b,
-		OriginResolved: originResolved, Score: score,
-		Verdict: map[string]string{
-			"shots":      verdictOf(shots),
-			"grenades":   verdictOf(grenades),
-			"objectives": verdictOf(objectives),
-			"bridge":     verdictOfBridge(b),
-		},
-	}
-}
-
-// deathOffsetMsIfKnown rend le calage `DeathOffsetMS` du pont, ou nil quand il n'est pas
-// CONNU — pas seulement quand il vaut zéro (cf. BridgeHealth.DeathOffsetMs, lot M1b).
-//
-// LE TÉMOIN DE CONNAISSANCE EST `DeathOffsetMatches > 0`, PAS `DeathOffsetMS != 0`. Un calage
-// à zéro exact (horloges déjà alignées) est une mesure valide qu'il ne faut pas confondre
-// avec son absence. `DeathOffsetMatches` vaut zéro dans les deux cas où le calage n'a pas de
-// sens : le pont n'a pas été construit (buildOwners rend un OwnerReport vide) ou l'affinage
-// n'a apparié aucune mort — dans les deux cas `DeathOffsetMS` reste à sa valeur zéro du
-// struct, qui ne doit alors PAS être publiée comme un calage mesuré.
-func deathOffsetMsIfKnown(own OwnerReport) *int64 {
-	if own.DeathOffsetMatches <= 0 {
-		return nil
-	}
-	v := own.DeathOffsetMS
-	return &v
-}
-
 // slotFor rend le slot du joueur pi à l'instant tUS, et la cause du rejet le cas échéant.
 //
 // C'EST LA MÊME PORTE QUE `uniqueSlotFor`, mais elle DIT pourquoi elle se ferme. L'ancienne

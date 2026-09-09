@@ -187,7 +187,7 @@ func buildScoreTimeline(in *ScoreInput, deaths []Death, c scoreClock) (*ScoreTim
 
 	tl := &ScoreTimeline{
 		Teams:   buildTeamScores(slots, teamScore, teamID, c),
-		Players: buildPlayerScores(recs, identity, deaths, c),
+		Players: buildPlayerScores(recs, identity, in.Lines, deaths, c),
 	}
 	tl.TargetScore = publishableTarget(in.TargetScore, slots, teamScore, len(tl.Teams))
 	if in.HoldTicksPerPoint > 0 {
@@ -295,11 +295,20 @@ func buildTeamScores(slots []int, score scoreSeriesSet, teamID map[int]int, c sc
 //
 // Un slot (mono) ou un couple (slot, manche) (multi) que le pont n'apparie pas sans ambiguite
 // n'est PAS publie : attribuer les compteurs d'un joueur a un autre serait indetectable a l'ecran.
+//
+// LA FEUILLE ENTRE AUSSI DANS LE CHEMIN MULTI-MANCHE (correctif R4, 2026-09-08). Elle n'y entrait
+// pas : `buildPlayerScores` ne recevait meme pas `lines`, si bien qu'un couple (slot, manche) que
+// le pont par morts ne pouvait pas nommer — un joueur qui meurt moins de trois fois dans la
+// manche — n'etait publie NULLE PART. Mesure : `51ebbc0f`, un joueur a 0 mort en manche 0, sa
+// manche entiere absente, ecart cumule K/D/A de 9 contre la feuille.
+// [objectiveevents.RoundIdentity.CompletedByElimination] la ferme dans le cas d'unicite, controle
+// par le residu de la feuille ; `lines` vide rend l'identite inchangee.
 func buildPlayerScores(recs []objectiveevents.StatRecord, flat map[int]string,
-	deaths []Death, c scoreClock) []PlayerScore {
+	lines []objectiveevents.PlayerLine, deaths []Death, c scoreClock) []PlayerScore {
 	if len(objectiveevents.RealRounds(recs)) > 1 {
-		return buildPlayerScoresByRound(recs,
-			objectiveevents.ResolveRoundIdentity(recs, deathInstantsOf(deaths)), c)
+		round := objectiveevents.ResolveRoundIdentity(recs, deathInstantsOf(deaths)).
+			CompletedByElimination(recs, lines)
+		return buildPlayerScoresByRound(recs, round, c)
 	}
 	return buildPlayerScoresFlat(recs, flat, c)
 }

@@ -83,26 +83,37 @@ func TestBuildObjectiveActionsRefusesUnidentified(t *testing.T) {
 	}
 }
 
-// TestDropUnpublishedActionsKeepsTheInvariant — une action dont le joueur n'a aucune track
-// publiee est comptee a part, pas silencieusement perdue.
+// TestActionsSansTrajectoirePubliéeSontQuandMemePubliees — UNE ACTION EST UNE ACTION.
 //
-// C'est la meme regle que pour les tirs : ce n'est pas un echec de rattachement, mais le
-// client n'aurait pas de trajectoire ou l'accrocher. L'annoncer comme rattachee promettrait
-// une couverture que l'ecran ne tiendrait pas.
-func TestDropUnpublishedActionsKeepsTheInvariant(t *testing.T) {
+// Ce test RETOURNE `TestDropUnpublishedActionsKeepsTheInvariant` (baseline gelee, entree
+// corrigee dans le meme commit, lot P2/R1 2026-09-08). L'ancien exigeait que l'action d'un
+// joueur sans trajectoire publiee soit SUPPRIMEE et comptee sous `Unpublished` ; la doctrine
+// du plan v2 dit l'inverse : une lecture vraie du film n'est jamais jetee parce qu'un autre
+// calque est incomplet. Le compte reste, mais au journal — plus rien n'est rejete ici.
+//
+// MUTATION : reintroduire le filtre -> l'action « fantome » disparait, rouge.
+func TestActionsSansTrajectoirePubliéeSontQuandMemePubliees(t *testing.T) {
 	actions := []ObjectiveAction{
 		{T: 1, XUID: "a", Stat: objectiveevents.StatFlagCaptures},
 		{T: 2, XUID: "fantome", Stat: objectiveevents.StatFlagReturns},
 	}
-	cov := LayerCoverage{Available: 2, Attached: 2}
-	got, cov := dropUnpublishedActions(actions, []Track{{XUID: "a"}}, nil, cov)
-	if len(got) != 1 || got[0].XUID != "a" {
-		t.Fatalf("%d actions gardees, attendu 1 (celle du joueur publie)", len(got))
+	if n := countActionsWithoutTrack(actions, []Track{{XUID: "a"}}, nil); n != 1 {
+		t.Fatalf("actions sans trajectoire = %d, attendu 1", n)
 	}
-	if cov.Unpublished != 1 || cov.Attached != 1 {
-		t.Errorf("nonPublies = %d, rattaches = %d ; attendu 1 et 1", cov.Unpublished, cov.Attached)
+	doc := ReplayDocument{Tracks: []Track{{XUID: "a"}}}
+	cov := attachObjectiveActions(&doc, Options{
+		Objectives: []objectiveevents.IdentifiedEvent{
+			ident(100, "a", objectiveevents.StatFlagCaptures),
+			ident(200, "fantome", objectiveevents.StatFlagReturns),
+		},
+	}, IdentityRegistry{}, scoreClock{intervalMS: 100, frames: 10})
+	if len(doc.Objectives) != 2 {
+		t.Fatalf("%d actions publiees, attendu 2 — une lecture vraie a ete jetee", len(doc.Objectives))
 	}
-	if !cov.Balanced() {
+	if cov.Unpublished != 0 {
+		t.Errorf("nonPublies = %d, attendu 0 : plus rien n'est rejete par ce calque", cov.Unpublished)
+	}
+	if cov.Attached != 2 || !cov.Balanced() {
 		t.Errorf("couverture desequilibree : %+v", cov)
 	}
 }
@@ -229,23 +240,27 @@ func TestCouvertureCompteCeQueLePontNaPasNomme(t *testing.T) {
 // VIES-R1, C3). Le parc local ne porte aucun temoin de la configuration declenchante.
 //
 // MUTATION : revenir a l'index bati sur `tr.XUID != ""` rougit (« publiees = 0, attendu 1 »).
+// TestActionDunJoueurSansVieNommeeEstPubliee — UNE LECTURE VRAIE N'EST PAS JETEE PARCE QU'UN
+// NOM MANQUE (constat P1-3 de l'audit du 2026-09-06, elargi par le lot P2/R1 du 2026-09-08).
+//
+// Un joueur dont AUCUNE vie n'est nommee perdait TOUTES ses actions d'objectif, alors que sa
+// trajectoire EST publiee et que le pont canonique nomme son slot. Depuis R1, plus AUCUNE action
+// n'est jetee : ce test verifie que le COMPTE d'actions sans trajectoire est nul des que le pont
+// nomme le slot de la piste — c'est lui qui declenche l'alarme du journal.
+//
+// MUTATION : revenir a l'index bati sur `tr.XUID != ""` rougit (« sansTrajectoire = 1, attendu 0 »).
 func TestActionDunJoueurSansVieNommeeEstPubliee(t *testing.T) {
 	actions := []ObjectiveAction{{T: 1, XUID: "42", Stat: objectiveevents.StatFlagCaptures}}
 	tracks := []Track{{Slot: 536}} // la piste est PUBLIEE, son nommage a echoue
-	cov := LayerCoverage{Available: 1, Attached: 1}
-
-	got, out := dropUnpublishedActions(actions, tracks, map[uint32]uint64{536: 42}, cov)
-	if len(got) != 1 {
-		t.Fatalf("publiees = %d, attendu 1 : le pont nomme le slot 536", len(got))
-	}
-	if out.Unpublished != 0 || out.Attached != 1 {
-		t.Errorf("couverture %+v, attendu nonPubliees=0 rattachees=1", out)
+	if n := countActionsWithoutTrack(actions, tracks, map[uint32]uint64{536: 42}); n != 0 {
+		t.Fatalf("sansTrajectoire = %d, attendu 0 : le pont nomme le slot 536", n)
 	}
 }
 
-// TestActionSansPontResteEcartee — LA CONTRE-EPREUVE du test precedent : le correctif
-// RETRECIT le rejet, il ne le supprime pas. On n'invente aucun joueur.
-func TestActionSansPontResteEcartee(t *testing.T) {
+// TestActionSansPontEstComptee — LA CONTRE-EPREUVE : quand rien ne nomme le slot de la piste,
+// l'action reste PUBLIEE (doctrine R1) mais elle est COMPTEE — le defaut du calque des positions
+// doit rester visible au journal, et on n'invente aucun joueur pour le masquer.
+func TestActionSansPontEstComptee(t *testing.T) {
 	actions := []ObjectiveAction{{T: 1, XUID: "42", Stat: objectiveevents.StatFlagCaptures}}
 	tracks := []Track{{Slot: 536}}
 	for nom, pont := range map[string]map[uint32]uint64{
@@ -255,13 +270,8 @@ func TestActionSansPontResteEcartee(t *testing.T) {
 		"pont a zero":         {536: 0},
 	} {
 		t.Run(nom, func(t *testing.T) {
-			got, out := dropUnpublishedActions(actions, tracks,
-				pont, LayerCoverage{Available: 1, Attached: 1})
-			if len(got) != 0 {
-				t.Errorf("%d action(s) publiee(s), attendu 0 : rien ne nomme ce slot", len(got))
-			}
-			if out.Unpublished != 1 {
-				t.Errorf("couverture %+v, attendu nonPubliees=1", out)
+			if n := countActionsWithoutTrack(actions, tracks, pont); n != 1 {
+				t.Errorf("sansTrajectoire = %d, attendu 1 : rien ne nomme ce slot", n)
 			}
 		})
 	}

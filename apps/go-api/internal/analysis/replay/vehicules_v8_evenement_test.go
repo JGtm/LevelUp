@@ -118,7 +118,7 @@ func v8UnFilm(t *testing.T, root string, f v0Film, tot *v8Bilan) {
 	}
 	in := vehicleRideInputs{
 		vehBySlot: ctx.vehBySlot, bipeds: ctx.bip, events: ctx.scan.Events,
-		own: ctx.own, lives: ctx.lives, clock: ctx.clock,
+		reg: ctx.own, lives: ctx.lives, clock: ctx.clock,
 		drawable: vehicleDrawableLives(ctx.lives, ctx.spawns, ctx.vehBySlot),
 	}
 	boards, exits := vehicleEventsByOccupant(ctx.scan.Events)

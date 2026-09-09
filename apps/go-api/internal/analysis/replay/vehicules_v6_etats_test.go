@@ -42,7 +42,7 @@ func v6EtatsUnFilm(t *testing.T, root string, f v0Film) {
 	}
 	in := vehicleRideInputs{
 		vehBySlot: ctx.vehBySlot, bipeds: ctx.bip, events: ctx.scan.Events,
-		own: ctx.own, lives: ctx.lives, clock: ctx.clock,
+		reg: ctx.own, lives: ctx.lives, clock: ctx.clock,
 	}
 	boards, exits := vehicleEventsByOccupant(ctx.scan.Events)
 	nb, ne := 0, 0

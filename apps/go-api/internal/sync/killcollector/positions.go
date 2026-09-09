@@ -271,18 +271,45 @@ func buildPositionRows(
 		observability.AddInt(metricPositionsAmbiguous, int64(idx.Disagreements))
 	}
 
-	slotXUID, owners := replay.ResolveSlotXUID(positions, deathsFilm, idx)
+	// LE REGISTRE D IDENTITE EST LA MEME FONCTION PURE QUE LA CUISSON (lot P2, decision D11).
+	// Le collecteur l appelle avec ce qu il a DEJA lu — positions, fil des morts, table d index,
+	// roster de la feuille — et sans axe de frames : il n ecrit pas d artefact, il ecrit des vies
+	// et des contextes de mort sur l horloge du MATCH. Deux producteurs, un seul nommage : les
+	// deux tables du meme film ne peuvent plus diverger.
+	//
+	// LE ROSTER DE LA FEUILLE ENTRE ICI, et c est un CHANGEMENT DE SORTIE : il rend possible
+	// l identite par ELIMINATION pour un joueur qui ne meurt jamais (cf.
+	// `replay.NomParElimination`). C est la raison du bump d [IsolationDecoderRev].
+	// LE LIEN DIRECT CORPS -> JOUEUR (lot E2, 2026-09-08) : le record de creation du bipede
+	// porte l'index de participant de son proprietaire. Le collecteur le lit sur le MEME film et
+	// sous le MEME verrou de decodage que les positions ; sans lui, `match_lives` retomberait
+	// sur le pont par morts alors que la cuisson, elle, lit le film. Deux producteurs, un seul
+	// nommage : c'est toute la decision D11. Absence NON fatale — le registre degrade et le dit.
+	creations, cStats, err := filmdec.ScanBipedCreations(filmdec.NewFilmContext(film))
+	if err != nil {
+		slog.Warn("killsource: creations de bipede illisibles — degradation sur le pont par morts",
+			"err", err, "match_id", matchID)
+		creations = nil
+	}
+	if cStats.Anchors > 0 && cStats.Accepted == 0 {
+		slog.Warn("killsource: aucune signature de creation reconnue sur des ancres presentes",
+			"match_id", matchID, "ancres", cStats.Anchors, "motAlternatifModal", cStats.OtherWord)
+	}
+	lectures := lecturesDuFilm{
+		positions: positions, creations: creations, deaths: deathsFilm, idx: idx}
+	reg := replay.BuildIdentityRegistry(entreeDuRegistre(lectures, ids, matchID))
+	slotXUID := reg.PontParSlot()
 	if len(slotXUID) == 0 {
 		observability.AddInt(metricPositionsNoBridge, 1)
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf(
 			"pont slot->xuid vide (vies=%d nommees=%d lectures_index=%d)",
-			owners.LivesTotal, owners.DeathsNamed, owners.IndexReadings)
+			reg.ViesTotal(), reg.ViesNommeesParLaLecture(), reg.LecturesIndex())
 	}
 
-	// LE MATERIAU REMONTE TEL QUEL : le rapport porte les vies nommees et le calage d horloge,
+	// LE MATERIAU REMONTE TEL QUEL : le registre porte les vies nommees et le calage d horloge,
 	// les positions portent le monde. La projection des faits d isolement s en sert sans
 	// rescanner le film (cf. isolation_facts.go).
-	mat := materiauDIsolement{report: owners, positions: positions}
+	mat := materiauDIsolement{registre: reg, positions: positions}
 	return composerPassePositions(positions, slotXUID, kills, int64(originUS), matchID), mat, nil
 }
 
@@ -432,4 +459,41 @@ func publishPositionsPass(ctx context.Context, matchID string, rep replay.KillPo
 		"match_id", matchID, "kills", rep.Kills, "deux_cotes", rep.Both,
 		"tueur_seul", rep.KillerOnly, "victime_seule", rep.VictimOnly,
 		"sans_position", rep.Dropped, "sans_pont_identite", rep.NoBridge, "lignes", rowsWritten)
+}
+
+// entreeDuRegistre assemble ce que le collecteur donne au registre d'identite. PURE — aucun film,
+// aucune base : c'est la COUTURE par laquelle un test pince ce que la production transmet.
+//
+// # POURQUOI ELLE EXISTE PLUTOT QU'UN LITTERAL EN LIGNE
+//
+// Deux champs comptent ici, et aucun des deux n'est evident a la lecture de l'appelant.
+//
+// `RosterXUIDs` : sans lui, l'identite par ELIMINATION n'a aucun candidat, et un joueur qui ne
+// meurt jamais reste anonyme dans `match_lives` — le defaut meme que le lot P2 ferme.
+//
+// `BipedCreations` : sans lui, le collecteur retomberait sur le pont par morts alors que la
+// cuisson lit le lien DIRECT dans le film — deux producteurs, deux nommages, exactement ce que la
+// decision D11 interdit. Son retrait ne casserait AUCUN test unitaire (ceux du registre
+// construisent leur propre entree) : c'est le role de cette couture, et de
+// `TestEntreeDuRegistrePorteLesCreationsDeBipede`.
+//
+// Les deux sont la raison des bumps successifs d'[IsolationDecoderRev]. Ecrits en ligne, leur
+// retrait laissait toute la suite verte — c'est exactement le defaut que
+// `composerPassePositions` avait deja corrige pour le decalage d'entame (constat B1 de la revue
+// du 2026-09-06).
+func entreeDuRegistre(l lecturesDuFilm, ids MatchIdentities, matchID string) replay.IdentityInput {
+	return replay.IdentityInput{
+		Positions: l.positions, BipedCreations: l.creations, Deaths: l.deaths,
+		PlayerIndices: l.idx, RosterXUIDs: rosterUint64(ids.XUIDs), MatchID: matchID,
+	}
+}
+
+// lecturesDuFilm groupe les QUATRE lectures que le collecteur fait du film avant de composer le
+// registre. Une structure plutot que quatre parametres de plus : le depot borne a cinq, et un
+// appelant qui ajoute une lecture ne doit pas reecrire la signature de la couture.
+type lecturesDuFilm struct {
+	positions []filmdec.BipedPosition
+	creations []filmdec.BipedCreation
+	deaths    []replay.Death
+	idx       replay.PlayerIndexTable
 }

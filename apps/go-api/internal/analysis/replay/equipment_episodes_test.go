@@ -314,11 +314,14 @@ func TestEpisodeNEnjambePasUneMort(t *testing.T) {
 		{Slot: 620, XUID: "111", StartFrame: 60, EndFrame: 300},
 		{Slot: 620, XUID: "111", StartFrame: 400, EndFrame: 500},
 	}
+	// LES TROIS VIES SE TERMINENT PAR UNE MORT LUE — c'est le registre qui le dit
+	// (`TracesCloturesParMort`), plus le nom porte par la piste (correctif E2-bis).
+	mortelles := map[int]bool{0: true, 1: true, 2: true}
 	camo := []filmdec.CamoRead{
 		camoRead(620, 20, filmdec.CamoActiveQ),
 		camoRead(620, 450, filmdec.CamoInactiveQ),
 	}
-	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, mortelles)
 	if len(eps) != 1 {
 		t.Fatalf("%d episode(s), attendu 1 : %+v", len(eps), eps)
 	}
@@ -329,74 +332,76 @@ func TestEpisodeNEnjambePasUneMort(t *testing.T) {
 }
 
 // TestEpisodeFranchitUnTrouAnonymeMaisPasLaMortSuivante — la meme regle, exercee dans les DEUX
-// sens sur un seul slot : la couture traverse la vie ANONYME (trou de replication) et s'arrete
-// net a la fin de la vie NOMMEE qui suit. C'est exactement la forme du cas reel `084a804d`
+// sens sur un seul slot : la couture traverse la vie que ferme un TROU DE REPLICATION et s'arrete
+// net a la fin de la vie que ferme une MORT. C'est exactement la forme du cas reel `084a804d`
 // slot 620, augmentee d'une vie de plus pour que la borne ait quelque chose a refuser.
+//
+// LES TROIS VIES PORTENT UN NOM (correctif E2-bis) : depuis le lot E2 le film les nomme toutes a
+// leur creation. Ce qui les separe est la CAUSE DE FIN, et elle seule.
 func TestEpisodeFranchitUnTrouAnonymeMaisPasLaMortSuivante(t *testing.T) {
 	tracks := []Track{
-		{Slot: 620, StartFrame: 0, EndFrame: 50},                 // ANONYME : trou de replication
-		{Slot: 620, XUID: "111", StartFrame: 60, EndFrame: 300},  // NOMMEE : sa fin est une mort
+		{Slot: 620, XUID: "111", StartFrame: 0, EndFrame: 50},    // fermee par un TROU
+		{Slot: 620, XUID: "111", StartFrame: 60, EndFrame: 300},  // fermee par une MORT
 		{Slot: 620, XUID: "111", StartFrame: 400, EndFrame: 500}, // la vie d'apres
 	}
+	mortelles := map[int]bool{1: true, 2: true}
 	camo := []filmdec.CamoRead{
 		camoRead(620, 45, filmdec.CamoActiveQ),
 		camoRead(620, 450, filmdec.CamoInactiveQ),
 	}
-	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, mortelles)
 	if len(eps) != 1 {
 		t.Fatalf("%d episode(s), attendu 1 : %+v", len(eps), eps)
 	}
 	if eps[0].T0 != 45 || eps[0].T1 != 300 {
-		t.Errorf("episode [%d..%d], attendu [45..300] — la couture traverse la vie ANONYME "+
-			"(activation mesuree conservee) puis s'arrete a la mort", eps[0].T0, eps[0].T1)
+		t.Errorf("episode [%d..%d], attendu [45..300] — la couture traverse la vie fermee par un "+
+			"TROU (activation mesuree conservee) puis s'arrete a la mort", eps[0].T0, eps[0].T1)
 	}
 }
 
-// TestEpisodeNeSArretePasSurUneIdentiteDEDUITE — L'INTERACTION DES DEUX LOTS, attrapee par la
-// cuisson de controle de l'integration (2026-09-07).
+// TestEpisodeNeSArretePasSurUnNomMaisSurUneMort — L'INTERACTION DES DEUX LOTS, attrapee par la
+// re-cuisson du corpus temoin (E2-bis, 2026-09-08).
 //
 // DUREES-R1 (C2) a fait de `spanFor` une union qui NE FRANCHIT PAS UNE MORT, et son marqueur de
-// mort est `XUID != ""` : « l identite d une vie vient de la mort qui la TERMINE ». Le proxy
-// etait exact tant que seul `nameLivesByDeaths` nommait. La passe de nommage final
-// (`unnamed_lives.go`) le casse : elle nomme, PAR DEDUCTION, des vies que nulle mort ne termine.
+// mort etait `XUID != ""` : « l identite d une vie vient de la mort qui la TERMINE ». Le proxy
+// etait exact tant que le fil des morts etait la seule voie de nommage. Le lot E2 le casse pour
+// de bon : le FILM nomme les vies a leur CREATION, donc TOUTES portent un nom et le proxy declare
+// une mort a chaque trou de replication.
 //
-// MESURE DE L'INTEGRATION : `084a804d` slot 620 — deux vies dont la PREMIERE etait sans nom et
-// que la passe nomme desormais. L'episode de camouflage `[3105..3672]` (568 frames — la valeur
-// meme que la chronique du v45 publie comme reparee) retombait a `[3105..3120]`, 16 frames :
-// 552 perdues sur le TEMOIN du correctif qu'il etait cense proteger.
+// MESURE : `084a804d` slot 620 — deux vies du meme corps separees par un trou. L'episode de
+// camouflage `[3105..3672]` (568 frames — la valeur meme que la chronique du v45 publie comme
+// reparee) retombait a `[3105..3120]`, 16 frames : 552 perdues sur le TEMOIN du correctif qu'il
+// etait cense proteger.
 //
-// LA REGLE, ET C'EST CELLE DE `carrierPresenceOf` : une deduction AJOUTE une presence, elle
-// n'ajoute jamais une absence — ni, ici, une MORT.
+// LA REGLE : la borne est la CAUSE DE FIN, `CauseVieMort`, servie par le registre
+// (`TracesCloturesParMort`). Un nom ne borne rien.
 //
-// MUTATION : retirer `&& !deduced[i]` de `trackFrameWindows` rougit (« [40..60] au lieu de
+// MUTATION : rendre `trackFrameWindows` a `named: t.XUID != ""` rougit (« [40..60] au lieu de
 // [40..260] »).
-func TestEpisodeNeSArretePasSurUneIdentiteDEDUITE(t *testing.T) {
-	// Deux vies du meme slot, separees par un trou de replication. La PREMIERE porte un xuid
-	// pose par la passe de nommage final (indice 0 dans `deduced`) : nulle mort ne la termine.
+func TestEpisodeNeSArretePasSurUnNomMaisSurUneMort(t *testing.T) {
+	// Deux vies du meme corps, separees par un TROU DE REPLICATION. Les deux portent le nom que
+	// le record de creation ecrit ; aucune n'est fermee par une mort.
 	tracks := []Track{
 		{Slot: 512, StartFrame: 40, EndFrame: 60, XUID: "111"},
 		{Slot: 512, StartFrame: 200, EndFrame: 260, XUID: "111"},
 	}
-	deduced := map[int]bool{0: true}
-	windows := trackFrameWindows(tracks, deduced)
-
-	span, ok := spanFor(windows[512], 45, 250)
+	span, ok := spanFor(trackFrameWindows(tracks, nil)[512], 45, 250)
 	if !ok {
 		t.Fatal("aucune vie ne recouvre l'intervalle mesure")
 	}
 	if span.from != 40 || span.to != 260 {
-		t.Errorf("union [%d..%d], attendu [40..260] : la premiere vie est nommee par DEDUCTION, "+
-			"pas par une mort — elle ne borne pas l'union", span.from, span.to)
+		t.Errorf("union [%d..%d], attendu [40..260] : la premiere vie porte un NOM mais nulle "+
+			"mort ne la termine — elle ne borne pas l'union", span.from, span.to)
 	}
 
-	// CONTRE-EPREUVE : la meme configuration ou la premiere vie est nommee PAR UNE MORT. La
+	// CONTRE-EPREUVE : la meme configuration ou la premiere vie est FERMEE PAR UNE MORT. La
 	// borne tient, et c'est tout le propos du constat C2 de DUREES-R1.
-	span, ok = spanFor(trackFrameWindows(tracks, nil)[512], 45, 250)
+	span, ok = spanFor(trackFrameWindows(tracks, map[int]bool{0: true})[512], 45, 250)
 	if !ok {
 		t.Fatal("aucune vie ne recouvre l'intervalle mesure")
 	}
 	if span.to != 60 {
-		t.Errorf("union [%d..%d] : une vie nommee PAR UNE MORT doit arreter l'union a 60",
+		t.Errorf("union [%d..%d] : une vie fermee PAR UNE MORT doit arreter l'union a 60",
 			span.from, span.to)
 	}
 }

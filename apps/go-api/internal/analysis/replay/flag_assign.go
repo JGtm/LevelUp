@@ -17,10 +17,16 @@ import "sort"
 //
 // En CTF on RENVOIE son drapeau, on ne le porte pas — c'est la regle du mode, tranchee par
 // l'utilisateur, et elle prime sur toute inference geometrique. Un portage n'est donc JAMAIS
-// pose sur le drapeau de l'equipe de son porteur : tout candidat qui y aboutit est REFUSE.
-// S'il ne reste qu'un candidat — l'autre drapeau —, il est pris ; s'il n'en reste aucun, le
-// portage sort NON ATTRIBUE (`flagIndex` = -1, compte en `unresolved`) et n'est publie sur
-// aucun drapeau. **On n'invente jamais un drapeau.**
+// pose sur le drapeau de l'equipe de son porteur : tout candidat qui y aboutit est REFUSE, et
+// les MEMES TROIS REGLES (ci-dessous) se rejouent alors sur les seuls drapeaux ADVERSES. Aucun
+// socle adverse : le portage sort NON ATTRIBUE (`flagIndex` = -1, compte en `unresolved`) et
+// n'est publie sur aucun drapeau. **On n'invente jamais un drapeau.**
+//
+// LE REFUS EST UN FILTRE, PAS UN VETO (correctif E2-bis, 2026-09-08). Il se repliait sur « l'autre
+// drapeau, s'il est unique » — regle qui ne sait trancher que sur DEUX socles. `084a804d` en
+// porte SIX : quatre portages y sortaient non attribues (`unresolved` 0 -> 4, quatre segments de
+// portage perdus) alors que la premiere regle — un drapeau adverse gisant au point de prise —
+// les resolvait. Sur une carte a deux socles, filtrer rend exactement l'ancien repli.
 //
 // L'EQUIPE DU PORTEUR NE VIENT PAS DU FILM : elle arrive par `FlagInput.TeamOf`, une table
 // xuid -> equipe DEJA RESOLUE par l'appelant, exactement comme le pont d'identite. Table vide
@@ -181,10 +187,10 @@ func (g *flagGround) poser(r flagCarryRaw) {
 
 // seulEnJeu rend l'UNIQUE drapeau en jeu, ou -1 quand il y en a zero ou plusieurs. Se taire a
 // deux est la regle du fichier : rien ne departagerait les deux drapeaux.
-func (g *flagGround) seulEnJeu() int {
+func (g *flagGround) seulEnJeu(recevable func(int) bool) int {
 	seul := -1
 	for f, v := range g.enJeu {
-		if !v {
+		if !v || !drapeauRecevable(recevable, f) {
 			continue
 		}
 		if seul >= 0 {
@@ -195,19 +201,34 @@ func (g *flagGround) seulEnJeu() int {
 	return seul
 }
 
-// choisir applique les trois regles de l'en-tete, dans l'ordre. Le second retour dit que la
-// TROISIEME a tranche — une attribution PAR ELIMINATION, que la couverture publie.
-func (g *flagGround) choisir(r flagCarryRaw, spawns []FlagSpawn) (int, bool) {
+// drapeauRecevable applique le filtre de candidats, `nil` valant « tous ». Il est ECRIT UNE FOIS
+// et partage par les trois regles : trois copies du meme `if recevable != nil` divergeraient.
+func drapeauRecevable(recevable func(int) bool, f int) bool {
+	return recevable == nil || recevable(f)
+}
+
+// choisir applique les trois regles de l'en-tete, dans l'ordre, sur les seuls drapeaux que
+// `recevable` accepte (nil = tous). Le second retour dit que la TROISIEME a tranche — une
+// attribution PAR ELIMINATION, que la couverture publie.
+//
+// LE FILTRE EXISTE POUR REJOUER LES MEMES REGLES APRES UN REFUS (correctif E2-bis) : l'invariant
+// « jamais son propre drapeau » etait applique en VETO, apres coup, et le repli qui suivait
+// (`autreDrapeau`) ne sait trancher que sur DEUX socles. Sur une carte a plus de deux
+// (`084a804d` en porte six), un refus condamnait le portage a sortir non attribue alors que la
+// premiere regle — un drapeau ADVERSE gisant au point de prise — le resolvait. Filtrer AVANT la
+// geometrie ne relache aucune abstention : les trois regles sont les memes, sur moins de
+// candidats.
+func (g *flagGround) choisir(r flagCarryRaw, spawns []FlagSpawn, recevable func(int) bool) (int, bool) {
 	if r.steal {
-		return nearestSpawn(spawns, r.x0, r.y0), false
+		return nearestSpawn(spawns, r.x0, r.y0, recevable), false
 	}
-	if f := nearestDroppedFlag(g.sol, r.x0, r.y0); f >= 0 {
+	if f := nearestDroppedFlag(g.sol, r.x0, r.y0, recevable); f >= 0 {
 		return f, false
 	}
-	if f := g.seulEnJeu(); f >= 0 {
+	if f := g.seulEnJeu(recevable); f >= 0 {
 		return f, true
 	}
-	return nearestSpawn(spawns, r.x0, r.y0), false
+	return nearestSpawn(spawns, r.x0, r.y0, recevable), false
 }
 
 // sonPropreDrapeau dit que le drapeau `f` appartient a l'equipe du porteur — ce qu'aucune regle
@@ -218,23 +239,6 @@ func sonPropreDrapeau(spawns []FlagSpawn, f int, equipe int, connue bool) bool {
 		return false
 	}
 	return spawns[f].Team == equipe
-}
-
-// autreDrapeau rend l'UNIQUE drapeau qui n'est pas celui de l'equipe du porteur, ou -1 quand il
-// n'y en a pas exactement un. C'est le seul repli autorise apres un refus : a deux candidats
-// restants, rien ne tranche, et le portage sort NON ATTRIBUE.
-func autreDrapeau(spawns []FlagSpawn, equipe int, connue bool) int {
-	seul := -1
-	for f := range spawns {
-		if sonPropreDrapeau(spawns, f, equipe, connue) {
-			continue
-		}
-		if seul >= 0 {
-			return -1
-		}
-		seul = f
-	}
-	return seul
 }
 
 // assignFlags attribue chaque portage a un drapeau (index dans la liste des socles), ou le
@@ -270,11 +274,15 @@ func assignFlags(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx,
 func (g *flagGround) ouvrir(raws []flagCarryRaw, i int, spawns []FlagSpawn,
 	cov *FlagCarriesCoverage) {
 	equipe, connue := g.equipeDe(raws[i].xuid)
-	f, parElimination := g.choisir(raws[i], spawns)
+	f, parElimination := g.choisir(raws[i], spawns, nil)
 	if sonPropreDrapeau(spawns, f, equipe, connue) {
-		// LE REPLI A DESIGNE SON PROPRE DRAPEAU : refuse. Il ne reste au plus qu'un candidat.
+		// LA GEOMETRIE A DESIGNE SON PROPRE DRAPEAU : refuse, et les MEMES TROIS REGLES se
+		// rejouent sur les seuls drapeaux ADVERSES. `nearestSpawn` peut alors ne rien rendre
+		// (aucun socle recevable) — le portage sort non attribue, comme avant.
 		cov.OwnFlagRefused++
-		f, parElimination = autreDrapeau(spawns, equipe, connue), false
+		f, parElimination = g.choisir(raws[i], spawns, func(k int) bool {
+			return !sonPropreDrapeau(spawns, k, equipe, connue)
+		})
 	}
 	raws[i].flagIndex = f
 	if f < 0 {
@@ -296,10 +304,10 @@ func (g *flagGround) equipeDe(xuid string) (int, bool) {
 
 // nearestDroppedFlag rend l'index du drapeau LACHE le plus proche du point, ou -1 si aucun n'est
 // a portee.
-func nearestDroppedFlag(dropped []*[2]float32, x, y float32) int {
+func nearestDroppedFlag(dropped []*[2]float32, x, y float32, recevable func(int) bool) int {
 	best, bd := -1, float64(flagPickupRadiusM*flagPickupRadiusM)
 	for i, p := range dropped {
-		if p == nil {
+		if p == nil || !drapeauRecevable(recevable, i) {
 			continue
 		}
 		if d := sqDist(p[0], p[1], x, y); d <= bd {
@@ -309,11 +317,15 @@ func nearestDroppedFlag(dropped []*[2]float32, x, y float32) int {
 	return best
 }
 
-// nearestSpawn rend l'index du socle le plus proche du point.
-func nearestSpawn(spawns []FlagSpawn, x, y float32) int {
-	best, bd := 0, sqDist(spawns[0].X, spawns[0].Y, x, y)
-	for i := 1; i < len(spawns); i++ {
-		if d := sqDist(spawns[i].X, spawns[i].Y, x, y); d < bd {
+// nearestSpawn rend l'index du socle RECEVABLE le plus proche du point, ou -1 quand aucun socle
+// n'est recevable.
+func nearestSpawn(spawns []FlagSpawn, x, y float32, recevable func(int) bool) int {
+	best, bd := -1, 0.0
+	for i := range spawns {
+		if !drapeauRecevable(recevable, i) {
+			continue
+		}
+		if d := sqDist(spawns[i].X, spawns[i].Y, x, y); best < 0 || d < bd {
 			best, bd = i, d
 		}
 	}

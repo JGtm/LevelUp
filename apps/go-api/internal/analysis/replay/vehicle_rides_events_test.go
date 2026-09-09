@@ -259,7 +259,7 @@ func TestVehicleRideFromEpisodeAnchors(t *testing.T) {
 			vehPos(veh, 2_000_000, 10, 10), vehPos(veh, 9_000_000, 10, 10),
 		}},
 		lives: []vehicleLife{{key: key, loUS: 0, hiUS: 30_000_000}},
-		own:   OwnerReport{SlotXUID: map[uint32]uint64{occ: 42}},
+		reg:   regDe(OwnerReport{SlotXUID: map[uint32]uint64{occ: 42}}),
 		clock: vehClock(),
 	}
 	cases := []struct {
@@ -370,7 +370,7 @@ func TestVehicleEpisodeReappearanceClosesOpenEnd(t *testing.T) {
 // creditait le mauvais conducteur, et le document se contredisait lui-meme (la piste du meme
 // slot au meme instant portait l AUTRE nom).
 //
-// MUTATION : revenir a `in.own.SlotXUID[slot]` rougit (« occupant a 30 s = 111, attendu 222 »).
+// MUTATION : revenir a `in.own.PontParSlot()[slot]` rougit (« occupant a 30 s = 111, attendu 222 »).
 func TestOwnerReportXuidAtSuitLOccupantDansLeTemps(t *testing.T) {
 	own := OwnerReport{
 		SlotXUID: map[uint32]uint64{7: 111},

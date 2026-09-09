@@ -61,7 +61,7 @@ type psInputs struct {
 	deaths     []Death
 	lives      []lifeSpan
 	// own porte le pont slot de bipede -> joueur, construit par le chemin de PRODUCTION.
-	own OwnerReport
+	own IdentityRegistry
 }
 
 // psLoad lit le film une fois pour toutes. Chaque flux manquant est DIT, jamais remplace.
@@ -98,7 +98,7 @@ func psLoad(t *testing.T, dir string) psInputs {
 			idx, _ = injectiveOrEmpty(raw)
 		}
 	}
-	in.own = buildOwners(tracks, in.deaths, idx, fireRefs(in.shots))
+	in.own = regDe(buildOwnersDeTest(tracks, in.deaths, idx, fireRefs(in.shots)))
 	return in
 }
 
@@ -106,7 +106,7 @@ func psLogInputs(t *testing.T, in psInputs) {
 	t.Helper()
 	t.Logf("FILM %s · positions %d · tirs %d · morts %d · vies %d · slots nommes %d "+
 		"(vies nommees %d / %d)", in.short, len(in.pos), len(in.shots), len(in.deaths),
-		len(in.lives), len(in.own.Owner), in.own.DeathsNamed, in.own.LivesTotal)
+		len(in.lives), len(in.own.IndexParSlot()), in.own.ViesNommeesParLaLecture(), in.own.ViesTotal())
 }
 
 // psRespawn mesure B.0.4 : le delai reel entre la mort et la reapparition suivante du meme
@@ -135,7 +135,7 @@ func psRespawn(t *testing.T, in psInputs) {
 func psDeathToSpawnGaps(in psInputs) []float64 {
 	byXUID := map[uint64][]lifeSpan{}
 	for _, l := range in.lives {
-		if x, ok := in.own.SlotXUID[l.slot]; ok {
+		if x, ok := in.own.PontParSlot()[l.slot]; ok {
 			byXUID[x] = append(byXUID[x], l)
 		}
 	}

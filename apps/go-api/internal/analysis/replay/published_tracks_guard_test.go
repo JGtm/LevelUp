@@ -126,27 +126,27 @@ func TestKeepOfPublishedTracks_ContratPreserve(t *testing.T) {
 // elle aurait du sortir `NoPosition`. Meme exposition pour `tracksByXUID` (drapeau).
 //
 // LE CORRECTIF EST A LA SOURCE : les quatre lecteurs qui NOMMENT une piste recoivent
-// `own.NamingBridge()`, d'ou les slots ambigus sont RETIRES. Le lecteur ne peut plus oublier la
+// `own.PontEpure()`, d'ou les slots ambigus sont RETIRES. Le lecteur ne peut plus oublier la
 // garde, puisqu'il n'a plus de quoi l'enfreindre.
 //
-// MUTATION : passer `own.SlotXUID` au lieu de `own.NamingBridge()` rougit — la piste contestee
+// MUTATION : passer `own.PontParSlot()` au lieu de `own.PontEpure()` rougit — la piste contestee
 // reprend le nom du premier occupant.
 func TestUnePisteCONTESTEEnEstJamaisIndexeeSousUnXUID(t *testing.T) {
 	// La configuration mesuree : A [5872..6981], la vie contestee [7123..7158], B [7457..7591].
 	const a, b = uint64(2535430265968559), uint64(2535456423427614)
-	own := OwnerReport{
+	own := regDe(OwnerReport{
 		SlotXUID:      map[uint32]uint64{734: a}, // le pont garde le PREMIER occupant
 		SlotAmbiguous: map[uint32]bool{734: true},
-	}
+	})
 	contestee := Track{Slot: 734, StartFrame: 7123, EndFrame: 7158,
 		Points: []Point{{T: 7140, X: 1, Y: 0, Z: 0}}}
 
-	if got := xuidOfPublishedTrack(contestee, own.NamingBridge()); got != "" {
+	if got := xuidOfPublishedTrack(contestee, own.PontEpure()); got != "" {
 		t.Errorf("piste contestee indexee sous %q — la passe de nommage l'a REFUSEE, "+
 			"le helper ne doit pas la nommer non plus", got)
 	}
 	// Le chemin NEUF du lot : les zones. La piste contestee ne doit servir a personne.
-	if s := samplesByXUID([]Track{contestee}, own.NamingBridge()); len(s) != 0 {
+	if s := samplesByXUID([]Track{contestee}, own.PontEpure()); len(s) != 0 {
 		t.Errorf("echantillons indexes %v — une capture de %d pourrait etre geolocalisee sur "+
 			"la trajectoire d'un autre joueur", s, a)
 	}

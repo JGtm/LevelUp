@@ -73,7 +73,7 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 		return
 	}
 
-	lives := toLifeRows(mat.report.ViesNommees())
+	lives := toLifeRows(mat.registre.ViesNommees())
 	if len(lives) == 0 {
 		slog.DebugContext(ctx, "killsource: isolement — aucune vie nommee, rien a projeter",
 			"match_id", matchID)
@@ -121,15 +121,47 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // un changement de la regle de visibilite ou de l'ordre des etats doit faire redecoder les faits
 // d'isolement SANS forcer un redecodage du journal des morts, qui n'a pas bouge. Meme espace de
 // valeurs, meme colonne `decoder_rev`, unites de fraicheur differentes.
-const IsolationDecoderRev = "isolement-2026-09-07"
+//
+// # POURQUOI ELLE BOUGE LE 2026-09-08 (lot P2, registre d'identite)
+//
+// Le collecteur ne construit plus son pont par [replay.ResolveSlotXUID] mais par
+// [replay.BuildIdentityRegistry], la MEME fonction pure que la cuisson — et il lui passe le
+// ROSTER DE LA FEUILLE (`ids.XUIDs`), qu'il ne lui passait pas. Cela ouvre l'identite par
+// ELIMINATION : un joueur qui ne meurt JAMAIS de tout le match, dont aucune vie ne portait de
+// nom, est desormais nomme quand il ne reste qu'une affectation possible (`d9781168` : 19 vies
+// sans nom sur un seul slot). Les lignes de `match_lives` et de `match_death_context` changent
+// donc de CONTENU — pas de forme.
+//
+// CE QUE LE BUMP DECLENCHE : `matchsAJour` (cmd_backfill_killsource_selection.go) exige que
+// `match_lives_latest` porte la revision COURANTE ; tous les matchs qui ont des positions ET des
+// equipes sortent de cette selection, sont re-decodes, et ecrivent une NOUVELLE PASSE dans les
+// deux tables (append-only, ADR 0026 — les vues `_latest` basculent d'un bloc). Le journal des
+// morts, lui, n'est PAS reecrit : [KillSourceDecoderRev] ne bouge pas, et c'est tout l'objet des
+// deux revisions separees. Commande : `levelup backfill-killsource`.
+//
+// # POURQUOI ELLE BOUGE UNE SECONDE FOIS LE 2026-09-08 (lot E2, lien direct corps -> joueur)
+//
+// La valeur `isolement-2026-09-08-registre` a ete posee par le lot P2 et **n'a jamais ete
+// livree** (branche non fusionnee, aucun backfill joue en production). Elle est donc remplacee
+// plutot que doublee — mais elle ne pouvait pas etre CONSERVEE : un poste qui aurait joue le
+// backfill sur la branche P2 porterait deja cette revision, et ses lignes seraient exclues a vie
+// du redecodage alors que leur CONTENU change de nouveau, et cette fois a la racine.
+//
+// Ce qui change : le collecteur passe desormais au registre les RECORDS DE CREATION DE BIPEDE
+// (`filmdec.ScanBipedCreations`), et le nommage des vies bascule du pont par morts — un
+// appariement glouton qui departageait par l'ordre des slots quand deux vies finissent au meme
+// instant — a une LECTURE du film. `match_lives.xuid` change donc sur les vies que le pont
+// echangeait (7 paires exactement echangees mesurees sur deux films) et se remplit sur les vies
+// qu'aucune mort ne terminait (vies d'ouverture, survivants).
+const IsolationDecoderRev = "isolement-2026-09-08-creation-bipede"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //
-// LE RAPPORT SUFFIT : il porte le pont, les vies nommees et le calage d'horloge. Une version
-// precedente recopiait aussi `SlotXUID` — un doublon de `report.SlotXUID`, et surtout le pont
+// LE REGISTRE SUFFIT : il porte le pont, les vies nommees et le calage d horloge. Une version
+// precedente recopiait aussi `SlotXUID` — un doublon du pont du registre, et surtout le pont
 // APLATI que la correction P0-2 a cesse d'employer.
 type materiauDIsolement struct {
-	report    replay.OwnerReport
+	registre  replay.IdentityRegistry
 	positions []filmdec.BipedPosition
 }
 
@@ -176,7 +208,7 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	// seulement telle ou telle victime sans lieu — `replay.ContextesDesMorts` refuserait de
 	// toute facon (meme garde), mais melanger cette cause dans `sansLieu` ferait croire a un
 	// probleme localise a chaque victime plutot qu'a un pont casse pour le match entier.
-	if !replay.PontPubliable(mat.report) {
+	if !mat.registre.PontPubliable() {
 		ecarts.pontNonPublicable = len(journal) - ecarts.sansEquipe
 		if ecarts.pontNonPublicable < 0 {
 			ecarts.pontNonPublicable = 0
@@ -185,7 +217,7 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	}
 	ctxs := replay.ContextesDesMorts(replay.EntreeContexteMorts{
 		Positions: mat.positions,
-		Report:    mat.report,
+		Registre:  mat.registre,
 		Journal:   journal,
 		Equipes:   equipes,
 	})

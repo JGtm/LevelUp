@@ -157,7 +157,7 @@ func TestFlagCarriesSlotNonPartageAccepteEtNeCompteRien(t *testing.T) {
 // perdre AUCUNE :
 //
 //	VIES-R1 C2   `OwnerReport.NamingBridge()` RETIRE du pont les slots que deux vies nommees se
-//	             partagent — la matiere est `own.lives`, les vies DECOUPEES, y compris celles que
+//	             partagent — la matiere est `own.Vies()`, les vies DECOUPEES, y compris celles que
 //	             `minPoints` n'a pas publiees ;
 //	DUREES-R1 C1 `slotAmbigu` juge sur les vies PUBLIEES et attrape la contradiction pont <->
 //	             document, que la premiere ne voit pas.
