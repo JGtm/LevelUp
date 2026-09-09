@@ -1,3 +1,29 @@
+## [2026-09-09] Master plan, vague 2 — E3 fusionne dans feat/v75, resumes d'usage recuits au us4 (E3.11), E4 lance — Complete
+
+**Decision technique principale.** Fusion de `feat/equipement-gachis` (E0-E3) dans `feat/v75`
+en `da01eba2e` apres verification sur pieces (0 comparaison de slug, 0 allowlist anti-ART
+agrandie, `fmt.Printf` limite a la sortie CLI de `cmd/levelup`). L'echec d'integration
+remonte par l'executant (`TestOuvrierReel_ConstruitEtLivre`, « 0 vies anonymes, attendu 1 »)
+etait l'oracle refige en `af3ef58b6` sur `feat/v75`, absent de son point de branche : il n'a
+pas ete corrige dans le lot, il a ete verifie apres fusion. E3.11 joue par le superviseur :
+serveur arrete (air + un `server.exe` orphelin qui tenait la DB partagee), `backfill-usage-summary
+--dry-run` puis passe reelle sans `--force`.
+
+**Resultats observes.** Gates apres fusion : `go build` OK ; unitaires persist, migration,
+replay, sessionusage, service, duckdb, replayartifacts, archlint verts ; integration `-p 1
+-count=1` persist, migration, duckdb, sync, api/wire verts (EXIT 0) ; `tsc -b --force` 0 ;
+vitest match-replay + charts 2 903 verts. Backfill : 64 resumes ecrits au us4 (schema 50),
+0 deja a jour, 0 echec, 2 s ; couverture des ramassages inchangee (269 prises sans famille,
+12 slots non rattaches, 27 chaines trouees — mesure incomplete, pas fausse). Serveur
+redemarre, health 200. Un P1 consigne pour E5 : `equipmentUsageLogic.ts` 430 → 582 L sans
+exemption.
+
+**Conclusion / prochaine etape.** E4 (Sessions, Sonnet) lance dans le worktree du chantier
+avance en avance rapide sur `feat/v75`. Puis E5/E6, artefact d'investigation Theater, revue
+double de la vague (persist touche), `make gate-push`, une CI.
+
+---
+
 ## [2026-09-09] Master plan — deux branches oubliees reprises : bornes aberrantes (code) et journal d'orchestration (docs) — Complete
 
 **Decision technique principale.** Question de l'utilisateur : `wt/bornes-aberrantes` et
