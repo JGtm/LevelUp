@@ -237,26 +237,50 @@ func matchHasExactComposition(
 	return true
 }
 
-// filterExactComposition ne garde que les matchs dont l'équipe du main correspond
-// EXACTEMENT à la composition sélectionnée (cf. matchHasExactComposition).
-// mainTeamByMatch nil (chargement échoué / non tenté) => rows inchangés
-// (dégradation gracieuse, page non blanchie).
+// extraPresentOn nomme les xuids de l'extraPool (autres coéquipiers connus)
+// présents sur l'équipe alliée du main pour un match — le frère "qui" du
+// prédicat booléen matchHasExactComposition (verrouillé par ses propres tests,
+// inchangé). Sert à publier l'écart (ADR 0033 critère 3) : un match écarté doit
+// NOMMER son ou ses responsables, jamais rester un simple booléen. Tri
+// alphabétique pour un résultat déterministe (plusieurs responsables possibles).
+func extraPresentOn(team map[string]struct{}, extraPool map[string]struct{}) []string {
+	if len(team) == 0 || len(extraPool) == 0 {
+		return nil
+	}
+	var out []string
+	for x := range team {
+		if _, ok := extraPool[x]; ok {
+			out = append(out, x)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// filterExactComposition sépare, en un seul balayage, les matchs dont l'équipe
+// du main correspond EXACTEMENT à la composition sélectionnée (kept, cf.
+// matchHasExactComposition) de ceux qui en sont écartés (excluded) — jamais deux
+// règles distinctes pour ces deux issues, sous peine de diverger (ADR 0033).
+// mainTeamByMatch nil (chargement échoué / non tenté) => rows inchangés, aucun
+// exclu (dégradation gracieuse, page non blanchie).
 func filterExactComposition(
 	rows []domain.SquadMatchRow,
 	mainTeamByMatch map[string]map[string]struct{},
 	extraPool map[string]struct{},
 	selectedXUIDs []string,
-) []domain.SquadMatchRow {
+) (kept, excluded []domain.SquadMatchRow) {
 	if mainTeamByMatch == nil || len(rows) == 0 {
-		return rows
+		return rows, nil
 	}
-	out := rows[:0:0]
+	kept = rows[:0:0]
 	for _, r := range rows {
 		if matchHasExactComposition(mainTeamByMatch[r.MatchID], extraPool, selectedXUIDs) {
-			out = append(out, r)
+			kept = append(kept, r)
+		} else {
+			excluded = append(excluded, r)
 		}
 	}
-	return out
+	return kept, excluded
 }
 
 // exactCompositionFilter porte les données du filtre "composition exacte" pour

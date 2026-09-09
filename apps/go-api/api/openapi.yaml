@@ -11140,6 +11140,68 @@ components:
         - solo_value
         - squad_value
       type: object
+    CompositionExcludedMatch:
+      additionalProperties: false
+      properties:
+        extra_gamertags:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        map_ui:
+          type: string
+        match_id:
+          type: string
+        start_time:
+          format: date-time
+          type: string
+      required:
+        - match_id
+        - start_time
+        - map_ui
+        - extra_gamertags
+      type: object
+    CompositionSessionEntry:
+      additionalProperties: false
+      properties:
+        ended_at:
+          format: date-time
+          type: string
+        excluded_by_exact_composition:
+          items:
+            $ref: '#/components/schemas/CompositionExcludedMatch'
+          type:
+            - array
+            - "null"
+        experiences:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        label:
+          type: string
+        match_count:
+          format: int64
+          type: integer
+        match_count_roster:
+          format: int64
+          type: integer
+        playlists:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        started_at:
+          format: date-time
+          type: string
+      required:
+        - label
+        - started_at
+        - ended_at
+      type: object
     ConfigFileStatus:
       additionalProperties: false
       properties:
@@ -26274,7 +26336,7 @@ components:
           $ref: '#/components/schemas/SquadAssistPairs'
         composition_sessions:
           items:
-            $ref: '#/components/schemas/SessionLabelEntry'
+            $ref: '#/components/schemas/CompositionSessionEntry'
           type:
             - array
             - "null"

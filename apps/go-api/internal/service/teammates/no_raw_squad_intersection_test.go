@@ -35,8 +35,8 @@ import (
 func TestExactCompositionWiringPresent(t *testing.T) {
 	dir := packageDir(t)
 	mustContain(t, filepath.Join(dir, "teammates_service.go"),
-		"allSquadRows = filterExactComposition(allSquadRows,",
-		"allSquadRowsForTimeline = filterExactComposition(allSquadRowsForTimeline,",
+		"allSquadRows, _ = filterExactComposition(allSquadRows,",
+		"allSquadRowsForTimeline, excludedForTimeline = filterExactComposition(allSquadRowsForTimeline,",
 		"if req.FilterExactComposition &&")
 	mustContain(t, filepath.Join(dir, "teammates_service_briefing.go"),
 		"compFilter.applyShared(")

@@ -5603,6 +5603,27 @@ export interface components {
             /** Format: double */
             squad_value: number;
         };
+        CompositionExcludedMatch: {
+            extra_gamertags: string[] | null;
+            map_ui: string;
+            match_id: string;
+            /** Format: date-time */
+            start_time: string;
+        };
+        CompositionSessionEntry: {
+            /** Format: date-time */
+            ended_at: string;
+            excluded_by_exact_composition?: components["schemas"]["CompositionExcludedMatch"][] | null;
+            experiences?: string[] | null;
+            label: string;
+            /** Format: int64 */
+            match_count?: number;
+            /** Format: int64 */
+            match_count_roster?: number;
+            playlists?: string[] | null;
+            /** Format: date-time */
+            started_at: string;
+        };
         ConfigFileStatus: {
             name: string;
             present: boolean;
@@ -11910,7 +11931,7 @@ export interface components {
         };
         TeammatesPageResponse: {
             assist_pairs?: components["schemas"]["SquadAssistPairs"];
-            composition_sessions?: components["schemas"]["SessionLabelEntry"][] | null;
+            composition_sessions?: components["schemas"]["CompositionSessionEntry"][] | null;
             data_issues?: components["schemas"]["DataIssue"][] | null;
             echange?: components["schemas"]["SquadEchange"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
