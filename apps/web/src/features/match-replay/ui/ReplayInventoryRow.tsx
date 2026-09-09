@@ -135,7 +135,13 @@ export function ReplayInventoryRow({
 
   return (
     <div
-      className="flex items-center gap-[5px] font-mono text-[9.5px] text-muted-foreground"
+      // `min-w-0` N EST PAS DECORATIF : sans lui, cette rangee est un element flex a
+      // `min-width: auto`, elle prend sa largeur HYPOTHETIQUE (texte entier du badge d etat
+      // vide compris) et deborde la rangee parente, qui la CLIPPE. Mesure du 2026-09-09 sur
+      // la feuille de style reelle : debordement de 119 px, et le `truncate` du badge ne
+      // s appliquait JAMAIS — texte coupe net, sans points de suspension, cellules suivantes
+      // disparues. Avec `min-w-0` : debordement 0, troncature active.
+      className="flex min-w-0 items-center gap-[5px] font-mono text-[9.5px] text-muted-foreground"
       // LA RANGÉE N'IMPOSE PLUS SON ÂGE À TOUTE LA GRILLE. L'estompage vivait ici tant que
       // l'inventaire était la seule lecture de la ligne ; il ne l'est plus (capacité par i48,
       // grenades par l'axe `grenadeReads`). Laissé au conteneur, il MULTIPLIAIT l'opacité

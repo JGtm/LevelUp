@@ -1215,3 +1215,33 @@ describe('ReplayTeams — la grille des camps ne peut pas déborder', () => {
     expect(grille?.style.gridTemplateColumns).not.toMatch(/repeat\(\d+,\s*1fr\)/)
   })
 })
+
+describe('ReplayTeams — la rangée d’inventaire se laisse rétrécir', () => {
+  /**
+   * GARDE-RAIL DU 2026-09-09 (retour utilisateur : « "Inventaire indisponible" fait aussi
+   * agrandir les largeurs de fiches […] si du contenu apparaît en texte qui est plus long faut
+   * le tronquer ! »).
+   *
+   * LE BADGE SE CROYAIT TRONQUÉ ET NE L'ÉTAIT PAS. Il porte bien `min-w-0 truncate`, mais son
+   * CONTENEUR — la rangée d'inventaire — est un élément flex à `min-width: auto` : il prenait sa
+   * largeur hypothétique, texte entier compris, et débordait la rangée parente, dont le
+   * `overflow-hidden` coupait la différence EN SILENCE. Mesuré le 2026-09-09 sur la feuille de
+   * style réelle du dépôt, gabarit 31 : rangée de 102 px pour un contenu de 221 px, soit 119 px
+   * coupés net — sans points de suspension, et les cellules placées après le badge purement
+   * disparues. Avec `min-w-0` sur le conteneur : débordement 0, `truncate` enfin actif.
+   *
+   * JSDOM NE MET RIEN EN PAGE — même raison que le garde-rail voisin de la grille des camps :
+   * la mesure qui a établi le défaut est irreproductible ici. Ce test fixe donc la CAUSE.
+   */
+  it('la rangée d’inventaire porte `min-w-0` : sans lui le `truncate` du badge ne s’applique jamais', () => {
+    const etiquettes = [{ en: 'Frag', fr: 'Fragmentation' }]
+    renderTeams({ grenadeLabels: etiquettes, inventory: [{ t: 0, slot: 512, empty: 'unknown' }] }, 10)
+    const badge = screen.getByText('Inventaire indisponible')
+    const rangee = badge.parentElement
+    expect(rangee).not.toBeNull()
+    expect(rangee?.className).toContain('min-w-0')
+    // Et le badge garde SA propre souplesse : les deux sont nécessaires, aucun ne remplace l'autre.
+    expect(badge.className).toContain('min-w-0')
+    expect(badge.className).toContain('truncate')
+  })
+})
