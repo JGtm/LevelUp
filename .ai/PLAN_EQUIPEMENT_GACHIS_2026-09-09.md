@@ -366,16 +366,24 @@ cd apps/web && npx eslint src/features/session-detail --max-warnings=0
 
 **Périmètre fermé — Web :**
 
-- [ ] E5.8 `features/synthesis/` — le bloc, en variante **comptes** (décision P9) : axe en
+- [x] E5.8 `features/synthesis/` — le bloc, en variante **comptes** (décision P9) : axe en
       objets pris, aucun pourcentage dans les barres, aucun trait de parité, lignes triées
-      du plus pris au moins pris
-- [ ] E5.9 Les deux donuts (décision P10, P11) via `components/charts/DonutChart`, avec
+      du plus pris au moins pris. Monté dans `SynthesisOverviewSection`
+      (`features/synthesis/SynthesisPage.tsx`), juste après `SynthesisWeaponRangeSection`
+- [x] E5.9 Les deux donuts (décision P10, P11) via `components/charts/DonutChart`, avec
       `sliceColors` du §3.3, `centerValue` = le compte du lobby, `centerLabel` = l'unité.
-      **Ne pas écrire un donut à la main** — la primitive existe
-- [ ] E5.10 Les deux sous-totaux emboîtés sous la légende, séparés par un filet
-- [ ] E5.11 Query keys dans `lib/query/keys.ts`, jamais en ligne
-- [ ] E5.12 Strings FR **et** EN
-- [ ] E5.13 Tests : `analysis` purs, `service` avec mock, front sur la projection
+      Primitive étendue d'une prop `arcLabelKind='value'` (justifiée : P11 veut le COMPTE
+      brut sur l'arc, pas un %) — jamais un donut écrit à la main
+- [x] E5.10 Les deux sous-totaux emboîtés sous la légende, séparés par un filet
+- [~] E5.11 Aucune query key neuve : zéro nouvelle requête réseau (le bloc arrive avec la
+      réponse existante) — couvert par `queryKeys.synthesis(...)` / `queryKeys.teammates(...)`
+      déjà en place
+- [x] E5.12 Strings FR **et** EN (15 clés neuves dans `usageI18n.ts`, parité par typage)
+- [x] E5.13 Tests front sur la projection (`usageCountsModel.test.ts`,
+      `usageEquipmentPartiesModel.test.ts`, `UsageCountsGrid.test.tsx`,
+      `UsageEquipmentDonutCard.test.tsx`, `EquipmentUsageSection.test.tsx`) + smoke bout en
+      bout (`SynthesisPage.test.tsx`, fixture `equipment_usage`). Pas de couche `analysis`/
+      `service` ici : Go déjà livré et testé par le lot E5-Go (E5.4-E5.7)
 
 **Gate** :
 ```bash
@@ -390,14 +398,31 @@ cd apps/web && npx tsc -b --force && npx eslint src/features --max-warnings=0
 
 - [x] E6.1 Go — même publication que E5, agrégée **par joueur suivi** (réutiliser
       `ResolveTrackedSquad`, déjà en place pour le contexte escouade de Sessions)
-- [ ] E6.2 Web — les deux graphes, **une ligne par coéquipier** au lieu d'une par famille.
-      Variante comptes (décision P9)
-- [ ] E6.3 Les deux donuts à **quatre parts** : moi, mes amis, reste de l'équipe, eux —
-      avec les deux sous-totaux « mon escouade » et « mon équipe »
-- [ ] E6.4 Les couleurs de joueur viennent de `features/squad/colors.ts`
+- [x] E6.2 Web — les deux graphes, **une ligne par coéquipier** au lieu d'une par famille.
+      Variante comptes (décision P9). `EquipmentUsageSection` (bloc partagé) prend un
+      `mode: 'solo' | 'squad'` — en mode `'squad'` la barre équipement lit `usage.players`
+      (au lieu de `usage.families`) ; la barre armes spéciales lit TOUJOURS `usage.players`
+      sur les deux pages (aucune ventilation par famille d'arme à ce grain, cf. Découvertes)
+- [x] E6.3 Les deux donuts à **quatre parts** : moi, mes amis (une part PAR AMI SUIVI,
+      colorée individuellement — §3.3, pas une part « amis » fusionnée), reste de l'équipe,
+      eux — avec les deux sous-totaux « mon escouade » et « mon équipe ». Data-driven : les
+      parts « amis » et le sous-total « mon escouade » apparaissent dès que
+      `tracked_players` est non vide, sur LES DEUX pages (Synthèse peut aussi avoir des amis
+      globalement configurés, cf. Go `ResolveScopeFriends` — vérifié sur pièces)
+- [x] E6.4 Les couleurs de joueur viennent de `features/squad/colors.ts`
       (`SQUAD_MAIN_PLAYER_TOKEN`, `SQUAD_TEAMMATE_COLOR_TOKENS`), **source unique** : un
-      joueur garde sa couleur d'une page à l'autre
-- [ ] E6.5 Tests service + front
+      joueur garde sa couleur d'une page à l'autre. Import direct depuis
+      `_shared/usage/usageEquipmentPartiesModel.ts` — précédent déjà établi par
+      `usageGrids.ts`/`usagePlayerInk` dans ce même dossier
+- [~] E6.5 Tests front (`EquipmentUsageSection.test.tsx` mode squad,
+      `SquadSynergiesPage.test.tsx` nouveaux tests bloc équipement). **Mounté mais NON
+      VÉRIFIABLE en conditions réelles** — écart de contrat consigné aux Découvertes :
+      `TeammatesPageResponse` (`/pages/teammates`, le SEUL endpoint que `SquadLayout` fetch
+      en production) ne porte pas encore `equipment_usage` ; seul `SquadPageV2Response`
+      (`/pages/squad/v2`, non fetché par la page Escouade) le porte côté Go. Le test « bloc
+      présent » simule le futur contrat ; le test « bloc absent » documente l'état réel
+      actuel (section auto-masquée, honnête). Pas de couche `service` ici : Go déjà livré
+      par E6.1
 
 **Gate** :
 ```bash
@@ -584,6 +609,78 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   2026-09-09). Rien n'a été fait pour cela — l'écart tient probablement à l'artefact local
   que le test consomme. L'entrée E3 n'est PAS retirée : elle reste à vérifier sur la machine
   qui l'a vue rouge. Non instruit.
+
+- **BLOQUANTE, E6.2-E6.5 du 2026-09-09 — écart de contrat entre le bloc Go et la page
+  Escouade réellement servie en production.** Vérifié sur pièces AVANT de coder (skill
+  plan-execution, règle 4).
+
+  Le Go (E6.1) publie `equipment_usage` sur `domain.SquadPageV2Response`
+  (`internal/domain/squad_v2.go:48`), la réponse de `GET /pages/squad/v2`
+  (`internal/api/handlers/squad_v2.go`). Mais la page Escouade réellement montée
+  (`features/squad/SquadLayout.tsx:26,357` → `useTeammates`, `features/squad/queries.ts`)
+  appelle `POST /pages/teammates`, dont la réponse est `domain.TeammatesPageResponse`
+  (`internal/domain/teammates.go:496`) — un type SÉPARÉ, qui NE PORTE PAS `equipment_usage`
+  (`teammates_service.go` n'a aucun `WithEquipmentUsage`, contrairement à
+  `synthesis_service_usage.go`). Grep exhaustif fait : AUCUN fichier de `apps/web/src`
+  n'appelle `GET /pages/squad/v2` (seul son sous-chemin `/pages/squad/v2/engagement`,
+  `features/engagement/queries.ts`, est fetché — par `SquadEngagementSection`, montée sur
+  `SquadDynamiquePage`, avec sa PROPRE requête scopée par `match_ids`). Le commentaire du
+  handler squad_v2.go le confirme : « vit en parallèle de l'endpoint legacy /pages/squad
+  jusqu'à migration complète du frontend » — cette migration n'a jamais eu lieu ;
+  `lib/api/types.ts` documente même explicitement que les types du payload V2 riche « ont
+  été retirés : plus aucun consommateur côté web ».
+
+  **Conséquence** : sans changement Go, `equipment_usage` ne peut PAS atteindre la page
+  Escouade réelle sans soit (a) une nouvelle requête réseau — exclue par le périmètre de ce
+  lot (« Aucune nouvelle requête réseau ») et par la logique produit (une requête de plus
+  pour un seul bloc, quand `SessionUsageRepo` sert déjà les trois lectures sans filtre
+  neuf) —, soit (b) le Go ajoutant `EquipmentUsage` à `TeammatesPageResponse` (hors
+  périmètre de ce lot : `apps/go-api` exclu).
+
+  **Décision d'exécution prise, signalée immédiatement (règle plan-execution §3), pas
+  contournée en silence** : construire et monter `EquipmentUsageSection` (mode `'squad'`)
+  contre `pageData.equipment_usage`, en ajoutant ce champ **optionnel** à
+  `TeammatesPageResponse` côté web (`lib/api/types.ts`, commentaire daté expliquant l'écart
+  et pointant `service.buildEquipmentUsageBlock`, déjà écrit et prêt à être branché). Tant
+  que le Go ne peuple pas ce champ, il vaut `undefined` et `usageAvailability` rend `hidden`
+  — la section s'auto-masque, exactement le même contrat que `available:false` pour un
+  titre sans capability : **zéro donnée fabriquée, zéro graphe fantôme**, mais aussi
+  **zéro régression visible** aujourd'hui sur la page réelle. Le câblage s'activera sans
+  toucher au web dès qu'un lot Go ajoutera `TeammatesService.WithEquipmentUsage` (le
+  helper `buildEquipmentUsageBlock` et son scope `matchIDsOf(resp.SharedMatches)` existent
+  déjà, réutilisés tels quels par E6.1 pour l'assemblage Squad V2 — le brancher sur
+  `TeammatesService` est une passe d'orchestration, pas une réécriture).
+
+  **Non traité ici** (hors périmètre déclaré `apps/go-api`) : ajouter
+  `WithEquipmentUsage` à `TeammatesService`. C'est le seul geste qui manque pour que ce lot
+  s'affiche réellement sur l'Escouade — à planifier en premier dans le prochain lot Go.
+
+- **Nouvelle, E6.3 du 2026-09-09** : la Synthèse (Solo) peut ELLE AUSSI publier une part
+  « mes amis » au donut — pas seulement l'Escouade. Vérifié sur pièces :
+  `synthesis_service_usage.go:48` passe `FriendGamertags: s.friendGamertags(ctx)`, qui
+  résout les amis GLOBALEMENT CONFIGURÉS (`app_settings.json`), pas une sélection
+  d'escouade. `buildPartiesDonutModel` est donc purement DATA-DRIVEN
+  (`tracked_players.length > 0`), jamais posé sur `mode==='solo'` en dur — sinon la
+  Synthèse d'un joueur avec des amis configurés aurait perdu leur part. Non instruit
+  au-delà : aucune fixture locale ne l'a exercé, seul le test unitaire
+  `usageEquipmentPartiesModel.test.ts` le couvre.
+
+- **Nouvelle, E6.2 du 2026-09-09** : la barre « armes spéciales » n'a JAMAIS d'issues
+  (pile utilisé/gardé/lâché) sur Solo ni sur Escouade — ni le mockup validé ni une lecture
+  rapide du plan ne le disent, mais le contrat Go (E6.1, `EquipmentUsagePlayerLine`,
+  commentaire de `PadPickups`) est explicite : le canal `shots` (« a tiré ») n'est publié
+  qu'au grain DOCUMENT, jamais au grain session/période. La barre y rend donc un compte
+  simple (aplat, pas de pile), sur les DEUX pages — écart assumé vis-à-vis du mockup (qui
+  montrait des lignes PAR ARME avec pile utilisé/jamais-tirée), déjà anticipé et consigné
+  par le lot E5-Go (« Ce que le lot ne publie PAS »). Non instruit davantage.
+
+- **Nouvelle, E5.9 du 2026-09-09** : l'axe des graduations de fin de barre
+  (`usageCountsModel.ts`, `niceAxisMax`) suit un algorithme standard « nice number »
+  (1/2/5/10 × 10ⁿ), PAS les valeurs précises vues sur la maquette artefact (qui semblent
+  choisies à l'œil par le mockup, pas produites par une formule déterministe — ex. 138 pris
+  → axe à 140 sur la maquette, 200 avec cet algorithme). Aucune décision P1-P14 ne fixe de
+  formule d'arrondi d'axe ; ce choix reste un axe rond et lisible, jamais un pixel-perfect
+  de la maquette. Non instruit, à ajuster si un retour utilisateur le juge trop lâche.
 
 ## 7. Clôture de chantier
 
@@ -1239,3 +1336,110 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
   **Prochaine étape** : la partie web de E5 (E5.1-E5.3 extraction du bloc partagé,
   E5.8-E5.13 Synthèse) et E6.2-E6.5 (Escouade), qui consomment `equipment_usage` tel que
   `generated.ts` le décrit désormais.
+
+- **2026-09-09 — E5.8-E5.13 (Synthèse) et E6.2-E6.5 (Escouade), CLOS côté web** (worktree
+  `LevelUp-wt-equipement-gachis`, branche `feat/equipement-gachis`, HEAD au commit
+  `4e1f9b5f0` de `feat/v75` — E5.1-E5.7/E6.1 déjà mergés).
+
+  **Le bloc partagé ajouté à `features/_shared/usage/`** (variante COMPTES, P9) :
+  - `usageCountsModel.ts` — `buildCountsGrid` : une ligne par grandeur, `valuePct` relatif
+    au MAXIMUM DE L'AXE (jamais une part d'équipe), `parityPct` toujours `null`, tri
+    descendant par défaut. RÉUTILISE `buildOutcomeSegments` (exporté depuis
+    `usageGaugeModel.ts` pour l'occasion) — même pile utilisé/lâché/gardé que Sessions,
+    zéro seconde définition.
+  - `usageEquipmentPartiesModel.ts` — `buildPartiesDonutModel` : les cinq comptes Go
+    (`EquipmentUsageParties`) en parts EXCLUSIVES contiguës (moi → mes amis → reste de mon
+    équipe → eux), légende COULEUR SEULE (P11), deux sous-totaux en pourcentage. `null`
+    quand `parties` est absent ou `lobby_total<=0` (donut masqué, jamais un anneau à zéro).
+    Couleurs de joueur importées DIRECTEMENT depuis `features/squad/colors.ts` — précédent
+    déjà établi dans ce dossier par `usageGrids.ts`/`usagePlayerInk` (vérifié sur pièces
+    AVANT de coder : `_shared/` est hors scan du ratchet `lint-cross-feature-imports`,
+    aucune entrée `ALLOWED_CROSS_IMPORTS` nécessaire).
+  - `UsageCountsGrid.tsx` — le rendu de la barre, RÉUTILISE `UsageGauge` (exportée depuis
+    `UsageForms.tsx` pour l'occasion, avec `LABEL_WIDTH`/`GAUGE_MIN`/`COLUMN_GAP`) : seule
+    différence avec Sessions, le sens de `valuePct` et l'absence de trait de parité —
+    aucune seconde cellule.
+  - `UsageEquipmentDonutCard.tsx` — le donut (`components/charts/DonutChart`, jamais écrit
+    à la main) + légende + sous-totaux.
+  - `EquipmentUsageSection.tsx` — l'orchestrateur : deux `SectionCard` (« Usages
+    d'équipement », « Contrôle des armes spéciales »), un `mode: 'solo' | 'squad'` qui ne
+    change QUE la base de la barre équipement (`families[]` vs `players[]`) — la barre
+    armes spéciales est TOUJOURS `players[]` sur les deux pages (aucune ventilation par
+    famille d'arme à ce grain, cf. Découvertes E6.2). `usageAvailability` réutilisé tel
+    quel (élargi en `UsageAvailabilityLike`, structurel, pour accepter
+    `EquipmentUsageBlock` en plus de `SessionUsageBlock` — CLAUDE.md n°6).
+  - `usageI18n.ts` : 15 clés neuves (FR+EN, parité par typage) — vues, aides de carte,
+    formats de compte/axe, libellés du donut. Aucune string en dur dans les composants.
+  - `components/charts/DonutChart.tsx` : nouvelle prop `arcLabelKind: 'percent' | 'value'`
+    (défaut `'percent'`, comportement historique inchangé) + `ChartPointDonut.valueLabel?` —
+    justifiée par P11 (« les valeurs sont sur les arcs », en COMPTE brut, jamais un %).
+    Primitive étendue, pas de donut réécrit à la main.
+
+  **Où le bloc est monté** :
+  - Synthèse : `features/synthesis/SynthesisPage.tsx`, dans `SynthesisOverviewSection`,
+    juste après `SynthesisWeaponRangeSection` (`mode="solo"`, prop `equipmentUsage`
+    ajoutée à `SynthesisOverviewSectionProps`, câblée depuis `data.equipment_usage`).
+    Type `equipment_usage?: EquipmentUsageBlock` ajouté à `SynthesisPageResponse`
+    (`lib/api/types.ts`) — champ déjà publié par `SynthesisPageV2Response` (Go, E5.5).
+  - Escouade : `features/squad/SquadSynergiesPage.tsx`, juste après `<MedalDigest>`
+    (`mode="squad"`, lit `pageData.equipment_usage`).
+
+  **BLOQUANT SIGNALÉ IMMÉDIATEMENT, pas contourné en silence** (détail complet aux
+  Découvertes ci-dessus) : la page Escouade réelle (`SquadLayout` → `useTeammates` →
+  `POST /pages/teammates` → `TeammatesPageResponse`) n'est PAS l'endpoint sur lequel le Go
+  a publié `equipment_usage` (`SquadPageV2Response`, `/pages/squad/v2`, que le web ne
+  fetch nulle part sauf son sous-chemin `/engagement`). Décision prise et signalée :
+  déclarer `equipment_usage?: EquipmentUsageBlock` en OPTIONNEL sur `TeammatesPageResponse`
+  (web seulement, commentaire daté), monter la section normalement — elle s'auto-masque
+  aujourd'hui (champ `undefined`, même contrat que `available:false`), et s'activera sans
+  toucher au web dès qu'un lot Go ajoutera `TeammatesService.WithEquipmentUsage`. E6.5
+  statué `[~]` pour cette raison : le test « bloc présent » simule le contrat futur, le
+  test « bloc absent » documente l'état réel actuel.
+
+  **TDD, rouge puis vert, dans l'ordre** : `usageCountsModel.test.ts` (9 tests),
+  `DonutChart.test.ts` (3 tests neufs sur `arcLabelKind`), `usageEquipmentPartiesModel.test.ts`
+  (6 tests), `UsageCountsGrid.test.tsx` (3 tests), `UsageEquipmentDonutCard.test.tsx`
+  (2 tests), `EquipmentUsageSection.test.tsx` (6 tests, modes solo ET squad) — chaque
+  fichier a échoué à l'import (module inexistant) avant l'implémentation. Puis smoke bout
+  en bout : `SynthesisPage.test.tsx` (fixture `equipment_usage` ajoutée à
+  `test/handlers.ts`), `SquadSynergiesPage.test.tsx` (2 tests neufs, bloc présent/absent).
+
+  **Gates, tous exécutés sur l'arbre final** :
+  - `rm -rf node_modules/.tmp && npx vitest run src/features/synthesis src/features/squad
+    src/features/_shared src/components/charts && npx tsc -b --force` — **119 fichiers,
+    1009 tests, 14 skips préexistants, vert** ; tsc silencieux (code 0).
+  - `npx vitest run` (suite complète) — **686 fichiers (1 skip), 7214 tests (17 skips),
+    vert** — aucune régression du fixture `equipment_usage` ajouté à `test/handlers.ts`
+    (partagé par toutes les pages Synthèse).
+  - `npx eslint src/features/synthesis src/features/squad src/features/_shared
+    --max-warnings=0` — **5 avertissements PRÉEXISTANTS**, tous dans 4 fichiers de
+    `squad/` (`SquadAssistPairsTable.tsx`, `SquadEchangeDelaiCard.tsx`,
+    `SquadImpactScoreboard.tsx`, `SquadSynergyHistoryTable.tsx`) — vérifié `git status
+    --short` : AUCUN des quatre n'est dans le diff de ce lot. Sous-ensemble exact des 28
+    warnings déjà consignés par le lot E5.1-E5.3 (même liste de fichiers).
+  - `npx eslint src/features --max-warnings=0` — **28 warnings, identique à la baseline**
+    (AVANT et APRÈS ce lot), 0 dans les fichiers touchés/créés par ce lot.
+  - `npm run lint` (script réel du dépôt) — **exit 0**, 30 warnings (28 ci-dessus + 2
+    préexistants ailleurs, déjà fixables).
+  - `node tools/lint-cross-feature-imports.mjs` — **7 ≤ 7**, plafond inchangé, aucune
+    entrée `ALLOWED_CROSS_IMPORTS` ajoutée.
+  - `wc -l` de tous les fichiers créés/touchés — tous ≤ 500 L, à l'exception de
+    `SynthesisPage.tsx` (865 L) et `lib/api/types.ts` (3177 L), DEUX fichiers déjà exemptés
+    par un `eslint-disable max-lines` daté et justifié AVANT ce lot (2026-09-06) — cette
+    session n'y a ajouté que quelques lignes de câblage, sans agrandir la dette.
+  - Greps couleur (hex / Tailwind) sur tous les fichiers créés/touchés — **0 résultat**.
+
+  **Statut des dix items** : E5.8 `[x]`, E5.9 `[x]`, E5.10 `[x]`, E5.11 `[~]` (zéro query
+  key neuve — zéro requête neuve), E5.12 `[x]`, E5.13 `[x]`, E6.2 `[x]`, E6.3 `[x]`,
+  E6.4 `[x]`, E6.5 `[~]` (front testé et monté, blocage de contrat signalé — cf.
+  Découvertes).
+
+  **Non traité ici** (hors périmètre déclaré `apps/go-api`, `openapi.yaml`,
+  `generated.ts`) : brancher `TeammatesService.WithEquipmentUsage` pour que le bloc
+  Escouade s'affiche réellement en production — seul geste manquant, détaillé aux
+  Découvertes.
+
+  **Prochaine étape** : §7 (clôture de chantier — `make gate-push`, revue adversariale
+  unique, `delivery-checklist`, annotation du plan vague C) — hors périmètre de cette
+  session (décision superviseur : un autre exécutant ou une session dédiée mène la
+  clôture). Pas de push, pas de fusion.

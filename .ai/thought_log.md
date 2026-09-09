@@ -1,3 +1,42 @@
+## [2026-09-09] Equipement gachis, E5.8-E5.13 (Synthese) + E6.2-E6.5 (Escouade) cote web — Complete (E5.11/E6.5 partiels, cf. decouvertes)
+
+**Decision technique principale.** Le bloc « servi ou gache » en variante COMPTES (P9) est
+ajoute a `features/_shared/usage/` (usageCountsModel.ts, usageEquipmentPartiesModel.ts,
+UsageCountsGrid.tsx, UsageEquipmentDonutCard.tsx, EquipmentUsageSection.tsx) en reutilisant
+au maximum le bloc Sessions existant : meme cellule `UsageGauge` (exportee), meme
+`buildOutcomeSegments` (exportee), memes couleurs squad (import direct depuis
+`features/squad/colors.ts`, precedent deja etabli par `usageGrids.ts`). `DonutChart.tsx`
+gagne une prop `arcLabelKind='value'` (retro-compatible) pour porter le compte brut sur
+l'arc (P11). Monte dans `SynthesisPage.tsx` (mode solo, apres WeaponRangeSection) et
+`SquadSynergiesPage.tsx` (mode squad, apres MedalDigest).
+
+**Blocage signale, pas contourne en silence.** La page Escouade reelle
+(`SquadLayout`→`useTeammates`→`POST /pages/teammates`→`TeammatesPageResponse`) n'est PAS
+l'endpoint sur lequel le Go (E6.1) a publie `equipment_usage`
+(`SquadPageV2Response`/`GET /pages/squad/v2`, que le web ne fetch nulle part sauf son
+sous-chemin `/engagement`) — verifie sur pieces (grep exhaustif, comparaison des deux
+structs Go). Decision : declarer `equipment_usage?` en optionnel sur `TeammatesPageResponse`
+cote web (commentaire date), monter la section — elle s'auto-masque aujourd'hui (champ
+absent, meme contrat que `available:false`), prete a s'activer des qu'un lot Go ajoutera
+`TeammatesService.WithEquipmentUsage` (le helper `buildEquipmentUsageBlock` existe deja).
+Detail complet : `.ai/PLAN_EQUIPEMENT_GACHIS_2026-09-09.md` section Decouvertes.
+
+**Resultats observes.** TDD rouge->vert sur les 6 nouveaux modules/composants (29 tests
+neufs) + 2 tests d'integration (Synthesis/Squad). Suite complete `npx vitest run` : 686
+fichiers / 7214 tests verts (0 regression). `tsc -b --force` silencieux. Eslint sur le
+perimetre du lot : 5 warnings PREEXISTANTS (4 fichiers squad/ non touches, sous-ensemble
+des 28 deja connus) ; `npx eslint src/features --max-warnings=0` toujours a 28 (inchange).
+`node tools/lint-cross-feature-imports.mjs` : 7 <= 7 (inchange, 0 entree ajoutee). Greps
+couleur (hex/Tailwind) : 0 sur tous les fichiers du lot. `wc -l` : tous <= 500 sauf les
+deux fichiers deja exemptes avant ce lot (`SynthesisPage.tsx`, `lib/api/types.ts`).
+
+**Conclusion / prochaine etape.** E5.8-E5.13 et E6.2-E6.4 `[x]`, E5.11 `[~]` (zero requete
+neuve = zero query key neuve), E6.5 `[~]` (front teste et monte, blocage de contrat Go
+signale). Reste a faire, hors perimetre de ce lot (`apps/go-api` exclu) : brancher
+`TeammatesService.WithEquipmentUsage` pour que le bloc Escouade s'affiche reellement en
+production — seul geste manquant. Puis §7 du plan (gate-push, revue adversariale unique,
+delivery-checklist) — hors perimetre de cette session. Pas de push, pas de fusion.
+
 ## [2026-09-09] Master plan, vague 2 — E4 fusionne, S9 (`deployed_*` reste au contrat), E5 lance en deux executants — Complete
 
 **Decision technique principale.** E4 (Sessions : pile des trois issues et deux reperes de taux
