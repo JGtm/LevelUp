@@ -18,8 +18,9 @@ import { render, screen } from '@testing-library/react'
 
 import type { SessionUsageBlock } from '@/lib/api/types'
 
+import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
+
 import { SessionUsageSection } from './SessionUsageSection'
-import { USAGE_TEXT } from './usageI18n'
 
 const BASE: SessionUsageBlock = { available: true, matches_measured: 4, matches_total: 6 }
 

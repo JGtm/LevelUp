@@ -315,14 +315,43 @@ cd apps/web && npx eslint src/features/session-detail --max-warnings=0
 
 **Périmètre fermé — extraction :**
 
-- [ ] E5.1 Déplacer le bloc dans `apps/web/src/features/_shared/usage/` (ou
-      `components/usage/` si le ratchet l'exige) : formes, projections, dictionnaire.
-      `features/session-detail` l'importe désormais au lieu de le porter
-- [ ] E5.2 Vérifier qu'aucun test de `session-detail` ne casse — c'est un déménagement, pas
-      une réécriture
-- [ ] E5.3 Poser le garde-rail : un test grep interdit qu'une feature réintroduise une copie
-      locale des formes d'usage (règle CLAUDE.md n°6 — une factorisation sans garde-rail
-      re-diverge)
+- [x] E5.1 Déplacer le bloc dans `apps/web/src/features/_shared/usage/` : formes,
+      projections, dictionnaire. `features/session-detail` l'importe désormais au lieu de le
+      porter. `_shared/` n'entre pas dans la regex de nom de feature du ratchet
+      `lint-cross-feature-imports` (`[a-z0-9-]+` ne matche pas `_shared`, vérifié sur pièces :
+      ni comme consommateur, ni comme cible importée) — aucune entrée `ALLOWED_CROSS_IMPORTS`
+      n'était donc nécessaire, précédent déjà établi par `firstBlood.ts` / `EncounterSplitBars.tsx`
+  - [x] E5.1bis Scission `usageLogic.ts` (680 L, seuil 500) EN MÊME TEMPS que le déplacement —
+        on ne peut pas déplacer un fichier hors-seuil puis le scinder ensuite sans double
+        churn sur les imports/tests ; découpe par responsabilité (pas au hasard) en 8 fichiers
+        du dossier `_shared/usage/` : `usageFormat.ts` (formatage, 56 L), `usageMetricKinds.ts`
+        (classification des grandeurs, 195 L), `usageParity.ts` (parité camp/lobby, 20 L),
+        `usageGaugeModel.ts` (forme jauge + pile des 3 issues, 261 L),
+        `usageLobbyTrackModel.ts` (forme piste du lobby, 86 L),
+        `usageRegularityBandModel.ts` (forme bande de régularité, 59 L),
+        `usageObjectives.ts` (ordre des rôles, 23 L), `usageAvailability.ts` (états du bloc,
+        43 L). Exports publics stables (mêmes noms). `usageI18n.ts` (425→430 L) et
+        `usageGrids.ts` (274→275 L) étaient déjà ≤500 : déplacés tels quels, imports internes
+        mis à jour. `SessionUsageForms.tsx` renommé `UsageForms.tsx` (retrait du préfixe
+        « Session », convention déjà en vigueur dans `_shared/` — `EncounterSplitBars.tsx`,
+        `ExperienceDropdown.tsx`). Le test `usageLogic.test.ts` (518 L, déjà hors seuil avant
+        ce lot) est scindé à l'identique en 7 fichiers de test miroir + `usageGrids.test.ts` ;
+        `SessionUsageForms.test.tsx` renommé `UsageForms.test.tsx`. Tous les fichiers créés ou
+        touchés ≤ 500 L (`wc -l` vérifié, cf. gate)
+  - [ ] E5.1ter Scission `match-replay/model/equipmentUsageLogic.ts` (582 L, seuil 500) —
+        sans rapport avec le déménagement ci-dessus (le fichier reste dans
+        `match-replay/model/`, aucune réutilisation cross-feature en jeu ici). Traitée à la
+        suite dans ce même lot (« scission n°2 » du contrat) — voir le journal
+- [x] E5.2 Vérifié : `npx vitest run src/features/session-detail src/features/match-replay
+      src/features/_shared src/components/charts` → 244 fichiers / 3083 tests verts (1 skip
+      préexistant), `npx tsc -b --force` propre. Déménagement pur : aucune assertion de test
+      n'a changé, seuls les chemins d'import
+- [x] E5.3 Garde-rail posé : `apps/web/src/features/_shared/usage/noLocalUsageCopies.guard.test.ts`
+      (grep de définitions — `function`/`interface`/`type` — des symboles canoniques du bloc,
+      hors du dossier `_shared/usage/`, sur le modèle de `squad/singleCountSource.guard.test.ts`).
+      Mordant prouvé par mutation : fichier `features/squad/__mutationTest.ts` créé avec une
+      redéfinition de `usageAvailability` → test ROUGE (`AssertionError` listant le fichier) ;
+      fichier retiré → test VERT. Mutation non committée
 
 **Périmètre fermé — Go :**
 
@@ -493,6 +522,25 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   un défaut visible sur le SEUL chemin de repli résiduel (famille avec geste mais sans
   bilan). Non traité (hors périmètre E4, `deployedFamilyLabel` n'est pas un fichier que E4
   modifie pour cette raison).
+
+- **Nouvelle, E5.1-E5.3 du 2026-09-09** : `cd apps/web && npx eslint src/features
+  --max-warnings=0` (gate de clôture demandé par le lot) échoue sur 28 avertissements dans
+  13 fichiers (`useReplayVehicles.ts`, `useReplaySound.ts`, `ReplayCanvas.tsx`,
+  `ReplayFeedName.tsx`, `MatchEncountersTable.tsx`, `MatchPositionsHeatmap.tsx`,
+  `MatchScoreboard.tsx`, `MediaAudioConfigButton.tsx`, `RelationsTable.tsx`,
+  `SquadAssistPairsTable.tsx`, `SquadEchangeDelaiCard.tsx`, `SquadImpactScoreboard.tsx`,
+  `SquadSynergyHistoryTable.tsx`) — `react-hooks/exhaustive-deps`,
+  `react-hooks/incompatible-library` (React Compiler × TanStack Table),
+  `react-refresh/only-export-components`, `react-hooks/set-state-in-effect`. Vérifié
+  PRÉEXISTANT : `git status --short apps/web/src/features` ne montre aucun de ces 13
+  fichiers parmi les fichiers touchés par ce lot (même méthode que l'entrée E2 du
+  2026-09-08 ci-dessus, ratchet `react-hooks/exhaustive-deps` déjà connu). Vérifié à zéro
+  sur le périmètre réel du lot : `npx eslint src/features/_shared/usage
+  src/features/session-detail/SessionUsageSection.tsx
+  src/features/session-detail/SessionUsageSection.gate.test.tsx --max-warnings=0` → 0
+  problème. `npm run lint` (sans `--max-warnings=0`, le script réel du dépôt) passe
+  (exit 0, 30 warnings dont les 28 ci-dessus, 0 erreur). Dette de lint antérieure au lot,
+  non accrue. Non traité (hors périmètre E5.1-E5.3).
 
 ---
 
@@ -916,3 +964,102 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
 
   **Prochaine étape** : E5 (bloc partagé, Solo/Synthèse) — décidera, avec la vue d'ensemble
   des consommateurs ci-dessus, si `deployed_*` sort du contrat Go.
+
+- **2026-09-09 — E5.1/E5.2/E5.3, extraction du bloc partagé (worktree
+  `LevelUp-wt-equipement-gachis`, branche `feat/equipement-gachis`)**. Périmètre : web
+  uniquement (le Go de E5.4-E5.13 est mené en parallèle par un autre exécutant, worktree
+  `LevelUp-wt-equipement-e5-go` — non touché ici, ni `apps/go-api/`, ni `openapi.yaml`, ni
+  `generated.ts`).
+
+  **Décision technique — ordre des deux scissions.** Le contrat de la tâche liste l'ordre
+  « E5.1 → E5.2 → E5.3 → scission 1 → scission 2 » tout en demandant de statuer la scission
+  de `usageLogic.ts` comme sous-item **de E5.1** (« E5.1bis »). Les deux ne sont conciliables
+  qu'en faisant la scission de `usageLogic.ts` **PENDANT** E5.1 : un fichier de 680 lignes ne
+  peut pas être déplacé tel quel dans `_shared/usage/` (seuil 500 L) puis scindé après coup
+  sans changer une deuxième fois tous les chemins d'import des consommateurs déjà mis à jour
+  — double churn, deux passes de risque au lieu d'une. La scission n°2
+  (`equipmentUsageLogic.ts`, `match-replay/model/`) n'a, elle, AUCUN rapport avec le
+  déménagement : elle reste dans son dossier d'origine et n'est réutilisée par personne de
+  neuf. Elle est donc traitée en dernier, conformément à l'ordre littéral du contrat.
+
+  **E5.1 — déplacement, avec scission intégrée (E5.1bis).** Le bloc « usages d'équipement,
+  armes spéciales et objectifs » quitte `features/session-detail/` pour
+  `apps/web/src/features/_shared/usage/`. Vérifié sur pièces AVANT de coder : la regex de
+  nom de feature du ratchet `lint-cross-feature-imports`
+  (`tools/lint-cross-feature-imports.mjs`, `FEATURE_IMPORT_RE = /@\/features\/([a-z0-9-]+).../`)
+  ne matche PAS `_shared` (le `_` n'est pas dans la classe de caractères) — ni comme feature
+  consommatrice (`getFeatureNameFromPath` rend `null`, la boucle passe), ni comme feature
+  importée (le `match` de l'import échoue). `_shared/` est donc structurellement HORS SCAN du
+  ratchet, précédent déjà exploité par `firstBlood.ts` / `EncounterSplitBars.tsx` (consommés
+  par 9 features sans une seule entrée `ALLOWED_CROSS_IMPORTS`). Aucune entrée n'a donc été
+  ajoutée au ratchet.
+
+  `usageLogic.ts` (680 L, 507 avant E4, seuil 500) est scindé par responsabilité (pas au
+  hasard, suivant ses propres sections déjà commentées dans le fichier source) en 8 fichiers :
+  `usageFormat.ts` (56 L, formatage), `usageMetricKinds.ts` (195 L, classification des
+  grandeurs), `usageParity.ts` (20 L), `usageGaugeModel.ts` (261 L, forme jauge + pile des
+  3 issues — le plus gros morceau), `usageLobbyTrackModel.ts` (86 L),
+  `usageRegularityBandModel.ts` (59 L), `usageObjectives.ts` (23 L),
+  `usageAvailability.ts` (43 L). Tous les exports publics (noms de fonctions/types) sont
+  restés IDENTIQUES — seuls les chemins d'import changent. `usageI18n.ts` (425→430 L après
+  ajout d'un en-tête de déménagement) et `usageGrids.ts` (274→275 L) étaient déjà ≤ 500 L :
+  déplacés sans réécriture, seuls leurs imports internes pointent maintenant vers les
+  nouveaux fichiers scindés. `SessionUsageForms.tsx` (400 L) est renommé `UsageForms.tsx` en
+  y arrivant (retrait du préfixe « Session », le bloc n'étant plus propre à cette page —
+  convention déjà en vigueur pour les autres fichiers de `_shared/`, aucun composant partagé
+  n'y porte de préfixe de feature).
+
+  `features/session-detail/SessionUsageSection.tsx` (page-orchestrateur, reste dans
+  `session-detail/` — il n'est PAS générique, il porte la mise en page des trois cartes
+  propres à la page Sessions) importe désormais tout depuis `@/features/_shared/usage/...`
+  au lieu de porter le bloc. `SessionUsageSection.gate.test.tsx` idem pour `USAGE_TEXT`.
+
+  Le test `usageLogic.test.ts` (518 L, déjà hors seuil AVANT ce lot — dette gelée non
+  accrue) est scindé à l'identique en miroir des 8 fichiers de logique + un
+  `usageGrids.test.ts` neuf (tests de grilles, jusqu'ici mêlés dans le même fichier) :
+  `usageFormat.test.ts`, `usageParity.test.ts`, `usageMetricKinds.test.ts`,
+  `usageGaugeModel.test.ts`, `usageLobbyTrackModel.test.ts`,
+  `usageRegularityBandModel.test.ts`, `usageAvailability.test.ts`, `usageGrids.test.ts`.
+  Chaque `it(...)` a été déplacé tel quel, AUCUNE assertion n'a changé. `SessionUsageForms.test.tsx`
+  renommé `UsageForms.test.tsx` (mêmes assertions).
+
+  **E5.2 — preuve que rien ne casse.** `cd apps/web && rm -rf node_modules/.tmp && npx vitest
+  run src/features/session-detail src/features/match-replay src/features/_shared
+  src/components/charts` → **244 fichiers de test, 3083 tests, verts (1 skip préexistant,
+  inchangé)**. `npx tsc -b --force` → silencieux, code 0.
+
+  **E5.3 — garde-rail.** `apps/web/src/features/_shared/usage/noLocalUsageCopies.guard.test.ts`,
+  sur le modèle de `features/squad/singleCountSource.guard.test.ts` : parcourt
+  `apps/web/src/features/**/*.{ts,tsx}` (dossier canonique `_shared/usage/` exclu du scan) et
+  fait échouer le test si une DÉFINITION (`function`/`interface`/`type`, pas un import) d'un
+  échantillon de 9 identifiants canoniques du bloc (`buildGaugeRow`, `buildOutcomeSegments`,
+  `buildLobbyTrack`, `buildRegularityBand`, `usageAvailability`, `equipmentMetrics`,
+  `UsageGaugeModel`, `UsageGaugeRowModel`, `UsageOutcomeKind`) apparaît ailleurs. **Mordant
+  prouvé par mutation** : création de `features/squad/__mutationTest.ts` avec une redéfinition
+  de `usageAvailability` → `npx vitest run
+  src/features/_shared/usage/noLocalUsageCopies.guard.test.ts` **ROUGE**
+  (`AssertionError: ... src/features\squad\__mutationTest.ts`) ; fichier supprimé → **VERT**.
+  La mutation n'a jamais été committée.
+
+  **Gates de clôture exécutés** :
+  - `npx vitest run src/features/session-detail src/features/match-replay src/features/_shared
+    src/components/charts` → vert (cf. E5.2) ;
+  - `npx tsc -b --force` → silencieux, code 0 ;
+  - `npx eslint src/features --max-warnings=0` → 28 avertissements PRÉEXISTANTS dans 13
+    fichiers hors périmètre (aucun touché par ce lot — cf. §6 Découvertes) ; scope réel du
+    lot (`_shared/usage` + les 2 fichiers modifiés de `session-detail`) → **0 problème** ;
+  - `npm run lint` (script réel du dépôt, sans `--max-warnings=0`) → exit 0, 30 warnings
+    (les 28 ci-dessus + 2 fixables), 0 erreur ;
+  - `node tools/lint-cross-feature-imports.mjs` → **7 ≤ 7** (plafond ratchet inchangé, aucune
+    violation neuve — cf. E5.1) ;
+  - `wc -l` de tous les fichiers créés/touchés → tous ≤ 500 L (max observé : 463 L,
+    `SessionUsageSection.tsx`, inchangé par rapport à avant ce lot) ;
+  - `grep hex` / `grep tailwind couleur` sur les fichiers créés/touchés → 0 résultat.
+
+  **Statut des items** : E5.1 `[x]`, E5.1bis `[x]`, E5.2 `[x]`, E5.3 `[x]`. E5.1ter
+  (scission `equipmentUsageLogic.ts`) reste `[ ]` à ce point du journal — traitée dans
+  l'entrée suivante. E5.4-E5.13 (Go, Synthèse/Escouade) : hors périmètre de cette session,
+  menés par un autre exécutant.
+
+  **Prochaine étape** : scission n°2 (`equipmentUsageLogic.ts`, match-replay), puis clôture
+  de ce lot (aucun push, aucune fusion — décision superviseur).
