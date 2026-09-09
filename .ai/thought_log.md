@@ -1272,6 +1272,50 @@ message ; revert verifie.
 
 **Conclusion / prochaine etape** : phase A1 — publier l'ecart (compte avant filtre exclusif +
 matchs ecartes avec le coequipier responsable nomme), en TDD rouge cette fois.
+## [2026-09-09] Lot C4 — les médailles de la frise, en images (décision D7) — Complete
+
+**Décision technique principale.** Périmètre fermé du lot C4 de
+`.ai/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` : remplacer l'anneau (`ring-1 ring-foreground`,
+1 px autour d'une marque de 3 × 8 px) par le badge image du jeu sur la frise du rejeu, décision
+D7 qui annule les décisions 9/14 de `PLAN_FRISE_POINT_DE_VUE_2026-09-06.md`. Worktree dédié
+`LevelUp-wt-frise-medailles`, branche `feat/frise-medailles-images` depuis `feat/v75`. Réutilisé
+`ui/MedalBadges.tsx` tel quel (déjà employé par `ReplayKillFeed.tsx:344`/`:508`) : le badge et
+son infobulle « titre — description » ne sont pas réécrits, seule la donnée qui les alimente
+change de forme. `TrackMark.medals`/`TrackKill.medals` (auparavant `readonly string[]`, un
+simple libellé) et `TrackMedal` (auparavant `{ label: string }`) portent désormais l'identité
+complète de la médaille (`MedalEvent` de `killFeedLogic.ts` : nom, libellé, description,
+`imageUrl`) jusqu'à `ReplayMarkTrack.tsx`, qui la transmet à `MedalBadges`. Changement de glue
+nécessaire : signature de `MedalBadges` élargie en `readonly MedalEvent[]` (le typecheck refusait
+un tableau `readonly` sur un paramètre mutable). Dans `ReplayMarkTrack.tsx`, la marque de
+kill/mort GARDE sa silhouette nue (plus de `ring-1`/anneau) et le badge se pose EN SURIMPRESSION
+dans un span séparé ; une médaille ORPHELINE (`kind: 'medal'`) n'a plus de marque nue du tout,
+son seul dessin est le badge. Ce span de badge est la SECONDE exception documentée à « les
+pistes ne captent pas le pointeur » (la première étant la vignette média) : `pointer-events` est
+une propriété héritée, et l'infobulle native (`title`) du badge ne se déclenche qu'au survol d'un
+élément qui reçoit le pointeur — l'envelopper en `pointer-events-none` comme les marques l'aurait
+éteinte silencieusement, sans qu'aucun test de rendu ne le voie.
+
+**Résultats observés.** Piste du joueur regardé élargie de 18 à 24 px (`h-[18px]` → `h-[24px]`)
+pour loger le badge de 16 px sans le rogner ; tops recalculés pour garder le centre vertical
+commun aux trois silhouettes (barre `top-2`, losange `top-[9px]`, badge `top-1`). Vérification
+sur pièces de `rosterHeight.guard.test.ts` cité par le plan : il porte en réalité sur le plafond
+`xl:max-h-[NN%]` des fiches joueur de la route de rejeu, un sujet distinct de la hauteur de piste
+— statué `[~]`, aucune modification nécessaire, consigné en « Découvertes » du plan. Tests migrés
+de `ReplayTimelineTracks.presence.test.tsx` (describe « l'anneau des médailles », qui montait
+toute la frise pour un comportement qui n'appartient plus qu'à `ReplayMarkTrack`) vers un nouveau
+`ReplayMarkTrack.test.tsx` monté directement sur le composant ; tests de logique
+(`replayTimelineTracksLogic.test.ts`, `useReplayTimeline.test.ts`) adaptés au nouveau type
+`MedalEvent`. Gates : `vitest run .../ReplayMarkTrack .../timelineGeometry .../rosterHeight` → 3
+fichiers, 28 tests verts ; `vitest run src/features/match-replay` (dossier complet) → 178
+fichiers (+1 skip préexistant), 2572 tests verts, zéro régression ; `make check-types` (`tsc -b`)
+→ 0 erreur. Contrôle de visu (rejeu Origin `8bc6074f`, JGtm, médaille « Revirement » à 3:49)
+réservé au superviseur, statué `[~]` dans le plan avec cette référence.
+
+**Conclusion / prochaine étape.** Lot C4 clos, 4/4 items `[x]`, aucun `[!]`. Prochaine étape :
+intégration dans `feat/formes-maquettes` par le superviseur, avec les autres lots de la vague C.
+Note d'environnement : le worktree neuf n'avait pas de `node_modules` sous `apps/web` — jonction
+NTFS créée vers celui de `LevelUp-go-migration` (même lockfile, aucune dépendance modifiée par ce
+lot) plutôt qu'une réinstallation complète.
 
 ## [2026-09-08] Lot M1b — corriger le décalage d'horloge du lien « voir dans le rejeu » — Complete
 

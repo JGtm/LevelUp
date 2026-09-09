@@ -114,6 +114,35 @@ grep -rn "quadrantDuPoint" apps/web/src --include=*.tsx | grep -v "\.test\."
 - [ ] Mettre à jour l'en-tête de `ReplayTimelineTracks.tsx` : le « un seul code : anneau =
       médaille » n'est plus vrai (règle du dépôt : la doc se corrige dans le commit qui change le
       comportement)
+- [x] `features/match-replay/ui/ReplayMarkTrack.tsx` — remplacer l'anneau
+      (`ring-1 ring-foreground`, 1 px autour d'une marque de 3 × 8 px, invisible en pratique) par le
+      badge image (décision D7). `ui/MedalBadges.tsx` existe et le fil l'emploie déjà
+      (`ReplayKillFeed.tsx:344` et `:508`). Fait le 2026-09-09 : la marque nue perd son anneau, le
+      badge se pose EN SURIMPRESSION à côté (span dédié, `pointer-events` par défaut pour que
+      l'infobulle native du badge fonctionne au survol — seconde exception documentée à côté de la
+      vignette média). `TrackMark.medals`/`TrackKill.medals`/`TrackMedal` portent désormais
+      l'identité complète (`MedalEvent`), plus un simple libellé, jusqu'à `MedalBadges.tsx`
+      (signature élargie en `readonly MedalEvent[]`, changement de glue nécessaire au typecheck).
+- [x] `ui/ReplayTimelineTracks.tsx` — **élargir la piste du joueur regardé** pour accueillir le
+      badge. C'est ce qui fait de ce lot un vrai travail et non un correctif court : la hauteur de
+      piste est structurelle (`timelineGeometry.guard.test.ts`). Fait : 18 → 24 px (`h-[18px]` →
+      `h-[24px]`), tops recalculés pour garder le même centre vertical (barre `top-2`, losange
+      `top-[9px]`, badge `top-1`). `rosterHeight.guard.test.ts` s'est révélé, sur pièces, porter sur
+      un tout autre sujet (le plafond `xl:max-h-[NN%]` des fiches joueur de la page de rejeu, pas la
+      hauteur de piste) : `[~]` — rien à y changer, `timelineGeometry.guard.test.ts` est le seul
+      garde-rail structurel réellement concerné et il est passé au gate.
+- [x] L'infobulle porte le **titre ET la description** de la médaille : le document les publie déjà
+      (`medal_label`, `medal_description`, `killFeedLogic.ts:86-92`). Fait : `MedalBadges` compose
+      déjà `"${label} — ${description}"`, réutilisé tel quel — aucune logique de tooltip réécrite.
+- [x] Mettre à jour l'en-tête de `ReplayTimelineTracks.tsx` : le « un seul code : anneau =
+      médaille » n'est plus vrai (règle du dépôt : la doc se corrige dans le commit qui change le
+      comportement). Fait, plus l'en-tête de `ReplayMarkTrack.tsx` (section badge, exception
+      pointer-events) et le JSDoc de `useReplayTimeline.reduceFeed`.
+
+**Découvertes (hors périmètre, non traitées) :**
+- `rosterHeight.guard.test.ts` ne concerne pas la hauteur des pistes de la frise malgré son nom
+  évocateur pour ce lot — il garde le plafond `xl:max-h-[NN%]` des fiches joueur sur la route de
+  rejeu. Aucune action : le plan le citait par erreur d'association, pas le code.
 
 **Gate :**
 ```bash
@@ -121,6 +150,14 @@ cd apps/web && npx vitest run src/features/match-replay/ui/ReplayMarkTrack src/f
 ```
 Et de visu : rejeu Origin `8bc6074f`, point de vue JGtm — la médaille « Revirement » à 3:49 est
 lisible sans survol.
+# 3 fichiers, 28 tests, tous verts (2026-09-09)
+cd apps/web && npx vitest run src/features/match-replay
+# 178 fichiers passés + 1 skip préexistant, 2572 tests verts, aucune régression (2026-09-09)
+make check-types
+# tsc -b : 0 erreur (2026-09-09)
+```
+Et de visu : rejeu Origin `8bc6074f`, point de vue JGtm — la médaille « Revirement » à 3:49 est
+lisible sans survol. `[~]` — contrôle de visu réservé au superviseur (cf. consignes d'exécution).
 
 ## Lot C5 — REPRIS AILLEURS
 
