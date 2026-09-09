@@ -104074,3 +104074,17 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
 - Resultats observes : 7/7 tests edgeClamp verts, 931/931 tests du dossier `model/` verts
   (dont le garde-rail `replayView.guard.test.ts`), `npx tsc -b --force` exit 0.
 - Prochaine etape : phase B1 (gabarit de la fleche hors cadre, `offscreenChevron.ts`).
+
+## [2026-09-10] Escouade hors cadre — Phase B1 gabarit de la fleche (Complete)
+- TDD : test ROUGE (`Failed to resolve import "./offscreenChevron"`), puis
+  `layers/offscreenChevron.ts`. Un seul fichier couvre B1.1 a B1.3 (chevron + etiquette),
+  9 cas via `recordingContext` (aucun mock canvas lourd, la convention deja en place dans la
+  feature).
+- Decision technique : gabarit normalise pointant +X, mis a l'echelle par `ctx.scale(
+  CHEVRON_SIZE_PX * k, ...)` (jamais un facteur du canevas) ; etiquette ancree du cote
+  INTERIEUR de la fleche (oppose a `angle`) pour ne jamais sortir de la toile ; le texte
+  « nom . distance » est compose par l'appelant (B2), ce module ne recoit qu'une chaine
+  prete — l'i18n de l'unite (B4.3) reste hors de ce fichier.
+- Resultats observes : 9/9 tests offscreenChevron verts, 652/652 tests du dossier `layers/`
+  verts, `npx tsc -b --force` exit 0.
+- Prochaine etape : phase B2 (cablage sur `drawLivingTrack`/`drawDeathMark`).
