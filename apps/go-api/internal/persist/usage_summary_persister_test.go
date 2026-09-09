@@ -59,6 +59,10 @@ func resumeUsageDeTest() *replay.UsageSummary {
 				CamoEpisodes: 1, CamoMS: 6000, CamoKills: 2,
 				DeployedByFamily: map[string]int{"wall": 1},
 				DroppedObjects:   3, GrenadesThrown: 5,
+				DroppedByFamily:    map[string]int{"wall": 1, "powerup_camo": 2},
+				TakenByFamily:      map[string]int{"wall": 4},
+				SpentByFamily:      map[string]int{"wall": 2},
+				KeptByFamily:       map[string]int{"wall": 2},
 				PadPickups:         2,
 				PadPickupsByWeapon: map[string]int{"11223344": 2},
 			},
@@ -282,5 +286,44 @@ func TestUsageSummaryPersistPass_Refus(t *testing.T) {
 	}
 	if n != 0 {
 		t.Errorf("les refus doivent laisser la table intacte (0 ligne), lu %d", n)
+	}
+}
+
+// TestUsageSummaryPersistPass_LesQuatreVentilationsDIssue — les colonnes ajoutees par
+// `shared_match_usage_players_outcomes_v1` (etape E3) sont ECRITES et RELUES PAR LA VUE.
+//
+// LA VUE EST LE VRAI SUJET DU TEST : `match_usage_players_latest` est un `SELECT p.*`, et
+// DuckDB FIGE cette etoile a la creation de la vue. Sans la recreation embarquee dans le
+// step de migration, ces quatre colonnes existeraient en table et resteraient INVISIBLES au
+// seul chemin de lecture autorise (ADR 0026) — la requete ci-dessous echouerait sur un
+// « Binder Error ». C est exactement le piege qui a coute un second step aux manches
+// (refresh_views_after_team_rounds).
+func TestUsageSummaryPersistPass_LesQuatreVentilationsDIssue(t *testing.T) {
+	db := openUsageSummaryTestDB(t)
+	if err := NewUsageSummaryPersister(db).PersistPass(
+		context.Background(), "m4", resumeUsageDeTest()); err != nil {
+		t.Fatalf("PersistPass: %v", err)
+	}
+	var taken, spent, kept, dropped string
+	err := db.QueryRow(`SELECT taken_json, spent_json, kept_json, dropped_json
+		FROM match_usage_players_latest WHERE match_id = 'm4' AND xuid = '111'`).
+		Scan(&taken, &spent, &kept, &dropped)
+	if err != nil {
+		t.Fatalf("select des issues par la vue _latest: %v", err)
+	}
+	if taken != `{"wall":4}` || spent != `{"wall":2}` || kept != `{"wall":2}` {
+		t.Errorf("issues relues : taken=%s spent=%s kept=%s", taken, spent, kept)
+	}
+	if dropped != `{"powerup_camo":2,"wall":1}` {
+		t.Errorf("dropped_json = %s, attendu {\"powerup_camo\":2,\"wall\":1} (cles triees par encoding/json)", dropped)
+	}
+	// Une ligne sans aucune issue porte `{}` — jamais NULL (colonnes NOT NULL).
+	var taken222 string
+	if err := db.QueryRow(`SELECT taken_json FROM match_usage_players_latest
+		WHERE match_id = 'm4' AND xuid = '222'`).Scan(&taken222); err != nil {
+		t.Fatalf("select joueur 222: %v", err)
+	}
+	if taken222 != "{}" {
+		t.Errorf("taken_json(222) = %q, attendu {}", taken222)
 	}
 }
