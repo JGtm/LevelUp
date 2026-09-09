@@ -104060,3 +104060,17 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   un groupe `par-xuid` a somme conservee = CHANGEMENT (reattribution), `ambiguousReturns` /
   `ambiguousSlot` / `shotsNoRide` = echecs, `flagCarries.homeBy*` / `assignedBy*` = voies ; tests.
   Gate relance.
+
+## [2026-09-10] Escouade hors cadre — Phase B0 geometrie pure du bornage (Complete)
+- Worktree dedie `LevelUp-wt-escouade-hors-cadre`, branche `wt/escouade-hors-cadre`. TDD :
+  test ROUGE d'abord (`Failed to resolve import "./edgeClamp"`), puis `edgeClamp.ts`.
+- Decision technique : `edgeMarkFor(c, view, margeEcran, echelle)` vit dans
+  `apps/web/src/features/match-replay/model/` et non `apps/web/src/lib/replay/` comme l'ecrivait
+  le plan — `CanvasView`/`projectTo`/`scaleOf` ont deja quitte `lib/replay/` au lot K3
+  (2026-09-05) et vivent dans `replayView.ts`, dont l'en-tete interdit justement une seconde
+  regle de projection. Verifie par grep : aucun fichier de production de `lib/replay/`
+  n'importe `features/`. Ecart de chemin traite dans le perimetre de B0.1, consigne au plan
+  (§8) et dans son journal de phase.
+- Resultats observes : 7/7 tests edgeClamp verts, 931/931 tests du dossier `model/` verts
+  (dont le garde-rail `replayView.guard.test.ts`), `npx tsc -b --force` exit 0.
+- Prochaine etape : phase B1 (gabarit de la fleche hors cadre, `offscreenChevron.ts`).

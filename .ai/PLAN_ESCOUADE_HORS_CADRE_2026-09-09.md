@@ -270,15 +270,38 @@ concurrente sur `features/squad/i18n.ts`.
 
 ### Phase B0 — TDD : la geometrie, pure
 
-- `[ ]` B0.1 **TEST ROUGE** `apps/web/src/lib/replay/edgeClamp.test.ts` : `edgeMarkFor(c,
-  view, margeEcran, echelle)` rend `null` dedans ; au bord droit, `x = w - marge` et l'angle
-  pointe a droite ; dans un coin, les deux axes sont bornes et l'angle vise la diagonale ;
-  la distance rendue est en METRES (pixels / `scaleOf(view)`) ; l'inversion de Y est
-  respectee (monde +Y haut, toile +Y bas).
-- `[ ]` B0.2 `edgeClamp.ts` : le module pur. Il vit dans `lib/replay/` avec la projection —
-  aucune seconde regle de projection (cf. en-tete de `replayView.ts`).
+- `[x]` B0.1 **TEST ROUGE** `edgeClamp.test.ts` : `edgeMarkFor(c, view, margeEcran, echelle)`
+  rend `null` dedans ; au bord droit, `x = w - marge` et l'angle pointe a droite (0 rad,
+  verifie aussi a gauche, ± PI) ; dans un coin, les deux axes sont bornes et l'angle vise la
+  diagonale (-PI/4 sur un cas a 45°) ; la distance rendue est en METRES (pixels /
+  `scaleOf(view)`, verifie avec deux cadrages d'echelle differente projetant le MEME point
+  canvas) ; l'inversion de Y est respectee (un point au sud du monde sort par le bas du
+  cadre) ; `echelle` grandit la marge (`marge = margeEcran * echelle`). **Echec observe**
+  (avant tout code) : `Failed to resolve import "./edgeClamp" from
+  ".../edgeClamp.test.ts". Does the file exist?` (Vite). Un premier jet du sous-cas `echelle`
+  s'est aussi trompe (attente sur le bord BAS alors que l'inversion Y place (50, 85) pres du
+  HAUT du canevas) — corrige AVANT de regarder `edgeClamp.ts`, en recalculant la projection a
+  la main plutot qu'en devinant.
+  **ECART DE CHEMIN AU PLAN, CORRIGE SUR PIECE** : le plan situait le module dans
+  `apps/web/src/lib/replay/edgeClamp.ts`. Verifie sur pieces (regle 4) : `CanvasView` /
+  `projectTo` / `scaleOf` ne vivent PLUS dans `lib/replay/` depuis le lot K3 (2026-09-05) — ils
+  vivent dans `apps/web/src/features/match-replay/model/replayView.ts`, dont l'en-tete est
+  justement la citation du plan (« aucune seconde regle de projection »). Aucun fichier de
+  production de `lib/replay/` n'importe quoi que ce soit de `features/` (verifie par grep : les
+  3 seules occurrences sont des fixtures de *test*) — l'inverse casserait le sens de
+  dependance bas/haut du dépôt. Le module et son test vivent donc dans
+  `apps/web/src/features/match-replay/model/` (`edgeClamp.ts` / `edgeClamp.test.ts`), a cote de
+  `replayView.ts` qu'ils consomment, et sont couverts par le garde-rail
+  `replayView.guard.test.ts` (« un seul cadrage, une seule projection ») comme tout le reste de
+  la feature. Consigne aussi en Decouvertes (§8).
+- `[x]` B0.2 `edgeClamp.ts` : le module pur (voir ecart de chemin ci-dessus). `EdgeMark { at,
+  angle, distanceM }` ; `edgeMarkFor` projette via `projectTo(view, c)`, borne aux deux axes a
+  `margeEcran * echelle`, et ne recalcule jamais l'inversion Y (deja faite par `projectTo`).
 
-**Gate B0** : `make test-web` (edgeClamp vert) · `make check-types`.
+**Gate B0 passe** (2026-09-10) : `npx vitest run src/features/match-replay/model/edgeClamp.test.ts`
+7/7 verts · `npx vitest run src/features/match-replay/model` 64 fichiers / 931 tests verts
+(aucune regression sur les gardes, dont `replayView.guard.test.ts`) · `npx tsc -b --force`
+(purge `node_modules/.tmp` prealable) exit 0.
 
 ### Phase B1 — TDD : le gabarit de la fleche
 
@@ -379,3 +402,10 @@ phase non close. `git log --oneline -10` sur `wt/escouade-hors-cadre` pour l'eta
   points d'apparition `equipment`. Lot a part entiere.
 - Etat actif des deployables (mur 19, capteur 22) : voie `charges-remaining` en reserve
   depuis la decision utilisateur du 2026-08-16.
+- B0.1/B0.2 : le plan situait `edgeClamp.ts` dans `apps/web/src/lib/replay/` ; le module vit
+  en realite dans `apps/web/src/features/match-replay/model/` (a cote de `replayView.ts`, qui a
+  deplace `CanvasView`/`projectTo`/`scaleOf` hors de `lib/replay/` le 2026-09-05, lot K3).
+  Traite DANS le perimetre de B0.1 (ecart de chemin d'un document qui rote plus vite qu'il
+  n'est maintenu, pas un changement de perimetre) — consigne ici pour memoire seulement,
+  aucune action restante. A repercuter si un futur plan cite a nouveau `lib/replay/` pour le
+  cadrage.
