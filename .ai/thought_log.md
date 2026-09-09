@@ -1,3 +1,22 @@
+## [2026-09-09] Master plan, lot 0.5 — clotures administratives du registre (22 lignes) — Complete
+
+**Decision technique principale.** Les numeros de ligne du tri du matin (§5 du master plan)
+etaient decales de +19 par les unions du jour : chaque ligne a ete re-localisee par son contenu
+et sa cloture verifiee sur pieces avant d etre barree (test archlint rejoue vert, commit
+`2b45b0dad` present sur `feat/v75`, `objectives.go:59-66`, `tactical/i18n.ts:65`, recuisson
+du parc local au schema 50, backfill killsource du 09-09, CI verte de la vague 1). Les deux
+lignes de l audit anti-bombe-RAM ne sont PAS closes : reclassees hors sequence de release
+(Notion relue le 09-09), condition de reprise inchangee.
+
+**Resultats observes.** 22 lignes barrees avec preuve datee, 2 annotees, aucune ligne
+supprimee ; les recuissons closes portent la reserve « en prod, passe backfill-replay de la
+release (Notion) ».
+
+**Conclusion / prochaine etape.** Vague 0 entierement statuee. Reste en vague 2 : retour de
+l executant web Synthese/Escouade, artefact d investigation Theater, revue double, gate-push, CI.
+
+---
+
 ## [2026-09-09] Master plan, vague 2 — E4 fusionne, S9 (`deployed_*` reste au contrat), E5 lance en deux executants — Complete
 
 **Decision technique principale.** E4 (Sessions : pile des trois issues et deux reperes de taux
