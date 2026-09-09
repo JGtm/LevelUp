@@ -31,7 +31,13 @@ import { tokenCssVar } from '@/lib/accessibility'
 
 import type { UsageText } from './usageI18n'
 import { usagePlayerInk } from './usageGrids'
-import type { UsageBandCell, UsageGaugeModel, UsageGaugeRowModel, UsageTrackSegment } from './usageLogic'
+import type {
+  UsageBandCell,
+  UsageGaugeModel,
+  UsageGaugeOutcomeSegment,
+  UsageGaugeRowModel,
+  UsageTrackSegment,
+} from './usageLogic'
 
 /** Largeur de la colonne des libellés de grandeur (alignée sur ValueGrid). */
 const LABEL_WIDTH = 152
@@ -43,6 +49,14 @@ const COLUMN_GAP = 14
 const PARITY_INK = tokenCssVar('warning')
 /** L'encre de « nous » (le camp du joueur), surchargeable par l'accessibilité. */
 const ALLY_INK = tokenCssVar('team-ally')
+/**
+ * LES DEUX REPÈRES DE TAUX DANS LA TRANCHE (P7, §3.2, étape E4) : « reste de mon
+ * équipe » reprend le jeton `team-ally` (la référence EST mon camp) ; « eux » n'a
+ * PAS de jeton de donnée — un trait pointillé neutre, comme la hachure de la piste
+ * du lobby (règle du bloc usage : l'adversaire n'est jamais coloré).
+ */
+const TEAMMATES_REF_INK = tokenCssVar('team-ally')
+const OPPONENTS_REF_INK = 'var(--muted-foreground)'
 
 /** La hachure anonyme de « eux » : motif neutre du thème, jamais un jeton d'équipe. */
 const ENEMY_HATCH: CSSProperties = {
@@ -77,6 +91,55 @@ const PRIMARY_GAUGE_INDEX = 1
  * rail, où il était déjà. « 49,3 % (105 sur 213) » sur trois lignes de trois colonnes
  * faisait neuf fractions à lire pour neuf pourcentages qui suffisaient.
  */
+/**
+ * UsageOutcomeStack — LE REMPLISSAGE DE LA TRANCHE (P1, P6, étape E4) : la pile
+ * utilisé → lâché → gardé (ordre ratifié par le test E4.6), puis les DEUX REPÈRES
+ * DE TAUX qui excluent le joueur (P7, §3.2) — des marques SANS CHIFFRE (E4.2),
+ * positionnées EN POURCENTAGE DE LA TRANCHE elle-même (même dénominateur que les
+ * segments), jamais du rail entier : le conteneur appelant est déjà large de
+ * `valuePct`, donc `left: X%` ici tombe au bon endroit sans calcul composé.
+ *
+ * Décoratif (`aria-hidden`) : le texte qui compte vit dans le `tooltip` combiné du
+ * rail entier (même contrat que le trait de parité, qui n'a jamais eu sa propre
+ * aria-label).
+ */
+function UsageOutcomeStack({
+  segments,
+  teammatesRatePct,
+  opponentsRatePct,
+}: {
+  segments: UsageGaugeOutcomeSegment[]
+  teammatesRatePct: number | null
+  opponentsRatePct: number | null
+}) {
+  return (
+    <div className="relative flex h-full w-full" aria-hidden="true">
+      {segments.map((seg) => (
+        <div
+          key={seg.key}
+          data-outcome-key={seg.key}
+          className="h-full"
+          style={{ width: `${seg.fraction * 100}%`, backgroundColor: tokenCssVar(seg.token) }}
+        />
+      ))}
+      {teammatesRatePct != null && (
+        <div
+          data-outcome-ref="teammates"
+          className="absolute top-0 h-full w-[2px]"
+          style={{ left: `${clampPct(teammatesRatePct)}%`, backgroundColor: TEAMMATES_REF_INK }}
+        />
+      )}
+      {opponentsRatePct != null && (
+        <div
+          data-outcome-ref="opponents"
+          className="absolute top-0 h-full border-l border-dashed"
+          style={{ left: `${clampPct(opponentsRatePct)}%`, borderColor: OPPONENTS_REF_INK }}
+        />
+      )}
+    </div>
+  )
+}
+
 function UsageGauge({ gauge }: { gauge: UsageGaugeModel }) {
   return (
     <>
@@ -88,10 +151,17 @@ function UsageGauge({ gauge }: { gauge: UsageGaugeModel }) {
           aria-label={gauge.tooltip}
         >
           {gauge.valuePct != null && (
-            <div
-              className="absolute left-0 top-0 h-full"
-              style={{ width: `${clampPct(gauge.valuePct)}%`, backgroundColor: ALLY_INK }}
-            />
+            <div className="absolute left-0 top-0 h-full" style={{ width: `${clampPct(gauge.valuePct)}%` }}>
+              {gauge.segments != null ? (
+                <UsageOutcomeStack
+                  segments={gauge.segments}
+                  teammatesRatePct={gauge.teammatesRatePct}
+                  opponentsRatePct={gauge.opponentsRatePct}
+                />
+              ) : (
+                <div data-outcome-fill="" className="h-full w-full" style={{ backgroundColor: ALLY_INK }} />
+              )}
+            </div>
           )}
           {gauge.parityPct != null && (
             <div

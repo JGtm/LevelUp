@@ -94,3 +94,51 @@ describe('SessionUsageSection — version compacte du drawer', () => {
     expect(screen.getByLabelText(USAGE_TEXT.fr.viewShares)).toBeInTheDocument()
   })
 })
+
+/**
+ * E4.5 / E4.3 — bout en bout : la ligne « Objets lâchés » disparaît de la liste des
+ * grandeurs (une mort est devenue un segment) et le contrat étendu en E3
+ * (`equipment_<famille>.outcomes`) atteint bien la pile de la jauge à l'écran.
+ */
+describe('SessionUsageSection — E4.5/E4.3 : le bilan équipement remplace le geste', () => {
+  const WITH_BILAN: SessionUsageBlock = {
+    ...BASE,
+    team_parity_pct: 25,
+    metrics: [
+      {
+        key: 'dropped_objects',
+        player_total: 4,
+        lobby_total: 30,
+        matches_above_lobby_parity: 0,
+      },
+      {
+        key: 'deployed_wall',
+        player_total: 12,
+        team_total: 20,
+        lobby_total: 43,
+        matches_above_lobby_parity: 1,
+      },
+      {
+        key: 'equipment_wall',
+        player_total: 9,
+        team_total: 20,
+        lobby_total: 43,
+        matches_above_lobby_parity: 1,
+        player_share_of_team_pct: 45,
+        outcomes: { used: 6, dropped: 2, kept: 1, taken: 10 },
+      },
+    ],
+  }
+
+  it("« Objets lâchés » ne s'affiche plus (E4.5)", () => {
+    render(<SessionUsageSection usage={WITH_BILAN} meLabel="moi" />)
+    expect(screen.queryByText(USAGE_TEXT.fr.metricDropped)).not.toBeInTheDocument()
+  })
+
+  it("deployed_wall s'efface derrière son équivalent equipment_wall, dont la pile se rend", () => {
+    const { container } = render(<SessionUsageSection usage={WITH_BILAN} meLabel="moi" />)
+    // La pile à trois segments (E4.3) vient de equipment_wall, seule survivante :
+    // deployed_wall n'ouvre pas de deuxième ligne pour la même famille.
+    expect(container.querySelectorAll('[data-outcome-key]')).toHaveLength(3)
+  })
+})
