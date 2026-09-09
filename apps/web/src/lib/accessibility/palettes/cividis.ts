@@ -65,6 +65,9 @@ export const cividisPalette: Palette = {
   'divergent-neutral': SAFE_GREY,
   'divergent-neg':     SAFE_VERMILLION,
 
+  // ── Objectif sans camp ─────────────────────────────────────────────────────
+  'zone-neutral':      SAFE_GREY,
+
   // ── Statuts UI ─────────────────────────────────────────────────────────────
   'success':     SAFE_BLUE,
   'warning':     CIVIDIS_T75, // ocre Cividis (entre jaune et orange)

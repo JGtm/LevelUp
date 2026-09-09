@@ -55,6 +55,8 @@ export interface StaticLayersInput {
   objectives: {
     elements: readonly ObjectiveElementReady[]
     colorOfTeam: (team: number) => string
+    /** Liseré des objectifs SANS CAMP (2026-09-08) : l'encre du fond, cf. `ObjectivesStyle`. */
+    neutralOutline: string
   }
 }
 
@@ -146,7 +148,7 @@ export function useReplayStaticLayers({
     redraw()
   }, [heatGrid, ramp, view, redraw, frozen])
 
-  const { elements, colorOfTeam } = objectives
+  const { elements, colorOfTeam, neutralOutline } = objectives
   useEffect(() => {
     if (frozen) return
     if (elements.length === 0 || view.width === 0) {
@@ -154,10 +156,10 @@ export function useReplayStaticLayers({
       return
     }
     objectivesRef.current = cookLayer(view, (ctx) =>
-      drawObjectivesLayer(ctx, [...elements], view, { colorOfTeam }),
+      drawObjectivesLayer(ctx, [...elements], view, { colorOfTeam, neutralOutline }),
     )
     redraw()
-  }, [elements, colorOfTeam, view, redraw, frozen])
+  }, [elements, colorOfTeam, neutralOutline, view, redraw, frozen])
 
   return { zonesRef, heatRef, objectivesRef, cookedRef }
 }

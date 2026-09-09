@@ -210,6 +210,8 @@
   --ac-divergent-pos:     #22C55E;
   --ac-divergent-neutral: #60A5FA;
   --ac-divergent-neg:     #EF4444;
+  /* Objectif sans camp — gris, jamais bleu : sur une carte, « allié » est déjà bleu. */
+  --ac-zone-neutral:      #9CA3AF;
   /* Statuts UI */
   --ac-success:     #10B981;
   --ac-warning:     #F59E0B;

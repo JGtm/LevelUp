@@ -32,8 +32,11 @@ import { TRACKS_COLUMN_LEFT } from './replayTimelineGrid'
  * qui rend la coïncidence lisible : deux objets alignés sur des ancres différentes se seraient
  * frôlés de un à deux pixels à chaque frag, sans que rien ne dise lequel des deux mentait.
  *
- * LUI, IL N'A PAS BESOIN D'ÊTRE TRANSLATÉ pour cela : il fait un pixel de large, sa gauche et son
- * centre sont le même endroit. La translation vit là où une largeur la rend nécessaire.
+ * IL EST TRANSLATÉ DE SA DEMI-LARGEUR DEPUIS LE 2026-09-08, et c'est l'élargissement qui l'impose.
+ * À un pixel de large, sa gauche et son centre étaient le même endroit et la translation ne servait
+ * à rien ; à trois, l'omettre le décalerait d'un pixel et demi vers la droite — exactement le
+ * défaut que la décision du 2026-09-06 avait corrigé sur les MARQUES. `-translate-x-1/2` se mesure
+ * sur l'élément : il suivra une largeur future sans qu'on y revienne.
  *
  * CE QU'IL NE TRAVERSE PAS. La colonne des libellés : il commence au bord gauche de la colonne
  * des pistes (`TRACKS_COLUMN_LEFT`) — un nom barré d'un trait ne se lit plus. Et la pastille du
@@ -45,6 +48,12 @@ import { TRACKS_COLUMN_LEFT } from './replayTimelineGrid'
  * IL NE CAPTE PAS LE POINTEUR ET N'A PAS DE NOM ACCESSIBLE : la frise reste saisissable au pixel
  * près sous lui (règle de toutes les pistes), et il ne dit rien que le champ n'expose déjà —
  * sa position EST la valeur du curseur.
+ *
+ * SA LARGEUR EST PASSÉE DE 1 À 3 PIXELS ET SON ENCRE DE 40 À 55 % (retour utilisateur du
+ * 2026-09-08 : « élargir la barre verticale qui survole les frises lors de la lecture »). Un trait
+ * d'un pixel à 40 % d'opacité, sur un fond de carte, se perdait dans la trame des pistes — il ne
+ * remplissait plus l'office pour lequel il avait été ajouté deux jours plus tôt : faire coïncider
+ * une marque de kill et l'instant lu.
  *
  * SON ENCRE EST CELLE DU CURSEUR (`--foreground` : la pastille et le remplissage), atténuée.
  * C'est le même objet qui se prolonge vers le haut, pas un repère de plus — à pleine encre il
@@ -60,7 +69,7 @@ export function ReplayPlayhead() {
       style={{ left: TRACKS_COLUMN_LEFT }}
     >
       <span
-        className="absolute inset-y-0 w-px bg-foreground/40"
+        className="absolute inset-y-0 w-[3px] -translate-x-1/2 rounded-full bg-foreground/55"
         style={{ left: trackLeftVar(CURSOR_RATIO_VAR) }}
       />
     </div>
