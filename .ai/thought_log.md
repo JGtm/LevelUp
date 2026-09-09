@@ -1,3 +1,38 @@
+## [2026-09-10] Fonds de carte WebP, Étape 0 (banc d'essai) — Complete
+
+**Decision technique principale.** Construit `apps/go-api/cmd/mapfond-webp` (modes `-verifier`
+et `-convertir`) sur la meme logique d'aller-retour (roundtrip.go) : decode PNG, encode WebP
+sans perte (`github.com/HugoSmits86/nativewebp`, D5, `CompressionLevel: BestCompression` —
+reste sans perte, ne joue que sur l'effort), redecode (`golang.org/x/image/webp`, D6 —
+necessaire des cette etape, pas seulement l'etape 3, car le banc d'essai doit lui-meme
+redecoder pour prouver l'identite), compare en `image.RGBA` canonicalise (`versRGBA`) octet par
+octet (Pix + Rect). TDD : le test synthetique a d'abord echoue (rouge) faute d'outil, PUIS a
+revele un vrai piege de test — une image construite en `*image.RGBA` avec des octets choisis
+librement peut violer le modele premultiplie (R/G/B <= A), ce qu'un aller-retour
+premultiplie/deprememultiplie ne restitue pas a l'identique ; corrige en `*image.NRGBA` (le
+type concret reellement rendu par `png.Decode` sur un fond RGBA+alpha), pas un defaut de
+l'encodeur. `-convertir` est implemente et teste de bout en bout sur `t.TempDir()`
+(ecrit le webp, met a jour `image` dans le sidecar — D3 —, supprime le PNG, refuse si
+l'aller-retour n'est pas identique) mais N'A PAS ete execute sur `data/` cette session.
+
+**Resultats observes.** `go build ./...` / `go vet` / `go test ./cmd/mapfond-webp/` /
+`golangci-lint run --new-from-merge-base=feat/v75 ./cmd/mapfond-webp/` : tous verts (0 issues).
+Mesure reelle `-verifier -echantillon=5` sur les 5 plus gros fonds (2 015 726 a 1 411 701
+octets) : aller-retour identique au bit pres sur les 5, gain cumule **38,4 %**
+(7 970 659 -> 4 908 462 octets), largement au-dessus du seuil de 20 % de D10.
+`git status --short data/` vide avant et apres, 218 fichiers (109 PNG + 109 JSON) inchanges.
+Chiffres detailles et tableau complet consignes dans
+`.ai/PLAN_FONDS_CARTE_WEBP_ETAG_2026-09-09.md` (section Etape 0 + Decouvertes).
+
+**Conclusion / prochaine etape.** Gate de l'Etape 0 passe. D10 statuee `[!]` decision
+utilisateur : les chiffres ne declenchent pas le critere d'abandon, mais la poursuite vers les
+etapes 2 a 5 (lecture format-agnostique, decodeurs des outils hors ligne, conversion reelle des
+109 fonds, recette navigateur) est une decision produit qui revient a l'utilisateur, pas a
+l'agent. Rien pousse, rien fusionne — worktree `LevelUp-wt-fonds-webp`,
+branche `feat/fonds-carte-webp`.
+
+---
+
 ## [2026-09-09] Master plan, vague 2 close — revue double 0 P0 / 0 P1, gate-push vert, S10 (ordre des issues) — Complete
 
 **Decision technique principale.** Deux relecteurs en contexte frais (Go anti-ART/multi-titre/
