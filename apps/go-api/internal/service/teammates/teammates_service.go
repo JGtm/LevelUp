@@ -94,6 +94,11 @@ type TeammatesService struct {
 	// « isolement x couverture » (section Echange) omet les sessions concernees plutot
 	// que d'inventer un rayon.
 	radarRange map[string]int
+	// sessionUsageRepo (optionnel) : le résumé d'usage (vues _latest) du bloc
+	// « servi ou gâché » de l'équipement (étape E6.1bis). Câblé gated par
+	// film.usage_summary ; nil → bloc servi avec Available=false et raison
+	// machine. Cf. teammates_service_usage.go.
+	sessionUsageRepo port.SessionUsageRepository
 }
 
 // NewTeammatesService crée un TeammatesService.
@@ -467,6 +472,11 @@ func (s *TeammatesService) GetPage(
 		compositionSessions = wrapSessionLabelsAsComposition(sessionLabels.Squad)
 	}
 
+	// Bloc « servi ou gâché » de l'équipement (étape E6.1bis) : best-effort, gaté
+	// par film.usage_summary, sur le scope FILTRÉ de la page (filteredMatches) —
+	// jamais l'intersection escouade, cf. teammates_service_usage.go.
+	equipmentUsage := s.loadEquipmentUsage(ctx, playerXUID, filteredMatches, req.SelectedGamertags)
+
 	return domain.TeammatesPageResponse{
 		Options:             options,
 		Teammates:           teammates,
@@ -498,6 +508,7 @@ func (s *TeammatesService) GetPage(
 		CompositionSessions:      compositionSessions,
 		LatestCompositionSession: latestCompositionSession,
 		DataIssues:               issues.list(),
+		EquipmentUsage:           equipmentUsage,
 	}, nil
 }
 

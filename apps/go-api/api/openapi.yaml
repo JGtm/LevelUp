@@ -24975,8 +24975,6 @@ components:
             - "null"
         charts:
           $ref: '#/components/schemas/SquadCharts'
-        equipment_usage:
-          $ref: '#/components/schemas/EquipmentUsageBlock'
         header:
           $ref: '#/components/schemas/SquadHeader'
         main_player:
@@ -26741,6 +26739,8 @@ components:
             - "null"
         echange:
           $ref: '#/components/schemas/SquadEchange'
+        equipment_usage:
+          $ref: '#/components/schemas/EquipmentUsageBlock'
         first_blood:
           items:
             $ref: '#/components/schemas/FirstBloodPlayerSeries'
