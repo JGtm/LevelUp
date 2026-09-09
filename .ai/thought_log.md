@@ -1,3 +1,41 @@
+## [2026-09-09] Equipement gachis, E6.1bis (worktree LevelUp-wt-equipement-e5-go, branche feat/equipement-e5-go) — Complete
+
+**Decision technique principale.** Le bloc `equipment_usage` publie a tort par E6.1 sur
+`domain.SquadPageV2Response` (GET /pages/squad/v2, jamais fetche par la page Escouade
+reelle) est deplace vers `domain.TeammatesPageResponse` (POST /pages/teammates, le SEUL
+endpoint que `SquadLayout` appelle), via `TeammatesService.WithEquipmentUsage` (fichier
+neuf `internal/service/teammates/teammates_service_usage.go`). Pour eviter un cycle
+d'import (`package service` importe deja `internal/service/teammates` depuis
+`synthesis_service_usage.go`), `buildEquipmentUsageBlock`/`equipmentUsageQuery` sont
+deplaces de `service` vers la feuille `internal/service/squadagg` (deja importee des deux
+cotes, meme patron que `BuildSquadHeader`), avec alias de compatibilite dans
+`squadagg_reexport.go` — zero site d'appel existant modifie. Scope retenu = matchs
+FILTRES de la page Teammates (`filteredMatches`, meme population qu'Options/MatchHistory,
+PAS l'intersection escouade) ; amis = coequipiers SELECTIONNES (`req.SelectedGamertags`,
+identique a E6.1) ; sujet = le joueur de la route. Retire integralement de
+`SquadPageV2Response`/`SquadServiceV2` (fichiers `squad_service_v2_usage.go`/`_test.go`
+supprimes, wiring `SquadV2Ctx` retire) — zero code mort.
+
+**Resultats observes.** TDD rouge->vert prouve (retrait temporaire de l'appel dans
+`GetPage`, les deux tests neufs echouent avec bloc `<nil>`, remis en place -> vert).
+Gates : `go build/vet/test ./...` vert (aucun `--- FAIL:`) ; `go test -tags=integration
+-p 1 -count=1 ./internal/service/... ./internal/api/...` vert (y compris
+`internal/api/wire`, le test consigne rouge preexistant par E3 passe sur ce worktree) ;
+`golangci-lint --new-from-merge-base=feat/v75` 0 issue ; `make openapi-gen` puis
+`make generate-types` : diff exact attendu (2 lignes deplacees entre les deux schemas) ;
+web `tsc -b --force` silencieux, `vitest run src/features/squad src/features/_shared` —
+75 fichiers / 594 tests verts ; grep `EquipmentUsage` sur les fichiers squad_v2 Go — 0
+resultat. Alignement web limite a `apps/web/src/lib/api/types.ts` (commentaire mis a
+jour, declaration du champ inchangee) — aucun composant web touche, la section
+s'active sans eux.
+
+**Conclusion / prochaine etape.** Contrat E6.1bis clos (3/3 sous-items `[x]`). Decouverte
+non traitee (hors perimetre) : le commentaire de `SquadSynergiesPage.tsx`/
+`SquadSynergiesPage.test.tsx` decrivant l'ancien ecart de contrat est devenu stale — a
+corriger dans un lot web. Pas de push, pas de fusion (superviseur a mener §7 clotures de
+chantier separement).
+
+---
 ## [2026-09-09] Master plan, lot 0.5 — clotures administratives du registre (22 lignes) — Complete
 
 **Decision technique principale.** Les numeros de ligne du tri du matin (§5 du master plan)
