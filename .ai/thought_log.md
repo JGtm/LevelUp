@@ -1,3 +1,60 @@
+## [2026-09-09] Vague A, etapes A8 et A9 — A8 et A9 livrees — Complete
+
+**A8 — la rangee d'inventaire se laisse enfin retrecir. LIVREE.**
+
+Le retour utilisateur disait « "Inventaire indisponible" fait aussi agrandir les largeurs de
+fiches ». La mesure, faite dans le navigateur sur la feuille de style REELLE du depot (la page de
+connexion la charge deja ; chaine de classes reproduite a l'identique depuis les sources), dit
+deux choses distinctes :
+
+1. **La largeur de fiche ne bouge PAS** apres A1. Avec `repeat(2, 1fr)` les colonnes de camps
+   mesurent `235.141px / 234.859px` selon que le badge est present ou non — la fuite de
+   min-content existait bien. Avec `minmax(0, 1fr)` (le correctif d'A1) : `235px / 235px` dans
+   les deux cas. **A1 couvrait deja la croissance de largeur.**
+2. **Mais un second defaut, independant, subsistait** : le badge ne se tronquait JAMAIS. Il porte
+   pourtant `min-w-0 truncate`, et son commentaire affirmait qu'il « occupe la place qui reste et
+   ne decale rien ». Faux : son CONTENEUR (`ReplayInventoryRow.tsx:137`) est un element flex a
+   `min-width: auto` sans `min-w-0`. Il prenait sa largeur hypothetique — texte entier compris —
+   et debordait la rangee parente, dont le `overflow-hidden` coupait la difference en silence.
+   Mesure gabarit 31 : rangee de 102 px pour 221 px de contenu, **119 px coupes net**, sans points
+   de suspension, et les cellules placees apres le badge purement disparues.
+
+Correctif : `min-w-0` sur ce seul conteneur — celui que la mesure designe, pas les deux suspects
+du plan « au cas ou ». Verification par la meme mesure : debordement 119 -> 0, `badge_tronque`
+passe de faux a vrai. Garde-rail ajoute dans `ReplayTeams.test.tsx` (jsdom ne met rien en page :
+le test fixe la CAUSE, meme doctrine que le garde-rail voisin de la grille des camps). Fixations
+DOM regenerees — diff verifie ligne a ligne : **18 ajouts de `min-w-0`, aucune autre difference**.
+Gate `npx vitest run src/features/match-replay/ui/ReplayTeams` : 79 passes, 3 skippes, 0 echec.
+
+**A9 — le Ghost plus petit que le pion. LIVREE, mais pas le correctif prevu.**
+
+Le plan supposait que le Ghost tombait sur `VEHICLE_FLOOR_PX` faute d'echelle mesuree. **Les deux
+moities de cette premisse sont refutees par la mesure :** le manifeste porte le Ghost en
+`statut: "valide"` a 9,99 mm/px (2026-09-02, les 18 familles sont mesurees — le commentaire du
+code disant le contraire etait perime, retire ici), et **aucune famille n'atteint le plancher**
+(mongoose 11,90 x 7,25 · ghost 15,71 x 13,02 · scorpion 36,07 x 24,17, pour un plancher a
+6,80 px). Le correctif prevu n'aurait rien change.
+
+**La vraie cause est l'ANCRE** : `PION_REFERENCE_PX = CORE_RADIUS * 2` = 6,80 px n'est pas la
+taille visible d'un pion (8,80 px avec son lisere, davantage avec ses anneaux d'etage). La cible
+« Mongoose = 1,75 pion de long » se calculait contre une reference 1,29 fois trop petite : le
+Mongoose sortait a 7,25 px de LARGE, plus etroit que le pion dont il est cense faire 1,75 fois la
+longueur.
+
+**Arbitrage utilisateur** : re-ancrer toutes les familles sur le pion visible (x1,29). L'option
+« anneau » (x1,91) ecartee — elle portait le Scorpion a 69 px. Apres : mongoose 15,40 x 9,38 ·
+ghost 20,33 x 16,84 · scorpion 46,68 x 31,28, toutes au-dessus du pion.
+
+`replayMarkers.ts` exporte `PION_VISIBLE_DIAMETER_PX` — la valeur que `markerEdge` calcule DEJA,
+pas une seconde verite. `VEHICLE_PX_PER_MM` et `VEHICLE_SOFT_CEIL_PX` intouches : derives de
+l'ancre, donc leurs valeurs suivent, mais les proportions RELATIVES entre familles ne bougent pas.
+Deux garde-rails : l'ancre est le pion visible et jamais son noyau ; la plus petite famille reste
+au moins aussi large qu'un pion.
+
+**Gates** : vitest vehicules 94 passes · `make check-types` vert · `make test-web` **658 fichiers,
+7 035 tests, 0 echec** · `lint:colors` 0 violation.
+
+---
 ## [2026-09-08] Vague A — le lot court des 7 correctifs — Complete (non commite, attente utilisateur)
 
 Worktree dedie `LevelUp-wt-lot-court`, branche `wt/lot-court` depuis `feat/v75` (7254b3853).
