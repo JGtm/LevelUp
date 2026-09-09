@@ -1,0 +1,226 @@
+package replay
+
+// usage_summary_outcomes_test.go — LES TROIS ISSUES D'UN OBJET PRIS, au grain du
+// résumé (étape E3 du PLAN_EQUIPEMENT_GACHIS_2026-09-09). La règle testée ici est
+// celle du web (equipmentUsageLogic.ts, livrée en E2), reproduite à l'identique :
+// `kept = max(0, taken - utilisé - lâché)`, « utilisé » étant les ÉPISODES pour les
+// deux bonus et les POSES DÉPLOYÉES pour tout le reste (décision P2).
+
+import "testing"
+
+// docIssuesTest — un document minimal qui porte les trois issues sur trois
+// familles à la fois :
+//
+//	111 (slot 1) : 2 murs pris, 1 posé, 0 lâché      -> gardé 1
+//	111          : 2 camouflages pris, 1 épisode, 1 lâché -> gardé 0
+//	222 (slot 2) : 3 capteurs pris, 0 posé, 1 lâché  -> gardé 2
+//	222          : 1 prise de rang NON NOMMÉ         -> aucune famille, réserve
+func docIssuesTest() *ReplayDocument {
+	return &ReplayDocument{
+		SchemaVersion:   SchemaVersion,
+		FrameIntervalMS: 100,
+		FrameCount:      1000,
+		DurationMS:      100000,
+		Roster: []RosterEntry{
+			{XUID: "111", FilmIndex: 0},
+			{XUID: "222", FilmIndex: 1},
+		},
+		Tracks: []Track{
+			{Slot: 1, XUID: "111", StartFrame: 0, EndFrame: 500},
+			{Slot: 2, XUID: "222", StartFrame: 0, EndFrame: 500},
+		},
+		// La palette du film nomme quatre rangs ; le rang 77 n'y est pas.
+		AbilityLabels: map[string]Label{
+			"2": {En: "Drop Wall", Fr: "mur de protection"},
+			"1": {En: "Threat Sensor", Fr: "detecteur de menaces"},
+			"8": {En: "Active Camouflage", Fr: "camouflage actif"},
+			"4": {En: "Grappleshot", Fr: "grappin"},
+		},
+		EquipmentEpisodes: []EquipmentEpisode{
+			{Slot: 1, T0: 100, T1: 150, Fam: EquipFamilyCamo},
+		},
+		EquipmentPlacements: []EquipmentPlacement{
+			// Mur DÉPLOYÉ par 111 : seul un PANNEAU compte (usageWallPanelIDs).
+			{Owner: 1, T0: 120, Family: usageFamilyWall, Origin: OriginDeployed, ID: "0x528fce46"},
+			// Camouflage LÂCHÉ par 111 (vocabulaire de POSE : powerup_camo).
+			{Owner: 1, T0: 300, Family: usageFamilyPowerupCamo, Origin: OriginDropped},
+			// Capteur LÂCHÉ par 222.
+			{Owner: 2, T0: 320, Family: usageFamilySensor, Origin: OriginDropped},
+		},
+		EquipmentChanges: []EquipmentChange{
+			{Slot: 1, T: 50, Kind: EquipmentTaken, R: 2},  // mur
+			{Slot: 1, T: 60, Kind: EquipmentTaken, R: 2},  // mur
+			{Slot: 1, T: 70, Kind: EquipmentTaken, R: 8},  // camouflage
+			{Slot: 1, T: 80, Kind: EquipmentTaken, R: 8},  // camouflage
+			{Slot: 2, T: 90, Kind: EquipmentTaken, R: 1},  // capteur
+			{Slot: 2, T: 91, Kind: EquipmentTaken, R: 1},  // capteur
+			{Slot: 2, T: 92, Kind: EquipmentTaken, R: 1},  // capteur
+			{Slot: 2, T: 93, Kind: EquipmentTaken, R: 77}, // rang SANS libellé : réserve
+			// Une consommation : son rang est sur `From`, jamais sur `R`.
+			{Slot: 1, T: 200, Kind: EquipmentSpent, R: NoAbilityRank, From: 2},
+			// Consommation dont la chaîne est trouée (`gap`) : `from` n'est pas
+			// une identité fiable — elle ne doit ventiler AUCUNE famille.
+			{Slot: 2, T: 210, Kind: EquipmentSpent, R: NoAbilityRank, From: 1, Gap: 2},
+			// Le grappin est NOMMÉ mais HORS BILAN (P4, comme le répulseur et le
+			// propulseur) : ni ligne, ni réserve.
+			{Slot: 1, T: 220, Kind: EquipmentTaken, R: 4},
+		},
+	}
+}
+
+func joueur(t *testing.T, s UsageSummary, xuid string) *UsagePlayerSummary {
+	t.Helper()
+	for i := range s.Players {
+		if s.Players[i].XUID == xuid {
+			return &s.Players[i]
+		}
+	}
+	t.Fatalf("le joueur %s n'a pas de ligne", xuid)
+	return nil
+}
+
+// TestUsageSummary_IssuesParFamille — la règle E2 reproduite : les prises ventilées
+// par famille, et le gardé DÉRIVÉ de taken - utilisé - lâché.
+func TestUsageSummary_IssuesParFamille(t *testing.T) {
+	s := BuildUsageSummary(docIssuesTest())
+
+	p111 := joueur(t, s, "111")
+	if got := p111.TakenByFamily[usageFamilyWall]; got != 2 {
+		t.Errorf("TakenByFamily[wall](111) = %d, attendu 2", got)
+	}
+	if got := p111.TakenByFamily[usageFamilyPowerupCamo]; got != 2 {
+		t.Errorf("TakenByFamily[powerup_camo](111) = %d, attendu 2", got)
+	}
+	// Le grappin est hors bilan : aucune famille ne le nomme.
+	if got, ok := p111.TakenByFamily[usageFamilyGrapple]; ok {
+		t.Errorf("TakenByFamily[grapple](111) = %d, attendu ABSENT (hors bilan, P4)", got)
+	}
+	// Mur : 2 pris, 1 posé (le panneau), 0 lâché -> 1 gardé.
+	if got := p111.KeptByFamily[usageFamilyWall]; got != 1 {
+		t.Errorf("KeptByFamily[wall](111) = %d, attendu 1 (2 pris - 1 posé - 0 lâché)", got)
+	}
+	// Camouflage : 2 pris, 1 épisode (le côté « utilisé » des bonus, P2), 1 lâché -> 0 gardé.
+	if got, ok := p111.KeptByFamily[usageFamilyPowerupCamo]; ok && got != 0 {
+		t.Errorf("KeptByFamily[powerup_camo](111) = %d, attendu 0 (2 - 1 épisode - 1 lâché)", got)
+	}
+	// La consommation ventile la famille de `From`.
+	if got := p111.SpentByFamily[usageFamilyWall]; got != 1 {
+		t.Errorf("SpentByFamily[wall](111) = %d, attendu 1", got)
+	}
+
+	p222 := joueur(t, s, "222")
+	if got := p222.TakenByFamily[usageFamilySensor]; got != 3 {
+		t.Errorf("TakenByFamily[sensor](222) = %d, attendu 3", got)
+	}
+	if got := p222.KeptByFamily[usageFamilySensor]; got != 2 {
+		t.Errorf("KeptByFamily[sensor](222) = %d, attendu 2 (3 pris - 0 posé - 1 lâché)", got)
+	}
+	// La consommation trouée (`gap`) ne ventile rien.
+	if got, ok := p222.SpentByFamily[usageFamilySensor]; ok {
+		t.Errorf("SpentByFamily[sensor](222) = %d, attendu ABSENT (chaîne trouée : `from` non fiable)", got)
+	}
+}
+
+// TestUsageSummary_LachersVentiles — DroppedByFamily est désormais une grandeur
+// PERSISTÉE, et sa somme reste égale à DroppedObjects (invariant historique).
+func TestUsageSummary_LachersVentiles(t *testing.T) {
+	s := BuildUsageSummary(docIssuesTest())
+	total := 0
+	for i := range s.Players {
+		p := &s.Players[i]
+		somme := 0
+		for _, n := range p.DroppedByFamily {
+			somme += n
+		}
+		if somme != p.DroppedObjects {
+			t.Errorf("%s : somme(DroppedByFamily) = %d != DroppedObjects = %d", p.XUID, somme, p.DroppedObjects)
+		}
+		total += somme
+	}
+	if total != 2 {
+		t.Errorf("lâchers totaux = %d, attendu 2 (un camouflage, un capteur)", total)
+	}
+}
+
+// TestUsageSummary_CouvertureDesPrises — les prises que le canal ne sait pas
+// rattacher sont COMPTÉES, jamais rangées dans une famille inventée.
+func TestUsageSummary_CouvertureDesPrises(t *testing.T) {
+	s := BuildUsageSummary(docIssuesTest())
+	if s.Match.EquipmentChanges.UnnamedRankTaken != 1 {
+		t.Errorf("UnnamedRankTaken = %d, attendu 1 (le rang 77)", s.Match.EquipmentChanges.UnnamedRankTaken)
+	}
+	// Le grappin est nommé : il n'entre PAS dans la réserve des rangs muets.
+	if s.Match.EquipmentChanges.UnnamedRankTaken > 1 {
+		t.Errorf("une famille NOMMÉE mais hors bilan a fui dans la réserve des rangs muets")
+	}
+	if s.Match.EquipmentChanges.UnattributedSlot != 0 {
+		t.Errorf("UnattributedSlot = %d, attendu 0 (les deux slots sont publiés)",
+			s.Match.EquipmentChanges.UnattributedSlot)
+	}
+}
+
+// TestUsageSummary_SlotNonRattache — un changement dont le slot n'ouvre aucune
+// ligne (vie anonyme, bot) est compté à la couverture, jamais crédité à un voisin.
+func TestUsageSummary_SlotNonRattache(t *testing.T) {
+	doc := docIssuesTest()
+	doc.EquipmentChanges = append(doc.EquipmentChanges,
+		EquipmentChange{Slot: 42, T: 400, Kind: EquipmentTaken, R: 2})
+	s := BuildUsageSummary(doc)
+	if s.Match.EquipmentChanges.UnattributedSlot != 1 {
+		t.Errorf("UnattributedSlot = %d, attendu 1 (le slot 42 n'a aucune vie publiée)",
+			s.Match.EquipmentChanges.UnattributedSlot)
+	}
+	// Et surtout : personne n'a hérité de cette prise.
+	total := 0
+	for i := range s.Players {
+		total += s.Players[i].TakenByFamily[usageFamilyWall]
+	}
+	if total != 2 {
+		t.Errorf("prises de mur attribuées = %d, attendu 2 — le slot orphelin a été crédité à quelqu'un", total)
+	}
+}
+
+// TestUsageSummary_GardeJamaisNegatif — l'écart résiduel mesuré par E0.4 (2,45 %
+// toutes familles) est absorbé par le clamp à zéro, jamais affiché en négatif.
+func TestUsageSummary_GardeJamaisNegatif(t *testing.T) {
+	doc := docIssuesTest()
+	// Quatre poses de mur pour deux prises : une pose est une CHARGE, pas un objet
+	// (piège d'unité n°1 de la référence des canaux).
+	for i := 0; i < 3; i++ {
+		doc.EquipmentPlacements = append(doc.EquipmentPlacements, EquipmentPlacement{
+			Owner: 1, T0: 130 + i, Family: usageFamilyWall,
+			Origin: OriginDeployed, ID: "0x528fce46",
+		})
+	}
+	s := BuildUsageSummary(doc)
+	p111 := joueur(t, s, "111")
+	if got, ok := p111.KeptByFamily[usageFamilyWall]; ok && got != 0 {
+		t.Errorf("KeptByFamily[wall] = %d, attendu 0 (clampé) — un gardé négatif a été publié", got)
+	}
+}
+
+// TestUsageSummary_FamillesDuBilan — la liste exportée est le vocabulaire de POSE
+// (celui de DeployedByFamily / DroppedByFamily), pas celui des épisodes : c'est ce
+// qui permet à l'agrégat de session de joindre les quatre ventilations sur UNE clé.
+func TestUsageSummary_FamillesDuBilan(t *testing.T) {
+	fams := EquipmentOutcomeFamilies()
+	attendues := map[string]bool{
+		usageFamilyWall: true, usageFamilySensor: true, "translocator_beacon": true,
+		"shroud_screen": true, "threat_seeker": true, "repair_field": true,
+		usageFamilyPowerupCamo: true, usageFamilyPowerupOvershield: true,
+	}
+	if len(fams) != len(attendues) {
+		t.Fatalf("EquipmentOutcomeFamilies() = %v, attendu %d familles", fams, len(attendues))
+	}
+	for _, f := range fams {
+		if !attendues[f] {
+			t.Errorf("famille inattendue au bilan : %q", f)
+		}
+	}
+	// Le répulseur, le grappin et le propulseur n'y sont PAS (P4 et hors bilan).
+	for _, f := range fams {
+		if f == usageFamilyRepulsor || f == usageFamilyGrapple || f == usageFamilyThruster {
+			t.Errorf("%q ne doit pas avoir de ligne d'issue (négatif mesuré / hors bilan)", f)
+		}
+	}
+}
