@@ -28,10 +28,16 @@
  *    côté ombré et EST le bouton : elle emmène le curseur à cet instant, sans mettre en pause et
  *    sans changer de joueur. Du côté ombré, elle ne recouvre jamais une marque de kill — un kill
  *    ne peut exister que dans la zone jouée.
- *  - L'ANNEAU (`ReplayMarkTrack`) entoure une marque de kill qui a valu une médaille, et fait
- *    à lui seul la marque d'une médaille d'objectif (creuse). Un seul code : anneau = médaille.
+ *  - LE BADGE (`ReplayMarkTrack`, ex-ANNEAU) se pose à côté d'une marque de kill qui a valu une
+ *    médaille, et fait à lui seul la marque d'une médaille d'objectif. « UN SEUL CODE : ANNEAU =
+ *    MÉDAILLE » N'EST PLUS VRAI DEPUIS LE 2026-09-09 (décision D7, plan « vague C, les formes ») :
+ *    l'anneau d'un pixel autour d'une marque de trois par huit était mesuré illisible en pratique.
+ *    Il est remplacé par le badge EN IMAGE du jeu (`ui/MedalBadges.tsx`, déjà employé par le fil),
+ *    avec titre ET description en infobulle — c'est ce qui a fait passer la piste du sujet de
+ *    dix-huit à vingt-quatre pixels (cf. `ReplayMarkTrack`, où vit désormais tout le code des
+ *    médailles).
  *
- * La piste des COÉQUIPIERS, elle, n'a ni porte ni anneau : elle s'assombrit par PALIERS, l'opacité
+ * La piste des COÉQUIPIERS, elle, n'a ni porte ni badge : elle s'assombrit par PALIERS, l'opacité
  * disant la part de l'effectif absente (`ReplayAbsenceShade`). Quatre portes empilées sur
  * quatorze pixels ne se liraient pas, et sa question n'est pas « qui est parti » mais « combien
  * manquaient » — c'est ce qui explique une dominance qui s'effondre sans qu'aucun duel ne l'ait
@@ -205,11 +211,12 @@ export function ReplayTimelineTracks({
             label={t.viewpointLabel}
             onSelect={onSelectViewpoint}
           />
-          {/* DIX-HUIT PIXELS ET NON QUATORZE depuis le 2026-09-07 : c'est la seule rangée qui
-              porte un anneau de médaille et une porte de présence, et les rogner les rendrait
-              illisibles. Celle des coéquipiers garde ses quatorze — l'écart de hauteur dit
-              laquelle des deux est le sujet. */}
-          <ReplayMarkTrack marks={own} height="h-[18px]" tall>
+          {/* VINGT-QUATRE PIXELS ET NON QUATORZE, dix-huit depuis le 2026-09-09 (décision D7) :
+              c'est la seule rangée qui porte un badge de médaille EN IMAGE (16 px, cf.
+              `ReplayMarkTrack`) et une porte de présence, et les rogner les rendrait illisibles.
+              Celle des coéquipiers garde ses quatorze — l'écart de hauteur dit laquelle des deux
+              est le sujet. */}
+          <ReplayMarkTrack marks={own} height="h-[24px]" tall>
             <ReplayPresenceShade
               shades={shades}
               identity={identity}

@@ -14,7 +14,7 @@ import type { MedalEvent } from '../model/killFeedLogic'
 /** Côté d'un badge de médaille, en px (option 2a du handoff 2026-08-27 : 16 px). */
 const MEDAL_PX = 16
 
-export function MedalBadges({ medals }: { medals: MedalEvent[] }) {
+export function MedalBadges({ medals }: { medals: readonly MedalEvent[] }) {
   return (
     <>
       {medals.map((m, i) => {
