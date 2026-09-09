@@ -1,3 +1,37 @@
+## [2026-09-09] Population escouade : la regle est ecrite (ADR 0033) + deux ratchets — Phase A0 close
+
+**Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
+worktree dedie. Deuxieme occurrence du meme defaut : le compte de matchs d'une session
+escouade differe entre la ligne L2 et le corps de page. Mesure du 27 aout : 7 cote rail
+(`/filters/resolve`, population du joueur principal) contre 4 cote page (`composition_sessions`,
+population reelle). `3862ff083` avait unifie le selecteur de sessions, pas le rail.
+
+**Decision technique principale** — la regle d'appartenance d'un match a la session d'une
+composition n'etait ecrite NULLE PART et tenait par accident. ADR 0033 (EN-only, regle 15) la
+fixe : le main a joue le match ET chaque coequipier selectionne figure sur son equipe alliee,
+**independamment de sa presence a la fin**. Quitter un match n'est pas quitter la session
+(cadrage utilisateur : crash du jeu, du PC, deconnexion). `composition_sessions[].match_count`
+devient la source UNIQUE d'un compte de session en contexte escouade ; `/filters/resolve` n'est
+qu'un repli de chargement.
+
+**Resultats observes** — le match du crash mesure (`2cf24f30`, 27/08 19:39 UTC : Chocoboflor
+`present_at_completion=false`, bot `bid(3.0)` en remplacement) est bien CONSERVE par le moteur
+actuel. L'ecart de la session venait de trois autres matchs, ou un coequipier connu hors
+selection etait sur l'equipe (Nilton410 rang 4, passivemarquise rang 35).
+
+Deux verrous poses, declares RATCHETS et non TDD (le moteur passait deja) :
+`composition_presence_test.go` (scenario du crash sur toutes les surfaces + aucun champ de
+presence dans les types de population) et `no_presence_filter_test.go` (grep sur les 4 sources
+SQL de la population escouade, allowlist VIDE et datee). **Mordant prouve par mutation** : avec
+`AND p2.present_at_completion` injecte dans `Q30SquadMatchesSharedQuery` et un champ
+`PresentAtCompletion` ajoute a `domain.AllyParticipant`, les deux tests echouent avec le bon
+message ; revert verifie.
+
+**Gate A0** : `go vet ./...` 0 · `go test ./internal/service/teammates/... ./internal/platform/duckdb/...` ok.
+
+**Conclusion / prochaine etape** : phase A1 — publier l'ecart (compte avant filtre exclusif +
+matchs ecartes avec le coequipier responsable nomme), en TDD rouge cette fois.
+
 ## [2026-09-08] Lot M1b — corriger le décalage d'horloge du lien « voir dans le rejeu » — Complete
 
 **Décision technique principale.** Reprise de la découverte non traitée du lot M1
