@@ -176,12 +176,21 @@ export function ReplayTeams({
     // TUILE autonome, le bandeau d'équipe est posé AU-DESSUS de la pile — la boîte qui les
     // enfermait ne disait rien de plus. Gaps de la maquette : 10 px entre colonnes, 6 px
     // sous le bandeau, 4 px entre tuiles. LES COLONNES D'ÉQUIPE NE CHANGENT PAS avec le
-    // gabarit (`repeat(groups.length, 1fr)`) : c'est À L'INTÉRIEUR d'un camp que les sièges
-    // passent en grille (D2 : pas de groupe « sans équipe » à traiter ; D3 : le FFA garde ses
-    // N colonnes d'un siège).
+    // gabarit (`repeat(groups.length, minmax(0, 1fr))`) : c'est À L'INTÉRIEUR d'un camp que les
+    // sièges passent en grille (D2 : pas de groupe « sans équipe » à traiter ; D3 : le FFA garde
+    // ses N colonnes d'un siège).
+    //
+    // `minmax(0, 1fr)` ET PAS `1fr`, ET CE N'EST PAS COSMÉTIQUE (retour utilisateur du
+    // 2026-09-08 : « les fiches toujours rognées à cause des longs gamertags »). `1fr` vaut
+    // `minmax(auto, 1fr)`, et le minimum `auto` d'une piste est son MIN-CONTENT — que le nom du
+    // joueur fixe au texte ENTIER, puisque `truncate` pose `white-space: nowrap`. La grille
+    // dépassait donc son conteneur, et le `overflow-hidden` du parent rognait la différence EN
+    // SILENCE : 563 px de colonnes dans 480 px de place, mesurés sur un 4v4 aux gamertags longs.
+    // Le zéro explicite rend aux pistes le droit de descendre sous leur min-content, et c'est
+    // alors le `truncate` qui fait son travail — celui pour lequel il est là.
     <div
       className="grid h-full min-h-0 gap-2.5"
-      style={{ gridTemplateColumns: `repeat(${groups.length}, 1fr)` }}
+      style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }}
     >
       {groups.map((group, gi) => (
         <div

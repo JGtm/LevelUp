@@ -184,4 +184,36 @@ describe('NavL1', () => {
     expect(screen.getByRole('link', { name: 'Carrière' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Médias' })).toBeInTheDocument()
   })
+
+  // ─── Onglet Tactique (2026-09-08) ─────────────────────────────────────────
+  // La page portait ses cinq onglets en L2 depuis le 2026-09-06 pendant que le dropdown L1 en
+  // comptait quatre : la page existait sans qu'aucun menu du bandeau n'y mène. Ces deux tests
+  // fixent le miroir — la présence ET la porte — pour que les deux listes ne redivergent pas.
+
+  it('expose Tactique en DERNIER dans la dropdown Ascension', () => {
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
+
+    const realisations = screen.getByRole('menuitem', { name: 'Réalisations' })
+    const tactique = screen.getByRole('menuitem', { name: 'Tactique' })
+    expect(tactique).toHaveAttribute(
+      'href',
+      '/t/halo_infinite/players/test-player/ascension/tactique',
+    )
+    expect(
+      realisations.compareDocumentPosition(tactique) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('masque Tactique pour un titre sans capability replay, sans masquer Ascension', () => {
+    setPartialTitle(['matchmaking', 'lusr'])
+
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
+
+    expect(screen.queryByRole('menuitem', { name: 'Tactique' })).not.toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Profil' })).toBeInTheDocument()
+  })
 })

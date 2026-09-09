@@ -63,7 +63,7 @@
  */
 import type { ReplayVehicleRide } from '@/lib/api/types'
 
-import { CORE_RADIUS } from '../layers/replayMarkers'
+import { CORE_RADIUS, PION_VISIBLE_DIAMETER_PX } from '../layers/replayMarkers'
 import { lastIndexAt, positionAt, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
@@ -310,22 +310,39 @@ export function vehiclePositionAt(track: ReplayVehicleTrackReady, frame: number)
 // --- TAILLE (décision de cadrage : ancrée sur le pion) ---------------------------------------
 
 /**
- * PION_REFERENCE_PX — le noyau du marqueur joueur (`CORE_RADIUS`, replayMarkers.ts), SEULE
- * partie TOUJOURS visible d'un pion quel que soit son étage. C'est l'ancre de la règle de
- * taille : « pion = pixels fixes, CORE 3,4 + RING 6,5 px » (décision de cadrage).
+ * PION_REFERENCE_PX — la taille VISIBLE d'un pion, ancre de toute la règle de taille des
+ * véhicules.
+ *
+ * CORRIGÉ LE 2026-09-09 (retour utilisateur : « le Ghost est plus petit que le pion du
+ * joueur, ça fait hyper bizarre »). L'ancre valait `CORE_RADIUS * 2` = 6,80 px, le NOYAU
+ * SEUL — or un pion au rez-de-chaussée mesure 8,80 px de large, lisere compris, et bien
+ * plus avec ses anneaux d'étage. La cible « Mongoose = 1,75 pion de long » se calculait
+ * donc contre une référence 1,29 fois trop petite : le Mongoose sortait à 11,90 px de long
+ * pour 7,25 px de LARGE, plus étroit que le pion dont il est censé faire 1,75 fois la
+ * longueur, et le Ghost à 13,02 px de large se lisait plus petit qu'un pion à anneaux.
+ *
+ * CE N'ÉTAIT PAS LE PLANCHER. La mesure du 2026-09-09 sur les PNG réels et le manifeste le
+ * dit sans ambiguïté : AUCUNE famille n'atteint `VEHICLE_FLOOR_PX` (la plus petite, le
+ * Mongoose, en était à 75 % au-dessus). Le plancher n'a jamais servi — c'est l'ancre qui
+ * était fausse, et la corriger grossit toutes les familles du même facteur 1,29, sans
+ * toucher à leurs proportions relatives.
  */
-const PION_REFERENCE_PX = CORE_RADIUS * 2
+const PION_REFERENCE_PX = PION_VISIBLE_DIAMETER_PX
 
 /** Milieu de la fourchette demandée (1,5-2 pions de long pour le Mongoose). */
 const MONGOOSE_TO_PION_RATIO = 1.75
 
 /**
- * MONGOOSE_REFERENCE_LENGTH_MM — la longueur RÉELLE (nez-en-haut) du sprite Mongoose VALIDÉ du
- * lot A (`V4_RAPPORT_SPRITES_2026-08-31.md`, statut "valide") : 128 px de sprite × 10 mm/px.
- * C'EST, AVEC LE WARTHOG, LA SEULE FAMILLE DONT L'ÉCHELLE EST GARANTIE (note de la tâche de ce
- * lot) : l'ancre de la conversion mm → pixel-écran se calibre donc sur elle, jamais sur un
- * sprite dont l'échelle n'est pas mesurée — ce chiffre n'a PAS besoin de charger le sprite
- * Mongoose au runtime, il est dérivé une fois, ici, de sa mesure connue.
+ * MONGOOSE_REFERENCE_LENGTH_MM — la longueur RÉELLE (nez-en-haut) du sprite Mongoose :
+ * 128 px de sprite × 10 mm/px. Ce chiffre n'a PAS besoin de charger le sprite au runtime,
+ * il est dérivé une fois, ici, de sa mesure connue.
+ *
+ * LA NOTE « SEULE FAMILLE GARANTIE AVEC LE WARTHOG » A ÉTÉ RETIRÉE LE 2026-09-09 : elle
+ * était périmée. Le manifeste `static/vehicles-assets/halo_infinite/replay/index.json`
+ * porte les DIX-HUIT familles en `statut: "valide"`, mesurées le 2026-09-02
+ * (`ECHELLES_SPRITES_2026-09-02.md`) — le Ghost à 9,99 mm/px vérifié, par exemple. Le
+ * Mongoose reste l'ancre de calibration parce qu'il est la RÉFÉRENCE DE CADRAGE (« 1,5-2
+ * pions de long »), plus parce qu'il serait le seul mesuré.
  */
 const MONGOOSE_REFERENCE_LENGTH_MM = 1280
 

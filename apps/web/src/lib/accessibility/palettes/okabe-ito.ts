@@ -50,6 +50,9 @@ export const okabePalette: Palette = {
   'divergent-neutral': '#888888', // Gris (pas de connotation directionnelle)
   'divergent-neg':     '#D55E00', // Vermillion
 
+  // ── Objectif sans camp ─────────────────────────────────────────────────────
+  'zone-neutral': '#888888', // Même gris : « aucun camp » n'a pas de direction non plus
+
   // ── Statuts UI ─────────────────────────────────────────────────────────────
   'success':     '#009E73', // Bluish Green (statut UI conventionnel — non binaire)
   'warning':     '#E69F00', // Orange

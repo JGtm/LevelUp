@@ -35,6 +35,7 @@ import {
   VEHICLE_PLASMA_FAMILIES,
   VEHICLE_SOFT_CEIL_PX,
 } from './vehiclesLayer'
+import { CORE_RADIUS, PION_VISIBLE_DIAMETER_PX } from '../layers/replayMarkers'
 
 /** Une vie de véhicule minimale, complétée par le test. */
 function track(over: Partial<ReplayVehicleTrackReady> = {}): ReplayVehicleTrackReady {
@@ -369,11 +370,13 @@ describe('vehicleScreenLengthPx / vehicleSpriteScale — taille (manifeste facti
   // Sprites FACTICES : mêmes dimensions et mm/px que les fichiers réels du lot A (statut
   // "valide" au 2026-08-31), mais lus ici comme un pur couple de nombres — aucun fichier chargé.
   const MONGOOSE_H_PX = 128
+  /** Largeur native du sprite Mongoose reel — celle qui decide s il parait plus fin qu un pion. */
+  const MONGOOSE_W_PX = 78
   const SCORPION_H_PX = 388
   const MM_PER_PX = 10
 
   it('le Mongoose (référence de calibration) mesure entre 1,5 et 2 pions de long', () => {
-    const pionLengthPx = VEHICLE_FLOOR_PX // = CORE_RADIUS * 2, l’ancre de la règle
+    const pionLengthPx = VEHICLE_FLOOR_PX // = le pion VISIBLE, l’ancre de la règle
     const mongoose = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX)
     expect(mongoose).toBeGreaterThanOrEqual(1.5 * pionLengthPx)
     expect(mongoose).toBeLessThanOrEqual(2 * pionLengthPx)
@@ -407,6 +410,33 @@ describe('vehicleScreenLengthPx / vehicleSpriteScale — taille (manifeste facti
     // partie non compressée (`vehicleScreenLengthPx` sous le plafond) est, elle, EXACTEMENT
     // linéaire (cf. le test de proportionnalité Mongoose/Scorpion ci-dessus).
     expect(evenHuger).toBeLessThan(huge * 1.5)
+  })
+
+  /**
+   * GARDE-RAIL DU 2026-09-09 (retour utilisateur : « le Ghost … est plus petit que le pion du
+   * joueur ça fait hyper bizarre »).
+   *
+   * L'ancre était `CORE_RADIUS * 2` — le NOYAU SEUL, 6,80 px — alors qu'un pion au
+   * rez-de-chaussée en mesure 8,80 de large, lisere compris. Tous les véhicules étaient donc
+   * calibrés 1,29 fois trop petit. CE N'ÉTAIT PAS LE PLANCHER : mesuré sur les PNG réels et le
+   * manifeste, aucune famille ne l'atteignait (la plus petite en était à 75 % au-dessus).
+   */
+  it('l’ancre est le pion VISIBLE, jamais son seul noyau', () => {
+    expect(VEHICLE_FLOOR_PX).toBe(PION_VISIBLE_DIAMETER_PX)
+    expect(VEHICLE_FLOOR_PX).toBeGreaterThan(CORE_RADIUS * 2)
+  })
+
+  /**
+   * L'INVARIANT QUE L'UTILISATEUR VOIT, et que la longueur seule ne portait pas : un véhicule se
+   * lit à sa LARGEUR autant qu'à sa longueur. Le Mongoose — la plus petite famille, donc le pire
+   * cas — sortait à 7,25 px de large contre 8,80 pour le pion : plus étroit que le pion dont il
+   * est censé faire 1,75 fois la LONGUEUR. Un sprite allongé ne doit jamais paraître plus mince
+   * qu'un pion.
+   */
+  it('même la plus petite famille reste au moins aussi LARGE qu’un pion', () => {
+    const longueur = vehicleScreenLengthPx(MONGOOSE_H_PX, MM_PER_PX)
+    const largeur = longueur * (MONGOOSE_W_PX / MONGOOSE_H_PX)
+    expect(largeur).toBeGreaterThanOrEqual(PION_VISIBLE_DIAMETER_PX)
   })
 
   it('dimensions dégénérées (image pas encore chargée, manifeste absent) : longueur nulle', () => {

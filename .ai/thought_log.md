@@ -705,6 +705,121 @@ Trois artefacts de maquette (`2ec1b8eb`, `19e7eca1`, `4c520da6`) illisibles depu
 
 **Prochaine etape.** Aucun code modifie. Les 6 correctifs courts sont candidats a un lot unique
 sous `plan-execution` ; les 5 chantiers demandent un cadrage sous `plan-review`.
+## [2026-09-09] Vague A, etapes A8 et A9 — A8 et A9 livrees — Complete
+
+**A8 — la rangee d'inventaire se laisse enfin retrecir. LIVREE.**
+
+Le retour utilisateur disait « "Inventaire indisponible" fait aussi agrandir les largeurs de
+fiches ». La mesure, faite dans le navigateur sur la feuille de style REELLE du depot (la page de
+connexion la charge deja ; chaine de classes reproduite a l'identique depuis les sources), dit
+deux choses distinctes :
+
+1. **La largeur de fiche ne bouge PAS** apres A1. Avec `repeat(2, 1fr)` les colonnes de camps
+   mesurent `235.141px / 234.859px` selon que le badge est present ou non — la fuite de
+   min-content existait bien. Avec `minmax(0, 1fr)` (le correctif d'A1) : `235px / 235px` dans
+   les deux cas. **A1 couvrait deja la croissance de largeur.**
+2. **Mais un second defaut, independant, subsistait** : le badge ne se tronquait JAMAIS. Il porte
+   pourtant `min-w-0 truncate`, et son commentaire affirmait qu'il « occupe la place qui reste et
+   ne decale rien ». Faux : son CONTENEUR (`ReplayInventoryRow.tsx:137`) est un element flex a
+   `min-width: auto` sans `min-w-0`. Il prenait sa largeur hypothetique — texte entier compris —
+   et debordait la rangee parente, dont le `overflow-hidden` coupait la difference en silence.
+   Mesure gabarit 31 : rangee de 102 px pour 221 px de contenu, **119 px coupes net**, sans points
+   de suspension, et les cellules placees apres le badge purement disparues.
+
+Correctif : `min-w-0` sur ce seul conteneur — celui que la mesure designe, pas les deux suspects
+du plan « au cas ou ». Verification par la meme mesure : debordement 119 -> 0, `badge_tronque`
+passe de faux a vrai. Garde-rail ajoute dans `ReplayTeams.test.tsx` (jsdom ne met rien en page :
+le test fixe la CAUSE, meme doctrine que le garde-rail voisin de la grille des camps). Fixations
+DOM regenerees — diff verifie ligne a ligne : **18 ajouts de `min-w-0`, aucune autre difference**.
+Gate `npx vitest run src/features/match-replay/ui/ReplayTeams` : 79 passes, 3 skippes, 0 echec.
+
+**A9 — le Ghost plus petit que le pion. LIVREE, mais pas le correctif prevu.**
+
+Le plan supposait que le Ghost tombait sur `VEHICLE_FLOOR_PX` faute d'echelle mesuree. **Les deux
+moities de cette premisse sont refutees par la mesure :** le manifeste porte le Ghost en
+`statut: "valide"` a 9,99 mm/px (2026-09-02, les 18 familles sont mesurees — le commentaire du
+code disant le contraire etait perime, retire ici), et **aucune famille n'atteint le plancher**
+(mongoose 11,90 x 7,25 · ghost 15,71 x 13,02 · scorpion 36,07 x 24,17, pour un plancher a
+6,80 px). Le correctif prevu n'aurait rien change.
+
+**La vraie cause est l'ANCRE** : `PION_REFERENCE_PX = CORE_RADIUS * 2` = 6,80 px n'est pas la
+taille visible d'un pion (8,80 px avec son lisere, davantage avec ses anneaux d'etage). La cible
+« Mongoose = 1,75 pion de long » se calculait contre une reference 1,29 fois trop petite : le
+Mongoose sortait a 7,25 px de LARGE, plus etroit que le pion dont il est cense faire 1,75 fois la
+longueur.
+
+**Arbitrage utilisateur** : re-ancrer toutes les familles sur le pion visible (x1,29). L'option
+« anneau » (x1,91) ecartee — elle portait le Scorpion a 69 px. Apres : mongoose 15,40 x 9,38 ·
+ghost 20,33 x 16,84 · scorpion 46,68 x 31,28, toutes au-dessus du pion.
+
+`replayMarkers.ts` exporte `PION_VISIBLE_DIAMETER_PX` — la valeur que `markerEdge` calcule DEJA,
+pas une seconde verite. `VEHICLE_PX_PER_MM` et `VEHICLE_SOFT_CEIL_PX` intouches : derives de
+l'ancre, donc leurs valeurs suivent, mais les proportions RELATIVES entre familles ne bougent pas.
+Deux garde-rails : l'ancre est le pion visible et jamais son noyau ; la plus petite famille reste
+au moins aussi large qu'un pion.
+
+**Gates** : vitest vehicules 94 passes · `make check-types` vert · `make test-web` **658 fichiers,
+7 035 tests, 0 echec** · `lint:colors` 0 violation.
+
+---
+## [2026-09-08] Vague A — le lot court des 7 correctifs — Complete (non commite, attente utilisateur)
+
+Worktree dedie `LevelUp-wt-lot-court`, branche `wt/lot-court` depuis `feat/v75` (7254b3853).
+25 fichiers, +436 / -60. **Rien n'est commite** : regle 16 du CLAUDE.md, demander avant.
+
+**Les sept etapes, chacune avec son gate passe.**
+A1 `ReplayTeams.tsx:184` `1fr` -> `minmax(0, 1fr)` · A2 onglet Tactique en L1 (+ cle i18n FR/EN,
+manifestes regeneres) · A3 trait de lecture 1 -> 3 px, opacite 40 -> 55 % · A4 les trois surcouches
+de carte descendent dans le conteneur de la toile · A5 message d'etat vide de « Distance par arme »
+rendu honnete (FR + EN) · A6 nouveau jeton `zone-neutral` + lisere a l'encre du fond pour les
+objectifs sans camp · A7 `FLAG_OFFSET_*` conditionne au seul etat `carried`.
+
+**Trois choses que l'execution a apprises, et qui valent plus que les correctifs.**
+
+1. **A1 : les fixations DOM ont casse, et c'etait le signal attendu.** Leur en-tete dit « toute
+   divergence est une regression 4v4, jamais une fixture a regenerer ». Avant de regenerer j'ai
+   diffe les instantanes CARACTERE PAR CARACTERE : **une seule difference sur 68 478 caracteres**
+   (`1fr` -> `minmax(0, 1fr)`), et le `git diff --word-diff` des deux fixtures ne rend que
+   `+minmax(0,` et `+)`, rien de retire. C'est la verification qui autorise la regeneration — pas
+   le fait que le test soit rouge.
+
+2. **A4 : ma premiere correction ne marchait pas, et seule la MESURE l'a dit.** J'avais enveloppe
+   `<ReplayCanvas>` d'un `relative` depuis la page. Mesure a l'ecran : overlay 711 px pour une
+   carte de 471, ecart 106 px — INCHANGE. La cause : `ReplayCanvas` ne rend pas que la toile, il
+   rend AUSSI la barre de lecture. Le bon ancrage etait un cran plus bas, dans son conteneur
+   `relative mx-auto` (l. 670), via une prop `mapOverlays`. Apres correction : overlay 181/471,
+   **ecart 0 px**. Lecon : un gate visuel n'est pas une formalite, il rattrape ce que le typage et
+   les tests laissent passer.
+
+3. **A6 etait sous-estime dans le plan.** `Palette = Record<SemanticToken, string>` : ajouter un
+   jeton oblige les 4 palettes d'accessibilite, `ALL_TOKENS`, l'union, `globals.css`, plus les
+   instantanes de couverture. Et le parametre `neutral` de `useZoneStates` portait une decision
+   DATEE du 2026-08-25 (« pas de variable de layout pour un fait de jeu »). Je l'ai honoree :
+   jeton semantique pour le remplissage, et pour le contour la technique deja documentee du
+   **lisere a l'encre du fond** (`useReplayInks.mark.outline`, `--background`) — celle dont le
+   commentaire decrit mot pour mot ce que l'utilisateur demandait (« en sombre le remplissage est
+   clair et le lisere sombre, en clair l'inverse »). Constat au passage : le defaut n'existait que
+   sur la palette PAR DEFAUT — les trois palettes daltoniennes rendaient deja `divergent-neutral`
+   gris, ce qui explique qu'il ait survecu aux relectures.
+
+**Extension de perimetre assumee sur A4.** Le plan ne visait que l'ecran de fin. J'ai deplace les
+TROIS surcouches : le message inter-manche partage le bloc et les styles de l'ecran de fin
+(`replayOverlayStyles.ts`) — n'en deplacer qu'un les aurait poses a deux hauteurs differentes,
+c'est-a-dire une divergence que le correctif AURAIT CREEE. Ce n'est pas un fix opportuniste, c'est
+la coherence de la correction elle-meme.
+
+**Mutation jouee sur A1** (rouge sans le correctif, vert avec). Sur A2 et A7 les tests portent sur
+des elements qui n'existent que grace au changement, la mutation y est tautologique.
+
+**Gates de cloture.** Suite web complete **7 032 tests verts, 0 echec** (rejouee apres la
+correction d'A4) · `tsc -b` propre · `lint:colors` 0 violation · `lint:fields` 0 violation ·
+gates visuels A1 (235+235 = 480, aucun rognage), A3 (3 px), A4 (ecart 0), A7 (anneau et pied du
+drapeau concentriques a l'image 790).
+
+**Reste a faire avant merge** : une revue adversariale unique sur le diff de vague, puis
+`delivery-checklist`. **Le point 5 (fond de carte d'Isolement) n'est PAS dans cette vague** — il
+est classe chantier dans le diagnostic, la regle de `coversPlayedArea` demandant une decision de
+forme (quel percentile, quelle marge, et faut-il journaliser).
 
 ## [2026-09-08] Lot M1b — corriger le décalage d'horloge du lien « voir dans le rejeu » — Complete
 
