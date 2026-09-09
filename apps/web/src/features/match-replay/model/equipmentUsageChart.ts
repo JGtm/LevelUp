@@ -1,6 +1,7 @@
 /**
  * equipmentUsageChart.ts — LA PROJECTION DES DEUX VUES DU BILAN D'ÉQUIPEMENT, et l'encre des
- * cinq familles de geste.
+ * quatre familles de geste (E2, 2026-09-09 : `deployed` et `dropped` ont fusionné en
+ * `equipment` — cf. `USAGE_GROUP_TOKENS`).
  *
  * LE TABLEAU EST DEVENU UN GRAPHE (2026-09-03, retours utilisateur sur l'onglet Chronologie).
  * Deux vues empilées remplacent le tableau à deux niveaux d'en-tête :
@@ -35,24 +36,47 @@ import type { ValueGridModel, ValueGridRow } from '@/components/charts/valueGrid
 import { buildValueGrid } from '@/components/charts/valueGridModel'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 
+import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
 import type { UsageColumn, UsageColumnGroup, UsageGroupKey } from './equipmentUsageColumns'
 import type { EquipmentUsageTally, EquipmentUsageTeam } from './equipmentUsageLogic'
 
 /**
  * L'ENCRE DE CHAQUE FAMILLE DE GESTE. Indexée par famille, jamais par rang (cf. en-tête).
  * Ordre d'écriture = celui de `usageColumnGroups`, pour que la table se relise contre elle.
+ *
+ * `deployed` ET `dropped` ONT FUSIONNÉ EN `equipment` (E2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md,
+ * décisions P2/P3) : une seule colonne par famille, empilée sur ses issues — `equipment`
+ * reprend le jeton de l'ancien `deployed`, `dropped` n'a plus de jeton DE FAMILLE (le lâché
+ * est désormais un SEGMENT d'issue, coloré par `USAGE_OUTCOME_TOKENS`, pas une famille).
  */
 export const USAGE_GROUP_TOKENS: Record<UsageGroupKey, SemanticToken> = {
   grapple: 'frag-sidearm', // vert
   episodes: 'frag-heavy', // violet
-  deployed: 'frag-shoulder', // cyan
-  dropped: 'frag-melee', // rose
+  equipment: 'frag-shoulder', // cyan — reprend le jeton de l'ancien `deployed`
   grenades: 'frag-grenade', // ambre
 }
 
 /** L'encre d'une famille, en variable CSS — jamais un hex (garde-rail color-tokens). */
 export function usageGroupColor(group: UsageGroupKey): string {
   return tokenCssVar(USAGE_GROUP_TOKENS[group])
+}
+
+/**
+ * LES TROIS ENCRES D'ISSUE (§3.1 de PLAN_EQUIPEMENT_GACHIS_2026-09-09.md — table NORMATIVE,
+ * aucun autre jeton n'est autorisé ici). Elles distinguent COMMENT un geste s'est terminé,
+ * jamais QUI l'a fait — à l'inverse de `USAGE_GROUP_TOKENS`, qui distingue la famille. La
+ * gamme est `divergent-*` : l'issue EST un jugement (bon / neutre / mauvais), la même gamme
+ * que la bande de régularité du même bloc.
+ */
+export const USAGE_OUTCOME_TOKENS = {
+  used: 'divergent-pos',
+  kept: 'divergent-neutral',
+  dropped: 'divergent-neg',
+} satisfies Record<string, SemanticToken>
+
+/** L'encre d'une issue, en variable CSS — jamais un hex (garde-rail color-tokens). */
+export function usageOutcomeColor(outcome: keyof typeof USAGE_OUTCOME_TOKENS): string {
+  return tokenCssVar(USAGE_OUTCOME_TOKENS[outcome])
 }
 
 /** Une colonne de la grille, et la famille dont elle relève (pour son encre). */
@@ -80,10 +104,18 @@ export function usageGestureCount(tally: EquipmentUsageTally, group: UsageGroupK
       return tally.grapplePulls
     case 'episodes':
       return Object.values(tally.episodes).reduce((a, e) => a + e.count, 0)
-    case 'deployed':
-      return sum(tally.deployed)
-    case 'dropped':
-      return sum(tally.dropped)
+    case 'equipment':
+      // FUSION (E2) : les poses déployées, les objets lâchés, ET les activations des deux
+      // power-ups (leur côté « utilisé » vient des épisodes, pas d'une pose — P2). Le compte
+      // d'épisode y figure DEUX FOIS au total du bloc (aussi dans la ligne `episodes`,
+      // décision documentée de garder les deux vues) : ce n'est pas une double mesure, c'est
+      // la même mesure lue sous deux questions différentes.
+      return (
+        sum(tally.deployed) +
+        sum(tally.dropped) +
+        (tally.episodes[EQUIP_FAMILY_CAMO]?.count ?? 0) +
+        (tally.episodes[EQUIP_FAMILY_OVERSHIELD]?.count ?? 0)
+      )
     case 'grenades':
       return sum(tally.grenades)
   }
