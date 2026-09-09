@@ -81,30 +81,65 @@ Cette étape construit l'outil qui servira à l'étape 4 et **décide si le chan
 
 **Périmètre fermé (2 fichiers + 1 dépendance) :**
 
-- [ ] `apps/go-api/go.mod` — ajouter `github.com/HugoSmits86/nativewebp` (D5)
-- [ ] Créer `apps/go-api/cmd/mapfond-webp/main.go` — outil hors ligne, deux modes :
-      `-verifier` (n'écrit rien, mesure et contrôle) et `-convertir` (écrit)
-- [ ] L'outil, pour chaque fond : décode le PNG, ré-encode en WebP sans perte, **re-décode le
-      WebP** et compare le `image.RGBA` obtenu au `image.RGBA` d'origine **octet par octet**
-      (`bytes.Equal` sur les `Pix`, plus égalité des `Rect`). Toute différence est une erreur
-      fatale nommant le fichier
-- [ ] Journalisation `slog.InfoContext` par fichier (nom, octets avant, octets après, gain %) et
-      `slog.ErrorContext(ctx, "...", "err", err)` sur échec — jamais de `fmt.Println`
-- [ ] Créer `apps/go-api/cmd/mapfond-webp/main_test.go` : une image RGBA synthétique avec zones
-      transparentes, trait fin et aplats, qui prouve l'aller-retour identique
-- [ ] Lancer `-verifier` sur **les 5 plus gros fonds** (`btb_fragmentation`,
+- [x] `apps/go-api/go.mod` — ajouté `github.com/HugoSmits86/nativewebp v1.3.0` (D5). `go mod
+      tidy` a aussi promu `golang.org/x/image v0.24.0` en dépendance directe (non `// indirect`)
+      : nécessaire dès cette étape, pas seulement à l'étape 3, car le banc d'essai lui-même doit
+      **redécoder** le WebP pour prouver l'aller-retour (D6 s'applique donc déjà ici, pas
+      seulement aux outils de l'étape 3)
+- [x] Créé `apps/go-api/cmd/mapfond-webp/main.go` — outil hors ligne, deux modes :
+      `-verifier` (n'écrit rien, mesure et contrôle) et `-convertir` (écrit). Chemin résolu via
+      `title.FindRepoRoot()` + `title.NewPathResolver(...).MapBackgroundDir(slug)` (jamais de
+      `filepath.Join(..., "data", ...)` à la main), override possible par `-dir` (documenté dans
+      le doc-comment du fichier)
+- [x] L'outil, pour chaque fond : décode le PNG (`image/png`), ré-encode en WebP sans perte
+      (`nativewebp.Encode`, `CompressionLevel: BestCompression` — reste sans perte dans tous les
+      cas, ce champ ne joue que sur l'effort de recherche), **re-décode le WebP**
+      (`golang.org/x/image/webp.Decode`) et compare le résultat à l'original canonicalisé en
+      `image.RGBA` (`versRGBA`, `apps/go-api/cmd/mapfond-webp/roundtrip.go:52-68`) **octet par
+      octet** (`bytes.Equal` sur les `Pix`, plus égalité des `Rect`). Toute différence est une
+      erreur fatale nommant le fichier (`verifier.go:24-27` pour `-verifier`,
+      `convertir.go:47-49` pour `-convertir`, qui en plus REFUSE d'écrire dans ce cas)
+- [x] Journalisation `slog.InfoContext`/`slog.ErrorContext` par fichier (nom, octets avant,
+      octets après, gain %, durées) — jamais de `fmt.Println` ; le seul `fmt.Fprintf(os.Stdout,
+      ...)` du fichier sert le TABLEAU de mesure (`verifier.go:66-74`), qui est le PRODUIT du
+      mode `-verifier`, pas une trace de diagnostic — conforme au contrat du lot
+- [x] Créé `apps/go-api/cmd/mapfond-webp/main_test.go` : une image **NRGBA** synthétique 64x64
+      avec zone opaque, zone totalement transparente, zone semi-transparente (alpha 120) et
+      trait fin d'un pixel, qui prouve l'aller-retour identique
+      (`TestAllerRetourWebP_ImageSynthetique_Identique`). NRGBA et non RGBA : une image
+      `*image.RGBA` construite à la main avec des octets choisis librement peut violer la
+      contrainte du modèle prémultiplié (R/G/B ≤ A) — ce qu'un aller-retour
+      prémultiplie/déprémultiplie ne peut pas restituer à l'identique, ce serait un artefact du
+      test et non une vraie perte de l'encodeur (constat fait en cours de TDD : la 1ʳᵉ version du
+      test, en `*image.RGBA`, échouait sur la zone semi-transparente ; corrigé en NRGBA — c'est
+      d'ailleurs le type concret que rend `png.Decode` sur un vrai fond RGBA+alpha). Tests
+      complémentaires : `TestVersRGBA_PreserveRect`, `TestGainPct`,
+      `TestSelectionnePNG_TrieParTailleDecroissanteEtLimite`, et
+      `TestConvertitUnFond_EcritWebpMetAJourSidecarSupprimePNG` qui exerce **`-convertir` de bout
+      en bout sur `t.TempDir()`** (écrit le WebP, met à jour `image` dans le sidecar, supprime le
+      PNG) — jamais sur `data/`
+- [x] Lancé `-verifier` sur **les 5 plus gros fonds** (`btb_fragmentation`,
       `28a3ac28-f69d-4fa9-9ebf-a0449c89c8da`, `37bc3df6-93e8-4d74-b16e-5ceaa30ebc23`,
-      `1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3`, `305b1bdd-9a7b-4975-bacf-8bd63c8c13d2`) et
-      **consigner les chiffres dans ce fichier**, section Découvertes
-- [ ] Statuer D10 par écrit : chantier poursuivi ou abandonné après l'étape 1
+      `1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3`, `305b1bdd-9a7b-4975-bacf-8bd63c8c13d2`) —
+      **chiffres consignés ci-dessous, section Découvertes**
+- [!] Statuer D10 par écrit : **décision utilisateur.** Les chiffres mesurés (gain cumulé 38,4 %
+      sur les 5 plus gros fonds, aller-retour identique au bit près sur les 5) dépassent le seuil
+      de 20 % fixé par D10 et par le gate. Sur la seule mesure de cette étape, le critère
+      d'abandon de D10 n'est PAS déclenché — mais la décision de poursuivre (étapes 2 à 5) revient
+      à l'utilisateur, pas à l'agent (hors périmètre de ce lot, cf. consigne d'exécution)
 
-**Gate :**
+**Gate — exécuté le 2026-09-10, sorties réelles (worktree `LevelUp-wt-fonds-webp`, branche
+`feat/fonds-carte-webp`, `LEVELUP_REPO_ROOT` pointé sur le worktree — `db_profiles.json`
+n'existe pas dans ce worktree, non versionné) :**
 ```bash
-cd apps/go-api && go test ./cmd/mapfond-webp/
-cd apps/go-api && go run ./cmd/mapfond-webp -verifier -echantillon=5
+cd apps/go-api && go build ./...                       # BUILD_EXIT=0
+cd apps/go-api && go vet ./cmd/mapfond-webp/            # VET_EXIT=0
+cd apps/go-api && go test ./cmd/mapfond-webp/           # ok  0.223s
+cd apps/go-api && go run ./cmd/mapfond-webp -verifier -echantillon=5   # 5/5 identique=true, gain cumulé 38.4 %
+cd apps/go-api && golangci-lint run --new-from-merge-base=feat/v75 ./cmd/mapfond-webp/   # 0 issues
+git status --short data/                                # vide, avant ET après
 ```
-Gate passé si : le test est vert, l'aller-retour est identique sur les 5, et le gain cumulé
-est >= 20 %. Sinon, appliquer D10.
+Gate passé : test vert, aller-retour identique sur les 5, gain cumulé 38,4 % >= 20 %.
 
 ---
 
@@ -326,3 +361,22 @@ ce chantier.
 | | | | |
 | 2026-09-09 | `writeJSONCached` (helpers.go) posait déjà SA PROPRE logique ETag/304 (format `"%x"` 16 hex, sans liste ni `W/`) — c'était donc la copie n°1 du motif avant même l'étape 1, pas 3 copies mais 4 en comptant assets.go et les 2 nouveaux sites | `handlers/helpers.go:95-121` (avant migration) | Traité **dans** ce plan, § amendement S5 : `writeJSONCached` migré vers `servirBlobAvecETag` dans le même commit |
 | 2026-09-09 | Les endpoints Huma (`capabilities.go`, `feature_matrix.go`, `field_mappings.go`, `home.go`) posent CHACUN leur propre calcul `sha256.Sum256(body)` + champ de sortie `ETag string \`header:"ETag"\`` — ils NE PEUVENT PAS appeler `servirBlobAvecETag` (qui écrit directement sur `http.ResponseWriter`), Huma sérialisant la réponse depuis la struct de sortie après le retour du handler. C'est 3 copies indépendantes du calcul SHA-256 (pas du branchement ETag/If-None-Match, qui reste propre à Huma) | `handlers/capabilities.go:108`, `handlers/feature_matrix.go:118`, `handlers/field_mappings.go:355` | Hors périmètre de l'étape 1 (contrat HTTP différent, pas un `Header().Set`/`Write` brut) — non traité, à évaluer dans un chantier séparé si la règle des 2 copies doit s'appliquer au calcul du hash lui-même |
+| 2026-09-10 | `title.FindRepoRoot()` échoue dans le worktree dédié `LevelUp-wt-fonds-webp` : il cherche `db_profiles.json` en remontant depuis le cwd, or ce fichier n'est pas versionné et n'existe donc dans AUCUN worktree fraîchement créé (seulement dans le poste de travail principal, hors git) | `apps/go-api/internal/domain/title/repo_root.go:18` (comportement, pas un bug — le fichier documente lui-même `LEVELUP_REPO_ROOT` comme repli) | Non traité ici : contournement local par `LEVELUP_REPO_ROOT=<racine du worktree>` pour le gate de cette étape, conforme à l'usage documenté de la variable. Rien à corriger dans le code |
+| 2026-09-10 | La première version du test synthétique (`main_test.go`) construisait l'image avec `*image.RGBA` et des octets `{R:10,G:60,B:220,A:120}` sur la zone semi-transparente — invalide au regard du modèle prémultiplié (`B=220 > A=120`), ce qui faisait échouer `TestAllerRetourWebP_ImageSynthetique_Identique` (round-trip non identique) alors que l'encodeur n'a aucun défaut : c'était un artefact du test, pas de l'outil | `apps/go-api/cmd/mapfond-webp/main_test.go` (avant correction, cf. historique de session) | Traité **dans ce lot** : image reconstruite en `*image.NRGBA` (non prémultiplié, le type concret que rend réellement `png.Decode` sur un fond RGBA+alpha) — pas un report |
+| 2026-09-10 | Mesure `-verifier -echantillon=5` (5 plus gros fonds, aller-retour identique sur les 5) : voir tableau ci-dessous | `apps/go-api/cmd/mapfond-webp/` | Consigné pour la décision D10 (utilisateur) |
+
+### Mesures de l'Étape 0 — `-verifier -echantillon=5`, 2026-09-10
+
+| Fichier | Octets PNG | Octets WebP | Gain % | Durée encodage | Durée décodage | Identique |
+|---|---:|---:|---:|---:|---:|---|
+| `btb_fragmentation.png` | 2 015 726 | 1 053 610 | 47,7 % | 2,363 s | 67,9 ms | oui |
+| `37bc3df6-93e8-4d74-b16e-5ceaa30ebc23.png` | 1 559 572 | 997 276 | 36,1 % | 2,155 s | 55,5 ms | oui |
+| `28a3ac28-f69d-4fa9-9ebf-a0449c89c8da.png` | 1 559 572 | 997 276 | 36,1 % | 1,978 s | 59,4 ms | oui |
+| `1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3.png` | 1 424 088 | 940 794 | 33,9 % | 1,702 s | 48,5 ms | oui |
+| `305b1bdd-9a7b-4975-bacf-8bd63c8c13d2.png` | 1 411 701 | 919 506 | 34,9 % | 1,596 s | 60,0 ms | oui |
+| **CUMUL (5)** | **7 970 659** | **4 908 462** | **38,4 %** | — | — | **5/5 identique** |
+
+Seuil du gate (>= 20 % de gain cumulé, aller-retour identique au bit près) : **atteint** sur cet
+échantillon. `data/` n'a subi aucune modification (`git status --short data/` vide avant et
+après ; 218 fichiers avant/après dans `map_backgrounds/`). La décision de poursuivre les étapes
+2 à 5 (D10) reste à l'utilisateur.
