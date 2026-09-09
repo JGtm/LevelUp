@@ -837,6 +837,19 @@ en = "small sample"
 fr = "{gamertag} — {session}<br>Isolement : {isoRate} ({isoBrut}/{isoN})<br>Couverture : {covRate} ({covBrut}/{covN})"
 en = "{gamertag} — {session}<br>Isolation: {isoRate} ({isoBrut}/{isoN})<br>Coverage: {covRate} ({covBrut}/{covN})"
 
+# Lot C3 (D4) : tooltip du GROS point par joueur (la médiane, toutes sessions confondues) —
+# distinct du tooltip par (joueur, session) ci-dessus, qui n'a pas de session à nommer.
+[squad.isolement.tooltip_median]
+fr = "{gamertag} — médiane ({n, plural, one {# mort examinée} other {# morts examinées}})<br>Isolement : {isoRate}<br>Couverture : {covRate}"
+en = "{gamertag} — median ({n, plural, one {# examined death} other {# examined deaths}})<br>Isolation: {isoRate}<br>Coverage: {covRate}"
+
+# Lot C3 : `quadrantDuPoint` rebranché — le tooltip d'un point NOMME désormais le quadrant
+# auquel il appartient (les quatre libellés ci-dessous étaient déjà affichés dans les coins
+# du nuage via `t.quadrant`, mais la fonction de classement par point n'avait aucun appelant).
+[squad.isolement.point_quadrant]
+fr = "Quadrant : {quadrant}"
+en = "Quadrant: {quadrant}"
+
 [squad.isolement.quadrant_proche_couvert]
 fr = "Proche et couvert"
 en = "Close and covered"

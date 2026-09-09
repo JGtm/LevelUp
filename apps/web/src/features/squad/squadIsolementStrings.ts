@@ -42,7 +42,15 @@ export function getSquadIsolementText(locale: Locale) {
       covBrut: number
       covN: number
     }) => m('squad.isolement.tooltip', { ...v }),
+    /** Tooltip du GROS point par joueur (D4, lot C3) : la médiane toutes sessions
+     *  confondues, sans session à nommer (distinct de `tooltip` ci-dessus). */
+    tooltipMedian: (v: { gamertag: string; n: number; isoRate: string; covRate: string }) =>
+      m('squad.isolement.tooltip_median', { ...v }),
     quadrant: (q: QuadrantIsolement) => m(quadrantKeys[q]),
+    /** Rebranche `quadrantDuPoint` (lot C3) : nomme le quadrant d'UN point dans son
+     *  tooltip — les quatre libellés eux-mêmes étaient déjà affichés dans les coins
+     *  (`quadrant` ci-dessus, consommé par `markArea`). */
+    pointQuadrant: (q: QuadrantIsolement) => m('squad.isolement.point_quadrant', { quadrant: m(quadrantKeys[q]) }),
     emptyTitle: m('squad.isolement.empty_title'),
     emptyDescription: m('squad.isolement.empty_description'),
   }

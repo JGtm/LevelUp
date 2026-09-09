@@ -119,23 +119,57 @@ session-detail 1089/1089 verts ; grep rend exactement les 5 sites ci-dessus ; `m
 
 ## Lot C3 — Le nuage d'isolement : ce qui manque
 
+**Exécuté le 2026-09-09 (lot 1.5, worktree `LevelUp-wt-vague1`, branche
+`feat/vague1-integration`).** Vérifié sur pièces avant d'écrire : `SquadIsolementNuageCard.tsx`
+avait bougé le 09-09 (chantier « légendes couleurs », commit `9212a1b0e` — infobulle ⓘ du
+titre au lieu d'un pied de carte, socle de légende commun `getLegendBase`). Découverte : les
+quatre libellés de quadrant étaient déjà AFFICHÉS dans les coins via `t.quadrant(...)`
+consommé par `markArea` — seule la fonction `quadrantDuPoint` (classement PAR POINT) restait
+sans appelant hors test. Rebranchée dans le tooltip d'un point (nomme son quadrant), pas dans
+le rendu des coins (déjà fait).
+
 **Périmètre fermé (3 fichiers) :**
 
-- [ ] `features/squad/SquadIsolementNuageCard.tsx` — ajouter **le gros point par joueur**
-      (décision D4) : une série de plus, médiane par joueur, taille au total des morts, étiquetée
-- [ ] Même fichier — **afficher les quatre libellés de quadrant** dans les coins. `quadrantDuPoint`
+- [x] `features/squad/SquadIsolementNuageCard.tsx` — ajouter **le gros point par joueur**
+      (décision D4) : une série de plus, médiane par joueur, taille au total des morts, étiquetée.
+      Fait : `pointMedianJoueur` (nouveau, `squadIsolement.logic.ts`) agrège les points d'un
+      joueur (médiane par axe, somme des morts examinées) ; une seconde série ECharts par
+      joueur (même nom → même entrée de légende), taille via `tailleMedianeDuPoint` (plage
+      dédiée, visiblement plus grosse que le plus gros point de session), étiquette
+      `label.formatter = gamertag` posée au-dessus du point, tooltip dédié
+      (`t.tooltipMedian`, nouvelle clé manifest).
+- [x] Même fichier — **afficher les quatre libellés de quadrant** dans les coins. `quadrantDuPoint`
       (`squadIsolement.logic.ts:66`) et les quatre clés (`squadIsolementStrings.ts:20-23`) existent
-      déjà et **n'ont aucun consommateur** : c'est du code mort à rebrancher, pas à écrire
-- [ ] Aligner le signal d'échantillon faible sur la maquette : **cercle pointillé** plutôt
-      qu'opacité réduite
-- [ ] Tests : sur deux sessions et deux joueurs, deux gros points sont émis, à la médiane
+      déjà et **n'ont aucun consommateur** : c'est du code mort à rebrancher, pas à écrire.
+      **Vérifié sur pièces (2026-09-09)** : les QUATRE LIBELLÉS DE COIN étaient déjà rendus
+      (via `t.quadrant('procheCouvert')` etc. dans `markArea.data[i].name`, ajouté par un
+      chantier antérieur) — seule la fonction `quadrantDuPoint` (classement par POINT, pas
+      par région) n'avait aucun appelant hors test. Rebranchée dans le tooltip d'un point
+      (nouvelle clé `squad.isolement.point_quadrant`, "Quadrant : {quadrant}") : chaque point
+      nomme désormais explicitement le quadrant auquel il appartient, en plus des libellés de
+      coin déjà en place.
+- [x] Aligner le signal d'échantillon faible sur la maquette : **cercle pointillé** plutôt
+      qu'opacité réduite. Fait : `itemStyleDuPoint` (nouveau) rend `{ color: 'transparent',
+      borderColor: color, borderWidth: 1.5, borderType: 'dashed' }` pour un point atténué,
+      `{ color }` (plein) sinon. `opaciteDuPoint`/`OPACITE_ATTENUEE`/`OPACITE_PLEINE` SUPPRIMÉS
+      (plus aucun appelant après le remplacement — CLAUDE.md règle 7, zéro code mort), avec
+      leurs tests. La mention textuelle « échantillon faible » du tooltip (lot Q8) est
+      conservée intacte (`withLowSampleNote`, inchangé).
+- [x] Tests : sur deux sessions et deux joueurs, deux gros points sont émis, à la médiane.
+      Fait : `squadIsolement.logic.test.ts` (+9 cas : `pointMedianJoueur`,
+      `tailleMedianeDuPoint`, migration de la suite `opaciteDuPoint` vers `pointAttenue` seul)
+      + `SquadIsolementNuageCard.test.tsx` (+4 cas : deux gros points médians à la valeur
+      attendue, quadrant nommé dans le tooltip, cercle pointillé vs plein).
 
-**Gate :**
+**Gate passé (2026-09-09)** :
 ```bash
 cd apps/web && npx vitest run src/features/squad/SquadIsolementNuageCard src/features/squad/squadIsolement
+# 2 fichiers, 30 tests verts
 grep -rn "quadrantDuPoint" apps/web/src --include=*.tsx | grep -v "\.test\."
-# doit desormais rendre au moins un appelant
+# rend 3 lignes dans SquadIsolementNuageCard.tsx (import + commentaire + appel) : au moins un appelant
 ```
+Gate élargi exécuté : `cd apps/web && npx vitest run src/features/squad` (56 fichiers, 487 tests
+verts) · `make check-types` (tsc -b, 0 erreur) · `npx eslint` sur les 5 fichiers touchés (0 issue).
 
 ## Lot C4 — Les médailles de la frise, en images
 

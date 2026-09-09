@@ -17,15 +17,6 @@ import type { SquadIsolementPoint } from '@/lib/api/types'
  */
 export const PLANCHER_MORTS_SESSION = 5
 
-/**
- * Opacité d'un point ATTÉNUÉ (échantillon sous 30 morts, `part_isolee.echantillon_faible`).
- * Même convention que `HistogramChart` (`ATTENUATION_OPACITE`) — reprise ici en dur parce
- * que cette constante-là est privée au wrapper et ce fichier ne l'importe pas.
- */
-export const OPACITE_ATTENUEE = 0.35
-/** Opacité d'un point à échantillon suffisant. */
-export const OPACITE_PLEINE = 0.8
-
 export type QuadrantIsolement = 'procheCouvert' | 'loinCouvert' | 'procheSeul' | 'loinSansSecours'
 
 export interface MedianesNuage {
@@ -76,18 +67,15 @@ export function quadrantDuPoint(
 }
 
 /**
- * pointAttenue dit si un point doit se peindre en opacité réduite : son taux d'isolement
- * (le même dénominateur que la taille du point) reste sous le plancher de confiance (30
- * morts examinées). Ce n'est PAS le plancher de publication (5) — un point publié peut
- * très bien rester atténué.
+ * pointAttenue dit si un point doit se peindre ATTÉNUÉ : son taux d'isolement (le même
+ * dénominateur que la taille du point) reste sous le plancher de confiance (30 morts
+ * examinées). Ce n'est PAS le plancher de publication (5) — un point publié peut très bien
+ * rester atténué. Le rendu de l'atténuation (lot C3, D3 maquette) est un CERCLE POINTILLÉ,
+ * pas une opacité réduite — décision de rendu portée par `SquadIsolementNuageCard`, cette
+ * fonction ne fait que trancher le booléen.
  */
 export function pointAttenue(point: SquadIsolementPoint): boolean {
   return point.part_isolee.echantillon_faible
-}
-
-/** Opacité d'un point : atténuée sous le plancher de confiance, pleine au-dessus. */
-export function opaciteDuPoint(point: SquadIsolementPoint): number {
-  return pointAttenue(point) ? OPACITE_ATTENUEE : OPACITE_PLEINE
 }
 
 const TAILLE_MIN = 6
@@ -100,4 +88,45 @@ const TAILLE_MAX = 30
  */
 export function tailleDuPoint(mortsExaminees: number): number {
   return Math.min(TAILLE_MAX, TAILLE_MIN + mortsExaminees)
+}
+
+export interface PointMedianJoueur {
+  /** Médiane de la part de morts isolées (axe X) DU JOUEUR, unité 0..1. */
+  isolement: number
+  /** Médiane du taux d'échange (axe Y) DU JOUEUR, unité 0..1. */
+  couverture: number
+  /** SOMME (pas médiane) des morts examinées sur tous les points du joueur — la taille du
+   *  gros point doit refléter le poids réel de son échantillon agrégé. */
+  mortsExaminees: number
+}
+
+/**
+ * pointMedianJoueur agrège tous les points d'UN joueur en un point unique : la MÉDIANE de
+ * chaque axe (décision D4 — cohérent avec les deux lignes de repère du nuage, qui médianent
+ * déjà tous les points), et le TOTAL des morts examinées pour la taille (une somme, pas une
+ * médiane : sinon deux joueurs à 3 et 30 sessions produiraient un point de même poids).
+ *
+ * `null` sans point : rien à agréger, un point à l'origine inventerait une position.
+ */
+export function pointMedianJoueur(points: SquadIsolementPoint[]): PointMedianJoueur | null {
+  if (points.length === 0) return null
+  return {
+    isolement: mediane(points.map((p) => p.part_isolee.taux)),
+    couverture: mediane(points.map((p) => p.couverture.taux)),
+    mortsExaminees: points.reduce((sum, p) => sum + p.morts_examinees, 0),
+  }
+}
+
+const TAILLE_MEDIANE_MIN = 16
+const TAILLE_MEDIANE_MAX = 46
+
+/**
+ * tailleMedianeDuPoint rend le rayon (px) du GROS point médian d'un joueur (D4) : plage
+ * délibérément plus large et un facteur d'atténuation (/2) sur le total des morts
+ * examinées (qui cumule potentiellement de nombreuses sessions), pour que ce point reste
+ * visuellement plus gros que le plus gros point de SESSION (`tailleDuPoint`) à décompte
+ * égal, sans saturer dès la deuxième session agrégée.
+ */
+export function tailleMedianeDuPoint(totalMortsExaminees: number): number {
+  return Math.min(TAILLE_MEDIANE_MAX, TAILLE_MEDIANE_MIN + totalMortsExaminees / 2)
 }
