@@ -406,3 +406,70 @@ _(à compléter en cours d'exécution)_
   longue mise au point : un seul graphe équipement (pas de séparation activés/déployés),
   barre combinée part + issue, références qui excluent le joueur, donuts à parts exclusives
   sur Solo et Escouade. Décisions P1..P13 fermes.
+
+- **2026-09-09 — E0, sortie BRUTE de l'instrument** (`internal/analysis/replay/e0_gachis_research_test.go`,
+  supprimé au commit suivant conformément à E0.5). Corpus : les 64 artefacts du parc local
+  (`data/cache/replays/halo_infinite/*.json`, schéma 50, recuits le 2026-09-09, `*derived*`
+  exclus) — le plan en exige 20. Gate : `go test ./internal/analysis/replay/ -run Research -v`,
+  vert. Les xuids sont remplacés par `<joueur>`.
+
+```
+CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
+== E0.1 VOLUMES DU CANAL `equipmentChanges` ==
+  artefacts portant des changements 64/64 (100.00 %) · sans section `identity` 0 · sans table `abilityLabels` 8
+  changements publies 1880 · `taken` 1422/1880 (75.64 %) · `spent` 458/1880 (24.36 %) · AUTRE Kind 0
+  slots distincts porteurs (somme sur les artefacts, un slot = une VIE) 1372
+== E0.1 TEMOIN DE COMPLETUDE (couverture du canal — le compteur de rotation) ==
+  emissions MANQUEES 71 sur 1954 publiees + manquees = TAUX D'EMISSIONS MANQUEES 71/1954 (3.63 %)
+  sauts de compteur 58 · reapparitions ecartees 1096 · recuperees (schema 38) 95 · premiere emission hors norme 96 · repetitions 1
+== E0.2 JOINTURE RANG DE PALETTE -> FAMILLE (`abilityLabels` du document) ==
+  rangs lus 1797 · NOMMES 1344/1797 (74.79 %) · NON NOMMES 453/1797 (25.21 %)
+  causes du silence : film SANS palette classee 148/453 (32.67 %) · rang connu du manifeste mais absent de la table du film 0/453 (0.00 %) · rang NON ETABLI nulle part 305/453 (67.33 %)
+  rang muet  19 : 167 lectures
+  rang muet  10 : 95 lectures
+  rang muet  22 : 90 lectures
+  rang muet   6 : 26 lectures
+  rang muet  20 : 22 lectures
+  rang muet   8 : 17 lectures
+  rang muet   9 : 14 lectures
+  rang muet   5 : 9 lectures
+  rang muet  12 : 4 lectures
+  rang muet   4 : 4 lectures
+  rang muet  11 : 4 lectures
+  rang muet  32 : 1 lectures
+== E0.3 JOINTURE `Slot` -> JOUEUR (registre d'identite publie, bornes par VIE) ==
+  evenements rattaches 1859/1880 (98.88 %) · NON RATTACHES 21/1880 (1.12 %)
+  slots porteurs rattaches 1355/1372 (98.76 %) · NON RATTACHES 17/1372 (1.24 %)
+== E0.4 IDENTITE `taken ~ utilise + lache + garde`, PAR FAMILLE ==
+  repulsor             pris  375 · utilise    0 · lache  210 · garde  161 · NON EXPLIQUE 4/375 (1.07 %)  <- AUCUN CANAL D'USAGE (negatif mesure) : « utilise » y est impossible
+  grapple              pris  306 · utilise  145 · lache   96 · garde   65 · NON EXPLIQUE 0/306 (0.00 %)
+  wall                 pris  128 · utilise   50 · lache   54 · garde   24 · NON EXPLIQUE 0/128 (0.00 %)
+  thruster             pris  111 · utilise   43 · lache   35 · garde   28 · NON EXPLIQUE 5/111 (4.50 %)
+  powerup_camo         pris   96 · utilise   80 · lache    6 · garde    5 · NON EXPLIQUE 5/96 (5.21 %)
+  powerup_overshield   pris   82 · utilise   73 · lache    6 · garde    3 · NON EXPLIQUE 0/82 (0.00 %)
+  translocator_beacon  pris   38 · utilise   16 · lache    6 · garde   13 · NON EXPLIQUE 3/38 (7.89 %)
+  sensor               pris   36 · utilise    4 · lache   11 · garde   16 · NON EXPLIQUE 5/36 (13.89 %)
+  threat_seeker        pris   29 · utilise    3 · lache   12 · garde    8 · NON EXPLIQUE 6/29 (20.69 %)
+  repair_field         pris   22 · utilise    2 · lache    4 · garde   14 · NON EXPLIQUE 2/22 (9.09 %)
+  TOUTES FAMILLES      pris 1223 · utilise  416 · lache  440 · garde  337 · NON EXPLIQUE 30/1223 (2.45 %)
+  hors de toute fenetre de `taken` : usages 2024 · lachers 9495 — equipement de REAPPARITION (jamais `taken`) et manques du canal, comptes a part, JAMAIS dans l'identite
+  ECART sur 488 couples (joueur, famille) · MEDIANE 0.00 % · PIRE CAS 100.00 % (<joueur>|thruster, 1 pris dont 1 non expliques)
+  PIRE CAS a >= 5 prises : 20.00 % (<joueur>|repulsor, 5 pris dont 1 non expliques)
+== RECENSEMENT BRUT DES POSES (rapporte au §6 du plan, non instruit) ==
+  grenade_frag         deployees   219 · lachees  5019 · origine inconnue   388
+  grenade_plasma       deployees    30 · lachees  1240 · origine inconnue    73
+  grenade_spike        deployees    41 · lachees   941 · origine inconnue    69
+  grenade_dynamo       deployees    19 · lachees   700 · origine inconnue    44
+  grapple              deployees    52 · lachees   604 · origine inconnue    29
+  wall                 deployees   295 · lachees   251 · origine inconnue    29
+  thruster             deployees    36 · lachees   463 · origine inconnue    16
+  sensor               deployees    49 · lachees   302 · origine inconnue    23
+  repulsor             deployees    61 · lachees   303 · origine inconnue     6
+  shroud_screen        deployees     9 · lachees    60 · origine inconnue     4
+  threat_seeker        deployees     3 · lachees    16 · origine inconnue     0
+  repair_field         deployees     3 · lachees    13 · origine inconnue     0
+  powerup_camo         deployees     3 · lachees     8 · origine inconnue     0
+  powerup_overshield   deployees     0 · lachees     9 · origine inconnue     0
+  translocator_beacon  deployees     0 · lachees     8 · origine inconnue     0
+  TOUTES FAMILLES      deployees   820 · lachees  9937 · origine inconnue   681 — RESERVE DE COUVERTURE des poses 681/11438 (5.95 %)
+```
