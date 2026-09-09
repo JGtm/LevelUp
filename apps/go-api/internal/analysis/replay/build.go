@@ -51,7 +51,15 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	doc.Tracks = decimateTracks(sorted, origin, step, opt.minPoints(), opt.Scoped)
 	doc.FrameCount = frameSpan(sorted, origin, step)
 	doc.DurationMS = doc.FrameCount * interval
-	doc.Bounds = boundsOf(doc.Tracks)
+	var ecartes int
+	doc.Bounds, ecartes = boundsOf(doc.Tracks)
+	if ecartes > 0 {
+		// JOURNALISE, JAMAIS AVALE (regle n°3 du depot). Un artefact de decodage qui passe la
+		// porte des bornes n est pas un detail : il decadre la scene et fait disparaitre le fond
+		// de carte. Le compte doit se voir en production, meme quand le correctif marche.
+		slog.Info("rejeu : echantillons aberrants ecartes des bornes",
+			"match_id", doc.MatchID, "ecartes", ecartes, "seuil_etendues", boundsRejectSpreads)
+	}
 	// Les tirs sont rattachés sur les positions NON décimées (le rattachement se joue à
 	// ~120 ms, la grille du rejeu est à 100 ms : décimer d'abord perdrait des tireurs).
 	// LE PONT slot -> joueur vient du seul fil des morts (cf. owners.go). Il conditionne les
