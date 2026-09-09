@@ -156,6 +156,8 @@ export function TacticalAnalysisView({
             grid={grid}
             bornes={raster.data.bornes}
             pasM={raster.data.pas_m}
+            matchsFiltres={raster.data.matchs_filtres}
+            matchsRetenus={raster.data.matchs_retenus}
             matchsEnAttente={raster.data.matchs_en_attente ?? 0}
             matchsNonCuisables={raster.data.matchs_non_cuisables ?? 0}
             onCellSelect={(col, row) => setSelected({ col, row })}

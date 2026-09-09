@@ -8,6 +8,8 @@ import {
   cellFromClick,
   pageTitle,
   planCanvasView,
+  planEmptyReason,
+  planEmptyText,
   ratioSafe,
   sourceForQuestion,
   statusMessages,
@@ -134,6 +136,63 @@ describe('cellFromClick — la cellule (col, row) sous un clic canvas', () => {
   it('suit le pas publié : la même position rend une adresse différente à 0,5 et à 2 m', () => {
     expect(cellFromClick(100, 50, 200, 100, BORNES, 0.5)).toEqual({ col: 100, row: 50 })
     expect(cellFromClick(100, 50, 200, 100, BORNES, 2)).toEqual({ col: 25, row: 12 })
+  })
+})
+
+// ─── planEmptyReason — CE QUE LE PLAN VIDE DIT, ET IL DOIT DIRE VRAI ────────────
+
+describe('planEmptyReason — trois causes de plan vide, trois messages', () => {
+  it('rien n’est vide quand au moins une cellule est peinte', () => {
+    expect(planEmptyReason(4, 38, 38)).toBeNull()
+    // Une seule cellule suffit : le plan est maigre, pas vide.
+    expect(planEmptyReason(1, 38, 38)).toBeNull()
+  })
+
+  it('aucun match dans le filtre : le périmètre est vide, pas la mesure', () => {
+    expect(planEmptyReason(0, 0, 0)).toBe('aucun-match')
+  })
+
+  it('des matchs mais aucun mesuré : « pas assez de matchs mesurés » reste vrai', () => {
+    expect(planEmptyReason(0, 0, 38)).toBe('aucune-mesure')
+  })
+
+  // LE DÉFAUT DU POINT 21 : sur Illusion, 38 matchs filtrés et mesurés, aucune cellule
+  // au-dessus du plancher. Le message « pas assez de matchs mesurés » était FAUX.
+  it('des matchs mesurés mais dispersés : densité insuffisante, jamais « pas assez de matchs »', () => {
+    expect(planEmptyReason(0, 38, 38)).toBe('densite')
+    expect(planEmptyReason(0, 3, 38)).toBe('densite')
+  })
+})
+
+describe('planEmptyText — le titre et la description de chaque cause', () => {
+  it('reprend le message existant pour « aucune mesure »', () => {
+    expect(planEmptyText(tFr, 'aucune-mesure', 0, 0.5)).toEqual({
+      title: tFr.planEmptyTitle,
+      description: tFr.planEmptyDescription,
+    })
+  })
+
+  it('la densité insuffisante cite les matchs mesurés, le plancher et le pas essayé', () => {
+    const densite = planEmptyText(tFr, 'densite', 38, 2)
+    expect(densite.title).toBe(tFr.planEmptyDensityTitle)
+    expect(densite.description).toContain('38 matchs mesurés')
+    expect(densite.description).toContain('3 matchs distincts')
+    expect(densite.description).toContain('2 m')
+    // Ce que la page ne doit PLUS dire quand les matchs sont là.
+    expect(densite.title).not.toBe(tFr.planEmptyTitle)
+  })
+
+  it('la densité insuffisante existe aussi en anglais', () => {
+    const densite = planEmptyText(tEn, 'densite', 38, 2)
+    expect(densite.title).toBe(tEn.planEmptyDensityTitle)
+    expect(densite.description).toContain('38 measured matches')
+  })
+
+  it('un périmètre vide garde son propre message', () => {
+    expect(planEmptyText(tFr, 'aucun-match', 0, 0.5)).toEqual({
+      title: tFr.planEmptyNoMatchTitle,
+      description: tFr.planEmptyNoMatchDescription,
+    })
   })
 })
 

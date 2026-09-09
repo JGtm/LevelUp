@@ -138,12 +138,28 @@ describe('TacticalAnalysisView — états de la lecture', () => {
     expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
   })
 
-  it('VIDE : le message du plancher dans la carte Plan, le KPI reste servi', () => {
+  // VIDE — TROIS CAUSES, TROIS MESSAGES (point 21, lot 3.2). Le message générique « pas
+  // assez de matchs mesurés » mentait quand les matchs étaient là mais dispersés.
+  it('VIDE, matchs mesurés dispersés : « densité insuffisante », le KPI reste servi', () => {
     mockRaster({ data: RASTER_VIDE })
     renderVue()
-    expect(screen.getByText(t.planEmptyTitle)).toBeInTheDocument()
+    expect(screen.getByText(t.planEmptyDensityTitle)).toBeInTheDocument()
+    expect(screen.queryByText(t.planEmptyTitle)).not.toBeInTheDocument()
     expect(screen.getByTestId('kpi-strip')).toBeInTheDocument()
-    expect(screen.queryByTestId('tactical-plan-canvas')).not.toBeInTheDocument()
+  })
+
+  it('VIDE, aucun match mesuré : le message historique reste servi', () => {
+    mockRaster({ data: { ...RASTER_VIDE, matchs_retenus: 0, matchs_filtres: 12 } })
+    renderVue()
+    expect(screen.getByText(t.planEmptyTitle)).toBeInTheDocument()
+    expect(screen.queryByText(t.planEmptyDensityTitle)).not.toBeInTheDocument()
+  })
+
+  it('VIDE, aucun match dans le filtre : le message du périmètre', () => {
+    mockRaster({ data: { ...RASTER_VIDE, matchs_retenus: 0, matchs_filtres: 0 } })
+    renderVue()
+    expect(screen.getByText(t.planEmptyNoMatchTitle)).toBeInTheDocument()
+    expect(screen.queryByText(t.planEmptyDensityTitle)).not.toBeInTheDocument()
   })
 
   it('NOMINAL : les KPI, le canevas du plan, le placeholder de la cellule', () => {
