@@ -177,7 +177,25 @@ test `:memory:` dédié à `QTacticalIsolement` (entre dans Q8 si la revue le ju
   (le film porte-t-il les entrées/sorties ? sinon S.3 se fait par calage `real_start_time` /
   `t0_quality`, comme prévu, mais APRÈS P2).
 - **P2 → P5** : Opus, une phase = un lot clos (gate + journal), UNE revue adversariale à la
-  clôture de P5 sur le diff cumulé (règle §0.5), bump 49 unique.
+  clôture de P5 sur le diff cumulé (règle §0.5), bump 50 unique (49 pris par le lien exact le
+  2026-09-08).
+- **Statut** : P1 [x] 2026-09-07 par une autre session (`77200cb7a`,
+  `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`), vérifié par le superviseur le 08/09 : axes
+  (i) et (j) couverts, verdict roster = le film ne porte pas les entrées/sorties → S.3 par calage
+  `real_start_time` après P2 ; séquençage P2-P5 §3 repris tel quel. P2 lancé le 2026-09-08 (Opus,
+  `feat/v2-p2-registre-joueurs`, worktree `LevelUp-wt-p2`, commits fréquents) — go utilisateur
+  « ok go pour la vague 3 ».
+- **P2 [x] 2026-09-08** (`feat/v2-p2-registre-joueurs`, 6 commits Opus + polarité du gate `632bd20c8` + P2-bis
+  `1496b386c`..`fd07570bc`, poussée, NON fusionnée) : registre pur `BuildIdentityRegistry` (liens directs
+  d abord, pont par morts en repli et vérification, élimination sur le roster, exclusion temporelle),
+  section `identity` publiée (schéma 50), 18 lecteurs du rejeu + collecteur migrés, garde-rail à
+  allowlist datée. MESURÉ par le superviseur (base 49 / HEAD 50, 10 témoins) : 0 perte de calque ;
+  `3372e7eb` unpublished 35 → 0 ; écart K/D/A `51ebbc0f` 9 → 0, `d9781168` 10 → 0 ; `unnamedLives`
+  `d9781168` 19 → 15, `51ebbc0f` 8 → 3, `64e8adfa` 11 → 7, `bf15f7ab` 1 → 0 ; portage du crâne inchangé ;
+  tirs rattachés +187/+149/+147. Résidu 13 pistes expliqué (grappes de fin de manche, attend le lien
+  décodeur E2). Deux compteurs d échec MONTENT honnêtement (`slotCollisions` 0 → 1, `unnamedLivesContested`
+  0 → 2 : collision jusque-là servie en silence) — à accepter au gate corpus (registre). `filmIndex`
+  8/8 direct partout ; `bipedSlot.direct` 0 partout (E2).
   R1, R2, R3 ne s'exécutent pas séparément.
 - **S.3** (Tactique) : après P1 selon son verdict, avec le calage prescrit par P1.
 - **L6, L7, L8** (narratif, erreurs API, Discord) : après décisions §5.
@@ -244,6 +262,35 @@ consommateur de production, l'ancrage de la grille de frames sur le premier paqu
 statborg, la contradiction de `vehicle_rides.go`, et l'absence totale de fichier de code dans le
 diff (`git diff --name-only feat/v75..feat/p1-inventaire` : 4 fichiers, tous sous `.ai/`). Les
 débits de lecture et les décomptes de liens viennent du balayage du lot, non re-mesurés.
+
+- **D12 (2026-09-08, utilisateur)** : le lien slot de bipède ↔ index de joueur est un BLOQUANT DE LA
+  RELEASE v7.5.0 (« sinon on a un truc bricolé et pas fiable/stable »). Le gel du décodeur (§0.6 du
+  plan v2) reste, ce seul item en est exempté : sondage borné de rétro-ingénierie (Opus, diagnostic
+  seul, 2-3 films) puis branchement additif sous corpus gate, à lancer dès que le quota le permet
+  (après P3-P4, ou en parallèle si budget). Entrée de registre datée ; critère de succès
+  `identity.coverage.bipedSlot.direct`. Vague 3 devient : P3, P4, **P-décodeur (E2)**, P5.
+- **D13 (2026-09-08, utilisateur, « go avec ta reco »)** : RÉORDONNANCEMENT — P2-bis (résidu) → **sondage
+  décodeur E2 AVANT P3** (Opus, diagnostic seul, borné : le film porte-t-il le propriétaire d un corps
+  et d un objet, et où ; critère `bipedSlot.direct`) → P3 et P4 ALLÉGÉS (registre, machine à états
+  unique, migration des lecteurs ; ZÉRO heuristique nouvelle : un lien que le film ne donne pas est
+  publié `non_resolu` et compté, jamais deviné par géométrie) → P5. Rien n est abandonné : les
+  heuristiques de déduction prévues par P3/P4 sont retirées de leur périmètre, pas le reste.
+- **Sondage E2 [x] 2026-09-08** (`feat/v2-sondage-e2`, `eaa35ba06`, Opus, diagnostic seul) : le record de
+  CRÉATION d une entité bipède `ti=35` porte l index de participant du propriétaire (`+67` R(5),
+  primitive `ECS_ReadEntityRefIndex5`, déjà consommée puis jetée par le décodeur). Couverture directe
+  mesurée : `d9781168` 90,3 %, `bf15f7ab` 86,8 %, `64e8adfa` 95,0 % (372/408 vies), 0 fantôme ;
+  contre le pont par morts : 329 concordants, 18 discordants dont 7 paires ÉCHANGÉES (le pont nomme
+  à tort), 39 vies neuves. Spécification et plan d intégration additif I1-I5 (~420 L) dans
+  `.ai/V7.5/film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md`. Préalable : trancher le cas des bots
+  (index lu 8 hors table sur `c75f33b8`) — doctrine : index hors table = `non_resolu` + compteur,
+  jamais inventé ; instruction dans le lot d intégration. Lot suivant : **P-décodeur E2 (I1-I5)**.
+- **D14 (2026-09-08, utilisateur)** : PAS DE REPLI par les morts pour les vies sans record de création lu.
+  Le pont par morts devient vérification seule ; les 5-13 % restants sont INSTRUITS vie par vie et
+  classés par cause : (a) vie découpée par un trou de réplication → lien PROPAGÉ par (slot, génération)
+  (même record, source directe) ; (b) record présent mais non lu → améliorer le lecteur ; (c) bot / index
+  hors table → `non_resolu` ; (d) record réellement absent (prouvé) → `non_resolu` compté, classe qui
+  doit rester petite. Objectif : `bipedSlot.direct` ≥ 95 %, `non_resolu` entièrement ventilé, 0 vie
+  nommée par le pont. Exécutant relancé avec ce brief (I0 bots déjà tranché : espace d index partagé).
 
 ## 5. Décisions qui appartiennent à l'utilisateur (avec recommandation ; à trancher avant le lot concerné)
 

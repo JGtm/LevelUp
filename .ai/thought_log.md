@@ -103379,3 +103379,125 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   (migration `SynthesisHeatmapChart.tsx` en mode divergent) quand le superviseur leve le report,
   et le nettoyage du commentaire stale de `squadEchange.logic.ts`. Pas de fusion vers `feat/v75`
   a ce stade (accord utilisateur prealable requis, regle CLAUDE.md n°16).
+## [2026-09-08] Orchestration — P2 livre, gate corpus, polarite des compteurs d'echec (En cours)
+- P2 (`feat/v2-p2-registre-joueurs`, 6 commits Opus) : gate corpus contre `feat/v75` sur les
+  7 temoins du manifeste = 0 perte, gains 7 (`d9781168`) et 6 (`51ebbc0f`).
+- Manifeste ETENDU (scratchpad : + `3372e7eb`, `64e8adfa`, `c0a82e88`) : 3 « pertes » qui sont les
+  gains attendus (`objectives.unpublished` 35 -> 0, `bridge.unnamedLives` 1 -> 0, `shots.noSlot`
+  35 -> 15) — le comparateur `replaydiff` lisait toute baisse comme une perte, y compris les
+  compteurs d'ECHEC (plan v2 §1 : « compteur d'echec qui baisse = gain »). Correctif sur la
+  branche P2 : `internal/replaydiff/polarite.go` (liste fermee et datee des compteurs d'echec,
+  inversion du sens, `deathOffsetRunnerUp` exclu — nombre de voix), tests ; commits `50a9e01f8`
+  (predicat sur la mauvaise forme de cle — son test le disait, commite par erreur avant
+  lecture du resultat) puis `632bd20c8` (cle `axe/chemin`, vert).
+- Prochaine etape : rejouer le gate etendu avec artefacts conserves, lire les compteurs de
+  couverture sur `3372e7eb` (unpublished 35 -> 0 attendu), `d9781168` (unnamedLives 19 -> 0),
+  `51ebbc0f` (ecart K/D/A 9 -> 0), puis P3.
+
+## [2026-09-08] Orchestration — P2 mesure sur pieces (En cours)
+- Gate corpus etendu (10 temoins, polarite corrigee) : 0 perte ; gains 28 (`3372e7eb`), 21
+  (`c0a82e88`), 7 (`d9781168`), 6 (`51ebbc0f`).
+- Compteurs lus dans les artefacts base (49) / HEAD (50) : `3372e7eb` objectives.unpublished
+  35 -> 0 (attached 76/76) ; `c0a82e88` unnamedLives 1 -> 0, shots.noSlot 35 -> 15, objectives.noSlot
+  69 inchange ; ecart K/D/A (somme des manches, scoreTimeline vs feuille) : `51ebbc0f` 9 -> 0,
+  `d9781168` 10 -> 0, `64e8adfa` 16 -> 16 (5 statborg non resolus, attendu), `3372e7eb` 0, `fb1a1a72` 0.
+- NON TENU : `d9781168` bridge.unnamedLives 19 -> 19 (identity.coverage bipedSlot : 142 deduits,
+  34 non resolus, 0 par elimination). R2 reste ouvert -> P2-bis (instruction vie par vie) avant P3.
+- Registre : filmIndex 8/8 direct sur tous les temoins ; bipedSlot 0 direct (trou E2, attendu) ;
+  statborgSlot 16/16 deduits sur `51ebbc0f`, 11 deduits + 5 non resolus sur `64e8adfa`.
+
+## [2026-09-08] Orchestration — decision : gel du decodeur maintenu, lien corps <-> index consigne
+- Question utilisateur : « on n'est plus cense passer par les morts, il y a plus propre avec l'index ».
+  Reponse sur pieces : P a generalise l'index partout ou le film le porte ; le corps (ti=35) n'a pas
+  de champ d'identite dans le decodeur actuel — le repli par morts ne sert plus qu'a ce lien.
+- Decision : gel du decodeur MAINTENU (budget quota) ; entree de registre ouverte avec l'hypothese
+  utilisateur (entite bipede porteuse de l'index, trajectoires/inventaire enfants) et la piste
+  `NOTE_PROJECTILE_OWNER_2026-09-01.md:70` (espace de handles dom1 commun aux bipedes) ; critere de
+  succes = `identity.coverage.bipedSlot.direct`. Reprise au plan decodeur post-v7.5.0.
+- Amendement immediat (utilisateur) : ce lien est A RESOUDRE AVANT v7.5.0, pas apres — bloquant de
+  release (D12). Le gel general du decodeur tient, cet item seul en est exempte ; lancement des que
+  le quota le permet. Vague 3 = P3, P4, P-decodeur (E2), P5.
+- D13 (utilisateur) : vague 3 reordonnee — P2-bis -> sondage decodeur E2 (diagnostic borne) ->
+  P3/P4 alleges (aucune heuristique nouvelle) -> P5. Rien d'abandonne ; les heuristiques de
+  deduction sortent du perimetre de P3/P4, le sondage decide de leur forme.
+
+## [2026-09-08] Orchestration — P2 clos (P2-bis), sondage decodeur E2 lance (En cours)
+- P2-bis (Opus) : la premisse de R2 etait fausse sur `d9781168` (aucun joueur a zero mort sur tout
+  le match ; le cas existe PAR MANCHE et le statborg le resout deja). Regle nouvelle « exclusion
+  temporelle » (un joueur n'occupe qu'un corps a la fois ; candidat unique -> nomme ; deux -> silence ;
+  zero -> contradiction + alarme), provenance `exclusion_temporelle`, 10 mutations rouges. Chiffres :
+  unnamedLives d9781168 19 -> 15, 51ebbc0f 8 -> 3, 64e8adfa 11 -> 7, fb1a1a72 3 -> 2, bf15f7ab 1 -> 0 ;
+  aucune perte ; +187/+149/+147 tirs rattaches. Residu 13 pistes explique -> lien decodeur E2.
+- `slotCollisions` 0 -> 1 et `unnamedLivesContested` 0 -> 2 : compteurs d'echec qui MONTENT parce
+  qu'une collision auparavant masquee est maintenant dite — le gate (polarite corrigee) les lira en
+  perte ; a accepter explicitement (registre), pas a masquer.
+- Sondage decodeur E2 lance (Opus, diagnostic seul, 3 hypotheses, 3 films) selon D12/D13.
+
+## [2026-09-08] Orchestration — gate corpus apres P2-bis : chaque « perte » instruite (Complete)
+- `coverage.bridge.namedByNextLife` en baisse partout : voie de nommage qui cede a l'exclusion
+  temporelle — compteur de METHODE, ni gain ni perte. Comparateur corrige (`namedBy*` = changement ;
+  `flagCarries.noTrack` ajoute aux compteurs d'echec), commit `2654e5e04` sur la branche P2.
+- `slotCollisions` 0 -> 1 (`fb1a1a72` slot 622, `d9781168` slot 637), `unnamedLivesContested` 0 -> 2 :
+  echecs qui MONTENT parce qu'ils sont enfin dits (le pont aplati servait la collision au premier
+  occupant en silence). ACCEPTES, pas masques.
+- `tracks/par-xuid` 18 -> 17 (`fb1a1a72`, …403277) et 21 -> 19 (`d9781168`, …553276) : pistes
+  REATTRIBUEES (147 et 174 pistes totales inchangees ; `sans xuid` 3 -> 2 et 19 -> 15) — la collision
+  corrigee rend a l'autre occupant ou marque « contestee ». Rien de jete.
+- `flagCarries duree-totale …613055` 500 -> 400 (`64e8adfa`) : le portage [6645..6853] devient
+  [6645..6753] + [6754..6853] par …763167 — la feuille date un `flag_grabs` de …763167 a t=6755 et
+  …613055 meurt a 6712 : la base prolongeait un portage FANTOME apres la mort du porteur. Prise
+  datee = perte legitime (plan v2 §1), et une correction.
+- Reste pour P5 : un mecanisme d'ACCEPTATION datee dans le manifeste du corpus (`[[temoin.accepte]]`
+  metrique / avant / apres / raison) pour que « 0 perte » garde son sens sans masquer les compteurs.
+
+## [2026-09-08] Orchestration — sondage decodeur E2 : le film nomme le proprietaire du corps (Complete)
+- H1 suffit : record NEW de l'entite bipede ti=35, `+67` R(5) = index de participant absolu
+  (`ECS_ReadEntityRefIndex5`), version 13, signature `player-representation-name` 0x1876BDA0
+  constante sur 5 films ; 529/529 portes ouvertes, 527/529 dans le roster ; couverture directe 87-95 %
+  (372/408 vies), 0 fantome ; 7 paires echangees par le pont par morts (il nomme a tort, pas
+  seulement se tait). H2/H3 non ouvertes (critere d'arret atteint). Bots a trancher (index 8 hors
+  table sur `c75f33b8`).
+- Prochaine etape : lot P-decodeur E2 (I1 lecteur `ScanBipedCreations` + I2 publication `direct`
+  + I3 pont = verification comptee + I4 gate + I5 goldens), Opus, base P2 ; puis P3/P4 alleges, P5.
+- D14 (utilisateur) : plus de repli par les morts ; le residu de vies sans record est instruit par
+  cause (trou de replication -> propagation par (slot, generation) ; record non lu -> lecteur ;
+  bot/hors table ; absent prouve). Executant E2 arrete puis relance sur son worktree (I0 bots deja
+  tranche : espace d'index partage, index 8 non resolu).
+
+## [2026-09-08] Orchestration — E2 livre ; gate corpus : pertes calque par calque -> E2-bis (En cours)
+- E2 (`feat/v2-decodeur-e2`, 7 commits Opus) : residu instruit par cause — 51 vies decoupees par un
+  trou de replication (propagees par le slot : UN slot = UN corps sur tout le film, generation
+  invariante), 0 record non lu, 2 index hors table (bot), 0 record absent. Couverture directe
+  100/100/100/100/97,7 %, 0 vie nommee par le pont, 27 vies renommees a raison, collisions a 0.
+- Gate corpus 10 temoins (base v75) : gains massifs MAIS pertes non vues par la mesure d'E2 (qui ne
+  regardait que nommage et scores) : vies de BOTS perdues (`bcb6d393` 1 -> 0, `c75f33b8` 2 -> 1,
+  bombStats.players 7 -> 6), VEHICULES `084a804d` rides 2711 -> 687 etc., ramassages/episodes par
+  joueur en baisse sur 6 films, flag spans 26 -> 23. Hypotheses : l'index hors table ecrase la voie
+  bot ; un corps en vehicule n'est pas replique et le trajet tombe dans un trou entre deux vies
+  directes (le pont aplati couvrait tout le slot). E2-bis lance (Opus) : instruction ligne par ligne,
+  correctifs dans le registre (identite du slot sur toute la duree du corps), 0 perte hors acceptees.
+
+## [2026-09-08] Orchestration — E2-bis rendu : pertes instruites, deux P0 corriges, corps = (slot, generation) (En cours)
+- Banc de mesure d'E2 pollue (5 artefacts de base ecrases par sa mesure I5) : refait, base
+  reproduite a l'octet, les 78 pertes du gate reproduites en local (`replay-diff`).
+- Refutation : `084a804d` porte 379 records pour 256 slots (123 slots a deux records, gen 1 puis
+  gen 2 apres la 11e minute) — « un slot = un corps » etait vrai sur 5 films, faux sur le 6e ;
+  le refus `lectures_divergentes` jetait 59 vies. Correctif `453b719fc` : le corps est (slot, gen),
+  une vie revient au corps qui tenait le slot a son debut.
+- Verdicts : bots 1->0 / 2->1 = REATTRIBUTIONS CORRIGEES (le relais nommait « bot » des corps
+  d'humains, chaines de 3 vies simultanees) ; ramassages, pistes, episode, bombStats = reattributions
+  a totaux constants (bombCarries 7 -> 9) ; vehicules 74 trajets / 28 995 frames conserves,
+  `ridesNamed` 52 -> 74 (hypothese du trou REFUTEE) ; 2 P0 : `equipmentEpisodes` (la borne lisait
+  « nom » pour « mort », `45c850637`) et `flagCarries.unresolved` 0 -> 4 (repli a 2 socles sur un film
+  a 6, `f7709ae01`) ; skull 1 frame, flag 500 -> 400, homeByObject : acceptees et confirmees.
+- Apres : `084a804d` non_resolu 59 -> 1 / 353, unnamedLives 80 -> 0, episodes = base ; 9 films sur
+  10 identiques a E2 a l'octet. Decouvertes : `attachEpisodeKills` sur le pont aplati (faux sur slot
+  recycle) ; `shotsNoRide`/`ambiguous*` non classes echecs (P5) ; les corps de bots REELS n'ont plus
+  de voie de nommage directe (index hors table) — question decodeur : ou est l'index des bots ?
+- Gate corpus sur le parc relance (superviseur).
+- Gate corpus apres E2-bis (superviseur) : les deux P0 ont disparu du detail ; restent des baisses
+  PAR JOUEUR a somme conservee (ramassages, trajets, pistes = reattributions prouvees), 3 compteurs
+  d'echec non classes et 2 voies de drapeau. Comparateur amende sur la branche E2 (`112d8fdaa`) :
+  un groupe `par-xuid` a somme conservee = CHANGEMENT (reattribution), `ambiguousReturns` /
+  `ambiguousSlot` / `shotsNoRide` = echecs, `flagCarries.homeBy*` / `assignedBy*` = voies ; tests.
+  Gate relance.
