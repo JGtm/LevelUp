@@ -66,7 +66,21 @@ func TestComparer_ReattributionASommeConservee(t *testing.T) {
 	if bil := rap.Bilans["vehicules"]; bil.Pertes != 0 || bil.Changements == 0 {
 		t.Errorf("duree reattribuee : %+v", bil)
 	}
-	if g, ok := groupeParXUID(cle("pistes", "tracks/vies-par-xuid/111")); !ok || g != cle("pistes", "tracks/vies-par-xuid/") {
+	if g, ok := groupeParXUID(cle("pistes", "tracks/vies-par-xuid/111")); !ok || g != cle("pistes", "tracks/vies-par-*/") {
 		t.Errorf("groupe vies-par-xuid : %q %v", g, ok)
+	}
+
+	// Un trajet ventile PAR SLOT (porteur sans nom) qui passe PAR JOUEUR (porteur nomme) : la
+	// ligne par-slot « disparait », la somme des deux ventilations est conservee -> changement.
+	kS := cle("vehicules", "vehicles.rides/duree-totale/par-slot/513")
+	kX := cle("vehicules", "vehicles.rides/duree-totale/par-xuid/111")
+	rap = Comparer(
+		Empreinte{Mesures: map[string]Mesure{kS: num(2672)}},
+		Empreinte{Mesures: map[string]Mesure{kX: num(2672)}},
+	)
+	for _, d := range rap.Differences {
+		if d.Sens == SensPerte || d.Sens == SensDisparu {
+			t.Errorf("slot -> joueur a somme conservee : %s/%s lu %q", d.Axe, d.Metrique, d.Sens)
+		}
 	}
 }
