@@ -50,6 +50,25 @@ d'intégration complet — pas par lot.
 - [ ] Exposer un plafond de saturation optionnel (la maquette sature à trente points) — par défaut
       inchangé, pour ne rien casser chez les consommateurs existants
 - [ ] Tests : une case `null` produit la hachure ; deux cases voisines ne se touchent pas
+- [x] `components/charts/Heatmap2DChart.tsx` — ajouter le padding des cases (décision D2) :
+      `itemStyle` avec `borderWidth`, `borderColor` à l'encre du fond, `borderRadius`. Fait :
+      `borderWidth: CELL_BORDER_WIDTH (4)`, `borderColor: tc.card`, `borderRadius: CELL_BORDER_RADIUS (2)`
+      au niveau série (hérité par toutes les cases, mesurées ou vides)
+- [x] Même fichier — rendre l'absence VISIBLE (décision D3) : une case `value: null` reçoit une
+      hachure et un tiret, et la légende la nomme. Fait : fond `tc.splitLine` + `decal` (hachure
+      diagonale, encre `tc.axisLabel`) au niveau ITEM (seules les cases vides, pas les mesurées),
+      étiquette `—` (`EMPTY_CELL_LABEL`), légende FR/EN rendue par le composant
+      (`HEATMAP_EMPTY_CELL_TEXT`, pied de `ChartCard` via sa prop `legend`) uniquement quand la
+      série contient au moins une case vide
+- [x] Exposer un plafond de saturation optionnel (la maquette sature à trente points) — par défaut
+      inchangé, pour ne rien casser chez les consommateurs existants. Fait : prop `saturationCap?:
+      number`, ignorée si `valueRange` est fourni, absente par défaut (comportement historique
+      inchangé, testé en non-régression)
+- [x] Tests : une case `null` produit la hachure ; deux cases voisines ne se touchent pas. Fait,
+      répartis sur deux fichiers (voir note ci-dessous) : `Heatmap2DChart.test.ts` (étendu — hachure/
+      itemStyle/decal, tiret, borderWidth>0, plafond de saturation, non-régression) et
+      `Heatmap2DChart.test.tsx` (créé — légende FR/EN au niveau composant, absente quand aucune
+      case vide)
 
 **Ce que ce lot ne fait PAS** : toucher aux quatre consommateurs. Ils héritent gratuitement.
 
@@ -70,6 +89,36 @@ cd apps/web && npx vitest run src/components/charts/Heatmap2DChart
       `[~]` avec cette référence, et vérifier seulement que son `gap-[3px]` reste
 - [ ] **Garde-rail** (règle n°6 du dépôt : une factorisation sans garde-rail re-diverge) : un test
       grep qui échoue si un `type: 'heatmap'` ECharts apparaît hors de `Heatmap2DChart.tsx`
+- [x] `features/synthesis/SynthesisHeatmapChart.tsx` — construit son option ECharts à la main.
+      La faire passer par `Heatmap2DChart` en mode `divergent` (sa rampe autour de 50 % est
+      légitime et doit être préservée). **FAIT le 2026-09-09 (lot 1.5, worktree
+      `LevelUp-wt-vague1`)** : le report du lot 1.4 est levé, le superviseur a ordonné
+      l'exécution. `valueRange={[0, 1]}` FIGE l'échelle du visualMap (le neutre reste à 50 %
+      quelle que soit la plage réelle des taux de victoire — laisser le wrapper auto-ajuster
+      min/max aurait décentré le neutre). `formatTooltip` reproduit le contenu exact de
+      l'ancien tooltip (jour, heure, taux, nombre de matchs). Le wrapper n'exposant pas
+      d'option `inverse` pour l'axe Y (contrairement à l'ancienne implémentation
+      `yAxis.inverse: true`), les points sont émis Dimanche → Lundi pour que Lundi occupe le
+      DERNIER index (le haut d'un axe catégoriel non inversé) — même rendu visuel. Effets de
+      bord ACCEPTÉS, inhérents à l'unification (pas de régression au sens du plan, qui ne
+      demande de préserver QUE la rampe) : légende horizontale en pied de carte au lieu de la
+      barre verticale à droite, plus de titres d'axes ("Heure"/"Jour") ni de libellés
+      "Victoires"/"" aux bornes du visualMap — le wrapper canonique n'expose aucune de ces
+      deux options, et les 4 autres consommateurs vivent déjà sans elles.
+- [~] `features/session-detail/SessionUsageForms.tsx` → `UsageRegularityBand` — **NE PAS migrer**.
+      C'est une miniature DOM/CSS assumée (cases de 14 px, valeur impossible à écrire) ; statuée
+      `[~]` avec cette référence. Vérifié sur pièces (2026-09-09) : `gap-[3px]` toujours présent
+      ligne 276, aucune modification
+- [x] **Garde-rail** (règle n°6 du dépôt : une factorisation sans garde-rail re-diverge) : un test
+      grep qui échoue si une série heatmap ECharts apparaît hors de `Heatmap2DChart.tsx`. Fait :
+      `components/charts/heatmapSingleImpl.guard.test.ts`, allowlist DATÉE 2026-09-09 (les 5 sites
+      relevés par grep avant écriture : `SynthesisHeatmapChart.tsx`, `ActivityCalendarChart.tsx`,
+      `ExplorerActivityHeatmapChart.tsx`, `RelationsMomentsHeatmap.tsx`, `squadMapHeatmapChart.ts`).
+      Mordant PROUVÉ : ajout temporaire d'un 6e site (`features/tactical/_tmpHeatmapProbe.ts`),
+      test rouge confirmé, fichier supprimé, test revert au vert — détail au thought_log.
+      **MIS À JOUR le 2026-09-09 (lot 1.5)** : `SynthesisHeatmapChart.tsx` retiré de l'allowlist
+      (plus aucun littéral `type: 'heatmap'` dans ce fichier après la migration ci-dessus) — 4
+      sites restants, tous décision S6 (hors périmètre de la vague C).
 
 **Gate :**
 ```bash
@@ -77,26 +126,74 @@ cd apps/web && npx vitest run src/components/charts src/features/synthesis
 grep -rn "type: 'heatmap'" apps/web/src --include=*.ts --include=*.tsx | grep -v Heatmap2DChart
 # doit ne rendre que des lignes allowlistees par le garde-rail
 ```
+Exécuté (2026-09-09, lot 1.4) : vitest 283/283 (charts) + suite complète synthesis/squad/tactical/
+session-detail 1089/1089 verts ; grep rend exactement les 5 sites ci-dessus ; `make check-types`
+(`tsc -b`) vert.
+
+**Ré-exécuté (2026-09-09, lot 1.5, après la migration de `SynthesisHeatmapChart.tsx`)** :
+`cd apps/web && npx vitest run src/components/charts src/features/synthesis` → 44 fichiers,
+409 tests verts (14 skipped, préexistants) ; `grep -rn "type: 'heatmap'" apps/web/src
+--include=*.ts --include=*.tsx | grep -v Heatmap2DChart` rend exactement les 4 sites restants ;
+`make check-types` (tsc -b) 0 erreur ; `npx eslint` sur les 3 fichiers touchés
+(`SynthesisHeatmapChart.tsx`, `SynthesisHeatmapChart.test.tsx`,
+`heatmapSingleImpl.guard.test.ts`) : 0 issue. Nouveau fichier de test dédié
+`SynthesisHeatmapChart.test.tsx` (6 cas) : rampe divergente figée sur [0, 1], ordre Lundi/
+Dimanche de l'axe Y, ordre des heures, contenu du tooltip, case vide (count 0 → value null),
+état vide (aucune cellule mesurée).
 
 ## Lot C3 — Le nuage d'isolement : ce qui manque
 
+**Exécuté le 2026-09-09 (lot 1.5, worktree `LevelUp-wt-vague1`, branche
+`feat/vague1-integration`).** Vérifié sur pièces avant d'écrire : `SquadIsolementNuageCard.tsx`
+avait bougé le 09-09 (chantier « légendes couleurs », commit `9212a1b0e` — infobulle ⓘ du
+titre au lieu d'un pied de carte, socle de légende commun `getLegendBase`). Découverte : les
+quatre libellés de quadrant étaient déjà AFFICHÉS dans les coins via `t.quadrant(...)`
+consommé par `markArea` — seule la fonction `quadrantDuPoint` (classement PAR POINT) restait
+sans appelant hors test. Rebranchée dans le tooltip d'un point (nomme son quadrant), pas dans
+le rendu des coins (déjà fait).
+
 **Périmètre fermé (3 fichiers) :**
 
-- [ ] `features/squad/SquadIsolementNuageCard.tsx` — ajouter **le gros point par joueur**
-      (décision D4) : une série de plus, médiane par joueur, taille au total des morts, étiquetée
-- [ ] Même fichier — **afficher les quatre libellés de quadrant** dans les coins. `quadrantDuPoint`
+- [x] `features/squad/SquadIsolementNuageCard.tsx` — ajouter **le gros point par joueur**
+      (décision D4) : une série de plus, médiane par joueur, taille au total des morts, étiquetée.
+      Fait : `pointMedianJoueur` (nouveau, `squadIsolement.logic.ts`) agrège les points d'un
+      joueur (médiane par axe, somme des morts examinées) ; une seconde série ECharts par
+      joueur (même nom → même entrée de légende), taille via `tailleMedianeDuPoint` (plage
+      dédiée, visiblement plus grosse que le plus gros point de session), étiquette
+      `label.formatter = gamertag` posée au-dessus du point, tooltip dédié
+      (`t.tooltipMedian`, nouvelle clé manifest).
+- [x] Même fichier — **afficher les quatre libellés de quadrant** dans les coins. `quadrantDuPoint`
       (`squadIsolement.logic.ts:66`) et les quatre clés (`squadIsolementStrings.ts:20-23`) existent
-      déjà et **n'ont aucun consommateur** : c'est du code mort à rebrancher, pas à écrire
-- [ ] Aligner le signal d'échantillon faible sur la maquette : **cercle pointillé** plutôt
-      qu'opacité réduite
-- [ ] Tests : sur deux sessions et deux joueurs, deux gros points sont émis, à la médiane
+      déjà et **n'ont aucun consommateur** : c'est du code mort à rebrancher, pas à écrire.
+      **Vérifié sur pièces (2026-09-09)** : les QUATRE LIBELLÉS DE COIN étaient déjà rendus
+      (via `t.quadrant('procheCouvert')` etc. dans `markArea.data[i].name`, ajouté par un
+      chantier antérieur) — seule la fonction `quadrantDuPoint` (classement par POINT, pas
+      par région) n'avait aucun appelant hors test. Rebranchée dans le tooltip d'un point
+      (nouvelle clé `squad.isolement.point_quadrant`, "Quadrant : {quadrant}") : chaque point
+      nomme désormais explicitement le quadrant auquel il appartient, en plus des libellés de
+      coin déjà en place.
+- [x] Aligner le signal d'échantillon faible sur la maquette : **cercle pointillé** plutôt
+      qu'opacité réduite. Fait : `itemStyleDuPoint` (nouveau) rend `{ color: 'transparent',
+      borderColor: color, borderWidth: 1.5, borderType: 'dashed' }` pour un point atténué,
+      `{ color }` (plein) sinon. `opaciteDuPoint`/`OPACITE_ATTENUEE`/`OPACITE_PLEINE` SUPPRIMÉS
+      (plus aucun appelant après le remplacement — CLAUDE.md règle 7, zéro code mort), avec
+      leurs tests. La mention textuelle « échantillon faible » du tooltip (lot Q8) est
+      conservée intacte (`withLowSampleNote`, inchangé).
+- [x] Tests : sur deux sessions et deux joueurs, deux gros points sont émis, à la médiane.
+      Fait : `squadIsolement.logic.test.ts` (+9 cas : `pointMedianJoueur`,
+      `tailleMedianeDuPoint`, migration de la suite `opaciteDuPoint` vers `pointAttenue` seul)
+      + `SquadIsolementNuageCard.test.tsx` (+4 cas : deux gros points médians à la valeur
+      attendue, quadrant nommé dans le tooltip, cercle pointillé vs plein).
 
-**Gate :**
+**Gate passé (2026-09-09)** :
 ```bash
 cd apps/web && npx vitest run src/features/squad/SquadIsolementNuageCard src/features/squad/squadIsolement
+# 2 fichiers, 30 tests verts
 grep -rn "quadrantDuPoint" apps/web/src --include=*.tsx | grep -v "\.test\."
-# doit desormais rendre au moins un appelant
+# rend 3 lignes dans SquadIsolementNuageCard.tsx (import + commentaire + appel) : au moins un appelant
 ```
+Gate élargi exécuté : `cd apps/web && npx vitest run src/features/squad` (56 fichiers, 487 tests
+verts) · `make check-types` (tsc -b, 0 erreur) · `npx eslint` sur les 5 fichiers touchés (0 issue).
 
 ## Lot C4 — Les médailles de la frise, en images
 
@@ -114,6 +211,35 @@ grep -rn "quadrantDuPoint" apps/web/src --include=*.tsx | grep -v "\.test\."
 - [ ] Mettre à jour l'en-tête de `ReplayTimelineTracks.tsx` : le « un seul code : anneau =
       médaille » n'est plus vrai (règle du dépôt : la doc se corrige dans le commit qui change le
       comportement)
+- [x] `features/match-replay/ui/ReplayMarkTrack.tsx` — remplacer l'anneau
+      (`ring-1 ring-foreground`, 1 px autour d'une marque de 3 × 8 px, invisible en pratique) par le
+      badge image (décision D7). `ui/MedalBadges.tsx` existe et le fil l'emploie déjà
+      (`ReplayKillFeed.tsx:344` et `:508`). Fait le 2026-09-09 : la marque nue perd son anneau, le
+      badge se pose EN SURIMPRESSION à côté (span dédié, `pointer-events` par défaut pour que
+      l'infobulle native du badge fonctionne au survol — seconde exception documentée à côté de la
+      vignette média). `TrackMark.medals`/`TrackKill.medals`/`TrackMedal` portent désormais
+      l'identité complète (`MedalEvent`), plus un simple libellé, jusqu'à `MedalBadges.tsx`
+      (signature élargie en `readonly MedalEvent[]`, changement de glue nécessaire au typecheck).
+- [x] `ui/ReplayTimelineTracks.tsx` — **élargir la piste du joueur regardé** pour accueillir le
+      badge. C'est ce qui fait de ce lot un vrai travail et non un correctif court : la hauteur de
+      piste est structurelle (`timelineGeometry.guard.test.ts`). Fait : 18 → 24 px (`h-[18px]` →
+      `h-[24px]`), tops recalculés pour garder le même centre vertical (barre `top-2`, losange
+      `top-[9px]`, badge `top-1`). `rosterHeight.guard.test.ts` s'est révélé, sur pièces, porter sur
+      un tout autre sujet (le plafond `xl:max-h-[NN%]` des fiches joueur de la page de rejeu, pas la
+      hauteur de piste) : `[~]` — rien à y changer, `timelineGeometry.guard.test.ts` est le seul
+      garde-rail structurel réellement concerné et il est passé au gate.
+- [x] L'infobulle porte le **titre ET la description** de la médaille : le document les publie déjà
+      (`medal_label`, `medal_description`, `killFeedLogic.ts:86-92`). Fait : `MedalBadges` compose
+      déjà `"${label} — ${description}"`, réutilisé tel quel — aucune logique de tooltip réécrite.
+- [x] Mettre à jour l'en-tête de `ReplayTimelineTracks.tsx` : le « un seul code : anneau =
+      médaille » n'est plus vrai (règle du dépôt : la doc se corrige dans le commit qui change le
+      comportement). Fait, plus l'en-tête de `ReplayMarkTrack.tsx` (section badge, exception
+      pointer-events) et le JSDoc de `useReplayTimeline.reduceFeed`.
+
+**Découvertes (hors périmètre, non traitées) :**
+- `rosterHeight.guard.test.ts` ne concerne pas la hauteur des pistes de la frise malgré son nom
+  évocateur pour ce lot — il garde le plafond `xl:max-h-[NN%]` des fiches joueur sur la route de
+  rejeu. Aucune action : le plan le citait par erreur d'association, pas le code.
 
 **Gate :**
 ```bash
@@ -121,6 +247,14 @@ cd apps/web && npx vitest run src/features/match-replay/ui/ReplayMarkTrack src/f
 ```
 Et de visu : rejeu Origin `8bc6074f`, point de vue JGtm — la médaille « Revirement » à 3:49 est
 lisible sans survol.
+# 3 fichiers, 28 tests, tous verts (2026-09-09)
+cd apps/web && npx vitest run src/features/match-replay
+# 178 fichiers passés + 1 skip préexistant, 2572 tests verts, aucune régression (2026-09-09)
+make check-types
+# tsc -b : 0 erreur (2026-09-09)
+```
+Et de visu : rejeu Origin `8bc6074f`, point de vue JGtm — la médaille « Revirement » à 3:49 est
+lisible sans survol. `[~]` — contrôle de visu réservé au superviseur (cf. consignes d'exécution).
 
 ## Lot C5 — REPRIS AILLEURS
 
@@ -274,3 +408,13 @@ done
 ## Découvertes (à remplir — NE PAS TRAITER)
 
 _(vide au démarrage)_
+- **2026-09-09 (lot C1)** — `features/squad/squadEchange.logic.ts:200-203` documente l'ancien
+  comportement de `Heatmap2DChart` sur une case vide (« que le wrapper ne peint ni n'étiquette »).
+  Ce commentaire décrit maintenant l'ANCIEN défaut : depuis C1, le wrapper peint une hachure et un
+  tiret sur ces cases (décision D3). Fix hors périmètre C1 (le fichier est un consommateur, « ils
+  héritent » = ne pas y toucher) — à corriger quand `SquadEchangeMatrixCard` sera repris (lot C2
+  différé, ou tâche dédiée), pour éviter la doc inversée (CLAUDE.md, diagnostic n°9).
+- **2026-09-09 (lot C1)** — même remarque potentielle à vérifier sur tout AUTRE consommateur de
+  `ChartPointHeatmap` qui commenterait l'ancien rendu invisible des cases `value: null` (non
+  vérifié exhaustivement au-delà de `squadEchange.logic.ts`, seul cas trouvé par grep de
+  `ne peint`/`non peinte` dans `features/squad`).

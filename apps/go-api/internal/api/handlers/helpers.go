@@ -3,9 +3,7 @@ package handlers
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -92,7 +90,11 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	_, _ = w.Write([]byte("\n"))
 }
 
-// writeJSONCached sérialise v, pose un ETag SHA-256 et retourne 304 si le client est à jour.
+// writeJSONCached sérialise v et délègue à servirBlobAvecETag (cache_http.go) la
+// pose de l'ETag fort et la négociation 304 — seul appelant JSON du helper : les
+// endpoints Huma (capabilities, feature_matrix, field_mappings, home) posent leur
+// ETag via un champ de sortie déclaratif et ne peuvent pas appeler un writer
+// direct, donc n'utilisent pas cette fonction (cf. § Découvertes du plan).
 // À utiliser sur les endpoints GET dont les données changent peu entre deux syncs.
 //
 // tous les callers passent 200/OK mais la signature reste configurable.
@@ -108,16 +110,7 @@ func writeJSONCached(w http.ResponseWriter, r *http.Request, status int, v inter
 		writeError(r.Context(), w, http.StatusInternalServerError, "encode_error", "erreur de sérialisation")
 		return
 	}
-	sum := sha256.Sum256(body)
-	etag := fmt.Sprintf(`"%x"`, sum[:8])
-	w.Header().Set("ETag", etag)
-	if r.Header.Get("If-None-Match") == etag {
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_, _ = w.Write(body)
+	servirBlobAvecETag(w, r, body, "application/json", "")
 }
 
 // writeError écrit une réponse d'erreur JSON standardisée et **logge l'erreur

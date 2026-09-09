@@ -290,10 +290,11 @@ function scoreTrack(
  *
  * LES MÉDAILLES Y ENTRENT DEPUIS LE 2026-09-07 (lot L4), et de deux façons qui ne se confondent
  * pas. Celles qui sont RATTACHÉES à un kill (±500 ms, `killFeedLogic`) voyagent avec lui en
- * libellés : la marque de kill existe déjà, elle recevra un anneau et son infobulle les nommera
- * (décision 9 — pas de second repère au même endroit). Celles qui restent ORPHELINES, elles,
- * n'ont ni tueur ni défunt — ce sont des médailles d'OBJECTIF, et sans marque à décorer elles en
- * prennent une à elles.
+ * IDENTITÉ COMPLÈTE (`MedalEvent`, pas seulement leur libellé depuis le 2026-09-09, décision D7) :
+ * la marque de kill existe déjà, elle recevra le badge du jeu en surimpression et son infobulle
+ * portera titre ET description (décision 9 — pas de second repère au même endroit). Celles qui
+ * restent ORPHELINES, elles, n'ont ni tueur ni défunt — ce sont des médailles d'OBJECTIF, et sans
+ * marque à décorer elles en prennent une à elles.
  *
  * UN LIBELLÉ VIDE NE PASSE PAS. Sur les matchs antérieurs au backfill des médailles du fil, le
  * nom peut manquer : une décoration sans libellé dirait « il s'est passé quelque chose » sans
@@ -324,7 +325,7 @@ export function reduceFeed(
           key: entry.key,
           replayMs: entry.replayMs,
           xuid: entry.medal.xuid,
-          label: entry.medal.label,
+          medal: entry.medal,
         })
       }
       continue
@@ -339,7 +340,7 @@ export function reduceFeed(
       key: entry.key,
       replayMs: entry.replayMs,
       xuid: kill.xuid,
-      medals: kill.medals.map((m) => m.label).filter((label) => label !== ''),
+      medals: kill.medals.filter((m) => m.label !== ''),
     })
     // LES FRAGS COMPTENT TOUTE LA SALLE, pas seulement les joueurs marqués : la dominance
     // oppose deux CAMPS. Un tueur dont le camp n'est pas résolu (acteur hors scoreboard) ne

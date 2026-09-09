@@ -48,11 +48,13 @@ import { getSquadTeammateColors, SQUAD_MAIN_PLAYER_TOKEN } from './colors'
 import type { KPIStats, LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import type { KPIStats as V2KPIStats } from './v2/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
+import { deriveSquadPending, decideCompositionReanchor } from './squadPending'
 import {
-  deriveSquadPending,
-  decideCompositionReanchor,
-  mergeSessionCounts,
-} from './squadPending'
+  squadSessionCount,
+  squadSessionShownCount,
+  resolveSquadSessionFallback,
+} from './squadSessionCounts'
+import { buildCompositionGapHint } from './squadCompositionGapHint'
 import { formatDataIssues } from './squadDataIssues'
 import { exactCompositionDefault } from './exactComposition'
 
@@ -136,7 +138,7 @@ export function SquadLayout() {
     autoSnapToLatestSession,
   } = useSquadFilterStore()
   // Résout le filterContext squad côté backend → alimente `resolvedContext`
-  // (session_options, available_options, period_presets) pour les pills et le rail.
+  // (options de session, cascade disponible, presets de période) pour les pills et le rail.
   useFiltersResolve(playerSlug, useSquadFilterStore)
   // L'ancrage de session est piloté par la COMPOSITION (cf. effet de ré-ancrage
   // plus bas) — pas via useFollowLatestSession, qui snappait sur la dernière
@@ -308,9 +310,6 @@ export function SquadLayout() {
   )
   const { data: previewResolve } = useFiltersPreview(playerSlug, squadPending)
 
-  // Compteur dynamique : préférer les counts du preview (mis à jour à la volée)
-  // plutôt que ceux du resolvedContext commité (figé jusqu'au clic Analyser).
-  const totalAfter = (previewResolve?.counts ?? resolvedContext?.counts)?.total_matches_after_filters ?? null
   const rawAvailable = previewResolve?.available_options ?? resolvedContext?.available_options
   const available = useMemo(() => {
     if (!rawAvailable) return undefined
@@ -375,24 +374,39 @@ export function SquadLayout() {
   )
   const latestCompositionSession = data?.latest_composition_session ?? ''
 
-  // Counts par session label — alimente SessionMultiSelect (masque les sessions
-  // vides + affiche le compte). SOURCE UNIQUE en contexte escouade : le compte
-  // « commencés ensemble » servi par teammates (composition_sessions.match_count),
-  // c'est-à-dire exactement la population des tableaux et graphes de la page.
-  // Les counts de /filters/resolve (population du joueur principal, cascade
-  // seule) ne servent plus que de repli tant que la réponse teammates n'est pas
-  // arrivée — c'est cette double source qui donnait 11/8/6/5 sur une même session.
-  const sessionCounts = useMemo(
-    () =>
-      mergeSessionCounts(
-        previewResolve?.session_options?.all_sessions ?? resolvedContext?.session_options?.all_sessions ?? [],
-        compositionSessions,
-      ),
-    [previewResolve, resolvedContext, compositionSessions],
+  // Counts par session label — SOURCE UNIQUE en contexte escouade (ADR 0033) :
+  // le compte « commencés ensemble » servi par teammates
+  // (composition_sessions.match_count), exactement la population des tableaux
+  // et graphes de la page. Les counts de /filters/resolve (population du
+  // joueur principal, cascade seule) ne servent plus que de repli tant que la
+  // réponse teammates n'est pas arrivée pour CE label — c'est cette double
+  // source qui donnait 11/8/6/5 sur une même session (rail vs page).
+  const sessionCountFallback = useMemo(
+    () => resolveSquadSessionFallback(previewResolve, resolvedContext),
+    [previewResolve, resolvedContext],
   )
+  // {shown, total, hint} — alimente la L2 (PeriodSessionRail.sessionCount) :
+  // « 4 sur 7 » quand la composition exacte écarte des matchs (D1), EXPLIQUÉ
+  // au survol par la liste des matchs écartés (phase A3 — critère de succès
+  // n°3 : l'écart doit être lisible ET expliqué, pas seulement visible).
   const getSessionCount = useMemo(
-    () => (label: string) => sessionCounts.get(label),
-    [sessionCounts],
+    () =>
+      (label: string) => {
+        const count = squadSessionCount(label, compositionSessions, sessionCountFallback)
+        if (!count) return undefined
+        return {
+          shown: count.shown,
+          total: count.total,
+          hint: buildCompositionGapHint(count.excluded, locale, t.compositionGap),
+        }
+      },
+    [compositionSessions, sessionCountFallback, locale, t],
+  )
+  // Nombre seul — alimente SessionMultiSelect (masque les sessions vides +
+  // affiche le compte par ligne), même module, même règle.
+  const getSessionShownCount = useMemo(
+    () => (label: string) => squadSessionShownCount(label, compositionSessions, sessionCountFallback),
+    [compositionSessions, sessionCountFallback],
   )
 
   // Dégradations remontées par l'API (chargements best-effort en échec) :
@@ -419,9 +433,14 @@ export function SquadLayout() {
     })
   }
   // Bouton « Voir les matchs » — déplacé dans le rail (zone centrale, après le
-  // compteur de matchs) pour décharger la barre de filtres.
+  // compteur de matchs) pour décharger la barre de filtres. squadEntryMatchId
+  // (1er match de match_history, population escouade) suffit à prouver qu'il
+  // existe au moins un match à parcourir — l'ancien garde-fou additionnel (le
+  // total post-filtres du joueur PRINCIPAL via /filters/resolve, pas celui de
+  // l'escouade affichée — ADR 0033, garde-rail singleCountSource.guard.test.ts)
+  // retiré : redondant de toute façon.
   const browseButton =
-    squadEntryMatchId && (totalAfter ?? 0) > 0 ? (
+    squadEntryMatchId ? (
       <button
         type="button"
         onClick={handleBrowseMatches}
@@ -671,7 +690,7 @@ export function SquadLayout() {
               onChange={applySessionLabels}
               locale={locale}
               triggerClassName="flex items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted whitespace-nowrap transition-colors"
-              getMatchCount={getSessionCount}
+              getMatchCount={getSessionShownCount}
             />
           )}
 
@@ -730,8 +749,20 @@ export function SquadLayout() {
         </div>
         {/* Rail de navigation période/session — placé DANS la barre sticky pour
             apparaître toujours juste sous les filtres Squad au scroll. Reçoit le
-            compteur de matchs (tous modes) + le bouton « Voir les matchs ». */}
-        <PeriodSessionRail filterStore={useSquadFilterStore} matchCount={totalAfter} trailing={browseButton} />
+            bouton « Voir les matchs » + le compte composition (source unique,
+            ADR 0033) en mode session unique via sessionCount. `matchCount`
+            (tous les AUTRES modes : période/multi-session/all-time) ne
+            reprend PLUS `totalAfter` — c'était la population du JOUEUR
+            PRINCIPAL (/filters/resolve), pas celle de l'escouade affichée :
+            exactement le défaut mesuré (7 vs 4) que l'option composition
+            exacte pouvait aggraver. Aucun total composition fiable pour ces
+            modes dans ce lot (composition_sessions n'est pas borné par la
+            période/le multi-select) : on affiche 0 plutôt qu'un nombre faux. */}
+        <PeriodSessionRail
+          filterStore={useSquadFilterStore}
+          trailing={browseButton}
+          sessionCount={getSessionCount}
+        />
       </div>
 
       {/* ─── Contenu ─────────────────────────────────────────────────────────── */}

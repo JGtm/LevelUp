@@ -44,10 +44,12 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { getSquadPlayerColors } from './colors'
 import {
   medianesNuage,
-  opaciteDuPoint,
   PLANCHER_MORTS_SESSION,
   pointAttenue,
+  pointMedianJoueur,
+  quadrantDuPoint,
   tailleDuPoint,
+  tailleMedianeDuPoint,
   type MedianesNuage,
 } from './squadIsolement.logic'
 import { getSquadIsolementText, type SquadIsolementText } from './squadIsolementStrings'
@@ -144,12 +146,32 @@ interface BuildOpts {
 }
 
 /** Un point de la donnée ECharts : la valeur [x,y] en POURCENTS (0..100, lisible sur les
- *  axes), la taille/opacité par point, et le point BRUT pour l'infobulle. */
+ *  axes), le style par point, et le point BRUT pour l'infobulle. */
 interface EchartScatterDatum {
   value: [number, number]
   symbolSize: number
-  itemStyle: { opacity: number }
+  itemStyle: Record<string, unknown>
   raw: SquadIsolementPoint
+}
+
+/** Le GROS point médian d'un joueur (D4, lot C3) : une agrégation, pas un match — son
+ *  tooltip et son étiquette sont distincts d'un point de session (`EchartScatterDatum`). */
+interface EchartMedianDatum {
+  value: [number, number]
+  symbolSize: number
+  itemStyle: Record<string, unknown>
+  label: Record<string, unknown>
+  medianRaw: { gamertag: string; mortsExaminees: number; isolement: number; couverture: number }
+}
+
+/** Style d'un point de session : cercle plein à l'échantillon suffisant, cercle POINTILLÉ
+ *  (bordure en tirets, pas de remplissage) à l'échantillon faible — décision C3, remplace
+ *  l'ancienne opacité réduite (`opaciteDuPoint`, retirée, plus fiable pour le contraste). */
+function itemStyleDuPoint(point: SquadIsolementPoint, color: string): Record<string, unknown> {
+  if (pointAttenue(point)) {
+    return { color: 'transparent', borderColor: color, borderWidth: 1.5, borderType: 'dashed' }
+  }
+  return { color }
 }
 
 function buildNuageOption(
@@ -164,13 +186,13 @@ function buildNuageOption(
   const axis = getAxisBase(tc)
   const warningColor = resolveToken('warning')
 
-  const echartsSeries = series.map((s, idx) => {
+  const echartsSeries = series.flatMap((s, idx) => {
     const gamertag = (s.meta as { gamertag?: string } | undefined)?.gamertag ?? s.key
     const color = playerColors[gamertag] ?? resolveToken('info')
     const data: EchartScatterDatum[] = s.datapoints.map((p) => ({
       value: [p.part_isolee.taux * 100, p.couverture.taux * 100],
       symbolSize: tailleDuPoint(p.morts_examinees),
-      itemStyle: { opacity: opaciteDuPoint(p) },
+      itemStyle: itemStyleDuPoint(p, color),
       raw: p,
     }))
     const serie: Record<string, unknown> = {
@@ -219,7 +241,35 @@ function buildNuageOption(
         ],
       }
     }
-    return serie
+    // Gros point médian du joueur (D4) : une seconde série ECharts, MÊME nom (partage
+    // l'entrée de légende — toggler l'un cache l'autre) et MÊME couleur que la série de
+    // session, mais nettement plus grande et étiquetée du gamertag. `z` la pose au-dessus
+    // du nuage de points pour qu'elle ne se fasse pas recouvrir par une session voisine.
+    const medianAgg = pointMedianJoueur(s.datapoints)
+    const medianSerie: Record<string, unknown> | null = medianAgg
+      ? {
+          type: 'scatter',
+          name: gamertag,
+          z: 5,
+          data: [
+            {
+              value: [medianAgg.isolement * 100, medianAgg.couverture * 100],
+              symbolSize: tailleMedianeDuPoint(medianAgg.mortsExaminees),
+              itemStyle: { color, borderColor: tc.card, borderWidth: 2 },
+              label: {
+                show: true,
+                formatter: gamertag,
+                position: 'top',
+                color: tc.axisLabel,
+                fontSize: 10,
+                fontWeight: 600,
+              },
+              medianRaw: { gamertag, ...medianAgg },
+            } satisfies EchartMedianDatum,
+          ],
+        }
+      : null
+    return medianSerie ? [serie, medianSerie] : [serie]
   })
 
   return {
@@ -231,7 +281,18 @@ function buildNuageOption(
       ...getTooltipBase(tc),
       trigger: 'item',
       formatter: (params: unknown) => {
-        const p = (params as { data?: EchartScatterDatum }).data?.raw
+        const data = (params as { data?: EchartScatterDatum | EchartMedianDatum }).data
+        if (!data) return ''
+        if ('medianRaw' in data) {
+          const mr = data.medianRaw
+          return t.tooltipMedian({
+            gamertag: escapeHtml(mr.gamertag),
+            n: mr.mortsExaminees,
+            isoRate: pctFmt.format(mr.isolement),
+            covRate: pctFmt.format(mr.couverture),
+          })
+        }
+        const p = data.raw
         if (!p) return ''
         const base = t.tooltip({
           gamertag: escapeHtml((p.gamertag ?? '') as string),
@@ -243,11 +304,16 @@ function buildNuageOption(
           covBrut: p.couverture.brut,
           covN: p.couverture.n,
         })
-        // L'opacité réduite (opaciteDuPoint) n'est pas un signal fiable à elle
-        // seule (contraste, daltonisme) : le tooltip nomme explicitement la
-        // réserve d'échantillon faible, par la forme unique du dépôt (`withLowSampleNote`,
+        // `quadrantDuPoint` rebranché (lot C3) : le tooltip d'un point NOMME le quadrant
+        // auquel il appartient, en plus des quatre libellés déjà affichés dans les coins
+        // (markArea ci-dessus). Rien à nommer sans médianes calculées (nuage vide — cas
+        // déjà exclu plus haut, mais `medianes` reste nullable au niveau du type).
+        const withQuadrant = medianes ? `${base}<br/>${t.pointQuadrant(quadrantDuPoint(p, medianes))}` : base
+        // L'opacité réduite n'est plus utilisée pour l'échantillon faible (remplacée par un
+        // cercle pointillé, décision C3) : le tooltip reste la seule mention textuelle
+        // fiable (contraste, daltonisme), par la forme unique du dépôt (`withLowSampleNote`,
         // séparateur HTML : le tooltip ECharts est du HTML).
-        return withLowSampleNote(base, pointAttenue(p), t.lowSample, '<br/>')
+        return withLowSampleNote(withQuadrant, pointAttenue(p), t.lowSample, '<br/>')
       },
     },
     // Socle de légende COMMUN à tous les graphes de l'app (`getLegendBase` : en pied,

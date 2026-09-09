@@ -14,6 +14,7 @@
  * Remplace l'ancien `SessionNavBar` (Stats-only) par une nav universelle visible
  * sur toutes les pages joueur (Stats, Squad, Home, Synthèse).
  */
+import type { ReactNode } from 'react'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import type { FilterStore } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -22,6 +23,7 @@ import { computeNextWindow, computePrevWindow, getRailMode } from '@/features/fi
 import { useSeasons, type SeasonEntry } from '@/lib/i18n/fieldMappings'
 import { findActiveSeason, isoDateUTC, nextSeason, prevSeason } from '@/lib/seasons/findSeasonAt'
 import type { Locale } from '@/lib/i18n/locale'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 interface RailText {
   prev: string
@@ -42,6 +44,7 @@ interface RailText {
   nextSeasonTitle: string
   positionLabel: (idx: number, total: number) => string
   matchCountSuffix: (n: number) => string
+  matchCountOfRosterSuffix: (shown: number, total: number) => string
   multiSessionLabel: (n: number) => string
   multiSessionTooltip: string
   allTimeLabel: (n: number) => string
@@ -73,6 +76,10 @@ const TEXTS: Record<Locale, RailText> = {
     nextSeasonTitle: 'Saison suivante',
     positionLabel: (idx, total) => `${idx + 1} / ${total}`,
     matchCountSuffix: (n) => ` · ${n} match${n > 1 ? 's' : ''}`,
+    // ADR 0033 (chantier A2) : écart composition exacte publié en clair —
+    // "4 sur 7 matchs" plutôt qu'un nombre qui ne correspondrait à rien
+    // d'affiché ailleurs sur la page.
+    matchCountOfRosterSuffix: (shown, total) => ` · ${shown} sur ${total} match${total > 1 ? 's' : ''}`,
     multiSessionLabel: (n) => `${n} sessions sélectionnées`,
     multiSessionTooltip: 'Désélectionnez des sessions pour activer la navigation',
     allTimeLabel: (n) => `Toutes les sessions (${n})`,
@@ -102,6 +109,7 @@ const TEXTS: Record<Locale, RailText> = {
     nextSeasonTitle: 'Next season',
     positionLabel: (idx, total) => `${idx + 1} / ${total}`,
     matchCountSuffix: (n) => ` · ${n} match${n > 1 ? 'es' : ''}`,
+    matchCountOfRosterSuffix: (shown, total) => ` · ${shown} of ${total} match${total > 1 ? 'es' : ''}`,
     multiSessionLabel: (n) => `${n} sessions selected`,
     multiSessionTooltip: 'Deselect sessions to enable navigation',
     allTimeLabel: (n) => `All sessions (${n})`,
@@ -197,6 +205,21 @@ interface PeriodSessionRailProps {
   matchCount?: number | null
   /** Élément rendu au centre, après le compteur (ex. bouton « Voir les matchs »). */
   trailing?: React.ReactNode
+  /**
+   * Mode session UNIQUEMENT : surcharge le compte affiché par la population
+   * réelle d'un contexte composition (ADR 0033 — `{ shown, total }`, "4 sur 7"
+   * quand un écart existe, sinon `shown === total`). Le compte natif de la
+   * session (`session.match_count`, population du joueur principal via
+   * `/filters/resolve`) reste utilisé pour les labels/pages qui ne passent pas
+   * cette prop (Stats solo, etc. — hors périmètre, rendu inchangé).
+   *
+   * `hint` (optionnel, phase A3 D1) : contenu EXPLICATIF de l'écart (ex. la
+   * liste des matchs écartés, construite côté page par
+   * `squadCompositionGapHint`). La L2 reste agnostique du domaine escouade —
+   * elle ne fait que rendre ce `ReactNode` au survol/focus du compte, via le
+   * patron d'aide d'en-tête existant (`InfoTooltip`, V73-L2 2.4c).
+   */
+  sessionCount?: (label: string) => { shown: number; total: number; hint?: ReactNode } | undefined
 }
 
 /** Composant principal — dispatcher selon le mode (session / multi-session / period / season). */
@@ -204,6 +227,7 @@ export function PeriodSessionRail({
   filterStore = useSoloFilterStore,
   matchCount,
   trailing,
+  sessionCount,
 }: PeriodSessionRailProps = {}) {
   const filterContext = filterStore((s) => s.filterContext)
   const resolvedContext = filterStore((s) => s.resolvedContext)
@@ -246,6 +270,7 @@ export function PeriodSessionRail({
         t={t}
         filterStore={filterStore}
         centerExtra={extraSessionOnly}
+        sessionCount={sessionCount}
       />
     )
   }
@@ -401,9 +426,10 @@ interface SessionRailProps {
   t: RailText
   filterStore: FilterStore
   centerExtra?: React.ReactNode
+  sessionCount?: (label: string) => { shown: number; total: number; hint?: ReactNode } | undefined
 }
 
-function SessionRail({ session, index, total, locale, t, filterStore, centerExtra }: SessionRailProps) {
+function SessionRail({ session, index, total, locale, t, filterStore, centerExtra, sessionCount }: SessionRailProps) {
   const formattedLabel = formatSessionLabel(
     session.label,
     session.started_at_utc,
@@ -416,6 +442,18 @@ function SessionRail({ session, index, total, locale, t, filterStore, centerExtr
 
   const canGoPrev = index < total - 1
   const canGoNext = index > 0
+
+  // ADR 0033 : source unique de la population escouade — `composition` (quand
+  // fournie par la page) prime TOUJOURS sur `session.match_count` (population
+  // du joueur principal, /filters/resolve). `undefined` = pas de contexte
+  // composition (page hors périmètre escouade) → compte natif inchangé.
+  const composition = sessionCount?.(session.label)
+  const countSuffix = composition
+    ? composition.shown > 0 &&
+      (composition.shown === composition.total
+        ? t.matchCountSuffix(composition.shown)
+        : t.matchCountOfRosterSuffix(composition.shown, composition.total))
+    : session.match_count > 0 && t.matchCountSuffix(session.match_count)
 
   return (
     <RailFrame
@@ -444,10 +482,7 @@ function SessionRail({ session, index, total, locale, t, filterStore, centerExtr
               {t.auto}
             </span>
           )}
-          <span className="shrink-0 text-xs text-muted-foreground" aria-live="polite">
-            ({t.positionLabel(index, total)}
-            {session.match_count > 0 && t.matchCountSuffix(session.match_count)})
-          </span>
+          <SessionCountLabel index={index} total={total} countSuffix={countSuffix} t={t} hint={composition?.hint} />
         </>
       }
       next={
@@ -461,6 +496,32 @@ function SessionRail({ session, index, total, locale, t, filterStore, centerExtr
       }
     />
   )
+}
+
+interface SessionCountLabelProps {
+  index: number
+  total: number
+  countSuffix: string | false
+  t: RailText
+  /** Contenu EXPLICATIF de l'écart composition exacte (phase A3, D1) — porté
+   *  par `sessionCount(label).hint`. `undefined` = pas d'écart à expliquer
+   *  (page hors périmètre composition, ou aucun match écarté) : rendu
+   *  inchangé, aucune info-bulle. */
+  hint?: ReactNode
+}
+
+/** Le compte de position + le compte de matchs de la session, EXPLIQUÉ au
+ *  survol/focus quand `hint` est fourni (patron d'aide d'en-tête existant,
+ *  `InfoTooltip`, V73-L2 2.4c — aucun nouveau primitif). */
+function SessionCountLabel({ index, total, countSuffix, t, hint }: SessionCountLabelProps) {
+  const label = (
+    <span className="shrink-0 text-xs text-muted-foreground" aria-live="polite">
+      ({t.positionLabel(index, total)}
+      {countSuffix})
+    </span>
+  )
+  if (!hint) return label
+  return <InfoTooltip trigger={label} content={hint} triggerFocusable />
 }
 
 interface PeriodRailProps {
