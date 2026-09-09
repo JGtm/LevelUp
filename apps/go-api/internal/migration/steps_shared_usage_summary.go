@@ -15,7 +15,10 @@ package migration
 //	                     camouflage/surbouclier (compte, durée, frags), déploiements par
 //	                     famille (JSON — ensemble ouvert), objets lâchés HORS grenades,
 //	                     lancers de grenade (produit, jamais affiché sur Sessions),
-//	                     prises de socle d'ARME (total + ventilation JSON par famille).
+//	                     prises de socle d'ARME (total + ventilation JSON par famille),
+//	                     et — depuis la révision de projection `us4` (2026-09-09) — LES
+//	                     TROIS ISSUES d'un objet pris, ventilées par famille :
+//	                     taken/spent/kept/dropped_json (cf. applyMatchUsageOutcomes).
 //	match_usage_films    1 ligne par match : l'échelle de temps du film (frame_interval_ms,
 //	                     frame_count, duration_ms), les comptes de prises (nommées,
 //	                     anonymes, occupations totales), les socles d'arme présents avec

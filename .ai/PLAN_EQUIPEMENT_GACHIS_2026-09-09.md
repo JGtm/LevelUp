@@ -244,32 +244,32 @@ Plus les deux greps couleur du §3.4.
 
 **Périmètre fermé — Go :**
 
-- [ ] E3.1 `internal/analysis/replay/usage_summary.go` — ajouter à `UsagePlayerSummary` :
+- [x] E3.1 `internal/analysis/replay/usage_summary.go` — ajouter à `UsagePlayerSummary` :
       `TakenByFamily`, `SpentByFamily`, `KeptByFamily` (dérivé), et **persister**
       `DroppedByFamily` qui existe déjà en mémoire mais n'est pas dans la DDL
-- [ ] E3.2 Même fichier — **incrémenter `UsageSummaryRev`** (`us3` → `us4`). C'est la clé de
+- [x] E3.2 Même fichier — **incrémenter `UsageSummaryRev`** (`us3` → `us4`). C'est la clé de
       reprise du backfill : sans ça, les matchs déjà résumés ne seront jamais re-résumés
-- [ ] E3.3 `internal/migration/` — migration de schéma pour les nouvelles colonnes, dans le
+- [x] E3.3 `internal/migration/` — migration de schéma pour les nouvelles colonnes, dans le
       style des migrations existantes du résumé d'usage. **Écriture INSERT-only via
       `persist.BatchBuilder` / le persister d'usage** — jamais d'UPSERT concurrent
       (règle anti-ART, ADR 0019/0026/0030)
-- [ ] E3.4 `internal/domain/session_usage.go` — étendre `SessionUsageMetric` avec les trois
+- [x] E3.4 `internal/domain/session_usage.go` — étendre `SessionUsageMetric` avec les trois
       issues par famille. Champs `omitempty` : un titre sans le canal ne publie rien, il ne
       publie pas des zéros
-- [ ] E3.5 `internal/analysis/sessionusage/` — agrégation des trois issues, mêmes règles de
+- [x] E3.5 `internal/analysis/sessionusage/` — agrégation des trois issues, mêmes règles de
       scope que `computeMetric` (numérateurs ET dénominateurs sur le sous-ensemble à camp
       connu ; sous-ensemble vide = nil, jamais un 0 inventé)
-- [ ] E3.6 Les **taux de référence** qui excluent le joueur (décision P7) : « reste de mon
+- [x] E3.6 Les **taux de référence** qui excluent le joueur (décision P7) : « reste de mon
       équipe » = équipe moins moi ; « eux » = lobby moins mon équipe. Calculés côté Go, pas
       au client
-- [ ] E3.7 Capability : brancher sur `film.usage_summary` comme le bloc existant, **jamais
+- [~] E3.7 Capability : brancher sur `film.usage_summary` comme le bloc existant, **jamais
       sur le slug** (`no_slug_comparison_test.go` est un ratchet)
-- [ ] E3.8 `slog.WarnContext` sur toute dégradation (rang non nommé, slot non rattaché),
+- [x] E3.8 `slog.WarnContext` sur toute dégradation (rang non nommé, slot non rattaché),
       avec un compteur — jamais d'erreur avalée
-- [ ] E3.9 `make openapi-gen` puis `make generate-types`
-- [ ] E3.10 Tests : `analysis` purs (les trois issues, le scope, nil ≠ 0) ; `duckdb` en
+- [x] E3.9 `make openapi-gen` puis `make generate-types`
+- [x] E3.10 Tests : `analysis` purs (les trois issues, le scope, nil ≠ 0) ; `duckdb` en
       `:memory:` pour la migration ; `service` avec mock repo
-- [ ] E3.11 **Recuisson** : lancer le backfill du résumé sur le parc local et vérifier que
+- [~] E3.11 **Recuisson** : lancer le backfill du résumé sur le parc local et vérifier que
       les matchs à l'ancienne révision sont bien repris. Consigner le compte au journal
 
 **Gate** :
@@ -409,6 +409,29 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   les 199 écarts sont des prises dont le rang n'a pas de famille connue ou dont la vie n'est
   pas nommée. Un dénominateur affiché « objets pris » devra dire lequel des deux il compte.
   Non instruit.
+
+- **Nouvelle, E3 du 2026-09-09** : le stem `réparation` de la reconnaissance rang -> famille
+  côté web (`EQUIPMENT_CHANGE_FAMILY_STEMS`, `equipmentUsageLogic.ts`) ne s'apparie à RIEN :
+  le manifeste écrit « champ de reparation » SANS accent (`replay_labels.toml`, rang 23), et
+  c'est son jumeau anglais `repair` qui classe le rang. Sans conséquence aujourd'hui (le
+  libellé EN est toujours publié quand le FR l'est), mais le web perdrait ce rang si un film
+  ne publiait que son français. Le Go écrit la forme réellement publiée. Non traité côté web
+  (hors périmètre E3).
+
+- **Nouvelle, E3 du 2026-09-09** : le document de rejeu ne publie PAS la table rang -> famille
+  du manifeste (`AbilityPalette.Families`), seulement rang -> libellé bilingue
+  (`abilityLabels`). Les deux consommateurs qui ont besoin de la famille depuis un document
+  DÉJÀ CUIT (le web en E2, le résumé d'usage en E3) reconstruisent donc chacun la jointure
+  par racine de libellé — deux copies, le plafond de la règle CLAUDE.md n°6. Publier
+  `abilityFamilies` dans l'artefact fermerait le sujet, mais c'est une montée de schéma et
+  une RE-CUISSON du parc, pas une re-projection : hors périmètre de ce chantier. Non instruit.
+
+- **Nouvelle, E3 du 2026-09-09** : `deployed_<famille>` et `equipment_<famille>` coexistent
+  désormais dans `metrics`. La première est un compte de GESTES (poses), la seconde un compte
+  d'OBJETS (les trois issues) — deux grandeurs différentes, aucune n'est morte : la page
+  Sessions rend aujourd'hui la première, et E4 décidera si la seconde la remplace à l'écran.
+  Si E4 la remplace, `deployed_*` devra être RETIRÉ du contrat dans le même lot (règle « 0
+  code mort »). Noté, non traité.
 
 - **Nouvelle, E2 du 2026-09-09** : `npx eslint src/features/match-replay src/components/charts
   --max-warnings=0` échoue sur 9 avertissements dans cinq fichiers (`ReplayExportDialog.tsx`,
@@ -636,3 +659,105 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
   passera par un artefact interactif d'investigation Theater (match, date/heure, carte, timestamp,
   joueurs) produit en fin de chantier — cf. registre et plan master 2.6. Test inverse : aucune
   mention « sans famille connue » ne doit etre rendue.
+
+- **2026-09-09 — E3 CLOSE.** Neuf items `[x]`, deux `[~]`. Trois commits :
+  `58297a995` (types + analyse), `73be18490` (migration + persist), `3859b256c`
+  (domaine + service + contrat).
+
+  **Ce que la projection publie maintenant** (`us3` -> **`us4`**, E3.2 — sans cette montée
+  aucun match déjà résumé ne serait re-projeté) : `UsagePlayerSummary` porte
+  `TakenByFamily`, `SpentByFamily`, `KeptByFamily` (dérivé) et **persiste** enfin
+  `DroppedByFamily`, qui n'existait qu'en mémoire. La règle du gardé est celle de la vue
+  match à l'octet près — `max(0, taken - utilisé - lâché)`, « utilisé » étant les ÉPISODES
+  pour les deux bonus et les POSES pour tout le reste (P2).
+
+  **Trois décisions de conception, prises à l'exécution :**
+
+  1. **La jointure rang -> famille se fait sur la RACINE DU LIBELLÉ, pas sur le manifeste.**
+     Le manifeste porte pourtant la table exacte (`AbilityPalette.Families`), et deux calques
+     du rejeu s'en servent — mais eux tournent À LA CONSTRUCTION du document.
+     `BuildUsageSummary` est une fonction PURE du document DÉJÀ CUIT, et c'est ce qui permet
+     au backfill de re-résumer le parc SANS re-décoder un seul film. Deuxième et dernière
+     copie de la table (la première est côté web, E2). De surcroît la table du manifeste ne
+     suffirait pas : les rangs 8 et 9 (les deux bonus) sont NOMMÉS sans porter de `family`.
+  2. **Les quatre ventilations parlent le vocabulaire des POSES** (`powerup_camo`, jamais
+     `camo`), là où le web nomme un bonus par son épisode dans `kept` et par sa pose dans
+     `dropped` puis ponte les deux. L'agrégat de session joint donc les quatre sur UNE clé.
+  3. **Nouvelle famille de clés `equipment_<famille>`**, à côté de `deployed_<famille>` et
+     non à sa place. Deux raisons mesurées : une famille PRISE mais JAMAIS POSÉE n'aurait
+     aucune ligne — c'est le capteur du parc, 4 objets utilisés sur 36 pris (E0.4), soit
+     exactement l'histoire que le bloc doit raconter ; et la valeur d'une barre empilée doit
+     être la SOMME DE SES SEGMENTS, sinon la pile déborde ou laisse un trou. Conséquence pour
+     **E4** : c'est `equipment_<famille>` qui porte `outcomes`, pas `deployed_*` — et si E4
+     retire `deployed_*` de l'écran, il doit le retirer du contrat dans le même lot (§6).
+
+  **Contrat** (E3.4) : `SessionUsageMetric.outcomes` (`omitempty`) — utilisé / gardé / lâché,
+  les prises comme dénominateur d'honnêteté, et TROIS taux : le mien, celui du **reste de mon
+  équipe** et celui d'**eux** (E3.6, décision P7 — les deux références M'EXCLUENT). Règle de
+  scope de `computeMetric` appliquée sans exception : les références sont des grandeurs
+  d'équipe, donc numérateurs ET dénominateurs sur les seuls matchs à camp connu ;
+  sous-ensemble vide = **nil**, jamais un 0 % qui se lirait « ils n'utilisent rien ». Une
+  barre vide rend un taux nil : 0/0 n'est pas 0 %.
+
+  **Migration** (E3.3) : `shared_match_usage_players_outcomes_v1` — quatre colonnes JSON
+  **plus la RECRÉATION de `match_usage_players_latest`**. La vue est un `SELECT p.*` et DuckDB
+  fige cette étoile à la création : sans la recréation, les colonnes existeraient en table et
+  seraient invisibles au seul chemin de lecture autorisé (ADR 0026). Écriture INSERT-only,
+  **zéro entrée ajoutée à l'allowlist anti-ART**. `DEFAULT '{}'` sans `NOT NULL` : DuckDB
+  refuse toute contrainte sur un `ADD COLUMN` (échec TDD n°2 ci-dessous).
+
+  **E3.7 statué `[~]`** — couvert par le câblage existant, vérifié sur pièces :
+  `registry_pages.go:343` n'injecte `SessionUsageRepo` que si
+  `capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary)`, et `replayartifacts/usage.go`
+  gate la production sur la même capability. Les nouvelles grandeurs voyagent dans ce bloc :
+  aucun branchement neuf à écrire, et surtout aucun `slug ==` introduit.
+
+  **E3.8** : `slog.WarnContext` avec compteurs chez les DEUX producteurs de passes
+  (`replayartifacts/usage.go` pour le fil de l'eau, `cmd_backfill_usage_summary.go` pour le
+  corpus) — prises dont le rang n'a aucun libellé, changements dont le slot n'ouvre aucune
+  ligne, consommations dont la chaîne du compteur est trouée (`gap > 0`, le document le dit
+  lui-même). Comptés, jamais rangés dans une famille inventée, **jamais publiés dans une
+  métrique ni dans une réserve UI** (amendement utilisateur du 09-09). Rien à zéro ne se dit.
+
+  **Échecs TDD observés, dans l'ordre.** (1) Les six tests de projection ne compilaient pas
+  (champs inexistants). (2) La migration a échoué : `Parser Error: Adding columns with
+  constraints not yet supported`. (3) Un test de contrat partait d'une prémisse fausse
+  (« aucune ligne d'équipement sans prise mesurée ») : le code avait raison — une POSE est une
+  issue même sans prise — c'est le test qui a été corrigé. (4) Le ratchet
+  `no_french_label_literal_test.go` a rejeté le stem accentué `réparation` ; vérification
+  faite, le manifeste écrit « champ de reparation » SANS accent, ce stem ne s'appariait donc à
+  rien, même côté web (reporté au §6) — remplacé par la forme réellement publiée, **aucune
+  allowlist agrandie**. (5) `golangci-lint` : trois `goconst`, résorbés par deux constantes de
+  famille.
+
+  **Gates, tous passés sur l'arbre final** : `gofmt -l` silencieux · `go build ./...` ·
+  `go vet ./...` · `go test ./...` vert · `go test -tags=integration -p 1 -count=1 ./...`
+  vert · `go test ./internal/sync/ -run NoART` vert · `golangci-lint
+  --new-from-merge-base=origin/main` **0 issue** · `make openapi-gen` + `make generate-types`
+  (+32 lignes openapi, +17 generated.ts, commitées, aucun diff résiduel) ·
+  `npx tsc -b --force` silencieux.
+
+- **2026-09-09 — E3.11 statué `[~] superviseur` : LA RECUISSON RESTE À FAIRE.**
+  Elle exige d'ouvrir `shared_matches_v2.duckdb` en **RW**, donc **serveur de dev arrêté**
+  (`OpenReadWrite` échoue si le lock est tenu — précondition écrite de la commande, valable
+  y compris pour `--dry-run`, qui joue les migrations). La consigne de cette tâche interdisant
+  toute ouverture d'une base sous `data/`, elle n'a pas été lancée ici.
+
+  ```bash
+  # 1) Serveur arrete. Controle a blanc : ce qui SERA repris, aucune ecriture.
+  cd apps/go-api && go run ./cmd/levelup backfill-usage-summary --dry-run
+  # 2) La passe reelle.
+  cd apps/go-api && go run ./cmd/levelup backfill-usage-summary
+  ```
+
+  **`--force` n'est PAS nécessaire, et il ne faut pas l'employer.** La clé de reprise est
+  `(summary_rev, artifact_schema)` lue sur `match_usage_films_latest` : le passage `us3` ->
+  `us4` suffit à ce que CHAQUE match déjà résumé soit repris. `--force` ne servirait qu'au cas
+  — qui ne doit jamais se produire — d'une règle changée sans montée de révision.
+
+  **Attendu** : `resume usage : N ecrits, 0 deja a jour, ...` (le `0 deja a jour` EST la
+  preuve que la montée de révision a mordu ; un compte non nul dirait que `us4` n'a pas été
+  pris en compte). Le `--dry-run` imprime en plus la ligne neuve `couverture des ramassages :
+  N prises sans famille connue, N slots non rattaches, N consommations a chaine trouee` —
+  à rapprocher des mesures E0.2 (25,21 % de rangs non nommés) et E0.3 (1,12 %). **Consigner
+  le compte d'écrits au journal une fois la passe faite.**
