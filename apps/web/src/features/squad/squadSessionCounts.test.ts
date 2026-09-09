@@ -20,12 +20,12 @@ describe('squadSessionCount', () => {
       [{ label: 'S1 (11)', match_count: 4, match_count_roster: 7 }],
       fallback,
     )
-    expect(got).toEqual({ shown: 4, total: 7 })
+    expect(got).toEqual({ shown: 4, total: 7, excluded: [] })
   })
 
   it('composition exacte OFF ou aucun écart : match_count_roster absent → total = shown', () => {
     const got = squadSessionCount('S1 (11)', [{ label: 'S1 (11)', match_count: 6 }], fallback)
-    expect(got).toEqual({ shown: 6, total: 6 })
+    expect(got).toEqual({ shown: 6, total: 6, excluded: [] })
   })
 
   it('sessions non couvertes par composition_sessions : repli sur /filters/resolve', () => {
@@ -34,19 +34,24 @@ describe('squadSessionCount', () => {
       [{ label: 'S1 (11)', match_count: 6, match_count_roster: 6 }],
       fallback,
     )
-    expect(got).toEqual({ shown: 4, total: 4 })
+    expect(got).toEqual({ shown: 4, total: 4, excluded: [] })
   })
 
   it('réponse teammates pas encore arrivée (composition_sessions vide) → uniquement le repli', () => {
     const got = squadSessionCount('S1 (11)', [], fallback)
-    expect(got).toEqual({ shown: 8, total: 8 })
+    expect(got).toEqual({ shown: 8, total: 8, excluded: [] })
   })
 
   it('match_count absent ou nul côté composition → repli (pas de session affichée à 0)', () => {
-    expect(squadSessionCount('S1 (11)', [{ label: 'S1 (11)' }], fallback)).toEqual({ shown: 8, total: 8 })
+    expect(squadSessionCount('S1 (11)', [{ label: 'S1 (11)' }], fallback)).toEqual({
+      shown: 8,
+      total: 8,
+      excluded: [],
+    })
     expect(squadSessionCount('S2 (4)', [{ label: 'S2 (4)', match_count: 0 }], fallback)).toEqual({
       shown: 4,
       total: 4,
+      excluded: [],
     })
   })
 
@@ -62,7 +67,19 @@ describe('squadSessionCount', () => {
       [{ label: 'S1 (11)', match_count: 4, match_count_roster: 7 }],
       [{ label: 'S1 (11)', match_count_filtered: 7 }],
     )
-    expect(got).toEqual({ shown: 4, total: 7 })
+    expect(got).toEqual({ shown: 4, total: 7, excluded: [] })
+  })
+
+  it('écart publié (D1) : `excluded_by_exact_composition` passe tel quel dans le compte', () => {
+    const excluded = [
+      { match_id: 'm1', start_time: '2026-08-27T20:00:00Z', map_ui: 'Aquarius', extra_gamertags: ['Nilton410'] },
+    ]
+    const got = squadSessionCount(
+      'S1 (11)',
+      [{ label: 'S1 (11)', match_count: 4, match_count_roster: 5, excluded_by_exact_composition: excluded }],
+      fallback,
+    )
+    expect(got).toEqual({ shown: 4, total: 5, excluded })
   })
 })
 
