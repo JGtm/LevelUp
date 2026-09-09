@@ -57,7 +57,7 @@
 | S4 | Vague B abandonnée ; la preuve de non-régression du P0 « identités » = `swap.sh` sur les 4 témoins après recuisson E2 (§3, lot 0.4). Si `malplaces > 0` subsiste : rouvrir la phase 1 de la vague B, pas avant |
 | S5 | ETag : le helper unique réutilise la logique d'`If-None-Match` déjà présente dans `handlers/helpers.go:writeJSONCached` (le plan croyait qu'aucun 304 n'existait ; il y en a 5). Le plan D9 est amendé : `writeJSONCached` MIGRE vers le helper, garde-rail grep sur `Header().Set("ETag"` |
 | S6 | C2 : les 4 autres `type: 'heatmap'` (`ascension/ActivityCalendarChart`, `explorer/ExplorerActivityHeatmapChart`, `palmares/RelationsMomentsHeatmap`, `squad/charts/squadMapHeatmapChart`) entrent dans l'allowlist DATÉE du garde-rail, pas dans le lot (périmètre fermé du plan) |
-| S7 | La recuisson du parc post-E2 remplace la « tâche hors lot » de la vague C (15 artefacts schéma 38 + 7 bornes fausses) et les lignes L567/569/584/602 du registre |
+| S7 | La recuisson du parc post-E2 remplace la « tâche hors lot » de la vague C (15 artefacts schéma 38) et les lignes L567/569/584/602 du registre. **Corrigé le 09-09 (soir)** : les 7 artefacts aux bornes fausses n'étaient PAS couverts — le correctif vivait sur `wt/bornes-aberrantes` (`490dc595e`), jamais fusionné, et la recuisson de 17:37 a été jouée sans lui (`81c02726` porte toujours z = −325 m, vérifié sur pièces). Fusionné en `4bd2a7969` (D11) ; la recuisson des 7 artefacts est rattachée au lot 3.2 |
 | S8 | `backfill-killsource` post-E2 (révision d'isolement bumpée) est la MÊME opération que le report L133 (arme du kill 0-5 % avril-juillet) : une passe, deux clôtures |
 
 ## 3. Décisions qui appartiennent à l'utilisateur (bloquantes, avec recommandation)
@@ -75,6 +75,7 @@
 | D8bis | Séquence Notion « à dérouler à la release » : la case « Re-cuisson du parc au schéma 48 » doit passer à **50** (E2 fusionné le 09-09) — modification de la page Notion, à faire par l'utilisateur ou sur son accord | release | À mettre à jour |
 | D9 | Seuil d'activation du rejeu public (registre L120, 88 %) : re-statuer maintenant ? | — | Une ligne de décision, après recuisson du parc |
 | D10 | **Tag de version / release : JAMAIS par le superviseur** (consigne utilisateur 2026-09-09). Aucun tag, aucun push sur `main` ; la séquence de release (R9) reste à la main de l'utilisateur | — | consigne ferme |
+| D11 | **Deux branches oubliées du plan** (question de l'utilisateur, 09-09 soir) : `wt/bornes-aberrantes` (correctif de cuisson, 1 commit) et `wt/orchestration-0907` (journal du superviseur du 09-08, 10 commits de docs) n'étaient reprises nulle part. Décision : **fusionner le code maintenant, recuire les 7 artefacts en vague 3 (lot 3.2)**. Fusions `4bd2a7969` (code) et `2cc39f89b` (docs, union) le 09-09 |
 
 Tranché le 2026-09-09 par l'utilisateur : D1, D2, D3, D4 (« champ libre pour commit », seule
 session active) — exécutées en vague 0 ; D10 ferme. Questionnaire du 09-09 : lot 1.6 → **P5**
@@ -127,7 +128,7 @@ traité (justifié).
 | # | Lot | Exécutant | Gate | Statut |
 |---|---|---|---|---|
 | 3.1 | Escouade B0-B4 (flèche hors cadre, TDD) | Sonnet, effort moyen | gates B0-B4, parité export vérifiée sur pièce | [ ] |
-| 3.2 | Tactique point 21 : pas adaptatif (D6), message d'état vide honnête (« densité insuffisante », pas « pas assez de matchs ») | Opus, effort bas | tests `analysis/tactical`, Illusion affiche des cellules | [ ] |
+| 3.2 | Tactique point 21 : pas adaptatif (D6), message d'état vide honnête (« densité insuffisante », pas « pas assez de matchs ») ; **défaut canvas 1 070 × 13 375 px** (découverte du 09-09) ; **recuisson des 7 artefacts aux bornes fausses** (`0a44c6cc`, `30a23d15`, `3923bede`, `4f77afc1`, `81c02726`, `879a4dba`, `a4083bd2` — D11, correctif fusionné `4bd2a7969`, serveur arrêté, un film à la fois, journal `build.go` « échantillons écartés ») puis vérification navigateur du fond de carte d'Isolement (Tactique + rejeu) | Opus, effort bas | tests `analysis/tactical`, Illusion affiche des cellules ; `jq .bounds` de `81c02726` : minZ > 0 et `coversPlayedArea` vrai | [ ] |
 | 3.3 | Fonds de carte étape 0 (mesure) → D10 → étapes 2-5 (TDD, recette export 12 verdicts). **Consigne utilisateur 2026-09-09 : la page Tactique sert aussi les fonds de carte (`features/tactical/queries.ts`, route `.../tactical/{map_id}/background.png`) — après conversion, vérifier EN NAVIGATEUR que le fond s'affiche sur Tactique, en plus du rejeu et de l'export** | Sonnet, effort moyen | gates du plan + contrôle navigateur Tactique (gate bloquant) | [ ] |
 | 3.R | Revue UNIQUE si 3.3 exécutée ; sinon delivery-checklist seule | — | — | [ ] |
 
@@ -177,6 +178,7 @@ L63 (`loadGameVariant` erreur avalée), L595 (3e copie clé de roster bot), L575
 
 ## 6. Découvertes de cette planification (consignées, non traitées sauf mention)
 
+- 2026-09-09 (soir) ; `.ai/PLAN_MASTER_2026-09-09.md` §0 ; l'inventaire initial des pièces a manqué deux branches sans worktree `LevelUp-wt-*` nommé dans les plans lus : `wt/bornes-aberrantes` (référencée seulement par le plan de la vague C, tâche hors lot) et `wt/orchestration-0907`. Leçon : l'inventaire de reprise part de `git branch --no-merged feat/v75` + `git worktree list`, pas des plans. Traité par D11.
 - 2026-09-09 ; `handlers/helpers.go:113` ; cinq handlers gèrent déjà `If-None-Match` — le plan
   WebP l'ignorait. Traité par S5 (amendement de D9), pas reporté.
 - 2026-09-09 ; `apps/web/src/features/{ascension,explorer,palmares,squad/charts}` ; quatre
@@ -221,3 +223,12 @@ de cocher ; fusion dans `feat/v75` seulement avec l'accord de l'utilisateur.
   worktrees, statuts git, tests). Registre trié par un agent Opus (162 groupes ouverts), huit
   lignes prioritaires contre-vérifiées. Gate corpus E2 lancé ; lots 1.1, 1.2, 1.3, 1.4 lancés
   en parallèle (Sonnet, worktrees dédiés). D1-D9 soumises à l'utilisateur.
+- **2026-09-09 (soir)** — Question de l'utilisateur : « les branches `wt/bornes-aberrantes` et
+  `wt/orchestration-0907` sont-elles reprises ? » Non, ni l'une ni l'autre. Vérifié sur pièces :
+  le correctif des bornes n'était dans aucun autre chemin, et l'artefact `81c02726` recuit à 17:37
+  au schéma 50 porte toujours `minZ = -325.4` — la décision S7 était fausse sur les 7 bornes.
+  D11 : fusion du code (`4bd2a7969`, conflit `thought_log` par union, `build.go` auto-fusionné
+  avec E2) et du journal d'orchestration (`2cc39f89b`, 3 docs par union, 0 marqueur résiduel,
+  lignes E2/E2-bis et D12-D14 toutes présentes) ; recuisson des 7 artefacts rattachée au lot 3.2.
+  Gates : `go build ./...` + tests `analysis/replay` et `replaydiff` (résultat au journal
+  thought_log). Pas de push : la CI reste une par vague.

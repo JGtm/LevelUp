@@ -363,12 +363,12 @@ de classement d'origine — à vérifier dans un chantier à part.
 
 Ni un correctif ni une conception : du **temps machine**, à lancer quand ça arrange.
 
-- [ ] `cmd/replay-build` sur les 15 artefacts restés au schéma 38 (`0891225f`, `0d265ab0`,
+- [x] (2026-09-09, 17:37, superviseur du master plan : recuisson du parc entier au schéma 50 via `backfill-replay --only-existing`, 64 artefacts en 23 min, pic 539 Mio) `cmd/replay-build` sur les 15 artefacts restés au schéma 38 (`0891225f`, `0d265ab0`,
       `1b2d9e08`, `28c9b538`, `30a23d15`, `4ecdf3e7`, `72b0a25e`, `7b0d89c4`, `94a28b8b`,
       `a03a5e65`, `bfecd02b`, `cde26226`, `f0220a96`, `f2966f08`, `faff9935`)
-- [ ] Vérifier que `coverage.vehicles` apparaît sur les 15 — c'est ce qui débloque l'affichage des
+- [x] (2026-09-09 : `coverage.vehicles` présent sur 64/64) Vérifier que `coverage.vehicles` apparaît sur les 15 — c'est ce qui débloque l'affichage des
       joueurs en véhicule (point 6)
-- [ ] **Recuire aussi les 7 artefacts aux bornes fausses** (`0a44c6cc`, `30a23d15`, `3923bede`,
+- [~] (2026-09-09 soir : le correctif est FUSIONNÉ dans `feat/v75` en `4bd2a7969` — il ne l'était pas lors de la recuisson de 17:37, qui a donc laissé les 7 bornes fausses ; la recuisson des 7 est portée par le lot 3.2 de `.ai/PLAN_MASTER_2026-09-09.md`, D11) **Recuire aussi les 7 artefacts aux bornes fausses** (`0a44c6cc`, `30a23d15`, `3923bede`,
       `4f77afc1`, `81c02726`, `879a4dba`, `a4083bd2`). Le correctif est livré côté cuisson
       (branche `wt/bornes-aberrantes`, commit `490dc595e`) mais les artefacts déjà cuits gardent
       leurs bornes. C'est ce qui débloque le FOND DE CARTE d'Isolement (point 5) : vérifié en
