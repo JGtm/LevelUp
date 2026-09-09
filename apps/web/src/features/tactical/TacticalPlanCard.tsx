@@ -27,6 +27,7 @@ import type { TacticalText } from './i18n'
 import { useTacticalMapBackgroundUrl } from './queries'
 import {
   cellFromClick,
+  planCanvasView,
   sourceForQuestion,
   statusMessages,
   TACTICAL_CELL_FLOOR,
@@ -86,8 +87,9 @@ export function TacticalPlanCard({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
-    const scale = width / (bornes.max_x - bornes.min_x)
-    drawTacticalHeatmap(ctx, grid, { topLeftWorld: { x: 0, y: 0 }, scale }, { ramp, k: 1 })
+    const vue = planCanvasView(bornes, width)
+    if (!vue) return
+    drawTacticalHeatmap(ctx, grid, vue, { ramp, k: 1 })
   }, [grid, ramp, bornes, bornesValides])
 
   function handleClick(event: React.MouseEvent<HTMLCanvasElement>) {
@@ -119,6 +121,9 @@ export function TacticalPlanCard({
           <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
             <p>{unite}</p>
             <p className="mt-1">{t.footerFloor(TACTICAL_CELL_FLOOR)}</p>
+            <p className="mt-1" data-testid="tactical-plan-grid-step">
+              {t.footerGrid(pasM)}
+            </p>
             <p className="mt-1">{source}</p>
           </div>
         ) : undefined

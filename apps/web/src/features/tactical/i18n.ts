@@ -81,8 +81,18 @@ export function getTacticalText(locale: Locale) {
     footerFloor: (n: number) => m('tactical.plan.footer_floor', { n }),
     sourceReplay: m('tactical.plan.source_replay'),
     sourceJournal: m('tactical.plan.source_journal'),
+    // Pas de la grille : PUBLIÉ par le serveur (`pas_m`), affiché tel quel — un plan à
+    // 2 m est plus grossier qu'un plan à 0,5 m, et cela doit se lire au pied de la carte.
+    footerGrid: (pas: number) => m('tactical.plan.footer_grid', { pas }),
+    // Les trois états vides du plan. Ils ne disent PAS la même chose : périmètre vide,
+    // aucune mesure, ou mesures trop dispersées (cf. `planEmptyReason`).
+    planEmptyNoMatchTitle: m('tactical.plan.empty_no_match_title'),
+    planEmptyNoMatchDescription: m('tactical.plan.empty_no_match_description'),
     planEmptyTitle: m('tactical.plan.empty_title'),
     planEmptyDescription: m('tactical.plan.empty_description'),
+    planEmptyDensityTitle: m('tactical.plan.empty_density_title'),
+    planEmptyDensityDescription: (matchs: number, plancher: number, pas: number) =>
+      m('tactical.plan.empty_density_description', { matchs, plancher, pas }),
     statusPending: (n: number) => m('tactical.status.pending', { n }),
     statusUnavailable: (n: number) => m('tactical.status.unavailable', { n }),
     cellTitle: m('tactical.cell.title'),

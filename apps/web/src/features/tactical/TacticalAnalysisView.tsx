@@ -109,7 +109,9 @@ export function TacticalAnalysisView({
   const cellule = useTacticalCellule(
     playerSlug,
     mapId,
-    selected ? { col: selected.col, lig: selected.row } : null,
+    selected && raster.data
+      ? { col: selected.col, lig: selected.row, pas_m: raster.data.pas_m }
+      : null,
     params,
   )
 
