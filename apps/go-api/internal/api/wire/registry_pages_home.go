@@ -337,5 +337,13 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveStatsRepo(duckdb.NewObjectiveStatsRepo(pdb))
 	}
+	// Bloc « servi ou gâché » de l'équipement (étape E5) : MÊME repo que le bloc de
+	// la page Sessions — ses trois lectures prennent un scope FERMÉ de match_id, et
+	// seul l'ensemble d'identifiants change d'une page à l'autre. Gated par
+	// film.usage_summary (Infinite ; absente pour Halo 5 → bloc Available=false avec
+	// raison machine). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
+		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver())
+	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
