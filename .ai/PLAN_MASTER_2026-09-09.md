@@ -94,7 +94,7 @@ traité (justifié).
 | 0.1 | D3 : `git merge main` dans `feat/v75`, gates Go+web, push | superviseur, accord D3 | `make go-api-test`, `make check-types`, `make test-web` | [ ] |
 | 0.2 | D2 : fusion `wt/lot-court` | superviseur, accord D2 | vitest des fichiers touchés, typecheck | [ ] |
 | 0.3 | D1 : passe navigateur « retours UI » puis commit des 116 fichiers sur `feat/retours-ui-0909`, fusion | superviseur, accord D1 | `make check-types`, `make test-web`, `make generate-types` sans diff | [ ] |
-| 0.4 | E2 : commit du diff `replaydiff` (polarité par-slot → par-xuid), `make replay-corpus-gate --reference=base`, verdict ligne par ligne (une ligne attendue : `flagCarries.homeByObject` sur `3372e7eb`), fusion (D4), `levelup backfill-killsource`, recuisson du parc (`backfill-replay --only-existing`, un film à la fois), puis `swap.sh` sur `8bc6074f d8b13ec2 a4083bd2 bf2a9f05` → `malplaces = 0` | superviseur | gate exit 0 ; `swap.sh` = 0 ; `jq .coverage.vehicles` présent sur les 15 artefacts schéma 38 | [~] en cours 09-09 : gate joué (9 lignes de perte sur 4 témoins, toutes instruites et acceptées au registre — dont `fb1a1a72` : propriétaire du slot 625 corrigé, bornes identiques) ; polarité `replaydiff` commitée `43320cd6f` ; **fusion faite `4dec9bd65`** ; `backfill-killsource` lancé détaché à 16:07 (737 films, 1 967 matchs en crédit ; serveur de dev arrêté pour la passe, journal scratchpad `backfill_killsource.log`). Reste : recuisson du parc, `swap.sh`, redémarrage du serveur |
+| 0.4 | E2 : commit du diff `replaydiff` (polarité par-slot → par-xuid), `make replay-corpus-gate --reference=base`, verdict ligne par ligne (une ligne attendue : `flagCarries.homeByObject` sur `3372e7eb`), fusion (D4), `levelup backfill-killsource`, recuisson du parc (`backfill-replay --only-existing`, un film à la fois), puis `swap.sh` sur `8bc6074f d8b13ec2 a4083bd2 bf2a9f05` → `malplaces = 0` | superviseur | gate exit 0 ; `swap.sh` = 0 ; `jq .coverage.vehicles` présent sur les 15 artefacts schéma 38 | [~] en cours 09-09 : gate joué (9 lignes de perte sur 4 témoins, toutes instruites et acceptées au registre — dont `fb1a1a72` : propriétaire du slot 625 corrigé, bornes identiques) ; polarité `replaydiff` commitée `43320cd6f` ; **fusion faite `4dec9bd65`** ; `backfill-killsource` lancé détaché à 16:07 (737 films, 1 967 matchs en crédit ; serveur de dev arrêté pour la passe, journal scratchpad `backfill_killsource.log`). Chaîne de backfills terminée 17:59 (sauvegarde DB, médailles 415 matchs, T0, cache appauvri, **recuisson 64 artefacts schéma 50 en 23 min, pic 539 Mio, `coverage.vehicles` 64/64**, T0 film, résumé d'usage 64, Assaut 0 film au parc) ; **P0 découvert** (voies du registre refusées par `match_lives`, corrigé `bc61b6636`) → passe films de killsource rejouée à 18:00 avec le binaire corrigé ; **`swap.sh` = 0 sur les 4 témoins et 37/38 artefacts** (résidu `58864b3c` au registre). Reste : fin de killsource v2, redémarrage du serveur, revues navigateur |
 | 0.5 | Clôtures administratives du registre (§5) + annotation « vague B abandonnée » dans son plan | superviseur | diff docs seul | [ ] |
 
 ### Vague 1 — P1 visibles, effort modéré (parallèle : 4 lots, domaines disjoints)
@@ -174,6 +174,15 @@ L63 (`loadGameVariant` erreur avalée), L595 (3e copie clé de roster bot), L575
   `SquadIsolementNuageCard.tsx`, `squad/i18n.ts`, `SessionUsageForms.tsx` — collision directe
   avec C3, A3, E4. D1.
 - 2026-09-09 ; `main` ; 13 commits absents de `feat/v75`. D3.
+- 2026-09-09 ; **P0 TRAITÉ IMMÉDIATEMENT** ; `persist/lives_persister.go` refusait les quatre voies
+  de nommage du registre d'identité (E2) : la passe `backfill-killsource` locale a échoué sur
+  les 736 films (faits d'isolement non réécrits ; en prod, chaque nouveau match aurait été
+  refusé au sync). Correctif `fix/match-lives-named-by-e2` fusionné (`bc61b6636`) : constantes,
+  validateur, garde-rail `no_life_cause_divergence_test` étendu à tout le paquet replay et à la
+  forme `const X = "..."`. Passe films rejouée après la chaîne (`suite_killsource.sh`). Point
+  prod ajouté au registre (dernière ligne) : `backfill-killsource --films-only` au déploiement.
+- 2026-09-09 ; GitHub signale 1 vulnérabilité « high » (dependabot n°18) sur la branche par
+  défaut — hors périmètre, à regarder par l'utilisateur.
 - 2026-09-09 ; bots réels anonymes après E2 (index hors table) ; consigne utilisateur : croiser
   d'abord les bornes d'arrivée/départ des bots publiées par l'API (`bid(N.0)`,
   `present_at_beginning` / `left_in_progress` / `last_leave_time`) avec les corps anonymes du

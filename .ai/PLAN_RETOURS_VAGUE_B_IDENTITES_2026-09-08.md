@@ -1,5 +1,17 @@
 # Plan — Vague B : le P0 des identités interverties
 
+> **2026-09-09 — PLAN ABANDONNÉ, OBJECTIF ATTEINT PAR UNE AUTRE VOIE.** Le sondage E2 puis le
+> lot P-décodeur E2 (lien DIRECT corps → joueur lu dans le record de création du bipède, pont par
+> morts relégué à la vérification, décision D14) ont établi la cause que la phase 1 devait
+> instruire : le pont par morts nommait à tort 7 paires ÉCHANGÉES sur cinq films. Après fusion
+> d'E2 dans `feat/v75` et recuisson du parc au schéma 50, la preuve prévue par ce plan a été
+> jouée telle quelle : `swap.sh` rend **`malplaces = 0` sur les quatre témoins** (`8bc6074f`,
+> `d8b13ec2`, `a4083bd2`, `bf2a9f05`, contre 2 chacun avant) et sur 37 des 38 artefacts testables
+> du parc. Résidu : `58864b3c` (3 sur 7, séparation des camps 4,4 / 8,2 m — au seuil de validité
+> de l'heuristique), consigné au registre. Les phases 1 et 2 ci-dessous ne sont pas exécutées ;
+> conservées pour mémoire. Décision : plan master 2026-09-09, S4 / D5.
+
+
 > Issu de `.ai/diagnostics/RETOURS_2026-09-08/DIAGNOSTIC_RETOURS_UTILISATEUR_2026-09-08.md`, § point 4.
 > **Exécution sous le contrat du skill `plan-execution`.**
 
