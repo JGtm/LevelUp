@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -55,6 +56,65 @@ func TestLeaderboardService_NoCapability_EmptyNot500(t *testing.T) {
 	}
 	if resp.TitleSlug != "unknown_title_no_cap" {
 		t.Errorf("TitleSlug résolu = %q, want unknown_title_no_cap", resp.TitleSlug)
+	}
+}
+
+// TestLeaderboardService_MissingSeasonOrPlaylist_EmptyNot500 (Lot 4.1) : le
+// classement mondial se définit par un COUPLE (saison, playlist). Un couple
+// incomplet n'est pas une panne : réponse vide + 200, le repo n'est même pas
+// appelé (son erreur « season et playlist requis » ne doit plus remonter en 500).
+func TestLeaderboardService_MissingSeasonOrPlaylist_EmptyNot500(t *testing.T) {
+	cases := []struct{ name, season, playlist string }{
+		{"aucun des deux", "", ""},
+		{"saison manquante", "", "p"},
+		{"playlist manquante", "s", ""},
+		{"blancs seulement", "   ", "  "},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Le repo échoue systématiquement : si le service l'appelait, le test
+			// verrait l'erreur (c'est le 500 qu'on supprime).
+			repo := &mockLeaderboardRepo{err: errors.New("le repo ne doit pas être appelé")}
+			svc := NewLeaderboardService(repo)
+
+			resp, err := svc.GetPage(context.Background(), domain.LeaderboardRequest{
+				Season: tc.season, Playlist: tc.playlist,
+			})
+			if err != nil {
+				t.Fatalf("couple incomplet doit dégrader en vide, got err: %v", err)
+			}
+			if len(resp.Entries) != 0 {
+				t.Errorf("entries = %d, want 0", len(resp.Entries))
+			}
+			if resp.TotalLocal != 0 {
+				t.Errorf("total = %d, want 0", resp.TotalLocal)
+			}
+			if resp.Category != string(domain.LeaderboardCSRWorld) {
+				t.Errorf("category = %q, want csr-world", resp.Category)
+			}
+			if repo.lastCategory != "" {
+				t.Errorf("le repo a été appelé (%q) alors que le couple est incomplet", repo.lastCategory)
+			}
+		})
+	}
+}
+
+// TestLeaderboardService_StatCategory_NoSeasonPlaylist_StillQueries : la garde
+// 4.1 ne concerne QUE le classement mondial — les catégories de stats agrégées
+// acceptent des filtres vides (saison/playlist optionnelles).
+func TestLeaderboardService_StatCategory_NoSeasonPlaylist_StillQueries(t *testing.T) {
+	repo := &mockLeaderboardRepo{stats: []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alice", Value: 42}}}
+	svc := NewLeaderboardService(repo)
+
+	resp, err := svc.GetPage(context.Background(), domain.LeaderboardRequest{Category: string(domain.LeaderboardKills)})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if repo.lastCategory != domain.LeaderboardKills {
+		t.Errorf("le repo de stats doit être appelé, lastCategory = %q", repo.lastCategory)
+	}
+	if len(resp.Entries) != 1 {
+		t.Errorf("entries = %d, want 1", len(resp.Entries))
 	}
 }
 

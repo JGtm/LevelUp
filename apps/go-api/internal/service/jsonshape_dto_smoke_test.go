@@ -7,6 +7,7 @@ import (
 	teammatespkg "levelup/go-api/internal/service/teammates"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
@@ -154,6 +155,67 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 		repo := &mockLeaderboardRepo{csrWorld: []domain.LeaderboardEntry{}}
 		svc := NewLeaderboardService(repo)
 		resp, err := svc.GetPage(context.Background(), domain.LeaderboardRequest{TitleSlug: "halo_infinite"})
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
+	})
+
+	// Le sous-test ci-dessus n'exerce QUE la sortie anticipée « couple (saison,
+	// playlist) incomplet », sur halo_infinite. Les autres chemins de sortie de
+	// GetPage/GetCatalog étaient hors du ratchet (constat du lot 4, plan
+	// PLAN_LEADERBOARD_MONDE_REPRISE_2026-09-03) : un repo sans aucune ligne rend une
+	// slice nil, que le service affectait par-dessus sa garantie de construction.
+	// Les repos ci-dessous rendent nil (et non `[]`) VOLONTAIREMENT : c'est ce qu'un
+	// scan DuckDB sans ligne produit réellement.
+
+	t.Run("LeaderboardService.GetPage/titre sans la capability", func(t *testing.T) {
+		svc := NewLeaderboardService(&mockLeaderboardRepo{})
+		resp, err := svc.GetPage(context.Background(), domain.LeaderboardRequest{
+			TitleSlug: "unknown_title_no_cap", Season: "s", Playlist: "p",
+		})
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
+	})
+
+	t.Run("LeaderboardService.GetPage/csr-world sans aucune ligne", func(t *testing.T) {
+		svc := NewLeaderboardService(&mockLeaderboardRepo{csrWorld: nil})
+		resp, err := svc.GetPage(context.Background(), domain.LeaderboardRequest{
+			TitleSlug: "halo_infinite", Season: "csrseason13-3", Playlist: "p",
+		})
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
+	})
+
+	t.Run("LeaderboardService.GetPage/catégorie de stats sans aucune ligne", func(t *testing.T) {
+		svc := NewLeaderboardService(&mockLeaderboardRepo{stats: nil})
+		resp, err := svc.GetPage(context.Background(), domain.LeaderboardRequest{
+			TitleSlug: "halo_infinite", Category: string(domain.LeaderboardKills),
+		})
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
+	})
+
+	t.Run("LeaderboardService.GetCatalog/titre sans la capability", func(t *testing.T) {
+		svc := NewLeaderboardService(&mockLeaderboardRepo{})
+		ctx := ctxkeys.WithTitleSlug(context.Background(), "unknown_title_no_cap")
+		resp, err := svc.GetCatalog(ctx)
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
+	})
+
+	t.Run("LeaderboardService.GetCatalog/catalogue vide", func(t *testing.T) {
+		svc := NewLeaderboardService(&mockLeaderboardRepo{})
+		ctx := ctxkeys.WithTitleSlug(context.Background(), "halo_infinite")
+		resp, err := svc.GetCatalog(ctx)
 		if err != nil {
 			t.Fatalf("error: %v", err)
 		}

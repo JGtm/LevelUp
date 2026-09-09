@@ -2,7 +2,7 @@
 
 > **Analyze your Halo 5: Guardians and Halo Infinite stats match by match, track your progress over time, and compare your performance with your squad.**
 
-[![Version](https://img.shields.io/badge/Version-7.3.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v7.3.0)
+[![Version](https://img.shields.io/badge/Version-7.3.1-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v7.3.1)
 [![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8.svg)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -289,7 +289,6 @@ This project is licensed under MIT. See [LICENSE](LICENSE) for details.
 
 - **Andy Curtis** ([acurtis166](https://github.com/acurtis166)) for [SPNKr](https://github.com/acurtis166/SPNKr)
 - **Den Delimarsky** ([dend](https://github.com/dend)) for [Grunt](https://github.com/dend/grunt) and [OpenSpartan](https://github.com/OpenSpartan)
-- **Gravemind2401** ([Gravemind2401](https://github.com/Gravemind2401)) for [Reclaimer](https://github.com/Gravemind2401/Reclaimer)
 
 See also [ACKNOWLEDGMENTS.md](docs/ACKNOWLEDGMENTS.md).
 
