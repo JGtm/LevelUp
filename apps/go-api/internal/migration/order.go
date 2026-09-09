@@ -254,6 +254,12 @@ var canonicalOrder = []string{
 	"add_xuid_to_world_csr_leaderboard",                        // shared (B1)
 	"shared_create_kill_positions",                             // shared (positions monde par kill, ref inter-titres)
 	"shared_append_only_kill_positions_v1",                     // shared (G.2 : id PK + written_at + vue kill_positions_latest, éradique ART sur re-décodage)
+	// Lot 1.7 (2026-09-09) : DOIT suivre la conversion G.2 ci-dessus (elle ajoute `id` et
+	// `written_at`, que ce rebuild-ci préserve en ajoutant `decode_pass`). La vue
+	// kill_positions_latest passe d'un arbitrage par CLÉ à un arbitrage par DERNIÈRE PASSE
+	// ENTIÈRE par match — sans quoi une position rétractée par un re-décodage survivait à
+	// jamais. Title-owned Halo Infinite (steps_shared_kill_positions_pass.go).
+	"shared_kill_positions_decode_pass_v1", // shared
 	// Table SOEUR de kill_positions (proxy d'entame D5, 2026-09-06) : mêmes clés, mêmes
 	// colonnes, positions prises un temps-pour-tuer AVANT le coup fatal. Créée DIRECTEMENT
 	// append-only (id PK + written_at + vue _latest), donc aucun step de conversion à sa

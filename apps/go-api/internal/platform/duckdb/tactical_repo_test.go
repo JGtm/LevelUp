@@ -169,9 +169,11 @@ func tacKill(t *testing.T, pdb *PlayerDB, matchID, killerXUID, victimXUID string
 // partielle) : signature `any` pour cela.
 func tacPos(t *testing.T, pdb *PlayerDB, matchID, killerXUID string, timeMS int, kx, ky, vx, vy any) {
 	t.Helper()
+	// `decode_pass` litteral (NOT NULL depuis le lot 1.7, vue par DERNIERE PASSE ENTIERE par
+	// match) : une valeur constante convient, chaque match du corpus n'a qu'une passe.
 	tacExec(t, pdb, `INSERT INTO kill_positions
-		(match_id, killer_xuid, time_ms, killer_x, killer_y, killer_z, victim_x, victim_y, victim_z)
-		VALUES (?, ?, ?, ?, ?, 0.0, ?, ?, 0.0)`,
+		(match_id, decode_pass, killer_xuid, time_ms, killer_x, killer_y, killer_z, victim_x, victim_y, victim_z)
+		VALUES (?, 'pass_test', ?, ?, ?, ?, 0.0, ?, ?, 0.0)`,
 		matchID, killerXUID, timeMS, kx, ky, vx, vy)
 }
 

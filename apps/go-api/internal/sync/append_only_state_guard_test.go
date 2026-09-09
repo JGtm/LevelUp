@@ -115,11 +115,14 @@ var appendOnlyStateTables = []string{
 	// les deux dernières tables du film qui n'étaient enrôlées dans AUCUNE des deux listes
 	// anti-ART, alors que les deux sont append-only avec vue _latest depuis leur migration.
 	//   - kill_positions : rebuild append-only G.2 (2026-08-30,
-	//     games/halo_infinite/migrations/steps_appendonly_misc.go) — id PK + written_at + vue
-	//     kill_positions_latest par (match_id, killer_xuid, time_ms). Unité de génération = LA
-	//     LIGNE (pas la passe) : la table n'a volontairement pas de decoder_rev, written_at
-	//     arbitre. Écrivains INSERT purs : persist/kill_position_persister.go (film Infinite),
-	//     persist/shared_persister.go persistKillPositions (builder Halo 5).
+	//     games/halo_infinite/migrations/steps_appendonly_misc.go) — id PK + written_at —, puis
+	//     bascule sur un arbitrage PAR PASSE au lot 1.7 (2026-09-09,
+	//     games/halo_infinite/migrations/steps_shared_kill_positions_pass.go : + decode_pass,
+	//     vue kill_positions_latest = DERNIÈRE PASSE ENTIÈRE par match). L'unité de génération
+	//     est donc LA PASSE, comme pour sa sœur kill_openings : une position qu'un re-décodage
+	//     ne retrouve plus est RÉTRACTÉE, là où l'arbitrage par clé la servait à jamais.
+	//     Écrivains INSERT purs : persist/kill_position_persister.go (film Infinite),
+	//     persist/shared_persister.go persistKillPositionsPass (builder Halo 5).
 	//   - match_weapon_hit_distance : créée append-only
 	//     (migration/steps_shared_weapon_hit_distance.go) — id PK seq + decode_pass +
 	//     decoder_rev + written_at + vue _latest qui retient LA DERNIÈRE PASSE PAR MATCH
