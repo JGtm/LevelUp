@@ -19,11 +19,11 @@
  * le grep de sanity-check du gate de vague le prendrait pour un 6e site et
  * polluerait sa propre vérification.
  *
- * ALLOWLIST datée 2026-09-09 — 5 sites relevés par grep avant écriture de ce
- * garde-rail (recherche du motif `type:` suivi de `heatmap` entre apostrophes,
- * hors Heatmap2DChart.tsx) :
- *   - features/synthesis/SynthesisHeatmapChart.tsx      : migration PRÉVUE (lot C2
- *     du plan), simplement reportée — pas encore faite au 2026-09-09.
+ * ALLOWLIST datée 2026-09-09, mise à jour le 2026-09-09 (lot 1.5) après la
+ * migration de `SynthesisHeatmapChart.tsx` (lot C2 — routée par le wrapper
+ * canonique en mode `divergent`, rampe autour de 50 % préservée via
+ * `valueRange={[0, 1]}`) — 4 sites restants relevés par grep (recherche du
+ * motif `type:` suivi de `heatmap` entre apostrophes, hors Heatmap2DChart.tsx) :
  *   - features/ascension/ActivityCalendarChart.tsx      : décision S6 du
  *     superviseur — migration à porter un par un, hors périmètre de la vague C.
  *   - features/explorer/ExplorerActivityHeatmapChart.tsx : idem (décision S6).
@@ -45,7 +45,6 @@ const CANONICAL_FILE = 'components/charts/Heatmap2DChart.tsx'
 
 /** Allowlist datée 2026-09-09 — voir le en-tête du fichier pour la justification de chaque entrée. */
 const ALLOWLIST_2026_09_09 = [
-  'features/synthesis/SynthesisHeatmapChart.tsx',
   'features/ascension/ActivityCalendarChart.tsx',
   'features/explorer/ExplorerActivityHeatmapChart.tsx',
   'features/palmares/RelationsMomentsHeatmap.tsx',

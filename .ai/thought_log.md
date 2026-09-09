@@ -1,3 +1,51 @@
+## [2026-09-09] Lot 1.5 : ecart escouade explique (A3), nuage d'isolement (C3), heatmap Synthese migree (C2) — Complete
+
+**Contexte** : lot 1.5 du master plan, trois items independants executes dans l'ordre prescrit,
+dans le worktree d'integration dedie `LevelUp-wt-vague1` (branche `feat/vague1-integration`,
+au-dessus de `feat/v75`). Aucun sous-agent, aucune revue adversariale (hors perimetre du lot).
+
+**Item 1 — Escouade phase A3 (D1, TDD).** Le rail L2 affichait deja « 4 sur 7 » (A2) sans dire
+POURQUOI. `squadCompositionGapHint.tsx` (nouveau, pur) batit le contenu de l'info-bulle depuis
+`composition_sessions[].excluded_by_exact_composition` (deja publie par le backend, A1) : date,
+carte, coequipier(s) responsable(s) nomme(s), accord singulier/pluriel FR/EN. `PeriodSessionRail`
+gagne un prop generique `sessionCount(label).hint?: ReactNode`, rendu via le patron d'aide
+d'en-tete existant (`InfoTooltip`/`HeaderLabelTooltip`, V73-L2 2.4c) — le composant shell reste
+agnostique du domaine escouade, aucun nouveau primitif de tooltip. TDD : echecs observes avant
+code (resolution de module, puis assertion `getByRole('tooltip')`). A3.5 (revue navigateur)
+statue `[~]`, reserve au superviseur (consigne d'execution).
+
+**Item 2 — Vague C lot C3 (nuage d'isolement).** Verifie sur pieces (le fichier avait bouge le
+09-09, chantier legendes couleurs, commit `9212a1b0e`) : les quatre libelles de quadrant
+etaient DEJA affiches dans les coins via `t.quadrant()` dans `markArea` — seule la fonction
+`quadrantDuPoint` (classement PAR POINT) restait sans appelant hors test. Rebranchee dans le
+tooltip d'un point (nomme son quadrant). Ajoute le gros point median par joueur (D4) :
+`pointMedianJoueur` (nouveau, pur) agrege les points d'un joueur (mediane par axe, somme des
+morts examinees), une seconde serie ECharts par joueur (meme nom -> meme entree de legende),
+taille via `tailleMedianeDuPoint` (plage dediee). Echantillon faible : cercle pointille
+(`itemStyleDuPoint`) remplace l'opacite reduite ; `opaciteDuPoint`/`OPACITE_ATTENUEE`/
+`OPACITE_PLEINE` supprimes avec leurs tests (plus aucun appelant, CLAUDE.md regle 7).
+
+**Item 3 — Vague C lot C2 (heatmap Synthese).** Le report du lot 1.4 (« migration REPORTEE par
+le superviseur ») est leve sur consigne explicite de ce lot. `SynthesisHeatmapChart.tsx` route
+desormais par `Heatmap2DChart` en mode `divergent`, `valueRange={[0, 1]}` pour FIGER la rampe
+autour de 50 % (sinon le wrapper auto-ajuste min/max et decentre le neutre). Le wrapper
+n'exposant pas d'option `inverse` pour l'axe Y, les points sont emis Dimanche -> Lundi pour que
+Lundi occupe le dernier index (le haut d'un axe categoriel non inverse) — meme rendu qu'avant.
+Effets de bord ACCEPTES (inherents a l'unification, hors perimetre de preservation demande) :
+legende horizontale en pied de carte au lieu de la barre verticale a droite, plus de titres
+d'axes ni de libelles aux bornes du visualMap. `SynthesisHeatmapChart.tsx` retire de
+l'allowlist datee de `heatmapSingleImpl.guard.test.ts` (4 sites restants, decision S6).
+
+**Resultats observes** : `make check-types` (tsc -b) 0 erreur sur les trois items ; vitest —
+squad+shell 648/648, squad (isolement inclus) 487/487, charts+synthesis 409/409 (14 skipped
+preexistants) ; grep `quadrantDuPoint` et `type: 'heatmap'` conformes aux gates prescrits ;
+eslint 0 issue sur tous les fichiers touches ; aucun hex/classe Tailwind couleur introduit.
+
+**Conclusion / prochaine etape** : les trois items du lot 1.5 sont clos et commits separement.
+A3.5 (revue navigateur escouade) et le controle de visu C3/C2 restent au superviseur.
+
+---
+
 ## [2026-09-09] Diagnostic triple : compteur L2 escouade, sortie de cadre au rejeu, familles d'equipement — Complete (aucun code modifie)
 
 **Demande utilisateur** : trois verifications, sans livraison. (1) session du 27 aout,

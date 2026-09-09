@@ -89,12 +89,22 @@ cd apps/web && npx vitest run src/components/charts/Heatmap2DChart
       `[~]` avec cette référence, et vérifier seulement que son `gap-[3px]` reste
 - [ ] **Garde-rail** (règle n°6 du dépôt : une factorisation sans garde-rail re-diverge) : un test
       grep qui échoue si un `type: 'heatmap'` ECharts apparaît hors de `Heatmap2DChart.tsx`
-- [!] `features/synthesis/SynthesisHeatmapChart.tsx` — construit son option ECharts à la main.
+- [x] `features/synthesis/SynthesisHeatmapChart.tsx` — construit son option ECharts à la main.
       La faire passer par `Heatmap2DChart` en mode `divergent` (sa rampe autour de 50 % est
-      légitime et doit être préservée). **NON TRAITÉ dans cette exécution** : consigne explicite
-      du superviseur pour le lot 1.4 (« la migration de SynthesisHeatmapChart.tsx est REPORTÉE par
-      le superviseur, ne la fais pas ») — seul le garde-rail ci-dessous est livré. Le fichier reste
-      dans l'allowlist datée du garde-rail avec la mention « migration prévue »
+      légitime et doit être préservée). **FAIT le 2026-09-09 (lot 1.5, worktree
+      `LevelUp-wt-vague1`)** : le report du lot 1.4 est levé, le superviseur a ordonné
+      l'exécution. `valueRange={[0, 1]}` FIGE l'échelle du visualMap (le neutre reste à 50 %
+      quelle que soit la plage réelle des taux de victoire — laisser le wrapper auto-ajuster
+      min/max aurait décentré le neutre). `formatTooltip` reproduit le contenu exact de
+      l'ancien tooltip (jour, heure, taux, nombre de matchs). Le wrapper n'exposant pas
+      d'option `inverse` pour l'axe Y (contrairement à l'ancienne implémentation
+      `yAxis.inverse: true`), les points sont émis Dimanche → Lundi pour que Lundi occupe le
+      DERNIER index (le haut d'un axe catégoriel non inversé) — même rendu visuel. Effets de
+      bord ACCEPTÉS, inhérents à l'unification (pas de régression au sens du plan, qui ne
+      demande de préserver QUE la rampe) : légende horizontale en pied de carte au lieu de la
+      barre verticale à droite, plus de titres d'axes ("Heure"/"Jour") ni de libellés
+      "Victoires"/"" aux bornes du visualMap — le wrapper canonique n'expose aucune de ces
+      deux options, et les 4 autres consommateurs vivent déjà sans elles.
 - [~] `features/session-detail/SessionUsageForms.tsx` → `UsageRegularityBand` — **NE PAS migrer**.
       C'est une miniature DOM/CSS assumée (cases de 14 px, valeur impossible à écrire) ; statuée
       `[~]` avec cette référence. Vérifié sur pièces (2026-09-09) : `gap-[3px]` toujours présent
@@ -105,7 +115,10 @@ cd apps/web && npx vitest run src/components/charts/Heatmap2DChart
       relevés par grep avant écriture : `SynthesisHeatmapChart.tsx`, `ActivityCalendarChart.tsx`,
       `ExplorerActivityHeatmapChart.tsx`, `RelationsMomentsHeatmap.tsx`, `squadMapHeatmapChart.ts`).
       Mordant PROUVÉ : ajout temporaire d'un 6e site (`features/tactical/_tmpHeatmapProbe.ts`),
-      test rouge confirmé, fichier supprimé, test revert au vert — détail au thought_log
+      test rouge confirmé, fichier supprimé, test revert au vert — détail au thought_log.
+      **MIS À JOUR le 2026-09-09 (lot 1.5)** : `SynthesisHeatmapChart.tsx` retiré de l'allowlist
+      (plus aucun littéral `type: 'heatmap'` dans ce fichier après la migration ci-dessus) — 4
+      sites restants, tous décision S6 (hors périmètre de la vague C).
 
 **Gate :**
 ```bash
@@ -113,9 +126,20 @@ cd apps/web && npx vitest run src/components/charts src/features/synthesis
 grep -rn "type: 'heatmap'" apps/web/src --include=*.ts --include=*.tsx | grep -v Heatmap2DChart
 # doit ne rendre que des lignes allowlistees par le garde-rail
 ```
-Exécuté (2026-09-09) : vitest 283/283 (charts) + suite complète synthesis/squad/tactical/
+Exécuté (2026-09-09, lot 1.4) : vitest 283/283 (charts) + suite complète synthesis/squad/tactical/
 session-detail 1089/1089 verts ; grep rend exactement les 5 sites ci-dessus ; `make check-types`
 (`tsc -b`) vert.
+
+**Ré-exécuté (2026-09-09, lot 1.5, après la migration de `SynthesisHeatmapChart.tsx`)** :
+`cd apps/web && npx vitest run src/components/charts src/features/synthesis` → 44 fichiers,
+409 tests verts (14 skipped, préexistants) ; `grep -rn "type: 'heatmap'" apps/web/src
+--include=*.ts --include=*.tsx | grep -v Heatmap2DChart` rend exactement les 4 sites restants ;
+`make check-types` (tsc -b) 0 erreur ; `npx eslint` sur les 3 fichiers touchés
+(`SynthesisHeatmapChart.tsx`, `SynthesisHeatmapChart.test.tsx`,
+`heatmapSingleImpl.guard.test.ts`) : 0 issue. Nouveau fichier de test dédié
+`SynthesisHeatmapChart.test.tsx` (6 cas) : rampe divergente figée sur [0, 1], ordre Lundi/
+Dimanche de l'axe Y, ordre des heures, contenu du tooltip, case vide (count 0 → value null),
+état vide (aucune cellule mesurée).
 
 ## Lot C3 — Le nuage d'isolement : ce qui manque
 
