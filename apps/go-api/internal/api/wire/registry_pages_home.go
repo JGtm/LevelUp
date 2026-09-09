@@ -151,6 +151,13 @@ func (r *ServiceRegistry) SquadV2Ctx(ctx context.Context, slug string) (port.Squ
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveStatsRepo(duckdb.NewObjectiveStatsRepo(pdb))
 	}
+	// Bloc « servi ou gâché » de l'équipement, une ligne par joueur suivi (étape
+	// E6.1) : MÊME repo que les pages Sessions et Synthèse, sur le scope fermé des
+	// matchs partagés. Gated par film.usage_summary (Infinite ; absente pour Halo 5
+	// → bloc Available=false avec raison machine). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
+		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb))
+	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -336,6 +343,14 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 	// (Infinite ; absente pour Halo 5 → bloc objective_stats omis). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveStatsRepo(duckdb.NewObjectiveStatsRepo(pdb))
+	}
+	// Bloc « servi ou gâché » de l'équipement (étape E5) : MÊME repo que le bloc de
+	// la page Sessions — ses trois lectures prennent un scope FERMÉ de match_id, et
+	// seul l'ensemble d'identifiants change d'une page à l'autre. Gated par
+	// film.usage_summary (Infinite ; absente pour Halo 5 → bloc Available=false avec
+	// raison machine). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
+		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver())
 	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }

@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // SynthesisService orchestre les données de la page Synthèse.
@@ -80,6 +81,11 @@ type SynthesisService struct {
 	// scope. Câblé UNIQUEMENT pour les titres à capability match.objective.stats
 	// (Infinite ; nil pour Halo 5 → bloc objective_stats omis). Best-effort.
 	objectiveStatsRepo port.ObjectiveStatsRepository
+	// sessionUsageRepo / usageFriends : le bloc « servi ou gâché » de l'équipement
+	// (étape E5). Câblés gated par film.usage_summary ; nil ⇒ bloc indisponible
+	// avec raison machine. Cf. synthesis_service_usage.go.
+	sessionUsageRepo port.SessionUsageRepository
+	usageFriends     teammates.FriendGamertagsResolver
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug  string
@@ -251,6 +257,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	// match à objectif → bloc omis.
 	objectiveStats := s.loadObjectiveStats(ctx, filteredCanon)
 
+	// Bloc « servi ou gâché » de l'équipement (étape E5) : best-effort, gaté par
+	// film.usage_summary — nil quand le scope filtré n'a aucun match.
+	equipmentUsage := s.loadEquipmentUsage(ctx, filteredCanon)
+
 	scope := domain.SynthesisScope{
 		Period:         period,
 		MatchCount:     matchCount,
@@ -287,29 +297,8 @@ func (s *SynthesisService) GetSynthesisPage(
 		WeaponRange:       weaponRange,
 		CombatProfile:     combatProfile,
 		ObjectiveStats:    objectiveStats,
+		EquipmentUsage:    equipmentUsage,
 	}, nil
-}
-
-// loadObjectiveStats agrège (SUM) les stats objectifs du joueur sur le scope filtré.
-// Best-effort : nil si repo non câblé (capability absente), joueur inconnu, scope vide,
-// erreur SQL, ou aucun match à objectif dans le scope (bloc omis de la réponse).
-func (s *SynthesisService) loadObjectiveStats(
-	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
-) *domain.ObjectiveAggregate {
-	if s.objectiveStatsRepo == nil || s.playerXUID == "" || len(filteredCanon) == 0 {
-		return nil
-	}
-	matchIDs := make([]string, 0, len(filteredCanon))
-	for _, r := range filteredCanon {
-		matchIDs = append(matchIDs, r.Summary.MatchID)
-	}
-	byXUID, err := s.objectiveStatsRepo.LoadAggregatedByXUID(ctx, matchIDs, []string{s.playerXUID})
-	if err != nil {
-		slog.WarnContext(ctx, "synthesis: objective stats query failed (best-effort)",
-			"player_xuid", s.playerXUID, "match_count", len(matchIDs), "err", err)
-		return nil
-	}
-	return byXUID[s.playerXUID]
 }
 
 // loadAndEnrichCanonicalRows charge les canonical rows et applique
@@ -356,10 +345,7 @@ func (s *SynthesisService) applyFunStatsToDetailedStats(
 	if s.playerXUID == "" {
 		return
 	}
-	matchIDs := make([]string, 0, len(filteredCanon))
-	for _, r := range filteredCanon {
-		matchIDs = append(matchIDs, r.Summary.MatchID)
-	}
+	matchIDs := synthesisMatchIDs(filteredCanon)
 	if len(matchIDs) == 0 {
 		return
 	}
@@ -426,10 +412,7 @@ func (s *SynthesisService) loadWeaponKillRows(
 	if s.weaponKillsRepo == nil || s.gamertag == "" {
 		return nil
 	}
-	matchIDs := make([]string, 0, len(filteredCanon))
-	for _, r := range filteredCanon {
-		matchIDs = append(matchIDs, r.Summary.MatchID)
-	}
+	matchIDs := synthesisMatchIDs(filteredCanon)
 	wf := port.WeaponKillFilters{MatchIDs: matchIDs, Gamertag: s.gamertag, ResolveRoles: true}
 	rows, err := s.weaponKillsRepo.LoadWeaponKillsAggregated(ctx, s.titleSlug, wf)
 	if err != nil {
@@ -469,10 +452,7 @@ func (s *SynthesisService) loadWeaponAccuracy(
 	if s.weaponAccuracyRepo == nil || s.gamertag == "" || len(filteredCanon) == 0 {
 		return nil
 	}
-	matchIDs := make([]string, 0, len(filteredCanon))
-	for _, r := range filteredCanon {
-		matchIDs = append(matchIDs, r.Summary.MatchID)
-	}
+	matchIDs := synthesisMatchIDs(filteredCanon)
 	wf := port.WeaponAccuracyFilters{MatchIDs: matchIDs, Gamertag: s.gamertag}
 	rows, err := s.weaponAccuracyRepo.LoadWeaponAccuracyAggregated(ctx, s.titleSlug, wf)
 	if err != nil {

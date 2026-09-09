@@ -130,12 +130,7 @@ type Input struct {
 // (« matchs mesurés 0/N » doit s'afficher, §5/S2).
 func ComputeUsage(in Input) domain.SessionUsageBlock {
 	out := domain.SessionUsageBlock{Available: true, MatchesTotal: len(in.Matches)}
-	measured := make([]MatchInput, 0, len(in.Matches))
-	for _, m := range in.Matches {
-		if m.Measured {
-			measured = append(measured, m)
-		}
-	}
+	measured := measuredMatches(in.Matches)
 	out.MatchesMeasured = len(measured)
 	if len(measured) == 0 {
 		return out
@@ -166,6 +161,55 @@ func ComputeUsage(in Input) domain.SessionUsageBlock {
 	}
 	out.PadFamilies = computePadFamilies(in.PlayerXUID, measured)
 	out.PowerupPickups = computePowerups(measured, durAll)
+	return out
+}
+
+// BuildMatchInputs — un MatchInput par match du scope, DANS L'ORDRE DONNÉ, mesuré
+// s'il porte une ligne film. SOURCE UNIQUE de l'assemblage : les deux blocs
+// (session et période) partent de là, et leurs appelants n'ont plus à regrouper
+// les lignes joueur ni à recopier le contexte de camp.
+//
+// Le résultat est SANS échelle de temps ni compteurs de grain match (durée, socles
+// anonymes, occupations de bonus) : ils ne servent qu'aux cadences et à la note de
+// pied de la page Sessions, qui les pose elle-même par-dessus — le bloc de période
+// n'a ni cadence ni note de pied.
+func BuildMatchInputs(
+	matchIDs []string, films map[string]FilmRow, players []PlayerRow, tc TeamContext,
+) []MatchInput {
+	playersByMatch := make(map[string][]PlayerRow, len(films))
+	for _, p := range players {
+		playersByMatch[p.MatchID] = append(playersByMatch[p.MatchID], p)
+	}
+	out := make([]MatchInput, 0, len(matchIDs))
+	for _, id := range matchIDs {
+		_, measured := films[id]
+		m := MatchInput{
+			MatchID:   id,
+			Measured:  measured,
+			TeamOf:    tc.TeamOf[id],
+			TeamSize:  tc.TeamSize[id],
+			LobbySize: tc.LobbySize[id],
+			Players:   playersByMatch[id],
+		}
+		if team, ok := tc.PlayerTeam[id]; ok {
+			t := team
+			m.PlayerTeam = &t
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// measuredMatches — les seuls matchs qui portent une ligne film. TOUT le calcul
+// des deux blocs (session et période) part de là : un match sans film n'est pas
+// mesuré, et le couple « matchs mesurés N / matchs M » dit le reste.
+func measuredMatches(matches []MatchInput) []MatchInput {
+	out := make([]MatchInput, 0, len(matches))
+	for _, m := range matches {
+		if m.Measured {
+			out = append(out, m)
+		}
+	}
 	return out
 }
 

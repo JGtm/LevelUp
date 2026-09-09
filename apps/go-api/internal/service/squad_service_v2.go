@@ -33,6 +33,10 @@ type SquadServiceV2 struct {
 	// Câblé gated par la capability match.objective.stats (SquadV2Ctx) ; nil → bloc
 	// objective_stats_by_xuid omis. Best-effort.
 	objectiveStatsRepo port.ObjectiveStatsRepository
+	// sessionUsageRepo : le résumé d'usage (vues _latest) du bloc « servi ou gâché »
+	// de l'équipement (étape E6.1). Câblé gated par film.usage_summary ; nil → bloc
+	// servi avec Available=false et raison machine. Cf. squad_service_v2_usage.go.
+	sessionUsageRepo port.SessionUsageRepository
 }
 
 // NewSquadServiceV2 construit le service avec un loader injecté.
@@ -142,6 +146,15 @@ func (s *SquadServiceV2) GetSquadPage(
 			resp.Header.ObjectiveStatsByXUID = agg
 		}
 	}
+
+	// Bloc « servi ou gâché » de l'équipement, une ligne par joueur suivi (étape
+	// E6.1) : best-effort, gaté par film.usage_summary. Posé AVANT la sortie
+	// anticipée — un scope sans match partagé rend nil, ce qui est déjà la réponse.
+	resp.EquipmentUsage = s.loadEquipmentUsage(ctx, squadUsageScope{
+		MainXUID:    squadXUIDs[mainGT],
+		MatchIDs:    matchIDsOf(resp.SharedMatches),
+		TeammateGTs: teammateGTs,
+	})
 
 	// Si pas de matchs partages, retourner sans charger les sections lourdes.
 	if len(resp.SharedMatches) == 0 {

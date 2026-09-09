@@ -172,43 +172,33 @@ func countMeasuredWithoutDuration(matches []sessionusage.MatchInput) int {
 
 // buildSessionUsageInput assemble l'entrée de sessionusage.ComputeUsage : un
 // MatchInput par match de la session (ordre d'affichage), mesuré s'il a une
-// ligne film. Durée du match mesuré : l'échelle de temps du film, repli sur la
-// durée côté stats si le film n'en a pas — un match resté sans durée est exclu
-// des cadences par ComputeUsage (totaux et parts conservés).
+// ligne film. L'assemblage commun vit dans sessionusage.BuildMatchInputs (le bloc
+// de période s'en sert aussi) ; ce qui suit n'ajoute que ce qui est PROPRE à la
+// session — l'échelle de temps des cadences, avec repli sur la durée côté stats
+// quand le film n'en a pas (un match resté sans durée est exclu des cadences par
+// ComputeUsage, totaux et parts conservés) — et les compteurs de grain match.
 func buildSessionUsageInput(
 	playerXUID string, matches []legacymatch.StatsMatchRow,
 	films map[string]sessionusage.FilmRow, players []sessionusage.PlayerRow,
 	tc sessionusage.TeamContext,
 ) sessionusage.Input {
-	playersByMatch := make(map[string][]sessionusage.PlayerRow, len(films))
-	for _, p := range players {
-		playersByMatch[p.MatchID] = append(playersByMatch[p.MatchID], p)
+	in := sessionusage.Input{
+		PlayerXUID: playerXUID,
+		Matches:    sessionusage.BuildMatchInputs(matchIDsFromStatsRows(matches), films, players, tc),
 	}
-	in := sessionusage.Input{PlayerXUID: playerXUID}
-	for i := range matches {
-		row := &matches[i]
-		film, measured := films[row.MatchID]
-		m := sessionusage.MatchInput{
-			MatchID:   row.MatchID,
-			Measured:  measured,
-			TeamOf:    tc.TeamOf[row.MatchID],
-			TeamSize:  tc.TeamSize[row.MatchID],
-			LobbySize: tc.LobbySize[row.MatchID],
-			Players:   playersByMatch[row.MatchID],
+	// BuildMatchInputs conserve l'ordre reçu : in.Matches[i] est le match matches[i].
+	for i := range in.Matches {
+		m := &in.Matches[i]
+		if !m.Measured {
+			continue
 		}
-		if team, ok := tc.PlayerTeam[row.MatchID]; ok {
-			t := team
-			m.PlayerTeam = &t
+		film := films[m.MatchID]
+		m.DurationSeconds = float64(film.DurationMS) / 1000
+		if m.DurationSeconds <= 0 && matches[i].TimePlayedSeconds != nil {
+			m.DurationSeconds = float64(*matches[i].TimePlayedSeconds)
 		}
-		if measured {
-			m.DurationSeconds = float64(film.DurationMS) / 1000
-			if m.DurationSeconds <= 0 && row.TimePlayedSeconds != nil {
-				m.DurationSeconds = float64(*row.TimePlayedSeconds)
-			}
-			m.PadUnnamed = film.PadUnnamed
-			m.PowerupPickups = film.PowerupPickups
-		}
-		in.Matches = append(in.Matches, m)
+		m.PadUnnamed = film.PadUnnamed
+		m.PowerupPickups = film.PowerupPickups
 	}
 	return in
 }
