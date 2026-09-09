@@ -427,9 +427,12 @@ type SessionLabelsList struct {
 // CompositionExcludedMatch décrit UN match du roster (« commencés ensemble »)
 // écarté par l'option composition exacte (filter_exact_composition=true) : un
 // coéquipier connu HORS sélection (extraPool) figurait sur l'équipe alliée du
-// joueur principal. ExtraGamertags nomme le(s) responsable(s), jamais vide sous
-// exclusion (repli "Joueur <4 derniers>" si le gamertag n'est pas résolu) — ADR
-// 0033 critère 3.
+// joueur principal. ExtraGamertags nomme le(s) responsable(s) (repli "Joueur
+// <4 derniers>" si le gamertag n'est pas résolu) — ADR 0033 critère 3. La liste
+// est VIDE dans un seul cas, documenté et testé : l'équipe alliée du match n'est
+// pas connue (aucune ligne de participant chargée — couverture partielle), donc le
+// filtre a écarté le match sans pouvoir nommer un fautif ; le web affiche alors le
+// repli « coéquipier inconnu ». Revue adversariale vague 1, 2026-09-09.
 //
 // Nommage CompositionExcludedMatch (et non ExcludedMatch) pour éviter la
 // collision avec domain.ExcludedMatch (match_exclusion.go), qui couvre un
