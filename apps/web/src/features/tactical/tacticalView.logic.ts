@@ -190,6 +190,45 @@ export function cellFromClick(
 }
 
 /**
+ * PLAN_ASPECT_DEFAUT — le rapport largeur/hauteur du cadre du plan quand les bornes ne
+ * disent rien d'exploitable : 16/9, celui des vignettes de carte (`TacticalMapTile`,
+ * `aspect-video`), qui affichent LE MÊME fond. Un plan vide a donc exactement la taille
+ * d'une carte normale, avec son état vide par-dessus.
+ */
+export const PLAN_ASPECT_DEFAUT = 16 / 9
+
+/**
+ * PLAN_HAUTEUR_MAX_PX — plafond de hauteur du cadre, en pixels.
+ *
+ * LE DÉFAUT QU'IL FERME (constaté le 2026-09-09 sur le plan d'Illusion) : le cadre était
+ * mis au seul `aspect-ratio` des bornes, sur une largeur de conteneur libre — un rapport
+ * très allongé rendait alors un canvas de 1 070 x 13 375 px, une hauteur qui n'est plus
+ * une page.
+ *
+ * LE RAPPORT N'EST JAMAIS DÉFORMÉ POUR TENIR : le peintre projette le monde avec UNE
+ * SEULE échelle (px par mètre) et le clic s'inverse par la même règle de trois — un cadre
+ * dont le rapport ne serait plus celui des bornes désalignerait les deux. Le plafond passe
+ * donc par une LARGEUR maximale (`rapport x plafond`), qui laisse `aspect-ratio` intact.
+ */
+export const PLAN_HAUTEUR_MAX_PX = 720
+
+/**
+ * planFrameStyle — le cadre du plan : rapport des bornes, hauteur bornée.
+ *
+ * Des bornes INEXPLOITABLES (non valides, d'étendue nulle ou négative, non finies)
+ * rendent le cadre par défaut. C'est le cas d'un plan VIDE : `TacticalRaster.bornes` n'est
+ * valide que si au moins une cellule passe le plancher.
+ */
+export function planFrameStyle(bornes: BornesMonde): { aspectRatio: number; maxWidth: string } {
+  const largeur = bornes.max_x - bornes.min_x
+  const hauteur = bornes.max_y - bornes.min_y
+  const exploitables =
+    bornes.valide && Number.isFinite(largeur) && Number.isFinite(hauteur) && largeur > 0 && hauteur > 0
+  const aspectRatio = exploitables ? largeur / hauteur : PLAN_ASPECT_DEFAUT
+  return { aspectRatio, maxWidth: `${aspectRatio * PLAN_HAUTEUR_MAX_PX}px` }
+}
+
+/**
  * planCanvasView — la projection monde -> canvas du calque de chaleur : ce que
  * `drawTacticalHeatmap` attend (`TacticalLayerView`).
  *
