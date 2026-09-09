@@ -19,6 +19,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
+import type { MedalEvent } from './killFeedLogic'
 import {
   buildEventTracks,
   buildFragDominance,
@@ -93,9 +94,28 @@ function kill(over: Partial<TrackKill> = {}): TrackKill {
   return { key: 'k1', replayMs: 20_000, xuid: 'me', medals: [], ...over }
 }
 
+/**
+ * Une médaille, identité complète (2026-09-09, décision D7) : la piste ne porte plus un simple
+ * libellé mais de quoi dessiner le badge du jeu et nourrir son infobulle (cf.
+ * `TrackMark.medals`).
+ */
+function medalEvent(over: Partial<MedalEvent> = {}): MedalEvent {
+  return {
+    tMs: 22_000,
+    xuid: 'me',
+    gamertag: 'JGtm',
+    teamID: 0,
+    name: 'Capture',
+    label: 'Capture',
+    description: 'A capturé le drapeau adverse.',
+    imageUrl: '/static/medals/capture.png',
+    ...over,
+  }
+}
+
 /** Une médaille ORPHELINE (objectif) : sans kill à moins de 500 ms, elle a sa propre marque. */
 function medal(over: Partial<TrackMedal> = {}): TrackMedal {
-  return { key: 'md1', replayMs: 22_000, xuid: 'me', label: 'Capture', ...over }
+  return { key: 'md1', replayMs: 22_000, xuid: 'me', medal: medalEvent(), ...over }
 }
 
 /**
@@ -290,25 +310,32 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
 
 /**
  * LES MÉDAILLES SUR LA FRISE (2026-09-07, lot L4). Deux règles, et elles ne se recouvrent pas :
- * une médaille RATTACHÉE à un kill décore la marque déjà dessinée (décision 9) ; une médaille
+ * une médaille RATTACHÉE à un kill voyage avec sa marque déjà dessinée (décision 9) ; une médaille
  * ORPHELINE prend une marque à elle. Les deux ne valent que sur la piste du joueur regardé.
+ *
+ * DEPUIS LE 2026-09-09 (décision D7), `TrackMark.medals` porte l'IDENTITÉ COMPLÈTE de la
+ * médaille (`MedalEvent`), pas un simple libellé : c'est `ui/ReplayMarkTrack.tsx` qui en dessine
+ * le badge et l'infobulle (titre + description) — ce fichier ne teste que l'ATTRIBUTION à la
+ * bonne marque, pas le rendu.
  */
 describe('buildEventTracks — les médailles', () => {
-  it('un kill médaillé garde sa marque et emporte ses libellés — pas de second repère', () => {
+  it('un kill médaillé garde sa marque et emporte l’identité complète — pas de second repère', () => {
+    const doublé = medalEvent({ name: 'Doublé', label: 'Doublé' })
+    const vengeance = medalEvent({ name: 'Vengeance', label: 'Vengeance' })
     const tracks = buildEventTracks(
-      ev([kill({ medals: ['Doublé', 'Vengeance'] })], []),
+      ev([kill({ medals: [doublé, vengeance] })], []),
       AUDIENCE,
       FRAME_MS,
       SCALE,
       clockOf,
     )
     expect(tracks.own).toHaveLength(1)
-    expect(tracks.own[0]).toMatchObject({ kind: 'kill', medals: ['Doublé', 'Vengeance'] })
+    expect(tracks.own[0]).toMatchObject({ kind: 'kill', medals: [doublé, vengeance] })
   })
 
   it('une médaille ORPHELINE du point de vue prend une marque `medal` à elle', () => {
     const tracks = buildEventTracks(ev([], [], [medal()]), AUDIENCE, FRAME_MS, SCALE, clockOf)
-    expect(tracks.own).toMatchObject([{ kind: 'medal', medals: ['Capture'] }])
+    expect(tracks.own).toMatchObject([{ kind: 'medal', medals: [medalEvent()] }])
   })
 
   it('la médaille orpheline d’un COÉQUIPIER n’est sur aucune piste', () => {
@@ -318,9 +345,9 @@ describe('buildEventTracks — les médailles', () => {
     expect(tracks.teammates).toEqual([])
   })
 
-  it('le kill médaillé d’un COÉQUIPIER garde sa marque NUE — les anneaux restent en haut', () => {
+  it('le kill médaillé d’un COÉQUIPIER garde sa marque NUE — le badge reste en haut', () => {
     const tracks = buildEventTracks(
-      ev([kill({ key: 'k-equipier', xuid: 'equipier', medals: ['Doublé'] })], []),
+      ev([kill({ key: 'k-equipier', xuid: 'equipier', medals: [medalEvent()] })], []),
       AUDIENCE,
       FRAME_MS,
       SCALE,

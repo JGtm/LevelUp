@@ -4,12 +4,11 @@ import type { SquadIsolementPoint } from '@/lib/api/types'
 
 import {
   medianesNuage,
-  opaciteDuPoint,
-  OPACITE_ATTENUEE,
-  OPACITE_PLEINE,
   pointAttenue,
+  pointMedianJoueur,
   quadrantDuPoint,
   tailleDuPoint,
+  tailleMedianeDuPoint,
 } from './squadIsolement.logic'
 
 function couverture(brut: number, n: number, echantillonFaible: boolean, matchs = 3) {
@@ -90,17 +89,19 @@ describe('quadrantDuPoint', () => {
   })
 })
 
-describe('pointAttenue / opaciteDuPoint', () => {
+describe('pointAttenue', () => {
+  // Depuis le lot C3 (2026-09-09), l'échantillon faible se signale par un
+  // CERCLE POINTILLÉ (SquadIsolementNuageCard), plus par une opacité réduite
+  // — `opaciteDuPoint`/`OPACITE_ATTENUEE`/`OPACITE_PLEINE` sont retirés (plus
+  // aucun appelant, CLAUDE.md règle 7 : zéro code mort).
   it('échantillon faible -> atténué', () => {
     const p = point({ part_isolee: couverture(4, 10, true) })
     expect(pointAttenue(p)).toBe(true)
-    expect(opaciteDuPoint(p)).toBe(OPACITE_ATTENUEE)
   })
 
-  it('échantillon suffisant -> opacité pleine', () => {
+  it('échantillon suffisant -> non atténué', () => {
     const p = point({ part_isolee: couverture(12, 40, false) })
     expect(pointAttenue(p)).toBe(false)
-    expect(opaciteDuPoint(p)).toBe(OPACITE_PLEINE)
   })
 
   it("l'atténuation lit part_isolee, pas couverture", () => {
@@ -123,5 +124,47 @@ describe('tailleDuPoint', () => {
 
   it('reste au-dessus du minimum même à 0 mort', () => {
     expect(tailleDuPoint(0)).toBeGreaterThan(0)
+  })
+})
+
+// Lot C3 (D4) : le "gros point" par joueur — médiane de chaque axe (cohérent
+// avec les lignes de repère du nuage, qui médianent déjà), taille au TOTAL
+// des morts examinées.
+describe('pointMedianJoueur', () => {
+  it('rend null sans point', () => {
+    expect(pointMedianJoueur([])).toBeNull()
+  })
+
+  it('médiane de chaque axe + somme des morts examinées (pas leur médiane)', () => {
+    const pts = [
+      point({ morts_examinees: 10, part_isolee: couverture(1, 10, true), couverture: couverture(1, 10, true) }),
+      point({ morts_examinees: 20, part_isolee: couverture(5, 10, true), couverture: couverture(5, 10, true) }),
+      point({ morts_examinees: 30, part_isolee: couverture(9, 10, true), couverture: couverture(9, 10, true) }),
+    ]
+    const med = pointMedianJoueur(pts)
+    expect(med?.isolement).toBeCloseTo(0.5)
+    expect(med?.couverture).toBeCloseTo(0.5)
+    expect(med?.mortsExaminees).toBe(60)
+  })
+
+  it('un seul point : la médiane EST ce point, le total égale son décompte', () => {
+    const p = point({ morts_examinees: 12, part_isolee: couverture(3, 10, true), couverture: couverture(7, 10, true) })
+    const med = pointMedianJoueur([p])
+    expect(med).toEqual({ isolement: 0.3, couverture: 0.7, mortsExaminees: 12 })
+  })
+})
+
+describe('tailleMedianeDuPoint', () => {
+  it('rend un point visiblement PLUS GROS que le plus gros point de session à décompte égal', () => {
+    const total = 40
+    expect(tailleMedianeDuPoint(total)).toBeGreaterThan(tailleDuPoint(total))
+  })
+
+  it('croît avec le total des morts examinées', () => {
+    expect(tailleMedianeDuPoint(80)).toBeGreaterThan(tailleMedianeDuPoint(10))
+  })
+
+  it('plafonne pour un total très chargé', () => {
+    expect(tailleMedianeDuPoint(10000)).toBe(tailleMedianeDuPoint(2000))
   })
 })

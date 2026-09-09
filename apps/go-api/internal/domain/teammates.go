@@ -424,6 +424,40 @@ type SessionLabelsList struct {
 	Squad []SessionLabelEntry `json:"squad"`
 }
 
+// CompositionExcludedMatch décrit UN match du roster (« commencés ensemble »)
+// écarté par l'option composition exacte (filter_exact_composition=true) : un
+// coéquipier connu HORS sélection (extraPool) figurait sur l'équipe alliée du
+// joueur principal. ExtraGamertags nomme le(s) responsable(s) (repli "Joueur
+// <4 derniers>" si le gamertag n'est pas résolu) — ADR 0033 critère 3. La liste
+// est VIDE dans un seul cas, documenté et testé : l'équipe alliée du match n'est
+// pas connue (aucune ligne de participant chargée — couverture partielle), donc le
+// filtre a écarté le match sans pouvoir nommer un fautif ; le web affiche alors le
+// repli « coéquipier inconnu ». Revue adversariale vague 1, 2026-09-09.
+//
+// Nommage CompositionExcludedMatch (et non ExcludedMatch) pour éviter la
+// collision avec domain.ExcludedMatch (match_exclusion.go), qui couvre un
+// concept sans rapport : l'exclusion MANUELLE d'un match par l'utilisateur.
+type CompositionExcludedMatch struct {
+	MatchID        string    `json:"match_id"`
+	StartTime      time.Time `json:"start_time"`
+	MapUI          string    `json:"map_ui"`
+	ExtraGamertags []string  `json:"extra_gamertags"`
+}
+
+// CompositionSessionEntry embarque SessionLabelEntry (MatchCount = compte
+// POST-filtre composition exacte, SOURCE UNIQUE d'un compte de session en
+// contexte escouade — ADR 0033) et publie l'écart quand l'option exclusive est
+// active : MatchCountRoster est le compte AVANT ce filtre (intersection du
+// roster, matchs "commencés ensemble", indépendante de la présence à la fin —
+// ADR 0033), ExcludedByExactComposition liste les matchs écartés de CETTE
+// session avec le(s) coéquipier(s) responsable(s), nommés (critère 3). Vide/nil
+// hors option ou sans écart.
+type CompositionSessionEntry struct {
+	SessionLabelEntry
+	MatchCountRoster           int                        `json:"match_count_roster,omitempty"`
+	ExcludedByExactComposition []CompositionExcludedMatch `json:"excluded_by_exact_composition,omitempty"`
+}
+
 // MedalDigestItem est une médaille agrégée sur tous les matchs partagés
 // pour un joueur donné.
 //
@@ -549,7 +583,7 @@ type TeammatesPageResponse struct {
 	// matchs, historique complet (non filtré par session). Alimente le
 	// SessionMultiSelect ET le ré-ancrage front. Sans coéquipier sélectionné,
 	// reprend les sessions squad du joueur principal (SessionLabels.Squad).
-	CompositionSessions []SessionLabelEntry `json:"composition_sessions,omitempty"`
+	CompositionSessions []CompositionSessionEntry `json:"composition_sessions,omitempty"`
 	// LatestCompositionSession : label de la session la plus récente de la
 	// composition exacte (1re entrée de CompositionSessions). Vide si la
 	// composition n'a jamais joué ensemble. Le front s'y ré-ancre quand la

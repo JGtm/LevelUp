@@ -55,6 +55,14 @@ export interface SquadText {
     all: string
     reset: string
   }
+  /** Info-bulle qui explique l'ecart "composition exacte" publie sur la L2
+   *  (ADR 0033, D1) : matchs ecartes de la session, coequipier responsable
+   *  nomme. Reutilise le patron d'aide d'en-tete existant (V73-L2 2.4c). */
+  compositionGap: {
+    heading: (excludedCount: number) => string
+    excludedLine: (dateLabel: string, mapLabel: string, culpritsLabel: string, culpritCount: number) => string
+    culpritUnknown: string
+  }
   table: {
     gamertag: string
     matches: string
@@ -406,6 +414,13 @@ const FR_TEXT: SquadText = {
     all: '(toutes)',
     reset: '✕ Réinitialiser',
   },
+  compositionGap: {
+    heading: (excludedCount) =>
+      `${excludedCount} match${excludedCount > 1 ? 's' : ''} écarté${excludedCount > 1 ? 's' : ''} de cette session par la composition exacte :`,
+    excludedLine: (dateLabel, mapLabel, culpritsLabel, culpritCount) =>
+      `${dateLabel} — ${mapLabel} : écarté, ${culpritsLabel} ${culpritCount > 1 ? 'étaient' : 'était'} dans ton équipe`,
+    culpritUnknown: 'un coéquipier non identifié',
+  },
   table: {
     gamertag: 'Gamertag',
     matches: 'Matchs',
@@ -755,6 +770,13 @@ const EN_TEXT: SquadText = {
     next: 'Next session',
     all: '(all)',
     reset: '✕ Reset',
+  },
+  compositionGap: {
+    heading: (excludedCount) =>
+      `${excludedCount} match${excludedCount > 1 ? 'es' : ''} excluded from this session by the exact composition filter:`,
+    excludedLine: (dateLabel, mapLabel, culpritsLabel, culpritCount) =>
+      `${dateLabel} — ${mapLabel}: excluded, ${culpritsLabel} ${culpritCount > 1 ? 'were' : 'was'} in your team`,
+    culpritUnknown: 'an unidentified teammate',
   },
   table: {
     gamertag: 'Gamertag',

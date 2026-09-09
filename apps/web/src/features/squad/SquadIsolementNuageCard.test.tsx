@@ -146,4 +146,87 @@ describe('SquadIsolementNuageCard', () => {
     const html = option.tooltip.formatter({ data: datum })
     expect(html).not.toContain('échantillon faible')
   })
+
+  // Lot C3 (D4) : le "gros point" médian par joueur.
+  it('sur deux sessions et deux joueurs, deux gros points médians sont émis, à la médiane', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard
+        nuage={nuageDe({
+          points: [
+            point({
+              morts_examinees: 10,
+              part_isolee: isoCouverture(2, 10, false),
+              couverture: isoCouverture(2, 10, false),
+            }),
+            point({
+              morts_examinees: 20,
+              part_isolee: isoCouverture(6, 10, false),
+              couverture: isoCouverture(6, 10, false),
+            }),
+            point({
+              xuid: 'x2',
+              gamertag: 'Bob',
+              morts_examinees: 15,
+              part_isolee: isoCouverture(3, 10, false),
+              couverture: isoCouverture(3, 10, false),
+            }),
+          ],
+        })}
+        joueurs={joueurs}
+      />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = captured[captured.length - 1].option as {
+      series: Array<{ name: string; data: Array<{ value: [number, number]; medianRaw?: unknown }> }>
+    }
+    const medianSeries = option.series.filter((s) => 'medianRaw' in s.data[0])
+    expect(medianSeries).toHaveLength(2)
+    const aliceMedian = medianSeries.find((s) => s.name === 'Alice')
+    // Médiane de [20%, 60%] (2 valeurs) = leur moyenne = 40%.
+    expect(aliceMedian?.data[0].value[0]).toBeCloseTo(40)
+    expect(aliceMedian?.data[0].value[1]).toBeCloseTo(40)
+  })
+
+  it('le tooltip d’un point NOMME son quadrant (quadrantDuPoint rebranché)', async () => {
+    renderWithProviders(<SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />)
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = captured[captured.length - 1].option as {
+      tooltip: { formatter: (p: unknown) => string }
+      series: Array<{ data: Array<{ raw: SquadIsolementPoint }> }>
+    }
+    const datum = option.series[0].data[0]
+    const html = option.tooltip.formatter({ data: datum })
+    expect(html).toContain('Quadrant :')
+  })
+
+  it('échantillon faible : cercle POINTILLÉ (bordure en tirets), pas d’opacité réduite', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard
+        nuage={nuageDe({ points: [point({ part_isolee: isoCouverture(4, 10, true) })] })}
+        joueurs={joueurs}
+      />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = captured[captured.length - 1].option as {
+      series: Array<{ data: Array<{ itemStyle: Record<string, unknown> }> }>
+    }
+    const datum = option.series[0].data[0]
+    expect(datum.itemStyle.borderType).toBe('dashed')
+    expect(datum.itemStyle.opacity).toBeUndefined()
+  })
+
+  it('échantillon suffisant : cercle plein, aucune bordure pointillée', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard
+        nuage={nuageDe({ points: [point({ part_isolee: isoCouverture(12, 40, false) })] })}
+        joueurs={joueurs}
+      />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = captured[captured.length - 1].option as {
+      series: Array<{ data: Array<{ itemStyle: Record<string, unknown> }> }>
+    }
+    const datum = option.series[0].data[0]
+    expect(datum.itemStyle.borderType).toBeUndefined()
+  })
 })

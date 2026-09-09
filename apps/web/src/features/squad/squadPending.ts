@@ -109,30 +109,6 @@ export function decideCompositionReanchor(input: CompositionReanchorInput): Comp
   return alreadyOnLatest ? { kind: 'none' } : { kind: 'snap', label: latestCompositionSession }
 }
 
-/**
- * Fusionne les compteurs de sessions affichés par le sélecteur de sessions.
- *
- * Règle canonique du contexte escouade : le nombre affiché est le compte
- * « commencés ensemble » servi par teammates (`composition_sessions.match_count`,
- * population du roster) — exactement la population des tableaux et graphes.
- * Les counts de `/filters/resolve` (population du joueur principal, cascade
- * seule) ne servent que de repli tant que la réponse teammates n'est pas
- * arrivée : c'est cette double source qui affichait 11/8/6/5 pour une session.
- */
-export function mergeSessionCounts(
-  fallback: { label: string; match_count_filtered: number }[],
-  compositionSessions: { label: string; match_count?: number }[],
-): Map<string, number> {
-  const map = new Map<string, number>()
-  for (const s of fallback) map.set(s.label, s.match_count_filtered)
-  for (const s of compositionSessions) {
-    // 0/undefined = producteur qui ne renseigne pas le compte : on garde le repli
-    // plutôt que d'afficher une session à zéro (qui serait masquée à tort).
-    if (typeof s.match_count === 'number' && s.match_count > 0) map.set(s.label, s.match_count)
-  }
-  return map
-}
-
 export function deriveSquadPending(
   pending: FilterContextInput,
   pickedSquadSessionLabels: string[],

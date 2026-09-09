@@ -1,3 +1,51 @@
+## [2026-09-09] Lot 1.5 : ecart escouade explique (A3), nuage d'isolement (C3), heatmap Synthese migree (C2) — Complete
+
+**Contexte** : lot 1.5 du master plan, trois items independants executes dans l'ordre prescrit,
+dans le worktree d'integration dedie `LevelUp-wt-vague1` (branche `feat/vague1-integration`,
+au-dessus de `feat/v75`). Aucun sous-agent, aucune revue adversariale (hors perimetre du lot).
+
+**Item 1 — Escouade phase A3 (D1, TDD).** Le rail L2 affichait deja « 4 sur 7 » (A2) sans dire
+POURQUOI. `squadCompositionGapHint.tsx` (nouveau, pur) batit le contenu de l'info-bulle depuis
+`composition_sessions[].excluded_by_exact_composition` (deja publie par le backend, A1) : date,
+carte, coequipier(s) responsable(s) nomme(s), accord singulier/pluriel FR/EN. `PeriodSessionRail`
+gagne un prop generique `sessionCount(label).hint?: ReactNode`, rendu via le patron d'aide
+d'en-tete existant (`InfoTooltip`/`HeaderLabelTooltip`, V73-L2 2.4c) — le composant shell reste
+agnostique du domaine escouade, aucun nouveau primitif de tooltip. TDD : echecs observes avant
+code (resolution de module, puis assertion `getByRole('tooltip')`). A3.5 (revue navigateur)
+statue `[~]`, reserve au superviseur (consigne d'execution).
+
+**Item 2 — Vague C lot C3 (nuage d'isolement).** Verifie sur pieces (le fichier avait bouge le
+09-09, chantier legendes couleurs, commit `9212a1b0e`) : les quatre libelles de quadrant
+etaient DEJA affiches dans les coins via `t.quadrant()` dans `markArea` — seule la fonction
+`quadrantDuPoint` (classement PAR POINT) restait sans appelant hors test. Rebranchee dans le
+tooltip d'un point (nomme son quadrant). Ajoute le gros point median par joueur (D4) :
+`pointMedianJoueur` (nouveau, pur) agrege les points d'un joueur (mediane par axe, somme des
+morts examinees), une seconde serie ECharts par joueur (meme nom -> meme entree de legende),
+taille via `tailleMedianeDuPoint` (plage dediee). Echantillon faible : cercle pointille
+(`itemStyleDuPoint`) remplace l'opacite reduite ; `opaciteDuPoint`/`OPACITE_ATTENUEE`/
+`OPACITE_PLEINE` supprimes avec leurs tests (plus aucun appelant, CLAUDE.md regle 7).
+
+**Item 3 — Vague C lot C2 (heatmap Synthese).** Le report du lot 1.4 (« migration REPORTEE par
+le superviseur ») est leve sur consigne explicite de ce lot. `SynthesisHeatmapChart.tsx` route
+desormais par `Heatmap2DChart` en mode `divergent`, `valueRange={[0, 1]}` pour FIGER la rampe
+autour de 50 % (sinon le wrapper auto-ajuste min/max et decentre le neutre). Le wrapper
+n'exposant pas d'option `inverse` pour l'axe Y, les points sont emis Dimanche -> Lundi pour que
+Lundi occupe le dernier index (le haut d'un axe categoriel non inverse) — meme rendu qu'avant.
+Effets de bord ACCEPTES (inherents a l'unification, hors perimetre de preservation demande) :
+legende horizontale en pied de carte au lieu de la barre verticale a droite, plus de titres
+d'axes ni de libelles aux bornes du visualMap. `SynthesisHeatmapChart.tsx` retire de
+l'allowlist datee de `heatmapSingleImpl.guard.test.ts` (4 sites restants, decision S6).
+
+**Resultats observes** : `make check-types` (tsc -b) 0 erreur sur les trois items ; vitest —
+squad+shell 648/648, squad (isolement inclus) 487/487, charts+synthesis 409/409 (14 skipped
+preexistants) ; grep `quadrantDuPoint` et `type: 'heatmap'` conformes aux gates prescrits ;
+eslint 0 issue sur tous les fichiers touches ; aucun hex/classe Tailwind couleur introduit.
+
+**Conclusion / prochaine etape** : les trois items du lot 1.5 sont clos et commits separement.
+A3.5 (revue navigateur escouade) et le controle de visu C3/C2 restent au superviseur.
+
+---
+
 ## [2026-09-09] Diagnostic triple : compteur L2 escouade, sortie de cadre au rejeu, familles d'equipement — Complete (aucun code modifie)
 
 **Demande utilisateur** : trois verifications, sans livraison. (1) session du 27 aout,
@@ -1162,6 +1210,160 @@ dire : 5 couples sans unicité, cas général qui appartient au lien direct inde
 que le film ne porte pas (plan décodeur d'après v7.5.0). Suite : P3 (registre des objets
 d'objectif), qui n'ouvre qu'après la clôture de P2. Branche `feat/v2-p2-registre-joueurs` poussée,
 NON fusionnée.
+## [2026-09-09] Population escouade : la L2 lit la meme source que la page — Phase A2 close
+
+**Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
+worktree dedie. Suite de A1 (backend) : cablage cote web, avec ratchet anti-regression.
+
+**Decision technique principale** — le vrai bug (rail 7 vs page 4) vivait dans
+`PeriodSessionRail.SessionRail` : en mode session UNIQUE (le cas du 27/08), ce sous-composant
+lit `session.match_count` (population du joueur principal, `/filters/resolve`) directement,
+sans jamais passer par la prop `matchCount` existante (celle-ci n'alimente QUE les modes
+multi-session/periode/all-time). Nouvelle prop `sessionCount?: (label) => {shown,total} |
+undefined`, cablee uniquement sur `SessionRail`, source unique = `squadSessionCounts.ts`
+(nouveau module, absorbe l'ancien `mergeSessionCounts`).
+
+**Decouverte traitee dans le perimetre de A2.5** (necessaire pour que le ratchet A2.6 passe
+avec une allowlist VIDE) : `SquadLayout.tsx` lisait encore `total_matches_after_filters`
+(pour `matchCount` du rail ET la visibilite du bouton "Voir les matchs") et `session_options`
+directement (pour le repli). Les deux retires : `matchCount` n'est plus alimente pour les
+modes hors session unique dans ce lot (rien de fiable a afficher plutot qu'un nombre faux) ;
+le bouton se fie desormais a `squadEntryMatchId` seul (deja suffisant, la condition
+`totalAfter>0` etait redondante) ; le repli `/filters/resolve` est extrait par
+`resolveSquadSessionFallback` dans le module canonique.
+
+**Resultats observes** — TDD respecte sur 2 modules : `squadSessionCounts.test.ts` (echec de
+resolution de module observe AVANT code, 9 cas verts apres) et `PeriodSessionRail.test.tsx`
+(2/10 cas rouges observes AVANT code — prop ignoree —, 10/10 verts apres). Le ratchet
+`singleCountSource.guard.test.ts` a lui-meme ECHOUE une premiere fois pendant sa redaction
+(sur `SquadLayout.tsx` avant le refactor `resolveSquadSessionFallback`), preuve de mordant
+avant meme la clotoure de l'item.
+
+**Gate A2** : `make check-types` 0 erreur · `make test-web` 7032 passed / 17 skipped / 0
+failed (suite complete) · `npx eslint` sur les 8 fichiers touches : 0 issue.
+
+**Conclusion / prochaine etape** : Phase A3 (lisibilite/info-bulle, D1) EN ATTENTE — touche
+`features/squad/i18n.ts` que le worktree partage modifie sans commit ; le superviseur
+tranchera la coordination avant de l'ordonner. Chantier B (bornage hors cadre) non commence,
+hors perimetre de ce lot.
+
+## [2026-09-09] Population escouade : l'ecart est publie par l'API — Phase A1 close
+
+**Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
+worktree dedie. Suite de la phase A0 (ADR 0033) : publier, sous l'option composition exacte,
+le compte AVANT filtre exclusif et les matchs ecartes avec le coequipier responsable nomme.
+
+**Decision technique principale** — `filterExactComposition` (auparavant un simple filtre)
+rend desormais `(kept, excluded []domain.SquadMatchRow)` en UN SEUL balayage plutot que deux
+regles paralleles (rejete un design "recalculer les ecartes a part" qui aurait pu diverger
+de `matchHasExactComposition`). Le predicat booleen existant reste verrouille par ses tests ;
+un nouveau frere `extraPresentOn(team, extraPool)` NOMME les xuids fautifs au lieu de rendre
+un simple bool. `teammates_service.go` etant deja a 508 lignes (dette gelee, seuil CLAUDE.md
+500L), toute la logique d'assemblage de `CompositionSessionEntry`
+(roster/gardes/ecartes -> par session) part dans un nouveau fichier
+`teammates_service_composition_sessions.go` plutot que de faire grossir le god-file.
+
+**Decouverte traitee dans le perimetre de A1.2** : le nom `ExcludedMatch` prescrit par le
+plan collisionne avec un type domain existant sans rapport (exclusion MANUELLE d'un match
+par l'utilisateur, `match_exclusion.go`). Renomme en `CompositionExcludedMatch`, justifie en
+GoDoc. Consigne en §8 Decouvertes du plan pour memoire (deja resolu, rien a re-traiter).
+
+**Resultats observes** — TDD respecte : le test A1.1
+(`TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches`) a d'abord ECHOUE en
+COMPILATION (`MatchCountRoster`/`ExcludedByExactComposition` inexistants,
+`domain.CompositionExcludedMatch` indefini), observe AVANT toute implementation. Apres code :
+vert, avec un scenario a 4 matchs ecartes (Nilton410 seul, passivemarquise seul, un xuid
+connu SANS gamertag resolu -> repli "Joueur 0009" meme convention que Q32b, et les deux
+ensemble -> `extra_gamertags` trie). Log `teammates.exact_composition_gap` observe :
+`sessions=1 kept_matches=1 excluded_matches=4 distinct_culprits=3`.
+
+**Gate A1** : test A1.1 vert · `go test ./internal/...` 100% pass (repo entier, y compris le
+golden test `openapi.yaml`) · `go vet ./...` exit 0 · `make go-api-lint` 0 issue ·
+`make generate-types` verifie IDEMPOTENT (deuxieme run : diff identique). Blocage leve en
+cours de route : le worktree dedie n'avait jamais eu `npm install` (`node_modules/` absent)
+— `make install-web` execute (prerequis d'outillage necessaire au gate, pas un fix hors
+perimetre).
+
+**Conclusion / prochaine etape** : phase A2 — cote web, source unique pour la L2
+(`squadSessionCounts.ts`), en TDD rouge.
+
+## [2026-09-09] Population escouade : la regle est ecrite (ADR 0033) + deux ratchets — Phase A0 close
+
+**Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
+worktree dedie. Deuxieme occurrence du meme defaut : le compte de matchs d'une session
+escouade differe entre la ligne L2 et le corps de page. Mesure du 27 aout : 7 cote rail
+(`/filters/resolve`, population du joueur principal) contre 4 cote page (`composition_sessions`,
+population reelle). `3862ff083` avait unifie le selecteur de sessions, pas le rail.
+
+**Decision technique principale** — la regle d'appartenance d'un match a la session d'une
+composition n'etait ecrite NULLE PART et tenait par accident. ADR 0033 (EN-only, regle 15) la
+fixe : le main a joue le match ET chaque coequipier selectionne figure sur son equipe alliee,
+**independamment de sa presence a la fin**. Quitter un match n'est pas quitter la session
+(cadrage utilisateur : crash du jeu, du PC, deconnexion). `composition_sessions[].match_count`
+devient la source UNIQUE d'un compte de session en contexte escouade ; `/filters/resolve` n'est
+qu'un repli de chargement.
+
+**Resultats observes** — le match du crash mesure (`2cf24f30`, 27/08 19:39 UTC : Chocoboflor
+`present_at_completion=false`, bot `bid(3.0)` en remplacement) est bien CONSERVE par le moteur
+actuel. L'ecart de la session venait de trois autres matchs, ou un coequipier connu hors
+selection etait sur l'equipe (Nilton410 rang 4, passivemarquise rang 35).
+
+Deux verrous poses, declares RATCHETS et non TDD (le moteur passait deja) :
+`composition_presence_test.go` (scenario du crash sur toutes les surfaces + aucun champ de
+presence dans les types de population) et `no_presence_filter_test.go` (grep sur les 4 sources
+SQL de la population escouade, allowlist VIDE et datee). **Mordant prouve par mutation** : avec
+`AND p2.present_at_completion` injecte dans `Q30SquadMatchesSharedQuery` et un champ
+`PresentAtCompletion` ajoute a `domain.AllyParticipant`, les deux tests echouent avec le bon
+message ; revert verifie.
+
+**Gate A0** : `go vet ./...` 0 · `go test ./internal/service/teammates/... ./internal/platform/duckdb/...` ok.
+
+**Conclusion / prochaine etape** : phase A1 — publier l'ecart (compte avant filtre exclusif +
+matchs ecartes avec le coequipier responsable nomme), en TDD rouge cette fois.
+## [2026-09-09] Lot C4 — les médailles de la frise, en images (décision D7) — Complete
+
+**Décision technique principale.** Périmètre fermé du lot C4 de
+`.ai/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` : remplacer l'anneau (`ring-1 ring-foreground`,
+1 px autour d'une marque de 3 × 8 px) par le badge image du jeu sur la frise du rejeu, décision
+D7 qui annule les décisions 9/14 de `PLAN_FRISE_POINT_DE_VUE_2026-09-06.md`. Worktree dédié
+`LevelUp-wt-frise-medailles`, branche `feat/frise-medailles-images` depuis `feat/v75`. Réutilisé
+`ui/MedalBadges.tsx` tel quel (déjà employé par `ReplayKillFeed.tsx:344`/`:508`) : le badge et
+son infobulle « titre — description » ne sont pas réécrits, seule la donnée qui les alimente
+change de forme. `TrackMark.medals`/`TrackKill.medals` (auparavant `readonly string[]`, un
+simple libellé) et `TrackMedal` (auparavant `{ label: string }`) portent désormais l'identité
+complète de la médaille (`MedalEvent` de `killFeedLogic.ts` : nom, libellé, description,
+`imageUrl`) jusqu'à `ReplayMarkTrack.tsx`, qui la transmet à `MedalBadges`. Changement de glue
+nécessaire : signature de `MedalBadges` élargie en `readonly MedalEvent[]` (le typecheck refusait
+un tableau `readonly` sur un paramètre mutable). Dans `ReplayMarkTrack.tsx`, la marque de
+kill/mort GARDE sa silhouette nue (plus de `ring-1`/anneau) et le badge se pose EN SURIMPRESSION
+dans un span séparé ; une médaille ORPHELINE (`kind: 'medal'`) n'a plus de marque nue du tout,
+son seul dessin est le badge. Ce span de badge est la SECONDE exception documentée à « les
+pistes ne captent pas le pointeur » (la première étant la vignette média) : `pointer-events` est
+une propriété héritée, et l'infobulle native (`title`) du badge ne se déclenche qu'au survol d'un
+élément qui reçoit le pointeur — l'envelopper en `pointer-events-none` comme les marques l'aurait
+éteinte silencieusement, sans qu'aucun test de rendu ne le voie.
+
+**Résultats observés.** Piste du joueur regardé élargie de 18 à 24 px (`h-[18px]` → `h-[24px]`)
+pour loger le badge de 16 px sans le rogner ; tops recalculés pour garder le centre vertical
+commun aux trois silhouettes (barre `top-2`, losange `top-[9px]`, badge `top-1`). Vérification
+sur pièces de `rosterHeight.guard.test.ts` cité par le plan : il porte en réalité sur le plafond
+`xl:max-h-[NN%]` des fiches joueur de la route de rejeu, un sujet distinct de la hauteur de piste
+— statué `[~]`, aucune modification nécessaire, consigné en « Découvertes » du plan. Tests migrés
+de `ReplayTimelineTracks.presence.test.tsx` (describe « l'anneau des médailles », qui montait
+toute la frise pour un comportement qui n'appartient plus qu'à `ReplayMarkTrack`) vers un nouveau
+`ReplayMarkTrack.test.tsx` monté directement sur le composant ; tests de logique
+(`replayTimelineTracksLogic.test.ts`, `useReplayTimeline.test.ts`) adaptés au nouveau type
+`MedalEvent`. Gates : `vitest run .../ReplayMarkTrack .../timelineGeometry .../rosterHeight` → 3
+fichiers, 28 tests verts ; `vitest run src/features/match-replay` (dossier complet) → 178
+fichiers (+1 skip préexistant), 2572 tests verts, zéro régression ; `make check-types` (`tsc -b`)
+→ 0 erreur. Contrôle de visu (rejeu Origin `8bc6074f`, JGtm, médaille « Revirement » à 3:49)
+réservé au superviseur, statué `[~]` dans le plan avec cette référence.
+
+**Conclusion / prochaine étape.** Lot C4 clos, 4/4 items `[x]`, aucun `[!]`. Prochaine étape :
+intégration dans `feat/formes-maquettes` par le superviseur, avec les autres lots de la vague C.
+Note d'environnement : le worktree neuf n'avait pas de `node_modules` sous `apps/web` — jonction
+NTFS créée vers celui de `LevelUp-go-migration` (même lockfile, aucune dépendance modifiée par ce
+lot) plutôt qu'une réinstallation complète.
 
 ## [2026-09-08] Lot M1b — corriger le décalage d'horloge du lien « voir dans le rejeu » — Complete
 
@@ -102933,3 +103135,110 @@ au lieu de la corriger.
 Resultats observes : `make check-types` vert.
 
 Conclusion : rien d'autre a faire ; l'avertissement disparait au prochain demarrage de vite.
+## [2026-09-09] Fonds de carte — étape 1 (ETag/304 centralisé) — Complete
+
+**Décision technique principale.** Exécution de l'étape 1 SEULE du plan
+`.ai/PLAN_FONDS_CARTE_WEBP_ETAG_2026-09-09.md` (étapes 0/2/3/4/5 reportées par le
+superviseur), sous TDD strict. Amendement S5 du superviseur corrige le plan : l'enquête
+préalable affirmait qu'aucun 304 n'existait dans `handlers/` — FAUX, vérifié sur pièces :
+`writeJSONCached` (helpers.go:95-121, avant migration) posait déjà SA PROPRE logique ETag
+(format `"%x"` sur 8 octets, sans liste ni préfixe `W/`) et répondait 304 ; `assets.go:217`
+posait un ETag jamais honoré (pas de lecture d'`If-None-Match`, donc inerte). Avec les
+2 sites du plan (replay.go, tactical.go) cela fait 4 occurrences du motif, pas 3 — la
+règle n°6 du dépôt (≤ 2 copies) impose donc de migrer LES QUATRE vers un helper unique,
+pas seulement les trois annoncés. Créé `apps/go-api/internal/api/handlers/cache_http.go`
+— `servirBlobAvecETag(w, r, blob, contentType, cacheControl)` : ETag fort
+`"sha256-<12 hex>"` (D7, calculé sur `sum[:6]`), `If-None-Match` analysé en liste
+séparée par virgules avec préfixe faible `W/` toléré et wildcard `*` ; 304 sans corps ni
+`Content-Length` ; sinon Content-Type + Cache-Control (si non vide) + Content-Length +
+corps.
+
+**TDD — échec observé avant implémentation.** `cache_http_test.go` et
+`cache_http_routes_test.go` écrits en premier (référençant `servirBlobAvecETag`
+inexistante) : `go vet ./internal/api/handlers/...` a échoué avec 8 occurrences
+`undefined: servirBlobAvecETag` (log conservé). Une fois `cache_http.go` créé mais AVANT
+la migration des 4 appelants, `go test -run 'TestNoRawETag|TestWriteJSONCached'` a
+échoué comme attendu : le garde-rail grep listait `assets.go` et `helpers.go` comme
+contrevenants, et `TestWriteJSONCached_ListeAvecPrefixeFaible_304` recevait 200 au lieu
+de 304 (l'ancienne logique de `writeJSONCached` ne gérait ni liste ni `W/`). Migration
+des 4 sites (replay.go:148-180, tactical.go:281-316, assets.go:217, helpers.go:95-121)
+→ tous les tests passent.
+
+**Preuve que le garde-rail mord (exigée par le superviseur).** Mutation temporaire d'un
+`w.Header().Set("ETag", "mutation-temporaire-preuve-garde-rail")` réintroduit dans
+replay.go : `TestNoRawETagHandlingOutsideCacheHTTP` échoue en nommant `replay.go` comme
+contrevenant. Mutation revertée aussitôt (`git diff --stat` confirme 0 delta résiduel) ;
+le test repasse au vert.
+
+**Résultats observés (sorties réelles).**
+```
+go test ./internal/api/handlers/     -> ok  levelup/go-api/internal/api/handlers  9.575s
+go build ./...                       -> exit 0
+go vet ./internal/api/...            -> exit 0
+golangci-lint run --new-from-merge-base=origin/main ./internal/api/handlers/ -> 0 issues.
+```
+
+**Découvertes non traitées (consignées dans le plan, § Découvertes) :** les trois
+endpoints Huma (`capabilities.go`, `feature_matrix.go`, `field_mappings.go` — et
+`home.go` en écho) calculent CHACUN leur propre `sha256.Sum256(body)` pour l'ETag via un
+champ de sortie `header:"ETag"` — 3 copies indépendantes du calcul, mais qui NE PEUVENT
+PAS appeler `servirBlobAvecETag` (Huma sérialise depuis une struct de sortie, pas
+d'écriture directe sur `http.ResponseWriter`). Hors périmètre de l'étape 1 : le contrat
+HTTP est différent (déclaratif vs writer direct), pas un simple `Header().Set`/`Write`
+brut. Non traité, noté pour un chantier séparé si la règle des 2 copies doit s'appliquer
+au calcul du hash indépendamment du branchement HTTP.
+
+**Conclusion / prochaine étape.** Étape 1 close : gate vert, items de l'étape statués
+`[x]`, plan mis à jour (cases + amendement S5 + Découvertes), commit sur
+`feat/fonds-carte-etag` (worktree `LevelUp-wt-fonds-etag`, base `feat/v75`). Étapes 0/2/3/4/5
+NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push sur `main`.
+## [2026-09-09] Vague C formes — lot 1.4 : C1 (Heatmap2DChart) + C2 garde-rail seulement (Complete)
+- Perimetre : lots C1 et C2 du plan `.ai/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md`, C2 restreint
+  au garde-rail (migration de `SynthesisHeatmapChart.tsx` REPORTEE par consigne explicite du
+  superviseur pour cette execution — non traitee).
+- **Decision technique C1** : `Heatmap2DChart.tsx` etendu sans casser les 4 consommateurs
+  existants (« ils heritent »). D2 (padding) : `itemStyle` SERIE (`borderWidth: 4`,
+  `borderColor: tc.card`, `borderRadius: 2`) — `tc.card` documente deja exactement cet usage
+  (« encre de separation »). D3 (absence visible) : les cases mesurees restent des tuples bruts
+  `[x,y,valeur,detail]` ; une case `value: null` devient un objet `{ value, itemStyle }` PROPRE
+  (fond `tc.splitLine` + `decal` hachure diagonale encre `tc.axisLabel`, `aria.decal.show: true`
+  requis cote option — meme flag que `MatchSummaryCharts.ARIA_DECAL`), etiquette `EMPTY_CELL_LABEL
+  = '—'`. Legende FR/EN (`HEATMAP_EMPTY_CELL_TEXT`, dictionnaire local `Record<Locale,string>`,
+  meme patron que `lib/review/i18n.ts`) rendue par le COMPOSANT (pas le builder pur) via la prop
+  `legend` de `ChartCard`, uniquement si la serie contient au moins une case vide — donc AUCUN
+  changement visible pour les consommateurs sans case vide. Plafond de saturation : prop
+  `saturationCap?: number`, ignoree si `valueRange` fourni, absente par defaut => comportement
+  historique inchange (teste explicitement).
+- **Resultats observes** : tests etendus dans `Heatmap2DChart.test.ts` (hachure/decal sur case
+  vide, tiret, `borderWidth > 0`, non-regression sans plafond, plafond actif, priorite de
+  `valueRange` sur `saturationCap`) + nouveau `Heatmap2DChart.test.tsx` (legende FR/EN au niveau
+  composant, absente si aucune case vide). Garde-rail C2 `heatmapSingleImpl.guard.test.ts` :
+  allowlist DATEE 2026-09-09 des 5 sites reeves par grep avant ecriture (`SynthesisHeatmapChart.tsx`
+  migration prevue lot C2 differe ; `ActivityCalendarChart.tsx`, `ExplorerActivityHeatmapChart.tsx`,
+  `RelationsMomentsHeatmap.tsx`, `squadMapHeatmapChart.ts` decision S6 du superviseur, hors
+  perimetre vague C). Mordant PROUVE : ajout temporaire de
+  `features/tactical/_tmpHeatmapProbe.ts` avec un litteral heatmap => test ROUGE
+  (`AssertionError: ... features/tactical/_tmpHeatmapProbe.ts`), fichier supprime, test revert
+  VERT. Le fichier de garde-rail evite deliberement de citer le litteral entre apostrophes
+  simples dans ses commentaires/titres de test, pour ne pas polluer le grep de sanity-check du
+  gate (`grep -rn "type: 'heatmap'" ...` doit rendre EXACTEMENT les 5 sites, verifie).
+- **Verification obligatoire** : `UsageRegularityBand`
+  (`features/session-detail/SessionUsageForms.tsx:276`) garde son `gap-[3px]` intact — verifie sur
+  pieces, statue `[~]` (non migre, miniature DOM/CSS assumee).
+- **Gates executes** (worktree `LevelUp-wt-formes`, branche `feat/formes-maquettes` depuis
+  `feat/v75`) : `npx vitest run src/components/charts` => 283/283 verts (32 fichiers) ; `npx
+  vitest run src/features/synthesis src/features/squad src/features/tactical
+  src/features/session-detail` => 1089/1089 verts (14 skip preexistants, `canvas` non installe =
+  warning attendu jsdom) ; `npm run typecheck` (`tsc -b`) => 0 erreur ; `npx eslint` sur les 4
+  fichiers touches/crees => 0 erreur ; grep du gate => exactement les 5 sites allowlistes.
+  `node_modules` du worktree relie par jonction Windows vers celui de
+  `LevelUp-go-migration/apps/web` (lockfile identique verifie par diff) — pas de reinstallation.
+- **Decouvertes NON traitees** (consignees dans le plan copie, section Decouvertes) :
+  `features/squad/squadEchange.logic.ts:200-203` documente l'ANCIEN comportement invisible des
+  cases vides — doc desormais partiellement inversee par C1, hors perimetre (consommateur, "ils
+  heritent") ; a corriger avec la migration de `SquadEchangeMatrixCard` ou une tache dediee.
+- **Conclusion / prochaine etape** : lot 1.4 clos (C1 fait, C2 garde-rail fait, migration
+  Synthesis explicitement differee). Reste a la charge d'une session future : lot C2 complet
+  (migration `SynthesisHeatmapChart.tsx` en mode divergent) quand le superviseur leve le report,
+  et le nettoyage du commentaire stale de `squadEchange.logic.ts`. Pas de fusion vers `feat/v75`
+  a ce stade (accord utilisateur prealable requis, regle CLAUDE.md n°16).
