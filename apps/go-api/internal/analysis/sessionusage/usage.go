@@ -130,12 +130,7 @@ type Input struct {
 // (« matchs mesurés 0/N » doit s'afficher, §5/S2).
 func ComputeUsage(in Input) domain.SessionUsageBlock {
 	out := domain.SessionUsageBlock{Available: true, MatchesTotal: len(in.Matches)}
-	measured := make([]MatchInput, 0, len(in.Matches))
-	for _, m := range in.Matches {
-		if m.Measured {
-			measured = append(measured, m)
-		}
-	}
+	measured := measuredMatches(in.Matches)
 	out.MatchesMeasured = len(measured)
 	if len(measured) == 0 {
 		return out
@@ -166,6 +161,19 @@ func ComputeUsage(in Input) domain.SessionUsageBlock {
 	}
 	out.PadFamilies = computePadFamilies(in.PlayerXUID, measured)
 	out.PowerupPickups = computePowerups(measured, durAll)
+	return out
+}
+
+// measuredMatches — les seuls matchs qui portent une ligne film. TOUT le calcul
+// des deux blocs (session et période) part de là : un match sans film n'est pas
+// mesuré, et le couple « matchs mesurés N / matchs M » dit le reste.
+func measuredMatches(matches []MatchInput) []MatchInput {
+	out := make([]MatchInput, 0, len(matches))
+	for _, m := range matches {
+		if m.Measured {
+			out = append(out, m)
+		}
+	}
 	return out
 }
 
