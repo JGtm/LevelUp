@@ -43,6 +43,11 @@ const (
 	MetricDroppedObjects     = "dropped_objects"
 	MetricPadPickups         = "pad_pickups"
 	MetricDeployedPrefix     = "deployed_"
+	// MetricEquipmentPrefix — LE BILAN D'ÉQUIPEMENT par famille (étape E3) :
+	// "equipment_wall", "equipment_powerup_camo"... Sa valeur est un compte
+	// d'OBJETS (utilisé + gardé + lâché), pas un compte de gestes, et c'est la
+	// seule famille de clés qui porte domain.SessionUsageOutcomes.
+	MetricEquipmentPrefix = "equipment_"
 )
 
 // PlayerRow — la ligne (match, joueur) telle que servie par
@@ -58,6 +63,15 @@ type PlayerRow struct {
 	PadPickups         int
 	DeployedByFamily   map[string]int
 	PadPickupsByFamily map[string]int
+	// Les QUATRE ventilations d'issue (colonnes taken/spent/kept/dropped_json,
+	// révision de projection `us4`). Toutes dans le vocabulaire des POSES : les
+	// quatre se joignent sur UNE clé de famille, sans pont. Une ligne écrite par
+	// une passe antérieure les porte vides — ce qui rend la grandeur absente, pas
+	// nulle.
+	TakenByFamily   map[string]int
+	SpentByFamily   map[string]int
+	KeptByFamily    map[string]int
+	DroppedByFamily map[string]int
 }
 
 // FilmRow — la ligne de grain match de match_usage_films_latest (l'existence de
@@ -147,6 +161,7 @@ func ComputeUsage(in Input) domain.SessionUsageBlock {
 	for _, key := range metricKeys(measured) {
 		m := computeMetric(in.PlayerXUID, key, measured, durAll, durTeam)
 		appendSquadLines(&m, measured, in.SquadXUIDs, durAll)
+		attachOutcomes(&m, in.PlayerXUID, measured)
 		out.Metrics = append(out.Metrics, m)
 	}
 	out.PadFamilies = computePadFamilies(in.PlayerXUID, measured)
@@ -172,32 +187,50 @@ func averageAndParity(measured []MatchInput, size func(MatchInput) int) (float64
 	return avg, &p
 }
 
-// metricKeys — les cinq grandeurs fixes puis les familles déployées observées
-// (triées : l'ordre de sortie est un contrat de stabilité, pas une itération de
-// map).
+// metricKeys — les cinq grandeurs fixes, puis les familles déployées observées,
+// puis les familles du BILAN D'ÉQUIPEMENT observées (triées dans chaque groupe :
+// l'ordre de sortie est un contrat de stabilité, pas une itération de map).
+//
+// UNE FAMILLE DU BILAN ENTRE DÈS QU'UNE DE SES QUATRE GRANDEURS EST NON NULLE, et
+// pas seulement sur ses déploiements : le capteur du parc compte 4 objets utilisés
+// pour 36 pris (mesure E0.4) — le lire sur ses seules poses effacerait précisément
+// l'histoire que ce bloc raconte.
 func metricKeys(measured []MatchInput) []string {
-	seen := map[string]bool{}
+	deployed := map[string]bool{}
+	bilan := map[string]bool{}
 	for _, m := range measured {
 		for _, p := range m.Players {
 			for fam := range p.DeployedByFamily {
-				seen[fam] = true
+				deployed[fam] = true
+			}
+			for _, fam := range equipmentBilanFamilies {
+				if equipmentOutcomeOf(&p, fam).total() > 0 {
+					bilan[fam] = true
+				}
 			}
 		}
 	}
-	fams := make([]string, 0, len(seen))
-	for fam := range seen {
-		fams = append(fams, fam)
-	}
-	sort.Strings(fams)
-	keys := make([]string, 0, 5+len(fams))
+	keys := make([]string, 0, 5+len(deployed)+len(bilan))
 	keys = append(keys,
 		MetricPadPickups, MetricCamoEpisodes, MetricOvershieldEpisodes,
 		MetricGrapplePulls, MetricDroppedObjects,
 	)
-	for _, fam := range fams {
-		keys = append(keys, MetricDeployedPrefix+fam)
-	}
+	keys = append(keys, prefixedSorted(MetricDeployedPrefix, deployed)...)
+	keys = append(keys, prefixedSorted(MetricEquipmentPrefix, bilan)...)
 	return keys
+}
+
+// prefixedSorted — les clés d'un ensemble, triées et préfixées.
+func prefixedSorted(prefix string, set map[string]bool) []string {
+	fams := make([]string, 0, len(set))
+	for fam := range set {
+		fams = append(fams, fam)
+	}
+	sort.Strings(fams)
+	for i, fam := range fams {
+		fams[i] = prefix + fam
+	}
+	return fams
 }
 
 // metricValue — la valeur d'une grandeur pour une ligne joueur.
@@ -213,6 +246,14 @@ func metricValue(key string, p *PlayerRow) int {
 		return p.DroppedObjects
 	case MetricPadPickups:
 		return p.PadPickups
+	}
+	if fam, ok := strings.CutPrefix(key, MetricEquipmentPrefix); ok {
+		// LA VALEUR EST LA SOMME DES TROIS ISSUES, jamais les prises : c'est ce qui
+		// garantit qu'une barre empilée sur `outcomes` remplit EXACTEMENT sa
+		// longueur. Même règle que la colonne fusionnée de la vue match
+		// (`equipmentGroup`, étape E2) — les prises restent servies à côté, comme
+		// dénominateur d'honnêteté.
+		return equipmentOutcomeOf(p, fam).total()
 	}
 	if fam, ok := strings.CutPrefix(key, MetricDeployedPrefix); ok {
 		return p.DeployedByFamily[fam]

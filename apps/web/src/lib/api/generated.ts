@@ -10747,6 +10747,7 @@ export interface components {
             matches_above_lobby_parity: number;
             /** Format: int64 */
             matches_above_team_parity?: number;
+            outcomes?: components["schemas"]["SessionUsageOutcomes"];
             per_match?: components["schemas"]["SessionUsageMatchPoint"][] | null;
             /** Format: double */
             player_per_10min?: number;
@@ -10763,6 +10764,22 @@ export interface components {
             team_share_of_lobby_pct?: number;
             /** Format: double */
             team_total?: number;
+        };
+        SessionUsageOutcomes: {
+            /** Format: double */
+            dropped: number;
+            /** Format: double */
+            kept: number;
+            /** Format: double */
+            opponents_used_rate_pct?: number;
+            /** Format: double */
+            taken: number;
+            /** Format: double */
+            teammates_used_rate_pct?: number;
+            /** Format: double */
+            used: number;
+            /** Format: double */
+            used_rate_pct?: number;
         };
         SessionUsagePadFamily: {
             family_key: string;
