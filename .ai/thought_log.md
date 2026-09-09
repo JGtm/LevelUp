@@ -1,3 +1,23 @@
+## [2026-09-09] P0 — match_lives refusait les voies de nommage du registre d'identite — Complete
+
+**Decision technique principale.** Le persister de `match_lives` valide `named_by` contre une liste
+fermee (refus = erreur, jamais une correction) ; le lot E2 a ajoute quatre voies (`biped_creation`,
+`biped_creation_propagee`, `elimination`, `exclusion_temporelle`) sans etendre cette liste. La
+passe `backfill-killsource` locale du 09-09 l'a revele : 736 films refuses (journal et positions
+ecrits, faits d'isolement non reecrits). Correctif dans le sens de l'axiome utilisateur (le
+registre est la solution stable et perenne) : le persister accepte les voies du registre, on ne
+revient pas aux seules voies `death`/`closure`.
+
+**Cause de l'angle mort.** `no_life_cause_divergence_test` ne lisait les `NomPar*` que dans
+`lives.go` (le registre les declare dans `identity_registry_*.go`) et son motif ignorait la forme
+`const X = "..."` sur une ligne. Les deux sont corriges ; le garde rouge -> vert prouve le mordant.
+
+**Resultats observes.** persist unit + integration `-p 1` ok, `sync -run NoART` ok, archlint ok,
+lint 0 issue. Fusion dans `feat/v75`. La passe films de killsource est rejouee automatiquement
+apres la chaine de backfills avec le binaire corrige (`suite_killsource.sh`).
+
+**Prochaine etape.** En prod : `backfill-killsource --films-only` au deploiement v7.5 (registre).
+
 ## [2026-09-09] Plan master — vague 0 (consolidation) et vague 1 (P1 visibles) closes — Complete
 
 **Decision technique principale.** Un plan master (`.ai/PLAN_MASTER_2026-09-09.md`) ordonne sept
