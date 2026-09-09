@@ -1419,6 +1419,24 @@ export interface TeammatesPageResponse {
   /** Chargements best-effort qui ont échoué : les nombres affichés sont partiels.
    *  Non vide => l'UI doit le signaler (fin des chiffres non reproductibles). */
   data_issues?: DataIssue[]
+  /**
+   * Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09, E6) —
+   * variante comptes (P9), une ligne par coéquipier suivi.
+   *
+   * ÉCART DE CONTRAT CONSIGNÉ (E6.2, 2026-09-09) : le Go publie aujourd'hui ce bloc
+   * sur `domain.SquadPageV2Response` (`GET /pages/squad/v2`) — vérifié sur pièces,
+   * `internal/domain/squad_v2.go:48`. Cette page-ci (`TeammatesPageResponse`,
+   * `POST /pages/teammates`, le SEUL endpoint que `SquadLayout`/`useTeammates` appelle
+   * en production ; `/pages/squad/v2` n'est fetché par AUCUNE page web hormis son
+   * sous-chemin `/engagement`) ne reçoit pas encore ce champ côté service
+   * (`teammates_service.go` n'a pas de `WithEquipmentUsage`). Le champ est déclaré ICI
+   * pour que <EquipmentUsageSection> soit branché et honnête : tant que le Go ne
+   * l'ajoute pas à `TeammatesPageResponse`, il vaut `undefined` et la section s'auto-
+   * masque (même contrat que `usageAvailability` : absent = rien, jamais un graphe à
+   * zéro) — zéro nouvelle requête réseau, zéro donnée fabriquée. Suite : brancher
+   * `service.buildEquipmentUsageBlock` (déjà écrit) depuis `TeammatesService`.
+   */
+  equipment_usage?: EquipmentUsageBlock
 }
 
 /** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
@@ -1521,6 +1539,10 @@ export interface SynthesisPageResponse {
   // KPI objectifs (cumul CTF/Zones/Oddball sur le scope) — omis pour un titre sans
   // capability match.objective.stats (Halo 5) ou un scope sans match à objectif.
   objective_stats?: ObjectiveAggregate | null
+  // Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09, E5) —
+  // variante comptes (P9), une ligne par famille. Absent si le scope filtré n'a aucun
+  // match ; `available:false` avec raison machine pour un titre sans film.usage_summary.
+  equipment_usage?: EquipmentUsageBlock
 }
 
 // Cumul des stats objectifs (CTF/Zones/Oddball) sur un scope — partagé Synthèse/Escouade.
@@ -2166,6 +2188,17 @@ export type SessionUsagePowerup = components['schemas']['SessionUsagePowerup']
 export type SessionObjectivesBlock = components['schemas']['SessionObjectivesBlock']
 export type SessionObjectiveRoleMetric = components['schemas']['SessionObjectiveRoleMetric']
 export type SessionObjectiveFamilyBlock = components['schemas']['SessionObjectiveFamilyBlock']
+
+// ─── PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E5/E6) : bloc « servi ou gâché » au grain
+// PÉRIODE, publié avec la Synthèse et l'Escouade. Contrat Go :
+// internal/domain/equipment_usage.go. Variante COMPTES (décision P9) : l'axe des
+// barres est en objets pris, pas en pourcentage — voir usageCountsModel.ts.
+
+export type EquipmentUsageBlock = components['schemas']['EquipmentUsageBlock']
+export type EquipmentUsageFamilyLine = components['schemas']['EquipmentUsageFamilyLine']
+export type EquipmentUsagePlayerLine = components['schemas']['EquipmentUsagePlayerLine']
+export type EquipmentUsageParties = components['schemas']['EquipmentUsageParties']
+export type EquipmentUsageFriendCount = components['schemas']['EquipmentUsageFriendCount']
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 

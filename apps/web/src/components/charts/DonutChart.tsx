@@ -24,6 +24,10 @@ import { CHART_BG, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesC
 export interface ChartPointDonut {
   name: string
   value: number
+  /** Texte déjà formaté (locale, séparateurs) du compte brut — utilisé UNIQUEMENT par
+   *  `arcLabelKind="value"` (P11, PLAN_EQUIPEMENT_GACHIS_2026-09-09). Absent : le
+   *  formatter retombe sur `value` tel quel. */
+  valueLabel?: string
 }
 
 export interface DonutChartProps {
@@ -55,6 +59,14 @@ export interface DonutChartProps {
   centerValue?: string
   /** Libellé affiché au centre, sous la valeur (petit texte) — ex "Victoires". */
   centerLabel?: string
+  /**
+   * Le texte porté par chaque arc (P11, PLAN_EQUIPEMENT_GACHIS_2026-09-09) :
+   * `'percent'` (défaut, comportement historique inchangé) écrit le nom et le %
+   * (`showPercent`) ; `'value'` écrit le nom et le COMPTE BRUT (`valueLabel` du point,
+   * sinon `value`) — pour un donut de PARTS EXCLUSIVES dont le centre porte déjà le
+   * volume total, où la légende ne doit plus dire qu'une couleur.
+   */
+  arcLabelKind?: 'percent' | 'value'
 }
 
 export function DonutChart({
@@ -72,11 +84,32 @@ export function DonutChart({
   compact,
   centerValue,
   centerLabel,
+  arcLabelKind,
 }: DonutChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointDonut>[]) =>
-      buildDonutOption(s, { sliceColors, innerRadius, outerRadius, showPercent, showLegend, compact, centerValue, centerLabel }),
-    [sliceColors, innerRadius, outerRadius, showPercent, showLegend, compact, centerValue, centerLabel],
+      buildDonutOption(s, {
+        sliceColors,
+        innerRadius,
+        outerRadius,
+        showPercent,
+        showLegend,
+        compact,
+        centerValue,
+        centerLabel,
+        arcLabelKind,
+      }),
+    [
+      sliceColors,
+      innerRadius,
+      outerRadius,
+      showPercent,
+      showLegend,
+      compact,
+      centerValue,
+      centerLabel,
+      arcLabelKind,
+    ],
   )
 
   return (
@@ -101,6 +134,7 @@ interface BuildOpts {
   compact?: boolean
   centerValue?: string
   centerLabel?: string
+  arcLabelKind?: 'percent' | 'value'
 }
 
 /**
@@ -120,6 +154,7 @@ export function buildDonutOption(
     compact = false,
     centerValue,
     centerLabel,
+    arcLabelKind = 'percent',
   } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -137,6 +172,7 @@ export function buildDonutOption(
     return {
       name: p.name,
       value: p.value,
+      valueLabel: p.valueLabel,
       itemStyle: { color },
     }
   })
@@ -204,9 +240,22 @@ export function buildDonutOption(
         avoidLabelOverlap: true,
         // Compact : % DANS le donut, pas d'étiquette externe ni de connecteur (sinon ils
         // débordent et se font clipper en colonne étroite). Sinon : étiquette externe.
+        // arcLabelKind='value' (P11) : le nom PUIS le compte brut sur l'arc — jamais un %,
+        // la légende ne dit plus que la couleur (`valueLabel` du point, sinon `value` nu).
         label: compact
           ? { show: true, position: 'inside', color: tc.text, fontSize: 11, formatter: '{d}%' }
-          : { show: showPercent, color: tc.text, fontSize: 11, formatter: showPercent ? '{b}\n{d}%' : '{b}' },
+          : {
+              show: showPercent || arcLabelKind === 'value',
+              color: tc.text,
+              fontSize: 11,
+              formatter:
+                arcLabelKind === 'value'
+                  ? (params: { name: string; value: number; data?: { valueLabel?: string } }) =>
+                      `${params.name}\n${params.data?.valueLabel ?? params.value}`
+                  : showPercent
+                    ? '{b}\n{d}%'
+                    : '{b}',
+            },
         labelLine: compact ? { show: false } : { length: 8, length2: 6 },
         data,
       },

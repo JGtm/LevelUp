@@ -97,8 +97,14 @@ export interface UsageGaugeOutcomeSegment {
  * E4.6) — un segment à fraction 0 ne se dessine pas. `outcomes` absent, ou dont la
  * somme des trois issues est nulle (aucun objet mesuré) : PAS de pile — le rendu
  * simple (un seul aplat) reste la vérité, jamais une pile à une seule couleur.
+ *
+ * EXPORTÉE depuis le 2026-09-09 (E5.8, PLAN_EQUIPEMENT_GACHIS_2026-09-09) :
+ * `usageCountsModel.ts` (variante comptes, Synthèse/Escouade) réutilise la MÊME pile —
+ * `EquipmentUsageFamilyLine`/`EquipmentUsagePlayerLine` portent les mêmes champs
+ * `used`/`kept`/`dropped` que `SessionUsageOutcomes` (structurellement compatibles),
+ * donc aucune seconde copie de cette fonction (CLAUDE.md n°6).
  */
-function buildOutcomeSegments(
+export function buildOutcomeSegments(
   outcomes: SessionUsageOutcomes | null | undefined,
   t: UsageText,
 ): UsageGaugeOutcomeSegment[] | undefined {
