@@ -54,6 +54,7 @@ import {
   squadSessionShownCount,
   resolveSquadSessionFallback,
 } from './squadSessionCounts'
+import { buildCompositionGapHint } from './squadCompositionGapHint'
 import { formatDataIssues } from './squadDataIssues'
 import { exactCompositionDefault } from './exactComposition'
 
@@ -384,11 +385,22 @@ export function SquadLayout() {
     () => resolveSquadSessionFallback(previewResolve, resolvedContext),
     [previewResolve, resolvedContext],
   )
-  // {shown, total} — alimente la L2 (PeriodSessionRail.sessionCount) : « 4 sur
-  // 7 » quand la composition exacte écarte des matchs (D1).
+  // {shown, total, hint} — alimente la L2 (PeriodSessionRail.sessionCount) :
+  // « 4 sur 7 » quand la composition exacte écarte des matchs (D1), EXPLIQUÉ
+  // au survol par la liste des matchs écartés (phase A3 — critère de succès
+  // n°3 : l'écart doit être lisible ET expliqué, pas seulement visible).
   const getSessionCount = useMemo(
-    () => (label: string) => squadSessionCount(label, compositionSessions, sessionCountFallback),
-    [compositionSessions, sessionCountFallback],
+    () =>
+      (label: string) => {
+        const count = squadSessionCount(label, compositionSessions, sessionCountFallback)
+        if (!count) return undefined
+        return {
+          shown: count.shown,
+          total: count.total,
+          hint: buildCompositionGapHint(count.excluded, locale, t.compositionGap),
+        }
+      },
+    [compositionSessions, sessionCountFallback, locale, t],
   )
   // Nombre seul — alimente SessionMultiSelect (masque les sessions vides +
   // affiche le compte par ligne), même module, même règle.

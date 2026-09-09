@@ -221,29 +221,48 @@ fichiers touches : 0 issue.
 
 ### Phase A3 — lisibilite de l'ecart (D1)
 
-**EN ATTENTE (2026-09-09) — pas `[!]`, coordination inter-sessions.** A3.3 touche
-`apps/web/src/features/squad/i18n.ts`, fichier que le worktree PARTAGE
-(`LevelUp-go-migration`) modifie actuellement sans commit (cf. regle memoire « worktree
-dedie obligatoire »). Toucher ce fichier depuis ce worktree dedie risquerait un conflit de
-fusion sur du travail en vol ailleurs. Le lot s'arrete donc proprement apres le gate A2 ; le
-superviseur ordonnera l'execution de A3 (et du chantier B) une fois ce conflit potentiel
-leve. Aucun item A3 n'est traite ni juge hors-perimetre : la case reste a cocher au prochain
-lot.
+**EXECUTEE le 2026-09-09 (lot 1.5, worktree d'integration `LevelUp-wt-vague1`,
+branche `feat/vague1-integration`).** Le conflit de coordination note ci-dessus (i18n.ts
+partage) est leve : ce lot travaille dans le worktree d'integration dedie, sur la
+branche d'integration de la vague 1 (deja fusionnee), donc plus de risque de fusion
+concurrente sur `features/squad/i18n.ts`.
 
-- `[ ]` A3.1 **TEST ROUGE** rendu : sous composition exacte avec des ecartes, la L2 porte
+- `[x]` A3.1 **TEST ROUGE** rendu : sous composition exacte avec des ecartes, la L2 porte
   « 4 sur 7 » et une info-bulle listant chaque match ecarte (date, carte, coequipier
-  responsable).
-- `[ ]` A3.2 Composant d'info-bulle : reutilise le patron d'aide d'en-tete existant
-  (`cardHint*`, convention V73-L2 2.4c) — pas de nouveau primitif.
-- `[ ]` A3.3 i18n FR **et** EN (`features/squad/i18n.ts`, parite par typage
-  `Record<Locale, T>`). FR sans anglicisme : « 4 sur 7 matchs », « ecarte : X etait dans
-  ton equipe ».
-- `[ ]` A3.4 Couleurs : tokens semantiques uniquement (skill `color-tokens`), zero hex,
-  zero classe Tailwind de couleur.
-- `[ ]` A3.5 Revue navigateur sur la session du 27/08 : la L2 doit lire « 4 sur 7 » et
-  l'info-bulle nommer Nilton410 (1 match) et passivemarquise (2 matchs).
+  responsable). Fait : `PeriodSessionRail.test.tsx` (2 cas : hint present -> tooltip
+  revele au survol/focus ; hint absent -> aucune info-bulle) + `squadCompositionGapHint.test.tsx`
+  (6 cas : contenu pur de l'info-bulle, accord singulier/pluriel FR/EN, repli quand le
+  coequipier n'est pas resolu). **Echec observe** (avant tout code) : `squadCompositionGapHint.test.tsx`
+  echoue par resolution de module (`Failed to resolve import "./squadCompositionGapHint"`,
+  Vite) ; `PeriodSessionRail.test.tsx` echoue sur l'assertion `getByRole('tooltip')` (aucune
+  info-bulle rendue, le prop `hint` n'existait pas encore).
+- `[x]` A3.2 Composant d'info-bulle : reutilise le patron d'aide d'en-tete existant
+  (`InfoTooltip`/`HeaderLabelTooltip`, convention V73-L2 2.4c) — pas de nouveau primitif.
+  `squadCompositionGapHint.tsx` ne fait que BATIR le `ReactNode` du contenu ; le rendu
+  passe par `InfoTooltip` (deja utilise par `cardTitleAdornment`), cable dans
+  `PeriodSessionRail.tsx` (`SessionCountLabel`, nouveau) via un prop `hint?: ReactNode`
+  generique — le composant shell reste agnostique du domaine escouade.
+- `[x]` A3.3 i18n FR **et** EN (`features/squad/i18n.ts`, parite par typage
+  `Record<Locale, T>`). Nouveau groupe `compositionGap` (heading, excludedLine, culpritUnknown)
+  dans l'interface `SquadText` + `FR_TEXT` + `EN_TEXT`. FR sans anglicisme : « 4 sur 7
+  matchs » (deja livre en A2), « ecarte : X etait dans ton equipe » (accord pluriel
+  « etaient » quand plusieurs coequipiers responsables).
+- `[x]` A3.4 Couleurs : tokens semantiques uniquement (skill `color-tokens`), zero hex,
+  zero classe Tailwind de couleur — verifie par grep (`grep -rn "#[0-9a-fA-F]\{6\}"` et
+  classes `text-{red,green,blue,yellow,amber,rose}-*` : 0 occurrence dans les fichiers
+  touches). Les classes utilisees (`text-xs`, `text-muted-foreground`, `font-medium`,
+  `space-y-*`) sont deja les tokens/utilitaires neutres du depot, aucune couleur ajoutee.
+- `[~]` A3.5 Revue navigateur sur la session du 27/08 : **couvert par le superviseur, revue
+  de vague** (consigne d'execution du lot 1.5 : « ne lance pas de navigateur »). La logique
+  est verrouillee par les tests A3.1 (contenu exact « Nilton410 était dans ton équipe » /
+  « Nilton410 et passivemarquise étaient dans ton équipe » couvert par
+  `squadCompositionGapHint.test.tsx`), la revue visuelle reste a faire par le superviseur.
 
-**Gate A3** : `make check-types` · `make test-web` · revue navigateur consignee.
+**Gate A3 passe** (2026-09-09) : `make check-types` (tsc -b) 0 erreur ·
+`cd apps/web && npx vitest run src/features/squad src/components/shell` → 73 fichiers,
+648 tests verts · `npx eslint` sur les 8 fichiers touches (`squadSessionCounts.ts`,
+`squadSessionCounts.test.ts`, `squadCompositionGapHint.tsx`, `squadCompositionGapHint.test.tsx`,
+`i18n.ts`, `SquadLayout.tsx`, `PeriodSessionRail.tsx`, `PeriodSessionRail.test.tsx`) : 0 issue.
 
 ---
 

@@ -45,21 +45,38 @@ export function resolveSquadSessionFallback(
   return previewResolve?.session_options?.all_sessions ?? resolvedContext?.session_options?.all_sessions ?? []
 }
 
+/** Un match écarté de la session par le filtre composition exacte — sous-
+ *  ensemble structurel de domain.CompositionExcludedMatch (généré dans
+ *  lib/api/generated.ts). `extra_gamertags` nomme le(s) coéquipier(s) connu(s)
+ *  qui a (ont) fait sortir le match (A1.5 : un xuid non résolu s'écrit déjà
+ *  "Joueur <4 derniers>" côté backend, jamais vide — `null` ne couvre que
+ *  l'absence de coéquipier connu identifiable). */
+export interface SquadSessionExcludedMatch {
+  match_id: string
+  start_time: string
+  map_ui: string
+  extra_gamertags: string[] | null
+}
+
 /** Entrée composition_sessions consommée ici — sous-ensemble structurel de
  *  domain.CompositionSessionEntry (généré dans lib/api/generated.ts). */
 export interface SquadSessionCompositionEntry {
   label: string
   match_count?: number
   match_count_roster?: number
+  excluded_by_exact_composition?: SquadSessionExcludedMatch[] | null
 }
 
 /** Compte affiché pour une session : `shown` = population réelle (source
  *  unique, ce que les tableaux/graphes de la page consomment) ; `total` =
  *  compte AVANT le filtre composition exacte (même valeur que `shown` hors
- *  écart — rien à publier). */
+ *  écart — rien à publier) ; `excluded` = le détail des matchs écartés
+ *  (vide hors écart, ou tant que la réponse teammates n'est pas arrivée —
+ *  le repli `/filters/resolve` ne porte pas ce détail). */
 export interface SquadSessionCount {
   shown: number
   total: number
+  excluded: SquadSessionExcludedMatch[]
 }
 
 /**
@@ -77,11 +94,15 @@ export function squadSessionCount(
 ): SquadSessionCount | undefined {
   const entry = compositionSessions.find((s) => s.label === label)
   if (entry && typeof entry.match_count === 'number' && entry.match_count > 0) {
-    return { shown: entry.match_count, total: entry.match_count_roster ?? entry.match_count }
+    return {
+      shown: entry.match_count,
+      total: entry.match_count_roster ?? entry.match_count,
+      excluded: entry.excluded_by_exact_composition ?? [],
+    }
   }
   const fb = fallback.find((s) => s.label === label)
   if (fb && fb.match_count_filtered > 0) {
-    return { shown: fb.match_count_filtered, total: fb.match_count_filtered }
+    return { shown: fb.match_count_filtered, total: fb.match_count_filtered, excluded: [] }
   }
   return undefined
 }

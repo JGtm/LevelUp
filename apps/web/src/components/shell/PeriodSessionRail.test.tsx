@@ -162,6 +162,54 @@ describe('PeriodSessionRail', () => {
     expect(screen.queryByText(/5 match/i)).toBeNull()
   })
 
+  // Phase A3 (D1) : l'écart "4 sur 7" doit être EXPLIQUÉ, pas seulement visible.
+  // `sessionCount` peut porter un `hint` (ReactNode, construit côté page —
+  // ex. `squadCompositionGapHint`) : la L2 le rend au survol/focus via le
+  // patron d'aide d'en-tête existant (`InfoTooltip`, V73-L2 2.4c), aucun
+  // nouveau primitif.
+  it('sessionCount avec hint : le survol du compte révèle l\'info-bulle EXPLICATIVE', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(
+      buildResolved([
+        { id: 's-latest', label: '06/04 21h24' },
+        { id: 's-old', label: '01/04 12h00' },
+      ]),
+    )
+    store.setSessions({ picked_sessions: ['s-latest'], gap_minutes: DEFAULT_GAP_MINUTES })
+
+    renderWithProviders(
+      <PeriodSessionRail
+        sessionCount={(label) =>
+          label === '06/04 21h24'
+            ? { shown: 4, total: 7, hint: <span>27 août — Aquarius : écarté, Nilton410 était dans ton équipe</span> }
+            : undefined
+        }
+      />,
+    )
+    expect(screen.getByText(/4 sur 7/)).toBeTruthy()
+    expect(screen.queryByRole('tooltip')).toBeNull()
+
+    fireEvent.mouseEnter(screen.getByText(/4 sur 7/))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Nilton410 était dans ton équipe')
+  })
+
+  it('sessionCount SANS hint : aucune info-bulle, rendu inchangé (pas de survol parasite)', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(
+      buildResolved([
+        { id: 's-latest', label: '06/04 21h24' },
+        { id: 's-old', label: '01/04 12h00' },
+      ]),
+    )
+    store.setSessions({ picked_sessions: ['s-latest'], gap_minutes: DEFAULT_GAP_MINUTES })
+
+    renderWithProviders(
+      <PeriodSessionRail sessionCount={(label) => (label === '06/04 21h24' ? { shown: 4, total: 7 } : undefined)} />,
+    )
+    fireEvent.mouseEnter(screen.getByText(/4 sur 7/))
+    expect(screen.queryByRole('tooltip')).toBeNull()
+  })
+
   it('sessionCount SANS écart (shown === total) : affiche le compte simple, pas de "sur"', () => {
     const store = useGlobalFilterStore.getState()
     store.setResolvedContext(
