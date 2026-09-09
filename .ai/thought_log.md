@@ -1,3 +1,22 @@
+## [2026-09-09] Master plan, vague 2 — E4 fusionne, S9 (`deployed_*` reste au contrat), E5 lance en deux executants — Complete
+
+**Decision technique principale.** E4 (Sessions : pile des trois issues et deux reperes de taux
+dans `UsageGauge`) verifie sur pieces et fusionne dans `feat/v75` en `b369c15c8`. Decision S9 :
+les cles `deployed_*` restent au contrat — E4 les remplace a l'ecran par `equipment_<famille>`,
+mais les retirer coute une revision de resume et une recuisson pour un gain mineur ; elles
+restent consommees par la classification et le repli. E5 est scinde : Go (E5.4-E5.7 + E6.1,
+Opus, worktree `LevelUp-wt-equipement-e5-go`) et extraction web (E5.1-E5.3, Sonnet), fichiers
+disjoints, branches distinctes.
+
+**Resultats observes.** E4 : 3 commits, TDD observe, vitest session-detail 146 verts, tsc
+force 0, eslint 0, 0 couleur en dur. Deux P1 de taille de fichier consignes et confies a
+l'extraction : `usageLogic.ts` 507 → 680 L, `equipmentUsageLogic.ts` 430 → 582 L.
+
+**Conclusion / prochaine etape.** A la livraison des deux executants : verification, fusion
+des deux branches, puis E5.8-E5.13 (Synthese) et E6.2-E6.5 (Escouade) cote web.
+
+---
+
 ## [2026-09-09] Master plan, vague 2 — E3 fusionne dans feat/v75, resumes d'usage recuits au us4 (E3.11), E4 lance — Complete
 
 **Decision technique principale.** Fusion de `feat/equipement-gachis` (E0-E3) dans `feat/v75`
