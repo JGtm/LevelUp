@@ -1,3 +1,90 @@
+## [2026-09-09] Lot 1.7 - `kill_positions` arbitre par PASSE de decodage + protection append-only - Complete
+
+**Branche** : `feat/kill-positions-par-passe` (worktree `LevelUp-wt-killpos-passe`, depuis
+`feat/v75`). Commits `e6f4b16ad` (migration + persister) et `43548bae3` (garde-rails + doc).
+
+**Le defaut, constate sur pieces.** `kill_positions_latest` retenait la derniere ligne par
+`(match_id, killer_xuid, time_ms)`. Cet arbitrage par CLE ne sait pas RETRACTER :
+`replay.BuildKillPositions` n'ecrit AUCUNE ligne pour une mort dont ni le tueur ni la victime
+n'ont pu etre localises (bornes de trajectoire, joueur non resolu, film re-telecharge plus
+court), donc un re-decodage qui ne retrouve plus une position ne la reecrit pas - il l'omet -
+et la vue continuait de servir A JAMAIS la ligne de la passe precedente, melangee aux
+nouvelles. Sa soeur `kill_openings` avait deja ferme ce piege avec `decode_pass` (D5,
+2026-09-06) ; `kill_positions` etait restee en arriere. Elle n'etait par ailleurs inscrite a
+aucune liste de tables append-only protegees - verification faite, elle l'etait deja depuis
+l'enrolement G4 du 2026-09-05 (cf. plus bas).
+
+**Decision technique principale - la passe synthetique est PAR MATCH, et la vue a DEUX
+etages.** Le step `shared_kill_positions_decode_pass_v1` (title-owned,
+`steps_shared_kill_positions_pass.go`) delegue a `migration.ApplyAppendOnlyRebuild` avec
+`MarkerColumn: "decode_pass"` et `IDConditional: true` - c'est ce qui le rend rejouable APRES
+G.2 (la table porte deja `id`, marqueur par defaut du helper, qui dirait « deja migree ») tout
+en PRESERVANT les `id` existants. Les lignes deja en base recoivent `'legacy-' || match_id` :
+une passe par match, donc la vue les sert TOUTES jusqu'a ce qu'une passe neuve arrive sur CE
+match - aucun match n'est vide par la migration, aucun n'est affecte par le re-decodage d'un
+autre. La vue arbitre par derniere passe entiere par match (modele `kill_openings_latest`),
+PUIS dedoublonne par cle DANS la passe retenue : sans ce second etage, fondre tout le passe
+d'un match dans une seule passe synthetique RESSUSCITERAIT les doublons de cle que l'ancienne
+vue par cle masquait (deux ecritures successives sur un meme match) - une regression
+introduite par la migration elle-meme, qui double-compterait des morts chez tous les lecteurs
+(carte tactique, distances, isolement). Sur une passe bien formee le second etage est un
+no-op, et il ne borne que l'INTERIEUR d'une passe : il ne peut donc pas ressusciter une ligne
+d'une passe precedente. `decode_pass` est NOT NULL (une ligne sans passe ne pourrait etre ni
+retenue ni ecartee par la vue) et l'index de jointure `idx_kill_positions_lookup` est recree
+par le `PostSwap`.
+
+**Persister.** Les deux ecrivains INSERT-only (`KillPositionPersister.PersistPass` pour la
+passe film Infinite, `persistKillPositionsPass` pour le chemin builder Halo 5) ecrivent
+desormais une passe entiere sous un `decode_pass` unique tire par `newDecodePassID()` - source
+unique du depot - au moment de l'ecriture, exactement comme `kill_openings` et
+`match_kill_events`. Verifie sur pieces : AUCUN de ces deux-la ne porte la valeur dans le
+`MatchBatch` ; la porter aurait fige dans le WAL un champ sans lecteur (le chemin builder est
+un no-op des que le match existe dans `match_registry`, donc un rejeu ne peut pas ecrire deux
+passes pour un meme match).
+
+**Garde-rails : rien a inscrire, tout a corriger.** `kill_positions` figurait DEJA dans
+`no_art_patterns_test.go` et `append_only_state_guard_test.go` (enrolement G4 du 2026-09-05)
+et dans `no_raw_rating_reads_test.go` (cloture Q8 du 2026-09-07, tous ses lecteurs passent par
+`_latest`). Aucune liste agrandie, AUCUNE allowlist touchee. En revanche leurs justifications
+disaient « unite de generation = LA LIGNE » et « vue par (match_id, killer_xuid, time_ms) » :
+corrigees dans le meme lot (doc inversee sur un garde-rail anti-corruption = incident en
+attente, anti-pattern n. 9 du depot).
+
+**TDD - echecs observes puis verts.**
+1. `TestKillPositions_DBNeuve_PorteDecodePassNotNull` : `kill_positions.decode_pass absente sur
+   DB neuve` (step pas encore dans `canonicalOrder`).
+2. Apres enregistrement, `TestKillPositions_LatestViewDedupesReDecode` (test G.2 existant) :
+   `insert pass 1: Constraint Error: NOT NULL constraint failed: kill_positions.decode_pass` -
+   le NOT NULL mord, test adapte (deux passes distinctes au lieu de deux lignes nues).
+3. Persister, 4 tests rouges : `PersistPass: persist: INSERT kill_positions m1/111/1000:
+   Constraint Error: NOT NULL constraint failed: kill_positions.decode_pass`.
+4. Fixtures de lecture brutes : 20 tests rouges dans `platform/duckdb` (`exec INSERT INTO
+   kill_positions`) - deux helpers corriges (`insertKillPos`, `tacPos`).
+
+**Resultats des gates (sorties reelles).**
+- `gofmt -l ./internal` : vide. `go build ./...` : OK. `go vet ./internal/persist/...
+  ./internal/migration/... ./internal/games/...` : exit 0.
+- `go test ./internal/persist/ ./internal/migration/
+  ./internal/games/halo_infinite/migrations/ ./internal/platform/duckdb/` : `ok` x4
+  (3,875 s / 12,510 s / 18,329 s / 86,861 s).
+- `go test -tags=integration -p 1 -count=1 ./internal/persist/ ./internal/migration/
+  ./internal/sync/` : `ok` x3 (41,320 s / 8,404 s / 142,476 s).
+- `go test -count=1 ./internal/sync/ -run NoART` : `ok` 13,682 s.
+- `go test -tags=integration -p 1 -count=1 ./internal/sync/killcollector/` : `ok` 13,534 s
+  (hors gate prescrit, ajoute : c'est l'appelant du persister).
+- `golangci-lint run --new-from-merge-base=origin/main ./internal/persist/...
+  ./internal/migration/... ./internal/games/...` : `0 issues.`
+
+**Hors perimetre, statues.** `openapi.yaml` non touche (aucun DTO ne bouge, changement
+strictement persist/migration). ADR 0026 : son tableau des mecanismes ne liste AUCUNE table du
+mecanisme `decode_pass` (ni `match_kill_events`, ni `kill_openings`, ni `match_lives`, ni
+`match_player_positions`) - y ajouter `kill_positions` seule serait incoherent ; consigne au
+registre des reports. Skill `db-schema` : ne mentionne pas `kill_positions`, rien a corriger.
+Deux decouvertes `internal/ops` consignees au registre, non traitees.
+
+**Prochaine etape** : migration appliquee au prochain boot local ; en prod, au deploiement
+v7.5 avant le backfill distance.
+
 ## [2026-09-09] Diagnostic triple : compteur L2 escouade, sortie de cadre au rejeu, familles d'equipement — Complete (aucun code modifie)
 
 **Demande utilisateur** : trois verifications, sans livraison. (1) session du 27 aout,
