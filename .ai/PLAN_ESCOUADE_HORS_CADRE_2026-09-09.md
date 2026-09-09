@@ -305,16 +305,29 @@ concurrente sur `features/squad/i18n.ts`.
 
 ### Phase B1 — TDD : le gabarit de la fleche
 
-- `[ ]` B1.1 **TEST ROUGE** `offscreenChevron.test.ts` : le trace ferme 4 sommets (pointe,
-  arriere-gauche, encoche, arriere-droite), il est a l'echelle de l'ECRAN (`style.k`, jamais
-  du canevas), il est pivote de `angle`, et il est rempli de la couleur passee.
-- `[ ]` B1.2 `layers/offscreenChevron.ts` : le dessin. Gabarit normalise pointant +X :
+- `[x]` B1.1 **TEST ROUGE** `offscreenChevron.test.ts` : le trace ferme 4 sommets (pointe,
+  arriere-gauche, encoche, arriere-droite), il est a l'echelle de l'ECRAN (`k`, jamais du
+  canevas — verifie via `recordingContext`, l'appel `scale` porte `CHEVRON_SIZE_PX * k`), il
+  est pivote de `angle`, et il est rempli de la couleur passee. **Echec observe** (avant tout
+  code) : `Failed to resolve import "./offscreenChevron" from ".../offscreenChevron.test.ts".
+  Does the file exist?` (Vite). Couvre aussi B1.3 dans le meme fichier (memes item de code,
+  meme TDD) : `offscreenLabelAnchor` (le cote INTERIEUR, oppose a `angle`) et
+  `drawOffscreenLabel` (contour puis remplissage, aucun `strokeText` quand `labelStroke` est
+  vide).
+- `[x]` B1.2 `layers/offscreenChevron.ts` : le dessin. Gabarit normalise pointant +X :
   pointe `(1, 0)`, arriere-gauche `(-0,75, -0,7)`, encoche `(-0,35, 0)`, arriere-droite
-  `(-0,75, 0,7)` — la base concave du gabarit fourni par l'utilisateur.
-- `[ ]` B1.3 L'etiquette « nom · distance » : posee du COTE INTERIEUR de la fleche (sinon
-  elle sort de la toile), encre de lisibilite depuis `canvasInk`, jamais un litteral.
+  `(-0,75, 0,7)` — la base concave du gabarit fourni par l'utilisateur. `save`/`restore`
+  encadrent le geste (meme regle que `drawRotatedSprite`).
+- `[x]` B1.3 L'etiquette « nom · distance » : posee du COTE INTERIEUR de la fleche
+  (`offscreenLabelAnchor`, a l'oppose de `angle` par `LABEL_GAP_PX * k`), encre de lisibilite
+  passee par l'appelant (meme convention que `replayLabels.ts` — jamais `readInk` appele
+  d'ici, jamais un litteral). Le texte lui-meme (« nom · distance ») est compose par
+  l'APPELANT (B2) : ce module ne recoit qu'une chaine deja faite — l'unite de distance (B4.3)
+  n'a donc pas a etre tranchee ici.
 
-**Gate B1** : `make test-web` · `make check-types`.
+**Gate B1 passe** (2026-09-10) : `npx vitest run src/features/match-replay/layers/offscreenChevron.test.ts`
+9/9 verts · `npx vitest run src/features/match-replay/layers` 50 fichiers / 652 tests verts ·
+`npx tsc -b --force` (purge `node_modules/.tmp` prealable) exit 0.
 
 ### Phase B2 — cablage des marqueurs joueurs
 
