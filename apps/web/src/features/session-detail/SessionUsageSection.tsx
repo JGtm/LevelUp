@@ -193,6 +193,10 @@ function metricGaugeRows(
       key: m.key,
       label: metricLabel(m.key, t),
       shares: m,
+      // E4.3 : les trois issues et les deux repères de taux, UNIQUEMENT portés par
+      // les grandeurs "equipment_<famille>" (contrat étendu en E3) — `undefined`
+      // partout ailleurs, jamais posé à zéro (buildGaugeRow ignore un `outcomes` nul).
+      outcomes: m.outcomes,
       teamParityPct: usage.team_parity_pct,
       lobbyParityPct: usage.lobby_parity_pct,
       teamOfLobbyParityPct: teamOfLobby,
