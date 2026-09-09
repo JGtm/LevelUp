@@ -28,6 +28,8 @@ import { useTacticalMapBackgroundUrl } from './queries'
 import {
   cellFromClick,
   planCanvasView,
+  planEmptyReason,
+  planEmptyText,
   sourceForQuestion,
   statusMessages,
   TACTICAL_CELL_FLOOR,
@@ -43,6 +45,10 @@ export interface TacticalPlanCardProps {
   grid: TacticalGrid | null
   bornes: BornesMonde
   pasM: number
+  /** Les deux dénominateurs publiés par la lecture — ils DISENT pourquoi un plan est vide
+   *  (périmètre vide, aucune mesure, ou densité insuffisante). */
+  matchsFiltres: number
+  matchsRetenus: number
   matchsEnAttente: number
   matchsNonCuisables: number
   onCellSelect: (col: number, row: number) => void
@@ -56,6 +62,8 @@ export function TacticalPlanCard({
   grid,
   bornes,
   pasM,
+  matchsFiltres,
+  matchsRetenus,
   matchsEnAttente,
   matchsNonCuisables,
   onCellSelect,
@@ -110,7 +118,10 @@ export function TacticalPlanCard({
   const messages = statusMessages(t, matchsEnAttente, matchsNonCuisables)
   const unite = unitForQuestion(t, question)
   const source = sourceForQuestion(t, question)
-  const aucuneCellule = !grid || grid.filled === 0
+  // POURQUOI le plan est vide, pas seulement QU'IL l'est : les trois causes n'appellent
+  // pas la même action de l'utilisateur (cf. `planEmptyReason`).
+  const raisonVide = planEmptyReason(grid?.filled ?? 0, matchsRetenus, matchsFiltres)
+  const aucuneCellule = raisonVide !== null
 
   return (
     <SectionCard
@@ -137,8 +148,8 @@ export function TacticalPlanCard({
             ))}
           </div>
         )}
-        {aucuneCellule ? (
-          <EmptyStateNotice title={t.planEmptyTitle} description={t.planEmptyDescription} />
+        {raisonVide ? (
+          <EmptyStateNotice {...planEmptyText(t, raisonVide, matchsRetenus, pasM)} />
         ) : (
           <div
             className="relative w-full overflow-hidden rounded-md bg-muted"

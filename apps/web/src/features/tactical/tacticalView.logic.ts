@@ -62,6 +62,68 @@ export function statusMessages(
   return messages
 }
 
+/**
+ * Les trois causes d'un plan vide. `null` = le plan n'est pas vide.
+ *
+ * ELLES NE SE DISENT PAS PAREIL, et c'est tout l'objet de cette distinction (point 21 des
+ * retours utilisateur, lot 3.2) :
+ *
+ *	aucun-match     le FILTRE ne retient aucun match sur cette carte. Rien n'a été mesuré
+ *	                parce que rien n'a été joué dans ce périmètre.
+ *	aucune-mesure   des matchs, mais aucun mesurable — film jamais décodé, journal des
+ *	                morts illisible. C'est le message historique, et il reste vrai ici.
+ *	densite         des matchs MESURÉS, mais trop dispersés : aucune zone n'atteint le
+ *	                plancher de 3 matchs distincts, même à la grille la plus grossière.
+ *
+ * LE DÉFAUT CORRIGÉ : le troisième cas affichait le message du deuxième. Sur Illusion,
+ * 38 matchs étaient retenus ET mesurés, et la page répondait « pas assez de matchs
+ * mesurés » — un message qui envoie élargir un filtre déjà large, pour un problème qui
+ * n'est pas là.
+ */
+export type TacticalPlanEmptyReason = 'aucun-match' | 'aucune-mesure' | 'densite'
+
+/**
+ * planEmptyReason — pourquoi le plan est vide, ou `null` s'il ne l'est pas.
+ *
+ * La cause se lit sur les DEUX dénominateurs déjà publiés par le contrat
+ * (`matchs_filtres`, `matchs_retenus`) et sur le nombre de cellules peintes : aucun champ
+ * supplémentaire n'est nécessaire, et aucune règle n'est recalculée côté client — le
+ * serveur ne publie que les cellules déjà au-dessus du plancher.
+ */
+export function planEmptyReason(
+  cellulesPeintes: number,
+  matchsRetenus: number,
+  matchsFiltres: number,
+): TacticalPlanEmptyReason | null {
+  if (cellulesPeintes > 0) return null
+  if (!(matchsFiltres > 0)) return 'aucun-match'
+  if (!(matchsRetenus > 0)) return 'aucune-mesure'
+  return 'densite'
+}
+
+/** planEmptyText — le titre et la description à afficher pour une cause donnée. */
+export function planEmptyText(
+  t: TacticalText,
+  raison: TacticalPlanEmptyReason,
+  matchsRetenus: number,
+  pasM: number,
+): { title: string; description: string } {
+  switch (raison) {
+    case 'aucun-match':
+      return { title: t.planEmptyNoMatchTitle, description: t.planEmptyNoMatchDescription }
+    case 'aucune-mesure':
+      return { title: t.planEmptyTitle, description: t.planEmptyDescription }
+    default:
+      return {
+        title: t.planEmptyDensityTitle,
+        // LE PAS CITÉ EST CELUI QUE LA LECTURE A RETENU : quand aucune densité ne suffit,
+        // c'est le plus grossier essayé, et le dire évite qu'on croie le plan calculé
+        // à 0,5 m.
+        description: t.planEmptyDensityDescription(matchsRetenus, TACTICAL_CELL_FLOOR, pasM),
+      }
+  }
+}
+
 /** ratioSafe — une proportion 0..1, jamais une division par zéro. */
 export function ratioSafe(numerateur: number, denominateur: number): number {
   if (!(denominateur > 0)) return 0
