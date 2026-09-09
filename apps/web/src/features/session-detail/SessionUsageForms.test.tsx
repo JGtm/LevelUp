@@ -13,25 +13,30 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
+import type { SessionUsageOutcomes } from '@/lib/api/types'
+
 import { UsageGaugeGrid } from './SessionUsageForms'
 import { USAGE_TEXT } from './usageI18n'
 import { buildGaugeRow } from './usageLogic'
 
 const t = USAGE_TEXT.fr
 
-function rows() {
+const baseShares = {
+  player_total: 9,
+  team_total: 20,
+  lobby_total: 43,
+  team_share_of_lobby_pct: 45.6,
+  player_share_of_team_pct: 20.5,
+  player_share_of_lobby_pct: 9.3,
+}
+
+function rows(outcomes?: SessionUsageOutcomes) {
   return [
     buildGaugeRow({
       key: 'camo',
       label: 'Camouflage',
-      shares: {
-        player_total: 9,
-        team_total: 20,
-        lobby_total: 43,
-        team_share_of_lobby_pct: 45.6,
-        player_share_of_team_pct: 20.5,
-        player_share_of_lobby_pct: 9.3,
-      },
+      shares: baseShares,
+      outcomes,
       teamParityPct: 25,
       lobbyParityPct: 12.5,
       teamOfLobbyParityPct: 50,
@@ -68,5 +73,74 @@ describe('UsageGaugeGrid — le compte brut vit dans l infobulle (D2)', () => {
     expect(screen.queryByText(/9 sur 20/)).not.toBeInTheDocument()
     const rail = screen.getByRole('img', { name: /Camouflage/ })
     expect(rail).toHaveAttribute('aria-label', expect.stringContaining('9 sur 20'))
+  })
+})
+
+describe('UsageGauge — E4.1/E4.2 : la pile des trois issues et les deux repères DANS la tranche', () => {
+  const outcomes: SessionUsageOutcomes = {
+    used: 6,
+    dropped: 3,
+    kept: 1,
+    taken: 11,
+    teammates_used_rate_pct: 62,
+    opponents_used_rate_pct: 40,
+  }
+
+  it('remplit la tranche de trois segments, dans l ordre utilisé -> lâché -> gardé (P1)', () => {
+    const { container } = render(<UsageGaugeGrid rows={rows(outcomes)} t={t} />)
+    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    const segments = rail.querySelectorAll('[data-outcome-key]')
+    expect(Array.from(segments).map((el) => el.getAttribute('data-outcome-key'))).toEqual([
+      'used',
+      'dropped',
+      'kept',
+    ])
+    // Zéro fond uni ALLY_INK quand une pile existe : la tranche n'est QUE des segments.
+    expect(container.querySelector('[data-outcome-fill]')).not.toBeInTheDocument()
+  })
+
+  it('une famille sans troisième issue (gardé = 0) rend deux segments', () => {
+    const twoOutcomes: SessionUsageOutcomes = { used: 6, dropped: 4, kept: 0, taken: 10 }
+    render(<UsageGaugeGrid rows={rows(twoOutcomes)} t={t} />)
+    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    const segments = rail.querySelectorAll('[data-outcome-key]')
+    expect(segments).toHaveLength(2)
+  })
+
+  it('sans outcomes (grandeur hors bilan) : rendu inchangé, un seul aplat, aucun segment', () => {
+    render(<UsageGaugeGrid rows={rows()} t={t} />)
+    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    expect(rail.querySelectorAll('[data-outcome-key]')).toHaveLength(0)
+    expect(rail.querySelector('[data-outcome-fill]')).toBeInTheDocument()
+  })
+
+  it('pose les deux repères de taux DANS la tranche, sans chiffre affiché (E4.2)', () => {
+    render(<UsageGaugeGrid rows={rows(outcomes)} t={t} />)
+    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    const teammatesRef = rail.querySelector('[data-outcome-ref="teammates"]')
+    const opponentsRef = rail.querySelector('[data-outcome-ref="opponents"]')
+    expect(teammatesRef).toBeInTheDocument()
+    expect(opponentsRef).toBeInTheDocument()
+    expect(teammatesRef).toHaveStyle({ left: '62%' })
+    expect(opponentsRef).toHaveStyle({ left: '40%' })
+    // Aucun chiffre imprimé dans le rail : le texte du taux ne vit que dans l infobulle.
+    expect(rail.textContent).toBe('')
+  })
+
+  it('repères absents (scope à camp inconnu) : aucune marque, jamais posée à 0 %', () => {
+    const noRef: SessionUsageOutcomes = { used: 6, dropped: 3, kept: 1, taken: 11 }
+    render(<UsageGaugeGrid rows={rows(noRef)} t={t} />)
+    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    expect(rail.querySelector('[data-outcome-ref="teammates"]')).not.toBeInTheDocument()
+    expect(rail.querySelector('[data-outcome-ref="opponents"]')).not.toBeInTheDocument()
+  })
+
+  it('le compte brut des trois issues reste en infobulle (E4.6)', () => {
+    render(<UsageGaugeGrid rows={rows(outcomes)} t={t} />)
+    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    const label = rail.getAttribute('aria-label') ?? ''
+    expect(label).toContain('utilisé 6')
+    expect(label).toContain('gardé 1')
+    expect(label).toContain('lâché 3')
   })
 })

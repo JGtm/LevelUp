@@ -21,6 +21,38 @@ exemption.
 **Conclusion / prochaine etape.** E4 (Sessions, Sonnet) lance dans le worktree du chantier
 avance en avance rapide sur `feat/v75`. Puis E5/E6, artefact d'investigation Theater, revue
 double de la vague (persist touche), `make gate-push`, une CI.
+## [2026-09-09] Equipement gachis, etape E4 — Sessions : la barre combinee des trois issues — Complete
+
+**Decision technique principale.** `UsageGauge` (`SessionUsageForms.tsx`) devient une pile a
+trois segments (utilise/lache/garde, ordre P1) qui remplit la TRANCHE (longueur = part,
+remplissage = issue, P6), plus deux reperes de taux SANS chiffre affiche, positionnes en
+pourcentage DE LA TRANCHE (meme denominateur que les segments, aucun calcul compose). Le
+projete (`usageLogic.ts`) fait porter ces issues UNIQUEMENT aux deux jauges de part DU JOUEUR
+(player-of-team, player-of-lobby), jamais a team-of-lobby (grandeur d'equipe, sans porteur
+individuel). Decision structurante : `equipmentMetrics()` supplante desormais
+`deployed_<famille>`/`camo_episodes`/`overshield_episodes` par leur `equipment_<famille>`
+homonyme quand les deux coexistent (memes cadence et bande de regularite, une seule liste
+`metrics`, P3) ; `deployed_*` N'A PAS ete retire du contrat Go sur instruction explicite de la
+tache (amende le plan §6, qui disait le retirer si E4 le remplacait) — reste un chemin de
+repli pour une famille sans bilan (grappin).
+
+**Resultats observes.** TDD : 10 tests rouges sur `usageLogic.test.ts` (segments/reperes/
+supplantation absents), 4 rouges sur `SessionUsageForms.test.tsx` (marquage DOM absent) —
+tous verts apres implementation, sans modification d'assertion pour les faire passer. Gate :
+`npx vitest run src/features/session-detail` (19 fichiers, 146 tests, vert, +14 tests neufs) ;
+`npx tsc -b --force` silencieux ; `npx eslint src/features/session-detail --max-warnings=0`
+silencieux ; greps couleur (§3.4) : zero ligne nouvelle dans les fichiers touches (29/25
+correspondances globales, toutes prouvees preexistantes hors perimetre). Bug preexistant
+decouvert et consigne (non corrige, hors perimetre) : `deployedFamilyLabel` classe sur des
+alias de rendu (`rift`/`shroud`/`seeker`/`field`) qui ne matchent JAMAIS les vraies cles de
+`deployed_<famille>` (`translocator_beacon`/`shroud_screen`/`threat_seeker`/`repair_field`).
+
+**Conclusion / prochaine etape.** Six items `[x]`, plan et thought_log a jour, commit sur
+`feat/equipement-gachis`. Consommateurs web restants de `deployed_*` : uniquement des chemins
+de classification/repli (`metricKind`, `METRIC_RANK`, `metricLabel`, `USAGE_METRIC_TOKENS`,
+`deployedFamilyLabel`) — plus aucun affichage effectif sur le parc mesure. Prochaine etape :
+E5 (bloc partage Solo/Synthese), qui tranchera avec cette vue d'ensemble si `deployed_*` sort
+du contrat Go. Pas de push, pas de fusion.
 
 ---
 
