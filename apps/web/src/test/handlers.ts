@@ -238,6 +238,15 @@ export const synthesisFixture = {
       { mode_name: 'CTF', match_count: 2, win_rate: 0.5 },
     ],
   },
+  // PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E5.13) : bloc « servi ou gâché », variante
+  // comptes — un fixture minimal, une famille, pour un smoke test de bout en bout.
+  equipment_usage: {
+    available: true,
+    matches_measured: 5,
+    matches_total: 5,
+    families: [{ family_key: 'wall', taken: 12, used: 8, kept: 2, dropped: 2 }],
+    players: [{ xuid: 'test-player-xuid', taken: 12, used: 8, kept: 2, dropped: 2, pad_pickups: 3 }],
+  },
 }
 
 const mediaFixture = {
