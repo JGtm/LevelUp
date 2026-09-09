@@ -119,7 +119,8 @@ const EQUIPMENT_CHANGE_FAMILY_STEMS: Readonly<Record<string, readonly string[]>>
  *  - le rang est HORS BILAN (label connu mais hors `EQUIPMENT_CHANGE_FAMILY_STEMS` : grappin,
  *    propulseur, répulseur) — silencieux, une exclusion PRODUIT, pas une mesure manquante ;
  *  - le rang n'a PAS DE LABEL DU TOUT (`abilityLabels?.[String(r)]` absent) — c'est la RÉSERVE
- *    « objets pris sans famille connue » (P13 amendée, décision utilisateur 2026-09-09),
+ *    « objets pris sans famille connue » — COMPTÉE mais JAMAIS AFFICHÉE (décision utilisateur
+ *    2026-09-09 : identification par relevé Theater guidé, hors interface),
  *    distinguée par l'appelant via `labels?.[String(r)] == null`, jamais devinée ici.
  */
 export function equipmentChangeFamilyOf(

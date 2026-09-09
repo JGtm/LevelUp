@@ -349,8 +349,10 @@ function unknownOriginPlacements(cov: EquipmentUsage['coverage']): number {
  * LES DEUX RÉSERVES DE COUVERTURE (P13, E2.6) FERMENT LA LISTE, JUSTE AVANT `notMeasured` : la
  * réserve NE SE CACHE PAS (amendement du 2026-09-09 à la sortie de E0 — décision utilisateur,
  * cf. journal du plan). `unknownOriginPlacements` existait déjà en germe dans `coverage` ;
- * `unnamedTaken` est NOUVEAU (E2, `equipmentUsageLogic.ts`) : les objets pris dont le rang n'a
- * pas de famille connue, jamais rattachés à un joueur (même raison que les socles de bonus).
+ * `unnamedTaken` (E2, `equipmentUsageLogic.ts`) compte les objets pris dont le rang n'a pas de
+ * famille connue ; il N'EST PAS RENDU (décision utilisateur 2026-09-09 : ces objets ne
+ * s'affichent pas dans l'interface, ils seront identifiés par un relevé Theater guidé). Le
+ * compteur reste publié par la logique pour l'outillage d'investigation.
  */
 function UsageFootnotes({ usage, t }: { usage: EquipmentUsage; t: ReplayText }) {
   const u = t.equipmentUsage
@@ -381,7 +383,6 @@ function UsageFootnotes({ usage, t }: { usage: EquipmentUsage; t: ReplayText }) 
       )}
       {orphelins > 0 && <p>{u.unattributedFmt(orphelins)}</p>}
       {posesInconnues > 0 && <p>{u.coverageUnknownOriginFmt(posesInconnues)}</p>}
-      {usage.unnamedTaken > 0 && <p>{u.coverageUnnamedTakenFmt(usage.unnamedTaken)}</p>}
       <p>{u.notMeasured}</p>
     </div>
   )

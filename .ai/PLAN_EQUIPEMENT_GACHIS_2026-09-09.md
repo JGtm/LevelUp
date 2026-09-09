@@ -630,3 +630,9 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
     vide sur les cinq) : dette de lint antérieure à ce chantier, non traitée (règle « zéro
     fix opportuniste hors périmètre »). Zéro nouveau problème lint dans les fichiers touchés
     par E1/E2.
+- **2026-09-09 (superviseur, apres E2)** — Amendement utilisateur : les objets pris dont le rang n'a
+  pas de famille connue NE S'AFFICHENT PAS dans l'interface (ligne de reserve et cles i18n
+  retirees ; `unnamedTaken` reste calcule par la logique pour l'outillage). Leur identification
+  passera par un artefact interactif d'investigation Theater (match, date/heure, carte, timestamp,
+  joueurs) produit en fin de chantier — cf. registre et plan master 2.6. Test inverse : aucune
+  mention « sans famille connue » ne doit etre rendue.

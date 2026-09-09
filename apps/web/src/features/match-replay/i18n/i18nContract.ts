@@ -129,7 +129,6 @@ export interface EquipmentUsageText {
    * réserve se montre au lieu de disqualifier la troisième).
    */
   coverageUnknownOriginFmt: (count: number) => string
-  coverageUnnamedTakenFmt: (count: number) => string
   groupGrenades: string
   groupGrenadesHint: string
   /** Repli quand le catalogue du titre ne nomme pas ce rang de grenade (le rang reste vrai). */
