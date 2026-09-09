@@ -104124,3 +104124,21 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   dur.
 - Prochaine etape : phase B4 (parite export, revue navigateur a statuer superviseur, i18n
   distance deja resolue en B2).
+
+## [2026-09-10] Escouade hors cadre — Phase B4 parite export et finition (Complete, B4.2 superviseur)
+- B4.1 verifie SUR PIECE (pas suppose) : `ReplayCanvas.tsx` (`redraw` = `drawRef.current`) ->
+  `useReplayCapture.ts:304-313` (relais sans copie) -> `useReplayExport.ts` (`paintExportFrame`
+  appelle `o.redraw()` par image de clip). L'export invoque donc litteralement le meme `draw()`
+  que la lecture normale (`composeScene(sceneLayers(buildScene(...)))`) -- parite structurelle,
+  aucun code a ecrire.
+- B4.3 deja resolu en B2 (`offscreenMarkerFmt`) : rien a ajouter, item non differe malgre
+  l'ordre des phases -- l'action etait executable des B2 et l'a ete (regle plan-execution n°3).
+- B4.2 (revue navigateur zoom 2x/3x) : hors de portee de cet executant (pas d'acces
+  navigateur dans ce lot delegue) -- statue [~] superviseur, procedure precise donnee dans le
+  rapport de cloture.
+- Resultats observes (reprise des gates B3, aucun fichier de production touche en B4) :
+  2622/2622 tests match-replay verts, tsc -b --force exit 0.
+- §5 (revues R1-R4) et §6 (gates transverses go-api) : HORS PERIMETRE de cet executant par
+  consigne explicite (revue adversariale une fois par vague, par le superviseur) -- non
+  statues ici, a traiter par le superviseur en cloture de vague.
+- Chantier B (B0-B4) termine cote executant. Prochaine etape : revue superviseur (B4.2, R1-R4).
