@@ -31,6 +31,8 @@ import { SquadIsolementNuageCard } from './SquadIsolementNuageCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
+import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
+import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 import { SquadFragSection } from './SquadFragSection'
 import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { getSquadPlayerColors } from './colors'
@@ -256,6 +258,14 @@ export function SquadSynergiesPage() {
           t={t.medals}
         />
       </section>
+      {/* Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09,
+          E6.2-E6.4) — variante comptes (P9), une ligne par coéquipier suivi. Aucune
+          requête neuve : lit `pageData.equipment_usage` de la même réponse déjà
+          chargée par `useTeammates`. La section se retire d'elle-même tant que ce champ
+          est absent — cf. `lib/api/types.ts` (TeammatesPageResponse.equipment_usage) : le
+          Go ne l'y publie pas encore (seul `SquadPageV2Response`, /pages/squad/v2, le
+          porte aujourd'hui, endpoint que cette page ne consomme pas). */}
+      <EquipmentUsageSection usage={pageData?.equipment_usage} mode="squad" t={USAGE_TEXT[locale]} locale={locale} />
     </div>
   )
 }

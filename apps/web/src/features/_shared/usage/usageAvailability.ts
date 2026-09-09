@@ -5,10 +5,21 @@
  *
  * Extrait de `session-detail/usageLogic.ts` le 2026-09-09 (étape E5.1bis, scission de taille —
  * CLAUDE.md n°5) au moment du déménagement du bloc vers `features/_shared/usage/` (étape E5.1).
+ *
+ * ÉLARGI le 2026-09-09 (E5.8, PLAN_EQUIPEMENT_GACHIS_2026-09-09) : `SessionUsageBlock`
+ * (page Sessions) et `EquipmentUsageBlock` (Synthèse/Escouade) portent la MÊME forme
+ * `available` / `unavailable_reason` / `matches_measured` — la même règle des deux
+ * portes s'applique aux deux, donc le même helper, typé structurellement plutôt que
+ * dupliqué (CLAUDE.md n°6).
  */
-import type { SessionUsageBlock } from '@/lib/api/types'
-
 import type { UsageText } from './usageI18n'
+
+/** Le sous-ensemble commun à `SessionUsageBlock` et `EquipmentUsageBlock`. */
+export interface UsageAvailabilityLike {
+  available: boolean
+  unavailable_reason?: string
+  matches_measured: number
+}
 
 export type UsageAvailability =
   | { kind: 'ok' }
@@ -30,7 +41,7 @@ export type UsageAvailability =
  *     des films, restent affichables par l'appelant).
  */
 export function usageAvailability(
-  usage: SessionUsageBlock | null | undefined,
+  usage: UsageAvailabilityLike | null | undefined,
   t: UsageText,
 ): UsageAvailability {
   if (usage == null) return { kind: 'hidden' }

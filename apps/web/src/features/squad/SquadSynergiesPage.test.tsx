@@ -155,3 +155,59 @@ describe('SquadSynergiesPage — section Assistances', () => {
     ).toBeNull()
   })
 })
+
+// PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E6.2-E6.4) : le bloc « servi ou gâché », variante
+// comptes, une ligne par coéquipier suivi. AUCUNE requête neuve : il lit
+// `pageData.equipment_usage` de la même réponse déjà chargée par `useTeammates`.
+//
+// ÉCART DE CONTRAT CONSIGNÉ (cf. `lib/api/types.ts`, TeammatesPageResponse.equipment_usage) :
+// le Go publie aujourd'hui ce bloc sur `SquadPageV2Response` (endpoint `/pages/squad/v2`,
+// que cette page ne fetch pas), pas encore sur `TeammatesPageResponse`
+// (`POST /pages/teammates`, le SEUL endpoint que `SquadLayout` appelle en production). Le
+// test « bloc absent » ci-dessous documente donc le comportement RÉEL de production
+// aujourd'hui (self-hiding, honnête) ; le test « bloc présent » prouve que le câblage
+// s'activera sans changement de code web dès que le Go ajoutera ce champ.
+describe('SquadSynergiesPage — bloc équipement (E6.2-E6.4)', () => {
+  function pageWithEquipmentUsage(): TeammatesPageResponse {
+    return {
+      options: [],
+      teammates: [],
+      total_matches: 42,
+      session_labels: { solo: [], squad: [] },
+      friends_count: 0,
+      tracked_players: [{ xuid: 'f1', gamertag: 'Madina' }],
+      equipment_usage: {
+        available: true,
+        matches_measured: 42,
+        matches_total: 42,
+        tracked_players: [{ xuid: 'f1', gamertag: 'Madina' }],
+        players: [
+          { xuid: 'me', taken: 88, used: 55, kept: 9, dropped: 24, pad_pickups: 41 },
+          { xuid: 'f1', taken: 74, used: 60, kept: 4, dropped: 10, pad_pickups: 31 },
+        ],
+      },
+    } as TeammatesPageResponse
+  }
+
+  it('bloc present : une ligne par coequipier suivi (jamais par famille)', () => {
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+      pageData: pageWithEquipmentUsage(),
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    expect(screen.getByText("Usages d'équipement")).toBeInTheDocument()
+    expect(screen.getAllByText('Madina').length).toBeGreaterThan(0)
+    expect(screen.getByText('88 pris')).toBeInTheDocument()
+  })
+
+  it('bloc absent (etat reel de production aujourd hui) : la section s auto-masque', () => {
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+      pageData: pageWithAssistPairs(),
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    expect(screen.queryByText("Usages d'équipement")).toBeNull()
+  })
+})
