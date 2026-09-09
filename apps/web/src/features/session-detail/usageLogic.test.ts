@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { SessionUsageBlock, SessionUsageMetric } from '@/lib/api/types'
+import type { SessionUsageBlock, SessionUsageMetric, SessionUsageOutcomes } from '@/lib/api/types'
 
 import { USAGE_TEXT } from './usageI18n'
 import { buildCadenceGrid, buildObjectiveFamilyGrid, buildSquadRoleGrid } from './usageGrids'
@@ -20,6 +20,7 @@ import {
   formatUsagePct,
   formatUsageRate,
   metricKind,
+  metricLabel,
   teamOfLobbyParityPct,
   usageAvailability,
 } from './usageLogic'
@@ -77,18 +78,130 @@ describe('classement et tri des grandeurs', () => {
     expect(metricKind('mystere')).toBe('other')
   })
 
-  it('exclut pad_pickups du bloc équipement et ordonne canoniquement', () => {
+  it('exclut pad_pickups ET dropped_objects du bloc équipement (E4.5 : une mort devient un segment, plus une ligne)', () => {
     const sorted = equipmentMetrics([
       metric({ key: 'pad_pickups' }),
       metric({ key: 'dropped_objects' }),
       metric({ key: 'grapple_pulls' }),
       metric({ key: 'camo_episodes' }),
     ])
-    expect(sorted.map((m) => m.key)).toEqual([
-      'camo_episodes',
-      'grapple_pulls',
-      'dropped_objects',
+    expect(sorted.map((m) => m.key)).toEqual(['camo_episodes', 'grapple_pulls'])
+  })
+
+  it('classe une clé equipment_<famille>, ensemble ouvert', () => {
+    expect(metricKind('equipment_wall')).toBe('equipment')
+    expect(metricKind('equipment_translocator_beacon')).toBe('equipment')
+  })
+
+  it("equipment_<famille> REMPLACE sa grandeur soeur (deployed_/camo_/overshield_) quand les deux coexistent — une seule ligne par famille (E4.3)", () => {
+    const sorted = equipmentMetrics([
+      metric({ key: 'deployed_wall' }),
+      metric({ key: 'equipment_wall' }),
+      metric({ key: 'camo_episodes' }),
+      metric({ key: 'equipment_powerup_camo' }),
+      metric({ key: 'overshield_episodes' }), // pas d equipment_powerup_overshield : reste seule
+      metric({ key: 'grapple_pulls' }), // pas d equipment_grapple : reste seule
     ])
+    expect(sorted.map((m) => m.key).sort()).toEqual(
+      ['equipment_wall', 'equipment_powerup_camo', 'overshield_episodes', 'grapple_pulls'].sort(),
+    )
+  })
+
+  it('libellé d une grandeur equipment_<famille> : familles connues nommées, inconnue garde sa clé', () => {
+    expect(metricLabel('equipment_wall', t)).toBe(t.metricWall)
+    expect(metricLabel('equipment_powerup_camo', t)).toBe(t.metricCamo)
+    expect(metricLabel('equipment_powerup_overshield', t)).toBe(t.metricOvershield)
+    expect(metricLabel('equipment_sensor', t)).toBe(t.equipSensor)
+    expect(metricLabel('equipment_translocator_beacon', t)).toBe(t.equipTranslocator)
+    expect(metricLabel('equipment_shroud_screen', t)).toBe(t.equipShroud)
+    expect(metricLabel('equipment_threat_seeker', t)).toBe(t.equipSeeker)
+    expect(metricLabel('equipment_repair_field', t)).toBe(t.equipField)
+    expect(metricLabel('equipment_mystere', t)).toBe(t.metricDeployedFmt('mystere'))
+  })
+})
+
+describe('buildGaugeRow — E4.3 : la pile des trois issues et les deux repères de taux (P6, P7)', () => {
+  const shares = {
+    player_total: 9,
+    team_total: 20,
+    lobby_total: 43,
+    team_share_of_lobby_pct: 45.6,
+    player_share_of_team_pct: 20.5,
+    player_share_of_lobby_pct: 9.3,
+  }
+
+  function rowWithOutcomes(outcomes: SessionUsageOutcomes) {
+    return buildGaugeRow({
+      key: 'equipment_wall',
+      label: 'Mur de protection',
+      shares,
+      outcomes,
+      teamParityPct: 25,
+      lobbyParityPct: 12.5,
+      teamOfLobbyParityPct: 50,
+      t,
+      locale: 'fr',
+    })
+  }
+
+  it('la pile respecte l ordre utilise -> lache -> garde (P1, E4.6), fractions de LA TRANCHE', () => {
+    const row = rowWithOutcomes({ used: 6, dropped: 3, kept: 1, taken: 11 })
+    const [, joueurEquipe, joueurLobby] = row.gauges
+    expect(joueurEquipe.segments?.map((s) => s.key)).toEqual(['used', 'dropped', 'kept'])
+    expect(joueurEquipe.segments?.map((s) => s.fraction)).toEqual([0.6, 0.3, 0.1])
+    // La jauge « mon equipe dans le lobby » ne porte AUCUN segment : Outcomes est une
+    // grandeur du JOUEUR, pas de l equipe agregee.
+    expect(row.gauges[0].segments).toBeUndefined()
+    // La 3e jauge (joueur/lobby) porte les MEMES segments (meme joueur, meme partition).
+    expect(joueurLobby.segments?.map((s) => s.key)).toEqual(['used', 'dropped', 'kept'])
+  })
+
+  it('une famille sans troisieme issue (ici : jamais garde) rend DEUX segments', () => {
+    const row = rowWithOutcomes({ used: 6, dropped: 4, kept: 0, taken: 10 })
+    const [, joueurEquipe] = row.gauges
+    expect(joueurEquipe.segments?.map((s) => s.key)).toEqual(['used', 'dropped'])
+  })
+
+  it('outcomes absent : segments absents, rendu inchange (E1/E4.1)', () => {
+    const row = buildGaugeRow({
+      key: 'grapple_pulls',
+      label: 'Grappin',
+      shares,
+      teamParityPct: 25,
+      lobbyParityPct: 12.5,
+      teamOfLobbyParityPct: 50,
+      t,
+      locale: 'fr',
+    })
+    expect(row.gauges[1].segments).toBeUndefined()
+    expect(row.gauges[1].teammatesRatePct).toBeNull()
+    expect(row.gauges[1].opponentsRatePct).toBeNull()
+  })
+
+  it('les deux repere de taux (P7, exclusion du joueur) se projettent tels quels, nil <> 0', () => {
+    const row = rowWithOutcomes({
+      used: 6,
+      dropped: 3,
+      kept: 1,
+      taken: 11,
+      teammates_used_rate_pct: 62,
+      opponents_used_rate_pct: 40,
+    })
+    expect(row.gauges[1].teammatesRatePct).toBe(62)
+    expect(row.gauges[1].opponentsRatePct).toBe(40)
+  })
+
+  it('reperes absents (scope FFA, camp inconnu) : null, jamais 0 %', () => {
+    const row = rowWithOutcomes({ used: 6, dropped: 3, kept: 1, taken: 11 })
+    expect(row.gauges[1].teammatesRatePct).toBeNull()
+    expect(row.gauges[1].opponentsRatePct).toBeNull()
+  })
+
+  it('le compte brut (utilise/garde/lache) reste dans l infobulle (E4.6)', () => {
+    const row = rowWithOutcomes({ used: 6, dropped: 3, kept: 1, taken: 11 })
+    expect(row.gauges[1].tooltip).toContain('6')
+    expect(row.gauges[1].tooltip).toContain('3')
+    expect(row.gauges[1].tooltip).toContain('1')
   })
 })
 
