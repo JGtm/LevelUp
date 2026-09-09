@@ -202,3 +202,62 @@ func TestAttachSessionUsage_DrawerFermeNeSertAucunBlocCompare(t *testing.T) {
 		t.Errorf("CompareUsage = %+v, attendu nil hors comparaison", resp.CompareUsage)
 	}
 }
+
+// TestAttachSessionUsage_LesTroisIssuesRemontentAuContrat — étape E3 : les quatre
+// ventilations lues par le repo (taken/spent/kept/dropped) deviennent une grandeur
+// "equipment_<famille>" avec son remplissage et ses deux taux de référence. Le
+// service ne calcule rien lui-même : ce test vérifie que rien ne se perd EN ROUTE
+// entre la ligne de base et le bloc servi.
+func TestAttachSessionUsage_LesTroisIssuesRemontentAuContrat(t *testing.T) {
+	repo := usageTestRepoMock()
+	repo.players = []sessionusage.PlayerRow{
+		{
+			MatchID: "m1", XUID: "P",
+			DeployedByFamily: map[string]int{"wall": 1},
+			TakenByFamily:    map[string]int{"wall": 3},
+			KeptByFamily:     map[string]int{"wall": 1},
+			DroppedByFamily:  map[string]int{"wall": 1},
+		},
+		// L'allié utilise tout ce qu'il prend : la référence « reste de mon
+		// équipe » vaut 100 %, et elle ne me contient pas (décision P7).
+		{
+			MatchID: "m1", XUID: "A",
+			DeployedByFamily: map[string]int{"wall": 2},
+			TakenByFamily:    map[string]int{"wall": 2},
+		},
+		// L'adversaire ne fait que lâcher : « eux » vaut 0 %.
+		{
+			MatchID: "m1", XUID: "E1",
+			TakenByFamily:   map[string]int{"wall": 2},
+			DroppedByFamily: map[string]int{"wall": 2},
+		},
+	}
+	svc := NewSessionPageService(nil).WithSessionUsage(repo, "P", nil, "")
+	var resp domain.SessionPageResponse
+	svc.attachSessionUsage(context.Background(), &resp, usageTestMatches(), nil, domain.MatchContextSolo, "fr")
+	if resp.Usage == nil || !resp.Usage.Available {
+		t.Fatalf("Usage = %+v, attendu bloc disponible", resp.Usage)
+	}
+	var m *domain.SessionUsageMetric
+	for i := range resp.Usage.Metrics {
+		if resp.Usage.Metrics[i].Key == sessionusage.MetricEquipmentPrefix+"wall" {
+			m = &resp.Usage.Metrics[i]
+		}
+	}
+	if m == nil {
+		t.Fatal("aucune grandeur equipment_wall dans le bloc servi")
+	}
+	if m.Outcomes == nil {
+		t.Fatal("equipment_wall servie SANS ses issues — le remplissage de la barre est perdu")
+	}
+	o := m.Outcomes
+	if o.Used != 1 || o.Kept != 1 || o.Dropped != 1 || o.Taken != 3 {
+		t.Errorf("issues servies = %+v, attendu 1/1/1 pour 3 prises", o)
+	}
+	if o.TeammatesUsedRatePct == nil || *o.TeammatesUsedRatePct != 100 {
+		t.Errorf("TeammatesUsedRatePct = %v, attendu 100 %%", o.TeammatesUsedRatePct)
+	}
+	if o.OpponentsUsedRatePct == nil || *o.OpponentsUsedRatePct != 0 {
+		t.Errorf("OpponentsUsedRatePct = %v, attendu 0 %%", o.OpponentsUsedRatePct)
+	}
+}
