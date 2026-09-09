@@ -103,6 +103,20 @@ const RING_ALPHA = 0.9
 const RING_ALPHA_DECAY = 0.18
 /** Liseré de lisibilité : la carte va du clair au sombre, un point coloré s'y perd sans lui. */
 const OUTLINE_PAD = 1.0
+/**
+ * PION_VISIBLE_DIAMETER_PX — le diametre REELLEMENT VU d un pion au rez-de-chaussee : le
+ * noyau ET son lisere. Le lisere n est pas un ornement, c est ce qui rend le point lisible
+ * sur un fond qui va du clair au sombre — `markerEdge` le compte deja comme faisant partie
+ * du pion.
+ *
+ * EXPORTEE LE 2026-09-09, et la raison est un defaut MESURE. La regle de taille des
+ * vehicules s ancrait sur le NOYAU SEUL (6,80 px) : la cible « Mongoose = 1,75 pion de
+ * long » se calculait donc contre une ancre plus petite que le pion visible (8,80 px), et
+ * le Mongoose sortait a 7,25 px de large — PLUS ETROIT que le pion dont il est cense faire
+ * 1,75 fois la longueur. D ou le retour utilisateur du 2026-09-09 : « le Ghost est plus
+ * petit que le pion du joueur ».
+ */
+export const PION_VISIBLE_DIAMETER_PX = (CORE_RADIUS + OUTLINE_PAD) * 2
 const OUTLINE_ALPHA = 0.62
 /**
  * LE JOUEUR DE LA PAGE (forme 'ring') — DOUBLE CONTOUR ET HALO depuis le 2026-08-18.
