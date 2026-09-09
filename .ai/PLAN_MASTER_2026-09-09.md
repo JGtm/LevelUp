@@ -254,3 +254,7 @@ de cocher ; fusion dans `feat/v75` seulement avec l'accord de l'utilisateur.
   bloc Escouade est monté mais aveugle : le Go l'a publié sur la mauvaise réponse (squad v2,
   legacy) — vérifié sur pièces (`squad/queries.ts:30`). Lot correctif E6.1bis lancé au lieu de
   laisser une donnée morte et une page vide. Reste ensuite : 2.6 artefact Theater, 2.R.
+- **2026-09-09 (soir, 2.6)** — Artefact d'investigation Theater publié (https://claude.ai/code/artifact/cf36cd85-9517-497d-adf3-e5441ed4c970), douze cas
+  alimentés par les artefacts locaux (rangs, corps hors table, camps) et l'API authentifiée
+  (dates, cartes, modes, camps via le volet navigateur). Les réponses arrivent dans la base de
+  la page : à relire au début de la vague 3 avant de nommer les familles. En vol : E6.1bis.
