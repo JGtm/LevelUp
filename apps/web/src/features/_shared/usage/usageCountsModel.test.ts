@@ -77,7 +77,7 @@ describe('buildCountsGrid — P9 : axe en comptes, aucun trait de parité', () =
       { t, locale: 'fr', unit: 'equipment' },
     )
     const row = grid.rows[0]
-    expect(row.gauge.segments?.map((s) => s.key)).toEqual(['used', 'dropped', 'kept'])
+    expect(row.gauge.segments?.map((s) => s.key)).toEqual(['used', 'kept', 'dropped'])
     expect(row.gauge.teammatesRatePct).toBe(55)
     expect(row.gauge.opponentsRatePct).toBe(40)
     expect(row.gauge.valueText).toBe('20 pris')

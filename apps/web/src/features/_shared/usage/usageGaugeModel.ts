@@ -61,8 +61,10 @@ export interface UsageGaugeModel {
   opponentsRatePct: number | null
 }
 
-/** L'ordre canonique des trois issues (P1, ratifié par le test E4.6). */
-const OUTCOME_ORDER = ['used', 'dropped', 'kept'] as const
+/** L'ordre canonique des trois issues : utilisé → gardé → lâché, la gamme ordinale bon /
+ * neutre / mauvais de la table §3.1 du plan équipement (décision S10 du master plan,
+ * 2026-09-09 : la vue match et ce bloc empilaient dans deux ordres différents). */
+const OUTCOME_ORDER = ['used', 'kept', 'dropped'] as const
 export type UsageOutcomeKind = (typeof OUTCOME_ORDER)[number]
 
 /** Le jeton d'une issue — table normative §3.1 du plan. */
@@ -92,7 +94,7 @@ export interface UsageGaugeOutcomeSegment {
 }
 
 /**
- * buildOutcomeSegments — la pile utilisé → lâché → gardé (ordre P1/E4.6), UNIQUEMENT
+ * buildOutcomeSegments — la pile utilisé → gardé → lâché (ordre §3.1 / S10), UNIQUEMENT
  * les issues NON NULLES (« une famille sans troisième issue rend deux segments »,
  * E4.6) — un segment à fraction 0 ne se dessine pas. `outcomes` absent, ou dont la
  * somme des trois issues est nulle (aucun objet mesuré) : PAS de pile — le rendu

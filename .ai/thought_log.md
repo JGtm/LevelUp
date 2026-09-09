@@ -1,3 +1,24 @@
+## [2026-09-09] Master plan, vague 2 close — revue double 0 P0 / 0 P1, gate-push vert, S10 (ordre des issues) — Complete
+
+**Decision technique principale.** Deux relecteurs en contexte frais (Go anti-ART/multi-titre/
+donnees ; front/couverture des tests) sur le diff cumule de la vague (`af3ef58b6..feat/v75`) :
+aucun P0 ni P1. Un P2 tranche par la decision S10 : l'ordre canonique des trois issues est
+utilise → garde → lache (gamme ordinale de la table §3.1 du plan equipement), la vue match
+et le bloc partage empilaient dans deux ordres differents parce que l'item E4.6 contredisait
+la table. Un P2 consigne (regex du garde-rail anti-copie contournable par renommage).
+
+**Resultats observes.** `make gate-push` EXIT 0. Corrections : `OUTCOME_ORDER` realigne,
+4 assertions de tests, commentaire du persister (colonne nullable, pas NOT NULL), commentaire
+obsolete de `SquadSynergiesPage` (page et test, doc inversee). Gates rejoues : vitest 3 396
+verts, tsc 0, eslint 0 sur les fichiers touches. Registre de revue :
+`.ai/V7.5/REVUE_VAGUE2_2026-09-09.md`.
+
+**Conclusion / prochaine etape.** Push de `feat/v75` = la CI de la vague 2 (une par vague).
+Puis vague 3 : 3.1 escouade hors cadre, 3.2 grille tactique + canvas + recuisson des 7 bornes,
+3.3 fonds de carte (mesure d'abord). Relire les reponses de l'artefact Theater avant 3.x.
+
+---
+
 ## [2026-09-09] Master plan, lot 2.6 — artefact interactif d'investigation Theater publie — Complete
 
 **Decision technique principale.** Une page HTML publiee (https://claude.ai/code/artifact/cf36cd85-9517-497d-adf3-e5441ed4c970) plutot qu'une liste : douze

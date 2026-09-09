@@ -90,14 +90,14 @@ describe('UsageGauge — E4.1/E4.2 : la pile des trois issues et les deux repèr
     opponents_used_rate_pct: 40,
   }
 
-  it('remplit la tranche de trois segments, dans l ordre utilisé -> lâché -> gardé (P1)', () => {
+  it('remplit la tranche de trois segments, dans l ordre utilisé -> gardé -> lâché (§3.1, S10)', () => {
     const { container } = render(<UsageGaugeGrid rows={rows(outcomes)} t={t} />)
     const rail = screen.getByRole('img', { name: /Camouflage/ })
     const segments = rail.querySelectorAll('[data-outcome-key]')
     expect(Array.from(segments).map((el) => el.getAttribute('data-outcome-key'))).toEqual([
       'used',
-      'dropped',
       'kept',
+      'dropped',
     ])
     // Zéro fond uni ALLY_INK quand une pile existe : la tranche n'est QUE des segments.
     expect(container.querySelector('[data-outcome-fill]')).not.toBeInTheDocument()
