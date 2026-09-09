@@ -178,14 +178,14 @@ func TestViseeLunette(t *testing.T) {
 	t.Logf("FIL — %d instants de kill, %d couples retenus, %d ambigus ecartes", nKills, len(couples), ambigus)
 
 	parXUID := map[uint64][]uint32{}
-	for slot, x := range own.SlotXUID {
+	for slot, x := range own.PontParSlot() {
 		parXUID[x] = append(parXUID[x], slot)
 	}
 	if len(parXUID) == 0 {
 		t.Fatalf("pont slot->xuid vide : aucun kill ne peut etre rattache a une visee")
 	}
 
-	mesure, temoinTir, fenetres, joints := adsPopulations(couples, armes, tracks, parXUID, own.DeathOffsetMS)
+	mesure, temoinTir, fenetres, joints := adsPopulations(couples, armes, tracks, parXUID, own.DeathOffsetMS())
 	fond := adsFond(pos, fenetres)
 	total := adsTotal(pos)
 	t.Logf("JOINTURE — %d couples du fil apparies a une source de degat killsource (%d sans arme connue)",
@@ -259,7 +259,7 @@ func adsConstat(constant bool, num, den int) string {
 
 // adsBalayage lit les positions du film et construit le pont slot -> joueur. Les bornes de carte
 // ne sont PAS demandees : cette mesure ne porte que sur des drapeaux, aucun metre n'y intervient.
-func adsBalayage(t *testing.T, dir string) ([]filmdec.BipedPosition, map[uint32]slotTrack, OwnerReport) {
+func adsBalayage(t *testing.T, dir string) ([]filmdec.BipedPosition, map[uint32]slotTrack, IdentityRegistry) {
 	t.Helper()
 	scan := filmdec.DefaultScanFilmOptions()
 	scan.CaptureDirs = true
@@ -281,10 +281,10 @@ func adsBalayage(t *testing.T, dir string) ([]filmdec.BipedPosition, map[uint32]
 	}
 	table, collisions := injectiveOrEmpty(idx)
 	tracks := indexBySlot(pos)
-	own := buildOwners(tracks, deaths, table, nil)
+	own := regDe(buildOwnersDeTest(tracks, deaths, table, nil))
 	t.Logf("PONT — %d slots nommes sur %d vies · decalage d'horloge %d ms (%d fins de vie appariees)"+
-		" · collisions d'index %d", len(own.SlotXUID), own.LivesTotal, own.DeathOffsetMS,
-		own.DeathOffsetMatches, collisions)
+		" · collisions d'index %d", len(own.PontParSlot()), own.ViesTotal(), own.DeathOffsetMS(),
+		own.DeathOffsetMatches(), collisions)
 	return pos, tracks, own
 }
 

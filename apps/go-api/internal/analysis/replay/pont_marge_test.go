@@ -96,10 +96,10 @@ func TestLAlarmeDeMargeEtroiteSeDeclencheEtSeTait(t *testing.T) {
 
 	// L'APPEL fait partie du contrat : une garde jamais appelée ne garde rien.
 	buf.Reset()
-	own := OwnerReport{
+	own := regDe(OwnerReport{
 		Owner: map[uint32]int{1: 0}, SlotXUID: map[uint32]uint64{1: 11},
 		DeathOffsetMatches: 9, DeathOffsetRunnerUp: 8, DeathsNamed: 9, LivesTotal: 87,
-	}
+	})
 	buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, own, true, nil)
 	if !strings.Contains(buf.String(), motif) {
 		t.Fatalf("buildCoverage n'appelle plus la garde de marge : %q", buf.String())

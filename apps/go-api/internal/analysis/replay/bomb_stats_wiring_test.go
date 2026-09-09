@@ -11,7 +11,7 @@ package replay
 // l'appelant : ils sont DÉRIVÉS au site de câblage (`attachBombStats`, bomb_stats_document.go) —
 //
 //	DetonationsRead  = opt.Score != nil
-//	CarryRead        = len(own.SlotXUID) > 0
+//	CarryRead        = len(own.PontParSlot()) > 0
 //	ArmingsRead      = bombArmingsRead(doc)   (couverture Scanned ET NON Suppressed)
 //
 // Inverser l'un des trois COMPILE, et fait sortir des ZÉROS là où le champ devait rester absent —
@@ -102,7 +102,7 @@ func bwPositions() []filmdec.BipedPosition {
 }
 
 // bwDeaths / bwIndices : les DEUX pièces du pont slot -> xuid. Retirer l'une des deux suffit à
-// vider `own.SlotXUID`, et c'est exactement ce que fait le cas « sans pont ».
+// vider `own.PontParSlot()`, et c'est exactement ce que fait le cas « sans pont ».
 func bwDeaths() []Death {
 	return []Death{{XUID: bwXUID, Gamertag: "Temoin", TimeMS: bwMortMS}}
 }

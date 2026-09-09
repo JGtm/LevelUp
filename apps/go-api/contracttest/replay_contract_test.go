@@ -164,6 +164,15 @@ var replaySchemas = []struct {
 	{"Coverage", replaydoc.Coverage{}},
 	{"LayerCoverage", replaydoc.LayerCoverage{}},
 	{"BridgeHealth", replaydoc.BridgeHealth{}},
+	{"IdentitySection", replaydoc.IdentitySection{}},
+	{"IdentityPlayer", replaydoc.IdentityPlayer{}},
+	{"IdentityBipedSlot", replaydoc.IdentityBipedSlot{}},
+	{"IdentityStatborgSlot", replaydoc.IdentityStatborgSlot{}},
+	{"IdentityCoverage", replaydoc.IdentityCoverage{}},
+	{"LinkCounts", replaydoc.LinkCounts{}},
+	{"BipedLinkCounts", replaydoc.BipedLinkCounts{}},
+	{"UnresolvedCauses", replaydoc.UnresolvedCauses{}},
+	{"Link", replaydoc.Link{}},
 }
 
 // wantReplayDocumentFields : le nombre de champs que l artefact publie. Ecrit ici pour que le
@@ -664,9 +673,24 @@ var replaySchemas = []struct {
 //	                      cuisson ne fera plus monter celui-ci. Le champ `schemaVersion` du corps
 //	                      continue de porter la version STOCKEE, celle qui pilote la re-cuisson.
 //
+//
+//	56 -> 57  2026-09-08  UN champ, LE REGISTRE D IDENTITE (lot P2 du plan v2, schema stocke 50) :
+//	                      - `identity` : les liens entre les entites du film et les joueurs
+//	                        (`players`, `bipedSlots`, `statborgSlots`) avec la PROVENANCE de
+//	                        chacun (`direct` / `catalogue` / `externe` / `deduit` /
+//	                        `non_resolu`), la voie exacte qui l a produit, et les BORNES de
+//	                        frames entre lesquelles il vaut. Plus `identity.coverage`, le
+//	                        decompte par famille et par provenance — ce que le gate corpus
+//	                        compare pour refuser qu un lien `direct` redevienne `deduit`.
+//	                      Sept types imbriques entrent a `replaySchemas` DANS CE LOT :
+//	                      `IdentitySection`, `IdentityPlayer`, `IdentityBipedSlot`,
+//	                      `IdentityStatborgSlot`, `IdentityCoverage`, `LinkCounts`, `Link`.
+//	                      `roster[].bid` nait au meme moment SANS faire monter ce compte : il
+//	                      est un champ de `RosterEntry`, pas du document.
+//
 // Les vingt et une fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 56
+const wantReplayDocumentFields = 57
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
@@ -806,13 +830,32 @@ func loadReplaySchemas(t *testing.T) map[string]map[string]any {
 
 // jsonFieldsOf rend les noms JSON des champs serialises d une struct.
 func jsonFieldsOf(rt reflect.Type) []string {
+	out := champsJSONAPlat(rt)
+	sort.Strings(out)
+	return out
+}
+
+// champsJSONAPlat rend les noms JSON d un type, LES STRUCTS EMBARQUES APLATIS.
+//
+// POURQUOI L APLATISSEMENT (lot E2, 2026-09-08). `encoding/json` promeut les champs d un struct
+// anonyme SANS balise au niveau du parent, et le generateur de contrat fait de meme. Une lecture
+// naive de `NumField` voyait, elle, un champ nomme du nom du TYPE embarque : elle aurait accuse
+// le contrat d oublier un champ « LinkCounts » qui n existe dans aucun JSON, et de promettre cinq
+// proprietes que le Go publie pourtant. Le premier type embarque du contrat
+// (`BipedLinkCounts`) a revele l ecart ; sans ce correctif, le garde-rail refusait le contrat
+// exact.
+func champsJSONAPlat(rt reflect.Type) []string {
 	var out []string
 	for i := 0; i < rt.NumField(); i++ {
-		if name, ok := jsonNameOf(rt.Field(i)); ok {
+		f := rt.Field(i)
+		if f.Anonymous && f.Tag.Get("json") == "" && f.Type.Kind() == reflect.Struct {
+			out = append(out, champsJSONAPlat(f.Type)...)
+			continue
+		}
+		if name, ok := jsonNameOf(f); ok {
 			out = append(out, name)
 		}
 	}
-	sort.Strings(out)
 	return out
 }
 

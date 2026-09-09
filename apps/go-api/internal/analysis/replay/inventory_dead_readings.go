@@ -29,17 +29,17 @@ import (
 // SANS FIL DES MORTS, RIEN NE BOUGE : les lectures gardent `unknown`, ce qui est exactement ce
 // qu'on sait d'elles. C'est une dégradation, et elle est journalisée par l'appelant avec les
 // autres couvertures — jamais une requalification par défaut.
-func markInventoryDeadReadings(inv []Inventory, deaths []Death, own OwnerReport, clk replayClock) int {
-	if len(inv) == 0 || len(deaths) == 0 || len(own.SlotXUID) == 0 {
+func markInventoryDeadReadings(inv []Inventory, deaths []Death, reg IdentityRegistry, clk replayClock) int {
+	if len(inv) == 0 || len(deaths) == 0 || len(reg.PontParSlot()) == 0 {
 		return 0
 	}
-	byXUID := deathTimesByVictimMS(deaths, own.DeathOffsetMS)
+	byXUID := deathTimesByVictimMS(deaths, reg.DeathOffsetMS())
 	marked := 0
 	for i := range inv {
 		if inv[i].Empty != InventoryEmptyUnknown {
 			continue
 		}
-		xuid, ok := own.SlotXUID[inv[i].Slot]
+		xuid, ok := reg.PontParSlot()[inv[i].Slot]
 		if !ok {
 			continue
 		}

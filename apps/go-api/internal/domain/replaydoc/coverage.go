@@ -58,6 +58,22 @@ type BridgeHealth struct {
 	IndexReadings      int `json:"indexReadings"`
 	IndexDisagreements int `json:"indexDisagreements"`
 	SlotCollisions     int `json:"slotCollisions"`
+	// Concordant / Discordant : LE PONT PAR MORTS EN TÉMOIN (lot E2, 2026-09-08). Le record de
+	// création du bipède écrit le propriétaire du corps ; le pont ne nomme plus, il confronte.
+	// Parmi les vies qu'une mort termine ET que la lecture directe nomme, `Concordant` compte
+	// celles dont la victime est le joueur lu. Le direct l'emporte toujours : sans ces deux
+	// compteurs, la correction serait muette.
+	Concordant int `json:"concordant"`
+	Discordant int `json:"discordant"`
+	// BridgeNamedLives : les vies que le pont a NOMMÉES. Zéro sur tout film dont les créations
+	// sont lues — non nul, le registre n'a reçu aucune lecture directe et a dégradé en entier.
+	BridgeNamedLives int `json:"bridgeNamedLives"`
+	// DirectByCreation / DirectByCreationPropagated : les vies que le RECORD DE CRÉATION nomme,
+	// selon qu'il OUVRE cette vie ou un AUTRE séjour du même corps.
+	// BodiesWithCreation : les corps dont un record a été lu — le dénominateur.
+	DirectByCreation           int `json:"directByCreation"`
+	DirectByCreationPropagated int `json:"directByCreationPropagated"`
+	BodiesWithCreation         int `json:"bodiesWithCreation"`
 	// NamedByPreviousLife / NamedByNextLife / NamedBySlotBridge : ce que le NOMMAGE FINAL a
 	// réparé, par voie. UnnamedLives : ce qui a résisté — un DÉFAUT à instruire, jamais une
 	// population « inconnue » à afficher (décision produit du 2026-09-07).

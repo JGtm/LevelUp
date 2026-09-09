@@ -429,23 +429,39 @@ func nearestFreeEnd(ends []int64, used []bool, target int64) int {
 	return bi
 }
 
-// nameLivesByDeaths pose l'identité de la victime sur la vie que sa mort termine.
+// deathPair apparie UNE mort du fil a LA vie qu'elle termine.
+type deathPair struct {
+	// li est l'indice de la vie, di celui de la mort.
+	li, di int
+}
+
+// apparierMortsEtVies apparie chaque mort du fil a la vie qu'elle termine, et ne fait QUE cela.
 //
-// L'APPARIEMENT EST GLOUTON PAR ÉCART CROISSANT, ce qui rend le résultat indépendant de
-// l'ordre d'itération — une boucle naïve donnerait un résultat différent selon l'ordre des
-// slots, donc non reproductible.
-func nameLivesByDeaths(lives []lifeSpan, deaths []Death, off int64) int {
+// # ELLE NE NOMME PLUS (lot E2, 2026-09-08)
+//
+// Elle posait l'identite de la victime sur la vie. Le film ECRIT cette identite dans le record
+// de creation du corps (cf. identity_registry_creation.go) : le pont par morts est donc devenu
+// une VERIFICATION, et l'appariement qu'il produit sert deux choses seulement — la CAUSE de fin
+// (`CauseVieMort` : la seule qui dise « ce joueur est mort ») et la confrontation du nom direct
+// a la victime. Ce qui nomme, ou verifie, est le RESSORT DE L'APPELANT ; cette fonction rend une
+// mesure, pas une decision.
+//
+// L'APPARIEMENT EST GLOUTON PAR ECART CROISSANT, ce qui rend le resultat independant de l'ordre
+// d'iteration — une boucle naive donnerait un resultat different selon l'ordre des slots, donc
+// non reproductible. Le resultat sort TRIE PAR VIE, pour la meme raison : un journal dont les
+// lignes changent d'ordre d'un run a l'autre ne se compare pas.
+func apparierMortsEtVies(lives []lifeSpan, deaths []Death, off int64) []deathPair {
 	ends := lifeEndsMS(lives)
-	type pair struct {
+	type candidat struct {
 		di, li int
 		d      int64
 	}
-	var ps []pair
+	var ps []candidat
 	for di, d := range deaths {
 		target := d.TimeMS + off
 		for li, e := range ends {
 			if delta := absI64(e - target); delta <= deathMatchWindowMS {
-				ps = append(ps, pair{di, li, delta})
+				ps = append(ps, candidat{di, li, delta})
 			}
 		}
 	}
@@ -457,18 +473,16 @@ func nameLivesByDeaths(lives []lifeSpan, deaths []Death, off int64) int {
 	})
 	usedD := make([]bool, len(deaths))
 	usedL := make([]bool, len(lives))
-	n := 0
+	var out []deathPair
 	for _, p := range ps {
 		if usedD[p.di] || usedL[p.li] {
 			continue
 		}
 		usedD[p.di], usedL[p.li] = true, true
-		lives[p.li].xuid = deaths[p.di].XUID
-		lives[p.li].cause = CauseVieMort
-		lives[p.li].nomPar = NomParMort
-		n++
+		out = append(out, deathPair{li: p.li, di: p.di})
 	}
-	return n
+	sort.Slice(out, func(i, j int) bool { return out[i].li < out[j].li })
+	return out
 }
 
 // lifeEndsMS rend la fin de chaque vie en millisecondes.

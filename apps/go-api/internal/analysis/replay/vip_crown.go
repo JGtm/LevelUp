@@ -187,9 +187,9 @@ func buildVipCrown(scan VipCrownScan, ctx matchClock) ([]VipPeriod, *VipCrownCov
 //
 // LE PONT D'IDENTITE (slot statborg -> xuid) SE FAIT ICI, comme pour le drapeau, par les seuls
 // INSTANTS DE MORT — aucune base — et PAR MANCHE (le slot est reattribue d'une manche a l'autre ;
-// une selection est nommee par l'identite de sa manche). `own.DeathOffsetMS` cale l'horloge du
+// une selection est nommee par l'identite de sa manche). `reg.DeathOffsetMS()` cale l'horloge du
 // fil des morts (et des evenements nommes, meme horloge) sur l'axe des frames.
-func attachVipCrown(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock) {
+func attachVipCrown(doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock) {
 	in := opt.Vip
 	if !in.Scanned {
 		return
@@ -202,7 +202,7 @@ func attachVipCrown(doc *ReplayDocument, opt Options, own OwnerReport, clock rep
 	}
 	periods, cov := buildVipCrown(scan, matchClock{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
-		deathOffsetMS: own.DeathOffsetMS,
+		deathOffsetMS: reg.DeathOffsetMS(),
 	})
 	doc.VipCrown = periods
 	if doc.Coverage != nil {

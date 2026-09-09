@@ -59,7 +59,7 @@ func v4OracleMesureFilm(t *testing.T, ctx v4Ctx, tracks []VehicleTrack) {
 	t.Helper()
 	slotTracks := indexBySlot(ctx.bip)
 	rides := v4RidesByOccupant(tracks)
-	slotsOf := v4SlotsParJoueur(ctx.own.Owner)
+	slotsOf := v4SlotsParJoueur(ctx.own.IndexParSlot())
 	var ag v4OracleAgg
 	for _, e := range ctx.fire {
 		if e.WeaponID == 0 || uint32(e.WeaponID) == v4ArmePersoBasse {

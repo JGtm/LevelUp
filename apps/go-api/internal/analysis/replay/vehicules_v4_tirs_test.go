@@ -119,7 +119,7 @@ func v4MesureTirs(ctx v4Ctx, tracks []VehicleTrack) v4TirAgg {
 	ag := v4TirAgg{dispo: len(ctx.fire), parArme: map[string]int{}}
 	slotTracks := indexBySlot(ctx.bip)
 	rides := v4RidesByOccupant(tracks)
-	slotsOf := v4SlotsParJoueur(ctx.own.Owner)
+	slotsOf := v4SlotsParJoueur(ctx.own.IndexParSlot())
 	for _, e := range ctx.fire {
 		vehArme := e.WeaponID != 0 && uint32(e.WeaponID) != v4ArmePersoBasse
 		if vehArme {
@@ -147,7 +147,7 @@ type v4TirArg struct {
 func v4TirRattache(
 	ctx v4Ctx, slotTracks map[uint32]slotTrack, e filmdec.FireEvent, ag *v4TirAgg,
 ) bool {
-	slot, reason := slotFor(slotTracks, ctx.own.Owner, e.FilmIndex, e.TimestampUS)
+	slot, reason := slotFor(slotTracks, ctx.own.IndexParSlot(), e.FilmIndex, e.TimestampUS)
 	if reason == reasonAttached {
 		if p, d := slotTracks[slot].at(e.TimestampUS); d <= shotPosToleranceUS && p.HasWorld {
 			ag.attaches++

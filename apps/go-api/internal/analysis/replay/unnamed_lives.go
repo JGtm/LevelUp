@@ -83,17 +83,17 @@ func (r unnamedLivesReport) total() int {
 //
 // Les pistes de BOT ne sont pas touchées : `Track.Bot` EST une identité (un bot n'a pas de
 // xuid — contrat de `Track.Bot`, document.go).
-func nameRemainingLives(tracks []Track, lives []lifeSpan, slotXUID map[uint32]uint64,
-	ambigus map[uint32]bool, origin, step uint64) unnamedLivesReport {
+func nameRemainingLives(tracks []Track, reg IdentityRegistry,
+	origin, step uint64) unnamedLivesReport {
 	rep := unnamedLivesReport{deduced: map[int]bool{}}
-	named := namedLivesBySlot(lives)
+	named := namedLivesBySlot(reg.Vies())
 	for i := range tracks {
 		if tracks[i].XUID != "" || tracks[i].Bot != "" {
 			continue
 		}
 		from, to := trackSpanUS(tracks[i], origin, step)
 		xuid, cause := slotOccupantAround(named[tracks[i].Slot], from, to,
-			bridgeOfSlot(slotXUID, ambigus, tracks[i].Slot))
+			reg.PontDeSlot(tracks[i].Slot))
 		switch cause {
 		case occupantPrevious:
 			tracks[i].XUID, rep.byPrevious = xuid, rep.byPrevious+1
@@ -125,21 +125,6 @@ const (
 	// ne date la frontière. On refuse, et on compte.
 	occupantContested
 )
-
-// bridgeOfSlot rend le xuid que le pont donne à ce slot — vide si le slot est AMBIGU.
-//
-// Le pont garde le PREMIER occupant nommé d'un slot que deux joueurs se partagent : le servir
-// ici publierait un nom arbitraire sur une vie que la lecture n'a pas nommée. C'est la même
-// abstention que `OwnerReport.xuidAt`, et pour la même raison.
-func bridgeOfSlot(slotXUID map[uint32]uint64, ambigus map[uint32]bool, slot uint32) string {
-	if ambigus[slot] {
-		return ""
-	}
-	if x, ok := slotXUID[slot]; ok && x != 0 {
-		return strconv.FormatUint(x, 10)
-	}
-	return ""
-}
 
 // slotOccupantAround rend le joueur qui occupait ce slot autour de [fromUS, toUS].
 //

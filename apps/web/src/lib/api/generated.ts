@@ -4674,6 +4674,21 @@ export interface components {
             /** Format: double */
             value: number;
         };
+        BipedLinkCounts: {
+            /** Format: int64 */
+            catalogue: number;
+            /** Format: int64 */
+            deduit: number;
+            /** Format: int64 */
+            direct: number;
+            /** Format: int64 */
+            direct_propage: number;
+            /** Format: int64 */
+            externe: number;
+            /** Format: int64 */
+            non_resolu: number;
+            non_resolu_par_cause: components["schemas"]["UnresolvedCauses"];
+        };
         BombArming: {
             /** Format: int64 */
             fuseMs: number;
@@ -4860,6 +4875,10 @@ export interface components {
         };
         BridgeHealth: {
             /** Format: int64 */
+            bodiesWithCreation: number;
+            /** Format: int64 */
+            bridgeNamedLives: number;
+            /** Format: int64 */
             closedByRespawn: number;
             /** Format: int64 */
             closedByShot: number;
@@ -4868,11 +4887,19 @@ export interface components {
             /** Format: int64 */
             closedRefused: number;
             /** Format: int64 */
+            concordant: number;
+            /** Format: int64 */
             deathOffsetMatched: number;
             /** Format: int64 */
             deathOffsetMs?: number;
             /** Format: int64 */
             deathOffsetRunnerUp: number;
+            /** Format: int64 */
+            directByCreation: number;
+            /** Format: int64 */
+            directByCreationPropagated: number;
+            /** Format: int64 */
+            discordant: number;
             /** Format: int64 */
             fromReading: number;
             /** Format: int64 */
@@ -7074,6 +7101,39 @@ export interface components {
             highest_lusr?: components["schemas"]["HomeSkillPeakSummary"];
             spartan_id?: string;
         };
+        IdentityBipedSlot: {
+            link: components["schemas"]["Link"];
+            /** Format: int32 */
+            slot: number;
+            xuid?: string;
+        };
+        IdentityCoverage: {
+            bipedSlot: components["schemas"]["BipedLinkCounts"];
+            filmIndex: components["schemas"]["LinkCounts"];
+            statborgSlot: components["schemas"]["LinkCounts"];
+        };
+        IdentityPlayer: {
+            bid?: string;
+            /** Format: int64 */
+            filmIndex: number;
+            link: components["schemas"]["Link"];
+            name?: string;
+            xuid?: string;
+        };
+        IdentitySection: {
+            bipedSlots?: components["schemas"]["IdentityBipedSlot"][] | null;
+            coverage: components["schemas"]["IdentityCoverage"];
+            players?: components["schemas"]["IdentityPlayer"][] | null;
+            statborgSlots?: components["schemas"]["IdentityStatborgSlot"][] | null;
+        };
+        IdentityStatborgSlot: {
+            link: components["schemas"]["Link"];
+            /** Format: int64 */
+            round: number;
+            /** Format: int64 */
+            slot: number;
+            xuid?: string;
+        };
         ImpactEventSummary: {
             /** Format: int64 */
             me: number;
@@ -7500,6 +7560,30 @@ export interface components {
             rank: number;
             /** Format: double */
             target_val: number;
+        };
+        Link: {
+            /** Format: int64 */
+            from: number;
+            method?: string;
+            /** Format: double */
+            metric?: number;
+            /** Format: int64 */
+            readings?: number;
+            source: string;
+            /** Format: int64 */
+            to: number;
+        };
+        LinkCounts: {
+            /** Format: int64 */
+            catalogue: number;
+            /** Format: int64 */
+            deduit: number;
+            /** Format: int64 */
+            direct: number;
+            /** Format: int64 */
+            externe: number;
+            /** Format: int64 */
+            non_resolu: number;
         };
         ListResult: {
             items: components["schemas"]["Notification"][] | null;
@@ -10036,6 +10120,7 @@ export interface components {
             grenadeReads?: components["schemas"]["GrenadeRead"][] | null;
             grenades?: components["schemas"]["Grenade"][] | null;
             groundWeapons?: components["schemas"]["GroundWeapon"][] | null;
+            identity?: components["schemas"]["IdentitySection"];
             inventory?: components["schemas"]["Inventory"][] | null;
             killEffects?: {
                 [key: string]: string;
@@ -10112,6 +10197,7 @@ export interface components {
             sys_bytes: number;
         };
         RosterEntry: {
+            bid?: string;
             bot?: boolean;
             /** Format: int64 */
             filmIndex: number;
@@ -12332,6 +12418,14 @@ export interface components {
             };
             /** Format: int64 */
             count: number;
+        };
+        UnresolvedCauses: {
+            /** Format: int64 */
+            index_hors_table: number;
+            /** Format: int64 */
+            lectures_divergentes: number;
+            /** Format: int64 */
+            sans_record: number;
         };
         UserPrestige: {
             /** Format: int64 */

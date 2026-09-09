@@ -39,7 +39,7 @@ type v4Ctx struct {
 	bip   []filmdec.BipedPosition
 	scan  VehicleScan
 	fire  []filmdec.FireEvent
-	own   OwnerReport
+	own   IdentityRegistry
 	clock replayClock
 	// lives / vehBySlot / spawns sont les entrees DEJA derivees de `scan`, pour ne pas les
 	// recalculer a chaque etage.
@@ -173,19 +173,19 @@ func v4Bipedes(
 // v4Pont construit le pont slot -> joueur EXACTEMENT comme `BuildFromPositions`.
 func v4Pont(
 	t *testing.T, dir string, bip []filmdec.BipedPosition, fire []filmdec.FireEvent,
-) OwnerReport {
+) IdentityRegistry {
 	t.Helper()
 	deaths, err := ScanFilmDeaths(dir)
 	if err != nil {
 		t.Logf("V4 : fil des morts illisible (%v) — pont vide", err)
-		return OwnerReport{}
+		return IdentityRegistry{}
 	}
 	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Logf("V4 : index joueur illisible (%v) — pont sans identite", err)
 	}
 	table, _ := injectiveOrEmpty(idx)
-	return buildOwners(indexBySlot(bip), deaths, table, fireRefs(fire))
+	return regDe(buildOwnersDeTest(indexBySlot(bip), deaths, table, fireRefs(fire)))
 }
 
 // v4Horloge rend l horloge du document (origine = premier paquet, pas = FrameIntervalMS defaut).

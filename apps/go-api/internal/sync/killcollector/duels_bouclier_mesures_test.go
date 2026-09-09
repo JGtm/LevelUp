@@ -18,7 +18,7 @@ import (
 //
 // LE RATTACHEMENT SE FAIT ICI ET PAS PLUS TARD, et c'est ce qui distingue cette sonde de la
 // n°1 : celle-la mesurait des chutes par SLOT et ne pouvait donc pas dire « le bouclier DU
-// TUEUR », faute de savoir qui occupait le slot. Le pont `ResolveSlotXUID` le donne.
+// TUEUR », faute de savoir qui occupait le slot. Le registre d identite le donne.
 type duelsBChute struct {
 	xuid uint64
 	ts   uint64

@@ -421,3 +421,51 @@ func TestToKillOpeningRows_PorteLInstantDuKillSansArithmetique(t *testing.T) {
 		t.Errorf("VictimX devait rester nil (non localisee), obtenu %v", *r.VictimX)
 	}
 }
+
+// TestEntreeDuRegistrePorteLeRosterDeLaFeuille — LA COUTURE : ce que le collecteur transmet.
+//
+// `RosterXUIDs` est le champ qui ouvre l'identite par ELIMINATION (un joueur qui ne meurt jamais).
+// Sans lui, `match_lives` reperd les vies que le lot P2 vient de nommer, et RIEN d'autre ne le
+// verrait : les tests du registre construisent leur propre entree, et le seul test qui traverse
+// `buildPositionRows` exige un film.
+//
+// MUTATION : retirer `RosterXUIDs` d'`entreeDuRegistre` -> ROUGE.
+func TestEntreeDuRegistrePorteLeRosterDeLaFeuille(t *testing.T) {
+	ids := MatchIdentities{XUIDs: []string{"111", "222", "bid(7.0)"}}
+	in := entreeDuRegistre(lecturesDuFilm{}, ids, "m1")
+
+	if len(in.RosterXUIDs) != 2 {
+		t.Fatalf("roster transmis = %v, attendu les deux xuids humains — sans lui, "+
+			"l'identite par elimination n'a aucun candidat", in.RosterXUIDs)
+	}
+	if in.MatchID != "m1" {
+		t.Errorf("match_id transmis = %q, attendu \"m1\"", in.MatchID)
+	}
+	// LE COLLECTEUR N'A PAS D'AXE DE FRAMES, et c'est voulu : il n'ecrit pas d'artefact. Une
+	// horloge inventee ici publierait des bornes de lien qui ne veulent rien dire.
+	if in.Clock.StepUS != 0 {
+		t.Errorf("axe de frames = %+v, attendu vide : le collecteur ne publie pas de section",
+			in.Clock)
+	}
+}
+
+// TestEntreeDuRegistrePorteLesCreationsDeBipede — LA SECONDE COUTURE (lot E2, 2026-09-08).
+//
+// `BipedCreations` est le lien DIRECT corps -> joueur. Sans lui, le collecteur retomberait sur le
+// pont par morts alors que la cuisson lit le film : deux producteurs, deux nommages de
+// `match_lives`, exactement ce que la decision D11 interdit. Son retrait ne casserait AUCUN autre
+// test du depot — les tests du registre construisent leur propre entree.
+//
+// MUTATION : retirer `BipedCreations` d'`entreeDuRegistre` -> ROUGE.
+func TestEntreeDuRegistrePorteLesCreationsDeBipede(t *testing.T) {
+	l := lecturesDuFilm{creations: []filmdec.BipedCreation{
+		{Slot: 512, Generation: 1, ParticipantIndex: 3, HasIndex: true, TimestampUS: 42},
+	}}
+	in := entreeDuRegistre(l, MatchIdentities{XUIDs: []string{"111"}}, "m1")
+
+	if len(in.BipedCreations) != 1 || in.BipedCreations[0].ParticipantIndex != 3 {
+		t.Fatalf("creations transmises = %+v, attendu le record du slot 512 (index 3) — sans "+
+			"elles, match_lives est nomme par le pont par morts alors que le film le nomme",
+			in.BipedCreations)
+	}
+}

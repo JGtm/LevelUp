@@ -24,7 +24,7 @@ func TestUneVieNommableParLeTempsNeResteJamaisSansNom(t *testing.T) {
 	}
 	lives := []lifeSpan{{slot: 7, from: 0, to: 10_000_000, xuid: 111}}
 
-	rep := nameRemainingLives(tracks, lives, nil, nil, 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(lives, nil, nil), 0, 100_000)
 	if tracks[1].XUID != "111" {
 		t.Fatalf("la vie qui suit celle de 111 sur le MÊME slot devait lui revenir, obtenu %q",
 			tracks[1].XUID)
@@ -45,7 +45,7 @@ func TestLeTempsTRANCHEEntreDeuxOccupantsDunMemeSlot(t *testing.T) {
 		{slot: 7, from: 20_000_000, to: 30_000_000, xuid: 222}, // occupant suivant
 	}
 	// `SlotXUID` désignerait 111 (première vie nommée) : c'est exactement ce qu'on refuse.
-	rep := nameRemainingLives(tracks, lives, map[uint32]uint64{7: 111}, nil, 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(lives, map[uint32]uint64{7: 111}, nil), 0, 100_000)
 	if tracks[0].XUID != "222" {
 		t.Fatalf("la vie à 40 s revient à l'occupant du moment (222), obtenu %q — le pont par "+
 			"slot aurait dit 111", tracks[0].XUID)
@@ -61,7 +61,7 @@ func TestUneVieAnterieureAuPremierDecesPrendLOccupantSUIVANT(t *testing.T) {
 	tracks := []Track{{Slot: 7, StartFrame: 0, EndFrame: 50}}
 	lives := []lifeSpan{{slot: 7, from: 20_000_000, to: 30_000_000, xuid: 222}}
 
-	rep := nameRemainingLives(tracks, lives, nil, nil, 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(lives, nil, nil), 0, 100_000)
 	if tracks[0].XUID != "222" || rep.byNext != 1 {
 		t.Errorf("piste = %q, rapport %+v ; attendu 222 par vie suivante", tracks[0].XUID, rep)
 	}
@@ -72,7 +72,7 @@ func TestUneVieAnterieureAuPremierDecesPrendLOccupantSUIVANT(t *testing.T) {
 func TestUnSlotQueSeuleUneFERMETURENommePasseParLePont(t *testing.T) {
 	tracks := []Track{{Slot: 9, StartFrame: 0, EndFrame: 50}}
 
-	rep := nameRemainingLives(tracks, nil, map[uint32]uint64{9: 333}, nil, 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(nil, map[uint32]uint64{9: 333}, nil), 0, 100_000)
 	if tracks[0].XUID != "333" || rep.byBridge != 1 {
 		t.Errorf("piste = %q, rapport %+v ; attendu 333 par le pont", tracks[0].XUID, rep)
 	}
@@ -89,7 +89,7 @@ func TestCeQuiResisteEstCOMPTE_JamaisDevine(t *testing.T) {
 	// Des vies nommées existent, mais sur un AUTRE slot : on ne traverse jamais la frontière.
 	lives := []lifeSpan{{slot: 7, from: 0, to: 10_000_000, xuid: 111}}
 
-	rep := nameRemainingLives(tracks, lives, nil, nil, 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(lives, nil, nil), 0, 100_000)
 	if tracks[0].XUID != "" || tracks[1].XUID != "" {
 		t.Errorf("des identités ont été INVENTÉES : %q et %q", tracks[0].XUID, tracks[1].XUID)
 	}
@@ -104,7 +104,7 @@ func TestUneVieDeBotNEstPasUnDefautDeNommage(t *testing.T) {
 	tracks := []Track{{Slot: 7, StartFrame: 0, EndFrame: 50, Bot: "343 Razzle [bot]"}}
 	lives := []lifeSpan{{slot: 7, from: 20_000_000, to: 30_000_000, xuid: 222}}
 
-	rep := nameRemainingLives(tracks, lives, map[uint32]uint64{7: 222}, nil, 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(lives, map[uint32]uint64{7: 222}, nil), 0, 100_000)
 	if tracks[0].XUID != "" || tracks[0].Bot != "343 Razzle [bot]" {
 		t.Errorf("la vie de bot a été réécrite : %+v", tracks[0])
 	}
@@ -119,7 +119,7 @@ func TestUneVieDejaNommeeNEstJamaisReecrite(t *testing.T) {
 	tracks := []Track{{Slot: 7, StartFrame: 400, EndFrame: 500, XUID: "111"}}
 	lives := []lifeSpan{{slot: 7, from: 0, to: 10_000_000, xuid: 999}}
 
-	rep := nameRemainingLives(tracks, lives, map[uint32]uint64{7: 999}, nil, 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(lives, map[uint32]uint64{7: 999}, nil), 0, 100_000)
 	if tracks[0].XUID != "111" || rep.total() != 0 {
 		t.Errorf("piste = %q, rapport %+v ; la vie lue devait garder son xuid",
 			tracks[0].XUID, rep)
@@ -147,8 +147,7 @@ func TestUneFrontiereEntreDeuxOccupantsNeSeTranchePasAuHASARD(t *testing.T) {
 		{slot: 734, from: 745_700_000, to: 759_100_000, xuid: 2535456423427614},
 	}
 	// Le pont garde le PREMIER occupant : il ne doit servir de repli sur AUCUN slot ambigu.
-	rep := nameRemainingLives(tracks, lives,
-		map[uint32]uint64{734: 2535430265968559}, map[uint32]bool{734: true}, 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(lives, map[uint32]uint64{734: 2535430265968559}, map[uint32]bool{734: true}), 0, 100_000)
 
 	if tracks[0].XUID != "" {
 		t.Fatalf("la vie de la frontière a été nommée %q sans preuve — « l'occupant précédent » "+
@@ -168,7 +167,7 @@ func TestUneFrontiereEntreDEUXVIESDuMemeJoueurSeTrancheBien(t *testing.T) {
 		{slot: 734, from: 587_200_000, to: 698_100_000, xuid: 111},
 		{slot: 734, from: 745_700_000, to: 759_100_000, xuid: 111},
 	}
-	rep := nameRemainingLives(tracks, lives, nil, nil, 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(lives, nil, nil), 0, 100_000)
 	if tracks[0].XUID != "111" || rep.byPrevious != 1 || rep.contested != 0 {
 		t.Errorf("piste = %q, rapport %+v ; attendu 111 par la vie précédente",
 			tracks[0].XUID, rep)
@@ -181,15 +180,24 @@ func TestUneFrontiereEntreDEUXVIESDuMemeJoueurSeTrancheBien(t *testing.T) {
 func TestLePontNeSertPasDeRepliSurUnSlotAMBIGU(t *testing.T) {
 	tracks := []Track{{Slot: 734, StartFrame: 10, EndFrame: 50}}
 
-	rep := nameRemainingLives(tracks, nil,
-		map[uint32]uint64{734: 111}, map[uint32]bool{734: true}, 0, 100_000)
+	rep := nameRemainingLives(tracks, regDeTest(nil, map[uint32]uint64{734: 111}, map[uint32]bool{734: true}), 0, 100_000)
 	if tracks[0].XUID != "" || rep.remaining != 1 {
 		t.Errorf("piste = %q, rapport %+v ; le pont ne doit pas servir sur un slot ambigu",
 			tracks[0].XUID, rep)
 	}
 	// Sur un slot NON ambigu, le repli joue toujours.
 	tracks = []Track{{Slot: 900, StartFrame: 10, EndFrame: 50}}
-	if rep := nameRemainingLives(tracks, nil, map[uint32]uint64{900: 111}, nil, 0, 100_000); tracks[0].XUID != "111" || rep.byBridge != 1 {
+	if rep := nameRemainingLives(tracks, regDeTest(nil, map[uint32]uint64{900: 111}, nil), 0, 100_000); tracks[0].XUID != "111" || rep.byBridge != 1 {
 		t.Errorf("piste = %q, rapport %+v ; attendu 111 par le pont", tracks[0].XUID, rep)
 	}
+}
+
+// regDeTest fabrique un registre d'identite a partir de ses seules tables — l'entree que la
+// passe de nommage final consomme. Sert aux scenarios synthetiques de ce fichier, qui n'ont ni
+// positions ni fil des morts a faire traverser a `BuildIdentityRegistry`.
+func regDeTest(lives []lifeSpan, slotXUID map[uint32]uint64,
+	ambigus map[uint32]bool) IdentityRegistry {
+	return IdentityRegistry{own: OwnerReport{
+		lives: lives, SlotXUID: slotXUID, SlotAmbiguous: ambigus,
+	}}
 }

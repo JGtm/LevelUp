@@ -52,19 +52,20 @@ type VieNommee struct {
 // RIEN NE SORT SI LE PONT N'A PAS ÉTÉ CONSTRUIT : sans fil des morts, il n'y a pas de calage,
 // donc pas d'horloge de match. Publier des vies calées sur zéro les rendrait joignables avec
 // n'importe quoi.
-func (r OwnerReport) ViesNommees() []VieNommee {
-	if r.DeathsNamed == 0 {
+func (r IdentityRegistry) ViesNommees() []VieNommee {
+	if r.ViesNommeesParLaLecture() == 0 {
 		return nil
 	}
-	out := make([]VieNommee, 0, len(r.lives))
-	for _, l := range r.lives {
+	vies := r.Vies()
+	out := make([]VieNommee, 0, len(vies))
+	for _, l := range vies {
 		if l.xuid == 0 {
 			continue
 		}
 		out = append(out, VieNommee{
 			XUID:    l.xuid,
-			DebutMS: l.from/1000 - r.DeathOffsetMS,
-			FinMS:   l.to/1000 - r.DeathOffsetMS,
+			DebutMS: l.from/1000 - r.DeathOffsetMS(),
+			FinMS:   l.to/1000 - r.DeathOffsetMS(),
 			Cause:   l.cause,
 			NomPar:  l.nomPar,
 		})

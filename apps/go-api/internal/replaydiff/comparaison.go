@@ -52,6 +52,9 @@ type Rapport struct {
 	Differences    []Difference        `json:"differences"`
 	Identiques     int                 `json:"identiques"`
 	Bilans         map[string]BilanAxe `json:"bilans"`
+	// conserves : groupes par joueur a somme conservee (polarite.go, `groupesConserves`) —
+	// calcule une fois par comparaison, avant de classer les ecarts.
+	conserves map[string]bool
 }
 
 // Comparer confronte deux empreintes. L'ordre des arguments porte le SENS : `a` est la
@@ -64,6 +67,7 @@ func Comparer(a, b Empreinte) Rapport {
 	if rap.MatchID == "" {
 		rap.MatchID = a.MatchID
 	}
+	rap.conserves = groupesConserves(a.Mesures, b.Mesures)
 	vues := map[string]bool{}
 	for k, ma := range a.Mesures {
 		vues[k] = true
@@ -101,6 +105,19 @@ func (r *Rapport) ajouter(k string, a, b *Mesure) {
 		return
 	}
 	d.Axe, d.Metrique = axe, metrique
+	switch {
+	case estCompteurDEchec(k):
+		// Un compteur d'echec se lit a l'envers (polarite.go) : sa baisse est le gain cherche.
+		d.Sens = inverserSens(d.Sens)
+	case estCompteurDeMethode(k):
+		// Une voie de nommage qui cede a une autre n'est ni un gain ni une perte (polarite.go).
+		d.Sens = SensChangement
+	case (d.Sens == SensPerte || d.Sens == SensDisparu) && estReattribution(k, r.conserves):
+		// Une BAISSE chez un joueur, dans un groupe dont la somme ne baisse pas, a change de
+		// main, pas de valeur : une REATTRIBUTION (polarite.go, `groupesConserves`). Les
+		// hausses et les apparitions restent des gains — un calque neuf est un gain.
+		d.Sens = SensChangement
+	}
 	r.Differences = append(r.Differences, d)
 	bil := r.Bilans[axe]
 	bil.Axe = axe

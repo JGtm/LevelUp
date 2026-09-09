@@ -113,6 +113,33 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 		return ReplayDocument{}, err
 	}
 	opt.observe("positions", positions)
+	// CRÉATIONS DE BIPÈDE : le lien DIRECT corps -> joueur, lu dans le default-state du record
+	// NEW `ti=35` (lot E2, 2026-09-08). MÊME bande de slots que les positions ci-dessus, pour
+	// que les deux lectures parlent des mêmes corps. Absence NON fatale — le registre dégrade
+	// alors sur le pont par morts et le PUBLIE (`coverage.bridge.bridgeNamedLives`).
+	creations, creaStats, err := filmdec.ScanBipedCreations(fc)
+	if err != nil {
+		slog.Warn("creations de bipede illisibles — le registre degrade sur le pont par morts",
+			"err", err, "match_id", matchID)
+		creations, creaStats = nil, filmdec.BipedCreationStats{}
+	} else {
+		slog.Info("creation de bipede : records lus",
+			"corps", creaStats.Slots, "ancres", creaStats.Anchors, "acceptes", creaStats.Accepted,
+			"formeRefusee", creaStats.ShapeBad, "signatureEtrangere", creaStats.SignatureMismatch,
+			"motAlternatif", creaStats.OtherWord, "motAlternatifCompte", creaStats.OtherWordCount,
+			"porteFermee", creaStats.GateClosed, "tronques", creaStats.Truncated)
+	}
+	if creaStats.Anchors > 0 && creaStats.Accepted == 0 {
+		// L'ALARME DU LECTEUR, ET C'EST LA SEULE : des ancres de la bonne FORME dont aucune ne
+		// porte la constante de représentation. Un film dont les bipèdes portent un autre corps
+		// que le Spartan multijoueur se lirait ainsi (cf. biped_creation.go).
+		slog.Warn("creation de bipede : aucune signature reconnue sur des ancres presentes — "+
+			"ce film porte-t-il une autre representation ?",
+			"match_id", matchID, "ancres", creaStats.Anchors,
+			"motAlternatifModal", creaStats.OtherWord, "compte", creaStats.OtherWordCount)
+	}
+	opt.BipedCreations = creations
+	opt.observe("bipedCreations", creations)
 	// Les tirs sont décodés du MÊME film et sur la MÊME horloge que les positions ; leur
 	// absence n'est pas fatale (un film sans event de tir reste un rejeu valide).
 	shots, err := filmdec.ScanFireEvents(film)

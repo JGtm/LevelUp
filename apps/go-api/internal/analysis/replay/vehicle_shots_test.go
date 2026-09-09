@@ -43,7 +43,7 @@ func vsOrphan(frame int, weapon uint64) orphanShot {
 	}
 }
 
-func vsOwn() OwnerReport { return OwnerReport{Owner: map[uint32]int{10: 3}} }
+func vsOwn() IdentityRegistry { return regDe(OwnerReport{Owner: map[uint32]int{10: 3}}) }
 
 // TestTirEnVehiculePosePendantUnEpisode — LE CAS NOMINAL : le tir tombe dans l'episode, il sort
 // a la position INTERPOLEE du vehicule et porte le slot de celui-ci.

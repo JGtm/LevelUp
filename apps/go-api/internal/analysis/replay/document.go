@@ -32,7 +32,11 @@ package replay
 // tout le parc < 49 en une passe (plutôt que de laisser un artefact ancien répondre « calage
 // inconnu » indéfiniment faute de recuisson déclenchée) — cf.
 // `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
-const SchemaVersion = 49
+//
+// v50 (2026-09-08, lot P2) : la section `identity` naît, `roster[].bid` est publié, et le
+// nommage des vies change (élimination sur le roster). Le CONTENU CUIT change, donc le bump est
+// exigé par la règle — pas seulement pour déclencher la recuisson.
+const SchemaVersion = 50
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -404,6 +408,20 @@ type ReplayDocument struct {
 	// sans dire que 519 existent laisse croire à l'exhaustivité. L'écart doit être lisible
 	// là où le résultat l'est. Absent des artefacts construits avant cette version.
 	Coverage *Coverage `json:"coverage,omitempty"`
+	// Identity est LE REGISTRE D'IDENTITÉ du film (schéma 50, lot P2) : chaque lien entre une
+	// entité du film et un joueur, avec sa PROVENANCE (`direct` / `catalogue` / `externe` /
+	// `deduit` / `non_resolu`), la voie exacte qui l'a produit, et les BORNES entre lesquelles
+	// il vaut (cf. identity_registry_section.go).
+	//
+	// POURQUOI ELLE EST PUBLIÉE. Le document disait DÉJÀ qui porte une trace (`tracks[].xuid`)
+	// sans jamais dire SUR QUOI ce nom repose : une lecture du film, un pont par morts, une
+	// fermeture, une déduction par élimination — quatre forces de preuve que rien ne
+	// distinguait. La section les sépare, et son récapitulatif (`identity.coverage`) est ce que
+	// le gate corpus compare : une régression d'un lien `direct` vers un lien `deduit` y devient
+	// visible, alors qu'elle était jusqu'ici indétectable.
+	//
+	// Absente des artefacts construits avant le schéma 50.
+	Identity *IdentitySection `json:"identity,omitempty"`
 }
 
 // RosterEntry est un joueur du film : son identité, et l'index sous lequel le film le désigne.
@@ -429,6 +447,15 @@ type RosterEntry struct {
 	// son Name porte le suffixe « [bot] », comme la base l'écrit. FilmIndex est le slot du
 	// roster de réplication que le paquet type 12 déclare.
 	Bot bool `json:"bot,omitempty"`
+	// Bid est l'identifiant STABLE d'un bot, forme `bid(N.0)` — la même que `match_participants`
+	// écrit (schéma 50).
+	//
+	// IL ÉTAIT LU DEPUIS TOUJOURS ET N'ÉTAIT PAS PUBLIÉ (inventaire P1, E9). Faute de l'avoir,
+	// la jointure web d'un bot se faisait sur le NOM NU — égalité de chaîne des deux côtés —,
+	// et le commentaire de `rosterLogic.ts` le disait lui-même : deux bots homonymes fusionnent.
+	// Vide pour un humain, et vide pour un bot dont la déclaration ne portait pas d'identifiant :
+	// un `bid(0.0)` inventé joindrait deux bots distincts.
+	Bid string `json:"bid,omitempty"`
 }
 
 // Loadout est l'ensemble des armes PORTÉES par un slot à un instant de référence.

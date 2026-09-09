@@ -184,14 +184,14 @@ func vehicleScanOptions(fc *filmdec.FilmContext, wr *filmdec.Vec3Range) filmdec.
 // porte les memes denominateurs que l artefact.
 //
 // `bipeds` est le nuage NON decime des BIPEDES (celui des joueurs), trie par instant : c est lui
-// qui porte les TROUS de position d ou sortent les episodes d occupation. `own` donne le pont
+// qui porte les TROUS de position d ou sortent les episodes d occupation. `reg` donne le pont
 // slot -> xuid, sans lequel un episode reste anonyme (il est publie quand meme : le vehicule est
 // occupe, seul son occupant est inconnu).
 func attachVehicles(
 	doc *ReplayDocument, scan VehicleScan, bipeds []filmdec.BipedPosition,
-	own OwnerReport, clock replayClock,
+	reg IdentityRegistry, clock replayClock,
 ) {
-	tracks, cov, st := buildVehicleTracks(scan, bipeds, own, clock)
+	tracks, cov, st := buildVehicleTracks(scan, bipeds, reg, clock)
 	doc.Vehicles = tracks
 	doc.Coverage.Vehicles = &cov
 	logVehicleCoverage(&cov)

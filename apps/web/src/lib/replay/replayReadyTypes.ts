@@ -26,6 +26,7 @@ import type {
   ReplayVehicleTrack,
   ReplayWeaponPad,
   ReplayZoneState,
+  ReplayIdentitySection,
 } from '@/lib/api/types'
 
 /** Un sommet d'emprise orientée : le `[2]float32` du Go. */
@@ -88,6 +89,17 @@ export type ReplayObjectiveObjectReady = Filled<ReplayObjectiveObjectLife, 'pts'
  */
 export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge'>
 /**
+ * ReplayIdentityReady — LE REGISTRE D'IDENTITÉ dont les trois listes sont comblées (schéma 50).
+ *
+ * L'OBJET, lui, garde le droit d'être ABSENT : un artefact antérieur au schéma 50 n'en porte
+ * aucun, et un objet vide se lirait « le registre a été calculé, il n'a rien trouvé » — le
+ * contraire de « personne n'a regardé ». Même régime que `scoreTimeline`.
+ */
+export type ReplayIdentityReady = Filled<
+  ReplayIdentitySection,
+  'players' | 'bipedSlots' | 'statborgSlots'
+>
+/**
  * ReplayVehicleTrackReady — la vie d'un véhicule dont les DEUX tableaux imbriqués sont comblés.
  *
  * MÊME PATRON QUE `weaponPads` : `samples` (la trajectoire) et `rides` (les épisodes
@@ -141,6 +153,7 @@ export type ReplayDocumentReady = Omit<
   | 'grenadeLabels'
   | 'grenadeReads'
   | 'grenades'
+  | 'identity'
   | 'inventory'
   | 'loadouts'
   | 'neutralDeaths'
@@ -290,6 +303,12 @@ export type ReplayDocumentReady = Omit<
    * mesure, et se lit sur la même grille que les pistes.
    */
   scoreTimeline?: ReplayScoreTimelineReady
+  /**
+   * LE REGISTRE D'IDENTITE (schema 50) : sur quoi repose chaque nom que le document sert.
+   * Absent = artefact anterieur au schema 50 — le client ne peut alors rien dire de la
+   * provenance, ce qui n'est pas la meme chose qu'un registre vide.
+   */
+  identity?: ReplayIdentityReady
   shots: NonNullable<ReplayDocument['shots']>
   structure: ReplaySurfaceReady[]
   tracks: ReplayTrackReady[]

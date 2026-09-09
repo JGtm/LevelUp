@@ -74,19 +74,19 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 	if err != nil {
 		fire = nil
 	}
-	own := buildOwners(indexBySlot(positions), deaths, table, fireRefs(fire))
+	own := regDe(buildOwnersDeTest(indexBySlot(positions), deaths, table, fireRefs(fire)))
 
 	t.Logf("== PONT slot -> joueur, EXERCE sur les ramassages natifs · %s ==", dir)
 	t.Logf("ramassages natifs : %d (listes multiples %d) · morts %d · slots ponts %d · "+
 		"vies nommees %d/%d · collisions de slot %d · index non injectif %d",
-		len(pickups), pStats.MultiEvent, len(deaths), len(own.SlotXUID),
-		own.DeathsNamed, own.LivesTotal, own.SlotCollisions, tableCollisions)
+		len(pickups), pStats.MultiEvent, len(deaths), len(own.PontParSlot()),
+		own.ViesNommeesParLaLecture(), own.ViesTotal(), own.CollisionsDeSlot(), tableCollisions)
 
 	// B1 — le pont nomme-t-il les ramasseurs ?
 	named, byClass, namedByClass := 0, map[uint8]int{}, map[uint8]int{}
 	for _, p := range pickups {
 		byClass[p.Class]++
-		if _, ok := own.SlotXUID[p.Slot]; ok {
+		if _, ok := own.PontParSlot()[p.Slot]; ok {
 			named++
 			namedByClass[p.Class]++
 		}
@@ -144,13 +144,13 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 		"construction — ce n'est pas une mesure independante, et on ne la presente pas comme telle.")
 
 	okB1 := 100*float64(named)/float64(len(pickups)) >= 80
-	okB2 := own.SlotCollisions == 0
+	okB2 := own.CollisionsDeSlot() == 0
 	okB3 := paires > 0 && egaux == paires
 	t.Logf("VERDICT B1 (>= 80 %% nommes) : %v · B2 (0 collision de slot) : %v · B3 (100 %% slots egaux) : %v",
 		okB1, okB2, okB3)
 	if !okB2 {
 		t.Errorf("B2 : %d collision(s) de slot — un meme slot porte deux joueurs, l'attribution "+
-			"des ramassages serait fausse", own.SlotCollisions)
+			"des ramassages serait fausse", own.CollisionsDeSlot())
 	}
 	if !okB3 {
 		t.Errorf("B3 : %d/%d paires a slots egaux — le fondement de l'attribution est rompu", egaux, paires)

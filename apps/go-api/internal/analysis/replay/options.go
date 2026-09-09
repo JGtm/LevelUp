@@ -152,6 +152,14 @@ type Options struct {
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.
 	PlayerIndices PlayerIndexTable
+	// BipedCreations : les records de CRÉATION de bipède du film (`filmdec.ScanBipedCreations`).
+	// C'est le lien DIRECT corps -> joueur : le film écrit l'index de participant du
+	// propriétaire dans le default-state du record (lot E2, 2026-09-08).
+	//
+	// VIDE = LE REGISTRE DÉGRADE EN ENTIER sur le pont par morts, et il le publie
+	// (`coverage.bridge.bridgeNamedLives` non nul). Ce n'est pas une option à activer : c'est
+	// l'état d'un producteur qui ne porte pas encore ce canal.
+	BipedCreations []filmdec.BipedCreation
 	// RosterXUIDs : les joueurs de la FEUILLE DE MATCH, fournis par l'assembleur. Ils
 	// COMPLÈTENT le roster que le fil des morts donne (`rosterFromDeaths`) avant la lecture
 	// de l'index de joueur.
@@ -197,6 +205,14 @@ type Options struct {
 	// EN AMONT du point d'équilibre, donc son compte doit descendre depuis l'amont. Zéro = le
 	// pont a nommé tout ce que le film nommait, ou l'appelant ne mesure pas cet écart.
 	ObjectivesUnnamed int
+	// StatborgIdentity est le pont slot d'entité statborg -> xuid PAR MANCHE, résolu par
+	// l'appelant (`replaybuild.pontParManche`) et déjà partagé par les calques d'objectif.
+	//
+	// POURQUOI ELLE ENTRE ICI. Le registre d'identité PUBLIE ce lien avec sa provenance
+	// (`identity.statborgSlots`) ; il ne le recalcule pas — un second déroulage complet du
+	// compteur de morts par cuisson est précisément ce que la mémorisation de `pontParManche`
+	// existe pour éviter. Résolveur vide = aucun lien de statborg publié.
+	StatborgIdentity objectiveevents.RoundIdentity
 	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
 	Score *ScoreInput
 	// Flag : de quoi construire LA VIE DES DRAPEAUX de CTF (entrée de DONNÉES comme Score ; cf.

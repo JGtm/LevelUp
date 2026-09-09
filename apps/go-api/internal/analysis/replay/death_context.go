@@ -91,7 +91,7 @@ type EntreeContexteMorts struct {
 	// Positions : les positions bipeds du film, avec leurs coordonnées MONDE (l'appelant a
 	// fourni les bornes de la carte à `ScanBipedPositions`). Sans monde, aucune distance.
 	Positions []filmdec.BipedPosition
-	// Report est le rapport du pont, TEL QUEL. Il porte les vies nommees (slot, bornes,
+	// Registre est LE REGISTRE D IDENTITE du film. Il porte les vies nommees (slot, bornes,
 	// occupant) et le calage d'horloge.
 	//
 	// PAS `SlotXUID`, ET C'EST LA CORRECTION P0-2 (2026-09-07) : ce pont aplati donne tout
@@ -100,7 +100,7 @@ type EntreeContexteMorts struct {
 	// `teammates_visible` et `nearest_teammate_m` faux, et rien pour le signaler. C'est le
 	// bug historique que `nameTracksByLives` a corrige pour les traces le 2026-09-02 ; ici
 	// l'attribution se fait par la VIE QUI COUVRE L'INSTANT.
-	Report OwnerReport
+	Registre IdentityRegistry
 	// Journal : toutes les morts du match, y compris celles des coéquipiers — elles servent à
 	// savoir qui attendait sa réapparition.
 	Journal []MortDuJournal
@@ -122,7 +122,8 @@ type ContexteMort struct {
 	Total                          int
 }
 
-// PontPubliable dit si le NOMMAGE des vies est assez sûr pour qu'on en tire des faits écrits en
+// LES DEUX CRITÈRES DE `IdentityRegistry.PontPubliable` — le NOMMAGE des vies est-il assez sûr
+// pour qu on en tire des faits écrits en
 // base.
 //
 // # `IndexDisagreements` REFUSE, ET C'EST LA MÊME RAISON QUE LE REJEU
@@ -143,9 +144,8 @@ type ContexteMort struct {
 // `indexerParXUID`). Refuser sur ce critère écarterait exactement les films que la correction
 // P0-2 existe pour traiter : ceux où un slot change de porteur. On perdrait la couverture sans
 // gagner la moindre sûreté.
-func PontPubliable(r OwnerReport) bool {
-	return r.IndexDisagreements == 0 && len(r.SlotXUID) > 0
-}
+// Elle vit sur le REGISTRE depuis le lot P2 : les deux criteres lisent les tables brutes du
+// pont, que seul `identity_registry.go` a le droit de toucher (garde-rail `archlint`).
 
 // ContextesDesMorts rend un contexte par mort du journal dont la VICTIME A UNE POSITION connue.
 //
@@ -154,11 +154,11 @@ func PontPubliable(r OwnerReport) bool {
 // NULL la ferait lire « aucun coéquipier à portée », c'est-à-dire ISOLÉE. Une absence de mesure
 // deviendrait un verdict.
 func ContextesDesMorts(e EntreeContexteMorts) []ContexteMort {
-	if !PontPubliable(e.Report) {
+	if !e.Registre.PontPubliable() {
 		return nil
 	}
 	pos := indexerParXUID(e)
-	vies := viesParXUID(e.Report)
+	vies := viesParXUID(e.Registre)
 	mortsPar := mortsParVictime(e.Journal)
 
 	out := make([]ContexteMort, 0, len(e.Journal))
@@ -272,7 +272,7 @@ type positionsParXUID map[uint64][]point
 // jamais rattachée au voisin le plus proche : mieux vaut un coéquipier « hors de vue » qu'un
 // coéquipier placé au mauvais endroit.
 func indexerParXUID(e EntreeContexteMorts) positionsParXUID {
-	vies := viesParSlot(e.Report)
+	vies := viesParSlot(e.Registre)
 	out := positionsParXUID{}
 	for i := range e.Positions {
 		p := &e.Positions[i]
@@ -284,7 +284,7 @@ func indexerParXUID(e EntreeContexteMorts) positionsParXUID {
 			continue
 		}
 		out[xuid] = append(out[xuid], point{
-			tMS: int64(p.TimestampUS)/1000 - e.Report.DeathOffsetMS,
+			tMS: int64(p.TimestampUS)/1000 - e.Registre.DeathOffsetMS(),
 			x:   float64(p.X), y: float64(p.Y),
 		})
 	}
@@ -296,9 +296,9 @@ func indexerParXUID(e EntreeContexteMorts) positionsParXUID {
 
 // viesParSlot indexe les vies NOMMÉES par slot. Les vies anonymes n'entrent pas : elles
 // n'attribuent rien.
-func viesParSlot(r OwnerReport) map[uint32][]lifeSpan {
-	out := make(map[uint32][]lifeSpan, len(r.SlotXUID))
-	for _, l := range r.lives {
+func viesParSlot(r IdentityRegistry) map[uint32][]lifeSpan {
+	out := make(map[uint32][]lifeSpan, len(r.Vies()))
+	for _, l := range r.Vies() {
 		if l.xuid == 0 {
 			continue
 		}
@@ -338,15 +338,15 @@ func (p positionsParXUID) vivantA(vies map[uint64][]vieMatch, xuid uint64, tMS i
 type vieMatch struct{ debutMS, finMS int64 }
 
 // viesParXUID indexe les vies nommées par occupant, sur l'horloge du match.
-func viesParXUID(r OwnerReport) map[uint64][]vieMatch {
-	out := make(map[uint64][]vieMatch, len(r.SlotXUID))
-	for _, l := range r.lives {
+func viesParXUID(r IdentityRegistry) map[uint64][]vieMatch {
+	out := make(map[uint64][]vieMatch, len(r.Vies()))
+	for _, l := range r.Vies() {
 		if l.xuid == 0 {
 			continue
 		}
 		out[l.xuid] = append(out[l.xuid], vieMatch{
-			debutMS: l.from/1000 - r.DeathOffsetMS,
-			finMS:   l.to/1000 - r.DeathOffsetMS,
+			debutMS: l.from/1000 - r.DeathOffsetMS(),
+			finMS:   l.to/1000 - r.DeathOffsetMS(),
 		})
 	}
 	return out
