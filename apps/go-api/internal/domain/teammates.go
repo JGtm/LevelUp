@@ -593,6 +593,16 @@ type TeammatesPageResponse struct {
 	// de la page. Non vide = les nombres affichés sont partiels ; le front DOIT le
 	// signaler (fin des chiffres non reproductibles). Vide/absent = page complète.
 	DataIssues []DataIssue `json:"data_issues,omitempty"`
+	// EquipmentUsage : le bloc « servi ou gâché » de l'équipement (étape E6.1bis du
+	// PLAN_EQUIPEMENT_GACHIS_2026-09-09) sur le scope FILTRÉ de la page (période +
+	// cascade + sessions déjà appliquées, même population que Options/MatchHistory) —
+	// une ligne pour le joueur principal + une par coéquipier SÉLECTIONNÉ
+	// (SelectedGamertags). Remplace la publication initiale (E6.1) sur
+	// SquadPageV2Response, jamais fetché par la page Escouade réelle (corrigé
+	// E6.1bis : c'est POST /pages/teammates que SquadLayout appelle). Nil si le
+	// scope filtré n'a aucun match ; Available=false avec raison machine pour un
+	// titre sans film.usage_summary.
+	EquipmentUsage *EquipmentUsageBlock `json:"equipment_usage,omitempty"`
 }
 
 // DataIssue décrit un chargement dégradé (best-effort) d'une page.

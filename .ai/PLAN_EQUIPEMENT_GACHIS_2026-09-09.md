@@ -433,6 +433,68 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
 
 ---
 
+### E6.1bis — Corriger la publication : `equipment_usage` sur Teammates, pas SquadV2
+
+> Lot correctif, périmètre fermé (défaut vérifié sur pièces par le superviseur, cf.
+> Découverte E6.2-E6.5 ci-dessus) : E6.1 avait posé le bloc sur `SquadPageV2Response`
+> (`GET /pages/squad/v2`), une réponse que la page Escouade réelle ne fetch jamais
+> (seul `POST /pages/teammates` l'est). Corrige le tir sans toucher au rendu web.
+
+- [x] E6.1bis.1 **Publication Teammates** : `domain.TeammatesPageResponse.EquipmentUsage`
+      (`internal/domain/teammates.go`) + `TeammatesService.WithEquipmentUsage(repo
+      port.SessionUsageRepository)` / `loadEquipmentUsage` dans un fichier voisin neuf
+      `internal/service/teammates/teammates_service_usage.go` (`TeammatesService` vit
+      dans `service/teammates`, `buildEquipmentUsageBlock` vivait dans `service` — cycle
+      d'import évité en déplaçant l'orchestration vers la FEUILLE
+      `internal/service/squadagg` déjà importée des deux côtés, cf. E6.1bis.3). Scope =
+      `filteredMatches` de `GetPage` (période + cascade + sessions déjà appliquées, LA
+      MÊME population qu'Options/MatchHistory — jamais l'intersection escouade) ; amis =
+      `req.SelectedGamertags` (les coéquipiers SÉLECTIONNÉS, comme le faisait E6.1) ;
+      sujet = `playerXUID` (le joueur de la route). Câblé dans
+      `internal/api/wire/registry_pages_home.go` (`TeammatesCtx`), gaté par la
+      capability `film.usage_summary`, jamais `slug==`. TDD : rouge observé (bloc `nil`
+      sur les deux tests) en retirant temporairement l'appel de `GetPage`, puis vert
+      après câblage — `internal/service/teammates/teammates_service_usage_test.go`
+- [x] E6.1bis.2 **Retrait SquadV2** : champ `EquipmentUsage` de
+      `internal/domain/squad_v2.go`, fichiers `squad_service_v2_usage.go` et
+      `squad_service_v2_usage_test.go` supprimés (avec `squadUsageScope`,
+      `WithEquipmentUsage`, `loadEquipmentUsage` et le champ `sessionUsageRepo` de
+      `SquadServiceV2`), câblage retiré de `SquadV2Ctx`
+      (`registry_pages_home.go`). Vérifié : `grep -rn "EquipmentUsage"
+      internal/domain/squad_v2.go internal/service/squad_service_v2*.go` → 0 résultat
+- [x] E6.1bis.3 **Contrat régénéré + alignement web** : `buildEquipmentUsageBlock`/
+      `equipmentUsageQuery` déplacés de `internal/service` (package `service`, qui
+      importe déjà `internal/service/teammates` depuis `synthesis_service_usage.go` —
+      un appel dans l'autre sens aurait été un cycle) vers
+      `internal/service/squadagg` (exportés `BuildEquipmentUsageBlock`/
+      `EquipmentUsageQuery`), avec alias de compatibilité dans
+      `squadagg_reexport.go` (même patron que `BuildSquadHeader`/`IntersectByMatchID` —
+      zéro site d'appel existant modifié, `equipment_usage_block_test.go` et
+      `synthesis_service_usage.go` inchangés). `make openapi-gen` : `equipment_usage`
+      quitte `SquadPageV2Response` et apparaît sur `TeammatesPageResponse` dans
+      `api/openapi.yaml` (diff vérifié, 2 lignes déplacées) ; `make generate-types` :
+      même mouvement dans `generated.ts`. Web (`apps/web/src/lib/api/types.ts`,
+      ~ligne 1439) : commentaire de `TeammatesPageResponse.equipment_usage` mis à jour
+      (l'écart de contrat est corrigé, la déclaration manuelle du champ est conservée
+      À L'IDENTIQUE — c'est la convention déjà en vigueur pour
+      `SynthesisPageResponse.equipment_usage`, une interface à la main plutôt qu'un
+      alias direct sur `components['schemas']`). Aucun composant web touché (hors
+      périmètre du lot) : `EquipmentUsageSection`/`SquadSynergiesPage.tsx` lisaient
+      déjà `pageData.equipment_usage`, le câblage s'active sans eux
+
+**Gate** :
+```bash
+cd apps/go-api && go build ./... && go vet ./... && go test ./...
+cd apps/go-api && go test -tags=integration -p 1 -count=1 ./internal/service/... ./internal/api/...
+cd apps/go-api && golangci-lint run --new-from-merge-base=feat/v75 ./...
+make openapi-gen && make generate-types && git status --short apps/go-api/api/openapi.yaml apps/web/src/lib/api/generated.ts
+cd apps/web && rm -rf node_modules/.tmp && npx tsc -b --force && npx vitest run src/features/squad src/features/_shared
+grep -rn "EquipmentUsage" apps/go-api/internal/domain/squad_v2.go apps/go-api/internal/service/squad_service_v2*.go
+```
+Tous verts / 0 résultat au grep (résultats détaillés au Journal).
+
+---
+
 ## 6. Découvertes — à consigner, PAS à traiter
 
 - **Ouverte, héritée du plan de la vague C** : le capteur affiche 49 déploiements pour 302
@@ -681,6 +743,16 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   → axe à 140 sur la maquette, 200 avec cet algorithme). Aucune décision P1-P14 ne fixe de
   formule d'arrondi d'axe ; ce choix reste un axe rond et lisible, jamais un pixel-perfect
   de la maquette. Non instruit, à ajuster si un retour utilisateur le juge trop lâche.
+
+- **Nouvelle, E6.1bis du 2026-09-09** : le commentaire de
+  `apps/web/src/features/squad/SquadSynergiesPage.tsx` (au-dessus du montage de
+  `<EquipmentUsageSection ... mode="squad" />`) et celui de
+  `SquadSynergiesPage.test.tsx` (près de la fixture `equipment_usage`) décrivent
+  encore l'écart de contrat E6.2-E6.5 (« le Go ne l'y publie pas encore ») — devenu
+  FAUX après ce lot, `TeammatesPageResponse` porte désormais le champ. Périmètre de
+  ce lot EXCLUT explicitement tout composant web (y compris un commentaire seul,
+  aucune ligne de rendu) : non corrigé ici. Un lot web pourra le faire en passant
+  (aucun garde-rail ni gate ne dépend de ce commentaire).
 
 ## 7. Clôture de chantier
 
@@ -1443,3 +1515,68 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
   unique, `delivery-checklist`, annotation du plan vague C) — hors périmètre de cette
   session (décision superviseur : un autre exécutant ou une session dédiée mène la
   clôture). Pas de push, pas de fusion.
+
+- **2026-09-09 — E6.1bis** (worktree `LevelUp-wt-equipement-e5-go`, branche
+  `feat/equipement-e5-go`) : correctif du blocage signalé par E6.5 ci-dessus — le bloc
+  équipement passe de `SquadPageV2Response` (jamais fetché par la page Escouade réelle)
+  à `TeammatesPageResponse` (`POST /pages/teammates`, le SEUL endpoint que `SquadLayout`
+  appelle).
+
+  **TDD** : deux tests neufs dans `internal/service/teammates/teammates_service_usage_test.go`
+  (bloc présent avec le bon scope/amis ; bloc indisponible sans repo câblé). Rouge observé
+  en retirant temporairement l'appel `s.loadEquipmentUsage(...)` + l'assignation
+  `EquipmentUsage:` du `return` de `GetPage` (`teammates_service.go`) : les deux tests
+  échouent (`bloc équipement = <nil>, attendu disponible` / `bloc = <nil>, attendu
+  indisponible/unsupported`). Remis en place → vert.
+
+  **Décision d'exécution — déplacement de package pour éviter un cycle** : le service-root
+  (`package service`) importe déjà `internal/service/teammates`
+  (`synthesis_service_usage.go`, pour `teammates.FriendGamertagsResolver`). `TeammatesService`
+  vit dans `service/teammates` ; `buildEquipmentUsageBlock` vivait dans `service` — un appel
+  direct aurait fermé un cycle `service → teammates → service`. Déplacé vers
+  `internal/service/squadagg` (déjà une FEUILLE importée des deux côtés, même patron que
+  `BuildSquadHeader`/`IntersectByMatchID`, K3b) : `EquipmentUsageQuery`/
+  `BuildEquipmentUsageBlock` exportés, alias `equipmentUsageQuery`/`buildEquipmentUsageBlock`
+  ajoutés à `squadagg_reexport.go` pour que `synthesis_service_usage.go` et
+  `equipment_usage_block_test.go` restent inchangés (zéro site d'appel requalifié).
+
+  **Contrat final** : `equipment_usage` publié UNIQUEMENT sur `TeammatesPageResponse`
+  (`internal/domain/teammates.go`), via `TeammatesService.WithEquipmentUsage`
+  (`internal/service/teammates/teammates_service_usage.go`, fichier neuf), câblé dans
+  `registry_pages_home.go` (`TeammatesCtx`) gated `film.usage_summary`. Scope = matchs
+  FILTRÉS de la page (`filteredMatches`, période+cascade+sessions déjà appliqués — la
+  même population qu'Options/MatchHistory, PAS l'intersection escouade) ; amis =
+  `req.SelectedGamertags` (coéquipiers SÉLECTIONNÉS, identique à E6.1) ; sujet =
+  `playerXUID` de la route. Retiré de `SquadPageV2Response` (`internal/domain/squad_v2.go`),
+  `SquadServiceV2` (`sessionUsageRepo`, `WithEquipmentUsage`, `loadEquipmentUsage`,
+  `squadUsageScope` — fichiers `squad_service_v2_usage.go`/`_test.go` supprimés), câblage
+  retiré de `SquadV2Ctx`.
+
+  **Gates exécutés sur l'arbre final** :
+  - `go build ./... && go vet ./... && go test ./...` — vert, aucun `--- FAIL:`.
+  - `go test -tags=integration -p 1 -count=1 ./internal/service/... ./internal/api/...` —
+    vert, y compris `internal/api/wire` (le test d'intégration consigné rouge préexistant
+    par E3 passe sur ce worktree, cohérent avec l'observation déjà notée E5-Go).
+  - `golangci-lint run --new-from-merge-base=feat/v75 ./...` — 0 issue.
+  - `make openapi-gen` : diff exact attendu (`equipment_usage` quitte
+    `SquadPageV2Response`, apparaît sur `TeammatesPageResponse`, 2 lignes déplacées).
+    `make generate-types` : même mouvement dans `generated.ts`.
+  - `apps/web` : `rm -rf node_modules/.tmp && npx tsc -b --force` silencieux ;
+    `npx vitest run src/features/squad src/features/_shared` — **75 fichiers, 594 tests,
+    vert**.
+  - `grep -rn "EquipmentUsage" internal/domain/squad_v2.go internal/service/squad_service_v2*.go`
+    — 0 résultat.
+
+  **Alignement web** : `apps/web/src/lib/api/types.ts` (`TeammatesPageResponse.equipment_usage`,
+  ~ligne 1439) — commentaire mis à jour (écart corrigé), déclaration manuelle du champ
+  conservée à l'identique (convention déjà en vigueur pour
+  `SynthesisPageResponse.equipment_usage`). Aucun composant web modifié : `EquipmentUsageSection`
+  et `SquadSynergiesPage.tsx` lisaient déjà `pageData.equipment_usage`, le câblage
+  Go suffit à activer la section — zéro régression, zéro changement de rendu.
+
+  **Découverte consignée, non traitée** (hors périmètre `apps/go-api`/`types.ts`) : le
+  commentaire de `SquadSynergiesPage.tsx`/`SquadSynergiesPage.test.tsx` décrivant l'écart
+  E6.2-E6.5 est maintenant stale (§6).
+
+  **Statut** : E6.1bis.1 `[x]`, E6.1bis.2 `[x]`, E6.1bis.3 `[x]`. Pas de push, pas de
+  fusion.

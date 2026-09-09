@@ -40,13 +40,6 @@ type SquadPageV2Response struct {
 	// Tables : tableaux historique + armes + galerie medailles (chunk S9).
 	Tables *SquadTables `json:"tables,omitempty"`
 
-	// EquipmentUsage : le bloc « servi ou gâché » de l'équipement sur les matchs
-	// PARTAGES, une ligne par joueur suivi + les comptes des deux donuts (etape E6.1
-	// du PLAN_EQUIPEMENT_GACHIS_2026-09-09). Attache a la reponse existante, jamais
-	// un endpoint dedie. nil si aucun match partage ; Available=false avec raison
-	// machine pour un titre sans film.usage_summary.
-	EquipmentUsage *EquipmentUsageBlock `json:"equipment_usage,omitempty"`
-
 	// Capabilities reprend canonical.CapabilityGap pour signaler les sections
 	// degradees ou absentes (events non charges, weapons repo absent, etc.).
 	Capabilities []canonical.CapabilityGap `json:"capabilities,omitempty"`
