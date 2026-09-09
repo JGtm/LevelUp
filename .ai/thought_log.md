@@ -1,3 +1,23 @@
+## [2026-09-09] Gate corpus complet E2 — 9 lignes de perte instruites, toutes acceptees — Complete
+
+**Decision technique principale.** Le gate `replay-corpus-gate --reference=base` (7 temoins,
+49 -> 50) rend PERTE sur 4 temoins (9 lignes). Chaque ligne a ete instruite sur pieces : huit
+sont deja documentees par les journaux E2 / E2-bis (vies d'humains nommees « bot » par le relais,
+index 8 hors table sur `c75f33b8`, portage du crane rogne d'une frame) ; la neuvieme
+(`fb1a1a72` `equipmentEpisodes.a/presents` 2 -> 1) a demande une re-cuisson du seul temoin avec
+`--keep-work` : les bornes des 4 episodes du slot 625 sont identiques, seul le PROPRIETAIRE de la
+piste change (lien direct), donc les frags credites passent de 2 a 3 et l'assistance suit l'ancien
+nom. C'est une des 27 vies que le pont par morts nommait a tort. Acceptation ecrite au registre.
+
+**Aussi dans ce commit.** Le correctif de polarite de `replaydiff` laisse en attente par la session
+precedente : une mesure ventilee `par-slot` (porteur sans nom) qui passe `par-xuid` (porteur nomme)
+forme UN groupe a somme conservee -> changement, pas perte. Tests `replaydiff` verts.
+
+**Prochaine etape.** Fusion de `feat/v2-decodeur-e2` dans `feat/v75`, `levelup backfill-killsource`
+(revision d'isolement bumpee ; couvre aussi le report L133 du registre), re-cuisson du parc
+(`backfill-replay --only-existing`, un film a la fois), puis `swap.sh` sur les 4 temoins de la
+vague B (preuve du P0 identites). Plan master `.ai/PLAN_MASTER_2026-09-09.md` lot 0.4.
+
 ## [2026-09-08] Lot E2-bis — les pertes du gate corpus, instruites une par une et corrigées — Complété
 
 **Décision technique principale : le corps d'un joueur est la paire `(slot, génération)`, pas le

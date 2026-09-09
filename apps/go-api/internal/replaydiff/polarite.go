@@ -52,18 +52,27 @@ var compteursDEchec = map[string]bool{
 	"periodsNoBridge": true,
 }
 
-// marqueurParXUID : segment des cles ventilees par joueur (`.../par-xuid/<xuid>`,
-// `tracks/vies-par-xuid/<xuid>`, `.../duree-totale/par-xuid/<xuid>`).
-const marqueurParXUID = "par-xuid/"
+// marqueurParXUID / marqueurParSlot : segments des cles ventilees par joueur
+// (`.../par-xuid/<xuid>`, `tracks/vies-par-xuid/<xuid>`, `.../duree-totale/par-xuid/<xuid>`) ou,
+// pour la MEME mesure quand le porteur n'a pas de nom, par slot (`.../par-slot/<slot>`, cf.
+// `empreinte_durees.go`). Les deux ventilations d'une meme mesure forment UN groupe : un trajet
+// qui passe de « slot 513 sans nom » a « joueur X » (lot E2, 2026-09-08 : 14 slots de `084a804d`)
+// n'a pas disparu, il a trouve son porteur — la somme sur les deux ventilations le dit.
+const (
+	marqueurParXUID = "par-xuid/"
+	marqueurParSlot = "par-slot/"
+	marqueurGroupe  = "par-*/"
+)
 
-// groupeParXUID rend la cle de GROUPE d'une mesure ventilee par joueur (tout ce qui precede
-// l'identifiant), et false si la mesure n'est pas ventilee.
+// groupeParXUID rend la cle de GROUPE d'une mesure ventilee par joueur ou par slot (tout ce qui
+// precede le marqueur, le marqueur neutralise), et false si la mesure n'est pas ventilee.
 func groupeParXUID(k string) (string, bool) {
-	i := strings.LastIndex(k, marqueurParXUID)
-	if i < 0 {
-		return "", false
+	for _, m := range []string{marqueurParXUID, marqueurParSlot} {
+		if i := strings.LastIndex(k, m); i >= 0 {
+			return k[:i] + marqueurGroupe, true
+		}
 	}
-	return k[:i+len(marqueurParXUID)], true
+	return "", false
 }
 
 // groupesConserves : les groupes par joueur dont la SOMME sur tous les joueurs est la meme des
