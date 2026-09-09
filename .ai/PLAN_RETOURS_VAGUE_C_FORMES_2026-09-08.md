@@ -418,3 +418,119 @@ _(vide au démarrage)_
   `ChartPointHeatmap` qui commenterait l'ancien rendu invisible des cases `value: null` (non
   vérifié exhaustivement au-delà de `squadEchange.logic.ts`, seul cas trouvé par grep de
   `ne peint`/`non peinte` dans `features/squad`).
+- **2026-09-10 (lot 3.2)** — `apps/web/src/lib/replay/heatPaint.ts:448-455` : `buildTacticalGrid`
+  reçoit `minX`/`minY` dans son `GridFrame`, mais `drawTacticalHeatmap` ne les lit JAMAIS (le
+  décalage vit dans `view.topLeftWorld`, désormais rempli par `planCanvasView`). Deux champs
+  morts pour ce consommateur, et le piège exact dans lequel l'appelant précédent est tombé
+  (il passait `topLeftWorld: {x: 0, y: 0}` en croyant que la grille portait déjà son origine).
+  À supprimer ou à honorer quand le noyau sera repris — hors périmètre 3.2 (le rejeu 2D est
+  l'autre consommateur).
+- **2026-09-10 (lot 3.2)** — bornes VALIDES mais ABERRANTES : `analysis/tactical.Raster.Bornes()`
+  cadre sur toutes les cellules qui passent le plancher, sans écarter une cellule isolée très
+  éloignée. Une seule zone lisible à l'écart suffit donc à rendre un rapport de cadre très
+  allongé — la hauteur est désormais bornée (`planFrameStyle`), mais le plan reste alors un
+  ruban. Le vrai correctif est en amont (recuisson des artefacts aux bornes fausses, D11, en
+  cours côté superviseur) ou un écrêtage au 99e centile dans `Bornes()`. NON TRAITÉ.
+- **2026-09-10 (lot 3.2)** — `apps/web/src/features/tactical/tacticalView.logic.ts` : le fichier
+  passe de 136 à 254 lignes en absorbant `planEmptyReason`/`planEmptyText`/`planFrameStyle`/
+  `planCanvasView`. Encore loin du seuil de 500, mais la carte « Plan » a maintenant assez de
+  logique propre pour justifier un `tacticalPlan.logic.ts` voisin au prochain ajout.
+
+---
+
+## Lot 3.2 — Tactique, point 21 : pas de grille adaptatif (branche `feat/tactique-grille`)
+
+Chantier autonome annoncé plus haut (« Plancher/pas de la grille tactique »), exécuté le
+2026-09-10 sous le master plan `.ai/PLAN_MASTER_2026-09-09.md` (§4 vague 3, ligne 3.2 ;
+décision **D6** : pas adaptatif, plancher inchangé). Périmètre EXCLU et non traité ici :
+la recuisson des 7 artefacts aux bornes fausses (superviseur), les fonds de carte WebP
+(lot 3.3), la page rejeu.
+
+### Le constat (vérifié sur pièces par le superviseur le 2026-09-09)
+
+Sur Illusion, après le backfill des positions de kill, la couverture est passée de 26,6 %
+à 67,9 % (38 matchs retenus) et le plan restait **vide** : au pas fixe de 0,5 m, aucune
+cellule n'atteignait les 3 matchs distincts du plancher. La page annonçait « pas assez de
+matchs mesurés » — faux : les matchs étaient là, c'est la **densité par cellule** qui
+manquait. Et le canvas du plan mesurait 1 070 × 13 375 px.
+
+### Items
+
+- [x] **1. Pas de grille adaptatif (D6).** `analysis/tactical/pas_adaptatif.go` :
+      `PasAdaptatifsM` (0,5 → 1 → 2 m, la suite DOUBLE) et `ChoisirPas`, qui retient le
+      **premier** pas atteignant `CellulesLisiblesMin` cellules au-dessus du plancher ;
+      faute de pas suffisant, la tentative la plus fournie (à égalité, la plus fine). Le
+      plancher de 3 matchs distincts **n'est jamais abaissé**. Les quatre lectures de
+      l'onglet passent par là (positions de kill, occupation, routes, morts isolées) :
+      les sidecars, cuits à 0,5 m, sont **regroupés** par `ReadresserComptes` — aucune
+      recuisson. Orchestration dans `service/tactical_service_grille.go` (fichier voisin :
+      `tactical_service.go` était à 493 lignes). Le pas retenu est publié dans `pas_m`
+      (champ **déjà** au contrat) et affiché : « Grille : 2 m par cellule », FR et EN.
+- [x] **1 bis. N = 22, et la valeur est mesurée.** C'est le plus petit nombre de cellules
+      lisibles pour lequel **au moins deux** cellules dépassent le p95 de l'échelle de
+      couleur (`quantile.go`) — donc le plus petit pour lequel la rampe décrit une
+      distribution et non la seule cellule extrême, ce que la doc de `OrdreP95` dit
+      justement vouloir éviter. En dessous de 22, le p95 est une interpolation entre les
+      deux plus grandes valeurs. Vérifié **dans les deux sens** par
+      `TestCellulesLisiblesMinEstLeSeuilOuLEchelleCesseDEtreDicteeParUneSeuleCellule`
+      (la propriété tient à N, elle ne tient pas à N−1) : N ne peut pas dériver en silence.
+- [x] **1 ter. Le clic → cellule suit le pas publié.** Le contrat de cellule reçoit
+      `cellule.pas_m` (seul champ ajouté au contrat, `openapi-gen` + `generate-types`
+      rejoués) : une adresse de cellule ne veut rien dire sans son pas, et résolue à
+      0,5 m une adresse de 2 m désigne un autre endroit de la carte. Absent ou ≤ 0 = pas
+      par défaut, pour un client d'une version antérieure. Côté sidecars, l'adresse cuite
+      à 0,5 m est readressée avant comparaison (`celluleVisee`).
+- [x] **1 quater. Deux corrections du repère, indissociables du pas publié**
+      (`tacticalView.logic.ts:107-114`, cité par le brief) : `cellFromClick` rend
+      désormais une adresse ancrée sur l'**origine du monde**, comme
+      `CelluleTactique.col/lig` — l'adresse relative à `min_x` ne coïncidait avec celle du
+      serveur que sur une carte calée sur (0, 0) ; et `planCanvasView` pose l'origine du
+      calque à `−min_x × échelle` — avec (0, 0), la heatmap était peinte `min_x` mètres à
+      côté, donc **entièrement hors canvas** sur ces mêmes cartes. Les deux défauts
+      étaient invisibles : toutes les fixtures partaient de (0, 0).
+- [x] **2. Message d'état vide honnête.** `planEmptyReason` distingue trois causes sur les
+      deux dénominateurs **déjà publiés** (aucun champ de contrat ajouté) : périmètre vide
+      (`aucun-match`, message propre), aucun match mesuré (`aucune-mesure`, message
+      historique conservé — il reste vrai là), matchs mesurés mais dispersés (`densite` :
+      « Densité insuffisante pour dessiner un plan », citant les matchs mesurés, le
+      plancher et le pas essayé). FR et EN dans `manifests/tactical.toml`.
+- [x] **3. Défaut du canvas.** `planFrameStyle` : le cadre garde le rapport **exact** des
+      bornes (sans quoi la peinture se désaligne du clic — une seule échelle px/m) et sa
+      hauteur est plafonnée par une **largeur** maximale (`rapport × 720 px`). Bornes
+      inexploitables (invalides, étendue nulle, non finies) → rapport du fond (16/9, celui
+      des vignettes). Le cadre est désormais posé **même quand rien n'est peint**, l'état
+      vide se posant par-dessus : un plan vide a la taille qu'il aura une fois rempli.
+      Non-régression : `planFrameStyle` (5 cas) + deux tests de rendu.
+- [~] **Ratchet anti-retour au pas fixe** : couvert par les tests plutôt que par un grep —
+      `TestTacticalService_PasAdaptatif_CarteClairsemee` (le service publie 2 m) et
+      `TestTacticalService_Cellule_SuitLePasDeLaLecture` (le détail suit le pas) rougissent
+      immédiatement si un appelant revient à `GrilleParDefaut()`. Les trois
+      `GrilleParDefaut()` restants sont légitimes et vérifiés : le repli de
+      `grilleDemandee`, les grappes de spawn (agrégation propre, cohérente des deux côtés)
+      et la cuisson des sidecars.
+
+### Gates (exécutés le 2026-09-10, codes de sortie vérifiés)
+
+| Gate | Résultat |
+|---|---|
+| `go build ./...` + `go vet ./internal/...` | exit 0 |
+| `go test ./internal/analysis/tactical/... ./internal/service/... ./internal/api/...` | exit 0, **0** `--- FAIL:` |
+| `golangci-lint run --new-from-merge-base=feat/v75 ./...` | **0 issues**, exit 0 |
+| `make openapi-gen` + `make generate-types` puis `git status` | vide après commit |
+| `npx vitest run src/features/tactical` | 8 fichiers, **142 tests**, exit 0 |
+| `npx tsc -b --force` | exit 0 |
+| `npx eslint src/features/tactical --max-warnings=0` | exit 0 |
+| grep couleurs en dur dans `features/tactical` | 0 |
+| grep `slug ==` dans le diff Go | 0 |
+
+### À vérifier en navigateur (superviseur)
+
+1. **Illusion affiche des cellules**, et le pied du plan annonce le pas retenu
+   (« Grille : 1 m » ou « 2 m ») ; si le plan reste vide, le message doit dire
+   *densité insuffisante*, jamais « pas assez de matchs ».
+2. **Une carte déjà lisible** (Aquarius, Streets…) rend **exactement** le même plan
+   qu'avant, à 0,5 m — le pas adaptatif ne coûte rien à qui n'en a pas besoin.
+3. **Un plan vide** rend un cadre de taille normale (rapport du fond), l'état vide
+   par-dessus — plus de canvas de 13 375 px.
+4. **Le clic sur une cellule** ouvre le bon détail, à n'importe quel pas (c'est ce que
+   les deux corrections du repère changent le plus visiblement).
