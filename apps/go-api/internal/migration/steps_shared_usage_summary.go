@@ -50,6 +50,55 @@ func init() {
 		Description: "Tables append-only match_usage_players + match_usage_films (résumé d'usage équipement/socles dérivé de l'artefact de rejeu) + vues _latest par passe",
 		ApplySchema: applyMatchUsageSummary,
 	})
+	Register(Migration{
+		Name:        "shared_match_usage_players_outcomes_v1",
+		TargetDB:    TargetShared,
+		Description: "Colonnes taken_json/spent_json/kept_json/dropped_json sur match_usage_players (les trois issues d'un objet pris, étape E3) + recréation de la vue _latest, qui fige son SELECT * à sa création",
+		ApplySchema: applyMatchUsageOutcomes,
+	})
+}
+
+// applyMatchUsageOutcomes ajoute les quatre ventilations d'issue au grain (match,
+// joueur), puis RECRÉE la vue joueurs.
+//
+// ─── POURQUOI UN SECOND STEP, ET PAS UN DDL ÉLARGI ─────────────────────────────────────────
+//
+// `shared_match_usage_summary_v1` est déjà au ledger de toutes les bases de dev : une
+// migration enregistrée ne rejoue jamais, donc élargir son DDL n'ajouterait ces colonnes
+// nulle part. Ce step-ci, lui, passe sur les bases existantes comme sur les neuves —
+// `addColumnIfMissing` est un no-op quand la colonne est là. Même patron que
+// `add_team_rounds_to_match_registry`.
+//
+// ─── LE PIÈGE DE L'ÉTOILE FIGÉE ────────────────────────────────────────────────────────────
+//
+// `match_usage_players_latest` est un `SELECT p.*` : DuckDB fige la liste des colonnes à la
+// CRÉATION de la vue. Sans la recréation ci-dessous, les quatre colonnes existeraient en
+// table et resteraient INVISIBLES au seul chemin de lecture autorisé (ADR 0026) — le
+// lecteur échouerait sur un « Binder Error » en les demandant. Le step est donc
+// indissociable de l'ALTER, et il est ici plutôt que dans un troisième step parce qu'il
+// n'a jamais été appliqué : les deux actions arrivent ensemble partout.
+//
+// ─── AUCUN BACKFILL SQL, ET C'EST VOULU ────────────────────────────────────────────────────
+//
+// Les lignes déjà écrites gardent `{}` : leur passe a été projetée par une révision qui ne
+// lisait pas `equipmentChanges`. Leur rattrapage est une RE-PROJECTION, pas un UPDATE —
+// `replay.UsageSummaryRev` passe à `us4` dans le même lot, ce qui suffit à ce que le
+// backfill (`levelup backfill-usage-summary`) reprenne chaque match et écrive une passe
+// neuve, en INSERT purs (ADR 0019/0026/0030 : aucun UPDATE ne touche jamais ces tables).
+func applyMatchUsageOutcomes(db *sql.DB) error {
+	// DEFAULT '{}' ET PAS NOT NULL, et ce n'est pas un relâchement : DuckDB REFUSE
+	// toute contrainte sur un ALTER ... ADD COLUMN (« Adding columns with constraints
+	// not yet supported »). Le défaut suffit à la propriété qui compte — les lignes
+	// des passes antérieures portent `{}`, jamais NULL, et le persister écrit
+	// toujours une valeur (usageCountMapJSON rend `{}` pour une map vide). Le lecteur
+	// traite de toute façon `{}` comme « aucune » sans allocation (countMapFromJSON).
+	for _, col := range []string{"taken_json", "spent_json", "kept_json", "dropped_json"} {
+		if err := addColumnIfMissing(db, "match_usage_players", col,
+			"VARCHAR DEFAULT '{}'"); err != nil {
+			return err
+		}
+	}
+	return execScript(db, ddlMatchUsagePlayersLatest)
 }
 
 // applyMatchUsageSummary crée les deux tables, leurs index et leurs vues. Idempotente. Les

@@ -165,13 +165,21 @@ func insertUsagePlayerRows(
 		if err != nil {
 			return fmt.Errorf("persist: resume usage %s/%s: pad_pickups_json: %w", matchID, r.XUID, err)
 		}
+		// Les QUATRE ventilations d'issue (etape E3, revision us4) : prises,
+		// consommations, garde derive, lachers. Elles se serialisent comme
+		// deployed_json — `{}` et jamais NULL, la colonne est NOT NULL.
+		issues, err := usageOutcomeJSONsOf(r)
+		if err != nil {
+			return fmt.Errorf("persist: resume usage %s/%s: %w", matchID, r.XUID, err)
+		}
 		if _, err := stmt.ExecContext(ctx,
 			matchID, pass, replay.UsageSummaryRev, now, r.XUID,
 			r.GrapplePulls,
 			r.CamoEpisodes, r.CamoMS, r.CamoKills,
 			r.OvershieldEpisodes, r.OvershieldMS, r.OvershieldKills,
 			deployed, r.DroppedObjects, r.GrenadesThrown,
-			r.PadPickups, padPickups); err != nil {
+			r.PadPickups, padPickups,
+			issues.taken, issues.spent, issues.kept, issues.dropped); err != nil {
 			return fmt.Errorf("persist: INSERT match_usage_players %s/%s: %w", matchID, r.XUID, err)
 		}
 	}
@@ -189,6 +197,33 @@ func usageCountMapJSON(m map[string]int) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+// usageOutcomeJSONs — les quatre ventilations d issue d une ligne, serialisees d un coup.
+// Regroupees parce qu elles voyagent ensemble : quatre appels separes dans la boucle
+// d insertion feraient franchir a `insertUsagePlayerRows` le plafond de taille de fonction
+// du depot, et la premiere erreur de l une doit arreter les quatre.
+type usageOutcomeJSONs struct{ taken, spent, kept, dropped string }
+
+func usageOutcomeJSONsOf(r *replay.UsagePlayerSummary) (usageOutcomeJSONs, error) {
+	var out usageOutcomeJSONs
+	for _, f := range []struct {
+		nom string
+		src map[string]int
+		dst *string
+	}{
+		{"taken_json", r.TakenByFamily, &out.taken},
+		{"spent_json", r.SpentByFamily, &out.spent},
+		{"kept_json", r.KeptByFamily, &out.kept},
+		{"dropped_json", r.DroppedByFamily, &out.dropped},
+	} {
+		s, err := usageCountMapJSON(f.src)
+		if err != nil {
+			return out, fmt.Errorf("%s: %w", f.nom, err)
+		}
+		*f.dst = s
+	}
+	return out, nil
 }
 
 // usageWeaponPadsJSON serialise la liste des socles d arme, dans l ordre du document.
@@ -219,5 +254,6 @@ const insertMatchUsagePlayerSQL = `
 		 camo_episodes, camo_ms, camo_kills,
 		 overshield_episodes, overshield_ms, overshield_kills,
 		 deployed_json, dropped_objects, grenades_thrown,
-		 pad_pickups, pad_pickups_json)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		 pad_pickups, pad_pickups_json,
+		 taken_json, spent_json, kept_json, dropped_json)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
