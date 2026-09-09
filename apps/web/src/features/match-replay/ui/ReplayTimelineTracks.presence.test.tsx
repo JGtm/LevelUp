@@ -3,8 +3,13 @@
  *
  * Séparé de `ReplayTimelineTracks.test.tsx` parce que c'est une autre question. Celui-là tient
  * la CHARPENTE de la frise — ses rangées, ses étiquettes, son curseur, son trait de lecture.
- * Celui-ci tient ce que le lot L4 y a ajouté : l'ombrage de présence, sa porte cliquable, et
- * l'anneau des médailles. Le montage commun vit dans `test/timelineTracksHarness`.
+ * Celui-ci tient ce que le lot L4 y a ajouté : l'ombrage de présence et sa porte cliquable. Le
+ * montage commun vit dans `test/timelineTracksHarness`.
+ *
+ * LE BADGE DE MÉDAILLE (ex-anneau) N'EST PLUS TESTÉ ICI depuis le 2026-09-09 (décision D7) : il
+ * a migré avec son dessin dans `ReplayMarkTrack.test.tsx`, qui monte le composant directement
+ * plutôt qu'au travers de toute la frise. Ce fichier ne garde que la hauteur de la piste du
+ * sujet, qui reste un fait STRUCTUREL de `ReplayTimelineTracks` (cf. plus bas).
  *
  * Ce qu'ils protègent :
  *  1. UNE PISTE VIDE AVAIT DEUX CAUSES ET UN SEUL DESSIN — le joueur n'était pas là, ou il n'a
@@ -14,15 +19,13 @@
  *     DÉDUIT d'une borne de vie à 10-20 s près. Une frontière au pixel sur une déduction serait
  *     un mensonge de précision.
  *  3. LA PORTE EST LE BOUTON, et elle ne fait qu'une chose : poser le curseur.
- *  4. L'ANNEAU DIT LA MÉDAILLE, la forme dit l'identité, la couleur dit le camp. Trois
- *     grandeurs, trois questions, aucune qui empiète sur une autre.
  */
 import { describe, expect, it } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent } from '@testing-library/react'
 
 import { trackLeft, trackWidth } from '../model/replayTimelineTracksLogic'
 import type { AbsenceStep, PresenceShade } from '../model/presenceTrackLogic'
-import { mark, renderTracks } from '../test/timelineTracksHarness'
+import { renderTracks } from '../test/timelineTracksHarness'
 
 /**
  * L'OMBRE DE PRÉSENCE ET SA PORTE (2026-09-07, lot L4).
@@ -85,7 +88,7 @@ describe('ReplayTimelineTracks — l’ombre de présence et sa porte', () => {
     return rangees[0] as HTMLElement
   }
 
-  const pisteJoueur = (c: HTMLElement) => piste(c, 'h-[18px]')
+  const pisteJoueur = (c: HTMLElement) => piste(c, 'h-[24px]')
   const pisteCoequipiers = (c: HTMLElement) => piste(c, 'h-3.5')
 
   /** Les bandes ombrées d'une rangée : des spans muets, sans infobulle (les marques en ont une). */
@@ -253,14 +256,15 @@ describe('ReplayTimelineTracks — l’ombre de présence et sa porte', () => {
 
   /**
    * L'ÉCART DE HAUTEUR EST CE QUI DIT LAQUELLE DES DEUX RANGÉES EST LE SUJET. Celle du joueur
-   * regardé est passée de quatorze à dix-huit pixels le 2026-09-07 pour loger l'anneau de
-   * médaille et la porte de présence ; celle des coéquipiers, qui ne porte ni l'un ni l'autre,
-   * n'a pas bougé. Les égaliser rendrait la frise muette sur ce point — et `piste()` ci-dessus
-   * ne saurait même plus les distinguer.
+   * regardé est passée de quatorze à dix-huit pixels le 2026-09-07 pour loger l'ex-anneau de
+   * médaille et la porte de présence, puis à vingt-quatre le 2026-09-09 (décision D7) pour loger
+   * le badge EN IMAGE qui a remplacé cet anneau (cf. `ReplayMarkTrack`, seize pixels de côté).
+   * Celle des coéquipiers, qui ne porte ni l'un ni l'autre, n'a pas bougé. Les égaliser rendrait
+   * la frise muette sur ce point — et `piste()` ci-dessus ne saurait même plus les distinguer.
    */
   it('la piste du SUJET est plus haute que celle des coéquipiers', () => {
     const { container } = renderTracks()
-    expect(pisteJoueur(container).className).toContain('h-[18px]')
+    expect(pisteJoueur(container).className).toContain('h-[24px]')
     expect(pisteCoequipiers(container).className).toContain('h-3.5')
   })
 
@@ -268,64 +272,5 @@ describe('ReplayTimelineTracks — l’ombre de présence et sa porte', () => {
     const { container } = renderTracks({ shades: [], absence: [] })
     expect(ombres(pisteJoueur(container))).toHaveLength(0)
     expect(ombres(pisteCoequipiers(container))).toHaveLength(0)
-  })
-})
-
-/**
- * L'ANNEAU DES MÉDAILLES (décision 14 du plan, 2026-09-07).
- *
- * Trois grandeurs et pas une de plus : la FORME dit l'identité (losange = ami), la COULEUR dit
- * le camp (encre alliée pour un frag, adverse pour une mort), le CONTOUR dit la médaille. Les
- * deux premières étaient déjà prises quand il a fallu dire « médaillé », d'où l'anneau plutôt
- * qu'une troisième teinte — et un seul code à apprendre : anneau = médaille, qu'elle décore un
- * kill ou qu'elle vienne seule.
- */
-describe('ReplayTimelineTracks — l’anneau des médailles', () => {
-  it('un kill MÉDAILLÉ garde sa silhouette et reçoit un anneau ; un kill ordinaire n’en a pas', () => {
-    const { container } = renderTracks({
-      own: [
-        mark({ key: 'k1', clock: '1:12', medals: ['Doublé'] }),
-        mark({ key: 'k2', clock: '2:20' }),
-      ],
-    })
-    const medaille = container.querySelector('[title="1:12 — Doublé"]')
-    expect(medaille?.className).toContain('ring-1')
-    expect(medaille?.className).toContain('ring-foreground')
-    // La silhouette et l'encre du frag ne bougent pas d'un iota.
-    expect(medaille?.getAttribute('style')).toContain('--ac-team-ally')
-    expect(container.querySelector('[title="2:20"]')?.className).not.toContain('ring-1')
-  })
-
-  it('l’infobulle NOMME les médailles après l’horloge, séparées par des virgules', () => {
-    renderTracks({ own: [mark({ key: 'k1', clock: '0:42', medals: ['Doublé', 'Vengeance'] })] })
-    expect(screen.getByTitle('0:42 — Doublé, Vengeance')).toBeTruthy()
-  })
-
-  /**
-   * UNE MÉDAILLE D'OBJECTIF N'A PAS DE CAMP À DIRE : décrochée sans élimination (une capture, un
-   * retour de drapeau), elle n'est ni un frag ni une mort. La remplir d'une des deux encres du
-   * rejeu lui ferait affirmer une appartenance qu'elle ne porte pas — d'où un anneau CREUX, de
-   * fond transparent, qui est tout son dessin.
-   */
-  it('une médaille d’OBJECTIF est un anneau CREUX : rond, transparent, sans encre d’équipe', () => {
-    const { container } = renderTracks({
-      own: [mark({ key: 'obj', kind: 'medal', clock: '4:04', medals: ['Capture'] })],
-    })
-    const anneau = container.querySelector('[title="4:04 — Capture"]')
-    expect(anneau?.className).toContain('rounded-full')
-    expect(anneau?.className).toContain('ring-1')
-    const style = anneau?.getAttribute('style') ?? ''
-    expect(style).toContain('transparent')
-    expect(style).not.toContain('team-ally')
-    expect(style).not.toContain('team-enemy')
-  })
-
-  it('une marque AMIE médaillée garde son losange ET prend l’anneau', () => {
-    const { container } = renderTracks({
-      teammates: [mark({ key: 'ami', clock: '5:05', friend: true, medals: ['Doublé'] })],
-    })
-    const ami = container.querySelector('[title="5:05 — Doublé"]')
-    expect(ami?.className).toContain('rotate-45')
-    expect(ami?.className).toContain('ring-1')
   })
 })
