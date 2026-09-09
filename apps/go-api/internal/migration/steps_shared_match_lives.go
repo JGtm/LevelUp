@@ -74,6 +74,11 @@ func applyMatchLives(db *sql.DB) error {
 //	                        que le joueur est bien vivant.
 //	named_by    'death'     nommee par LECTURE du fil des morts.
 //	            'closure'   nommee par DEDUCTION (fermeture de slot) — jamais une mort.
+//	            'biped_creation'          nommee par LECTURE du record de creation du bipede
+//	                                      (lien direct corps -> joueur, registre d'identite E2).
+//	            'biped_creation_propagee' le meme record, propage a un autre sejour du meme corps.
+//	            'elimination'             DEDUCTION : elimination sur le roster (registre P2).
+//	            'exclusion_temporelle'    DEDUCTION : exclusion sur l'intervalle de vie (P2-bis).
 //
 // UN SEUL INDEX, celui qui sert la vue `_latest` et la lecture par match. DuckDB est colonnaire :
 // un index ART ne sert que les acces ponctuels, et chaque index elargit la surface ART #23046 le
