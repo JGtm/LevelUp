@@ -99,14 +99,32 @@ func attachOutcomes(m *domain.SessionUsageMetric, playerXUID string, measured []
 	if !ok {
 		return
 	}
+	out := computeOutcomes(playerXUID, []string{family}, measured)
+	m.Outcomes = &out
+}
+
+// computeOutcomes — les trois issues du SUJET sur un ensemble de familles, et les
+// deux taux de référence qui l'EXCLUENT (décision P7). SOURCE UNIQUE du
+// remplissage de barre : la page Sessions la lit par famille (attachOutcomes), le
+// bloc de période par famille pour la Synthèse et toutes familles confondues pour
+// l'Escouade (usage_overview.go).
+//
+// LE SUJET N'EST PAS TOUJOURS LE JOUEUR DE LA ROUTE : sur une ligne de coéquipier,
+// « le reste de mon équipe » est mon camp moins CE coéquipier. Le camp de
+// référence reste celui du joueur de la route (MatchInput.PlayerTeam) — c'est le
+// seul que le scope connaisse, et les sujets suivis y sont tous alliés.
+//
+// Un participant sans camp connu dans un match à camp connu tombe du côté « eux » :
+// on sait qu'il n'est pas dans mon camp, on ne sait rien de plus.
+func computeOutcomes(subjectXUID string, families []string, measured []MatchInput) domain.SessionUsageOutcomes {
 	var mine, teammates, opponents outcomeCounts
 	teamKnown := false
 	for i := range measured {
 		mi := &measured[i]
 		for j := range mi.Players {
 			p := &mi.Players[j]
-			c := equipmentOutcomeOf(p, family)
-			if p.XUID == playerXUID {
+			c := outcomeCountsOf(p, families)
+			if p.XUID == subjectXUID {
 				mine.add(c)
 				continue
 			}
@@ -117,7 +135,7 @@ func attachOutcomes(m *domain.SessionUsageMetric, playerXUID string, measured []
 			}
 			teamKnown = true
 			if teamID, inLobby := mi.TeamOf[p.XUID]; inLobby && teamID == *mi.PlayerTeam {
-				teammates.add(c) // mon camp MOINS moi (décision P7)
+				teammates.add(c) // mon camp MOINS le sujet (décision P7)
 			} else {
 				opponents.add(c) // le lobby MOINS mon camp
 			}
@@ -132,5 +150,14 @@ func attachOutcomes(m *domain.SessionUsageMetric, playerXUID string, measured []
 		out.TeammatesUsedRatePct = teammates.usedRatePct()
 		out.OpponentsUsedRatePct = opponents.usedRatePct()
 	}
-	m.Outcomes = &out
+	return out
+}
+
+// outcomeCountsOf — le cumul des issues d'une ligne joueur sur plusieurs familles.
+func outcomeCountsOf(p *PlayerRow, families []string) outcomeCounts {
+	var c outcomeCounts
+	for _, family := range families {
+		c.add(equipmentOutcomeOf(p, family))
+	}
+	return c
 }
