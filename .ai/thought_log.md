@@ -1,4 +1,4 @@
-## [2026-09-09] Equipement gachis, etape E5.1-E5.3 — le bloc usage demenage vers _shared — En cours
+## [2026-09-09] Equipement gachis, etape E5.1-E5.3 + scissions obligatoires — le bloc usage demenage vers _shared — Complete
 
 **Decision technique principale.** Le bloc « usages d'equipement, armes speciales et
 objectifs » quitte `features/session-detail/` pour `apps/web/src/features/_shared/usage/`
@@ -28,10 +28,25 @@ lot) ; scope reel du lot -> 0 probleme ; `npm run lint` (script reel du depot) -
 `wc -l` de tous les fichiers crees/touches <= 500 L (max 463 L, inchange). Greps couleur
 (hex/tailwind) sur les fichiers crees/touches : 0 resultat.
 
-**Conclusion / prochaine etape.** E5.1/E5.1bis/E5.2/E5.3 `[x]`. E5.1ter (scission
-`match-replay/model/equipmentUsageLogic.ts`, 582 L, sans rapport avec le demenagement) reste
-a faire dans la meme session, puis clôture (pas de push, pas de fusion — decision
-superviseur). E5.4-E5.13 (Go, Synthese/Escouade) menes par un autre executant, non touches.
+**Scission n2 (E5.1ter, sans rapport avec le demenagement).**
+`match-replay/model/equipmentUsageLogic.ts` (582 L) scinde en creant le fichier voisin
+`equipmentKeptLogic.ts` (142 L) : la troisieme issue (KEPT_FAMILIES,
+isEpisodeMeasuredFamily, equipmentChangeFamilyOf, deplaces tels quels) + une fonction neuve
+`deriveKeptFromTaken` qui encapsule les deux boucles autrefois inline dans
+`buildEquipmentUsage`. Fichier principal : 582 -> 488 L. Aucun autre consommateur externe de
+ces symboles (verifie par grep avant de coder) ; les exports consommes par match-view
+(EPISODE_FAMILIES, buildEquipmentUsage, tallyTotal) restent dans le fichier principal, donc
+l'entree ALLOWED_CROSS_IMPORTS nommee n'a pas bouge. `npx vitest run
+src/features/match-replay` : 179 fichiers / 2596 tests verts. `npx vitest run
+src/features/match-view` : 1 flake temporel non reproductible
+(xuidMeta.guard.test.ts, timeout sous charge), vert au rejeu isole et au rejeu du lot complet
+(410/410) - consigne, non traite. `tsc -b --force` silencieux. eslint scope (3 fichiers) exit
+0. Ratchet cross-feature inchange (7 <= 7). wc -l : 488/142/137, tous <= 500.
+
+**Conclusion / prochaine etape.** Toutes les cases du perimetre de cette session (E5.1,
+E5.1bis, E5.1ter, E5.2, E5.3) sont `[x]`. E5.4-E5.13 (Go, Synthese/Escouade) menes par un
+autre executant dans un autre worktree, non touches. Pas de push, pas de fusion (decision
+superviseur).
 
 ---
 

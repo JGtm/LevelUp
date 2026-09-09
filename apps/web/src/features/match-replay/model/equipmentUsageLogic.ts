@@ -51,11 +51,15 @@
  * Tout est PUR : aucun React, aucun canvas, aucune couleur, AUCUNE LANGUE — ce fichier compte,
  * il ne nomme rien. La mise en colonnes et les libellés vivent dans `equipmentUsageColumns.ts`
  * (extrait le 2026-08-25, seuil de taille), le rendu dans `MatchEquipmentUsageSection.tsx`.
+ * La TROISIÈME ISSUE (« gardé sans l'utiliser ») et la reconnaissance rang -> famille de
+ * `equipmentChanges` vivent dans `equipmentKeptLogic.ts` (extrait le 2026-09-09, même
+ * raison : seuil de taille — scission obligatoire n°2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md).
  */
-import { REPLAY_NO_ABILITY_RANK, type MatchScoreboardRow } from '@/lib/api/types'
+import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
 import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
+import { deriveKeptFromTaken, isEpisodeMeasuredFamily, KEPT_FAMILIES } from './equipmentKeptLogic'
 import { droppedFamilyOf } from './gameChangers'
 import { PLACEMENT_RENDER, placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
 import { placementIsDroppedPower, PLACEMENT_DROPPED_FAMILIES } from './placementDropped'
@@ -67,74 +71,6 @@ import { padEquipmentFamilyOf, type PadEquipmentFamilyKey } from './weaponPadFam
 /** Les deux familles dont l'ÉTAT ACTIF est mesuré (identifiants stables du document). */
 export const EPISODE_FAMILIES = [EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD] as const
 export type EquipmentEpisodeFamily = (typeof EPISODE_FAMILIES)[number]
-
-/**
- * LES FAMILLES DU BILAN « SERVI OU GÂCHÉ » (E2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : les
- * six déployables (mêmes clés que `deployed`/`dropped`, tirées de `PLACEMENT_RENDER`) et les
- * deux power-ups (mêmes clés que `episodes` — `camo`/`overshield`, PAS `powerup_*`, qui nomme
- * le MÊME objet côté pose : cf. `droppedFamilyOf`). Le répulseur, le grappin, le propulseur et
- * le translocateur (en tant qu'ACTIVATION, distincte de sa balise `translocator_beacon` posée)
- * n'y figurent PAS : leur activation n'est mesurée par aucun canal ici mobilisé (P4), ou ils
- * portent déjà leur propre colonne (grappin).
- */
-const KEPT_FAMILIES: readonly string[] = [
-  'wall',
-  'sensor',
-  'translocator_beacon',
-  'shroud_screen',
-  'threat_seeker',
-  'repair_field',
-  EQUIP_FAMILY_CAMO,
-  EQUIP_FAMILY_OVERSHIELD,
-]
-
-/** Vrai pour les deux familles dont le côté « utilisé » vient des ÉPISODES, pas des poses. */
-function isEpisodeMeasuredFamily(family: string): boolean {
-  return family === EQUIP_FAMILY_CAMO || family === EQUIP_FAMILY_OVERSHIELD
-}
-
-/**
- * EQUIPMENT_CHANGE_FAMILY_STEMS — LA RECONNAISSANCE RANG -> FAMILLE DE `equipmentChanges`, sur
- * la RACINE du libellé publié par `abilityLabels` (même patron que `CHARGE_FAMILY_STEMS` de
- * `abilityChargeLogic.ts` et `translocatorRanks` de `placementTeleport.ts` : l'artefact ne
- * publie AUCUNE table rang->famille, seulement rang->texte bilingue). Une famille absente d'ici
- * — grappin, propulseur, répulseur — reste HORS BILAN (P4) sans qu'on y pense : elle a un
- * libellé (donc n'entre pas dans la réserve « sans famille connue »), simplement aucun stem ne
- * la reconnaît.
- */
-const EQUIPMENT_CHANGE_FAMILY_STEMS: Readonly<Record<string, readonly string[]>> = {
-  wall: ['mur', 'wall'],
-  sensor: ['capteur', 'sensor'],
-  translocator_beacon: ['translocat'],
-  shroud_screen: ['occultant', 'shroud'],
-  threat_seeker: ['traqueur', 'seeker'],
-  repair_field: ['réparation', 'repair'],
-  [EQUIP_FAMILY_CAMO]: ['camouflage'],
-  [EQUIP_FAMILY_OVERSHIELD]: ['surbouclier', 'overshield'],
-}
-
-/**
- * equipmentChangeFamilyOf — la famille CANONIQUE (vocabulaire `KEPT_FAMILIES`) que nomme le
- * rang `r` d'un `equipmentChanges`, ou `null` quand :
- *  - le rang est HORS BILAN (label connu mais hors `EQUIPMENT_CHANGE_FAMILY_STEMS` : grappin,
- *    propulseur, répulseur) — silencieux, une exclusion PRODUIT, pas une mesure manquante ;
- *  - le rang n'a PAS DE LABEL DU TOUT (`abilityLabels?.[String(r)]` absent) — c'est la RÉSERVE
- *    « objets pris sans famille connue » — COMPTÉE mais JAMAIS AFFICHÉE (décision utilisateur
- *    2026-09-09 : identification par relevé Theater guidé, hors interface),
- *    distinguée par l'appelant via `labels?.[String(r)] == null`, jamais devinée ici.
- */
-export function equipmentChangeFamilyOf(
-  labels: ReplayDocumentReady['abilityLabels'],
-  rank: number,
-): string | null {
-  const label = labels?.[String(rank)]
-  if (!label) return null
-  const text = `${label.fr ?? ''} ${label.en ?? ''}`.toLowerCase()
-  for (const [family, stems] of Object.entries(EQUIPMENT_CHANGE_FAMILY_STEMS)) {
-    if (stems.some((stem) => text.includes(stem))) return family
-  }
-  return null
-}
 
 /**
  * Un état actif cumulé : combien d'épisodes, combien de temps en tout, et combien de frags
@@ -407,41 +343,11 @@ export function buildEquipmentUsage(
   // LE LANCER PORTE SON AUTEUR : `i`, l'index de joueur du film — jamais `slot` (cf. en-tête).
   for (const g of doc.grenades) bump(tallyOfFilmIndex(g.i).grenades, g.rank)
 
-  // LES PRISES (`equipmentChanges` `taken`), par compteur ET par famille CANONIQUE — un
-  // scratch LOCAL, jamais posé sur `EquipmentUsageTally` : ce n'est pas une grandeur affichée,
-  // seulement l'entrée du calcul de `kept` ci-dessous (E2, décision utilisateur 2026-09-09).
-  const takenByTally = new Map<EquipmentUsageTally, Record<string, number>>()
-  let unnamedTaken = 0
-  for (const c of doc.equipmentChanges) {
-    if (c.kind !== 'taken') continue
-    if (!doc.abilityLabels?.[String(c.r)]) {
-      // Aucun label pour ce rang, dans CE film : réserve « sans famille connue » (P13
-      // amendée), au niveau du match — jamais un porteur mis en cause pour une non-mesure.
-      if (c.r !== REPLAY_NO_ABILITY_RANK) unnamedTaken += 1
-      continue
-    }
-    const family = equipmentChangeFamilyOf(doc.abilityLabels, c.r)
-    // Labellisé mais hors bilan (grappin, propulseur, répulseur) : exclusion PRODUIT (P4),
-    // pas une famille inconnue — elle ne rejoint donc PAS la réserve ci-dessus.
-    if (!family) continue
-    const t = tallyOfSlotAt(c.slot, c.t)
-    const rec = takenByTally.get(t) ?? {}
-    rec[family] = (rec[family] ?? 0) + 1
-    takenByTally.set(t, rec)
-  }
-  // LE GARDÉ SE DÉRIVE APRÈS COUP, une fois `deployed`/`dropped`/`episodes` posés pour CE
-  // compteur : `taken` sans usage ni lâcher pour la même famille (règle validée par E0.4).
-  for (const [t, taken] of takenByTally) {
-    for (const family of KEPT_FAMILIES) {
-      const takenN = taken[family] ?? 0
-      if (takenN === 0) continue
-      const usedN = isEpisodeMeasuredFamily(family)
-        ? (t.episodes[family]?.count ?? 0)
-        : (t.deployed[family] ?? 0)
-      const droppedN = t.dropped[droppedFamilyOf(family)] ?? 0
-      t.kept[family] = Math.max(0, takenN - usedN - droppedN)
-    }
-  }
+  // LA TROISIÈME ISSUE (« gardé sans l'utiliser », E2) : collecte des prises
+  // (`equipmentChanges` `taken`) par compteur et par famille canonique, puis dérivation
+  // `taken - utilisé - lâché` une fois les autres canaux posés pour ce compteur — voir
+  // `equipmentKeptLogic.ts` (extrait le 2026-09-09, seuil de taille du dépôt).
+  const unnamedTaken = deriveKeptFromTaken(doc, tallyOfSlotAt)
 
   const byTeam = teamsOf(players, tallies)
   const byPlayer = byTeam.flatMap((g) => g.players)

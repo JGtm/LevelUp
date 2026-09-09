@@ -338,10 +338,13 @@ cd apps/web && npx eslint src/features/session-detail --max-warnings=0
         ce lot) est scindé à l'identique en 7 fichiers de test miroir + `usageGrids.test.ts` ;
         `SessionUsageForms.test.tsx` renommé `UsageForms.test.tsx`. Tous les fichiers créés ou
         touchés ≤ 500 L (`wc -l` vérifié, cf. gate)
-  - [ ] E5.1ter Scission `match-replay/model/equipmentUsageLogic.ts` (582 L, seuil 500) —
+  - [x] E5.1ter Scission `match-replay/model/equipmentUsageLogic.ts` (582 L, seuil 500) —
         sans rapport avec le déménagement ci-dessus (le fichier reste dans
-        `match-replay/model/`, aucune réutilisation cross-feature en jeu ici). Traitée à la
-        suite dans ce même lot (« scission n°2 » du contrat) — voir le journal
+        `match-replay/model/`, aucune réutilisation cross-feature en jeu ici). Nouveau
+        fichier voisin `equipmentKeptLogic.ts` (142 L) : `KEPT_FAMILIES`,
+        `isEpisodeMeasuredFamily`, `equipmentChangeFamilyOf` et une fonction neuve
+        `deriveKeptFromTaken` (encapsule la collecte des prises + la dérivation du gardé,
+        avant inline dans `buildEquipmentUsage`). `equipmentUsageLogic.ts` : 582 → 488 L
 - [x] E5.2 Vérifié : `npx vitest run src/features/session-detail src/features/match-replay
       src/features/_shared src/components/charts` → 244 fichiers / 3083 tests verts (1 skip
       préexistant), `npx tsc -b --force` propre. Déménagement pur : aucune assertion de test
@@ -541,6 +544,20 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   problème. `npm run lint` (sans `--max-warnings=0`, le script réel du dépôt) passe
   (exit 0, 30 warnings dont les 28 ci-dessus, 0 erreur). Dette de lint antérieure au lot,
   non accrue. Non traité (hors périmètre E5.1-E5.3).
+
+- **Nouvelle, scission n°2 du 2026-09-09** : `equipmentUsageColumns.ts:290` commente
+  « une famille de `KEPT_FAMILIES` ... cf. `equipmentUsageLogic.ts` » — référence devenue
+  inexacte, `KEPT_FAMILIES` vit maintenant dans `equipmentKeptLogic.ts`. Cosmétique
+  (commentaire seul, aucun import cassé) ; `equipmentUsageColumns.ts` est explicitement hors
+  périmètre de la scission n°2 (« Ne touche à rien d'autre dans match-replay »). Non traité.
+
+- **Nouvelle, scission n°2 du 2026-09-09** : `src/features/match-view/xuidMeta.guard.test.ts`
+  a timeout (5000 ms) une fois sur `npx vitest run src/features/match-view` en lot (42
+  fichiers), test qui parcourt tout `features/match-view` sur disque. Rejoué seul et rejoué
+  en lot une seconde fois : vert les deux fois (906 ms puis suite complète verte). Flake
+  temporel de contention disque sous charge parallèle, pas une régression du déplacement
+  (`equipmentKeptLogic.ts` n'est pas dans l'arbre scanné par ce garde-rail). Non traité,
+  catégorie déjà connue du dépôt (cf. thought_log, vague 2 : « un flake temporel consigne »).
 
 ---
 
@@ -1063,3 +1080,39 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
 
   **Prochaine étape** : scission n°2 (`equipmentUsageLogic.ts`, match-replay), puis clôture
   de ce lot (aucun push, aucune fusion — décision superviseur).
+
+- **2026-09-09 — scission obligatoire n°2, `equipmentUsageLogic.ts` (match-replay)**. Sans
+  rapport avec le déménagement E5.1 (ce fichier reste dans `match-replay/model/`, aucune
+  réutilisation cross-feature). Nouveau fichier voisin `equipmentKeptLogic.ts` (142 L) : la
+  TROISIÈME ISSUE et sa reconnaissance rang -> famille — `KEPT_FAMILIES`,
+  `isEpisodeMeasuredFamily`, `equipmentChangeFamilyOf` (déplacés tels quels, exports
+  stables) et une fonction NEUVE `deriveKeptFromTaken(doc, tallyOfSlotAt)` qui encapsule les
+  deux boucles autrefois inline dans `buildEquipmentUsage` (collecte des prises par famille
+  canonique, puis dérivation `taken - utilisé - lâché`). `equipmentUsageLogic.ts` :
+  582 → 488 L. Import type-only de `EquipmentUsageTally` depuis `equipmentUsageLogic.ts`
+  vers `equipmentKeptLogic.ts` (érasé à la compilation, aucun cycle runtime).
+  `equipmentUsageLogic.kept.test.ts` : `equipmentChangeFamilyOf` importé depuis
+  `./equipmentKeptLogic`, `buildEquipmentUsage` reste depuis `./equipmentUsageLogic` — même
+  fichier de test, aucune assertion changée. Aucun autre consommateur externe de
+  `equipmentChangeFamilyOf`/`KEPT_FAMILIES` (vérifié par grep global avant de coder) ;
+  `EPISODE_FAMILIES`/`buildEquipmentUsage`/`tallyTotal` (consommés par `match-view` via
+  l'entrée `ALLOWED_CROSS_IMPORTS` nommée `match-view=>match-replay/model/equipmentUsageLogic`)
+  restent dans le fichier principal, donc cette entrée n'a pas bougé.
+
+  **Résultats observés** : `npx vitest run src/features/match-replay` → 179 fichiers / 2596
+  tests verts (1 skip préexistant). `npx vitest run src/features/match-view` → 1 flake
+  temporel non reproductible (`xuidMeta.guard.test.ts`, timeout 5000 ms sous charge
+  parallèle), vert au rejeu isolé ET au rejeu du lot complet (410/410) — consigné en
+  Découvertes, non traité. `npx tsc -b --force` silencieux. `npx eslint
+  src/features/match-replay/model/equipmentUsageLogic.ts
+  src/features/match-replay/model/equipmentKeptLogic.ts
+  src/features/match-replay/model/equipmentUsageLogic.kept.test.ts --max-warnings=0` → exit
+  0. `node tools/lint-cross-feature-imports.mjs` → 7 ≤ 7, inchangé. `wc -l` : 488 / 142 / 137,
+  tous ≤ 500. Greps couleur (hex/tailwind) sur les deux fichiers de logique : 0 résultat.
+
+  **Statut** : E5.1ter `[x]`. Toutes les cases du périmètre de cette session (E5.1, E5.1bis,
+  E5.1ter, E5.2, E5.3) sont maintenant `[x]`.
+
+  **Conclusion** : chantier E5.1-E5.3 + les deux scissions obligatoires terminé et vérifié
+  sur pièces. Pas de push, pas de fusion (décision superviseur — un autre exécutant mène en
+  parallèle E5.4-E5.13, Go + Synthèse/Escouade, dans un worktree différent).
