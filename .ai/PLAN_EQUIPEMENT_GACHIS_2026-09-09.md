@@ -191,12 +191,12 @@ issue devient un `[!]` et les étapes suivantes livrent deux segments.
 
 **Périmètre fermé :**
 
-- [ ] E1.1 `components/charts/valueGridModel.ts` — `ValueGridCell.segments?: Array<{ key, value, fraction, color, label }>`
+- [x] E1.1 `components/charts/valueGridModel.ts` — `ValueGridCell.segments?: Array<{ key, value, fraction, color, label }>`
       **OPTIONNEL**. La borne de colonne se calcule sur le TOTAL de la pile.
       Champ absent = comportement strictement inchangé
-- [ ] E1.2 `components/charts/ValueGrid.tsx` — rendu des segments, dans l'ordre du tableau,
+- [x] E1.2 `components/charts/ValueGrid.tsx` — rendu des segments, dans l'ordre du tableau,
       chacun avec son `aria-label` (même contrat d'accessibilité que les cellules simples)
-- [ ] E1.3 Tests `components/charts/valueGridModel.test.ts` : une cellule à trois segments
+- [x] E1.3 Tests `components/charts/valueGridModel.test.ts` : une cellule à trois segments
       s'empile sur la borne du total ; une cellule SANS segment rend exactement comme avant
       (test de non-régression sur la grille des objectifs de match-view)
 
@@ -533,3 +533,39 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
 
   **Prochaine étape : décision utilisateur.** Ouvrir E1 avec deux segments, ou combler
   d'abord les trois rangs de palette et remesurer.
+
+- **2026-09-09 — DÉCISION UTILISATEUR (questionnaire), qui AMENDE la décision de sortie
+  ci-dessus.** On garde les TROIS issues (utilisé / lâché en mourant / gardé sans l'utiliser).
+  Le seuil franchi (25,21 % de rangs non nommés) ne disqualifie pas la troisième issue : il
+  dit seulement que certains objets pris ne peuvent pas être VENTILÉS PAR FAMILLE. La réponse
+  produit n'est donc pas de réduire à deux segments, mais de rendre la réserve VISIBLE : les
+  objets pris dont le rang n'a pas de famille connue ne sont ni cachés ni forcés dans une
+  famille — ils forment une ligne de réserve sous le tableau, « N objets pris sans famille
+  connue » (FR) / « N objects taken without a known family » (EN), au sens de la décision P13
+  (la réserve de couverture s'affiche, elle ne se cache pas). Un lot de manifeste séparé
+  (classer la palette des 8 films sans table, nommer les rangs 10/19/22) réduira cette réserve
+  plus tard ; il n'est pas traité ici. E1 et E2 s'exécutent donc avec les TROIS segments.
+
+- **2026-09-09 — E1 CLOSE.** `components/charts/valueGridModel.ts` porte `ValueGridCell.segments?`
+  et `ValueGridInput.segments?` (E1.1), `ValueGrid.tsx` les rend en pile ordonnée avec un
+  `aria-label` par segment via un sous-composant `ValueGridStack` (E1.2), tests ajoutés à
+  `valueGridModel.test.ts` : une pile à trois segments s'empile sur la borne du TOTAL de la
+  cellule (`value`, pas une somme recalculée des segments) ; une cellule sans callback
+  `segments`, ou dont le callback rend `undefined` pour cette cellule précise (cas d'un
+  appelant qui n'empile qu'une partie de ses colonnes), rend EXACTEMENT comme avant (E1.3).
+  Gate : `npx vitest run src/components/charts` (34 fichiers, 307 tests, vert) et
+  `npx tsc -b --force` (silencieux, vert). Aucune régression sur la grille des objectifs de
+  match-view (`objectivesChart.ts`, qui ne fournit jamais `segments`).
+
+- **2026-09-09 — E2 ouverte.** Périmètre déclaré (columns.ts/chart.ts/i18n.ts) étendu à
+  `equipmentUsageLogic.ts` (calcul de `kept` par famille depuis `doc.equipmentChanges` — la
+  plomberie que E2.1-E2.7 présupposent sans la nommer, cf. mandat de la tâche : « le gardé se
+  dérive côté web depuis le document ») et à `gameChangers.ts` (pont inverse épisode->socle,
+  déjà propriétaire du pont direct — CLAUDE.md n°6). Décision de conception : `EquipmentUsageColumns.deployed`/`.dropped`/`.episodes`
+  restent INCHANGÉS (évite de casser ~10 assertions de `equipmentUsageLogic.test.ts` hors
+  périmètre déclaré) ; un champ ADDITIF `equipment: string[]` porte la liste fusionnée. Le
+  groupe d'affichage `episodes` (3 sous-colonnes compte/durée/frags) reste lui aussi RENDU
+  tel quel dans `equipmentUsageColumns.ts` — camouflage/surbouclier gagnent EN PLUS une colonne
+  dans la pile fusionnée (leur compte d'épisodes y sert de côté « utilisé », P2/D9 amendée) :
+  légère redite du compte d'épisodes entre les deux blocs, jugée préférable à la suppression
+  d'une fonctionnalité existante (durée, frags sous effet) hors du périmètre écrit de E2.
