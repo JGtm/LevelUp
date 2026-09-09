@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 )
 
@@ -166,12 +167,118 @@ func parseF32(s string) float32 {
 // deplacement, aucune ligne de calcul n a change (le golden d assemblage fige les bornes).
 // ---------------------------------------------------------------------------
 
-// boundsOf calcule l'étendue XY (et Z) de tous les points publiés.
-func boundsOf(tracks []Track) Bounds {
+// ---------------------------------------------------------------------------
+// LE REJET DES ECHANTILLONS ABERRANTS (2026-09-08)
+//
+// LE DEFAUT QU IL CORRIGE. `boundsOf` etait un min/max BRUT sur tous les points publies :
+// UN seul echantillon faux suffisait a definir plusieurs bornes. Mesure sur l artefact
+// `81c02726` (Isolement, Bases) : le point (slot 523, image 645) sort a
+// x=-78.6 y=+46.38 z=-325.4 alors que le sol joue est a 117.8 en mediane — quatre cent
+// quarante metres SOUS le terrain, sur une carte qui n a pas de vide. Il est SEUL : un point
+// sur 16 064. Et il fixait a lui tout seul MinX, MaxY et MinZ.
+//
+// CE QUE CA CASSAIT EN AVAL, ET C EST DOUBLE. Le client ecarte le fond de carte quand l image
+// ne contient pas les bornes (`coversPlayedArea`) : sur ces matchs le fond disparaissait alors
+// que l image couvre 99 % des positions. Et les MEMES bornes cadrent la scene (`sceneBounds`) :
+// la carte etait dessinee plus petite qu elle ne devait, pour loger un point fantome.
+//
+// LE SEUIL EST MESURE, PAS CHOISI. Balayage des 64 artefacts du parc, par axe : l ecart du
+// point le plus lointain, exprime en unites d ETENDUE CENTRALE (p1..p99). La population se
+// separe en deux, avec un trou franc :
+//
+//	artefacts de decodage : 105.3  71.9  65.5  49.3  47.7  46.8  45.9  38.5  17.7
+//	--- trou ---
+//	jeu legitime          :   9.5   8.2   8.1   7.0   5.9   5.5   5.2  ...  (mediane 0.12)
+//
+// `boundsRejectSpreads = 12` tombe dans ce trou : 1.5x sous le plus petit artefact, 1.3x
+// au-dessus du plus grand ecart legitime. Un tir depuis un perchoir ou une chute dans un vide
+// REEL (Launch Site) reste tres en deca — c est ce que dit la colonne de droite.
+//
+// POURQUOI L ETENDUE CENTRALE ET NON L ECART-TYPE : un seul point a -325 m tire la moyenne ET
+// l ecart-type, donc se masque lui-meme. Les centiles, non.
+// ---------------------------------------------------------------------------
+
+// boundsRejectSpreads : au-dela de combien d'ETENDUES CENTRALES un echantillon est tenu pour
+// un artefact de decodage. Calibre sur le parc (cf. le bloc ci-dessus).
+const boundsRejectSpreads = 12
+
+// boundsMinSamples : en deca, aucun rejet. Les centiles n'ont pas de sens sur une poignee de
+// points, et un match si court ne vaut pas le risque d'ecarter une position vraie.
+const boundsMinSamples = 200
+
+// boundsMinSpread : plancher de l'etendue centrale, en metres. Sans lui, une partie ou tout le
+// monde reste sur un plan (spread 0) rejetterait le moindre deplacement.
+const boundsMinSpread = 0.5
+
+// boundsOf calcule l'étendue XY (et Z) des points publiés, en écartant les échantillons
+// ABERRANTS (cf. le bloc ci-dessus). Le second retour est le nombre de points écartés — il est
+// journalisé par l'appelant, jamais avalé.
+func boundsOf(tracks []Track) (Bounds, int) {
+	xs, ys, zs := axisValues(tracks)
+	if len(xs) < boundsMinSamples {
+		return rawBounds(tracks, nil), 0
+	}
+	garde := [3]axisGuard{guardOf(xs), guardOf(ys), guardOf(zs)}
+	aberrant := func(p Point) bool {
+		return garde[0].rejects(p.X) || garde[1].rejects(p.Y) || garde[2].rejects(p.Z)
+	}
+	b := rawBounds(tracks, aberrant)
+	// GARDE DE DERNIER RESSORT : si le filtre a tout ecarte, il s est trompe sur la forme de la
+	// donnee, pas la donnee sur elle-meme. On rend les bornes brutes plutot qu'une etendue vide.
+	if b.MinX > b.MaxX {
+		return rawBounds(tracks, nil), 0
+	}
+	return b, countRejected(tracks, aberrant)
+}
+
+// axisGuard : les bornes d'acceptation d'un axe, deduites de son etendue centrale.
+type axisGuard struct{ lo, hi float32 }
+
+func (g axisGuard) rejects(v float32) bool { return v < g.lo || v > g.hi }
+
+// guardOf deduit les bornes d'acceptation d'un axe. `vals` est TRIE par l'appelant.
+func guardOf(vals []float32) axisGuard {
+	n := len(vals)
+	p1, p99 := vals[n/100], vals[99*n/100]
+	spread := p99 - p1
+	if spread < boundsMinSpread {
+		spread = boundsMinSpread
+	}
+	marge := boundsRejectSpreads * spread
+	return axisGuard{lo: p1 - marge, hi: p99 + marge}
+}
+
+// axisValues rend les trois axes de tous les points, TRIES — la forme qu'attend `guardOf`.
+func axisValues(tracks []Track) (xs, ys, zs []float32) {
+	n := 0
+	for _, tr := range tracks {
+		n += len(tr.Points)
+	}
+	xs, ys, zs = make([]float32, 0, n), make([]float32, 0, n), make([]float32, 0, n)
+	for _, tr := range tracks {
+		for _, p := range tr.Points {
+			xs, ys, zs = append(xs, p.X), append(ys, p.Y), append(zs, p.Z)
+		}
+	}
+	sortFloats(xs)
+	sortFloats(ys)
+	sortFloats(zs)
+	return xs, ys, zs
+}
+
+func sortFloats(v []float32) {
+	sort.Slice(v, func(i, j int) bool { return v[i] < v[j] })
+}
+
+// rawBounds accumule l'étendue des points que `skip` ne rejette pas (`nil` = tous).
+func rawBounds(tracks []Track, skip func(Point) bool) Bounds {
 	var b Bounds
 	first := true
 	for _, tr := range tracks {
 		for _, p := range tr.Points {
+			if skip != nil && skip(p) {
+				continue
+			}
 			if first {
 				b = Bounds{MinX: p.X, MinY: p.Y, MaxX: p.X, MaxY: p.Y, MinZ: p.Z, MaxZ: p.Z}
 				first = false
@@ -182,7 +289,25 @@ func boundsOf(tracks []Track) Bounds {
 			b.MinZ, b.MaxZ = minf(b.MinZ, p.Z), maxf(b.MaxZ, p.Z)
 		}
 	}
+	// Aucun point retenu : `first` est reste vrai et `b` est le zero. On le SIGNALE par une
+	// etendue inversee, que l'appelant reconnait (cf. la garde de dernier ressort).
+	if first {
+		return Bounds{MinX: 1, MaxX: -1}
+	}
 	return b
+}
+
+// countRejected compte les échantillons écartés — la mesure que l'appelant journalise.
+func countRejected(tracks []Track, skip func(Point) bool) int {
+	n := 0
+	for _, tr := range tracks {
+		for _, p := range tr.Points {
+			if skip(p) {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // geometryBounds calcule l'étendue XY des props (nil si pas de géométrie).
