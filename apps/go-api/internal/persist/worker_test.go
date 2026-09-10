@@ -126,6 +126,15 @@ func TestWorker_Run_PersistFailure_NoACK(t *testing.T) {
 	persister := &mockPersister{persistErr: errors.New("DB unavailable")}
 	w := NewWorker("test-fail", q, TargetShared, persister)
 
+	// Synchronisation explicite sur OnPersistError (même patron que le correctif du
+	// flake TestWorker_Run_PersistsAndACKs ci-dessus, registre .ai/V7.5/REGISTRE_REPORTS.md
+	// lot hygiène 5.3, L590) : un `time.Sleep` fixe pour « laisser le temps au worker de
+	// processer » est une attente implicite sur une durée devinée, pas sur l'événement
+	// réel — le hook se déclenche exactement quand Persist a échoué, avant toute tentative
+	// d'ACK.
+	failed := make(chan struct{}, 1)
+	w.OnPersistError = func(error) { failed <- struct{}{} }
+
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- w.Run(ctx) }()
@@ -134,8 +143,11 @@ func TestWorker_Run_PersistFailure_NoACK(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Laisser le temps au worker de processer
-	time.Sleep(200 * time.Millisecond)
+	select {
+	case <-failed:
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout en attente de OnPersistError")
+	}
 
 	// WAL doit toujours être présent (pas d'ACK car Persist a failed)
 	walPath := filepath.Join(dir, "fail001.json")
