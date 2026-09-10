@@ -1,4 +1,4 @@
-## [2026-09-10] Master plan, vague 4 — 4.3 fusionne et recuit (schema 51, us5), 4.4 fusionne et verifie, 4.5 statue — En cours (revue 4.R)
+## [2026-09-10] Master plan, vague 4 — 4.3 fusionne et recuit (schema 51, us5), 4.4 fusionne et verifie, 4.5 statue — Complete (revue 4.R : 0 P0 / 0 P1 / 3 P2, gate-push vert, push 0879f1787 = CI de vague)
 
 **Decision technique principale.** Recuisson du parc au schema 51 lancee detachee avec veilleur
 (64 films, 22 min, pic 552 Mio, 0 erreur), puis `backfill-usage-summary --force` (64 ecrits, 2 s).
