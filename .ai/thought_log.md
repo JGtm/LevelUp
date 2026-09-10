@@ -1,3 +1,19 @@
+## [2026-09-10] Releves Theater — 7 sur 12 recus : rang 10 = ecran occultant, rang 19 = mur a une utilisation, corps hors table = bots 343 — En cours
+
+**Decision technique principale.** Les reponses sont relues depuis la base de la page publiee
+(collection `releves`). Deux rangs de palette sur trois sont nommes par l'utilisateur ; le
+residu des identites interverties (`58864b3c`) est clos par observation directe (camps bons,
+apparitions dispersees : le test de separation etait non concluant par nature). Le nommage
+au manifeste (`[ability_palettes.ranks]`), la recuisson et le re-resume sont regroupes dans un
+lot 3.4 qui attend les cinq releves restants pour ne recuire qu'une fois.
+
+**Resultats observes.** La barre de lecture de Theater correspond a la colonne « film » de
+l'artefact (4:37 observe pour 4:38 calcule) : les formules de `matchClock.ts` tiennent.
+
+**Conclusion / prochaine etape.** Lot 3.4 des que les releves du rang 22 arrivent.
+
+---
+
 ## [2026-09-10] Master plan, vague 3 — 3.1 (fleche hors cadre) et 3.2 (grille tactique) fusionnes, recuisson des bornes faite, D10 = poursuivre — En cours
 
 **Decision technique principale.** Fusions `376894f91` (3.2) et `b859cc65e` (3.1) apres verification

@@ -269,3 +269,7 @@ de cocher ; fusion dans `feat/v75` seulement avec l'accord de l'utilisateur.
   (contrat Escouade) attrapé avant la CI, revue double 0 P0 / 0 P1 / 2 P2, `make gate-push`
   vert, 64 résumés d'usage recuits au us4, artefact d'investigation Theater publié. Vague 3
   ouverte : 3.1 et 3.2 indépendants (escouade / tactique), 3.3 après mesure.
+- **2026-09-10 (matin)** — Sept relevés Theater reçus sur douze (`read_db`, collection
+  `releves`) : rang 10 = écran occultant, rang 19 = mur de protection à une utilisation, corps
+  hors table = bots 343 et arrivées en cours, camps de `58864b3c` bons (résidu clos). Lot 3.4
+  créé (nommage au manifeste + recuisson + re-résumé), en attente des cinq relevés restants.
