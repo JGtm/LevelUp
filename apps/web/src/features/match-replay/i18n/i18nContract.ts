@@ -540,6 +540,22 @@ export interface ReplayText {
   groundWeaponPickedByFmt: (name: string) => string
   groundWeaponPickerUnknown: string
   /**
+   * LES MUNITIONS DE L'ARME LÂCHÉE (lot 6.6, 2026-09-10) — ET POURQUOI ELLES SONT DATÉES.
+   *
+   * Le chiffre n'est PAS celui du lâcher : les munitions ne sont pas sur l'objet (mesure du
+   * lot, `.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md` — 0 égalité sur 1 524 comparaisons
+   * pour la liste de chargeurs du record de création, 10 sur 6 477 pour le R(7) voisin). Ce
+   * qui s'affiche est la dernière lecture d'inventaire du LÂCHEUR avant le lâcher, prise aux
+   * images-clés, en retard de 9,0 s en médiane et de 18,0 s au neuvième décile.
+   *
+   * LES DEUX STRINGS PORTENT DONC LE « ≈ » ET L'ÂGE, ET C'EST NON NÉGOCIABLE : sans eux, le
+   * lecteur croirait lire l'état de l'arme au moment où elle tombe — c'est-à-dire exactement
+   * la fenêtre pendant laquelle le porteur a tiré. La seconde forme s'emploie quand le film
+   * écrit AUSSI la réserve ; l'absence de réserve n'est pas un zéro (cf. `AmmoSlot`).
+   */
+  groundWeaponAmmoFmt: (mag: number, age: string) => string
+  groundWeaponAmmoResFmt: (mag: number, res: number, age: string) => string
+  /**
    * LES VÉHICULES (schéma 29) : le nom du calque et sa réserve.
    *
    * LA RÉSERVE DIT LA FIN DE VIE, et c'est le point qui trompe le plus facilement : la
