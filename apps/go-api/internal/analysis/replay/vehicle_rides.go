@@ -25,10 +25,16 @@ package replay
 //	ce qui manque tient a la primitive du trou (un trajet de moins de 3 s n en ouvre aucun), pas
 //	au decodage.
 //
-// L EVENEMENT NE NOMME PAS LE VEHICULE. Sa reference 2 (domaine 7, celui des objets du monde)
-// est gardee-absente dans la quasi-totalite des cas mesures (rapport V3 embarquement § 4.2). Le
-// vehicule d un episode vient donc de la GEOMETRIE — le vehicule le plus proche a l ouverture du
-// trou —, jamais de l evenement.
+// LA SORTIE NOMME LE VEHICULE, DEPUIS LE LOT V8 (corrige le 2026-09-10, lot hygiene 5.3,
+// inventaire P1 — cet en-tete affirmait encore le contraire). Sa reference 1 (domaine 1, la
+// SECONDE unite de la scene, gardee-jetee jusqu au lot V8) est desormais publiee et nomme le
+// vehicule dans 105/105 cas mesures, bande `ti=40`, zero bipede (`filmdec/event_list.go:317-320`,
+// `vehicle_rides_events.go` `vehicleLifeFromEvent`). La reference 2 (domaine 7, objets du monde)
+// de l EMBARQUEMENT, elle, reste gardee-absente dans la quasi-totalite des cas mesures (rapport
+// V3 embarquement § 4.2) : SEULE la sortie nomme, jamais l embarquement. La GEOMETRIE — le
+// vehicule le plus proche a l ouverture du trou — n est plus que le REPLI quand aucun evenement
+// exploitable n a ferme l episode (`vehicleLifeFromGeometry`, tente seulement si
+// `vehicleLifeFromEvent` echoue).
 //
 // PUR : aucune I/O, aucune lecture de film. Les entrees sont deja decodees.
 

@@ -26,6 +26,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 const (
@@ -67,8 +69,8 @@ func main() {
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn})))
 
-	manifDir := filepath.Join(*cacheDir, "film_manifests")
-	chunksDir := filepath.Join(*cacheDir, "film_chunks")
+	manifDir := filmcache.ManifestsRoot(*cacheDir)
+	chunksDir := filmcache.ChunksRoot(*cacheDir)
 
 	entries, err := os.ReadDir(manifDir)
 	if err != nil {

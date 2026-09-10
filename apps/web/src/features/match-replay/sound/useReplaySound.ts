@@ -215,15 +215,20 @@ function useSoundCategoryFilter(): {
     objective: true,
   }), [categoriesOff])
 
+  // NEXT CALCULÉ HORS UPDATER, PERSISTANCE APRÈS `setCategoriesOff` (même correctif que le
+  // bug U2 des bascules, `usePersistedFlag` / `thought_log.md`) : `persistPreference`
+  // notifie ses abonnés SYNCHRONEMENT, et un abonné qui rappelle `setState` depuis
+  // l'updater d'un AUTRE `setState` (ici `setCategoriesOff`) déclenche une mise à jour
+  // d'état en pleine phase de rendu — React le refuse (« Cannot update a component while
+  // rendering a different component »). Aucun symptôme aujourd'hui (`SOUND_CATEGORIES_OFF_KEY`
+  // n'a pas d'abonné croisé), mais le motif fautif ne doit pas se reproduire.
   const toggleCategory = useCallback((category: SoundCategory) => {
-    setCategoriesOff((prev) => {
-      const next = new Set(prev)
-      if (next.has(category)) next.delete(category)
-      else next.add(category)
-      persistPreference(SOUND_CATEGORIES_OFF_KEY, JSON.stringify(Array.from(next)))
-      return next
-    })
-  }, [])
+    const next = new Set(categoriesOff)
+    if (next.has(category)) next.delete(category)
+    else next.add(category)
+    setCategoriesOff(next)
+    persistPreference(SOUND_CATEGORIES_OFF_KEY, JSON.stringify(Array.from(next)))
+  }, [categoriesOff])
 
   return { categories, toggleCategory }
 }
@@ -288,38 +293,47 @@ function useInstanceSoundTuning(playerRef: { current: ReplayAudioPlayer | null }
   return { variationPercentRef, distancePercentRef, apply }
 }
 
+/**
+ * ReplaySoundContext — les entrées de `useReplaySound` qui dépendent du CONTEXTE de la page
+ * (scoreboard, fin de partie, langue, point de vue), plutôt que de la piste elle-même
+ * (`doc`/`kills`/`speed`, restés positionnels).
+ *
+ * Regroupées en objet le 2026-09-10 (lot hygiène 5.3, `.ai/V7.5/REGISTRE_REPORTS.md`, L575) :
+ * le hook avait 7 paramètres positionnels (seuil du dépôt CLAUDE.md n°5 : 5), une exemption
+ * commentée en attendant ce lot, qui touche les 8 appels du hook — dont 7 tests.
+ *
+ * LES QUATRE CHAMPS RESTENT TOUS REQUIS (`null`/`undefined` explicite), même garantie de
+ * compilation qu'avant le regroupement sur le relais du POINT DE VUE (2026-09-06, décision 11 —
+ * « allié »/« adverse » se disent par rapport à CE joueur ; seule la fin de partie, `endMatch`,
+ * reste ancrée sur le joueur de la page ; `null` = la ligne « moi », comportement d'origine).
+ * Rendu obligatoire depuis le 2026-09-07 (revue F4) : TypeScript n'accepte pas un champ requis
+ * après un optionnel dans un type positionnel, ce qui avait forcé les trois précédents
+ * (`scoreboard`, `endMatch`, `locale`) à le devenir aussi. Un appelant qui l'omettait laissait
+ * les tics de zone et la voix d'objectif sur le camp du joueur de la page pendant que la carte
+ * suivait le joueur choisi, et les tests restaient verts.
+ */
+export interface ReplaySoundContext {
+  /** Le tableau de score, d'où se DÉDUIT le camp de l'auteur d'une action d'objectif (résolveur
+   *  pur : `sideResolverFromScoreboard`). Absent, ou sans ligne « moi » : les actions qui ont
+   *  deux variantes d'équipe restent MUETTES — le rejeu ne devine jamais un camp, même règle
+   *  que l'encre des calques. */
+  scoreboard: readonly ScoreboardSide[] | undefined
+  endMatch: EndMatchSoundSpec | null
+  /** La LANGUE de l'interface : elle ne sert QU'au son « manche terminée » (voix d'annonceur,
+   *  `roundOverSound.ts`), la seule entrée locale-aware de la piste. Absente, ce son se tait. */
+  locale: ReplayLocale | undefined
+  /** LE POINT DE VUE de la page — voir l'en-tête de cette interface. */
+  viewpoint: string | null
+}
+
 export function useReplaySound(
   doc: ReplayDocumentReady,
   // Les kills DU FIL, déjà recalés (`killsOfFeed`) : la piste ne rejoue plus le recalage.
   kills: readonly ReplayKill[],
   speed: number,
-  // Le tableau de score, d'où se DÉDUIT le camp de l'auteur d'une action d'objectif (résolveur
-  // pur : `sideResolverFromScoreboard`). Absent, ou sans ligne « moi » : les actions qui ont
-  // deux variantes d'équipe restent MUETTES — le rejeu ne devine jamais un camp, même règle
-  // que l'encre des calques.
-  scoreboard: readonly ScoreboardSide[] | undefined,
-  endMatch: EndMatchSoundSpec | null,
-  // La LANGUE de l'interface : elle ne sert QU'au son « manche terminée » (voix d'annonceur,
-  // `roundOverSound.ts`), la seule entrée locale-aware de la piste. Absente, ce son se tait.
-  locale: ReplayLocale | undefined,
-  // LE POINT DE VUE de la page (2026-09-06) : « allié » et « adverse » se disent par rapport à
-  // CE joueur (décision 11 — les sons d'objectif en cours de match suivent ce qu'on regarde ;
-  // seule la fin de partie, `endMatch` ci-dessus, reste ancrée sur le joueur de la page).
-  // `null` : la ligne « moi », comportement d'origine.
-  //
-  // SEPTIÈME PARAMÈTRE, EN CONNAISSANCE DE CAUSE (seuil du dépôt : 5). Les six premiers sont
-  // déjà là ; les regrouper en objet toucherait les huit appels du hook — dont sept tests —
-  // dans un lot dont le contrat est « rien ne change ». À faire au prochain passage sur ce
-  // fichier, pas ici.
-  //
-  // ET IL EST OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4), `null` compris — ce qui a forcé les
-  // TROIS paramètres précédents à le devenir aussi : TypeScript n'accepte pas un paramètre
-  // requis derrière un optionnel. C'est le prix d'une garantie de compilation sur le relais du
-  // point de vue ; sans elle, l'oublier laissait les tics de zone et la voix d'objectif sur le
-  // camp du joueur de la page pendant que la carte suivait le joueur choisi, et les 2 673 tests
-  // restaient verts. Les appels passent donc `undefined` là où ils omettaient — explicite.
-  viewpoint: string | null,
+  context: ReplaySoundContext,
 ): ReplaySound {
+  const { scoreboard, endMatch, locale, viewpoint } = context
   const sideOfXuid = useMemo(
     () => sideResolverFromScoreboard(scoreboard, viewpoint),
     [scoreboard, viewpoint],

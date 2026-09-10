@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -22,6 +23,14 @@ type fakeSquadLoader struct {
 	errByGT    map[string]error
 	calls      []string // gamertags appeles dans l'ordre
 	delayPerGT time.Duration
+
+	// active/maxActive : PREUVE DE CONCURRENCE par compteur de chevauchement, pas par
+	// horloge murale. Un seuil temporel (« elapsed < 130ms ») rougit sous charge CI sans
+	// que le comportement testé ait changé (registre .ai/V7.5/REGISTRE_REPORTS.md, lot
+	// hygiène 5.3, L603) — maxActive>=2 est vrai dès que deux appels LoadFor se sont
+	// réellement recouverts dans le temps, quelle que soit la lenteur de la machine.
+	active    int32
+	maxActive int32
 }
 
 func (f *fakeSquadLoader) LoadFor(
@@ -32,6 +41,14 @@ func (f *fakeSquadLoader) LoadFor(
 	f.mu.Lock()
 	f.calls = append(f.calls, gamertag)
 	f.mu.Unlock()
+	n := atomic.AddInt32(&f.active, 1)
+	for {
+		prevMax := atomic.LoadInt32(&f.maxActive)
+		if n <= prevMax || atomic.CompareAndSwapInt32(&f.maxActive, prevMax, n) {
+			break
+		}
+	}
+	defer atomic.AddInt32(&f.active, -1)
 	if f.delayPerGT > 0 {
 		time.Sleep(f.delayPerGT)
 	}
@@ -296,16 +313,15 @@ func TestSquadServiceV2_GetSquadPage_LoaderRunsInParallel(t *testing.T) {
 		delayPerGT: 50 * time.Millisecond,
 	}
 	svc := NewSquadServiceV2(loader)
-	start := time.Now()
 	if _, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
 		[]string{"f1", "f2"}, temporal.PeriodAll, nil, nil, nil, nil); err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
-	// 3 joueurs × 50ms en sequentiel = 150ms. En parallele : ~50ms.
-	// On laisse une marge confortable pour CI lente.
-	elapsed := time.Since(start)
-	if elapsed >= 130*time.Millisecond {
-		t.Errorf("loader appeared to run sequentially (%v >= 130ms)", elapsed)
+	// Preuve de concurrence par COMPTEUR DE CHEVAUCHEMENT (pas par horloge murale, cf.
+	// commentaire de fakeSquadLoader) : un run séquentiel des 3 loaders ne fait jamais
+	// dépasser 1 appel actif à la fois.
+	if max := atomic.LoadInt32(&loader.maxActive); max < 2 {
+		t.Errorf("loader appeared to run sequentially (maxActive=%d, want >= 2)", max)
 	}
 }
 
