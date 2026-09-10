@@ -162,7 +162,7 @@ func ctfWriteKillPositions(b *strings.Builder, pos []filmdec.BipedPosition,
 		kills = append(kills, KillRef{KillerXUID: p.killerXUID, VictimXUID: p.victimXUID,
 			TimeMS: int64(p.timeMS)})
 	}
-	_, rep := BuildKillPositions(pos, slotXUID, kills, off*1000)
+	_, rep := BuildKillPositions(pos, regPlat(slotXUID), kills, off*1000)
 	fmt.Fprintf(b, "\n# LA MORT SUR LA CARTE — positions des deux joueurs, sans aucun record de tir\n")
 	fmt.Fprintf(b, "morts\t%d\tdeux_positions\t%d\ttueur_seul\t%d\tvictime_seule\t%d\tecartees\t%d\thors_pont\t%d\n",
 		rep.Kills, rep.Both, rep.KillerOnly, rep.VictimOnly, rep.Dropped, rep.NoBridge)

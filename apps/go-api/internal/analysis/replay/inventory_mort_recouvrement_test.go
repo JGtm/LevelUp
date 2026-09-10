@@ -75,7 +75,7 @@ func invMortMeasure(
 			st = vide
 		}
 		st.total++
-		x, ok := own.PontParSlot()[r.Slot]
+		x, ok := own.PontEpure()[r.Slot]
 		if !ok {
 			continue
 		}

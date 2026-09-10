@@ -65,8 +65,8 @@ func TestBuildKillOpeningsRendLaPositionDAvantEtLInstantDuKill(t *testing.T) {
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: mortMS}}
 
-	fatal, _ := BuildKillPositions(pos, slotXUID, kills, 0)
-	entame, rep := BuildKillOpenings(pos, slotXUID, kills, 0)
+	fatal, _ := BuildKillPositions(pos, regPlat(slotXUID), kills, 0)
+	entame, rep := BuildKillOpenings(pos, regPlat(slotXUID), kills, 0)
 	if len(fatal) != 1 || len(entame) != 1 || rep.Both != 1 || rep.OpeningOutOfLife != 0 {
 		t.Fatalf("les deux placements devaient aboutir : fatal %+v, entame %+v (%+v)",
 			fatal, entame, rep)
@@ -98,12 +98,12 @@ func TestBuildKillOpeningsRefuseUnPointDApparition(t *testing.T) {
 
 	// Témoin : sans frontière de vie, le placement TOMBE dans le piège. Si ce témoin cesse de
 	// valoir, le test qui suit ne prouve plus rien et il faut le réécrire.
-	piege, _ := BuildKillPositions(pos, slotXUID, ShiftKillRefs(kills, -OpeningLeadMS), 0)
+	piege, _ := BuildKillPositions(pos, regPlat(slotXUID), ShiftKillRefs(kills, -OpeningLeadMS), 0)
 	if len(piege) != 1 || piege[0].Killer == nil || piege[0].Victim == nil {
 		t.Fatalf("témoin invalide : le placement nu devait rendre les deux apparitions, %+v", piege)
 	}
 
-	got, rep := BuildKillOpenings(pos, slotXUID, kills, 0)
+	got, rep := BuildKillOpenings(pos, regPlat(slotXUID), kills, 0)
 	if len(got) != 0 {
 		t.Fatalf("une apparition n'est pas une entame : %+v", got)
 	}
@@ -130,12 +130,12 @@ func TestBuildKillOpeningsRefuseLaVieSuivante(t *testing.T) {
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: mortMS}}
 
-	piege, _ := BuildKillPositions(pos, slotXUID, ShiftKillRefs(kills, -OpeningLeadMS), 0)
+	piege, _ := BuildKillPositions(pos, regPlat(slotXUID), ShiftKillRefs(kills, -OpeningLeadMS), 0)
 	if len(piege) != 1 || piege[0].Victim == nil {
 		t.Fatalf("témoin invalide : le placement nu devait rendre la réapparition, %+v", piege)
 	}
 
-	got, rep := BuildKillOpenings(pos, slotXUID, kills, 0)
+	got, rep := BuildKillOpenings(pos, regPlat(slotXUID), kills, 0)
 	if len(got) != 1 || got[0].Victim != nil || got[0].Killer == nil {
 		t.Fatalf("seule l'entame du tueur devait survivre : %+v", got)
 	}
@@ -170,12 +170,12 @@ func TestBuildKillOpeningsInstantNegatifNeDonneAucunePosition(t *testing.T) {
 		t.Fatalf("instant décalé attendu -100 ms, obtenu %d", decales[0].TimeMS)
 	}
 
-	piege, _ := BuildKillPositions(pos, slotXUID, decales, offsetUS)
+	piege, _ := BuildKillPositions(pos, regPlat(slotXUID), decales, offsetUS)
 	if len(piege) != 1 || piege[0].Killer == nil || piege[0].Victim == nil {
 		t.Fatalf("témoin invalide : l'instant décalé est DANS la tolérance, %+v", piege)
 	}
 
-	got, rep := BuildKillOpenings(pos, slotXUID, kills, offsetUS)
+	got, rep := BuildKillOpenings(pos, regPlat(slotXUID), kills, offsetUS)
 	if len(got) != 0 {
 		t.Fatalf("aucune entame ne devait être écrite : %+v", got)
 	}
@@ -188,7 +188,7 @@ func TestBuildKillOpeningsInstantNegatifNeDonneAucunePosition(t *testing.T) {
 // l'index des trajectoires, qui n'existe pas dans ce cas.
 func TestBuildKillOpeningsEntreeVide(t *testing.T) {
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: 5_000}}
-	got, rep := BuildKillOpenings(nil, map[uint32]uint64{1: 111}, kills, 0)
+	got, rep := BuildKillOpenings(nil, regPlat(map[uint32]uint64{1: 111}), kills, 0)
 	if len(got) != 0 || rep.Kills != 1 || rep.Dropped != 1 || rep.OpeningOutOfLife != 0 {
 		t.Fatalf("entrée sans position : aucune entame, une mort abandonnée, %+v (%+v)", got, rep)
 	}

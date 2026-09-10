@@ -13,7 +13,7 @@ package replay
 // CE QUE CET INSTRUMENT REUTILISE, sans rien recopier :
 //   - positions JOUEUR : filmdec.ScanFilmBipedPositions (chemin de production, monde en metres) ;
 //   - fil des morts : ScanFilmDeaths ; index joueur : ScanFilmPlayerIndices + injectiveOrEmpty ;
-//   - PONT slot->xuid + CALAGE d'horloge : buildOwners (own.PontParSlot(), own.DeathOffsetMS()). Le calage
+//   - PONT slot->xuid + CALAGE d'horloge : buildOwners (own.PontEpure(), own.DeathOffsetMS()). Le calage
 //     est celui, PROUVE, du pont de production : horlogeFilm_ms = death.TimeMS + DeathOffsetMS ;
 //   - vies + trajectoires VEHICULE : filmdec.ScanFilmWorldObjectKeyframes (recensement, bornes de
 //     vie) et filmdec.ScanFilmBipedPositionsForBand (grammaire dyn.-prec., monde en metres).
@@ -124,7 +124,7 @@ func v2dProcessFilm(t *testing.T, dir string, entry filmdec.MapQuantEntry, ag *v
 	}
 	table, _ := injectiveOrEmpty(idx)
 	own := regDe(buildOwnersDeTest(tracks, deaths, table, nil))
-	xuidSlots := v2dInvertSlotXUID(own.PontParSlot())
+	xuidSlots := v2dInvertSlotXUID(own.PontEpure())
 
 	kf := filmdec.ScanFilmWorldObjectKeyframes(dir, filmdec.VehicleTypeIndex)
 	vtracks := v2dVehicleTracks(dir, kf.Band, worldRange, lay)

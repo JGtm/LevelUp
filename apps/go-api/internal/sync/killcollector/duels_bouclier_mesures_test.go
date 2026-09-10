@@ -30,6 +30,7 @@ type duelsBSonde struct {
 	kills     []duelsBKill
 	positions []filmdec.BipedPosition
 	slotXUID  map[uint32]uint64
+	registre  replay.IdentityRegistry
 	equipes   map[uint64]int64
 	originUS  int64
 }
@@ -114,7 +115,7 @@ func duelsBTueursLocalises(s duelsBSonde) []bool {
 	}
 	// BuildKillPositions n'emet PAS les morts dont aucun des deux n'est localise : le resultat
 	// se relit par couple (tueur, victime, instant), jamais par indice.
-	posOut, _ := replay.BuildKillPositions(s.positions, s.slotXUID, refs, s.originUS)
+	posOut, _ := replay.BuildKillPositions(s.positions, s.registre, refs, s.originUS)
 	localise := make(map[replay.KillRef]bool, len(posOut))
 	for i := range posOut {
 		if posOut[i].Killer != nil {

@@ -277,7 +277,7 @@ func v3dContexte(t *testing.T, dir string, bip, vehPos []filmdec.BipedPosition) 
 	// Le pont de production se construit sur le flux COMPLET (c'est son entree habituelle) ;
 	// seules les mesures de trou et de distance passent par le flux monde-seul.
 	own := regDe(buildOwnersDeTest(tousBipedes, deaths, table, nil))
-	ctx.slotX, ctx.offset = own.PontParSlot(), own.DeathOffsetMS()
+	ctx.slotX, ctx.offset = own.PontEpure(), own.DeathOffsetMS()
 	for _, d := range deaths {
 		if ms := d.TimeMS + own.DeathOffsetMS(); ms > 0 {
 			ctx.morts[d.XUID] = append(ctx.morts[d.XUID], uint64(ms)*1000)

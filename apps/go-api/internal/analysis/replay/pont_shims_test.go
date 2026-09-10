@@ -33,3 +33,25 @@ func buildOwnersDeTest(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIn
 		IdentityInput{Deaths: deaths, PlayerIndices: idx, Fire: fire})
 	return rep
 }
+
+// occupantFige et occupantFigeUS adaptent une table slot -> xuid FIGEE en la fonction
+// « qui occupe ce siege a cet instant » que les calques attendent depuis le lot 6.1.
+//
+// ELLES NE SONT PAS UN REPLI DU PONT APLATI : elles servent aux scenarios dont le siege n'est
+// occupe QUE PAR UN JOUEUR, ou l'instant ne change rien et ou fabriquer un registre entier
+// n'exercerait rien de plus. Le cas du siege RECYCLE, lui, se monte sur un vrai registre
+// (`registreSiegeRecycle`, pont_a_l_instant_test.go) — c'est la seule facon d'exercer la regle.
+func occupantFige(slotXUID map[uint32]uint64) func(uint32, int) uint64 {
+	return func(slot uint32, _ int) uint64 { return slotXUID[slot] }
+}
+
+func occupantFigeUS(slotXUID map[uint32]uint64) func(uint32, uint64) uint64 {
+	return func(slot uint32, _ uint64) uint64 { return slotXUID[slot] }
+}
+
+// regPlat monte un registre SANS VIES autour d'une table slot -> xuid : `XUIDNumAt` y retombe
+// alors sur le pont pour tout instant. C'est la forme qu'attendent les tests de placement dont
+// le scenario n'a qu'un occupant par siege — le siege RECYCLE se monte, lui, avec ses vies.
+func regPlat(slotXUID map[uint32]uint64) IdentityRegistry {
+	return regDeTest(nil, slotXUID, nil)
+}

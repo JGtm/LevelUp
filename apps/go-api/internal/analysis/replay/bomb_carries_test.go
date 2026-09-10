@@ -40,7 +40,7 @@ func TestBombHeldEventsFilterAndClock(t *testing.T) {
 
 // bombTestCarry reconstruit une chronologie depuis des evenements ms match.
 func bombTestCarry(evs []HeldObjectEvent, slotXUID map[uint32]uint64, deaths []Death) HeldObjectCarry {
-	return BuildHeldObjectCarry(evs, slotXUID, deaths)
+	return BuildHeldObjectCarry(evs, occupantFige(slotXUID), deaths)
 }
 
 // TestBombCarriesDeathClosesWithoutEmission : une prise sans lacher dont le porteur MEURT se

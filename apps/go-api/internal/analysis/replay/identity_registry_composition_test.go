@@ -27,7 +27,7 @@ func TestRegistreComposeLaLectureSeule(t *testing.T) {
 	idx := PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 5}
 
 	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
-	pont := reg.PontParSlot()
+	pont := reg.PontEpure()
 
 	if pont[512] != 111 || pont[513] != 222 {
 		t.Fatalf("pont inattendu : %+v", pont)
@@ -46,8 +46,8 @@ func TestRegistreSansMortsRendUnPontVide(t *testing.T) {
 
 	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, PlayerIndices: idx})
 
-	if len(reg.PontParSlot()) != 0 {
-		t.Fatalf("attendu un pont vide sans fil des morts, obtenu %+v", reg.PontParSlot())
+	if len(reg.PontEpure()) != 0 {
+		t.Fatalf("attendu un pont vide sans fil des morts, obtenu %+v", reg.PontEpure())
 	}
 	if reg.ViesNommeesParLaLecture() != 0 {
 		t.Errorf("vies nommees = %d, attendu 0", reg.ViesNommeesParLaLecture())
@@ -61,7 +61,7 @@ func TestRegistreSansIndexDeJoueurRendUnPontVide(t *testing.T) {
 
 	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths})
 
-	if len(reg.PontParSlot()) != 0 {
-		t.Fatalf("attendu un pont vide sans index de joueur, obtenu %+v", reg.PontParSlot())
+	if len(reg.PontEpure()) != 0 {
+		t.Fatalf("attendu un pont vide sans index de joueur, obtenu %+v", reg.PontEpure())
 	}
 }

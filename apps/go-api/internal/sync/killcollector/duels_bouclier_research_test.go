@@ -140,7 +140,7 @@ func TestSondeDuelsBouclier(t *testing.T) {
 		"(positions.go -> BuildKillPositions)", origin)
 
 	duelsBMesurer(t, duelsBSonde{
-		kills: kills, positions: positions, slotXUID: slotXUID,
+		kills: kills, positions: positions, slotXUID: slotXUID, registre: owners,
 		equipes: equipes, originUS: int64(origin),
 	})
 }
@@ -371,7 +371,9 @@ func duelsBPontIdentite(
 	owners := replay.BuildIdentityRegistry(replay.IdentityInput{
 		Positions: positions, Deaths: deaths, PlayerIndices: idx, RosterXUIDs: roster,
 	})
-	slotXUID := owners.PontParSlot()
+	// LE PONT EPURE, PAS L'APLATI (lot 6.1) : la sonde s'en sert pour ses propres denominateurs
+	// (chutes de bouclier par siege) ; le PLACEMENT, lui, passe le registre entier.
+	slotXUID := owners.PontEpure()
 	if len(slotXUID) == 0 {
 		t.Fatalf("pont slot->xuid vide (vies=%d nommees=%d lectures=%d) : rien a mesurer",
 			owners.ViesTotal(), owners.ViesNommeesParLaLecture(), owners.LecturesIndex())
