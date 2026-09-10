@@ -93,6 +93,26 @@ vrai aujourd hui (deux lignes, deux projectiles ; le Mongoose nu ne porte ni `uw
 **Restent hors perimetre** : les 8 autres tags sans banque du catalogue, le gauss (0 kill), les
 lignes `turret_g`, `d2ffec3f` (deux porteurs, rejete par la garde `+N` — elle sert deja).
 
+## 1ter. AMENDEMENT 2 — le Mutilateur rentre (2026-09-10, decision utilisateur)
+
+Decouvert en mesurant pour la session citations : l arme TUE 1262 fois au corpus (tags
+`15dcdfe3` / `b258262f` / `01bc8b0b`), servait deja son icone (`NOM Mutilator -> killfeed-81`)
+et n avait AUCUNE entree au registre — donc aucune ligne de statistiques d arme. Meme famille
+que `hinf_warthog`, en plus simple : pas d ambiguite, juste une entree jamais posee.
+
+Pose : entree `hinf_mutilator`, famille `mutilator`, libelles FR/EN, `weapon_key` sur la regle
+existante. Aucun genre nouveau, aucune regle nouvelle — c est un trou de CATALOGUE, pas de pont.
+
+MESURE ET DEDUCTION, la distinction est ecrite dans le code : le nom EN est mesure (labels.tsv +
+passe humaine de l atlas). La classe `shoulder` et le role `shotgun` sont DEDUITS. Type de degat
+et fabricant laisses VIDES plutot que devines. Le libelle FR « Mutilateur » est un CHOIX a
+confirmer — les noms FR du jeu ne sont pas des translitterations (Mangler = Dechiqueteur).
+
+TROIS GARDE-RAILS PRE-EXISTANTS ONT MORDU, tous a raison :
+`TestConcordanceAllowlistSansEntreePerimee` (dispense du 2026-09-01 devenue perimee, retiree),
+`TestWeaponRegistry_ReferentialIntegrity` (famille manquante), `TestWeaponRegistry_Seed-
+Cardinalities` (104 -> 107 armes, 49 -> 52 HINF, 52 -> 53 familles).
+
 ## 2bis. Journal d execution (2026-09-10)
 
 | etape | statut | gate |
@@ -103,8 +123,9 @@ lignes `turret_g`, `d2ffec3f` (deux porteurs, rejete par la garde `+N` — elle 
 | 3 corroboration | CLOSE | `dd7f9102` : QUATRE sources concordantes, toutes mode `0xc0803caa`. Ligne `labels.tsv:166` rouverte : porteur unique, pas de `+N`, racine unique. 3.2 et 3.3 `[!]` : 0 kill |
 | 4 registre | CLOSE | `go test ./internal/games/weapons/...` vert apres mise a jour des cardinalites |
 | 5 regles + garde-rails | CLOSE | DEUX regles (Warthog, puis Gungoose apres amendement) ; `./internal/games/...` vert ; `go vet` propre ; `gofmt` propre |
-| 6 a l ecran | OUVERTE | — |
-| 7 livraison | OUVERTE | — |
+| 5bis Mutilator | CLOSE | ajout de perimetre (utilisateur) ; 3 garde-rails ont morde et ete mis a jour |
+| 6 a l ecran | ABANDONNEE | item de plan, pas une demande ; couvert plus finement par les tests |
+| 7 livraison | CLOSE sauf fusion | commit `8ebbb1483` ; `gate-push` + fusion en attente utilisateur |
 
 **Les TROIS garde-rails ont ete verifies PAR TEST NEGATIF**, pas seulement constates verts.
 Chaque fois, le code a ete restaure immediatement apres :
@@ -254,33 +275,64 @@ Gate : `cd apps/go-api && go test ./internal/games/halo_infinite/... && go vet .
 
 ### Etape 6 — Voir a l ecran (gate : capture)
 
-- [ ] 6.1 `make dev`, ouvrir un rejeu contenant un des tags mesures a l etape 0.3, verifier que
-      la ligne du fil porte l icone du Warthog.
-- [ ] 6.2 Verifier la teinte d equipe (les PNG sont des masques blancs portes par l alpha : une
-      vignette qui sort blanche est un bug de teinture, pas de table).
-- [ ] 6.3 Verifier qu aucune ligne qui portait deja une icone n en a change autrement que prevu.
+**ETAPE ABANDONNEE — arbitrage utilisateur du 2026-09-10.** Elle etait un item de CE plan, pas
+une demande. Deux raisons de la retirer plutot que de la reporter :
+- le serveur de dev en vol tourne depuis le worktree PARTAGE, donc sans cette branche : le
+  verifier a l ecran aurait demande un second serveur, en contention d ecriture sur les memes
+  DuckDB (un seul writer par base) ;
+- ce qu elle aurait montre est deja epingle plus finement par `TestPorteurPrimeBanque`, tag par
+  tag, y compris le temoin qui ne doit PAS bouger.
 
-Gate : capture jointe, ou justification `[!]` si aucun rejeu du corpus local ne contient le cas.
+- [!] 6.1 Non fait — couvert par `TestPorteurPrimeBanque` (`382cafaf` -> `killfeed-26`).
+- [!] 6.2 Non fait — la teinture est un chemin de rendu partage par les 54 vignettes deja
+      servies ; ce lot n y touche pas.
+- [!] 6.3 Non fait au rendu, mais COUVERT ailleurs et mieux : `TestCouvertureParClasse` fige le
+      compte par classe (46 -> 48) et `TestPorteurPrimeBanque` epingle le temoin `00015cd1`.
+
+Gate : sans objet (etape retiree).
 
 ### Etape 7 — Livraison
 
-- [ ] 7.1 Skill `delivery-checklist` deroule.
-- [ ] 7.2 Entree `.ai/thought_log.md` (date, titre, statut, decision technique, resultats, suite).
-- [ ] 7.3 Revue adversariale du diff (skill `adversarial-review`) — table de donnees versionnee
-      + garde-rails : lot a risque.
-- [ ] 7.4 `make gate-push`, puis push. **Ne pas merger vers `main` sans l utilisateur** (push
-      main = deploiement prod automatique).
+- [x] 7.1 `delivery-checklist` deroule. Suite Go COMPLETE verte (exit 0), `go vet` propre,
+      `gofmt` propre, hooks pre-commit tous verts (gofmt, merge-conflict, docs-fr-sync,
+      gitleaks, go-vet). Pas de `fmt.Println` introduit, pas de `filepath.Join` sur `data/`,
+      aucun TODO, aucun garde-rail affaibli — TROIS ont au contraire mordu et ont ete mis a
+      jour avec justification datee. Pas de tag `integration` : ce lot ne touche ni `persist/`,
+      ni `sync/`, ni `migration/`.
+- [x] 7.2 Entree `.ai/thought_log.md` ecrite, y compris les DEUX erreurs du lot (lecture de la
+      table brute, conclusion trop large sur le Gungoose) et leurs lecons.
+- [~] 7.3 Revue adversariale — NON lancee par lot, et c est la regle du depot : elle se joue une
+      fois par VAGUE, avec la CI, pas lot par lot (feedback utilisateur enregistre). A la charge
+      du superviseur de vague. Le diff est pret a etre relu : 10 fichiers, table de donnees
+      versionnee + registre + garde-rails.
+- [x] 7.4a Commit `8ebbb1483` sur `wt/killfeed-porteur`.
+- [ ] 7.4b `make gate-push` puis fusion vers `feat/v75` — EN ATTENTE DE L UTILISATEUR. Jamais de
+      merge vers `main` (push main = deploiement prod automatique).
+- [ ] 7.5 APRES FUSION : prevenir la session « Citations pour kills vehicules ». Elle attend
+      `hinf_warthog` / `hinf_gungoose` dans `feat/v75` pour cabler deux citations, et porte une
+      allowlist datee pour `hinf_mutilator` devenue sans objet (critere de retrait rempli par ce
+      lot) — a supprimer de son cote, sinon elle devient une garde legacy sans date.
 
 ## 4. Ce que ce plan NE repare pas, et qui doit le savoir
 
-- Le Gungoose reste sans icone. Sa chaine est identifiee (`weap 0x0042678e`, banque
-  `veh_un_wargoose`) mais aucun `jpt!` de `labels.tsv` ne pointe dessus : la table est anterieure
-  a la decouverte. Reparable, par un autre bout, et il faudrait d abord une mort mesuree au
-  Gungoose pour valider quoi que ce soit.
-- Les 10 lignes `turret_g` restent sans icone.
-- L existence de `hinf_warthog` au registre rendra techniquement possible une citation
-  « Artilleur de Warthog » — l image est en stock. **Ce n est pas une invitation** : la decision
-  du 2026-09-10 de l ecarter portait sur le libelle, et elle n est pas revue ici.
+- ~~Le Gungoose reste sans icone.~~ **PERIME — traite par ce lot** (amendement 1bis). Cette ligne
+  est conservee barree parce qu elle porte une erreur instructive : elle affirmait « aucun `jpt!`
+  ne pointe dessus », ce que la mesure a refute. Voir 1bis.
+- Les 10 lignes `turret_g` restent sans icone (deux porteurs ET trois racines : indecidable).
+  111 morts mesurees.
+- **LE SCORPION N EST PAS DANS CE LOT, et il n est plus une enigme** : la session « Citations pour
+  kills vehicules » l a resolu le 2026-09-10 — 335 morts sur DEUX tags jumeaux de classe INCONNU
+  (`0bece71e` et `19bd6810`, meme `effet proj ac954d50`), confirmes a l oeil par l utilisateur
+  sur le match `5faa6b74` (Fragmentation Heavies). Cela ferait du Scorpion la DEUXIEME arme de
+  vehicule du corpus. Aucun genre existant ne les atteint — ni `NOM`, ni `BANQUE`, ni `GGGL`, ni
+  `PORTEUR`, ni `CLASSE` : il faut un genre indexe sur l EFFET (le `proj`), qui couvre les deux
+  jumeaux d un coup. Lot « attribution » ouvert par cette session APRES la fusion de celui-ci.
+  MA MESURE INITIALE DISAIT 0 ET ELLE ETAIT TROMPEUSE : elle comptait par `weapon_key`, ce qui ne
+  peut par construction rien reveler de ce qui n a pas de cle.
+- L existence de `hinf_warthog` et `hinf_gungoose` au registre rend techniquement possibles deux
+  citations « Artilleur de » — les images sont en stock. **Ce n est pas une invitation** : c est
+  le lot citations qui decide, apres fusion, et la question des paliers reste ouverte (Warthog :
+  record de 10 frags pour un joueur, 7 joueurs au palier 5 ; Gungoose : record 5, un seul joueur).
 
 ## 5. Decouvertes (a remplir en cours d execution, a NE PAS traiter)
 
