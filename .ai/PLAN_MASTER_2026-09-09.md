@@ -143,6 +143,7 @@ traité (justifié).
 | 4.2 | Console de la page de rejeu : neuf clés React dupliquées (identifiants de carte) + un 404 à identifier après redémarrage du serveur | Sonnet, effort bas | vitest + tsc + eslint sur le périmètre, cause corrigée à la source | [ ] en cours 10-09 (worktree `LevelUp-wt-console`, `feat/console-rejeu`) |
 | 4.3 | Identité : nommer les corps hors table par le tableau de l'API (bots 343, arrivées en cours — confirmé par le relevé Theater) avec une voix nouvelle déclarée au persist ; **+ publier la table rang → famille dans le document** (bump schéma 51 / us5, racines de libellé supprimées) ; recuisson du parc et re-résumé par le superviseur | Opus, effort moyen | tests replay + goldens, intégration `-p 1` persist/sync/archlint, lint 0 ; après recuisson : `index_hors_table` de `4f77afc1` 18 → 0 attendu, `prisesSansFamille` ≈ 0 | [ ] en cours 10-09 (worktree `LevelUp-wt-bots-api`, `feat/identite-bots-api`) |
 | 4.4 | Rejeu : flèche hors cadre pour les joueurs EMBARQUÉS (le pion en véhicule n'était pas dessiné hors cadre ; cas le plus fréquent en Grand combat) | Sonnet, effort bas | vitest match-replay, tsc, eslint, parité export | [ ] à lancer après 4.2 |
+| 4.5 | **Artefact de vérification Theater n° 2** (demande utilisateur du 10-09) : lever la réserve `SOUS_RESERVE` du tag répulseur `07104b31` (`.ai/V7.5/PLAN_KILLS_HORS_ARME.md` §6 : un seul kill sur la base de prod, match daté à retrouver dans `kill_source`) + vérifier le classement « Chute et environnement » du témoin utilisateur `1eedd3c8` (Nemesis, 06/04 22:49 : 02:04 JGtm → EIcRriizz ; 04:53 et 05:04 El sir jorge → TriksyFTW puis → JGtm). Même modèle que l'artefact 2.6 (match, instant sur les deux horloges, joueurs, quoi regarder, réponse enregistrée). Bases à lire une fois la recuisson finie | superviseur | artefact publié, réponses relues par `read_db` | [ ] à faire après la recuisson 3.4 |
 | 4.R | Revue (persist touché par 4.3 : deux relecteurs, courts), `make gate-push`, CI | — | P0 = 0, P1 = 0 | [ ] |
 
 Consigné sans lot (arbitrage du 10-09 avec impacts écrits au journal) : révision us5 des armes spéciales (P5), hygiène de code (garde-rail, alias, eslint, flake, journal), couronne VIP, socles d'équipement, mesures E0 (investigation bornée si quota), part de la Synthèse, lot hygiène du registre (en tout dernier si quota).
@@ -303,3 +304,10 @@ de cocher ; fusion dans `feat/v75` seulement avec l'accord de l'utilisateur.
 - **2026-09-10 (midi)** — Vague 3 : revue 3.R close (3 P1 corrigés avec tests et mutations
   prouvées), gate-push vert, douze relevés Theater reçus et les trois rangs nommés au manifeste.
   Push de `feat/v75` = CI de vague 3 ; recuisson du parc et re-résumé d'usage à suivre (3.4).
+- **2026-09-10 (après-midi)** — Arbitrage des découvertes validé par l'utilisateur : us5 armes
+  spéciales en P5, table rang → famille dans 4.3, hygiène de code sans lot, VIP et socles non
+  traités (la couronne reste dessinée sur le pion ; seul le VIP hors cadre n'a pas sa couronne à
+  la marge), investigation E0 bornée si quota, part de la Synthèse non, lot hygiène du registre
+  en tout dernier si quota. Kills hors arme : lot déjà livré (`2b45b0dad`, bobines par énergie,
+  chute et environnement en une classe, répulseur sous réserve) — lot 4.5 créé pour lever la
+  réserve du répulseur par relevé Theater.
