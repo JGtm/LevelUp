@@ -31,6 +31,7 @@ type Coverage struct {
 	ObjectiveObjects  *ObjectiveObjectsCoverage   `json:"objectiveObjects,omitempty"`
 	Inventory         *InventoryCoverage          `json:"inventory,omitempty"`
 	GrenadeReads      *GrenadeReadCoverage        `json:"grenadeReads,omitempty"`
+	Abilities         *AbilityCoverage            `json:"abilities,omitempty"`
 	Zones             *ZonesCoverage              `json:"zones,omitempty"`
 	OriginResolved    bool                        `json:"originResolved"`
 	T0Film            *T0FilmCoverage             `json:"t0Film,omitempty"`
@@ -142,6 +143,17 @@ type GrenadeReadCoverage struct {
 	FromDelta    int  `json:"fromDelta"`
 	Unpublished  int  `json:"unpublished"`
 	AmmoRefused  bool `json:"ammoRefused,omitempty"`
+}
+
+// AbilityCoverage est la couverture du calque IDENTITÉ DE CAPACITÉ PORTÉE (jumeau de
+// `replay.AbilityCoverage`) : lectures i48/image-clé disponibles, celles écartées comme
+// BRUIT DE BALAYAGE (rang hors domaine plausible, RAPPORT_E0_2026-09-10 §3), celles sans
+// trajectoire publiée, et celles publiées.
+type AbilityCoverage struct {
+	Reads       int `json:"reads"`
+	ScanNoise   int `json:"scanNoise"`
+	Unpublished int `json:"unpublished"`
+	Published   int `json:"published"`
 }
 
 // EquipmentCoverage dit combien de vies publiées portent au moins un épisode, par
