@@ -226,34 +226,51 @@ Aucun fichier n'est converti à cette étape : le comportement reste **stricteme
 
 **Périmètre fermé (5 fichiers) :**
 
-- [ ] `internal/domain/title/registry.go` — ajouter
-      `MapBackgroundImageFilePath(titleSlug, nomFichier string) string`. Ne pas supprimer
-      `MapBackgroundPath` (encore utilisé en écriture par la cuisson) ; ne **jamais** faire de
-      `filepath.Join` à la main ailleurs
-- [ ] `internal/service/replay_map_background.go:110-123` — `readBackgroundImage` construit le
-      chemin depuis `meta.Image` (D3) au lieu de la clé + `.png`
-- [ ] Même fichier — garde de sûreté sur `meta.Image`, sur le modèle de `cleDeFondSure` (l. 217) :
-      `filepath.Base` imposé, et **liste blanche d'extensions** `{.png, .webp}`. Tout autre cas →
-      `slog.ErrorContext` puis `port.ErrMapBackgroundNotAvailable` (jamais de panique, jamais
-      d'erreur avalée)
-- [ ] Même fichier — `MapBackgroundImage` et `MapBackgroundImageForMap` retournent désormais
-      `([]byte, string, error)`, la chaîne étant le type MIME déduit de l'extension par une table
-      `{.png: image/png, .webp: image/webp}`. Répercuter sur l'interface de `internal/port/` et
-      sur les deux handlers (qui passent la valeur à `servirBlobAvecETag`)
-- [ ] `internal/service/replay_map_background_traversee_test.go` — ajouter les cas
-      `Image: "../../ailleurs.png"`, `Image: "/absolu.png"` et `Image: "carte.svg"` : les trois
-      doivent rendre `ErrMapBackgroundNotAvailable`
-- [ ] Adapter les assertions `image/png` en dur : `handlers/replay_test.go:239-240`,
-      `handlers/tactical_background_test.go:57-58` — elles doivent lire le type servi, pas le
-      supposer
+- [x] `internal/domain/title/registry.go` — ajouté
+      `MapBackgroundImageFilePath(titleSlug, nomFichier string) string` (simple
+      `filepath.Join`, sans garde — la garde vit côté appelant, comme documenté dans son
+      commentaire). `MapBackgroundPath` conservée telle quelle (encore utilisée en écriture
+      par la cuisson, doc-commentaire mis à jour pour le dire explicitement)
+- [x] `internal/service/replay_map_background.go` — `readBackgroundImage` (avant : lignes
+      110-123) construit désormais le chemin depuis `bg.Image` (D3) au lieu de la clé +
+      `.png` en dur
+- [x] Même fichier — garde de sûreté sur `bg.Image` : `nom := filepath.Base(bg.Image)` puis
+      `nom != bg.Image` (rejette toute remontée relative ou tout chemin absolu, même
+      principe que `cleDeFondSure`) **et** liste blanche d'extensions
+      `mimeParExtensionDeFond` (`{.png: image/png, .webp: image/webp}`). Tout autre cas →
+      `slog.ErrorContext` (`"fond de carte : nom de fichier image refusé"`) puis
+      `port.ErrMapBackgroundNotAvailable`
+- [x] Même fichier — `MapBackgroundImage` et `MapBackgroundImageForMap` retournent
+      désormais `([]byte, string, error)`. Répercuté sur `internal/port/services.go` et sur
+      les deux handlers (`replay.go`, `tactical.go`), qui passent la chaîne MIME telle
+      quelle à `servirBlobAvecETag` — la route reste `background.png` (D4), seul le
+      `Content-Type` change avec le format réel
+- [x] `internal/service/replay_map_background_traversee_test.go` — ajouté
+      `TestReadBackgroundImage_RefuseImageHostile`, 3 cas (`Image: "../../ailleurs.png"`,
+      `"/absolu.png"`, `"carte.svg"`) → `ErrMapBackgroundNotAvailable`. **TDD prouvé** : le
+      test a d'abord tourné ROUGE sur le code d'avant l'étape (le PNG légitime
+      `ridgeline.png` existe à côté, donc l'ancien code — qui ignorait `Image` — le servait
+      quand même), puis VERT après l'implémentation de la garde
+- [x] Assertions `image/png` en dur remplacées par des tables PNG+WebP qui lisent le type
+      RENDU PAR LE MOCK plutôt que de le supposer : `handlers/replay_test.go` —
+      `TestReplayBackgroundImage_OK` (sous-tests PNG/WebP) ; `handlers/tactical_background_test.go`
+      — `TestTacticalBackgroundImage_OK` (idem). Tous les autres appelants du mock
+      (`mockReplayService`) gardent leur comportement par défaut `image/png` via
+      `contentTypeOuDefaut`, donc aucune régression sur les tests existants qui ne
+      fixent pas explicitement le type
 
-**Gate :**
+Tests service ajustés pour la nouvelle signature à 3 valeurs (aucun changement de
+comportement, seulement la propagation du type) : `replay_map_background_test.go`,
+`replay_map_background_carte_test.go`, `match_history_replay_test.go` (stub).
+
+**Gate — exécuté le 2026-09-10, sorties réelles :**
 ```bash
-cd apps/go-api && go test ./internal/service/ ./internal/api/handlers/ ./internal/domain/title/
-cd apps/go-api && go test ./...
+cd apps/go-api && go test ./internal/service/ ./internal/api/handlers/ ./internal/domain/title/   # ok (3 paquets)
+cd apps/go-api && go test ./...                                                                   # ok, 0 FAIL sur l'ensemble du module
+cd apps/go-api && golangci-lint run --new-from-merge-base=feat/v75 ./internal/service/... ./internal/api/handlers/... ./internal/domain/title/... ./internal/port/...   # 0 issues (après extraction de mimeImagePNG/mimeImageWebP en constantes — 1er passage : 1 issue goconst)
+git status --porcelain data/   # vide, avant ET après
 ```
-Gate passé si tout est vert **et** qu'aucun fichier de `data/` n'a été modifié
-(`git status --porcelain data/` vide).
+Gate passé.
 
 ---
 
@@ -263,23 +280,62 @@ Sans cette étape, l'étape 4 casse silencieusement la planche de contact et le 
 
 **Périmètre fermé (5 fichiers) :**
 
-- [ ] `apps/go-api/go.mod` — ajouter `golang.org/x/image` (D6)
-- [ ] `cmd/mapfond-planche/main.go:152` — `png.Decode` → `image.Decode`, plus import blanc
-      `_ "golang.org/x/image/webp"` et `_ "image/png"`
-- [ ] `cmd/mapfond-cadrage/main.go:122` — idem
-- [ ] `internal/mapdecoupe/masque.go:69` — idem
-- [ ] Passer en revue `cmd/mapfond-inventaire` et `cmd/migrate-static-maps` : s'ils ouvrent un
-      fond de carte, même traitement ; sinon, statuer `[~]` avec la référence
-- [ ] **Hors périmètre, à ne pas toucher** : `cmd/vs-measure/*` et `cmd/vehicle-sprite/compose.go`
-      décodent des sprites de véhicules, pas des fonds de carte. Les laisser en `png.Decode`
-- [ ] Un test dans `internal/mapdecoupe/` qui décode un WebP sans perte produit par l'outil de
-      l'étape 0 et vérifie les dimensions
+- [~] `apps/go-api/go.mod` — `golang.org/x/image` déjà présente en dépendance DIRECTE depuis
+      l'étape 0 (le banc d'essai devait déjà redécoder le WebP pour prouver l'aller-retour,
+      cf. `go.mod` ligne 22). Rien à ajouter ici
+- [x] `cmd/mapfond-planche/main.go` (l. 152 avant l'étape) — `png.Decode` → `image.Decode`
+      (rend `(image.Image, string, error)`, format ignoré au `_`). Import `image/png`
+      CONSERVÉ nommément (encore utilisé pour l'ENCODAGE des vignettes,
+      `png.Encoder`/`png.BestCompression`) — son effet de bord (enregistrement du décodeur
+      PNG) suffit, pas besoin d'un second import blanc du même paquet ; ajouté
+      `_ "golang.org/x/image/webp"` pour le décodeur WebP (D6)
+- [x] `cmd/mapfond-cadrage/main.go` (l. 122 avant l'étape) — idem (`image/png` en import
+      blanc cette fois, cet outil n'encode rien) + `_ "golang.org/x/image/webp"`.
+      **Extension du périmètre de ce fichier, nécessaire à son fonctionnement même** (pas
+      un fix opportuniste : sans elle l'outil aurait continué à COMPILER après l'étape 4
+      tout en ne trouvant plus aucun fichier) : le glob `*.png` en dur est remplacé par
+      `fichiersFondDeCarte()` (PNG **et** WebP), et la clé `strings.TrimSuffix(nom, ".png")`
+      par `strings.TrimSuffix(nom, filepath.Ext(nom))`
+- [x] `internal/mapdecoupe/masque.go` (l. 69 avant l'étape) — idem (`_ "image/png"` +
+      `_ "golang.org/x/image/webp"`, `png.Decode` → `image.Decode`). Paramètre renommé
+      `pngPath` → `imagePath` (doc-commentaire de `ChargeMasque` mis à jour : « PNG ou WebP
+      sans perte, sniffée au contenu »)
+- [x] Revue de `cmd/mapfond-inventaire` : ne décode AUCUNE image — `resoutFond`
+      (`main.go:173`) ne fait que `os.Stat` sur le SIDECAR `.json` (jamais sur l'image) pour
+      décider de la clé de fond. Statué `[~]`, rien à traiter
+- [x] Revue de `cmd/migrate-static-maps` : opère sur `static/maps` (`--static-dir`), un
+      répertoire d'assets totalement DISTINCT de `data/titles/{slug}/reference/map_backgrounds/`
+      (thumbnails migrés vers DuckDB, PNG/JPG en dur ligne 92) — aucun rapport avec les fonds
+      de carte du rejeu/de la Tactique. Statué `[~]`, hors périmètre par nature
+- [~] `cmd/vs-measure/*` et `cmd/vehicle-sprite/compose.go` — non touchés, conforme au plan
+      (sprites de véhicules, pas des fonds de carte)
+- [x] `internal/mapdecoupe/masque_test.go` — `TestChargeMasqueDecodeUnWebPSansPerte` : encode
+      une image NRGBA 3x2 avec `nativewebp.Encode` (le MÊME encodeur que l'outil de l'étape 0,
+      `github.com/HugoSmits86/nativewebp`, D5), la décode via `ChargeMasque` et vérifie les
+      dimensions (`NX`/`NY`) **et** la lecture de l'alpha cellule par cellule
 
-**Gate :**
+**Découverte traitée dans le même lot (pas un fix opportuniste — nécessaire au respect de
+l'invariant « aucun test skippé » à l'étape 4)** : `internal/mapdecoupe/oracle_corpus_test.go`,
+méthode `corpus.masque()` (avant : `png := c.res.MapBackgroundPath(...)`, chemin `.png` en dur).
+Après conversion des fonds (étape 4), `os.Stat` sur ce chemin échouerait pour TOUTES les
+cartes et `TestOracleIoUContreLeDecoupePOC` — qui traite l'absence de masque comme un cas
+NOMINAL (`if m == nil { t.Skip(...) }`) — passerait silencieusement au SKIP au lieu de
+mesurer l'IoU réel : exactement la panne silencieuse que l'étape 3 existe pour écarter,
+citée dans l'en-tête de cette étape. Corrigé pour lire `bg.Image` via
+`replay.LoadMapBackground` puis `res.MapBackgroundImageFilePath`, comme le service de
+production (D3). Vérifié sur pièces : `TestOracleIoUContreLeDecoupePOC` mesure toujours un
+IoU médian réel (0,871 sur 11 zones, seuil 0,85) après ce correctif, sur les fonds encore en
+PNG à ce stade.
+
+**Gate — exécuté le 2026-09-10, sorties réelles :**
 ```bash
-cd apps/go-api && go build ./... && go vet ./...
-cd apps/go-api && go test ./internal/mapdecoupe/
+cd apps/go-api && go build ./... && go vet ./...                                    # BUILD_EXIT=0, VET_EXIT=0
+cd apps/go-api && go test ./internal/mapdecoupe/                                    # ok, 3.7s (TestOraclePositionsJouees/TestOracleTolerance SKIP pré-existants, jeu de données de positions absent de ce worktree — sans rapport avec ce lot)
+cd apps/go-api && go test ./...                                                     # ok, 0 FAIL sur l'ensemble du module
+cd apps/go-api && golangci-lint run --new-from-merge-base=feat/v75 ./cmd/mapfond-planche/... ./cmd/mapfond-cadrage/... ./internal/mapdecoupe/...   # 0 issues
+git status --porcelain data/                                                        # vide, avant ET après
 ```
+Gate passé.
 
 ---
 
@@ -364,6 +420,7 @@ ce chantier.
 | 2026-09-10 | `title.FindRepoRoot()` échoue dans le worktree dédié `LevelUp-wt-fonds-webp` : il cherche `db_profiles.json` en remontant depuis le cwd, or ce fichier n'est pas versionné et n'existe donc dans AUCUN worktree fraîchement créé (seulement dans le poste de travail principal, hors git) | `apps/go-api/internal/domain/title/repo_root.go:18` (comportement, pas un bug — le fichier documente lui-même `LEVELUP_REPO_ROOT` comme repli) | Non traité ici : contournement local par `LEVELUP_REPO_ROOT=<racine du worktree>` pour le gate de cette étape, conforme à l'usage documenté de la variable. Rien à corriger dans le code |
 | 2026-09-10 | La première version du test synthétique (`main_test.go`) construisait l'image avec `*image.RGBA` et des octets `{R:10,G:60,B:220,A:120}` sur la zone semi-transparente — invalide au regard du modèle prémultiplié (`B=220 > A=120`), ce qui faisait échouer `TestAllerRetourWebP_ImageSynthetique_Identique` (round-trip non identique) alors que l'encodeur n'a aucun défaut : c'était un artefact du test, pas de l'outil | `apps/go-api/cmd/mapfond-webp/main_test.go` (avant correction, cf. historique de session) | Traité **dans ce lot** : image reconstruite en `*image.NRGBA` (non prémultiplié, le type concret que rend réellement `png.Decode` sur un fond RGBA+alpha) — pas un report |
 | 2026-09-10 | Mesure `-verifier -echantillon=5` (5 plus gros fonds, aller-retour identique sur les 5) : voir tableau ci-dessous | `apps/go-api/cmd/mapfond-webp/` | Consigné pour la décision D10 (utilisateur) |
+| 2026-09-10 | `cmd/mapcallouts-build/decoupe_masque.go:46` construit le chemin de l'image via `res.MapBackgroundPath(slug, e.Module)` (suffixe `.png` en dur), puis `chargeMasqueCarte` (l. 71-72) traite un `os.Stat` en échec comme « pas de fond publié », un cas NOMINAL documenté. Après l'étape 4 (conversion en `.webp`), cet outil de CUISSON DES CALLOUTS traiterait donc TOUTES les cartes comme sans fond et arrêterait de découper les zones — une dégradation silencieuse, pas un crash | `apps/go-api/cmd/mapcallouts-build/decoupe_masque.go:44-51,71-80` | Hors périmètre des « 5 fichiers » de l'étape 3 (non cité par le plan, dont l'enquête préalable n'auditait que les 3 sites `png.Decode` de `mapfond-planche`/`mapfond-cadrage`/`mapdecoupe`) et hors gate de ce lot (outil de PRODUCTION de contenu, pas exercé par la recette de l'étape 5 ni par le serveur). Non traité ici — à corriger avant toute prochaine exécution de `mapcallouts-build` (même correctif que `oracle_corpus_test.go` : lire `Image` du sidecar plutôt que supposer `.png`) |
 
 ### Mesures de l'Étape 0 — `-verifier -echantillon=5`, 2026-09-10
 

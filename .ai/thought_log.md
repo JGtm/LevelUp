@@ -104213,3 +104213,45 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   consigne explicite (revue adversariale une fois par vague, par le superviseur) -- non
   statues ici, a traiter par le superviseur en cloture de vague.
 - Chantier B (B0-B4) termine cote executant. Prochaine etape : revue superviseur (B4.2, R1-R4).
+
+## [2026-09-10] Fonds de carte WebP — Etapes 2 et 3 (Complete)
+- Decision technique principale : le format du fond devient une propriete de la DONNEE (D3)
+  et non du code. `readBackgroundImage` (internal/service/replay_map_background.go) lit
+  desormais `bg.Image` (nom de fichier du sidecar) au lieu de reconstruire `<cle>.png` en
+  dur, avec une garde de surete (filepath.Base + liste blanche d'extensions {.png, .webp})
+  sur le meme modele que `cleDeFondSure`. `MapBackgroundImage`/`MapBackgroundImageForMap`
+  rendent maintenant `([]byte, string, error)` (le type MIME) ; repercute sur
+  `internal/port/services.go` et les deux handlers (replay.go, tactical.go), qui passent le
+  type reel a `servirBlobAvecETag`. La route HTTP reste `background.png` (D4) quel que soit
+  le format servi.
+- TDD prouve sur la garde de securite : `TestReadBackgroundImage_RefuseImageHostile`
+  (replay_map_background_traversee_test.go) a d'abord tourne ROUGE sur le code d'avant
+  l'etape (le PNG legitime existait a cote, donc l'ancien code le servait quand meme en
+  ignorant `Image`), puis VERT apres implementation.
+- Etape 3 (outils hors ligne) : `image.Decode` + imports d'enregistrement de decodeur
+  (`_ "golang.org/x/image/webp"`, `image/png` deja present) dans `mapfond-planche`,
+  `mapfond-cadrage` et `internal/mapdecoupe/masque.go`. `mapfond-cadrage` a aussi du
+  remplacer son glob `*.png` en dur par un glob PNG+WebP (fichiersFondDeCarte) — sans quoi
+  l'outil aurait compile mais ne trouve plus rien apres la conversion. Nouveau test
+  `TestChargeMasqueDecodeUnWebPSansPerte` : encode avec le MEME encodeur que l'outil de
+  l'etape 0 (nativewebp), decode via ChargeMasque, verifie dimensions + alpha.
+- Decouverte traitee dans le lot (pas un report) : `oracle_corpus_test.go` (corpus.masque())
+  construisait aussi un chemin `.png` en dur ; apres l'etape 4 cet oracle serait passe en
+  SKIP silencieux (TestOracleIoUContreLeDecoupePOC traite l'absence de masque comme cas
+  nominal). Corrige pour lire `Image` depuis le sidecar, comme la production. Verifie sur
+  pieces : IoU median 0,871 (seuil 0,85) mesure apres correction, sur les fonds encore PNG a
+  ce stade.
+- Decouverte NON traitee (hors perimetre des 5 fichiers de l'etape 3, hors gate de ce lot) :
+  `cmd/mapcallouts-build/decoupe_masque.go:46` a le meme defaut (`res.MapBackgroundPath`
+  suppose `.png`) mais c'est un outil de PRODUCTION de contenu (cuisson des callouts), pas
+  exerce par ce lot ni par la recette export. Consignee au plan pour correction avant
+  prochaine execution de cet outil.
+- Resultats observes : `go build ./...` + `go vet ./...` verts (retente une fois, flakiness
+  connue du linker mingw sous Windows sur des binaires lies a duckdb-static, sans rapport
+  avec ce lot) ; `go test ./...` 0 FAIL sur l'ensemble du module ; golangci-lint 0 issues sur
+  les paquets touches (apres extraction de `mimeImagePNG`/`mimeImageWebP` en constantes,
+  1 issue goconst au premier passage) ; `git status --porcelain data/` vide avant et apres
+  les deux etapes.
+- Prochaine etape : Etape 4 (conversion des 109 fonds avec sauvegarde prealable des PNG,
+  `data/backups/map_backgrounds-png-2026-09-10/`), puis Etape 5 (recette export, 12 verdicts
+  d'un coup).
