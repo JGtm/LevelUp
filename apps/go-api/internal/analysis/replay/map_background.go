@@ -27,14 +27,17 @@ import (
 // MapBackgroundSchemaVersion est la version de forme du sidecar de fond de carte.
 const MapBackgroundSchemaVersion = 1
 
-// MapBackground est le sidecar JSON qui accompagne `{module}.png`.
+// MapBackground est le sidecar JSON qui accompagne l'image de fond du module (PNG à
+// l'origine, WebP sans perte depuis le 2026-09-10 : le format est porté par le champ Image, D3
+// du plan fonds WebP, jamais supposé par le lecteur).
 type MapBackground struct {
 	SchemaVersion int `json:"schemaVersion"`
-	// Module est le dossier du .module d'où vient la carte (clé du fichier, et nom du PNG).
+	// Module est le dossier du .module d'où vient la carte (clé du fichier et racine du nom de l'image).
 	Module string `json:"module"`
 	// MapNames sont les noms de carte affichés qui partagent ce module (traçabilité).
 	MapNames []string `json:"mapNames,omitempty"`
-	// Image est le nom de fichier du PNG, à côté de ce sidecar.
+	// Image est le nom de fichier de l'image (extension incluse, `.png` ou `.webp`), à côté de
+	// ce sidecar. Nom simple, sans chemin : le service le vérifie avant de lire.
 	Image string `json:"image"`
 	// Source documente la chaîne de production.
 	Source      string    `json:"source"`
