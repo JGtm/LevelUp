@@ -30,6 +30,7 @@ import {
   type FlagCarriesInput,
 } from './flagCarriesLayer'
 import type { ReplayFlagCarryReady } from '../../../lib/replay/replayNormalize'
+import { OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 
 const VIEW = {
   bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
@@ -539,6 +540,41 @@ describe('ancrage du glyphe — le décalage ne vaut que pour un PORTEUR (2026-0
     expect(moveTos.length).toBeGreaterThanOrEqual(2)
     expect(moveTos[0].args[0] as number).toBeCloseTo(projeteX(1), 5)
     expect(moveTos[moveTos.length - 1].args[0] as number).toBeCloseTo(projeteX(5) + 6, 5)
+  })
+})
+
+/**
+ * BORNAGE HORS CADRE (plan escouade hors cadre, chantier B, phase B3, décision D3, 2026-09-10).
+ *
+ * Seul le drapeau PORTÉ (`carried`/`carried_open`) est un « porteur d'objectif » au sens de D3 —
+ * `dropped`/`home` sont des positions de CARTE, hors périmètre de ce lot (même statut que les
+ * socles d'arme).
+ */
+describe('bornage hors cadre (D3) — le drapeau PORTÉ est plaqué à la marge', () => {
+  it('PORTÉ ET HORS CADRE : le pied est BORNÉ, jamais projeté hors toile', () => {
+    // Monde (1000, 5) -> canvas brut (projeteX(1000), centre en Y) : très au-delà de la toile
+    // (528x528, pad 24) sur l'axe X seul.
+    const layer = layerWith({ x: 1000, y: 5 })
+    const { ctx, calls } = mockCtx()
+    drawFlagCarries(ctx, layer, [FLAG_0], VIEW, 15)
+    const moveTos = calls.filter((c) => c.method === 'moveTo')
+    const pied = moveTos[moveTos.length - 1].args[0] as number
+    // Sans bornage, le pied vaudrait `projeteX(1000)` — très au-delà de la toile. Borné, il
+    // tombe sur la marge, DÉCALÉ comme tout glyphe PORTÉ (même règle que le cas non borné
+    // ci-dessus : le décalage ne dépend que de l'état, pas de la position).
+    expect(pied).toBeCloseTo(VIEW.width - OFFSCREEN_MARGIN_PX + 6, 5)
+    expect(pied).toBeLessThan(projeteX(1000))
+  })
+
+  it('AU SOL / À LA BASE, hors cadre : reste à sa position PROJETÉE, pas bornée (hors périmètre)', () => {
+    const loin: ReplayFlagCarryReady = {
+      team: 0,
+      spans: [{ state: 'dropped', t0: 0, t1: 9, xuid: null, x: 1000, y: 5 }],
+    }
+    const { ctx, calls } = mockCtx()
+    drawFlagCarries(ctx, layerWith(null), [loin], VIEW, 5)
+    const moveTos = calls.filter((c) => c.method === 'moveTo')
+    expect(moveTos[moveTos.length - 1].args[0] as number).toBeCloseTo(projeteX(1000), 5)
   })
 })
 

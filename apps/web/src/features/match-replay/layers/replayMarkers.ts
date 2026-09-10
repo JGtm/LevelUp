@@ -45,6 +45,8 @@ import {
   type XY,
 } from '../../../lib/replay/replayLogic'
 import { type CanvasView, projectTo } from '../model/replayView'
+import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
+import { drawOffscreenChevron, drawOffscreenLabel } from './offscreenChevron'
 
 // --- Durées, en frames, converties par l'appelant depuis le temps réel ---------------------
 
@@ -212,6 +214,14 @@ export interface MarkerStyle {
    * au point d'embarquement plutôt qu'à la sortie.
    */
   embarkedAtSlot?: (slot: number, frame: number) => boolean
+  /**
+   * BORNAGE HORS CADRE (plan escouade hors cadre, chantier B, décision D2, 2026-09-10) : le
+   * texte de l'étiquette d'un joueur hors fenêtre — nom ET distance jusqu'à sa position réelle.
+   * RÉSOLU PAR L'APPELANT (`REPLAY_TEXT[locale].offscreenMarkerFmt`), comme toute string UI de
+   * cette feature (règle color-tokens/i18n) : ce calque ne connaît aucune langue, il ne fait
+   * QUE composer la géométrie et poser le texte qu'on lui donne.
+   */
+  offscreenLabelOf: (name: string, meters: number) => string
 }
 
 /**
@@ -276,6 +286,11 @@ export function drawTracksLayer(
 /**
  * drawDeathMark marque l'endroit de la dernière position transmise pendant `timing.death`,
  * puis plus rien : le joueur a disparu jusqu'à sa réapparition, qui est une AUTRE vie.
+ *
+ * HORS FENÊTRE (chantier B, décision D6, 2026-09-10) : la croix en X est remplacée par la
+ * FLÈCHE, plaquée à la marge, au MÊME calcul de fondu — mais SANS nom ni distance. La croix ne
+ * vit que 2,5 s et s'efface déjà ; sa position au bord dit la direction, une étiquette de plus
+ * ajouterait un texte à peine lu (D6).
  */
 function drawDeathMark(
   ctx: CanvasRenderingContext2D,
@@ -287,8 +302,15 @@ function drawDeathMark(
   if (age < 0 || age > style.timing.death) return
   const last = track.points[track.points.length - 1]
   if (!last) return
-  const c = project(last, view)
   const fade = 1 - age / style.timing.death
+  const mark = edgeMarkFor(last, view, OFFSCREEN_MARGIN_PX, style.k)
+  if (mark) {
+    ctx.globalAlpha = DEATH_ALPHA * fade
+    drawOffscreenChevron(ctx, mark.at, mark.angle, style.k, style.deathInk)
+    ctx.globalAlpha = 1
+    return
+  }
+  const c = project(last, view)
   // LA CROIX NE GRANDIT PAS (planche du 2026-08-16) : une croix qui enfle attire l'œil sur un
   // événement déjà passé. Elle garde sa taille et s'efface.
   const r = DEATH_RADIUS * style.k
@@ -305,7 +327,15 @@ function drawDeathMark(
   ctx.globalAlpha = 1
 }
 
-/** drawLivingTrack : traînée, cône, apparition, marqueur d'étage. */
+/**
+ * drawLivingTrack : traînée, cône, apparition, marqueur d'étage.
+ *
+ * HORS FENÊTRE (chantier B, décision D2, 2026-09-10) : plus rien de tout cela ne se dessine —
+ * seule la FLÈCHE, plaquée à la marge, orientée vers la position réelle, dans la couleur
+ * d'équipe, avec le nom ET la distance. Une traînée, un cône ou un anneau d'étage tracés à la
+ * marge désigneraient un endroit que le joueur n'occupe pas : la flèche remplace intégralement
+ * le marqueur, elle ne s'y ajoute pas (même logique que le pion embarqué, juste au-dessus).
+ */
 function drawLivingTrack(
   ctx: CanvasRenderingContext2D,
   track: ReplayTrackReady,
@@ -315,6 +345,16 @@ function drawLivingTrack(
 ): void {
   const head = positionAt(track.points, style.frame)
   if (!head) return
+  const mark = edgeMarkFor(head, view, OFFSCREEN_MARGIN_PX, style.k)
+  if (mark) {
+    drawOffscreenChevron(ctx, mark.at, mark.angle, style.k, color)
+    const name = style.nameOfSlot(track.slot, style.frame)
+    if (name) {
+      const text = style.offscreenLabelOf(name, mark.distanceM)
+      drawOffscreenLabel(ctx, mark.at, mark.angle, text, { k: style.k, labelStroke: style.labelStroke }, color)
+    }
+    return
+  }
   const c = project(head, view)
   const fl = floorIndex(track, style)
 

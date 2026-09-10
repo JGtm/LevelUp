@@ -52,6 +52,7 @@
 import { type XY } from '../../../lib/replay/replayLogic'
 
 import { type CanvasView, projectTo } from '../model/replayView'
+import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 import type { ReplayFlagCarryReady } from '../../../lib/replay/replayNormalize'
 
 /** Les quatre états publiés par `flagCarries[].spans[].state` (schéma 15). */
@@ -268,6 +269,12 @@ export function flagBlinkAlpha(state: string, frame: number, reducedMotion: bool
  *
  * Un drapeau sans état à cette image n'est PAS dessiné : l'artefact ne dit rien de lui, le
  * calque non plus.
+ *
+ * BORNAGE HORS CADRE (plan escouade hors cadre, chantier B, décision D3, 2026-09-10) : SEUL le
+ * glyphe PORTÉ (`carried`/`carried_open`) est plaqué à la marge quand son porteur sort du
+ * cadrage visible — c'est le seul état qui suit un JOUEUR. La base et le sol sont des lieux de
+ * carte, comme un socle d'arme : hors du périmètre tranché pour ce lot, ils restent projetés
+ * sans bornage, même hors toile.
  */
 export function drawFlagCarries(
   ctx: CanvasRenderingContext2D,
@@ -289,7 +296,13 @@ export function drawFlagCarries(
       // LA BASE N'EST JAMAIS DÉCALÉE : c'est un lieu fixe, aucun pion ne s'y tient.
       drawFlagGlyph(ctx, px(anchor), { ink, outline, alpha: ALPHA_FAINT, hollow: true, offset: false })
     }
-    const at = px(flagPointAt(now, frame, layer.posOf))
+    const worldPoint = flagPointAt(now, frame, layer.posOf)
+    const carried = now.state === 'carried' || now.state === 'carried_open'
+    // ÉCHELLE 1 : ce calque, comme ses deux voisins (bombe, crâne), ne met encore rien à
+    // l'échelle de l'écran (`k`) — ses cotes sont des constantes fixes. La marge suit donc la
+    // même convention plutôt que d'inventer un facteur que rien d'autre ici ne consomme.
+    const mark = carried ? edgeMarkFor(worldPoint, view, OFFSCREEN_MARGIN_PX, 1) : null
+    const at = mark ? mark.at : px(worldPoint)
     drawFlagGlyph(ctx, at, {
       ink,
       outline,

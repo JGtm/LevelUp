@@ -104131,3 +104131,85 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   un groupe `par-xuid` a somme conservee = CHANGEMENT (reattribution), `ambiguousReturns` /
   `ambiguousSlot` / `shotsNoRide` = echecs, `flagCarries.homeBy*` / `assignedBy*` = voies ; tests.
   Gate relance.
+
+## [2026-09-10] Escouade hors cadre — Phase B0 geometrie pure du bornage (Complete)
+- Worktree dedie `LevelUp-wt-escouade-hors-cadre`, branche `wt/escouade-hors-cadre`. TDD :
+  test ROUGE d'abord (`Failed to resolve import "./edgeClamp"`), puis `edgeClamp.ts`.
+- Decision technique : `edgeMarkFor(c, view, margeEcran, echelle)` vit dans
+  `apps/web/src/features/match-replay/model/` et non `apps/web/src/lib/replay/` comme l'ecrivait
+  le plan — `CanvasView`/`projectTo`/`scaleOf` ont deja quitte `lib/replay/` au lot K3
+  (2026-09-05) et vivent dans `replayView.ts`, dont l'en-tete interdit justement une seconde
+  regle de projection. Verifie par grep : aucun fichier de production de `lib/replay/`
+  n'importe `features/`. Ecart de chemin traite dans le perimetre de B0.1, consigne au plan
+  (§8) et dans son journal de phase.
+- Resultats observes : 7/7 tests edgeClamp verts, 931/931 tests du dossier `model/` verts
+  (dont le garde-rail `replayView.guard.test.ts`), `npx tsc -b --force` exit 0.
+- Prochaine etape : phase B1 (gabarit de la fleche hors cadre, `offscreenChevron.ts`).
+
+## [2026-09-10] Escouade hors cadre — Phase B1 gabarit de la fleche (Complete)
+- TDD : test ROUGE (`Failed to resolve import "./offscreenChevron"`), puis
+  `layers/offscreenChevron.ts`. Un seul fichier couvre B1.1 a B1.3 (chevron + etiquette),
+  9 cas via `recordingContext` (aucun mock canvas lourd, la convention deja en place dans la
+  feature).
+- Decision technique : gabarit normalise pointant +X, mis a l'echelle par `ctx.scale(
+  CHEVRON_SIZE_PX * k, ...)` (jamais un facteur du canevas) ; etiquette ancree du cote
+  INTERIEUR de la fleche (oppose a `angle`) pour ne jamais sortir de la toile ; le texte
+  « nom . distance » est compose par l'appelant (B2), ce module ne recoit qu'une chaine
+  prete — l'i18n de l'unite (B4.3) reste hors de ce fichier.
+- Resultats observes : 9/9 tests offscreenChevron verts, 652/652 tests du dossier `layers/`
+  verts, `npx tsc -b --force` exit 0.
+- Prochaine etape : phase B2 (cablage sur `drawLivingTrack`/`drawDeathMark`).
+
+## [2026-09-10] Escouade hors cadre — Phase B2 cablage marqueurs joueurs (Complete)
+- TDD : test ROUGE (`count(ops,'rotate')` attendu 1, obtenu 0 sur 3 cas), puis cablage de
+  `edgeMarkFor` dans `drawLivingTrack` (branche complete, return immediat comme le pion
+  embarque) et `drawDeathMark` (meme fondu DEATH_ALPHA*fade, sans nom ni distance, D6).
+- Decision technique : `OFFSCREEN_MARGIN_PX` (16px ecran de reference) canonique dans
+  `edgeClamp.ts`, partagee par B2 et bientot B3 (jamais une copie locale, CLAUDE.md n°6).
+  `MarkerStyle.offscreenLabelOf` recoit le texte deja compose par l'appelant -- le calque ne
+  connait aucune locale. Resolu preventivement l'item B4.3 (i18n unite de distance) : ajout de
+  `offscreenMarkerFmt` a `i18nContract.ts`/`i18n.ts` (FR/EN, "m" identique dans les deux
+  langues mais parite de typage tenue), cable dans ReplayCanvas.tsx.
+- Resultats observes : 2617/2617 tests match-replay verts (1 skip inchange), tsc -b --force
+  exit 0, ReplayTeams.perf.test.tsx toujours gate `REPLAY_PERF=1` (skip inchange, aucun de ses
+  imports touche). eslint --max-warnings=0 sur les 10 fichiers touches B0-B2 : 1 avertissement
+  PRE-EXISTANT (ReplayCanvas.tsx:532, zoneInk.outline, hors diff de ce lot).
+- Prochaine etape : phase B3 (porteurs d'objectif : flagCarriesLayer, bombCarrierLayer,
+  skullCarrierLayer, decision sur vipCrownLayer).
+
+## [2026-09-10] Escouade hors cadre — Phase B3 porteurs d'objectif (Complete)
+- TDD : test ROUGE par calque (position brute non bornee obtenue au lieu de la marge
+  attendue), puis cablage de `edgeMarkFor` dans `flagCarriesLayer.drawFlagCarries` (seul le
+  glyphe PORTE, jamais dropped/home), `bombCarrierLayer.drawBombCarrier` (seule la bombe
+  portee, jamais au sol) et `skullCarrierLayer.drawSkullCarrier`. Chaque calque garde un test
+  de non-regression prouvant que les positions de CARTE (sol/base) restent non bornees.
+- Decision technique : les trois calques ne mettent encore rien a l'echelle de l'ecran (pas
+  de `k`/`dpr`) -- marge fixee a echelle=1, coherent avec leur convention existante, consigne
+  en decouverte pour un futur lot d'homogeneisation.
+- Decision produit : `vipCrownLayer` NON traite `[!]`, justifie -- hors du perimetre D3 (seuls
+  drapeau/crane/bombe y figurent) et meme raison que D5 (pas de decoration cumulee sur la
+  fleche) ; verifie sur piece qu'aucune regression n'est introduite (comportement hors cadre
+  identique avant/apres, la couronne ne se dessinait deja pas).
+- Resultats observes : 2622/2622 tests match-replay verts (1 skip inchange), tsc -b --force
+  exit 0, eslint --max-warnings=0 sur les 6 fichiers touches : 0 avertissement, 0 couleur en
+  dur.
+- Prochaine etape : phase B4 (parite export, revue navigateur a statuer superviseur, i18n
+  distance deja resolue en B2).
+
+## [2026-09-10] Escouade hors cadre — Phase B4 parite export et finition (Complete, B4.2 superviseur)
+- B4.1 verifie SUR PIECE (pas suppose) : `ReplayCanvas.tsx` (`redraw` = `drawRef.current`) ->
+  `useReplayCapture.ts:304-313` (relais sans copie) -> `useReplayExport.ts` (`paintExportFrame`
+  appelle `o.redraw()` par image de clip). L'export invoque donc litteralement le meme `draw()`
+  que la lecture normale (`composeScene(sceneLayers(buildScene(...)))`) -- parite structurelle,
+  aucun code a ecrire.
+- B4.3 deja resolu en B2 (`offscreenMarkerFmt`) : rien a ajouter, item non differe malgre
+  l'ordre des phases -- l'action etait executable des B2 et l'a ete (regle plan-execution n°3).
+- B4.2 (revue navigateur zoom 2x/3x) : hors de portee de cet executant (pas d'acces
+  navigateur dans ce lot delegue) -- statue [~] superviseur, procedure precise donnee dans le
+  rapport de cloture.
+- Resultats observes (reprise des gates B3, aucun fichier de production touche en B4) :
+  2622/2622 tests match-replay verts, tsc -b --force exit 0.
+- §5 (revues R1-R4) et §6 (gates transverses go-api) : HORS PERIMETRE de cet executant par
+  consigne explicite (revue adversariale une fois par vague, par le superviseur) -- non
+  statues ici, a traiter par le superviseur en cloture de vague.
+- Chantier B (B0-B4) termine cote executant. Prochaine etape : revue superviseur (B4.2, R1-R4).
