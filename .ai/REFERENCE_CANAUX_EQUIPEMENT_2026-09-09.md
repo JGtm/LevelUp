@@ -17,7 +17,7 @@ MATCH. Ce qui remonte au grain session est une autre affaire — §3.
 | Canal | Ce qu'il mesure | Grain | Réserve mesurée |
 |---|---|---|---|
 | `equipmentEpisodes` | L'état ACTIF : **camouflage** et **surbouclier** seulement. Nombre d'épisodes, durée, frags pendant | Par VIE | Deux familles seulement, « parce que deux seulement sont mesurées — les autres restent sans état plutôt que devinés » (`document.go:147`) |
-| `equipmentPlacements` `origin: deployed` | Les DÉPLOIEMENTS d'objets sur la carte, par famille (`wall` / `sensor` / `other`) | Par pose, poseur mesuré | `t1` est une mise au repos, pas une disparition. ~5 % des poses sont `origin: unknown` |
+| `equipmentPlacements` `origin: deployed` | Les DÉPLOIEMENTS d'objets sur la carte, par famille (`wall` / `sensor` / `other`) | Par pose, poseur mesuré | `t1` est une mise au repos, pas une disparition. ~5 % des poses sont `origin: unknown`. **ET SURTOUT (2026-09-10)** : sur un objet PORTÉ, `deployed` ne mesure PAS un déploiement mais un lâcher volontaire à mi-vie — seul le mur, qui engendre une pièce, y publie son geste (§1 bis) |
 | `equipmentPlacements` `origin: dropped` | Ce qui TOMBE à la mort : déployables **et bonus** | Par pose | Classé `dropped` à < 200 ms et < 1,5 m de la dernière position du porteur. Les deux populations sont séparées par trois ordres de grandeur |
 | `equipmentChanges` | Les RAMASSAGES (`taken`) et les CONSOMMATIONS (`spent`), datés à la ms | Par VIE (`Slot`) | Les annonces de RÉAPPARITION en sont écartées. Témoin de complétude : ~16 émissions manquées sur 319 sur trois films ; **71 sur 1 954 = 3,63 % sur les 64 artefacts du parc** (mesure E0 du 2026-09-09, §2) |
 | `grappleLines` | Les TRACTIONS de grappin — la seule activation de capacité mesurée et attribuée | Par VIE | — |
@@ -50,14 +50,42 @@ C'est la clé de tout le sujet, et c'est ce que j'avais raté (décision utilisa
 | Propulseur | `abilityImpulses` (schéma 38, validé 5/5 contre relevé Theater) | mesuré |
 | **Répulseur** | **AUCUN** | **NÉGATIF MESURÉ** — 9 canaux fouillés (événements, i57/i59, tag 3, poses, i48, i54, i56, masque bipède, entité ti=37). Une colonne dirait « 0 utilisation » là où la vérité est « non mesuré » |
 
-**B — Les équipements DÉPLOYABLES.** On les pose sur le terrain. « Utilisé » = **posé**.
+**B — Les équipements DÉPLOYABLES.** On les pose sur le terrain. « Utilisé » = **la charge
+consommée** (`equipmentChanges` `spent`) — SAUF pour le mur, « utilisé » = **posé**.
 
 Mur de protection (`wall`), capteur de menaces (`sensor`), écran occultant (`shroud`),
 traqueur de menaces (`seeker`), champ de réparation (`field`), balise du translocateur
-(`rift`) — tous par `equipmentPlacements` `origin: deployed`, avec le poseur mesuré.
+(`rift`).
+
+> **CORRIGÉ LE 2026-09-10 (lot 5.5, rapport E0 question 5).** Cette ligne disait
+> « tous par `equipmentPlacements` `origin: deployed` » : c'était faux pour tous sauf un.
+> Une pose `deployed` sur un objet PORTÉ (`kind = "carried"` au manifeste) mesure un
+> **lâcher volontaire à mi-vie** — l'objet qui tombe parce que son porteur en ramasse un
+> autre — et non un déploiement ; `equipmentOrigin` ne pose qu'une question, « cette
+> création est-elle à la fin d'une vie ? », et un échange à mi-vie y répond non. Mesure
+> décisive : sur **202 consommations de charge** de ces familles, **ZÉRO** n'est couverte
+> par une pose de la même famille du même joueur à moins de 2 s. Le **mur** est à **84 %**
+> parce qu'il est le SEUL équipement du manifeste qui **engendre une pièce distincte**
+> (ses panneaux, `kind = "deployed"`) : son `spent` tombe sur la pose de panneau (149 sur
+> 242) et JAMAIS sur la création de l'appareil porté (0 sur 31). La frontière n'est donc
+> pas une opinion : c'est le champ `kind` du manifeste
+> (`config/titles/halo_infinite/mappings/replay_labels.toml`), transcrit côté Go en
+> `usageFamiliesWithSpawnedPiece` et recollé au manifeste par un garde-rail.
+> **Réserve** : `spent` sous-compte à son tour — là où les deux canaux existent (le mur),
+> 118 consommations pour 252 poses de panneau. Ces familles passent de « aucune mesure »
+> à « une mesure partielle », pas à la vérité.
 
 > Le mur publie DEUX poses (l'appareil et ses panneaux) et compte pour UNE : filtre
 > `WALL_PANEL_IDS` côté déployé. Un lâcher n'en publie qu'une, rien à dédoublonner.
+> **Et c'est pourquoi son rapport déploiements/lâchers vaut 1:1 quand toutes les autres
+> familles sont entre 1:5,3 et 1:13,0** (correctif E0 n° 1, documentaire) : sous la clé
+> `wall`, le NUMÉRATEUR additionne 242 poses de panneaux et 31 créations de l'appareil,
+> pendant que le DÉNOMINATEUR est presque entièrement l'appareil porté (236 lâchers sur
+> 241) — un panneau n'existe qu'une fois déployé, il ne peut pas être lâché à la mort ;
+> l'appareil seul est à **1:7,6**, en plein dans le couloir des autres familles. Ce n'est
+> PAS une double publication du même geste (médiane 17 s entre une pose d'appareil et la
+> pose de panneau la plus proche). Ce rapport ne se compare donc à aucun autre : ses deux
+> côtés ne portent pas sur le même objet.
 
 **Dans les deux cas la question est la même** : servi, ou gâché. Seul le canal du « servi »
 change. Le « gâché » est commun aux deux — §2.
@@ -69,7 +97,7 @@ somme est le nombre d'objets ramassés SUR LA CARTE.
 
 | Issue | Canal | État |
 |---|---|---|
-| **Utilisé** | Famille A : le canal d'activation de la famille (tableau §1 bis). Famille B : `deployed`. `spent` sert de témoin commun | Lu par la vue match, sauf translocateur et propulseur. **MESURÉ E0** : 416 objets sur 1 223 pris (34,0 %) |
+| **Utilisé** | Famille A : le canal d'activation de la famille (tableau §1 bis). Famille B : `spent` — **SAUF le mur, qui reste sur `deployed`** (corrigé le 2026-09-10, lot 5.5 : voir l'encadré du §1 bis) | Lu par la vue match, sauf translocateur et propulseur. **MESURÉ E0** : 416 objets sur 1 223 pris (34,0 %) — chiffre d'AVANT le correctif ; côté résumé de session, `us6` fait passer le translocateur de 0 à 11 « utilisés » au parc, le traqueur de 3 à 5, l'écran de 7 à 10 |
 | **Lâché en mourant** | `dropped` | Lu par la vue match. **MESURÉ E0** : 440 sur 1 223 (36,0 %) |
 | **Gardé sans l'utiliser** | `taken` sans `spent` ni `dropped` | **BRANCHÉ** (vue match E2 ; résumé de session E3, révision `us4`) — dérivé, jamais lu d'un canal : `max(0, taken - utilisé - lâché)`, clampé. **MESURÉ E0** : 337 sur 1 223 (27,6 %), et 30 (2,5 %) restent NON EXPLIQUÉS |
 
@@ -180,12 +208,16 @@ des grandeurs `equipment_<famille>` avec deux taux de référence qui EXCLUENT l
    Les deux bonus ont reçu leur `family` au manifeste dans le même lot (rangs 8 et 9,
    `powerup_camo` / `powerup_overshield`).
 3. **Une recuisson reste nécessaire** pour que ces colonnes se remplissent sur les matchs
-   déjà résumés : `UsageSummaryRev` est passée à `us4` le 2026-09-09 puis à **`us5`** le
-   2026-09-10 (bascule sur la famille publiée), ce qui suffit à faire reprendre chaque match
-   par `levelup backfill-usage-summary` (sans `--force`) — mais tant que cette passe n'a pas
-   tourné, les colonnes sont vides et les grandeurs `equipment_*` absentes. **La recuisson
-   des ARTEFACTS précède celle des résumés** : un artefact au schéma 50 ne porte aucune
-   famille, donc son résumé us5 ne classerait rien.
+   déjà résumés : `UsageSummaryRev` est passée à `us4` le 2026-09-09, à `us5` le 2026-09-10
+   (bascule sur la famille publiée) puis à **`us6`** le même jour (le « utilisé » d'un
+   déployable sans pièce engendrée passe aux consommations — §1 bis), ce qui suffit à faire
+   reprendre chaque match par `levelup backfill-usage-summary` (sans `--force`) — mais tant
+   que cette passe n'a pas tourné, les colonnes sont vides et les grandeurs `equipment_*`
+   absentes. **La recuisson des ARTEFACTS précède celle des résumés** : un artefact au
+   schéma 50 ne porte aucune famille, donc son résumé us5 ne classerait rien. **`us6`, lui,
+   n'exige AUCUNE recuisson d'artefact** : `spent` et sa famille sont publiés depuis le
+   schéma 51. La chronique complète des révisions vit dans
+   `internal/analysis/replay/usage_summary_chronicle.go`.
 
 **Ce qui reste vrai :** la vue match peut tout servir sans recuisson (elle lit le document) ;
 Sessions, Solo et Escouade lisent la base et ne voient donc jamais mieux que la dernière
@@ -205,6 +237,12 @@ matchs à re-résumer.
 - **`equipmentChanges` est bien vivant ailleurs** : `abilityChargeLogic.ts`,
   `placementTeleport.ts`, `riftStations.ts`, `equipmentChangeSound.ts`. Le brancher sur la
   fiche d'usage n'est donc pas un défrichage.
+- **ÉCART GO / WEB OUVERT DEPUIS LE 2026-09-10** : le résumé de session (Go, `us6`) lit le
+  « utilisé » d'un déployable sans pièce engendrée sur ses CONSOMMATIONS ; son miroir de la
+  vue match (`equipmentKeptLogic.ts`, la boucle `KEPT_FAMILIES` : `t.deployed[family]`)
+  est resté sur les POSES. Les
+  deux écrans peuvent donc afficher un « gardé » différent pour le même match tant que le
+  web n'a pas suivi — écart CONNU et hors périmètre du lot 5.5, à traiter côté web.
 - **Page Sessions** (`features/session-detail/`) — lit le bloc `usage` de la réponse, donc
   uniquement le tableau du §3 — qui porte les trois issues depuis l'étape E3 (grandeurs
   `equipment_<famille>` et leur champ `outcomes`), sous réserve de la recuisson.
@@ -239,6 +277,9 @@ Trois affirmations fausses à ne pas répéter :
 - ~~« Les bonus doivent sortir de la barre. »~~ → non : ils ont juste une autre définition
   de « utilisé » (§1 bis). Le seul équipement qui doive rester hors barre est le
   **répulseur**, et pour une raison opposée : son usage n'est mesuré nulle part.
+- ~~« Un déployable est utilisé quand il est posé. »~~ (2026-09-10) → seulement le **mur**.
+  Pour les autres, une pose `deployed` est un **lâcher volontaire à mi-vie** ; leur usage se
+  lit sur les **consommations de charge** (§1 bis).
 
 ## 7. Références
 
