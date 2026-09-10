@@ -1,3 +1,24 @@
+## [2026-09-10] Master plan, vague 4 — 4.3 fusionne et recuit (schema 51, us5), 4.4 fusionne et verifie, 4.5 statue — En cours (revue 4.R)
+
+**Decision technique principale.** Recuisson du parc au schema 51 lancee detachee avec veilleur
+(64 films, 22 min, pic 552 Mio, 0 erreur), puis `backfill-usage-summary --force` (64 ecrits, 2 s).
+Lectures en base faites AVANT la recuisson, serveur arrete, par `cmd/diag_q` en lecture seule.
+
+**Resultats observes.** `4f77afc1` : `index_hors_table` 18 → 8 (10 vies nommees par le tableau
+de l'API, voix `tableau_api`), bots servis `bid(6.0)` / `bid(42.0)` — l'attendu « 18 → 0 » du
+plan etait faux, le tableau n'indexe pas. Vue match `1eedd3c8` : sidearm 9 / melee 4 /
+environnement 1 (total 14), plus de « non attribue ». Decouverte consignee, preexistante :
+8 artefacts sur 64 n'ont pas de table de capacites (palette « non classee », <= 7 lectures),
+dont `4f77afc1` malgre 187 episodes — les 130 prises sans famille du resume viennent de la.
+Repulseur `07104b31` : 0 ligne dans `match_kill_events`, cinq revisions de decodeur ; la
+mesure du 29/08 (1 kill) n'a pas survecu a la passe killsource v2. Revue 4.R : relecteur
+« tests » (L6 + L3) 0 constat recevable, 9 conditions tenues, deux mutations jouees.
+
+**Conclusion / prochaine etape.** Rapport du relecteur « donnees » (L1 + L4), corrections
+eventuelles en worktree, `make gate-push`, push de `feat/v75` = CI de la vague 4.
+
+---
+
 ## [2026-09-10] Master plan, lot 4.5 — la chute mesuree au film sort en « environnement » sur la vue match (provenance recopiee) — Complete
 
 **Decision technique principale.** Le temoin de chute du plan (match `1eedd3c8`, Nemesis,
