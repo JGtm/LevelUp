@@ -37,17 +37,9 @@ package replay
 // nommage des vies change (élimination sur le roster). Le CONTENU CUIT change, donc le bump est
 // exigé par la règle — pas seulement pour déclencher la recuisson.
 //
-// v51 (2026-09-10, lot 4.3) : DEUX changements de contenu cuit, tous deux exigés par la règle.
-//
-//	(1) LES CORPS DONT L'INDEX EST HORS TABLE SONT NOMMÉS par le tableau de l'API :
-//	`identity.bipedSlots[].bid` naît (l'identifiant `bid(N.0)` d'un bot, exclusif du `xuid`) et
-//	`identity.coverage.bipedSlot` bascule des vies de `non_resolu/index_hors_table` vers
-//	`externe`. Au passage, `roster[].bid` et `identity.players[].bid` cessent d'être VIDES sur
-//	tout le parc : le `BotID` lu par le décodage ne traversait pas `replaybuild.botIdentities`.
-//	(2) LA TABLE RANG -> FAMILLE D'ÉQUIPEMENT EST PUBLIÉE (`abilityLabels[].family`) : le
-//	résumé d'usage joint désormais sur la famille cuite, et la reconstruction par racine de
-//	libellé disparaît. Un artefact < 51 ne porte pas la famille, donc le résumé ne peut pas
-//	être re-projeté sans recuisson — d'où le bump conjoint de `UsageSummaryRev` (us4 -> us5).
+// v51 (2026-09-10, lot 4.3) : deux changements de CONTENU CUIT — `identity.bipedSlots[].bid`
+// (le tableau de l'API nomme les corps hors table) et `abilityLabels[].family` (le résumé
+// d'usage y joint, d'où `UsageSummaryRev` us4 -> us5). Raison détaillée : `structure_test.go`.
 const SchemaVersion = 51
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
