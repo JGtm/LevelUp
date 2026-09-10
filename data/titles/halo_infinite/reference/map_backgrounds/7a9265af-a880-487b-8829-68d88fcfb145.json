@@ -5,7 +5,7 @@
     "Starboard",
     "starboard_map"
   ],
-  "image": "7a9265af-a880-487b-8829-68d88fcfb145.png",
+  "image": "7a9265af-a880-487b-8829-68d88fcfb145.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T08:56:44.29271Z",
   "style": "encre",

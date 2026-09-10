@@ -5,7 +5,7 @@
     "Curfew",
     "curfew_map"
   ],
-  "image": "63d634be-0319-489d-8c21-9c4e012f664f.png",
+  "image": "63d634be-0319-489d-8c21-9c4e012f664f.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:44:01.7825776Z",
   "style": "encre",

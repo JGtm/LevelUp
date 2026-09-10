@@ -5,7 +5,7 @@
     "Houseki",
     "houseki_map"
   ],
-  "image": "cf034ec8-ee47-43c2-b2e8-4751c22b3d4d.png",
+  "image": "cf034ec8-ee47-43c2-b2e8-4751c22b3d4d.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T10:11:22.5186934Z",
   "style": "encre",

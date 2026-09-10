@@ -5,7 +5,7 @@
     "Cliffside",
     "cliffside_map"
   ],
-  "image": "4bffd021-92c0-422b-8b6e-8f595511458c.png",
+  "image": "4bffd021-92c0-422b-8b6e-8f595511458c.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:39:31.5480948Z",
   "style": "encre",

@@ -5,7 +5,7 @@
     "Fortitude Heavies",
     "fortitude_heavies_map"
   ],
-  "image": "305b1bdd-9a7b-4975-bacf-8bd63c8c13d2.png",
+  "image": "305b1bdd-9a7b-4975-bacf-8bd63c8c13d2.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:30:37.6151197Z",
   "style": "encre",

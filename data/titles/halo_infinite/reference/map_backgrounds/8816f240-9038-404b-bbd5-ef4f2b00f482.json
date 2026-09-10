@@ -5,7 +5,7 @@
     "Ecotone",
     "ecotone_map"
   ],
-  "image": "8816f240-9038-404b-bbd5-ef4f2b00f482.png",
+  "image": "8816f240-9038-404b-bbd5-ef4f2b00f482.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:52:53.1919718Z",
   "style": "encre",

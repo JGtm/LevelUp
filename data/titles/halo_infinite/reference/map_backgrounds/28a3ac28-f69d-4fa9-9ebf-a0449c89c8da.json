@@ -5,7 +5,7 @@
     "Thunderhead",
     "28a3ac28-f69d-4fa9-9ebf-a0449c89c8da_map"
   ],
-  "image": "28a3ac28-f69d-4fa9-9ebf-a0449c89c8da.png",
+  "image": "28a3ac28-f69d-4fa9-9ebf-a0449c89c8da.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T12:10:46.6972688Z",
   "style": "encre",

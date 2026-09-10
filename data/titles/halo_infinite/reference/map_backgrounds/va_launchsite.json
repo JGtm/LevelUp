@@ -6,7 +6,7 @@
     "launch_site",
     "launch_site_va_launchsite"
   ],
-  "image": "va_launchsite.png",
+  "image": "va_launchsite.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-26T19:51:28.9074204Z",
   "style": "encre",

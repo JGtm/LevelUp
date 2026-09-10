@@ -5,7 +5,7 @@
     "Snowbound",
     "snowbound_map"
   ],
-  "image": "410f1c01-aca6-4567-9df5-9b16bd550cb2.png",
+  "image": "410f1c01-aca6-4567-9df5-9b16bd550cb2.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T14:50:37.3661558Z",
   "style": "encre",

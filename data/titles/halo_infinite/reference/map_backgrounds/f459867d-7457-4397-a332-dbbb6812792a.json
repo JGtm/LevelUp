@@ -5,7 +5,7 @@
     "Ronin",
     "ronin_map"
   ],
-  "image": "f459867d-7457-4397-a332-dbbb6812792a.png",
+  "image": "f459867d-7457-4397-a332-dbbb6812792a.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T23:24:03.6260926Z",
   "style": "encre",

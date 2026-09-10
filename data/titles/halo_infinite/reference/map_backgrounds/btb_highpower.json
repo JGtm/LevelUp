@@ -9,7 +9,7 @@
     "highpower_map",
     "highpower_heavies_map"
   ],
-  "image": "btb_highpower.png",
+  "image": "btb_highpower.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T21:21:31.8047608Z",
   "style": "encre",

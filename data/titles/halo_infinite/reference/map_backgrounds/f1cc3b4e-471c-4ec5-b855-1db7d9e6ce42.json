@@ -5,7 +5,7 @@
     "Solitude",
     "solitude_map"
   ],
-  "image": "f1cc3b4e-471c-4ec5-b855-1db7d9e6ce42.png",
+  "image": "f1cc3b4e-471c-4ec5-b855-1db7d9e6ce42.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T23:23:05.0636278Z",
   "style": "encre",

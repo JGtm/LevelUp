@@ -6,7 +6,7 @@
     "deadlock_map",
     "deadlock_heavies_map"
   ],
-  "image": "btb_drydock.png",
+  "image": "btb_drydock.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-12T23:00:51.9204482Z",
   "style": "jeu",

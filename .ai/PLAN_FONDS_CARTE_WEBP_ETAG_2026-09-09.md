@@ -149,21 +149,21 @@ Indépendante du WebP : livrable seule, et livrée **même si D10 abandonne la s
 
 **Périmètre fermé (6 fichiers) :**
 
-- [ ] Créer `apps/go-api/internal/api/handlers/cache_http.go` — `servirBlobAvecETag(w, r, blob,
+- [~] (livré par le lot 1.3 du master plan, `8356118c8`, fusionné le 09-09) Créer `apps/go-api/internal/api/handlers/cache_http.go` — `servirBlobAvecETag(w, r, blob,
       contentType, cacheControl)` : calcule l'ETag (D7), pose `ETag`, `Content-Type`,
       `Cache-Control` ; si `If-None-Match` contient l'ETag **ou** `*`, répond `304` **sans corps
       ni `Content-Length`** ; sinon pose `Content-Length` et écrit le blob
-- [ ] L'analyse d'`If-None-Match` gère la **liste séparée par virgules** et le préfixe faible
+- [~] (livré par le lot 1.3 du master plan, `8356118c8`, fusionné le 09-09) L'analyse d'`If-None-Match` gère la **liste séparée par virgules** et le préfixe faible
       `W/`. Un en-tête absent ou illisible se comporte comme une absence (200), jamais comme une
       erreur
-- [ ] `handlers/replay.go:148-180` — remplacer les trois `Header().Set` et le `Write` par l'appel
+- [~] (livré par le lot 1.3 du master plan, `8356118c8`, fusionné le 09-09) `handlers/replay.go:148-180` — remplacer les trois `Header().Set` et le `Write` par l'appel
       au helper
-- [ ] `handlers/tactical.go:281-316` — idem
-- [ ] `handlers/assets.go:217` — idem (D8 : 3e copie, donc migration obligatoire ; l'ETag y existe
+- [~] (livré par le lot 1.3 du master plan, `8356118c8`, fusionné le 09-09) `handlers/tactical.go:281-316` — idem
+- [~] (livré par le lot 1.3 du master plan, `8356118c8`, fusionné le 09-09) `handlers/assets.go:217` — idem (D8 : 3e copie, donc migration obligatoire ; l'ETag y existe
       déjà mais sans 304, ce qui le rend inerte)
-- [ ] Créer `apps/go-api/internal/api/handlers/cache_http_test.go` — garde-rail **grep** (règle
+- [~] (livré par le lot 1.3 du master plan, `8356118c8`, fusionné le 09-09) Créer `apps/go-api/internal/api/handlers/cache_http_test.go` — garde-rail **grep** (règle
       n°6) : aucun `Header().Set("ETag"` ailleurs que dans `cache_http.go`, allowlist vide
-- [ ] Tests `httptest` sur les trois routes : 1re requête `200` + ETag non vide ; 2e requête avec
+- [~] (livré par le lot 1.3 du master plan, `8356118c8`, fusionné le 09-09) Tests `httptest` sur les trois routes : 1re requête `200` + ETag non vide ; 2e requête avec
       `If-None-Match` = cet ETag → `304`, **corps vide**, et pas de `Content-Length` non nul
 
 **Gate :**
@@ -510,12 +510,12 @@ chantier.
 
 ## Clôture
 
-- [ ] Entrée dans `.ai/thought_log.md` : date `[2026-09-09]`, titre, statut, décision technique
+- [x] (superviseur, 10-09) Entrée dans `.ai/thought_log.md` : date `[2026-09-09]`, titre, statut, décision technique
       principale (D1 sans perte + D3 format porté par la donnée), gain mesuré, prochaine étape
-- [ ] Skill `delivery-checklist` avant d'annoncer la livraison
-- [ ] **Une seule** revue adversariale (`adversarial-review`) sur le diff complet, en fin de
+- [x] (superviseur, 10-09) Skill `delivery-checklist` avant d'annoncer la livraison
+- [~] (revue 3.R du master plan, une par vague, superviseur) **Une seule** revue adversariale (`adversarial-review`) sur le diff complet, en fin de
       chantier — le lot touche la persistance de données de référence et une frontière HTTP
-- [ ] Ne pas pousser sur `main` (déploiement prod automatique) sans accord explicite
+- [x] (jamais : décision D10 du master plan) Ne pas pousser sur `main` (déploiement prod automatique) sans accord explicite
 
 ## Découvertes (à remplir en cours d'exécution, sans traiter)
 

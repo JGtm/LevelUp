@@ -5,7 +5,7 @@
     "Illusion",
     "ctf_illusion"
   ],
-  "image": "ctf_illusion.png",
+  "image": "ctf_illusion.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-26T17:10:42.0979379Z",
   "style": "encre",

@@ -5,7 +5,7 @@
     "Bazaar",
     "bazaar_map"
   ],
-  "image": "ctf_bazaar.png",
+  "image": "ctf_bazaar.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-26T16:10:39.6314007Z",
   "style": "encre",

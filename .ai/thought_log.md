@@ -1,3 +1,24 @@
+## [2026-09-10] Fonds de carte WebP — etapes 2 a 5 livrees, 109 fonds convertis sans perte (37,2 %) — Complete (verification navigateur : superviseur)
+
+**Decision technique principale.** Lecture du fond independante du format cote serveur (D3),
+outils hors ligne PNG + WebP (D6), conversion des 109 fonds par `cmd/mapfond-webp -convertir`
+avec refus d'ecrire sur tout aller-retour non identique, sidecars `.json` repointes sur le
+`.webp`, `.gitattributes` `*.webp binary`. Les fonds sont des assets VERSIONNES
+(`data/titles/halo_infinite/reference/map_backgrounds/`) : la conversion est un commit, pas
+une operation de production ; sauvegarde integrale des PNG dans
+`data/backups/map_backgrounds-png-2026-09-10/` (109 + 109, `diff -rq` identique).
+
+**Resultats observes.** 109/109 identiques a l'octet apres re-decodage, 45 686 553 → 28 689 086
+octets (37,2 %), 81 s. Recette export : 12e verdict `fondDeCarte` ajoute a
+`scripts/recette_export_rejeu.js` ; les cinq verdicts visuels sont au superviseur (navigateur).
+L'executant s'est arrete en attendant un relecteur qu'il avait lance lui-meme (hors consigne :
+une revue par vague, 3.R) ; la cloture est reprise par le superviseur.
+
+**Conclusion / prochaine etape.** Gates, fusion dans `feat/v75`, verification navigateur
+(Tactique, rejeu, export), revue 3.R, gate-push, CI.
+
+---
+
 ## [2026-09-10] Fonds de carte WebP, Étape 0 (banc d'essai) — Complete
 
 **Decision technique principale.** Construit `apps/go-api/cmd/mapfond-webp` (modes `-verifier`
