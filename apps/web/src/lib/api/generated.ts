@@ -6834,12 +6834,6 @@ export interface components {
             /** Format: float */
             y: number;
         };
-        FormTabResponse: {
-            has_enough_data: boolean;
-            /** Format: double */
-            mean: number | null;
-            points: components["schemas"]["PerformancePoint"][] | null;
-        };
         FragClassEntry: {
             authoritative: boolean;
             class: string;
@@ -9508,13 +9502,6 @@ export interface components {
             player: string;
             title?: string;
         };
-        PerformancePoint: {
-            match_id: string;
-            /** Format: double */
-            score: number | null;
-            /** Format: date-time */
-            start_time: string;
-        };
         PeriodInput: {
             /** Format: date-time */
             end_date: string | null;
@@ -11579,7 +11566,6 @@ export interface components {
             accuracy?: components["schemas"]["AccuracyTabResponse"];
             bucket_info: components["schemas"]["BucketInfo"];
             current_season?: components["schemas"]["CurrentSeasonResult"];
-            form?: components["schemas"]["FormTabResponse"];
             lusr?: components["schemas"]["LUSRTabResponse"];
             objective?: components["schemas"]["ObjectiveTabResponse"];
             /** Format: int64 */

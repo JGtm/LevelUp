@@ -6,7 +6,6 @@
 //   - win_loss   : Victoires/Défaites, K/D cumulatif
 //   - accuracy   : Précision, Personal Score/min
 //   - objective  : Personal Score total, Assists
-//   - form       : Performance Score relatif (v5-relative)
 //   - lusr       : LUSR (LevelUp Skill Rating / TrueSkill-inspired)
 package service
 
@@ -108,9 +107,6 @@ func (s *StatsService) GetPage(
 	case "objective":
 		tab := buildObjectiveTab(matches)
 		resp.Objective = &tab
-	case "form":
-		tab := buildFormTab(matches)
-		resp.Form = &tab
 	case "lusr":
 		tab, err := s.buildLUSRTab(ctx, matches)
 		if err != nil {
@@ -121,7 +117,6 @@ func (s *StatsService) GetPage(
 		wl := buildWinLossTab(matches)
 		ac := buildAccuracyTab(matches)
 		ob := buildObjectiveTab(matches)
-		fo := buildFormTab(matches)
 		lu, err := s.buildLUSRTab(ctx, matches)
 		if err != nil {
 			return resp, fmt.Errorf("StatsService.GetPage LUSR: %w", err)
@@ -129,7 +124,6 @@ func (s *StatsService) GetPage(
 		resp.WinLoss = &wl
 		resp.Accuracy = &ac
 		resp.Objective = &ob
-		resp.Form = &fo
 		resp.LUSR = &lu
 	}
 
@@ -282,43 +276,6 @@ func buildObjectiveTab(matches []legacymatch.StatsMatchRow) domain.ObjectiveTabR
 		TotalScore: totalScore,
 		AvgAssists: math.Round(avgAssists*100) / 100,
 		HasData:    hasScore,
-	}
-}
-
-// ─── Onglet Forme (Performance Score) ────────────────────────────────────────
-
-func buildFormTab(matches []legacymatch.StatsMatchRow) domain.FormTabResponse {
-	rawScores := analysis.ComputePerformanceSeries(matches)
-	points := make([]domain.PerformancePoint, len(matches))
-
-	sum := 0.0
-	count := 0
-	for i, m := range matches {
-		var score *float64
-		if rawScores != nil && i < len(rawScores) {
-			score = rawScores[i]
-		}
-		if score != nil {
-			sum += *score
-			count++
-		}
-		points[i] = domain.PerformancePoint{
-			MatchID:   m.MatchID,
-			StartTime: m.StartTime,
-			Score:     score,
-		}
-	}
-
-	var mean *float64
-	if count > 0 {
-		v := math.Round(sum/float64(count)*10) / 10
-		mean = &v
-	}
-
-	return domain.FormTabResponse{
-		Points:        points,
-		Mean:          mean,
-		HasEnoughData: count >= analysis.MinMatchesForRelative,
 	}
 }
 
