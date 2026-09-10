@@ -153,7 +153,7 @@ func ComputeUsage(in Input) domain.SessionUsageBlock {
 	out.TeamSizeAvg, out.TeamParityPct = averageAndParity(measured, func(m MatchInput) int { return m.TeamSize })
 	out.LobbySizeAvg, out.LobbyParityPct = averageAndParity(measured, func(m MatchInput) int { return m.LobbySize })
 
-	for _, key := range metricKeys(measured) {
+	for _, key := range metricKeys(in.PlayerXUID, measured) {
 		m := computeMetric(in.PlayerXUID, key, measured, durAll, durTeam)
 		appendSquadLines(&m, measured, in.SquadXUIDs, durAll)
 		attachOutcomes(&m, in.PlayerXUID, measured)
@@ -235,25 +235,33 @@ func averageAndParity(measured []MatchInput, size func(MatchInput) int) (float64
 // puis les familles du BILAN D'ÉQUIPEMENT observées (triées dans chaque groupe :
 // l'ordre de sortie est un contrat de stabilité, pas une itération de map).
 //
-// UNE FAMILLE DU BILAN ENTRE DÈS QU'UNE DE SES QUATRE GRANDEURS EST NON NULLE, et
-// pas seulement sur ses déploiements : le capteur du parc compte 4 objets utilisés
-// pour 36 pris (mesure E0.4) — le lire sur ses seules poses effacerait précisément
-// l'histoire que ce bloc raconte.
-func metricKeys(measured []MatchInput) []string {
+// `deployed_<famille>` reste au critère du LOBBY (n'importe quel joueur du match) :
+// c'est une grandeur comparative — « combien de murs déployés dans ce lobby » — qui
+// a un sens même à zéro pour le joueur suivi.
+//
+// `equipment_<famille>` (le BILAN) entre au critère du SUJET SEUL, depuis le lot
+// 6.4 point 4 : [subjectBilanFamilies], LA MÊME fonction que lit [overviewFamilies]
+// (usage_overview.go) pour les pages Synthèse et Escouade. AVANT ce correctif, ce
+// critère était le LOBBY ici et le SUJET là-bas — deux pages qui affichent la MÊME
+// barre subjet-only (`attachOutcomes` / `computeOutcomes`, toutes deux réduites au
+// joueur suivi) pouvaient ouvrir une ligne différente pour le même scope : la page
+// Sessions montrait une barre entièrement VIDE (0 utilisé / 0 gardé / 0 lâché) dès
+// qu'un COÉQUIPIER avait touché la famille, exactement le « reproche sans objet »
+// que le commentaire d'[overviewFamilies] refuse déjà côté Synthèse/Escouade. Une
+// famille du bilan entre dès qu'une de ses TROIS issues (utilisé/gardé/lâché) est
+// non nulle POUR LE SUJET, et pas seulement sur ses poses : le capteur du parc
+// compte 4 objets utilisés pour 36 pris (mesure E0.4) — le lire sur ses seules
+// poses effacerait précisément l'histoire que ce bloc raconte.
+func metricKeys(playerXUID string, measured []MatchInput) []string {
 	deployed := map[string]bool{}
-	bilan := map[string]bool{}
 	for _, m := range measured {
 		for _, p := range m.Players {
 			for fam := range p.DeployedByFamily {
 				deployed[fam] = true
 			}
-			for _, fam := range equipmentBilanFamilies {
-				if equipmentOutcomeOf(&p, fam).total() > 0 {
-					bilan[fam] = true
-				}
-			}
 		}
 	}
+	bilan := subjectBilanFamilies(playerXUID, measured)
 	keys := make([]string, 0, 5+len(deployed)+len(bilan))
 	keys = append(keys,
 		MetricPadPickups, MetricCamoEpisodes, MetricOvershieldEpisodes,
