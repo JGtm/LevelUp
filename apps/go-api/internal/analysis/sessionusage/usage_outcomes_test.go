@@ -217,8 +217,16 @@ func TestOutcomes_FFA_ReferencesNil(t *testing.T) {
 	}
 }
 
-// TestOutcomes_BarreVideRendUnTauxNil — 0/0 n'est pas 0 %. Un joueur qui n'a
-// touché à rien n'a pas un taux d'utilisation de zéro : il n'en a pas.
+// TestOutcomes_BarreVideRendUnTauxNil — 0/0 n'est pas 0 %. Un camp sans aucun
+// coéquipier n'a pas un taux de référence de zéro : il n'en a pas.
+//
+// DEPUIS LE LOT 6.4 POINT 4, une ligne "equipment_<famille>" n'entre QUE si le
+// SUJET l'a lui-même touchée ([subjectBilanFamilies], source commune à
+// [metricKeys] et [overviewFamilies]) : le « 0/0 » du joueur lui-même ne se
+// manifeste donc plus comme une ligne à taux nil, mais comme une ligne ABSENTE
+// (TestOutcomes_LeRepulseurNaJamaisDeLigne le couvre). Le joueur touche ici son
+// mur en le lâchant SANS l'utiliser, pour que la ligne entre et que le nil
+// restant (aucun allié) reste observable sur la référence d'équipe.
 func TestOutcomes_BarreVideRendUnTauxNil(t *testing.T) {
 	in := Input{
 		PlayerXUID: "P",
@@ -227,7 +235,7 @@ func TestOutcomes_BarreVideRendUnTauxNil(t *testing.T) {
 			PlayerTeam: intp(0), TeamOf: map[string]int{"P": 0, "E1": 1},
 			TeamSize: 1, LobbySize: 2,
 			Players: []PlayerRow{
-				{MatchID: "m1", XUID: "P"},
+				{MatchID: "m1", XUID: "P", DroppedByFamily: map[string]int{"wall": 1}},
 				{MatchID: "m1", XUID: "E1", TakenByFamily: map[string]int{"wall": 2},
 					DroppedByFamily: map[string]int{"wall": 2}},
 			},
@@ -235,10 +243,10 @@ func TestOutcomes_BarreVideRendUnTauxNil(t *testing.T) {
 	}
 	o := findMetric(t, ComputeUsage(in).Metrics, MetricEquipmentPrefix+"wall").Outcomes
 	if o == nil {
-		t.Fatal("equipment_wall sans Outcomes — la famille est mesurée dans le lobby")
+		t.Fatal("equipment_wall sans Outcomes — le joueur a lâché un mur")
 	}
-	if o.UsedRatePct != nil {
-		t.Errorf("UsedRatePct = %v, attendu nil (le joueur n'a pris aucun mur)", *o.UsedRatePct)
+	if !closeTo(o.UsedRatePct, 0) {
+		t.Errorf("UsedRatePct = %v, attendu 0 %% (le joueur a lâché son mur sans l'utiliser)", o.UsedRatePct)
 	}
 	// Mon camp moins moi est VIDE : nil, pas 0 %.
 	if o.TeammatesUsedRatePct != nil {
@@ -262,23 +270,18 @@ func TestOutcomes_SeulesLesGrandeursDEquipementPortentLesIssues(t *testing.T) {
 				m.Key, m.Outcomes != nil, MetricEquipmentPrefix)
 		}
 	}
-	// Le mur de cette session n'a AUCUNE prise mesurée (passe antérieure à `us4`,
-	// ou équipement de réapparition — jamais `taken`) et sa seule issue est la
-	// pose d'un ALLIÉ. La ligne existe quand même, parce qu'une pose EST une
-	// issue ; ma part y est nulle, et c'est bien ce que le bloc doit montrer.
-	m := findMetric(t, out.Metrics, MetricEquipmentPrefix+"wall")
-	if m.Outcomes == nil || m.Outcomes.Used != 0 || m.Outcomes.Taken != 0 {
-		t.Fatalf("equipment_wall = %+v, attendu aucune issue pour le joueur", m.Outcomes)
-	}
-	if m.PlayerTotal != 0 || m.LobbyTotal != 1 {
-		t.Errorf("(PlayerTotal, LobbyTotal) = (%v, %v), attendu (0, 1)", m.PlayerTotal, m.LobbyTotal)
-	}
-	if m.Outcomes.UsedRatePct != nil {
-		t.Errorf("UsedRatePct = %v, attendu nil (le joueur n'a aucune issue)", *m.Outcomes.UsedRatePct)
-	}
-	if !closeTo(m.Outcomes.TeammatesUsedRatePct, 100) {
-		t.Errorf("TeammatesUsedRatePct = %v, attendu 100 %% (l'allié a posé son mur)",
-			m.Outcomes.TeammatesUsedRatePct)
+	// Le mur de cette session n'est posé QUE par un ALLIÉ (A) : le joueur de la
+	// route ne l'a jamais touché. DEPUIS LE LOT 6.4 POINT 4, une ligne
+	// "equipment_<famille>" n'entre QUE sur le sujet lui-même
+	// ([subjectBilanFamilies]) — avant ce lot, la ligne existait quand même (sur
+	// la seule pose de l'allié) et affichait une barre entièrement vide pour le
+	// joueur : le « reproche sans objet » que ce lot supprime. `deployed_wall`
+	// (grandeur LOBBY, inchangée) reste, lui, observé sur A — voir
+	// TestComputeUsage_LignesEscouade dans usage_test.go.
+	for _, m := range out.Metrics {
+		if m.Key == MetricEquipmentPrefix+"wall" {
+			t.Fatalf("equipment_wall présent alors que le joueur n'a jamais touché de mur : %+v", m)
+		}
 	}
 }
 
@@ -324,4 +327,61 @@ func TestOutcomes_LesLignesDEscouadeSuivent(t *testing.T) {
 		t.Errorf("Total(A) = %v, attendu 2 (deux murs posés)", m.Squad[0].Total)
 	}
 	var _ domain.SessionUsageMetric = m
+}
+
+// TestBilan_MetricKeysEtOverviewFamiliesPartagentLeCritere — lot 6.4 point 4.
+// AVANT ce lot, [metricKeys] (page Sessions) ouvrait une ligne "equipment_<famille>"
+// dès qu'UN JOUEUR DU LOBBY la touchait, pendant qu'[overviewFamilies] (Synthèse,
+// Escouade) l'ouvrait seulement sur LE SUJET — deux critères pour la MÊME barre
+// subjet-only. Ce test verrouille la source commune ([subjectBilanFamilies]) : sur
+// un scope où seul un COÉQUIPIER touche "shroud_screen", NI l'une NI l'autre ne
+// doit publier de ligne pour cette famille ; sur "wall"/"sensor", que LE SUJET
+// touche, LES DEUX doivent en publier une.
+func TestBilan_MetricKeysEtOverviewFamiliesPartagentLeCritere(t *testing.T) {
+	measured := sessionIssuesDeTest().Matches
+	// Un coéquipier (A, déjà du camp de P sur m1) touche une troisième famille que
+	// P ne touche jamais.
+	for i := range measured {
+		if measured[i].MatchID != "m1" {
+			continue
+		}
+		for j := range measured[i].Players {
+			if measured[i].Players[j].XUID == "A" {
+				measured[i].Players[j].TakenByFamily["shroud_screen"] = 1
+				measured[i].Players[j].DeployedByFamily["shroud_screen"] = 1
+			}
+		}
+	}
+
+	sessionKeys := metricKeys("P", measured)
+	overview := overviewFamilies("P", measured)
+	overviewKeys := map[string]bool{}
+	for _, f := range overview {
+		overviewKeys[MetricEquipmentPrefix+f.FamilyKey] = true
+	}
+	sessionBilan := map[string]bool{}
+	for _, k := range sessionKeys {
+		if strings.HasPrefix(k, MetricEquipmentPrefix) {
+			sessionBilan[k] = true
+		}
+	}
+
+	for _, touched := range []string{MetricEquipmentPrefix + "wall", MetricEquipmentPrefix + "sensor"} {
+		if !sessionBilan[touched] {
+			t.Errorf("metricKeys omet %q, que le sujet a pourtant touchée", touched)
+		}
+		if !overviewKeys[touched] {
+			t.Errorf("overviewFamilies omet %q, que le sujet a pourtant touchée", touched)
+		}
+	}
+	interdite := MetricEquipmentPrefix + "shroud_screen"
+	if sessionBilan[interdite] {
+		t.Errorf("metricKeys publie %q sur la seule foi d'un coéquipier — critère du lobby, pas du sujet", interdite)
+	}
+	if overviewKeys[interdite] {
+		t.Errorf("overviewFamilies publie %q sur la seule foi d'un coéquipier", interdite)
+	}
+	if len(sessionBilan) != len(overviewKeys) {
+		t.Errorf("ensembles divergents : metricKeys=%v, overviewFamilies=%v", sessionBilan, overviewKeys)
+	}
 }

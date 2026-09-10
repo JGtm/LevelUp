@@ -68,20 +68,21 @@ func ComputeUsageOverview(in OverviewInput) domain.EquipmentUsageBlock {
 // les lignes se lisent de haut en bas par volume ; clé croissante à volume égal
 // pour que l'ordre soit un contrat stable).
 //
-// LE CRITÈRE D'ENTRÉE EST CELUI DU SUJET, pas celui du lobby — contrairement à
-// [metricKeys], qui ouvre une grandeur dès qu'un joueur quelconque la nomme. La
+// LE CRITÈRE D'ENTRÉE EST CELUI DU SUJET, pas celui du lobby : [subjectBilanFamilies]
+// (usage_outcomes.go), LA MÊME fonction que lit désormais [metricKeys] pour la page
+// Sessions (lot 6.4 point 4 — les deux étaient divergentes avant ce lot). La
 // question posée par cette page est « est-ce que JE gâche mon équipement » : une
 // famille que je n'ai jamais ramassée n'a pas de barre à remplir, et une ligne à
 // zéro y serait un reproche sans objet.
 func overviewFamilies(playerXUID string, measured []MatchInput) []domain.EquipmentUsageFamilyLine {
-	out := make([]domain.EquipmentUsageFamilyLine, 0, len(equipmentBilanFamilies))
+	touched := subjectBilanFamilies(playerXUID, measured)
+	out := make([]domain.EquipmentUsageFamilyLine, 0, len(touched))
 	for _, family := range equipmentBilanFamilies {
-		o := computeOutcomes(playerXUID, []string{family}, measured)
-		if o.Used+o.Kept+o.Dropped <= 0 {
+		if !touched[family] {
 			continue
 		}
 		out = append(out, domain.EquipmentUsageFamilyLine{
-			FamilyKey: family, SessionUsageOutcomes: o,
+			FamilyKey: family, SessionUsageOutcomes: computeOutcomes(playerXUID, []string{family}, measured),
 		})
 	}
 	sort.SliceStable(out, func(a, b int) bool {
