@@ -101,8 +101,11 @@ icon = "hud/Spike"
 #   - 0 (`mobility_sprint`, la course) et 7 (`melee_default`) : categorie NULLE, ce ne sont
 #     pas des capacites — les nommer mettrait « course » sur une fiche d'equipement ;
 #   - 3 : categorie nulle egalement, son `eqip` ne reference qu'un systeme de marquage ;
-#   - 10, et les rangs 13 a 22, 24 a 26 : identifiants de chaine NON inverses. Le rang 10
-#     est pourtant OBSERVE 67 fois sur le corpus — c'est le premier trou a combler.
+#   - les rangs 13 a 18, 24 a 26 : identifiants de chaine NON inverses.
+#   Le rang 10 (famille A) et les rangs 19 et 22 (famille B) sont NOMMES depuis le releve
+#   Theater du 2026-09-10 (artefact « Releves Theater », 12 scenes sur 9 matchs) : voir
+#   chaque entree. Ce sont des VARIANTES d objets deja connus (charges ou utilisations
+#   multiples, Super Fiesta) : la famille est celle de l objet de base.
 [[ability_palettes]]
 id = "famille_a"
 # markers : les rangs dont l'observation SIGNE cette palette. Ils sont disjoints de ceux de
@@ -119,6 +122,10 @@ markers = [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 23]
 "6"  = { en = "Repulsor", fr = "repulseur", icon = "hud/Repulsor", family = "repulsor" }
 "8"  = { en = "Active Camouflage", fr = "camouflage actif", icon = "hud/ActiveCamouflage" }
 "9"  = { en = "Overshield", fr = "surbouclier", icon = "hud/Overshield" }
+# Rang 10 : NOMME LE 2026-09-10 par releve Theater guide (3 matchs, 9 scenes : `cde26226`,
+# `f0220a96`, `4f77afc1`) — l ecran occultant, ramasse au socle ou au sol, a 2 ou 4 charges
+# selon la partie. Coherent avec l objet `0x4396db42` (banque sonore `sb_007_abl_shroud`).
+"10" = { en = "Shroud Screen", fr = "ecran occultant", icon = "hud/ShroudScreen", family = "shroud_screen" }
 "11" = { en = "Quantum Translocator", fr = "translocateur quantique", icon = "hud/QuantumTranslocator", family = "translocator_beacon" }
 "12" = { en = "Threat Seeker", fr = "traqueur de menaces", icon = "hud/ThreatSeeker", family = "threat_seeker" }
 # 23 est le SEUL rang confirme par DEUX chaines : l'inversion murmur3 ET la banque sonore
@@ -138,19 +145,24 @@ markers = [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 23]
 # SECOND canal independant — i48 rend 20 sur les slots 513 et 516 (grappins) et 21 sur le
 # slot 518 (propulseur), sans qu'aucune information du releve n'entre dans cette lecture.
 #
-# LE MUR (19) ET LE CAPTEUR (22) NE SONT PAS NOMMES : une seule observation chacun, sur un
-# seul joueur. « Un controle de groupe vaut, un temoignage isole ne vaut pas »
-# (RECETTE_LOADOUT §2) — et c'est exactement cette regle qui avait deja tort de les nommer.
-# CE QUI LES RESTAURERAIT, et c'est bon marche : un SECOND releve Theater nommant
-# l'equipement d'un joueur dont la lecture vaut 19 ou 22, sur un autre film que `000d5950`.
-# Ligne au REGISTRE_REPORTS.
+# LE MUR (19) ET LE CAPTEUR (22) SONT NOMMES DEPUIS LE 2026-09-10 : le second releve Theater
+# demande ci-dessous a ete fait, et au-dela — releve guide de l utilisateur (artefact
+# « Releves Theater ») : rang 19 sur 3 matchs / 9 scenes (`0797ce72`, `9ffce8ef`, `4f77afc1`),
+# toujours le mur de protection a UNE utilisation ; rang 22 sur 4 matchs / 12 scenes
+# (`9ffce8ef`, `bf2a9f05`, `a396aa7f`, `d1dfbc02`), toujours le detecteur de menaces a 2, 3 ou
+# 4 utilisations, parfois deploye aussitot. Controle de groupe obtenu (plusieurs joueurs,
+# plusieurs films), la regle « un temoignage isole ne vaut pas » est satisfaite. Ce sont des
+# VARIANTES (Super Fiesta) des objets des rangs 2 et 1 : meme famille, meme icone.
+# Historique : une seule observation chacun avant cette date, non nommes a dessein.
 [[ability_palettes]]
 id = "famille_b"
 markers = [19, 20, 21, 22]
 
 [ability_palettes.ranks]
 "20" = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot", family = "grapple" }
+"19" = { en = "Drop Wall", fr = "mur de protection", icon = "hud/DropWall", family = "wall" }
 "21" = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster", family = "thruster" }
+"22" = { en = "Threat Sensor", fr = "detecteur de menaces", icon = "hud/ThreatSensor", family = "sensor" }
 
 # Familles de capacite dont l'USAGE est MESURE par le canal d'IMPULSION du bipede : le corps
 # de tag externe `R(2) == 1` des composants `biped-spartan-ability` (i57) et
