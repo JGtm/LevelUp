@@ -104296,3 +104296,23 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   web, `tsc -b --force` exit 0 et `vitest run src/features/match-replay src/features/tactical
   src/lib/replay` : 3025 passed / 3 skipped (pre-existant) / 0 failed.
 - Prochaine etape : Etape 5, recette export video (12 verdicts d'un coup) + controle Tactique.
+
+## [2026-09-10] Fonds de carte WebP — Etape 5, recette export (Complete cote script, [~] superviseur cote navigateur)
+- Decision technique : 12e verdict `fondDeCarte` ajoute a `scripts/recette_export_rejeu.js`
+  dans la meme fonction `recetteExport`, rendu avec les 11 autres. Mesure : sur une frame de
+  JEU (pas l'ecran de fin, qui pose un voile plein cadre), histogramme quantifie (16
+  niveaux/canal, 1 pixel sur 7) de la proportion de pixels hors couleur dominante du cadre
+  (seuil 15 %). Un fond non decode laisse un cadre quasi uniforme (vide + HUD/surcouche,
+  fraction mineure connue) ; un fond decode couvre le reste de couleurs de terrain variees.
+  Verifie par `node --check` (syntaxe valide) — pas de suite de test automatisee possible
+  (jsdom ne decode pas de MP4, cf. l'en-tete du fichier).
+- Blocage constate et assume, PAS contourne silencieusement : ce worktree n'a NI base de
+  match/joueur reelle NI serveur pointe sur ses fonds convertis (seul le serveur du worktree
+  partage, port 8000, a des donnees reelles — et la consigne du lot interdit explicitement
+  d'y toucher, reservee au superviseur). L'execution reelle de la recette (12 verdicts +
+  controle visuel de la video + controle de l'onglet Tactique) est donc statuee `[~]
+  superviseur`, avec une procedure precise consignee au plan (etape par etape : conversion
+  des donnees du worktree partage prealable, vidage de cache, match Cliffhanger/ridgeline —
+  seul appariement du depot avec un artefact de rejeu reel, copie/retrait du script,
+  attendu par verdict).
+- Prochaine etape : cloture du lot (delivery-checklist, revue adversariale du diff complet).

@@ -441,25 +441,70 @@ chantier export de fin août. Rien de ce qui précède ne prouve que la vidéo l
 
 **Périmètre fermé (1 fichier + 1 passage navigateur) :**
 
-- [ ] `scripts/recette_export_rejeu.js` — ajouter un **12e verdict `fondDeCarte`** : sur une frame
-      exportée, la proportion de pixels non transparents hors surcouche est supérieure à un seuil,
-      ce qui échoue si le fond n'a pas été décodé. Verdict rendu **avec les 11 autres**, jamais
-      isolément
-- [ ] **Vider le cache avant la passe** : `staleTime: Infinity` côté TanStack **et**
-      `max-age=3600` côté HTTP peuvent servir l'ancien blob PNG et masquer une régression.
-      Rechargement forcé, cache désactivé dans l'inspecteur
-- [ ] Exécuter la recette selon la procédure du dépôt : copier temporairement le script dans
-      `apps/web/public/`, l'exécuter dans le navigateur, **RETIRER la copie**
-- [ ] Rendre les **12 verdicts d'un seul coup**. Ne jamais annoncer une propriété à la fois
-- [ ] Contrôle visuel à l'échelle d'export : ouvrir la vidéo produite et vérifier que le fond est
-      net, sans halo ni frange sur l'alpha (D1 le garantit en théorie ; on le regarde quand même)
-- [ ] Contrôler aussi l'onglet **Tactique** (`features/tactical/queries.ts:164`), second
-      consommateur du fond, qui pose l'objectURL en CSS et non au canvas
+- [x] `scripts/recette_export_rejeu.js` — ajouté le **12e verdict `fondDeCarte`** : sur une frame
+      de JEU (pas l'écran de fin, qui pose un voile plein cadre — `Math.min(1, secondes/2)`,
+      dans la plage exportée, avant toute superposition de fin), un histogramme quantifié
+      (16 niveaux/canal, 1 pixel sur 7) mesure la proportion de pixels qui s'écartent de la
+      couleur DOMINANTE du cadre (celle du vide quand aucun fond n'est décodé — HUD/marqueurs
+      exclus de fait car ils ne couvrent qu'une fraction mineure et connue du cadre, la
+      « surcouche »). Seuil : > 15 % hors couleur dominante. Verdict `noter('fondDeCarte', ...)`
+      ajouté **dans la même fonction `recetteExport`**, rendu avec les 11 autres dans le même
+      tableau — jamais une passe séparée
+- [~] superviseur — les 5 items suivants exigent un navigateur réel connecté à des données
+      réelles (le worktree de cet exécutant n'a NI base de match/joueur NI serveur pointé sur
+      ses fonds convertis : seul le serveur du worktree partagé, port 8000, a des données
+      réelles, et la consigne du lot est explicite — ne pas le toucher, seul le superviseur le
+      fait). **Procédure exacte à suivre, dans cet ordre :**
+      1. **Pré-requis données** : le serveur de port 8000 sert `data/` du worktree PARTAGÉ
+         (`LevelUp-go-migration`), où les fonds sont encore en `.png` (109 fichiers, vérifié
+         sur pièce le 2026-09-10 — non touchés par ce lot). Pour que la recette prouve quoi que
+         ce soit sur le WebP, le superviseur doit d'abord faire lire au serveur des fonds
+         convertis : soit copier `data/titles/halo_infinite/reference/map_backgrounds/` de
+         `LevelUp-wt-fonds-webp` (109 `.webp` + 109 `.json` mis à jour, ce lot ne les a
+         PAS commités — cf. § Étape 4) par-dessus celui du worktree partagé (après sa PROPRE
+         sauvegarde), soit relancer `go run ./cmd/mapfond-webp -convertir` directement sur les
+         fonds du worktree partagé. **Ne pas** redémarrer le serveur lui-même : un rechargement
+         de page suffit, les fonds sont lus à la requête
+      2. **Vider le cache avant la passe** : `staleTime: Infinity` côté TanStack (rejeu ET
+         Tactique) **et** `max-age=3600` côté HTTP peuvent servir l'ancien blob PNG et masquer
+         une régression — rechargement forcé (Ctrl+Maj+R), case « Disable cache » de l'onglet
+         Réseau de l'inspecteur cochée pendant toute la passe
+      3. **Match et carte** : `Cliffhanger` (module `ridgeline`) — c'est, sur pièce
+         (`internal/service/replay_map_background_test.go`, `TestMapBackground_DonneesReelles`),
+         **le seul appariement du dépôt dont on possède un artefact de rejeu réel** ; c'est donc
+         le seul qui permette au contrôle visuel de confronter le fond à l'écran. Ouvrir un
+         match de ce joueur/cette carte, page rejeu 2D
+      4. **Copier temporairement** `scripts/recette_export_rejeu.js` dans `apps/web/public/`,
+         l'exécuter dans la console (`await recetteExport()` après l'avoir collé, ou via
+         `<script src="/recette_export_rejeu.js">` + `await recetteExport()`), **RETIRER la
+         copie** de `apps/web/public/` immédiatement après (jamais committée)
+      5. **Rendre les 12 verdicts d'un seul coup** — ne jamais annoncer une propriété isolément.
+         Attendu, verdict par verdict : `donneesDuMatch` OK (scoreboard/issue présents, sinon
+         **c'est la vue du match qui est morte, pas l'export** — ne pas chercher dans ce
+         chantier) ; `exportTermine`, `fichierProduit`, `image`, `pistesSonores`,
+         `mixageEnPremier`, `maintienDeFin`, `sonDansLaQueue`, `musiquePresente`, `ecranDeFin`,
+         `dimensions` : comportement inchangé par ce lot, doivent rester OK comme avant ;
+         **`fondDeCarte` OK** (> 15 % hors couleur dominante) est LE verdict que ce lot ajoute —
+         un ÉCHEC ici, sur Cliffhanger/ridgeline avec le cache vidé, signifie que le WebP n'est
+         pas décodé bout en bout (Content-Type erroné, ou le navigateur du poste ne sait pas
+         décoder le WebP — improbable en 2026, mais c'est la panne que ce verdict existerait
+         pour attraper)
+      6. **Contrôle visuel** à l'échelle d'export : ouvrir le fichier vidéo produit, chercher un
+         halo ou une frange sur les bords du décor (l'alpha du fond) à un instant où le rejeu
+         est en cours (pas l'écran de fin) — D1 (sans perte) le garantit en théorie, ce contrôle
+         le regarde quand même
+      7. **Onglet Tactique** (`features/tactical/queries.ts:164`) : ouvrir la grille des cartes,
+         vérifier que la vignette de Cliffhanger/ridgeline affiche un fond réel (texture de
+         terrain visible), pas une case vide — ce consommateur pose l'objectURL en **CSS**
+         (`background-image`), pas au canvas ; un navigateur qui décode le WebP en `<img>`/CSS
+         mais pas au `canvas.drawImage` (asymétrie improbable, mais jamais vérifiée sur pièce
+         avant ce lot) romprait spécifiquement ce chemin sans toucher au rejeu
 
-**Gate :** les 12 verdicts au vert en une passe, plus le contrôle visuel de la vidéo. Si le
-prérequis `donneesDuMatch` échoue (mention « SANS ÉQUIPE », ou horloge à la durée du film au lieu
-de la durée jouée), **c'est la vue du match qui est morte, pas l'export** : ne pas chercher dans
-ce chantier.
+**Gate :** les 12 verdicts au vert en une passe, plus le contrôle visuel de la vidéo et de
+l'onglet Tactique — **à statuer par le superviseur**, cf. procédure ci-dessus. Si le prérequis
+`donneesDuMatch` échoue (mention « SANS ÉQUIPE », ou horloge à la durée du film au lieu de la
+durée jouée), **c'est la vue du match qui est morte, pas l'export** : ne pas chercher dans ce
+chantier.
 
 ---
 
