@@ -10,6 +10,28 @@ l'arme par kill. Tout le pipeline est implémenté en Go sous `apps/go-api`.
 > réconcilie avec les totaux de l'API. Lire [Niveaux de confiance](#niveaux-de-confiance)
 > et [Limites connues](#limites-connues) avant de s'y fier.
 
+> **Mise à jour Halo Infinite (2026-09-01, doc corrigé le 2026-09-10 — lot
+> hygiène 5.3, `.ai/V7.5/REGISTRE_REPORTS.md`).** Les sections 2 à 10 ci-dessous
+> décrivent le pipeline D'ORIGINE : `weapon_kills` (corrélation par fire-event /
+> snapshot, stockée par kill) + la vue de lecture `v_weapon_kills`. Pour Halo
+> Infinite, tout ce pipeline a été **retiré** par la migration
+> `shared_drop_weapon_kills_v1`
+> (`internal/games/halo_infinite/migrations/steps_shared_drop_weapon_kills.go`) :
+> la table, les deux vues `v_weapon_kills`, `weapon_kills_v3` et la séquence de
+> génération sont toutes supprimées, sans sauvegarde (112 000 lignes jetées — la
+> corrélation par fire-event mal-attribuait les armes sans tir comme l'épée ou
+> le marteau sur l'arme à feu tenue par le joueur). Le chemin de lecture actuel
+> pour Halo Infinite est la **source de dégât** du kill, lue en direct depuis
+> `match_kill_events_latest.source_tag` et traduite en `weapon_key` côté Go
+> (`port.KillSourceClassifier`, jamais en SQL — la table change à chaque
+> saison) — voir [Lecture](#lecture--v_weapon_kills-et-labels) pour le mécanisme
+> actuel, centralisé dans
+> `internal/platform/duckdb/killsource_weapon_scope.go`. **Halo 5 écrit et lit
+> toujours `weapon_kills`** (avec `confidence = 'native'`, issue de sa propre
+> timeline API — un pipeline autoritatif sans rapport, explicitement épargné
+> par la migration de retrait) : les sections 2 à 10 restent exactes pour ce
+> titre.
+
 ---
 
 ## Table des matières
@@ -56,8 +78,10 @@ match et le KPI « arme favorite » de l'accueil.
 | Struct résultat d'attribution | `internal/analysis/kill_attribution.go` |
 | Repository de lecture agrégée | `internal/platform/duckdb/weapon_kills_repo.go` |
 | Résolution label / rôle (metadata) | `internal/platform/duckdb/weapon_resolver.go` |
-| Schéma (table + vue) | `internal/games/halo_infinite/migrations/steps_shared_core.go` (`add_weapon_kills`, `add_weapon_kills_reconciled_as`) |
+| Schéma (table + vue) | `internal/games/halo_infinite/migrations/steps_shared_core.go` (`add_weapon_kills`, `add_weapon_kills_reconciled_as`) — **Halo 5 seulement depuis le 2026-09-01**, voir plus bas |
 | Conversion append-only | `internal/migration/steps_shared_append_only_weapon_kills.go` |
+| Retrait (Halo Infinite, 2026-09-01) | `internal/games/halo_infinite/migrations/steps_shared_drop_weapon_kills.go` (`shared_drop_weapon_kills_v1`) |
+| **Chemin de lecture HINF actuel (source de dégât, non stockée par kill)** | `internal/platform/duckdb/killsource_weapon_scope.go`, `internal/port/kill_source.go` (`KillSourceClassifier`) |
 | Backfill CLI | `apps/go-api/cmd/levelup` — `backfill --weapons` |
 | Seeding des labels | `apps/go-api/cmd/seed-weapon-labels` |
 
@@ -176,6 +200,11 @@ sein de `weapon_data.go`, et est dupliquée en notes de recherche dans
 
 ## Stockage — `weapon_kills` (append-only)
 
+> **Halo Infinite : supprimée le 2026-09-01** (`shared_drop_weapon_kills_v1`) —
+> cette section décrit `weapon_kills` de Halo 5 (native, depuis sa propre
+> timeline API) et le pipeline historique de Halo Infinite. Voir l'encart en
+> tête de ce document.
+
 La table `weapon_kills` vit dans la DB partagée
 (`data/warehouse/shared_matches_v2.duckdb`). Colonnes de base
 (`steps_shared_core.go`, migrations `add_weapon_kills` +
@@ -211,6 +240,35 @@ lecture, pas de contraintes au niveau ligne.
 ---
 
 ## Lecture — `v_weapon_kills` et labels
+
+> **Halo Infinite : cette section décrit le chemin RETIRÉ** (conservé pour
+> Halo 5 et pour la référence historique — voir l'encart en tête de ce
+> document). Pour Halo Infinite, remplacer toute mention de `weapon_kills` /
+> `v_weapon_kills` ci-dessous par le foyer actuel,
+> `internal/platform/duckdb/killsource_weapon_scope.go` :
+>
+> - `weaponKillsFromSourceForPlayer` agrège les kills crédités d'un joueur par
+>   **source de dégât** plutôt que par `weapon_id` stocké : il lit
+>   `match_kill_events_latest.source_tag` pour ce xuid (borné à une liste de
+>   matchs en option ; liste vide = tout l'historique du joueur, utilisé par le
+>   KPI « arme favorite » de l'Accueil), puis traduit chaque `source_tag`
+>   numérique en `weapon_key` du registre via
+>   `port.KillSourceClassifier.KillSourceRegistryKey` — une table de
+>   correspondance côté Go (jamais en SQL : elle change à chaque saison),
+>   implémentée par titre.
+> - Un `source_tag` que le classifieur ne reconnaît pas n'est **pas** remonté
+>   (reste dans « Non attribué » — décision D7 du plan du 2026-09-01) : jamais
+>   deviné ni proratisé.
+> - Consommateurs : `ExplorerRepo.topWeaponsFromSource` (top armes sur une
+>   liste de matchs, objets hors arsenal comme le répulseur écartés — la
+>   surface affiche une vignette d'arme) et
+>   `HomeRepo.favoriteWeaponFromDamageSource` (arme favorite sur tout
+>   l'historique du joueur).
+> - La résolution du libellé ne change pas dans son principe (voir le
+>   paragraphe ci-dessous) : une fois un `weapon_key` connu,
+>   `resolveWeaponKeyDimensions` joint les mêmes tables metadata `weapons` +
+>   `weapon_name_labels` — seul ce qu'on cherche a changé (un `weapon_key` du
+>   classifieur, pas un `weapon_key` dérivé d'un `weapon_id` stocké).
 
 Les lecteurs ne lisent jamais `weapon_kills` directement. La surface de lecture
 canonique est la vue **`v_weapon_kills`**, qui :
