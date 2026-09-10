@@ -7245,6 +7245,27 @@ components:
         - otherFamily
         - noResolver
       type: object
+    AbilityCoverage:
+      additionalProperties: false
+      properties:
+        published:
+          format: int64
+          type: integer
+        reads:
+          format: int64
+          type: integer
+        scanNoise:
+          format: int64
+          type: integer
+        unpublished:
+          format: int64
+          type: integer
+      required:
+        - reads
+        - scanNoise
+        - unpublished
+        - published
+      type: object
     AbilityImpulse:
       additionalProperties: false
       properties:
@@ -11393,6 +11414,8 @@ components:
     Coverage:
       additionalProperties: false
       properties:
+        abilities:
+          $ref: '#/components/schemas/AbilityCoverage'
         abilityCharges:
           $ref: '#/components/schemas/AbilityChargeCoverage'
         abilityImpulses:

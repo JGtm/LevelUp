@@ -67,6 +67,44 @@ func TestKeepAbilitiesOfPublishedTracks(t *testing.T) {
 	}
 }
 
+// TestRejectAbilityScanNoise — RAPPORT_E0_2026-09-10 §3 : un rang hors du domaine plausible
+// d'une palette du titre est du BRUIT DE BALAYAGE, pas une capacité inconnue. Les deux cas
+// mesurés sur le parc (`9ffce8ef` rang 32 slot 530, `a03a5e65` rang 34 slot 574) sont
+// reproduits ici par leur RANG SEUL — c'est le critère retenu (cf. abilityRankDomainMax),
+// pas la distance à une vie : mesuré sur les 64 films, aucun seuil de fenêtre ne sépare ces
+// deux lectures des 14 autres lectures i48 légitimement hors-fenêtre du corpus (gaps de 64 à
+// 465 images, valeurs qui ENCADRENT les 176 images de `a03a5e65` des deux côtés), alors que
+// le domaine du rang les sépare EXACTEMENT (zéro collatéral sur 4 952 lectures du corpus).
+func TestRejectAbilityScanNoise(t *testing.T) {
+	reads := []AbilityRead{
+		{Slot: 512, R: 5, Src: AbilitySrcI48},       // valide : conservee
+		{Slot: 530, R: 32, Src: AbilitySrcI48},      // 9ffce8ef, image 6140
+		{Slot: 574, R: 34, Src: AbilitySrcI48},      // a03a5e65, image 2746
+		{Slot: 517, R: 22, Src: AbilitySrcKeyframe}, // valide : conservee
+	}
+	got, noise := rejectAbilityScanNoise(reads)
+	if noise != 2 {
+		t.Fatalf("bruit compte = %d, attendu 2 (rangs 32 et 34)", noise)
+	}
+	if len(got) != 2 {
+		t.Fatalf("lectures conservees = %d, attendu 2 : %+v", len(got), got)
+	}
+	for _, r := range got {
+		if r.R > abilityRankDomainMax {
+			t.Errorf("une lecture hors domaine a survecu au filtre : %+v", r)
+		}
+	}
+	if got2, noise2 := rejectAbilityScanNoise(nil); got2 != nil || noise2 != 0 {
+		t.Error("sans lecture, rien n'est invente ni compte")
+	}
+	// LE RANG PILE AU PLAFOND EST CONSERVE : le seuil ecarte ce qui le DEPASSE, pas ce qui
+	// l'atteint (cf. justification d'abilityRankDomainMax).
+	pileAuPlafond := []AbilityRead{{Slot: 1, R: abilityRankDomainMax, Src: AbilitySrcI48}}
+	if got3, noise3 := rejectAbilityScanNoise(pileAuPlafond); len(got3) != 1 || noise3 != 0 {
+		t.Errorf("un rang egal au plafond doit etre conserve : got=%+v noise=%d", got3, noise3)
+	}
+}
+
 // famA / famB : les deux palettes du titre, réduites à ce que le classement consomme.
 var (
 	famA = AbilityPalette{
@@ -132,8 +170,9 @@ func TestClassifyAbilityPaletteRefuseCeQuElleNeSaitPas(t *testing.T) {
 		{"signature mélangée", map[int]int{4: 10, 20: 10}},
 		// 80 % : au-dessus de la moitié, mais sous le seuil — la marge est là pour ça.
 		{"majorité trop faible", map[int]int{4: 8, 20: 2}},
-		// Trop peu de lectures : une seule parasite pèserait plus que la tolérance.
-		{"corpus trop maigre", map[int]int{4: 9}},
+		// Moins de 10 lectures et PAS unanime (une d'une autre famille) : le regime sous le
+		// plancher EXIGE l'unanimite, il ne relache rien (RAPPORT_E0_2026-09-10 §2).
+		{"corpus maigre et non unanime", map[int]int{4: 8, 20: 1}},
 		// Aucun marqueur connu : un film d'une palette qu'on n'a jamais vue.
 		{"rangs inconnus", map[int]int{30: 20, 31: 15}},
 	}
@@ -144,6 +183,46 @@ func TestClassifyAbilityPaletteRefuseCeQuElleNeSaitPas(t *testing.T) {
 	}
 	if classifyAbilityPalette(readsOf(map[int]int{4: 20}), nil) != nil {
 		t.Error("sans palette declaree, rien ne se classe")
+	}
+}
+
+// TestClassifyAbilityPaletteUnanimiteSousLePlancher — RAPPORT_E0_2026-09-10 §2 : sous le
+// plancher historique de 10 lectures, on n'assouplit pas le critère, on l'EXIGE ENTIER. La
+// cause prouvée du rapport est structurelle (le canal image-clé ne voit QUE les rangs
+// 16..23, donc un film de famille A ne récolte jamais de lecture `kf` et reste rare) — sept
+// films du parc à n <= 7, tous à 100 % de pureté famille A, doivent désormais se classer.
+// Vérifié sur les 64 films du corpus : 0 reclassement fautif, 0 perte (le film réellement
+// mélangé, `4f77afc1`, reste refusé — cf. TestClassifyAbilityPaletteSurLesSignaturesMESUREES
+// et TestClassifyAbilityPaletteRefuseCeQuElleNeSaitPas pour les cas qui doivent RESTER non
+// classés).
+func TestClassifyAbilityPaletteUnanimiteSousLePlancher(t *testing.T) {
+	palettes := []AbilityPalette{famA, famB}
+	// 3 lectures UNANIMES (toutes famille A) : classée.
+	if got := classifyAbilityPalette(readsOf(map[int]int{4: 3}), palettes); got == nil || got.ID != "famille_a" {
+		t.Errorf("3 lectures unanimes doivent classer en famille_a, obtenu %q", paletteIDOrNone(got))
+	}
+	// 3 lectures dont UNE d'une autre famille : n'est PAS unanime, refusée.
+	if got := classifyAbilityPalette(readsOf(map[int]int{4: 2, 20: 1}), palettes); got != nil {
+		t.Errorf("3 lectures non unanimes (une autre famille) ne doivent PAS se classer, obtenu %q", got.ID)
+	}
+	// n=1, le plancher le plus bas du parc (`b0fe12b1`, une seule lecture i48, 100 % famille
+	// A) : la généralisation vaut aussi là — la découverte de la lecture unique en elle-même
+	// reste une anomalie distincte (hors périmètre), mais la RÈGLE de classement, elle,
+	// s'applique uniformément.
+	if got := classifyAbilityPalette(readsOf(map[int]int{4: 1}), palettes); got == nil || got.ID != "famille_a" {
+		t.Errorf("1 lecture unanime doit classer, obtenu %q", paletteIDOrNone(got))
+	}
+}
+
+// TestClassifyAbilityPaletteSeuilInchangeAuDessusDuPlancher — le régime n >= 10 (pureté
+// >= 90 %) ne bouge pas : 91 % classe, 85 % non, exactement le seuil actuel.
+func TestClassifyAbilityPaletteSeuilInchangeAuDessusDuPlancher(t *testing.T) {
+	palettes := []AbilityPalette{famA, famB}
+	if got := classifyAbilityPalette(readsOf(map[int]int{4: 91, 20: 9}), palettes); got == nil || got.ID != "famille_a" {
+		t.Errorf("91%% de purete (n=100 >= 10) doit classer, obtenu %q", paletteIDOrNone(got))
+	}
+	if got := classifyAbilityPalette(readsOf(map[int]int{4: 85, 20: 15}), palettes); got != nil {
+		t.Errorf("85%% de purete (n=100 >= 10) ne doit PAS classer, obtenu %q", got.ID)
 	}
 }
 

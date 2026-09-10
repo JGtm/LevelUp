@@ -276,6 +276,12 @@ type Coverage struct {
 	// GrenadeReads dit ce que chaque canal a apporte a l'axe des grenades portees, et si le
 	// canal MUNITIONS du film a ete refuse en bloc (cf. grenade_reads.go).
 	GrenadeReads *GrenadeReadCoverage `json:"grenadeReads,omitempty"`
+	// Abilities est la couverture du calque IDENTITE DE CAPACITE PORTEE (cf. abilities.go) :
+	// lectures i48/image-cle disponibles, celles ecartees comme BRUIT DE BALAYAGE (rang hors
+	// domaine plausible, RAPPORT_E0_2026-09-10 §3), celles sans trajectoire publiee, et
+	// celles publiees. TELEMETRIE PURE, SANS MONTEE DE SCHEMAVERSION (lot 5.6, 2026-09-10) :
+	// meme regle qu'Inventory ci-dessus, aucun rendu n'en depend.
+	Abilities *AbilityCoverage `json:"abilities,omitempty"`
 	// Zones est la couverture de L'ÉTAT DES ZONES (schéma 16, cf. document_zones.go) : la
 	// MÉTHODE d'appariement employée et les rôles du catalogue qui composent `mapObjectives.zones`
 	// (sans quoi `zoneRef` ne serait pas vérifiable), les slots lus, ceux qu'aucune capture n'a

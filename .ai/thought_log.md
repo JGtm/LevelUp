@@ -47,6 +47,55 @@ Consignees, non traitees : les 8 poses d'appareil de mur sur 295 promues `deploy
 clause de distance de `equipmentOrigin` (lachers a la mort), et les deux artefacts de Grand
 combat non identifies (`879a4dba`, `5676a9ba`) que l'instrument voit encore dans les totaux de
 parc.
+## [2026-09-10] Master plan, lot 5.6 — palette unanimite + bruit i48 (questions 2 et 3 du rapport E0) — Complete (TDD rouge->vert, 0 bump de schema, 9 artefacts a recuire)
+
+**Decision technique principale.** Deux items TDD dans `internal/analysis/replay/abilities.go`.
+(a) `classifyAbilityPalette` : sous `abilityPaletteMinReads` (10), le seuil de purete devient
+1.0 (unanimite) au lieu du refus sec — meme constantes, un seul `threshold` local ; les 7 films
+a n<=7 du rapport E0 (dont `b0fe12b1`, n=1) se classent desormais, `4f77afc1` (Grand combat,
+reellement melange, hors perimetre) reste refuse. (b) Bruit `i48` : `rejectAbilityScanNoise`
+ecarte les lectures dont le rang depasse `abilityRankDomainMax = 27` (domaine plausible d'une
+palette du titre), AVANT classement et nommage, comptees dans un NOUVEAU `AbilityCoverage`
+(`reads/scanNoise/unpublished/published`) journalise par slog.
+
+**DEVIATION ASSUMEE PAR RAPPORT AU CORRECTIF PROPOSE PAR LE RAPPORT E0** : celui-ci suggerait un
+filtre par TOLERANCE DE FENETRE DE VIE dans `keepAbilitiesOfPublishedTracks`. Verification sur
+pieces (jq sur les 64 artefacts, pas les hypotheses du rapport) : aucune tolerance de fenetre ne
+separe les deux lectures bruitees des lectures legitimes du meme corpus — `a03a5e65` (rang 34,
+176 images avant l'unique vie du slot) est ENCADREE des DEUX cotes par des lectures legitimes a
+rang valide (`46c3f91d` gap 64, `0a44c6cc` gap 465), et le second plus grand ecart du parc entier
+(1 819 images, `30724141`, rang 20 valide) n'est PAS du bruit. Le domaine du rang, lui, separe
+EXACTEMENT les deux cas cibles des 4 950 autres lectures du corpus (0 collateral). Filtre retenu
+au rang, pas a la fenetre — justifie en detail dans abilities.go et le rapport final.
+
+**Resultats observes.** Tests rouges prouves puis verts : 2 nouveaux tests de classement
+(`TestClassifyAbilityPaletteUnanimiteSousLePlancher`, `...SeuilInchangeAuDessusDuPlancher`), 1
+test existant requalifie (`corpus trop maigre` -> `corpus maigre et non unanime`, le cas n=9
+100% pur passe desormais en classe), 1 nouveau test de bruit (`TestRejectAbilityScanNoise`, dont
+un cas mutation-proof au rang pile-plafond). Ajout d'un NOUVEAU champ `Coverage.Abilities` (Go +
+jumeau `replaydoc` + convertisseur `replayview`) : la parite stockage/servi (`parity_test.go`)
+et `TestOpenAPIYAMLIsUpToDate` ont d'abord rougi (champ absent du DTO servi / openapi.yaml perime
+apres regeneration), corriges par le miroir `replaydoc.AbilityCoverage` + `toAbilityCoverage` +
+`make openapi-gen`. AUCUN bump de SchemaVersion (reste 51) : champ optionnel `omitempty`, aucun
+rendu n'en depend (meme regle qu'Inventory, `TestStructureIsOptionalInDocument`) ; seuls les 7
+artefacts de (a) et les 2 de (b) seront recuits par le superviseur, pas le parc entier. Golden
+`assembly_000d5950.golden` regenere : 1 ligne ajoutee (`couverture : 214 lecture(s) -> 0 ecartee(s)
+bruit de balayage...`), zero autre chiffre bouge (film hors des deux causes). Gates : build/vet/
+`./internal/analysis/replay/...`/`./internal/replaybuild/...`/`./internal/service/replayview/...`
+verts, `golangci-lint --new-from-merge-base=feat/v75` 0 issue, `go test ./...` vert hors 1 flake
+Windows preexistant (`internal/mapcatalog`, verrou de fichier concurrent, 3/3 vert isole, non
+touche par ce lot).
+
+**Conclusion / prochaine etape.** Artefacts a recuire par le superviseur (9, identifiants 8 hex) :
+`b0fe12b1`, `8bc6074f`, `bf5ced1b`, `4ecdf3e7`, `94a28b8b`, `30a23d15`, `58864b3c` (item a) et
+`9ffce8ef`, `a03a5e65` (item b) — aucun chevauchement. Hors perimetre, non traites : `4f77afc1`
+(Grand combat, reste refuse), `b0fe12b1` en tant qu'ANOMALIE i48 distincte (pourquoi 1 seule
+lecture sur 101 vies — seul son classement change, pas sa rarete), le resume d'usage (lot 5.5),
+les melanges reels de palette. `apps/web/generated.ts` non regenere (node_modules absent de ce
+worktree) : champ optionnel non consomme par le front, drift sans impact fonctionnel mais a
+purger au prochain `make generate-types`.
+
+---
 
 ## [2026-09-10] Master plan, lot 5.2 — investigation E0 bornee (mur 1:1, palette non classee, rang 32, prises inclassables, capteur/traqueur) — Complete (diagnostic seul, 5 causes prouvees sur 5)
 

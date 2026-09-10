@@ -35,6 +35,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		ObjectiveObjects:  ptrOf(v.ObjectiveObjects, toObjectiveObjectsCoverage),
 		Inventory:         ptrOf(v.Inventory, toInventoryCoverage),
 		GrenadeReads:      ptrOf(v.GrenadeReads, toGrenadeReadCoverage),
+		Abilities:         ptrOf(v.Abilities, toAbilityCoverage),
 		Zones:             ptrOf(v.Zones, toZonesCoverage),
 		OriginResolved:    v.OriginResolved,
 		T0Film:            ptrOf(v.T0Film, toT0FilmCoverage),
@@ -122,6 +123,15 @@ func toGrenadeReadCoverage(v replay.GrenadeReadCoverage) replaydoc.GrenadeReadCo
 		FromDelta:    v.FromDelta,
 		Unpublished:  v.Unpublished,
 		AmmoRefused:  v.AmmoRefused,
+	}
+}
+
+func toAbilityCoverage(v replay.AbilityCoverage) replaydoc.AbilityCoverage {
+	return replaydoc.AbilityCoverage{
+		Reads:       v.Reads,
+		ScanNoise:   v.ScanNoise,
+		Unpublished: v.Unpublished,
+		Published:   v.Published,
 	}
 }
 
