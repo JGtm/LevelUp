@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -99,6 +100,101 @@ func TestUsageFamiliesMatchManifestValidator(t *testing.T) {
 		}
 		if n > 1 {
 			t.Errorf("la famille %q est classée dans %d listes du résumé — une seule est permise", f, n)
+		}
+	}
+}
+
+// famillesEngendrantUnePieceDuManifeste lit le manifeste des libellés de rejeu et rend
+// les familles dont AU MOINS UN objet porte `kind = "deployed"` — la nature « n'existe
+// qu'une fois déployé », que le valideur n'autorise qu'avec la provenance `sofa_parent`.
+//
+// Lecture LIGNE À LIGNE et non par expression sur tout le fichier : l'en-tête du
+// manifeste cite `[[equipment_objects]]` dans ses commentaires, et un découpage sur le
+// littéral y ouvrirait un bloc fantôme.
+func famillesEngendrantUnePieceDuManifeste(t *testing.T, raw []byte) map[string]bool {
+	t.Helper()
+	champ := regexp.MustCompile(`^\s*(family|kind)\s*=\s*"([a-z0-9_]+)"`)
+	out, objets := map[string]bool{}, 0
+	var famille, nature string
+	ferme := func() {
+		if famille == "" {
+			return
+		}
+		objets++
+		if nature == "deployed" {
+			out[famille] = true
+		}
+		famille, nature = "", ""
+	}
+	for _, ligne := range strings.Split(string(raw), "\n") {
+		switch {
+		case strings.TrimSpace(ligne) == "[[equipment_objects]]":
+			ferme()
+		case strings.HasPrefix(strings.TrimSpace(ligne), "["):
+			ferme() // une autre table commence : le bloc courant est clos
+		default:
+			if m := champ.FindStringSubmatch(ligne); m != nil {
+				if m[1] == "family" {
+					famille = m[2]
+				} else {
+					nature = m[2]
+				}
+			}
+		}
+	}
+	ferme()
+	if objets < 15 {
+		t.Fatalf("le garde-rail n'a lu que %d objets d'équipement — extraction cassée ?", objets)
+	}
+	return out
+}
+
+// TestUsageFamiliesWithSpawnedPieceMatchManifest — CINQUIÈME LISTE ÉCRITE (lot 5.5) :
+// les familles qui ENGENDRENT UNE PIÈCE, seules dont le canal des poses voit le
+// déploiement (usageFamiliesWithSpawnedPiece). Elle décide du côté « utilisé » de tout
+// le bilan d'équipement, et sa donnée source est le MANIFESTE : la famille de chaque
+// objet `kind = "deployed"`.
+//
+// CE GARDE-RAIL LIT LE MANIFESTE, pas une seconde table figée : un panneau ajouté à une
+// autre famille là-bas (un jour où un second équipement engendrerait une pièce) doit
+// FAIRE ÉCHOUER ce test, pas passer inaperçu — la famille resterait alors lue sur ses
+// consommations alors que ses poses la mesurent. L'inverse aussi : retirer le `kind`
+// des panneaux du mur ferait basculer le mur sur `spent` sans que rien ne le dise.
+func TestUsageFamiliesWithSpawnedPieceMatchManifest(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	// internal/analysis/replay -> internal -> go-api -> apps -> racine du dépôt.
+	manifest := filepath.Join(wd, "..", "..", "..", "..", "..",
+		"config", "titles", "halo_infinite", "mappings", "replay_labels.toml")
+	raw, err := os.ReadFile(manifest)
+	if err != nil {
+		t.Fatalf("lecture du manifeste des libellés de rejeu: %v", err)
+	}
+
+	duManifeste := famillesEngendrantUnePieceDuManifeste(t, raw)
+	if len(duManifeste) == 0 {
+		t.Fatal("aucune famille `kind = deployed` au manifeste — le garde-rail doit être " +
+			"adapté, pas supprimé : la règle d'usage_summary_outcomes.go n'aurait plus de source")
+	}
+	for f := range duManifeste {
+		if !usageFamiliesWithSpawnedPiece[f] {
+			t.Errorf("la famille %q engendre une pièce au manifeste (`kind = deployed`) mais "+
+				"n'est pas dans usageFamiliesWithSpawnedPiece : son « utilisé » est lu sur ses "+
+				"CONSOMMATIONS alors que ses POSES le mesurent (cf. usage_summary_families.go)", f)
+		}
+	}
+	for f := range usageFamiliesWithSpawnedPiece {
+		if !duManifeste[f] {
+			t.Errorf("la famille %q est déclarée engendrer une pièce, mais AUCUN objet "+
+				"`kind = deployed` du manifeste ne la porte — son « utilisé » serait lu sur des "+
+				"poses qui mesurent un lâcher volontaire (rapport E0, question 5)", f)
+		}
+		// Et elle reste une famille du bilan : une famille hors bilan n'a pas de côté
+		// « utilisé » à décider.
+		if !estFamilleDuBilan(f) {
+			t.Errorf("la famille %q engendre une pièce mais ne porte aucune ligne d'issue", f)
 		}
 	}
 }

@@ -120,3 +120,35 @@ func usageDeployedCounts(p *EquipmentPlacement) bool {
 	}
 	return true
 }
+
+// usageFamiliesWithSpawnedPiece — LES FAMILLES QUI ENGENDRENT UNE PIÈCE DISTINCTE,
+// et donc les seules dont le canal des POSES voit le déploiement.
+//
+// Cette liste est la transcription d'une DONNÉE ÉCRITE : les familles dont le
+// manifeste (`config/titles/halo_infinite/mappings/replay_labels.toml`) porte au
+// moins un objet `kind = "deployed"` — la nature « n'existe qu'une fois déployé »,
+// que le valideur n'autorise qu'avec la provenance `sofa_parent` (l'`eqip` engendré
+// par un autre équipement). Le manifeste n'en désigne aujourd'hui que DEUX, les deux
+// panneaux du mur, donc UNE famille. Le résumé ne peut pas lire le manifeste
+// lui-même — [BuildUsageSummary] est une fonction PURE DU DOCUMENT CUIT, c'est ce
+// qui permet au backfill de re-projeter sans re-décoder un film — d'où la
+// transcription ; le garde-rail usage_summary_families_guard_test.go la RECOLLE au
+// manifeste à chaque test, une famille ajoutée là-bas échoue ici.
+//
+// CE QUE LA FRONTIÈRE DÉCIDE (rapport E0 du 2026-09-10, question 5). Une pose
+// `origin: deployed` sur un objet PORTÉ ne mesure pas un déploiement : elle mesure un
+// LÂCHER VOLONTAIRE à mi-vie (l'objet qui tombe parce que son porteur en ramasse un
+// autre). Mesure décisive : sur 202 consommations de charge annoncées par les films,
+// ZÉRO n'est couverte par une pose de la même famille du même joueur à moins de 2 s —
+// contre 84 % pour le mur, dont le `spent` tombe sur la pose de PANNEAU (149 sur 242)
+// et JAMAIS sur la création de l'appareil porté (0 sur 31).
+var usageFamiliesWithSpawnedPiece = map[string]bool{
+	usageFamilyWall: true,
+}
+
+// usageFamilySpawnsPiece dit si le canal des POSES voit le déploiement de cette
+// famille — donc si son côté « utilisé » se lit sur `deployed` (mur) ou sur les
+// CONSOMMATIONS (tout le reste : capteur, traqueur, écran, champ, balise).
+func usageFamilySpawnsPiece(family string) bool {
+	return usageFamiliesWithSpawnedPiece[family]
+}
