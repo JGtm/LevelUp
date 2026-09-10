@@ -1,3 +1,50 @@
+## [2026-09-10] Lot 6.3 — Armes lachees au sol : investigation bornee, le calque ne dessine RIEN (cle de vignette) — Complete (diagnostic seul)
+
+**Decision technique principale.** Investigation bornee sur les 64 artefacts du parc (schema 51),
+61 films d'arene et 3 de Grand combat comptes a part, par trois instruments jetables poses dans
+`internal/games/weapons/` — le paquet qui porte le registre d'armes STATIQUE, donc aucune base
+ouverte. « Arme speciale » definie comme `role` dans {sniper, power, special} du registre
+canonique (la FONCTION de combat, pas la manipulation : la classe `heavy` retiendrait le Bulldog
+et laisserait le Needler dehors). Instruments supprimes apres mesure, sortie brute integrale au
+rapport.
+
+**Resultats observes.** (1) LE RESULTAT QUI COMMANDE TOUT : le calque « Armes au sol » ne peint
+rien a l'ecran. `groundWeapons[].w` est ecrit `"30484ea6"` (`%08x`) et `weaponLabels` est indexe
+`"0x30484EA6"` (`0x%08X`) ; `padIconRefFor` fait une lecture EXACTE, rend `null`, et le calque
+fait `if (!icon) continue`. Verifie sur les 64 artefacts : aucune cle minuscule dans
+`weaponLabels`. Le test unitaire du calque branche un `iconOf` de substitution, il ne pouvait pas
+le voir. (2) Le contrat de `GroundWeapon.Dropper` decrit un lien qui n'existe pas (« un lacher du
+flux delta coincide ») : le code lit `gwPadsClass`, la vie qui S'ACHEVE. Mesure decisive,
+`dropper` renseigne == `origin=dropped`, exactement 9 794 = 9 794 — le lacher VOLONTAIRE est
+anonyme, toujours. (3) Couverture : 12 466 objets publies (204/film), dropped 78,6 %, dropper
+nomme 78,6 % (resolu en joueur 79,1 %), picker nomme 2,7 % (resolu 99,7 %), fins
+pickup/seen/open 337 / 11 770 / 359. Speciales 17,4 % des objets mais 65,3 % des ramassages
+observes ; chaine complete lacheur→ramasseur 280 objets (4,6/film), dont 187 speciales.
+(4) Munitions : joignables SANS RIEN CUIRE (inventory + loadouts + groundWeapons sont deja tous
+dans le document servi), 78,4 % de couverture, mais en retard de p50 9,0 s / p90 18,0 s — c'est
+« a la derniere image-cle », pas « au lacher ». Recuisson NON, et rien a cuire. (5) Lien du
+lacheur volontaire mesure et ECARTE : 12,7 % de rendement (92 evenements sur 723), la fenetre
+n'est pas la contrainte (±0,5/1/2 s donnent le meme compte) — 1 978 objets (13,7 %) partent au
+calque des socles faute d'avoir bouge. (6) Page Tactique : cinq lectures seulement (morts, kills,
+gagne, temps, routes), rien sur les armes, et elle lit un SIDECAR, pas l'artefact — une lecture
+d'arme y coute une recuisson des sidecars. (7) Reserve non instruite : `30724141` et `0797ce72`
+ont TOUTE l'attribution de proximite a zero (dropperNamed 0, pickupLinked 0, placements
+withOwner 0 alors que `lives` vaut 342 et 317) — pas propre aux armes au sol, a rapprocher du
+lot 6.1.
+
+**Conclusion / prochaine etape.** Rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` avec les
+sept options chiffrees. Ordre recommande : (0) reparer la jointure de vignette + garde-rail sur la
+forme des cles + corriger le commentaire de `Dropper` (XS, aucune recuisson) — sans quoi tout le
+reste est invisible ; (A) infobulle « lachee par X / reprise par Y » sur le calque (S, aucune
+recuisson, le survol est deja factorise dans `hoverLayers.ts` qui promet « une ligne ») ;
+(B) publier le `role` dans `weaponLabels` A LA REQUETE et filtrer les armes speciales (S, aucune
+recuisson) ; puis (C) bloc de match si l'usage se confirme. Munitions : rien a faire, recette de
+jointure consignee. Tactique : plus tard et sur le LACHER seulement, le « qui ramasse » ne tient
+pas a 2,7 %. A confirmer par le superviseur : le §0 d'un coup d'oeil a l'ecran, et la cause du
+double zero de `30724141` / `0797ce72`.
+
+---
+
 ## [2026-09-10] Master plan, vague 5 — sept lots fusionnes, revue 2 P1 corriges, gate vert, push 992ae412f — Complete (CI de vague verte 4/4 sur 992ae412f)
 
 **Decision technique principale.** Vague ouverte sur les decisions utilisateur du 10-09 (D12) :
