@@ -1,3 +1,40 @@
+## [2026-09-10] Lot 4.3 item 2 — la table rang -> famille publiee dans le document, les racines de libelle supprimees — Complete
+
+**Decision technique principale.** `BuildUsageSummary` est une fonction PURE du document DEJA
+CUIT (c'est ce qui permet a `backfill-usage-summary` de re-resumer sans re-decoder un film) : la
+palette du manifeste n'y etait plus en main, d'ou une reconstruction de la famille par la RACINE
+du libelle bilingue — deuxieme copie de la table du web, plafond de la regle n°6. `Label` gagne
+donc `Family` (schema 51), `abilityLabelsUsed` la recopie depuis `AbilityPalette.FamilyOf`, et
+`equipmentOutcomeFamilyOf` lit `label.Family`. `equipmentOutcomeStems` (le type + la table des
+racines) est SUPPRIMEE ; ce qui reste est `equipmentOutcomeFamilies`, le PERIMETRE du bilan —
+une decision produit (repulseur P4, grappin et propulseur hors bilan), pas une reconnaissance.
+Deux ajustements necessaires : les rangs 8 et 9 (les bonus) n'avaient AUCUNE `family` au
+manifeste — ajoutee (`powerup_camo` / `powerup_overshield`), sans quoi la bascule perdait les
+deux familles les plus lues ; ils n'entrent dans aucune liste `families` mesuree, donc les
+calques d'impulsions et de charges sont inchanges (ils filtrent par `measured[fam]`).
+
+**Resultats observes.** Golden d'assemblage regenere, DEUX lignes changees et ce sont les gains
+attendus : `schema 50` -> `schema 51`, et « capacites nommees » porte desormais la famille
+(19=wall, 20=grapple, 21=thruster, 22=sensor sur `000d5950`) — la preuve que la table du
+manifeste voyage. Le garde-rail `usage_summary_families_guard_test` apprend la QUATRIEME liste
+ecrite (`equipmentOutcomeFamilies`) : depuis que la jointure ne lit plus de texte, une faute de
+frappe y ferait disparaitre une ligne d'issue en silence. `UsageSummaryRev` us4 -> us5.
+Reference des canaux equipement mise a jour (le point 2 disait l'inverse — anti-pattern « doc
+inversee »).
+
+**Gates.** `go build ./...` + `go vet ./...` + `go test ./...` verts ; integration
+`-p 1 -count=1 ./internal/persist/ ./internal/sync/ ./internal/archlint/` verte (41,0 s /
+154,8 s / 12,1 s) ; `golangci-lint run --new-from-merge-base=feat/v75 ./...` : 0 issue ;
+`make check-types` vert ; `make openapi-gen` + `make generate-types` rejoues
+(`Label.family` publiee).
+
+**Conclusion / prochaine etape.** Lot 4.3 termine. Le superviseur recuit le parc (schema 51)
+PUIS rejoue `backfill-usage-summary` — dans cet ordre : un artefact au schema 50 ne porte
+aucune famille, son resume us5 ne classerait rien. Le gate corpus sur le parc lui revient
+aussi (bases fermees pendant le lot).
+
+---
+
 ## [2026-09-10] Lot 4.3 item 1 — les corps hors table nommes par le tableau de l'API (voie `tableau_api`) — Complete
 
 **Decision technique principale.** L'index de participant hors de `PlayerIndexTable` n'etait pas

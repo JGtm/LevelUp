@@ -20,22 +20,26 @@ package replay
 // OBJET (un capteur pris une fois et lancé quatre fois donne 4 poses pour 1 objet —
 // piège d'unité n°1 de `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`).
 //
-// # POURQUOI LA JOINTURE RANG -> FAMILLE SE FAIT SUR LE LIBELLÉ, ET PAS SUR LE MANIFESTE
+// # LA JOINTURE RANG -> FAMILLE SE FAIT SUR LA FAMILLE PUBLIÉE (schéma 51, lot 4.3)
 //
-// Le manifeste du titre porte pourtant la table exacte (`AbilityPalette.Families`,
-// `replay_labels.toml`), et les calques d'impulsions et de charges s'en servent —
-// mais eux tournent À LA CONSTRUCTION du document, quand la palette est en main.
-// [BuildUsageSummary] est une fonction PURE DU DOCUMENT DÉJÀ CUIT : c'est ce qui
-// permet au backfill (`levelup backfill-usage-summary`) de re-résumer les artefacts
-// sur disque SANS re-décoder un seul film. Le document ne publie que
-// `AbilityLabels` (rang -> texte bilingue) ; la reconnaissance se fait donc sur la
-// RACINE du libellé, exactement comme côté web (`EQUIPMENT_CHANGE_FAMILY_STEMS`) et
-// comme `CHARGE_FAMILY_STEMS` / `translocatorRanks` avant elle. DEUXIÈME ET DERNIÈRE
-// COPIE de cette table (règle CLAUDE.md n°6) : une troisième devrait la centraliser.
+// Elle se faisait sur la RACINE DU LIBELLÉ, et c'était un pis-aller : le manifeste
+// porte la table exacte (`AbilityPalette.Families`, `replay_labels.toml`) mais elle
+// ne traversait pas le document cuit, or [BuildUsageSummary] est une fonction PURE
+// DU DOCUMENT DÉJÀ CUIT — c'est ce qui permet au backfill
+// (`levelup backfill-usage-summary`) de re-résumer les artefacts sur disque SANS
+// re-décoder un seul film. Le document publie désormais `abilityLabels[].family`
+// (cf. Label.Family) : la reconstruction par racine a DISPARU d'ici, et avec elle la
+// deuxième copie de la table que la règle CLAUDE.md n°6 plafonnait.
 //
-// De surcroît la table du manifeste ne suffirait pas telle quelle : les deux bonus
-// (rangs 8 et 9 de la famille A) sont NOMMÉS sans porter de `family` — leur objet de
-// manifeste n'est pas un emplacement de capacité.
+// CE QUI RESTE ÉCRIT ICI EST UNE DÉCISION PRODUIT, PAS UNE RECONNAISSANCE : la liste
+// des familles qui PORTENT une ligne d'issue. Le répulseur (négatif mesuré, décision
+// P4), le grappin et le propulseur ont une famille au manifeste et n'ont pas de bilan
+// — ce sont des capacités portées, pas des objets qu'on garde ou qu'on gâche.
+//
+// LES DEUX BONUS ONT REÇU LEUR `family` AU MANIFESTE dans le même lot (rangs 8 et 9,
+// `powerup_camo` / `powerup_overshield`) : leur objet de manifeste n'est pas un
+// emplacement de capacité, mais la palette peut nommer leur famille comme les autres,
+// et sans elle la bascule aurait perdu les deux familles les plus lues du bilan.
 //
 // # LE VOCABULAIRE DE CLÉ EST CELUI DES POSES, ET C'EST UN CHOIX
 //
@@ -47,47 +51,37 @@ package replay
 // pont ni dictionnaire ; le seul endroit qui traduit est ici, au moment de lire le
 // côté « utilisé » des deux bonus (leur compte d'épisodes).
 
-import (
-	"strconv"
-	"strings"
-)
+import "strconv"
 
-// equipmentOutcomeStem — une famille du bilan et les RACINES de libellé qui la
-// désignent. Une LISTE et non une map : le premier stem qui répond gagne, et
-// l'ordre d'itération d'une map n'est pas un ordre (le web s'appuie sur l'ordre
-// d'écriture de son littéral, `Object.entries`).
-type equipmentOutcomeStem struct {
-	family string
-	stems  []string
+// equipmentOutcomeFamilies — LES FAMILLES QUI PORTENT UNE LIGNE D'ISSUE, dans
+// l'ordre où le bilan les cite. Une LISTE et non une map : l'ordre d'itération
+// d'une map n'est pas un ordre, et l'agrégat de session publie ces familles dans
+// celui-ci.
+//
+// CE N'EST PLUS UNE TABLE DE RECONNAISSANCE (la famille est publiée par le document
+// depuis le schéma 51) : c'est le PÉRIMÈTRE DU BILAN. Une famille du manifeste
+// absente d'ici reste hors bilan sans qu'on ait à l'exclure — le répulseur (négatif
+// mesuré, décision P4), le grappin et le propulseur portent une famille, ils n'ont
+// simplement aucune ligne « pris / utilisé / gardé / lâché ».
+var equipmentOutcomeFamilies = []string{
+	usageFamilyWall,
+	usageFamilySensor,
+	"translocator_beacon",
+	"shroud_screen",
+	"threat_seeker",
+	"repair_field",
+	usageFamilyPowerupCamo,
+	usageFamilyPowerupOvershield,
 }
 
-// equipmentOutcomeStems — LA RECONNAISSANCE RANG -> FAMILLE, dans l'ordre du web
-// (`EQUIPMENT_CHANGE_FAMILY_STEMS`). Les racines sont celles du libellé bilingue
-// publié par `AbilityLabels`, comparé en minuscules sur `fr + " " + en`.
-//
-// UNE FAMILLE ABSENTE D'ICI RESTE HORS BILAN, sans qu'on ait à l'exclure : le
-// répulseur (négatif mesuré, décision P4), le grappin et le propulseur ont un
-// libellé — ils ne comptent donc PAS dans la réserve des rangs muets — mais aucune
-// racine ne les nomme, donc aucune ligne d'issue ne les porte.
-var equipmentOutcomeStems = []equipmentOutcomeStem{
-	// Pour deux familles, la RACINE ANGLAISE du libellé coïncide avec la clé de
-	// manifeste (`wall`, `sensor`). On réemploie la constante plutôt qu'un littéral
-	// jumeau — c'est une coïncidence de vocabulaire, jamais une jointure : les
-	// autres familles ont des racines qui ne ressemblent pas à leur clé.
-	{family: usageFamilyWall, stems: []string{"mur", usageFamilyWall}},
-	{family: usageFamilySensor, stems: []string{"capteur", usageFamilySensor}},
-	{family: "translocator_beacon", stems: []string{"translocat"}},
-	{family: "shroud_screen", stems: []string{"occultant", "shroud"}},
-	{family: "threat_seeker", stems: []string{"traqueur", "seeker"}},
-	// « reparation » SANS ACCENT, et ce n'est pas une coquille : le manifeste écrit
-	// « champ de reparation » (replay_labels.toml, rang 23) — le stem accentué du
-	// web ne s'apparie donc à RIEN, c'est son jumeau anglais qui travaille. Écrire
-	// la forme réellement publiée classe ce rang même si un jour la table de
-	// libellés perdait son anglais ; elle tient de surcroît le ratchet des libellés
-	// FR en dur (archlint/no_french_label_literal_test.go), qui compte les accents.
-	{family: "repair_field", stems: []string{"reparation", "repair"}},
-	{family: usageFamilyPowerupCamo, stems: []string{"camouflage"}},
-	{family: usageFamilyPowerupOvershield, stems: []string{"surbouclier", "overshield"}},
+// estFamilleDuBilan dit si cette famille porte une ligne d'issue.
+func estFamilleDuBilan(family string) bool {
+	for _, f := range equipmentOutcomeFamilies {
+		if f == family {
+			return true
+		}
+	}
+	return false
 }
 
 // EquipmentFamilyPowerupCamo / EquipmentFamilyPowerupOvershield — les deux familles
@@ -104,10 +98,8 @@ const (
 // pouvoir citer une famille du bilan même quand AUCUNE prise ne l'a nommée sur le
 // scope (un déployable posé depuis l'équipement de réapparition, jamais `taken`).
 func EquipmentOutcomeFamilies() []string {
-	out := make([]string, 0, len(equipmentOutcomeStems))
-	for _, s := range equipmentOutcomeStems {
-		out = append(out, s.family)
-	}
+	out := make([]string, len(equipmentOutcomeFamilies))
+	copy(out, equipmentOutcomeFamilies)
 	return out
 }
 
@@ -124,15 +116,13 @@ func equipmentOutcomeFamilyOf(labels map[string]Label, rank int) (family string,
 	if !ok {
 		return "", false
 	}
-	text := strings.ToLower(label.Fr + " " + label.En)
-	for _, s := range equipmentOutcomeStems {
-		for _, stem := range s.stems {
-			if strings.Contains(text, stem) {
-				return s.family, true
-			}
-		}
+	if !estFamilleDuBilan(label.Family) {
+		// Rang NOMMÉ dont la famille n'a pas de ligne d'issue — ou que le manifeste ne
+		// classe pas du tout. Les deux se taisent, et aucun des deux n'est une mesure
+		// manquante : c'est ce que dit le second retour.
+		return "", true
 	}
-	return "", true
+	return label.Family, true
 }
 
 // UsageChangeCoverage — ce que le canal des ramassages n'a pas su rattacher. Ces
@@ -210,19 +200,19 @@ func tallyUsageEquipmentChanges(
 // lâché)`, famille par famille du bilan.
 func deriveUsageKept(players *usageTallies) {
 	for _, t := range players.byXUID {
-		for _, family := range equipmentOutcomeStems {
-			taken := t.TakenByFamily[family.family]
+		for _, family := range equipmentOutcomeFamilies {
+			taken := t.TakenByFamily[family]
 			if taken == 0 {
 				continue
 			}
-			kept := taken - usageUsedOf(t, family.family) - t.DroppedByFamily[family.family]
+			kept := taken - usageUsedOf(t, family) - t.DroppedByFamily[family]
 			if kept < 0 {
 				kept = 0 // une pose est une CHARGE, pas un objet : jamais de gardé négatif
 			}
 			if t.KeptByFamily == nil {
 				t.KeptByFamily = map[string]int{}
 			}
-			t.KeptByFamily[family.family] = kept
+			t.KeptByFamily[family] = kept
 		}
 	}
 }

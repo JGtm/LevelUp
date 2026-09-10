@@ -62,7 +62,12 @@ import "sort"
 // dont la passe courante porte (UsageSummaryRev, SchemaVersion) est à jour ; changer
 // une règle d'attribution ici DOIT incrémenter cette révision, sinon le backfill
 // sautera des matchs à re-résumer.
-const UsageSummaryRev = "us4"
+// us5 (2026-09-10, lot 4.3) : la jointure rang -> famille du bilan d'équipement ne passe
+// plus par la RACINE DU LIBELLÉ ; elle lit `abilityLabels[].family`, publiée par le
+// document depuis le schéma 51. La règle d'attribution change donc bel et bien —
+// un artefact au schéma 50 ne porte aucune famille, et son résumé ne peut pas être
+// re-projeté sans recuisson de l'artefact lui-même.
+const UsageSummaryRev = "us5"
 
 // UsagePlayerSummary — les usages d'UN joueur sur UN match, prêt à persister.
 type UsagePlayerSummary struct {

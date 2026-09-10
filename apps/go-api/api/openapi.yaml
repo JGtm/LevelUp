@@ -15559,6 +15559,8 @@ components:
       properties:
         en:
           type: string
+        family:
+          type: string
         fr:
           type: string
         img:

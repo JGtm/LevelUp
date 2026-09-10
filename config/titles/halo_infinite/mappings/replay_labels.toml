@@ -120,8 +120,13 @@ markers = [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 23]
 "4"  = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot", family = "grapple" }
 "5"  = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster", family = "thruster" }
 "6"  = { en = "Repulsor", fr = "repulseur", icon = "hud/Repulsor", family = "repulsor" }
-"8"  = { en = "Active Camouflage", fr = "camouflage actif", icon = "hud/ActiveCamouflage" }
-"9"  = { en = "Overshield", fr = "surbouclier", icon = "hud/Overshield" }
+# Rangs 8 et 9 : les DEUX BONUS. Leur `family` est celle des POSES (`powerup_*`), et elle est
+# posee le 2026-09-10 (lot 4.3) parce que le document publie desormais la table rang -> famille
+# et que le resume d usage joint dessus : sans elle, les deux familles les plus lues du bilan
+# d equipement sortaient du perimetre. Elles ne figurent dans AUCUNE liste `families` mesuree
+# ([ability_impulses], [ability_charges]) — la famille NOMME, elle n ouvre aucun canal.
+"8"  = { en = "Active Camouflage", fr = "camouflage actif", icon = "hud/ActiveCamouflage", family = "powerup_camo" }
+"9"  = { en = "Overshield", fr = "surbouclier", icon = "hud/Overshield", family = "powerup_overshield" }
 # Rang 10 : NOMME LE 2026-09-10 par releve Theater guide (3 matchs, 9 scenes : `cde26226`,
 # `f0220a96`, `4f77afc1`) — l ecran occultant, ramasse au socle ou au sol, a 2 ou 4 charges
 # selon la partie. Coherent avec l objet `0x4396db42` (banque sonore `sb_007_abl_shroud`).

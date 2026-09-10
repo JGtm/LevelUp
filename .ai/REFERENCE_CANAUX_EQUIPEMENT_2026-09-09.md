@@ -169,15 +169,23 @@ des grandeurs `equipment_<famille>` avec deux taux de référence qui EXCLUENT l
 1. **Les quatre ventilations parlent le vocabulaire des POSES** (`powerup_camo`, jamais
    `camo`) — le web, lui, nomme un bonus par son ÉPISODE dans `kept` et par sa POSE dans
    `dropped`, et ponte les deux (`droppedFamilyOf`). Côté Go il n'y a qu'une clé.
-2. **La jointure rang -> famille se fait sur la RACINE DU LIBELLÉ** (`abilityLabels`), PAS
-   sur `AbilityPalette.Families` du manifeste : le résumé est une fonction pure du document
-   DÉJÀ CUIT, la palette n'y est plus en main — c'est ce qui permet de re-résumer sans
-   re-décoder. Et la table du manifeste ne suffirait pas : les deux bonus sont nommés sans
-   porter de `family`.
+2. **La jointure rang -> famille se fait sur la FAMILLE PUBLIÉE PAR LE DOCUMENT**
+   (`abilityLabels[].family`), depuis le schéma 51 (lot 4.3 du 2026-09-10). Elle se faisait
+   sur la RACINE DU LIBELLÉ, faute de mieux : le résumé est une fonction pure du document
+   DÉJÀ CUIT et la palette du manifeste n'y était plus en main. Le document publie désormais
+   la table du manifeste telle quelle, et la reconstruction par racine a disparu du Go
+   (`equipmentOutcomeStems` supprimée). Ce qui reste écrit dans `usage_summary_outcomes.go`
+   est le PÉRIMÈTRE du bilan (`equipmentOutcomeFamilies`), une décision produit — le
+   répulseur, le grappin et le propulseur ont une famille et n'ont pas de ligne d'issue.
+   Les deux bonus ont reçu leur `family` au manifeste dans le même lot (rangs 8 et 9,
+   `powerup_camo` / `powerup_overshield`).
 3. **Une recuisson reste nécessaire** pour que ces colonnes se remplissent sur les matchs
-   déjà résumés : `UsageSummaryRev` est passée à `us4`, ce qui suffit à faire reprendre
-   chaque match par `levelup backfill-usage-summary` (sans `--force`) — mais tant que cette
-   passe n'a pas tourné, les colonnes sont vides et les grandeurs `equipment_*` absentes.
+   déjà résumés : `UsageSummaryRev` est passée à `us4` le 2026-09-09 puis à **`us5`** le
+   2026-09-10 (bascule sur la famille publiée), ce qui suffit à faire reprendre chaque match
+   par `levelup backfill-usage-summary` (sans `--force`) — mais tant que cette passe n'a pas
+   tourné, les colonnes sont vides et les grandeurs `equipment_*` absentes. **La recuisson
+   des ARTEFACTS précède celle des résumés** : un artefact au schéma 50 ne porte aucune
+   famille, donc son résumé us5 ne classerait rien.
 
 **Ce qui reste vrai :** la vue match peut tout servir sans recuisson (elle lit le document) ;
 Sessions, Solo et Escouade lisent la base et ne voient donc jamais mieux que la dernière

@@ -175,6 +175,7 @@ func toLabel(v replay.Label) replaydoc.Label {
 		Fr:     v.Fr,
 		Img:    v.Img,
 		Tinted: v.Tinted,
+		Family: v.Family,
 	}
 }
 
