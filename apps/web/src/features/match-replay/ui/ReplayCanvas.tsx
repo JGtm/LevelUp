@@ -358,9 +358,13 @@ export function ReplayCanvas({
   })
   // LES ARMES AU SOL (schéma 27) : les armes ABANDONNÉES — un socle est un LIEU qui réapprovisionne,
   // une arme au sol un OBJET qui ne revient pas. Liseré à l'encre du « aucun camp » (cf. le hook).
+  // SURVOL (lot 6.5, 2026-09-10) : `nameOfSlot` est la MÊME résolution frame-aware que celle
+  // des poses d'équipement — le lâcheur et le ramasseur sont des vies de bipède comme un
+  // poseur, jamais une identité à part.
   const groundWeapons = useReplayGroundWeapons({
     doc, view: canvasView, enabled: showGroundWeapons,
     ink: { fill: markInk.fill, outline: neutralInk }, redraw,
+    frameRef, nameOfSlot, locale,
   })
   // `showNames: true` : le calque des noms a quitte le tiroir le 2026-09-02 (toujours allume).
   // BORNAGE HORS CADRE (lot 4.4, 2026-09-10) : `offscreenLabelOf`/`offscreenGroupLabelOf`
@@ -690,19 +694,21 @@ export function ReplayCanvas({
             {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
                 de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
                 relatif n'existe que pour elle — sans carte de chaleur, rien n'y flotte. */}
-            {/* TROIS CALQUES SURVOLABLES SUR UNE SEULE BALISE (poses, emplacements d'arme,
-                drapeaux) : chacun rejoue le survol sur SA donnée, le canvas passe le geste. */}
+            {/* QUATRE CALQUES SURVOLABLES SUR UNE SEULE BALISE (poses, emplacements d'arme,
+                drapeaux, armes au sol depuis le lot 6.5 du 2026-09-10) : chacun rejoue le
+                survol sur SA donnée, le canvas passe le geste. */}
             <div className="relative mx-auto" style={{ width: renderWidth || '100%' }}>
               <canvas
                 ref={canvasRef}
                 className="block"
                 style={{ width: renderWidth || '100%', height: viewH }}
-                {...hoverHandlers([placements.hover, weaponPads, flags], drag)}
+                {...hoverHandlers([placements.hover, weaponPads, flags, groundWeapons], drag)}
               />
-              {/* Les infobulles des trois calques survolables (cf. ReplayCanvasTips). */}
+              {/* Les infobulles des quatre calques survolables (cf. ReplayCanvasTips). */}
               <ReplayCanvasTips
                 locale={locale} width={renderWidth} ownerNameOf={nameOfSlot} playWindow={playWindow}
                 placement={placements.hover.hover} pad={weaponPads.hover} flag={flags.hover}
+                groundWeapon={groundWeapons.hover}
               />
               {/* LES SURCOUCHES DE LA CARTE (2026-09-08) : écran de fin, message inter-manche,
                   compte à rebours de la bombe. Elles arrivent de la page, mais elles se posent

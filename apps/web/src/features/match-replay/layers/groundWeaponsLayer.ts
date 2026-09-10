@@ -50,10 +50,16 @@ export type { PlacementView as GroundWeaponView } from './placementShapes'
  * comparer deux objets côte à côte. Assez grande, cependant, pour qu'une silhouette d'arme reste
  * reconnaissable — en deçà de 6 px, toutes les armes se ressemblent.
  */
-const GROUND_ICON_H_PX = 6.5
+export const GROUND_ICON_H_PX = 6.5
 
-/** Une vignette d'arme est large : au-delà de ce rapport, la largeur est bornée. */
-const GROUND_ICON_MAX_ASPECT = 3.2
+/**
+ * Une vignette d'arme est large : au-delà de ce rapport, la largeur est bornée.
+ *
+ * EXPORTÉE AVEC `GROUND_ICON_H_PX` (lot 6.5, 2026-09-10) : `groundWeaponAt` en a besoin pour
+ * le survol — la zone atteignable doit couvrir la vignette la plus large qu'on puisse poser,
+ * jamais une estimation qui divergerait du tracé.
+ */
+export const GROUND_ICON_MAX_ASPECT = 3.2
 
 /**
  * Épaisseur du LISERÉ, en pixels d'écran, et le nombre de directions où on repose la
@@ -151,4 +157,47 @@ export function drawGroundWeaponsLayer(
   }
   ctx.globalAlpha = 1
   ctx.restore()
+}
+
+/**
+ * Marge de survol ajoutée à la vignette, en pixels d'écran — même valeur que les socles
+ * (`PAD_HOVER_MARGIN_PX`) : une vignette plus petite que celle d'un socle a d'autant plus
+ * besoin d'un peu de rab pour rester atteignable au pointeur.
+ */
+const GROUND_HOVER_MARGIN_PX = 3
+
+/**
+ * groundWeaponAt — L'ARME AU SOL sous le pointeur, à l'image donnée (lot 6.5, 2026-09-10).
+ *
+ * LE RAYON D'ATTEINTE COUVRE LA VIGNETTE LA PLUS LARGE POSSIBLE (`GROUND_ICON_MAX_ASPECT`),
+ * jamais la largeur RÉELLE de l'icône chargée : au moment du survol, deux vignettes voisines
+ * peuvent ne pas avoir fini de charger, et le geste doit rester cohérent que l'image soit prête
+ * ou non — même logique que `padAt`, qui ignore lui aussi la vignette pour le test de zone.
+ *
+ * LA PLUS PROCHE GAGNE quand deux zones se recouvrent (armes tombées au même endroit) : c'est
+ * la même règle de proximité que `padAt` et `placementAt`.
+ */
+export function groundWeaponAt(
+  items: readonly ReplayGroundWeapon[],
+  view: PlacementView,
+  frame: number,
+  k: number,
+  at: XY,
+): ReplayGroundWeapon | null {
+  const visible = groundWeaponsAt(items, frame)
+  if (visible.length === 0) return null
+  const h = GROUND_ICON_H_PX * k
+  const reach = (h * GROUND_ICON_MAX_ASPECT) / 2 + GROUND_HOVER_MARGIN_PX * k
+  const reach2 = reach * reach
+  let best: ReplayGroundWeapon | null = null
+  let bestD2 = Infinity
+  for (const { item } of visible) {
+    const c = project({ x: item.x, y: item.y }, view)
+    const d2 = (at.x - c.x) ** 2 + (at.y - c.y) ** 2
+    if (d2 <= reach2 && d2 < bestD2) {
+      best = item
+      bestD2 = d2
+    }
+  }
+  return best
 }
