@@ -1,3 +1,44 @@
+## [2026-09-10] Lot 6.2 — portages Oddball « fantomes » : defaut REFUTE au HEAD, attribue, et le vrai trou (le pont d'identite du crane) ferme — Complete
+
+**Decision technique principale.** Deux decisions, prises sur mesure. (1) **Ne PAS reimplementer
+la regle prescrite** : le report demandait d'exiger que l'intervalle porte tombe dans la presence
+bipede du xuid ; cette regle EXISTE en production depuis le 2026-08-30 (`carrierPresence.gate`,
+compteur `carrierAbsent` publie et journalise) et rend **0** sur les quatre films Oddball du parc
+— la durcir n'aurait touche que des portages VRAIS et sous-mesures, la regression exacte du
+2026-09-06. (2) **Livrer le correctif que la mesure a fait apparaitre a la place** : le pont
+d'identite du crane n'etait pas COMPLETE comme celui du drapeau (schema 42). `SkullInput` gagne
+`Identity`, `skullIdentityOf` copie `flagIdentityOf`, et `replaybuild.skullInput` pose
+`pont.identite()` — le meme resolveur paresseux que les actions d'objectif, donc zero resolution
+supplementaire (il en economise une). **Aucun bump de schema** : la forme du document ne change
+pas, seules les valeurs, sur les seuls films Oddball.
+
+**Resultats observes.** Le parc Oddball n'est pas de 2 films mais de **4** (`d9781168`,
+`51ebbc0f`, `c88ec007`, `43716616`), et **aucun des 64 artefacts du parc ne porte
+`skullCarries`** — la premisse de l'instruction etait fausse ; le corpus vit au cache de FILMS.
+Harnais hors ligne monte pour l'occasion (aucune base ouverte, serveur de dev en vol) : faits de
+match engendres depuis les TSV versionnes `oracle_lotA_bis*.tsv`, generateur controle contre le
+`d9781168.facts.json` deja commis. **Phase A** : 0 portage hors presence sur 94 au HEAD ; le
+defaut EST reproduit au schema 48 (6/36, memes bornes, memes vies que le releve du 2026-09-08) ;
+bissection : `b9e1064ad` 6 -> `fb953ee94` 3 -> **`b6b0ee4c5` (E2, lien direct corps -> joueur)
+0**. **La cause n'etait pas l'attribution xuid** — les 36 portages sont identiques entre 48 et
+HEAD ; ce qui manquait etait les VIES (19 publiees sans xuid au 48, 0 au HEAD). **Phase B** :
+`noBridge` 6 -> 2, portages 94 -> 98, **78,9 % -> 82,2 % de l'oracle API**, aucun joueur au-dessus
+du sien, 0 fantome avant comme apres. Gates : build/vet OK, 3 paquets verts, lint
+`--new-from-merge-base=feat/v75` **0 issue**, gate corpus **0 perte** (d9781168 11 gains,
+51ebbc0f et 084a804d identiques ; 4 temoins ABSENT faute de faits hors base). Golden : un seul
+digest bouge, l'etape `skull` de `d9781168.tsv`, sur 50 etapes comparees.
+
+**Conclusion / prochaine etape.** Quatre artefacts a recuire, et eux seuls : `d9781168`,
+`51ebbc0f`, `c88ec007`, `43716616` (aucun n'existe au parc : c'est une PREMIERE cuisson).
+Superviseur : rejouer le gate corpus COMPLET serveur arrete (4 temoins non couverts ici) et
+recuire. Quatre reports ouverts au registre : les 62,3 s encore perdues sur `43716616` (films
+multi-manche, `CompletedByLines` inapplicable), les 694 images de portage sans position (lot
+WEB, stopgap `skullPresence` deja ecrit), le pont non pose sur la couronne VIP (aucun film VIP a
+mesurer ; a la 3e copie du patron, centraliser + garde-rail), et la peremption du digest local
+`d9781168.tsv` sur `flag`/`bipedCreations`/`artifact`, anterieure a ce lot.
+
+---
+
 ## [2026-09-10] Master plan, vague 5 — sept lots fusionnes, revue 2 P1 corriges, gate vert, push 992ae412f — Complete (CI de vague verte 4/4 sur 992ae412f)
 
 **Decision technique principale.** Vague ouverte sur les decisions utilisateur du 10-09 (D12) :
