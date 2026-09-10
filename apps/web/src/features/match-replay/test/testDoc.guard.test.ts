@@ -20,18 +20,17 @@ const REBUILD = /normalizeReplayDocument\s*\(/
 
 /**
  * Les tests qui appellent la frontière légitimement, hors fixture :
- *  - `replayContract.test.ts` : c'est le test DE la frontière ;
- *  - `replayModel.bench.test.ts` (2026-09-06, mesure E2.3 du plan « frise, point de vue ») : il
- *    chronomètre la jointure sur l'ARTEFACT RÉEL du match témoin, lu du cache du dépôt et passé
- *    par le chemin exact de la page. C'est l'inverse du défaut que ce garde prévient — il ne
- *    fabrique aucun document minimal, il refuse justement d'en fabriquer un. RETRAIT : le jour
- *    où la mesure disparaîtrait.
+ *  - `replayContract.test.ts` : c'est le test DE la frontière.
+ *
+ * RETIRÉ le 2026-09-10 (lot hygiène 5.3, `.ai/V7.5/REGISTRE_REPORTS.md`, L577) :
+ * `replayModel.bench.test.ts` (mesure E2.3 du plan « frise, point de vue », 2026-09-06,
+ * chantier clos) lisait un artefact HORS DÉPÔT et se sautait donc toujours en CI — la mesure
+ * qu'il produisait est déjà écrite en dur au-dessus de la mémo qu'elle a justifiée
+ * (`useReplayModel.ts`). Un test qui se saute toujours en CI est du code mort (CLAUDE.md,
+ * diagnostic n°1) : supprimé plutôt que converti en fixture, puisque son en-tête disait
+ * lui-même n'être PAS un test de non-régression.
  */
-const ALLOWED = new Set([
-  'testDoc.guard.test.ts',
-  'replayContract.test.ts',
-  'replayModel.bench.test.ts',
-])
+const ALLOWED = new Set(['testDoc.guard.test.ts', 'replayContract.test.ts'])
 
 describe('garde-rail : une seule fixture de document de rejeu', () => {
   it('aucun test de la feature ne renormalise un document à la main', () => {
