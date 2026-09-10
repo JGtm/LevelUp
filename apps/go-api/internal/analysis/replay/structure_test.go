@@ -994,8 +994,19 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact < 50 porte des vies anonymes réparables, des
 	//   actions d'objectif manquantes et des manches de joueur non publiées.
 	//   Détail : `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`.
-	if SchemaVersion != 50 {
-		t.Fatalf("SchemaVersion = %d, attendu 50 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v51 (2026-09-10, lot 4.3) : (1) le tableau de l'API nomme les corps dont l'index de
+	//   participant est LU mais hors de `PlayerIndexTable` — `identity.bipedSlots[].bid` naît et
+	//   la couverture bascule de `non_resolu/index_hors_table` vers `externe` (mesuré sur
+	//   `4f77afc1` : 18 vies non résolues, dont 10 sur des index que `BOT_METADATA` déclare) ;
+	//   au passage `roster[].bid` cesse d'être vide sur tout le parc. (2) `abilityLabels[]`
+	//   porte la FAMILLE du manifeste, et le résumé d'usage joint dessus au lieu de reconstruire
+	//   la famille par la racine du libellé.
+	//   POURQUOI LA VERSION MONTE : un artefact < 51 porte des vies de bot non résolues, un
+	//   `bid` vide, et aucune famille d'équipement — le résumé ne peut pas être re-projeté sans
+	//   recuisson.
+	if SchemaVersion != 51 {
+		t.Fatalf("SchemaVersion = %d, attendu 51 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

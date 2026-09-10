@@ -130,6 +130,14 @@ const (
 	MethodSlotBridge LinkMethod = "pont_par_slot"
 	// MethodSuccession : un relais de bot, date par l'instant de bascule lu dans la base.
 	MethodSuccession LinkMethod = "relais"
+	// MethodScoreboard : le TABLEAU DE L'API nomme le participant que le film ne table pas.
+	//
+	// Elle va avec [LinkExternal], jamais avec [LinkInferred] : rien n'est devine. L'index de
+	// participant est LU dans le film ; ce que le tableau apporte est l'IDENTIFIANT publiable
+	// (`bid(N.0)` d'un bot, que la table d'index ne peut pas porter faute de xuid) et les
+	// BORNES DE PARTICIPATION qui departagent un siege d'index que deux participants successifs
+	// occupent (un bot, puis l'humain qui le remplace en cours de partie).
+	MethodScoreboard LinkMethod = "tableau_api"
 	// MethodRosterElimination : il ne reste qu'une affectation possible entre un xuid libre et
 	// un slot sans nom. Ce n'est pas une deduction par ressemblance, c'est un appariement force.
 	MethodRosterElimination LinkMethod = "elimination_roster"

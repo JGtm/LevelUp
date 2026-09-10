@@ -88,6 +88,14 @@ type creationReport struct {
 	// causes : indice de vie -> cause de non-resolution. Une vie absente de cette table est
 	// nommee ; une vie presente ne l'est pas, et la table DIT pourquoi.
 	causes map[int]canonical.LinkMethod
+	// indexLu : indice de vie -> index de participant LU dans le record de creation, pour les
+	// seules vies que la resolution a refusees faute de le trouver dans la table publiee.
+	//
+	// IL EST LA PIECE, ET IL DOIT SURVIVRE AU REFUS (lot 4.3). « index_hors_table » sans
+	// l'index ne se corrige pas : c'est lui que le TABLEAU DE L'API confronte a ses
+	// participants (cf. identity_registry_scoreboard.go). Le reconstruire ailleurs demanderait
+	// un second balayage des records — exactement la seconde lecture que ce fichier evite.
+	indexLu map[int]uint32
 }
 
 // Lues rend le nombre de vies que la lecture directe a nommees, propagation comprise.
@@ -110,7 +118,8 @@ func (r IdentityRegistry) CauseNonResolue(i int) canonical.LinkMethod {
 // couverture et les alarmes.
 func nommerViesParCreations(lives []lifeSpan, creations []filmdec.BipedCreation,
 	idx PlayerIndexTable, bots []BotIdentity) creationReport {
-	rep := creationReport{Records: len(creations), causes: map[int]canonical.LinkMethod{}}
+	rep := creationReport{Records: len(creations), causes: map[int]canonical.LinkMethod{},
+		indexLu: map[int]uint32{}}
 	if len(lives) == 0 {
 		return rep
 	}
@@ -205,18 +214,26 @@ func (r *creationReport) appliquerAuCorps(lives []lifeSpan, vies []int, c corpsL
 func (r *creationReport) poser(lives []lifeSpan, i, pi int, t resolutionDIndex) bool {
 	if t.versBot[pi] {
 		// BOT DECLARE : le corps est identifie, il n'y a pas de xuid a poser. La lecture se
-		// compte, la vie garde ses autres voies, et rien n'alarme (verdict I0).
+		// compte, la vie garde ses autres voies, et rien n'alarme (verdict I0). L'index est
+		// CONSERVE : c'est lui que le tableau de l'API confronte a ses participants.
 		r.IndexBot++
-		r.causes[i] = canonical.MethodIndexOutOfTable
+		r.refuserFauteDeTable(i, pi)
 		return false
 	}
 	x, connu := t.versXUID[pi]
 	if !connu {
-		r.causes[i] = canonical.MethodIndexOutOfTable
+		r.refuserFauteDeTable(i, pi)
 		return false
 	}
 	lives[i].xuid = x
 	return true
+}
+
+// refuserFauteDeTable inscrit la cause `index_hors_table` ET l'index qui l'a provoquee. Les deux
+// vont ensemble : une cause sans sa piece ne se corrige pas, elle se contemple.
+func (r *creationReport) refuserFauteDeTable(i, pi int) {
+	r.causes[i] = canonical.MethodIndexOutOfTable
+	r.indexLu[i] = uint32(pi)
 }
 
 // viesOuvertes apparie chaque record du corps a LA VIE QU'IL OUVRE : la premiere vie du slot que

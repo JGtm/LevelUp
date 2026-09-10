@@ -22,6 +22,21 @@ type Label struct {
 	// Tinted dit si le visuel est un masque à teindre (même contrat que WeaponLabel).
 	Img    string `json:"img,omitempty"`
 	Tinted bool   `json:"tinted,omitempty"`
+	// Family est l'IDENTITÉ STABLE de la chose nommée, dans le vocabulaire des familles
+	// d'équipement du titre (`wall`, `sensor`, `powerup_camo`...) — la table
+	// `[ability_palettes.ranks].family` du manifeste, telle quelle (schéma 51, lot 4.3).
+	//
+	// POURQUOI ELLE VOYAGE DANS LE DOCUMENT. Le rang d'une capacité n'est pas une identité :
+	// le propulseur vaut 5 en famille A et 21 en famille B. Tout lecteur du document CUIT —
+	// au premier rang `BuildUsageSummary`, fonction PURE du document que le backfill rejoue
+	// sans re-décoder un film — devait donc reconstruire la famille depuis la RACINE du
+	// libellé. Deux copies de la même table (Go et web) : le plafond de la règle n°6 du dépôt.
+	// Publier la table du manifeste supprime la copie Go.
+	//
+	// VIDE = LE MANIFESTE NE CLASSE PAS CE RANG, et le lecteur ne le classe pas non plus.
+	// C'est une réponse, pas un trou : un rang nommé sans famille est NOMMÉ (il ne compte pas
+	// dans la réserve des rangs muets) et il reste hors de tout bilan par famille.
+	Family string `json:"family,omitempty"`
 }
 
 // WeaponLabel est le libellé d'une arme, plus l'EFFET de rendu de ses tirs.

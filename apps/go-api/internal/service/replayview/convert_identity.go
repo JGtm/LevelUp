@@ -32,7 +32,9 @@ func toIdentityPlayer(v replay.IdentityPlayer) replaydoc.IdentityPlayer {
 }
 
 func toIdentityBipedSlot(v replay.IdentityBipedSlot) replaydoc.IdentityBipedSlot {
-	return replaydoc.IdentityBipedSlot{Slot: v.Slot, XUID: v.XUID, Link: toLink(v.Link)}
+	return replaydoc.IdentityBipedSlot{
+		Slot: v.Slot, XUID: v.XUID, Bid: v.Bid, Link: toLink(v.Link),
+	}
 }
 
 func toIdentityStatborgSlot(v replay.IdentityStatborgSlot) replaydoc.IdentityStatborgSlot {

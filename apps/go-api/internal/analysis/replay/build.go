@@ -76,6 +76,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		Positions: sorted, BipedCreations: opt.BipedCreations,
 		Deaths: opt.Deaths, PlayerIndices: opt.PlayerIndices,
 		Bots: opt.Bots, Fire: refs, RosterXUIDs: opt.RosterXUIDs,
+		Participants: opt.Participants,
 		Statborg: StatborgIdentityInput{
 			Identity: opt.StatborgIdentity, Records: scoreRecordsOf(opt.Score)},
 		Clock:   IdentityClock{OriginUS: origin, StepUS: step, FrameCount: doc.FrameCount},

@@ -29,12 +29,14 @@ func docIssuesTest() *ReplayDocument {
 			{Slot: 1, XUID: "111", StartFrame: 0, EndFrame: 500},
 			{Slot: 2, XUID: "222", StartFrame: 0, EndFrame: 500},
 		},
-		// La palette du film nomme quatre rangs ; le rang 77 n'y est pas.
+		// La palette du film nomme quatre rangs ET publie leur famille (schéma 51) ; le
+		// rang 77 n'y est pas. La jointure du bilan lit `Family`, jamais le texte.
 		AbilityLabels: map[string]Label{
-			"2": {En: "Drop Wall", Fr: "mur de protection"},
-			"1": {En: "Threat Sensor", Fr: "detecteur de menaces"},
-			"8": {En: "Active Camouflage", Fr: "camouflage actif"},
-			"4": {En: "Grappleshot", Fr: "grappin"},
+			"2": {En: "Drop Wall", Fr: "mur de protection", Family: usageFamilyWall},
+			"1": {En: "Threat Sensor", Fr: "detecteur de menaces", Family: usageFamilySensor},
+			"8": {En: "Active Camouflage", Fr: "camouflage actif",
+				Family: usageFamilyPowerupCamo},
+			"4": {En: "Grappleshot", Fr: "grappin", Family: usageFamilyGrapple},
 		},
 		EquipmentEpisodes: []EquipmentEpisode{
 			{Slot: 1, T0: 100, T1: 150, Fam: EquipFamilyCamo},
@@ -222,5 +224,42 @@ func TestUsageSummary_FamillesDuBilan(t *testing.T) {
 		if f == usageFamilyRepulsor || f == usageFamilyGrapple || f == usageFamilyThruster {
 			t.Errorf("%q ne doit pas avoir de ligne d'issue (négatif mesuré / hors bilan)", f)
 		}
+	}
+}
+
+// TestUsageSummary_JointureSurLaFamillePubliee — LE RÉSUMÉ JOINT SUR LA FAMILLE CUITE,
+// PLUS SUR LA RACINE DU LIBELLÉ (lot 4.3, item 2).
+//
+// Les deux moitiés du test se contredisent sous l'ancienne règle, et c'est le but :
+//   - un rang dont le LIBELLÉ ne ressemble à rien mais qui PORTE la famille est classé ;
+//   - un rang dont le libellé dit « mur de protection » mais qui ne porte AUCUNE famille
+//     ne l'est pas — il est nommé, donc hors réserve, et hors bilan.
+//
+// MUTATION : rétablir la reconnaissance par racine de libellé -> la première moitié
+// tombe dans le vide (aucune racine ne dit « xyzzy ») et la seconde classe un mur, rouge.
+func TestUsageSummary_JointureSurLaFamillePubliee(t *testing.T) {
+	doc := docIssuesTest()
+	doc.AbilityLabels = map[string]Label{
+		// Libellé opaque, famille publiée : la jointure passe par la FAMILLE.
+		"2": {En: "xyzzy", Fr: "xyzzy", Family: usageFamilyWall},
+		// Libellé parlant, aucune famille : le manifeste ne le classe pas, donc nous non plus.
+		"1": {En: "Drop Wall", Fr: "mur de protection"},
+		"8": {En: "Active Camouflage", Fr: "camouflage actif", Family: usageFamilyPowerupCamo},
+		"4": {En: "Grappleshot", Fr: "grappin", Family: usageFamilyGrapple},
+	}
+	s := BuildUsageSummary(doc)
+	if got := joueur(t, s, "111").TakenByFamily[usageFamilyWall]; got != 2 {
+		t.Errorf("TakenByFamily[wall](111) = %d, attendu 2 — la famille PUBLIÉE fait foi, "+
+			"pas la racine du libellé", got)
+	}
+	p222 := joueur(t, s, "222")
+	if got, ok := p222.TakenByFamily[usageFamilyWall]; ok {
+		t.Errorf("TakenByFamily[wall](222) = %d, attendu ABSENT — le rang 1 est NOMMÉ mais "+
+			"sans famille au manifeste : hors bilan, jamais reclassé par son texte", got)
+	}
+	// NOMMÉ SANS FAMILLE N'EST PAS MUET : la réserve ne compte que le rang 77.
+	if got := s.Match.EquipmentChanges.UnnamedRankTaken; got != 1 {
+		t.Errorf("UnnamedRankTaken = %d, attendu 1 (le seul rang 77) — un rang nommé sans "+
+			"famille a fui dans la réserve des rangs muets", got)
 	}
 }

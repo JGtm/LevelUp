@@ -37,6 +37,10 @@ type IdentityBipedSlot struct {
 	Slot uint32 `json:"slot"`
 	// XUID de l'occupant. Vide quand rien ne l'a nomme (`link.source = "non_resolu"`).
 	XUID string `json:"xuid,omitempty"`
+	// Bid est l'identifiant STABLE du BOT qui occupe le corps, forme `bid(N.0)` (schema 51,
+	// lot 4.3). EXCLUSIF avec `XUID` : un bot n'a pas de xuid, et lui en fabriquer un le rendrait
+	// joignable avec un humain. Vide pour un humain comme pour un corps que rien ne nomme.
+	Bid  string `json:"bid,omitempty"`
 	Link Link   `json:"link"`
 }
 

@@ -14758,6 +14758,8 @@ components:
     IdentityBipedSlot:
       additionalProperties: false
       properties:
+        bid:
+          type: string
         link:
           $ref: '#/components/schemas/Link'
         slot:
@@ -15556,6 +15558,8 @@ components:
       additionalProperties: false
       properties:
         en:
+          type: string
+        family:
           type: string
         fr:
           type: string

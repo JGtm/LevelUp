@@ -7190,6 +7190,7 @@ export interface components {
             spartan_id?: string;
         };
         IdentityBipedSlot: {
+            bid?: string;
             link: components["schemas"]["Link"];
             /** Format: int32 */
             slot: number;
@@ -7508,6 +7509,7 @@ export interface components {
         };
         Label: {
             en: string;
+            family?: string;
             fr: string;
             img?: string;
             tinted?: boolean;
