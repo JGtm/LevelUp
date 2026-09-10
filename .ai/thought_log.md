@@ -1,3 +1,88 @@
+## [2026-09-10] Revue vague 5 — les trois constats corriges (C1 agregat de session, C2 colonnes de la vue match, C3 code mort) — Complete
+
+**Decision technique principale.** Les trois constats de la revue adversariale de la vague 5
+sont recevables et corriges dans la branche dediee `wt/corrections-v5`.
+
+- **C1 (P1, Go).** `equipmentUsedOf` (`internal/analysis/sessionusage/usage_outcomes.go`)
+  lisait `DeployedByFamily` pour TOUTES les familles, alors que le resume etait passe aux
+  consommations en `us6` : l'agregat de session etait le dernier lecteur reste sur l'ancienne
+  regle. Il applique desormais la meme bascule que `replay.usageUsedOf` — episodes pour les
+  deux bonus, poses pour le seul MUR, `SpentByFamily` pour tout autre deployable. La
+  CONNAISSANCE des familles a piece engendree n'est PAS recopiee : nouvel accesseur exporte
+  `replay.UsageFamilySpawnsPiece` (`usage_summary_families.go`), lui-meme recolle au manifeste
+  par le garde-rail existant. Garde-rail neuf du cote appelant :
+  `sessionusage/usage_outcomes_guard_test.go` (grep : l'accesseur est appele, le repli lit
+  `SpentByFamily`, aucune famille en dur). Les commentaires « JUMEAU EXACT » et « DEUX
+  definitions » etaient faux (doc inversee) : corriges.
+- **C2 (P1, web).** `columnsOf` (`equipmentUsageLogic.ts`) filtrait la colonne fusionnee sur
+  `deployed || dropped || kept`, sans `spent` : un capteur pris puis consomme donnait
+  `columns.equipment = []` et `equipmentUsageColumns.ts` supprimait le GROUPE ENTIER — la vue
+  match n'affichait plus rien de la seule famille employee. Le test est delegue a
+  `familyHasAnyTrace` (`equipmentKeptLogic.ts`), qui derive de `usageUsedOf` : une seule
+  ecriture de la regle. Le critere reste volontairement PLUS LARGE que les trois issues (une
+  pose ouvre aussi la colonne), sans quoi les familles seulement posees perdaient la leur.
+- **C3 (P2, web).** `equipmentChangeFamilyOf` n'avait plus aucun appelant de production tout en
+  restant epinglee par ses tests. SOLUTION RETENUE : lui RENDRE son role plutot que la
+  supprimer. Elle rendait un `string | null` qui confondait les deux « non » (mesure manquante
+  contre exclusion produit), ce qui obligeait `deriveKeptFromTaken` a relire `abilityLabels`
+  lui-meme, DEUX fois. Elle rend desormais `{ family, named }` — meme forme que le jumeau Go
+  `equipmentOutcomeFamilyOf(labels, rank) (family, named)` — et `deriveKeptFromTaken` passe par
+  elle pour les prises COMME pour les consommations : il n'existe plus qu'UN SEUL chemin de
+  lecture de la famille, et il est teste.
+
+**Resultats observes.** Rouge prouve avant vert pour les trois. C1 : regle temporairement
+remise a l'ancienne -> 5 tests rouges dont les quatre cites par le relecteur
+(`TestOverview_ScopeDesDonutsEstCeluiDuCampConnu` 10 au lieu de 11,
+`TestOverview_LesQuatrePartsFontLeLobby`, `TestOverview_UneLigneParJoueurSuivi`,
+`TestAttachSessionUsage_LesTroisIssuesRemontentAuContrat` « capteur Used:0 Kept:0 Dropped:1 »,
+`TestEquipmentUsageBlock_AmisConfiguresEtPartsDuDonut`, `TestSynthesisPage_AttacheLeBlocEquipement`)
+plus le garde-rail grep. Les quatre fixtures citees ne DISTINGUAIENT pas les deux canaux (elles
+ne portaient que du mur, seule famille encore lue sur ses poses) : elles portent desormais un
+capteur `spent` sans aucune pose. Test dedie au cas exact du constat :
+`TestOutcomes_UnDeployableSansPieceSeLitSurSesConsommations` (`taken=3, spent=2, dropped=1,
+deployed=0` -> utilise 2, garde 0, total 3, taux 66,67 %), plus son symetrique
+`TestOutcomes_LeMurResteLuSurSesPoses`. C2 : `usageUsedOf` retire de `familyHasAnyTrace` ->
+2 tests rouges (`columns.equipment` vide au lieu de `['sensor']` et de `['camo']`). C3 : les
+4 cas de `equipmentChangeFamilyOf` reecrits sur le nouveau contrat, et un cas gagne (l'exclusion
+produit se distingue maintenant de la mesure manquante a l'assertion).
+
+**Verifications de perimetre.** `metricValue` / `metricKeys` (`usage.go:247` et `:303`) n'ont
+aucune AUTRE lecture fautive des poses : leurs deux references a `DeployedByFamily` servent la
+grandeur `deployed_<famille>`, qui EST un compte de poses. Aucune autre liste de colonnes web ne
+derive du filtre corrige (`equipmentPileParts` passait deja par `usageUsedOf` ;
+`columns.deployed` / `columns.dropped` comptent bien des poses et des lachers).
+`equipmentUsageLogic.ts` passe de 500 a 494 lignes (le filtre remplace est plus court que
+l'ancien) : aucune extraction n'a ete necessaire.
+
+**Gates.** Go : `go build ./...` OK ; `go vet` et `go test -count=1` sur
+`internal/analysis/sessionusage`, `internal/analysis/replay`, `internal/service`,
+`internal/platform/duckdb` -> 4 `ok`, code de sortie 0 ; `golangci-lint run
+--new-from-merge-base=feat/v75 ./...` -> **0 issues**. Web : `node_modules/.tmp` purge puis
+`npm run typecheck` -> 0 erreur ; `npx vitest run src/features/match-replay
+src/features/session-detail src/features/synthesis src/features/_shared` -> 226 fichiers,
+2947 tests verts, 17 skips ; `npm run lint` -> **30 warnings, 0 error** = la baseline exacte,
+aucun avertissement neuf. Aucune base de `data/` ouverte, aucun backfill lance.
+
+**Documentation.** `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4 disait « ECART GO / WEB
+OUVERT » : l'ecart est referme (lot 5.7 cote vue match, C1 cote agregat de session), la ligne le
+dit desormais et cite le dernier lecteur corrige.
+
+**Decouvertes NON traitees (hors perimetre, aucune correction faite).**
+1. Le « utilise » de session reste tributaire de la recuisson `us6` : tant que
+   `levelup backfill-usage-summary` n'a pas repris les matchs, `spent_json` est vide et la
+   correction C1 n'a rien a lire. Aucun backfill lance ici (bases tenues par un serveur de dev).
+2. `internal/analysis/sessionusage/usage.go` ouvre une grandeur `equipment_<famille>` des qu'UN
+   joueur du lobby la nomme (`metricKeys`) alors que `overviewFamilies` n'ouvre une ligne que
+   sur le joueur de la route : deux criteres d'entree pour la meme famille, documentes des deux
+   cotes, mais jamais confrontes par un test commun.
+3. Cote web, `deriveKeptFromTaken` ecarte un `spent` de famille a piece engendree (le mur) mais
+   le Go, lui, le ventile dans `SpentByFamily` sans l'ecarter — sans consequence tant que
+   `usageUsedOf` ne lit pas ce canal pour le mur, mais les deux depots ne stockent pas la meme
+   chose sous la meme cle.
+
+**Prochaine etape.** Revue du diff par un contexte frais si la vague l'exige, puis fusion de
+`wt/corrections-v5` dans l'integration de la vague 5. Aucun push, aucune fusion faite ici.
+
 ## [2026-09-10] Master plan, lot 5.5 — le « utilise » d'un deployable se lit sur ses consommations (`us6`) — Complete
 
 **Decision technique principale.** `usageUsedOf` (`internal/analysis/replay/usage_summary_outcomes.go`)

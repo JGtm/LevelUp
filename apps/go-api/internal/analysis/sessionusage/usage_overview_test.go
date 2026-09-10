@@ -14,11 +14,17 @@ import (
 // overviewDeTest — deux matchs mesurés, dont UN SEUL à camp connu.
 //
 //	m1 (camp connu) : P (moi) prend 3 murs, en pose 1, en lâche 1 -> gardé 1
+//	                  P prend AUSSI 1 capteur et en CONSOMME la charge -> utilisé 1
 //	                  F (ami suivi) prend 2 murs, en pose 2
 //	                  A (allié NON suivi) prend 1 mur, le lâche
 //	                  E1 (eux) prend 4 murs, les lâche tous
 //	                  socles d'arme : P 2, F 1, A 3, E1 5
-//	m2 (FFA, camp INCONNU) : P prend 1 capteur et le garde ; X en pose 2
+//	m2 (FFA, camp INCONNU) : P prend 1 capteur et le garde ; X en consomme 2
+//
+// LE CAPTEUR EST LÀ POUR DISTINGUER LES DEUX CANAUX (correction C1, 2026-09-10) :
+// il n'engendre AUCUNE pièce, son « utilisé » se lit donc sur les CONSOMMATIONS
+// (`SpentByFamily`) et jamais sur les poses. Une fixture qui ne porterait que du
+// mur — seule famille encore lue sur ses poses — laisserait passer les deux règles.
 func overviewDeTest() OverviewInput {
 	return OverviewInput{
 		PlayerXUID:  "P",
@@ -33,7 +39,8 @@ func overviewDeTest() OverviewInput {
 					{
 						MatchID: "m1", XUID: "P", PadPickups: 2,
 						DeployedByFamily: map[string]int{"wall": 1},
-						TakenByFamily:    map[string]int{"wall": 3},
+						SpentByFamily:    map[string]int{"sensor": 1},
+						TakenByFamily:    map[string]int{"wall": 3, "sensor": 1},
 						DroppedByFamily:  map[string]int{"wall": 1},
 						KeptByFamily:     map[string]int{"wall": 1},
 					},
@@ -65,8 +72,8 @@ func overviewDeTest() OverviewInput {
 					},
 					{
 						MatchID: "m2", XUID: "X",
-						DeployedByFamily: map[string]int{"sensor": 2},
-						TakenByFamily:    map[string]int{"sensor": 2},
+						SpentByFamily: map[string]int{"sensor": 2},
+						TakenByFamily: map[string]int{"sensor": 2},
 					},
 				},
 			},
@@ -132,8 +139,10 @@ func TestOverview_LesQuatrePartsFontLeLobby(t *testing.T) {
 	if eq == nil {
 		t.Fatal("comptes du donut équipement absents")
 	}
-	if eq.Player != 3 || eq.Friends != 2 || eq.RestOfTeam != 1 || eq.Opponents != 4 {
-		t.Errorf("parts équipement = (moi %v, amis %v, reste %v, eux %v), attendu (3, 2, 1, 4)",
+	// Moi = 3 murs (posé/gardé/lâché) + 1 capteur CONSOMMÉ : la charge consommée
+	// est un objet utilisé, même sans aucune pose (correction C1).
+	if eq.Player != 4 || eq.Friends != 2 || eq.RestOfTeam != 1 || eq.Opponents != 4 {
+		t.Errorf("parts équipement = (moi %v, amis %v, reste %v, eux %v), attendu (4, 2, 1, 4)",
 			eq.Player, eq.Friends, eq.RestOfTeam, eq.Opponents)
 	}
 	if somme := eq.Player + eq.Friends + eq.RestOfTeam + eq.Opponents; somme != eq.LobbyTotal {
@@ -167,8 +176,9 @@ func TestOverview_UneLigneParJoueurSuivi(t *testing.T) {
 	if moi.XUID != "P" {
 		t.Fatalf("première ligne = %q, attendu le joueur de la route P", moi.XUID)
 	}
-	if moi.Used != 1 || moi.Kept != 2 || moi.Dropped != 1 || moi.Taken != 4 {
-		t.Errorf("moi = (utilisé %v, gardé %v, lâché %v, pris %v), attendu (1, 2, 1, 4)",
+	// 1 mur posé + 1 capteur CONSOMMÉ = 2 utilisés ; 5 pris (3 murs + 2 capteurs).
+	if moi.Used != 2 || moi.Kept != 2 || moi.Dropped != 1 || moi.Taken != 5 {
+		t.Errorf("moi = (utilisé %v, gardé %v, lâché %v, pris %v), attendu (2, 2, 1, 5)",
 			moi.Used, moi.Kept, moi.Dropped, moi.Taken)
 	}
 	if moi.PadPickups != 3 {
@@ -224,13 +234,17 @@ func TestOverview_AucunMatchMesure(t *testing.T) {
 
 // TestOverview_ScopeDesDonutsEstCeluiDuCampCONNU — règle de scope de computeMetric
 // appliquée aux donuts : numérateurs ET dénominateurs sur les seuls matchs à camp
-// connu. Le capteur du match FFA n'entre donc PAS dans le donut, alors qu'il entre
-// dans la ligne de famille et dans la ligne du joueur.
+// connu. Les capteurs du match FFA n'entrent donc PAS dans le donut, alors qu'ils
+// entrent dans la ligne de famille et dans la ligne du joueur.
+//
+// Le total du donut PIN AUSSI LA RÈGLE D'USAGE (correction C1) : le capteur consommé
+// par P dans m1 y compte pour 1, alors que ses poses valent zéro. Lu sur les poses,
+// ce donut afficherait 10.
 func TestOverview_ScopeDesDonutsEstCeluiDuCampConnu(t *testing.T) {
 	out := ComputeUsageOverview(overviewDeTest())
-	if out.EquipmentParties.LobbyTotal != 10 {
-		t.Errorf("lobby du donut = %v, attendu 10 (les 3 objets du match FFA sont hors scope)",
-			out.EquipmentParties.LobbyTotal)
+	if out.EquipmentParties.LobbyTotal != 11 {
+		t.Errorf("lobby du donut = %v, attendu 11 (les 3 objets du match FFA sont hors scope, "+
+			"le capteur consommé de m1 compte)", out.EquipmentParties.LobbyTotal)
 	}
 	if out.WeaponPadParties.LobbyTotal != 11 {
 		t.Errorf("lobby du donut socles = %v, attendu 11", out.WeaponPadParties.LobbyTotal)

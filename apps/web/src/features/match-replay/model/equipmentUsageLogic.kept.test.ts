@@ -11,9 +11,12 @@
  * un import d'un fichier `.test.ts` voisin, qui rejouerait ses `describe` une seconde fois).
  *
  * CE QU'ILS PROTÈGENT :
- *   - `equipmentChangeFamilyOf` lit `abilityLabels[rank].family` (schéma 51), la bascule sur les
- *     deux vocabulaires (`powerup_camo` -> `camo`), et rend `null` pour un rang labellisé mais
- *     HORS BILAN (grappin, propulseur, répulseur — P4) comme pour un rang SANS AUCUNE famille ;
+ *   - `equipmentChangeFamilyOf` — LA SEULE lecture de `abilityLabels` du bilan, appelée par
+ *     `deriveKeptFromTaken` pour les prises comme pour les consommations (constat C3 de la revue
+ *     de la vague 5) : elle lit `abilityLabels[rank].family` (schéma 51), bascule les deux
+ *     vocabulaires (`powerup_camo` -> `camo`), et son second retour `named` sépare l'EXCLUSION
+ *     PRODUIT (rang labellisé hors bilan — grappin, propulseur, répulseur, P4 : silencieuse) de
+ *     la MESURE MANQUANTE (rang sans label, ou label sans famille : réserve `unnamedTaken`) ;
  *   - un label SANS `family` (artefact antérieur au schéma 51) est un REPLI EXPLICITE vers la
  *     réserve `unnamedTaken`, jamais une famille devinée (lot 5.7) ;
  *   - `kept` se DÉRIVE (`taken - utilisé - lâché`, jamais lu d'un canal direct) — décision
@@ -68,34 +71,38 @@ describe('equipmentChangeFamilyOf — la reconnaissance rang -> famille sur `Lab
   }
 
   it('reconnaît chacune des huit familles du bilan par `family`, camo/overshield via le pont D5', () => {
-    expect(equipmentChangeFamilyOf(LABELS_A, 5)).toBe('wall')
-    expect(equipmentChangeFamilyOf(LABELS_A, 6)).toBe('sensor')
-    expect(equipmentChangeFamilyOf(LABELS_A, 7)).toBe('threat_seeker')
-    expect(equipmentChangeFamilyOf(LABELS_A, 8)).toBe('repair_field')
-    expect(equipmentChangeFamilyOf(LABELS_A, 9)).toBe('shroud_screen')
-    expect(equipmentChangeFamilyOf(LABELS_A, 11)).toBe('translocator_beacon')
+    expect(equipmentChangeFamilyOf(LABELS_A, 5).family).toBe('wall')
+    expect(equipmentChangeFamilyOf(LABELS_A, 6).family).toBe('sensor')
+    expect(equipmentChangeFamilyOf(LABELS_A, 7).family).toBe('threat_seeker')
+    expect(equipmentChangeFamilyOf(LABELS_A, 8).family).toBe('repair_field')
+    expect(equipmentChangeFamilyOf(LABELS_A, 9).family).toBe('shroud_screen')
+    expect(equipmentChangeFamilyOf(LABELS_A, 11).family).toBe('translocator_beacon')
     // Le manifeste publie `powerup_camo`/`powerup_overshield` (vocabulaire de POSE) — le pont
     // D5 (`EPISODE_FAMILY_OF_POWERUP`) les ramène au vocabulaire `KEPT_FAMILIES` (`camo`/
     // `overshield`), jamais une seconde table.
-    expect(equipmentChangeFamilyOf(LABELS_A, 1)).toBe('camo')
-    expect(equipmentChangeFamilyOf(LABELS_A, 2)).toBe('overshield')
+    expect(equipmentChangeFamilyOf(LABELS_A, 1).family).toBe('camo')
+    expect(equipmentChangeFamilyOf(LABELS_A, 2).family).toBe('overshield')
   })
 
-  it('rend null pour un rang LABELLISÉ, avec une famille CONNUE, mais hors bilan (P4)', () => {
-    expect(equipmentChangeFamilyOf(LABELS_A, 3)).toBeNull() // grapple
-    expect(equipmentChangeFamilyOf(LABELS_A, 4)).toBeNull() // thruster
-    expect(equipmentChangeFamilyOf(LABELS_A, 10)).toBeNull() // repulsor
+  it('un rang LABELLISÉ, de famille CONNUE mais hors bilan (P4), est NOMMÉ sans famille', () => {
+    // `named: true` = exclusion PRODUIT, qui se tait. À distinguer du cas suivant, qui est une
+    // MESURE MANQUANTE et rejoint la réserve du match (constat C3, 2026-09-10).
+    for (const rang of [3, 4, 10]) {
+      expect(equipmentChangeFamilyOf(LABELS_A, rang)).toEqual({ family: null, named: true })
+    }
   })
 
-  it('rend null quand le rang n’a AUCUN label — c’est à l’appelant de le compter en réserve', () => {
-    expect(equipmentChangeFamilyOf(LABELS_A, 42)).toBeNull()
-    expect(equipmentChangeFamilyOf(undefined, 5)).toBeNull()
+  it('un rang SANS AUCUN label n’est PAS nommé — c’est à l’appelant de le compter en réserve', () => {
+    expect(equipmentChangeFamilyOf(LABELS_A, 42)).toEqual({ family: null, named: false })
+    expect(equipmentChangeFamilyOf(undefined, 5)).toEqual({ family: null, named: false })
   })
 
-  it('rend null quand le label existe mais SANS `family` — artefact antérieur au schéma 51', () => {
+  it('un label SANS `family` n’est pas nommé non plus — artefact antérieur au schéma 51', () => {
     // La table est là, mais aucun lot < 4.3 n'y a écrit de famille : repli explicite,
     // jamais une devinette sur la racine du libellé (lot 5.7).
-    expect(equipmentChangeFamilyOf({ '5': { fr: 'Mur de protection', en: 'Drop wall' } }, 5)).toBeNull()
+    expect(equipmentChangeFamilyOf({ '5': { fr: 'Mur de protection', en: 'Drop wall' } }, 5)).toEqual(
+      { family: null, named: false },
+    )
   })
 })
 
@@ -165,6 +172,11 @@ describe('buildEquipmentUsage — le gardé se DÉRIVE de `equipmentChanges` (E2
     const alpha = u.byPlayer.find((r) => r.name === 'Alpha')
     expect(alpha?.spent.sensor).toBe(1)
     expect(alpha?.kept.sensor ?? 0).toBe(0)
+    // ET LA COLONNE S'OUVRE (correction C2, 2026-09-10). La liste des colonnes ne lisait que
+    // `deployed` / `dropped` / `kept` : ce capteur n'y entrait plus, et `equipmentUsageColumns`
+    // supprime le groupe entier quand la liste est vide — la vue match n'affichait plus rien
+    // de la seule famille que ce joueur a employée.
+    expect(u.columns.equipment).toEqual(['sensor'])
   })
 
   it('un `spent` sur une chaîne de compteur TROUÉE (`gap > 0`) ne ventile aucune famille', () => {

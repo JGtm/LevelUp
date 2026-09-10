@@ -152,3 +152,19 @@ var usageFamiliesWithSpawnedPiece = map[string]bool{
 func usageFamilySpawnsPiece(family string) bool {
 	return usageFamiliesWithSpawnedPiece[family]
 }
+
+// UsageFamilySpawnsPiece — LA MÊME QUESTION, POUR L'AGRÉGAT DE SESSION.
+//
+// Exportée le 2026-09-10 (correction C1 de la revue de la vague 5) : l'agrégat de
+// session décide du même côté « utilisé » sur une ligne de BASE et non sur une
+// ligne de projection ([sessionusage.equipmentUsedOf]). Il ne peut donc pas
+// appeler [usageUsedOf], mais il ne doit pas non plus RECOPIER la liste des
+// familles à pièce engendrée : cette liste est recollée au manifeste par un
+// garde-rail (usage_summary_families_guard_test.go) et une deuxième écriture
+// re-divergerait au premier objet `kind = "deployed"` ajouté là-bas — c'est
+// exactement ce qui s'est produit avec le passage de `us5` à `us6`, où seul le
+// résumé avait suivi. Garde-rail du côté appelant :
+// sessionusage/usage_outcomes_guard_test.go.
+func UsageFamilySpawnsPiece(family string) bool {
+	return usageFamilySpawnsPiece(family)
+}

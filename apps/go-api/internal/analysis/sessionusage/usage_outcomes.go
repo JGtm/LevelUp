@@ -62,10 +62,12 @@ func (o outcomeCounts) usedRatePct() *float64 {
 // equipmentOutcomeOf — les trois issues d'UNE famille pour UNE ligne (match,
 // joueur).
 //
-// « UTILISÉ » A DEUX DÉFINITIONS (décision P2) et c'est le seul endroit du paquet
-// qui les distingue : les deux bonus servent quand ils sont ACTIVÉS (leur compte
-// d'épisodes), tout le reste sert quand il est POSÉ (`deployed_json`). Le lecteur
-// ne voit pas la différence — c'est un détail de calcul.
+// « UTILISÉ » A TROIS DÉFINITIONS (décision P2, amendée par le lot 5.5) et c'est le
+// seul endroit du paquet qui les distingue : les deux bonus servent quand ils sont
+// ACTIVÉS (leur compte d'épisodes), le MUR quand il est POSÉ (`deployed_json`, seul
+// déployable qui engendre une pièce), tout autre déployable quand il CONSOMME UNE
+// CHARGE (`spent_json`). Le lecteur ne voit pas la différence — c'est un détail de
+// calcul.
 func equipmentOutcomeOf(p *PlayerRow, family string) outcomeCounts {
 	return outcomeCounts{
 		used:    equipmentUsedOf(p, family),
@@ -75,19 +77,37 @@ func equipmentOutcomeOf(p *PlayerRow, family string) outcomeCounts {
 	}
 }
 
-// equipmentUsedOf — le côté « utilisé » d'une famille. JUMEAU EXACT de
-// `usageUsedOf` (internal/analysis/replay/usage_summary_outcomes.go), qui décide de
-// la même chose à la projection : deuxième et dernière copie tolérée de cette
-// bascule (règle CLAUDE.md n°6). Elle ne peut pas être partagée — là-bas elle lit
-// une ligne de projection, ici une ligne de base.
+// equipmentUsedOf — le côté « utilisé » d'une famille, sur une ligne de BASE.
+//
+// MÊME RÈGLE que `usageUsedOf` (internal/analysis/replay/usage_summary_outcomes.go),
+// qui décide de la même chose à la projection : deuxième et dernière copie tolérée de
+// cette BASCULE (règle CLAUDE.md n°6). La fonction elle-même ne peut pas être
+// partagée — là-bas elle lit une ligne de projection, ici une ligne de base — mais LA
+// CONNAISSANCE, elle, l'est : les familles à pièce engendrée viennent de
+// [replay.UsageFamilySpawnsPiece], jamais d'une liste réécrite ici. Garde-rail :
+// usage_outcomes_guard_test.go.
+//
+// CORRIGÉ LE 2026-09-10 (constat C1 de la revue de la vague 5). Cette fonction
+// lisait `DeployedByFamily` pour TOUTES les familles, alors que le résumé était
+// passé aux consommations en `us6` : sur un capteur `taken=3, spent=2, dropped=1,
+// deployed=0`, la page Sessions affichait « utilisé 0 · gardé 0 · lâché 1 » quand la
+// vue match affichait « utilisé 2 », et la famille disparaissait même des grandeurs
+// dès que ses poses étaient nulles (metricKeys lit `total()`). `SpentByFamily` était
+// chargée par le repo et n'avait aucun lecteur.
 func equipmentUsedOf(p *PlayerRow, family string) int {
-	switch family {
-	case replay.EquipmentFamilyPowerupCamo:
+	switch {
+	case family == replay.EquipmentFamilyPowerupCamo:
 		return p.CamoEpisodes
-	case replay.EquipmentFamilyPowerupOvershield:
+	case family == replay.EquipmentFamilyPowerupOvershield:
 		return p.OvershieldEpisodes
-	default:
+	case replay.UsageFamilySpawnsPiece(family):
+		// Le MUR seul : son `spent` tombe sur la pose de PANNEAU, jamais sur la
+		// création de l'appareil porté (rapport E0 du 2026-09-10, question 5).
 		return p.DeployedByFamily[family]
+	default:
+		// Tout autre déployable : une pose `deployed` y mesure un LÂCHER VOLONTAIRE
+		// à mi-vie, pas un déploiement. Son usage se lit sur les charges consommées.
+		return p.SpentByFamily[family]
 	}
 }
 
