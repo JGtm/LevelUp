@@ -124,6 +124,77 @@ func TestOutcomes_FamilleSansAucunDeploiement(t *testing.T) {
 	}
 }
 
+// TestOutcomes_UnDeployableSansPieceSeLitSurSesConsommations — CORRECTION C1
+// (revue de la vague 5, 2026-09-10). Le cas exact du constat : un capteur
+// `taken=3, spent=2, dropped=1, deployed=0`. Le capteur n'engendre aucune pièce
+// (replay.UsageFamilySpawnsPiece), son « utilisé » se lit donc sur les CHARGES
+// CONSOMMÉES, comme le fait le résumé depuis `us6`.
+//
+// AVANT LA CORRECTION, l'agrégat lisait `deployed` pour toutes les familles : la
+// page Sessions affichait « utilisé 0 · gardé 0 · lâché 1 » là où la vue match
+// affichait « utilisé 2 », la valeur de la grandeur valait 1 au lieu de 3, et la
+// famille disparaissait même de la liste des grandeurs dès que ses poses étaient
+// nulles (metricKeys n'ouvre une ligne que sur un total non nul).
+func TestOutcomes_UnDeployableSansPieceSeLitSurSesConsommations(t *testing.T) {
+	in := Input{
+		PlayerXUID: "P",
+		Matches: []MatchInput{{
+			MatchID: "m1", Measured: true, DurationSeconds: 600,
+			PlayerTeam: intp(0), TeamOf: map[string]int{"P": 0},
+			TeamSize: 1, LobbySize: 1,
+			Players: []PlayerRow{{
+				MatchID: "m1", XUID: "P",
+				TakenByFamily:   map[string]int{"sensor": 3},
+				SpentByFamily:   map[string]int{"sensor": 2},
+				DroppedByFamily: map[string]int{"sensor": 1},
+				// Aucune pose, et pourtant deux objets servis.
+			}},
+		}},
+	}
+	m := findMetric(t, ComputeUsage(in).Metrics, MetricEquipmentPrefix+"sensor")
+	if m.Outcomes == nil {
+		t.Fatal("equipment_sensor sans Outcomes")
+	}
+	o := m.Outcomes
+	if o.Used != 2 || o.Kept != 0 || o.Dropped != 1 || o.Taken != 3 {
+		t.Errorf("issues = (utilisé %v, gardé %v, lâché %v, pris %v), attendu (2, 0, 1, 3)",
+			o.Used, o.Kept, o.Dropped, o.Taken)
+	}
+	if m.PlayerTotal != 3 {
+		t.Errorf("PlayerTotal = %v, attendu 3 (la barre remplit ses trois prises)", m.PlayerTotal)
+	}
+	if !closeTo(o.UsedRatePct, 200.0/3) {
+		t.Errorf("UsedRatePct = %v, attendu 66,67 %% (2 utilisés sur 3)", o.UsedRatePct)
+	}
+}
+
+// TestOutcomes_LeMurResteLuSurSesPoses — l'autre côté de la même frontière : le mur
+// est le SEUL équipement du manifeste qui engendre une pièce distincte (ses
+// panneaux), son « utilisé » reste donc sur les poses. Une correction qui
+// basculerait TOUT sur les consommations perdrait 50 murs utilisés au parc.
+func TestOutcomes_LeMurResteLuSurSesPoses(t *testing.T) {
+	in := Input{
+		PlayerXUID: "P",
+		Matches: []MatchInput{{
+			MatchID: "m1", Measured: true, DurationSeconds: 600,
+			PlayerTeam: intp(0), TeamOf: map[string]int{"P": 0},
+			TeamSize: 1, LobbySize: 1,
+			Players: []PlayerRow{{
+				MatchID: "m1", XUID: "P",
+				TakenByFamily:    map[string]int{"wall": 2},
+				DeployedByFamily: map[string]int{"wall": 2},
+				// Le film annonce moins de consommations que de poses de panneau
+				// (118 pour 252 au parc) : les lire ici sous-compterait.
+				SpentByFamily: map[string]int{"wall": 1},
+			}},
+		}},
+	}
+	o := findMetric(t, ComputeUsage(in).Metrics, MetricEquipmentPrefix+"wall").Outcomes
+	if o == nil || o.Used != 2 {
+		t.Errorf("mur = %+v, attendu 2 utilisés (ses POSES de panneau, pas ses consommations)", o)
+	}
+}
+
 // TestOutcomes_FFA_ReferencesNil — sur une session sans aucun camp connu, les deux
 // taux de référence restent nil : « je ne sais pas » ne s'écrit pas 0 %.
 func TestOutcomes_FFA_ReferencesNil(t *testing.T) {

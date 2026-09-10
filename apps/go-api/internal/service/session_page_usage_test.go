@@ -208,15 +208,21 @@ func TestAttachSessionUsage_DrawerFermeNeSertAucunBlocCompare(t *testing.T) {
 // "equipment_<famille>" avec son remplissage et ses deux taux de référence. Le
 // service ne calcule rien lui-même : ce test vérifie que rien ne se perd EN ROUTE
 // entre la ligne de base et le bloc servi.
+//
+// DEUX FAMILLES, DEUX CANAUX (correction C1, 2026-09-10) : le mur se lit sur ses
+// POSES (seule famille qui engendre une pièce), le capteur sur ses CONSOMMATIONS.
+// La colonne `spent_json` est chargée par le repo depuis `us4` — jusqu'à cette
+// correction elle n'avait AUCUN lecteur et le capteur remontait « utilisé 0 ».
 func TestAttachSessionUsage_LesTroisIssuesRemontentAuContrat(t *testing.T) {
 	repo := usageTestRepoMock()
 	repo.players = []sessionusage.PlayerRow{
 		{
 			MatchID: "m1", XUID: "P",
 			DeployedByFamily: map[string]int{"wall": 1},
-			TakenByFamily:    map[string]int{"wall": 3},
+			SpentByFamily:    map[string]int{"sensor": 2},
+			TakenByFamily:    map[string]int{"wall": 3, "sensor": 3},
 			KeptByFamily:     map[string]int{"wall": 1},
-			DroppedByFamily:  map[string]int{"wall": 1},
+			DroppedByFamily:  map[string]int{"wall": 1, "sensor": 1},
 		},
 		// L'allié utilise tout ce qu'il prend : la référence « reste de mon
 		// équipe » vaut 100 %, et elle ne me contient pas (décision P7).
@@ -238,15 +244,7 @@ func TestAttachSessionUsage_LesTroisIssuesRemontentAuContrat(t *testing.T) {
 	if resp.Usage == nil || !resp.Usage.Available {
 		t.Fatalf("Usage = %+v, attendu bloc disponible", resp.Usage)
 	}
-	var m *domain.SessionUsageMetric
-	for i := range resp.Usage.Metrics {
-		if resp.Usage.Metrics[i].Key == sessionusage.MetricEquipmentPrefix+"wall" {
-			m = &resp.Usage.Metrics[i]
-		}
-	}
-	if m == nil {
-		t.Fatal("aucune grandeur equipment_wall dans le bloc servi")
-	}
+	m := grandeurEquipement(t, resp.Usage.Metrics, "wall")
 	if m.Outcomes == nil {
 		t.Fatal("equipment_wall servie SANS ses issues — le remplissage de la barre est perdu")
 	}
@@ -260,4 +258,35 @@ func TestAttachSessionUsage_LesTroisIssuesRemontentAuContrat(t *testing.T) {
 	if o.OpponentsUsedRatePct == nil || *o.OpponentsUsedRatePct != 0 {
 		t.Errorf("OpponentsUsedRatePct = %v, attendu 0 %%", o.OpponentsUsedRatePct)
 	}
+
+	// LE CAPTEUR : aucune pose, deux charges consommées, un lâcher. Servi sur les
+	// poses, il remonterait « utilisé 0 · gardé 0 · lâché 1 » pour une barre de 1
+	// au lieu de 3 (constat C1 de la revue de la vague 5).
+	sensor := grandeurEquipement(t, resp.Usage.Metrics, "sensor")
+	if sensor.Outcomes == nil {
+		t.Fatal("equipment_sensor servie SANS ses issues")
+	}
+	so := sensor.Outcomes
+	if so.Used != 2 || so.Kept != 0 || so.Dropped != 1 || so.Taken != 3 {
+		t.Errorf("issues du capteur = %+v, attendu 2 utilisés / 0 gardé / 1 lâché pour 3 prises", so)
+	}
+	if sensor.PlayerTotal != 3 {
+		t.Errorf("PlayerTotal du capteur = %v, attendu 3", sensor.PlayerTotal)
+	}
+}
+
+// grandeurEquipement — la grandeur "equipment_<famille>" du bloc servi, ou un échec
+// nommé : une famille ABSENTE est le symptôme même du constat C1 (metricKeys
+// n'ouvre une ligne que sur un total non nul).
+func grandeurEquipement(
+	t *testing.T, metrics []domain.SessionUsageMetric, family string,
+) *domain.SessionUsageMetric {
+	t.Helper()
+	for i := range metrics {
+		if metrics[i].Key == sessionusage.MetricEquipmentPrefix+family {
+			return &metrics[i]
+		}
+	}
+	t.Fatalf("aucune grandeur equipment_%s dans le bloc servi", family)
+	return nil
 }
