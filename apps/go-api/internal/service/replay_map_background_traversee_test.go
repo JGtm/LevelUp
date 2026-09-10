@@ -49,7 +49,7 @@ func TestResolveBackgroundKey_RefuseUnMapIDHostile(t *testing.T) {
 		if _, err := svc.MapBackgroundForMap(context.Background(), hostile); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 			t.Errorf("cle %q : err = %v, attendu ErrMapBackgroundNotAvailable", hostile, err)
 		}
-		if _, err := svc.MapBackgroundImageForMap(context.Background(), hostile); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		if _, _, err := svc.MapBackgroundImageForMap(context.Background(), hostile); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 			t.Errorf("cle %q (image) : err = %v, attendu ErrMapBackgroundNotAvailable", hostile, err)
 		}
 	}
@@ -114,7 +114,7 @@ func TestResolveBackgroundKey_RefuseUneCleDIndexHostile(t *testing.T) {
 	if _, err := svc.MapBackgroundForMap(context.Background(), "asset-x"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Fatalf("err = %v, attendu ErrMapBackgroundNotAvailable", err)
 	}
-	if _, err := svc.MapBackgroundImageForMap(context.Background(), "asset-x"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+	if _, _, err := svc.MapBackgroundImageForMap(context.Background(), "asset-x"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Fatalf("err image = %v, attendu ErrMapBackgroundNotAvailable", err)
 	}
 }
@@ -182,4 +182,47 @@ func TestResolveBackgroundKey_AucuneLectureHorsDuRepertoire(t *testing.T) {
 // sousLeRepertoire dit si `chemin` est contenu dans `dir` (les deux deja nettoyes).
 func sousLeRepertoire(chemin, dir string) bool {
 	return strings.HasPrefix(chemin, dir+string(filepath.Separator))
+}
+
+// TestReadBackgroundImage_RefuseImageHostile — LA CLE N'EST PLUS LE SEUL GARDE-FOU (etape 2).
+//
+// Depuis l'etape 2, le nom du fichier image vient du sidecar (champ `Image`, D3) et non
+// plus de `<cle>.png` construit en dur : le service lit desormais un contenu de fichier
+// pour decider QUEL AUTRE fichier ouvrir. Un sidecar est une donnee, donc modifiable —
+// un champ Image qui remonte l'arborescence, qui pointe en absolu, ou qui porte une
+// extension hors liste blanche doit etre refuse exactement comme une cle hostile, sinon
+// le chemin de la cle resterait sur mais celui de l'image ne le serait plus.
+//
+// `ridgeline.png` EXISTE reellement a cote du sidecar : sans la garde, l'ancien code
+// (qui ignorait `Image` et rebatissait `<cle>.png`) le servirait quand meme, et ce test
+// serait vert pour la mauvaise raison. Ecrire ce fichier est ce qui rend le test rouge
+// tant que la garde sur `Image` n'existe pas.
+func TestReadBackgroundImage_RefuseImageHostile(t *testing.T) {
+	cas := []struct {
+		nom   string
+		image string
+	}{
+		{"remontee relative", "../../ailleurs.png"},
+		{"chemin absolu", "/absolu.png"},
+		{"extension hors liste blanche", "carte.svg"},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			root := t.TempDir()
+			res := title.NewPathResolver(root)
+			ecrire(t, res.MapBackgroundMetaPath(title.DefaultSlug, "ridgeline"),
+				`{"schemaVersion":1,"module":"ridgeline","mapNames":["Cliffhanger"],`+
+					`"image":"`+c.image+`",`+
+					`"source":"test","generatedAt":"2026-09-10T10:00:00Z","style":"jeu",`+
+					`"calibration":{"metersPerPixel":0.092,"originX":0,"originY":0,`+
+					`"widthPx":100,"heightPx":100,"convention":"test"},`+
+					`"stats":{"anchors":1}}`)
+			ecrire(t, res.MapBackgroundPath(title.DefaultSlug, "ridgeline"), "\x89PNG\r\n\x1a\nfaux")
+
+			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}})
+			if _, _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+				t.Errorf("image=%q : err = %v, attendu ErrMapBackgroundNotAvailable", c.image, err)
+			}
+		})
+	}
 }

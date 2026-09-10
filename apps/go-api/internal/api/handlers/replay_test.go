@@ -26,7 +26,10 @@ type mockReplayService struct {
 	// exister sans fond, et le contraire n'a pas de sens.
 	bg    *replaydoc.MapBackground
 	image []byte
-	bgErr error
+	// imageContentType : type MIME rendu par MapBackgroundImage. Vide == "image/png", le
+	// défaut historique — un mock existant qui ne le fixe pas continue de décrire un PNG.
+	imageContentType string
+	bgErr            error
 	// callouts / calloutsErr : les zones nommées, indépendantes du fond ET de l'artefact.
 	callouts    *replaydoc.MapCalloutsEntry
 	calloutsErr error
@@ -36,8 +39,19 @@ type mockReplayService struct {
 	// `vuMapID` retient ce que le handler a transmis au service.
 	bgMap    *replaydoc.MapBackground
 	imageMap []byte
-	bgMapErr error
-	vuMapID  string
+	// imageMapContentType : jumeau de imageContentType, pour le fond servi par carte.
+	imageMapContentType string
+	bgMapErr            error
+	vuMapID             string
+}
+
+// contentTypeOuDefaut rend "image/png" quand aucun type n'a été fixé explicitement — le
+// défaut historique du mock, pour ne pas réécrire tous ses appelants existants.
+func contentTypeOuDefaut(ct string) string {
+	if ct == "" {
+		return "image/png"
+	}
+	return ct
 }
 
 func (m *mockReplayService) GetReplay(_ context.Context, _ string) (replaydoc.ReplayDocument, error) {
@@ -48,8 +62,8 @@ func (m *mockReplayService) MapBackground(_ context.Context, _ string) (*replayd
 	return m.bg, m.bgErr
 }
 
-func (m *mockReplayService) MapBackgroundImage(_ context.Context, _ string) ([]byte, error) {
-	return m.image, m.bgErr
+func (m *mockReplayService) MapBackgroundImage(_ context.Context, _ string) ([]byte, string, error) {
+	return m.image, contentTypeOuDefaut(m.imageContentType), m.bgErr
 }
 
 func (m *mockReplayService) MapBackgroundForMap(_ context.Context, mapID string) (*replaydoc.MapBackground, error) {
@@ -57,9 +71,9 @@ func (m *mockReplayService) MapBackgroundForMap(_ context.Context, mapID string)
 	return m.bgMap, m.bgMapErr
 }
 
-func (m *mockReplayService) MapBackgroundImageForMap(_ context.Context, mapID string) ([]byte, error) {
+func (m *mockReplayService) MapBackgroundImageForMap(_ context.Context, mapID string) ([]byte, string, error) {
 	m.vuMapID = mapID
-	return m.imageMap, m.bgMapErr
+	return m.imageMap, contentTypeOuDefaut(m.imageMapContentType), m.bgMapErr
 }
 
 func (m *mockReplayService) MapCallouts(_ context.Context, _ string) (*replaydoc.MapCalloutsEntry, error) {
@@ -209,7 +223,8 @@ func fondMock() *mockReplayService {
 				WidthPx: 1633, HeightPx: 1627,
 			},
 		},
-		image: []byte("\x89PNG\r\n\x1a\nfaux"),
+		image:            []byte("\x89PNG\r\n\x1a\nfaux"),
+		imageContentType: "image/png",
 	}
 }
 
@@ -229,18 +244,39 @@ func TestReplayBackground_OK(t *testing.T) {
 	}
 }
 
-// TestReplayBackgroundImage_OK — les octets sortent tels quels, avec leur type.
+// TestReplayBackgroundImage_OK — les octets sortent tels quels, avec le Content-Type
+// RENDU PAR LE SERVICE (étape 2 : le client web ne doit pas avoir à connaître le format,
+// D4, et la route reste `background.png` quel que soit le format réellement servi).
+//
+// PNG et WebP en table : ce test ne suppose plus un format, il lit celui que le service
+// déclare et vérifie que le handler le répercute tel quel, sans jamais le remplacer par
+// une valeur en dur.
 func TestReplayBackgroundImage_OK(t *testing.T) {
-	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return fondMock(), nil }
-	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/background.png", "127.0.0.1:5432")
-	if w.Code != http.StatusOK {
-		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+	cas := []struct {
+		nom         string
+		octets      []byte
+		contentType string
+	}{
+		{"PNG", []byte("\x89PNG\r\n\x1a\nfaux"), "image/png"},
+		{"WebP", []byte("RIFF\x00\x00\x00\x00WEBPVP8Lfaux"), "image/webp"},
 	}
-	if ct := w.Header().Get("Content-Type"); ct != "image/png" {
-		t.Errorf("Content-Type = %q, attendu image/png", ct)
-	}
-	if !strings.HasPrefix(w.Body.String(), "\x89PNG") {
-		t.Errorf("les octets servis ne sont pas ceux du service: %q", w.Body.String())
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			mock := fondMock()
+			mock.image = c.octets
+			mock.imageContentType = c.contentType
+			factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
+			w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/background.png", "127.0.0.1:5432")
+			if w.Code != http.StatusOK {
+				t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+			}
+			if ct := w.Header().Get("Content-Type"); ct != c.contentType {
+				t.Errorf("Content-Type = %q, attendu %q", ct, c.contentType)
+			}
+			if w.Body.String() != string(c.octets) {
+				t.Errorf("les octets servis ne sont pas ceux du service: %q", w.Body.String())
+			}
+		})
 	}
 }
 

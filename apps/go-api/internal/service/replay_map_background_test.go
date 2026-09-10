@@ -116,12 +116,15 @@ func TestMapBackground_ChaineComplete(t *testing.T) {
 		t.Errorf("le match n'a pas été demandé au registre : %v", repo.vu)
 	}
 
-	blob, err := svc.MapBackgroundImage(context.Background(), "m1")
+	blob, mime, err := svc.MapBackgroundImage(context.Background(), "m1")
 	if err != nil {
 		t.Fatalf("MapBackgroundImage: %v", err)
 	}
 	if len(blob) == 0 || string(blob[:4]) != "\x89PNG" {
 		t.Errorf("les octets servis ne sont pas ceux du fichier : %q", blob)
+	}
+	if mime != mimeImagePNG {
+		t.Errorf("mime = %q, attendu image/png", mime)
 	}
 }
 
@@ -157,7 +160,7 @@ func TestMapBackground_ForgeParMapID(t *testing.T) {
 			if bg.Module != mapID {
 				t.Errorf("cle = %q, attendu le map_id %s", bg.Module, mapID)
 			}
-			if _, err := svc.MapBackgroundImage(context.Background(), "m1"); err != nil {
+			if _, _, err := svc.MapBackgroundImage(context.Background(), "m1"); err != nil {
 				t.Errorf("MapBackgroundImage: %v", err)
 			}
 		})
@@ -304,7 +307,7 @@ func TestMapBackground_Absences(t *testing.T) {
 			if _, err := svc.MapBackground(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 				t.Errorf("MapBackground: err = %v, attendu ErrMapBackgroundNotAvailable", err)
 			}
-			if _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+			if _, _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 				t.Errorf("MapBackgroundImage: err = %v, attendu ErrMapBackgroundNotAvailable", err)
 			}
 		})
@@ -324,13 +327,13 @@ func TestMapBackgroundImage_SansCalage(t *testing.T) {
 	}
 	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}})
 
-	if _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+	if _, _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Errorf("image sans calage servie : err = %v", err)
 	}
 	// Contre-épreuve : avec son sidecar, la même image est servie.
 	root2 := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", true)
 	svc2 := NewReplayService(title.DefaultSlug, root2, &mapNamesStub{names: []string{"Cliffhanger"}})
-	if _, err := svc2.MapBackgroundImage(context.Background(), "m1"); err != nil {
+	if _, _, err := svc2.MapBackgroundImage(context.Background(), "m1"); err != nil {
 		t.Errorf("image avec calage : %v", err)
 	}
 }
@@ -344,7 +347,7 @@ func TestMapBackground_ImageAbsente(t *testing.T) {
 	if _, err := svc.MapBackground(context.Background(), "m1"); err != nil {
 		t.Errorf("le calage doit rester servi : %v", err)
 	}
-	if _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+	if _, _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Errorf("image absente : err = %v, attendu ErrMapBackgroundNotAvailable", err)
 	}
 }
@@ -395,12 +398,15 @@ func TestMapBackground_DonneesReelles(t *testing.T) {
 	if bg.Calibration.MetersPerPixel <= 0 || bg.Calibration.WidthPx <= 0 || bg.Calibration.HeightPx <= 0 {
 		t.Errorf("calage inexploitable : %+v", bg.Calibration)
 	}
-	blob, err := svc.MapBackgroundImage(context.Background(), "000d5950")
+	blob, mime, err := svc.MapBackgroundImage(context.Background(), "000d5950")
 	if err != nil {
 		t.Fatalf("image de Cliffhanger : %v", err)
 	}
 	if len(blob) < 8 || string(blob[1:4]) != "PNG" {
 		t.Errorf("l'octet servi n'est pas un PNG (%d octets)", len(blob))
+	}
+	if mime != mimeImagePNG {
+		t.Errorf("mime = %q, attendu image/png (le fond réel de Cliffhanger est encore un PNG à cette étape)", mime)
 	}
 
 	// ET LE CADRE CONTIENT LA ZONE JOUÉE. C'est le contrôle qui dit que les deux repères
@@ -473,7 +479,7 @@ func TestMapBackground_TousLesModulesDuCatalogue(t *testing.T) {
 			if bg.Calibration.MetersPerPixel <= 0 || bg.Calibration.WidthPx <= 0 {
 				t.Errorf("calage inexploitable pour %s : %+v", nom, bg.Calibration)
 			}
-			if _, err := svc.MapBackgroundImage(context.Background(), "m"); err != nil {
+			if _, _, err := svc.MapBackgroundImage(context.Background(), "m"); err != nil {
 				t.Errorf("image de %s : %v", nom, err)
 			}
 			avecFond++
@@ -521,7 +527,7 @@ func TestMapBackground_TousLesFondsMapID(t *testing.T) {
 			if bg.Calibration.MetersPerPixel <= 0 || bg.Calibration.WidthPx <= 0 || bg.Calibration.HeightPx <= 0 {
 				t.Errorf("calage inexploitable : %+v", bg.Calibration)
 			}
-			if _, err := svc.MapBackgroundImage(context.Background(), "m"); err != nil {
+			if _, _, err := svc.MapBackgroundImage(context.Background(), "m"); err != nil {
 				t.Errorf("image de %s : %v", cle, err)
 			}
 		})
