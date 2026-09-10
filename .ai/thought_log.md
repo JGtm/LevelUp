@@ -1,3 +1,78 @@
+## [2026-09-10] Lot 6.4 — cinq points de dette visible (equipement) — Complete
+
+**Decision technique principale.** Cinq points instruits point par point (worktree dedie
+`wt/dette-visible`), chacun verifie sur pieces puis corrige SEULEMENT si le correctif est petit
+et sur, sinon consigne :
+
+1. **Champ de reparation sous-compte (CONSIGNE, pas de code).** Mesure sur le parc live (64
+   artefacts) : `repair_field` a 22 pris / 1 `spent` au total, mais **18 des 22 prises viennent
+   de DEUX artefacts Grand Combat** (`5676a9ba`, `879a4dba` — Grand Combat est explicitement
+   HORS PERIMETRE, decision D13 du plan maitre). Hors Grand Combat (61 artefacts), la famille
+   n'est prise que **4 fois sur tout le parc**, avec **0 `spent` ET 0 `deployed`** enregistres —
+   aucune alternative ne bat `spent` a cet echantillon, la mesure est juste trop rare pour
+   trancher. Rapport ecrit, aucun changement de regle (le canal `spent`, deja la regle generale
+   des deployables sans piece engendree, reste le meilleur disponible).
+2. **Barre « part de chaque equipe, geste par geste » n'additionnait pas `spent` (CORRIGE).**
+   `usageGestureCount` (`equipmentUsageChart.ts`, cas `'equipment'`) sommait poses deployees +
+   lachees + episodes des deux bonus, jamais les consommations de charge : une famille dont le
+   SEUL geste est une consommation (capteur pris puis vide, jamais pose ni lache) restait
+   invisible de cette vue alors que `tallyTotal` la comptait deja. Aucun risque de double compte
+   du mur : `deriveKeptFromTaken` (`equipmentKeptLogic.ts`) exclut deja les familles a piece
+   engendree du tally `spent`. Test rouge -> vert + test de non-regression anti-double-compte.
+   Aucune string nouvelle (labels deja portes par `equipmentUsageColumns.ts`).
+3. **Poses d'appareil de mur promues `deployed` a la mort (CONSIGNE, pas de code).** Reproduit
+   sur `1cd3848a` (slot 581, `t0=4081` = exactement la derniere position connue du poseur,
+   distance mesuree 1,75 m >= seuil `originDropMaxDist` 1,5 m de justesse) : la clause de
+   distance de `equipmentOrigin` (`equipment_placements.go:300`) classe ce lacher-a-la-mort en
+   `deployed`. Non corrige : (a) impact ecran marginal — `usageDeployedCounts` filtre deja aux
+   seuls IDs de PANNEAU pour le mur, seul `DroppedByFamily["wall"]` perd ces ~8/295 evenements
+   au niveau du parc ; (b) un test unitaire existant (`equipment_origin_test.go`, cas « au bon
+   instant mais trop loin ») encode DELIBEREMENT la discrimination par distance meme a instant
+   exact — l'assouplir casserait ce contrat documente sans preuve que ca ne mordrait jamais un
+   vrai deploiement coincidant par hasard avec la mort d'un tiers ; (c) le rapport E0 du
+   2026-09-10 avait deja tranche « a consigner, pas a corriger seul » sur cette meme decouverte.
+4. **Deux criteres d'entree pour `equipment_<famille>` (CORRIGE).** `metricKeys` (page
+   Sessions) ouvrait une ligne des qu'UN JOUEUR DU LOBBY touchait la famille ; `overviewFamilies`
+   (Synthese/Escouade) seulement sur LE SUJET — deux criteres pour la MEME barre subjet-only
+   (`attachOutcomes`/`computeOutcomes` reduisent deja au sujet dans les deux cas). Preuve : deux
+   tests existants (`TestOutcomes_BarreVideRendUnTauxNil`,
+   `TestOutcomes_SeulesLesGrandeursDEquipementPortentLesIssues`) epinglaient une barre VIDE
+   affichee sur la seule foi d'un coequipier — le « reproche sans objet » que le commentaire
+   d'`overviewFamilies` refusait deja de son cote. Source unique creee
+   (`subjectBilanFamilies`, `usage_outcomes.go`), appelee par les deux fonctions ; `deployed_
+   <famille>` (grandeur LOBBY comparative, distincte) reste inchangee. Test commun ajoute
+   (`TestBilan_MetricKeysEtOverviewFamiliesPartagentLeCritere`). Les deux tests existants
+   contradictoires re-ecrits pour refleter la regle corrigee (leur scenario encodait l'ancien
+   comportement).
+5. **`94a28b8b` publie 5 vies sans identite (CONSIGNE, pas de code).** Mesure directe sur
+   l'artefact : slot 512 (frames 0-40, avant/au tout debut du match, t0Film detecte a 300 ms)
+   et slots 590/593/598/600 (chacun une SEULE vie, courant jusqu'aux toutes dernieres frames du
+   match, 5686 au total, jamais close par une mort). Les cinq sont des occurrences UNIQUES de
+   leur slot dans le match (aucune autre vie, nommee ou non, ne partage ce numero de slot) :
+   ni la regle "vie precedente/suivante du meme slot" ni le pont canonique (`SlotXUID`,
+   `BridgeNamedLives=0`) n'ont de matiere. C'est exactement la population residuelle DECRITE et
+   ATTENDUE par l'en-tete de `unnamed_lives.go` (vies avant le debut reel du match + survivants
+   de fin de partie non clos), pas un defaut de code prouve.
+
+**Resultats observes.** Gates : `go build`/`go vet`/`go test` (paquets touches +
+`-tags=integration -p 1`) verts ; `golangci-lint run --new-from-merge-base=feat/v75` 0 issue ;
+web `npm run typecheck` (cache purge) 0 erreur, `npx vitest run src/features/match-replay
+src/features/session-detail src/features/_shared` 2844 tests verts, `npm run lint` 30
+avertissements preexistants (aucun nouveau). Aucun fichier touche ne depasse 500 L
+(`equipmentUsageChart.ts` 232 L ; `usage.go` 419 L). Deux commits (points 2 et 4 — les trois
+consignes n'ont produit aucun diff de code).
+
+**Conclusion / prochaine etape.** Le resume d'usage (`UsagePlayerSummary`) et le document cuit
+ne changent PAS de forme — aucune recuisson ni re-resume a jouer par le superviseur. Trois
+decouvertes non traitees consignees dans le rapport final (hors perimetre du lot) : l'ecart
+Grand Combat/arene sur `repair_field` merite d'etre revisite si D13 change d'avis sur le Grand
+Combat ; la clause de distance `equipmentOrigin` (1,5 m) reste une dette connue partagee avec
+plusieurs autres systemes (CTF, socles d'arme) qui devra se traiter globalement, pas famille par
+famille ; le residu d'identite de `94a28b8b` n'appelle aucune action tant qu'aucune nouvelle
+source (positionnelle inter-slot) n'est disponible.
+
+---
+
 ## [2026-09-10] Master plan, vague 5 — sept lots fusionnes, revue 2 P1 corriges, gate vert, push 992ae412f — Complete (CI de vague verte 4/4 sur 992ae412f)
 
 **Decision technique principale.** Vague ouverte sur les decisions utilisateur du 10-09 (D12) :
