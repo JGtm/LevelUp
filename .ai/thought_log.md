@@ -1,3 +1,22 @@
+## [2026-09-10] Master plan, vague 3 — revue 3.R : 0 P0, 3 P1 corriges (tests manquants + doc), WebP en prod locale — En cours (gate-push, CI)
+
+**Decision technique principale.** Trois P1 recevables sur la vague, tous de la meme
+famille : un chemin livre sans test qui le prouve (MIME `.webp` du service, clic sur les
+plans temps/routes au pas grossier) ou une doc contredite par le code (schema `MapBackground`).
+Chacun est corrige avec un test synthetique et une mutation prouvee (le test rougit quand on
+retire le correctif). Le relecteur du lot WebP avait ete lance par l'executant hors consigne ;
+ses constats ont ete retenus parce que recevables, la consigne (une revue par vague, par le
+superviseur) est rappelee au journal.
+
+**Resultats observes.** Registre `.ai/V7.5/REVUE_VAGUE3_2026-09-10.md`. Recette export en
+navigateur 13/13 (fond de carte 71 % hors couleur dominante, clip 4,95 Mo en 2,2 s) ;
+Tactique servie en `image/webp` avec ETag ; rejeu d'Isolement avec son fond.
+
+**Conclusion / prochaine etape.** Fusion du correctif tactique, `make gate-push`, push =
+CI de la vague 3. Puis 3.4 (nommage des rangs) quand les cinq releves arrivent.
+
+---
+
 ## [2026-09-10] Releves Theater — 7 sur 12 recus : rang 10 = ecran occultant, rang 19 = mur a une utilisation, corps hors table = bots 343 — En cours
 
 **Decision technique principale.** Les reponses sont relues depuis la base de la page publiee
