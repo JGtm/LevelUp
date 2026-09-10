@@ -104391,3 +104391,62 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   seul appariement du depot avec un artefact de rejeu reel, copie/retrait du script,
   attendu par verdict).
 - Prochaine etape : cloture du lot (delivery-checklist, revue adversariale du diff complet).
+
+## [2026-09-10] Rejeu 2D — lot 4.4 vague 4 : fleche hors cadre pour les joueurs EMBARQUES
+- Statut : Complete (hors revue navigateur, laissee au superviseur).
+- Decision technique : le vehicule reçoit DEUX traitements distincts et cumulables. (1) Son
+  glyphe propre (sprite teinte, ou losange neutre si le chassis n'est pas resolu) suit
+  desormais la MEME regle qu'un porteur d'objectif (flagCarriesLayer.ts, B3.2) : seule sa
+  POSITION est plaquee a la marge par `edgeMarkFor` (edgeClamp.ts, module deja livre au
+  chantier B), sa forme ne change pas. (2) Chaque occupant embarque (son pion a pied est deja
+  supprime par `MarkerStyle.embarkedAtSlot`) recoit EN PLUS le signal d'un joueur a pied hors
+  cadre : meme gabarit `offscreenChevron`, meme etiquette « nom · distance ». Regle retenue
+  pour plusieurs occupants du meme vehicule (justifiee dans le commentaire du test et du
+  code) : UNE SEULE fleche par vehicule, jamais une par occupant (ils partagent tous le meme
+  point hors cadre) — etiquette du CONDUCTEUR (siege 0) si son nom est resolu, sinon repli sur
+  un compte « N joueurs » (nouvelle cle i18n `offscreenGroupMarkerFmt`, parite FR/EN). Un
+  vehicule VIDE hors cadre garde son glyphe repositionne mais ne recoit ni fleche ni etiquette
+  (ce n'est pas un joueur hors cadre). L'etiquette hors cadre REMPLACE les noms empiles
+  existants (`drawVehicleOccupantNames`), elle ne s'y ajoute pas : les deux disent « qui est a
+  bord », la version hors cadre porte en plus la distance.
+- Echecs TDD observes (avant tout code, `vehiclesPaint.test.ts`) : 7 des 8 nouveaux cas
+  echouaient sur `count(ops,'rotate')` attendu a 2 (sprite + fleche), obtenu 1 — le calque ne
+  bornait encore rien et n'ajoutait aucune rotation de fleche. Implemente dans
+  `vehiclesPaint.ts` (`drawVehicleOffscreenSignal`, `vehicleOffscreenText`), cable via
+  `useReplayVehicles.ts` (2 nouveaux champs `offscreenLabelOf`/`offscreenGroupLabelOf`) et
+  `ui/ReplayCanvas.tsx` (resolution `REPLAY_TEXT[locale]`, meme convention que
+  `MarkerStyle.offscreenLabelOf` des pions). i18n : `i18nContract.ts` +
+  `i18n.ts` (FR « N joueurs · N m », EN « N players · N m »).
+- Resultats observes : gate complet vert. `npx vitest run src/features/match-replay` : 181
+  fichiers / 2631 tests passed, 1 skipped (ReplayTeams.perf.test.tsx, inchange — meme
+  comportement de gate que le chantier B) ; `npx tsc -b --force` (purge prealable
+  `node_modules/.tmp`) exit 0 ; `npx eslint src/features/match-replay/layers
+  --max-warnings=0` : 1 avertissement PRE-EXISTANT et INCHANGE (`useReplayVehicles.ts`,
+  `react-hooks/preserve-manual-memoization` sur `isEmbarkedAt`, verifie en restaurant
+  temporairement puis en relintant la version HEAD du fichier — meme avertissement, meme
+  cause, sans rapport avec ce lot) ; `eslint` sur `i18n.ts`/`i18nContract.ts` : 0 issue ;
+  `ReplayCanvas.tsx` : 1 avertissement PRE-EXISTANT (`zoneInk.outline`, deja documente au
+  Gate B2 du plan escouade, ligne decalee de 9 par cet ajout mais meme avertissement). Grep
+  hex/Tailwind couleur : 0 occurrence dans les fichiers de production touches. Aucun fichier
+  de production ne depasse le seuil de 500 lignes (max-lines mesure en lignes de code,
+  `vehiclesPaint.ts` a 487 lignes brutes apres ajout).
+- `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md` §8 : la decouverte « Vehicules occupes hors
+  cadre » est statuee `[x]` avec reference a ce lot (worktree/branche/fichiers/tests) — le
+  reste de la decouverte (justification D3 au moment de l'ecriture) reste en place pour
+  memoire.
+- A verifier par le superviseur (navigateur, pas d'acces depuis ce lot) : match Grand Combat
+  avec vehicules occupes, zoom 2x puis 3x, deplacement vers le bord de la carte a bord d'un
+  Warthog/Ghost/Scorpion — attendu : le vehicule reapparait plaque au bord avec une fleche
+  triangulaire pointant vers sa position reelle, l'etiquette « nom du conducteur · distance
+  en m » (ou « N joueurs · distance » si plusieurs occupants et conducteur non identifie), a
+  la couleur d'equipe ; en re-rentrant dans le cadre, le vehicule redevient un sprite/losange
+  normal avec ses noms empiles habituels ; export video de l'instant hors cadre (parite
+  structurelle deja verifiee B4.1, non retestee ici car aucun second chemin de dessin
+  n'existe).
+- Decouverte (non traitee, hors perimetre de ce lot) : les cones de visee des occupants
+  restent dessines a la position bornee du vehicule quand il est hors cadre (angle inchange,
+  ancre deplacee a la marge) — pas de defaut identifie, mais non explicitement demande par le
+  contrat du lot ; a revoir si un retour utilisateur signale une lecture confuse.
+- Prochaine etape : revue adversariale (skill `adversarial-review`) et delivery-checklist a la
+  cloture de la vague 4 par le superviseur (regle "une fois par vague", pas par lot) ; pas de
+  commit sur main, pas de fusion — laisse au superviseur.

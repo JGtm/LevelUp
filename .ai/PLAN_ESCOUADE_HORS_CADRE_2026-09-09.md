@@ -474,8 +474,21 @@ phase non close. `git log --oneline -10` sur `wt/escouade-hors-cadre` pour l'eta
 
 ## 8. Decouvertes (a consigner, PAS a traiter)
 
-- Vehicules occupes hors cadre : un pion embarque n'est pas dessine (`vehiclesLayer` porte
-  l'info) ; sans bornage du vehicule, il disparait sans repere. Hors perimetre (D3).
+- `[x]` Vehicules occupes hors cadre : un pion embarque n'est pas dessine (`vehiclesLayer`
+  porte l'info) ; sans bornage du vehicule, il disparait sans repere. Hors perimetre (D3) A
+  L'ECRITURE de cette decouverte (2026-09-10) — TRAITE le meme jour, lot 4.4 du master plan
+  (`.ai/PLAN_MASTER_2026-09-09.md`, vague 4), worktree `LevelUp-wt-escouade-hors-cadre` /
+  branche `wt/escouade-hors-cadre`. Le glyphe du vehicule (sprite ou losange neutre) est
+  desormais plaque a la marge via `edgeMarkFor` — MEME regle que les porteurs d'objectif
+  (B3.2) : seule sa POSITION change, jamais sa forme. Chaque occupant embarque recoit EN PLUS
+  le signal d'un joueur a pied hors cadre (meme gabarit `offscreenChevron`, etiquette
+  « nom · distance ») : UNE SEULE fleche par vehicule (pas une par occupant, ils partagent le
+  meme point) — etiquette du CONDUCTEUR si nomme, sinon compte « N joueurs »
+  (`i18nContract.offscreenGroupMarkerFmt`). Implemente dans
+  `apps/web/src/features/match-replay/layers/vehiclesPaint.ts`
+  (`drawVehicleOffscreenSignal`/`vehicleOffscreenText`), cable via `useReplayVehicles.ts` et
+  `ui/ReplayCanvas.tsx`. Tests : `vehiclesPaint.test.ts`, describe « bornage hors cadre du
+  vehicule (lot 4.4) », 8 cas TDD (rouge observe avant code sur les 7 qui en dependent).
 - Collision de nom `domain.ExcludedMatch` (A1.2) : traitee DANS le perimetre de l'item
   (renommage en `CompositionExcludedMatch`), consignee ici pour memoire seulement — aucune
   action restante.
