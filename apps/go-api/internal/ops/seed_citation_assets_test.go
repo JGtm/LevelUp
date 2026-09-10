@@ -1,6 +1,7 @@
 package ops
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,6 +81,43 @@ func TestCitationEnabled_HasImagePath(t *testing.T) {
 	for _, m := range defaultCitationMappings() {
 		if m.Enabled && m.ImagePath == "" {
 			t.Errorf("citation %q (%q) est active mais n'a aucun image_path", m.Norm, m.Display)
+		}
+	}
+}
+
+// TestCompositeChildren_ExistAsCitations : tout enfant cité par un composite désigne une
+// citation réellement seedée.
+//
+// Motivation (ajout 2026-09-10, avec les six citations « Artilleur de » qui portent le
+// nombre d'enfants de `vehicle_mastery` de 9 à 15). Un enfant fantôme ne casse RIEN de
+// visible : OverrideCompositeTotals ignore les norms absents de `mappings` — exactement
+// comme il ignore un enfant désactivé — et le composite se contente d'afficher un total
+// plus bas que la réalité. Le défaut est donc silencieux et permanent, ce qui est le pire
+// des cas : une faute de frappe dans la liste JSON coûte un palier au joueur sans qu'aucun
+// signal ne soit émis. Ce test la transforme en échec de build.
+func TestCompositeChildren_ExistAsCitations(t *testing.T) {
+	mappings := defaultCitationMappings()
+	known := make(map[string]struct{}, len(mappings))
+	for _, m := range mappings {
+		known[m.Norm] = struct{}{}
+	}
+	for _, m := range mappings {
+		if m.CompositeChildren == "" {
+			continue
+		}
+		var children []string
+		if err := json.Unmarshal([]byte(m.CompositeChildren), &children); err != nil {
+			t.Errorf("composite %q: composite_children illisible (%v)", m.Norm, err)
+			continue
+		}
+		if len(children) == 0 {
+			t.Errorf("composite %q: composite_children vide", m.Norm)
+			continue
+		}
+		for _, child := range children {
+			if _, ok := known[child]; !ok {
+				t.Errorf("composite %q: enfant %q ne correspond à aucune citation seedée", m.Norm, child)
+			}
 		}
 	}
 }

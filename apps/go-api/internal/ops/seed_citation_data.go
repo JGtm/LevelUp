@@ -3,8 +3,9 @@ package ops
 // seed_citation_data.go — table de donnees: mapping medaille -> citation.
 // Littéral de données (exempt de la regle 80L/fonction : data table).
 
-// defaultCitationMappings — 98 règles citations (88 portées de l'ancien
-// scripts/populate_citation_mappings.py, + 10 citations d'objectif v7.2.1).
+// defaultCitationMappings — 104 règles citations (88 portées de l'ancien
+// scripts/populate_citation_mappings.py, + 10 citations d'objectif v7.2.1,
+// + 6 « Artilleur de » véhicule le 2026-09-10).
 //
 // Catégories : Mode de jeu, Multijoueur, Spartan Companies, Véhicule, Arme,
 // Ennemi (PVE) + composites.
@@ -205,6 +206,74 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatVehicule,
 			Description: "Décrochez des médailles de pilote.",
 			TierTargets: tierTargets10_20_30_50_100, Subcategory: citationSubGeneral},
+
+		// ── PVP — Artilleur de véhicule (6) ───────────────────────────
+		// AJOUT 2026-09-10 (demande utilisateur). Ces six citations comptent les frags
+		// TIRÉS depuis l'armement d'un châssis — ce que le catalogue 343i ne récompense
+		// nulle part : `splatter`/`road_trip`/`lawnmower` comptent l'ÉCRASEMENT, `driver`
+		// la médaille de pilote-assist, les `*_destroyer` la DESTRUCTION d'un engin.
+		//
+		// La mesure ne coûte rien à produire : `weapon_stat` est alimenté depuis la
+		// SOURCE DE DÉGÂT DU FILM (sync/citations_weapons_source.go, bascule du
+		// 2026-09-01), qui nomme le châssis par sa racine de banque sonore. Les clés
+		// hinf_ghost..hinf_wraith sont déjà au registre et déjà verrouillées hors
+		// arsenal (games/weapons/off_arsenal_guard_test.go) : aucune n'émet de record
+		// de dégât 0xd2, donc aucune n'est visible de la voie `weapon_kills` — le
+		// non-double-comptage est une propriété constatée, pas une règle appliquée.
+		//
+		// SIX CHÂSSIS ET PAS PLUS, et pourquoi les autres manquent :
+		//   - Warthog et Warthog gauss : leur artilleur tire depuis une TOURELLE, qui
+		//     porte sa propre racine (`tur_un_machinegun`, `tur_un_gausscannon`). Le
+		//     film nomme l'ARME, jamais le PORTEUR — une citation « Artilleur de
+		//     Warthog » compterait donc aussi les tourelles fixes. Écartée comme
+		//     libellé faux (décision utilisateur du 2026-09-10). La lever demande de
+		//     croiser avec l'occupation du véhicule (`biped_board_vehicle`), soit un
+		//     chantier de décodage, pas un branchement.
+		//   - Gungoose, Mantis, Phaéton : aucune racine de banque mesurée.
+		//   - Chopper, Phantom, Pélican et les tourelles : mesurables, mais aucune
+		//     image « Artilleur de » en stock — à rouvrir le jour où l'image existe.
+		//
+		// StatName = nom canonique EN du registre (weapon_names.toml), pas la clé :
+		// c'est ce que loadWeaponKillsFromSource dépose dans ctx.Stats.
+		{Norm: "ghost_gunner", Display: "Artilleur de Ghost", MappingType: mappingTypeWeaponStat,
+			StatName: "weapon_kills:Ghost", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Artilleur_de_ghost.png",
+			Category:    citationCatVehicule,
+			Description: "Éliminez des Spartans avec l'armement du Ghost.",
+			TierTargets: tierTargets5_10_15_25_50, Subcategory: citationSubGeneral},
+		{Norm: "banshee_gunner", Display: "Artilleur de Banshee", MappingType: mappingTypeWeaponStat,
+			StatName: "weapon_kills:Banshee", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Artilleur_de_banshee.png",
+			Category:    citationCatVehicule,
+			Description: "Éliminez des Spartans avec l'armement du Banshee.",
+			TierTargets: tierTargets5_10_15_25_50, Subcategory: citationSubGeneral},
+		// « Apparition » est le libellé FR arrêté pour le Wraith (weapon_names.toml,
+		// décision D14) — l'image H5 et la citation `wraith_destroyer` le disent déjà.
+		{Norm: "wraith_gunner", Display: "Artilleur de l'Apparition", MappingType: mappingTypeWeaponStat,
+			StatName: "weapon_kills:Wraith", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Artilleur_de_l'apparition.png",
+			Category:    citationCatVehicule,
+			Description: "Éliminez des Spartans avec l'armement de l'Apparition.",
+			TierTargets: tierTargets5_10_15_25_50, Subcategory: citationSubGeneral},
+		{Norm: "scorpion_gunner", Display: "Artilleur de Scorpion", MappingType: mappingTypeWeaponStat,
+			StatName: "weapon_kills:Scorpion", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Artilleur_de_scorpion.png",
+			Category:    citationCatVehicule,
+			Description: "Éliminez des Spartans avec l'armement du Scorpion.",
+			TierTargets: tierTargets5_10_15_25_50, Subcategory: citationSubGeneral},
+		{Norm: "wasp_gunner", Display: "Artilleur de Wasp", MappingType: mappingTypeWeaponStat,
+			StatName: "weapon_kills:Wasp", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Artilleur_de_wasp.png",
+			Category:    citationCatVehicule,
+			Description: "Éliminez des Spartans avec l'armement du Wasp.",
+			TierTargets: tierTargets5_10_15_25_50, Subcategory: citationSubGeneral},
+		{Norm: "rockethog_gunner", Display: "Artilleur de Warthog lance-roquettes", MappingType: mappingTypeWeaponStat,
+			StatName: "weapon_kills:Rockethog", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Artilleur_de_warthog_lance-roquettes.png",
+			Category:    citationCatVehicule,
+			Description: "Éliminez des Spartans avec l'armement du Warthog lance-roquettes.",
+			TierTargets: tierTargets5_10_15_25_50, Subcategory: citationSubGeneral},
+
 		{Norm: "frag_grenade", Display: "Grenade à fragmentation", MappingType: mappingTypeMedal, MedalID: 2648272972, Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_Grenade_à_fragmentation.png",
 			Category:    citationCatArme,
@@ -654,7 +723,13 @@ func defaultCitationMappings() []CitationMapping {
 			Description:       "Obtenez toutes les citations de grenade.",
 			Subcategory:       "Grenade"},
 		{Norm: "vehicle_mastery", Display: "Maîtrise de véhicule", MappingType: mappingTypeComposite,
-			CompositeChildren: `["splatter","driver","wraith_destroyer","banshee_destroyer","ghost_destroyer","mongoose_destroyer","scorpion_destroyer","warthog_destroyer","wasp_destroyer"]`,
+			// Neuf enfants d'origine + les six « Artilleur de » du 2026-09-10. Le max du
+			// composite passe donc de 9 à 15 : la progression déjà écrite reste valide
+			// (elle compte des enfants masterisés, pas un total brut), mais le palier
+			// final recule pour tout le monde. Un re-seed impose le backfill
+			// `--citations-recompute-all` (docs/COMMENDATIONS.md), sans quoi les six
+			// nouveaux enfants restent à zéro sur l'historique.
+			CompositeChildren: `["splatter","driver","wraith_destroyer","banshee_destroyer","ghost_destroyer","mongoose_destroyer","scorpion_destroyer","warthog_destroyer","wasp_destroyer","ghost_gunner","banshee_gunner","wraith_gunner","scorpion_gunner","wasp_gunner","rockethog_gunner"]`,
 			Enabled:           true,
 			ImagePath:         wpH5 + "Vehicle_Mastery.png",
 			Category:          citationCatVehicule,
@@ -705,6 +780,7 @@ var citationDisplayEN = map[string]string{
 	"assassin":            "Assassin",
 	"assistant":           "Assistant",
 	"banshee_destroyer":   "Banshee Destroyer",
+	"banshee_gunner":      "Banshee Gunner",
 	"bulldozer":           "Bulldozer",
 	"charge":              "Storm the Walls",
 	"close_combat":        "Close Quarters",
@@ -718,6 +794,7 @@ var citationDisplayEN = map[string]string{
 	"forced_annexation":   "Aggressive Expansion",
 	"frag_grenade":        "Frag Grenade",
 	"ghost_destroyer":     "Ghost Destroyer",
+	"ghost_gunner":        "Ghost Gunner",
 	"grenade_mastery":     "Grenade Mastery",
 	"grunt_slayer":        "Grunt Slayer",
 	"headshot":            "Headshot",
@@ -728,7 +805,9 @@ var citationDisplayEN = map[string]string{
 	"multikill":           "Multikill",
 	"opportunist":         "Combat Opportunist",
 	"plasma_grenade":      "Plasma Grenade",
+	"rockethog_gunner":    "Rockethog Gunner",
 	"scorpion_destroyer":  "Scorpion Destroyer",
+	"scorpion_gunner":     "Scorpion Gunner",
 	"slayer_victory":      "Slayer Victory",
 	"spartan_carnage":     "Spartan Spree",
 	"spartan_killer":      "Spartan Slayer",
@@ -738,7 +817,9 @@ var citationDisplayEN = map[string]string{
 	"vehicle_mastery":     "Vehicle Mastery",
 	"warthog_destroyer":   "Warthog Destroyer",
 	"wasp_destroyer":      "Wasp Destroyer",
+	"wasp_gunner":         "Wasp Gunner",
 	"wraith_destroyer":    "Wraith Destroyer",
+	"wraith_gunner":       "Wraith Gunner",
 	"all_weapons_mastery": "Weapon Mastery",
 	// ── Citations d'objectif v7.2.1 (source objective_stat) ────────────────────
 	// Noms EN arbitrés par l'utilisateur le 2026-07-25 ; le Norm en est la forme
@@ -921,6 +1002,13 @@ var citationDescriptionEN = map[string]string{
 	"sentinel_beam_mastery":  "Kill enemy Spartans with the Sentinel Beam.",
 	"disruptor_mastery":      "Kill enemy Spartans with the Disruptor.",
 	"shock_rifle_mastery":    "Kill enemy Spartans with the Shock Rifle.",
+	// ── Artilleur de véhicule (2026-09-10, source film) ────────────────────────
+	"ghost_gunner":     "Kill enemy Spartans with the Ghost's weapons.",
+	"banshee_gunner":   "Kill enemy Spartans with the Banshee's weapons.",
+	"wraith_gunner":    "Kill enemy Spartans with the Wraith's weapons.",
+	"scorpion_gunner":  "Kill enemy Spartans with the Scorpion's weapons.",
+	"wasp_gunner":      "Kill enemy Spartans with the Wasp's weapons.",
+	"rockethog_gunner": "Kill enemy Spartans with the Rockethog's weapons.",
 	// ── Éliminations / natives Infinite-only (trad fidèle du FR) ────────────────
 	"avenger":         "Kill the enemy responsible for your previous death.",
 	"sentinel_slayer": "Kill Sentinels.",
