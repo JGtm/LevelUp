@@ -1020,7 +1020,7 @@ traité (justifié).
   répulseur sans aucune ligne en base toutes passes (réserve maintenue), chute témoin en base et
   perdue dans la seule vue match — provenance film recopiée (`85ab36cdb`), vérifié par l'API.
   Revue 4.R : relecteur tests 0 constat recevable, 9 conditions tenues ; relecteur données en cours.
-| 4.R | Revue (persist touché par 4.3 : deux relecteurs, courts), `make gate-push`, CI | — | P0 = 0, P1 = 0 | [ ] |
+| 4.R | Revue (persist touché par 4.3 : deux relecteurs, courts), `make gate-push`, CI | — | P0 = 0, P1 = 0 | [~] 10-09 : revues faites — relecteur A (L1 + L4, Opus) 0 P0 / 0 P1 / 3 P2 consignés, 20 conditions tenues ; relecteur B (L6 + L3, Sonnet) 0 constat recevable, 9 conditions tenues, 2 mutations jouées ; registre `.ai/V7.5/REVUE_VAGUE4_2026-09-10.md`. `make gate-push` lancé 13:24 (détaché, `gate_push_v4.log`) ; push = CI de vague à suivre |
 - **2026-09-10 (après-midi, 4.3 à 4.5)** — 4.3 fusionné (`0db1b21c6`), recuisson 51 du parc
   64/64 en 22 min, us5 re-résumé ; `4f77afc1` hors table 18 → 8 (le tableau de l'API nomme 10
   vies, l'index que personne ne déclare reste non résolu par décision). 4.5 sans artefact :
@@ -1650,6 +1650,25 @@ L63 (`loadGameVariant` erreur avalée), L595 (3e copie clé de roster bot), L575
   répulseur sans aucune ligne en base toutes passes (réserve maintenue), chute témoin en base et
   perdue dans la seule vue match — provenance film recopiée (`85ab36cdb`), vérifié par l'API.
   Revue 4.R : relecteur tests 0 constat recevable, 9 conditions tenues ; relecteur données en cours.
+
+### Découvertes de la vague 4 (revue 4.R, 2026-09-10 — consignées, non traitées)
+
+- P2 `cmd/levelup/cmd_backfill_usage_summary.go:285-292` : la reprise `(rev, schema)` ne refuse
+  pas un artefact au schéma < 51 après le bump us5 ; dans l'ordre inverse (re-résumé avant
+  recuisson) le bilan d'équipement sortirait vide et marqué à jour. Ordre supervisé respecté ici.
+- P2 `internal/analysis/replay/identity_registry_creation.go:374-378` : compteur de l'alarme
+  « index lu mais absent de la table » soustrait une population de lecture directe d'un résidu
+  post-tableau → alarme muette ou sous-évaluée sur les films à sièges de bots nommés.
+- P2 (préexistant) `internal/sync/killcollector/positions.go:484-489` : le collecteur de sync ne
+  passe ni `Bots` ni `Participants` au registre ; `match_lives` et l'artefact divergent sur un
+  siège partagé bot → humain, et la voix `tableau_api` n'a aucun producteur vers `match_lives`.
+- P2 (préexistant) : 8 artefacts sur 64 sans table de capacités (palette « non classée »,
+  ≤ 7 lectures) dont `4f77afc1` malgré 187 épisodes de capacité — source des 130 « prises sans
+  famille » du résumé us5 ; à instruire avec le seuil de classement de la palette.
+- P3 `apps/web/src/features/match-replay/model/equipmentKeptLogic.ts` : copie web des racines
+  de libellé (`EQUIPMENT_CHANGE_FAMILY_STEMS`) désormais remplaçable par `abilityLabels[].family`.
+- P3 rejeu : cônes de visée des occupants d'un véhicule hors cadre dessinés à la position
+  bornée (angle inchangé) — pas de défaut constaté.
 ## 7. Reprise de session
 - **2026-09-10 (après-midi, 4.3 à 4.5)** — 4.3 fusionné (`0db1b21c6`), recuisson 51 du parc
   64/64 en 22 min, us5 re-résumé ; `4f77afc1` hors table 18 → 8 (le tableau de l'API nomme 10
