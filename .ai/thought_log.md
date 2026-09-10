@@ -1,3 +1,35 @@
+## [2026-09-10] Master plan, lot 4.5 — la chute mesuree au film sort en « environnement » sur la vue match (provenance recopiee) — Complete
+
+**Decision technique principale.** Le temoin de chute du plan (match `1eedd3c8`, Nemesis,
+Theater 02:04, EIcRriizz tue par JGtm) EST en base : `match_kill_events_latest` a la ligne a
+124 140 ms, source_tag 0x00403594 (classe `DEGAT_GLOBAL`, VALIDE), lecture « source-victime »,
+diverges = vrai. Le registre la traduit bien en `hinf_environment` (voie 2), et `weapons` de
+metadata connait la cle. La perte etait en aval, dans la SEULE vue match : le lecteur film
+`match_view_repo_weapons_source.go` produit des `BulkWeaponKillRaw` sans provenance, et
+`buildViewerFragDistribution` construit ses `port.WeaponKillRow` sans `FromDamageSource` — or
+`fragdist.isRegistryFragClass` ne sert equipement/environnement QUE mesures au film (verrou
+Halo 5 `h5_environmental`). Correctif minimal : un champ `FromDamageSource` sur le type de
+domaine, pose a `true` par le lecteur film, recopie par l assemblage. Les autres chemins
+(session, synthese, explorateur, escouade) passaient deja par le depot qui pose la provenance.
+
+**Resultats observes.** Test `TestBuildViewerFragDistribution_ChuteMesureeAuFilm_ServieEnEnvironnement`
+rouge avant (champ absent), vert apres ; mutation prouvee (provenance forcee a faux → rouge) ;
+`go vet` + `go test` domain/service verts, `platform/duckdb` (MatchView|Weapon|KillSource) vert.
+Le second cas du test fige que la meme ligne SANS provenance reste ecartee (Halo 5 inchange).
+`match_view_raw.go` etait deja a 563 lignes (dette gelee) : +6 lignes, commentaire condense.
+
+**Repulseur (reserve `07104b31`)** : ZERO ligne dans `match_kill_events`, toutes passes
+confondues (5 revisions de decodeur, 979 matchs en `killsource-2026-09-05`). Le « seul kill »
+mesure le 29/08 n a pas survecu a la passe killsource v2 : il n y a AUCUN temoin a relever en
+Theater, la reserve reste posee telle quelle dans `labels.tsv`. Pas d artefact Theater n°2 :
+il n aurait rien a montrer.
+
+**Conclusion / prochaine etape.** Fusion dans `feat/v75`, verification en navigateur sur
+`1eedd3c8` apres redemarrage du serveur (attendu : sidearm 9 / melee 4 / environnement 1,
+plus de « non attribue »), puis revue 4.R.
+
+---
+
 ## [2026-09-10] Master plan, vague 3 — revue 3.R : 0 P0, 3 P1 corriges (tests manquants + doc), WebP en prod locale — Complete (gate-push vert, CI verte)
 ## [2026-09-10] Lot 4.3 item 2 — la table rang -> famille publiee dans le document, les racines de libelle supprimees — Complete
 

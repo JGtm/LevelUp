@@ -314,6 +314,12 @@ type BulkWeaponKillRaw struct {
 	// d'épaule attribués à l'arme TENUE, kill_kind <> 'weapon' sur H5 ; 0 sur Infinite).
 	// buildFragDistribution les retire des classes gun (anti-double-comptage V72-15.3).
 	MechanicKills int
+	// FromDamageSource : ligne MESUREE dans la source de degat du film (match_view_repo_weapons_
+	// source.go), pas lue dans `v_weapon_kills`. Seule provenance qui ouvre les classes hors
+	// arsenal (equipement, environnement) au sunburst par match — meme contrat que
+	// `port.WeaponKillRow.FromDamageSource` (verrou Halo 5 : fragdist_halo5_golden_test.go).
+	// Lot 4.5, 2026-09-10 : sans lui la chute mesuree au film sortait en « non attribue ».
+	FromDamageSource bool
 }
 
 // MatchEnrichmentRaw : données brutes de Q18.
