@@ -151,8 +151,10 @@ var citationTitleMappingDirs = []string{"halo_infinite", "halo_5"}
 //     son propre Display disait pourtant « MK50 ».
 //   - `bandit_mastery`    demandait « Bandit Evo », qui est le libelle FR, la ou le moteur
 //     attend l'identite EN « M392 Bandit ».
-//   - `mutilator_mastery` demande « Mutilator », absent du registre — 1262 frags mesures au
-//     corpus (138 807 morts, 1384 matchs) qui ne comptent pour aucune citation.
+//   - `mutilator_mastery` demandait « Mutilator », absent du registre — 1262 frags mesures au
+//     corpus (138 807 morts, 1384 matchs). Repare le 2026-09-10 par le lot kill feed
+//     `PORTEUR`, qui a pose `hinf_mutilator` au registre : ce test est desormais vert SANS
+//     aucune tolerance, et il ne doit jamais en reprendre.
 //
 // Les trois sont enfants de `human_weapons_mastery` : son palier final etait donc
 // inatteignable pour tout le monde, en silence.
@@ -173,43 +175,9 @@ func TestWeaponStatCitations_ResolvableName(t *testing.T) {
 		if _, ok := known[name]; ok {
 			continue
 		}
-		if reason, toleree := weaponStatNamesEnAttente[m.Norm]; toleree {
-			t.Logf("citation %q: nom %q non resolu, TOLERE — %s", m.Norm, name, reason)
-			continue
-		}
 		t.Errorf("citation %q: StatName demande l'arme %q, qui n'existe ni au registre "+
 			"ni dans weapon_names.toml — la citation comptera zero en silence", m.Norm, name)
 	}
-}
-
-// weaponStatNamesEnAttente — allowlist DATEE, une entree, et la seule tolerance de ce test.
-//
-// `mutilator_mastery` reste rouge dans les faits : le Mutilateur n'est pas au registre alors
-// qu'il tue (1262 morts mesurees). La reparation demande de toucher registry.go,
-// weapon_names.toml, killicon/data/rules.tsv et off_arsenal_guard_test.go — les QUATRE
-// fichiers qu'un autre chantier (genre `PORTEUR`, kill feed) tient en vol le 2026-09-10.
-// Les editer en parallele produirait exactement le conflit que ce depot passe son temps a
-// eviter, pour un defaut qui existe depuis des mois.
-//
-// CRITERE DE RETRAIT, mesurable et non negociable : des que `hinf_mutilator` figure au
-// registre avec son libelle, cette entree DISPARAIT et le test devient vert sans elle.
-// DATE CIBLE : 2026-10-01. Passee cette date sans retrait, l'entree est une dette a traiter,
-// pas une tolerance. Ne JAMAIS ajouter une ligne ici pour faire passer un test : la seule
-// raison valable est une reparation deja engagee ailleurs, nommee et datee.
-//
-// LA REPARATION EST DEJA ECRITE, et cette entree est donc deja condamnee : commit `8ebbb1483`
-// du lot kill feed `PORTEUR` (branche `wt/killfeed-porteur`, worktree LevelUp-wt-killfeed-porteur)
-// pose `hinf_mutilator` au registre, sa famille, son libelle (en = "Mutilator") et la
-// `weapon_key` sur la regle `NOM Mutilator`. Ce commit n'est PAS encore fusionne dans
-// `feat/v75` le 2026-09-10 : d'ou la survie temporaire de cette ligne. GESTE A FAIRE des la
-// fusion : supprimer cette entree ET la map si elle reste vide, puis relancer
-// TestWeaponStatCitations_ResolvableName — il doit etre vert SANS tolerance. Le laisser
-// derriere serait exactement la « compatibility guard forever » que le diagnostic de revue
-// du depot interdit.
-var weaponStatNamesEnAttente = map[string]string{
-	"mutilator_mastery": "Mutilateur absent du registre ; reparation portee par le lot " +
-		"kill feed `PORTEUR` (2026-09-10). Retrait des que `hinf_mutilator` est au registre, " +
-		"cible 2026-10-01.",
 }
 
 // knownWeaponNames rend l'ensemble des noms d'armes qu'une citation peut demander : les noms
