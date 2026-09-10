@@ -102,6 +102,13 @@ export interface EquipmentUsageTally {
   deployed: Record<string, number>
   /** Objets lâchés à la mort, par famille du document. */
   dropped: Record<string, number>
+  /**
+   * Consommations de charge (`equipmentChanges` `spent`), par famille CANONIQUE — jointes sur
+   * le rang PRÉCÉDENT (`from`), jamais `r` (vide sur un `spent`). Côté « utilisé » de tout
+   * déployable SANS pièce engendrée (lot 5.7, `equipmentKeptLogic.ts` : `usageUsedOf`) — jumeau
+   * de `SpentByFamily` côté Go (`usage_summary_outcomes.go`, révision `us6`).
+   */
+  spent: Record<string, number>
   /** Lancers de grenade, par RANG du catalogue du document (`grenadeLabels[rank]`). */
   grenades: Record<number, number>
   /**
@@ -216,7 +223,7 @@ export interface EquipmentUsage {
 
 /** Un compteur vide. Chaque appel rend un NOUVEL objet : les tables ne se partagent pas. */
 function emptyTally(): EquipmentUsageTally {
-  return { grapplePulls: 0, episodes: {}, deployed: {}, dropped: {}, grenades: {}, kept: {} }
+  return { grapplePulls: 0, episodes: {}, deployed: {}, dropped: {}, spent: {}, grenades: {}, kept: {} }
 }
 
 /** Incrémente une case de table, en la créant au besoin. */
@@ -244,6 +251,7 @@ function mergeTally(dst: EquipmentUsageTally, src: EquipmentUsageTally): void {
   }
   for (const [fam, n] of Object.entries(src.deployed)) bump(dst.deployed, fam, n)
   for (const [fam, n] of Object.entries(src.dropped)) bump(dst.dropped, fam, n)
+  for (const [fam, n] of Object.entries(src.spent)) bump(dst.spent, fam, n)
   for (const [rank, n] of Object.entries(src.grenades)) bump(dst.grenades, Number(rank), n)
   for (const [fam, n] of Object.entries(src.kept)) bump(dst.kept, fam, n)
 }
@@ -252,7 +260,9 @@ function mergeTally(dst: EquipmentUsageTally, src: EquipmentUsageTally): void {
 export function tallyIsEmpty(t: EquipmentUsageTally): boolean {
   if (t.grapplePulls > 0) return false
   if (Object.values(t.episodes).some((e) => e.count > 0)) return false
-  return ![t.deployed, t.dropped, t.grenades, t.kept].some((m) => Object.values(m).some((n) => n > 0))
+  return ![t.deployed, t.dropped, t.spent, t.grenades, t.kept].some((m) =>
+    Object.values(m).some((n) => n > 0),
+  )
 }
 
 /**
@@ -465,7 +475,9 @@ export function tallyTotal(t: EquipmentUsageTally): number {
   const sum = (m: Record<string, number> | Record<number, number>) =>
     Object.values(m).reduce((a: number, b: number) => a + b, 0)
   const episodes = Object.values(t.episodes).reduce((a, e) => a + e.count, 0)
-  return t.grapplePulls + episodes + sum(t.deployed) + sum(t.dropped) + sum(t.grenades)
+  return (
+    t.grapplePulls + episodes + sum(t.deployed) + sum(t.dropped) + sum(t.spent) + sum(t.grenades)
+  )
 }
 
 /** coverageOf recopie les dénominateurs du document — aucun n'est recalculé ni deviné. */

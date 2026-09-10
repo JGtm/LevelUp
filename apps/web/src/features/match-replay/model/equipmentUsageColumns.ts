@@ -18,10 +18,10 @@ import { formatDurationMMSS } from '@/lib/formatters/duration'
 
 import { catalogText } from '../i18n/catalogLabel'
 import { PLACEMENT_RENDER } from '../layers/equipmentPlacementsLayer'
-import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
 import { usageOutcomeColor } from './equipmentUsageChart'
 import type { EquipmentUsage, EquipmentUsageTally } from './equipmentUsageLogic'
 import { droppedFamilyOf, isGameChangerFamily } from './gameChangers'
+import { usageUsedOf } from './equipmentKeptLogic'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayText } from '../i18n/i18nContract'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -247,28 +247,28 @@ function activeEpisodesGroup(
   }
 }
 
-/** Vrai pour les deux familles dont le côté « utilisé » vient des ÉPISODES, pas des poses. */
-function isEpisodeMeasuredFamily(family: string): boolean {
-  return family === EQUIP_FAMILY_CAMO || family === EQUIP_FAMILY_OVERSHIELD
-}
-
 /**
  * equipmentPileParts — LES TROIS ISSUES D'UNE FAMILLE (P1), pour UN compteur.
  *
- *  - `used` : le côté « utilisé » (P2) — les épisodes pour les deux power-ups, les poses
- *    déployées pour tout le reste ;
+ *  - `used` : le côté « utilisé » (P2), lu par `usageUsedOf` (`equipmentKeptLogic.ts`, lot 5.7,
+ *    même fonction que le calcul de `kept`) — les épisodes pour les deux power-ups, les poses
+ *    déployées pour le seul MUR, les CONSOMMATIONS de charge (`spent`) pour tout le reste ;
  *  - `dropped` : lâché en mourant (`tally.dropped`, ponté vers son vocabulaire de pose pour
  *    les power-ups — `droppedFamilyOf`) ;
- *  - `kept` : gardé sans l'utiliser, DÉJÀ DÉRIVÉ par `equipmentUsageLogic.ts`
+ *  - `kept` : gardé sans l'utiliser, DÉJÀ DÉRIVÉ par `equipmentKeptLogic.ts`
  *    (`taken - used - dropped`, cf. `tally.kept`) — rien à recalculer ici.
+ *
+ * LA MÊME FONCTION `usageUsedOf` NOURRIT LES DEUX CALCULS (`kept` ET l'affichage ici) : avant le
+ * lot 5.7 cette cellule relisait `tally.deployed[family]` pour toute famille hors power-up, un
+ * second calcul divergent de celui qui dérive `kept` — la somme `used + kept + dropped` pouvait
+ * alors ne plus valoir `taken` (P1) pour les déployables sans pièce engendrée. Un seul calcul,
+ * jamais deux (CLAUDE.md n°6).
  */
 function equipmentPileParts(
   tally: EquipmentUsageTally,
   family: string,
 ): { used: number; kept: number; dropped: number } {
-  const used = isEpisodeMeasuredFamily(family)
-    ? intValue(tally.episodes[family]?.count)
-    : intValue(tally.deployed[family])
+  const used = intValue(usageUsedOf(tally, family))
   const dropped = intValue(tally.dropped[droppedFamilyOf(family)])
   const kept = intValue(tally.kept[family])
   return { used, kept, dropped }
