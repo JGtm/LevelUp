@@ -30,7 +30,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { replayClock } from './replayClock'
 import type { PresenceHeader } from './presenceFeed'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import { rosterEntryKey, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 
 /** Fenêtre d'appariement départ↔arrivée. Large à dessein : le jeu peut mettre du temps à
  * combler un siège, et deux relais simultanés restent départagés par la proximité. */
@@ -177,7 +177,7 @@ function pairSuccessions(
 function filmIndexByIdentity(doc: ReplayDocumentReady): Map<string, number> {
   const out = new Map<string, number>()
   for (const e of doc.roster ?? []) {
-    const key = e.xuid || (e.bot && e.name ? `bot:${e.name}` : '')
+    const key = rosterEntryKey(e)
     if (key) out.set(key, e.filmIndex)
   }
   return out
