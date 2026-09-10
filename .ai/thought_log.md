@@ -1,3 +1,53 @@
+## [2026-09-10] Lot 6.5 — Armes au sol : jointure reparee, infobulle, filtre armes speciales — Complete (3 commits TDD, worktree LevelUp-wt-armes-au-sol-calque)
+
+**Decision technique principale.** Trois items du plan maitre, TDD strict, un commit par item.
+(0) Jointure : decision de normaliser CÔTÉ WEB (`weaponLabelKeyOf`, nouveau helper dans
+`useReplayWeaponPads.ts`, applique aux trois resolutions deja partagees par les socles et les
+armes au sol — `padScaleFor`/`padNameFor`/`padIconRefFor`) plutot que d'aligner l'ecriture Go de
+`GroundWeapon.W` sur `0x%08X` : aucun autre lecteur Go ou web ne depend de la casse minuscule
+(verifie par grep), et aligner cote Go aurait exige une recuisson complete des 64 artefacts locaux
+et de la production, hors perimetre. La fonction est idempotente sur la forme deja canonique
+(les socles ne regressent pas). Corrige aussi le commentaire invers de `GroundWeapon.Dropper`
+(CLAUDE.md n°9) qui promettait un lien avec le flux delta de prises/lachers absent du code.
+(A) Infobulle une ligne (`ReplayGroundWeaponTip.tsx`, nouveau) : `groundWeaponAt` (nouveau, meme
+patron que `padAt`/`placementAt`) plus survol/etat dans `useReplayGroundWeapons.ts`, qui
+`hoverLayers.ts` n'a pas eu a changer — il promettait deja « un quatrieme calque survolable en
+une ligne ». (B) `WeaponLabel.Role` publie A LA REQUETE (comme Key/Tint), depuis un nouvel
+`internal/games/weapons.RolesByKey()` purement in-memory (zero ouverture DuckDB) ; filtre web
+« armes speciales seulement » (sniper/power/special), fille de la bascule du calque.
+
+**Resultats observes.** TDD complet avec rouge prouve puis mutation prouvee : (0) test sur un
+extrait REEL de l'artefact `9ffce8ef` (objet `w:"2b1824d5"` + libelle BR75) — rouge confirme en
+retirant `weaponLabelKeyOf` des trois call sites (l'icone et le nom redeviennent introuvables,
+reproduisant exactement le defaut du rapport), vert restaure. Garde-rail Go
+`TestGroundWeaponItemsWEstMinusculeSansPrefixe` fige `%08x`. (A) mutation sur la garde `origin ===
+'spawned'` et sur le filtre du hook : les deux font rougir les tests concernes, confirmes puis
+restaures. (B) `TestOpenAPIYAMLIsUpToDate` vert apres `make openapi-gen` + `generate-types` :
+diff purement additif (+`role: type: string`) sur `WeaponLabel`, propage a `replaydoc.WeaponLabel`
+et `convert_document.go` (piege de parite attrape par `parity_test.go`, corrige dans le meme
+commit). Un piege TypeScript decouvert et documente : `.filter()` sur `doc.groundWeapons` (type
+d'intersection compose par `ReplayDocument`) perd le membre litteral `'dropped' | 'spawned'` au
+profit du `string` du schema OpenAPI genere — contourne en assignant d'abord a une variable
+`readonly ReplayGroundWeapon[]` explicitement typee avant de filtrer.
+Gates : Go build/vet/tests (`internal/analysis/replay`, `internal/service/replayview`,
+`internal/api`, `internal/games/weapons`, `internal/service`,
+`internal/games/halo_infinite/replaylabels`) verts ; `golangci-lint --new-from-merge-base=feat/v75`
+0 issue ; `TestOpenAPIYAMLIsUpToDate` vert. Web : `tsc -b --force` (cache purge) 0 erreur,
+`vitest run src/features/match-replay` 2664/2664 (+63 tests neufs), `npm run lint` 30/0 warnings
+(baseline inchangee), 0 hex/classe Tailwind couleur introduits.
+
+**Conclusion / prochaine etape.** Trois commits sur `wt/armes-au-sol-calque` (worktree dedie) :
+`fix(replay): item 0`, `feat(replay): item A`, `feat(replay): item B` — chacun verifie
+independamment vert (build a chaque etape, restauration progressive depuis une sauvegarde
+scratchpad des fichiers finaux). Aucun push, aucune fusion. Reste a l'utilisateur : verifier a
+l'ecran sur un match qui porte des armes au sol (le rapport n'avait pas pu le confirmer depuis le
+worktree precedent) — allumer le calque, survoler une arme, activer le filtre. Options C/D/E/F du
+rapport non retenues, hors perimetre de ce lot (bloc de match, page Tactique, munitions, lacheur
+volontaire — exclus explicitement). Decouverte non traitee, deja notee au rapport source : le
+double zero d'attribution sur `30724141`/`0797ce72` (§2.5), a rapprocher du lot 6.1.
+
+---
+
 ## [2026-09-10] Lot 6.3 — Armes lachees au sol : investigation bornee, le calque ne dessine RIEN (cle de vignette) — Complete (diagnostic seul)
 
 **Decision technique principale.** Investigation bornee sur les 64 artefacts du parc (schema 51),

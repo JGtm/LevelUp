@@ -67,6 +67,9 @@ func (s *replayService) resolveWeaponLabels(ctx context.Context, doc *replay.Rep
 		// Une arme sans teinte déclarée (mêlée, arme non classée) garde la teinte neutre
 		// du thème : la table est partielle par nature, comme celle des effets.
 		lbl.Tint = cat.Tints[key]
+		// Le RÔLE (lot armes au sol, 2026-09-10) suit la même clé : une arme dont le
+		// registre ne classe pas de rôle garde une chaîne vide, jamais celui d'une voisine.
+		lbl.Role = cat.Roles[key]
 		doc.WeaponLabels[id] = lbl
 	}
 }

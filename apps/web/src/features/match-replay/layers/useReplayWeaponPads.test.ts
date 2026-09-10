@@ -28,10 +28,13 @@ import { testReplayDoc } from '../test/testDoc'
 import { count, diamondCentres, recordingContext } from '../test/recordingContext'
 import {
   crossedWeaponPads,
+  isSpecialWeaponRole,
   padIconRefFor,
   padNameFor,
   padScaleFor,
   useReplayWeaponPads,
+  weaponLabelKeyOf,
+  weaponRoleOf,
 } from './useReplayWeaponPads'
 import { padFamilyOf } from '../model/weaponPadFamilies'
 import { padStateAt } from '../model/weaponPadTime'
@@ -125,6 +128,106 @@ describe('padIconRefFor — quelle image, et d’où elle vient', () => {
   it('sans image, RIEN — le calque posera son glyphe neutre, jamais l’icône d’un voisin', () => {
     expect(padIconRefFor(INCONNUE, LABELS, 'halo_infinite')).toBeNull()
     expect(padIconRefFor(SNIPER, undefined, 'halo_infinite')).toBeNull()
+  })
+})
+
+// --- LA JOINTURE DES ARMES AU SOL (lot 6.5, 2026-09-10) ---------------------------------
+
+describe('weaponLabelKeyOf — la clé canonique, quelle que soit la forme reçue', () => {
+  it('normalise la forme des armes au sol (minuscules, sans préfixe) vers la forme canonique', () => {
+    expect(weaponLabelKeyOf('2b1824d5')).toBe('0x2B1824D5')
+    expect(weaponLabelKeyOf('0a1992bc')).toBe('0x0A1992BC')
+  })
+
+  it('est IDEMPOTENTE sur la forme déjà canonique — les socles ne régressent pas', () => {
+    expect(weaponLabelKeyOf('0x2B1824D5')).toBe('0x2B1824D5')
+    expect(weaponLabelKeyOf(SNIPER)).toBe(SNIPER)
+  })
+
+  it('laisse INCHANGÉE une clé qui n’a pas la forme d’un hexadécimal court', () => {
+    // Une clé d'équipement de socle (`padEquipmentFamilyOf`) n'a rien à faire ici : elle est
+    // interceptée avant cet appel dans les trois résolutions, mais la fonction reste sûre si
+    // on la lui passe quand même.
+    expect(weaponLabelKeyOf(POWERUP)).toBe(POWERUP)
+  })
+})
+
+/**
+ * LA JOINTURE RÉELLE, SUR UN EXTRAIT DE L'ARTEFACT `9ffce8ef` (schéma 51, corpus du rapport
+ * `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`) : UN objet de `groundWeapons` et SON libellé
+ * de `weaponLabels`, copiés tels quels du document réel (213 objets `groundWeapons`).
+ *
+ * CE QUE CE TEST PROUVE, ET C'EST LE DÉFAUT DU RAPPORT §0 : `item.w` vaut `"2b1824d5"`
+ * (minuscules, sans préfixe — l'écriture `%08x` de `document_ground_weapon_items.go`) et
+ * `weaponLabels` est indexé `"0x2B1824D5"` (l'écriture `0x%08X` du service). AVANT ce lot,
+ * `labels?.[item.w]` rendait `undefined` sur cet objet comme sur les 213 du film : aucune
+ * icône, aucun nom. Ce test échoue si `padIconRefFor`/`padNameFor` cessent de normaliser la
+ * clé avant la lecture.
+ */
+const GROUND_WEAPON_9FFCE8EF = {
+  t0: 150, t1: 150, t1max: 338, x: 7.2025757, y: -3.6161804,
+  w: '2b1824d5', origin: 'dropped' as const, dropper: 512, end: 'seen' as const, picker: -1,
+}
+const LABEL_BR75_9FFCE8EF = {
+  en: 'BR75', fr: 'BR75', fx: 'ballistic', key: 'hinf_br75',
+  img: '/static/weapons-assets/halo_infinite/jeu/contour-01.png', tinted: true,
+}
+const LABELS_9FFCE8EF: ReplayDocumentReady['weaponLabels'] = {
+  '0x2B1824D5': LABEL_BR75_9FFCE8EF,
+}
+
+describe('la jointure groundWeapons -> weaponLabels, sur l’extrait réel 9ffce8ef', () => {
+  it('l’icône se RÉSOUT — le calque a de quoi dessiner l’objet', () => {
+    const ref = padIconRefFor(GROUND_WEAPON_9FFCE8EF.w, LABELS_9FFCE8EF, 'halo_infinite')
+    expect(ref).not.toBeNull()
+    expect(ref?.url).toContain('silhouette-01.png')
+  })
+
+  it('le nom se RÉSOUT, jamais l’hexadécimal brut', () => {
+    const nom = padNameFor(GROUND_WEAPON_9FFCE8EF.w, LABELS_9FFCE8EF, REPLAY_TEXT.fr, 'fr')
+    expect(nom).toBe('BR75')
+  })
+
+  it('sans la normalisation, la jointure échouait : témoin sur la clé BRUTE', () => {
+    // Preuve que le défaut était réel et pas un artefact du test : la lecture EXACTE que le
+    // rapport décrit (`labels?.[weapon]`, sans normalisation) ne trouve rien sur cette donnée.
+    expect(LABELS_9FFCE8EF[GROUND_WEAPON_9FFCE8EF.w as keyof typeof LABELS_9FFCE8EF]).toBeUndefined()
+  })
+})
+
+describe('weaponRoleOf / isSpecialWeaponRole — le filtre « armes spéciales »', () => {
+  const ROLES: ReplayDocumentReady['weaponLabels'] = {
+    [SNIPER]: { ...LABELS[SNIPER], role: 'sniper' },
+    '0x2B1824D5': { ...LABELS['0x2B1824D5'], role: 'automatic' },
+    [INCONNUE]: { en: '?', fr: '?' }, // hors registre : pas de rôle du tout.
+  }
+
+  it('un rôle sniper/power/special EST spécial', () => {
+    expect(isSpecialWeaponRole('sniper')).toBe(true)
+    expect(isSpecialWeaponRole('power')).toBe(true)
+    expect(isSpecialWeaponRole('special')).toBe(true)
+  })
+
+  it('un rôle connu mais NEUTRE (automatic, sidearm...) n’est PAS spécial', () => {
+    expect(isSpecialWeaponRole('automatic')).toBe(false)
+    expect(isSpecialWeaponRole('shotgun')).toBe(false)
+  })
+
+  it('un rôle ABSENT n’est jamais spécial — un manque ne s’affirme pas', () => {
+    expect(isSpecialWeaponRole(undefined)).toBe(false)
+    expect(isSpecialWeaponRole('')).toBe(false)
+  })
+
+  it('weaponRoleOf lit le rôle à travers la même normalisation de clé', () => {
+    // Forme des armes au sol (minuscule, sans préfixe) ET forme canonique : les deux trouvent.
+    expect(weaponRoleOf('0a1992bc', ROLES)).toBe('sniper')
+    expect(weaponRoleOf(SNIPER, ROLES)).toBe('sniper')
+    expect(weaponRoleOf('2b1824d5', ROLES)).toBe('automatic')
+  })
+
+  it('une arme hors registre ou hors document rend `undefined`, jamais une chaîne devinée', () => {
+    expect(weaponRoleOf(INCONNUE, ROLES)).toBeUndefined()
+    expect(weaponRoleOf(SNIPER, undefined)).toBeUndefined()
   })
 })
 

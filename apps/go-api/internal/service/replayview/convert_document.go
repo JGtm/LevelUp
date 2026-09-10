@@ -185,6 +185,7 @@ func toWeaponLabel(v replay.WeaponLabel) replaydoc.WeaponLabel {
 		Fr:     v.Fr,
 		Fx:     v.Fx,
 		Key:    v.Key,
+		Role:   v.Role,
 		Tint:   v.Tint,
 		Img:    v.Img,
 		Tinted: v.Tinted,

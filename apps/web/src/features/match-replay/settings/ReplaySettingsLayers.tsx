@@ -70,6 +70,13 @@ export interface ReplayGroundWeaponControls {
   available: boolean
   show: boolean
   onToggle: () => void
+  /**
+   * Le filtre « armes spéciales seulement » (lot 6.5, 2026-09-10) : une bascule FILLE, comme
+   * les objets non identifiés des poses d'équipement — elle ne s'affiche qu'avec son calque
+   * ALLUMÉ, jamais éteint (filtrer un calque qu'on ne voit pas ne dit rien au lecteur).
+   */
+  showSpecialOnly: boolean
+  onToggleSpecialOnly: () => void
 }
 
 /**
@@ -182,6 +189,16 @@ export function LayersSection({
               pressed={groundWeapons.show}
               onToggle={groundWeapons.onToggle}
               hint={t.layerGroundWeaponsHint}
+            />
+          )}
+          {/* FILLE DU CALQUE, PAS DE LA GRILLE : elle ne s'affiche qu'avec son calque ALLUMÉ
+              (2026-09-10) — même règle que les objets non identifiés/lâchés des poses. */}
+          {groundWeapons.available && groundWeapons.show && (
+            <SettingsToggle
+              label={t.layerGroundWeaponsSpecialOnly}
+              pressed={groundWeapons.showSpecialOnly}
+              onToggle={groundWeapons.onToggleSpecialOnly}
+              hint={t.layerGroundWeaponsSpecialOnlyHint}
             />
           )}
           {/* LES VÉHICULES sont des OBJETS qui bougent, comme les joueurs — mais ce sont des

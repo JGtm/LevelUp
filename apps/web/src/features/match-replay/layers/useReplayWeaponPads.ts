@@ -62,6 +62,44 @@ import { drawWeaponPadsLayer, padAt, type PadIcon } from './weaponPadsLayer'
 type PadLabels = ReplayDocumentReady['weaponLabels']
 
 /**
+ * weaponLabelKeyOf — LA CLÉ CANONIQUE d'une famille d'arme dans `weaponLabels`, quelle que
+ * soit la forme de l'identifiant REÇU (rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`,
+ * §0 et §5 option 0).
+ *
+ * DEUX ÉCRITURES COEXISTENT DANS LES ARTEFACTS DÉJÀ CUITS, ET C'EST UN DÉFAUT, PAS UN CHOIX.
+ * `weaponPads[].weapon` et les clés de `weaponLabels` s'écrivent `0x%08X` (majuscules,
+ * préfixées) ; `groundWeapons[].w` (et `weaponChanges[].w`, non lu ici) s'écrivent `%08x`
+ * (minuscules, sans préfixe) — un artefact Go `fmt.Sprintf("%08x", ...)` jamais aligné sur
+ * l'autre écriture. Vérifié sur les 64 artefacts locaux : zéro clé minuscule dans
+ * `weaponLabels`. Résultat mesuré côté jointure : `groundWeapons` ne trouvait JAMAIS son
+ * libellé — `labels?.[weapon]` rendait `undefined` sur 100 % des objets.
+ *
+ * LA DÉCISION DU LOT (2026-09-10) est de normaliser ICI, À LA LECTURE, plutôt que de recuire
+ * les artefacts pour aligner `W` sur `0x%08X` : les 64 artefacts locaux et toute la production
+ * gardent leur écriture minuscule, et rien ne les rend illisibles pour ce lot de plus. Aligner
+ * l'écriture Go aurait exigé une recuisson complète — exclue du périmètre de ce lot — pour un
+ * gain nul (aucun AUTRE lecteur Go ou web ne dépend de la casse de `W`, cf. `git grep` sur
+ * `groundWeapons\[\].w` et `\.w\b` du calque : les seuls lecteurs sont ce module et
+ * `groundWeaponsLayer.ts`, qui reçoit déjà l'identifiant BRUT et le passe tel quel à `iconOf`).
+ *
+ * IDEMPOTENT SUR LA FORME CANONIQUE, ET C'EST CE QUI REND LA FONCTION SÛRE À POSER AUX DEUX
+ * ENDROITS : une clé déjà `0x%08X` (les socles, qui fonctionnaient déjà) la traverse
+ * INCHANGÉE. Appliquer `weaponLabelKeyOf` à `padScaleFor`/`padNameFor`/`padIconRefFor` — les
+ * trois résolutions déjà PARTAGÉES par les socles ET les armes au sol (cf. `useReplayGroundWeapons`
+ * qui réutilise `padIconRefFor`) — corrige donc le second calque sans aucun risque de régresser
+ * le premier.
+ *
+ * Une entrée qui n'a pas la forme d'un hexadécimal court (la clé d'équipement d'un power-up,
+ * p. ex. `powerup_overshield`, déjà interceptée avant cet appel par `padEquipmentFamilyOf`)
+ * traverse elle aussi INCHANGÉE : ce n'est pas de son ressort.
+ */
+export function weaponLabelKeyOf(w: string): string {
+  const hex = w.startsWith('0x') || w.startsWith('0X') ? w.slice(2) : w
+  if (!/^[0-9a-fA-F]{1,8}$/.test(hex)) return w
+  return `0x${hex.toUpperCase().padStart(8, '0')}`
+}
+
+/**
  * padScaleFor — la TAILLE d'un socle, quelle que soit la nature de ce qu'il porte.
  *
  * DEUX VOCABULAIRES, UNE SEULE RÈGLE. Un socle d'ARME publie l'hexadécimal d'une famille : sa
@@ -71,7 +109,7 @@ type PadLabels = ReplayDocumentReady['weaponLabels']
  * `POWER_PAD_KEYS` porte les deux vocabulaires, donc la règle de taille ne se dédouble pas.
  */
 export function padScaleFor(weapon: string, labels: PadLabels): PadScale {
-  return padScaleOf(padEquipmentFamilyOf(weapon) ?? labels?.[weapon]?.key)
+  return padScaleOf(padEquipmentFamilyOf(weapon) ?? labels?.[weaponLabelKeyOf(weapon)]?.key)
 }
 
 /**
@@ -92,7 +130,7 @@ export function padNameFor(
 ): string {
   const family = padEquipmentFamilyOf(weapon)
   if (family) return t.padEquipmentFamily[family]
-  return catalogText(labels?.[weapon], locale) ?? weapon
+  return catalogText(labels?.[weaponLabelKeyOf(weapon)], locale) ?? weapon
 }
 
 /** Une vignette à charger : son URL, son mode (masque à teindre ou image finie), son sens. */
@@ -128,10 +166,46 @@ export function padIconRefFor(weapon: string, labels: PadLabels, titleSlug: stri
     // Le masque de HUD d'un power-up n'est pas une image d'atlas : il garde son sens.
     return url ? { url, tinted: true, mirrored: false } : null
   }
-  const label = labels?.[weapon]
+  const label = labels?.[weaponLabelKeyOf(weapon)]
   if (!label?.img) return null
   const full = weaponFullIcon(label.img)
   return { url: full.url, tinted: !!label.tinted, mirrored: full.mirrored }
+}
+
+/**
+ * SPECIAL_WEAPON_ROLES — LES TROIS RÔLES DU FILTRE « ARMES SPÉCIALES » du calque des armes au
+ * sol (rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`, §1 et §5 option B).
+ *
+ * LA DÉFINITION RETENUE EST LA DIMENSION FONCTION DE COMBAT (`WeaponLabel.role`, posé à la
+ * requête depuis le registre canonique — jamais une table d'armes en dur côté web), PAS LA
+ * MANIPULATION (`class`) : elle isole exactement ce qu'un socle distribue et ce qu'un
+ * adversaire a intérêt à ramasser (S7 Sniper, Shock Rifle, SPNKr, Skewer, Cindershot, Hydra,
+ * Épée, Marteau, Needler, Sentinel Beam) et laisse dehors le CQS48 Bulldog (`shotgun`) et
+ * l'arsenal de départ. Mesuré : 17,4 % des objets publiés, mais 65,3 % des reprises
+ * OBSERVÉES — une arme reprise est presque deux fois sur trois une arme qui compte.
+ */
+export const SPECIAL_WEAPON_ROLES: ReadonlySet<string> = new Set(['sniper', 'power', 'special'])
+
+/**
+ * isSpecialWeaponRole — le prédicat du filtre, et SA GARDE contre les rôles ABSENTS.
+ *
+ * UN RÔLE MANQUANT (libellé hors registre, ou artefact d'un titre qui n'en publie pas) N'EST
+ * JAMAIS SPÉCIAL — c'est la règle explicite du lot : l'objet reste visible bascule ÉTEINTE, et
+ * disparaît bascule ALLUMÉE, exactement comme une arme dont on ne sait rien ne s'affirme jamais
+ * hors catalogue. Deviner « spécial » sur une absence de donnée serait le même mensonge qu'une
+ * icône empruntée à une arme voisine.
+ */
+export function isSpecialWeaponRole(role: string | undefined): boolean {
+  return role !== undefined && role !== '' && SPECIAL_WEAPON_ROLES.has(role)
+}
+
+/**
+ * weaponRoleOf — LE RÔLE d'une arme, quelle que soit la forme de son identifiant (cf.
+ * `weaponLabelKeyOf`). `undefined` quand le document ne le publie pas — jamais une chaîne
+ * vide devinée : `isSpecialWeaponRole` distingue déjà « absent » de « connu et neutre ».
+ */
+export function weaponRoleOf(weapon: string, labels: PadLabels): string | undefined {
+  return labels?.[weaponLabelKeyOf(weapon)]?.role
 }
 
 /**

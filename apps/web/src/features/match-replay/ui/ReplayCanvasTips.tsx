@@ -16,11 +16,13 @@
  * lecteur. Chacune se pose à son propre point.
  */
 import { ReplayFlagTip } from './ReplayFlagTip'
+import { ReplayGroundWeaponTip } from './ReplayGroundWeaponTip'
 import { ReplayPlacementTip } from './ReplayPlacementTip'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 import type { FlagHover } from '../layers/useReplayFlagCarries'
+import type { GroundWeaponHover } from '../layers/useReplayGroundWeapons'
 import type { PlacementHover } from '../layers/usePlacementHover'
 import type { WeaponPadHover } from '../layers/useReplayWeaponPads'
 
@@ -45,6 +47,8 @@ interface ReplayCanvasTipsProps {
   pad: WeaponPadHover | null
   /** Un DRAPEAU de CTF survolé : son camp, son état, son porteur, depuis quand. */
   flag: FlagHover | null
+  /** Une ARME AU SOL survolée : son nom, qui l'a lâchée, qui l'a reprise (lot 6.5). */
+  groundWeapon: GroundWeaponHover | null
 }
 
 export function ReplayCanvasTips({
@@ -55,6 +59,7 @@ export function ReplayCanvasTips({
   ownerNameOf,
   pad,
   flag,
+  groundWeapon,
 }: ReplayCanvasTipsProps) {
   return (
     <>
@@ -72,6 +77,9 @@ export function ReplayCanvasTips({
           l'affiche pas — son dessin n'a pas ete repense. */}
       {pad && <ReplayWeaponPadTip locale={locale} hover={pad} width={width} />}
       {flag && <ReplayFlagTip locale={locale} hover={flag} width={width} />}
+      {groundWeapon && (
+        <ReplayGroundWeaponTip locale={locale} hover={groundWeapon} width={width} />
+      )}
     </>
   )
 }

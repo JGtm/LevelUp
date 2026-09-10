@@ -303,6 +303,27 @@ func FilmshellWeaponKeysByFamily() map[uint32]string {
 	return out
 }
 
+// RolesByKey rend l'index `weapon_key -> role` (fonction de combat : automatic, precision,
+// sniper, power, special, shotgun, sidearm, melee, grenade...) du registre canonique.
+//
+// POURQUOI EXPORTÉ (lot armes au sol, 2026-09-10). Le rejeu 2D publie déjà `WeaponLabel.Key`
+// à la requête (`resolveWeaponLabels`, depuis `cat.Keys[family]`, lui-même construit sur
+// `FilmshellWeaponKeysByFamily`) : le filtre « armes spéciales » (rôles sniper/power/special,
+// cf. rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`) a besoin du MÊME weapon_key pour
+// trouver le rôle, SANS seconde jointure ni recuisson — c'est la donnée déjà en mémoire du
+// registre statique, jamais une lecture de metadata.duckdb.
+//
+// STATIQUE ET IN-PROCESS, COMME `FilmshellWeaponKeysByFamily` : aucune ouverture de base, le
+// registre est un slice Go seedé au build. Chaque weapon_key est unique CROSS-TITRE (préfixé
+// `hinf_`/`h5_`), donc aucune collision possible entre deux armes de titres différents.
+func RolesByKey() map[string]string {
+	out := make(map[string]string, len(weaponRegistryWeapons))
+	for _, w := range weaponRegistryWeapons {
+		out[w.key] = w.role
+	}
+	return out
+}
+
 func seedWeaponFilmshellIDs(db *sql.DB) error {
 	const q = `INSERT OR IGNORE INTO weapon_ids (title_slug, id_kind, id_value, weapon_key) VALUES (?, 'filmshell', ?, ?)`
 	for _, f := range weaponRegistryInfiniteFilmshell {
