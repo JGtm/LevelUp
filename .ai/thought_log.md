@@ -1,3 +1,30 @@
+## [2026-09-10] Master plan, vague 5 — sept lots fusionnes, revue 2 P1 corriges, gate vert, push 992ae412f — En cours (CI de vague)
+
+**Decision technique principale.** Vague ouverte sur les decisions utilisateur du 10-09 (D12) :
+trois P2 de la revue 4.R (5.1), investigation E0 bornee (5.2, cinq causes prouvees) qui a
+engendre deux correctifs (5.5 « utilise » lu sur les consommations, us6 ; 5.6 palette unanime
+sous 10 lectures + bruit i48 rejete par domaine de rang), hygiene XS du registre (5.3, 14 lignes
+dont l'onglet API `form` mort supprime), hygiene du registre (5.4), et 5.7 pour refermer l'ecart
+Go/web decouvert par 5.5. Fusions faites depuis un worktree d'INTEGRATION dedie (`LevelUp-wt-v75`)
+apres qu'une autre session a bascule le worktree partage sur sa branche.
+
+**Resultats observes.** Recuisson des 9 artefacts cibles par 5.6 (7 films purs famille A
+recoivent leur table de capacites, 2 films publient `scanNoise` = 1), re-resume us6 (prises sans
+famille 130 → 100). Revue de vague (Opus, L1+L4+L6) : 0 P0, 2 P1, 1 P2, 14 conditions tenues —
+l'agregat de session lisait encore les poses et le filtre des colonnes ignorait `spent` ; corriges
+(`e9489efcd`), ronde 2 vide (6 conditions, mutations). Gate local : lint 0 erreur, web vert,
+15 760 tests verts ; la comparaison baseline a rougi sur 39 tests supprimes volontairement par
+5.3, baseline purgee et documentee (`992ae412f`). Deux erreurs de manipulation dans la journee,
+toutes deux reparees et consignees en memoire : une insertion `sed` sans adresse qui a duplique
+le plan maitre (reconstruit), une adresse `sed` non fermee sur une ligne du plan (refaite).
+
+**Conclusion / prochaine etape.** CI de vague 5 sur `992ae412f` en cours. Verification navigateur
+differee tant que le worktree partage (serveur) n'est pas sur `feat/v75` : capteur `9ffce8ef`
+6 utilises sur 7 en vue match ET en session, 7 films a palette classee, `4f77afc1` refuse. Puis
+cloture de la vague et release par l'utilisateur (copie des bases + replays vers le VPS).
+
+---
+
 ## [2026-09-10] Revue vague 5 — les trois constats corriges (C1 agregat de session, C2 colonnes de la vue match, C3 code mort) — Complete
 
 **Decision technique principale.** Les trois constats de la revue adversariale de la vague 5
