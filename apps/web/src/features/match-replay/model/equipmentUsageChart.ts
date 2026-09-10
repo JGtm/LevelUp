@@ -105,14 +105,23 @@ export function usageGestureCount(tally: EquipmentUsageTally, group: UsageGroupK
     case 'episodes':
       return Object.values(tally.episodes).reduce((a, e) => a + e.count, 0)
     case 'equipment':
-      // FUSION (E2) : les poses déployées, les objets lâchés, ET les activations des deux
-      // power-ups (leur côté « utilisé » vient des épisodes, pas d'une pose — P2). Le compte
-      // d'épisode y figure DEUX FOIS au total du bloc (aussi dans la ligne `episodes`,
-      // décision documentée de garder les deux vues) : ce n'est pas une double mesure, c'est
-      // la même mesure lue sous deux questions différentes.
+      // FUSION (E2) : les poses déployées, les objets lâchés, LES CONSOMMATIONS DE CHARGE
+      // (`spent`, lot 6.4 point 2), ET les activations des deux power-ups (leur côté « utilisé »
+      // vient des épisodes, pas d'une pose — P2). Le compte d'épisode y figure DEUX FOIS au
+      // total du bloc (aussi dans la ligne `episodes`, décision documentée de garder les deux
+      // vues) : ce n'est pas une double mesure, c'est la même mesure lue sous deux questions
+      // différentes.
+      //
+      // `spent` NE DOUBLE JAMAIS LE MUR : `deriveKeptFromTaken` (equipmentKeptLogic.ts) exclut
+      // explicitement les familles à pièce engendrée (`isFamilyWithSpawnedPiece`) de ce tally —
+      // le mur reste lu sur SES poses, jamais sur ses consommations. Sans `spent`, une famille
+      // dont le SEUL geste mesuré est une consommation (un capteur pris puis vidé, ni posé ni
+      // lâché) restait invisible de cette vue alors que `tallyTotal` (equipmentUsageLogic.ts)
+      // la comptait déjà.
       return (
         sum(tally.deployed) +
         sum(tally.dropped) +
+        sum(tally.spent) +
         (tally.episodes[EQUIP_FAMILY_CAMO]?.count ?? 0) +
         (tally.episodes[EQUIP_FAMILY_OVERSHIELD]?.count ?? 0)
       )

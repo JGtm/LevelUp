@@ -154,6 +154,19 @@ describe('usageGestureCount — la part se compte en GESTES', () => {
     const t = tally({ episodes: { camo: { count: 2, ms: 1000, kills: 0 } }, deployed: { wall: 1 } })
     expect(usageGestureCount(t, 'equipment')).toBe(3)
   })
+
+  it('ajoute les CONSOMMATIONS DE CHARGE (`spent`) — lot 6.4 point 2 : une famille dont le seul '
+    + 'geste est une consommation (capteur pris puis vidé, jamais posé ni lâché) ne doit pas '
+    + 'rester invisible de la barre « part de chaque équipe »', () => {
+    expect(usageGestureCount(tally({ spent: { sensor: 2 } }), 'equipment')).toBe(2)
+  })
+
+  it('ne double-compte jamais le MUR : `spent` ne porte jamais sa famille (elle se lit sur ses '
+    + 'poses, `deployed`), donc l’additionner est sans risque pour lui', () => {
+    // deployed:2 (panneaux) + spent:5 (une autre famille, jamais `wall`) = 7, pas 2+5 de mur en double.
+    const t = tally({ deployed: { wall: 2 }, spent: { sensor: 5 } })
+    expect(usageGestureCount(t, 'equipment')).toBe(7)
+  })
 })
 
 describe('buildUsageGrid — la grille par joueur', () => {
