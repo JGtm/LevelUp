@@ -104682,6 +104682,48 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   cloture de la vague 4 par le superviseur (regle "une fois par vague", pas par lot) ; pas de
   commit sur main, pas de fusion — laisse au superviseur.
 
+## [2026-09-10] Citations CTF : desactivation de « Vol du drapeau » + visuel definitif de « Capture du drapeau »
+
+- Statut : Complete (re-seed local JOUE et verifie en base ; reste a rejouer en prod au deploiement).
+- Demande utilisateur : (1) « flag steals j'en veux plus » -> desactiver la citation ;
+  (2) visuel retravaille pour `flag_captures`, fourni hors depot (`E:\Sans titre.png`,
+  484x484), a servir a la place du SVG bouche-trou.
+- Decision technique principale : les deux SVG bouche-trous de la v7.2.1 sont SUPPRIMES du
+  depot, ce qui leve le blocage « ne pas deployer en prod avec les SVG » (plan V721-03).
+  `flag_captures` sert desormais `static/commendations/halo_infinite/HI_citation_Capture_du_drapeau.png`,
+  redimensionne 484x484 -> 100x100 (bicubique haute qualite, alpha preserve) pour respecter
+  la convention du dossier (164 visuels de citation sur 165 sont en 100x100).
+  `flag_steals` passe `Enabled: false` avec `ImagePath` vide : la citation reste listee
+  (inventaire + parite EN) mais le moteur l'ignore (`WHERE enabled IS NOT FALSE`, cote lecture
+  comme cote recalcul), exactement le patron `flag_defender` de I7. Vidage de l'ImagePath
+  legitime car son seul visuel etait le bouche-trou supprime, et
+  `TestCitationEnabled_HasImagePath` n'exige un visuel que sur les citations actives.
+- Garde-rails : `TestObjectiveStatCitationsV721_MappedToColumns` fige desormais l'etat
+  actif/inactif des 10 citations d'objectif (champ `enabled` ajoute au tableau `want`) — la
+  colonne source et les paliers calibres restent pines meme sur la citation desactivee, pour
+  qu'une eventuelle reactivation reparte des bonnes valeurs. Nouveau `TestFlagSteals_Disabled`
+  (calque sur `TestFlagDefender_Disabled`) : desactivee, sans ImagePath, et enfant d'aucun
+  composite — donc aucun palier de composite rendu inatteignable.
+- Verification sur pieces : `flag_steals` n'apparait dans aucune liste `composite_children` ;
+  la colonne `flag_steals` reste utilisee ailleurs (KPI synthese, radar de match, series
+  temporelles, i18n) — seule la citation est retiree, aucune stat n'est touchee.
+- Resultats observes : `go test ./internal/ops/` vert (garde-rails citations inclus).
+- Re-seed local JOUE le 2026-09-10 (accord utilisateur) : air + server.exe arretes, puis
+  `levelup seed citation-mappings` -> « 16 inserees, 88 mises a jour », puis air relance et
+  port 8000 verifie. Les 16 insertions = les 10 citations d'objectif v7.2.1 (jamais seedees
+  dans cette base locale) + les 6 « Artilleur de » du lot en cours present dans l'arbre de
+  travail — effet de bord assume sur la base de DEV, a signaler a l'utilisateur.
+  Verification sur pieces (outil jetable `cmd/tmp_check_citations`, cree, lu et SUPPRIME
+  dans la foulee, lecture via `OpenReadForQuery`) : `flag_steals` enabled=false / image_path
+  vide, `flag_captures` enabled=true / `HI_citation_Capture_du_drapeau.png`, les trois
+  autres citations CTF/Oddball actives avec leur visuel H5. Le serveur sert bien le PNG
+  (HTTP 200, 9658 o, image/png) et l'ancien SVG rend 404.
+- Prochaine etape : rejouer le meme seed en prod au deploiement (le zip metadata
+  pre-construit ne rattrape rien : il n'est extrait que si la base est absente). Aucun
+  recalcul necessaire — la progression stockee est ignoree pour une citation desactivee.
+  Pas de commit : la branche `feat/citations-artilleur-vehicules` porte deja le lot
+  « Artilleur de » en cours, decision de commit laissee a l'utilisateur.
+
 ## [2026-09-10] Citations « Artilleur de » — frags a l'armement de vehicule
 
 **Statut** : Complete (code + garde-rail) ; re-seed et backfill NON joues, en attente du

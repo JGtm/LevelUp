@@ -119,18 +119,14 @@ func defaultCitationMappings() []CitationMapping {
 		// Ordre du bloc : CTF, puis Zones, puis Oddball — celui d'objectiveStatColumns
 		// (internal/sync/citations.go), et non l'ordre alphabétique du bloc précédent.
 		//
-		// VISUELS PROVISOIRES — « Capture du drapeau » et « Vol du drapeau » pointent deux
-		// SVG bouche-trous générés en interne, uniquement pour que la chaîne soit
-		// complète et testable en local (pas de vignette cassée). L'utilisateur produit
-		// ses propres visuels sous Photoshop ; cibles attendues :
-		//   static/commendations/halo_infinite/HI_citation_Capture_du_drapeau.png
-		//   static/commendations/halo_infinite/HI_citation_Vol_du_drapeau.png
-		// Remplacement = changer `.svg` en `.png` dans les deux ImagePath ci-dessous
-		// puis re-seeder (`levelup seed citation-mappings`) — rien d'autre à toucher.
-		// NE PAS DÉPLOYER EN PROD avec les SVG (blocage acté, plan V721-03).
+		// VISUELS (2026-09-10) — le blocage « SVG bouche-trous » du plan V721-03 est LEVÉ :
+		// les deux SVG générés en interne ont été supprimés. « Capture du drapeau » sert
+		// désormais le PNG définitif fourni par l'utilisateur (redimensionné à 100x100,
+		// la taille de tous les autres visuels de citation) ; « Vol du drapeau » n'a plus
+		// de visuel du tout car la citation est désactivée (voir son entrée).
 		{Norm: citationNormFlagCaptures, Display: "Capture du drapeau", MappingType: mappingTypeObjectiveStat,
 			StatName: "flag_captures", Enabled: true,
-			ImagePath:   wpHI + "HI_citation_Capture_du_drapeau.svg",
+			ImagePath:   wpHI + "HI_citation_Capture_du_drapeau.png",
 			Category:    citationCatModeJeu,
 			Description: "Capturez le drapeau ennemi dans n'importe quelle partie matchmaking Capture du drapeau.",
 			TierTargets: tierTargets10_25_50_75_125},
@@ -140,9 +136,16 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatModeJeu,
 			Description: "Sécurisez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.",
 			TierTargets: tierTargets50_100_200_350_600},
+		// DÉCISION UTILISATEUR (2026-09-10) : « Vol du drapeau » DÉSACTIVÉE (Enabled=false).
+		// La citation reste listée (inventaire + parité EN) mais le moteur l'ignore
+		// (loadFullCitationMappings : WHERE enabled IS NOT FALSE). ImagePath vidé et SVG
+		// bouche-trou supprimé du dépôt : aucun visuel n'a jamais été produit pour elle et
+		// une citation désactivée n'est jamais rendue (TestCitationEnabled_HasImagePath
+		// n'exige un visuel que sur les citations actives). Non enfant d'un composite →
+		// aucun composite rendu inatteignable. La colonne `flag_steals` reste utilisée
+		// ailleurs (KPI, radar de match, séries temporelles) : rien à retirer côté stats.
 		{Norm: citationNormFlagSteals, Display: "Vol du drapeau", MappingType: mappingTypeObjectiveStat,
-			StatName: "flag_steals", Enabled: true,
-			ImagePath:   wpHI + "HI_citation_Vol_du_drapeau.svg",
+			StatName: "flag_steals", Enabled: false,
 			Category:    citationCatModeJeu,
 			Description: "Volez le drapeau ennemi à sa base dans n'importe quelle partie matchmaking Capture du drapeau.",
 			TierTargets: tierTargets25_50_100_175_300},
