@@ -203,3 +203,167 @@ exposé des six, et c'est le seul dont le correctif coûte un redécodage du par
 3. **Trois films du corpus d'équivalence sont absents du cache** (`1c4c63c2`, `60ae07c4`,
    `a349fea8`), dont `1c4c63c2` qui est « le plus gros film du cache » selon `CORPUS.txt`. Le
    corpus d'équivalence n'est donc rejouable qu'à 10/13 sur ce poste.
+
+---
+
+# PHASE B — LA MIGRATION (2026-09-10)
+
+## 9. Ce qui a été fait, site par site
+
+Les six sites passent au registre À L'INSTANT. Trois formes, selon ce que le site connaît de son
+instant — les conversions d'horloge vivent dans **un seul** fichier
+(`analysis/replay/pont_a_l_instant.go`), jamais recopiées au site.
+
+| # | Site | Avant | Après |
+|---|---|---|---|
+| 1 | `bomb_carries.go:137` | `len(reg.PontParSlot()) == 0` | `!reg.PontEtabli()` |
+| 2 | `bomb_carries.go:142` | `BuildHeldObjectCarry(events, pont, deaths)` | `BuildHeldObjectCarry(events, occupantParMatchMS(reg), deaths)` |
+| 3 | `bomb_stats_document.go:77` | `len(reg.PontParSlot()) > 0` | `reg.PontEtabli()` |
+| 4 | `build.go:161` | `attachAllEquipmentKills(..., pont, ...)` | `... occupantParFrame(reg, clk) ...` |
+| 5 | `build.go:228` | `pickupInputs{slotXUID: pont}` | `pickupInputs{occupant: reg.XUIDNumAt}` |
+| 6 | `inventory_dead_readings.go:33/42` | garde + `pont[slot]` | `reg.PontEtabli()` + `occupantParFrame(reg, clk)` |
+| 7 | `killcollector/positions.go:309` | `reg.PontParSlot()` puis `slotsByXUID` | le REGISTRE entier, puis `siegesDe(reg, sieges, xuid, tUS)` |
+
+Trois accesseurs sur le registre : `XUIDNumAt(slot, tUS)` (la forme numérique de `XUIDAt` — les
+sites qui JOIGNENT une identité travaillent sur `uint64`, pas sur une chaîne), `PontEtabli()` (la
+seule question que posaient les gardes), et `PontEpure()` qui existait déjà. `xuidAt` devient
+`xuidNumAt` en interne, `XUIDAt` le formate : une seule règle, deux formes.
+
+`killpos.go` change de méthode et pas seulement d'accesseur : `slotsByXUID` (l'inversion du pont
+aplati, faite UNE FOIS pour tout le film) est **supprimée** au profit de `siegesDe`, qui demande à
+chaque mort quels sièges le joueur occupe À CET INSTANT. C'est ce qui rend au second occupant d'un
+siège recyclé ses positions, et retire au premier celles qui ne sont pas les siennes.
+
+## 10. Le pont aplati est SUPPRIMÉ, avec son garde-rail
+
+`IdentityRegistry.PontParSlot()` n'existe plus (règle 7 : zéro code mort). Ses ~20 usages de test
+passent à `PontEpure()` (identique quand aucun siège n'est ambigu, strictement plus sûr sinon) ou
+aux deux adaptateurs de test `occupantFige` / `occupantFigeUS`.
+
+Garde-rail dans le MÊME commit :
+`internal/archlint/no_identity_bridge_outside_registry_test.go` gagne le motif `PontParSlot(` et
+une notion de motif **`absolu`** — un motif qui s'applique MÊME aux fichiers de l'allowlist.
+**Son allowlist est donc vide, registre compris.** `ResolveSlotXUID` (porte retirée au lot P2)
+rejoint la même catégorie : ces deux-là ne protègent pas une frontière de couches, ils empêchent
+de recréer une réponse démontrée fausse.
+
+## 11. TDD — rouge, puis vert, mutation prouvée
+
+Un siège synthétique 900 partagé par 111 (vie de 0 à 1 s) et 222 (vie de 2 à 3 s), plus un siège
+témoin 901 à 333 : `apps/go-api/internal/analysis/replay/pont_a_l_instant_test.go`.
+
+**ROUGE mesuré sur le code d'avant** (valeurs, pas erreurs de compilation) :
+
+```
+--- FAIL: TestZZRougeRamassage      ramassage 2e vie : "111", attendu 222
+                                    ramassage dans le trou : "111", attendu le silence
+                                    nommes = 2, attendu 1
+--- FAIL: TestZZRougeFragEquipement frag sous camo : k=0, attendu 1
+--- FAIL: TestZZRougeBombe          porteur de bombe : 111, attendu 222
+--- FAIL: TestZZRougeInventaire     n=2 empty[0]="dead" empty[1]="dead", attendu 1/dead/unknown
+--- FAIL: TestZZRougeKillPos        position du tueur 222 : Killer nil, NoBridge 1, attendu x=7
+                                    111 place sur le corps d un autre : Killer non nil, Both 1
+```
+
+La dernière ligne est le cas le plus grave et il est reproduit : **le premier occupant recevait la
+position du corps du second.**
+
+**VERT après migration** : les sept tests du fichier passent
+(`TestRegistreNommeLOccupantDuSiegeALInstant`, `TestRamassageSuitLOccupantDuSiege`,
+`TestFragSousEquipementSuitLOccupantDuSiege`, `TestPortageDeBombeSuitLOccupantDuSiege`,
+`TestInventaireMortSuitLOccupantDuSiege`, `TestPositionDeKillSuitLOccupantDuSiege`,
+`TestPositionDeKillSeTaitHorsDesVies`).
+
+**MUTATION** : remplacer `reg.XUIDNumAt(...)` par une lecture aplatie du siège dans l'un des sites
+migrés rougit le test correspondant, avec l'identité du PREMIER occupant (111) là où l'on attend
+le second (222). Le test `TestOwnerReportXuidAtSuitLOccupantDansLeTemps`
+(`vehicle_rides_events_test.go`) porte la mutation symétrique sur le registre lui-même.
+
+## 12. Différentiel sur films réels — 14 films, avant/après, à l'octet
+
+Méthode du gate corpus (cuire deux fois, comparer), jouée **sans base** : le binaire
+`cmd/replay-build` compilé AVANT la migration et celui compilé APRÈS, sur les mêmes chunks, avec
+sortie dans le `data/cache/` du worktree.
+
+| Population | Films | Verdict |
+|---|---|---|
+| Corpus d'équivalence (facts figés) | 10 | 9 **identiques à l'octet**, 1 différent (`084a804d`) |
+| Témoins de `config/replay_corpus.toml` hors corpus ci-dessus | 5 (`bcb6d393`, `fb1a1a72`, `c75f33b8`, `bf15f7ab`, `51ebbc0f`) | **identiques à l'octet** |
+
+Les **7 témoins du manifeste** sont couverts (`084a804d` et `d9781168` par la première ligne, les
+cinq autres par la seconde), plus 8 films supplémentaires.
+
+**Le seul diff, ligne par ligne** (`084a804d`, 9 350 639 puis 9 350 590 octets) :
+
+```
+ramassages (2 lignes sur 540)
+  AVANT {"t":9802,"slot":603,"xuid":"2533274817603732","w":"e9e7ff79","kind":"weapon"}
+  APRES {"t":9802,"slot":603,                          "w":"e9e7ff79","kind":"weapon"}
+  AVANT {"t":9968,"slot":603,"xuid":"2533274817603732","w":"273fe0eb","family":"grapple"}
+  APRES {"t":9968,"slot":603,                          "w":"273fe0eb","family":"grapple"}
+inventaire (1 ligne sur 826)
+  AVANT {"t":3180,"slot":603,"empty":"dead"}
+  APRES {"t":3180,"slot":603,"empty":"unknown"}
+couverture
+  coverage.pickups.named 540 -> 538
+```
+
+**Trois lignes, exactement les trois que la phase A avait prédites**, et pas une de plus. Rien
+d'autre ne bouge sur aucun des 14 films : ni pistes, ni tirs, ni épisodes d'équipement (le calque
+est bien exercé — `killsRead=true` sur 7 films, 33 frags et 7 assistances crédités, tous
+inchangés), ni portages de bombe (`9f57c612`, 11 portages, inchangés), ni couverture d'identité.
+
+Ce ne sont pas des PERTES : ce sont deux noms faux retirés et une qualification `dead` que rien
+n'établissait. Le film ne dit pas à qui appartiennent ces trois lectures ; le registre se tait,
+comme il doit.
+
+## 13. Le bump de révision, et ce qu'il commande au superviseur
+
+**`IsolationDecoderRev` : `isolement-2026-09-08-creation-bipede` devient
+`isolement-2026-09-10-pont-a-l-instant`.**
+
+- **Pourquoi une révision alors que `match_lives` ne change pas** : `kill_positions` NE PORTE PAS
+  de `decoder_rev` (son unité de génération est `decode_pass`, cf.
+  `persist/kill_position_persister.go`), et la sélection de rattrapage (`matchsAJour`,
+  `cmd/levelup/cmd_backfill_killsource_selection.go:89`) ne connaît que cette révision-ci. Sans
+  bump, aucun match déjà collecté ne repasserait, et les positions écrites resteraient celles du
+  pont aplati.
+- **Ce que le bump déclenche tout seul : RIEN.** `matchsAJour` n'est lu que par la commande
+  `levelup backfill-killsource` ; aucun chemin de sync ne l'appelle. Le corpus devient éligible,
+  il ne se re-décode pas.
+- **BACKFILL À REJOUER (décision superviseur) : `levelup backfill-killsource`.** Il réécrira
+  `kill_positions` et `kill_openings` — et une passe de `match_lives` / `match_death_context` au
+  contenu INCHANGÉ, effet de bord du partage de révision.
+- **Ce que ça rapporte, mesuré** : sur 74 films, la fenêtre où une position de kill peut être
+  fausse vaut **UNE frame de 100 ms** (`084a804d`, siège 603, dernière frame). Le coût du
+  redécodage complet du parc est sans commune mesure avec ce gain. **Recommandation : bumper
+  (fait — le code doit porter la vérité) et NE PAS rejouer le backfill en urgence** ; le
+  rattrapage se fera au prochain redécodage motivé par une autre raison. Aucune recuisson
+  d'artefacts n'est requise non plus : 13 films sur 14 sont identiques à l'octet.
+
+## 14. Gates (tous joués dans cette session, sur `wt/pont-aplati`)
+
+| Gate | Commande | Résultat |
+|---|---|---|
+| Build | `go build ./...` | OK |
+| Vet module | `go vet ./...` | 0 |
+| Tests module | `go test ./... -count=1` | 0 échec |
+| Intégration sérialisée | `go test -tags=integration -p 1 -count=1 ./internal/sync/... ./internal/persist/... ./internal/archlint/...` | 0 échec |
+| Paquets du périmètre | `go test ./internal/analysis/replay/ ./internal/sync/killcollector/ ./internal/replaybuild/ ./internal/service/replayview/ ./internal/archlint/` | 0 échec |
+| Différentiel films réels | 14 films, avant/après, `cmp` | 13 identiques, 1 diff instruit (§12) |
+| Lint du diff | `golangci-lint run --new-from-merge-base=feat/v75 ./...` | 0 issue |
+
+**`make replay-corpus-gate --reference=base` N'A PAS ÉTÉ JOUÉ**, et c'est un `[!]` assumé : il
+exige la base partagée du titre en lecture (`levelup replay-facts-export` en sous-processus), or
+la consigne de ce lot interdit d'ouvrir une base de `data/` — le serveur de dev les tient. Le §12
+en joue la MÉTHODE (deux cuissons, comparaison à l'octet) sur les 7 témoins du manifeste plus 8
+films, sans base. Le gate lui-même reste à jouer par le superviseur ou par la CI.
+
+## 15. Découvertes de la phase B (consignées, NON traitées)
+
+4. **Les artefacts cuits pour une mesure polluent un test d'oracle.**
+   `internal/mapdecoupe/oracle_positions_test.go` lit le PARC LOCAL (`data/cache/replays/{slug}/`)
+   et exige 5 films sur 3 cartes ; les 15 artefacts cuits dans le worktree pour cette mesure l'ont
+   fait ÉCHOUER (« 4 films mesurés, le plan en exige 5 ») alors qu'il SKIPPE sur un parc vide. Le
+   test ne distingue pas « parc absent » de « parc partiel ». Les artefacts ont été déplacés hors
+   du worktree et le test repasse. P2 — mais tout lot qui cuit dans son worktree retombera dessus.

@@ -121,12 +121,12 @@ func aimOracle(t *testing.T, dir string, pos []filmdec.BipedPosition) {
 		nKills, len(couples), ambigus)
 	t.Logf("  pont slot->xuid : %d slots nommes sur %d vies · decalage d'horloge %d ms"+
 		" (%d fins de vie appariees) · collisions d'index %d",
-		len(own.PontParSlot()), own.ViesTotal(), own.DeathOffsetMS(), own.DeathOffsetMatches(), collisions)
-	if len(own.PontParSlot()) == 0 {
+		len(own.PontEpure()), own.ViesTotal(), own.DeathOffsetMS(), own.DeathOffsetMatches(), collisions)
+	if len(own.PontEpure()) == 0 {
 		t.Fatalf("pont vide : aucun kill ne peut etre situe sur la carte")
 	}
 	parXUID := map[uint64][]uint32{}
-	for slot, x := range own.PontParSlot() {
+	for slot, x := range own.PontEpure() {
 		parXUID[x] = append(parXUID[x], slot)
 	}
 	b := aimEvalueCouples(couples, tracks, parXUID, own.DeathOffsetMS())

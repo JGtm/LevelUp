@@ -178,7 +178,7 @@ func TestViseeLunette(t *testing.T) {
 	t.Logf("FIL — %d instants de kill, %d couples retenus, %d ambigus ecartes", nKills, len(couples), ambigus)
 
 	parXUID := map[uint64][]uint32{}
-	for slot, x := range own.PontParSlot() {
+	for slot, x := range own.PontEpure() {
 		parXUID[x] = append(parXUID[x], slot)
 	}
 	if len(parXUID) == 0 {
@@ -283,7 +283,7 @@ func adsBalayage(t *testing.T, dir string) ([]filmdec.BipedPosition, map[uint32]
 	tracks := indexBySlot(pos)
 	own := regDe(buildOwnersDeTest(tracks, deaths, table, nil))
 	t.Logf("PONT — %d slots nommes sur %d vies · decalage d'horloge %d ms (%d fins de vie appariees)"+
-		" · collisions d'index %d", len(own.PontParSlot()), own.ViesTotal(), own.DeathOffsetMS(),
+		" · collisions d'index %d", len(own.PontEpure()), own.ViesTotal(), own.DeathOffsetMS(),
 		own.DeathOffsetMatches(), collisions)
 	return pos, tracks, own
 }

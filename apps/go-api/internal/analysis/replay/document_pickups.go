@@ -174,7 +174,10 @@ type Pickup struct {
 // d'ou » tient dans une structure ; la liste et l'horloge restent des arguments parce qu'elles
 // sont l'ENTREE et le REFERENTIEL, pas des dependances.
 type pickupInputs struct {
-	slotXUID   map[uint32]uint64
+	// occupant rend le joueur qui tient le siège A L'INSTANT du ramassage (microsecondes,
+	// horloge du film) — le registre à l'instant, jamais le pont aplati (lot 6.1, 2026-09-10).
+	// Nil = aucun nommage, ce qui est la dégradation propre quand le pont n'existe pas.
+	occupant   func(slot uint32, tUS uint64) uint64
 	st         filmdec.BipedPickupStats
 	weaponKeys map[uint32]string
 	judge      *pickupOriginJudge
@@ -183,7 +186,7 @@ type pickupInputs struct {
 func buildPickups(
 	pickups []filmdec.BipedPickup, clk replayClock, in pickupInputs,
 ) ([]Pickup, PickupCoverage) {
-	slotXUID, st, weaponKeys, judge := in.slotXUID, in.st, in.weaponKeys, in.judge
+	occupant, st, weaponKeys, judge := in.occupant, in.st, in.weaponKeys, in.judge
 	cov := PickupCoverage{
 		Decoded:    len(pickups),
 		MultiEvent: st.MultiEvent,
@@ -214,9 +217,11 @@ func buildPickups(
 			Kind:   k,
 			Class:  int(p.Class),
 		}
-		if x, ok := slotXUID[p.Slot]; ok {
-			e.XUID = strconv.FormatUint(x, 10)
-			cov.Named++
+		if occupant != nil {
+			if x := occupant(p.Slot, p.TimestampUS); x != 0 {
+				e.XUID = strconv.FormatUint(x, 10)
+				cov.Named++
+			}
 		}
 		if e.Family == "" {
 			cov.UnknownFamilies++

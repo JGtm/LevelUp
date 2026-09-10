@@ -30,17 +30,22 @@ import (
 // qu'on sait d'elles. C'est une dégradation, et elle est journalisée par l'appelant avec les
 // autres couvertures — jamais une requalification par défaut.
 func markInventoryDeadReadings(inv []Inventory, deaths []Death, reg IdentityRegistry, clk replayClock) int {
-	if len(inv) == 0 || len(deaths) == 0 || len(reg.PontParSlot()) == 0 {
+	if len(inv) == 0 || len(deaths) == 0 || !reg.PontEtabli() {
 		return 0
 	}
 	byXUID := deathTimesByVictimMS(deaths, reg.DeathOffsetMS())
+	occupant := occupantParFrame(reg, clk)
 	marked := 0
 	for i := range inv {
 		if inv[i].Empty != InventoryEmptyUnknown {
 			continue
 		}
-		xuid, ok := reg.PontParSlot()[inv[i].Slot]
-		if !ok {
+		// LE PORTEUR SE DEMANDE A L'INSTANT DE LA LECTURE (lot 6.1) : sur un siège recyclé, le
+		// pont aplati servait le PREMIER occupant, et la lecture se voyait alors requalifiée par
+		// les morts d'un joueur qui n'était plus là. Zéro = personne n'occupe ce siège à cet
+		// instant, et une lecture sans porteur établi garde `unknown` — ce qu'on sait d'elle.
+		xuid := occupant(inv[i].Slot, inv[i].T)
+		if xuid == 0 {
 			continue
 		}
 		// L'INSTANT SE RECONSTRUIT DEPUIS LA GRILLE, et l'arrondi n'a aucune portée ici : un pas

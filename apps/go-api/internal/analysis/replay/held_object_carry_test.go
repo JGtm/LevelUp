@@ -15,7 +15,7 @@ func TestBuildHeldObjectCarryLacher(t *testing.T) {
 	c := BuildHeldObjectCarry(hocEvents(
 		HeldObjectEvent{TimeMS: 1000, Slot: 5, Pickup: true},
 		HeldObjectEvent{TimeMS: 4000, Slot: 5, Pickup: false},
-	), map[uint32]uint64{5: 42}, nil)
+	), occupantFige(map[uint32]uint64{5: 42}), nil)
 	if len(c.Periods) != 1 {
 		t.Fatalf("périodes : %d, attendu 1", len(c.Periods))
 	}
@@ -34,7 +34,7 @@ func TestBuildHeldObjectCarryMortFermeLaPeriode(t *testing.T) {
 	c := BuildHeldObjectCarry(hocEvents(
 		HeldObjectEvent{TimeMS: 1000, Slot: 5, Pickup: true},
 		HeldObjectEvent{TimeMS: 6000, Slot: 9, Pickup: true},
-	), map[uint32]uint64{5: 42, 9: 77}, []Death{{XUID: 42, TimeMS: 2500}})
+	), occupantFige(map[uint32]uint64{5: 42, 9: 77}), []Death{{XUID: 42, TimeMS: 2500}})
 	if len(c.Periods) != 2 {
 		t.Fatalf("périodes : %d, attendu 2", len(c.Periods))
 	}
@@ -50,7 +50,7 @@ func TestBuildHeldObjectCarryFinDeFilm(t *testing.T) {
 	// Prise sans lâcher ni mort : période OUVERTE, exclue du temps de portage.
 	c := BuildHeldObjectCarry(hocEvents(
 		HeldObjectEvent{TimeMS: 1000, Slot: 5, Pickup: true},
-	), map[uint32]uint64{5: 42}, nil)
+	), occupantFige(map[uint32]uint64{5: 42}), nil)
 	if len(c.Periods) != 1 || !c.Periods[0].Ouverte || c.Periods[0].FinMS != HeldObjectOpenEndMS {
 		t.Fatalf("période ouverte attendue : %+v", c.Periods)
 	}
@@ -65,7 +65,7 @@ func TestBuildHeldObjectCarryLacherOrphelin(t *testing.T) {
 		HeldObjectEvent{TimeMS: 1000, Slot: 5, Pickup: true},
 		HeldObjectEvent{TimeMS: 2000, Slot: 9, Pickup: false},
 		HeldObjectEvent{TimeMS: 3000, Slot: 5, Pickup: false},
-	), map[uint32]uint64{5: 42}, nil)
+	), occupantFige(map[uint32]uint64{5: 42}), nil)
 	if len(c.Periods) != 1 || c.Periods[0].FinMS != 3000 {
 		t.Fatalf("le lâcher orphelin ne doit rien fermer : %+v", c.Periods)
 	}

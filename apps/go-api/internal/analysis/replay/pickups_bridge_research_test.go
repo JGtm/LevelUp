@@ -79,14 +79,14 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 	t.Logf("== PONT slot -> joueur, EXERCE sur les ramassages natifs · %s ==", dir)
 	t.Logf("ramassages natifs : %d (listes multiples %d) · morts %d · slots ponts %d · "+
 		"vies nommees %d/%d · collisions de slot %d · index non injectif %d",
-		len(pickups), pStats.MultiEvent, len(deaths), len(own.PontParSlot()),
+		len(pickups), pStats.MultiEvent, len(deaths), len(own.PontEpure()),
 		own.ViesNommeesParLaLecture(), own.ViesTotal(), own.CollisionsDeSlot(), tableCollisions)
 
 	// B1 — le pont nomme-t-il les ramasseurs ?
 	named, byClass, namedByClass := 0, map[uint8]int{}, map[uint8]int{}
 	for _, p := range pickups {
 		byClass[p.Class]++
-		if _, ok := own.PontParSlot()[p.Slot]; ok {
+		if _, ok := own.PontEpure()[p.Slot]; ok {
 			named++
 			namedByClass[p.Class]++
 		}

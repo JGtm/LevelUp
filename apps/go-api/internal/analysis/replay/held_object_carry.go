@@ -84,9 +84,13 @@ type heldObjectTransition struct {
 //
 //   - events : transitions datées ms match (l'appelant convertit TimestampUS via l'origine
 //     d'horloge du film, cf. ScanFilmClockOrigin) ;
-//   - slotXUID : le pont slot->xuid (ResolveSlotXUID) — un slot absent reste XUID 0 ;
+//   - occupant : qui tient le siège A L'INSTANT de la transition (registre à l'instant,
+//     lot 6.1 — le pont APLATI créditait le PREMIER occupant d'un siège recyclé, donc un
+//     portage pouvait revenir à un joueur que le film place ailleurs) ; zéro = pas de porteur
+//     établi, la période reste non pontée et la couverture le dit ;
 //   - deaths : le fil des morts (ScanFilmDeaths), qui ferme les périodes des porteurs morts.
-func BuildHeldObjectCarry(events []HeldObjectEvent, slotXUID map[uint32]uint64, deaths []Death) HeldObjectCarry {
+func BuildHeldObjectCarry(events []HeldObjectEvent, occupant func(slot uint32, matchMS int) uint64,
+	deaths []Death) HeldObjectCarry {
 	trans := make([]heldObjectTransition, 0, len(events))
 	for _, e := range events {
 		trans = append(trans, heldObjectTransition{tMS: e.TimeMS, slot: e.Slot, pickup: e.Pickup})
@@ -97,13 +101,16 @@ func BuildHeldObjectCarry(events []HeldObjectEvent, slotXUID map[uint32]uint64, 
 	for _, d := range deaths {
 		mortsDe[d.XUID] = append(mortsDe[d.XUID], int(d.TimeMS))
 	}
+	if occupant == nil {
+		occupant = func(uint32, int) uint64 { return 0 }
+	}
 	out := HeldObjectCarry{CarryMSByXUID: map[uint64]int{}}
 	for _, tr := range trans {
 		out.Events = append(out.Events, HeldObjectEvent{
-			TimeMS: tr.tMS, Slot: tr.slot, XUID: slotXUID[tr.slot], Pickup: tr.pickup,
+			TimeMS: tr.tMS, Slot: tr.slot, XUID: occupant(tr.slot, tr.tMS), Pickup: tr.pickup,
 		})
 	}
-	out.Periods = heldObjectPeriods(trans, slotXUID, mortsDe)
+	out.Periods = heldObjectPeriods(trans, occupant, mortsDe)
 	for _, p := range out.Periods {
 		if p.XUID != 0 && !p.Ouverte {
 			out.CarryMSByXUID[p.XUID] += p.FinMS - p.DebutMS
@@ -114,7 +121,7 @@ func BuildHeldObjectCarry(events []HeldObjectEvent, slotXUID map[uint32]uint64, 
 
 // heldObjectPeriods déroule les transitions en périodes (prise -> lâcher | mort | fin).
 func heldObjectPeriods(
-	trans []heldObjectTransition, slotXUID map[uint32]uint64, mortsDe map[uint64][]int,
+	trans []heldObjectTransition, occupant func(uint32, int) uint64, mortsDe map[uint64][]int,
 ) []HeldObjectPeriod {
 	var out []HeldObjectPeriod
 	ouverte := -1
@@ -136,7 +143,7 @@ func heldObjectPeriods(
 			fermer(fin, parMort)
 		}
 		out = append(out, HeldObjectPeriod{
-			Slot: tr.slot, XUID: slotXUID[tr.slot], DebutMS: tr.tMS, Ouverte: true,
+			Slot: tr.slot, XUID: occupant(tr.slot, tr.tMS), DebutMS: tr.tMS, Ouverte: true,
 		})
 		ouverte = len(out) - 1
 	}

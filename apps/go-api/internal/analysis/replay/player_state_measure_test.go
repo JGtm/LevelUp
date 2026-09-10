@@ -135,7 +135,7 @@ func psRespawn(t *testing.T, in psInputs) {
 func psDeathToSpawnGaps(in psInputs) []float64 {
 	byXUID := map[uint64][]lifeSpan{}
 	for _, l := range in.lives {
-		if x, ok := in.own.PontParSlot()[l.slot]; ok {
+		if x, ok := in.own.PontEpure()[l.slot]; ok {
 			byXUID[x] = append(byXUID[x], l)
 		}
 	}

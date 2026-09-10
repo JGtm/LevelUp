@@ -106,10 +106,10 @@ type StatborgIdentityInput struct {
 // IdentityRegistry est la table d'identite d'UN film : les liens, leur provenance, et les
 // accesseurs que les calques consomment.
 //
-// LES ACCESSEURS PORTENT LEURS GARDES. `PontEpure` retire les slots ambigus, `XUIDAt` prefere la
-// vie qui couvre l'instant au pont aplati, `PontParSlot` ne sert que les consommateurs dont
-// l'exemption est ecrite. Un calque ne peut plus oublier une garde : il n'a plus de quoi
-// l'enfreindre.
+// LES ACCESSEURS PORTENT LEURS GARDES. `PontEpure` retire les slots ambigus ; `XUIDAt` /
+// `XUIDNumAt` preferent la vie qui couvre l'instant et s'abstiennent sur un siege ambigu ;
+// `PontEtabli` ne dit QUE si un pont existe. Le pont APLATI n'a plus d'accesseur du tout depuis
+// le lot 6.1. Un calque ne peut plus oublier une garde : il n'a plus de quoi l'enfreindre.
 type IdentityRegistry struct {
 	// own est le pont brut. INTERNE, et il le reste : c'est tout l'objet du garde-rail.
 	own OwnerReport
@@ -174,13 +174,22 @@ func BuildIdentityRegistry(in IdentityInput) IdentityRegistry {
 // Vies rend les vies decoupees et nommees, telles que le registre les a laissees.
 func (r IdentityRegistry) Vies() []lifeSpan { return r.own.lives }
 
-// PontParSlot rend le pont APLATI slot -> xuid.
+// PontEtabli dit si le registre a pu ponter AU MOINS UN siege — la question que se posaient les
+// gardes qui testaient `len(PontParSlot()) == 0` avant le lot 6.1.
 //
-// IL GARDE LE PREMIER OCCUPANT D'UN SLOT RECYCLE, et c'est pourquoi il ne doit servir qu'aux
-// consommateurs dont l'exemption est ecrite (ramassages, marques de portage, frags sous
-// equipement actif). Tout ce qui NOMME une piste passe par [IdentityRegistry.PontEpure] ; tout
-// ce qui interroge un INSTANT passe par [IdentityRegistry.XUIDAt].
-func (r IdentityRegistry) PontParSlot() map[uint32]uint64 { return r.own.SlotXUID }
+// ELLE NE SERT QU'A SE TAIRE, jamais a nommer : un calque qui la trouve fausse n'a rien a
+// publier. Le nommage passe par [IdentityRegistry.XUIDAt] / [IdentityRegistry.XUIDNumAt] (a
+// l'instant) ou [IdentityRegistry.PontEpure] (pour une piste entiere).
+func (r IdentityRegistry) PontEtabli() bool { return len(r.own.SlotXUID) > 0 }
+
+// LE PONT APLATI N'A PLUS D'ACCESSEUR (lot 6.1, 2026-09-10). `PontParSlot` rendait
+// `OwnerReport.SlotXUID` tel quel — le PREMIER occupant d'un siege recycle, quel que soit
+// l'instant demande — sous une exemption ecrite « ramassages, marques de portage, frags sous
+// equipement actif ». Ses six lecteurs connaissaient tous l'instant de leur lecture ; ils sont
+// passes a `XUIDNumAt`. Mesure qui a commande le retrait :
+// `.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md` (un siege ambigu sur 74 films, deux ramassages
+// publies sous le nom d'un joueur que le film place ailleurs). Garde-rail contre la
+// reintroduction : `internal/archlint/no_identity_bridge_outside_registry_test.go`.
 
 // IndexParSlot rend le pont slot -> INDEX DE JOUEUR du film. C'est la forme qu'attendent les
 // rattachements d'EVENEMENTS, qui portent un index et non un xuid.
@@ -221,7 +230,23 @@ func scoreRecordsOf(in *ScoreInput) []objectiveevents.StatRecord {
 // couvre l'instant si elle est nommee, sinon le pont par slot — et rien du tout sur un slot
 // ambigu. Chaine vide = personne ne le nomme.
 func (r IdentityRegistry) XUIDAt(slot uint32, tUS uint64) string {
-	return r.own.xuidAt(slot, tUS)
+	x := r.own.xuidNumAt(slot, tUS)
+	if x == 0 {
+		return ""
+	}
+	return strconv.FormatUint(x, 10)
+}
+
+// XUIDNumAt est [IdentityRegistry.XUIDAt] EN NUMERIQUE — zero quand personne ne nomme le slot a
+// cet instant.
+//
+// POURQUOI LES DEUX FORMES. Les calques qui PUBLIENT une identite l'ecrivent en chaine (c'est le
+// contrat de l'artefact) ; ceux qui la JOIGNENT — un frag a son episode, une lecture d'inventaire
+// aux morts de son porteur, une position a son corps — travaillent sur `uint64`, comme le fil des
+// morts et le pont. Leur faire formater puis reparser une chaine par lecture serait un aller-retour
+// pur, et c'est exactement ce que les lecteurs du pont aplati evitaient en le lisant a nu.
+func (r IdentityRegistry) XUIDNumAt(slot uint32, tUS uint64) uint64 {
+	return r.own.xuidNumAt(slot, tUS)
 }
 
 // DeathOffsetMS rend le calage du fil des morts sur l'horloge du film
