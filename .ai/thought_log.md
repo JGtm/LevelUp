@@ -1,3 +1,47 @@
+## [2026-09-10] Lot 6.6 — Munitions de l'arme au sol : REFUTEES sur l'objet, repli date livre — Complete (2 commits TDD, worktree LevelUp-wt-armes-au-sol-calque)
+
+**Decision technique principale.** Etape 1 (instrument obligatoire avant toute publication) : les
+trois feuilles candidates du default-state de l'archetype `ti=42` — le `R(12)` du point 3, le
+`R(7)` du point 4 et la « liste de chargeurs » du point 5 (`consumeWeaponMagazineList`) — ont ete
+rendues observables SANS CHANGER UN SEUL BIT (receptacle passe en parametre au lecteur PARTAGE,
+donc aucune seconde copie ; l'appelant de l'arme portee passe `nil`), puis confrontees sur 61
+films d'arene a la derniere lecture d'inventaire du lacheur. Les trois sont REFUTEES. Decision qui
+en decoule : PAS de champ `ammo` cuit, PAS de recuisson — le repli prevu par le plan est livre
+(jointure a la lecture cote web, affichage DATE). Decision de RETIRER apres mesure la plomberie
+des points 3, 4 et 5 : la semantique etant refutee, la garder aurait laisse un type exporte
+(`WeaponMagazineList`) et deux champs de `EquipmentCreation` sans aucun lecteur — « pas de au cas
+ou » (CLAUDE.md n°7). Seul le point 6 est CONSERVE : il publie dans `EquipCreationRef`, champ qui
+existe deja pour `ti=37` (aucun type ni champ nouveau), et sa semantique est PROUVEE.
+
+**Resultats observes.** Point 5 : 10 613 mots de 32 bits, **6 609 valeurs distinctes**, minimum
+98, **2 sous 1024**, et **0 egalite avec le chargeur du lacheur sur 1 524 comparaisons** (0 aussi
+en « <= », 0 avec la reserve, 0 meme en prenant N'IMPORTE LEQUEL des mots). Les contre-exemples
+donnent la cause : le mot est CONSTANT par famille d'arme (`84bd29ed` -> 320 323 477 trois fois)
+pendant que le chargeur varie (7, 4, 7) — c'est un HANDLE, ce que la porte `FUN_14080d69c` disait
+deja (« optional-handle gate »). Point 4 : 10 egalites sur 6 477 (0,2 %), valeur 0 dans 74 % des
+records. Point 3 : 0 sur 6 477. **Point 6, en revanche, est IDENTIFIE : il vaut l'index de joueur
+du lacheur dans 6 551 cas sur 6 931 testes (94,5 %)**, et il est transmis pour 92,5 % des objets
+`spawned` — ceux que le calque laisse anonymes, et sur lesquels l'option E du rapport 6.3 ne
+rendait que 12,7 %. Invariance de la grammaire prouvee sur octets reels, des DEUX cotes du
+changement (`git archive HEAD` d'un cote, branche de l'autre, meme test) : empreinte sha256 des
+champs pre-existants identique (28 creations d'arme au sol, 38 d'equipement, ancres 141 / 170).
+Mutation Go jouee : le `!` retire de la porte du point 6 fait tomber le balayage de 28 records a
+1. Mutations web jouees (3) : seuil `>` en `>=`, lecture a venir acceptee, jointure de cle sans
+normalisation — les trois font rougir. Gates : `go test ./internal/analysis/filmdec/
+./internal/analysis/replay/ ./internal/replaybuild/ ./internal/service/...` vert, `go vet` et
+`golangci-lint` sans nouvel avertissement, `tsc` vert, vitest match-replay 2 681 tests dont 15
+neufs (9 sur la jointure, 3 sur le survol, 3 sur l'assemblage de l'infobulle), lint web sans nouvel avertissement.
+
+**Conclusion / prochaine etape.** Aucune recuisson du parc n'est necessaire : la jointure se fait
+a la lecture depuis `inventory` / `loadouts` / `groundWeapons`, tous les trois deja servis.
+Rapport `.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`. Trois decouvertes consignees et NON
+traitees : (1) le commentaire de `GroundWeapon.W` (`document_ground_weapon_items.go:78`) affirme
+« MEME espace d'identifiants que `Loadout.W` » alors que l'intersection brute des deux ensembles
+est VIDE (doc inversee, cote serveur, non corrigee au lot 6.5) ; (2) le point 6 permettrait de
+nommer le proprietaire des armes `spawned` a 92,5 % — un lot a part, il exige un champ au document
+et une recuisson ; (3) le canal de l'ARME PORTEE lit la meme liste de chargeurs dans les paquets
+DELTA, non mesuree.
+
 ## [2026-09-10] Lot 6.5 — Armes au sol : jointure reparee, infobulle, filtre armes speciales — Complete (3 commits TDD, worktree LevelUp-wt-armes-au-sol-calque)
 
 **Decision technique principale.** Trois items du plan maitre, TDD strict, un commit par item.
