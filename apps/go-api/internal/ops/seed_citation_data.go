@@ -574,7 +574,11 @@ func defaultCitationMappings() []CitationMapping {
 			Description: "Éliminez des Spartans avec le MA40 AR.",
 			TierTargets: "25,50,100,200,500", Subcategory: citationSubUNSC},
 		{Norm: "sidekick_mastery", Display: "Maîtrise du MK50 Sidekick", MappingType: mappingTypeWeaponStat,
-			StatName: "weapon_kills:Mk51 Sidekick", Enabled: true,
+			// CORRECTION 2026-09-10 : `Mk51` -> `Mk50`. La citation demandait un nom qui
+			// n'existe nulle part — le registre et weapon_names.toml disent tous deux
+			// « Mk50 Sidekick », et le Display de cette ligne le disait déjà. Un chiffre,
+			// et la citation comptait zéro depuis sa création, sans le moindre signal.
+			StatName: "weapon_kills:Mk50 Sidekick", Enabled: true,
 			ImagePath:   wpHI + "HI_Commendations_Sidekick.png",
 			Category:    citationCatArme,
 			Description: "Éliminez des Spartans avec le MK50 Sidekick.",
@@ -604,7 +608,12 @@ func defaultCitationMappings() []CitationMapping {
 			Description: "Éliminez des Spartans avec le CQS48 Bulldog.",
 			TierTargets: tierTargets10_25_50_100_250, Subcategory: citationSubUNSC},
 		{Norm: "bandit_mastery", Display: "Maîtrise du Bandit EVO", MappingType: mappingTypeWeaponStat,
-			StatName: "weapon_kills:Bandit Evo", Enabled: true,
+			// CORRECTION 2026-09-10 : « Bandit Evo » est le libellé FR (weapon_names.toml
+			// `fr`), pas l'identité EN canonique. Le moteur compare au nom canonique —
+			// « M392 Bandit » — donc la citation comptait zéro depuis sa création. Piège
+			// général du type `weapon_stat` : le StatName porte un nom EN, jamais un
+			// libellé affiché. Garde-rail : TestWeaponStatCitations_ResolvableName.
+			StatName: "weapon_kills:M392 Bandit", Enabled: true,
 			ImagePath:   wpHI + "HI_Commendations_Bandit.png",
 			Category:    citationCatArme,
 			Description: "Éliminez des Spartans avec le Bandit EVO.",
