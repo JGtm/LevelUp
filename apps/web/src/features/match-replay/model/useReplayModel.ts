@@ -16,9 +16,12 @@
  * CE QUE COÛTE UNE BASCULE DE POINT DE VUE, MESURÉ AVANT D'OPTIMISER (E2.3 du plan « frise,
  * point de vue », 2026-09-06) : sur le match témoin `4ecdf3e7` — artefact réel de 2 714 images,
  * 9 joueurs, 38 vies, 90 kills — la reconstruction COMPLÈTE du modèle prend une MÉDIANE de
- * 0,16 ms sur 20 bascules (min 0,14, max 0,25 — `replayModel.bench.test.ts`). Trois cents fois
- * sous le seuil de 50 ms au-delà duquel le plan prévoyait de découper la mémo : elle reste
- * ENTIÈRE. Découper coûterait deux chemins de dépendances à tenir pour un gain invisible.
+ * 0,16 ms sur 20 bascules (min 0,14, max 0,25). Trois cents fois sous le seuil de 50 ms au-delà
+ * duquel le plan prévoyait de découper la mémo : elle reste ENTIÈRE. Découper coûterait deux
+ * chemins de dépendances à tenir pour un gain invisible. Le banc qui a produit cette mesure
+ * (`replayModel.bench.test.ts`, artefact hors dépôt, toujours sauté en CI) a été retiré le
+ * 2026-09-10 une fois la mesure ci-dessus actée (lot hygiène 5.3, code mort — CLAUDE.md n°1) ;
+ * ce commentaire en reste l'unique trace.
  */
 import { useMemo } from 'react'
 

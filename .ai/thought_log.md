@@ -238,6 +238,74 @@ legerement inexact, pas touche (hors perimetre du lot 5.1).
 **Conclusion / prochaine etape.** Les trois P2 de la revue de vague 4 sont fermes. Aucune case du
 plan maitre cochee ici (au superviseur). Prochaine etape : le superviseur statue et enchaine sur
 la suite de la vague 5 (E0 + palette hors Grand combat, hygiene XS, hygiene du registre).
+## [2026-09-10] Lot 5.3 (hygiene XS du registre des reports) — 15 lignes statuees — Complete
+
+**Decision technique principale.** Worktree dedie `LevelUp-wt-hygiene-xs` (branche
+`wt/hygiene-xs`, depuis `feat/v75`). Chaque ligne du registre (`.ai/V7.5/REGISTRE_REPORTS.md`)
+verifiee SUR PIECES avant traitement (le fichier a grossi depuis l'ecriture du plan : offset
+constant de +19 lignes entre la numerotation du plan et les lignes reelles, confirme sur les
+15 items). 1 commit de code + 1 commit de cloture registre par ligne (ou groupe coherent) :
+21 commits au total, aucun push.
+
+**Resultats observes, par ligne (numerotation du plan -> ligne reelle) :**
+- L29->48 et L302->321 : **DEJA RESOLUS** avant ce lot (commits anterieurs `75f55c654` et
+  2026-08-18 respectivement) — preuve consignee, aucun code touche.
+- L473->492 : **DEJA RESOLU** (`198ab7e6c`, deja integre a `feat/v75`).
+- L514->533 : **CLOS** — onglet API `form` mort supprime en cascade (buildFormTab,
+  ComputePerformanceSeries et toute sa chaine d'appel orpheline, domain.FormTabResponse/
+  PerformancePoint) ; openapi.yaml + generated.ts regeneres, contract-surface.snapshot.json
+  corrige au plus juste (2 entrees, pas de resync complet).
+- L62->81 : **CLOS** — littéral `film_manifests`/`film_chunks` centralise dans `filmcache`
+  (nouvel export `ManifestsRoot`) sur les 4 sites restants + garde-rail
+  `no_hardcoded_film_cache_dirs_test.go` (walk module entier).
+- L66->85 : **NON TRAITE, premisse caduque** — `match_player_positions` est devenue une
+  projection append-only ACTIVEMENT ecrite et lue (decision v2 du 2026-09-06, posterieure au
+  report) ; consigne au registre, aucun code touche (regle explicite : dropper seulement si
+  0 lecteur ET 0 ecrivain).
+- L63->82 : **CLOS** — `loadGameVariant` logge desormais avant degradation ; le repli
+  lui-meme (0, nil) n'a pas ete change (hors perimetre explicite du report).
+- L595->614 : **CLOS** — `seatLogic.filmIndexByIdentity` delegue a `rosterEntryKey` ; garde-rail
+  `rosterEntryKey_no_new_copies.guard.test.ts`.
+- L437->456 et L575->594 (meme fichier `useReplaySound.ts`, traites ensemble) : **CLOS** —
+  `toggleCategory` corrige (motif U2, next hors updater) apres verification que `toggle` etait
+  deja sain ; les 7 parametres regroupes en `ReplaySoundContext` (8 appels migres).
+- L603->622 : **CLOS** — preuve de concurrence par compteur (`maxActive`, CompareAndSwap) au
+  lieu d'un seuil de 130 ms qui rougissait sous charge CI.
+- L590->609 : **CLOS** — synchronisation sur le hook `OnPersistError` au lieu d'un
+  `time.Sleep(200ms)`, meme patron que le flake deja ferme sur le test voisin.
+- L577->596 : **CLOS** — banc `replayModel.bench.test.ts` retire (chantier frise clos, mesure
+  deja actee dans `useReplayModel.ts`, un test qui se saute toujours en CI est du code mort) ;
+  pointeurs nettoyes (`testDoc.guard.test.ts`, commentaire `useReplayModel.ts`).
+- L11->30 : **CLOS** — en-tete de `vehicle_rides.go` corrige (doc inversee : la sortie nomme le
+  vehicule depuis V8, l'embarquement non, la geometrie n'est plus qu'un repli).
+- L542->561 : **CLOS PARTIELLEMENT (assume)** — `docs/WEAPONS.md` + FR corriges (encart de tete,
+  carte du code, sections Stockage/Lecture) pour ne plus decrire comme actuelle une voie
+  retiree pour Halo Infinite (migration `shared_drop_weapon_kills_v1`, 2026-09-01) ; la reprise
+  complete du chapitre (sections 2-7/9-10, pipeline film historique) reste au prochain lot qui
+  touche l'attribution d'arme, comme le prescrivait le report — portee volontairement limitee
+  pour rester dans le gabarit « hygiene XS ».
+
+**Decouvertes hors perimetre, non traitees (signalees, pas corrigees) :**
+- `domain.MatchMetrics` (internal/domain/stats.go) est deja mort AVANT ce lot (jamais consomme
+  par `ComputeRelativePerformanceScore`, meme avant le retrait de L514) — orpheline preexistante,
+  distincte de la cascade de L514.
+- `.ai/V7.5/REGISTRE_REPORTS.md` porte un bloc DUPLIQUE (lignes 614-616 identiques a 617-619,
+  meme defaut de sed sans adresse deja corrige ailleurs par `f2a394c8c` dans le plan maitre) —
+  seule la premiere occurrence (cible de L595) a ete cloturee ; le doublon lui-meme n'a pas ete
+  merge.
+
+**Gates joues (sorties propres a chaque fois, verifiees sur pieces) :** `go build ./...`,
+`go vet ./...`, `go test ./...` (suite complete, exit 0, 0 `--- FAIL:`), `-tags=integration
+-p 1 -count=1 ./internal/persist/...` (touche par L590), `golangci-lint
+--new-from-merge-base=feat/v75 ./...` (0 issue) ; cote web : `npm run typecheck` (cache
+`.tsbuildinfo` purge a chaque fois), `npx vitest run` sur les 9 fichiers de test touches
+(115 tests verts), `npm run lint` complet (30 warnings, 0 erreur — compares avant/apres via
+`git stash` sur les fichiers touches : 0 nouvelle occurrence).
+
+**Conclusion / prochaine etape.** Les 15 lignes assignees sont statuees dans le registre
+(CLOS / DEJA RESOLU / NON TRAITE, chacune avec preuve). Rien n'a ete coche dans le plan maitre
+(reserve au superviseur). Prochaine etape : revue du lot par le superviseur, puis fusion dans
+l'integration de la vague 5 si accepte.
 
 ---
 

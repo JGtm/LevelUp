@@ -89,6 +89,11 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 
 	gameVariant, err := loadGameVariant(ctx, db, matchID)
 	if err != nil {
+		// Non critique (repli dominance_flag=0), mais l'erreur est tracée AVANT la
+		// dégradation (règle CLAUDE.md n3) : un match_registry absent/verrouillé ne doit
+		// pas disparaître en silence, même si le chemin historique n'est pas tenté ici.
+		slog.WarnContext(ctx, "computeMatchDominanceFlag: lecture du game variant",
+			"match_id", matchID, "err", err)
 		return 0, nil // non critique
 	}
 

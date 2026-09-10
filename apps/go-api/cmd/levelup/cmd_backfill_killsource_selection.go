@@ -12,11 +12,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
 	"levelup/go-api/internal/domain/killscope"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/sync/killcollector"
 )
 
@@ -143,7 +143,7 @@ func compterChunks(cacheRoot, matchID string) (int, bool) {
 	if i := strings.IndexByte(matchID, '-'); i > 0 {
 		court = matchID[:i]
 	}
-	raw, err := os.ReadFile(filepath.Join(cacheRoot, "film_manifests", court+".json"))
+	raw, err := os.ReadFile(filmcache.ManifestPath(cacheRoot, court))
 	if err != nil {
 		return 0, false
 	}

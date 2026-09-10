@@ -13978,27 +13978,6 @@ components:
         - x
         - "y"
       type: object
-    FormTabResponse:
-      additionalProperties: false
-      properties:
-        has_enough_data:
-          type: boolean
-        mean:
-          format: double
-          type:
-            - number
-            - "null"
-        points:
-          items:
-            $ref: '#/components/schemas/PerformancePoint'
-          type:
-            - array
-            - "null"
-      required:
-        - points
-        - mean
-        - has_enough_data
-      type: object
     FragClassEntry:
       additionalProperties: false
       properties:
@@ -20210,24 +20189,6 @@ components:
         - max_ms
         - errors
       type: object
-    PerformancePoint:
-      additionalProperties: false
-      properties:
-        match_id:
-          type: string
-        score:
-          format: double
-          type:
-            - number
-            - "null"
-        start_time:
-          format: date-time
-          type: string
-      required:
-        - match_id
-        - start_time
-        - score
-      type: object
     PeriodInput:
       additionalProperties: false
       properties:
@@ -25493,8 +25454,6 @@ components:
           $ref: '#/components/schemas/BucketInfo'
         current_season:
           $ref: '#/components/schemas/CurrentSeasonResult'
-        form:
-          $ref: '#/components/schemas/FormTabResponse'
         lusr:
           $ref: '#/components/schemas/LUSRTabResponse'
         objective:
