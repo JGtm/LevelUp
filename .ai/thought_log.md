@@ -105002,3 +105002,45 @@ indexe sur le tag d'EFFET (`proj ac954d50`) et non sur les deux tags `jpt!` — 
 un seul fait vu deux fois. Priorite apres NOM et PORTEUR, avant CLASSE, prouvee par test
 negatif ; verifier que la regle porte la `weapon_key` ; supprimer la regle `BANQUE
 veh_un_scorpion` devenue inerte dans le meme commit.
+
+## [2026-09-10] Le canon du Scorpion nomme — 335 frags rendus aux statistiques
+
+**Statut** : Complete.
+
+**Le defaut** : les deux tags du canon du Scorpion (`0bece71e` et `19bd6810`, deux faces du
+meme effet `proj ac954d50`) etaient etiquetes `INCONNU / INCONNU` dans `labels.tsv`, donc NON
+PUBLIABLES. 335 morts, 47 matchs, 80 tueurs sans aucune arme. Et la regle
+`BANQUE veh_un_scorpion -> killfeed-31 -> hinf_scorpion` existait depuis toujours en restant
+INERTE : les six lignes qui citaient cette racine en citaient toutes plusieurs, et la garde
+d unicite les rejetait toutes.
+
+**Ce qui a ete fait, et ce qui ne l a PAS ete** : deux lignes de `labels.tsv` passees de
+INCONNU/INCONNU a VEHICULE/VALIDE avec la racine `sb_010_veh_un_scorpion`. **Zero ligne de code
+Go.** Le genre `EFFET` que j avais concu et annonce (indexation sur le tag d effet) s est revele
+INUTILE : le probleme n etait pas l absence d une voie de resolution, c etait l absence d une
+identite. La voie existait, elle attendait une etiquette. Verifie sur piece avant d ecrire quoi
+que ce soit — c est ce qui a evite un genre de regle entier pour rien.
+
+**Identite etablie** : mesure (77 % des morts en Grand Combat contre 9 % du corpus ; cartes
+Heavies ; tueurs concentrant 24, 18 et 15 morts dans un seul match — signature d un pilote de
+char) PUIS verification humaine sur le match `5faa6b74-0026-4e60-aaca-34522d75050c`
+(Fragmentation Heavies, 2026-01-28) : l utilisateur a regarde le film et confirme. La
+correlation seule ne suffisait pas et n aurait pas du suffire.
+
+**Portee reelle, mesuree avant de decider** : 335 frags sur 138 807, soit 0,24 %. J avais
+propose une demi-journee de decodage pour cela et je l ai retire apres mesure. Le vrai trou est
+ailleurs : **27 806 morts (20 %), sur 553 matchs, n ont AUCUNE source** — probablement des
+matchs jamais relus par le decodeur courant. C est 83 fois le Scorpion, et c est la cause
+probable du signalement « armes inconnues » du backlog. NON TRAITE, consigne ici.
+
+**Garde-rails** : `TestScorpionResoutVersSaCle` verifie l EFFET tag par tag (cle ET sprite), la
+seule formulation qui aurait rougi — `TestChaqueRegleTrouveSaSource` verifie qu une racine est
+CITEE, pas qu elle est citee SEULE, et ne pouvait donc pas voir une regle verte et inerte.
+Limite assumee et ecrite : une troisieme face de l effet arriverait INCONNUE sans faire rougir
+ce test. Ratchet de couverture VEHICULE mis a jour 89/48 -> 91/50 (les DEUX colonnes montent :
+les tags etaient non publiables, contrairement au Gungoose qui n avait que l icone en moins).
+
+**Prochaine etape** : les 335 frags entrent dans le kill feed et les graphes des le
+redemarrage, sans backfill — la traduction tag -> arme se fait a la lecture. Seule la citation
+« Artilleur de Scorpion » a besoin du recalcul des citations, deja inscrit dans la sequence de
+release Notion. Rien de neuf a y ajouter.

@@ -100,7 +100,7 @@
 0a67d603	INCONNU	INCONNU		[effet proj 18b437a4 #0/3]	
 0affed65	INCONNU	INCONNU		[effet hlmt 5295f69c #0/2, PARTAGE par 4 porteurs]	
 0be508f9	ARME	SOUS_RESERVE	BR75	[effet proj 01a07381]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
-0bece71e	INCONNU	INCONNU		[effet proj ac954d50 #0/2]	
+0bece71e	VEHICULE	VALIDE		ARME DE VEHICULE (sb_010_veh_un_scorpion, canon principal) [effet proj ac954d50 #0/2]	porteur `vehi` non extrait : identite etablie par la mesure et la verification humaine, pas par la chaine de tags
 0c64b43f	ARME	SOUS_RESERVE	M41 SPNKr	[effet proj 267e2ad4 #1/3]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
 0d203522	OBJET_EXPLOSIF	VALIDE		OBJET EXPLOSIF PORTE (hlmt 95b23ee5, etat de degat 1/7, sb_008_exp_single_small_kineticunsc, 2 weap, classe pball) [effet weap 2e4faab6]	la flaveur de banque est le TYPE D ENERGIE de l explosion, pas l identite de l objet ni le declencheur (RE_LOG 7ter.51 (4) leve par 7ter.57)
 0d695792	INCONNU	INCONNU		[effet char 5c0b45ae, PARTAGE par 2 porteurs]	
@@ -119,7 +119,7 @@
 177a79ee	ARME	SOUS_RESERVE	Vestige Carbine	[effet proj ccf32fd5]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
 17d6bd23	ARME	SOUS_RESERVE	Sentinel Beam	[effet proj 1345085b]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
 18cbcf8b	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 0000d4ff +5, sb_006_cfx_un_spartan / sb_010_veh_un_scorpion / sb_010_tur_cv_shadeturret / sb_010_veh_bt_chopper / sb_010_veh_cv_banshee / sb_010_veh_un_wasp, classe fixed) [effet hlmt 48c60097 #0/2]	
-19bd6810	INCONNU	INCONNU		[effet proj ac954d50 #1/2]	
+19bd6810	VEHICULE	VALIDE		ARME DE VEHICULE (sb_010_veh_un_scorpion, canon principal) [effet proj ac954d50 #1/2]	porteur `vehi` non extrait : identite etablie par la mesure et la verification humaine, pas par la chaine de tags
 1abc404e	INCONNU	INCONNU		[effet proj 18b437a4 #1/3]	
 1ae38096	ARME	SOUS_RESERVE	Shock Rifle / Shock Rifle (Ranked)	[effet proj 232cea71, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
 1b6370f9	ARME	SOUS_RESERVE	Pulse Carbine	[effet proj 3c2a68bb]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
