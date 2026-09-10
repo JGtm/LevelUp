@@ -356,8 +356,17 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// La capacite portee a son PROPRE calque : ses deux canaux ne vivent pas sur la meme
 	// horloge (i48 dans les deltas, l'ancre dans les images-cles), et ils publient la MEME
 	// grandeur — le rang de palette.
-	doc.Abilities = keepAbilitiesOfPublishedTracks(
-		buildAbilityReads(opt.AbilityRanks, opt.Inventory, origin, step), doc.Tracks)
+	//
+	// LE BRUIT DE BALAYAGE EST ECARTE AVANT TOUT AUTRE FILTRE (RAPPORT_E0_2026-09-10 §3) : un
+	// rang hors du domaine plausible d'une palette (abilityRankDomainMax) n'a pas sa place
+	// dans le classement ni le nommage, et le rejet est COMPTE (AbilityCoverage.ScanNoise),
+	// jamais muet.
+	rawAbilities := buildAbilityReads(opt.AbilityRanks, opt.Inventory, origin, step)
+	cleanAbilities, abilityNoise := rejectAbilityScanNoise(rawAbilities)
+	doc.Abilities = keepAbilitiesOfPublishedTracks(cleanAbilities, doc.Tracks)
+	abilityCov := buildAbilityCoverage(rawAbilities, cleanAbilities, doc.Abilities, abilityNoise)
+	doc.Coverage.Abilities = &abilityCov
+	logAbilityCoverage(abilityCov)
 	// LA PALETTE SE CLASSE AVANT DE NOMMER, et un film ambigu ne recoit AUCUN nom : le
 	// meme rang designe des capacites differentes d'une palette a l'autre.
 	// LES RAMASSAGES ET LES CONSOMMATIONS d'equipement, sur le meme axe et avec les MEMES

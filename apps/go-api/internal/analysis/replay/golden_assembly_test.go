@@ -532,6 +532,10 @@ func renderAbilities(p func(string, ...any), doc ReplayDocument) {
 	p("lectures NOMMEES %d/%d — un rang hors table garde son numero, et la table est propre a"+
 		" la palette du film", named, len(doc.Abilities))
 	p("capacites nommees : %s", renderBilingualMap(doc.AbilityLabels))
+	if c := doc.Coverage.Abilities; c != nil {
+		p("couverture : %d lecture(s) -> %d ecartee(s) bruit de balayage · %d ecartee(s) sans"+
+			" trajectoire publiee -> %d publiee(s)", c.Reads, c.ScanNoise, c.Unpublished, c.Published)
+	}
 	p("")
 }
 
