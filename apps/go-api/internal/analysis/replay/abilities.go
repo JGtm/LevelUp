@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"log/slog"
 	"sort"
 	"strconv"
 
@@ -117,6 +118,95 @@ func keepAbilitiesOfPublishedTracks(reads []AbilityRead, tracks []Track) []Abili
 		func(a AbilityRead, published map[uint32]bool) bool { return published[a.Slot] })
 }
 
+// abilityRankDomainMax : rang maximal PLAUSIBLE dans une palette du titre — au-delà, une
+// lecture n'est plus une « capacité inconnue » mais du BRUIT DE BALAYAGE bit-à-bit
+// (RAPPORT_E0_2026-09-10 §3, même signature que l'unique rang 44 de `084a804d` déjà consigné
+// ci-dessous en §CLASSEMENT DE PALETTE). Les blocs `sofd` du jeu comptent au plus ~27
+// entrées (mesure indépendante par inversion, aucun marqueur de groupe de tags dans le
+// registre) : un rang plus grand ne peut correspondre à AUCUNE capacité, connue ou future,
+// de ce titre — le motif d'en-tête de record a coïncidé avec autre chose et R(6) a lu une
+// valeur arbitraire.
+//
+// MESURÉ SUR LES 64 FILMS DU PARC (2026-09-10) : EXACTEMENT deux lectures dépassent ce
+// plafond sur les 4 952 lectures i48+kf du corpus — rang 32 (`9ffce8ef`, slot 530, image
+// 6140, 8 min 47 s après la SEULE lecture précédente du slot) et rang 34 (`a03a5e65`, slot
+// 574, image 2746, aucune autre lecture du slot). Zéro collatéral.
+//
+// UN FILTRE PAR FENÊTRE DE VIE A ÉTÉ ENVISAGÉ PUIS ÉCARTÉ, mesure à l'appui : sur le même
+// parc, 14 lectures i48 LÉGITIMES (rang appartenant à la palette, cohérent avec le reste de
+// la vie du slot) tombent elles aussi hors de toute fenêtre de vie, à des écarts de 64 à 465
+// images — et DEUX d'entre elles (46c3f91d, écart 64 ; 0a44c6cc, écart 465) ENCADRENT des
+// deux côtés les 176 images de la lecture bruitée de `a03a5e65`. Aucune tolérance de fenêtre,
+// quelle qu'elle soit, ne peut donc séparer le bruit des lectures légitimes ; le domaine du
+// rang, lui, les sépare EXACTEMENT.
+const abilityRankDomainMax = 27
+
+// rejectAbilityScanNoise écarte les lectures dont le rang dépasse abilityRankDomainMax et
+// rend le nombre écarté — jamais un refus muet (cf. AbilityCoverage.ScanNoise). Appelée
+// AVANT keepAbilitiesOfPublishedTracks : le bruit n'est pas une question de trajectoire
+// publiée, c'est une question de valeur — inutile de la faire survivre à un filtre qui ne la
+// concerne pas.
+func rejectAbilityScanNoise(reads []AbilityRead) ([]AbilityRead, int) {
+	if len(reads) == 0 {
+		return nil, 0
+	}
+	out := reads[:0]
+	noise := 0
+	for _, r := range reads {
+		if r.R > abilityRankDomainMax {
+			noise++
+			continue
+		}
+		out = append(out, r)
+	}
+	if len(out) == 0 {
+		return nil, noise
+	}
+	return out, noise
+}
+
+// AbilityCoverage est la couverture du calque IDENTITÉ DE CAPACITÉ PORTÉE (cf.
+// buildAbilityReads / rejectAbilityScanNoise) : combien de lectures i48/image-clé le film a
+// transmises, combien le décodeur a écartées comme BRUIT DE BALAYAGE (rang hors domaine
+// plausible, RAPPORT_E0_2026-09-10 §3), combien faute de trajectoire publiée, et combien
+// restent. `Reads == ScanNoise + Unpublished + Published`, exactement.
+//
+// TÉLÉMÉTRIE PURE, SANS MONTÉE DE SCHEMAVERSION (lot 5.6, 2026-09-10) : même règle
+// qu'Inventory (cf. TestStructureIsOptionalInDocument) — champ OPTIONNEL, aucun rendu n'en
+// dépend, seule la mesure du parc en bénéficie.
+type AbilityCoverage struct {
+	// Reads est le nombre de lectures i48/image-clé DISPONIBLES avant tout filtre.
+	Reads int `json:"reads"`
+	// ScanNoise compte les lectures ÉCARTÉES pour rang hors domaine plausible.
+	ScanNoise int `json:"scanNoise"`
+	// Unpublished est le nombre de lectures retirées faute de trajectoire publiée pour leur
+	// slot (keepAbilitiesOfPublishedTracks) — comptée à part, même filtre que les autres
+	// calques.
+	Unpublished int `json:"unpublished"`
+	// Published est le nombre de lectures effectivement publiées dans doc.Abilities.
+	Published int `json:"published"`
+}
+
+// buildAbilityCoverage assemble la couverture depuis les trois étapes du filtrage : brut
+// (buildAbilityReads), nettoyé du bruit (rejectAbilityScanNoise), publié
+// (keepAbilitiesOfPublishedTracks).
+func buildAbilityCoverage(raw, clean, published []AbilityRead, noise int) AbilityCoverage {
+	return AbilityCoverage{
+		Reads:       len(raw),
+		ScanNoise:   noise,
+		Unpublished: countUnpublished(len(clean), len(published)),
+		Published:   len(published),
+	}
+}
+
+// logAbilityCoverage journalise la couverture du calque — un rejet compté mais jamais
+// journalisé serait à moitié muet.
+func logAbilityCoverage(cov AbilityCoverage) {
+	slog.Info("rejeu : identite de capacite portee",
+		"lectures", cov.Reads, "bruitDeBalayage", cov.ScanNoise,
+		"sansTrajectoirePubliee", cov.Unpublished, "publiees", cov.Published)
+}
+
 // AbilityPalette est une palette de capacités du titre : les rangs qui la SIGNENT, et les
 // noms qu'elle donne à ceux d'entre eux qui sont établis. Elle vient du catalogue du titre
 // (`config/titles/{slug}/mappings/replay_labels.toml`), jamais du code.
@@ -177,24 +267,49 @@ func (p *AbilityPalette) FamilyOf(rank int) string {
 // hors de toute palette connue (un `sofd` compte ~27 entrées). Les compter contre la pureté
 // plutôt que les ignorer est délibéré — c'est ce qui fait que la règle REFUSERAIT un film
 // réellement mélangé.
+//
+// SOUS LE PLANCHER, ON N'ASSOUPLIT PAS — ON EXIGE ENTIER (RAPPORT_E0_2026-09-10 §2, lot 5.6).
+// Le plancher de 10 lectures ferme à tort SEPT films du parc dont la rareté n'est PAS un
+// défaut de qualité : le canal image-clé ne voit QUE la fenêtre 16..23 (les quatre rangs de
+// la famille B), donc AUCUN film de famille A ne récolte jamais de lecture `kf` — mesuré sur
+// 39 films de famille A, 0 lecture `kf`, quand le plus pauvre des films de famille B en
+// transmet 153. Le plancher ne mesure donc pas la palette de ces sept films, il mesure une
+// DURÉE croisée à un canal borgne. Les sept ont pourtant n dans [1, 7] et 100 % DE PURETÉ SUR
+// UNE SEULE FAMILLE — la même propriété que la règle ci-dessus juge suffisante à 90 % dès que
+// n ≥ 10. La généralisation naturelle de « une lecture parasite ne doit pas disqualifier un
+// film pur » est donc : EN DESSOUS DU PLANCHER, ON N'EN TOLÈRE AUCUNE — l'unanimité (100 %)
+// remplace la pureté à 90 %.
+//
+// VÉRIFIÉ EXHAUSTIVEMENT SUR LES 64 FILMS DU PARC : 7 films non classés -> famille A (les
+// sept ci-dessus), 39 famille A -> famille A (inchangé), 17 famille B -> famille B
+// (inchangé), 1 non classé -> non classé (`4f77afc1`, le SEUL film qui mélange réellement les
+// deux palettes — 58 lectures de famille A et 129 de famille B — et qui reste hors périmètre
+// du Grand combat). ZÉRO reclassement fautif, zéro perte.
 const (
-	// abilityPalettePurity : part minimale des lectures portant les marqueurs d'UNE palette.
+	// abilityPalettePurity : part minimale des lectures portant les marqueurs d'UNE palette,
+	// appliquée quand n >= abilityPaletteMinReads.
 	abilityPalettePurity = 0.90
-	// abilityPaletteMinReads : en deçà, on ne classe pas. Le chiffre est DÉRIVÉ du seuil et
-	// non choisi à part — c'est le plus petit n tel qu'UNE lecture parasite ne suffise pas à
-	// disqualifier un film pur : (n−1)/n ≥ 0,90, donc n ≥ 10. En deçà, le test de pureté ne
-	// mesurerait plus la palette mais le hasard du balayage. Le corpus est loin au-dessus :
-	// le film le plus pauvre en transmet 35.
+	// abilityPaletteMinReads : le seuil qui SÉPARE les deux régimes de classifyAbilityPalette
+	// — pureté à 90 % au-dessus, unanimité (100 %) en dessous. Le chiffre est DÉRIVÉ du seuil
+	// et non choisi à part — c'est le plus petit n tel qu'UNE lecture parasite ne suffise pas
+	// à disqualifier un film pur : (n−1)/n ≥ 0,90, donc n ≥ 10. Au-dessus, le corpus est loin
+	// au-dessus : le film le plus pauvre en transmet 35.
 	abilityPaletteMinReads = 10
 )
 
 // classifyAbilityPalette choisit la palette du film d'après ce qu'il MONTRE, ou rend nil.
 //
 // UNE SIGNATURE AMBIGUË NE NOMME RIEN, et c'est le point de toute l'étape : un film dont les
-// lectures se partagent entre deux palettes, ou qui en montre trop peu, sort AVEC SES RANGS
-// et sans un seul nom. Nommer au jugé mettrait « grappin » sur un propulseur.
+// lectures se partagent entre deux palettes sort AVEC SES RANGS et sans un seul nom. Nommer
+// au jugé mettrait « grappin » sur un propulseur.
+//
+// DEUX RÉGIMES, UN SEUL SEUIL DE BASCULE (RAPPORT_E0_2026-09-10 §2) : à partir de
+// abilityPaletteMinReads lectures, la pureté doit atteindre abilityPalettePurity ; en deçà,
+// elle doit être ENTIÈRE (1.0) — un film trop rare pour absorber même une seule lecture
+// parasite ne doit en tolérer AUCUNE. Une seule table de comptage sert les deux régimes :
+// seul le seuil de comparaison change.
 func classifyAbilityPalette(reads []AbilityRead, palettes []AbilityPalette) *AbilityPalette {
-	if len(reads) < abilityPaletteMinReads || len(palettes) == 0 {
+	if len(reads) == 0 || len(palettes) == 0 {
 		return nil
 	}
 	counts := make([]int, len(palettes))
@@ -206,8 +321,12 @@ func classifyAbilityPalette(reads []AbilityRead, palettes []AbilityPalette) *Abi
 			}
 		}
 	}
+	threshold := abilityPalettePurity
+	if len(reads) < abilityPaletteMinReads {
+		threshold = 1.0
+	}
 	for i := range palettes {
-		if float64(counts[i])/float64(len(reads)) >= abilityPalettePurity {
+		if float64(counts[i])/float64(len(reads)) >= threshold {
 			return &palettes[i]
 		}
 	}
