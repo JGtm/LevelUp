@@ -103,22 +103,28 @@ func TestObjectiveStatCitations_MappedToColumns(t *testing.T) {
 // écartées). Fige la colonne source ET le palier calibré : un réalignement sur les paliers
 // génériques (10,20,30,50,100) rendrait « Porteur imparable », « Crâne intouchable »,
 // « Chasse au porteur » et « Prise du crâne » inatteignables (totaux réels : 3, 1, 4, 3).
+//
+// L'état actif/inactif fait partie de ce qui est figé : 9 actives sur les 10 depuis la
+// désactivation de « Vol du drapeau » (décision utilisateur 2026-09-10, cf.
+// TestFlagSteals_Disabled). Colonne et paliers restent pinés même désactivée, pour qu'une
+// réactivation reparte des valeurs calibrées.
 func TestObjectiveStatCitationsV721_MappedToColumns(t *testing.T) {
 	want := []struct {
-		norm  string
-		col   string
-		tiers string
+		norm    string
+		col     string
+		tiers   string
+		enabled bool
 	}{
-		{citationNormFlagCaptures, "flag_captures", tierTargets10_25_50_75_125},
-		{citationNormFlagSecures, "flag_secures", tierTargets50_100_200_350_600},
-		{citationNormFlagSteals, "flag_steals", tierTargets25_50_100_175_300},
-		{citationNormReturnerTakedown, "flag_returners_killed", tierTargets5_10_20_35_60},
-		{citationNormUnstoppableCarrier, "kills_as_flag_carrier", tierTargets1_2_3_5_10},
-		{citationNormAggressiveReturn, "kills_as_flag_returner", tierTargets5_10_20_30_50},
-		{citationNormZoneDefense, "zone_defensive_kills", tierTargets25_50_100_200_350},
-		{citationNormUntouchableCarrier, "kills_as_skull_carrier", tierTargets1_2_3_5_10},
-		{citationNormSkullCarrierTakedown, "skull_carriers_killed", tierTargets2_5_10_20_40},
-		{citationNormSkullGrabs, "skull_grabs", tierTargets2_5_10_20_40},
+		{citationNormFlagCaptures, "flag_captures", tierTargets10_25_50_75_125, true},
+		{citationNormFlagSecures, "flag_secures", tierTargets50_100_200_350_600, true},
+		{citationNormFlagSteals, "flag_steals", tierTargets25_50_100_175_300, false},
+		{citationNormReturnerTakedown, "flag_returners_killed", tierTargets5_10_20_35_60, true},
+		{citationNormUnstoppableCarrier, "kills_as_flag_carrier", tierTargets1_2_3_5_10, true},
+		{citationNormAggressiveReturn, "kills_as_flag_returner", tierTargets5_10_20_30_50, true},
+		{citationNormZoneDefense, "zone_defensive_kills", tierTargets25_50_100_200_350, true},
+		{citationNormUntouchableCarrier, "kills_as_skull_carrier", tierTargets1_2_3_5_10, true},
+		{citationNormSkullCarrierTakedown, "skull_carriers_killed", tierTargets2_5_10_20_40, true},
+		{citationNormSkullGrabs, "skull_grabs", tierTargets2_5_10_20_40, true},
 	}
 	for _, w := range want {
 		m := citationByNorm(t, w.norm)
@@ -134,11 +140,33 @@ func TestObjectiveStatCitationsV721_MappedToColumns(t *testing.T) {
 		if m.Category != citationCatModeJeu {
 			t.Errorf("%s.Category = %q, want %q", w.norm, m.Category, citationCatModeJeu)
 		}
-		if !m.Enabled {
-			t.Errorf("%s.Enabled = false, want true", w.norm)
+		if m.Enabled != w.enabled {
+			t.Errorf("%s.Enabled = %v, want %v", w.norm, m.Enabled, w.enabled)
 		}
 		if m.Description == "" {
 			t.Errorf("%s.Description vide", w.norm)
+		}
+	}
+}
+
+// TestFlagSteals_Disabled : « Vol du drapeau » désactivée sur décision utilisateur du
+// 2026-09-10 (« j'en veux plus »). Vérifie qu'elle n'est enfant d'aucun composite (sa
+// désactivation ne rend aucun palier inatteignable) et qu'elle ne porte plus de visuel :
+// son seul visuel était un SVG bouche-trou, supprimé du dépôt avec cette désactivation.
+func TestFlagSteals_Disabled(t *testing.T) {
+	m := citationByNorm(t, citationNormFlagSteals)
+	if m.Enabled {
+		t.Errorf("flag_steals.Enabled = true, want false (désactivée)")
+	}
+	if m.ImagePath != "" {
+		t.Errorf("flag_steals.ImagePath = %q, want vide (SVG bouche-trou supprimé)", m.ImagePath)
+	}
+	for _, c := range defaultCitationMappings() {
+		if c.MappingType != mappingTypeComposite {
+			continue
+		}
+		if strings.Contains(c.CompositeChildren, `"`+citationNormFlagSteals+`"`) {
+			t.Errorf("composite %q référence flag_steals désactivée → potentiellement inatteignable", c.Norm)
 		}
 	}
 }

@@ -1,8 +1,10 @@
 package ops
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -82,4 +84,130 @@ func TestCitationEnabled_HasImagePath(t *testing.T) {
 			t.Errorf("citation %q (%q) est active mais n'a aucun image_path", m.Norm, m.Display)
 		}
 	}
+}
+
+// TestCompositeChildren_ExistAsCitations : tout enfant cité par un composite désigne une
+// citation réellement seedée.
+//
+// Motivation (ajout 2026-09-10, avec les six citations « Artilleur de » qui portent le
+// nombre d'enfants de `vehicle_mastery` de 9 à 15). Un enfant fantôme ne casse RIEN de
+// visible : OverrideCompositeTotals ignore les norms absents de `mappings` — exactement
+// comme il ignore un enfant désactivé — et le composite se contente d'afficher un total
+// plus bas que la réalité. Le défaut est donc silencieux et permanent, ce qui est le pire
+// des cas : une faute de frappe dans la liste JSON coûte un palier au joueur sans qu'aucun
+// signal ne soit émis. Ce test la transforme en échec de build.
+func TestCompositeChildren_ExistAsCitations(t *testing.T) {
+	mappings := defaultCitationMappings()
+	known := make(map[string]struct{}, len(mappings))
+	for _, m := range mappings {
+		known[m.Norm] = struct{}{}
+	}
+	for _, m := range mappings {
+		if m.CompositeChildren == "" {
+			continue
+		}
+		var children []string
+		if err := json.Unmarshal([]byte(m.CompositeChildren), &children); err != nil {
+			t.Errorf("composite %q: composite_children illisible (%v)", m.Norm, err)
+			continue
+		}
+		if len(children) == 0 {
+			t.Errorf("composite %q: composite_children vide", m.Norm)
+			continue
+		}
+		for _, child := range children {
+			if _, ok := known[child]; !ok {
+				t.Errorf("composite %q: enfant %q ne correspond à aucune citation seedée", m.Norm, child)
+			}
+		}
+	}
+}
+
+// weaponRowNameRe capture le nom canonique EN d'une ligne du registre d'armes, c'est-a-dire
+// la TROISIEME chaine entre guillemets de `{"cle", titleXXX, "Nom", ...}`. On lit le fichier
+// source en texte plutot que d'importer `games/weapons` : les lignes du registre sont un
+// type non exporte, et un accesseur ouvert pour les besoins d'un test serait une porte
+// d'entree permanente sur une table qui doit rester close.
+var weaponRowNameRe = regexp.MustCompile(`^\s*\{"[^"]+",\s*\w+,\s*"([^"]+)"`)
+
+// tomlNameENRe capture la valeur `en` d'une ligne de weapon_names.toml.
+var tomlNameENRe = regexp.MustCompile(`\ben\s*=\s*"([^"]+)"`)
+
+// citationTitleMappingDirs — les manifestes de libelles a lire, un par titre seede.
+var citationTitleMappingDirs = []string{"halo_infinite", "halo_5"}
+
+// TestWeaponStatCitations_ResolvableName : tout `weapon_stat` demande un nom d'arme qui
+// existe reellement.
+//
+// LE DEFAUT QU'IL FERME, ET POURQUOI IL ETAIT INVISIBLE. Une citation `weapon_stat` porte
+// `StatName: "weapon_kills:<nom canonique EN>"`. Le moteur (analysis.dispatchFull) lit
+// `ctx.Stats[StatName]` ; sync.loadWeaponKillsFromSource remplit ce map depuis le registre.
+// Un nom qui ne correspond a RIEN ne provoque ni erreur, ni log, ni test rouge : la lecture
+// d'une cle absente rend le zero-value, et la citation affiche simplement 0. Un joueur ne
+// peut pas distinguer « citation jamais meritee » de « citation cassee ».
+//
+// TROIS L'ETAIENT, decouvertes le 2026-09-10 en croisant le seed et les libelles :
+//   - `sidekick_mastery`  demandait « Mk51 Sidekick » pour « Mk50 Sidekick » (un chiffre) ;
+//     son propre Display disait pourtant « MK50 ».
+//   - `bandit_mastery`    demandait « Bandit Evo », qui est le libelle FR, la ou le moteur
+//     attend l'identite EN « M392 Bandit ».
+//   - `mutilator_mastery` demandait « Mutilator », absent du registre — 1262 frags mesures au
+//     corpus (138 807 morts, 1384 matchs). Repare le 2026-09-10 par le lot kill feed
+//     `PORTEUR`, qui a pose `hinf_mutilator` au registre : ce test est desormais vert SANS
+//     aucune tolerance, et il ne doit jamais en reprendre.
+//
+// Les trois sont enfants de `human_weapons_mastery` : son palier final etait donc
+// inatteignable pour tout le monde, en silence.
+func TestWeaponStatCitations_ResolvableName(t *testing.T) {
+	known := knownWeaponNames(t)
+	if len(known) == 0 {
+		t.Skip("registre et libelles illisibles — garde-rail NON joue")
+	}
+	for _, m := range defaultCitationMappings() {
+		if m.MappingType != mappingTypeWeaponStat {
+			continue
+		}
+		name := strings.TrimPrefix(m.StatName, "weapon_kills:")
+		if name == m.StatName {
+			t.Errorf("citation %q: StatName %q ne porte pas le prefixe weapon_kills:", m.Norm, m.StatName)
+			continue
+		}
+		if _, ok := known[name]; ok {
+			continue
+		}
+		t.Errorf("citation %q: StatName demande l'arme %q, qui n'existe ni au registre "+
+			"ni dans weapon_names.toml — la citation comptera zero en silence", m.Norm, name)
+	}
+}
+
+// knownWeaponNames rend l'ensemble des noms d'armes qu'une citation peut demander : les noms
+// canoniques du registre, plus les `en` des manifestes de libelles (c'est cette valeur que
+// loadWeaponKeyNames prefere au nom du registre quand elle existe).
+func knownWeaponNames(t *testing.T) map[string]struct{} {
+	t.Helper()
+	known := map[string]struct{}{}
+
+	registry, err := os.ReadFile(filepath.Join("..", "games", "weapons", "registry.go"))
+	if err != nil {
+		t.Logf("registre illisible (%v)", err)
+		return known
+	}
+	for _, line := range strings.Split(string(registry), "\n") {
+		if m := weaponRowNameRe.FindStringSubmatch(line); m != nil {
+			known[m[1]] = struct{}{}
+		}
+	}
+
+	for _, slug := range citationTitleMappingDirs {
+		path := filepath.Join(citationRepoRoot, "config", "titles", slug, "mappings", "weapon_names.toml")
+		labels, err := os.ReadFile(path)
+		if err != nil {
+			t.Logf("libelles %s illisibles (%v)", slug, err)
+			continue
+		}
+		for _, m := range tomlNameENRe.FindAllStringSubmatch(string(labels), -1) {
+			known[m[1]] = struct{}{}
+		}
+	}
+	return known
 }
