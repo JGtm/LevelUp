@@ -350,6 +350,7 @@ var weaponRegistryFamilies = []weaponFamilyRow{
 	{"shock_rifle"},
 	{"disruptor"},
 	{"mangler"},
+	{"mutilator"}, // pose le 2026-09-10 avec `hinf_mutilator`
 	{"pulse_carbine"},
 	{"carbine"},
 	{"frag_grenade"},
@@ -431,6 +432,19 @@ var weaponRegistryWeapons = []weaponRow{
 	{keyHinfShockRifle, titleHINF, "Shock Rifle", clsHeavy, roleSniper, "shock_rifle", facBanished, "shock", "Sicatt Workshop"},
 	{"hinf_disruptor", titleHINF, "Disruptor", clsSidearm, clsSidearm, "disruptor", facBanished, "shock", "Sicatt Workshop"},
 	{"hinf_mangler", titleHINF, "Mangler", clsSidearm, clsSidearm, "mangler", facBanished, dmgSpike, "Ukala Workshop"},
+	// Mutilator — pose le 2026-09-10. Elle TUE 1262 fois au corpus (vue
+	// `match_kill_events_latest`, tags 15dcdfe3 / b258262f / 01bc8b0b) et servait deja son
+	// icone (`NOM Mutilator -> killfeed-81`), mais n avait AUCUNE entree ici : ses frags
+	// n apparaissaient sur aucune ligne de statistiques d arme. Meme famille de defaut que
+	// `hinf_warthog` ci-dessous, en plus simple — aucune ambiguite, juste une entree jamais
+	// posee.
+	//
+	// CE QUI EST MESURE ET CE QUI EST DEDUIT, la distinction compte : le nom EN vient de
+	// `labels.tsv` et de la passe humaine de l atlas (index 37 des atlas d armes, 81 du kill
+	// feed), donc il est mesure. La classe `shoulder` et le role `shotgun` sont DEDUITS de sa
+	// presence dans les atlas d ARMES et de son emploi au contact — a corriger si une source
+	// dit mieux. Type de degat et fabricant laisses VIDES a dessein plutot que devines.
+	{"hinf_mutilator", titleHINF, "Mutilator", clsShoulder, roleShotgun, "mutilator", facBanished, "", ""},
 	{"hinf_pulse_carbine", titleHINF, "Pulse Carbine", clsShoulder, roleAuto, "pulse_carbine", facCovenant, dmgPlasma, mfrLodam},
 	{"hinf_stalker_rifle", titleHINF, "Stalker Rifle", clsShoulder, rolePrecision, "stalker_rifle", facCovenant, dmgPlasma, mfrQikost},
 	{"hinf_vestige_carbine", titleHINF, "Vestige Carbine", clsShoulder, rolePrecision, "carbine", facCovenant, dmgPlasma, "Sangheili"},
@@ -491,6 +505,17 @@ var weaponRegistryWeapons = []weaponRow{
 	{"hinf_wasp", titleHINF, "Wasp", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
 	{"hinf_scorpion", titleHINF, "Scorpion", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
 	{"hinf_rockethog", titleHINF, "Rockethog", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	// Warthog a MITRAILLEUSE (LAAG). Pose le 2026-09-10 : sans cette entree, les 173 frags
+	// du `vehi dd7f9102` retomberaient sur `hinf_turret_machinegun` — la tourelle FIXE de
+	// carte, qui n en compte que 11. La cle nomme le PORTEUR, pas l arme : c est ce que le
+	// kill feed du jeu affiche, et ce que `film/killicon` sait maintenant resoudre.
+	{"hinf_warthog", titleHINF, "Warthog", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	// Gungoose — le Mongoose arme de canons jumeles. Pose le 2026-09-10 avec la meme voie que
+	// le Warthog. Particularite : ses 62 frags n avaient AUCUNE ligne de statistiques
+	// jusqu ici (aucune banque sonore, donc aucune regle, donc aucune weapon_key) ; ils
+	// tombaient dans « Non attribue ». Ici on ne repare donc pas une mesure fausse, on en
+	// cree une qui n existait pas.
+	{"hinf_gungoose", titleHINF, "Gungoose", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
 	{"hinf_pelican", titleHINF, "Pelican", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
 	{"hinf_falcon_lmg", titleHINF, "Falcon LMG turret", clsTurret, clsTurret, clsTurret, facHuman, "", ""},
 	{"hinf_falcon_gl", titleHINF, "Falcon grenade launcher", clsTurret, clsTurret, clsTurret, facHuman, "", ""},

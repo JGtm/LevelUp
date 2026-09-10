@@ -42,12 +42,27 @@ var rawRules string
 // Genre : sur quelle quantite une regle s applique.
 type Genre string
 
-// Les trois genres publies, par priorite decroissante de resolution.
+// Les cinq genres publies, par priorite decroissante de resolution.
 const (
 	// GenreNom : la cle est le champ `nom` de labels.tsv, verbatim.
 	GenreNom Genre = "NOM"
 	// GenreGGGL : la cle est l entree de la liste des grenades du jeu (`gggl entree N/4`).
 	GenreGGGL Genre = "GGGL"
+	// GenrePorteur : la cle est le tag `vehi` du PORTEUR cite par le champ detail
+	// (`ARME DE VEHICULE (vehi dd7f9102, ...)` -> `dd7f9102`).
+	//
+	// POURQUOI IL PRIME `BANQUE`. Une ligne de classe VEHICULE porte DEUX identifiants, et
+	// ils n ont pas la meme finesse. La banque nomme l ARME (`tur_un_machinegun`), que
+	// plusieurs porteurs partagent — la mitrailleuse du Warthog et la tourelle fixe posee
+	// sur la carte sont la MEME banque. Le `vehi`, lui, nomme le PORTEUR, et il est unique.
+	// Quand on sait a quel engin un `vehi` correspond, il tranche donc ce que la banque
+	// laisse ambigu, et sa reponse est strictement plus precise : d ou la priorite.
+	//
+	// CE QU IL NE FAIT PAS. Il ne devine aucun `vehi` : une cle n existe ici que si un
+	// rapport de retro-ingenierie du depot l a nommee, avec deux sources concordantes. Les
+	// `vehi` non identifies (le chassis de tourelle generique `b857fb95`, par exemple) n ont
+	// pas de regle et gardent le comportement d avant — aucune icone.
+	GenrePorteur Genre = "PORTEUR"
 	// GenreBanque : la cle est la racine de banque sonore citee par le champ detail
 	// (`sb_010_veh_cv_ghost` -> `veh_cv_ghost`). C est ainsi que le CHASSIS d un vehicule
 	// se nomme : la classe VEHICULE ne porte pas de nom propre, mais 55 de ses 89 lignes
@@ -112,6 +127,33 @@ var banqueRe = regexp.MustCompile(`sb_\d+_([a-z]+_[a-z]+_[a-z0-9]+)`)
 // fois sur quatre. Meme regle que pour les noms alternatifs << A / B >>.
 func uniqueBanque(detail string) (string, bool) {
 	return racineUnique(banqueRe, detail)
+}
+
+// porteurRe capture le tag `vehi` du porteur cite par le champ `detail`, ET le marqueur
+// `+N` qui le suit quand la ligne en declare plusieurs (`vehi 003f00c7 +1`).
+var porteurRe = regexp.MustCompile(`vehi ([0-9a-f]{8})( \+\d+)?`)
+
+// clePorteurRe : la forme exigee d une CLE de regle PORTEUR (colonne `cle` de rules.tsv).
+var clePorteurRe = regexp.MustCompile(`^[0-9a-f]{8}$`)
+
+// uniquePorteur rend le tag `vehi` d une ligne, et SEULEMENT s il designe UN SEUL porteur.
+//
+// IL FAUT DEUX GARDES, PAS UNE, et c est le point delicat de ce genre :
+//
+//  1. la ligne cite DEUX `vehi` differents — `racineUnique` les attrape, comme pour les
+//     banques ;
+//  2. la ligne cite UN `vehi` SUIVI DE `+N` — le tag imprime est le premier d une famille
+//     de N+1 porteurs, et la regex n en voit qu un seul. `racineUnique` le declarerait donc
+//     unique a tort. Sans le rejet explicite du marqueur, une regle PORTEUR deborderait en
+//     silence sur les N autres porteurs : exactement l icone fausse que cette table existe
+//     pour empecher.
+func uniquePorteur(detail string) (string, bool) {
+	for _, m := range porteurRe.FindAllStringSubmatch(detail, -1) {
+		if m[2] != "" {
+			return "", false
+		}
+	}
+	return racineUnique(porteurRe, detail)
 }
 
 // banqueLongueRe capture le nom de banque ENTIER, prive de son seul numero de paquet.
@@ -198,7 +240,7 @@ func Source() Provenance { return provided }
 // meme critere que celui qui interdit de publier son libelle.
 func resolve(rs []Rule, labels []damagetag.Label) map[uint32]Icon {
 	idx := map[Genre]map[string]Rule{
-		GenreNom: {}, GenreGGGL: {}, GenreBanque: {}, GenreClasse: {},
+		GenreNom: {}, GenreGGGL: {}, GenrePorteur: {}, GenreBanque: {}, GenreClasse: {},
 	}
 	for _, r := range rs {
 		if m, ok := idx[r.Genre]; ok {
@@ -217,9 +259,13 @@ func resolve(rs []Rule, labels []damagetag.Label) map[uint32]Icon {
 	return out
 }
 
-// matchRule applique les quatre genres dans l ordre de priorite : le nom propre d abord
-// (le plus specifique), puis les deux quantites qui designent un objet precis sans le
+// matchRule applique les cinq genres dans l ordre de priorite : le nom propre d abord
+// (le plus specifique), puis les trois quantites qui designent un objet precis sans le
 // nommer, puis la classe (le plus large).
+//
+// PORTEUR passe AVANT BANQUE : sur une ligne de vehicule les deux repondent souvent, et le
+// porteur est le plus fin des deux (cf. la doctrine de GenrePorteur). Un `vehi` sans regle
+// retombe sur la banque, comme avant : l ajout est additif, il ne retire rien.
 func matchRule(l damagetag.Label, idx map[Genre]map[string]Rule) (Rule, bool) {
 	if l.Name != "" {
 		if r, ok := idx[GenreNom][l.Name]; ok {
@@ -228,6 +274,11 @@ func matchRule(l damagetag.Label, idx map[Genre]map[string]Rule) (Rule, bool) {
 	}
 	if m := ggglRe.FindStringSubmatch(l.Detail); m != nil {
 		if r, ok := idx[GenreGGGL][m[1]]; ok {
+			return r, true
+		}
+	}
+	if porteur, ok := uniquePorteur(l.Detail); ok {
+		if r, ok := idx[GenrePorteur][porteur]; ok {
 			return r, true
 		}
 	}
@@ -310,12 +361,18 @@ func parseRules(raw string) ([]Rule, string, int, error) {
 // sans vignette ne dit rien, une regle sans justification n est pas auditable.
 func validate(r Rule, line int) error {
 	switch r.Genre {
-	case GenreNom, GenreGGGL, GenreBanque, GenreClasse:
+	case GenreNom, GenreGGGL, GenrePorteur, GenreBanque, GenreClasse:
 	default:
 		return fmt.Errorf("ligne %d: genre %q inconnu", line, r.Genre)
 	}
 	if r.Key == "" || r.Sprite == "" {
 		return fmt.Errorf("ligne %d: cle ou sprite vide", line)
+	}
+	// Une cle PORTEUR mal formee (majuscules, prefixe `0x`, longueur fautive) ne
+	// correspondrait a AUCUNE ligne : la regle serait inerte, sans erreur ni compteur. La
+	// forme est donc verifiee a la lecture, pour que la faute se paie en rouge au demarrage.
+	if r.Genre == GenrePorteur && !clePorteurRe.MatchString(r.Key) {
+		return fmt.Errorf("ligne %d: cle PORTEUR %q mal formee (8 chiffres hexa minuscules attendus)", line, r.Key)
 	}
 	if r.Justification == "" {
 		return fmt.Errorf("ligne %d: justification vide (regle non auditable)", line)

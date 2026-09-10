@@ -13,9 +13,17 @@
 # construit donc sur le nom — mais HORS LIGNE : la resolution effective est indexee par TAG
 # a l initialisation (cf. killicon.go), le runtime ne compare jamais de chaine.
 #
-# QUATRE GENRES DE REGLE, dans cet ordre de priorite :
+# CINQ GENRES DE REGLE, dans cet ordre de priorite :
 #   NOM     la cle est le champ `nom` de labels.tsv, VERBATIM (espaces et casse compris).
 #   GGGL    la cle est l entree de la liste des grenades (`gggl entree N/4` du champ detail).
+#   PORTEUR la cle est le tag `vehi` du PORTEUR cite par le champ detail (8 chiffres hexa
+#           minuscules). AJOUTE LE 2026-09-10. Une ligne de classe VEHICULE porte DEUX
+#           identifiants et ils n ont pas la meme finesse : la banque nomme l ARME, que
+#           plusieurs engins partagent ; le `vehi` nomme le PORTEUR, et il est unique. Quand
+#           un rapport du depot a identifie le `vehi`, il tranche donc ce que la banque
+#           laisse ambigu — d ou la priorite. Une ligne qui declare PLUSIEURS porteurs
+#           (marqueur `+N`, comme `vehi 003f00c7 +1`) n obtient rien : le tag imprime n est
+#           que le premier de la famille. Aucun `vehi` n est devine ici.
 #   BANQUE  la cle est la racine de banque sonore citee par le champ detail
 #           (`sb_010_veh_cv_ghost` -> `veh_cv_ghost`). C est ainsi qu un CHASSIS de vehicule
 #           se nomme : la classe VEHICULE n a pas de nom propre, mais 55 de ses 89 lignes
@@ -47,7 +55,7 @@
 # donc aucune icone. Une icone absente est un repli ; une icone fausse est un mensonge.
 # Les 5 noms alternatifs ecartes pour cette raison sont listes en fin de fichier.
 #
-# date=2026-08-27 regles=55
+# date=2026-09-10 regles=57
 genre	cle	sprite	weapon_key	justification
 NOM	BR75	killfeed-00	hinf_br75	NOMMAGE_GATE index 00 ; nom interne battle_rifle concordant
 NOM	VK78 Commando	killfeed-01	hinf_vk78_commando	NOMMAGE_GATE index 01 ; nom interne commando_rifle concordant
@@ -78,13 +86,15 @@ NOM	Repulsor	killfeed-56	hinf_repulsor	NOMMAGE_GATE index 56 ; nom interne repul
 NOM	Bandit Evo / M392 Bandit	killfeed-73	hinf_bandit	alternative SURE : le registre donne en=M392 Bandit et fr=Bandit EVO, une seule arme ; nom interne bandit concordant
 NOM	Mythic Sandwich / Sandwich	killfeed-76		alternative SURE : base et variante mythique du meme objet ; nom interne sandwich concordant ; hors registre d armes, donc sans weapon_key
 NOM	MA5K Avenger	killfeed-80	hinf_ma5k_avenger	NOMMAGE_GATE index 80 (nom interne ma5k_smg) ; sans weapon_key cote index.json, d ou la colonne vide de la passe humaine
-NOM	Mutilator	killfeed-81		NOMMAGE_GATE index 81 ; nom interne mutilator concordant ; arme HORS registre, donc sans weapon_key
+NOM	Mutilator	killfeed-81	hinf_mutilator	NOMMAGE_GATE index 81 ; nom interne mutilator concordant. WEAPON_KEY POSEE LE 2026-09-10 : l arme etait « hors registre, donc sans weapon_key » — vrai, mais c etait le registre qui avait tort, pas la regle. Ses 1262 morts au corpus (vue `match_kill_events_latest`, tags 15dcdfe3 / b258262f / 01bc8b0b) servaient une icone sans jamais produire de ligne de statistiques d arme. Entree `hinf_mutilator` posee au registre le meme jour.
 NOM	Fuel Rod SPNKr	killfeed-82	hinf_fuel_rod_spnkr	NOMMAGE_GATE index 82 (libelle humain identique au nom du registre)
 NOM	Vestige Carbine	killfeed-84	hinf_vestige_carbine	NOMMAGE_GATE index 84 (libelle humain Carabine Vestige = FR de Vestige Carbine)
 GGGL	0	killfeed-46	hinf_frag_grenade	entree 0 de la liste gggl = banque sb_008_exp_single_med_kineticunsc (cinetique UNSC) ; vignette 46 nommee frag_grenade dans le jeu
 GGGL	1	killfeed-47	hinf_plasma_grenade	entree 1 = sb_010_grn_cv_plasmagrenade (cv = Covenant) ; vignette 47 nommee plasma_grenade dans le jeu
 GGGL	2	killfeed-48	hinf_dynamo_grenade	entree 2 = sb_010_grn_un_lightninggrenade ; vignette 48 nommee lightning_grenade dans le jeu — concordance textuelle directe
 GGGL	3	killfeed-49		entree 3 = sb_008_exp_single_med_kineticbanished (cinetique Banished) = grenade a pointes ; vignette 49 nommee spike_grenade ; absente du registre d armes
+PORTEUR	dd7f9102	killfeed-26	hinf_warthog	WARTHOG A MITRAILLEUSE (LAAG). Le porteur tranche ce que la banque laisse ambigu : la racine `tur_un_machinegun` est partagee par ce Hog et par la tourelle FIXE de carte (`vehi 0000d500`), et la regle BANQUE ci-dessous donnait donc la meme vignette generique aux deux. Mesure du 2026-09-10 sur la vue `match_kill_events_latest` : 173 morts pour ce porteur contre 11 pour la tourelle fixe — 94 pour cent des frags ainsi etiquetes etaient des Warthog. (Lire la table BRUTE aurait donne 1002 contre 70 : cinq revisions de decodeur y coexistent et la meme mort y figure plusieurs fois. Regle ART numero 2, ADR 0026 : lecture par la vue `_latest` UNIQUEMENT.) QUATRE sources concordantes sur l identite du `vehi`, toutes avec mode 0xc0803caa : WARTHOG_FINAL_2026-09-02 section 1 (n.15 MITRAILLEUSE/LAAG, weap 0x0c6fd911), CONTACT_ARMES_WARTHOG_2026-09-01 n.15 (fut long etroit), REWORK_WARTHOG_GUNGOOSE_2026-09-01 (warthog_b_g_l), ASSEMBLAGE_ENFANTS_2026-09-01 (warthog_b_g). Vignette 26 nommee `warthog` par la passe humaine du 2026-08-09 et verifiee a l oeil sur planche_killfeed.png : chassis quatre roues, tourelle sur le plateau arriere, distinct du 27 (rockethog) et des quads 28/29.
+PORTEUR	000025aa	killfeed-29	hinf_gungoose	GUNGOOSE. Cas LIMITE du genre, et le plus pur : ce tag n a AUCUNE banque sonore (l un des deux seuls du catalogue dans ce cas, avec d2ffec3f) — la voie BANQUE ne pouvait donc rien pour lui, jamais, et ses 62 morts mesurees le 2026-09-10 (vue `match_kill_events_latest` ; 387 en lecture brute, gonflee par les revisions de decodeur qui coexistent) n avaient ni icone NI ligne de statistiques. L identite est etablie de longue date par le journal de retro-ingenierie : RE_LOG_KILLWEAPON << 00426796 = projectile de GUNGOOSE (vehicule Mongoose arme d un lanceur) >>, resolu par la chaine vcdd -> sofd -> sofa -> uwfa -> weap 0042678e, et le journal appelle ce tag << l ancre Gungoose >>. Le meme journal designait cette voie comme celle << a etendre aux 9 tags sans banque du catalogue >> : c est fait ici pour le premier d entre eux. ATTENTION, la cle est le chassis MONGOOSE, partage avec le Mongoose NU : ce qui rend la regle sure aujourd hui, c est que les deux seules lignes portees par ce chassis sont des degats de PROJECTILE et que le Mongoose nu n a pas d arme (CONTACT_ARMES_GUNGOOSE_2026-09-02 section 2 : ni uwfa ni scen). Un troisieme tag apparaissant sur ce chassis (un ecrasement, par exemple) heriterait a tort de cette vignette — c est precisement ce que le garde-rail TestChassisMongooseNePorteQueDesTagsGungoose interdit.
 BANQUE	veh_cv_ghost	killfeed-36	hinf_ghost	chassis nomme par sa banque sonore ; vignette 36 nommee ghost dans le jeu
 BANQUE	veh_cv_banshee	killfeed-35	hinf_banshee	vignette 35 nommee banshee
 BANQUE	veh_cv_wraith	killfeed-33	hinf_wraith	vignette 33 nommee wraith
@@ -96,7 +106,7 @@ BANQUE	veh_un_rockethog	killfeed-27	hinf_rockethog	vignette 27 nommee rockethog
 BANQUE	veh_un_pelican	killfeed-30	hinf_pelican	vignette 30 nommee pelican
 BANQUE	veh_un_falconlmgturret	killfeed-86	hinf_falcon_lmg	vignette 86 nommee falcon_chaingun : lmg = chaingun, concordance textuelle entre la banque sonore et la table de chaines du jeu, deux sources independantes
 BANQUE	veh_un_falcongrenadelauncher	killfeed-87	hinf_falcon_gl	vignette 87 nommee falcon_grenade_launcher, concordance textuelle exacte
-BANQUE	tur_un_machinegun	killfeed-05	hinf_turret_machinegun	vignette 05 nommee turret_chaingun : meme tourelle UNSC
+BANQUE	tur_un_machinegun	killfeed-05	hinf_turret_machinegun	vignette 05 nommee turret_chaingun : meme tourelle UNSC. DEPUIS LE 2026-09-10 cette regle ne sert plus QUE les porteurs non identifies : le Warthog a mitrailleuse (`vehi dd7f9102`) est intercepte avant elle par la regle PORTEUR, plus fine. Ce qui reste ici est la tourelle FIXE de carte (`vehi 0000d500`, 70 kills) et tout porteur futur que personne n a encore nomme — pour ceux-la, la tourelle generique est la reponse honnete.
 BANQUE	tur_cv_plasmacannon	killfeed-21	hinf_turret_plasma	vignette 21 nommee turret_plasma
 BANQUE	tur_cv_shadeturret	killfeed-39	hinf_turret_shade	vignette 39, nommee << Banished Shade Turret >> par la passe humaine ; toutes les racines `cv` d Infinite sont des engins Banished (ghost, banshee, wraith, phantom), la Shade `cv` est donc la version Banished — tranche par l utilisateur le 2026-08-11
 BANQUE	exp_single_small_shock	killfeed-42	hinf_coil_shock	BOBINE A CHOC. La coupe a trois segments de banqueRe rendait les quatre bobines identiques (exp_single_small) ; la racine LONGUE les distingue. Concordance textuelle directe entre la flaveur de banque (shock) et la vignette 42, nommee Shock coil par la passe humaine du 2026-08-09.
@@ -124,7 +134,13 @@ CLASSE	MELEE	killfeed-65		la classe EST la reponse : l effet est partage par tou
 #                         - Scrap cannon >>. Quand l humain contredit le nom interne, c est
 #                         l humain qui fait foi (c est exactement ce qui a sauve le couple
 #                         Cindershot / Heatwave) — donc ici : aucune regle.
-#   tur_un_gausscannon    aucune vignette de canon gauss dans l atlas du kill feed.
+#   tur_un_gausscannon    aucune vignette de canon gauss dans l atlas du kill feed. Le porteur
+#                         EST pourtant connu (`vehi 64b925eb`, WARTHOG_FINAL_2026-09-02 n.16),
+#                         donc une regle PORTEUR serait ecrivable — mais elle n aurait aucune
+#                         vignette a servir, et la mesure du 2026-09-10 donne 0 kill au gauss
+#                         sur tout le corpus : rien a reparer, rien a verifier a l ecran. A
+#                         rouvrir le jour ou un frag au gauss apparait ET qu une vignette est
+#                         identifiee (l index 25 de l atlas n est nomme par personne).
 #   tur_un_rocketturret   idem, aucune vignette.
 #   wea_fr_heatwave, wea_cv_plasmapistol, prototype_weapon_lightrifle, chm_ge_weaanim,
 #   cfx_un_spartan, lvl_moments_ge    ce ne sont pas des chassis : ces racines apparaissent
