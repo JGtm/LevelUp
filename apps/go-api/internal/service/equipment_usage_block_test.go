@@ -18,6 +18,11 @@ import (
 
 // overviewRepoMock — un match mesuré à camp connu : moi (P), un ami (Alpha), un
 // allié non déclaré (Bravo), un adversaire (Echo).
+//
+// P PORTE DEUX FAMILLES ET DEUX CANAUX (correction C1, 2026-09-10) : 3 murs, lus sur
+// leurs POSES (seule famille qui engendre une pièce), et 2 capteurs, lus sur leurs
+// CHARGES CONSOMMÉES. Une fixture qui ne porterait que du mur laisserait passer
+// l'ancienne règle — celle qui lisait les poses pour TOUTES les familles.
 func overviewRepoMock() *mockSessionUsageRepo {
 	return &mockSessionUsageRepo{
 		films: map[string]sessionusage.FilmRow{"m1": {MatchID: "m1", DurationMS: 600000}},
@@ -25,7 +30,8 @@ func overviewRepoMock() *mockSessionUsageRepo {
 			{
 				MatchID: "m1", XUID: "P", PadPickups: 2,
 				DeployedByFamily: map[string]int{"wall": 1},
-				TakenByFamily:    map[string]int{"wall": 3},
+				SpentByFamily:    map[string]int{"sensor": 2},
+				TakenByFamily:    map[string]int{"wall": 3, "sensor": 2},
 				DroppedByFamily:  map[string]int{"wall": 1},
 				KeptByFamily:     map[string]int{"wall": 1},
 			},
@@ -61,9 +67,10 @@ func TestEquipmentUsageBlock_AmisConfiguresEtPartsDuDonut(t *testing.T) {
 	if eq == nil {
 		t.Fatal("comptes du donut équipement absents")
 	}
-	// moi 3, l'ami 2, le reste de l'équipe (Bravo) 1, eux 5 -> lobby 11.
-	if eq.Player != 3 || eq.Friends != 2 || eq.RestOfTeam != 1 || eq.Opponents != 5 || eq.LobbyTotal != 11 {
-		t.Errorf("parts = %+v, attendu (moi 3, amis 2, reste 1, eux 5, lobby 11)", eq)
+	// moi 5 (3 murs + 2 capteurs CONSOMMÉS), l'ami 2, le reste de l'équipe (Bravo) 1,
+	// eux 5 -> lobby 13. Lus sur les poses, les capteurs vaudraient 0 et le donut 11.
+	if eq.Player != 5 || eq.Friends != 2 || eq.RestOfTeam != 1 || eq.Opponents != 5 || eq.LobbyTotal != 13 {
+		t.Errorf("parts = %+v, attendu (moi 5, amis 2, reste 1, eux 5, lobby 13)", eq)
 	}
 	// Deux lignes joueur : moi puis l'ami suivi (publication E6.1).
 	if len(block.Players) != 2 || block.Players[0].XUID != "P" || block.Players[1].XUID != "A" {
@@ -127,6 +134,16 @@ func TestSynthesisPage_AttacheLeBlocEquipement(t *testing.T) {
 	wall := block.Families[0]
 	if wall.FamilyKey != "wall" || wall.Used != 1 || wall.Kept != 1 || wall.Dropped != 1 {
 		t.Errorf("première famille = %+v, attendu wall (1, 1, 1)", wall)
+	}
+	// La deuxième famille est le CAPTEUR, servi sur ses charges consommées : sans
+	// elle, la page Synthèse n'aurait aucune ligne pour un équipement pris deux
+	// fois et utilisé deux fois (constat C1 de la revue de la vague 5).
+	if len(block.Families) != 2 {
+		t.Fatalf("familles = %+v, attendu deux lignes (mur puis capteur)", block.Families)
+	}
+	sensor := block.Families[1]
+	if sensor.FamilyKey != "sensor" || sensor.Used != 2 || sensor.Kept != 0 || sensor.Dropped != 0 {
+		t.Errorf("deuxième famille = %+v, attendu sensor (2, 0, 0)", sensor)
 	}
 }
 
