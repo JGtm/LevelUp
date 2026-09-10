@@ -212,7 +212,7 @@ func validateLife(l *LifeInsert, matchID string, i int) error {
 	}
 	switch l.NamedBy {
 	case NommeParMort, NommeParFermeture, NommeParCreation, NommeParCreationPropagee,
-		NommeParElimination, NommeParExclusionTemporelle:
+		NommeParElimination, NommeParExclusionTemporelle, NommeParTableauAPI:
 	default:
 		return fmt.Errorf("persist: match_lives %s ligne #%d: named_by %q inconnu", matchID, i, l.NamedBy)
 	}
@@ -263,4 +263,10 @@ const (
 	NommeParCreationPropagee    = "biped_creation_propagee"
 	NommeParElimination         = "elimination"
 	NommeParExclusionTemporelle = "exclusion_temporelle"
+	// NommeParTableauAPI (lot 4.3, 2026-09-10) : le TABLEAU DE L'API a nomme la vie — soit le
+	// `bid(N.0)` d'un bot que le film declare (ces vies-la n'atteignent pas cette table, elles
+	// n'ont pas de xuid), soit l'humain arrive EN COURS qui a pris le siege d'index d'un bot,
+	// departage par sa fenetre de participation. Declaree ICI DANS LE MEME COMMIT que la voie
+	// du paquet `replay` : c'est l'oubli symetrique du lot E2 qui avait fait refuser 736 films.
+	NommeParTableauAPI = "tableau_api"
 )

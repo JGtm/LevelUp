@@ -67,6 +67,14 @@ type lifeSpan struct {
 	slot     uint32
 	from, to int64  // microsecondes, horloge du film
 	xuid     uint64 // identité lue dans le fil des morts ; 0 = non nommée
+	// bid est l'identifiant STABLE d'un BOT, forme `bid(N.0)` — la même que la base emploie.
+	//
+	// POURQUOI UN SECOND CHAMP PLUTÔT QU'UN xuid ÉLARGI : un bot n'a pas de xuid, et lui en
+	// fabriquer un (0, un négatif, un hachage du nom) le rendrait joignable avec un humain.
+	// Les deux champs sont donc EXCLUSIFS : une vie porte un xuid, ou un `bid`, ou rien.
+	// `xuid == 0` reste le témoin « aucune identité de JOUEUR », que tous les lecteurs de vies
+	// nommées (`ViesNommees`, `nameTracksByLives`) emploient déjà — un bot n'entre pas en base.
+	bid string
 	// cause dit COMMENT la vie s'est terminée. Posée à la découpe (structure), écrasée par
 	// [CauseVieMort] si le fil des morts apparie sa fin.
 	//

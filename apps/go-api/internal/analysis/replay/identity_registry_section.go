@@ -74,7 +74,12 @@ type IdentityBipedSlot struct {
 	Slot uint32 `json:"slot"`
 	// XUID de l'occupant. VIDE quand rien ne l'a nomme — la ligne est publiee quand meme,
 	// avec `link.source = non_resolu`.
-	XUID string         `json:"xuid,omitempty"`
+	XUID string `json:"xuid,omitempty"`
+	// Bid est l'identifiant STABLE du BOT qui occupe le corps, forme `bid(N.0)` — la meme que
+	// la base emploie. EXCLUSIF avec `XUID` : un bot n'a pas de xuid, et lui en fabriquer un le
+	// rendrait joignable avec un humain (lot 4.3). Vide pour un humain comme pour un corps que
+	// rien ne nomme.
+	Bid  string         `json:"bid,omitempty"`
 	Link canonical.Link `json:"link"`
 }
 
@@ -194,20 +199,23 @@ func identityBipedSlots(r IdentityRegistry, c IdentityClock) []IdentityBipedSlot
 	for i, l := range lives {
 		lien := canonical.Link{From: c.frameOf(l.from), To: c.frameOf(l.to)}
 		var xuid string
-		if l.xuid == 0 {
+		switch {
+		case l.xuid == 0 && l.bid == "":
 			// RIEN NE L'A NOMMEE : la ligne se publie quand meme, elle DIT qu'elle n'est pas
 			// resolue, et depuis le lot E2 elle dit POURQUOI. La jeter ferait de la couverture
 			// un compte de rescapes ; la publier sans cause en ferait un constat sans prise.
 			lien.Source, lien.Method = canonical.LinkUnresolved, r.CauseNonResolue(i)
-		} else {
-			xuid = strconv.FormatUint(l.xuid, 10)
+		default:
+			if l.xuid != 0 {
+				xuid = strconv.FormatUint(l.xuid, 10)
+			}
 			// LA VOIE SE LIT DANS `nomPar`, PAS DANS `deducedLives` (correctif P2-bis) : depuis
 			// que le registre a DEUX voies de deduction, `deducedLives` ne dit plus LAQUELLE.
 			// Il ne dit que « c'est une deduction », ce que `LinkInferred` porte deja.
 			lien.Method = methodeDeNommage(l.nomPar)
 			lien.Source = provenanceDeNommage(l.nomPar)
 		}
-		out = append(out, IdentityBipedSlot{Slot: l.slot, XUID: xuid, Link: lien})
+		out = append(out, IdentityBipedSlot{Slot: l.slot, XUID: xuid, Bid: l.bid, Link: lien})
 	}
 	return out
 }
@@ -218,6 +226,11 @@ func identityBipedSlots(r IdentityRegistry, c IdentityClock) []IdentityBipedSlot
 func provenanceDeNommage(nomPar string) canonical.LinkSource {
 	if nomParLecture(nomPar) {
 		return canonical.LinkDirect
+	}
+	if nomPar == NomParTableauAPI {
+		// LE TABLEAU N'EST NI UNE LECTURE DU FILM NI UNE DEDUCTION : c'est la base qui le dit,
+		// et `externe` existe exactement pour cela (cf. canonical.LinkExternal).
+		return canonical.LinkExternal
 	}
 	return canonical.LinkInferred
 }
@@ -238,6 +251,8 @@ func methodeDeNommage(nomPar string) canonical.LinkMethod {
 		return canonical.MethodRosterElimination
 	case NomParExclusionTemporelle:
 		return canonical.MethodTemporalExclusion
+	case NomParTableauAPI:
+		return canonical.MethodScoreboard
 	}
 	return canonical.MethodNone
 }
