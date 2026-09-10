@@ -398,15 +398,29 @@ func TestMapBackground_DonneesReelles(t *testing.T) {
 	if bg.Calibration.MetersPerPixel <= 0 || bg.Calibration.WidthPx <= 0 || bg.Calibration.HeightPx <= 0 {
 		t.Errorf("calage inexploitable : %+v", bg.Calibration)
 	}
+	// FORMAT-AGNOSTIQUE (D3) : cet oracle lit un asset RÉEL et versionné, dont le format
+	// peut changer sans que le service ne change (étape 4 du plan fonds WebP l'a fait
+	// basculer de PNG à WebP sans perte). L'assertion porte donc sur la COHÉRENCE entre le
+	// type MIME rendu et les octets servis, jamais sur un format supposé en dur — un test
+	// qui aurait figé "image/png" ici serait resté vert par CACHE (go test ne rejoue pas un
+	// test dont les sources n'ont pas changé, même si data/ a changé sous ses pieds) tout
+	// en mentant sur ce que le serveur sert réellement : découvert sur pièce à l'étape 4,
+	// -count=1 obligatoire après toute conversion de data/.
 	blob, mime, err := svc.MapBackgroundImage(context.Background(), "000d5950")
 	if err != nil {
 		t.Fatalf("image de Cliffhanger : %v", err)
 	}
-	if len(blob) < 8 || string(blob[1:4]) != "PNG" {
-		t.Errorf("l'octet servi n'est pas un PNG (%d octets)", len(blob))
-	}
-	if mime != mimeImagePNG {
-		t.Errorf("mime = %q, attendu image/png (le fond réel de Cliffhanger est encore un PNG à cette étape)", mime)
+	switch mime {
+	case mimeImagePNG:
+		if len(blob) < 8 || string(blob[1:4]) != "PNG" {
+			t.Errorf("mime %q mais octets non-PNG (%d octets)", mime, len(blob))
+		}
+	case mimeImageWebP:
+		if len(blob) < 12 || string(blob[:4]) != "RIFF" || string(blob[8:12]) != "WEBP" {
+			t.Errorf("mime %q mais octets non-WebP (%d octets)", mime, len(blob))
+		}
+	default:
+		t.Errorf("mime = %q, attendu %q ou %q", mime, mimeImagePNG, mimeImageWebP)
 	}
 
 	// ET LE CADRE CONTIENT LA ZONE JOUÉE. C'est le contrôle qui dit que les deux repères

@@ -120,7 +120,9 @@ func TestCatalogueCalloutsLivreEstExploitable(t *testing.T) {
 			t.Errorf("%s : champ module = %q", module, e.Module)
 		}
 		attendu := CalloutsProvenanceBrut
-		if _, err := os.Stat(filepath.Join(fonds, module+".png")); err == nil {
+		// L'image publiée peut être un `.png` ou un `.webp` (D3, plan fonds WebP) : la
+		// présence du fond, pas son extension, décide de la provenance attendue.
+		if fondImagePubliee(fonds, module) {
 			attendu = CalloutsProvenanceDecoupe
 		}
 		if e.Provenance != attendu {
@@ -168,6 +170,17 @@ func TestCatalogueCalloutsLivreEstExploitable(t *testing.T) {
 	}
 	verifieBrutConserve(t, cat)
 	t.Logf("catalogue livré : %d cartes, %d zones, ridgeline %d grandes", len(cat.Maps), total, grandes)
+}
+
+// fondImagePubliee dit si une image de fond existe pour ce module, PNG ou WebP (D3, plan
+// fonds WebP) — jamais une extension supposée en dur.
+func fondImagePubliee(dir, module string) bool {
+	for _, ext := range []string{".png", ".webp"} {
+		if _, err := os.Stat(filepath.Join(dir, module+ext)); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // TestCatalogueCalloutsForgeLivreEstExploitable — L'ORACLE SUR LA SECTION FORGE du
