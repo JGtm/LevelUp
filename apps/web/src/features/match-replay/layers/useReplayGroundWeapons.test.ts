@@ -17,7 +17,7 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { createRef, type PointerEvent, type RefObject } from 'react'
 
-import type { ReplayGroundWeapon } from '@/lib/api/types'
+import type { ReplayDocument, ReplayGroundWeapon } from '@/lib/api/types'
 
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { testReplayDoc } from '../test/testDoc'
@@ -47,11 +47,17 @@ function monter(
     specialOnly?: boolean
     nameOfSlot?: (slot: number, frame: number) => string | null
     labels?: ReplayDocumentReady['weaponLabels']
+    /** Le reste du document — l'inventaire et les loadouts du fragment de munitions. */
+    doc?: Partial<ReplayDocument>
   } = {},
 ) {
   const frameRef = createRef<number>() as RefObject<number>
   frameRef.current = 0
-  const doc = testReplayDoc({ groundWeapons: items, weaponLabels: opts.labels ?? LABELS })
+  const doc = testReplayDoc({
+    groundWeapons: items,
+    weaponLabels: opts.labels ?? LABELS,
+    ...opts.doc,
+  })
   return renderHook(() =>
     useReplayGroundWeapons({
       doc,
@@ -152,6 +158,58 @@ describe('useReplayGroundWeapons — le survol (item A)', () => {
     )
     survoler(result)
     expect(result.current.hover).toBeNull()
+  })
+})
+
+describe('useReplayGroundWeapons — les munitions du lâcheur (item A2, lot 6.6)', () => {
+  /**
+   * LE DOCUMENT PORTE TOUT CE QU'IL FAUT À LA JOINTURE, et rien de plus : une vie sur le slot
+   * 7 (le lâcheur des objets de ce fichier), un relevé de loadout et une lecture d'inventaire
+   * au MÊME instant. L'image de 1 000 ms rend l'âge lisible en secondes rondes.
+   *
+   * LE LÂCHER EST À L'IMAGE 0 (contrainte du survol, cf. `item`) : la lecture est donc à
+   * l'image 0 elle aussi, et l'âge affiché vaut 0,0 s. Ce que ce test verrouille n'est pas la
+   * valeur de l'âge mais le fait que la ligne le PORTE — l'arithmétique de l'âge est
+   * verrouillée par `groundWeaponAmmo.test.ts`.
+   */
+  const AVEC_INVENTAIRE: Partial<ReplayDocument> = {
+    frameIntervalMs: 1000,
+    tracks: [
+      {
+        slot: 7,
+        team: -1,
+        xuid: 'A',
+        startFrame: 0,
+        endFrame: 100,
+        points: [
+          { t: 0, x: 0, y: 0 },
+          { t: 100, x: 1, y: 1 },
+        ],
+      },
+    ],
+    loadouts: [{ t: 0, slot: 7, w: ['0x2B1824D5'] }],
+    inventory: [{ t: 0, slot: 7, am: [{ mag: 12, res: 24 }] }],
+  }
+
+  it('lâcheur avec inventaire lu : la ligne porte le chiffre ET sa datation', () => {
+    const { result } = monter([item()], { doc: AVEC_INVENTAIRE })
+    survoler(result)
+    expect(result.current.hover?.ammoLine).toBe(
+      '≈ 12 au chargeur et 24 en réserve, lues 0.0 s avant le lâcher',
+    )
+  })
+
+  it('arme APPARUE : aucune ligne de munitions — il n’y a pas de lâcheur à interroger', () => {
+    const { result } = monter([item({ origin: 'spawned', dropper: -1 })], { doc: AVEC_INVENTAIRE })
+    survoler(result)
+    expect(result.current.hover?.originLine).toBe('apparue')
+    expect(result.current.hover?.ammoLine).toBeNull()
+  })
+
+  it('sans lecture d’inventaire : aucune ligne, jamais un zéro', () => {
+    const { result } = monter([item()])
+    survoler(result)
+    expect(result.current.hover?.ammoLine).toBeNull()
   })
 })
 

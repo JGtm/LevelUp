@@ -190,6 +190,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     groundWeaponDropperUnknown: 'lâchée par un joueur non nommé',
     groundWeaponPickedByFmt: (name) => `reprise par ${name}`,
     groundWeaponPickerUnknown: 'reprise par un joueur non nommé',
+    groundWeaponAmmoFmt: (mag, age) =>
+      `≈ ${mag} munitions au chargeur, lues ${age} avant le lâcher`,
+    groundWeaponAmmoResFmt: (mag, res, age) =>
+      `≈ ${mag} au chargeur et ${res} en réserve, lues ${age} avant le lâcher`,
     layerVehicles: 'Véhicules',
     layerVehiclesHint:
       "Les véhicules du match, lus dans le film : leur naissance, leur trajectoire orientée dans le sens du déplacement (le dernier cap connu à l'arrêt), et qui est à bord. Un véhicule sans occupant connu reste neutre ; un châssis que la table ne nomme pas encore se dessine en petit repère neutre, jamais avec le véhicule d'un voisin. LA DISPARITION DU SPRITE N'EST PAS UNE DESTRUCTION : le film ne date aucune destruction — le véhicule reste dessiné jusqu'à la PREMIÈRE preuve mesurée de son absence (fenêtre d'environ 20 s après la dernière preuve de présence), puis s'efface — rien de plus.",
@@ -626,6 +630,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     groundWeaponDropperUnknown: 'dropped by an unnamed player',
     groundWeaponPickedByFmt: (name) => `picked up by ${name}`,
     groundWeaponPickerUnknown: 'picked up by an unnamed player',
+    groundWeaponAmmoFmt: (mag, age) => `≈ ${mag} rounds in the magazine, read ${age} before the drop`,
+    groundWeaponAmmoResFmt: (mag, res, age) =>
+      `≈ ${mag} in the magazine and ${res} in reserve, read ${age} before the drop`,
     layerVehicles: 'Vehicles',
     layerVehiclesHint:
       "The match's vehicles, read from the film: their birth, their trajectory oriented in the direction of travel (the last known heading while stopped), and who is aboard. A vehicle with no known occupant stays neutral; a chassis the table doesn't name yet is drawn as a small neutral marker, never with a neighbor's vehicle. THE SPRITE DISAPPEARING IS NOT A DESTRUCTION: the film dates no destruction — the vehicle stays drawn until the FIRST measured proof of its absence (a window of about 20 s past the last proof of presence), then vanishes — nothing more.",
