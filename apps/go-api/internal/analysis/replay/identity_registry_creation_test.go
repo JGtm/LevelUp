@@ -1,6 +1,9 @@
 package replay
 
 import (
+	"bytes"
+	"encoding/json"
+	"log/slog"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -292,4 +295,89 @@ func TestCauseSansRecordQuandLeFilmNePorteAucuneCreation(t *testing.T) {
 		t.Fatalf("cause de la vie 0 = %q, attendu %q",
 			reg.CauseNonResolue(0), canonical.MethodNoCreationRecord)
 	}
+}
+
+// TestAlarmerSurLesRefusNeSoustraitPasDeuxPopulationsNonComparables — lot 5.1, revue de vague 4,
+// constat P2.
+//
+// # LA FIGURE : DEUX INDEX DE BOT, UN SEUL SURVIT AU TABLEAU
+//
+// Slot 300 (index 5) : un bot SEUL a cet index, et son `bid` est publie au tableau — la regle 1
+// de `identity_registry_scoreboard.go` le resout, la vie SORT du residu.
+//
+// Slot 400 (index 6) : un bot est DECLARE a cet index (BOT_METADATA), mais son `bid` n'entre PAS
+// dans le tableau (`Participants` ne le porte pas) — la vie reste `non_resolu`,
+// `index_hors_table`, elle est le SEUL residu.
+//
+// A LA LECTURE DIRECTE (avant le tableau), les DEUX vies comptent dans `r.IndexBot` (2). APRES
+// le tableau, une seule reste dans `causes.IndexOutOfTable` (1, slot 400). L'ANCIEN CALCUL
+// (`causes.IndexOutOfTable - r.IndexBot` = 1 - 2 = -1, garde par `causes.IndexOutOfTable >
+// r.IndexBot` qui vaut `1 > 2` = FAUX) ne declenche AUCUNE alarme : le residu reel (1 vie
+// authentiquement perdue) se tait.
+//
+// MUTATION : remettre `causes.IndexOutOfTable > r.IndexBot` (et `causes.IndexOutOfTable -
+// r.IndexBot` dans le champ `vies`) -> l'alarme disparait, rouge.
+func TestAlarmerSurLesRefusNeSoustraitPasDeuxPopulationsNonComparables(t *testing.T) {
+	in := filmDeuxCorps()
+	for tUS := uint64(1_000_000); tUS <= 2_000_000; tUS += 500_000 {
+		in.Positions = append(in.Positions, posAt(300, tUS, 3, 3, 3))
+		in.Positions = append(in.Positions, posAt(400, tUS, 4, 4, 4))
+	}
+	in.BipedCreations = append(in.BipedCreations,
+		creationDe(300, 1_000_000, 5), creationDe(400, 1_000_000, 6))
+	in.Bots = []BotIdentity{
+		{FilmIndex: 5, Name: "Bot Publie [bot]", BotID: 1},
+		{FilmIndex: 6, Name: "Bot Sans Ligne [bot]", BotID: 2},
+	}
+	// SEUL bid(1.0) entre au tableau : bid(2.0) est declare par le film, mais la base n'en porte
+	// aucune ligne (le cas qui doit ALARMER — un participant que le film sait nommer, mais dont
+	// la base n'a AUCUNE trace, n'est pas une degradation muette).
+	in.Participants = []Participant{{ID: "bid(1.0)"}}
+
+	reg := BuildIdentityRegistry(in)
+	if reg.creation.IndexBot != 2 {
+		t.Fatalf("IndexBot (lecture directe) = %d, attendu 2 — la figure a change", reg.creation.IndexBot)
+	}
+	c := reg.Section.Coverage.BipedSlot
+	if c.UnresolvedByCause.IndexOutOfTable != 1 {
+		t.Fatalf("index_hors_table (residu apres tableau) = %d, attendu 1 (slot 400 seul) : %+v",
+			c.UnresolvedByCause.IndexOutOfTable, c)
+	}
+
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	defer slog.SetDefault(prev)
+
+	reg.creation.alarmerSurLesRefus("test", c.UnresolvedByCause)
+
+	vies := viesAlarmeesIndexHorsTable(t, buf.Bytes())
+	if vies != 1 {
+		t.Fatalf("alarme index_hors_table : vies = %d, attendu 1 — le residu REEL (1 vie, slot "+
+			"400) doit alarmer meme si 2 lectures directes portaient un index de bot", vies)
+	}
+}
+
+// viesAlarmeesIndexHorsTable extrait le champ `vies` du log JSON de l'alarme
+// « index de participant LU mais absent de la table publiee ». Rend -1 si l'alarme n'est pas
+// sortie DU TOUT — c'est exactement le silence que l'ancien calcul produisait.
+func viesAlarmeesIndexHorsTable(t *testing.T, journal []byte) int {
+	t.Helper()
+	for _, ligne := range bytes.Split(journal, []byte("\n")) {
+		if len(ligne) == 0 {
+			continue
+		}
+		var rec map[string]any
+		if err := json.Unmarshal(ligne, &rec); err != nil {
+			t.Fatalf("ligne de journal illisible : %v (%s)", err, ligne)
+		}
+		msg, _ := rec["msg"].(string)
+		if msg != "rejeu : index de participant LU mais absent de la table publiee — vies NON "+
+			"rattachees (verdict I0 : participant que PlayerIndexTable ne nomme pas)" {
+			continue
+		}
+		v, _ := rec["vies"].(float64)
+		return int(v)
+	}
+	return -1
 }

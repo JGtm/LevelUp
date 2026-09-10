@@ -77,7 +77,7 @@ type passeCouranteUsage struct {
 
 // bilanUsageBackfill : ce que la passe a fait — et pourquoi elle a saute ce qu elle a saute.
 type bilanUsageBackfill struct {
-	ecrits, dejaAJour, sansArtefact, echecs int
+	ecrits, dejaAJour, sansArtefact, echecs, schemaPerime int
 	// Totaux du corpus projete, pour les controles croises de session (--dry-run).
 	totalNommees, totalAnonymes int
 	totalPowerups               map[string]int
@@ -141,8 +141,10 @@ func runBackfillUsageSummary(cfg *config.AppConfig, args []string) error {
 	}
 	debut := time.Now()
 	b := resumerCorpus(ctx, db, pr, o, candidats, dejaResumes)
-	fmt.Printf("resume usage : %d ecrits, %d deja a jour, %d sans artefact, %d echecs — %s\n",
-		b.ecrits, b.dejaAJour, b.sansArtefact, b.echecs, time.Since(debut).Round(time.Second))
+	fmt.Printf("resume usage : %d ecrits, %d deja a jour, %d sans artefact, %d echecs, "+
+		"%d schema perime — %s\n",
+		b.ecrits, b.dejaAJour, b.sansArtefact, b.echecs, b.schemaPerime,
+		time.Since(debut).Round(time.Second))
 	if o.dryRun {
 		fmt.Printf("totaux du corpus projete : %d prises nommees, %d anonymes, powerups %s\n",
 			b.totalNommees, b.totalAnonymes, usagePowerupsTexte(b.totalPowerups))
@@ -213,7 +215,7 @@ func resumerCorpus(
 		if o.limit > 0 && projetes >= o.limit {
 			break
 		}
-		s, etat := projeterUnArtefact(pr.ReplayArtifactPath(o.titleSlug, id), id, o, dejaResumes)
+		s, etat := projeterUnArtefact(ctx, pr.ReplayArtifactPath(o.titleSlug, id), id, o, dejaResumes)
 		switch etat {
 		case usageSansArtefact:
 			b.sansArtefact++
@@ -223,6 +225,9 @@ func resumerCorpus(
 			continue
 		case usageEchec:
 			b.echecs++
+			continue
+		case usageSchemaPerime:
+			b.schemaPerime++
 			continue
 		}
 		projetes++
@@ -259,13 +264,17 @@ const (
 	usageSansArtefact
 	usageDejaAJour
 	usageEchec
+	// usageSchemaPerime : l artefact sur disque porte un schema PLUS ANCIEN que
+	// `replay.SchemaVersion` courant — cf. le refus dans [projeterUnArtefact].
+	usageSchemaPerime
 )
 
 // projeterUnArtefact lit UN artefact et le projette, ou dit pourquoi il ne le fait pas.
 // L artefact entier est relache a la sortie — seule la projection (quelques centaines
 // d octets par joueur) survit.
 func projeterUnArtefact(
-	path, matchID string, o usageSummaryOptions, dejaResumes map[string]passeCouranteUsage,
+	ctx context.Context, path, matchID string, o usageSummaryOptions,
+	dejaResumes map[string]passeCouranteUsage,
 ) (*replay.UsageSummary, etatUsageMatch) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -279,6 +288,22 @@ func projeterUnArtefact(
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		fmt.Printf("  ECHEC %s : parse artefact: %v\n", matchID, err)
 		return nil, usageEchec
+	}
+	// UN ARTEFACT ENCORE A UN SCHEMA ANTERIEUR AU COURANT NE PEUT PAS ETRE RESUME : ses champs
+	// n existent simplement pas encore, et `BuildUsageSummary` rendrait un bilan VIDE — pas une
+	// erreur, donc rien qui arrete la passe, mais un resume FAUX qui s ecrirait quand meme sous
+	// la cle (rev courante, schema de l artefact), et qu une prochaine passe verrait « a jour »
+	// pour toujours (revue de vague 4, 2026-09-10, constat P2 : deux comparaisons distinctes —
+	// `(rev, schema)` face a la reprise, `SchemaVersion` face au COURANT — que l ancien calcul
+	// confondait). Seule une recuisson (`backfill-replay`) porte l artefact au schema courant ;
+	// cette passe-ci REFUSE et se compte, elle ne marque jamais un tel match a jour, meme sous
+	// `--force` (forcer ne fabrique aucun champ manquant).
+	if doc.SchemaVersion < replay.SchemaVersion {
+		slog.WarnContext(ctx, "backfill usage : artefact a un schema perime, resume refuse — "+
+			"recuisson requise (backfill-replay)",
+			"match_id", matchID, "schema_artefact", doc.SchemaVersion,
+			"schema_courant", replay.SchemaVersion)
+		return nil, usageSchemaPerime
 	}
 	// La reprise se decide sur le schema de l artefact SUR DISQUE : un artefact re-cuit a
 	// un schema plus recent que la passe courante doit etre re-resume.

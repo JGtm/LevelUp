@@ -366,16 +366,32 @@ func indexDesBotsDeclares(bots []BotIdentity) map[int]bool {
 
 // alarmerSurLesRefus journalise ce que la lecture directe n'a pas su poser. Un refus muet est
 // exactement ce que la doctrine §0.2 interdit ; un refus SANS CAUSE ne se corrige pas.
+//
+// # POURQUOI `causes.IndexOutOfTable` SE LIT SEUL, SANS SOUSTRAIRE `r.IndexBot` (correctif lot
+// 5.1, revue de vague 4, constat P2)
+//
+// `r.IndexBot` compte les lectures a la LECTURE DIRECTE (`nommerViesParCreations`), AVANT que le
+// tableau de l'API (`resolveByScoreboard`) ne tranche. `causes` arrive ici DEPUIS
+// `r.Section.Coverage.BipedSlot.UnresolvedByCause`, construite APRES le tableau, l'elimination
+// et l'exclusion temporelle (`identity_registry.go`, ordre des etapes) : `IndexOutOfTable` y est
+// deja le RESIDU — les vies qu'AUCUNE etape n'a su nommer, bots compris. Soustraire `r.IndexBot`
+// (population PRE-tableau) a ce residu (POST-tableau) comparait deux populations disjointes :
+// sur `4f77afc1`, 18 lectures dont 10 `IndexBot` a la lecture directe, mais SEULES 8 restent
+// `non_resolu` une fois le tableau execute (les 10 sont nommees, en bot ou en humain departage)
+// — `18 - 10 = 8` semblait juste par COINCIDENCE ; des que le tableau nomme MOINS de bots que
+// `r.IndexBot` n'en compte (siege a cheval sur l'arrivee, bot sans bid publie), la soustraction
+// tombe sous zero ou sous le vrai residu, et l'alarme se tait ou se sous-evalue — exactement le
+// defaut consigne. `causes.IndexOutOfTable`, LUI, exclut deja tout bot NOMME (bid pose) : une
+// vie qui en sort n'est plus `non_resolu`, donc plus dans ce compte. Rien a soustraire.
 func (r creationReport) alarmerSurLesRefus(matchID string, causes canonical.UnresolvedCauses) {
 	slog.Info("rejeu : lien direct corps -> joueur",
 		"match_id", matchID, "records", r.Records, "corps", r.Slots,
 		"direct", r.Direct, "propage", r.Propagated, "indexBot", r.IndexBot,
 		"slotsRecycles", r.Recycled)
-	if causes.IndexOutOfTable > r.IndexBot {
+	if causes.IndexOutOfTable > 0 {
 		slog.Warn("rejeu : index de participant LU mais absent de la table publiee — vies NON "+
 			"rattachees (verdict I0 : participant que PlayerIndexTable ne nomme pas)",
-			"match_id", matchID, "vies", causes.IndexOutOfTable-r.IndexBot,
-			"dontBotsDeclares", r.IndexBot)
+			"match_id", matchID, "vies", causes.IndexOutOfTable)
 	}
 	if causes.DivergentReadings > 0 {
 		slog.Warn("rejeu : vie anterieure au premier record de son slot RECYCLE — aucun corps "+

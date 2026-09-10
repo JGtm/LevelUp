@@ -37,6 +37,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
@@ -326,7 +327,7 @@ func (b *Builder) collecterEntreesCatalogue(
 	// 2026-09-02/03) : ils se calculent ici, où `ksRes` vit, et voyagent avec les autres
 	// entrées. Aucune étape observée ne s'ajoute — ce sont des projections de `killsource`,
 	// déjà observé plus haut.
-	bots := botIdentities(ksRes)
+	bots := replayidentity.BotIdentities(ksRes)
 	successions := botSuccessions(matchID, facts, ksRes)
 	return entreesCatalogue{
 		zones: zones, zoneRoles: zoneRoles,
@@ -433,34 +434,14 @@ func (b *Builder) neutralDeaths(matchID string, res *killsource.Result) []replay
 	return out
 }
 
-// botIdentities projette les bots que le film déclare (BOT_METADATA, décodage killsource
-// DÉJÀ fait) vers l'assemblage du rejeu. Le suffixe « [bot] » suit la même règle que le
-// kill-feed (killsource.botSuffix) : un consommateur ne doit jamais confondre un bot avec
-// un joueur. Les bots NON ÉPINGLÉS (slot contredisant l'espace des humains) n'entrent pas —
-// leur index est une anomalie déclarée, pas une identité.
-func botIdentities(res *killsource.Result) []replay.BotIdentity {
-	if res == nil || len(res.Roster.Bots) == 0 {
-		return nil
-	}
-	unpinned := make(map[int]bool, len(res.Roster.UnpinnedBots))
-	for _, b := range res.Roster.UnpinnedBots {
-		unpinned[b.BotID] = true
-	}
-	out := make([]replay.BotIdentity, 0, len(res.Roster.Bots))
-	for _, b := range res.Roster.Bots {
-		if b.Name == "" || unpinned[b.BotID] {
-			continue
-		}
-		// `BotID` VOYAGE (lot 4.3) : il etait lu par le decodage, employe comme cle exacte par
-		// les relais, et perdu ICI. Faute de lui, `BotIdentity.Bid()` rendait toujours une
-		// chaine vide — le `bid(N.0)` que `RosterEntry.Bid` et `IdentityPlayer.Bid` publient
-		// depuis le lot P1 etait donc VIDE SUR TOUT LE PARC (verifie sur `4f77afc1`), et la
-		// jointure des bots retombait sur le nom nu que ces deux champs existent pour eviter.
-		out = append(out, replay.BotIdentity{
-			FilmIndex: b.Slot, Name: b.Name + " [bot]", BotID: b.BotID})
-	}
-	return out
-}
+// botIdentities projetait les bots que le film déclare (BOT_METADATA) vers l'assemblage du
+// rejeu. EXTRAITE vers `replayidentity.BotIdentities` (lot 5.1, revue de vague 4, constat P2) :
+// le collecteur de sync a besoin de la MÊME projection pour peupler `replay.IdentityInput.Bots`
+// — sans elle, un siège d'index partagé bot/humain attribuait au sync les vies du bot à
+// l'humain (cf. l'en-tête de `games/halo_infinite/replayidentity/bot_identities.go`). Un
+// appelant qui la réécrirait ici divergerait de celle du collecteur au premier ajustement du
+// filtre (bots non nommés, bots non épinglés) — le garde-rail
+// `archlint.TestNoBotIdentityProjectionOutsideKillsource` l'interdit.
 
 // botSuccessions construit les RELAIS (cf. replay/successions.go) : pour chaque ligne de
 // participation `bid(N.0)` arrivée EN COURS de partie, le nom du bot vient du roster
@@ -478,7 +459,7 @@ func botSuccessions(matchID string, facts port.MatchFacts, res *killsource.Resul
 	byID := make(map[int]botRef, len(res.Roster.Bots))
 	for _, b := range res.Roster.Bots {
 		if b.Name != "" {
-			byID[b.BotID] = botRef{name: b.Name + " [bot]", idx: b.Slot}
+			byID[b.BotID] = botRef{name: b.Name + killsource.BotSuffix, idx: b.Slot}
 		}
 	}
 	var out []replay.Succession
