@@ -361,7 +361,16 @@ export function ReplayCanvas({
     ink: { fill: markInk.fill, outline: neutralInk }, redraw,
   })
   // `showNames: true` : le calque des noms a quitte le tiroir le 2026-09-02 (toujours allume).
-  const vehicles = useReplayVehicles({ doc, view: canvasView, enabled: showVehicles, showNames: true, showAim, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, neutralInk, labelStroke, explosionInk: fxInk, reducedMotion, redraw }) // schéma 39 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02) ; explosion de destruction (2026-09-03, en avance de phase).
+  // BORNAGE HORS CADRE (lot 4.4, 2026-09-10) : `offscreenLabelOf`/`offscreenGroupLabelOf`
+  // resolvent le texte de la fleche ICI (langue de la page) — le calque, lui, ne connait
+  // aucune locale (meme convention que `offscreenLabelOf` du calque des pions ci-dessous).
+  const vehicles = useReplayVehicles({
+    doc, view: canvasView, enabled: showVehicles, showNames: true, showAim, colorOfSlot, colorOfXuid,
+    nameOfSlot, nameOfXuid,
+    offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
+    offscreenGroupLabelOf: (n, meters) => REPLAY_TEXT[locale].offscreenGroupMarkerFmt(n, meters),
+    neutralInk, labelStroke, explosionInk: fxInk, reducedMotion, redraw,
+  }) // schéma 39 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02) ; explosion de destruction (2026-09-03, en avance de phase).
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
   // d'autre — plus de garde de mode par-dessus (2026-08-20).

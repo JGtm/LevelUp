@@ -63,6 +63,13 @@ export interface VehiclesInput {
    * dépend, lui, d'une trace de bipède jointe à un xuid (cf. `VehicleStyle.nameOfXuid`).
    */
   nameOfXuid: (xuid: string) => string | null
+  /**
+   * BORNAGE HORS CADRE (plan escouade hors cadre, lot 4.4, 2026-09-10) : texte de la flèche
+   * d'un SEUL occupant hors fenêtre — nom ET distance (cf. `VehicleStyle.offscreenLabelOf`).
+   */
+  offscreenLabelOf: (name: string, meters: number) => string
+  /** MÊME bornage, plusieurs occupants sans conducteur nommé — « N joueurs · distance ». */
+  offscreenGroupLabelOf: (count: number, meters: number) => string
   /** Encre du « aucun occupant connu » (token sémantique, résolu par l'appelant). */
   neutralInk: string
   /** Encre du contour des noms (cf. `useReplayInks`). */
@@ -120,6 +127,8 @@ export function useReplayVehicles({
   colorOfXuid,
   nameOfSlot,
   nameOfXuid,
+  offscreenLabelOf,
+  offscreenGroupLabelOf,
   neutralInk,
   labelStroke,
   explosionInk,
@@ -231,13 +240,14 @@ export function useReplayVehicles({
         { frame, k, frameMs },
         {
           neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, colorOfXuid,
-          nameOfSlot, nameOfXuid, explosionInk, reducedMotion,
+          nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf, explosionInk, reducedMotion,
         },
       )
     },
     [
       enabled, tracks, view, neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf,
-      colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, frameMs, explosionInk, reducedMotion,
+      colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
+      frameMs, explosionInk, reducedMotion,
     ],
   )
 
