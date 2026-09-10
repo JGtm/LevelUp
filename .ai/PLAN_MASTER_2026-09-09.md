@@ -148,6 +148,18 @@ traité (justifié).
 
 Consigné sans lot (arbitrage du 10-09 avec impacts écrits au journal) : révision us5 des armes spéciales (P5), hygiène de code (garde-rail, alias, eslint, flake, journal), couronne VIP, socles d'équipement, mesures E0 (investigation bornée si quota), part de la Synthèse, lot hygiène du registre (en tout dernier si quota).
 
+#### Vague 5 — décisions utilisateur du 10-09 (soir), après inventaire complet des reports
+
+Décision D12 (utilisateur) : traiter les trois P2 de la revue 4.R, l'investigation E0 bornée avec la palette non classée (**hors Grand combat : le mode n'est pas servi officiellement tant que son décodage n'est pas propre**), le lot hygiène XS du registre, puis l'hygiène du registre en dernier. Précision par arme : **abandon définitif**, recherches et code backend conservés. Non traités (confirmé) : couronne VIP hors cadre, socles, us5 armes spéciales, hygiène de code, portages Oddball fantômes (consigné, à la demande seulement), prototype Forge (hors v7.5).
+
+| Lot | Contenu | Exécutant | Gate | Statut |
+|---|---|---|---|---|
+| 5.1 | Trois défauts de la revue 4.R : (a) le collecteur de sync (`internal/sync/killcollector/positions.go` `entreeDuRegistre`) passe `Bots` et `Participants` au registre comme `replaybuild` (`matchfacts.go`), pour que `match_lives` et l'artefact disent la même chose sur un siège partagé et que la voix `tableau_api` ait un producteur ; (b) `cmd/levelup/cmd_backfill_usage_summary.go` refuse (ou alarme et saute) un artefact au schéma < 51 ; (c) `identity_registry_creation.go:374-378` compteur de l'alarme calculé sur des populations comparables. TDD, intégration `-p 1` sync/persist | Sonnet, worktree `LevelUp-wt-collecteur-bots` (`wt/collecteur-bots`) | go test, `-tags=integration -p 1` sync/persist/archlint, lint 0 | [ ] |
+| 5.2 | Investigation E0 bornée (diagnostic seul, aucun code de production) sur les artefacts locaux HORS Grand combat : mur 1:1 déploiements/lâchers (double publication ?), 8 artefacts à palette « non classée » (seuil de classement, ≤ 7 lectures), rang 32 vu une fois, 199 prises inclassables sur 1 422, capteur 4/36 et traqueur 3/29 « utilisés ». Rapport `.ai/V7.5/RAPPORT_E0_2026-09-10.md` avec causes prouvées, correctifs proposés et effort | Opus, worktree `LevelUp-wt-e0-palette` (`wt/e0-palette`) | rapport relu par le superviseur ; aucune base ouverte (serveur en marche) | [ ] |
+| 5.3 | Hygiène XS du registre (§5) : L29, L302, L514, L62, L66 (migration seulement si la table est sans lecteur, sinon consigner), L63, L595, L575/L437, L603, L590, L577, L473, L11, L542 — chaque ligne statuée dans le registre | Sonnet, worktree `LevelUp-wt-hygiene-xs` (`wt/hygiene-xs`) | go test + vitest des paquets touchés, lint 0, registre mis à jour | [ ] |
+| 5.4 | Hygiène du registre des reports : fermer ce que le dépôt prouve résolu, requalifier (précision par arme = abandon définitif, image-clé = recherche acquise / exploitation annulée, Forge = prototype hors v7.5, Oddball fantômes = consigné) | superviseur, en dernier | relecture ligne à ligne | [ ] |
+| 5.R | Revue unique (5.1 touche sync/persist : un relecteur L1 + L6), `make gate-push`, push = CI de vague | — | P0 = 0, P1 = 0 | [ ] |
+
 ### Après ce plan (non planifié ici, pour mémoire)
 
 P3 → P4 → P5 du paradigme (Opus, orchestration §4) ; audit anti-bombe-RAM (D8) ; registre :
