@@ -26,11 +26,13 @@ import (
 	"flag"
 	"fmt"
 	"image"
-	"image/png"
+	_ "image/png" // decodeur PNG, enregistre par effet de bord (image.Decode)
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	_ "golang.org/x/image/webp" // decodeur WebP sans perte, enregistre par effet de bord (D6)
 
 	"levelup/go-api/internal/domain/title"
 )
@@ -81,7 +83,10 @@ func main() {
 		dossier = filepath.Dir(title.NewPathResolver(racine).MapBackgroundPath(*titleSlug, "x"))
 	}
 
-	fichiers, err := filepath.Glob(filepath.Join(dossier, "*.png"))
+	// PNG ET WebP : le format est une propriété de la donnée (D3, plan fonds WebP), jamais
+	// supposé — un dépôt dont les fonds ont été convertis (étape 4) ne doit pas rendre cet
+	// outil silencieusement aveugle.
+	fichiers, err := fichiersFondDeCarte(dossier)
 	if err != nil || len(fichiers) == 0 {
 		fmt.Fprintf(os.Stderr, "aucun fond dans %s (err=%v)\n", dossier, err)
 		os.Exit(1)
@@ -112,20 +117,35 @@ func main() {
 	}
 }
 
-// mesureFond rend la boite de la matiere non transparente d'un PNG, rapportee a son cadre.
+// fichiersFondDeCarte liste les images de fond d'un dossier — PNG ou WebP, jamais un seul
+// des deux : le format est une propriété de la donnee (D3), pas de cet outil.
+func fichiersFondDeCarte(dossier string) ([]string, error) {
+	var fichiers []string
+	for _, motif := range []string{"*.png", "*.webp"} {
+		trouves, err := filepath.Glob(filepath.Join(dossier, motif))
+		if err != nil {
+			return nil, err
+		}
+		fichiers = append(fichiers, trouves...)
+	}
+	return fichiers, nil
+}
+
+// mesureFond rend la boite de la matiere non transparente d'un fond (PNG ou WebP,
+// sniffe au contenu), rapportee a son cadre.
 func mesureFond(chemin string) (mesure, error) {
 	f, err := os.Open(chemin)
 	if err != nil {
 		return mesure{}, err
 	}
 	defer f.Close()
-	img, err := png.Decode(f)
+	img, _, err := image.Decode(f)
 	if err != nil {
 		return mesure{}, err
 	}
 	b := img.Bounds()
 	m := mesure{
-		cle:     strings.TrimSuffix(filepath.Base(chemin), ".png"),
+		cle:     strings.TrimSuffix(filepath.Base(chemin), filepath.Ext(chemin)),
 		largeur: b.Dx(),
 		hauteur: b.Dy(),
 	}
