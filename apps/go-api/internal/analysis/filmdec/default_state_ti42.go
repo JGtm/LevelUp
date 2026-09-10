@@ -30,6 +30,24 @@ package filmdec
 // `consumeWeaponMagazineList`, feuille pour feuille et porte pour porte. On REUTILISE, on ne
 // recopie pas : une seconde copie re-divergerait au premier correctif (regle des 2 copies).
 //
+// CE QUE LES POINTS 3, 4 ET 5 NE SONT PAS — MESURE DU 2026-09-10, LOT 6.6
+// (`.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`). La question posee etait « les MUNITIONS de
+// l'arme lachee sont-elles sur l'objet ? ». Les trois feuilles ont ete instrumentees et
+// confrontees, sur 61 films d'arene et 9 219 objets laches apparies, a la derniere lecture
+// d'inventaire du lacheur :
+//
+//   - point 5 (liste de chargeurs) : 10 613 mots de 32 bits, 6 609 valeurs DISTINCTES, minimum
+//     98, DEUX valeurs sous 1024 — et un meme mot revient sur une meme famille d'arme quand le
+//     chargeur, lui, varie. Sur 1 524 comparaisons : 0 egal au chargeur, 0 inferieur ou egal,
+//     0 egal a la reserve. C'est un HANDLE (la porte `FUN_14080d69c` est celle des poignees
+//     optionnelles), pas un compte de munitions ;
+//   - point 4 (R(7) dequantifie) : 0 en valeur dans 74 % des records ; sur 6 477 comparaisons,
+//     10 (0,2 %) egalent le chargeur ;
+//   - point 3 (R(12)) : 0 comparaison sur 6 477 egale le chargeur, 3 egalent la reserve.
+//
+// LES MUNITIONS NE SONT DONC PAS SUR L'OBJET. Les trois feuilles restent consommees sans etre
+// publiees : ne rien en tirer est le resultat, pas un oubli.
+//
 // L'IDENTITE DE L'ARME SORT PAR LE MEME CHEMIN QUE CELLE DE L'EQUIPEMENT : le bloc
 // `object-multiplayer-properties` du point 2 publie son mot de 32 bits inconditionnel par
 // `mppHook` (MPPWord32). Pour ti=37 ce mot est le GlobalID du tag `eqip` ; l'hypothese pour
@@ -41,13 +59,35 @@ package filmdec
 // reprend le bloc MPP a l'identique.
 
 // consumeDefaultStateTI42 porte FUN_1407f0c68 (archetype 42, « arme au sol »).
+//
+// LE POINT 6 PUBLIE DESORMAIS CE QU'IL LIT (lot 6.6, 2026-09-10) — meme correction qu'i48 le
+// 2026-08-14 et que les deux feuilles de ti=37 (`consumeDefaultStateTI37`). AUCUN BIT NE CHANGE :
+// `consumeGate0R(br, 5)` est deroule a l'identique, porte INVERSEE comprise. Preuve sur octets
+// reels : l'empreinte des champs pre-existants des 28 creations d'arme au sol de la mini-bobine
+// est la meme avant et apres (cf. l'en-tete de golden_minibobine_test.go).
+//
+// IL SORT PAR `EquipCreationRef`, ET C'EST LE MEME CHAMP QUE POUR ti=37 : les deux archetypes
+// appellent le MEME deserialiseur (`ECS_ReadEntityRefIndex5` = FUN_1407f2058). Lui donner un
+// second nom laisserait croire a deux grandeurs differentes.
+//
+// CE QUE LA MESURE DIT DE SA VALEUR (2026-09-10, 61 films d'arene) : sur les objets LACHES dont
+// le lacheur est nomme et l'appariement sans ambiguite, la reference vaut l'INDEX DE JOUEUR du
+// lacheur (`roster[].filmIndex`) dans 6 551 cas sur 6 931 TESTES, soit 94,5 %. Elle est
+// transmise pour 8 717 objets `dropped` sur 9 219 (94,6 %) ET pour 2 395 objets `spawned` sur
+// 2 588 (92,5 %) — c'est-a-dire aussi pour ceux que le calque des armes au sol laisse
+// aujourd'hui ANONYMES. La suite (publier un proprietaire au document) est un lot a part : ici
+// on ne fait que cesser de jeter la valeur.
 func consumeDefaultStateTI42(br *BitReader) {
 	consumeVersionPrefix(br)      // 1. V
 	consumeDefaultStateTI36(br)   // 2. FUN_1407f2224 : V + bloc MPP (FUN_14080cfe8)
 	br.ReadBits(12)               // 3. inline R(12) -> dst+0x60
 	br.ReadBits(7)                // 4. FUN_1406d84b4 R(7) -> dst+0x64
 	consumeWeaponMagazineList(br) // 5. FUN_1407f2494 (deja porte, cf. components_object.go)
-	consumeGate0R(br, 5)          // 6. ECS_ReadEntityRefIndex5 = FUN_1407f2058
+	if !br.ReadBit() {            // 6. ECS_ReadEntityRefIndex5 = consumeGate0R(br, 5) : porte INVERSEE
+		publishEquipmentCreation(EquipCreationRef, br.ReadBits(5), true)
+	} else {
+		publishEquipmentCreation(EquipCreationRef, 0, false)
+	}
 }
 
 // GroundWeaponDefaultStateMinBits est la largeur du chemin minimal de consumeDefaultStateTI42
