@@ -86,6 +86,22 @@ type LabelCatalog struct {
 	// n'ont pas la même couleur dans le jeu ; deux armes de même couleur n'ont pas la
 	// même forme. Détail et raison dans replay_labels.toml.
 	Tints map[string]string
+	// Roles est la table weapon_key -> RÔLE (fonction de combat : automatic, precision,
+	// sniper, power, special, shotgun, sidearm, melee, grenade...), telle que le registre
+	// canonique d'armes la porte (`internal/games/weapons.RolesByKey`). Posée par la COUCHE
+	// TITRE après NewLabelCatalog, comme Icons et Tints — un sixième paramètre ferait sauter
+	// le seuil du dépôt, et cette table n'entre dans aucune jointure de construction.
+	//
+	// POURQUOI ELLE EXISTE (lot armes au sol, 2026-09-10, rapport
+	// `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`). Le filtre « armes spéciales » du rejeu
+	// (sniper/power/special : ce qu'un socle distribue et qu'un adversaire a intérêt à
+	// ramasser) a besoin du RÔLE, jamais publié dans l'artefact — l'ajouter ici, à la
+	// requête, évite toute recuisson : les 64 artefacts locaux et toute la production
+	// deviennent filtrables sans réécrire une seule ligne de cache.
+	//
+	// UNE ARME HORS REGISTRE N'A PAS DE RÔLE (chaîne vide) : le client la traite comme
+	// non-spéciale plutôt que de deviner — même règle que Tint sur une arme non teintée.
+	Roles map[string]string
 	// Effects est la table weapon_key -> famille de rendu TELLE QUE LUE du titre
 	// ([shot_effects]). Weapons n'en garde que la projection par famille d'arme FILM ;
 	// or les kills du feed sont keyés par weapon_key — cette table est publiée telle

@@ -120,6 +120,32 @@ func TestWeaponKeys_ArmeHorsRegistreResteMuette(t *testing.T) {
 	}
 }
 
+// TestWeaponRoles_PoseLeRoleDuRegistre : le RÔLE (lot armes au sol, 2026-09-10) suit la même
+// clé que Key/Tint — publié À LA REQUÊTE depuis le registre canonique
+// (`internal/games/weapons.RolesByKey`), jamais l'artefact. hinf_ma40_ar est classé
+// `automatic` (registry.go) : c'est le fait qui rend ce test capable de détecter une
+// régression de jointure, pas une valeur inventée pour le test.
+func TestWeaponRoles_PoseLeRoleDuRegistre(t *testing.T) {
+	root := t.TempDir()
+	mappingsReels(t, root, title.DefaultSlug)
+	artefactArmes(t, root, title.DefaultSlug, "match-armes")
+
+	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+		GetReplay(context.Background(), "match-armes")
+	if err != nil {
+		t.Fatalf("lecture du rejeu : %v", err)
+	}
+	for _, id := range []string{"0x48C19D2D", "0x48C19D2D42C9679F"} {
+		if got := doc.WeaponLabels[id].Role; got != "automatic" {
+			t.Errorf("rôle de %s = %q, attendu automatic", id, got)
+		}
+	}
+	if got := doc.WeaponLabels["0xDEADBEEF"].Role; got != "" {
+		t.Errorf("rôle %q posé sur une famille hors registre — le silence est la seule "+
+			"réponse juste : un rôle manquant ne s'affirme jamais spécial", got)
+	}
+}
+
 // TestWeaponKeys_TitreSansCatalogue : un titre sans mappings sert le rejeu ENTIER, sans
 // clés. L'absence de catalogue n'est pas une erreur de lecture du document.
 func TestWeaponKeys_TitreSansCatalogue(t *testing.T) {

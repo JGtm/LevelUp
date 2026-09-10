@@ -34,6 +34,7 @@ const SHOW_UNNAMED_PLACEMENTS_KEY = 'replay-show-unnamed-placements'
 const SHOW_DROPPED_PLACEMENTS_KEY = 'replay-show-dropped-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
 const SHOW_GROUND_WEAPONS_KEY = 'replay-show-ground-weapons'
+const SHOW_GROUND_WEAPONS_SPECIAL_ONLY_KEY = 'replay-show-ground-weapons-special-only'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
 const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
 const SHOW_SKULL_CARRIER_KEY = 'replay-show-skull-carrier'
@@ -169,6 +170,15 @@ const SHOW_WEAPON_PADS_DEFAULT = true
 const SHOW_GROUND_WEAPONS_DEFAULT = true
 
 /**
+ * LE FILTRE « ARMES SPÉCIALES SEULEMENT » EST ÉTEINT PAR DÉFAUT (lot 6.5, 2026-09-10, rapport
+ * `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`). C'est un RESSERREMENT du calque des armes au
+ * sol, pas son remplacement : le comportement d'avant ce lot (tout afficher) reste le défaut,
+ * et l'utilisateur choisit d'affiner sur les matchs denses (204 objets/film en moyenne, dont
+ * 82 % sans intérêt tactique).
+ */
+const SHOW_GROUND_WEAPONS_SPECIAL_ONLY_DEFAULT = false
+
+/**
  * LES DRAPEAUX SONT ALLUMÉS PAR DÉFAUT. C'est l'ENJEU du match en capture de drapeau : savoir
  * où est le drapeau, qui le porte et depuis quand est la lecture même du mode — un rejeu de CTF
  * qui s'ouvrirait sans lui montrerait huit points qui courent sans raison. Le film qui n'en
@@ -267,6 +277,13 @@ export interface ReplaySettings {
    */
   showGroundWeapons: boolean
   toggleGroundWeapons: () => void
+  /**
+   * Filtre « ARMES SPÉCIALES SEULEMENT » du calque des armes au sol (lot 6.5, 2026-09-10) :
+   * sniper/power/special uniquement. ÉTEINT par défaut (cf.
+   * SHOW_GROUND_WEAPONS_SPECIAL_ONLY_DEFAULT).
+   */
+  showGroundWeaponsSpecialOnly: boolean
+  toggleGroundWeaponsSpecialOnly: () => void
   /**
    * Calque des DRAPEAUX de capture (schéma 15). Allumé par défaut : c'est l'enjeu du mode
    * (cf. SHOW_FLAG_CARRIES_DEFAULT). Un film hors capture n'en publie aucun.
@@ -381,6 +398,10 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_GROUND_WEAPONS_KEY,
     SHOW_GROUND_WEAPONS_DEFAULT,
   )
+  const [showGroundWeaponsSpecialOnly, toggleGroundWeaponsSpecialOnly] = usePersistedFlag(
+    SHOW_GROUND_WEAPONS_SPECIAL_ONLY_KEY,
+    SHOW_GROUND_WEAPONS_SPECIAL_ONLY_DEFAULT,
+  )
   const [showFlagCarries, toggleFlagCarries] = usePersistedFlag(
     SHOW_FLAG_CARRIES_KEY,
     SHOW_FLAG_CARRIES_DEFAULT,
@@ -459,6 +480,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleWeaponPads,
     showGroundWeapons,
     toggleGroundWeapons,
+    showGroundWeaponsSpecialOnly,
+    toggleGroundWeaponsSpecialOnly,
     showFlagCarries,
     toggleFlagCarries,
     showVipCrown,

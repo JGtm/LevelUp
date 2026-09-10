@@ -28425,6 +28425,8 @@ components:
           type: string
         key:
           type: string
+        role:
+          type: string
         tint:
           type: string
         tinted:

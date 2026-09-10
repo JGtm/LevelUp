@@ -12781,6 +12781,7 @@ export interface components {
             fx?: string;
             img?: string;
             key?: string;
+            role?: string;
             tint?: string;
             tinted?: boolean;
         };

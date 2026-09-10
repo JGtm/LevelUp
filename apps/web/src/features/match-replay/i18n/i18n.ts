@@ -182,6 +182,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerGroundWeapons: 'Armes au sol',
     layerGroundWeaponsHint:
       "Les armes abandonnées au sol, lues dans le film : l'arme d'un mort, celle qu'on laisse en ramassant autre chose, ou celle qu'un râtelier a éjectée. Chacune est dessinée là où elle s'est arrêtée, dès qu'elle y tombe. Les armes SUR LEUR EMPLACEMENT ne sont pas ici : elles appartiennent au calque des emplacements d'arme. LA FIN est celle que le film montre, jamais une durée de table : un ramassage daté l'arrête exactement ; sinon l'arme est dessinée pleine tant qu'un relevé la voit encore, puis S'ESTOMPE jusqu'au premier relevé qui ne la voit plus — la disparition a eu lieu quelque part entre les deux, et rien n'est dessiné au-delà de cette borne.",
+    layerGroundWeaponsSpecialOnly: 'Armes spéciales seulement',
+    layerGroundWeaponsSpecialOnlyHint:
+      "N'affiche que les armes de puissance, de précision longue et hors gabarit (fusil de précision, épée, marteau, roquettes, empaleur, crémateur, aiguiseur, faisceau sentinelle...) : ce qu'un socle distribue et qu'un adversaire a intérêt à ramasser. Une arme dont le rôle n'est pas connu reste visible bascule éteinte, et disparaît bascule allumée — un rôle manquant ne s'affirme jamais spécial.",
     groundWeaponSpawned: 'apparue',
     groundWeaponDroppedByFmt: (name) => `lâchée par ${name}`,
     groundWeaponDropperUnknown: 'lâchée par un joueur non nommé',
@@ -615,6 +618,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerGroundWeapons: 'Weapons on the ground',
     layerGroundWeaponsHint:
       'Weapons abandoned on the ground, read from the film: a weapon dropped by a dead player, left behind while picking up another, or ejected from a rack. Each one is drawn where it came to rest, from the moment it lands. Weapons ON THEIR SPOT are not here — they belong to the weapon-spots layer. The END is what the film shows, never a duration from a table: a dated pickup ends the display exactly; otherwise the weapon is drawn solid for as long as a key frame still records it, then FADES to the first key frame that no longer does — the disappearance happened somewhere in between, and nothing is drawn past that bound.',
+    layerGroundWeaponsSpecialOnly: 'Special weapons only',
+    layerGroundWeaponsSpecialOnlyHint:
+      "Only shows power weapons, long-range precision weapons and out-of-class weapons (sniper rifle, energy sword, gravity hammer, rocket launcher, skewer, cindershot, mangler, sentinel beam...): what a spot distributes and an opponent has a reason to pick up. A weapon whose role is unknown stays visible while the toggle is off, and disappears once it's on — a missing role never asserts itself as special.",
     groundWeaponSpawned: 'appeared',
     groundWeaponDroppedByFmt: (name) => `dropped by ${name}`,
     groundWeaponDropperUnknown: 'dropped by an unnamed player',

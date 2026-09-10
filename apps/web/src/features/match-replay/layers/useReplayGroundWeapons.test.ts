@@ -1,11 +1,14 @@
 /**
- * Tests — useReplayGroundWeapons : LE SURVOL (item A) du lot 6.5 (2026-09-10,
- * `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`).
+ * Tests — useReplayGroundWeapons : LE SURVOL (item A) et LE FILTRE « ARMES SPÉCIALES » (item B)
+ * du lot 6.5 (2026-09-10, `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`).
  *
  * CE QUE CE FICHIER VERROUILLE :
  *  - l'infobulle tient en UNE ligne composée de trois fragments (arme, origine, reprise) ;
  *  - une arme `spawned` n'a JAMAIS de lâcheur affiché, même si `dropper` était renseigné ;
- *  - un lâcheur/ramasseur NON résolu en joueur se dit, il ne se tait jamais.
+ *  - un lâcheur/ramasseur NON résolu en joueur se dit, il ne se tait jamais ;
+ *  - le filtre retire les objets AVANT le tracé et le survol — une arme filtrée ne se survole
+ *    plus, exactement comme si le film ne la publiait pas ;
+ *  - un rôle ABSENT reste visible bascule éteinte et disparaît bascule allumée.
  *
  * La résolution de nom (`padNameFor`) et la normalisation de clé (`weaponLabelKeyOf`) sont
  * déjà verrouillées dans `useReplayWeaponPads.test.ts` : ce fichier ne les retraverse pas.
@@ -34,11 +37,14 @@ function item(over: Partial<ReplayGroundWeapon> = {}): ReplayGroundWeapon {
 
 const LABELS: ReplayDocumentReady['weaponLabels'] = {
   '0x2B1824D5': { en: 'BR75', fr: 'BR75', img: '/x.png', tinted: true },
+  '0x0A1992BC': { en: 'S7 Sniper', fr: 'S7 Sniper', img: '/y.png', tinted: true, role: 'sniper' },
+  '0x230447B1': { en: 'M41 SPNKr', fr: 'M41 SPNKr', img: '/z.png', tinted: true, role: 'power' },
 }
 
 function monter(
   items: ReplayGroundWeapon[],
   opts: {
+    specialOnly?: boolean
     nameOfSlot?: (slot: number, frame: number) => string | null
     labels?: ReplayDocumentReady['weaponLabels']
   } = {},
@@ -51,6 +57,7 @@ function monter(
       doc,
       view: VUE,
       enabled: true,
+      specialOnly: opts.specialOnly ?? false,
       ink: { fill: 'fill', outline: 'outline' },
       redraw: vi.fn(),
       frameRef,
@@ -138,12 +145,56 @@ describe('useReplayGroundWeapons — le survol (item A)', () => {
     const doc = testReplayDoc({ groundWeapons: [item()], weaponLabels: LABELS })
     const { result } = renderHook(() =>
       useReplayGroundWeapons({
-        doc, view: VUE, enabled: false,
+        doc, view: VUE, enabled: false, specialOnly: false,
         ink: { fill: 'fill', outline: 'outline' }, redraw: vi.fn(),
         frameRef, nameOfSlot: () => null, locale: 'fr',
       }),
     )
     survoler(result)
     expect(result.current.hover).toBeNull()
+  })
+})
+
+describe('useReplayGroundWeapons — le filtre « armes spéciales seulement » (item B)', () => {
+  const SNIPER = item({ w: '0a1992bc', origin: 'spawned', dropper: -1, x: 15, y: 15 })
+  const POWER = item({ w: '230447b1', origin: 'spawned', dropper: -1, x: -15, y: 15 })
+  // BR75, rôle CONNU mais NEUTRE — au CENTRE de la vue, seul objet que le test survole.
+  const NEUTRE = item({ w: '2b1824d5', origin: 'spawned', dropper: -1, x: 0, y: 0 })
+  const HORS_REGISTRE = item({ w: 'deadbeef', origin: 'spawned', dropper: -1, x: 15, y: -15 }) // rôle ABSENT
+
+  it('bascule ÉTEINTE : les QUATRE objets restent survolables, rôle absent compris', () => {
+    const { result } = monter([SNIPER, POWER, NEUTRE, HORS_REGISTRE], { specialOnly: false })
+    expect(result.current.available).toBe(true)
+    // Projection (worldToCanvas, bornes [-20, 20] sur 200 px, Y inversé) : screen =
+    // ((x + 20) * 5, (20 - y) * 5).
+    for (const [pos, attendu] of [
+      [{ x: 175, y: 25 }, 'S7 Sniper'], // SNIPER (15, 15)
+      [{ x: 25, y: 25 }, 'M41 SPNKr'], // POWER (-15, 15)
+      [{ x: 100, y: 100 }, 'BR75'], // NEUTRE (0, 0)
+      [{ x: 175, y: 175 }, 'deadbeef'], // HORS_REGISTRE (15, -15), sans libellé
+    ] as const) {
+      survoler(result, pos)
+      expect(result.current.hover?.weaponName, `arme attendue à (${pos.x}, ${pos.y})`).toBe(attendu)
+    }
+  })
+
+  it('bascule ALLUMÉE : seuls sniper/power/special restent — le rôle ABSENT est exclu', () => {
+    const { result: eteint } = monter([SNIPER, POWER, NEUTRE, HORS_REGISTRE], { specialOnly: false })
+    const { result: allume } = monter([SNIPER, POWER, NEUTRE, HORS_REGISTRE], { specialOnly: true })
+    // La disponibilité elle-même distingue déjà les deux mondes : allumée, seules deux
+    // armes (sniper + power) restent, jamais zéro (il y a bien des spéciales dans le lot).
+    expect(eteint.current.available).toBe(true)
+    expect(allume.current.available).toBe(true)
+    // Survoler la position du NEUTRE (BR75, rôle connu mais pas spécial) : visible bascule
+    // éteinte, invisible bascule allumée.
+    survoler(eteint)
+    expect(eteint.current.hover?.weaponName).toBe('BR75')
+    survoler(allume)
+    expect(allume.current.hover).toBeNull()
+  })
+
+  it('bascule ALLUMÉE, liste vide de spéciales : le calque n’est plus DISPONIBLE', () => {
+    const { result } = monter([NEUTRE, HORS_REGISTRE], { specialOnly: true })
+    expect(result.current.available).toBe(false)
   })
 })
