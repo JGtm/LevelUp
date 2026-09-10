@@ -416,6 +416,9 @@ func buildViewerFragDistribution(
 		rows = append(rows, port.WeaponKillRow{
 			Label: w.WeaponLabel, Kills: w.Kills, Class: w.Class, Role: w.Role,
 			Family: w.Family, WeaponKey: w.WeaponKey, MechanicKills: w.MechanicKills,
+			// La provenance VOYAGE (lot 4.5) : sans elle fragdist ecarte equipement et
+			// environnement, et une chute mesuree au film retombe en « non attribue ».
+			FromDamageSource: w.FromDamageSource,
 		})
 	}
 	counts := domain.FragKillTypeCounts{

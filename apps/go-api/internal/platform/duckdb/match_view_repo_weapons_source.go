@@ -91,6 +91,9 @@ func (r *MatchViewRepo) bulkWeaponKillsFromSource(
 			Role:        m.role,
 			Family:      m.family,
 			WeaponKey:   k.weaponKey,
+			// Mesuree dans le film : la seule provenance qui ouvre les classes hors arsenal
+			// (equipement, environnement) au sunburst par match — cf. le champ dans domain.
+			FromDamageSource: true,
 		})
 	}
 	sort.SliceStable(out, func(i, j int) bool {
