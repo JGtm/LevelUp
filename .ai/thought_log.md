@@ -1,3 +1,49 @@
+## [2026-09-10] Master plan, lot 5.2 — investigation E0 bornee (mur 1:1, palette non classee, rang 32, prises inclassables, capteur/traqueur) — Complete (diagnostic seul, 5 causes prouvees sur 5)
+
+**Decision technique principale.** Investigation en LECTURE SEULE sur les 64 artefacts du parc
+au schema 51 (`data/cache/replays/halo_infinite/*.json`), instrument jetable `jq` + `awk`
+reproduisant les regles Go a la lettre, aucune base ouverte, aucun code de production touche.
+Etalonnage prealable : le recensement brut retrouve exactement les chiffres E0 du 09-09
+(11 438 poses, 820/9 937/681, 1 880 changements, 1 797 lectures de rang). Exclusion du Grand
+combat par le NOMBRE DE JOUEURS DU ROSTER > 16 — l'artefact ne porte ni mode ni variante, et
+la distribution est bimodale (8 a 13 joueurs contre 25/27/29) : trois artefacts exclus,
+`4f77afc1`, `879a4dba`, `5676a9ba`, dont les deux derniers n'avaient jamais ete identifies.
+
+**Resultats observes.** (1) Le mur a 1:1 n'est PAS une double publication : appariement
+appareil/panneaux a 17 s de mediane, une seule paire sous la seconde sur 37. C'est
+l'agregation de deux natures d'objet (`kind`) sous la cle `wall` — l'appareil porte seul est a
+1:7,6, dans le couloir 1:5,3 a 1:13,0 de toutes les familles. (2) Les 8 palettes non classees
+sont deux causes disjointes : 7 films (tous du perimetre) echouent sur le SEUL plancher
+`abilityPaletteMinReads = 10` avec n <= 7 et 100 % de purete famille A, le 8e (`4f77afc1`,
+Grand combat) est reellement melange (58 A / 129 B) et doit rester refuse. Cause structurelle :
+le canal image-cle ne voit que 16..23, donc AUCUN film de famille A ne recolte de lecture `kf`
+(0 sur 39) quand un film de famille B en recolte 125 a 199. Regle alternative « purete >= 90 %
+si n >= 10, unanimite si n < 10 » verifiee sur les 64 : 7 films classes, 56 inchanges, 0 mal
+classe. (3) Le rang 32 est du bruit de balayage `i48` : `9ffce8ef` image 6140 slot 530, soit
+8 min 47 s apres la seule vie du slot — valeur extreme du parc (p99 = 785 images) — et hors de
+tout `sofd` (<= 27 entrees) ; jumeau non signale trouve, rang 34 dans `a03a5e65`. (4) Les 199
+prises inclassables sont deja tombees a 142 au schema 51, et a 40 hors Grand combat : 30
+palette non classee, 9 vies de bot (decision assumee), 1 rang 32 — couverture 96,5 %, portee a
+99,1 % par le correctif (2). (5) Capteur 4/36 et traqueur 3/29 ne sont NI un defaut
+d'attribution (0 pose `deployed` sans poseur, vrai par construction) NI un comportement reel :
+c'est un defaut de CANAL. Couverture des consommations `spent` par une pose du meme joueur a
+moins de 2 s : mur 98/117 = 84 %, TOUTES les autres familles 0 sur 202. Le mur est le seul
+equipement qui engendre une piece distincte (`kind = deployed`) ; ailleurs, une pose
+`deployed` sur un objet `carried` coincide avec un `taken` (45 a 67 % des cas) et JAMAIS avec
+un `spent` (0/31 sur l'appareil de mur contre 149/242 sur ses panneaux) — elle mesure un
+lacher volontaire a mi-vie, pas un deploiement.
+
+**Conclusion / prochaine etape.** Rapport livre : `.ai/V7.5/RAPPORT_E0_2026-09-10.md` (methode,
+mesures, cause, correctif fichier:ligne, effort, impact ecran, besoin de recuisson par
+question ; tableau recapitulatif et ordre recommande). Ordre propose : (5) d'abord —
+`usageUsedOf` sur `SpentByFamily` pour les deployables sans piece engendree, effort M, seul
+correctif qui change les chiffres a l'ecran, recuisson des RESUMES seulement (`us6`) ; puis
+(2)+(3) ensemble, meme fichier `abilities.go` et meme recuisson d'ARTEFACTS ; puis l'infobulle
+du denominateur de (4) ; (1) en dernier, documentation seule. Six decouvertes de chemin
+consignees au §8 du rapport, non traitees.
+
+---
+
 ## [2026-09-10] Master plan, vague 4 — 4.3 fusionne et recuit (schema 51, us5), 4.4 fusionne et verifie, 4.5 statue — Complete (revue 4.R : 0 P0 / 0 P1 / 3 P2, gate-push vert, push 0879f1787, CI de vague verte 4/4)
 
 **Decision technique principale.** Recuisson du parc au schema 51 lancee detachee avec veilleur
