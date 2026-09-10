@@ -22,6 +22,7 @@ import type { ReplayVehicleAim, ReplayVehicleSample } from '@/lib/api/types'
 import { EXPLOSION_MS } from './explosionFx'
 import type { FxInk } from './fxInk'
 import { count, recordingContext, type CanvasOp } from '../test/recordingContext'
+import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 import { project, type PlacementView } from './placementShapes'
 import type { ReplayVehicleRideReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { drawVehiclesLayer, type VehicleStyle, type VehicleTime } from './vehiclesPaint'
@@ -94,6 +95,11 @@ function style(over: Partial<VehicleStyle> = {}): VehicleStyle {
     nameOfXuid: () => null,
     explosionInk: EXPLOSION_INK,
     reducedMotion: false,
+    // BORNAGE HORS CADRE (lot 4.4, 2026-09-10) : mêmes formats que la vraie i18n
+    // (`offscreenMarkerFmt`/`offscreenGroupMarkerFmt`), mais littéraux — ce test ne vérifie que
+    // le CÂBLAGE (quel texte est composé, avec quels arguments), pas la traduction elle-même.
+    offscreenLabelOf: (name, meters) => `${name} · ${Math.round(meters)} m`,
+    offscreenGroupLabelOf: (n, meters) => `${n} joueurs · ${Math.round(meters)} m`,
     ...over,
   }
 }
@@ -406,5 +412,113 @@ describe('drawVehiclesLayer — LA DESTRUCTION (schéma 39, demande utilisateur 
     expect(count(ops, 'fill')).toBe(0)
     expect(count(ops, 'createRadialGradient')).toBe(0)
     expect(count(ops, 'set globalCompositeOperation')).toBe(0)
+  })
+})
+
+/**
+ * BORNAGE HORS CADRE (plan escouade hors cadre, lot 4.4, 2026-09-10) — le VÉHICULE OCCUPÉ.
+ *
+ * Découverte du chantier B (§8 du plan) : sans ce lot, un véhicule dont la position projetée
+ * sort du cadrage visible (zoom 2x/3x) disparaît purement et simplement — et avec lui, son
+ * ou ses occupants, dont le pion à pied est déjà supprimé ailleurs (`embarkedAtSlot`). Ce bloc
+ * couvre les DEUX règles du lot : le glyphe du véhicule suit la règle des porteurs d'objectif
+ * (position plaquée à la marge, MÊME forme) ; chaque occupant reçoit en plus le signal d'un
+ * joueur à pied hors cadre (MÊME géométrie `edgeMarkFor`, MÊME gabarit de flèche que
+ * `replayMarkers.drawLivingTrack`), mais UNE SEULE flèche par véhicule.
+ */
+describe('drawVehiclesLayer — bornage hors cadre du véhicule (lot 4.4)', () => {
+  // Monde (1000, 50) très au-delà des bornes de VIEW (0..100) : largement hors toile (400x400).
+  const OFFSCREEN_WORLD = { x: 1000, y: 50 }
+  const MARK = edgeMarkFor(OFFSCREEN_WORLD, VIEW, OFFSCREEN_MARGIN_PX, 1)!
+
+  function offscreenTrack(over: Partial<ReplayVehicleTrackReady> = {}): ReplayVehicleTrackReady {
+    return track({ samples: [sample({ t: 0, x: OFFSCREEN_WORLD.x, y: OFFSCREEN_WORLD.y, h: 90 })], ...over })
+  }
+
+  it('VÉHICULE VIDE hors cadre : le sprite est plaqué à la marge, aucune flèche (aucun occupant à signaler)', () => {
+    const ops = paint([offscreenTrack({ rides: [] })])
+    const translate = ops.find((o) => o.op === 'translate')
+    expect(translate?.args[0]).toBeCloseTo(MARK.at.x, 5)
+    expect(translate?.args[1]).toBeCloseTo(MARK.at.y, 5)
+    // UNE seule rotation : celle du sprite (cap du véhicule). Une flèche en ajouterait une 2e.
+    expect(count(ops, 'rotate')).toBe(1)
+    expect(count(ops, 'fillText')).toBe(0)
+  })
+
+  it('CHÂSSIS NON RÉSOLU (losange) hors cadre : plaqué à la marge, comme le sprite', () => {
+    const ops = paint([offscreenTrack({ family: undefined, rides: [] })])
+    const moveTos = ops.filter((o) => o.op === 'moveTo')
+    expect(moveTos.length).toBeGreaterThan(0)
+    // Le premier sommet du losange (traceDiamond) est directement au-dessus du centre.
+    expect(moveTos[0].args[0]).toBeCloseTo(MARK.at.x, 5)
+  })
+
+  it('UN OCCUPANT hors cadre : la flèche ET l’étiquette « nom · distance », à la couleur d’équipe', () => {
+    const ops = paint([offscreenTrack({ rides: [ride({ slot: 7, seat: 0 })] })])
+    // Sprite (cap) + flèche (direction vers la position réelle) : 2 rotations.
+    expect(count(ops, 'rotate')).toBe(2)
+    expect(texts(ops)).toEqual([`PION-BRIDGE · ${Math.round(MARK.distanceM)} m`])
+    // La flèche EST le gabarit d'`offscreenChevron` (mêmes 4 sommets que replayMarkers/edgeClamp).
+    expect(
+      ops.filter((o) => o.op === 'moveTo' || o.op === 'lineTo').slice(-4).map((o) => o.args),
+    ).toEqual([
+      [1, 0],
+      [-0.75, -0.7],
+      [-0.35, 0],
+      [-0.75, 0.7],
+    ])
+    expect(fillColorAtText(ops)).toBe('#equipe')
+  })
+
+  it('DANS LE CADRE : comportement inchangé — aucune flèche, glyphe à sa position projetée, noms empilés', () => {
+    const ops = paint([track({ rides: [ride({ slot: 7, seat: 0 })] })]) // position par défaut (50,50), dans VIEW
+    expect(count(ops, 'rotate')).toBe(1)
+    const translate = ops.find((o) => o.op === 'translate')
+    const c = project({ x: 50, y: 50 }, VIEW)
+    expect(translate?.args[0]).toBeCloseTo(c.x, 5)
+    expect(texts(ops)).toEqual(['PION-BRIDGE'])
+  })
+
+  it('OCCUPANT SANS NOM RÉSOLU : la flèche seule, sans étiquette (comme le pion à pied, D6)', () => {
+    const ops = paint(
+      [offscreenTrack({ rides: [ride({ slot: 7, seat: 0 })] })],
+      style({ nameOfSlot: () => null, nameOfXuid: () => null }),
+    )
+    expect(count(ops, 'rotate')).toBe(2)
+    expect(count(ops, 'fillText')).toBe(0)
+  })
+
+  it('DEUX OCCUPANTS hors cadre : UNE SEULE flèche (pas une par occupant), étiquette du CONDUCTEUR', () => {
+    const ops = paint(
+      [offscreenTrack({ rides: [ride({ slot: 8, seat: 1 }), ride({ slot: 7, seat: 0 })] })],
+      style({ nameOfSlot: (slot) => (slot === 7 ? 'CONDUCTEUR' : 'PASSAGER') }),
+    )
+    expect(count(ops, 'rotate')).toBe(2) // sprite + UNE flèche
+    expect(texts(ops)).toEqual([`CONDUCTEUR · ${Math.round(MARK.distanceM)} m`])
+  })
+
+  it('DEUX OCCUPANTS hors cadre, CONDUCTEUR NON NOMMÉ : repli sur le compte « N joueurs »', () => {
+    const ops = paint(
+      [offscreenTrack({ rides: [ride({ slot: 8, seat: 1 }), ride({ slot: 7, seat: 0 })] })],
+      style({ nameOfSlot: () => null, nameOfXuid: () => null }),
+    )
+    expect(count(ops, 'rotate')).toBe(2)
+    expect(texts(ops)).toEqual([`2 joueurs · ${Math.round(MARK.distanceM)} m`])
+  })
+
+  it('CALQUE DES NOMS ÉTEINT : la flèche reste (repère de position), mais aucune étiquette', () => {
+    const ops = paint(
+      [offscreenTrack({ rides: [ride({ slot: 7, seat: 0 })] })],
+      style({ showNames: false }),
+    )
+    expect(count(ops, 'rotate')).toBe(2)
+    expect(count(ops, 'fillText')).toBe(0)
+  })
+
+  it('UNE FAMILLE DE DÉCOR hors cadre reste muette (aucune régression du refus D2026-09-02)', () => {
+    const ops = paint([offscreenTrack({ family: 'falcon', rides: [ride({ slot: 7, seat: 0 })] })])
+    expect(count(ops, 'rotate')).toBe(0)
+    expect(count(ops, 'fill')).toBe(0)
+    expect(count(ops, 'fillText')).toBe(0)
   })
 })
