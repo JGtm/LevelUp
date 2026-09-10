@@ -30,8 +30,14 @@
  * publiés, déjà servis à chaque rejeu — via `nameOfSlot`, LA MÊME résolution frame-aware que
  * les poses d'équipement (`ownerNameOf` de `ReplayCanvasTips`). UNE LIGNE, jamais deux (cf.
  * `ReplayGroundWeaponTip.tsx`) : « <arme> · lâchée par X · reprise par Y ».
+ *
+ * LE FILTRE « ARMES SPÉCIALES SEULEMENT » (item B du même lot) retire les objets AVANT le
+ * tracé ET le survol — une arme filtrée ne se peint pas et ne se survole pas, exactement comme
+ * si le film ne la publiait pas. Le rôle vient de `weaponLabels[key].role`, posé À LA REQUÊTE
+ * (jamais une table d'armes en dur côté web) ; un rôle ABSENT n'est jamais spécial
+ * (`isSpecialWeaponRole`).
  */
-import { useCallback, useEffect, useRef, useState, type PointerEvent, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from 'react'
 
 import { useTitleSlug } from '@/lib/title-routing'
 import type { ReplayGroundWeapon } from '@/lib/api/types'
@@ -46,7 +52,7 @@ import {
 } from './groundWeaponsLayer'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { XY } from '../../../lib/replay/replayLogic'
-import { padIconRefFor, padNameFor } from './useReplayWeaponPads'
+import { padIconRefFor, padNameFor, weaponRoleOf, isSpecialWeaponRole } from './useReplayWeaponPads'
 
 /** Ce qui est survolé : l'arme, où poser l'infobulle, et les DEUX lignes déjà composées. */
 export interface GroundWeaponHover {
@@ -66,6 +72,12 @@ export interface GroundWeaponsInput {
   view: GroundWeaponView
   /** Faux quand le calque est éteint : rien n'est dessiné, rien ne se survole. */
   enabled: boolean
+  /**
+   * Le filtre « armes spéciales seulement » (item B, lot 6.5) : ne garde que les objets dont
+   * `weaponLabels[key].role` vaut sniper/power/special. Un rôle absent est exclu quand ce
+   * drapeau est vrai — jamais deviné spécial — et reste visible quand il est faux.
+   */
+  specialOnly: boolean
   /**
    * Les deux encres : le CORPS à l'encre du marquage, le LISERÉ à l'encre NEUTRE.
    *
@@ -90,7 +102,8 @@ export interface GroundWeaponsInput {
 }
 
 export interface GroundWeapons {
-  /** Le film porte-t-il des armes au sol ? Une bascule qui ne commande rien ne s'affiche pas. */
+  /** Le film porte-t-il des armes au sol (APRÈS filtre) ? Une bascule qui ne commande rien ne
+   *  s'affiche pas. */
   available: boolean
   /**
    * LE NOM DU CALQUE, porté par le calque et non par la table de liaison du canvas
@@ -134,16 +147,36 @@ export function useReplayGroundWeapons({
   doc,
   view,
   enabled,
+  specialOnly,
   ink,
   redraw,
   frameRef,
   nameOfSlot,
   locale,
 }: GroundWeaponsInput): GroundWeapons {
-  const items = doc.groundWeapons
   const labels = doc.weaponLabels
   const titleSlug = useTitleSlug()
   const t = REPLAY_TEXT[locale]
+
+  // UNE VARIABLE NOMMÉE N'EST PAS UN STYLE, C'EST LE CONTOURNEMENT D'UN PIÈGE TYPESCRIPT :
+  // `doc.groundWeapons` porte le type D'INTERSECTION que `ReplayDocument` compose (le schéma
+  // généré, `origin: string`, ET `ReplayGroundWeapon`, `origin: 'dropped' | 'spawned'` — cf.
+  // `ReplayDocumentDeltaLayers`). Assigner cette intersection à une variable EXPLICITEMENT
+  // typée fixe la surcharge de `.filter()` que TypeScript choisit ; appeler `.filter()`
+  // directement sur `doc.groundWeapons` la fait résoudre sur le schéma généré et perd le
+  // membre `'dropped' | 'spawned'` au profit d'un `string` que `drawGroundWeaponsLayer` et
+  // `groundWeaponAt` refusent ensuite.
+  const allGroundWeapons: readonly ReplayGroundWeapon[] = doc.groundWeapons
+
+  // LE FILTRE RETIRE LES OBJETS AVANT TOUT LE RESTE (tracé, survol, cuisson) : une arme
+  // écartée ici se comporte exactement comme si le film ne la publiait pas.
+  const items = useMemo<readonly ReplayGroundWeapon[]>(
+    () =>
+      specialOnly
+        ? allGroundWeapons.filter((item) => isSpecialWeaponRole(weaponRoleOf(item.w, labels)))
+        : allGroundWeapons,
+    [allGroundWeapons, specialOnly, labels],
+  )
 
   // UNE TABLE PAR RÉFÉRENCE, pas un état : la remplir ne doit pas re-rendre la page (la boucle
   // de dessin la lit pendant qu'elle peint). Même règle que les vignettes de socle et de

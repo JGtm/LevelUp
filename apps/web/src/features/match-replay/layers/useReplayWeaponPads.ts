@@ -173,6 +173,42 @@ export function padIconRefFor(weapon: string, labels: PadLabels, titleSlug: stri
 }
 
 /**
+ * SPECIAL_WEAPON_ROLES — LES TROIS RÔLES DU FILTRE « ARMES SPÉCIALES » du calque des armes au
+ * sol (rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`, §1 et §5 option B).
+ *
+ * LA DÉFINITION RETENUE EST LA DIMENSION FONCTION DE COMBAT (`WeaponLabel.role`, posé à la
+ * requête depuis le registre canonique — jamais une table d'armes en dur côté web), PAS LA
+ * MANIPULATION (`class`) : elle isole exactement ce qu'un socle distribue et ce qu'un
+ * adversaire a intérêt à ramasser (S7 Sniper, Shock Rifle, SPNKr, Skewer, Cindershot, Hydra,
+ * Épée, Marteau, Needler, Sentinel Beam) et laisse dehors le CQS48 Bulldog (`shotgun`) et
+ * l'arsenal de départ. Mesuré : 17,4 % des objets publiés, mais 65,3 % des reprises
+ * OBSERVÉES — une arme reprise est presque deux fois sur trois une arme qui compte.
+ */
+export const SPECIAL_WEAPON_ROLES: ReadonlySet<string> = new Set(['sniper', 'power', 'special'])
+
+/**
+ * isSpecialWeaponRole — le prédicat du filtre, et SA GARDE contre les rôles ABSENTS.
+ *
+ * UN RÔLE MANQUANT (libellé hors registre, ou artefact d'un titre qui n'en publie pas) N'EST
+ * JAMAIS SPÉCIAL — c'est la règle explicite du lot : l'objet reste visible bascule ÉTEINTE, et
+ * disparaît bascule ALLUMÉE, exactement comme une arme dont on ne sait rien ne s'affirme jamais
+ * hors catalogue. Deviner « spécial » sur une absence de donnée serait le même mensonge qu'une
+ * icône empruntée à une arme voisine.
+ */
+export function isSpecialWeaponRole(role: string | undefined): boolean {
+  return role !== undefined && role !== '' && SPECIAL_WEAPON_ROLES.has(role)
+}
+
+/**
+ * weaponRoleOf — LE RÔLE d'une arme, quelle que soit la forme de son identifiant (cf.
+ * `weaponLabelKeyOf`). `undefined` quand le document ne le publie pas — jamais une chaîne
+ * vide devinée : `isSpecialWeaponRole` distingue déjà « absent » de « connu et neutre ».
+ */
+export function weaponRoleOf(weapon: string, labels: PadLabels): string | undefined {
+  return labels?.[weaponLabelKeyOf(weapon)]?.role
+}
+
+/**
  * crossedWeaponPads — LES SOCLES À DESSINER, une fois le catalogue de la carte croisé.
  *
  * CE QUE LE CROISEMENT APPORTE, et il n'apporte que ça : la POSITION. Le serveur ne sert

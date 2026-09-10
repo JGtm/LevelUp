@@ -68,6 +68,22 @@ type WeaponLabel struct {
 	// s'améliorer ne se stocke pas. Vide = le titre n'a pas de catalogue lisible, ou
 	// l'arme n'est pas au registre : silence propre, jamais un son approchant.
 	Key string `json:"key,omitempty"`
+	// Role est la FONCTION DE COMBAT de l'arme (automatic, precision, sniper, power,
+	// special, shotgun, sidearm, melee, grenade...), telle que le registre canonique
+	// d'armes la classe (`internal/games/weapons.RolesByKey`).
+	//
+	// POURQUOI IL EST PUBLIÉ (lot armes au sol, 2026-09-10) : c'est le critère du filtre
+	// « armes spéciales seulement » du calque des armes au sol (rôles sniper/power/special —
+	// cf. `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`, §1). Interdit au client de tenir une
+	// table d'armes en dur pour la même décision.
+	//
+	// IL N'EST PAS ÉCRIT DANS L'ARTEFACT : posé À LA REQUÊTE par le service
+	// (replay_weapon_labels.go), exactement comme Key et Tint, et pour la même raison — une
+	// résolution qui peut s'améliorer (le registre grandit) ne se stocke pas, et cuire le
+	// rôle laisserait muets tous les artefacts déjà cuits. Vide = arme hors registre : elle
+	// reste visible quand le filtre est éteint, et EN EST EXCLUE quand il est allumé — un
+	// rôle manquant ne s'affirme jamais spécial.
+	Role string `json:"role,omitempty"`
 	// Tint est la NATURE DE LA DÉCHARGE (kinetic, plasma_cool, plasma_hot, forerunner,
 	// electric, needle, blast) : ce qui sort du canon, jamais une couleur ni un camp.
 	// C'est elle qui teinte l'éclair de bouche côté client — la COULEUR, elle, est un

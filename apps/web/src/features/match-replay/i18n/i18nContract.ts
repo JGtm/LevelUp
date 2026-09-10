@@ -511,6 +511,15 @@ export interface ReplayText {
   layerGroundWeapons: string
   layerGroundWeaponsHint: string
   /**
+   * LE FILTRE « ARMES SPÉCIALES SEULEMENT » du calque des armes au sol (lot 6.5, 2026-09-10,
+   * rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` §1 et §5 option B). Sniper, power,
+   * special : ce qu'un socle distribue et qu'un adversaire a intérêt à ramasser — 17,4 % des
+   * objets au sol, mais 65,3 % des reprises OBSERVÉES. Une bascule fille du calque, comme les
+   * objets non identifiés des poses d'équipement : elle ne s'affiche qu'avec son calque.
+   */
+  layerGroundWeaponsSpecialOnly: string
+  layerGroundWeaponsSpecialOnlyHint: string
+  /**
    * L'INFOBULLE D'UNE ARME AU SOL (lot 6.5, 2026-09-10) : UNE LIGNE, jamais deux — même
    * mécanique que les trois calques survolables voisins (poses, socles, drapeaux). Le geste se
    * lit « <arme> · lâchée par X », puis « · reprise par Y » si un ramasseur est mesuré.

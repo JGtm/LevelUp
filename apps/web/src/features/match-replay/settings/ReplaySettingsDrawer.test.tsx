@@ -10,6 +10,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { ReplayHeatmapLegend } from '../ui/ReplayHeatmapLegend'
 import {
   ReplaySettingsDrawer,
+  type ReplayGroundWeaponControls,
   type ReplayHeatmapControls,
   type ReplayPlacementControls,
   type ReplayFlagControls,
@@ -34,6 +35,19 @@ function makePlacements(over: Partial<ReplayPlacementControls> = {}): ReplayPlac
 
 function makeWeaponPads(over: Partial<ReplayWeaponPadControls> = {}): ReplayWeaponPadControls {
   return { available: true, show: true, onToggle: vi.fn(), ...over }
+}
+
+function makeGroundWeapons(
+  over: Partial<ReplayGroundWeaponControls> = {},
+): ReplayGroundWeaponControls {
+  return {
+    available: true,
+    show: true,
+    onToggle: vi.fn(),
+    showSpecialOnly: false,
+    onToggleSpecialOnly: vi.fn(),
+    ...over,
+  }
 }
 
 function makeFlagCarries(over: Partial<ReplayFlagControls> = {}): ReplayFlagControls {
@@ -96,7 +110,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       zonesAvailable
       placements={makePlacements()}
       weaponPads={makeWeaponPads()}
-      groundWeapons={makeWeaponPads()}
+      groundWeapons={makeGroundWeapons()}
       flagCarries={makeFlagCarries()}
       vipCrown={makeFlagCarries()}
       skullCarrier={makeFlagCarries()}

@@ -28,11 +28,13 @@ import { testReplayDoc } from '../test/testDoc'
 import { count, diamondCentres, recordingContext } from '../test/recordingContext'
 import {
   crossedWeaponPads,
+  isSpecialWeaponRole,
   padIconRefFor,
   padNameFor,
   padScaleFor,
   useReplayWeaponPads,
   weaponLabelKeyOf,
+  weaponRoleOf,
 } from './useReplayWeaponPads'
 import { padFamilyOf } from '../model/weaponPadFamilies'
 import { padStateAt } from '../model/weaponPadTime'
@@ -190,6 +192,42 @@ describe('la jointure groundWeapons -> weaponLabels, sur l’extrait réel 9ffce
     // Preuve que le défaut était réel et pas un artefact du test : la lecture EXACTE que le
     // rapport décrit (`labels?.[weapon]`, sans normalisation) ne trouve rien sur cette donnée.
     expect(LABELS_9FFCE8EF[GROUND_WEAPON_9FFCE8EF.w as keyof typeof LABELS_9FFCE8EF]).toBeUndefined()
+  })
+})
+
+describe('weaponRoleOf / isSpecialWeaponRole — le filtre « armes spéciales »', () => {
+  const ROLES: ReplayDocumentReady['weaponLabels'] = {
+    [SNIPER]: { ...LABELS[SNIPER], role: 'sniper' },
+    '0x2B1824D5': { ...LABELS['0x2B1824D5'], role: 'automatic' },
+    [INCONNUE]: { en: '?', fr: '?' }, // hors registre : pas de rôle du tout.
+  }
+
+  it('un rôle sniper/power/special EST spécial', () => {
+    expect(isSpecialWeaponRole('sniper')).toBe(true)
+    expect(isSpecialWeaponRole('power')).toBe(true)
+    expect(isSpecialWeaponRole('special')).toBe(true)
+  })
+
+  it('un rôle connu mais NEUTRE (automatic, sidearm...) n’est PAS spécial', () => {
+    expect(isSpecialWeaponRole('automatic')).toBe(false)
+    expect(isSpecialWeaponRole('shotgun')).toBe(false)
+  })
+
+  it('un rôle ABSENT n’est jamais spécial — un manque ne s’affirme pas', () => {
+    expect(isSpecialWeaponRole(undefined)).toBe(false)
+    expect(isSpecialWeaponRole('')).toBe(false)
+  })
+
+  it('weaponRoleOf lit le rôle à travers la même normalisation de clé', () => {
+    // Forme des armes au sol (minuscule, sans préfixe) ET forme canonique : les deux trouvent.
+    expect(weaponRoleOf('0a1992bc', ROLES)).toBe('sniper')
+    expect(weaponRoleOf(SNIPER, ROLES)).toBe('sniper')
+    expect(weaponRoleOf('2b1824d5', ROLES)).toBe('automatic')
+  })
+
+  it('une arme hors registre ou hors document rend `undefined`, jamais une chaîne devinée', () => {
+    expect(weaponRoleOf(INCONNUE, ROLES)).toBeUndefined()
+    expect(weaponRoleOf(SNIPER, undefined)).toBeUndefined()
   })
 })
 

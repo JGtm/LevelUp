@@ -231,7 +231,7 @@ export function ReplayCanvas({
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showGroundWeapons, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
+    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
@@ -358,11 +358,11 @@ export function ReplayCanvas({
   })
   // LES ARMES AU SOL (schéma 27) : les armes ABANDONNÉES — un socle est un LIEU qui réapprovisionne,
   // une arme au sol un OBJET qui ne revient pas. Liseré à l'encre du « aucun camp » (cf. le hook).
-  // SURVOL (lot 6.5, 2026-09-10) : `nameOfSlot` est la MÊME résolution frame-aware que celle
-  // des poses d'équipement — le lâcheur et le ramasseur sont des vies de bipède comme un
-  // poseur, jamais une identité à part.
+  // SURVOL ET FILTRE « ARMES SPÉCIALES » (lot 6.5, 2026-09-10) : `nameOfSlot` est la MÊME
+  // résolution frame-aware que celle des poses d'équipement — le lâcheur et le ramasseur sont
+  // des vies de bipède comme un poseur, jamais une identité à part.
   const groundWeapons = useReplayGroundWeapons({
-    doc, view: canvasView, enabled: showGroundWeapons,
+    doc, view: canvasView, enabled: showGroundWeapons, specialOnly: showGroundWeaponsSpecialOnly,
     ink: { fill: markInk.fill, outline: neutralInk }, redraw,
     frameRef, nameOfSlot, locale,
   })

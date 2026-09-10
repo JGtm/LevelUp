@@ -181,10 +181,14 @@ type Label struct {
 
 // WeaponLabel est le libellé d'une arme, plus l'EFFET de rendu de ses tirs.
 type WeaponLabel struct {
-	En     string `json:"en"`
-	Fr     string `json:"fr"`
-	Fx     string `json:"fx,omitempty"`
-	Key    string `json:"key,omitempty"`
+	En  string `json:"en"`
+	Fr  string `json:"fr"`
+	Fx  string `json:"fx,omitempty"`
+	Key string `json:"key,omitempty"`
+	// Role est la fonction de combat (sniper, power, special...) postée à la requête depuis
+	// le registre canonique — filtre « armes spéciales » du calque des armes au sol (lot
+	// 2026-09-10). Cf. replay.WeaponLabel.Role pour la décision complète.
+	Role   string `json:"role,omitempty"`
 	Tint   string `json:"tint,omitempty"`
 	Img    string `json:"img,omitempty"`
 	Tinted bool   `json:"tinted,omitempty"`
