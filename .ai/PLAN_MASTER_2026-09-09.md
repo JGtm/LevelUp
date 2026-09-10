@@ -405,3 +405,11 @@ de cocher ; fusion dans `feat/v75` seulement avec l'accord de l'utilisateur.
   le plan maître n'a plus de lot ouvert (38 faits, 1.6 en P5 par décision). Rapport de campagne publié :
   https://claude.ai/code/artifact/8fb62fc2-2f72-4197-adbd-c911ea2b56c4 (plans orchestrés, reste à trancher,
   dette consignée, échéances, release). Suite : release par l'utilisateur.
+- **2026-09-10 (20:10)** — La session « Citations pour kills véhicules » a fusionné dans `feat/v75` depuis le worktree
+  d'intégration, sur instruction de l'utilisateur (`aa70f3018`, poussé) : citations d'artilleur de véhicule, kill
+  feed PORTEUR (session Gungoose/Warthog), canon du Scorpion nommé (335 frags). Worktree vérifié propre, mes commits
+  ancêtres, CI de ce push sous veille. Découverte remontée par cette session, consignée non traitée : **20 % des frags
+  du corpus sans source** (27 806 morts sur 553 matchs restés sur un ancien décodeur) — hypothèse du superviseur :
+  matchs sur `killsource-2026-07-31` dont les films ne sont plus en cache (blobs expirés, volet B fermé le 05-09),
+  donc non redécodables ; à vérifier par une requête avant d'en faire un lot. Le worktree partagé porte des restes
+  non commités d'autres sessions (entrée de journal « icônes Chopper » orpheline) : à récupérer par leur auteur.
