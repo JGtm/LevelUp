@@ -59,8 +59,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
 import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
-import { deriveKeptFromTaken, isEpisodeMeasuredFamily, KEPT_FAMILIES } from './equipmentKeptLogic'
-import { droppedFamilyOf } from './gameChangers'
+import { deriveKeptFromTaken, familyHasAnyTrace, KEPT_FAMILIES } from './equipmentKeptLogic'
 import { PLACEMENT_RENDER, placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
 import { placementIsDroppedPower, PLACEMENT_DROPPED_FAMILIES } from './placementDropped'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -421,22 +420,17 @@ function columnsOf(rows: EquipmentUsageRow[]): EquipmentUsageColumns {
   const deployedUsed = used((r) => r.deployed)
   const droppedUsed = used((r) => r.dropped)
   const grenadesUsed = used((r) => r.grenades)
-  const keptUsed = used((r) => r.kept)
   // LA COLONNE « ÉQUIPEMENT » FUSIONNÉE (E2) : une famille de `KEPT_FAMILIES` y entre dès
-  // qu'AU MOINS UN joueur l'a utilisée (déployée, ou activée pour les deux power-ups), lâchée,
-  // OU gardée sans l'utiliser — un objet gardé du début à la fin, jamais posé ni lâché, doit
-  // quand même ouvrir sa colonne. Ordre ÉCRIT : `PLACEMENT_RENDER` d'abord (même ordre que
-  // `deployed`), les deux power-ups ensuite.
-  const equipmentUsed = KEPT_FAMILIES.filter((f) => {
-    if (isEpisodeMeasuredFamily(f)) {
-      return (
-        rows.some((r) => (r.episodes[f]?.count ?? 0) > 0) ||
-        droppedUsed.has(droppedFamilyOf(f)) ||
-        keptUsed.has(f)
-      )
-    }
-    return deployedUsed.has(f) || droppedUsed.has(f) || keptUsed.has(f)
-  })
+  // qu'AU MOINS UN joueur en porte une trace mesurée — utilisée, posée, lâchée, OU gardée sans
+  // l'utiliser. Un objet gardé du début à la fin, jamais posé ni lâché, doit quand même ouvrir
+  // sa colonne. Ordre ÉCRIT : `PLACEMENT_RENDER` d'abord (même ordre que `deployed`), les deux
+  // power-ups ensuite.
+  //
+  // LE TEST EST DÉLÉGUÉ À `familyHasAnyTrace` (correction C2, 2026-09-10) : cette liste rejouait
+  // sa propre définition d'« utilisé » (`deployed` pour toute famille non-bonus) et avait cessé
+  // de suivre `usageUsedOf` au lot 5.7 — un capteur pris puis CONSOMMÉ, ni posé ni lâché,
+  // n'ouvrait donc plus aucune colonne et `equipmentUsageColumns.ts` supprimait le groupe entier.
+  const equipmentUsed = KEPT_FAMILIES.filter((f) => rows.some((r) => familyHasAnyTrace(r, f)))
   const equipmentOrder = [...Object.keys(PLACEMENT_RENDER), ...EPISODE_FAMILIES]
   return {
     grapple: rows.some((r) => r.grapplePulls > 0),

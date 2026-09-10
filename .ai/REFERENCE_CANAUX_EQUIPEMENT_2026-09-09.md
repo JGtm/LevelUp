@@ -237,12 +237,21 @@ matchs à re-résumer.
 - **`equipmentChanges` est bien vivant ailleurs** : `abilityChargeLogic.ts`,
   `placementTeleport.ts`, `riftStations.ts`, `equipmentChangeSound.ts`. Le brancher sur la
   fiche d'usage n'est donc pas un défrichage.
-- **ÉCART GO / WEB OUVERT DEPUIS LE 2026-09-10** : le résumé de session (Go, `us6`) lit le
-  « utilisé » d'un déployable sans pièce engendrée sur ses CONSOMMATIONS ; son miroir de la
-  vue match (`equipmentKeptLogic.ts`, la boucle `KEPT_FAMILIES` : `t.deployed[family]`)
-  est resté sur les POSES. Les
-  deux écrans peuvent donc afficher un « gardé » différent pour le même match tant que le
-  web n'a pas suivi — écart CONNU et hors périmètre du lot 5.5, à traiter côté web.
+- **ÉCART GO / WEB — REFERMÉ LE 2026-09-10.** Il a existé une demi-journée : le résumé de
+  session (Go, `us6`) lisait le « utilisé » d'un déployable sans pièce engendrée sur ses
+  CONSOMMATIONS pendant que son miroir de la vue match (`equipmentKeptLogic.ts`) restait sur
+  les POSES. Le lot 5.7 a aligné le web (`usageUsedOf`), et la **correction C1 de la revue de
+  la vague 5** a aligné le dernier lecteur resté en arrière : l'AGRÉGAT DE SESSION
+  (`internal/analysis/sessionusage/usage_outcomes.go`, `equipmentUsedOf`), qui lisait encore
+  `DeployedByFamily` pour toutes les familles — un capteur `taken=3, spent=2, dropped=1,
+  deployed=0` s'y affichait « utilisé 0 · gardé 0 · lâché 1 » quand la vue match affichait
+  « utilisé 2 ». La liste des familles à pièce engendrée n'est plus recopiée : elle passe par
+  `replay.UsageFamilySpawnsPiece` (garde-rail `sessionusage/usage_outcomes_guard_test.go`).
+- **La liste des colonnes de la vue match a suivi le 2026-09-10** (correction C2) : elle
+  rejouait sa propre définition d'« utilisé » et une famille seulement CONSOMMÉE n'ouvrait
+  aucune colonne — donc plus aucun affichage, `equipmentUsageColumns.ts` retirant le groupe
+  entier sur une liste vide. Elle passe désormais par `familyHasAnyTrace`, qui dérive de
+  `usageUsedOf`.
 - **Page Sessions** (`features/session-detail/`) — lit le bloc `usage` de la réponse, donc
   uniquement le tableau du §3 — qui porte les trois issues depuis l'étape E3 (grandeurs
   `equipment_<famille>` et leur champ `outcomes`), sous réserve de la recuisson.

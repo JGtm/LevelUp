@@ -119,6 +119,36 @@ export function usageUsedOf(tally: EquipmentUsageTally, family: string): number 
 }
 
 /**
+ * familyHasAnyTrace — ce compteur porte-t-il UNE TRACE MESURÉE de cette famille ?
+ *
+ * LE CRITÈRE D'ENTRÉE D'UNE FAMILLE DANS LA COLONNE FUSIONNÉE (`EquipmentUsageColumns.equipment`,
+ * `columnsOf`). Il est DÉLIBÉRÉMENT PLUS LARGE que les trois issues : une pose compte aussi, même
+ * quand elle ne vaut plus « utilisé » depuis le lot 5.7 (sur un objet porté, une pose `deployed`
+ * mesure un lâcher volontaire à mi-vie). Une famille dont le film a mesuré QUELQUE CHOSE mérite
+ * sa colonne ; c'est le REMPLISSAGE de la barre, lui, qui départage les issues.
+ *
+ * CORRECTION C2 (revue de la vague 5, 2026-09-10) : le côté « utilisé » manquait à cette liste.
+ * Elle testait `deployed` / `dropped` / `kept` et rejouait ainsi sa propre définition d'usage —
+ * celle d'avant le lot 5.7. Un capteur pris puis CONSOMMÉ (ni posé, ni lâché, donc rien à garder)
+ * n'ouvrait plus aucune colonne, et `equipmentUsageColumns.ts` retire le GROUPE ENTIER quand la
+ * liste est vide : la vue match n'affichait plus rien de la seule famille employée. Passer par
+ * `usageUsedOf` raccroche la liste à la règle canonique — une seule écriture, ici comme ailleurs.
+ *
+ * `dropped` se lit dans le vocabulaire des POSES (`powerup_camo`), d'où le pont `droppedFamilyOf`
+ * — même lecture que la dérivation du gardé ci-dessous. `deployed`, lui, n'a jamais de membre
+ * pour les deux bonus (aucun déploiement de power-up n'est mesuré) : le terme y est simplement
+ * toujours nul, il n'a pas besoin d'être écarté.
+ */
+export function familyHasAnyTrace(tally: EquipmentUsageTally, family: string): boolean {
+  return (
+    usageUsedOf(tally, family) > 0 ||
+    (tally.deployed[family] ?? 0) > 0 ||
+    (tally.dropped[droppedFamilyOf(family)] ?? 0) > 0 ||
+    (tally.kept[family] ?? 0) > 0
+  )
+}
+
+/**
  * keptFamilyOf — normalise une famille BRUTE publiée par le document (vocabulaire de POSE,
  * `powerup_camo`) vers le vocabulaire `KEPT_FAMILIES` (`camo`) via le pont D5
  * (`EPISODE_FAMILY_OF_POWERUP`), puis filtre au PÉRIMÈTRE du bilan. `null` = famille CONNUE mais
@@ -133,23 +163,33 @@ function keptFamilyOf(rawFamily: string): string | null {
 }
 
 /**
- * equipmentChangeFamilyOf — la famille CANONIQUE (vocabulaire `KEPT_FAMILIES`) que nomme le
- * rang `r` d'un `equipmentChanges`, ou `null` quand :
- *  - le rang n'a PAS DE LABEL DU TOUT (`abilityLabels?.[String(r)]` absent) ;
- *  - le label N'A PAS DE `family` (artefact antérieur au schéma 51, ou table incomplète) — repli
- *    explicite, jamais deviné (cf. en-tête) ;
- *  - le rang est HORS BILAN (famille connue mais hors `KEPT_FAMILIES` : grappin, propulseur,
- *    répulseur) — silencieux, une exclusion PRODUIT, pas une mesure manquante.
- * Les trois cas rendent `null` ici ; c'est à l'APPELANT de distinguer « famille manquante »
- * (réserve `unnamedTaken`) de « famille hors bilan » (silencieux), en relisant `label?.family`
- * lui-même — ce que fait `deriveKeptFromTaken`.
+ * equipmentChangeFamilyOf — LA SEULE LECTURE de `abilityLabels` du bilan : la famille CANONIQUE
+ * (vocabulaire `KEPT_FAMILIES`) que nomme le rang d'un `equipmentChanges`, et si ce rang est
+ * NOMMÉ dans CE film.
+ *
+ * LES DEUX « NON » NE DISENT PAS LA MÊME CHOSE, et c'est tout l'intérêt de `named` :
+ *  - `named: false` — le rang n'a AUCUN label, ou son label n'a pas de `family` (artefact
+ *    antérieur au schéma 51, ou table du film incomplète). C'est une MESURE MANQUANTE : la prise
+ *    rejoint la réserve `unnamedTaken`, jamais une famille devinée par une racine de libellé.
+ *  - `named: true, family: null` — rang labellisé, famille CONNUE mais HORS BILAN (grappin,
+ *    propulseur, répulseur — P4). C'est une EXCLUSION PRODUIT : elle se tait.
+ *
+ * CORRIGÉ LE 2026-09-10 (constat C3 de la revue de la vague 5). Cette fonction rendait un simple
+ * `string | null` qui confondait les deux « non », si bien que son unique appelant possible
+ * ([deriveKeptFromTaken]) relisait `abilityLabels` lui-même — DEUX fois — pour les distinguer :
+ * la fonction n'avait plus aucun appelant de production tout en restant épinglée par ses tests
+ * (anti-pattern n°1, « dead code museum » avec des tests verts qui entretiennent l'illusion). Le
+ * second retour lui rend son rôle, et il n'existe désormais qu'UN SEUL chemin de lecture de la
+ * famille — même forme que le jumeau Go, `equipmentOutcomeFamilyOf(labels, rank) (family, named)`
+ * (`usage_summary_outcomes.go`).
  */
 export function equipmentChangeFamilyOf(
   labels: ReplayDocumentReady['abilityLabels'],
   rank: number,
-): string | null {
+): { family: string | null; named: boolean } {
   const rawFamily = labels?.[String(rank)]?.family
-  return rawFamily ? keptFamilyOf(rawFamily) : null
+  if (!rawFamily) return { family: null, named: false }
+  return { family: keptFamilyOf(rawFamily), named: true }
 }
 
 /**
@@ -176,15 +216,14 @@ export function deriveKeptFromTaken(
   let unnamedTaken = 0
   for (const c of doc.equipmentChanges) {
     if (c.kind === 'taken') {
-      const label = doc.abilityLabels?.[String(c.r)]
-      if (!label?.family) {
+      const { family, named } = equipmentChangeFamilyOf(doc.abilityLabels, c.r)
+      if (!named) {
         // La TABLE ou la FAMILLE manque (artefact ancien) : réserve « sans famille connue »
         // (P13 amendée), au niveau du match — jamais un porteur mis en cause pour une
         // non-mesure. Repli EXPLICITE (lot 5.7) : jamais deviné par une racine de libellé.
         if (c.r !== REPLAY_NO_ABILITY_RANK) unnamedTaken += 1
         continue
       }
-      const family = keptFamilyOf(label.family)
       // Labellisé mais hors bilan (grappin, propulseur, répulseur) : exclusion PRODUIT (P4),
       // pas une famille inconnue — elle ne rejoint donc PAS la réserve ci-dessus.
       if (!family) continue
@@ -199,8 +238,7 @@ export function deriveKeptFromTaken(
       // le Go, `Gap > 0` — `SpentUnreliableFrom`). `r` vaut `REPLAY_NO_ABILITY_RANK` sur un
       // `spent` (l'emplacement est vide) : le rang consommé est sur `from`, jamais sur `r`.
       if (c.gap) continue
-      const label = doc.abilityLabels?.[String(c.from)]
-      const family = label?.family ? keptFamilyOf(label.family) : null
+      const { family } = equipmentChangeFamilyOf(doc.abilityLabels, c.from)
       // Famille manquante, hors bilan, OU famille à pièce engendrée (le mur reste lu sur SES
       // poses, jamais sur `spent` — cf. `usageUsedOf`) : rien à ventiler ici.
       if (!family || isFamilyWithSpawnedPiece(family)) continue
