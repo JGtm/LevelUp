@@ -1,5 +1,13 @@
 # PLAN — « Servi ou gâché » : équipement et armes spéciales sur quatre pages (2026-09-09)
 
+> **Statut au 2026-09-10 (superviseur du plan maître)** : E0 à E6 exécutés via
+> `.ai/PLAN_MASTER_2026-09-09.md` (lots 2.1 à 2.5, E6.1bis, revue 2.R, gate-push et CI de
+> vague 2 verts) ; la liste de clôture §11 est couverte au niveau de la vague (revue unique,
+> gate-push, thought_log, référence des canaux mise à jour par E0 puis par les lots 4.3, 5.5 et
+> la ronde de corrections de la vague 5). Reste ouvert ici : les découvertes §6 (mesures E0
+> instruites par `.ai/V7.5/RAPPORT_E0_2026-09-10.md`) et P5 (armes spéciales au grain session,
+> reporté par décision utilisateur du 10-09).
+
 **Pour l'agent qui exécute.** Ce plan est autoportant. Avant la première ligne de code :
 
 1. Lire `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` — **obligatoire**. C'est le seul

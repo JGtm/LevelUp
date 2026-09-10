@@ -1,5 +1,11 @@
 # Plan — Vague C : les formes (heatmaps, blocs manquants, médailles)
 
+> **Statut au 2026-09-10 (superviseur du plan maître)** : ce plan a été EXÉCUTÉ via
+> `.ai/PLAN_MASTER_2026-09-09.md` — C1/C2 (lot 1.4 + 1.5), C3 (1.5), C4 (1.2), C5/C6 absorbés
+> par le plan Équipement (lots 2.2 à 2.5), tâche hors lot des 15 + 7 artefacts absorbée par les
+> recuissons 0.4 et 3.2. Les cases ci-dessous n'ont pas été cochées une à une : le plan maître
+> (statuts, commits, gates, revues) fait foi. Reste ouvert ici : rien.
+
 > Issu de `.ai/diagnostics/RETOURS_2026-09-08/DIAGNOSTIC_RETOURS_UTILISATEUR_2026-09-08.md`,
 > §§ 1, 18, 18bis, 20, 20bis, 22. **Exécution sous le contrat du skill `plan-execution`.**
 
