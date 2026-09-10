@@ -151,7 +151,7 @@ func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.Tactica
 	}
 	dans := cible(lecture.Univers.Equipes, req.Qui, s.xuid, scope.Coequipiers)
 	prendVictime, prendTueur := facesDeLaQuestion(req.Question)
-	grille := tactical.GrilleParDefaut()
+	grille := grilleDemandee(req.PasM)
 
 	out := make([]domain.TacticalContribution, 0, 4)
 	for _, p := range lecture.Points {
@@ -199,7 +199,7 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 	}
 	rayons, _ := s.rayonsParMatch(lecture.Univers.Matchs)
 	dans := cible(lecture.Univers.Equipes, req.Qui, s.xuid, scope.Coequipiers)
-	grille := tactical.GrilleParDefaut()
+	grille := grilleDemandee(req.PasM)
 
 	out := make([]domain.TacticalContribution, 0, 2)
 	for _, m := range lecture.Morts {
@@ -279,14 +279,30 @@ func (s *TacticalService) celluleArtefact(ctx context.Context, req domain.Tactic
 		if !s.sidecarExploitable(ctx, sc, m.MatchID) {
 			continue
 		}
-		out = append(out, contributionsDuSidecar(sc, m.MatchID, req.Question, req.Col, req.Lig, dans)...)
+		out = append(out, contributionsDuSidecar(sc, m.MatchID, req.Question, celluleVisee(req), dans)...)
 	}
 	return out, nil
 }
 
+// celluleVisee rend le predicat « cette cellule DU SIDECAR tombe-t-elle dans la cellule
+// demandee ? ».
+//
+// LES DEUX ADRESSES NE SONT PAS SUR LA MEME GRILLE, et c'est structurel : un sidecar est
+// cuit a 0,5 m (`domain.TacticalRasterPasM`) une fois pour toutes, tandis que la lecture
+// agregee a pu retenir 1 ou 2 m selon la densite (pas adaptatif, lot 3.2). Le regroupement
+// est exact — la suite des pas double, et l'adressage est ancre sur l'origine du monde.
+func celluleVisee(req domain.TacticalCelluleRequest) func(col, lig int) bool {
+	source := grilleDemandee(domain.TacticalRasterPasM)
+	cible := grilleDemandee(req.PasM)
+	return func(col, lig int) bool {
+		c := tactical.Readresser(tactical.Cellule{Col: col, Lig: lig}, source, cible)
+		return c.Col == req.Col && c.Lig == req.Lig
+	}
+}
+
 // contributionsDuSidecar rend les contributions d'UN sidecar pour UNE cellule.
 func contributionsDuSidecar(sc *domain.TacticalRasterSidecar, matchID, question string,
-	col, lig int, dans predicatQui) []domain.TacticalContribution {
+	visee func(col, lig int) bool, dans predicatQui) []domain.TacticalContribution {
 	out := make([]domain.TacticalContribution, 0, 2)
 	for _, j := range sc.Joueurs {
 		if !dans(matchID, j.XUID) {
@@ -295,7 +311,7 @@ func contributionsDuSidecar(sc *domain.TacticalRasterSidecar, matchID, question 
 		switch question {
 		case domain.TacticalQuestionRoutes:
 			for _, route := range j.Routes {
-				if !routeTraverseCellule(route, col, lig) {
+				if !routeTraverseCellule(route, visee) {
 					continue
 				}
 				out = append(out, domain.TacticalContribution{
@@ -307,7 +323,7 @@ func contributionsDuSidecar(sc *domain.TacticalRasterSidecar, matchID, question 
 			}
 		default: // domain.TacticalQuestionTemps
 			for _, e := range j.PremieresEntrees {
-				if e.Col != col || e.Lig != lig {
+				if !visee(e.Col, e.Lig) {
 					continue
 				}
 				out = append(out, domain.TacticalContribution{
@@ -322,10 +338,10 @@ func contributionsDuSidecar(sc *domain.TacticalRasterSidecar, matchID, question 
 	return out
 }
 
-// routeTraverseCellule dit si une route de spawn passe par (col, lig).
-func routeTraverseCellule(r domain.TacticalRasterRoute, col, lig int) bool {
+// routeTraverseCellule dit si une route de spawn passe par la cellule visee.
+func routeTraverseCellule(r domain.TacticalRasterRoute, visee func(col, lig int) bool) bool {
 	for _, c := range r.Cases {
-		if c.Col == col && c.Lig == lig {
+		if visee(c.Col, c.Lig) {
 			return true
 		}
 	}

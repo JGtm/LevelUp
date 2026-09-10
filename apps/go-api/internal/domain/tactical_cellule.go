@@ -41,6 +41,20 @@ type TacticalCelluleRequest struct {
 	// CelluleTactique.Col/Lig — ancre sur l'origine du monde, jamais sur les bornes de la
 	// lecture agregee.
 	Col, Lig int
+
+	// PasM est le pas de la grille SUR LAQUELLE l'adresse ci-dessus a un sens, en metres :
+	// celui que la lecture agregee a publie (`TacticalRaster.PasM`), renvoye tel quel par
+	// le client.
+	//
+	// IL EST OBLIGATOIRE DEPUIS LE PAS ADAPTATIF (lot 3.2, decision D6) : une adresse de
+	// cellule ne veut rien dire sans son pas — la cellule (12, 8) d'une grille de 2 m
+	// couvre les cellules (48..51, 32..35) d'une grille de 0,5 m. Resolue au mauvais pas,
+	// la demande rend les contributions d'un AUTRE endroit de la carte, sans rien casser.
+	//
+	// ZERO (ou toute valeur non finie / negative) VAUT LE PAS PAR DEFAUT, jamais une
+	// erreur : c'est ce que faisaient tous les appelants avant ce lot, et un client d'une
+	// version anterieure doit continuer a lire la meme chose.
+	PasM float64
 }
 
 // TacticalContribution est UNE contribution a la cellule demandee.

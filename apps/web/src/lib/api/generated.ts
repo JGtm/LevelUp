@@ -11929,6 +11929,11 @@ export interface components {
              * @description Ligne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.lig).
              */
             lig: number;
+            /**
+             * Format: double
+             * @description Pas de la grille sur laquelle (col, lig) est adressee, en metres — celui publie par la lecture agregee (TacticalRaster.pas_m). Absent ou <= 0 : pas par defaut (0,5 m).
+             */
+            pas_m?: number;
         };
         TacticalCelluleBody: {
             /** @description La cellule dont on demande le detail (col, lig). */

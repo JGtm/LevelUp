@@ -72,9 +72,12 @@ func (s *TacticalService) rasterIsole(ctx context.Context, out *domain.TacticalR
 	cov := bilan.Couverture
 	out.Isolement = &cov
 
-	grille := tactical.GrilleParDefaut()
-	raster, err := tactical.RasteriseComptes(grille, matchsAyantUnRayon(rayons),
-		comptesDesMortsIsolees(grille, bilan.Isolees))
+	// LES MORTS SE REPROJETTENT A CHAQUE PAS ESSAYE, elles ne se regroupent pas : leurs
+	// positions sont en main (contrairement aux sidecars, deja agreges), et projeter la
+	// position exacte est plus juste que regrouper une cellule fine.
+	lue, err := rasteriserComptes(matchsAyantUnRayon(rayons), func(g tactical.Grille) []tactical.CompteCellule {
+		return comptesDesMortsIsolees(g, bilan.Isolees)
+	})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: rasterisation des morts isolees en echec",
 			"player", s.xuid, "map_id", out.MapID, "err", err)
@@ -82,7 +85,7 @@ func (s *TacticalService) rasterIsole(ctx context.Context, out *domain.TacticalR
 	}
 	// `ignores` VAUT ZERO ET C'EST STRUCTUREL : cette lecture ne lit aucun sidecar, donc
 	// aucun point n'a pu etre ecarte a la cuisson.
-	remplirDepuisSidecars(out, raster, 0)
+	remplirDepuisSidecars(out, lue.Raster, 0)
 	s.lireLeJournal(ctx, out, scope)
 
 	s.logger.InfoContext(ctx, "tactique: lecture d'isolement",

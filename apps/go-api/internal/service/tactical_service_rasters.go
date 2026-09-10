@@ -278,13 +278,23 @@ func (s *TacticalService) remplirLectureArtefact(ctx context.Context, out *domai
 		}
 	}
 
-	raster, err := tactical.RasteriseComptes(tactical.GrilleParDefaut(), mesures, comptes)
+	// LES SIDECARS SONT CUITS A 0,5 M, ET ILS N'ONT PAS A ETRE RECUITS POUR ETRE LUS PLUS
+	// GROS : chaque pas essaye REGROUPE leurs cellules (`tactical.ReadresserComptes`), ce
+	// qui est exact parce que la suite des pas double et que l'adressage est ancre sur
+	// l'origine du monde — quatre cellules fines pour une grosse, jamais un chevauchement.
+	sourceSidecar := grilleDemandee(domain.TacticalRasterPasM)
+	lue, err := rasteriserComptes(mesures, func(g tactical.Grille) []tactical.CompteCellule {
+		return tactical.ReadresserComptes(comptes, sourceSidecar, g)
+	})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: somme des rasters en echec",
 			"player", s.xuid, "map_id", out.MapID, "question", out.Question, "err", err)
 		return fmt.Errorf("tactique: somme des rasters: %w", err)
 	}
-	remplirDepuisSidecars(out, raster, ignores)
+	remplirDepuisSidecars(out, lue.Raster, ignores)
+	s.logger.InfoContext(ctx, "tactique: pas de grille retenu (lecture d'artefact)",
+		"player", s.xuid, "map_id", out.MapID, "question", out.Question,
+		"pas_m", out.PasM, "densite_suffisante", lue.Suffisante, "pas_essayes", lue.Tentatives)
 	return nil
 }
 
