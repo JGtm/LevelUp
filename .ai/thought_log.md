@@ -104795,3 +104795,76 @@ restent a zero sur tout l'historique. NON JOUE : attend le feu vert utilisateur 
 bases locales). Aucun commit demande a ce stade. Branche `feat/citations-artilleur-vehicules`
 depuis `feat/v75`.
 
+
+## [2026-09-10] Citations d'arme mortes en silence + le canon du Scorpion retrouve
+
+**Statut** : Complete pour la partie citations (code + garde-rail). Le lot « attribution »
+(Scorpion) est CADRE mais NON OUVERT : il attend la fusion du lot kill feed `PORTEUR`.
+
+**Point de depart** : en cablant six citations « Artilleur de », la mesure du corpus donnait
+Scorpion = 0 frag sur 1384 matchs. J'ai presente ce 0 a l'utilisateur comme un fait etabli.
+Il a refuse : « que ce soit 0 pour moi est etonnant, mais 0 pour TOUT LE MONDE est quasi
+impossible ». Il avait raison, et c'est la lecon principale de la journee.
+
+**Ce qui n'allait pas dans la mesure** : elle agregeait par `weapon_key`. Une mesure par cle
+ne peut pas, PAR CONSTRUCTION, reveler une source qui n'a pas de cle. Le 0 etait exact comme
+chiffre et faux comme conclusion. Il manquait aussi le denominateur : personne n'avait compte
+les matchs de Grand Combat du corpus (126 sur 1384, soit 9 % — donc le Scorpion avait bien
+eu ses occasions).
+
+**Resultat, prouve** : le canon du Scorpion est porte par DEUX tags jumeaux du meme effet,
+tous deux `INCONNU / INCONNU` dans `labels.tsv` — `0bece71e` (`proj ac954d50 #0/2`, 234 morts)
+et `19bd6810` (`#1/2`, 101 morts). Total 335 morts, 47 matchs, 80 tueurs. Faisceau : 77 % des
+morts en Grand Combat contre 9 % du corpus (x8) ; cartes Fragmentation / Insolence / Fortitude
+/ Obituary / Breaker **Heavies** ; tueurs concentrant 24, 18, 15 morts dans UN SEUL match
+(signature d'un pilote de char). VERIFICATION HUMAINE, seule chose qui tranche vraiment :
+match `5faa6b74-0026-4e60-aaca-34522d75050c`, Fragmentation Heavies, 2026-01-28 19:20 UTC,
+B1GDADDYDUFF 24 obus — l'utilisateur a regarde le film : « il a massacre tout le monde avec le
+scorpion sur cette partie ». Une fois nomme, le Scorpion devient la DEUXIEME arme de vehicule
+du corpus, derriere le Ghost (391) et devant le Banshee (238).
+
+**Contre-epreuve Rockethog (aucun defaut)** : 16 morts, 11 tueurs. La regle FONCTIONNE ; l'engin
+est reellement rare. L'utilisateur en est le recordman du corpus avec 4 frags (2 Flood Gulch BTB
+2026-07-24, 1 Behemoth Partie rapide 2026-03-17, 1 Behemoth 2025-12-09) — sa memoire etait juste.
+Consequence : avec les paliers 5,10,15,25,50 qu'il a maintenus, sa citation affichera 4/5, a un
+frag du premier palier. Mon « bloquee a zero » etait une erreur d'analyse.
+
+**Sante globale de l'etiquetage** : sur les 60 tags les plus meurtriers, seuls DEUX sont sans
+identite (`0bece71e` = le Scorpion, et `0000005f`). Le Scorpion etait le gros trou, pas la partie
+emergee d'un desastre. Bon a savoir avant de sur-reagir.
+
+**Decision technique du lot livre** : trois citations `weapon_stat` comptaient zero depuis leur
+creation, decouvertes en croisant les 30 `StatName` avec les libelles canoniques.
+- `sidekick_mastery` demandait « Mk51 Sidekick » ; le registre et `weapon_names.toml` disent
+  « Mk50 Sidekick ». CAUSE TROUVEE : `labels.tsv` (nom INTERNE du jeu) dit « Mk51 Sidekick » —
+  la citation avait ete ecrite d'apres le nom du jeu, pas d'apres le registre. Corrigee.
+- `bandit_mastery` demandait « Bandit Evo », qui est le libelle FR ; l'identite EN est
+  « M392 Bandit ». Corrigee.
+- `mutilator_mastery` demande « Mutilator », absent du registre (1262 frags mesures). NON
+  corrigee par moi : la reparation touche registry.go, weapon_names.toml, rules.tsv et
+  off_arsenal_guard_test.go, quatre fichiers tenus en vol par un autre chantier. Mise en
+  allowlist DATEE d'une entree, deja condamnee par le commit `8ebbb1483` de ce chantier.
+Les trois sont enfants de `human_weapons_mastery` : son palier final etait donc inatteignable
+pour tout le monde, en silence.
+
+**Garde-rail** : `TestWeaponStatCitations_ResolvableName` — tout `weapon_kills:<nom>` doit
+resoudre vers un nom du registre ou d'un `weapon_names.toml`. Le defaut etait structurellement
+invisible : `ctx.Stats[cle absente]` rend le zero-value, donc ni erreur, ni log, ni test rouge,
+et un joueur ne peut pas distinguer « jamais meritee » de « cassee ». Verifie par test negatif
+(nom casse -> rouge nommant la citation ; retabli -> vert).
+
+**Outil decouvert** : `apps/go-api/cmd/diag_q` — lecteur DuckDB generique,
+`go run ./cmd/diag_q <db> "<SQL>"`. Il force `access_mode=read_only`, ce que la regle ART n4
+deconseille sur une base tenue RW ; une ouverture refusee est sans danger (DuckDB verrouille
+avant d'ecrire), mais ne pas l'utiliser en aveugle. TOUTE mesure se lit par
+`match_kill_events_latest`, jamais la table brute : cinq revisions de decodeur y coexistent et
+la meme mort y figure plusieurs fois (facteur ~6 constate le meme jour sur une autre mesure).
+
+**Prochaine etape** : lot « attribution », APRES la fusion du lot `PORTEUR` — (1) retirer
+l'entree d'allowlist `mutilator_mastery`, devenue sans objet ; (2) nommer le canon du Scorpion.
+Conception retenue sur conseil du chantier kill feed : un genre `EFFET` cle sur le tag d'EFFET
+(`proj ac954d50`) et non sur les tags `jpt!` — les deux jumeaux sont un seul fait vu deux fois,
+indexer sur le tag ecrirait deux regles pour une connaissance et resterait muet a l'ajout d'une
+troisieme face. Priorite apres `NOM` et `PORTEUR`, avant `CLASSE`, prouvee par test negatif.
+Verifier que la regle porte bien la `weapon_key` (sinon icone gagnee, ligne de stats perdue) et
+SUPPRIMER la regle `BANQUE veh_un_scorpion`, inerte, dans le meme commit.
