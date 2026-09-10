@@ -274,3 +274,13 @@ de cocher ; fusion dans `feat/v75` seulement avec l'accord de l'utilisateur.
   `releves`) : rang 10 = écran occultant, rang 19 = mur de protection à une utilisation, corps
   hors table = bots 343 et arrivées en cours, camps de `58864b3c` bons (résidu clos). Lot 3.4
   créé (nommage au manifeste + recuisson + re-résumé), en attente des cinq relevés restants.
+- **2026-09-10 (matin, Notion)** — Décision utilisateur : **la release ne rejoue aucun backfill
+  en prod ; les bases locales et les replays sont copiés sur le VPS (sauvegarde puis
+  écrasement)**. En conséquence, dix cases de la séquence Notion « à dérouler à la release »
+  sont cochées avec la mention « fait en local » : cache appauvri, médailles du kill feed,
+  killsource, T0 (deux passes), `kill_positions` (migration 1.7), distance des kills et
+  `kill_openings` (passe films du 09/09), recuisson au schéma 50 (rejouée le 10/09 avec les
+  bornes), résumé d'usage us4, Assaut (0 film local). Restent à l'utilisateur : jeton, curl de
+  pré-vol, `systemctl`, `LEVELUP_REPLAY_PUBLIC`, vérifications, copie des bases, nettoyage des
+  worktrees, déplacement du décodeur (post-merge). Le surveillant de la chaîne du 09/09 (tail
+  persistant) a été arrêté ce matin.
