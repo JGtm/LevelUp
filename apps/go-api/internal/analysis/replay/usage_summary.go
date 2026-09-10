@@ -61,13 +61,9 @@ import "sort"
 // (`summary_rev` + `artifact_schema`). C'est la clé de reprise du backfill : un match
 // dont la passe courante porte (UsageSummaryRev, SchemaVersion) est à jour ; changer
 // une règle d'attribution ici DOIT incrémenter cette révision, sinon le backfill
-// sautera des matchs à re-résumer.
-// us5 (2026-09-10, lot 4.3) : la jointure rang -> famille du bilan d'équipement ne passe
-// plus par la RACINE DU LIBELLÉ ; elle lit `abilityLabels[].family`, publiée par le
-// document depuis le schéma 51. La règle d'attribution change donc bel et bien —
-// un artefact au schéma 50 ne porte aucune famille, et son résumé ne peut pas être
-// re-projeté sans recuisson de l'artefact lui-même.
-const UsageSummaryRev = "us5"
+// sautera des matchs à re-résumer. CE QUE CHAQUE RÉVISION A CHANGÉ, ET CE QU'ELLE
+// EXIGE COMME RECUISSON : usage_summary_chronicle.go, sa seule et unique chronique.
+const UsageSummaryRev = "us6"
 
 // UsagePlayerSummary — les usages d'UN joueur sur UN match, prêt à persister.
 type UsagePlayerSummary struct {
@@ -202,7 +198,9 @@ func BuildUsageSummary(doc *ReplayDocument) UsageSummary {
 	tallyUsagePads(doc, players, &out.Match)
 	// LES ISSUES EN DERNIER, ET DANS CET ORDRE : `deriveUsageKept` soustrait des
 	// grandeurs que les tallies ci-dessus viennent de poser (poses déployées,
-	// épisodes, lâchers). L'inverser rendrait un gardé égal aux prises.
+	// épisodes, lâchers) ET les CONSOMMATIONS que la ligne juste au-dessus ventile
+	// (côté « utilisé » des déployables sans pièce engendrée, `us6`). L'inverser
+	// rendrait un gardé égal aux prises.
 	out.Match.EquipmentChanges = tallyUsageEquipmentChanges(doc, players, slotOwner)
 	deriveUsageKept(players)
 

@@ -12,9 +12,29 @@ package replay
 //
 //	kept = max(0, taken - utilisé - lâché)
 //
-// « Utilisé » a DEUX définitions et le lecteur ne voit pas la différence (P2) : un
-// équipement d'ACTIVATION sert quand il est ACTIVÉ (les deux bonus, par le canal
-// des épisodes), un DÉPLOYABLE sert quand il est POSÉ (par les poses `deployed`).
+// « Utilisé » a TROIS lectures et le lecteur ne voit pas la différence (P2, amendée
+// par le lot 5.5) : un équipement d'ACTIVATION sert quand il est ACTIVÉ (les deux
+// bonus, par le canal des épisodes) ; un DÉPLOYABLE QUI ENGENDRE UNE PIÈCE sert
+// quand il est POSÉ (le MUR seul, par les poses `deployed` de ses panneaux) ; tout
+// autre DÉPLOYABLE sert quand il CONSOMME UNE CHARGE (`spent`).
+//
+// POURQUOI LA TROISIÈME (rapport E0 du 2026-09-10, question 5). Le côté « utilisé »
+// se lisait sur `deployed` pour TOUS les déployables, et cela ne marchait que pour le
+// mur : sur 202 consommations de charge annoncées par les films des autres familles,
+// ZÉRO n'est couverte par une pose de la même famille du même joueur à moins de 2 s
+// (mur : 84 %). Une pose `origin: deployed` sur un objet PORTÉ ne mesure pas un
+// déploiement — elle mesure un LÂCHER VOLONTAIRE à mi-vie, l'objet qui tombe parce
+// que son porteur en ramasse un autre ; `equipmentOrigin` ne sait pas les distinguer,
+// sa seule question est « cette création est-elle à la fin d'une vie ? ». Le capteur
+// affichait 4 « utilisés » sur 36 pris et le traqueur 3 sur 29 PAR CONSTRUCTION,
+// pendant que les films annonçaient 39 et 5 consommations que le bilan ignorait.
+// La frontière n'est pas inventée ici : c'est `usageFamiliesWithSpawnedPiece`
+// (usage_summary_families.go), transcription du `kind = "deployed"` du manifeste,
+// recollée au manifeste par un garde-rail. RÉSERVE HONNÊTE : `spent` sous-compte à
+// son tour — là où les deux canaux existent (le mur), 118 consommations pour 252
+// poses de panneau. Le correctif fait passer ces familles de « aucune mesure » à
+// « une mesure partielle », il ne rend pas la vérité.
+//
 // Le clamp à zéro absorbe deux écarts mesurés et attendus : les 2,45 % de fenêtres
 // que la mesure E0.4 ne referme pas, et le fait qu'une POSE EST UNE CHARGE, PAS UN
 // OBJET (un capteur pris une fois et lancé quatre fois donne 4 poses pour 1 objet —
@@ -217,17 +237,24 @@ func deriveUsageKept(players *usageTallies) {
 	}
 }
 
-// usageUsedOf — le côté « utilisé » d'une famille pour CETTE ligne (décision P2) :
-// le compte d'ÉPISODES pour les deux bonus, les poses DÉPLOYÉES pour tout le reste.
-// C'est le seul endroit du fichier qui traduit entre les deux vocabulaires.
+// usageUsedOf — le côté « utilisé » d'une famille pour CETTE ligne. TROIS canaux, et
+// le lecteur ne voit pas la différence :
+//
+//   - les deux BONUS : le compte d'ÉPISODES d'état actif (décision P2) ;
+//   - le MUR, seul déployable qui ENGENDRE UNE PIÈCE : ses poses de panneau ;
+//   - tout autre DÉPLOYABLE : ses CONSOMMATIONS de charge (`spent`).
+//
+// C'est le seul endroit du fichier qui traduit entre ces vocabulaires.
 func usageUsedOf(t *UsagePlayerSummary, family string) int {
-	switch family {
-	case usageFamilyPowerupCamo:
+	switch {
+	case family == usageFamilyPowerupCamo:
 		return t.CamoEpisodes
-	case usageFamilyPowerupOvershield:
+	case family == usageFamilyPowerupOvershield:
 		return t.OvershieldEpisodes
-	default:
+	case usageFamilySpawnsPiece(family):
 		return t.DeployedByFamily[family]
+	default:
+		return t.SpentByFamily[family]
 	}
 }
 
