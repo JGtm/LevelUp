@@ -9,6 +9,7 @@ package main
 // l artefact SUR DISQUE) contre ce que la vue `_latest` a dit du match (passe en map).
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -72,10 +73,29 @@ func TestProjeterUnArtefact_CleDeReprise(t *testing.T) {
 			path: filepath.Join(t.TempDir(), "jamais-ecrit.json"),
 			opts: usageSummaryOptions{}, passes: aJour, want: usageSansArtefact,
 		},
+		{
+			// LA FIGURE DE LA REVUE DE VAGUE 4 (constat P2, 2026-09-10) : un artefact encore au
+			// schema d avant le bump courant, JAMAIS resume (absent de `dejaResumes`).
+			// L ANCIEN CALCUL ne comparait que (rev, schema) face a la reprise : ce cas serait
+			// tombe dans `usageAProjeter`, aurait ecrit un bilan VIDE (les champs du bump
+			// n existent pas a ce schema), et l aurait marque a jour pour toujours.
+			nom:  "artefact a un schema perime (< courant) : refuse, jamais projete",
+			path: artefactUsageDeTest(t, replay.SchemaVersion-1),
+			opts: usageSummaryOptions{}, passes: map[string]passeCouranteUsage{},
+			want: usageSchemaPerime,
+		},
+		{
+			// MEME REFUS SOUS --force : forcer ne fabrique aucun champ manquant, le schema reste
+			// incompatible.
+			nom:  "artefact a un schema perime, meme sous --force : refuse",
+			path: artefactUsageDeTest(t, replay.SchemaVersion-1),
+			opts: usageSummaryOptions{force: true}, passes: aJour,
+			want: usageSchemaPerime,
+		},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			s, etat := projeterUnArtefact(c.path, "m1", c.opts, c.passes)
+			s, etat := projeterUnArtefact(context.Background(), c.path, "m1", c.opts, c.passes)
 			if etat != c.want {
 				t.Fatalf("etat = %d, attendu %d", etat, c.want)
 			}
@@ -94,7 +114,7 @@ func TestProjeterUnArtefact_ArtefactIllisible(t *testing.T) {
 	if err := os.WriteFile(path, []byte("{pas du json"), 0o644); err != nil {
 		t.Fatalf("ecrire artefact: %v", err)
 	}
-	if _, etat := projeterUnArtefact(path, "m1", usageSummaryOptions{}, nil); etat != usageEchec {
+	if _, etat := projeterUnArtefact(context.Background(), path, "m1", usageSummaryOptions{}, nil); etat != usageEchec {
 		t.Fatalf("etat = %d, attendu usageEchec (un artefact corrompu degrade CE match, pas la passe)", etat)
 	}
 }
