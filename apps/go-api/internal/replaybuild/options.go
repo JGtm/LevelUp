@@ -21,6 +21,7 @@ func (b *Builder) buildReplayOptions(
 		Kills:           cat.kills,
 		MatchKills:      cat.matchKills,
 		RosterXUIDs:     rosterXUIDs(facts),
+		Participants:    participantsDuTableau(facts),
 		Bots:            cat.bots,
 		Successions:     cat.successions,
 		Objectives:      stats.objectives,

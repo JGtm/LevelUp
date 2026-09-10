@@ -174,6 +174,14 @@ type Options struct {
 	// VIDE = COMPORTEMENT D'AVANT, À L'OCTET PRÈS : le CLI hors ligne et l'ouvrier sans faits
 	// gardent le roster du fil des morts seul, et le rejeu reste publiable sans base.
 	RosterXUIDs []uint64
+	// Participants : le TABLEAU DE L'API — les participants du match sous l'identifiant de la
+	// base (`bid(N.0)` pour un bot) et leurs bornes de participation.
+	//
+	// IL NOMME CE QUE LE FILM NE TABLE PAS (lot 4.3) : les corps dont l'index de participant est
+	// LU dans le record de création mais absent de `PlayerIndexTable` — un bot déclaré, ou un
+	// siège d'index qu'un arrivant en cours a pris à un bot. Vide = aucune résolution par cette
+	// voie, et le registre le publie (cf. identity_registry_scoreboard.go).
+	Participants []Participant
 	// Bots : les bots que le film DÉCLARE (BOT_METADATA, paquet type 12), fournis par
 	// l'assembleur — le décodage vit chez son propriétaire unique (film/killsource), et ce
 	// paquet-ci est title-agnostic. FilmIndex est le slot de roster déclaré, Name porte le
