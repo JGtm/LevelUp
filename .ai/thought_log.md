@@ -1,4 +1,4 @@
-## [2026-09-10] Master plan, vague 5 — sept lots fusionnes, revue 2 P1 corriges, gate vert, push 992ae412f — En cours (CI de vague)
+## [2026-09-10] Master plan, vague 5 — sept lots fusionnes, revue 2 P1 corriges, gate vert, push 992ae412f — Complete (CI de vague verte 4/4 sur 992ae412f)
 
 **Decision technique principale.** Vague ouverte sur les decisions utilisateur du 10-09 (D12) :
 trois P2 de la revue 4.R (5.1), investigation E0 bornee (5.2, cinq causes prouvees) qui a
