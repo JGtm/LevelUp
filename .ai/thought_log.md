@@ -1,3 +1,62 @@
+## [2026-09-10] Master plan, lot 5.1 — les trois P2 de la revue de vague 4 fermes (collecteur bots/tableau, reprise usage-summary par schema, compteur d'alarme index_hors_table) — Complete
+
+**Decision technique principale.** Trois correctifs independants, TDD, dans le worktree dedie
+`wt/collecteur-bots` :
+
+(a) `sync/killcollector` construisait le registre d'identite SANS `Bots` ni `Participants`
+(`entreeDuRegistre`, positions.go) : `resolveByScoreboard` ne s'executait donc jamais au sync,
+alors qu'il tourne deja a la cuisson. Sur un siege d'index partage bot -> humain arrive en cours,
+`PlayerIndexTable` (bijection propre au collecteur) resolvait l'index vers l'humain et le lien
+direct attribuait ALORS les vies du bot (avant l'arrivee) au xuid de l'humain — mesure et prouvee
+par mutation (`TestEntreeDuRegistrePorteLesBotsEtLesParticipants` : 2 vies pour l'humain au lieu
+de 1 sans le branchement). Fix : `SharedRoster.participantsForMatch` lit desormais
+`joined_in_progress`/`first_joined_time` (fragment timezone canonique, meme formule que
+`replay_facts_repo.go`) et peuple `MatchIdentities.Participants` ; le roster de bots est
+partage via un NOUVEAU paquet `games/halo_infinite/replayidentity` (`BotIdentities`), pas
+`killsource` ni `replay` directement — les deux directions creaient un probleme (killsource ->
+replay ferme un cycle de TEST, `replay` a un instrument qui importe deja `killsource` ; replay ->
+killsource inverserait la couche generique/specifique-titre). `replaybuild` et `killcollector`
+appellent tous deux ce paquet ; garde-rail archlint
+`TestNoBotIdentityProjectionOutsideKillsource` (grep `replay.BotIdentity{` hors du fichier
+canonique). `killsource.botSuffix` exporte en `BotSuffix` pour eviter une 3e copie du litteral
+`" [bot]"`. `positions.go` frolait 500 L en ajoutant les 2 champs : `entreeDuRegistre` +
+`lecturesDuFilm` extraites vers `positions_identity_entree.go`. Fingerprint
+`killSourceDecoderFingerprint` recopiee (rename pur `botSuffix`->`BotSuffix`, AUCUNE ligne
+produite ne bouge, `KillSourceDecoderRev` inchangee — decision explicite documentee).
+
+(b) `cmd_backfill_usage_summary.go` : la reprise ne comparait que `(rev, schema)` face a la vue
+`_latest`, jamais le schema de l'artefact face au `replay.SchemaVersion` COURANT — un artefact
+reste au schema d'avant un bump (ex. us5) aurait ete resume a vide et marque a jour pour
+toujours. Fix : `projeterUnArtefact` refuse (`usageSchemaPerime`, log WARN, compte dans le
+bilan) tout artefact `SchemaVersion < replay.SchemaVersion`, AVANT la reprise et meme sous
+`--force`. Test table-driven rouge sur l'ancien code (2 sous-tests), vert avec le refus.
+
+(c) `identity_registry_creation.go` : l'alarme « index hors table » soustrayait `r.IndexBot`
+(compte a la lecture DIRECTE, avant le tableau de l'API) de `causes.IndexOutOfTable` (residu
+APRES le tableau/l'elimination/l'exclusion) — deux populations non comparables. Sur la figure
+mesuree (`4f77afc1`, 18 lectures / 10 IndexBot / 8 residu reel), l'ancien calcul rendait
+`8 > 10` = faux : alarme MUETTE. Fix : le residu post-tableau EXCLUT DEJA tout bot NOMME (bid
+pose) par construction — rien a soustraire. `causes.IndexOutOfTable` s'alarme seul. Test
+`TestAlarmerSurLesRefusNeSoustraitPasDeuxPopulationsNonComparables` : 2 index de bot direct
+(IndexBot=2), un seul survit au tableau (residu=1) ; capture slog JSON, rouge sur l'ancien
+calcul (aucune alarme), vert sur le nouveau (vies=1).
+
+**Resultats observes.** `go build ./...` propre ; `go vet ./...` propre ; `go test ./...` complet
+171 ok / 0 fail ; `golangci-lint run --new-from-merge-base=feat/v75 ./...` 0 issue ; `go test
+-tags=integration -p 1 -count=1 ./internal/sync/... ./internal/persist/... ./internal/archlint/...`
+tout vert (sync 276.9 s, killcollector 20.4 s, persist 42.4 s, archlint 38.0 s). Les trois
+mutations TDD ont ete jouees et confirmees rouges avant correctif, revert propre ensuite.
+Decouverte hors perimetre, non traitee : `scoreboardReport.alarmer` (identity_registry_scoreboard.go)
+dit « NI la table NI BOT_METADATA » pour `SansCandidat`, alors que ce compteur regroupe aussi le
+cas ou BOT_METADATA declare le bot mais son `bid` n'entre pas dans le tableau — message
+legerement inexact, pas touche (hors perimetre du lot 5.1).
+
+**Conclusion / prochaine etape.** Les trois P2 de la revue de vague 4 sont fermes. Aucune case du
+plan maitre cochee ici (au superviseur). Prochaine etape : le superviseur statue et enchaine sur
+la suite de la vague 5 (E0 + palette hors Grand combat, hygiene XS, hygiene du registre).
+
+---
+
 ## [2026-09-10] Master plan, vague 4 — 4.3 fusionne et recuit (schema 51, us5), 4.4 fusionne et verifie, 4.5 statue — Complete (revue 4.R : 0 P0 / 0 P1 / 3 P2, gate-push vert, push 0879f1787, CI de vague verte 4/4)
 
 **Decision technique principale.** Recuisson du parc au schema 51 lancee detachee avec veilleur
