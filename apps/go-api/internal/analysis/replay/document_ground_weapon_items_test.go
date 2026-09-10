@@ -8,6 +8,7 @@ package replay
 // production.
 
 import (
+	"fmt"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -147,6 +148,32 @@ func TestGroundWeaponItemsLoinOuTardNeLiePas(t *testing.T) {
 	if len(got) != 1 || got[0].End == GroundWeaponEndPickup || cov.PickupLinked != 0 {
 		t.Fatalf("got = %+v cov = %+v : ni la distance ni le temps ne doivent céder — un lien "+
 			"approximatif poserait la mauvaise arme dans les mauvaises mains", got, cov)
+	}
+}
+
+// TestGroundWeaponItemsWEstMinusculeSansPrefixe — GARDE-RAIL DE FORME DE CLÉ (lot armes au
+// sol, 2026-09-10). `W` s'écrit `%08x` (minuscules, sans préfixe `0x`), alors que
+// `weaponLabels` — la table que le web joint dessus — est indexée `0x%08X` (majuscules,
+// préfixée). Vérifié sur les 64 artefacts locaux : AUCUNE clé minuscule dans `weaponLabels`.
+//
+// LA DÉCISION DU LOT EST DE NE PAS ALIGNER LES DEUX ÉCRITURES ICI : la web NORMALISE à la
+// lecture (`weaponLabelKeyOf`, apps/web/src/features/match-replay/layers/useReplayWeaponPads.ts)
+// pour que les artefacts DÉJÀ CUITS (forme minuscule) restent joignables sans recuisson. Si ce
+// test casse, la forme de `W` a changé : le normalisateur web ET ce test doivent être mis à
+// jour DANS LE MÊME lot, sous peine de rouvrir le défaut de jointure que ce lot corrige.
+func TestGroundWeaponItemsWEstMinusculeSansPrefixe(t *testing.T) {
+	o := gwiObj(2_000_000, 10, 10, 0x0A1992BC, gwClassDropped)
+	got, _ := buildGroundWeaponItems([]gwPickupObject{o}, nil, nil, gwiClock())
+	if len(got) != 1 {
+		t.Fatalf("publiées = %d, attendu 1", len(got))
+	}
+	want := fmt.Sprintf("%08x", uint32(0x0A1992BC))
+	if got[0].W != want {
+		t.Fatalf("W = %q, attendu %q (minuscules, sans préfixe 0x) — un changement ici casse "+
+			"le normalisateur web `weaponLabelKeyOf`", got[0].W, want)
+	}
+	if got[0].W != "0a1992bc" {
+		t.Fatalf("W = %q, attendu la forme littérale %q", got[0].W, "0a1992bc")
 	}
 }
 
