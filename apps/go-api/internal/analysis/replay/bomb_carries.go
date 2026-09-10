@@ -13,7 +13,7 @@ package replay
 // La bombe voyage dans le canal des armes tenues, DÉJÀ balayé par `BuildFromFilm` pour
 // `weaponChanges` (`opt.WeaponChanges`, brut, familles comprises). Ce calque FILTRE ce
 // balayage sur la famille bombe — il ne relit pas le film. Le fil des morts (`opt.Deaths`)
-// et le pont slot->xuid (`reg.PontParSlot()`) sont eux aussi déjà là.
+// et le registre d'identité (`reg.XUIDNumAt`) sont eux aussi déjà là.
 //
 // # L'HORLOGE : pourquoi `deathOffsetMS` et pas l'origine du chunk 1
 //
@@ -116,7 +116,7 @@ func buildBombCarries(carry HeldObjectCarry, ctx matchClock,
 // attachBombCarries pose les périodes de portage de la bombe sur le document, avec leur
 // couverture. Les événements viennent du balayage des armes tenues DÉJÀ fait
 // (`opt.WeaponChanges`) ; le pont et son calage d'horloge viennent d'`own`, comme pour le
-// drapeau. Sans pont (`reg.PontParSlot()` vide), rien n'est reconstruit : aucune période ne
+// drapeau. Sans pont (`reg.PontEtabli()` faux), rien n'est reconstruit : aucune période ne
 // pourrait être nommée, et la couverture dit ce qui a été vu.
 //
 // ELLE REND LA CHRONOLOGIE RECONSTRUITE, EN MILLISECONDES, et pas seulement ce qu'elle publie :
@@ -134,12 +134,12 @@ func attachBombCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 	var carries []BombCarry
 	var cov *BombCarriesCoverage
 	var carry HeldObjectCarry
-	if len(reg.PontParSlot()) == 0 {
+	if !reg.PontEtabli() {
 		cov = &BombCarriesCoverage{BombFilm: true, Events: len(events)}
 		slog.Warn("rejeu : portage de la bombe sans pont slot->xuid — aucune periode publiable",
 			"match_id", doc.MatchID, "transitions", len(events))
 	} else {
-		carry = BuildHeldObjectCarry(events, reg.PontParSlot(), opt.Deaths)
+		carry = BuildHeldObjectCarry(events, occupantParMatchMS(reg), opt.Deaths)
 		carries, cov = buildBombCarries(carry, matchClock{
 			origin: clock.origin, step: clock.step, frames: clock.frames,
 			deathOffsetMS: reg.DeathOffsetMS(),

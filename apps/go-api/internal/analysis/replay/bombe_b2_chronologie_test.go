@@ -141,7 +141,7 @@ func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, 
 		t.Logf("%s : index de joueur illisible (%v) — pont par le seul fil des morts", id, err)
 	}
 	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
-	slotXUID, rep := reg.PontParSlot(), reg
+	slotXUID, rep := reg.PontEpure(), reg
 	t.Logf("%s : %d transitions bombe/crane, pont slot->xuid : %d slots nommés (vies=%d)",
 		id, len(evs), len(slotXUID), rep.ViesTotal())
 	return evs, slotXUID, deaths
@@ -150,7 +150,7 @@ func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, 
 // b2Periodes délègue à l'instrument publié (held_object_carry.go) : la logique des périodes
 // n'a qu'UNE implémentation, celle que le produit consommera.
 func b2Periodes(evs []HeldObjectEvent, slotXUID map[uint32]uint64, deaths []Death) []HeldObjectPeriod {
-	return BuildHeldObjectCarry(evs, slotXUID, deaths).Periods
+	return BuildHeldObjectCarry(evs, occupantFige(slotXUID), deaths).Periods
 }
 
 // b2PorteurA rend la période active à t, ou la dernière fermée dans la fenêtre [t-maxMS, t].

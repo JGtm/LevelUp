@@ -95,9 +95,9 @@ func ShiftKillRefs(kills []KillRef, deltaMS int64) []KillRef {
 // LE RAPPORT EST RECOMPTÉ après le filtre : retirer un côté change la classe de la mort
 // (`Both` -> `KillerOnly`, et une mort dont les deux côtés tombent n'est pas écrite du tout,
 // elle passe en `Dropped`). `OpeningOutOfLife` compte les CÔTÉS écartés par le filtre de vie.
-func BuildKillOpenings(pos []filmdec.BipedPosition, slotXUID map[uint32]uint64,
+func BuildKillOpenings(pos []filmdec.BipedPosition, reg IdentityRegistry,
 	kills []KillRef, offsetUS int64) ([]KillPosition, KillPosReport) {
-	p := placeKillPositions(pos, slotXUID, ShiftKillRefs(kills, -OpeningLeadMS), offsetUS)
+	p := placeKillPositions(pos, reg, ShiftKillRefs(kills, -OpeningLeadMS), offsetUS)
 	rep := p.report
 	if len(p.positions) == 0 {
 		return nil, rep

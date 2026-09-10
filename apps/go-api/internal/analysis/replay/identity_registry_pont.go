@@ -5,15 +5,13 @@ package replay
 // TROISIEME MOITIE DU MEME PRODUCTEUR (lot E2, 2026-09-08). `identity_registry.go` porte les
 // types, l'ordre des etapes et les accesseurs ; `identity_registry_mutations.go` porte les
 // poseurs (lot P2-bis) ; ce fichier-ci porte la CONSTRUCTION du pont brut — `buildOwners`, ce
-// qu'il compose, et les deux methodes d'`OwnerReport` qui portent une garde (`xuidAt`,
+// qu'il compose, et les deux methodes d'`OwnerReport` qui portent une garde (`xuidNumAt`,
 // `NamingBridge`).
 //
 // LA SEPARATION EST ARITHMETIQUE, PAS DOCTRINALE : le lien direct du lot E2 a porte
 // `identity_registry.go` a 505 lignes pour un seuil de 500. Aucune REGLE de nommage ne vit ici
 // non plus — les trois decideurs (`_creation.go`, `_elimination.go`, `_exclusion.go`) restent
 // hors allowlist et passent par les poseurs.
-
-import "strconv"
 
 // buildOwners construit le pont : le lien DIRECT du record de creation d'abord, le fil des morts
 // en temoin.
@@ -151,8 +149,8 @@ func indexToXUIDOf(xuidToIndex map[uint64]int) map[int]uint64 {
 	return out
 }
 
-// xuidAt rend le joueur qui OCCUPE ce slot à cet instant : la vie qui couvre l'instant si elle
-// est nommée, sinon le pont par slot. Chaîne vide = ni l'une ni l'autre ne le nomme.
+// xuidNumAt rend le joueur qui OCCUPE ce slot à cet instant : la vie qui couvre l'instant si elle
+// est nommée, sinon le pont par slot. Zéro = ni l'une ni l'autre ne le nomme.
 //
 // POURQUOI L'INSTANT COMPTE (correctif du 2026-09-06, constat P1-7). `SlotXUID` est une identité
 // UNIQUE PAR SLOT pour tout le match : `ownersFromLives` garde la PREMIÈRE vie nommée et jette
@@ -163,25 +161,22 @@ func indexToXUIDOf(xuidToIndex map[uint64]int) map[int]uint64 {
 //
 // LE MOTIF EST CELUI DU DÉPÔT — « par vie d'abord, pont en repli » (cf. `tracksByXUID`) — et
 // c'est ici qu'il vit pour tous ses lecteurs : la table par vie est déjà DANS cet objet.
-func (r OwnerReport) xuidAt(slot uint32, tUS uint64) string {
+func (r OwnerReport) xuidNumAt(slot uint32, tUS uint64) uint64 {
 	t := int64(tUS)
 	for _, l := range r.lives {
 		if l.slot != slot || l.xuid == 0 || t < l.from || t > l.to {
 			continue
 		}
-		return strconv.FormatUint(l.xuid, 10)
+		return l.xuid
 	}
 	// LE REPLI PAR SLOT S'ABSTIENT SUR UN SLOT AMBIGU (2026-09-07). `SlotXUID` y garde le
 	// PREMIER occupant nommé, par ordre des vies : le servir à un instant que sa vie ne couvre
 	// pas reviendrait à publier un nom arbitraire, et c'est exactement ce que cette méthode
 	// existe pour éviter. Sans vie couvrante ET sur un slot à plusieurs occupants, on se tait.
 	if r.SlotAmbiguous[slot] {
-		return ""
+		return 0
 	}
-	if x, ok := r.SlotXUID[slot]; ok && x != 0 {
-		return strconv.FormatUint(x, 10)
-	}
-	return ""
+	return r.SlotXUID[slot]
 }
 
 // NamingBridge rend le pont slot -> joueur DÉBARRASSÉ DES SLOTS AMBIGUS — celui que doit
