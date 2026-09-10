@@ -83,8 +83,20 @@ type GroundWeapon struct {
 	// l'arme d'un mort) ou `spawned` (le reste : l'arme de départ abandonnée en ramassant
 	// autre chose, l'arme éjectée d'un râtelier).
 	Origin string `json:"origin"`
-	// Dropper est le slot de la VIE qui l'a lâchée, quand un lâcher du flux delta coïncide
-	// (même paquet à 500 ms près, moins de 1,5 m). -1 sinon.
+	// Dropper est le slot de la VIE DE BIPÈDE QUI S'ACHÈVE à moins de `originDropWindowUS`
+	// (2 frames) et `originDropMaxDist` (1,5 m) de la naissance de l'objet (`gwPadsClass`,
+	// ground_weapon_rules.go) — la RÈGLE MÊME qui classe l'apparition `Origin == "dropped"`,
+	// et rien d'autre. -1 sinon (`Origin == "spawned"`).
+	//
+	// CE N'EST PAS UN LIEN AVEC LE FLUX DELTA DE PRISES/LÂCHERS (corrigé le 2026-09-10,
+	// rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` §2.2 : le commentaire précédent
+	// promettait un tel lien — « un lâcher du flux delta coïncide » — qui n'existe nulle part
+	// dans le code, `DropperSlot` n'ayant qu'une seule affectation, ici même). Mesuré sur le
+	// parc : `Dropper` renseigné équivaut EXACTEMENT à `Origin == "dropped"` (9 794 = 9 794
+	// sur 61 films d'arène) — aucun objet `spawned` ne porte de lâcheur. Le lâcher VOLONTAIRE
+	// (arme de départ abandonnée, arme éjectée d'un râtelier) tombe dans `spawned` et y reste
+	// ANONYME : le nommer exigerait de joindre `weaponChanges`, mesuré et écarté (rendement
+	// 12,7 %, rapport §5 option E).
 	Dropper int `json:"dropper"`
 	// End dit comment l'affichage se termine (GroundWeaponEnd*).
 	End string `json:"end"`

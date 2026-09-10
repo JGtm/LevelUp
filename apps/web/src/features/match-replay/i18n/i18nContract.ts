@@ -511,6 +511,35 @@ export interface ReplayText {
   layerGroundWeapons: string
   layerGroundWeaponsHint: string
   /**
+   * LE FILTRE « ARMES SPÉCIALES SEULEMENT » du calque des armes au sol (lot 6.5, 2026-09-10,
+   * rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` §1 et §5 option B). Sniper, power,
+   * special : ce qu'un socle distribue et qu'un adversaire a intérêt à ramasser — 17,4 % des
+   * objets au sol, mais 65,3 % des reprises OBSERVÉES. Une bascule fille du calque, comme les
+   * objets non identifiés des poses d'équipement : elle ne s'affiche qu'avec son calque.
+   */
+  layerGroundWeaponsSpecialOnly: string
+  layerGroundWeaponsSpecialOnlyHint: string
+  /**
+   * L'INFOBULLE D'UNE ARME AU SOL (lot 6.5, 2026-09-10) : UNE LIGNE, jamais deux — même
+   * mécanique que les trois calques survolables voisins (poses, socles, drapeaux). Le geste se
+   * lit « <arme> · lâchée par X », puis « · reprise par Y » si un ramasseur est mesuré.
+   *
+   * UNE ARME `spawned` (arme de départ abandonnée, arme éjectée d'un râtelier) N'A PAS de
+   * lâcheur mesuré : le canal ne le nomme JAMAIS pour cette origine (mesuré sur le parc,
+   * rapport §2.2 : `dropper` connu équivaut EXACTEMENT à `origin == "dropped"`, 9 794 = 9 794
+   * sur 61 films d'arène) — elle est dite « apparue », sans lâcheur inventé.
+   *
+   * « JOUEUR NON NOMMÉ » PLUTÔT QUE LE SILENCE : 20,9 % des lâcheurs `dropped` ne se résolvent
+   * pas en joueur via `identity.bipedSlots` (mesuré, rapport §2.5) — la ligne le DIT plutôt que
+   * de disparaître, ce qui laisserait croire qu'aucune arme n'est jamais lâchée par personne.
+   * Même réserve, séparée, côté ramasseur (0,3 % non résolus).
+   */
+  groundWeaponSpawned: string
+  groundWeaponDroppedByFmt: (name: string) => string
+  groundWeaponDropperUnknown: string
+  groundWeaponPickedByFmt: (name: string) => string
+  groundWeaponPickerUnknown: string
+  /**
    * LES VÉHICULES (schéma 29) : le nom du calque et sa réserve.
    *
    * LA RÉSERVE DIT LA FIN DE VIE, et c'est le point qui trompe le plus facilement : la

@@ -19,7 +19,7 @@ import type { ReplayGroundWeapon } from '@/lib/api/types'
 
 import { count, diamondCentres, recordingContext, valuesOf } from '../test/recordingContext'
 import { GROUND_WEAPON_ALPHA_FULL } from '../model/groundWeaponTime'
-import { drawGroundWeaponsLayer, type GroundWeaponStyle } from './groundWeaponsLayer'
+import { drawGroundWeaponsLayer, groundWeaponAt, type GroundWeaponStyle } from './groundWeaponsLayer'
 import { worldToCanvas } from '../../../lib/replay/replayLogic'
 
 /** 10 m de côté sur 100 px : 10 px par mètre — le même cadrage que les tests de socles. */
@@ -139,5 +139,45 @@ describe('drawGroundWeaponsLayer — ce qu’on refuse d’inventer', () => {
       iconOf: () => ICON,
     })
     expect(ops).toHaveLength(0)
+  })
+})
+
+/**
+ * groundWeaponAt — LE SURVOL (lot 6.5, 2026-09-10) : la zone atteignable, pas seulement le
+ * tracé. Même patron de test que `padAt`/`placementAt` — géométrie pure, aucun canvas requis.
+ */
+describe('groundWeaponAt — l’arme au sol sous le pointeur', () => {
+  it('attrape l’objet exactement sur sa position projetée', () => {
+    const items = [item({ x: 5, y: 5 })]
+    const c = worldToCanvas({ x: 5, y: 5 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
+    expect(groundWeaponAt(items, VIEW, 10, 1, c)).toBe(items[0])
+  })
+
+  it('un point trop loin de toute vignette ne rend rien', () => {
+    const items = [item({ x: 5, y: 5 })]
+    expect(groundWeaponAt(items, VIEW, 10, 1, { x: 0, y: 0 })).toBeNull()
+  })
+
+  it('n’attrape jamais un objet PASSÉ SA PREMIÈRE PREUVE D’ABSENCE — même règle que le tracé', () => {
+    const items = [item({ x: 5, y: 5, t1: 10, t1max: 10, end: 'pickup' })]
+    const c = worldToCanvas({ x: 5, y: 5 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
+    expect(groundWeaponAt(items, VIEW, 11, 1, c)).toBeNull()
+  })
+
+  it('n’attrape jamais un objet qui n’est PAS ENCORE apparu', () => {
+    const items = [item({ x: 5, y: 5, t0: 30 })]
+    const c = worldToCanvas({ x: 5, y: 5 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
+    expect(groundWeaponAt(items, VIEW, 29, 1, c)).toBeNull()
+  })
+
+  it('deux armes voisines : LA PLUS PROCHE gagne', () => {
+    const proche = item({ x: 5, y: 5 })
+    const lointaine = item({ x: 5.3, y: 5 })
+    const c = worldToCanvas({ x: 5, y: 5 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
+    expect(groundWeaponAt([lointaine, proche], VIEW, 10, 1, c)).toBe(proche)
+  })
+
+  it('sur une liste vide, rien à attraper', () => {
+    expect(groundWeaponAt([], VIEW, 10, 1, { x: 50, y: 50 })).toBeNull()
   })
 })
