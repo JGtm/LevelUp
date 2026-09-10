@@ -351,7 +351,23 @@ func TestCouvertureParClasse(t *testing.T) {
 		// tag `382cafaf` avait DEJA une icone — la mauvaise, celle de la tourelle generique.
 		// Il a change de vignette, pas de statut. Un compte global ne voit pas un echange :
 		// c est `TestPorteurPrimeBanque` qui l epingle, tag par tag.
-		damagetag.ClassVehicule: {89, 48},
+		//
+		// VEHICULE 89 -> 91 publiables et 48 -> 50 avec icone le 2026-09-10, second temps :
+		// le CANON DU SCORPION. Ses deux tags `0bece71e` et `19bd6810` etaient etiquetes
+		// INCONNU/INCONNU, donc NON PUBLIABLES — d ou le +2 des DEUX colonnes, et non de la
+		// seule colonne icone comme pour le Gungoose. La regle `BANQUE veh_un_scorpion`
+		// existait depuis toujours et ne resolvait RIEN : les six lignes qui citaient cette
+		// racine en citaient toutes plusieurs, et la garde d unicite les rejetait toutes.
+		// Nommer les deux vraies lignes rend la regle vivante sans toucher au code.
+		//
+		// IDENTITE ETABLIE PAR MESURE PUIS PAR L OEIL, le 2026-09-10 : 335 morts, 47 matchs,
+		// 80 tueurs ; 77 % en Grand Combat contre 9 % du corpus ; cartes Fragmentation /
+		// Insolence / Fortitude / Obituary / Breaker **Heavies** ; tueurs concentrant 24, 18
+		// et 15 morts dans UN SEUL match (signature d un pilote de char). Verification
+		// humaine sur le match `5faa6b74-0026-4e60-aaca-34522d75050c` (Fragmentation
+		// Heavies, 2026-01-28) : l utilisateur a regarde le film et confirme le Scorpion.
+		// C est cette derniere etape qui tranche — la correlation, seule, ne suffisait pas.
+		damagetag.ClassVehicule: {91, 50},
 		// OBJET_EXPLOSIF ENTRE DANS LA TABLE LE 2026-08-27, et c est une DECISION, pas une
 		// derive : les quatre bobines ont chacune leur vignette dans l atlas (42 Shock,
 		// 43 Blast, 44 UNSC fusion, 45 Plasma, passe humaine du 2026-08-09). Ce qui les
@@ -549,5 +565,46 @@ func TestChassisMongooseNePorteQueDesTagsGungoose(t *testing.T) {
 	}
 	if vus == 0 {
 		t.Fatal("aucune ligne portee par le chassis Mongoose : le test ne prouve rien")
+	}
+}
+
+// TestScorpionResoutVersSaCle : les deux tags du canon du Scorpion rendent bien
+// `hinf_scorpion`, et pas seulement une icone.
+//
+// POURQUOI CE TEST EXISTE. Pendant des mois, la regle `BANQUE veh_un_scorpion ->
+// killfeed-31 -> hinf_scorpion` a ete VERTE et INERTE : elle etait bien formee, sa racine
+// etait bien citee dans labels.tsv, et elle ne resolvait AUCUN tag — les six lignes qui
+// citaient `veh_un_scorpion` en citaient toutes plusieurs, et la garde d unicite les
+// rejetait. Resultat : 335 morts, 47 matchs, 80 tueurs sans arme, et une citation
+// « Artilleur de Scorpion » condamnee a afficher zero. Aucun signal, nulle part.
+//
+// `TestChaqueRegleTrouveSaSource` ne pouvait pas l attraper : il verifie qu une racine est
+// CITEE quelque part, pas qu elle est citee SEULE. Ce test-ci verifie l EFFET, tag par tag —
+// la seule formulation qui aurait rougi.
+//
+// LES DEUX TAGS SONT LES DEUX FACES D UN MEME EFFET (`proj ac954d50` #0/2 et #1/2). Les
+// exiger tous les deux n est pas une redondance : le jour ou le jeu ajoute une troisieme
+// face, elle arrivera INCONNUE et ce test restera vert alors qu une part des frags
+// redeviendra muette. C est la limite connue de ce garde-rail, et elle est assumee ici
+// plutot que decouverte plus tard.
+//
+// LA WEAPON_KEY EST LE POINT DUR, pas le sprite : une regle qui porte un sprite sans cle
+// donne une icone au kill feed et ne produit AUCUNE ligne de statistiques. C est le piege
+// exact du Mutilateur (icone servie, arme absente du registre, 1262 frags perdus). Ce test
+// verifie donc la cle, et le sprite seulement en second.
+func TestScorpionResoutVersSaCle(t *testing.T) {
+	for _, tag := range []uint32{0x0bece71e, 0x19bd6810} {
+		ic, ok := Lookup(tag)
+		if !ok {
+			t.Errorf("tag %08x (canon du Scorpion) : aucune icone — les frags redeviennent muets", tag)
+			continue
+		}
+		if ic.WeaponKey != "hinf_scorpion" {
+			t.Errorf("tag %08x : weapon_key = %q, attendu %q — sans cle, icone servie mais zero ligne de statistiques",
+				tag, ic.WeaponKey, "hinf_scorpion")
+		}
+		if ic.Sprite != "killfeed-31" {
+			t.Errorf("tag %08x : sprite = %q, attendu killfeed-31", tag, ic.Sprite)
+		}
 	}
 }
