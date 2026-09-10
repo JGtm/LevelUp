@@ -105058,3 +105058,366 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
 - Prochaine etape : revue adversariale (skill `adversarial-review`) et delivery-checklist a la
   cloture de la vague 4 par le superviseur (regle "une fois par vague", pas par lot) ; pas de
   commit sur main, pas de fusion — laisse au superviseur.
+
+## [2026-09-10] Citations CTF : desactivation de « Vol du drapeau » + visuel definitif de « Capture du drapeau »
+
+- Statut : Complete (re-seed local JOUE et verifie en base ; reste a rejouer en prod au deploiement).
+- Demande utilisateur : (1) « flag steals j'en veux plus » -> desactiver la citation ;
+  (2) visuel retravaille pour `flag_captures`, fourni hors depot (`E:\Sans titre.png`,
+  484x484), a servir a la place du SVG bouche-trou.
+- Decision technique principale : les deux SVG bouche-trous de la v7.2.1 sont SUPPRIMES du
+  depot, ce qui leve le blocage « ne pas deployer en prod avec les SVG » (plan V721-03).
+  `flag_captures` sert desormais `static/commendations/halo_infinite/HI_citation_Capture_du_drapeau.png`,
+  redimensionne 484x484 -> 100x100 (bicubique haute qualite, alpha preserve) pour respecter
+  la convention du dossier (164 visuels de citation sur 165 sont en 100x100).
+  `flag_steals` passe `Enabled: false` avec `ImagePath` vide : la citation reste listee
+  (inventaire + parite EN) mais le moteur l'ignore (`WHERE enabled IS NOT FALSE`, cote lecture
+  comme cote recalcul), exactement le patron `flag_defender` de I7. Vidage de l'ImagePath
+  legitime car son seul visuel etait le bouche-trou supprime, et
+  `TestCitationEnabled_HasImagePath` n'exige un visuel que sur les citations actives.
+- Garde-rails : `TestObjectiveStatCitationsV721_MappedToColumns` fige desormais l'etat
+  actif/inactif des 10 citations d'objectif (champ `enabled` ajoute au tableau `want`) — la
+  colonne source et les paliers calibres restent pines meme sur la citation desactivee, pour
+  qu'une eventuelle reactivation reparte des bonnes valeurs. Nouveau `TestFlagSteals_Disabled`
+  (calque sur `TestFlagDefender_Disabled`) : desactivee, sans ImagePath, et enfant d'aucun
+  composite — donc aucun palier de composite rendu inatteignable.
+- Verification sur pieces : `flag_steals` n'apparait dans aucune liste `composite_children` ;
+  la colonne `flag_steals` reste utilisee ailleurs (KPI synthese, radar de match, series
+  temporelles, i18n) — seule la citation est retiree, aucune stat n'est touchee.
+- Resultats observes : `go test ./internal/ops/` vert (garde-rails citations inclus).
+- Re-seed local JOUE le 2026-09-10 (accord utilisateur) : air + server.exe arretes, puis
+  `levelup seed citation-mappings` -> « 16 inserees, 88 mises a jour », puis air relance et
+  port 8000 verifie. Les 16 insertions = les 10 citations d'objectif v7.2.1 (jamais seedees
+  dans cette base locale) + les 6 « Artilleur de » du lot en cours present dans l'arbre de
+  travail — effet de bord assume sur la base de DEV, a signaler a l'utilisateur.
+  Verification sur pieces (outil jetable `cmd/tmp_check_citations`, cree, lu et SUPPRIME
+  dans la foulee, lecture via `OpenReadForQuery`) : `flag_steals` enabled=false / image_path
+  vide, `flag_captures` enabled=true / `HI_citation_Capture_du_drapeau.png`, les trois
+  autres citations CTF/Oddball actives avec leur visuel H5. Le serveur sert bien le PNG
+  (HTTP 200, 9658 o, image/png) et l'ancien SVG rend 404.
+- Prochaine etape : rejouer le meme seed en prod au deploiement (le zip metadata
+  pre-construit ne rattrape rien : il n'est extrait que si la base est absente). Aucun
+  recalcul necessaire — la progression stockee est ignoree pour une citation desactivee.
+  Pas de commit : la branche `feat/citations-artilleur-vehicules` porte deja le lot
+  « Artilleur de » en cours, decision de commit laissee a l'utilisateur.
+
+## [2026-09-10] Citations « Artilleur de » — frags a l'armement de vehicule
+
+**Statut** : Complete (code + garde-rail) ; re-seed et backfill NON joues, en attente du
+feu vert utilisateur.
+
+**Question d'origine** : existe-t-il une citation pour les frags TIRES depuis un vehicule
+(pas les ecrasements) ? Reponse mesuree : non. Le catalogue vehicule couvrait l'ecrasement
+(`splatter`, `road_trip`, `lawnmower` -> medaille 221693153), la medaille de pilote-assist
+(`driver` -> 2926348688) et la DESTRUCTION d'engins (`*_destroyer`). Rien sur le tir.
+
+**Decision technique principale** : aucun code de mesure a ecrire. Depuis la bascule du
+2026-09-01 (`sync/citations_weapons_source.go`), le `weapon_stat` du moteur de citations est
+alimente par la SOURCE DE DEGAT DU FILM : `match_kill_events_latest.source_tag` -> cle de
+registre -> nom canonique EN, sans aucun filtre de classe. Les cles de chassis
+(`hinf_ghost`, `hinf_banshee`, `hinf_wraith`, `hinf_scorpion`, `hinf_wasp`,
+`hinf_rockethog`) sont deja au registre et deja verrouillees hors arsenal
+(`games/weapons/off_arsenal_guard_test.go`) : elles n'emettent aucun record de degat 0xd2,
+donc aucune n'est visible de la voie historique `weapon_kills` — le non-double-comptage est
+une propriete constatee, pas une regle appliquee. Le travail se reduit donc a six lignes de
+seed + le rattachement au composite.
+
+**Resultats observes** :
+- Les 11 images `H5G_citation_Artilleur_de_*.png` existent dans
+  `static/commendations/halo_5_guardians/` depuis toujours et n'etaient referencees NULLE
+  PART dans le code (grep Go/TS/TOML : 0 occurrence). Intuition utilisateur confirmee.
+- 17 racines de banque vehicule/tourelle dans `damagetag/data/labels.tsv`. Six seulement
+  croisent une image « Artilleur de » ET une regle `killicon` : ghost, banshee, wraith,
+  scorpion, wasp, rockethog.
+- CORRECTION D'UNE ERREUR D'ANALYSE : « Apparition » est le libelle FR du WRAITH dans ce
+  projet (`weapon_names.toml:71`, decision D14 ; la citation `wraith_destroyer` s'affiche
+  deja « Destructeur d'apparitions »), pas du Phantom. L'image
+  `Artilleur_de_l'apparition.png` va donc sur `hinf_wraith`.
+- WARTHOG : pas de racine `veh_un_warthog`, et ce n'est pas un manque. Le chassis ne tue pas
+  en tirant — c'est sa TOURELLE qui tire, sous sa propre racine `tur_un_machinegun`, deja
+  pontee vers `hinf_turret_machinegun`. Les frags d'artilleur de Warthog sont donc DEJA
+  comptes, mais melanges avec ceux d'une tourelle fixe : le film nomme l'ARME, jamais le
+  PORTEUR. Decision utilisateur du 2026-09-10 : ne pas creer « Artilleur de Warthog »
+  (libelle faux). Les distinguer demande de croiser avec `biped_board_vehicle` — chantier de
+  decodage, pas un branchement.
+- GAUSS : `tur_un_gausscannon` EST present dans `labels.tsv` (le Gauss hog est en Grand
+  Combat). Ce qui manque est le pont : `rules.tsv` note « aucune vignette de canon gauss dans
+  l'atlas du kill feed » et `killicon.go:318` refuse une regle sans sprite. Meme cas pour
+  `tur_un_rocketturret` et `tur_bt_gatlingmortar`.
+- GUNGOOSE : aucune racine, ni chassis ni tourelle. Non explique.
+- Paliers retenus (decision utilisateur) : `5,10,15,25,50` — les frags a l'armement de
+  vehicule sont rares en arene, un palier aligne sur Ecrasement/Pilote (10..100) serait hors
+  d'atteinte.
+- `vehicle_mastery` passe de 9 a 15 enfants. La progression deja ecrite reste valide (le
+  composite compte des enfants masterises, pas un total brut) mais le palier final recule
+  pour tout le monde.
+
+**Garde-rail ajoute** (meme commit) : `TestCompositeChildren_ExistAsCitations` dans
+`internal/ops/seed_citation_assets_test.go`. Un enfant fantome dans un `composite_children`
+ne cassait RIEN de visible — `OverrideCompositeTotals` ignore les norms absents des mappings,
+exactement comme un enfant desactive, et le composite affiche simplement un total plus bas.
+Defaut silencieux et permanent. Verifie par test negatif : enfant bidon injecte -> rouge
+nomme ; retire -> vert.
+
+**Verifications** : `go build ./...` OK ; `go vet` OK ; `make go-api-lint` (golangci-lint,
+`--new-from-merge-base=origin/main`) 0 issue ; paquets ops/analysis/sync/games/api/domain/
+archlint verts. Les garde-rails de seed pre-existants passent et couvrent l'essentiel de ce
+lot : `TestCitationImagePaths_ExistOnDisk` (les 6 PNG existent), `TestCitationDisplayEN_*` et
+`TestCitationDescriptionEN_*` (parite FR/EN, aucun orphelin), `TestCitationNorms_Unique`,
+`TestCitationCategories_AreCanonicalKeys`.
+
+**Prochaine etape** : le seed ne prend effet qu'apres re-seed metadata + backfill
+`--citations-recompute-all` (docs/COMMENDATIONS.md) — sans quoi les six nouvelles citations
+restent a zero sur tout l'historique. NON JOUE : attend le feu vert utilisateur (touche les
+bases locales). Aucun commit demande a ce stade. Branche `feat/citations-artilleur-vehicules`
+depuis `feat/v75`.
+
+
+## [2026-09-10] Citations d'arme mortes en silence + le canon du Scorpion retrouve
+
+**Statut** : Complete pour la partie citations (code + garde-rail). Le lot « attribution »
+(Scorpion) est CADRE mais NON OUVERT : il attend la fusion du lot kill feed `PORTEUR`.
+
+**Point de depart** : en cablant six citations « Artilleur de », la mesure du corpus donnait
+Scorpion = 0 frag sur 1384 matchs. J'ai presente ce 0 a l'utilisateur comme un fait etabli.
+Il a refuse : « que ce soit 0 pour moi est etonnant, mais 0 pour TOUT LE MONDE est quasi
+impossible ». Il avait raison, et c'est la lecon principale de la journee.
+
+**Ce qui n'allait pas dans la mesure** : elle agregeait par `weapon_key`. Une mesure par cle
+ne peut pas, PAR CONSTRUCTION, reveler une source qui n'a pas de cle. Le 0 etait exact comme
+chiffre et faux comme conclusion. Il manquait aussi le denominateur : personne n'avait compte
+les matchs de Grand Combat du corpus (126 sur 1384, soit 9 % — donc le Scorpion avait bien
+eu ses occasions).
+
+**Resultat, prouve** : le canon du Scorpion est porte par DEUX tags jumeaux du meme effet,
+tous deux `INCONNU / INCONNU` dans `labels.tsv` — `0bece71e` (`proj ac954d50 #0/2`, 234 morts)
+et `19bd6810` (`#1/2`, 101 morts). Total 335 morts, 47 matchs, 80 tueurs. Faisceau : 77 % des
+morts en Grand Combat contre 9 % du corpus (x8) ; cartes Fragmentation / Insolence / Fortitude
+/ Obituary / Breaker **Heavies** ; tueurs concentrant 24, 18, 15 morts dans UN SEUL match
+(signature d'un pilote de char). VERIFICATION HUMAINE, seule chose qui tranche vraiment :
+match `5faa6b74-0026-4e60-aaca-34522d75050c`, Fragmentation Heavies, 2026-01-28 19:20 UTC,
+B1GDADDYDUFF 24 obus — l'utilisateur a regarde le film : « il a massacre tout le monde avec le
+scorpion sur cette partie ». Une fois nomme, le Scorpion devient la DEUXIEME arme de vehicule
+du corpus, derriere le Ghost (391) et devant le Banshee (238).
+
+**Contre-epreuve Rockethog (aucun defaut)** : 16 morts, 11 tueurs. La regle FONCTIONNE ; l'engin
+est reellement rare. L'utilisateur en est le recordman du corpus avec 4 frags (2 Flood Gulch BTB
+2026-07-24, 1 Behemoth Partie rapide 2026-03-17, 1 Behemoth 2025-12-09) — sa memoire etait juste.
+Consequence : avec les paliers 5,10,15,25,50 qu'il a maintenus, sa citation affichera 4/5, a un
+frag du premier palier. Mon « bloquee a zero » etait une erreur d'analyse.
+
+**Sante globale de l'etiquetage** : sur les 60 tags les plus meurtriers, seuls DEUX sont sans
+identite (`0bece71e` = le Scorpion, et `0000005f`). Le Scorpion etait le gros trou, pas la partie
+emergee d'un desastre. Bon a savoir avant de sur-reagir.
+
+**Decision technique du lot livre** : trois citations `weapon_stat` comptaient zero depuis leur
+creation, decouvertes en croisant les 30 `StatName` avec les libelles canoniques.
+- `sidekick_mastery` demandait « Mk51 Sidekick » ; le registre et `weapon_names.toml` disent
+  « Mk50 Sidekick ». CAUSE TROUVEE : `labels.tsv` (nom INTERNE du jeu) dit « Mk51 Sidekick » —
+  la citation avait ete ecrite d'apres le nom du jeu, pas d'apres le registre. Corrigee.
+- `bandit_mastery` demandait « Bandit Evo », qui est le libelle FR ; l'identite EN est
+  « M392 Bandit ». Corrigee.
+- `mutilator_mastery` demande « Mutilator », absent du registre (1262 frags mesures). NON
+  corrigee par moi : la reparation touche registry.go, weapon_names.toml, rules.tsv et
+  off_arsenal_guard_test.go, quatre fichiers tenus en vol par un autre chantier. Mise en
+  allowlist DATEE d'une entree, deja condamnee par le commit `8ebbb1483` de ce chantier.
+Les trois sont enfants de `human_weapons_mastery` : son palier final etait donc inatteignable
+pour tout le monde, en silence.
+
+**Garde-rail** : `TestWeaponStatCitations_ResolvableName` — tout `weapon_kills:<nom>` doit
+resoudre vers un nom du registre ou d'un `weapon_names.toml`. Le defaut etait structurellement
+invisible : `ctx.Stats[cle absente]` rend le zero-value, donc ni erreur, ni log, ni test rouge,
+et un joueur ne peut pas distinguer « jamais meritee » de « cassee ». Verifie par test negatif
+(nom casse -> rouge nommant la citation ; retabli -> vert).
+
+**Outil decouvert** : `apps/go-api/cmd/diag_q` — lecteur DuckDB generique,
+`go run ./cmd/diag_q <db> "<SQL>"`. Il force `access_mode=read_only`, ce que la regle ART n4
+deconseille sur une base tenue RW ; une ouverture refusee est sans danger (DuckDB verrouille
+avant d'ecrire), mais ne pas l'utiliser en aveugle. TOUTE mesure se lit par
+`match_kill_events_latest`, jamais la table brute : cinq revisions de decodeur y coexistent et
+la meme mort y figure plusieurs fois (facteur ~6 constate le meme jour sur une autre mesure).
+
+**Prochaine etape** : lot « attribution », APRES la fusion du lot `PORTEUR` — (1) retirer
+l'entree d'allowlist `mutilator_mastery`, devenue sans objet ; (2) nommer le canon du Scorpion.
+Conception retenue sur conseil du chantier kill feed : un genre `EFFET` cle sur le tag d'EFFET
+(`proj ac954d50`) et non sur les tags `jpt!` — les deux jumeaux sont un seul fait vu deux fois,
+indexer sur le tag ecrirait deux regles pour une connaissance et resterait muet a l'ajout d'une
+troisieme face. Priorite apres `NOM` et `PORTEUR`, avant `CLASSE`, prouvee par test negatif.
+Verifier que la regle porte bien la `weapon_key` (sinon icone gagnee, ligne de stats perdue) et
+SUPPRIMER la regle `BANQUE veh_un_scorpion`, inerte, dans le meme commit.
+## [2026-09-10] Kill feed : genre PORTEUR — le Warthog et le Gungoose retrouvent leur icone
+
+**Statut** : Complete cote code et tests ; etape « voir a l ecran » et livraison ouvertes.
+Worktree `LevelUp-wt-killfeed-porteur`, branche `wt/killfeed-porteur` depuis `feat/v75`.
+Plan : `.ai/V7.5/PLAN_ICONE_PORTEUR_KILLFEED_2026-09-10.md`.
+
+**Point de depart** : question utilisateur — pourquoi le fil du rejeu n affiche ni Gungoose ni
+Warthog a mitrailleuse. Ce n etait pas un probleme d assets : les vignettes 26 et 29 sont
+extraites et nommees depuis le 2026-08-09.
+
+**Decision technique principale** : `rules.tsv` s indexait, pour les vehicules, sur la RACINE DE
+BANQUE SONORE. Or une ligne de classe VEHICULE de `labels.tsv` porte DEUX identifiants, et la
+banque est le moins fin des deux : elle nomme l ARME (que plusieurs engins partagent), quand le
+tag `vehi` nomme le PORTEUR (unique). Ajout d un cinquieme genre de regle, `PORTEUR`, indexe sur
+le `vehi`, prioritaire sur `BANQUE`. Extraction par regex sur le champ `detail`, comme `BANQUE`
+et `GGGL` — pas de nouvelle colonne, donc pas de regeneration de `labels.tsv` depuis le jeu.
+
+**Le point de rupture, identifie avant de coder** : `racineUnique` ne suffit pas. Sur
+« vehi 003f00c7 +1 » la regex ne voit qu un tag et le declarerait unique, alors que la ligne
+annonce N+1 porteurs. Garde explicite du marqueur `+N` — sans elle, une regle deborderait en
+silence. Elle sert deja : elle rejette `d2ffec3f` (deux porteurs).
+
+**Resultats observes** (mesure `cmd/diag_q` en lecture seule sur la vue
+`match_kill_events_latest` : 138 807 morts, 1384 matchs) :
+- `382cafaf` (vehi `dd7f9102`, Warthog mitrailleuse) : **173 morts**, qui affichaient
+  `killfeed-05` — la tourelle UNSC generique ;
+- `00015cd1` (vehi `0000d500`, tourelle FIXE de carte) : 11 morts, meme vignette. Donc 184
+  morts partageaient une icone et 94 % d entre elles etaient des Warthog mal etiquetes ;
+- `00426796` (vehi `000025aa`, Gungoose) : **62 morts**, ni icone NI ligne de statistiques ;
+- gauss (`64b925eb`) et second chassis Warthog (`4ccc20e6`) : **0 kill**. Ecartes par la mesure,
+  pas par opinion — une regle pour eux serait invérifiable a l ecran.
+
+**Erreur commise et corrigee en cours de route** : j ai d abord affirme a l utilisateur que le
+Gungoose n avait « aucun `jpt!` » et « rien a compter ». Faux : j avais confondu « pas de racine
+de banque » avec « pas de donnee ». Le tag est dans `labels.tsv:88` depuis toujours et
+`RE_LOG_KILLWEAPON.md` le nomme explicitement « l ancre Gungoose » (chaine `vcdd -> sofd ->
+sofa -> uwfa -> weap 0042678e`). Le meme journal designait cette voie comme « a etendre aux
+9 tags sans banque du catalogue » : c est fait pour le premier d entre eux. LECON : l absence de
+la cle qu on a choisie n est pas l absence d identifiant — verifier les AUTRES colonnes avant de
+conclure a l impossibilite.
+
+**Compromis assume** : la regle Gungoose est indexee sur le chassis MONGOOSE, partage avec le
+Mongoose nu (le Gungoose n a pas de `vehi` propre). Sure aujourd hui — les deux seules lignes de
+ce chassis sont des projectiles et le Mongoose nu n a pas d arme — gardee par
+`TestChassisMongooseNePorteQueDesTagsGungoose`, qui rougit au troisieme tag.
+
+**Effet de bord traite** : entrees `hinf_warthog` et `hinf_gungoose` au registre d armes +
+`weapon_names.toml` + allowlist hors arsenal. Sans elles, le Warthog aurait PERDU sa ligne de
+statistiques (il resolvait `hinf_turret_machinegun`). Cardinalites du registre mises a jour
+104 -> 106 avec justification datee : le garde-rail a joue son role, forcer l acte delibere.
+
+**Verifications** : `go test ./internal/games/...` vert ; `go vet` propre ; `gofmt` propre.
+Les TROIS nouveaux garde-rails verifies PAR TEST NEGATIF (garde `+N` retiree, priorite retiree,
+entree retiree de la liste Gungoose) — chaque fois rouge avec un message nomme, code restaure.
+`TestCouvertureParClasse` passe de 46 a 48 icones VEHICULE : le +2 est entierement le Gungoose,
+le Warthog n y apparait pas puisqu il a CHANGE d icone sans en gagner une. Un compte global ne
+voit pas un echange — c est `TestPorteurPrimeBanque` qui l epingle tag par tag.
+
+**SECONDE ERREUR, CORRIGEE LE MEME JOUR — lecture de la table brute au lieu de la vue.**
+Les effectifs ci-dessus ont d abord ete mesures sur `match_kill_events` BRUTE, qui annonce
+1 213 763 lignes : c est la faute que la regle ART numero 2 et l ADR 0026 nomment
+explicitement (« lecture = vue `_latest` UNIQUEMENT »). CINQ revisions de decodeur coexistent
+dans cette table (`killsource-2026-09-05`, `killsource-2026-07-31`, `highlight-credit-2026-08-01`,
+`credit-base-2026-08-03`, `sync-kill-feed-2026-08-02`) et la meme mort y figure plusieurs fois.
+Effectifs gonfles d un facteur ~6 (Warthog 1002 au lieu de 173, Gungoose 387 au lieu de 62,
+tourelle fixe 70 au lieu de 11). LES RAPPORTS, EUX, SONT INCHANGES — 93 % devient 94 % — donc
+AUCUNE decision du lot n est invalidee : le Warthog ecrase toujours la tourelle fixe, le gauss
+et `4ccc20e6` sont toujours a zero. Seuls les chiffres cites l etaient, dans `rules.tsv`,
+`registry.go`, `killicon_test.go` et ci-dessus ; tous corriges.
+LECON : la vue `_latest` n est pas qu une precaution d ecriture, c est la seule lecture juste —
+y compris pour une mesure jetable qui sert a justifier une decision.
+
+**AJOUT DE PERIMETRE — le Mutilator (decision utilisateur, 2026-09-10).** Decouvert en mesurant
+pour la session citations : l arme TUE 1262 fois au corpus (tags `15dcdfe3` / `b258262f` /
+`01bc8b0b`), servait deja son icone (`NOM Mutilator -> killfeed-81`) et n avait AUCUNE entree au
+registre — donc aucune ligne de statistiques d arme. Meme famille de defaut que `hinf_warthog`,
+en plus simple : pas d ambiguite, juste une entree jamais posee. Entree `hinf_mutilator` +
+famille `mutilator` + libelle FR/EN + `weapon_key` sur la regle existante.
+Classe `shoulder` et role `shotgun` sont DEDUITS (presence aux atlas d armes, emploi au contact),
+type de degat et fabricant laisses VIDES plutot que devines — ecrit tel quel dans le commentaire.
+Libelle FR « Mutilateur » a confirmer par l utilisateur : les noms FR du jeu ne sont pas des
+translitterations (Mangler = Dechiqueteur), donc celui-ci est un choix, pas une lecture.
+
+**TROIS GARDE-RAILS PRE-EXISTANTS ONT MORDU SUR CET AJOUT, tous a raison** — c est la meilleure
+preuve que le filet du depot fonctionne :
+- `TestConcordanceAllowlistSansEntreePerimee` : la dispense « Mutilator » du 2026-09-01 disait
+  « l ajouter est une decision de catalogue, hors de ce lot ». La decision etant prise, la
+  dispense devenait perimee — retiree. Elle citait 116 morts la ou la vue `_latest` en donne
+  1262 : le lot d origine avait mesure sur un perimetre plus etroit.
+- `TestWeaponRegistry_ReferentialIntegrity` : la famille `mutilator` n existait pas au
+  referentiel. Ajoutee.
+- `TestWeaponRegistry_SeedCardinalities` : cardinalites 104 -> 107 armes, 49 -> 52 HINF,
+  52 -> 53 familles, chacune avec justification datee.
+
+**Verifications finales** : `go test ./...` (suite COMPLETE) vert, exit 0 ; `go vet` propre ;
+`gofmt` propre.
+
+**Prochaine etape** : revue adversariale du diff avant fusion vers `feat/v75`. Pas de merge vers
+`main` sans l utilisateur. Etape « voir a l ecran » ABANDONNEE : c etait un item de mon plan, pas
+une demande, et les garde-rails epinglent deja le comportement tag par tag (arbitrage utilisateur
+du 2026-09-10). A prevenir apres fusion : session « Citations pour kills vehicules », qui attend
+`hinf_warthog` / `hinf_gungoose` dans `feat/v75` et porte une allowlist datee d une entree pour
+`hinf_mutilator` — desormais sans objet, a retirer de son cote.
+
+## [2026-09-10] Artilleur de Warthog et de Gungoose — les deux derniers cablables
+
+**Statut** : Complete.
+
+**Pourquoi ils manquaient au premier passage** : leur source n'etait pas atteignable. Le
+Warthog tire depuis une TOURELLE dont la racine de banque sonore est partagee avec la tourelle
+FIXE de carte (une citation « Artilleur de Warthog » aurait donc compte les deux, libelle faux
+ecarte par l'utilisateur le matin meme) ; le Gungoose, lui, n'a AUCUNE banque sonore — la voie
+par banque ne pouvait rien pour lui, jamais.
+
+**Ce qui a leve les deux** : le lot kill feed `PORTEUR`, fusionne le meme jour, indexe sur le
+tag `vehi` du PORTEUR et pose `hinf_warthog` / `hinf_gungoose` au registre. Rien a produire
+cote visuel : les deux images « Artilleur de » dormaient au depot depuis le catalogue Halo 5,
+comme les six premieres.
+
+**Livre** : deux citations `weapon_stat` (`weapon_kills:Warthog`, `weapon_kills:Gungoose`),
+paliers 5,10,15,25,50 (arbitrage utilisateur maintenu), rattachees a `vehicle_mastery` qui
+passe de 9 a 17 enfants. Suite Go complete verte (171 paquets, 0 echec).
+
+**Arbitrage utilisateur a retenir pour la suite** : la difficulte d'obtention d'une citation
+n'est PAS un critere de decision. « Je m'en bats les couilles que ce soit difficile a rafler,
+on code une app. » Le seul critere est : la source est-elle mesurable et le visuel existe-t-il.
+Ne plus proposer d'arbitrage de paliers fonde sur des taux d'obtention.
+
+**Reste ouvert** : le canon du Scorpion (335 frags non attribues, deux tags jumeaux sans
+etiquette, preuve humaine faite sur le match 5faa6b74). Conception arretee : genre de regle
+indexe sur le tag d'EFFET (`proj ac954d50`) et non sur les deux tags `jpt!` — les jumeaux sont
+un seul fait vu deux fois. Priorite apres NOM et PORTEUR, avant CLASSE, prouvee par test
+negatif ; verifier que la regle porte la `weapon_key` ; supprimer la regle `BANQUE
+veh_un_scorpion` devenue inerte dans le meme commit.
+
+## [2026-09-10] Le canon du Scorpion nomme — 335 frags rendus aux statistiques
+
+**Statut** : Complete.
+
+**Le defaut** : les deux tags du canon du Scorpion (`0bece71e` et `19bd6810`, deux faces du
+meme effet `proj ac954d50`) etaient etiquetes `INCONNU / INCONNU` dans `labels.tsv`, donc NON
+PUBLIABLES. 335 morts, 47 matchs, 80 tueurs sans aucune arme. Et la regle
+`BANQUE veh_un_scorpion -> killfeed-31 -> hinf_scorpion` existait depuis toujours en restant
+INERTE : les six lignes qui citaient cette racine en citaient toutes plusieurs, et la garde
+d unicite les rejetait toutes.
+
+**Ce qui a ete fait, et ce qui ne l a PAS ete** : deux lignes de `labels.tsv` passees de
+INCONNU/INCONNU a VEHICULE/VALIDE avec la racine `sb_010_veh_un_scorpion`. **Zero ligne de code
+Go.** Le genre `EFFET` que j avais concu et annonce (indexation sur le tag d effet) s est revele
+INUTILE : le probleme n etait pas l absence d une voie de resolution, c etait l absence d une
+identite. La voie existait, elle attendait une etiquette. Verifie sur piece avant d ecrire quoi
+que ce soit — c est ce qui a evite un genre de regle entier pour rien.
+
+**Identite etablie** : mesure (77 % des morts en Grand Combat contre 9 % du corpus ; cartes
+Heavies ; tueurs concentrant 24, 18 et 15 morts dans un seul match — signature d un pilote de
+char) PUIS verification humaine sur le match `5faa6b74-0026-4e60-aaca-34522d75050c`
+(Fragmentation Heavies, 2026-01-28) : l utilisateur a regarde le film et confirme. La
+correlation seule ne suffisait pas et n aurait pas du suffire.
+
+**Portee reelle, mesuree avant de decider** : 335 frags sur 138 807, soit 0,24 %. J avais
+propose une demi-journee de decodage pour cela et je l ai retire apres mesure. Le vrai trou est
+ailleurs : **27 806 morts (20 %), sur 553 matchs, n ont AUCUNE source** — probablement des
+matchs jamais relus par le decodeur courant. C est 83 fois le Scorpion, et c est la cause
+probable du signalement « armes inconnues » du backlog. NON TRAITE, consigne ici.
+
+**Garde-rails** : `TestScorpionResoutVersSaCle` verifie l EFFET tag par tag (cle ET sprite), la
+seule formulation qui aurait rougi — `TestChaqueRegleTrouveSaSource` verifie qu une racine est
+CITEE, pas qu elle est citee SEULE, et ne pouvait donc pas voir une regle verte et inerte.
+Limite assumee et ecrite : une troisieme face de l effet arriverait INCONNUE sans faire rougir
+ce test. Ratchet de couverture VEHICULE mis a jour 89/48 -> 91/50 (les DEUX colonnes montent :
+les tags etaient non publiables, contrairement au Gungoose qui n avait que l icone en moins).
+
+**Prochaine etape** : les 335 frags entrent dans le kill feed et les graphes des le
+redemarrage, sans backfill — la traduction tag -> arme se fait a la lecture. Seule la citation
+« Artilleur de Scorpion » a besoin du recalcul des citations, deja inscrit dans la sequence de
+release Notion. Rien de neuf a y ajouter.

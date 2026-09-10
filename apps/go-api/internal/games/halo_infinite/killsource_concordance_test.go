@@ -60,9 +60,11 @@ var dispensesConcordance = []dispenseConcordance{
 			"distinguer inventerait une entrée que le jeu ne distingue pas non plus en statistiques"},
 	{killicon.GenreNom, "Mythic Sandwich / Sandwich", "2026-09-01",
 		"objet de mode événementiel, absent de l'arsenal : aucune entrée de registre à lui donner"},
-	{killicon.GenreNom, "Mutilator", "2026-09-01",
-		"arme nommée par le film mais absente du registre — mesure, pas oubli (116 morts " +
-			"sur le lot du 2026-09-01) ; l'ajouter est une décision de catalogue, hors de ce lot"},
+	// Mutilator — DISPENSE LEVÉE LE 2026-09-10, entrée retirée. Elle disait « l'ajouter est
+	// une décision de catalogue, hors de ce lot » : la décision a été prise (utilisateur,
+	// 2026-09-10) et `hinf_mutilator` est au registre. Elle citait 116 morts ; la mesure par
+	// la vue `match_kill_events_latest` en donne 1262 — le lot du 2026-09-01 avait compté sur
+	// un périmètre plus étroit. C'est ce garde-rail qui a signalé la péremption, au bon moment.
 	{killicon.GenreGGGL, "3", "2026-09-01",
 		"entrée 3/4 de la liste des grenades (`kineticbanished`, grenade à pointes) : le " +
 			"registre Halo Infinite ne porte que frag, plasma et dynamo"},

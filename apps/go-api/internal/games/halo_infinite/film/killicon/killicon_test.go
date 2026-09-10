@@ -340,10 +340,34 @@ func TestCouvertureParClasse(t *testing.T) {
 		// ARME 114->115 publiables, 105->106 avec icone (2026-08-25) : le repulseur
 		// (jpt! 07104b31, RE himap eqip 7ca85adc -> sofa 6845f2b3 -> eqip frere 1e79ebda)
 		// rejoint la table, cf. killicon/data/rules.tsv "NOM Repulsor".
-		damagetag.ClassArme:     {115, 106},
-		damagetag.ClassMelee:    {14, 14},
-		damagetag.ClassGrenade:  {15, 15},
-		damagetag.ClassVehicule: {89, 46},
+		damagetag.ClassArme:    {115, 106},
+		damagetag.ClassMelee:   {14, 14},
+		damagetag.ClassGrenade: {15, 15},
+		// VEHICULE 46 -> 48 avec icone le 2026-09-10 (genre PORTEUR). Le +2 vient
+		// ENTIEREMENT du Gungoose (`00426796`, `00426797`) : ces deux tags ne citent aucune
+		// banque sonore et n avaient donc jamais pu recevoir d icone.
+		//
+		// LE WARTHOG N APPARAIT PAS DANS CE CHIFFRE, et c est la lecon de ce compteur : son
+		// tag `382cafaf` avait DEJA une icone — la mauvaise, celle de la tourelle generique.
+		// Il a change de vignette, pas de statut. Un compte global ne voit pas un echange :
+		// c est `TestPorteurPrimeBanque` qui l epingle, tag par tag.
+		//
+		// VEHICULE 89 -> 91 publiables et 48 -> 50 avec icone le 2026-09-10, second temps :
+		// le CANON DU SCORPION. Ses deux tags `0bece71e` et `19bd6810` etaient etiquetes
+		// INCONNU/INCONNU, donc NON PUBLIABLES — d ou le +2 des DEUX colonnes, et non de la
+		// seule colonne icone comme pour le Gungoose. La regle `BANQUE veh_un_scorpion`
+		// existait depuis toujours et ne resolvait RIEN : les six lignes qui citaient cette
+		// racine en citaient toutes plusieurs, et la garde d unicite les rejetait toutes.
+		// Nommer les deux vraies lignes rend la regle vivante sans toucher au code.
+		//
+		// IDENTITE ETABLIE PAR MESURE PUIS PAR L OEIL, le 2026-09-10 : 335 morts, 47 matchs,
+		// 80 tueurs ; 77 % en Grand Combat contre 9 % du corpus ; cartes Fragmentation /
+		// Insolence / Fortitude / Obituary / Breaker **Heavies** ; tueurs concentrant 24, 18
+		// et 15 morts dans UN SEUL match (signature d un pilote de char). Verification
+		// humaine sur le match `5faa6b74-0026-4e60-aaca-34522d75050c` (Fragmentation
+		// Heavies, 2026-01-28) : l utilisateur a regarde le film et confirme le Scorpion.
+		// C est cette derniere etape qui tranche — la correlation, seule, ne suffisait pas.
+		damagetag.ClassVehicule: {91, 50},
 		// OBJET_EXPLOSIF ENTRE DANS LA TABLE LE 2026-08-27, et c est une DECISION, pas une
 		// derive : les quatre bobines ont chacune leur vignette dans l atlas (42 Shock,
 		// 43 Blast, 44 UNSC fusion, 45 Plasma, passe humaine du 2026-08-09). Ce qui les
@@ -397,5 +421,190 @@ func TestLookupEstIndexeParTag(t *testing.T) {
 	}
 	if _, ok := Lookup(0xffffffff); ok {
 		t.Error("Lookup(0xffffffff) : un tag hors catalogue ne doit pas avoir d icone")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GENRE PORTEUR (2026-09-10)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Les deux `jpt!` qui citent la MEME banque `tur_un_machinegun` et que SEUL le porteur
+// distingue. Ils sont le coeur du lot : avant le genre PORTEUR ils rendaient la meme
+// vignette generique, alors que 173 des 184 morts mesurees venaient du Warthog (vue
+// `match_kill_events_latest` — la table brute, ou cinq revisions de decodeur coexistent,
+// annoncait 1002 sur 1072 : meme rapport, effectifs gonfles six fois).
+const (
+	tagWarthogLAAG  = 0x382cafaf // vehi dd7f9102 — mitrailleuse du Warthog
+	tagTourelleFixe = 0x00015cd1 // vehi 0000d500 — tourelle fixe posee sur la carte
+)
+
+// TestChaqueReglePorteurTrouveSonVehi : le pendant de TestChaqueRegleTrouveSaSource pour le
+// nouveau genre.
+//
+// POURQUOI IL EXISTE. Une regle PORTEUR dont le `vehi` a disparu de labels.tsv (saison
+// suivante, table regeneree) serait INERTE : pas d erreur, pas de compteur, juste une icone
+// qui cesse de sortir. C est trait pour trait le silence que ce lot repare — la table SAVAIT
+// nommer le Warthog depuis le 2026-09-02 et personne ne l a su pendant huit jours. La
+// peremption de ce genre doit donc se payer en rouge, jamais en discretion.
+func TestChaqueReglePorteurTrouveSonVehi(t *testing.T) {
+	reg := registryEN(t)
+	verifiees := 0
+	for _, r := range Rules() {
+		if r.Genre != GenrePorteur {
+			continue
+		}
+		if !unVehiDeclareCePorteur(r.Key) {
+			t.Errorf("regle PORTEUR %q : aucune ligne de labels.tsv ne declare ce vehi comme "+
+				"porteur UNIQUE — regle inerte", r.Key)
+			continue
+		}
+		// Un chassis SANS weapon_key perdrait sa ligne de statistiques : le kill retomberait
+		// dans « Non attribue » alors qu il en avait une avant. Une icone gagnee ne doit pas
+		// se payer d une mesure perdue.
+		if r.WeaponKey == "" {
+			t.Errorf("regle PORTEUR %q : weapon_key vide", r.Key)
+			continue
+		}
+		if _, ok := reg[r.WeaponKey]; !ok {
+			t.Errorf("regle PORTEUR %q : weapon_key %q absent du registre", r.Key, r.WeaponKey)
+			continue
+		}
+		verifiees++
+	}
+	if verifiees == 0 {
+		t.Fatal("aucune regle PORTEUR verifiee : le test ne prouve rien")
+	}
+}
+
+func unVehiDeclareCePorteur(cle string) bool {
+	for _, l := range damagetag.Labels() {
+		if p, ok := uniquePorteur(l.Detail); ok && p == cle {
+			return true
+		}
+	}
+	return false
+}
+
+// TestPorteurPrimeBanque : la priorite, CONSTATEE sur le cas reel — pas re-implementee.
+//
+// Le temoin est la seconde moitie du test et il n est pas decoratif : la tourelle FIXE cite
+// la MEME banque que le Warthog. Si elle basculait elle aussi sur la vignette du Hog, la
+// regle PORTEUR aurait deborde de son porteur, et un test sans temoin serait reste vert.
+func TestPorteurPrimeBanque(t *testing.T) {
+	ic, ok := Lookup(tagWarthogLAAG)
+	if !ok {
+		t.Fatalf("tag %08x : aucune icone", uint32(tagWarthogLAAG))
+	}
+	if ic.Genre != GenrePorteur || ic.Sprite != "killfeed-26" {
+		t.Errorf("Warthog %08x : %q par %q — attendu killfeed-26 par PORTEUR",
+			uint32(tagWarthogLAAG), ic.Sprite, ic.Genre)
+	}
+	fixe, ok := Lookup(tagTourelleFixe)
+	if !ok {
+		t.Fatalf("tourelle fixe %08x : aucune icone", uint32(tagTourelleFixe))
+	}
+	if fixe.Genre != GenreBanque || fixe.Sprite != "killfeed-05" {
+		t.Errorf("tourelle fixe %08x : %q par %q — attendu killfeed-05 par BANQUE (elle n a "+
+			"pas de regle PORTEUR et doit garder la vignette generique)",
+			uint32(tagTourelleFixe), fixe.Sprite, fixe.Genre)
+	}
+}
+
+// TestPorteurRefuseUnePluraliteDeclaree : la garde du marqueur `+N`, point de rupture du genre.
+//
+// `racineUnique` ne suffit PAS ici : sur « vehi 003f00c7 +1 » la regex ne voit qu un seul tag
+// et le declarerait unique, alors que la ligne annonce N+1 porteurs. Sans le rejet explicite,
+// une regle PORTEUR deborderait en silence sur les autres.
+func TestPorteurRefuseUnePluraliteDeclaree(t *testing.T) {
+	if _, ok := uniquePorteur("ARME DE VEHICULE (vehi 003f00c7 +1, sb_010_tur_un_machinegun, classe turret)"); ok {
+		t.Error("`vehi 003f00c7 +1` declare plusieurs porteurs : uniquePorteur doit refuser")
+	}
+	if _, ok := uniquePorteur("(vehi 3d4a8a5a, x) puis (vehi b857fb95, y)"); ok {
+		t.Error("deux vehi differents sur la ligne : uniquePorteur doit refuser")
+	}
+	got, ok := uniquePorteur("ARME DE VEHICULE (vehi dd7f9102, sb_010_tur_un_machinegun, classe turret)")
+	if !ok || got != "dd7f9102" {
+		t.Errorf("porteur unique : (%q, %v) — attendu (dd7f9102, true)", got, ok)
+	}
+}
+
+// chassisMongoose : le `vehi` du Mongoose, PARTAGE entre le Mongoose nu et le Gungoose.
+const chassisMongoose = "000025aa"
+
+// tagsGungooseConnus : les deux seules lignes de labels.tsv portees par ce chassis au
+// 2026-09-10. Toutes deux sont des degats de PROJECTILE, et le Mongoose nu n a pas d arme.
+var tagsGungooseConnus = map[uint32]bool{0x00426796: true, 0x00426797: true}
+
+// TestChassisMongooseNePorteQueDesTagsGungoose : la contrepartie du seul compromis du lot.
+//
+// LE COMPROMIS. La regle Gungoose est indexee sur le chassis MONGOOSE, faute de mieux : le
+// Gungoose n a pas de `vehi` propre, c est un Mongoose auquel une arme est accrochee. Elle
+// n est donc juste que TANT QUE tout ce que porte ce chassis vient de cette arme — vrai
+// aujourd hui (deux lignes, deux projectiles ; le Mongoose nu ne porte ni `uwfa` ni `scen`,
+// CONTACT_ARMES_GUNGOOSE_2026-09-02 section 2), pas garanti demain.
+//
+// CE QUE CE TEST EMPECHE. Un troisieme tag apparaissant sur ce chassis — un ecrasement de
+// Mongoose, typiquement — heriterait EN SILENCE de la vignette du Gungoose, et afficherait
+// un Gungoose la ou un Mongoose a ecrase. Exactement l icone fausse que cette table existe
+// pour interdire. Ici, il rougit.
+func TestChassisMongooseNePorteQueDesTagsGungoose(t *testing.T) {
+	vus := 0
+	for _, l := range damagetag.Labels() {
+		p, ok := uniquePorteur(l.Detail)
+		if !ok || p != chassisMongoose {
+			continue
+		}
+		vus++
+		if !tagsGungooseConnus[l.Tag] {
+			t.Errorf("tag %08x : NOUVEAU porteur sur le chassis Mongoose %s (%q). La regle "+
+				"PORTEUR lui donnerait la vignette du Gungoose. Verifier ce qu il est AVANT "+
+				"de l ajouter a tagsGungooseConnus : si ce n est pas l arme du Gungoose, la "+
+				"regle doit etre reindexee, pas la liste allongee.",
+				l.Tag, chassisMongoose, l.Detail)
+		}
+	}
+	if vus == 0 {
+		t.Fatal("aucune ligne portee par le chassis Mongoose : le test ne prouve rien")
+	}
+}
+
+// TestScorpionResoutVersSaCle : les deux tags du canon du Scorpion rendent bien
+// `hinf_scorpion`, et pas seulement une icone.
+//
+// POURQUOI CE TEST EXISTE. Pendant des mois, la regle `BANQUE veh_un_scorpion ->
+// killfeed-31 -> hinf_scorpion` a ete VERTE et INERTE : elle etait bien formee, sa racine
+// etait bien citee dans labels.tsv, et elle ne resolvait AUCUN tag — les six lignes qui
+// citaient `veh_un_scorpion` en citaient toutes plusieurs, et la garde d unicite les
+// rejetait. Resultat : 335 morts, 47 matchs, 80 tueurs sans arme, et une citation
+// « Artilleur de Scorpion » condamnee a afficher zero. Aucun signal, nulle part.
+//
+// `TestChaqueRegleTrouveSaSource` ne pouvait pas l attraper : il verifie qu une racine est
+// CITEE quelque part, pas qu elle est citee SEULE. Ce test-ci verifie l EFFET, tag par tag —
+// la seule formulation qui aurait rougi.
+//
+// LES DEUX TAGS SONT LES DEUX FACES D UN MEME EFFET (`proj ac954d50` #0/2 et #1/2). Les
+// exiger tous les deux n est pas une redondance : le jour ou le jeu ajoute une troisieme
+// face, elle arrivera INCONNUE et ce test restera vert alors qu une part des frags
+// redeviendra muette. C est la limite connue de ce garde-rail, et elle est assumee ici
+// plutot que decouverte plus tard.
+//
+// LA WEAPON_KEY EST LE POINT DUR, pas le sprite : une regle qui porte un sprite sans cle
+// donne une icone au kill feed et ne produit AUCUNE ligne de statistiques. C est le piege
+// exact du Mutilateur (icone servie, arme absente du registre, 1262 frags perdus). Ce test
+// verifie donc la cle, et le sprite seulement en second.
+func TestScorpionResoutVersSaCle(t *testing.T) {
+	for _, tag := range []uint32{0x0bece71e, 0x19bd6810} {
+		ic, ok := Lookup(tag)
+		if !ok {
+			t.Errorf("tag %08x (canon du Scorpion) : aucune icone — les frags redeviennent muets", tag)
+			continue
+		}
+		if ic.WeaponKey != "hinf_scorpion" {
+			t.Errorf("tag %08x : weapon_key = %q, attendu %q — sans cle, icone servie mais zero ligne de statistiques",
+				tag, ic.WeaponKey, "hinf_scorpion")
+		}
+		if ic.Sprite != "killfeed-31" {
+			t.Errorf("tag %08x : sprite = %q, attendu killfeed-31", tag, ic.Sprite)
+		}
 	}
 }

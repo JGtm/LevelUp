@@ -74,6 +74,9 @@ hinf_chopper            = { en = "Chopper", fr = "Chopper" }
 hinf_wasp               = { en = "Wasp", fr = "Wasp" }
 hinf_scorpion           = { en = "Scorpion", fr = "Scorpion" }
 hinf_rockethog          = { en = "Rockethog", fr = "Warthog lance-roquettes" }
+hinf_mutilator          = { en = "Mutilator", fr = "Mutilateur" }
+hinf_warthog            = { en = "Warthog", fr = "Warthog" }
+hinf_gungoose           = { en = "Gungoose", fr = "Gungoose" }
 hinf_pelican            = { en = "Pelican", fr = "Pélican" }
 hinf_falcon_lmg         = { en = "Falcon LMG turret", fr = "Tourelle LMG du Falcon" }
 hinf_falcon_gl          = { en = "Falcon grenade launcher", fr = "Lance-grenades du Falcon" }
