@@ -104391,3 +104391,53 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   seul appariement du depot avec un artefact de rejeu reel, copie/retrait du script,
   attendu par verdict).
 - Prochaine etape : cloture du lot (delivery-checklist, revue adversariale du diff complet).
+
+## [2026-09-10] Lot 4.2 — nettoyage console page de rejeu (clés dupliquées) (Complété)
+- Contexte : revue navigateur du superviseur sur `/t/halo_infinite/players/JGtm/matches/<id>/replay`
+  — neuf avertissements React « Encountered two children with the same key », clés = des GUID
+  de carte (`map_id`), plus un 404 non identifié. Travail fait dans le worktree dédié
+  `LevelUp-wt-console` (branche `feat/console-rejeu`, créée depuis `feat/v75`
+  = 737e4fe50), API arrêtée — investigation par lecture statique uniquement.
+- Composant fautif identifié : `AssetGrid.tsx` (`apps/web/src/features/asset-drawer/AssetGrid.tsx:44`,
+  `key={asset.id}`), monté par `AssetDrawer` (`apps/web/src/features/asset-drawer/AssetDrawer.tsx`),
+  lui-même monté EN PERMANENCE par `AppShell.tsx:55` — le tiroir n'est jamais démonté quand
+  fermé (translaté hors écran par CSS), et `useAssetMaps` (`useAssetDrawer.ts`) est appelé sans
+  garde sur `isOpen` (`enabled: !!titleSlug` seulement) : le catalogue de cartes
+  (`/assets/{titleSlug}/maps`) est donc chargé sur TOUTE page dès qu'un titre est actif, rejeu
+  compris — cohérent avec les « 82 images de cartes chargées » constatées par le superviseur.
+- Root cause du DOUBLON (côté Go, hors périmètre de ce lot, à faire lire au superviseur) :
+  `MetadataRepo.ListMapsByTitle`
+  (`apps/go-api/internal/platform/duckdb/metadata_repo_assets_list.go:21-63`) dédoublonne par
+  `SELECT DISTINCT ON (m.name_canonical)`, PAS par `map_asset_id`. Si `maps_catalog` porte deux
+  `name_canonical` distincts pour le MÊME `map_asset_id` (rename de carte, entrée dupliquée du
+  catalogue, variante Forge du même asset), la requête rend deux lignes avec le même `id` sous
+  deux libellés — exactement la forme observée. Confirmé par lecture du SQL (logique, pas besoin
+  d'accès à la DB live, indisponible dans ce worktree — pas de duckdb CLI, pas de serveur). PAS
+  de correction Go dans ce lot (périmètre exclu par la consigne) : à corriger côté serveur en
+  dédoublonnant sur `map_asset_id` au lieu de `name_canonical`, ou en gardant le libellé le plus
+  récent — décision produit qui appartient au superviseur/à un lot dédié.
+- Correction retenue côté web : `dedupeAssetsById` (nouveau fichier
+  `apps/web/src/features/asset-drawer/assetDrawerLogic.ts`), logique PURE et testée
+  (`assetDrawerLogic.test.ts`, rouge confirmé avant écriture du fichier — import qui échoue —
+  puis vert), appliquée dans `AssetDrawer.tsx` juste avant `AssetGrid` (garde la PREMIÈRE
+  occurrence de chaque `id` — ordre serveur déterministe, `ORDER BY name_canonical, name_en`).
+  Dédoublonnage à la SOURCE DE DONNÉES du composant fautif, pas une clé composite qui aurait
+  masqué le doublon réel (deux entrées pour le même asset, pas deux assets distincts).
+- Le 404 : NON identifié. Aucun asset de carte/icône ne vit sous `apps/web/public/` (tout est
+  servi par le Go — `/static/...`, `/api/v1/assets/...`) : sans serveur ni trace réseau,
+  impossible de confirmer par lecture statique QUEL chemin répond 404. Hypothèse documentée,
+  NON vérifiée : si `AssetService.ListMaps` résout `image_url` depuis `NameEN`
+  (`apps/go-api/internal/service/asset_service.go:56`), et que les DEUX libellés dupliqués
+  n'ont pas la même image sur disque, l'un des deux pouvait 404 — notre dédoublonnage
+  (garde le premier par tri alphabétique de `name_canonical`) peut incidemment faire
+  disparaître ce 404 s'il venait du doublon écarté, mais ce n'est PAS vérifié en conditions
+  réelles. À reconfirmer par le superviseur avec l'API relancée (l'URL exacte du 404 tranchera).
+- Résultats de gate (worktree `LevelUp-wt-console`, `apps/web`) :
+  `npx vitest run src/features/asset-drawer` → 2 fichiers, 6 tests, 0 échec ;
+  `npx vitest run src/components/shell` → 17 fichiers, 171 tests, 0 échec (AppShell/AssetDrawer
+  non régressés) ; `npx tsc -b --force` → exit 0, sortie vide ; `npx eslint
+  src/features/asset-drawer --max-warnings=0` → exit 0, sortie vide.
+- Prochaine étape : aucune côté web pour ce lot. Côté Go (hors périmètre) : corriger
+  `ListMapsByTitle` pour dédoublonner par `map_asset_id` ; côté superviseur : rouvrir la page
+  avec l'API active pour confirmer disparition des 9 avertissements et capturer l'URL exacte
+  du 404.
