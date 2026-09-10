@@ -60,6 +60,21 @@ type SkullInput struct {
 	// de match n'entre : le porteur se nomme par les instants de mort, et le calque est donc
 	// publiable hors ligne.
 	Records []objectiveevents.StatRecord
+	// Identity est le pont slot statborg -> xuid que l'APPELANT a deja resolu, PAR MANCHE.
+	// Valeur zero : ce paquet le resout lui-meme par les seuls instants de mort (cf.
+	// [skullIdentityOf]), et l'artefact reste publiable hors ligne.
+	//
+	// POURQUOI L'APPELANT PEUT FAIRE MIEUX, ET DE COMBIEN. Le pont par morts exige TROIS
+	// progressions coincidentes du compteur de morts (`deathInstantMin`) : un joueur qui meurt
+	// moins de trois fois dans la manche lui echappe PAR CONSTRUCTION — et en Oddball c'est
+	// souvent le porteur, que son equipe protege. Son train de tics part alors en `NoBridge` et
+	// aucun intervalle n'est publie. Mesure du 2026-09-10 sur les quatre films Oddball du parc
+	// (cuisson hors ligne, oracle API `time_as_skull_carrier_seconds`) : `43716616` perdait
+	// 62,3 s sur son plus gros porteur, `c88ec007` 25,8 s, `d9781168` un train. Le pont COMPLETE
+	// (morts + triplet de la feuille + elimination par manche) que la couche d'assemblage resout
+	// deja pour les actions d'objectif et le drapeau ferme ce trou, sans qu'aucun fait de match
+	// n'entre ici : ce qui descend est une TABLE slot -> xuid.
+	Identity objectiveevents.RoundIdentity
 }
 
 // SkullCarryScan porte ce que le film rend du porteur. Les lectures voyagent ensemble, et
@@ -362,7 +377,7 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, 
 	scan := SkullCarryScan{
 		Scanned:  true,
 		Records:  in.Records,
-		Identity: objectiveevents.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths)),
+		Identity: skullIdentityOf(in, opt),
 	}
 	carries, cov := buildSkullCarries(scan, matchClock{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
@@ -373,6 +388,26 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, 
 		doc.Coverage.SkullCarries = cov
 	}
 	logSkullCarriesCoverage(cov)
+}
+
+// skullIdentityOf rend le pont d'identite du calque : celui de l'appelant s'il en a fourni un,
+// sinon celui que ce paquet resout par les seuls INSTANTS DE MORT.
+//
+// MEME REGLE, MEME ECRITURE QUE [flagIdentityOf], et pour la meme raison : la preference va a
+// l'appelant, qui ne peut que COMPLETER. Le pont que la couche d'assemblage fournit part des
+// MEMES enregistrements et du MEME fil des morts (`replay.ScanDeaths`, celui-la meme que
+// `BuildFromFilm` pose dans `opt.Deaths`), PLUS les completions par le triplet de la feuille et
+// par l'elimination : c'est un SUR-ENSEMBLE — aucun slot nomme ici ne peut y perdre son nom ni
+// y changer de joueur.
+//
+// [objectiveevents.RoundIdentity.Resolved] et non un compte de noms : un appelant hors ligne qui
+// ne fournit RIEN doit tomber sur la resolution locale, alors qu'un pont fourni qui ne nomme
+// personne est une reponse, pas un silence.
+func skullIdentityOf(in SkullInput, opt Options) objectiveevents.RoundIdentity {
+	if in.Identity.Resolved() {
+		return in.Identity
+	}
+	return objectiveevents.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths))
 }
 
 // logSkullCarriesCoverage journalise ce que le calque publie — et ce qu'il ecarte.
