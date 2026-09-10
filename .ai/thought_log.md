@@ -104255,3 +104255,44 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
 - Prochaine etape : Etape 4 (conversion des 109 fonds avec sauvegarde prealable des PNG,
   `data/backups/map_backgrounds-png-2026-09-10/`), puis Etape 5 (recette export, 12 verdicts
   d'un coup).
+
+## [2026-09-10] Fonds de carte WebP — Etape 4, conversion reelle (Complete)
+- Decision technique principale : sauvegarde integrale (109 PNG + 109 JSON) dans
+  `data/backups/map_backgrounds-png-2026-09-10/` (repertoire absent du worktree, cree ; verifie
+  `diff -rq` identique a la source AVANT toute conversion), puis
+  `go run ./cmd/mapfond-webp -convertir` (LEVELUP_REPO_ROOT sur le worktree). 109/109 convertis,
+  0 refus d'ecriture. Verification INDEPENDANTE (decodage des 109 webp publies + comparaison
+  pixel a pixel contre les 109 PNG de sauvegarde, via un test jetable non commite, supprime
+  ensuite) : 109/109 identiques au bit pres. Gain reel 37,2 % (45 686 553 -> 28 689 086 octets),
+  coherent avec les 38,4 % mesures sur l'echantillon des 5 plus gros fonds a l'etape 0.
+- Decouverte majeure, corrigee dans le lot (bloquait le gate) : caching `go test` MASQUAIT une
+  regression. Un `go test ./...` normal (sans -count=1) apres la conversion est ressorti VERT y
+  compris sur `TestMapBackground_DonneesReelles` (ecrite a l'etape 2), qui affirmait pourtant
+  encore `mime == image/png` sur l'asset REEL de Cliffhanger desormais servi en webp — resultat
+  CACHE d'avant la conversion, faux vert. `go clean -testcache && go test ./... -count=1` a
+  demasque l'echec. Lecon consignee au plan : apres toute modification de `data/`, gate go test
+  systematiquement avec -count=1 (symetrique du piege tsc -b incrementalcote web).
+- Deux autres regressions reelles trouvees (paquets hors perimetre des etapes 2-3 mais qui
+  supposaient `.png` en dur sur `map_backgrounds/`) et corrigees, car bloquantes pour le gate
+  `go test ./...` de cette etape : `internal/himap/cle_forge_test.go`
+  (TestFondForgeJamaisSousCleModule) et `internal/analysis/replay/callouts_catalog_test.go`
+  (TestCatalogueCalloutsLivreEstExploitable). Les trois corrections acceptent PNG OU WebP,
+  jamais une extension supposee.
+- Amendement d'execution vs le texte du plan (qui prevoyait un commit atomique de l'etape 4) :
+  consigne explicite du superviseur pour ce lot — les fichiers de `data/` ne font PARTIE
+  D'AUCUN commit (seul le journal, dans `.ai/`, est commite). L'etat converti reste donc en
+  working tree non commite a la cloture de cette session (109 png supprimes, 109 json
+  modifies, 109 webp nouveaux, tous suivis par git car `data/titles/.../reference/` EST
+  versionne en clair — verifie : `data/backups/` lui n'apparait meme pas dans `git status`,
+  bien ignore).
+- Decouverte non bloquante (environnement, pas ce lot) : `golangci-lint run
+  --new-from-merge-base=feat/v75 ./...` (module ENTIER) echoue a typechecker
+  `internal/himodule` -> `internal/ooz` sur ce poste Windows (cgo/g++ mal cable pour
+  l'invocation interne de golangci-lint), reproductible avant ET apres ce lot, alors que
+  `go build ./...` et `go test ./...` compilent et executent ooz sans erreur. Les lints
+  SCOPES aux paquets reellement modifies sont tous a 0 issue.
+- Resultats observes : `go test ./... -count=1` 0 FAIL (171 paquets testes) ; `make
+  go-api-test` vert ; golangci-lint scope (himap, analysis/replay, service) 0 issues ; cote
+  web, `tsc -b --force` exit 0 et `vitest run src/features/match-replay src/features/tactical
+  src/lib/replay` : 3025 passed / 3 skipped (pre-existant) / 0 failed.
+- Prochaine etape : Etape 5, recette export video (12 verdicts d'un coup) + controle Tactique.
