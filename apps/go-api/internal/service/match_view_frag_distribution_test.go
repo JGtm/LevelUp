@@ -249,3 +249,45 @@ func TestBuildCombatTabFull_ExcludesNonCombatFromWeaponBreakdown(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildViewerFragDistribution_ChuteMesureeAuFilm_ServieEnEnvironnement : une mort
+// dont la SOURCE DE DEGAT a ete lue dans le film (chute, tag `DEGAT_GLOBAL` -> registre
+// `hinf_environment`) doit sortir dans la classe « environnement » du sunburst par match,
+// pas dans le residu « non attribue ».
+//
+// Temoin reel (lot 4.5 du plan maitre, 2026-09-10) : match `1eedd3c8`, Nemesis, Theater
+// 02:04, EIcRriizz tue par JGtm par chute (`match_kill_events_latest` : source_tag
+// 0x00403594, lecture « source-victime »). La vue match servait sidearm 9 / melee 4 /
+// non attribue 1 : la ligne « environnement » existait en base, elle etait perdue ICI —
+// `buildViewerFragDistribution` ne recopiait pas la provenance film, et `fragdist` ne sert
+// equipement/environnement QUE mesures au film (verrou Halo 5, `fragdist_halo5_golden_test`).
+//
+// La ligne SANS provenance (`FromDamageSource=false`, cas Halo 5 `h5_environmental`)
+// reste ecartee : c'est le second cas, inchange.
+func TestBuildViewerFragDistribution_ChuteMesureeAuFilm_ServieEnEnvironnement(t *testing.T) {
+	me := &domain.MatchScoreboardRow{
+		XUID: "me", IsMe: true, Kills: ptrInt(14), MeleeKills: ptrInt(4),
+	}
+	bulk := []domain.BulkWeaponKillRaw{
+		{XUID: "me", WeaponID: 1, Kills: 9, Class: "sidearm", Role: "sidearm", WeaponKey: "hinf_sidekick"},
+		{XUID: "me", WeaponID: 0, Kills: 1, Class: "environmental", Role: "environmental",
+			WeaponKey: "hinf_environment", FromDamageSource: true},
+	}
+	got := fragClassKills(buildViewerFragDistribution(me, bulk, false))
+	if got[domain.FragClassEnvironmental] != 1 {
+		t.Errorf("environnement = %d, want 1 (chute mesuree au film) ; classes = %+v",
+			got[domain.FragClassEnvironmental], got)
+	}
+	if got[domain.FragClassUnattributed] != 0 {
+		t.Errorf("non attribue = %d, want 0 (la chute est classee) ; classes = %+v",
+			got[domain.FragClassUnattributed], got)
+	}
+
+	// Meme ligne SANS provenance film : ecartee, le kill retombe au residu.
+	bulk[1].FromDamageSource = false
+	got = fragClassKills(buildViewerFragDistribution(me, bulk, false))
+	if got[domain.FragClassEnvironmental] != 0 || got[domain.FragClassUnattributed] != 1 {
+		t.Errorf("sans provenance : environnement = %d / non attribue = %d, want 0 / 1",
+			got[domain.FragClassEnvironmental], got[domain.FragClassUnattributed])
+	}
+}
