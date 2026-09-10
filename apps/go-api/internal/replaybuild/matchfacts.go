@@ -357,18 +357,21 @@ type pontParManche struct {
 
 // identite rend le pont, en le resolvant au premier appel.
 //
-// TROIS VOIES CHAINEES, DANS L'ORDRE DE LA FORCE DE PREUVE (lot P2, 2026-09-08) : les instants
-// de mort, puis le triplet de la feuille (MONO-MANCHE seulement — le triplet apparie des totaux
-// de match), puis l'ELIMINATION par manche, qui ne suppose rien du contenu et se controle sur le
-// residu de la feuille. Sans cette derniere, les ACTIONS d'objectif d'un joueur qui meurt moins
-// de trois fois dans une manche restaient sans auteur alors que les COMPTEURS, eux, allaient
-// etre completes par le meme mecanisme (`buildPlayerScores`) — deux lecteurs du meme pont
-// n'auraient plus dit la meme chose du meme match.
+// QUATRE VOIES CHAINEES, DANS L'ORDRE DE LA FORCE DE PREUVE (lot P2, 2026-09-08 ; lot 6.7-B1,
+// 2026-09-10) : les instants de mort, puis le triplet de la feuille (MONO-MANCHE seulement — le
+// triplet apparie des totaux de match), puis l'ELIMINATION par manche, qui ne suppose rien du
+// contenu et se controle sur le residu de la feuille, puis le RESIDU DE MANCHE (MULTI-MANCHE
+// seulement), qui produit l'appariement que l'elimination se contentait de controler des que la
+// manche laisse PLUSIEURS slots muets. Sans les deux dernieres, les ACTIONS d'objectif d'un
+// joueur qui meurt moins de trois fois dans une manche restaient sans auteur alors que les
+// COMPTEURS, eux, allaient etre completes par le meme mecanisme (`buildPlayerScores`) — deux
+// lecteurs du meme pont n'auraient plus dit la meme chose du meme match.
 func (p *pontParManche) identite() objectiveevents.RoundIdentity {
 	if !p.resolu {
 		p.id = objectiveevents.ResolveRoundIdentity(p.recs, p.deaths).
 			CompletedByLines(p.recs, p.lines).
-			CompletedByElimination(p.recs, p.lines)
+			CompletedByElimination(p.recs, p.lines).
+			CompletedByRoundResidue(p.recs, p.lines)
 		p.resolu = true
 	}
 	return p.id

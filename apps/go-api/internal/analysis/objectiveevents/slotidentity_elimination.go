@@ -162,35 +162,27 @@ func segmentsParManche(recs []StatRecord) map[int]map[int]segmentKDA {
 // C'est ce controle qui distingue un appariement force d'une devinette : sans lui, une manche
 // mal decoupee attribuerait des compteurs qui ne sont pas ceux du joueur, et l'ecran ne
 // montrerait rien.
+//
+// LE CALCUL DU RESIDU N'EST ECRIT QU'UNE FOIS ([residuDeManche], slotidentity_residue.go) : la
+// voie par residu de manche le PRODUIT, celle-ci le CONTROLE, et deux ecritures du meme calcul
+// divergeraient (regle n° 6 du depot).
 func residuConcorde(seg map[int]map[int]segmentKDA, byRound map[int]map[int]string,
 	lines []PlayerLine, round, slot int, xuid string) bool {
-	var ligne PlayerLine
-	trouvee := false
-	for _, l := range lines {
-		if l.XUID == xuid {
-			ligne, trouvee = l, true
-			break
-		}
-	}
-	if !trouvee {
+	if !porteLeXUID(lines, xuid) {
 		return false
 	}
-	residu := segmentKDA{kills: ligne.Kills, deaths: ligne.Deaths, assists: ligne.Assists}
-	for r, m := range byRound {
-		if r == round {
-			continue
-		}
-		for s, x := range m {
-			if x != xuid {
-				continue
-			}
-			d := seg[r][s]
-			residu.kills -= d.kills
-			residu.deaths -= d.deaths
-			residu.assists -= d.assists
+	return seg[round][slot] == residuDeManche(seg, byRound, lines, round, xuid)
+}
+
+// porteLeXUID dit que la feuille contient bien ce joueur — un xuid absent n'a pas de residu, et
+// un residu nul n'est pas la meme chose qu'une absence de ligne.
+func porteLeXUID(lines []PlayerLine, xuid string) bool {
+	for _, l := range lines {
+		if l.XUID == xuid {
+			return true
 		}
 	}
-	return seg[round][slot] == residu
+	return false
 }
 
 // copieProfonde duplique les tables du resolveur : la completion ne doit jamais modifier

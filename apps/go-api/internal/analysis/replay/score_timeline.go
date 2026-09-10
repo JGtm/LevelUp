@@ -302,12 +302,17 @@ func buildTeamScores(slots []int, score scoreSeriesSet, teamID map[int]int, c sc
 // manche — n'etait publie NULLE PART. Mesure : `51ebbc0f`, un joueur a 0 mort en manche 0, sa
 // manche entiere absente, ecart cumule K/D/A de 9 contre la feuille.
 // [objectiveevents.RoundIdentity.CompletedByElimination] la ferme dans le cas d'unicite, controle
-// par le residu de la feuille ; `lines` vide rend l'identite inchangee.
+// par le residu de la feuille, et
+// [objectiveevents.RoundIdentity.CompletedByRoundResidue] des que la manche laisse PLUSIEURS
+// slots muets (lot 6.7-B1). LA MEME CHAINE QUE LE PONT DE LA CUISSON (`replaybuild`, pontParManche) :
+// deux lecteurs du meme pont doivent dire la meme chose du meme match. `lines` vide rend
+// l'identite inchangee.
 func buildPlayerScores(recs []objectiveevents.StatRecord, flat map[int]string,
 	lines []objectiveevents.PlayerLine, deaths []Death, c scoreClock) []PlayerScore {
 	if len(objectiveevents.RealRounds(recs)) > 1 {
 		round := objectiveevents.ResolveRoundIdentity(recs, deathInstantsOf(deaths)).
-			CompletedByElimination(recs, lines)
+			CompletedByElimination(recs, lines).
+			CompletedByRoundResidue(recs, lines)
 		return buildPlayerScoresByRound(recs, round, c)
 	}
 	return buildPlayerScoresFlat(recs, flat, c)
