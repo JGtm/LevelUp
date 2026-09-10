@@ -219,6 +219,12 @@ export interface ReplayText {
    */
   offscreenMarkerFmt: (name: string, meters: number) => string
   /**
+   * LA MÊME ÉTIQUETTE, PLUSIEURS OCCUPANTS SANS CONDUCTEUR NOMMÉ (lot 4.4, véhicule hors
+   * cadre, 2026-09-10) : un véhicule à plusieurs occupants dont aucun nom ne peut porter seul
+   * l'étiquette (cf. `vehiclesPaint.vehicleOffscreenText`) affiche un COMPTE plutôt qu'un nom.
+   */
+  offscreenGroupMarkerFmt: (count: number, meters: number) => string
+  /**
    * AVIS « INSTANT NON CALÉ » (lot M1b, 2026-09-08) : un lien tactique demandait un instant
    * sur l'horloge du MATCH, mais l'artefact de ce match n'a pas de calage connu (`coverage.
    * bridge.deathOffsetMs` absent — schéma antérieur à 49, ou pont d'identité qui n'a apparié

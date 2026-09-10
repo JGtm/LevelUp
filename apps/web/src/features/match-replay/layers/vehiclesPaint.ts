@@ -17,12 +17,14 @@ import type { ReplayVehicleRide } from '@/lib/api/types'
 
 import { drawExplosion, EXPLOSION_MS } from './explosionFx'
 import type { FxInk } from './fxInk'
+import { drawOffscreenChevron, drawOffscreenLabel } from './offscreenChevron'
 import { project, type PlacementView } from './placementShapes'
 import { aimLengthScale, drawAimSector } from './replayAimCone'
 import { drawRotatedSprite } from './replayDraw'
 import { drawNameLabel, type LabelStyle } from './replayLabels'
 import type { XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
+import { edgeMarkFor, OFFSCREEN_MARGIN_PX, type EdgeMark } from '../model/edgeClamp'
 import { vehicleOccupantAimAt } from '../model/vehiclesAim'
 import {
   vehicleActiveRides,
@@ -119,6 +121,20 @@ export interface VehicleStyle {
    */
   nameOfXuid: (xuid: string) => string | null
   /**
+   * BORNAGE HORS CADRE (plan escouade hors cadre, lot 4.4, 2026-09-10) : le texte de la flèche
+   * hors fenêtre pour UN SEUL occupant identifié — nom ET distance jusqu'à sa position réelle.
+   * MÊME contrat que `MarkerStyle.offscreenLabelOf` (replayMarkers.ts, joueur à pied) :
+   * RÉSOLU PAR L'APPELANT (`REPLAY_TEXT[locale].offscreenMarkerFmt`), ce calque ne connaît
+   * aucune langue.
+   */
+  offscreenLabelOf: (name: string, meters: number) => string
+  /**
+   * MÊME BORNAGE, PLUSIEURS OCCUPANTS SANS CONDUCTEUR NOMMÉ (décision du lot, cf. l'en-tête de
+   * `drawVehicleOffscreenSignal`) : « N joueurs · distance » — repli quand aucun nom ne peut
+   * porter seul l'étiquette d'un véhicule à plusieurs occupants.
+   */
+  offscreenGroupLabelOf: (count: number, meters: number) => string
+  /**
    * Teintes de nature des effets (fxInk.ts, MÊME source que les tirs/grenades) : l'explosion de
    * destruction (demande utilisateur, cf. `drawVehicleDestructionFx`) y puise sa couleur PLASMA
    * (Covenant/Bannis) ou NORMALE (UNSC/humains) — jamais la couleur d'équipe de l'occupant, la
@@ -188,6 +204,71 @@ function occupantName(
 ): string | null {
   const byXuid = ride.xuid ? style.nameOfXuid(ride.xuid) : null
   return byXuid ?? style.nameOfSlot(ride.slot, frame)
+}
+
+/**
+ * drawVehicleOffscreenSignal — LA FLÈCHE D'OCCUPANT HORS CADRE (plan escouade hors cadre, lot
+ * 4.4, 2026-09-10).
+ *
+ * MÊME GABARIT, MÊME GÉOMÉTRIE que le joueur à pied hors cadre (`replayMarkers.
+ * drawLivingTrack`) : `mark` est calculé UNE FOIS par l'appelant (`edgeMarkFor`, partagé avec
+ * le repositionnement du glyphe du véhicule) et sert ici tel quel — jamais une seconde règle
+ * de bornage.
+ *
+ * UNE SEULE FLÈCHE PAR VÉHICULE, PAS UNE PAR OCCUPANT (décision du lot) : tous les occupants
+ * d'un même véhicule partagent EXACTEMENT le même point hors cadre — en tracer une par siège y
+ * empilerait des flèches identiques, illisibles. `vehicleOffscreenText` compose l'unique
+ * étiquette.
+ *
+ * L'ÉTIQUETTE REMPLACE LES NOMS EMPILÉS (`drawVehicleOccupantNames`), elle ne s'y AJOUTE PAS
+ * (cf. l'appelant) : les deux répondent à « qui est à bord », et la version hors cadre porte en
+ * plus la distance, que les noms empilés ne portent jamais.
+ */
+function drawVehicleOffscreenSignal(
+  ctx: CanvasRenderingContext2D,
+  rides: readonly ReplayVehicleRide[],
+  time: VehicleTime,
+  style: Pick<
+    VehicleStyle,
+    'nameOfSlot' | 'nameOfXuid' | 'labelStroke' | 'showNames' | 'offscreenLabelOf' | 'offscreenGroupLabelOf'
+  >,
+  mark: EdgeMark,
+  color: string,
+): void {
+  drawOffscreenChevron(ctx, mark.at, mark.angle, time.k, color)
+  if (!style.showNames) return
+  const text = vehicleOffscreenText(rides, time.frame, style, mark.distanceM)
+  if (text) {
+    drawOffscreenLabel(ctx, mark.at, mark.angle, text, { k: time.k, labelStroke: style.labelStroke }, color)
+  }
+}
+
+/**
+ * vehicleOffscreenText — QUI EST À BORD, en UN SEUL texte (décision du lot : une flèche par
+ * véhicule, jamais une par occupant, cf. `drawVehicleOffscreenSignal`).
+ *
+ * UN SEUL OCCUPANT : son nom, ou RIEN (même règle que la croix de mort hors cadre, D6 du plan
+ * escouade — un occupant non nommé ne reçoit pas d'étiquette, seulement la flèche d'équipe).
+ *
+ * PLUSIEURS OCCUPANTS : le nom du CONDUCTEUR (siège 0) s'il est résolu ; À DÉFAUT, un COMPTE
+ * (« N joueurs »), JAMAIS une recherche du premier passager nommé — la règle reste lisible d'un
+ * coup d'œil, sur le même principe que `vehicleColorAt` (le conducteur d'abord, un repli
+ * générique ensuite, jamais un balayage qui pourrait nommer un passager au hasard des données).
+ */
+function vehicleOffscreenText(
+  rides: readonly ReplayVehicleRide[],
+  frame: number,
+  style: Pick<VehicleStyle, 'nameOfSlot' | 'nameOfXuid' | 'offscreenLabelOf' | 'offscreenGroupLabelOf'>,
+  meters: number,
+): string | null {
+  if (rides.length === 1) {
+    const name = occupantName(rides[0], frame, style)
+    return name ? style.offscreenLabelOf(name, meters) : null
+  }
+  const driver = rides.find((r) => r.seat === 0) ?? null
+  const driverName = driver ? occupantName(driver, frame, style) : null
+  if (driverName) return style.offscreenLabelOf(driverName, meters)
+  return style.offscreenGroupLabelOf(rides.length, meters)
 }
 
 /**
@@ -344,7 +425,15 @@ export function drawVehiclesLayer(
     if (vehicleVisibleAt(track, time.frame)) {
       const world = vehiclePositionAt(track, time.frame)
       if (world) {
-        const c = project(world, view)
+        // BORNAGE HORS CADRE (plan escouade hors cadre, lot 4.4, 2026-09-10 — découverte du
+        // chantier B, §8 : « un pion embarqué n'est pas dessiné ; sans bornage du véhicule, il
+        // disparaît sans repère »). LE GLYPHE SUIT LA MÊME RÈGLE QU'UN PORTEUR D'OBJECTIF
+        // (`flagCarriesLayer.drawFlagCarries`) : seule sa POSITION est plaquée à la marge, sa
+        // forme ne change pas — sprite ou losange, inchangés plus bas. `mark` sert aussi de
+        // source à la flèche d'occupant (`drawVehicleOffscreenSignal`) : même géométrie,
+        // jamais recalculée deux fois.
+        const mark = edgeMarkFor(world, view, OFFSCREEN_MARGIN_PX, time.k)
+        const c = mark ? mark.at : project(world, view)
         const color = vehicleColorAt(track, time.frame, style) ?? style.neutralInk
         // LES OCCUPANTS SONT LUS UNE FOIS pour les deux calques qui les consomment (cônes puis
         // noms) : `vehicleActiveRides` trie, filtre et alloue — l'appeler deux fois par véhicule
@@ -372,7 +461,15 @@ export function drawVehiclesLayer(
           // Sinon : image ou manifeste pas encore chargés — rien ne remplace le sprite (même
           // contrat que les vignettes de socle), le nom garde le repli de plancher ci-dessus.
         }
-        if (style.showNames && rides.length > 0) {
+        // LE JOUEUR EMBARQUÉ HORS CADRE (lot 4.4) REMPLACE LES NOMS EMPILÉS PAR LA FLÈCHE,
+        // JAMAIS LES DEUX : les noms empilés ne disent que « qui », la flèche dit « qui, dans
+        // quelle direction, à quelle distance » — ajouter les deux au même point serait un
+        // doublon d'information, pas un renfort. Un véhicule VIDE (aucun `ride`) hors cadre ne
+        // reçoit ni l'un ni l'autre : ce n'est pas « un joueur hors cadre », seul son glyphe
+        // (déjà repositionné ci-dessus) le signale.
+        if (mark && rides.length > 0) {
+          drawVehicleOffscreenSignal(ctx, rides, time, style, mark, color)
+        } else if (style.showNames && rides.length > 0) {
           drawVehicleOccupantNames(ctx, rides, time.frame, c, edgePx, style, time.k)
         }
       }
