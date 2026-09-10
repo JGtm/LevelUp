@@ -326,7 +326,7 @@ func TestCollectPositions_CapabiliteAbsenteNeTenteAucuneEcriture(t *testing.T) {
 		mapBounds:     testMapQuantCatalog(),
 		acquireShared: panicWriter,
 	}
-	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide(), killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), killRefValide())
 }
 
 // TestCollectPositions_NonCableNeTenteAucuneEcriture — Q8 (2026-09-07) : ce cas est une
@@ -340,7 +340,7 @@ func TestCollectPositions_NonCableNeTenteAucuneEcriture(t *testing.T) {
 		acquireShared: panicWriter,
 		// mapNames / mapBounds volontairement nil : WithPositionCapture jamais appele.
 	}
-	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide(), killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), killRefValide())
 	if got := observability.LoadCounter(metricPositionsNotWired) - avant; got != 1 {
 		t.Errorf("%s a bougé de %d, attendu 1 : un cablage manquant doit se compter",
 			metricPositionsNotWired, got)
@@ -355,7 +355,7 @@ func TestCollectPositions_AucuneIdentiteResolueNeTenteAucuneEcriture(t *testing.
 		acquireShared: panicWriter,
 	}
 	deaths := []persist.KillEventInsert{{TimeMS: 1000, FeedKillerXUID: "", VictimXUID: ""}}
-	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, deaths, deaths)
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, deaths, deaths)
 }
 
 func TestCollectPositions_CarteHorsCatalogueNeTenteAucuneEcriture(t *testing.T) {
@@ -365,7 +365,7 @@ func TestCollectPositions_CarteHorsCatalogueNeTenteAucuneEcriture(t *testing.T) 
 		mapBounds:     testMapQuantCatalog(),
 		acquireShared: panicWriter,
 	}
-	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide(), killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), killRefValide())
 }
 
 // TestCollectPositions_FilmIllisibleNeTenteAucuneEcriture — bornes resolues, morts resolues,
@@ -379,7 +379,7 @@ func TestCollectPositions_FilmIllisibleNeTenteAucuneEcriture(t *testing.T) {
 		acquireShared: panicWriter,
 	}
 	ids := MatchIdentities{XUIDs: []string{"111", "222"}}
-	c.collectPositions(context.Background(), "m1", nil, ids, killRefValide(), killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, nil, ids, killRefValide(), killRefValide())
 }
 
 // TestToKillOpeningRows_PorteLInstantDuKillSansArithmetique : LE point critique de la passe
@@ -432,7 +432,7 @@ func TestToKillOpeningRows_PorteLInstantDuKillSansArithmetique(t *testing.T) {
 // MUTATION : retirer `RosterXUIDs` d'`entreeDuRegistre` -> ROUGE.
 func TestEntreeDuRegistrePorteLeRosterDeLaFeuille(t *testing.T) {
 	ids := MatchIdentities{XUIDs: []string{"111", "222", "bid(7.0)"}}
-	in := entreeDuRegistre(lecturesDuFilm{}, ids, "m1")
+	in := entreeDuRegistre(lecturesDuFilm{}, ids, nil, "m1")
 
 	if len(in.RosterXUIDs) != 2 {
 		t.Fatalf("roster transmis = %v, attendu les deux xuids humains — sans lui, "+
@@ -461,11 +461,97 @@ func TestEntreeDuRegistrePorteLesCreationsDeBipede(t *testing.T) {
 	l := lecturesDuFilm{creations: []filmdec.BipedCreation{
 		{Slot: 512, Generation: 1, ParticipantIndex: 3, HasIndex: true, TimestampUS: 42},
 	}}
-	in := entreeDuRegistre(l, MatchIdentities{XUIDs: []string{"111"}}, "m1")
+	in := entreeDuRegistre(l, MatchIdentities{XUIDs: []string{"111"}}, nil, "m1")
 
 	if len(in.BipedCreations) != 1 || in.BipedCreations[0].ParticipantIndex != 3 {
 		t.Fatalf("creations transmises = %+v, attendu le record du slot 512 (index 3) — sans "+
 			"elles, match_lives est nomme par le pont par morts alors que le film le nomme",
 			in.BipedCreations)
+	}
+}
+
+// TestEntreeDuRegistrePorteLesBotsEtLesParticipants — LA TROISIEME COUTURE (lot 5.1, revue de
+// vague 4, constat P2 sur `positions.go:484-489`).
+//
+// # LA FIGURE, IDENTIQUE A CELLE DE `identity_registry_scoreboard.go` (`4f77afc1`)
+//
+// Le slot 300 partage l'index de participant 9 entre un bot que BOT_METADATA declare
+// (`bid(7.0)`) et l'humain 222, arrive en cours a 10 s. `PlayerIndices.ByXUID` resout DEJA
+// l'index 9 vers 222 (ses morts APRES l'arrivee suffisent a la bijection du collecteur) : SANS
+// `Bots` pour dire que cet index est AUSSI un bot, le lien direct
+// (`identity_registry_creation.go`) attribue TOUT le siege a 222 — y compris la vie D'AVANT
+// l'arrivee, qui appartient au bot. AVEC `Bots`, l'index sort du lien direct
+// (`IndexOutOfTable`, verdict I0) et `resolveByScoreboard` le departage PAR VIE grace a
+// `Participants` : la vie d'avant prend `bid(7.0)`, celle d'apres prend `xuid=222` avec
+// `nomPar=tableau_api`.
+//
+// `ViesNommees()` est l'accesseur que `isolation_facts.go` (`toLifeRows`) emploie pour ecrire
+// `match_lives` : c'est donc lui, et pas un accesseur de test, qui doit ne rendre qu'UNE SEULE
+// vie pour 222.
+//
+// MUTATION : retirer `Bots`/`Participants` d'`entreeDuRegistre` -> ROUGE (`ViesNommees()` rend
+// DEUX vies pour 222, la vie du bot comprise, nommees `biped_creation`/`biped_creation_propagee`
+// au lieu de `tableau_api`).
+func TestEntreeDuRegistrePorteLesBotsEtLesParticipants(t *testing.T) {
+	var pos []filmdec.BipedPosition
+	for tUS := uint64(1_000_000); tUS <= 4_000_000; tUS += 500_000 {
+		pos = append(pos, filmdec.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
+	}
+	for tUS := uint64(20_000_000); tUS <= 23_000_000; tUS += 500_000 {
+		pos = append(pos, filmdec.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
+	}
+	// Le siege partage : une vie AVANT l'arrivee de 222 (le bot), une vie APRES (l'humain).
+	for tUS := uint64(1_000_000); tUS <= 4_000_000; tUS += 500_000 {
+		pos = append(pos, filmdec.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
+	}
+	for tUS := uint64(20_000_000); tUS <= 24_000_000; tUS += 500_000 {
+		pos = append(pos, filmdec.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
+	}
+	l := lecturesDuFilm{
+		positions: pos,
+		creations: []filmdec.BipedCreation{
+			{Slot: 100, Generation: 1, ParticipantIndex: 0, HasIndex: true, TimestampUS: 1_000_000},
+			{Slot: 300, Generation: 1, ParticipantIndex: 9, HasIndex: true, TimestampUS: 1_000_000},
+		},
+		// Le slot 100 (joueur 111) CALE l'horloge du film sur celle du match — sans lui, aucune
+		// fenetre de participation n'est exprimable (cf. l'en-tete de identity_registry_scoreboard.go).
+		deaths: []replay.Death{
+			{XUID: 111, Gamertag: "MORTEL", TimeMS: 4_000},
+			{XUID: 111, Gamertag: "MORTEL", TimeMS: 23_000},
+		},
+		idx: replay.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 9}, Readings: 26},
+	}
+	arrivee222 := int64(10_000)
+	ids := MatchIdentities{
+		XUIDs: []string{"111", "222"},
+		Participants: []replay.Participant{
+			{ID: "111"},
+			{ID: "bid(7.0)"},
+			{ID: "222", JoinedInProgress: true, JoinMatchMS: &arrivee222},
+		},
+	}
+	bots := []replay.BotIdentity{{FilmIndex: 9, Name: "343 Doomfruit [bot]", BotID: 7}}
+
+	in := entreeDuRegistre(l, ids, bots, "m1")
+	reg := replay.BuildIdentityRegistry(in)
+
+	var viesDe222 []replay.VieNommee
+	for _, v := range reg.ViesNommees() {
+		if v.XUID == 0 {
+			t.Fatalf("une vie sans xuid a atteint ViesNommees : %+v — les bots n'ont pas de xuid "+
+				"et n'entrent jamais dans match_lives", v)
+		}
+		if v.XUID == 222 {
+			viesDe222 = append(viesDe222, v)
+		}
+	}
+	if len(viesDe222) != 1 {
+		t.Fatalf("vies nommees pour 222 = %d, attendu 1 (%+v) — sans Bots/Participants au "+
+			"registre, le siege partage attribue AUSSI la vie du bot (avant l'arrivee) a "+
+			"l'humain", len(viesDe222), viesDe222)
+	}
+	if viesDe222[0].NomPar != replay.NomParTableauAPI {
+		t.Fatalf("nomPar = %q, attendu %q (la vie doit venir du DEPARTAGE par le tableau, pas du "+
+			"lien direct)", viesDe222[0].NomPar, replay.NomParTableauAPI)
 	}
 }
