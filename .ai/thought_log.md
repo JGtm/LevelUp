@@ -104868,3 +104868,106 @@ indexer sur le tag ecrirait deux regles pour une connaissance et resterait muet 
 troisieme face. Priorite apres `NOM` et `PORTEUR`, avant `CLASSE`, prouvee par test negatif.
 Verifier que la regle porte bien la `weapon_key` (sinon icone gagnee, ligne de stats perdue) et
 SUPPRIMER la regle `BANQUE veh_un_scorpion`, inerte, dans le meme commit.
+## [2026-09-10] Kill feed : genre PORTEUR — le Warthog et le Gungoose retrouvent leur icone
+
+**Statut** : Complete cote code et tests ; etape « voir a l ecran » et livraison ouvertes.
+Worktree `LevelUp-wt-killfeed-porteur`, branche `wt/killfeed-porteur` depuis `feat/v75`.
+Plan : `.ai/V7.5/PLAN_ICONE_PORTEUR_KILLFEED_2026-09-10.md`.
+
+**Point de depart** : question utilisateur — pourquoi le fil du rejeu n affiche ni Gungoose ni
+Warthog a mitrailleuse. Ce n etait pas un probleme d assets : les vignettes 26 et 29 sont
+extraites et nommees depuis le 2026-08-09.
+
+**Decision technique principale** : `rules.tsv` s indexait, pour les vehicules, sur la RACINE DE
+BANQUE SONORE. Or une ligne de classe VEHICULE de `labels.tsv` porte DEUX identifiants, et la
+banque est le moins fin des deux : elle nomme l ARME (que plusieurs engins partagent), quand le
+tag `vehi` nomme le PORTEUR (unique). Ajout d un cinquieme genre de regle, `PORTEUR`, indexe sur
+le `vehi`, prioritaire sur `BANQUE`. Extraction par regex sur le champ `detail`, comme `BANQUE`
+et `GGGL` — pas de nouvelle colonne, donc pas de regeneration de `labels.tsv` depuis le jeu.
+
+**Le point de rupture, identifie avant de coder** : `racineUnique` ne suffit pas. Sur
+« vehi 003f00c7 +1 » la regex ne voit qu un tag et le declarerait unique, alors que la ligne
+annonce N+1 porteurs. Garde explicite du marqueur `+N` — sans elle, une regle deborderait en
+silence. Elle sert deja : elle rejette `d2ffec3f` (deux porteurs).
+
+**Resultats observes** (mesure `cmd/diag_q` en lecture seule sur la vue
+`match_kill_events_latest` : 138 807 morts, 1384 matchs) :
+- `382cafaf` (vehi `dd7f9102`, Warthog mitrailleuse) : **173 morts**, qui affichaient
+  `killfeed-05` — la tourelle UNSC generique ;
+- `00015cd1` (vehi `0000d500`, tourelle FIXE de carte) : 11 morts, meme vignette. Donc 184
+  morts partageaient une icone et 94 % d entre elles etaient des Warthog mal etiquetes ;
+- `00426796` (vehi `000025aa`, Gungoose) : **62 morts**, ni icone NI ligne de statistiques ;
+- gauss (`64b925eb`) et second chassis Warthog (`4ccc20e6`) : **0 kill**. Ecartes par la mesure,
+  pas par opinion — une regle pour eux serait invérifiable a l ecran.
+
+**Erreur commise et corrigee en cours de route** : j ai d abord affirme a l utilisateur que le
+Gungoose n avait « aucun `jpt!` » et « rien a compter ». Faux : j avais confondu « pas de racine
+de banque » avec « pas de donnee ». Le tag est dans `labels.tsv:88` depuis toujours et
+`RE_LOG_KILLWEAPON.md` le nomme explicitement « l ancre Gungoose » (chaine `vcdd -> sofd ->
+sofa -> uwfa -> weap 0042678e`). Le meme journal designait cette voie comme « a etendre aux
+9 tags sans banque du catalogue » : c est fait pour le premier d entre eux. LECON : l absence de
+la cle qu on a choisie n est pas l absence d identifiant — verifier les AUTRES colonnes avant de
+conclure a l impossibilite.
+
+**Compromis assume** : la regle Gungoose est indexee sur le chassis MONGOOSE, partage avec le
+Mongoose nu (le Gungoose n a pas de `vehi` propre). Sure aujourd hui — les deux seules lignes de
+ce chassis sont des projectiles et le Mongoose nu n a pas d arme — gardee par
+`TestChassisMongooseNePorteQueDesTagsGungoose`, qui rougit au troisieme tag.
+
+**Effet de bord traite** : entrees `hinf_warthog` et `hinf_gungoose` au registre d armes +
+`weapon_names.toml` + allowlist hors arsenal. Sans elles, le Warthog aurait PERDU sa ligne de
+statistiques (il resolvait `hinf_turret_machinegun`). Cardinalites du registre mises a jour
+104 -> 106 avec justification datee : le garde-rail a joue son role, forcer l acte delibere.
+
+**Verifications** : `go test ./internal/games/...` vert ; `go vet` propre ; `gofmt` propre.
+Les TROIS nouveaux garde-rails verifies PAR TEST NEGATIF (garde `+N` retiree, priorite retiree,
+entree retiree de la liste Gungoose) — chaque fois rouge avec un message nomme, code restaure.
+`TestCouvertureParClasse` passe de 46 a 48 icones VEHICULE : le +2 est entierement le Gungoose,
+le Warthog n y apparait pas puisqu il a CHANGE d icone sans en gagner une. Un compte global ne
+voit pas un echange — c est `TestPorteurPrimeBanque` qui l epingle tag par tag.
+
+**SECONDE ERREUR, CORRIGEE LE MEME JOUR — lecture de la table brute au lieu de la vue.**
+Les effectifs ci-dessus ont d abord ete mesures sur `match_kill_events` BRUTE, qui annonce
+1 213 763 lignes : c est la faute que la regle ART numero 2 et l ADR 0026 nomment
+explicitement (« lecture = vue `_latest` UNIQUEMENT »). CINQ revisions de decodeur coexistent
+dans cette table (`killsource-2026-09-05`, `killsource-2026-07-31`, `highlight-credit-2026-08-01`,
+`credit-base-2026-08-03`, `sync-kill-feed-2026-08-02`) et la meme mort y figure plusieurs fois.
+Effectifs gonfles d un facteur ~6 (Warthog 1002 au lieu de 173, Gungoose 387 au lieu de 62,
+tourelle fixe 70 au lieu de 11). LES RAPPORTS, EUX, SONT INCHANGES — 93 % devient 94 % — donc
+AUCUNE decision du lot n est invalidee : le Warthog ecrase toujours la tourelle fixe, le gauss
+et `4ccc20e6` sont toujours a zero. Seuls les chiffres cites l etaient, dans `rules.tsv`,
+`registry.go`, `killicon_test.go` et ci-dessus ; tous corriges.
+LECON : la vue `_latest` n est pas qu une precaution d ecriture, c est la seule lecture juste —
+y compris pour une mesure jetable qui sert a justifier une decision.
+
+**AJOUT DE PERIMETRE — le Mutilator (decision utilisateur, 2026-09-10).** Decouvert en mesurant
+pour la session citations : l arme TUE 1262 fois au corpus (tags `15dcdfe3` / `b258262f` /
+`01bc8b0b`), servait deja son icone (`NOM Mutilator -> killfeed-81`) et n avait AUCUNE entree au
+registre — donc aucune ligne de statistiques d arme. Meme famille de defaut que `hinf_warthog`,
+en plus simple : pas d ambiguite, juste une entree jamais posee. Entree `hinf_mutilator` +
+famille `mutilator` + libelle FR/EN + `weapon_key` sur la regle existante.
+Classe `shoulder` et role `shotgun` sont DEDUITS (presence aux atlas d armes, emploi au contact),
+type de degat et fabricant laisses VIDES plutot que devines — ecrit tel quel dans le commentaire.
+Libelle FR « Mutilateur » a confirmer par l utilisateur : les noms FR du jeu ne sont pas des
+translitterations (Mangler = Dechiqueteur), donc celui-ci est un choix, pas une lecture.
+
+**TROIS GARDE-RAILS PRE-EXISTANTS ONT MORDU SUR CET AJOUT, tous a raison** — c est la meilleure
+preuve que le filet du depot fonctionne :
+- `TestConcordanceAllowlistSansEntreePerimee` : la dispense « Mutilator » du 2026-09-01 disait
+  « l ajouter est une decision de catalogue, hors de ce lot ». La decision etant prise, la
+  dispense devenait perimee — retiree. Elle citait 116 morts la ou la vue `_latest` en donne
+  1262 : le lot d origine avait mesure sur un perimetre plus etroit.
+- `TestWeaponRegistry_ReferentialIntegrity` : la famille `mutilator` n existait pas au
+  referentiel. Ajoutee.
+- `TestWeaponRegistry_SeedCardinalities` : cardinalites 104 -> 107 armes, 49 -> 52 HINF,
+  52 -> 53 familles, chacune avec justification datee.
+
+**Verifications finales** : `go test ./...` (suite COMPLETE) vert, exit 0 ; `go vet` propre ;
+`gofmt` propre.
+
+**Prochaine etape** : revue adversariale du diff avant fusion vers `feat/v75`. Pas de merge vers
+`main` sans l utilisateur. Etape « voir a l ecran » ABANDONNEE : c etait un item de mon plan, pas
+une demande, et les garde-rails epinglent deja le comportement tag par tag (arbitrage utilisateur
+du 2026-09-10). A prevenir apres fusion : session « Citations pour kills vehicules », qui attend
+`hinf_warthog` / `hinf_gungoose` dans `feat/v75` et porte une allowlist datee d une entree pour
+`hinf_mutilator` — desormais sans objet, a retirer de son cote.
