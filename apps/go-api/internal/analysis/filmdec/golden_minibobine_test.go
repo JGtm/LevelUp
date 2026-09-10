@@ -58,6 +58,22 @@ package filmdec
 // mesure est au verdict E-R1 (mutation M5, `vehicleSeatBits` 6 -> 5 : tout le gate reste vert).
 // La couverture reelle de ce golden est de 29 lignes sur 35.
 //
+// # REGENERATION DU 2026-09-10 (lot 6.6) — UNE LIGNE, ET POURQUOI CE N'EST PAS UNE DERIVE
+//
+// `groundWeaponCreations` a change de digest. AUCUN BIT DU FLUX N'A BOUGE : le point 6 du
+// default-state de `ti=42` (`ECS_ReadEntityRefIndex5`) PUBLIE desormais sa reference d'entite au
+// lieu de la jeter, donc `HasRef` et `Ref` cessent d'etre uniformement faux et nuls sur cette
+// famille — et `rendreStable` rend tous les champs.
+//
+// LA PREUVE QUE LA GRAMMAIRE EST INTACTE, mesuree des DEUX COTES du changement sur CETTE bobine
+// (instrument jetable : empreinte sha256 des champs pre-existants, `Ref`/`HasRef` exclus, de
+// chaque record rendu) : `9b2dbd3166d9cf62c2f0e449deaa2ff7ffb1b90685c87b052034a901b8d27a08` pour
+// les 28 creations d'arme au sol et `0f8c60fa57e4286a5d851f149e0fbf3d0c2b248f1986e63ae4941b29c8690984`
+// pour les 38 creations d'equipement — identiques avant et apres, positions, masques,
+// `DefaultStateBits` et `AfterBit` compris. Les comptes d'ancres (141 / 170) et d'acceptees
+// (28 / 38) ne bougent pas non plus. Le detail est au rapport
+// `.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`.
+//
 // # PAS DE SKIP
 //
 // La bobine est VERSIONNEE : son absence est une panne du depot, pas une condition d'execution.
