@@ -116,7 +116,7 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 		objectivesUnnamed: nonNommes,
 		flag:              flagInput(recs, film, pont, facts),
 		vip:               vipInput(recs, isVipVariant(facts.GameVariantName)),
-		skull:             skullInput(recs, isSkullVariant(facts.GameVariantName)),
+		skull:             skullInput(recs, isSkullVariant(facts.GameVariantName), pont),
 		bomb:              bombInput(film, isBombVariant(facts.GameVariantName)),
 		statborgIdentity:  pont.identite(),
 	}
@@ -175,11 +175,30 @@ func bombInput(film *filmsource.Film, bomb bool) replay.BombInput {
 // skullInput assemble ce que le PORTEUR DU CRANE lit dans le film — les memes enregistrements
 // d'entite que la courbe de score, garde par le mode. Hors Oddball, il rend un input VIDE (ni
 // records ni Scanned) : le calque ne sera ni construit ni publie.
-func skullInput(recs []objectiveevents.StatRecord, isSkull bool) replay.SkullInput {
+//
+// LE PONT D'IDENTITE DESCEND JUSQU'ICI, comme pour le drapeau depuis le schema 42 (cf.
+// [withFlagIdentity]) — et c'est TOUT ce que ce lot change au calque. Le calque le resolvait
+// lui-meme par les seuls INSTANTS DE MORT, qui exigent TROIS instants coincidents : un joueur
+// qui meurt moins de trois fois dans la manche lui echappe par construction, son train de tics
+// etait compte `noBridge` et AUCUN intervalle n'etait publie. Mesure du 2026-09-10 sur les
+// quatre films Oddball du parc : `43716616` 2 trains perdus dont les 62,3 s du plus gros
+// porteur, `c88ec007` 3 trains (25,8 s sur un joueur), `d9781168` 1 train.
+//
+// IL N'EST DEMANDE QUE SUR UN FILM ODDBALL, et cette fonction le garde pour elle-meme : hors
+// Oddball elle ne touche pas au resolveur, si bien qu'un appelant qui n'aurait pas d'autre
+// raison de le reveiller ne le paye pas. (Dans `readFilmStats`, `statborgIdentity` le resout de
+// toute facon, tous modes confondus : ce cablage-ci ne coute donc AUCUNE resolution de plus —
+// il en economise une, celle que `attachSkullCarries` refaisait pour son compte.)
+//
+// AUCUN FAIT DE MATCH N'ENTRE DANS LE CALQUE : ce qui descend est une TABLE slot -> xuid. Sans
+// lignes de match, les completions s'abstiennent et l'artefact reste exactement celui d'avant —
+// la propriete « publiable hors ligne » est conservee.
+func skullInput(recs []objectiveevents.StatRecord, isSkull bool,
+	pont *pontParManche) replay.SkullInput {
 	if !isSkull {
 		return replay.SkullInput{}
 	}
-	return replay.SkullInput{Scanned: true, Records: recs}
+	return replay.SkullInput{Scanned: true, Records: recs, Identity: pont.identite()}
 }
 
 // vipInput assemble ce que la COURONNE VIP lit dans le film — les memes enregistrements d'entite
