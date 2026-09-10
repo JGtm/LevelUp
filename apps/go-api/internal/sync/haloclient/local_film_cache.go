@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // LocalFilmCache lit les manifestes et chunks du cache disque hérité du
@@ -41,7 +42,7 @@ func NewLocalFilmCache(rootDir string) *LocalFilmCache {
 	if rootDir == "" {
 		return nil
 	}
-	manifests := filepath.Join(rootDir, "film_manifests")
+	manifests := filmcache.ManifestsRoot(rootDir)
 	if info, err := os.Stat(manifests); err != nil || !info.IsDir() {
 		return nil
 	}
@@ -96,7 +97,7 @@ func (c *LocalFilmCache) LoadManifest(matchID string) (*CachedManifest, error) {
 	if c == nil {
 		return nil, nil
 	}
-	path := filepath.Join(c.rootDir, "film_manifests", shortID(matchID)+".json")
+	path := filmcache.ManifestPath(c.rootDir, shortID(matchID))
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -117,7 +118,7 @@ func (c *LocalFilmCache) LoadChunk(matchID string, index int) ([]byte, error) {
 	if c == nil {
 		return nil, nil
 	}
-	path := filepath.Join(c.rootDir, "film_chunks", shortID(matchID), fmt.Sprintf("chunk_%02d.bin", index))
+	path := filepath.Join(filmcache.ChunkDir(c.rootDir, shortID(matchID)), fmt.Sprintf("chunk_%02d.bin", index))
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

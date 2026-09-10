@@ -41,6 +41,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 )
 
@@ -219,7 +220,7 @@ func decoder(film, cache string) (*rapport, error) {
 // un chemin tel quel. Rend aussi le nom court a afficher.
 func resoudre(film, cache string) (dir, name string) {
 	if len(film) == shortIDLen && !strings.ContainsAny(film, `/\.`) {
-		return filepath.Join(cache, "film_chunks", film), film
+		return filmcache.ChunkDir(cache, film), film
 	}
 	return film, filepath.Base(strings.TrimRight(filepath.Clean(film), `/\`))
 }

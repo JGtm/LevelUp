@@ -162,6 +162,12 @@ func ChunkDir(root, shortID string) string {
 // ce qui est disponible localement.
 func ChunksRoot(root string) string { return filepath.Join(root, chunksDir) }
 
+// ManifestsRoot rend le repertoire qui contient TOUS les manifestes (un fichier json par
+// film). Symetrique de [ChunksRoot] — les deux existent pour que plus aucun appelant n'ait
+// besoin de connaitre les noms `film_manifests`/`film_chunks` (garde-rail
+// `internal/archlint/no_hardcoded_film_cache_dirs_test.go`).
+func ManifestsRoot(root string) string { return filepath.Join(root, manifestsDir) }
+
 // ManifestPath rend le chemin du manifeste d'un film.
 func ManifestPath(root, shortID string) string {
 	return filepath.Join(root, manifestsDir, shortID+".json")
