@@ -104971,3 +104971,34 @@ une demande, et les garde-rails epinglent deja le comportement tag par tag (arbi
 du 2026-09-10). A prevenir apres fusion : session « Citations pour kills vehicules », qui attend
 `hinf_warthog` / `hinf_gungoose` dans `feat/v75` et porte une allowlist datee d une entree pour
 `hinf_mutilator` — desormais sans objet, a retirer de son cote.
+
+## [2026-09-10] Artilleur de Warthog et de Gungoose — les deux derniers cablables
+
+**Statut** : Complete.
+
+**Pourquoi ils manquaient au premier passage** : leur source n'etait pas atteignable. Le
+Warthog tire depuis une TOURELLE dont la racine de banque sonore est partagee avec la tourelle
+FIXE de carte (une citation « Artilleur de Warthog » aurait donc compte les deux, libelle faux
+ecarte par l'utilisateur le matin meme) ; le Gungoose, lui, n'a AUCUNE banque sonore — la voie
+par banque ne pouvait rien pour lui, jamais.
+
+**Ce qui a leve les deux** : le lot kill feed `PORTEUR`, fusionne le meme jour, indexe sur le
+tag `vehi` du PORTEUR et pose `hinf_warthog` / `hinf_gungoose` au registre. Rien a produire
+cote visuel : les deux images « Artilleur de » dormaient au depot depuis le catalogue Halo 5,
+comme les six premieres.
+
+**Livre** : deux citations `weapon_stat` (`weapon_kills:Warthog`, `weapon_kills:Gungoose`),
+paliers 5,10,15,25,50 (arbitrage utilisateur maintenu), rattachees a `vehicle_mastery` qui
+passe de 9 a 17 enfants. Suite Go complete verte (171 paquets, 0 echec).
+
+**Arbitrage utilisateur a retenir pour la suite** : la difficulte d'obtention d'une citation
+n'est PAS un critere de decision. « Je m'en bats les couilles que ce soit difficile a rafler,
+on code une app. » Le seul critere est : la source est-elle mesurable et le visuel existe-t-il.
+Ne plus proposer d'arbitrage de paliers fonde sur des taux d'obtention.
+
+**Reste ouvert** : le canon du Scorpion (335 frags non attribues, deux tags jumeaux sans
+etiquette, preuve humaine faite sur le match 5faa6b74). Conception arretee : genre de regle
+indexe sur le tag d'EFFET (`proj ac954d50`) et non sur les deux tags `jpt!` — les jumeaux sont
+un seul fait vu deux fois. Priorite apres NOM et PORTEUR, avant CLASSE, prouvee par test
+negatif ; verifier que la regle porte la `weapon_key` ; supprimer la regle `BANQUE
+veh_un_scorpion` devenue inerte dans le meme commit.

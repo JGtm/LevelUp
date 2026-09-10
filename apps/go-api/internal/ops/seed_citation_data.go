@@ -3,9 +3,9 @@ package ops
 // seed_citation_data.go — table de donnees: mapping medaille -> citation.
 // Littéral de données (exempt de la regle 80L/fonction : data table).
 
-// defaultCitationMappings — 104 règles citations (88 portées de l'ancien
+// defaultCitationMappings — 106 règles citations (88 portées de l'ancien
 // scripts/populate_citation_mappings.py, + 10 citations d'objectif v7.2.1,
-// + 6 « Artilleur de » véhicule le 2026-09-10).
+// + 8 « Artilleur de » véhicule le 2026-09-10).
 //
 // Catégories : Mode de jeu, Multijoueur, Spartan Companies, Véhicule, Arme,
 // Ennemi (PVE) + composites.
@@ -275,6 +275,25 @@ func defaultCitationMappings() []CitationMapping {
 			ImagePath:   wpH5 + "H5G_citation_Artilleur_de_warthog_lance-roquettes.png",
 			Category:    citationCatVehicule,
 			Description: "Éliminez des Spartans avec l'armement du Warthog lance-roquettes.",
+			TierTargets: tierTargets5_10_15_25_50, Subcategory: citationSubGeneral},
+		// AJOUT 2026-09-10, second temps. Ces deux-là manquaient au premier passage parce que
+		// leur source n'était pas atteignable : le Warthog tire depuis une TOURELLE dont la
+		// racine de banque est partagée avec la tourelle fixe de carte, et le Gungoose n'a
+		// AUCUNE banque sonore. Le lot kill feed `PORTEUR` (fusionné le même jour) a posé un
+		// genre de règle indexé sur le tag `vehi` du porteur, qui lève les deux cas d'un coup
+		// et pose `hinf_warthog` / `hinf_gungoose` au registre. Les deux images « Artilleur
+		// de » étaient déjà au dépôt depuis le catalogue Halo 5.
+		{Norm: "warthog_gunner", Display: "Artilleur de Warthog", MappingType: mappingTypeWeaponStat,
+			StatName: "weapon_kills:Warthog", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Artilleur_de_warthog.png",
+			Category:    citationCatVehicule,
+			Description: "Éliminez des Spartans avec l'armement du Warthog.",
+			TierTargets: tierTargets5_10_15_25_50, Subcategory: citationSubGeneral},
+		{Norm: "gungoose_gunner", Display: "Artilleur de Gungoose", MappingType: mappingTypeWeaponStat,
+			StatName: "weapon_kills:Gungoose", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Artilleur_de_gungoose.png",
+			Category:    citationCatVehicule,
+			Description: "Éliminez des Spartans avec l'armement du Gungoose.",
 			TierTargets: tierTargets5_10_15_25_50, Subcategory: citationSubGeneral},
 
 		{Norm: "frag_grenade", Display: "Grenade à fragmentation", MappingType: mappingTypeMedal, MedalID: 2648272972, Enabled: true,
@@ -735,13 +754,14 @@ func defaultCitationMappings() []CitationMapping {
 			Description:       "Obtenez toutes les citations de grenade.",
 			Subcategory:       "Grenade"},
 		{Norm: "vehicle_mastery", Display: "Maîtrise de véhicule", MappingType: mappingTypeComposite,
-			// Neuf enfants d'origine + les six « Artilleur de » du 2026-09-10. Le max du
-			// composite passe donc de 9 à 15 : la progression déjà écrite reste valide
+			// Neuf enfants d origine + les HUIT « Artilleur de » du 2026-09-10 (six au premier
+			// passage, Warthog et Gungoose une fois leur source atteignable). Le max du
+			// composite passe donc de 9 à 17 : la progression déjà écrite reste valide
 			// (elle compte des enfants masterisés, pas un total brut), mais le palier
 			// final recule pour tout le monde. Un re-seed impose le backfill
 			// `--citations-recompute-all` (docs/COMMENDATIONS.md), sans quoi les six
 			// nouveaux enfants restent à zéro sur l'historique.
-			CompositeChildren: `["splatter","driver","wraith_destroyer","banshee_destroyer","ghost_destroyer","mongoose_destroyer","scorpion_destroyer","warthog_destroyer","wasp_destroyer","ghost_gunner","banshee_gunner","wraith_gunner","scorpion_gunner","wasp_gunner","rockethog_gunner"]`,
+			CompositeChildren: `["splatter","driver","wraith_destroyer","banshee_destroyer","ghost_destroyer","mongoose_destroyer","scorpion_destroyer","warthog_destroyer","wasp_destroyer","ghost_gunner","banshee_gunner","wraith_gunner","scorpion_gunner","wasp_gunner","rockethog_gunner","warthog_gunner","gungoose_gunner"]`,
 			Enabled:           true,
 			ImagePath:         wpH5 + "Vehicle_Mastery.png",
 			Category:          citationCatVehicule,
@@ -807,6 +827,7 @@ var citationDisplayEN = map[string]string{
 	"frag_grenade":        "Frag Grenade",
 	"ghost_destroyer":     "Ghost Destroyer",
 	"ghost_gunner":        "Ghost Gunner",
+	"gungoose_gunner":     "Gungoose Gunner",
 	"grenade_mastery":     "Grenade Mastery",
 	"grunt_slayer":        "Grunt Slayer",
 	"headshot":            "Headshot",
@@ -828,6 +849,7 @@ var citationDisplayEN = map[string]string{
 	"strongholds_victory": "Stronghold Victory",
 	"vehicle_mastery":     "Vehicle Mastery",
 	"warthog_destroyer":   "Warthog Destroyer",
+	"warthog_gunner":      "Warthog Gunner",
 	"wasp_destroyer":      "Wasp Destroyer",
 	"wasp_gunner":         "Wasp Gunner",
 	"wraith_destroyer":    "Wraith Destroyer",
@@ -1021,6 +1043,8 @@ var citationDescriptionEN = map[string]string{
 	"scorpion_gunner":  "Kill enemy Spartans with the Scorpion's weapons.",
 	"wasp_gunner":      "Kill enemy Spartans with the Wasp's weapons.",
 	"rockethog_gunner": "Kill enemy Spartans with the Rockethog's weapons.",
+	"warthog_gunner":   "Kill enemy Spartans with the Warthog's weapons.",
+	"gungoose_gunner":  "Kill enemy Spartans with the Gungoose's weapons.",
 	// ── Éliminations / natives Infinite-only (trad fidèle du FR) ────────────────
 	"avenger":         "Kill the enemy responsible for your previous death.",
 	"sentinel_slayer": "Kill Sentinels.",
