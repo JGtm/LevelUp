@@ -299,7 +299,7 @@ func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *
 		writeError(ctx, w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
-	blob, err := svc.MapBackgroundImageForMap(ctx, mapID)
+	blob, contentType, err := svc.MapBackgroundImageForMap(ctx, mapID)
 	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
 			messageSansFond)
@@ -310,8 +310,9 @@ func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *
 		writeError(ctx, w, http.StatusInternalServerError, "tactical_error", err.Error())
 		return
 	}
-	// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9.
-	servirBlobAvecETag(w, r, blob, "image/png", "private, max-age=3600")
+	// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9. Format
+	// (PNG ou WebP) porté par la donnée, pas par cette route (D4).
+	servirBlobAvecETag(w, r, blob, contentType, "private, max-age=3600")
 }
 
 // replayPourCarte VALIDE le map_id puis resout le service de rejeu du joueur.

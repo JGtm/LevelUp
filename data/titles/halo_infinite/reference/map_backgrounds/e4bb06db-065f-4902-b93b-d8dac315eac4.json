@@ -5,7 +5,7 @@
     "Dredge",
     "dredge_map"
   ],
-  "image": "e4bb06db-065f-4902-b93b-d8dac315eac4.png",
+  "image": "e4bb06db-065f-4902-b93b-d8dac315eac4.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T18:39:49.8557741Z",
   "style": "encre",

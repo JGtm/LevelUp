@@ -5,7 +5,7 @@
     "Vallaheim Firefight",
     "vallaheim_firefight_map"
   ],
-  "image": "e8268e75-6583-42ad-9e0c-2d2f043f5f0f.png",
+  "image": "e8268e75-6583-42ad-9e0c-2d2f043f5f0f.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T12:16:47.4438948Z",
   "style": "encre",

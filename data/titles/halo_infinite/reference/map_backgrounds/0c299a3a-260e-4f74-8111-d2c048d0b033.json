@@ -5,7 +5,7 @@
     "Megapolis",
     "0c299a3a-260e-4f74-8111-d2c048d0b033_map"
   ],
-  "image": "0c299a3a-260e-4f74-8111-d2c048d0b033.png",
+  "image": "0c299a3a-260e-4f74-8111-d2c048d0b033.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T10:12:17.0777609Z",
   "style": "encre",

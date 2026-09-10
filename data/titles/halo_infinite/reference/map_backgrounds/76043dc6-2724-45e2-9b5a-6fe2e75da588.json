@@ -5,7 +5,7 @@
     "Elevation",
     "elevation_map"
   ],
-  "image": "76043dc6-2724-45e2-9b5a-6fe2e75da588.png",
+  "image": "76043dc6-2724-45e2-9b5a-6fe2e75da588.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T18:56:41.8968481Z",
   "style": "encre",

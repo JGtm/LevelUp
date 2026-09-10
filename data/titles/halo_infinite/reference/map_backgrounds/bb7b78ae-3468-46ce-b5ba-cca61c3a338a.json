@@ -5,7 +5,7 @@
     "High Ground",
     "high_ground_map"
   ],
-  "image": "bb7b78ae-3468-46ce-b5ba-cca61c3a338a.png",
+  "image": "bb7b78ae-3468-46ce-b5ba-cca61c3a338a.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T14:53:11.2923575Z",
   "style": "encre",

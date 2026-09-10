@@ -5,7 +5,7 @@
     "Domicile",
     "domicile_map"
   ],
-  "image": "921aebb1-783d-45e4-bacd-7ad869fa8dae.png",
+  "image": "921aebb1-783d-45e4-bacd-7ad869fa8dae.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T08:53:57.1516033Z",
   "style": "encre",

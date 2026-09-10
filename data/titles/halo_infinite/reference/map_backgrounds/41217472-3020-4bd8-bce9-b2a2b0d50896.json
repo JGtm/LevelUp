@@ -5,7 +5,7 @@
     "Refuge",
     "refuge_map"
   ],
-  "image": "41217472-3020-4bd8-bce9-b2a2b0d50896.png",
+  "image": "41217472-3020-4bd8-bce9-b2a2b0d50896.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T13:59:45.5637949Z",
   "style": "encre",

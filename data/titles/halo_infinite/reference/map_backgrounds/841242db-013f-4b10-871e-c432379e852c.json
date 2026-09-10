@@ -5,7 +5,7 @@
     "Courtyard",
     "841242db-013f-4b10-871e-c432379e852c_map"
   ],
-  "image": "841242db-013f-4b10-871e-c432379e852c.png",
+  "image": "841242db-013f-4b10-871e-c432379e852c.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T11:52:32.748275Z",
   "style": "encre",

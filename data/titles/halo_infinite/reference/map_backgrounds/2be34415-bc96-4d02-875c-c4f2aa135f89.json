@@ -5,7 +5,7 @@
     "Nemesis",
     "nemesis_map"
   ],
-  "image": "2be34415-bc96-4d02-875c-c4f2aa135f89.png",
+  "image": "2be34415-bc96-4d02-875c-c4f2aa135f89.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:28:04.2725867Z",
   "style": "encre",

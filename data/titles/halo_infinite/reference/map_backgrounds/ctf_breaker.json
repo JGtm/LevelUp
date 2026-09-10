@@ -7,7 +7,7 @@
     "breaker_heavies_map",
     "breaker_map"
   ],
-  "image": "ctf_breaker.png",
+  "image": "ctf_breaker.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T19:00:29.0645459Z",
   "style": "encre",

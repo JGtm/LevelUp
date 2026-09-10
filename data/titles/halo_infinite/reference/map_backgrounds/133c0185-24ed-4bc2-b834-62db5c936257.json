@@ -5,7 +5,7 @@
     "Rat's Nest",
     "rat's_nest_map"
   ],
-  "image": "133c0185-24ed-4bc2-b834-62db5c936257.png",
+  "image": "133c0185-24ed-4bc2-b834-62db5c936257.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T11:39:45.2642481Z",
   "style": "encre",

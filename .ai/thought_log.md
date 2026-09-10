@@ -33,6 +33,24 @@ distance »). Decouvertes : avertissements React de cles dupliquees sur le selec
 
 **Conclusion / prochaine etape.** Attendre la livraison des etapes 2-5 WebP (sauvegarde des PNG
 avant conversion), verifier en navigateur Tactique + rejeu + export, revue 3.R, gate-push, CI.
+## [2026-09-10] Fonds de carte WebP — etapes 2 a 5 livrees, 109 fonds convertis sans perte (37,2 %) — Complete (verification navigateur : superviseur)
+
+**Decision technique principale.** Lecture du fond independante du format cote serveur (D3),
+outils hors ligne PNG + WebP (D6), conversion des 109 fonds par `cmd/mapfond-webp -convertir`
+avec refus d'ecrire sur tout aller-retour non identique, sidecars `.json` repointes sur le
+`.webp`, `.gitattributes` `*.webp binary`. Les fonds sont des assets VERSIONNES
+(`data/titles/halo_infinite/reference/map_backgrounds/`) : la conversion est un commit, pas
+une operation de production ; sauvegarde integrale des PNG dans
+`data/backups/map_backgrounds-png-2026-09-10/` (109 + 109, `diff -rq` identique).
+
+**Resultats observes.** 109/109 identiques a l'octet apres re-decodage, 45 686 553 → 28 689 086
+octets (37,2 %), 81 s. Recette export : 12e verdict `fondDeCarte` ajoute a
+`scripts/recette_export_rejeu.js` ; les cinq verdicts visuels sont au superviseur (navigateur).
+L'executant s'est arrete en attendant un relecteur qu'il avait lance lui-meme (hors consigne :
+une revue par vague, 3.R) ; la cloture est reprise par le superviseur.
+
+**Conclusion / prochaine etape.** Gates, fusion dans `feat/v75`, verification navigateur
+(Tactique, rejeu, export), revue 3.R, gate-push, CI.
 
 ---
 
@@ -104251,3 +104269,106 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   consigne explicite (revue adversariale une fois par vague, par le superviseur) -- non
   statues ici, a traiter par le superviseur en cloture de vague.
 - Chantier B (B0-B4) termine cote executant. Prochaine etape : revue superviseur (B4.2, R1-R4).
+
+## [2026-09-10] Fonds de carte WebP — Etapes 2 et 3 (Complete)
+- Decision technique principale : le format du fond devient une propriete de la DONNEE (D3)
+  et non du code. `readBackgroundImage` (internal/service/replay_map_background.go) lit
+  desormais `bg.Image` (nom de fichier du sidecar) au lieu de reconstruire `<cle>.png` en
+  dur, avec une garde de surete (filepath.Base + liste blanche d'extensions {.png, .webp})
+  sur le meme modele que `cleDeFondSure`. `MapBackgroundImage`/`MapBackgroundImageForMap`
+  rendent maintenant `([]byte, string, error)` (le type MIME) ; repercute sur
+  `internal/port/services.go` et les deux handlers (replay.go, tactical.go), qui passent le
+  type reel a `servirBlobAvecETag`. La route HTTP reste `background.png` (D4) quel que soit
+  le format servi.
+- TDD prouve sur la garde de securite : `TestReadBackgroundImage_RefuseImageHostile`
+  (replay_map_background_traversee_test.go) a d'abord tourne ROUGE sur le code d'avant
+  l'etape (le PNG legitime existait a cote, donc l'ancien code le servait quand meme en
+  ignorant `Image`), puis VERT apres implementation.
+- Etape 3 (outils hors ligne) : `image.Decode` + imports d'enregistrement de decodeur
+  (`_ "golang.org/x/image/webp"`, `image/png` deja present) dans `mapfond-planche`,
+  `mapfond-cadrage` et `internal/mapdecoupe/masque.go`. `mapfond-cadrage` a aussi du
+  remplacer son glob `*.png` en dur par un glob PNG+WebP (fichiersFondDeCarte) — sans quoi
+  l'outil aurait compile mais ne trouve plus rien apres la conversion. Nouveau test
+  `TestChargeMasqueDecodeUnWebPSansPerte` : encode avec le MEME encodeur que l'outil de
+  l'etape 0 (nativewebp), decode via ChargeMasque, verifie dimensions + alpha.
+- Decouverte traitee dans le lot (pas un report) : `oracle_corpus_test.go` (corpus.masque())
+  construisait aussi un chemin `.png` en dur ; apres l'etape 4 cet oracle serait passe en
+  SKIP silencieux (TestOracleIoUContreLeDecoupePOC traite l'absence de masque comme cas
+  nominal). Corrige pour lire `Image` depuis le sidecar, comme la production. Verifie sur
+  pieces : IoU median 0,871 (seuil 0,85) mesure apres correction, sur les fonds encore PNG a
+  ce stade.
+- Decouverte NON traitee (hors perimetre des 5 fichiers de l'etape 3, hors gate de ce lot) :
+  `cmd/mapcallouts-build/decoupe_masque.go:46` a le meme defaut (`res.MapBackgroundPath`
+  suppose `.png`) mais c'est un outil de PRODUCTION de contenu (cuisson des callouts), pas
+  exerce par ce lot ni par la recette export. Consignee au plan pour correction avant
+  prochaine execution de cet outil.
+- Resultats observes : `go build ./...` + `go vet ./...` verts (retente une fois, flakiness
+  connue du linker mingw sous Windows sur des binaires lies a duckdb-static, sans rapport
+  avec ce lot) ; `go test ./...` 0 FAIL sur l'ensemble du module ; golangci-lint 0 issues sur
+  les paquets touches (apres extraction de `mimeImagePNG`/`mimeImageWebP` en constantes,
+  1 issue goconst au premier passage) ; `git status --porcelain data/` vide avant et apres
+  les deux etapes.
+- Prochaine etape : Etape 4 (conversion des 109 fonds avec sauvegarde prealable des PNG,
+  `data/backups/map_backgrounds-png-2026-09-10/`), puis Etape 5 (recette export, 12 verdicts
+  d'un coup).
+
+## [2026-09-10] Fonds de carte WebP — Etape 4, conversion reelle (Complete)
+- Decision technique principale : sauvegarde integrale (109 PNG + 109 JSON) dans
+  `data/backups/map_backgrounds-png-2026-09-10/` (repertoire absent du worktree, cree ; verifie
+  `diff -rq` identique a la source AVANT toute conversion), puis
+  `go run ./cmd/mapfond-webp -convertir` (LEVELUP_REPO_ROOT sur le worktree). 109/109 convertis,
+  0 refus d'ecriture. Verification INDEPENDANTE (decodage des 109 webp publies + comparaison
+  pixel a pixel contre les 109 PNG de sauvegarde, via un test jetable non commite, supprime
+  ensuite) : 109/109 identiques au bit pres. Gain reel 37,2 % (45 686 553 -> 28 689 086 octets),
+  coherent avec les 38,4 % mesures sur l'echantillon des 5 plus gros fonds a l'etape 0.
+- Decouverte majeure, corrigee dans le lot (bloquait le gate) : caching `go test` MASQUAIT une
+  regression. Un `go test ./...` normal (sans -count=1) apres la conversion est ressorti VERT y
+  compris sur `TestMapBackground_DonneesReelles` (ecrite a l'etape 2), qui affirmait pourtant
+  encore `mime == image/png` sur l'asset REEL de Cliffhanger desormais servi en webp — resultat
+  CACHE d'avant la conversion, faux vert. `go clean -testcache && go test ./... -count=1` a
+  demasque l'echec. Lecon consignee au plan : apres toute modification de `data/`, gate go test
+  systematiquement avec -count=1 (symetrique du piege tsc -b incrementalcote web).
+- Deux autres regressions reelles trouvees (paquets hors perimetre des etapes 2-3 mais qui
+  supposaient `.png` en dur sur `map_backgrounds/`) et corrigees, car bloquantes pour le gate
+  `go test ./...` de cette etape : `internal/himap/cle_forge_test.go`
+  (TestFondForgeJamaisSousCleModule) et `internal/analysis/replay/callouts_catalog_test.go`
+  (TestCatalogueCalloutsLivreEstExploitable). Les trois corrections acceptent PNG OU WebP,
+  jamais une extension supposee.
+- Amendement d'execution vs le texte du plan (qui prevoyait un commit atomique de l'etape 4) :
+  consigne explicite du superviseur pour ce lot — les fichiers de `data/` ne font PARTIE
+  D'AUCUN commit (seul le journal, dans `.ai/`, est commite). L'etat converti reste donc en
+  working tree non commite a la cloture de cette session (109 png supprimes, 109 json
+  modifies, 109 webp nouveaux, tous suivis par git car `data/titles/.../reference/` EST
+  versionne en clair — verifie : `data/backups/` lui n'apparait meme pas dans `git status`,
+  bien ignore).
+- Decouverte non bloquante (environnement, pas ce lot) : `golangci-lint run
+  --new-from-merge-base=feat/v75 ./...` (module ENTIER) echoue a typechecker
+  `internal/himodule` -> `internal/ooz` sur ce poste Windows (cgo/g++ mal cable pour
+  l'invocation interne de golangci-lint), reproductible avant ET apres ce lot, alors que
+  `go build ./...` et `go test ./...` compilent et executent ooz sans erreur. Les lints
+  SCOPES aux paquets reellement modifies sont tous a 0 issue.
+- Resultats observes : `go test ./... -count=1` 0 FAIL (171 paquets testes) ; `make
+  go-api-test` vert ; golangci-lint scope (himap, analysis/replay, service) 0 issues ; cote
+  web, `tsc -b --force` exit 0 et `vitest run src/features/match-replay src/features/tactical
+  src/lib/replay` : 3025 passed / 3 skipped (pre-existant) / 0 failed.
+- Prochaine etape : Etape 5, recette export video (12 verdicts d'un coup) + controle Tactique.
+
+## [2026-09-10] Fonds de carte WebP — Etape 5, recette export (Complete cote script, [~] superviseur cote navigateur)
+- Decision technique : 12e verdict `fondDeCarte` ajoute a `scripts/recette_export_rejeu.js`
+  dans la meme fonction `recetteExport`, rendu avec les 11 autres. Mesure : sur une frame de
+  JEU (pas l'ecran de fin, qui pose un voile plein cadre), histogramme quantifie (16
+  niveaux/canal, 1 pixel sur 7) de la proportion de pixels hors couleur dominante du cadre
+  (seuil 15 %). Un fond non decode laisse un cadre quasi uniforme (vide + HUD/surcouche,
+  fraction mineure connue) ; un fond decode couvre le reste de couleurs de terrain variees.
+  Verifie par `node --check` (syntaxe valide) — pas de suite de test automatisee possible
+  (jsdom ne decode pas de MP4, cf. l'en-tete du fichier).
+- Blocage constate et assume, PAS contourne silencieusement : ce worktree n'a NI base de
+  match/joueur reelle NI serveur pointe sur ses fonds convertis (seul le serveur du worktree
+  partage, port 8000, a des donnees reelles — et la consigne du lot interdit explicitement
+  d'y toucher, reservee au superviseur). L'execution reelle de la recette (12 verdicts +
+  controle visuel de la video + controle de l'onglet Tactique) est donc statuee `[~]
+  superviseur`, avec une procedure precise consignee au plan (etape par etape : conversion
+  des donnees du worktree partage prealable, vidage de cache, match Cliffhanger/ridgeline —
+  seul appariement du depot avec un artefact de rejeu reel, copie/retrait du script,
+  attendu par verdict).
+- Prochaine etape : cloture du lot (delivery-checklist, revue adversariale du diff complet).

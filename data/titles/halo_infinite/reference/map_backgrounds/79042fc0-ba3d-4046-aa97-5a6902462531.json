@@ -5,7 +5,7 @@
     "Scarlett's Landing",
     "scarlett's_landing_map"
   ],
-  "image": "79042fc0-ba3d-4046-aa97-5a6902462531.png",
+  "image": "79042fc0-ba3d-4046-aa97-5a6902462531.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:50:39.5865777Z",
   "style": "encre",

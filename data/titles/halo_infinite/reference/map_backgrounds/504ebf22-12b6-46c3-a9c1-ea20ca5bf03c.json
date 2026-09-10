@@ -5,7 +5,7 @@
     "Goliath",
     "goliath_map"
   ],
-  "image": "504ebf22-12b6-46c3-a9c1-ea20ca5bf03c.png",
+  "image": "504ebf22-12b6-46c3-a9c1-ea20ca5bf03c.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T08:55:52.8602839Z",
   "style": "encre",

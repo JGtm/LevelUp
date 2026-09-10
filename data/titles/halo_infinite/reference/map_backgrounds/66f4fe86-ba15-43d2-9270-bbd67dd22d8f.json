@@ -5,7 +5,7 @@
     "Foundry",
     "66f4fe86-ba15-43d2-9270-bbd67dd22d8f_map"
   ],
-  "image": "66f4fe86-ba15-43d2-9270-bbd67dd22d8f.png",
+  "image": "66f4fe86-ba15-43d2-9270-bbd67dd22d8f.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T11:49:17.4366111Z",
   "style": "encre",

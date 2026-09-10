@@ -5,7 +5,7 @@
     "Alpha Site",
     "6c433ed1-d56b-4ea1-9520-423ddf8e0f11_map"
   ],
-  "image": "6c433ed1-d56b-4ea1-9520-423ddf8e0f11.png",
+  "image": "6c433ed1-d56b-4ea1-9520-423ddf8e0f11.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-28T12:27:03.7410283Z",
   "style": "encre",

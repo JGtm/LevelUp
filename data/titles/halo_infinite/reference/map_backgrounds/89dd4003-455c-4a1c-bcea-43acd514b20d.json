@@ -5,7 +5,7 @@
     "Dawnbreaker",
     "dawnbreaker_map"
   ],
-  "image": "89dd4003-455c-4a1c-bcea-43acd514b20d.png",
+  "image": "89dd4003-455c-4a1c-bcea-43acd514b20d.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:55:57.1424792Z",
   "style": "encre",

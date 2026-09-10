@@ -5,7 +5,7 @@
     "Prism",
     "prism_sgh_crystalcaves"
   ],
-  "image": "sgh_crystalcaves.png",
+  "image": "sgh_crystalcaves.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-26T18:12:45.3304618Z",
   "style": "encre",

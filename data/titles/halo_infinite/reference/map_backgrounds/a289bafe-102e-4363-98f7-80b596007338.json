@@ -5,7 +5,7 @@
     "Obituary",
     "obituary_map"
   ],
-  "image": "a289bafe-102e-4363-98f7-80b596007338.png",
+  "image": "a289bafe-102e-4363-98f7-80b596007338.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T23:01:27.6595415Z",
   "style": "encre",

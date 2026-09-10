@@ -39,12 +39,15 @@ func TestMapBackgroundForMap_ParNom(t *testing.T) {
 		t.Errorf("la carte n'a pas ete demandee au registre : %v", repo.vu)
 	}
 
-	blob, err := svc.MapBackgroundImageForMap(context.Background(), "asset-cliffhanger")
+	blob, mime, err := svc.MapBackgroundImageForMap(context.Background(), "asset-cliffhanger")
 	if err != nil {
 		t.Fatalf("MapBackgroundImageForMap: %v", err)
 	}
 	if len(blob) < 4 || string(blob[:4]) != "\x89PNG" {
 		t.Errorf("les octets servis ne sont pas ceux du fichier : %q", blob)
+	}
+	if mime != mimeImagePNG {
+		t.Errorf("mime = %q, attendu image/png", mime)
 	}
 }
 
@@ -78,7 +81,7 @@ func TestMapBackgroundForMap_SansFond(t *testing.T) {
 	if _, err := svc.MapBackgroundForMap(context.Background(), "asset-inconnue"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Fatalf("err = %v, attendu ErrMapBackgroundNotAvailable", err)
 	}
-	if _, err := svc.MapBackgroundImageForMap(context.Background(), "asset-inconnue"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+	if _, _, err := svc.MapBackgroundImageForMap(context.Background(), "asset-inconnue"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Fatalf("err image = %v, attendu ErrMapBackgroundNotAvailable", err)
 	}
 }
@@ -94,7 +97,7 @@ func TestMapBackgroundImageForMap_ImageManquante(t *testing.T) {
 	if _, err := svc.MapBackgroundForMap(context.Background(), "asset-cliffhanger"); err != nil {
 		t.Fatalf("le calage doit rester lisible : %v", err)
 	}
-	if _, err := svc.MapBackgroundImageForMap(context.Background(), "asset-cliffhanger"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+	if _, _, err := svc.MapBackgroundImageForMap(context.Background(), "asset-cliffhanger"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Fatalf("err = %v, attendu ErrMapBackgroundNotAvailable", err)
 	}
 }
