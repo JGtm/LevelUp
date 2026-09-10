@@ -104681,3 +104681,75 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
 - Prochaine etape : revue adversariale (skill `adversarial-review`) et delivery-checklist a la
   cloture de la vague 4 par le superviseur (regle "une fois par vague", pas par lot) ; pas de
   commit sur main, pas de fusion — laisse au superviseur.
+
+## [2026-09-10] Citations « Artilleur de » — frags a l'armement de vehicule
+
+**Statut** : Complete (code + garde-rail) ; re-seed et backfill NON joues, en attente du
+feu vert utilisateur.
+
+**Question d'origine** : existe-t-il une citation pour les frags TIRES depuis un vehicule
+(pas les ecrasements) ? Reponse mesuree : non. Le catalogue vehicule couvrait l'ecrasement
+(`splatter`, `road_trip`, `lawnmower` -> medaille 221693153), la medaille de pilote-assist
+(`driver` -> 2926348688) et la DESTRUCTION d'engins (`*_destroyer`). Rien sur le tir.
+
+**Decision technique principale** : aucun code de mesure a ecrire. Depuis la bascule du
+2026-09-01 (`sync/citations_weapons_source.go`), le `weapon_stat` du moteur de citations est
+alimente par la SOURCE DE DEGAT DU FILM : `match_kill_events_latest.source_tag` -> cle de
+registre -> nom canonique EN, sans aucun filtre de classe. Les cles de chassis
+(`hinf_ghost`, `hinf_banshee`, `hinf_wraith`, `hinf_scorpion`, `hinf_wasp`,
+`hinf_rockethog`) sont deja au registre et deja verrouillees hors arsenal
+(`games/weapons/off_arsenal_guard_test.go`) : elles n'emettent aucun record de degat 0xd2,
+donc aucune n'est visible de la voie historique `weapon_kills` — le non-double-comptage est
+une propriete constatee, pas une regle appliquee. Le travail se reduit donc a six lignes de
+seed + le rattachement au composite.
+
+**Resultats observes** :
+- Les 11 images `H5G_citation_Artilleur_de_*.png` existent dans
+  `static/commendations/halo_5_guardians/` depuis toujours et n'etaient referencees NULLE
+  PART dans le code (grep Go/TS/TOML : 0 occurrence). Intuition utilisateur confirmee.
+- 17 racines de banque vehicule/tourelle dans `damagetag/data/labels.tsv`. Six seulement
+  croisent une image « Artilleur de » ET une regle `killicon` : ghost, banshee, wraith,
+  scorpion, wasp, rockethog.
+- CORRECTION D'UNE ERREUR D'ANALYSE : « Apparition » est le libelle FR du WRAITH dans ce
+  projet (`weapon_names.toml:71`, decision D14 ; la citation `wraith_destroyer` s'affiche
+  deja « Destructeur d'apparitions »), pas du Phantom. L'image
+  `Artilleur_de_l'apparition.png` va donc sur `hinf_wraith`.
+- WARTHOG : pas de racine `veh_un_warthog`, et ce n'est pas un manque. Le chassis ne tue pas
+  en tirant — c'est sa TOURELLE qui tire, sous sa propre racine `tur_un_machinegun`, deja
+  pontee vers `hinf_turret_machinegun`. Les frags d'artilleur de Warthog sont donc DEJA
+  comptes, mais melanges avec ceux d'une tourelle fixe : le film nomme l'ARME, jamais le
+  PORTEUR. Decision utilisateur du 2026-09-10 : ne pas creer « Artilleur de Warthog »
+  (libelle faux). Les distinguer demande de croiser avec `biped_board_vehicle` — chantier de
+  decodage, pas un branchement.
+- GAUSS : `tur_un_gausscannon` EST present dans `labels.tsv` (le Gauss hog est en Grand
+  Combat). Ce qui manque est le pont : `rules.tsv` note « aucune vignette de canon gauss dans
+  l'atlas du kill feed » et `killicon.go:318` refuse une regle sans sprite. Meme cas pour
+  `tur_un_rocketturret` et `tur_bt_gatlingmortar`.
+- GUNGOOSE : aucune racine, ni chassis ni tourelle. Non explique.
+- Paliers retenus (decision utilisateur) : `5,10,15,25,50` — les frags a l'armement de
+  vehicule sont rares en arene, un palier aligne sur Ecrasement/Pilote (10..100) serait hors
+  d'atteinte.
+- `vehicle_mastery` passe de 9 a 15 enfants. La progression deja ecrite reste valide (le
+  composite compte des enfants masterises, pas un total brut) mais le palier final recule
+  pour tout le monde.
+
+**Garde-rail ajoute** (meme commit) : `TestCompositeChildren_ExistAsCitations` dans
+`internal/ops/seed_citation_assets_test.go`. Un enfant fantome dans un `composite_children`
+ne cassait RIEN de visible — `OverrideCompositeTotals` ignore les norms absents des mappings,
+exactement comme un enfant desactive, et le composite affiche simplement un total plus bas.
+Defaut silencieux et permanent. Verifie par test negatif : enfant bidon injecte -> rouge
+nomme ; retire -> vert.
+
+**Verifications** : `go build ./...` OK ; `go vet` OK ; `make go-api-lint` (golangci-lint,
+`--new-from-merge-base=origin/main`) 0 issue ; paquets ops/analysis/sync/games/api/domain/
+archlint verts. Les garde-rails de seed pre-existants passent et couvrent l'essentiel de ce
+lot : `TestCitationImagePaths_ExistOnDisk` (les 6 PNG existent), `TestCitationDisplayEN_*` et
+`TestCitationDescriptionEN_*` (parite FR/EN, aucun orphelin), `TestCitationNorms_Unique`,
+`TestCitationCategories_AreCanonicalKeys`.
+
+**Prochaine etape** : le seed ne prend effet qu'apres re-seed metadata + backfill
+`--citations-recompute-all` (docs/COMMENDATIONS.md) — sans quoi les six nouvelles citations
+restent a zero sur tout l'historique. NON JOUE : attend le feu vert utilisateur (touche les
+bases locales). Aucun commit demande a ce stade. Branche `feat/citations-artilleur-vehicules`
+depuis `feat/v75`.
+
