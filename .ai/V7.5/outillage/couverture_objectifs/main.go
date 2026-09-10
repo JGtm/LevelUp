@@ -43,6 +43,8 @@ func main() {
 	ecrire(*out, "vague6_couverture_parc.tsv", ctx.censusParc())
 	ecrire(*out, "vague6_stats_publiees.tsv", ctx.statsPubliees())
 	ecrire(*out, "vague6_couverture_portage.tsv", ctx.axe1Portage())
+	ecrire(*out, "vague6_couverture_crane.tsv", ctx.axe1Crane())
+	ecrire(*out, "vague6_bilan_portages.tsv", ctx.bilanPortages())
 	ecrire(*out, "vague6_couverture_zones.tsv", ctx.axe1Zones())
 	ecrire(*out, "vague6_couverture_actions.tsv", ctx.axe2Actions())
 	ecrire(*out, "vague6_identite.tsv", ctx.axe3Identite())
