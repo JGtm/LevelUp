@@ -40,6 +40,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"levelup/go-api/internal/analysis/replay"
@@ -48,6 +49,22 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/replayview"
 )
+
+// mimeImagePNG / mimeImageWebP : les deux seuls types MIME qu'un fond de carte peut
+// prendre (plan fonds WebP, D1-D6). Constantes plutôt que littéraux : le même type revient
+// côté production ET côté tests (mimeImagePNG y prouve le format historique).
+const (
+	mimeImagePNG  = "image/png"
+	mimeImageWebP = "image/webp"
+)
+
+// mimeParExtensionDeFond associe l'extension du fichier image de fond (telle que portée par
+// le sidecar, champ Image) à son type MIME. LISTE BLANCHE (plan fonds WebP, étape 2) : toute
+// autre extension est refusée par readBackgroundImage, jamais devinée ni servie telle quelle.
+var mimeParExtensionDeFond = map[string]string{
+	".png":  mimeImagePNG,
+	".webp": mimeImageWebP,
+}
 
 // MapBackground retourne le calage du fond de carte du match, dans sa forme SERVIE : le
 // sidecar est lu tel qu'il est ecrit sur disque (`analysis/replay`) puis projete sur le
@@ -64,14 +81,16 @@ func (s *replayService) MapBackground(ctx context.Context, matchID string) (*rep
 	return replayview.MapBackgroundOf(bg), nil
 }
 
-// MapBackgroundImage retourne les octets PNG du fond de carte du match.
+// MapBackgroundImage retourne les octets du fond de carte du match, et le type MIME sous
+// lequel les servir (PNG ou WebP — le format est une propriété de la donnée, pas du code,
+// D3 du plan fonds WebP).
 //
 // L'image n'est servie QUE si son sidecar est lisible : une image sans calage ne se superpose
 // à rien, et la publier laisserait croire à un fond posé au bon endroit.
-func (s *replayService) MapBackgroundImage(ctx context.Context, matchID string) ([]byte, error) {
+func (s *replayService) MapBackgroundImage(ctx context.Context, matchID string) ([]byte, string, error) {
 	key, err := s.resolveBackgroundKey(ctx, matchID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	return s.readBackgroundImage(ctx, key)
 }
@@ -94,32 +113,48 @@ func (s *replayService) MapBackgroundForMap(ctx context.Context, mapID string) (
 	return replayview.MapBackgroundOf(bg), nil
 }
 
-// MapBackgroundImageForMap retourne les octets PNG du fond d'une CARTE.
+// MapBackgroundImageForMap retourne les octets du fond d'une CARTE, et son type MIME.
 //
 // Comme sa jumelle par match, l'image n'est servie QUE si son sidecar de calage est
 // lisible : une image sans calage ne se superpose à rien.
-func (s *replayService) MapBackgroundImageForMap(ctx context.Context, mapID string) ([]byte, error) {
+func (s *replayService) MapBackgroundImageForMap(ctx context.Context, mapID string) ([]byte, string, error) {
 	key, err := s.resolveBackgroundKeyForMap(ctx, mapID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	return s.readBackgroundImage(ctx, key)
 }
 
-// readBackgroundImage lit le PNG d'une clé de fond, après avoir exigé son calage.
-func (s *replayService) readBackgroundImage(ctx context.Context, key string) ([]byte, error) {
-	if _, err := s.loadMapBackground(ctx, key); err != nil {
-		return nil, err
+// readBackgroundImage lit l'image d'une clé de fond, après avoir exigé son calage, et rend
+// son type MIME déduit de son extension.
+//
+// LE NOM DE FICHIER VIENT DU SIDECAR (champ Image, D3 du plan fonds WebP) et non plus d'une
+// extension supposée : le format devient une propriété de la donnée. C'est un contenu de
+// FICHIER, donc modifiable — même garde de sûreté que sur la clé (cleDeFondSure) : nom de
+// fichier simple (aucun `/`, `\`, pas de remontée par filepath.Base) ET extension en liste
+// blanche (mimeParExtensionDeFond). Tout autre cas est une donnée corrompue, jamais une
+// panique ni une erreur avalée en silence.
+func (s *replayService) readBackgroundImage(ctx context.Context, key string) ([]byte, string, error) {
+	bg, err := s.loadMapBackground(ctx, key)
+	if err != nil {
+		return nil, "", err
 	}
-	path := title.NewPathResolver(s.repoRoot).MapBackgroundPath(s.titleSlug, key)
+	nom := filepath.Base(bg.Image)
+	mime, connue := mimeParExtensionDeFond[strings.ToLower(filepath.Ext(nom))]
+	if nom != bg.Image || !connue {
+		slog.ErrorContext(ctx, "fond de carte : nom de fichier image refusé",
+			"image", bg.Image, "cle", key, "titleSlug", s.titleSlug)
+		return nil, "", port.ErrMapBackgroundNotAvailable
+	}
+	path := title.NewPathResolver(s.repoRoot).MapBackgroundImageFilePath(s.titleSlug, nom)
 	blob, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, port.ErrMapBackgroundNotAvailable
+		return nil, "", port.ErrMapBackgroundNotAvailable
 	}
 	if err != nil {
-		return nil, fmt.Errorf("lecture image de fond %s: %w", key, err)
+		return nil, "", fmt.Errorf("lecture image de fond %s: %w", key, err)
 	}
-	return blob, nil
+	return blob, mime, nil
 }
 
 // resolveBackgroundKey traduit le match en clé de fond.

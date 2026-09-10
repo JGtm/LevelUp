@@ -925,8 +925,22 @@ func (p *PathResolver) MapBackgroundDir(titleSlug string) string {
 // fond transparent). La clé est le nom de MODULE, celui déjà porté par map_quant_bounds.json
 // et map_structure/ — le lien nom affiché -> module reste déclaré à un seul endroit.
 // Ex: data/titles/halo_infinite/reference/map_backgrounds/ridgeline.png
+//
+// UTILISÉ EN ÉCRITURE UNIQUEMENT (cuisson, cmd/mapfond-build) : c'est elle qui produit
+// encore un PNG. En LECTURE, préférer MapBackgroundImageFilePath (le nom de fichier réel,
+// PNG ou WebP, vient du sidecar — plan fonds WebP, étape 2, D3).
 func (p *PathResolver) MapBackgroundPath(titleSlug, module string) string {
 	return filepath.Join(p.MapBackgroundDir(titleSlug), module+".png")
+}
+
+// MapBackgroundImageFilePath retourne le chemin de l'image de fond dont le NOM DE FICHIER
+// est `nomFichier` — celui que le sidecar (`MapBackground.Image`) porte à côté de lui-même.
+// Le format (PNG ou WebP) est une propriété de la DONNÉE, pas du code : cette fonction ne
+// suppose aucune extension, contrairement à MapBackgroundPath. L'appelant reste responsable
+// de valider `nomFichier` (nom de fichier simple, extension en liste blanche) avant d'appeler
+// cette fonction — elle ne fait qu'un `filepath.Join`, jamais de garde.
+func (p *PathResolver) MapBackgroundImageFilePath(titleSlug, nomFichier string) string {
+	return filepath.Join(p.MapBackgroundDir(titleSlug), nomFichier)
 }
 
 // MapBackgroundMetaPath retourne le chemin du SIDECAR de calage du fond de carte

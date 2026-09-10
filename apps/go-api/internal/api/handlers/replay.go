@@ -156,7 +156,7 @@ func (h *ReplayHandler) handleGetBackgroundImage(w http.ResponseWriter, r *http.
 		writeError(ctx, w, http.StatusBadRequest, "missing_match_id", "match_id est requis")
 		return
 	}
-	blob, err := svc.MapBackgroundImage(ctx, matchID)
+	blob, contentType, err := svc.MapBackgroundImage(ctx, matchID)
 	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
 			"aucun fond de carte pour ce match")
@@ -168,6 +168,8 @@ func (h *ReplayHandler) handleGetBackgroundImage(w http.ResponseWriter, r *http.
 	}
 	// Donnée de RÉFÉRENCE versionnée : elle ne change qu'à une re-cuisson, jamais en
 	// cours de session. `private` parce que la route est derrière l'ownership joueur.
-	// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9.
-	servirBlobAvecETag(w, r, blob, "image/png", "private, max-age=3600")
+	// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9. Le format
+	// (PNG ou WebP) est une propriété de la donnée, pas de cette route (D4) : le nom de
+	// la route reste `background.png` quel que soit le Content-Type réellement servi.
+	servirBlobAvecETag(w, r, blob, contentType, "private, max-age=3600")
 }
