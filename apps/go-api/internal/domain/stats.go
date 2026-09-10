@@ -58,13 +58,6 @@ type MatchMetrics struct {
 
 // ─── Résultats des onglets ───────────────────────────────────────────────────
 
-// PerformancePoint est un point de la série performance score.
-type PerformancePoint struct {
-	MatchID   string    `json:"match_id"`
-	StartTime time.Time `json:"start_time"`
-	Score     *float64  `json:"score"`
-}
-
 // CumulativePoint est un point d'une série cumulative (K/D, net score).
 type CumulativePoint struct {
 	Index     int       `json:"index"`
@@ -107,7 +100,7 @@ type StatsQueryRequest struct {
 	// Mode est soit "period" (toutes les parties de la période filtrée)
 	// soit "sessions" (groupé par sessions).
 	Mode string `json:"mode"`
-	// Tab sélectionne l'onglet : "win_loss", "accuracy", "objective", "form", "lusr".
+	// Tab sélectionne l'onglet : "win_loss", "accuracy", "objective", "lusr".
 	Tab string `json:"tab"`
 }
 
@@ -137,13 +130,6 @@ type ObjectiveTabResponse struct {
 	HasData    bool             `json:"has_data"`
 }
 
-// FormTabResponse est la réponse de l'onglet Forme (perf score).
-type FormTabResponse struct {
-	Points        []PerformancePoint `json:"points"`
-	Mean          *float64           `json:"mean"`
-	HasEnoughData bool               `json:"has_enough_data"`
-}
-
 // LUSRTabResponse est la réponse de l'onglet LUSR.
 type LUSRTabResponse struct {
 	Points        []LUSRPoint `json:"points"`
@@ -156,7 +142,6 @@ type StatsPageResponse struct {
 	WinLoss       *WinLossTabResponse   `json:"win_loss,omitempty"`
 	Accuracy      *AccuracyTabResponse  `json:"accuracy,omitempty"`
 	Objective     *ObjectiveTabResponse `json:"objective,omitempty"`
-	Form          *FormTabResponse      `json:"form,omitempty"`
 	LUSR          *LUSRTabResponse      `json:"lusr,omitempty"`
 	BucketInfo    BucketInfo            `json:"bucket_info"`
 	TotalMatches  int                   `json:"total_matches"`

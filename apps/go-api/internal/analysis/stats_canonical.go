@@ -197,27 +197,6 @@ func StatsMatchRowsFromCanonical(rows []canonical.PlayerMatchRow, effectiveHpToK
 }
 
 // =============================================================================
-// Entry-points canonical pour analyses stats partagées (P4.3 finale)
-// =============================================================================
-//
-// Stratégie : chaque *FromCanonical convertit en []StatsMatchRow via
-// StatsMatchRowsFromCanonical puis délègue à la fonction legacy. La logique
-// métier (ComputePerformanceSeries, ComputeSkillRatingsBatch, etc.) reste
-// UNE source de vérité côté legacy.
-//
-// **Justification pragmatique** : la chaîne d'appel ComputePerformanceSeries →
-// ComputeRelativePerformanceScore → applyBotBonus → ... fait plusieurs
-// centaines de lignes. Un port full canonical apporterait 0 valeur métier
-// (zéro changement de comportement) tout en doublant la maintenance. Les
-// converters encapsulés ici permettent de retirer la conversion service-level.
-
-// ComputePerformanceSeriesFromCanonical : entry-point canonical pour
-// ComputePerformanceSeries.
-func ComputePerformanceSeriesFromCanonical(rows []canonical.PlayerMatchRow, effectiveHpToKill float64) []*float64 {
-	return ComputePerformanceSeries(StatsMatchRowsFromCanonical(rows, effectiveHpToKill))
-}
-
-// =============================================================================
 // Converter canonical → SynthesisMatchRow (P4.3 finale, partagé squad/teammates)
 // =============================================================================
 
