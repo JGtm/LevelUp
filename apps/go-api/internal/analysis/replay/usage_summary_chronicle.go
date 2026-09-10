@@ -20,3 +20,19 @@ package replay
 // lache)`. Sans cette montee, aucun match deja resume ne serait re-projete et les quatre
 // colonnes neuves resteraient vides sur tout le corpus : la cle de reprise du backfill est
 // (summary_rev, artifact_schema), pas la presence des colonnes.
+// us5 (2026-09-10, lot 4.3) — LA JOINTURE RANG -> FAMILLE DU BILAN D'EQUIPEMENT ne passe
+// plus par la RACINE DU LIBELLE : elle lit `abilityLabels[].family`, publiee par le
+// document depuis le schema 51. La regle d'attribution change donc bel et bien — un
+// artefact au schema 50 ne porte aucune famille, et son resume ne peut pas etre re-projete
+// sans RECUISSON DE L'ARTEFACT lui-meme. (Cette entree vivait dans usage_summary.go
+// jusqu'au lot 5.5 : la chronique n'a qu'un seul foyer, et c'est ce fichier.)
+// us6 (2026-09-10, lot 5.5) — LE COTE « UTILISE » D'UN DEPLOYABLE SANS PIECE ENGENDREE
+// (capteur, traqueur, ecran occultant, champ de reparation, balise du translocateur) se lit
+// desormais sur ses CONSOMMATIONS DE CHARGE (`spent`) et non plus sur ses poses `deployed`.
+// Une pose `deployed` sur un objet PORTE mesure un LACHER VOLONTAIRE a mi-vie, pas un
+// deploiement : sur les 202 consommations de ces familles au parc, ZERO n'est couverte par
+// une pose du meme joueur a moins de 2 s (le mur, seul equipement qui ENGENDRE UNE PIECE,
+// est a 84 % — rapport E0 du 2026-09-10, question 5). Le mur garde donc ses poses de
+// panneau et les deux bonus leurs episodes. AUCUNE RECUISSON D'ARTEFACT : `spent` et sa
+// famille sont publies depuis le schema 51 — la seule bascule de revision suffit a faire
+// reprendre les resumes par `levelup backfill-usage-summary` (sans `--force`).

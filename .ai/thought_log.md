@@ -1,3 +1,53 @@
+## [2026-09-10] Master plan, lot 5.5 — le « utilise » d'un deployable se lit sur ses consommations (`us6`) — Complete
+
+**Decision technique principale.** `usageUsedOf` (`internal/analysis/replay/usage_summary_outcomes.go`)
+porte desormais TROIS lectures du cote « utilise » au lieu de deux : episodes pour les deux
+bonus, poses `deployed` pour le MUR SEUL, consommations de charge (`SpentByFamily`) pour tout
+autre deployable (capteur, traqueur, ecran occultant, champ de reparation, balise du
+translocateur). La frontiere n'est pas un test de chaine ni une opinion : c'est le champ
+`kind = "deployed"` du manifeste `config/titles/halo_infinite/mappings/replay_labels.toml`
+(les deux panneaux du mur, seuls objets ENGENDRES par un equipement), transcrit en une table
+ecrite `usageFamiliesWithSpawnedPiece` (`usage_summary_families.go`) parce que
+`BuildUsageSummary` est une fonction PURE du document cuit et ne peut pas lire le manifeste —
+et RECOLLE au manifeste par un garde-rail neuf qui le relit ligne a ligne
+(`TestUsageFamiliesWithSpawnedPieceMatchManifest`, cinquieme liste ecrite du garde-rail des
+familles). `UsageSummaryRev` passe `us5` -> `us6` ; la chronique des revisions, dispersee
+entre `usage_summary.go` et `usage_summary_chronicle.go`, est regroupee dans le second (seul
+foyer) et `usage_summary.go` y renvoie.
+
+**Resultats observes.** TDD : deux tests rouges d'abord (capteur lu au bon canal ; clamp du
+garde quand les consommations depassent les prises), rouges prouves sur la regle d'avant,
+verts apres. Trois mutations prouvees : declarer le capteur « engendre une piece » -> garde-rail
+manifeste rouge + comportement rouge ; vider la liste -> le mur bascule sur `spent`, rouge des
+deux cotes ; retirer la branche camouflage -> les bonus basculent sur `spent`, rouge. Mesure sur
+les artefacts reels (instrument jetable, supprime apres mesure, LECTURE SEULE des 64 artefacts
+au schema 51) : sur `9ffce8ef`, capteur 7 pris, « utilise » 3 -> 6 (4 poses contre 7
+consommations) ; sur `396cfc92`, traqueur 13 pris, « utilise » 1 -> 3 et garde 5 -> 3. Au parc
+(lignes avec au moins une prise) : translocateur 0 -> 11 utilises et garde 26 -> 15, ecran
+occultant 7 -> 10 et garde 19 -> 16, traqueur 3 -> 5 et garde 8 -> 6, champ de reparation
+3 -> 1 et garde 8 -> 9 (le nouveau canal sous-compte aussi : reserve ecrite), capteur, mur et
+les deux bonus inchanges en total. Les totaux bruts du parc retrouvent exactement le rapport
+E0 la ou son perimetre coincide (capteur 39 consommations, traqueur 3 poses / 5 consommations,
+translocateur 0 / 11). Golden d'assemblage regenere avec `-update` : ZERO ligne bougee — il fige
+le document cuit, pas le resume ; aucun golden du depot ne couvre `BuildUsageSummary`.
+
+**Gates.** `go build ./...` OK ; `go vet` OK sur replay/persist/service/cmd/levelup ;
+`go test` OK sur les memes (replay 16 s, persist 15 s, service 101 s, levelup 2 s) + sessionusage ;
+`go test -tags=integration -p 1 -count=1 ./internal/persist/... ./internal/archlint/...` OK
+(66 s / 53 s) ; `golangci-lint run --new-from-merge-base=feat/v75 ./...` = **0 issue**.
+
+**Conclusion / prochaine etape.** Aucune recuisson d'ARTEFACT : `spent` et sa famille sont
+publies depuis le schema 51, la seule bascule `us6` fait reprendre les resumes par
+`levelup backfill-usage-summary` (sans `--force`) — la passe reste a lancer par le superviseur
+apres fusion (un serveur de dev tient les bases). Ecart connu et NON traite (hors perimetre) :
+le miroir web de la vue match (`equipmentKeptLogic.ts`, boucle `KEPT_FAMILIES`) lit toujours
+`t.deployed[family]` — les deux ecrans peuvent afficher un « garde » different pour le meme
+match tant que le web n'a pas suivi ; l'ecart est inscrit au §4 de la reference des canaux.
+Consignees, non traitees : les 8 poses d'appareil de mur sur 295 promues `deployed` par la
+clause de distance de `equipmentOrigin` (lachers a la mort), et les deux artefacts de Grand
+combat non identifies (`879a4dba`, `5676a9ba`) que l'instrument voit encore dans les totaux de
+parc.
+
 ## [2026-09-10] Master plan, lot 5.2 — investigation E0 bornee (mur 1:1, palette non classee, rang 32, prises inclassables, capteur/traqueur) — Complete (diagnostic seul, 5 causes prouvees sur 5)
 
 **Decision technique principale.** Investigation en LECTURE SEULE sur les 64 artefacts du parc

@@ -263,3 +263,121 @@ func TestUsageSummary_JointureSurLaFamillePubliee(t *testing.T) {
 			"famille a fui dans la réserve des rangs muets", got)
 	}
 }
+
+// TestUsageSummary_UtiliseLuSurLesConsommations — LE DÉFAUT PROUVÉ PAR LE RAPPORT E0
+// (question 5, 2026-09-10) : pour un déployable qui n'engendre AUCUNE pièce, une pose
+// `origin: deployed` mesure un LÂCHER VOLONTAIRE à mi-vie, pas un déploiement — zéro
+// de ses 202 consommations du parc n'est couverte par une pose (contre 84 % pour le
+// mur). Le côté « utilisé » de ces familles se lit donc sur les CONSOMMATIONS.
+//
+// MUTATION : rétablir `DeployedByFamily` pour le capteur -> le gardé remonte à 1
+// (3 pris - 1 pose - 1 lâché), rouge. C'est exactement l'état d'avant ce lot.
+func TestUsageSummary_UtiliseLuSurLesConsommations(t *testing.T) {
+	doc := docIssuesTest()
+	// La consommation de capteur du fixture porte une chaîne trouée : on la répare, et on
+	// en ajoute une seconde — 222 consomme DEUX charges de capteur sur ses trois prises.
+	for i := range doc.EquipmentChanges {
+		if c := &doc.EquipmentChanges[i]; c.Kind == EquipmentSpent && c.From == 1 {
+			c.Gap = 0
+		}
+	}
+	doc.EquipmentChanges = append(doc.EquipmentChanges,
+		EquipmentChange{Slot: 2, T: 230, Kind: EquipmentSpent, R: NoAbilityRank, From: 1})
+	// Et UNE pose `deployed` de capteur : elle reste comptée là où elle l'était
+	// (DeployedByFamily), mais elle ne vaut plus « utilisé ».
+	doc.EquipmentPlacements = append(doc.EquipmentPlacements, EquipmentPlacement{
+		Owner: 2, T0: 240, Family: usageFamilySensor, Origin: OriginDeployed,
+	})
+
+	s := BuildUsageSummary(doc)
+	p222 := joueur(t, s, "222")
+	if got := p222.SpentByFamily[usageFamilySensor]; got != 2 {
+		t.Fatalf("SpentByFamily[sensor](222) = %d, attendu 2 — le fixture du test est faux", got)
+	}
+	if got := p222.DeployedByFamily[usageFamilySensor]; got != 1 {
+		t.Fatalf("DeployedByFamily[sensor](222) = %d, attendu 1 — la pose reste comptée", got)
+	}
+	if got := p222.KeptByFamily[usageFamilySensor]; got != 0 {
+		t.Errorf("KeptByFamily[sensor](222) = %d, attendu 0 (3 pris - 2 consommées - 1 lâché) — "+
+			"le côté « utilisé » d'un déployable sans pièce engendrée se lit sur les "+
+			"CONSOMMATIONS, jamais sur ses poses (rapport E0 question 5)", got)
+	}
+}
+
+// TestUsageSummary_MurLuSurSesPanneaux — LA SEULE EXCEPTION, et elle est mesurée : le
+// mur est le seul équipement du manifeste qui ENGENDRE UNE PIÈCE DISTINCTE
+// (`kind = "deployed"`, les panneaux), et 84 % de ses consommations tombent sur une de
+// ses poses. Son « utilisé » reste donc ses poses de panneau.
+//
+// MUTATION : basculer le mur sur les consommations -> gardé 0 au lieu de 1, rouge.
+func TestUsageSummary_MurLuSurSesPanneaux(t *testing.T) {
+	doc := docIssuesTest()
+	// DEUX consommations de mur pour UN panneau posé : les deux lectures divergent, et
+	// c'est ce qui rend ce test discriminant.
+	doc.EquipmentChanges = append(doc.EquipmentChanges,
+		EquipmentChange{Slot: 1, T: 205, Kind: EquipmentSpent, R: NoAbilityRank, From: 2})
+
+	s := BuildUsageSummary(doc)
+	p111 := joueur(t, s, "111")
+	if got := p111.SpentByFamily[usageFamilyWall]; got != 2 {
+		t.Fatalf("SpentByFamily[wall](111) = %d, attendu 2 — le fixture du test est faux", got)
+	}
+	if got := p111.KeptByFamily[usageFamilyWall]; got != 1 {
+		t.Errorf("KeptByFamily[wall](111) = %d, attendu 1 (2 pris - 1 panneau posé - 0 lâché) — "+
+			"le mur engendre une pièce, son « utilisé » reste ses POSES", got)
+	}
+}
+
+// TestUsageSummary_BonusRestentSurLeursEpisodes — les deux bonus ne bougent pas : leur
+// « utilisé » est l'ÉPISODE d'état actif (décision P2), et le film annonce pourtant des
+// consommations pour eux (54 camouflages et 34 surboucliers au parc, mesure E0).
+//
+// MUTATION : basculer les bonus sur les consommations -> gardé 0 au lieu de 1, rouge.
+func TestUsageSummary_BonusRestentSurLeursEpisodes(t *testing.T) {
+	doc := docIssuesTest()
+	// Une troisième prise de camouflage, et DEUX consommations annoncées par le film.
+	doc.EquipmentChanges = append(doc.EquipmentChanges,
+		EquipmentChange{Slot: 1, T: 85, Kind: EquipmentTaken, R: 8},
+		EquipmentChange{Slot: 1, T: 240, Kind: EquipmentSpent, R: NoAbilityRank, From: 8},
+		EquipmentChange{Slot: 1, T: 250, Kind: EquipmentSpent, R: NoAbilityRank, From: 8})
+
+	s := BuildUsageSummary(doc)
+	p111 := joueur(t, s, "111")
+	if got := p111.SpentByFamily[usageFamilyPowerupCamo]; got != 2 {
+		t.Fatalf("SpentByFamily[powerup_camo](111) = %d, attendu 2 — le fixture du test est faux", got)
+	}
+	if got := p111.KeptByFamily[usageFamilyPowerupCamo]; got != 1 {
+		t.Errorf("KeptByFamily[powerup_camo](111) = %d, attendu 1 (3 pris - 1 épisode - 1 lâché) — "+
+			"un bonus s'utilise en s'ACTIVANT, ses consommations ne comptent pas deux fois", got)
+	}
+}
+
+// TestUsageSummary_ConsommationsAuDelaDesPrises — l'identité `taken = utilisé + lâché +
+// gardé` reste BORNÉE quand le nouveau canal déborde : une charge se consomme plusieurs
+// fois par objet (piège d'unité n°1 de la référence des canaux) et l'équipement de
+// RÉAPPARITION se consomme sans jamais être `taken`. Le clamp tient, le gardé ne devient
+// jamais négatif.
+func TestUsageSummary_ConsommationsAuDelaDesPrises(t *testing.T) {
+	doc := docIssuesTest()
+	for i := range doc.EquipmentChanges {
+		if c := &doc.EquipmentChanges[i]; c.Kind == EquipmentSpent && c.From == 1 {
+			c.Gap = 0
+		}
+	}
+	// Cinq consommations de capteur pour trois prises et un lâcher.
+	for i := 0; i < 4; i++ {
+		doc.EquipmentChanges = append(doc.EquipmentChanges, EquipmentChange{
+			Slot: 2, T: 230 + i, Kind: EquipmentSpent, R: NoAbilityRank, From: 1,
+		})
+	}
+
+	s := BuildUsageSummary(doc)
+	p222 := joueur(t, s, "222")
+	if got := p222.SpentByFamily[usageFamilySensor]; got != 5 {
+		t.Fatalf("SpentByFamily[sensor](222) = %d, attendu 5 — le fixture du test est faux", got)
+	}
+	if got, ok := p222.KeptByFamily[usageFamilySensor]; !ok || got != 0 {
+		t.Errorf("KeptByFamily[sensor](222) = %d (présent=%v), attendu 0 — 3 - 5 - 1 doit se "+
+			"clamper, jamais publier un gardé négatif", got, ok)
+	}
+}
