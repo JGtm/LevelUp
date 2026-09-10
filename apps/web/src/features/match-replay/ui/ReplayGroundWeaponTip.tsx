@@ -30,11 +30,12 @@ interface ReplayGroundWeaponTipProps {
 }
 
 export function ReplayGroundWeaponTip({ hover, width }: ReplayGroundWeaponTipProps) {
-  const { at, weaponName, originLine, pickupLine } = hover
+  const { at, weaponName, originLine, pickupLine, ammoLine } = hover
   const flip = at.x + TIP_OFFSET + TIP_WIDTH > width
-  const line = pickupLine
-    ? `${weaponName} · ${originLine} · ${pickupLine}`
-    : `${weaponName} · ${originLine}`
+  // L'ORDRE DES FRAGMENTS EST CELUI DU GESTE : ce qu'est l'objet, qui l'a lâché, ce qu'il
+  // restait dedans, qui l'a repris. Chaque fragment absent DISPARAÎT — jamais un séparateur
+  // orphelin, jamais un « · ? ».
+  const line = [weaponName, originLine, ammoLine, pickupLine].filter(Boolean).join(' · ')
   return (
     <div
       role="tooltip"

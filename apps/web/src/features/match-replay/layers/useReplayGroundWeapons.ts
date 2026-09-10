@@ -50,6 +50,7 @@ import {
   type GroundWeaponIcon,
   type GroundWeaponView,
 } from './groundWeaponsLayer'
+import { groundWeaponAmmoAt, groundWeaponAmmoLine } from '../model/groundWeaponAmmo'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { XY } from '../../../lib/replay/replayLogic'
 import { padIconRefFor, padNameFor, weaponRoleOf, isSpecialWeaponRole } from './useReplayWeaponPads'
@@ -64,6 +65,13 @@ export interface GroundWeaponHover {
   originLine: string
   /** « reprise par Y » (ou « ... non nommé ») ; `null` tant qu'aucun ramassage n'est mesuré. */
   pickupLine: string | null
+  /**
+   * « ≈ N munitions au chargeur, lues X s avant le lâcher » — ou `null`, qui est le cas le plus
+   * fréquent (arme `spawned`, lecture absente, arme hors du relevé, arme à jauge, lecture trop
+   * vieille). LA DATATION EST DANS LA LIGNE et n'en sort jamais : le chiffre n'est PAS celui du
+   * lâcher (lot 6.6 — les munitions ne sont pas sur l'objet, cf. `groundWeaponAmmo.ts`).
+   */
+  ammoLine: string | null
 }
 
 export interface GroundWeaponsInput {
@@ -130,6 +138,22 @@ function groundWeaponOriginLine(
   if (item.origin === 'spawned') return t.groundWeaponSpawned
   const name = nameOfSlot(item.dropper, item.t0)
   return name ? t.groundWeaponDroppedByFmt(name) : t.groundWeaponDropperUnknown
+}
+
+/**
+ * groundWeaponAmmoFragment — LE TROISIÈME FRAGMENT : les munitions du lâcheur, DATÉES.
+ *
+ * IL PASSE PAR LE MODÈLE PUR (`groundWeaponAmmo.ts`), qui porte à la fois la jointure et sa
+ * phrase : la règle « jamais un nombre nu » ne peut pas se perdre en route si les deux ne se
+ * séparent jamais.
+ */
+function groundWeaponAmmoFragment(
+  doc: ReplayDocumentReady,
+  item: ReplayGroundWeapon,
+  t: (typeof REPLAY_TEXT)['fr'],
+): string | null {
+  const reading = groundWeaponAmmoAt(doc, item)
+  return reading ? groundWeaponAmmoLine(t, reading) : null
 }
 
 /** groundWeaponPickupLine — LA SECONDE LIGNE, ou `null` tant qu'aucune reprise n'est mesurée. */
@@ -246,6 +270,7 @@ export function useReplayGroundWeapons({
           weaponName: padNameFor(found.w, labels, t, locale),
           originLine: groundWeaponOriginLine(found, nameOfSlot, t),
           pickupLine: groundWeaponPickupLine(found, nameOfSlot, t),
+          ammoLine: groundWeaponAmmoFragment(doc, found, t),
         }
         if (
           prev &&
@@ -253,14 +278,15 @@ export function useReplayGroundWeapons({
           prev.at.x === at.x &&
           prev.at.y === at.y &&
           prev.originLine === next.originLine &&
-          prev.pickupLine === next.pickupLine
+          prev.pickupLine === next.pickupLine &&
+          prev.ammoLine === next.ammoLine
         ) {
           return prev
         }
         return next
       })
     },
-    [enabled, items, view, frameRef, labels, t, locale, nameOfSlot],
+    [enabled, items, view, frameRef, labels, t, locale, nameOfSlot, doc],
   )
 
   const onPointerLeave = useCallback(() => {
