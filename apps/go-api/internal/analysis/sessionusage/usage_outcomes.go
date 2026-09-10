@@ -181,3 +181,32 @@ func outcomeCountsOf(p *PlayerRow, families []string) outcomeCounts {
 	}
 	return c
 }
+
+// subjectBilanFamilies — les familles du bilan que LE SUJET a lui-même touchées
+// (une de ses trois issues non nulle), sur tout le scope mesuré.
+//
+// SOURCE UNIQUE DU CRITÈRE D'ENTRÉE d'une ligne "equipment_<famille>" (lot 6.4
+// point 4) : [metricKeys] (usage.go, page Sessions) ET [overviewFamilies]
+// (usage_overview.go, pages Synthèse/Escouade) l'appellent TOUTES LES DEUX. Les
+// deux pages affichent la même barre SUJET SEUL (`attachOutcomes` /
+// `computeOutcomes` réduisent déjà au sujet) : leur critère d'entrée doit être le
+// même, sans quoi l'une peut ouvrir une ligne entièrement vide — un « reproche
+// sans objet » — sur la seule foi d'un coéquipier ou d'un adversaire. La question
+// posée est « qu'est-ce QUE JE gâche », jamais « qu'est-ce que le lobby gâche ».
+func subjectBilanFamilies(playerXUID string, measured []MatchInput) map[string]bool {
+	out := map[string]bool{}
+	for i := range measured {
+		for j := range measured[i].Players {
+			p := &measured[i].Players[j]
+			if p.XUID != playerXUID {
+				continue
+			}
+			for _, family := range equipmentBilanFamilies {
+				if equipmentOutcomeOf(p, family).total() > 0 {
+					out[family] = true
+				}
+			}
+		}
+	}
+	return out
+}
