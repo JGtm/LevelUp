@@ -72,6 +72,8 @@ import (
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -104,7 +106,7 @@ const (
 // structurellement aucune position à offrir. Utiliser la liste pré-fusion n'est donc pas une
 // approximation, c'est la population exacte qui peut avoir une position.
 func (c *KillSourceCollector) collectPositions(
-	ctx context.Context, matchID string, film *filmsource.Film,
+	ctx context.Context, matchID string, film *filmsource.Film, res *killsource.Result,
 	ids MatchIdentities, deaths, fusionnees []persist.KillEventInsert,
 ) {
 	if !c.caps.Has(games.CapFilmKillPositions) {
@@ -143,7 +145,7 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 
-	pass, mat, err := buildPositionRows(film, entry, ids, kills, matchID)
+	pass, mat, err := buildPositionRows(film, res, entry, ids, kills, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "killsource: positions — passe ignoree", "match_id", matchID, "err", err)
 		return
@@ -238,7 +240,7 @@ func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID stri
 // dans `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06,
 // constat B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
 func buildPositionRows(
-	film *filmsource.Film, entry filmdec.MapQuantEntry, ids MatchIdentities,
+	film *filmsource.Film, res *killsource.Result, entry filmdec.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (passePositions, materiauDIsolement, error) {
 	release := filmdec.LockProcessDecode()
@@ -297,7 +299,13 @@ func buildPositionRows(
 	}
 	lectures := lecturesDuFilm{
 		positions: positions, creations: creations, deaths: deathsFilm, idx: idx}
-	reg := replay.BuildIdentityRegistry(entreeDuRegistre(lectures, ids, matchID))
+	// LE ROSTER DE BOTS VOYAGE DEPUIS LE MEME DECODAGE killsource QUE LES MORTS (`res`, deja
+	// resolu par l appelant) — PAS UN SECOND BALAYAGE : `replayidentity.BotIdentities` est la
+	// MEME projection que la cuisson (lot 5.1, revue de vague 4, constat P2). Sans elle, un
+	// siege d index partage bot/humain attribue les vies du bot a l humain (cf. l en-tete de
+	// `games/halo_infinite/replayidentity/bot_identities.go`).
+	bots := replayidentity.BotIdentities(res)
+	reg := replay.BuildIdentityRegistry(entreeDuRegistre(lectures, ids, bots, matchID))
 	slotXUID := reg.PontParSlot()
 	if len(slotXUID) == 0 {
 		observability.AddInt(metricPositionsNoBridge, 1)
@@ -461,39 +469,6 @@ func publishPositionsPass(ctx context.Context, matchID string, rep replay.KillPo
 		"sans_position", rep.Dropped, "sans_pont_identite", rep.NoBridge, "lignes", rowsWritten)
 }
 
-// entreeDuRegistre assemble ce que le collecteur donne au registre d'identite. PURE — aucun film,
-// aucune base : c'est la COUTURE par laquelle un test pince ce que la production transmet.
-//
-// # POURQUOI ELLE EXISTE PLUTOT QU'UN LITTERAL EN LIGNE
-//
-// Deux champs comptent ici, et aucun des deux n'est evident a la lecture de l'appelant.
-//
-// `RosterXUIDs` : sans lui, l'identite par ELIMINATION n'a aucun candidat, et un joueur qui ne
-// meurt jamais reste anonyme dans `match_lives` — le defaut meme que le lot P2 ferme.
-//
-// `BipedCreations` : sans lui, le collecteur retomberait sur le pont par morts alors que la
-// cuisson lit le lien DIRECT dans le film — deux producteurs, deux nommages, exactement ce que la
-// decision D11 interdit. Son retrait ne casserait AUCUN test unitaire (ceux du registre
-// construisent leur propre entree) : c'est le role de cette couture, et de
-// `TestEntreeDuRegistrePorteLesCreationsDeBipede`.
-//
-// Les deux sont la raison des bumps successifs d'[IsolationDecoderRev]. Ecrits en ligne, leur
-// retrait laissait toute la suite verte — c'est exactement le defaut que
-// `composerPassePositions` avait deja corrige pour le decalage d'entame (constat B1 de la revue
-// du 2026-09-06).
-func entreeDuRegistre(l lecturesDuFilm, ids MatchIdentities, matchID string) replay.IdentityInput {
-	return replay.IdentityInput{
-		Positions: l.positions, BipedCreations: l.creations, Deaths: l.deaths,
-		PlayerIndices: l.idx, RosterXUIDs: rosterUint64(ids.XUIDs), MatchID: matchID,
-	}
-}
-
-// lecturesDuFilm groupe les QUATRE lectures que le collecteur fait du film avant de composer le
-// registre. Une structure plutot que quatre parametres de plus : le depot borne a cinq, et un
-// appelant qui ajoute une lecture ne doit pas reecrire la signature de la couture.
-type lecturesDuFilm struct {
-	positions []filmdec.BipedPosition
-	creations []filmdec.BipedCreation
-	deaths    []replay.Death
-	idx       replay.PlayerIndexTable
-}
+// entreeDuRegistre et lecturesDuFilm sont EXTRAITES vers positions_identity_entree.go (lot 5.1) :
+// positions.go frolait le plafond de 500 lignes du depot au moment d'ajouter `Bots`/`Participants`
+// a la couture (decouverte du lot). Meme fichier logique, autre fichier physique.

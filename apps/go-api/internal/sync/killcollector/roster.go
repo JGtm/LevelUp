@@ -11,6 +11,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/observability"
 	"log/slog"
 	"time"
@@ -122,20 +124,31 @@ func (r *SharedRoster) gamertagsForMatch(ctx context.Context, matchID string) (m
 	return out, nil
 }
 
-// participantsForMatch complete `out` avec les xuids du match, la reference `shots_fired`
-// et l EQUIPE de chacun.
+// participantsForMatch complete `out` avec les xuids du match, la reference `shots_fired`,
+// l EQUIPE de chacun, et le TABLEAU DE L API que le registre d identite consomme pour departager
+// un siege partage (`out.Participants`, cf. identities.go et identity_registry_scoreboard.go).
 //
 // ⚠ `shots_fired` NULL N EST PAS ZERO. Une colonne nulle veut dire « l API n a pas donne le
 // nombre de tirs » ; zero veut dire « l API dit qu il n a pas tire ». La porte de publication
 // traite les deux DIFFEREMMENT (refus faute de reference d un cote, verdict de l autre), donc la
 // lecture ne doit surtout pas les confondre : une valeur nulle n entre pas dans la table.
+//
+// L INSTANT D ARRIVEE PASSE PAR LE FRAGMENT TIMEZONE CANONIQUE (regle n 8 du depot) — jamais
+// `start_time` brut — et par LA MEME FORMULE que `platform/duckdb/replay_facts_repo.go`
+// (`playerFacts`) : les deux producteurs du registre (cuisson, collecteur) doivent caler
+// l instant d arrivee sur le MEME zero, sans quoi la fenetre que le tableau tranche glisserait
+// d un producteur a l autre.
 func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string, out *MatchIdentities) error {
 	if r == nil || r.db == nil {
 		return fmt.Errorf("SharedRoster: db nil")
 	}
+	start := analysis.SQLStartTimeCanonical("mr")
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT p.xuid, p.shots_fired, p.team_id
+		SELECT p.xuid, p.shots_fired, p.team_id,
+		       COALESCE(p.joined_in_progress, FALSE),
+		       CAST(epoch_ms(p.first_joined_time) - epoch_ms(`+start+`) AS BIGINT)
 		FROM match_participants p
+		JOIN match_registry mr ON mr.match_id = p.match_id
 		WHERE p.match_id = ? AND p.xuid IS NOT NULL AND p.xuid <> ''
 		ORDER BY p.xuid
 	`, matchID)
@@ -146,8 +159,9 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 
 	for rows.Next() {
 		var xuid string
-		var shots, team sql.NullInt64
-		if err := rows.Scan(&xuid, &shots, &team); err != nil {
+		var shots, team, joinMS sql.NullInt64
+		var joined bool
+		if err := rows.Scan(&xuid, &shots, &team, &joined, &joinMS); err != nil {
 			return fmt.Errorf("SharedRoster participants(%s) scan: %w", matchID, err)
 		}
 		out.XUIDs = append(out.XUIDs, xuid)
@@ -157,6 +171,16 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 		if team.Valid {
 			out.Equipes[xuid] = int(team.Int64)
 		}
+		p := replay.Participant{ID: xuid, JoinedInProgress: joined}
+		// L INSTANT NE VOYAGE QUE S IL EST DECLARE (meme garde que `participantsDuTableau`
+		// cote cuisson) : le porter avec un zero fabriquerait une arrivee au coup d envoi, ce
+		// qui donnerait TOUTES les vies du siege a l humain — exactement le defaut que ce lot
+		// corrige.
+		if joined && joinMS.Valid {
+			ms := joinMS.Int64
+			p.JoinMatchMS = &ms
+		}
+		out.Participants = append(out.Participants, p)
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("SharedRoster participants(%s) rows: %w", matchID, err)
