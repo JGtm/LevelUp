@@ -74,7 +74,7 @@ func attachBombStats(doc *ReplayDocument, opt Options, reg IdentityRegistry, car
 		Objectives:      opt.Objectives,
 		// Sans pont slot -> xuid, `attachBombCarries` ne reconstruit AUCUNE période : publier
 		// des zéros affirmerait une mesure qui n'a pas eu lieu.
-		CarryRead: len(reg.PontParSlot()) > 0,
+		CarryRead: reg.PontEtabli(),
 		Carry:     carry,
 		// ArmingsRead suit la CONFRONTATION LOCALE : un calque retenu à la source (garde 2,
 		// tout-ou-rien) n'est pas « zéro armement », c'est une absence de lecture.

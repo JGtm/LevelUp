@@ -113,8 +113,11 @@ type KillPosReport struct {
 	Both, KillerOnly, VictimOnly int
 	// Dropped compte les morts dont AUCUN des deux n'est localisable : rien n'est écrit.
 	Dropped int
-	// NoBridge compte les morts dont un xuid n'a aucun slot au pont — un sous-cas de Dropped,
-	// isolé parce qu'il désigne le chantier du PONT et non celui des positions.
+	// NoBridge compte les morts dont un xuid n'occupe AUCUN siège à l'instant demandé — un
+	// sous-cas de Dropped, isolé parce qu'il désigne le chantier du PONT et non celui des
+	// positions. Depuis le lot 6.1 la question se pose À L'INSTANT : un joueur mort, pas encore
+	// réapparu, n'a pas de corps — ce n'est pas un défaut du pont, et c'est le cas le plus
+	// fréquent de ce compteur.
 	NoBridge int
 	// OpeningOutOfLife n'est renseigné QUE par `BuildKillOpenings`. Il compte les CÔTÉS — pas
 	// les morts : une mort dont les deux joueurs ont réapparu en compte deux — dont la
@@ -134,9 +137,9 @@ type KillPosReport struct {
 // ELLE NE CONNAÎT AUCUNE FRONTIÈRE DE VIE, et c'est licite ICI : l'instant demandé est celui du
 // coup fatal, donc à l'intérieur des deux vies concernées par construction. Pour un instant
 // DÉCALÉ — l'entame — cette ignorance devient un piège, d'où `BuildKillOpenings`.
-func BuildKillPositions(pos []filmdec.BipedPosition, slotXUID map[uint32]uint64,
+func BuildKillPositions(pos []filmdec.BipedPosition, reg IdentityRegistry,
 	kills []KillRef, offsetUS int64) ([]KillPosition, KillPosReport) {
-	p := placeKillPositions(pos, slotXUID, kills, offsetUS)
+	p := placeKillPositions(pos, reg, kills, offsetUS)
 	return p.positions, p.report
 }
 
@@ -157,24 +160,25 @@ type killPlacement struct {
 }
 
 // placeKillPositions est LE placement, et le seul.
-func placeKillPositions(pos []filmdec.BipedPosition, slotXUID map[uint32]uint64,
+func placeKillPositions(pos []filmdec.BipedPosition, reg IdentityRegistry,
 	kills []KillRef, offsetUS int64) killPlacement {
 	out := killPlacement{report: KillPosReport{Kills: len(kills)}}
-	if len(pos) == 0 || len(slotXUID) == 0 || len(kills) == 0 {
+	if len(pos) == 0 || !reg.PontEtabli() || len(kills) == 0 {
 		out.report.Dropped = len(kills)
 		return out
 	}
 	out.tracks = indexBySlot(pos)
-	byXUID := slotsByXUID(slotXUID)
+	sieges := siegesTries(out.tracks)
 	out.positions = make([]KillPosition, 0, len(kills))
 	out.slots = make([]killSides, 0, len(kills))
 	for _, k := range kills {
 		tUS := uint64(k.TimeMS*1000 + offsetUS)
+		duTueur, deLaVictime := siegesDe(reg, sieges, k.KillerXUID, tUS), siegesDe(reg, sieges, k.VictimXUID, tUS)
 		kp := KillPosition{KillRef: k}
 		var sides killSides
-		kp.Killer, sides.killer = positionOf(out.tracks, byXUID[k.KillerXUID], tUS)
-		kp.Victim, sides.victim = positionOf(out.tracks, byXUID[k.VictimXUID], tUS)
-		if len(byXUID[k.KillerXUID]) == 0 || len(byXUID[k.VictimXUID]) == 0 {
+		kp.Killer, sides.killer = positionOf(out.tracks, duTueur, tUS)
+		kp.Victim, sides.victim = positionOf(out.tracks, deLaVictime, tUS)
+		if len(duTueur) == 0 || len(deLaVictime) == 0 {
 			out.report.NoBridge++
 		}
 		if !countKillPosition(&out.report, kp) {
@@ -206,15 +210,42 @@ func countKillPosition(rep *KillPosReport, kp KillPosition) bool {
 	return true
 }
 
-// slotsByXUID inverse le pont : un joueur possède plusieurs slots au cours d'un match (un par
-// vie), et c'est précisément pour cela qu'il faut les chercher tous.
-func slotsByXUID(slotXUID map[uint32]uint64) map[uint64][]uint32 {
-	out := map[uint64][]uint32{}
-	for slot, x := range slotXUID {
-		out[x] = append(out[x], slot)
+// siegesTries rend les sièges que les trajectoires portent, en ordre croissant.
+//
+// L'ORDRE N'EST PAS COSMÉTIQUE : `positionOf` refuse de trancher entre deux corps, mais un
+// parcours de map Go est aléatoire, et un producteur d'artefact doit être reproductible à
+// l'octet. Le tri est ici plutôt que dans `siegesDe`, qui est appelée une fois par mort.
+func siegesTries(tracks map[uint32]slotTrack) []uint32 {
+	out := make([]uint32, 0, len(tracks))
+	for s := range tracks {
+		out = append(out, s)
 	}
-	for x := range out {
-		sort.Slice(out[x], func(i, j int) bool { return out[x][i] < out[x][j] })
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
+// siegesDe rend les sièges que ce joueur occupe À CET INSTANT.
+//
+// # POURQUOI ELLE REMPLACE L'INVERSION DU PONT APLATI (lot 6.1, 2026-09-10)
+//
+// La version précédente inversait `SlotXUID` une fois pour tout le film. Sur un siège recyclé
+// entre deux joueurs, cette table ne retient que le PREMIER : le SECOND n'avait aucun siège et
+// ses positions étaient introuvables, tandis que le premier se voyait attribuer le siège pour
+// toute la durée du film — donc, quand il n'avait pas d'autre corps échantillonné à cet instant,
+// la position d'un AUTRE joueur. Mesuré sur `084a804d` (le seul siège ambigu de 74 films) : une
+// fenêtre d'une frame, mais une position fausse écrite en base est invisible et crédible.
+//
+// LE XUID NUL NE DÉSIGNE PERSONNE, et la garde est nécessaire : `XUIDNumAt` rend zéro sur un
+// siège que rien ne nomme, si bien qu'un appel à zéro ramasserait tous les corps anonymes.
+func siegesDe(reg IdentityRegistry, sieges []uint32, xuid uint64, tUS uint64) []uint32 {
+	if xuid == 0 {
+		return nil
+	}
+	var out []uint32
+	for _, s := range sieges {
+		if reg.XUIDNumAt(s, tUS) == xuid {
+			out = append(out, s)
+		}
 	}
 	return out
 }

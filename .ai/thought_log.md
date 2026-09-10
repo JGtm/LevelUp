@@ -152,6 +152,56 @@ multi-manche, `CompletedByLines` inapplicable), les 694 images de portage sans p
 WEB, stopgap `skullPresence` deja ecrit), le pont non pose sur la couronne VIP (aucun film VIP a
 mesurer ; a la 3e copie du patron, centraliser + garde-rail), et la peremption du digest local
 `d9781168.tsv` sur `flag`/`bipedCreations`/`artifact`, anterieure a ce lot.
+## [2026-09-10] Lot 6.1 — le pont APLATI supprime : ses six lecteurs passent au registre A L'INSTANT — Complete
+
+**Decision technique principale.** Phase A (mesure) AVANT toute ligne de code, et elle a change
+le cadrage du lot. Le critere d'ecart a ete DEMONTRE plutot que suppose : pont aplati != registre
+a l'instant <=> le siege est AMBIGU (`SlotCollisions`), parce que `ownersFromLives` et
+`poserIdentiteDeVie` marquent l'ambiguite exactement dans les cas ou `xuidAt` diverge. Ce compte
+etant deja publie par la production (`coverage.bridge.slotCollisions`), la mesure s'est faite sur
+les ARTEFACTS — la table de vies du registre y est publiee ligne par vie avec ses bornes — plutot
+qu'en rejouant le registre sur les films : meme reponse, sans decodage. 64 artefacts du parc lus
+en lecture seule + 10 films du corpus d'equivalence cuits DANS le worktree
+(`replay-build --facts`, aucune base ouverte, aucun acces au jeu). Phase B : les six sites passent
+a `XUIDNumAt`, les conversions d'horloge tiennent dans un seul fichier
+(`analysis/replay/pont_a_l_instant.go`), `PontParSlot` est SUPPRIME et son motif entre au
+garde-rail archlint avec une allowlist VIDE (nouvelle notion de motif `absolu` : il s'applique
+meme aux fichiers de l'allowlist, registre compris — comme `ResolveSlotXUID`). `killpos.go` change
+de methode et pas seulement d'accesseur : l'inversion `slotsByXUID` (une fois pour tout le film)
+cede a `siegesDe(reg, sieges, xuid, tUS)`, qui demande a chaque mort quels sieges le joueur occupe
+A CET INSTANT.
+
+**Resultats observes.** 74 films, 1 205 sieges : UN SEUL siege ambigu (`084a804d`/603). Les 123
+sieges recycles que le report 1.6 invoquait n'en produisent qu'UNE ambiguite — les correctifs
+E2-bis (« le corps est (slot, generation) ») avaient deja supprime le defaut a la racine, et le
+report etait reste ecrit dans les termes d'avant. Servi faux a l'ecran : DEUX ramassages
+(frames 9802 et 9968) nommes `2533274817603732` alors que le record de creation donne le siege a
+`2535419608696209`, plus une lecture d'inventaire qualifiee `dead` sans porteur etabli. Zero frag
+sous equipement (1 146 episodes, `killsRead` vrai sur 7 films, 33 frags et 7 assistances), zero
+portage de bombe. Le site du sync (`kill_positions`, servi a Tactique) que le report designait
+comme le plus grave est en fait le MOINS expose : sa fenetre vaut UNE frame de 100 ms sur tout le
+parc. TDD : rouge de VALEUR mesure sur le code d'avant pour les cinq sites (dont « le premier
+occupant recoit la position du corps du second », Both=1), vert apres, mutation ecrite.
+Differentiel sur films reels, methode du gate corpus sans base (binaire d'avant contre binaire
+d'apres, memes chunks) : 14 films dont les 7 temoins de `config/replay_corpus.toml`, 13
+IDENTIQUES A L'OCTET, et sur `084a804d` exactement les TROIS lignes que la phase A avait predites
+(`coverage.pickups.named` 540 -> 538). Gates : `go build`, `go vet ./...`, `go test ./...`,
+integration `-p 1` sync/persist/archlint, lint du diff `--new-from-merge-base=feat/v75` = 0 issue.
+
+**Conclusion / prochaine etape.** `IsolationDecoderRev` bumpe a
+`isolement-2026-09-10-pont-a-l-instant` : c'est la SEULE cle de fraicheur qui gouverne
+`kill_positions` (cette table ne porte pas de `decoder_rev`, son unite est `decode_pass`, et
+`matchsAJour` ne connait que cette revision). Le bump ne declenche rien seul — seule la commande
+`levelup backfill-killsource` re-decode. Recommandation ECRITE au superviseur : ne PAS rejouer ce
+backfill en urgence (une frame de 100 ms de gain contre un redecodage complet du parc) ; aucune
+recuisson d'artefacts non plus, 13 films sur 14 sont identiques. `make replay-corpus-gate
+--reference=base` reste `[!]` : il ouvre la base partagee, ce que la consigne du lot interdit — sa
+METHODE a ete jouee sans base sur les 7 temoins. Rapport chiffre :
+`.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`. Quatre decouvertes consignees non traitees (siege
+partage bot/humain que `XUIDAt` ne corrige pas non plus, ramassages publies au-dela de l'axe de
+frames, trois films du corpus d'equivalence absents du cache, et l'oracle
+`internal/mapdecoupe/oracle_positions_test.go` qui echoue sur un parc PARTIEL la ou il skippe sur
+un parc vide). Rien n'est coche dans le plan maitre.
 
 ---
 

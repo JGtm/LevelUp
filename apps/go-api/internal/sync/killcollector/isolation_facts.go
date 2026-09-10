@@ -153,7 +153,29 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // instant — a une LECTURE du film. `match_lives.xuid` change donc sur les vies que le pont
 // echangeait (7 paires exactement echangees mesurees sur deux films) et se remplit sur les vies
 // qu'aucune mort ne terminait (vies d'ouverture, survivants).
-const IsolationDecoderRev = "isolement-2026-09-08-creation-bipede"
+// # POURQUOI ELLE BOUGE LE 2026-09-10 (lot 6.1, retrait du pont APLATI)
+//
+// CE N'EST PAS `match_lives` NI `match_death_context` QUI CHANGENT — leur contenu est identique
+// à l'octet, ils sortent du MEME registre. Ce sont `kill_positions` et `kill_openings` :
+// `positions.go` ne passe plus le pont APLATI (le PREMIER occupant de chaque siège, servi à
+// n'importe quel instant) mais le REGISTRE, qui répond à l'instant du coup fatal. Sur un siège
+// recyclé entre deux joueurs, l'ancienne table donnait le siège au premier pour tout le film :
+// le second n'avait aucun corps où chercher sa position, et le premier pouvait se voir écrire la
+// position d'un AUTRE corps.
+//
+// LA RÉVISION BOUGE QUAND MÊME, et c'est la seule voie possible : `kill_positions` NE PORTE PAS
+// de `decoder_rev` (cf. persist/kill_position_persister.go — son unité de génération est
+// `decode_pass`), et la sélection de rattrapage (`matchsAJour`,
+// cmd_backfill_killsource_selection.go) ne connaît que cette révision-ci. Sans bump, aucun match
+// déjà collecté ne repasserait, et les positions écrites resteraient celles du pont aplati.
+//
+// CE QUE ÇA COÛTE, ET CE QUE ÇA RAPPORTE — les deux mesurés, pour que la décision de JOUER le
+// backfill se prenne sur des chiffres (rapport `.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`) :
+// sur 74 films du parc, UN SEUL siège est ambigu (`084a804d`/603), et sa fenêtre d'exposition
+// vaut UNE frame (100 ms, la dernière du film). Le bump rend éligible TOUT le corpus au
+// redécodage. Il ne déclenche rien par lui-même : seule la commande `levelup backfill-killsource`
+// re-décode, et `match_lives`/`match_death_context` y réécriront une passe au contenu inchangé.
+const IsolationDecoderRev = "isolement-2026-09-10-pont-a-l-instant"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //

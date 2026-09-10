@@ -34,14 +34,18 @@ package killcollector
 // plus de disque plein possible — et le seul refus qui reste est celui qui protégeait d'une
 // position fausse : la séquence trouée (cf. refuserSequenceTrouee).
 //
-// # LE PONT SLOT -> XUID EST CELUI DU REJEU 2D, PAS UNE RÉSOLUTION LOCALE
+// # LE REGISTRE D'IDENTITÉ EST CELUI DU REJEU 2D, PAS UNE RÉSOLUTION LOCALE
 //
-// `replay.BuildKillPositions` a besoin d'un `slotXUID map[uint32]uint64` (un joueur change de
-// slot à chaque réapparition). Ce pont existe déjà, LU et pas voté, dans `analysis/replay`
-// (owners.go : fil des morts + index de joueur, mesuré à 90/105 vies nommées avec 0 collision sur
-// le film témoin). Une résolution locale à ce paquet serait, encore, un second décodeur du même
-// fait — c'est pourquoi `replay.ResolveSlotXUID` a été exportée (killpos_bridge.go) plutôt que
-// réimplémentée ici.
+// `replay.BuildKillPositions` a besoin de savoir QUI OCCUPE QUEL SIÈGE À L'INSTANT du coup fatal
+// (un joueur change de siège à chaque réapparition, et un siège peut être recyclé entre deux
+// joueurs sur un film long). Ce registre existe déjà, LU et pas voté, dans `analysis/replay` —
+// c'est le MÊME que la cuisson construit (décision D11). Une résolution locale à ce paquet serait,
+// encore, un second décodeur du même fait.
+//
+// LE PONT APLATI A DISPARU DU CHEMIN (lot 6.1, 2026-09-10) : ce fichier passait
+// `reg.PontParSlot()` — le PREMIER occupant de chaque siège, quel que soit l'instant — et la
+// position d'un autre corps pouvait donc être écrite sous le nom du premier. Il passe désormais le
+// registre entier, qui répond à l'instant. Voir `.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`.
 //
 // # LA CAPABILITY, ET CE QU'ELLE NE GARANTIT PAS SEULE
 //
@@ -306,8 +310,7 @@ func buildPositionRows(
 	// `games/halo_infinite/replayidentity/bot_identities.go`).
 	bots := replayidentity.BotIdentities(res)
 	reg := replay.BuildIdentityRegistry(entreeDuRegistre(lectures, ids, bots, matchID))
-	slotXUID := reg.PontParSlot()
-	if len(slotXUID) == 0 {
+	if !reg.PontEtabli() {
 		observability.AddInt(metricPositionsNoBridge, 1)
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf(
 			"pont slot->xuid vide (vies=%d nommees=%d lectures_index=%d)",
@@ -318,7 +321,7 @@ func buildPositionRows(
 	// les positions portent le monde. La projection des faits d isolement s en sert sans
 	// rescanner le film (cf. isolation_facts.go).
 	mat := materiauDIsolement{registre: reg, positions: positions}
-	return composerPassePositions(positions, slotXUID, kills, int64(originUS), matchID), mat, nil
+	return composerPassePositions(positions, reg, kills, int64(originUS), matchID), mat, nil
 }
 
 // composerPassePositions : LES DEUX JEUX DE LIGNES D UNE SEULE LECTURE DU FILM. PURE — aucune
@@ -338,11 +341,11 @@ func buildPositionRows(
 // du kill. `toKillOpeningRows` n a donc AUCUNE avance a readditionner : le faire decalerait
 // toutes les lignes de 1,5 s.
 func composerPassePositions(
-	positions []filmdec.BipedPosition, slotXUID map[uint32]uint64,
+	positions []filmdec.BipedPosition, reg replay.IdentityRegistry,
 	kills []replay.KillRef, originUS int64, matchID string,
 ) passePositions {
-	posOut, rep := replay.BuildKillPositions(positions, slotXUID, kills, originUS)
-	openOut, openRep := replay.BuildKillOpenings(positions, slotXUID, kills, originUS)
+	posOut, rep := replay.BuildKillPositions(positions, reg, kills, originUS)
+	openOut, openRep := replay.BuildKillOpenings(positions, reg, kills, originUS)
 	return passePositions{
 		rep:      rep,
 		rows:     toKillPositionRows(matchID, posOut),

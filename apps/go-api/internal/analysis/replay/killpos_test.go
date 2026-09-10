@@ -20,7 +20,7 @@ func TestKillPositionsPlaceLesDeuxJoueurs(t *testing.T) {
 	}
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: 10_000}}
-	got, rep := BuildKillPositions(pos, slotXUID, kills, 0)
+	got, rep := BuildKillPositions(pos, regPlat(slotXUID), kills, 0)
 	if len(got) != 1 || got[0].Killer == nil || got[0].Victim == nil {
 		t.Fatalf("les deux positions devaient être trouvées : %+v", got)
 	}
@@ -40,7 +40,7 @@ func TestKillPositionsLaisseNilHorsTolerance(t *testing.T) {
 	}
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: 10_000}}
-	got, rep := BuildKillPositions(pos, slotXUID, kills, 0)
+	got, rep := BuildKillPositions(pos, regPlat(slotXUID), kills, 0)
 	if len(got) != 1 || got[0].Victim != nil {
 		t.Fatalf("la victime devait rester nil : %+v", got)
 	}
@@ -54,7 +54,7 @@ func TestKillPositionsNEcritRienSansAucunePosition(t *testing.T) {
 	pos := []filmdec.BipedPosition{posAt(1, 1_000_000, 1, 2, 3)}
 	slotXUID := map[uint32]uint64{1: 111}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 999, TimeMS: 60_000}}
-	got, rep := BuildKillPositions(pos, slotXUID, kills, 0)
+	got, rep := BuildKillPositions(pos, regPlat(slotXUID), kills, 0)
 	if len(got) != 0 {
 		t.Fatalf("aucune position : rien ne devait être écrit, %+v", got)
 	}
@@ -74,7 +74,7 @@ func TestKillPositionsRefuseDeTrancherEntreDeuxCorps(t *testing.T) {
 	}
 	slotXUID := map[uint32]uint64{1: 111, 2: 111, 3: 222}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: 10_000}}
-	got, rep := BuildKillPositions(pos, slotXUID, kills, 0)
+	got, rep := BuildKillPositions(pos, regPlat(slotXUID), kills, 0)
 	if len(got) != 1 || got[0].Killer != nil {
 		t.Fatalf("le tueur a deux corps : sa position devait rester nil, %+v", got)
 	}
@@ -89,10 +89,10 @@ func TestKillPositionsAppliqueLeDecalageDHorloge(t *testing.T) {
 	pos := []filmdec.BipedPosition{posAt(1, 14_000_000, 1, 2, 3), posAt(2, 14_000_000, 4, 5, 6)}
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: 10_000}}
-	if _, rep := BuildKillPositions(pos, slotXUID, kills, 0); rep.Dropped != 1 {
+	if _, rep := BuildKillPositions(pos, regPlat(slotXUID), kills, 0); rep.Dropped != 1 {
 		t.Fatalf("sans décalage, la mort tombe à 10 s et rien n'est trouvé : %+v", rep)
 	}
-	_, rep := BuildKillPositions(pos, slotXUID, kills, 4_000_000)
+	_, rep := BuildKillPositions(pos, regPlat(slotXUID), kills, 4_000_000)
 	if rep.Both != 1 {
 		t.Fatalf("avec le décalage de 4 s, les deux positions devaient être trouvées : %+v", rep)
 	}

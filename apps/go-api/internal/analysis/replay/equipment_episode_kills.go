@@ -62,12 +62,12 @@ type KillsInput struct {
 // décalage de 3,6 s à 50,8 s selon le match) ; aucun frag n'est donc joint, et c'est compté
 // comme une mesure NON tentée, pas comme un match sans aucun frag sous effet actif.
 func attachAllEquipmentKills(
-	episodes []EquipmentEpisode, kills KillsInput, slotXUID map[uint32]uint64,
+	episodes []EquipmentEpisode, kills KillsInput, occupant func(slot uint32, frame int) uint64,
 	originMs *int64, frameIntervalMS int,
 ) bool {
 	read := kills.Read && originMs != nil
 	if read {
-		attachEpisodeKills(episodes, kills.Kills, slotXUID, *originMs, frameIntervalMS)
+		attachEpisodeKills(episodes, kills.Kills, occupant, *originMs, frameIntervalMS)
 	}
 	return read
 }
@@ -76,11 +76,13 @@ func attachAllEquipmentKills(
 // fenêtre [T0, T1]. PURE — aucune lecture de film ni de base ici, testable sur données
 // synthétiques (equipment_episode_kills_test.go).
 //
-// slotXUID EST LE MÊME PONT QUE CELUI DÉJÀ PUBLIÉ DANS L'ARTEFACT (Track.XUID, cf.
-// document.go) : à un instant donné, au plus UNE vie d'un xuid est active, et les épisodes
-// d'un slot sont déjà bornés à SA fenêtre de vie (equipment_episodes.go, `episodeAccum`) —
-// chercher parmi TOUS les slots d'un xuid ne peut donc jamais faire matcher deux vies
-// distinctes au même instant, sans qu'il soit nécessaire de rejouer ici les fenêtres de vie.
+// `occupant` EST LE REGISTRE A L'INSTANT (lot 6.1, 2026-09-10), et non plus le pont APLATI : à un
+// instant donné, au plus UNE vie d'un xuid est active, et les épisodes d'un slot sont déjà bornés
+// à SA fenêtre de vie (equipment_episodes.go, `episodeAccum`) — chercher parmi TOUS les slots d'un
+// xuid ne peut donc jamais faire matcher deux vies distinctes au même instant. Ce qui manquait,
+// c'est le SENS INVERSE : sur un siège recyclé entre deux joueurs, le pont aplati rendait le
+// PREMIER occupant, et le frag d'un joueur pouvait créditer l'épisode d'un autre corps du même
+// siège (mesuré sur `fb1a1a72` slot 625 au lot E2-bis : une assistance déplacée).
 //
 // UN FRAG APRÈS LA FIN DE L'ÉPISODE NE COMPTE PAS, QUE LA FIN SOIT MESURÉE OU LA MORT
 // (`EndRead`) : l'épisode est déjà borné à T1 dans les deux cas — [T0, T1] est la SEULE
@@ -90,10 +92,10 @@ func attachAllEquipmentKills(
 // ouverts simultanément pour le même porteur, et le frag crédite alors LES DEUX épisodes —
 // ce n'est pas une avance qui s'arrête au premier trouvé.
 func attachEpisodeKills(
-	episodes []EquipmentEpisode, kills []EquipmentKillRef, slotXUID map[uint32]uint64,
+	episodes []EquipmentEpisode, kills []EquipmentKillRef, occupant func(slot uint32, frame int) uint64,
 	originMs int64, frameIntervalMS int,
 ) {
-	if len(episodes) == 0 || len(kills) == 0 || frameIntervalMS <= 0 {
+	if len(episodes) == 0 || len(kills) == 0 || frameIntervalMS <= 0 || occupant == nil {
 		return
 	}
 	for _, k := range kills {
@@ -103,22 +105,27 @@ func attachEpisodeKills(
 		// l'arrondi exact retenu pour la partie négative.
 		frame := (k.TimeMS - int(originMs)) / frameIntervalMS
 		if k.XUID != 0 {
-			creditFrame(episodes, slotXUID, k.XUID, frame, false)
+			creditFrame(episodes, occupant, k.XUID, frame, false)
 		}
 		if k.AssistKnown && k.AssistXUID != 0 {
-			creditFrame(episodes, slotXUID, k.AssistXUID, frame, true)
+			creditFrame(episodes, occupant, k.AssistXUID, frame, true)
 		}
 	}
 }
 
 // creditFrame incrémente K (ou A si assist) sur chaque épisode du xuid donné dont la fenêtre
 // [T0, T1] couvre frame.
-func creditFrame(episodes []EquipmentEpisode, slotXUID map[uint32]uint64, xuid uint64, frame int, assist bool) {
+//
+// LA FENÊTRE SE TESTE AVANT L'OCCUPANT, et l'ordre compte : il garantit que `frame` est dans
+// [T0, T1] — donc positif, T0 l'étant toujours — avant toute conversion vers l'horloge du film,
+// et il épargne une résolution d'identité à chaque épisode que l'instant ne concerne pas.
+func creditFrame(episodes []EquipmentEpisode, occupant func(uint32, int) uint64,
+	xuid uint64, frame int, assist bool) {
 	for i := range episodes {
-		if slotXUID[episodes[i].Slot] != xuid {
+		if frame < episodes[i].T0 || frame > episodes[i].T1 {
 			continue
 		}
-		if frame < episodes[i].T0 || frame > episodes[i].T1 {
+		if occupant(episodes[i].Slot, frame) != xuid {
 			continue
 		}
 		if assist {

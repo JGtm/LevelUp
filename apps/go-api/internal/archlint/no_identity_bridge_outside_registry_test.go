@@ -23,6 +23,15 @@
 // Mesuré au HEAD du lot : `.own.` n'apparaît nulle part ailleurs, et les trois portes ont disparu
 // de tous les appelants.
 //
+// # LES MOTIFS `absolu` : LES PORTES SUPPRIMÉES (2026-09-10, lot 6.1)
+//
+// Deux motifs ne désignent pas une lecture À CANALISER mais une porte qui N'EXISTE PLUS :
+// `ResolveSlotXUID` (retirée au lot P2) et `PontParSlot` (le pont APLATI, retiré au lot 6.1).
+// Ceux-là s'appliquent MÊME aux fichiers de l'allowlist — leur allowlist est vide, registre
+// compris — parce que leur interdit ne protège pas une frontière de couches : il empêche de
+// RECRÉER une réponse qu'on a démontrée fausse (le premier occupant d'un siège recyclé, servi à
+// n'importe quel instant). Un motif `absolu` n'entre ici qu'avec la mesure qui l'a condamné.
+//
 // # ALLOWLIST : UNE SEULE ENTRÉE, DATÉE
 //
 // `identity_registry.go`, le registre lui-même. Toute autre entrée exige une justification écrite
@@ -64,7 +73,7 @@ var identityBridgeScope = []string{
 //	                                 restent hors allowlist et passent par ces poseurs.
 //	identity_registry_pont.go        2026-09-08, lot E2 — LA CONSTRUCTION du pont brut
 //	                                 (`buildOwners`) et les deux méthodes d'`OwnerReport` qui
-//	                                 portent une garde (`xuidAt`, `NamingBridge`), extraites du
+//	                                 portent une garde (`xuidNumAt`, `NamingBridge`), extraites du
 //	                                 registre passé à 505 L quand le LIEN DIRECT corps ↔ joueur y
 //	                                 est entré. TROISIÈME MOITIÉ du même producteur, à la même
 //	                                 condition que la deuxième : aucune RÈGLE de nommage n'y vit.
@@ -80,21 +89,36 @@ var identityBridgeAllowlist = map[string]string{
 
 // identityBridgePatterns : les motifs interdits hors de l'allowlist, avec ce qu'ils protègent.
 var identityBridgePatterns = []struct {
-	re  *regexp.Regexp
-	dit string
+	re *regexp.Regexp
+	// absolu : le motif s'applique MÊME aux fichiers de l'allowlist. Réservé aux portes
+	// SUPPRIMÉES, que personne — pas même le registre — n'a le droit de rouvrir.
+	absolu bool
+	dit    string
 }{
-	{regexp.MustCompile(`\.own\.`),
+	{regexp.MustCompile(`\.own\.`), false,
 		"lecture directe des tables brutes du pont (`IdentityRegistry.own`)"},
-	{regexp.MustCompile(`\bfunc\b[^\n]*\bOwnerReport\b`),
+	{regexp.MustCompile(`\bfunc\b[^\n]*\bOwnerReport\b`), false,
 		"`OwnerReport` en signature de fonction — les calques prennent `IdentityRegistry`"},
-	{regexp.MustCompile(`\bbuildOwners\s*\(`),
+	{regexp.MustCompile(`\bbuildOwners\s*\(`), false,
 		"appel à `buildOwners` — seul le registre construit le pont"},
-	{regexp.MustCompile(`\bResolveSlotXUID\s*\(`),
+	{regexp.MustCompile(`\bResolveSlotXUID\s*\(`), true,
 		"appel à `ResolveSlotXUID` — porte supprimée au lot P2 (`BuildIdentityRegistry`)"},
-	{regexp.MustCompile(`\.NamingBridge\s*\(`),
+	{regexp.MustCompile(`\.NamingBridge\s*\(`), false,
 		"appel à `NamingBridge` — l'accesseur du registre est `PontEpure`"},
-	{regexp.MustCompile(`\.SlotXUID\b`),
-		"lecture de `SlotXUID` — l'accesseur du registre est `PontParSlot`"},
+	{regexp.MustCompile(`\.SlotXUID\b`), false,
+		"lecture de `SlotXUID` — le registre répond à l'instant par `XUIDAt` / `XUIDNumAt`"},
+	// PIERRE TOMBALE DU PONT APLATI (2026-09-10, lot 6.1). `PontParSlot` rendait `SlotXUID` tel
+	// quel — le PREMIER occupant d'un siège recyclé, quel que soit l'instant demandé — sous une
+	// exemption écrite « ramassages, marques de portage, frags sous équipement actif ». Ses six
+	// lecteurs de production connaissaient tous l'instant de leur lecture ; ils sont passés à
+	// `XUIDNumAt`, et l'accesseur a été SUPPRIMÉ (règle 7, zéro code mort). L'ALLOWLIST DE CE
+	// MOTIF EST VIDE : aucun fichier de production n'a le droit de le rouvrir, y compris le
+	// registre. Mesure qui a commandé le retrait, avec ce qu'elle a trouvé de faux à l'écran :
+	// `.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`.
+	{regexp.MustCompile(`\bPontParSlot\s*\(`), true,
+		"appel à `PontParSlot` — le pont APLATI est supprimé (lot 6.1) : `XUIDNumAt`/`XUIDAt` " +
+			"répondent à l'instant, `PontEpure` nomme une piste entière, `PontEtabli` dit " +
+			"seulement si un pont existe"},
 }
 
 func TestNoIdentityBridgeOutsideRegistry(t *testing.T) {
@@ -119,7 +143,7 @@ func TestNoIdentityBridgeOutsideRegistry(t *testing.T) {
 	if len(violations) > 0 {
 		t.Errorf("le pont d'identité est reconstruit hors du registre :\n  %s\n\n"+
 			"Le registre (`internal/analysis/replay/identity_registry.go`) est le SEUL producteur : "+
-			"passez par ses accesseurs (`PontEpure`, `PontParSlot`, `XUIDAt`, `IndexParSlot`, "+
+			"passez par ses accesseurs (`PontEpure`, `XUIDAt`, `XUIDNumAt`, `IndexParSlot`, "+
 			"`Vies`, `SanteDuPont`). Ajouter une entrée à l'allowlist exige une justification "+
 			"écrite et datée dans ce fichier.", strings.Join(violations, "\n  "))
 	}
@@ -136,9 +160,7 @@ func visiteurDuPont(violations *[]string) filepath.WalkFunc {
 		if strings.HasSuffix(base, "_test.go") {
 			return nil
 		}
-		if _, autorise := identityBridgeAllowlist[base]; autorise {
-			return nil
-		}
+		_, autorise := identityBridgeAllowlist[base]
 		src, err := os.ReadFile(path)
 		if err != nil {
 			return err
@@ -150,6 +172,9 @@ func visiteurDuPont(violations *[]string) filepath.WalkFunc {
 				continue
 			}
 			for _, p := range identityBridgePatterns {
+				if autorise && !p.absolu {
+					continue
+				}
 				if p.re.MatchString(line) {
 					*violations = append(*violations,
 						filepath.Base(filepath.Dir(path))+"/"+base+":"+itoa(i+1)+" — "+p.dit)

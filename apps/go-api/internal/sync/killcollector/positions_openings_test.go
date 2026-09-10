@@ -19,12 +19,40 @@ package killcollector
 import (
 	"context"
 	"math"
+	"sort"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/observability"
 )
+
+// registreSynthetique monte un VRAI registre d'identite sur des trajectoires fabriquees, par le
+// LIEN DIRECT — le record de creation du bipede, qui ECRIT l'index de participant du proprietaire
+// du corps. C'est la voie que le film emploie, et la seule qui soit deterministe sans fil des
+// morts (l'appariement des morts departage par l'ordre des slots quand deux vies finissent au
+// meme instant, ce que ces trajectoires font toutes).
+//
+// POURQUOI IL REMPLACE UNE TABLE slot -> xuid (lot 6.1, 2026-09-10) : `composerPassePositions`
+// prend desormais le registre, qui repond A L'INSTANT. Lui passer une table aplatie serait
+// exactement ce que ce lot a retire du chemin de production.
+func registreSynthetique(positions []filmdec.BipedPosition,
+	slotXUID map[uint32]uint64) replay.IdentityRegistry {
+	sieges := make([]uint32, 0, len(slotXUID))
+	for s := range slotXUID {
+		sieges = append(sieges, s)
+	}
+	sort.Slice(sieges, func(i, j int) bool { return sieges[i] < sieges[j] })
+	idx := replay.PlayerIndexTable{ByXUID: map[uint64]int{}, Readings: 1}
+	creations := make([]filmdec.BipedCreation, 0, len(sieges))
+	for i, s := range sieges {
+		idx.ByXUID[slotXUID[s]] = i
+		creations = append(creations, filmdec.BipedCreation{
+			Slot: s, Generation: 1, ParticipantIndex: uint32(i), HasIndex: true})
+	}
+	return replay.BuildIdentityRegistry(replay.IdentityInput{
+		Positions: positions, BipedCreations: creations, PlayerIndices: idx})
+}
 
 // bipedAt fabrique un échantillon de trajectoire monde — le type que `ScanBipedPositions` rend.
 func bipedAt(slot uint32, tMS int64, x, y, z float32) filmdec.BipedPosition {
@@ -62,7 +90,7 @@ func TestComposerPassePositions_LEntameEstPriseAvantLeKillEtPorteSonInstant(t *t
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []replay.KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: mortMS}}
 
-	pass := composerPassePositions(positions, slotXUID, kills, 0, "m1")
+	pass := composerPassePositions(positions, registreSynthetique(positions, slotXUID), kills, 0, "m1")
 
 	if len(pass.rows) != 1 || len(pass.openRows) != 1 {
 		t.Fatalf("attendu 1 position et 1 entame, obtenu %d et %d", len(pass.rows), len(pass.openRows))
@@ -126,7 +154,7 @@ func TestComposerPassePositions_ReapparitionEcarteLEntameEtLaCompte(t *testing.T
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []replay.KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: mortMS}}
 
-	pass := composerPassePositions(positions, slotXUID, kills, 0, "m1")
+	pass := composerPassePositions(positions, registreSynthetique(positions, slotXUID), kills, 0, "m1")
 
 	if len(pass.rows) != 1 || pass.rows[0].KillerX == nil {
 		t.Fatalf("la position du coup fatal doit rester entière : %+v", pass.rows)

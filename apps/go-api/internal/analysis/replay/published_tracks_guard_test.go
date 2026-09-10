@@ -129,7 +129,7 @@ func TestKeepOfPublishedTracks_ContratPreserve(t *testing.T) {
 // `own.PontEpure()`, d'ou les slots ambigus sont RETIRES. Le lecteur ne peut plus oublier la
 // garde, puisqu'il n'a plus de quoi l'enfreindre.
 //
-// MUTATION : passer `own.PontParSlot()` au lieu de `own.PontEpure()` rougit — la piste contestee
+// MUTATION : rendre `PontEpure` sans retirer les slots ambigus rougit — la piste contestee
 // reprend le nom du premier occupant.
 func TestUnePisteCONTESTEEnEstJamaisIndexeeSousUnXUID(t *testing.T) {
 	// La configuration mesuree : A [5872..6981], la vie contestee [7123..7158], B [7457..7591].

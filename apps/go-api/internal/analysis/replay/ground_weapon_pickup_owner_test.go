@@ -16,7 +16,8 @@ package replay
 // entrees que `BuildFromFilm` : le fil des morts (`ScanFilmDeaths`), l'index de joueur lu dans
 // les chunks de replication (`ScanFilmPlayerIndices` + `injectiveOrEmpty`), les evenements de tir
 // (`ScanFilmFireEvents` -> `fireRefs`, dont les fermetures ont besoin) et les positions de bipede
-// deja lues par l'instrument (`indexBySlot`). C'est `own.PontParSlot()` que le document publie sur
+// deja lues par l'instrument (`indexBySlot`). Depuis le lot 6.1 le document nomme le ramasseur par
+// `own.XUIDNumAt(slot, instant)` ; l'instrument, lui, mesure la COUVERTURE du pont epure sur
 // `Track.XUID` (`build.go`, `nameTracks`) : mesurer sur autre chose ne dirait rien de ce qui
 // serait publie en phase 3.
 //
@@ -231,11 +232,11 @@ func gwPickupOwners(t *testing.T, dir string, f *gwPickupFilm) map[uint32]uint64
 		" par lecture %d · fermetures tir %d / reapparition %d (contestees %d, refusees %d) ·"+
 		" lectures d'index %d · desaccords d'index %d · collisions de slot %d ·"+
 		" index non injectif %d · joueurs distincts %d",
-		len(deaths), len(own.PontParSlot()), own.ViesNommeesParLaLecture(), own.ViesTotal(), own.SlotsParLaLecture(),
+		len(deaths), len(own.PontEpure()), own.ViesNommeesParLaLecture(), own.ViesTotal(), own.SlotsParLaLecture(),
 		own.FermeturesParTir(), own.FermeturesParReapparition(), own.FermeturesContestees(),
 		own.FermeturesRefusees(), own.LecturesIndex(), own.DesaccordsIndex(), own.CollisionsDeSlot(),
-		collisions, gwPickup25Distinct(own.PontParSlot()))
-	return own.PontParSlot()
+		collisions, gwPickup25Distinct(own.PontEpure()))
+	return own.PontEpure()
 }
 
 // gwPickupXUIDLoadout rend le loadout de la VIE COURANTE de `xuid` a l'image-cle `kf` : les

@@ -69,7 +69,7 @@ func TestPickupOriginSeauxEtInvariant(t *testing.T) {
 		poRamassage(3, 3_000_000, 2), // grenade
 		poRamassage(4, 4_000_000, 0), // ARME (classe 0, ecrite en clair)
 	}
-	got, cov := buildPickups(in, poClock(), pickupInputs{slotXUID: nil, st: filmdec.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, dropped)})
+	got, cov := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: filmdec.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, dropped)})
 	if len(got) != 4 {
 		t.Fatalf("4 ramassages publies attendus, obtenu %d", len(got))
 	}
@@ -114,7 +114,7 @@ func TestPickupOriginSocleLEmporteSurLeSol(t *testing.T) {
 	dropped := []droppedSpot{{t: 0, jusqua: -1, x: 10, y: 10, z: 0}}
 	pos := []filmdec.BipedPosition{poPos(1, 1_000_000, 10, 10, 0)}
 	in := []filmdec.BipedPickup{poRamassage(1, 1_000_000, 3)}
-	got, _ := buildPickups(in, poClock(), pickupInputs{slotXUID: nil, st: filmdec.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, dropped)})
+	got, _ := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: filmdec.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, dropped)})
 	if len(got) != 1 || got[0].Origin != PickupOriginSpawner {
 		t.Fatalf("point et pose au meme endroit : origine %q, attendu %q — un fait de carte "+
 			"au centimetre l'emporte sur une inference de film", got[0].Origin,
@@ -122,7 +122,7 @@ func TestPickupOriginSocleLEmporteSurLeSol(t *testing.T) {
 	}
 	// LE TEMOIN DE L'ORDRE : sans le point, le meme ramassage doit devenir `ground`. Sans ce
 	// second appel, le test ne distinguerait pas « spawner gagne » de « ground ne marche pas ».
-	gotSansPoint, _ := buildPickups(in, poClock(), pickupInputs{slotXUID: nil, st: filmdec.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(nil, SpawnPointsEstablished, pos, dropped)})
+	gotSansPoint, _ := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: filmdec.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(nil, SpawnPointsEstablished, pos, dropped)})
 	if gotSansPoint[0].Origin != PickupOriginGround {
 		t.Fatalf("sans point catalogue, la meme pose doit rendre %q, obtenu %q",
 			PickupOriginGround, gotSansPoint[0].Origin)
@@ -216,7 +216,7 @@ func TestPickupOriginRefuseUnePositionTropLointaineDansLeTemps(t *testing.T) {
 	// La position est sur le point, mais une SECONDE avant le ramassage — dix fois la garde.
 	pos := []filmdec.BipedPosition{poPos(1, 1_000_000, 10, 10, 0)}
 	in := []filmdec.BipedPickup{poRamassage(1, 1_000_000+10*PickupOriginPosMaxUS, 2)}
-	got, cov := buildPickups(in, poClock(), pickupInputs{slotXUID: nil, st: filmdec.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, nil)})
+	got, cov := buildPickups(in, poClock(), pickupInputs{occupant: nil, st: filmdec.BipedPickupStats{}, weaponKeys: nil, judge: poJuge(points, SpawnPointsEstablished, pos, nil)})
 	if got[0].Origin != "" {
 		t.Fatalf("position trop vieille : origine %q, attendu l'abstention — sinon on invente "+
 			"un lieu au ramassage", got[0].Origin)

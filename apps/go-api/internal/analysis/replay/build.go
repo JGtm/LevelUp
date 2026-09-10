@@ -158,7 +158,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// Les FRAGS SOUS EFFET ACTIF : jointure des episodes avec les kills resolus par
 	// l'appelant (cf. equipment_episode_kills.go). AVANT la couverture, qui publie
 	// killsRead a cote des compteurs.
-	killsRead := attachAllEquipmentKills(doc.EquipmentEpisodes, opt.Kills, reg.PontParSlot(), doc.OriginMs, interval)
+	killsRead := attachAllEquipmentKills(doc.EquipmentEpisodes, opt.Kills, occupantParFrame(reg, replayClock{origin: origin, step: step}), doc.OriginMs, interval)
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, reg, doc.OriginMs != nil, scoreCov)
 	// LE RESIDU DE NOMMAGE SE PUBLIE AVEC LE PONT : un artefact qui porte des vies sans identite
@@ -225,7 +225,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	doc.Pickups, pkCov = buildPickups(opt.Pickups,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount,
 			families: opt.Labels.EquipmentFamilies},
-		pickupInputs{slotXUID: reg.PontParSlot(), st: opt.PickupStats,
+		pickupInputs{occupant: reg.XUIDNumAt, st: opt.PickupStats,
 			weaponKeys: opt.Labels.Keys, judge: judge})
 	doc.Coverage.Pickups = &pkCov
 	slog.Info("rejeu : ramassages natifs",

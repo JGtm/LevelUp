@@ -141,9 +141,9 @@ func bpExtraire(t *testing.T, cache, id string) (
 		t.Logf("%s : index de joueur illisible (%v) — pont par le seul fil des morts", id, err)
 	}
 	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
-	slotXUID, own := reg.PontParSlot(), reg
+	slotXUID, own := reg.PontEpure(), reg
 	events := bombHeldEventsOf(changes, own.DeathOffsetMS())
-	carry := BuildHeldObjectCarry(events, slotXUID, deaths)
+	carry := BuildHeldObjectCarry(events, occupantFige(slotXUID), deaths)
 	carries, cov := buildBombCarries(carry, matchClock{origin: 0, step: 1000, frames: 1 << 20}, carrierPresence{})
 	return carry.Periods, carries, cov, own
 }
