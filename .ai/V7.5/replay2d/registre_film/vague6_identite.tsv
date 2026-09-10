@@ -1,0 +1,20 @@
+film	famille	mode	manches_couverture	manches_score_indice	obj_available	obj_attached	obj_noSlot	pct_actions_non_nommees	flag_openings	flag_carries	flag_noBridge	spans_portes_sans_xuid	images_portees_sans_xuid	bridge_livesNamed	bridge_livesTotal	actions_objectif_oracle_total	actions_objectif_publiees
+4f77afc1	CTF	BTB:CTF	1	1	253	253	0	0.0	0	0	0	0	0	192	375	40	75
+879a4dba	CTF	BTB:CTF	1	1	99	99	0	0.0	0	0	0	0	0	122	219	72	27
+5676a9ba	TotalControl	BTB:Total Control	1	1	178	178	0	0.0	0	0	0	0	0	204	307	60	27
+16ea3668	CTF	CTF:Arena	1	1	9700	9636	0	0.0	29	29	0	0	0	74	79	56	49
+58864b3c	CTF	CTF:Arena	1	1	64	64	0	0.0	20	20	0	0	0	27	41	42	29
+7fce3219	CTF	CTF:Arena	2	2	348	348	0	0.0	85	85	0	0	0	168	191	124	109
+8bc6074f	CTF	CTF:Arena	1	1	15808	15808	0	0.0	54	53	0	0	0	81	98	99	79
+a0c36016	CTF	CTF:Arena	1	1	361	361	0	0.0	49	49	0	0	0	136	151	95	163
+b8a44fe8	CTF	CTF:Arena	1	1	254	254	0	0.0	63	63	0	0	0	124	140	129	86
+bc60b4d9	CTF	CTF:Arena	1	1	177	177	0	0.0	31	31	0	0	0	79	90	73	61
+bf5ced1b	CTF	CTF:Arena	1	1	54	54	0	0.0	12	12	0	0	0	26	29	23	17
+cde26226	CTF	CTF:Arena	2	2	415	415	0	0.0	89	88	0	0	0	163	181	158	184
+f8efc5ca	CTF	CTF:Arena	1	1	15784	15784	0	0.0	35	35	0	0	0	83	95	79	58
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	1	1	86	86	0	0.0	26	25	0	0	0	29	52	53	40
+32d9a94f	Strongholds	Strongholds:Arena	1	1	148	148	0	0.0	0	0	0	0	0	71	86	55	55
+396cfc92	Strongholds	Strongholds:Arena	1	1	152	152	0	0.0	0	0	0	0	0	62	81	58	58
+572e236b	Strongholds	Strongholds:Arena	1	1	143	143	0	0.0	0	0	0	0	0	65	78	45	45
+81c02726	Strongholds	Strongholds:Arena	1	1	92	92	0	0.0	0	0	0	0	0	39	53	35	35
+e60aaf06	Strongholds	Strongholds:Arena	3	1	154	24	130	84.4	0	0	0	0	0	67	77	49	12
