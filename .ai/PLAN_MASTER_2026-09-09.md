@@ -370,3 +370,7 @@ de cocher ; fusion dans `feat/v75` seulement avec l'accord de l'utilisateur.
   Réparation du plan maître (`f2a394c8c`) après duplication par une insertion sed sans adresse dans
   deux commits poussés. Restent au plan les seuls points « consignés » et « si quota » : us5 armes
   spéciales (P5), hygiène de code, investigation E0 bornée, hygiène du registre en dernier.
+- **2026-09-10 (16:40)** — Incident de worktree : une autre session a basculé le worktree partagé sur
+  `feat/citations-artilleur-vehicules` (créée à `24ded422b`, travail non commité) ; mon commit de plan
+  `80c8e0af6` y est tombé, reporté sur `feat/v75` (`7b52b3a7e`). Désormais toute fusion dans `feat/v75`
+  se fait depuis le worktree d'intégration `LevelUp-wt-v75` (garde de branche inchangée).
