@@ -5,7 +5,7 @@
     "Merchant's Square",
     "merchant's_square_map"
   ],
-  "image": "7dfec55d-d968-4a38-aa68-bc31e8874cfd.png",
+  "image": "7dfec55d-d968-4a38-aa68-bc31e8874cfd.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:51:43.3913472Z",
   "style": "encre",

@@ -183,8 +183,10 @@ type ReplayService interface {
 	// ErrMapBackgroundNotAvailable quand la carte du match n'a pas d'image figée —
 	// 21 cartes en ont, pas toutes : le rejeu retombe alors sur son sol structurel.
 	MapBackground(ctx context.Context, matchID string) (*replaydoc.MapBackground, error)
-	// MapBackgroundImage retourne les octets PNG du fond, même sentinelle d'absence.
-	MapBackgroundImage(ctx context.Context, matchID string) ([]byte, error)
+	// MapBackgroundImage retourne les octets du fond et son type MIME ("image/png" ou
+	// "image/webp", déduit de l'extension réelle du fichier — champ Image du sidecar, D3
+	// du plan fonds WebP), même sentinelle d'absence.
+	MapBackgroundImage(ctx context.Context, matchID string) ([]byte, string, error)
 	// MapBackgroundForMap et MapBackgroundImageForMap servent le MÊME fond, keyé par
 	// CARTE (map_id) au lieu du match. La grille de l'onglet Tactique n'a pas de match
 	// sous la main : elle liste des cartes. La résolution est la même — et elle n'est
@@ -192,7 +194,7 @@ type ReplayService interface {
 	// façon d'obtenir les identités de carte (ReplayMapNameRepo.MapKeysForMap).
 	// Mêmes sentinelles d'absence que leurs jumelles par match.
 	MapBackgroundForMap(ctx context.Context, mapID string) (*replaydoc.MapBackground, error)
-	MapBackgroundImageForMap(ctx context.Context, mapID string) ([]byte, error)
+	MapBackgroundImageForMap(ctx context.Context, mapID string) ([]byte, string, error)
 	// MapCallouts retourne les ZONES NOMMÉES officielles de la carte du match
 	// (polygones monde + libellés FR/EN, catalogue de référence versionné). Retourne
 	// ErrMapCalloutsNotAvailable quand la carte n'en a pas — cas nominal des cartes

@@ -5,7 +5,7 @@
     "Cliffhanger",
     "cliffhanger_ridgeline"
   ],
-  "image": "ridgeline.png",
+  "image": "ridgeline.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-26T14:59:01.6358608Z",
   "style": "encre",

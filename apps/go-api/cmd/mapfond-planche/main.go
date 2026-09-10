@@ -26,6 +26,12 @@
 //	                             [--intro "..."] [--cote 380]
 package main
 
+// L'import nommé "image/png" reste nécessaire pour l'ENCODAGE des vignettes (png.Encoder,
+// png.BestCompression) ; il enregistre AUSSI le décodeur PNG par effet de bord
+// (image.RegisterFormat), comme le fait l'import blanc de golang.org/x/image/webp ci-dessous
+// pour le WebP (D6, plan fonds WebP) — c'est ce qui permet à `image.Decode` (et non plus
+// `png.Decode`) de lire indifféremment les deux formats.
+
 import (
 	"bufio"
 	"bytes"
@@ -39,6 +45,8 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+
+	_ "golang.org/x/image/webp" // decodeur WebP sans perte, enregistre par effet de bord (D6)
 )
 
 // coteMaxParDefaut : cote maximal d'une vignette, en pixels. 380 px laisse lire l'architecture
@@ -149,7 +157,10 @@ func cuitVignette(chemin string, cote, coteLoupe int) (vignette, error) {
 	if err != nil {
 		return vignette{}, err
 	}
-	src, err := png.Decode(bytes.NewReader(blob))
+	// image.Decode et non png.Decode : le fond peut etre un PNG ou un WebP sans perte
+	// depuis l'etape 4 du plan fonds WebP — le format est sniffe au contenu, jamais
+	// suppose depuis l'extension (D6).
+	src, _, err := image.Decode(bytes.NewReader(blob))
 	if err != nil {
 		return vignette{}, err
 	}

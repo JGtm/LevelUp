@@ -127,13 +127,27 @@ func chargeDumpPOC(t *testing.T, path string) map[int]zonePOC {
 
 // masque charge le fond d'une carte, fermeture de production appliquée. nil = pas de fond
 // publié (cas nominal : la carte reste brute).
+//
+// LE NOM DE FICHIER VIENT DU SIDECAR (champ Image), PAS DE `<module>.png` EN DUR : depuis
+// l'étape 2 du plan fonds WebP, le format est une propriété de la donnée (D3). Une version
+// figée sur `.png` aurait continué de COMPILER après l'étape 4 (conversion en WebP) tout en
+// dégradant SILENCIEUSEMENT cet oracle en `t.Skip` — exactement le risque que l'étape 3 existe
+// pour écarter (cf. l'en-tête du plan : « l'étape 4 casse silencieusement la planche de contact
+// et le cadrage »). C'est mesuré : avant ce correctif, `TestOracleIoUContreLeDecoupePOC`
+// passait au SKIP sur un dépôt dont les fonds sont en `.webp`, sans qu'aucune sortie de test ne
+// le signale comme un échec.
 func (c corpus) masque(t *testing.T, module string, tolerance float64) *Masque {
 	t.Helper()
-	png := c.res.MapBackgroundPath(title.DefaultSlug, module)
-	if _, err := os.Stat(png); err != nil {
+	metaPath := c.res.MapBackgroundMetaPath(title.DefaultSlug, module)
+	meta, err := replay.LoadMapBackground(metaPath)
+	if err != nil {
 		return nil
 	}
-	m, err := ChargeMasque(png, c.res.MapBackgroundMetaPath(title.DefaultSlug, module))
+	imgPath := c.res.MapBackgroundImageFilePath(title.DefaultSlug, meta.Image)
+	if _, err := os.Stat(imgPath); err != nil {
+		return nil
+	}
+	m, err := ChargeMasque(imgPath, metaPath)
 	if err != nil {
 		t.Fatalf("fond de %s illisible : %v", module, err)
 	}

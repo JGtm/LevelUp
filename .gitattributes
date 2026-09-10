@@ -7,6 +7,7 @@
 
 # Binaires explicites
 *.png binary
+*.webp binary
 *.jpg binary
 *.ico binary
 *.gif binary

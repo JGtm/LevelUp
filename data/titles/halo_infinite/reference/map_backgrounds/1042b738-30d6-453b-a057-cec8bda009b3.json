@@ -5,7 +5,7 @@
     "Showdown Arena",
     "1042b738-30d6-453b-a057-cec8bda009b3_map"
   ],
-  "image": "1042b738-30d6-453b-a057-cec8bda009b3.png",
+  "image": "1042b738-30d6-453b-a057-cec8bda009b3.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T10:25:43.7924914Z",
   "style": "encre",

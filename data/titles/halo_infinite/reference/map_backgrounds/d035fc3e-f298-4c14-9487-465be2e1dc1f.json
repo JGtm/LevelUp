@@ -5,7 +5,7 @@
     "Empyrean",
     "empyrean_map"
   ],
-  "image": "d035fc3e-f298-4c14-9487-465be2e1dc1f.png",
+  "image": "d035fc3e-f298-4c14-9487-465be2e1dc1f.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T13:26:14.0011Z",
   "style": "encre",

@@ -5,7 +5,7 @@
     "Nadair",
     "nadair_map"
   ],
-  "image": "6dbd1c0d-a6c2-4697-8453-f0799d941741.png",
+  "image": "6dbd1c0d-a6c2-4697-8453-f0799d941741.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T18:57:59.0067436Z",
   "style": "encre",

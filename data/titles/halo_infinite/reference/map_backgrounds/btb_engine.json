@@ -5,7 +5,7 @@
     "Scarr",
     "scarr_map"
   ],
-  "image": "btb_engine.png",
+  "image": "btb_engine.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T19:02:50.8428631Z",
   "style": "encre",

@@ -5,7 +5,7 @@
     "Vagabond",
     "map"
   ],
-  "image": "105f5d84-8de1-4908-af3a-1c4f3bf9d642.png",
+  "image": "105f5d84-8de1-4908-af3a-1c4f3bf9d642.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-09-07T16:09:57.4085189Z",
   "style": "encre",

@@ -7,7 +7,7 @@
     "streets_sgh_streets",
     "streets_-_ranked_map"
   ],
-  "image": "sgh_streets.png",
+  "image": "sgh_streets.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-26T15:50:38.2093609Z",
   "style": "encre",

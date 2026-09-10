@@ -5,7 +5,7 @@
     "Obituary Heavies",
     "obituary_heavies_map"
   ],
-  "image": "e3681516-2930-491c-b94f-7dbfa161e000.png",
+  "image": "e3681516-2930-491c-b94f-7dbfa161e000.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T23:16:28.5380311Z",
   "style": "encre",

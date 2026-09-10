@@ -5,7 +5,7 @@
     "Boulevard",
     "252e2a45-93fa-4661-a5cf-4a35803f9149_map"
   ],
-  "image": "252e2a45-93fa-4661-a5cf-4a35803f9149.png",
+  "image": "252e2a45-93fa-4661-a5cf-4a35803f9149.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T13:32:54.1681597Z",
   "style": "encre",

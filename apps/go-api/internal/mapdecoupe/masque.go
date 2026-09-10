@@ -33,9 +33,11 @@ package mapdecoupe
 import (
 	"fmt"
 	"image"
-	"image/png"
+	_ "image/png" // decodeur PNG, enregistre par effet de bord (image.Decode)
 	"math"
 	"os"
+
+	_ "golang.org/x/image/webp" // decodeur WebP sans perte, enregistre par effet de bord (D6)
 
 	"levelup/go-api/internal/analysis/replay"
 )
@@ -52,23 +54,25 @@ type Masque struct {
 	dur    []bool
 }
 
-// ChargeMasque lit le masque praticable d'une carte depuis son PNG et son sidecar.
+// ChargeMasque lit le masque praticable d'une carte depuis son IMAGE (PNG ou WebP sans
+// perte, sniffée au contenu — D6 du plan fonds WebP, jamais supposée depuis l'extension) et
+// son sidecar.
 //
 // Une image dont les dimensions contredisent le calage est REFUSÉE : découper sur une
 // grille mal calée déplacerait silencieusement toutes les frontières.
-func ChargeMasque(pngPath, metaPath string) (*Masque, error) {
+func ChargeMasque(imagePath, metaPath string) (*Masque, error) {
 	meta, err := replay.LoadMapBackground(metaPath)
 	if err != nil {
 		return nil, err
 	}
-	f, err := os.Open(pngPath)
+	f, err := os.Open(imagePath)
 	if err != nil {
-		return nil, fmt.Errorf("fond de carte illisible (%s) : %w", pngPath, err)
+		return nil, fmt.Errorf("fond de carte illisible (%s) : %w", imagePath, err)
 	}
 	defer f.Close()
-	img, err := png.Decode(f)
+	img, _, err := image.Decode(f)
 	if err != nil {
-		return nil, fmt.Errorf("fond de carte non décodable (%s) : %w", pngPath, err)
+		return nil, fmt.Errorf("fond de carte non décodable (%s) : %w", imagePath, err)
 	}
 	b := img.Bounds()
 	if b.Dx() != meta.Calibration.WidthPx || b.Dy() != meta.Calibration.HeightPx {

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/HugoSmits86/nativewebp"
+
 	"levelup/go-api/internal/analysis/replay"
 )
 
@@ -143,6 +145,56 @@ func TestChargeMasqueLitLAlphaCommeMatiere(t *testing.T) {
 	}
 	if got := m.PartDure(); got != 0.5 {
 		t.Errorf("PartDure = %v, attendu 0,5", got)
+	}
+}
+
+// TestChargeMasqueDecodeUnWebPSansPerte — ÉTAPE 3 DU PLAN FONDS WEBP.
+//
+// `ChargeMasque` (comme les deux outils hors ligne de mapfond-planche et mapfond-cadrage)
+// doit lire un fond quel que soit son format : PNG aujourd'hui, WebP après l'étape 4. Ce
+// test encode avec le MÊME encodeur que l'outil de l'étape 0 (`nativewebp`, D5) — pas un
+// fichier WebP fabriqué à la main — et vérifie que le décodage (import blanc
+// `golang.org/x/image/webp`, D6) rend exactement les dimensions et l'alpha attendus.
+// Sans l'import blanc du décodeur, `image.Decode` échouerait ici avec « format d'image non
+// reconnu » : c'est la panne exacte que l'étape 3 existe pour écarter.
+func TestChargeMasqueDecodeUnWebPSansPerte(t *testing.T) {
+	dir := t.TempDir()
+	img := image.NewNRGBA(image.Rect(0, 0, 3, 2))
+	img.Set(0, 0, color.NRGBA{R: 10, G: 10, B: 10, A: 0})   // transparent = pas de matière
+	img.Set(1, 0, color.NRGBA{R: 10, G: 10, B: 10, A: 255}) // opaque = matière
+	img.Set(2, 0, color.NRGBA{R: 10, G: 10, B: 10, A: 255})
+	img.Set(0, 1, color.NRGBA{R: 10, G: 10, B: 10, A: 0})
+	img.Set(1, 1, color.NRGBA{R: 10, G: 10, B: 10, A: 0})
+	img.Set(2, 1, color.NRGBA{R: 10, G: 10, B: 10, A: 255})
+
+	webpPath := filepath.Join(dir, "temoin.webp")
+	f, err := os.Create(webpPath)
+	if err != nil {
+		t.Fatalf("création du WebP : %v", err)
+	}
+	if err := nativewebp.Encode(f, img, &nativewebp.Options{CompressionLevel: nativewebp.BestCompression}); err != nil {
+		f.Close()
+		t.Fatalf("encodage WebP (nativewebp, D5) : %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("fermeture du WebP : %v", err)
+	}
+
+	metaPath := filepath.Join(dir, "temoin.json")
+	ecritSidecar(t, metaPath, 3, 2)
+
+	m, err := ChargeMasque(webpPath, metaPath)
+	if err != nil {
+		t.Fatalf("ChargeMasque sur un WebP sans perte : %v", err)
+	}
+	if m.NX != 3 || m.NY != 2 {
+		t.Errorf("dimensions = %dx%d, attendu 3x2", m.NX, m.NY)
+	}
+	attendu := []bool{false, true, true, false, false, true}
+	for k, v := range attendu {
+		if m.dur[k] != v {
+			t.Errorf("cellule %d : dur = %v, attendu %v", k, m.dur[k], v)
+		}
 	}
 }
 

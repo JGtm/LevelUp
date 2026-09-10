@@ -5,7 +5,7 @@
     "Takamanohara",
     "takamanohara_map"
   ],
-  "image": "edcd4467-6846-455f-ac44-f1034476f774.png",
+  "image": "edcd4467-6846-455f-ac44-f1034476f774.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T23:20:28.0851811Z",
   "style": "encre",

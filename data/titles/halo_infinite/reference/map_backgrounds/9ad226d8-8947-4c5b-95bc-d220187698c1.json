@@ -5,7 +5,7 @@
     "Banished Narrows",
     "banished_narrows_map"
   ],
-  "image": "9ad226d8-8947-4c5b-95bc-d220187698c1.png",
+  "image": "9ad226d8-8947-4c5b-95bc-d220187698c1.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T18:52:48.4448165Z",
   "style": "encre",

@@ -5,7 +5,7 @@
     "The Pit",
     "the_pit_map"
   ],
-  "image": "648ae7aa-c5d0-4f80-861a-79eb30440fcb.png",
+  "image": "648ae7aa-c5d0-4f80-861a-79eb30440fcb.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T13:10:51.357761Z",
   "style": "encre",
