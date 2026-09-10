@@ -270,60 +270,170 @@ concurrente sur `features/squad/i18n.ts`.
 
 ### Phase B0 — TDD : la geometrie, pure
 
-- `[ ]` B0.1 **TEST ROUGE** `apps/web/src/lib/replay/edgeClamp.test.ts` : `edgeMarkFor(c,
-  view, margeEcran, echelle)` rend `null` dedans ; au bord droit, `x = w - marge` et l'angle
-  pointe a droite ; dans un coin, les deux axes sont bornes et l'angle vise la diagonale ;
-  la distance rendue est en METRES (pixels / `scaleOf(view)`) ; l'inversion de Y est
-  respectee (monde +Y haut, toile +Y bas).
-- `[ ]` B0.2 `edgeClamp.ts` : le module pur. Il vit dans `lib/replay/` avec la projection —
-  aucune seconde regle de projection (cf. en-tete de `replayView.ts`).
+- `[x]` B0.1 **TEST ROUGE** `edgeClamp.test.ts` : `edgeMarkFor(c, view, margeEcran, echelle)`
+  rend `null` dedans ; au bord droit, `x = w - marge` et l'angle pointe a droite (0 rad,
+  verifie aussi a gauche, ± PI) ; dans un coin, les deux axes sont bornes et l'angle vise la
+  diagonale (-PI/4 sur un cas a 45°) ; la distance rendue est en METRES (pixels /
+  `scaleOf(view)`, verifie avec deux cadrages d'echelle differente projetant le MEME point
+  canvas) ; l'inversion de Y est respectee (un point au sud du monde sort par le bas du
+  cadre) ; `echelle` grandit la marge (`marge = margeEcran * echelle`). **Echec observe**
+  (avant tout code) : `Failed to resolve import "./edgeClamp" from
+  ".../edgeClamp.test.ts". Does the file exist?` (Vite). Un premier jet du sous-cas `echelle`
+  s'est aussi trompe (attente sur le bord BAS alors que l'inversion Y place (50, 85) pres du
+  HAUT du canevas) — corrige AVANT de regarder `edgeClamp.ts`, en recalculant la projection a
+  la main plutot qu'en devinant.
+  **ECART DE CHEMIN AU PLAN, CORRIGE SUR PIECE** : le plan situait le module dans
+  `apps/web/src/lib/replay/edgeClamp.ts`. Verifie sur pieces (regle 4) : `CanvasView` /
+  `projectTo` / `scaleOf` ne vivent PLUS dans `lib/replay/` depuis le lot K3 (2026-09-05) — ils
+  vivent dans `apps/web/src/features/match-replay/model/replayView.ts`, dont l'en-tete est
+  justement la citation du plan (« aucune seconde regle de projection »). Aucun fichier de
+  production de `lib/replay/` n'importe quoi que ce soit de `features/` (verifie par grep : les
+  3 seules occurrences sont des fixtures de *test*) — l'inverse casserait le sens de
+  dependance bas/haut du dépôt. Le module et son test vivent donc dans
+  `apps/web/src/features/match-replay/model/` (`edgeClamp.ts` / `edgeClamp.test.ts`), a cote de
+  `replayView.ts` qu'ils consomment, et sont couverts par le garde-rail
+  `replayView.guard.test.ts` (« un seul cadrage, une seule projection ») comme tout le reste de
+  la feature. Consigne aussi en Decouvertes (§8).
+- `[x]` B0.2 `edgeClamp.ts` : le module pur (voir ecart de chemin ci-dessus). `EdgeMark { at,
+  angle, distanceM }` ; `edgeMarkFor` projette via `projectTo(view, c)`, borne aux deux axes a
+  `margeEcran * echelle`, et ne recalcule jamais l'inversion Y (deja faite par `projectTo`).
 
-**Gate B0** : `make test-web` (edgeClamp vert) · `make check-types`.
+**Gate B0 passe** (2026-09-10) : `npx vitest run src/features/match-replay/model/edgeClamp.test.ts`
+7/7 verts · `npx vitest run src/features/match-replay/model` 64 fichiers / 931 tests verts
+(aucune regression sur les gardes, dont `replayView.guard.test.ts`) · `npx tsc -b --force`
+(purge `node_modules/.tmp` prealable) exit 0.
 
 ### Phase B1 — TDD : le gabarit de la fleche
 
-- `[ ]` B1.1 **TEST ROUGE** `offscreenChevron.test.ts` : le trace ferme 4 sommets (pointe,
-  arriere-gauche, encoche, arriere-droite), il est a l'echelle de l'ECRAN (`style.k`, jamais
-  du canevas), il est pivote de `angle`, et il est rempli de la couleur passee.
-- `[ ]` B1.2 `layers/offscreenChevron.ts` : le dessin. Gabarit normalise pointant +X :
+- `[x]` B1.1 **TEST ROUGE** `offscreenChevron.test.ts` : le trace ferme 4 sommets (pointe,
+  arriere-gauche, encoche, arriere-droite), il est a l'echelle de l'ECRAN (`k`, jamais du
+  canevas — verifie via `recordingContext`, l'appel `scale` porte `CHEVRON_SIZE_PX * k`), il
+  est pivote de `angle`, et il est rempli de la couleur passee. **Echec observe** (avant tout
+  code) : `Failed to resolve import "./offscreenChevron" from ".../offscreenChevron.test.ts".
+  Does the file exist?` (Vite). Couvre aussi B1.3 dans le meme fichier (memes item de code,
+  meme TDD) : `offscreenLabelAnchor` (le cote INTERIEUR, oppose a `angle`) et
+  `drawOffscreenLabel` (contour puis remplissage, aucun `strokeText` quand `labelStroke` est
+  vide).
+- `[x]` B1.2 `layers/offscreenChevron.ts` : le dessin. Gabarit normalise pointant +X :
   pointe `(1, 0)`, arriere-gauche `(-0,75, -0,7)`, encoche `(-0,35, 0)`, arriere-droite
-  `(-0,75, 0,7)` — la base concave du gabarit fourni par l'utilisateur.
-- `[ ]` B1.3 L'etiquette « nom · distance » : posee du COTE INTERIEUR de la fleche (sinon
-  elle sort de la toile), encre de lisibilite depuis `canvasInk`, jamais un litteral.
+  `(-0,75, 0,7)` — la base concave du gabarit fourni par l'utilisateur. `save`/`restore`
+  encadrent le geste (meme regle que `drawRotatedSprite`).
+- `[x]` B1.3 L'etiquette « nom · distance » : posee du COTE INTERIEUR de la fleche
+  (`offscreenLabelAnchor`, a l'oppose de `angle` par `LABEL_GAP_PX * k`), encre de lisibilite
+  passee par l'appelant (meme convention que `replayLabels.ts` — jamais `readInk` appele
+  d'ici, jamais un litteral). Le texte lui-meme (« nom · distance ») est compose par
+  l'APPELANT (B2) : ce module ne recoit qu'une chaine deja faite — l'unite de distance (B4.3)
+  n'a donc pas a etre tranchee ici.
 
-**Gate B1** : `make test-web` · `make check-types`.
+**Gate B1 passe** (2026-09-10) : `npx vitest run src/features/match-replay/layers/offscreenChevron.test.ts`
+9/9 verts · `npx vitest run src/features/match-replay/layers` 50 fichiers / 652 tests verts ·
+`npx tsc -b --force` (purge `node_modules/.tmp` prealable) exit 0.
 
 ### Phase B2 — cablage des marqueurs joueurs
 
-- `[ ]` B2.1 **TEST ROUGE** `replayMarkers.test.ts` : un joueur vivant hors fenetre dessine
+- `[x]` B2.1 **TEST ROUGE** `replayMarkers.test.ts` : un joueur vivant hors fenetre dessine
   la fleche a la marge, et NE dessine ni trainee, ni cone de visee, ni anneau d'apparition,
-  ni marqueur d'etage.
-- `[ ]` B2.2 `drawLivingTrack` : branche hors cadre.
-- `[ ]` B2.3 **TEST ROUGE** croix de mort hors fenetre : la croix est plaquee a la marge,
-  meme fondu, SANS nom ni distance (D6).
-- `[ ]` B2.4 `drawDeathMark` : branche hors cadre.
+  ni marqueur d'etage. **Echec observe** (avant tout code) : les 3 nouveaux cas echouent sur
+  `count(ops, 'rotate')` attendu a 1, obtenu 0 — le calque ne bornait encore rien. La distance
+  attendue est calculee via `edgeMarkFor` (meme fonction que `edgeClamp.test.ts`), jamais
+  recopiee a la main, pour ne tester que le CABLAGE. `OFFSCREEN_MARGIN_PX` (16 px ecran de
+  reference) devient la marge CANONIQUE, exportee depuis `edgeClamp.ts` pour que B3 la
+  reutilise sans copie.
+- `[x]` B2.2 `drawLivingTrack` : branche hors cadre — `edgeMarkFor` d'abord ; si hors fenetre,
+  `drawOffscreenChevron` + `drawOffscreenLabel` (si un nom est resolu) puis `return` immediat
+  (meme structure que la branche pion embarque juste au-dessus) : rien d'autre n'est atteint.
+- `[x]` B2.3 **TEST ROUGE** croix de mort hors fenetre : la croix est plaquee a la marge,
+  meme fondu, SANS nom ni distance (D6). **Echec observe** (avant tout code) : meme signature
+  (`rotate` attendu 1, obtenu 0).
+- `[x]` B2.4 `drawDeathMark` : branche hors cadre — `ctx.globalAlpha = DEATH_ALPHA * fade`
+  POSE AVANT `drawOffscreenChevron` (le chevron ne fixe pas l'alpha lui-meme, `save`/`restore`
+  la traverse) : meme calcul de fondu que la croix en X, aucune etiquette.
+  **DECOUVERTE traitee dans le perimetre** : `MarkerStyle` gagne un champ obligatoire
+  `offscreenLabelOf: (name, meters) => string` (texte deja compose, resolu par l'appelant —
+  meme convention que `ink`/`labelStroke`). Deux fichiers de test construisaient un
+  `MarkerStyle` complet (`replayMarkers.test.ts`, `replayAimCone.test.ts` — extrait de l'un a
+  l'autre le 2026-09-06) : les deux mis a jour. L'i18n de l'unite (B4.3) est resolue ICI, pas
+  reportee : `offscreenMarkerFmt: (name, meters) => string` ajoute a `i18nContract.ts` +
+  `i18n.ts` (FR/EN, meme valeur « m » — symbole international, pas un anglicisme, mais la
+  parite de typage CLAUDE.md n°1 est tenue) ; cable dans `ReplayCanvas.tsx`
+  (`offscreenLabelOf` resout `REPLAY_TEXT[locale].offscreenMarkerFmt`, `locale` ajoute aux
+  dependances du `useCallback`).
 
-**Gate B2** : `make test-web` · `ReplayTeams.perf.test.tsx` sans regression.
+**Gate B2 passe** (2026-09-10) : `npx vitest run src/features/match-replay` 181 fichiers /
+2617 tests verts, 1 skipped (aucune regression) · `npx tsc -b --force` (purge prealable)
+exit 0 · `ReplayTeams.perf.test.tsx` : 3 skipped — gate `REPLAY_PERF=1` + temoin
+`data/cache/replays/...` absent de ce worktree dedie (comportement inchange, aucun module
+qu'il importe n'est touche par ce lot — verifie par lecture de ses imports) ·
+`npx eslint --max-warnings=0` sur les 10 fichiers touches (B0-B2) : 1 avertissement
+PRE-EXISTANT et INCHANGE, `ReplayCanvas.tsx:532` (`zoneInk.outline` manquant aux
+dependances d'un AUTRE `useCallback`, sans rapport avec ce lot — confirme par `git diff`,
+la ligne n'est pas dans le diff de ce lot).
 
 ### Phase B3 — porteurs d'objectif (D3)
 
-- `[ ]` B3.1 **TEST ROUGE** par calque : `flagCarriesLayer`, `bombCarrierLayer`,
-  `skullCarrierLayer` — le glyphe du porteur hors fenetre est plaque a la marge.
-- `[ ]` B3.2 Cablage des trois calques sur `edgeMarkFor` (jamais une copie de la regle).
-- `[ ]` B3.3 `vipCrownLayer` : statuer `[x]` (meme traitement) ou `[!]` (justifie) — la
-  couronne suit le marqueur du joueur, verifier sur piece avant de trancher.
+- `[x]` B3.1 **TEST ROUGE** par calque : `flagCarriesLayer`, `bombCarrierLayer`,
+  `skullCarrierLayer` — le glyphe du porteur hors fenetre est plaque a la marge. **Echec
+  observe** (avant tout code, les 3 cas) : la position brute non bornee (ex. `48030`,
+  `2000`) au lieu de la marge attendue (`518`, `184`). Chaque calque gagne aussi un cas
+  « au sol / a la base, hors cadre » prouvant le NON-bornage des positions de CARTE
+  (dropped/home pour le drapeau, sol pour la bombe) — ce sont des lieux fixes, pas des
+  porteurs, hors perimetre D3.
+- `[x]` B3.2 Cablage des trois calques sur `edgeMarkFor` (jamais une copie de la regle) :
+  seul le point RELU DU PORTEUR (`layer.posOf`) est borne — la position de span (dropped/
+  home/sol) reste projetee sans bornage, exactement comme avant ce lot. Echelle `1` partout
+  (**DECOUVERTE traitee dans le perimetre** : ces trois calques ne mettent encore RIEN a
+  l'echelle de l'ecran — `k`/`dpr` n'existe dans aucun des trois, contrairement a
+  `replayMarkers.ts` ; suivre leur convention existante plutot que d'introduire un `k` que
+  rien d'autre n'y consomme encore. Documente en commentaire dans les 3 fichiers et en
+  Decouvertes §8).
+- `[!]` B3.3 `vipCrownLayer` : **NON traite, justifie**. Verifie sur piece
+  (`vipCrownLayer.ts`/`.test.ts`) : la couronne se dessine SUR le point du marqueur du VIP
+  (`layer.posOf`, meme lecture que le pion), jamais a une position propre. D3 ne la liste
+  PAS (seuls drapeau/crane/bombe le sont) ; et la meme raison que D5 (« cumuler forme
+  d'identite + fleche rendrait la silhouette illisible a 12 px ») s'applique par analogie a
+  une couronne posee sur la fleche du joueur hors cadre. AUCUNE REGRESSION : hors cadre, la
+  couronne ne se dessine deja PAS (position projetee hors toile, canvas qui n'y peint rien) —
+  comportement IDENTIQUE avant/apres ce lot, ce n'est pas un defaut introduit ici. Consigne
+  en Decouvertes §8 pour un futur lot.
 
-**Gate B3** : `make test-web` · `make check-types`.
+**Gate B3 passe** (2026-09-10) : `npx vitest run src/features/match-replay` 181 fichiers /
+2622 tests verts, 1 skipped (inchange) · `npx tsc -b --force` (purge prealable) exit 0 ·
+`npx eslint --max-warnings=0` sur les 6 fichiers touches (3 calques + leurs tests) : 0
+avertissement · grep `#[0-9a-fA-F]\{6\}` et classes Tailwind de couleur sur les 6 fichiers de
+production touches B0-B3 : 0 occurrence.
 
 ### Phase B4 — parite export et finition
 
-- `[ ]` B4.1 Verifier sur piece que l'export video passe par les MEMES peintres
-  (`bindPainters` / `composeScene`) : la parite doit etre gratuite, pas supposee.
-- `[ ]` B4.2 Revue navigateur : zoom 2x et 3x sur un match temoin, plusieurs joueurs hors
-  cadre du meme cote, lisibilite des etiquettes.
-- `[ ]` B4.3 i18n de l'unite de distance (FR + EN) si un libelle est necessaire.
+- `[x]` B4.1 Verifie sur piece (pas suppose) que l'export video passe par les MEMES peintres.
+  Chaine remontee jusqu'au bout : `ReplayCanvas.tsx` declare `const redraw = useCallback(() =>
+  drawRef.current(), [])` (une seule reference, ligne 329) et la passe telle quelle a
+  `useReplayCapture({..., redraw, ...})` ; `useReplayCapture.ts:304-313`
+  (`useExportSeam`) la relaie SANS Copie a `useReplayExport({..., redraw: redraw ?? bidon,
+  ...})` ; `useReplayExport.ts` (`paintExportFrame`) appelle `o.redraw()` pour CHAQUE image du
+  clip. `redraw()` invoque `drawRef.current()`, c'est-a-dire EXACTEMENT le `draw()` qui
+  compose `composeScene(ctx, sceneLayers(buildScene(ctx, frame)), frame, dpr)` en lecture
+  normale. Les calques modifies par ce chantier (`drawTracksLayer`, `drawFlagCarries`,
+  `drawBombCarrier`, `drawSkullCarrier`) sont appeles DEPUIS `buildScene`, jamais recopies
+  cote export : la parite est donc STRUCTURELLE (une seule fonction de dessin, deux
+  appelants), pas une supposition. Rien a cabler : verification pure, aucun code touche.
+- `[~]` B4.2 Revue navigateur : **couvert par le superviseur** (hors de portee de cet
+  exécutant — pas d'acces navigateur dans ce lot). Procedure exacte et criteres a l'ecran
+  detailles dans le rapport de cloture de ce lot (match a choisir avec >= 2 coequipiers
+  simultanement eloignes sur une carte BTB/moyenne-grande ; zooms 2x puis 3x via le controle
+  de zoom ; deplacement au pave directionnel pour sortir plusieurs joueurs du meme cote ;
+  verifier fleche + nom + distance, croix de mort bornee sans texte, glyphe d'objectif porte
+  borne, VIP non borne (connu, D3), et parite d'un export video couvrant l'instant).
+- `[~]` B4.3 i18n de l'unite de distance (FR + EN) : **deja fait en B2**, pas differe.
+  `offscreenMarkerFmt` (`i18nContract.ts` + `i18n.ts`, FR/EN) compose « nom · N m » — « m »
+  est le symbole international du metre, identique dans les deux langues (pas un
+  anglicisme), et la parite de TYPAGE (regle CLAUDE.md n°1) est neanmoins tenue par le
+  contrat `Record<ReplayLocale, ReplayText>`. Rien a ajouter ici.
 
-**Gate B4** : `make check-types` · `make test-web` · revue navigateur consignee.
+**Gate B4 passe** (2026-09-10, hors B4.2 superviseur) : `npx vitest run src/features/match-replay`
+181 fichiers / 2622 tests verts, 1 skipped (inchange) · `npx tsc -b --force` (purge
+`node_modules/.tmp` prealable) exit 0. Aucun fichier de production supplementaire touche pour
+cette phase (B4.1 = lecture seule, B4.3 = deja livre en B2) : pas de nouvel eslint/grep
+necessaire au-dela de ceux deja passes aux phases B0-B3.
 
 ---
 
@@ -379,3 +489,21 @@ phase non close. `git log --oneline -10` sur `wt/escouade-hors-cadre` pour l'eta
   points d'apparition `equipment`. Lot a part entiere.
 - Etat actif des deployables (mur 19, capteur 22) : voie `charges-remaining` en reserve
   depuis la decision utilisateur du 2026-08-16.
+- B0.1/B0.2 : le plan situait `edgeClamp.ts` dans `apps/web/src/lib/replay/` ; le module vit
+  en realite dans `apps/web/src/features/match-replay/model/` (a cote de `replayView.ts`, qui a
+  deplace `CanvasView`/`projectTo`/`scaleOf` hors de `lib/replay/` le 2026-09-05, lot K3).
+  Traite DANS le perimetre de B0.1 (ecart de chemin d'un document qui rote plus vite qu'il
+  n'est maintenu, pas un changement de perimetre) — consigne ici pour memoire seulement,
+  aucune action restante. A repercuter si un futur plan cite a nouveau `lib/replay/` pour le
+  cadrage.
+- B3.2 : `flagCarriesLayer.ts`, `bombCarrierLayer.ts`, `skullCarrierLayer.ts` ne mettent
+  encore RIEN a l'echelle de l'ecran (pas de `k`/`dpr`, contrairement a `replayMarkers.ts` et
+  a `drawShotsLayer`/`drawKillFxLayer`) — leurs hooks (`useReplayFlagCarries` etc.) n'ont
+  jamais recu le 3e parametre `dpr` du contrat `LayerPaint`. La marge de bornage y est donc
+  fixee a `echelle=1`, coherente avec l'absence totale de mise a l'echelle existante, mais PAS
+  homogene avec les marqueurs joueurs (qui, eux, scalent par `k`). Observation, pas un defaut
+  de ce lot : threader `dpr` dans ces trois hooks est un lot a part (toucherait leurs
+  signatures `paint` et potentiellement d'autres cotes fixes de ces glyphes).
+- B3.3 : `vipCrownLayer` ne borne pas la couronne VIP hors cadre (justification `[!]` dans le
+  plan). Un futur lot pourrait envisager un petit anneau colore sur la fleche du joueur hors
+  cadre plutot qu'une couronne complete, si le produit le demande — non demande par ce plan.

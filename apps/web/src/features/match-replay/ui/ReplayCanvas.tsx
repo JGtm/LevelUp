@@ -54,7 +54,7 @@ import { useZoneStates } from '../layers/useZoneStates'
 import { useReplayWeaponPads } from '../layers/useReplayWeaponPads'
 import { useReplayGroundWeapons } from '../layers/useReplayGroundWeapons'
 import { useReplayVehicles } from '../layers/useReplayVehicles'
-import type { ReplayLocale } from '../i18n/i18n'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { EndMatchSoundSpec } from '../sound/endMatchSound'
 import { killsOfFeed, type ReplayFeedEntry } from '../model/killFeedLogic'
 import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
@@ -498,6 +498,10 @@ export function ReplayCanvas({
               selfInk,
               deathInk: shotColor,
               labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, // PION EMBARQUE (C7).
+              // BORNAGE HORS CADRE (chantier B, decision D2, 2026-09-10) : la flèche porte le
+              // nom ET la distance ; le texte est resolu ICI (langue de la page), le calque ne
+              // connait aucune locale.
+              offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
             }),
           'marques-de-tir': (_c, fr, k) =>
             drawFireMarks(ctx, fireMarks, view, {
@@ -572,6 +576,7 @@ export function ReplayCanvas({
     showShotFx,
     showKillFx,
     mapImage,
+    locale,
     ],
   )
 
