@@ -5,7 +5,7 @@
     "Smallhalla",
     "smallhalla_map"
   ],
-  "image": "98783453-ce40-4020-9e87-62099a290b62.png",
+  "image": "98783453-ce40-4020-9e87-62099a290b62.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T15:38:08.5246095Z",
   "style": "encre",

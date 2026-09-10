@@ -5,7 +5,7 @@
     "Ruujaya",
     "37a9b5f0-6be7-4a46-8010-1fe6f7ea5611_map"
   ],
-  "image": "37a9b5f0-6be7-4a46-8010-1fe6f7ea5611.png",
+  "image": "37a9b5f0-6be7-4a46-8010-1fe6f7ea5611.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-28T12:00:36.0300101Z",
   "style": "encre",

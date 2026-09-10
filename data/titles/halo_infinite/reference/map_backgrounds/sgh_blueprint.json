@@ -8,7 +8,7 @@
     "recharge_sgh_blueprint",
     "recharge_-_ranked_sgh_blueprint"
   ],
-  "image": "sgh_blueprint.png",
+  "image": "sgh_blueprint.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T18:58:27.9674928Z",
   "style": "encre",

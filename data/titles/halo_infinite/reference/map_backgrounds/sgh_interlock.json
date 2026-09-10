@@ -9,7 +9,7 @@
     "live_fire_-_ranked_sgh_interlock",
     "live_fire_sgh_interlock"
   ],
-  "image": "sgh_interlock.png",
+  "image": "sgh_interlock.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-09-03T09:14:06.9035965Z",
   "style": "encre",

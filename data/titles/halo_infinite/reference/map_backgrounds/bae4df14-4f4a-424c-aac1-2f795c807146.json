@@ -5,7 +5,7 @@
     "Critical Dewpoint",
     "critical_dewpoint_map"
   ],
-  "image": "bae4df14-4f4a-424c-aac1-2f795c807146.png",
+  "image": "bae4df14-4f4a-424c-aac1-2f795c807146.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T13:37:24.2803641Z",
   "style": "encre",

@@ -5,7 +5,7 @@
     "Sylvanus",
     "sylvanus_map"
   ],
-  "image": "95b69e4b-485f-4c6c-9b00-4bd68c94c1e9.png",
+  "image": "95b69e4b-485f-4c6c-9b00-4bd68c94c1e9.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:58:25.5043151Z",
   "style": "encre",

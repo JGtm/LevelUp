@@ -5,7 +5,7 @@
     "Fortress",
     "fortress_map"
   ],
-  "image": "0d1c9255-d912-416c-befc-5f3e5e176df2.png",
+  "image": "0d1c9255-d912-416c-befc-5f3e5e176df2.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T13:54:05.0253965Z",
   "style": "encre",

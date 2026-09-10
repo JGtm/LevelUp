@@ -5,7 +5,7 @@
     "Chasm",
     "chasm_map"
   ],
-  "image": "chasm.png",
+  "image": "chasm.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-26T18:02:36.1788391Z",
   "style": "encre",

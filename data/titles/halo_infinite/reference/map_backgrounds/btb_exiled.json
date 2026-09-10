@@ -11,7 +11,7 @@
     "oasis_heavies_map",
     "btb_exiled"
   ],
-  "image": "btb_exiled.png",
+  "image": "btb_exiled.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T21:22:04.6991944Z",
   "style": "encre",

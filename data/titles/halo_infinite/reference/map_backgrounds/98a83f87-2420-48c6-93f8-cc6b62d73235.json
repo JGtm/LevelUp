@@ -5,7 +5,7 @@
     "Kaiketsu",
     "kaiketsu_map"
   ],
-  "image": "98a83f87-2420-48c6-93f8-cc6b62d73235.png",
+  "image": "98a83f87-2420-48c6-93f8-cc6b62d73235.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T23:00:32.0729977Z",
   "style": "encre",

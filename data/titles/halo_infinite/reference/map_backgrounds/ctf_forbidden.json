@@ -5,7 +5,7 @@
     "Forbidden",
     "ctf_forbidden"
   ],
-  "image": "ctf_forbidden.png",
+  "image": "ctf_forbidden.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-26T19:35:39.810111Z",
   "style": "encre",

@@ -5,7 +5,7 @@
     "Warehouse",
     "warehouse_map"
   ],
-  "image": "5b12d6d9-1b5c-4eac-b2a9-de4c36b8a6d3.png",
+  "image": "5b12d6d9-1b5c-4eac-b2a9-de4c36b8a6d3.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:42:18.0255206Z",
   "style": "encre",

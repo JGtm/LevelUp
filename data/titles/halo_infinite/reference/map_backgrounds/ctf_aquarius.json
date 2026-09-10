@@ -7,7 +7,7 @@
     "aquarius_-_ranked_map",
     "aquarius_map"
   ],
-  "image": "ctf_aquarius.png",
+  "image": "ctf_aquarius.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-26T17:22:33.5137461Z",
   "style": "encre",

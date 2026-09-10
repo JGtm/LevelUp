@@ -6,7 +6,7 @@
     "forest_-_ranked_map",
     "forest_map"
   ],
-  "image": "forest.png",
+  "image": "forest.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-12T22:59:40.332021Z",
   "style": "jeu",

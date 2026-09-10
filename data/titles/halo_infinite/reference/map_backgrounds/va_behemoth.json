@@ -5,7 +5,7 @@
     "Behemoth",
     "behemoth_va_behemoth"
   ],
-  "image": "va_behemoth.png",
+  "image": "va_behemoth.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T21:20:12.172234Z",
   "style": "encre",

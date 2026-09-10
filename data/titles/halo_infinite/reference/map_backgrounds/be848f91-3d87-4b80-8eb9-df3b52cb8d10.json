@@ -5,7 +5,7 @@
     "Urban Raid",
     "urban_raid_map"
   ],
-  "image": "be848f91-3d87-4b80-8eb9-df3b52cb8d10.png",
+  "image": "be848f91-3d87-4b80-8eb9-df3b52cb8d10.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T23:06:29.3471123Z",
   "style": "encre",

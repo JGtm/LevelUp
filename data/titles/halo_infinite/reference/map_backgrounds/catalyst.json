@@ -6,7 +6,7 @@
     "catalyst",
     "catalyst_map"
   ],
-  "image": "catalyst.png",
+  "image": "catalyst.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-26T19:24:28.658566Z",
   "style": "encre",

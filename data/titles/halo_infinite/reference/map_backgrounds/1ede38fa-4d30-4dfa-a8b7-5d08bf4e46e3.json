@@ -5,7 +5,7 @@
     "Fortitude",
     "fortitude_map"
   ],
-  "image": "1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3.png",
+  "image": "1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:21:53.195449Z",
   "style": "encre",

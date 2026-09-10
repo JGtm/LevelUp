@@ -5,7 +5,7 @@
     "Salvation",
     "salvation_map"
   ],
-  "image": "cd08bc7a-7ba5-4502-be87-c58b641fc94d.png",
+  "image": "cd08bc7a-7ba5-4502-be87-c58b641fc94d.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T23:09:47.1116619Z",
   "style": "encre",

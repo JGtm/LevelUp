@@ -7,7 +7,7 @@
     "fragmentation_heavies_map",
     "fragmentation_map"
   ],
-  "image": "btb_fragmentation.png",
+  "image": "btb_fragmentation.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T21:20:49.5531143Z",
   "style": "encre",

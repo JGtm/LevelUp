@@ -5,7 +5,7 @@
     "Detachment",
     "detachment_map"
   ],
-  "image": "d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1.png",
+  "image": "d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-09-03T09:47:30.5241565Z",
   "style": "encre",

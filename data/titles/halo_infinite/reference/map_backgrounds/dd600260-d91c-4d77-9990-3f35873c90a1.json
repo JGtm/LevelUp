@@ -5,7 +5,7 @@
     "Argyle",
     "argyle_map"
   ],
-  "image": "dd600260-d91c-4d77-9990-3f35873c90a1.png",
+  "image": "dd600260-d91c-4d77-9990-3f35873c90a1.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-09-03T09:57:51.7781741Z",
   "style": "encre",

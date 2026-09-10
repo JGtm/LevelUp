@@ -5,7 +5,7 @@
     "Flood Gulch",
     "flood_gulch_map"
   ],
-  "image": "7097bc4f-efcf-4c5a-a96e-4ddb03e84d2a.png",
+  "image": "7097bc4f-efcf-4c5a-a96e-4ddb03e84d2a.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-30T12:12:24.7315458Z",
   "style": "encre",

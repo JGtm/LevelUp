@@ -5,7 +5,7 @@
     "Pharaoh",
     "pharaoh_map"
   ],
-  "image": "88d45250-97dd-4a28-8fb2-b52baaeebb39.png",
+  "image": "88d45250-97dd-4a28-8fb2-b52baaeebb39.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
   "generatedAt": "2026-08-27T22:54:13.3476856Z",
   "style": "encre",
