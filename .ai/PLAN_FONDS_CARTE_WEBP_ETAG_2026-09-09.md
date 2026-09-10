@@ -342,27 +342,90 @@ Gate passé.
 ## Étape 4 — Conversion des 109 fonds
 
 Première étape qui touche la donnée. Elle est atomique : un seul commit, réversible par `git
-revert`.
+revert`. **Amendement d'exécution (consigne du superviseur, 2026-09-10)** : les fichiers de
+`data/` ne font PARTIE d'AUCUN commit de ce lot — seul leur journal (compte, gain, 109/109
+identiques) est commité, dans `.ai/`. La conversion reste donc, à la clôture de cette session,
+un état de working tree non commité (109 `.png` supprimés, 109 `.json` modifiés, 109 `.webp`
+nouveaux, tous suivis par `data/titles/halo_infinite/reference/` qui EST versionné en clair —
+vérifié : `data/backups/` lui, n'apparaît même pas dans `git status`, donc bien ignoré).
 
 **Périmètre fermé :**
 
-- [ ] `.gitattributes` — ajouter `*.webp binary` à côté de `*.png binary`
-- [ ] `go run ./cmd/mapfond-webp -convertir` sur les 109 fonds : écrit `<clé>.webp`, **met à jour
-      le champ `Image` du sidecar** (`<clé>.webp`), puis supprime `<clé>.png`. Ne pas toucher
-      `SchemaVersion` : le champ `Image` porte déjà un nom de fichier, le contrat ne change pas
-- [ ] L'outil refuse d'écrire si l'aller-retour n'est pas identique au bit près sur **le fichier
-      en cours** — la vérification n'est pas qu'un mode séparé
-- [ ] Vérifier le décompte : 109 `.webp`, 109 `.json`, **0 `.png`** dans le répertoire
-- [ ] Consigner le gain réel total dans § Découvertes
+- [x] `.gitattributes` — ajouté `*.webp binary` à côté de `*.png binary` (commité)
+- [x] **Sauvegarde préalable** (consigne du contrat du lot, pas du plan initial) :
+      `data/backups/` n'existait pas dans ce worktree (comme `db_profiles.json`, non
+      versionné — cf. découverte de l'étape 0) — créé, puis copié 109 `.png` + 109 `.json`
+      dans `data/backups/map_backgrounds-png-2026-09-10/`. Vérifié `diff -rq` entre la
+      sauvegarde et la source AVANT toute conversion : identique
+- [x] `go run ./cmd/mapfond-webp -convertir` (`LEVELUP_REPO_ROOT` pointé sur le worktree,
+      même contournement documenté à l'étape 0) sur les 109 fonds : écrit `<clé>.webp`, met à
+      jour le champ `Image` du sidecar, supprime `<clé>.png`. `SchemaVersion` inchangé
+- [x] L'outil a bien REFUSÉ d'écrire sur tout aller-retour non identique — vérifié
+      négativement : aucun des 109 n'a déclenché ce refus (log `mapfond-webp: conversion
+      terminee fichiers=109`, zéro `os.Exit(1)`), et une vérification INDÉPENDANTE du code de
+      l'outil (décodage des 109 `.webp` publiés + comparaison pixel à pixel contre les 109
+      `.png` de sauvegarde, via un test jetable non commité) confirme **109/109 identiques
+      au bit près**
+- [x] Décompte vérifié : 109 `.webp`, 109 `.json`, **0 `.png`** dans le répertoire
+- [x] Gain réel total consigné ci-dessous (§ Découvertes)
 
-**Gate :**
+**Découverte bloquante, corrigée dans ce lot (gate de l'étape) : caching `go test` masquant une
+régression réelle.** Le premier `go test ./...` après la conversion a trouvé UNE régression
+(`internal/himap/cle_forge_test.go`, ci-dessous) ; après l'avoir corrigée, un second
+`go test ./...` (sans `-count=1`) est ressorti **totalement vert** — mais c'était un FAUX VERT :
+`go test` ne réexécute pas un paquet dont les FICHIERS SOURCE n'ont pas changé, même si les
+fichiers qu'il LIT SUR DISQUE (ici `data/`) ont changé sous ses pieds. `TestMapBackground_DonneesReelles`
+(ajouté à l'étape 2, jamais retouché depuis) affirmait encore `mime == image/png` sur le fond
+réel de Cliffhanger : servi silencieusement en résultat CACHÉ (vert, mais mesurant l'état
+d'AVANT la conversion) au lieu d'échouer contre l'état réel (`image/webp` depuis cette étape).
+`go clean -testcache && go test ./... -count=1` a démasqué l'échec. **Leçon consignée pour la
+suite du dépôt** : après toute modification de `data/`, le gate `go test` doit être relancé
+avec `-count=1` (ou `go clean -testcache` avant), sans quoi un test qui lit un artefact réel
+peut rester vert sur un état obsolète — symétrique du piège `tsc -b` incrémental déjà documenté
+côté web (skill `delivery-checklist` §2).
+
+**Deux régressions réelles trouvées et corrigées (paquets HORS périmètre des étapes 2-3,
+mais qui lisent `map_backgrounds/` avec une extension `.png` supposée en dur — bloquantes
+pour le gate `go test ./...` de CETTE étape, donc traitées, pas différées) :**
+
+- `internal/himap/cle_forge_test.go` (`TestFondForgeJamaisSousCleModule`) — vérifiait la
+  présence de l'image Forge via `c.MapID+".png"` uniquement. Réécrit pour accepter `.png`
+  OU `.webp` (constante `extensionsImageFond`, helpers `fichierExiste`/`uneExtensionExiste`) ;
+  le sidecar reste vérifié en `.json` explicitement
+- `internal/analysis/replay/callouts_catalog_test.go` (`TestCatalogueCalloutsLivreEstExploitable`)
+  — décidait la provenance attendue (`decoupe` vs `brut`) via `os.Stat(module+".png")`
+  uniquement ; toutes les cartes seraient retombées à `brut` après conversion. Corrigé avec
+  un helper `fondImagePubliee` (PNG ou WebP)
+- `internal/service/replay_map_background_test.go` (`TestMapBackground_DonneesReelles`,
+  ajoutée à l'étape 2) — affirmait `mime == image/png` en dur sur l'asset réel. Réécrite en
+  `switch mime` (PNG **ou** WebP, magic bytes vérifiés pour le format effectivement rendu) :
+  l'oracle reste vrai quel que soit le format réellement servi, au lieu de figer le format du
+  jour de son écriture
+
+**Gate — exécuté le 2026-09-10, sorties réelles :**
 ```bash
-ls data/titles/halo_infinite/reference/map_backgrounds/*.png 2>/dev/null | wc -l   # attendu 0
-ls data/titles/halo_infinite/reference/map_backgrounds/*.webp | wc -l              # attendu 109
-grep -L '"image": *"[^"]*\.webp"' data/titles/halo_infinite/reference/map_backgrounds/*.json
-cd apps/go-api && go test ./...
-make go-api-test
+ls data/titles/halo_infinite/reference/map_backgrounds/*.png 2>/dev/null | wc -l   # 0
+ls data/titles/halo_infinite/reference/map_backgrounds/*.webp | wc -l              # 109
+grep -L '"image": *"[^"]*\.webp"' data/titles/halo_infinite/reference/map_backgrounds/*.json  # rien (0 sidecar en défaut)
+ls data/backups/map_backgrounds-png-2026-09-10/*.png | wc -l                       # 109
+diff -rq data/backups/map_backgrounds-png-2026-09-10/ <état pré-conversion>        # identique (vérifié AVANT la conversion)
+cd apps/go-api && go build ./...                                                  # BUILD_EXIT=0
+cd apps/go-api && go clean -testcache && go test ./... -count=1                   # ok, 0 FAIL (171 paquets avec tests) — cache-busté, cf. découverte ci-dessus
+cd ../.. && make go-api-test                                                      # ok (domain + analysis + contracttest)
+cd apps/go-api && golangci-lint run --new-from-merge-base=feat/v75 ./internal/himap/... ./internal/analysis/replay/... ./internal/service/...   # 0 issues
+cd apps/web && rm -rf node_modules/.tmp && npx tsc -b --force                     # exit 0
+cd apps/web && npx vitest run src/features/match-replay src/features/tactical src/lib/replay   # 3025 passed, 3 skipped (pré-existant), 0 failed
 ```
+Gate passé. **Note honnête** : `golangci-lint run --new-from-merge-base=feat/v75 ./...`
+(module entier, sans restriction de paquets) échoue à TYPECHECKER sur ce poste — erreur
+`could not import levelup/go-api/internal/ooz (build constraints exclude all Go files)` avec
+`CGO_ENABLED` par défaut, ou `could not import C (cgo preprocessing failed)` avec
+`CGO_ENABLED=1` forcé — alors que `go build ./...` et `go test ./...` compilent et exécutent
+`internal/ooz` sans aucune erreur dans ce même environnement. C'est un défaut de câblage
+cgo/g++ propre à l'invocation interne de golangci-lint sur ce poste Windows (aucun rapport
+avec `internal/ooz` ni avec `internal/himodule`, ni touchés par ce lot), reproductible avant
+et après tout changement de ce chantier — donc PRÉ-EXISTANT, non introduit ici. Les lints
+scopés aux paquets réellement modifiés (ci-dessus) sont tous à 0 issue.
 Le `grep -L` doit ne rien lister. Puis, serveur lancé :
 ```bash
 curl -sI localhost:8000/api/players/<GT>/matches/<ID>/replay/background.png | grep -i -E 'content-type|etag'
@@ -437,3 +500,20 @@ Seuil du gate (>= 20 % de gain cumulé, aller-retour identique au bit près) : *
 échantillon. `data/` n'a subi aucune modification (`git status --short data/` vide avant et
 après ; 218 fichiers avant/après dans `map_backgrounds/`). La décision de poursuivre les étapes
 2 à 5 (D10) reste à l'utilisateur.
+
+### Conversion réelle de l'Étape 4 — 109/109 fonds, 2026-09-10
+
+| Mesure | Valeur |
+|---|---:|
+| Fichiers convertis | 109 / 109 |
+| Aller-retour identique (vérification indépendante, décodage + comparaison pixel à pixel) | 109 / 109 |
+| Octets PNG (sauvegarde) | 45 686 553 |
+| Octets WebP (publiés) | 28 689 086 |
+| Gain total | **37,2 %** |
+| Durée totale de la conversion | ~81 s (09:53:12 → 09:54:14) |
+
+Le gain réel (37,2 %) est cohérent avec la mesure de l'étape 0 sur l'échantillon des 5 plus
+gros fonds (38,4 %) — les plus gros fonds, sur-représentés dans l'échantillon, gagnent
+légèrement plus que la moyenne du corpus complet. Sauvegarde intégrale des 109 PNG + 109 JSON
+dans `data/backups/map_backgrounds-png-2026-09-10/` (vérifiée `diff -rq` identique à la source
+avant conversion).
