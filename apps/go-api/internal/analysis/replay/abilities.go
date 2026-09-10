@@ -243,9 +243,16 @@ func abilityLabelsUsed(reads []AbilityRead, palette *AbilityPalette) map[string]
 	}
 	out := map[string]Label{}
 	for _, r := range reads {
-		if name, ok := palette.Ranks[r.R]; ok {
-			out[strconv.Itoa(r.R)] = name
+		name, ok := palette.Ranks[r.R]
+		if !ok {
+			continue
 		}
+		// LA FAMILLE DU MANIFESTE VOYAGE AVEC LE NOM (schéma 51, lot 4.3) : sans elle, tout
+		// lecteur du document cuit reconstruisait la famille depuis la racine du libellé.
+		// `Families` est PLUS PARTIELLE que `Ranks` — un rang nommé sans famille garde une
+		// `Family` vide, et c'est une réponse.
+		name.Family = palette.FamilyOf(r.R)
+		out[strconv.Itoa(r.R)] = name
 	}
 	if len(out) == 0 {
 		return nil

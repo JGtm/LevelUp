@@ -7509,6 +7509,7 @@ export interface components {
         };
         Label: {
             en: string;
+            family?: string;
             fr: string;
             img?: string;
             tinted?: boolean;

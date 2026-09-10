@@ -64,7 +64,7 @@ couverture : 150 image-cle · 120 delta · 0 ecartee(s) sans piste · canal muni
 214 lecture(s) · 82 par i48 (rang complet, paquets delta) · 132 par image-cle (fenetre 16..23)
 rangs observes : 19:42 20:66 21:70 22:36
 lectures NOMMEES 214/214 — un rang hors table garde son numero, et la table est propre a la palette du film
-capacites nommees : 19=en:"Drop Wall"/fr:"mur de protection", 20=en:"Grappleshot"/fr:"grappin", 21=en:"Thruster"/fr:"propulseur", 22=en:"Threat Sensor"/fr:"detecteur de menaces"
+capacites nommees : 19=en:"Drop Wall"/fr:"mur de protection"/fam:"wall", 20=en:"Grappleshot"/fr:"grappin"/fam:"grapple", 21=en:"Thruster"/fr:"propulseur"/fam:"thruster", 22=en:"Threat Sensor"/fr:"detecteur de menaces"/fam:"sensor"
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 36 episode(s) publie(s) · par famille : camo=36 · 24 fin(s) MESUREE(s) (le reste ferme a la mort)
