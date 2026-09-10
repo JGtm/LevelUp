@@ -22,6 +22,7 @@ import { renderWithProviders } from '@/test/render-utils'
 
 import { getTacticalText } from './i18n'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
+import { PLAN_ASPECT_DEFAUT, PLAN_HAUTEUR_MAX_PX } from './tacticalView.logic'
 
 const getBlob = vi.fn()
 vi.mock('@/lib/api/client', async (importOriginal) => {
@@ -138,12 +139,54 @@ describe('TacticalAnalysisView — états de la lecture', () => {
     expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
   })
 
-  it('VIDE : le message du plancher dans la carte Plan, le KPI reste servi', () => {
+  // VIDE — TROIS CAUSES, TROIS MESSAGES (point 21, lot 3.2). Le message générique « pas
+  // assez de matchs mesurés » mentait quand les matchs étaient là mais dispersés.
+  it('VIDE, matchs mesurés dispersés : « densité insuffisante », le KPI reste servi', () => {
     mockRaster({ data: RASTER_VIDE })
     renderVue()
-    expect(screen.getByText(t.planEmptyTitle)).toBeInTheDocument()
+    expect(screen.getByText(t.planEmptyDensityTitle)).toBeInTheDocument()
+    expect(screen.queryByText(t.planEmptyTitle)).not.toBeInTheDocument()
     expect(screen.getByTestId('kpi-strip')).toBeInTheDocument()
+  })
+
+  it('VIDE, aucun match mesuré : le message historique reste servi', () => {
+    mockRaster({ data: { ...RASTER_VIDE, matchs_retenus: 0, matchs_filtres: 12 } })
+    renderVue()
+    expect(screen.getByText(t.planEmptyTitle)).toBeInTheDocument()
+    expect(screen.queryByText(t.planEmptyDensityTitle)).not.toBeInTheDocument()
+  })
+
+  it('VIDE, aucun match dans le filtre : le message du périmètre', () => {
+    mockRaster({ data: { ...RASTER_VIDE, matchs_retenus: 0, matchs_filtres: 0 } })
+    renderVue()
+    expect(screen.getByText(t.planEmptyNoMatchTitle)).toBeInTheDocument()
+    expect(screen.queryByText(t.planEmptyDensityTitle)).not.toBeInTheDocument()
+  })
+
+  // UN PLAN VIDE GARDE UN CADRE DE TAILLE NORMALE (lot 3.2) : ni canvas de 13 375 px, ni
+  // carte qui se rétracte à la hauteur d'un message.
+  it('VIDE : le cadre du plan reste posé, au rapport du fond, hauteur bornée', () => {
+    mockRaster({ data: { ...RASTER_VIDE, bornes: { ...BORNES, valide: false } } })
+    renderVue()
+    const cadre = screen.getByTestId('tactical-plan-frame')
+    // jsdom normalise `aspect-ratio: <n>` en « <n> / 1 ».
+    expect(cadre.style.aspectRatio).toBe(`${PLAN_ASPECT_DEFAUT} / 1`)
+    expect(cadre.style.maxWidth).toBe(`${PLAN_ASPECT_DEFAUT * PLAN_HAUTEUR_MAX_PX}px`)
+    // Aucun calque de chaleur à peindre : le canevas n'est pas monté.
     expect(screen.queryByTestId('tactical-plan-canvas')).not.toBeInTheDocument()
+  })
+
+  it('des bornes très allongées ne rendent plus un cadre de 13 375 px', () => {
+    mockRaster({
+      data: {
+        ...RASTER_NOMINAL,
+        bornes: { min_x: 0, max_x: 8, min_y: 0, max_y: 100, valide: true },
+      },
+    })
+    renderVue()
+    const cadre = screen.getByTestId('tactical-plan-frame')
+    // Largeur plafonnée à 0,08 x 720 px : la hauteur ne peut plus dépasser 720 px.
+    expect(cadre.style.maxWidth).toBe(`${0.08 * PLAN_HAUTEUR_MAX_PX}px`)
   })
 
   it('NOMINAL : les KPI, le canevas du plan, le placeholder de la cellule', () => {
@@ -160,6 +203,21 @@ describe('TacticalAnalysisView — états de la lecture', () => {
     expect(
       screen.getByRole('heading', { name: 'Plan de Ruelles — Où je meurs' }),
     ).toBeInTheDocument()
+  })
+
+  // LE PAS RETENU EST AFFICHÉ, PAS DEVINÉ (lot 3.2, décision D6) : depuis le pas
+  // adaptatif, deux cartes peuvent se lire à deux résolutions différentes — sans le dire,
+  // elles ne se comparent plus.
+  it('NOMINAL : le pied du plan annonce le pas de grille publié par le serveur', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, pas_m: 2 } })
+    renderVue()
+    expect(screen.getByTestId('tactical-plan-grid-step')).toHaveTextContent('Grille : 2 m par cellule')
+  })
+
+  it('NOMINAL : un pas fractionnaire s’affiche dans la locale de la page', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, pas_m: 0.5 } })
+    renderVue()
+    expect(screen.getByTestId('tactical-plan-grid-step')).toHaveTextContent('Grille : 0,5 m par cellule')
   })
 
   it('la carte Plan omet échange/isolement quand le contrat ne les publie pas', () => {

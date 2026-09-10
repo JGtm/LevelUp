@@ -7,6 +7,12 @@ import { getTacticalText } from './i18n'
 import {
   cellFromClick,
   pageTitle,
+  PLAN_ASPECT_DEFAUT,
+  PLAN_HAUTEUR_MAX_PX,
+  planCanvasView,
+  planEmptyReason,
+  planEmptyText,
+  planFrameStyle,
   ratioSafe,
   sourceForQuestion,
   statusMessages,
@@ -116,6 +122,141 @@ describe('cellFromClick — la cellule (col, row) sous un clic canvas', () => {
 
   it('un pas de grille nul ou négatif ne rend rien', () => {
     expect(cellFromClick(10, 10, 200, 100, BORNES, 0)).toBeNull()
+  })
+
+  // L'ADRESSE EST ANCRÉE SUR L'ORIGINE DU MONDE, PAS SUR LES BORNES DE LA LECTURE — même
+  // convention que `CelluleTactique.col/lig` côté serveur (`tactical.Grille.Cellule`).
+  // Une adresse relative aux bornes ne retrouvait aucune cellule serveur dès que la
+  // carte n'était pas calée sur (0, 0), c'est-à-dire sur toutes les cartes réelles.
+  it('rend une adresse ancrée sur l’origine du monde, bornes négatives comprises', () => {
+    const bornes: BornesMonde = { min_x: -20, max_x: -10, min_y: -8, max_y: -4, valide: true }
+    // Coin haut-gauche du canvas = (-20, -8) monde ; pas de 2 m -> (-10, -4).
+    expect(cellFromClick(0, 0, 200, 80, bornes, 2)).toEqual({ col: -10, row: -4 })
+    // Centre du canvas = (-15, -6) monde -> colonne -8, ligne -3.
+    expect(cellFromClick(100, 40, 200, 80, bornes, 2)).toEqual({ col: -8, row: -3 })
+  })
+
+  it('suit le pas publié : la même position rend une adresse différente à 0,5 et à 2 m', () => {
+    expect(cellFromClick(100, 50, 200, 100, BORNES, 0.5)).toEqual({ col: 100, row: 50 })
+    expect(cellFromClick(100, 50, 200, 100, BORNES, 2)).toEqual({ col: 25, row: 12 })
+  })
+})
+
+// ─── planEmptyReason — CE QUE LE PLAN VIDE DIT, ET IL DOIT DIRE VRAI ────────────
+
+describe('planEmptyReason — trois causes de plan vide, trois messages', () => {
+  it('rien n’est vide quand au moins une cellule est peinte', () => {
+    expect(planEmptyReason(4, 38, 38)).toBeNull()
+    // Une seule cellule suffit : le plan est maigre, pas vide.
+    expect(planEmptyReason(1, 38, 38)).toBeNull()
+  })
+
+  it('aucun match dans le filtre : le périmètre est vide, pas la mesure', () => {
+    expect(planEmptyReason(0, 0, 0)).toBe('aucun-match')
+  })
+
+  it('des matchs mais aucun mesuré : « pas assez de matchs mesurés » reste vrai', () => {
+    expect(planEmptyReason(0, 0, 38)).toBe('aucune-mesure')
+  })
+
+  // LE DÉFAUT DU POINT 21 : sur Illusion, 38 matchs filtrés et mesurés, aucune cellule
+  // au-dessus du plancher. Le message « pas assez de matchs mesurés » était FAUX.
+  it('des matchs mesurés mais dispersés : densité insuffisante, jamais « pas assez de matchs »', () => {
+    expect(planEmptyReason(0, 38, 38)).toBe('densite')
+    expect(planEmptyReason(0, 3, 38)).toBe('densite')
+  })
+})
+
+describe('planEmptyText — le titre et la description de chaque cause', () => {
+  it('reprend le message existant pour « aucune mesure »', () => {
+    expect(planEmptyText(tFr, 'aucune-mesure', 0, 0.5)).toEqual({
+      title: tFr.planEmptyTitle,
+      description: tFr.planEmptyDescription,
+    })
+  })
+
+  it('la densité insuffisante cite les matchs mesurés, le plancher et le pas essayé', () => {
+    const densite = planEmptyText(tFr, 'densite', 38, 2)
+    expect(densite.title).toBe(tFr.planEmptyDensityTitle)
+    expect(densite.description).toContain('38 matchs mesurés')
+    expect(densite.description).toContain('3 matchs distincts')
+    expect(densite.description).toContain('2 m')
+    // Ce que la page ne doit PLUS dire quand les matchs sont là.
+    expect(densite.title).not.toBe(tFr.planEmptyTitle)
+  })
+
+  it('la densité insuffisante existe aussi en anglais', () => {
+    const densite = planEmptyText(tEn, 'densite', 38, 2)
+    expect(densite.title).toBe(tEn.planEmptyDensityTitle)
+    expect(densite.description).toContain('38 measured matches')
+  })
+
+  it('un périmètre vide garde son propre message', () => {
+    expect(planEmptyText(tFr, 'aucun-match', 0, 0.5)).toEqual({
+      title: tFr.planEmptyNoMatchTitle,
+      description: tFr.planEmptyNoMatchDescription,
+    })
+  })
+})
+
+// ─── planFrameStyle — LA TAILLE DU CADRE, ET SON DÉFAUT ─────────────────────────
+
+describe('planFrameStyle — le cadre du plan ne dégénère jamais', () => {
+  it('prend le rapport EXACT des bornes quand elles sont exploitables', () => {
+    // 100 m x 50 m -> 2:1. C'est ce qui garde le clic et la peinture alignés.
+    expect(planFrameStyle(BORNES).aspectRatio).toBe(2)
+  })
+
+  it('borne la hauteur : une largeur maximale déduite du rapport et du plafond', () => {
+    expect(planFrameStyle(BORNES).maxWidth).toBe(`${2 * PLAN_HAUTEUR_MAX_PX}px`)
+  })
+
+  // LE DÉFAUT CONSTATÉ LE 2026-09-09 : canvas 1 070 x 13 375 px sur le plan d'Illusion.
+  // Un rapport de 1/12,5 sur une largeur de conteneur libre donne une hauteur qui n'est
+  // plus une page. Le rapport reste EXACT (sans quoi la peinture se désaligne du clic) ;
+  // c'est la hauteur qui est plafonnée, par une largeur maximale.
+  it('un rapport très allongé reste exact mais ne peut plus faire 13 375 px de haut', () => {
+    const allongees: BornesMonde = { min_x: 0, max_x: 8, min_y: 0, max_y: 100, valide: true }
+    const cadre = planFrameStyle(allongees)
+    expect(cadre.aspectRatio).toBeCloseTo(0.08, 6)
+    // 0,08 x 720 = 57,6 px de large, donc 720 px de haut au plus — jamais 13 375.
+    expect(cadre.maxWidth).toBe(`${0.08 * PLAN_HAUTEUR_MAX_PX}px`)
+  })
+
+  it('des bornes inexploitables rendent le cadre par défaut, jamais un rapport dégénéré', () => {
+    const cas: BornesMonde[] = [
+      { ...BORNES, valide: false },
+      { min_x: 0, max_x: 0, min_y: 0, max_y: 0, valide: true },
+      { min_x: 0, max_x: 100, min_y: 0, max_y: 0, valide: true },
+      { min_x: 0, max_x: Number.POSITIVE_INFINITY, min_y: 0, max_y: 50, valide: true },
+      { min_x: 0, max_x: Number.NaN, min_y: 0, max_y: 50, valide: true },
+    ]
+    for (const bornes of cas) {
+      expect(planFrameStyle(bornes).aspectRatio).toBe(PLAN_ASPECT_DEFAUT)
+    }
+  })
+
+  it('le rapport par défaut est celui des vignettes de carte (le même fond)', () => {
+    expect(PLAN_ASPECT_DEFAUT).toBe(16 / 9)
+  })
+})
+
+// ─── planCanvasView — la projection monde -> canvas du calque de chaleur ─────────
+
+describe('planCanvasView — le cadrage du calque de chaleur', () => {
+  it('pose l’origine du canvas sur (min_x, min_y), pas sur l’origine du monde', () => {
+    const bornes: BornesMonde = { min_x: -20, max_x: -10, min_y: -8, max_y: -4, valide: true }
+    // 200 px pour 10 m -> 20 px/m ; la colonne 0 du monde (x = 0) tomberait à 400 px.
+    expect(planCanvasView(bornes, 200)).toEqual({ topLeftWorld: { x: 400, y: 160 }, scale: 20 })
+  })
+
+  it('rend une origine nulle quand les bornes partent de (0, 0)', () => {
+    expect(planCanvasView(BORNES, 200)).toEqual({ topLeftWorld: { x: 0, y: 0 }, scale: 2 })
+  })
+
+  it('ne rend rien sur des bornes invalides ou un canvas vide', () => {
+    expect(planCanvasView({ ...BORNES, valide: false }, 200)).toBeNull()
+    expect(planCanvasView(BORNES, 0)).toBeNull()
   })
 })
 

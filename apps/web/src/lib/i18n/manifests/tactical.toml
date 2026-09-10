@@ -328,6 +328,28 @@ en = "Source: death log"
 fr = "Plancher : {n, plural, one {# match distinct} other {# matchs distincts}} par cellule"
 en = "Floor: {n, plural, one {# distinct match} other {# distinct matches}} per cell"
 
+# Pas de la grille : PUBLIÉ par le serveur (`TacticalRaster.pas_m`), jamais choisi ici.
+# Il varie de 0,5 à 2 m selon la densité des positions (pas adaptatif, décision D6) : un
+# plan plus grossier doit se voir, sans quoi deux cartes ne se comparent plus.
+[tactical.plan.footer_grid]
+fr = "Grille : {pas, number} m par cellule"
+en = "Grid: {pas, number} m per cell"
+
+# ── Les trois états vides du plan, et pourquoi ils ne disent pas la même chose ──
+# Le message générique « pas assez de matchs mesurés » a menti sur Illusion (point 21) :
+# 38 matchs étaient retenus et mesurés, mais aucune zone n'atteignait le plancher de
+# 3 matchs distincts par cellule. Trois causes, trois messages.
+
+# 1. Aucun match dans le filtre sur cette carte : le périmètre est vide, pas la mesure.
+[tactical.plan.empty_no_match_title]
+fr = "Aucun match sur cette carte dans ce filtre"
+en = "No match on this map within this filter"
+
+[tactical.plan.empty_no_match_description]
+fr = "Élargis la période ou la composition pour retrouver des matchs sur cette carte."
+en = "Widen the period or the squad to find matches on this map."
+
+# 2. Des matchs, mais aucun mesuré (film jamais décodé, journal des morts illisible).
 [tactical.plan.empty_title]
 fr = "Pas assez de matchs mesurés sur cette carte"
 en = "Not enough measured matches on this map"
@@ -335,6 +357,15 @@ en = "Not enough measured matches on this map"
 [tactical.plan.empty_description]
 fr = "Élargis la période, la composition ou change de spawn de départ pour mesurer plus de matchs."
 en = "Widen the period, the squad, or change the starting spawn to measure more matches."
+
+# 3. Des matchs mesurés, mais trop dispersés : la densité par cellule ne suffit pas.
+[tactical.plan.empty_density_title]
+fr = "Densité insuffisante pour dessiner un plan"
+en = "Not enough density to draw a plan"
+
+[tactical.plan.empty_density_description]
+fr = "{matchs, plural, one {# match mesuré} other {# matchs mesurés}} sur cette carte, mais aucune zone n'atteint {plancher, plural, one {# match distinct} other {# matchs distincts}}, même avec une grille de {pas, number} m. Élargis la période ou la composition."
+en = "{matchs, plural, one {# measured match} other {# measured matches}} on this map, but no area reaches {plancher, plural, one {# distinct match} other {# distinct matches}}, even with a {pas, number} m grid. Widen the period or the squad."
 
 # ── KPI génériques (taux + compte brut, jamais un taux seul) ──────────────────
 [tactical.kpi.secondary]

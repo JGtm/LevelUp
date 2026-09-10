@@ -6,8 +6,12 @@
  * rejeu depuis le lot Q7, 2026-09-07) PARTAGENT EXACTEMENT LE MÊME
  * CADRE : le conteneur est mis à l'aspect-ratio DU MONDE (bornes du raster), jamais un
  * 16:9 fixe — sinon `object-cover` rognerait l'image sur un axe que le calque, lui, ne
- * rogne pas, et les deux se désaligneraient au clic. Sans bornes valides, rien n'est
- * peint (état vide : `EmptyStateNotice`).
+ * rogne pas, et les deux se désaligneraient au clic.
+ *
+ * LE CADRE EST POSÉ MÊME QUAND RIEN N'EST PEINT (lot 3.2, 2026-09-09), et sa hauteur est
+ * BORNÉE (`planFrameStyle`) : sans bornes exploitables il prend le rapport du fond, et
+ * l'état vide se pose PAR-DESSUS. Auparavant, l'état vide remplaçait le cadre, et un
+ * rapport très allongé rendait un canvas de 1 070 x 13 375 px.
  *
  * COULEURS : rampe d'INTENSITÉ (bleu → rouge → violet), MÊME token que la carte de
  * chaleur du rejeu (`useReplayHeatmap.ts`) — grandeur neutre (des morts, des kills, du
@@ -27,6 +31,10 @@ import type { TacticalText } from './i18n'
 import { useTacticalMapBackgroundUrl } from './queries'
 import {
   cellFromClick,
+  planCanvasView,
+  planEmptyReason,
+  planEmptyText,
+  planFrameStyle,
   sourceForQuestion,
   statusMessages,
   TACTICAL_CELL_FLOOR,
@@ -42,6 +50,10 @@ export interface TacticalPlanCardProps {
   grid: TacticalGrid | null
   bornes: BornesMonde
   pasM: number
+  /** Les deux dénominateurs publiés par la lecture — ils DISENT pourquoi un plan est vide
+   *  (périmètre vide, aucune mesure, ou densité insuffisante). */
+  matchsFiltres: number
+  matchsRetenus: number
   matchsEnAttente: number
   matchsNonCuisables: number
   onCellSelect: (col: number, row: number) => void
@@ -55,6 +67,8 @@ export function TacticalPlanCard({
   grid,
   bornes,
   pasM,
+  matchsFiltres,
+  matchsRetenus,
   matchsEnAttente,
   matchsNonCuisables,
   onCellSelect,
@@ -71,9 +85,10 @@ export function TacticalPlanCard({
   }, [paletteVersion])
 
   const bornesValides = bornes.valide && bornes.max_x > bornes.min_x && bornes.max_y > bornes.min_y
-  const aspect = bornesValides
-    ? (bornes.max_x - bornes.min_x) / (bornes.max_y - bornes.min_y)
-    : 16 / 9
+  // LE CADRE EST TOUJOURS POSÉ, plein ou vide : rapport des bornes quand elles disent
+  // quelque chose, rapport du fond sinon, hauteur bornée dans les deux cas
+  // (cf. `planFrameStyle` — c'est ce qui ferme le canvas de 13 375 px).
+  const cadre = planFrameStyle(bornes)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -86,8 +101,9 @@ export function TacticalPlanCard({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
-    const scale = width / (bornes.max_x - bornes.min_x)
-    drawTacticalHeatmap(ctx, grid, { topLeftWorld: { x: 0, y: 0 }, scale }, { ramp, k: 1 })
+    const vue = planCanvasView(bornes, width)
+    if (!vue) return
+    drawTacticalHeatmap(ctx, grid, vue, { ramp, k: 1 })
   }, [grid, ramp, bornes, bornesValides])
 
   function handleClick(event: React.MouseEvent<HTMLCanvasElement>) {
@@ -108,7 +124,10 @@ export function TacticalPlanCard({
   const messages = statusMessages(t, matchsEnAttente, matchsNonCuisables)
   const unite = unitForQuestion(t, question)
   const source = sourceForQuestion(t, question)
-  const aucuneCellule = !grid || grid.filled === 0
+  // POURQUOI le plan est vide, pas seulement QU'IL l'est : les trois causes n'appellent
+  // pas la même action de l'utilisateur (cf. `planEmptyReason`).
+  const raisonVide = planEmptyReason(grid?.filled ?? 0, matchsRetenus, matchsFiltres)
+  const aucuneCellule = raisonVide !== null
 
   return (
     <SectionCard
@@ -119,6 +138,9 @@ export function TacticalPlanCard({
           <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
             <p>{unite}</p>
             <p className="mt-1">{t.footerFloor(TACTICAL_CELL_FLOOR)}</p>
+            <p className="mt-1" data-testid="tactical-plan-grid-step">
+              {t.footerGrid(pasM)}
+            </p>
             <p className="mt-1">{source}</p>
           </div>
         ) : undefined
@@ -132,24 +154,28 @@ export function TacticalPlanCard({
             ))}
           </div>
         )}
-        {aucuneCellule ? (
-          <EmptyStateNotice title={t.planEmptyTitle} description={t.planEmptyDescription} />
-        ) : (
-          <div
-            className="relative w-full overflow-hidden rounded-md bg-muted"
-            style={{ aspectRatio: aspect }}
-          >
-            {fond && (
-              <img src={fond} alt="" aria-hidden className="h-full w-full object-cover" />
-            )}
+        <div
+          className="relative w-full overflow-hidden rounded-md bg-muted"
+          style={cadre}
+          data-testid="tactical-plan-frame"
+        >
+          {fond && <img src={fond} alt="" aria-hidden className="h-full w-full object-cover" />}
+          {raisonVide ? (
+            // L'ÉTAT VIDE SE POSE SUR LE CADRE, il ne le remplace pas : la carte garde la
+            // taille qu'elle aura une fois remplie, et le message dit ce qui manque
+            // au-dessus du fond plutôt qu'à la place de tout.
+            <div className="absolute inset-0 flex items-center justify-center p-3">
+              <EmptyStateNotice {...planEmptyText(t, raisonVide, matchsRetenus, pasM)} />
+            </div>
+          ) : (
             <canvas
               ref={canvasRef}
               className="absolute inset-0 h-full w-full cursor-crosshair"
               onClick={handleClick}
               data-testid="tactical-plan-canvas"
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </SectionCard>
   )

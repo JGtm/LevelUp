@@ -197,6 +197,11 @@ func (h *TacticalHandler) handleGetRaster(ctx context.Context, in *tacticalRaste
 type tacticalCelluleAdresse struct {
 	Col int `json:"col" doc:"Colonne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.col)."`
 	Lig int `json:"lig" doc:"Ligne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.lig)."`
+	// PasM VOYAGE AVEC L'ADRESSE parce qu'une adresse de cellule n'a de sens qu'a un pas
+	// donne : depuis le pas adaptatif (lot 3.2), la meme carte peut se lire a 0,5, 1 ou
+	// 2 m selon la densite, et la cellule (12, 8) ne designe pas le meme terrain d'un pas
+	// a l'autre. Le client renvoie ici le `pas_m` que la lecture agregee lui a publie.
+	PasM float64 `json:"pas_m,omitempty" doc:"Pas de la grille sur laquelle (col, lig) est adressee, en metres — celui publie par la lecture agregee (TacticalRaster.pas_m). Absent ou <= 0 : pas par defaut (0,5 m)."`
 }
 
 // tacticalCelluleBody : LE MEME perimetre que tacticalRasterBody (match_ids,
@@ -239,6 +244,7 @@ func (h *TacticalHandler) handleGetCellule(ctx context.Context, in *tacticalCell
 		Scope:    scopeAvecSpawn(in.Body.MatchIDs, in.Body.Coequipiers, in.Body.Spawn),
 		Col:      in.Body.Cellule.Col,
 		Lig:      in.Body.Cellule.Lig,
+		PasM:     in.Body.Cellule.PasM,
 	})
 	if err != nil {
 		return nil, mapTacticalError(ctx, err, "tactical.cellule")

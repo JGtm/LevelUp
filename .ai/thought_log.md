@@ -30,6 +30,42 @@ etapes 2 a 5 (lecture format-agnostique, decodeurs des outils hors ligne, conver
 109 fonds, recette navigateur) est une decision produit qui revient a l'utilisateur, pas a
 l'agent. Rien pousse, rien fusionne — worktree `LevelUp-wt-fonds-webp`,
 branche `feat/fonds-carte-webp`.
+## [2026-09-10] Lot 3.2 — Tactique point 21 : pas de grille adaptatif, etat vide honnete, cadre du plan borne — Complete
+
+**Decision technique principale.** Le plancher de 3 matchs distincts par cellule ne bouge PAS
+(decision D6, « abaisser ment ») : c'est la cellule qui grossit. `analysis/tactical.ChoisirPas`
+essaie 0,5 → 1 → 2 m (la suite DOUBLE, ce qui rend le regroupement exact) et retient le PREMIER
+pas atteignant N cellules lisibles ; faute de pas suffisant, la tentative la plus fournie (a
+egalite, la plus fine — d'ou l'invariant : une carte deja lisible a 0,5 m rend exactement le
+meme plan qu'avant). **N = 22, et la valeur est mesuree, pas choisie a vue** : c'est le plus
+petit nombre de cellules lisibles pour lequel au moins DEUX cellules depassent le p95 de
+l'echelle de couleur, donc le plus petit pour lequel la rampe decrit une distribution et non
+la seule cellule extreme — ce que la doc de `OrdreP95` dit justement vouloir eviter. Verifie
+dans les deux sens (tient a N, ne tient pas a N-1). Les quatre lectures de l'onglet passent
+par la ; les sidecars cuits a 0,5 m sont REGROUPES (`ReadresserComptes`), aucune recuisson.
+
+**Resultats observes.** Deux defauts du repere, anterieurs et invisibles parce que toutes les
+fixtures partaient de (0, 0), ont ete trouves en branchant le pas publie : `cellFromClick`
+rendait une adresse relative a `min_x` la ou le serveur adresse sur l'ORIGINE DU MONDE (donc
+`trouveCellule` ne retrouvait rien sur une carte non calee sur zero), et la heatmap etait
+peinte `min_x` metres a cote, c'est-a-dire entierement hors canvas sur ces memes cartes —
+l'explication la plus probable du « rien n'est peint » constate le 09-09. Corriges avec le
+lot, car le brief fait du clic juste au pas publie un invariant. Le contrat gagne UN champ
+(`cellule.pas_m`) : une adresse de cellule ne veut rien dire sans son pas. Etat vide : trois
+causes distinguees sur les denominateurs deja publies (perimetre vide / aucune mesure /
+densite insuffisante), FR et EN. Cadre du plan : rapport EXACT des bornes conserve (sinon la
+peinture se desaligne du clic), hauteur plafonnee par une LARGEUR maximale (rapport x 720 px),
+et le cadre est pose meme vide, l'etat vide par-dessus. Gates : go build/vet 0, go test
+tactical+service+api 0 FAIL, golangci-lint `--new-from-merge-base=feat/v75` 0 issue,
+openapi/generated.ts propres apres commit, vitest 142 verts, tsc 0, eslint 0, greps couleurs
+et `slug ==` a 0.
+
+**Conclusion / prochaine etape.** Branche `feat/tactique-grille`, 5 commits, NI push NI fusion.
+Le superviseur verifie en navigateur : Illusion affiche des cellules (et le pied annonce le
+pas), une carte deja lisible est inchangee, un plan vide rend un cadre normal, le clic ouvre
+le bon detail. Trois decouvertes consignees dans
+`.ai/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` (dont l'ecretage des bornes aberrantes, qui
+releve de la recuisson D11). La recuisson des 7 artefacts reste hors perimetre de ce lot.
 
 ---
 
