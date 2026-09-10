@@ -140,6 +140,34 @@ async function recetteExport({ secondes = 6 } = {}) {
   noter('ecranDeFin', ecart > 12, `ecart moyen ${Math.round(ecart * 10) / 10} entre le milieu et la fin`)
   noter('dimensions', v.videoWidth >= 1000, `${v.videoWidth}x${v.videoHeight}`)
 
+  // --- 5. LE FOND DE CARTE : le rejeu affiche-t-il le decor, ou un cadre vide ? ---
+  // (plan fonds WebP, etape 5 — 12e verdict)
+  //
+  // UNE FRAME DE JEU, PAS DE L'ECRAN DE FIN : le voile de fin recouvre tout le cadre (verdict
+  // ecranDeFin ci-dessus), une mesure prise dessus ne dirait rien du fond. On vise le tout
+  // debut de la plage exportee, avant toute superposition de fin.
+  //
+  // CE QUE MESURE LE SEUIL. Un fond NON decode (mauvais Content-Type, decodeur WebP absent,
+  // fichier introuvable) laisse un cadre presque UNIFORME : la couleur de vide du canevas plus
+  // le HUD/les marqueurs de joueurs, qui ne couvrent qu'une fraction MINEURE et connue du
+  // cadre — c'est la « surcouche ». Un fond decode couvre le reste du cadre de couleurs de
+  // terrain variees. On compte donc les pixels qui s'ecartent nettement de la couleur
+  // DOMINANTE du cadre (celle du vide quand il n'y a pas de fond) : leur proportion est ce qui
+  // reste « hors surcouche ». Un histogramme quantifie (16 niveaux par canal, echantillonnage 1
+  // pixel sur 7 — un cadre HD n'a pas besoin de plus pour cette mesure) evite de dependre d'une
+  // couleur de vide exacte, qui peut changer avec le theme.
+  const jeu = await grab(Math.min(1, secondes / 2))
+  const histogramme = new Map()
+  for (let i = 0; i < jeu.length; i += 4 * 7) {
+    const cle = `${jeu[i] >> 4},${jeu[i + 1] >> 4},${jeu[i + 2] >> 4}`
+    histogramme.set(cle, (histogramme.get(cle) ?? 0) + 1)
+  }
+  const total = Array.from(histogramme.values()).reduce((a, b) => a + b, 0)
+  const dominante = total > 0 ? Math.max(...histogramme.values()) : 0
+  const proportionHorsSurcouche = total > 0 ? 1 - dominante / total : 0
+  noter('fondDeCarte', proportionHorsSurcouche > 0.15,
+    `${Math.round(proportionHorsSurcouche * 1000) / 10}% hors couleur dominante (seuil 15%)`)
+
   return resultats
 }
 
