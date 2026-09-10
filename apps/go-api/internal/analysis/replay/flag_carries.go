@@ -16,17 +16,26 @@ import (
 // le porte, et les evenements de statistique du statborg disent a la milliseconde QUAND le
 // portage commence et QUAND il s'arrete.
 //
-// # Les quatre faits qui FERMENT un portage, et pourquoi le plus petit gagne
+// # Les CINQ faits qui FERMENT un portage, et pourquoi le plus petit gagne
 //
 //	la CAPTURE du porteur       `flag_captures` : le drapeau rentre a sa base
 //	sa MORT                     le fil des morts du film : il lache ce qu'il tenait
 //	une NOUVELLE prise de lui   il ne peut pas prendre deux fois de suite sans avoir lache
+//	le LACHER VOLONTAIRE        la VIE LIBRE de l'objet qui renait a ses pieds (flag_objects.go)
 //	la fin du match             borne par defaut
 //
-// Le LACHER VOLONTAIRE n'est observable par aucune de ces chaines et n'est donc PAS borne : un
-// portage qui en contient un est trop long. Le biais joue CONTRE ce qui est affirme (un drapeau
-// dessine dans une main qui ne le tient plus), jamais en sa faveur — c'est le sens dans lequel on
-// veut se tromper, et le controle du marqueur le mesure.
+// LE LACHER EST BORNE DEPUIS LE LOT 6.7-B1 (2026-09-11), ET C'EST UN CHANGEMENT DE NATURE. Ce
+// calque etait une BORNE HAUTE assumee : aucune des quatre premieres chaines ne date un lacher
+// volontaire, si bien qu'un portage qui en contenait un courait jusqu'au fait suivant. L'oracle
+// API a chiffre le biais pour la premiere fois — +1 129,3 s sur 197 periodes de 11 films CTF,
+// 69 joueurs sur 95 au-dessus de leur propre temps reel. La cinquieme chaine le ferme : l'objet
+// drapeau REPLIQUE sa position des qu'il n'est plus porte, et sa renaissance aux pieds du
+// porteur DATE le lacher (regle, sous-population et temoins negatifs : `flag_objects.go`,
+// [closeByFreeLives]). Elle ne peut que RACCOURCIR un portage.
+//
+// CE QUI RESTE NON BORNE : un lacher dont l'objet ne renait PAS aux pieds du porteur (piste de
+// l'objet perdue, ou naissance a un socle, que la regle refuse). Le biais garde alors son sens
+// d'origine — trop long, jamais trop court — et le controle du marqueur le mesure.
 //
 // `flag_carriers_killed` est credite au TUEUR, pas a la victime : il ne nomme donc PAS le porteur
 // qui tombe. Il ne sert ici qu'a fermer un portage que le fil des morts aurait manque, et

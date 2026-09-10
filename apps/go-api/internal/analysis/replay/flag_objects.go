@@ -251,12 +251,34 @@ func flagFreeNearSpawn(spawns []FlagSpawn, x, y float32) bool {
 
 // closeByFreeLives DATE LE LACHER VOLONTAIRE — ce que rien d'autre ne sait faire.
 //
-// LA REGLE, ET POURQUOI ELLE EST SURE. Un portage que rien ne ferme court jusqu'a la fin de
-// l'axe : c'est une BORNE HAUTE, publiee `carried_open`. Si l'objet drapeau REAPPARAIT pendant ce
-// portage, AUX PIEDS du porteur, c'est qu'il ne le porte plus — un objet porte ne replique pas sa
-// position, et un objet qui renait ailleurs n'est pas celui-ci. Les trois conditions valent
-// ensemble : fenetre STRICTEMENT interieure au portage, distance au porteur, et naissance qui
-// n'est PAS un socle.
+// LA REGLE, ET POURQUOI ELLE EST SURE. Si l'objet drapeau REAPPARAIT pendant un portage, AUX
+// PIEDS du porteur, c'est qu'il ne le porte plus — un objet porte ne replique pas sa position,
+// et un objet qui renait ailleurs n'est pas celui-ci. Les trois conditions valent ensemble :
+// fenetre STRICTEMENT interieure au portage, distance au porteur, et naissance qui n'est PAS un
+// socle.
+//
+// # ELLE S'APPLIQUE AUSSI A UN PORTAGE DEJA FERME (lot 6.7-B1, item 3, 2026-09-11)
+//
+// La regle ne regardait d'abord que les portages que RIEN ne bornait (`carried_open`). C'etait
+// trop etroit, et l'oracle l'a chiffre : sur les 11 films CTF a calque, `carried_open` ne
+// represente qu'UN span, tandis que 1 129,3 s de portage FAUX se cachaient dans les portages
+// FERMES — fermes par une mort, une capture ou une reprise SURVENUE APRES un lacher volontaire
+// que rien ne datait. 69 joueurs sur 95 depassaient leur propre oracle, jusqu'a 63 fois
+// (`16ea3668` / 2535417044536883 : 56,7 s publiees pour 0,9 s). Le canal etait la, lu et compte
+// (`objectLives`), et ne fermait rien : `closedByObject` valait ZERO sur les onze films.
+//
+// LE PLUS PETIT FERMOIR GAGNE, et c'est structurel plutot que compare : [flagFreeDropInside] ne
+// retient qu'une naissance STRICTEMENT interieure a `]t0, t1[`, donc tout instant qu'elle rend
+// est deja plus petit que la borne en place. Les vies libres etant triees par instant
+// ([flagFreeLess]), la premiere trouvee est la PLUS PRECOCE. Une vie nee APRES la fermeture
+// n'entre jamais : la regle ne peut que RACCOURCIR un portage, jamais l'allonger.
+//
+// UNE CAPTURE DEMENTIE N'EN EST PLUS UNE : si l'objet reposait au sol avant l'instant de la
+// capture, ce porteur-la ne l'a pas ramene — `captured` retombe a faux et l'etat publie devient
+// `dropped`. C'est la meme decision que la fermeture elle-meme, prise sur la meme preuve.
+//
+// LA SOUS-POPULATION NE S'ELARGIT PAS : seules servent les vies nees aux pieds d'un porteur et
+// hors socle — celle que le controle 3 valide (cf. l'en-tete de ce fichier).
 //
 // LE PORTEUR EST LU SUR SA PISTE PUBLIEE, la meme que celle sur laquelle le client dessine :
 // c'est la seule position dont on soit sur qu'elle existe au rendu.
@@ -269,9 +291,6 @@ func closeByFreeLives(raws []flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan)
 	idx, _ := tracksByXUID(ctx.tracks, ctx.slotXUID, ctx.slotAmbiguous)
 	closed := 0
 	for i := range raws {
-		if raws[i].closed {
-			continue
-		}
 		at, ok := flagFreeDropInside(raws[i], ctx, idx[raws[i].xuid], scan)
 		if !ok {
 			continue
