@@ -1,3 +1,25 @@
+## [2026-09-10] Master plan, vague 3 — 3.1 (fleche hors cadre) et 3.2 (grille tactique) fusionnes, recuisson des bornes faite, D10 = poursuivre — En cours
+
+**Decision technique principale.** Fusions `376894f91` (3.2) et `b859cc65e` (3.1) apres verification
+sur pieces (0 `slug ==`, 0 couleur en dur, 0 test skippe). 3.2 : pas adaptatif 0,5 → 1 → 2 m,
+N = 22 (le plus petit N ou deux cellules depassent le p95 de l'echelle), plancher inchange,
+sidecars regroupes sans recuisson, et deux defauts anterieurs corriges (adresse de clic relative a
+`min_x`, heatmap peinte a l'origine) — la cause probable du plan vide d'Illusion. Recuisson du parc
+avec le correctif des bornes : 64/64 en 22 min, pic 553 Mio, `81c02726` minZ -325,4 → 114,51.
+Etape 0 WebP fusionnee (`1485835a9`) : 38,4 % de gain sans perte sur 5 fonds, 5/5 identiques a
+l'octet ; l'utilisateur a tranche D10 = poursuivre ; etapes 2-5 lancees.
+
+**Resultats observes.** Gates post-fusion : Go verts, tsc 0, vitest 2 764 verts. Revues navigateur :
+Illusion affiche des cellules (grille 2 m, canvas 635 × 720), Isolement retrouve son fond de carte
+au rejeu, la fleche hors cadre est lisible au zoom x4 sur Ravin Parasite (chevron + « nom ·
+distance »). Decouvertes : avertissements React de cles dupliquees sur le selecteur de cartes, un
+404, regroupement des cellules en bas du plan d'Illusion a confirmer.
+
+**Conclusion / prochaine etape.** Attendre la livraison des etapes 2-5 WebP (sauvegarde des PNG
+avant conversion), verifier en navigateur Tactique + rejeu + export, revue 3.R, gate-push, CI.
+
+---
+
 ## [2026-09-10] Fonds de carte WebP, Étape 0 (banc d'essai) — Complete
 
 **Decision technique principale.** Construit `apps/go-api/cmd/mapfond-webp` (modes `-verifier`
