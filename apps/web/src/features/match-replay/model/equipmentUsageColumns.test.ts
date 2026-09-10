@@ -27,6 +27,7 @@ import {
 import { buildEquipmentUsage } from './equipmentUsageLogic'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { testReplayDoc } from '../test/testDoc'
+import { WALL_PANEL_IDS } from '../layers/placementWall'
 
 const t = REPLAY_TEXT.fr
 
@@ -218,9 +219,12 @@ describe('equipmentGroup — la pile empilée (E2, PLAN_EQUIPEMENT_GACHIS_2026-0
   }
 
   it('une cellule à UN SEUL segment non nul reste lisible : les trois segments existent, deux à zéro', () => {
+    // Famille MUR (et son panneau, `WALL_PANEL_IDS`) : c'est la SEULE dont une pose `deployed`
+    // seule vaut « utilisé » depuis le lot 5.7 (`isFamilyWithSpawnedPiece`) — une pose de
+    // capteur seule, elle, ne vaudrait plus rien (cf. `equipmentUsageLogic.kept.test.ts`).
     const { column, alpha } = colonneEquipement(
-      { equipmentPlacements: [pose('sensor', 'deployed', 1)] } as Partial<ReplayDocument>,
-      'sensor',
+      { equipmentPlacements: [pose('wall', 'deployed', 1, WALL_PANEL_IDS[0])] } as Partial<ReplayDocument>,
+      'wall',
     )
     expect(column?.value(alpha!)).toBe(1)
     const segments = column?.segments?.(alpha!)
@@ -240,7 +244,7 @@ describe('equipmentGroup — la pile empilée (E2, PLAN_EQUIPEMENT_GACHIS_2026-0
     // 3 pris - 1 utilisé - 1 lâché = 1 gardé, décision utilisateur du 2026-09-09).
     const { column, alpha } = colonneEquipement(
       {
-        abilityLabels: { '5': { fr: 'Mur de protection', en: 'Drop wall' } },
+        abilityLabels: { '5': { fr: 'Mur de protection', en: 'Drop wall', family: 'wall' } },
         equipmentChanges: [
           { t: 1, slot: 1, kind: 'taken', r: 5, from: -1 },
           { t: 2, slot: 1, kind: 'taken', r: 5, from: -1 },

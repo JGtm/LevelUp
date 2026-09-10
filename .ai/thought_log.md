@@ -96,6 +96,48 @@ worktree) : champ optionnel non consomme par le front, drift sans impact fonctio
 purger au prochain `make generate-types`.
 
 ---
+## [2026-09-10] Master plan, lot 5.7 — aligner « garde/utilise » web (vue match) sur la regle Go us6 — Complete
+
+**Decision technique principale.** `equipmentChangeFamilyOf` (`equipmentKeptLogic.ts`) lit
+desormais `abilityLabels[rank].family` (schema 51, type genere `Label.family`) au lieu de
+deviner la famille sur la racine du libelle FR/EN — `EQUIPMENT_CHANGE_FAMILY_STEMS` est
+supprimee (0 code mort, CLAUDE.md n7), avec un pont vers le vocabulaire `KEPT_FAMILIES` via
+`EPISODE_FAMILY_OF_POWERUP` (deja ecrit dans `gameChangers.ts`, pas une seconde table) pour les
+deux bonus (`powerup_camo`/`powerup_overshield` -> `camo`/`overshield`). Un label SANS `family`
+(artefact anterieur au schema 51) est un repli EXPLICITE vers la reserve `unnamedTaken`, jamais
+une famille devinee — divergence assumee du Go (qui traite ce cas comme une exclusion produit
+silencieuse). Nouvelle constante documentee `KEPT_FAMILIES_WITH_SPAWNED_PIECE` (figee a 1 famille,
+`wall`, par test dedie), jumelle web de `usageFamiliesWithSpawnedPiece` cote Go. Nouvelle fonction
+partagee `usageUsedOf(tally, family)` (jumelle du `usageUsedOf` Go) : episodes pour les deux
+bonus, poses `deployed` pour le seul mur, CONSOMMATIONS (`spent`, nouveau canal expose sur
+`EquipmentUsageTally`, alimente par `equipmentChanges` kind `spent` joint sur `from`, garde
+`gap > 0` ignoree comme le Go) pour tout le reste. `equipmentUsageColumns.ts`
+(`equipmentPileParts`) appelle desormais la MEME fonction pour la valeur « utilise » affichee —
+avant ce lot elle relisait `deployed[family]` en doublon de la regle de `kept`, ce qui aurait pu
+rendre `used + kept + dropped != taken` (invariant P1) pour les deployables sans piece engendree
+une fois `kept` corrige seul.
+
+**Resultats observes.** TDD prouve rouge->vert : 5 tests (isFamilyWithSpawnedPiece fige a
+`['wall']`, repli sur `family` manquante, capteur pris+pose reste garde, capteur pris+consomme
+n'est plus garde, repli meme verifie au niveau reserve) echouent sur l'ancien code
+(`TypeError`/assertions), passent sur le nouveau. Verification sur artefact reel
+`data/cache/replays/halo_infinite/9ffce8ef.json` (schema 51, lecture seule) : capteur passe de
+3 utilises sur 7 pris (avant, mesure sur les poses, 5 joueurs preneurs) a 6 utilises sur 7 pris
+(apres, mesure sur les consommations) — conforme au chiffre du lot 5.5 Go. Gates `apps/web` :
+`npm run typecheck` (tsc -b, cache purge) propre ; `npx vitest run src/features/match-replay
+src/features/match-view` = 3047 passed / 3 skipped, 0 failed ; `npm run lint` = 0 erreur, 30
+avertissements (baseline inchangee, aucun nouveau). `equipmentUsageLogic.ts` ramene a exactement
+500 lignes apres l'ajout du champ `spent` (seuil CLAUDE.md n5).
+
+**Decouverte non traitee (hors perimetre du lot).** `usageGestureCount` / `buildUsageShares`
+(`equipmentUsageChart.ts`, vue "Part de chaque equipe, geste par geste") somme
+`deployed`+`dropped`+episodes mais PAS `spent` : une famille dont le seul geste mesure est une
+consommation (jamais posee ni lachee) reste invisible sur cette barre de part meme apres ce lot.
+Distinct de la pile "gardé/utilisé" corrigee ici (`equipmentPileParts`) ; a traiter separement si
+le produit le juge necessaire.
+
+**Prochaine etape.** Aucune — lot ferme. La recuisson des resumes de session (Go, `us6`) est deja
+couverte par le lot 5.5 ; ce lot 5.7 ne touche aucune base et n'exige aucun backfill.
 
 ## [2026-09-10] Master plan, lot 5.2 — investigation E0 bornee (mur 1:1, palette non classee, rang 32, prises inclassables, capteur/traqueur) — Complete (diagnostic seul, 5 causes prouvees sur 5)
 

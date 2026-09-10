@@ -25,7 +25,16 @@ import type { UsageColumnGroup } from './equipmentUsageColumns'
 import type { EquipmentUsageTally, EquipmentUsageTeam } from './equipmentUsageLogic'
 
 function tally(over: Partial<EquipmentUsageTally> = {}): EquipmentUsageTally {
-  return { grapplePulls: 0, episodes: {}, deployed: {}, dropped: {}, grenades: {}, kept: {}, ...over }
+  return {
+    grapplePulls: 0,
+    episodes: {},
+    deployed: {},
+    dropped: {},
+    spent: {},
+    grenades: {},
+    kept: {},
+    ...over,
+  }
 }
 
 const ALPHA = tally({
