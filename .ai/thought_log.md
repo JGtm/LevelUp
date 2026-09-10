@@ -1,4 +1,87 @@
 ## [2026-09-10] Master plan, vague 3 — revue 3.R : 0 P0, 3 P1 corriges (tests manquants + doc), WebP en prod locale — Complete (gate-push vert, CI verte)
+## [2026-09-10] Lot 4.3 item 2 — la table rang -> famille publiee dans le document, les racines de libelle supprimees — Complete
+
+**Decision technique principale.** `BuildUsageSummary` est une fonction PURE du document DEJA
+CUIT (c'est ce qui permet a `backfill-usage-summary` de re-resumer sans re-decoder un film) : la
+palette du manifeste n'y etait plus en main, d'ou une reconstruction de la famille par la RACINE
+du libelle bilingue — deuxieme copie de la table du web, plafond de la regle n°6. `Label` gagne
+donc `Family` (schema 51), `abilityLabelsUsed` la recopie depuis `AbilityPalette.FamilyOf`, et
+`equipmentOutcomeFamilyOf` lit `label.Family`. `equipmentOutcomeStems` (le type + la table des
+racines) est SUPPRIMEE ; ce qui reste est `equipmentOutcomeFamilies`, le PERIMETRE du bilan —
+une decision produit (repulseur P4, grappin et propulseur hors bilan), pas une reconnaissance.
+Deux ajustements necessaires : les rangs 8 et 9 (les bonus) n'avaient AUCUNE `family` au
+manifeste — ajoutee (`powerup_camo` / `powerup_overshield`), sans quoi la bascule perdait les
+deux familles les plus lues ; ils n'entrent dans aucune liste `families` mesuree, donc les
+calques d'impulsions et de charges sont inchanges (ils filtrent par `measured[fam]`).
+
+**Resultats observes.** Golden d'assemblage regenere, DEUX lignes changees et ce sont les gains
+attendus : `schema 50` -> `schema 51`, et « capacites nommees » porte desormais la famille
+(19=wall, 20=grapple, 21=thruster, 22=sensor sur `000d5950`) — la preuve que la table du
+manifeste voyage. Le garde-rail `usage_summary_families_guard_test` apprend la QUATRIEME liste
+ecrite (`equipmentOutcomeFamilies`) : depuis que la jointure ne lit plus de texte, une faute de
+frappe y ferait disparaitre une ligne d'issue en silence. `UsageSummaryRev` us4 -> us5.
+Reference des canaux equipement mise a jour (le point 2 disait l'inverse — anti-pattern « doc
+inversee »).
+
+**Gates.** `go build ./...` + `go vet ./...` + `go test ./...` verts ; integration
+`-p 1 -count=1 ./internal/persist/ ./internal/sync/ ./internal/archlint/` verte (41,0 s /
+154,8 s / 12,1 s) ; `golangci-lint run --new-from-merge-base=feat/v75 ./...` : 0 issue ;
+`make check-types` vert ; `make openapi-gen` + `make generate-types` rejoues
+(`Label.family` publiee).
+
+**Conclusion / prochaine etape.** Lot 4.3 termine. Le superviseur recuit le parc (schema 51)
+PUIS rejoue `backfill-usage-summary` — dans cet ordre : un artefact au schema 50 ne porte
+aucune famille, son resume us5 ne classerait rien. Le gate corpus sur le parc lui revient
+aussi (bases fermees pendant le lot).
+
+---
+
+## [2026-09-10] Lot 4.3 item 1 — les corps hors table nommes par le tableau de l'API (voie `tableau_api`) — Complete
+
+**Decision technique principale.** L'index de participant hors de `PlayerIndexTable` n'etait pas
+une enigme : il est LU, et la mesure sur `4f77afc1` (balayage `ScanBipedCreations` du film en
+cache, 330 records) donne sa ventilation exacte pour les 18 vies `index_hors_table` — index 25
+(2 vies, bot « 343 Donos » declare par BOT_METADATA, aucun humain sur ce siege), index 26
+(8 vies, SIEGE PARTAGE : le bot « 343 Doomfruit » ET l'humain « Narotlcs » arrive en cours a
+2:46 ; les records d'index 26 courent jusqu'a 4:35 du match), index 24 (8 vies, participant que
+ni la table ni BOT_METADATA ne nomme). Le tableau de l'API (`match_participants`) apporte deux
+choses que le film ne porte pas : l'IDENTIFIANT publiable d'un bot (`bid(N.0)`) et les BORNES DE
+PARTICIPATION. D'ou une etape 2bis du registre (`identity_registry_scoreboard.go`), apres le pont
+par morts parce qu'elle a besoin de son calage : (1) index d'un bot declare que le tableau porte
+-> la vie prend son `bid` ; (2) siege partage -> la fenetre d'arrivee tranche PAR VIE, a cheval
+on se tait et on compte ; (3) index que personne ne declare -> rien n'est pose, la cause reste.
+Voie `NomParTableauAPI = "tableau_api"`, source canonique `externe` (ni lecture du film, ni
+deduction), declaree DANS LE MEME COMMIT cote `persist` (`NommeParTableauAPI`) — l'oubli
+symetrique du lot E2 avait fait refuser 736 films.
+
+**Resultats observes.** `4f77afc1` : 18 vies `index_hors_table` avant ; apres, seules celles de
+l'index 24 (8) peuvent rester — les 10 autres basculent en `externe` des que le tableau porte les
+deux bots (a mesurer a la recuisson : la base est fermee pendant ce lot). Golden d'assemblage
+regenere : SEULE ligne changee = `schema 50` -> `schema 51` (le film temoin `000d5950` n'a ni bot
+ni participant, donc zero regression). Decouverte de taille : `replaybuild.botIdentities` ne
+recopiait pas `BotID`, si bien que `BotIdentity.Bid()` rendait TOUJOURS une chaine vide — le
+`bid(N.0)` publie depuis le lot P1 dans `roster[].bid` et `identity.players[].bid` etait vide sur
+tout le parc (verifie sur l'artefact `4f77afc1`), et la jointure web des bots retombait sur le
+nom nu que ces champs existent pour eviter. Corrige. Seconde decouverte : `poserIdentiteDeVie`
+ne gardait pas contre une vie deja nommee par un `bid` — l'elimination sur le roster, qui
+raisonne sur un SLOT entier, reprenait les vies que le tableau venait d'attribuer au bot.
+
+**Gates.** `go build ./...` + `go vet ./...` + `go test ./...` verts ; `go test -tags=integration
+-p 1 -count=1 ./internal/persist/ ./internal/sync/ ./internal/archlint/` verts (persist 41,7 s,
+sync 147,0 s, archlint 11,3 s) ; `golangci-lint run --new-from-merge-base=feat/v75 ./...` :
+0 issue. Garde-rails : `no_life_cause_divergence_test` vert (voix declaree des deux cotes),
+`no_identity_bridge_outside_registry_test` vert (le nouveau fichier DECIDE et passe par les
+accesseurs + les poseurs, il n'est PAS a l'allowlist). `make openapi-gen` + `make generate-types`
+rejoues : `IdentityBipedSlot.bid` publie.
+
+**Conclusion / prochaine etape.** Item 2 : publier la table rang -> famille dans `abilityLabels`
+et supprimer `equipmentOutcomeStems`. `SchemaVersion` deja bumpe 50 -> 51 (les deux items
+changent le contenu cuit) ; `UsageSummaryRev` us4 -> us5 a l'item 2. Le gate corpus sur le parc
+est joue par le superviseur apres livraison — la recuisson en cours interdit d'ouvrir les bases.
+
+---
+
+## [2026-09-10] Master plan, vague 3 — revue 3.R : 0 P0, 3 P1 corriges (tests manquants + doc), WebP en prod locale — En cours (gate-push, CI)
 
 **Decision technique principale.** Trois P1 recevables sur la vague, tous de la meme
 famille : un chemin livre sans test qui le prouve (MIME `.webp` du service, clic sur les

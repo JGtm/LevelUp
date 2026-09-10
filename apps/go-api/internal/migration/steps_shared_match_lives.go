@@ -79,6 +79,11 @@ func applyMatchLives(db *sql.DB) error {
 //	            'biped_creation_propagee' le meme record, propage a un autre sejour du meme corps.
 //	            'elimination'             DEDUCTION : elimination sur le roster (registre P2).
 //	            'exclusion_temporelle'    DEDUCTION : exclusion sur l'intervalle de vie (P2-bis).
+//	            'tableau_api'             SOURCE EXTERNE : le tableau de l'API (lot 4.3) — un
+//	                                      joueur arrive EN COURS qui a pris le siege d'index
+//	                                      d'un bot, departage par sa fenetre de participation.
+//	                                      Les vies de BOT, elles, n'atteignent pas cette table :
+//	                                      elles n'ont pas de xuid a y ecrire.
 //
 // UN SEUL INDEX, celui qui sert la vue `_latest` et la lecture par match. DuckDB est colonnaire :
 // un index ART ne sert que les acces ponctuels, et chaque index elargit la surface ART #23046 le

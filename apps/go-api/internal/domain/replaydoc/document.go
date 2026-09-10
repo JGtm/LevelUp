@@ -171,6 +171,12 @@ type Label struct {
 	Fr     string `json:"fr"`
 	Img    string `json:"img,omitempty"`
 	Tinted bool   `json:"tinted,omitempty"`
+	// Family est l'identite STABLE de la chose nommee, dans le vocabulaire des familles
+	// d'equipement du titre (`wall`, `sensor`, `powerup_camo`...) — schema 51, lot 4.3. Le rang
+	// d'une capacite n'est PAS une identite (le propulseur vaut 5 en famille A et 21 en famille
+	// B) : c'est ce champ qui permet a un lecteur de designer une capacite sans ecrire son rang.
+	// Vide = le manifeste ne classe pas ce rang.
+	Family string `json:"family,omitempty"`
 }
 
 // WeaponLabel est le libellé d'une arme, plus l'EFFET de rendu de ses tirs.

@@ -70,6 +70,9 @@ func (r IdentityRegistry) logRegistry(matchID string) {
 		"parElimination", r.eliminated,
 		"parExclusionTemporelle", r.excluded,
 		"viesSansAucunCandidat", r.excludedContradictions,
+		"parTableauAPI", r.ViesNommeesParLeTableau(),
+		"conflitsAuTableau", r.ViesConflitAuTableau(),
+		"sansCandidatAuTableau", r.ViesSansCandidatAuTableau(),
 		"liensDirects", total.Direct, "liensDeduits", total.Inferred,
 		"liensNonResolus", total.Unresolved)
 	r.creation.alarmerSurLesRefus(matchID, r.Section.Coverage.BipedSlot.UnresolvedByCause)

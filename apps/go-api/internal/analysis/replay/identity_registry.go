@@ -77,6 +77,11 @@ type IdentityInput struct {
 	// RosterXUIDs : le roster COMPLET du match, tel que la base le connait. Source EXTERNE :
 	// c'est lui qui rend l'ELIMINATION possible pour un joueur qui ne meurt jamais.
 	RosterXUIDs []uint64
+	// Participants : le TABLEAU DE L'API — les participants du match sous l'identifiant de la
+	// base (`bid(N.0)` pour un bot) et leurs bornes de participation. VIDE = le producteur n'a
+	// pas de base : la voie `tableau_api` se tait entierement, et elle le publie (cf.
+	// identity_registry_scoreboard.go).
+	Participants []Participant
 	// Statborg : l'identite des slots d'entite statborg, resolue par manche par l'appelant.
 	// Le registre ne la RECALCULE pas — il la PUBLIE avec sa provenance.
 	Statborg StatborgIdentityInput
@@ -132,6 +137,9 @@ type IdentityRegistry struct {
 	// discordances, et le compte des vies que le pont a NOMMEES — non nul seulement quand le
 	// registre n'a recu aucune lecture directe (cf. identity_registry_bridge.go).
 	bridge bridgeVerification
+	// tableau porte ce que le TABLEAU DE L'API a nomme et refuse — la voie qui ferme les corps
+	// dont l'index est lu mais hors de la table publiee (cf. identity_registry_scoreboard.go).
+	tableau scoreboardReport
 }
 
 // BuildIdentityRegistry construit le registre d'identite du film. PURE : aucune I/O.
@@ -143,6 +151,10 @@ type IdentityRegistry struct {
 //     (`identity_registry_creation.go`), propage aux autres vies du meme corps ;
 //  2. le PONT PAR MORTS ne nomme plus : il pose la CAUSE de fin et VERIFIE le lien direct — une
 //     discordance s'inscrit et alarme, elle n'ecrase jamais (`identity_registry_bridge.go`) ;
+//  2. bis. le TABLEAU DE L'API nomme les corps dont l'index est LU mais hors de la table publiee
+//     — les bots que `BOT_METADATA` declare, et les sieges d'index qu'un arrivant en cours prend
+//     a un bot (`identity_registry_scoreboard.go`). Il vient APRES le pont parce que sa fenetre
+//     de participation a besoin du calage que le pont mesure ;
 //  3. l'ELIMINATION SUR LE ROSTER ferme le cas d'unicite — un seul xuid sans vie, un seul slot
 //     sans nom ;
 //  4. l'EXCLUSION TEMPORELLE porte la meme elimination a l'echelle d'UNE VIE — un joueur
@@ -152,6 +164,7 @@ type IdentityRegistry struct {
 func BuildIdentityRegistry(in IdentityInput) IdentityRegistry {
 	reg := IdentityRegistry{deducedLives: map[int]bool{}}
 	reg.own, reg.creation, reg.bridge = buildOwners(in)
+	reg.resolveByScoreboard(in)
 	reg.resolveByRosterElimination(in)
 	reg.resolveByTemporalExclusion(in)
 	reg.Section = buildIdentitySection(reg, in)
@@ -306,9 +319,15 @@ func (r IdentityRegistry) ViesParCreation() int         { return r.creation.Dire
 func (r IdentityRegistry) ViesParCreationPropagee() int { return r.creation.Propagated }
 func (r IdentityRegistry) CorpsAvecCreation() int       { return r.creation.Slots }
 func (r IdentityRegistry) LecturesDIndexDeBot() int     { return r.creation.IndexBot }
-func (r IdentityRegistry) PontConcordant() int          { return r.bridge.Concordant }
-func (r IdentityRegistry) PontDiscordant() int          { return r.bridge.Discordant }
-func (r IdentityRegistry) ViesNommeesParLePont() int    { return r.bridge.NamedByBridge }
+
+// ViesNommeesParLeTableau / ViesConflitAuTableau / ViesSansCandidatAuTableau : ce que le TABLEAU
+// DE L'API a nomme et ce qu'il a refuse, par cause (cf. identity_registry_scoreboard.go).
+func (r IdentityRegistry) ViesNommeesParLeTableau() int   { return r.tableau.Nommees() }
+func (r IdentityRegistry) ViesConflitAuTableau() int      { return r.tableau.Conflits }
+func (r IdentityRegistry) ViesSansCandidatAuTableau() int { return r.tableau.SansCandidat }
+func (r IdentityRegistry) PontConcordant() int            { return r.bridge.Concordant }
+func (r IdentityRegistry) PontDiscordant() int            { return r.bridge.Discordant }
+func (r IdentityRegistry) ViesNommeesParLePont() int      { return r.bridge.NamedByBridge }
 
 // ViesTotal / LecturesIndex / DesaccordsIndex / CollisionsDeSlot / CalageSecond : les
 // dénominateurs et les témoins que la couverture publie.

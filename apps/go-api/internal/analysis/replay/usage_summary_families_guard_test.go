@@ -37,6 +37,13 @@ func famillesEcritesDuResume() map[string]bool {
 	for f := range usagePowerupFamilies {
 		out[f] = true
 	}
+	// QUATRIEME LISTE ECRITE (lot 4.3) : le PERIMETRE DU BILAN d'equipement. Depuis que la
+	// jointure rang -> famille lit `abilityLabels[].family` au lieu d'une racine de libelle,
+	// une faute de frappe ici ne se voit plus a la lecture — la famille ne s'apparie
+	// simplement a rien, et la ligne d'issue disparait en silence.
+	for _, f := range equipmentOutcomeFamilies {
+		out[f] = true
+	}
 	return out
 }
 

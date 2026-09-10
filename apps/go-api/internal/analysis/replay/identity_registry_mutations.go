@@ -40,6 +40,13 @@ func (r *IdentityRegistry) poserIdentiteDeVie(i int, xuid uint64, pi int, piConn
 	if xuid == 0 || i < 0 || i >= len(r.own.lives) || r.own.lives[i].xuid != 0 {
 		return false
 	}
+	if r.own.lives[i].bid != "" {
+		// LA VIE PORTE DEJA UN BOT (lot 4.3) : une deduction ne remplace pas une source. Sans
+		// cette garde, l'elimination sur le roster — qui raisonne sur un SLOT entier — reprenait
+		// les vies que le tableau de l'API venait d'attribuer a un bot, et le siege partage
+		// retombait sur un seul occupant.
+		return false
+	}
 	slot := r.own.lives[i].slot
 	r.own.lives[i].xuid = xuid
 	r.own.lives[i].nomPar = nomPar
@@ -60,6 +67,30 @@ func (r *IdentityRegistry) poserIdentiteDeVie(i int, xuid uint64, pi int, piConn
 			r.own.Owner[slot] = pi
 		}
 	}
+	return true
+}
+
+// poserBidDeVie pose l'identifiant d'un BOT sur UNE vie. Rend faux quand la vie n'existe pas ou
+// porte deja une identite.
+//
+// # POURQUOI IL NE TOUCHE NI `SlotXUID` NI `Owner`
+//
+// Les deux tables du pont aplati sont indexees par XUID et par index de JOUEUR : un bot n'a ni
+// l'un ni l'autre a y mettre. `Owner` porte deja le siege du bot — `ownersFromCreations` l'y pose
+// depuis le lot E2, et c'est par la que `nameBotTracks` nomme ses pistes. Ecrire ici reviendrait
+// donc soit a inventer une valeur, soit a repeter ce que la lecture directe a deja pose.
+//
+// LA VIE, ELLE, EST BORNEE DANS LE TEMPS : c'est le seul endroit ou l'identite d'un bot peut
+// vivre sans mentir sur un siege que deux occupants successifs se partagent.
+func (r *IdentityRegistry) poserBidDeVie(i int, bid string) bool {
+	if bid == "" || i < 0 || i >= len(r.own.lives) {
+		return false
+	}
+	if r.own.lives[i].xuid != 0 || r.own.lives[i].bid != "" {
+		return false
+	}
+	r.own.lives[i].bid = bid
+	r.own.lives[i].nomPar = NomParTableauAPI
 	return true
 }
 

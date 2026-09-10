@@ -191,3 +191,30 @@ func TestAbilityLabelsUsedNamesOnlyWhatItKnows(t *testing.T) {
 		t.Error("sans palette classee, aucune capacite ne doit etre nommee")
 	}
 }
+
+// TestAbilityLabelsUsedPublieLaFamilleDuManifeste — LA TABLE RANG -> FAMILLE VOYAGE DANS
+// LE DOCUMENT (lot 4.3, item 2).
+//
+// Sans elle, tout lecteur du document cuit devait reconstruire la famille depuis la RACINE
+// du libellé — deux copies de la même table (Go et web), plafond de la règle n°6 du dépôt.
+// Un rang que le manifeste nomme SANS lui donner de famille garde son libellé et n'en
+// invente pas : `Family` reste vide.
+//
+// MUTATION : ne pas recopier `palette.FamilyOf` -> la famille est vide sur un rang qui en
+// a une, rouge.
+func TestAbilityLabelsUsedPublieLaFamilleDuManifeste(t *testing.T) {
+	palette := AbilityPalette{
+		ID:       "test",
+		Ranks:    map[int]Label{2: {En: "Drop Wall", Fr: "mur"}, 8: {En: "Camo", Fr: "camo"}},
+		Families: map[int]string{2: "wall"},
+	}
+	got := abilityLabelsUsed([]AbilityRead{{R: 2}, {R: 8}}, &palette)
+	if got["2"].Family != "wall" {
+		t.Errorf("rang 2 : family = %q, attendu \"wall\" — la table du manifeste doit voyager",
+			got["2"].Family)
+	}
+	if got["8"].Family != "" {
+		t.Errorf("rang 8 : family = %q, attendu vide — un rang sans famille au manifeste n'en "+
+			"invente pas", got["8"].Family)
+	}
+}

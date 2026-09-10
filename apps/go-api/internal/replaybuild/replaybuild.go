@@ -451,7 +451,13 @@ func botIdentities(res *killsource.Result) []replay.BotIdentity {
 		if b.Name == "" || unpinned[b.BotID] {
 			continue
 		}
-		out = append(out, replay.BotIdentity{FilmIndex: b.Slot, Name: b.Name + " [bot]"})
+		// `BotID` VOYAGE (lot 4.3) : il etait lu par le decodage, employe comme cle exacte par
+		// les relais, et perdu ICI. Faute de lui, `BotIdentity.Bid()` rendait toujours une
+		// chaine vide — le `bid(N.0)` que `RosterEntry.Bid` et `IdentityPlayer.Bid` publient
+		// depuis le lot P1 etait donc VIDE SUR TOUT LE PARC (verifie sur `4f77afc1`), et la
+		// jointure des bots retombait sur le nom nu que ces deux champs existent pour eviter.
+		out = append(out, replay.BotIdentity{
+			FilmIndex: b.Slot, Name: b.Name + " [bot]", BotID: b.BotID})
 	}
 	return out
 }

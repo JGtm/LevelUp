@@ -866,7 +866,10 @@ func renderBilingualMap(in map[string]Label) string {
 	keys := sortedKeys(in)
 	parts := make([]string, 0, len(keys))
 	for _, k := range keys {
-		parts = append(parts, fmt.Sprintf("%s=en:%q/fr:%q", k, in[k].En, in[k].Fr))
+		// LA FAMILLE FIGE AVEC LE NOM (schema 51) : c'est elle que le resume d'usage joint
+		// desormais, et un golden qui ne l'imprimerait pas laisserait sa perte invisible.
+		parts = append(parts, fmt.Sprintf("%s=en:%q/fr:%q/fam:%q",
+			k, in[k].En, in[k].Fr, in[k].Family))
 	}
 	return strings.Join(parts, ", ")
 }

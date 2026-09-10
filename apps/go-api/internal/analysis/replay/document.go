@@ -36,7 +36,11 @@ package replay
 // v50 (2026-09-08, lot P2) : la section `identity` naît, `roster[].bid` est publié, et le
 // nommage des vies change (élimination sur le roster). Le CONTENU CUIT change, donc le bump est
 // exigé par la règle — pas seulement pour déclencher la recuisson.
-const SchemaVersion = 50
+//
+// v51 (2026-09-10, lot 4.3) : deux changements de CONTENU CUIT — `identity.bipedSlots[].bid`
+// (le tableau de l'API nomme les corps hors table) et `abilityLabels[].family` (le résumé
+// d'usage y joint, d'où `UsageSummaryRev` us4 -> us5). Raison détaillée : `structure_test.go`.
+const SchemaVersion = 51
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
