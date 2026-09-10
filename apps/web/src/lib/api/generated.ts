@@ -4075,6 +4075,16 @@ export interface components {
             /** Format: int64 */
             unpublished: number;
         };
+        AbilityCoverage: {
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reads: number;
+            /** Format: int64 */
+            scanNoise: number;
+            /** Format: int64 */
+            unpublished: number;
+        };
         AbilityImpulse: {
             family: string;
             /** Format: int32 */
@@ -5712,6 +5722,7 @@ export interface components {
             taux: number;
         };
         Coverage: {
+            abilities?: components["schemas"]["AbilityCoverage"];
             abilityCharges?: components["schemas"]["AbilityChargeCoverage"];
             abilityImpulses?: components["schemas"]["AbilityImpulseCoverage"];
             bombArmings?: components["schemas"]["BombArmingsCoverage"];
