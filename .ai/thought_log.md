@@ -1,3 +1,55 @@
+## [2026-09-10] Audit sur preuves — couverture des calques d'objectif contre l'oracle API — Complete (aucune correction de code, worktree LevelUp-wt-couverture-objectifs)
+
+**Decision technique principale.** Audit `perimetre x axe` sous le skill `adversarial-audit`
+(§0 : un audit ne corrige rien). Perimetre : les calques d'objectif du rejeu 2D
+(`analysis/replay/`, `analysis/objectiveevents/`, `replaybuild/`, `features/match-replay/`).
+Contrat de reference : l'ORACLE OFFICIEL de l'API (`match_objective_stats_latest`, export du
+jour serveur arrete, 328 lignes joueur x match), committe au premier commit. Instrument Go
+hors ligne (`.ai/V7.5/outillage/couverture_objectifs/`, 5 fichiers, `go vet` propre) : il lit
+les 64 artefacts deja cuits et les trois TSV, **n'ouvre aucune base, ne recuit rien**. Ses huit
+sorties brutes sont committees sous `replay2d/registre_film/vague6_*` — chaque chiffre du
+registre s'y relit. Calibrage joue AVANT toute affirmation, sur les deux moities : lecture de
+l'artefact (spans `carried` recalcules = `coverage.flagCarries.carries`, 11 films / 11) et
+lecture de l'oracle (1 249,0 s de portage de crane sur les 4 films Oddball, et les trois
+porteurs du rapport 6.2 §3.3 a la decimale). Le calibrage demande par l'instruction — les
+82,2 % — est declare NON reproductible avec sa preuve : aucun film Oddball n'a d'artefact au
+parc (`skullCarries` a zero sur les 64), ces 82,2 % viennent d'une cuisson hors ligne.
+
+**Resultats observes.** Le constat central inverse ce que le rapport 6.2 avait etabli sur le
+crane : **le drapeau SUR-mesure** — 3 246,4 s publiees pour 2 121,2 s a l'oracle sur 11 films
+CTF (153,1 %), **69 joueurs sur 95 au-dessus de leur propre oracle**, pire cas 56,7 s publiees
+pour 0,9 s reelles. Cause ecrite dans le code (`flag_carries.go:26` : le lacher volontaire
+n'est borne par aucune chaine) et chiffree pour la premiere fois : +5,73 s par periode sur
+197 periodes. Corollaire : la demi-fenetre de tic de la decouverte 4 est propre aux calques a
+TRAIN DE TICS (crane) et **contre-indiquee** sur le drapeau (elle porterait 71 joueurs sur 72
+au-dessus de leur oracle). Les ACTIONS, elles, sont exactes (ratio 1,000 par joueur sur
+grabs/captures/steals/returns/carriers_killed, 8 films sur 11 sans le moindre ecart) —
+sauf `flag_secures` (223 a l'oracle, 0 publiee, absente de la table `named.go:90-102`) et trois
+compteurs qui explosent sur un joueur (84 assistances pour 0, 65 vols pour 1). Le defaut
+« `CompletedByLines` mono-manche » est REFUTE sur le drapeau (les 2 CTF multi-manche du parc :
+`noSlot = 0`, actions exactes) ; ce qui frappe est une manche FANTOME sur `e60aaf06`
+(`coverage.score.rounds = 3` contre 1 seule manche dans tout son fil de score, 84,4 % d'actions
+perdues). Tout ce qui depasse 8 joueurs est faux ou muet (`statSlotMax = 24`) : 266,2 s de
+portage BTB jamais publiees, et 65 prises publiees la ou l'oracle en compte 4. Zones : 3 507,2 s
+d'occupation a l'oracle, **0 s publiee par joueur** — le calque n'existe pas. Objet porte sans
+position : 533 images / 32 464 (1,64 %) sur le drapeau, quatre fois moins que le crane, et le
+stopgap « rendre l'objet LIBRE » ne se transpose PAS au drapeau (il se fige a une ancre
+perimee, `flagCarriesLayer.ts:237-241`, au lieu de disparaitre).
+
+**Conclusion / prochaine etape.** Registre :
+`.ai/V7.5/AUDIT_COUVERTURE_OBJECTIFS_2026-09-10.md` — 10 causes prouvees avec `fichier:ligne`,
+declenchement et effectif ; 3 hypotheses rangees a part (dont « le plafond de 8 slots CAUSE les
+compteurs faux du BTB », dont seuls la constante, l'effectif et le desaccord sont etablis) ;
+6 decouvertes hors perimetre ; 7 questions declarees non prouvables avec ce qu'il faudrait pour
+chacune. Le lot correctif propose tient en 10 items fermes et cochables, ordonnes gain/effort,
+chacun avec son gate mesurable et sa dependance a une recuisson — de L1 (taire le calque des
+actions au-dela de 8 joueurs, effort faible, 129 actions fausses retirees) a L5 (fermer un
+portage sur le lacher, effort fort, 1 129,3 s de faux retirees, **changement de definition a
+trancher par l'utilisateur**) et L9 (temps en zone par joueur, escalade utilisateur : c'est un
+calque qui n'existe pas, pas un calque casse). Prealable a L4 : ajouter `assists` et `kills` a
+l'export d'oracle — une requete, sans quoi les 40 806 pulses d'assistance de trois films restent
+non refutables.
+
 ## [2026-09-10] Lot 6.5 — Armes au sol : jointure reparee, infobulle, filtre armes speciales — Complete (3 commits TDD, worktree LevelUp-wt-armes-au-sol-calque)
 
 **Decision technique principale.** Trois items du plan maitre, TDD strict, un commit par item.

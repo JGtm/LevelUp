@@ -1,0 +1,518 @@
+film	famille	mode	action	xuid	gamertag	publie	oracle	ecart
+4f77afc1	CTF	BTB:CTF	flag_captures	2535418140736812		1	1	0
+4f77afc1	CTF	BTB:CTF	flag_captures	2535457514480546		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_grabs	2533274818676576		64	0	64
+4f77afc1	CTF	BTB:CTF	flag_grabs	2533274858283686		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_grabs	2535418140736812		1	1	0
+4f77afc1	CTF	BTB:CTF	flag_grabs	2535420159292452		0	2	-2
+4f77afc1	CTF	BTB:CTF	flag_steals	2533274798159764		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_steals	2533274988198027		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_steals	2535418140736812		1	1	0
+4f77afc1	CTF	BTB:CTF	flag_steals	2535420159292452		0	2	-2
+4f77afc1	CTF	BTB:CTF	flag_steals	2535447170907787		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_steals	2535457217346540		1	1	0
+4f77afc1	CTF	BTB:CTF	flag_steals	2535457514480546		0	3	-3
+4f77afc1	CTF	BTB:CTF	flag_steals	2535462972817970		0	3	-3
+4f77afc1	CTF	BTB:CTF	flag_returns	2533274823110022	JGtm	1	1	0
+4f77afc1	CTF	BTB:CTF	flag_returns	2533274858283686		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_returns	2535432037056604		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_returns	2535461788192443		1	1	0
+4f77afc1	CTF	BTB:CTF	flag_returns	2535469763661810		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_returns	bid(59.0		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_secures	2533274858283686		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_secures	2535418140736812		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_secures	2535420159292452		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_carriers_killed	2533274818676576		1	1	0
+4f77afc1	CTF	BTB:CTF	flag_carriers_killed	2533274858283686		0	2	-2
+4f77afc1	CTF	BTB:CTF	flag_carriers_killed	2535437483090324		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_carriers_killed	2535447170907787		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_carriers_killed	2535449476496795		1	1	0
+4f77afc1	CTF	BTB:CTF	flag_carriers_killed	2535457217346540		1	1	0
+4f77afc1	CTF	BTB:CTF	flag_carriers_killed	2535457514480546		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_carriers_killed	2535461788192443		1	1	0
+4f77afc1	CTF	BTB:CTF	flag_carriers_killed	2535469763661810		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_carriers_killed	bid(59.0		0	1	-1
+4f77afc1	CTF	BTB:CTF	flag_capture_assists	2535457217346540		1	1	0
+879a4dba	CTF	BTB:CTF	flag_captures	2533274858283686		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_captures	2533274920570623		1	1	0
+879a4dba	CTF	BTB:CTF	flag_captures	2535405728090473		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_captures	2535457217346540		1	1	0
+879a4dba	CTF	BTB:CTF	flag_captures	2535460487570599		1	1	0
+879a4dba	CTF	BTB:CTF	flag_grabs	2533274817737470		2	2	0
+879a4dba	CTF	BTB:CTF	flag_grabs	2533274823110022	JGtm	0	1	-1
+879a4dba	CTF	BTB:CTF	flag_grabs	2533274858283686		0	2	-2
+879a4dba	CTF	BTB:CTF	flag_grabs	2533274893737372		0	4	-4
+879a4dba	CTF	BTB:CTF	flag_grabs	2533274920570623		1	1	0
+879a4dba	CTF	BTB:CTF	flag_grabs	2535405728090473		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_grabs	2535432231421181		0	2	-2
+879a4dba	CTF	BTB:CTF	flag_grabs	2535443641007500		1	1	0
+879a4dba	CTF	BTB:CTF	flag_grabs	2535457217346540		3	3	0
+879a4dba	CTF	BTB:CTF	flag_grabs	2535458469688663		0	3	-3
+879a4dba	CTF	BTB:CTF	flag_grabs	2535462209962245		2	2	0
+879a4dba	CTF	BTB:CTF	flag_grabs	2667980672122182		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_steals	2533274920570623		1	1	0
+879a4dba	CTF	BTB:CTF	flag_steals	2535432231421181		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_steals	2535457217346540		1	1	0
+879a4dba	CTF	BTB:CTF	flag_steals	2535460487570599		1	1	0
+879a4dba	CTF	BTB:CTF	flag_steals	2535462209962245		1	1	0
+879a4dba	CTF	BTB:CTF	flag_secures	2533274817737470		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_secures	2533274823110022	JGtm	0	1	-1
+879a4dba	CTF	BTB:CTF	flag_secures	2533274858283686		0	2	-2
+879a4dba	CTF	BTB:CTF	flag_secures	2533274893737372		0	3	-3
+879a4dba	CTF	BTB:CTF	flag_secures	2533274920570623		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_secures	2535405728090473		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_secures	2535432231421181		0	2	-2
+879a4dba	CTF	BTB:CTF	flag_secures	2535443641007500		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_secures	2535457217346540		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_secures	2535458469688663		0	3	-3
+879a4dba	CTF	BTB:CTF	flag_secures	2535462209962245		0	2	-2
+879a4dba	CTF	BTB:CTF	flag_secures	2667980672122182		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_carriers_killed	2533274893737372		0	2	-2
+879a4dba	CTF	BTB:CTF	flag_carriers_killed	2533274920570623		1	1	0
+879a4dba	CTF	BTB:CTF	flag_carriers_killed	2533274964038601		4	4	0
+879a4dba	CTF	BTB:CTF	flag_carriers_killed	2533274965326253		2	2	0
+879a4dba	CTF	BTB:CTF	flag_carriers_killed	2535457217346540		1	1	0
+879a4dba	CTF	BTB:CTF	flag_capture_assists	2533274817737470		1	1	0
+879a4dba	CTF	BTB:CTF	flag_capture_assists	2533274823110022	JGtm	0	1	-1
+879a4dba	CTF	BTB:CTF	flag_capture_assists	2533274893737372		0	1	-1
+879a4dba	CTF	BTB:CTF	flag_capture_assists	2535432231421181		0	2	-2
+879a4dba	CTF	BTB:CTF	flag_capture_assists	2535443641007500		1	1	0
+879a4dba	CTF	BTB:CTF	flag_capture_assists	2535458469688663		0	2	-2
+879a4dba	CTF	BTB:CTF	flag_capture_assists	2535462209962245		1	1	0
+879a4dba	CTF	BTB:CTF	flag_capture_assists	2667980672122182		0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2533274817737470		4	4	0
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2533274823110022	JGtm	0	4	-4
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2533274845241701		0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2533274858283686		8	8	0
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2533274858343347		0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2533274893737372		1	1	0
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2533274964038601		0	3	-3
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2533275013465881		0	2	-2
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535405373150550		0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535420302347168		0	4	-4
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535442484776177		0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535444408537131		0	3	-3
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535446464444062		3	3	0
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535452383863984		0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535457217346540		5	5	0
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535458469688663		0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535459882866010		0	2	-2
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535462209962245		2	2	0
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535468111373012		0	3	-3
+5676a9ba	TotalControl	BTB:Total Control	zone_captures	2535469049971772		0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_secures	2533274817737470		2	2	0
+5676a9ba	TotalControl	BTB:Total Control	zone_secures	2533274823110022	JGtm	0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_secures	2533275013465881		0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_secures	2535409375826107		0	1	-1
+5676a9ba	TotalControl	BTB:Total Control	zone_secures	2535420302347168		0	2	-2
+5676a9ba	TotalControl	BTB:Total Control	zone_secures	2535457217346540		2	2	0
+16ea3668	CTF	CTF:Arena	flag_captures	2533274858283686		1	1	0
+16ea3668	CTF	CTF:Arena	flag_captures	2535466949313010		1	1	0
+16ea3668	CTF	CTF:Arena	flag_captures	2598952284978039		2	2	0
+16ea3668	CTF	CTF:Arena	flag_grabs	2533274858283686		6	6	0
+16ea3668	CTF	CTF:Arena	flag_grabs	2533275034585819		3	3	0
+16ea3668	CTF	CTF:Arena	flag_grabs	2535447614023932		6	6	0
+16ea3668	CTF	CTF:Arena	flag_grabs	2535466949313010		2	2	0
+16ea3668	CTF	CTF:Arena	flag_grabs	2598952284978039		1	1	0
+16ea3668	CTF	CTF:Arena	flag_steals	2533274858283686		3	3	0
+16ea3668	CTF	CTF:Arena	flag_steals	2535417044536883		2	2	0
+16ea3668	CTF	CTF:Arena	flag_steals	2535447614023932		2	2	0
+16ea3668	CTF	CTF:Arena	flag_steals	2535466949313010		2	2	0
+16ea3668	CTF	CTF:Arena	flag_steals	2598952284978039		2	2	0
+16ea3668	CTF	CTF:Arena	flag_returns	2533274823110022		2	2	0
+16ea3668	CTF	CTF:Arena	flag_returns	2533275034585819		1	1	0
+16ea3668	CTF	CTF:Arena	flag_returns	2535417044536883		1	1	0
+16ea3668	CTF	CTF:Arena	flag_returns	2535466949313010		3	3	0
+16ea3668	CTF	CTF:Arena	flag_returns	2535469190789936	Chocoboflor	1	1	0
+16ea3668	CTF	CTF:Arena	flag_secures	2533274858283686		0	2	-2
+16ea3668	CTF	CTF:Arena	flag_secures	2533275034585819		0	1	-1
+16ea3668	CTF	CTF:Arena	flag_secures	2535447614023932		0	1	-1
+16ea3668	CTF	CTF:Arena	flag_secures	2535466949313010		0	2	-2
+16ea3668	CTF	CTF:Arena	flag_secures	2598952284978039		0	1	-1
+16ea3668	CTF	CTF:Arena	flag_carriers_killed	2535417044536883		1	1	0
+16ea3668	CTF	CTF:Arena	flag_carriers_killed	2535447614023932		2	2	0
+16ea3668	CTF	CTF:Arena	flag_carriers_killed	2535466949313010		1	1	0
+16ea3668	CTF	CTF:Arena	flag_carriers_killed	2598952284978039		1	1	0
+16ea3668	CTF	CTF:Arena	flag_capture_assists	2533275034585819		1	1	0
+16ea3668	CTF	CTF:Arena	flag_capture_assists	2535417044536883		1	1	0
+16ea3668	CTF	CTF:Arena	flag_capture_assists	2598952284978039		1	1	0
+58864b3c	CTF	CTF:Arena	flag_captures	2533274822170595		1	1	0
+58864b3c	CTF	CTF:Arena	flag_captures	2535452521259564		2	2	0
+58864b3c	CTF	CTF:Arena	flag_grabs	2533274823110022	JGtm	1	1	0
+58864b3c	CTF	CTF:Arena	flag_grabs	2533274829350000		4	4	0
+58864b3c	CTF	CTF:Arena	flag_grabs	2533274858283686		4	4	0
+58864b3c	CTF	CTF:Arena	flag_grabs	2535452521259564		3	3	0
+58864b3c	CTF	CTF:Arena	flag_grabs	2535469190789936		2	2	0
+58864b3c	CTF	CTF:Arena	flag_steals	2533274822170595		1	1	0
+58864b3c	CTF	CTF:Arena	flag_steals	2533274823110022	JGtm	1	1	0
+58864b3c	CTF	CTF:Arena	flag_steals	2533274829350000		1	1	0
+58864b3c	CTF	CTF:Arena	flag_steals	2533274858283686		1	1	0
+58864b3c	CTF	CTF:Arena	flag_steals	2535452521259564		1	1	0
+58864b3c	CTF	CTF:Arena	flag_steals	2535469190789936		1	1	0
+58864b3c	CTF	CTF:Arena	flag_returns	2533274829350000		1	1	0
+58864b3c	CTF	CTF:Arena	flag_returns	2535450759128461		2	2	0
+58864b3c	CTF	CTF:Arena	flag_secures	2533274823110022	JGtm	0	1	-1
+58864b3c	CTF	CTF:Arena	flag_secures	2533274829350000		0	4	-4
+58864b3c	CTF	CTF:Arena	flag_secures	2533274858283686		0	4	-4
+58864b3c	CTF	CTF:Arena	flag_secures	2535452521259564		0	3	-3
+58864b3c	CTF	CTF:Arena	flag_secures	2535469190789936		0	1	-1
+58864b3c	CTF	CTF:Arena	flag_carriers_killed	2533274823110022	JGtm	1	1	0
+58864b3c	CTF	CTF:Arena	flag_carriers_killed	2533274829350000		1	1	0
+58864b3c	CTF	CTF:Arena	flag_capture_assists	2533274829350000		1	1	0
+7fce3219	CTF	CTF:Arena	flag_captures	2533274955626571		2	2	0
+7fce3219	CTF	CTF:Arena	flag_captures	2535415254450151		1	1	0
+7fce3219	CTF	CTF:Arena	flag_captures	2535469190789936		1	1	0
+7fce3219	CTF	CTF:Arena	flag_captures	2654577101798078		1	1	0
+7fce3219	CTF	CTF:Arena	flag_grabs	2533274823110022	JGtm	2	2	0
+7fce3219	CTF	CTF:Arena	flag_grabs	2533274858283686		6	6	0
+7fce3219	CTF	CTF:Arena	flag_grabs	2533274955626571		24	24	0
+7fce3219	CTF	CTF:Arena	flag_grabs	2535415254450151		9	9	0
+7fce3219	CTF	CTF:Arena	flag_grabs	2535458465148583		1	1	0
+7fce3219	CTF	CTF:Arena	flag_grabs	2535469190789936		15	15	0
+7fce3219	CTF	CTF:Arena	flag_grabs	2654577101798078		13	13	0
+7fce3219	CTF	CTF:Arena	flag_steals	2533274858283686		3	3	0
+7fce3219	CTF	CTF:Arena	flag_steals	2533274943116584		1	1	0
+7fce3219	CTF	CTF:Arena	flag_steals	2533274955626571		3	3	0
+7fce3219	CTF	CTF:Arena	flag_steals	2535415254450151		4	4	0
+7fce3219	CTF	CTF:Arena	flag_steals	2535469190789936		2	2	0
+7fce3219	CTF	CTF:Arena	flag_steals	2654577101798078		2	2	0
+7fce3219	CTF	CTF:Arena	flag_returns	2533274823110022	JGtm	2	2	0
+7fce3219	CTF	CTF:Arena	flag_returns	2533274858283686		2	2	0
+7fce3219	CTF	CTF:Arena	flag_returns	2533274943116584		1	1	0
+7fce3219	CTF	CTF:Arena	flag_returns	2535415254450151		1	1	0
+7fce3219	CTF	CTF:Arena	flag_returns	2535458465148583		1	1	0
+7fce3219	CTF	CTF:Arena	flag_returns	2654577101798078		1	1	0
+7fce3219	CTF	CTF:Arena	flag_secures	2533274823110022	JGtm	0	2	-2
+7fce3219	CTF	CTF:Arena	flag_secures	2533274858283686		0	4	-4
+7fce3219	CTF	CTF:Arena	flag_secures	2533274955626571		0	1	-1
+7fce3219	CTF	CTF:Arena	flag_secures	2535415254450151		0	4	-4
+7fce3219	CTF	CTF:Arena	flag_secures	2535458465148583		0	1	-1
+7fce3219	CTF	CTF:Arena	flag_secures	2535469190789936		0	1	-1
+7fce3219	CTF	CTF:Arena	flag_secures	2654577101798078		0	2	-2
+7fce3219	CTF	CTF:Arena	flag_carriers_killed	2533274823110022	JGtm	2	2	0
+7fce3219	CTF	CTF:Arena	flag_carriers_killed	2533274858283686		1	1	0
+7fce3219	CTF	CTF:Arena	flag_carriers_killed	2533274943116584		3	3	0
+7fce3219	CTF	CTF:Arena	flag_carriers_killed	2533274955626571		1	1	0
+7fce3219	CTF	CTF:Arena	flag_carriers_killed	2535469190789936		1	1	0
+7fce3219	CTF	CTF:Arena	flag_carriers_killed	2654577101798078		1	1	0
+7fce3219	CTF	CTF:Arena	flag_capture_assists	2533274955626571		1	1	0
+7fce3219	CTF	CTF:Arena	flag_capture_assists	2535415254450151		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_captures	2533274829350000		2	2	0
+8bc6074f	CTF	CTF:Arena	flag_captures	2535449383340628		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_captures	2535469190789936		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_grabs	2533274823110022		4	4	0
+8bc6074f	CTF	CTF:Arena	flag_grabs	2533274829350000		15	15	0
+8bc6074f	CTF	CTF:Arena	flag_grabs	2533274833178266	XxDaemonGamerxX	1	1	0
+8bc6074f	CTF	CTF:Arena	flag_grabs	2533274858283686		4	4	0
+8bc6074f	CTF	CTF:Arena	flag_grabs	2535449383340628		7	7	0
+8bc6074f	CTF	CTF:Arena	flag_grabs	2535452521259564		2	2	0
+8bc6074f	CTF	CTF:Arena	flag_grabs	2535469190789936		9	9	0
+8bc6074f	CTF	CTF:Arena	flag_steals	2533274823110022		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_steals	2533274833178266	XxDaemonGamerxX	2	2	0
+8bc6074f	CTF	CTF:Arena	flag_steals	2533274858283686		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_steals	2535449383340628		4	4	0
+8bc6074f	CTF	CTF:Arena	flag_steals	2535450759128461		2	2	0
+8bc6074f	CTF	CTF:Arena	flag_steals	2535452521259564		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_steals	2535469190789936		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_returns	2533274823110022		3	3	0
+8bc6074f	CTF	CTF:Arena	flag_returns	2533274829350000		2	2	0
+8bc6074f	CTF	CTF:Arena	flag_returns	2533274858283686		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_returns	2535449383340628		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_returns	2535450759128461		3	3	0
+8bc6074f	CTF	CTF:Arena	flag_returns	2535452521259564		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_secures	2533274823110022		0	4	-4
+8bc6074f	CTF	CTF:Arena	flag_secures	2533274829350000		0	6	-6
+8bc6074f	CTF	CTF:Arena	flag_secures	2533274833178266	XxDaemonGamerxX	0	1	-1
+8bc6074f	CTF	CTF:Arena	flag_secures	2533274858283686		0	1	-1
+8bc6074f	CTF	CTF:Arena	flag_secures	2535449383340628		0	4	-4
+8bc6074f	CTF	CTF:Arena	flag_secures	2535452521259564		0	3	-3
+8bc6074f	CTF	CTF:Arena	flag_secures	2535469190789936		0	1	-1
+8bc6074f	CTF	CTF:Arena	flag_carriers_killed	2533274823110022		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_carriers_killed	2533274858283686		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_carriers_killed	2535449383340628		3	3	0
+8bc6074f	CTF	CTF:Arena	flag_carriers_killed	2535450759128461		2	2	0
+8bc6074f	CTF	CTF:Arena	flag_capture_assists	2533274833178266	XxDaemonGamerxX	1	1	0
+8bc6074f	CTF	CTF:Arena	flag_capture_assists	2535450759128461		1	1	0
+8bc6074f	CTF	CTF:Arena	flag_capture_assists	2535452521259564		1	1	0
+a0c36016	CTF	CTF:Arena	flag_captures	2533274823110022	JGtm	1	1	0
+a0c36016	CTF	CTF:Arena	flag_grabs	2533274823110022	JGtm	1	1	0
+a0c36016	CTF	CTF:Arena	flag_grabs	2533274858283686		3	3	0
+a0c36016	CTF	CTF:Arena	flag_grabs	2533274858911298		2	2	0
+a0c36016	CTF	CTF:Arena	flag_grabs	2535425652517893		4	4	0
+a0c36016	CTF	CTF:Arena	flag_grabs	2535427927026623		6	6	0
+a0c36016	CTF	CTF:Arena	flag_grabs	2535448372866366		1	1	0
+a0c36016	CTF	CTF:Arena	flag_grabs	2535456861208728		7	7	0
+a0c36016	CTF	CTF:Arena	flag_grabs	2535469190789936		8	8	0
+a0c36016	CTF	CTF:Arena	flag_steals	2533274858283686		2	2	0
+a0c36016	CTF	CTF:Arena	flag_steals	2533274858911298		5	5	0
+a0c36016	CTF	CTF:Arena	flag_steals	2535425652517893		3	3	0
+a0c36016	CTF	CTF:Arena	flag_steals	2535427927026623		2	2	0
+a0c36016	CTF	CTF:Arena	flag_steals	2535448372866366		1	1	0
+a0c36016	CTF	CTF:Arena	flag_steals	2535469190789936		4	4	0
+a0c36016	CTF	CTF:Arena	flag_returns	2533274823110022	JGtm	2	2	0
+a0c36016	CTF	CTF:Arena	flag_returns	2533274858283686		5	5	0
+a0c36016	CTF	CTF:Arena	flag_returns	2533274858911298		2	2	0
+a0c36016	CTF	CTF:Arena	flag_returns	2535425652517893		4	4	0
+a0c36016	CTF	CTF:Arena	flag_returns	2535427927026623		2	2	0
+a0c36016	CTF	CTF:Arena	flag_returns	2535448372866366		1	1	0
+a0c36016	CTF	CTF:Arena	flag_returns	2535456861208728		2	2	0
+a0c36016	CTF	CTF:Arena	flag_returns	2535469190789936		1	1	0
+a0c36016	CTF	CTF:Arena	flag_secures	2533274823110022	JGtm	0	2	-2
+a0c36016	CTF	CTF:Arena	flag_secures	2533274858283686		0	2	-2
+a0c36016	CTF	CTF:Arena	flag_secures	2533274858911298		0	4	-4
+a0c36016	CTF	CTF:Arena	flag_secures	2535425652517893		0	1	-1
+a0c36016	CTF	CTF:Arena	flag_secures	2535427927026623		0	1	-1
+a0c36016	CTF	CTF:Arena	flag_secures	2535448372866366		0	1	-1
+a0c36016	CTF	CTF:Arena	flag_secures	2535456861208728		0	5	-5
+a0c36016	CTF	CTF:Arena	flag_carriers_killed	2533274858283686		4	4	0
+a0c36016	CTF	CTF:Arena	flag_carriers_killed	2535425652517893		1	1	0
+a0c36016	CTF	CTF:Arena	flag_carriers_killed	2535427927026623		1	1	0
+a0c36016	CTF	CTF:Arena	flag_carriers_killed	2535448372866366		1	1	0
+a0c36016	CTF	CTF:Arena	flag_carriers_killed	2535456861208728		1	1	0
+a0c36016	CTF	CTF:Arena	flag_carriers_killed	2535469190789936		1	1	0
+a0c36016	CTF	CTF:Arena	flag_capture_assists	2533274858283686		1	1	0
+a0c36016	CTF	CTF:Arena	flag_capture_assists	2535427927026623		84	0	84
+b8a44fe8	CTF	CTF:Arena	flag_captures	2533274858283686		1	1	0
+b8a44fe8	CTF	CTF:Arena	flag_grabs	2533274823110022		2	2	0
+b8a44fe8	CTF	CTF:Arena	flag_grabs	2533274858283686		25	25	0
+b8a44fe8	CTF	CTF:Arena	flag_grabs	2533274858911298		1	1	0
+b8a44fe8	CTF	CTF:Arena	flag_grabs	2533274897257135		2	2	0
+b8a44fe8	CTF	CTF:Arena	flag_grabs	2535442462807197		13	13	0
+b8a44fe8	CTF	CTF:Arena	flag_grabs	2535455799302553		8	8	0
+b8a44fe8	CTF	CTF:Arena	flag_steals	2533274858283686		5	5	0
+b8a44fe8	CTF	CTF:Arena	flag_steals	2533274858911298		1	1	0
+b8a44fe8	CTF	CTF:Arena	flag_steals	2535442462807197		3	3	0
+b8a44fe8	CTF	CTF:Arena	flag_steals	2535455799302553		2	2	0
+b8a44fe8	CTF	CTF:Arena	flag_steals	2535469190789936	Chocoboflor	1	1	0
+b8a44fe8	CTF	CTF:Arena	flag_returns	2533274823110022		3	3	0
+b8a44fe8	CTF	CTF:Arena	flag_returns	2533274858283686		1	1	0
+b8a44fe8	CTF	CTF:Arena	flag_returns	2533274858911298		1	1	0
+b8a44fe8	CTF	CTF:Arena	flag_returns	2533274897257135		2	2	0
+b8a44fe8	CTF	CTF:Arena	flag_returns	2533275027826442		1	1	0
+b8a44fe8	CTF	CTF:Arena	flag_returns	2535442462807197		2	2	0
+b8a44fe8	CTF	CTF:Arena	flag_returns	2535469190789936	Chocoboflor	3	3	0
+b8a44fe8	CTF	CTF:Arena	flag_secures	2533274823110022		0	2	-2
+b8a44fe8	CTF	CTF:Arena	flag_secures	2533274858283686		0	14	-14
+b8a44fe8	CTF	CTF:Arena	flag_secures	2533274858911298		0	3	-3
+b8a44fe8	CTF	CTF:Arena	flag_secures	2533274897257135		0	2	-2
+b8a44fe8	CTF	CTF:Arena	flag_secures	2533275027826442		0	1	-1
+b8a44fe8	CTF	CTF:Arena	flag_secures	2535442462807197		0	15	-15
+b8a44fe8	CTF	CTF:Arena	flag_secures	2535455799302553		0	6	-6
+b8a44fe8	CTF	CTF:Arena	flag_carriers_killed	2533274823110022		4	4	0
+b8a44fe8	CTF	CTF:Arena	flag_carriers_killed	2533274858283686		1	1	0
+b8a44fe8	CTF	CTF:Arena	flag_carriers_killed	2533275027826442		2	2	0
+b8a44fe8	CTF	CTF:Arena	flag_carriers_killed	2535442462807197		2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_captures	2533274897645479		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_captures	2533274924336100		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_captures	2654577101798078		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_grabs	2533274823110022	JGtm	2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_grabs	2533274897645479		3	3	0
+bc60b4d9	CTF	CTF:Arena	flag_grabs	2533274924336100		2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_grabs	2533274943116584		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_grabs	2535469190789936		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_grabs	2654577101798078		10	10	0
+bc60b4d9	CTF	CTF:Arena	flag_steals	2533274897645479		2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_steals	2533274924336100		2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_steals	2533274943116584		2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_steals	2535458465148583		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_steals	2535469190789936		4	4	0
+bc60b4d9	CTF	CTF:Arena	flag_steals	2654577101798078		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_returns	2533274858283686		3	3	0
+bc60b4d9	CTF	CTF:Arena	flag_returns	2533274897645479		3	3	0
+bc60b4d9	CTF	CTF:Arena	flag_returns	2533274924336100		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_returns	2535458465148583		2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_returns	2535469190789936		2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_secures	2533274823110022	JGtm	0	2	-2
+bc60b4d9	CTF	CTF:Arena	flag_secures	2533274897645479		0	3	-3
+bc60b4d9	CTF	CTF:Arena	flag_secures	2533274924336100		0	2	-2
+bc60b4d9	CTF	CTF:Arena	flag_secures	2654577101798078		0	5	-5
+bc60b4d9	CTF	CTF:Arena	flag_carriers_killed	2533274823110022	JGtm	3	3	0
+bc60b4d9	CTF	CTF:Arena	flag_carriers_killed	2533274858283686		2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_carriers_killed	2533274897645479		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_carriers_killed	2533274924336100		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_carriers_killed	2533274943116584		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_carriers_killed	2535469190789936		2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_carriers_killed	2654577101798078		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_capture_assists	2533274897645479		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_capture_assists	2533274924336100		2	2	0
+bc60b4d9	CTF	CTF:Arena	flag_capture_assists	2535458465148583		1	1	0
+bc60b4d9	CTF	CTF:Arena	flag_capture_assists	2654577101798078		1	1	0
+bf5ced1b	CTF	CTF:Arena	flag_captures	2535412865870758		1	1	0
+bf5ced1b	CTF	CTF:Arena	flag_captures	2535434888128184		2	2	0
+bf5ced1b	CTF	CTF:Arena	flag_grabs	2535412865870758		2	2	0
+bf5ced1b	CTF	CTF:Arena	flag_grabs	2535434888128184		2	2	0
+bf5ced1b	CTF	CTF:Arena	flag_grabs	2535459651975585		5	5	0
+bf5ced1b	CTF	CTF:Arena	flag_steals	2535412865870758		1	1	0
+bf5ced1b	CTF	CTF:Arena	flag_steals	2535459651975585		2	2	0
+bf5ced1b	CTF	CTF:Arena	flag_secures	2535412865870758		0	2	-2
+bf5ced1b	CTF	CTF:Arena	flag_secures	2535434888128184		0	2	-2
+bf5ced1b	CTF	CTF:Arena	flag_secures	2535459651975585		0	1	-1
+bf5ced1b	CTF	CTF:Arena	flag_carriers_killed	2535415855124749		0	1	-1
+bf5ced1b	CTF	CTF:Arena	flag_capture_assists	2535459651975585		2	2	0
+cde26226	CTF	CTF:Arena	flag_captures	2533274817658307		2	2	0
+cde26226	CTF	CTF:Arena	flag_captures	2533274849050722		1	1	0
+cde26226	CTF	CTF:Arena	flag_captures	2533274858283686		1	1	0
+cde26226	CTF	CTF:Arena	flag_captures	2535415492484355		1	1	0
+cde26226	CTF	CTF:Arena	flag_grabs	2533274817658307		2	2	0
+cde26226	CTF	CTF:Arena	flag_grabs	2533274818074729		3	3	0
+cde26226	CTF	CTF:Arena	flag_grabs	2533274849050722		2	2	0
+cde26226	CTF	CTF:Arena	flag_grabs	2533274858283686		7	7	0
+cde26226	CTF	CTF:Arena	flag_grabs	2535415492484355		12	12	0
+cde26226	CTF	CTF:Arena	flag_grabs	2535468122262494		35	35	0
+cde26226	CTF	CTF:Arena	flag_grabs	2535469190789936		10	10	0
+cde26226	CTF	CTF:Arena	flag_steals	2533274817658307		4	4	0
+cde26226	CTF	CTF:Arena	flag_steals	2533274818074729		1	1	0
+cde26226	CTF	CTF:Arena	flag_steals	2533274823110022	JGtm	1	1	0
+cde26226	CTF	CTF:Arena	flag_steals	2533274849050722		2	2	0
+cde26226	CTF	CTF:Arena	flag_steals	2533274858283686		2	2	0
+cde26226	CTF	CTF:Arena	flag_steals	2535415492484355		1	1	0
+cde26226	CTF	CTF:Arena	flag_steals	2535468122262494		5	5	0
+cde26226	CTF	CTF:Arena	flag_steals	2535469190789936		65	1	64
+cde26226	CTF	CTF:Arena	flag_returns	2533274817658307		1	1	0
+cde26226	CTF	CTF:Arena	flag_returns	2533274818074729		3	3	0
+cde26226	CTF	CTF:Arena	flag_returns	2533274823110022	JGtm	4	4	0
+cde26226	CTF	CTF:Arena	flag_returns	2533274858283686		1	1	0
+cde26226	CTF	CTF:Arena	flag_returns	2535415492484355		2	2	0
+cde26226	CTF	CTF:Arena	flag_returns	2535468122262494		1	1	0
+cde26226	CTF	CTF:Arena	flag_returns	2535469190789936		2	2	0
+cde26226	CTF	CTF:Arena	flag_secures	2533274817658307		0	2	-2
+cde26226	CTF	CTF:Arena	flag_secures	2533274818074729		0	9	-9
+cde26226	CTF	CTF:Arena	flag_secures	2533274823110022	JGtm	0	1	-1
+cde26226	CTF	CTF:Arena	flag_secures	2533274849050722		0	4	-4
+cde26226	CTF	CTF:Arena	flag_secures	2533274858283686		0	7	-7
+cde26226	CTF	CTF:Arena	flag_secures	2535415492484355		0	5	-5
+cde26226	CTF	CTF:Arena	flag_secures	2535468122262494		0	8	-8
+cde26226	CTF	CTF:Arena	flag_secures	2535469190789936		0	2	-2
+cde26226	CTF	CTF:Arena	flag_carriers_killed	2533274817658307		1	1	0
+cde26226	CTF	CTF:Arena	flag_carriers_killed	2533274818074729		1	1	0
+cde26226	CTF	CTF:Arena	flag_carriers_killed	2533274823110022	JGtm	1	1	0
+cde26226	CTF	CTF:Arena	flag_carriers_killed	2533274849050722		2	2	0
+cde26226	CTF	CTF:Arena	flag_carriers_killed	2533274858283686		1	1	0
+cde26226	CTF	CTF:Arena	flag_carriers_killed	2535415492484355		1	1	0
+cde26226	CTF	CTF:Arena	flag_carriers_killed	2535468122262494		3	3	0
+cde26226	CTF	CTF:Arena	flag_carriers_killed	2535469190789936		2	2	0
+cde26226	CTF	CTF:Arena	flag_capture_assists	2535468122262494		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_captures	2533274811578968		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_captures	2535467632752562		2	2	0
+f8efc5ca	CTF	CTF:Arena	flag_grabs	2533274811578968		3	3	0
+f8efc5ca	CTF	CTF:Arena	flag_grabs	2533274823110022		2	2	0
+f8efc5ca	CTF	CTF:Arena	flag_grabs	2533274858283686		4	4	0
+f8efc5ca	CTF	CTF:Arena	flag_grabs	2535458336606528		7	7	0
+f8efc5ca	CTF	CTF:Arena	flag_grabs	2535467632752562		5	5	0
+f8efc5ca	CTF	CTF:Arena	flag_grabs	2535469190789936		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_steals	2533274804730586		3	3	0
+f8efc5ca	CTF	CTF:Arena	flag_steals	2533274811578968		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_steals	2533274823110022		3	3	0
+f8efc5ca	CTF	CTF:Arena	flag_steals	2533274858283686		3	3	0
+f8efc5ca	CTF	CTF:Arena	flag_steals	2535458336606528		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_steals	2535467632752562		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_steals	2535469190789936		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_returns	2533274804730586		2	2	0
+f8efc5ca	CTF	CTF:Arena	flag_returns	2533274823110022		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_returns	2533274833178266	XxDaemonGamerxX	1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_returns	2533274858283686		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_returns	2535458336606528		2	2	0
+f8efc5ca	CTF	CTF:Arena	flag_returns	2535467632752562		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_secures	2533274811578968		0	3	-3
+f8efc5ca	CTF	CTF:Arena	flag_secures	2533274823110022		0	7	-7
+f8efc5ca	CTF	CTF:Arena	flag_secures	2533274858283686		0	2	-2
+f8efc5ca	CTF	CTF:Arena	flag_secures	2535458336606528		0	2	-2
+f8efc5ca	CTF	CTF:Arena	flag_secures	2535467632752562		0	5	-5
+f8efc5ca	CTF	CTF:Arena	flag_secures	2535469190789936		0	2	-2
+f8efc5ca	CTF	CTF:Arena	flag_carriers_killed	2533274833178266	XxDaemonGamerxX	2	2	0
+f8efc5ca	CTF	CTF:Arena	flag_carriers_killed	2533274858283686		5	5	0
+f8efc5ca	CTF	CTF:Arena	flag_carriers_killed	2535458336606528		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_capture_assists	2533274804730586		2	2	0
+f8efc5ca	CTF	CTF:Arena	flag_capture_assists	2533274811578968		1	1	0
+f8efc5ca	CTF	CTF:Arena	flag_capture_assists	2535458336606528		1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_captures	2533274858283686		2	2	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_captures	2535426953464929		1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_captures	2535469190789936		2	2	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_grabs	2533274823110022	JGtm	1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_grabs	2533274858283686		9	9	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_grabs	2533274877168586		0	1	-1
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_grabs	2535426953464929		10	10	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_grabs	2535469190789936		1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_steals	2533274823110022	JGtm	1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_steals	2533274858283686		1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_steals	2535426953464929		1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_steals	2535469190789936		2	2	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_secures	2533274823110022	JGtm	0	1	-1
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_secures	2533274858283686		0	6	-6
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_secures	2533274877168586		0	1	-1
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_secures	2535426953464929		0	2	-2
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_secures	2535469190789936		0	1	-1
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_carriers_killed	2533274924091420		1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_carriers_killed	2535409159085195		2	2	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_carriers_killed	2535426953464929		1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_capture_assists	2533274823110022	JGtm	2	2	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_capture_assists	2533274858283686		1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_capture_assists	2533274877168586		0	1	-1
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_capture_assists	2535426953464929		1	1	0
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	flag_capture_assists	2535469190789936		1	1	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_captures	2533274823110022	JGtm	5	5	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_captures	2533274858283686		5	5	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_captures	2533275026823394		6	6	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_captures	2535413078037816		6	6	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_captures	2535441377074664		5	5	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_captures	2535443874154080		4	4	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_captures	2535454224469196		2	2	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_captures	2535469190789936		6	6	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_secures	2533274823110022	JGtm	3	3	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_secures	2533274858283686		6	6	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_secures	2533275026823394		1	1	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_secures	2535413078037816		1	1	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_secures	2535441377074664		1	1	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_secures	2535443874154080		3	3	0
+32d9a94f	Strongholds	Strongholds:Arena	zone_secures	2535454224469196		1	1	0
+396cfc92	Strongholds	Strongholds:Arena	zone_captures	2533274810173379		9	9	0
+396cfc92	Strongholds	Strongholds:Arena	zone_captures	2533274823110022		4	4	0
+396cfc92	Strongholds	Strongholds:Arena	zone_captures	2533274833178266	XxDaemonGamerxX	3	3	0
+396cfc92	Strongholds	Strongholds:Arena	zone_captures	2533274858283686		7	7	0
+396cfc92	Strongholds	Strongholds:Arena	zone_captures	2535450759128461		5	5	0
+396cfc92	Strongholds	Strongholds:Arena	zone_captures	2535452521259564		7	7	0
+396cfc92	Strongholds	Strongholds:Arena	zone_captures	2535461109438273		6	6	0
+396cfc92	Strongholds	Strongholds:Arena	zone_captures	2535469190789936		7	7	0
+396cfc92	Strongholds	Strongholds:Arena	zone_secures	2533274823110022		1	1	0
+396cfc92	Strongholds	Strongholds:Arena	zone_secures	2533274858283686		1	1	0
+396cfc92	Strongholds	Strongholds:Arena	zone_secures	2535450759128461		1	1	0
+396cfc92	Strongholds	Strongholds:Arena	zone_secures	2535452521259564		5	5	0
+396cfc92	Strongholds	Strongholds:Arena	zone_secures	2535461109438273		2	2	0
+572e236b	Strongholds	Strongholds:Arena	zone_captures	2533274823110022		6	6	0
+572e236b	Strongholds	Strongholds:Arena	zone_captures	2533274858283686		6	6	0
+572e236b	Strongholds	Strongholds:Arena	zone_captures	2535448131958677		5	5	0
+572e236b	Strongholds	Strongholds:Arena	zone_captures	2535450759128461		5	5	0
+572e236b	Strongholds	Strongholds:Arena	zone_captures	2535452521259564		5	5	0
+572e236b	Strongholds	Strongholds:Arena	zone_captures	2535469190789936		5	5	0
+572e236b	Strongholds	Strongholds:Arena	zone_captures	2696798348309366		4	4	0
+572e236b	Strongholds	Strongholds:Arena	zone_secures	2533274823110022		2	2	0
+572e236b	Strongholds	Strongholds:Arena	zone_secures	2533274858283686		1	1	0
+572e236b	Strongholds	Strongholds:Arena	zone_secures	2535450759128461		1	1	0
+572e236b	Strongholds	Strongholds:Arena	zone_secures	2535452521259564		2	2	0
+572e236b	Strongholds	Strongholds:Arena	zone_secures	2696798348309366		3	3	0
+81c02726	Strongholds	Strongholds:Arena	zone_captures	2533274810173379		2	2	0
+81c02726	Strongholds	Strongholds:Arena	zone_captures	2533274823110022		3	3	0
+81c02726	Strongholds	Strongholds:Arena	zone_captures	2533274833178266		1	1	0
+81c02726	Strongholds	Strongholds:Arena	zone_captures	2533274846254457		6	6	0
+81c02726	Strongholds	Strongholds:Arena	zone_captures	2533274858283686		2	2	0
+81c02726	Strongholds	Strongholds:Arena	zone_captures	2535427240092988		4	4	0
+81c02726	Strongholds	Strongholds:Arena	zone_captures	2535464918561629		3	3	0
+81c02726	Strongholds	Strongholds:Arena	zone_captures	2535469190789936	Chocoboflor	7	7	0
+81c02726	Strongholds	Strongholds:Arena	zone_secures	2533274810173379		2	2	0
+81c02726	Strongholds	Strongholds:Arena	zone_secures	2533274823110022		1	1	0
+81c02726	Strongholds	Strongholds:Arena	zone_secures	2535427240092988		2	2	0
+81c02726	Strongholds	Strongholds:Arena	zone_secures	2535464918561629		1	1	0
+81c02726	Strongholds	Strongholds:Arena	zone_secures	2535469190789936	Chocoboflor	1	1	0
+e60aaf06	Strongholds	Strongholds:Arena	zone_captures	2533274822170595		1	5	-4
+e60aaf06	Strongholds	Strongholds:Arena	zone_captures	2533274823110022		1	5	-4
+e60aaf06	Strongholds	Strongholds:Arena	zone_captures	2533274833178266	XxDaemonGamerxX	2	3	-1
+e60aaf06	Strongholds	Strongholds:Arena	zone_captures	2533274858283686		2	5	-3
+e60aaf06	Strongholds	Strongholds:Arena	zone_captures	2533274885014051		1	4	-3
+e60aaf06	Strongholds	Strongholds:Arena	zone_captures	2533274959313934		1	4	-3
+e60aaf06	Strongholds	Strongholds:Arena	zone_captures	2535464745227259		1	5	-4
+e60aaf06	Strongholds	Strongholds:Arena	zone_captures	2535469190789936		1	7	-6
+e60aaf06	Strongholds	Strongholds:Arena	zone_secures	2533274822170595		0	1	-1
+e60aaf06	Strongholds	Strongholds:Arena	zone_secures	2533274823110022		1	3	-2
+e60aaf06	Strongholds	Strongholds:Arena	zone_secures	2533274885014051		1	4	-3
+e60aaf06	Strongholds	Strongholds:Arena	zone_secures	2533274959313934		0	1	-1
+e60aaf06	Strongholds	Strongholds:Arena	zone_secures	2535464745227259		0	2	-2
