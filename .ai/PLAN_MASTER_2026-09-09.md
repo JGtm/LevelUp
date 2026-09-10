@@ -11468,3 +11468,7 @@ de cocher ; fusion dans `feat/v75` seulement avec l'accord de l'utilisateur.
   `make gate-push` vert, push de `feat/v75` (`0879f1787`) = CI de vague 4, quatre ateliers en
   cours. Reste au plan après la CI : les points « consignés seulement » (us5 armes spéciales en
   P5, hygiène, VIP, socles, E0 bornée si quota, hygiène du registre en dernier si quota).
+- **2026-09-10 (fin d'après-midi)** — Vague 4 : revue 4.R close (0 P0, 0 P1, 3 P2 consignés),
+  `make gate-push` vert, push de `feat/v75` (`0879f1787`) = CI de vague 4, quatre ateliers en
+  cours. Reste au plan après la CI : les points « consignés seulement » (us5 armes spéciales en
+  P5, hygiène, VIP, socles, E0 bornée si quota, hygiène du registre en dernier si quota).
