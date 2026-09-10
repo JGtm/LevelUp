@@ -86,7 +86,13 @@ const KillSourceDecoderRev = "killsource-2026-09-05"
 // redecodees.
 //
 // COMMENT LA METTRE A JOUR : jouer le test, il imprime la valeur mesuree.
-const killSourceDecoderFingerprint = "b272f221909247fd6f8e2c1cca01d4136ec9b317fbecd31488e3eda48bc59379"
+//
+// 2026-09-10 (lot 5.1) : `botSuffix` -> `BotSuffix` (export pur, roster.go) pour que
+// `games/halo_infinite/replayidentity.BotIdentities` — le nouveau paquet partage par
+// `replaybuild` ET `killcollector` — puisse la lire sans dupliquer le littéral " [bot]".
+// AUCUNE LIGNE PRODUITE NE BOUGE (meme chaine, meme usage) : la revision NE bouge PAS, seule
+// l empreinte est recopiee (decision explicite, pas un bump implicite).
+const killSourceDecoderFingerprint = "be2015502cff7e9cfba152eb510b91e5df55e7c0adfbaab681a870ff649e89a3"
 
 // defaultKillSourceTimeout — la limite de temps PAR MATCH.
 //
@@ -383,7 +389,7 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 	//	               suivre : une mort credit-seule absente du fil n aurait sinon aucun
 	//	               contexte, ET sa victime ne serait jamais « en attente » aux morts
 	//	               suivantes — elle passerait pour vivante et hors de vue.
-	c.collectPositions(ctx, matchID, film, ids, batch.Deaths, fusionnees)
+	c.collectPositions(ctx, matchID, film, res, ids, batch.Deaths, fusionnees)
 
 	// LE NUMERATEUR DE PRECISION PAR ARME (weapon_accuracy + distance), Infinite depuis le film.
 	// Best-effort au meme titre que les tirs : son echec ou son absence (film non sur disque,

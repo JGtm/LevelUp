@@ -54,9 +54,9 @@ type roster struct {
 	perm     []int
 }
 
-// botSuffix : marqueur ajoute au nom d un bot. Il doit rester visible : un consommateur ne doit
+// BotSuffix : marqueur ajoute au nom d un bot. Il doit rester visible : un consommateur ne doit
 // jamais confondre un bot avec un joueur, et le kill-feed ne les distingue pas pour lui.
-const botSuffix = " [bot]"
+const BotSuffix = " [bot]"
 
 // buildRoster : roster etendu + epinglage des slots de bot + borne des indices.
 func buildRoster(kf *killFeed, bm botMeta, useBots bool) *roster {
@@ -75,7 +75,7 @@ func buildRoster(kf *killFeed, bm botMeta, useBots bool) *roster {
 			r.unpinned = append(r.unpinned, b)
 			continue
 		}
-		r.names = append(r.names, b.Name+botSuffix)
+		r.names = append(r.names, b.Name+BotSuffix)
 		r.pin[b.Slot] = len(r.names) - 1
 		if b.Slot+1 > r.nPlay {
 			r.nPlay = b.Slot + 1

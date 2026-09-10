@@ -9,6 +9,7 @@ package killcollector
 import (
 	"strings"
 
+	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 )
 
@@ -36,6 +37,12 @@ type MatchIdentities struct {
 	// adversaire proche comme un accompagnement. Une entree ABSENTE veut dire « equipe non
 	// renseignee » — le joueur n entre alors dans aucun camp, jamais dans un camp par defaut.
 	Equipes map[string]int
+	// Participants : le TABLEAU DE L API — les participants du match (bots COMPRIS, sous
+	// `bid(N.0)`) et leurs bornes de participation. C est la meme projection que la cuisson
+	// (`replaybuild.participantsDuTableau`) : sans elle, le registre d identite ne peut pas
+	// departager un siege d index PARTAGE entre un bot et un humain arrive en cours (lot 5.1,
+	// revue de vague 4, constat P2 — cf. identity_registry_scoreboard.go pour la regle).
+	Participants []replay.Participant
 }
 
 // Resoudre : LE nom que le film donne devient un xuid et un gamertag. UNE SEULE COPIE DE CETTE
