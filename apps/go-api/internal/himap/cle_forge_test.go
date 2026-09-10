@@ -74,15 +74,26 @@ func TestFondForgeJamaisSousCleModule(t *testing.T) {
 	declares := map[string]string{}
 	for _, c := range CartesForge {
 		declares[c.MapID] = c.Nom
-		for _, ext := range []string{".png", ".json"} {
-			p := filepath.Join(dir, c.ModuleCanevas+ext)
+		// L'IMAGE peut etre un `.png` ou un `.webp` : le format est une propriete de la
+		// DONNEE, pas du code (plan fonds WebP, D3, etape 4). Le sidecar, lui, reste
+		// toujours `.json` — seule son extension est verifiee en dur.
+		for _, imgExt := range extensionsImageFond {
+			p := filepath.Join(dir, c.ModuleCanevas+imgExt)
 			if _, statErr := os.Stat(p); statErr == nil {
 				t.Errorf("fond Forge sous cle MODULE refuse : %s existe — la cle de %s est son map_id %s",
 					p, c.Nom, c.MapID)
 			}
-			if _, statErr := os.Stat(filepath.Join(dir, c.MapID+ext)); statErr != nil {
-				t.Errorf("%s : fond %s%s absent — declaration sans asset publie", c.Nom, c.MapID, ext)
-			}
+		}
+		if p := filepath.Join(dir, c.ModuleCanevas+".json"); fichierExiste(p) {
+			t.Errorf("fond Forge sous cle MODULE refuse : %s existe — la cle de %s est son map_id %s",
+				p, c.Nom, c.MapID)
+		}
+		if !uneExtensionExiste(dir, c.MapID, extensionsImageFond) {
+			t.Errorf("%s : aucune image de fond (.png ou .webp) pour %s — declaration sans asset publie",
+				c.Nom, c.MapID)
+		}
+		if p := filepath.Join(dir, c.MapID+".json"); !fichierExiste(p) {
+			t.Errorf("%s : fond %s.json absent — declaration sans asset publie", c.Nom, c.MapID)
 		}
 	}
 	entrees, err := os.ReadDir(dir)
@@ -90,13 +101,34 @@ func TestFondForgeJamaisSousCleModule(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, e := range entrees {
-		base := strings.TrimSuffix(strings.TrimSuffix(e.Name(), ".png"), ".json")
+		base := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
 		if regexpMapID.MatchString(base) {
 			if _, ok := declares[base]; !ok {
 				t.Errorf("fond %s keye par un map_id sans declaration CartesForge — orphelin, aucun producteur", e.Name())
 			}
 		}
 	}
+}
+
+// extensionsImageFond : les deux formats qu'une image de fond peut prendre (D1-D6, plan
+// fonds WebP) — jamais une extension supposee en dur.
+var extensionsImageFond = []string{".png", ".webp"}
+
+// fichierExiste dit si `p` existe (os.Stat sans erreur).
+func fichierExiste(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
+}
+
+// uneExtensionExiste dit si au moins un fichier `<dir>/<cle><ext>` existe pour une des
+// extensions listees.
+func uneExtensionExiste(dir, cle string, extensions []string) bool {
+	for _, ext := range extensions {
+		if fichierExiste(filepath.Join(dir, cle+ext)) {
+			return true
+		}
+	}
+	return false
 }
 
 // TestBoiteDesVolumesDeMort — L'EQUIVALENT FORGE DU MASQUE DE CALLOUTS.
