@@ -1,4 +1,4 @@
-## [2026-09-10] Master plan, vague 3 — revue 3.R : 0 P0, 3 P1 corriges (tests manquants + doc), WebP en prod locale — En cours (gate-push, CI)
+## [2026-09-10] Master plan, vague 3 — revue 3.R : 0 P0, 3 P1 corriges (tests manquants + doc), WebP en prod locale — Complete (gate-push vert, CI verte)
 
 **Decision technique principale.** Trois P1 recevables sur la vague, tous de la meme
 famille : un chemin livre sans test qui le prouve (MIME `.webp` du service, clic sur les
@@ -13,7 +13,7 @@ navigateur 13/13 (fond de carte 71 % hors couleur dominante, clip 4,95 Mo en 2,2
 Tactique servie en `image/webp` avec ETag ; rejeu d'Isolement avec son fond.
 
 **Conclusion / prochaine etape.** Fusion du correctif tactique, `make gate-push`, push =
-CI de la vague 3. Puis 3.4 (nommage des rangs) quand les cinq releves arrivent.
+CI de la vague 3 : verte sur `737e4fe50` (CI, Secrets, Deploy Pre-Check). 3.4 livre ensuite (rangs nommes, recuisson 64/64).
 
 ---
 
