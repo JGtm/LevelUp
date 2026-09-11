@@ -7082,7 +7082,7 @@ export interface components {
         };
         GroundWeaponItemsCoverage: {
             /** Format: int64 */
-            ammoRead: number;
+            ammoRead?: number;
             /** Format: int64 */
             atRest: number;
             /** Format: int64 */
