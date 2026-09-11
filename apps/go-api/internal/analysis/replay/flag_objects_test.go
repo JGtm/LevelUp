@@ -197,3 +197,58 @@ func TestFlagFreeLivesApparieCreationEtPiste(t *testing.T) {
 			"aucun drapeau n'en publie aucun", n)
 	}
 }
+
+// TestUnLacherAuPiedDuSocleFermeLePortage — LE POINT DU LOT 6.13, et le MIROIR exact du temoin
+// ci-dessus : un drapeau lache A COTE d'un socle n'est PAS un drapeau qui rentre, et il ferme.
+//
+// # LE DEFAUT QUE CE TEST FIGE
+//
+// Le refus de socle prenait le rayon du LACHER (`originDropMaxDist`, 1,5 m) pour le rayon du
+// SUPPORT. Il faisait donc de chaque socle un disque AVEUGLE de 1,5 m dans lequel plus aucun
+// lacher ne se datait — alors que lacher le drapeau adverse SUR SON PROPRE POINT DE LIVRAISON,
+// en attendant que son drapeau a soi revienne, est un geste ordinaire du mode, et que c'est
+// exactement la que le porteur se tient.
+//
+// # LES CHIFFRES DU TERRAIN QUI LE FONDENT (`b8a44fe8`, CTF:Arena sur Forest)
+//
+// Le meme joueur lache deux fois au MEME endroit de sa base : a 1,233 m du support, puis a
+// 1,513 m. Le second fermait son portage a 0,4 s ; le premier, 0,013 m plus DEDANS, laissait
+// courir 58,1 s de portage fantome. Le film publiait 495,1 s pour 401,1 s d'oracle.
+//
+// MUTATION : rendre a [flagSpawnAt] le seuil `originDropMaxDist` rougit ce test (le portage se
+// rouvre jusqu'a la fin de l'axe) sans toucher au temoin negatif ci-dessus — les deux populations
+// sont separees de deux ordres de grandeur.
+func TestUnLacherAuPiedDuSocleFermeLePortage(t *testing.T) {
+	// Le porteur se tient a 1,2 m du socle de l'equipe 1 et y lache le drapeau : la naissance
+	// est A COTE du support, pas SUR lui.
+	tracks := []Track{flagTestTrack(10, "1", 0, 99, 101.2, 100)}
+	free := []flagFreeLife{flagTestLife(30, [2]float32{101.2, 100}, [2]float32{101.3, 100})}
+	got, cov := buildFlagCarries(flagTestOpenScan(free), flagTestCtx(tracks, nil, 100))
+	f := flagOfTeam(t, got, 1)
+	assertFlagStates(t, f, []string{FlagStateHome, FlagStateCarried, FlagStateDropped})
+	if f.Spans[1].T1 != 30 {
+		t.Errorf("portage ferme a la frame %d, attendu 30 : un lacher a 1,2 m du support est un "+
+			"LACHER, pas une rentree", f.Spans[1].T1)
+	}
+	if cov.ClosedByObject != 1 || cov.Open != 0 || !cov.Balanced() {
+		t.Errorf("couverture %+v, attendu 1 ferme par l'objet et l'invariant tenu", *cov)
+	}
+}
+
+// TestUneRentreeResteUneRentreeAuPointDuSocle — LE TEMOIN QUI TIENT LE SEUIL PAR L'AUTRE BOUT.
+//
+// Le seuil ne se regle pas, il se constate. Sur les 626 vies libres des 12 films de CTF du parc,
+// les 145 RENTREES naissent a 0,008 m au plus du point du catalogue (le moteur repose l'objet
+// dessus) et les 34 LACHERS a portee d'un support a 0,324 m au moins. Ce test fige les DEUX
+// bornes de l'intervalle vide : une naissance a 3 cm du support reste une rentree — et NOMME son
+// drapeau —, une naissance a 32 cm n'en est deja plus une.
+func TestUneRentreeResteUneRentreeAuPointDuSocle(t *testing.T) {
+	if f, ok := flagSpawnAt(flagTestSpawns(), 100.03, 100); !ok || f != 1 {
+		t.Errorf("flagSpawnAt(100,03 ; 100) = (%d, %v), attendu le socle 1 : a 3 cm du point du "+
+			"catalogue, c'est le support — aucune rentree mesuree ne depasse 0,008 m", f, ok)
+	}
+	if f, ok := flagSpawnAt(flagTestSpawns(), 100.32, 100); ok {
+		t.Errorf("flagSpawnAt(100,32 ; 100) = (%d, true), attendu aucun socle : a 32 cm, c'est un "+
+			"objet LACHE la — aucun lacher mesure ne tombe sous 0,324 m", f)
+	}
+}

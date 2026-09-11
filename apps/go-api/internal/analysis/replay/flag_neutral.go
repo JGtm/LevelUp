@@ -87,8 +87,14 @@ func flagChooseSpawns(scan FlagCarryScan) flagSpawnChoice {
 
 // flagBirthsNear compte les vies libres qui NAISSENT a portee de l'un des socles donnes.
 //
-// LA DISTANCE N'EST PAS UN SEUIL NEUF : c'est `originDropMaxDist`, celle de la regle du lacher et
-// de la rentree (flag_objects.go). Une naissance compte pour UN socle au plus.
+// LA DISTANCE N'EST PAS UN SEUIL NEUF : c'est celle de la RENTREE, `flagHomeExactDist`, servie
+// par le seul test qui en decide (`flagSpawnAt`, flag_objects.go). Une naissance compte pour UN
+// socle au plus.
+//
+// LE SEUIL A ETE RESSERRE AU LOT 6.13 (il valait le rayon du LACHER, 1,5 m) et LE VERDICT NE
+// BOUGE PAS : un drapeau qui renait a son support y renait AU POINT du catalogue — 0,006 m au
+// plus sur le parc. Ce que le resserrement retire des deux comptes, ce sont des LACHERS a portee
+// d'un support, qui ne disent rien de la variante.
 func flagBirthsNear(lives []flagFreeLife, spawns []FlagSpawn) int {
 	if len(spawns) == 0 {
 		return 0
