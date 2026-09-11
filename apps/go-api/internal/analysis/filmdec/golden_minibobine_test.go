@@ -95,6 +95,59 @@ package filmdec
 //
 // Le detail est au rapport `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`.
 //
+// # REGENERATION DU 2026-09-11 (lot 6.10 bis) — UNE LIGNE, ET C'EST UNE MARCHE QUI N'EST PLUS ROMPUE
+//
+// `equipmentState` passe de 65 a 66 echantillons. La grammaire du composant i9
+// `object-multiplayer-properties` a ete retablie sur le desassemblage (components_batch7.go +
+// tlv_mode2.go) : i9 est un composant d'objet GENERIQUE, et toute marche qui le traverse en
+// heritait la derive.
+//
+// CE QUI CHANGE, CHAMP PAR CHAMP, mesure des DEUX cotes sur CETTE bobine (copie `git archive
+// HEAD` d'un cote, branche de l'autre, meme instrument jetable) :
+//
+//	                         AVANT                      APRES
+//	records delta ti=37      5282                       5282        (inchange)
+//	masque avec un champ     66                         66          (inchange)
+//	marches abouties         65                         66
+//	marches ROMPUES           1                          0
+//	i20 equipment-deployed   annonce 4 · lu 3           annonce 4 · lu 4
+//	i21 equipment-activated  annonce 1 · lu 1           idem
+//	i23 equipment-creator    annonce 0 · lu 0           idem
+//	i24 equipment-energy     annonce 1 · lu 1           idem
+//	i26 energy-delay-ticks   annonce 48 · lu 48         idem
+//	i27 charges-remaining    annonce 12 · lu 12         idem
+//
+// LE DELTA EST DONC UN SEUL RECORD, ET DANS LE BON SENS : le seul record de la bobine dont la
+// marche se rompait est celui qui traversait i9 ; il aboutit desormais et son champ
+// `equipment-deployed` est lu. Aucune valeur pre-existante ne change — les cinq autres champs
+// sont identiques au compte pres.
+//
+// LES DEUX FAMILLES DE CREATION N'ONT PAS BOUGE A CE COMMIT-LA (`groundWeaponCreations`,
+// `equipmentCreations`) : leur marche consomme i9 par le BLOC MPP du default-state
+// (`consumeMultiplayerPropertiesBlock`), qui est un lecteur distinct et n'a pas change.
+//
+// # SECONDE REGENERATION DU 2026-09-11 (lot 6.10 bis) — `groundWeaponCreations`, LA RESERVE LEVEE
+//
+// La RESERVE DE LECTURE des munitions a ete levee dans la foulee (ground_weapon_ammo.go) : la
+// marche traverse desormais i9 au lieu de refuser les records qui le portent. Sur cette bobine :
+//
+//	                                AVANT   APRES
+//	creations acceptees              28      28     (inchange)
+//	ancres reconnues                141     141     (inchange)
+//	masque portant i20               21      21     (inchange)
+//	masque portant i9                27      27     (inchange)
+//	munitions LUES (`HasAmmo`)        0      21
+//
+// PREUVE D'INVARIANCE SUR OCTETS REELS, mesuree des DEUX cotes (copie `git archive HEAD` d'un
+// cote, branche de l'autre, meme instrument jetable ; empreinte sha256 de TOUS les champs
+// PRE-EXISTANTS de chaque record — `HasAmmo`/`Ammo` exclus) :
+//
+//	groundWeaponCreations  n=28
+//	  sha256=4409c0381383427ae59f99e3cbce31001d0cbdf1c9f68d3378b353daf74a19f8   (identique)
+//
+// Slot, generation, horodatage, `MPPVal`, masque, `DefaultStateBits`, position et `AfterBit`
+// sont donc au bit pres les memes : seul le champ `Ammo`, qui etait vide, se remplit.
+//
 // # PAS DE SKIP
 //
 // La bobine est VERSIONNEE : son absence est une panne du depot, pas une condition d'execution.
