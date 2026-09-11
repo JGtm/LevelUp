@@ -13805,13 +13805,25 @@ components:
         captures:
           format: int64
           type: integer
+        carrierTeamUnknown:
+          format: int64
+          type: integer
         carries:
           format: int64
           type: integer
         closed:
           format: int64
           type: integer
+        closedByHandoff:
+          format: int64
+          type: integer
+        closedByHome:
+          format: int64
+          type: integer
         closedByObject:
+          format: int64
+          type: integer
+        closedByReturn:
           format: int64
           type: integer
         closedOverlaps:

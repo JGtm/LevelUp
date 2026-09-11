@@ -126,6 +126,29 @@ const (
 	// manches : sur le CTF `53ce4390`, un point isole a 2 104 suffisait a faire passer une manche
 	// fantome pour reelle et portait le score d equipe de 1 a 2 104.
 	statMaxModeScore = 250
+	// statMaxCounter borne les CANAUX A et B d un enregistrement d entite. Ce n est pas un
+	// reglage mais une contrainte de DOMAINE, au niveau de l ENREGISTREMENT et non du pas —
+	// c est le filtre que le lot 6.7-B1 avait nomme sans le poser (decouverte D5) : rejeter le
+	// record entier quand l un de ses canaux est hors domaine, comme [modeScoreInDomain] le fait
+	// deja pour le score de mode.
+	//
+	// LA MESURE QUI LE CALE (lot 6.11, item 3, sur 11 films du parc, tous modes) : la plus
+	// grande valeur d un enregistrement dont AUCUN canal n atteint 2^20 est 102 934
+	// (`4f77afc1`) et 32 518 partout ailleurs ; la population aberrante, elle, commence a
+	// 2 415 919 104 (0x90000000) et monte a 4,1 milliards. Entre 102 934 et 1 048 576 il n y a
+	// RIEN — un facteur dix de vide. Le seuil est donc dix fois au-dessus de la pire valeur
+	// saine mesuree et exactement sous la plus petite valeur aberrante.
+	//
+	// CE QUE CE FILTRE FERME, ET IL A COUTE UNE PUBLICATION FAUSSE : sur `fb1a1a72`, un
+	// enregistrement fortuit du slot 24 (t = 764 967, DOUZE composants, canaux a 2 415 919 104
+	// et -30 456) portait `comp 22 A = 10`, publie en DIX prises de drapeau pour ZERO a
+	// l oracle. Le pas de 10 passait sous la borne de deroulage (16) : la borne par pas ne
+	// pouvait pas le voir, seul le niveau de l enregistrement le voit.
+	//
+	// A ET B SEULEMENT : ce sont les deux canaux mesures, et les seuls que les tables
+	// d objectif lisent. C et D restent hors de la contrainte tant que personne ne les a
+	// mesures — on ne borne pas ce qu on n a pas observe.
+	statMaxCounter = 1 << 20
 )
 
 // StatValue porte les valeurs d'un composant. Le sens de chaque canal depend du composant :
@@ -234,12 +257,26 @@ func scanFrameForRecords(pay []byte, tMS int) []StatRecord {
 			continue
 		}
 		comps, round := decodeComponents(pay, at, idx)
-		if len(comps) == 0 {
+		if len(comps) == 0 || !statCountersInDomain(comps) {
 			continue
 		}
 		out = append(out, StatRecord{TimeMS: tMS, Slot: slot, Round: round, Comps: comps})
 	}
 	return out
+}
+
+// statCountersInDomain dit que TOUS les canaux A et B d'un enregistrement tiennent dans le
+// domaine des compteurs. Un seul canal hors domaine condamne l'enregistrement ENTIER : un
+// ancrage fortuit ne produit pas une valeur fausse, il produit un record qui n'existe pas, et
+// ses autres composants sont du bruit au meme titre (cf. [statMaxCounter]).
+func statCountersInDomain(comps map[int]StatValue) bool {
+	for _, v := range comps {
+		if v.A > statMaxCounter || v.A < -statMaxCounter ||
+			v.B > statMaxCounter || v.B < -statMaxCounter {
+			return false
+		}
+	}
+	return true
 }
 
 // matchRecordHeader teste l'en-tete d'enregistrement d'entite a la position b. Il rend le

@@ -40,11 +40,22 @@ type FlagCarriesCoverage struct {
 	Spawns                int  `json:"spawns"`
 	ObjectLives           int  `json:"objectLives"`
 	ClosedByObject        int  `json:"closedByObject"`
-	DropsRepositioned     int  `json:"dropsRepositioned"`
-	AssignedByPlay        int  `json:"assignedByPlay"`
-	DropsWithheld         int  `json:"dropsWithheld"`
-	OwnFlagRefused        int  `json:"ownFlagRefused"`
-	Unresolved            int  `json:"unresolved"`
+	// ClosedByHandoff : portages fermes par la prise d'un AUTRE joueur du MEME drapeau (le
+	// passage de main en main). CarrierTeamUnknown : portages dont l'equipe du porteur ne nomme
+	// aucun drapeau, sur lesquels les regles par equipe se taisent. Les deux sont `omitempty`
+	// des DEUX cotes (stocke et servi) : ils valent zero sur tous les films hors CTF, et sans
+	// lui chaque artefact du parc changerait d'octet pour un champ vide.
+	ClosedByHandoff    int `json:"closedByHandoff,omitempty"`
+	CarrierTeamUnknown int `json:"carrierTeamUnknown,omitempty"`
+	// ClosedByReturn / ClosedByHome : portages fermes parce que leur drapeau est RENTRE CHEZ LUI
+	// — retour credite, puis rentree de l'objet. `omitempty` des DEUX cotes, comme leurs freres.
+	ClosedByReturn    int `json:"closedByReturn,omitempty"`
+	ClosedByHome      int `json:"closedByHome,omitempty"`
+	DropsRepositioned int `json:"dropsRepositioned"`
+	AssignedByPlay    int `json:"assignedByPlay"`
+	DropsWithheld     int `json:"dropsWithheld"`
+	OwnFlagRefused    int `json:"ownFlagRefused"`
+	Unresolved        int `json:"unresolved"`
 }
 
 // VipCrownCoverage porte les denominateurs du calque. Sans eux, « 15 periodes » se lirait comme

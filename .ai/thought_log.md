@@ -77,6 +77,80 @@ disant lesquelles de ses conclusions sont superseedees). Ligne 6.10 du plan mait
 **RECUISSON DU PARC TOUJOURS NECESSAIRE** (`ammo` est cuit, sa couverture quadruple) -> lot 6.8, la
 recuisson unique deja prevue apres 6.10 et 6.11. Contrat, schema et web inchanges : aucun bump de
 `SchemaVersion`. Pas de push, pas de fusion.
+## [2026-09-11] Lot 6.11 — les passages de drapeau rapides — Complete (worktree `LevelUp-wt-couverture-objectifs`)
+
+**Decision technique principale.** Trois items, trois commits, chacun avec sa cause verifiee SUR
+PIECES avant de coder, ses tests rouges d'abord, son test de MUTATION et son gate mesure. Regime :
+**aucune base DuckDB ouverte**, aucun artefact du parc partage recuit, serveur intact. Quatre parcs
+cuits HORS LIGNE dans le scratchpad, avec les faits de match deja exportes pour B1 ; le parc AVANT
+reproduit B1 a la decimale (ratio 1,1300, 469 periodes, 45 joueurs au-dessus, 2 sous 0,8).
+
+**LA MESURE A REFUTE L'HYPOTHESE DU LOT, ET C'EST LE RESULTAT PRINCIPAL.** B1 avait nomme la cause
+du residu de 275,7 s : « rien ne ferme un portage quand un AUTRE joueur prend le meme drapeau ».
+Cette regle est juste — et elle ne pese que **15 portages, 15,0 s**. Le lacher suivi d'une reprise
+par un coequipier est deja date, presque toujours, par la vie libre de l'objet posee en B1 :
+l'objet touche le sol entre les deux mains. Ce qui pesait vraiment, c'est **le drapeau qui RENTRE
+CHEZ LUI pendant qu'on le croit porte** — 17 portages, 119,7 s.
+
+**Item 1 — la prise d'un AUTRE joueur du MEME drapeau (`6bcca3456`).** Le point dur n'etait pas la
+regle mais l'IDENTITE du drapeau : le bornage precede l'attribution geometrique (celle-ci a besoin
+des positions, qui dependent de `t1`), donc `flagIndex` n'existe pas encore. Il n'est pas
+necessaire : l'invariant dur du mode suffit — on ne porte jamais son propre drapeau, donc deux
+coequipiers portent le MEME et deux adversaires en portent deux DIFFERENTS. Le drapeau est nomme
+PAR L'EQUIPE. Le filtre par equipe porte tout le poids : sans lui, 57 portages et 775,1 s seraient
+retires a tort (ratio 0,739 contre un oracle a 1,000), et c'est le chiffre que fige le temoin
+negatif. Mesure : ratio 1,1300 -> 1,1229, `overlaps` reste a 0, actions inchangees.
+
+**Item 2 — le drapeau qui RENTRE CHEZ LUI (`0e35b3235`).** Mesure d'abord, comme l'item l'exige :
+les suites de reprise pesent 228,2 s publiees dont 54,1 s au-dela du premier span — elles
+n'expliquent donc pas seules l'exces. La borne prouvable vient d'ailleurs : un VOL se fait AU
+SOCLE, donc un joueur qui RE-VOLE un drapeau a attendu qu'il RENTRE, et un drapeau chez lui n'est
+dans la main de personne. Deux chaines le datent et toutes deux NOMMENT leur drapeau — le retour
+CREDITE (nomme par l'equipe de qui le rend : on ne renvoie que le sien) et la RENTREE DE L'OBJET
+(nommee par son socle). Les deux etaient deja lues pour l'etat du sol et **aucune ne fermait un
+portage**. Une fin CHEZ LUI n'est pas un lacher : `endsHome()` regroupe la capture et la rentree, et
+les trois endroits qui posent le drapeau apres une fin la traitent pareil ; un retour qui vient de
+fermer un portage ne se compte plus en abstention. Mesure : **1,1229 -> 1,0665**, joueurs au-dessus
+45 -> 39, periodes 469 -> 477, `16ea3668` 1,443 -> **1,031** et son cas nomme au gate de B1
+(2535417044536883) 55,1 s -> **1,3 s** pour 0,9 s d'oracle.
+
+**Item 3 — le DOMAINE des compteurs au niveau de l'ENREGISTREMENT (`6066e462c`).** Les dix prises
+fausses de `fb1a1a72` ne venaient ni d'une erreur d'identite (les huit slots sont nommes sans
+collision, aucun autre joueur ne perd la prise) ni de la manche fantome (`RealRounds` ne retient
+deja que la manche 0 depuis B1), mais d'un **ancrage FORTUIT** : un enregistrement de DOUZE
+composants la ou ce slot n'en emet jamais plus de six, portant `comp 22 A = 10` a cote de
+`comp 7 B = 2 415 919 104` et `comp 46 A = -30 456`. Le pas de 10 passait SOUS la borne de
+deroulage de B1 (16) : la borne PAR PAS ne pouvait pas le voir. C'est la decouverte D5 de B1 enfin
+posee. Seuil MESURE sur 11 films, tous modes : pire valeur d'un enregistrement sain **102 934**,
+plus petite valeur aberrante **2 415 919 104** — rien entre les deux ; `statMaxCounter = 2^20` est
+dix fois au-dessus de l'une et sous l'autre. Gate : sur les **69 films du parc, la SEULE action qui
+change est `fb1a1a72` / 2535450323793545 `flag_grabs` 10 -> 0**.
+
+**Item 4 — `4ecdf3e7` / 2533274877168586 : `[!]`, cause etablie.** Le joueur n'a AUCUN slot
+statborg. La feuille de match dit pourquoi : il part a 157 s (`left_in_progress`), un bot tient le
+siege UNE seconde, un remplacant arrive — **un siege, trois occupants dans la meme manche**. Le
+film le confirme a la seconde : la serie `comp 22 A` du slot 12 ne porte qu'un point, `t = 155 197 :
+0`, le compteur du siege REMIS A ZERO. `SlotIdentityByRound` resout un slot pour une manche
+entiere par le triplet de fin de match : il ne peut en nommer qu'un. Le correctif est une identite
+par fenetre d'OCCUPATION dans `objectiveevents/` (les instants existent deja aux faits de match) —
+hors perimetre, statue `[!]`.
+
+**Resultats observes.** 11 films CTF a calque, cuisson hors ligne : ratio publie/oracle
+**1,130 -> 1,066**, exces **275,7 s -> 141,0 s** (-48,9 %), joueurs au-dessus de leur oracle a 0,5 s
+pres **45 -> 39**, periodes **469 -> 477** (aucune supprimee), aucun joueur sous 0,8 (les 2 connus
+inchanges, ce sont les deux de `4ecdf3e7`). Gates techniques : `go test` replay + objectiveevents +
+replaybuild + service (CGO) verts, `golangci-lint` **0 issues**, `go vet` propre, `openapi.yaml` et
+`generated.ts` regeneres en additif et OPTIONNEL. 17 films a recuire sur 69.
+
+**Conclusion / prochaine etape.** Le gate a 1,05 n'est **pas** atteint : 1,066, statue `[!]` avec
+sa decomposition. Le residu tient a 67 % dans `b8a44fe8` (sans lui, les dix autres films sont a
+**1,027**) et se reduit a UNE forme : le lacher suivi d'une REPRISE AU SOL par le meme joueur, sur
+un drapeau qui ne rentre pas chez lui et dont l'objet ne replique pas sa naissance — les trois
+chaines de datation y sont muettes. La quatrieme, le marqueur d'image-cle, n'a **pas** ete utilisee
+et c'est un choix argumente : elle est le CONTROLE INDEPENDANT du calque, et en faire une source le
+rendrait tautologique. Rapport `.ai/V7.5/RAPPORT_PASSAGES_DRAPEAU_2026-09-11.md`, sorties APRES
+`replay2d/registre_film/vague6_611_*`. Suite au superviseur : gate corpus d'equivalence, puis 6.8
+(recuisson des 17 films, qui rejoint le parc complet deja prevu).
 
 ## [2026-09-11] Lot 6.7 phase B2 — glyphe porte sans position, Total Control, KOTH, `flag_secures` — Complete (worktree LevelUp-wt-couverture-objectifs-b)
 
