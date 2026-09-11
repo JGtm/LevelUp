@@ -890,14 +890,36 @@ func (p *PathResolver) MapCalloutsPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_callouts.json")
 }
 
-// MapGeometryDir retourne le répertoire des PROPS de carte (géométrie Forge : socles,
-// caisses, rampes posées dans la variante), lus par cmd/replay-build pour poser des
-// repères contextuels sur le rejeu 2D — à distinguer de la STRUCTURE, qui est le sol.
-// Donnée de RÉFÉRENCE versionnée (produite par le RE de la variante .mvar), au même
-// titre que map_structure/ et map_quant_bounds.json : ce n'est pas un cache.
-// Ex: data/titles/halo_infinite/reference/map_geometry/
-func (p *PathResolver) MapGeometryDir(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_geometry")
+// MapGeometryDir retourne le répertoire des PROPS d'UNE carte (géométrie Forge : socles,
+// caisses, rampes posées dans la variante), lus pour poser des repères contextuels sur le
+// rejeu 2D — à distinguer de la STRUCTURE, qui est le sol. Donnée de RÉFÉRENCE versionnée
+// (produite par le RE de la variante .mvar), au même titre que map_structure/ et
+// map_quant_bounds.json : ce n'est pas un cache.
+//
+// LA CLÉ EST LE MODULE, ET CE PARAMÈTRE EST UN CORRECTIF (2026-09-11). Cette fonction ne
+// prenait que le titre et rendait UN répertoire pour toutes les cartes : le CSV qui s'y
+// trouvait était donc servi à chaque match, quelle que soit la carte jouée. Mesuré sur les
+// 76 artefacts du parc : 382 props IDENTIQUES partout, cartes confondues, y compris sur des
+// cartes dont aucun fichier de structure n'existe. Le CSV lui-même ne porte aucune colonne de
+// carte — rien, dans la donnée, ne dit à quelle carte il appartient (l'attribution du seul
+// fichier que nous ayons est argumentée dans son README).
+//
+// Tant que le sol reconstruit était un amas de rectangles, ces props étaient les SEULS repères
+// lisibles et les servir partout se défendait. Avec un fond de carte correct, un décor
+// appartenant à une AUTRE carte n'est plus un pis-aller : c'est une donnée fausse posée sur un
+// outil où l'on mesure des positions. Un répertoire par module, absent = pas de props.
+//
+// MODULE VIDE = LE RÉPERTOIRE DU TITRE, celui du CATALOGUE DES TYPES (`forge_object_types.csv`,
+// quel identifiant a quelle emprise). Il vaut pour toutes les cartes ; le recopier sous chacune
+// en ferait diverger les copies, ce que la règle des deux copies interdit déjà.
+//
+// Ex: data/titles/halo_infinite/reference/map_geometry/ridgeline/
+func (p *PathResolver) MapGeometryDir(titleSlug, module string) string {
+	base := filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_geometry")
+	if module == "" {
+		return base
+	}
+	return filepath.Join(base, module)
 }
 
 // MapStructurePath retourne le chemin du fichier de STRUCTURE d'une carte : les emprises

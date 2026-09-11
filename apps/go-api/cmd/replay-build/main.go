@@ -54,7 +54,8 @@ func main() {
 	titleFlag := flag.String("title", title.DefaultSlug, "slug du titre")
 	interval := flag.Int("interval", 0, "pas de temps du rejeu, en ms (0 = défaut)")
 	geomDir := flag.String("geometry", "",
-		"répertoire des CSV de props Forge (défaut : PathResolver.MapGeometryDir du titre)")
+		"répertoire des props Forge d'une carte, imposé pour toutes (défaut : "+
+			"PathResolver.MapGeometryDir du titre ET du module de la carte)")
 	mapName := flag.String("map", "", "nom de carte du match (obligatoire : porte les bornes de déquantification)")
 	memGiB := flag.Int("mem-gib", filmproc.DefaultLimitGiB,
 		"plafond memoire souple de la cuisson, en gibioctets (0 = desarme, echappatoire de l'operateur)")
