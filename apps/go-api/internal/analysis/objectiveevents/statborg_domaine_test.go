@@ -46,9 +46,9 @@ func TestDomaineAccepteUnEnregistrementREEL(t *testing.T) {
 // composants du slot 24 a t = 764 967, avec leurs valeurs mesurees. `comp 22 A = 10` y est
 // PARFAITEMENT plausible pris isolement — c'est le reste de l'enregistrement qui le condamne.
 //
-// MUTATION : retirer `!statCountersInDomain(comps)` de [scanFrameForRecords] ne rougit pas ce
-// test (il porte sur le predicat), mais rouvre les DIX prises fausses de `fb1a1a72` — gate du
-// lot, mesure sur film.
+// MUTATION : ce test porte sur le PREDICAT, et lui seul. Le BRANCHEMENT du predicat dans
+// [scanFrameForRecords] a ses propres temoins depuis la revue 6.R — `statborg_domaine_branche_test.go`,
+// ou retirer `!statCountersInDomain(comps)` du balayage rougit.
 func TestDomaineRefuseLEnregistrementDeFb1a1a72(t *testing.T) {
 	rec := map[int]StatValue{
 		7:  {A: 1, B: 2415919104},
