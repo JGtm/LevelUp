@@ -1,3 +1,58 @@
+## [2026-09-11] Lot 6.7 phase B1 — les cinq correctifs Go des calques d'objectif (items 2 a 6) — Complete (worktree LevelUp-wt-couverture-objectifs)
+
+**Decision technique principale.** Reprise du lot apres l'arret quota de l'item 1
+(`20f138e30`). Chaque item suit le meme contrat : cause verifiee SUR PIECES avant de coder,
+tests rouges d'abord, un test de MUTATION par item, puis un gate mesure sur des parcs
+d'artefacts cuits HORS LIGNE (aucune base ouverte, aucun artefact du parc recuit) confrontes a
+l'oracle API. Quatre parcs de 68 films ont ete cuits : `parc0` (HEAD, la reference AVANT, qui
+reproduit l'audit a la troisieme decimale : ratio drapeau 1,530 contre 1,531, 197 periodes,
+69 joueurs au-dessus), `parc23`, `parc4` et `parc7` (la reference APRES).
+
+Les cinq correctifs, chacun avec sa cause : (2) un train de tics du crane couvrait (n-1)
+largeurs de tic pour n secondes de possession — la largeur se MESURE desormais sur le film
+(mediane des ecarts intra-train : releve 900 ms x13, 1 000 ms x186 sur `43716616`) et
+`(w-1)/2` se pose aux deux bornes ; (3) `closeByFreeLives` ne regardait que les portages que
+RIEN ne fermait, soit UN seul span sur tout le parc, alors que les 1 129,3 s de faux etaient
+dans les portages FERMES apres un lacher non date ; (4) `e60aaf06` declarait les manches 0 et 2
+sans AUCUN enregistrement en manche 1, et la tolerance d'une manche vide laissait la chaine
+atteindre un ancrage dont l'intervalle tient dans celui de la manche 0 — le cout ne passait pas
+par les series mais par l'IDENTITE, resolue par manche ; (5) le calque des actions n'avait
+aucune garde d'effectif ; (6) la borne de deroulage valait 100 000 quand le pire pas SAIN du
+parc vaut 3.
+
+**Deux corrections de conception imposees par la mesure, et elles valent d'etre retenues.**
+(a) La demi-fenetre du crane devait valoir `(w-1)/2` et non `w/2` : l'intervalle publie est
+FERME, donc `w/2` faisait passer 2 joueurs sur 28 au-dessus de leur propre oracle. (b) La garde
+d'effectif devait compter des SIEGES et non des LIGNES de feuille : comptee en lignes, elle
+refusait CINQ films d'arene parfaitement mesures (9 ou 10 lignes pour 8 sieges — un joueur
+part, un bot tient la place, un remplacant arrive) et coutait 633 actions exactes. Les deux
+erreurs ont ete trouvees par la cuisson hors ligne, pas par les tests.
+
+**Resultats observes.** Crane 0,891 -> **0,966** de l'oracle sur les 4 films Oddball, 0 joueur
+au-dessus. Drapeau : exces 1 125,2 s -> **275,7 s** (-75,5 %), mediane du ratio par joueur
+1,380 -> 1,033, joueurs a plus de 5 s d'ecart 48 -> 9 ; le gate a 1,05 n'est PAS atteint
+(1,130) et sa cause est nommee (rien ne ferme un portage sur la prise d'un AUTRE joueur du meme
+drapeau). `e60aaf06` : 24 actions rattachees sur 154 -> **154 / 154**, captures de zone
+10 -> **38 pour 38**, `noSlot` 130 -> 0 ; concordance manches/fil de score sur les 68 films :
+3 desaccords -> 1. Garde d'effectif : les 3 films BTB publient 0 action, les 65 autres n'en
+perdent aucune. Borne de deroulage : `a0c36016` 84 -> 0, `cde26226` 65 -> 1, et sur les 68
+films **ZERO joueur au-dessus de son oracle sur une action de drapeau ou de zone** (3 avant).
+L'hypothese `assists` de l'audit est CONFIRMEE par la feuille de match re-exportee : 40 806
+pulses pour 106 assistances reelles, et la borne les ramene a 31, 38 et 37 — la feuille, a
+l'unite. Effet de bord : `coverage.objectives.available` de `8bc6074f` passe de 15 808 a 198,
+ce qui ferme aussi la decouverte 12.1 de l'audit.
+
+**Conclusion / prochaine etape.** Six commits (`1e32db6c4`, `7ad82ea13`, `bb06cce5a`,
+`ebd012e3b`, `f22474816` plus les docs), rapport complet dans
+`.ai/V7.5/RAPPORT_COUVERTURE_OBJECTIFS_B1_2026-09-11.md`, sorties APRES sous
+`replay2d/registre_film/vague6_b1_*`. **26 films sur 68 sont a recuire** (liste exacte au §8 du
+rapport ; les 4 Oddball sont une PREMIERE cuisson), aucune montee de `SchemaVersion` — le seul
+champ neuf est `omitempty`. Gates joues : tests des quatre paquets verts, `internal/service`
+vert avec CGO, `golangci-lint` 0 avertissement neuf (les 9 restants sont preexistants et hors
+des paquets touches), `openapi.yaml` et `generated.ts` regeneres. Reste au superviseur : le
+gate corpus d'equivalence, la recuisson, et la phase B2 (web, zones Total Control, catalogue
+KOTH, `flag_secures`).
+
 ## [2026-09-10] Audit sur preuves — couverture des calques d'objectif contre l'oracle API — Complete (aucune correction de code, worktree LevelUp-wt-couverture-objectifs)
 
 **Decision technique principale.** Audit `perimetre x axe` sous le skill `adversarial-audit`
