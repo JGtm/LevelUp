@@ -68,6 +68,12 @@ func markFlagCarries(raws []flagCarryRaw, scan filmdec.CarrierMarkScan, ctx flag
 func tallyFlagCarries(raws []flagCarryRaw, cov *FlagCarriesCoverage) {
 	cov.Carries = len(raws)
 	for _, r := range raws {
+		// LE FERMOIR EN VIGUEUR, ET LUI SEUL, PEUPLE SON COMPTEUR : un portage repris par une
+		// chaine plus precoce quitte le compteur de la precedente au lieu d'etre compte deux
+		// fois (revue 6.R, C1 — cf. flag_carries_close.go).
+		if n := flagClosedByCounter(r.closedBy, cov); n != nil {
+			*n++
+		}
 		switch {
 		case r.closed:
 			cov.Closed++

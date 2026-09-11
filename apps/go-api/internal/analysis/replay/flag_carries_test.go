@@ -34,6 +34,20 @@ func flagTestSignals() objectiveevents.FlagFilmSignals {
 	return objectiveevents.FlagFilmSignals{Bursts: 3, Captures: 3, Steals: 2, Grabs: 4}
 }
 
+// flagComptePar rend le nombre de portages dont le fermoir EN VIGUEUR est celui-ci. C'est la
+// lecture que la couverture fait elle-meme depuis la revue 6.R : un fermoir ne compte plus ses
+// passages, il laisse sa marque sur le portage et le dernier a parler l'emporte
+// (cf. flag_carries_close.go).
+func flagComptePar(raws []flagCarryRaw, by flagCloser) int {
+	n := 0
+	for i := range raws {
+		if raws[i].closedBy == by {
+			n++
+		}
+	}
+	return n
+}
+
 // flagStateCarrying dit si un etat publie est un etat PORTE — ferme ou non.
 func flagStateCarrying(state string) bool {
 	return state == FlagStateCarried || state == FlagStateCarriedOpen
