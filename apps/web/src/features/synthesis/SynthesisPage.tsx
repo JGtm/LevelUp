@@ -382,13 +382,13 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
 
                   <div className="grid grid-cols-2 gap-2">
                     <AccentCard label={t('synthesis.combat_profile.perfect_kills')} value={detailedStats.total_perfect_kills.toLocaleString(numLoc)} accent="perf-tier-3" />
-                    <AccentCard label={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'} value={detailedStats.total_headshot_kills.toLocaleString(numLoc)} accent="perf-tier-2" />
+                    <AccentCard label={fieldMappings?.fields['headshot_kills']?.label ?? t('synthesis.stats_detail.headshot_kills_fallback')} value={detailedStats.total_headshot_kills.toLocaleString(numLoc)} accent="perf-tier-2" />
                   </div>
 
                   <div>
                     <div className="grid grid-cols-2 gap-2">
-                      <AccentCard label={fieldMappings?.fields['shots_fired']?.label ?? 'Tirs effectués'} value={detailedStats.total_shots_fired.toLocaleString(numLoc)} accent="info" />
-                      <AccentCard label={fieldMappings?.fields['shots_hit']?.label ?? 'Tirs au but'}      value={detailedStats.total_shots_hit.toLocaleString(numLoc)}   accent="info" />
+                      <AccentCard label={fieldMappings?.fields['shots_fired']?.label ?? t('synthesis.stats_detail.shots_fired_fallback')} value={detailedStats.total_shots_fired.toLocaleString(numLoc)} accent="info" />
+                      <AccentCard label={fieldMappings?.fields['shots_hit']?.label ?? t('synthesis.stats_detail.shots_hit_fallback')}      value={detailedStats.total_shots_hit.toLocaleString(numLoc)}   accent="info" />
                       {detailedStats.total_shots_fired > 0 && (
                         <AccentCard
                           label={t('synthesis.kpi.raw_accuracy')}
@@ -408,9 +408,9 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
 
                   <div>
                     <div className="grid grid-cols-2 gap-2">
-                      <AccentCard label={fieldMappings?.fields['damage_dealt']?.label ?? 'Dégâts infligés'} value={Math.round(detailedStats.total_damage_dealt).toLocaleString(numLoc)} accent="outcome-win" />
+                      <AccentCard label={fieldMappings?.fields['damage_dealt']?.label ?? t('synthesis.stats_detail.damage_dealt_fallback')} value={Math.round(detailedStats.total_damage_dealt).toLocaleString(numLoc)} accent="outcome-win" />
                       {hasDamageTaken && (
-                        <AccentCard label={fieldMappings?.fields['damage_taken']?.label ?? 'Dégâts reçus'} value={Math.round(detailedStats.total_damage_taken).toLocaleString(numLoc)} accent="outcome-loss" />
+                        <AccentCard label={fieldMappings?.fields['damage_taken']?.label ?? t('synthesis.stats_detail.damage_taken_fallback')} value={Math.round(detailedStats.total_damage_taken).toLocaleString(numLoc)} accent="outcome-loss" />
                       )}
                     </div>
                   </div>

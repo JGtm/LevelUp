@@ -487,6 +487,9 @@ function PassShowcase({
             activeTierRank={pass.active_tier_rank}
             onOpenCard={handleOpenCard}
             freeLabel={text.seasonPass.freeLabel}
+            prevAriaLabel={text.seasonPass.carousel.prevAriaLabel}
+            nextAriaLabel={text.seasonPass.carousel.nextAriaLabel}
+            viewDetailAriaLabel={text.seasonPass.carousel.viewDetailAriaLabel}
           />
 
           <div className="flex justify-center">

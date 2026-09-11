@@ -352,6 +352,31 @@ en = "Headshots"
 fr = "Score perso"
 en = "Personal score"
 
+# ─── Replis stats détaillées avant chargement des field-mappings ────────────
+# Bilan fork ChaseWoodhams 2026-09-11, point 6 : le repli quand `fieldMappings`
+# n'est pas encore chargé (chargement backend) était un littéral FR en dur —
+# visible sous UI EN pendant l'instant de chargement. Repli = libellé i18n de
+# la feature, jamais un littéral.
+[synthesis.stats_detail.headshot_kills_fallback]
+fr = "Tirs à la tête"
+en = "Headshot kills"
+
+[synthesis.stats_detail.shots_fired_fallback]
+fr = "Tirs effectués"
+en = "Shots fired"
+
+[synthesis.stats_detail.shots_hit_fallback]
+fr = "Tirs au but"
+en = "Shots hit"
+
+[synthesis.stats_detail.damage_dealt_fallback]
+fr = "Dégâts infligés"
+en = "Damage dealt"
+
+[synthesis.stats_detail.damage_taken_fallback]
+fr = "Dégâts reçus"
+en = "Damage taken"
+
 [synthesis.kpi.open_match]
 fr = "Ouvrir le match"
 en = "Open match"

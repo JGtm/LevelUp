@@ -264,6 +264,38 @@ en = "Loss"
 fr = "Inconnu"
 en = "Unknown"
 
+[timeseries.distributions.outcome_tie_fallback]
+fr = "Égalité"
+en = "Tie"
+
+[timeseries.distributions.outcome_dnf_fallback]
+fr = "Abandon"
+en = "DNF"
+
+# Replis quand `fieldMappings` n'est pas encore chargé — bilan fork
+# ChaseWoodhams 2026-09-11, point 6. Distincts des libellés d'axe ci-dessus
+# (qui portent l'unité, ex. "Précision (%)") : ce sont les libellés BRUTS du
+# champ, tels que fieldMappings les rendrait.
+[timeseries.distributions.accuracy_fallback]
+fr = "Précision"
+en = "Accuracy"
+
+[timeseries.distributions.personal_score_fallback]
+fr = "Score personnel"
+en = "Personal score"
+
+[timeseries.distributions.performance_score_fallback]
+fr = "Score de performance"
+en = "Performance score"
+
+[timeseries.distributions.team_mmr_fallback]
+fr = "MMR équipe"
+en = "Team MMR"
+
+[timeseries.distributions.enemy_mmr_fallback]
+fr = "MMR adverse"
+en = "Enemy MMR"
+
 # ─── États transverses ─────────────────────────────────────────────────────
 
 [timeseries.empty.no_data]
@@ -358,6 +390,12 @@ en = "Median"
 [timeseries.summary.avg_life_axis]
 fr = "Durée de vie (s)"
 en = "Average life (s)"
+
+# Repli card title quand `fieldMappings` n'est pas encore chargé (distinct de
+# l'axe ci-dessus, qui porte l'unité) — bilan fork 2026-09-11 point 6.
+[timeseries.summary.avg_life_fallback]
+fr = "Durée de vie moyenne"
+en = "Average life"
 
 [timeseries.summary.trend]
 fr = "Tendance"
@@ -505,6 +543,13 @@ en = "Killing spree (max)"
 [timeseries.progression.perfect_kills]
 fr = "Frags parfaits"
 en = "Perfect kills"
+
+# Repli quand `fieldMappings` n'est pas encore chargé — bilan fork 2026-09-11
+# point 6. `perfect_kills` ci-dessus servait déjà de repli pour la série
+# voisine ; `headshot_kills` ne l'avait pas.
+[timeseries.progression.headshot_kills_fallback]
+fr = "Tirs à la tête"
+en = "Headshot kills"
 
 [timeseries.progression.rank_score_title]
 fr = "Rang et score personnel"

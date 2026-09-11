@@ -52,7 +52,7 @@ export function TimeseriesDistributionsTabView({
             buckets: distributions_tab.accuracy_buckets ?? [],
             reviewKey: undefined as string | undefined,
             title:
-              fieldMappings?.fields['accuracy']?.label ?? 'Précision',
+              fieldMappings?.fields['accuracy']?.label ?? t('timeseries.distributions.accuracy_fallback'),
             colorToken: 'chart-series-2' as const,
             xAxisLabel: t('timeseries.distributions.accuracy_axis_x'),
             colorTokenByBucket: undefined,
@@ -82,9 +82,9 @@ export function TimeseriesDistributionsTabView({
             buckets: distributions_tab.personal_score_buckets ?? [],
             reviewKey: undefined as string | undefined,
             title:
-              fieldMappings?.fields['personal_score']?.label ?? 'Score personnel',
+              fieldMappings?.fields['personal_score']?.label ?? t('timeseries.distributions.personal_score_fallback'),
             colorToken: 'chart-series-5' as const,
-            xAxisLabel: fieldMappings?.fields['personal_score']?.label ?? 'Score personnel',
+            xAxisLabel: fieldMappings?.fields['personal_score']?.label ?? t('timeseries.distributions.personal_score_fallback'),
             colorTokenByBucket: undefined,
             hidden: false,
           },
@@ -95,7 +95,7 @@ export function TimeseriesDistributionsTabView({
               fieldMappings?.fields['performance_score']?.label ??
               t('timeseries.summary.perf_label'),
             colorToken: 'perf-tier-3' as const,
-            xAxisLabel: fieldMappings?.fields['performance_score']?.label ?? 'Score de performance',
+            xAxisLabel: fieldMappings?.fields['performance_score']?.label ?? t('timeseries.distributions.performance_score_fallback'),
             // Grading color : perf-tier-1..5 selon le bucket midpoint sur [0,100].
             colorTokenByBucket: ((b: { bucket_lower: number; bucket_upper: number }) => {
               const mid = (b.bucket_lower + b.bucket_upper) / 2
@@ -152,7 +152,7 @@ export function TimeseriesDistributionsTabView({
             metricXKey: 'accuracy',
             metricYKey: 'kda',
             title: t('timeseries.distributions.accuracy_vs_kda'),
-            xLabel: `${fieldMappings?.fields['accuracy']?.label ?? 'Précision'} (%)`,
+            xLabel: `${fieldMappings?.fields['accuracy']?.label ?? t('timeseries.distributions.accuracy_fallback')} (%)`,
             yLabel: fieldMappings?.fields['kda']?.label ?? 'FDA',
           },
           {
@@ -202,8 +202,8 @@ export function TimeseriesDistributionsTabView({
           points={distributions_tab.correlation_points ?? []}
           metricXKey="mmr_team"
           metricYKey="mmr_enemy"
-          xAxisLabel={fieldMappings?.fields['team_mmr']?.label ?? 'MMR équipe'}
-          yAxisLabel={fieldMappings?.fields['enemy_mmr']?.label ?? 'MMR adverse'}
+          xAxisLabel={fieldMappings?.fields['team_mmr']?.label ?? t('timeseries.distributions.team_mmr_fallback')}
+          yAxisLabel={fieldMappings?.fields['enemy_mmr']?.label ?? t('timeseries.distributions.enemy_mmr_fallback')}
           outcomeLabels={outcomeLabels}
           trendLabel={t('timeseries.summary.trend')}
           height={320}

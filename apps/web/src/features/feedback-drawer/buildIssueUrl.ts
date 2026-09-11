@@ -11,22 +11,27 @@
 import type { Classification, FeedbackType } from './classifyFeedback'
 import type { FeedbackContext } from './collectContext'
 import { GITHUB_ISSUES_URL, GITHUB_REPO } from '@/lib/appLinks'
+import { formatMessage } from '@/lib/i18n/format'
+import { feedbackDrawerManifest, type FeedbackDrawerManifestKey } from '@/lib/i18n/generated/feedback_drawer'
+import type { Locale } from '@/lib/i18n/locale'
 
 // Slug du dépôt et URL des issues : source unique dans lib/appLinks.
 const BASE_URL = `${GITHUB_ISSUES_URL}/new`
 const MAX_BODY_LENGTH = 7000
 const TRUNCATED_MARKER = '…[truncated]'
 
+// Labels GitHub (métadonnées machine, pas de contenu utilisateur) : restent en
+// anglais quelle que soit la locale — un label GitHub n'est pas traduit.
 const TYPE_LABEL_MAP: Record<FeedbackType, string> = {
   bug: 'bug',
   enhancement: 'enhancement',
   question: 'question',
 }
 
-const TYPE_PREFIX_MAP: Record<FeedbackType, string> = {
-  bug: '[Bug] ',
-  enhancement: '[Idée] ',
-  question: '[?] ',
+const TYPE_PREFIX_KEY_MAP: Record<FeedbackType, FeedbackDrawerManifestKey> = {
+  bug: 'feedback_drawer.issue_title.bug_prefix',
+  enhancement: 'feedback_drawer.issue_title.enhancement_prefix',
+  question: 'feedback_drawer.issue_title.question_prefix',
 }
 
 export interface BuildIssueUrlInput {
@@ -34,6 +39,8 @@ export interface BuildIssueUrlInput {
   description: string
   context: FeedbackContext
   classification: Classification
+  /** Locale du corps de l'issue GitHub généré — bilan fork 2026-09-11 pt 6. */
+  locale: Locale
 }
 
 export interface BuildIssueUrlResult {
@@ -42,8 +49,12 @@ export interface BuildIssueUrlResult {
   wasTruncated: boolean
 }
 
+function t(locale: Locale, key: FeedbackDrawerManifestKey): string {
+  return formatMessage(feedbackDrawerManifest, key, locale)
+}
+
 export function buildIssueUrl(input: BuildIssueUrlInput): BuildIssueUrlResult {
-  const fullTitle = TYPE_PREFIX_MAP[input.classification.type] + input.title
+  const fullTitle = t(input.locale, TYPE_PREFIX_KEY_MAP[input.classification.type]) + input.title
   const labels = [
     'feedback',
     TYPE_LABEL_MAP[input.classification.type],
@@ -73,51 +84,51 @@ interface BodySections {
 
 function buildBody(input: BuildIssueUrlInput): { body: string; wasTruncated: boolean } {
   const sections = renderSections(input)
-  let body = composeBody(sections)
+  let body = composeBody(input.locale, sections)
 
   if (body.length <= MAX_BODY_LENGTH) return { body, wasTruncated: false }
 
   // Troncature progressive : erreurs console → filtres → description
   sections.consoleErrors = TRUNCATED_MARKER
   sections.failedRequests = TRUNCATED_MARKER
-  body = composeBody(sections)
+  body = composeBody(input.locale, sections)
 
   if (body.length > MAX_BODY_LENGTH) {
     sections.filters = TRUNCATED_MARKER
-    body = composeBody(sections)
+    body = composeBody(input.locale, sections)
   }
   if (body.length > MAX_BODY_LENGTH) {
     const remaining = MAX_BODY_LENGTH - (body.length - sections.description.length)
     const safeBudget = Math.max(200, remaining - TRUNCATED_MARKER.length - 4)
     sections.description = sections.description.slice(0, safeBudget) + '\n' + TRUNCATED_MARKER
-    body = composeBody(sections)
+    body = composeBody(input.locale, sections)
   }
   return { body, wasTruncated: true }
 }
 
-function composeBody(s: BodySections): string {
+function composeBody(locale: Locale, s: BodySections): string {
   return [
-    '## Description',
+    t(locale, 'feedback_drawer.issue_body.heading_description'),
     s.description,
     '',
     '---',
     '',
-    '## Contexte',
+    t(locale, 'feedback_drawer.issue_body.heading_context'),
     s.context,
     '',
-    '## Environnement client',
+    t(locale, 'feedback_drawer.issue_body.heading_environment'),
     s.environment,
     '',
-    '## Filtres actifs',
+    t(locale, 'feedback_drawer.issue_body.heading_filters'),
     s.filters,
     '',
-    '## Classification heuristique (front)',
+    t(locale, 'feedback_drawer.issue_body.heading_classification'),
     s.classification,
     '',
-    '## Erreurs console récentes',
+    t(locale, 'feedback_drawer.issue_body.heading_console_errors'),
     s.consoleErrors,
     '',
-    '## Requêtes échouées récentes',
+    t(locale, 'feedback_drawer.issue_body.heading_failed_requests'),
     s.failedRequests,
     '',
     '---',
@@ -126,59 +137,62 @@ function composeBody(s: BodySections): string {
 }
 
 function renderSections(input: BuildIssueUrlInput): BodySections {
-  const { context, classification } = input
-  const description = input.description.trim() || '_(aucune description fournie)_'
+  const { context, classification, locale } = input
+  const description = input.description.trim() || t(locale, 'feedback_drawer.issue_body.no_description')
+  const na = t(locale, 'feedback_drawer.issue_body.not_applicable')
 
   return {
     description,
     context: [
-      `- **URL** : ${context.browser.url}`,
-      `- **Titre** : ${context.shell.titleSlug}`,
-      `- **Joueur** : ${context.shell.playerSlug ?? '_n/a_'}`,
-      `- **Locale** : ${context.browser.locale}  ·  **Thème** : ${context.browser.theme}`,
-      `- **Timestamp** : ${context.browser.timestampIso}`,
-      `- **Élément focus** : ${context.browser.focusedElement ?? '_n/a_'}`,
+      `- ${t(locale, 'feedback_drawer.issue_body.label_url')} : ${context.browser.url}`,
+      `- ${t(locale, 'feedback_drawer.issue_body.label_title')} : ${context.shell.titleSlug}`,
+      `- ${t(locale, 'feedback_drawer.issue_body.label_player')} : ${context.shell.playerSlug ?? na}`,
+      `- ${t(locale, 'feedback_drawer.issue_body.label_locale')} : ${context.browser.locale}  ·  ${t(locale, 'feedback_drawer.issue_body.label_theme')} : ${context.browser.theme}`,
+      `- ${t(locale, 'feedback_drawer.issue_body.label_timestamp')} : ${context.browser.timestampIso}`,
+      `- ${t(locale, 'feedback_drawer.issue_body.label_focused_element')} : ${context.browser.focusedElement ?? na}`,
     ].join('\n'),
     environment: [
-      `- **Version app** : ${context.shell.appVersion ?? 'unknown'}`,
-      `- **User-Agent** : ${context.browser.userAgent}`,
-      `- **Viewport** : ${context.browser.viewportWidth} × ${context.browser.viewportHeight}`,
+      `- ${t(locale, 'feedback_drawer.issue_body.label_app_version')} : ${context.shell.appVersion ?? 'unknown'}`,
+      `- ${t(locale, 'feedback_drawer.issue_body.label_user_agent')} : ${context.browser.userAgent}`,
+      `- ${t(locale, 'feedback_drawer.issue_body.label_viewport')} : ${context.browser.viewportWidth} × ${context.browser.viewportHeight}`,
     ].join('\n'),
-    filters: renderFilters(context.filters),
-    classification: `- **Type** : ${classification.type}  ·  **Sévérité** : ${classification.severity}  ·  **Zone** : ${classification.area}`,
-    consoleErrors: renderConsoleErrors(context.console),
-    failedRequests: renderFailedRequests(context.failedRequests),
+    filters: renderFilters(locale, context.filters),
+    classification: `- ${t(locale, 'feedback_drawer.issue_body.label_classification_type')} : ${classification.type}  ·  ${t(locale, 'feedback_drawer.issue_body.label_classification_severity')} : ${classification.severity}  ·  ${t(locale, 'feedback_drawer.issue_body.label_classification_area')} : ${classification.area}`,
+    consoleErrors: renderConsoleErrors(locale, context.console),
+    failedRequests: renderFailedRequests(locale, context.failedRequests),
     footer:
-      '*Auto-généré par le drawer feedback — LevelUp web*\n' +
-      "*Une analyse automatique sera ajoutée en commentaire dans quelques secondes.*",
+      t(locale, 'feedback_drawer.issue_body.footer_generated') + '\n' +
+      t(locale, 'feedback_drawer.issue_body.footer_auto_analysis'),
   }
 }
 
-function renderFilters(filters: FeedbackContext['filters']): string {
-  if (!filters) return '_(aucun filtre actif)_'
-  const lines = [`- **Mode filtre** : ${filters.filter_mode}`]
+function renderFilters(locale: Locale, filters: FeedbackContext['filters']): string {
+  if (!filters) return t(locale, 'feedback_drawer.issue_body.no_active_filters')
+  const lines = [`- ${t(locale, 'feedback_drawer.issue_body.label_filter_mode')} : ${filters.filter_mode}`]
   if (filters.period?.start_date || filters.period?.end_date) {
     lines.push(
-      `- **Période** : ${filters.period.start_date ?? '?'} → ${filters.period.end_date ?? '?'}`,
+      `- ${t(locale, 'feedback_drawer.issue_body.label_period')} : ${filters.period.start_date ?? '?'} → ${filters.period.end_date ?? '?'}`,
     )
   }
   if (filters.cascade?.modes?.length) {
-    lines.push(`- **Modes** : ${filters.cascade.modes.join(', ')}`)
+    lines.push(`- ${t(locale, 'feedback_drawer.issue_body.label_modes')} : ${filters.cascade.modes.join(', ')}`)
   }
   if (filters.cascade?.maps?.length) {
-    lines.push(`- **Maps** : ${filters.cascade.maps.join(', ')}`)
+    lines.push(`- ${t(locale, 'feedback_drawer.issue_body.label_maps')} : ${filters.cascade.maps.join(', ')}`)
   }
   if (filters.cascade?.playlists?.length) {
-    lines.push(`- **Playlists** : ${filters.cascade.playlists.join(', ')}`)
+    lines.push(`- ${t(locale, 'feedback_drawer.issue_body.label_playlists')} : ${filters.cascade.playlists.join(', ')}`)
   }
   if (filters.sessions?.picked_sessions?.length) {
-    lines.push(`- **Sessions** : ${filters.sessions.picked_sessions.length} sélectionnée(s)`)
+    lines.push(
+      `- ${t(locale, 'feedback_drawer.issue_body.label_sessions')} : ${filters.sessions.picked_sessions.length} ${t(locale, 'feedback_drawer.issue_body.sessions_selected')}`,
+    )
   }
-  return lines.length === 1 ? '_(filtres par défaut)_' : lines.join('\n')
+  return lines.length === 1 ? t(locale, 'feedback_drawer.issue_body.default_filters') : lines.join('\n')
 }
 
-function renderConsoleErrors(entries: FeedbackContext['console']): string {
-  if (!entries.length) return '_(aucune erreur console capturée)_'
+function renderConsoleErrors(locale: Locale, entries: FeedbackContext['console']): string {
+  if (!entries.length) return t(locale, 'feedback_drawer.issue_body.no_console_errors')
   const lines = entries.map((e) => {
     const ts = formatTime(e.timestamp)
     const head = `[${e.level.toUpperCase()} ${ts}] ${e.message}`
@@ -187,8 +201,8 @@ function renderConsoleErrors(entries: FeedbackContext['console']): string {
   return '```js\n' + lines.join('\n') + '\n```'
 }
 
-function renderFailedRequests(reqs: FeedbackContext['failedRequests']): string {
-  if (!reqs.length) return '_(aucune requête échouée capturée)_'
+function renderFailedRequests(locale: Locale, reqs: FeedbackContext['failedRequests']): string {
+  if (!reqs.length) return t(locale, 'feedback_drawer.issue_body.no_failed_requests')
   const lines = reqs.map((r) => `${r.method} ${r.url} → ${r.status} (${formatTime(r.timestamp)})`)
   return '```\n' + lines.join('\n') + '\n```'
 }
