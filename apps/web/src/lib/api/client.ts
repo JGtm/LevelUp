@@ -317,6 +317,24 @@ export const api = {
   getBlob: async (path: string, headers?: Record<string, string>): Promise<Blob> =>
     (await sendRequest('GET', path, { headers })).blob(),
 
+  /**
+   * GET JSON + UN en-tête de réponse choisi. Réservé aux endpoints qui publient une MÉTA
+   * HTTP hors du corps JSON (ex : `X-Replay-Latest-Schema-Version`, cf.
+   * `internal/api/handlers/replay.go` côté Go — la méta voyage en en-tête pour ne jamais
+   * toucher la forme de fil du document, verrouillée par `replayview/parity_test.go`).
+   * `header` rend `null` quand l'en-tête est absent de la réponse — jamais une erreur : une
+   * méta optionnelle qui manque n'est pas un échec de requête.
+   */
+  getWithHeader: async <T>(
+    path: string,
+    header: string,
+    headers?: Record<string, string>,
+  ): Promise<{ data: T; header: string | null }> => {
+    const response = await sendRequest('GET', path, { headers })
+    const data = (await response.json()) as T
+    return { data, header: response.headers.get(header) }
+  },
+
   post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
     request<T>('POST', path, { body, headers }),
 
