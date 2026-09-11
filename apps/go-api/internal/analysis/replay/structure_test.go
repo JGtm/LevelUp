@@ -1005,8 +1005,24 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact < 51 porte des vies de bot non résolues, un
 	//   `bid` vide, et aucune famille d'équipement — le résumé ne peut pas être re-projeté sans
 	//   recuisson.
-	if SchemaVersion != 51 {
-		t.Fatalf("SchemaVersion = %d, attendu 51 : incrémenter exige une raison écrite ci-dessus "+
+	// v52 (2026-09-11, lot B — correctifs du décodeur repris du fork) : TROIS changements de
+	//   contenu cuit. (1) UN LANCER DE GRENADE REVIENT À SON LANCEUR : la naissance de
+	//   projectile n'est plus choisie sur le temps seul, mais par le biped de l'auteur, refusée
+	//   au-delà de 4 m ; et `grenades[].slot` est publié sur les deux branches (il sortait à
+	//   zéro sur la branche projectile, et zéro RESSEMBLE à un slot). Mesuré : pire cas de la
+	//   distance lancer -> lanceur 14,46 -> 0,56 m sur `000d5950`, médiane 25,42 -> 0,00 m et
+	//   26,69 -> 0,00 m sur les deux films Live Fire du parc. (2) UN VOL DE PROJECTILE S'ARRÊTE
+	//   AU PREMIER PAS IMPOSSIBLE (> 10 m en 100 ms) et `rest` tombe à false s'il est coupé :
+	//   947 trajectoires sur 15 735 du parc traçaient une droite en travers de la carte.
+	//   (3) `geometry` devient les props de LA CARTE du match : un répertoire unique les servait
+	//   à tous (382 props identiques sur les 76 artefacts), et une carte non extraite sort
+	//   désormais sans props.
+	//   POURQUOI LA VERSION MONTE : un artefact < 52 porte des lancers posés sur le mauvais
+	//   joueur, des vols traversant la carte, et le décor d'une autre carte. `coverage.projectiles`
+	//   s'ajoute au passage — un champ optionnel, qui ne l'aurait pas exigé à lui seul.
+	//   Détail : `document_chronicle.go` et `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+	if SchemaVersion != 52 {
+		t.Fatalf("SchemaVersion = %d, attendu 52 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -1061,3 +1061,59 @@ package replay
 //	ce que le lot   il ne touche NI le pont statborg (`64e8adfa` garde ses 5 couples perdus, écart
 //	n'a pas fait    K/D/A 16 inchangé) NI l'équipe d'un joueur (elle vit dans la base). Détail,
 //	                mesures et instruction du résidu : `.ai/V7.5/v2/RESTES_E2_2026-09-08.md`.
+
+// v52 (2026-09-11, lot B — LES CORRECTIFS DU DÉCODEUR REPRIS DU FORK). Trois changements de
+// CONTENU CUIT, indépendants l'un de l'autre, et un compteur qui s'ajoute.
+//
+//	ce qui change   1. UN LANCER DE GRENADE REVIENT À SON LANCEUR. `locateThrow` choisissait la
+//	                   naissance de projectile la plus proche DANS LE TEMPS (±200 ms) et
+//	                   départageait les simultanées par le tri, donc par X : deux joueurs qui
+//	                   lancent dans la même fenêtre — un lancer sur cinq — et l'un recevait la
+//	                   position du projectile de l'autre. L'auteur est résolu d'abord ; parmi
+//	                   TOUTES les naissances de la fenêtre on garde celle qui est à portée de sa
+//	                   main, et aucune au-delà de `grenadeAuthorRadiusM = 4` m. Sans auteur
+//	                   ponté, une candidate unique reste une lecture, plusieurs sont un refus.
+//	                2. `grenades[].slot` EST PUBLIÉ SUR LES DEUX BRANCHES. La branche projectile
+//	                   sortait à zéro — et zéro RESSEMBLE à un slot, si bien qu'un lecteur qui
+//	                   colore un lancer par son lanceur ne pouvait ni nommer personne, ni voir
+//	                   l'ambiguïté.
+//	                3. UN VOL DE PROJECTILE S'ARRÊTE AU PREMIER PAS IMPOSSIBLE (> 10 m en
+//	                   100 ms, `projectileMaxStepM`), et n'est pas recousu. `rest` tombe à false
+//	                   sur un vol coupé : il CERTIFIE une fin de vol, et un vol coupé n'a pas la
+//	                   sienne. Le compte des coupures est publié (`coverage.projectiles`).
+//	                4. `geometry` devient les props de LA CARTE du match. Un répertoire unique
+//	                   les servait à tous les matchs : les artefacts d'une carte non extraite
+//	                   sortent désormais SANS props, ce qui est la vérité.
+//
+//	mesuré          GRENADES, distance du lancer publié au biped de son auteur au même instant
+//	                (banc `grenade_ecart_research_test.go`), avant -> après :
+//	                `000d5950` Cliffhanger médiane 0,44 -> 0,44 m, PIRE CAS 14,46 -> 0,56 m,
+//	                lancers au-delà de 4 m 2 -> 0 ; `0797ce72` Live Fire médiane 25,42 -> 0,00 m ;
+//	                `21ece4d8` Live Fire médiane 26,69 -> 0,00 m. Sur les deux films Live Fire,
+//	                la branche projectile s'effondre (84 -> 1 et 137 -> 0 lancers) parce que les
+//	                naissances y sont victimes du repli de quantum ci-dessous ; le nombre de
+//	                lancers publiés y est INCHANGÉ (103 et 156), ils se lisent sur le biped.
+//	                Golden `000d5950` : 70 -> 69 lancers posés (dénominateur inchangé),
+//	                répartition par source 65/5 -> 63/6.
+//	                PROJECTILES : 947 trajectoires sur 15 735 du parc (6,0 %) portaient au moins
+//	                un pas impossible, soit 4 901 pas. Golden `000d5950` : 439 -> 436
+//	                trajectoires publiées, 2 732 -> 2 725 points, 3 coupures.
+//	                PROPS : 382 props identiques sur les 76 artefacts, cartes confondues.
+//
+//	la cause du 3   N'EST PAS CORRIGÉE, ELLE EST CARACTÉRISÉE. Le saut vaut l'étendue de la carte
+//	                sur un axe DIVISÉE PAR UNE PUISSANCE DE DEUX — le poids d'UN bit du champ
+//	                quantifié, et non un repli de toute la plage. Sur les quatre films Live Fire
+//	                (`sgh_interlock`, Y sur 12 bits) il vaut exactement la MOITIÉ de l'étendue Y
+//	                (médiane 31,89 m pour 63,775 m) avec |Δx| médian 0,20 m : le bit de poids
+//	                fort de Y bascule, 3 907 pas sur 4 901. Sur les cartes Forge l'axe touché est
+//	                plutôt X et le bit plus bas (étendue / 2^7 majoritaire). Le chantier appartient
+//	                à `filmdec` : `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+//
+//	le contrat      `coverage.projectiles` est ADDITIF et optionnel. `grenades[].slot` et
+//	                `projectiles[].p` existaient déjà : ce sont leurs VALEURS qui changent, et
+//	                c'est ce qui exige le bump — un client v51 dessine aujourd'hui des lancers
+//	                posés sur le mauvais joueur et des vols en travers de la carte.
+//
+//	ce que le lot   il ne touche NI la déquantification (la cause du point 3), NI l'attribution
+//	n'a pas fait    des props des 78 autres cartes du catalogue de bornes — une seule extraction
+//	                existe, attribuée à `ridgeline` par son emprise (cf. le README du répertoire).
