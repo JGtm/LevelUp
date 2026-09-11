@@ -215,16 +215,66 @@ func consumeObjectMaximumVitalities(br *BitReader) {
 	br.ReadBit()
 }
 
-// consumeObjectDissolver (i14) mirrors FUN_140dd9f9c.
+// consumeObjectDissolver (i14 `object-dissolver-component`) porte `FUN_140dd9f9c`.
+//
+// GRAMMAIRE RELUE INSTRUCTION PAR INSTRUCTION le 2026-09-11 (lot 6.10 bis, image base
+// 140000000). AUCUNE LARGEUR N'A CHANGE — la relecture a servi a savoir ce que les bits
+// PORTENT, pas a corriger un compte :
+//
+//	R(4)   etat        140dd9faf: MOV ECX,0xe ; CALL 0x1406d310c  -> bitLen(0xe) = 4
+//	                   140dd9ff6: MOV dword ptr [RDI+0x3a8],R10D
+//	si etat != 0xd :   140dd9ffd: CMP R10D,0xd ; JNZ 0x140dda074
+//	  R(96) brut       140dda07b: MOV R9D,0x60 ; CALL 0x1406d676c  -> [RDI+0x3ac], 12 octets
+//	  R(12) dequant.   140dda0a1: MOV dword ptr [RSP+0x20],0xc ; XMM2 = 0.0 ;
+//	                   XMM3 = [0x143cd873c] = 10.0f ; CALL 0x1406d84b4
+//	                   140dda0ae: MOVSS dword ptr [RDI+0x3b8],XMM0  -> un FLOTTANT dans [0, 10]
+//	  R(1)   drapeau   140dda0d6: MOV byte ptr [RDI+0x3bc],CL
+//
+// AUCUN CHAMP DE FIN DE VIE N'Y EST ETABLI, ET C'EST UNE MESURE, PAS UN RENONCEMENT. i14 etait
+// le seul candidat au nom explicite pour dater la disparition d'un objet (decouverte n° 3 du lot
+// 6.10). Mesure sur les 64 films du parc, records de CREATION `ti=42` :
+//
+//	creations acceptees                        27 155
+//	dont le masque porte i14                   18 214  (67,1 %)
+//	objets du document apparies a leur record  13 014
+//	  dont l'etat vaut 13 — LE NEUTRE          12 988  (99,80 %)
+//	  dont le corps est donc LU                    26  ( 0,20 %)
+//
+// LA CAUSE EST STRUCTURELLE : un composant de DISSOLUTION decrit une FIN, et la fin n'est pas
+// connue a la naissance de l'objet. A l'instant du record de creation le dissolveur est a son
+// etat neutre, et il n'y a rien a y lire.
+//
+// LES 26 EXCEPTIONS NE PORTENT AUCUNE RELATION MESURABLE : la duree R(12) rangee par quartile
+// donne des vies observees de 301, 669, 1 527 puis 1 219 images — non monotone, sur six cas par
+// quartile ; le drapeau R(1) vaut vrai 17 fois et faux 9 fois, et AUCUN de ces 26 objets n'a ete
+// ramasse (les 363 objets du parc a fin `pickup` sont TOUS a l'etat neutre). Publier l'un de ces
+// champs reviendrait a nommer du bruit.
+//
+// CE QUI RESTE A TENTER, SI LA QUESTION REVIENT : i14 dans les paquets DELTA, pas dans le record
+// de creation. Le film ne date la disparition d'aucun objet pose (acquis du 2026-08-17) et le
+// calque publie un INTERVALLE `[t1, t1max]` ; c'est toujours la meilleure reponse disponible.
 func consumeObjectDissolver(br *BitReader) {
-	w := uint(bitLen(0xe)) // = 4
-	v := br.ReadBits(w)
-	if v != 13 {
-		br.ReadBits(96)
-		br.ReadBits(12)
-		br.ReadBit()
+	v := br.ReadBits(uint(bitLen(objectDissolverEtatMax))) // R(4)
+	if v != objectDissolverEtatNeutre {
+		br.ReadBits(objectDissolverCorpsBits) // R(96) bruts -> [dst+0x3ac]
+		br.ReadBits(objectDissolverDureeBits) // R(12) dequantifie dans [0, 10] -> [dst+0x3b8]
+		br.ReadBit()                          // drapeau -> [dst+0x3bc]
 	}
 }
+
+// Les seuils d'`object-dissolver-component`, nommes parce qu'ils sont lus DEUX fois — ici et
+// par le garde-rail de largeur (components_object_state_test.go).
+const (
+	// objectDissolverEtatMax borne l'etat : `FUN_1406d310c(0xe)` rend bitLen(0xe) = 4 bits.
+	objectDissolverEtatMax = 0xe
+	// objectDissolverEtatNeutre coupe le corps du composant (140dd9ffd : CMP R10D,0xd).
+	objectDissolverEtatNeutre = 13
+	// objectDissolverCorpsBits est le bloc brut de 96 bits (140dda07b : MOV R9D,0x60).
+	objectDissolverCorpsBits = 96
+	// objectDissolverDureeBits est la largeur du flottant dequantifie dans [0, 10]
+	// (140dda0a1 : MOV dword ptr [RSP+0x20],0xc).
+	objectDissolverDureeBits = 12
+)
 
 // consumeObjectPhysicsFlags (i16) mirrors FUN_1407ee070: 5 x R(1).
 func consumeObjectPhysicsFlags(br *BitReader) {

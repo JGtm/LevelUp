@@ -35,23 +35,31 @@ package filmdec
 // pas etablie. Le nommer reviendrait a ecrire une conclusion avant la mesure (meme regle que la
 // table ECS, qui laisse les trois champs POSITIONNELS).
 //
-// LA RESERVE DE LECTURE — ET ELLE EST DATEE. Pour atteindre i20 il faut traverser les composants
-// qui le precedent. Tous sont portes, sauf UN : `object-multiplayer-properties-component` (i9,
-// `consumeObjectMultiplayerProperties`, components_batch7.go), dont le flux TLV ne consomme pas
-// le bon nombre de bits sur cet archetype. Mesure du 2026-09-11 : sur les records dont le masque
-// ne porte PAS i9, la position d'i20 trouvee par l'oracle est le decalage ZERO dans 80 cas sur
-// 89 (89,9 %) ; sur les records qui le portent, elle s'eparpille sur 121 decalages distincts et
-// la longueur VRAIE d'i9 vaut 300 a 470 bits (34 valeurs distinctes, aucune structure modulo 8,
-// aucune correlation avec ses six premiers bits). La grammaire d'i9 ne se retablit donc pas par
-// la mesure : il faut desassembler `FUN_1407d4c94`.
+// LA RESERVE DE LECTURE A ETE LEVEE LE 2026-09-11 (lot 6.10 bis). Pour atteindre i20 il faut
+// traverser les composants qui le precedent ; un seul ne l'etait pas bit-exact,
+// `object-multiplayer-properties-component` (i9, `consumeObjectMultiplayerProperties`,
+// components_batch7.go + tlv_mode2.go). Sa grammaire a ete RETABLIE SUR LE DESASSEMBLAGE de
+// `FUN_1407d4c94` et de sa chaine de flux, pas par la mesure — le lot 6.10 avait refute sept
+// lectures candidates et conclu que la mesure seule n'y suffirait pas.
 //
-// D'OU LA REGLE CI-DESSOUS : on ne lit les munitions que lorsque la marche est PROUVEE
-// bit-exacte, c'est-a-dire quand le masque du record ne porte pas i9. Ce n'est pas une
-// precaution de confort, c'est la difference entre un chiffre et un bruit — et c'est ce qui
-// borne la couverture. CRITERE DE LEVEE : le portage d'i9 valide par un oracle (le meme que
-// celui de ce lot : la position d'i20 doit retomber au decalage zero sur > 95 % des records qui
-// portent i9). Tant qu'il n'est pas leve, l'infobulle garde son repli date pour les autres
-// objets (`apps/web/.../model/groundWeaponAmmo.ts`).
+// CE QUE LA LEVEE A COUTE ET RAPPORTE, EN CHIFFRES (64 films, meme oracle que le lot 6.10) :
+//
+//	                                      AVANT (refus d'i9)   APRES
+//	creations ti=42 acceptees             27 155               27 155
+//	dont le masque porte i20              16 218 (59,7 %)      16 218 (59,7 %)
+//	dont les munitions sont LUES           4 283 (15,8 %)      16 218 (59,7 %)
+//	decalage ZERO, records AVEC i9        eparpille sur 121    94,3 % (2 738 / 2 903)
+//	decalage ZERO, records SANS i9        89,9 % (80 / 89)     91,8 % (391 / 426)
+//	longueur d'i9, reste modulo 8         sans structure       6 dans 100,0 % des cas
+//
+// LE CONTROLE QUI TRANCHE N'EST PAS LE SEUIL, C'EST LA POPULATION TEMOIN. Le lot 6.10 avait
+// ecrit « > 95 % » comme critere de levee ; la mesure montre que les records SANS i9 — dont la
+// marche etait DEJA prouvee bit-exacte — plafonnent eux-memes a 91,8 % sur ce corpus, parce que
+// l'oracle d'inventaire vieillit. Le residu n'est donc pas imputable a i9 : les records qui le
+// portent font MIEUX que la population de reference.
+//
+// L'infobulle garde son repli date pour les objets dont le masque ne porte pas i20 — 40,3 % des
+// creations (`apps/web/.../model/groundWeaponAmmo.ts`).
 
 // groundWeaponAmmoIndex est l'index de composant de `weapon-ammo-component` dans l'archetype
 // ARME AU SOL, et groundWeaponMPPIndex celui d'`object-multiplayer-properties-component`. Les
@@ -67,8 +75,10 @@ const (
 // diverge au premier renommage.
 const compWeaponAmmo = "weapon-ammo-component"
 
-// compObjectMultiplayerProperties est l'etiquette du composant dont le portage TLV n'est pas
-// bit-exact sur cet archetype (cf. l'en-tete). Meme raison d'etre.
+// compObjectMultiplayerProperties est l'etiquette du composant i9, que la marche TRAVERSE pour
+// atteindre i20. Le lecteur verifie que l'index 9 le porte bien dans le registre du film : un
+// index de composant est un numero de BUILD, et lire i20 derriere un i9 qui n'en serait pas un
+// reviendrait a faire confiance a un decalage inconnu.
 const compObjectMultiplayerProperties = "object-multiplayer-properties-component"
 
 // GroundWeaponAmmo porte les deux champs PROUVES du composant `weapon-ammo-component`.
@@ -85,8 +95,8 @@ type GroundWeaponAmmo struct {
 // du chemin existant n'est lu autrement.
 //
 // ok=false quand la lecture n'est pas prouvee bit-exacte : masque sans i20 (rien a lire),
-// masque avec i9 (marche non fiable, cf. l'en-tete), archetype dont les index ne portent pas les
-// composants attendus, ou i20 non atteint.
+// archetype dont les index ne portent pas les composants attendus, ou i20 non atteint. Le refus
+// des masques portant i9 a ete RETIRE le 2026-09-11 (cf. l'en-tete) : la marche les traverse.
 func readGroundWeaponAmmo(pay []byte, compStart int, mask []int, arch Archetype) (GroundWeaponAmmo, bool) {
 	if arch.component(groundWeaponAmmoIndex) != compWeaponAmmo ||
 		arch.component(groundWeaponMPPIndex) != compObjectMultiplayerProperties {
@@ -95,9 +105,6 @@ func readGroundWeaponAmmo(pay []byte, compStart int, mask []int, arch Archetype)
 	var bits uint64
 	hasAmmo := false
 	for _, i := range mask {
-		if i == groundWeaponMPPIndex {
-			return GroundWeaponAmmo{}, false
-		}
 		if i == groundWeaponAmmoIndex {
 			hasAmmo = true
 		}
