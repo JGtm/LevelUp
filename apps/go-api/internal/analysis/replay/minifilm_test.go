@@ -430,8 +430,8 @@ func TestMiniFilmDecodesTheGrenadeThrows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ScanFilmGrenadeThrows : %v", err)
 	}
-	if len(th) != wantGrenades {
-		t.Errorf("%d lancers decodes, attendu %d", len(th), wantGrenades)
+	if len(th) != wantGrenadesAvailable {
+		t.Errorf("%d lancers decodes, attendu %d", len(th), wantGrenadesAvailable)
 	}
 	byKind := map[int]int{}
 	for _, g := range th {

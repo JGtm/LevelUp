@@ -127,7 +127,7 @@ func TestGoldenAssemblyFigeLesChiffresDuChantier(t *testing.T) {
 		// 483/519 = 93.1 % depuis la ronde de correction du 2026-08-09 (93.3 % avec les
 		// fermetures non corrigees, 91.5 % avant elles).
 		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 93.1 %%", wantShotsAttached, wantShotsAvailable),
-		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 100.0 %%", wantGrenades, wantGrenades),
+		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 98.6 %%", wantGrenades, wantGrenadesAvailable),
 		fmt.Sprintf("%d vie(s) nommee(s) / %d", wantLivesNamed, wantLivesTotal),
 		fmt.Sprintf("%d trajectoire(s) ·", wantProjectiles),
 		fmt.Sprintf("%d etat(s) publie(s) ·", wantInventory),

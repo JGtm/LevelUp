@@ -57,9 +57,22 @@ const (
 	// par aucun evenement.
 	wantLivesNamed = 90
 	wantLivesTotal = 105
-	// wantGrenades : 70 lancers, tous situes (65 par la naissance de leur projectile, 5 par le
-	// biped de leur auteur).
-	wantGrenades = 70
+	// wantGrenades : 69 lancers situes sur 70 — 63 par la naissance de leur projectile, 6 par le
+	// biped de leur auteur (65 / 5 avant le 2026-09-11).
+	//
+	// C ETAIT 70 JUSQU AU 2026-09-11, ET LE LANCER PERDU EST UN GAIN. Le choix de la naissance
+	// revient desormais au biped de l auteur (cf. locateThrow) ; celui-la n a PAS d auteur ponte
+	// et sa fenetre de 200 ms porte DIX naissances, dont huit au meme instant a moins d un metre
+	// les unes des autres — une rafale de sous-projectiles. L ancien code en prenait une par
+	// proximite temporelle, soit un tirage au sort sur dix. On s abstient.
+	//
+	// LES 64 RESTANTS SONT MESURES : distance mediane du lancer au biped de son lanceur 0,44 m,
+	// pire cas 0,56 m (contre 14,46 m avant), 0 lancer au-dela de 4 m (contre 2) — banc
+	// `grenade_ecart_research_test.go`, 2026-09-11.
+	wantGrenades = 69
+	// wantGrenadesAvailable : 70 lancers decodes — le DENOMINATEUR, et il ne bouge pas. Un
+	// rattachement qui s abstient se compte ; il ne se retire pas du disponible.
+	wantGrenadesAvailable = 70
 	// wantProjectiles : 439 trajectoires publiees.
 	wantProjectiles = 439
 	// wantInventory : 184 etats d inventaire publies.
@@ -214,11 +227,18 @@ func TestBridgeNamesNinetyLivesOfHundredFive(t *testing.T) {
 // stricte : la naissance du projectile d abord (aucun pont), le biped ensuite. Le compte par
 // source est verifie parce qu un basculement silencieux de l une vers l autre changerait la
 // signification du calque sans changer son total.
+//
+// LE DENOMINATEUR ET LE PUBLIE SE SONT SEPARES LE 2026-09-11 : 70 lancers decodes, 69 poses.
+// Le soixante-dixieme n a pas d auteur ponte et sa fenetre porte DIX naissances — l abstention
+// est le correctif, pas la perte (cf. wantGrenades).
 func TestSeventyGrenadeThrowsAreAllPlaced(t *testing.T) {
 	doc := buildGolden(t)
 	c := doc.Coverage.Grenades
-	if c.Available != wantGrenades {
-		t.Errorf("%d lancers disponibles, attendu %d", c.Available, wantGrenades)
+	if c.Available != wantGrenadesAvailable {
+		t.Errorf("%d lancers disponibles, attendu %d", c.Available, wantGrenadesAvailable)
+	}
+	if len(doc.Grenades) != wantGrenades {
+		t.Errorf("%d lancers poses, attendu %d", len(doc.Grenades), wantGrenades)
 	}
 	if !c.Balanced() {
 		t.Errorf("lancers : la somme rattaches+rejets ne fait pas %d", c.Available)
