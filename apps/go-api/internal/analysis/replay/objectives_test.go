@@ -29,7 +29,7 @@ func TestBuildObjectiveActionsMapsOntoFrameAxis(t *testing.T) {
 		ident(250, "b", objectiveevents.StatFlagReturns),
 		ident(1_050, "a", objectiveevents.StatFlagGrabs),
 	}
-	got, cov := buildObjectiveActions(evs, 0, scoreClock{intervalMS: 100, frames: 20})
+	got, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 20})
 	if len(got) != 3 || cov.Attached != 3 {
 		t.Fatalf("%d actions (couverture %d), attendu 3", len(got), cov.Attached)
 	}
@@ -54,7 +54,7 @@ func TestBuildObjectiveActionsCountsOutOfWindow(t *testing.T) {
 		ident(500, "a", objectiveevents.StatZoneCaptures),
 		ident(999_000, "a", objectiveevents.StatZoneSecures),
 	}
-	got, cov := buildObjectiveActions(evs, 0, scoreClock{intervalMS: 100, frames: 10})
+	got, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 10})
 	if len(got) != 1 {
 		t.Fatalf("%d actions publiees, attendu 1", len(got))
 	}
@@ -74,7 +74,7 @@ func TestBuildObjectiveActionsRefusesUnidentified(t *testing.T) {
 		ident(100, "", objectiveevents.StatFlagSteals),
 		ident(200, "a", objectiveevents.StatFlagSteals),
 	}
-	got, cov := buildObjectiveActions(evs, 0, scoreClock{intervalMS: 100, frames: 10})
+	got, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 10})
 	if len(got) != 1 || cov.NoSlot != 1 {
 		t.Errorf("%d actions, sansSlot = %d ; attendu 1 et 1", len(got), cov.NoSlot)
 	}
@@ -161,7 +161,7 @@ func TestBuildObjectiveActionsSubtractsOrigin(t *testing.T) {
 		ident(20_000, "a", objectiveevents.StatFlagReturns),
 	}
 	clock := scoreClock{intervalMS: 100, frames: 200, originMS: 10_000}
-	got, cov := buildObjectiveActions(evs, 0, clock)
+	got, cov := buildObjectiveActions(evs, 0, 0, clock)
 	if len(got) != 2 || cov.Attached != 2 {
 		t.Fatalf("%d action(s) (couverture %d), attendu 2", len(got), cov.Attached)
 	}
@@ -184,7 +184,7 @@ func TestBuildObjectiveActionsRefusesBeforeFrameZero(t *testing.T) {
 		ident(9_950, "a", objectiveevents.StatFlagGrabs),
 		ident(10_100, "a", objectiveevents.StatFlagGrabs),
 	}
-	got, cov := buildObjectiveActions(evs, 0, scoreClock{intervalMS: 100, frames: 200, originMS: 10_000})
+	got, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 200, originMS: 10_000})
 	if len(got) != 1 || cov.OutOfWindow != 1 {
 		t.Errorf("%d action(s), horsFenetre = %d ; attendu 1 et 1", len(got), cov.OutOfWindow)
 	}
@@ -209,7 +209,7 @@ func TestCouvertureCompteCeQueLePontNaPasNomme(t *testing.T) {
 		ident(100, "a", objectiveevents.StatFlagCaptures),
 		ident(200, "b", objectiveevents.StatFlagGrabs),
 	}
-	got, cov := buildObjectiveActions(evs, 3, scoreClock{intervalMS: 100, frames: 20})
+	got, cov := buildObjectiveActions(evs, 3, 0, scoreClock{intervalMS: 100, frames: 20})
 	if len(got) != 2 {
 		t.Fatalf("%d action(s) publiee(s), attendu 2", len(got))
 	}

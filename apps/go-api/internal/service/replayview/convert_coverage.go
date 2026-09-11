@@ -46,12 +46,13 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 
 func toLayerCoverage(v replay.LayerCoverage) replaydoc.LayerCoverage {
 	return replaydoc.LayerCoverage{
-		Available:   v.Available,
-		Attached:    v.Attached,
-		NoSlot:      v.NoSlot,
-		Ambiguous:   v.Ambiguous,
-		OutOfWindow: v.OutOfWindow,
-		Unpublished: v.Unpublished,
+		Available:       v.Available,
+		Attached:        v.Attached,
+		NoSlot:          v.NoSlot,
+		Ambiguous:       v.Ambiguous,
+		OutOfWindow:     v.OutOfWindow,
+		Unpublished:     v.Unpublished,
+		RefusedByRoster: v.RefusedByRoster,
 	}
 }
 

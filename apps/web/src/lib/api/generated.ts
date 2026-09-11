@@ -7543,6 +7543,8 @@ export interface components {
             /** Format: int64 */
             outOfWindow: number;
             /** Format: int64 */
+            refusedByRoster?: number;
+            /** Format: int64 */
             unpublished: number;
         };
         LeaderboardCatalog: {
