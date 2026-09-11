@@ -61,5 +61,15 @@ func toGroundWeapon(v replay.GroundWeapon) replaydoc.GroundWeapon {
 		Dropper: v.Dropper,
 		End:     v.End,
 		Picker:  v.Picker,
+		Ammo:    toGroundWeaponAmmo(v.Ammo),
 	}
+}
+
+// toGroundWeaponAmmo garde l'ABSENCE absente : un objet sans munitions lues ne se traduit pas
+// par un couple de zeros, qui se lirait « arme vide ».
+func toGroundWeaponAmmo(v *replay.GroundWeaponAmmo) *replaydoc.GroundWeaponAmmo {
+	if v == nil {
+		return nil
+	}
+	return &replaydoc.GroundWeaponAmmo{Mag: v.Mag, Res: v.Res}
 }

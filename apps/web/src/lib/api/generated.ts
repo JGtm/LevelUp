@@ -7003,6 +7003,7 @@ export interface components {
             unpublished: number;
         };
         GroundWeapon: {
+            ammo?: components["schemas"]["GroundWeaponAmmo"];
             /** Format: int64 */
             dropper: number;
             end: string;
@@ -7022,6 +7023,12 @@ export interface components {
             y: number;
             /** Format: float */
             z?: number;
+        };
+        GroundWeaponAmmo: {
+            /** Format: int64 */
+            mag: number;
+            /** Format: int64 */
+            res: number;
         };
         GroundWeaponCoverage: {
             /** Format: int64 */
@@ -7066,6 +7073,8 @@ export interface components {
             unknown: number;
         };
         GroundWeaponItemsCoverage: {
+            /** Format: int64 */
+            ammoRead: number;
             /** Format: int64 */
             atRest: number;
             /** Format: int64 */
