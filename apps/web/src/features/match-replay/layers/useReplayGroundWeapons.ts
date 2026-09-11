@@ -66,10 +66,25 @@ export interface GroundWeaponHover {
   /** « reprise par Y » (ou « ... non nommé ») ; `null` tant qu'aucun ramassage n'est mesuré. */
   pickupLine: string | null
   /**
-   * « ≈ N munitions au chargeur, lues X s avant le lâcher » — ou `null`, qui est le cas le plus
-   * fréquent (arme `spawned`, lecture absente, arme hors du relevé, arme à jauge, lecture trop
-   * vieille). LA DATATION EST DANS LA LIGNE et n'en sort jamais : le chiffre n'est PAS celui du
-   * lâcher (lot 6.6 — les munitions ne sont pas sur l'objet, cf. `groundWeaponAmmo.ts`).
+   * Les munitions de l'arme au sol, déjà composées — ou `null`, qui reste le cas le plus
+   * fréquent (arme `spawned` sans lecture sur l'objet, lâcheur non mesuré, arme hors du relevé,
+   * arme à jauge, lecture trop vieille).
+   *
+   * DEUX NATURES DE LECTURE, ET LA LIGNE DIT LAQUELLE (`groundWeaponAmmo.ts`) :
+   *
+   * - EXACTE (`kind: 'exact'`, lot 6.10) — le chargeur et la réserve lus SUR L'OBJET, dans son
+   *   record de création, à l'instant même du lâcher. Elle s'affiche SANS « ≈ » et SANS âge :
+   *   il n'y a rien à dater, et l'orner d'une approximation ferait passer une mesure pour une
+   *   estimation.
+   * - DATÉE (`kind: 'dated'`, lot 6.6) — la dernière lecture d'inventaire du LÂCHEUR, prise aux
+   *   images-clés, en retard de 9,0 s en médiane. Elle ne s'affiche JAMAIS sans son « ≈ » ni
+   *   sans son âge : le chiffre n'est pas celui du lâcher, et la fenêtre d'écart est exactement
+   *   celle pendant laquelle le porteur a tiré.
+   *
+   * LES TROIS STRINGS PORTENT CETTE FRONTIÈRE et vivent ensemble : `groundWeaponAmmoExactFmt`
+   * d'un côté, `groundWeaponAmmoFmt` / `groundWeaponAmmoResFmt` de l'autre (`i18nContract.ts`).
+   * `groundWeaponAmmoLine` choisit sur la NATURE de la lecture, jamais sur le goût de
+   * l'appelant.
    */
   ammoLine: string | null
 }

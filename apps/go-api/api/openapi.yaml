@@ -14537,7 +14537,6 @@ components:
         - endPickup
         - endSeen
         - endOpen
-        - ammoRead
       type: object
     Group:
       additionalProperties: false

@@ -176,7 +176,14 @@ type flagCarryRaw struct {
 	// homed dit que la fin RENVOIE le drapeau a sa base sans capture : un retour credite ou une
 	// rentree de l objet a date la fin du portage (flag_carries_home.go). L etat publie apres la
 	// fin est alors `home`, exactement comme apres une capture — le drapeau n est PAS au sol.
-	homed      bool
+	//
+	// IL SE DEMENT : un fermoir plus precoce le remet a faux (cf. [flagCloseAt]). Avant la revue
+	// 6.R il ne s ecrivait qu une fois, et un lacher date APRES coup laissait un drapeau publie
+	// a sa base pendant qu il gisait au sol.
+	homed bool
+	// closedBy nomme LE fermoir en vigueur — celui qui a pose `t1`. Il est la source UNIQUE des
+	// compteurs `closedBy*` de la couverture : un portage ne peut donc en peupler qu un seul.
+	closedBy   flagCloser
 	flagIndex  int
 	confirmed  bool
 	observable bool
@@ -222,16 +229,21 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	}
 	logFlagOpeningsWithoutBridge(sansPont, len(openings))
 	raws := boundFlagCarries(named, scan.Events, ctx)
-	// LE PASSAGE DE MAIN EN MAIN SE FERME ICI, AVANT TOUTE GEOMETRIE : le drapeau est nomme par
+	// LES QUATRE CHAINES DE FERMETURE S'APPLIQUENT EN SUITE, ET LA PLUS PRECOCE GAGNE — chacune
+	// EFFACANT l'etat de fin de celle qu'elle remplace (cf. [flagCloseAt], flag_carries_close.go).
+	// Les compteurs `closedBy*` ne s'incrementent donc PAS ici : ils se derivent du fermoir en
+	// vigueur, une fois toutes les chaines passees (`tallyFlagCarries`).
+	//
+	// LE PASSAGE DE MAIN EN MAIN SE FERME AVANT TOUTE GEOMETRIE : le drapeau est nomme par
 	// l'EQUIPE du preneur (regle du mode), pas par sa position (cf. flag_carries_handoff.go).
-	cov.ClosedByHandoff, cov.CarrierTeamUnknown = closeByHandoff(raws, named, scan)
+	cov.CarrierTeamUnknown = closeByHandoff(raws, named, scan)
 	// LE DRAPEAU RENTRE CHEZ LUI FERME AUSSI, et par les deux chaines qui le datent — le retour
 	// credite et la rentree de l'objet (cf. flag_carries_home.go).
-	cov.ClosedByReturn, cov.ClosedByHome = closeByHomecoming(raws, scan, ctx)
+	closeByHomecoming(raws, scan, ctx)
 	raws, cov.AmbiguousCarrierKills = closeByCarrierKills(raws, scan.Events, scan.Identity)
 	// LE LACHER VOLONTAIRE SE FERME ICI, ET AVANT LES POSITIONS : c'est lui qui deplace `t1`,
 	// donc le point de lacher que la ligne suivante ira lire sur la piste du porteur.
-	raws, cov.ClosedByObject = closeByFreeLives(raws, ctx, scan)
+	raws = closeByFreeLives(raws, ctx, scan)
 	raws = attachFlagCarryPositions(raws, ctx, cov)
 	// ... et le point de lacher se corrige APRES, sur la piste LIBRE : le porteur meurt rarement
 	// la ou l'objet se pose. L'attribution du drapeau qui suit s'en sert.
@@ -290,19 +302,19 @@ func boundFlagCarries(ops []flagOpening, evs []objectiveevents.NamedEvent, ctx f
 	end := flagMatchEnd(evs, ctx)
 	out := make([]flagCarryRaw, 0, len(ops))
 	for i, o := range ops {
-		t1, captured, closed := end, false, false
+		t1, captured, by := end, false, flagCloserNone
 		if c, ok := firstAfter(captures[o.slot], o.t0); ok && c < t1 {
-			t1, captured, closed = c, true, true
+			t1, captured, by = c, true, flagCloserBound
 		}
 		if d, ok := firstAfter(deaths[o.xuid], o.t0); ok && d < t1 {
-			t1, captured, closed = d, false, true
+			t1, captured, by = d, false, flagCloserBound
 		}
 		if n, ok := next[i]; ok && n < t1 {
-			t1, captured, closed = n, false, true
+			t1, captured, by = n, false, flagCloserBound
 		}
 		out = append(out, flagCarryRaw{
 			xuid: o.xuid, t0: o.t0, t1: t1, steal: o.steal,
-			captured: captured, closed: closed, flagIndex: -1,
+			captured: captured, closed: by != flagCloserNone, closedBy: by, flagIndex: -1,
 		})
 	}
 	return out
@@ -347,7 +359,7 @@ func closeByCarrierKills(raws []flagCarryRaw, evs []objectiveevents.NamedEvent,
 		case several:
 			ambiguous++
 		case open >= 0:
-			raws[open].t1, raws[open].captured = at, false
+			flagCloseAt(&raws[open], at, flagCloserCarrierKill)
 		}
 	}
 	return raws, ambiguous

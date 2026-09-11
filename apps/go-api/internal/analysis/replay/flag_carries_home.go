@@ -98,15 +98,16 @@ func flagReturns(scan FlagCarryScan) []flagHomecoming {
 }
 
 // closeByHomecoming ferme chaque portage au PREMIER instant ou SON drapeau est rentre chez lui.
-// Rend les deux comptes, PAR CHAINE — le retour credite et la rentree de l'objet — parce que
+// Les DEUX CHAINES restent distinguees — le retour credite et la rentree de l'objet — parce que
 // leur provenance n'a pas la meme force : l'un est un fait credite a un joueur, l'autre une
-// lecture de l'objet.
-func closeByHomecoming(raws []flagCarryRaw, scan FlagCarryScan,
-	ctx flagCarryCtx) (byReturn, byObject int) {
+// lecture de l'objet. Le fermoir retenu voyage sur le portage ([flagCarryRaw.closedBy]) et c'est
+// de lui que la couverture tire ses deux comptes : un portage qu'un fermoir plus precoce reprend
+// ensuite cesse de peupler celui-ci, au lieu de rester compte dans les deux.
+func closeByHomecoming(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx) {
 	retours := flagReturns(scan)
 	rentrees := flagObjectHomecomings(scan, ctx)
 	if len(retours) == 0 && len(rentrees) == 0 {
-		return 0, 0
+		return
 	}
 	drapeaux := flagIndexByTeam(raws, scan)
 	for i := range raws {
@@ -118,14 +119,11 @@ func closeByHomecoming(raws []flagCarryRaw, scan FlagCarryScan,
 		atO, okO := flagFirstHomeInside(rentrees, f, raws[i], raws, drapeaux)
 		switch {
 		case okR && (!okO || atR <= atO):
-			raws[i].t1, raws[i].closed, raws[i].captured, raws[i].homed = atR, true, false, true
-			byReturn++
+			flagCloseAt(&raws[i], atR, flagCloserReturn)
 		case okO:
-			raws[i].t1, raws[i].closed, raws[i].captured, raws[i].homed = atO, true, false, true
-			byObject++
+			flagCloseAt(&raws[i], atO, flagCloserHome)
 		}
 	}
-	return byReturn, byObject
 }
 
 // flagFirstHomeInside rend le PREMIER instant, strictement interieur au portage, ou le drapeau
