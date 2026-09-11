@@ -130,6 +130,12 @@ type EquipmentCreation struct {
 	// DefaultStateBits est le nombre de bits qu'a consommés consumeDefaultStateTI37 sur CE
 	// record. Publié parce qu'un déserialiseur mal porté se voit à une largeur qui s'éparpille.
 	DefaultStateBits int
+	// HasAmmo / Ammo : les MUNITIONS de l'objet à sa naissance, lues dans le composant i20
+	// `weapon-ammo-component` du MÊME record (arme au sol uniquement — cf. ground_weapon_ammo.go,
+	// qui porte la mesure et la RÉSERVE DE LECTURE qui borne `HasAmmo`). Faux partout ailleurs :
+	// aucun autre archétype de cette marche ne demande la lecture.
+	HasAmmo bool
+	Ammo    GroundWeaponAmmo
 	// AfterBit est la position du premier bit après le composant i0 (traçabilité du balayage).
 	AfterBit int
 }
@@ -157,6 +163,11 @@ type EquipmentCreationStats struct {
 	NoI0 int
 	// WithRef / WithID : records acceptés dont la porte a transmis la valeur du champ.
 	WithRef, WithID int
+	// WithAmmo : records acceptés dont les MUNITIONS ont pu être lues (composant i20 au masque
+	// ET marche prouvée bit-exacte — cf. ground_weapon_ammo.go). L'écart avec `Accepted` n'est
+	// pas une anomalie : il MESURE la réserve de lecture, et c'est lui qui doit tomber le jour
+	// où le portage d'i9 sera corrigé.
+	WithAmmo int
 }
 
 // ScanFilmEquipmentCreations décode les records de création des objets d'équipement du film de
@@ -287,6 +298,12 @@ type equipCreationWalk struct {
 	// posBits est la largeur du composant i0, pour avancer le curseur après un record accepté.
 	// Zéro vaut projPosBits() (chemin objet du monde) ; `ti=40` passe lay.TotalBits().
 	posBits int
+	// ammoArch, non nil, demande la lecture des MUNITIONS du record (composant i20) en rejouant
+	// la boucle de composants de production sur l'archétype donné. SEULE l'arme au sol la
+	// demande : c'est le seul archétype de cette marche qui porte `weapon-ammo-component`, et le
+	// seul dont la sémantique des champs soit prouvée (ground_weapon_ammo.go). La lecture se
+	// fait avec son PROPRE curseur : elle ne change aucun bit du chemin existant.
+	ammoArch *Archetype
 }
 
 // archetype et defaultState rendent les réglages effectifs de la marche (défauts `ti=37`).
@@ -348,6 +365,9 @@ func (w equipCreationWalk) scanPayload(
 		}
 		if cre.HasID {
 			st.WithID++
+		}
+		if cre.HasAmmo {
+			st.WithAmmo++
 		}
 		out = append(out, cre)
 		p = cre.AfterBit - 1 // un record accepté n'est pas re-balayé
@@ -427,10 +447,14 @@ func (w equipCreationWalk) readCreation(
 		st.MaskBad++
 		return cre, false
 	}
-	v, ok := w.decodePos(pay, br.BitPos())
+	compStart := br.BitPos()
+	v, ok := w.decodePos(pay, compStart)
 	if !ok {
 		st.PosBad++
 		return cre, false
+	}
+	if w.ammoArch != nil {
+		cre.Ammo, cre.HasAmmo = readGroundWeaponAmmo(pay, compStart, idx, *w.ammoArch)
 	}
 	cre.HasRef, cre.Ref = w.cur.present[EquipCreationRef], uint32(w.cur.val[EquipCreationRef])
 	cre.HasID, cre.AbilityID = w.cur.present[EquipCreationAbilityID], uint32(w.cur.val[EquipCreationAbilityID])
