@@ -1,3 +1,69 @@
+## [2026-09-11] Lot 6.13 — la ZONE AVEUGLE des socles : `b8a44fe8` 1,234 -> 1,037, parc CTF 1,066 -> 1,028 — Complete (worktree LevelUp-wt-couverture-objectifs)
+
+**Le fait de depart, et il etait faux.** Le lot 6.11 avait ferme son gate a `[!]` en nommant un
+residu : `b8a44fe8` portait 94 s des 141 s d'exces restant, et le rapport concluait que « les trois
+chaines de datation sont muettes » sur un lacher suivi d'une reprise au sol par le meme joueur. La
+mesure de ce lot **REFUTE cette lecture**. Le canal objet n'est pas muet sur ce film : il y replique
+74 vies libres et ferme deja 49 portages. Et le joueur ne reprend pas au sol pendant 58 s — il LACHE
+a **279 ms** de sa prise, et la chaine qui devait le dater **a refuse sa vie libre**.
+
+**Decision technique principale — la cause, nommee.** `flagSpawnAt`
+(`internal/analysis/replay/flag_objects.go`) tranchait « cette naissance est-elle un drapeau qui
+RENTRE ? » avec le rayon du **LACHER** (`originDropMaxDist`, 1,5 m). Deux questions sans rapport :
+un lacher tombe aux pieds du porteur (0,63 m de mediane mesuree), une rentree est une RE-CREATION AU
+POINT DU CATALOGUE. Prendre l'un pour l'autre faisait de chaque socle un **disque aveugle de 1,5 m**
+ou plus aucun lacher ne se datait — or lacher le drapeau adverse sur son propre point de livraison,
+en attendant que son drapeau a soi revienne, est un geste ORDINAIRE du mode, et c'est precisement la
+que le porteur se tient. Le temoin tient en deux centimetres : le MEME joueur lache deux fois au
+MEME endroit de sa base, a 1,233 m et 1,513 m du support ; le second fermait son portage a 0,4 s, le
+premier laissait courir **58,1 s** de portage fantome.
+
+**Le seuil ne se regle pas, il se constate.** Sur les 626 vies libres des 12 films de CTF du parc,
+les **145 rentrees** naissent a **0,008 m au plus** du point du catalogue (141 d'entre elles ne
+portent qu'UN echantillon : le moteur le pose et il ne bouge plus), les **34 lachers a portee d'un
+support** a **0,324 m au moins** (16 a 157 echantillons : l'objet roule). Rien entre les deux, un
+facteur 40. `flagHomeExactDist = 0,10 m` s'y tient, et n'importe quelle valeur de l'intervalle rend
+le meme classement — meme regime que `originDropWindowUS`. Le test etait par ailleurs ecrit DEUX
+fois (`flagFreeNearSpawn` et `flagSpawnAt`) : c'est ce qui l'a laisse diverger, et le correctif le
+ramene a **un seul predicat**.
+
+**Classe, pas cas unique — et ce n'est ni une carte ni une variante.** La zone aveugle frappe
+**10 films sur 12 et 5 cartes** (Forest, Illusion, Critical Dewpoint, Origin, Absolution), toutes AU
+catalogue. `a0c36016` est sur la MEME carte que `b8a44fe8`, avec les MEMES socles aux MEMES
+coordonnees, et vaut 1,026 : c'est la SITUATION DE JEU qui varie, pas le code. `b8a44fe8` en est le
+cas extreme parce que c'est un siege — 0-1 en 754 s, une seule capture, l'equipe 0 campant son point
+de livraison le drapeau adverse a la main : ses **sept** naissances aveuglees sont toutes au MEME
+socle.
+
+**Resultats observes.** `b8a44fe8` **1,234 -> 1,037** (gate <= 1,05 tenu) ; les 12 films CTF
+**1,066 -> 1,028** (gate <= 1,03 tenu) ; somme des ecarts absolus par joueur **537,3 s -> 366,9 s**
+(-31,7 %) ; joueurs hors de +- 1,5 s **36 -> 32** ; aucun nouveau joueur sous 0,8 de son oracle.
+**Bonus de la meme cause, en sens INVERSE** : le joueur qui etait **39,4 s SOUS** son oracle revient
+a **+3,5 s** — ses portages etaient TRONQUES par de FAUSSES rentrees (des lachers nes a 1,0-1,5 m
+d'un support, publies `home` alors que le drapeau gisait au sol). Un seul seuil, deux erreurs de
+signe oppose. **57 des 69 films sont identiques a l'octet** ; les 12 qui changent sont exactement
+les 12 CTF ; **0 action modifiee**, 0 statistique publiee modifiee, aucune montee de
+`SchemaVersion`, web non touche. Protocole : deux parcs de 69 films cuits HORS LIGNE, aucune base
+ouverte (le parc etait en recuisson) ; le parc AVANT reproduit la reference 6.11 champ pour champ
+sur les 69 films.
+
+**Ce qui reste `[!]`, avec sa cause.** `2533274823110022` reste a +7,8 s, et ce n'est PAS cette
+cause : c'est le **SEUL span `carried_open` du parc** (18,7 s, deja nomme par l'audit du 2026-09-10
+§3.4). Il prend le drapeau a 742,0 s d'un match de 754 s et le match FINIT dans sa main ;
+`flagMatchEnd` borne alors a la fin de l'AXE du rejeu, pas de la partie jouable. Chemin exact : faire
+descendre `playable_duration_seconds` (deja aux faits de match) jusqu'a l'entree du calque — un champ
+neuf, hors du perimetre d'un lot dont la cause est le rayon des socles. Second `[!]` : « aucun joueur
+au-dessus a 0,5 s pres » n'est atteint par AUCUN film du parc, ni avant ni apres, y compris a 1,013 —
+c'est le grain de la demi-image multiplie par le nombre de periodes, et le lever demanderait de
+changer la DEFINITION du portage (decision produit, audit §3.4).
+
+**Conclusion / prochaine etape.** Gate du lot tenu. 12 films a recuire (les 12 CTF). Decouvertes
+consignees et non traitees : le socle CENTRAL d'Illusion etiquete equipe 0 au catalogue (D1 de 6.11,
+dont ce lot mesure le second effet — il creait la plus grande zone aveugle du parc, en plein milieu
+de carte) ; `cde26226` garde 1,040 pour une AUTRE cause ; et les 258 images muettes de `b8a44fe8`
+sont **rigoureusement inchangees** par le correctif, ce qui refute l'idee qu'elles suivaient les
+portages fantomes. Rapport : `.ai/V7.5/RAPPORT_FILM_B8A44FE8_2026-09-11.md`.
+
 ## [2026-09-11] Lot 6.10 bis — i9 desassemble, la reserve des munitions levee, i14 mesure — Complete (worktree LevelUp-wt-munitions-objet)
 
 **Decision technique principale.** Les deux items `[!]` du lot 6.10 ne se traitaient pas par la
