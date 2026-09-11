@@ -385,51 +385,123 @@ func sortedSlotKeys(table map[statSlotKey]statSlot) []statSlotKey {
 	return out
 }
 
-// incrementTimes rend un instant par UNITE gagnee par le compteur : c'est la conversion
-// d'un compteur en evenements. `key` ne sert qu'au journal des bornes ; `b` porte le solde
-// d'evenements de la passe et n'est jamais nil (cf. [eventBudget]).
+// boundedStep est UN point d'une suite cumulee, avec le deroulage qu'il demande et le verdict
+// de la borne par pas. C'est l'unite de la DERIVATION UNIQUE des increments filtres.
+type boundedStep struct {
+	// Point est l'emission telle qu'elle sort de [cumulateRounds] / [longestRun].
+	Point ScorePoint
+	// Unroll est le deroulage BRUT demande par ce point (`p.Value - prev`). ZERO quand le
+	// point est un palier : il ne fait pas avancer le compteur.
+	Unroll int64
+	// Kept est ce que la borne RETIENT : `Unroll`, ou zero quand elle le refuse.
+	Kept int64
+}
+
+// rejected dit que ce point demandait des unites et que la borne les a toutes refusees.
+func (s boundedStep) rejected() bool { return s.Unroll > 0 && s.Kept == 0 }
+
+// boundSteps est LA SEULE LECTURE DE [maxUnrollPerStep] DU DEPOT — garde-rail :
+// `named_bornes_test.go`. C'est le correctif 6.R (2026-09-11).
 //
-// La premiere valeur observee est comptee depuis zero — un compteur de recompense part de
-// zero au coup d'envoi. Si le film ne montre le slot qu'apres coup, les unites deja
-// acquises sont datees de cette premiere emission, ce qui MAJORE leur instant.
+// # POURQUOI UNE SEULE
 //
-// # Le garde-fou, et il a ete paye
+// Le meme compteur etait derive DEUX fois : la CLE d'appariement le lisait par
+// [incrementTimes] (borne appliquee), la SERIE publiee par [SeriesTotal] / [SeriesByRound]
+// (borne absente). Sur `c0a82e88` le slot 12 deroulait 60 assistances d'un coup la ou sa
+// feuille en porte zero : la cle voyait 0 et nommait le joueur, la courbe de score servait 60
+// a l'ecran. Une seule derivation supprime la classe entiere de ces ecarts — les deux lecteurs
+// ne peuvent plus diverger puisqu'ils lisent le meme verdict.
+//
+// # CE QU'ELLE FAIT, MOT POUR MOT COMME AVANT
 //
 // `prev` ne redescend JAMAIS, sinon la meme unite se compte deux fois apres un creux. Sans
 // cela, une seule emission aberrante a -115 faisait remonter le compteur de 0 a 1 en **116**
 // evenements (mesure sur `1bc77d2e`, slot 24, comp 0 A). Les emissions negatives elles-memes
 // sont ecartees plus tot, par [seriesBySlot].
 //
+// Un deroulage au-dela de [maxUnrollPerStep] est REJETE : le point ne rend rien et `prev`
+// avance quand meme a sa valeur — sinon le point SUIVANT rejouerait le meme ecart geant, et
+// la borne n'aurait fait que deplacer l'explosion d'un cran.
+//
+// TOUS les points d'entree ressortent, paliers compris : c'est ce qui permet a
+// [boundedSeries] de rendre une suite de MEME cardinalite que celle qu'elle assainit, donc de
+// ne jamais faire disparaitre un compteur reste a zero.
+func boundSteps(pts []ScorePoint) []boundedStep {
+	out := make([]boundedStep, 0, len(pts))
+	prev := int64(0)
+	for _, p := range pts {
+		s := boundedStep{Point: p}
+		if n := p.Value - prev; n > 0 { // >= 0 : les negatives sont ecartees par [seriesBySlot]
+			prev = p.Value
+			s.Unroll = n
+			if n <= maxUnrollPerStep {
+				s.Kept = n
+			}
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// boundedSeries rend la suite cumulee des unites RETENUES : memes instants, meme cardinalite,
+// valeurs recalculees comme le cumul des pas acceptes par [boundSteps].
+//
+// C'est la forme SERIE de la derivation unique — [incrementTimes] en est la forme EVENEMENTS.
+// Un pas rejete ne laisse aucune trace dans la valeur publiee : la serie finit donc exactement
+// sur le compte que la cle d'appariement a lu.
+//
+// LE REJET N'EST PAS JOURNALISE ICI, et ce n'est pas une erreur avalee : la meme table
+// d'enregistrements passe par [SlotIdentityFrom] a chaque construction d'artefact, et sa passe
+// `slot_identity` journalise deja chaque deroulage refuse sur ces trois memes emplacements
+// (cf. [eventBudget.rejeter]). Une seconde ligne par serie ne dirait rien de neuf et noierait
+// la premiere.
+func boundedSeries(pts []ScorePoint) []ScorePoint {
+	if len(pts) == 0 {
+		return nil
+	}
+	out := make([]ScorePoint, 0, len(pts))
+	var total int64
+	for _, s := range boundSteps(pts) {
+		total += s.Kept
+		out = append(out, ScorePoint{TimeMS: s.Point.TimeMS, Slot: s.Point.Slot, Value: total})
+	}
+	return out
+}
+
+// incrementTimes rend un instant par UNITE gagnee par le compteur : c'est la conversion
+// d'un compteur en evenements, et la forme EVENEMENTS de la derivation unique de
+// [boundSteps]. `key` ne sert qu'au journal des bornes ; `b` porte le solde d'evenements de
+// la passe et n'est jamais nil (cf. [eventBudget]).
+//
+// La premiere valeur observee est comptee depuis zero — un compteur de recompense part de
+// zero au coup d'envoi. Si le film ne montre le slot qu'apres coup, les unites deja
+// acquises sont datees de cette premiere emission, ce qui MAJORE leur instant.
+//
 // # Les deux bornes (lot 4b) — cf. l'en-tete des constantes de ce fichier
 //
-// Un deroulage au-dela de [maxUnrollPerStep] est REJETE : le point n'emet rien et `prev`
-// avance quand meme a sa valeur — sinon le point SUIVANT rejouerait le meme ecart geant, et
-// la borne n'aurait fait que deplacer l'explosion d'un cran. Le solde de la passe est
-// consomme au fur et a mesure ; quand un deroulage n'y tient plus, la passe est TRONQUEE et
-// n'emet plus rien, ici comme dans ses appels suivants.
+// La borne par PAS vit dans [boundSteps] ; celle du TOTAL vit ici, parce qu'elle ne borne que
+// ce qui est materialise en memoire : le solde de la passe est consomme au fur et a mesure, et
+// quand un deroulage n'y tient plus la passe est TRONQUEE et n'emet plus rien, ici comme dans
+// ses appels suivants.
 func incrementTimes(pts []ScorePoint, key statSlotKey, b *eventBudget) []int {
 	if b.tronque {
 		return nil
 	}
 	var out []int
-	prev := int64(0)
-	for _, p := range pts {
-		n := p.Value - prev // >= 0 : les valeurs negatives sont ecartees par [seriesBySlot]
-		if n <= 0 {
-			continue
-		}
-		if n > maxUnrollPerStep {
-			b.rejeter(key, p, n)
-			prev = p.Value
-			continue
-		}
-		if n > int64(b.reste) {
-			b.epuiser(key, p, n)
+	for _, s := range boundSteps(pts) {
+		switch {
+		case s.rejected():
+			b.rejeter(key, s.Point, s.Unroll)
+		case s.Kept == 0:
+			continue // palier : le compteur n'avance pas
+		case s.Kept > int64(b.reste):
+			b.epuiser(key, s.Point, s.Kept)
 			return out
-		}
-		b.reste -= int(n)
-		for ; prev < p.Value; prev++ {
-			out = append(out, p.TimeMS)
+		default:
+			b.reste -= int(s.Kept)
+			for i := int64(0); i < s.Kept; i++ {
+				out = append(out, s.Point.TimeMS)
+			}
 		}
 	}
 	return out
