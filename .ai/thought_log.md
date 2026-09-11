@@ -106328,3 +106328,54 @@ les tags etaient non publiables, contrairement au Gungoose qui n avait que l ico
 redemarrage, sans backfill — la traduction tag -> arme se fait a la lecture. Seule la citation
 « Artilleur de Scorpion » a besoin du recalcul des citations, deja inscrit dans la sequence de
 release Notion. Rien de neuf a y ajouter.
+
+## [2026-09-11] Lot A — badge admin « version de schéma » sur la page rejeu 2D
+
+**Statut** : Complété (A.1-A.3 ; A.4 laissé à la revue du pilote).
+
+**Décision technique principale** : la version COURANTE du producteur
+(`analysis/replay.SchemaVersion`) voyage en EN-TÊTE HTTP `X-Replay-Latest-Schema-Version`,
+jamais dans le corps JSON. Deux garde-fous documentés l'imposaient : `domain/replaydoc/doc.go`
+interdit explicitement tout import d'`analysis/replay` dans ce paquet et tout numéro de
+version dans le document servi (leçon déjà tirée le 2026-09-05 d'un `ContractVersion` mort) ;
+et `replayview/parity_test.go` (`TestChaqueChampServiAUneSource`) exige qu'un champ du
+document servi ait une SOURCE dans le document stocké — la version courante du producteur
+n'en a pas, elle décrit le binaire qui répond, pas l'artefact lu. Un embedding anonyme de
+`replaydoc.ReplayDocument` dans un type wrapper (option envisagée) aurait en plus cassé le
+nommage du schéma OpenAPI `ReplayDocument` (huma flatten les champs anonymes sans tag JSON —
+vérifié sur pièces dans `schema.go` de la dépendance, `getFields`, ligne 723) : la seule
+référence à ce schéma nommé dans tout le module est cet endpoint, l'embedding l'aurait donc
+fait disparaître du contrat, faisant échouer `TestReplayDocumentFieldCountIsFrozen`.
+L'en-tête laisse le corps et son schéma strictement intacts.
+
+**Ce qui a été fait** :
+- Go (`api/handlers/replay.go`) : `replayOutput.LatestSchemaVersion int
+  \`header:"X-Replay-Latest-Schema-Version"\`` assemblé dans `handleGetReplay` depuis
+  `replay.SchemaVersion`. Test rouge→vert `TestReplayHandler_LatestSchemaVersionHeader`
+  (artefact à la version 42, en-tête attendu 51, corps toujours 42 — les deux nombres ne se
+  confondent jamais). Contrat régénéré (`make openapi-gen` puis `make generate-types`) :
+  diff minimal (5 lignes openapi.yaml, 1 ligne generated.ts), `TestOpenAPIYAMLIsUpToDate`
+  vert. Commit `40bf29a5c`.
+- Web : `api.getWithHeader()` ajouté au client (`lib/api/client.ts`, même famille que
+  `getBlob`) pour lire l'en-tête sans changer la forme du corps. `useMatchReplay`
+  (`lib/replay/queries.ts`) l'attache au document normalisé sous `latestSchemaVersion`
+  (champ optionnel ajouté à `ReplayDocumentReady`, jamais au contrat généré). Logique pure
+  `replaySchemaStatusLogic.ts` (3 états : `unknown`/`upToDate`/`stale`, testée). Composant
+  `ReplaySchemaBadge.tsx` (features/match-replay/ui/) : rien pour un non-admin (gate interne
+  sur `isAdmin`, prop descendue par la route comme `locale`/`theme`), FR/EN via
+  `i18n.ts`/`i18nContract.ts`, tokens `success`/`warning` (`tokenCssVar`) + classes neutres
+  `text-muted-foreground`/`border-border` déjà en usage dans la feature pour l'état
+  `unknown`. Posé dans le `h1` de `replay.tsx`, à côté du titre. Commit `097a764ca`.
+
+**Résultats observés** : Go — `go test ./...` (module complet) et `go vet ./...` verts, 0
+échec. `TestOpenAPIYAMLIsUpToDate` vert. Web — `npm run typecheck` (cache `.tsbuildinfo`
+purgé avant, pas de faux vert incrémental) et `npm run lint` (0 erreur, warnings pré-existants
+sans rapport) verts ; `vitest run src/features/match-replay` : 2720 tests passés, 3 skip
+(inchangé) ; `vitest run src/lib/replay src/lib/api` : 295 tests passés.
+
+**Découvertes non traitées (notées, pas corrigées — hors périmètre du lot)** : néant côté
+code touché ; le seul point laissé de côté est A.4 (revue sur pièces), explicitement réservé
+au pilote par le plan.
+
+**Prochaine étape** : revue A.4 par le pilote, puis lot suivant du plan
+(`.ai/PLAN_FORK_ET_RELEASE_2026-09-11.md`).
