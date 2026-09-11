@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -146,6 +147,42 @@ func TestReplayHandler_OK(t *testing.T) {
 	}
 	if got.MatchID != "000d5950" || len(got.Tracks) != 1 || got.Tracks[0].Slot != 665 {
 		t.Errorf("document inattendu: %+v", got)
+	}
+}
+
+// TestReplayHandler_LatestSchemaVersionHeader — la réponse porte la version COURANTE du
+// producteur (`analysis/replay.SchemaVersion`) en en-tête, DISTINCTE du `schemaVersion` du
+// corps (celui de l'ARTEFACT LU). Un artefact cuit sous une version ancienne (42 ici) doit
+// laisser les deux nombres diverger : c'est exactement ce que le badge admin lit pour dire
+// « à jour » ou « à recuire » (lot A, 2026-09-11).
+func TestReplayHandler_LatestSchemaVersionHeader(t *testing.T) {
+	const artefactAncien = 42
+	mock := &mockReplayService{doc: replaydoc.ReplayDocument{
+		SchemaVersion: artefactAncien, MatchID: "000d5950", TitleSlug: "halo_infinite",
+	}}
+	factory := func(_ context.Context, slug string) (port.ReplayService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return mock, nil
+	}
+	w := doReplayGet(newReplayRouter(factory), testPlayerSlug, "000d5950")
+	if w.Code != http.StatusOK {
+		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	got := w.Header().Get("X-Replay-Latest-Schema-Version")
+	want := strconv.Itoa(replay.SchemaVersion)
+	if got != want {
+		t.Errorf("X-Replay-Latest-Schema-Version = %q, attendu %q (analysis/replay.SchemaVersion)",
+			got, want)
+	}
+	var body replaydoc.ReplayDocument
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("réponse illisible: %v", err)
+	}
+	if body.SchemaVersion != artefactAncien {
+		t.Errorf("schemaVersion du corps = %d, attendu %d (version de l'ARTEFACT LU, "+
+			"jamais remplacée par la version courante)", body.SchemaVersion, artefactAncien)
 	}
 }
 
