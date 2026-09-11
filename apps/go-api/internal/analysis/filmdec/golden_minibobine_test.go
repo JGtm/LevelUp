@@ -122,9 +122,31 @@ package filmdec
 // `equipment-deployed` est lu. Aucune valeur pre-existante ne change — les cinq autres champs
 // sont identiques au compte pres.
 //
-// LES DEUX FAMILLES DE CREATION NE BOUGENT PAS (`groundWeaponCreations`, `equipmentCreations`) :
-// leur marche consomme i9 par le BLOC MPP du default-state (`consumeMultiplayerPropertiesBlock`),
-// qui est un lecteur distinct et n'a pas change.
+// LES DEUX FAMILLES DE CREATION N'ONT PAS BOUGE A CE COMMIT-LA (`groundWeaponCreations`,
+// `equipmentCreations`) : leur marche consomme i9 par le BLOC MPP du default-state
+// (`consumeMultiplayerPropertiesBlock`), qui est un lecteur distinct et n'a pas change.
+//
+// # SECONDE REGENERATION DU 2026-09-11 (lot 6.10 bis) — `groundWeaponCreations`, LA RESERVE LEVEE
+//
+// La RESERVE DE LECTURE des munitions a ete levee dans la foulee (ground_weapon_ammo.go) : la
+// marche traverse desormais i9 au lieu de refuser les records qui le portent. Sur cette bobine :
+//
+//	                                AVANT   APRES
+//	creations acceptees              28      28     (inchange)
+//	ancres reconnues                141     141     (inchange)
+//	masque portant i20               21      21     (inchange)
+//	masque portant i9                27      27     (inchange)
+//	munitions LUES (`HasAmmo`)        0      21
+//
+// PREUVE D'INVARIANCE SUR OCTETS REELS, mesuree des DEUX cotes (copie `git archive HEAD` d'un
+// cote, branche de l'autre, meme instrument jetable ; empreinte sha256 de TOUS les champs
+// PRE-EXISTANTS de chaque record — `HasAmmo`/`Ammo` exclus) :
+//
+//	groundWeaponCreations  n=28
+//	  sha256=4409c0381383427ae59f99e3cbce31001d0cbdf1c9f68d3378b353daf74a19f8   (identique)
+//
+// Slot, generation, horodatage, `MPPVal`, masque, `DefaultStateBits`, position et `AfterBit`
+// sont donc au bit pres les memes : seul le champ `Ammo`, qui etait vide, se remplit.
 //
 // # PAS DE SKIP
 //
