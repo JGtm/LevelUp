@@ -231,11 +231,17 @@ func TestFlagRetourRemetLeSolEtEnJeu(t *testing.T) {
 	}
 }
 
-// TestFlagOverlapsComptesParDrapeau — CONSTAT C3.
+// TestFlagOverlapsComptesParDrapeau — CONSTAT C3, et ce que le lot 6.11 y a change.
 //
 // Deux portages du MEME drapeau qui se recouvrent sont une incoherence : un drapeau n'a qu'un
 // porteur. Le compte portait sur « plus de deux portages, tous drapeaux confondus » et ratait
 // donc le cas nominal d'un CTF a deux drapeaux.
+//
+// LE TEST A DEUX MOITIES DEPUIS LE LOT 6.11, ET LA SECONDE EST NEUVE. Sans equipe lue, rien ne
+// nomme le drapeau avant la geometrie : le recouvrement subsiste, et le compte le dit — c'est le
+// constat C3, inchange. Avec les equipes, le recouvrement N'EXISTE PLUS : la prise du coequipier
+// FERME le portage precedent (`closeByHandoff`), et l'incoherence est desormais PREVENUE au lieu
+// d'etre seulement comptee.
 func TestFlagOverlapsComptesParDrapeau(t *testing.T) {
 	tracks := []Track{
 		flagTestTrack(12, "1", 0, 99, 2, 2),
@@ -250,13 +256,36 @@ func TestFlagOverlapsComptesParDrapeau(t *testing.T) {
 		},
 		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
 		Spawns:   flagInvariantSpawns(),
-		TeamOf:   map[string]int{"1": 0, "2": 0},
 	}
 
+	// CONSTAT C3 — equipes inconnues : la geometrie pose les deux portages sur le meme drapeau,
+	// le recouvrement subsiste et il se compte.
 	_, cov := buildFlagCarries(scan, flagTestCtx(tracks, deaths, 100))
 	if cov.Overlaps == 0 || cov.ClosedOverlaps == 0 {
 		t.Errorf("couverture %+v : deux portages du MEME drapeau se recouvrent — l'incoherence "+
 			"doit se compter, elle etait invisible tant que le seuil ignorait `flagIndex`", *cov)
+	}
+	if cov.CarrierTeamUnknown != 2 {
+		t.Errorf("carrierTeamUnknown %d, attendu 2 : sans equipe lue, la regle de passage se tait "+
+			"et le dit", cov.CarrierTeamUnknown)
+	}
+
+	// LOT 6.11 — equipes lues : les deux preneurs sont COEQUIPIERS, donc le drapeau est le meme,
+	// donc le second ferme le premier a 2 000 ms (frame 20).
+	scan.TeamOf = map[string]int{"1": 0, "2": 0}
+	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, deaths, 100))
+	if cov.ClosedByHandoff != 1 || cov.Overlaps != 0 || cov.ClosedOverlaps != 0 || !cov.Balanced() {
+		t.Fatalf("couverture %+v : la prise du coequipier devait FERMER le portage precedent "+
+			"et supprimer le recouvrement", *cov)
+	}
+	// Le drapeau passe de main en main SANS toucher le sol : le premier porteur s'arrete a la
+	// frame 19, le second prend a la frame 20, et aucun `dropped` ne s'intercale.
+	f := flagOfTeam(t, got, 1)
+	assertFlagStates(t, f, []string{FlagStateHome, FlagStateCarried, FlagStateCarried, FlagStateDropped})
+	assertPorteurs(t, f, []string{"1", "2"})
+	if f.Spans[1].T1 != 19 || f.Spans[2].T0 != 20 {
+		t.Errorf("spans %d..%d puis %d..%d : le passage devait tomber a la frame 20",
+			f.Spans[1].T0, f.Spans[1].T1, f.Spans[2].T0, f.Spans[2].T1)
 	}
 }
 

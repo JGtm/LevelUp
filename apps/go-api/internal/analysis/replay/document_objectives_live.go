@@ -305,6 +305,22 @@ type FlagCarriesCoverage struct {
 	// [FlagStateCarriedOpen], c'est-a-dire trop longs par construction. Chacun qui bascule est un
 	// drapeau qu'on cesse de dessiner dans une main qui ne le tient plus.
 	ClosedByObject int `json:"closedByObject"`
+	// ClosedByHandoff compte les portages qu'une prise d'un AUTRE joueur du MEME drapeau a
+	// fermes — le PASSAGE DE MAIN EN MAIN, que rien ne datait avant le lot 6.11.
+	//
+	// LE DRAPEAU EST NOMME PAR L'EQUIPE, PAS PAR LA GEOMETRIE (cf. flag_carries_handoff.go) : en
+	// CTF on ne porte jamais son propre drapeau, donc deux coequipiers portent le meme.
+	//
+	// `omitempty` : le compteur vaut zero sur tous les films qui ne sont pas du CTF, et sur les
+	// films de CTF ou le lacher est deja date par la vie libre de l'objet. L'ecrire sans lui
+	// changerait chaque octet de chaque artefact du parc pour un champ vide.
+	ClosedByHandoff int `json:"closedByHandoff,omitempty"`
+	// CarrierTeamUnknown compte les portages dont l'EQUIPE du porteur ne nomme aucun drapeau :
+	// table `TeamOf` vide (CLI hors ligne, ouvrier sans faits) ou carte a plus de deux socles.
+	// Les regles qui passent par l'equipe se taisent sur eux, et ce compteur est leur
+	// denominateur — sans lui, un calque qu'elles traversent en silence serait indistinguable
+	// d'un calque sans passage.
+	CarrierTeamUnknown int `json:"carrierTeamUnknown,omitempty"`
 	// DropsRepositioned compte les etats [FlagStateDropped] dont la position vient desormais de
 	// la piste LIBRE et non plus de la derniere position du porteur. L'ecart n'est pas
 	// cosmetique : un drapeau tombe rebondit, et le porteur meurt rarement la ou l'objet se pose.
