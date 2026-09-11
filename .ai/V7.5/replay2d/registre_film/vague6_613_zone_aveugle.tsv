@@ -1,0 +1,14 @@
+film	vies_libres	naissances_au_point	dmax_au_point_m	naissances_zone_aveugle	dmin_zone_aveugle_m	socles_concernes	portages_touches	secondes_fantomes
+16ea3668	37	12	0.005	1	1.258	1	0	0.0
+4ecdf3e7	27	5	0.004	0	0.000	-	0	0.0
+58864b3c	24	7	0.004	1	0.917	1	0	0.0
+7fce3219	98	18	0.006	2	0.744	1	0	0.0
+8bc6074f	63	12	0.004	3	0.338	0,1	0	0.0
+a0c36016	66	18	0.006	2	0.856	0,1	0	0.0
+b8a44fe8	74	13	0.006	7	0.614	1	6	194.7
+bc60b4d9	41	13	0.005	6	0.324	0,1	6	4.7
+bf5ced1b	13	4	0.005	3	0.572	1,2	2	2.3
+cde26226	90	15	0.005	5	0.527	0	1	70.1
+f8efc5ca	46	14	0.008	1	1.170	0	1	1.4
+fb1a1a72	47	14	0.004	3	0.627	0,1	2	4.0
+TOTAL	626	145	0.008	34	0.324	-	18	277.1

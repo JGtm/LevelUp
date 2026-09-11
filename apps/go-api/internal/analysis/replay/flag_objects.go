@@ -47,7 +47,7 @@ package replay
 // consomment pas la population que le controle refuse : elles ne se declenchent QUE sur les vies
 // nees AUX PIEDS D'UN PORTEUR — c'est-a-dire exactement la sous-population que le controle
 // VALIDE (la branche « porteur » de ses 75,6 %). Une vie nee a un socle est explicitement
-// ecartee (`flagFreeNearSpawn`), une vie nee ailleurs ne passe pas la distance au porteur.
+// ecartee (`flagFreeAtSpawn`), une vie nee ailleurs ne passe pas la distance au porteur.
 //
 //	le LACHER VOLONTAIRE SE DATE — un portage que rien ne fermait (`carried_open`, une borne
 //	  haute qui courait jusqu'a la fin de l'axe) se ferme a l'instant ou l'objet reapparait aux
@@ -229,24 +229,63 @@ func flagFreeSampleLess(a, b flagFreeSample) bool {
 // le drapeau que ce porteur vient de lacher.
 const flagFreeDropWindowMS = 1000
 
-// flagFreeNearSpawn dit si une vie libre nait A UN SOCLE.
+// flagHomeExactDist — la distance, en metres, sous laquelle la naissance d'un objet drapeau EST
+// le point du catalogue : le moteur a RE-CREE le drapeau a son support, il ne l'a pas fait
+// tomber la.
 //
-// POURQUOI CE REFUS EST LA CONDITION DE TOUT CE QUI SUIT (arbitrage du 2026-08-18). Les deux
-// corrections ci-dessous ne s'appliquent QU'AUX vies nees aux pieds d'un porteur — la seule
-// sous-population que le controle 3 valide (les « porteur » tenues). Une vie nee a la base n'est
-// pas un lacher : c'est un drapeau qui rentre, et un porteur tue juste devant le socle adverse
-// suffirait a la confondre avec le sien. On l'ecarte d'abord, on regarde le porteur ensuite.
+// # POURQUOI CE N'EST PAS `originDropMaxDist`, ET CE QUE LA CONFUSION COUTAIT (lot 6.13)
+//
+// Les deux rayons repondent a deux questions qui n'ont rien a voir :
+//
+//	`originDropMaxDist` (1,5 m)  « cet objet est-il tombe des mains de CE joueur ? » Un lacher
+//	                             tombe aux pieds du porteur — 0,63 m de mediane MESUREE
+//	                             (equipment_placements.go).
+//	`flagHomeExactDist`          « le moteur a-t-il re-cree ce drapeau a son support ? » Une
+//	                             rentree n'est pas une chute : l'objet reapparait AU POINT DU
+//	                             CATALOGUE, a la precision d'encodage pres.
+//
+// Prendre le premier pour le second fait d'un disque de 1,5 m autour de chaque support une ZONE
+// AVEUGLE : tout drapeau LACHE a portee d'un support y est lu comme un drapeau qui rentre, donc
+// ecarte de la seule chaine qui date un lacher volontaire. Or lacher le drapeau adverse sur son
+// propre point de livraison — en attendant que son drapeau a soi revienne — est un geste ORDINAIRE
+// du mode, et c'est precisement la ou le porteur se tient.
+//
+// # LES DEUX POPULATIONS SONT SEPAREES D'UN FACTEUR QUARANTE, ET C'EST MESURE
+//
+// Sur les **626 vies libres d'objet drapeau des 12 films de CTF du parc**, la distance de la
+// naissance au support le plus proche ne prend que deux valeurs de grandeur, et RIEN entre elles :
+//
+//	les RENTREES  145 naissances, **0,008 m au plus** — le moteur repose l'objet SUR le point du
+//	              catalogue, il n'en reste que le bruit d'encodage, et elles ne bougent plus ;
+//	les LACHERS   34 naissances a portee d'un support, **0,324 m au moins** — un joueur ne peut
+//	              pas se tenir DANS le support, et l'objet roule ensuite (16 a 157 echantillons).
+//
+// N'importe quelle valeur de l'intervalle ]0,008 ; 0,324[ rend le MEME classement sur tout le
+// parc : ce seuil ne se regle pas, il se constate — meme regime que `originDropWindowUS`. Un
+// decimetre s'y tient a douze fois au-dessus de la premiere population et trois fois au-dessous
+// de la seconde.
+//
+// LE TEMOIN DU DEFAUT, sur `b8a44fe8` : deux laches du MEME joueur au MEME endroit de sa base, a
+// 662 683 ms et 720 883 ms, nes a 1,233 m et 1,513 m du support. Le premier tombait dans la zone
+// aveugle et laissait courir 58,1 s de portage fantome ; le second, 0,013 m plus loin, fermait son
+// portage a 0,4 s. Deux centimetres separaient une mesure juste d'une mesure fausse.
+const flagHomeExactDist = 0.10
+
+// flagFreeAtSpawn dit si une vie libre nait AU POINT meme d'un socle — c'est-a-dire si elle est
+// un drapeau QUI RENTRE, et non un drapeau lache dans les parages.
+//
+// POURQUOI CE REFUS RESTE LA CONDITION DE TOUT CE QUI SUIT (arbitrage du 2026-08-18, seuil
+// corrige au lot 6.13). Les deux corrections ci-dessous ne s'appliquent QU'AUX vies nees aux
+// pieds d'un porteur — la seule sous-population que le controle 3 valide. Une vie nee AU SUPPORT
+// n'est pas un lacher : c'est un drapeau qui rentre. Une vie nee A COTE du support en est un, et
+// la distinction tient a [flagHomeExactDist], pas au rayon du lacher.
 //
 // LES SOCLES SONT CEUX QUE LA PRODUCTION CONNAIT (socles d'EQUIPE, cf. replaybuild/flagspawns.go).
 // Carte hors catalogue : aucun socle, donc aucun refus — et la regle retombe sur la seule
 // condition de distance au porteur, qui reste la bonne.
-func flagFreeNearSpawn(spawns []FlagSpawn, x, y float32) bool {
-	for _, s := range spawns {
-		if sqDist(s.X, s.Y, x, y) <= originDropMaxDist*originDropMaxDist {
-			return true
-		}
-	}
-	return false
+func flagFreeAtSpawn(spawns []FlagSpawn, x, y float32) bool {
+	_, ok := flagSpawnAt(spawns, x, y)
+	return ok
 }
 
 // closeByFreeLives DATE LE LACHER VOLONTAIRE — ce que rien d'autre ne sait faire.
@@ -312,7 +351,7 @@ func flagFreeDropInside(r flagCarryRaw, ctx flagCarryCtx, tracks []Track,
 			continue
 		}
 		x, y := l.First()
-		if flagFreeNearSpawn(scan.Spawns, x, y) {
+		if flagFreeAtSpawn(scan.Spawns, x, y) {
 			continue
 		}
 		p, ok := pointOfXUIDAt(tracks, f)
@@ -374,7 +413,7 @@ func flagFreeAtDrop(r flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan) (flagF
 			continue
 		}
 		x, y := l.First()
-		if flagFreeNearSpawn(scan.Spawns, x, y) {
+		if flagFreeAtSpawn(scan.Spawns, x, y) {
 			continue
 		}
 		if sqDist(r.x1, r.y1, x, y) > originDropMaxDist*originDropMaxDist {
@@ -431,11 +470,17 @@ func flagObjectHomecomings(scan FlagCarryScan, ctx flagCarryCtx) []flagHomecomin
 	return out
 }
 
-// flagSpawnAt rend l'indice du socle LE PLUS PROCHE d'un point, s'il est a moins de
-// [originDropMaxDist]. Le plus proche, et non le premier : deux socles peuvent se toucher sur
+// flagSpawnAt rend l'indice du socle dont un point EST le point, s'il est a moins de
+// [flagHomeExactDist]. Le plus proche, et non le premier : deux socles peuvent se toucher sur
 // une carte etroite, et un drapeau ne rentre que chez lui.
+//
+// C'EST LE SEUL ENDROIT QUI TRANCHE « nee au support ou non », et les deux lecteurs de l'objet en
+// dependent — la RENTREE qui ferme un portage et nomme son drapeau ([flagObjectHomecomings]) et
+// le REFUS qui protege la chaine du lacher ([flagFreeAtSpawn]). Une seconde ecriture de ce test
+// les laisserait diverger au premier correctif, et c'est exactement ce que le lot 6.13 a eu a
+// reparer : le refus avait pris le rayon du LACHER pour celui du SUPPORT.
 func flagSpawnAt(spawns []FlagSpawn, x, y float32) (int, bool) {
-	best, bestD := -1, float64(originDropMaxDist*originDropMaxDist)
+	best, bestD := -1, float64(flagHomeExactDist*flagHomeExactDist)
 	for i, s := range spawns {
 		if d := sqDist(s.X, s.Y, x, y); d <= bestD {
 			best, bestD = i, d
