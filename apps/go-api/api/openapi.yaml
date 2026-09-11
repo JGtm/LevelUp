@@ -15621,6 +15621,9 @@ components:
         outOfWindow:
           format: int64
           type: integer
+        refusedByRoster:
+          format: int64
+          type: integer
         unpublished:
           format: int64
           type: integer

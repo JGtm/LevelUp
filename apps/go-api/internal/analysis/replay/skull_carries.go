@@ -46,6 +46,69 @@ import (
 // periodes distinctes sans couper une periode continue (meme valeur que l'instrument du gate).
 const skullTickGapMS = 3000
 
+// # LA DEMI-FENETRE DE TIC, AUX DEUX BORNES (lot 6.7-B1, item 2, 2026-09-11)
+//
+// LE DEFAUT, ET SA MESURE. Un train est borne par son PREMIER et son DERNIER tic : un train de
+// n tics couvre donc (n-1) largeurs de tic, alors qu'il temoigne de n SECONDES de possession.
+// La seconde d'amorce (entre la prise et le premier tic) et celle de chute (entre le dernier
+// tic et le lacher) manquaient. Mesure du 2026-09-11, quatre films Oddball cuits hors ligne
+// contre l'oracle API `time_as_skull_carrier_seconds` : 1 113,0 s publiees pour 1 249,0 s,
+// soit 0,891 — et le manque est PROPORTIONNEL au nombre de periodes, pas a leur duree
+// (100 periodes, 136,0 s manquantes, 1,36 s par periode).
+//
+// POURQUOI CE CALQUE ET PAS LES AUTRES (audit du 2026-09-10 §3.4). Le biais est propre aux
+// calques a TRAIN DE TICS. Le drapeau lit des EVENEMENTS de statborg et SUR-mesure (le lacher
+// volontaire ne ferme rien) ; la bombe et le crane PORTE lisent des transitions du canal des
+// armes tenues et sont bornes exactement des deux cotes. Poser une demi-fenetre sur eux
+// aggraverait leur biais au lieu de le corriger.
+//
+// LA LARGEUR N'EST PAS UNE CONSTANTE ECRITE ICI : elle se MESURE sur le film, par la mediane
+// des ecarts entre tics consecutifs D'UN MEME TRAIN (cf. [skullTickWidthFrames]). Un film qui
+// ne donne aucun ecart a mesurer ne recoit aucune fenetre.
+
+// skullTickWidthFrames rend la LARGEUR d'un tic de possession, en images de l'axe publie,
+// mesuree sur les trains du film lui-meme.
+//
+// La mediane, et pas la moyenne : un train peut sauter un tic (replication perdue), ce qui
+// produit un ecart double ; la moyenne s'en trouverait tiree vers le haut, la mediane non.
+// Seuls les ecarts INTRA-TRAIN entrent (au-dela de [skullTickGapMS] ce n'est plus un ecart
+// entre deux tics mais la separation de deux periodes). Zero quand aucun ecart n'est mesurable
+// — un film dont tous les trains tiennent en un seul tic, ou un axe sans echelle.
+func skullTickWidthFrames(recs []objectiveevents.StatRecord, ctx matchClock) int {
+	var ecarts []int
+	for _, byRound := range objectiveevents.SeriesByRound(recs, objectiveevents.SkullTicksComponent, false) {
+		for _, pts := range byRound {
+			inst := skullTickInstants(pts)
+			for i := 1; i < len(inst); i++ {
+				if d := inst[i] - inst[i-1]; d > 0 && d <= skullTickGapMS {
+					ecarts = append(ecarts, d)
+				}
+			}
+		}
+	}
+	if len(ecarts) == 0 {
+		return 0
+	}
+	sort.Ints(ecarts)
+	return ctx.slackFrames(ecarts[len(ecarts)/2])
+}
+
+// skullHalfTickFrames rend la demi-fenetre a poser DE PART ET D'AUTRE d'un train, en images.
+//
+// POURQUOI (w-1)/2 ET NON w/2. L'intervalle publie est FERME sur la grille : `[t0, t1]` compte
+// `t1 - t0 + 1` images, donc les bornes rendent DEJA une image de plus que l'ecart qu'elles
+// enserrent. Poser w/2 de chaque cote ferait publier n largeurs de tic PLUS une image, et un
+// porteur passerait au-dessus de son propre oracle (mesure : 2 joueurs sur 28, +0,1 s chacun).
+// (w-1)/2 est la plus grande fenetre symetrique en images ENTIERES qui ne depasse jamais
+// n largeurs de tic — le sens dans lequel on veut se tromper.
+func skullHalfTickFrames(recs []objectiveevents.StatRecord, ctx matchClock) int {
+	w := skullTickWidthFrames(recs, ctx)
+	if w <= 1 {
+		return 0
+	}
+	return (w - 1) / 2
+}
+
 // SkullInput est CE QUE L'APPELANT FOURNIT du crane. Entree de DONNEES, comme `Flag` et `Vip`.
 //
 // LA GARDE DE MODE EST ICI, chez l'appelant : `comp 0 A` est le score de mode de tout mode, donc
@@ -122,6 +185,8 @@ func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence carrierPres
 	raws := skullCarryIntervals(scan.Records, scan.Identity)
 	cov.Trains = len(raws)
 	openThreshold := ctx.frames - 1 - ctx.slackFrames(skullTickGapMS)
+	// La demi-fenetre se mesure UNE FOIS par film (cf. l'en-tete de [skullTickWidthFrames]).
+	demi := skullHalfTickFrames(scan.Records, ctx)
 	out := make([]SkullCarry, 0, len(raws))
 	for _, r := range raws {
 		if r.xuid == "" {
@@ -137,6 +202,14 @@ func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence carrierPres
 		if f1 < f0 {
 			f1 = f0
 		}
+		// LA DEMI-FENETRE DE TIC, AUX DEUX BORNES — posee APRES le rejet hors fenetre (un
+		// train qui commence avant l'axe reste hors fenetre : ce n'est pas la demi-fenetre qui
+		// doit l'y ramener) et AVANT le gate de presence (une seconde d'amorce hors de toute
+		// vie du porteur ne doit pas etre publiee).
+		if f0 -= demi; f0 < 0 {
+			f0 = 0
+		}
+		f1 = clampFrame(f1+demi, ctx.frames)
 		// Gate de PRESENCE : le porteur doit etre sur la carte pendant le portage.
 		var ok bool
 		if f0, f1, ok = presence.gate(r.xuid, f0, f1); !ok {

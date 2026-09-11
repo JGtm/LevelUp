@@ -43,11 +43,15 @@ func main() {
 	ecrire(*out, "vague6_couverture_parc.tsv", ctx.censusParc())
 	ecrire(*out, "vague6_stats_publiees.tsv", ctx.statsPubliees())
 	ecrire(*out, "vague6_couverture_portage.tsv", ctx.axe1Portage())
+	ecrire(*out, "vague6_couverture_crane.tsv", ctx.axe1Crane())
+	ecrire(*out, "vague6_bilan_portages.tsv", ctx.bilanPortages())
 	ecrire(*out, "vague6_couverture_zones.tsv", ctx.axe1Zones())
 	ecrire(*out, "vague6_couverture_actions.tsv", ctx.axe2Actions())
 	ecrire(*out, "vague6_identite.tsv", ctx.axe3Identite())
 	ecrire(*out, "vague6_bornage.tsv", ctx.axe4Bornage())
 	ecrire(*out, "vague6_objet_sans_position.tsv", ctx.axe5SansPosition())
+	ecrire(*out, "vague6_deroulage.tsv", ctx.axe6Deroulage())
+	ecrire(*out, "vague6_deroulage_bilan.tsv", ctx.axe6Bilan())
 	fmt.Println("sorties ecrites dans", *out)
 }
 
@@ -81,6 +85,9 @@ type ctxAudit struct {
 	equipe map[string]map[string]string
 	// gamertag[matchID][xuid]
 	gt map[string]map[string]string
+	// feuille[matchID][xuid] = ligne de participants (kills, assists, score)
+	feuille map[string]map[string][]string
+	pTSV    *tsv
 	// registre[court] = ligne de registre
 	regParMatch map[string][]string
 	rTSV        *tsv
@@ -104,6 +111,8 @@ func charger(parc, oracleDir string) (*ctxAudit, error) {
 		oTSV:        obj,
 		equipe:      map[string]map[string]string{},
 		gt:          map[string]map[string]string{},
+		feuille:     map[string]map[string][]string{},
+		pTSV:        part,
 		regParMatch: map[string][]string{},
 		rTSV:        reg,
 	}
@@ -122,6 +131,10 @@ func charger(parc, oracleDir string) (*ctxAudit, error) {
 		}
 		c.equipe[m][part.s(r, "xuid")] = part.s(r, "team_id")
 		c.gt[m][part.s(r, "xuid")] = part.s(r, "gamertag")
+		if c.feuille[m] == nil {
+			c.feuille[m] = map[string][]string{}
+		}
+		c.feuille[m][part.s(r, "xuid")] = r
 	}
 	for _, r := range reg.rows {
 		c.regParMatch[reg.s(r, "match_id")] = r
