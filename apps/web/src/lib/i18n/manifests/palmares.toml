@@ -737,6 +737,23 @@ en = "No description is available for this pass."
 fr = "Dernière synchronisation réussie le {date}"
 en = "Last successful synchronization on {date}"
 
+# ─── Season pass - Carrousel de récompenses (BattlePassRewardCarousel) ──────
+# Bilan fork ChaseWoodhams 2026-09-11, point 6 : ces libellés étaient en dur
+# (valeurs par défaut des props du composant), donc figés en FR quel que soit
+# la locale — HomeBattlePassPanel ne les passait même pas.
+
+[palmares.season_pass.carousel.prev_aria_label]
+fr = "Paliers précédents"
+en = "Previous tiers"
+
+[palmares.season_pass.carousel.next_aria_label]
+fr = "Paliers suivants"
+en = "Next tiers"
+
+[palmares.season_pass.carousel.view_detail_aria_label]
+fr = "Voir le détail de {title}"
+en = "View details for {title}"
+
 # ─── Season pass - Contenu du pass ───────────────────────────────────────────
 
 [palmares.season_pass.content.armor_label]

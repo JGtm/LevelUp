@@ -31,7 +31,9 @@
 ## Lot C — robustesse (bilan 4a, 4b) + littéraux FR hors i18n (bilan 6)
 - [x] C.1 `IsFileLockError` libellé Windows EN + test.
 - [x] C.2 `IsFilmGoneErr` + test ; brancher sur les appelants qui retentent (à vérifier).
-- [ ] C.3 Les ~15 emplacements web du bilan passés par `Record<Locale, T>`.
+- [x] C.3 Les ~15 emplacements web du bilan passés par `Record<Locale, T>`. `[!]`
+      `ChartsShowcasePage.tsx` (page de labo, faible priorité, ~45 lignes accentuées,
+      non traitée — cf. journal).
 
 ## Lot D — tâches Notion 7 puis 6+8 (machine, serveur de dev arrêté)
 - [ ] D.1 `levelup backfill-killsource` (325 matchs sur l'ancien décodeur) ; contrôle par `_latest`.
@@ -52,6 +54,18 @@
 ## Découvertes (non traitées)
 - feat/citations-artilleur-vehicules était en retard de 161 commits sur feat/v75 ; le pilote s'est
   replacé sur feat/v75 (worktree `LevelUp-wt-v75` détaché, à supprimer au lot F).
+- (lot C, C.3) Même défaut « repli `?? '<littéral FR>'` quand `fieldMappings` n'est pas chargé »
+  sur des CHAMPS NON cités par le bilan, dans les mêmes fichiers déjà touchés :
+  `TimeseriesPage.distributions.tsx` (7 occurrences `?? 'Frags'/'Morts'/'FDA'`),
+  `TimeseriesPage.summary.tsx` (6 occurrences, mêmes champs). Non traité (hors liste du bilan,
+  volume trop grand pour rester mécanique dans ce lot — 13 occurrences supplémentaires).
+- (lot C, C.3) `eslint-rules/no-hardcoded-strings.js` a deux angles morts documentés dans le
+  nouveau garde-rail `apps/web/src/lib/i18n/no-hardcoded-locale-fallback.guard.test.ts` : un
+  littéral FR assigné à une variable avant usage JSX (non vu par le visiteur `JSXAttribute`), et
+  un littéral court (< 3 mots ET < 15 caractères, ex. « Précédent ») sous le seuil
+  `looksLikeUserContent`. Le garde-rail ajouté ferme la lacune sur les fichiers de ce lot
+  uniquement — une passe eslint dédiée (scope analysis ou lint TS custom) resterait à faire pour
+  fermer la lacune partout.
 
 ## Journal
 - 2026-09-11 : plan écrit, worktrees `LevelUp-wt-badge-schema` et `LevelUp-wt-mesure-ti9` créés.
@@ -90,3 +104,35 @@
   témoins toutes pertes voulues. `[~]` B.5 : la recuisson du parc est jouée par le pilote après
   fusion, serveur arrêté. Découvertes : `build.go` et `replaybuild.go` > 500 L grossissent ;
   17 films du parc absents de l'instantané v93 du registre ; le client ne dessine pas d'arcs.
+- 2026-09-11 : lot C rendu (`wt/robustesse-i18n`, base feat/v75 `81f15be30`). C.1 :
+  `IsFileLockError` reconnaît le message OS Windows EN « process cannot access the file because
+  it is being used by another process » (insensible à la casse), en plus du marqueur DuckDB
+  « File is already open in » qui ne couvre QUE le cas où DuckDB identifie lui-même le détenteur
+  du verrou. C.2 : `haloclient.IsFilmGoneErr` exporte `isNotFoundErr` (déjà typé
+  `*HTTPError`/`*BlobHTTPError`, manifeste ET blobs, 404/410) ; appelant branché =
+  `killcollector.collect()` — un manifeste vivant dont un blob CDN pré-signé rend 404/410
+  (expiration partielle) remontait une ERREUR non-nil, jamais classée `OutcomeNoFilm`, donc
+  `MBitFilmAbsent` n'était JAMAIS posé et le match restait candidat à vie aux passes
+  `backfill-killsource --online` ; reclassé en `OutcomeNoFilm` sans erreur, `slog.WarnContext`
+  avec `match_id`. Une panne transitoire (503, rate-limit) reste une erreur retentée (biais
+  assumé, bilan pt 4b). Callers vérifiés sans retry à brancher : `GetFilmChunkURLs`
+  (build-queue, résout le manifeste seul, erreur immédiate à l'admin, pas de retry en boucle),
+  `GetHighlightEventsChunk` (déjà typé côté blob, cf. commentaire d'origine), `LocalCacheFilms`
+  (hors ligne, aucun réseau). C.3 : ~20 littéraux FR en dur migrés vers les manifests TOML
+  existants (`common`, `palmares`, `feedback_drawer`, `synthesis`, `timeseries`) sur les 10
+  fichiers cités par le bilan — deux catégories : (a) littéral direct en JSX (carousel.tsx,
+  StepPlayer.tsx, XboxLoginPage.tsx) ; (b) littéral assigné à une variable AVANT usage JSX
+  (ThemeToggle.tsx — angle mort de la règle eslint `no-hardcoded-strings`, qui ne suit pas les
+  variables) ; (c) corps d'issue GitHub entièrement en dur (buildIssueUrl.ts, ~20 lignes,
+  `locale` maintenant un paramètre requis) ; (d) replis `?? '<littéral>'` quand `fieldMappings`
+  n'est pas chargé (SynthesisPage, TimeseriesPage×4) — repli = clé manifest de la feature, plus
+  un littéral. Garde-rail neuf `lib/i18n/no-hardcoded-locale-fallback.guard.test.ts` (grep
+  source, ferme les deux angles morts eslint documentés en tête de fichier). `[!]`
+  `ChartsShowcasePage.tsx` non traité (faible priorité déclarée par le plan). Découverte non
+  traitée : 13 occurrences du même défaut sur des champs non cités par le bilan (Frags/Morts/
+  FDA) dans les fichiers timeseries déjà touchés — notée ci-dessus, hors liste du bilan. Gates :
+  Go `go test ./internal/platform/duckdb/... ./internal/sync/...` (vert, ~140 s) + `go vet ./...`
+  (vert) + `go test -tags=integration -p 1 ./internal/sync/...` (vert, ~230 s, touché
+  `killcollector` au-delà de `haloclient`) ; web `tsc -b` (0 erreur), `eslint .` (0 erreur, 31
+  warnings pré-existants hors périmètre), `vitest run` (695 fichiers / 7373 tests, 1 skip
+  jsdom canvas). Commits : `8c13b3b4c` (C.1), `90e97c240` (C.2), commits C.3 à suivre.
