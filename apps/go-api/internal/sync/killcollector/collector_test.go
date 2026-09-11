@@ -22,6 +22,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -391,6 +392,66 @@ func TestKillSourcePasseMultiMatchsCompteToutSansSArreter(t *testing.T) {
 	}
 	if client.calls != 3 {
 		t.Errorf("%d appel(s), attendu 3 — la passe s est arretee au premier echec", client.calls)
+	}
+}
+
+// TestKillSourceBlobExpirePartiellementEstDefinitif — bilan fork ChaseWoodhams 2026-09-11
+// point 4b : un manifeste vivant dont un chunk (blob CDN pre-signe) rend 404/410 est une
+// EXPIRATION PARTIELLE, indiscernable d une panne transitoire pour qui ne regarde que
+// "err != nil". Sans classification, marquerFilmParOutcome ne pose jamais MBitFilmAbsent
+// (le film garde son outcome interne a OutcomeNoFilm mais l erreur non-nil fait sortir
+// CollectMatches par la branche Errors AVANT d atteindre le marquage) : le match reste
+// candidat a VIE aux passes `--online` suivantes (jamais exclu par le filtre
+// `MBitFilmAbsent`). Avec `haloclient.IsFilmGoneErr`, ce cas se classe desormais comme
+// OutcomeNoFilm SANS erreur — memes consequences qu un manifeste 404, y compris le
+// marquage terminal.
+func TestKillSourceBlobExpirePartiellementEstDefinitif(t *testing.T) {
+	blobGoneErr := fmt.Errorf("GetFilmChunks chunk 3(m1): %w",
+		&haloclient.BlobHTTPError{StatusCode: 404, URL: "u", Attempts: 1})
+	client := &fakeFilmClient{err: blobGoneErr}
+	col := NewKillSourceCollector(client, fakeRoster{}, nil, capsAvecFilm(), 0)
+
+	outcome, deaths, err := col.CollectMatch(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("CollectMatch: erreur rendue %v, attendu nil (film definitivement perdu = etat, pas panne)", err)
+	}
+	if outcome != OutcomeNoFilm {
+		t.Errorf("outcome = %q, attendu %q", outcome, OutcomeNoFilm)
+	}
+	if deaths != 0 {
+		t.Errorf("deaths = %d, attendu 0", deaths)
+	}
+
+	// La passe multi-matchs doit compter ceci en NoFilm, PAS en Errors — sinon le match
+	// n est jamais marque MBitFilmAbsent et reste candidat a vie.
+	sum := col.CollectMatches(context.Background(), []string{"m1", "m2"})
+	if sum.NoFilm != 2 {
+		t.Errorf("NoFilm = %d, attendu 2", sum.NoFilm)
+	}
+	if sum.Errors != 0 {
+		t.Errorf("Errors = %d, attendu 0 — une expiration partielle definitive n est pas une panne", sum.Errors)
+	}
+}
+
+// TestKillSourceErreurTransitoireResteUneErreur — un blob 503 (rate-limit, panne CDN
+// passagere) doit rester classe en erreur : seul le lien DEFINITIVEMENT mort (404/410,
+// manifeste ou blob) se reclasse en OutcomeNoFilm. Sans ce garde, une vraie panne
+// serait marquee MBitFilmAbsent et perdrait le match pour toujours.
+func TestKillSourceErreurTransitoireResteUneErreur(t *testing.T) {
+	transitoire := fmt.Errorf("GetFilmChunks chunk 3(m1): %w",
+		&haloclient.BlobHTTPError{StatusCode: 503, URL: "u", Attempts: 3})
+	client := &fakeFilmClient{err: transitoire}
+	col := NewKillSourceCollector(client, fakeRoster{}, nil, capsAvecFilm(), 0)
+
+	outcome, _, err := col.CollectMatch(context.Background(), "m1")
+	if err == nil {
+		t.Fatal("CollectMatch: erreur attendue pour un 503 transitoire, err = nil")
+	}
+	if outcome != OutcomeNoFilm {
+		// La valeur de outcome n a pas d importance cote appelant tant que err != nil
+		// (CollectMatches l ignore et compte Errors), mais on la fige pour eviter une
+		// derive silencieuse.
+		t.Errorf("outcome = %q, attendu %q", outcome, OutcomeNoFilm)
 	}
 }
 
