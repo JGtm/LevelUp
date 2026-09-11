@@ -127,20 +127,22 @@ type grenEcartLectures struct {
 }
 
 func (l *grenEcartLectures) observe(step string, v any) {
+	// LES NOMS D'ETAPE SONT CEUX DU PAQUET (cf. equivalence_minifilm_test.go) : le paquet ne
+	// garde qu'UNE ecriture de chacun, celle des litteraux `opt.observe("...")` de build.go.
 	switch step {
-	case "positions":
+	case etapePositions:
 		l.positions, _ = v.([]filmdec.BipedPosition)
-	case "bipedCreations":
+	case etapeCreationsBipede:
 		l.creations, _ = v.([]filmdec.BipedCreation)
-	case "deaths":
+	case etapeMorts:
 		l.deaths, _ = v.([]Death)
-	case "playerIndices":
+	case etapeIndicesJoueur:
 		l.indices, _ = v.(PlayerIndexTable)
-	case "fire":
+	case etapeFire:
 		l.fire, _ = v.([]filmdec.FireEvent)
-	case "grenades":
+	case etapeGrenades:
 		l.throws, _ = v.([]filmdec.GrenadeThrow)
-	case "projectiles":
+	case etapeProjectiles:
 		l.proj, _ = v.([]filmdec.ProjectileTrack)
 	}
 }
