@@ -127,7 +127,24 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// Les projectiles se construisent AVANT les lancers : le lancer publie son lien vers le
 	// projectile né de lui (Grenade.Proj), qui pointe un index de la tranche PUBLIÉE.
 	var pubProjByRaw map[int]int
-	doc.Projectiles, pubProjByRaw = buildProjectiles(opt.Projectiles, origin, step)
+	var projTronquees int
+	doc.Projectiles, pubProjByRaw, projTronquees = buildProjectiles(opt.Projectiles, origin, step)
+	// LA COUVERTURE DES PROJECTILES EST CONSTRUITE ICI mais POSEE plus bas : `doc.Coverage`
+	// n'existe qu'apres `buildCoverage`. Nil quand aucune piste n'est fournie — un film sans
+	// projectile ne publie pas trois zeros.
+	var projCov *ProjectileCoverage
+	if len(opt.Projectiles) > 0 {
+		projCov = &ProjectileCoverage{
+			Tracks: len(opt.Projectiles), Published: len(doc.Projectiles), Truncated: projTronquees,
+		}
+		if projTronquees > 0 {
+			// JOURNALISE, JAMAIS AVALE (regle n°3) : une coupure protege le rendu, elle ne
+			// repare pas la dequantification qui la cause.
+			slog.Info("rejeu : trajectoires de projectile coupees a un pas impossible",
+				"match_id", matchID, "tronquees", projTronquees, "pistes", len(opt.Projectiles),
+				"seuil_m", projectileMaxStepM)
+		}
+	}
 
 	gren, grenCov := buildGrenades(sorted, opt.Grenades, origin, step, reg.IndexParSlot(), opt.Projectiles, pubProjByRaw)
 	doc.Grenades = keepGrenadesOfPublishedTracks(gren, doc.Tracks)
@@ -161,6 +178,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	killsRead := attachAllEquipmentKills(doc.EquipmentEpisodes, opt.Kills, occupantParFrame(reg, replayClock{origin: origin, step: step}), doc.OriginMs, interval)
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, reg, doc.OriginMs != nil, scoreCov)
+	doc.Coverage.Projectiles = projCov
 	// LE RESIDU DE NOMMAGE SE PUBLIE AVEC LE PONT : un artefact qui porte des vies sans identite
 	// doit le DIRE, sans quoi le defaut ne se voit que dans les journaux du jour de la cuisson.
 	doc.Coverage.Bridge.NamedByPreviousLife = unnamed.byPrevious

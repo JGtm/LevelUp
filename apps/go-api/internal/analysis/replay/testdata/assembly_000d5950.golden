@@ -44,8 +44,9 @@ par source : projectile=63 (aucun pont) · biped=6 (le pont a servi)
 par type : Dynamo=17 · Frag=17 · Plasma=14 · Spike=21
 
 ## PROJECTILES — le dernier point est la DERNIERE POSITION REPLIQUEE, jamais un impact
-439 trajectoire(s) · 2732 point(s) de grille
-75 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
+436 trajectoire(s) · 2725 point(s) de grille
+74 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
+couverture : 580 piste(s) decodee(s) · 436 publiee(s) · 3 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
 184 etat(s) publie(s) · 150 avec grenades lues · 150 avec munitions lues

@@ -130,6 +130,8 @@ func TestGoldenAssemblyFigeLesChiffresDuChantier(t *testing.T) {
 		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 98.6 %%", wantGrenades, wantGrenadesAvailable),
 		fmt.Sprintf("%d vie(s) nommee(s) / %d", wantLivesNamed, wantLivesTotal),
 		fmt.Sprintf("%d trajectoire(s) ·", wantProjectiles),
+		fmt.Sprintf("%d piste(s) decodee(s) · %d publiee(s) · %d coupee(s) a un pas impossible",
+			wantProjectileTracks, wantProjectiles, wantProjectilesTruncated),
 		fmt.Sprintf("%d etat(s) publie(s) ·", wantInventory),
 		fmt.Sprintf("%d chunk(s) de replication concordants · 0 desaccord(s) d identite · "+
 			"0 collision(s) de slot", wantIndexReadings),

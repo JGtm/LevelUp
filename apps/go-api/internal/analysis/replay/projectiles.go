@@ -35,20 +35,53 @@ type Projectile struct {
 	Rest bool `json:"rest,omitempty"`
 }
 
+// projectileMaxStepM borne le déplacement d'un projectile entre deux points de la grille
+// (100 ms). Au-delà, ce n'est plus une lecture : c'est un artefact de déquantification.
+//
+// LE DÉFAUT MESURÉ, ET POURQUOI CE GARDE-FOU EXISTE. Sur les 76 artefacts du parc (schéma 51,
+// 2026-09-11), 947 trajectoires sur 15 735 — 6,0 % — portent au moins un pas impossible, soit
+// 4 901 pas. La signature est celle d'UN BIT du champ quantifié qui bascule : le saut vaut
+// l'étendue de la carte sur un axe DIVISÉE PAR UNE PUISSANCE DE DEUX, l'autre axe ne bougeant
+// pas d'un centimètre. Sur les quatre films Live Fire du parc (`sgh_interlock`, Y sur 12 bits),
+// le saut vaut EXACTEMENT la moitié de l'étendue Y — 31,89 m pour 63,775 m, soit le bit de poids
+// fort — et cette forme couvre 3 907 des 4 901 pas ; sur les cartes Forge, l'axe touché est
+// plutôt X et le bit plus bas (étendue / 2^7 majoritaire).
+//
+// LA CAUSE EST EN AMONT, dans la déquantification (`filmdec`), et elle N'EST PAS corrigée ici :
+// elle est caractérisée (`.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`). Ce qui est corrigé
+// ici est la PUBLICATION d'une position fausse, qui faisait tracer au client une droite en
+// travers de toute la carte, à 300 m/s et plus.
+//
+// 10 m par pas, soit 100 m/s, laisse passer tout projectile du jeu (une grenade tient sous
+// 20 m/s, une roquette sous 30) et ne coupe que l'impossible. C'est aussi le seuil que le
+// filtre de vitesse des bipèdes emploie déjà, pour la même raison.
+const projectileMaxStepM = 10
+
 // buildProjectiles projette les trajectoires décodées sur la grille de frames du rejeu.
 //
 // DÉCIMATION : le film réplique à ~60 Hz, la grille du rejeu est à 10 Hz. On garde UN point
 // par frame — le premier — plutôt que de moyenner : un projectile suit une parabole, et
 // moyenner deux positions distantes de 100 ms couperait le sommet de l'arc.
 //
+// LE VOL S'ARRÊTE AU PREMIER PAS IMPOSSIBLE, il n'est pas recousu : après un basculement de
+// bit, la suite du vol est ailleurs sur la carte et rien ne dit où le projectile est réellement
+// passé. C'est la même règle que celle qui gouverne la fin d'un vol — on publie ce qui est lu,
+// et on s'arrête là où le film cesse d'être lisible.
+//
 // LA SECONDE VALEUR DE RETOUR est la table index brut (rang dans `tracks`) -> index PUBLIÉ
 // (rang dans la tranche rendue, après filtre et tri). C'est elle qui permet au lancer de
 // grenade de publier son lien vers le projectile né de lui (Grenade.Proj) : l'appariement
 // se fait sur les pistes brutes, l'artefact ne connaît que les publiées.
-func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) ([]Projectile, map[int]int) {
+//
+// LA TROISIÈME est le nombre de trajectoires COUPÉES, qui remonte à la couverture du document :
+// un décodeur qui coupe sans le dire est un rejet avalé (cf. coverage.go). Elle compte aussi les
+// coupures dont la trajectoire n'est pas publiée ensuite — sans quoi le compteur mentirait par
+// omission.
+func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) ([]Projectile, map[int]int, int) {
 	if len(tracks) == 0 {
-		return nil, nil
+		return nil, nil, 0
 	}
+	tronquees := 0
 	type withRaw struct {
 		p   Projectile
 		raw int
@@ -61,6 +94,7 @@ func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) ([]
 		t0 := int((tr.Pts[0].TimestampUS - origin) / step)
 		var pts [][3]float32
 		last := -1
+		coupe := false
 		for _, p := range tr.Pts {
 			if p.TimestampUS < origin {
 				continue
@@ -69,14 +103,23 @@ func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) ([]
 			if f == last {
 				continue // un seul point par frame de la grille
 			}
+			if n := len(pts); n > 0 && planDist(round2(p.X), round2(p.Y), pts[n-1][1], pts[n-1][2]) > projectileMaxStepM {
+				coupe = true
+				break
+			}
 			last = f
 			pts = append(pts, [3]float32{float32(f - t0), round2(p.X), round2(p.Y)})
+		}
+		if coupe {
+			tronquees++
 		}
 		if len(pts) < 2 { // une trajectoire d'un seul point de grille ne se dessine pas
 			continue
 		}
 		kept = append(kept, withRaw{
-			p:   Projectile{T0: t0, P: pts, Rest: tr.Pts[len(tr.Pts)-1].AtRest},
+			// `Rest` CERTIFIE une fin de vol : un vol coupé n'a pas la sienne, et le dire
+			// serait affirmer qu'on a vu le projectile s'immobiliser là.
+			p:   Projectile{T0: t0, P: pts, Rest: !coupe && tr.Pts[len(tr.Pts)-1].AtRest},
 			raw: raw,
 		})
 	}
@@ -105,5 +148,5 @@ func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) ([]
 		out[i] = k.p
 		pubByRaw[k.raw] = i
 	}
-	return out, pubByRaw
+	return out, pubByRaw, tronquees
 }
