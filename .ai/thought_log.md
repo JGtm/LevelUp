@@ -1,3 +1,10 @@
+## [2026-09-11] Revue 6.R ronde 2 — P0 0 / P1 0 / P2 3, boucle close, garde-rail regle 6 pose — Complete (superviseur)
+
+**Decision technique principale.** La ronde 2 (corrections seules, contexte frais) ne rend ni P0 ni P1 : la boucle de revue de la vague 6 est close (5 -> 0). Le seul P2 qui viole une regle ecrite (regle n 6 : quatre copies centralisees dans `flagCloseAt` sans garde-rail) est corrige par le superviseur : `archlint/no_flag_carry_end_outside_close_test.go` interdit toute affectation par selecteur des cinq champs de fin d'un `flagCarryRaw` hors `flag_carries_close.go`.
+
+**Resultats observes.** Garde-rail vert au HEAD ; rouge sur une ecriture ajoutee dans `flag_carries_home.go` (mutation jouee puis retiree) ; `golangci-lint` 0 issue ; suite `archlint` verte. Les deux autres P2 (invariant `Balanced` vrai par construction ; `closedBy*` qui baissent sur les films a `noTrack`/`outOfWindow`, chiffre correct mais deplace) sont consignes dans `REVUE_VAGUE6_2026-09-11.md` §Ronde 2.
+
+**Prochaine etape.** Fusion dans `feat/v75`, recuisson des 9 films CTF au binaire final, `make gate-push`, push, CI de vague.
 ## [2026-09-11] Revue 6.R de la vague 6, ronde 1 — 5 constats corriges, 46,3 s de drapeau fantome rendues au sol — Complete (worktree LevelUp-wt-couverture-objectifs)
 
 **Le constat P0, et il n'avait rien d'exotique.** `homed` (`flagCarryRaw`) n'avait qu'UNE
