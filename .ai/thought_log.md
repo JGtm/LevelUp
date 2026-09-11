@@ -1,3 +1,77 @@
+## [2026-09-11] Lot 6.10 — Les munitions EXACTES d'une arme au lacher : trouvees, prouvees, publiees a 15,8 % — Complete (worktree LevelUp-wt-munitions-objet)
+
+**Decision technique principale.** Le lot 6.6 avait cherche les munitions dans l'ETAT PAR DEFAUT
+de l'archetype ARME AU SOL (`ti=42`) et refute ses trois feuilles candidates. Elles n'y sont pas :
+elles sont dans un COMPOSANT du MEME record de creation, `weapon-ammo-component` (i20, deser
+`FUN_140fc3028`, grammaire `R(8)+R(11)+R(12)`), qui vit APRES le masque de presence. Le balayage
+des creations s'arretait au composant i0 (la position) et n'allait jamais jusque-la. Le composant
+etait porte depuis le 2026-08-30 et declare « valeurs NON FIABLES » le meme jour : la sonde d'alors
+captait un global de PAQUET et l'attribuait au premier record `ti=42` venu. Ici la boucle de
+composants de production est rejouee RECORD PAR RECORD, avec son propre curseur.
+
+**Resultats observes.** Semantique PROUVEE sur 64 films et 939 cas de marche bit-exacte, par le
+GRADIENT de fraicheur de l'oracle (le chargeur du lacheur a sa derniere lecture d'inventaire avant
+le lacher, en retard de 9 s en mediane) :
+
+- reference <= 1 s (n=62) : A == chargeur **74,2 %**, A <= chargeur **100,0 %**, B == reserve **96,8 %** ;
+- 2 a 5 s (n=174) : 42,5 / 96,0 / 90,8 % ; 10 a 20 s (n=377) : 41,4 / 92,0 / 66,0 %.
+
+A s'effondre vite (le porteur TIRE entre les deux instants), B decroit lentement (la reserve ne
+bouge qu'au rechargement) : ce sont deux pentes differentes dans le bon sens, et c'est la preuve.
+Temoins : reference prise sur un AUTRE objet 3,2 % (A) et 9,7 % (B) ; champ voisin de meme largeur
+19 bits plus loin **0,0 %**. Second oracle INDEPENDANT de l'inventaire : le mode du champ A par
+famille d'arme donne 36, 20, 12, 8, 6 — des capacites de chargeur. Le troisieme champ (C, R(12))
+n'est PAS publie : sens non etabli.
+
+**La couverture est le point faible, et sa cause est isolee.** Pour atteindre i20 il faut traverser
+i9 `object-multiplayer-properties` (`components_batch7.go:26`), dont le flux TLV ne consomme pas le
+bon nombre de bits sur cet archetype : sur les records SANS i9 la position d'i20 est le decalage
+ZERO dans 80 cas sur 89 (89,9 %) ; sur ceux qui le portent elle s'eparpille sur 121 decalages
+distincts. Longueur vraie d'i9 mesuree a 300-470 bits (34 valeurs distinctes, aucune structure
+modulo 8, aucune correlation avec ses six premiers bits) ; sept lectures candidates rejouees sur
+1 224 records, toutes <= 0,2 %. La grammaire ne se retablit donc pas par la mesure — il faut
+desassembler `FUN_1407d4c94`, et ni Ghidra ni Cheat Engine n'etaient joignables dans cette session.
+On ne lit donc QUE lorsque la marche est prouvee bit-exacte : **4 283 lectures sur 27 155 creations
+`ti=42` (15,8 %)**. Critere de levee ecrit et mesurable (rapport §3.3).
+
+**Fin de vie (demande utilisateur) : aucun champ de ce type trouve.** Le champ C d'i20 est nul dans
+**97,7 %** des objets laches lus (388 sur 397), y compris les 32 repris et les 13 encore presents ;
+ses quartiles contre la duree OBSERVEE donnent des medianes de 55, 60, 75 et 73 images — aucune
+relation. Piste de reprise nommee et non traitee : `object-dissolver-component` (i14), present sur
+71,4 % des creations, jamais mesure.
+
+**Ce qui est livre.** `be7d7a2fd` lecteur `filmdec/ground_weapon_ammo.go` (+ test sur octets
+fabriques, 2 mutations) ; `838e9c7bb` champ cuit `groundWeapons[].ammo = {mag, res}` omitempty et
+additif (AUCUN bump de `SchemaVersion`), compteur `coverage.groundWeaponItems.ammoRead`, parite
+`replaydoc`, openapi + `generate-types` purement additifs ; `c0fa82958` infobulle « 12 au chargeur,
+24 en reserve » — sans « ~ » et sans age, parce qu'il n'y a rien a dater — i18n FR+EN, et
+`GroundWeaponAmmoReading` devenu une UNION DISCRIMINEE (`exact` / `dated`) pour qu'une lecture datee
+ne PUISSE PLUS s'afficher sans son age. Le repli date du lot 6.6 reste en place pour les objets sans
+lecture exacte, qui sont la majorite. L'absence reste ABSENTE (pas de couple de zeros, qui se lirait
+« arme vide ») ; un chargeur exact a zero, lui, se publie.
+
+**Aucun bit lu autrement**, prouve des DEUX cotes du changement sur la mini-bobine versionnee
+(empreinte sha256 des champs pre-existants, `HasAmmo`/`Ammo` exclus, copie `git archive HEAD` d'un
+cote) : `groundWeaponCreations` n=28 ancres=141 acceptees=28 sha256=a71593143c29... identique ;
+`equipmentCreations` n=38 ancres=170 acceptees=38 sha256=71cd12247c95... identique. Le golden des
+familles change sur ces deux lignes pour la seule raison que `rendreStable` rend TOUS les champs
+(sur cette bobine, les 28 creations d'arme au sol portent toutes i9, donc `HasAmmo` est faux
+partout) ; l'explication est dans son en-tete.
+
+**Gates executes.** `go test ./internal/analysis/filmdec/ ./internal/analysis/replay/
+./internal/replaybuild/ ./internal/service/...` vert ; `go vet` vert ; `golangci-lint run` sur les
+paquets touches ; tsc `--noEmit` 0 erreur ; `npx vitest run src/features/match-replay` 2 687 tests
+verts ; eslint sur les fichiers touches 0 erreur (9 avertissements pre-existants ailleurs). Les
+treize instruments de mesure `zz_mun*_research_test.go` sont SUPPRIMES ; leur recette est au
+rapport §7.
+
+**Conclusion / prochaine etape.** Rapport `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`, ligne
+6.10 au plan maitre. **RECUISSON DU PARC NECESSAIRE** (`ammo` est un champ cuit) — elle tombe dans
+la coupure unique prevue au lot 6.8, apres 6.11. Deux `[!]` : la voie longue n'a pas ete ouverte
+(motive : elle viserait une grandeur moins bonne que celle qui est prouvee) et i9 n'est pas corrige
+(pas de desassembleur joignable) — c'est lui, et non la voie longue, qui ferait passer la couverture
+de 15,8 a 59,7 %.
+
 ## [2026-09-11] Lot 6.7 phase B1 — les cinq correctifs Go des calques d'objectif (items 2 a 6) — Complete (worktree LevelUp-wt-couverture-objectifs)
 
 **Decision technique principale.** Reprise du lot apres l'arret quota de l'item 1
