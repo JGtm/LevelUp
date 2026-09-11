@@ -73,8 +73,19 @@ const (
 	// wantGrenadesAvailable : 70 lancers decodes — le DENOMINATEUR, et il ne bouge pas. Un
 	// rattachement qui s abstient se compte ; il ne se retire pas du disponible.
 	wantGrenadesAvailable = 70
-	// wantProjectiles : 439 trajectoires publiees.
-	wantProjectiles = 439
+	// wantProjectiles : 436 trajectoires publiees sur 580 pistes decodees, dont 3 COUPEES a un
+	// pas impossible (cf. projectileMaxStepM). C etait 439 avant le 2026-09-11 : les trois
+	// coupures de ce film tombent des le deuxieme point de grille, et une trajectoire d un seul
+	// point ne se dessine pas. Le nombre de POINTS ne perd, lui, que 7 unites (2732 -> 2725) :
+	// la coupure retire des positions fausses, pas des trajectoires entieres.
+	wantProjectiles = 436
+	// wantProjectileTracks / wantProjectilesTruncated : le denominateur et le chiffre qui doit
+	// rester sous les yeux. Tant que la seconde n est pas nulle, l artefact porte des vols dont
+	// la fin est INCONNUE, et la cause vit dans la dequantification (`filmdec`), pas ici.
+	// Cliffhanger est une carte PEU touchee : sur le parc, les quatre films Live Fire portent
+	// a eux seuls 634 des 947 trajectoires coupees.
+	wantProjectileTracks     = 580
+	wantProjectilesTruncated = 3
 	// wantInventory : 184 etats d inventaire publies.
 	wantInventory = 184
 	// wantIndexReadings : 26 chunks de replication livrent la MEME table identite -> index.
@@ -265,6 +276,15 @@ func TestProjectilesAndInventoryCounts(t *testing.T) {
 	if len(doc.Projectiles) != wantProjectiles {
 		t.Errorf("%d trajectoires de projectile publiees, attendu %d", len(doc.Projectiles), wantProjectiles)
 	}
+	c := doc.Coverage.Projectiles
+	if c == nil {
+		t.Fatal("la couverture des projectiles doit etre publiee sur un film qui en porte")
+	}
+	if c.Tracks != wantProjectileTracks || c.Published != wantProjectiles ||
+		c.Truncated != wantProjectilesTruncated {
+		t.Errorf("couverture des projectiles attendue %d/%d/%d, obtenu %+v",
+			wantProjectileTracks, wantProjectiles, wantProjectilesTruncated, *c)
+	}
 	if len(doc.Inventory) != wantInventory {
 		t.Errorf("%d etats d inventaire publies, attendu %d", len(doc.Inventory), wantInventory)
 	}
@@ -443,6 +463,10 @@ func renderProjectiles(p func(string, ...any), doc ReplayDocument) {
 	p("%d trajectoire(s) · %d point(s) de grille", len(doc.Projectiles), pts)
 	p("%d se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol",
 		rest)
+	if c := doc.Coverage.Projectiles; c != nil {
+		p("couverture : %d piste(s) decodee(s) · %d publiee(s) · %d coupee(s) a un pas impossible",
+			c.Tracks, c.Published, c.Truncated)
+	}
 	p("")
 }
 

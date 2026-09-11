@@ -135,6 +135,19 @@ func (c LayerCoverage) warnIfLossy(layer string) {
 type Coverage struct {
 	Shots    LayerCoverage `json:"shots"`
 	Grenades LayerCoverage `json:"grenades"`
+	// Projectiles est la couverture des TRAJECTOIRES DE PROJECTILE (cf. projectiles.go) :
+	// pistes décodées, trajectoires publiées, et celles qu'un PAS IMPOSSIBLE a coupées.
+	//
+	// `truncated` EST LE CHIFFRE QUI EXISTE POUR ÊTRE VU : la coupure protège le rendu d'une
+	// droite en travers de la carte, mais elle ne répare pas la déquantification qui la cause.
+	// Tant que ce nombre n'est pas nul, l'artefact porte des vols dont la fin est INCONNUE — et
+	// le taire ferait passer un pansement pour un correctif. Mesuré sur le parc du 2026-09-11
+	// (schéma 51, avant la coupure) : 947 trajectoires sur 15 735, dont 634 sur les quatre seuls
+	// films Live Fire.
+	//
+	// `omitempty` PARCE QUE LA FORME DU DOCUMENT NE DOIT PAS BOUGER POUR RIEN (même règle que
+	// `RefusedByRoster`) : un film sans piste de projectile ne publie rien ici.
+	Projectiles *ProjectileCoverage `json:"projectiles,omitempty"`
 	// Objectives est la couverture du calque des actions d'objectif (cf. objectives.go).
 	// Son dénominateur est le nombre d'événements identifiés fournis au build : publier
 	// 40 actions sans dire que 55 existaient laisserait croire à l'exhaustivité.
@@ -342,6 +355,20 @@ type Coverage struct {
 	// Bridge décrit sur quoi repose le pont slot -> joueur. Un calque peut être complet et
 	// néanmoins reposer sur une résolution fragile : les deux se jugent séparément.
 	Bridge BridgeHealth `json:"bridge"`
+}
+
+// ProjectileCoverage est la couverture du calque des projectiles.
+type ProjectileCoverage struct {
+	// Tracks est le nombre de pistes DÉCODÉES — le dénominateur.
+	Tracks int `json:"tracks"`
+	// Published est le nombre de trajectoires publiées. L'écart avec Tracks tient aux pistes
+	// trop courtes pour se dessiner (moins de deux points de grille) et à celles qui naissent
+	// avant l'origine du rejeu.
+	Published int `json:"published"`
+	// Truncated est le nombre de trajectoires COUPÉES à un pas impossible (cf.
+	// projectileMaxStepM). Elle compte aussi les coupures si précoces que la trajectoire n'est
+	// plus publiable : sans cela le compteur mentirait par omission.
+	Truncated int `json:"truncated"`
 }
 
 // slotFor rend le slot du joueur pi à l'instant tUS, et la cause du rejet le cas échéant.
