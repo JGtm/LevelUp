@@ -1,3 +1,61 @@
+## [2026-09-11] 6.R ronde 1 bis — la serie publiee et la cle d'appariement ne derivent plus qu'une fois — Complete (worktree LevelUp-wt-couverture-objectifs)
+
+**Le defaut, trouve par le gate local de fin de vague 6.** `TestOuvrierReel_ConstruitEtLivre`
+echouait sur UNE assertion : sur `c0a82e88`, le slot 12 publiait 60 assistances dans la courbe de
+score alors que le pont d'identite l'appariait sur 0 — sa ligne de feuille. Le meme compteur avait
+DEUX derivations et une seule borne : la cle passait par `incrementTimes` (borne par pas
+`maxUnrollPerStep` = 16 appliquee depuis le lot 6.7-B1, `named_series.go:421` au commit
+`1690aec04`), la serie par `SeriesTotal` / `SeriesByRound` (`score.go:138-147`), qui rendaient la
+suite BRUTE. Avant la vague 6 le slot n'etait pas ponte donc pas publie, et l'ecart etait
+invisible ; depuis, la courbe servait une valeur FAUSSE a l'interface.
+
+**Decision technique principale — une seule derivation, un seul lecteur de la borne.**
+`maxUnrollPerStep` n'est plus lu qu'a un endroit, `boundSteps`. `incrementTimes` en est la forme
+EVENEMENTS, `boundedSeries` la forme SERIE, et `SeriesTotal` / `SeriesByRound` passent par la
+seconde. La borne N'EST PAS etendue a tout : un champ `StatComponent.Unitary` la demande, et seuls
+les trois compteurs d'ACTION le portent — exactement les trois que lit la cle. Les autres
+compteurs publies sont des compteurs de CADENCE dont un pas legitime depasse 16 (score personnel
++100 par frag, 35 tics de garde pour un point de colline, score de mode en tics ou en secondes) :
+les borner effacerait des courbes vraies. Ni la valeur ni la semantique des bornes ne changent.
+
+**Garde-rail, et un garde-rail voisin repare.** `named_derivation_unique_test.go` tient l'accord
+serie/cle, la contre-epreuve saine, l'invariant general et — regle n 6 du depot — un balayage de
+tout le module qui interdit toute autre lecture de la borne (allowlist a 2 entrees, la seconde ne
+fait que l'imprimer au journal). Mutation jouee : retirer `boundedSeries` de `score.go` rend 60
+contre 0. Decouverte en chemin et CORRIGEE parce que le correctif la causait : l'echantillon egare
+de `manches_compteurs_test.go` portait 60 assistances, une valeur que la borne par pas ecarte AUSSI
+— les trois mutations du filtre de manche (2026-09-06) auraient continue de passer. Fixture ramenee
+a 15 (pas de 12, sain pour la borne) : chaque filtre est de nouveau seul devant son defaut, les
+trois mutations rejouees rougissent.
+
+**Resultats observes.** Gate : `TestOuvrierReel_ConstruitEtLivre` FAIL -> ok, sans retoucher une
+seule mesure figee du superviseur (8 pontes, 20 frags / 6 assistances / 3 captures / 3 vols,
+6 joueurs publies, 3 portages). Suite `wire` en integration ok ; `go test ./...` du module 0 echec ;
+`go test -tags=integration ./internal/analysis/... ./internal/replaybuild/...` 0 echec ;
+`golangci-lint run --new-from-merge-base=origin/main ./...` 0 issue ; `go vet` vert.
+**Parc : 78 films cuits HORS LIGNE deux fois** (binaire AVANT tire de `git archive 1690aec04`,
+APRES de `261e86c98`, faits derives des exports commites et valides a l'octet contre
+`01e1f945.facts.json`, aucune base ouverte). Sur 604 joueurs publies, **2 series bougent** :
+`1b2d9e08` / 2533274806449978 (15 616 assistances -> 2, feuille 2) et `bf2a9f05` / 2533274903615304
+(56 -> 1, feuille 1). Ecart total serie-feuille **15 669 -> 0**, ecart moyen par joueur
+**25,94 -> 0,00**, joueurs exacts **602/604 -> 604/604**. **76 artefacts sur 78 identiques a
+l'octet**, et le calque `objectives` ne bouge sur AUCUN film (il passait deja par la borne).
+
+**Conclusion / prochaine etape.** Films a recuire : `1b2d9e08` et `bf2a9f05` — deux, pas plus, et
+le detecteur est exhaustif (la passe `slot_identity` journalise exactement les rejets sur les trois
+compteurs concernes, la cuisson des 78 et la comparaison a l'octet le confirment). Hors parc, la
+fixture `c0a82e88` est recuite par le test lui-meme. Rapport : `REVUE_VAGUE6_2026-09-11.md`
+section « Ronde 1 bis », releve complet dans
+`replay2d/registre_film/vague6_6R_joueurs_avant_apres.tsv`. Reste au superviseur : fusion,
+recuisson des deux films, `make replay-corpus-gate` (il compare au parc reel, que ce correctif
+deplace legitimement sur ces deux films), `make gate-push`.
+## [2026-09-11] Revue 6.R ronde 2 — P0 0 / P1 0 / P2 3, boucle close, garde-rail regle 6 pose — Complete (superviseur)
+
+**Decision technique principale.** La ronde 2 (corrections seules, contexte frais) ne rend ni P0 ni P1 : la boucle de revue de la vague 6 est close (5 -> 0). Le seul P2 qui viole une regle ecrite (regle n 6 : quatre copies centralisees dans `flagCloseAt` sans garde-rail) est corrige par le superviseur : `archlint/no_flag_carry_end_outside_close_test.go` interdit toute affectation par selecteur des cinq champs de fin d'un `flagCarryRaw` hors `flag_carries_close.go`.
+
+**Resultats observes.** Garde-rail vert au HEAD ; rouge sur une ecriture ajoutee dans `flag_carries_home.go` (mutation jouee puis retiree) ; `golangci-lint` 0 issue ; suite `archlint` verte. Les deux autres P2 (invariant `Balanced` vrai par construction ; `closedBy*` qui baissent sur les films a `noTrack`/`outOfWindow`, chiffre correct mais deplace) sont consignes dans `REVUE_VAGUE6_2026-09-11.md` §Ronde 2.
+
+**Prochaine etape.** Fusion dans `feat/v75`, recuisson des 9 films CTF au binaire final, `make gate-push`, push, CI de vague.
 ## [2026-09-11] Revue 6.R de la vague 6, ronde 1 — 5 constats corriges, 46,3 s de drapeau fantome rendues au sol — Complete (worktree LevelUp-wt-couverture-objectifs)
 
 **Le constat P0, et il n'avait rien d'exotique.** `homed` (`flagCarryRaw`) n'avait qu'UNE

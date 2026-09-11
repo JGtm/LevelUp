@@ -36,6 +36,22 @@ const (
 	// Les deux manches de la fixture, sur l'horloge du film.
 	manchesDebutR0 = 1_000
 	manchesDebutR1 = 12_000
+	// manchesEgareAssists : les assistances que porte L'ECHANTILLON EGARE.
+	//
+	// # POURQUOI 15 ET PLUS 60 (correctif 6.R, 2026-09-11)
+	//
+	// Le vrai `51ebbc0f` en porte 60, et l'en-tete de ce fichier le raconte tel quel. Mais
+	// depuis 6.R la SERIE passe elle aussi par la borne par pas
+	// (`objectiveevents.maxUnrollPerStep` = 16, cf. `boundSteps`) : un egare a 60 sautait de 3 a
+	// 60 d'un coup, donc le pas etait rejete et la manche 0 finissait a 3 MEME SANS le filtre de
+	// manche. Les trois tests ci-dessous auraient continue de passer avec leur mutation JOUEE —
+	// un garde-rail eteint par un autre filtre, et personne pour le dire.
+	//
+	// 15 remet chaque filtre devant son propre defaut : le pas 3 -> 15 est SAIN pour la borne
+	// (12 <= 16), donc seul le filtre de manche peut encore ecarter l'egare, et le retirer fait
+	// bien remonter la manche 0 a 15. La borne par pas, elle, a ses propres tests
+	// (`objectiveevents/named_bornes_test.go`, `replay/bounds_aberrants_test.go`).
+	manchesEgareAssists = 15
 )
 
 // manchesSlots : huit slots de joueur, comme un film 4v4.
@@ -46,13 +62,13 @@ var manchesSlots = []int{10, 12, 14, 16, 18, 20, 22, 24}
 // rythme, et un train de score de mode par manche pour que `RealRounds` les tienne pour reelles.
 //
 // `egare` ajoute L'ECHANTILLON EGARE : un enregistrement date DANS la manche 1 (14 000 ms) qui
-// declare la manche 0 et porte 60 assistances pour le slot 12.
+// declare la manche 0 et porte [manchesEgareAssists] assistances pour le slot 12.
 func deuxManchesFixture(egare bool) []objectiveevents.StatRecord {
 	recs := manchesCorps(0, manchesDebutR0)
 	recs = append(recs, manchesCorps(1, manchesDebutR1)...)
 	if egare {
 		recs = append(recs, statRec(14_000, 12, 0, map[int]objectiveevents.StatValue{
-			2: {A: 0, B: 0}, 3: {A: 60},
+			2: {A: 0, B: 0}, 3: {A: manchesEgareAssists},
 		}))
 	}
 	return recs
@@ -121,7 +137,7 @@ func dernierPoint(pts []objectiveevents.ScorePoint) (int, int64) {
 // TestEchantillonEgareNAlimentePasSaMancheDeclaree — LE TEST QUI FONDE LE CORRECTIF.
 //
 // MUTATION : retirer `bornes.Excludes(r)` de `rawSeriesByRound` (named_series.go) fait
-// remonter la manche 0 du slot 12 a 60 assistances, et le test echoue.
+// remonter la manche 0 du slot 12 a [manchesEgareAssists] assistances, et le test echoue.
 func TestEchantillonEgareNAlimentePasSaMancheDeclaree(t *testing.T) {
 	sain := assistsDuSlot(deuxManchesFixture(false), 12)
 	avecEgare := assistsDuSlot(deuxManchesFixture(true), 12)
@@ -132,8 +148,9 @@ func TestEchantillonEgareNAlimentePasSaMancheDeclaree(t *testing.T) {
 		t.Fatalf("temoin sans egare : la manche 0 finit a %d assistances (attendu 3)", vSain)
 	}
 	if tEgare != tSain || vEgare != vSain {
-		t.Errorf("l'echantillon egare (14 000 ms, dans la manche 1, 60 assistances) a ete range en "+
-			"manche 0 : elle finit a {%d, %d} au lieu de {%d, %d}", tEgare, vEgare, tSain, vSain)
+		t.Errorf("l'echantillon egare (14 000 ms, dans la manche 1, %d assistances) a ete range en "+
+			"manche 0 : elle finit a {%d, %d} au lieu de {%d, %d}",
+			manchesEgareAssists, tEgare, vEgare, tSain, vSain)
 	}
 	// La manche 1 du meme slot n'est pas touchee : le correctif ECARTE, il ne deplace pas.
 	if _, v := dernierPoint(avecEgare[1]); v != 3 {
@@ -143,10 +160,12 @@ func TestEchantillonEgareNAlimentePasSaMancheDeclaree(t *testing.T) {
 
 // TestEchantillonEgareNeGonflePasLeTotalDuJoueur — le meme defaut, vu du DOCUMENT.
 //
-// Sans le correctif le total valait 63 (60 de decalage + 3) ; avec, il vaut 6, la somme des deux
-// manches. Le test prouve aussi que le total publie reste CHRONOLOGIQUE.
+// Sans le correctif le total valait 18 ([manchesEgareAssists] de decalage + 3) ; avec, il vaut 6,
+// la somme des deux manches. Le test prouve aussi que le total publie reste CHRONOLOGIQUE.
+// (Sur le vrai `51ebbc0f`, l'egare portait 60 et le total publie valait 63 ; cf.
+// [manchesEgareAssists] pour la raison du 15 dans la fixture.)
 //
-// MUTATION : retirer `bornes.Excludes(r)` de `rawSeriesByRound` porte le total a 63.
+// MUTATION : retirer `bornes.Excludes(r)` de `rawSeriesByRound` porte le total a 18.
 func TestEchantillonEgareNeGonflePasLeTotalDuJoueur(t *testing.T) {
 	tl, cov := buildScoreTimeline(&ScoreInput{Records: deuxManchesFixture(true)},
 		manchesMorts(), multiRoundClock())
@@ -236,16 +255,16 @@ func TestSerieCumuleeParSlotResteChronologique(t *testing.T) {
 // eventuelle se voie.
 func TestMonoMancheInchangeParLesBornes(t *testing.T) {
 	recs := manchesCorps(0, manchesDebutR0)
-	tardif := statRec(20_000, 12, 0, map[int]objectiveevents.StatValue{3: {A: 60}})
+	tardif := statRec(20_000, 12, 0, map[int]objectiveevents.StatValue{3: {A: manchesEgareAssists}})
 	recs = append(recs, tardif)
 
 	if objectiveevents.ResolveRoundBounds(recs).Excludes(tardif) {
 		t.Fatal("une borne de manche a ete posee sur un film MONO-MANCHE")
 	}
 	_, v := dernierPoint(assistsDuSlot(recs, 12)[0])
-	if v != 60 {
-		t.Errorf("la serie mono-manche a change : elle finit a %d au lieu de 60 "+
-			"(l'echantillon tardif doit y rester)", v)
+	if v != manchesEgareAssists {
+		t.Errorf("la serie mono-manche a change : elle finit a %d au lieu de %d "+
+			"(l'echantillon tardif doit y rester)", v, manchesEgareAssists)
 	}
 }
 

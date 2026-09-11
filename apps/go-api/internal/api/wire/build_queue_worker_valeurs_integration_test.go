@@ -149,10 +149,17 @@ var valeurViesParXUID = map[string]int{
 
 // valeurJoueursApparies : les xuids que le pont d'identité rattache à un slot d'entité, donc les
 // seuls dont le document publie des compteurs vivants.
+//
+// 2026-09-11 (vague 6) : `2535458702376288` (5 frags, 0 mort, 0 assistance) entre dans la liste.
+// Il occupait le slot 12, illisible jusque-là : 0 mort le mettait hors du pont par morts, et son
+// compteur d'assistances DEROULE a 60 (deroulage aberrant) le mettait hors du triplet. Borne de
+// deroulage a 16 (lot 6.7-B1 item 6) et domaine des compteurs au niveau de l'enregistrement
+// (lot 6.11 item 3) : son triplet vaut (5, 0, 0), sa ligne de feuille, et le pont le nomme.
 var valeurJoueursApparies = []string{
 	"2533275001554469",
 	"2535429692041611",
 	"2535432531943478",
+	"2535458702376288",
 	"2535463878425995",
 	"2535465632069522",
 }
@@ -171,10 +178,16 @@ var valeurCourbeCamp = []replaydoc.ScoreTick{{T: 195, V: 1}, {T: 485, V: 2}, {T:
 // triplet (`RoundIdentity.CompletedByLines`, instruction CTF du 2026-09-06, revue CTF-R2) : les
 // 7 slots nommables sont pontés et chacun publie exactement sa ligne de la feuille de match —
 // 15 frags, 6 assistances, 1 capture, 1 vol (oracle : `facts` du fixture, sommes des lignes des
-// 7 pontés). Le 8e joueur reste non ponté (slot 12 agrégé, assistance lue 60 contre 0).
-// Figé ici pour que le prochain déplacement se voie ; `assertCalquesDObjectif` (fichier voisin)
-// porte la confrontation captures = score de la feuille de match.
-var valeurObjectifsParStat = map[string]int{"kills": 15, "assists": 6, "flag_captures": 1, "flag_steals": 1}
+// 7 pontés). Le 8e joueur restait non ponté (slot 12 agrégé, assistance lue 60 contre 0).
+//
+// 2026-09-11 (vague 6) : le 8e est ponté (cf. `valeurJoueursApparies`), et le film publie la
+// feuille ENTIÈRE — 20 frags (somme des 8 lignes), 6 assistances, 3 captures (= `teamScores`
+// 3 + 0) et 3 vols (chaque capture de ce film commence par un vol ; les deux actions du slot 12
+// étaient parmi les `noBridge` du calque du drapeau, cf. `assertPortsDeDrapeau`). Les 60
+// assistances fantômes du slot 12 ne sont plus dans le total : bornées puis rejetées, pas
+// attribuées. Figé ici pour que le prochain déplacement se voie ; `assertCalquesDObjectif`
+// (fichier voisin) porte la confrontation captures = score de la feuille de match.
+var valeurObjectifsParStat = map[string]int{"kills": 20, "assists": 6, "flag_captures": 3, "flag_steals": 3}
 
 // assertValeursDuDocument confronte le document cuit par l'ouvrier à l'oracle de l'API et aux
 // mesures figées. Appelée par `assertArtefactLivreEtComplet` sur le document que le service de

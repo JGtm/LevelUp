@@ -111,7 +111,7 @@ func manchesMortsRelecteur() []Death {
 // contredit — donc ecarte. C'est le cas exact de `51ebbc0f`.
 //
 // MUTATION : exempter un bloc des qu'il a UN enregistrement hors fenetre (au lieu de TOUS) fait
-// revenir les 60 assistances.
+// revenir les assistances de l'egare (cf. [manchesEgareAssists]).
 func TestEgareSeulResteEcarteMalgreLaGardeParSlot(t *testing.T) {
 	recs := deuxManchesFixture(true)
 	bornes := objectiveevents.ResolveRoundBounds(recs)
