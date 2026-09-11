@@ -1,3 +1,10 @@
+## [2026-09-11] Vague 6 close — couverture des calques d'objectif, munitions exactes, jonglage, revue et CI vertes — Complete (superviseur)
+
+**Decision technique principale.** Cloture de la vague 6 du plan maitre v7.5 : 12 lots fusionnes dans `feat/v75` (6.1 pont a l'instant, 6.2 crane, 6.4 dette visible, 6.5/6.6 armes au sol et munitions, 6.7 audit + B1 + B2 couverture des objectifs, 6.10/6.10 bis munitions exactes et grammaire i9, 6.11 passages de drapeau, 6.13 zone aveugle des socles), revue unique en deux rondes + ronde 1 bis sur un defaut trouve par le gate local, `make gate-push` puis baseline (15 849 tests, 0 echec), push `c7b63b8f4`, CI 3/3 verte.
+
+**Resultats observes.** Drapeau 153 % -> 102,8 % de l'oracle (parc CTF), crane 83 -> 96,6 %, manche fantome Strongholds 24/154 -> 154/154, BTB 530 actions fausses -> 0, `flag_secures` 0 -> 233/264, KOTH 0/7 -> 6/7 films cuits, munitions exactes au lacher publiees (96 % des armes lachees), courbe de score alignee a la feuille (ecart 15 669 -> 0 sur 604 joueurs). Parc recuit au code final (65 + 12 premieres cuissons + 13 + 11). Gate corpus : 4 ok, 3 pertes toutes instruites, corpus non re-fige.
+
+**Prochaine etape.** Verification navigateur quand le worktree partage revient sur `feat/v75` ; lot 6.9 (temps en zone par joueur) sur decision ; release a la main de l'utilisateur (aucun tag, aucun push main).
 ## [2026-09-11] 6.R ronde 1 bis — la serie publiee et la cle d'appariement ne derivent plus qu'une fois — Complete (worktree LevelUp-wt-couverture-objectifs)
 
 **Le defaut, trouve par le gate local de fin de vague 6.** `TestOuvrierReel_ConstruitEtLivre`
