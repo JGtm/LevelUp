@@ -1,3 +1,74 @@
+## [2026-09-11] Lot 6.7 phase B2 — glyphe porte sans position, Total Control, KOTH, `flag_secures` — Complete (worktree LevelUp-wt-couverture-objectifs-b)
+
+**Decision technique principale.** Quatre items, quatre commits, chacun avec sa cause verifiee
+SUR PIECES avant de coder, ses tests rouges d'abord, son test de MUTATION et son gate mesure.
+Regime : **aucune base DuckDB ouverte**, aucun artefact du parc partage recuit, serveur intact.
+Les faits de match des cuissons hors ligne sont DERIVES des exports commites de la vague 6
+(registre + participants), et la derivation est validee A L'OCTET contre le fichier de reference
+commite `testdata/equivalence/01e1f945.facts.json`.
+
+**Item 1 — le glyphe porte sans position du porteur (`98ec81da0`, web).** Trois calques
+repondaient differemment a la meme image muette : le crane et la bombe DISPARAISSAIENT
+(`if (!w) continue`), le drapeau se figeait a l'ANCRE DU SPAN — une position perimee affichee avec
+l'habillage du porte, donc un fait FAUX plutot que rien (533 images sur 32 464 cote drapeau,
+694 cote crane). La regle est desormais ecrite UNE fois (`model/carriedGlyphPlace.ts`) : sans
+position du porteur, l'objet est rendu LIBRE a sa DERNIERE position connue (jamais avant le debut
+du portage), avec l'habillage d'un LIEU ; les trois etats sont exclusifs, donc jamais deux glyphes
+du meme objet a la meme image. La precedence du portage de `skullPresenceAt` est conditionnee a une
+position, et le calque de l'objet libre relit les positions par le MEME resolveur que le calque du
+porte. Garde-rail `carriedGlyphPlace.guard.test.ts`. Gate : 12 tests rouges -> verts, 5 mutations,
+`tsc -b` propre, 7 354 tests web verts, eslint 0 nouvel avertissement. Aucune recuisson.
+
+**Item 2 — zones de Total Control : `[!]` INSTRUIT (`dc0b0ef30`).** L'audit supposait un defaut de
+code (mode ou effectif). C'est faux : l'entree Total Control d'`objective_roles.toml` a ete RETIREE
+le 2026-08-27 sur DECISION UTILISATEUR, motivee par trois mesures refutant le designateur, avec
+une condition de reprise ecrite (« un CHANTIER DE DECODAGE, pas un ajustement de configuration »).
+Mesure NEUVE sur la cible exacte du gate (`5676a9ba`, absent du corpus D3-ter) : cardinal 1 pendant
+100,0 % du temps exploitable, **cardinal 3 pendant 0,0 %** pour un seuil de 80 %. Et le catalogue
+d'Insolence porte QUINZE `totalcontrol_zone` pour TROIS actives : atteindre « >= 3 zones » se ferait
+par une publication FAUSSE. La seconde moitie du gate (captures >= 46/51) est hors d'atteinte depuis
+la garde d'effectif de B1 (27 lignes pour 8 slots). Aucun code modifie.
+
+**Item 3 — KOTH (`33301324e`).** L'hypothese « catalogue d'objectifs sans formes de colline » est
+REFUTEE : les six cartes portent 5 ou 6 volumes `hill`, tous a forme. La cause etait celle que le
+journal d'echec nommait deja — « match absent du registre — identite de carte non resolue »
+(`sql: no rows in result set`). Les matchs y sont depuis : **6 films sur 7 cuisent, code de sortie
+0**, 3 ou 4 `zoneStates` et leur `coverage.zones` chacun. `0a247154` est `[!]` : plus aucun chunk au
+cache. Et l'affirmation d'exactitude de `hill_hold_ticks.go` — « 31 joueurs / 4 films » — n'etait
+tenue que par un RELEVE qui journalise ses desaccords et passe quand meme (anti-patron n° 9) : elle
+est desormais tenue par un GATE qui echoue, sur un corpus porte a **6 films / 47 slots apparies,
+0 desaccord, 0 joueur au-dessus de son oracle**.
+
+**Item 4 — `flag_secures` (`3e1e1dc69`).** Balayage des 260 emplacements du statborg contre
+l'oracle, valeur par valeur apres pont slot -> xuid, avec TEMOIN POSITIF (`comp 22 A` doit
+reproduire `flag_grabs`) et controle de NON-VACUITE. Gate STRICT ecrit d'avance (>= 10 films,
+0 desaccord) : **`comp 23 B` est le SEUL exact, sur 11 films / 79 slots / 0 desaccord**, pour
+169 securisations non nulles. Il figurait dans la liste « ce qui est TOMBE au controle » — mais
+comme candidat a la RECOMPENSE `runner_stopped`, co-nommee avec `21 B`, alors que l'oracle de
+l'epoque ne portait aucune colonne `flag_secures` : la bonne cible n'etait pas dans le jeu d'essai.
+Publication mesuree : **0 -> 233 securisations sur 264, ratio 1,000 film par film sur 11 films,
+0 joueur au-dessus**. Les deux films a 0 sont tus par la garde d'effectif faute de
+`joinedInProgress` dans mes faits hors ligne ; le balayage, lui, les trouve exacts.
+
+**Resultats observes.** 8 films neufs a cuire (6 KOTH + `64e8adfa` `fb1a1a72`, tous sans artefact
+au parc) ; 11 des 26 films de B1 gagnent une raison de plus. Aucune montee de `SchemaVersion`,
+aucun changement d'`openapi.yaml` ni de `generated.ts`, aucune string UI nouvelle.
+`golangci-lint` 0 issue sur les paquets touches.
+
+**Decouverte majeure, NON traitee.** Le corpus d'equivalence porte un ecart **PREEXISTANT** sur
+l'etape `score` de TOUS les films testes, golden Slayer `000d5950` compris (`attendu compte=1`,
+`obtenu compte=0`). Verifie au binaire construit depuis `c3860bc46` avec la meme racine de
+donnees : l'ecart est identique, donc anterieur a B2. **Il doit etre tranche AVANT tout `-update`
+du corpus**, sans quoi un re-figeage l'effacerait en silence. Autres decouvertes : `fb1a1a72`
+publie 10 prises de drapeau pour 0 a l'oracle sur un joueur (sous la borne de B1) ; `7fce3219` ne
+rend aucun pont d'identite par le triplet ; le temps en zone par joueur reste a 0 sur les six films
+KOTH (cause C8, escalade L9 deja renvoyee au lot 6.9).
+
+**Conclusion / prochaine etape.** Rapport `.ai/V7.5/RAPPORT_COUVERTURE_OBJECTIFS_B2_2026-09-11.md`,
+sorties `replay2d/registre_film/vague6_b2_*`, ligne 6.7 du plan maitre a jour. Rien n'est pousse,
+rien n'est fusionne. Au superviseur : la recuisson des 8 films neufs (lot 6.8), le corpus
+d'equivalence (dont la decision sur l'ecart `score`), et l'arbitrage de l'item 2 statue `[!]`.
+
 ## [2026-09-11] Lot 6.7 phase B1 — les cinq correctifs Go des calques d'objectif (items 2 a 6) — Complete (worktree LevelUp-wt-couverture-objectifs)
 
 **Decision technique principale.** Reprise du lot apres l'arret quota de l'item 1
