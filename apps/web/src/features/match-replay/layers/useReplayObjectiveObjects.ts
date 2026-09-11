@@ -24,14 +24,18 @@ import { useCallback, useMemo } from 'react'
 import { drawFreeSkull, type ObjectiveObjectsInput } from './objectiveObjectsLayer'
 import { skullPresenceAt, skullSocle } from '../model/skullPresence'
 
+import { useCarrierPosAt } from '../model/carrierPosition'
 import { type CanvasView } from '../model/replayView'
-import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from '../../../lib/replay/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 interface UseReplayObjectiveObjectsArgs {
-  /** Les vies libres publiées par l'artefact. Vide = rien à peindre, et c'est le cas nominal. */
-  lives: readonly ReplayObjectiveObjectReady[]
-  /** Les périodes de portage (schéma 23). Vide = artefact ancien : la présence retombe sur les vies. */
-  carries: readonly ReplaySkullCarry[]
+  /**
+   * LE DOCUMENT ENTIER, et non les deux listes séparément, depuis le lot 6.7 phase B2 : la
+   * présence du crâne dépend désormais aussi des TRAJECTOIRES de son porteur (un portage dont le
+   * porteur n'a pas de position rend le crâne LIBRE, cf. `skullPresence.ts`), et cette relecture
+   * est celle du résolveur commun — le même que les quatre autres calques de porteur.
+   */
+  doc: ReplayDocumentReady
   view: CanvasView
   /** L'encre neutre du thème (remplissage) et celle du FOND (liseré), déjà résolues par l'appelant. */
   ink: string
@@ -50,20 +54,26 @@ export interface ReplayObjectiveObjects {
 }
 
 export function useReplayObjectiveObjects({
-  lives, carries, view, ink, outline,
+  doc, view, ink, outline,
 }: UseReplayObjectiveObjectsArgs): ReplayObjectiveObjects {
+  const lives = doc.objectiveObjects
+  const carries = doc.skullCarries
   const layer = useMemo<ObjectiveObjectsInput>(() => ({ style: { ink, outline } }), [ink, outline])
   // Le socle (point de réapparition) se lit UNE fois : le crâne au repos y est posé (cf. skullPresence).
   const socle = useMemo(() => skullSocle(lives), [lives])
+  // La relecture de position partagée (carrierPosition.ts) : embarqué -> position du véhicule,
+  // sinon celle du bipède. C'est la MÊME que celle de `skullCarrierLayer` — les deux calques
+  // doivent s'accorder à l'image près, sinon le crâne clignote entre porté et libre.
+  const posOf = useCarrierPosAt(doc)
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number) => {
       // Sans aucune vie émise, on ne connaît ni position ni socle : rien à peindre.
       if (lives.length === 0) return
-      const presence = skullPresenceAt(lives, carries, frame, socle)
+      const presence = skullPresenceAt(lives, carries, frame, socle, posOf)
       if (presence.state !== 'free') return
       drawFreeSkull(ctx, layer, presence.at, view, presence.rolling)
     },
-    [lives, carries, socle, layer, view],
+    [lives, carries, socle, posOf, layer, view],
   )
   return { id: 'objets-objectif', paint }
 }

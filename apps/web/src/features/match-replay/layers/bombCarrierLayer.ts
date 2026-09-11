@@ -31,6 +31,7 @@ import { type CanvasView, projectTo } from '../model/replayView'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 import type { ReplayBombCarry } from '../../../lib/replay/replayNormalize'
 import { carriedGlyphAlpha } from './carriedGlyphPulse'
+import { carriedGlyphPlaceAt } from '../model/carriedGlyphPlace'
 import { covers } from '../model/replaySpans'
 
 /** Style du calque : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
@@ -109,9 +110,14 @@ export function bombGroundAt(
 
 /**
  * drawBombCarrier peint la bombe de l'image : sur son porteur courant (par-dessus le marqueur),
- * ou au sol sur le dernier point de son lâcheur. Un joueur non localisable n'est PAS dessiné :
- * la bombe n'a pas de position propre, et l'inventer serait affirmer une place que le film ne
- * donne pas à cette image.
+ * ou au sol sur le dernier point de son lâcheur.
+ *
+ * PORTEUR SANS POSITION (audit du 2026-09-10, cause C10 ; lot 6.7 phase B2) : la bombe ne
+ * DISPARAÎT plus. Le portage est vrai, c'est la trajectoire du bipède qui a un trou — la règle
+ * commune aux trois glyphes portés (`carriedGlyphPlace.ts`) la rend LIBRE à sa dernière position
+ * connue, avec l'habillage du sol. Sans AUCUNE position connue depuis le début du portage, rien
+ * n'est dessiné : la bombe n'a pas de canal de position propre, et l'inventer serait affirmer
+ * une place que le film ne donne pas.
  *
  * BORNAGE HORS CADRE (plan escouade hors cadre, chantier B, décision D3, 2026-09-10) : SEULE la
  * bombe PORTÉE (sur son porteur) est plaquée à la marge quand il sort du cadrage visible — au
@@ -126,12 +132,26 @@ export function drawBombCarrier(
   frame: number,
 ): void {
   for (const c of bombCarrierActiveAt(carries, frame)) {
-    const w = layer.posOf(c.xuid, frame)
-    if (!w) continue
+    // LA RÈGLE COMMUNE AUX TROIS GLYPHES PORTÉS (`carriedGlyphPlace.ts`) : sans position du
+    // porteur, la bombe est LIBRE à sa dernière position connue, pas disparue. `fallback: null`
+    // — la bombe n'a AUCUN canal de position propre (cf. l'en-tête, document_bomb_carries.go).
+    const place = carriedGlyphPlaceAt(layer.posOf, c, frame, null)
+    if (place.state === 'absent') continue
+    if (place.state === 'free') {
+      // LIBRE : ancrée sur le point lui-même, sans le décalage du porté (aucun pion à éviter),
+      // et sans bornage hors cadre — c'est devenu un objet de carte, comme la bombe au sol.
+      drawBombGlyph(ctx, projectTo(view, place.at), {
+        ink: layer.style.ink,
+        outline: layer.style.outline,
+        alpha: ALPHA_GROUND,
+      })
+      ctx.globalAlpha = 1
+      return // une seule bombe : un seul glyphe à cette image
+    }
     // ÉCHELLE 1 : ce calque ne met encore rien à l'échelle de l'écran (`k`), même convention
     // que `flagCarriesLayer`/`skullCarrierLayer` (cf. leur en-tête).
-    const mark = edgeMarkFor(w, view, OFFSCREEN_MARGIN_PX, 1)
-    const at = mark ? mark.at : projectTo(view, w)
+    const mark = edgeMarkFor(place.at, view, OFFSCREEN_MARGIN_PX, 1)
+    const at = mark ? mark.at : projectTo(view, place.at)
     // La bombe se pose AU-DESSUS du marqueur (celui-ci occupe le point) : le décalage est
     // appliqué ICI, le glyphe partagé ne connaît que son centre.
     drawBombGlyph(ctx, { x: at.x, y: at.y - BOMB_OFFSET_Y }, {

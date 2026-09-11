@@ -22,7 +22,7 @@ import {
   drawFlagCarries,
   flagAt,
   flagBlinkAlpha,
-  flagPointAt,
+  flagPlaceAt,
   flagSpanAt,
   FLAG_HIT_RADIUS,
   FLAG_STATES,
@@ -155,22 +155,85 @@ describe('homeAnchorOf', () => {
   })
 })
 
-describe('flagPointAt', () => {
+/**
+ * PORTEUR SANS POSITION (audit du 2026-09-10, cause C9 ; lot 6.7 phase B2, item 1).
+ *
+ * 533 images sur 32 464 (1,64 % du parc CTF) tombent dans un trou de réplication du bipède
+ * PENDANT un portage vrai. Le calque y repliait sur `{x: now.x, y: now.y}` — l'ANCRE DU SPAN,
+ * une position PÉRIMÉE — et gardait l'habillage du porté : un objet immobile faux qui se lit
+ * comme un fait. La règle commune aux trois glyphes portés (`carriedGlyphPlaceAt`) rend le
+ * drapeau LIBRE à sa dernière position CONNUE, avec l'habillage d'un LIEU.
+ */
+describe('flagPlaceAt', () => {
   it('un drapeau PORTÉ se lit sur la position RELUE de son porteur, pas sur celle du span', () => {
     const now = flagSpanAt(FLAG_0, 15)!
-    expect(flagPointAt(now, 15, () => ({ x: 7, y: 3 }))).toEqual({ x: 7, y: 3 })
+    expect(flagPlaceAt(now, 15, () => ({ x: 7, y: 3 }))).toEqual({ at: { x: 7, y: 3 }, loose: false })
   })
 
-  it('porteur non localisable : REPLI sur la position mesurée du span, jamais de disparition', () => {
+  it('porteur sans position : LIBRE à la DERNIÈRE position connue, pas à l’ancre du span', () => {
     const now = flagSpanAt(FLAG_0, 15)!
-    expect(flagPointAt(now, 15, () => null)).toEqual({ x: 2, y: 8 })
+    // Localisable jusqu'à l'image 12, muet ensuite. L'ancre du span vaut (2, 8) : on ne la sert pas.
+    const posOf = (_x: string, f: number) => (f <= 12 ? { x: 7, y: 3 } : null)
+    expect(flagPlaceAt(now, 15, posOf)).toEqual({ at: { x: 7, y: 3 }, loose: true })
   })
 
-  it('au sol et à la base : la position du span, sans relecture de joueur', () => {
+  it('porteur JAMAIS localisable : LIBRE à l’ancre du span, la seule position mesurée restante', () => {
+    const now = flagSpanAt(FLAG_0, 15)!
+    expect(flagPlaceAt(now, 15, () => null)).toEqual({ at: { x: 2, y: 8 }, loose: true })
+  })
+
+  it('au sol et à la base : la position du span, sans relecture de joueur ni état libre', () => {
     const posOf = vi.fn(() => ({ x: 0, y: 0 }))
-    expect(flagPointAt(flagSpanAt(FLAG_0, 25)!, 25, posOf)).toEqual({ x: 5, y: 5 })
-    expect(flagPointAt(flagSpanAt(FLAG_0, 35)!, 35, posOf)).toEqual({ x: 1, y: 9 })
+    expect(flagPlaceAt(flagSpanAt(FLAG_0, 25)!, 25, posOf)).toEqual({ at: { x: 5, y: 5 }, loose: false })
+    expect(flagPlaceAt(flagSpanAt(FLAG_0, 35)!, 35, posOf)).toEqual({ at: { x: 1, y: 9 }, loose: false })
     expect(posOf).not.toHaveBeenCalled()
+  })
+
+  it('MUTATION — le balayage arrière ne remonte JAMAIS avant le début du portage', () => {
+    const now = flagSpanAt(FLAG_0, 15)!
+    // Une position connue AVANT t0 (= 10) seulement : elle appartient au span d'avant la prise.
+    const posOf = (_x: string, f: number) => (f < 10 ? { x: 7, y: 3 } : null)
+    expect(flagPlaceAt(now, 15, posOf)).toEqual({ at: { x: 2, y: 8 }, loose: true })
+  })
+})
+
+describe('drawFlagCarries — habillage du drapeau libéré', () => {
+  it('un drapeau porté SANS position perd le DÉCALAGE du porté : il désigne un lieu', () => {
+    // Le décalage n'existe que pour ne pas recouvrir le pion du porteur ; sans pion à l'écran
+    // il ferait MENTIR la position. Le glyphe s'ancre donc sur le point brut.
+    const posOf = (_x: string, f: number) => (f <= 12 ? { x: 2, y: 8 } : null)
+    const layer: FlagCarriesInput = {
+      style: { colorOfTeam: () => INK, outline: OUTLINE, reducedMotion: true }, posOf,
+    }
+    const libre = mockCtx()
+    drawFlagCarries(libre.ctx, layer, [FLAG_0], VIEW, 15)
+    const porte = mockCtx()
+    drawFlagCarries(porte.ctx, layerWith({ x: 2, y: 8 }, true), [FLAG_0], VIEW, 15)
+    // Même position MONDE dans les deux cas : seul le décalage d'habillage les sépare. On lit le
+    // DERNIER `moveTo` — le glyphe vivant est peint après le rappel de base, qui, lui, n'est
+    // jamais décalé et serait donc identique des deux côtés.
+    const dernierMoveTo = (c: ReturnType<typeof mockCtx>) => {
+      const m = c.calls.filter((k) => k.method === 'moveTo')
+      return (m[m.length - 1].args as number[])[0]
+    }
+    expect(dernierMoveTo(porte) - dernierMoveTo(libre)).toBeCloseTo(6, 5) // FLAG_OFFSET_X
+  })
+
+  it('MUTATION — le SURVOL suit le glyphe libéré : viser le décalage ne toucherait rien', () => {
+    // `flagAt` rejoue la géométrie du tracé. Si le survol gardait le décalage du porté alors que
+    // le glyphe ne l'a plus, la cible serait à 6 px à côté — un écart qui ne se voit pas.
+    const posOf = (_x: string, f: number) => (f <= 12 ? { x: 2, y: 8 } : null)
+    const layer: FlagCarriesInput = {
+      style: { colorOfTeam: () => INK, outline: OUTLINE, reducedMotion: true }, posOf,
+    }
+    // Les deux calques visent le MÊME point monde (2, 8) : seul l'habillage les sépare. On sonde
+    // les deux au même endroit de la toile — la position projetée de ce point.
+    const sonde = { x: 120, y: 120 } // monde (2, 8) : pad 24 + 2x48 ; y renversé : 24 + (10-8)x48
+    const libre = flagAt([FLAG_0], layer, VIEW, 15, sonde)
+    const porte = flagAt([FLAG_0], layerWith({ x: 2, y: 8 }, true), VIEW, 15, sonde)
+    expect(libre).not.toBeNull()
+    expect(porte).not.toBeNull()
+    expect(porte!.at.x - libre!.at.x).toBeCloseTo(6, 5) // FLAG_OFFSET_X, comme au tracé
   })
 })
 

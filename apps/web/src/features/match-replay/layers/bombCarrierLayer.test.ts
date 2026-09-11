@@ -72,13 +72,49 @@ describe('drawBombCarrier', () => {
     return { ctx, fill, arc }
   }
 
-  it('ne dessine pas un porteur non localisable (aucune position propre à inventer)', () => {
+  /**
+   * PORTEUR SANS POSITION (audit du 2026-09-10, cause C10 ; lot 6.7 phase B2, item 1).
+   *
+   * L'ANCIEN COMPORTEMENT ÉTAIT `if (!w) continue` — la bombe DISPARAISSAIT. Le portage est
+   * pourtant vrai sur ces images : c'est la trajectoire du bipède qui a un trou de réplication.
+   * La règle commune aux trois glyphes portés (`carriedGlyphPlaceAt`) la rend désormais LIBRE à
+   * sa dernière position connue, avec l'habillage du sol — jamais deux glyphes à la même image.
+   */
+  it('porteur sans position : la bombe est rendue LIBRE à sa DERNIÈRE position connue', () => {
+    const { ctx, fill, arc } = makeCtx()
+    const layer: BombCarrierInput = {
+      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      // Le porteur est localisable jusqu'à l'image 5, muet ensuite.
+      posOf: (_x, f) => (f <= 5 ? { x: 50, y: 50 } : null),
+    }
+    drawBombCarrier(ctx, layer, [carry({ t0: 0, t1: 100 })], [], view, 10)
+    // UN SEUL glyphe : la silhouette est remplie une fois, pas deux.
+    expect(fill).toHaveBeenCalledTimes(1)
+    const [cx, cy] = arc.mock.calls[0] as number[]
+    // Monde (50, 50) -> canvas (100, 100). AU SOL : ancrée sur le point, SANS le décalage
+    // vertical du porté (BOMB_OFFSET_Y = 12) — l'habillage « libre » désigne un LIEU.
+    expect(cx).toBeCloseTo(100, 5)
+    expect(cy).toBeCloseTo(100, 5)
+  })
+
+  it('porteur JAMAIS localisable : rien — la bombe n’a aucun canal de position propre', () => {
     const { ctx, fill } = makeCtx()
     const layer: BombCarrierInput = {
       style: { ink: '#fff', outline: '#000', reducedMotion: true },
       posOf: () => null,
     }
     drawBombCarrier(ctx, layer, [carry({ t0: 0, t1: 100 })], [], view, 10)
+    expect(fill).not.toHaveBeenCalled()
+  })
+
+  it('MUTATION — le repli ne remonte JAMAIS avant le début du portage', () => {
+    const { ctx, fill } = makeCtx()
+    const layer: BombCarrierInput = {
+      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      // La seule position connue est AVANT t0 : elle appartient à la vie d'avant la prise.
+      posOf: (_x, f) => (f < 40 ? { x: 50, y: 50 } : null),
+    }
+    drawBombCarrier(ctx, layer, [carry({ t0: 40, t1: 100 })], [], view, 60)
     expect(fill).not.toHaveBeenCalled()
   })
 

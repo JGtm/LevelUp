@@ -186,3 +186,46 @@ describe('skullPresenceAt — le crâne au REPOS est sur son socle', () => {
     expect(skullPresenceAt(lives, [], 20, null)).toEqual({ state: 'absent' })
   })
 })
+
+/**
+ * PORTEUR SANS POSITION (audit du 2026-09-10, causes C9/C10 ; lot 6.7 phase B2, item 1).
+ *
+ * 694 images du parc Oddball (7,0 %, rapport 6.2 §2.1) tombent dans un trou de réplication du
+ * bipède PENDANT un portage vrai. La précédence `carried` s'y appliquait quand même, et le
+ * calque du crâne porté ne dessinait rien faute de position : le crâne disparaissait de l'écran.
+ * La précédence est désormais CONDITIONNÉE à une position du porteur — sans elle, le crâne est
+ * LIBRE à sa dernière position connue, et c'est le calque de l'objet libre qui le dessine.
+ */
+describe('skullPresenceAt — porteur sans position à l’image', () => {
+  const lives = [rest(5, 1, 1)]
+  const carries = [carry(10, 40)]
+
+  it('garde {carried} tant que le porteur est localisable', () => {
+    expect(skullPresenceAt(lives, carries, 20, SOCLE, () => ({ x: 7, y: 8 })))
+      .toEqual({ state: 'carried' })
+  })
+
+  it('rend {free} à la DERNIÈRE position connue du porteur quand l’image est muette', () => {
+    // Localisable jusqu'à l'image 20, muet ensuite : le crâne reste là où il a été vu.
+    const posOf = (_x: string, f: number) => (f <= 20 ? { x: 7, y: 8 } : null)
+    expect(skullPresenceAt(lives, carries, 30, SOCLE, posOf))
+      .toEqual({ state: 'free', at: { x: 7, y: 8 }, rolling: false })
+  })
+
+  it('retombe sur le DERNIER REPOS quand le porteur n’a jamais de position', () => {
+    expect(skullPresenceAt(lives, carries, 30, SOCLE, () => null))
+      .toEqual({ state: 'free', at: { x: 1, y: 1 }, rolling: false })
+  })
+
+  it('puis sur le SOCLE quand aucun repos ne précède le portage', () => {
+    expect(skullPresenceAt([], carries, 30, SOCLE, () => null))
+      .toEqual({ state: 'free', at: SOCLE, rolling: false })
+  })
+
+  it('MUTATION — sans lecteur de position, la précédence du portage est INCHANGÉE', () => {
+    // Dégradation : un appelant qui ne sait pas relire les positions garde le comportement
+    // historique. Si ce défaut était `() => null`, ce test rougirait en rendant `free`.
+    expect(skullPresenceAt(lives, carries, 30, SOCLE)).toEqual({ state: 'carried' })
+    expect(skullPresenceAt(lives, carries, 30, SOCLE, null)).toEqual({ state: 'carried' })
+  })
+})

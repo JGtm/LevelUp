@@ -394,7 +394,7 @@ export function ReplayCanvas({
   })
 
   const objectiveObjects = useReplayObjectiveObjects({
-    lives: doc.objectiveObjects, carries: doc.skullCarries, view: canvasView, ink: neutralInk, outline: markInk.outline,
+    doc, view: canvasView, ink: neutralInk, outline: markInk.outline,
   })
   // LA COURONNE VIP (schéma 22) : marqueur sur le VIP courant, relu image par image (useReplayVipCrown).
   const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion })
