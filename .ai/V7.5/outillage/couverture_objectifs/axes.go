@@ -163,7 +163,7 @@ var actionsSuivies = [][2]string{
 
 func (c *ctxAudit) axe2Actions() []string {
 	l := []string{strings.Join([]string{"film", "famille", "mode", "action", "xuid", "gamertag",
-		"publie", "oracle", "ecart"}, "\t")}
+		"publie", "oracle", "ecart", "max_pas"}, "\t")}
 	for _, f := range c.films {
 		fam := famille(f.mode)
 		if fam == "SansObjectif" || fam == "INCONNU" {
@@ -176,6 +176,7 @@ func (c *ctxAudit) axe2Actions() []string {
 			}
 			pub[o.Stat][o.XUID]++
 		}
+		mult := multipliciteMax(f.art)
 		for _, a := range actionsSuivies {
 			xs := map[string]bool{}
 			for x := range pub[a[0]] {
@@ -196,7 +197,7 @@ func (c *ctxAudit) axe2Actions() []string {
 				}
 				p := pub[a[0]][x]
 				l = append(l, strings.Join([]string{f.court, fam, f.mode, a[0], x,
-					c.gt[f.match][x], fmt.Sprint(p), fmt.Sprint(o), fmt.Sprint(p - o)}, "\t"))
+					c.gt[f.match][x], fmt.Sprint(p), fmt.Sprint(o), fmt.Sprint(p - o), fmt.Sprint(mult[a[0]][x])}, "\t"))
 			}
 		}
 	}
