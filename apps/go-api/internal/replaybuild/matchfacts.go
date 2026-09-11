@@ -35,6 +35,7 @@ import (
 	"log/slog"
 	"strconv"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/analysis/replay"
@@ -50,6 +51,11 @@ type filmStats struct {
 	// DENOMINATEUR manquant : sans lui, `coverage.objectives.available` compte les rescapes
 	// et un calque partiel se lit ~100 % (cf. objectiveevents.IdentifyNamedEventsByRound).
 	objectivesUnnamed int
+	// objectivesRefused est le nombre d evenements que la GARDE D EFFECTIF refuse de publier :
+	// le match compte plus de joueurs que le statborg n a de slots d entite
+	// (objectiveevents.RosterFitsStatborg). Il voyage pour la meme raison que le precedent —
+	// un calque muet doit dire ce que son silence coute.
+	objectivesRefused int
 	// flag porte les lectures du DRAPEAU VIVANT que seul cet etage peut faire : les
 	// enregistrements d'entite (les memes que la courbe de score) et les bursts de capture. Les
 	// SOCLES s'y ajoutent chez l'appelant (ils viennent du catalogue de carte, pas du film).
@@ -103,7 +109,7 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 	// UN SEUL PONT D'IDENTITE POUR LES DEUX CALQUES QUI EN VIVENT (actions d'objectif et
 	// drapeau vivant) : la meme table slot -> xuid, resolue AU PLUS UNE FOIS par cuisson.
 	pont := &pontParManche{recs: recs, deaths: deathInstantsOf(deaths.list), lines: lines}
-	objectifs, nonNommes := identifiedEvents(ctx, matchID, deaths, recs, facts, pont)
+	objectifs, nonNommes, refuses := identifiedEvents(ctx, matchID, deaths, recs, facts, pont)
 	return filmStats{
 		score: &replay.ScoreInput{
 			Records:    recs,
@@ -114,6 +120,7 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 		},
 		objectives:        objectifs,
 		objectivesUnnamed: nonNommes,
+		objectivesRefused: refuses,
 		flag:              flagInput(recs, film, pont, facts),
 		vip:               vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:             skullInput(recs, isSkullVariant(facts.GameVariantName), pont),
@@ -317,21 +324,48 @@ func withFlagIdentity(in replay.FlagInput, pont *pontParManche) replay.FlagInput
 // alors integralement perdu, et c'est cette perte-la qu'il faut publier, pas zero.
 func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 	recs []objectiveevents.StatRecord, facts port.MatchFacts,
-	pont *pontParManche) ([]objectiveevents.IdentifiedEvent, int) {
+	pont *pontParManche) ([]objectiveevents.IdentifiedEvent, int, int) {
 	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeOf(facts.GameVariantName))
 	if len(named) == 0 {
-		return nil, 0
+		return nil, 0, 0
+	}
+	// GARDE D'EFFECTIF, symetrique a `IsFlagFilm` pour le PORTAGE (lot 6.7-B1, item 5) : au-dela
+	// de huit joueurs le statborg n'a plus de slot pour dire de qui il parle, et les comptes
+	// publies ne correspondent a personne — `4f77afc1` annoncait 65 prises de drapeau pour 4 a
+	// l'oracle. Le calque se tait ENTIEREMENT, et le refus se compte et se journalise.
+	if sieges := siegesAuCoupDEnvoi(facts); !objectiveevents.RosterFitsStatborg(sieges) {
+		slog.WarnContext(ctx, "replaybuild: actions d'objectif REFUSEES — effectif hors du format du statborg",
+			"match_id", matchID, "nommees", len(named), "sieges", sieges,
+			"lignes", len(facts.Players), "slots", objectiveevents.StatPlayerSlots)
+		return nil, 0, len(named)
 	}
 	if deaths.err != nil {
 		slog.WarnContext(ctx, "replaybuild: fil des morts illisible — actions d'objectif non identifiees",
 			"err", deaths.err, "match_id", matchID, "nommees", len(named))
-		return nil, len(named)
+		return nil, len(named), 0
 	}
 	out, nonNommes := objectiveevents.IdentifyNamedEventsByRound(named, pont.identite())
 	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
 		"match_id", matchID, "nommees", len(named), "identifiees", len(out),
 		"nonNommees", nonNommes, "lignes", len(facts.Players))
-	return out, nonNommes
+	return out, nonNommes, 0
+}
+
+// siegesAuCoupDEnvoi compte les SIEGES qu'un match ouvre, et non les lignes de sa feuille.
+//
+// Un siege est occupe par au plus une personne a la fois : une ligne de BOT (il remplit une
+// place liberee) et une ligne de joueur ARRIVE EN COURS (il en prend une) n'en ouvrent aucun.
+// Trois lignes peuvent ainsi se partager un seul siege — c'est le cas de cinq films d'arene du
+// parc, qui portent 9 ou 10 lignes pour huit sieges (cf. `objectiveevents.RosterFitsStatborg`).
+func siegesAuCoupDEnvoi(facts port.MatchFacts) int {
+	n := 0
+	for _, p := range facts.Players {
+		if p.JoinedInProgress || analysis.IsBot(p.XUID) {
+			continue
+		}
+		n++
+	}
+	return n
 }
 
 // pontParManche est LE pont slot d'entite -> xuid de la cuisson : resolu par manche via les
@@ -357,18 +391,21 @@ type pontParManche struct {
 
 // identite rend le pont, en le resolvant au premier appel.
 //
-// TROIS VOIES CHAINEES, DANS L'ORDRE DE LA FORCE DE PREUVE (lot P2, 2026-09-08) : les instants
-// de mort, puis le triplet de la feuille (MONO-MANCHE seulement — le triplet apparie des totaux
-// de match), puis l'ELIMINATION par manche, qui ne suppose rien du contenu et se controle sur le
-// residu de la feuille. Sans cette derniere, les ACTIONS d'objectif d'un joueur qui meurt moins
-// de trois fois dans une manche restaient sans auteur alors que les COMPTEURS, eux, allaient
-// etre completes par le meme mecanisme (`buildPlayerScores`) — deux lecteurs du meme pont
-// n'auraient plus dit la meme chose du meme match.
+// QUATRE VOIES CHAINEES, DANS L'ORDRE DE LA FORCE DE PREUVE (lot P2, 2026-09-08 ; lot 6.7-B1,
+// 2026-09-10) : les instants de mort, puis le triplet de la feuille (MONO-MANCHE seulement — le
+// triplet apparie des totaux de match), puis l'ELIMINATION par manche, qui ne suppose rien du
+// contenu et se controle sur le residu de la feuille, puis le RESIDU DE MANCHE (MULTI-MANCHE
+// seulement), qui produit l'appariement que l'elimination se contentait de controler des que la
+// manche laisse PLUSIEURS slots muets. Sans les deux dernieres, les ACTIONS d'objectif d'un
+// joueur qui meurt moins de trois fois dans une manche restaient sans auteur alors que les
+// COMPTEURS, eux, allaient etre completes par le meme mecanisme (`buildPlayerScores`) — deux
+// lecteurs du meme pont n'auraient plus dit la meme chose du meme match.
 func (p *pontParManche) identite() objectiveevents.RoundIdentity {
 	if !p.resolu {
 		p.id = objectiveevents.ResolveRoundIdentity(p.recs, p.deaths).
 			CompletedByLines(p.recs, p.lines).
-			CompletedByElimination(p.recs, p.lines)
+			CompletedByElimination(p.recs, p.lines).
+			CompletedByRoundResidue(p.recs, p.lines)
 		p.resolu = true
 	}
 	return p.id

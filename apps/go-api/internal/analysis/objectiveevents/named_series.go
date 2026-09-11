@@ -27,25 +27,48 @@ import (
 // du cache ont la meme structure (`a349fea8` 1,1 Md sur 21 B ; `1c4c63c2` 537 M sur 22 A ;
 // `60ae07c4` 2,1 Md sur 21 A).
 //
-// CE QUE CES BORNES SONT, ET CE QU'ELLES NE SONT PAS. Un dernier rempart MEMOIRE, pas un
-// filtre d'anomalie : sur un enregistrement fautif, un plafond par pas coupe les gros canaux
-// et laisse passer les petits (31, 58, 2 139 mesures au meme instant sur le meme slot). Le
-// filtre juste serait au niveau de l'ENREGISTREMENT — rejeter le record entier quand l'un de
-// ses canaux est hors domaine, comme [modeScoreInDomain] le fait deja pour le comp 0. Il n'est
-// pas dans ce lot.
+// CE QUE CES BORNES SONT. Un rempart MEMOIRE d'abord, et — depuis le lot 6.7-B1 — un filtre
+// d'ANOMALIE calibre sur l'oracle API. Elles restent grossieres : sur un enregistrement fautif,
+// un plafond par pas coupe les gros canaux et laisse passer les petits. Le filtre exact serait
+// au niveau de l'ENREGISTREMENT — rejeter le record entier quand l'un de ses canaux est hors
+// domaine, comme [modeScoreInDomain] le fait deja pour le comp 0. Il n'est toujours pas la.
 const (
 	// maxUnrollPerStep borne le deroulage d'UN point, PREMIER TERME COMPRIS (`prev` part de
 	// zero et ne redescend jamais : la grandeur qui explose est `p.Value - prev`, pas l'ecart
 	// entre deux echantillons consecutifs).
 	//
-	// LA VALEUR EST MESUREE, PAS DEVINEE (item 4b.1, 9 films sains + 4 bombes, sur les seuls
-	// emplacements que la production deroule) : le pire deroulage d'un film SAIN vaut 17 306
-	// (`d9781168`, comp 20 B, slot 12, t = 345 931 ms) — marge 5,8x ; la plus petite bombe vaut
-	// 537 698 416 (`1c4c63c2`, comp 22 A) — marge 5 377x. Les deux populations sont separees
-	// d'un facteur 31 000, et 100 000 tombe au milieu : aucun film sain connu n'est touche, les
-	// quatre bombes connues sont neutralisees. Huit films sains sur neuf tiennent d'ailleurs
-	// sous 2 — un seul porte toute l'anomalie.
-	maxUnrollPerStep = 100_000
+	// # LA VALEUR EST MESUREE SUR L'ORACLE API (lot 6.7-B1, item 6, 2026-09-11)
+	//
+	// ELLE VALAIT 100 000, ET C'ETAIT TROIS ORDRES DE GRANDEUR AU-DESSUS DU PHENOMENE. Sa
+	// justification d'origine (item 4b.1) qualifiait de « pire deroulage d'un film SAIN » les
+	// 17 306 unites du comp 20 B de `d9781168`. L'oracle refute cette qualification :
+	// `match_objective_stats_latest` etablit que ce MEME emplacement produit, sur `a0c36016`,
+	// 84 assistances de capture pour ZERO reelle. La population dite saine ne l'etait pas, et
+	// la borne se calait donc sur du bruit (audit du 2026-09-10, decouverte 12.3).
+	//
+	// RECALIBRAGE, 68 artefacts du parc confrontes joueur par joueur a l'oracle et a la feuille
+	// de match. La grandeur mesuree est le plus gros deroulage d'UN pas, lu dans l'artefact
+	// lui-meme : `incrementTimes` DATE toutes les unites d'un pas au meme instant, donc n
+	// actions publiees au meme `timeMs` pour un meme (joueur, statistique) sont un pas de n.
+	//
+	//	population SAINE      1 sur 376 triples (film, action, joueur) d'action d'objectif ;
+	//	                      1 a 3 sur 147 triples de `kills` (3 une seule fois) ;
+	//	                      1 sur 130 triples de `assists`. PIRE PAS SAIN : 3.
+	//	population ABERRANTE  64 (`4f77afc1` flag_grabs), 64 (`cde26226` flag_steals),
+	//	                      84 (`a0c36016` flag_capture_assists), puis 9 482 / 15 608 /
+	//	                      15 610 (`assists` de `16ea3668`, `f8efc5ca`, `8bc6074f`).
+	//	                      PLUS PETIT PAS ABERRANT : 64.
+	//
+	// Les deux populations sont separees d'un facteur 21 et RIEN n'occupe l'intervalle. 16 s'y
+	// pose : 5,3 fois au-dessus du pire pas sain — la marge couvre la PREMIERE emission d'un
+	// slot vu en retard, qui date d'un coup les unites deja acquises (cf. [incrementTimes]) —
+	// et 4 fois sous le plus petit pas aberrant.
+	//
+	// L'ORACLE VALIDE LE RESULTAT A L'UNITE sur les trois films a `assists` explosives : le pas
+	// aberrant retire, le total publie tombe a 6, 6 et 8 — exactement les valeurs de la feuille
+	// de match. Les quatre bombes memoire connues (537 698 416 a 2 163 333 677) restent
+	// neutralisees avec une marge de 33 millions.
+	maxUnrollPerStep = 16
 	// maxNamedEventsPerFilm borne le TOTAL emis par une passe sur un film. Le pire total sain
 	// mesure vaut 21 160 (`d9781168`) — marge 47x ; les quatre bombes sont 500 a 3 900 fois
 	// au-dessus. Une passe qui l'atteint s'arrete : le rejeu vaut mieux tronque qu'absent.

@@ -442,7 +442,22 @@ func RealRounds(recs []StatRecord) map[int]bool {
 			runs[k.round] = n
 		}
 	}
-	return contiguousRounds(runs, materialRounds(recs))
+	return contiguousRounds(runs, materialRounds(recs), presentRounds(recs))
+}
+
+// presentRounds rend les manches qui EXISTENT dans le film : au moins UN enregistrement, de
+// joueur ou d'equipe.
+//
+// Les slots d'equipe comptent ici, contrairement a [materialRounds] : la question n'est pas
+// « cette manche a-t-elle assez de matiere pour etre une manche » mais « cette manche
+// a-t-elle laisse la moindre trace ». Une manche dont pas un seul enregistrement ne porte le
+// numero n'a pas ete jouee — elle n'est meme pas courte, elle est absente.
+func presentRounds(recs []StatRecord) map[int]bool {
+	out := make(map[int]bool, 4)
+	for _, r := range recs {
+		out[r.Round] = true
+	}
+	return out
 }
 
 // statMinRoundRecordShare : la part MINIMALE, en pour cent, des enregistrements de slot
@@ -549,17 +564,33 @@ const statMaxEmptyRoundRun = 1
 // OU la matiere de la manche ([statMinRoundRecordShare]). Le second existe pour l'Assaut One
 // Bomb, ou une manche ne porte qu'UNE emission de score et ne peut donc jamais tenir le
 // premier — voir l'en-tete de [statMinRoundRecordShare] pour les deux populations mesurees.
-func contiguousRounds(runs map[int]int, material map[int]bool) map[int]bool {
+//
+// UNE MANCHE TOLEREE APRES UNE MANCHE ADMISE DOIT EXISTER (lot 6.7-B1, item 4, 2026-09-11). La
+// tolerance ci-dessus est ecrite pour une manche JOUEE mais trop COURTE ; elle ne dit rien
+// d'une manche qui n'a laisse AUCUN enregistrement. `e60aaf06` (Strongholds, une seule manche a
+// son fil de score) declare les manches 0 et 2 et RIEN en manche 1 : la chaine sautait
+// par-dessus le vide et atteignait la manche 2, un ancrage de 44 enregistrements (14 % de la
+// manche 0, donc MATERIEL au sens de [statMinRoundRecordShare]) dont l'intervalle tombe
+// ENTIEREMENT dans celui de la manche 0. Le film publiait alors trois manches, l'identite se
+// resolvait PAR MANCHE, et 130 de ses 154 actions partaient en `noSlot` faute d'identite dans
+// une manche qui n'existe pas.
+//
+// EN TETE DE CHAINE, EN REVANCHE, UNE MANCHE ABSENTE RESTE TOLEREE : un film qui numerote ses
+// manches a partir de 1 ne declare rien en manche 0, et ce n'est pas un trou mais un DECALAGE
+// de numerotation. La distinction se fait sur `vue` : tant qu'aucune manche n'a ete ADMISE par
+// l'un des deux criteres, l'absence ne prouve rien.
+func contiguousRounds(runs map[int]int, material, present map[int]bool) map[int]bool {
 	out := map[int]bool{}
-	gap := 0
+	gap, vue := 0, false
 	for round := 0; round <= statMaxRound; round++ {
 		if runs[round] >= statMinRoundRun || material[round] {
-			gap = 0
+			gap, vue = 0, true
 			out[round] = true
 			continue
 		}
 		gap++
-		if gap > statMaxEmptyRoundRun || !hasRoundAfter(runs, material, round) {
+		if gap > statMaxEmptyRoundRun || (vue && !present[round]) ||
+			!hasRoundAfter(runs, material, round) {
 			break
 		}
 		out[round] = true // manche courte, mais une manche coherente la suit encore

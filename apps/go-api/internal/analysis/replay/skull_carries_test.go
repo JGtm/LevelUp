@@ -80,11 +80,18 @@ func TestSkullCarriesTwoRounds(t *testing.T) {
 		t.Fatalf("portages = %d, attendu 4 : %+v", len(carries), carries)
 	}
 	// Ordre TOTAL par instant : A(1000), C(5000), A(9000), B(20000).
+	//
+	// LES BORNES PORTENT LA DEMI-FENETRE DE TIC (lot 6.7-B1, item 2) : la cadence mesuree de la
+	// fixture vaut 1 000 ms, l'axe 1 000 us par image, donc 499 images de part et d'autre (cf.
+	// [skullHalfTickFrames]). Les instants des TICS, eux, sont inchanges.
 	want := []struct {
 		xuid   string
 		t0, t1 int
 	}{
-		{"A", 1000, 4000}, {"C", 5000, 7000}, {"A", 9000, 10000}, {"B", 20000, 22000},
+		{"A", 1000 - testHalfTickFrames, 4000 + testHalfTickFrames},
+		{"C", 5000 - testHalfTickFrames, 7000 + testHalfTickFrames},
+		{"A", 9000 - testHalfTickFrames, 10000 + testHalfTickFrames},
+		{"B", 20000 - testHalfTickFrames, 22000 + testHalfTickFrames},
 	}
 	for i, w := range want {
 		if carries[i].XUID != w.xuid || carries[i].T0 != w.t0 || carries[i].T1 != w.t1 {
@@ -238,9 +245,12 @@ func TestSkullCarriesVieAnonymeNEstPasUneAbsence(t *testing.T) {
 	if cov.CarrierAbsent != 0 {
 		t.Errorf("CarrierAbsent = %d, attendu 0 : une vie anonyme couvre l'intervalle", cov.CarrierAbsent)
 	}
-	// Le 1er portage de A n'est PAS rogne a [1500,3500] : il garde ses bornes.
-	if carries[0].XUID != "A" || carries[0].T0 != 1000 || carries[0].T1 != 4000 {
-		t.Errorf("portage A = %+v, attendu {A 1000 4000} NON rogne", carries[0])
+	// Le 1er portage de A n'est PAS rogne a [1500,3500] : il garde ses bornes, demi-fenetre
+	// de tic comprise (lot 6.7-B1, item 2).
+	if carries[0].XUID != "A" || carries[0].T0 != 1000-testHalfTickFrames ||
+		carries[0].T1 != 4000+testHalfTickFrames {
+		t.Errorf("portage A = %+v, attendu {A %d %d} NON rogne", carries[0],
+			1000-testHalfTickFrames, 4000+testHalfTickFrames)
 	}
 	if !cov.Balanced() {
 		t.Errorf("couverture desequilibree : %+v", cov)

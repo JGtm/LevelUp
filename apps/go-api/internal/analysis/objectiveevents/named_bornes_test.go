@@ -4,11 +4,13 @@ package objectiveevents
 //
 // Ce que ces tests verrouillent, et pourquoi chacun existe :
 //
-//	serie saine INTACTE       la borne par pas ne doit toucher AUCUN film sain connu. Le cas
-//	                          limite n'est pas invente : 17 306 est le pire deroulage mesure
-//	                          sur les neuf films du corpus d'equivalence (`d9781168`,
-//	                          comp 20 B, slot 12, t = 345 931 ms). Il PASSE, et c'est ce qui
-//	                          garantit que les references figees ne bougent pas.
+//	serie saine INTACTE       la borne par pas ne doit toucher AUCUN film sain. Le cas limite
+//	                          n'est pas invente : 3 est le pire deroulage d'un pas SAIN mesure
+//	                          sur les 68 artefacts du parc confrontes a l'oracle API et a la
+//	                          feuille de match (lot 6.7-B1, item 6). Il PASSE.
+//	pas ABERRANT refuse       64 est le plus petit pas que l'oracle refute (`cde26226`,
+//	                          comp 24 A : 65 vols publies pour UN reel). Il est REJETE, et le
+//	                          vol reel survit — c'est la separation que la borne mesure.
 //	premier terme ENORME      `prev` part de zero et n'est jamais reinitialise : la grandeur
 //	                          qui explose est `pts[0].Value - 0`, pas un ecart entre deux
 //	                          echantillons. C'est la forme exacte des quatre bombes.
@@ -28,9 +30,14 @@ import (
 // pt abrege la construction d'un point de serie.
 func pt(ms int, v int64) ScorePoint { return ScorePoint{TimeMS: ms, Slot: 12, Value: v} }
 
-// TestIncrementTimesSerieSaineIntacte — le pire cas SAIN mesure passe sans etre touche.
+// TestIncrementTimesSerieSaineIntacte — le pire pas SAIN mesure passe sans etre touche.
+//
+// LA REFERENCE A CHANGE AU LOT 6.7-B1 (item 6). Elle valait 17 306, « pire deroulage d'un film
+// SAIN » — une qualification que l'oracle API refute : le MEME emplacement (comp 20 B) produit
+// 84 assistances de capture pour ZERO reelle sur `a0c36016`. Le pire pas reellement sain du
+// parc vaut 3 (`kills`, un joueur), et 376 des 379 triples d'action d'objectif valent 1.
 func TestIncrementTimesSerieSaineIntacte(t *testing.T) {
-	const pireSaut = 17306 // mesure 4b.1 : `d9781168`, comp 20 B, slot 12, t = 345 931 ms
+	const pireSaut = 3 // parc de 68 artefacts, 2026-09-11 : le plus gros pas confirme par l'oracle
 	pts := []ScorePoint{pt(100, 1), pt(200, 2), pt(345931, 2+pireSaut)}
 	b := newEventBudget("test")
 	out := incrementTimes(pts, statSlotKey{20, sideB}, b)
@@ -46,6 +53,42 @@ func TestIncrementTimesSerieSaineIntacte(t *testing.T) {
 	}
 	if want := maxNamedEventsPerFilm - (2 + pireSaut); b.reste != want {
 		t.Fatalf("solde %d, attendu %d", b.reste, want)
+	}
+}
+
+// TestIncrementTimesPasAberrantDeSoixanteQuatreRejete — LE POINT DE L'ITEM 6, sur la forme
+// EXACTE que l'oracle refute : `cde26226`, comp 24 A, un joueur qui publie 65 vols de drapeau
+// pour UN a l'oracle. Le vol reel precede le saut ; apres rejet il survit, seul.
+//
+// MUTATION : remettre `maxUnrollPerStep` a 100 000 rougit ce test — les 64 unites ressortent.
+func TestIncrementTimesPasAberrantDeSoixanteQuatreRejete(t *testing.T) {
+	const aberrant = 64 // parc de 68 artefacts : le PLUS PETIT pas que l'oracle refute
+	pts := []ScorePoint{pt(100, 1), pt(200, 1+aberrant)}
+	b := newEventBudget("test")
+	out := incrementTimes(pts, statSlotKey{24, sideA}, b)
+
+	if len(out) != 1 || out[0] != 100 {
+		t.Fatalf("%v, attendu le SEUL vol reel date de 100 ms", out)
+	}
+	if b.rejetes != 1 {
+		t.Fatalf("rejets=%d, attendu 1", b.rejetes)
+	}
+}
+
+// TestIncrementTimesAssistsExplosivesRamenentLaFeuilleDeMatch — la mesure de bout en bout des
+// trois films a `assists` explosives, reproduite a l'unite : six assistances reelles, puis un
+// pas de 9 482 (`16ea3668`, comp 3 A). L'oracle de la feuille dit SIX.
+func TestIncrementTimesAssistsExplosivesRamenentLaFeuilleDeMatch(t *testing.T) {
+	pts := []ScorePoint{pt(100, 1), pt(200, 2), pt(300, 3), pt(400, 4), pt(500, 5), pt(600, 6),
+		pt(700, 9488)}
+	b := newEventBudget("test")
+	out := incrementTimes(pts, statSlotKey{3, sideA}, b)
+
+	if len(out) != 6 {
+		t.Fatalf("%d assistances publiees, attendu 6 (la feuille de match)", len(out))
+	}
+	if b.rejetes != 1 {
+		t.Fatalf("rejets=%d, attendu 1", b.rejetes)
 	}
 }
 
