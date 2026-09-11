@@ -190,6 +190,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     groundWeaponDropperUnknown: 'lâchée par un joueur non nommé',
     groundWeaponPickedByFmt: (name) => `reprise par ${name}`,
     groundWeaponPickerUnknown: 'reprise par un joueur non nommé',
+    groundWeaponAmmoExactFmt: (mag, res) => `${mag} au chargeur, ${res} en réserve`,
     groundWeaponAmmoFmt: (mag, age) =>
       `≈ ${mag} munitions au chargeur, lues ${age} avant le lâcher`,
     groundWeaponAmmoResFmt: (mag, res, age) =>
@@ -630,6 +631,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     groundWeaponDropperUnknown: 'dropped by an unnamed player',
     groundWeaponPickedByFmt: (name) => `picked up by ${name}`,
     groundWeaponPickerUnknown: 'picked up by an unnamed player',
+    groundWeaponAmmoExactFmt: (mag, res) => `${mag} in the magazine, ${res} in reserve`,
     groundWeaponAmmoFmt: (mag, age) => `≈ ${mag} rounds in the magazine, read ${age} before the drop`,
     groundWeaponAmmoResFmt: (mag, res, age) =>
       `≈ ${mag} in the magazine and ${res} in reserve, read ${age} before the drop`,

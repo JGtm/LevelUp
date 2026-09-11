@@ -1,10 +1,13 @@
 /**
- * Tests — groundWeaponAmmo : LA JOINTURE DE REPLI, ET TOUT CE QU'ELLE REFUSE DE DIRE.
+ * Tests — groundWeaponAmmo : LE CHOIX DE LA SOURCE, ET TOUT CE QUE LE REPLI REFUSE DE DIRE.
  *
- * Le lot 6.6 a MESURÉ que les munitions ne sont PAS sur l'objet
- * (`.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`). Il ne reste que la dernière lecture
- * d'inventaire du lâcheur AVANT le lâcher — une lecture d'image-clé, en retard de 9 s en
- * médiane. Ce fichier verrouille les cinq refus qui empêchent cette lecture de mentir :
+ * DEUX SOURCES depuis le lot 6.10 (2026-09-11). L'EXACTE, `groundWeapons[].ammo`, est lue sur
+ * l'objet à l'instant du lâcher et passe TOUJOURS en premier ; le repli DATÉ du lot 6.6 — la
+ * dernière lecture d'inventaire du lâcheur, en retard de 9 s en médiane — ne sert que lorsque
+ * l'exacte manque, ce qui est le cas majoritaire.
+ *
+ * Ce fichier verrouille les deux règles de choix, puis les cinq refus qui empêchent le repli
+ * de mentir :
  *
  *  1. rien pour une arme `spawned` : elle n'a pas de lâcheur mesuré, donc pas d'inventaire ;
  *  2. rien quand l'arme lâchée n'est pas à l'emplacement lu : `am[i]` est indexé par
@@ -21,7 +24,12 @@ import type { ReplayGroundWeapon } from '@/lib/api/types'
 
 import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import { testReplayDoc } from '../test/testDoc'
-import { GROUND_WEAPON_AMMO_MAX_AGE_MS, groundWeaponAmmoAt } from './groundWeaponAmmo'
+import { REPLAY_TEXT } from '../i18n/i18n'
+import {
+  GROUND_WEAPON_AMMO_MAX_AGE_MS,
+  groundWeaponAmmoAt,
+  groundWeaponAmmoLine,
+} from './groundWeaponAmmo'
 
 /** Une vie couvrant [start, end] sur un slot — même patron que inventoryReading.test.ts. */
 function track(slot: number, start: number, end: number): ReplayTrackReady {
@@ -70,7 +78,29 @@ describe('groundWeaponAmmoAt — la lecture retenue', () => {
   it('rend le chargeur de L’EMPLACEMENT de l’arme lâchée, et l’ÂGE de la lecture', () => {
     const r = groundWeaponAmmoAt(docNominal(), lachee())
     // L'emplacement 1 porte `0x0A1992BC` : 7 balles, pas les 30 de l'emplacement 0.
-    expect(r).toEqual({ mag: 7, res: 14, ageMs: 10_000 })
+    expect(r).toEqual({ kind: 'dated', mag: 7, res: 14, ageMs: 10_000 })
+  })
+
+  it('préfère les munitions EXACTES de l’objet à la lecture d’inventaire du lâcheur', () => {
+    // Le document porte les DEUX : l'inventaire dit 7/14 à l'image 30, l'objet dit 3/14 au
+    // lâcher. C'est l'objet qui gagne — et la lecture rendue n'a pas d'âge, parce qu'elle
+    // n'est pas en retard.
+    const r = groundWeaponAmmoAt(docNominal(), lachee({ ammo: { mag: 3, res: 14 } }))
+    expect(r).toEqual({ kind: 'exact', mag: 3, res: 14 })
+  })
+
+  it('rend les munitions EXACTES d’une arme `spawned`, que le repli ne pouvait pas servir', () => {
+    const spawned = lachee({ origin: 'spawned', dropper: -1, ammo: { mag: 36, res: 108 } })
+    expect(groundWeaponAmmoAt(docNominal(), spawned)).toEqual({ kind: 'exact', mag: 36, res: 108 })
+  })
+
+  it('n’invente rien : un chargeur EXACT à zéro se dit, et se dit comme exact', () => {
+    // Une arme lâchée vide est une information — pas une absence de lecture.
+    expect(groundWeaponAmmoAt(docNominal(), lachee({ ammo: { mag: 0, res: 0 } }))).toEqual({
+      kind: 'exact',
+      mag: 0,
+      res: 0,
+    })
   })
 
   it('joint sur la forme NORMALISÉE de la clé, jamais sur l’écriture brute', () => {
@@ -123,5 +153,42 @@ describe('groundWeaponAmmoAt — la lecture retenue', () => {
     // `am[i]` est indexé « dans l'ordre de Loadout.W » du MÊME relevé : un loadout d'un autre
     // instant peut porter d'autres armes dans un autre ordre.
     expect(groundWeaponAmmoAt(docNominal({ loadouts: [] }), lachee())).toBeNull()
+  })
+})
+
+describe('groundWeaponAmmoLine — la phrase dit la NATURE de la lecture', () => {
+  it('écrit la lecture EXACTE sans « ≈ » et sans âge, en FR comme en EN', () => {
+    const exacte = { kind: 'exact', mag: 12, res: 24 } as const
+    const fr = groundWeaponAmmoLine(REPLAY_TEXT.fr, exacte)
+    const en = groundWeaponAmmoLine(REPLAY_TEXT.en, exacte)
+    for (const phrase of [fr, en]) {
+      expect(phrase).toContain('12')
+      expect(phrase).toContain('24')
+      // LE POINT DU TEST : ni approximation, ni datation — la valeur est mesurée au lâcher.
+      expect(phrase).not.toContain('≈')
+      expect(phrase).not.toMatch(/\d\s*s\b/)
+    }
+    expect(fr).not.toEqual(en)
+  })
+
+  it('écrit la lecture DATÉE avec son « ≈ » et son âge, en FR comme en EN', () => {
+    const datee = { kind: 'dated', mag: 12, res: 24, ageMs: 9_000 } as const
+    for (const t of [REPLAY_TEXT.fr, REPLAY_TEXT.en]) {
+      const phrase = groundWeaponAmmoLine(t, datee)
+      expect(phrase).toContain('≈')
+      expect(phrase).toContain('9.0')
+    }
+  })
+
+  it('la forme sans réserve reste réservée à la lecture DATÉE', () => {
+    // L'exacte porte toujours ses deux champs ; seule la datée peut manquer de réserve.
+    const phrase = groundWeaponAmmoLine(REPLAY_TEXT.fr, {
+      kind: 'dated',
+      mag: 12,
+      res: null,
+      ageMs: 9_000,
+    })
+    expect(phrase).toContain('≈')
+    expect(phrase).not.toContain('réserve')
   })
 })

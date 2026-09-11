@@ -102,6 +102,9 @@ const GROUND_WEAPON_KEYS = [
   'dropper',
   'end',
   'picker',
+  // `ammo` entre au lot 6.10 (2026-09-11) : les munitions EXACTES lues sur l'objet, optionnelles
+  // parce que le decodeur ne les lit pas partout — l'absence est la regle, pas l'exception.
+  'ammo',
 ] as const
 type _ClesGroundWeapon = Expect<
   Equals<(typeof GROUND_WEAPON_KEYS)[number], keyof ReplayGroundWeapon>
