@@ -429,3 +429,213 @@ CGO_ENABLED=0 go run . -parc <parc cuit> \
 | R2-3 | `flag_carries_close.go:77` — quatre copies centralisées sans le garde-rail exigé par la règle n° 6 du dépôt | P2 | **corrigé par le superviseur** : `internal/archlint/no_flag_carry_end_outside_close_test.go` interdit toute affectation par sélecteur de `t1`/`closed`/`homed`/`captured`/`closedBy` dans `replay/flag_*.go` hors `flag_carries_close.go` ; joué vert, puis rouge sur une écriture ajoutée dans `flag_carries_home.go` (mutation), lint 0 |
 
 **13 conditions vérifiées qui tiennent** (relecteur ronde 2) : (a) tous les fermoirs post-bornage passent par `flagCloseAt` (grep : seules écritures en `flag_carries_close.go:81-84` ; le bornage construit par littéral) ; `closeByCarrierKills` y passe avec `ferme()` faux = borne et non fermoir, conforme à la décision ; (a bis) `nextOpeningOfSlot` est un candidat du bornage en une passe, pas un fermoir tardif ; (b) un fermoir plus tardif est ignoré sans effacement (garde `at <= t0 || at >= t1`, `t1` monotone décroissant, ex æquo au plus précoce) ; (c) dérivation des `closedBy*` complète (capture/mort/reprise = `flagCloserBound` sans compteur, handoff/retour/rentrée/objet un compteur chacun, chute créditée aucun, fin de match = `carried_open`) ; effacement de `captured`/`homed` à chaque passage, `homed ⇒ closed` ; aucun fermoir n'allonge ; ripple aval vérifié sur `endsHome()` et ses trois consommateurs ; (d) mutations réellement jouées par `go test -overlay` : `homed` collant → seul `TestUnLacherPLUSTOTDEMENTLaRentree` rougit ; clause de domaine retirée → seul `TestLeBalayageJETTELEnregistrementHorsDomaine` rougit ; `omitempty` retiré → `TestAmmoReadAZeroNEcritPasLaCle` rougit ; `flagHomeExactDist` remis à 1,5 m → le test de la réserve rougit ; (e) `FlagCarriesCoverage.Balanced()` n'est appelé que par les tests (état antérieur au lot, pas une régression) ; C2 exact sur pièces (16 / 2^20 / rejet du record entier) ; C3 ferme un vrai trou ; C5 parité complète (`omitempty` des deux côtés, hors `required`, `ammoRead?: number`, golden OpenAPI vert) ; C4 conforme au code et aux trois strings FR/EN.
+
+---
+
+## Ronde 1 bis (2026-09-11, 17:20-18:10) — défaut trouvé par le gate local de fin de vague
+
+> Périmètre fermé : ce défaut, ses tests, son rapport. Zéro fix opportuniste.
+> Commits `1690aec04` (mesures figées du superviseur), `cea109f4d` (correctif + tests),
+> `261e86c98` (coupe de fichier).
+
+### 1 bis.1 Ce que le gate a montré
+
+`cd apps/go-api && go test -tags=integration ./internal/api/wire/ -run TestOuvrierReel_ConstruitEtLivre`
+échouait sur UNE assertion, `assertCompteursJoueurs` point 2 — la cohérence INTERNE entre les deux
+dérivations du même compteur :
+
+```
+SÉRIE PUBLIÉE ≠ CLÉ D'APPARIEMENT pour 2535458702376288 : la série finit à 5 frags / 0 morts /
+60 assistances, alors que le pont l'a apparié sur 5 / 0 / 0 incréments
+```
+
+Sur `c0a82e88` (CTF, 8 joueurs), ce joueur occupe le slot 12 dont le compteur d'assistances est
+DÉROULÉ à 60 par un déroulage aberrant — sa feuille de match en porte ZÉRO.
+
+### 1 bis.2 Cause, sur pièces
+
+Le même compteur avait **deux dérivations et une seule borne**. Lignes relues au commit
+`1690aec04` :
+
+| chemin | lignes | borne par pas ? |
+|---|---|---|
+| **CLÉ D'APPARIEMENT** | `objectiveevents/slotidentity.go:86-88` vers `named.go:377-383` (`countsOf`) vers `named_series.go:410-436` (`incrementTimes`), test `n > maxUnrollPerStep` en **`named_series.go:421`** | **OUI** |
+| **SÉRIE PUBLIÉE** | `replay/score_timeline.go:327-330` (`buildPlayerScoresFlat`) et `:364-367` (`buildPlayerScoresByRound`) vers `score_timeline.go:80-89` (`loadScoreSeries` / `at`) vers `objectiveevents/score.go:110-130` (`SeriesByRound`) et **`score.go:138-147` (`SeriesTotal`)** vers `score_timeline.go:122-143` (`scoreTicksOf`) | **NON** |
+
+`SeriesTotal` au commit `1690aec04` :
+
+```go
+func SeriesTotal(recs []StatRecord, c StatComponent, teams bool) map[int][]ScorePoint {
+	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams), RealRounds(recs))
+	if !c.Strict { return out }   // rend la suite BRUTE : la borne par pas n'est jamais consultée
+	...
+}
+```
+
+Les deux chemins partagent bien le filtre de DOMAINE au niveau de l'enregistrement
+(`statborg.go:260`, `statCountersInDomain`, appliqué au décodage donc en amont des deux) ; c'est la
+borne PAR PAS, et elle seule, qui manquait à la série. Sur le slot 12 de `c0a82e88`, le pas 0 vers 60
+sur `comp 3 A` est refusé côté clé (journal `passe=slot_identity comp=3 cote=A slot=12
+time_ms=39694 deroulage=60 borne=16`) et retenu côté série.
+
+**Pourquoi le gate le voit MAINTENANT.** Avant la vague 6 ce slot n'était pas pontable (0 mort,
+triplet agrégé introuvable à la feuille) : rien de lui n'était publié, et l'écart n'était visible
+nulle part. La vague 6 le rend nommable — 8 pontés sur 8 — et la courbe de score s'est mise à
+servir **60 assistances pour 0** à l'interface. Le progrès a révélé le défaut ; il ne l'a pas créé.
+Le parc le confirme : **2 joueurs étaient DÉJÀ dans cet état** (§1 bis.6).
+
+### 1 bis.3 Le correctif — une seule dérivation, un seul lecteur de la borne
+
+`named_bounds.go` (extrait de `named_series.go`, cf. §1 bis.7) porte **`boundSteps`, SEULE lecture
+de `maxUnrollPerStep` du dépôt**, et ses deux formes :
+
+| forme | fonction | consommateur |
+|---|---|---|
+| ÉVÉNEMENTS | `incrementTimes` | clé d'appariement, nommage des actions d'objectif |
+| SÉRIE | `boundedSeries` | `SeriesTotal` (`score.go:175`), `SeriesByRound` (`score.go:147`) |
+
+`boundedSeries` recalcule les VALEURS (cumul des pas acceptés) sans toucher aux instants ni à la
+cardinalité — un compteur resté à zéro garde donc sa série de points à zéro, et aucun joueur ne
+disparaît du document par `PlayerScore.empty()`.
+
+**La borne n'est PAS étendue à tout — elle reste dans son domaine de calibration.** Un champ
+`StatComponent.Unitary` (`score.go:73`) la demande, et seuls les trois compteurs d'ACTION le
+portent (`score.go:91-93`) : exactement les trois que lit la clé. Les autres compteurs publiés
+sont des compteurs de CADENCE dont un pas légitime dépasse largement 16 :
+
+| emplacement | pas légitime |
+|---|---|
+| score PERSONNEL (`comp 1 B`) | +100 et plus par frag |
+| tics de GARDE (`comp 23 A`) | 35 tics valent UN point de colline (`hill_hold_ticks.go`) |
+| score de MODE (`comp 0 A`) | Strongholds compte des tics, Oddball des secondes |
+
+Les borner effacerait des courbes vraies. **Ni la valeur (`16`) ni la sémantique des bornes ne
+changent** : seul leur domaine d'APPLICATION s'étend de la clé à la série du même compteur.
+
+### 1 bis.4 Tests, et les mutations jouées
+
+`apps/go-api/internal/analysis/objectiveevents/named_derivation_unique_test.go` (neuf, 260 L) :
+
+| test | ce qu'il tient |
+|---|---|
+| `TestSeriePublieeEtCleAppariementSAccordent` | sur la forme du défaut (slot à 5/0/0 dont `comp 3 A` déroule 60), `SeriesTotal` ET `SeriesByRound` finissent au compte de la clé ; et le pont nomme bien le joueur |
+| `TestSerieSaineTraverseLaDerivationIntacte` | contre-épreuve : un pas de 3 (pire pas sain du parc) passe entier dans les deux |
+| `TestBoundedSeriesGardeLaFormeDeLaSuite` | instants et cardinalité intacts, `prev` avance malgré le rejet |
+| `TestBoundedSeriesEtIncrementTimesNeDiventJamaisDeuxChoses` | l'invariant général sur 8 formes de suite |
+| `TestUneSeuleLectureDeLaBorneParPas` | **garde-rail de la factorisation** (règle n° 6) : balayage de TOUT le module, `maxUnrollPerStep` n'est lisible que dans `boundSteps` ; allowlist à 2 entrées, la seconde (`eventBudget.rejeter`) ne fait qu'IMPRIMER la borne dans son avertissement |
+
+**MUTATION JOUÉE** — retirer les deux appels à `boundedSeries` de `score.go` :
+
+```
+--- FAIL: TestSeriePublieeEtCleAppariementSAccordent
+    SERIE PUBLIEE != CLE D'APPARIEMENT pour le slot 12 : la serie finit a 60 assistances,
+    la cle en compte 0 — la borne par pas ne descend pas dans la serie
+    serie PAR MANCHE du slot 12 : finit a 60, attendu 0
+```
+
+**UN GARDE-RAIL VOISIN RÉPARÉ, ET C'EST LE CORRECTIF QUI L'EXIGEAIT.** L'échantillon égaré de
+`manches_compteurs_test.go` portait 60 assistances — la forme réelle de `51ebbc0f`. À 60, la borne
+par pas l'écarte AUSSI, si bien que les trois mutations du filtre de manche (correctif du
+2026-09-06) auraient continué de PASSER : un garde-rail éteint par un autre filtre, sans que rien
+ne le dise. La fixture passe donc à **15** assistances (`manchesEgareAssists`, pas de 12 <= 16, donc
+SAIN pour la borne) : chaque filtre reste devant son propre défaut. Les trois mutations rejouées
+après le changement rougissent bien — `TestEchantillonEgareNAlimentePasSaMancheDeclaree`
+(« l'egare ... a ete range en manche 0 : elle finit a {14000, 15} au lieu de {7700, 3} »),
+`TestEchantillonEgareNeGonflePasLeTotalDuJoueur` (« assistances totales = 18, attendu 6 »),
+`TestEgareSeulResteEcarteMalgreLaGardeParSlot` (« la manche 0 du slot 12 finit a 15 au lieu de 3 »).
+
+### 1 bis.5 Gate, AVANT vers APRÈS
+
+| gate | AVANT | APRÈS |
+|---|---|---|
+| `go test -tags=integration ./internal/api/wire/ -run TestOuvrierReel_ConstruitEtLivre` | **FAIL** (1 assertion) | **ok** 6,7 s |
+| `go test -tags=integration ./internal/api/wire/` (suite entière) | — | **ok** 16,2 s |
+| `go test ./internal/analysis/replay/ ./internal/analysis/objectiveevents/ ./internal/replaybuild/ ./internal/service/...` | — | **ok** |
+| `go test ./...` (module entier, hors tag `gamefiles`) | — | **0 échec** |
+| `go test -tags=integration ./internal/analysis/... ./internal/replaybuild/...` | — | **0 échec** |
+| `golangci-lint run --new-from-merge-base=origin/main ./...` | — | **0 issues** |
+| `go vet` (paquets touchés + hook `go-vet` à chaque commit) | — | vert |
+
+Les mesures figées par le superviseur (8 pontés, 20 frags / 6 assistances / 3 captures / 3 vols,
+6 joueurs publiés, 3 portages) **tiennent sans être retouchées**.
+
+### 1 bis.6 Effet sur le parc — cuisson hors ligne AVANT/APRÈS, 78 films
+
+Protocole : `<short8>.facts.json` **dérivés des exports commités** (`oracle_vague6_registry.tsv` +
+`oracle_vague6_participants.tsv`), dérivation validée à l'octet contre le fichier de référence
+`testdata/equivalence/01e1f945.facts.json`. Deux binaires : **AVANT** construit depuis
+`git archive 1690aec04`, **APRÈS** depuis `261e86c98`. Aucune base ouverte, chunks lus en lecture
+seule, artefacts écrits dans un faux `LEVELUP_REPO_ROOT` de scratchpad. 78 réussites, 0 échec de
+chaque côté.
+
+| mesure | AVANT | APRÈS |
+|---|---|---|
+| films comparés | 78 | 78 |
+| joueurs publiés (`scoreTimeline.players[*]`) | 604 | 604 |
+| **joueurs dont la série finale BOUGE** | — | **2** |
+| écart total (série − feuille, en valeur absolue) | **15 669** | **0** |
+| **écart MOYEN par joueur** | **25,9421** | **0,0000** |
+| joueurs dont la série ÉGALE sa ligne de feuille | 602 / 604 | **604 / 604** |
+| artefacts identiques à l'octet | — | **76 / 78** |
+| films dont le calque `objectives` bouge | — | **0** |
+
+Les deux joueurs, avec leur ligne de feuille (relevé complet :
+`.ai/V7.5/replay2d/registre_film/vague6_6R_joueurs_avant_apres.tsv`, 604 lignes) :
+
+| film | xuid | AVANT (k/d/a) | APRÈS (k/d/a) | feuille (k/d/a) |
+|---|---|---|---|---|
+| `1b2d9e08` (Dynasty) | 2533274806449978 | 16 / 7 / **15 616** | 16 / 7 / **2** | 16 / 7 / 2 |
+| `bf2a9f05` (Bazaar) | 2533274903615304 | 19 / 7 / **56** | 19 / 7 / **1** | 19 / 7 / 1 |
+
+**Le calque `objectives` ne bouge sur AUCUN film**, et c'est attendu : il passe par
+`incrementTimes`, donc il était déjà borné. Les 9 513 / 15 648 / 15 645 assistances fantômes citées
+pour `16ea3668`, `8bc6074f` et `f8efc5ca` étaient des mesures de CE calque-là, prises avant que le
+lot 6.11 ne pose le filtre de domaine au niveau de l'enregistrement : sur le parc recuit au HEAD de
+la vague, ces trois films **ne portent plus aucun déroulage aberrant** sur les compteurs de la clé
+(journal `passe=slot_identity` vide pour eux). `a0c36016`, `cde26226`, `fb1a1a72` et `4f77afc1` non
+plus. Seuls `1b2d9e08` et `bf2a9f05` ont un résidu, et c'est lui que 6.R rend au sol.
+
+**Le détecteur est EXHAUSTIF et il est dans le journal** : la passe `slot_identity` lit exactement
+les trois compteurs dont la série est désormais bornée, et elle tourne à chaque cuisson AVANT comme
+APRÈS. Ses deux lignes de rejet sur les 78 films nomment les deux mêmes films — la cuisson des 78
+et la comparaison à l'octet confirment qu'il n'y en a pas d'autre.
+
+### 1 bis.7 Films à recuire — la liste exacte
+
+**2 des 78 films du parc** :
+
+```
+1b2d9e08   bf2a9f05
+```
+
+Les **76 autres sont identiques à l'octet**. Aucune montée de `SchemaVersion` : la forme du
+document ne change pas, seules deux valeurs de série changent. Un artefact non recuit n'est pas
+illisible ; il affiche seulement un compteur d'assistances faux pour un joueur.
+
+À recuire AUSSI, hors parc : la fixture `c0a82e88` (absente de `oracle_vague6_registry.tsv`, donc
+hors des 78) — c'est elle que porte `TestOuvrierReel_ConstruitEtLivre`, et le test la recuit à
+chaque exécution.
+
+Un item d'hygiène, TRAITÉ DANS LE PÉRIMÈTRE parce que le correctif l'a créé : `named_series.go`
+repassait à 508 lignes, au-dessus du seuil de 500. La coupe (`named_bounds.go`, commit
+`261e86c98`) suit la RESPONSABILITÉ — bornes, budget d'événements et dérivation unique d'un côté
+(278 L), passage des enregistrements aux suites de valeurs de l'autre (244 L) — et ne change aucun
+comportement.
+
+### 1 bis.8 Reproduction
+
+```bash
+# 1. facts derives des exports commites (validation : identiques au fichier de reference
+#    apps/go-api/internal/analysis/replay/testdata/equivalence/01e1f945.facts.json)
+# 2. cuisson HORS LIGNE, deux binaires (AVANT = `git archive 1690aec04`, APRES = worktree)
+LEVELUP_REPO_ROOT=<faux repo de travail> <binaire> --map <carte> \
+  --facts <short8>.facts.json <matchId> <racine partagee>/data/cache/film_chunks/<short8>
+# 3. confrontation scoreTimeline.players[*] contre oracle_vague6_participants.tsv
+#    sortie : .ai/V7.5/replay2d/registre_film/vague6_6R_joueurs_avant_apres.tsv
+# 4. detecteur exhaustif, lu dans le journal de cuisson :
+grep "deroulage aberrant rejete.*passe=slot_identity" <journal de cuisson>
+```
+
+**Le corpus d'équivalence (`make replay-corpus-gate`) n'est PAS joué ici** : il compare au parc
+RÉEL du dépôt partagé, que ce correctif déplace légitimement sur deux films. Il appartient au
+superviseur, après recuisson.
