@@ -556,6 +556,17 @@ export interface ReplayText {
   groundWeaponAmmoFmt: (mag: number, age: string) => string
   groundWeaponAmmoResFmt: (mag: number, res: number, age: string) => string
   /**
+   * LA FORME EXACTE (lot 6.10, 2026-09-11) : le chargeur et la réserve LUS SUR L'OBJET, dans son
+   * record de création — c'est-à-dire à l'instant même du lâcher.
+   *
+   * ELLE NE PORTE NI « ≈ » NI ÂGE, ET C'EST LA SEULE DIFFÉRENCE QUI COMPTE avec les deux formes
+   * ci-dessus. Les leur ajouter ferait passer une mesure pour une estimation ; les leur retirer
+   * à elles ferait passer une estimation pour une mesure. Les trois strings vivent donc
+   * ensemble, et `groundWeaponAmmoLine` choisit sur la nature de la lecture, jamais sur le goût
+   * de l'appelant.
+   */
+  groundWeaponAmmoExactFmt: (mag: number, res: number) => string
+  /**
    * LES VÉHICULES (schéma 29) : le nom du calque et sa réserve.
    *
    * LA RÉSERVE DIT LA FIN DE VIE, et c'est le point qui trompe le plus facilement : la

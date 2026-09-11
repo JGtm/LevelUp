@@ -141,11 +141,12 @@ function groundWeaponOriginLine(
 }
 
 /**
- * groundWeaponAmmoFragment — LE TROISIÈME FRAGMENT : les munitions du lâcheur, DATÉES.
+ * groundWeaponAmmoFragment — LE TROISIÈME FRAGMENT : ce qu'il restait dans l'arme.
  *
- * IL PASSE PAR LE MODÈLE PUR (`groundWeaponAmmo.ts`), qui porte à la fois la jointure et sa
- * phrase : la règle « jamais un nombre nu » ne peut pas se perdre en route si les deux ne se
- * séparent jamais.
+ * IL PASSE PAR LE MODÈLE PUR (`groundWeaponAmmo.ts`), qui porte à la fois le CHOIX de la source
+ * (exacte lue sur l'objet, sinon la lecture d'inventaire datée du lâcheur) et la phrase : la
+ * règle « une valeur datée ne se montre jamais sans son âge » ne peut pas se perdre en route si
+ * les deux ne se séparent jamais.
  */
 function groundWeaponAmmoFragment(
   doc: ReplayDocumentReady,
