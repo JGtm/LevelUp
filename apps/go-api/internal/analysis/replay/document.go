@@ -40,7 +40,16 @@ package replay
 // v51 (2026-09-10, lot 4.3) : deux changements de CONTENU CUIT — `identity.bipedSlots[].bid`
 // (le tableau de l'API nomme les corps hors table) et `abilityLabels[].family` (le résumé
 // d'usage y joint, d'où `UsageSummaryRev` us4 -> us5). Raison détaillée : `structure_test.go`.
-const SchemaVersion = 51
+//
+// v52 (2026-09-11, lot B décodeur) : TROIS changements de CONTENU CUIT, chacun mesuré.
+// `grenades[]` change de position ET porte désormais son `slot` sur les deux branches (le
+// lancer revient à son lanceur) ; `projectiles[]` est coupé au premier pas impossible, `rest`
+// tombant à false sur un vol coupé ; `geometry` devient les props de LA carte du match, donc
+// vide sur toute carte non extraite. Le bump est exigé par la règle — le contenu change, et un
+// artefact v51 doit se voir comme « à recuire », pas comme à jour. `coverage.projectiles`
+// s'ajoute au passage, mais un champ optionnel ne l'aurait pas exigé à lui seul. Chronique
+// détaillée et chiffres : `document_chronicle.go`.
+const SchemaVersion = 52
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
