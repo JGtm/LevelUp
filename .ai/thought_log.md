@@ -1,3 +1,64 @@
+## [2026-09-11] Revue 6.R de la vague 6, ronde 1 — 5 constats corriges, 46,3 s de drapeau fantome rendues au sol — Complete (worktree LevelUp-wt-couverture-objectifs)
+
+**Le constat P0, et il n'avait rien d'exotique.** `homed` (`flagCarryRaw`) n'avait qu'UNE
+ecriture dans tout le paquet : celle de `closeByHomecoming`. Les deux fermoirs qui tournent APRES
+lui — la chute creditee et le lacher volontaire — ecrivaient `t1`, `closed` et `captured` sans
+jamais le dementir. Sequence ordinaire : prise, lacher date en D par la vie libre de l'objet,
+drapeau laisse au sol, rentree seule en H > D. La rentree fermait d'abord (`t1 = H`, `homed`), le
+lacher fermait ensuite (`t1 = D`) et `homed` restait vrai — si bien que le calque publiait
+`home` AU SOCLE des `frame(D)+1`, retirait le drapeau du sol ET du jeu (faussant l'attribution des
+prises suivantes), sautait le repositionnement du lacher, et comptait le meme portage dans
+`closedByHome` ET `closedByObject`.
+
+**Decision technique principale — un seul principe, un seul endroit.** `flag_carries_close.go`
+(neuf) porte `flagCloseAt` : SEUL endroit qui ferme un portage apres le bornage, il n'accepte
+qu'un instant STRICTEMENT interieur a `]t0, t1[` — « le plus petit gagne » devient structurel
+plutot que compare — et il REECRIT tout l'etat de fin, `captured` et `homed` compris. Corollaire
+qui ferme le double compte a la racine : les compteurs `closedBy*` ne s'incrementent plus au
+passage, ils se DERIVENT du fermoir en vigueur (`flagCarryRaw.closedBy`) dans `tallyFlagCarries`.
+Un portage ne PEUT plus en peupler deux. `Balanced()` porte l'invariant (somme des `closedBy*`
+<= `closed`), et la mutation qui remet le double compte le rougit.
+
+**Une exception mesuree, pas supposee.** `flag_carriers_killed` reste une BORNE et non un
+fermoir : lui faire poser `closed` a ete cuit et mesure — sur `b8a44fe8`, le seul span
+`carried_open` du parc tomberait de 25,0 s a 7,3 s pour 17,2 s a l'oracle, soit +7,8 s -> -9,9 s.
+L'evenement ne date donc pas la chute de ce porteur-la. Le desaccord entre `t1` et l'etat publie
+est consigne au rapport, NON traite (hors perimetre du constat).
+
+**Resultats observes** (12 films CTF cuits HORS LIGNE, aucune base ouverte ; `parcAvant`
+reproduit les 12 lignes de la reference 6.13 a la decimale) : ratio parc **1,028 -> 1,028**,
+`b8a44fe8` **1,037 -> 1,037**, **aucun joueur ne bouge d'un centieme de seconde** (80 lignes
+comparees), actions et toutes les autres sorties de l'instrument identiques a l'octet. **Effectif
+du defaut : 3 portages** comptes a la fois `home` et `object`, plus 18 comptes a la fois `handoff`
+et `object` — 21 doubles comptes sur 523 portages fermes, **0 apres**. Trois portages changent
+d'etat publie, et ce n'est pas cosmetique : **46,3 s** de drapeau dessine a sa base alors qu'il
+gisait au sol (13,3 s sur `16ea3668`, 6,6 s sur `a0c36016`, 26,4 s sur `fb1a1a72` — a 44,9 m de
+l'endroit ou il etait rendu). Les 6 autres artefacts qui changent ne changent QUE leur couverture ;
+3 sont identiques a l'octet.
+
+**Les quatre autres constats.** C2 et C4 sont deux docs inversees (anti-patron n° 9) : le filtre
+au niveau de l'enregistrement que `named_series.go` disait absent existe depuis 6.11
+(`statMaxCounter` + `statCountersInDomain`), et le champ `ammoLine` du rejeu niait la lecture
+EXACTE des munitions livree au 6.10. C3 : le BRANCHEMENT du filtre de domaine dans
+`scanFrameForRecords` n'etait couvert par rien — le test l'ecrivait lui-meme ; un vecteur FRAME
+synthetique le rougit desormais, mutation jouee. C5 : `AmmoRead` prend `omitempty` des deux cotes
+(la parite `replaydoc` compare les octets), quitte `required`, contrat et types web regeneres —
+diff d'une ligne chacun.
+
+**Reserve du relecteur, instruite.** Le resserrement de `flagBirthsNear` a `flagHomeExactDist` au
+lot 6.13 change le denominateur du verdict DRAPEAU NEUTRE, et les tests existants posaient leurs
+naissances exactement sur les socles. Mesure sur le seul film neutre du parc, `4ecdf3e7` (High
+Ground) : toujours classe NEUTRE, **5 naissances a <= 0,10 m du socle neutre contre 0 aux socles
+d'equipe**, pour un seuil de 3 — deux de marge. Test ajoute a 0,05 m (reste neutre) et 0,50 m (ne
+compte pas).
+
+**Conclusion / prochaine etape.** 6 commits (`3b2cca257` `a72190f8a` `c30b6661d` `425a43f2c`
+`e96c1e69f` `bd0113849`), gates verts (Go 4 paquets + service, `go vet`, golangci-lint 0 issue,
+`openapi-gen -check` a jour, tsc 0, vitest match-replay 2 711 verts, eslint 0). **9 des 12 films
+CTF sont a recuire**, aucune montee de `SchemaVersion`. Reste : ronde 2 sur les corrections,
+`make gate-push` depuis `LevelUp-wt-v75`, push = CI de vague. Rapport complet :
+`.ai/V7.5/REVUE_VAGUE6_2026-09-11.md`.
+
 ## [2026-09-11] Lot 6.13 — la ZONE AVEUGLE des socles : `b8a44fe8` 1,234 -> 1,037, parc CTF 1,066 -> 1,028 — Complete (worktree LevelUp-wt-couverture-objectifs)
 
 **Le fait de depart, et il etait faux.** Le lot 6.11 avait ferme son gate a `[!]` en nommant un
