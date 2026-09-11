@@ -25,12 +25,22 @@
  * y réapparaît en boucle, une chute dans le vide n'y émet qu'un instant isolé). Sans socle
  * identifiable (artefact trop court), on retombe sur `absent`.
  *
+ * LA PRÉCÉDENCE DU PORTAGE EST CONDITIONNÉE À UNE POSITION DU PORTEUR (audit du 2026-09-10,
+ * causes C9/C10 ; lot 6.7 phase B2). Le portage est un INTERVALLE, la trajectoire du bipède une
+ * suite d'échantillons qui peut s'interrompre : sur 694 images du parc Oddball (7,0 %, rapport
+ * 6.2 §2.1) le portage est vrai mais le porteur n'a PAS de position. Rendre `carried` là-dessus
+ * faisait taire ce module pendant que `skullCarrierLayer` ne dessinait rien faute de position —
+ * le crâne DISPARAISSAIT. La règle commune aux trois glyphes portés (`carriedGlyphPlace.ts`) le
+ * rend désormais LIBRE à sa dernière position connue : celle du porteur, à défaut le dernier
+ * repos, à défaut le socle. Un seul glyphe à l'écran, jamais zéro, jamais deux.
+ *
  * DÉGRADATION : avec `carries: []` (artefacts antérieurs au schéma 23), aucune prise ne suit
  * jamais un repos → le maintien ne se déclenche pas → la présence retombe EXACTEMENT sur le
  * comportement historique (vie active seule, muet ailleurs).
  */
 import { objectiveObjectAt } from '../layers/objectiveObjectsLayer'
 
+import { carriedGlyphPlaceAt, type CarrierPosAt } from './carriedGlyphPlace'
 import type { XY } from '../../../lib/replay/replayLogic'
 import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
@@ -47,7 +57,9 @@ export type SkullPresence =
 /**
  * skullPresenceAt applique le test du prochain événement à l'image servie.
  *
- * 1. Une CARRY couvre F → `carried` (précédence sûre : lives et carries sont disjoints).
+ * 1. Une CARRY couvre F → `carried`, MAIS SEULEMENT SI SON PORTEUR A UNE POSITION À CETTE IMAGE
+ *    (cf. l'en-tête, précédence conditionnée). Sinon le crâne est LIBRE à sa dernière position
+ *    connue — celle du porteur, à défaut le dernier repos, à défaut le socle.
  * 2. Sinon une VIE ACTIVE couvre F → `free` au dernier point émis (= `objectiveObjectAt`).
  * 3. Sinon (TROU DE REPOS) : `lastRest` = la vie de plus grand `t1 <= F`. Aucune → `absent`.
  *    Sinon on regarde le PROCHAIN début strictement > F (toutes vies ET carries) :
@@ -60,20 +72,24 @@ export function skullPresenceAt(
   carries: readonly ReplaySkullCarry[],
   frame: number,
   socle: XY | null = null,
+  posOf: CarrierPosAt | null = null,
 ): SkullPresence {
   for (const carry of carries) {
-    if (covers(carry, frame)) return { state: 'carried' }
+    if (!covers(carry, frame)) continue
+    // SANS LECTEUR DE POSITION, la précédence du portage reste entière : c'est la dégradation
+    // des appelants qui ne relisent pas les trajectoires (et le comportement d'avant ce lot).
+    if (!posOf) return { state: 'carried' }
+    const place = carriedGlyphPlaceAt(posOf, carry, frame, lastRestPointOf(lives, frame) ?? socle)
+    if (place.state === 'carried') return { state: 'carried' }
+    // Le crâne LIBRE au dernier point connu : il ne ROULE pas — cette position est un repos
+    // constaté, pas un échantillon de trajectoire en cours.
+    return place.state === 'free' ? { state: 'free', at: place.at, rolling: false } : { state: 'absent' }
   }
   for (const life of lives) {
     const now = objectiveObjectAt(life, frame)
     if (now) return { state: 'free', at: now.at, rolling: now.rolling }
   }
-  let lastRest: ReplayObjectiveObjectReady | null = null
-  for (const life of lives) {
-    if (life.t1 <= frame && life.pts.length > 0 && (lastRest === null || life.t1 > lastRest.t1)) {
-      lastRest = life
-    }
-  }
+  const lastRest = lastRestOf(lives, frame)
   if (lastRest === null) return restOnSocle(socle)
   // Prochain début > F : les vies posent le seuil, une carry ne l'emporte que STRICTEMENT
   // plus tôt (une carry ex æquo avec une vie ne prend pas le pas — la vie gagne l'égalité).
@@ -94,6 +110,34 @@ export function skullPresenceAt(
   if (!nextIsCarry) return restOnSocle(socle)
   const p = lastRest.pts[lastRest.pts.length - 1]
   return { state: 'free', at: { x: p.x, y: p.y }, rolling: false }
+}
+
+/**
+ * lastRestOf — la vie de plus grand `t1 <= frame` qui ait émis au moins un point, ou `null`.
+ * C'est le DERNIER ENDROIT OÙ LE CRÂNE A ÉTÉ VU au sol avant l'image servie.
+ */
+function lastRestOf(
+  lives: readonly ReplayObjectiveObjectReady[],
+  frame: number,
+): ReplayObjectiveObjectReady | null {
+  let lastRest: ReplayObjectiveObjectReady | null = null
+  for (const life of lives) {
+    if (life.t1 <= frame && life.pts.length > 0 && (lastRest === null || life.t1 > lastRest.t1)) {
+      lastRest = life
+    }
+  }
+  return lastRest
+}
+
+/** Le dernier point émis du dernier repos, ou `null` — le repli de position de l'objet lui-même. */
+function lastRestPointOf(
+  lives: readonly ReplayObjectiveObjectReady[],
+  frame: number,
+): XY | null {
+  const rest = lastRestOf(lives, frame)
+  if (rest === null) return null
+  const p = rest.pts[rest.pts.length - 1]
+  return { x: p.x, y: p.y }
 }
 
 /**

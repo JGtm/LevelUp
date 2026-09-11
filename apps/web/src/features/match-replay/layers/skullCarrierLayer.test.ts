@@ -4,6 +4,8 @@ import { type CanvasView } from '../model/replayView'
 import type { ReplaySkullCarry } from '../../../lib/replay/replayNormalize'
 import { drawSkullCarrier, skullCarrierActiveAt, type SkullCarrierInput } from './skullCarrierLayer'
 import { OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
+import { skullPresenceAt } from '../model/skullPresence'
+import type { ReplayObjectiveObjectReady } from '../../../lib/replay/replayNormalize'
 
 const carry = (over: Partial<ReplaySkullCarry>): ReplaySkullCarry => ({
   xuid: '2533274806055812',
@@ -90,5 +92,54 @@ describe('drawSkullCarrier', () => {
     const [cx] = arc.mock.calls[0] as number[]
     expect(cx).toBeCloseTo(view.width - OFFSCREEN_MARGIN_PX, 5)
     expect(cx).toBeLessThan(2000)
+  })
+})
+
+/**
+ * UN SEUL GLYPHE PAR IMAGE (lot 6.7 phase B2, item 1 — audit causes C9/C10).
+ *
+ * Le crâne est le seul des trois objets portés dont le rendu est PARTAGÉ entre deux calques :
+ * celui-ci dessine le crâne PORTÉ, `objectiveObjectsLayer` dessine le crâne LIBRE, et
+ * `skullPresenceAt` arbitre. Le silence de ce calque sur un porteur non localisable n'est donc
+ * correct QUE si la présence bascule sur `free` à la même image — sans quoi le crâne disparaît
+ * (694 images du parc Oddball). Ce test tient les deux bouts ensemble : c'est la seule façon de
+ * prouver « un glyphe, jamais zéro, jamais deux ».
+ */
+describe('crâne porté et crâne libre : exactement un glyphe à chaque image', () => {
+  const view: CanvasView = {
+    bounds: { minX: 0, minY: 0, maxX: 100, maxY: 100 },
+    width: 200,
+    height: 200,
+    pad: 0,
+  }
+  const lives: ReplayObjectiveObjectReady[] = [
+    { family: 'ball', en: 'Oddball', fr: 'Crâne', t0: 5, t1: 5, pts: [{ t: 5, x: 1, y: 1 }] },
+  ]
+  const carries = [carry({ xuid: 'a', t0: 10, t1: 40 })]
+  /** Porteur localisable jusqu'à l'image 20, muet ensuite. */
+  const posOf = (_x: string, f: number) => (f <= 20 ? { x: 7, y: 8 } : null)
+
+  const paint = (frame: number) => {
+    const fill = vi.fn()
+    const ctx = {
+      beginPath: vi.fn(), arc: vi.fn(), fill, stroke: vi.fn(),
+    } as unknown as CanvasRenderingContext2D
+    const layer: SkullCarrierInput = {
+      style: { ink: '#fff', outline: '#000', reducedMotion: true }, posOf,
+    }
+    drawSkullCarrier(ctx, layer, carries, view, frame)
+    return { porte: fill.mock.calls.length > 0, presence: skullPresenceAt(lives, carries, frame, null, posOf) }
+  }
+
+  it('porteur localisable : le calque PORTÉ dessine, le calque libre se tait', () => {
+    const { porte, presence } = paint(15)
+    expect(porte).toBe(true)
+    expect(presence.state).toBe('carried')
+  })
+
+  it('porteur sans position : le calque porté se tait, le calque LIBRE prend le relais', () => {
+    const { porte, presence } = paint(30)
+    expect(porte).toBe(false)
+    expect(presence).toEqual({ state: 'free', at: { x: 7, y: 8 }, rolling: false })
   })
 })

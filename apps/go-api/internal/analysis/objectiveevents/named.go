@@ -84,8 +84,13 @@ type statSlot struct {
 // cles confirmees par le controle sur moities disjointes y figurent.
 //
 // Ce qui est TOMBE au controle et n'est donc pas ici : `5 B`, `6 A`, `8 A`, `8 B`, `9 A`,
-// `22 B`, `23 B`, `25 A` en CTF et `5 B` en zones — les cles a faible observation, nommees
+// `22 B`, `25 A` en CTF et `5 B` en zones — les cles a faible observation, nommees
 // par coincidence de comptes et non par une correspondance reelle.
+//
+// `23 B` ETAIT DE CETTE LISTE ET N'Y EST PLUS (2026-09-11) : il y etait tombe comme candidat a
+// la RECOMPENSE `runner_stopped`, pas comme candidat a une STATISTIQUE. Confronte a
+// `flag_secures` — une colonne que l'oracle de l'epoque ne portait pas — il est exact joueur par
+// joueur sur 11 films. Le detail de la mesure est a son entree ci-dessous.
 var namedStatSlots = map[string]map[statSlotKey]statSlot{
 	ObjectiveTypeFlag: {
 		{0, sideA}:  {Stat: StatFlagCaptures, Redundant: true},
@@ -94,6 +99,24 @@ var namedStatSlots = map[string]map[statSlotKey]statSlot{
 		{21, sideB}: {Stat: StatFlagCarriersKilled},
 		{22, sideA}: {Stat: StatFlagGrabs},
 		{23, sideA}: {Stat: StatFlagReturns},
+		// `23 B` = `flag_secures`, NOMME LE 2026-09-11 (lot 6.7 phase B2, item 4 ; audit L8).
+		//
+		// IL AVAIT DEJA ETE ESSAYE, ET IL ETAIT TOMBE — mais sur une AUTRE cible : le controle
+		// sur moities disjointes (§17.6 de l'etat de l'art) le co-nommait `runner_stopped` avec
+		// `21 B`, et c'est `21 B` qui avait survecu. La confusion s'explique : `runner_stopped`
+		// est une RECOMPENSE de score, et elle couvre indistinctement les deux statistiques
+		// voisines que sont « tuer le porteur adverse » (`flag_carriers_killed`, `21 B`) et
+		// « securiser » (`flag_secures`). L'oracle de l'epoque ne portait aucune colonne
+		// `flag_secures` : la bonne cible n'etait pas dans le jeu d'essai.
+		//
+		// LA MESURE QUI LE NOMME (2026-09-11, `flag_secures_sweep_test.go`) : balayage des 260
+		// emplacements (comps 0 a 64 x cote x strict) sur les 13 CTF d'arene du parc, valeur par
+		// valeur apres pont slot -> xuid. `23 B` est le SEUL emplacement exact, et il l'est sur
+		// **11 films sur 11 exploitables, 79 slots apparies, 0 desaccord**, pour 169
+		// securisations non nulles. Les deux films ecartes ne temoignent ni pour ni contre :
+		// `7fce3219` ne rend AUCUN pont d'identite, et `fb1a1a72` fait tomber le TEMOIN POSITIF
+		// (`comp 22 A` y publie 10 prises pour 0 a l'oracle sur un joueur).
+		{23, sideB}: {Stat: StatFlagSecures},
 		{24, sideA}: {Stat: StatFlagSteals},
 		{2, sideA}:  {Stat: StatKills},
 		{12, sideA}: {Stat: StatKills, Redundant: true},
@@ -157,6 +180,7 @@ const (
 	StatFlagCaptures       = "flag_captures"
 	StatFlagCaptureAssists = "flag_capture_assists"
 	StatFlagGrabs          = "flag_grabs"
+	StatFlagSecures        = "flag_secures"
 	StatFlagReturns        = "flag_returns"
 	StatFlagSteals         = "flag_steals"
 	StatFlagCarriersKilled = "flag_carriers_killed"

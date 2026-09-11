@@ -1,0 +1,130 @@
+# vague6_b2_item4_flag_secures.log — lot 6.7 phase B2, item 4 (audit L8, cause C5)
+# 2026-09-11. Balayage des emplacements du statborg contre flag_secures, joueur par joueur.
+# Protocole : celui qui a nomme flag_grabs (named.go:139-155). Gate STRICT ecrit d'avance :
+# >= 10 films ET aucun desaccord, sinon on ne publie RIEN.
+# Corpus : les 13 CTF d'arene du parc qui ont des chunks (les 3 CTF de BTB sont exclus :
+# au-dela de 8 sieges le statborg ne dit de qui il parle, cf. rosterfit.go).
+# AUCUNE base DuckDB ouverte ; oracle derive des exports commites de la vague 6.
+# Commande : ZONE_FILM=<chunks>/<short8> go test ./internal/analysis/replay/ -run FlagSecuresSweep -count=1 -v
+
+===== 16ea3668 =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	16ea3668	comp 22 A (flag_grabs) : 8 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	16ea3668	8 slot(s) apparie(s), 7 securisation(s) a l'oracle sur 8 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	16ea3668	5 joueur(s) apparie(s) a securisation NON NULLE, somme 7
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	16ea3668	comp 23 B	8 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	16ea3668	comp 23 B strict	8 exact(s)	0 desaccord
+--- PASS: TestFlagSecuresSweep (0.37s)
+ok  	levelup/go-api/internal/analysis/replay	0.435s
+===== 4ecdf3e7 =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	4ecdf3e7	comp 22 A (flag_grabs) : 8 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	4ecdf3e7	8 slot(s) apparie(s), 11 securisation(s) a l'oracle sur 10 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	4ecdf3e7	4 joueur(s) apparie(s) a securisation NON NULLE, somme 10
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	4ecdf3e7	comp 23 B	8 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	4ecdf3e7	comp 23 B strict	8 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	4ecdf3e7	comp 22 A	6 exact(s)	2 desaccord(s)	pire ecart 8
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	4ecdf3e7	comp 22 A strict	6 exact(s)	2 desaccord(s)	pire ecart 8
+--- PASS: TestFlagSecuresSweep (0.27s)
+ok  	levelup/go-api/internal/analysis/replay	0.336s
+===== 58864b3c =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	58864b3c	comp 22 A (flag_grabs) : 6 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	58864b3c	6 slot(s) apparie(s), 13 securisation(s) a l'oracle sur 8 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	58864b3c	3 joueur(s) apparie(s) a securisation NON NULLE, somme 5
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	58864b3c	comp 23 B	6 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	58864b3c	comp 23 B strict	6 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	58864b3c	comp 22 A	5 exact(s)	1 desaccord(s)	pire ecart 1
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	58864b3c	comp 22 A strict	5 exact(s)	1 desaccord(s)	pire ecart 1
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	58864b3c	comp 6 A	4 exact(s)	2 desaccord(s)	pire ecart 1
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	58864b3c	comp 6 A strict	4 exact(s)	2 desaccord(s)	pire ecart 1
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	58864b3c	comp 21 B	4 exact(s)	2 desaccord(s)	pire ecart 3
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	58864b3c	comp 21 B strict	4 exact(s)	2 desaccord(s)	pire ecart 3
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	58864b3c	comp 24 A	4 exact(s)	2 desaccord(s)	pire ecart 2
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	58864b3c	comp 24 A strict	4 exact(s)	2 desaccord(s)	pire ecart 2
+--- PASS: TestFlagSecuresSweep (0.17s)
+ok  	levelup/go-api/internal/analysis/replay	0.227s
+===== 64e8adfa =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	64e8adfa	comp 22 A (flag_grabs) : 4 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	64e8adfa	4 slot(s) apparie(s), 46 securisation(s) a l'oracle sur 8 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	64e8adfa	4 joueur(s) apparie(s) a securisation NON NULLE, somme 14
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	64e8adfa	comp 23 B	4 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	64e8adfa	comp 23 B strict	4 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	64e8adfa	comp 22 A	2 exact(s)	2 desaccord(s)	pire ecart 2
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	64e8adfa	comp 22 A strict	2 exact(s)	2 desaccord(s)	pire ecart 2
+--- PASS: TestFlagSecuresSweep (0.78s)
+ok  	levelup/go-api/internal/analysis/replay	0.845s
+===== 7fce3219 =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	7fce3219	comp 22 A (flag_grabs) : 0 exact(s), 0 desaccord(s)
+--- SKIP: TestFlagSecuresSweep (0.79s)
+ok  	levelup/go-api/internal/analysis/replay	0.864s
+===== 8bc6074f =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	8bc6074f	comp 22 A (flag_grabs) : 8 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	8bc6074f	8 slot(s) apparie(s), 20 securisation(s) a l'oracle sur 10 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	8bc6074f	7 joueur(s) apparie(s) a securisation NON NULLE, somme 20
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	8bc6074f	comp 23 B	8 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	8bc6074f	comp 23 B strict	8 exact(s)	0 desaccord
+--- PASS: TestFlagSecuresSweep (0.44s)
+ok  	levelup/go-api/internal/analysis/replay	0.503s
+===== a0c36016 =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	a0c36016	comp 22 A (flag_grabs) : 8 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	a0c36016	8 slot(s) apparie(s), 16 securisation(s) a l'oracle sur 8 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	a0c36016	7 joueur(s) apparie(s) a securisation NON NULLE, somme 16
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	a0c36016	comp 23 B	8 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	a0c36016	comp 23 B strict	8 exact(s)	0 desaccord
+--- PASS: TestFlagSecuresSweep (0.71s)
+ok  	levelup/go-api/internal/analysis/replay	0.781s
+===== b8a44fe8 =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	b8a44fe8	comp 22 A (flag_grabs) : 8 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	b8a44fe8	8 slot(s) apparie(s), 43 securisation(s) a l'oracle sur 8 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	b8a44fe8	7 joueur(s) apparie(s) a securisation NON NULLE, somme 43
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	b8a44fe8	comp 23 B	8 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	b8a44fe8	comp 23 B strict	8 exact(s)	0 desaccord
+--- PASS: TestFlagSecuresSweep (0.74s)
+ok  	levelup/go-api/internal/analysis/replay	0.808s
+===== bc60b4d9 =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	bc60b4d9	comp 22 A (flag_grabs) : 8 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	bc60b4d9	8 slot(s) apparie(s), 12 securisation(s) a l'oracle sur 8 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	bc60b4d9	4 joueur(s) apparie(s) a securisation NON NULLE, somme 12
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	bc60b4d9	comp 23 B	8 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	bc60b4d9	comp 23 B strict	8 exact(s)	0 desaccord
+--- PASS: TestFlagSecuresSweep (0.42s)
+ok  	levelup/go-api/internal/analysis/replay	0.482s
+===== bf5ced1b =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	bf5ced1b	comp 22 A (flag_grabs) : 6 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	bf5ced1b	6 slot(s) apparie(s), 5 securisation(s) a l'oracle sur 9 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	bf5ced1b	3 joueur(s) apparie(s) a securisation NON NULLE, somme 5
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	bf5ced1b	comp 23 B	6 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	bf5ced1b	comp 23 B strict	6 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	bf5ced1b	comp 22 A	5 exact(s)	1 desaccord(s)	pire ecart 4
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	bf5ced1b	comp 22 A strict	5 exact(s)	1 desaccord(s)	pire ecart 4
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	bf5ced1b	comp 0 A	4 exact(s)	2 desaccord(s)	pire ecart 1
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	bf5ced1b	comp 0 A strict	4 exact(s)	2 desaccord(s)	pire ecart 1
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	bf5ced1b	comp 5 B	4 exact(s)	2 desaccord(s)	pire ecart 6
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	bf5ced1b	comp 5 B strict	4 exact(s)	2 desaccord(s)	pire ecart 6
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	bf5ced1b	comp 8 A	4 exact(s)	2 desaccord(s)	pire ecart 3
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	bf5ced1b	comp 8 A strict	4 exact(s)	2 desaccord(s)	pire ecart 3
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	bf5ced1b	comp 21 A	4 exact(s)	2 desaccord(s)	pire ecart 1
+    flag_secures_sweep_test.go:369: FLAGSEC-PROCHE	bf5ced1b	comp 21 A strict	4 exact(s)	2 desaccord(s)	pire ecart 1
+--- PASS: TestFlagSecuresSweep (0.14s)
+ok  	levelup/go-api/internal/analysis/replay	0.202s
+===== cde26226 =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	cde26226	comp 22 A (flag_grabs) : 5 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	cde26226	5 slot(s) apparie(s), 38 securisation(s) a l'oracle sur 8 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	cde26226	5 joueur(s) apparie(s) a securisation NON NULLE, somme 20
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	cde26226	comp 23 B	5 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	cde26226	comp 23 B strict	5 exact(s)	0 desaccord
+--- PASS: TestFlagSecuresSweep (0.88s)
+ok  	levelup/go-api/internal/analysis/replay	0.947s
+===== f8efc5ca =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	f8efc5ca	comp 22 A (flag_grabs) : 8 exact(s), 0 desaccord(s)
+    flag_secures_sweep_test.go:345: FLAGSEC	f8efc5ca	8 slot(s) apparie(s), 21 securisation(s) a l'oracle sur 8 ligne(s)
+    flag_secures_sweep_test.go:347: FLAGSEC-CIBLE	f8efc5ca	6 joueur(s) apparie(s) a securisation NON NULLE, somme 21
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	f8efc5ca	comp 23 B	8 exact(s)	0 desaccord
+    flag_secures_sweep_test.go:366: FLAGSEC-EXACT	f8efc5ca	comp 23 B strict	8 exact(s)	0 desaccord
+--- PASS: TestFlagSecuresSweep (0.42s)
+ok  	levelup/go-api/internal/analysis/replay	0.481s
+===== fb1a1a72 =====
+    flag_secures_sweep_test.go:320: FLAGSEC-TEMOIN	fb1a1a72	comp 22 A (flag_grabs) : 7 exact(s), 1 desaccord(s)
+    flag_secures_sweep_test.go:333: FLAGSEC-TEMOIN-KO	fb1a1a72	slot 24 (2535450323793545) publie 10, oracle 0
+--- FAIL: TestFlagSecuresSweep (0.79s)
+FAIL
+FAIL	levelup/go-api/internal/analysis/replay	0.851s
+FAIL
