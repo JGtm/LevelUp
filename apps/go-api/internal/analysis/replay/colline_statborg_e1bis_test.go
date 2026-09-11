@@ -73,6 +73,41 @@ var e1bOracle = map[string][]e1bJoueur{
 		{"2535457719922537", 50, 93, 7, 8, 9, 0},
 		{"2535471057307458", 89, 136, 11, 10, 6, 1},
 	},
+	// CHASM ET SHOGUN SONT ENTRES LE 2026-09-11 (lot 6.7 phase B2, item 3). Leurs films etaient
+	// au cache depuis toujours mais la cuisson echouait « carte hors catalogue ([]) » — non parce
+	// que leur carte manque au catalogue (elle y est, avec 5 collines a forme chacune) mais parce
+	// que le match etait ABSENT DU REGISTRE local au 2026-08-30 (`E4_cuisson_koth.log` :
+	// « match absent du registre — identite de carte non resolue », `sql: no rows in result set`).
+	// Ils y sont depuis, et les six films cuisent.
+	//
+	// LEURS LIGNES SONT DERIVEES DE L'EXPORT COMMITE `oracle_vague6_objective_stats.tsv` joint a
+	// `oracle_vague6_participants.tsv`, jamais tapees : la MEME derivation, appliquee aux quatre
+	// films deja geles ci-dessus, les reproduit LIGNE POUR LIGNE, lignes de bot comprises.
+	"606d9844": {
+		{"2533274823110022", 2, 6, 2, 8, 1, 1},
+		{"2533274835138874", 0, 0, 1, 5, 0, 1},
+		{"2533274864142980", 49, 50, 2, 2, 2, 0},
+		{"2533274897620970", 7, 16, 2, 6, 0, 1},
+		{"2533275031831732", 57, 64, 9, 1, 2, 0},
+		{"2535449018082899", 0, 0, 3, 7, 0, 1},
+		{"2535472156173951", 9, 13, 11, 2, 3, 0},
+		{"2535472834247640", 75, 77, 5, 4, 2, 0},
+		// BOT : xuid corrompu en base, aucune ligne de match — donc aucun pont possible.
+		{"bid(28.0", 0, 0, -1, -1, -1, -1},
+	},
+	"8076f97f": {
+		{"2533274823110022", 25, 37, 7, 7, 4, 1},
+		{"2533274857387572", 16, 34, 6, 7, 4, 0},
+		{"2533274858283686", 31, 51, 12, 8, 7, 1},
+		{"2533275004520376", 41, 65, 10, 11, 7, 0},
+		{"2535407066740278", 20, 36, 9, 10, 2, 0},
+		{"2535408183412820", 0, 0, 0, 0, 0, 0},
+		{"2535435974688461", 24, 35, 6, 10, 6, 0},
+		{"2535456259091650", 46, 60, 13, 7, 5, 1},
+		{"2541316932603141", 44, 60, 6, 9, 6, 1},
+		// BOT : xuid corrompu en base, aucune ligne de match — donc aucun pont possible.
+		{"bid(48.0", 0, 0, -1, -1, -1, -1},
+	},
 	"7f1bbf06": {
 		{"2533274811165209", 20, 30, 8, 5, 9, 0},
 		{"2533274823110022", 2, 8, 6, 9, 5, 1},
