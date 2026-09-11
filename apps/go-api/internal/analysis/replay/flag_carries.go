@@ -172,11 +172,21 @@ type flagCarryRaw struct {
 	captured bool
 	// closed dit qu un FAIT a ferme le portage. Faux : rien ne l a ferme, il court jusqu a la
 	// fin du rejeu et aucune transition de fin n est emise.
-	closed     bool
+	closed bool
+	// homed dit que la fin RENVOIE le drapeau a sa base sans capture : un retour credite ou une
+	// rentree de l objet a date la fin du portage (flag_carries_home.go). L etat publie apres la
+	// fin est alors `home`, exactement comme apres une capture — le drapeau n est PAS au sol.
+	homed      bool
 	flagIndex  int
 	confirmed  bool
 	observable bool
 }
+
+// endsHome dit que le portage s acheve avec le drapeau CHEZ LUI, et non au sol. Deux faits le
+// produisent — la CAPTURE et la RENTREE (retour credite ou re-creation de l objet a son socle) —
+// et les trois endroits qui posent le drapeau apres une fin doivent les traiter pareil : l etat
+// du sol (`poser`), le repositionnement du lacher et la transition publiee.
+func (r flagCarryRaw) endsHome() bool { return r.captured || r.homed }
 
 // buildFlagCarries rend la vie de chaque drapeau et la couverture du calque.
 //
@@ -215,6 +225,9 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	// LE PASSAGE DE MAIN EN MAIN SE FERME ICI, AVANT TOUTE GEOMETRIE : le drapeau est nomme par
 	// l'EQUIPE du preneur (regle du mode), pas par sa position (cf. flag_carries_handoff.go).
 	cov.ClosedByHandoff, cov.CarrierTeamUnknown = closeByHandoff(raws, named, scan)
+	// LE DRAPEAU RENTRE CHEZ LUI FERME AUSSI, et par les deux chaines qui le datent — le retour
+	// credite et la rentree de l'objet (cf. flag_carries_home.go).
+	cov.ClosedByReturn, cov.ClosedByHome = closeByHomecoming(raws, scan, ctx)
 	raws, cov.AmbiguousCarrierKills = closeByCarrierKills(raws, scan.Events, scan.Identity)
 	// LE LACHER VOLONTAIRE SE FERME ICI, ET AVANT LES POSITIONS : c'est lui qui deplace `t1`,
 	// donc le point de lacher que la ligne suivante ira lire sur la piste du porteur.

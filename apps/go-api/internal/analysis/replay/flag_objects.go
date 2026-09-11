@@ -330,15 +330,15 @@ func flagFreeDropInside(r flagCarryRaw, ctx flagCarryCtx, tracks []Track,
 // c'est la ou il est mort, pas la ou l'objet repose. Un drapeau tombe, roule et s'immobilise ;
 // sa piste libre le suit jusqu'a ce qu'il cesse d'emettre, c'est-a-dire jusqu'a son repos.
 //
-// UNE CAPTURE N'EST PAS UN LACHER : le drapeau rentre a sa base, et sa position vient du socle.
-// Elle n'est donc jamais repositionnee.
+// UNE FIN CHEZ LUI N'EST PAS UN LACHER : capture, retour credite ou rentree de l'objet, le
+// drapeau rentre a sa base et sa position vient du socle. Elle n'est donc jamais repositionnee.
 func repositionFlagDrops(raws []flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan) int {
 	if len(scan.Free) == 0 {
 		return 0
 	}
 	moved := 0
 	for i := range raws {
-		if !raws[i].closed || raws[i].captured {
+		if !raws[i].closed || raws[i].endsHome() {
 			continue
 		}
 		l, ok := flagFreeAtDrop(raws[i], ctx, scan)

@@ -47,11 +47,15 @@ type FlagCarriesCoverage struct {
 	// lui chaque artefact du parc changerait d'octet pour un champ vide.
 	ClosedByHandoff    int `json:"closedByHandoff,omitempty"`
 	CarrierTeamUnknown int `json:"carrierTeamUnknown,omitempty"`
-	DropsRepositioned  int `json:"dropsRepositioned"`
-	AssignedByPlay     int `json:"assignedByPlay"`
-	DropsWithheld      int `json:"dropsWithheld"`
-	OwnFlagRefused     int `json:"ownFlagRefused"`
-	Unresolved         int `json:"unresolved"`
+	// ClosedByReturn / ClosedByHome : portages fermes parce que leur drapeau est RENTRE CHEZ LUI
+	// — retour credite, puis rentree de l'objet. `omitempty` des DEUX cotes, comme leurs freres.
+	ClosedByReturn    int `json:"closedByReturn,omitempty"`
+	ClosedByHome      int `json:"closedByHome,omitempty"`
+	DropsRepositioned int `json:"dropsRepositioned"`
+	AssignedByPlay    int `json:"assignedByPlay"`
+	DropsWithheld     int `json:"dropsWithheld"`
+	OwnFlagRefused    int `json:"ownFlagRefused"`
+	Unresolved        int `json:"unresolved"`
 }
 
 // VipCrownCoverage porte les denominateurs du calque. Sans eux, « 15 periodes » se lirait comme

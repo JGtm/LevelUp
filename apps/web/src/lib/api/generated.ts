@@ -6778,7 +6778,11 @@ export interface components {
             /** Format: int64 */
             closedByHandoff?: number;
             /** Format: int64 */
+            closedByHome?: number;
+            /** Format: int64 */
             closedByObject: number;
+            /** Format: int64 */
+            closedByReturn?: number;
             /** Format: int64 */
             closedOverlaps: number;
             /** Format: int64 */
