@@ -28,10 +28,24 @@ import (
 // `60ae07c4` 2,1 Md sur 21 A).
 //
 // CE QUE CES BORNES SONT. Un rempart MEMOIRE d'abord, et — depuis le lot 6.7-B1 — un filtre
-// d'ANOMALIE calibre sur l'oracle API. Elles restent grossieres : sur un enregistrement fautif,
-// un plafond par pas coupe les gros canaux et laisse passer les petits. Le filtre exact serait
-// au niveau de l'ENREGISTREMENT — rejeter le record entier quand l'un de ses canaux est hors
-// domaine, comme [modeScoreInDomain] le fait deja pour le comp 0. Il n'est toujours pas la.
+// d'ANOMALIE calibre sur l'oracle API. Elles ne travaillent PAS seules, et c'est le lot 6.11 qui
+// leur a donne leur second etage : le filtre au niveau de l'ENREGISTREMENT existe depuis lors
+// (`statMaxCounter` + `statCountersInDomain`, `statborg.go`), et il rejette le record ENTIER des
+// qu'un de ses canaux A ou B sort du domaine — exactement ce que [modeScoreInDomain] fait pour le
+// score de mode.
+//
+// LES DEUX BORNES SONT CALIBREES L'UNE PAR RAPPORT A L'AUTRE, et aucune ne couvre seule le
+// phenomene :
+//
+//	le PAS (ici)             coupe les gros deroulages et laisse passer les petits. Le record
+//	                         fortuit de `fb1a1a72` (slot 24, t = 764 967, canaux a
+//	                         2 415 919 104 et -30 456) portait un pas de 10 sur `comp 22 A` :
+//	                         il passe SOUS [maxUnrollPerStep] = 16, et cette borne-ci ne peut
+//	                         rien en dire — dix prises de drapeau publiees pour ZERO a l'oracle ;
+//	l'ENREGISTREMENT         ne regarde pas le pas mais l'ORDRE DE GRANDEUR des canaux : la pire
+//	  (`statborg.go`)        valeur SAINE mesuree vaut 102 934, la plus petite ABERRANTE
+//	                         2 415 919 104, et [statMaxCounter] = 2^20 se pose dans le vide qui
+//	                         les separe. C'est lui, et lui seul, qui attrape le cas ci-dessus.
 const (
 	// maxUnrollPerStep borne le deroulage d'UN point, PREMIER TERME COMPRIS (`prev` part de
 	// zero et ne redescend jamais : la grandeur qui explose est `p.Value - prev`, pas l'ecart

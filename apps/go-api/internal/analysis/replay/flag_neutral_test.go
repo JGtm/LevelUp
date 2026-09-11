@@ -112,3 +112,40 @@ func TestFlagVarianteNeutrePublieUnSeulDrapeau(t *testing.T) {
 	assertFlagStates(t, got[0],
 		[]string{FlagStateHome, FlagStateCarried, FlagStateDropped, FlagStateHome})
 }
+
+// TestFlagNaissancesLaDISTANCEDecideDuDENOMINATEUR — LA RESERVE DE LA REVUE 6.R, INSTRUITE.
+//
+// CE QUE LE RELECTEUR A NOTE. Le lot 6.13 a resserre [flagBirthsNear] du rayon du LACHER (1,5 m)
+// a [flagHomeExactDist] (0,10 m). Les tests ci-dessus posent leurs naissances EXACTEMENT sur les
+// socles : ils passent avec l'ancien seuil comme avec le nouveau, et ne disent donc rien du
+// resserrement. Ce test-ci fait varier la SEULE distance.
+//
+// LA MESURE SUR FILM (revue 6.R, parc de 12 films CTF cuits hors ligne) : `4ecdf3e7`
+// (High Ground, la seule partie a drapeau neutre du parc) reste classe NEUTRE apres 6.13, avec
+// CINQ naissances a 0,10 m au plus du socle neutre et ZERO aux socles d'equipe — deux de marge
+// au-dessus de [flagNeutralMinBirths], et un denominateur adverse vide.
+//
+// LES DEUX CAS : une naissance a 0,05 m est un drapeau QUI RENTRE (le catalogue est juste a
+// 0,006 m pres sur le parc) ; une naissance a 0,50 m est un LACHER a portee du support, et elle
+// ne dit rien de la variante — c'est exactement ce que le resserrement retire du denominateur.
+func TestFlagNaissancesLaDISTANCEDecideDuDenominateur(t *testing.T) {
+	for _, c := range []struct {
+		nom    string
+		ecart  float32
+		neutre bool
+	}{
+		{"a 0,05 m du socle : le drapeau rentre", 0.05, true},
+		{"a 0,50 m du socle : un lacher a portee du support", 0.50, false},
+	} {
+		scan := flagNeutralScan(0, 0)
+		for i := 0; i < 6; i++ {
+			scan.Free = append(scan.Free,
+				flagFreeLifeAt(uint64(i+1)*100_000, 50+c.ecart, 50))
+		}
+		choix := flagChooseSpawns(scan)
+		if choix.Neutral != c.neutre {
+			t.Errorf("%s : neutre=%v (attendu %v), comptes neutre=%d equipes=%d",
+				c.nom, choix.Neutral, c.neutre, choix.NeutralBirths, choix.TeamBirths)
+		}
+	}
+}

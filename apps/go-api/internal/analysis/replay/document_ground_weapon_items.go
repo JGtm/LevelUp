@@ -157,7 +157,13 @@ type GroundWeaponItemsCoverage struct {
 	// (`filmdec/ground_weapon_ammo.go`), et c'est lui qui doit tomber le jour où le portage du
 	// composant i9 sera corrigé. Sans ce compteur, une couverture basse serait indiscernable
 	// d'un câblage cassé.
-	AmmoRead int `json:"ammoRead"`
+	//
+	// `omitempty`, COMME TOUS LES CHAMPS NEUFS DE LA VAGUE 6 : un champ ajouté ne doit pas faire
+	// bouger la forme du document des artefacts qui ne le peuplent pas. Sans lui, un artefact
+	// cuit AVANT le lot 6.10 — qui n'écrit pas la clé — serait indiscernable d'un film où le
+	// décodeur n'a rien lu, qui l'écrit à zéro (revue 6.R, C5). Il est optionnel au contrat pour
+	// la même raison : la clé absente et la clé à zéro disent la même chose.
+	AmmoRead int `json:"ammoRead,omitempty"`
 }
 
 // buildGroundWeaponItems projette les objets de la chaîne des socles sur l'axe du document et

@@ -76,7 +76,7 @@ func flagOfCarrier(scan FlagCarryScan, xuid string) (int, bool) {
 // closeByHandoff ferme chaque portage a la PREMIERE prise d'un AUTRE joueur portant sur le MEME
 // drapeau. Rend le nombre de portages ainsi fermes, et celui des portages dont l'equipe ne nomme
 // aucun drapeau — ceux que la regle n'a pas pu juger.
-func closeByHandoff(raws []flagCarryRaw, ops []flagOpening, scan FlagCarryScan) (closed, unnamed int) {
+func closeByHandoff(raws []flagCarryRaw, ops []flagOpening, scan FlagCarryScan) (unnamed int) {
 	parPortage := flagIndexByTeam(raws, scan)
 	// `ops` et `raws` portent les MEMES joueurs, un portage par prise : la table par xuid se
 	// deduit donc de celle par portage, sans second balayage des socles.
@@ -94,10 +94,9 @@ func closeByHandoff(raws []flagCarryRaw, ops []flagOpening, scan FlagCarryScan) 
 		if !found {
 			continue
 		}
-		raws[i].t1, raws[i].closed, raws[i].captured = at, true, false
-		closed++
+		flagCloseAt(&raws[i], at, flagCloserHandoff)
 	}
-	return closed, unnamed
+	return unnamed
 }
 
 // flagFirstOtherOpening rend l'instant de la PREMIERE prise d'un AUTRE joueur du drapeau `mien`,
