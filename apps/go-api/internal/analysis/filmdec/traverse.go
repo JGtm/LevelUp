@@ -425,7 +425,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		br.ReadBit()
 		br.ReadBits(96)
 		return variant, nil, true
-	case "weapon-ammo-component": // ti=42 i20 (FUN_140fc3028) — R(8)+R(11)+R(12)
+	case compWeaponAmmo: // ti=42 i20 (FUN_140fc3028) — R(8)+R(11)+R(12)
 		consumeWeaponAmmo(br)
 		return variant, nil, true
 	case "branch-script-results-component": // ti=16 i1 (FUN_142ed3dcc) — R(6)+R(32)
@@ -780,7 +780,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case compSplashMessageStatic: // ti=47 i0 (FUN_141085d50) — sonde sur le R(24) inconditionnel
 		publishProbe(typeIndex, ProbeSplashStatic, consumeManagedSplashMessage(br))
 		return variant, nil, true
-	case "object-multiplayer-properties-component": // i9 = the 'obje' (FUN_1407d4c94 TLV blob)
+	case compObjectMultiplayerProperties: // i9 = the 'obje' (FUN_1407d4c94 TLV blob)
 		consumeObjectMultiplayerProperties(br)
 		return variant, nil, true
 	case compWeaponStateTypeInfo: // held weapon (FUN_1407f06bc)

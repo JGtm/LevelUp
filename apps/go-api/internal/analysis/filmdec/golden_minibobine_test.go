@@ -74,6 +74,27 @@ package filmdec
 // (28 / 38) ne bougent pas non plus. Le detail est au rapport
 // `.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`.
 //
+// # REGENERATION DU 2026-09-11 (lot 6.10) — DEUX LIGNES, ET AUCUN BIT N'A BOUGE NON PLUS
+//
+// `groundWeaponCreations` ET `equipmentCreations` ont change de digest. La cause est la meme
+// qu'au lot 6.6 : `EquipmentCreation` porte deux champs de plus (`HasAmmo`, `Ammo` — les
+// MUNITIONS lues dans le composant i20 du meme record, cf. ground_weapon_ammo.go) et
+// `rendreStable` rend TOUS les champs. Sur CETTE bobine ils valent `false` et `{0 0}` partout :
+// ses 28 creations d'arme au sol portent TOUTES le composant i9, que la reserve de lecture
+// ecarte (mesure du 2026-09-11). Les deux familles changent donc de digest sans qu'une seule
+// VALEUR pre-existante ne change.
+//
+// LA PREUVE, mesuree des DEUX COTES du changement sur CETTE bobine (instrument jetable :
+// empreinte sha256 des champs pre-existants, `HasAmmo`/`Ammo` exclus, de chaque record rendu ;
+// copie `git archive HEAD` d'un cote, branche de l'autre, meme test) :
+//
+//	groundWeaponCreations  n=28  ancres=141  acceptees=28
+//	  sha256=a71593143c298a8c5e2696bc8d5d9c3847b95f976dff269ae87feb15214f55e5   (identique)
+//	equipmentCreations     n=38  ancres=170  acceptees=38
+//	  sha256=71cd12247c95a07f11849fc8d43565674172cebfd140145de31ef6cefe086cee   (identique)
+//
+// Le detail est au rapport `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`.
+//
 // # PAS DE SKIP
 //
 // La bobine est VERSIONNEE : son absence est une panne du depot, pas une condition d'execution.
