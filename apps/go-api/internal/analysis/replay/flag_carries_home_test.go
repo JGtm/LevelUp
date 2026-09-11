@@ -139,3 +139,44 @@ func TestUneRentreeApresLaFermetureNeDeplaceRien(t *testing.T) {
 			f.Spans[1].T1, *cov)
 	}
 }
+
+// TestUnLacherPLUSTOTDEMENTLaRentree — LE CONSTAT C1 DE LA REVUE 6.R (2026-09-11).
+//
+// LA SEQUENCE ORDINAIRE QUI PRODUISAIT UN DRAPEAU FANTOME A SA BASE : prise a t0, LACHER date par
+// une vie libre a l'image 15 (hors socle, aux pieds du porteur), puis le drapeau reste au sol et
+// RENTRE seul a l'image 20. `closeByHomecoming` passait d'abord et posait `homed` ; le fermoir de
+// la vie libre passait ensuite, ramenait `t1` a l'image 15 — et ne DEMENTAIT PAS `homed`. L'etat
+// publie devenait `home`, AU SOCLE, des l'image 16, alors que le drapeau gisait a 70 m de la
+// jusqu'a l'image 20. Le meme portage se comptait en outre dans `closedByHome` ET dans
+// `closedByObject`.
+//
+// CE QUE LE TEST EXIGE : le plus petit fermoir gagne ET EFFACE celui qu'il remplace.
+//
+// MUTATION JOUEE : remettre `homed` a vrai dans [flagCloseAt] pour le fermoir de l'objet rougit
+// l'etat `dropped` ; compter les deux fermoirs au lieu du dernier en vigueur ([tallyFlagCarries])
+// rougit `closedByHome` et l'invariant de [FlagCarriesCoverage.Balanced].
+func TestUnLacherPLUSTOTDEMENTLaRentree(t *testing.T) {
+	free := []flagFreeLife{
+		flagTestLife(15, [2]float32{50.5, 50.5}), // le LACHER, aux pieds du porteur, hors socle
+		flagTestLife(20, [2]float32{0, 0}),       // la RENTREE, au socle du drapeau porte
+	}
+	scan := flagHomeScan(map[string]int{"1": 0, "2": 0}, free) // le retour porte sur l'AUTRE drapeau
+	got, cov := buildFlagCarries(scan, flagHomeCtx())
+	f := flagOfTeam(t, got, 1)
+	assertFlagStates(t, f, []string{FlagStateHome, FlagStateCarried, FlagStateDropped, FlagStateHome})
+	if f.Spans[1].T1 != 15 {
+		t.Errorf("portage ferme a la frame %d, attendu 15 (le lacher, plus petit que la rentree)",
+			f.Spans[1].T1)
+	}
+	// LE DRAPEAU GIT LA OU IL EST TOMBE, pas au socle : c'est tout l'enjeu du dementi.
+	if s := f.Spans[2]; s.X != 50.5 || s.Y != 50.5 {
+		t.Errorf("lacher publie en (%v, %v), attendu (50.5, 50.5) — la position de l'objet", s.X, s.Y)
+	}
+	if cov.ClosedByObject != 1 || cov.ClosedByHome != 0 || cov.ClosedByReturn != 0 {
+		t.Errorf("couverture %+v : un portage ne se compte que dans UN fermoir, celui en vigueur",
+			*cov)
+	}
+	if !cov.Balanced() {
+		t.Errorf("couverture %+v : la somme des fermoirs depasse les portages fermes", *cov)
+	}
+}

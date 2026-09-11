@@ -321,23 +321,21 @@ func flagFreeAtSpawn(spawns []FlagSpawn, x, y float32) bool {
 //
 // LE PORTEUR EST LU SUR SA PISTE PUBLIEE, la meme que celle sur laquelle le client dessine :
 // c'est la seule position dont on soit sur qu'elle existe au rendu.
-func closeByFreeLives(raws []flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan) ([]flagCarryRaw, int) {
+func closeByFreeLives(raws []flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan) []flagCarryRaw {
 	if len(scan.Free) == 0 {
-		return raws, 0
+		return raws
 	}
 	// Les slots ambigus sont comptes et journalises par `attachFlagCarryPositions`, seul porteur
 	// de la couverture : les compter deux fois sur le meme index ne dirait rien de plus.
 	idx, _ := tracksByXUID(ctx.tracks, ctx.slotXUID, ctx.slotAmbiguous)
-	closed := 0
 	for i := range raws {
 		at, ok := flagFreeDropInside(raws[i], ctx, idx[raws[i].xuid], scan)
 		if !ok {
 			continue
 		}
-		raws[i].t1, raws[i].closed, raws[i].captured = at, true, false
-		closed++
+		flagCloseAt(&raws[i], at, flagCloserObject)
 	}
-	return raws, closed
+	return raws
 }
 
 // flagFreeDropInside rend l'instant (horloge du MATCH) de la PREMIERE vie libre qui commence

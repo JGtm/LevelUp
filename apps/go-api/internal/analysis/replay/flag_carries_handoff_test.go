@@ -33,8 +33,8 @@ func flagHandoffScan(teams map[string]int) FlagCarryScan {
 // mort a 6 000 ms ; « 2 » prend a 3 000 ms.
 func flagHandoffCas() ([]flagCarryRaw, []flagOpening) {
 	raws := []flagCarryRaw{
-		{xuid: "1", t0: 1000, t1: 6000, steal: true, closed: true, flagIndex: -1},
-		{xuid: "2", t0: 3000, t1: 9000, closed: true, flagIndex: -1},
+		{xuid: "1", t0: 1000, t1: 6000, steal: true, closed: true, closedBy: flagCloserBound, flagIndex: -1},
+		{xuid: "2", t0: 3000, t1: 9000, closed: true, closedBy: flagCloserBound, flagIndex: -1},
 	}
 	ops := []flagOpening{
 		{slot: 12, xuid: "1", t0: 1000, steal: true},
@@ -52,7 +52,8 @@ func flagHandoffCas() ([]flagCarryRaw, []flagOpening) {
 // celui-ci.
 func TestUnePriseDUnCoequipierFermeLePortage(t *testing.T) {
 	raws, ops := flagHandoffCas()
-	closed, unnamed := closeByHandoff(raws, ops, flagHandoffScan(map[string]int{"1": 0, "2": 0}))
+	unnamed := closeByHandoff(raws, ops, flagHandoffScan(map[string]int{"1": 0, "2": 0}))
+	closed := flagComptePar(raws, flagCloserHandoff)
 	if closed != 1 || unnamed != 0 {
 		t.Fatalf("closeByHandoff rend (%d, %d), attendu (1, 0)", closed, unnamed)
 	}
@@ -76,7 +77,8 @@ func TestUnePriseDUnCoequipierFermeLePortage(t *testing.T) {
 // test, et lui seul.
 func TestUnePriseDUnADVERSAIRENeFermeRien(t *testing.T) {
 	raws, ops := flagHandoffCas()
-	closed, unnamed := closeByHandoff(raws, ops, flagHandoffScan(map[string]int{"1": 0, "2": 1}))
+	unnamed := closeByHandoff(raws, ops, flagHandoffScan(map[string]int{"1": 0, "2": 1}))
+	closed := flagComptePar(raws, flagCloserHandoff)
 	if closed != 0 || unnamed != 0 {
 		t.Fatalf("closeByHandoff rend (%d, %d), attendu (0, 0)", closed, unnamed)
 	}
@@ -92,7 +94,8 @@ func TestUnSeulDrapeauEnJeuToutePriseDUnAutreFerme(t *testing.T) {
 	raws, ops := flagHandoffCas()
 	scan := flagHandoffScan(map[string]int{"1": 0, "2": 1}) // ADVERSAIRES
 	scan.Spawns = nil
-	closed, unnamed := closeByHandoff(raws, ops, scan)
+	unnamed := closeByHandoff(raws, ops, scan)
+	closed := flagComptePar(raws, flagCloserHandoff)
 	if closed != 1 || unnamed != 0 || raws[0].t1 != 3000 {
 		t.Errorf("(%d, %d) et borne %d — attendu (1, 0) et 3000 : un seul drapeau est en jeu",
 			closed, unnamed, raws[0].t1)
@@ -104,7 +107,8 @@ func TestUnSeulDrapeauEnJeuToutePriseDUnAutreFerme(t *testing.T) {
 // ferme, et le silence SE COMPTE.
 func TestSansEquipeLueLaRegleSeTaitEtSeCompte(t *testing.T) {
 	raws, ops := flagHandoffCas()
-	closed, unnamed := closeByHandoff(raws, ops, flagHandoffScan(nil))
+	unnamed := closeByHandoff(raws, ops, flagHandoffScan(nil))
+	closed := flagComptePar(raws, flagCloserHandoff)
 	if closed != 0 || unnamed != 2 || raws[0].t1 != 6000 {
 		t.Errorf("(%d, %d) et borne %d — attendu (0, 2) et 6000", closed, unnamed, raws[0].t1)
 	}
@@ -125,7 +129,8 @@ func TestUnePriseHorsDuPortageNeDeplaceRien(t *testing.T) {
 	} {
 		raws, ops := flagHandoffCas()
 		ops[1].t0, raws[1].t0 = cas.at, cas.at
-		closed, _ := closeByHandoff(raws, ops, flagHandoffScan(teams))
+		closeByHandoff(raws, ops, flagHandoffScan(teams))
+		closed := flagComptePar(raws, flagCloserHandoff)
 		if closed != 0 || raws[0].t1 != 6000 {
 			t.Errorf("%s : (%d) et borne %d — attendu 0 passage et 6000", cas.nom, closed, raws[0].t1)
 		}
@@ -142,7 +147,8 @@ func TestUneCarteAPlusDeDeuxDrapeauxAdversesSeTait(t *testing.T) {
 		{Team: 0, X: 0, Y: 0}, {Team: 0, X: 10, Y: 0},
 		{Team: 1, X: 100, Y: 100}, {Team: 1, X: 300, Y: 300},
 	}
-	closed, unnamed := closeByHandoff(raws, ops, scan)
+	unnamed := closeByHandoff(raws, ops, scan)
+	closed := flagComptePar(raws, flagCloserHandoff)
 	if closed != 0 || unnamed != 2 {
 		t.Errorf("(%d, %d) — attendu (0, 2) : deux drapeaux adverses ne se departagent pas",
 			closed, unnamed)

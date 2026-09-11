@@ -358,11 +358,19 @@ type FlagCarriesCoverage struct {
 	Unresolved int `json:"unresolved"`
 }
 
-// Balanced verifie les DEUX invariants du calque : toute prise de l'oracle est soit publiee, soit
-// rejetee sous une cause NOMMEE, et tout portage publie est soit ferme, soit ouvert. Une somme
-// fausse signale une fuite — un chemin de rejet non compte, ou une population qui echappe au
-// partage.
+// Balanced verifie les TROIS invariants du calque : toute prise de l'oracle est soit publiee, soit
+// rejetee sous une cause NOMMEE ; tout portage publie est soit ferme, soit ouvert ; et un portage
+// ferme ne se compte que dans UN fermoir. Une somme fausse signale une fuite — un chemin de rejet
+// non compte, une population qui echappe au partage, ou un portage compte deux fois.
+//
+// LE TROISIEME INVARIANT EST CELUI DE LA REVUE 6.R (constat C1) : les quatre chaines de fermeture
+// s'appliquent en suite, et la plus precoce reprend le portage a la precedente. Tant que chacune
+// incrementait son propre compteur, un portage ferme par la rentree PUIS par un lacher plus
+// precoce peuplait `closedByHome` ET `closedByObject`. L'inegalite est LARGE, et non une egalite :
+// un portage ferme par la capture, la mort, la reprise du meme slot ou la chute creditee ne
+// peuple aucun de ces quatre compteurs.
 func (c FlagCarriesCoverage) Balanced() bool {
 	return c.Carries+c.NoBridge+c.NoTrack+c.OutOfWindow == c.Openings &&
-		c.Closed+c.Open == c.Carries
+		c.Closed+c.Open == c.Carries &&
+		c.ClosedByHandoff+c.ClosedByReturn+c.ClosedByHome+c.ClosedByObject <= c.Closed
 }
