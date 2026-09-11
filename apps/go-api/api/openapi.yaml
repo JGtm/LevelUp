@@ -14338,6 +14338,8 @@ components:
     GroundWeapon:
       additionalProperties: false
       properties:
+        ammo:
+          $ref: '#/components/schemas/GroundWeaponAmmo'
         dropper:
           format: int64
           type: integer
@@ -14379,6 +14381,19 @@ components:
         - dropper
         - end
         - picker
+      type: object
+    GroundWeaponAmmo:
+      additionalProperties: false
+      properties:
+        mag:
+          format: int64
+          type: integer
+        res:
+          format: int64
+          type: integer
+      required:
+        - mag
+        - res
       type: object
     GroundWeaponCoverage:
       additionalProperties: false
@@ -14470,6 +14485,9 @@ components:
     GroundWeaponItemsCoverage:
       additionalProperties: false
       properties:
+        ammoRead:
+          format: int64
+          type: integer
         atRest:
           format: int64
           type: integer
@@ -14507,6 +14525,7 @@ components:
         - endPickup
         - endSeen
         - endOpen
+        - ammoRead
       type: object
     Group:
       additionalProperties: false

@@ -68,6 +68,7 @@ func toGroundWeaponItemsCoverage(v replay.GroundWeaponItemsCoverage) replaydoc.G
 		EndPickup:    v.EndPickup,
 		EndSeen:      v.EndSeen,
 		EndOpen:      v.EndOpen,
+		AmmoRead:     v.AmmoRead,
 	}
 }
 

@@ -56,4 +56,19 @@ type GroundWeapon struct {
 	Dropper int     `json:"dropper"`
 	End     string  `json:"end"`
 	Picker  int     `json:"picker"`
+	// Ammo porte les MUNITIONS EXACTES de l'arme au moment ou elle a touche le sol, quand le
+	// film les transmet. ABSENT est le cas majoritaire (lot 6.10, 2026-09-11) : c'est une
+	// reserve de LECTURE du decodeur, pas une absence de l'objet — et l'infobulle garde son
+	// repli date pour ces objets-la.
+	Ammo *GroundWeaponAmmo `json:"ammo,omitempty"`
+}
+
+// GroundWeaponAmmo est ce qu'il restait dans l'arme quand elle a touche le sol. Deux champs et
+// pas trois : le troisieme que le film transmet n'a pas de semantique etablie, et un nombre au
+// sens inconnu ne se publie pas.
+type GroundWeaponAmmo struct {
+	// Mag est le CHARGEUR.
+	Mag int `json:"mag"`
+	// Res est la RESERVE.
+	Res int `json:"res"`
 }

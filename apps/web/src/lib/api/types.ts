@@ -3081,6 +3081,29 @@ export interface ReplayGroundWeapon {
   end: 'pickup' | 'seen' | 'open'
   /** Slot de la vie qui l'a prise, sur `end: 'pickup'`. -1 sinon. */
   picker: number
+  /**
+   * Munitions EXACTES au moment ou l'arme a touche le sol, lues dans le record de CREATION de
+   * l'objet (lot 6.10, 2026-09-11). ABSENT est le cas majoritaire, et ce n'est pas un manque de
+   * l'objet mais une reserve de LECTURE du decodeur, chiffree par
+   * `coverage.groundWeaponItems.ammoRead`. L'infobulle retombe alors sur la lecture
+   * d'inventaire DATEE du lacheur (`model/groundWeaponAmmo.ts`).
+   */
+  // PAS DE `| null` ICI, a la difference des tranches : le Go publie un POINTEUR `omitempty`,
+  // donc le champ est ABSENT ou present — jamais `null`. Le garde-rail de contrat compare la
+  // forme au type genere, qui le dit aussi.
+  ammo?: ReplayGroundWeaponAmmo
+}
+
+/**
+ * ReplayGroundWeaponAmmo — ce qu'il restait dans l'arme au lacher. DEUX champs et pas trois : le
+ * troisieme que le film transmet n'a pas de semantique etablie, et un nombre au sens inconnu ne
+ * se publie pas.
+ */
+export interface ReplayGroundWeaponAmmo {
+  /** Balles au chargeur. */
+  mag: number
+  /** Balles en reserve. */
+  res: number
 }
 
 /**

@@ -195,3 +195,31 @@ func TestGroundWeaponItemsIntervalleDeDisparition(t *testing.T) {
 			"le client choisit son rendu DEDANS", g.T1, g.T1Max)
 	}
 }
+
+// TestGroundWeaponItemsMunitionsExactes — l'objet dont le record de création portait ses
+// MUNITIONS les publie, et la couverture les compte. L'objet qui n'en portait pas n'invente
+// rien : `ammo` reste absent (c'est le cas majoritaire, cf. la réserve de lecture du décodeur).
+func TestGroundWeaponItemsMunitionsExactes(t *testing.T) {
+	avec := gwiObj(2_000_000, 10, 10, 0xAABBCCDD, gwClassDropped)
+	avec.HasAmmo, avec.Ammo = true, filmdec.GroundWeaponAmmo{Mag: 27, Res: 114}
+	sans := gwiObj(3_000_000, 20, 20, 0xAABBCCDD, gwClassDropped)
+	got, cov := buildGroundWeaponItems([]gwPickupObject{avec, sans}, nil, nil, gwiClock())
+	if len(got) != 2 {
+		t.Fatalf("publiées = %d, attendu 2", len(got))
+	}
+	if got[0].Ammo == nil {
+		t.Fatal("le premier objet portait ses munitions : `ammo` doit sortir")
+	}
+	if got[0].Ammo.Mag != 27 || got[0].Ammo.Res != 114 {
+		t.Errorf("munitions publiées %+v, attendu {Mag:27 Res:114}", *got[0].Ammo)
+	}
+	if got[1].Ammo != nil {
+		t.Errorf("le second objet n'en portait pas : `ammo` doit rester ABSENT, pas valoir zéro"+
+			" — un chargeur vide et un chargeur non lu ne se disent pas de la même façon (%+v)",
+			*got[1].Ammo)
+	}
+	if cov.AmmoRead != 1 || cov.Published != 2 {
+		t.Errorf("couverture ammoRead=%d published=%d, attendu 1 et 2 : l'écart entre les deux"+
+			" EST la mesure de la réserve de lecture", cov.AmmoRead, cov.Published)
+	}
+}

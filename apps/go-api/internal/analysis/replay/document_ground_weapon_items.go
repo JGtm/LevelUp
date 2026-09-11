@@ -102,6 +102,31 @@ type GroundWeapon struct {
 	End string `json:"end"`
 	// Picker est le slot de la VIE qui l'a prise, pour End == "pickup". -1 sinon.
 	Picker int `json:"picker"`
+	// Ammo porte les MUNITIONS EXACTES de l'arme au moment où elle a touché le sol, quand le
+	// film les transmet et que la lecture est prouvée bit-exacte. Absent sinon — et l'absence
+	// est le cas MAJORITAIRE (lot 6.10, 2026-09-11 : 15,8 % des créations `ti=42` du parc).
+	//
+	// EXACT, PAS DATÉ, et c'est toute la différence avec le repli de l'infobulle
+	// (`apps/web/.../model/groundWeaponAmmo.ts`, qui montre la dernière lecture d'inventaire du
+	// lâcheur avec son âge) : cette valeur-ci est lue dans le record de CRÉATION de l'objet,
+	// c'est-à-dire à l'instant du lâcher. Les deux coexistent : `ammo` quand il est là, le
+	// repli daté sinon.
+	Ammo *GroundWeaponAmmo `json:"ammo,omitempty"`
+}
+
+// GroundWeaponAmmo est ce qu'il restait dans l'arme quand elle a touché le sol.
+//
+// DEUX CHAMPS, ET PAS TROIS. Le composant du film en porte un troisième (R(12)) dont la
+// sémantique n'est PAS établie : le publier sous un nom inventé reviendrait à écrire une
+// conclusion avant la mesure. La preuve des deux qui sortent ici — le gradient d'égalité avec
+// l'inventaire du lâcheur selon l'âge de la référence — est en tête de
+// `filmdec/ground_weapon_ammo.go` et au rapport
+// `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`.
+type GroundWeaponAmmo struct {
+	// Mag est le CHARGEUR.
+	Mag int `json:"mag"`
+	// Res est la RÉSERVE.
+	Res int `json:"res"`
 }
 
 // GroundWeaponItemsCoverage dit ce que le calque a vu, lié, et refusé de dire.
@@ -127,6 +152,12 @@ type GroundWeaponItemsCoverage struct {
 	EndPickup int `json:"endPickup"`
 	EndSeen   int `json:"endSeen"`
 	EndOpen   int `json:"endOpen"`
+	// AmmoRead : objets publiés dont les MUNITIONS EXACTES sortent (`Ammo` non nul). L'écart
+	// avec `Published` n'est pas une anomalie : il MESURE la réserve de lecture du décodeur
+	// (`filmdec/ground_weapon_ammo.go`), et c'est lui qui doit tomber le jour où le portage du
+	// composant i9 sera corrigé. Sans ce compteur, une couverture basse serait indiscernable
+	// d'un câblage cassé.
+	AmmoRead int `json:"ammoRead"`
 }
 
 // buildGroundWeaponItems projette les objets de la chaîne des socles sur l'axe du document et
@@ -164,6 +195,10 @@ func buildGroundWeaponItems(
 		}
 		if g.Dropper >= 0 {
 			cov.DropperNamed++
+		}
+		if o.HasAmmo {
+			g.Ammo = &GroundWeaponAmmo{Mag: int(o.Ammo.Mag), Res: int(o.Ammo.Res)}
+			cov.AmmoRead++
 		}
 		switch {
 		case pickers[i].found:
