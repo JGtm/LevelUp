@@ -43,7 +43,7 @@
 | 3 | correctif a la source | `[x]` | un seuil nomme + un seul predicat (§5), rouge -> vert + mutation |
 | 4 | gate | `[x]` **sauf** deux sous-criteres `[!]` | detail et cause au §6 |
 
-Commit unique : `a1948671b` `fix(6.13): la ZONE AVEUGLE des socles`.
+Commit du correctif : `82eac688f` `fix(6.13): la ZONE AVEUGLE des socles`.
 
 ## 2. Protocole de mesure
 
