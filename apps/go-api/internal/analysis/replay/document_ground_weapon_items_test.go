@@ -8,7 +8,9 @@ package replay
 // production.
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -221,5 +223,35 @@ func TestGroundWeaponItemsMunitionsExactes(t *testing.T) {
 	if cov.AmmoRead != 1 || cov.Published != 2 {
 		t.Errorf("couverture ammoRead=%d published=%d, attendu 1 et 2 : l'écart entre les deux"+
 			" EST la mesure de la réserve de lecture", cov.AmmoRead, cov.Published)
+	}
+}
+
+// TestAmmoReadAZeroNEcritPasLaCle — LA FORME DU DOCUMENT NE BOUGE PAS POUR UN COMPTEUR VIDE
+// (revue 6.R, constat C5).
+//
+// CE QUE CE TEST FERME. `ammoRead` est né au lot 6.10, et il s'écrivait SANS `omitempty` — seul
+// champ neuf de la vague dans ce cas. Un artefact cuit AVANT le lot n'a pas la clé ; un artefact
+// cuit APRÈS, sur un film où le décodeur n'a rien lu, l'écrivait à zéro. Les deux disent
+// exactement la même chose, et rien ne permettait de les distinguer d'un coup d'œil : la clé à
+// zéro faisait passer une absence de matière pour une mesure.
+//
+// MUTATION JOUÉE : retirer `,omitempty` du champ rougit ce test.
+func TestAmmoReadAZeroNEcritPasLaCle(t *testing.T) {
+	vide, err := json.Marshal(GroundWeaponItemsCoverage{Objects: 3, Published: 2})
+	if err != nil {
+		t.Fatalf("sérialisation : %v", err)
+	}
+	if strings.Contains(string(vide), "ammoRead") {
+		t.Errorf("couverture sans munitions lues : %s — la clé `ammoRead` ne doit pas être"+
+			" écrite à zéro", vide)
+	}
+	// LE TÉMOIN POSITIF : dès qu'il y a de la matière, le compteur sort. Sans lui, un champ
+	// supprimé passerait ce test.
+	plein, err := json.Marshal(GroundWeaponItemsCoverage{Objects: 3, Published: 2, AmmoRead: 1})
+	if err != nil {
+		t.Fatalf("sérialisation : %v", err)
+	}
+	if !strings.Contains(string(plein), `"ammoRead":1`) {
+		t.Errorf("couverture avec une lecture : %s — le compteur doit sortir", plein)
 	}
 }

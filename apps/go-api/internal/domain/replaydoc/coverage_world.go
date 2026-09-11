@@ -61,7 +61,7 @@ type GroundWeaponItemsCoverage struct {
 	EndPickup    int `json:"endPickup"`
 	EndSeen      int `json:"endSeen"`
 	EndOpen      int `json:"endOpen"`
-	AmmoRead     int `json:"ammoRead"`
+	AmmoRead     int `json:"ammoRead,omitempty"`
 }
 
 // PickupCoverage dit ce que le canal a vu, ce qu'il a écarté et ce qu'il ne PEUT PAS voir.
