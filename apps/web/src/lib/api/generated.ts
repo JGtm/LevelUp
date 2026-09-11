@@ -6770,9 +6770,13 @@ export interface components {
             /** Format: int64 */
             captures: number;
             /** Format: int64 */
+            carrierTeamUnknown?: number;
+            /** Format: int64 */
             carries: number;
             /** Format: int64 */
             closed: number;
+            /** Format: int64 */
+            closedByHandoff?: number;
             /** Format: int64 */
             closedByObject: number;
             /** Format: int64 */
