@@ -107,6 +107,13 @@ type gwPickupObject struct {
 	// DropperSlot est le slot de la vie de bipede qui S ACHEVE a la naissance de l objet —
 	// celle-la meme qui a classe l apparition `dropped` (cf. gwPadsClass). -1 pour `spawned`.
 	DropperSlot int
+	// HasAmmo / Ammo : les MUNITIONS de l objet a sa naissance, lues dans le record de creation
+	// lui-meme (composant i20, cf. filmdec/ground_weapon_ammo.go). Le record de creation est
+	// date a l INSTANT DU LACHER : ce n est pas une lecture d inventaire en retard, c est l etat
+	// de l arme quand elle touche le sol. Faux quand la lecture n est pas prouvee bit-exacte —
+	// la reserve de lecture est decrite et chiffree dans ce fichier-la.
+	HasAmmo bool
+	Ammo    filmdec.GroundWeaponAmmo
 }
 
 // gwPickupDateUS rend l'instant retenu de la disparition : celui du passage quand il existe, la
@@ -170,10 +177,11 @@ func padObjects(
 			}
 			w, _ := gwPadsIdentity(c)
 			fam, _ := rule.Family(w)
-			o := gwPickupObject{Key: k, FamilyID: w, Appar: gwPadApparition{
-				Kind: rule.Kind, Family: fam,
-				X: c.X, Y: c.Y, Z: c.Z, TUS: c.TimestampUS,
-			}}
+			o := gwPickupObject{Key: k, FamilyID: w, HasAmmo: c.HasAmmo, Ammo: c.Ammo,
+				Appar: gwPadApparition{
+					Kind: rule.Kind, Family: fam,
+					X: c.X, Y: c.Y, Z: c.Z, TUS: c.TimestampUS,
+				}}
 			o.Appar.Class, o.DropperSlot = gwPadsClass(lives, o.Appar)
 			gwPickupResolve(&o, c, lifeEnd, filmEnd, gwResolveInputs{
 				kfTimes: scan.Keyframes.TimesUS, seen: scan.Keyframes.SeenUS[k],
