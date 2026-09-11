@@ -112,12 +112,17 @@ func assertCalquesDObjectif(t *testing.T, doc replaydoc.ReplayDocument, fx filmF
 				xuid, actions["kills"], actions["assists"], p.Kills, p.Assists)
 		}
 	}
-	// LE PONTAGE : 7 des 8 joueurs de la feuille, pas 5. Le 8e occupe le slot 12, dont les compteurs
-	// agreges (5, 0, 60 assistances contre 0 a la feuille) ne ressemblent a aucune ligne.
-	if len(parJoueur) != 7 {
-		t.Errorf("joueurs pontés = %d, attendu 7 — un pont qui en perd deux perd avec eux leurs "+
-			"actions d'objectif (régression `d173b1a8c`, corrigée le 2026-09-06). Pontés : %v",
-			len(parJoueur), clesTriees(parJoueur))
+	// LE PONTAGE : 8 des 8 joueurs de la feuille (2026-09-11, vague 6). Jusqu'au 2026-09-10 le 8e,
+	// sur le slot 12, restait anonyme : ses compteurs agreges (5, 0, 60 assistances contre 0 a la
+	// feuille) ne ressemblaient a aucune ligne. Les 60 assistances etaient un DEROULAGE ABERRANT
+	// (lot 6.7-B1 item 6 : borne 100 000 -> 16 ; lot 6.11 item 3 : domaine des compteurs au niveau
+	// de l'enregistrement). Compteurs assainis, le pont le nomme — et la boucle d'EGALITE ci-dessus
+	// prouve que ses frags et assistances publies sont exactement sa ligne de feuille. Le plancher
+	// historique (7, regression `d173b1a8c` corrigee le 2026-09-06) reste garde par l'inegalite.
+	if len(parJoueur) != len(fx.Facts.Players) {
+		t.Errorf("joueurs pontés = %d, attendu %d (tous, depuis la vague 6) — un pont qui en perd "+
+			"perd avec eux leurs actions d'objectif (régression `d173b1a8c`, corrigée le 2026-09-06). "+
+			"Pontés : %v", len(parJoueur), len(fx.Facts.Players), clesTriees(parJoueur))
 	}
 	// LES ACTIONS `flag` : la régression instruite. Elles vivent toutes deux sur le slot du
 	// joueur qui meurt DEUX fois — celui que le pont par instants de mort ne peut pas nommer seul.
@@ -141,10 +146,13 @@ func assertCalquesDObjectif(t *testing.T, doc replaydoc.ReplayDocument, fx filmF
 // COMPLÉTÉ — celui-là même que les actions consomment depuis le schéma 40 — descend désormais
 // jusqu'à ce calque, et le portage est publié.
 //
-// LES DEUX PRISES QUI RESTENT `noBridge` NE SONT PAS UN DÉFAUT : elles sont sur le slot 12, dont
-// les compteurs agrégés (5, 0, 60 assistances) ne ressemblent à aucune ligne de match — le même
-// slot qui laisse le 8e joueur anonyme ci-dessus. Si un lot futur le rend nommable, ce compte
-// passera à 3 : ce sera un PROGRÈS, et ce test le dira.
+// LES DEUX PRISES QUI RESTAIENT `noBridge` (2026-09-06) étaient sur le slot 12, dont les compteurs
+// agrégés (5, 0, 60 assistances) ne ressemblaient à aucune ligne de match — le même slot qui
+// laissait le 8e joueur anonyme ci-dessus. Le test annonçait : « si un lot futur le rend nommable,
+// ce compte passera à 3 : ce sera un PROGRÈS, et ce test le dira ». C'est fait le 2026-09-11
+// (vague 6 : déroulage borné à 16 et domaine des compteurs au niveau de l'enregistrement) : les
+// trois prises sont nommées, aucune ne reste sans pont, et les trois intervalles portés sont
+// publiés. La mesure figée est désormais 3 / 0 / 3.
 //
 // L'ORACLE EST INDÉPENDANT, ET C'EST TOUT L'INTÉRÊT. Les bornes du portage viennent des
 // compteurs du statborg et du fil des morts du film ; les instants des actions `flag_steals` /
@@ -152,9 +160,9 @@ func assertCalquesDObjectif(t *testing.T, doc replaydoc.ReplayDocument, fx filmF
 // À la capture, sur le MÊME xuid, n'est démontrable par aucune des deux chaînes seule.
 func assertPortsDeDrapeau(t *testing.T, doc replaydoc.ReplayDocument, fc *replaydoc.FlagCarriesCoverage) {
 	t.Helper()
-	if fc.Carries != 1 || fc.NoBridge != 2 || fc.Openings != 3 {
-		t.Errorf("couverture du drapeau : %d portage(s), %d sans pont, %d prises — attendu 1 / 2 / 3 "+
-			"(le porteur qui meurt deux fois est nommé, le slot 12 agrégé ne l'est pas)",
+	if fc.Carries != 3 || fc.NoBridge != 0 || fc.Openings != 3 {
+		t.Errorf("couverture du drapeau : %d portage(s), %d sans pont, %d prises — attendu 3 / 0 / 3 "+
+			"(depuis la vague 6, le slot 12 assaini est nommé comme les deux autres)",
 			fc.Carries, fc.NoBridge, fc.Openings)
 	}
 	if fc.Carries+fc.NoBridge+fc.NoTrack+fc.OutOfWindow != fc.Openings {
@@ -169,13 +177,22 @@ func assertPortsDeDrapeau(t *testing.T, doc replaydoc.ReplayDocument, fc *replay
 			}
 		}
 	}
-	if len(portes) != 1 {
-		t.Fatalf("%d intervalle(s) porté(s) publié(s), attendu 1 — au schéma 41 il n'y en avait "+
-			"AUCUN, et le drapeau restait dessiné à sa base pendant qu'un joueur le portait", len(portes))
+	if len(portes) != 3 {
+		t.Fatalf("%d intervalle(s) porté(s) publié(s), attendu 3 — au schéma 41 il n'y en avait "+
+			"AUCUN (le drapeau restait dessiné à sa base pendant qu'un joueur le portait), au schéma 42 "+
+			"un seul, et depuis la vague 6 les trois prises ont leur porteur", len(portes))
 	}
-	port := portes[0]
-	if port.XUID == nil || *port.XUID != porteurDeDrapeau {
-		t.Fatalf("porteur publié %v, attendu %s (SweatyYeti75, 7 frags / 2 morts)", port.XUID, porteurDeDrapeau)
+	// Le porteur qui meurt deux fois (SweatyYeti75, 7 frags / 2 morts) reste le témoin du
+	// recoupement des deux chaînes : on retient SON intervalle parmi les trois.
+	var port *replaydoc.FlagSpan
+	for i := range portes {
+		if portes[i].XUID != nil && *portes[i].XUID == porteurDeDrapeau {
+			port = &portes[i]
+			break
+		}
+	}
+	if port == nil {
+		t.Fatalf("aucun intervalle porté au porteur %s (SweatyYeti75, 7 frags / 2 morts) parmi %d", porteurDeDrapeau, len(portes))
 	}
 	// LES DEUX CHAÎNES SE RECOUPENT : le vol ouvre la fenêtre, la capture la ferme.
 	vol, capture := -1, -1
