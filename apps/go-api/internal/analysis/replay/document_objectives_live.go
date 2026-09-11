@@ -321,6 +321,15 @@ type FlagCarriesCoverage struct {
 	// denominateur — sans lui, un calque qu'elles traversent en silence serait indistinguable
 	// d'un calque sans passage.
 	CarrierTeamUnknown int `json:"carrierTeamUnknown,omitempty"`
+	// ClosedByReturn / ClosedByHome comptent les portages fermes parce que LEUR DRAPEAU EST
+	// RENTRE CHEZ LUI pendant qu'on le croyait porte — par le RETOUR CREDITE (`flag_returns`,
+	// nomme par l'equipe de qui le rend) et par la RENTREE DE L'OBJET (re-creation au socle).
+	//
+	// LES DEUX CHAINES SONT COMPTEES SEPAREMENT parce qu'elles n'ont pas la meme force : l'une
+	// est un fait credite a un joueur, l'autre une lecture de l'objet, assortie d'un refus
+	// d'ambiguite (cf. flag_carries_home.go). `omitempty` pour la meme raison que leurs freres.
+	ClosedByReturn int `json:"closedByReturn,omitempty"`
+	ClosedByHome   int `json:"closedByHome,omitempty"`
 	// DropsRepositioned compte les etats [FlagStateDropped] dont la position vient desormais de
 	// la piste LIBRE et non plus de la derniere position du porteur. L'ecart n'est pas
 	// cosmetique : un drapeau tombe rebondit, et le porteur meurt rarement la ou l'objet se pose.

@@ -77,20 +77,16 @@ func flagOfCarrier(scan FlagCarryScan, xuid string) (int, bool) {
 // drapeau. Rend le nombre de portages ainsi fermes, et celui des portages dont l'equipe ne nomme
 // aucun drapeau — ceux que la regle n'a pas pu juger.
 func closeByHandoff(raws []flagCarryRaw, ops []flagOpening, scan FlagCarryScan) (closed, unnamed int) {
-	drapeaux := make(map[string]int, len(ops))
-	for _, o := range ops {
-		if _, vu := drapeaux[o.xuid]; vu {
-			continue
-		}
-		f, ok := flagOfCarrier(scan, o.xuid)
-		if !ok {
-			f = -1
-		}
-		drapeaux[o.xuid] = f
+	parPortage := flagIndexByTeam(raws, scan)
+	// `ops` et `raws` portent les MEMES joueurs, un portage par prise : la table par xuid se
+	// deduit donc de celle par portage, sans second balayage des socles.
+	drapeaux := make(map[string]int, len(raws))
+	for i := range raws {
+		drapeaux[raws[i].xuid] = parPortage[i]
 	}
 	for i := range raws {
-		mien, ok := drapeaux[raws[i].xuid]
-		if !ok || mien < 0 {
+		mien := parPortage[i]
+		if mien < 0 {
 			unnamed++
 			continue
 		}
@@ -119,4 +115,24 @@ func flagFirstOtherOpening(r flagCarryRaw, ops []flagOpening, drapeaux map[strin
 		}
 	}
 	return best, found
+}
+
+// flagIndexByTeam rend, par portage, l'index du drapeau que son porteur tient — -1 quand
+// l'equipe ne le nomme pas. La table est calculee UNE fois : la resoudre dans la boucle
+// refarait le meme balayage de socles a chaque portage.
+func flagIndexByTeam(raws []flagCarryRaw, scan FlagCarryScan) []int {
+	out := make([]int, len(raws))
+	cache := make(map[string]int, len(raws))
+	for i := range raws {
+		f, vu := cache[raws[i].xuid]
+		if !vu {
+			var ok bool
+			if f, ok = flagOfCarrier(scan, raws[i].xuid); !ok {
+				f = -1
+			}
+			cache[raws[i].xuid] = f
+		}
+		out[i] = f
+	}
+	return out
 }

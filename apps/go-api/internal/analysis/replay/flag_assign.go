@@ -171,14 +171,15 @@ func (g *flagGround) seulAuSol() int {
 	return seul
 }
 
-// poser applique la FIN d'un portage : une capture renvoie le drapeau chez lui, tout le reste le
-// laisse au sol, a l'endroit du lacher.
+// poser applique la FIN d'un portage : une fin CHEZ LUI (capture, ou rentree datee par le retour
+// credite / l'objet) renvoie le drapeau a sa base, tout le reste le laisse au sol, a l'endroit du
+// lacher.
 func (g *flagGround) poser(r flagCarryRaw) {
 	f := r.flagIndex
 	if f < 0 || f >= len(g.sol) {
 		return // fin d'un portage jamais attribue : il n'y a rien a poser.
 	}
-	if r.captured {
+	if r.endsHome() {
 		g.sol[f], g.enJeu[f] = nil, false
 		return
 	}
