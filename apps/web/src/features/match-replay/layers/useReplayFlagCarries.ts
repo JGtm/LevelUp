@@ -11,7 +11,7 @@
  * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES, image par image, et c'est ce qui « colle » le
  * drapeau à son marqueur : le span publie UNE position pour tout son intervalle, alors que le
  * porteur court. `useCarrierPosAt` est le même utilitaire que la bombe, le crâne et la couronne —
- * une position relue, jamais devinée (cf. `flagPointAt` pour le repli). PORTEUR EMBARQUÉ : c'est
+ * une position relue, jamais devinée (cf. `flagPlaceAt` pour le repli). PORTEUR EMBARQUÉ : c'est
  * la position du VÉHICULE qui répond (décision produit du 2026-09-05, cf. l'en-tête de
  * `carrierPosition.ts`).
  *

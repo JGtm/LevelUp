@@ -52,6 +52,7 @@
 import { type XY } from '../../../lib/replay/replayLogic'
 
 import { type CanvasView, projectTo } from '../model/replayView'
+import { carriedGlyphPlaceAt } from '../model/carriedGlyphPlace'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 import type { ReplayFlagCarryReady } from '../../../lib/replay/replayNormalize'
 
@@ -225,20 +226,39 @@ export interface FlagCarriesInput {
   posOf: (xuid: string, frame: number) => XY | null
 }
 
+/** Où le drapeau se dessine à cette image, et AVEC QUEL HABILLAGE (porté / lieu). */
+export interface FlagPlace {
+  /** Le point MONDE du glyphe. */
+  at: XY
+  /**
+   * LE PORTEUR A-T-IL ÉTÉ PERDU DE VUE ? Vrai = le drapeau se dessine comme un LIEU (pas de
+   * décalage, aucun pion à éviter) parce qu'aucun porteur n'est à l'écran sous lui.
+   */
+  loose: boolean
+}
+
 /**
- * flagPointAt rend le point MONDE où le drapeau se dessine à cette image, et rien d'autre.
+ * flagPlaceAt rend le point MONDE où le drapeau se dessine à cette image, et son habillage.
  *
- * LE REPLI EST UNE DONNÉE, PAS UNE INVENTION : quand le porteur n'est pas localisable (vie non
- * publiée, image hors de ses trajectoires), le span porte lui-même une position mesurée — celle
- * que le serveur a retenue pour ce portage. On la sert plutôt que de faire disparaître le
- * drapeau, et l'infobulle dit de toute façon qui le porte.
+ * PORTEUR SANS POSITION (audit du 2026-09-10, cause C9 ; lot 6.7 phase B2). Le calque repliait
+ * sur `{x: now.x, y: now.y}` — l'ANCRE DU SPAN — en gardant l'habillage du PORTÉ. C'était deux
+ * erreurs en une : une position PÉRIMÉE (le porteur a couru depuis), affirmée avec les
+ * décorations d'un objet tenu par un joueur qui n'est pas à l'écran. 533 images sur 32 464
+ * (1,64 % du parc CTF) étaient dans ce cas.
+ *
+ * LA RÈGLE EST CELLE DES TROIS GLYPHES PORTÉS (`carriedGlyphPlace.ts`) : la DERNIÈRE position
+ * connue du porteur depuis le début du portage, à défaut l'ancre du span — qui reste une
+ * position MESURÉE, la seule qui subsiste — et dans les deux cas l'habillage d'un LIEU.
  */
-export function flagPointAt(now: FlagNow, frame: number, posOf: FlagCarriesInput['posOf']): XY {
-  if (now.state === 'carried' || now.state === 'carried_open') {
-    const p = now.xuid ? posOf(now.xuid, frame) : null
-    if (p) return p
+export function flagPlaceAt(now: FlagNow, frame: number, posOf: FlagCarriesInput['posOf']): FlagPlace {
+  if (now.state !== 'carried' && now.state !== 'carried_open') {
+    return { at: { x: now.x, y: now.y }, loose: false }
   }
-  return { x: now.x, y: now.y }
+  const place = carriedGlyphPlaceAt(posOf, now, frame, { x: now.x, y: now.y })
+  // `absent` est ici INATTEIGNABLE (le repli est toujours servi), mais le typage l'exige et on
+  // ne le traite pas par un `!` : l'ancre du span est la réponse, écrite une seule fois.
+  if (place.state === 'absent') return { at: { x: now.x, y: now.y }, loose: true }
+  return { at: place.at, loose: place.state === 'free' }
 }
 
 /**
@@ -296,8 +316,11 @@ export function drawFlagCarries(
       // LA BASE N'EST JAMAIS DÉCALÉE : c'est un lieu fixe, aucun pion ne s'y tient.
       drawFlagGlyph(ctx, px(anchor), { ink, outline, alpha: ALPHA_FAINT, hollow: true, offset: false })
     }
-    const worldPoint = flagPointAt(now, frame, layer.posOf)
-    const carried = now.state === 'carried' || now.state === 'carried_open'
+    const place = flagPlaceAt(now, frame, layer.posOf)
+    const worldPoint = place.at
+    // PORTÉ AU SENS DU RENDU : un portage dont le porteur n'est pas à l'écran ne l'est plus —
+    // ni bornage à la marge (il n'y a pas de pion à suivre), ni décalage (rien à éviter).
+    const carried = !place.loose && (now.state === 'carried' || now.state === 'carried_open')
     // ÉCHELLE 1 : ce calque, comme ses deux voisins (bombe, crâne), ne met encore rien à
     // l'échelle de l'écran (`k`) — ses cotes sont des constantes fixes. La marge suit donc la
     // même convention plutôt que d'inventer un facteur que rien d'autre ici ne consomme.
@@ -308,7 +331,7 @@ export function drawFlagCarries(
       outline,
       alpha: flagBlinkAlpha(now.state, frame, layer.style.reducedMotion),
       hollow: now.state === 'carried_open',
-      offset: glyphIsOffset(now.state),
+      offset: glyphIsOffset(now.state) && !place.loose,
     })
   }
   ctx.globalAlpha = 1
@@ -471,7 +494,7 @@ export interface FlagHit {
 /**
  * flagAt rend le drapeau dont le glyphe se trouve sous le point CANVAS servi, ou `null`.
  *
- * LE SURVOL REJOUE EXACTEMENT LA MÊME GÉOMÉTRIE QUE LE TRACÉ (`flagPointAt`, même décalage) :
+ * LE SURVOL REJOUE EXACTEMENT LA MÊME GÉOMÉTRIE QUE LE TRACÉ (`flagPlaceAt`, même décalage) :
  * viser une forme dessinée ailleurs ne toucherait rien, et ce genre d'écart ne se voit pas.
  * Seul le glyphe VIVANT est survolable — la base atténuée n'est qu'un rappel d'absence.
  */
@@ -487,12 +510,13 @@ export function flagAt(
   for (const carry of carries) {
     const now = flagSpanAt(carry, frame)
     if (!now) continue
-    const w = flagPointAt(now, frame, layer.posOf)
-    const c = projectTo(view, w)
-    // MÊME RÈGLE DE DÉCALAGE QUE LE TRACÉ (2026-09-08) : elle dépend désormais de l'ÉTAT. La
-    // recopier sans la condition rendrait la cible de survol à 6 px du glyphe sur trois états
-    // sur quatre — et un écart de cible ne se voit pas, il se subit.
-    const decale = glyphIsOffset(now.state)
+    const place = flagPlaceAt(now, frame, layer.posOf)
+    const c = projectTo(view, place.at)
+    // MÊME RÈGLE DE DÉCALAGE QUE LE TRACÉ (2026-09-08) : elle dépend de l'ÉTAT, et depuis le lot
+    // 6.7 phase B2 aussi de `loose` (porteur perdu de vue). La recopier sans ces conditions
+    // rendrait la cible de survol à 6 px du glyphe — et un écart de cible ne se voit pas, il se
+    // subit.
+    const decale = glyphIsOffset(now.state) && !place.loose
     const cx = c.x + (decale ? FLAG_OFFSET_X : 0)
     const cy = c.y - (decale ? FLAG_OFFSET_Y : 0) - FLAG_POLE_H / 2
     const d = (cx - at.x) * (cx - at.x) + (cy - at.y) * (cy - at.y)
