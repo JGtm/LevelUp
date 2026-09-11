@@ -1,3 +1,83 @@
+## [2026-09-11] Lot 6.10 bis — i9 desassemble, la reserve des munitions levee, i14 mesure — Complete (worktree LevelUp-wt-munitions-objet)
+
+**Decision technique principale.** Les deux items `[!]` du lot 6.10 ne se traitaient pas par la
+mesure : il fallait desassembler. Ghidra etait joignable cette fois (instance pid 26060,
+`HaloInfinite.exe` ouvert, image base 140000000, 311 103 fonctions) — mais **le pont MCP ne peut pas
+s'y connecter sur ce poste** : il tourne sous un Python sans `socket.AF_UNIX` et refuse le repli TCP
+tant qu'il n'a pas pu lire le nom du projet par le socket. Le plugin repond en revanche parfaitement
+en HTTP sur `127.0.0.1:8089` (`/mcp/schema`, `/decompile_function`, `/disassemble_function`,
+`/read_memory`, `/disassemble_bytes`). Tout le lot a ete desassemble par la.
+
+**Point 1 — i9 `object-multiplayer-properties` (`723b3b61a`, `296cbd5e6`).** Le portage inventait un
+flux TLV « chaque type a un corps » qui ne correspondait a aucune fonction du binaire. Le vrai flux
+est un **sous-message en mode 2**, etabli sur neuf fonctions relues instruction par instruction :
+`FUN_1407d4c94` (porte R(1), etiquette R(5)), `FUN_1407d54ac` (construction de variante, ZERO bit),
+`FUN_1407d4e10` (`1407d4e39: MOV EAX,0x2` — le mode vaut 2), `FUN_1424ccb1c`
+(`1424ccb28: MOV AL,byte ptr [RDX+0x29]` — l'indicateur vaut ZERO, c'est lui qui ouvre l'en-tete),
+`FUN_140c7fedc` (le corps et sa boucle), `FUN_1408ccb7c` (en-tete LEB128), `FUN_140b4bc28` (le tag :
+5 bits bas = TYPE DE FIL, 3 bits hauts = compte de saut), `FUN_141cbbae0` + `FUN_1428fbcd0` (la table
+de saut par type de fil). **Quatre erreurs corrigees** : l'en-tete LEB128 n'etait pas lu (son premier
+octet vaut souvent 0x00, pris pour le terminateur) ; les types 4, 0xf, 0x10 et 0x11 etaient lus comme
+des corps prefixes par leur longueur alors que `FUN_140b4ba68` lit un varint ET REND LA MAIN
+(`141cbbb40`) ; huit types de fil sur dix-neuf consommaient ZERO bit ; le type de fil 1 ne terminait
+pas la boucle (`142295808`).
+
+**Resultats observes.** La preuve qui tranche n'est pas l'oracle mais la CONGRUENCE : la longueur
+consommee par i9 vaut **6 modulo 8 dans 100,0 % des 6 318 records** qui le portent (10 valeurs
+distinctes, toutes entre 414 et 502 bits, espacees de 8) — exactement ce qu'exige 1 bit de porte +
+5 bits d'etiquette suivis d'un flux d'OCTETS. Le lot 6.10 mesurait 34 longueurs et « aucune structure
+modulo 8 ». Oracle : le decalage ZERO d'i20 passe d'un eparpillement sur 121 decalages a **94,3 %**
+(2 738 / 2 903) ; la population de CONTROLE — les records SANS i9, deja prouves bit-exacts — plafonne
+a **91,8 %** (391 / 426) sur le meme corpus. **Le seuil de 95 % ecrit au 6.10 etait au-dessus du
+plafond de l'oracle** (il vieillit de 9 s en mediane) : le controle qui tranche est la comparaison des
+deux populations, et les records avec i9 font MIEUX que la reference. Couverture : **4 283 -> 16 218
+lectures sur 27 155 creations `ti=42` (15,8 % -> 59,7 %)**, soit la totalite des records portant i20.
+
+**Ce que la correction change ailleurs, chiffre.** i9 est generique, donc tout composant lu APRES lui
+en heritait la derive. RIEN ne bouge pour les creations, les positions d'atterrissage et l'identite :
+au commit de grammaire, les lignes de golden `groundWeaponCreations` et `equipmentCreations` sont
+identiques au caractere pres (leur marche consomme i9 par le BLOC MPP du default-state, un lecteur
+distinct). Une seule famille change, et dans le bon sens : `equipmentState` passe de 65 a 66
+echantillons — 5 282 records delta inchanges, 66 masques inchanges, **marches ROMPUES 1 -> 0**,
+`equipment-deployed` lu 3/4 -> 4/4, les cinq autres champs identiques. Le seul record de la
+mini-bobine dont la marche se rompait est celui qui traversait i9.
+
+**Point 2 — i14 `object-dissolver-component` (`87181b6cf`).** Grammaire relue sur `FUN_140dd9f9c` :
+R(4) etat (`140dd9faf: MOV ECX,0xe` -> bitLen(0xe) = 4) ; si etat != 13, R(96) bruts
+(`140dda07b: MOV R9D,0x60`), R(12) dequantifie dans [0, 10] (`140dda0a1` + la constante
+`0x143cd873c` = 10.0f), puis R(1). **AUCUNE LARGEUR NE CHANGE** — la relecture servait a savoir ce que
+les bits portent. **Verdict : aucun champ de fin de vie etabli**, et la cause est structurelle. Sur les
+64 films : 18 214 creations sur 27 155 (67,1 %) portent i14 ; sur les 13 014 objets apparies, l'etat
+vaut le NEUTRE (13) dans **99,80 %** des cas. Un composant de DISSOLUTION decrit une FIN, et la fin
+n'est pas connue a la naissance de l'objet. Les 26 exceptions (0,20 %) ne portent aucune relation :
+la duree rangee par quartile donne des vies observees de 301, 669, 1 527 puis 1 219 images (non
+monotone, six cas par quartile), le drapeau vaut vrai 17 fois et faux 9 fois, **aucun de ces 26 objets
+n'a ete ramasse** et les 363 objets du parc a fin `pickup` sont TOUS a l'etat neutre. Rien n'est
+publie — nommer l'un de ces champs reviendrait a nommer du bruit.
+
+**Piege de l'instrument, consigne parce qu'il coute une demi-mesure.** `projPosBits()` et la boucle de
+composants lisent des GLOBAUX (precision i0, largeurs MPP) calibres film par film. La premiere version
+de l'instrument collectait tous les cas puis rejouait la marche a la fin : tous les films etaient alors
+decodes avec les reglages du DERNIER, et la mesure donnait 81,5 % de decalage zero au lieu de 94,3 %,
+avec des longueurs d'i9 a 131 206 bits. **Le symptome d'un instrument qui se trompe ressemble
+exactement a celui d'une grammaire fausse** ; c'est le controle de congruence modulo 8 qui les a
+distingues. Le rejeu se fait desormais dans la boucle par film, jamais apres.
+
+**Gates.** `go test ./internal/analysis/filmdec/ ./internal/analysis/replay/ ./internal/replaybuild/
+./internal/service/...` vert (CGO active — sans CGO le paquet `service` ne construit pas sur ce poste) ;
+`go vet` 0 ; `golangci-lint run ./internal/analysis/filmdec/...` **0 nouvel avertissement** sur les
+fichiers touches (les 12 restants sont la dette de baseline) ; goldens : invariance demontree sur
+octets reels des DEUX cotes (sha256 `4409c038...` des champs pre-existants des 28 creations,
+identique), les deux lignes qui changent expliquees champ par champ dans l'en-tete du test. **Web non
+touche.** Quatre fichiers d'instrument supprimes, recette au rapport §B8.
+
+**Conclusion / prochaine etape.** Rapport : section « 6.10 bis » de
+`.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md` (l'en-tete du rapport porte desormais un bandeau
+disant lesquelles de ses conclusions sont superseedees). Ligne 6.10 du plan maitre mise a jour.
+**RECUISSON DU PARC TOUJOURS NECESSAIRE** (`ammo` est cuit, sa couverture quadruple) -> lot 6.8, la
+recuisson unique deja prevue apres 6.10 et 6.11. Contrat, schema et web inchanges : aucun bump de
+`SchemaVersion`. Pas de push, pas de fusion.
+
 ## [2026-09-11] Lot 6.7 phase B2 — glyphe porte sans position, Total Control, KOTH, `flag_secures` — Complete (worktree LevelUp-wt-couverture-objectifs-b)
 
 **Decision technique principale.** Quatre items, quatre commits, chacun avec sa cause verifiee
@@ -14020,6 +14100,16 @@ films re-cuits, et les ~40 films KOTH restants à cuire.
 ---
 
 ## [2026-08-30] Munitions des armes au sol : composant atteint, valeurs NON FIABLES — Complété
+
+> **SUPERSEDEE LE 2026-09-11 (lots 6.10 puis 6.10 bis) — NE PAS AGIR SUR LA CONCLUSION DE CETTE
+> ENTREE.** Elle attribue la faute au mauvais endroit : l'etat par defaut de `ti=42` ETAIT valide
+> par un oracle de position depuis le 2026-08-17 (`6603eeaf8`). Les deux vraies causes etaient une
+> attribution de sonde fausse par construction (un global de paquet rendu au premier record `ti=42`
+> venu) et la grammaire du composant i9 `object-multiplayer-properties`, corrigee sur le
+> desassemblage le 2026-09-11 (`723b3b61a`). **Les munitions d'une arme au sol SONT fiables** sur
+> les records qui portent le composant i20 — 16 218 sur 27 155 creations (59,7 %) — et elles sont
+> publiees (`groundWeapons[].ammo`, infobulle exacte). Voir
+> `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md` et sa section « 6.10 bis ».
 
 **Demande** : note utilisateur — verifier si les armes speciales NON VIDES s affichent jusqu au
 despawn ou au ramassage, avec une source Steam a valider.

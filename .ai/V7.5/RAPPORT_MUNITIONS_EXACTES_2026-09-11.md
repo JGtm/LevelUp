@@ -1,5 +1,12 @@
 # RAPPORT — Les munitions EXACTES d'une arme au lâcher (lot 6.10, 2026-09-11)
 
+> **CE RAPPORT A UNE SUITE, ET ELLE CHANGE DEUX DE SES CONCLUSIONS.** Le lot **6.10 bis**
+> (section en fin de fichier, meme journee) a desassemble i9 : la RESERVE DE LECTURE du §3 est
+> **LEVEE**, la couverture passe de 15,8 % a 59,7 %, et le critere « > 95 % » du §3.3 s'est
+> revele au-dessus du plafond de l'oracle. La piste `object-dissolver-component` (i14) nommee au
+> §5 a ete instruite : **aucun champ de fin de vie n'y est etabli**, et la cause est prouvee.
+> Tout le reste de ce rapport tient.
+
 > Branche `wt/munitions-objet`, worktree `LevelUp-wt-munitions-objet`.
 > Aucune base DuckDB ouverte, aucune recuisson, aucun serveur touché. Les 64 artefacts cuits
 > (schéma 51) et les chunks de film du cache sont lus comme des fichiers.
@@ -381,3 +388,407 @@ Durées observées : 190 s pour le gradient sur les 64 films, 72 s pour la couve
   `filmdec/unit_weaponstate.go` (`consumeWeaponAmmo`), `filmdec/components_batch7.go` (i9),
   `filmdec/traverse.go`, `replay/document_ground_weapon_items.go` ; côté web
   `features/match-replay/model/groundWeaponAmmo.ts`.
+
+---
+---
+
+# 6.10 BIS — i9 DÉSASSEMBLÉ, LA RÉSERVE LEVÉE, i14 MESURÉ (2026-09-11)
+
+> Suite directe du lot 6.10 : ses deux items `[!]` (i9, faute de désassembleur ;
+> `object-dissolver-component` i14, jamais mesuré) sont traités. Même worktree
+> `LevelUp-wt-munitions-objet`, même branche `wt/munitions-objet`. Aucune base DuckDB ouverte,
+> aucune recuisson jouée, serveur intact. Ghidra était joignable cette fois : instance pid 26060,
+> `HaloInfinite.exe` ouvert, image base `140000000`, 311 103 fonctions.
+
+## B0. LES TROIS LIGNES QUI COMMANDENT LE RESTE
+
+1. **La grammaire d'i9 ne ressemblait à aucune fonction du binaire.** Le portage inventait un flux
+   TLV « chaque type a un corps ». Le vrai flux est un **sous-message en mode 2** : un en-tête
+   LEB128, puis des champs dont le premier octet porte un TYPE DE FIL sur ses 5 bits bas et un
+   COMPTE DE SAUT sur ses 3 bits hauts, chaque type de fil ayant sa longueur propre. Quatre erreurs
+   sont corrigées, chacune nommée au §B2.
+2. **La preuve qui tranche n'est pas l'oracle, c'est la congruence.** La longueur consommée par i9
+   vaut **6 modulo 8 dans 100,0 % des 6 318 records** qui le portent — exactement ce qu'exige
+   1 bit de porte + 5 bits d'étiquette suivis d'un flux d'OCTETS — et elle ne prend plus que **10
+   valeurs, toutes entre 414 et 502 bits**. Le lot 6.10 mesurait 34 longueurs et « aucune structure
+   modulo 8 ». Ce contrôle n'emprunte rien à l'inventaire.
+3. **`object-dissolver-component` ne porte aucun champ de fin de vie, et la cause est
+   structurelle.** À l'instant du record de CRÉATION son état vaut le neutre (13) dans **99,80 %**
+   des cas : un composant de dissolution décrit une FIN, et la fin n'est pas connue à la naissance.
+
+**CE QUE LA COUVERTURE DEVIENT** : les munitions exactes passent de **4 283 lectures sur 27 155
+créations `ti=42` (15,8 %)** à **16 218 (59,7 %)** — c'est-à-dire la totalité des records dont le
+masque annonce i20. Les 40,3 % restants ne portent aucune munition à lire.
+
+---
+
+## B1. LA CHAÎNE D'APPELS D'i9, RELUE INSTRUCTION PAR INSTRUCTION
+
+`consumeObjectMultiplayerProperties` porte `FUN_1407d4c94`. Ce qu'il fallait établir n'était pas
+dans cette fonction-là mais dans les neuf qu'elle entraîne.
+
+| Adresse | Rôle | Ce que l'instruction décisive dit |
+|---|---|---|
+| `FUN_1407d4c94` | i9 | `R(1)` porte ; si le bit vaut 0 le bloc est PRÉSENT, `R(5)` étiquette de variante, puis le sous-message. La branche `else` écrit `*(dst+0xbc) = 0` — l'effacement d'un champ absent |
+| `FUN_1407d54ac` | construction de la variante (0..5) | **NE LIT AUCUN BIT** : six branches qui appellent un constructeur et posent `dst+0xbc` |
+| `FUN_1407d4e10` | pose le contexte de flux | `1407d4e39: MOV EAX,0x2` puis `1407d4e3e: MOV word ptr [RSP+0x28],AX` — le **mode vaut 2** |
+| `FUN_1424ccb1c` | recopie le contexte | `1424ccb28: MOV AL,byte ptr [RDX+0x29]` — l'octet HAUT du mot `1` posé en `1407d4e5f`, donc **ZÉRO** : c'est lui qui ouvre l'en-tête |
+| `FUN_140c7fedc` | le corps | `140c7ff00: CALL 0x1408ccb7c` (en-tête), `140c7ff27: CALL 0x140b4bc28` (premier tag), `140c7ff3b: CALL 0x140ccda34` (les champs connus), puis le fragment hors ligne `142295806` (la boucle de saut) |
+| `FUN_1408ccb7c` | en-tête du sous-message | `if (indicateur == 0 && mode == 2) FUN_140b4bcb4(...)` — **un LEB128, lu et jeté** |
+| `FUN_140b4bc28` | un tag | `b0 = R(8)` ; `*param_2 = b0 & 0x1f` (le TYPE DE FIL) ; si `b0 & 0xe0 == 0xe0` deux octets de plus, si `0xc0` un octet de plus (le COMPTE DE SAUT) |
+| `FUN_141cbbae0` | le saut d'un champ | la table du §B2, lue sur `141cbbae7..141cbbb68` |
+| `FUN_1428fbcd0` | les types composés | `1428fbcde..1428fbe00` |
+| `FUN_1408cc940` / `FUN_1406d654c` | lire n octets | `8n` bits à la position courante, **sans alignement** — le mode trame n'aligne pas sur l'octet |
+
+**LA BOUCLE ET SES DEUX SORTIES** (`140c7ff4c..140c7ff5a` + le fragment hors ligne) :
+
+```
+142295806: MOV ECX,EDX ; CMP EDX,0x1 ; JZ 0x140c7ff52   <- type de fil 1 : FIN, sans saut
+142295811: MOV RCX,[RBX] ; CALL 0x141cbbae0             <- sinon : saut du champ
+142295819: ... CALL 0x140b4bc28 ; TEST ECX,ECX ; JNZ    <- type de fil 0 : FIN
+```
+
+**POURQUOI SAUTER DONNE LE MÊME COMPTE QUE LIRE.** `FUN_140ccda34` est le déroulé des ~30 lecteurs
+typés du schéma des propriétés multijoueur ; `FUN_141cbbae0` est le sauteur générique. Les deux
+consomment le même nombre de bits pour un type de fil donné — c'est la définition d'un format
+auto-descriptif. La confirmation vient d'un chemin INDÉPENDANT : `FUN_140b4af20`, le lecteur de
+LISTE typée, porte la **même table de largeurs** que le sauteur, branche pour branche
+(`14228cc1e..14228cc56`).
+
+---
+
+## B2. LA TABLE DES TYPES DE FIL, ET LES QUATRE ERREURS QU'ELLE CORRIGE
+
+| Type de fil | Consommation | Adresse |
+|---|---|---|
+| `0` | FIN du message | `140c7ff4e` |
+| `1` | FIN de portée, **sans saut de corps** | `142295808` |
+| `2`, `3`, `0xe` | 1 octet | `141cbbb52: MOV EDX,0x1` |
+| `7` | 4 octets | `141cbbb12: MOV EDX,0x4` |
+| `8` | 8 octets | `141cbbb59: MOV EDX,0x8` |
+| `4`, `5`, `6`, `0xf`, `0x10`, `0x11` | **un LEB128, ET RIEN DE PLUS** | `141cbbb40 -> FUN_140b4ba68 ; RET` |
+| `9`, `0xa` | LEB128 `n` puis `n` octets | `1428fbdeb` / `1428fbd8b` |
+| `0xb`, `0xc` | liste homogène : en-tête `FUN_140b4bbb8` puis `count` fois le saut du type des éléments | `1428fbd5e` |
+| `0xd` | table de paires : `R(8)` type de clé, `R(8)` type de valeur, LEB128 `count`, puis `count` fois (clé, valeur) | `1428fbd1b -> FUN_1408cc830` |
+| `0x12` | LEB128 `n` puis **2n** octets | `1428fbd08` |
+| tout le reste | **ZÉRO bit** | `1428fbe00: RET` |
+
+**LES QUATRE ERREURS DU PORTAGE PRÉCÉDENT**, chacune mesurable :
+
+1. **L'en-tête LEB128 du mode 2 n'était pas lu.** Sur un flux réel son premier octet vaut souvent
+   `0x00` — que l'ancien lecteur prenait pour le terminateur. C'est la raison pour laquelle i9
+   consommait 14 bits au lieu de quatre cents et quelques dans la plupart des cas.
+2. **Les types 4, 0xf, 0x10 et 0x11 étaient lus comme des corps préfixés par leur longueur.**
+   `FUN_140b4ba68` lit le LEB128 et **rend la main** (`141cbbb40: LEA RDX,[RSP+0x40] ; CALL
+   0x140b4ba68 ; ADD RSP,0x28 ; RET`). Ce sont des ENTIERS à longueur variable, pas des chaînes.
+3. **Les types 5, 6, 9, 0xa, 0xb, 0xc, 0xd et 0x12 ne consommaient RIEN.** Huit types de fil sur
+   dix-neuf tombaient dans le `skip = 0` par défaut.
+4. **Le type de fil 1 ne terminait pas la boucle.** Le moteur sort sans sauter de corps.
+
+Le tout est porté dans `apps/go-api/internal/analysis/filmdec/tlv_mode2.go` (le flux, avec sa
+doctrine et ses plafonds anti-coût) et `components_batch7.go` (i9 lui-même, quatre lignes).
+**UN SEUL LECTEUR, AUCUNE VARIANTE PAR ARCHÉTYPE** : i9 est un composant d'objet générique.
+
+---
+
+## B3. LE GATE, ET POURQUOI SON SEUIL LITTÉRAL ÉTAIT AU-DESSUS DU PLAFOND DE L'ORACLE
+
+Le lot 6.10 (§3.3) écrivait : « la position d'i20 doit retomber au décalage zéro sur > 95 % des
+records qui portent i9 ». La mesure, sur les 64 films, même oracle, même appariement :
+
+| Population | records avec i20 | i20 atteint | oracle retrouvé | **décalage ZÉRO** | décalages distincts |
+|---|---:|---:|---:|---:|---:|
+| **AVEC i9** | 6 318 | 6 318 (100 %) | 2 903 | **2 738 (94,3 %)** | 29 |
+| **SANS i9** (contrôle) | 1 018 | 1 018 (100 %) | 426 | **391 (91,8 %)** | 14 |
+
+**LE SEUIL DE 95 % N'EST PAS ATTEIGNABLE, ET LA POPULATION TÉMOIN LE DÉMONTRE.** Les records SANS
+i9 sont ceux dont la marche était DÉJÀ prouvée bit-exacte au lot 6.10 ; ils plafonnent eux-mêmes à
+91,8 % sur ce corpus, parce que l'oracle d'inventaire vieillit (9 s en médiane) et qu'une arme
+rechargée ou vidée entre les deux instants ne retombe sur aucun décalage. Les records qui portent
+i9 font donc **MIEUX que la population de référence** : le résidu de 5,7 % n'est pas imputable à
+i9. Le contrôle qui tranche est la comparaison des deux populations, pas le franchissement d'un
+seuil écrit avant la mesure.
+
+Les décalages non nuls sont d'ailleurs les MÊMES des deux côtés, dans les mêmes proportions :
+`+16` (1,8 % avec i9, 0,9 % sans), `-77`/`-78`/`-79` (1,8 % contre 1,4 %).
+
+### B3.1 Le contrôle STRUCTUREL, qui n'emprunte rien à l'inventaire
+
+| | lot 6.10 (mesure indirecte) | 6.10 bis (grammaire portée) |
+|---|---|---|
+| longueurs distinctes d'i9 | 34 | **10** |
+| plage | 300 à 470 bits | **414 à 502 bits** |
+| structure modulo 8 | aucune (restes 0:23, 3:16, 5:11, 2:5, 7:5, 1:4, 4:3, 6:2) | **reste 6 dans 100,0 % des 6 318 records** |
+| valeurs hors plage (> 600 bits) | — | **0,0 %** |
+
+Les valeurs dominantes sont 414 (4 695 records), 478 (565), 502 (489), 462 (191), 470 (154),
+494 (132), 486 (58), 454 (21) — **espacées de 8 bits exactement**, et toutes congrues à 6 modulo 8.
+C'est la signature d'un en-tête de 6 bits (1 porte + 5 étiquette) suivi d'un flux d'OCTETS, et rien
+d'autre ne la produit.
+
+### B3.2 Le gradient de fraîcheur, les deux populations côte à côte
+
+| Âge de la référence | n (sans i9) | A ≤ chargeur | B == réserve | n (avec i9) | A ≤ chargeur | B == réserve |
+|---|---:|---:|---:|---:|---:|---:|
+| ≤ 1 s | 68 | 97,1 % | 94,1 % | 349 | **94,6 %** | **90,3 %** |
+| 1 à 2 s | 61 | 95,1 % | 93,4 % | 365 | 90,1 % | 83,6 % |
+| 2 à 5 s | 190 | 93,7 % | 89,5 % | 1 042 | 91,1 % | 80,5 % |
+| 5 à 10 s | 271 | 89,3 % | 79,7 % | 1 668 | 90,8 % | 69,4 % |
+| 10 à 20 s | 405 | 90,1 % | 65,9 % | 2 718 | 89,6 % | 56,7 % |
+| > 20 s | 23 | 95,7 % | 43,5 % | 176 | 92,6 % | 44,3 % |
+
+Les deux colonnes décrivent la MÊME courbe : `A ≤ chargeur` reste haut et plat (la valeur lue n'est
+jamais supérieure à la dernière lecture connue, hors rechargement), `B == réserve` décroît
+lentement (la réserve ne bouge qu'au rechargement). **Témoin du champ voisin** (même largeur,
+19 bits plus loin) : **4,1 à 6,8 %** avec i9, 1,6 à 4,1 % sans — les deux sous le seuil de 10 %.
+
+**LE TÉMOIN DE PERMUTATION EST À 12-15 % AVEC i9 ET 2-8 % SANS, ET CE N'EST PAS UN CONTRASTE
+RÉEL.** Il est tiré par le rang du cas dans sa tranche : les tranches « sans i9 » comptent 23 à
+405 cas et n'échantillonnent qu'une fraction du corpus, les tranches « avec i9 » jusqu'à 2 718 et
+le couvrent. Le témoin qui compte ici est celui du champ voisin, tiré au même endroit pour les deux
+populations.
+
+---
+
+## B4. CE QUE LA CORRECTION CHANGE AILLEURS — MESURÉ, LIGNE PAR LIGNE
+
+La découverte centrale du lot 6.10 était que « i9 étant générique, tout composant lu APRÈS lui sur
+tout archétype héritait de la dérive ». Voici ce que ça donne, chiffré.
+
+### B4.1 Ce qui NE change PAS, et pourquoi
+
+| Famille | Effet | Cause |
+|---|---|---|
+| `groundWeaponCreations`, `equipmentCreations` | **aucun changement au commit de grammaire** | leur marche consomme i9 par le BLOC MPP du default-state (`consumeMultiplayerPropertiesBlock`), un lecteur DISTINCT qui n'a pas changé |
+| oracles de position d'atterrissage (118/119, 97/99) | **aucun changement** | ils reposent sur le default-state et le composant i0, tous deux AVANT i9 dans le record |
+| identité `MPPWord32` (98,9 %) | **aucun changement** | même raison : le mot voyage dans le default-state |
+
+La preuve n'est pas un raisonnement mais le golden : au commit de grammaire (`723b3b61a`), les deux
+lignes `groundWeaponCreations` et `equipmentCreations` du golden de mini-bobine sont **identiques
+au caractère près**. Une dérive de position ou d'identité les aurait fait rougir.
+
+### B4.2 Ce qui change, et c'est une AMÉLIORATION
+
+Une seule famille bouge : `equipmentState` (l'état des équipements déployés, `ti=37`), qui
+TRAVERSE i9. Mesure des deux côtés sur la mini-bobine versionnée (copie `git archive HEAD` d'un
+côté, branche de l'autre, même instrument) :
+
+| | AVANT | APRÈS |
+|---|---:|---:|
+| records delta `ti=37` | 5 282 | 5 282 |
+| masques annonçant un champ | 66 | 66 |
+| marches abouties | 65 | **66** |
+| marches **ROMPUES** | **1** | **0** |
+| i20 `equipment-deployed` | annoncé 4 · lu **3** | annoncé 4 · lu **4** |
+| i21 `equipment-activated` | annoncé 1 · lu 1 | idem |
+| i23 `equipment-creator` | annoncé 0 · lu 0 | idem |
+| i24 `equipment-energy` | annoncé 1 · lu 1 | idem |
+| i26 `energy-delay-ticks-left` | annoncé 48 · lu 48 | idem |
+| i27 `charges-remaining` | annoncé 12 · lu 12 | idem |
+
+**LE DELTA EST UN SEUL RECORD, ET DANS LE BON SENS** : le seul record de la bobine dont la marche
+se rompait est celui qui traversait i9 ; il aboutit désormais et son champ est lu. Aucune valeur
+pré-existante ne change.
+
+### B4.3 La levée de la réserve, et son invariance
+
+Le second commit (`296cbd5e6`) retire le refus des masques portant i9 dans `readGroundWeaponAmmo`.
+Sur la mini-bobine :
+
+| | AVANT | APRÈS |
+|---|---:|---:|
+| créations acceptées | 28 | 28 |
+| ancres reconnues | 141 | 141 |
+| masque portant i20 | 21 | 21 |
+| masque portant i9 | 27 | 27 |
+| **munitions LUES** (`HasAmmo`) | **0** | **21** |
+
+**PREUVE D'INVARIANCE SUR OCTETS RÉELS**, empreinte sha256 de TOUS les champs pré-existants de
+chaque record (`HasAmmo`/`Ammo` exclus), mesurée des deux côtés :
+
+```
+groundWeaponCreations  n=28
+  sha256=4409c0381383427ae59f99e3cbce31001d0cbdf1c9f68d3378b353daf74a19f8   (identique)
+```
+
+Slot, génération, horodatage, `MPPVal`, masque, `DefaultStateBits`, position et `AfterBit` sont donc
+au bit près les mêmes : seul le champ `Ammo`, qui était vide, se remplit.
+
+### B4.4 Les goldens changés, et pourquoi
+
+| Ligne | Commit | Cause |
+|---|---|---|
+| `equipmentState` 65 -> 66 | `723b3b61a` | une marche rompue qui ne l'est plus (§B4.2) |
+| `groundWeaponCreations` (digest) | `296cbd5e6` | `HasAmmo` passe de 0 à 21 records ; `rendreStable` rend tous les champs (§B4.3) |
+
+Les deux régénérations sont documentées dans l'en-tête de `golden_minibobine_test.go`, avec leurs
+tableaux champ par champ. **Aucune autre ligne du golden ne bouge**, sur 35.
+
+---
+
+## B5. i14 `object-dissolver-component` — AUCUN CHAMP DE FIN DE VIE ÉTABLI
+
+### B5.1 La grammaire, relue sur `FUN_140dd9f9c`
+
+```
+R(4)   état        140dd9faf: MOV ECX,0xe ; CALL 0x1406d310c  -> bitLen(0xe) = 4
+                   140dd9ff6: MOV dword ptr [RDI+0x3a8],R10D
+si état != 0xd :   140dd9ffd: CMP R10D,0xd ; JNZ 0x140dda074
+  R(96) brut       140dda07b: MOV R9D,0x60 ; CALL 0x1406d676c  -> [RDI+0x3ac], 12 octets
+  R(12) déquant.   140dda0a1: MOV dword ptr [RSP+0x20],0xc ; XMM2 = 0.0 ;
+                   XMM3 = [0x143cd873c] = 10.0f ; CALL 0x1406d84b4
+                   140dda0ae: MOVSS dword ptr [RDI+0x3b8],XMM0  -> un FLOTTANT dans [0, 10]
+  R(1)   drapeau   140dda0d6: MOV byte ptr [RDI+0x3bc],CL
+```
+
+**AUCUNE LARGEUR N'A CHANGÉ** : `consumeObjectDissolver` consommait déjà 4, puis 96 + 12 + 1. La
+relecture a servi à savoir ce que les bits PORTENT, pas à corriger un compte. Un garde-rail
+(`components_object_state_test.go`) fige désormais les quatre largeurs **en clair** — jamais à
+partir des constantes du décodeur, un test qui réutilise la constante qu'il vérifie ne vérifie
+rien. Trois mutations jouées (durée 12 -> 11, corps 96 -> 64, état `0xe` -> `0x1e`) : les trois
+rougissent.
+
+### B5.2 La mesure, et le verdict
+
+Sur les 64 films du parc, records de CRÉATION `ti=42` :
+
+| Quantité | Valeur |
+|---|---:|
+| créations acceptées | 27 155 |
+| dont le masque porte i14 | 18 214 (**67,1 %**) |
+| objets du document appariés à leur record | 13 014 |
+| dont l'**état vaut 13 — LE NEUTRE** | 12 988 (**99,80 %**) |
+| dont le corps est donc LU | 26 (**0,20 %**) |
+
+Distribution de l'état `R(4)` : `13` x 12 988, `8` x 14, `0` x 5, `1` x 3, `4` x 1, `5` x 1,
+`6` x 1, `14` x 1.
+
+**LA CAUSE EST STRUCTURELLE, PAS UN RENONCEMENT.** Un composant de DISSOLUTION décrit une FIN ; la
+fin n'est pas connue à la naissance de l'objet. Au record de création le dissolveur est à son état
+neutre et il n'y a rien à y lire.
+
+### B5.3 Les 26 exceptions, et pourquoi rien ne s'y publie
+
+| Champ lu | Ce qu'il donne |
+|---|---|
+| **durée `R(12)`** déquantifiée dans [0, 10] | 18 valeurs distinctes sur 26 cas. Rangée par quartile, la vie OBSERVÉE de l'objet donne 301, 669, 1 527 puis 1 219 images — **non monotone**, sur six cas par quartile |
+| **drapeau `R(1)`** | vrai 17 fois, faux 9 fois. **Aucun des 26 objets n'a été ramassé** — les deux modalités donnent 0 ramassage, et les 363 objets du parc à fin `pickup` sont TOUS à l'état neutre |
+| **les 96 bits bruts** (3 mots de 32) | 21, 18 et 17 valeurs distinctes sur 26 cas. Aucun mode, aucune constante par famille |
+
+Ventilation par fin d'objet : `pickup` 363 objets, **tous** à l'état neutre, zéro corps ; `seen`
+12 296 dont 22 avec corps ; `open` 355 dont 4 avec corps.
+
+**VERDICT : aucun champ de fin de vie établi.** Publier l'un de ces champs reviendrait à nommer du
+bruit — même règle que le champ C d'i20 du lot 6.10, qui reste non publié.
+
+**PISTE NON TRAITÉE, consignée** : i14 dans les paquets DELTA plutôt que dans le record de
+création. Le film ne date la disparition d'aucun objet posé (acquis du 2026-08-17) et le calque
+publie un INTERVALLE `[t1, t1max]` : c'est toujours la meilleure réponse disponible.
+
+---
+
+## B6. CE QUI EST LIVRÉ
+
+| Élément | Fichier | Commit |
+|---|---|---|
+| Le flux TLV mode 2, avec sa chaîne d'appels et ses plafonds | `filmdec/tlv_mode2.go` (nouveau) | `723b3b61a` |
+| i9 réduit à quatre lignes, avec sa doctrine | `filmdec/components_batch7.go` | `723b3b61a` |
+| Garde-rail de grammaire (17 cas, un par branche) + témoin du varint sans corps | `filmdec/components_batch7_test.go` | `723b3b61a` |
+| Golden `equipmentState` + en-tête expliquant le delta | `filmdec/golden_minibobine_test.go`, `testdata/golden_minibobine_familles.tsv` | `723b3b61a` |
+| Réserve de lecture LEVÉE | `filmdec/ground_weapon_ammo.go` | `296cbd5e6` |
+| Garde-rail de traversée d'i9 (trois familles de types de fil) | `filmdec/ground_weapon_ammo_test.go` | `296cbd5e6` |
+| Golden `groundWeaponCreations` + preuve d'invariance | `filmdec/golden_minibobine_test.go`, `testdata/...` | `296cbd5e6` |
+| Grammaire d'i14 documentée + seuils nommés | `filmdec/components_object_state.go` | `87181b6cf` |
+| Garde-rail des largeurs d'i14 (valeurs en clair) | `filmdec/components_object_state_test.go` (nouveau) | `87181b6cf` |
+
+**RIEN N'A CHANGÉ CÔTÉ WEB NI AU CONTRAT** : la forme publiée (`groundWeapons[].ammo = {mag, res}`,
+`omitempty`, additif) et l'infobulle du lot 6.10 sont inchangées. Seule la COUVERTURE augmente, et
+c'est un effet de la cuisson, pas du schéma. Aucun bump de `SchemaVersion`.
+
+**RECUISSON : OUI, ET DE TOUT LE PARC** — `ammo` est un champ CUIT et sa couverture passe de 15,8 %
+à 59,7 %. C'est la recuisson unique déjà prévue au plan maître après 6.10 et 6.11 (lot 6.8).
+
+---
+
+## B7. GATES JOUÉS
+
+| Gate | Résultat |
+|---|---|
+| `go test ./internal/analysis/filmdec/ ./internal/analysis/replay/ ./internal/replaybuild/ ./internal/service/...` | vert (CGO activé — sans CGO le paquet `service` ne construit pas sur ce poste) |
+| `go vet ./internal/analysis/filmdec/` | 0 |
+| `golangci-lint run ./internal/analysis/filmdec/...` | **0 nouvel avertissement** sur les fichiers touchés ; les 12 restants sont la dette de baseline (9 `goconst`, 2 `unparam`, 1 `unused`) |
+| Goldens | invariance démontrée sur octets réels des DEUX côtés (§B4.3) ; les deux lignes qui changent sont expliquées champ par champ dans l'en-tête du test |
+| Web | **non touché** — aucun fichier de `apps/web/` modifié |
+| Corpus d'équivalence | joué par le superviseur |
+
+---
+
+## B8. LA RECETTE DE L'INSTRUMENT (supprimé avant livraison)
+
+Quatre fichiers `zz_i9bis*_research_test.go` dans `internal/analysis/filmdec/`, garde
+`MUN_RACINE=<racine qui porte data/>` (+ `MUN_N=<nb de films>`). Ils reprennent le socle du lot 6.10
+(§7) avec **une correction qui change tout** :
+
+> **LE REJEU SE FAIT DANS LA BOUCLE PAR FILM, JAMAIS APRÈS.** `projPosBits()` et la boucle de
+> composants lisent des GLOBAUX (précision i0, largeurs MPP) calibrés film par film. La première
+> version de l'instrument collectait tous les cas puis rejouait la marche à la fin : tous les films
+> étaient alors décodés avec les réglages du DERNIER, et la mesure donnait 81,5 % de décalage zéro
+> au lieu de 94,3 %, avec des longueurs d'i9 à 131 206 bits. **Le symptôme d'un instrument qui se
+> trompe ressemble exactement à celui d'une grammaire fausse** — c'est le contrôle de congruence
+> modulo 8 qui a permis de les distinguer.
+
+1. **Socle** (`zz_i9bis_socle`) : lister les films qui ont un artefact ET des chunks ;
+   `filmsource.LoadDir`, `DetectI0LayoutOf` + `SetWorldObjectPrecisionFromLayout` ; calibrer les
+   largeurs MPP par le chemin de production (`ScanWorldObjectsForBand` + `EquipmentLifeSpans` +
+   `CalibrateMPPWidthsOf` sur `ti=37`) ; bande par `worldObjectSlotBand(film, 42)` ; balayer les
+   paquets delta avec `equipCreationWalk.scanPayload` **en conservant le payload de chaque record**
+   (le balayage de production ne le publie pas, et le rejeu en a besoin).
+2. **Oracle** : lire l'artefact cuit (`groundWeapons`, `loadouts`, `inventory`) ; apparier par
+   (famille `MPPVal[MPPWord32]` en `%08x`, image ± 2, unicité EXIGÉE) ; le chargeur et la réserve
+   viennent du dernier `loadouts` du lâcheur avant `t0` (il donne l'ORDRE des emplacements) et de
+   l'`inventory` du MÊME instant.
+3. **Rejeu** : `NewBitReader(pay)`, `SetBitPos(cre.AfterBit - projPosBits())`,
+   `traverseComponentLoop` avec le masque du record, puis relire à `CompResult{Index:20}.StartBit`.
+   La longueur d'i9 est `StartBit(composant suivant) - StartBit(i9)`.
+4. **Les cinq mesures** : couverture (acceptées / portant i20 / lues), balayage de décalage sur
+   [-96, +96], congruence modulo 8 des longueurs d'i9, gradient de fraîcheur séparé AVEC/SANS i9,
+   témoins (permutation, champ voisin à +19 bits).
+5. **i14** : même socle, lecture directe à `CompResult{Index:14}.StartBit` (`R(4)` état, puis
+   `3 x R(32)`, `R(12)`, `R(1)`), confrontée à `end`, `picker`, `t1 - t0` et `t1max - t0`.
+6. **Invariance** : sha256 du rendu de chaque record, champs nouveaux EXCLUS, joué des deux côtés
+   d'une copie `git archive HEAD`.
+
+Durées observées : 205 s pour l'oracle sur les 64 films, 160 s pour i14, 0,15 s pour les deltas de
+mini-bobine.
+
+---
+
+## B9. STATUT DES ITEMS DU CONTRAT 6.10 BIS
+
+| Item | Statut |
+|---|---|
+| **Point 1.1** — retrouver et désassembler le déserialiseur d'i9, grammaire complète documentée | `[x]` §B1, §B2 — neuf fonctions relues, l'instruction décisive citée pour chacune |
+| **Point 1.2** — porter en Go sans seconde copie, tests rouges puis verts, test de mutation | `[x]` un seul lecteur générique (`tlv_mode2.go` + quatre lignes dans i9) ; 17 cas de grammaire ; mutations jouées : table d'avant le lot (16 lignes sur 17 rouges), varint lu comme longueur (témoin dédié rouge), type de fil 5 retiré (garde-rail de traversée rouge) |
+| **Point 1.3** — gate : décalage zéro > 95 %, couverture 15,8 % vers 59,7 %, témoins < 10 %, invariance des goldens | `[~]` **couverture tenue à l'unité près (15,8 % vers 59,7 %, 4 283 vers 16 218)**, témoin du champ voisin tenu (4,1 à 6,8 % < 10 %), invariance démontrée sur octets réels, goldens expliqués ligne par ligne. **Le seuil littéral de 95 % n'est PAS atteint (94,3 %) et il n'était pas atteignable** : la population de contrôle, dont la marche était déjà prouvée bit-exacte, plafonne à 91,8 % sur le même corpus (§B3). Le contrôle structurel indépendant — congruence modulo 8 à **100,0 %** — est, lui, sans réserve |
+| **Point 1.4** — chiffrer ce que la correction change ailleurs | `[x]` §B4 : « rien » PROUVÉ pour les créations, les positions d'atterrissage et l'identité (goldens identiques au commit de grammaire) ; **une amélioration mesurée** sur `equipmentState` (une marche rompue en moins, un champ lu en plus) ; aucune régression |
+| **Point 2** — i14, grammaire désassemblée puis oracle ; publier un champ seulement si prouvé | `[x]` §B5 — grammaire relue (aucune largeur ne change), garde-rail posé, **aucun champ de fin de vie établi**, avec la liste des champs lus et leurs distributions. Le champ C d'i20 reste non publié |
+| **Point 3** — rapport, ligne 6.10 du plan, journal, mention datée superséder l'entrée du 30-08 | `[x]` cette section, plus les trois écritures |
+| Instrument supprimé avant livraison, recette au rapport | `[x]` §B8 |
+
+---
+
+## B10. DÉCOUVERTES (consignées, NON traitées — règle « zéro fix opportuniste »)
+
+1. **Le pont MCP Ghidra ne peut pas se connecter en UDS sur ce poste** : il tourne sous un Python
+   sans `socket.AF_UNIX`, et il refuse le repli TCP tant qu'il n'a pas pu lire le nom du projet.
+   Le plugin répond pourtant parfaitement en HTTP sur `127.0.0.1:8089` (`/mcp/schema`,
+   `/decompile_function`, `/disassemble_function`, `/read_memory`, `/disassemble_bytes`). C'est par
+   là que tout ce lot a été désassemblé.
+2. **`FUN_140ccda34` est le déroulé des lecteurs typés du schéma des propriétés multijoueur** —
+   une trentaine de tentatives ordonnées, chacune testant un type de fil attendu. Le décoder
+   donnerait le SENS des champs d'i9 (et non plus seulement leur longueur). Personne n'en a besoin
+   aujourd'hui : le décodeur ne fait que traverser i9.
+3. **Le compte de saut des trois bits hauts du tag** désigne un nombre de champs SAUTÉS dans le
+   schéma, pas dans le flux : il ne consomme rien au-delà de ses octets d'extension. Il n'est donc
+   pas rendu par `readTLVTag` (ce serait du code mort), mais c'est lui qui permettrait de nommer
+   les champs si la découverte n° 2 était instruite.
