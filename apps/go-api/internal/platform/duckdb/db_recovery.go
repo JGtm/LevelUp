@@ -52,6 +52,17 @@ func IsInvalidatedError(err error) bool {
 // une contention inter-process (CLI backfill concurrent, 2e instance serveur,
 // hot-reload Air pas encore libéré). Permet aux callers d'émettre un message
 // actionnable au lieu d'un "open rw" opaque (cf. spartan_cron Madina 2026-05-31).
+//
+// Le marqueur "File is already open in <exe> (PID N)" est ajouté par DuckDB
+// lui-même, EN et indépendant de la locale OS — MAIS seulement quand DuckDB
+// identifie le détenteur via son propre protocole de verrou. Un détenteur
+// étranger (antivirus, sauvegarde, outil hors DuckDB) ne laisse que le
+// message IO Error brut remonté par l'OS ; sur un poste Windows en locale EN
+// (ou en prod hors locale FR), ce message est l'anglais "The process cannot
+// access the file because it is being used by another process." — sans ce
+// second motif (comparaison insensible à la casse), un tel verrou est classé
+// « autre erreur » au lieu d'une contention identifiée. Cf. bilan fork
+// ChaseWoodhams 2026-09-11, point 4a.
 func IsFileLockError(err error) bool {
 	if err == nil {
 		return false
@@ -60,13 +71,9 @@ func IsFileLockError(err error) bool {
 	return strings.Contains(s, "Could not set lock on file") ||
 		strings.Contains(s, "Conflicting lock is held") ||
 		strings.Contains(s, "different configuration") ||
-		// Windows/DuckDB : un autre détenteur (process distinct OU instance in-process
-		// avec une config différente) tient déjà le fichier. DuckDB ajoute toujours ce
-		// marqueur EN — "File is already open in <exe> (PID N)" — indépendamment de la
-		// locale OS (le message Win FR "utilisé par un autre processus" varie, pas lui).
-		// Sans ça, le boot Air laissant un tmp/server.exe résiduel produit un WARN
-		// par-joueur dans spartan_cron au lieu de l'ERROR agrégée. Cf. 2026-06-27.
-		strings.Contains(s, "File is already open in")
+		strings.Contains(s, "File is already open in") ||
+		strings.Contains(strings.ToLower(s),
+			"process cannot access the file because it is being used by another process")
 }
 
 // Reopen ferme la connexion actuelle et en ouvre une nouvelle avec les
