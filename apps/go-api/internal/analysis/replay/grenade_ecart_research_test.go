@@ -20,7 +20,7 @@ package replay
 //
 //	M1 population   lancers publiés, part situés par PROJECTILE, part dont l'auteur est résolu
 //	                (le dénominateur : un lancer sans auteur résolu n'est pas mesurable).
-//	M2 écart        médiane, part au-delà du rayon d'auteur, pire cas de la distance lancer ->
+//	M2 écart        médiane, part > `grenadeAuthorRadiusM`, pire cas de la distance lancer ->
 //	                lanceur, sur la seule branche PROJECTILE.
 //	M3 ambiguïté    nombre de fenêtres ±200 ms portant DEUX naissances ou plus — la population
 //	                exacte où le départage par le temps ne décide rien.
@@ -175,7 +175,7 @@ func grenEcartCas2(doc ReplayDocument, l *grenEcartLectures) []grenEcartCas {
 		if !ok {
 			continue
 		}
-		c := grenEcartCas{src: gr.Src, candidates: grenEcartFenetre(births, g.TimestampUS)}
+		c := grenEcartCas{src: gr.Src, candidates: len(birthsInWindow(births, g.TimestampUS))}
 		if p, d := grenEcartAuteur(g, tracks, owner); d {
 			c.auteurVu = true
 			c.distance = planDist(gr.X, gr.Y, p.X, p.Y)
@@ -245,13 +245,13 @@ func grenEcartDistances(t *testing.T, titre string, d []float64) {
 	sort.Float64s(d)
 	loin := 0
 	for _, v := range d {
-		if v > grenEcartRayonM {
+		if v > grenadeAuthorRadiusM {
 			loin++
 		}
 	}
 	t.Logf("%s : n=%d médiane=%.2f m p90=%.2f m max=%.2f m ; > %d m : %d (%s)",
 		titre, len(d), d[len(d)/2], d[9*(len(d)-1)/10], d[len(d)-1],
-		grenEcartRayonM, loin, grenEcartPct(loin, len(d)))
+		grenadeAuthorRadiusM, loin, grenEcartPct(loin, len(d)))
 }
 
 func grenEcartPct(n, total int) string {
@@ -259,27 +259,6 @@ func grenEcartPct(n, total int) string {
 		return "n/a"
 	}
 	return fmt.Sprintf("%.1f %%", 100*float64(n)/float64(total))
-}
-
-// grenEcartRayonM : le rayon au-dela duquel une naissance de projectile n'est PLUS a portee de
-// main de son lanceur. Local au banc TANT QUE la production ne porte pas ce seuil ; il devient
-// `grenadeAuthorRadiusM` au correctif, et cette copie disparait alors (regle des deux copies).
-const grenEcartRayonM = 4
-
-// grenEcartFenetre compte les naissances de la fenetre +-`grenadeBirthWindowUS` : c'est le
-// nombre de candidates entre lesquelles le departage par le temps ne decide rien.
-func grenEcartFenetre(births []projectileBirth, at uint64) int {
-	var lo uint64
-	if at > grenadeBirthWindowUS {
-		lo = at - grenadeBirthWindowUS
-	}
-	hi := at + grenadeBirthWindowUS
-	i := sort.Search(len(births), func(k int) bool { return births[k].s.TimestampUS >= lo })
-	n := 0
-	for ; i < len(births) && births[i].s.TimestampUS <= hi; i++ {
-		n++
-	}
-	return n
 }
 
 // grenEcartBornes charge les bornes de déquantification de la carte depuis le catalogue
