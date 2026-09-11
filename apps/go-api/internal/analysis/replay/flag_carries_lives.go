@@ -137,16 +137,16 @@ func flagLifeTimeline(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx,
 		if !r.closed {
 			continue
 		}
-		// UNE CAPTURE N EST JAMAIS RETENUE : elle ne pose pas le drapeau au sol, elle le renvoie
-		// a sa base, et c est un fait DATE qui tranche sur tout recouvrement.
-		if !r.captured && flagTenuParUnAutre(raws, i) {
+		// UNE FIN CHEZ LUI N EST JAMAIS RETENUE : elle ne pose pas le drapeau au sol, elle le
+		// renvoie a sa base, et c est un fait DATE qui tranche sur tout recouvrement.
+		if !r.endsHome() && flagTenuParUnAutre(raws, i) {
 			cov.DropsWithheld++
 			continue
 		}
 		out = append(out, flagLifeEvent{at: r.t1, kind: flagLifeClose, carry: i})
 	}
-	for _, t := range flagReturnTimes(scan) {
-		out = append(out, flagLifeEvent{at: t, kind: flagLifeReturn, carry: -1})
+	for _, t := range flagReturns(scan) {
+		out = append(out, flagLifeEvent{at: t.at, kind: flagLifeReturn, carry: -1, flag: t.flag})
 	}
 	for _, h := range flagObjectHomecomings(scan, ctx) {
 		out = append(out, flagLifeEvent{at: h.at, kind: flagLifeHome, carry: -1, flag: h.flag, x: h.x, y: h.y})
@@ -239,7 +239,7 @@ func applyFlagLifeEvent(ev flagLifeEvent, raws []flagCarryRaw, scan FlagCarrySca
 		})
 	case flagLifeClose:
 		next := flagTransition{frame: st.ctx.frameOfMatchMS(r.t1) + 1, state: FlagStateDropped, x: r.x1, y: r.y1}
-		if r.captured {
+		if r.endsHome() {
 			if f >= len(scan.Spawns) {
 				// Socle inconnu : on n invente pas sa position. La transition SANS ETAT
 				// borne le portage sans rien affirmer de la suite.
@@ -254,7 +254,16 @@ func applyFlagLifeEvent(ev flagLifeEvent, raws []flagCarryRaw, scan FlagCarrySca
 }
 
 // applyFlagReturn renvoie a sa base le SEUL drapeau au sol, ou s'abstient et se compte.
+//
+// UN DRAPEAU DEJA CHEZ LUI N'EST PAS UNE ABSTENTION (lot 6.11) : quand l'equipe du rendeur nomme
+// le drapeau et que celui-ci vient de rentrer — parce que CE retour a ferme le portage qui le
+// tenait (`closeByHomecoming`) —, il n'y a rien a faire et rien a compter. Sans ce cas, le
+// compteur d'abstentions monterait a chaque fermeture reussie, ce qui serait exactement l'inverse
+// de ce qu'il mesure.
 func applyFlagReturn(ev flagLifeEvent, scan FlagCarryScan, st flagLifeState) {
+	if ev.flag >= 0 && ev.flag < len(st.state) && st.state[ev.flag] == FlagStateHome {
+		return
+	}
 	only, several := -1, false
 	for f, s := range st.state {
 		if s != FlagStateDropped {

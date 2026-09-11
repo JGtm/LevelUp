@@ -16,12 +16,14 @@ import (
 // le porte, et les evenements de statistique du statborg disent a la milliseconde QUAND le
 // portage commence et QUAND il s'arrete.
 //
-// # Les CINQ faits qui FERMENT un portage, et pourquoi le plus petit gagne
+// # Les SIX faits qui FERMENT un portage, et pourquoi le plus petit gagne
 //
 //	la CAPTURE du porteur       `flag_captures` : le drapeau rentre a sa base
 //	sa MORT                     le fil des morts du film : il lache ce qu'il tenait
 //	une NOUVELLE prise de lui   il ne peut pas prendre deux fois de suite sans avoir lache
 //	le LACHER VOLONTAIRE        la VIE LIBRE de l'objet qui renait a ses pieds (flag_objects.go)
+//	la PRISE D'UN AUTRE JOUEUR  du MEME drapeau : il n'a qu'un porteur a la fois
+//	                            (flag_carries_handoff.go)
 //	la fin du match             borne par defaut
 //
 // LE LACHER EST BORNE DEPUIS LE LOT 6.7-B1 (2026-09-11), ET C'EST UN CHANGEMENT DE NATURE. Ce
@@ -33,9 +35,18 @@ import (
 // porteur DATE le lacher (regle, sous-population et temoins negatifs : `flag_objects.go`,
 // [closeByFreeLives]). Elle ne peut que RACCOURCIR un portage.
 //
+// LE PASSAGE DE MAIN EN MAIN EST BORNE DEPUIS LE LOT 6.11 (2026-09-11). Un drapeau n'a qu'UN
+// porteur : toute prise d'un AUTRE joueur du MEME drapeau, datee a l'interieur d'un portage, le
+// borne. Le drapeau y est nomme par l'EQUIPE du preneur — pas par la geometrie, qui n'est pas
+// encore calculee a ce stade — et cette lecture est l'invariant dur du mode lui-meme : on ne
+// porte jamais son propre drapeau, donc deux coequipiers portent le meme
+// (`flag_carries_handoff.go`).
+//
 // CE QUI RESTE NON BORNE : un lacher dont l'objet ne renait PAS aux pieds du porteur (piste de
-// l'objet perdue, ou naissance a un socle, que la regle refuse). Le biais garde alors son sens
-// d'origine — trop long, jamais trop court — et le controle du marqueur le mesure.
+// l'objet perdue, ou naissance a un socle, que la regle refuse) ET que personne ne reprend
+// ensuite — typiquement le lacher suivi d'une REPRISE PAR LE MEME JOUEUR, qui ne change pas de
+// main. Le biais garde alors son sens d'origine — trop long, jamais trop court — et le controle
+// du marqueur le mesure.
 //
 // `flag_carriers_killed` est credite au TUEUR, pas a la victime : il ne nomme donc PAS le porteur
 // qui tombe. Il ne sert ici qu'a fermer un portage que le fil des morts aurait manque, et
@@ -161,11 +172,21 @@ type flagCarryRaw struct {
 	captured bool
 	// closed dit qu un FAIT a ferme le portage. Faux : rien ne l a ferme, il court jusqu a la
 	// fin du rejeu et aucune transition de fin n est emise.
-	closed     bool
+	closed bool
+	// homed dit que la fin RENVOIE le drapeau a sa base sans capture : un retour credite ou une
+	// rentree de l objet a date la fin du portage (flag_carries_home.go). L etat publie apres la
+	// fin est alors `home`, exactement comme apres une capture — le drapeau n est PAS au sol.
+	homed      bool
 	flagIndex  int
 	confirmed  bool
 	observable bool
 }
+
+// endsHome dit que le portage s acheve avec le drapeau CHEZ LUI, et non au sol. Deux faits le
+// produisent — la CAPTURE et la RENTREE (retour credite ou re-creation de l objet a son socle) —
+// et les trois endroits qui posent le drapeau apres une fin doivent les traiter pareil : l etat
+// du sol (`poser`), le repositionnement du lacher et la transition publiee.
+func (r flagCarryRaw) endsHome() bool { return r.captured || r.homed }
 
 // buildFlagCarries rend la vie de chaque drapeau et la couverture du calque.
 //
@@ -201,6 +222,12 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	}
 	logFlagOpeningsWithoutBridge(sansPont, len(openings))
 	raws := boundFlagCarries(named, scan.Events, ctx)
+	// LE PASSAGE DE MAIN EN MAIN SE FERME ICI, AVANT TOUTE GEOMETRIE : le drapeau est nomme par
+	// l'EQUIPE du preneur (regle du mode), pas par sa position (cf. flag_carries_handoff.go).
+	cov.ClosedByHandoff, cov.CarrierTeamUnknown = closeByHandoff(raws, named, scan)
+	// LE DRAPEAU RENTRE CHEZ LUI FERME AUSSI, et par les deux chaines qui le datent — le retour
+	// credite et la rentree de l'objet (cf. flag_carries_home.go).
+	cov.ClosedByReturn, cov.ClosedByHome = closeByHomecoming(raws, scan, ctx)
 	raws, cov.AmbiguousCarrierKills = closeByCarrierKills(raws, scan.Events, scan.Identity)
 	// LE LACHER VOLONTAIRE SE FERME ICI, ET AVANT LES POSITIONS : c'est lui qui deplace `t1`,
 	// donc le point de lacher que la ligne suivante ira lire sur la piste du porteur.
