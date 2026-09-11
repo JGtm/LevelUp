@@ -30,7 +30,7 @@
 
 ## Lot C — robustesse (bilan 4a, 4b) + littéraux FR hors i18n (bilan 6)
 - [x] C.1 `IsFileLockError` libellé Windows EN + test.
-- [ ] C.2 `IsFilmGoneErr` + test ; brancher sur les appelants qui retentent (à vérifier).
+- [x] C.2 `IsFilmGoneErr` + test ; brancher sur les appelants qui retentent (à vérifier).
 - [ ] C.3 Les ~15 emplacements web du bilan passés par `Record<Locale, T>`.
 
 ## Lot D — tâches Notion 7 puis 6+8 (machine, serveur de dev arrêté)
