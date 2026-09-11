@@ -345,6 +345,15 @@ export type ReplayDocumentReady = Omit<
    * plate. Le crâne LIBRE (`objectiveObjects`) reste la couche POSITION ; celle-ci est le PORTEUR.
    */
   skullCarries: NonNullable<ReplayDocument['skullCarries']>
+  /**
+   * LA VERSION COURANTE DU PRODUCTEUR (lot A, 2026-09-11) : distincte de `schemaVersion`
+   * (celle de l'ARTEFACT LU, cf. `ReplayDocument.schemaVersion`). Elle ne vient PAS du corps —
+   * `domain/replaydoc` côté Go ne porte aucun numéro de version (cf. son `doc.go`) — mais de
+   * l'en-tête de réponse `X-Replay-Latest-Schema-Version`, posé ici à la frontière transport
+   * (`lib/replay/queries.ts`). Absente sur une réponse dont l'en-tête manquerait (ancien
+   * cache, proxy qui le filtre) : le badge admin retombe alors sur la seule version lue.
+   */
+  latestSchemaVersion?: number
 }
 
 /** ReplayVipPeriod — UNE période de port de la couronne, telle que le rendu la lit (plate). */

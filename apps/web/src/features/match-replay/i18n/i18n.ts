@@ -23,6 +23,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     restart: 'Recommencer',
     loading: 'Chargement du rejeu…',
     empty: 'Aucun rejeu 2D disponible pour ce match.',
+    schemaBadgeUpToDateFmt: (schemaVersion) => `Schéma ${schemaVersion} · à jour`,
+    schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
+      `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion})`,
+    schemaBadgeUnknownFmt: (schemaVersion) => `Schéma ${schemaVersion}`,
     offscreenMarkerFmt: (name, meters) => `${name} · ${Math.round(meters)} m`,
     offscreenGroupMarkerFmt: (count, meters) => `${count} joueurs · ${Math.round(meters)} m`,
     openAtUncalibratedTitle: 'Instant non calé sur cet artefact',
@@ -466,6 +470,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     restart: 'Restart',
     loading: 'Loading replay…',
     empty: 'No 2D replay available for this match.',
+    schemaBadgeUpToDateFmt: (schemaVersion) => `Schema ${schemaVersion} · up to date`,
+    schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
+      `Schema ${schemaVersion} · rebuild needed (latest: ${latestSchemaVersion})`,
+    schemaBadgeUnknownFmt: (schemaVersion) => `Schema ${schemaVersion}`,
     offscreenMarkerFmt: (name, meters) => `${name} · ${Math.round(meters)} m`,
     offscreenGroupMarkerFmt: (count, meters) => `${count} players · ${Math.round(meters)} m`,
     openAtUncalibratedTitle: 'Instant not calibrated on this artifact',

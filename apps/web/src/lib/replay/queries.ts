@@ -33,10 +33,23 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.matchReplay(playerSlug, titleSlug, matchId),
-    queryFn: async () =>
-      normalizeReplayDocument(
-        await api.get<ReplayDocument>(`/players/${playerSlug}/matches/${matchId}/replay`),
-      ),
+    queryFn: async () => {
+      // `X-Replay-Latest-Schema-Version` : la version COURANTE du producteur, distincte du
+      // `schemaVersion` du corps (celle de l'ARTEFACT LU). Elle ne peut venir que du
+      // transport — `domain/replaydoc` côté Go ne porte aucun numéro de version — d'où ce
+      // second appel au client plutôt qu'un simple `api.get`. Sert uniquement le badge admin
+      // (`ReplaySchemaBadge`) ; `null` (en-tête absent) laisse `latestSchemaVersion` undefined,
+      // et le badge retombe alors sur la seule version lue.
+      const { data: raw, header } = await api.getWithHeader<ReplayDocument>(
+        `/players/${playerSlug}/matches/${matchId}/replay`,
+        'X-Replay-Latest-Schema-Version',
+      )
+      const normalized = normalizeReplayDocument(raw)
+      return {
+        ...normalized,
+        latestSchemaVersion: header !== null ? Number(header) : undefined,
+      }
+    },
     staleTime: 5 * 60_000,
     enabled: enabled && !!playerSlug && !!matchId,
     // 404 = pas d'artefact de rejeu pour ce match → état vide, ne pas réessayer.
