@@ -1,0 +1,49 @@
+# vague6_b2_item3_koth.log — lot 6.7 phase B2, item 3 (audit L10)
+# 2026-09-11. Cuisson HORS LIGNE des films KOTH du cache + gate des tics de colline.
+# AUCUNE base DuckDB ouverte : les faits viennent des exports commites (registre +
+# participants de la vague 6), reconstitution validee A L'OCTET contre le fichier de
+# reference commite testdata/equivalence/01e1f945.facts.json.
+#
+# CUISSON — 6 films sur 7. 0a247154 (Solitude - Ranked) n'a AUCUN chunk au cache (purge) :
+# statue [!] pour ce film, rien a cuire.
+# Commande : replay-build --map <carte> --facts <short8>.facts.json <matchId> <chunks>
+#   01e1f945 Catalyst   code 0  113 pistes  1 973 134 octets  16,88 s
+#   21ece4d8 Live Fire  code 0   99 pistes  1 561 202 octets  14,97 s
+#   606d9844 Chasm      code 0   55 pistes    780 609 octets   6,62 s
+#   7f1bbf06 Streets    code 0   71 pistes  1 871 409 octets   9,88 s
+#   8076f97f Shogun     code 0   84 pistes  1 272 977 octets  11,17 s
+#   a36c8bed Isolation  code 0   83 pistes  1 533 101 octets  15,94 s
+
+# GATE — comp 23 A contre zone_scoring_ticks, joueur par joueur, tolerance 0.
+# Commande : ZONE_FILM=<chunks>/<short8> go test ./internal/analysis/replay/ -run KothHoldTicks -count=1 -v
+
+===== 01e1f945 =====
+    koth_hold_ticks_gate_test.go:110: KOTH-TICS	01e1f945	comp 23 A : 8 slot(s) apparie(s) sur 9 ligne(s) d'oracle, 0 desaccord(s)
+--- PASS: TestKothHoldTicksGate (0.52s)
+    --- PASS: TestKothHoldTicksGate/mutation (0.00s)
+ok  	levelup/go-api/internal/analysis/replay	0.579s
+===== 21ece4d8 =====
+    koth_hold_ticks_gate_test.go:110: KOTH-TICS	21ece4d8	comp 23 A : 8 slot(s) apparie(s) sur 8 ligne(s) d'oracle, 0 desaccord(s)
+--- PASS: TestKothHoldTicksGate (0.39s)
+    --- PASS: TestKothHoldTicksGate/mutation (0.00s)
+ok  	levelup/go-api/internal/analysis/replay	0.454s
+===== 606d9844 =====
+    koth_hold_ticks_gate_test.go:110: KOTH-TICS	606d9844	comp 23 A : 8 slot(s) apparie(s) sur 9 ligne(s) d'oracle, 0 desaccord(s)
+--- PASS: TestKothHoldTicksGate (0.21s)
+    --- PASS: TestKothHoldTicksGate/mutation (0.00s)
+ok  	levelup/go-api/internal/analysis/replay	0.277s
+===== 7f1bbf06 =====
+    koth_hold_ticks_gate_test.go:110: KOTH-TICS	7f1bbf06	comp 23 A : 8 slot(s) apparie(s) sur 8 ligne(s) d'oracle, 0 desaccord(s)
+--- PASS: TestKothHoldTicksGate (0.30s)
+    --- PASS: TestKothHoldTicksGate/mutation (0.00s)
+ok  	levelup/go-api/internal/analysis/replay	0.363s
+===== 8076f97f =====
+    koth_hold_ticks_gate_test.go:110: KOTH-TICS	8076f97f	comp 23 A : 8 slot(s) apparie(s) sur 10 ligne(s) d'oracle, 0 desaccord(s)
+--- PASS: TestKothHoldTicksGate (0.32s)
+    --- PASS: TestKothHoldTicksGate/mutation (0.00s)
+ok  	levelup/go-api/internal/analysis/replay	0.384s
+===== a36c8bed =====
+    koth_hold_ticks_gate_test.go:110: KOTH-TICS	a36c8bed	comp 23 A : 7 slot(s) apparie(s) sur 9 ligne(s) d'oracle, 0 desaccord(s)
+--- PASS: TestKothHoldTicksGate (0.39s)
+    --- PASS: TestKothHoldTicksGate/mutation (0.00s)
+ok  	levelup/go-api/internal/analysis/replay	0.449s

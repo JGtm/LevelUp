@@ -7,10 +7,21 @@ package replay
 // publie par camp.
 //
 // LE COMPTEUR EST `comp 23 A`, ET C'EST MESURE (lot E1-bis du 2026-08-30) : il reproduit
-// `ZonesStats.StrongholdScoringTicks` de l'API EXACTEMENT, joueur par joueur, sur 31 joueurs de
-// 4 films — apres pont slot -> xuid. Sur le premier film il est le SEUL des 26 composants a bonne
-// cardinalite a reproduire l'ensemble. Meme discriminant que VIP (`comp 22 A`) : l'exactitude par
-// joueur, jamais la couverture.
+// `ZonesStats.StrongholdScoringTicks` de l'API EXACTEMENT, joueur par joueur, apres pont
+// slot -> xuid. Sur le premier film il est le SEUL des 26 composants a bonne cardinalite a
+// reproduire l'ensemble. Meme discriminant que VIP (`comp 22 A`) : l'exactitude par joueur,
+// jamais la couverture.
+//
+// CORPUS ETENDU LE 2026-09-11 (lot 6.7 phase B2, item 3) : 31 joueurs / 4 films -> **47 joueurs
+// apparies / 6 films**, six cartes (Catalyst, Live Fire, Chasm, Streets, Shogun, Isolation),
+// **0 desaccord et 0 joueur au-dessus de son oracle**. Chasm et Shogun sont entres au corpus le
+// jour ou leur cuisson a cesse d'echouer — non par un catalogue complete (leurs collines y
+// etaient), mais parce que leur match est entre au registre local.
+//
+// ET L'AFFIRMATION EST DESORMAIS TENUE PAR UN TEST QUI ECHOUE : `koth_hold_ticks_gate_test.go`.
+// Jusque-la elle ne l'etait que par un RELEVE (`colline_statborg_e1bis_test.go`), qui journalise
+// ses desaccords et passe quand meme — une affirmation d'exactitude sans assertion derive en
+// silence (anti-patron n° 9 du depot).
 //
 // LA BARRE D'UN CAMP EST L'UNION DES INSTANTS DE SES JOUEURS, et les deux formules evidentes sont
 // fausses (lot E1-ter, meme jour) :
