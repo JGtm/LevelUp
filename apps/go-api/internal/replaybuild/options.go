@@ -31,6 +31,10 @@ func (b *Builder) buildReplayOptions(
 		// meme que le lot declare corriger. Mesure : `c0a82e88`, 17 actions nommees par le
 		// film, 12 identifiees par le pont par manche.
 		ObjectivesUnnamed: stats.objectivesUnnamed,
+		// LE REFUS D EFFECTIF VOYAGE AUSSI, et il est un DENOMINATEUR de meme nature : le
+		// calque se tait, et `coverage.objectives.refusedByRoster` dit combien d actions ce
+		// silence coute (129 sur les trois films BTB du parc).
+		ObjectivesRefused: stats.objectivesRefused,
 		// LE PONT DU STATBORG VOYAGE POUR ETRE PUBLIE, PAS POUR ETRE REFAIT : le registre
 		// d'identite en tire `identity.statborgSlots` avec la provenance de chaque couple.
 		StatborgIdentity: stats.statborgIdentity,

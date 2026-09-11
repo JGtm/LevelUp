@@ -89,7 +89,7 @@ func TestIdentifiedEventsSansFamilleNeNommeRien(t *testing.T) {
 		"variante inconnue":            "",
 	} {
 		t.Run(nom, func(t *testing.T) {
-			got, _ := identifiedEvents(context.Background(), "m",
+			got, _, _ := identifiedEvents(context.Background(), "m",
 				filmDeaths{err: errors.New("film absent")}, recs,
 				port.MatchFacts{GameVariantName: variant}, &pontParManche{recs: recs})
 			if got != nil {

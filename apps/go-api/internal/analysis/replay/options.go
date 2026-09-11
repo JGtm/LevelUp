@@ -213,6 +213,11 @@ type Options struct {
 	// EN AMONT du point d'équilibre, donc son compte doit descendre depuis l'amont. Zéro = le
 	// pont a nommé tout ce que le film nommait, ou l'appelant ne mesure pas cet écart.
 	ObjectivesUnnamed int
+	// ObjectivesRefused est le nombre d'actions que le film NOMMAIT et que la GARDE D'EFFECTIF
+	// de l'appelant refuse de publier : l'effectif du match dépasse les huit slots d'entité de
+	// joueur du statborg (`objectiveevents.RosterFitsStatborg`). Le calque est alors VIDE, et
+	// ce compte est son dénominateur — il devient `coverage.objectives.refusedByRoster`.
+	ObjectivesRefused int
 	// StatborgIdentity est le pont slot d'entité statborg -> xuid PAR MANCHE, résolu par
 	// l'appelant (`replaybuild.pontParManche`) et déjà partagé par les calques d'objectif.
 	//

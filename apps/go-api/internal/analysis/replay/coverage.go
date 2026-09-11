@@ -48,12 +48,27 @@ type LayerCoverage struct {
 	// Unpublished : l'événement était rattaché, mais son slot n'a pas de trajectoire publiée
 	// (track trop courte). Compté à part : ce n'est pas un échec de rattachement.
 	Unpublished int `json:"unpublished"`
+	// RefusedByRoster : événements que le calque REFUSE DE PUBLIER parce que l'effectif du
+	// match dépasse ce que le format peut porter — huit slots d'entité de joueur au statborg
+	// (cf. objectiveevents.RosterFitsStatborg). Le calque se tait ENTIÈREMENT, et ce compteur
+	// dit combien d'actions ce silence coûte : un calque muet dont personne ne sait pourquoi
+	// il est muet est pire que le calque faux qu'il remplace.
+	//
+	// Peuplé par le seul calque des ACTIONS d'objectif ; zéro partout ailleurs.
+	//
+	// `omitempty` PARCE QUE LA FORME DU DOCUMENT NE DOIT PAS BOUGER POUR RIEN (même règle que
+	// `Coverage.Abilities`, lot 5.6) : le compteur vaut zéro sur 65 des 68 artefacts du parc,
+	// et l'écrire quand même y changerait chaque octet — donc obligerait à recuire le parc
+	// entier pour un champ vide. `SchemaVersion` ne monte pas : un champ optionnel ne change
+	// pas la forme (cf. `build_test.go`).
+	RefusedByRoster int `json:"refusedByRoster,omitempty"`
 }
 
 // Balanced vérifie l'invariant : tout ce qui existait est soit rattaché, soit rejeté sous
 // une cause nommée. Une somme fausse signale une fuite — un chemin de rejet non compté.
 func (c LayerCoverage) Balanced() bool {
-	return c.Attached+c.NoSlot+c.Ambiguous+c.OutOfWindow+c.Unpublished == c.Available
+	return c.Attached+c.NoSlot+c.Ambiguous+c.OutOfWindow+c.Unpublished+c.RefusedByRoster ==
+		c.Available
 }
 
 // rejectReason nomme la cause d'un rejet, pour le comptage.
@@ -89,6 +104,11 @@ func (c *LayerCoverage) count(r rejectReason) {
 // `3372e7eb`, 46 % des actions d'objectif disparaissaient sans une seule ligne de journal, pour
 // un seuil de 10 %. Une catégorie de rejet sans alarme est un rejet avalé — l'anti-patron que
 // l'en-tête de ce fichier existe pour interdire.
+//
+// `RefusedByRoster` N'EST PAS DANS CETTE LISTE, ET CE N'EST PAS UN OUBLI : elle vaut TOUT ou
+// RIEN (le calque se tait entièrement), et son alarme est émise à la source, là où la décision
+// se prend et où l'effectif est connu — `replaybuild.identifiedEvents`. L'ajouter ici ferait
+// journaliser deux fois le même refus.
 func (c LayerCoverage) warnIfLossy(layer string) {
 	if c.Available == 0 {
 		return

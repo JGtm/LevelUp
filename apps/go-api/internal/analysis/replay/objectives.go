@@ -77,8 +77,13 @@ type ObjectiveAction struct {
 // que le contrat public reserve exactement a ce cas (« le pont ne couvre pas ce joueur »).
 // Mesure du depot sur `c0a82e88` : 17 actions nommees, 12 identifiees — la couverture annoncait
 // 12/12 et 0 `noSlot`.
-func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, unnamed int,
+func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, unnamed, refused int,
 	c scoreClock) ([]ObjectiveAction, LayerCoverage) {
+	// LA GARDE D'EFFECTIF EST DEJA TOMBEE CHEZ L'APPELANT : `evs` est vide et `refused` porte
+	// ce que le film nommait. Le calque n'a rien a poser, et la couverture dit POURQUOI.
+	if refused > 0 {
+		return nil, LayerCoverage{Available: refused, RefusedByRoster: refused}
+	}
 	cov := LayerCoverage{Available: len(evs) + unnamed, NoSlot: unnamed}
 	if c.intervalMS <= 0 || c.frames <= 0 {
 		cov.OutOfWindow = len(evs)
@@ -159,7 +164,8 @@ func countActionsWithoutTrack(actions []ObjectiveAction, tracks []Track,
 // l'origine (cf. buildObjectiveActions et build_score.go).
 func attachObjectiveActions(doc *ReplayDocument, opt Options, reg IdentityRegistry,
 	c scoreClock) LayerCoverage {
-	actions, cov := buildObjectiveActions(opt.Objectives, opt.ObjectivesUnnamed, c)
+	actions, cov := buildObjectiveActions(opt.Objectives, opt.ObjectivesUnnamed,
+		opt.ObjectivesRefused, c)
 	doc.Objectives = actions
 	if n := countActionsWithoutTrack(actions, doc.Tracks, reg.PontEpure()); n > 0 {
 		// PUBLIEES QUAND MEME, ET SIGNALEES : le defaut est dans le calque des POSITIONS, pas

@@ -48,6 +48,14 @@ type LayerCoverage struct {
 	Ambiguous   int `json:"ambiguous"`
 	OutOfWindow int `json:"outOfWindow"`
 	Unpublished int `json:"unpublished"`
+	// RefusedByRoster : actions non publiées parce que l'effectif du match dépasse les huit
+	// slots d'entité de joueur du statborg (calque des objectifs uniquement).
+	//
+	// `omitempty` COMME CÔTÉ STOCKÉ, et le garde-rail de parité l'exige : le tag doit être le
+	// MÊME des deux côtés, sinon le client lirait un autre nom que celui que la cuisson écrit
+	// (`replayview/parity_test.go`). Côté artefact, l'option évite de changer la forme des
+	// 65 documents où le compteur vaut zéro — donc de recuire le parc pour un champ vide.
+	RefusedByRoster int `json:"refusedByRoster,omitempty"`
 }
 
 // BridgeHealth résume la santé du pont slot -> joueur.
