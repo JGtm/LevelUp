@@ -102,7 +102,7 @@ func ScanGroundWeaponCreationsForBand(
 
 	w := equipCreationWalk{
 		comps: len(arch.Components), wr: wr, band: band, cur: &cur,
-		ti: GroundWeaponTypeIndex, deser: consumeDefaultStateTI42,
+		ti: GroundWeaponTypeIndex, deser: consumeDefaultStateTI42, ammoArch: &arch,
 	}
 	return runCreationWalk(fc, w, &st), st, nil
 }
