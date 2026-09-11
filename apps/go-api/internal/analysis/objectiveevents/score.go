@@ -55,6 +55,22 @@ type StatComponent struct {
 	// NON DECROISSANT — un composant porte deux valeurs et il est reemis des que l'UNE des
 	// deux bouge, donc la meme valeur revient legitimement.
 	Strict bool
+	// Unitary dit que CHAQUE UNITE de ce compteur est une ACTION du joueur — un frag, une
+	// mort, une assistance — donc que la borne par pas de [boundSteps] s'y applique.
+	//
+	// # LA BORNE NE VAUT QUE POUR EUX, ET C'EST MESURE (correctif 6.R, 2026-09-11)
+	//
+	// [maxUnrollPerStep] = 16 est calibre sur l'oracle API des compteurs d'ACTION : pire pas
+	// sain mesure 3, plus petit pas aberrant 64. Les autres emplacements publies sont des
+	// compteurs de CADENCE, dont un pas legitime depasse tres largement 16 :
+	//
+	//	score PERSONNEL (comp 1 B)     +100 et plus par frag ;
+	//	tics de GARDE   (comp 23 A)    35 tics valent UN point de colline (hill_hold_ticks.go) ;
+	//	score de MODE   (comp 0 A)     Strongholds compte des tics, Oddball des secondes.
+	//
+	// Les borner effacerait des courbes vraies. D'ou l'opt-in explicite plutot qu'un filtre
+	// pose sur toutes les series : le domaine de validite de la borne est SA calibration.
+	Unitary bool
 }
 
 // Les emplacements que le rejeu publie.
@@ -67,9 +83,14 @@ var (
 	PersonalScoreComponent = StatComponent{Comp: personalScoreComp, SideB: true}
 	// KillsComponent, DeathsComponent, AssistsComponent : les trois compteurs de base,
 	// confirmes nominativement contre `match_participants` (cf. slotidentity.go).
-	KillsComponent   = StatComponent{Comp: coreKillsComp}
-	DeathsComponent  = StatComponent{Comp: coreKillsComp, SideB: true}
-	AssistsComponent = StatComponent{Comp: coreAssistsComp}
+	//
+	// CE SONT EXACTEMENT LES TROIS EMPLACEMENTS QUE LIT LA CLE D'APPARIEMENT
+	// ([SlotIdentityFrom] -> [countsOf]), d'ou leur `Unitary` : la serie publiee et la cle
+	// derivent alors le meme compteur par le meme verdict de [boundSteps], et ne peuvent plus
+	// annoncer deux totaux differents (correctif 6.R, 2026-09-11).
+	KillsComponent   = StatComponent{Comp: coreKillsComp, Unitary: true}
+	DeathsComponent  = StatComponent{Comp: coreKillsComp, SideB: true, Unitary: true}
+	AssistsComponent = StatComponent{Comp: coreAssistsComp, Unitary: true}
 
 	// SkullTicksComponent : le canal du PORTEUR d'Oddball. C'est le score de MODE par joueur
 	// (`comp 0 A`), qui en Oddball compte les TICS DE POSSESSION du crane (`skull_scoring_ticks`,
@@ -107,6 +128,12 @@ func (c StatComponent) key() statSlotKey {
 // teams choisit les slots d'equipe (6 et 8) plutot que ceux de joueur (10..24 pairs). Les
 // manches FANTOMES — celles que [RealRounds] refuse — sont ecartees : les cumuler ferait
 // exploser les compteurs (mesure : le score d'equipe d'un CTF passait de 1 a 2 104).
+//
+// UN COMPTEUR `Unitary` PASSE PAR [boundedSeries] (correctif 6.R) : la borne par pas s'applique
+// MANCHE PAR MANCHE, `prev` repartant de zero a chaque manche — c'est exactement le decoupage
+// des pas que voit [countsOf] sur la suite cumulee, puisque le decalage d'une manche vaut le
+// total de la precedente (le pas de sa premiere emission y vaut donc sa valeur brute). Les deux
+// lectures jugent le meme pas.
 func SeriesByRound(recs []StatRecord, c StatComponent, teams bool) map[int]map[int][]ScorePoint {
 	real := RealRounds(recs)
 	out := map[int]map[int][]ScorePoint{}
@@ -117,6 +144,9 @@ func SeriesByRound(recs []StatRecord, c StatComponent, teams bool) map[int]map[i
 			}
 			sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
 			kept := longestRun(pts, c.Strict)
+			if c.Unitary {
+				kept = boundedSeries(kept)
+			}
 			if len(kept) == 0 {
 				continue
 			}
@@ -135,13 +165,20 @@ func SeriesByRound(recs []StatRecord, c StatComponent, teams bool) map[int]map[i
 //
 // C'est le pendant de [SeriesByRound], et les deux sont necessaires : la manche est ce que
 // l'ecran affiche pendant qu'elle se joue, le total est ce que le match retient.
+//
+// UN COMPTEUR `Unitary` PASSE PAR [boundedSeries] (correctif 6.R), sur la suite CUMULEE et donc
+// sur les memes pas que [countsOf] : le total publie vaut exactement le compte que la cle
+// d'appariement a lu.
 func SeriesTotal(recs []StatRecord, c StatComponent, teams bool) map[int][]ScorePoint {
 	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams), RealRounds(recs))
-	if !c.Strict {
-		return out
-	}
 	for slot, pts := range out {
-		out[slot] = longestRun(pts, true)
+		if c.Unitary {
+			pts = boundedSeries(pts)
+		}
+		if c.Strict {
+			pts = longestRun(pts, true)
+		}
+		out[slot] = pts
 	}
 	return out
 }
