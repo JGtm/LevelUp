@@ -39,7 +39,7 @@
 - [x] D.3 Cocher Notion 6, 7, 8.
 
 ## Lot E — tâche Notion 9 : déplacement pur du décodeur sous `internal/games/halo_infinite/film/`
-- [ ] E.1 Ratchet « `analysis/` n'importe pas `games/{slug}` » posé avant.
+- [x] E.1 Ratchet « `analysis/` n'importe pas `games/{slug}` » posé avant.
 - [ ] E.2 Commit de déplacement seul ; suite Go complète + goldens identiques.
 - [ ] E.3 Cocher Notion 9.
 
