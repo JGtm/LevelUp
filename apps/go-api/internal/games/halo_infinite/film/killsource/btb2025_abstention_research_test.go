@@ -19,10 +19,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
 )
 
@@ -60,6 +62,7 @@ func diagnostiquerFilm(t *testing.T, dir string) {
 		t.Fatalf("prepare : %v", err)
 	}
 
+	t.Logf("VERSION  film_major_version=%d lue=%v", c.film.majorVersion, c.film.versionLue)
 	t.Logf("ROSTER   humains_kill_feed=%d nPlay=%d noms=%d bots=%d non_epingles=%d",
 		c.roster.nHumans, c.roster.nPlay, len(c.roster.names),
 		len(c.roster.bots.Bots), len(c.roster.unpinned))
@@ -107,38 +110,17 @@ func histogramme(h map[int]int) string {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		b.WriteString(itoa(k) + ":" + itoa(h[k]))
+		b.WriteString(strconv.Itoa(k) + ":" + strconv.Itoa(h[k]))
 	}
 	return b.String()
 }
 
-func itoa(v int) string {
-	if v == 0 {
-		return "0"
-	}
-	neg := v < 0
-	if neg {
-		v = -v
-	}
-	var buf [24]byte
-	i := len(buf)
-	for v > 0 {
-		i--
-		buf[i] = byte('0' + v%10)
-		v /= 10
-	}
-	if neg {
-		i--
-		buf[i] = '-'
-	}
-	return string(buf[i:])
-}
-
 // TestBTB2025KillFeedNoms — LE MEME BANC, MAIS SUR LE SEUL CHUNK HIGHLIGHT.
 //
-// Il isole l etape amont : combien de XUID distincts, combien de gamertags non vides, et ce que
-// le MEME chunk rend sous l autre implantation d event (`filmMajorVersion` 39-40, dont le
-// gamertag vit a `b[12:44]` et non `b[0:32]`). `killsource.loadKillFeed` passe 0 en dur.
+// Il isole l etape amont : la version LUE dans l en-tete du registre, puis, pour chacune des deux
+// implantations du bloc d event, combien de XUID distincts et combien de gamertags non vides. La
+// version lue doit designer celle des deux qui rend un nom par joueur — verification croisee de
+// l indicateur.
 func TestBTB2025KillFeedNoms(t *testing.T) {
 	root := os.Getenv(btb2025RootEnv)
 	ids := strings.Split(os.Getenv(btb2025IDsEnv), ",")
@@ -158,10 +140,11 @@ func TestBTB2025KillFeedNoms(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s : %v", id, err)
 		}
-		for _, ver := range []int{41, 39} {
+		t.Logf("%-8s film_major_version=%d (lue=%v)", id, f.majorVersion, f.versionLue)
+		for _, ver := range []int{versionGamertagEnTeteTest, versionGamertagDecaleTest} {
 			best, nk := meilleurHighlight(f, ver)
 			xu, gt, vides := statsNoms(best)
-			t.Logf("%-8s version=%2d kills=%3d events=%4d xuid_distincts=%2d gamertags_distincts=%2d gamertags_vides=%4d",
+			t.Logf("%-8s decoupage=%2d kills=%3d events=%4d xuid_distincts=%2d gamertags_distincts=%2d gamertags_vides=%4d",
 				id, ver, nk, len(best), xu, gt, vides)
 		}
 	}
@@ -208,8 +191,8 @@ func statsNoms(evs []analysis.HighlightEvent) (xuids, tags, vides int) {
 // Il ASSERTE, lui, et il est le seul de ce fichier a le faire. Sur un film Big Team Battle de
 // 2025 (version de film 39-40), le roster humain doit compter au moins 20 joueurs et la
 // couverture depasser 80 % — avant le correctif du 2026-09-12 le roster tombait a 10-12 noms et
-// la couverture a 5-17 %. Un retour a la lecture du gamertag << en tete >> sur ces films le
-// ferait echouer immediatement.
+// la couverture a 5-17 %. Debrancher la lecture de la version (retour au 0 en dur, donc au
+// decoupage << gamertag en tete >>) le ferait echouer immediatement.
 //
 //	KS_BTB2025_ROOT=<cache>/film_chunks KS_BTB2025_NONREG=111fa685 \
 //	  go test ./internal/games/halo_infinite/film/killsource/ -run TestBTB2025NonRegression
@@ -227,8 +210,9 @@ func TestBTB2025NonRegression(t *testing.T) {
 		t.Fatalf("Decode : %v", err)
 	}
 	if res.Roster.Humans < 20 {
-		t.Errorf("roster humain = %d, want >= 20 — le decoupage du gamertag des films de "+
-			"version 39-40 n est plus resolu (cf. analysis.scanEvents)", res.Roster.Humans)
+		t.Errorf("roster humain = %d, want >= 20 — la version du film n est plus LUE dans "+
+			"l en-tete de son registre (cf. filmdec.FilmMajorVersion, killsource.loadFilm)",
+			res.Roster.Humans)
 	}
 	if res.Coverage.RealPairs == 0 {
 		t.Fatal("aucun couple reel : le kill-feed n a pas ete lu")
@@ -240,55 +224,91 @@ func TestBTB2025NonRegression(t *testing.T) {
 	}
 }
 
-// TestBTB2025ParcDecoupage — LE PARC ENTIER DU CACHE, pour chiffrer le redecodage.
+// TestBTB2025ParcVersions — LE PARC ENTIER DU CACHE, CLASSE PAR LA VERSION LUE.
 //
-// Il ne charge PAS les films : il lit le seul chunk HIGHLIGHT (le dernier du repertoire, type 3
-// au manifeste) et compare les deux decoupages du gamertag. Un film dont le decoupage decale
-// rend plus de noms distincts est un film de version 39-40, donc un film dont les lignes
-// `match_kill_events` ont ete produites avec un roster effondre.
+// Il ne charge PAS les films : il lit les quatre premiers octets de `chunk_00.bin` (le
+// FilmMajorVersion) et compte les films par version. Les versions 39-40 sont celles dont le
+// gamertag vit a `b[12:44]` : ce sont les films dont les lignes `match_kill_events` ont ete
+// produites avec un roster effondre, donc ceux a redecoder.
 //
-//	KS_BTB2025_PARC=<cache>/film_chunks go test ... -run TestBTB2025ParcDecoupage -v
-func TestBTB2025ParcDecoupage(t *testing.T) {
+// LE CROISEMENT EST FAIT AU PASSAGE, sur demande (`KS_BTB2025_PARC_CROISE=1`) : le chunk
+// HIGHLIGHT est relu sous les deux decoupages, et le test signale tout film ou le decoupage qui
+// rend le plus de noms distincts CONTREDIT la version lue. Zero contradiction = l indicateur est
+// le bon, mesure sur tout le parc.
+//
+//	KS_BTB2025_PARC=<cache>/film_chunks go test ... -run TestBTB2025ParcVersions -v
+func TestBTB2025ParcVersions(t *testing.T) {
 	racine := os.Getenv("KS_BTB2025_PARC")
 	if racine == "" {
 		t.Skip("banc de diagnostic : KS_BTB2025_PARC requis")
 	}
+	croise := os.Getenv("KS_BTB2025_PARC_CROISE") != ""
 	entrees, err := os.ReadDir(racine)
 	if err != nil {
 		t.Fatalf("lecture %s : %v", racine, err)
 	}
-	var decale, enTete, illisible []string
+	parVersion := map[int]int{}
+	var sansRegistre, contradictions []string
 	for _, e := range entrees {
 		if !e.IsDir() {
 			continue
 		}
-		brut, err := dernierChunk(filepath.Join(racine, e.Name()))
+		registre, err := os.ReadFile(filepath.Join(racine, e.Name(), "chunk_00.bin"))
 		if err != nil {
-			illisible = append(illisible, e.Name())
+			sansRegistre = append(sansRegistre, e.Name())
 			continue
 		}
-		evs, err := analysis.ParseHighlightEvents(brut, versionGamertagEnTeteTest)
-		if err != nil || len(evs) == 0 {
-			illisible = append(illisible, e.Name())
+		version, ok := filmdec.FilmMajorVersionFromHeader(filmsource.Inflate(registre))
+		if !ok {
+			sansRegistre = append(sansRegistre, e.Name())
 			continue
 		}
-		alt, err := analysis.ParseHighlightEvents(brut, versionGamertagDecaleTest)
-		if err != nil {
-			illisible = append(illisible, e.Name())
+		parVersion[version]++
+		if !croise {
 			continue
 		}
-		_, a, _ := statsNoms(evs)
-		_, b, _ := statsNoms(alt)
-		switch {
-		case b > a:
-			decale = append(decale, e.Name())
-		default:
-			enTete = append(enTete, e.Name())
+		mesure, mesurable := decoupageMesure(filepath.Join(racine, e.Name()))
+		if mesurable && mesure != decoupageDeLaVersion(version) {
+			contradictions = append(contradictions, e.Name()+":v"+strconv.Itoa(version))
 		}
 	}
-	t.Logf("PARC     films=%d decoupage_decale_39_40=%d decoupage_en_tete=%d sans_highlight_lisible=%d",
-		len(entrees), len(decale), len(enTete), len(illisible))
-	t.Logf("DECALE   %s", strings.Join(decale, " "))
+	t.Logf("PARC     films=%d sans_registre_lisible=%d", len(entrees), len(sansRegistre))
+	t.Logf("VERSIONS %s", histogramme(parVersion))
+	if croise {
+		t.Logf("CROISE   contradictions=%d %s", len(contradictions), strings.Join(contradictions, " "))
+	}
+}
+
+// decoupageDeLaVersion : l implantation du gamertag qu une version DECLARE.
+func decoupageDeLaVersion(version int) int {
+	if version <= 38 || version >= 41 {
+		return versionGamertagEnTeteTest
+	}
+	return versionGamertagDecaleTest
+}
+
+// decoupageMesure : l implantation qui rend le plus de gamertags distincts sur le chunk HIGHLIGHT.
+// C EST UNE MESURE DE CONTROLE, jamais un chemin de production : le decodeur LIT la version, il
+// ne la devine pas (decision du 2026-09-12).
+func decoupageMesure(dir string) (int, bool) {
+	brut, err := dernierChunk(dir)
+	if err != nil {
+		return 0, false
+	}
+	evs, err := analysis.ParseHighlightEvents(brut, versionGamertagEnTeteTest)
+	if err != nil || len(evs) == 0 {
+		return 0, false
+	}
+	alt, err := analysis.ParseHighlightEvents(brut, versionGamertagDecaleTest)
+	if err != nil {
+		return 0, false
+	}
+	_, enTete, _ := statsNoms(evs)
+	_, decale, _ := statsNoms(alt)
+	if decale > enTete {
+		return versionGamertagDecaleTest, true
+	}
+	return versionGamertagEnTeteTest, true
 }
 
 // versionGamertagEnTeteTest / versionGamertagDecaleTest : les deux implantations, nommees ici

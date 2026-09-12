@@ -119,48 +119,25 @@ func ParseHighlightEvents(data []byte, filmMajorVersion int) ([]HighlightEvent, 
 	return scanEvents(payload, filmMajorVersion), nil
 }
 
-// Versions d'implantation du bloc d'event. Elles ne servent qu'à NOMMER les deux découpages
-// possibles du gamertag — voir decodeEventBytes pour le découpage lui-même.
-const (
-	// versionUnknown est la valeur que porte un film dont le manifeste ne dit pas la version.
-	// `halo_client_film.go` la pose explicitement (« legacy cache n'a pas la version »), et
-	// trois appelants la passent en dur faute de manifeste (killsource, replay/deaths_source,
-	// ops/medal_feed_backfill). Elle ne DÉSIGNE aucune implantation : elle déclenche la
-	// résolution par mesure (voir gamertagLayoutAlternatif).
-	versionUnknown = 0
-	// versionGamertagEnTete est une version dont le gamertag vit à b[0:32] (<= 38 ou >= 41).
-	versionGamertagEnTete = 41
-	// versionGamertagDecale est une version dont le gamertag vit à b[12:44] (39-40).
-	versionGamertagDecale = 39
-)
-
 // scanEvents identifie chaque XUID dans le flux binaire (au bit près) et
 // parse l'event associé. Retourne tous les events reconnus, ignore les non
 // reconnus.
 //
-// VERSION INCONNUE = RÉSOLUTION PAR MESURE, et c'est le correctif du 2026-09-12. Le découpage
-// du gamertag est le SEUL champ du bloc d'event qui dépende de la version ; l'acceptation d'un
-// event (type_hint, end-marker) n'en dépend pas. Un appelant sans manifeste passait donc 0,
-// c'est-à-dire l'implantation « en tête », sur TOUS les films — y compris ceux des versions
-// 39-40, où le gamertag est décalé de 12 octets. Le symptôme mesuré sur quatre films Big Team
-// Battle de mars à octobre 2025 : 2 gamertags distincts au lieu de 24 à 27, donc un roster
-// humain effondré en aval. On décode donc les deux découpages et on retient celui qui rend le
-// plus de gamertags distincts.
+// `version` EST LUE, JAMAIS DEVINÉE (décision utilisateur du 2026-09-12). Le découpage du
+// gamertag est le seul champ du bloc d'event qui en dépende, et l'indicateur qui le commande
+// existe : `FilmMajorVersion`, l'u32 little-endian en tête du registre du film
+// (`filmdec.FilmMajorVersionFromHeader`), que l'API publie aussi dans son manifeste de
+// spectate. Les appelants le lisent et le passent ; ce parseur ne mesure rien.
+//
+// `version` = 0 signifie « le film ne porte pas son registre » : le découpage historique
+// « gamertag en tête » s'applique, et l'appelant a consigné la dégradation.
 func scanEvents(data []byte, version int) []HighlightEvent {
 	totalBits := len(data) * 8
 	if totalBits < 80 {
 		return nil
 	}
 
-	auto := version == versionUnknown
-	if auto {
-		version = versionGamertagEnTete
-	}
-
 	var events []HighlightEvent
-	// alternatif[i] : le gamertag de events[i] sous l'AUTRE découpage. Rempli seulement quand
-	// la version est inconnue — sinon le manifeste tranche et il n'y a rien à mesurer.
-	var alternatif []string
 	// Indices déjà traités (en bits) pour éviter les doublons.
 	seenPositions := make(map[int]bool)
 
@@ -189,54 +166,16 @@ func scanEvents(data []byte, version int) []HighlightEvent {
 			continue
 		}
 
-		ev, brut, err := parseEventAtBit(data, xuidStart, xuid, version)
+		ev, err := parseEventAtBit(data, xuidStart, xuid, version)
 		if err != nil {
 			// Event non reconnu (type_hint inconnu, end-marker absent dans la
 			// fenêtre, etc.) → skip silencieusement.
 			continue
 		}
 		events = append(events, ev)
-		if auto {
-			alternatif = append(alternatif, gamertagPourVersion(brut, versionGamertagDecale))
-		}
 		seenPositions[xuidStart] = true
 	}
-	if auto && gamertagLayoutAlternatif(events, alternatif) {
-		for i := range events {
-			events[i].Gamertag = alternatif[i]
-		}
-	}
 	return events
-}
-
-// gamertagLayoutAlternatif : l'AUTRE découpage rend-il un meilleur roster que celui retenu ?
-//
-// CRITÈRE : le nombre de gamertags DISTINCTS non vides. Un découpage juste rend un nom par
-// joueur (24 à 27 sur un Big Team Battle) ; un découpage faux lit du rembourrage, qui est le
-// MÊME pour tous les events et ne rend qu'une poignée de valeurs. Le contraste mesuré le
-// 2026-09-12 sur sept films est de 2 contre 24-27 — il n'y a pas de zone grise à arbitrer.
-// Départage, si les deux découpages rendent autant de noms distincts : le nombre d'events
-// nommés, puis le découpage déjà retenu (l'alternatif ne gagne jamais une égalité parfaite).
-func gamertagLayoutAlternatif(events []HighlightEvent, alternatif []string) bool {
-	if len(alternatif) != len(events) || len(events) == 0 {
-		return false
-	}
-	distinctsRetenu, nommesRetenu := map[string]bool{}, 0
-	distinctsAlt, nommesAlt := map[string]bool{}, 0
-	for i, ev := range events {
-		if ev.Gamertag != "" {
-			distinctsRetenu[ev.Gamertag] = true
-			nommesRetenu++
-		}
-		if alternatif[i] != "" {
-			distinctsAlt[alternatif[i]] = true
-			nommesAlt++
-		}
-	}
-	if len(distinctsAlt) != len(distinctsRetenu) {
-		return len(distinctsAlt) > len(distinctsRetenu)
-	}
-	return nommesAlt > nommesRetenu
 }
 
 // parseEventAtBit parse l'event situé à xuidStartBit dans le flux binaire
@@ -249,11 +188,7 @@ func gamertagLayoutAlternatif(events []HighlightEvent, alternatif []string) bool
 // (type_hint reconnu). Le Python upstream prend le premier match aveuglément
 // — équivalent en pratique sur de la vraie data, mais cette version est plus
 // robuste sur des flux synthétiques ou bruités.
-//
-// Elle rend AUSSI les 60 octets retenus : la résolution du découpage du gamertag (version
-// inconnue) les relit sous l'autre implantation, et les re-scanner coûterait une seconde passe
-// complète sur le chunk.
-func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (HighlightEvent, []byte, error) {
+func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (HighlightEvent, error) {
 	totalBits := len(data) * 8
 	windowEndBit := xuidStartBit + eventWindowBits
 	if windowEndBit > totalBits {
@@ -266,9 +201,9 @@ func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (H
 		endPosBit := findBitMarker(data, searchFrom, windowEndBit, endMarker)
 		if endPosBit < 0 {
 			if lastErr != nil {
-				return HighlightEvent{}, nil, lastErr
+				return HighlightEvent{}, lastErr
 			}
-			return HighlightEvent{}, nil, fmt.Errorf("end-marker absent dans la fenêtre")
+			return HighlightEvent{}, fmt.Errorf("end-marker absent dans la fenêtre")
 		}
 
 		eventBitsStart := endPosBit - eventDataBytes*8
@@ -287,7 +222,7 @@ func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (H
 		}
 		ev, err := decodeEventBytes(eventBytes, xuid, version)
 		if err == nil {
-			return ev, eventBytes, nil
+			return ev, nil
 		}
 		// type_hint inconnu / event corrompu : c'était un faux positif du
 		// scanner d'end-marker. Continuer après cette position.
@@ -305,7 +240,12 @@ func decodeEventBytes(b []byte, xuid uint64, version int) (HighlightEvent, error
 		return HighlightEvent{}, fmt.Errorf("bloc event trop court: %d < 60", len(b))
 	}
 
-	gamertag := gamertagPourVersion(b, version)
+	var gamertag string
+	if version <= 38 || version >= 41 {
+		gamertag = decodeUTF16LE(b[0:32])
+	} else {
+		gamertag = decodeUTF16LE(b[12:44])
+	}
 
 	typeHint := int(b[47])
 	// time_ms est un uint32 big-endian (bitstring.Bits.unpack("uint:32") = big-endian).
@@ -327,19 +267,6 @@ func decodeEventBytes(b []byte, xuid uint64, version int) (HighlightEvent, error
 		TimeMS:    timeMS,
 		MedalType: medalType,
 	}, nil
-}
-
-// gamertagPourVersion : le gamertag des 60 octets d'event, sous le découpage de `version`.
-// Les deux découpages sont ceux documentés par decodeEventBytes ; ils sont isolés ici parce que
-// la résolution d'une version inconnue doit pouvoir relire le MÊME bloc sous l'autre.
-func gamertagPourVersion(b []byte, version int) string {
-	if len(b) < eventDataBytes {
-		return ""
-	}
-	if version <= 38 || version >= 41 {
-		return decodeUTF16LE(b[0:32])
-	}
-	return decodeUTF16LE(b[12:44])
 }
 
 // inferEventType déduit le type d'event depuis type_hint et isMedal.
