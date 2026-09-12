@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 4985 frames · intervalle 100 ms · duree 498500 ms
-schema 51 · titre halo_infinite
+schema 53 · titre halo_infinite
 origine de la frame 0 sur l horloge du fil : 3604 ms
 coup d envoi date par le film : 26304 ms · 98/104 piste(s) en mouvement · rafale 4 · marge depuis la frame 0 : 22700 ms
 
@@ -36,16 +36,17 @@ verdict : nominal
 483 tir(s) publie(s) · 401 avec un cap de visee lisible · 483 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
-70 rattache(s) / 70 disponible(s) = 100.0 %
-rejets : slot introuvable=0 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+69 rattache(s) / 70 disponible(s) = 98.6 %
+rejets : slot introuvable=1 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 70 = 70 (equilibre : true)
 verdict : nominal
-par source : projectile=65 (aucun pont) · biped=5 (le pont a servi)
-par type : Dynamo=17 · Frag=17 · Plasma=14 · Spike=22
+par source : projectile=63 (aucun pont) · biped=6 (le pont a servi)
+par type : Dynamo=17 · Frag=17 · Plasma=14 · Spike=21
 
 ## PROJECTILES — le dernier point est la DERNIERE POSITION REPLIQUEE, jamais un impact
-439 trajectoire(s) · 2732 point(s) de grille
-75 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
+436 trajectoire(s) · 2725 point(s) de grille
+74 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
+couverture : 580 piste(s) decodee(s) · 436 publiee(s) · 3 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
 184 etat(s) publie(s) · 150 avec grenades lues · 150 avec munitions lues

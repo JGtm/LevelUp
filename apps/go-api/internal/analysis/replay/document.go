@@ -40,7 +40,26 @@ package replay
 // v51 (2026-09-10, lot 4.3) : deux changements de CONTENU CUIT — `identity.bipedSlots[].bid`
 // (le tableau de l'API nomme les corps hors table) et `abilityLabels[].family` (le résumé
 // d'usage y joint, d'où `UsageSummaryRev` us4 -> us5). Raison détaillée : `structure_test.go`.
-const SchemaVersion = 51
+//
+// v52 (2026-09-11, lot B décodeur) : TROIS changements de CONTENU CUIT, chacun mesuré.
+// `grenades[]` change de position ET porte désormais son `slot` sur les deux branches (le
+// lancer revient à son lanceur) ; `projectiles[]` est coupé au premier pas impossible, `rest`
+// tombant à false sur un vol coupé ; `geometry` devient les props de LA carte du match, donc
+// vide sur toute carte non extraite. Le bump est exigé par la règle — le contenu change, et un
+// artefact v51 doit se voir comme « à recuire », pas comme à jour. `coverage.projectiles`
+// s'ajoute au passage, mais un champ optionnel ne l'aurait pas exigé à lui seul. Chronique
+// détaillée et chiffres : `document_chronicle.go`.
+// v53 (2026-09-12, lot B-bis) : UNE SEULE CAUSE, et elle ne touche qu'une carte du catalogue —
+// mais plusieurs calques en dépendent. La porte du composant de position des objets du monde
+// était écrite en dur à 3 bits ; l'index de région qu'elle porte fait DEUX bits sur Live Fire.
+// Le décodeur y lisait les trois axes un bit trop tôt et rendait des positions fausses, que le
+// garde-fou de v52 coupait ensuite au deuxième ou troisième point. Mesuré sur les quatre films
+// Live Fire du parc : 614 vols de projectile tronqués -> 5, et 1 067 points publiés -> 8 378 ;
+// les poses d'équipement passent de 49 et 27 à 227 et 114 sur les deux films mesurés, et les
+// lancers de grenade retrouvent leur lien vers le projectile (2 -> 85, 0 -> 137). Aucune autre
+// carte ne bouge d'un point (Cliffhanger, Banished Narrows, The Pit, Isolation : identiques).
+// Chronique et chiffres : `document_chronicle.go`.
+const SchemaVersion = 53
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

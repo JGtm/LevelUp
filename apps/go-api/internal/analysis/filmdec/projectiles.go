@@ -61,11 +61,25 @@ const ProjectileTypeIndex = 41
 // l'objet s'immobilise (cf. splitLives).
 const projectileRestComponent = 18
 
+// projGateBits est la longueur de la PORTE d'`object-position-component` : 1 bit precHigh,
+// 1 bit index-sel, puis l'index de région à la largeur de la CARTE.
+//
+// CETTE LARGEUR N'EST PAS UN LITTÉRAL — correction du 2026-09-12 (lot B-bis). Elle valait 3
+// en dur, c'est-à-dire un index de région d'UN bit, ce qui est vrai de 78 cartes du catalogue
+// sur 79. Live Fire (`sgh_interlock`) déclare quatre régions : son index en fait DEUX, et le
+// décodeur y lisait ses trois axes un bit trop tôt. Le bit de poids faible de X devenait le
+// bit de poids fort de Y, celui de Y le bit de poids fort de Z — et un bit de poids faible
+// bascule d'une image à l'autre. D'où 8 091 pas impossibles sur 15 971 (50,7 %) sur
+// `0797ce72`, contre 7 après correctif. Le jumeau bipède (`decodeBipedI0Pos`) lisait déjà
+// cette largeur dans le découpage de la carte : les deux écritures du même champ avaient
+// divergé.
+func projGateBits() int { return 2 + int(WorldObjectPrecision.IndexW) }
+
 // projPosBits est la longueur d'`object-position-component` sur le chemin dominant :
-// 3 de porte + les trois axes + 2 de queue. Voir WorldObjectPrecision.
+// la porte + les trois axes + 2 de queue. Voir WorldObjectPrecision.
 func projPosBits() int {
 	p := WorldObjectPrecision
-	return 3 + int(p.AxisW[0]+p.AxisW[1]+p.AxisW[2]) + 2
+	return projGateBits() + int(p.AxisW[0]+p.AxisW[1]+p.AxisW[2]) + 2
 }
 
 // ProjectileSample est une position de projectile à un instant.
@@ -450,12 +464,22 @@ func ascendingComponents(pay []byte, at, mc int) ([]int, bool) {
 // REJET DES QUANTA SATURÉS : un axe à 0 ou à 2^w-1 est écarté. Sans cette règle, une vie sur
 // soixante-dix finit au plancher du BSP (z = -84 m) — un quantum saturé n'est pas une position,
 // c'est une valeur de garde.
+//
+// REJET D'UNE AUTRE RÉGION : l'index de région lu doit valoir celui que la carte joue
+// (`WorldObjectPrecision.Region`, installé depuis le catalogue). Un record d'une autre région
+// exprime ses quanta dans une AUTRE AABB : le déquantifier avec ces bornes rendrait une
+// position fausse SILENCIEUSE, ce qui est pire qu'un refus. Même règle que le jumeau bipède
+// `decodeBipedI0Pos`.
 func decodeWorldObjectPos(pay []byte, at int, wr *Vec3Range) ([3]float32, bool) {
 	var v [3]float32
-	if PeekBits(pay, at, 3) != 0 { // porte : precHigh, index-sel, index de région tous nuls
+	if PeekBits(pay, at, 2) != 0 { // precHigh et index-sel nuls = chemin dominant
 		return v, false
 	}
-	off := at + 3
+	idxW := int(WorldObjectPrecision.IndexW)
+	if uint32(PeekBits(pay, at+2, idxW)) != WorldObjectPrecision.Region {
+		return v, false
+	}
+	off := at + 2 + idxW
 	for a := 0; a < 3; a++ {
 		w := WorldObjectPrecision.AxisW[a]
 		q := PeekBits(pay, off, int(w))

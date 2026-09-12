@@ -11456,6 +11456,8 @@ components:
           $ref: '#/components/schemas/PickupCoverage'
         placements:
           $ref: '#/components/schemas/EquipmentPlacementCoverage'
+        projectiles:
+          $ref: '#/components/schemas/ProjectileCoverage'
         score:
           $ref: '#/components/schemas/ScoreCoverage'
         shots:
@@ -21319,6 +21321,23 @@ components:
       required:
         - t0
         - p
+      type: object
+    ProjectileCoverage:
+      additionalProperties: false
+      properties:
+        published:
+          format: int64
+          type: integer
+        tracks:
+          format: int64
+          type: integer
+        truncated:
+          format: int64
+          type: integer
+      required:
+        - tracks
+        - published
+        - truncated
       type: object
     ProposalDTO:
       additionalProperties: false

@@ -106355,3 +106355,110 @@ Ecartes : temoin d'arme (caduc derriere le registre d'identite), horloge du matc
 contraire a la regle n°1 — ses « defauts Go » n'en sont pas chez nous : cascade
 `PreferredLangsForLocale` + normalisation middleware).
 **Prochaine etape** : aucune action code. Reprendre le bilan a la cloture du chantier courant.
+## [2026-09-11] Lot B — corrections du decodeur reprises du fork (grenades, projectiles, props)
+
+**Statut** : Complete (branche `wt/decodeur-fork`, base feat/v75 `81f15be30`, 6 commits).
+
+**Decision technique principale** : sur les trois defauts du bilan du fork (points 1, 2, 5), les
+IDEES sont reprises et REIMPLEMENTEES sur notre arbre — aucun cherry-pick, 2 570 commits de
+divergence. Trois correctifs, chacun precede de sa mesure.
+
+1. **Un lancer de grenade revient a son lanceur.** `locateThrow` choisissait la naissance de
+   projectile la plus proche DANS LE TEMPS et departageait les simultanees par le tri, donc par
+   X. L auteur est desormais resolu d abord, il juge parmi TOUTES les naissances de la fenetre,
+   et refuse au-dela de 4 m. Sans auteur ponte, une candidate unique reste une lecture,
+   plusieurs sont un refus compte. `grenades[].slot` est publie sur les deux branches — il
+   sortait a zero sur la branche projectile, et zero RESSEMBLE a un slot.
+2. **Un vol de projectile s arrete au premier pas impossible** (> 10 m en 100 ms), sans etre
+   recousu, `rest` tombant a false. Le compte des coupures est publie
+   (`coverage.projectiles.truncated`) : un decodeur qui coupe sans le dire est un rejet avale.
+3. **Les props Forge appartiennent a une carte.** `MapGeometryDir(titleSlug, module)` ;
+   `LoadGeometry(mapDir, typesDir)` ; une carte sans fichier rend zero prop sans erreur
+   (journalise en Debug, pas en Warn a chaque match).
+
+**Resultats observes** :
+
+- Distance lancer -> lanceur, avant -> apres : `000d5950` Cliffhanger pire cas **14,46 -> 0,56 m**
+  et 2 -> 0 lancers au-dela de 4 m ; `0797ce72` et `21ece4d8` (Live Fire) mediane
+  **25,42 -> 0,00 m** et **26,69 -> 0,00 m**, sans perdre un seul lancer (103 et 156 inchanges).
+  Un lancer sur cinq tombait dans une fenetre a deux naissances ou plus.
+- Pas impossibles sur le parc : **947 trajectoires sur 15 735 (6,0 %)**, 4 901 pas.
+- Props : **382 identiques sur les 76 artefacts**, cartes confondues.
+- Gate corpus `--reference=base` sur les 7 temoins : sortie 1, **toutes les pertes voulues** et
+  cantonnees aux trois calques du lot (aucun axe tirs / vies / identite / score / objectifs /
+  vehicules / zones touche). Verdict ligne par ligne dans le rapport.
+- Gates : suite Go complete + `go vet` verts (CGO), `make go-api-lint` **0 issue**.
+
+**Decouverte majeure, NON traitee (consignee au plan)** : la cause du pas impossible n est PAS
+celle que le fork decrit (« le quantum Y repasse d un bord a l autre »). Le saut vaut l etendue
+de la carte sur un axe **divisee par une puissance de deux** — le poids d UN BIT du champ
+quantifie. Sur les quatre films Live Fire (`sgh_interlock`, Y sur 12 bits) il vaut exactement la
+MOITIE de l etendue Y (31,89 m pour 63,775 m) avec |dx| median 0,20 m : le bit de poids fort de
+Y bascule, 3 907 pas sur 4 901. Sur les cartes Forge l axe touche est X et le bit plus bas
+(etendue / 2^7). 97 % des pas coupes suivent cette loi. C est un decalage de lecture d un bit
+dans `filmdec`, pas un bit de signe ni un debordement — et Live Fire est justement la carte qui
+a impose le decoupage d i0 par catalogue (plus de deux regions de compression).
+
+**Attribution du CSV de props** : `map_geometry/ridgeline/` (Cliffhanger), pas `UNATTRIBUTED/`.
+L emprise des 453 props tombe a 90,8 % dans l aire jouee de Cliffhanger pour un rapport de
+surfaces de 1,078 — aucune autre carte du parc ne tient les deux criteres — et le commit qui a
+introduit le CSV ne porte que deux `.mvar`, tous deux de Cliffhanger. Le README du repertoire dit
+que c est une attribution DEDUITE et donne son test de falsification.
+
+**SchemaVersion 51 -> 52**, exige par la regle (le contenu cuit change trois fois). Chronique
+datee dans `document_chronicle.go`, raison dans le garde de `structure_test.go`, contrat OpenAPI
+et `generated.ts` regeneres.
+
+**Prochaine etape** : la recuisson du parc (`backfill-replay`) appartient au pilote, apres
+fusion, serveur arrete. La cause racine de la dequantification est a instruire dans `filmdec` —
+le compteur `coverage.projectiles.truncated` sert desormais de temoin par artefact. Rapport
+complet : `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+
+## [2026-09-12] Lot B-bis — le bit de trop peu de la porte d i0 (Complete)
+
+**Question** : le lot B avait CARACTERISE le pas impossible des projectiles (947 trajectoires sur
+15 735, le saut vaut l etendue d un axe divisee par une puissance de deux) sans l EXPLIQUER. Ce
+lot remonte du point publie jusqu aux bits lus dans le film.
+
+**Decision technique** : la PORTE d `object-position-component` etait un LITTERAL. Elle valait 3
+bits en dur dans `decodeWorldObjectPos` et `projPosBits` : 1 precHigh + 1 index-sel + UN bit d
+index de region. Or la largeur de cet index est une constante PAR CARTE (`regionIndexBits` du
+catalogue de bornes) : elle vaut 1 sur 78 cartes du catalogue et DEUX sur la 79e, Live Fire
+(`sgh_interlock`, quatre regions declarees, arene en region 1). Le decodeur y consommait un bit de
+trop peu et lisait les TROIS axes un bit trop tot : le bit de poids faible de X devenait le bit de
+poids FORT de Y, celui de Y le bit de poids fort de Z. Un bit de poids faible bascule d une image
+a l autre, d ou un saut de la MOITIE de l etendue de l axe — 31,89 m pour 63,775 m d etendue Y,
+exactement la mediane mesuree au lot B. La porte suit desormais `WorldObjectPrecision.IndexW`, et
+l index lu est COMPARE a la region jouee de la carte au lieu d etre exige nul.
+
+**Ce que la cause dit du depot** : le jumeau bipede `decodeBipedI0Pos` (vehicle_creation.go)
+faisait DEJA la bonne chose. Deux ecritures du meme champ, dont une seule a suivi le catalogue
+quand Live Fire est arrivee (lot C catalogues, 2026-08-27) — une factorisation abandonnee, le
+8e anti-pattern de la liste de CLAUDE.md.
+
+**Resultats observes** : records porteurs d un pas impossible 50,7 % -> 0,04 % (`0797ce72`),
+52,8 % -> 0,02 % (`21ece4d8`), 48,5 % -> 0,02 % (`c88ec007`) — 40 pas sur 40 detailles bit a bit
+sur deux films portent la bascule du MSB de Y et d aucun autre bit. Cuisson complete de 10 films,
+deux fois, dans une racine jetable : Live Fire 614 vols tronques -> 5 et 1 067 points -> 8 378 ;
+les poses d equipement suivent (49 -> 227 et 27 -> 114) car le meme decodeur sert ti=37 ; les cinq
+cartes a index d un bit et le temoin Cliffhanger sont IDENTIQUES au point pres. Controle croise
+independant du seuil de 10 m : la branche projectile des lancers de grenade, effondree a 1 et 0
+au lot B, retrouve 83 et 137 lancers a 0,44 m de mediane de leur lanceur — le regime exact de
+Cliffhanger. SchemaVersion 52 -> 53, chronique datee, golden `000d5950` regenere : il ne differe
+QUE par la ligne de schema. Gate corpus `--reference=base --base=wt/decodeur-fork` : sortie 0,
+7 temoins sur 7, 0 perte.
+
+**Decouvertes** : (1) aucun temoin du corpus n est sur Live Fire — le gate est sorti vert sur un
+correctif qu il ne voyait pas ; (2) la queue de pas impossibles des cartes Forge (612 pas, 5 films)
+n est PAS la porte, c est la signature d un FAUX POSITIF du balayage par position de bit (Y fige au
+quantum pres pendant que X saute d une puissance de deux exacte) ; (3) `document_chronicle.go`
+passe 1 119 -> 1 190 L, la convention de chronique fait grossir un fichier deja hors seuil.
+
+**Incident de seance** : un `git stash` a ete lance par erreur dans le worktree — interdit par
+CLAUDE.md. Detecte immediatement, `git stash pop` a tout restaure sans perte ; les deux stash d
+autres sessions presents dans la pile n ont pas ete touches. Les travaux ont ete commites dans la
+foulee pour ne plus dependre de l arbre de travail.
+
+**Conclusion / prochaine etape** : la recuisson du parc N A PAS ete lancee (consigne du lot) et
+reste au pilote, serveur arrete. Rapport complet :
+`.ai/RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md`.

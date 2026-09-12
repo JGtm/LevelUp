@@ -29,6 +29,10 @@ var worldObjectPrecisionReaders = map[string]string{
 		"lectures du chemin de traversée (`object-position-component`)",
 	"internal/analysis/filmdec/projectiles.go": "longueur du champ (`projPosBits`) et " +
 		"déquantification (`decodeWorldObjectPos`) — le balayage des objets du monde",
+	"internal/analysis/filmdec/components_movement.go": "CITATION en commentaire (2026-09-12, " +
+		"lot B-bis) : le champ `Region` de `PrecisionDescriptor` documente qu'il ne vaut que " +
+		"pour le descripteur world-object et pourquoi il vit DANS la structure (restauration " +
+		"par valeur par l'installateur) — aucune lecture de la valeur ici",
 	"internal/analysis/filmdec/position_capture.go": "repli d'`absAxisW`, INATTEIGNABLE en " +
 		"l'état : il est gardé par `absoluteAxisW > 0`, dont le défaut vaut 14 et dont le seul " +
 		"écrivain (killsource/calibrate.go) balaie 6..26",

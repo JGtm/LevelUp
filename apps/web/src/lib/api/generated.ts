@@ -5743,6 +5743,7 @@ export interface components {
             padDating?: components["schemas"]["PadDatingStats"];
             pickups?: components["schemas"]["PickupCoverage"];
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
+            projectiles?: components["schemas"]["ProjectileCoverage"];
             score?: components["schemas"]["ScoreCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
@@ -9981,6 +9982,14 @@ export interface components {
             rest?: boolean;
             /** Format: int64 */
             t0: number;
+        };
+        ProjectileCoverage: {
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            tracks: number;
+            /** Format: int64 */
+            truncated: number;
         };
         ProposalDTO: {
             /** Format: date-time */

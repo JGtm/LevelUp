@@ -258,7 +258,7 @@ func TestGrenadeLinksItsPublishedProjectile(t *testing.T) {
 		{TimestampUS: 2_150_000, X: 13, Y: 35, Z: 4},
 		{TimestampUS: 2_250_000, X: 14, Y: 36, Z: 3, AtRest: true},
 	}}}
-	published, pubByRaw := buildProjectiles(proj, 1_000_000, 100_000)
+	published, pubByRaw, _ := buildProjectiles(proj, 1_000_000, 100_000)
 	if len(published) != 1 || pubByRaw[0] != 0 {
 		t.Fatalf("projectile attendu publie a l'index 0 : %+v / %+v", published, pubByRaw)
 	}

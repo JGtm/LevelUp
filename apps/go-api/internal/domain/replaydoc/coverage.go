@@ -9,6 +9,7 @@ type Coverage struct {
 	Shots             LayerCoverage               `json:"shots"`
 	Grenades          LayerCoverage               `json:"grenades"`
 	Objectives        LayerCoverage               `json:"objectives"`
+	Projectiles       *ProjectileCoverage         `json:"projectiles,omitempty"`
 	Equipment         *EquipmentCoverage          `json:"equipment,omitempty"`
 	Grapple           *GrappleCoverage            `json:"grapple,omitempty"`
 	Placements        *EquipmentPlacementCoverage `json:"placements,omitempty"`
@@ -141,6 +142,16 @@ type InventoryCoverage struct {
 	DroppedBeforeOrigin int `json:"droppedBeforeOrigin"`
 	Unpublished         int `json:"unpublished"`
 	Published           int `json:"published"`
+}
+
+// ProjectileCoverage est la couverture des TRAJECTOIRES DE PROJECTILE : pistes décodées,
+// trajectoires publiées, et celles qu'un PAS IMPOSSIBLE a coupées. Tant que `truncated` n'est
+// pas nul, l'artefact porte des vols dont la fin est INCONNUE — la coupure protège le rendu,
+// elle ne répare pas la déquantification qui la cause.
+type ProjectileCoverage struct {
+	Tracks    int `json:"tracks"`
+	Published int `json:"published"`
+	Truncated int `json:"truncated"`
 }
 
 // GrenadeReadCoverage dit ce que chaque canal a apporté. Sans ces dénominateurs, un axe

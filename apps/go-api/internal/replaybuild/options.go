@@ -14,7 +14,7 @@ func (b *Builder) buildReplayOptions(
 ) replay.Options {
 	return replay.Options{
 		FrameIntervalMS: b.interval,
-		Geometry:        b.geometry,
+		Geometry:        b.geometryFor(entry.Module),
 		Structure:       b.structureFor(entry.Module),
 		Labels:          b.labels,
 		NeutralDeaths:   cat.neutral,

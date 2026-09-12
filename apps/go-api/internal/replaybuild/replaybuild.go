@@ -63,7 +63,15 @@ type Builder struct {
 	titleSlug string
 	catalog   *filmdec.MapQuantCatalog
 	labels    replay.LabelCatalog
-	geometry  []replay.MapObject
+	// geometries : cache par MODULE des props Forge de la carte. PAR CARTE depuis le
+	// 2026-09-11 : un repertoire unique servait ses props a TOUS les matchs, cartes confondues
+	// (382 props identiques sur les 76 artefacts du parc). Meme motif que `structures` — une
+	// carte revient N fois dans une passe de masse.
+	geometries map[string][]replay.MapObject
+	// geometryOverride : le repertoire de props impose par la CLI (--geometry). Non nil = il
+	// gagne sur la resolution par carte, pour toutes les cartes ; c'est l'echappatoire de
+	// l'operateur qui teste une extraction.
+	geometryOverride []replay.MapObject
 	// interval : pas de temps du rejeu en ms ; 0 = défaut de replay.Options.
 	interval int
 	// structures : cache par module du fond structurel (une carte revient N fois dans une
@@ -114,15 +122,6 @@ func NewBuilder(repoRoot, titleSlug string) (*Builder, error) {
 	if err != nil {
 		return nil, fmt.Errorf("catalogue de libellés du titre %s: %w", titleSlug, err)
 	}
-	geomDir := pr.MapGeometryDir(titleSlug)
-	geometry, skipped, err := replay.LoadGeometry(geomDir)
-	if err != nil {
-		slog.Warn("replaybuild: géométrie de carte indisponible — artefacts sans props",
-			"err", err, "dir", geomDir)
-		geometry = nil
-	} else if skipped > 0 {
-		slog.Debug("replaybuild: props sans emprise ignorés", "sansEmprise", skipped, "dir", geomDir)
-	}
 	// La table de reglement (cible de victoire) est BEST-EFFORT : un titre sans
 	// regulation.toml construit des artefacts sans cible, et le client a son repli.
 	regulation, err := mappings.LoadRegulationFromFile(
@@ -137,7 +136,7 @@ func NewBuilder(repoRoot, titleSlug string) (*Builder, error) {
 		titleSlug:  titleSlug,
 		catalog:    cat,
 		labels:     labels,
-		geometry:   geometry,
+		geometries: map[string][]replay.MapObject{},
 		structures: map[string][]replay.Surface{},
 		regulation: regulation,
 	}, nil
@@ -149,19 +148,65 @@ func (b *Builder) WithFrameInterval(ms int) *Builder {
 	return b
 }
 
-// WithGeometryDir recharge les props Forge depuis un répertoire explicite (CLI --geometry).
-// Chaînable ; un répertoire illisible dégrade en « sans props », journalisé.
+// WithGeometryDir IMPOSE les props Forge d'un répertoire explicite (CLI --geometry), pour
+// toutes les cartes. C'est l'échappatoire de l'opérateur qui teste une extraction avant de
+// l'attribuer ; la voie nominale est la résolution PAR CARTE (cf. geometryFor). Chaînable ;
+// un répertoire illisible dégrade en « sans props », journalisé.
+//
+// LE CATALOGUE DES TYPES RESTE CELUI DU TITRE : c'est une table d'emprises par identifiant,
+// elle ne dépend d'aucune carte.
 func (b *Builder) WithGeometryDir(dir string) *Builder {
-	objs, skipped, err := replay.LoadGeometry(dir)
+	typesDir := title.NewPathResolver(b.repoRoot).MapGeometryDir(b.titleSlug, "")
+	objs, skipped, err := replay.LoadGeometry(dir, typesDir)
 	if err != nil {
 		slog.Warn("replaybuild: géométrie de carte indisponible — artefacts sans props",
 			"err", err, "dir", dir)
-		b.geometry = nil
+		b.geometryOverride = []replay.MapObject{}
 		return b
 	}
-	slog.Info("replaybuild: géométrie de carte chargée", "objets", len(objs), "sansEmprise", skipped, "dir", dir)
-	b.geometry = objs
+	slog.Info("replaybuild: géométrie de carte imposée", "objets", len(objs), "sansEmprise", skipped, "dir", dir)
+	// UN REPERTOIRE IMPOSE SANS PROP LISIBLE IMPOSE QUAND MEME ZERO PROP : `LoadGeometry` rend nil
+	// (pas d'erreur) quand le CSV manque ou ne passe aucune emprise, et `geometryFor` distingue
+	// « impose » de « resolu par carte » sur le seul nil. Laisser nil ici rendait la main a la
+	// resolution par carte en contradiction avec le journal (revue de vague, 2026-09-12).
+	if objs == nil {
+		objs = []replay.MapObject{}
+	}
+	b.geometryOverride = objs
 	return b
+}
+
+// geometryFor charge (et met en cache) les props Forge d'un module.
+//
+// SON ABSENCE EST LE CAS NOMINAL, et c'est pourquoi elle est journalisée en Debug et non en
+// Warn : personne n'a extrait les props des 79 cartes du catalogue de bornes, et un
+// avertissement par match d'une carte non extraite noierait le journal d'une passe de masse.
+// `LoadGeometry` ne distingue que l'ABSENCE du CSV de carte (nil, sans erreur) ; toute autre
+// erreur — catalogue de TYPES illisible (panne du titre) comme CSV de carte present mais
+// corrompu — remonte telle quelle et merite un Warn, avec `dir` et `module` pour dire lequel.
+func (b *Builder) geometryFor(module string) []replay.MapObject {
+	if b.geometryOverride != nil {
+		return b.geometryOverride
+	}
+	if g, ok := b.geometries[module]; ok {
+		return g
+	}
+	pr := title.NewPathResolver(b.repoRoot)
+	mapDir := pr.MapGeometryDir(b.titleSlug, module)
+	objs, skipped, err := replay.LoadGeometry(mapDir, pr.MapGeometryDir(b.titleSlug, ""))
+	if err != nil {
+		slog.Warn("replaybuild: catalogue des emprises de props illisible — artefacts sans props",
+			"err", err, "dir", mapDir, "module", module)
+		objs = nil
+	} else if len(objs) == 0 {
+		slog.Debug("replaybuild: aucun prop pour cette carte — artefact sans repères contextuels",
+			"dir", mapDir, "module", module)
+	} else {
+		slog.Debug("replaybuild: props de carte chargés",
+			"objets", len(objs), "sansEmprise", skipped, "module", module)
+	}
+	b.geometries[module] = objs
+	return objs
 }
 
 // ResolveMapEntry résout la première identité de carte candidate qui existe au catalogue

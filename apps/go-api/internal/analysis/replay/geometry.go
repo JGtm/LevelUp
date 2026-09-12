@@ -2,6 +2,7 @@ package replay
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -37,25 +38,41 @@ func planDist(ax, ay, bx, by float32) float64 {
 
 // Fichiers du fond de carte, produits par le RE de la variante Forge (.mvar) et par la
 // résolution des tags de modèle (cf. cmd/tmp_forgedim). Ils vivent sous
-// `PathResolver.MapGeometryDir(titleSlug)` — donnée de référence versionnée du titre,
-// et non plus dans le répertoire de notes du chantier (lot 3.1).
+// `PathResolver.MapGeometryDir(titleSlug, module)` — donnée de référence versionnée, PAR CARTE
+// pour les props (le paramètre `module` corrige un défaut : un seul répertoire servait ses props
+// à toutes les cartes, cf. registry.go) et par TITRE pour le catalogue des types. Et non plus
+// dans le répertoire de notes du chantier (lot 3.1).
 const (
 	MapObjectsFile  = "map_objects.csv"
 	ObjectTypesFile = "forge_object_types.csv"
 )
 
-// LoadGeometry lit les props Forge (map_objects.csv) et leurs emprises par type
-// (forge_object_types.csv) depuis dir, et renvoie les objets DESSINABLES.
+// LoadGeometry lit les props Forge d'UNE carte (map_objects.csv dans mapDir) et leurs emprises
+// par type (forge_object_types.csv dans typesDir), et renvoie les objets DESSINABLES.
+//
+// DEUX RÉPERTOIRES, PARCE QUE LES DEUX FICHIERS N'ONT PAS LA MÊME PORTÉE. Les props
+// appartiennent à une carte ; le catalogue des types (quel identifiant a quelle emprise) vaut
+// pour tout le titre. Les lire au même endroit obligerait à recopier le catalogue sous chaque
+// carte — autant de copies à faire diverger, là où le dépôt en interdit déjà trois.
+//
+// UNE CARTE SANS FICHIER DE PROPS N'EST PAS UNE ERREUR, c'est le CAS NOMINAL : personne n'a
+// extrait les props des 79 cartes du catalogue de bornes. Elle rend zéro prop et aucune erreur,
+// pour que le journal de cuisson ne crie pas à chaque match d'une carte non extraite. Le
+// CATALOGUE, lui, reste obligatoire : sans lui aucun prop n'a d'emprise, et se taire rendrait
+// indiscernables « cette carte n'a pas de props » et « le titre a perdu sa table des emprises ».
 //
 // Les types sans bounding box mesurée (modèles vides : points d'apparition, volumes de
 // blocage) sont écartés — ils n'ont rien à afficher. Le second retour donne le nombre
 // d'objets ainsi écartés, pour le journal d'assemblage.
-func LoadGeometry(dir string) ([]MapObject, int, error) {
-	sizes, err := loadTypeExtents(filepath.Join(dir, ObjectTypesFile))
+func LoadGeometry(mapDir, typesDir string) ([]MapObject, int, error) {
+	sizes, err := loadTypeExtents(filepath.Join(typesDir, ObjectTypesFile))
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, cols, err := readCSV(filepath.Join(dir, MapObjectsFile))
+	rows, cols, err := readCSV(filepath.Join(mapDir, MapObjectsFile))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, 0, nil
+	}
 	if err != nil {
 		return nil, 0, err
 	}
