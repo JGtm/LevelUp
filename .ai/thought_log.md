@@ -106580,3 +106580,164 @@ n'ont gagné que 8 % ; `document_chronicle.go` 1 190 L ; 13 replis FR restants s
 
 **Prochaine étape** : lot E (déplacement pur du décodeur sous `internal/games/halo_infinite/film/`),
 puis lot F (nettoyage worktrees/branches, bascule dossier LevelUp).
+
+---
+
+## [2026-09-12] Section 3 de chunk_00 : le film porte la table des joueurs du match — Complete
+
+**Contexte** : la carte de `chunk_00` du 2026-08-30 laissait une troisième section d'environ
+538 ko par film, propre au match, non décodée — « la plus grosse donnée inexplorée du format ».
+Les statistiques sur les octets (entropie, périodicité 2..1024, zlib imbriqué, paquets de 16 o,
+identifiants en clair) avaient toutes échoué. Chantier borné dans le worktree dédié
+`LevelUp-wt-section3-chunk00` (branche `wt/section3-chunk00`), sans commit.
+
+**Décision technique principale** : ne pas remesurer les octets, suivre le CONSOMMATEUR/l'écrivain
+dans `HaloInfinite.exe` (méthode, règle 1), en partant de l'ancre que le lot D avait laissée : les
+chaînes d'identification de build. `HI_1_13_0` (`0x1436a37c0`) → `FUN_140b32390` (structure d'infos
+de build) → `FUN_140b32438` (globales) → **`FUN_14299b674`**, l'initialiseur de l'écrivain de film,
+qui recopie version/build/saveur dans des champs de 32 octets aux offsets exacts mesurés le 30/08.
+De là, `FUN_14299cb5c` (tampon de `0x1E1B80` = 1 973 120 octets, la taille inflatée connue), puis
+**`FUN_14299b198` et `FUN_14299b278`** dont le désassemblage donne la carte complète du fichier,
+champ par champ, avec la largeur en BITS (`MOV R9D,<bits> ; CALL FUN_1406d60f4`).
+
+**Le point dur** : un booléen d'UN BIT à `0x0CB45C` (`FUN_1406d49c4`) décale tout le reste du
+fichier d'un bit. Aucune lecture alignée sur l'octet ne pouvait rendre quoi que ce soit après cet
+offset — c'est toute l'explication du « amorphe » du 30/08.
+
+**Résultats observés** :
+- Contrôle d'échelle sur 250 films : **8 enregistrements sur 198 films, 24 sur 2 films** (taille
+  exacte d'une « Grande bataille »), **jamais plus de 32** — la borne de l'écrivain. Le balayage
+  ignore tout des modes de jeu.
+- **Fermeture arithmétique sans ajustement** : `0x000008 + 0x659000/8 = 0x0CB208` (début de la
+  table par type) et `0x0CB208 + 123 x 4 = 0x0CB3F4` (offset du champ version, mesuré le 30/08 par
+  une tout autre voie). La table par type compte **exactement 123 entrées à `0x0CB208`** :
+  question ouverte n°2 du 30/08 FERMÉE.
+- Les deux u32 inconnus de `0x0CB454` sont l'**identifiant de build** et le **changelist**
+  (globales `DAT_144e4ef50` / `DAT_144e4ef54`) : question ouverte n°4 FERMÉE.
+- **L'horodatage du match est dans le film** : 32 bits à `0x0CB65C x 8 + 1`. Un seul décalage de
+  bit sur dix-sept rend une valeur plausible, et c'est celui que l'écrivain prédit. Confronté à
+  `match_registry.start_time_utc` : **+19 s, +29 s, +43 s** (seuil écrit avant la mesure : 120 s).
+- **Le corps se termine par 32 enregistrements de `0x1450` octets, un par slot**
+  (`0x28A00 / 0x1450 = 32`, borne littérale `LEA RSI,[RDI+0x28a00]`), sérialisés par
+  **`FUN_1407ecb08`** : 1+1+1 bits booléens, 32 bits, 2 bits, 48 bits, puis **64 bits = le XUID**.
+- **44 des 45 XUID humains de `match_participants` retrouvés exactement une fois** sur 6 films et
+  2 builds, **44/44 avec l'en-tête conforme** (1/0/0 + u32 nul + 2 bits nuls), **0 faux positif
+  sur 240 leurres** tirés au hasard dans la même plage d'XUID Xbox.
+- **Le roster se reconstruit sans aucune entrée externe** : le seul motif d'en-tête rend 8/8/8/8/4/8
+  enregistrements contre 1 à 2 positions parasites par film, toutes éliminées par deux filtres
+  écrits d'avance.
+- Contrôle croisé interne le plus fort du lot : **la longueur d'un enregistrement suit le JOUEUR,
+  pas le match** — `2533274823110022` fait 27 969 bits sur 4 films, `2533274858283686` fait
+  28 081 bits sur 4 films, à travers deux builds. 2/2.
+- Gates : `go vet` net, `go test ./internal/analysis/filmdec/` ok, `go test ./internal/archlint/` ok. Aucun code de production touché, aucune variable de
+  paquet ajoutée.
+
+**Découvertes non traitées (règle 7)** : (a) **le registre ECS commence à l'octet 8**, pas à 0 —
+`parseRegistry` lit décalé de 8 octets, ce qui explique d'un coup « kind = 0 sur 1 066 des
+1 067 slots » (30/08) et « le niveau lu un cran plus loin » du commentaire de `registryBlockTail` ;
+la question « défaut ou décalage intentionnel compensé ailleurs » n'est PAS tranchée et y toucher
+casserait des décodages validés ; (b) `parseRegistry` divise toujours le fichier entier par la
+taille d'un bloc, la borne exacte est 50 ; (c) le cache local ne contient plus que deux builds
+(1 123 `HI_1_13_0`, 146 `HI_1_12_0` sur 1 351 répertoires) — les builds `HI_1_5_1` à `HI_1_11_0`
+du recensement du 30/08 ont disparu, donc la vérification a porté sur deux builds et non trois.
+
+**Livrables** : `.ai/V7.5/film_re/NOTE_SECTION3_CHUNK00_2026-09-12.md` (carte complète, contrôles
+chiffrés, commandes de rejeu), section 8 de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md` (tableau
+des fonctions avec preuve), instruments
+`apps/go-api/internal/analysis/filmdec/section3_ecrivain_research_test.go` et
+`section3_roster_research_test.go` (garde `CHUNK00_FILMS`).
+
+**Prochaine étape** : désassembler `FUN_1407ecd00` (premier sous-sérialiseur du slot, `sub+0x00` à
+`sub+0xC10`) pour l'ÉQUIPE et le GAMERTAG — le contrôle positif est déjà en main (les gamertags
+UTF-16 lisibles mesurés le 30/08 doivent tomber dans l'enregistrement du bon XUID). Puis vérifier
+si l'ordre des enregistrements coïncide avec le `player_index` 5 bits de production
+(`resolvePlayerIndices`) : si oui, une table explicite remplace l'inférence par le fil des morts.
+
+---
+
+## [2026-09-12] Section 3 de chunk_00, phase 2 : la grammaire du slot, le gamertag, l'ordre — et la personnalisation reservee mais vide — Complete
+
+**Contexte** : reprise d'une phase 2 interrompue par la limite de quota. Un agent precedent avait
+ecrit trois instruments (`section3_slot_{grammar,ordre,perso}_research_test.go`, 1 018 L) sans les
+executer ni les consigner. Objectifs : grammaire complete d'un enregistrement de slot (equipe et
+gamertag en priorite), verdict sur l'hypothese de l'utilisateur « l'enregistrement porte la
+personnalisation du joueur », ordre des slots contre le `player_index` de production, et
+verification multi-build. Worktree dedie `LevelUp-wt-section3-chunk00` (branche
+`wt/section3-chunk00`), sans commit, aucun code de production touche.
+
+**Decision technique principale** : ne rien faire reposer sur le decompile. Chaque largeur de champ
+du sous-enregistrement `FUN_1407edea8` a ete relue **dans le desassemblage de son propre ecrivain**
+(`MOV ECX,<largeur>`), ce qui a corrige une lecture de la phase 1 : `FUN_1407ece18` n'est pas un
+ecrivain de scalaire de 16 bits mais un **ecrivain de chaine UTF-16** (`TEST DI,DI ; JNZ`), donc
+`sub+0xc14` EST le gamertag — la section 8.1 du relevé Ghidra affirmait le contraire. Pour le
+verdict personnalisation, la voie decisive a ete le **serialiseur DELTA de la meme structure**
+(`FUN_140969c54`), qui passe `sub+0xcc0` champ par champ a `FUN_1407ec27c` avec les noms en clair
+(`variantName`, `coatingName`, `actionPose`, ...) — et la fermeture `0x738 + 4 = 0x73C = 1 852`
+prouve que c'est bien le bloc brut de l'ecrivain de film.
+
+**Resultats observes** :
+- **Grammaire : elle FERME.** La longueur totale d'un enregistrement est PREDITE a partir de quatre
+  nombres lus dans le flux : **38/38** ecarts sur les 6 films temoins, **560/567** sur 76 films
+  (les 7 restants encadrent une position parasite du balayage, desormais comptee a part).
+- **Gamertag : 616/636** noms egaux au `roster[].name` des documents de rejeu sur 76 films ; 8/8
+  contre l'oracle du seul film temoin qui en a un. Contrôle positif du 30/08 PASSE.
+- **Un SECOND champ de nom** : le bloc brut `sub+0x1400` (44 o), en UTF-16 petit-boutiste —
+  **640/640** blocs portent le gamertag de leur enregistrement, **0/44** en gros-boutiste. Offset du
+  nom dans le bloc : 0 en `HI_1_13_0`, 12 en `HI_1_12_0`.
+- **Contradiction texte du 30/08 TRANCHEE** : 18 touches du balayage UTF-16 aligne sur l'octet,
+  **9 dans le champ de nom, 9 dans le bloc de queue, 0 hors grammaire**. Il y avait bien deux champs
+  de texte ; aucune des deux lectures n'etait fortuite.
+- **VERDICT PERSONNALISATION : structure PROUVEE, contenu REFUTE.** Le bloc `sub+0xcc0` (1 852 o)
+  est ecrit **integralement a zero** : 0 octet non nul sur 81 488 (44 enregistrements, 6 films,
+  2 builds), 0/24 attaches d'armure, tous les champs nommes a `00000000`. Et aucune autre zone ne
+  porte de tenue : le prefixe commun d'une zone chez un meme joueur d'un match a l'autre s'arrete a
+  **0 a 16 octets** sur 447/702/668. Lecon de methode : **P-STA sans P-DIS ne prouve rien** — les
+  trois zones « stables 3/3 joueurs » etaient les trois zones de zeros, ce que P-DIS revele (1 seule
+  empreinte, partagee par 36 xuids).
+- **Second volet de l'hypothese REFUTE** : les deux classes de longueur ne sont pas « avec / sans
+  bloc de personnalisation » (largeur fixe, toujours ecrite) mais **les trois listes prefixees**
+  vides ou pleines. Fermeture : `702 x 8 + 167 x 32 = 10 960` et l'ecart mesure vaut
+  `10 992 = 10 960 + 32` (les 32 bits de difference de longueur des deux gamertags).
+- **Equipe : fermee par la NEGATIVE.** Les neuf champs courts candidats sont CONSTANTS sur les 44
+  enregistrements (`f10=183` partout, les autres a 0 ou -1) ; seul `f1` varie et il vaut exactement
+  « les listes sont pleines ». Aucun ne partage un roster en deux moities egales (0/6 films).
+- **Ordre des slots = `player_index` de production** : 605/637 slots en egalite stricte, 72/76 films
+  en coincidence totale, et surtout **76/76 films ou `filmIndex - rang` est CONSTANT** — les 4 films
+  en desaccord sont une troncature de tete du lecteur, pas une permutation.
+- **Multi-build : la premisse de la phase 1 etait fausse.** Le cache porte **7 builds** (13 groupes),
+  pas deux. La grammaire du slot s'y transpose par **une seule constante** (-2 880 bits en
+  `HI_1_11_0`/`HI_1_10_0`, -4 320 en `HI_1_9_0`/`HI_1_8_0`, +1 600 en `HI_1_4_1`), identique sur tous
+  les enregistrements d'un film, et le XUID comme le nom survivent partout
+  (**11 550/11 728** gamertags imprimables). Le decalage d'en-tete se ferme trois fois :
+  `16 640 (un bloc de registre) + 4 x (entrees manquantes de la table par type)`.
+- Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
+  `go test ./internal/analysis/filmdec/` sans garde **ok**, `go test ./internal/archlint/` **ok**.
+  Aucune variable de paquet ajoutee, fichiers a 427/479/439/229 L (seuil 500), fonctions sous 80 L.
+
+**Corrections apportees aux instruments laisses par la phase 2 interrompue** : (1) l'oracle lisait
+`tracks[].team` des documents de rejeu, or ce champ vaut **-1 partout** (schemas 2 et 53) — l'equipe
+arrive maintenant par `CHUNK00_EQUIPES` ; (2) `CHUNK00_REPLAYS` accepte plusieurs repertoires ;
+(3) G-TXT utilisait une tolerance de 8 bits qui excluait toutes les touches reelles — remplacee par
+un test d'**appartenance aux plages** des deux champs de texte (18/18) ; (4) G-T44 supposait l'offset
+du nom dans le bloc de queue, il le **cherche** desormais ; (5) l'instrument perso mesurait les
+champs nommes d'un bloc **vide** sans l'avoir verifie : P-ZER passe maintenant en premier ; (6) les
+zones porteuses (masque, liste d'octets, liste de mots) n'etaient pas capturees du tout ;
+(7) un test de stabilite par joueur des champs courts, redondant avec la distribution globale, a ete
+supprime (regle 7).
+
+**Decouvertes non traitees (regle 7)** : (a) le decalage de 8 octets de `parseRegistry` — connu, non
+tranche, pas touche ; (b) `TestD1Builds` compte 124 entrees de table par type la ou l'ecrivain en
+ecrit 123 (heuristique de `lireEntete`), les ecarts RELATIFS entre builds restent coherents ;
+(c) le lecteur chaine perd la tete de la table sur 4 films sur 76 ; (d) 5 films du cache n'ont pas de
+section d'identification et se comportent comme `HI_1_4_1`.
+
+**Livrables** : `.ai/V7.5/film_re/NOTE_SECTION3_SLOTS_2026-09-12.md` (verdict, grammaire champ par
+champ, controles chiffres, profil par build, commandes de rejeu), section **8.2** de
+`.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md` (+ correction de la conclusion de 8.1, devenue fausse
+pour le gamertag), instruments
+`apps/go-api/internal/analysis/filmdec/section3_slot_{grammar,ordre,perso,builds}_research_test.go`.
+
+**Prochaine etape** : chercher l'equipe dans les trois listes prefixees en suivant le CONSOMMATEUR
+(methode, regle 1) — trouver le desserialiseur de `FUN_1407ecd00` et lire qui compare le resultat a
+des constantes. Puis, si la table des slots doit servir en production, rendre le lecteur robuste a
+la troncature de tete et calibrer la constante de build sur le film lui-meme.
