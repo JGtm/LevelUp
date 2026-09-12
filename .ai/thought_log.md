@@ -106580,3 +106580,41 @@ n'ont gagné que 8 % ; `document_chronicle.go` 1 190 L ; 13 replis FR restants s
 
 **Prochaine étape** : lot E (déplacement pur du décodeur sous `internal/games/halo_infinite/film/`),
 puis lot F (nettoyage worktrees/branches, bascule dossier LevelUp).
+
+## [2026-09-12] Big Team Battle 2025 — l'abstention du décodeur de source de dégât
+
+**Statut** : Complété · Branche `wt/btb-2025-abstention` (base feat/v75 `2f5d165be`)
+
+**Contexte** : mesure du pilote sur `match_kill_events_latest` — 83-91 % de morts sans source de
+dégât sur les Big Team Battle de mars à août 2025, 75-80 % en octobre-novembre, contre 0-7 % en
+2023-2024 et 0-14 % en 2026. Cinq hypothèses à départager (format de film, véhicules, cartes hors
+catalogue, chunks tronqués, autre). Rapport : `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
+
+**Décision technique principale** : la cause est le FORMAT, mais pas là où on la cherchait. Les
+films de mars à novembre 2025 sont en `FilmMajorVersion` 39-40, où le gamertag vit à l'octet 12 du
+bloc d'event et non à l'octet 0. `killsource.loadKillFeed` passe `filmMajorVersion = 0` en dur
+(les manifestes en cache ne portent pas la version) : la lecture ramenait du rembourrage, le
+roster humain tombait de 24-27 noms à 10-12, et la borne `nPlay` faisait rejeter les trois quarts
+des dead-states par les portes `indice < nPlay` du scan ET par le filtre de crédibilité de la
+marche. Correctif dans `analysis.scanEvents` : quand la version est INCONNUE, décoder les deux
+découpages sur le même bloc déjà retenu et garder celui qui rend le plus de gamertags distincts —
+une version DÉCLARÉE fait toujours foi. `KillSourceDecoderRev` monté à `killsource-2026-09-12`.
+
+**Résultats observés** : séparation parfaite sur le parc BTB, 92 films sur 92 — les 74 films au
+découpage décalé sont exactement ceux entre 68,1 et 96,5 % de morts sans source, les 18 autres
+entre 0,0 et 23,5 %. Couverture avant -> après sur cinq films 2025 : 15,0 -> 97,1 ; 11,2 -> 100,0 ;
+6,8 -> 94,8 ; 5,1 -> 97,0 ; 17,3 -> 82,4 %. Trois témoins (2024-10, 2026-01, 2026-07) inchangés au
+dixième, roster et candidats compris. Hypothèses (b) véhicules, (c) cartes et (d) chunks tronqués
+écartées sur pièces (mêmes cartes bonnes ailleurs, manifestes complets). Gates : `go vet ./...`,
+`go test ./internal/...`, `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...`
+tous verts.
+
+**Découvertes non traitées** : 210 des 1 351 films du cache sont en version 39-40, donc ~136
+hors BTB (arène et divers) sont atteints par le même défaut — la mesure « arène à ~0-10 % » du
+pilote agrège probablement toutes les années, à re-mesurer par mois et par playlist ;
+`killSourceDecoderFingerprint` ne hache que `killsource/` et n'aurait pas vu ce changement d'amont ;
+`film_manifests/*.json` ne conserve pas `FilmMajorVersion`, l'y écrire au téléchargement rendrait
+la résolution par mesure inutile.
+
+**Prochaine étape** : re-décodage du parc (non lancé, consigne) — la montée de revision remet les
+lignes au backlog de `postsync`, 210 films à 8-50 s = 30 min à 3 h en série.
