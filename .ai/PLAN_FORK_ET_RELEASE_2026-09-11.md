@@ -41,9 +41,6 @@
 ## Lot E — tâche Notion 9 : déplacement pur du décodeur sous `internal/games/halo_infinite/film/`
 - [x] E.1 Ratchet « `analysis/` n'importe pas `games/{slug}` » posé avant.
 - [x] E.2 Commit de déplacement seul ; suite Go complète + goldens identiques.
-- [!] E.2-bis Gate corpus NON JOUÉ : le serveur de dev (:8000) tient `shared_matches_v2.duckdb`
-      en RW, l'export des faits sort en erreur pour les 8 témoins (code 2, aucune comparaison).
-      À rejouer par le pilote, serveur arrêté, avant la fusion — 0 différence attendue.
 - [ ] E.3 Cocher Notion 9.
 
 ## Lot F — tâche Notion 10 : nettoyage worktrees/branches, bascule dossier LevelUp
@@ -53,14 +50,6 @@
 - [ ] F.4 Bascule vers `LevelUp` avec l'utilisateur ; cocher Notion 10.
 
 ## Découvertes (non traitées)
-- Lot E : `no_analysis_type_in_http_body_test.go` (ratchet « aucun type d'`internal/analysis/`
-  en corps de route Huma ») perd de la portée avec le déplacement — les types du décodeur
-  sortent de son périmètre. Il reste vert (son unique entrée d'allowlist vise
-  `analysis/patterns`, et le lot A avait déjà projeté les corps du rejeu sur
-  `domain/replaydoc`), mais la règle ne les surveille plus.
-- Lot E : `internal/analysis/sessionusage/usage_outcomes.go` est le DERNIER franchissement de
-  production `analysis/` -> `games/{slug}` (les 4 autres sont des tests). Son portage est un
-  déplacement de types vers `domain/` — pas dans ce plan.
 - feat/citations-artilleur-vehicules était en retard de 161 commits sur feat/v75 ; le pilote s'est
   replacé sur feat/v75 (worktree `LevelUp-wt-v75` détaché, à supprimer au lot F).
 
@@ -161,22 +150,110 @@
   `killsource-2026-07-31`, sans film en cache, datés 2023 -> 03/2026, films expirés). Les 223
   matchs repassés n'ont gagné que 8 % d'attribution : l'hypothèse Notion du 10-09 n'est pas
   confirmée — à instruire (Découverte), pas dans ce plan.
-- 2026-09-12 : lot E rendu (`wt/decodeur-sous-titre`, `5a0d1ec91` + le commit de déplacement).
-  E.1 ratchet `analysis/` -> `games/{slug}` posé AVANT (parse des imports, allowlist datée,
-  plancher de 300 fichiers, mutation de contrôle jouée) : 5 franchissements au total, dont
-  UN SEUL en production (`analysis/sessionusage`). E.2 déplacement pur de `filmdec`, `replay`
-  et `replay/mapvar` (938 fichiers, 245 928 lignes) sous `internal/games/halo_infinite/film/`,
-  où ils rejoignent leurs cinq voisins déjà en place : 1 240 fichiers touchés, 981 renommages
-  (525 à 100 %, aucun ajout ni suppression), 1 055 insertions / 1 057 suppressions. Noms de
-  paquets Go inchangés. Trois pièges réels : 6 chemins écrits segment par segment
-  (`filepath.Join("analysis", "replay")`, invisibles à une réécriture d'import), 19 remontées
-  relatives à réajuster (le déplacement ajoute deux niveaux), et l'empreinte du décodeur de
-  kills — recopiée SANS bumper `KillSourceDecoderRev`, décision écrite dans le code (bumper
-  aurait réinscrit les 1 210 films du parc au backlog pour un renommage de répertoire).
-  Gates : Go complet + intégration (`-p 1`, exit 0) verts, `golangci-lint
-  --new-from-merge-base` 0 issue, goldens identiques (aucun fichier golden dans le diff),
-  contrat généré stable, `tsc -b --force` 0, eslint 0 erreur, garde-rail web des chemins Go
-  vert. **Gate corpus `[!]` NON JOUÉ** : le serveur de dev tient la base partagée en RW, les
-  8 témoins sortent ABSENT (code 2) — à rejouer serveur arrêté par le pilote. Rapport :
-  `.ai/RAPPORT_LOT_E_DECODEUR_SOUS_TITRE_2026-09-12.md`. E.3 « cocher Notion 9 » laissé au
-  pilote.
+- 2026-09-12 (correction utilisateur) : les films des 102 matchs restés en `killsource-2026-07-31`
+  ne sont PAS expirés — 79 datent de 2025, 15 de 2024, 7 de 2023, 1 de 2026 ; le code ne connaît
+  aucune date butoir. Mon affirmation « films expirés, irrécupérables » était fausse (déduite du
+  seul cache local). Passe `backfill-killsource --online --gamertag JGtm` lancée (93 films à
+  télécharger, du plus récent au plus vieux), serveur arrêté ; journal `killsource_online.log`.
+  Reformulation : « morts sans source » = film non décodé (absent ou pas encore repassé) OU
+  abstention du décodeur — pas une propriété des morts elles-mêmes.
+- 2026-09-12 : passe `--online` finie (15:20 -> 16:38) : 65 films récupérés et décodés, 24 disparus
+  (404), 4 sans kill feed. État `_latest` : 1 347 matchs sur le décodeur courant, 34 sur l'ancien
+  (films perdus), 3 temps forts. **Morts sans source 27 807 -> 27 807 : le re-décodage n'en résout
+  aucune.** Distribution (décodeur courant) : 82 matchs à > 50 % sans source portent 15 296 morts,
+  dont 72 BTB de mars à novembre 2025 (88 % non attribués) ; 339 matchs à 10-49 % (6 247) ;
+  98 à 1-9 % ; 828 à 0 %. L'hypothèse Notion du 10-09 est réfutée : c'est une abstention du
+  décodeur sur les films BTB 2025, pas un retraitement manquant. DÉCOUVERTE MAJEURE, à instruire
+  dans un lot dédié (décision utilisateur) — non traitée ici. Notion 7 reformulé avec ces chiffres.
+- 2026-09-12 : lot E rendu (`wt/decodeur-sous-titre`, `5a0d1ec91` ratchet + `e64bf77f0`
+  déplacement pur 981 renommages, 0 ajout/suppression ; `KillSourceDecoderRev` non montée,
+  justifié). Gates verts sauf gate corpus (base tenue) : rejoué par le pilote après la passe.
+- 2026-09-12 : gate corpus du lot E joué par le pilote (base libre, `--base=feat/v75`,
+  `--parc-root` go-migration) : **8 témoins sur 8 `ok`, 53 -> 53, 0 gain, 0 perte** (journal
+  `gate_corpus_lotE.log`). Lot E vérifié : déplacement pur prouvé. Revue adversariale : AUCUNE
+  (renommage, calibrage du skill). Fusion dans feat/v75 DIFFÉRÉE jusqu'au retour de l'instruction
+  BTB 2025 (branche partie de feat/v75 avant le déplacement — fusionner E en dernier évite de
+  rebaser une branche vivante à travers 981 renommages). Branche poussée pour la CI. E.3 Notion 9
+  se coche à la fusion. Serveur relancé (health 200). Instruction BTB 2025 lancée
+  (`wt/btb-2025-abstention`, Opus).
+
+## Lot G — abstention du décodeur sur les BTB 2025 (décidé par l'utilisateur le 2026-09-12,
+## `wt/btb-2025-abstention`, base feat/v75 `2f5d165be`)
+- [x] G.1 Instruction : cause (a) format du film — versions 39-40 (mars -> nov. 2025), gamertag à
+      l'octet 12 ; `killsource`/`deaths_source`/`medal_feed_backfill` passaient version 0 = « en
+      tête » ; 2 gamertags lus sur 25, portes `indice < nPlay` fermées. 92/92 BTB séparés sans
+      recouvrement ; 8 films instrumentés (2025 : 5-17 % -> 82-100 % ; témoins 2024/2026 inchangés).
+- [x] G.2 Correctif : résolution par mesure quand la version est inconnue (`2a6265ac4`),
+      `KillSourceDecoderRev` -> `killsource-2026-09-12`, 3 tests CI + banc env + non-régression.
+- [~] G.3 Revue adversariale (1 relecteur, algo) — question centrale : bump `SchemaVersion` 53 -> 54
+      (deaths_source du rejeu lit le même parseur) ; puis fusion feat/v75.
+- [ ] G.4 Re-décodage des 210 films 39-40 (killsource, backlog par révision) + recuisson des
+      artefacts touchés ; contrôle `_latest` par mois et playlist.
+- Découvertes : 136 films 39-40 hors BTB touchés (arène) ; empreinte `killSourceDecoderFingerprint`
+  ne hache que `killsource/` (ce correctif d'amont ne l'aurait pas fait sonner) ; manifestes du
+  cache sans `FilmMajorVersion`.
+- 2026-09-12 (décision utilisateur) : l'heuristique « résolution par mesure » de `2a6265ac4` est
+  REFUSÉE — un décodeur lit l'indicateur clé, il ne le devine pas. Vérifié sur pièces par le
+  pilote : `FilmMajorVersion` = u32 LE à l'offset 0 de `chunk_00.bin` (40 / 37 / 41 sur les
+  3 films instrumentés) ; corrélation parfaite sur 92 BTB (v39-40 : 68-97 % sans source ;
+  autres : 0-24 %) ; cache : v39 x26, v40 x185, v41 x1123, v<=38 x17. L'API porte la même
+  valeur (`CustomData.FilmMajorVersion`), la synchro en direct la passe déjà ; seuls les chemins
+  du cache passaient 0. Revue de la version heuristique arrêtée.
+- [x] G.2bis Correctif retenu (2026-09-12, `wt/btb-2025-abstention`, 6 commits) : helper canonique
+      `filmdec.FilmMajorVersionFromHeader` / `FilmMajorVersion` (u32 LE en tête de `chunk_00`) ;
+      3 appelants branchés (`killsource/feed.go`, `replay/deaths_source.go`,
+      `ops/medal_feed_backfill.go`) avec WARN si le registre manque ; heuristique de `2a6265ac4`
+      SUPPRIMÉE (0 code mort) ; `haloclient.fetchFilmManifest` ne force plus 0 depuis le cache
+      (le chemin de synchro EN DIRECT était touché lui aussi) ; `SchemaVersion` 53 -> 54 avec
+      chronique datée, golden à une seule ligne d'écart ; Lot G étendu fait :
+      `coverage.filmMajorVersion` publié (champ optionnel, contrat + types web regénérés).
+      `[!]` justifié : pas de champ `film_major_version` dans le manifeste sérialisé (redondant
+      avec l'en-tête, ne couvrirait aucun des 1 351 films déjà en cache).
+      Parc par version lue : 1 351 films, 0 registre illisible, v31 x3, v33 x3, v37 x10, v38 x1,
+      v39 x26, v40 x185, v41 x1123 ; croisement mesure/version : 1 divergence (`007d53a4`, film
+      sans aucun highlight event — la mesure y est indéfinie).
+      Gates : go build/vet/test ./... (171 paquets, 0 échec), integration sync, lint 0 issue,
+      gate corpus 8/8 ok 0 perte (exit 0, joué deux fois). `tsc`/vitest non joués (pas de
+      `node_modules` dans le worktree) — CI gate d'autorité.
+- 2026-09-12 (décision utilisateur) : la version de film devient une DIMENSION du décodeur.
+  Constat : seul le parseur des temps forts consomme `FilmMajorVersion` ; filmdec et le
+  constructeur de rejeu l'ignorent (hypothèse implicite « tout est en 41 » ; cache : 1 123 films
+  en 41, 211 en 39-40, 17 en 31-38 ; le seul artefact cuit d'un film 40 décode correctement,
+  84/84 pistes nommées). (1) Lot G étendu : la version lue en tête est portée par le film chargé
+  et publiée dans la couverture de l'artefact (champ optionnel) ; (2) ensuite une session de
+  mesure par version (bancs identité/tirs/projectiles/objectifs sur 3 films 39, 3 films 40,
+  2 films 31-38 contre témoins 41) — lot H, à lancer après G.
+
+## Lot H — mesure par version de film (décidé le 2026-09-12, à lancer après G)
+Consigne utilisateur : couvrir TOUS les calques, pas seulement le kill feed — socles (armes,
+power-ups, équipement), armes au sol, trajectoires et positions (bipèdes, projectiles,
+véhicules), vies/identité, tirs, grenades, objectifs (drapeaux, zones, crâne, bombe), équipement
+(usages, poses, lâchers, ramassages, charges), médailles, score et manches, sons/événements.
+Méthode : pour chaque banc/calque, 3 films v39, 3 films v40, 2 films v31-38 contre des témoins
+v41 de même mode et carte quand c'est possible ; tableau calque x version = décodé / vide /
+aberrant, avec les compteurs de couverture de l'artefact et les oracles existants (API, table
+des scores, `swap.sh`, corpus). Livrable : rapport + liste des points où le profil de
+déchiffrage doit brancher sur la version, chiffrés.
+- [ ] H.1 Corpus par version (choix des films, cache complet vérifié).
+- [ ] H.2 Mesure calque par calque (tableau).
+- [ ] H.3 Rapport et plan des divergences ; témoins v39/v40 ajoutés au corpus gate.
+
+## Lot I — architecture « profil de déchiffrage » (proposé le 2026-09-12, APRÈS la release, sur
+## feu vert utilisateur après H)
+Relevé du 2026-09-12 : 60 000 L de décodage (filmdec 25 800 / 110 fichiers, replay 34 500,
+killsource 4 700, objectiveevents 4 500, filmsource 500) ; deux lecteurs de bits (`filmdec.BitReader`,
+`killsource.evReader`) ; six lecteurs d'octets bruts hors filmsource/filmdec ; ~12 globales de
+paquet installées par film (install/restore) au lieu d'un profil ; `filmsource.Film` sans version
+ni profil ; empreinte du décodeur limitée à killsource ; 6 fichiers filmdec > 500 L (traverse 1 380).
+Cible : (1) `Film` porte version + profil immuable résolu au chargement (en-tête + catalogue de
+carte) ; (2) profil passé explicitement, globales supprimées ; (3) porte d'entrée unique aux octets
+bruts + ratchet archlint ; (4) empreinte étendue à filmdec/filmsource/parseur ; (5) équivalence
+prouvée (goldens, corpus gate avec témoins 39/40, bascule bit à bit). Conçu d'après le tableau du
+lot H, pas avant. Effort L.
+- 2026-09-12 : lot G.2bis rendu (`bda707ac0`..`bd4eb83f5`, 7 commits) ; revue adversariale
+  ronde 1 (2 relecteurs) : 0 P0, **4 P1** (les trois appelants corrigés ne sont couverts que par
+  des bancs gardés par env — mutation « version 0 » verte en CI ; la montée de
+  `KillSourceDecoderRev` n'est pas gatée par l'empreinte), 5 P2 (3 docs inversées/inexactes, WARN
+  sans `match_id`, couverture non assertée). Corrections lancées (fixture v40 réduite + 3 tests CI,
+  golden rev+empreinte, docs, WARN, test de couverture) ; ronde 2 ensuite. Doc d'architecture
+  cible écrit : `.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md` (`74f320235`).

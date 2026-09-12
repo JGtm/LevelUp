@@ -5730,6 +5730,8 @@ export interface components {
             bridge: components["schemas"]["BridgeHealth"];
             equipment?: components["schemas"]["EquipmentCoverage"];
             equipmentChanges?: components["schemas"]["EquipmentChangeCoverage"];
+            /** Format: int64 */
+            filmMajorVersion?: number;
             flagCarries?: components["schemas"]["FlagCarriesCoverage"];
             grapple?: components["schemas"]["GrappleCoverage"];
             grenadeReads?: components["schemas"]["GrenadeReadCoverage"];

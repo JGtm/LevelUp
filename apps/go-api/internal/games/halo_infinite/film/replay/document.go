@@ -59,7 +59,20 @@ package replay
 // lancers de grenade retrouvent leur lien vers le projectile (2 -> 85, 0 -> 137). Aucune autre
 // carte ne bouge d'un point (Cliffhanger, Banished Narrows, The Pit, Isolation : identiques).
 // Chronique et chiffres : `document_chronicle.go`.
-const SchemaVersion = 53
+//
+// v54 (2026-09-12, lot G.2bis) : UN SEUL changement, et il ne touche que les films de
+// FilmMajorVersion 39-40 (mars a novembre 2025, 211 des 1 351 du cache) — mais sur ceux-la il
+// change le ROSTER. `ScanDeaths` passait `filmMajorVersion = 0` au parseur d'events, donc le
+// decoupage « gamertag en tete » ; sur ces films le gamertag vit douze octets plus loin et la
+// lecture ramenait du rembourrage. La version est desormais LUE dans l'en-tete du registre du
+// film. Mesure sur pieces (`gamertagsOf`, la table qui nomme `roster[]`) : `e5adf7b2` passe de
+// 17 identites nommees / 2 noms distincts a 26 / 26, `111fa685` de 16 / 2 a 24 / 24. Temoins de
+// version 41 (`000d5950`, `5676a9ba`) : identiques, 8 / 8 et 26 / 26 des deux cotes. Le bump est
+// exige par la regle — le contenu cuit change — et il est ce qui rendra ces artefacts candidats
+// a `backfill-replay --only-existing`. `coverage.filmMajorVersion` s'ajoute au passage — la
+// version lue voyage desormais AVEC l'artefact ; champ optionnel, il ne l'aurait pas exige a
+// lui seul. Chronique : `document_chronicle.go`.
+const SchemaVersion = 54
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

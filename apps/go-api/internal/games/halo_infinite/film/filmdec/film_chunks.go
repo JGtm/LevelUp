@@ -116,8 +116,10 @@ func FilmChunkAt(f *filmsource.Film, num int) ([]byte, []FilmPacket, bool) {
 // le film n'en porte pas — une bobine partielle, une fixture : les lecteurs de registre rendent
 // alors leur erreur habituelle, pas un registre vide qui se lirait comme un archetype absent.
 //
-// SON UNIQUE LECTEUR EST [FilmContext.Registry] (lot 2, 2026-09-03), qui l'analyse UNE fois par
-// film : la douzaine de re-analyses par cuisson a disparu avec `filmRegistry`.
+// IL A DEUX LECTEURS, ET ILS NE LISENT PAS LA MEME CHOSE. [FilmContext.Registry] (lot 2,
+// 2026-09-03) ANALYSE le registre — les archetypes et leurs slots — UNE fois par film : la
+// douzaine de re-analyses par cuisson a disparu avec `filmRegistry`. [FilmMajorVersion]
+// (2026-09-12) n'en lit que les QUATRE PREMIERS OCTETS, l'u32 de version, sans rien analyser.
 func FilmRegistryChunk(f *filmsource.Film) ([]byte, bool) {
 	pos := filmChunkPos(f, 0)
 	if pos < 0 {

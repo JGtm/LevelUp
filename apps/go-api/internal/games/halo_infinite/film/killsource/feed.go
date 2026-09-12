@@ -57,11 +57,19 @@ type killFeed struct {
 
 // loadKillFeed : localise le chunk HIGHLIGHT PAR SON CONTENU (celui qui produit le plus de
 // kills) et en tire les instants. Aucune borne de chunk : un BTB a son HIGHLIGHT en n62.
+//
+// LA VERSION DU FILM EST LUE, PLUS DEVINEE (2026-09-12). Elle vient de l en-tete du registre
+// (`filmdec.FilmMajorVersion`, pose par `loadFilm`) et commande le decoupage du gamertag dans le
+// bloc d event. Le 0 qui trainait ici designait « gamertag en tete » pour TOUS les films, y
+// compris les versions 39-40 ou il vit douze octets plus loin — d ou 68 a 96 % de morts sans
+// source de degat sur les films de mars a novembre 2025
+// (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Film sans registre : `f.versionLue` est faux,
+// `f.majorVersion` vaut 0 et le comportement historique tient — l appelant l a consigne.
 func loadKillFeed(f *film) (*killFeed, error) {
 	var best []analysis.HighlightEvent
 	bestN := 0
 	for ch := range f.chunks {
-		evs, err := analysis.ParseHighlightEvents(f.chunks[ch], 0)
+		evs, err := analysis.ParseHighlightEvents(f.chunks[ch], f.majorVersion)
 		if err != nil {
 			continue // un chunk de replication n est pas un chunk HIGHLIGHT : ce n est pas une erreur
 		}
