@@ -334,7 +334,7 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 		// transitoire (503, rate-limit, reseau) qui doit rester une erreur retentee.
 		if haloclient.IsFilmGoneErr(err) {
 			observability.AddInt(metricNoFilm, 1)
-			slog.WarnContext(ctx, "killsource: film expire partiellement (blob mort, manifeste vivant) — classe absent",
+			slog.WarnContext(ctx, "killsource: film expire definitivement (404/410 sur le manifeste ou un blob, manifeste possiblement relu du cache local) — classe absent",
 				"match_id", matchID, "err", err)
 			return OutcomeNoFilm, 0, nil
 		}
