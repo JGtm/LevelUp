@@ -106621,7 +106621,12 @@ au seul motif d'avoir changé de répertoire. Les racines déduites à l'exécut
 du cache film) n'ont rien demandé. Gates : `go build`/`go vet`/`go test ./...` verts, intégration
 verte, `golangci-lint --new-from-merge-base` 0 issue, goldens 8 PASS et AUCUN fichier golden dans
 le diff, `make generate-types` sans dérive, tsc 0, garde-rail web des chemins Go (8 tests) vert,
-gate corpus sans perte.
+gate corpus **NON JOUÉ** (`[!]`) : `replay-facts-export` ne peut pas ouvrir
+`shared_matches_v2.duckdb` en RO, le serveur de dev (:8000, `levelup.exe` PID 40148) la tient en
+RW — modèle mono-process ADR 0013/0016 ; les 8 témoins sortent ABSENT et le gate meurt en code 2
+sans rien comparer, avant toute cuisson. Les lots B.5 et B-bis l'avaient joué serveur arrêté. Je
+n'arrête pas le serveur de l'utilisateur : à rejouer par le pilote avant la fusion, 0 différence
+attendue puisque rien ne change de comportement.
 
 **Découvertes (non traitées).** `no_analysis_type_in_http_body_test.go` perd de la portée : les
 types du décodeur sortent de son périmètre, il reste vert mais ne les surveille plus (le lot A

@@ -142,7 +142,9 @@ games/halo_infinite/film (ADR 0012)`.
 
 ### Statistiques du renommage
 
-`git diff --stat -M` : **1 240 fichiers, 1 055 insertions, 1 057 suppressions**.
+`git diff --stat -M` sur le code et la config : **1 240 fichiers, 1 055 insertions,
+1 057 suppressions** (le commit porte en plus le plan, le journal et ce rapport, d'ou
+1 243 fichiers au `git show`).
 `git diff --name-status -M` : **981 renommages, 259 modifications, 0 ajout, 0 suppression**.
 A 99 % de similarite, 525 renommages sont a 100 % (fichiers non-Go et Go sans import touche)
 et 247 a 99 %. Le plus bas est a 81 % (`world_object_precision_guard_test.go`, petit fichier
@@ -155,14 +157,38 @@ dont l'allowlist entiere est faite de chemins).
 | `go build ./...` | exit 0 |
 | `go vet ./...` | exit 0 (seuls les messages de contraintes de build CGO preexistants) |
 | `go test ./...` (module complet, CGO) | 0 echec |
-| `go test -tags=integration -p 1 ./...` | (voir journal) |
+| `go test -tags=integration -p 1 ./...` | 0 echec sur le module ; re-joue sur `persist`/`sync`/`migration`/`api/wire` avec code de sortie verifie : **exit 0**, 13 paquets `ok` |
 | `go vet -tags=gamefiles ./internal/himap/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/` | exit 0 |
 | `golangci-lint run --new-from-merge-base=origin/main` | **0 issue** |
 | Goldens `go test ./internal/games/halo_infinite/film/replay/ -run Golden` | 8 PASS, 1 SKIP (regeneration), **aucun fichier golden modifie dans le diff** |
 | `make generate-types` | aucune derive (`generated.ts` inchange) |
-| `npm run typecheck` | exit 0 |
+| `npm run typecheck` puis `tsc -b --force` | exit 0 (force, pour ecarter le faux vert incremental) |
 | Garde-rail web des chemins Go (`deltaLayersContract.guard.test.ts`) | 8 tests verts |
-| `replay-corpus-gate --reference=base --base=feat/v75` | (voir journal) |
+| `npm run lint` | 0 erreur (31 avertissements preexistants) |
+| `replay-corpus-gate --reference=base --base=feat/v75` | **`[!]` BLOQUE, pas joue** — voir ci-dessous |
+
+### Le gate corpus n'a pas pu tourner : le serveur local tient la base partagee
+
+`replay-corpus-gate --reference=base --base=feat/v75 --parc-root <LevelUp-go-migration>` sort
+en **code 2 (couverture incomplete, 8/8 temoins ABSENT)** sans avoir compare quoi que ce soit.
+La cause n'est pas le lot : l'export des faits (`levelup replay-facts-export`, la seule etape
+qui lit la base) echoue pour les 8 temoins sur
+
+    OpenReadOnly(shared_matches_v2.duckdb) : File is already open in
+    …\LevelUp-go-migrationpps\go-apiin\levelup.exe (PID 40148)
+
+c'est-a-dire le SERVEUR DE DEV qui tourne sur :8000 et tient la base en RW. C'est le modele
+mono-process d'ADR 0013/0016, applique : RO et RW sur le meme fichier depuis deux process est
+interdit. Les lots B.5 et B-bis avaient joue ce gate **serveur arrete** ; il l'exige.
+
+Je n'arrete pas le serveur de l'utilisateur. Le gate est donc statue `[!]` : a rejouer par le
+pilote, serveur arrete, avant la fusion. Attendu : 0 difference, puisque le lot ne change
+aucun comportement — et les deux preuves qui ne dependent pas de la base sont deja au vert
+(goldens du decodeur identiques, aucun fichier golden dans le diff ; suite Go complete et
+integration vertes).
+
+Aucune ecriture n'a ete faite dans le parc : le gate travaille dans un repertoire temporaire,
+et il est mort avant toute cuisson.
 
 ## Decouvertes (non traitees)
 

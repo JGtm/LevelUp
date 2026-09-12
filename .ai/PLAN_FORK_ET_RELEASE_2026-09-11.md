@@ -41,6 +41,9 @@
 ## Lot E — tâche Notion 9 : déplacement pur du décodeur sous `internal/games/halo_infinite/film/`
 - [x] E.1 Ratchet « `analysis/` n'importe pas `games/{slug}` » posé avant.
 - [x] E.2 Commit de déplacement seul ; suite Go complète + goldens identiques.
+- [!] E.2-bis Gate corpus NON JOUÉ : le serveur de dev (:8000) tient `shared_matches_v2.duckdb`
+      en RW, l'export des faits sort en erreur pour les 8 témoins (code 2, aucune comparaison).
+      À rejouer par le pilote, serveur arrêté, avant la fusion — 0 différence attendue.
 - [ ] E.3 Cocher Notion 9.
 
 ## Lot F — tâche Notion 10 : nettoyage worktrees/branches, bascule dossier LevelUp
@@ -170,7 +173,10 @@
   relatives à réajuster (le déplacement ajoute deux niveaux), et l'empreinte du décodeur de
   kills — recopiée SANS bumper `KillSourceDecoderRev`, décision écrite dans le code (bumper
   aurait réinscrit les 1 210 films du parc au backlog pour un renommage de répertoire).
-  Gates : Go complet + intégration verts, lint 0 issue, goldens identiques (aucun fichier
-  golden dans le diff), contrat généré stable, tsc 0, garde-rail web des chemins Go vert,
-  gate corpus sans perte. Rapport : `.ai/RAPPORT_LOT_E_DECODEUR_SOUS_TITRE_2026-09-12.md`.
-  E.3 « cocher Notion 9 » laissé au pilote.
+  Gates : Go complet + intégration (`-p 1`, exit 0) verts, `golangci-lint
+  --new-from-merge-base` 0 issue, goldens identiques (aucun fichier golden dans le diff),
+  contrat généré stable, `tsc -b --force` 0, eslint 0 erreur, garde-rail web des chemins Go
+  vert. **Gate corpus `[!]` NON JOUÉ** : le serveur de dev tient la base partagée en RW, les
+  8 témoins sortent ABSENT (code 2) — à rejouer serveur arrêté par le pilote. Rapport :
+  `.ai/RAPPORT_LOT_E_DECODEUR_SOUS_TITRE_2026-09-12.md`. E.3 « cocher Notion 9 » laissé au
+  pilote.
