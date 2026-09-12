@@ -1,9 +1,7 @@
 package replay
 
 import (
-	"context"
 	"fmt"
-	"log/slog"
 	"sort"
 
 	"levelup/go-api/internal/analysis"
@@ -54,7 +52,8 @@ func ScanFilmDeaths(filmDir string) ([]Death, error) {
 // LA VERSION DU FILM EST LUE DANS SON REGISTRE (2026-09-12), plus passee a 0 en dur : elle
 // commande le decoupage du gamertag du bloc d event, decale de douze octets sur les versions
 // 39-40 (mars a novembre 2025). Les `Death.Gamertag` publies dans l artefact de rejeu en
-// dependent — cf. .ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md.
+// dependent — cf. .ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md. Film sans registre : version 0,
+// decoupage historique, et c est L APPELANT qui consigne la degradation (voir le corps).
 func ScanDeaths(film *filmsource.Film) ([]Death, error) {
 	nums := filmdec.FilmChunkNumbers(film)
 	if len(nums) == 0 {
@@ -67,16 +66,13 @@ func ScanDeaths(film *filmsource.Film) ([]Death, error) {
 	if !ok {
 		return nil, fmt.Errorf("chunk highlight (%d) : absent du film", n)
 	}
-	version, lue := filmdec.FilmMajorVersion(film)
-	if !lue {
-		// Bobine sans registre (`chunk_00`) : la version reste inconnue et le decoupage
-		// historique « gamertag en tete » s applique. Sur un film de version 39-40 les
-		// gamertags publies seraient du rembourrage — jamais en silence (CLAUDE.md n 3). Le
-		// film charge ne porte pas son identifiant de match : le chunk suffit a le situer.
-		slog.WarnContext(context.Background(),
-			"replay: version de film illisible, decoupage historique du gamertag",
-			"chunk_highlight", n, "film_major_version", version)
-	}
+	// LE WARN DU REGISTRE ABSENT MONTE CHEZ L APPELANT, ET C EST DELIBERE (revue adversariale du
+	// 2026-09-12, constat P2-4). Deux raisons : cette fonction ne connait pas le `match_id` — elle
+	// recoit un film deja charge — alors que tous les WARN voisins de la cuisson le portent ; et
+	// elle est appelee DEUX FOIS par cuisson (`replaybuild.lireMorts` puis `BuildFromFilm`), ce
+	// qui doublait la ligne de journal pour un seul fait. [BuildFromFilm] lit deja cette meme
+	// version pour la publier dans la couverture : c est lui qui consigne, une fois, avec le match.
+	version, _ := filmdec.FilmMajorVersion(film)
 	evs, err := analysis.ParseHighlightEvents(raw, version)
 	if err != nil {
 		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, err)

@@ -83,21 +83,6 @@ func buildChunkURL(blobPrefix, fileRelativePath string) string {
 	return blobPrefix + name
 }
 
-// fetchFilmManifest télécharge et décode le manifest film d'un match.
-// Retourne (manifest, true, nil) si disponible, (nil, false, nil) si absent (404/410).
-//
-// Si un LocalFilmCache est configuré, on lit le manifest local avant l'API —
-// le cache disque survit à l'expiration de l'endpoint manifest API (Halo
-// purge les manifestes après quelques semaines/mois mais le cache local
-// conserve les blob_prefixes valides plus longtemps via le CDN).
-//
-// LA VERSION DU FILM VIENT ALORS DU FILM LUI-MÊME (2026-09-12). Le manifeste en cache ne porte
-// pas `FilmMajorVersion` — ce champ était donc posé à 0, et `GetHighlightEventsChunk` servait 0
-// à tout le pipeline de synchronisation dès que le manifeste venait du disque. Sur les 211 films
-// de version 39-40 du cache, 0 fait lire le gamertag douze octets trop tôt
-// (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). La version est lue dans l'en-tête du registre,
-// qui est LE film et vaut donc pour les 1 351 films déjà en cache, sans migration ni champ
-// sérialisé redondant.
 // filmMajorVersionDuCache lit le `FilmMajorVersion` d'un film en cache dans l'en-tête de son
 // registre (`chunk_00`). Registre absent ou illisible : [filmdec.FilmMajorVersionUnknown], et la
 // dégradation est consignée — le décodeur du kill-feed retombe alors sur le découpage historique
@@ -122,6 +107,21 @@ func (c *HaloAPIClient) filmMajorVersionDuCache(ctx context.Context, matchID str
 	return version
 }
 
+// fetchFilmManifest télécharge et décode le manifest film d'un match.
+// Retourne (manifest, true, nil) si disponible, (nil, false, nil) si absent (404/410).
+//
+// Si un LocalFilmCache est configuré, on lit le manifest local avant l'API —
+// le cache disque survit à l'expiration de l'endpoint manifest API (Halo
+// purge les manifestes après quelques semaines/mois mais le cache local
+// conserve les blob_prefixes valides plus longtemps via le CDN).
+//
+// LA VERSION DU FILM VIENT ALORS DU FILM LUI-MÊME (2026-09-12). Le manifeste en cache ne porte
+// pas `FilmMajorVersion` — ce champ était donc posé à 0, et `GetHighlightEventsChunk` servait 0
+// à tout le pipeline de synchronisation dès que le manifeste venait du disque. Sur les 211 films
+// de version 39-40 du cache, 0 fait lire le gamertag douze octets trop tôt
+// (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). La version est lue dans l'en-tête du registre,
+// qui est LE film et vaut donc pour les 1 351 films déjà en cache, sans migration ni champ
+// sérialisé redondant.
 func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (*filmManifest, bool, error) {
 	if !rexUUID.MatchString(matchID) {
 		return nil, false, fmt.Errorf("fetchFilmManifest: matchID invalide %q", matchID)
