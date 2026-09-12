@@ -104,8 +104,8 @@ func stripComments(src string) string {
 // prochain passage sur ces paquets, remplacer l'echelle par testutil.RepoRoot() et retirer
 // l'entree ici.
 var repoRootLadderAllowlist = map[string]bool{
-	"internal/analysis/filmdec/map_bounds_test.go": true, // echelle + Skip sur map_quant_bounds.json (versionne)
-	"internal/ops/seed_citation_assets_test.go":    true, // const citationRepoRoot, racine des image_path seedes
+	"internal/games/halo_infinite/film/filmdec/map_bounds_test.go": true, // echelle + Skip sur map_quant_bounds.json (versionne)
+	"internal/ops/seed_citation_assets_test.go":                    true, // const citationRepoRoot, racine des image_path seedes
 }
 
 // TestNoAdHocRepoRootLadderInTests : un test qui lit un fichier VERSIONNE localise la
@@ -168,7 +168,7 @@ var repoRootInTestsAllowlist = map[string]bool{
 	// Instrument de RECHERCHE sous garde d'environnement (CTF_RESEARCH_FILMS) : il ne
 	// tourne jamais en CI, donc le helper de production y est sans consequence. Reprise :
 	// si la garde d'environnement tombe, migrer vers testutil.RepoRoot().
-	"internal/analysis/replay/ctf_research_test.go": true,
+	"internal/games/halo_infinite/film/replay/ctf_research_test.go": true,
 	// Lit data/cache/replays/halo_infinite/000d5950.json — un CACHE, NON versionne
 	// (git ls-files vide au 2026-08-19). Ici le skip est le comportement JUSTE : le fichier
 	// est vraiment absent d'un checkout. Reprise : s'il devient versionne, migrer + Fatal.

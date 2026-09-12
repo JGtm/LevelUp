@@ -328,7 +328,7 @@ export type ResolvedReplayInstant = { status: 'ms'; ms: number } | { status: 'un
  *
  * `clock: 'film'` (questions `temps`/`routes`) : `t` EST DÉJÀ sur cet axe, aucune conversion.
  * `clock: 'match'` (questions `morts`/`kills`/`gagne`/`isole`) : `horlogeFilm = horlogeMatch +
- * deathOffsetMs` (cf. `analysis/replay/lives_export.go` côté Go) — `deathOffsetMs` vient de
+ * deathOffsetMs` (cf. `games/halo_infinite/film/replay/lives_export.go` côté Go) — `deathOffsetMs` vient de
  * `coverage.bridge.deathOffsetMs`, publié depuis le schéma 49 SEULEMENT, et absent (`null`/
  * `undefined`) quand le pont d'identité n'a apparié aucune mort. PAS DE REPLI SUR ZÉRO dans ce
  * dernier cas : un décalage mesuré de 3,6 à 50,8 s selon le match (`DECOUVERTES_TACTIQUE_

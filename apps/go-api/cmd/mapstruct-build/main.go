@@ -32,8 +32,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/himap"
 )
 

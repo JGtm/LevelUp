@@ -21,9 +21,9 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
 
@@ -69,10 +69,10 @@ type replayInput struct {
 // l'artefact — le service projette, le handler encode (cf. internal/service/replayview).
 //
 // LatestSchemaVersion voyage en EN-TÊTE, jamais dans le corps : c'est une méta HTTP (la
-// version COURANTE du producteur, `analysis/replay.SchemaVersion`), distincte du
+// version COURANTE du producteur, `games/halo_infinite/film/replay.SchemaVersion`), distincte du
 // `schemaVersion` du corps (celle de l'ARTEFACT LU). `domain/replaydoc` est une feuille de
-// `domain/` qui n'importe jamais `analysis/replay` et ne porte AUCUN numéro de version — cf.
-// `domain/replaydoc/doc.go` ("AUCUN IMPORT D'internal/analysis/replay ICI, jamais" et "PAS DE
+// `domain/` qui n'importe jamais `games/halo_infinite/film/replay` et ne porte AUCUN numéro de version — cf.
+// `domain/replaydoc/doc.go` ("AUCUN IMPORT D'internal/games/halo_infinite/film/replay ICI, jamais" et "PAS DE
 // NUMERO DE VERSION DANS CE PAQUET"), et `replayview/parity_test.go` qui verrouille le corps
 // champ pour champ. Assembler LatestSchemaVersion ICI, à la frontière HTTP, respecte les deux
 // : le document jumeau reste inchangé, et le badge admin (lot A, 2026-09-11) lit l'en-tête

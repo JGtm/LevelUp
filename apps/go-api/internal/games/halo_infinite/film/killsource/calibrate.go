@@ -36,7 +36,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // calibration : ce que le balayage a retenu.

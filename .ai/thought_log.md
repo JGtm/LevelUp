@@ -106580,3 +106580,56 @@ n'ont gagné que 8 % ; `document_chronicle.go` 1 190 L ; 13 replis FR restants s
 
 **Prochaine étape** : lot E (déplacement pur du décodeur sous `internal/games/halo_infinite/film/`),
 puis lot F (nettoyage worktrees/branches, bascule dossier LevelUp).
+
+## [2026-09-12] Lot E — le décodeur de film descend sous son titre (`internal/games/halo_infinite/film/`) — Complété (worktree LevelUp-wt-decodeur-sous-titre)
+
+**Décision technique principale.** Tâche Notion 9 / décision 5 de l'audit v2, AVANT le merge de
+v7.5.0 : `internal/analysis/filmdec` et `internal/analysis/replay` (+ `replay/mapvar`) — 938
+fichiers, 245 928 lignes, Halo-only de bout en bout — descendent sous
+`internal/games/halo_infinite/film/` (ADR 0012), où ils rejoignent `damagetag`, `filmcache`,
+`killicon`, `killsource` et `medalname` déjà en place. Deux commits, dans cet ordre, et l'ordre
+est la décision : le RATCHET d'abord (`5a0d1ec91`), le déplacement ensuite. Sans ratchet posé
+avant, le déplacement aurait transformé des imports internes à `analysis/` en franchissements de
+frontière invisibles — exactement la dette que ce lot doit rendre visible. Le ratchet
+(`internal/archlint/no_title_package_in_analysis_test.go`) PARSE les imports (`go/parser`,
+`ImportsOnly`) de tous les `.go` d'`internal/analysis/`, tests compris ; les 4 paquets
+inter-titres (`canonical`, `classification`, `mappings`, `weapons`) sont tolérés, tout autre
+répertoire d'`internal/games/` est un titre PAR DÉFAUT. Jusqu'ici la frontière n'avait qu'un
+garde-rail LOCAL (`no_temporal_title_import_test.go`, limité à `analysis/temporal`).
+
+Deuxième décision, dans `killcollector/collector.go` : l'empreinte du décodeur de kills est
+recopiée mais `KillSourceDecoderRev` NE BOUGE PAS. Seules les lignes d'import des sources de
+`killsource` changent ; bumper la révision aurait réinscrit les 1 210 films du parc au backlog
+pour un renommage de répertoire. Le choix est écrit dans le code, daté, à côté de l'empreinte —
+le test exige qu'il soit explicite, pas implicite.
+
+**Résultats observés.** Inventaire E.0 : 85 arcs d'import, 60 paquets importateurs répartis sur
+8 couches (`api`, `service`, `sync`, `persist`, `replaybuild`, `games`, `himap`/`mapcatalog`/
+`mapdecoupe`, 20 binaires `cmd/`). Cinq franchissements `analysis/` -> `games/{slug}` au total,
+dont DEUX préexistaient (tests d'`objectiveevents` ouvrant `film/filmcache`) et trois sont
+révélés par le déplacement ; un seul est en PRODUCTION (`analysis/sessionusage`). Déplacement :
+1 240 fichiers touchés, 981 renommages (525 à 100 % de similarité, 0 ajout, 0 suppression),
+1 055 insertions / 1 057 suppressions. Trois pièges réels, qu'une réécriture de chemin d'import
+seule aurait manqués : 6 chemins écrits segment par segment (`filepath.Join("analysis",
+"replay")`, dans `cmd/replay-equiv` et quatre ratchets d'`archlint`) ; 19 remontées relatives à
+réajuster parce que le déplacement ajoute DEUX niveaux (`..` x5 -> x7 vers la racine du dépôt,
+x6 -> x8 dans `mapvar`, x3 -> x5 vers `apps/go-api`) — dont `golden_minibobine_test.go` qui
+atteint désormais `killsource` comme un FRÈRE au lieu de traverser l'arbre ; et l'exemption
+`gocyclo/funlen/lll` de `.golangci.yml`, dont le décodeur héritait par le chemin
+`internal/analysis/` et qu'il fallait transposer pour que le même code ne se mette pas à rougir
+au seul motif d'avoir changé de répertoire. Les racines déduites à l'exécution (`go.mod`, racine
+du cache film) n'ont rien demandé. Gates : `go build`/`go vet`/`go test ./...` verts, intégration
+verte, `golangci-lint --new-from-merge-base` 0 issue, goldens 8 PASS et AUCUN fichier golden dans
+le diff, `make generate-types` sans dérive, tsc 0, garde-rail web des chemins Go (8 tests) vert,
+gate corpus sans perte.
+
+**Découvertes (non traitées).** `no_analysis_type_in_http_body_test.go` perd de la portée : les
+types du décodeur sortent de son périmètre, il reste vert mais ne les surveille plus (le lot A
+avait déjà projeté les corps du rejeu sur `domain/replaydoc`). `analysis/sessionusage` est le
+dernier franchissement de production : tant qu'il tient, `internal/analysis/` n'est pas
+title-agnostic au sens strict de l'ADR 0025 — c'est un portage de types vers `domain/`, pas un
+déplacement.
+
+**Conclusion / prochaine étape.** E.1 `[x]`, E.2 `[x]`. E.3 « cocher Notion 9 » laissé au pilote,
+comme le veut le plan. Rien n'est poussé ni fusionné. Rapport :
+`.ai/RAPPORT_LOT_E_DECODEUR_SOUS_TITRE_2026-09-12.md`.

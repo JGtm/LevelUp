@@ -6,7 +6,7 @@ package objectiveevents
 //
 // [ObjectiveTypeOf] classe un match par son `game_variant_name`, qui vient du registre. Mais
 // l'artefact de rejeu 2D est construit HORS LIGNE, a partir des seuls chunks du film : il ne
-// connait ni la carte, ni le mode, ni le moindre champ de la base (cf. `analysis/replay`,
+// connait ni la carte, ni le mode, ni le moindre champ de la base (cf. `games/halo_infinite/film/replay`,
 // en-tete de document.go). Publier le portage du drapeau exige pourtant de savoir qu'on est en
 // CTF — la table d'emplacements de statistiques du drapeau ([namedStatSlots]), appliquee au film
 // d'un AUTRE mode, rend des « prises » qui n'en sont pas : sur un film Oddball elle compte 1 470

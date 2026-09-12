@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // LE RELEVE — combien chacun des trois filtres de visibilite retirerait-il ?

@@ -5,7 +5,7 @@ import "testing"
 // flagfilm_test.go — LE CORPUS MESURE, GELE ET REJOUE SANS FILM.
 //
 // Les quinze lignes ci-dessous sont les comptes RELEVES le 2026-08-18 sur quinze films de mode
-// CONNU (instrument `analysis/replay/objectifs_phase1_ctf_test.go`, sous garde `OBJ_FILM`). Les
+// CONNU (instrument `games/halo_infinite/film/replay/objectifs_phase1_ctf_test.go`, sous garde `OBJ_FILM`). Les
 // figer ici transforme une mesure ponctuelle en garde-rail permanent : si la regle du verdict
 // bouge, ce test tombe en CI, sans qu'aucun film soit necessaire.
 //

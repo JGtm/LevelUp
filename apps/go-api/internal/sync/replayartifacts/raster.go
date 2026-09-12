@@ -53,11 +53,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
 
@@ -141,7 +141,7 @@ func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRa
 
 // pistesDeLArtefact projette les pistes du document vers les types PURS du rasterisage.
 // C'est LA frontiere declaree par analysis/tactical/doc.go : ce paquet-la n'importe pas
-// `analysis/replay`, c'est l'appelant qui traduit ce qu'il a.
+// `games/halo_infinite/film/replay`, c'est l'appelant qui traduit ce qu'il a.
 func pistesDeLArtefact(tracks []replay.Track) []tactical.Piste {
 	out := make([]tactical.Piste, 0, len(tracks))
 	for _, t := range tracks {

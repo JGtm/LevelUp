@@ -4,8 +4,8 @@ package replayview
 // changements d'arme. Jumeau de `domain/replaydoc/inventory.go`.
 
 import (
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 func toInventory(v replay.Inventory) replaydoc.Inventory {

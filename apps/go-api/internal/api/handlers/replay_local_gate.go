@@ -18,7 +18,7 @@ import (
 // concentre là où ça se voit le plus : le DERNIER DÉCILE d'un match perd de 40 à 74 % de ses
 // tirs, dans TOUS les modes. Cause établie le 2026-08-08 (`.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md`)
 // : le pont nomme une vie par la mort qui la termine, donc un joueur qui cesse de mourir cesse
-// d'être localisable. Les FERMETURES (`analysis/replay/closures.go`) ont depuis porté les sept
+// d'être localisable. Les FERMETURES (`games/halo_infinite/film/replay/closures.go`) ont depuis porté les sept
 // films de 79,7-93,4 % à 87,4-96,4 %.
 //
 // CORPUS REMESURÉ LE 2026-08-11, après la ronde de CORROBORATION de la fermeture A (revue

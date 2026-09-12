@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // ecrireArtefact pose un artefact de rejeu portant la version de schema demandee.

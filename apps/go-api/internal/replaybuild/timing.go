@@ -26,7 +26,7 @@ import (
 // logPhase journalise la duree d'une phase de cuisson, depuis son instant de debut.
 //
 // slog.Info et non Debug : c'est la granularite qu'un operateur veut voir par defaut quand une
-// cuisson traine — le detail par balayage, lui, est en Debug (cf. analysis/replay/observe.go).
+// cuisson traine — le detail par balayage, lui, est en Debug (cf. games/halo_infinite/film/replay/observe.go).
 func logPhase(phase, matchID string, debut time.Time) {
 	slog.Info("cuisson: phase", "phase", phase, "match_id", matchID, "duration", time.Since(debut))
 }

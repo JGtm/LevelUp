@@ -78,7 +78,7 @@ type TacticalContribution struct {
 	//	TacticalClockMatch ("match")  morts, kills, gagne, isole — l'horloge du MATCH
 	//	                              (`match_kill_events.time_ms` /
 	//	                              `match_death_context.time_ms`), DISTINCTE de celle du
-	//	                              film : `analysis/replay/lives_export.go` etablit
+	//	                              film : `games/halo_infinite/film/replay/lives_export.go` etablit
 	//	                              `horlogeFilm = horlogeMatch + DeathOffsetMS`, un
 	//	                              decalage PAR MATCH (mesure 3,6 a 50,8 s sur les films
 	//	                              temoins) publie par `coverage.bridge.deathOffsetMs`

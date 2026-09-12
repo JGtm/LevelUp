@@ -17,7 +17,7 @@ package replaybuild
 // jusqu'a 21 Mo par film, mesure du corpus de 22). Depuis le lot 1 de PLAN_CUISSON_PERF, le
 // FILM lui-meme n'est de toute facon plus relu : il arrive charge (`filmload.go`).
 //
-// # POURQUOI C'EST ICI ET PAS DANS `analysis/replay`
+// # POURQUOI C'EST ICI ET PAS DANS `games/halo_infinite/film/replay`
 //
 // Meme frontiere que pour les morts sans revendication : `analysis/` est title-agnostic et pur,
 // ce paquet est la couche d'ASSEMBLAGE. C'est lui qui sait ou vit le cache film du titre, et
@@ -38,7 +38,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
 
@@ -233,7 +233,7 @@ func vipInput(recs []objectiveevents.StatRecord, isVip bool) replay.VipInput {
 // drapeau — lui echappait par construction, sa prise etait comptee `noBridge` et AUCUN portage
 // n'etait publie pour elle. `c0a82e88` : 3 prises, 3 `noBridge`, 0 portage. Le pont COMPLETE
 // (par morts + triplet, cf. [pontParManche]) est le meme que celui des actions d'objectif, et
-// il vit ICI parce que c'est ici que les lignes de match arrivent — `analysis/replay` continue
+// il vit ICI parce que c'est ici que les lignes de match arrivent — `games/halo_infinite/film/replay` continue
 // de n'en voir aucune.
 //
 // IL N'EST DEMANDE QUE SUR UN FILM DE CTF, et la garde est la MEME que celle du calque

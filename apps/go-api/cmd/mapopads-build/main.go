@@ -27,7 +27,7 @@
 // CE QUE LE CATALOGUE NE FAIT PAS. Il ne dit pas si un socle est ALLUMÉ : le fichier de
 // carte POSE, le mode ALLUME (Cliffhanger porte 17 socles, en rend 10 en CTF et ZÉRO en
 // Super Fiesta). Le croisement avec les socles du match est OBLIGATOIRE en aval
-// (internal/analysis/replay/map_weapon_pads.go).
+// (internal/games/halo_infinite/film/replay/map_weapon_pads.go).
 package main
 
 import (
@@ -39,8 +39,8 @@ import (
 	"sort"
 	"time"
 
-	"levelup/go-api/internal/analysis/replay"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/mapcatalog"
 )
 

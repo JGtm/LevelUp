@@ -39,7 +39,7 @@ import (
 
 	_ "golang.org/x/image/webp" // decodeur WebP sans perte, enregistre par effet de bord (D6)
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // Masque : la matière praticable d'une carte, cellule par cellule, dans la grille EXACTE du

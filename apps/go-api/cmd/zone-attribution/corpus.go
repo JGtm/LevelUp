@@ -12,11 +12,11 @@ import (
 	"os"
 	"strings"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // candidate est un match du registre, avant tout filtrage.

@@ -7,7 +7,7 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // loader_objective_roles.go — table MODE DE JEU -> ROLES D'OBJECTIF statiques du rejeu 2D

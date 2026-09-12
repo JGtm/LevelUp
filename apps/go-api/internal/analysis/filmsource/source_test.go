@@ -19,14 +19,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // miniBobine : la mini-bobine du film 000d5950 (Cliffhanger, Fiesta), fixture de `replay` avec sa
 // PROVENANCE.txt. Trois chunks : chunk_01 (735 paquets reels), chunk_02 (table d'identite) et
 // chunk_03, le chunk HIGHLIGHT du film, octet pour octet.
-const miniBobine = "../replay/testdata/minifilm_000d5950"
+const miniBobine = "../../games/halo_infinite/film/replay/testdata/minifilm_000d5950"
 
 // chunkHighlight : l'indice du chunk highlight DANS LA SOURCE. Les fichiers sont tries par nom et
 // la bobine n'a pas de chunk_00 : chunk_03.bin y est le troisieme, donc l'indice 2.

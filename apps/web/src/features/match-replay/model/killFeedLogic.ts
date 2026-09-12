@@ -11,7 +11,7 @@
  * CE DÉCALAGE EST DÉSORMAIS PUBLIÉ PAR L'ARTEFACT (`originMs`, schéma v4, lu par la seule
  * horloge de la page — `model/replayClock`) : c'est
  * l'instant de la frame 0 sur l'horloge du fil, mesuré hors ligne comme la différence de
- * deux en-têtes de paquet du même film (cf. Go `internal/analysis/replay/origin.go`). Le
+ * deux en-têtes de paquet du même film (cf. Go `internal/games/halo_infinite/film/replay/origin.go`). Le
  * recalage nominal est donc une SOUSTRACTION, `alignFeedByOrigin` :
  *
  *     replayMs = event_time_ms + t0Ms − originMs

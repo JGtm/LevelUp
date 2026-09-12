@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // catalogSchemaVersion — incrémenter à tout changement incompatible de forme.

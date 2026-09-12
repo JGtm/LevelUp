@@ -54,9 +54,9 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/analysis/replay"
-	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/games/mappings"
 )
 

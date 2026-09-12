@@ -17,9 +17,9 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // sweepMaxComp : dernier index de composant balaye (archetype 6 = 28 emplacements, 0..27).

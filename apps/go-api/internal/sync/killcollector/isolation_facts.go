@@ -24,8 +24,8 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -258,7 +258,7 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 			TeammatesVisible:    c.Visibles,
 			TeammatesWaiting:    c.EnAttente,
 			TeammatesOutOfSight: c.HorsDeVue,
-			// TeammatesLeft (colonne `teammates_left`) : toujours 0. `analysis/replay` n'a
+			// TeammatesLeft (colonne `teammates_left`) : toujours 0. `games/halo_infinite/film/replay` n'a
 			// plus produit l'état « parti » depuis 7C.9 (2026-09-07, retrait du calage
 			// horloge API/film qui pouvait sortir une mort « isolée » à tort) — la COLONNE
 			// reste (append-only, ADR 0026), écrite à 0 plutôt que migrée.

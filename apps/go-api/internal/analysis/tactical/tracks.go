@@ -43,7 +43,7 @@ package tactical
 //
 // # PUR
 //
-// Aucune I/O, aucune dependance a `analysis/replay` : l'appelant PROJETTE ses pistes et ses
+// Aucune I/O, aucune dependance a `games/halo_infinite/film/replay` : l'appelant PROJETTE ses pistes et ses
 // episodes d'artefact vers les types de ce fichier (cf. la frontiere declaree dans doc.go,
 // gardee par archlint/tactical_pure_test.go). C'est aussi lui qui resout l'echelle de l'axe
 // de temps quand l'artefact ne la publie pas — ce paquet ne devine aucune cadence.

@@ -2900,7 +2900,7 @@ export type ReplayFlagCarriesCoverage = components['schemas']['FlagCarriesCovera
 
 // LA VIE D'UN VÉHICULE (schéma 39) : où il naît, sa trajectoire échantillonnée avec son cap,
 // ses épisodes d'occupation (qui est à bord et quand), et jusqu'à quelle frame l'afficher.
-// `end` vaut TOUJOURS `unknown` (cf. `apps/go-api/internal/analysis/replay/document_vehicles.go`) :
+// `end` vaut TOUJOURS `unknown` (cf. `apps/go-api/internal/games/halo_infinite/film/replay/document_vehicles.go`) :
 // la datation de la destruction a été mesurée et RÉFUTÉE une première fois
 // (V3_DESTRUCTION_DATEE_2026-09-02) — la disparition du sprite n'était alors JAMAIS à lire comme
 // une explosion.

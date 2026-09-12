@@ -12,7 +12,7 @@ import (
 	"database/sql"
 	"fmt"
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"log/slog"
 	"time"

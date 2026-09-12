@@ -32,8 +32,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/sync/haloclient"
 )
 

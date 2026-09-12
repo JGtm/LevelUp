@@ -16,7 +16,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 )
 

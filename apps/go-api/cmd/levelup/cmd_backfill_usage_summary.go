@@ -52,10 +52,10 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
 )

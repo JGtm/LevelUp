@@ -17,8 +17,8 @@ import (
 	"errors"
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // Erreurs rendues par [Decode]. Elles se testent avec `errors.Is`.

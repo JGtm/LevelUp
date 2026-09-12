@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // executeConvertir ecrit le WebP, met a jour le sidecar (champ `image`, D3) et supprime le PNG

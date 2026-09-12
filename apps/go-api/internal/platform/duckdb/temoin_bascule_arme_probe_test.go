@@ -22,7 +22,7 @@
 // # Elle ne s'arme que sur demande
 //
 // Sans `TEMOIN_ARME_SHARED`, elle est sautee : elle lit des bases REELLES, que la CI n'a
-// pas. Motif des sondes du depot (cf. analysis/filmdec/sonde_*_test.go).
+// pas. Motif des sondes du depot (cf. games/halo_infinite/film/filmdec/sonde_*_test.go).
 //
 // Reproduction :
 //

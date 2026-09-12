@@ -10,7 +10,7 @@ import (
 
 	"github.com/HugoSmits86/nativewebp"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // masqueTest fabrique un masque synthétique calé en (0, 0), un mètre par cellule — les

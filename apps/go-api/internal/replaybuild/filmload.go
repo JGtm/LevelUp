@@ -32,8 +32,8 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // ouvrirManifeste ouvre le manifeste du film et JOURNALISE ce qu'il en est.

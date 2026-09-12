@@ -99,9 +99,9 @@ func fichiersGoNonTest(t *testing.T, pkgDir string) map[string]*ast.File {
 // inflates du depot, et son film arrive maintenant deja charge (`Decode(ctx, name, film, opts)`).
 // Le reste du depot est couvert par l'allowlist FERMEE de la regle 4.
 var paquetsSansInflate = []string{
-	"internal/analysis/filmdec",
+	"internal/games/halo_infinite/film/filmdec",
 	"internal/analysis/objectiveevents",
-	"internal/analysis/replay",
+	"internal/games/halo_infinite/film/replay",
 	"internal/games/halo_infinite/film/killsource",
 }
 
@@ -152,7 +152,7 @@ var fichiersFilmdecLisantLeDisque = map[string]bool{
 // et `filepath.Glob` enumere un repertoire de chunks aussi bien que `os.ReadDir`. Une allowlist
 // qui laisse le meme geste passer sous un autre nom ne mesure plus rien.
 //
-// LA REGLE NE COUVRE QUE `internal/analysis/filmdec` : `filmsource` est HORS de son perimetre par
+// LA REGLE NE COUVRE QUE `internal/games/halo_infinite/film/filmdec` : `filmsource` est HORS de son perimetre par
 // construction (il n'est pas dans `pkgDir`), et c'est voulu — c'est LE paquet autorise a lire un
 // film, l'unique chargeur de la chaine (D1).
 var lecturesDisque = map[string]bool{
@@ -166,7 +166,7 @@ var paquetsLecteursDeDisque = map[string]bool{"os": true, "filepath": true}
 
 // TestFilmdecNeLitPasLeDisqueHorsAllowlist — REGLE 2.
 func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/analysis/filmdec"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/filmdec"))
 	var violations []string
 	for nom, f := range fichiersGoNonTest(t, pkgDir) {
 		if fichiersFilmdecLisantLeDisque[nom] {
@@ -274,7 +274,7 @@ var enveloppesInterditesEnProduction = []string{
 // les quatre derniers manquaient — ils ne peuvent pas appeler d'enveloppe aujourd'hui, et c'est
 // precisement ce qu'un ratchet garde).
 //
-//	internal/analysis/replay        BuildFromFilm et les balayages du document
+//	internal/games/halo_infinite/film/replay        BuildFromFilm et les balayages du document
 //	internal/replaybuild            la cuisson (BuildBytes / BuildMatch)
 //	internal/analysis/objectiveevents  ses neuf points d'entree prennent un *filmsource.Film
 //	internal/games/halo_infinite/film/killsource  Decode recoit le film deja charge
@@ -282,7 +282,7 @@ var enveloppesInterditesEnProduction = []string{
 //	internal/api/wire               registry_replay_build.go : le cablage de l'API
 //	cmd/zone-attribution            measure.go : charge le film UNE fois (item 1.6)
 var paquetsDeProduction = []string{
-	"internal/analysis/replay",
+	"internal/games/halo_infinite/film/replay",
 	"internal/replaybuild",
 	"internal/analysis/objectiveevents",
 	"internal/games/halo_infinite/film/killsource",
