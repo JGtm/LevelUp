@@ -32,7 +32,7 @@ import type { XY } from '../../../lib/replay/replayLogic'
 
 /**
  * Rang du translocateur quantique dans la palette de capacités du film — FAMILLE A SEULEMENT.
- * Le rang est établi côté serveur (`internal/analysis/filmdec/translocateur_test.go`) et le
+ * Le rang est établi côté serveur (`internal/games/halo_infinite/film/filmdec/translocateur_test.go`) et le
  * document le confirme : `abilityLabels` associe 11 à « translocateur quantique ». C'est le
  * REPLI des documents sans table de libellés ; partout ailleurs, `translocatorRanks` lit la
  * table — un film famille B (rangs 19-22) rendrait ce littéral muet (bug du 2026-09-02 :

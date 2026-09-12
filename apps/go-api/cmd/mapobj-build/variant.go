@@ -25,7 +25,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // parkedAbsoluteSpreadM : sous cette emprise ABSOLUE, les objectifs d'une variante sont

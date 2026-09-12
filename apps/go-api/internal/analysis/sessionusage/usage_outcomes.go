@@ -28,8 +28,8 @@ package sessionusage
 import (
 	"strings"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // equipmentBilanFamilies — les familles qui portent une ligne d'issue. SOURCE
@@ -79,7 +79,7 @@ func equipmentOutcomeOf(p *PlayerRow, family string) outcomeCounts {
 
 // equipmentUsedOf — le côté « utilisé » d'une famille, sur une ligne de BASE.
 //
-// MÊME RÈGLE que `usageUsedOf` (internal/analysis/replay/usage_summary_outcomes.go),
+// MÊME RÈGLE que `usageUsedOf` (internal/games/halo_infinite/film/replay/usage_summary_outcomes.go),
 // qui décide de la même chose à la projection : deuxième et dernière copie tolérée de
 // cette BASCULE (règle CLAUDE.md n°6). La fonction elle-même ne peut pas être
 // partagée — là-bas elle lit une ligne de projection, ici une ligne de base — mais LA

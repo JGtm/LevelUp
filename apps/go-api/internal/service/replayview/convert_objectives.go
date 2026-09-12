@@ -4,8 +4,8 @@ package replayview
 // Jumeau de `domain/replaydoc/objectives.go`.
 
 import (
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 func toObjectiveAction(v replay.ObjectiveAction) replaydoc.ObjectiveAction {

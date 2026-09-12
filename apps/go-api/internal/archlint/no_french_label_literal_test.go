@@ -85,18 +85,18 @@ var accentedLiteralRE = regexp.MustCompile(`[éèêàùçÉÈÊÀÙÇ]`)
 var frenchLabelAllowlist = map[string]int{
 	// L6 — narratif / prestige (D7 : ce sont des PHRASES/contenu, ADR 0028 — hors plan
 	// libellés sauf mojibake, mais comptées ici tant qu'elles restent en dur).
-	"analysis/filmdec/equipment_creation_width.go": 1,
-	"analysis/match_impact.go":                     3,
-	"analysis/patterns/behavioral.go":              2,
-	"analysis/patterns/behavioral_engagement.go":   3,
-	"analysis/prestigetuning/analyze.go":           6,
-	"analysis/prestigetuning/render.go":            16,
-	"analysis/replay/coverage_bridge.go":           5,
-	"analysis/replay/neutral_deaths.go":            2,
-	"analysis/skill_v2/display_smoothing.go":       1,
-	"notify/coach.go":                              5,
-	"service/synthesis_service_builders.go":        1,
-	"service/synthesis_service_legacy.go":          5,
+	"games/halo_infinite/film/filmdec/equipment_creation_width.go": 1,
+	"analysis/match_impact.go":                                     3,
+	"analysis/patterns/behavioral.go":                              2,
+	"analysis/patterns/behavioral_engagement.go":                   3,
+	"analysis/prestigetuning/analyze.go":                           6,
+	"analysis/prestigetuning/render.go":                            16,
+	"games/halo_infinite/film/replay/coverage_bridge.go":           5,
+	"games/halo_infinite/film/replay/neutral_deaths.go":            2,
+	"analysis/skill_v2/display_smoothing.go":                       1,
+	"notify/coach.go":                                              5,
+	"service/synthesis_service_builders.go":                        1,
+	"service/synthesis_service_legacy.go":                          5,
 
 	// L3 — modes / playlists / catégories (cible : assets.toml). rankedplaylists.go
 	// retiré le 2026-09-08 (lot M5 L3, branche feat/libelles-modes-playlists) :

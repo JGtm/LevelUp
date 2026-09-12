@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // artefactUsageDeTest ecrit un artefact minimal portant ce schema, et rend son chemin.

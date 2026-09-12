@@ -48,8 +48,8 @@ import (
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"

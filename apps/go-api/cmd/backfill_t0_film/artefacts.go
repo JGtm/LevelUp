@@ -34,7 +34,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/replaybuild"
 )
 

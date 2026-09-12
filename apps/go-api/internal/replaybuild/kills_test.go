@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // kills_test.go — la résolution d'identité hors ligne (gamertag/xuid: -> xuid), sur données

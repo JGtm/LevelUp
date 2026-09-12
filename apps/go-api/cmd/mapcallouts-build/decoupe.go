@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // decoupeDump est la partie du dump que l'ingestion consomme.

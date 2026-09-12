@@ -49,7 +49,7 @@
  * origine que le producteur a REFUSÉ d'établir — chunk illisible, témoin contradictoire) :
  * l'écart entre les deux axes est un inconnu de 3,6 à 50,8 s, et `matchClock` rend `null`.
  * Zéro n'est pas un repli acceptable, le producteur l'écrit lui-même
- * (`internal/analysis/replay/origin.go` : « ZERO N'EST PAS UNE ORIGINE NEUTRE, C'EST UN
+ * (`internal/games/halo_infinite/film/replay/origin.go` : « ZERO N'EST PAS UNE ORIGINE NEUTRE, C'EST UN
  * REPLI »). Mesure du parc local au 2026-09-05 : 5 artefacts sur 106 sans origine, et les
  * cinq portent déjà `coverage.originResolved: false` — ils sont donc déjà écartés en amont
  * par `filmClockTrusted`, et cette porte-ci ne retire aucune carte de l'écran.

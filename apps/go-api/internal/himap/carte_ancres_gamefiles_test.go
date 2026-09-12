@@ -10,7 +10,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // LES ANCRES — l'oracle FAIBLE, mais disponible sur les 37 cartes.

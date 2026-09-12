@@ -14,7 +14,7 @@
  * page n'a pas d'horloge et AUCUNE surface ne place quoi que ce soit sur l'axe du film.
  *
  * POURQUOI PAS `0` EN REPLI. C'est le producteur lui-même qui l'écrit, en capitales, dans
- * `internal/analysis/replay/origin.go` : « ZERO N'EST PAS UNE ORIGINE NEUTRE, C'EST UN
+ * `internal/games/halo_infinite/film/replay/origin.go` : « ZERO N'EST PAS UNE ORIGINE NEUTRE, C'EST UN
  * REPLI ». Il REFUSE de publier une origine qu'il ne peut pas établir (chunk illisible,
  * témoin contradictoire) plutôt que d'en inventer une ; recopier `0` côté client revient à
  * défaire ce refus et à poser chaque marque à un instant faux — qui se lit comme juste.

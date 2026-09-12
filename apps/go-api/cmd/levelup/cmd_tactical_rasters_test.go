@@ -22,10 +22,10 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // trArtefact : un artefact minimal, deux joueurs immobiles pendant 2 s (100 ms par frame).

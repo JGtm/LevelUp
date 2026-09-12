@@ -13,10 +13,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
 
@@ -152,7 +152,7 @@ func TestReplayHandler_OK(t *testing.T) {
 }
 
 // TestReplayHandler_LatestSchemaVersionHeader — la réponse porte la version COURANTE du
-// producteur (`analysis/replay.SchemaVersion`) en en-tête, DISTINCTE du `schemaVersion` du
+// producteur (`games/halo_infinite/film/replay.SchemaVersion`) en en-tête, DISTINCTE du `schemaVersion` du
 // corps (celui de l'ARTEFACT LU). Un artefact cuit sous une version ancienne (42 ici) doit
 // laisser les deux nombres diverger : c'est exactement ce que le badge admin lit pour dire
 // « à jour » ou « à recuire » (lot A, 2026-09-11).
@@ -174,7 +174,7 @@ func TestReplayHandler_LatestSchemaVersionHeader(t *testing.T) {
 	got := w.Header().Get(middleware.ReplayLatestSchemaHeader)
 	want := strconv.Itoa(replay.SchemaVersion)
 	if got != want {
-		t.Errorf("X-Replay-Latest-Schema-Version = %q, attendu %q (analysis/replay.SchemaVersion)",
+		t.Errorf("X-Replay-Latest-Schema-Version = %q, attendu %q (games/halo_infinite/film/replay.SchemaVersion)",
 			got, want)
 	}
 	var body replaydoc.ReplayDocument

@@ -10,7 +10,7 @@
 //
 // # Pourquoi un binaire et pas un test
 //
-// Le croisement lui-meme est pur et teste (internal/analysis/replay). La MESURE, elle,
+// Le croisement lui-meme est pur et teste (internal/games/halo_infinite/film/replay). La MESURE, elle,
 // exige la base (le pont slot -> xuid lit `match_participants`) et le cache film local,
 // qui n'est pas versionne : ce sont des dependances d'orchestration, donc un cmd.
 //
@@ -34,10 +34,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/analysis/replay"
-	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/platform/duckdb"
 )
 

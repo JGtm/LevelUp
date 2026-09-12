@@ -5,7 +5,7 @@ package archlint
 //
 // # LE CONTRAT, ET POURQUOI IL EST DUR
 //
-// `internal/analysis/filmdec/decode_gate.go:16-18` l'ecrit noir sur blanc : « tout chemin qui
+// `internal/games/halo_infinite/film/filmdec/decode_gate.go:16-18` l'ecrit noir sur blanc : « tout chemin qui
 // enchaine les balayages de ce paquet (`Scan*`, walk killsource) acquiert ce verrou pour TOUTE la
 // duree du decodage d'un film — jamais par sous-appel ». La raison n'est pas theorique : les
 // parametres de replication du decodeur de bits sont des GLOBAUX DE PAQUET, et le paquet chiffre
@@ -38,7 +38,7 @@ package archlint
 //
 // LE QUALIFICATEUR EST RESOLU PAR L'IMPORT, PAS DEVINE (D-2 de la revue E-R2, 2026-09-06). La
 // regle comparait le prefixe d'appel au litteral « filmdec » : un paquet qui ecrivait
-// `fd "levelup/go-api/internal/analysis/filmdec"` puis `fd.DecodeFrameRecords(...)` sans verrou
+// `fd "levelup/go-api/internal/games/halo_infinite/film/filmdec"` puis `fd.DecodeFrameRecords(...)` sans verrou
 // laissait le ratchet vert ET n'entrait pas dans la liste derivee — la derivation heritait du trou
 // de la regle, et depuis qu'elle est la SEULE source de la liste, plus rien ne le rattrapait a la
 // main. `nomLocalDeFilmdec` lit desormais le nom local de l'import dans chaque fichier : nom par
@@ -85,7 +85,7 @@ var racinesMesurees = []string{"internal", "cmd"}
 // `DecodeFrame*` et `TraverseEntity*`. La liste est desormais derivee ; ceci en est le plancher.
 var paquetsAttendus = []string{
 	"cmd/rdata_weapon_scan",
-	"internal/analysis/replay",
+	"internal/games/halo_infinite/film/replay",
 	"internal/games/halo_infinite/film/killsource",
 	"internal/sync/killcollector",
 }
@@ -120,7 +120,7 @@ const importPoint = "."
 // import point.
 //
 // POURQUOI CE DETOUR (D-2 de la revue E-R2, 2026-09-06). La regle comparait le qualificateur au
-// litteral « filmdec ». Un paquet qui ecrivait `fd "levelup/go-api/internal/analysis/filmdec"`
+// litteral « filmdec ». Un paquet qui ecrivait `fd "levelup/go-api/internal/games/halo_infinite/film/filmdec"`
 // puis `fd.DecodeFrameRecords(...)` sans verrou laissait le ratchet VERT, et — depuis que la liste
 // des paquets mesures est DERIVEE de cette meme regle — n'entrait meme pas dans la liste. Une
 // omission de la regle ne peut plus etre rattrapee a la main : elle doit etre fermee ici.
@@ -143,7 +143,7 @@ func nomLocalDeFilmdec(f *ast.File) (string, bool) {
 
 // paquetDuDecodeur est le paquet qui PORTE les balayages : il est hors mesure (il ne s'appelle pas
 // lui-meme par selecteur, et c'est lui qui definit le verrou).
-const paquetDuDecodeur = "internal/analysis/filmdec"
+const paquetDuDecodeur = "internal/games/halo_infinite/film/filmdec"
 
 // paquetsQuiDecodent DERIVE la liste des paquets de production a mesurer : tout repertoire de
 // `internal` ou `cmd` dont une source non-test appelle un balayage `filmdec`, sauf le paquet du
@@ -167,7 +167,7 @@ func paquetsQuiDecodent(t *testing.T, racine string) []string {
 				return err
 			}
 			// PREFILTRE SUR LE CHEMIN D'IMPORT, PAS SUR LE QUALIFICATEUR : un fichier qui ecrit
-			// `fd "…/internal/analysis/filmdec"` ne contient nulle part la chaine « filmdec. ».
+			// `fd "…/internal/games/halo_infinite/film/filmdec"` ne contient nulle part la chaine « filmdec. ».
 			if !bytes.Contains(src, []byte(paquetDuDecodeur)) {
 				return nil
 			}

@@ -55,9 +55,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/mapcatalog"
 	"levelup/go-api/internal/observability"
 )

@@ -2,7 +2,7 @@
 // publie, et rien d'autre.
 //
 // POURQUOI CE PAQUET EXISTE. Jusqu'au 2026-09-05, le document servi ETAIT le document
-// stocke : `internal/analysis/replay.ReplayDocument` — le format du fichier
+// stocke : `internal/games/halo_infinite/film/replay.ReplayDocument` — le format du fichier
 // `data/cache/replays/{titre}/{match}.json` — etait rendu tel quel par le handler, donc
 // derive en 99 schemas d'`api/openapi.yaml` puis en autant de types TypeScript. Un seul
 // objet portait trois roles : format de cuisson sur disque, modele de calcul des calques,
@@ -13,7 +13,7 @@
 // d'artefacts deja cuits.
 //
 // CE QUE LA SEPARATION CHANGE. Les types de ce paquet decrivent ce que le client recoit.
-// Ceux d'`internal/analysis/replay` decrivent ce que la cuisson ecrit. Le convertisseur
+// Ceux d'`internal/games/halo_infinite/film/replay` decrivent ce que la cuisson ecrit. Le convertisseur
 // (`internal/service/replayview`) est la seule arete entre les deux, et le test de parite
 // qui l'accompagne exige une decision ecrite pour chaque champ stocke : copie, transforme,
 // ou explicitement non servi. Ajouter un calque a la cuisson ne touche donc plus le
@@ -24,7 +24,7 @@
 // OpenAPI), memes tags JSON, memes `omitempty`. `api/openapi.yaml` et
 // `apps/web/src/lib/api/generated.ts` sont inchanges — c'est le gate du lot.
 //
-// AUCUN IMPORT D'`internal/analysis/replay` ICI, jamais : ce paquet est une feuille de
+// AUCUN IMPORT D'`internal/games/halo_infinite/film/replay` ICI, jamais : ce paquet est une feuille de
 // `domain/`, et c'est ce qui garantit que le contrat ne suive pas le format de stockage
 // par simple alias. Les chroniques de schema (pourquoi tel champ est ne, ce que la mesure
 // a refuse d'y mettre) restent du cote stocke, ou elles decrivent le producteur.
@@ -43,7 +43,7 @@
 //     champs de `ReplayDocument` a une constante ECRITE et a sa chronique datee.
 //
 // CE QUI VERSIONNE, a la place : le champ `schemaVersion` du corps, qui porte la version de
-// l'ARTEFACT LU (`analysis/replay.SchemaVersion` au moment de la cuisson). C'est elle, et
+// l'ARTEFACT LU (`games/halo_infinite/film/replay.SchemaVersion` au moment de la cuisson). C'est elle, et
 // elle seule, qui dit au parc « a re-cuire » ; la projection la recopie telle quelle et ne
 // la remplace jamais (verrouille par `replayview/parity_test.go`).
 package replaydoc

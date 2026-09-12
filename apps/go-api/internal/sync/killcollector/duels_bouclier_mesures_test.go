@@ -10,8 +10,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // duelsBChute : une baisse de bouclier, datee, rattachee a un JOUEUR (et plus a un slot).
@@ -205,7 +205,7 @@ func duelsBGoNoGo(ok bool) string {
 
 // duelsBChutesBouclier rend les baisses de bouclier RATTACHEES A UN JOUEUR.
 //
-// La detection est celle de la sonde n°1 (`duelsChutesBouclier`, analysis/replay) : par slot,
+// La detection est celle de la sonde n°1 (`duelsChutesBouclier`, games/halo_infinite/film/replay) : par slot,
 // lectures triees, une chute est une baisse superieure a `duelsBChuteEps` entre deux lectures
 // CONSECUTIVES separees de moins de `duelsBLifeGapUS` (au-dela, c'est une nouvelle vie et le
 // bouclier repart plein — la comparaison serait une fausse chute). La transposition ici est

@@ -30,5 +30,15 @@
 #               lignes produites bougent sur les films de version 39-40.
 #   2026-09-12  passage de la constante killSourceDecoderFingerprint a ce golden (constat P1-4).
 #               Ni le decodeur ni la revision ne bougent : meme empreinte, meme revision.
+#   2026-09-12  lot E.2 : deplacement pur de filmdec et replay d internal/analysis/ vers
+#               internal/games/halo_infinite/film/ (ADR 0012). Seules les LIGNES D IMPORT des
+#               sources de killsource changent (analysis/filmdec -> games/halo_infinite/film/
+#               filmdec) ; le decodage est identique au bit pres. Revision INCHANGEE — la bumper
+#               reinscrirait tout le parc au backlog pour un renommage de repertoire — empreinte
+#               seule recopiee (fusion avec feat/v75 lot G).
+#   2026-09-12  fusion feat/v75 (lot G) dans wt/decodeur-sous-titre : gofmt sur chunks.go apres
+#               reecriture des imports d aterrissage de G (analyse -> games/halo_infinite/film)
+#               change la mise en forme du fichier, pas le decodage. Revision INCHANGEE, empreinte
+#               seule recopiee.
 #
-killsource-2026-09-12	974c1aa8d371bb2f555e915487d4d41a2a5f779655d139722e3f41531298295b
+killsource-2026-09-12	4e7cf973ccafb384a8c8c03bdaabc21a722c8df5fbb73570db9c763aafcc8dfc

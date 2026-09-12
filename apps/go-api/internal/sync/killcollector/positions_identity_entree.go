@@ -8,8 +8,8 @@ package killcollector
 // PHYSIQUE — aucun changement de comportement.
 
 import (
-	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // entreeDuRegistre assemble ce que le collecteur donne au registre d'identite. PURE — aucun film,

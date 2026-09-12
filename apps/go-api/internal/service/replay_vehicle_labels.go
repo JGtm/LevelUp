@@ -25,8 +25,8 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/assets/static"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // vehicleSpriteDir est le sous-dossier des sprites de vehicule sous

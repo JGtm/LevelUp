@@ -32,7 +32,7 @@ package migration
 //
 // ─── ABSENT N'EST PAS ZERO — c'est la raison d'etre des colonnes NULLABLE ─────────────────
 //
-// Le noyau d'extraction (`analysis/replay/bomb_stats.go`) rend des POINTEURS pilotes par des
+// Le noyau d'extraction (`games/halo_infinite/film/replay/bomb_stats.go`) rend des POINTEURS pilotes par des
 // temoins de LECTURE : un canal non balaye laisse le champ a `nil`, il ne le met pas a zero. Ce
 // schema TIENT cette distinction : les cinq colonnes sont nullable, une valeur non mesuree
 // s'ecrit NULL. Ecrire 0 dirait « mesure : rien ne s'est passe » la ou la verite est « on n'a

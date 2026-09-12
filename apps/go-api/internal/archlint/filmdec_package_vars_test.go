@@ -16,7 +16,7 @@ package archlint
 // # CE QUI EST COMPTE, EXACTEMENT
 //
 // Les NOMS declares par un `var` de NIVEAU PAQUET dans les fichiers non-test de
-// `internal/analysis/filmdec` — un bloc `var ( a = 1; b = 2 )` compte donc pour DEUX, parce que
+// `internal/games/halo_infinite/film/filmdec` — un bloc `var ( a = 1; b = 2 )` compte donc pour DEUX, parce que
 // c'est deux morceaux d'etat, pas une ligne de syntaxe. L'identifiant blanc (`var _ = ...`,
 // assertion de compilation) n'est PAS compte : il ne porte aucun etat. Le comptage se fait par
 // `go/ast` et non par grep — un `var` dans un commentaire ou dans un corps de fonction ne doit
@@ -128,7 +128,7 @@ const filmdecVarsGeles = 96
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/analysis/filmdec"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/filmdec"))
 	compte, parFichier := compterVarsDePaquet(t, pkgDir)
 	switch {
 	case compte > filmdecVarsGeles:

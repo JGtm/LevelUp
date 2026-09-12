@@ -434,7 +434,7 @@ the local film cache; the two offline ones need no DB and decode one film per bo
 
 ```bash
 cd apps/go-api
-go run ./cmd/levelup replay-facts-export --out internal/analysis/replay/testdata/equivalence \
+go run ./cmd/levelup replay-facts-export --out internal/games/halo_infinite/film/replay/testdata/equivalence \
   [--title slug] <short8|match_id>...
 ```
 
@@ -455,7 +455,7 @@ The equivalence harness of the build chain: it hashes the output of **every** sc
 final artifact, so a divergence is located down to the scan. Parent and child share one binary —
 the parent plans and decodes nothing, each film is born in a bounded child (solo lock with bounded
 wait, sentinel) and dies with its RAM. References live in
-`internal/analysis/replay/testdata/equivalence/<short8>.tsv`, each opening with its
+`internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, each opening with its
 `# digest-grammar: N` marker: a reference frozen under another grammar is an infrastructure failure
 ("re-freeze with `-update`"), never a decoding difference. `-update` rewrites those references
 instead of comparing them — for a declared correction only. The `-walkers` mode (divergence of the
@@ -596,7 +596,7 @@ deliberate partial run.
 | `--keep-work` | `false` | keep the working root after the run (debugging) |
 | `--json` | (none) | path to also write the full report as JSON |
 
-**Run it before merging anything that touches** `analysis/replay`, `replaybuild`, `filmdec`, or
+**Run it before merging anything that touches** `games/halo_infinite/film/replay`, `replaybuild`, `filmdec`, or
 that bumps `SchemaVersion`. **Requires**: the local dev parc (film chunks; + already-baked
 artifacts under `data/cache/replays` in `--reference=parc` mode) and read access to the title's
 shared DB (for match facts, via `levelup replay-facts-export` run as a subprocess, per witness —

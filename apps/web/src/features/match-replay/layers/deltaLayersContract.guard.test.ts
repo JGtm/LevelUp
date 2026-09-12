@@ -36,8 +36,8 @@ import {
 } from '@/lib/api/types'
 
 const REPO = racineDuDepot()
-const GO = resolve(REPO, 'apps/go-api/internal/analysis/replay')
-const FILMDEC = resolve(REPO, 'apps/go-api/internal/analysis/filmdec')
+const GO = resolve(REPO, 'apps/go-api/internal/games/halo_infinite/film/replay')
+const FILMDEC = resolve(REPO, 'apps/go-api/internal/games/halo_infinite/film/filmdec')
 
 /** Égalité STRICTE de deux types (le double conditionnel différé est ce qui la rend stricte). */
 type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2

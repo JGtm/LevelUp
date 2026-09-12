@@ -5,7 +5,7 @@
 // PUR : aucune I/O, aucun SQL, aucun reseau, aucun etat global. L'entree est une liste de
 // `domain.PositionSample` (matchID, x, y en metres monde) que l'appelant projette depuis
 // ce qu'il a — les positions mesurees de `kill_positions`, ou les points des pistes d'un
-// artefact de rejeu. Ce paquet n'importe NI `analysis/replay` NI `platform/duckdb` : une
+// artefact de rejeu. Ce paquet n'importe NI `games/halo_infinite/film/replay` NI `platform/duckdb` : une
 // lecture tactique doit rester calculable sans artefact.
 //
 // ART ANTERIEUR — cmd/mappos-build (2026-08-30). La mecanique de la grille vient de la, et

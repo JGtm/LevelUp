@@ -24,7 +24,7 @@
 #
 # CE QUE LA BASELINE DE PRÉSENCE COUVRE. `tests_pre_migration.jsonl` a été capturée
 # le 2026-06-26 ; elle ignorait donc tout le chantier v7.5 du rejeu. Les entrées des
-# packages `analysis/replay` (+ `replay/mapvar`), `replaybuild`, `sync/replayartifacts`,
+# packages `games/halo_infinite/film/replay` (+ `replay/mapvar`), `replaybuild`, `sync/replayartifacts`,
 # `sync/killcollector` et `analysis/objectiveevents` ont été AJOUTÉES le 2026-09-05
 # (1 209 tests, events pass/skip terminaux d'un run réel `-tags=integration`), sans
 # rejouer la capture entière — la baseline est un CUMUL, pas un instantané. Supprimer

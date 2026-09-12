@@ -39,9 +39,9 @@ package replaybuild
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/replay"
-	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // flagSpawns rend TOUS les socles de drapeau de la carte du match, en coordonnees monde — les

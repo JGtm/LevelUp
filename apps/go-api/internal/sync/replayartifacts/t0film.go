@@ -5,7 +5,7 @@ package replayartifacts
 // # CE QUE CE FICHIER FERME
 //
 // L'artefact fraichement cuit publie `t0FilmMs` : le coup d'envoi du match date par le premier
-// mouvement des joueurs (cf. `analysis/replay/t0_film.go`). Mais tout ce qui date sur l'axe du
+// mouvement des joueurs (cf. `games/halo_infinite/film/replay/t0_film.go`). Mais tout ce qui date sur l'axe du
 // MATCH hors du rejeu — le premier frag, la duree jouable, la vue de match — lit
 // `match_registry.real_start_time`, ESTIME des `first_joined_time` de l'API : degenere a ~0 ms
 // sur 10-15 % des matchs. Sans ce report, chaque nouveau match repartait donc avec le mauvais

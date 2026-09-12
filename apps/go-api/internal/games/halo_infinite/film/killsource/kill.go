@@ -11,8 +11,8 @@ package killsource
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // Kill : une mort, et LES DEUX REPONSES a << qu est-ce qui l a tuee >>.
@@ -309,7 +309,7 @@ type Result struct {
 	// Coverage : les denominateurs.
 	Coverage Coverage
 	// Health : la metrique de sante, prete pour `expvar` via `Health.ExpvarPairs()`.
-	// Le type est PUR (zero dependance interne) et vit dans `internal/analysis/filmdec`.
+	// Le type est PUR (zero dependance interne) et vit dans `internal/games/halo_infinite/film/filmdec`.
 	Health filmdec.KillSourceHealth
 	// Stats : ce qu il faut pour PONDERER et pour VERIFIER que l hybride est bien une
 	// preference et non un arbitrage.

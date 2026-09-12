@@ -53,13 +53,13 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // miniBobineV40Dir : la bobine de version 40, relative au paquet.
 //
-// ELLE A DEUX LECTEURS : ce paquet, et `internal/analysis/replay` dont `ScanDeaths` est le
+// ELLE A DEUX LECTEURS : ce paquet, et `internal/games/halo_infinite/film/replay` dont `ScanDeaths` est le
 // deuxieme des trois appelants qui passaient 0 (constat P1-2) — il la designe par un chemin
 // relatif, comme `filmdec` designe deja `replay/testdata/minifilm_000d5950` dans l autre sens.
 // Un second exemplaire de 876 Kio pour la meme preuve serait de la dette.

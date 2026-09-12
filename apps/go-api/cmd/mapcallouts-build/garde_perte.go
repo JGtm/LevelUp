@@ -33,7 +33,7 @@ import (
 	"os"
 	"sort"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // perteCarte est le constat pour UNE carte : combien de sommets avant, combien apres.

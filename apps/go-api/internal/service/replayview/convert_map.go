@@ -4,8 +4,8 @@ package replayview
 // du document (fond de carte, zones nommees). Jumeau de `domain/replaydoc/map.go`.
 
 import (
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 func toMapObjectives(v replay.MapObjectives) replaydoc.MapObjectives {

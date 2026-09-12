@@ -32,7 +32,7 @@ package replayartifacts
 // # L'EQUIPE VIENT DE LA BASE, PAR LE XUID (correction du constat C5, revue A-R1)
 //
 // LE FILM NE PORTE PAS L'EQUIPE : `Track.Team` vaut -1 sur tout artefact produit par le
-// decodeur d'aujourd'hui (`analysis/replay/build.go` la pose sans condition, et le roster le
+// decodeur d'aujourd'hui (`games/halo_infinite/film/replay/build.go` la pose sans condition, et le roster le
 // dit : « ce qu'il ne donne PAS, et que seule la base porte : l'equipe »). La projection ne
 // l'invente donc pas — elle la JOINT, par le xuid que le document nomme sur chaque vie, contre
 // `match_participants` : la meme jointure que celle que le client fait pour colorer un
@@ -64,8 +64,8 @@ import (
 	"database/sql"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
