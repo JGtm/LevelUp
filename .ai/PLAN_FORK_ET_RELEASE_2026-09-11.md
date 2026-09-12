@@ -185,7 +185,7 @@
       recouvrement ; 8 films instrumentés (2025 : 5-17 % -> 82-100 % ; témoins 2024/2026 inchangés).
 - [x] G.2 Correctif : résolution par mesure quand la version est inconnue (`2a6265ac4`),
       `KillSourceDecoderRev` -> `killsource-2026-09-12`, 3 tests CI + banc env + non-régression.
-- [~] G.3 Revue adversariale (1 relecteur, algo) — question centrale : bump `SchemaVersion` 53 -> 54
+- [x] G.3 Revue adversariale (1 relecteur, algo) — question centrale : bump `SchemaVersion` 53 -> 54
       (deaths_source du rejeu lit le même parseur) ; puis fusion feat/v75.
 - [ ] G.4 Re-décodage des 210 films 39-40 (killsource, backlog par révision) + recuisson des
       artefacts touchés ; contrôle `_latest` par mois et playlist.
@@ -257,3 +257,10 @@ lot H, pas avant. Effort L.
   sans `match_id`, couverture non assertée). Corrections lancées (fixture v40 réduite + 3 tests CI,
   golden rev+empreinte, docs, WARN, test de couverture) ; ronde 2 ensuite. Doc d'architecture
   cible écrit : `.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md` (`74f320235`).
+- 2026-09-12 : ronde 1 corrigée (`fc7084801` fixture v40 888 Kio + 3 tests CI mordants ;
+  `c0ee67a8b` golden rev+empreinte gatant les deux gestes ; `4ea83abd5` docs + WARN avec
+  match_id + tests de couverture) ; ronde 2 : 0 constat, 6 mutations rougissent. **Fusion du lot G
+  dans feat/v75** (merge de `wt/btb-2025-abstention`), gates sur la branche fusionnée : Go
+  paquets touchés verts, tsc 0, vitest 3 015 (replay/api/match-replay), contrat généré stable ;
+  push pour la CI. G.4 lancé : serveur arrêté, `backfill-killsource` (révision montée = tout le
+  parc au backlog, ~2 h 30) puis `backfill-replay --only-existing` (schéma 54, ~23 min).
