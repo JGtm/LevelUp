@@ -106894,3 +106894,53 @@ dérivation de l'offset (`172 + état par défaut`), le lecteur de roster qui ti
 rosters et sur les builds anciens, et le pont rang vers xuid. Le geste le plus rentable en amont
 est de corriger le modèle de record d'image-clé du décodeur (découverte b), qui débloquerait bien
 plus que l'équipe.
+
+## [2026-09-13] Résidus chunk_00 / slots / équipe, phase 5b : les six résidus sont fermés, dont cinq par une fermeture arithmétique — Complete
+
+**Statut** : Complété. Branche `wt/film-residus` (worktree dédié `LevelUp-wt-film-residus`),
+aucun commit, aucun code de production modifié, aucune base ouverte en écriture.
+
+**Décision technique principale.** Les six résidus laissés par les phases 1 à 4 se traitent tous
+par la même méthode : trouver, dans le flux, une ANCRE que la grammaire ne conditionne pas, et
+mesurer de part et d'autre. Trois ancres ont porté le lot. (1) Le bloc de queue d'un
+enregistrement de slot porte le gamertag en UTF-16 petit-boutiste : on le retrouve par recherche
+de motif, donc on peut couper l'enregistrement en deux moitiés mesurables séparément, ce qui
+localise la transposition par build SANS exécutable de ces builds. (2) La longueur d'un
+enregistrement entièrement à zéro se CALCULE depuis la grammaire (1 299 + perso + 352 + 32), ce
+qui transforme « écart aberrant » en hypothèse testable au bit près. (3) L'équipe par joueur,
+prouvée en phase 3 dans la trame, sert d'oracle interne pour trancher la contradiction du pied de
+film, sans passer par la base.
+
+**Résultats observés.** R1 : les deux écarts aberrants sont chacun exactement UN slot vacant
+(13 619 bits sur `HI_1_10_0`/`HI_1_11_0`, reste 0), et la fermeture générale passe de 1 890/1 892
+à **2 121/2 121 écarts sur 96 films** ; la longueur d'un slot vide (ouvert n°3 de la phase 1) est
+fermée au passage. R2 : la transposition par build est portée par le SEUL bloc de personnalisation
+`sub+0xcc0` (1 852 / 1 492 / 1 312 / 2 052 octets), tout le reste de l'enregistrement valant
+**270 bits sur les sept builds** ; le lecteur par grammaire, calibré sur le film et enjambant les
+slots vacants, rend le compte du balayage sur **1 351 films sur 1 351** et lit **32 slots exactement
+sur 1 351 films sur 1 351** — la borne de l'écrivain vérifiée par la lecture sur tout le cache.
+R3 : `HI_1_9_0` rejoint la table de profil (i0 dérivé 186, n1 12, n2 88, record 459, transposition
+-4 320) et son oracle d'équipe ferme à 23/23 rangs, recalage unique sur deux essais ; `HI_1_12_0`
+est ajouté. R4 : l'écrivain d'état complet `FUN_142e2d08c` montre que le mot gaté par le drapeau
+est la SENTINELLE `0x0FFDDCBA` — cherchée à tout décalage dans 250 paquets de 7 builds :
+**0 occurrence**, avec témoin positif à 4 368/4 368 ; à `d = 218` le critère interne échoue sur
+10 films sur 10. R5 : le consommateur d'affichage est `AddTeamDesignatorStringIdsToList` →
+`FUN_142d40c1c`, qui empile `team_0`..`team_7`, `team_neutral` dans cet ordre — la correspondance
+`team_id 0` ↔ `First` est **prouvée pour l'indexation** par une seconde chaîne ; et aucun film du
+cache ne porte plus de deux désignateurs (les trois seuls matchs à plus de 2 `team_id` en base
+lisent une valeur unique dans le film). R6 : balayage aveugle des 60 octets du pied contre
+l'équipe prouvée — **`b37` et `b38` valent l'équipe 665 fois sur 665**, `b55` (ce que la production
+lit) vaut **0 sur les 665**, plancher de bruit 4 lectures parfaites sur 180 essayées.
+
+**Livrables.** Quatre instruments sous garde `CHUNK00_FILMS` (`residus_vacants`, `residus_slots`,
+`residus_trame`, `residus_pied` `_research_test.go`), la note
+`.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md`, la section 8.6 de
+`RE_EXE_GHIDRA_FINDINGS.md`. Gates : `gofmt -l` net, `go vet` net, `go test
+./internal/analysis/filmdec/` sans garde ok, `go test ./internal/archlint/` ok.
+
+**Conclusion / prochaine étape.** Les trois pièces d'un décodeur multi-build sont désormais
+complètes et vérifiées sur tout le cache : le pont rang → xuid, le désignateur par slot, et le
+profil par build (transposition + n2 + longueur de record). Rien n'est branché en production. Le
+geste suivant le plus rentable reste hors de ce lot : corriger le modèle de record d'image-clé du
+décodeur (`keyframe_record_walk.go`), et — découverte de ce lot — remplacer la lecture de `b55`
+par `b37` dans `objectiveevents/film.go`.
