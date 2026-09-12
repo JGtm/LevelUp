@@ -2,6 +2,8 @@
 
 Date : 2026-09-12 · Branche : `wt/btb-2025-abstention` (base `feat/v75` 2f5d165be)
 Perimetre : une session, borne. Correctif livre (la cause est simple et prouvee).
+Mise a jour du 2026-09-12 (lot G.2bis) : le correctif retenu N EST PLUS la resolution par
+mesure decrite en section 4 — voir la section 6, qui fait foi.
 
 ## 1. Verdict
 
@@ -157,3 +159,189 @@ go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...  OK
    la liste des chunks. La resolution par mesure est donc la bonne reponse aujourd'hui ; ecrire
    `FilmMajorVersion` dans le manifeste au telechargement la rendrait inutile et serait plus
    direct — a arbitrer separement.
+
+## 6. Correctif retenu : la version est LUE dans l en-tete, l heuristique est retiree
+
+Decision utilisateur du 2026-09-12 : **un outil bien developpe cherche l indicateur cle qui lui
+dit comment le film est construit, il ne le devine pas.** La resolution par mesure de `2a6265ac4`
+(section 4) est REFUSEE et supprimee.
+
+### 6.1 L indicateur, et il etait sous nos yeux
+
+Les **quatre premiers octets de `chunk_00.bin`** — le registre du film — sont le
+`FilmMajorVersion`, en u32 little-endian. C est la MEME valeur que l API publie dans
+`CustomData.FilmMajorVersion` de son manifeste de spectate. Le second u32 suit (25 / 24 / 27 sur
+les films de version 40 / 37 / 41), puis la chaine `game-engine-team-mapping-component` ouvre le
+premier bloc d archetype.
+
+Verifie sur pieces, en-tete brut :
+
+```
+e5adf7b2 (2025-07)  28 00 00 00 | 19 00 00 00 | "game-engine-team-mapping..."  -> v40
+a26dbcdb (2024-10)  25 00 00 00 | 18 00 00 00 | idem                           -> v37
+5676a9ba (2026-07)  29 00 00 00 | 1b 00 00 00 | idem                           -> v41
+```
+
+Le depot avait deja MESURE cette valeur sans la nommer : le commentaire de `looksZlib`
+(`filmdec/registry.go`) la comptait sur les 1 378 `chunk_00` du cache et la lisait comme « le
+`kind` u32 du premier slot ». Le comptage etait juste, l interpretation non. Les deux commentaires
+concernes sont corriges.
+
+### 6.2 Ce qui a ete livre
+
+| item | etat |
+|---|---|
+| G.2bis-1 helper canonique `filmdec.FilmMajorVersionFromHeader` / `FilmMajorVersion` | `[x]` |
+| G.2bis-2 les trois appelants passent la version lue | `[x]` |
+| G.2bis-3 heuristique supprimee (0 code mort) | `[x]` |
+| G.2bis-4 la version survit au cache disque (`fetchFilmManifest`) | `[x]` |
+| G.2bis-4bis champ `film_major_version` dans le manifeste serialise | `[!]` justifie, cf. 6.5 |
+| G.2bis-5 `SchemaVersion` 53 -> 54 + empreinte killsource recopiee | `[x]` |
+| G.2 etendu (plan, 2026-09-12) : la version portee par le film charge et publiee dans la couverture | `[x]` |
+
+**Le helper vit dans `internal/analysis/filmdec`** (`film_major_version.go`), et pas dans
+`filmsource` : `filmsource` est volontairement aveugle au contenu (« les chunks bruts, et rien
+d autre ») et `archlint/filmsource_leaf_test.go` le maintient feuille ; `filmdec` est le paquet
+qui porte la semantique de `chunk_00` — `registry.go` l analyse, `FilmRegistryChunk` le localise.
+
+**Les trois appelants** qui passaient `0` :
+
+- `killsource/feed.go` — `loadFilm` pose `majorVersion` / `versionLue` sur le film, `prepare`
+  consigne un `slog.WarnContext` quand le registre manque, `loadKillFeed` passe la version.
+- `analysis/replay/deaths_source.go` — `ScanDeaths` lit la version du film deja charge, WARN idem.
+- `ops/medal_feed_backfill.go` — `SourceChunkHighlight` rend desormais un
+  `FilmHighlight{Chunk, MajorVersion}` ; l implantation CLI charge en plus le seul `chunk_00`
+  (~2 Mio) pour lire l en-tete.
+
+Aucune degradation silencieuse : registre illisible = WARN + version 0 = comportement historique.
+
+**Ce qui a ete supprime** de `2a6265ac4` : `gamertagLayoutAlternatif`, la tranche `alternatif`, le
+drapeau `auto`, les constantes `versionUnknown` / `versionGamertagEnTete` / `versionGamertagDecale`,
+le troisieme retour `brut` de `parseEventAtBit`, et l enveloppe `gamertagPourVersion` (un seul
+appelant restant, et sa justification ecrite portait sur la resolution retiree).
+`highlight_event_parser.go` est redevenu identique a son etat d avant le correctif, a son
+commentaire de contrat pres.
+
+### 6.3 Le parc entier, par la version LUE
+
+`TestBTB2025ParcVersions` (banc garde par `KS_BTB2025_PARC`) remplace `TestBTB2025ParcDecoupage` :
+il classe par la version lue au lieu de mesurer.
+
+```
+PARC     films=1351 sans_registre_lisible=0
+VERSIONS 31:3 33:3 37:10 38:1 39:26 40:185 41:1123
+```
+
+Exactement la distribution annoncee par le pilote. **211 films de version 39-40** sont concernes.
+
+Croisement mesure contre version (`KS_BTB2025_PARC_CROISE=1`) : **1 divergence sur 1 351**, le film
+`007d53a4` (v40). Inspection : ce film ne porte **aucun** highlight event — 0 sous les deux
+decoupages. La mesure y est indefinie et retombe par defaut sur « en tete » ; la version, elle,
+repond. C est exactement l angle mort d une heuristique par mesure, et une raison de plus de ne
+pas en garder une.
+
+### 6.4 Le contenu cuit du rejeu change — d ou le bump 53 -> 54
+
+`ScanDeaths` alimente `gamertagsOf`, la table qui **nomme `roster[]`** dans l artefact de rejeu
+(`build.go`, `identity_registry_section.go`) et qui sert aussi de table nom -> xuid a
+`replaybuild/kills.go`. Mesure sur les memes octets, version passee `0` puis version lue :
+
+| film | version lue | identites nommees | noms distincts |
+|---|---:|---|---|
+| `e5adf7b2` | 40 | 17 -> **26** | 2 -> **26** |
+| `111fa685` | 39 | 16 -> **24** | 2 -> **24** |
+| `000d5950` (temoin) | 41 | 8 -> 8 | 8 -> 8 |
+| `5676a9ba` (temoin) | 41 | 26 -> 26 | 26 -> 26 |
+
+Le contenu cuit change : la regle de `document.go` exige la montee, et c est elle qui rendra ces
+artefacts candidats a `backfill-replay --only-existing`. Chronique datee posee dans
+`document_chronicle.go` et dans le garde de `structure_test.go`, selon la convention.
+
+Le golden d assemblage `000d5950` change d **une seule ligne** (`schema 53` -> `schema 54`) :
+609 lignes figees, 609 obtenues, un seul ecart — ses entrees etant figees dans
+`inputs_000d5950.bin.gz`.
+
+`KillSourceDecoderRev` reste `killsource-2026-09-12` (deja monte) ; `killSourceDecoderFingerprint`
+est recopiee, `loadFilm` / `loadKillFeed` / `prepare` ayant bouge et les lignes produites aussi.
+
+### 6.5 Le manifeste en cache : ce qui a ete fait, et ce qui ne l a pas ete
+
+**Fait.** `fetchFilmManifest` posait `CustomData.FilmMajorVersion = 0` des que le manifeste venait
+du cache local. Consequence non vue jusqu ici : `GetHighlightEventsChunk` servait `0` a **tout le
+pipeline de synchronisation** pour ces matchs — le chemin en direct compris, qu on croyait
+epargne. La version est desormais lue dans l en-tete du registre, ce qui vaut pour les 1 351 films
+deja en cache, **sans migration**. Deux tests sans reseau le figent.
+
+**`[!]` non fait, et c est delibere :** aucun champ `film_major_version` n est ajoute au manifeste
+serialise. Trois raisons : il serait redondant avec l en-tete du registre (seconde source de
+verite pour le meme fait) ; il ne couvrirait **aucun** des 1 351 films deja en cache, `filmcache.Write`
+ne reecrivant jamais un manifeste existant ; et l objectif fonctionnel vise — « `GetFilmChunks`
+rend la vraie version aussi depuis le cache » — est atteint sans lui.
+
+### 6.6 La version voyage avec l artefact (Lot G etendu, ligne du plan du 2026-09-12)
+
+Constat du plan : seul le parseur des temps forts consomme `FilmMajorVersion` ; `filmdec` et le
+constructeur de rejeu travaillent sous l hypothese implicite « tout est en 41 », alors que le
+cache porte SEPT versions. Un artefact ne disait donc pas sous quelle grammaire il avait ete cuit,
+et la mesure par version (lot H) aurait exige de relire les films.
+
+`Options.FilmMajorVersion` (pointeur) est pose par `BuildFromFilm` depuis
+`filmdec.FilmMajorVersion(film)`, republie tel quel dans `Coverage.FilmMajorVersion`
+(`coverage.filmMajorVersion` dans le JSON). Pointeur et non zero : l absence dit « film sans
+registre, ou artefact anterieur a ce lot », jamais « version 0 ».
+
+Telemetrie pure, champ OPTIONNEL : il n aurait pas exige de montee a lui seul, il part avec le
+bump 54 deja acquis. Miroir `replaydoc` + projection `replayview` (garde-rail de parite), contrat
+regenere par `make openapi-gen` et types web regeneres par `openapi-typescript` : un champ
+optionnel de plus des deux cotes, rien d autre.
+
+### 6.7 Portes jouees
+
+```
+go build ./...                                         OK
+go vet ./...                                           OK
+go test ./...                                          171 paquets OK, 0 echec
+go test -tags=integration -p 1 ./internal/sync/...      OK
+make go-api-lint (golangci-lint, ratchet CI)            0 issues
+make openapi-gen                                        api/openapi.yaml : +3 lignes
+openapi-typescript -> apps/web/.../generated.ts          +2 lignes (champ optionnel)
+golden assembly_000d5950                                regenere, 1 ligne (schema)
+replay-corpus-gate --reference=base --base=feat/v75     8 temoins / 8 ok, 0 perte, exit 0
+```
+
+`make generate-types` n a PAS pu tourner dans ce worktree (`apps/web/node_modules` absent) : les
+types ont ete regeneres par le meme binaire `openapi-typescript` 7.13.0 emprunte a l arbre
+principal, sur le MEME `openapi.yaml`. `make check-types` (tsc) et `make test-web` n ont pas ete
+joues pour la meme raison — le changement cote web est un champ OPTIONNEL de plus dans un fichier
+genere, et la CI reste le gate d autorite.
+
+Gate corpus, detail (`base(feat/v75) 53 -> HEAD 54`, gains / pertes) :
+
+```
+bcb6d393  ctf_mono_manche      5 / 0     (film v40 — affecte)
+fb1a1a72  ctf_multi_manche     3 / 0
+d9781168  oddball              3 / 0
+c75f33b8  assaut_bombe         3 / 0
+bf15f7ab  slayer               3 / 0
+51ebbc0f  deux_manches         3 / 0
+084a804d  vehicules           17 / 0     (film v39 — affecte)
+0797ce72  region_index_2_bits  3 / 0
+```
+
+Les deux temoins de version 39-40 (`bcb6d393` v40, `084a804d` v39) sont exactement ceux qui
+gagnent plus que le socle commun ; les six temoins de version 41 portent le socle et rien d autre.
+Avant l ajout de `coverage.filmMajorVersion`, le meme gate donnait 3 / 1 / 1 / 1 / 1 / 1 / 15 / 1 :
+chaque temoin a gagne exactement deux differences de plus — la ligne de schema et ce champ.
+**Zero perte, aux deux passages.**
+
+### 6.8 Ce qui reste ouvert
+
+1. **Le redecodage n est pas lance** (consigne du lot) : `backfill-replay --only-existing` pour
+   les artefacts de rejeu, et le backlog `killsource` par `KillSourceDecoderRev`. Ordre de
+   grandeur : 211 films a 8-50 s, soit 30 min a 3 h en serie.
+2. **Les 136 films 39-40 hors BTB** (arene et divers) restent a verifier en base, par mois et par
+   playlist. Aucune requete DuckDB n a ete faite ici (consigne).
+3. **L empreinte du decodeur ne couvre pas son amont.** `killSourceDecoderFingerprint` ne hache
+   que `killsource/` : ce correctif a commence dans `analysis/` et `filmdec` et n aurait pas fait
+   sonner le gate si `loadFilm` / `loadKillFeed` n avaient pas bouge aussi. Decouverte notee sur
+   place dans `collector.go`, non traitee (hors perimetre).

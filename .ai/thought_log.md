@@ -106618,3 +106618,63 @@ la résolution par mesure inutile.
 
 **Prochaine étape** : re-décodage du parc (non lancé, consigne) — la montée de revision remet les
 lignes au backlog de `postsync`, 210 films à 8-50 s = 30 min à 3 h en série.
+
+## [2026-09-12] Lot G.2bis — la version du film est LUE dans l'en-tête, l'heuristique est retirée
+
+**Statut** : Complété (branche `wt/btb-2025-abstention`, 5 commits au-dessus de `feat/v75`)
+
+**Décision technique principale** : décision utilisateur ferme — un décodeur cherche l'indicateur
+clé qui lui dit comment le film est construit, il ne le devine pas. La « résolution par mesure »
+du découpage du gamertag (commit `2a6265ac4`) est REFUSÉE et supprimée. L'indicateur existe : les
+quatre premiers octets de `chunk_00.bin` (u32 little-endian) sont le `FilmMajorVersion`, la même
+valeur que l'API publie dans `CustomData.FilmMajorVersion`. Helper canonique
+`filmdec.FilmMajorVersionFromHeader` / `FilmMajorVersion`, posé dans `internal/analysis/filmdec`
+— le paquet qui porte la sémantique de `chunk_00` (`registry.go`, `FilmRegistryChunk`) ;
+`filmsource` reste volontairement aveugle au contenu et feuille (ratchet `filmsource_leaf_test`).
+Les trois appelants qui passaient 0 (`killsource/feed.go`, `replay/deaths_source.go`,
+`ops/medal_feed_backfill.go`) lisent et passent la version, avec `slog.WarnContext` quand le
+registre manque. Découverte au passage : `haloclient.fetchFilmManifest` forçait aussi la version à
+0 dès que le manifeste venait du cache, donc `GetHighlightEventsChunk` servait 0 au pipeline de
+synchronisation EN DIRECT pour ces matchs — corrigé par la lecture de l'en-tête, ce qui vaut pour
+les 1 351 films déjà en cache sans migration.
+
+**Résultats observés** : parc entier classé par la version lue — 1 351 films, 0 registre illisible,
+v31 x3, v33 x3, v37 x10, v38 x1, v39 x26, v40 x185, v41 x1123, exactement la distribution annoncée.
+Croisement mesure contre version : 1 divergence sur 1 351 (`007d53a4`, v40), et ce film ne porte
+AUCUN highlight event — la mesure y est indéfinie, la version répond : l'angle mort d'une
+heuristique, en une ligne. Le contenu cuit du rejeu change sur les films 39-40 : `gamertagsOf`, la
+table qui nomme `roster[]`, passe de 17 identités / 2 noms distincts à 26 / 26 sur `e5adf7b2` et de
+16 / 2 à 24 / 24 sur `111fa685` ; témoins v41 (`000d5950`, `5676a9ba`) identiques. D'où
+`SchemaVersion` 53 -> 54 avec chronique datée (`document_chronicle.go`, garde `structure_test.go`).
+Golden `assembly_000d5950` : une seule ligne change (schéma), 609 lignes des deux côtés.
+`killSourceDecoderFingerprint` recopiée, `KillSourceDecoderRev` reste `killsource-2026-09-12`.
+Portes : `go build ./...`, `go vet ./...`, `go test ./...` (171 paquets, 0 échec),
+`go test -tags=integration -p 1 ./internal/sync/...`, `make go-api-lint` 0 issue,
+`replay-corpus-gate --reference=base --base=feat/v75` 8 témoins / 8 ok, 0 perte, exit 0 (joué deux
+fois : avant et après l'ajout du champ de couverture) — et les deux témoins de version 39-40
+(`bcb6d393` v40, `084a804d` v39) sont exactement ceux qui gagnent plus que le socle commun.
+
+**Lot G étendu (ligne du plan du 2026-09-12, exécutée)** : la version lue voyage désormais AVEC
+l'artefact — `Options.FilmMajorVersion` posée par `BuildFromFilm`, republiée dans
+`Coverage.FilmMajorVersion` (`coverage.filmMajorVersion`). Motif : seul le parseur des temps forts
+consommait cette version, tout le reste du décodeur travaille sous l'hypothèse implicite « tout
+est en 41 » ; sans ce champ, la mesure par version du lot H devrait relire les films. Pointeur et
+non zéro (l'absence dit « film sans registre », pas « version 0 »). Miroir `replaydoc` + projection
+`replayview`, contrat regénéré (`make openapi-gen`, +3 lignes) et types web regénérés (+2 lignes).
+`make generate-types` n'a pas pu tourner dans ce worktree (`apps/web/node_modules` absent) : même
+binaire `openapi-typescript` 7.13.0 emprunté à l'arbre principal, même `openapi.yaml` ; `tsc` et
+vitest non joués pour la même raison, la CI reste le gate d'autorité.
+
+**Statué `[!]` avec justification** : le champ `film_major_version` dans le manifeste sérialisé du
+cache n'est pas ajouté — il serait redondant avec l'en-tête du registre (seconde source de vérité
+pour le même fait), il ne couvrirait aucun des 1 351 films déjà en cache (`filmcache.Write` ne
+réécrit jamais un manifeste existant), et l'objectif fonctionnel est atteint sans lui.
+
+**Découvertes non traitées** : `killSourceDecoderFingerprint` ne hache que `killsource/` — ce
+correctif a commencé dans `analysis/` et `filmdec` et n'aurait pas fait sonner le gate si
+`loadFilm`/`loadKillFeed` n'avaient pas bougé aussi (noté dans `collector.go`) ; les ~136 films
+39-40 hors BTB restent à vérifier en base, par mois et par playlist.
+
+**Prochaine étape** : re-décodage NON lancé (consigne du lot) — `backfill-replay --only-existing`
+pour les artefacts de rejeu, backlog `killsource` par `KillSourceDecoderRev` ; 211 films à 8-50 s,
+soit 30 min à 3 h en série. Puis revue adversariale (G.3) et fusion dans `feat/v75`.
