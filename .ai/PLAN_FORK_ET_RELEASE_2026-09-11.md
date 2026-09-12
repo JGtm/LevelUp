@@ -39,8 +39,8 @@
 - [x] D.3 Cocher Notion 6, 7, 8.
 
 ## Lot E — tâche Notion 9 : déplacement pur du décodeur sous `internal/games/halo_infinite/film/`
-- [ ] E.1 Ratchet « `analysis/` n'importe pas `games/{slug}` » posé avant.
-- [ ] E.2 Commit de déplacement seul ; suite Go complète + goldens identiques.
+- [x] E.1 Ratchet « `analysis/` n'importe pas `games/{slug}` » posé avant.
+- [x] E.2 Commit de déplacement seul ; suite Go complète + goldens identiques.
 - [ ] E.3 Cocher Notion 9.
 
 ## Lot F — tâche Notion 10 : nettoyage worktrees/branches, bascule dossier LevelUp
@@ -150,3 +150,29 @@
   `killsource-2026-07-31`, sans film en cache, datés 2023 -> 03/2026, films expirés). Les 223
   matchs repassés n'ont gagné que 8 % d'attribution : l'hypothèse Notion du 10-09 n'est pas
   confirmée — à instruire (Découverte), pas dans ce plan.
+- 2026-09-12 (correction utilisateur) : les films des 102 matchs restés en `killsource-2026-07-31`
+  ne sont PAS expirés — 79 datent de 2025, 15 de 2024, 7 de 2023, 1 de 2026 ; le code ne connaît
+  aucune date butoir. Mon affirmation « films expirés, irrécupérables » était fausse (déduite du
+  seul cache local). Passe `backfill-killsource --online --gamertag JGtm` lancée (93 films à
+  télécharger, du plus récent au plus vieux), serveur arrêté ; journal `killsource_online.log`.
+  Reformulation : « morts sans source » = film non décodé (absent ou pas encore repassé) OU
+  abstention du décodeur — pas une propriété des morts elles-mêmes.
+- 2026-09-12 : passe `--online` finie (15:20 -> 16:38) : 65 films récupérés et décodés, 24 disparus
+  (404), 4 sans kill feed. État `_latest` : 1 347 matchs sur le décodeur courant, 34 sur l'ancien
+  (films perdus), 3 temps forts. **Morts sans source 27 807 -> 27 807 : le re-décodage n'en résout
+  aucune.** Distribution (décodeur courant) : 82 matchs à > 50 % sans source portent 15 296 morts,
+  dont 72 BTB de mars à novembre 2025 (88 % non attribués) ; 339 matchs à 10-49 % (6 247) ;
+  98 à 1-9 % ; 828 à 0 %. L'hypothèse Notion du 10-09 est réfutée : c'est une abstention du
+  décodeur sur les films BTB 2025, pas un retraitement manquant. DÉCOUVERTE MAJEURE, à instruire
+  dans un lot dédié (décision utilisateur) — non traitée ici. Notion 7 reformulé avec ces chiffres.
+- 2026-09-12 : lot E rendu (`wt/decodeur-sous-titre`, `5a0d1ec91` ratchet + `e64bf77f0`
+  déplacement pur 981 renommages, 0 ajout/suppression ; `KillSourceDecoderRev` non montée,
+  justifié). Gates verts sauf gate corpus (base tenue) : rejoué par le pilote après la passe.
+- 2026-09-12 : gate corpus du lot E joué par le pilote (base libre, `--base=feat/v75`,
+  `--parc-root` go-migration) : **8 témoins sur 8 `ok`, 53 -> 53, 0 gain, 0 perte** (journal
+  `gate_corpus_lotE.log`). Lot E vérifié : déplacement pur prouvé. Revue adversariale : AUCUNE
+  (renommage, calibrage du skill). Fusion dans feat/v75 DIFFÉRÉE jusqu'au retour de l'instruction
+  BTB 2025 (branche partie de feat/v75 avant le déplacement — fusionner E en dernier évite de
+  rebaser une branche vivante à travers 981 renommages). Branche poussée pour la CI. E.3 Notion 9
+  se coche à la fusion. Serveur relancé (health 200). Instruction BTB 2025 lancée
+  (`wt/btb-2025-abstention`, Opus).
