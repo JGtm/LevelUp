@@ -31,6 +31,7 @@ type Coverage struct {
 	Vehicles          *VehicleCoverage            `json:"vehicles,omitempty"`
 	ObjectiveObjects  *ObjectiveObjectsCoverage   `json:"objectiveObjects,omitempty"`
 	Inventory         *InventoryCoverage          `json:"inventory,omitempty"`
+	FilmMajorVersion  *int                        `json:"filmMajorVersion,omitempty"`
 	GrenadeReads      *GrenadeReadCoverage        `json:"grenadeReads,omitempty"`
 	Abilities         *AbilityCoverage            `json:"abilities,omitempty"`
 	Zones             *ZonesCoverage              `json:"zones,omitempty"`

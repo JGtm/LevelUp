@@ -12,10 +12,18 @@ package killcollector
 //
 // # Ce que le garde-rail fait, exactement
 //
-// Il hache les sources NON-TEST du paquet decodeur et compare a
-// [killSourceDecoderFingerprint], figee A COTE de la revision. Toucher le decodeur fait rougir
-// ce test ; le remettre au vert demande de rouvrir la ligne de la revision — donc de DECIDER si
-// les lignes en base doivent etre redecodees. C est tout ce qu on lui demande.
+// Il hache les sources NON-TEST du paquet decodeur et compare AU GOLDEN
+// `testdata/killsource_decoder_rev.golden`, qui porte le couple (revision, empreinte). Toucher le
+// decodeur fait rougir ce test ; le remettre au vert demande de rouvrir la ligne de la revision —
+// donc de DECIDER si les lignes en base doivent etre redecodees. C est tout ce qu on lui demande.
+//
+// # Le golden porte LES DEUX valeurs, et c est le correctif du 2026-09-12
+//
+// Revue adversariale, constat P1-4 : tant que le test ne comparait que l EMPREINTE a une constante
+// de `collector.go`, remettre [KillSourceDecoderRev] a sa valeur d avant — en gardant la nouvelle
+// empreinte — restait VERT. Le gate ne tenait donc qu un des deux gestes qu il exigeait dans son
+// propre message. Les deux valeurs figees ENSEMBLE rendent les deux derives visibles, avec deux
+// messages distincts : « le decodeur a change » et « la revision a change sans le decodeur ».
 //
 // # Ce qu il ne fait pas, et pourquoi c est assume
 //
@@ -34,6 +42,7 @@ package killcollector
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -43,6 +52,65 @@ import (
 	"strings"
 	"testing"
 )
+
+// updateDecoderRevGolden : la regeneration du golden, EXPLICITE. Sans ce drapeau le test ne
+// reecrit jamais rien — un gate qui se repare tout seul ne garde rien.
+var updateDecoderRevGolden = flag.Bool("update", false,
+	"reecrire testdata/killsource_decoder_rev.golden (revision ET empreinte)")
+
+// cheminGoldenDecoderRev : le golden, relatif au paquet.
+const cheminGoldenDecoderRev = "testdata/killsource_decoder_rev.golden"
+
+// lireGoldenDecoderRev rend le couple (revision, empreinte) fige. Les lignes vides et les lignes
+// de commentaire (`#`) sont ignorees : le fichier porte sa propre recette et son historique.
+func lireGoldenDecoderRev(t *testing.T) (revision, empreinte string) {
+	t.Helper()
+	blob, err := os.ReadFile(cheminGoldenDecoderRev)
+	if err != nil {
+		t.Fatalf("golden %s illisible : %v — il est VERSIONNE, son absence est une erreur",
+			cheminGoldenDecoderRev, err)
+	}
+	for _, ligne := range strings.Split(strings.ReplaceAll(string(blob), "\r\n", "\n"), "\n") {
+		if ligne == "" || strings.HasPrefix(ligne, "#") {
+			continue
+		}
+		champs := strings.Split(ligne, "\t")
+		if len(champs) != 2 || champs[0] == "" || champs[1] == "" {
+			t.Fatalf("golden %s : ligne de donnees malformee %q — attendu "+
+				"`revision<TAB>empreinte`", cheminGoldenDecoderRev, ligne)
+		}
+		if revision != "" {
+			t.Fatalf("golden %s : plusieurs lignes de donnees — le fichier fige UN couple",
+				cheminGoldenDecoderRev)
+		}
+		revision, empreinte = champs[0], champs[1]
+	}
+	if revision == "" {
+		t.Fatalf("golden %s : aucune ligne de donnees", cheminGoldenDecoderRev)
+	}
+	return revision, empreinte
+}
+
+// ecrireGoldenDecoderRev reecrit la SEULE ligne de donnees, en gardant l en-tete et l historique.
+func ecrireGoldenDecoderRev(t *testing.T, revision, empreinte string) {
+	t.Helper()
+	blob, err := os.ReadFile(cheminGoldenDecoderRev)
+	if err != nil {
+		t.Fatalf("golden %s illisible : %v", cheminGoldenDecoderRev, err)
+	}
+	var sortie []string
+	for _, ligne := range strings.Split(strings.ReplaceAll(string(blob), "\r\n", "\n"), "\n") {
+		if ligne == "" || strings.HasPrefix(ligne, "#") {
+			sortie = append(sortie, ligne)
+		}
+	}
+	// La derniere entree est la ligne vide finale : la ligne de donnees se glisse avant elle.
+	sortie = append(sortie[:len(sortie)-1], revision+"\t"+empreinte, "")
+	if err := os.WriteFile(cheminGoldenDecoderRev, []byte(strings.Join(sortie, "\n")), 0o600); err != nil {
+		t.Fatalf("ecriture du golden %s : %v", cheminGoldenDecoderRev, err)
+	}
+	t.Logf("golden regenere : %s / %s", revision, empreinte)
+}
 
 // cheminPaquetKillsource rend le chemin du paquet decodeur depuis CE fichier de test.
 //
@@ -117,8 +185,13 @@ func empreinteSourcesGo(racine string) (string, int, error) {
 	return hex.EncodeToString(h.Sum(nil)), len(lus), nil
 }
 
-// TestKillSourceDecoderRevSuitLeDecodeur — LE GATE. Sources du decodeur modifiees sans bump de
-// la revision = rouge, avec le geste exact a faire dans le message.
+// TestKillSourceDecoderRevSuitLeDecodeur — LE GATE. Il tient les DEUX gestes que son message
+// exige, et il les distingue :
+//
+//	empreinte differente          le decodeur a change -> decider, bumper si les lignes bougent,
+//	                              puis regenerer le golden ;
+//	empreinte egale, revision non la revision a bouge sans le decodeur -> geste sans effet, ou
+//	                              golden non regenere apres un bump legitime.
 func TestKillSourceDecoderRevSuitLeDecodeur(t *testing.T) {
 	dir := cheminPaquetKillsource(t)
 	if _, err := os.Stat(dir); err != nil {
@@ -129,26 +202,51 @@ func TestKillSourceDecoderRevSuitLeDecodeur(t *testing.T) {
 	if err != nil {
 		t.Fatalf("empreinte des sources du decodeur : %v", err)
 	}
-	if empreinte != killSourceDecoderFingerprint {
-		t.Fatalf(`LE DECODEUR A CHANGE ET SA REVISION N A PAS BOUGE.
+	if *updateDecoderRevGolden {
+		ecrireGoldenDecoderRev(t, KillSourceDecoderRev, empreinte)
+		return
+	}
+	revisionGolden, empreinteGolden := lireGoldenDecoderRev(t)
+	if empreinte != empreinteGolden {
+		t.Fatalf(`LE DECODEUR A CHANGE.
 
   paquet    : internal/games/halo_infinite/film/killsource (%d fichiers non-test)
   attendue  : %s
   mesuree   : %s
-  revision  : KillSourceDecoderRev = %q
+  revision  : KillSourceDecoderRev = %q (golden : %q)
 
-DEUX GESTES, DANS COLLECTOR.GO, ET LES DEUX SONT OBLIGATOIRES :
+DEUX GESTES, ET LES DEUX SONT OBLIGATOIRES :
 
-  1. BUMPER KillSourceDecoderRev (ex. "killsource-AAAA-MM-JJ") si le changement modifie les
-     lignes produites — c est ce qui rend les matchs deja decodes a nouveau candidats au
-     backlog (postsync.go, conditionBacklog). Si le changement ne touche PAS les lignes
-     produites (commentaire, renommage interne), laisser la revision et l ecrire dans le
-     commit : le choix doit etre explicite, pas implicite.
-  2. RECOPIER l empreinte mesuree ci-dessus dans killSourceDecoderFingerprint.
+  1. BUMPER KillSourceDecoderRev dans collector.go (ex. "killsource-AAAA-MM-JJ") si le changement
+     modifie les lignes produites — c est ce qui rend les matchs deja decodes a nouveau candidats
+     au backlog (postsync.go, conditionBacklog). Si le changement ne touche PAS les lignes
+     produites (commentaire, renommage interne), laisser la revision et l ecrire dans le commit :
+     le choix doit etre explicite, pas implicite.
+  2. REGENERER le golden, qui fige le couple (revision, empreinte) :
+
+       go test ./internal/sync/killcollector/ -run TestKillSourceDecoderRevSuitLeDecodeur -update
 
 Sans le geste 2 ce test reste rouge ; sans le geste 1 les lignes en base restent servies avec
 l ancien decodage, sans compteur et sans reprise possible.`,
-			n, killSourceDecoderFingerprint, empreinte, KillSourceDecoderRev)
+			n, empreinteGolden, empreinte, KillSourceDecoderRev, revisionGolden)
+	}
+	if KillSourceDecoderRev != revisionGolden {
+		t.Fatalf(`LA REVISION A CHANGE SANS QUE LE DECODEUR BOUGE.
+
+  revision  : KillSourceDecoderRev = %q
+  golden    : %q
+  empreinte : %s (inchangee)
+
+Deux lectures possibles, et aucune ne se regle en laissant le test vert :
+
+  - la revision a ete bumpee pour un changement qui vit AILLEURS que dans
+    internal/games/halo_infinite/film/killsource/ (le parseur d events, filmdec, une source de
+    chunk). C est legitime — le gate ne hache que le decodeur, pas son amont : regenerer le
+    golden avec -update, et le dire dans le commit.
+  - la revision a ete modifiee par megarde, ou remise a une valeur anterieure. La remettre.
+
+  go test ./internal/sync/killcollector/ -run TestKillSourceDecoderRevSuitLeDecodeur -update`,
+			KillSourceDecoderRev, revisionGolden, empreinte)
 	}
 }
 

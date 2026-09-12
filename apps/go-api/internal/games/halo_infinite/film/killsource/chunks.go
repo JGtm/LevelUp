@@ -31,6 +31,7 @@ package killsource
 import (
 	"sort"
 
+	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
 )
 
@@ -61,6 +62,15 @@ type film struct {
 	packets []packet
 	t0      []packet // paquets type-0, tries par horodatage
 	tsBase  uint64
+
+	// majorVersion : le FilmMajorVersion LU dans l en-tete du registre (`chunk_00`), et
+	// `versionLue=false` quand le film n en porte pas (bobine partielle, fixture). Il commande
+	// le decoupage du gamertag dans le kill-feed : sur les versions 39-40 le gamertag vit a
+	// l octet 12 du bloc d event et non a l octet 0. Le passer en dur a 0 — ce que faisait
+	// `loadKillFeed` avant le 2026-09-12 — lisait du rembourrage sur ces films et effondrait le
+	// roster humain a deux noms distincts pour 24 a 27 joueurs.
+	majorVersion int
+	versionLue   bool
 }
 
 // loadFilm : traduit un film deja charge par `filmsource` dans le vocabulaire du decodeur, et
@@ -71,6 +81,7 @@ func loadFilm(src *filmsource.Film) (*film, error) {
 	}
 	n := src.NumChunks()
 	f := &film{chunks: make([][]byte, n), packets: packetsOf(src)}
+	f.majorVersion, f.versionLue = filmdec.FilmMajorVersion(src)
 	for ch := 0; ch < n; ch++ {
 		f.chunks[ch] = src.Chunk(ch)
 	}
