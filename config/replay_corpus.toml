@@ -117,3 +117,19 @@ famille = "vehicules"
 mode    = "BTB Heavies:CTF"
 carte   = "Fortitude Heavies"
 raison  = "densite maximale de vehicules du parc (57 chunks) ; couvre vies de vehicule + occupations de sieges (fusion des vies en relais, visee des occupants)"
+
+# --- Region d'index a 2 bits (Live Fire) --------------------------------------------------
+# Live Fire (sgh_interlock) est la SEULE carte du catalogue de bornes dont l'index de region
+# tient sur 2 bits (arene en region 1). Jusqu'au schema 52 la porte de position des objets du
+# monde lisait un litteral de 3 bits : tous les projectiles y etaient lus un bit trop tot
+# (50 % de pas impossibles, 239 vols tronques sur 305), et le gate est reste VERT sur le
+# correctif du 2026-09-12 (schema 53) parce qu'aucun temoin ne jouait sur cette carte. Ce
+# temoin garde la seule carte a largeur d'index non triviale ; en perdre les projectiles ou
+# les lancers de grenade par projectile (83 a 0,44 m du lanceur) signalerait une regression
+# de la porte.
+[[temoin]]
+id      = "0797ce72"
+famille = "region_index_2_bits"
+mode    = "Slayer:Arena Super Fiesta"
+carte   = "Live Fire"
+raison  = "seule carte du catalogue a index de region sur 2 bits ; porte de position des objets du monde par largeur d'index (schema 53) — projectiles et lancers par projectile invisibles a tout autre temoin"
