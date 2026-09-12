@@ -50,6 +50,17 @@ const (
 type PrecisionDescriptor struct {
 	IndexW uint
 	AxisW  [3]uint
+	// Region est la VALEUR d'index de région attendue sur les records, sur `IndexW` bits.
+	// N'a de sens que pour le descripteur WORLD-OBJECT (`WorldObjectPrecision`), dont le
+	// lecteur compare l'index lu à cette valeur — un record d'une AUTRE région exprime ses
+	// quanta dans une autre AABB. Le chemin de TRAVERSÉE (`TraversalPrecision`) ne la lit
+	// pas : il consomme l'index sans le juger, parce qu'il ne déquantifie pas.
+	//
+	// ELLE VIT DANS LE DESCRIPTEUR, et pas à côté, pour une raison précise :
+	// `replay.installWorldObjectPrecision` sauve et restaure le descripteur PAR VALEUR. Un
+	// second global aurait une durée de vie à gérer à la main, et c'est exactement le genre
+	// d'oubli qui laisse la région d'un match fuir sur le suivant.
+	Region uint32
 }
 
 // consumeDynPrecVec3 mirrors FUN_14076d528: a leading R(1) present flag (bit==0
