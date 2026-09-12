@@ -106551,3 +106551,32 @@ au pilote par le plan.
 
 **Prochaine étape** : revue A.4 par le pilote, puis lot suivant du plan
 (`.ai/PLAN_FORK_ET_RELEASE_2026-09-11.md`).
+
+---
+
+## [2026-09-12] Vague fork + release : lots A, B, B-bis, C fusionnés ; lot D (backfills) joué — Complete
+
+**Contexte** : arbitrage utilisateur du 11-09 (bilan du fork ChaseWoodhams + tâches Notion 6-10 +
+badge admin de version de schéma). Plan `.ai/PLAN_FORK_ET_RELEASE_2026-09-11.md`.
+
+**Décisions techniques** : (A) version courante du producteur en EN-TÊTE HTTP, jamais dans le corps
+du document jumeau (parité verrouillée) ; (B) lancer de grenade attribué par l'auteur d'abord,
+props Forge par carte (CSV attribué à Cliffhanger par emprise 90,8 % + commit d'origine) ;
+(B-bis) la cause du « bit qui bascule » n'était ni un signe ni un repli de plage mais une porte
+de 3 bits en dur là où la largeur d'index de région est PAR CARTE (2 sur Live Fire) — 40/40 pas
+vérifiés bit à bit, correctif = porte 2 + IndexW ; (C) IsFilmGoneErr = 404/410 typés seulement,
+branché au collecteur de kills.
+
+**Résultats** : revue adversariale unique de vague (3 relecteurs, 0 P0/P1, 6 P2 corrigés ; ronde 2
+1 P2 corrigé par test CORS) ; CI feat/v75 verte ; recuisson 76 artefacts schéma 53 (0 erreur,
+Live Fire : vols tronqués 239 -> 4) ; lot D : killsource 1 210 films (IsolationDecoderRev du
+10-09 avait périmé tout le parc), seed + recompute-all V1-V4 OK. Mesure ti=9 (bilan point 3) :
+en-tête keyframe PAR TYPE confirmé (47 bits), exploitation non recommandée.
+
+**Découvertes non traitées** : morts sans source INCHANGÉES après killsource (27 807) — 102 matchs
+sans film (expirés) et 10,3 % d'abstention sur le décodeur courant ; les 223 matchs repassés
+n'ont gagné que 8 % ; `document_chronicle.go` 1 190 L ; 13 replis FR restants sur Frags/Morts/FDA
+(timeseries) ; corpus témoin sans Live Fire (corrigé : témoin `0797ce72` ajouté).
+
+**Prochaine étape** : lot E (déplacement pur du décodeur sous `internal/games/halo_infinite/film/`),
+puis lot F (nettoyage worktrees/branches, bascule dossier LevelUp).
