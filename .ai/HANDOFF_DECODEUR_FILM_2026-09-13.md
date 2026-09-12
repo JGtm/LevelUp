@@ -175,6 +175,35 @@ Ce qui n'est PAS à faire : re-mesurer par statistique ce qu'un écrivain lisibl
 - La sémantique des valeurs 1..6 de la table par type de `chunk_00` (appel virtuel
   `vtable+0x30` : version de sérialisation par type, non prouvé).
 
+## 5 bis. Séquence recommandée : RE ou révision du décodeur d'abord ? (question du 2026-09-13)
+
+Ni l'un avant l'autre en bloc. Trois temps, chacun justifié par le risque :
+
+1. **D'abord les correctifs courts, gate-ables un par un, sans attendre la révision** : l'octet
+   37 du pied, les cinq états par défaut manquants, le cadre d'image-clé branché dans ses deux
+   consommateurs, le lecteur de registre à l'octet 8, et la lecture de la table des slots et du
+   désignateur d'équipe dans le constructeur de rejeu (l'équipe réelle sans base). Chacun tient
+   en une branche courte sous corpus gate et équivalence ; aucun n'a besoin du profil ni des
+   couches. C'est la valeur visible la plus proche (les « sans équipe », le compact BTB).
+2. **Ensuite la révision, pas 0 à 7, à zéro différence** : elle crée le profil (là où les
+   largeurs dépendantes du build ou de la config doivent vivre), retire les globales et le
+   verrou, pose les empreintes, les goldens par build et le budget de temps. Elle est
+   mécanique et interruptible ; sa fenêtre exige qu'aucune branche filmdec ne soit en vol,
+   donc pas de port de composant pendant qu'elle court.
+3. **Enfin la RE des 62 %, comme charge utile du pas 8, dans la structure révisée** : chaque
+   composant porté est une fonction pure (profil, bits) dans `grammar`, une révision de couche,
+   un gain attendu au corpus gate. Porter 161 composants AVANT la révision reviendrait à
+   grossir les fichiers de 1 380 lignes, à écrire les largeurs dépendantes de la config dans
+   des globales ou des littéraux (ce que le ratchet interdit déjà, et ce que le document
+   diagnostique comme la maladie), et à faire re-mesurer ensuite « zéro différence » sur un
+   décodeur qui bouge.
+
+Ce qui peut courir en parallèle sans gêner : la RE en INSTRUMENTS (tests de recherche, notes,
+relevé Ghidra), qui ne touche pas la production ; elle nourrit le pas 8 et doit simplement être
+fusionnée ou rebasée avant le pas 5 (déplacement des paquets). L'inventaire des composants et
+le ratchet de couverture d'image-clé (section 4 bis, étape 1) se posent au pas 0 : c'est un
+gate, pas un port.
+
 ## 6. Prochaine étape
 
 Écrire le plan du chantier décodeur (skill `plan-review` puis `plan-execution`) à partir du
