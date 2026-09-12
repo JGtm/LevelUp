@@ -3626,6 +3626,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReplayDocument'
           description: OK
+          headers:
+            X-Replay-Latest-Schema-Version:
+              schema:
+                format: int64
+                type: integer
         default:
           content:
             application/json:

@@ -47,6 +47,7 @@ import { ReplayMatchRecall } from '@/features/match-replay/ui/ReplayMatchRecall'
 import { frameToMs, resolveTacticalOpenAtFrame } from '@/lib/replay/replayLogic'
 import { ReplayBombCountdownOverlay } from '@/features/match-replay/ui/ReplayBombCountdownOverlay'
 import { ReplayRoundBreakOverlay } from '@/features/match-replay/ui/ReplayRoundBreakOverlay'
+import { ReplaySchemaBadge } from '@/features/match-replay/ui/ReplaySchemaBadge'
 import { ReplayScoreBanner } from '@/features/match-replay/ui/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ui/ReplayTeams'
 import { ReplayVictoryOverlay } from '@/features/match-replay/ui/ReplayVictoryOverlay'
@@ -93,6 +94,7 @@ function ReplayPage() {
   const params = Route.useParams()
   const { playerSlug, matchId } = params
   const locale = useAppShellStore((s) => s.locale)
+  const isAdmin = useAppShellStore((s) => s.isAdmin)
   const t = REPLAY_TEXT[locale]
   // Le logo du rejeu est un raster à deux variantes (noire / blanche) : c'est le thème local
   // qui choisit, comme pour les autres icônes du dépôt (cf. lib/themedIcon.ts).
@@ -204,6 +206,18 @@ function ReplayPage() {
           <h1 className="flex items-center gap-1.5 text-sm font-semibold">
             <img src={themedIconSrc('replay', theme)} alt="" aria-hidden className="h-4 w-auto" />
             {t.title}
+            {/* BADGE ADMIN « version de schéma » (lot A, 2026-09-11) : rien pour un joueur
+                ordinaire — `ReplaySchemaBadge` se gate lui-même sur `isAdmin`. `data` peut être
+                absent (chargement, 404) : le badge n'a alors ni version lue ni comparaison à
+                faire. */}
+            {data && (
+              <ReplaySchemaBadge
+                isAdmin={isAdmin}
+                schemaVersion={data.schemaVersion}
+                latestSchemaVersion={data.latestSchemaVersion}
+                locale={locale}
+              />
+            )}
           </h1>
         }
         detail={

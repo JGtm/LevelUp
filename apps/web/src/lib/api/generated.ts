@@ -17324,6 +17324,7 @@ export interface operations {
             /** @description OK */
             200: {
                 headers: {
+                    "X-Replay-Latest-Schema-Version"?: number;
                     [name: string]: unknown;
                 };
                 content: {

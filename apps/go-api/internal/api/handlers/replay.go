@@ -21,6 +21,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/port"
@@ -66,7 +67,20 @@ type replayInput struct {
 // replayOutput : le corps est le document SERVI (`domain/replaydoc`), jamais le document
 // STOCKE. C'est cette frontiere qui rend `openapi.yaml` independant du format de fichier de
 // l'artefact — le service projette, le handler encode (cf. internal/service/replayview).
-type replayOutput struct{ Body replaydoc.ReplayDocument }
+//
+// LatestSchemaVersion voyage en EN-TÊTE, jamais dans le corps : c'est une méta HTTP (la
+// version COURANTE du producteur, `analysis/replay.SchemaVersion`), distincte du
+// `schemaVersion` du corps (celle de l'ARTEFACT LU). `domain/replaydoc` est une feuille de
+// `domain/` qui n'importe jamais `analysis/replay` et ne porte AUCUN numéro de version — cf.
+// `domain/replaydoc/doc.go` ("AUCUN IMPORT D'internal/analysis/replay ICI, jamais" et "PAS DE
+// NUMERO DE VERSION DANS CE PAQUET"), et `replayview/parity_test.go` qui verrouille le corps
+// champ pour champ. Assembler LatestSchemaVersion ICI, à la frontière HTTP, respecte les deux
+// : le document jumeau reste inchangé, et le badge admin (lot A, 2026-09-11) lit l'en-tête
+// pour dire « à jour » ou « à recuire ».
+type replayOutput struct {
+	Body                replaydoc.ReplayDocument
+	LatestSchemaVersion int `header:"X-Replay-Latest-Schema-Version"`
+}
 
 // handleGetReplay retourne le document de rejeu 2D d'un match (404 si absent).
 func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*replayOutput, error) {
@@ -86,7 +100,7 @@ func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "replay_error", err.Error())
 	}
-	return &replayOutput{Body: doc}, nil
+	return &replayOutput{Body: doc, LatestSchemaVersion: replay.SchemaVersion}, nil
 }
 
 type backgroundOutput struct{ Body replaydoc.MapBackground }
