@@ -41,7 +41,7 @@
 ## Lot E — tâche Notion 9 : déplacement pur du décodeur sous `internal/games/halo_infinite/film/`
 - [x] E.1 Ratchet « `analysis/` n'importe pas `games/{slug}` » posé avant.
 - [x] E.2 Commit de déplacement seul ; suite Go complète + goldens identiques.
-- [ ] E.3 Cocher Notion 9.
+- [x] E.3 Cocher Notion 9.
 
 ## Lot F — tâche Notion 10 : nettoyage worktrees/branches, bascule dossier LevelUp
 - [ ] F.1 Inventaire daté (fusionné dans feat/v75 / non fusionné).
@@ -187,7 +187,7 @@
       `KillSourceDecoderRev` -> `killsource-2026-09-12`, 3 tests CI + banc env + non-régression.
 - [x] G.3 Revue adversariale (1 relecteur, algo) — question centrale : bump `SchemaVersion` 53 -> 54
       (deaths_source du rejeu lit le même parseur) ; puis fusion feat/v75.
-- [ ] G.4 Re-décodage des 210 films 39-40 (killsource, backlog par révision) + recuisson des
+- [x] G.4 Re-décodage des 210 films 39-40 (killsource, backlog par révision) + recuisson des
       artefacts touchés ; contrôle `_latest` par mois et playlist.
 - Découvertes : 136 films 39-40 hors BTB touchés (arène) ; empreinte `killSourceDecoderFingerprint`
   ne hache que `killsource/` (ce correctif d'amont ne l'aurait pas fait sonner) ; manifestes du
@@ -264,3 +264,19 @@ lot H, pas avant. Effort L.
   paquets touchés verts, tsc 0, vitest 3 015 (replay/api/match-replay), contrat généré stable ;
   push pour la CI. G.4 lancé : serveur arrêté, `backfill-killsource` (révision montée = tout le
   parc au backlog, ~2 h 30) puis `backfill-replay --only-existing` (schéma 54, ~23 min).
+- 2026-09-12 (21:40) : feat/v75 (lot G) fusionné DANS `wt/decodeur-sous-titre` (`1ba55d468`) :
+  4 fichiers de G suivis sous `games/halo_infinite/film`, 7 autres imports de G réécrits, chemin
+  relatif d'une fixture corrigé, golden d'empreinte régénéré à révision inchangée (2 lignes
+  d'historique). Gates : Go 171 ok, archlint, lint 0, openapi sans dérive, tsc 0. Reste pour E :
+  gate corpus base libre (après la chaîne G.4), fusion dans feat/v75, Notion 9. Hygiène : 42 node
+  et 1 git bloqué (sessions précédentes / sous-agent) coupés ; règle consignée en mémoire.
+- 2026-09-13 : chaîne G.4 finie (killsource 20:26 -> 00:34, 1 351 films, 0 erreur ; recuisson 54
+  00:34 -> 00:57, 76 artefacts, 0 erreur). **Contrôle `_latest` : morts sans source sur le
+  décodeur courant 21 898 -> 7 677 (5,9 %)** ; BTB par année : 2023 22 % (9 matchs, v31-33),
+  2024 4 %, **2025 27 % (102 matchs, était 88 %)**, 2026 10,6 %. Résidu 2025 supérieur aux
+  années voisines : à instruire au lot H (par version 39 vs 40, par calque). Notion 7 mis à jour.
+  Gate corpus du lot E lancé base libre.
+- 2026-09-13 : gate corpus du lot E après intégration de G : 8/8 `ok`, 54 -> 54, 0 gain, 0 perte.
+  **Lot E fusionné dans feat/v75** (`a3e4e516b`) ; `internal/analysis/{filmdec,replay}` n'existent
+  plus, tout est sous `internal/games/halo_infinite/film/`. Serveur relancé (air, health 200).
+  Notion 9 coché. Push feat/v75 pour la CI. Prochain : lot H.
