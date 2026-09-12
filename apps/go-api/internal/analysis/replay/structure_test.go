@@ -1005,8 +1005,43 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact < 51 porte des vies de bot non résolues, un
 	//   `bid` vide, et aucune famille d'équipement — le résumé ne peut pas être re-projeté sans
 	//   recuisson.
-	if SchemaVersion != 51 {
-		t.Fatalf("SchemaVersion = %d, attendu 51 : incrémenter exige une raison écrite ci-dessus "+
+	// v52 (2026-09-11, lot B — correctifs du décodeur repris du fork) : TROIS changements de
+	//   contenu cuit. (1) UN LANCER DE GRENADE REVIENT À SON LANCEUR : la naissance de
+	//   projectile n'est plus choisie sur le temps seul, mais par le biped de l'auteur, refusée
+	//   au-delà de 4 m ; et `grenades[].slot` est publié sur les deux branches (il sortait à
+	//   zéro sur la branche projectile, et zéro RESSEMBLE à un slot). Mesuré : pire cas de la
+	//   distance lancer -> lanceur 14,46 -> 0,56 m sur `000d5950`, médiane 25,42 -> 0,00 m et
+	//   26,69 -> 0,00 m sur les deux films Live Fire du parc. (2) UN VOL DE PROJECTILE S'ARRÊTE
+	//   AU PREMIER PAS IMPOSSIBLE (> 10 m en 100 ms) et `rest` tombe à false s'il est coupé :
+	//   947 trajectoires sur 15 735 du parc traçaient une droite en travers de la carte.
+	//   (3) `geometry` devient les props de LA CARTE du match : un répertoire unique les servait
+	//   à tous (382 props identiques sur les 76 artefacts), et une carte non extraite sort
+	//   désormais sans props.
+	//   POURQUOI LA VERSION MONTE : un artefact < 52 porte des lancers posés sur le mauvais
+	//   joueur, des vols traversant la carte, et le décor d'une autre carte. `coverage.projectiles`
+	//   s'ajoute au passage — un champ optionnel, qui ne l'aurait pas exigé à lui seul.
+	//   Détail : `document_chronicle.go` et `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+	// v53 (2026-09-12, lot B-bis — LE BIT DE TROP PEU DE LA PORTE D'i0). UN changement de
+	//   contenu cuit, sur une seule carte. `decodeWorldObjectPos` écrivait la porte
+	//   d'`object-position-component` en dur à 3 bits (precHigh + index-sel + UN bit d'index de
+	//   région). Cette dernière largeur est une constante PAR CARTE : elle vaut 2 sur Live Fire
+	//   (`sgh_interlock`, quatre régions déclarées, arène en région 1). Le décodeur y consommait
+	//   donc un bit de trop peu et lisait les TROIS axes un bit trop tôt : le bit de poids
+	//   faible de X devenait le bit de poids fort de Y, celui de Y le bit de poids fort de Z. Un
+	//   bit de poids faible bascule d'une image à l'autre, d'où un pas de la MOITIÉ de l'étendue
+	//   de l'axe (31,89 m pour 63,775 m d'étendue Y), que le garde-fou de v52 coupait.
+	//   Mesuré (cuisson complète, avant -> après) : `0797ce72` 239 -> 4 vols tronqués et
+	//   471 -> 2 949 points ; `21ece4d8` 144 -> 1 et 209 -> 2 367 ; `30724141` 162 -> 0 et
+	//   291 -> 2 012 ; `c88ec007` 69 -> 0 et 96 -> 1 050. Contrôle croisé indépendant : sur
+	//   `0797ce72` et `21ece4d8`, la branche PROJECTILE des lancers de grenade, effondrée à 1 et
+	//   0 au lot B, retrouve 83 et 137 lancers à une médiane de 0,44 m de leur lanceur — le
+	//   régime de Cliffhanger. Aucune autre carte ne change (Cliffhanger, Banished Narrows,
+	//   The Pit, Isolation : identiques au point près).
+	//   POURQUOI LA VERSION MONTE : un artefact 52 d'un match Live Fire ne porte que le premier
+	//   tiers de seconde de chaque vol de projectile. La reprise du backfill se fait par
+	//   SchemaVersion : sans montée, aucune recuisson ne le rattraperait.
+	if SchemaVersion != 53 {
+		t.Fatalf("SchemaVersion = %d, attendu 53 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

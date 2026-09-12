@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"math"
 	"sort"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -47,8 +48,12 @@ const (
 type Grenade struct {
 	// T est l'index de frame, sur le même axe que Point.T.
 	T int `json:"t"`
-	// Slot est le biped lanceur quand il est connu (0 sinon). Il sert à relier le lancer à une
-	// trajectoire ; il n'est PAS nécessaire pour situer le lancer.
+	// Slot est le biped lanceur quand le pont le connaît (0 sinon). Il sert à relier le lancer
+	// à une trajectoire ; il n'est PAS nécessaire pour situer le lancer.
+	//
+	// IL EST PUBLIÉ SUR LES DEUX BRANCHES DEPUIS LE 2026-09-11, et il ne l'était que sur la
+	// branche biped : un lancer situé par son projectile sortait à zéro, et zéro RESSEMBLE à un
+	// slot. Zéro reste donc « pont muet », mais il ne veut plus dire « position lue ailleurs ».
 	Slot uint32 `json:"slot"`
 	// Idx est l'index de joueur ÉCRIT dans le film. C'est lui l'auteur, toujours renseigné.
 	Idx int `json:"i"`
@@ -141,20 +146,121 @@ func buildGrenades(pos []filmdec.BipedPosition, throws []filmdec.GrenadeThrow,
 // de son auteur quand le pont le connaît. La seconde valeur est l'index BRUT de la piste de
 // projectile appariée (-1 quand la position vient du biped) : c'est lui qui fonde le lien
 // Grenade.Proj, une fois traduit en index publié par l'appelant.
+//
+// L'AUTEUR EST RÉSOLU EN PREMIER, ET C'EST UN CORRECTIF (2026-09-11). La naissance était choisie
+// sur le TEMPS SEUL : `birthNear` prenait la plus proche dans une fenêtre de 200 ms, et le
+// départage des naissances simultanées venait du tri, donc de X. Quand deux joueurs lancent dans
+// la même fenêtre — banal —, le lancer recevait la position du projectile de l'AUTRE.
+//
+// MESURÉ SUR NOTRE PARC (banc `grenade_ecart_research_test.go`, distance du lancer publié au
+// biped de son auteur au même instant) : sur `000d5950`, médiane 0,44 m mais 2 lancers sur 64
+// au-delà de 4 m, pire cas 14,46 m ; sur les deux films Live Fire `0797ce72` et `21ece4d8`,
+// médiane 25,42 m et 26,69 m et **100 %** des lancers au-delà de 4 m. Un lancer sur cinq tombe
+// dans une fenêtre portant deux naissances ou plus (21,4 % / 19,4 % / 13,5 %) — la population
+// exacte où le départage par le temps ne décide rien. À comparer à la mesure qui FONDE cette
+// source : 0,77 unité entre une naissance et le biped de son auteur.
+//
+// LE BIPED DE L'AUTEUR EST DONC LE JUGE, quand le pont le donne : parmi les naissances de la
+// fenêtre, on retient celle qui est à portée de sa main, et aucune si elle n'y est pas. Sans
+// pont, la source reste utilisable — c'était sa raison d'être — mais une fenêtre qui porte
+// PLUSIEURS naissances n'est plus tranchée au hasard : elle n'est pas publiée.
 func locateThrow(g filmdec.GrenadeThrow, births []projectileBirth,
 	tracks map[uint32]slotTrack, owner map[uint32]int) (Grenade, int, bool) {
-	if b, ok := birthNear(births, g.TimestampUS); ok {
-		return Grenade{X: round2(b.s.X), Y: round2(b.s.Y), Src: GrenadeSrcProjectile}, b.raw, true
+	slot, author := authorBiped(g, tracks, owner)
+	if b, ok := birthForThrow(births, g.TimestampUS, author); ok {
+		// LE SLOT EST PORTÉ MÊME ICI, ET IL NE L'ÉTAIT PAS : la branche projectile rendait un
+		// `Grenade` sans `Slot`, donc à zéro — et zéro RESSEMBLE à un slot, si bien qu'un
+		// lecteur qui colore un lancer par son lanceur ne pouvait ni nommer personne, ni voir
+		// l'ambiguïté. La POSITION ne dépend toujours pas du pont (c'est tout l'intérêt de
+		// cette source) ; le slot, lui, est publié dès que le pont le connaît.
+		return Grenade{Slot: slot, X: round2(b.s.X), Y: round2(b.s.Y), Src: GrenadeSrcProjectile}, b.raw, true
 	}
+	if author == nil {
+		return Grenade{}, -1, false
+	}
+	return Grenade{Slot: slot, X: round2(author.X), Y: round2(author.Y), Src: GrenadeSrcBiped}, -1, true
+}
+
+// authorBiped rend le slot du lanceur et sa position répliquée, quand le pont et le film les
+// donnent tous les deux. Le slot peut être connu sans que la position le soit (réplication trop
+// lointaine) : le premier retour vaut alors le slot, le second nil.
+func authorBiped(g filmdec.GrenadeThrow, tracks map[uint32]slotTrack,
+	owner map[uint32]int) (uint32, *filmdec.BipedPosition) {
 	slot, reason := slotFor(tracks, owner, g.FilmIndex, g.TimestampUS)
 	if reason != reasonAttached {
-		return Grenade{}, -1, false
+		return 0, nil
 	}
 	p, d := tracks[slot].at(g.TimestampUS)
 	if d > shotPosToleranceUS || !p.HasWorld {
-		return Grenade{}, -1, false
+		return slot, nil
 	}
-	return Grenade{Slot: slot, X: round2(p.X), Y: round2(p.Y), Src: GrenadeSrcBiped}, -1, true
+	return slot, &p
+}
+
+// grenadeAuthorRadiusM est la distance maximale acceptée entre la naissance d'un projectile et
+// le biped de son lanceur, en mètres.
+//
+// LA MESURE QUI LE FONDE : 0,77 unité de médiane entre une naissance et le biped de son auteur,
+// contre 6,4 pour un instant permuté. Quatre mètres laissent largement passer le signal (le banc
+// mesure une médiane de 0,44 m sur `000d5950` après correctif du choix) tout en écartant le
+// projectile d'un joueur voisin — et, incidemment, les naissances victimes du repli de quantum
+// mesuré sur Live Fire, qui sautent d'une demi-étendue de carte (31,89 m).
+//
+// LE CLIENT NE PORTE PAS ENCORE DE JUMEAU : vérifié le 2026-09-11, `apps/web/src/features/
+// match-replay/` n'a ni `grenadeArcs.ts` ni `ARC_ORIGIN_RADIUS_M` — les arcs de lancer n'y sont
+// pas dessinés. Si ce seuil y naît un jour, il doit valoir CE nombre et le dire, faute de quoi
+// les deux répondront différemment à la même question (« cette naissance est-elle celle de CE
+// lanceur ? »).
+const grenadeAuthorRadiusM = 4
+
+// birthForThrow choisit la naissance qui appartient à CE lancer.
+//
+// AVEC L'AUTEUR : la plus proche de sa main, refusée au-delà de `grenadeAuthorRadiusM`. SANS
+// l'auteur : une seule candidate est une lecture, plusieurs sont un tirage au sort — on
+// s'abstient plutôt que de poser un lancer sur le projectile du voisin.
+func birthForThrow(births []projectileBirth, at uint64,
+	author *filmdec.BipedPosition) (projectileBirth, bool) {
+	cands := birthsInWindow(births, at)
+	if len(cands) == 0 {
+		return projectileBirth{}, false
+	}
+	if author == nil {
+		if len(cands) == 1 {
+			return cands[0], true
+		}
+		return projectileBirth{}, false
+	}
+	best, bestD := projectileBirth{raw: -1}, math.MaxFloat64
+	for _, c := range cands {
+		if d := planDist(c.s.X, c.s.Y, author.X, author.Y); d < bestD {
+			bestD, best = d, c
+		}
+	}
+	if bestD > grenadeAuthorRadiusM {
+		return projectileBirth{}, false
+	}
+	return best, true
+}
+
+// birthsInWindow rend TOUTES les naissances de la fenêtre, et pas seulement la plus proche dans
+// le temps : c'est le fait qu'il y en ait plusieurs qui PORTE l'ambiguïté. Les rendre toutes est
+// la condition pour que le biped de l'auteur puisse trancher.
+//
+// `births` est trié par instant (cf. projectileBirths), et ce tri reste TOTAL : il ne choisit
+// plus la position publiée, mais il rend cette tranche reproductible d'une construction à
+// l'autre.
+func birthsInWindow(births []projectileBirth, at uint64) []projectileBirth {
+	var lo uint64
+	if at > grenadeBirthWindowUS {
+		lo = at - grenadeBirthWindowUS
+	}
+	hi := at + grenadeBirthWindowUS
+	i := sort.Search(len(births), func(k int) bool { return births[k].s.TimestampUS >= lo })
+	var out []projectileBirth
+	for ; i < len(births) && births[i].s.TimestampUS <= hi; i++ {
+		out = append(out, births[i])
+	}
+	return out
 }
 
 // projectileBirth est la naissance d'une piste de projectile, avec l'index BRUT de sa piste
@@ -168,13 +274,16 @@ type projectileBirth struct {
 // projectileBirths rend le premier point de chaque projectile, trié par instant.
 //
 // LE TRI EST TOTAL, ET C'EST LA CONDITION DE REPRODUCTIBILITÉ DE L'ARTEFACT. Plusieurs
-// projectiles naissent au MÊME instant de réplication ; `birthNear` prend ensuite la naissance
-// d'un INDICE donné dans cette tranche, donc le départage des ex æquo décide de la position
-// publiée pour le lancer. Sur l'instant seul, ce départage venait de l'ordre d'arrivée — issu
-// d'une itération de map — et deux constructions du même film donnaient deux positions
-// différentes (mesuré : 12,72 / −187,11 contre 11,41 / 17,99 sur le lancer t=1580 de
-// `01e1f945`). Départager par la position rend le choix indépendant de l'amont ; l'index brut
+// projectiles naissent au MÊME instant de réplication, et l'ordre d'arrivée vient d'une
+// itération de map : sans départage stable, deux constructions du même film ne rendent pas la
+// même tranche (mesuré : 12,72 / −187,11 contre 11,41 / 17,99 sur le lancer t=1580 de
+// `01e1f945`). Départager par la position rend l'ordre indépendant de l'amont ; l'index brut
 // ferme le dernier ex æquo depuis que la naissance porte aussi le LIEN vers sa piste.
+//
+// CE TRI NE CHOISIT PLUS LA POSITION PUBLIÉE, et c'est le correctif de `locateThrow` : le choix
+// parmi les naissances d'une même fenêtre revient au biped de l'auteur, pas au rang dans la
+// tranche. L'ordre reste requis — il rend `birthsInWindow` reproductible — mais il n'arbitre
+// plus rien.
 func projectileBirths(proj []filmdec.ProjectileTrack) []projectileBirth {
 	out := make([]projectileBirth, 0, len(proj))
 	for raw, p := range proj {
@@ -198,25 +307,6 @@ func projectileBirths(proj []filmdec.ProjectileTrack) []projectileBirth {
 		}
 	})
 	return out
-}
-
-// birthNear rend la naissance de projectile la plus proche de `at`, si elle tombe dans la
-// fenêtre.
-func birthNear(births []projectileBirth, at uint64) (projectileBirth, bool) {
-	if len(births) == 0 {
-		return projectileBirth{}, false
-	}
-	i := sort.Search(len(births), func(k int) bool { return births[k].s.TimestampUS >= at })
-	best, bestD := projectileBirth{raw: -1}, uint64(1)<<62
-	for _, k := range []int{i - 1, i} {
-		if k < 0 || k >= len(births) {
-			continue
-		}
-		if d := absDiffU64(births[k].s.TimestampUS, at); d < bestD {
-			bestD, best = d, births[k]
-		}
-	}
-	return best, bestD <= grenadeBirthWindowUS
 }
 
 // keepGrenadesOfPublishedTracks écarte les lancers rattachés à un biped SANS trajectoire

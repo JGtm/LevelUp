@@ -14,7 +14,7 @@ package filmdec
 //
 // LE GATE DE SELECTIVITE EST i0 EN PRECISION-DYNAMIQUE. i0 de `ti=40` est
 // `object-position-dynamic-precision-component` (porte 5 bits, grammaire biped) — PAS objet du
-// monde (porte 3 bits). On passe donc au walk le decodeur i0 dyn.-prec. (decodeBipedI0Pos),
+// monde (porte 2 + IndexW bits). On passe donc au walk le decodeur i0 dyn.-prec. (decodeBipedI0Pos),
 // construit sur le decoupage lu DANS le film (DetectI0Layout) et les primitives livrees par V1a
 // (offline_biped.go : la porte biped, DequantBipedAxis, saturatedQuantum). Ce gate valide le cadre
 // du record : un default-state de mauvaise largeur fait tomber i0 hors de la porte, et le record
@@ -36,7 +36,7 @@ import (
 )
 
 // decodeBipedI0Pos VALIDE et decode le composant i0 en PRECISION-DYNAMIQUE (grammaire biped, porte
-// 5 bits) a l'offset bit `at`. C'est l'equivalent de decodeWorldObjectPos (porte 3 bits) pour les
+// 5 bits) a l'offset bit `at`. C'est l'equivalent de decodeWorldObjectPos (porte 2 + IndexW bits) pour les
 // deux archetypes qui portent cette forme (biped ti=35, vehicule ti=40). Rejette : porte non nulle
 // (spine+useDefault), region inattendue, ou axe sature (quantum de garde). Chaque brique est celle
 // du decodeur biped de V1a (matchBipedHeader, saturatedQuantum, DequantBipedAxis).
