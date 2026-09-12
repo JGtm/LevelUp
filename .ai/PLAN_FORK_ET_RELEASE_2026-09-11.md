@@ -31,7 +31,7 @@
       lancer perdu sur ces deux-là. Golden : 70 → 69 lancers posés, justifié.
 - [x] B.3 Garde-fou pas projectile > 10 m (`Rest=false`, compteur tronqués) ; mesure |Δy| − étendue Y.
       Forme mesurée et CONTRAIRE à celle du fork : le saut vaut étendue / 2^k (un bit), pas
-      l'étendue entière. Cause racine caractérisée, non traitée (cf. Découvertes).
+      l'étendue entière. Cause racine caractérisée ici, TRANCHÉE et corrigée au lot B-bis.
 - [x] B.4 Props Forge par carte (`MapGeometryDir(slug, module)`, `UNATTRIBUTED/` + README, test PathResolver).
       Le CSV est ATTRIBUÉ à `ridgeline` (Cliffhanger) sur deux preuves indépendantes, donc placé
       sous `map_geometry/ridgeline/` et non sous `UNATTRIBUTED/`. README + test de falsification.
@@ -40,6 +40,28 @@
       corpus `--reference=base` joué sur les 7 témoins, toutes les pertes voulues (verdict ligne
       par ligne au rapport). `[!]` **RECUISSON NON LANCÉE** — réservée au pilote, après fusion,
       serveur arrêté (consigne du lot).
+
+## Lot B-bis — la cause racine du pas impossible (`wt/bit-projectile`, base `wt/decodeur-fork`)
+- [x] BB.1 INSTRUCTION : du point publié aberrant jusqu'aux BITS, sur 2 films, 20 pas chacun.
+      **Verdict (b) — largeur de champ fausse.** La porte d'`object-position-component` était
+      écrite en dur à 3 bits ; l'index de région qu'elle porte fait DEUX bits sur Live Fire
+      (seule carte du catalogue à `regionIndexBits = 2`). Les trois axes y étaient lus un bit
+      trop tôt : le bit de poids faible de X devenait le bit de poids fort de Y. 40 pas sur 40,
+      sur `0797ce72` et `21ece4d8`, portent la bascule du MSB de Y et d'aucun autre bit.
+      (a) signe, (c) bornes, (d) delta : réfutées sur pièces — tableau au rapport.
+- [x] BB.2 CORRECTIF `filmdec` : la porte suit `WorldObjectPrecision.IndexW` et l'index lu est
+      COMPARÉ à la région jouée (ce que le jumeau bipède `decodeBipedI0Pos` faisait déjà).
+      Records porteurs d'un pas impossible : 50,7 % -> 0,04 % (`0797ce72`), 52,8 % -> 0,02 %
+      (`21ece4d8`), 48,5 % -> 0,02 % (`c88ec007`). Garde-rail `world_object_gate_region_test.go`.
+- [x] BB.3 MESURE avant/après sur 10 films cuits deux fois (racine jetable, zéro écriture au parc) :
+      Live Fire 614 vols tronqués -> 5, 1 067 points -> 8 378 ; les 5 cartes à index d'un bit et
+      le témoin Cliffhanger IDENTIQUES au point près. SchemaVersion 52 -> 53, chronique datée,
+      golden régénéré (il ne diffère que par la ligne de schéma). Gate corpus `--reference=base`
+      `--base=wt/decodeur-fork` : sortie 0, 7/7 ok, 0 perte, verdict ligne par ligne au rapport.
+      Contrôle croisé indépendant du seuil : la branche projectile des lancers de grenade
+      retrouve 83 et 137 lancers à 0,44 m de médiane (elle était à 1 et 0 au lot B).
+      `[!]` **RECUISSON DU PARC NON LANCÉE** — consigne explicite du lot, elle reste au pilote.
+      Rapport : `.ai/RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md`.
 
 ## Lot C — robustesse (bilan 4a, 4b) + littéraux FR hors i18n (bilan 6)
 - [ ] C.1 `IsFileLockError` libellé Windows EN + test.
@@ -63,6 +85,15 @@
 - [ ] F.4 Bascule vers `LevelUp` avec l'utilisateur ; cocher Notion 10.
 
 ## Découvertes (non traitées)
+- Le corpus témoin (`config/replay_corpus.toml`) n'a AUCUN témoin Live Fire, donc aucun témoin
+  d'une carte à index de région de 2 bits : le gate est sorti vert sur un correctif qu'il ne
+  voyait pas. Ajouter `0797ce72` fermerait le trou (lot B-bis).
+- La queue de pas impossibles des cartes Forge (612 pas, 5 films) n'est PAS la porte : leurs
+  artefacts sont identiques avant/après. Signature d'un FAUX POSITIF du balayage par position de
+  bit (Y figé au quantum près pendant que X saute d'une puissance de deux exacte). Le garde-fou
+  de v52 la couvre et devient rare (lot B-bis).
+- `document_chronicle.go` 1 119 -> 1 190 L : la convention de chronique fait grossir à chaque
+  bump un fichier déjà au-delà du seuil de 500 L (lot B-bis).
 - feat/citations-artilleur-vehicules était en retard de 161 commits sur feat/v75 ; le pilote s'est
   replacé sur feat/v75 (worktree `LevelUp-wt-v75` détaché, à supprimer au lot F).
 - **(lot B) La cause du pas de projectile impossible est un basculement d'UN BIT du champ
@@ -81,6 +112,11 @@
   n'existe donc pas encore côté web ; le commentaire Go le dit.
 
 ## Journal
+- 2026-09-12 : lot B-bis rendu (`wt/bit-projectile`, `1a93b34f2` `fb71e9b3c` `c5a71dcbd`).
+  La cause racine du point 2 du bilan est TRANCHÉE et corrigée : un bit de porte de trop peu sur
+  la seule carte du catalogue à deux bits d'index de région, découvert en remontant du point
+  publié jusqu'aux quanta bruts. Gates : `go build` / `go vet` / `go test ./...` verts (CGO),
+  lint 0 issue, aucun fichier > 500 L ni fonction > 80 L introduit. Recuisson NON lancée.
 - 2026-09-11 : plan écrit, worktrees `LevelUp-wt-badge-schema` et `LevelUp-wt-mesure-ti9` créés.
 - 2026-09-11 (pilote, pré-mesure lot B sur les 76 artefacts `data/cache/replays/halo_infinite/*.json`,
   tous schéma 51) : grenades 8 938 dont **7 012 (78 %) situées par projectile, toutes avec

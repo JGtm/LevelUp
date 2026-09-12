@@ -106389,3 +106389,52 @@ et `generated.ts` regeneres.
 fusion, serveur arrete. La cause racine de la dequantification est a instruire dans `filmdec` —
 le compteur `coverage.projectiles.truncated` sert desormais de temoin par artefact. Rapport
 complet : `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+
+## [2026-09-12] Lot B-bis — le bit de trop peu de la porte d i0 (Complete)
+
+**Question** : le lot B avait CARACTERISE le pas impossible des projectiles (947 trajectoires sur
+15 735, le saut vaut l etendue d un axe divisee par une puissance de deux) sans l EXPLIQUER. Ce
+lot remonte du point publie jusqu aux bits lus dans le film.
+
+**Decision technique** : la PORTE d `object-position-component` etait un LITTERAL. Elle valait 3
+bits en dur dans `decodeWorldObjectPos` et `projPosBits` : 1 precHigh + 1 index-sel + UN bit d
+index de region. Or la largeur de cet index est une constante PAR CARTE (`regionIndexBits` du
+catalogue de bornes) : elle vaut 1 sur 78 cartes du catalogue et DEUX sur la 79e, Live Fire
+(`sgh_interlock`, quatre regions declarees, arene en region 1). Le decodeur y consommait un bit de
+trop peu et lisait les TROIS axes un bit trop tot : le bit de poids faible de X devenait le bit de
+poids FORT de Y, celui de Y le bit de poids fort de Z. Un bit de poids faible bascule d une image
+a l autre, d ou un saut de la MOITIE de l etendue de l axe — 31,89 m pour 63,775 m d etendue Y,
+exactement la mediane mesuree au lot B. La porte suit desormais `WorldObjectPrecision.IndexW`, et
+l index lu est COMPARE a la region jouee de la carte au lieu d etre exige nul.
+
+**Ce que la cause dit du depot** : le jumeau bipede `decodeBipedI0Pos` (vehicle_creation.go)
+faisait DEJA la bonne chose. Deux ecritures du meme champ, dont une seule a suivi le catalogue
+quand Live Fire est arrivee (lot C catalogues, 2026-08-27) — une factorisation abandonnee, le
+8e anti-pattern de la liste de CLAUDE.md.
+
+**Resultats observes** : records porteurs d un pas impossible 50,7 % -> 0,04 % (`0797ce72`),
+52,8 % -> 0,02 % (`21ece4d8`), 48,5 % -> 0,02 % (`c88ec007`) — 40 pas sur 40 detailles bit a bit
+sur deux films portent la bascule du MSB de Y et d aucun autre bit. Cuisson complete de 10 films,
+deux fois, dans une racine jetable : Live Fire 614 vols tronques -> 5 et 1 067 points -> 8 378 ;
+les poses d equipement suivent (49 -> 227 et 27 -> 114) car le meme decodeur sert ti=37 ; les cinq
+cartes a index d un bit et le temoin Cliffhanger sont IDENTIQUES au point pres. Controle croise
+independant du seuil de 10 m : la branche projectile des lancers de grenade, effondree a 1 et 0
+au lot B, retrouve 83 et 137 lancers a 0,44 m de mediane de leur lanceur — le regime exact de
+Cliffhanger. SchemaVersion 52 -> 53, chronique datee, golden `000d5950` regenere : il ne differe
+QUE par la ligne de schema. Gate corpus `--reference=base --base=wt/decodeur-fork` : sortie 0,
+7 temoins sur 7, 0 perte.
+
+**Decouvertes** : (1) aucun temoin du corpus n est sur Live Fire — le gate est sorti vert sur un
+correctif qu il ne voyait pas ; (2) la queue de pas impossibles des cartes Forge (612 pas, 5 films)
+n est PAS la porte, c est la signature d un FAUX POSITIF du balayage par position de bit (Y fige au
+quantum pres pendant que X saute d une puissance de deux exacte) ; (3) `document_chronicle.go`
+passe 1 119 -> 1 190 L, la convention de chronique fait grossir un fichier deja hors seuil.
+
+**Incident de seance** : un `git stash` a ete lance par erreur dans le worktree — interdit par
+CLAUDE.md. Detecte immediatement, `git stash pop` a tout restaure sans perte ; les deux stash d
+autres sessions presents dans la pile n ont pas ete touches. Les travaux ont ete commites dans la
+foulee pour ne plus dependre de l arbre de travail.
+
+**Conclusion / prochaine etape** : la recuisson du parc N A PAS ete lancee (consigne du lot) et
+reste au pilote, serveur arrete. Rapport complet :
+`.ai/RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md`.
