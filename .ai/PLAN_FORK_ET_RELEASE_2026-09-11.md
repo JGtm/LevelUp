@@ -185,7 +185,7 @@
       recouvrement ; 8 films instrumentés (2025 : 5-17 % -> 82-100 % ; témoins 2024/2026 inchangés).
 - [x] G.2 Correctif : résolution par mesure quand la version est inconnue (`2a6265ac4`),
       `KillSourceDecoderRev` -> `killsource-2026-09-12`, 3 tests CI + banc env + non-régression.
-- [ ] G.3 Revue adversariale (1 relecteur, algo) — question centrale : bump `SchemaVersion` 53 -> 54
+- [~] G.3 Revue adversariale (1 relecteur, algo) — question centrale : bump `SchemaVersion` 53 -> 54
       (deaths_source du rejeu lit le même parseur) ; puis fusion feat/v75.
 - [ ] G.4 Re-décodage des 210 films 39-40 (killsource, backlog par révision) + recuisson des
       artefacts touchés ; contrôle `_latest` par mois et playlist.
@@ -250,3 +250,10 @@ carte) ; (2) profil passé explicitement, globales supprimées ; (3) porte d'ent
 bruts + ratchet archlint ; (4) empreinte étendue à filmdec/filmsource/parseur ; (5) équivalence
 prouvée (goldens, corpus gate avec témoins 39/40, bascule bit à bit). Conçu d'après le tableau du
 lot H, pas avant. Effort L.
+- 2026-09-12 : lot G.2bis rendu (`bda707ac0`..`bd4eb83f5`, 7 commits) ; revue adversariale
+  ronde 1 (2 relecteurs) : 0 P0, **4 P1** (les trois appelants corrigés ne sont couverts que par
+  des bancs gardés par env — mutation « version 0 » verte en CI ; la montée de
+  `KillSourceDecoderRev` n'est pas gatée par l'empreinte), 5 P2 (3 docs inversées/inexactes, WARN
+  sans `match_id`, couverture non assertée). Corrections lancées (fixture v40 réduite + 3 tests CI,
+  golden rev+empreinte, docs, WARN, test de couverture) ; ronde 2 ensuite. Doc d'architecture
+  cible écrit : `.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md` (`74f320235`).
