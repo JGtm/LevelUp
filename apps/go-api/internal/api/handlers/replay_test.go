@@ -15,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/port"
 )
@@ -170,7 +171,7 @@ func TestReplayHandler_LatestSchemaVersionHeader(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
 	}
-	got := w.Header().Get("X-Replay-Latest-Schema-Version")
+	got := w.Header().Get(middleware.ReplayLatestSchemaHeader)
 	want := strconv.Itoa(replay.SchemaVersion)
 	if got != want {
 		t.Errorf("X-Replay-Latest-Schema-Version = %q, attendu %q (analysis/replay.SchemaVersion)",
