@@ -182,7 +182,7 @@ func (p passeMedailles) traiterMatch(
 		slog.WarnContext(ctx, "backfill medailles: version de film illisible, decoupage historique",
 			"match_id", matchID, "film_major_version", film.MajorVersion)
 	}
-	events, err := analysis.ParseHighlightEvents(film.Chunk, film.MajorVersion)
+	events, err := eventsDuFilm(film)
 	if err != nil {
 		bilan.MatchsIllisibles++
 		slog.WarnContext(ctx, "backfill medailles: match saute, chunk highlight indecodable",
@@ -212,6 +212,19 @@ func (p passeMedailles) traiterMatch(
 		"match_id", matchID, "events_en_base", len(enBase), "events_a_rattraper", aRattraper,
 		"corrections", len(corrections), "dry_run", p.options.DryRun)
 	return nil
+}
+
+// eventsDuFilm parse le chunk highlight AVEC LA VERSION QUE LE FILM DECLARE.
+//
+// UNE FONCTION POUR UNE LIGNE, ET ELLE EST JUSTIFIEE : le decoupage du gamertag est le SEUL
+// champ du bloc d event qui depende de la version, et l appariement des medailles, lui, se fait
+// sur le couple (xuid, instant) — deux champs lus hors du bloc. Repasser 0 ici ne changeait donc
+// AUCUNE ligne ecrite par la passe, et aucun test ne pouvait le voir (revue adversariale du
+// 2026-09-12, constat P1-3). Isoler le geste lui donne un point d observation :
+// `TestEventsDuFilmSuitLaVersionDeclaree` lit le gamertag d un bloc de version 40 et rougit des
+// que la version cesse d etre transmise.
+func eventsDuFilm(film FilmHighlight) ([]analysis.HighlightEvent, error) {
+	return analysis.ParseHighlightEvents(film.Chunk, film.MajorVersion)
 }
 
 // correction est ce qu on ecrit sur une ligne : le type_hint TOUJOURS (quantite
