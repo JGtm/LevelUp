@@ -106678,3 +106678,48 @@ correctif a commencé dans `analysis/` et `filmdec` et n'aurait pas fait sonner 
 **Prochaine étape** : re-décodage NON lancé (consigne du lot) — `backfill-replay --only-existing`
 pour les artefacts de rejeu, backlog `killsource` par `KillSourceDecoderRev` ; 211 films à 8-50 s,
 soit 30 min à 3 h en série. Puis revue adversariale (G.3) et fusion dans `feat/v75`.
+
+### [2026-09-12] Lot G, revue adversariale ronde 1 — les gardes qui ne gardaient rien
+
+**Statut** : Complété (branche `wt/btb-2025-abstention`, 3 commits au-dessus de la ronde G.2bis)
+
+**Décision technique principale** : les quatre constats P1 de la relecture disaient tous la même
+chose — le correctif « la version du film est lue » n'avait AUCUN témoin capable de le défaire.
+Cause mécanique : la seule bobine versionnée du dépôt (`minibobine_000d5950`) vient d'un film de
+version 41, et `decodeEventBytes` applique le MÊME découpage du gamertag pour 0 et pour ≥ 41.
+Correctif : une bobine de **version 40** versionnée, `killsource/testdata/minibobine_e5adf7b2`
+(registre + premier chunk de données + chunk HIGHLIGHT du film `e5adf7b2`, **876 Kio** zlib, recette
+exécutable `TestMiniBobineV40Regenerer`), et trois tests CI, un par appelant. Le troisième appelant
+(`ops/medal_feed_backfill`) a demandé une couture : son appariement se fait sur (xuid, instant),
+deux champs lus HORS du bloc de 60 octets, donc aucune ligne écrite ne dépendait de la version —
+`eventsDuFilm(FilmHighlight)` isole le geste et lui donne un point d'observation, encadré d'une
+contre-épreuve. Pour P1-4, la constante `killSourceDecoderFingerprint` cède la place au golden
+`killcollector/testdata/killsource_decoder_rev.golden`, qui fige le COUPLE (révision, empreinte) :
+le gate distingue désormais « le décodeur a changé » de « la révision a changé sans le décodeur »,
+et la régénération est explicite (`-update`).
+
+**Résultats observés** : mutations rejouées une par une. `feed.go` → roster 11 / 2 gamertags contre
+26 / 26 : **rouge**. `deaths_source.go` → 2 noms distincts pour 199 morts contre 26 : **rouge**.
+`eventsDuFilm` → gamertag décalé : **rouge**. Gate de révision : révision seule **rouge**, décodeur
+seul **rouge**, les deux ensemble avec golden régénéré **vert**. `Coverage.FilmMajorVersion` :
+publication neutralisée → **rouge**. Toutes vertes au retour. Côté P2 : le paragraphe du 2026-09-12
+rendu à `fetchFilmManifest` (il était devenu le doc de `filmMajorVersionDuCache`, qui a maintenant
+le sien), la phrase « unique lecteur » de `FilmRegistryChunk` corrigée (deux lecteurs, deux
+lectures distinctes), le godoc de `ParseHighlightEvents` nommant les DEUX sources de la version, et
+le WARN du registre absent monté de `ScanDeaths` (sans `match_id`, émis deux fois par cuisson) à
+`BuildFromFilm`, qui connaît le match et lit déjà cette version.
+
+**Portes** : `go build ./...`, `go vet ./...`, `go test ./...` (171 paquets ok, 0 échec, exit 0),
+`go test -tags=integration -p 1 ./internal/sync/...`, `make go-api-lint` 0 issue, goldens
+`assembly_000d5950` / `minibobine_000d5950` / familles `filmdec` INCHANGÉS (aucun `-update`).
+**Gate corpus non rejoué, justifié** : aucun changement de contenu cuit attendu — le seul
+comportement de production qui bouge est une ligne de journal (P2-4), `eventsDuFilm` est une
+extraction sans changement de valeur, `SchemaVersion` reste 54 et `KillSourceDecoderRev` reste
+`killsource-2026-09-12` (empreinte du décodeur inchangée).
+
+**Zéro fix opportuniste** : les découvertes de la ronde G.2bis restent ouvertes telles quelles
+(l'empreinte du décodeur ne couvre pas son amont — désormais dit explicitement dans le second
+message d'échec du gate ; les ~136 films 39-40 hors BTB à vérifier en base).
+
+**Prochaine étape** : re-décodage toujours NON lancé (consigne du lot). Fusion dans `feat/v75` à la
+main de l'utilisateur — aucun merge ni push fait ici.

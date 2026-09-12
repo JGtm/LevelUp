@@ -345,3 +345,121 @@ chaque temoin a gagne exactement deux differences de plus — la ligne de schema
    que `killsource/` : ce correctif a commence dans `analysis/` et `filmdec` et n aurait pas fait
    sonner le gate si `loadFilm` / `loadKillFeed` n avaient pas bouge aussi. Decouverte notee sur
    place dans `collector.go`, non traitee (hors perimetre).
+
+## 7. Revue adversariale, ronde 1
+
+Relecture par contexte frais du 2026-09-12. Neuf constats, tous verifies PAR MUTATION par le
+relecteur : sur les quatre constats P1, la mutation ne faisait rougir AUCUN test de la CI. Les neuf
+sont corriges ci-dessous, et chaque mutation a ete rejouee ici (rouge, puis vert au retour).
+
+### 7.1 Les trois appelants n avaient aucun temoin — P1-1, P1-2, P1-3
+
+**La cause est la meme pour les trois, et elle est mecanique.** La seule bobine versionnee du depot,
+`minibobine_000d5950`, vient d un film de version 41. Or `decodeEventBytes` decoupe le gamertag a
+l octet 0 pour `version <= 38 || version >= 41` : sur un film v41, passer 0 ou passer 41 donne LE
+MEME decoupage. Le correctif « la version est lue » n avait donc, par construction, aucun temoin
+capable de le defaire bruyamment.
+
+**Correctif : une bobine de version 40, versionnee.** `killsource/testdata/minibobine_e5adf7b2` —
+trois chunks, **876 Kio** :
+
+| fichier | contenu | pourquoi celui-la |
+|---|---|---|
+| `chunk_00.bin` | le REGISTRE du film `e5adf7b2` | c est lui qui PORTE la version (u32 LE en tete) |
+| `chunk_01.bin` | le premier chunk de DONNEES | `loadFilm` refuse un film sans paquet type-0 |
+| `chunk_02.bin` | le chunk HIGHLIGHT (n30), trouve par son CONTENU | le kill-feed |
+
+Origine : `data/cache/film_chunks/e5adf7b2` (2025-07, Fragmentation, Big Team Battle, version 40 —
+l un des cinq films instrumentes en section 3). Recette executable, comme pour la bobine de rejeu :
+`KILLSOURCE_FIXTURES=<racine> go test ./internal/games/halo_infinite/film/killsource/ -run
+TestMiniBobineV40Regenerer -update`. **Un seul ecart avec la recette de `minibobine_000d5950`** :
+les octets sont recompresses en zlib (le cache local les stocke desormais decompresses ; recopies
+tels quels ils pesaient 3,0 Mio). Leur contenu DECOMPRESSE est celui du film, inchange, et
+`filmsource` les inflate au chargement exactement comme il inflate ceux de la bobine v41.
+
+Le contraste mesure sur cette bobine ne laisse aucune zone grise :
+
+| appelant | test CI | version lue (40) | mutation « version 0 » |
+|---|---|---|---|
+| `killsource/feed.go` | `TestMiniBobineV40RosterSuitLaVersionLue` | roster 26, dont 26 gamertags | roster 11, dont 2 gamertags |
+| `replay/ScanDeaths` | `TestScanDeathsSuitLaVersionDuFilm` | 199 morts, 26 noms distincts | 199 morts, 2 noms distincts |
+| `ops/medal_feed_backfill` | `TestEventsDuFilmSuitLaVersionDeclaree` | gamertag intact | gamertag decale |
+
+Les planchers des deux premiers tests sont a 20 : assez haut pour que la mutation les creve, assez
+bas pour ne pas figer un compte exact qu une correction de parseur ferait bouger.
+
+**Le troisieme appelant a demande une couture, et il faut dire pourquoi.** L appariement des
+medailles se fait sur le couple (xuid, instant) — deux champs lus HORS du bloc de 60 octets — alors
+que la version ne commande que le decoupage du GAMERTAG a l interieur du bloc. **Aucune correction
+ecrite par cette passe ne depend de la version** : repasser 0 ne changeait donc rien d observable,
+et c est la raison de fond pour laquelle le constat P1-3 existait. Une fonction d une ligne,
+`eventsDuFilm(FilmHighlight)`, isole le geste « parser avec la version declaree » et lui donne un
+point d observation ; deux tests l encadrent, dont une contre-epreuve (version 0 sur le meme bloc
+39-40 ne rend PAS le nom) sans laquelle le premier ne prouverait rien.
+
+### 7.2 Le gate de revision ne tenait qu un de ses deux gestes — P1-4
+
+`TestKillSourceDecoderRevSuitLeDecodeur` comparait la seule EMPREINTE a la constante
+`killSourceDecoderFingerprint`. Remettre `KillSourceDecoderRev` a sa valeur d avant, en gardant la
+nouvelle empreinte, restait VERT — alors que le message d echec du test declare les deux gestes
+« OBLIGATOIRES ».
+
+Correctif : `killcollector/testdata/killsource_decoder_rev.golden` fige le couple
+`revision<TAB>empreinte`, porte sa recette et l historique des mouvements ; la constante disparait
+(une seule source de verite, pas deux copies a tenir en phase). Le test distingue desormais deux
+echecs :
+
+| observation | message | geste attendu |
+|---|---|---|
+| empreinte differente | « LE DECODEUR A CHANGE » | decider, bumper si les lignes bougent, regenerer |
+| empreinte egale, revision non | « LA REVISION A CHANGE SANS QUE LE DECODEUR BOUGE » | regenerer si le changement vit en amont, sinon remettre la revision |
+
+Regeneration explicite, citee dans les deux messages :
+`go test ./internal/sync/killcollector/ -run TestKillSourceDecoderRevSuitLeDecodeur -update`.
+
+Trois mutations jouees : revision seule -> **rouge** (second message) ; decodeur seul (une ligne de
+commentaire ajoutee a `feed.go`) -> **rouge** (premier message) ; les deux ensemble avec golden
+regenere -> **vert**.
+
+### 7.3 Documentation et journalisation — P2-1 a P2-5
+
+| constat | correctif |
+|---|---|
+| P2-1 | le paragraphe du 2026-09-12 s etait colle au doc-comment de `fetchFilmManifest` et devenait celui de `filmMajorVersionDuCache`, laissant `fetchFilmManifest` sans doc. Les deux docs sont remises sur leur fonction. |
+| P2-2 | `FilmRegistryChunk` n a plus un unique lecteur. La phrase dit maintenant ce que chacun lit : `FilmContext.Registry` ANALYSE le registre (archetypes et slots), `FilmMajorVersion` n en lit que l u32 de tete. |
+| P2-3 | le godoc de `ParseHighlightEvents` attribuait la version au seul manifeste. Il nomme les DEUX sources de la meme valeur (u32 en tete du registre, `CustomData.FilmMajorVersion` de l API) et dit que 0 = inconnue = decoupage « en tete », a la charge de l appelant de consigner. |
+| P2-4 | le WARN « registre absent » de `ScanDeaths` ne portait pas `match_id` et sortait DEUX fois par cuisson (`replaybuild.lireMorts` puis `BuildFromFilm`). Il monte chez `BuildFromFilm` — le seul appelant du chemin qui connaisse le match ET qui lise deja cette version pour la couverture. Aucune signature ne change, aucun log n est perdu : le chemin du collecteur (`killcollector/positions.go`) garde le sien, consigne par `killsource.prepare`. |
+| P2-5 | `Coverage.FilmMajorVersion` etait publie sans qu aucun test n en asserte la valeur. Deux tests : version presente -> la couverture porte 40 ; version absente -> `nil`, jamais 0 (le pointeur distingue « on ne sait pas » de « version 0 », qui est signifiante ailleurs). Mutation sur la ligne de publication : rouge, puis vert. |
+
+### 7.4 Portes jouees
+
+```
+go build ./...                                          OK
+go vet ./...                                            OK
+go test ./...                                           171 paquets ok, 0 echec, exit 0
+go test -tags=integration -p 1 ./internal/sync/...      OK
+make go-api-lint (golangci-lint, ratchet CI)            0 issue
+golden assembly_000d5950                                INCHANGE (aucun -update)
+golden minibobine_000d5950 et familles filmdec          INCHANGES
+```
+
+**Gate corpus NON rejoue, et c est justifie** : aucun changement de contenu cuit n est attendu de
+cette ronde. Le seul fichier de production dont le comportement bouge est le WARN de P2-4 (une
+ligne de journal, portee par un autre appelant) ; `eventsDuFilm` est une extraction sans changement
+de valeur, et les cinq autres constats sont de la documentation, des tests ou un fichier de fixture.
+`SchemaVersion` reste 54, `KillSourceDecoderRev` reste `killsource-2026-09-12`, et l empreinte du
+decodeur est inchangee — le golden d assemblage `000d5950` le confirme sans une seule ligne d ecart.
+
+### 7.5 Taille ajoutee
+
+| element | octets |
+|---|---|
+| `minibobine_e5adf7b2/chunk_00.bin` | 445 742 |
+| `minibobine_e5adf7b2/chunk_01.bin` | 116 319 |
+| `minibobine_e5adf7b2/chunk_02.bin` | 334 509 |
+| `minibobine_e5adf7b2/PROVENANCE.txt` | 948 |
+| **total fixture** | **897 518 octets (876 Kio)** |
+
+A comparer aux 3,8 Mio de `minibobine_000d5950` : la bobine v40 ne garde que ce qu il faut pour
+lire un kill-feed, la bobine v41 garde un prefixe contigu long parce qu elle verrouille, elle, les
+lignes publiees de source de degat.
