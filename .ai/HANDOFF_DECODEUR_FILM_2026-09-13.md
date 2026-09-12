@@ -119,6 +119,50 @@ Les pistes, dans l'ordre où elles se prouvent :
 4. **Le gate** : un compteur « records d'image-clé fermés / total » par archétype, publié en
    expvar et gelé par un ratchet, pour que le cadre ne puisse plus casser en silence.
 
+### 4 bis. Combler les 62 % : la méthode, composant par composant
+
+Le trou n'est pas un mystère, c'est un inventaire. Les faits mesurés qui le bornent :
+
+- Le registre de `chunk_00` nomme 264 composants distincts ; `filmdec` porte aujourd'hui un
+  lecteur pour 103 d'entre eux (mesure `grep case "...-component"`, 2026-09-13). Les 161 autres
+  n'ont pas de lecteur, et c'est tout ce qui manque : le cadre est juste, l'ordre est connu.
+- Dans une image-clé il n'y a pas de masque : TOUS les composants de l'archétype sont présents,
+  dans l'ordre du registre. Un seul composant sans lecteur bloque donc tout ce qui le suit. La
+  note 5a nomme le bloquant par archétype (ti=9 bute sur `i4
+  managed-player-forge-weather-effect-overrides-component`, 1 679 fois sur 1 679 ; neuf
+  archétypes butent sur leur premier ou deuxième composant). Le nombre de composants à porter
+  pour débloquer les archétypes utiles est donc bien plus petit que 161 : à inventorier au
+  premier pas.
+- Le lot R7-d a établi la méthode pour trouver la grammaire d'un composant dans l'exécutable :
+  chaque descripteur de composant a une vtable de 10 cases dont exactement deux touchent le flux,
+  `+0x18` ÉCRIT et son miroir LIT ; le descripteur se retrouve par dump de `.rdata`
+  (`0x143606000..0x144395200`, `read_memory`) sans xref. Quatre ports Go sur cinq y ont été
+  confirmés largeur pour largeur : les 103 lecteurs existants (écrits pour le delta) valent pour
+  l'image-clé, puisque l'écrivain d'image-clé est le miroir exact du lecteur delta (i60 en R7-d).
+- L'oracle ne coûte rien et ne demande aucune capture : la FERMETURE (le record suivant tombe
+  exactement où la grammaire le prédit, `imagecle_fermeture_research_test.go`), le mot `n2`
+  pour l'état par défaut, et pour un champ de largeur constante le profil de bascule des bits en
+  dent de scie (méthode de `i0_layout.go`) comme seconde chaîne.
+
+Le pas, répétable jusqu'à ce que les archétypes utiles ferment à 100 % :
+
+1. **Inventaire** : un instrument qui, par archétype, imprime la liste ordonnée des composants
+   avec leur statut (porté / manquant / BLOQUANT = premier manquant) et le taux de fermeture.
+   Il devient le ratchet « la couverture d'image-clé par archétype ne descend jamais ».
+2. **Priorité** : les archétypes que le rejeu et killsource consomment, dans cet ordre : ti=9
+   joueur (un seul bloquant, `i4`), ti=11 et ti=12 objectifs (100 % de désync aujourd'hui),
+   ti=35 bipède (52 composants, la majorité déjà portée), ti=42 et ti=43 armes, puis véhicules.
+3. **Par composant bloquant** : descripteur par `.rdata`, décompilation de l'écrivain `+0x18`,
+   port en fonction pure (profil, bits) dans `filmdec` ; une largeur qui dépend d'une config du
+   jeu (comme le quaternion de véhicule de ti=40) devient une entrée de profil, pas une
+   constante. Preuve : fermeture de l'archétype avant / après, sur 6 films de 3 builds.
+4. **Répéter** jusqu'au prochain bloquant. Beaucoup de composants sont partagés entre
+   archétypes : chaque port en débloque souvent plusieurs.
+
+Ordre de grandeur honnête : quelques dizaines de composants pour les six archétypes utiles, pas
+161 ; chaque composant est une session de désassemblage courte, la méthode et l'oracle existent.
+Ce qui n'est PAS à faire : re-mesurer par statistique ce qu'un écrivain lisible dit en clair.
+
 ## 5. Ce qui reste ouvert (recherche), par ordre de valeur
 
 - Le reliquat de 61,8 % des records d'image-clé (largeurs de composants) ; ti=13 muet malgré une
