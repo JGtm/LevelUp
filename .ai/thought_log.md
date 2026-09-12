@@ -106580,3 +106580,38 @@ n'ont gagné que 8 % ; `document_chronicle.go` 1 190 L ; 13 replis FR restants s
 
 **Prochaine étape** : lot E (déplacement pur du décodeur sous `internal/games/halo_infinite/film/`),
 puis lot F (nettoyage worktrees/branches, bascule dossier LevelUp).
+
+## [2026-09-12] Architecture cible du décodeur de film : relecture sur pièces et amendement du document — Complete (worktree partagé, aucun commit)
+
+**Decision technique principale.** `.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md` amendé
+(sections marquées « (ajout) ») après relecture contre le code et les notes de RE, à la demande de
+l'utilisateur. Trois familles d'écarts corrigées : (1) le texte disait « une douzaine de globales »,
+le ratchet `filmdec_package_vars_test.go` en gèle 118 (crochets d'observation, table des largeurs
+sans verrou) et `LockProcessDecode` + `decode_lock_held_test.go` n'étaient pas mentionnés ; `FilmContext`
+existe déjà et absorbe le futur `Profile` (décision écrite) ; les inférences (`DetectI0Layout`, chaînes)
+ne sont pas des valeurs de profil : oracle de test là où le profil sait, erreur typée là où il ne sait
+pas. (2) Principes ajoutés 9 à 15 : la grammaire vient du JEU (exe, `.module`) par outil de
+fabrication comme `cmd/mapquant-build`, le film n'est que la clé (build en clair dans `chunk_00`
+section 2, lu par personne en production) et le témoin ; version inconnue = erreur typée + expvar ;
+frontières par `internal/` avant ratchets ; sémantique d'erreur par couche ; zéro panique + fuzz ;
+preuve dans le code ; données vs code. (3) Contrôles 8 à 13 : budget de temps (aucun `Benchmark`
+n'existe), `-race`, kill-switch daté pour la double écriture, consignation des gates locaux (la CI
+ne voit ni corpus gate ni `replay-equiv`), goldens et fixtures de contrat au pas 0.
+
+**Resultats observes.** Vérifié sur pièces : `chunk_00` a quatre sections (registre = ordre des
+composants, aucune largeur ; en-tête = table de 123 u32 par type constante par build + build en clair ;
+corps non décodé ; zéros) et le pied (type 3) est le flux des récompenses de score personnel avec
+gamertag en clair (page Notion du 01/09) : sources de FAITS, pas de grammaire. Largeurs, quantums et
+bornes sont hors film (« le mur », `i0_layout.go`). Publication : `SchemaVersion = 53` monolithique,
+règle « optionnel sans bump » = source des régressions entre versions, type jumeau `domain/replaydoc`
+sans numéro, fixture web à `schemaVersion: 1`, zod présent mais non branché sur le rejeu. Quatre
+branches non fusionnées touchent filmdec/replay (`wt/decodeur-sous-titre` 993 fichiers). Sections
+neuves : 5 bis (ce que le film déclare), 11 (second chantier publication : faits persistés par film
+avec révision de couche, révision par calque, un seul type publié ; après le pas 5, fenêtre propre),
+12 (six garde-rails Go/web exécutables en CI : fixtures produites par Go, matrice de compatibilité,
+zod à la frontière, empreinte de forme du document, goldens jamais régénérés, ratchet fixtures),
+13 (ADR 0034 à écrire).
+
+**Prochaine etape.** L'utilisateur transforme le document en plan (skill `plan-execution`) ; le pas 0
+(section 12) est exécutable sans attendre la release. Aucun commit fait (règle 16) : fichier modifié
+dans le worktree partagé `feat/v75`.
