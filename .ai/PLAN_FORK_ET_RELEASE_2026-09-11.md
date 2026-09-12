@@ -176,3 +176,77 @@
   rebaser une branche vivante à travers 981 renommages). Branche poussée pour la CI. E.3 Notion 9
   se coche à la fusion. Serveur relancé (health 200). Instruction BTB 2025 lancée
   (`wt/btb-2025-abstention`, Opus).
+
+## Lot G — abstention du décodeur sur les BTB 2025 (décidé par l'utilisateur le 2026-09-12,
+## `wt/btb-2025-abstention`, base feat/v75 `2f5d165be`)
+- [x] G.1 Instruction : cause (a) format du film — versions 39-40 (mars -> nov. 2025), gamertag à
+      l'octet 12 ; `killsource`/`deaths_source`/`medal_feed_backfill` passaient version 0 = « en
+      tête » ; 2 gamertags lus sur 25, portes `indice < nPlay` fermées. 92/92 BTB séparés sans
+      recouvrement ; 8 films instrumentés (2025 : 5-17 % -> 82-100 % ; témoins 2024/2026 inchangés).
+- [x] G.2 Correctif : résolution par mesure quand la version est inconnue (`2a6265ac4`),
+      `KillSourceDecoderRev` -> `killsource-2026-09-12`, 3 tests CI + banc env + non-régression.
+- [ ] G.3 Revue adversariale (1 relecteur, algo) — question centrale : bump `SchemaVersion` 53 -> 54
+      (deaths_source du rejeu lit le même parseur) ; puis fusion feat/v75.
+- [ ] G.4 Re-décodage des 210 films 39-40 (killsource, backlog par révision) + recuisson des
+      artefacts touchés ; contrôle `_latest` par mois et playlist.
+- Découvertes : 136 films 39-40 hors BTB touchés (arène) ; empreinte `killSourceDecoderFingerprint`
+  ne hache que `killsource/` (ce correctif d'amont ne l'aurait pas fait sonner) ; manifestes du
+  cache sans `FilmMajorVersion`.
+- 2026-09-12 (décision utilisateur) : l'heuristique « résolution par mesure » de `2a6265ac4` est
+  REFUSÉE — un décodeur lit l'indicateur clé, il ne le devine pas. Vérifié sur pièces par le
+  pilote : `FilmMajorVersion` = u32 LE à l'offset 0 de `chunk_00.bin` (40 / 37 / 41 sur les
+  3 films instrumentés) ; corrélation parfaite sur 92 BTB (v39-40 : 68-97 % sans source ;
+  autres : 0-24 %) ; cache : v39 x26, v40 x185, v41 x1123, v<=38 x17. L'API porte la même
+  valeur (`CustomData.FilmMajorVersion`), la synchro en direct la passe déjà ; seuls les chemins
+  du cache passaient 0. Revue de la version heuristique arrêtée.
+- [x] G.2bis Correctif retenu (2026-09-12, `wt/btb-2025-abstention`, 6 commits) : helper canonique
+      `filmdec.FilmMajorVersionFromHeader` / `FilmMajorVersion` (u32 LE en tête de `chunk_00`) ;
+      3 appelants branchés (`killsource/feed.go`, `replay/deaths_source.go`,
+      `ops/medal_feed_backfill.go`) avec WARN si le registre manque ; heuristique de `2a6265ac4`
+      SUPPRIMÉE (0 code mort) ; `haloclient.fetchFilmManifest` ne force plus 0 depuis le cache
+      (le chemin de synchro EN DIRECT était touché lui aussi) ; `SchemaVersion` 53 -> 54 avec
+      chronique datée, golden à une seule ligne d'écart ; Lot G étendu fait :
+      `coverage.filmMajorVersion` publié (champ optionnel, contrat + types web regénérés).
+      `[!]` justifié : pas de champ `film_major_version` dans le manifeste sérialisé (redondant
+      avec l'en-tête, ne couvrirait aucun des 1 351 films déjà en cache).
+      Parc par version lue : 1 351 films, 0 registre illisible, v31 x3, v33 x3, v37 x10, v38 x1,
+      v39 x26, v40 x185, v41 x1123 ; croisement mesure/version : 1 divergence (`007d53a4`, film
+      sans aucun highlight event — la mesure y est indéfinie).
+      Gates : go build/vet/test ./... (171 paquets, 0 échec), integration sync, lint 0 issue,
+      gate corpus 8/8 ok 0 perte (exit 0, joué deux fois). `tsc`/vitest non joués (pas de
+      `node_modules` dans le worktree) — CI gate d'autorité.
+- 2026-09-12 (décision utilisateur) : la version de film devient une DIMENSION du décodeur.
+  Constat : seul le parseur des temps forts consomme `FilmMajorVersion` ; filmdec et le
+  constructeur de rejeu l'ignorent (hypothèse implicite « tout est en 41 » ; cache : 1 123 films
+  en 41, 211 en 39-40, 17 en 31-38 ; le seul artefact cuit d'un film 40 décode correctement,
+  84/84 pistes nommées). (1) Lot G étendu : la version lue en tête est portée par le film chargé
+  et publiée dans la couverture de l'artefact (champ optionnel) ; (2) ensuite une session de
+  mesure par version (bancs identité/tirs/projectiles/objectifs sur 3 films 39, 3 films 40,
+  2 films 31-38 contre témoins 41) — lot H, à lancer après G.
+
+## Lot H — mesure par version de film (décidé le 2026-09-12, à lancer après G)
+Consigne utilisateur : couvrir TOUS les calques, pas seulement le kill feed — socles (armes,
+power-ups, équipement), armes au sol, trajectoires et positions (bipèdes, projectiles,
+véhicules), vies/identité, tirs, grenades, objectifs (drapeaux, zones, crâne, bombe), équipement
+(usages, poses, lâchers, ramassages, charges), médailles, score et manches, sons/événements.
+Méthode : pour chaque banc/calque, 3 films v39, 3 films v40, 2 films v31-38 contre des témoins
+v41 de même mode et carte quand c'est possible ; tableau calque x version = décodé / vide /
+aberrant, avec les compteurs de couverture de l'artefact et les oracles existants (API, table
+des scores, `swap.sh`, corpus). Livrable : rapport + liste des points où le profil de
+déchiffrage doit brancher sur la version, chiffrés.
+- [ ] H.1 Corpus par version (choix des films, cache complet vérifié).
+- [ ] H.2 Mesure calque par calque (tableau).
+- [ ] H.3 Rapport et plan des divergences ; témoins v39/v40 ajoutés au corpus gate.
+
+## Lot I — architecture « profil de déchiffrage » (proposé le 2026-09-12, APRÈS la release, sur
+## feu vert utilisateur après H)
+Relevé du 2026-09-12 : 60 000 L de décodage (filmdec 25 800 / 110 fichiers, replay 34 500,
+killsource 4 700, objectiveevents 4 500, filmsource 500) ; deux lecteurs de bits (`filmdec.BitReader`,
+`killsource.evReader`) ; six lecteurs d'octets bruts hors filmsource/filmdec ; ~12 globales de
+paquet installées par film (install/restore) au lieu d'un profil ; `filmsource.Film` sans version
+ni profil ; empreinte du décodeur limitée à killsource ; 6 fichiers filmdec > 500 L (traverse 1 380).
+Cible : (1) `Film` porte version + profil immuable résolu au chargement (en-tête + catalogue de
+carte) ; (2) profil passé explicitement, globales supprimées ; (3) porte d'entrée unique aux octets
+bruts + ratchet archlint ; (4) empreinte étendue à filmdec/filmsource/parseur ; (5) équivalence
+prouvée (goldens, corpus gate avec témoins 39/40, bascule bit à bit). Conçu d'après le tableau du
+lot H, pas avant. Effort L.
