@@ -1220,6 +1220,11 @@ package replay
 //	VERSION MONTE   noms pour vingt-cinq joueurs. La reprise du backfill se faisant par
 //	                SchemaVersion, sans montee aucune recuisson ne le rattraperait.
 //
+//	le champ ajoute `coverage.filmMajorVersion` publie la version lue : elle voyage desormais AVEC
+//	                l'artefact au lieu d'exiger une relecture du film. Champ OPTIONNEL, il
+//	                n'aurait pas exige le bump a lui seul ; il sert la mesure par version du
+//	                lot H, ou chaque calque se juge contre la grammaire qui l'a produit.
+//
 //	ce que le lot   le REDECODAGE lui-meme (`backfill-replay --only-existing` et le backlog
 //	n'a pas fait    killsource par `KillSourceDecoderRev`) : consigne du lot, il reste a lancer.
 //	                Detail : `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.

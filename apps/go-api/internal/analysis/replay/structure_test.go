@@ -1054,6 +1054,9 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact 53 d'un match de cette période porte un roster de
 	//   deux noms pour vingt-cinq joueurs. La reprise du backfill se fait par SchemaVersion :
 	//   sans montée, aucune recuisson ne le rattraperait.
+	//   `coverage.filmMajorVersion` s'ajoute au passage — la version lue voyage desormais AVEC
+	//   l'artefact, au lieu d'exiger une relecture du film. Champ OPTIONNEL : il ne l'aurait pas
+	//   exigé à lui seul, et il sert la mesure par version du lot H.
 	//   Détail : `document_chronicle.go` et `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
 	if SchemaVersion != 54 {
 		t.Fatalf("SchemaVersion = %d, attendu 54 : incrémenter exige une raison écrite ci-dessus "+

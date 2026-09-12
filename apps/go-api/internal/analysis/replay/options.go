@@ -27,6 +27,11 @@ type Options struct {
 	FrameIntervalMS int
 	// MinPoints : seuil de publication d'une track ; 0 -> DefaultMinPoints.
 	MinPoints int
+	// FilmMajorVersion : la version du film, LUE dans l'en-tete de son registre par l'appelant
+	// qui a charge le film (`filmdec.FilmMajorVersion`). nil quand le film ne porte pas son
+	// registre, ou quand l'appelant construit depuis des positions sans film. Republiee telle
+	// quelle dans `Coverage.FilmMajorVersion` — cf. le commentaire de ce champ.
+	FilmMajorVersion *int
 	// Geometry : props Forge optionnels (repères contextuels, pas le fond de carte).
 	Geometry []MapObject
 	// Structure : emprises de la géométrie structurelle de la carte (le vrai fond de
