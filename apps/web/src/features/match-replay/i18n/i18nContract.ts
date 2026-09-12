@@ -210,6 +210,22 @@ export interface ReplayText {
   loading: string
   empty: string
   /**
+   * LE BADGE ADMIN « version de schéma » (lot A, 2026-09-11) : visible UNIQUEMENT quand
+   * `useAppShellStore((s) => s.isAdmin)` est vrai (règle produit — un non-admin ne voit rien,
+   * pas même un badge vide). Trois formes, une par `ReplaySchemaStatus.kind`
+   * (`model/replaySchemaStatusLogic.ts`) :
+   *  - `schemaBadgeUpToDateFmt` : l'artefact porte déjà la version que le producteur écrirait
+   *    aujourd'hui ;
+   *  - `schemaBadgeStaleFmt` : l'artefact est en retard — le second nombre est la version
+   *    COURANTE du producteur, à recuire ;
+   *  - `schemaBadgeUnknownFmt` : aucune comparaison possible (en-tête `X-Replay-Latest-
+   *    Schema-Version` absent — artefact antérieur à ce lot, ou réponse mise en cache) : le
+   *    badge dit la seule chose qu'il sait, la version LUE, sans jamais affirmer un statut.
+   */
+  schemaBadgeUpToDateFmt: (schemaVersion: number) => string
+  schemaBadgeStaleFmt: (schemaVersion: number, latestSchemaVersion: number) => string
+  schemaBadgeUnknownFmt: (schemaVersion: number) => string
+  /**
    * L'ÉTIQUETTE DE LA FLÈCHE HORS CADRE (plan escouade hors cadre, chantier B, décision D2,
    * 2026-09-10) : le nom du joueur (ou du porteur d'objectif) ET la distance jusqu'à sa
    * position réelle, hors du cadre visible à zoom serré (2x/3x). Le symbole du mètre (« m »)
