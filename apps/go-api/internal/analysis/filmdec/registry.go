@@ -11,6 +11,10 @@ package filmdec
 // Slot layout (260 bytes): [u32 kind LE][u32 flags LE][name ASCII, NUL-padded].
 // Block layout: archetypeBlockSlots slots; the component list is the leading run
 // of non-empty-name slots, the rest is zero padding.
+//
+// CAVEAT on the FIRST slot of block 0: its leading u32 is not a slot kind at all, it is the
+// film's FilmMajorVersion (identified 2026-09-12 - see FilmMajorVersionFromHeader). The parser
+// never reads that field, so nothing here changes; the value is simply named elsewhere.
 
 import (
 	"bytes"
@@ -159,11 +163,13 @@ func ParseRegistryChunk(data []byte) (*Registry, error) {
 // `(octet0<<8 | octet1) % 31 == 0`.
 //
 // LA SOMME DE CONTROLE EST PORTEUSE, ET C'EST MESURE (revue CTF-R1, 2026-09-06, balayage des
-// 1 378 `chunk_00` du cache). Un registre inflate commence par le `kind` u32 LE de son premier
-// slot : `0x29` sur 1 117 films, mais aussi `0x28` (204 films), `0x27` (34), `0x25` (13),
-// `0x26`/`0x1f`/`0x21` (3 chacun), `0x22` (1) — le premier octet n'est donc PAS constant, et les
-// 204 films en `0x28` passent la condition CM=8 : seule la somme de controle les sauve
-// (`0x2800 % 31 = 10`). « Jamais 0x78 » tient sur tout le corpus : 0 faux positif.
+// 1 378 `chunk_00` du cache). Un registre inflate commence par son `FilmMajorVersion` u32 LE
+// (identifie le 2026-09-12 — cf. [FilmMajorVersionFromHeader] ; cette note le lisait auparavant
+// comme « le kind du premier slot », le comptage etait juste et l'interpretation non) : `0x29`
+// sur 1 117 films, mais aussi `0x28` (204 films), `0x27` (34), `0x25` (13), `0x26`/`0x1f`/`0x21`
+// (3 chacun), `0x22` (1) — le premier octet n'est donc PAS constant, et les 204 films en `0x28`
+// passent la condition CM=8 : seule la somme de controle les sauve (`0x2800 % 31 = 10`).
+// « Jamais 0x78 » tient sur tout le corpus : 0 faux positif.
 func looksZlib(data []byte) bool {
 	if len(data) < 2 || data[0]&0x0f != 0x08 || data[1]&0x20 != 0 {
 		return false
