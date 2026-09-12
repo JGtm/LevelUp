@@ -175,7 +175,7 @@ La cause n'est pas le lot : l'export des faits (`levelup replay-facts-export`, l
 qui lit la base) echoue pour les 8 temoins sur
 
     OpenReadOnly(shared_matches_v2.duckdb) : File is already open in
-    …\LevelUp-go-migrationpps\go-apiin\levelup.exe (PID 40148)
+    ...(LevelUp-go-migration)/apps/go-api/bin/levelup.exe (PID 40148)
 
 c'est-a-dire le SERVEUR DE DEV qui tourne sur :8000 et tient la base en RW. C'est le modele
 mono-process d'ADR 0013/0016, applique : RO et RW sur le meme fichier depuis deux process est
