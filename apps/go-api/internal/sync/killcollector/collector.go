@@ -69,7 +69,18 @@ import (
 // lignes deja en base portaient donc la revision courante et etaient exclues A VIE du backlog
 // (`conditionBacklog`, postsync.go) — source du degat, categorie et assistant servis avec le
 // decodage d avant les vehicules. Le bump les rend a nouveau candidates.
-const KillSourceDecoderRev = "killsource-2026-09-05"
+//
+// 2026-09-12 : `killsource-2026-09-05` -> `killsource-2026-09-12`. Le decodeur n a pas bouge,
+// son AMONT si : `analysis.ParseHighlightEvents` resout desormais par mesure le decoupage du
+// gamertag quand la version du film est inconnue (ce que `loadKillFeed` passe en dur). Sur les
+// films de version 39-40 — 210 des 1 351 du cache, mars a novembre 2025 — le gamertag etait lu
+// 12 octets trop tot, le roster s effondrait a 2 noms distincts et les portes `indice < nPlay`
+// rejetaient les trois quarts des dead-states. Couverture mesuree sur cinq films Big Team
+// Battle 2025 : 15.0 -> 97.1, 11.2 -> 100.0, 6.8 -> 94.8, 5.1 -> 97.0, 17.3 -> 82.4 % ; temoins
+// 2024 et 2026 inchanges au dixieme (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Les lignes
+// en base doivent etre redecodees : d ou ce bump. LIMITE : l empreinte ci-dessous ne hache que
+// `killsource/` — un changement d amont comme celui-ci ne l aurait PAS fait sonner.
+const KillSourceDecoderRev = "killsource-2026-09-12"
 
 // killSourceDecoderFingerprint — L EMPREINTE DES SOURCES DU DECODEUR, FIGEE A COTE DE SA REVISION.
 //
