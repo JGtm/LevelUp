@@ -27,13 +27,15 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { renderWithProviders } from '@/test/render-utils'
 
 vi.mock('@/lib/api/client', () => ({
-  api: { get: vi.fn() },
+  api: { get: vi.fn(), getWithHeader: vi.fn() },
   getApiTitleSlug: () => 'halo_infinite',
   setApiTitleSlug: vi.fn(),
   setApiLocale: vi.fn(),
 }))
 
-const apiGet = vi.mocked(api.get)
+// Le document de rejeu est demande par `getWithHeader` (lot A, 2026-09-11 : la version courante du
+// producteur voyage en en-tete X-Replay-Latest-Schema-Version), plus par `get`.
+const apiGet = vi.mocked(api.getWithHeader)
 
 /** Le titre courant du magasin d'app, avec la liste de capabilities qu'on veut éprouver. */
 function titreAvecCapabilities(caps: string[]) {
@@ -82,7 +84,7 @@ afterEach(() => {
 describe('page de rejeu — porte de titre `replay`', () => {
   it('titre SANS la clé : aucune requête de rejeu, et l’écran dit pourquoi', async () => {
     titreAvecCapabilities(['matchmaking'])
-    apiGet.mockResolvedValue({})
+    apiGet.mockResolvedValue({ data: {}, header: null })
 
     renderWithProviders(<SousLesDeuxPortes />)
 
@@ -106,13 +108,16 @@ describe('page de rejeu — porte de titre `replay`', () => {
 
   it('titre AVEC la clé : la page est montée et demande son artefact', async () => {
     titreAvecCapabilities(['matchmaking', 'replay'])
-    apiGet.mockResolvedValue({ schemaVersion: 4, tracks: [] })
+    apiGet.mockResolvedValue({ data: { schemaVersion: 4, tracks: [] }, header: null })
 
     renderWithProviders(<SousLesDeuxPortes />)
 
     expect(screen.getByText('contenu du rejeu')).toBeInTheDocument()
     await waitFor(() =>
-      expect(apiGet).toHaveBeenCalledWith('/players/jgtm/matches/match-1/replay'),
+      expect(apiGet).toHaveBeenCalledWith(
+        '/players/jgtm/matches/match-1/replay',
+        'X-Replay-Latest-Schema-Version',
+      ),
     )
   })
 
