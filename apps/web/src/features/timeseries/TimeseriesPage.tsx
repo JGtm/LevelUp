@@ -64,8 +64,8 @@ export function TimeseriesPage() {
     loss:
       fieldMappings?.outcomes?.loss?.label ??
       t('timeseries.distributions.outcome_loss_fallback'),
-    tie: fieldMappings?.outcomes?.tie?.label ?? 'Égalité',
-    dnf: fieldMappings?.outcomes?.dnf?.label ?? 'Abandon',
+    tie: fieldMappings?.outcomes?.tie?.label ?? t('timeseries.distributions.outcome_tie_fallback'),
+    dnf: fieldMappings?.outcomes?.dnf?.label ?? t('timeseries.distributions.outcome_dnf_fallback'),
     unknown:
       fieldMappings?.fields['outcome_unknown']?.label ??
       t('timeseries.distributions.outcome_unknown_fallback'),

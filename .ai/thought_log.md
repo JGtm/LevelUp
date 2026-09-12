@@ -1,3 +1,42 @@
+## [2026-09-11] Lot C (robustesse + i18n) — verrou Windows EN, film mort classé, ~20 littéraux FR migrés — Complete (worktree LevelUp-wt-robustesse-i18n)
+
+**Decision technique principale.** Trois items indépendants du plan fork ChaseWoodhams
+(`.ai/PLAN_FORK_ET_RELEASE_2026-09-11.md` lot C) : C.1 `IsFileLockError` (duckdb) reconnaît
+désormais le message OS Windows EN en plus du marqueur DuckDB EN déjà présent — le second ne
+couvre que les verrous que DuckDB identifie lui-même, pas un détenteur étranger (antivirus,
+sauvegarde). C.2 `haloclient.IsFilmGoneErr` exporte le prédicat `isNotFoundErr` déjà typé
+(manifeste ET blobs, 404/410) et le branche dans `killcollector.collect()` : un manifeste vivant
+dont un blob CDN pré-signé expire (404/410) remontait une erreur jamais classée `OutcomeNoFilm`,
+donc `MBitFilmAbsent` n'était jamais posé — le match restait candidat à vie aux passes
+`backfill-killsource --online`. Reclassé en état terminal sans erreur, `slog.WarnContext` avec
+`match_id` ; une panne transitoire (503) reste retentée (biais assumé, bilan pt 4b). C.3 : ~20
+littéraux FR en dur hors i18n migrés vers les manifests TOML existants sur les 10 fichiers cités
+par le bilan (`components/shell/ThemeToggle.tsx`, `components/ui/carousel.tsx`,
+`features/palmares/BattlePassRewardCarousel.tsx`, `features/setup/StepPlayer.tsx`,
+`features/feedback-drawer/{FeedbackDrawer,buildIssueUrl}.ts(x)`, `features/auth/XboxLoginPage.tsx`,
+`features/synthesis/SynthesisPage.tsx`, `features/timeseries/TimeseriesPage*.tsx`).
+
+**Resultats observes.** Deux angles morts trouvés dans `eslint-rules/no-hardcoded-strings.js`
+(règle déjà en `error` depuis 2026-07-05, donc lint restait vert malgré les littéraux) : un
+littéral FR assigné à une VARIABLE avant usage JSX (ThemeToggle.tsx — le visiteur `JSXAttribute`
+ne suit pas les variables) et un littéral COURT sous le seuil `looksLikeUserContent` (< 3 mots ET
+< 15 car., ex. carousel.tsx `aria-label="Précédent"`). Garde-rail neuf
+`apps/web/src/lib/i18n/no-hardcoded-locale-fallback.guard.test.ts` (grep source, ferme ces deux
+angles morts sur les fichiers de ce lot). `buildIssueUrl.ts` : corps d'issue GitHub entièrement
+en dur (~20 lignes) — `locale` devient un paramètre requis, test de non-régression EN ajouté.
+Gates : Go `go test ./internal/platform/duckdb/... ./internal/sync/...` + `go vet ./...` +
+`go test -tags=integration -p 1 ./internal/sync/...` (killcollector touché au-delà de
+haloclient) tous verts ; web `tsc -b` 0 erreur, `eslint .` 0 erreur (31 warnings pré-existants
+hors périmètre), `vitest run` 695 fichiers / 7373 tests verts (1 skip jsdom canvas).
+
+**Conclusion / prochaine étape.** `[!]` `ChartsShowcasePage.tsx` non traité (faible priorité
+déclarée par le plan, page de labo, ~45 lignes accentuées). Découverte notée non traitée : 13
+occurrences du même défaut `?? '<littéral>'` sur des champs NON cités par le bilan
+(Frags/Morts/FDA) dans les fichiers timeseries déjà touchés. Commits sur `wt/robustesse-i18n` :
+`8c13b3b4c` (C.1), `90e97c240` (C.2), C.3 à suivre dans ce commit. Pas de merge, pas de push —
+laissé au pilote pour la fusion de vague (revue adversariale + CI une fois par vague, cf.
+`feedback_revue_ci_fin_de_vague.md`).
+
 ## [2026-09-11] Vague 6 close — couverture des calques d'objectif, munitions exactes, jonglage, revue et CI vertes — Complete (superviseur)
 
 **Decision technique principale.** Cloture de la vague 6 du plan maitre v7.5 : 12 lots fusionnes dans `feat/v75` (6.1 pont a l'instant, 6.2 crane, 6.4 dette visible, 6.5/6.6 armes au sol et munitions, 6.7 audit + B1 + B2 couverture des objectifs, 6.10/6.10 bis munitions exactes et grammaire i9, 6.11 passages de drapeau, 6.13 zone aveugle des socles), revue unique en deux rondes + ronde 1 bis sur un defaut trouve par le gate local, `make gate-push` puis baseline (15 849 tests, 0 echec), push `c7b63b8f4`, CI 3/3 verte.

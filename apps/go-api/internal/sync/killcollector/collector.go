@@ -324,6 +324,20 @@ func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) 
 func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (KillSourceOutcome, int, error) {
 	chunks, found, err := FilmChunksForMatch(ctx, c.client, matchID)
 	if err != nil {
+		// EXPIRATION PARTIELLE = DEFINITIVE (bilan fork ChaseWoodhams 2026-09-11, point 4b) :
+		// le manifeste repond encore mais un chunk (blob CDN pre-signe) rend 404/410. Sans
+		// cette classification, l erreur remontait telle quelle et CollectMatches la comptait
+		// en Errors — jamais en OutcomeNoFilm — donc marquerFilmParOutcome ne posait JAMAIS
+		// MBitFilmAbsent : le match restait candidat A VIE aux passes `--online` suivantes
+		// (le filtre `MBitFilmAbsent` ne l excluait jamais). haloclient.IsFilmGoneErr
+		// distingue ce lien DEFINITIVEMENT mort (404/410, manifeste ou blob) d une panne
+		// transitoire (503, rate-limit, reseau) qui doit rester une erreur retentee.
+		if haloclient.IsFilmGoneErr(err) {
+			observability.AddInt(metricNoFilm, 1)
+			slog.WarnContext(ctx, "killsource: film expire definitivement (404/410 sur le manifeste ou un blob, manifeste possiblement relu du cache local) — classe absent",
+				"match_id", matchID, "err", err)
+			return OutcomeNoFilm, 0, nil
+		}
 		observability.AddInt(metricDecodeError, 1)
 		return OutcomeNoFilm, 0, err
 	}

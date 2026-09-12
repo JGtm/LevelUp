@@ -384,6 +384,32 @@ func isNotFoundErr(err error) bool {
 	return false
 }
 
+// IsFilmGoneErr dit si l'erreur signale un film DÉFINITIVEMENT perdu — manifeste OU
+// blobs, peu importe lequel : 404/410 typé (*HTTPError pour fetchFilmManifest/doGet,
+// *BlobHTTPError pour downloadBlob, cf. isNotFoundErr) sur l'un ou l'autre compte comme
+// définitif. C'est exactement isNotFoundErr, exporté sous ce nom pour les callers qui
+// RETENTENT un film au lieu de simplement le classer absent/présent — eux ont besoin de
+// distinguer une erreur transitoire (réseau, 5xx, rate limit) d'un lien mort, ce que
+// fetchFilmManifest et fetchFilmChunks ne leur exposent pas (ils remontent l'erreur
+// brute, transitoire ou pas).
+//
+// EXPIRATION PARTIELLE = DÉFINITIVE, biais assumé (bilan fork ChaseWoodhams 2026-09-11,
+// point 4b). Le manifeste et les blobs pré-signés expirent sur des calendriers séparés :
+// un manifeste qui répond encore alors qu'un de ses blobs rend 404/410 est indiscernable
+// d'un timeout pour un appelant qui ne regarde que "err != nil". Dans un errgroup
+// (fetchFilmChunks), UN chunk sur N qui rend 404 remonte SEUL via eg.Wait() — même si un
+// autre chunk rendait 503 en parallèle, l'un ou l'autre motif ressort au hasard des
+// goroutines. Classer cette expiration partielle comme définitive est un choix délibéré :
+// un faux « transitoire » se corrige tout seul à la passe suivante (le film redevient
+// candidat) ; un faux « définitif » serait un film réellement vivant classé perdu à tort.
+// Le biais va du bon côté — mais un chunk isolé mort à côté de chunks lisibles n'est PAS
+// la même chose qu'un manifeste entièrement 404 : un appelant qui a besoin de la
+// distinction fine (ex. republier le film partiel plutôt que l'abandonner) ne doit pas
+// se fier à ce seul prédicat.
+func IsFilmGoneErr(err error) bool {
+	return isNotFoundErr(err)
+}
+
 // downloadBlob télécharge un blob Halo sans header d'auth (pre-signed URL)
 // et le décompresse zlib (le CDN Azure des films Halo Infinite renvoie du zlib brut).
 // Portage de download_film_chunk() (Python api_client.py:485-498).

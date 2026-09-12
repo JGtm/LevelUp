@@ -161,6 +161,29 @@ en = "Settings"
 fr = "Thème"
 en = "Theme"
 
+# components/ui/carousel.tsx — bilan fork ChaseWoodhams 2026-09-11, point 6 :
+# littéraux FR courts (1 mot), sous le seuil de la règle eslint
+# `no-hardcoded-strings` (≥ 3 mots OU ≥ 15 caractères).
+[common.carousel.prev]
+fr = "Précédent"
+en = "Previous"
+
+[common.carousel.next]
+fr = "Suivant"
+en = "Next"
+
+# ThemeToggle.tsx — bilan fork ChaseWoodhams 2026-09-11, point 6 : le libellé
+# aria-label/title était un littéral FR assigné à une variable AVANT d'être
+# posé sur l'attribut JSX, hors de portée de la règle eslint
+# `no-hardcoded-strings` (qui ne suit pas les littéraux via une variable).
+[common.shell.theme_toggle_to_light]
+fr = "Passer au thème clair"
+en = "Switch to light theme"
+
+[common.shell.theme_toggle_to_dark]
+fr = "Passer au thème sombre"
+en = "Switch to dark theme"
+
 [common.shell.nav_game]
 fr = "Jeu"
 en = "Game"
@@ -1271,6 +1294,27 @@ en = "Matches to sync"
 fr = "Jeu {current} sur {total}"
 en = "Game {current} of {total}"
 
+# StepPlayer.tsx — bilan fork ChaseWoodhams 2026-09-11, point 6.
+[common.setup.create_profile_error]
+fr = "Erreur lors de la création du profil."
+en = "Error while creating the profile."
+
+[common.setup.gamertag_placeholder]
+fr = "MonGamertag"
+en = "MyGamertag"
+
+[common.setup.creating_ellipsis]
+fr = "Création…"
+en = "Creating…"
+
+[common.setup.confirm_create_profile]
+fr = "Confirmer et créer mon profil"
+en = "Confirm and create my profile"
+
+[common.setup.add_action]
+fr = "Ajouter"
+en = "Add"
+
 # ─── Auth Xbox login page ───────────────────────────────────────────────
 
 [common.auth.xbox_admin_login]
@@ -1316,6 +1360,21 @@ en = "Admin login only. Normal users sign in through Xbox."
 [common.auth.xbox_back_to_xbox]
 fr = "← Retour à la connexion Xbox"
 en = "← Back to Xbox sign-in"
+
+# Erreurs du formulaire login admin (XboxLoginPage.tsx handleLogin) — bilan
+# fork ChaseWoodhams 2026-09-11, point 6 (littéral relevé : le message de
+# repli générique ; les deux voisins directs du même handler corrigés avec lui).
+[common.auth.xbox_error_invalid_credentials]
+fr = "Identifiants incorrects."
+en = "Incorrect credentials."
+
+[common.auth.xbox_error_password_admin_only]
+fr = "En mode SSO Xbox, le login par mot de passe est réservé aux administrateurs. Utilisez la connexion Xbox."
+en = "In Xbox SSO mode, password login is reserved for administrators. Use Xbox sign-in instead."
+
+[common.auth.xbox_error_generic]
+fr = "Erreur de connexion."
+en = "Sign-in error."
 
 # ─── Onboarding (OpenSpartan import) ────────────────────────────────────
 

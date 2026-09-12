@@ -136,7 +136,7 @@ export function TimeseriesProgressionTab({
           emptyMessage={emptyMsg}
           rows={data.match_rows ?? []}
           spreeLabel={t('timeseries.progression.spree_label')}
-          headshotsLabel={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'}
+          headshotsLabel={fieldMappings?.fields['headshot_kills']?.label ?? t('timeseries.progression.headshot_kills_fallback')}
           perfectLabel={
             fieldMappings?.fields['perfect_kills']?.label ??
             t('timeseries.progression.perfect_kills')
@@ -177,7 +177,7 @@ export function TimeseriesProgressionTab({
           title={t('timeseries.progression.rank_score_title')}
           emptyMessage={emptyMsg}
           rows={data.match_rows ?? []}
-          scoreLabel={fieldMappings?.fields['personal_score']?.label ?? 'Score personnel'}
+          scoreLabel={fieldMappings?.fields['personal_score']?.label ?? t('timeseries.distributions.personal_score_fallback')}
           rankLabel={
             fieldMappings?.fields['rank']?.label ??
             t('timeseries.progression.rank')
