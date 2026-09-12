@@ -1188,3 +1188,38 @@ package replay
 //	                puissance de deux exacte, sur plusieurs slots et générations à la fois. Le
 //	                garde-fou de v52 la couvre et devient rare : c'est son rôle.
 //	                Détail : `.ai/RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md`.
+//
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// v54 (2026-09-12, lot G.2bis) — LA VERSION DU FILM EST LUE, PLUS DEVINEE
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+//
+//	la cause        Le bloc d'event de 60 octets du chunk HIGHLIGHT porte le gamertag a
+//	                `b[0:32]` sur les FilmMajorVersion <= 38 et >= 41, et a `b[12:44]` sur les
+//	                versions 39-40. `ScanDeaths` passait 0 en dur au parseur — c'est-a-dire le
+//	                premier decoupage, pour TOUS les films. Sur un film 39-40 il lisait donc du
+//	                rembourrage : la meme chaine pour tous les joueurs.
+//
+//	l'indicateur    Il existait et personne ne le lisait : les quatre premiers octets de
+//	                `chunk_00.bin` (u32 little-endian) sont le FilmMajorVersion, la meme valeur
+//	                que l'API publie dans `CustomData.FilmMajorVersion`. Helper canonique :
+//	                `filmdec.FilmMajorVersionFromHeader`. Parc : 1 351 films, 0 registre
+//	                illisible — v31 x3, v33 x3, v37 x10, v38 x1, v39 x26, v40 x185, v41 x1123.
+//
+//	ce qui change   `gamertagsOf(deaths)` est la table qui nomme `roster[]` et qui rattache les
+//	                identites. Mesure avant -> apres, version passee 0 puis version lue :
+//	                `e5adf7b2` (v40) 17 identites nommees / 2 noms distincts -> 26 / 26 ;
+//	                `111fa685` (v39) 16 / 2 -> 24 / 24. Le kill-feed de `killsource` suit la
+//	                meme cause : couverture 5,1 -> 97,0 % et 6,8 -> 94,8 % sur ces deux films.
+//
+//	temoins         `000d5950` (v41, film de reference du golden) et `5676a9ba` (v41) : 8 / 8 et
+//	                26 / 26 des DEUX cotes. Aucune carte, aucun calque, aucun autre compte ne
+//	                bouge — le golden d'assemblage ne change que par sa ligne de schema, ses
+//	                entrees etant figees dans `testdata/inputs_000d5950.bin.gz`.
+//
+//	POURQUOI LA     Un artefact 53 d'un match de mars a novembre 2025 porte un roster de deux
+//	VERSION MONTE   noms pour vingt-cinq joueurs. La reprise du backfill se faisant par
+//	                SchemaVersion, sans montee aucune recuisson ne le rattraperait.
+//
+//	ce que le lot   le REDECODAGE lui-meme (`backfill-replay --only-existing` et le backlog
+//	n'a pas fait    killsource par `KillSourceDecoderRev`) : consigne du lot, il reste a lancer.
+//	                Detail : `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
