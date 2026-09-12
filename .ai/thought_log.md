@@ -106638,3 +106638,211 @@ déplacement.
 **Conclusion / prochaine étape.** E.1 `[x]`, E.2 `[x]`. E.3 « cocher Notion 9 » laissé au pilote,
 comme le veut le plan. Rien n'est poussé ni fusionné. Rapport :
 `.ai/RAPPORT_LOT_E_DECODEUR_SOUS_TITRE_2026-09-12.md`.
+## [2026-09-12] Architecture cible du décodeur de film : relecture sur pièces et amendement du document — Complete (worktree partagé, aucun commit)
+
+**Decision technique principale.** `.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md` amendé
+(sections marquées « (ajout) ») après relecture contre le code et les notes de RE, à la demande de
+l'utilisateur. Trois familles d'écarts corrigées : (1) le texte disait « une douzaine de globales »,
+le ratchet `filmdec_package_vars_test.go` en gèle 118 (crochets d'observation, table des largeurs
+sans verrou) et `LockProcessDecode` + `decode_lock_held_test.go` n'étaient pas mentionnés ; `FilmContext`
+existe déjà et absorbe le futur `Profile` (décision écrite) ; les inférences (`DetectI0Layout`, chaînes)
+ne sont pas des valeurs de profil : oracle de test là où le profil sait, erreur typée là où il ne sait
+pas. (2) Principes ajoutés 9 à 15 : la grammaire vient du JEU (exe, `.module`) par outil de
+fabrication comme `cmd/mapquant-build`, le film n'est que la clé (build en clair dans `chunk_00`
+section 2, lu par personne en production) et le témoin ; version inconnue = erreur typée + expvar ;
+frontières par `internal/` avant ratchets ; sémantique d'erreur par couche ; zéro panique + fuzz ;
+preuve dans le code ; données vs code. (3) Contrôles 8 à 13 : budget de temps (aucun `Benchmark`
+n'existe), `-race`, kill-switch daté pour la double écriture, consignation des gates locaux (la CI
+ne voit ni corpus gate ni `replay-equiv`), goldens et fixtures de contrat au pas 0.
+
+**Resultats observes.** Vérifié sur pièces : `chunk_00` a quatre sections (registre = ordre des
+composants, aucune largeur ; en-tête = table de 123 u32 par type constante par build + build en clair ;
+corps non décodé ; zéros) et le pied (type 3) est le flux des récompenses de score personnel avec
+gamertag en clair (page Notion du 01/09) : sources de FAITS, pas de grammaire. Largeurs, quantums et
+bornes sont hors film (« le mur », `i0_layout.go`). Publication : `SchemaVersion = 53` monolithique,
+règle « optionnel sans bump » = source des régressions entre versions, type jumeau `domain/replaydoc`
+sans numéro, fixture web à `schemaVersion: 1`, zod présent mais non branché sur le rejeu. Quatre
+branches non fusionnées touchent filmdec/replay (`wt/decodeur-sous-titre` 993 fichiers). Sections
+neuves : 5 bis (ce que le film déclare), 11 (second chantier publication : faits persistés par film
+avec révision de couche, révision par calque, un seul type publié ; après le pas 5, fenêtre propre),
+12 (six garde-rails Go/web exécutables en CI : fixtures produites par Go, matrice de compatibilité,
+zod à la frontière, empreinte de forme du document, goldens jamais régénérés, ratchet fixtures),
+13 (ADR 0034 à écrire).
+
+**Prochaine etape.** L'utilisateur transforme le document en plan (skill `plan-execution`) ; le pas 0
+(section 12) est exécutable sans attendre la release. Aucun commit fait (règle 16) : fichier modifié
+dans le worktree partagé `feat/v75`.
+## [2026-09-12] Big Team Battle 2025 — l'abstention du décodeur de source de dégât
+
+**Statut** : Complété · Branche `wt/btb-2025-abstention` (base feat/v75 `2f5d165be`)
+
+**Contexte** : mesure du pilote sur `match_kill_events_latest` — 83-91 % de morts sans source de
+dégât sur les Big Team Battle de mars à août 2025, 75-80 % en octobre-novembre, contre 0-7 % en
+2023-2024 et 0-14 % en 2026. Cinq hypothèses à départager (format de film, véhicules, cartes hors
+catalogue, chunks tronqués, autre). Rapport : `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
+
+**Décision technique principale** : la cause est le FORMAT, mais pas là où on la cherchait. Les
+films de mars à novembre 2025 sont en `FilmMajorVersion` 39-40, où le gamertag vit à l'octet 12 du
+bloc d'event et non à l'octet 0. `killsource.loadKillFeed` passe `filmMajorVersion = 0` en dur
+(les manifestes en cache ne portent pas la version) : la lecture ramenait du rembourrage, le
+roster humain tombait de 24-27 noms à 10-12, et la borne `nPlay` faisait rejeter les trois quarts
+des dead-states par les portes `indice < nPlay` du scan ET par le filtre de crédibilité de la
+marche. Correctif dans `analysis.scanEvents` : quand la version est INCONNUE, décoder les deux
+découpages sur le même bloc déjà retenu et garder celui qui rend le plus de gamertags distincts —
+une version DÉCLARÉE fait toujours foi. `KillSourceDecoderRev` monté à `killsource-2026-09-12`.
+
+**Résultats observés** : séparation parfaite sur le parc BTB, 92 films sur 92 — les 74 films au
+découpage décalé sont exactement ceux entre 68,1 et 96,5 % de morts sans source, les 18 autres
+entre 0,0 et 23,5 %. Couverture avant -> après sur cinq films 2025 : 15,0 -> 97,1 ; 11,2 -> 100,0 ;
+6,8 -> 94,8 ; 5,1 -> 97,0 ; 17,3 -> 82,4 %. Trois témoins (2024-10, 2026-01, 2026-07) inchangés au
+dixième, roster et candidats compris. Hypothèses (b) véhicules, (c) cartes et (d) chunks tronqués
+écartées sur pièces (mêmes cartes bonnes ailleurs, manifestes complets). Gates : `go vet ./...`,
+`go test ./internal/...`, `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...`
+tous verts.
+
+**Découvertes non traitées** : 210 des 1 351 films du cache sont en version 39-40, donc ~136
+hors BTB (arène et divers) sont atteints par le même défaut — la mesure « arène à ~0-10 % » du
+pilote agrège probablement toutes les années, à re-mesurer par mois et par playlist ;
+`killSourceDecoderFingerprint` ne hache que `killsource/` et n'aurait pas vu ce changement d'amont ;
+`film_manifests/*.json` ne conserve pas `FilmMajorVersion`, l'y écrire au téléchargement rendrait
+la résolution par mesure inutile.
+
+**Prochaine étape** : re-décodage du parc (non lancé, consigne) — la montée de revision remet les
+lignes au backlog de `postsync`, 210 films à 8-50 s = 30 min à 3 h en série.
+
+## [2026-09-12] Lot G.2bis — la version du film est LUE dans l'en-tête, l'heuristique est retirée
+
+**Statut** : Complété (branche `wt/btb-2025-abstention`, 5 commits au-dessus de `feat/v75`)
+
+**Décision technique principale** : décision utilisateur ferme — un décodeur cherche l'indicateur
+clé qui lui dit comment le film est construit, il ne le devine pas. La « résolution par mesure »
+du découpage du gamertag (commit `2a6265ac4`) est REFUSÉE et supprimée. L'indicateur existe : les
+quatre premiers octets de `chunk_00.bin` (u32 little-endian) sont le `FilmMajorVersion`, la même
+valeur que l'API publie dans `CustomData.FilmMajorVersion`. Helper canonique
+`filmdec.FilmMajorVersionFromHeader` / `FilmMajorVersion`, posé dans `internal/analysis/filmdec`
+— le paquet qui porte la sémantique de `chunk_00` (`registry.go`, `FilmRegistryChunk`) ;
+`filmsource` reste volontairement aveugle au contenu et feuille (ratchet `filmsource_leaf_test`).
+Les trois appelants qui passaient 0 (`killsource/feed.go`, `replay/deaths_source.go`,
+`ops/medal_feed_backfill.go`) lisent et passent la version, avec `slog.WarnContext` quand le
+registre manque. Découverte au passage : `haloclient.fetchFilmManifest` forçait aussi la version à
+0 dès que le manifeste venait du cache, donc `GetHighlightEventsChunk` servait 0 au pipeline de
+synchronisation EN DIRECT pour ces matchs — corrigé par la lecture de l'en-tête, ce qui vaut pour
+les 1 351 films déjà en cache sans migration.
+
+**Résultats observés** : parc entier classé par la version lue — 1 351 films, 0 registre illisible,
+v31 x3, v33 x3, v37 x10, v38 x1, v39 x26, v40 x185, v41 x1123, exactement la distribution annoncée.
+Croisement mesure contre version : 1 divergence sur 1 351 (`007d53a4`, v40), et ce film ne porte
+AUCUN highlight event — la mesure y est indéfinie, la version répond : l'angle mort d'une
+heuristique, en une ligne. Le contenu cuit du rejeu change sur les films 39-40 : `gamertagsOf`, la
+table qui nomme `roster[]`, passe de 17 identités / 2 noms distincts à 26 / 26 sur `e5adf7b2` et de
+16 / 2 à 24 / 24 sur `111fa685` ; témoins v41 (`000d5950`, `5676a9ba`) identiques. D'où
+`SchemaVersion` 53 -> 54 avec chronique datée (`document_chronicle.go`, garde `structure_test.go`).
+Golden `assembly_000d5950` : une seule ligne change (schéma), 609 lignes des deux côtés.
+`killSourceDecoderFingerprint` recopiée, `KillSourceDecoderRev` reste `killsource-2026-09-12`.
+Portes : `go build ./...`, `go vet ./...`, `go test ./...` (171 paquets, 0 échec),
+`go test -tags=integration -p 1 ./internal/sync/...`, `make go-api-lint` 0 issue,
+`replay-corpus-gate --reference=base --base=feat/v75` 8 témoins / 8 ok, 0 perte, exit 0 (joué deux
+fois : avant et après l'ajout du champ de couverture) — et les deux témoins de version 39-40
+(`bcb6d393` v40, `084a804d` v39) sont exactement ceux qui gagnent plus que le socle commun.
+
+**Lot G étendu (ligne du plan du 2026-09-12, exécutée)** : la version lue voyage désormais AVEC
+l'artefact — `Options.FilmMajorVersion` posée par `BuildFromFilm`, republiée dans
+`Coverage.FilmMajorVersion` (`coverage.filmMajorVersion`). Motif : seul le parseur des temps forts
+consommait cette version, tout le reste du décodeur travaille sous l'hypothèse implicite « tout
+est en 41 » ; sans ce champ, la mesure par version du lot H devrait relire les films. Pointeur et
+non zéro (l'absence dit « film sans registre », pas « version 0 »). Miroir `replaydoc` + projection
+`replayview`, contrat regénéré (`make openapi-gen`, +3 lignes) et types web regénérés (+2 lignes).
+`make generate-types` n'a pas pu tourner dans ce worktree (`apps/web/node_modules` absent) : même
+binaire `openapi-typescript` 7.13.0 emprunté à l'arbre principal, même `openapi.yaml` ; `tsc` et
+vitest non joués pour la même raison, la CI reste le gate d'autorité.
+
+**Statué `[!]` avec justification** : le champ `film_major_version` dans le manifeste sérialisé du
+cache n'est pas ajouté — il serait redondant avec l'en-tête du registre (seconde source de vérité
+pour le même fait), il ne couvrirait aucun des 1 351 films déjà en cache (`filmcache.Write` ne
+réécrit jamais un manifeste existant), et l'objectif fonctionnel est atteint sans lui.
+
+**Découvertes non traitées** : `killSourceDecoderFingerprint` ne hache que `killsource/` — ce
+correctif a commencé dans `analysis/` et `filmdec` et n'aurait pas fait sonner le gate si
+`loadFilm`/`loadKillFeed` n'avaient pas bougé aussi (noté dans `collector.go`) ; les ~136 films
+39-40 hors BTB restent à vérifier en base, par mois et par playlist.
+
+**Prochaine étape** : re-décodage NON lancé (consigne du lot) — `backfill-replay --only-existing`
+pour les artefacts de rejeu, backlog `killsource` par `KillSourceDecoderRev` ; 211 films à 8-50 s,
+soit 30 min à 3 h en série. Puis revue adversariale (G.3) et fusion dans `feat/v75`.
+
+### [2026-09-12] Lot G, revue adversariale ronde 1 — les gardes qui ne gardaient rien
+
+**Statut** : Complété (branche `wt/btb-2025-abstention`, 3 commits au-dessus de la ronde G.2bis)
+
+**Décision technique principale** : les quatre constats P1 de la relecture disaient tous la même
+chose — le correctif « la version du film est lue » n'avait AUCUN témoin capable de le défaire.
+Cause mécanique : la seule bobine versionnée du dépôt (`minibobine_000d5950`) vient d'un film de
+version 41, et `decodeEventBytes` applique le MÊME découpage du gamertag pour 0 et pour ≥ 41.
+Correctif : une bobine de **version 40** versionnée, `killsource/testdata/minibobine_e5adf7b2`
+(registre + premier chunk de données + chunk HIGHLIGHT du film `e5adf7b2`, **876 Kio** zlib, recette
+exécutable `TestMiniBobineV40Regenerer`), et trois tests CI, un par appelant. Le troisième appelant
+(`ops/medal_feed_backfill`) a demandé une couture : son appariement se fait sur (xuid, instant),
+deux champs lus HORS du bloc de 60 octets, donc aucune ligne écrite ne dépendait de la version —
+`eventsDuFilm(FilmHighlight)` isole le geste et lui donne un point d'observation, encadré d'une
+contre-épreuve. Pour P1-4, la constante `killSourceDecoderFingerprint` cède la place au golden
+`killcollector/testdata/killsource_decoder_rev.golden`, qui fige le COUPLE (révision, empreinte) :
+le gate distingue désormais « le décodeur a changé » de « la révision a changé sans le décodeur »,
+et la régénération est explicite (`-update`).
+
+**Résultats observés** : mutations rejouées une par une. `feed.go` → roster 11 / 2 gamertags contre
+26 / 26 : **rouge**. `deaths_source.go` → 2 noms distincts pour 199 morts contre 26 : **rouge**.
+`eventsDuFilm` → gamertag décalé : **rouge**. Gate de révision : révision seule **rouge**, décodeur
+seul **rouge**, les deux ensemble avec golden régénéré **vert**. `Coverage.FilmMajorVersion` :
+publication neutralisée → **rouge**. Toutes vertes au retour. Côté P2 : le paragraphe du 2026-09-12
+rendu à `fetchFilmManifest` (il était devenu le doc de `filmMajorVersionDuCache`, qui a maintenant
+le sien), la phrase « unique lecteur » de `FilmRegistryChunk` corrigée (deux lecteurs, deux
+lectures distinctes), le godoc de `ParseHighlightEvents` nommant les DEUX sources de la version, et
+le WARN du registre absent monté de `ScanDeaths` (sans `match_id`, émis deux fois par cuisson) à
+`BuildFromFilm`, qui connaît le match et lit déjà cette version.
+
+**Portes** : `go build ./...`, `go vet ./...`, `go test ./...` (171 paquets ok, 0 échec, exit 0),
+`go test -tags=integration -p 1 ./internal/sync/...`, `make go-api-lint` 0 issue, goldens
+`assembly_000d5950` / `minibobine_000d5950` / familles `filmdec` INCHANGÉS (aucun `-update`).
+**Gate corpus non rejoué, justifié** : aucun changement de contenu cuit attendu — le seul
+comportement de production qui bouge est une ligne de journal (P2-4), `eventsDuFilm` est une
+extraction sans changement de valeur, `SchemaVersion` reste 54 et `KillSourceDecoderRev` reste
+`killsource-2026-09-12` (empreinte du décodeur inchangée).
+
+**Zéro fix opportuniste** : les découvertes de la ronde G.2bis restent ouvertes telles quelles
+(l'empreinte du décodeur ne couvre pas son amont — désormais dit explicitement dans le second
+message d'échec du gate ; les ~136 films 39-40 hors BTB à vérifier en base).
+
+**Prochaine étape** : re-décodage toujours NON lancé (consigne du lot). Fusion dans `feat/v75` à la
+main de l'utilisateur — aucun merge ni push fait ici.
+
+## [2026-09-12] Fusion de feat/v75 (lot G) dans wt/decodeur-sous-titre — Complété
+
+**Décision technique principale.** Six conflits résolus : `.ai/PLAN_FORK_ET_RELEASE_2026-09-11.md`
+pris côté `feat/v75` (theirs) ; les quatre fichiers ajoutés par G dans les anciens répertoires
+(`film_major_version.go`, `film_major_version_test.go`, `build_film_version_test.go`,
+`deaths_source_version_test.go`) atterris directement au bon endroit par la détection de
+renommage de Git (`CONFLICT (file location)`), imports réécrits vers
+`games/halo_infinite/film/{filmdec,replay}` ; sept autres fichiers de G, fusionnés sans conflit
+mais important encore l'ancien chemin (`cmd_backfill_medailles_feed.go`,
+`btb2025_abstention_research_test.go`, `chunks.go`, `minibobine_v40_test.go`,
+`medal_feed_backfill.go`, `medal_feed_backfill_version_test.go`, `halo_client_film.go`),
+corrigés au même titre ; un chemin relatif stale dans `deaths_source_version_test.go`
+(`../../games/...` calculé depuis l'ancien `analysis/replay`, devenu `../killsource/...` depuis le
+nouveau `games/halo_infinite/film/replay`) ; `collector.go` résolu côté `feat/v75` (golden), la
+constante `killSourceDecoderFingerprint` et son commentaire E retirés.
+
+**Résultats observés.** `TestKillSourceDecoderRevSuitLeDecodeur` rouge après résolution
+(« LE DECODEUR A CHANGE », empreinte mesurée différente de l'attendue) car les imports des
+sources de `killsource/` ont changé avec E — conforme à l'attendu. Golden régénéré par
+`-update` en gardant `KillSourceDecoderRev = "killsource-2026-09-12"` (révision inchangée,
+seule l'empreinte est recopiée) ; ligne d'historique ajoutée au golden. `gofmt` a ensuite
+reformaté `chunks.go` (import réécrit) et fait rebouger l'empreinte une seconde fois pour la
+même raison — regénéré une seconde fois, seconde ligne d'historique ajoutée. Portes :
+`go build ./...`, `go vet ./...` propres ; `go test ./...` 171 paquets ok, 0 échec ;
+`go test ./internal/archlint/...` vert (ratchets `no_title_package_in_analysis`, `gamefiles_tag`,
+`filmsource_leaf` inclus) ; `make go-api-lint` 0 issue ; `make openapi-check` sans dérive ;
+`cd apps/web && npm run typecheck` sans erreur. `grep -rn "internal/analysis/filmdec\|internal/analysis/replay" apps/go-api --include=*.go`
+ne retourne plus rien. Aucune DuckDB ouverte, gate corpus non joué (laissé au pilote, base libre).
+
+**Prochaine étape.** Commit de fusion sur `wt/decodeur-sous-titre`. Aucun push, aucune fusion
+dans `feat/v75`.

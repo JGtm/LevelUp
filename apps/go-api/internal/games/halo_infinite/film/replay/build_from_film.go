@@ -91,6 +91,21 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// balayage. A partir d'ici, chaque `opt.observe` ferme le balayage qu'il annonce
 	// (cf. observe.go).
 	opt.clock = &stepClock{last: time.Now()}
+	// LA VERSION DU FILM VOYAGE AVEC L'ARTEFACT. Elle est lue dans l'en-tete du registre
+	// (`chunk_00`), elle commande deja le decoupage du gamertag du fil des morts, et rien dans
+	// l'artefact ne disait sous quelle grammaire il avait ete cuit.
+	//
+	// FILM SANS REGISTRE : nil dans la couverture, ET UN WARN ICI. C'est cette fonction qui le
+	// porte parce qu'elle est la seule du chemin a connaitre le `match_id` — `ScanDeaths`, qui
+	// applique le decoupage historique dans ce cas, recoit un film deja charge et est appelee
+	// deux fois par cuisson (revue adversariale du 2026-09-12, constat P2-4 : le WARN y etait
+	// sans match et en double).
+	if v, lue := filmdec.FilmMajorVersion(film); lue {
+		opt.FilmMajorVersion = &v
+	} else {
+		slog.Warn("rejeu : version de film illisible — le fil des morts retombe sur le decoupage "+
+			"historique du gamertag", "match_id", matchID)
+	}
 	// TÉLÉPORTATIONS DU TRANSLOCATEUR : lues AVANT les positions, parce qu'elles servent
 	// deux fois — le calque `translocations` du document, et l'EXEMPTION du filtre de
 	// vitesse (décision D2) : une arrivée de téléportation part à 193-1540 m/s, le filtre à

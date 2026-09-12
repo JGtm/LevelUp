@@ -16,6 +16,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
@@ -103,6 +104,13 @@ func (c *decodeCtx) prepare(ctx context.Context, src *filmsource.Film) error {
 	var err error
 	if c.film, err = loadFilm(src); err != nil {
 		return err
+	}
+	if !c.film.versionLue {
+		// Le film ne porte pas son registre (`chunk_00`) : la version reste inconnue et le
+		// kill-feed se lit avec le decoupage historique « gamertag en tete ». Sur un film de
+		// version 39-40 cela rend un roster effondre — silence interdit, cf. CLAUDE.md n 3.
+		slog.WarnContext(ctx, "killsource: version de film illisible, decoupage historique",
+			"film", c.name, "film_major_version", c.film.majorVersion)
 	}
 	if err = ctx.Err(); err != nil {
 		return err

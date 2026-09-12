@@ -69,37 +69,35 @@ import (
 // lignes deja en base portaient donc la revision courante et etaient exclues A VIE du backlog
 // (`conditionBacklog`, postsync.go) — source du degat, categorie et assistant servis avec le
 // decodage d avant les vehicules. Le bump les rend a nouveau candidates.
-const KillSourceDecoderRev = "killsource-2026-09-05"
+//
+// 2026-09-12 : `killsource-2026-09-05` -> `killsource-2026-09-12`. LA VERSION DU FILM EST
+// DESORMAIS LUE. `loadKillFeed` passait `filmMajorVersion = 0` en dur au parseur d events, donc
+// le decoupage « gamertag en tete » pour tous les films ; sur les 211 films de version 39-40 du
+// cache (mars a novembre 2025) le gamertag vit 12 octets plus loin, le roster s effondrait a
+// 2 noms distincts pour 24 a 27 joueurs et les portes `indice < nPlay` rejetaient les trois
+// quarts des dead-states. `loadFilm` lit maintenant cette version dans l en-tete du registre du
+// film (`filmdec.FilmMajorVersion`, u32 LE en tete de `chunk_00`). Couverture mesuree sur cinq
+// films Big Team Battle 2025 : 15.0 -> 97.1, 11.2 -> 100.0, 6.8 -> 94.8, 5.1 -> 97.0,
+// 17.3 -> 82.4 % ; temoins 2024 et 2026 inchanges au dixieme
+// (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Les lignes en base doivent etre redecodees :
+// d ou ce bump.
+//
+// DECOUVERTE, NON TRAITEE : l empreinte ci-dessous ne hache que `killsource/`. Ce correctif a
+// commence dans `internal/analysis/` (parseur) et dans `filmdec` — il n aurait PAS fait sonner
+// le gate si `loadFilm`/`loadKillFeed` n avaient pas bouge aussi. Le gate couvre le decodeur,
+// pas son amont.
+const KillSourceDecoderRev = "killsource-2026-09-12"
 
-// killSourceDecoderFingerprint — L EMPREINTE DES SOURCES DU DECODEUR, FIGEE A COTE DE SA REVISION.
+// L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
+// `testdata/killsource_decoder_rev.golden` porte le couple (revision, empreinte) et
+// `decoder_rev_fingerprint_test.go` le compare aux sources NON-TEST de
+// `internal/games/halo_infinite/film/killsource/`.
 //
-// POURQUOI ELLE EXISTE. La consigne « faire evoluer la revision a chaque changement de decodage »
-// est une consigne : elle a ete oubliee 14 fois de suite. Cette empreinte la transforme en gate.
-// `TestKillSourceDecoderRevSuitLeDecodeur` (decoder_rev_fingerprint_test.go) hache les sources
-// NON-TEST de `internal/games/halo_infinite/film/killsource/` et compare a cette valeur : toute
-// modification du decodeur fait ECHOUER le test tant que la revision ET l empreinte n ont pas ete
-// mises a jour ENSEMBLE.
-//
-// CE QU ELLE NE PROMET PAS : elle ne dit pas si le changement modifie les lignes produites (un
-// commentaire reformule la fait bouger). Le jugement reste humain — mais il devient EXPLICITE :
-// on ne peut plus changer le decodeur sans decider, par ecrit, si les lignes en base doivent etre
-// redecodees.
-//
-// COMMENT LA METTRE A JOUR : jouer le test, il imprime la valeur mesuree.
-//
-// 2026-09-10 (lot 5.1) : `botSuffix` -> `BotSuffix` (export pur, roster.go) pour que
-// `games/halo_infinite/replayidentity.BotIdentities` — le nouveau paquet partage par
-// `replaybuild` ET `killcollector` — puisse la lire sans dupliquer le littéral " [bot]".
-// AUCUNE LIGNE PRODUITE NE BOUGE (meme chaine, meme usage) : la revision NE bouge PAS, seule
-// l empreinte est recopiee (decision explicite, pas un bump implicite).
-//
-// 2026-09-12 (lot E.2) : DEPLACEMENT PUR de `filmdec` et `replay` d `internal/analysis/` vers
-// `internal/games/halo_infinite/film/` (ADR 0012). Seules les LIGNES D IMPORT des sources de
-// `killsource` changent (`analysis/filmdec` -> `games/halo_infinite/film/filmdec`) ; le
-// decodage est identique au bit pres. La revision NE bouge PAS — la bumper reinscrirait les
-// 1 210 films du parc au backlog pour un renommage de repertoire. Seule l empreinte est
-// recopiee.
-const killSourceDecoderFingerprint = "46049a816a3b9cfd9f9e3b517b02ec821e897a5a75fa9460544c6a32b98cd773"
+// POURQUOI UN GOLDEN ET PLUS UNE CONSTANTE (revue adversariale du 2026-09-12, constat P1-4).
+// Tant que le test ne comparait que l EMPREINTE a une constante, remettre la revision ci-dessus a
+// sa valeur d avant — en gardant la nouvelle empreinte — restait VERT : le gate ne tenait qu un
+// des deux gestes qu il pretendait tenir. Le golden porte les DEUX, et le test distingue les deux
+// echecs : « le decodeur a change » et « la revision a change sans le decodeur ».
 
 // defaultKillSourceTimeout — la limite de temps PAR MATCH.
 //
