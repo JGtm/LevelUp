@@ -91,6 +91,13 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// balayage. A partir d'ici, chaque `opt.observe` ferme le balayage qu'il annonce
 	// (cf. observe.go).
 	opt.clock = &stepClock{last: time.Now()}
+	// LA VERSION DU FILM VOYAGE AVEC L'ARTEFACT. Elle est lue dans l'en-tete du registre
+	// (`chunk_00`), elle commande deja le decoupage du gamertag du fil des morts, et rien dans
+	// l'artefact ne disait sous quelle grammaire il avait ete cuit. Film sans registre : nil,
+	// et `ScanDeaths` consigne la degradation de son cote.
+	if v, lue := filmdec.FilmMajorVersion(film); lue {
+		opt.FilmMajorVersion = &v
+	}
 	// TÉLÉPORTATIONS DU TRANSLOCATEUR : lues AVANT les positions, parce qu'elles servent
 	// deux fois — le calque `translocations` du document, et l'EXEMPTION du filtre de
 	// vitesse (décision D2) : une arrivée de téléportation part à 193-1540 m/s, le filtre à

@@ -69,7 +69,9 @@ package replay
 // 17 identites nommees / 2 noms distincts a 26 / 26, `111fa685` de 16 / 2 a 24 / 24. Temoins de
 // version 41 (`000d5950`, `5676a9ba`) : identiques, 8 / 8 et 26 / 26 des deux cotes. Le bump est
 // exige par la regle — le contenu cuit change — et il est ce qui rendra ces artefacts candidats
-// a `backfill-replay --only-existing`. Chronique : `document_chronicle.go`.
+// a `backfill-replay --only-existing`. `coverage.filmMajorVersion` s'ajoute au passage — la
+// version lue voyage desormais AVEC l'artefact ; champ optionnel, il ne l'aurait pas exige a
+// lui seul. Chronique : `document_chronicle.go`.
 const SchemaVersion = 54
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.

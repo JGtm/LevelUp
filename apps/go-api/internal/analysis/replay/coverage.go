@@ -349,6 +349,20 @@ type Coverage struct {
 	// établie, le détecteur n'a même pas été lancé (son résultat vivrait sur une horloge
 	// inconnue).
 	T0Film *T0FilmCoverage `json:"t0Film,omitempty"`
+	// FilmMajorVersion est LA VERSION DU FILM qui a produit cet artefact, lue dans l'en-tête de
+	// son registre (`filmdec.FilmMajorVersionFromHeader`, u32 LE en tête de `chunk_00`).
+	//
+	// ELLE EST PUBLIÉE PARCE QUE LE DÉCODAGE EN DÉPEND ET QUE RIEN NE LE DISAIT. Le parc en cache
+	// porte sept versions (v31 x3, v33 x3, v37 x10, v38 x1, v39 x26, v40 x185, v41 x1123 au
+	// 2026-09-12) ; un seul consommateur la lisait — le découpage du gamertag du parseur d'events
+	// — et tout le reste du décodeur travaille sous l'hypothèse implicite « tout est en 41 ».
+	// Sans ce champ, un artefact ne dit pas sous quelle grammaire il a été cuit, et une mesure
+	// par version (lot H) doit relire les films pour le savoir.
+	//
+	// TÉLÉMÉTRIE PURE : aucun rendu n'en dépend, et son absence dit « film sans registre, ou
+	// artefact antérieur à ce lot » — d'où le pointeur plutôt qu'un zéro qui ressemblerait à une
+	// version.
+	FilmMajorVersion *int `json:"filmMajorVersion,omitempty"`
 	// Verdict dit, calque par calque, si le résultat est publiable. Repris du chantier
 	// voisin, qui sait annoncer « 371 couples sur 371, verdict nominal ».
 	Verdict map[string]string `json:"verdict,omitempty"`

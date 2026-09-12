@@ -179,6 +179,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, reg, doc.OriginMs != nil, scoreCov)
 	doc.Coverage.Projectiles = projCov
+	// La version du film est une DIMENSION du décodage : elle voyage avec l'artefact plutôt que
+	// d'exiger une relecture du film pour la retrouver (cf. Coverage.FilmMajorVersion).
+	doc.Coverage.FilmMajorVersion = opt.FilmMajorVersion
 	// LE RESIDU DE NOMMAGE SE PUBLIE AVEC LE PONT : un artefact qui porte des vies sans identite
 	// doit le DIRE, sans quoi le defaut ne se voit que dans les journaux du jour de la cuisson.
 	doc.Coverage.Bridge.NamedByPreviousLife = unnamed.byPrevious
