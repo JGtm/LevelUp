@@ -36,7 +36,9 @@ export function HomeBattlePassPanel({
   const intlLocale = locale === 'en' ? 'en-GB' : 'fr-FR'
   const t = useCallback((key: HomeManifestKey) => formatMessage(homeManifest, key, locale), [locale])
   // Labels du contenu de pass (paliers, cR, raretés…) — réutilise l'i18n palmares.
-  const passContentLabels = getPalmaresText(normalizePalmaresLocale(locale)).seasonPass.content
+  const palmaresText = getPalmaresText(normalizePalmaresLocale(locale))
+  const passContentLabels = palmaresText.seasonPass.content
+  const { carousel: carouselLabels, freeLabel } = palmaresText.seasonPass
   const buildFreshnessLabel = useCallback(
     (date: string) =>
       formatMessage(homeManifest, 'home.freshness.last_sync', locale, { date }),
@@ -190,6 +192,10 @@ export function HomeBattlePassPanel({
               tiers={featuredPass.tiers!}
               activeTierRank={featuredPass.active_tier_rank}
               onOpenCard={handleOpenCard}
+              freeLabel={freeLabel}
+              prevAriaLabel={carouselLabels.prevAriaLabel}
+              nextAriaLabel={carouselLabels.nextAriaLabel}
+              viewDetailAriaLabel={carouselLabels.viewDetailAriaLabel}
             />
 
             <div className="flex justify-center">

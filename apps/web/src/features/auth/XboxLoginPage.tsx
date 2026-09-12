@@ -385,12 +385,12 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
         onError: (err) => {
           const apiErr = err as unknown as ApiError
           if (apiErr.code === 'invalid_credentials') {
-            setError('Identifiants incorrects.')
+            setError(t('common.auth.xbox_error_invalid_credentials'))
           } else if (apiErr.code === 'password_login_admin_only') {
             // D3 : utilisateur valide mais pas admin en mode xbox.
-            setError('En mode SSO Xbox, le login par mot de passe est réservé aux administrateurs. Utilisez la connexion Xbox.')
+            setError(t('common.auth.xbox_error_password_admin_only'))
           } else {
-            setError(apiErr.message ?? 'Erreur de connexion.')
+            setError(apiErr.message ?? t('common.auth.xbox_error_generic'))
           }
         },
       },

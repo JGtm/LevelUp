@@ -178,6 +178,11 @@ export interface PalmaresText {
     activeTierProgress: string
     activeTierFallback: string
     freshnessLastSync: (date: string) => string
+    carousel: {
+      prevAriaLabel: string
+      nextAriaLabel: string
+      viewDetailAriaLabel: (title: string) => string
+    }
     obtained: string
     upcoming: string
     otherPassesTitle: string
@@ -403,6 +408,14 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       activeTierFallback: t(loc, 'palmares.season_pass.active_tier_fallback'),
       freshnessLastSync: (date: string) =>
         formatMessage(palmaresManifest, 'palmares.season_pass.freshness_last_sync', loc, { date }),
+      carousel: {
+        prevAriaLabel: t(loc, 'palmares.season_pass.carousel.prev_aria_label'),
+        nextAriaLabel: t(loc, 'palmares.season_pass.carousel.next_aria_label'),
+        viewDetailAriaLabel: (title: string) =>
+          formatMessage(palmaresManifest, 'palmares.season_pass.carousel.view_detail_aria_label', loc, {
+            title,
+          }),
+      },
       obtained: t(loc, 'palmares.season_pass.obtained'),
       upcoming: t(loc, 'palmares.season_pass.upcoming'),
       otherPassesTitle: t(loc, 'palmares.season_pass.other_passes_title'),
