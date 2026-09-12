@@ -11435,6 +11435,9 @@ components:
           $ref: '#/components/schemas/EquipmentCoverage'
         equipmentChanges:
           $ref: '#/components/schemas/EquipmentChangeCoverage'
+        filmMajorVersion:
+          format: int64
+          type: integer
         flagCarries:
           $ref: '#/components/schemas/FlagCarriesCoverage'
         grapple:

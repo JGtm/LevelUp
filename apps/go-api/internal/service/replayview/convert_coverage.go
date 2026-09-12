@@ -35,6 +35,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Vehicles:          ptrOf(v.Vehicles, toVehicleCoverage),
 		ObjectiveObjects:  ptrOf(v.ObjectiveObjects, toObjectiveObjectsCoverage),
 		Inventory:         ptrOf(v.Inventory, toInventoryCoverage),
+		FilmMajorVersion:  v.FilmMajorVersion,
 		GrenadeReads:      ptrOf(v.GrenadeReads, toGrenadeReadCoverage),
 		Abilities:         ptrOf(v.Abilities, toAbilityCoverage),
 		Zones:             ptrOf(v.Zones, toZonesCoverage),

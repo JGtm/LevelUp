@@ -25,21 +25,23 @@ import (
 // ─── Doublures et fabriques ───────────────────────────────────────────────────
 
 // filmSynthetique rend un chunk par match ; un match absent de la carte n a pas
-// de film.
+// de film. `version` est celle que la source declare pour TOUS ses films (0 = inconnue, le cas
+// d une bobine sans registre).
 type filmSynthetique struct {
 	parMatch map[string][]byte
+	version  int
 	erreur   error
 }
 
-func (f filmSynthetique) ChunkHighlight(_ context.Context, matchID string) ([]byte, bool, error) {
+func (f filmSynthetique) ChunkHighlight(_ context.Context, matchID string) (FilmHighlight, bool, error) {
 	if f.erreur != nil {
-		return nil, false, f.erreur
+		return FilmHighlight{}, false, f.erreur
 	}
 	data, ok := f.parMatch[matchID]
 	if !ok {
-		return nil, false, nil
+		return FilmHighlight{}, false, nil
 	}
-	return data, true, nil
+	return FilmHighlight{Chunk: data, MajorVersion: f.version}, true, nil
 }
 
 // evenementFilm decrit un event a fabriquer dans le chunk synthetique.

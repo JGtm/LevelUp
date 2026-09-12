@@ -39,7 +39,19 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/filmdec"
 )
+
+// FilmHighlight : le chunk highlight d un match ET la version du film qui le porte.
+//
+// LES DEUX VOYAGENT ENSEMBLE PARCE QUE LE PARSEUR A BESOIN DES DEUX. `MajorVersion` commande le
+// decoupage du gamertag dans le bloc d event (octet 12 au lieu de 0 sur les versions 39-40) ; il
+// vaut [filmdec.FilmMajorVersionUnknown] quand la source n a pas pu le lire, et le decoupage
+// historique s applique alors.
+type FilmHighlight struct {
+	Chunk        []byte
+	MajorVersion int
+}
 
 // SourceChunkHighlight rend le chunk highlight brut d un match. `trouve=false`
 // signifie « pas de film pour ce match » (cache incomplet, film expire cote
@@ -48,7 +60,7 @@ import (
 // L interface existe pour que la logique d appariement soit testable SANS film
 // reel ; l implementation qui lit le cache disque vit chez l appelant (CLI).
 type SourceChunkHighlight interface {
-	ChunkHighlight(ctx context.Context, matchID string) (data []byte, trouve bool, err error)
+	ChunkHighlight(ctx context.Context, matchID string) (film FilmHighlight, trouve bool, err error)
 }
 
 // ResolveurNomMedaille rend le nom anglais (clef de referentiel) designe par le
@@ -154,7 +166,7 @@ type passeMedailles struct {
 func (p passeMedailles) traiterMatch(
 	ctx context.Context, matchID string, bilan *BilanBackfillMedailles,
 ) error {
-	data, trouve, err := p.films.ChunkHighlight(ctx, matchID)
+	film, trouve, err := p.films.ChunkHighlight(ctx, matchID)
 	if err != nil {
 		return fmt.Errorf("backfill medailles: chunk highlight de %s: %w", matchID, err)
 	}
@@ -163,11 +175,14 @@ func (p passeMedailles) traiterMatch(
 		slog.InfoContext(ctx, "backfill medailles: match saute, film absent du cache", "match_id", matchID)
 		return nil
 	}
-	// Version de film 0 : le manifeste du cache ne la porte pas, et elle ne
-	// deplace que la gamertag dans le bloc (versions 39-40). L appariement se
-	// fait sur le xuid — lu au bit pres hors du bloc — et sur l instant : le
-	// layout de la gamertag ne l atteint pas.
-	events, err := analysis.ParseHighlightEvents(data, 0)
+	if film.MajorVersion == filmdec.FilmMajorVersionUnknown {
+		// La source n a pas su lire l en-tete du registre : decoupage historique du gamertag.
+		// L appariement lui-meme s en moque (il se fait sur le xuid, lu au bit pres hors du
+		// bloc, et sur l instant), mais un decodage degrade ne se tait pas (CLAUDE.md n 3).
+		slog.WarnContext(ctx, "backfill medailles: version de film illisible, decoupage historique",
+			"match_id", matchID, "film_major_version", film.MajorVersion)
+	}
+	events, err := eventsDuFilm(film)
 	if err != nil {
 		bilan.MatchsIllisibles++
 		slog.WarnContext(ctx, "backfill medailles: match saute, chunk highlight indecodable",
@@ -197,6 +212,19 @@ func (p passeMedailles) traiterMatch(
 		"match_id", matchID, "events_en_base", len(enBase), "events_a_rattraper", aRattraper,
 		"corrections", len(corrections), "dry_run", p.options.DryRun)
 	return nil
+}
+
+// eventsDuFilm parse le chunk highlight AVEC LA VERSION QUE LE FILM DECLARE.
+//
+// UNE FONCTION POUR UNE LIGNE, ET ELLE EST JUSTIFIEE : le decoupage du gamertag est le SEUL
+// champ du bloc d event qui depende de la version, et l appariement des medailles, lui, se fait
+// sur le couple (xuid, instant) — deux champs lus hors du bloc. Repasser 0 ici ne changeait donc
+// AUCUNE ligne ecrite par la passe, et aucun test ne pouvait le voir (revue adversariale du
+// 2026-09-12, constat P1-3). Isoler le geste lui donne un point d observation :
+// `TestEventsDuFilmSuitLaVersionDeclaree` lit le gamertag d un bloc de version 40 et rougit des
+// que la version cesse d etre transmise.
+func eventsDuFilm(film FilmHighlight) ([]analysis.HighlightEvent, error) {
+	return analysis.ParseHighlightEvents(film.Chunk, film.MajorVersion)
 }
 
 // correction est ce qu on ecrit sur une ligne : le type_hint TOUJOURS (quantite

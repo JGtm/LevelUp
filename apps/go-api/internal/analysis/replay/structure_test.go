@@ -1040,8 +1040,26 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact 52 d'un match Live Fire ne porte que le premier
 	//   tiers de seconde de chaque vol de projectile. La reprise du backfill se fait par
 	//   SchemaVersion : sans montée, aucune recuisson ne le rattraperait.
-	if SchemaVersion != 53 {
-		t.Fatalf("SchemaVersion = %d, attendu 53 : incrémenter exige une raison écrite ci-dessus "+
+	// v54 (2026-09-12, lot G.2bis — LA VERSION DU FILM EST LUE, PLUS DEVINÉE). UN changement de
+	//   contenu cuit, sur les seuls films de FilmMajorVersion 39-40 (mars à novembre 2025, 211
+	//   des 1 351 du cache). `ScanDeaths` passait `filmMajorVersion = 0` au parseur d'events,
+	//   c'est-à-dire le découpage « gamertag en tête » (`b[0:32]`) ; sur ces films le gamertag
+	//   vit à `b[12:44]` et la lecture ramenait du rembourrage — la même chaîne pour tous les
+	//   joueurs. La version est désormais LUE dans l'en-tête du registre du film : les quatre
+	//   premiers octets de `chunk_00.bin`, u32 little-endian (`filmdec.FilmMajorVersionFromHeader`),
+	//   la même valeur que l'API publie dans `CustomData.FilmMajorVersion`.
+	//   Mesuré sur `gamertagsOf`, la table qui nomme `roster[]` : `e5adf7b2` (v40) passe de 17
+	//   identités nommées / 2 noms distincts à 26 / 26, `111fa685` (v39) de 16 / 2 à 24 / 24.
+	//   Témoins de version 41 (`000d5950`, `5676a9ba`) : 8 / 8 et 26 / 26 des DEUX côtés.
+	//   POURQUOI LA VERSION MONTE : un artefact 53 d'un match de cette période porte un roster de
+	//   deux noms pour vingt-cinq joueurs. La reprise du backfill se fait par SchemaVersion :
+	//   sans montée, aucune recuisson ne le rattraperait.
+	//   `coverage.filmMajorVersion` s'ajoute au passage — la version lue voyage desormais AVEC
+	//   l'artefact, au lieu d'exiger une relecture du film. Champ OPTIONNEL : il ne l'aurait pas
+	//   exigé à lui seul, et il sert la mesure par version du lot H.
+	//   Détail : `document_chronicle.go` et `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
+	if SchemaVersion != 54 {
+		t.Fatalf("SchemaVersion = %d, attendu 54 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

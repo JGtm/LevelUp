@@ -47,6 +47,8 @@ import (
 	"fmt"
 	"os"
 
+	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/medalname"
@@ -129,16 +131,23 @@ type chunksHighlightDuCache struct {
 	cache *haloclient.LocalFilmCache
 }
 
-// ChunkHighlight rend le chunk de type highlight (3) du film en cache.
+// ChunkHighlight rend le chunk de type highlight (3) du film en cache, et la version du film lue
+// dans l en-tete de son registre (`chunk_00`).
+//
 // `trouve=false` = manifeste absent, aucun chunk de ce type, ou fichier de chunk
 // manquant — dans les trois cas le match n a pas de film exploitable ici.
-func (c chunksHighlightDuCache) ChunkHighlight(_ context.Context, matchID string) ([]byte, bool, error) {
+//
+// LE REGISTRE EST LU EN PLUS, et c est le SEUL chunk supplementaire charge : il pese ~2 Mio
+// contre les dizaines de Mio du film entier, et sans lui le decoupage du gamertag se devine
+// (cf. .ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Registre absent : la version reste
+// inconnue, `ops` le consigne et le decoupage historique s applique.
+func (c chunksHighlightDuCache) ChunkHighlight(_ context.Context, matchID string) (ops.FilmHighlight, bool, error) {
 	manifest, err := c.cache.LoadManifest(matchID)
 	if err != nil {
-		return nil, false, fmt.Errorf("manifeste du film %s: %w", matchID, err)
+		return ops.FilmHighlight{}, false, fmt.Errorf("manifeste du film %s: %w", matchID, err)
 	}
 	if manifest == nil {
-		return nil, false, nil
+		return ops.FilmHighlight{}, false, nil
 	}
 	for _, chunk := range manifest.Chunks {
 		if chunk.ChunkType != haloclient.FilmChunkTypeHighlightEvents {
@@ -146,12 +155,31 @@ func (c chunksHighlightDuCache) ChunkHighlight(_ context.Context, matchID string
 		}
 		data, err := c.cache.LoadChunk(matchID, chunk.Index)
 		if err != nil {
-			return nil, false, fmt.Errorf("chunk highlight du film %s: %w", matchID, err)
+			return ops.FilmHighlight{}, false, fmt.Errorf("chunk highlight du film %s: %w", matchID, err)
 		}
 		if len(data) == 0 {
-			return nil, false, nil
+			return ops.FilmHighlight{}, false, nil
 		}
-		return data, true, nil
+		version, err := c.versionDuFilm(matchID)
+		if err != nil {
+			return ops.FilmHighlight{}, false, err
+		}
+		return ops.FilmHighlight{Chunk: data, MajorVersion: version}, true, nil
 	}
-	return nil, false, nil
+	return ops.FilmHighlight{}, false, nil
+}
+
+// versionDuFilm lit le FilmMajorVersion en tete du registre du film. Registre absent du cache :
+// [filmdec.FilmMajorVersionUnknown], sans erreur — c est le cas d une bobine partielle, et
+// l appelant le consigne. `filmsource.Inflate` rend le tampon inchange quand il n est pas zlib.
+func (c chunksHighlightDuCache) versionDuFilm(matchID string) (int, error) {
+	registre, err := c.cache.LoadChunk(matchID, 0)
+	if err != nil {
+		return filmdec.FilmMajorVersionUnknown, fmt.Errorf("registre du film %s: %w", matchID, err)
+	}
+	if len(registre) == 0 {
+		return filmdec.FilmMajorVersionUnknown, nil
+	}
+	version, _ := filmdec.FilmMajorVersionFromHeader(filmsource.Inflate(registre))
+	return version, nil
 }

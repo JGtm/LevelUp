@@ -1,0 +1,34 @@
+# GOLDEN — LE COUPLE (REVISION DU DECODEUR, EMPREINTE DE SES SOURCES). Ne PAS editer a la main.
+#
+# Une ligne de donnees : la revision, une TABULATION, l empreinte SHA-256 des sources NON-TEST de
+# internal/games/halo_infinite/film/killsource/ (fins de ligne normalisees en LF, chemin relatif
+# hache a cote du contenu). Les lignes vides et celles qui commencent par # sont ignorees.
+#
+# CE QUE CE FICHIER GARDE, ET POURQUOI IL PORTE LES DEUX VALEURS. Le gate d avant ne comparait que
+# l empreinte a une constante de collector.go : remettre KillSourceDecoderRev a sa valeur d avant
+# en gardant la nouvelle empreinte restait VERT (revue adversariale du 2026-09-12, constat P1-4).
+# Les deux valeurs figees ensemble rendent les deux derives visibles :
+#
+#   empreinte differente            le decodeur a change  -> DECIDER si les lignes en base doivent
+#                                   etre redecodees, bumper la revision si oui, puis regenerer.
+#   empreinte egale, revision non   la revision a bouge sans le decodeur -> geste sans effet, ou
+#                                   golden non regenere apres un bump legitime.
+#
+# REGENERATION (les deux valeurs a la fois, jamais l une sans l autre) :
+#
+#   go test ./internal/sync/killcollector/ -run TestKillSourceDecoderRevSuitLeDecodeur -update
+#
+# HISTORIQUE DES MOUVEMENTS DE CE COUPLE
+#
+#   2026-09-05  killsource-2026-07-31 -> killsource-2026-09-05. 14 commits sur le decodeur depuis
+#               v7.3.0 sans un seul bump : les lignes en base portaient la revision courante et
+#               etaient exclues A VIE du backlog (postsync.go, conditionBacklog).
+#   2026-09-10  botSuffix -> BotSuffix (export pur, roster.go). AUCUNE ligne produite ne bouge :
+#               revision INCHANGEE, empreinte seule recopiee — decision explicite.
+#   2026-09-12  killsource-2026-09-05 -> killsource-2026-09-12. loadFilm pose la version LUE du
+#               film, loadKillFeed la passe au parseur, prepare consigne le registre absent. Les
+#               lignes produites bougent sur les films de version 39-40.
+#   2026-09-12  passage de la constante killSourceDecoderFingerprint a ce golden (constat P1-4).
+#               Ni le decodeur ni la revision ne bougent : meme empreinte, meme revision.
+#
+killsource-2026-09-12	974c1aa8d371bb2f555e915487d4d41a2a5f779655d139722e3f41531298295b
