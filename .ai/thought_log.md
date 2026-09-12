@@ -106869,3 +106869,29 @@ ne retourne plus rien. Aucune DuckDB ouverte, gate corpus non joué (laissé au 
 
 **Prochaine étape.** Commit de fusion sur `wt/decodeur-sous-titre`. Aucun push, aucune fusion
 dans `feat/v75`.
+
+---
+
+## [2026-09-13] Lots E et G fusionnés dans feat/v75 ; parc re-décodé et recuit au schéma 54 — Complete
+
+**Décisions** : (G) la version majeure du film est LUE (u32 en tête de `chunk_00`, même valeur que
+`CustomData.FilmMajorVersion` de l'API) et non devinée — l'heuristique par mesure a été refusée
+par l'utilisateur et retirée ; passée aux trois lecteurs qui recevaient « inconnue » depuis le
+cache ; `KillSourceDecoderRev = killsource-2026-09-12`, `SchemaVersion 54`,
+`coverage.filmMajorVersion`. (E) déplacement pur du décodeur sous `games/halo_infinite/film/`
+fusionné EN DERNIER, après G, pour ne pas rebaser une branche vivante à travers 981 renommages ;
+révision du décodeur inchangée (golden d'empreinte régénéré avec historique).
+
+**Résultats** : revue G ronde 1 : 4 P1 (gardes ne mordant pas en CI ; gate de révision à un seul
+geste) + 5 P2, corrigés (fixture v40 de 888 Kio, 3 tests CI, golden rev+empreinte) ; ronde 2 : 0.
+Re-décodage complet (1 351 films) + recuisson (76 artefacts) : morts sans source sur le
+décodeur courant 21 898 -> 7 677 (5,9 %) ; BTB 2025 88 % -> 27 %. Gate corpus E : 8/8 identiques.
+CI feat/v75 verte sur G.
+
+**Découvertes** : résidu BTB 2025 (27 %) et BTB 2023 (22 %, v31-33) au-dessus des années voisines
+— lot H (mesure par version, tous calques) ; `sessionusage` dernier import de production
+analysis -> games (allowlist du ratchet) ; empreinte du décodeur limitée à killsource.
+Hygiène : 56 python + 42 node de sessions précédentes et 2 commandes bloquées sur stdin coupés ;
+règle en mémoire.
+
+**Prochaine étape** : lot H, puis lot F (nettoyage worktrees/branches, bascule dossier LevelUp).
