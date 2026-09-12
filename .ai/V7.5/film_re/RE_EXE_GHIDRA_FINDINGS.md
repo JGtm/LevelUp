@@ -430,3 +430,53 @@ enregistrements réels. Le balayage de roster qui l'exigeait nul rendait ces slo
 
 Détail, contrôles chiffrés et commandes de rejeu :
 `.ai/V7.5/film_re/NOTE_PROFIL_PAR_BUILD_2026-09-12.md`.
+
+### 8.5 Cinq états par défaut d'archétype, relus et confirmés par la mesure (2026-09-13, phase 5a)
+
+La phase 4 avait établi la FORME du record d'image-clé (lecteur d'état complet `FUN_142e2bfd0`,
+début des composants = `172 + largeur de l'état par défaut(ti)`). La phase 5a l'a CHIFFRÉE
+archétype par archétype, et la mesure a désigné cinq archétypes dont le dépôt consomme **0 bit**
+d'état par défaut alors que leur `vtable[0x60]` en lit plusieurs. Chaque largeur ci-dessous est
+tenue par **deux chaînes sans étape commune** : le décompilé (colonne « grammaire ») et la
+mesure sur les films (colonnes « oracle `n2` » et « fermeture »).
+
+| ti | `vtable[0x60]` | grammaire relue (décompilé) | largeur, préfixe de version à 0 | oracle `n2` | fermeture mesurée |
+|---|---|---|---|---|---|
+| **14** | `0x140FED6F4` | `FUN_1406cf008` = R(1) ; si 1 → R(8) ; puis **R(5)** | **6 bits** | `n2 = 28` constant | **864/864 · 1 792/1 792 · 2 368/2 368** (3 builds) |
+| **17** | `0x14101A0A4` | V ; puis **R(7)** | **8 bits** | `n2 = 432` constant | **891/891 · 1 947/1 947 · 2 541/2 541** (3 builds) |
+| **21** | `0x141133C24` | **aucun préfixe de version** ; un unique **R(0x12)** | **18 bits** | `n2 = 244` constant | 0/373 (largeur juste, composant encore faux) |
+| **29** | `0x14116F514` | **`FUN_1406cf008` SEUL** — R(1) ; si 1 → R(8) ; rien d'autre | **1 bit** | `n2` constant AUSSI à 0 bit — l'oracle ne tranche pas | **27/27 · 56/56 · 55/74** |
+| **47** | `0x1410F44F8` | V ; puis **R(5)** | **6 bits** | `n2 = 252` constant | 0/1 679 (idem `ti=21`) |
+
+`V` désigne le préfixe de version commun du dossier : `FUN_1406cf008` = `R(1)`, et si le bit
+vaut 1, `R(8)`. Il vaut **0 sur tout le corpus** (6 films, 3 builds), comme pour `ti=9` en
+phase 4 — les largeurs ci-dessus sont donc les largeurs nominales, 8 bits de plus si le bit de
+version est mis.
+
+**Deux corrections de dossier tombent avec cette lecture :**
+
+1. **`ti=14` n'est pas un STUB.** `default_state_arch.go` le range parmi les stubs
+   (« + ti14 = FUN_140467a20, un `return;` partagé ») ; `KEYFRAME_ARCHETYPE_DEFAULTSTATE_TABLE.md`
+   lui donne `0x140FED6F4`, classé REAL. **La table a raison** : `FUN_140FED6F4` consomme 6 bits,
+   et les poser fait fermer 5 024 records sur 5 024.
+2. **`ti=14` n'est pas « R(5) » non plus.** La ligne « RESTE À FAIRE » de la table donnait
+   « ti=14→R(5) » : le `R(5)` est exact, mais le préfixe de version d'un bit manquait, d'où 6 et
+   non 5.
+
+**Ce que l'oracle `n2` peut et ne peut pas faire — borné par `ti=29`.** La phase 4 présentait
+`n2` comme un détecteur gratuit de largeur d'état par défaut fausse. La phase 5a le confirme
+dans un sens (`n2` dispersé ⇒ largeur fausse à coup sûr) et le **réfute dans l'autre** : sur
+`ti=29`, `n2` est constant à la largeur portée (0 bit) alors que la vraie largeur est 1 bit. Une
+zone de bits constante rend plusieurs décalages également « constants ». `n2` détecte ; seule la
+FERMETURE (la marche atterrit sur l'ancre du record suivant) mesure.
+
+**Le chiffre qui motive un lot de production.** Sur 62 686 records d'image-clé bornés (6 films,
+3 builds) : le modèle de la production (en-tête 64 bits + masque) en ferme **0** ; la forme
+d'état complet en ferme **8 796 (14,0 %)** contre un plancher de hasard mesuré à **0,8 %** (le
+même lecteur, en-tête décalé d'un bit) ; en ajoutant `ti=14`, `ti=17` et `ti=29`, **19 337
+(30,8 %)**. Et la production ne déraille pas par manque de couverture : sous son modèle, **5,5 %
+seulement des records désynchronisent**, les 92 % restants marchent jusqu'au bout et atterrissent
+au mauvais bit.
+
+Détail, contrôles chiffrés et commandes de rejeu :
+`.ai/V7.5/film_re/NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md`.
