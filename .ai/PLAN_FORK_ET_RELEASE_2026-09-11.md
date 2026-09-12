@@ -234,7 +234,7 @@ v41 de même mode et carte quand c'est possible ; tableau calque x version = dé
 aberrant, avec les compteurs de couverture de l'artefact et les oracles existants (API, table
 des scores, `swap.sh`, corpus). Livrable : rapport + liste des points où le profil de
 déchiffrage doit brancher sur la version, chiffrés.
-- [ ] H.1 Corpus par version (choix des films, cache complet vérifié).
+- [x] H.1 Corpus par version (choix des films, cache complet vérifié) — 8 films (3 en v39, 3 en v40, 2 en v31-38) + 8 témoins, cartes et modes obtenus HORS BASE (corpus toml, CORPUS.txt des faits versionnés, rapport BTB 2025) ; 1 351 films inventoriés par version ET par build, zéro incomplet.
 - [ ] H.2 Mesure calque par calque (tableau).
 - [ ] H.3 Rapport et plan des divergences ; témoins v39/v40 ajoutés au corpus gate.
 
