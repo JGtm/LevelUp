@@ -300,3 +300,77 @@ soit **un bloc de registre ECS (`0x4100 = 16 640`) plus 4 octets par entrée man
 par type** — trois fermetures sans ajustement. La longueur d'un enregistrement de slot y change
 aussi, d'une **constante par build** (-2 880, -4 320, +1 600 bits), le XUID et le gamertag restant
 lisibles partout (11 550/11 728 enregistrements).
+
+### 8.3 L'ÉQUIPE D'UN JOUEUR : elle n'est pas dans `chunk_00`, elle est dans la trame (2026-09-12, phase 3)
+
+La phase 2 avait fermé la question **par la négative** : aucun des champs courts de
+l'enregistrement de slot de `chunk_00` ne porte l'équipe (huit des neuf sont constants sur tout le
+corpus). La phase 3 la ferme **par le positif**, en suivant le CONSOMMATEUR (méthode, règle 1) :
+l'équipe est une donnée **répliquée**, portée par un composant ECS de la trame d'état (paquets de
+type 2), et non par l'en-tête du film.
+
+**Le chemin, depuis la chaîne de nom du composant.** Le tableau des descripteurs de composant a un
+pas de `0x50` (dix pointeurs), le champ de nom en `+0x08`, le SÉRIALISEUR en `+0x18` et le
+DÉSÉRIALISEUR en `+0x30` — forme vérifiée sur deux entrées distinctes (elle explique la mention
+« deser thunk (vtable+0x28) » déjà portée par `filmdec/components_team_mapping.go`, qui compte
+depuis le champ de nom).
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| `0x143c953c0` | chaîne `"managed-player-team-designator-component"` | `search_strings` |
+| `0x141177eb0` | thunk de nom (`LEA RAX,[chaîne] ; RET`) | xref de la chaîne |
+| **`0x143d08ad0`** | **descripteur du composant** : nom en `+0x08`, écrivain en `+0x18`, lecteur en `+0x30` | xref du thunk ; lecture mémoire |
+| **`0x142edbd3c`** | **écrivain (sérialiseur)** du composant | `descripteur + 0x18` |
+| **`0x140f581e8`** | **lecteur (désérialiseur)** : un seul appel, `FUN_1407ef804` | `descripteur + 0x30` ; décompilé — concorde avec `ecs_table.tsv:228` |
+| **`0x1407ef804`** | **primitive : lit 4 BITS et STOCKE la valeur MOINS UN** | `ADD dword ptr [RCX+0x2c],0x4` ; `SHR R9,0x3c` ; `DEC R9B` |
+| `0x1445c0c00` | descripteur de l'énumération de script `mp_team_designator` (« Enum for MP team designators »), **9 entrées** à `0x144723da0` | lecture mémoire |
+| `0x144723da0` | les 9 noms, dans l'ordre : `First`, `Second`, `Third`, `Fourth`, `Fifth`, `Sixth`, `Seventh`, `Eighth`, `Neutral` | lecture mémoire des 9 pointeurs |
+
+**Le codage, et c'est une prédiction, pas une lecture.** `DEC R9B` fixe la convention : le champ de
+4 bits porte `désignateur + 1`, donc `0` code **-1 = aucune équipe**. Le lecteur de la composante
+globale le confirme par son test de validité (`INC AL ; CMP AL,0x9 ; JA` → domaine `-1..8`, soit
+les neuf désignateurs plus « aucun »). Prédiction écrite avant toute mesure sur les films :
+**`brut = team_id + 1`**.
+
+**Vérifié sur les films.** Archétype **ti=9** (« managed-player »), composant **i0**, champ à
+**186 bits du début du record d'image-clé** (décalage MESURÉ, pas porté : les largeurs de l'en-tête
+par entité et du bloc d'état par défaut de ti=9 ne sont pas tranchées par le dossier). Corpus de
+22 films (14 d'arène, 6 de Grande bataille, 2 de FFA) :
+
+- **16 films sur 18 en accord EXACT** avec `match_participants.team_id`, **160/176 slots**, dont
+  **24/24 deux fois** en Grande bataille (`03af54c3`, `213a87dc`) ;
+- **le seul décalage de tout le record** qui satisfasse l'oracle : **1 sur 456/457 par film**,
+  soit 0 faux positif sur 7 292 positions ; **0 touche sur 576** décalages voisins ;
+- **témoin négatif naturel** : les deux films de FFA lisent `0` sur les huit entités — le moteur
+  ne donne aucun désignateur en FFA, là où l'API fabrique un `team_id` par joueur ;
+- **8 entités ti=9 par image-clé en arène, 24 en Grande bataille**, slots consécutifs de pas 2,
+  longueur de record constante (459/460 bits selon le build) ;
+- le désignateur bouge **si et seulement si** la suite des slots bouge (22/22 films) : il est
+  stable par ENTITÉ, et c'est la réattribution de slot qui déplace l'appariement.
+
+**Ce que la section 8.1 disait, et ce qui tient.** « Le gamertag et l'équipe ne sont dans aucun des
+champs ci-dessus » : faux pour le gamertag (corrigé en 8.2), **vrai pour l'équipe**, et la phase 3
+dit désormais où elle est à la place.
+
+#### Le composant qui porte `team` dans son nom, et qui n'est PAS l'équipe d'un joueur
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| `0x143c985c0` | chaîne `"game-engine-team-mapping-component"` | `search_strings` |
+| `0x143d0f7a0` | son descripteur (nom `0x141173050` en `+0x08`) | xref du thunk |
+| `0x142f068bc` · `0x140f58200` | écrivain · lecteur — déjà portés par `filmdec/components_team_mapping.go` | `descripteur + 0x18` / `+ 0x30` |
+| **`0x142f1b44c`** | **vidangeur de debug du masque de champs sales : il NOMME les six champs** dans l'ordre des bits — `team-mapping` (0), `shared-team-lives` (1), `current-state` (2), `game-finished` (3), `current-round` (4), `round-timer` (5) | décompilé (`FUN_14064d734(dest, "team-mapping:", 0x400)`) |
+
+Son état fait 20 octets : six champs de 2 octets puis un tableau de **HUIT** octets signés, gaté
+par le masque de `+0x06`, chaque entrée lue par `FUN_1407ef804` (4 bits, valeur-1) et mise à `-1`
+si le bit est absent. **Huit entrées, pas trente-deux : c'est une table par ÉQUIPE, pas par
+joueur**, et le vocabulaire de ses six champs est celui d'un composant global du moteur de jeu.
+
+#### Le chunk de type 8 « PLAYER_METADATA » n'existe pas dans ce corpus
+
+Mesure sur les **1 351 manifestes** du cache : les seuls types déclarés sont **1 (x1 351),
+2 (x37 661) et 3 (x1 351)**. Aucun type 8, aucun type 12. La piste « le roster et les équipes sont
+dans un chunk de type 8 » est donc **réfutée pour ce corpus**.
+
+Détail, contrôles chiffrés, chemin actuel de la production et ses pertes :
+`.ai/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md`.

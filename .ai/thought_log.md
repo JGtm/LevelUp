@@ -106741,3 +106741,70 @@ pour le gamertag), instruments
 (methode, regle 1) — trouver le desserialiseur de `FUN_1407ecd00` et lire qui compare le resultat a
 des constantes. Puis, si la table des slots doit servir en production, rendre le lecteur robuste a
 la troncature de tete et calibrer la constante de build sur le film lui-meme.
+
+## [2026-09-12] Équipe dans le film, phase 3 : elle n'est pas dans `chunk_00`, elle est dans la trame — Complete
+
+**Statut** : Complété. Branche `wt/section3-chunk00`, aucun commit, aucun code de production
+modifié.
+
+**Question** : où le film Theater porte-t-il l'équipe de chaque joueur ? La phase 2 avait fermé la
+question par la négative sur l'enregistrement de slot de `chunk_00` (huit des neuf champs courts
+constants sur tout le corpus) et laissait trois branches ouvertes : les trois listes préfixées du
+sous-enregistrement, le composant `game-engine-team-mapping-component` de la trame, ou un chunk de
+type 8 « PLAYER_METADATA ».
+
+**Décision technique principale** : suivre le CONSOMMATEUR (méthode, règle 1) au lieu de continuer à
+corréler des champs. Le nom du composant ECS a mené en trois sauts au descripteur, puis au lecteur,
+puis à la primitive qui donne la largeur ET la convention de valeur. **L'équipe est dans la trame
+d'état (paquets de type 2), composant `managed-player-team-designator-component` de l'archétype
+ti=9, composant i0, 4 bits, à 186 bits du début du record d'image-clé, et la valeur écrite vaut le
+désignateur PLUS UN** (donc 0 = aucune équipe). Écrivain `0x142edbd3c`, lecteur `0x140f581e8`,
+primitive `FUN_1407ef804`, descripteur `0x143d08ad0`, énumération `mp_team_designator` à
+`0x144723da0` (9 noms, `First`..`Eighth`, `Neutral`).
+
+**Résultats observés** (22 films : 14 d'arène, 6 de Grande bataille, 2 de FFA) :
+(1) l'archétype ti=9 porte bien ce composant en i0 dans le registre du FILM, 22/22 ;
+(2) 8 entités ti=9 par image-clé en arène, **24 en Grande bataille**, slots consécutifs de pas 2,
+longueur de record constante (459/460 bits selon le build) ;
+(3) **16 films sur 18 en accord EXACT terme à terme** avec `match_participants.team_id`,
+**160/176 slots**, dont **24/24 deux fois** en Grande bataille ;
+(4) le balayage complet du record ne rend **qu'UN décalage** satisfaisant l'oracle, `d = 186`, sur
+16/16 films à équipes — 0 faux positif sur 7 292 positions, **0 touche sur 576** décalages voisins ;
+(5) **témoin négatif naturel propre** : les deux films de FFA lisent `0` sur les huit entités, le
+moteur ne donne aucun désignateur en FFA (l'écart avec la base vient de la base, qui fabrique un
+`team_id` par joueur) ;
+(6) contrôle interne gratuit, 22/22 : le désignateur bouge **si et seulement si** la suite des slots
+des entités ti=9 bouge — il est stable par entité, c'est la réattribution de slot qui déplace
+l'appariement ;
+(7) `game-engine-team-mapping-component` est **réfuté** comme source : état de 20 octets, table de
+**huit** entrées gatée par un masque à `+0x06`, six champs nommés par le vidangeur de debug
+`FUN_142f1b44c` (`team-mapping`, `shared-team-lives`, `current-state`, `game-finished`,
+`current-round`, `round-timer`) — un composant global de partie, pas un joueur ;
+(8) le chunk de type 8 est **réfuté par la mesure** : les 1 351 manifestes du cache ne déclarent que
+les types 1, 2 et 3 ;
+(9) **une affirmation de la production est réfutée** : `replay/document.go:577`, `document.go:365`
+et `build.go:577` déclarent « l'équipe n'est PAS dans le film » et écrivent `Team: -1` en dur.
+Le chemin actuel passe par la base (`match_participants.team_id` → `equipesParXUID` →
+`FlagInput.TeamOf`, et `objectiveevents.Roster`), et ses pertes sont déjà comptées par le code
+lui-même (`CarrierTeamUnknown` : « table `TeamOf` vide, CLI hors ligne »).
+
+**Découvertes non traitées (règle 7)** : (a) la production lit `b55` du pied de film là où
+l'archive a confirmé `b37`/`b38` — trois affirmations, deux offsets, aucune tranchée ; (b) le
+décalage de 8 octets de `parseRegistry`, connu, non tranché ; (c) aucune entité ti=9 dans le
+PREMIER paquet de type 2 (`chunk_01`), cause non établie ; (d) le lecteur de la table des slots de
+`chunk_00` casse sur les gros rosters (contourné par un repli documenté, cause non traitée) ;
+(e) la réattribution de slot en cours de match, qui impose d'indexer par SLOT et non par rang.
+
+**Livrables** : `.ai/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md` (verdict, chaîne de
+l'exécutable, six contrôles chiffrés, chemin actuel de la production et ses pertes, commandes de
+rejeu), section **8.3** de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
+`apps/go-api/internal/analysis/filmdec/equipe_film_{recon,designateur,oracle}_research_test.go`.
+Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
+`go test ./internal/analysis/filmdec/` sans garde ok, `go test ./internal/archlint/` ok.
+
+**Prochaine étape** : expliquer le décalage 186 au lieu de le mesurer (il vaut l'en-tête par entité
+plus le bloc d'état par défaut de ti=9, deux largeurs non tranchées — même question que le plan
+R7-e et que la valeur 47 du fork chasewoodhams), puis vérifier `d = 186` sur les builds antérieurs.
+Pour un branchement en production : rendre le lecteur de `chunk_00` robuste aux gros rosters et
+indexer le désignateur par slot ; l'artefact de rejeu pourrait alors porter l'équipe réelle sans
+ouvrir aucune base.
