@@ -106894,3 +106894,90 @@ dérivation de l'offset (`172 + état par défaut`), le lecteur de roster qui ti
 rosters et sur les builds anciens, et le pont rang vers xuid. Le geste le plus rentable en amont
 est de corriger le modèle de record d'image-clé du décodeur (découverte b), qui débloquerait bien
 plus que l'équipe.
+
+
+## [2026-09-13] Image-clé sous la forme d'état complet, phase 5a : le correctif chiffré archétype par archétype — Complété
+
+**Statut** : Complété. Recherche seulement, **aucun code de production modifié, aucun commit**.
+Worktree dédié `LevelUp-wt-section3-chunk00` (branche `wt/section3-chunk00`).
+
+**Question**. La phase 4 avait réfuté le modèle de record d'image-clé de la production (en-tête
+64 bits + masque de présence) et dérivé la bonne forme (lecteur d'état complet `FUN_142e2bfd0` :
+en-tête 108 bits + `n1` + état par défaut + `n2` + composants, sans masque). Elle l'avait laissée
+en découverte hors périmètre. Ce lot CHIFFRE le gain, archétype par archétype, avant qu'un lot de
+production soit décidé.
+
+**Décision technique principale**. Trois instruments sous garde `CHUNK00_FILMS`, tous en
+réutilisant le code existant sans le modifier : la bonne forme est jouée par
+`WalkKeyframeFullState` (porté au lot R7-d, jamais branché) avec les déserialiseurs d'état par
+défaut du dépôt ; le modèle de production est joué par SON PROPRE CODE (`readKeyframeHeader` +
+`walkOneKeyframeRecord`). Critère de succès unique et vérifiable sans oracle externe : **un
+record FERME quand la marche atterrit exactement sur l'ancre du record suivant**. Témoin de
+hasard obligatoire (règle 4 de la méthode) : le même lecteur avec l'en-tête décalé d'UN bit.
+
+**Résultats mesurés** (6 films, 3 builds, **62 686 records d'image-clé bornés**) :
+
+- **La production ferme 0 record sur 62 686.** Pas un taux faible : un compte nul, sur les six
+  films et les trois builds.
+- **La bonne forme en ferme 8 796 (14,0 %)**, contre un plancher de hasard **mesuré** à 529
+  (0,8 %). Cinq archétypes passent de 0 % à un taux quasi parfait : `ti=6` 7 820/7 822,
+  `ti=15`/`ti=18`/`ti=22` 163/163 chacun, `ti=4` 112/157. **8 archétypes gagnent, 0 régressent.**
+- **Le témoin de hasard a servi deux fois** : il a disqualifié le gain apparent de `ti=38`
+  (1,7 % contre 1,7 %, donc rien) et il a DÉSIGNÉ `ti=29`, qui ferme 138/157 à +1 bit et 0/157
+  à la largeur portée — c'est-à-dire un état par défaut d'un bit non consommé.
+- **Cinq largeurs d'état par défaut manquantes, chacune tenue par DEUX chaînes** (oracle `n2`
+  et/ou fermeture, plus le décompilé Ghidra relu le jour même) : `ti=14` → 6 bits
+  (`FUN_140FED6F4` = V ; R(5)), `ti=17` → 8 (`FUN_14101A0A4` = V ; R(7)), `ti=21` → 18
+  (`FUN_141133C24` = R(0x12), sans préfixe de version), `ti=29` → 1 (`FUN_14116F514` = préfixe
+  de version SEUL), `ti=47` → 6 (`FUN_1410F44F8` = V ; R(5)). Toutes portées à 0 bit aujourd'hui.
+  Les trois premières font fermer **10 541 records de plus** → **projection 19 337 / 62 686 =
+  30,8 %**, pour trois entrées dans `defaultStateDeserByTI` écrites avec des primitives déjà
+  présentes.
+- **La production ne déraille pas par manque de couverture, mais par le cadre** : sous son
+  modèle, **5,5 % seulement des records désynchronisent**, les 92 % restants marchent jusqu'au
+  bout et atterrissent au mauvais bit — le masque de présence fait croire qu'aucun composant
+  n'est présent.
+- **Il n'existe aucun compteur de production « la table d'image-clé a déraillé »** :
+  `KillSourceHealth` compte des candidats d'attribution de mort ; `WalkKeyframeRecords` n'a
+  aucun appelant hors du paquet ; le SEUL chemin de production qui parse le corps d'un record
+  d'image-clé est `ScanNavpointRadial` (ti=12), appelé par l'armement d'Assaut du rejeu — et sur
+  ce corpus il ne s'engage même pas (bande de slots vide, aucun film d'Assaut). Là où un
+  balayage s'engage (`ti=11`), son propre témoin `KeyChained` vaut **0 sur 27**.
+
+**Négatifs publiés avec leur témoin positif**. Le témoin positif écrit avant la mesure
+(« `ti=9` doit fermer à 100 % ») ÉCHOUE : 0/1 679, les 1 679 marches butant toutes sur le même
+composant non porté `i4 managed-player-forge-weather-effect-overrides-component`. C'est un manque
+de couverture, pas un défaut de forme, et la dérivation de la phase 4 (premier composant à 186)
+n'est pas touchée — ce qui confirme le cadre, ce sont les cinq archétypes qui ferment à 100 %
+contre 0 % pour les deux autres modèles. Réfuté aussi : « `n2` constant prouve que la largeur est
+juste » (contre-exemple `ti=29`), et « corriger le cadre suffirait à débloquer ce que la
+production lit » (`ti=11` et `ti=12` désynchronisent à 100 % sous la bonne forme, sur leur
+deuxième et cinquième composant).
+
+**Découvertes non traitées (règle 7)** : (a) le décalage de 8 octets de `parseRegistry`, toujours
+NON TRANCHÉ, non touché ; (b) `ti=14` est classé STUB à tort dans `default_state_arch.go` alors
+que `KEYFRAME_ARCHETYPE_DEFAULTSTATE_TABLE.md` a raison — contradiction du dossier tranchée par
+la mesure, à corriger dans le lot de production ; (c) six archétypes sont bloqués par leur
+premier ou deuxième composant (1 176 records) ; (d) `ti=13` reste muet alors que sa grammaire
+portée est bit-exacte avec le décompilé ; (e) deux films de `HI_1_12_0` déclenchent
+l'avertissement « empreinte du registre ECS INCONNUE ».
+
+**Livrables** : `.ai/V7.5/film_re/NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md` (tableau archétype ×
+modèle par build et par film, liste des états par défaut à corriger avec la largeur impliquée,
+estimation de ce que la production déraille, prouvé/hypothèse/réfuté, commandes de rejeu),
+section **8.5** de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
+`apps/go-api/internal/analysis/filmdec/imagecle_{fermeture,oracle_n2,production}_research_test.go`.
+Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
+`go test ./internal/analysis/filmdec/` sans garde **ok**, `go test ./internal/archlint/` **ok** —
+le ratchet des variables de paquet de `filmdec` n'est pas touché (aucune variable de niveau
+paquet ajoutée).
+
+**Conclusion / prochaine étape**. Le pilote a son chiffre : **0 record fermé aujourd'hui,
+8 796 (14,0 %) avec le seul correctif de forme, 19 337 (30,8 %) en y ajoutant trois largeurs
+d'état par défaut mesurées et confirmées au décompilé.** Le lot de production le moins cher et le
+mieux tenu est donc : (1) les trois entrées `defaultStateDeserByTI` de `ti=14`, `ti=17`, `ti=29`
+(plus `ti=21` et `ti=47`, prouvées mais sans fermeture), (2) la correction du commentaire STUB de
+`ti=14`, (3) le branchement de `WalkKeyframeFullState` à la place de `TraverseEntity` dans
+`navpoint_radial_scan.go` et `objective_scan.go`. **Ce lot n'a rien branché : il chiffre.** Et il
+faut dire au pilote que le correctif ne répare aujourd'hui la sortie d'AUCUNE page — il ouvre une
+voie (l'équipe à 186, les champs d'objectif, l'armement) que le cadre faux fermait.
