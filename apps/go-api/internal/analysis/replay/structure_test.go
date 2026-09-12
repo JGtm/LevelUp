@@ -1021,8 +1021,27 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   joueur, des vols traversant la carte, et le décor d'une autre carte. `coverage.projectiles`
 	//   s'ajoute au passage — un champ optionnel, qui ne l'aurait pas exigé à lui seul.
 	//   Détail : `document_chronicle.go` et `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
-	if SchemaVersion != 52 {
-		t.Fatalf("SchemaVersion = %d, attendu 52 : incrémenter exige une raison écrite ci-dessus "+
+	// v53 (2026-09-12, lot B-bis — LE BIT DE TROP PEU DE LA PORTE D'i0). UN changement de
+	//   contenu cuit, sur une seule carte. `decodeWorldObjectPos` écrivait la porte
+	//   d'`object-position-component` en dur à 3 bits (precHigh + index-sel + UN bit d'index de
+	//   région). Cette dernière largeur est une constante PAR CARTE : elle vaut 2 sur Live Fire
+	//   (`sgh_interlock`, quatre régions déclarées, arène en région 1). Le décodeur y consommait
+	//   donc un bit de trop peu et lisait les TROIS axes un bit trop tôt : le bit de poids
+	//   faible de X devenait le bit de poids fort de Y, celui de Y le bit de poids fort de Z. Un
+	//   bit de poids faible bascule d'une image à l'autre, d'où un pas de la MOITIÉ de l'étendue
+	//   de l'axe (31,89 m pour 63,775 m d'étendue Y), que le garde-fou de v52 coupait.
+	//   Mesuré (cuisson complète, avant -> après) : `0797ce72` 239 -> 4 vols tronqués et
+	//   471 -> 2 949 points ; `21ece4d8` 144 -> 1 et 209 -> 2 367 ; `30724141` 162 -> 0 et
+	//   291 -> 2 012 ; `c88ec007` 69 -> 0 et 96 -> 1 050. Contrôle croisé indépendant : sur
+	//   `0797ce72` et `21ece4d8`, la branche PROJECTILE des lancers de grenade, effondrée à 1 et
+	//   0 au lot B, retrouve 83 et 137 lancers à une médiane de 0,44 m de leur lanceur — le
+	//   régime de Cliffhanger. Aucune autre carte ne change (Cliffhanger, Banished Narrows,
+	//   The Pit, Isolation : identiques au point près).
+	//   POURQUOI LA VERSION MONTE : un artefact 52 d'un match Live Fire ne porte que le premier
+	//   tiers de seconde de chaque vol de projectile. La reprise du backfill se fait par
+	//   SchemaVersion : sans montée, aucune recuisson ne le rattraperait.
+	if SchemaVersion != 53 {
+		t.Fatalf("SchemaVersion = %d, attendu 53 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

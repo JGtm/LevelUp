@@ -49,7 +49,17 @@ package replay
 // artefact v51 doit se voir comme « à recuire », pas comme à jour. `coverage.projectiles`
 // s'ajoute au passage, mais un champ optionnel ne l'aurait pas exigé à lui seul. Chronique
 // détaillée et chiffres : `document_chronicle.go`.
-const SchemaVersion = 52
+// v53 (2026-09-12, lot B-bis) : UNE SEULE CAUSE, et elle ne touche qu'une carte du catalogue —
+// mais plusieurs calques en dépendent. La porte du composant de position des objets du monde
+// était écrite en dur à 3 bits ; l'index de région qu'elle porte fait DEUX bits sur Live Fire.
+// Le décodeur y lisait les trois axes un bit trop tôt et rendait des positions fausses, que le
+// garde-fou de v52 coupait ensuite au deuxième ou troisième point. Mesuré sur les quatre films
+// Live Fire du parc : 614 vols de projectile tronqués -> 5, et 1 067 points publiés -> 8 378 ;
+// les poses d'équipement passent de 49 et 27 à 227 et 114 sur les deux films mesurés, et les
+// lancers de grenade retrouvent leur lien vers le projectile (2 -> 85, 0 -> 137). Aucune autre
+// carte ne bouge d'un point (Cliffhanger, Banished Narrows, The Pit, Isolation : identiques).
+// Chronique et chiffres : `document_chronicle.go`.
+const SchemaVersion = 53
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

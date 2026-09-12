@@ -1117,3 +1117,74 @@ package replay
 //	ce que le lot   il ne touche NI la déquantification (la cause du point 3), NI l'attribution
 //	n'a pas fait    des props des 78 autres cartes du catalogue de bornes — une seule extraction
 //	                existe, attribuée à `ridgeline` par son emprise (cf. le README du répertoire).
+
+// v53 (2026-09-12, lot B-bis — LE BIT DE TROP PEU DE LA PORTE D'i0). UNE seule CAUSE, sur une
+// seule carte du catalogue — mais plusieurs calques en dépendent, et elle y rendait les
+// projectiles inexploitables.
+//
+//	ce qui change   La PORTE d'`object-position-component` (i0 des objets du monde : projectiles
+//	                ti=41, équipement ti=37, armes au sol ti=42) était écrite EN DUR à 3 bits
+//	                dans `decodeWorldObjectPos` et `projPosBits` : 1 precHigh + 1 index-sel +
+//	                UN bit d'index de région. La largeur de cet index est une CONSTANTE PAR
+//	                CARTE (`regionIndexBits` du catalogue de bornes, `ceilLog2(nb de régions)`).
+//	                Elle vaut 1 sur 78 cartes du catalogue et DEUX sur la 79e, Live Fire
+//	                (`sgh_interlock`, quatre régions déclarées, arène en région 1). Le décodeur
+//	                y consommait donc un bit de trop peu, et lisait les TROIS axes un bit trop
+//	                tôt. La porte suit désormais la largeur d'index du descripteur de précision
+//	                world-object (`IndexW`, installée depuis le catalogue), et l'index lu
+//	                est COMPARÉ à la région jouée de la carte au lieu d'être exigé nul.
+//
+//	la mécanique    Décalés d'un bit, les champs se chevauchent : le bit de poids faible de X
+//	                devient le bit de poids FORT de Y, celui de Y le bit de poids fort de Z. Un
+//	                bit de poids faible bascule d'une image à l'autre — d'où un saut de la
+//	                MOITIÉ de l'étendue de l'axe à chaque bascule (31,89 m pour 63,775 m
+//	                d'étendue Y sur Live Fire ; 11,45 m sur Z). C'est la forme exacte que le lot
+//	                B avait mesurée sans l'expliquer (« le saut vaut étendue / 2^k »).
+//	                Le bit d'index restant, toujours à 1, devenait le bit de poids fort de X :
+//	                le nuage de projectiles y était comprimé de moitié ET décalé d'une
+//	                demi-étendue — X [-0,7 ; 34,7] au lieu de [-16,7 ; 24,4] sur `0797ce72`.
+//
+//	mesuré          Records i0 acceptés porteurs d'un pas impossible (instrument
+//	                `bit_projectile_research_test.go`, avant -> après) : `0797ce72` 8 091 / 15 971
+//	                (50,7 %) -> 7 / 15 930 (0,04 %) ; `21ece4d8` 6 958 / 13 173 (52,8 %) ->
+//	                3 / 13 109 ; `c88ec007` 2 758 / 5 693 (48,5 %) -> 1 / 5 691.
+//	                Cuisson complète (vols tronqués et points publiés, avant -> après) :
+//	                `0797ce72` 239 -> 4 et 471 -> 2 949 ; `21ece4d8` 144 -> 1 et 209 -> 2 367 ;
+//	                `30724141` 162 -> 0 et 291 -> 2 012 ; `c88ec007` 69 -> 0 et 96 -> 1 050.
+//	                Pas médian après correctif sur `0797ce72` : 0,85 m, p95 2,48 m, max 7,70 m —
+//	                une balistique, plus une droite.
+//
+//	les autres      `decodeWorldObjectPos` sert AUSSI l'équipement (`ti=37`) et les armes au sol
+//	calques         (`ti=42`) : les POSES D'ÉQUIPEMENT passent de 49 à 227 sur `0797ce72` et de
+//	                27 à 114 sur `21ece4d8`, et les lancers de grenade retrouvent leur lien vers
+//	                le projectile né d'eux (`grenades[].proj` : 2 -> 85 et 0 -> 137). Les armes
+//	                au sol, les tirs et les ramassages ne bougent pas (217, 717, 108 des deux
+//	                côtés) : ils ne tiennent pas leur position de ce chemin. Un lancer se perd
+//	                sur `0797ce72` (103 -> 102) — le garde d'auteur de v52 refuse une fenêtre
+//	                ambiguë, comme il le faisait déjà sur Cliffhanger.
+//
+//	contrôle croisé INDÉPENDANT du garde-fou : la branche PROJECTILE des lancers de grenade, que
+//	                le lot B voyait s'effondrer à 1 et 0 lancers sur les deux films Live Fire
+//	                (toutes les naissances refusées à 25-27 m de leur lanceur), retrouve 83 et
+//	                137 lancers à une médiane de 0,44 m et un pire cas de 0,50 et 0,66 m — le
+//	                régime exact de Cliffhanger. Rien dans cette mesure ne passe par le seuil de
+//	                10 m : elle juge la position, pas la continuité.
+//
+//	témoins         Cliffhanger (`000d5950`), Banished Narrows (`fb1a1a72`, `51ebbc0f`,
+//	                `e60aaf06`), The Pit (`a4083bd2`), Isolation (`daaa17d6`) : pistes, points et
+//	                coupures IDENTIQUES à l'unité. Le correctif ne déplace rien là où l'index de
+//	                région tient sur un bit — c'est-à-dire partout ailleurs.
+//
+//	POURQUOI LA     Un artefact 52 d'un match Live Fire ne porte que le premier tiers de seconde
+//	VERSION MONTE   de chaque vol de projectile : le garde-fou de v52 coupait au deuxième ou
+//	                troisième point. La reprise du backfill se faisant par SchemaVersion, sans
+//	                montée aucune recuisson ne le rattraperait.
+//
+//	ce que le lot   la QUEUE de pas impossibles des cartes Forge (612 pas sur cinq films, |Δx|
+//	n'a pas fait    médian 21,69 m). Elle ne vient PAS de la porte : ces cartes ont un index de
+//	                région d'un bit, et leurs artefacts sont identiques avant et après. Instruite
+//	                au lot B-bis, elle porte la signature d'un FAUX POSITIF du balayage par
+//	                position de bit — Y figé au quantum près (479, 735) pendant que X saute d'une
+//	                puissance de deux exacte, sur plusieurs slots et générations à la fois. Le
+//	                garde-fou de v52 la couvre et devient rare : c'est son rôle.
+//	                Détail : `.ai/RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md`.
