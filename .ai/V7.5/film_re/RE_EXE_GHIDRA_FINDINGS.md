@@ -430,3 +430,81 @@ enregistrements réels. Le balayage de roster qui l'exigeait nul rendait ces slo
 
 Détail, contrôles chiffrés et commandes de rejeu :
 `.ai/V7.5/film_re/NOTE_PROFIL_PAR_BUILD_2026-09-12.md`.
+
+### 8.6 L'ÉCRIVAIN d'état complet, le drapeau de contrôle et le nom d'un désignateur (2026-09-13, phase 5b)
+
+> Section écrite par le lot « résidus » dans le worktree `wt/film-residus`. La section 8.5 est
+> écrite en parallèle par un autre lot ; les deux seront fusionnées par le pilote.
+
+La phase 4 avait lu le **lecteur** d'état complet `FUN_142e2bfd0` et noté qu'un mot de 32 bits
+« de contrôle » y est lu entre l'état par défaut et `n2` quand `FUN_14076cea8()` est vrai. Ce lot
+a lu le **symétrique**, et il dit ce que ce mot contient : ce n'est pas un champ, c'est une
+**sentinelle constante**.
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| **`0x142e2d08c`** | **ÉCRIVAIN d'ÉTAT COMPLET** — le symétrique de `FUN_142e2bfd0` : `R(32)` id, `R(32)` typeIndex, `R(32)`, `R(4)`, `R(8)` ; puis `R(32) n1` [si `>0` → `vtable[0x58]` = l'état par défaut], **la sentinelle si le drapeau**, `R(32) n2` [si `>0` → `FUN_1428e38ec`] | décompilé ; l'écrivain de bits est inliné, chaque champ incrémente `*(param_1+0x2c)` de sa largeur |
+| **`0x0FFDDCBA`** | **LA SENTINELLE** écrite sur 32 bits quand `DAT_1450e24e8 != 0` — un marqueur de détection de corruption, pas une donnée. Le nom `filmComponentCorruptionCheck` que le dépôt porte déjà est donc exact | `if (DAT_1450e24e8 != '\0') { … 0xffddcba … }` dans `FUN_142e2d08c` |
+| `DAT_1450e24e8` | le drapeau côté **écrivain**. **Aucune écriture** dans l'image (3 lectures : `FUN_142e2d08c`, `FUN_14076cea8`, et `FUN_14299b674`, l'initialiseur de l'écrivain de film) ; valeur statique **0** | `get_xrefs_to` + lecture mémoire |
+| `DAT_144c23326` | le drapeau côté **lecteur**, choisi par `FUN_14076cea8` quand `FUN_1404f2b4c()` est vrai. **Aucune écriture** ; valeur statique **0** | idem |
+| **`0x1404f2b4c`** | le prédicat de choix : `*(uint *)(index * 0x1134f0 + 0xea71c + DAT_145121d28) == 2`. Le pas `0x1134F0` est la taille de la structure de session que `FUN_14095944c` recopie pour le film, et `+0xEA71C` est un champ que l'écrivain du corps sérialise — les deux chemins parlent du même objet | décompilé |
+| `0x1407ec828` | **`jeu+0xEA71C` est écrit sur 2 BITS**, pas 1 comme la section 8 le portait : `MOV R9D,[RSI+0xea71c]` puis `SHL RDX,0x2` à `1407ec844`. Domaine `0..3` — la valeur `2` est donc représentable dans le film | désassemblage |
+
+**Mesure sur les films (négatif publié avec son témoin positif).** La sentinelle `0x0FFDDCBA`,
+cherchée à tout décalage de bit dans **250 paquets de type 2** de 10 films couvrant les **7
+builds** : **0 occurrence**. Témoin positif du même instrument : à la position où elle tomberait
+(`i0 - 32`), on lit `n2` sur **4 368 records ti=9 sur 4 368**. Troisième lentille : le critère
+interne d'équipe passe à `d = 186` sur 8 films sur 10, **à `d = 218` sur 0 sur 10** (on y lit `15`
+partout, hors du domaine `1..9`). **Le drapeau est inactif dans tous les films du cache**, et
+c'est désormais mesuré, non plus déduit.
+
+#### Le consommateur d'affichage du désignateur d'équipe
+
+La table `mp_team_designator` (§8.3) n'a **aucune référence de code** : ni son descripteur
+(`0x1445c0c00`), ni son tableau de 9 noms (`0x144723da0`, dont la seule référence est le
+descripteur). Le descripteur appartient à une table d'entrées de pas **`0x58`** (vérifié sur
+`0x1445c0ba8`), consommée **par nom** à l'exécution par le système de script. Le consommateur se
+trouve donc en suivant le nom de la fonction de script, pas la table.
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| `0x1436e34f0` | chaîne `"AddTeamDesignatorStringIdsToList"` | `search_strings` |
+| `0x140ee83dc` @`140ee863d` | l'enregistrement qui apparie ce nom au pointeur de fonction `0x142d417c0` | désassemblage : `LEA RAX,[0x1436e34f0] ; MOV [RBP+0xb0],RAX` puis `LEA RAX,[0x142d417c0] ; MOV [RBP+0xb8],RAX` |
+| **`0x142d417c0`** → **`0x142d40c1c`** | **empile, dans cet ordre, les identifiants de chaîne `team_0`, `team_1`, …, `team_7`, `team_neutral`** — neuf entrées | décompilé |
+| `0x1436daff0` · `0x1436db008` | `"First"` · `"Neutral"` — les deux extrémités du tableau de 9 noms de `mp_team_designator` | lecture mémoire |
+
+**Conséquence.** Deux voies sans étape commune — la table de l'énumération (lue en données) et la
+liste d'identifiants de chaîne (lue en code) — donnent **neuf entrées, même ordre**, et la seconde
+**nomme la numérotation** : elle part de `team_0`. La correspondance `team_id 0` → désignateur 0 →
+`team_0` → `First` est donc **prouvée pour l'indexation**. Ce qui ne l'est pas : que l'étiquette
+affichée de `team_0` soit « Eagle » — le binaire ne porte que l'identifiant, le libellé vit dans
+les fichiers de chaînes du jeu. La seule trace d'Eagle/Cobra dans l'exe est côté variante de mode
+(`eagleStartScore` à `variante+0x1108` via `FUN_142c76fc0`, `cobraStartScore` à `+0x110C` via
+`FUN_142c76ef8` : Eagle au plus petit offset), cohérent mais pas probant.
+
+#### Deux corollaires mesurés sur les films
+
+1. **La longueur d'un enregistrement de slot VACANT se calcule** :
+   `85 + 64 + 11 + 1 + 12 + 8 + 832 + 16 + 128 + 32 + 64 + 46` = **1 299 bits**, plus le bloc de
+   personnalisation, le bloc de queue (352) et le u32 final (32). Sur `HI_1_10_0`/`HI_1_11_0` :
+   **13 619 bits**, et c'est **au bit près** le surplus des deux écarts aberrants laissés par la
+   phase 4. Un tel enregistrement est doublement invisible au balayage (booléens de tête `0/0/0`,
+   XUID nul) ; son seul bit non nul est le champ de 6 bits `sub+0xc35`, qui y vaut **0** là où un
+   slot occupé porte **-1**.
+2. **La transposition de la grammaire du slot par build (§8.2) est portée par le SEUL bloc de
+   personnalisation `sub+0xcc0`** : 1 852 o (`HI_1_12_0`/`HI_1_13_0`), 1 492 (`HI_1_10_0`/
+   `HI_1_11_0`), 1 312 (`HI_1_8_0`/`HI_1_9_0`), 2 052 (`HI_1_4_1`). Mesuré sur les films sans
+   exécutable de ces builds, en coupant l'enregistrement autour du bloc de queue : tout le reste
+   de l'enregistrement vaut **270 bits sur les sept builds**. Deux des trois écarts ferment sur le
+   pas des 24 attaches d'armure de `FUN_1407ebf44` (`360 = 10 × 0x24`, `540 = 15 × 0x24`) ; le
+   troisième (`+200` octets) ne ferme sur aucun pas connu.
+
+**Et l'octet 55 du pied de film n'est pas l'équipe.** Balayage aveugle des 60 octets du bloc
+d'événement (chunk de type 3), trois lectures par octet, contre l'équipe prouvée par la trame :
+**`b37` et `b38` valent l'équipe sur 665 événements sur 665** (14 films), tandis que `b55` — celui
+que `objectiveevents/film.go` lit sous le nom `teamRaw` — **vaut 0 sur les 665**. Plancher de
+bruit mesuré : **4 lectures parfaites sur 180 essayées**, et ce sont les deux de `b37` et les deux
+de `b38`.
+
+Détail, contrôles chiffrés et commandes de rejeu :
+`.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md`.
