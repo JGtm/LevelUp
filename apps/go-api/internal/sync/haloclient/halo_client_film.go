@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sort"
@@ -15,6 +16,8 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games"
 )
 
@@ -87,6 +90,38 @@ func buildChunkURL(blobPrefix, fileRelativePath string) string {
 // le cache disque survit à l'expiration de l'endpoint manifest API (Halo
 // purge les manifestes après quelques semaines/mois mais le cache local
 // conserve les blob_prefixes valides plus longtemps via le CDN).
+//
+// LA VERSION DU FILM VIENT ALORS DU FILM LUI-MÊME (2026-09-12). Le manifeste en cache ne porte
+// pas `FilmMajorVersion` — ce champ était donc posé à 0, et `GetHighlightEventsChunk` servait 0
+// à tout le pipeline de synchronisation dès que le manifeste venait du disque. Sur les 211 films
+// de version 39-40 du cache, 0 fait lire le gamertag douze octets trop tôt
+// (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). La version est lue dans l'en-tête du registre,
+// qui est LE film et vaut donc pour les 1 351 films déjà en cache, sans migration ni champ
+// sérialisé redondant.
+// filmMajorVersionDuCache lit le `FilmMajorVersion` d'un film en cache dans l'en-tête de son
+// registre (`chunk_00`). Registre absent ou illisible : [filmdec.FilmMajorVersionUnknown], et la
+// dégradation est consignée — le décodeur du kill-feed retombe alors sur le découpage historique
+// du gamertag, ce qui est faux sur un film de version 39-40.
+//
+// `filmsource.Inflate` rend le tampon inchangé quand il n'est pas zlib (0 registre compressé sur
+// les 1 351 du cache, mesure du 2026-09-12 — la tolérance ne coûte rien et couvre le cache
+// historique).
+func (c *HaloAPIClient) filmMajorVersionDuCache(ctx context.Context, matchID string) int {
+	registre, err := c.localFilmCache.LoadChunk(matchID, 0)
+	if err != nil {
+		slog.WarnContext(ctx, "film: registre illisible, version de film inconnue",
+			"match_id", matchID, "err", err)
+		return filmdec.FilmMajorVersionUnknown
+	}
+	version, ok := filmdec.FilmMajorVersionFromHeader(filmsource.Inflate(registre))
+	if !ok {
+		slog.WarnContext(ctx, "film: registre absent du cache, version de film inconnue",
+			"match_id", matchID)
+		return filmdec.FilmMajorVersionUnknown
+	}
+	return version
+}
+
 func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (*filmManifest, bool, error) {
 	if !rexUUID.MatchString(matchID) {
 		return nil, false, fmt.Errorf("fetchFilmManifest: matchID invalide %q", matchID)
@@ -97,7 +132,7 @@ func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (
 		manifest := &filmManifest{
 			BlobStoragePathPrefix: cm.BlobPrefix,
 		}
-		manifest.CustomData.FilmMajorVersion = 0 // legacy cache n'a pas la version
+		manifest.CustomData.FilmMajorVersion = c.filmMajorVersionDuCache(ctx, matchID)
 		manifest.CustomData.Chunks = make([]filmChunk, 0, len(cm.Chunks))
 		for _, ch := range cm.Chunks {
 			manifest.CustomData.Chunks = append(manifest.CustomData.Chunks, filmChunk{
