@@ -106328,3 +106328,30 @@ les tags etaient non publiables, contrairement au Gungoose qui n avait que l ico
 redemarrage, sans backfill — la traduction tag -> arme se fait a la lecture. Seule la citation
 « Artilleur de Scorpion » a besoin du recalcul des citations, deja inscrit dans la sequence de
 release Notion. Rien de neuf a y ajouter.
+
+---
+
+## [2026-09-11] Veille : bilan du fork ChaseWoodhams/LevelUp (issues + PR #27/#28) — Complete
+
+**Contexte** : l'utilisateur a demande un avis sur les issues recentes du fork et sur sa PR #28.
+Livrable : `.ai/BILAN_FORK_CHASEWOODHAMS_2026-09-11.md` (inventaire, pas un plan — a relire
+apres le chantier en cours ; un point encore valide devient un plan).
+
+**Decision technique** : rien n'est fusionnable (fork base sur 7.3.1, notre HEAD a 2 570 commits
+au-dessus dont 615 sur replay/filmdec). Le fork est traite comme une source de MESURES et
+d'idees a reimplementer, verifiees sur pieces dans notre arbre avant d'etre retenues.
+
+**Resultats** : six points retenus, tous constates presents chez nous le 2026-09-11 :
+(1) grenades — `locateThrow` attribue le lancer au projectile le plus proche dans le TEMPS, sans
+`Slot` sur la branche projectile (fork : mediane 7,95 m -> 0,10 m apres correctif) ;
+(2) projectiles — repli du quantum Y (saut = etendue Y exacte, 27-35 % des trajectoires), cause
+amont `filmdec` non corrigee par le fork ; (3) en-tete keyframe PAR TYPE (ti=9 = 47 bits),
+equipe presente dans le film (1 873 lectures), grammaires default-state confirmees justes au
+p-code ; (4) `IsFileLockError` libelle Windows EN + `IsFilmGoneErr` (manifeste vivant, blobs
+morts) ; (5) props Forge : UN csv dessine sur toutes les cartes (`MapGeometryDir` sans module) ;
+(6) ~15 emplacements web avec des litteraux FR en dur hors i18n (liste dans le bilan).
+Ecartes : temoin d'arme (caduc derriere le registre d'identite), horloge du match et « une track
+= une vie » (deja couverts), appli study, rendu Blender, conversion English-only (PR #28,
+contraire a la regle n°1 — ses « defauts Go » n'en sont pas chez nous : cascade
+`PreferredLangsForLocale` + normalisation middleware).
+**Prochaine etape** : aucune action code. Reprendre le bilan a la cloture du chantier courant.
