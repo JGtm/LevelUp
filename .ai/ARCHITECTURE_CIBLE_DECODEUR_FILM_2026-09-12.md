@@ -207,7 +207,11 @@ type Profile struct {
     MajorVersion int             // u32 LE à l'offset 0 de chunk_00 (lot G) ; l'API le confirme
     Map          MapQuantEntry   // bornes, largeurs d'axes, IndexW, région jouée (catalogue)
     Highlight    HighlightLayout // gamertag en tête ou décalé (jusqu'à 38, 39-40, dès 41)
-    Keyframe     KeyframeLayout  // largeur d'en-tête PAR TYPE d'entité (mesure ti=9 : 47 bits)
+    Keyframe     KeyframeLayout  // début des composants PAR TYPE d'entité : une RÈGLE, pas un nombre
+                                 // (phase 4) : 108 + 32 + largeurEtatParDefaut(ti) + 32 = 172 + état(ti) ;
+                                 // ti=9 : 172 + 14 = 186, identique sur 5 builds ; ce qui varie par
+                                 // build est l'état par défaut, pas l'en-tête (le « 47 bits » du fork
+                                 // et le « 64 + masque » de la production sont réfutés)
     Movement     MovementLayout  // quantums de delta, largeur d'axe absolue, drapeaux de queue
     // une entrée par famille de globale actuelle, jamais une globale de plus
 }
@@ -296,6 +300,19 @@ d'UN bit par un booléen à `0x0CB45C`. Ce qu'elle apporte, et où cela va dans 
 | Équipe : pas dans `chunk_00` mais dans la TRAME D'ÉTAT (chunks de type 2) : composant `managed-player-team-designator-component` (archétype ti=9 « managed-player », composant i0, 4 bits, à 186 bits du début du record d'image-clé), valeur = désignateur + 1 (0 = aucune équipe) ; écrivain `0x142edbd3c`, lecteur `0x140f581e8`, table de noms `mp_team_designator` | phase 3 (`NOTE_EQUIPE_FILM_2026-09-12.md`) : 16 films sur 18 en accord terme à terme avec `match_participants.team_id` (160/176 slots, 24/24 deux fois en Grande bataille), un seul décalage sur 456 satisfait l'oracle ; FFA lit 0 partout (témoin négatif naturel) | `grammar` (lecture du composant) + `facts` (équipe par slot) | l'équipe réelle dans l'artefact SANS ouvrir de base : aujourd'hui `replay` écrit `Team: -1` en dur et le rejeu hors ligne perd l'équipe (`CarrierTeamUnknown`), d'où les « sans équipe » impossibles ; les entités ti=9 sont les joueurs (8 en arène, 24 en BTB), pas huit équipes (fork chasewoodhams réfuté) |
 | Sept builds au cache (1.4.1 à 1.13), grammaire du slot transposée par une constante par build (−2 880 / −4 320 / +1 600 bits) et en-tête à `16 640 + 4 × entrées manquantes` | `TestSection3SlotProfilBuilds` sur 1 351 films | `profile` | première DONNÉE DE PROFIL mesurée par build : elle entre telle quelle dans la table de la section 5 |
 | Le registre commence à l'octet 8, pas à 0 | fermeture arithmétique `0x8 + 832000 = 0x0CB208` | `source` | voir ci-dessous |
+| (phase 4, `NOTE_PROFIL_PAR_BUILD_2026-09-12.md`) Le décalage 186 du désignateur EST EXPLIQUÉ : `186 = 108 + 32 + 14 + 32`, largeurs lues dans l'exe, vérifié sur 2 424 records ti=9 sur 2 424 sans ajustement. La table d'image-clé est lue par le lecteur d'ÉTAT COMPLET `FUN_142e2bfd0` (aucun masque de présence), pas par le lecteur de record NEW | somme fermée ; deux mots de taille (`n1 = 12`, `n2 = 136 = memset de vtable[0x88]`) ferment gratuitement | `profile` (`Keyframe KeyframeLayout` : largeur d'en-tête PAR TYPE d'entité) | la première valeur de profil DÉRIVÉE et non mesurée ; `n2` est un détecteur de largeur d'état par défaut fausse (constant sur 13 archétypes à état fixe, dispersé sur 21) : un oracle interne neuf pour le gate du principe 6 |
+| Tableau par build (5 builds, 1.4.1 à 1.13) : 186 identique partout ; record ti=9 459 bits (460 en 1.13) ; `n2` 88 (136 en 1.13) ; transposition de la table des slots +1 600 / −4 320 / −2 880 / 0 ; équipe 9 films sur 10 en accord (six BTB à 24/24), FFA à 0 reproduit en 1.8 | `TestProfilBuilds`, oracle en lecture seule sur la sauvegarde | `profile` | PREMIÈRE TABLE DE PROFIL du chantier : une ligne par build, chaque valeur avec sa preuve. Ce qui ne bouge pas d'un build à l'autre est le résultat principal |
+| Lecteur de la table des slots sur les gros rosters : la cause tenait en UN champ (`slot+0x08`, octet signé sur 2 bits que le balayage exigeait nul) ; instrument corrigé | 1 890 écarts sur 1 892 ferment sur les 86 films à plus de 16 joueurs | `source` | roster complet en BTB (24 à 30) ; le résidu (23 XUID de la base absents du flux) est « arrivée en cours de partie », hypothèse |
+
+**Découverte hors périmètre de la phase 4, la plus lourde du chantier, notée et non traitée :
+le modèle de record d'image-clé de la PRODUCTION est faux.** `keyframe_record_walk.go` et
+`TraverseEntity` lisent un en-tête de 64 bits suivi d'un masque ; le jeu lit un état complet
+sans masque (`FUN_142e2bfd0`), et le dépôt porte la bonne forme depuis le lot R7-d dans
+`keyframe_fullstate_loop.go` sans l'avoir branchée. C'est la cause de fond des déraillements des
+lots R3, R4 et R5 (« le désérialiseur du corps d'un record d'image-clé n'est résolu nulle
+part »). Dans la trajectoire, ce correctif est un pas à part entière de `grammar`, AVANT tout
+branchement de l'équipe ou du roster en production : changement de comportement, donc corpus
+gate, équivalence et révision de couche, avec `n2` comme oracle interne.
 
 **Le lecteur de registre est à corriger, mais pas en passant.** `registry.go` lit le registre
 depuis l'octet 0 : l'ORDRE des composants est juste (c'est ce que le décodage utilise), mais
