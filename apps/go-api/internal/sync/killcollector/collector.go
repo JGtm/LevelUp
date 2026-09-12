@@ -70,16 +70,22 @@ import (
 // (`conditionBacklog`, postsync.go) — source du degat, categorie et assistant servis avec le
 // decodage d avant les vehicules. Le bump les rend a nouveau candidates.
 //
-// 2026-09-12 : `killsource-2026-09-05` -> `killsource-2026-09-12`. Le decodeur n a pas bouge,
-// son AMONT si : `analysis.ParseHighlightEvents` resout desormais par mesure le decoupage du
-// gamertag quand la version du film est inconnue (ce que `loadKillFeed` passe en dur). Sur les
-// films de version 39-40 — 210 des 1 351 du cache, mars a novembre 2025 — le gamertag etait lu
-// 12 octets trop tot, le roster s effondrait a 2 noms distincts et les portes `indice < nPlay`
-// rejetaient les trois quarts des dead-states. Couverture mesuree sur cinq films Big Team
-// Battle 2025 : 15.0 -> 97.1, 11.2 -> 100.0, 6.8 -> 94.8, 5.1 -> 97.0, 17.3 -> 82.4 % ; temoins
-// 2024 et 2026 inchanges au dixieme (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Les lignes
-// en base doivent etre redecodees : d ou ce bump. LIMITE : l empreinte ci-dessous ne hache que
-// `killsource/` — un changement d amont comme celui-ci ne l aurait PAS fait sonner.
+// 2026-09-12 : `killsource-2026-09-05` -> `killsource-2026-09-12`. LA VERSION DU FILM EST
+// DESORMAIS LUE. `loadKillFeed` passait `filmMajorVersion = 0` en dur au parseur d events, donc
+// le decoupage « gamertag en tete » pour tous les films ; sur les 211 films de version 39-40 du
+// cache (mars a novembre 2025) le gamertag vit 12 octets plus loin, le roster s effondrait a
+// 2 noms distincts pour 24 a 27 joueurs et les portes `indice < nPlay` rejetaient les trois
+// quarts des dead-states. `loadFilm` lit maintenant cette version dans l en-tete du registre du
+// film (`filmdec.FilmMajorVersion`, u32 LE en tete de `chunk_00`). Couverture mesuree sur cinq
+// films Big Team Battle 2025 : 15.0 -> 97.1, 11.2 -> 100.0, 6.8 -> 94.8, 5.1 -> 97.0,
+// 17.3 -> 82.4 % ; temoins 2024 et 2026 inchanges au dixieme
+// (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Les lignes en base doivent etre redecodees :
+// d ou ce bump.
+//
+// DECOUVERTE, NON TRAITEE : l empreinte ci-dessous ne hache que `killsource/`. Ce correctif a
+// commence dans `internal/analysis/` (parseur) et dans `filmdec` — il n aurait PAS fait sonner
+// le gate si `loadFilm`/`loadKillFeed` n avaient pas bouge aussi. Le gate couvre le decodeur,
+// pas son amont.
 const KillSourceDecoderRev = "killsource-2026-09-12"
 
 // killSourceDecoderFingerprint — L EMPREINTE DES SOURCES DU DECODEUR, FIGEE A COTE DE SA REVISION.
@@ -103,7 +109,12 @@ const KillSourceDecoderRev = "killsource-2026-09-12"
 // `replaybuild` ET `killcollector` — puisse la lire sans dupliquer le littéral " [bot]".
 // AUCUNE LIGNE PRODUITE NE BOUGE (meme chaine, meme usage) : la revision NE bouge PAS, seule
 // l empreinte est recopiee (decision explicite, pas un bump implicite).
-const killSourceDecoderFingerprint = "be2015502cff7e9cfba152eb510b91e5df55e7c0adfbaab681a870ff649e89a3"
+//
+// 2026-09-12 (lot G.2bis) : `loadFilm` pose la version lue du film, `loadKillFeed` la passe au
+// parseur, `prepare` consigne le cas du registre absent. LES LIGNES PRODUITES BOUGENT sur les
+// films de version 39-40 : la revision EST bumpee ci-dessus (a la meme date, deja posee), et
+// l empreinte est recopiee avec elle.
+const killSourceDecoderFingerprint = "974c1aa8d371bb2f555e915487d4d41a2a5f779655d139722e3f41531298295b"
 
 // defaultKillSourceTimeout — la limite de temps PAR MATCH.
 //
