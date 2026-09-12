@@ -106808,3 +106808,89 @@ R7-e et que la valeur 47 du fork chasewoodhams), puis vérifier `d = 186` sur le
 Pour un branchement en production : rendre le lecteur de `chunk_00` robuste aux gros rosters et
 indexer le désignateur par slot ; l'artefact de rejeu pourrait alors porter l'équipe réelle sans
 ouvrir aucune base.
+
+## [2026-09-12] Profil par build, phase 4 : 186 dérivé, builds anciens mesurés, lecteur de roster réparé — Complété
+
+**Statut** : Complété. Travail hors ligne, lecture seule (Ghidra instance partagée, aucun
+renommage ni sauvegarde ; DuckDB lu uniquement dans la sauvegarde
+`data/backups/pre-chaine-2026-09-09/`). Aucun code de production modifié, aucun commit.
+Worktree dédié `LevelUp-wt-section3-chunk00`, branche `wt/section3-chunk00`.
+
+**Décision technique n°1 — EXPLIQUER 186 au lieu de le mesurer, en suivant le LECTEUR.** La
+phase 3 avait mesuré le champ d'équipe à 186 bits du début d'un record d'image-clé sans pouvoir
+le dériver : les trois largeurs d'en-tête du dossier (47 / 64 / 108) ne fermaient pas. La lecture
+de l'exécutable donne la raison : **la table d'image-clé n'est PAS lue par le lecteur de record
+NEW**. Le modèle du dépôt (en-tête 64 bits, état par défaut, MASQUE de présence, composants) a une
+borne supérieure arithmétique de `64 + 22 + 65 = 151` bits — 35 bits trop court, quelle que soit
+la donnée — et la mesure le confirme : il place i0 à 82 sur 80 records sur 80, le masque relu à
+cette position rendant la forme absurde « aucun composant présent ». C'est le lecteur d'ÉTAT
+COMPLET `FUN_142e2bfd0` qui la lit, et sa boucle n'a **aucun masque de présence**.
+
+**La somme ferme sans aucun ajustement** : `186 = 108 (en-tête par entité) + 32 (n1) + 14 (état
+par défaut de ti=9, `FUN_1410d7540`, préfixe de version à 0) + 32 (n2)`, puis le premier
+composant, `R(4)`. Mesure : **186 sur 2 424 records ti=9 sur 2 424**. Deux fermetures
+arithmétiques gratuites la confirment : `n1 = 12` = la taille exacte de la structure que
+`FUN_1410d7540` remplit, et `n2 = 136 = 0x88` = le `memset(dst,0,0x88)` de `vtable[0x88]`. La
+vtable de ti=9 (`0x1436fff28`) a été relue octet à octet ; `vtable+0x30` et `vtable+0x88`
+consomment 0 bit. **Donnée de profil** (`KeyframeLayout`, architecture cible section 5) :
+`début des composants(ti) = 172 + largeur de l'état par défaut(ti)`.
+
+**Décision technique n°2 — vérifier sur les builds anciens plutôt que supposer une transposition.**
+La phase 2 avait montré que la grammaire de `chunk_00` se transpose d'une constante par build
+(-4 320 / -2 880 / +1 600 bits) ; il était naturel d'attendre la même chose sur la trame. **C'est
+faux, et c'est le résultat** : 186 se dérive à l'identique sur cinq builds (`HI_1_4_1`,
+`HI_1_8_0`, `HI_1_10_0`, `HI_1_11_0`, `HI_1_13_0`), l'état par défaut de ti=9 faisant 14 bits et
+`n1` valant 12 partout. Ce qui bouge est `n2` (88 contre 136) et la longueur du record (459 contre
+460). Oracle externe rejoué : **9 films sur 10 en accord TOTAL avec `match_participants.team_id`,
+168 slots sur 176**, dont six Grandes batailles à 24/24, et **0 touche sur 320 décalages voisins**.
+Le dixième est le témoin négatif FFA (`1950c59b`, `HI_1_8_0`, `[0 0 0 0 0 0 0 0]`).
+
+**Décision technique n°3 — traiter la CAUSE du lecteur de roster, pas le symptôme.** Quatre causes
+candidates écrites avant la mesure, puis un relâchement de critère à la fois. Une seule restitue
+le compte : **le champ de 2 bits de `slot+0x08`**, que le balayage exigeait nul alors que
+`FUN_1407ecb08` l'écrit comme un octet SIGNÉ sur 2 bits. La sonde ciblée le nomme
+(`1c4c63c2` xuid 2535450607961405 au bit 11 137 668, `111fa685` xuid 2535454874175468 au bit
+10 812 405 : `b=1/0/0`, `u32=0`, jeton non nul, `deux=1`). Un enregistrement invisible DOUBLE
+l'écart au voisin, et le regroupement terminal perdait alors toute la tête de la table :
+`1c4c63c2` rendait 11 enregistrements au lieu de 24, `a26dbcdb` en rendait 3.
+
+**Résultats observés.** Correction = retrait du critère `deux == 0` plus le filtre de parasite déjà
+établi par la phase 2 (nom non imprimable) ; le seuil de regroupement n'est pas touché. Preuve par
+un oracle 100 % interne — **la grammaire prédit l'écart** : chaque écart doit valoir la longueur
+prédite plus une seule constante par film. Sur les **86 films** du cache à plus de 16 joueurs en
+base : **1 890 écarts sur 1 892 ferment**, 1 978 enregistrements lus contre 1 851 avant, 22 films
+gagnent des enregistrements, 13 en perdent (parasites), 0 film au-delà de la borne de 32 de
+l'écrivain. Sur 400 films, la distribution des comptes se concentre sur 8 (299 vers 351) et 24
+(14 vers 22), les comptes de 9 à 15 disparaissant complètement. L'oracle d'équipe passe de 4 à
+**9 films sur 10** en accord total.
+
+**Résidus publiés** : 2 écarts aberrants sur 1 892 (`b1bcbe24`, `1c5c10cc`), non expliqués ; le
+compte lu vaut le compte d'entités ti=9 sur 59 films sur 86 et tient dans [-1, +1] sur 75 sur 86 —
+ce n'est pas une erreur de lecture (la grammaire ferme sur ces films) mais deux grandeurs
+différentes : la table est le roster à l'écriture de `chunk_00`, la trame compte les joueurs
+PRÉSENTS à l'image-clé. La sonde mesure **23 XUID de la base absents du flux** sur 11 films.
+
+**Découvertes non traitées (règle 7)** : (a) le décalage de 8 octets de `parseRegistry`, toujours
+non tranché, non touché ; (b) **le modèle de record d'image-clé de la PRODUCTION est faux**
+(`keyframe_record_walk.go` + `TraverseEntity` avec en-tête 64 bits et masque) — c'est la cause de
+fond des déraillements des lots R3/R4/R5, et le dépôt portait la bonne forme depuis R7-d
+(`keyframe_fullstate_loop.go`) sans l'avoir branchée ; (c) `n2` est un détecteur gratuit de largeur
+d'état par défaut fausse (constant sur les 13 archétypes à état fixe, dispersé sur les 21 autres) ;
+(d) le pied de film `b37`/`b38` contre `b55`, contradiction datée de l'archive ; (e) la
+réattribution de slot ne se voit PAS dans `chunk_00` — c'est un phénomène de la trame, et un
+décodeur doit indexer le désignateur par SLOT.
+
+**Livrables** : `.ai/V7.5/film_re/NOTE_PROFIL_PAR_BUILD_2026-09-12.md` (dérivation de 186, table
+de profil par build, cause et correction du lecteur, prouvé/hypothèse/réfuté, commandes de rejeu),
+section **8.4** de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
+`apps/go-api/internal/analysis/filmdec/profil_{entete,fermeture,builds,roster,roster_bilan}_research_test.go`.
+Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
+`go test ./internal/analysis/filmdec/` sans garde ok, `go test ./internal/archlint/` ok — le
+ratchet des variables de paquet de `filmdec` n'est pas touché (aucune variable de niveau paquet
+ajoutée).
+
+**Prochaine étape** : brancher la lecture en production. Les trois pièces sont réunies — la
+dérivation de l'offset (`172 + état par défaut`), le lecteur de roster qui tient sur les gros
+rosters et sur les builds anciens, et le pont rang vers xuid. Le geste le plus rentable en amont
+est de corriger le modèle de record d'image-clé du décodeur (découverte b), qui débloquerait bien
+plus que l'équipe.

@@ -374,3 +374,59 @@ dans un chunk de type 8 » est donc **réfutée pour ce corpus**.
 
 Détail, contrôles chiffrés, chemin actuel de la production et ses pertes :
 `.ai/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md`.
+
+### 8.4 Le lecteur d'ÉTAT COMPLET, et l'explication de l'offset 186 (2026-09-12, phase 4)
+
+La phase 3 avait MESURÉ le champ d'équipe à 186 bits du début d'un record d'image-clé sans
+pouvoir l'expliquer : les trois largeurs d'en-tête que le dossier portait (47 du fork, 64 de
+`keyframeHeaderBits`, 108 de `keyframeFullStateHeaderBits`) ne fermaient pas. La phase 4 l'a
+dérivée en suivant le lecteur, et la chaîne ci-dessous est la raison.
+
+**Le point de bascule : la table d'image-clé n'est PAS lue par le lecteur de record NEW.** Le
+modèle du dépôt (en-tête 64 bits, état par défaut, MASQUE de présence, composants) a une borne
+supérieure arithmétique de `64 + 22 + 65 = 151` bits avant le premier composant — **35 bits trop
+court**, quelle que soit la donnée. C'est le lecteur d'ÉTAT COMPLET `FUN_142e2bfd0` qui la lit, et
+sa boucle n'a **aucun masque de présence**.
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| **`0x142e2bfd0`** | **lecteur d'ÉTAT COMPLET** — en-tête PAR ENTITÉ de **108 bits** : `R(32)` id, `R(32)` typeIndex, `R(32)`, `R(4)`, `R(8)` ; puis `R(32) n1` [si `>0` → état par défaut], `R(32)` de contrôle **si `FUN_14076cea8()`**, `R(32) n2` [si `>0` → `vtable[0x88]` puis la boucle] | décompilé ; chaque lecture inline incrémente `*(param_1+0x2c)` de la largeur annoncée |
+| `0x142e29cf8` | **`R(4)`** — le 4ᵉ champ de l'en-tête par entité | désassemblage : `*(param_1+0x2c) += 4` |
+| `0x142e2c690` | la boucle des 64 entrées nommées de l'archétype, **sans masque de présence** | via `FUN_1428e2b68` |
+| `0x14076cea8` | prédicat RUNTIME (`DAT_144c23326` si `FUN_1404f2b4c()`, sinon `DAT_1450e24e8`) qui gate le mot de contrôle de 32 bits — **indécidable statiquement** ; mesuré FAUX sur les films du cache | décompilé |
+| **`0x1436fff28`** | **vtable de l'archétype ti=9 (`managed-player`)**, relue octet à octet | xrefs [DATA] sur `0x1410d7540`, puis `vtable+0x60 == 0x1410d7540` |
+| `0x14111fd9c` (`vtable+0x30`) | `XORPS XMM0,XMM0 ; MOV RAX,RDX ; MOVUPS [RDX],XMM0 ; MOVUPS [RDX+0x10],XMM0 ; MOV dword [RDX],1 ; RET` — **0 bit** | octets relus : `0f57c0 488bc2 0f1102 0f114210 c70201000000 c3` |
+| `0x141071a58` (`vtable+0x88`) | `memset(dst, 0, 0x88)` puis des constantes ; **ne reçoit pas le lecteur de bits → 0 bit** | décompilé |
+| `0x1410d7540` (`vtable+0x60`) | état par défaut de `managed-player` : `FUN_1406cf008` = `R(1)` ; si 1 → `R(8)` ; `R(6)` ; `R(6)` ; `R(1)` — **14 ou 22 bits** | décompilé |
+| **`0x1406cf008`** | **lit UN bit** et le rend : c'est la porte du préfixe de version ET le prédicat « mode film » du corps | `*(param_1+0x2c) += 1` |
+| `0x1406d7610` | le MASQUE de présence du chemin NEW : `R(1)` ; si 1 → `R(64)` ; sinon `R(3)` = compte puis compte × `R(6)` | décompilé — c'est exactement `consumeMask` du dépôt |
+| `0x1408f1aa4` | lecteur de record NEW : `R(6)` typeIndex, `vtable[0x60]`, `vtable[0x88]`, `vtable[0x30]`, puis `FUN_14076cb60` | décompilé |
+| `0x1406cbaa0` | la boucle de records (`param_1` = 1 NEW / 2 DELTA / 3 destruction) ; en mode film, `R(1)` + `R(8)` de version AVANT `FUN_1408f1aa4` | décompilé |
+
+**La somme, pour ti=9, sans aucun ajustement :**
+
+```
+  108   en-tête par entité       FUN_142e2bfd0
++  32   n1                       R(32), testé > 0
++  14   état par défaut          FUN_1410d7540, préfixe de version à 0
++  32   n2                       R(32), testé > 0
+= 186   premier composant        managed-player-team-designator-component, R(4)
+```
+
+**Deux fermetures arithmétiques gratuites confirment l'en-tête de 108 bits**, mesurées sur
+2 424 records ti=9 : `n1 = 12` (= la taille exacte de la structure que `FUN_1410d7540` remplit :
+`uint @ +0`, `uint @ +4`, `bool @ +8`) et `n2 = 136 = 0x88` (= le `memset(dst, 0, 0x88)` de
+`vtable[0x88]`) sur les films du build courant. Un en-tête mal dimensionné lirait deux mots de
+32 bits quelconques.
+
+**Règle de profil qui en découle** (`KeyframeLayout` de l'architecture cible, section 5) :
+`début des composants(ti) = 172 + largeur de l'état par défaut(ti)`, plus 32 si le drapeau de
+contrôle du build est actif. Mesurée identique sur cinq builds (`HI_1_4_1`, `HI_1_8_0`,
+`HI_1_10_0`, `HI_1_11_0`, `HI_1_13_0`).
+
+**Corollaire pour le champ de 2 bits de `FUN_1407ecb08`** (section 8, slot `+0x08`) : il est écrit
+comme un **octet SIGNÉ sur 2 bits**, son domaine est `-2..1` et il a été mesuré à **1** sur des
+enregistrements réels. Le balayage de roster qui l'exigeait nul rendait ces slots invisibles.
+
+Détail, contrôles chiffrés et commandes de rejeu :
+`.ai/V7.5/film_re/NOTE_PROFIL_PAR_BUILD_2026-09-12.md`.
