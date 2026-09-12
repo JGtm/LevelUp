@@ -124,3 +124,13 @@
   (158/16 880). Incident : un `git stash`/`pop` par l'exécutant, sans perte, consigné.
 - 2026-09-12 : revue adversariale UNIQUE de la vague A+B+B-bis+C lancée (3 relecteurs
   aveugles : correction décodeur, couverture de tests par mutation, killcollector + badge).
+- 2026-09-12 : revue de vague rendue — ronde 1 (3 relecteurs) : 0 P0, 0 P1, 6 P2 tous corrigés
+  dans les lots (`3395430b8` échappatoire --geometry + doc porte + banc ; `9e73145b5` en-tête
+  exposé sous CORS ; `13866c98c` libellé WARN) ; ronde 2 (corrections seules) : 0 P0/P1, 1 P2
+  (aucun test ne traversait CORS) corrigé par `0bc007fec`. Fusion dans feat/v75 décidée par
+  l'utilisateur : `c44aa87ca` (bit-projectile, contient decodeur-fork), `380adae61` (badge),
+  `4a1dcfdef` (robustesse-i18n) ; plan du pilote conservé aux conflits, journal en union.
+  Gates sur la branche fusionnée : Go complet exit 0, tsc purgé 0, eslint 0 erreur, vitest
+  7 385 (1 rouge corrigé `af0af06f2` : le test de porte de la route mockait `api.get`),
+  contrat généré stable. Témoin Live Fire `0797ce72` ajouté au corpus (`4694733c4`). Push
+  feat/v75 pour la CI de vague.
