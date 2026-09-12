@@ -278,6 +278,40 @@ Conséquences pour la cible :
   type. Si c'est bien une version de sérialisation par type, le film dit lui-même quand la
   grammaire d'un type change, et le profil peut s'en servir comme clé secondaire.
 
+### 5 bis. 1 La section 3 percée (2026-09-12, même jour) : ce que le film déclare EN PLUS
+
+Note complète : `.ai/V7.5/film_re/NOTE_SECTION3_CHUNK00_2026-09-12.md` (prouvé par deux
+chaînes : écrivain désassemblé dans l'exe, `FUN_14299b198` / `FUN_14299b278`, et mesure sur les
+films). La section 3 n'était pas un format inconnu : c'est le même flux tassé au bit, décalé
+d'UN bit par un booléen à `0x0CB45C`. Ce qu'elle apporte, et où cela va dans la cible :
+
+| Déclaration du film | Preuve | Couche cible | Ce que ça fiabilise |
+|---|---|---|---|
+| Table des joueurs : un enregistrement par slot, XUID en clair sur 64 bits à 85 bits du début, au plus 32 slots | 44/45 XUID sur 6 films, 0/240 leurres ; 8 enregistrements en arène, 24 en Grande bataille sur 250 films | `source` lit la table ; `facts` en fait le roster | le pont slot vers xuid en lecture directe (aujourd'hui inféré par le fil des morts) ; la composition des équipes (les « sans équipe » impossibles) ; la taille réelle de l'escouade (affichage compact BTB sans deviner par le nom du mode) |
+| Horodatage du match (32 bits) | +19 / +29 / +43 s de `start_time_utc` sur 3 témoins | `source` | appariement film ↔ match sans l'API |
+| Identifiant de build et changelist (deux u32) | lus dans la structure de build de l'exe | `profile` (clé) | clé exacte du profil, avec le build en clair |
+| Grammaire complète de l'enregistrement de slot : 16 champs, largeurs relues chez chaque écrivain (`FUN_1407ecd00` et sous-sérialiseurs) ; gamertag à `sub+0xc14`, second champ de nom à `sub+0x1400` | phase 2 (`NOTE_SECTION3_SLOTS_2026-09-12.md`) : longueur prédite = mesurée sur 560/567 enregistrements de 76 films ; gamertag 616/636 contre l'oracle externe | `source` + `facts` | identité par slot en clair, sans pont par les morts |
+| L'ordre des enregistrements EST le `player_index` de production | `filmIndex − rang` constant sur 76/76 films | `facts` | la table explicite remplace `resolvePlayerIndices` (inférence par le fil des morts) |
+| Personnalisation : le format RÉSERVE une structure de tenue de 1 852 o par slot (`variantName`, `coatingName`, `themeName`... écrits par `FUN_1407ec27c`), mais le film ne la porte PAS | prouvé côté exe ; 0 octet non nul sur 81 488 (44 enregistrements, 6 films, 2 builds) | aucune | hypothèse « tenues dans le film » RÉFUTÉE ; les deux classes de longueur viennent de trois listes préfixées (`702 × 8 + 167 × 32 + 32` bits), pas d'un bloc optionnel |
+| Équipe : dans aucun champ court de l'enregistrement (8 des 9 constants sur tout le corpus) | phase 2, fermé par la négative | à chercher chez le CONSOMMATEUR (désérialiseur de `FUN_1407ecd00`) | la composition des équipes reste à obtenir ailleurs : masque de 2 048 bits, liste de 702 octets ou 167 mots, ou source hors section 3 |
+| Sept builds au cache (1.4.1 à 1.13), grammaire du slot transposée par une constante par build (−2 880 / −4 320 / +1 600 bits) et en-tête à `16 640 + 4 × entrées manquantes` | `TestSection3SlotProfilBuilds` sur 1 351 films | `profile` | première DONNÉE DE PROFIL mesurée par build : elle entre telle quelle dans la table de la section 5 |
+| Le registre commence à l'octet 8, pas à 0 | fermeture arithmétique `0x8 + 832000 = 0x0CB208` | `source` | voir ci-dessous |
+
+**Le lecteur de registre est à corriger, mais pas en passant.** `registry.go` lit le registre
+depuis l'octet 0 : l'ORDRE des composants est juste (c'est ce que le décodage utilise), mais
+`kind` et `flags` d'un slot sont ceux du slot voisin, ce que le code décrit lui-même comme « le
+niveau lu un cran plus loin » (`registryBlockTail`) et ce qui explique « kind = 0 sur 1 066 des
+1 067 slots ». C'est un changement de comportement : il passe par le corpus gate et
+l'équivalence, avec une révision de `source`, comme un pas à part entière (à insérer AVANT le
+pas 1, puisque `source` doit lire `chunk_00` juste avant de porter build et version). Le gain
+est réel : une lecture du film exacte, constante et prouvée à l'écrivain, au lieu d'une lecture
+« qui marche » sur la seule partie qu'on utilisait.
+
+Principe qui en découle (à ajouter au 9) : **quand l'écrivain est lisible dans l'exe, la
+grammaire se prend chez l'écrivain, pas par mesure.** La section 3 a résisté deux semaines aux
+statistiques et cédé en une session à l'écrivain. Chaque valeur de profil doit citer, quand elle
+existe, la fonction d'écriture ou de lecture de l'exe qui la fixe.
+
 ## 6. Réutiliser, ne pas réinventer
 
 | Besoin | Existant à réutiliser tel quel | Ce qui manque |

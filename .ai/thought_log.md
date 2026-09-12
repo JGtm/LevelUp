@@ -106615,6 +106615,21 @@ zod à la frontière, empreinte de forme du document, goldens jamais régénér�
 **Prochaine etape.** L'utilisateur transforme le document en plan (skill `plan-execution`) ; le pas 0
 (section 12) est exécutable sans attendre la release. Aucun commit fait (règle 16) : fichier modifié
 dans le worktree partagé `feat/v75`.
+
+**Addendum (même jour, section 3 de chunk_00).** Agent Opus en worktree `LevelUp-wt-section3-chunk00`
+(branche `wt/section3-chunk00`, rien de committé) : section 3 PERCÉE par l'écrivain de l'exe
+(`FUN_14299b198` / `FUN_14299b278`, ancre = xrefs des chaînes de build) : flux tassé au bit décalé
+d'UN bit par un booléen à `0x0CB45C` ; table de 32 slots max avec XUID en clair (44/45 sur 6 films,
+0/240 leurres ; 8 en arène, 24 en BTB sur 250 films) ; horodatage du match ; build id + changelist ;
+registre à l'octet 8 (le lecteur de prod lit `kind`/`flags` du slot voisin : correction = pas à part
+sous corpus gate, écrit en 5 bis.1 du doc d'architecture). Phase 2 lancée (grammaire du slot :
+équipe, gamertag, hypothèse utilisateur « bloc de personnalisation » = les deux classes de longueur
+~28 000 / ~16 600 bits). Correction d'un constat de l'agent : le cache local porte 7 builds
+(`TestD1Builds` sur 1 351 films : HI_1_4_1 → HI_1_13_0), pas 2 ; la vérification multi-build de la
+phase 1 n'a couvert que 1_12/1_13, à étendre à 1_8/1_10/1_11 en phase 3.
+
+**Addendum 2 (phase 2, 21 h 33 à 22 h 15).** Grammaire du slot COMPLÈTE et fermée (16 champs, largeurs relues chez chaque écrivain, longueur prédite = mesurée sur 560/567 enregistrements de 76 films) ; gamertag en clair à `sub+0xc14` (616/636 contre l oracle externe), second champ de nom à `sub+0x1400` (contradiction du 30/08 tranchée : 18/18 touches expliquées) ; ordre des enregistrements = `player_index` de production (76/76 films) ; sept builds vérifiés, grammaire transposée par une constante par build. Hypothèse « personnalisation dans le film » RÉFUTÉE : le format réserve une structure de tenue de 1 852 o par slot (`FUN_1407ec27c` : variantName, coatingName...), mais 0 octet non nul sur 81 488 ; les deux classes de longueur = trois listes préfixées (702 x 8 + 167 x 32 + 32 bits), rôle ouvert. Équipe : dans aucun champ court (fermé par la négative) ; prochaine étape = le CONSOMMATEUR (désérialiseur de `FUN_1407ecd00`). Livrables dans le worktree (non committés) : 6 instruments de recherche, 2 notes `film_re/NOTE_SECTION3_*_2026-09-12.md`, relevé Ghidra 8 à 8.2. Gates verts (gofmt, vet, filmdec, archlint). Doc d architecture 5 bis.1 mis en cohérence.
+
 ## [2026-09-12] Big Team Battle 2025 — l'abstention du décodeur de source de dégât
 
 **Statut** : Complété · Branche `wt/btb-2025-abstention` (base feat/v75 `2f5d165be`)
