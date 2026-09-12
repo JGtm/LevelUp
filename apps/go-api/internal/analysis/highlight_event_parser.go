@@ -96,7 +96,15 @@ type HighlightEvent struct {
 // avec "zlib: invalid header" sur les fresh downloads, alors que les
 // matchs anciens cachés parsaient OK).
 //
-// filmMajorVersion provient de CustomData.FilmMajorVersion dans le manifest.
+// filmMajorVersion a DEUX sources, et elles portent la même valeur : l'u32 little-endian en tête
+// du registre du film (`chunk_00`, cf. `filmdec.FilmMajorVersion`) et le `CustomData.FilmMajorVersion`
+// du manifeste de spectate de l'API. Un appelant qui tient le film lit la première, un appelant
+// du chemin en direct la seconde ; aucun ne la devine.
+//
+// 0 = INCONNUE (film sans registre, manifeste sans le champ) : le découpage historique « gamertag
+// en tête » s'applique, et l'appelant a la charge de consigner la dégradation — sur un film de
+// version 39-40 les gamertags rendus seraient du rembourrage.
+//
 // Retourne les événements parsés ; les events non reconnus sont silencieusement ignorés.
 func ParseHighlightEvents(data []byte, filmMajorVersion int) ([]HighlightEvent, error) {
 	if len(data) == 0 {
