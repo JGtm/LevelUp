@@ -26,7 +26,7 @@
 - [x] B.2 Correctif `locateThrow` (auteur d'abord, toutes les naissances, rayon 4 m, `Slot` publié).
 - [x] B.3 Garde-fou pas projectile > 10 m (`Rest=false`, compteur tronqués) ; mesure |Δy| − étendue Y.
 - [x] B.4 Props Forge par carte (`MapGeometryDir(slug, module)`, `UNATTRIBUTED/` + README, test PathResolver).
-- [~] B.5 Bump SchemaVersion, goldens, gate corpus, recuisson `backfill-replay --only-existing`.
+- [x] B.5 Bump SchemaVersion, goldens, gate corpus, recuisson `backfill-replay --only-existing`.
 
 ## Lot C — robustesse (bilan 4a, 4b) + littéraux FR hors i18n (bilan 6)
 - [x] C.1 `IsFileLockError` libellé Windows EN + test.
@@ -34,9 +34,9 @@
 - [x] C.3 Les ~15 emplacements web du bilan passés par `Record<Locale, T>`.
 
 ## Lot D — tâches Notion 7 puis 6+8 (machine, serveur de dev arrêté)
-- [ ] D.1 `levelup backfill-killsource` (325 matchs sur l'ancien décodeur) ; contrôle par `_latest`.
-- [ ] D.2 `levelup seed citation-mappings` puis `backfill --all --citations-recompute-all`.
-- [ ] D.3 Cocher Notion 6, 7, 8.
+- [x] D.1 `levelup backfill-killsource` (325 matchs sur l'ancien décodeur) ; contrôle par `_latest`.
+- [x] D.2 `levelup seed citation-mappings` puis `backfill --all --citations-recompute-all`.
+- [x] D.3 Cocher Notion 6, 7, 8.
 
 ## Lot E — tâche Notion 9 : déplacement pur du décodeur sous `internal/games/halo_infinite/film/`
 - [ ] E.1 Ratchet « `analysis/` n'importe pas `games/{slug}` » posé avant.
@@ -134,3 +134,19 @@
   7 385 (1 rouge corrigé `af0af06f2` : le test de porte de la route mockait `api.get`),
   contrat généré stable. Témoin Live Fire `0797ce72` ajouté au corpus (`4694733c4`). Push
   feat/v75 pour la CI de vague.
+- 2026-09-12 : recuisson du parc au schéma 53 jouée (`backfill-replay --only-existing`, serveur
+  arrêté, 76 artefacts, 0 erreur, journal scratchpad `recuisson_53.log`) : 76/76 au schéma 53,
+  338 vols tronqués comptés en couverture, lancers par projectile 6 891 dont 6 549 avec slot
+  (95 %), props seulement sur Cliffhanger (382). B.5 `[x]`. Lot D lancé en chaîne :
+  `backfill-killsource` (1 210 films : `IsolationDecoderRev` montée le 10-09, tout le parc est
+  périmé sur l'unité « faits d'isolement », pas 325) puis `seed citation-mappings` puis
+  `backfill --all --citations-recompute-all` (journal `lot_d_chaine.log`).
+- 2026-09-12 : lot D clos. `backfill-killsource` 12:10 -> 14:50 (1 210 films décodés, 1 384 matchs
+  crédités, 138 806 morts), `seed citation-mappings` (2 insérées, 104 mises à jour),
+  `backfill --all --citations-recompute-all` (JGtm 1 147, Madina97294 1 268, Chocoboflor 580,
+  XxDaemonGamerxX 39 matchs ; V1-V4 OK ; 5 profils sans base sautés). Serveur relancé (health
+  200). Notion 6, 7, 8 cochés avec les chiffres. **Contrôle `_latest` : 27 807 morts sans source,
+  INCHANGÉ** (12 047 = 10,3 % sur le décodeur courant ; 15 326 sur 102 matchs restés en
+  `killsource-2026-07-31`, sans film en cache, datés 2023 -> 03/2026, films expirés). Les 223
+  matchs repassés n'ont gagné que 8 % d'attribution : l'hypothèse Notion du 10-09 n'est pas
+  confirmée — à instruire (Découverte), pas dans ce plan.
