@@ -165,6 +165,13 @@ func (b *Builder) WithGeometryDir(dir string) *Builder {
 		return b
 	}
 	slog.Info("replaybuild: géométrie de carte imposée", "objets", len(objs), "sansEmprise", skipped, "dir", dir)
+	// UN REPERTOIRE IMPOSE SANS PROP LISIBLE IMPOSE QUAND MEME ZERO PROP : `LoadGeometry` rend nil
+	// (pas d'erreur) quand le CSV manque ou ne passe aucune emprise, et `geometryFor` distingue
+	// « impose » de « resolu par carte » sur le seul nil. Laisser nil ici rendait la main a la
+	// resolution par carte en contradiction avec le journal (revue de vague, 2026-09-12).
+	if objs == nil {
+		objs = []replay.MapObject{}
+	}
 	b.geometryOverride = objs
 	return b
 }
@@ -174,8 +181,9 @@ func (b *Builder) WithGeometryDir(dir string) *Builder {
 // SON ABSENCE EST LE CAS NOMINAL, et c'est pourquoi elle est journalisée en Debug et non en
 // Warn : personne n'a extrait les props des 79 cartes du catalogue de bornes, et un
 // avertissement par match d'une carte non extraite noierait le journal d'une passe de masse.
-// Seul un catalogue de TYPES illisible — une panne du titre, pas de la carte — mérite un Warn,
-// et c'est `LoadGeometry` qui le distingue.
+// `LoadGeometry` ne distingue que l'ABSENCE du CSV de carte (nil, sans erreur) ; toute autre
+// erreur — catalogue de TYPES illisible (panne du titre) comme CSV de carte present mais
+// corrompu — remonte telle quelle et merite un Warn, avec `dir` et `module` pour dire lequel.
 func (b *Builder) geometryFor(module string) []replay.MapObject {
 	if b.geometryOverride != nil {
 		return b.geometryOverride

@@ -8,8 +8,8 @@ package filmdec
 //
 // CE QUE L'INSTRUMENT FAIT. Il rejoue le balayage des records d'objet du monde en gardant, pour
 // chaque échantillon, la POSITION DE BIT du début d'i0, les bits de PORTE et le quantum BRUT de
-// chaque axe. Il le fait DEUX FOIS sur le même film : avec la porte de PRODUCTION (3 bits,
-// littéral de `decodeWorldObjectPos`) et avec la porte que le CATALOGUE impose
+// chaque axe. Il le fait DEUX FOIS sur le même film : avec la porte ANCIENNE (3 bits, le
+// littéral de `decodeWorldObjectPos` AVANT le correctif BB.2) et avec la porte que le CATALOGUE impose
 // (2 + regionIndexBits). Puis il compte les pas impossibles de chaque lecture et publie, pour
 // les premiers d'entre eux, les bits bruts des deux points consécutifs.
 //
@@ -112,37 +112,37 @@ func bitProjMesureFilm(t *testing.T, parc string, cat *MapQuantCatalog, f bitPro
 		t.Skipf("film %s absent : %v", f.id, err)
 	}
 	rng := entry.Range()
-	porteProd := 3                                        // littéral de decodeWorldObjectPos
+	porteAncienne := 3                                    // ancien littéral de decodeWorldObjectPos, corrigé au BB.2 (porte = 2 + IndexW)
 	porteCat := 2 + int(entry.EffectiveRegionIndexBits()) // precHigh + index-sel + index de région
 
 	t.Logf("=== %s / %s (module %s) ===", f.id, f.carte, entry.Module)
 	t.Logf("bornes X[%.3f;%.3f] Y[%.3f;%.3f] Z[%.3f;%.3f]  étendues %.3f / %.3f / %.3f",
 		entry.Min[0], entry.Max[0], entry.Min[1], entry.Max[1], entry.Min[2], entry.Max[2],
 		entry.Max[0]-entry.Min[0], entry.Max[1]-entry.Min[1], entry.Max[2]-entry.Min[2])
-	t.Logf("largeurs d'axe %d/%d/%d · région attendue %d sur %d bits · porte production %d bits, porte catalogue %d bits",
+	t.Logf("largeurs d'axe %d/%d/%d · région attendue %d sur %d bits · porte ancienne %d bits (litteral 3, corrige au BB.2), porte catalogue %d bits",
 		entry.AxisWidths[0], entry.AxisWidths[1], entry.AxisWidths[2],
-		entry.Region, entry.EffectiveRegionIndexBits(), porteProd, porteCat)
+		entry.Region, entry.EffectiveRegionIndexBits(), porteAncienne, porteCat)
 
 	band := worldObjectSlotBand(film, ProjectileTypeIndex)
 	if len(band) == 0 {
 		t.Skipf("aucun slot ti=%d dans les images-clés de %s", ProjectileTypeIndex, f.id)
 	}
-	// PORTE ATTENDUE. La production exige les 3 bits NULS. À la porte du catalogue, les deux
+	// PORTE ATTENDUE. L'ancienne porte exigeait les 3 bits NULS. À la porte du catalogue, les deux
 	// premiers bits (precHigh, index-sel) restent nuls mais l'index de région vaut la région
 	// JOUÉE de la carte : sur Live Fire, 1. Exiger zéro y écarterait tous les records.
-	prod := bitProjBalaye(film, band, entry.AxisWidths, rng, porteProd, 0)
+	prod := bitProjBalaye(film, band, entry.AxisWidths, rng, porteAncienne, 0)
 	cata := bitProjBalaye(film, band, entry.AxisWidths, rng, porteCat, uint64(entry.Region))
 	t.Logf("records retenus : porte %d bits -> %d · porte %d bits -> %d",
-		porteProd, len(prod), porteCat, len(cata))
+		porteAncienne, len(prod), porteCat, len(cata))
 
 	pProd := bitProjPas(prod)
 	pCata := bitProjPas(cata)
 	t.Logf("PAS IMPOSSIBLES (> %.0f m) : porte %d bits -> %d/%d (%.2f %%) · porte %d bits -> %d/%d (%.2f %%)",
 		bitProjPasMaxM,
-		porteProd, bitProjCompte(pProd), len(pProd), 100*bitProjPart(pProd),
+		porteAncienne, bitProjCompte(pProd), len(pProd), 100*bitProjPart(pProd),
 		porteCat, bitProjCompte(pCata), len(pCata), 100*bitProjPart(pCata))
 
-	bitProjDetaille(t, entry, prod, porteProd, porteCat)
+	bitProjDetaille(t, entry, prod, porteAncienne, porteCat)
 }
 
 // bitProjBalaye rejoue `scanProjectileRecords` avec une porte de largeur LIBRE, et garde les
@@ -261,7 +261,7 @@ func bitProjPart(ps []bpPas) float64 {
 
 // bitProjDetaille publie, pour les premiers pas impossibles de la lecture de PRODUCTION, les
 // quanta bruts des deux points et le bit qui les sépare. C'est la pièce de la preuve.
-func bitProjDetaille(t *testing.T, e MapQuantEntry, prod []bpEchantillon, porteProd, porteCat int) {
+func bitProjDetaille(t *testing.T, e MapQuantEntry, prod []bpEchantillon, porteAncienne, porteCat int) {
 	t.Helper()
 	ps := bitProjPas(prod)
 	sort.Slice(ps, func(i, j int) bool {
@@ -272,7 +272,7 @@ func bitProjDetaille(t *testing.T, e MapQuantEntry, prod []bpEchantillon, porteP
 	})
 	max := bitProjDetail()
 	t.Logf("--- pas impossibles détaillés (porte %d bits ; la porte catalogue est %d) ---",
-		porteProd, porteCat)
+		porteAncienne, porteCat)
 	t.Logf("%-6s %-5s %-10s | %-22s | %-22s | %s",
 		"slot", "gen", "bit i0", "quanta A (x/y/z)", "quanta B (x/y/z)", "XOR par axe")
 	n := 0

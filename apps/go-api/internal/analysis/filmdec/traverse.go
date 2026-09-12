@@ -308,7 +308,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// L'ancien commentaire affirmait « largeurs world-object UNIVERSELLES, PAS map-specific ».
 		// C'est RÉFUTÉ : ce sont les largeurs DE LA CARTE, les mêmes que celles du bipède
 		// (13/13/14 sur Cliffhanger), et les bornes de déquantification sont le même AABB de BSP.
-		// Seule la PORTE diffère du bipède : 3 bits ici (precHigh + index-sel + index de région)
+		// Seule la PORTE diffère du bipède : 2 + largeur d'index de région ici (precHigh + index-sel + index, soit 3 bits sur 78 cartes et 4 sur Live Fire — lot BB.2, 2026-09-12)
 		// contre 5 là-bas. C'est ce qui explique la contradiction « i0 45 vs 47 bits » qui
 		// traînait dans les notes : ce ne sont pas deux mesures du même champ, ce sont deux
 		// archétypes différents.

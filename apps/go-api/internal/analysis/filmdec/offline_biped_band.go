@@ -54,7 +54,7 @@ func ScanFilmBipedPositionsForBand(dir string, band SlotBand, opt ScanFilmOption
 // (`ti=35`) et le VÉHICULE (`ti=40`). Le registre du film le dit, et la mesure du cadrage
 // véhicules du 2026-08-31 le confirme sur pièces : sur la même bande de slots et le même film,
 // cette grammaire rend 99,4 à 100 % de pas de trajectoire sous 35 m/s, celle des objets du
-// monde (porte de 3 bits, `ScanWorldObjects`) 21,2 à 41,8 %. Le décodeur savait donc déjà
+// monde (porte de 2 + IndexW bits, `ScanWorldObjects`) 21,2 à 41,8 %. Le décodeur savait donc déjà
 // lire un véhicule ; il lui manquait ce point d'entrée, `bipedSlotBand` filtrant en dur
 // `ti=35`. Rien de la grammaire n'est paramétré ici : seule la bande l'est.
 //

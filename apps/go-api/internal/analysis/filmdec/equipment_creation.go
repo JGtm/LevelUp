@@ -290,7 +290,7 @@ type equipCreationWalk struct {
 	// deser est le déserialiseur du default-state de cet archétype ; nil vaut celui de `ti=37`.
 	deser func(*BitReader)
 	// posDecode décode et VALIDE le composant i0 à l'offset donné (gate de sélectivité). nil vaut
-	// le chemin OBJET DU MONDE (decodeWorldObjectPos, porte 3 bits). L'archétype VÉHICULE (`ti=40`)
+	// le chemin OBJET DU MONDE (decodeWorldObjectPos, porte 2 + IndexW bits). L'archétype VÉHICULE (`ti=40`)
 	// porte un i0 en PRÉCISION-DYNAMIQUE (porte 5 bits, biped) : il passe ici decodeBipedI0Pos
 	// (vehicle_creation.go). Sans ce paramètre le gate lit i0 avec la mauvaise grammaire et n'est
 	// plus sélectif — mesuré : le témoin fantôme rendait alors PLUS de records que la vraie bande.
@@ -322,7 +322,7 @@ func (w equipCreationWalk) defaultState() func(*BitReader) {
 }
 
 // decodePos VALIDE et décode i0 à l'offset at : le décodeur paramétré (dyn.-préc. pour `ti=40`)
-// s'il est fourni, sinon le chemin objet du monde (porte 3 bits).
+// s'il est fourni, sinon le chemin objet du monde (porte 2 + IndexW bits).
 func (w equipCreationWalk) decodePos(pay []byte, at int) ([3]float32, bool) {
 	if w.posDecode != nil {
 		return w.posDecode(pay, at)
