@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
 

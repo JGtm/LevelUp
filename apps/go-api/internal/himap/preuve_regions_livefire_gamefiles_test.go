@@ -29,7 +29,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // liveFireLevelID est le level_id de Live Fire (preuve de module, TestPreuveLevelIDCartes).

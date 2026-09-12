@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // cartesOrphelines : les cartes du depot sans fichier-lien de canevas. Une entree sort de

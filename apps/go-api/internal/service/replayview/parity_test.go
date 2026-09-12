@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/service/replayview"
 )
 
@@ -53,7 +53,7 @@ var champsNonServis = map[string]string{}
 // et ce n'est pas un oubli.
 var typesNonServis = map[string]string{}
 
-// racines : les trois corps de route derives du monde `analysis/replay`.
+// racines : les trois corps de route derives du monde `games/halo_infinite/film/replay`.
 var racines = []struct {
 	nom    string
 	stocke reflect.Type

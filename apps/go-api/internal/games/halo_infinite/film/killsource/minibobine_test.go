@@ -19,7 +19,7 @@ package killsource
 // CE QUE LA BOBINE EST : un PREFIXE CONTIGU du film `000d5950` (chunks 00 a 05, en-tete compris)
 // suivi de son chunk HIGHLIGHT. Le prefixe est contigu et part du debut PARCE QUE LE DECODEUR
 // L EXIGE : le monde se construit par accumulation depuis l en-tete, et une bobine faite de
-// paquets cherry-pickes — le patron de la mini-bobine du rejeu, `internal/analysis/replay` — ne
+// paquets cherry-pickes — le patron de la mini-bobine du rejeu, `internal/games/halo_infinite/film/replay` — ne
 // decode ici plus AUCUNE mort. Mesure a l appui : en-tete + chunk 01 + highlight (644 Ko) rend
 // ZERO candidat ; le prefixe 00-03 en rend 6 ; le prefixe 00-05 en rend 10. C est ce dernier qui
 // est retenu, parce que c est lui qui atteint la ligne `01:12`.

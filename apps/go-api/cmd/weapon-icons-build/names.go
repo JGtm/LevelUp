@@ -31,7 +31,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // gameBinary rend le binaire du jeu, c'est-à-dire LE PLUS GROS des candidats : le fichier à

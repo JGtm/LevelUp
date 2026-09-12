@@ -149,7 +149,7 @@ const (
 	// (`sync/killcollector`, G.2bis) mais répond à une troisième question (OÙ, pas QUI
 	// ni QUOI), et elle a ses propres réserves — plancher de couverture mesuré 75,8 %
 	// (36 artefacts, 1 994 couples), tolérance 120 ms, positions absentes JAMAIS
-	// approchées (règle de prudence, cf. analysis/replay/killpos.go).
+	// approchées (règle de prudence, cf. games/halo_infinite/film/replay/killpos.go).
 	//
 	// Halo Infinite : supported (décodeur du film + catalogue de bornes de
 	// déquantification par carte, 79 cartes). Halo 5 : ABSENTE — ses positions sont
@@ -210,7 +210,7 @@ const (
 	// (`film.usage_summary`, `film.bomb_stats`, la timeline d'objectif et les positions
 	// keyframe servies à la Match View) sont les projections.
 	//
-	// Halo Infinite : supported (décodeur `analysis/filmdec` + `replaybuild`). Halo 5 :
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/filmdec` + `replaybuild`). Halo 5 :
 	// not_exposed — autre format de film, aucun décodeur, donc aucun artefact possible.
 	//
 	// ⚠ ELLE GOUVERNE LA PRODUCTION, ET L'AFFICHAGE SUIT (décision utilisateur du

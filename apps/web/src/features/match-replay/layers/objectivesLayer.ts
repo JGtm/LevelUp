@@ -285,7 +285,7 @@ export interface ObjectivePulse {
  *
  * `a.t` EST DÉJÀ UNE FRAME DU DOCUMENT — LE CLIENT NE RETRANCHE RIEN. C'est le contrat du
  * champ, écrit côté Go : `ObjectiveAction.T` est « l'index de frame, sur le même axe que
- * Point.T et Shot.T » (`analysis/replay/objectives.go`), et c'est `buildObjectiveActions`
+ * Point.T et Shot.T » (`games/halo_infinite/film/replay/objectives.go`), et c'est `buildObjectiveActions`
  * qui pose l'instant sur la grille via `scoreClock.frameOf` — laquelle RETRANCHE l'origine
  * (`build_score.go`, `replayScoreClock` : `originMS = originMSOf(doc.OriginMs, …)`).
  *

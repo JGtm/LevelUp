@@ -14,7 +14,7 @@
 // l'appelant, qui les résout où il veut (registre partagé, flag CLI, fichier). C'est ce qui le
 // garde utilisable hors ligne, et c'est la même frontière que `replay.Options.Objectives`.
 //
-// Il décode le film à DEUX endroits, et pour deux grammaires différentes : `analysis/replay`
+// Il décode le film à DEUX endroits, et pour deux grammaires différentes : `games/halo_infinite/film/replay`
 // pour les positions et les événements de réplication (sérialisé par le verrou process de
 // `filmdec`), `analysis/objectiveevents` pour les enregistrements d'entité d'où sortent la
 // courbe de score et les actions d'objectif (cf. matchfacts.go).
@@ -31,12 +31,12 @@ import (
 	"strconv"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/games/mappings"
@@ -424,7 +424,7 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 // FAIT (cf. decodeKillSource, kills.go) — ce fichier ne décode plus rien lui-même depuis le
 // lot F.1 (jointure des frags sous effet actif), qui a besoin du MÊME `*killsource.Result`.
 //
-// POURQUOI CE DÉCODAGE-CI VIT DANS `replaybuild`, ET PAS DANS `analysis/replay`. La source du
+// POURQUOI CE DÉCODAGE-CI VIT DANS `replaybuild`, ET PAS DANS `games/halo_infinite/film/replay`. La source du
 // dégât fatal se lit dans le composant dead-state du film, et ce décodage a UN seul
 // propriétaire dans le dépôt (`film/killsource`, avec ses golden et ses ancres Theater).
 // `analysis/` est title-agnostic et n'a pas à le connaître ; ce paquet, lui, est la couche

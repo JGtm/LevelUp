@@ -107,7 +107,7 @@ schema_version = 6
 "CTF:Arena Neutral Flag"     = 5
 # Strongholds : 200 en social, 250 en classe (plateaux mesures ; c'est le score AFFICHE
 # par le jeu, celui que porte la courbe du film — l'API compte des ticks, cf.
-# analysis/replay/document_score.go).
+# games/halo_infinite/film/replay/document_score.go).
 "Strongholds:Arena"          = 200
 "Arena:Strongholds"          = 200
 "Ranked:Strongholds"         = 250
@@ -159,7 +159,7 @@ schema_version = 6
 # mesure sur le canal de PROPRIETE (une reconstruction), et la tentation etait de le monter pour
 # que la jauge tombe pleine pile au point. La voie propre etait de changer de SOURCE, pas de
 # corriger la constante. Detail des trois lots : `.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`
-# §E1, §E1-bis et §E1-ter ; instrument `internal/analysis/replay/colline_statborg_e1bis_test.go`.
+# §E1, §E1-bis et §E1-ter ; instrument `internal/games/halo_infinite/film/replay/colline_statborg_e1bis_test.go`.
 #
 # VOLONTAIREMENT ABSENTS :
 #   - "Ranked:King of the Hill" : les 3 matchs classes du registre sont INEXPLOITABLES (deux

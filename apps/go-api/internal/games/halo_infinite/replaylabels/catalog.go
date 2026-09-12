@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/games/weapons"
 )

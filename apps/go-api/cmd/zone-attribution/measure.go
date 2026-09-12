@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"strconv"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/analysis/replay"
-	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // runner porte le contexte commun a tous les matchs mesures.

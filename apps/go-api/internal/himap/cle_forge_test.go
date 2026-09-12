@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // regexpMapID : la forme d'un asset UGC (uuid v4 minuscule) — la cle de publication Forge.

@@ -41,7 +41,7 @@ package killsource
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // health : la mesure complete.

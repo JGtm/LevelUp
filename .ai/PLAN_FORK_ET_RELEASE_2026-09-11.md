@@ -40,7 +40,7 @@
 
 ## Lot E — tâche Notion 9 : déplacement pur du décodeur sous `internal/games/halo_infinite/film/`
 - [x] E.1 Ratchet « `analysis/` n'importe pas `games/{slug}` » posé avant.
-- [ ] E.2 Commit de déplacement seul ; suite Go complète + goldens identiques.
+- [x] E.2 Commit de déplacement seul ; suite Go complète + goldens identiques.
 - [ ] E.3 Cocher Notion 9.
 
 ## Lot F — tâche Notion 10 : nettoyage worktrees/branches, bascule dossier LevelUp
@@ -50,6 +50,14 @@
 - [ ] F.4 Bascule vers `LevelUp` avec l'utilisateur ; cocher Notion 10.
 
 ## Découvertes (non traitées)
+- Lot E : `no_analysis_type_in_http_body_test.go` (ratchet « aucun type d'`internal/analysis/`
+  en corps de route Huma ») perd de la portée avec le déplacement — les types du décodeur
+  sortent de son périmètre. Il reste vert (son unique entrée d'allowlist vise
+  `analysis/patterns`, et le lot A avait déjà projeté les corps du rejeu sur
+  `domain/replaydoc`), mais la règle ne les surveille plus.
+- Lot E : `internal/analysis/sessionusage/usage_outcomes.go` est le DERNIER franchissement de
+  production `analysis/` -> `games/{slug}` (les 4 autres sont des tests). Son portage est un
+  déplacement de types vers `domain/` — pas dans ce plan.
 - feat/citations-artilleur-vehicules était en retard de 161 commits sur feat/v75 ; le pilote s'est
   replacé sur feat/v75 (worktree `LevelUp-wt-v75` détaché, à supprimer au lot F).
 
@@ -150,3 +158,19 @@
   `killsource-2026-07-31`, sans film en cache, datés 2023 -> 03/2026, films expirés). Les 223
   matchs repassés n'ont gagné que 8 % d'attribution : l'hypothèse Notion du 10-09 n'est pas
   confirmée — à instruire (Découverte), pas dans ce plan.
+- 2026-09-12 : lot E rendu (`wt/decodeur-sous-titre`, `5a0d1ec91` + le commit de déplacement).
+  E.1 ratchet `analysis/` -> `games/{slug}` posé AVANT (parse des imports, allowlist datée,
+  plancher de 300 fichiers, mutation de contrôle jouée) : 5 franchissements au total, dont
+  UN SEUL en production (`analysis/sessionusage`). E.2 déplacement pur de `filmdec`, `replay`
+  et `replay/mapvar` (938 fichiers, 245 928 lignes) sous `internal/games/halo_infinite/film/`,
+  où ils rejoignent leurs cinq voisins déjà en place : 1 240 fichiers touchés, 981 renommages
+  (525 à 100 %, aucun ajout ni suppression), 1 055 insertions / 1 057 suppressions. Noms de
+  paquets Go inchangés. Trois pièges réels : 6 chemins écrits segment par segment
+  (`filepath.Join("analysis", "replay")`, invisibles à une réécriture d'import), 19 remontées
+  relatives à réajuster (le déplacement ajoute deux niveaux), et l'empreinte du décodeur de
+  kills — recopiée SANS bumper `KillSourceDecoderRev`, décision écrite dans le code (bumper
+  aurait réinscrit les 1 210 films du parc au backlog pour un renommage de répertoire).
+  Gates : Go complet + intégration verts, lint 0 issue, goldens identiques (aucun fichier
+  golden dans le diff), contrat généré stable, tsc 0, garde-rail web des chemins Go vert,
+  gate corpus sans perte. Rapport : `.ai/RAPPORT_LOT_E_DECODEUR_SOUS_TITRE_2026-09-12.md`.
+  E.3 « cocher Notion 9 » laissé au pilote.

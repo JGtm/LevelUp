@@ -40,8 +40,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"levelup/go-api/internal/analysis/replay"
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/himap"
 )
 

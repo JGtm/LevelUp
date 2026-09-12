@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // TestPrendreVerrouCreeLeDossierEtNAttendPas — le premier rattrapage d'un titre ne doit ni

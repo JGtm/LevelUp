@@ -5,7 +5,7 @@
 //
 // Trois endroits nomment les memes valeurs, et ils ne peuvent pas partager une constante :
 //
-//	internal/analysis/replay        les PRODUIT (CauseVie*, NomPar*) — paquet d'analyse pur ;
+//	internal/games/halo_infinite/film/replay        les PRODUIT (CauseVie*, NomPar*) — paquet d'analyse pur ;
 //	internal/persist                les VALIDE (CauseFin*, NommePar*) — `persist` ne doit pas
 //	                                importer un paquet d'analyse pour verifier une colonne ;
 //	internal/migration              les DOCUMENTE dans le DDL de `match_lives`.
@@ -32,7 +32,7 @@ var sourcesDesCauses = []struct {
 	fichier string
 	prefixe string
 }{
-	{"internal/analysis/replay/lives.go", "CauseVie"},
+	{"internal/games/halo_infinite/film/replay/lives.go", "CauseVie"},
 	{"internal/persist/lives_persister.go", "CauseFin"},
 }
 
@@ -43,7 +43,7 @@ var sourcesDesNommages = []struct {
 	// Le REPERTOIRE, pas le seul lives.go : le registre d'identite (E2, P2) declare ses voies
 	// dans identity_registry_*.go, et le garde qui ne lisait que lives.go a laisse passer
 	// quatre voies inconnues du persister (736 films refuses le 2026-09-09).
-	{"internal/analysis/replay", "NomPar"},
+	{"internal/games/halo_infinite/film/replay", "NomPar"},
 	{"internal/persist/lives_persister.go", "NommePar"},
 }
 

@@ -33,7 +33,7 @@ package migration
 // `weaponPads[].weapon` mélange familles d'arme (huit hexa) et noms canoniques de bonus
 // (`powerup_camo`, ...). La frontière est `replay.PadWeaponFamilyKey` et elle seule : les
 // bonus vont dans `powerup_pickups_json` (anonymes par construction), JAMAIS dans
-// `pad_pickups`. Cf. internal/analysis/replay/usage_summary.go.
+// `pad_pickups`. Cf. internal/games/halo_infinite/film/replay/usage_summary.go.
 //
 // ─── APPEND-ONLY, MÊME UNITÉ DE GÉNÉRATION QUE match_weapon_hit_distance ───────────────────
 //

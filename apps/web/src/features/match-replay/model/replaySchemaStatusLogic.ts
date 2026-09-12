@@ -5,7 +5,7 @@
  * DEUX NOMBRES, JAMAIS CONFONDUS : `schemaVersion` (le corps) est celle de l'ARTEFACT LU,
  * figée à la cuisson ; `latestSchemaVersion` (l'en-tête `X-Replay-Latest-Schema-Version`,
  * posé à la frontière transport dans `lib/replay/queries.ts`) est celle que le PRODUCTEUR
- * écrirait s'il cuisait ce match maintenant (`analysis/replay.SchemaVersion` côté Go). Le
+ * écrirait s'il cuisait ce match maintenant (`games/halo_infinite/film/replay.SchemaVersion` côté Go). Le
  * document jumeau servi (`domain/replaydoc`) ne porte aucun numéro de version — cf. son
  * `doc.go` — cette seconde valeur ne peut donc venir que du transport, jamais du corps.
  *

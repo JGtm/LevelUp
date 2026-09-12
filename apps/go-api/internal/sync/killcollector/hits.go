@@ -39,8 +39,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/ingest"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"

@@ -195,7 +195,7 @@ jobs:
           cache-dependency-path: apps/go-api/go.sum
 
       - name: go vet (domain + analysis — sans CGo)
-        run: go vet ./internal/domain/... ./internal/analysis/...
+        run: go vet ./internal/domain/... ./internal/analysis/... ./internal/games/halo_infinite/film/filmdec/... ./internal/games/halo_infinite/film/replay/...
         env:
           CGO_ENABLED: "0"
 
@@ -231,7 +231,7 @@ jobs:
           CGO_ENABLED: "1"
 
       - name: go test (unit, no CGo DB)
-        run: go test ./internal/domain/... ./internal/analysis/... ./contracttest/... -timeout 60s -count=1
+        run: go test ./internal/domain/... ./internal/analysis/... ./internal/games/halo_infinite/film/filmdec/... ./internal/games/halo_infinite/film/replay/... ./contracttest/... -timeout 60s -count=1
         env:
           CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"

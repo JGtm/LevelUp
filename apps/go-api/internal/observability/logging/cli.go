@@ -8,7 +8,7 @@ import (
 
 // ConsoleLevelFromEnv lit le niveau de CONSOLE dans LEVELUP_LOG_LEVEL (defaut INFO) — la meme
 // convention que le serveur (`cmd/server/main.go`). C'est `debug` qui fait apparaitre les lignes
-// de mesure (durees de balayage de la cuisson, cf. `analysis/replay/observe.go`).
+// de mesure (durees de balayage de la cuisson, cf. `games/halo_infinite/film/replay/observe.go`).
 //
 // ELLE VIT ICI, ET PAS DANS CHAQUE CLI : la table etait deja recopiee dans `cmd/replay-build` et
 // s'appretait a l'etre dans `cmd/replay-equiv` — a la troisieme copie la regle du depot impose

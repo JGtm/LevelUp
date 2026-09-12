@@ -48,8 +48,8 @@ import (
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -92,7 +92,14 @@ const KillSourceDecoderRev = "killsource-2026-09-05"
 // `replaybuild` ET `killcollector` — puisse la lire sans dupliquer le littéral " [bot]".
 // AUCUNE LIGNE PRODUITE NE BOUGE (meme chaine, meme usage) : la revision NE bouge PAS, seule
 // l empreinte est recopiee (decision explicite, pas un bump implicite).
-const killSourceDecoderFingerprint = "be2015502cff7e9cfba152eb510b91e5df55e7c0adfbaab681a870ff649e89a3"
+//
+// 2026-09-12 (lot E.2) : DEPLACEMENT PUR de `filmdec` et `replay` d `internal/analysis/` vers
+// `internal/games/halo_infinite/film/` (ADR 0012). Seules les LIGNES D IMPORT des sources de
+// `killsource` changent (`analysis/filmdec` -> `games/halo_infinite/film/filmdec`) ; le
+// decodage est identique au bit pres. La revision NE bouge PAS — la bumper reinscrirait les
+// 1 210 films du parc au backlog pour un renommage de repertoire. Seule l empreinte est
+// recopiee.
+const killSourceDecoderFingerprint = "46049a816a3b9cfd9f9e3b517b02ec821e897a5a75fa9460544c6a32b98cd773"
 
 // defaultKillSourceTimeout — la limite de temps PAR MATCH.
 //

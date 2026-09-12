@@ -45,11 +45,11 @@ import (
 	"sort"
 	"time"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync/replayartifacts"
 )

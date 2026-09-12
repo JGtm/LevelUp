@@ -232,7 +232,7 @@ const VIP_COLS: ObjectiveColSpec[] = [
 // COLONNES SONT EXPOSÉES depuis l'arbitrage N-17 (2026-09-05, registre du plan d'intégration,
 // seconde lecture E.2) : `bomb_carriers_killed` est mesuré depuis le lot G.6 (témoin `9f57c612` :
 // 3 porteurs tués) et la prémisse « colonne de tirets » qui la retenait n'était plus vraie.
-// RÉSERVE portée par `bomb_carriers_killed` (écrite en tête d'`internal/analysis/replay/bomb_stats.go`) :
+// RÉSERVE portée par `bomb_carriers_killed` (écrite en tête d'`internal/games/halo_infinite/film/replay/bomb_stats.go`) :
 // ni camp, ni tir ami — un tir ami sur un porteur de son propre camp compte.
 const BOMB_COLS: ObjectiveColSpec[] = [
   { key: 'bomb_detonations', agg: 'sum' },

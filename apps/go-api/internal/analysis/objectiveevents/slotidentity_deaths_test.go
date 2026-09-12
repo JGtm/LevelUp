@@ -17,7 +17,7 @@ import (
 // Les enregistrements sont SYNTHETIQUES : ils portent exactement ce que les deux ponts lisent
 // (le compteur de morts en `comp 2 B`, les frags en `comp 2 A`, les assistances en `comp 3 A`),
 // donc le test tourne en CI, sans film. La verite terrain sur films reels, elle, vit dans
-// l'instrument sous garde de la phase 0 (`analysis/replay/objectifs_phase0_statborg_test.go`),
+// l'instrument sous garde de la phase 0 (`games/halo_infinite/film/replay/objectifs_phase0_statborg_test.go`),
 // qui appelle CE code.
 
 // deathBridgeFixture fabrique un film synthetique a huit joueurs :

@@ -43,9 +43,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/replayview"
 )
@@ -67,7 +67,7 @@ var mimeParExtensionDeFond = map[string]string{
 }
 
 // MapBackground retourne le calage du fond de carte du match, dans sa forme SERVIE : le
-// sidecar est lu tel qu'il est ecrit sur disque (`analysis/replay`) puis projete sur le
+// sidecar est lu tel qu'il est ecrit sur disque (`games/halo_infinite/film/replay`) puis projete sur le
 // contrat public (`domain/replaydoc`), comme le document lui-meme.
 func (s *replayService) MapBackground(ctx context.Context, matchID string) (*replaydoc.MapBackground, error) {
 	key, err := s.resolveBackgroundKey(ctx, matchID)

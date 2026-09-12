@@ -7,7 +7,7 @@ package sessionusage
 //
 // [equipmentUsedOf] est la DEUXIÈME et dernière écriture tolérée de la bascule
 // « utilisé » (règle CLAUDE.md n°6) : la première est `usageUsedOf`
-// (internal/analysis/replay/usage_summary_outcomes.go), qui décide de la même chose
+// (internal/games/halo_infinite/film/replay/usage_summary_outcomes.go), qui décide de la même chose
 // sur une ligne de PROJECTION quand celle-ci décide sur une ligne de BASE. Les deux
 // ont divergé une fois, en silence, et pendant tout un lot : le résumé est passé aux
 // CONSOMMATIONS en `us6` (2026-09-10) et l'agrégat de session est resté sur les

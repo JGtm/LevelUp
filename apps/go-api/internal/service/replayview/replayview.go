@@ -1,5 +1,5 @@
 // Package replayview projette le document de rejeu STOCKE
-// (`internal/analysis/replay.ReplayDocument`, le format du fichier d'artefact) sur le
+// (`internal/games/halo_infinite/film/replay.ReplayDocument`, le format du fichier d'artefact) sur le
 // document SERVI (`internal/domain/replaydoc.ReplayDocument`, la forme de fil publique).
 //
 // C'EST LA SEULE ARETE ENTRE LES DEUX MONDES, et c'est tout l'objet du paquet : tant que
@@ -19,8 +19,8 @@
 package replayview
 
 import (
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // FromArtifact projette le document d'artefact sur le document servi.

@@ -1,5 +1,5 @@
 // Package replayidentity — LE ROSTER DE BOTS DECODE PAR killsource, PROJETE VERS LE REGISTRE
-// D'IDENTITE DU REJEU (`internal/analysis/replay`).
+// D'IDENTITE DU REJEU (`internal/games/halo_infinite/film/replay`).
 //
 // # POURQUOI CE PAQUET EXISTE, ET PAS UN APPEL DIRECT ENTRE SES DEUX VOISINS
 //
@@ -34,8 +34,8 @@
 package replayidentity
 
 import (
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // BotIdentities projette le roster de bots declares par BOT_METADATA vers ce que le registre

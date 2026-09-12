@@ -88,36 +88,25 @@ var franchissementsToleres = map[string]string{
 		"`games/halo_infinite/film/filmcache` : même motif que ci-dessus (extraction des " +
 		"événements d'objectif vérifiée sur films réels). Même portage attendu : la source " +
 		"du film devient un paramètre du test.",
-}
-
-// paquetsEnDeplacement : les répertoires d'`internal/analysis/` qui QUITTENT `analysis/` et
-// dont les franchissements sont donc tolérés le temps du déplacement — entrée TRANSITOIRE,
-// avec sa date de pose et sa date cible de retrait.
-//
-//	2026-09-12, retrait cible le MÊME JOUR, au commit E.2 du plan
-//	`.ai/PLAN_FORK_ET_RELEASE_2026-09-11.md` : `filmdec` et `replay` (le décodeur de film,
-//	Halo-only de bout en bout) descendent sous `internal/games/halo_infinite/film/` (ADR 0012).
-//	Leurs 15 tests qui ouvrent `film/filmcache`, `film/damagetag` et `film/killsource` ne
-//	franchissent alors plus aucune frontière : ils sont chez eux. Ce ratchet est posé AVANT le
-//	déplacement pour que le déplacement se fasse sous surveillance, pas après coup — d'où
-//	cette clause, qui disparaît avec les répertoires qu'elle nomme.
-//	Critère mesurable de retrait : `internal/analysis/filmdec` et `internal/analysis/replay`
-//	n'existent plus (le test l'exige ci-dessous : une entrée sans répertoire fait rougir).
-var paquetsEnDeplacement = map[string]string{
-	"internal/analysis/filmdec": "2026-09-12, retrait au commit E.2 — descend sous " +
-		"internal/games/halo_infinite/film/filmdec (ADR 0012).",
-	"internal/analysis/replay": "2026-09-12, retrait au commit E.2 — descend sous " +
-		"internal/games/halo_infinite/film/replay (ADR 0012).",
-}
-
-// enDeplacement dit si le fichier appartient à un répertoire en instance de déplacement.
-func enDeplacement(rel string) bool {
-	for prefixe := range paquetsEnDeplacement {
-		if strings.HasPrefix(rel, prefixe+"/") {
-			return true
-		}
-	}
-	return false
+	"internal/analysis/filmsource/source_test.go": "2026-09-12, rendu visible par le " +
+		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/filmdec` : le test " +
+		"EXTERNE de `filmsource` compare les deux marcheurs de paquets sur un film réel " +
+		"(preuve d'équivalence de la grammaire, cf. `filmsource_leaf_test.go`). Le paquet " +
+		"testé, lui, reste une feuille sans aucun import du dépôt : c'est le TEST qui " +
+		"franchit. Portage attendu : la preuve d'équivalence descend avec le décodeur, sous " +
+		"`games/halo_infinite/film/`.",
+	"internal/analysis/sessionusage/usage_outcomes.go": "2026-09-12, rendu visible par le " +
+		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/replay` : SEUL " +
+		"franchissement de PRODUCTION de la liste. `sessionusage` lit les types de sortie " +
+		"d'usage d'équipement produits par le décodeur. Portage attendu : ces types " +
+		"remontent en `domain/` (ou `games/canonical/`), comme `domain/replaydoc` l'a déjà " +
+		"fait pour le document de rejeu au lot A — après quoi `sessionusage` n'importera " +
+		"plus rien d'un titre.",
+	"internal/analysis/weapon_index_equivalence_test.go": "2026-09-12, rendu visible par le " +
+		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/filmdec` : test " +
+		"d'équivalence entre l'index d'armes d'`analysis` et celui du décodeur. Portage " +
+		"attendu : l'index d'armes est title-agnostic (`games/weapons`), la comparaison " +
+		"descend côté décodeur.",
 }
 
 func TestAnalysisImporteAucunPaquetDeTitre(t *testing.T) {
@@ -128,15 +117,6 @@ func TestAnalysisImporteAucunPaquetDeTitre(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(racineGames, nom)); err != nil {
 			t.Errorf("paquetsInterTitres cite %q, absent d'internal/games/ : %v — la liste "+
 				"décrit une arborescence qui n'existe plus", nom, err)
-		}
-	}
-	for rep, motif := range paquetsEnDeplacement {
-		if strings.TrimSpace(motif) == "" {
-			t.Errorf("paquetsEnDeplacement cite %q sans justification datée", rep)
-		}
-		if _, err := os.Stat(filepath.Join(racineAPI, filepath.FromSlash(rep))); err != nil {
-			t.Errorf("paquetsEnDeplacement cite %q, qui n'existe plus : le déplacement est "+
-				"fait, retirer l'entrée (c'est son critère de retrait)", rep)
 		}
 	}
 
@@ -164,9 +144,6 @@ func TestAnalysisImporteAucunPaquetDeTitre(t *testing.T) {
 			paquet := strings.Trim(imp.Path.Value, `"`)
 			titre, ok := titreDuPaquetGames(paquet)
 			if !ok {
-				continue
-			}
-			if enDeplacement(rel) {
 				continue
 			}
 			vus[rel] = true

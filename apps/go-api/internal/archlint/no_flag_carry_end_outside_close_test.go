@@ -42,7 +42,7 @@ var flagCarryEndWrite = regexp.MustCompile(`\.(t1|closed|homed|captured|closedBy
 
 func TestFinDePortageDeDrapeauEcriteSeulementDansFlagCarriesClose(t *testing.T) {
 	_, here, _, _ := runtime.Caller(0)
-	dir := filepath.Join(filepath.Dir(here), "..", "analysis", "replay")
+	dir := filepath.Join(filepath.Dir(here), "..", "games", "halo_infinite", "film", "replay")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("lecture de %s : %v", dir, err)

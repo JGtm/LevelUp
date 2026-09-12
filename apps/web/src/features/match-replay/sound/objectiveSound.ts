@@ -160,7 +160,7 @@ export function sideResolverFromScoreboard(
  *
  * L'HORLOGE NE DEMANDE AUCUN RECALAGE : `ObjectiveAction.T` est déjà l'index de frame, sur le
  * même axe que les tirs et les positions (la soustraction d'`originMs` est faite côté Go, cf.
- * `analysis/replay/objectives.go`). La conversion est donc la même `frameToMs` que partout.
+ * `games/halo_infinite/film/replay/objectives.go`). La conversion est donc la même `frameToMs` que partout.
  */
 export function objectiveSoundEvents(
   doc: ReplayDocumentReady,

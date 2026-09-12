@@ -44,7 +44,7 @@ import (
 )
 
 // slotBandScope : le paquet où les bandes de slots se construisent.
-var slotBandScope = filepath.Join("analysis", "filmdec")
+var slotBandScope = filepath.Join("games", "halo_infinite", "film", "filmdec")
 
 // slotBandAllowed : les SEULS fichiers autorisés à tenir une liste d'exclusion de slots, avec la
 // raison de chacun. Ajouter une entrée ici est une décision, pas une formalité.

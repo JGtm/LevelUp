@@ -9,8 +9,8 @@ package killcollector
 import (
 	"strings"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // MatchIdentities : ce que la passe demande a la base sur les participants d un match.

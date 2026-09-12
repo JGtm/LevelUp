@@ -7,9 +7,9 @@ package replayview
 // (l'artefact) de ce que l'ecran montre (le document servi).
 
 import (
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 func toIdentitySection(v replay.IdentitySection) replaydoc.IdentitySection {

@@ -74,9 +74,9 @@ import "sort"
 // Moins de deux manches utilisables : aucune borne, donc aucun enregistrement ecarte. Un film
 // mono-manche rend l'octet qu'il rendait avant.
 //
-// Instrument du releve : `analysis/replay/manches_bornes_research_test.go` (garde `MANCHES_CACHE`
+// Instrument du releve : `games/halo_infinite/film/replay/manches_bornes_research_test.go` (garde `MANCHES_CACHE`
 // + `MANCHES_FILMS`). Mutations qui prouvent chaque garde :
-// `analysis/replay/manches_compteurs_test.go`.
+// `games/halo_infinite/film/replay/manches_compteurs_test.go`.
 
 // roundSpan est l'intervalle de temps d'une manche, demi-ouvert : `[fromMS, toMS)`. Les
 // bords non contraints valent [roundSpanOpenFrom] / [roundSpanOpenTo].
@@ -349,7 +349,7 @@ func (w RoundBounds) Excludes(r StatRecord) bool {
 
 // OutliersNominalMax est le plus grand nombre d'enregistrements ecartes observe sur un film SAIN
 // du parc — LA SEULE ECRITURE de cette fourchette, referencee par le journal de cuisson
-// (`analysis/replay/build_score.go`).
+// (`games/halo_infinite/film/replay/build_score.go`).
 //
 // Releve du 2026-09-06 sur les douze films multi-manche du parc de 119 :
 //
