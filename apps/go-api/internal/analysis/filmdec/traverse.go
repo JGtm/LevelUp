@@ -207,6 +207,13 @@ func SetWorldObjectPrecisionFromLayout(l I0Layout) {
 	if l.GateBits > i0SpineBits+i0UseDefaultBits {
 		WorldObjectPrecision.IndexW = uint(l.GateBits - i0SpineBits - i0UseDefaultBits)
 	}
+	// LA RÉGION ATTENDUE SUIT LES LARGEURS, par le même chemin et dans le même appel
+	// (lot B-bis, 2026-09-12). Sans elle, le lecteur world-object exigeait un index de région
+	// NUL — vrai partout sauf sur Live Fire, dont la région jouée est la 1 sur 2 bits. Il y
+	// lisait donc ses trois axes un bit trop tôt, et le bit de poids fort de chaque axe
+	// devenait le bit de poids faible du champ précédent : un pas de la moitié de l'étendue
+	// de l'axe à chaque bascule (31,89 m sur Y, mesuré sur quatre films).
+	WorldObjectPrecision.Region = l.Region
 }
 
 // consumeByName dispatches a component to its ported bit-consumer. It returns the
