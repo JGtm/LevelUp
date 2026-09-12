@@ -35,8 +35,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // spawnPoints rend les points d'apparition non-arme de la carte du match, et L'ETAT du

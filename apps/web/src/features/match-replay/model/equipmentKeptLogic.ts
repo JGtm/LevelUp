@@ -14,7 +14,7 @@
  * # LE CÔTÉ « UTILISÉ » A DEUX LECTURES (lot 5.7, aligné sur le Go `us6`)
  *
  * CORRIGÉ LE 2026-09-10 (lot 5.7, jumeau web du lot 5.5 Go —
- * `internal/analysis/replay/usage_summary_outcomes.go` / `usage_summary_families.go`,
+ * `internal/games/halo_infinite/film/replay/usage_summary_outcomes.go` / `usage_summary_families.go`,
  * `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §1 bis). Ce fichier lisait « utilisé » sur les
  * POSES `deployed` pour TOUTES les familles : c'était juste pour le MUR (qui engendre une pièce
  * distincte, ses panneaux) et FAUX pour tout le reste — une pose `deployed` sur un objet PORTÉ
@@ -92,7 +92,7 @@ export function isEpisodeMeasuredFamily(family: string): boolean {
  *
  * Transcription du MANIFESTE du titre (`config/titles/halo_infinite/mappings/
  * replay_labels.toml`, `kind = "deployed"`) — UNE DONNÉE ÉCRITE, pas une déduction — et JUMELLE
- * de `usageFamiliesWithSpawnedPiece` côté Go (`internal/analysis/replay/
+ * de `usageFamiliesWithSpawnedPiece` côté Go (`internal/games/halo_infinite/film/replay/
  * usage_summary_families.go`) : même décision produit, deux dépôts (rapport E0 du 2026-09-10,
  * lots 5.5/5.7). Le manifeste n'en désigne aujourd'hui qu'UNE : le MUR (ses deux panneaux,
  * `WALL_PANEL_IDS`). Le web ne peut pas relire le manifeste lui-même depuis ce module PUR — même

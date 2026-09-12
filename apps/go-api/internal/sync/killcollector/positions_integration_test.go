@@ -22,9 +22,9 @@ import (
 	"runtime"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/haloclient"
 )

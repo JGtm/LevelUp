@@ -8,7 +8,7 @@ import (
 	"math"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // zoneTest fabrique un objet « zone nommee » : boite de cotes pleins a, b, orientee par f.

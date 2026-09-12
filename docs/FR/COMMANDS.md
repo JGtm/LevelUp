@@ -453,7 +453,7 @@ priorité CPU basse, verrou solo).
 
 ```bash
 cd apps/go-api
-go run ./cmd/levelup replay-facts-export --out internal/analysis/replay/testdata/equivalence \
+go run ./cmd/levelup replay-facts-export --out internal/games/halo_infinite/film/replay/testdata/equivalence \
   [--title slug] <short8|match_id>...
 ```
 
@@ -475,7 +475,7 @@ Le harnais d'équivalence de la construction : il hache la sortie de **chaque** 
 seulement l'artefact final, ce qui localise une divergence au balayage près. Parent et enfant vivent
 dans le même binaire — le parent planifie et ne décode rien, chaque film naît dans un enfant borné
 (verrou solo en attente bornée, sentinelle) et meurt avec sa RAM. Les références vivent dans
-`internal/analysis/replay/testdata/equivalence/<short8>.tsv`, chacune ouverte par son marqueur
+`internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, chacune ouverte par son marqueur
 `# digest-grammar: N` : une référence figée sous une autre grammaire est une panne
 d'infrastructure (« re-figer par `-update` »), jamais un écart de décodage. `-update` réécrit ces
 références au lieu de les comparer — pour une correction déclarée seulement. Le mode `-walkers`
@@ -622,7 +622,7 @@ jour) :
 | `--keep-work` | `false` | conserver la racine de travail après l'exécution (débogage) |
 | `--json` | (aucun) | chemin où écrire aussi le rapport complet en JSON |
 
-**À exécuter avant tout merge qui touche** `analysis/replay`, `replaybuild`, `filmdec`, ou qui
+**À exécuter avant tout merge qui touche** `games/halo_infinite/film/replay`, `replaybuild`, `filmdec`, ou qui
 bumpe `SchemaVersion`. **Exige** : le parc local de développement (chunks de film ; + artefacts
 déjà cuits sous `data/cache/replays` en mode `--reference=parc`) et l'accès en lecture à la base
 partagée du titre (pour les faits du match, via `levelup replay-facts-export` lancé en

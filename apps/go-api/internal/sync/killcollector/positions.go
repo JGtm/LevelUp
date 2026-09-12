@@ -14,7 +14,7 @@ package killcollector
 //
 // # LE FILM EST CHARGÉ UNE FOIS, ET LE PONT DISQUE A DISPARU
 //
-// `analysis/replay`/`analysis/filmdec` exposent QUATRE lectures du film : ScanBipedPositions,
+// `games/halo_infinite/film/replay`/`games/halo_infinite/film/filmdec` exposent QUATRE lectures du film : ScanBipedPositions,
 // ScanClockOrigin, ScanPlayerIndices, ScanDeaths. Le collecteur, lui, tient les chunks EN MÉMOIRE
 // PURE (téléchargés par `FilmChunksForMatch`) — il ne les a jamais écrits sur disque.
 //
@@ -38,7 +38,7 @@ package killcollector
 //
 // `replay.BuildKillPositions` a besoin de savoir QUI OCCUPE QUEL SIÈGE À L'INSTANT du coup fatal
 // (un joueur change de siège à chaque réapparition, et un siège peut être recyclé entre deux
-// joueurs sur un film long). Ce registre existe déjà, LU et pas voté, dans `analysis/replay` —
+// joueurs sur un film long). Ce registre existe déjà, LU et pas voté, dans `games/halo_infinite/film/replay` —
 // c'est le MÊME que la cuisson construit (décision D11). Une résolution locale à ce paquet serait,
 // encore, un second décodeur du même fait.
 //
@@ -72,11 +72,11 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"

@@ -15,7 +15,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 func mustRoot(ti tagInfo) int {

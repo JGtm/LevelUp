@@ -11,7 +11,7 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // trajectoire fabrique une vie dont les points vont de 0 à n-1 frames, une frame par point.

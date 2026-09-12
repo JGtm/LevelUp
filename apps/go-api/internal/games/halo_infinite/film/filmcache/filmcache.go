@@ -28,7 +28,7 @@
 //
 // Il rend des octets, un index et — par [LoadFilm] — un film DEJA CHARGE (`filmsource`, une
 // decompression par film). Le decodage, lui, vit dans `analysis/objectiveevents` et
-// `analysis/filmdec`.
+// `games/halo_infinite/film/filmdec`.
 package filmcache
 
 import (
@@ -152,7 +152,7 @@ func LoadFilmDir(chunkDir string) (*filmsource.Film, bool, error) {
 }
 
 // ChunkDir rend le repertoire des chunks d'un film. C'est ce chemin qu'attendent les
-// balayages hors ligne de `analysis/filmdec` et `analysis/replay`, qui lisent le dossier
+// balayages hors ligne de `games/halo_infinite/film/filmdec` et `games/halo_infinite/film/replay`, qui lisent le dossier
 // directement plutot que par l'interface.
 func ChunkDir(root, shortID string) string {
 	return filepath.Join(root, chunksDir, shortID)
@@ -201,7 +201,7 @@ func chunkName(index int) string { return fmt.Sprintf("chunk_%02d.bin", index) }
 //
 // POURQUOI CETTE PORTE EXISTE. Le manifeste et les chunks vivent dans deux sous-dossiers
 // FRERES (cf. l'en-tete de ce paquet) ; les balayages hors ligne, eux, recoivent un chemin de
-// chunks parce que `analysis/filmdec` et `analysis/replay` lisent le dossier directement. Le
+// chunks parce que `games/halo_infinite/film/filmdec` et `games/halo_infinite/film/replay` lisent le dossier directement. Le
 // constructeur d'artefact a besoin des deux — les chunks pour le decodage, le manifeste pour
 // le `start_ms` de chaque chunk, sans lequel les enregistrements d'entite ne sont pas datables.
 //

@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // artefactBombe forge un artefact d'ASSAUT minimal mais complet : deux joueurs, quatre

@@ -2,7 +2,7 @@ package replaybuild
 
 // kills.go — LES FRAGS SOUS EFFET ACTIF (camo, surbouclier) : décodage killsource partagé
 // avec neutralDeaths, résolution d'identité HORS LIGNE, et construction des EquipmentKillRef que
-// `analysis/replay` joint aux épisodes d'équipement (cf. equipment_episode_kills.go).
+// `games/halo_infinite/film/replay` joint aux épisodes d'équipement (cf. equipment_episode_kills.go).
 //
 // PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F, sous-lot F.1. Décision utilisateur 8a/8b,
 // DEC-7 (révisée) : GO à petite population — cf. le journal du plan pour le détail des
@@ -15,8 +15,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // decodeKillSource décode killsource UNE SEULE FOIS par match. neutralDeaths ET killRefs en
@@ -41,7 +41,7 @@ func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *kills
 }
 
 // killRefs résout, pour chaque frag publié par killsource, l'identité du TUEUR, de l'ASSISTANT
-// et de la VICTIME en XUID — les deux jointures de `analysis/replay` (épisodes d'équipement et
+// et de la VICTIME en XUID — les deux jointures de `games/halo_infinite/film/replay` (épisodes d'équipement et
 // `bomb_carriers_killed`) ne consomment plus que des identités déjà résolues.
 //
 // DEUX SORTIES, UNE SEULE PASSE DE RÉSOLUTION (lot G.6, 2026-09-05). La victime a été ajoutée

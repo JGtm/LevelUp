@@ -4,8 +4,8 @@ package replayview
 // `domain/replaydoc/coverage.go`.
 
 import (
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 func toCoverage(v replay.Coverage) replaydoc.Coverage {

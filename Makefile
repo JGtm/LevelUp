@@ -193,7 +193,9 @@ restart: stop dev
 ## Go API: lance les tests (sans CGo — domain/analysis/contract)
 go-api-test:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 LEVELUP_DEMO_MODE=true \
-		go test ./internal/domain/... ./internal/analysis/... ./contracttest/... \
+		go test ./internal/domain/... ./internal/analysis/... \
+			./internal/games/halo_infinite/film/filmdec/... ./internal/games/halo_infinite/film/replay/... \
+			./contracttest/... \
 		-v -timeout 60s -count=1
 
 ## Go API: corpus de retro-ingenierie des cartes (EXIGE Halo Infinite installe, ~6 min)
@@ -218,7 +220,7 @@ go-api-test-gamefiles:
 ## venir que du diff en cours de revue. Mode --reference=parc (balayage de release, contre
 ## l'artefact deja cuit) disponible mais INFORMATIF sauf --strict — cf. docs/COMMANDS.md.
 ##
-## A LANCER AVANT tout merge qui touche analysis/replay, replaybuild, filmdec, ou qui bumpe
+## A LANCER AVANT tout merge qui touche games/halo_infinite/film/replay, replaybuild, filmdec, ou qui bumpe
 ## SchemaVersion. EXIGE le parc local de developpement (chunks de film) ET l'acces en lecture
 ## a la base partagee du titre pour les faits du match ; PAS le jeu installe. Marche SANS FLAG
 ## depuis un depot qui porte sa propre base partagee (le cas courant, cf. docs/COMMANDS.md pour
@@ -259,7 +261,7 @@ go-api-lint:
 		golangci-lint run --timeout 5m --new-from-merge-base=origin/main; \
 	else \
 		echo "golangci-lint absent — REPLI go vet (domain+analysis). Le lint complet FAIT FOI en CI (job go-lint, .github/workflows/ci.yml)."; \
-		go vet ./internal/domain/... ./internal/analysis/...; \
+		go vet ./internal/domain/... ./internal/analysis/... ./internal/games/halo_infinite/film/filmdec/... ./internal/games/halo_infinite/film/replay/...; \
 	fi
 
 ## Installe les hooks git du projet (lefthook — seul système de hooks).

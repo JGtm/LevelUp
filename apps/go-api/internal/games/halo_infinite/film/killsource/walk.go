@@ -31,7 +31,7 @@ package killsource
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // deadRecord : un dead-state atteint par la marche, avec sa position.

@@ -85,7 +85,7 @@ func ValiderComposition(xuids []string) error {
 // document de rejeu.
 //
 // FRONTIERE VOULUE : `internal/analysis/tactical` ne connait QUE ces types. Il n'importe
-// ni `analysis/replay` (le document de rejeu) ni `platform/duckdb` — c'est l'appelant qui
+// ni `games/halo_infinite/film/replay` (le document de rejeu) ni `platform/duckdb` — c'est l'appelant qui
 // PROJETTE ce qu'il a (positions de `kill_positions`, points des pistes d'un artefact)
 // vers `PositionSample`. Le rasterisage reste donc consommable sans artefact.
 

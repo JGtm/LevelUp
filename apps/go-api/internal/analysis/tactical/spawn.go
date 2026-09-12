@@ -39,7 +39,7 @@ package tactical
 // recharge la liste.
 //
 // PUR : aucune I/O. Les zones nommees sont une ENTREE — c'est le service qui les resout
-// depuis le catalogue de callouts versionne (`analysis/replay`, que ce paquet n'importe
+// depuis le catalogue de callouts versionne (`games/halo_infinite/film/replay`, que ce paquet n'importe
 // pas : cf. le ratchet de purete).
 
 import (

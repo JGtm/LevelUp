@@ -3,7 +3,7 @@ package killcollector
 // duels_bouclier_research_test.go — SONDE N°2 : LA MESURE QUI DECIDE DU LOT 7 (duels).
 //
 // LA QUESTION, ET POURQUOI ELLE N'EST PAS CELLE DE LA SONDE N°1. La sonde n°1
-// (`analysis/replay/duels_sonde_*_test.go`, note `.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`)
+// (`games/halo_infinite/film/replay/duels_sonde_*_test.go`, note `.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`)
 // a mesure la RECIPROCITE DU DEGAT et l'a rejetee : le film n'emet que 0,8 a 4,8
 // `damage_aftermath` par mort, le compte des duels serait un sous-comptage de 4 a 8x. Mais
 // elle s'interdisait la base, donc elle ignorait QUI etait le tueur pour 50 a 90 % des morts.
@@ -58,10 +58,10 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -93,7 +93,7 @@ const duelsBChuteEps = 0.02
 
 // duelsBLifeGapUS : trou au-dela duquel deux lectures consecutives appartiennent a DEUX VIES —
 // le bouclier repart alors plein et la comparaison serait une fausse chute. MEME valeur que
-// `lifeGapUS` (internal/analysis/replay/lives.go), qui decoupe les vies ; elle est recopiee ici
+// `lifeGapUS` (internal/games/halo_infinite/film/replay/lives.go), qui decoupe les vies ; elle est recopiee ici
 // parce qu'elle n'est pas exportee, et la recopie est signalee pour qu'un changement la-bas se
 // voie ici.
 const duelsBLifeGapUS = 5_000_000

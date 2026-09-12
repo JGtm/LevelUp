@@ -31,7 +31,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // idxEqZeroTS : la mesure ne depend pas de l'horodatage (on correle par octet, pas par temps).

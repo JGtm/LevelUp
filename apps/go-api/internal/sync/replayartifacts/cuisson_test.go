@@ -28,9 +28,9 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis/replay"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"

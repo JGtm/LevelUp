@@ -106581,6 +106581,63 @@ n'ont gagné que 8 % ; `document_chronicle.go` 1 190 L ; 13 replis FR restants s
 **Prochaine étape** : lot E (déplacement pur du décodeur sous `internal/games/halo_infinite/film/`),
 puis lot F (nettoyage worktrees/branches, bascule dossier LevelUp).
 
+## [2026-09-12] Lot E — le décodeur de film descend sous son titre (`internal/games/halo_infinite/film/`) — Complété (worktree LevelUp-wt-decodeur-sous-titre)
+
+**Décision technique principale.** Tâche Notion 9 / décision 5 de l'audit v2, AVANT le merge de
+v7.5.0 : `internal/analysis/filmdec` et `internal/analysis/replay` (+ `replay/mapvar`) — 938
+fichiers, 245 928 lignes, Halo-only de bout en bout — descendent sous
+`internal/games/halo_infinite/film/` (ADR 0012), où ils rejoignent `damagetag`, `filmcache`,
+`killicon`, `killsource` et `medalname` déjà en place. Deux commits, dans cet ordre, et l'ordre
+est la décision : le RATCHET d'abord (`5a0d1ec91`), le déplacement ensuite. Sans ratchet posé
+avant, le déplacement aurait transformé des imports internes à `analysis/` en franchissements de
+frontière invisibles — exactement la dette que ce lot doit rendre visible. Le ratchet
+(`internal/archlint/no_title_package_in_analysis_test.go`) PARSE les imports (`go/parser`,
+`ImportsOnly`) de tous les `.go` d'`internal/analysis/`, tests compris ; les 4 paquets
+inter-titres (`canonical`, `classification`, `mappings`, `weapons`) sont tolérés, tout autre
+répertoire d'`internal/games/` est un titre PAR DÉFAUT. Jusqu'ici la frontière n'avait qu'un
+garde-rail LOCAL (`no_temporal_title_import_test.go`, limité à `analysis/temporal`).
+
+Deuxième décision, dans `killcollector/collector.go` : l'empreinte du décodeur de kills est
+recopiée mais `KillSourceDecoderRev` NE BOUGE PAS. Seules les lignes d'import des sources de
+`killsource` changent ; bumper la révision aurait réinscrit les 1 210 films du parc au backlog
+pour un renommage de répertoire. Le choix est écrit dans le code, daté, à côté de l'empreinte —
+le test exige qu'il soit explicite, pas implicite.
+
+**Résultats observés.** Inventaire E.0 : 85 arcs d'import, 60 paquets importateurs répartis sur
+8 couches (`api`, `service`, `sync`, `persist`, `replaybuild`, `games`, `himap`/`mapcatalog`/
+`mapdecoupe`, 20 binaires `cmd/`). Cinq franchissements `analysis/` -> `games/{slug}` au total,
+dont DEUX préexistaient (tests d'`objectiveevents` ouvrant `film/filmcache`) et trois sont
+révélés par le déplacement ; un seul est en PRODUCTION (`analysis/sessionusage`). Déplacement :
+1 240 fichiers touchés, 981 renommages (525 à 100 % de similarité, 0 ajout, 0 suppression),
+1 055 insertions / 1 057 suppressions. Trois pièges réels, qu'une réécriture de chemin d'import
+seule aurait manqués : 6 chemins écrits segment par segment (`filepath.Join("analysis",
+"replay")`, dans `cmd/replay-equiv` et quatre ratchets d'`archlint`) ; 19 remontées relatives à
+réajuster parce que le déplacement ajoute DEUX niveaux (`..` x5 -> x7 vers la racine du dépôt,
+x6 -> x8 dans `mapvar`, x3 -> x5 vers `apps/go-api`) — dont `golden_minibobine_test.go` qui
+atteint désormais `killsource` comme un FRÈRE au lieu de traverser l'arbre ; et l'exemption
+`gocyclo/funlen/lll` de `.golangci.yml`, dont le décodeur héritait par le chemin
+`internal/analysis/` et qu'il fallait transposer pour que le même code ne se mette pas à rougir
+au seul motif d'avoir changé de répertoire. Les racines déduites à l'exécution (`go.mod`, racine
+du cache film) n'ont rien demandé. Gates : `go build`/`go vet`/`go test ./...` verts, intégration
+verte, `golangci-lint --new-from-merge-base` 0 issue, goldens 8 PASS et AUCUN fichier golden dans
+le diff, `make generate-types` sans dérive, tsc 0, garde-rail web des chemins Go (8 tests) vert,
+gate corpus **NON JOUÉ** (`[!]`) : `replay-facts-export` ne peut pas ouvrir
+`shared_matches_v2.duckdb` en RO, le serveur de dev (:8000, `levelup.exe` PID 40148) la tient en
+RW — modèle mono-process ADR 0013/0016 ; les 8 témoins sortent ABSENT et le gate meurt en code 2
+sans rien comparer, avant toute cuisson. Les lots B.5 et B-bis l'avaient joué serveur arrêté. Je
+n'arrête pas le serveur de l'utilisateur : à rejouer par le pilote avant la fusion, 0 différence
+attendue puisque rien ne change de comportement.
+
+**Découvertes (non traitées).** `no_analysis_type_in_http_body_test.go` perd de la portée : les
+types du décodeur sortent de son périmètre, il reste vert mais ne les surveille plus (le lot A
+avait déjà projeté les corps du rejeu sur `domain/replaydoc`). `analysis/sessionusage` est le
+dernier franchissement de production : tant qu'il tient, `internal/analysis/` n'est pas
+title-agnostic au sens strict de l'ADR 0025 — c'est un portage de types vers `domain/`, pas un
+déplacement.
+
+**Conclusion / prochaine étape.** E.1 `[x]`, E.2 `[x]`. E.3 « cocher Notion 9 » laissé au pilote,
+comme le veut le plan. Rien n'est poussé ni fusionné. Rapport :
+`.ai/RAPPORT_LOT_E_DECODEUR_SOUS_TITRE_2026-09-12.md`.
 ## [2026-09-12] Architecture cible du décodeur de film : relecture sur pièces et amendement du document — Complete (worktree partagé, aucun commit)
 
 **Decision technique principale.** `.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md` amendé
@@ -106780,3 +106837,35 @@ message d'échec du gate ; les ~136 films 39-40 hors BTB à vérifier en base).
 
 **Prochaine étape** : re-décodage toujours NON lancé (consigne du lot). Fusion dans `feat/v75` à la
 main de l'utilisateur — aucun merge ni push fait ici.
+
+## [2026-09-12] Fusion de feat/v75 (lot G) dans wt/decodeur-sous-titre — Complété
+
+**Décision technique principale.** Six conflits résolus : `.ai/PLAN_FORK_ET_RELEASE_2026-09-11.md`
+pris côté `feat/v75` (theirs) ; les quatre fichiers ajoutés par G dans les anciens répertoires
+(`film_major_version.go`, `film_major_version_test.go`, `build_film_version_test.go`,
+`deaths_source_version_test.go`) atterris directement au bon endroit par la détection de
+renommage de Git (`CONFLICT (file location)`), imports réécrits vers
+`games/halo_infinite/film/{filmdec,replay}` ; sept autres fichiers de G, fusionnés sans conflit
+mais important encore l'ancien chemin (`cmd_backfill_medailles_feed.go`,
+`btb2025_abstention_research_test.go`, `chunks.go`, `minibobine_v40_test.go`,
+`medal_feed_backfill.go`, `medal_feed_backfill_version_test.go`, `halo_client_film.go`),
+corrigés au même titre ; un chemin relatif stale dans `deaths_source_version_test.go`
+(`../../games/...` calculé depuis l'ancien `analysis/replay`, devenu `../killsource/...` depuis le
+nouveau `games/halo_infinite/film/replay`) ; `collector.go` résolu côté `feat/v75` (golden), la
+constante `killSourceDecoderFingerprint` et son commentaire E retirés.
+
+**Résultats observés.** `TestKillSourceDecoderRevSuitLeDecodeur` rouge après résolution
+(« LE DECODEUR A CHANGE », empreinte mesurée différente de l'attendue) car les imports des
+sources de `killsource/` ont changé avec E — conforme à l'attendu. Golden régénéré par
+`-update` en gardant `KillSourceDecoderRev = "killsource-2026-09-12"` (révision inchangée,
+seule l'empreinte est recopiée) ; ligne d'historique ajoutée au golden. `gofmt` a ensuite
+reformaté `chunks.go` (import réécrit) et fait rebouger l'empreinte une seconde fois pour la
+même raison — regénéré une seconde fois, seconde ligne d'historique ajoutée. Portes :
+`go build ./...`, `go vet ./...` propres ; `go test ./...` 171 paquets ok, 0 échec ;
+`go test ./internal/archlint/...` vert (ratchets `no_title_package_in_analysis`, `gamefiles_tag`,
+`filmsource_leaf` inclus) ; `make go-api-lint` 0 issue ; `make openapi-check` sans dérive ;
+`cd apps/web && npm run typecheck` sans erreur. `grep -rn "internal/analysis/filmdec\|internal/analysis/replay" apps/go-api --include=*.go`
+ne retourne plus rien. Aucune DuckDB ouverte, gate corpus non joué (laissé au pilote, base libre).
+
+**Prochaine étape.** Commit de fusion sur `wt/decodeur-sous-titre`. Aucun push, aucune fusion
+dans `feat/v75`.

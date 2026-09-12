@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // TestWithGeometryDir_RepertoireSansPropImposeZeroProp — l'echappatoire `--geometry` ne doit

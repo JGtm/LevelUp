@@ -47,10 +47,10 @@ import (
 	"fmt"
 	"os"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/medalname"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"

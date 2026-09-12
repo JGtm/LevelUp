@@ -31,8 +31,8 @@ package killsource
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // packet : un paquet de replication, tel qu il se presente dans un chunk decompresse.

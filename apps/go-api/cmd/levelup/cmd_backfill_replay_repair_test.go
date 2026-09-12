@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 )

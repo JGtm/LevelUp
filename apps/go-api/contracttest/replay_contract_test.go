@@ -22,7 +22,7 @@
 // tableau du contrat ne lui echappe (cf. replayContract.test.ts).
 //
 // CE FICHIER A CHANGE DE COTE LE 2026-09-05 (lot B du plan v2). Jusque-la il reflechissait sur
-// `internal/analysis/replay` — le format du FICHIER d artefact, qui etait AUSSI le contrat. La
+// `internal/games/halo_infinite/film/replay` — le format du FICHIER d artefact, qui etait AUSSI le contrat. La
 // separation du document stocke et du document servi lui donne son vrai sujet : il reflechit
 // desormais sur `internal/domain/replaydoc`, la forme de FIL, et confronte ce contrat au
 // fichier `api/openapi.yaml` qui en derive. Ce qu il ne regarde plus — que la cuisson ecrive
@@ -664,7 +664,7 @@ var replaySchemas = []struct {
 //	                      tueur/victime qu il demande n existe pas dans la chaine de cuisson.
 //
 //	56 -> 56  2026-09-05  AUCUN CHAMP NEUF, ET POURTANT LE GEL CHANGE DE NATURE (lot B du plan
-//	                      v2). Le compte portait sur `analysis/replay.ReplayDocument`, le format
+//	                      v2). Le compte portait sur `games/halo_infinite/film/replay.ReplayDocument`, le format
 //	                      du FICHIER d artefact ; il porte desormais sur
 //	                      `domain/replaydoc.ReplayDocument`, la forme de FIL. Le chiffre est le
 //	                      meme parce que la separation laisse le contrat strictement inchange

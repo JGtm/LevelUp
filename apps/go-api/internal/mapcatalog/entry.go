@@ -10,8 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"levelup/go-api/internal/analysis/replay"
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // EntryFromMvar tire d'un `.mvar` l'entree de catalogue d'une carte : ses socles d'ARME et ses

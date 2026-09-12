@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // printActionDump imprime chaque action d'objectif du match avec son attribution APRES

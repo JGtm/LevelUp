@@ -15,8 +15,8 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
 )

@@ -184,7 +184,7 @@ func cumulateRounds(raw map[int]map[int][]ScorePoint, real map[int]bool) map[int
 //
 // L'ECART EST JOURNALISE ICI, une fois, avec le slot et le premier recul : c'est un defaut, pas
 // un cas nominal, et il ne doit jamais etre avale. Le journal vit dans la fonction plutot que
-// chez ses appelants pour que les DEUX cumuls (par slot ici, par joueur dans `analysis/replay`)
+// chez ses appelants pour que les DEUX cumuls (par slot ici, par joueur dans `games/halo_infinite/film/replay`)
 // le rendent de la meme facon, sans dupliquer ni le message ni la decision.
 func ChronologicalTotal(pts []ScorePoint) []ScorePoint {
 	out := make([]ScorePoint, 0, len(pts))

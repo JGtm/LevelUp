@@ -82,7 +82,7 @@ func main() {
 	}
 	// LE JOURNAL EST INSTALLÉ ICI, ET IL NE L'ÉTAIT PAS DU TOUT : sans handler, ce binaire
 	// gardait le défaut de la bibliothèque — les lignes Debug (dont la durée de chaque balayage,
-	// cf. analysis/replay/observe.go) étaient donc PERDUES, et rien n'atterrissait dans logs/.
+	// cf. games/halo_infinite/film/replay/observe.go) étaient donc PERDUES, et rien n'atterrissait dans logs/.
 	defer logging.InstallCLILevel(repoRoot, logging.ConsoleLevelFromEnv())()
 
 	builder, err := replaybuild.NewBuilder(repoRoot, *titleFlag)

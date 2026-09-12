@@ -63,7 +63,7 @@ var longestRunAllowed = map[string]bool{
 // (lot E, item E.2) : le fichier est supprimé (deux fonctions de debug sans aucun
 // appelant, tests compris), l'exemption n'a plus de cible non plus.
 var longestRunAllowedPrefixes = []string{
-	"internal/analysis/filmdec/frame_records.go",
+	"internal/games/halo_infinite/film/filmdec/frame_records.go",
 }
 
 // longestRunExempt dit si le chemin relatif est couvert par une exemption datée.

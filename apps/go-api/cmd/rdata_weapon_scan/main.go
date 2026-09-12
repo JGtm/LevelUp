@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 const cache = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950`

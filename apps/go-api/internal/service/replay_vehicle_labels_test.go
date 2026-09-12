@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // replayVehicleTracks fabrique des vies ne portant QUE leur famille — la seule entree de

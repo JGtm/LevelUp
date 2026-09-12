@@ -67,7 +67,7 @@ package domain
 //
 // Le temps passe en VEHICULE est attribue par les episodes d'occupation du document
 // (`replay.VehicleRide`), et cette primitive n'attribue que **15,6 a 21,1 % des vies de
-// vehicule** (limite mesuree et publiee dans `analysis/replay/document_vehicles.go`, doc
+// vehicule** (limite mesuree et publiee dans `games/halo_infinite/film/replay/document_vehicles.go`, doc
 // de `VehicleTrack.Rides`). Le reste du temps embarque n'est donc PAS mesure : il
 // n'apparait ni dans les cellules, ni au denominateur. Une lecture « ou je passe mon
 // temps » sous-estime le temps en vehicule, et c'est une propriete connue de la mesure —

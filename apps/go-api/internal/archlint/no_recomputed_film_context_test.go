@@ -113,7 +113,7 @@ var appelsAutorisesDuContexte = map[string]string{
 
 // TestContexteFilmCalculeUneFois — REGLE 1.
 func TestContexteFilmCalculeUneFois(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/analysis/filmdec"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/filmdec"))
 	vus := map[string]bool{}
 	var enTrop []string
 	for nom, f := range fichiersGoNonTest(t, pkgDir) {
@@ -169,7 +169,7 @@ func TestContexteFilmCalculeUneFois(t *testing.T) {
 // paquetsSansAnalyseDeRegistre : les paquets de la chaine de cuisson qui, hors `filmdec`, ne
 // doivent pas analyser le registre eux-memes — la cuisson passe par le contexte du film.
 var paquetsSansAnalyseDeRegistre = []string{
-	"internal/analysis/replay",
+	"internal/games/halo_infinite/film/replay",
 	"internal/replaybuild",
 	"internal/analysis/objectiveevents",
 	"internal/games/halo_infinite/film/killsource",

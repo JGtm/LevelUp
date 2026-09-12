@@ -207,6 +207,18 @@ linters:
           - funlen
           - lll
 
+      # Decodeur de film : MEME exemption que `internal/analysis/` ci-dessus, transposee au
+      # nouveau chemin le 2026-09-12 (lot E.2). `filmdec` et `replay` vivaient sous
+      # `internal/analysis/` et en heritaient ; leur descente sous
+      # `internal/games/halo_infinite/film/` (ADR 0012) est un deplacement PUR, elle ne doit
+      # rien changer au regime de lint. Sans cette regle, le meme code se mettrait a rougir
+      # au seul motif d'avoir change de repertoire.
+      - path: "internal/games/halo_infinite/film/(filmdec|replay)/"
+        linters:
+          - gocyclo
+          - funlen
+          - lll
+
       # handlers : setup + sync complexes par conception (orchestration I/O)
       - path: "internal/api/handlers/"
         linters:

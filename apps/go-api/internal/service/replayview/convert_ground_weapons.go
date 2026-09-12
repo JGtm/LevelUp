@@ -4,8 +4,8 @@ package replayview
 // `domain/replaydoc/ground_weapons.go`.
 
 import (
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 func toWeaponPad(v replay.WeaponPad) replaydoc.WeaponPad {

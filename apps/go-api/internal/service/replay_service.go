@@ -12,9 +12,9 @@ import (
 	"os"
 	"strings"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/replayview"
 )
@@ -111,7 +111,7 @@ const replayArtifactExt = ".json"
 // L'absence de l'une ou de l'autre n'est jamais une erreur — le rejeu se sert entier sans.
 //
 // LE TYPE DE RETOUR EST LE DOCUMENT SERVI, pas le document stocké : l'artefact est lu dans sa
-// forme de FICHIER (`analysis/replay`), enrichi des trois résolutions ci-dessus, puis PROJETÉ
+// forme de FICHIER (`games/halo_infinite/film/replay`), enrichi des trois résolutions ci-dessus, puis PROJETÉ
 // sur la forme de FIL (`domain/replaydoc`) — c'est la seule frontière où les deux se croisent
 // (cf. internal/service/replayview).
 func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydoc.ReplayDocument, error) {

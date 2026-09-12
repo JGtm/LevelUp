@@ -39,7 +39,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // FilmHighlight : le chunk highlight d un match ET la version du film qui le porte.

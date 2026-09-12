@@ -30,8 +30,8 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/analysis/replay"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"

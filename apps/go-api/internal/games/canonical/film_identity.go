@@ -6,7 +6,7 @@ package canonical
 //
 // `internal/games/canonical` ne portait AUCUN type d'entite de film : ni slot de bipede, ni
 // objet d'objectif, ni vehicule. Le registre nait donc canonique parce qu'il n'y a rien a
-// casser — ce sont des types de DONNEE inter-titres, pas des adapters. `internal/analysis/replay`
+// casser — ce sont des types de DONNEE inter-titres, pas des adapters. `internal/games/halo_infinite/film/replay`
 // les remplit pour Halo Infinite ; un autre titre les remplirait par son propre adapter sans
 // toucher au consommateur. Aucune comparaison de slug nulle part : la porte reste la capability
 // `film.replay_artifact`.

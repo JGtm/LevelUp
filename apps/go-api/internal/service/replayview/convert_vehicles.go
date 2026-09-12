@@ -4,8 +4,8 @@ package replayview
 // `domain/replaydoc/vehicles.go`.
 
 import (
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 func toVehicleTrack(v replay.VehicleTrack) replaydoc.VehicleTrack {

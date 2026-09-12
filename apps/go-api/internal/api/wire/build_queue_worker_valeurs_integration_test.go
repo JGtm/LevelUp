@@ -21,7 +21,7 @@
 //
 //   - LE ROSTER, OUI. `assertRoster` vérifie que le film ne NOMME que les joueurs auxquels
 //     l'API donne au moins une mort. Les noms de vies sont lus du fil des morts du chunk
-//     highlight (`analysis/replay/deaths_source.go` : « aucune base n'intervient ») ; ils ne
+//     highlight (`games/halo_infinite/film/replay/deaths_source.go` : « aucune base n'intervient ») ; ils ne
 //     passent pas par `facts`. Les deux chaînes sont bien indépendantes, et l'égalité des deux
 //     ensembles est un fait, pas une définition.
 //   - LES COMPTEURS DE JOUEUR, NON. Le pont d'identité apparie un slot d'entité à un xuid par

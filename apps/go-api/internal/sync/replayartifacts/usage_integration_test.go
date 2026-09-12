@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // racineDepot vit desormais dans capability_test.go (sans tag de build) : la porte de

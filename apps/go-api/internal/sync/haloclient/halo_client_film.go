@@ -16,9 +16,9 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -42,7 +42,7 @@ type MatchPlayerFact struct {
 
 // MatchFacts est CE QUE LA BASE SAIT DU MATCH ET QUE LE FILM NE DIT PAS.
 //
-// POURQUOI CE TYPE EXISTE. `replaybuild` et `analysis/replay` n'ouvrent AUCUNE base — c'est leur
+// POURQUOI CE TYPE EXISTE. `replaybuild` et `games/halo_infinite/film/replay` n'ouvrent AUCUNE base — c'est leur
 // contrat, et il est ce qui rend le constructeur d'artefact utilisable hors ligne. Les deux ponts
 // qui manquent au film (l'identité des joueurs et celle des camps) arrivent donc en ENTRÉE, par
 // ce type, résolue par l'appelant là où il sait le faire.

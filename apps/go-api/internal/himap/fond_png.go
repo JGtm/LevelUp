@@ -20,7 +20,7 @@
 //     Pas de taille fixe : imposer une toile commune obligerait a choisir entre rogner les
 //     grandes cartes et gaspiller sur les petites.
 //  4. Le calage voyage dans un SIDECAR JSON par carte, a cote du PNG (cf.
-//     internal/analysis/replay/map_background.go pour le type et le lecteur).
+//     internal/games/halo_infinite/film/replay/map_background.go pour le type et le lecteur).
 //
 // POURQUOI UN SIDECAR PAR CARTE ET PAS UN MANIFESTE UNIQUE : une re-cuisson partielle (une
 // seule carte) ne peut alors jamais abimer l'entree d'une autre, et chaque PNG porte sa propre

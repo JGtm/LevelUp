@@ -23,8 +23,8 @@ package killcollector
 import (
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/port"
 )
 

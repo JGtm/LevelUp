@@ -9,7 +9,7 @@
 // avait dû corriger le même défaut de son côté (P0-2), et le collecteur de sync avait sa propre
 // entrée exportée. Le même fait — « qui occupe ce slot » — se répondait donc de trois façons.
 //
-// LA RÈGLE POSÉE : `internal/analysis/replay/identity_registry.go` est le SEUL fichier autorisé à
+// LA RÈGLE POSÉE : `internal/games/halo_infinite/film/replay/identity_registry.go` est le SEUL fichier autorisé à
 // toucher les tables brutes du pont. Tout le reste passe par les accesseurs du registre, qui
 // portent déjà leurs gardes (`PontEpure` retire les slots ambigus, `XUIDAt` préfère la vie qui
 // couvre l'instant). Un lecteur ne peut plus oublier une garde : il n'a plus de quoi l'enfreindre.
@@ -56,7 +56,7 @@ import (
 // identityBridgeScope : les paquets où le pont d'identité circule — la cuisson du rejeu et le
 // collecteur de sync, les deux producteurs que la décision D11 autorise.
 var identityBridgeScope = []string{
-	filepath.Join("analysis", "replay"),
+	filepath.Join("games", "halo_infinite", "film", "replay"),
 	filepath.Join("sync", "killcollector"),
 }
 
@@ -142,7 +142,7 @@ func TestNoIdentityBridgeOutsideRegistry(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Errorf("le pont d'identité est reconstruit hors du registre :\n  %s\n\n"+
-			"Le registre (`internal/analysis/replay/identity_registry.go`) est le SEUL producteur : "+
+			"Le registre (`internal/games/halo_infinite/film/replay/identity_registry.go`) est le SEUL producteur : "+
 			"passez par ses accesseurs (`PontEpure`, `XUIDAt`, `XUIDNumAt`, `IndexParSlot`, "+
 			"`Vies`, `SanteDuPont`). Ajouter une entrée à l'allowlist exige une justification "+
 			"écrite et datée dans ce fichier.", strings.Join(violations, "\n  "))

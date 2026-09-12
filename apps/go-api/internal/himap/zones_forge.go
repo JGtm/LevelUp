@@ -19,7 +19,7 @@ package himap
 import (
 	"math"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // TypeIDZoneNommee : le type d'objet « named location » des variantes Forge.

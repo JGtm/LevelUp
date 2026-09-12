@@ -6,7 +6,7 @@
 // seulement l'artefact final : il hache la sortie de CHAQUE balayage (l'observateur vit dans le
 // code de production, cf. `replay/observe.go`), ce qui LOCALISE une divergence au balayage pres
 // au lieu de dire « quelque chose a change ». Les digests de reference sont figes dans
-// `internal/analysis/replay/testdata/equivalence/<short8>.tsv`, avec LES FAITS DU MATCH a cote
+// `internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, avec LES FAITS DU MATCH a cote
 // (`<short8>.facts.json`) : sans eux, zones, actions d'objectif, VIP/crane/bombe, socles et
 // points d'apparition sont court-circuites et l'equivalence serait VACUANTE.
 //
@@ -146,7 +146,7 @@ func lireDrapeaux() (options, error) {
 // Chemin de SOURCE, pas de donnee : il ne passe donc pas par PathResolver (qui resout `data/`).
 func dossierEquivalence(repoRoot string) string {
 	return filepath.Join(repoRoot, "apps", "go-api",
-		"internal", "analysis", "replay", "testdata", "equivalence")
+		"internal", "games", "halo_infinite", "film", "replay", "testdata", "equivalence")
 }
 
 // filmsDemandes rend la liste short8 de `-films`, vide si le drapeau ne l'est pas.
