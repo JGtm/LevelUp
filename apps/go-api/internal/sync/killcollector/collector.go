@@ -88,33 +88,16 @@ import (
 // pas son amont.
 const KillSourceDecoderRev = "killsource-2026-09-12"
 
-// killSourceDecoderFingerprint — L EMPREINTE DES SOURCES DU DECODEUR, FIGEE A COTE DE SA REVISION.
+// L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
+// `testdata/killsource_decoder_rev.golden` porte le couple (revision, empreinte) et
+// `decoder_rev_fingerprint_test.go` le compare aux sources NON-TEST de
+// `internal/games/halo_infinite/film/killsource/`.
 //
-// POURQUOI ELLE EXISTE. La consigne « faire evoluer la revision a chaque changement de decodage »
-// est une consigne : elle a ete oubliee 14 fois de suite. Cette empreinte la transforme en gate.
-// `TestKillSourceDecoderRevSuitLeDecodeur` (decoder_rev_fingerprint_test.go) hache les sources
-// NON-TEST de `internal/games/halo_infinite/film/killsource/` et compare a cette valeur : toute
-// modification du decodeur fait ECHOUER le test tant que la revision ET l empreinte n ont pas ete
-// mises a jour ENSEMBLE.
-//
-// CE QU ELLE NE PROMET PAS : elle ne dit pas si le changement modifie les lignes produites (un
-// commentaire reformule la fait bouger). Le jugement reste humain — mais il devient EXPLICITE :
-// on ne peut plus changer le decodeur sans decider, par ecrit, si les lignes en base doivent etre
-// redecodees.
-//
-// COMMENT LA METTRE A JOUR : jouer le test, il imprime la valeur mesuree.
-//
-// 2026-09-10 (lot 5.1) : `botSuffix` -> `BotSuffix` (export pur, roster.go) pour que
-// `games/halo_infinite/replayidentity.BotIdentities` — le nouveau paquet partage par
-// `replaybuild` ET `killcollector` — puisse la lire sans dupliquer le littéral " [bot]".
-// AUCUNE LIGNE PRODUITE NE BOUGE (meme chaine, meme usage) : la revision NE bouge PAS, seule
-// l empreinte est recopiee (decision explicite, pas un bump implicite).
-//
-// 2026-09-12 (lot G.2bis) : `loadFilm` pose la version lue du film, `loadKillFeed` la passe au
-// parseur, `prepare` consigne le cas du registre absent. LES LIGNES PRODUITES BOUGENT sur les
-// films de version 39-40 : la revision EST bumpee ci-dessus (a la meme date, deja posee), et
-// l empreinte est recopiee avec elle.
-const killSourceDecoderFingerprint = "974c1aa8d371bb2f555e915487d4d41a2a5f779655d139722e3f41531298295b"
+// POURQUOI UN GOLDEN ET PLUS UNE CONSTANTE (revue adversariale du 2026-09-12, constat P1-4).
+// Tant que le test ne comparait que l EMPREINTE a une constante, remettre la revision ci-dessus a
+// sa valeur d avant — en gardant la nouvelle empreinte — restait VERT : le gate ne tenait qu un
+// des deux gestes qu il pretendait tenir. Le golden porte les DEUX, et le test distingue les deux
+// echecs : « le decodeur a change » et « la revision a change sans le decodeur ».
 
 // defaultKillSourceTimeout — la limite de temps PAR MATCH.
 //
