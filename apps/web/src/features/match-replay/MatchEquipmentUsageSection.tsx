@@ -10,6 +10,11 @@
  * tableau à deux niveaux d'en-tête donnait la bonne mesure dans la mauvaise forme : une grille
  * de chiffres où l'œil ne trouve ni le geste dominant ni le camp qui s'en est servi. À sa place,
  * dans la même carte :
+ * PLUS DE COLONNE DE GRENADES, ET UNE SEULE COLONNE PAR ÉTAT ACTIF (2026-09-13, cadrage
+ * utilisateur) : les lancers restent mesurés et dessinés par le rejeu mais ne sont pas un
+ * équipement ; la durée cumulée et les frags d'un état actif qualifient son compte en
+ * infobulle, au lieu d'ouvrir deux colonnes d'unités différentes sur la même mesure.
+ *
  *   1. « Nombre de gestes par joueur » — la grille partagée `components/charts/ValueGrid` :
  *      lignes = joueurs dans l'ordre du roster, camp par camp, filet entre les deux camps ;
  *      colonnes = grandeurs, CHACUNE AVEC SON ÉCHELLE (un mur se compare à un mur) ;
@@ -37,12 +42,13 @@
  *     réserve se lit) ;
  *   - les socles de bonus vidés sont ANONYMES par mesure : une ligne au niveau du MATCH, jamais
  *     une colonne de joueur ;
- *   - répulseur et propulseur n'ont aucune colonne, et une phrase dit pourquoi — mais pas pour
- *     la même raison depuis le 2026-09-03. Le RÉPULSEUR reste non mesuré (neuf canaux du film
- *     fouillés, négatif) : une colonne de zéros se lirait « zéro utilisation » là où la vérité
- *     est « non mesuré ». Le PROPULSEUR, lui, EST mesuré (schéma 38) et n'a toujours pas de
- *     colonne : décision utilisateur — le geste dure une demi-seconde, il se lit sur la carte
- *     du rejeu (le dash du pion), pas dans un compte de tableau.
+ *   - répulseur et propulseur n'ont aucune colonne, et c'est écrit dans la réserve du groupe
+ *     « Équipement » (`groupEquipmentHint`) et non plus en pied de carte : le PARAGRAPHE qui
+ *     l'expliquait a été retiré le 2026-09-13 sur demande de l'utilisateur (« je veux pas du
+ *     texte "Socles de bonus de puissance vidés : … Le propulseur … le geste dure une
+ *     demi-seconde" »). La raison n'a pas changé — le répulseur n'a aucun canal d'activation
+ *     dans le film, le propulseur dure une demi-seconde et se lit sur la carte du rejeu — elle
+ *     se dit juste au survol du groupe concerné.
  *
  * COULEURS. Les familles de geste prennent la table d'encres de `equipmentUsageChart` (jetons
  * sémantiques, jamais un hex) ; les camps prennent `teamTokenCssVar` — les jetons `team-ally` /
@@ -103,8 +109,15 @@ export function MatchEquipmentUsageSection({
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const usage = useMemo(() => (data ? buildEquipmentUsage(data, board) : null), [data, board])
   // REPLIÉ PAR DÉFAUT (plan 2026-09-05, décision D3) : état posé AU MONTAGE, jamais persisté.
-  const [expanded, setExpanded] = useState(false)
-  const { partition, groups, familles } = useUsagePartition(usage, data, t, locale, expanded)
+  // SAUF QUAND LE REPLI NE LAISSE RIEN À VOIR (2026-09-13) : zéro colonne élue = une carte qui
+  // n'affiche que ses notes de pied, exactement le défaut que l'utilisateur a nommé sur le bloc
+  // voisin (« pourquoi il est constamment replié et n'affiche jamais rien par défaut ? »). Le
+  // cas est devenu courant depuis le retrait des grenades, qui étaient les seules colonnes hors
+  // vote donc toujours visibles. Le bouton reste, il sert alors à REPLIER.
+  const [expanded, setExpanded] = useState<boolean | null>(null)
+  const partition = useUsagePartition(usage, t)
+  const deplie = expanded ?? partition.forward.length === 0
+  const { groups, familles } = useUsageGroups(partition, deplie)
   const meRow = useMemo(() => board.find((r) => r.is_me), [board])
   const meSide = meRow?.team_side ?? null
 
@@ -156,9 +169,9 @@ export function MatchEquipmentUsageSection({
         <span className="flex items-center justify-between gap-2">
           <span>{label}</span>
           <CollapsedItemsToggle
-            expanded={expanded}
+            expanded={deplie}
             count={partition.collapsedColumnCount}
-            onToggle={() => setExpanded((v) => !v)}
+            onToggle={() => setExpanded(!deplie)}
             showLabelFmt={t.collapsedColumnsShowFmt}
             hideLabel={t.collapsedColumnsHide}
             hint={t.collapsedColumnsHint}
@@ -173,30 +186,32 @@ export function MatchEquipmentUsageSection({
 }
 
 /**
- * useUsagePartition — les groupes de colonnes du repli « game changers », prêts à rendre.
+ * useUsagePartition — la partition « game changers » des groupes de colonnes.
  *
- * Extrait du composant le 2026-09-05 (plafond de taille de fonction du dépôt). Déplié = les
- * élus D'ABORD, les repliés ENSUITE — l'ordre interne survit dans chaque bloc. `familles` sert
- * la légende et la vue 2, qui raisonnent PAR FAMILLE DE GESTE : un groupe mixte redécoupé n'y
- * a qu'une occurrence (cf. `uniqueUsageGroups`).
+ * Extraite du composant le 2026-09-05 (plafond de taille de fonction du dépôt). Elle ne dépend
+ * PAS de l'état du repli : c'est elle qui décide de l'état INITIAL de ce repli (zéro colonne
+ * élue = carte ouverte au montage, cf. le composant).
  */
-function useUsagePartition(
-  usage: EquipmentUsage | null,
-  data: ReturnType<typeof useMatchReplay>['data'],
-  t: ReplayText,
-  locale: ReplayLocale,
-  expanded: boolean,
-) {
-  const partition = useMemo(
-    () => partitionUsageGroups(data && usage ? usageColumnGroups(usage, data, t, locale) : []),
-    [data, usage, t, locale],
+function useUsagePartition(usage: EquipmentUsage | null, t: ReplayText) {
+  return useMemo(
+    () => partitionUsageGroups(usage ? usageColumnGroups(usage, t) : []),
+    [usage, t],
   )
+}
+
+/**
+ * useUsageGroups — les colonnes réellement rendues. Déplié = les élus D'ABORD, les repliés
+ * ENSUITE, l'ordre interne survivant dans chaque bloc. `familles` sert la légende et la vue 2,
+ * qui raisonnent PAR FAMILLE DE GESTE : un groupe mixte redécoupé n'y a qu'une occurrence
+ * (cf. `uniqueUsageGroups`).
+ */
+function useUsageGroups(partition: ReturnType<typeof useUsagePartition>, expanded: boolean) {
   const groups = useMemo(
     () => (expanded ? [...partition.forward, ...partition.collapsed] : partition.forward),
     [expanded, partition],
   )
   const familles = useMemo(() => uniqueUsageGroups(groups), [groups])
-  return { partition, groups, familles }
+  return { groups, familles }
 }
 
 /**
@@ -346,7 +361,7 @@ function unknownOriginPlacements(cov: EquipmentUsage['coverage']): number {
  * en dessous dans l'onglet). Une colonne, même intitulée « anonyme », finirait par se lire comme
  * une grandeur de joueur.
  *
- * LES DEUX RÉSERVES DE COUVERTURE (P13, E2.6) FERMENT LA LISTE, JUSTE AVANT `notMeasured` : la
+ * LES DEUX RÉSERVES DE COUVERTURE (P13, E2.6) FERMENT LA LISTE : la
  * réserve NE SE CACHE PAS (amendement du 2026-09-09 à la sortie de E0 — décision utilisateur,
  * cf. journal du plan). `unknownOriginPlacements` existait déjà en germe dans `coverage` ;
  * `unnamedTaken` (E2, `equipmentUsageLogic.ts`) compte les objets pris dont le rang n'a pas de
@@ -383,7 +398,6 @@ function UsageFootnotes({ usage, t }: { usage: EquipmentUsage; t: ReplayText }) 
       )}
       {orphelins > 0 && <p>{u.unattributedFmt(orphelins)}</p>}
       {posesInconnues > 0 && <p>{u.coverageUnknownOriginFmt(posesInconnues)}</p>}
-      <p>{u.notMeasured}</p>
     </div>
   )
 }
