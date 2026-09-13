@@ -6,7 +6,9 @@ package filmdec
 // # POURQUOI L ARTEFACT ET PAS UN RECLASSEMENT MAISON
 //
 // La question 2 du lot demande « pour chaque pose classee `dropped` … ». Ce classement est
-// une DECISION DE PRODUCTION (`replay.equipmentOrigin`, fenetre 200 ms + distance 1,5 m) : le
+// une DECISION DE PRODUCTION (`replay.equipmentOrigin` — fenetre de 200 ms ET distance de
+// 1,5 m au moment ou F.0 a mesure ; la clause de distance a ete retiree par l'item F.1 le
+// 2026-09-13, APRES cette mesure, ce que les comptes de ce lot refletent donc bien) : le
 // recalculer ici en ferait une seconde ecriture, qui divergerait au premier correctif — et
 // c est precisement ce correctif que le lot instruit. L instrument lit donc `origin` dans
 // l artefact deja cuit, tel que le client le recoit.
