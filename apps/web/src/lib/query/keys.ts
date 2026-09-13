@@ -190,6 +190,10 @@ export const queryKeys = {
   // fetch garde le joueur (la route est derrière l'ownership).
   tacticalMapBackground: (titleSlug: string, mapId: string) =>
     ['tactical-map-background', titleSlug, mapId] as const,
+  /** Calage monde du fond d'une carte — même donnée de référence que l'image, donc même
+   *  régime : versionnée par titre, jamais par joueur. */
+  tacticalMapBackgroundFrame: (titleSlug: string, mapId: string) =>
+    ['tactical', 'map-background-frame', titleSlug, mapId] as const,
 
   // Raster de placement pour UNE carte et UNE question.
   tacticalRaster: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>

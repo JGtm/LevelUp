@@ -19,7 +19,7 @@ import type { FormesCardsText } from './cardsI18n'
 import { squadPlayerInk } from './colors'
 import { formatCount, formatMatchTime, formatPct, formatSigned } from './format'
 import type { FormesText } from './i18n'
-import { allMatches, measuredMatches } from './model/access'
+import { measuredMatches } from './model/access'
 import { weaponIndex } from './model/pads'
 
 /** Un membre de l'escouade affichée : son identité et son encre. */
@@ -38,7 +38,6 @@ export interface FormesViewModel {
   squad: FormesSquadMember[]
   weapons: Record<string, SquadFormesWeapon>
   measured: SquadFormesMatch[]
-  matches: SquadFormesMatch[]
   fmtPct: (v: number) => string
   fmtSigned: (v: number) => string
   fmtCount: (v: number, isDuration?: boolean) => string
@@ -52,18 +51,37 @@ export interface FormesViewModel {
   weaponLabel: (key: string) => string
 }
 
+/** Le libellé d'un membre : son gamertag, le nom de la page pour le joueur, son xuid en dernier. */
+function nameOf(
+  xuid: string,
+  gamertag: string | undefined,
+  mainXuid: string,
+  mainPlayerLabel: string | undefined,
+): string {
+  if (gamertag != null && gamertag !== '') return gamertag
+  if (xuid === mainXuid && mainPlayerLabel != null && mainPlayerLabel !== '') return mainPlayerLabel
+  return xuid
+}
+
 export function buildFormesViewModel(
   block: SquadFormesBlock,
   t: FormesText,
   ct: FormesCardsText,
   locale: Locale,
+  /**
+   * Le nom du joueur de la page, tel que la RÉPONSE DE PAGE le porte
+   * (`main_player`). Dernier filet contre un XUID à l'écran : le bloc le nomme
+   * déjà, mais un scope dont aucun participant ne porte son gamertag l'avait
+   * laissé sans nom (défaut mesuré le 2026-09-13).
+   */
+  mainPlayerLabel?: string,
 ): FormesViewModel {
   const mainXuid = block.main_xuid ?? ''
   const squad: FormesSquadMember[] = (block.squad ?? []).map((p, index) => ({
     xuid: p.xuid,
     // Un joueur sans gamertag garde son identifiant : aucune vie anonyme, jamais
-    // un « inconnu » à l'écran.
-    label: p.gamertag !== '' ? p.gamertag : p.xuid,
+    // un « inconnu » à l'écran — et le joueur de la page, lui, a toujours son nom.
+    label: nameOf(p.xuid, p.gamertag, mainXuid, mainPlayerLabel),
     ink: squadPlayerInk(index),
   }))
   const weapons = weaponIndex(block)
@@ -76,7 +94,6 @@ export function buildFormesViewModel(
     squad,
     weapons,
     measured: measuredMatches(block),
-    matches: allMatches(block),
     fmtPct: (v) => formatPct(v, locale),
     fmtSigned: (v) => formatSigned(v, locale),
     fmtCount: (v, isDuration) => formatCount(v, locale, isDuration),

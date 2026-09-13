@@ -10,7 +10,7 @@
  * AUCUNE CADENCE PAR MINUTE : les comptes se lisent PAR MATCH (décision
  * utilisateur du 2026-09-13).
  */
-import { FormesCard } from '../FormesCard'
+import { FormesCaption, FormesCard } from '../FormesCard'
 import { MINUS_INK, PLUS_INK, SPREAD_INK, TEAM_REST_INK, axisInk } from '../colors'
 import { BandeForm, type BandeRow } from '../forms/BandeForm'
 import { BatonMinMaxForm } from '../forms/BatonMinMaxForm'
@@ -18,6 +18,7 @@ import { GrilleForm, type GrilleColumn, type GrilleRow } from '../forms/GrilleFo
 import { JaugeDoubleForm, type JaugeRow } from '../forms/JaugeDoubleForm'
 import { Piste100Form, type PisteRow } from '../forms/Piste100Form'
 import { EQUIPMENT_AXES, playerAxisValue, type EquipmentAxis } from '../model/access'
+import { measuredWindow } from '../model/display'
 import {
   aggregateAxis,
   lobbyParts,
@@ -27,6 +28,13 @@ import {
 } from '../model/aggregates'
 import type { FormesViewModel } from '../viewModel'
 import { lobbyTrackRow, matchColumns, squadSegments } from './shared'
+
+/**
+ * La colonne des noms d'une grille PAR MATCH : « 22:51 · Assassin en équipe » et
+ * sa carte ne tiennent pas dans la largeur par défaut (mesuré sur les vrais
+ * libellés de mode du titre).
+ */
+const MATCH_NAME_WIDTH = 240
 
 /** Carte 1 — « Ma part, dans mon équipe et dans le lobby » (jauge double). */
 export function EquipmentSharesCard({ vm }: { vm: FormesViewModel }) {
@@ -87,27 +95,26 @@ export function EquipmentSharesCard({ vm }: { vm: FormesViewModel }) {
 /** Carte 2 — « Cadence de gestes, match par match » (grille, une ligne par match). */
 export function EquipmentByMatchCard({ vm }: { vm: FormesViewModel }) {
   const { t, ct } = vm
-  const rows: GrilleRow[] = vm.matches.map((m) => ({
+  // UNE LIGNE PAR MATCH MESURÉ, les plus récents : sur une portée de mille
+  // matchs, une ligne par match donnait quinze écrans de hachure.
+  const shown = measuredWindow(vm.block)
+  const rows: GrilleRow[] = shown.rows.map((m) => ({
     key: m.match_id,
     label: vm.matchLabel(m),
     sublabel: vm.matchMap(m),
-    accent: m.measured ? vm.squad[0]?.ink : undefined,
-    measured: m.measured,
+    accent: vm.squad[0]?.ink,
   }))
   const columns: GrilleColumn[] = EQUIPMENT_AXES.map((axis) => ({
     key: axis,
     label: t.axes[axis],
     total: t.common.totalFmt(vm.fmtCount(playerTotal(vm.block, vm.mainXuid, axis))),
   }))
-  const matchById = new Map(vm.matches.map((m) => [m.match_id, m]))
+  const matchById = new Map(shown.rows.map((m) => [m.match_id, m]))
   return (
     <FormesCard
       title={ct.cards.equipmentByMatch.title}
       note={ct.cards.equipmentByMatch.note}
-      legend={[
-        ...EQUIPMENT_AXES.map((axis) => ({ label: t.axes[axis], ink: axisInk(axis) })),
-        { label: t.common.noFilm, unmeasured: true },
-      ]}
+      legend={EQUIPMENT_AXES.map((axis) => ({ label: t.axes[axis], ink: axisInk(axis) }))}
     >
       <GrilleForm
         rows={rows}
@@ -121,7 +128,11 @@ export function EquipmentByMatchCard({ vm }: { vm: FormesViewModel }) {
         tooltip={(row, col, text) => t.common.valueTipFmt(row.label, col.label, text)}
         notMeasuredLabel={t.common.noFilm}
         axisTitle={t.common.gesturesPerMatchAxis}
+        nameWidth={MATCH_NAME_WIDTH}
       />
+      <FormesCaption>
+        {t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)}
+      </FormesCaption>
     </FormesCard>
   )
 }
@@ -164,10 +175,11 @@ export function EquipmentSpreadCard({ vm }: { vm: FormesViewModel }) {
 /** Carte 4 — « Régularité match par match » (bande, part de mon camp vs 50 %). */
 export function EquipmentRegularityCard({ vm }: { vm: FormesViewModel }) {
   const { t, ct } = vm
+  const shown = measuredWindow(vm.block)
   const rows: BandeRow[] = EQUIPMENT_AXES.map((axis) => ({
     key: axis,
     label: t.axes[axis],
-    cells: vm.matches.map((m) => {
+    cells: shown.rows.map((m) => {
       const pct = teamShareOfMatch(m, vm.mainXuid, axis)
       const label = `${vm.matchLabel(m)} · ${vm.matchMap(m)}`
       return {
@@ -195,7 +207,15 @@ export function EquipmentRegularityCard({ vm }: { vm: FormesViewModel }) {
         { label: t.common.noMeasureOnAxis, unmeasured: true },
       ]}
     >
-      <BandeForm rows={rows} columns={matchColumns(vm)} parity={50} axisTitle={t.common.matchesAxis} />
+      <BandeForm
+        rows={rows}
+        columns={matchColumns(vm, shown.rows)}
+        parity={50}
+        axisTitle={t.common.matchesAxis}
+      />
+      <FormesCaption>
+        {t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)}
+      </FormesCaption>
     </FormesCard>
   )
 }

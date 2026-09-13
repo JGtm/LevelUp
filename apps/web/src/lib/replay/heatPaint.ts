@@ -564,3 +564,53 @@ export function drawTacticalHeatmap(
   }
   drawHeatmap(ctx, source, geometry, style)
 }
+
+// =========================================================================================
+// CADRE MONDE D'UN FOND DE CARTE — LE REPÈRE PARTAGÉ DES TROIS CALQUES.
+// =========================================================================================
+
+/**
+ * MapFrame — le rectangle MONDE que couvre un fond de carte, déduit de son calage.
+ *
+ * C'EST LE SEUL REPÈRE DANS LEQUEL UN CALQUE ET SON FOND COÏNCIDENT. Un calque projeté sur
+ * les bornes de SES PROPRES données (le nuage de points, la boîte englobante des cellules
+ * mesurées) n'a aucun rapport avec l'image posée dessous : sur Illusion, les morts tiennent
+ * dans 30 x 36 m quand le fond en couvre 53 x 69 — l'image entière était écrasée dans une
+ * fenêtre qui n'en représentait que 40 %, et la chaleur tombait hors du bâtiment (constaté
+ * le 2026-09-13).
+ *
+ * `originX`/`originY` sont le coin du monde correspondant au pixel (0, 0) de l'image, donc
+ * le coin HAUT-GAUCHE : le Y monde DÉCROÎT quand la ligne de pixels croît (convention
+ * publiée avec le calage : `yMonde = originY - (py + 0.5) * metersPerPixel`).
+ *
+ * Déplacé ici depuis `features/match-view/_positionsHeat.ts` le 2026-09-13 : trois calques
+ * en dépendent désormais (rejeu 2D, « Où ça se joue », plan de l'onglet Tactique), et la
+ * règle du dépôt veut qu'à la troisième copie la définition remonte dans le noyau partagé.
+ */
+export interface MapFrame {
+  /** Coin du monde correspondant au pixel (0,0) de l'image — HAUT-gauche. */
+  originX: number
+  originY: number
+  /** Largeur et hauteur du fond, en mètres monde. */
+  widthM: number
+  heightM: number
+}
+
+/** Le calage d'un fond, réduit à ce dont une projection a besoin. */
+export interface MapCalibration {
+  metersPerPixel: number
+  originX: number
+  originY: number
+  widthPx: number
+  heightPx: number
+}
+
+/** mapFrame traduit le calage du fond en cadre monde exploitable. */
+export function mapFrame(cal: MapCalibration): MapFrame {
+  return {
+    originX: cal.originX,
+    originY: cal.originY,
+    widthM: cal.widthPx * cal.metersPerPixel,
+    heightM: cal.heightPx * cal.metersPerPixel,
+  }
+}

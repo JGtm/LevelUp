@@ -13,10 +13,12 @@
  */
 import { useCallback, useMemo, type ReactNode } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { ChartLegend } from '@/components/charts/ChartLegend'
 import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
+import { fragClassColor } from '@/lib/accessibility/scales'
 import type { FragClassEntry, SquadWeaponAccuracy, SquadWeaponKills } from '@/lib/api/types'
-import { buildFragBreakdownOption } from './charts/squadFragBreakdownChart'
+import { buildFragBreakdownOption, fragBreakdownClasses } from './charts/squadFragBreakdownChart'
 import { buildSquadFragTools, SQUAD_TOOLS_TOP_DETAILS, SQUAD_TOOLS_TOP_GUNS } from './charts/squadFragTools'
 import { SquadWeaponKillsChart } from './SquadWeaponKillsChart'
 import { SquadWeaponAccuracyBarsChart } from './SquadWeaponAccuracyBarsChart'
@@ -92,6 +94,24 @@ export function SquadFragSection({
     [weaponKills, fragClassesByPlayer, locale, t.weaponKills.otherWeapons, t.weaponKills.otherKills],
   )
 
+  /**
+   * La légende des classes de frags, HORS canvas (finitions 2026-09-13).
+   *
+   * Dans le canvas, à sept classes et en demi-largeur, elle s'étalait sur deux rangées
+   * posées au fond du graphe, exactement là où s'impriment les graduations de l'axe des
+   * frags : « 1 000 … 7 000 » se lisaient par-dessus les libellés. Même source que les
+   * séries (`fragBreakdownClasses`) pour que les deux listes ne divergent jamais.
+   */
+  const fragLegendItems = useMemo(
+    () =>
+      fragBreakdownClasses(fragClassesByPlayer, playerOrder).map((cls) => ({
+        key: cls,
+        label: formatMessage(fragsManifest, `frags.class.${cls}` as never, locale),
+        color: fragClassColor(cls),
+      })),
+    [fragClassesByPlayer, playerOrder, locale],
+  )
+
   // Carte « Répartition des frags » définie UNE seule fois (≤ 2 copies), puis
   // placée selon la composition de la rangée 1. fluid : s'étire à la hauteur de
   // la ligne (grid align-items:stretch) → alignée avec la cellule voisine.
@@ -102,6 +122,12 @@ export function SquadFragSection({
       buildOption={buildFragBreakdown}
       height={FRAG_BREAKDOWN_HEIGHT}
       emptyMessage={t.empty.noBlockData}
+      legend={
+        <ChartLegend
+          items={fragLegendItems}
+          ariaLabel={t.performanceCharts.fragBreakdownTitle}
+        />
+      }
       fluid
     />
   )

@@ -30,7 +30,7 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 6
+schema_version = 7
 
 [regulation_seconds]
 "CTF:Arena"                   = 720
@@ -387,3 +387,30 @@ schema_version = 6
 "Tactical:Slayer"                 = 18
 "Team Slayer:Arena"               = 18
 "Team Snipers:Arena"              = 18
+
+# ---------------------------------------------------------------------------------------
+# FENETRE DE JONGLAGE DU DRAPEAU (schema_version 7, mesure du 2026-09-13).
+#
+# CE QUE LA VALEUR EST : la duree en deca de laquelle un LACHER suivi d'une REPRISE par le
+# MEME joueur, sur le MEME drapeau, est UN SEUL geste — le porteur lance le drapeau devant
+# lui pour courir plus vite, puis le ramasse. Le compteur officiel `flag_grabs` compte ces
+# deux ramassages ; les « prises nettes » n'en comptent qu'un.
+#
+# SCALAIRE ET NON TABLE PAR VARIANTE, contrairement aux six tables ci-dessus : la coupure
+# vit dans le GESTE, pas dans le reglage d'une playlist. Mesure sur les 13 films CTF du parc
+# local (404 delais lacher -> reprise par le meme joueur) : l'effectif tombe de 99 sur la
+# tranche [1,0 ; 1,5) s a 27 sur [1,5 ; 2,0) s — un facteur 3,7, la SEULE discontinuite de la
+# distribution ; au-dela c'est un plateau plat. 1,5 s capte 93 % du mode dense sans mordre
+# sur le plateau. A cette fenetre, 40 % du compteur officiel est du jonglage (617 prises
+# brutes, 370 nettes). Detail, histogramme et controles :
+# `.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`.
+#
+# MEME DOCTRINE QUE TOUT CE FICHIER : cle ABSENTE = PAS DE LECTURE. Un titre qui ne declare
+# pas cette fenetre ne publie AUCUNE prise nette (jamais un zero, jamais une fenetre par
+# defaut). Une valeur negative est refusee au chargement ; pour ne pas publier la grandeur,
+# on RETIRE la ligne — l'absence EST l'interrupteur.
+#
+# Consommation : mappings.RegulationSet.FlagJuggleWindow() -> objectiveevents.NetFlagGrabs
+# -> persist.FlagGrabsNetPersister (match_flag_grabs_net) -> cartes d'objectif.
+[flag_grabs_net]
+flag_juggle_window_s = 1.5

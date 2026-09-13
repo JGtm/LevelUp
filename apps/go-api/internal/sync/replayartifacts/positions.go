@@ -273,10 +273,11 @@ func persisterPositions(ctx context.Context, d Deps, b *bilanDerivations, lus []
 // sans cette trace, la marque de derivation se poserait sur un match dont RIEN n'a ete ecrit
 // (constat C1 de la revue A-R1).
 func echecPositions(b *bilanDerivations, prets []passePositionsPrete) {
-	b.writerIndisponible()
+	ids := make([]string, 0, len(prets))
 	for i := range prets {
-		b.echec(prets[i].matchID)
+		ids = append(ids, prets[i].matchID)
 	}
+	echecFauteDeWriter(b, ids)
 }
 
 // projeterPositionsDuLot projette tous les documents du lot, AVANT tout writer. Rend les passes

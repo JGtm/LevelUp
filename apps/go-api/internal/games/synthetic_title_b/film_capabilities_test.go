@@ -27,16 +27,17 @@ import (
 	"levelup/go-api/internal/games/mappings"
 )
 
-// filmAttendu — le contenu EXACT attendu des six lignes `film.*` du TOML de la fixture.
+// filmAttendu — le contenu EXACT attendu des sept lignes `film.*` du TOML de la fixture.
 //
 // C'est une liste ECRITE A LA MAIN, et c'est voulu : la deriver du fichier reviendrait a
-// comparer le fichier a lui-meme. Un cas `supported` et cinq `not_exposed` — si un jour la
+// comparer le fichier a lui-meme. Un cas `supported` et six `not_exposed` — si un jour la
 // fixture doit changer, ce tableau change dans le meme commit, ce qui rend la decision
 // visible en revue.
 var filmAttendu = map[games.CapabilityKey]games.CapabilityStatus{
 	games.CapFilmReplayArtifact: games.CapSupported,
 	games.CapFilmUsageSummary:   games.CapNotExposed,
 	games.CapFilmBombStats:      games.CapNotExposed,
+	games.CapFilmFlagGrabsNet:   games.CapNotExposed,
 	games.CapFilmKillSource:     games.CapNotExposed,
 	games.CapFilmWeaponShots:    games.CapNotExposed,
 	games.CapFilmKillPositions:  games.CapNotExposed,

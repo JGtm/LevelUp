@@ -235,6 +235,13 @@ func fallbackCapabilities() games.CapabilityMap {
 		// match ; un titre sans la cle ne produit AUCUNE ligne et n expose AUCUNE
 		// colonne (cf. capabilities.toml).
 		games.CapFilmBombStats: games.CapSupported,
+		// Les PRISES DE DRAPEAU BRUTES ET NETTES lues du calque de drapeau de l artefact
+		// -> shared.match_flag_grabs_net. Le compteur officiel `flag_grabs` compte chaque
+		// ramassage, donc aussi le JONGLAGE ; la grandeur nette le replie. Gouverne la
+		// production post-sync (replayartifacts), le backfill CLI et l exposition sur les
+		// cartes d objectif. ⚠ LA CLE NE SUFFIT PAS : le titre doit AUSSI declarer sa
+		// fenetre de jonglage dans regulation.toml (cf. capabilities.toml).
+		games.CapFilmFlagGrabsNet: games.CapSupported,
 		// L ARTEFACT DE REJEU 2D lui-meme (data/cache/replays/{slug}/{match}.json) : la
 		// SOURCE dont les quatre cles film.* ci-dessus sont des projections. Gouverne la
 		// PRODUCTION (etape post-sync replayartifacts : sans la cle, rien n est mis en

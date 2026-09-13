@@ -59,8 +59,10 @@ describe('EquipmentUsageSection', () => {
     const labels = screen.getAllByText(/Mur de protection|Capteur de menaces/)
     expect(labels[0]).toHaveTextContent('Mur de protection')
     expect(labels[1]).toHaveTextContent('Capteur de menaces')
-    // Le bandeau "Matchs mesures" (une occurrence par carte)
-    expect(screen.getAllByText(t.measuredFmt(8, 8)).length).toBe(2)
+    // La couverture ne s'ecrit plus dans les bandeaux de titre (2026-09-13) : une seule
+    // ligne de pied par rangee, donc DEUX au total, et aucun "Matchs mesures N/M".
+    expect(screen.queryByText(t.measuredFmt(8, 8))).not.toBeInTheDocument()
+    expect(screen.getAllByText(t.measuredFooterFmt(8, 8)).length).toBe(2)
     // La barre "armes speciales" (pad_pickups) rend "Moi" pour le joueur de la route.
     expect(screen.getByText('Moi')).toBeInTheDocument()
     expect(screen.getByText('12 prises')).toBeInTheDocument()
@@ -96,5 +98,22 @@ describe('EquipmentUsageSection', () => {
     render(<EquipmentUsageSection usage={usage} mode="solo" t={t} locale="fr" />)
     // Pas de sous-total "Mon équipe" : le donut ne s'est pas rendu.
     expect(screen.queryByText(t.rowMyTeam)).not.toBeInTheDocument()
+  })
+})
+
+describe('couverture de mesure — accord en nombre (finitions 2026-09-13)', () => {
+  it('un seul match : « match » au singulier, en FR comme en EN', () => {
+    expect(USAGE_TEXT.fr.measuredFooterFmt(1, 1)).toBe('Mesuré sur 1 match sur 1')
+    expect(USAGE_TEXT.en.measuredFooterFmt(1, 1)).toBe('Measured on 1 match out of 1')
+  })
+
+  it('plusieurs matchs : pluriel', () => {
+    expect(USAGE_TEXT.fr.measuredFooterFmt(104, 1147)).toBe('Mesuré sur 104 matchs sur 1147')
+    expect(USAGE_TEXT.en.measuredFooterFmt(104, 1147)).toBe('Measured on 104 matches out of 1147')
+  })
+
+  it('aucun match mesuré : singulier en FR (« 0 match »), pluriel en EN', () => {
+    expect(USAGE_TEXT.fr.measuredFooterFmt(0, 12)).toBe('Mesuré sur 0 match sur 12')
+    expect(USAGE_TEXT.en.measuredFooterFmt(0, 12)).toBe('Measured on 0 matches out of 12')
   })
 })

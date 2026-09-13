@@ -10,7 +10,7 @@
  * UNE DURÉE NE SE COMPARE QU'À SA PROPRE PARITÉ : les colonnes « tenir » sont en
  * secondes et s'écrivent en m:ss.
  */
-import { FormesCard, FormesSubtitle } from '../FormesCard'
+import { FormesCaption, FormesCard, FormesSubtitle } from '../FormesCard'
 import { MINUS_INK, PLUS_INK, SPREAD_INK, TEAM_REST_INK, squadPlayerInk } from '../colors'
 import { EcartForm, type EcartRow } from '../forms/EcartForm'
 import { GrilleForm, type GrilleColumn, type GrilleRow } from '../forms/GrilleForm'
@@ -22,12 +22,16 @@ import {
   aggregateRole,
   columnsOfFamily,
   matchesOfFamily,
+  objectiveCell,
   objectiveFamilies,
-  objectiveValue,
   roleLobbyParts,
 } from '../model/objectives'
 import type { FormesViewModel } from '../viewModel'
+import { listWindow } from '../model/display'
 import { lobbyTrackRow } from './shared'
+
+/** La colonne des noms d'une grille par match — cf. EquipmentCards. */
+const MATCH_NAME_WIDTH = 240
 
 /** Le libellé d'une famille de mode (clé stable -> nom du titre). */
 function familyLabel(vm: FormesViewModel, family: string): string {
@@ -99,7 +103,7 @@ export function ObjectivesSharesByFamilyCard({ vm }: { vm: FormesViewModel }) {
       {objectiveFamilies(vm.block).map((family) => {
         const matches = matchesOfFamily(vm.block, family)
         const rows: JaugeRow[] = columnsOfFamily(vm.block, family).map((col) => {
-          const agg = aggregateColumns(matches, vm.mainXuid, [col.key])
+          const agg = aggregateColumns(matches, vm.mainXuid, [col])
           return {
             key: `${family}-${col.key}`,
             label: t.columns[col.key] ?? col.key,
@@ -163,7 +167,10 @@ export function ObjectivesRawGridCard({ vm }: { vm: FormesViewModel }) {
       legend={[{ label: vm.squad[0]?.label ?? '', ink: squadPlayerInk(0) }]}
     >
       {objectiveFamilies(vm.block).map((family) => {
-        const matches = matchesOfFamily(vm.block, family)
+        // LA FEUILLE DE MATCH N'A PAS BESOIN DE FILM : aucun match n'est écarté
+        // ici, la forme se borne seulement en nombre (les plus récents).
+        const shown = listWindow(matchesOfFamily(vm.block, family))
+        const matches = shown.rows
         const cols = columnsOfFamily(vm.block, family)
         const rows: GrilleRow[] = matches.map((m) => ({
           key: m.match_id,
@@ -177,6 +184,7 @@ export function ObjectivesRawGridCard({ vm }: { vm: FormesViewModel }) {
           duration: c.duration,
         }))
         const byId = new Map(matches.map((m) => [m.match_id, m]))
+        const byKey = new Map(cols.map((c) => [c.key, c]))
         return (
           <div key={family}>
             <FormesSubtitle>{ct.familyMatchesFmt(familyLabel(vm, family), matches.length)}</FormesSubtitle>
@@ -185,14 +193,27 @@ export function ObjectivesRawGridCard({ vm }: { vm: FormesViewModel }) {
               columns={columns}
               value={(row, col) => {
                 const match = byId.get(row.key)
-                return match ? objectiveValue(match, vm.mainXuid, col.key) : null
+                const spec = byKey.get(col.key)
+                if (!match || !spec) return null
+                // Une grandeur lue du film manque sur un match sans artefact :
+                // la case dit « non mesuré », jamais zéro.
+                return objectiveCell(match, vm.mainXuid, spec)
               }}
               ink={() => squadPlayerInk(0)}
               format={(v, col) => vm.fmtCount(v, col.duration)}
-              tooltip={(row, col, text) => t.common.valueTipFmt(row.label, col.label, text)}
+              tooltip={(row, col, text) => {
+                const base = t.common.valueTipFmt(row.label, col.label, text)
+                // La grandeur nette ne se lit pas sans sa règle : l'infobulle
+                // la porte, avec la fenêtre du match.
+                const w = byId.get(row.key)?.objective?.flag_juggle_window_seconds
+                if (!byKey.get(col.key)?.optional || w == null) return base
+                return `${base} — ${t.common.juggleFoldedFmt(vm.fmtCount(w))}`
+              }}
               notMeasuredLabel={t.common.notMeasured}
               axisTitle={t.common.gesturesAxis}
+              nameWidth={MATCH_NAME_WIDTH}
             />
+            <FormesCaption>{t.common.foldListFmt(matches.length, shown.hidden)}</FormesCaption>
           </div>
         )
       })}
@@ -216,7 +237,7 @@ export function ObjectivesGapSquadCard({ vm }: { vm: FormesViewModel }) {
       {objectiveFamilies(vm.block).map((family) => {
         const matches = matchesOfFamily(vm.block, family)
         const rows: EcartRow[] = columnsOfFamily(vm.block, family).map((col) => {
-          const agg = aggregateColumns(matches, vm.mainXuid, [col.key])
+          const agg = aggregateColumns(matches, vm.mainXuid, [col])
           return {
             key: `${family}-${col.key}`,
             label: t.columns[col.key] ?? col.key,

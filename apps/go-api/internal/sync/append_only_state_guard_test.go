@@ -151,6 +151,20 @@ var appendOnlyStateTables = []string{
 	// REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT — une lecture brute servirait les
 	// positions d'une passe de décodage précédente. Recette ADR 0026 étape 5.
 	"kill_openings",
+	// match_flag_grabs_net (prises nettes de drapeau, 2026-09-13) : créée directement
+	// append-only (id PK seq + decode_pass + written_at + vue match_flag_grabs_net_latest).
+	// L'unité de génération est LA PASSE DE LECTURE D'UN ARTEFACT, pas la ligne : la vue
+	// retient la DERNIÈRE PASSE ENTIÈRE par match (`decode_pass`, modèle de kill_openings),
+	// et c'est vital ICI pour deux raisons. (1) Chaque ligne porte la FENÊTRE de jonglage
+	// sous laquelle elle a été calculée : un arbitrage par clé, après une re-projection à
+	// une autre fenêtre qui ne retrouve plus un joueur, servirait la ligne de ce joueur à
+	// l'ANCIENNE fenêtre à côté des nouvelles — un scope à deux fenêtres, donc un scope qui
+	// n'annonce plus aucune règle. (2) Un joueur que le pont ne nomme plus doit être
+	// RÉTRACTÉ, pas servi à jamais. Écriture = INSERT pur
+	// (persist/flag_grabs_net_persister.go, un seul statement) ; aucun DELETE / ON CONFLICT /
+	// INSERT OR REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT. Recette ADR 0026
+	// étape 5.
+	"match_flag_grabs_net",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors
