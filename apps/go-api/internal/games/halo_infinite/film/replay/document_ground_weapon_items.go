@@ -74,9 +74,21 @@ type GroundWeapon struct {
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
 	Z float32 `json:"z,omitempty"`
-	// W est la famille d'arme en hexadécimal 8 chiffres — MÊME convention et MÊME espace
-	// d'identifiants que Loadout.W et WeaponChange.W (le mot d'identité du record de création
-	// se résout dans le même catalogue, c'est le filtre de la chaîne des socles).
+	// W est la famille d'arme en hexadécimal 8 chiffres, écrite `%08x` : MINUSCULES ET SANS
+	// PRÉFIXE `0x`.
+	//
+	// CE N'EST PAS LA MÊME ÉCRITURE QUE Loadout.W / WeaponChange.W, et ce commentaire a
+	// longtemps affirmé le contraire (« MÊME convention et MÊME espace d'identifiants ») —
+	// rectifié le 2026-09-13 (rapport 6.6, découverte 1). Les deux désignent bien la MÊME
+	// famille d'arme, mais `Loadout.W` s'écrit `0x%08X` (majuscules, préfixé). Mesuré sur
+	// `0891225f` : les deux ensembles portent les mêmes 8 familles et leur intersection
+	// BRUTE est VIDE. Joindre l'un sur l'autre sans normaliser ne rend donc rien — et
+	// silencieusement, puisqu'une jointure vide ressemble à une absence de données.
+	//
+	// Le web normalise avant de joindre (`weaponLabelKeyOf`,
+	// `features/match-replay/layers/useReplayGroundWeapons.ts`, lot 6.5). Tout nouveau
+	// consommateur doit faire de même. Le format de CE champ ne change pas : le parc cuit
+	// l'écrit ainsi, et le rectifier imposerait une recuisson complète pour une casse.
 	W string `json:"w"`
 	// Origin est l'origine MESURÉE de l'apparition, même vocabulaire que les poses
 	// d'équipement : `dropped` (une vie de bipède s'achève à moins de 2 frames et 1,5 m —

@@ -166,7 +166,11 @@ func BuildMapObjectives(e MapObjectivesEntry, specs []ObjectiveRoleSpec) *MapObj
 		for _, p := range e.PointsOfRole(spec.Role) {
 			out.Markers = append(out.Markers, ObjectiveMarkerDTO{
 				Role: string(p.Role),
-				Team: displayTeam(p.TeamIndex, spec.Neutral),
+				// `p.Neutral || spec.Neutral` : le socle de la variante « drapeau neutre »
+				// est neutre même quand la table de rôles ne force rien, et même quand le
+				// fichier de carte lui donne un `team_index` (socle central d'Illusion —
+				// cf. mapvar.Objective.IsCTFNeutral).
+				Team: displayTeam(p.TeamIndex, p.Neutral || spec.Neutral),
 				X:    float32(p.Center.X),
 				Y:    float32(p.Center.Y),
 				Z:    float32(p.Center.Z),

@@ -66,10 +66,29 @@ func (b *Builder) flagSpawns(matchID, mapID string) []replay.FlagSpawn {
 	out := make([]replay.FlagSpawn, 0, 3)
 	for _, p := range entry.PointsOfRole(mapvar.RoleFlagSpawn) {
 		out = append(out, replay.FlagSpawn{
-			Team: p.TeamIndex, X: float32(p.Center.X), Y: float32(p.Center.Y),
+			Team: flagSpawnTeam(p), X: float32(p.Center.X), Y: float32(p.Center.Y),
 		})
 	}
 	return out
+}
+
+// flagSpawnTeam rend l'equipe proprietaire d'un socle de drapeau : celle du fichier de
+// carte, SAUF si le socle porte le label de la variante « drapeau neutre » — auquel cas il
+// est neutre, quoi que dise son `team_index`.
+//
+// LE LABEL PRIME SUR LE `team_index`, ET CE N'EST PAS UNE PRECAUTION THEORIQUE. Le socle
+// central d'Illusion (`9e821f5e`, object_index 201, au point (0, 0)) porte
+// `ctf_neutral_include` ET `team_index = 0` : lu par son team_index, il devenait un
+// TROISIEME drapeau d'equipe 0 fige au milieu de la carte, que le calque ne pouvait pas
+// ecarter (`flag_neutral.go` trie sur `Team == TeamNeutral`) et qui creait la plus grande
+// zone aveugle du parc. Corrige le 2026-09-13 (rapport 6.11, decouverte D1). Le recensement
+// du catalogue est dans le godoc de [mapvar.Objective.IsCTFNeutral] : sur 63 socles
+// neutres, le label est juste 63 fois, le team_index 62.
+func flagSpawnTeam(p replay.PointObjective) int {
+	if p.Neutral {
+		return replay.TeamNeutral
+	}
+	return p.TeamIndex
 }
 
 // objectivesCatalog charge (une fois par Builder) le catalogue versionne d'objectifs de carte.

@@ -59,33 +59,33 @@ au 2026-09-13 (2 RT migrés le 2026-06-13, jamais depuis) ; local idem depuis le
       ./internal/sync/... ./cmd/server/...` + `-tags=integration -p 1 ./internal/sync/...`.
 
 ### B.3 Hygiène XS
-- [ ] B.3.1 D9 — socle central d'Illusion étiqueté équipe 0 au catalogue : localiser le
+- [x] B.3.1 D9 — socle central d'Illusion étiqueté équipe 0 au catalogue : localiser le
       catalogue (`film/replay/mapvar/objectives.go` ou le TOML de carte), corriger en
       « neutre », test de non-régression ; si l'item est déjà réglé, `[~]` + commit.
-- [ ] B.3.2 D15 — `ListMapsByTitle` (`platform/duckdb/metadata_repo_assets_list.go`) :
+- [x] B.3.2 D15 — `ListMapsByTitle` (`platform/duckdb/metadata_repo_assets_list.go`) :
       dédoublonner par `map_asset_id` (le web le fait déjà par identifiant), test.
-- [ ] B.3.3 G2 — `cmd/replay-corpus-gate` : un témoin du corpus sans chunks en cache fait
+- [~] B.3.3 G2 — `cmd/replay-corpus-gate` : un témoin du corpus sans chunks en cache fait
       ÉCHOUER le gate avec le nom du film (aujourd'hui silencieux) ; test unitaire sur le
       manifeste.
-- [ ] B.3.4 G3 — `config/replay_corpus.toml` : la raison du témoin Oddball décrit un résidu
+- [x] B.3.4 G3 — `config/replay_corpus.toml` : la raison du témoin Oddball décrit un résidu
       fermé le 2026-09-08 ; réécrire la raison (ce que le témoin exerce aujourd'hui).
-- [ ] B.3.5 G4 — commentaires : `domain/replaydoc/coverage_objectives.go` /
+- [x] B.3.5 G4 — commentaires : `domain/replaydoc/coverage_objectives.go` /
       `film/replay/coverage_bridge.go` — l'invariant `Balanced()` est vrai par construction
       (protection réelle = un seul fermoir par portage) ; `closedBy*` baissent sur les films à
       `noTrack` (raison à écrire, pas le double comptage). Doc seule.
-- [ ] B.3.6 G6 — ADR 0026 : documenter `decode_pass` (colonne de `kill_positions`, passe de
+- [x] B.3.6 G6 — ADR 0026 : documenter `decode_pass` (colonne de `kill_positions`, passe de
       décodage, clé de la vue `_latest`). Si `seed_demo_corpus.go` porte encore un
       `UPDATE kill_positions` : allowlister avec justification datée dans
       `internal/sync/no_art_patterns_test.go` (outil de démo, base jetable) — sinon `[~]`.
-- [ ] B.3.7 G7 — commentaire de `GroundWeapon.W` (`document_ground_weapon_items.go`) : espace
+- [x] B.3.7 G7 — commentaire de `GroundWeapon.W` (`document_ground_weapon_items.go`) : espace
       de clés distinct de `Loadout.W` (rapport 6.6 découverte 1). Doc seule.
-- [ ] B.3.8 H1 — `MatchMetrics` (`internal/domain/stats.go`) : supprimer si aucun usage
+- [x] B.3.8 H1 — `MatchMetrics` (`internal/domain/stats.go`) : supprimer si aucun usage
       (`git grep -nw MatchMetrics`), sinon `[~]` ; `cmd/mapcallouts-build/decoupe_masque.go` :
       extension `.png` en constante nommée.
-- [ ] B.3.9 H4 — supprimer `cmd/weapon-sounds`, `cmd/vs-measure`, `cmd/vehicle-sprite` (git
+- [x] B.3.9 H4 — supprimer `cmd/weapon-sounds`, `cmd/vs-measure`, `cmd/vehicle-sprite` (git
       garde l'historique) ; retirer toute mention dans `docs/COMMANDS.md` (FR+EN) et
       `.ai/project_map.md`.
-- [ ] B.3.10 killpos — `.ai/V7.5/PLAN_LOT_PONT_ET_KILLPOSITIONS.md` items 2.3, 2.4, 2.6 : statuer
+- [x] B.3.10 killpos — `.ai/V7.5/PLAN_LOT_PONT_ET_KILLPOSITIONS.md` items 2.3, 2.4, 2.6 : statuer
       `[~]` (critère du 2026-11-08 tenu : `BuildKillPositions` appelé par
       `sync/killcollector/positions.go:347`, écriture `persist/shared_persister.go` INSERT-only,
       `kill_positions_latest` = 114 038 lignes / 1 307 matchs Infinite au 2026-09-13) ; le CLI
@@ -148,9 +148,45 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
       tâche « Deux lots à planifier » tracée ; thought_log ; suppression des worktrees.
 
 ## Découvertes (consignées, NON traitées)
-- (à remplir par les lots)
+
+### Lot B (2026-09-13)
+
+- **D-B1 — Le ratchet anti-ART est aveugle aux noms de table INTERPOLÉS.**
+  `internal/sync/no_art_patterns_test.go` scanne des LITTÉRAUX. `internal/ops/seed_demo_corpus.go`
+  construisait ses écritures par `fmt.Sprintf("UPDATE %s …")` : aucun littéral `UPDATE weapon_kills`
+  n'existait dans la source, donc ni `TestNoBulkMultiRowUpdateOnCriticalTables` (qui couvre pourtant
+  `weapon_kills`, `medals_earned`, `killer_victim_pairs` et `match_participants`, tous présents dans
+  cette boucle) ni le scan principal ne pouvaient le voir. Le cas précis est corrigé en B.3.6, mais
+  **le trou du garde-rail reste** : toute écriture à table interpolée échappe encore aux deux tests.
+  Traitement possible : détecter la FORME `UPDATE %s` / `UPDATE " + table` en plus des littéraux, ou
+  une analyse AST. NON TRAITÉ.
+- **D-B2 — 8 socles `flag_spawn` d'équipe portent `team_index = -1` au catalogue d'objectifs**
+  (Cliffside, Highpower Heavies, Solitude, Solitude - Ranked, plus 4 entrées sans `public_name`).
+  C'est le défaut SYMÉTRIQUE de D9 : là où Illusion déclarait neutre un socle d'équipe, ces cartes
+  déclarent « sans équipe » des socles qui en ont une. `flag_neutral.go` triant sur
+  `Team == TeamNeutral`, ces socles tombent dans le panier NEUTRE et pourraient faire basculer à tort
+  un film en variante « drapeau neutre » (il faut `neutralBirths >= 3` et strictement plus que les
+  naissances d'équipe — donc pas automatique, mais possible). La correction de B.3.1 ne les touche
+  pas : elle porte sur le label, et ces socles n'en ont pas. Traitement propre : porter la neutralité
+  en champ EXPLICITE de `FlagSpawn` plutôt que de la surcharger sur `Team`. NON TRAITÉ.
+- **D-B3 — `cmd/weapon-sounds` et `cmd/vehicle-sprite` ne devaient PAS être supprimés**, contrairement
+  à ce que l'arbitrage H4 indiquait — et l'annexe G9 de l'audit du 2026-09-05, sa propre source, le
+  disait déjà (constats P1-2 et P1-4). Ce sont les seuls producteurs de 197 fichiers d'assets
+  VERSIONNÉS servis en production (20 sprites de véhicules lus par `useReplayVehicles.ts`,
+  177 sons sous `static/sounds/halo_infinite/`). Seul `vs-measure` était jetable et a été supprimé.
+  Traité dans B.3.9 et statué au registre ; consigné ici parce que l'écart vient de l'arbitrage.
+- **D-B4 — Deux `//nolint` ne suppriment probablement rien.** `golangci-lint` avertit :
+  « Found unknown linters in //nolint directives: 2026-09-07), gosec — limit/placeholders
+  maîtrisés, plr0913 — clé canonique d'issue (d5, plr0913 — coordinator function ». Les
+  directives de `internal/service/match_view_builders_summary.go` et
+  `match_view_builders_team.go` (commit `898bb3084`, hors de ce lot) mettent une justification
+  en PROSE là où le linter attend des noms de linters, et il parse donc la phrase comme tels.
+  Conséquence : la suppression demandée n'a probablement pas lieu. Forme correcte :
+  `//nolint:gosec,plr0913 // justification`. Le lint sort tout de même en 0 issue (dette gelée).
+  NON TRAITÉ.
 
 ## Journal
 - 2026-09-13 : plan écrit ; lot A fait (commit deps + push).
 - 2026-09-13 : lot B.1 clos (`feat/finitions-hygiene`) — merge `wt/psa-index-cause` (garde data-health PSA, 5 reproducteurs derrière `psarepro`), rapport déplacé en `.ai/V7.5/RAPPORT_VOLET2_INDEX_PSA_2026-08-28.md`, `#23046` -> `#23645` sur 133 fichiers Go + 6 docs + CLAUDE.md (196 occurrences Go), registre L538 réécrit (cause amont prouvée, garde alerte-seule 41 ms/base, condition de reprise = 1.5.6 avec #24744 ou jauge > 0). Gates : `go build ./...` exit 0, `go test ./internal/archlint/... ./internal/scheduler/...` exit 0, `go test -tags=integration -p 1 ./internal/scheduler/... ./internal/migration/...` exit 0.
 - 2026-09-13 : lot B.2 clos — migration one-shot des jetons legacy RETIREE (ADR 0023 Phase 5 close, en avance sur l'echeance 2026-10-01, critere tenu). Supprimes : `auth/migration.go` + test, `migrateLegacyAuthTokensAtBoot`/`legacyAuthSourcesReader` + `cmd/server/migration_boot_test.go`, `platform/duckdb/queries_auth.go` + son test d'integration. Allowlists sentinel 2 et 3 a 0 entree (ratchets anti-resurrection) ; guard 1 garde la seule entree `capturecli.go` (stdin, pas d'environnement). `no_legacy_source_used_test.go` inchange : il n'a jamais porte d'exception. Docs : CLAUDE.md, ADR 0023 (section « Cloture de la Phase 5 »), `ops/seed_demo_sync_meta.go`, `groupstore/migrate.go` (reference morte). Gates : `go build ./...` 0, `go vet ./...` 0, `go test ./internal/platform/auth/... ./internal/sync/... ./cmd/server/... ./internal/ops/... ./internal/platform/duckdb/...` 0, `go test -tags=integration -p 1 ./internal/sync/...` 0.
+- 2026-09-13 : lot B.3 clos. **B.3.1 (D9)** corrige a la SOURCE : le socle central d'Illusion est neutre par son LABEL (`ctf_neutral_include`), pas par son `team_index` qui vaut 0 — recensement du catalogue : sur 63 socles neutres le label est juste 63 fois, le team_index 62. `mapvar.Objective.IsCTFNeutral` + `PointObjective.Neutral` (la projection laissait tomber `Labels`) + les deux lecteurs (`replaybuild.flagSpawnTeam`, `BuildMapObjectives`) ; 3 tests, mutation verifiee (le retrait du correctif fait bien echouer le test). **B.3.2 (D15)** dedup par `map_asset_id`, requete enveloppante pour garder le tri d'affichage, test des homonymes. **B.3.3 (G2)** `[~]` : deja livre par `128ae9d15` (CORPUS-R1 C3) — `verifierCouverture` (report.go:149) fait sortir le gate en 2 en nommant chaque temoin absent et sa cause, appele depuis main.go:319, 4 tests qui ne touchent pas le cache reel. **B.3.4 (G3)** raison du temoin Oddball reecrite (residu ferme au lot 6.2 le 2026-09-10 — defaut REFUTE, pas corrige). **B.3.5 (G4)**, **B.3.7 (G7)** doc seule. **B.3.6 (G6)** ADR 0026 : `decode_pass` documente comme 4e mecanisme (le seul qui sait RETRACTER) + les 3 pieges ; l'`UPDATE kill_positions` de la demo EXISTAIT (invisible au grep : nom de table interpole) et a ete corrige en N UPDATE row-by-row a valeurs liees — PAS en INSERT-only, qui aurait laisse les xuid REELS dans une base publiee ; test d'anonymisation ajoute (la fonction n'en avait aucun). **B.3.8 (H1)** `MatchMetrics` supprime ; le `.png` de `decoupe_masque.go` est `[~]` (deja porte par `PathResolver.MapBackgroundPath`). **B.3.9 (H4)** SEUL `vs-measure` supprime : `vehicle-sprite` et `weapon-sounds` produisent 197 assets versionnes servis en production (cf. Decouverte D-B3). **B.3.10** echeance killpos soldee par anticipation. Gates : build 0, vet 0, `go test` hors himap 0 (170 paquets), `-tags=integration -p 1` sur sync/persist/migration/duckdb/ops/scheduler 0 (19 paquets), golangci-lint `--new-from-merge-base=origin/main` **0 issue**, gofmt propre.
