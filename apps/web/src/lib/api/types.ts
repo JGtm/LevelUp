@@ -1434,6 +1434,15 @@ export interface TeammatesPageResponse {
    * best-effort).
    */
   equipment_usage?: EquipmentUsageBlock
+  /**
+   * Bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) — la
+   * MATIÈRE des dix-neuf cartes des trois blocs (usages d'équipement, contrôle
+   * des armes spéciales, objectifs) : une ligne par joueur et par match, les
+   * deux camps. Publié par `TeammatesService.WithSquadFormes` sur le MÊME scope
+   * filtré que `equipment_usage`. Absent = scope sans match ; `available:false`
+   * avec raison machine pour un titre sans `film.usage_summary`.
+   */
+  formes_retenues?: SquadFormesBlock
 }
 
 /** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
@@ -2196,6 +2205,21 @@ export type EquipmentUsageFamilyLine = components['schemas']['EquipmentUsageFami
 export type EquipmentUsagePlayerLine = components['schemas']['EquipmentUsagePlayerLine']
 export type EquipmentUsageParties = components['schemas']['EquipmentUsageParties']
 export type EquipmentUsageFriendCount = components['schemas']['EquipmentUsageFriendCount']
+
+// ─── Artefact « Les formes retenues » (2ec1b8eb, lot D2 du 2026-09-13) : la
+// matière des dix-neuf cartes de l'onglet Synergies. Contrat Go :
+// internal/domain/squad_formes.go. Le bloc ne porte AUCUN agrégat — les parts,
+// les parités et les étendues se calculent dans `features/squad/formes/model/`,
+// à l'endroit où elles s'affichent (quatre dénominateurs, six formes).
+
+export type SquadFormesBlock = components['schemas']['SquadFormesBlock']
+export type SquadFormesMatch = components['schemas']['SquadFormesMatch']
+export type SquadFormesLobbyPlayer = components['schemas']['SquadFormesLobbyPlayer']
+export type SquadFormesWeapon = components['schemas']['SquadFormesWeapon']
+export type SquadFormesWeaponPad = components['schemas']['SquadFormesWeaponPad']
+export type SquadFormesObjective = components['schemas']['SquadFormesObjective']
+export type SquadFormesObjectiveColumn = components['schemas']['SquadFormesObjectiveColumn']
+export type SquadFormesObjectivePlayer = components['schemas']['SquadFormesObjectivePlayer']
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 
