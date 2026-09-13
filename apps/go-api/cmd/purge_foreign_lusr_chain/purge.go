@@ -25,23 +25,40 @@ import (
 // chainCensus — photographie des lignes d'une chaîne dans une player DB.
 type chainCensus struct {
 	TotalRows           int            // toutes lignes de match_skill_rank
-	ForeignRaw          int            // lignes de la chaîne visée, TABLE BRUTE
+	ForeignRaw          int            // lignes de la chaîne visée, par SCAN FORCÉ
+	ForeignIndexed      int            // idem, par LOOKUP INDEXÉ (doit être égal)
 	ForeignByRatingType map[string]int // ventilation LUSR / LUSR_V2 / ...
 	ForeignLatest       int            // lignes de la chaîne encore GAGNANTES dans la vue
 }
 
+// indexMismatch : le lookup indexé et le scan ne s'accordent pas sur le nombre de
+// lignes de la chaîne. Signature de la désynchronisation d'index ART (duckdb#23645)
+// — mesurée sur la base de JGtm le 2026-09-13 : scan 1 826, lookup 22.
+func (c chainCensus) indexMismatch() bool { return c.ForeignIndexed != c.ForeignRaw }
+
 // censusForeignChain recense la chaîne visée dans la table brute ET dans la vue
 // _latest. Les deux comptes racontent deux choses différentes : le brut est ce que la
 // purge retire, `_latest` est ce que les lecteurs applicatifs voient encore.
+//
+// SCAN FORCÉ PARTOUT (`playlist_group || ” = ?`) : un `playlist_group = ?` nu est
+// servi par idx_msr_playlist, et un index ART désynchronisé rend alors un compte
+// MINORÉ — c'est le P0 du 2026-09-13 (JGtm : 22 lignes annoncées pour 1 826 réelles),
+// qui aurait fait échouer la garde de cardinalité du swap après coup. Le compte par
+// lookup est relevé À PART (ForeignIndexed) pour que l'écart soit VU, pas subi.
 func censusForeignChain(ctx context.Context, db *sql.DB, chain string) (chainCensus, error) {
 	c := chainCensus{ForeignByRatingType: map[string]int{}}
 	if err := db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM match_skill_rank`).Scan(&c.TotalRows); err != nil {
 		return c, fmt.Errorf("recensement total: %w", err)
 	}
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM match_skill_rank WHERE playlist_group = ?`,
+		chain).Scan(&c.ForeignIndexed); err != nil {
+		return c, fmt.Errorf("recensement par lookup indexé: %w", err)
+	}
 	rows, err := db.QueryContext(ctx,
 		`SELECT rating_type, COUNT(*) FROM match_skill_rank
-		 WHERE playlist_group = ? GROUP BY rating_type ORDER BY rating_type`, chain)
+		 WHERE playlist_group || '' = ? GROUP BY rating_type ORDER BY rating_type`, chain)
 	if err != nil {
 		return c, fmt.Errorf("recensement brut: %w", err)
 	}
@@ -59,7 +76,7 @@ func censusForeignChain(ctx context.Context, db *sql.DB, chain string) (chainCen
 		return c, fmt.Errorf("recensement brut rows: %w", err)
 	}
 	if err := db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM match_skill_rank_latest WHERE playlist_group = ?`,
+		`SELECT COUNT(*) FROM match_skill_rank_latest WHERE playlist_group || '' = ?`,
 		chain).Scan(&c.ForeignLatest); err != nil {
 		return c, fmt.Errorf("recensement _latest: %w", err)
 	}
@@ -68,9 +85,13 @@ func censusForeignChain(ctx context.Context, db *sql.DB, chain string) (chainCen
 
 // purgeForeignChain reconstruit match_skill_rank SANS les lignes de la chaîne visée.
 //
-// `playlist_group IS DISTINCT FROM ?` et non `<> ?` : en SQL, `NULL <> 'x'` vaut NULL,
-// donc un `<>` nu JETTERAIT toutes les lignes à playlist_group NULL (les CSR, entre
-// autres). La garde de cardinalité l'attraperait, mais le filtre doit être juste.
+// Deux précautions dans le prédicat du CTAS, chacune pour un défaut constaté :
+//   - `IS DISTINCT FROM` et non `<>` : en SQL, `NULL <> 'x'` vaut NULL, donc un `<>`
+//     nu JETTERAIT toutes les lignes à playlist_group NULL (les CSR, entre autres) ;
+//   - `playlist_group || ”` et non la colonne nue : la concaténation interdit au
+//     planner de servir le prédicat par idx_msr_playlist. Sur une base dont l'index
+//     est désynchronisé (P0 du 2026-09-13), un filtre indexé CONSERVERAIT les lignes
+//     étrangères que l'index ne voit pas — la purge serait silencieusement partielle.
 func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before chainCensus) error {
 	indexDDL, err := captureDDL(ctx, db,
 		`SELECT sql FROM duckdb_indexes() WHERE table_name = 'match_skill_rank' AND sql IS NOT NULL`)
@@ -105,7 +126,7 @@ func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before cha
 	}
 	if _, err := tx.ExecContext(ctx,
 		`CREATE TABLE match_skill_rank__purge AS
-		 SELECT * FROM match_skill_rank WHERE playlist_group IS DISTINCT FROM ?`, chain); err != nil {
+		 SELECT * FROM match_skill_rank WHERE playlist_group || '' IS DISTINCT FROM ?`, chain); err != nil {
 		return fmt.Errorf("CTAS filtré: %w", err)
 	}
 

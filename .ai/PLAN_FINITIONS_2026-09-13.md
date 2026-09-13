@@ -134,6 +134,16 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
       L'EXÉCUTION sur les 4 bases est faite par le pilote (serveur arrêté, sauvegarde préalable).
 - [x] C.6 Registre L537 : cause PROUVÉE (double source de titre, profils déclarés sous deux
       titres) + gardes C.1/C.2/C.4 + purge à exécuter.
+- [x] C.8 (P0, 2026-09-13) Désynchronisation d'index ART sur `match_skill_rank` de JGtm,
+      constatée au dry-run de la purge : `COUNT(*) FILTER (WHERE playlist_group='h5_arena')`
+      (scan) rend 1 826 lignes, `WHERE playlist_group = 'h5_arena'` (lookup par
+      `idx_msr_playlist`) n'en rend que 22. Donnée INTACTE, seuls les lookups mentent —
+      même famille que `personal_score_awards` le 2026-08-27 (duckdb#23645). Livré :
+      `cmd/repair_msr_index` (diag scan-vs-lookup par axe indexé + `-repair` DROP/CREATE
+      avec la DDL capturée dans la base + CHECKPOINT, jamais de DELETE ni d'UPDATE) ;
+      `purge_foreign_lusr_chain` durci (recensement et filtre CTAS par scan forcé
+      `playlist_group || ''`, contrôle pré-vol lookup=scan qui REFUSE `-commit` et nomme
+      `repair_msr_index`). Les 3 autres joueurs rendent des comptes cohérents.
 - [x] C.7 Gate : `go build ./...`, `go vet ./...`, `go test ./...` (hors himap),
       `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/migration/... ./internal/platform/duckdb/...`
       (exit 0), `make go-api-lint`, push, CI verte.
@@ -264,6 +274,12 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   `SchemaVersion` reste à 54 — la recuisson est donc une décision de fraîcheur, pas de contrat.
 
 
+- **P0 TRAITÉ (C.8)** — désynchronisation d'index ART sur `match_skill_rank` (JGtm) :
+  détectée au dry-run de la purge, outillée le 2026-09-13 (`cmd/repair_msr_index` + pré-vol
+  de la purge). La FAMILLE de défaut est confirmée au-delà de `personal_score_awards` : tout
+  lecteur applicatif qui interroge `match_skill_rank` par prédicat indexé a pu servir des
+  lignes amputées sur cette base. À re-sonder périodiquement — l'outil en `-dry-run` est le
+  détecteur. Exécution de la réparation : pilote, serveur arrêté.
 - **Lot C — `migration.RebuildMatchSkillRankART`
   (`internal/migration/steps_player_rebuild_match_skill_rank.go:71`) repose
   `ADD PRIMARY KEY (match_id)`** : c'est le schéma PRÉ-append-only. Sur une player DB
@@ -320,3 +336,9 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   Effet de bord du lot : quatre fixtures de test de `platform/duckdb` recopient la DDL de la
   vue `_latest` au lieu de passer par les migrations (piège connu du dépôt) ; la vue par type
   y a été ajoutée en miroir, avec renvoi au nom du step.
+- 2026-09-13 : **C.8 (P0)** — le dry-run de la purge sur JGtm a révélé un index ART
+  désynchronisé (`idx_msr_playlist` : 22 lignes annoncées pour 1 826 réelles). Sans le
+  durcissement, la purge aurait recensé 22 lignes étrangères puis fait rollback sur sa garde
+  de cardinalité — le garde a fonctionné, mais il fallait remonter d'un cran : la purge lit
+  et filtre désormais par SCAN FORCÉ, et refuse `-commit` tant que lookup ≠ scan.
+  `cmd/repair_msr_index` répare l'index (DDL capturée dans la base, jamais recopiée).
