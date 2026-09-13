@@ -563,7 +563,7 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       d'équipe dans sa suite cohérente, et sur ce film les slots d'équipe déclarent EXACTEMENT
       les mêmes manches que les slots joueur (0 et 2, jamais 1). La mesure du 2026-09-08 citée au
       registre (« les manches viennent des slots d'ÉQUIPE ») est amendée dans le même geste.
-- [ ] 0.D.2 **D7 — bloc monde/équipement de `60ae07c4` (Live Fire, v37).**
+- [x] 0.D.2 **D7 — bloc monde/équipement de `60ae07c4` (Live Fire, v37).**
       Séparer l'effet du schéma 53 (porte de région sur 2 bits) de celui de la borne
       `maxUnrollPerStep = 16` : trouver les sha qui encadrent v53 (`document_chronicle.go`),
       jouer le corpus gate sur `60ae07c4` seul avec `--base=<sha juste avant v53>` contre le
@@ -573,6 +573,50 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       DÉFAUT (dire laquelle des deux entrées affirme « ne bouge pas » à tort, et si la perte est
       réelle) ou DIVERGENCE VOULUE. Correctif seulement si défaut à cause identifiée, même
       protocole qu'en 0.D.1 ; sinon registre.
+      **Fait** (2026-09-13). **VERDICT : DIVERGENCE VOULUE sur le bloc monde/équipement — et la
+      borne de déroulage n'y est pour RIEN.** Aucun correctif (règle 7). Méthode : quatre points
+      de base du corpus gate sur `60ae07c4` seul (manifeste réduit), `--source-root` laissé sur
+      ce worktree — la variante « vieux sha en `--source-root` » du brief aurait fait exporter
+      les faits par le `cmd/levelup` du 2026-09-11 (`facts.go` lance l'export depuis
+      `SourceRoot`), donc **aucun worktree temporaire n'a été créé ni retiré**. Faire varier
+      `--base` isole les mêmes révisions et donne QUATRE points au lieu de deux.
+      **(1) La borne `maxUnrollPerStep = 16` (`f22474816`) n'explique RIEN** : les rapports aux
+      bases `ebd012e3b` (son parent) et `f22474816` sont **identiques octet pour octet** (hors
+      durée) — 66 gains, 28 pertes, mêmes valeurs sur tous les axes.
+      **(2) La porte de région (`fb71e9b3c`, chronique v53) explique 100 % du bloc** : à la base
+      `1a93b34f2` (son parent) le gate rend 17 pertes ; à la base `c5a71dcbd` (le bump v53, juste
+      après) il rend **0 perte, 3 gains, exit 0**. Entre les deux il n'y a que ces deux commits.
+      **(3) Rien de publié n'est perdu**, lecture des deux artefacts cuits (`--keep-work`) :
+      `groundWeapons` publiées **188 -> 188**, `pickups` publiés **297 -> 297**,
+      `groundWeapons.kept` **218 -> 218**, `objects` **218 -> 218**. Les « pertes » sont de deux
+      natures et d'aucune autre : des compteurs d'ÉCHEC qui baissent (`rejected` 211 -> 116 avec
+      `accepted` 429 -> 334, soit −95 des deux côtés et `kept` constant : les 95 partants étaient
+      DÉJÀ écartés sur l'identité ; `unknown` 36 -> 5 ; `placements.unknown` 57 -> 4 ;
+      `pickups.originUnknown` 56 -> 40 ; `projectiles.truncated` 343 -> 3) et une
+      RE-CLASSIFICATION à somme constante (`spawned` 218 -> 35 avec `dropped` **0 -> 183**, somme
+      218 des deux côtés : positions fausses, la règle du lâcher ne mordait jamais et tout
+      tombait en `spawned` par défaut). Gains massifs en face : `placements` **57 -> 190**,
+      `projectiles` publiés **236 -> 417**, `dropperNamed` 0 -> 183, `withOwner` 0 -> 186,
+      `dated` 0 -> 31, `cycles` 0 -> 1.
+      **(4) L'entrée v53 n'est PAS démentie.** Elle dit « Les armes au sol, les tirs et les
+      ramassages ne bougent pas (217, 717, 108 des deux côtés) » — et sur `60ae07c4` les armes au
+      sol PUBLIÉES et les ramassages PUBLIÉS ne bougent effectivement pas (188 et 297 des deux
+      côtés). Ce qui bouge, ce sont les compteurs de COUVERTURE, dont l'entrée ne parle pas. Le
+      constat D7 comparait des compteurs de couverture à une phrase sur des comptes publiés.
+      **(5) Aucune part ne vient d'un découpage d'i0 DÉTECTÉ** (question du pilote) : le
+      catalogue impose `axisWidths [12 12 11]` et `regionIndexBits 2` pour Live Fire
+      (`map_quant_bounds.json`, entrée « live fire », module `sgh_interlock`), ce fichier est
+      **identique entre `1a93b34f2` et HEAD** (`git diff` vide), et `film_context.go` — qui
+      n'auto-détecte QUE si l'entrée de carte est invalide — est lui aussi **identique aux deux
+      révisions**. La détection ([13 12 11]) n'est donc atteinte sur aucun des deux côtés ; le
+      seul écart est bien le nombre de bits que la porte consomme. `killcollector/positions.go`
+      détecte encore (audit 0.E, A1), mais c'est le chemin des positions de kill, pas celui de la
+      cuisson : il ne touche aucun de ces chiffres.
+      **(6) TROISIÈME CAUSE, dite et non instruite** (brief : « si une troisième cause apparaît,
+      dis-la »). `skullCarries.grabs` 39 -> 8, tout le bloc `equipmentChanges` et les capacités
+      ne bougent NI à la porte NI à la borne : ils sont **déjà à leur valeur de HEAD à la base
+      `ebd012e3b` (schéma 51)**, donc leur cause est antérieure. Ligne au registre des reports,
+      avec ce qui est établi et sa condition de reprise.
 - [ ] 0.D.3 **D9 — le codec des entrées de golden est incomplet.**
       Compléter le codec `inputs_*.bin.gz` (`golden_inputs_test.go`) pour qu'il transporte les
       rangs de capacité et les origines de pose (tout ce que `decodeFilmInputs` rend et que
@@ -1064,6 +1108,8 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 | 2026-09-13 | 0.D.1 | **D3 — le corpus gate lit TOUTE baisse de `coverage.score.rounds` comme une perte, alors que retirer une manche fantôme est le gain cherché.** `rounds` n'est pas dans la liste fermée des compteurs d'ÉCHEC de `internal/replaydiff/polarite.go`, donc il garde la lecture générique « plus = mieux ». Or l'instruction 0.D.1 prouve que la baisse 3 -> 1 sur `fb1a1a72` est une CORRECTION (manche 1 sans un seul enregistrement, manche 2 à 16 % de la densité de la manche 0 et recouvrant sa fenêtre). Conséquence : tout lot futur qui améliore la détection des manches fantômes sortira en « perte » au gate et devra être ré-instruit à la main, exactement comme celui-ci. Même famille que les 8 lignes de polarité douteuse du §7.B du rapport de re-figeage, et que la ligne « `shotsNoRide` / `ambiguousSlot` » déjà au registre. NON TRAITÉ (règle 7). | Le lot qui inventoriera les compteurs de VOIE et d'ÉCHEC du contrat de couverture (registre des reports, ligne du lot E2-bis) : y faire entrer `score.rounds` avec la bonne polarité, ou l'inscrire en ligne à ACCEPTER au gate |
 
+| 2026-09-13 | 0.D.2 | **D4 — le constat D7 groupait DEUX causes séparées par ~17 montées de schéma.** Les treize axes que D7 citait ensemble sur `60ae07c4` se scindent : le bloc ARMES AU SOL / POSES / PROJECTILES / RAMASSAGES vient à 100 % de la porte de région (`fb71e9b3c`, v53) et n'est pas une perte ; le bloc ÉQUIPEMENT / CRÂNE / CAPACITÉS (`skullCarries.grabs` 39 -> 8, tout `equipmentChanges`, `abilities/n` 29 -> 27, `abilityLabels/n` 4 -> 3) est déjà à sa valeur de HEAD au schéma 51 et vient d'ailleurs. **Leçon de méthode** : un constat de gate qui énumère des axes « qui bougent ensemble » ne prouve pas une cause commune — ici la co-occurrence venait uniquement de la largeur du segment comparé (34 -> 54). Un constat de gate devrait porter le segment le plus étroit où il tient encore. NON TRAITÉ. | Le lot qui révisera le protocole du corpus gate (même famille que la ligne « pas de mécanisme d'acceptation datée d'une perte instruite » au registre) : exiger d'un constat qu'il nomme le segment minimal, pas le segment de la campagne |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -1137,6 +1183,14 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.D.1 | ce commit | Oracles produit : `fb1a1a72.facts.json` et `config/titles/halo_infinite/mappings/regulation.toml` | Feuille : `teamScores [0,1]`, `gameVariantName "CTF:Arena"` — un total de captures. `[rounds_decide]` ne liste que les trois Oddball et son en-tête EXCLUT nommément `CTF:Arena` (« deux MI-TEMPS, pas des manches décisives [...] le compte de manches y vaut 0-1, ce qui serait un contresens ») |
 | 2026-09-13 | 0.D.1 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` (film, archlint, replaybuild, killcollector, objectiveevents) ; `go test` (12 paquets) ; `golangci-lint --timeout 20m --new-from-merge-base=origin/main` | gofmt vide ; vet 0 diagnostic ; **12 paquets ok** (filmdec 8,9 s, archlint 14,0 s, objectiveevents 0,5 s) ; lint **0 issues, exit 0**. L'instrument SAUTE sans ses deux variables (`--- SKIP`) : il ne pèse pas sur la CI |
 | 2026-09-13 | 0.D.1 (gate décodage) | ce commit | `git diff --stat HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` | **SORTIE VIDE : aucun octet de production ne change dans ce sous-lot** (un instrument `_research_test.go`, deux documents). Le régime court n'est donc PAS rejoué : `replay-equiv` ne dépend que du code de production, et 0.D.0 l'a laissé à 20/20 identiques au commit précédent. Gate consigné comme NON APPLICABLE, pas comme différé — une commande qui ne peut rien mesurer de neuf |
+
+
+| 2026-09-13 | 0.D.2 | `554cf8339` (arbre) | `replay-corpus-gate --base=ebd012e3b` puis `--base=f22474816`, manifeste réduit à `60ae07c4`, `--source-root` = ce worktree, `--parc-root` = le principal | **Les deux rapports sont IDENTIQUES octet pour octet** (hors `dureeMs`) : schéma de référence 51, **66 gains, 28 pertes**, mêmes valeurs sur tous les axes. **La borne `maxUnrollPerStep = 16` (`f22474816`) n'explique RIEN sur ce témoin.** Durées 52,3 s et 88,0 s |
+| 2026-09-13 | 0.D.2 | `554cf8339` (arbre) | `replay-corpus-gate --base=1a93b34f2` (parent de la porte) puis `--base=c5a71dcbd` (bump v53) | base 52 : **17 pertes**, 67 gains, exit 1 — base 53 : **0 perte, 3 gains, exit 0**. Entre les deux bases il n'y a que `fb71e9b3c` (la porte) et `c5a71dcbd` (le bump) : **la porte de région explique 100 % du bloc** |
+| 2026-09-13 | 0.D.2 | `554cf8339` (arbre) | `--base=1a93b34f2 --work-root <scratch> --keep-work`, puis comparaison des DEUX artefacts cuits, bloc par bloc | **Rien de publié ne baisse** : `groundWeapons` 188 -> 188, `pickups` 297 -> 297, `kept` 218 -> 218, `objects` 218 -> 218. Pertes = compteurs d'ÉCHEC (`rejected` 211 -> 116 pour `accepted` 429 -> 334, −95 des deux côtés ; `unknown` 36 -> 5 ; `placements.unknown` 57 -> 4 ; `originUnknown` 56 -> 40 ; `truncated` 343 -> 3) + RE-CLASSIFICATION à somme constante (`spawned` 218 -> 35, `dropped` **0 -> 183**, somme 218). Gains : `placements` **57 -> 190**, `projectiles` publiés **236 -> 417**, `dropperNamed` 0 -> 183, `withOwner` 0 -> 186, `dated` 0 -> 31, `cycles` 0 -> 1 |
+| 2026-09-13 | 0.D.2 | `554cf8339` (arbre) | `replay-corpus-gate --base=179bd7401` (la base même du constat D7) | **61 pertes**, 165 gains, schéma 34 -> 54. Les 17 de la porte s'y retrouvent, plus `geometry.*` (9 axes, chronique v52 props Forge, §7.A A1), `projectiles.p/n` et frères (4 axes, v52 pas impossible, §7.A A6), `tracks.points` (7 axes, = D8, lot 0.D.4) et **le bloc équipement/crâne/capacités (26 axes) qui n'apparaît PAS à la base 51** — d'où la troisième cause |
+| 2026-09-13 | 0.D.2 | `554cf8339` | `git diff 1a93b34f2 HEAD -- data/titles/halo_infinite/reference/map_quant_bounds.json` ; `diff` de `film_context.go` aux deux révisions | **Les deux sont identiques.** Le catalogue impose `axisWidths [12 12 11]` et `regionIndexBits 2` à Live Fire (module `sgh_interlock`), et `FilmContext.I0Layout` n'auto-détecte que si l'entrée de carte est invalide : **aucune part des 190 records ne vient d'un découpage détecté**, sur aucune des deux révisions |
+| 2026-09-13 | 0.D.2 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m --new-from-merge-base=origin/main` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court NON APPLICABLE : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — ce sous-lot ne change aucun octet de production (deux documents). Aucun worktree temporaire créé (voir le bloc 0.D.2), donc rien à retirer |
 
 ## 6. Protocole de reprise de session
 
