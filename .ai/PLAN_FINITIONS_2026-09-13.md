@@ -472,10 +472,21 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
 - R14 — `ListMapsByTitle` : `COALESCE(name_canonical,'')` fait passer les cartes sans nom canonique en tête du tri (le commentaire dit « tri inchangé »).
 - R15 — deux formulations imprécises : référence équipement §1 (« de la dernière position » -> « de la fin de vie ») ; godoc `originDropMaxDist` (le crâne n'est qu'un test).
 
+### Lot G (2026-09-13)
+
+- **D-G1 — `internal/ops/restore.go:223` vide une table par `DELETE FROM %q` interpolé**, nom de
+  table venu du jeu de parquets de sauvegarde, sans aucune valeur liée. C'est la forme
+  déclencheuse ART, et elle s'applique indifféremment à une table protégée si la sauvegarde en
+  contient une. Le nouveau scan G.2 ne la juge PAS : il corrèle FILE-level sur le nom d'une table
+  protégée ou critique, et `restore.go` n'en nomme aucune (son universalité est justement ce qui
+  le rend générique). Limite assumée et documentée dans le fichier de test. Traitement possible :
+  restaurer par swap CTAS (`CREATE TABLE __restored AS SELECT … ; DROP ; RENAME`) au lieu du
+  couple DELETE + INSERT. NON TRAITÉ.
+
 ## Lot G — fiabilité (`feat/finitions-fiabilite`, Go) — arbitré le 13/09 soir (points 1 à 5 des recos)
 Contrat `plan-execution`, périmètre FERMÉ, découvertes consignées non traitées sauf P0.
 - [x] G.1 Supprimer `migration.RebuildMatchSkillRankART` (`internal/migration/steps_player_rebuild_match_skill_rank.go`) et son unique appelant `cmd/force_rebuild_art`, avec tests, imports, mentions docs (`docs/COMMANDS.md` FR+EN, `.ai/project_map.md`) et entrées de baseline de tests retirées dans le MÊME commit. Si un autre appelant existe, statuer `[!]` avec preuve.
-- [ ] G.2 `internal/sync/no_art_patterns_test.go` : détecter aussi les écritures à nom de table INTERPOLÉ (`fmt.Sprintf("UPDATE %s`, `"UPDATE " + table`, `DELETE FROM %s`, `INSERT INTO %s … ON CONFLICT`) sur les tables protégées ; le cas de `seed_demo_corpus.go` (forme ligne à ligne à valeurs liées) doit rester VERT ; un cas témoin rouge (fixture de test) prouve la morsure ; aucune allowlist agrandie.
+- [x] G.2 `internal/sync/no_art_patterns_test.go` : détecter aussi les écritures à nom de table INTERPOLÉ (`fmt.Sprintf("UPDATE %s`, `"UPDATE " + table`, `DELETE FROM %s`, `INSERT INTO %s … ON CONFLICT`) sur les tables protégées ; le cas de `seed_demo_corpus.go` (forme ligne à ligne à valeurs liées) doit rester VERT ; un cas témoin rouge (fixture de test) prouve la morsure ; aucune allowlist agrandie.
 - [ ] G.3 Sonde data-health « index désynchronisé » étendue à `match_skill_rank` des player DB (`internal/scheduler/`), calquée sur `data_health_psa_index.go` (alerte seule, `OpenReadForQuery`, échantillon borné, jauge gelée si non mesuré, entrée dans `WarningsTotal`, title-agnostic, coût mesuré). Réutiliser la règle de comparaison de `cmd/repair_msr_index/diag.go` plutôt que la recopier (extraire un helper partagé si besoin, avec garde-rail ≤ 2 copies). Le message d'alerte nomme `repair_msr_index -repair`.
 - [ ] G.4 `internal/service/openspartan_post_import_service.go` : le titre de la base est stampé UNE fois à l'entrée du post-import, pour TOUTES les étapes (LUSR, `recomputePerfScores` → `GetPerformanceChain`, suivantes) ; test : un ctx entrant portant un autre titre ne change pas la chaîne de performance écrite. Mesure : requête lecture seule sur les 4 player DB Infinite (serveur ARRÊTÉ par le pilote, pas par l'agent) pour compter les `performance_chain` étrangères — l'agent livre la requête, le pilote l'exécute.
 - [ ] G.5 Tests de parité : (a) Go ↔ TS des familles d'objectif (`objectiveevents/families.go` ↔ `features/match-replay/model/objectiveFamilies.ts`, ratchet Go qui lit le fichier TS, modèle `archlint/*_test.go`) ; (b) `infiniteLUSRChains` du gate d'intégration dérivée de `games/halo_infinite/skillchain` (export d'une liste ou test d'exhaustivité contre `ClassifyLUSRChain`), plus de copie manuelle.
