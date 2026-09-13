@@ -482,6 +482,9 @@ de contrat et les références d'équivalence figées à `cbfdc269d` ; les trois
 croisement au corpus gate (D6, D7, D8 de la §4) attendent un verdict ; et D9 dit que le codec
 des entrées de golden ne transporte pas tout ce que l'assemblage lit. Sous-lots strictement
 séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, la main rendue.
+ORDRE D'EXÉCUTION (révisé le 2026-09-13 au soir) : 0.D.0, 0.D.1, 0.D.2 sont clos ; viennent
+ensuite **0.D.5** (synchronisation de la seconde fusion, avant tout le reste — les oracles
+doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
 
 - [x] 0.D.0 **Synchronisation avec `feat/v75` : attribution, régénération, re-figeage.**
       Régime court (10 films) sur `215649efd` : lister, film par film, les étapes qui diffèrent
@@ -624,6 +627,59 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       responsables ; verdict DÉFAUT ou DIVERGENCE ; correctif seulement si défaut à cause
       identifiée (même protocole) ; sinon registre. Si la session ne suffit pas : registre avec
       ce qui a été établi.
+
+- [x] 0.D.5 **Synchronisation bis : la seconde fusion de `feat/v75` dans l'intégration.**
+      Même méthode qu'en 0.D.0, sur la fusion `c28f7da59` (55 commits de finitions et
+      d'ajustements : H.1 `flag_neutral`, H.2 « pièce engendrée = déployée » dans
+      `equipment_placements.go`, `identity.go`, `usage_summary_families.go`, `flag_carries.go`,
+      `replaybuild/flagspawns.go`). Régime court sur le sha de fusion ; lister les étapes qui
+      diffèrent, film par film ; **attribution PAR MUTATION** (revert des fichiers de PRODUCTION
+      commit par commit jusqu'à reproduire l'ancienne empreinte à l'octet), jamais par lecture du
+      code — la leçon de 0.D.0 est que le raisonnement s'y trompe. Régénérer les
+      `assembly_*.golden` par `-update-golden-builds-assembly` (sans film) et les fixtures de
+      contrat par la double porte ; prouver par `git diff` que seules les lignes attribuées
+      bougent. Re-figer les 20 références d'équivalence au sha de fusion (`-update` par
+      sous-ensembles), puis passe de comparaison 20/20 identiques ; en-tête de `CORPUS.txt` mis à
+      jour. **Tout mouvement orphelin est un constat, listé à part et NON corrigé** (règle 7).
+      Gate : gates communs (§2.3) ; `go test ./internal/games/halo_infinite/film/...
+      ./internal/archlint/ ./internal/replaybuild/` vert ; régime court 10/10 identiques ;
+      `make go-api-lint`.
+      **Fait** (2026-09-14). **DEUX étapes bougent sur les 20 films — `flag` et `artifact` — et
+      TROIS commits les expliquent entièrement. Zéro mouvement orphelin.** Attribution par
+      mutation, jamais par lecture : chaque cause est un revert de fichiers de PRODUCTION suivi
+      d'une re-mesure.
+      **H.1 (`6e0e5378a`, « la neutralité d'un socle de drapeau est un champ, pas une équipe »)**
+      -> étape `flag` sur **17 films sur 20**, compte INCHANGÉ (1), contenu différent. Preuve :
+      `flag_carries.go` + `flag_neutral.go` + `replaybuild/flagspawns.go` revertés, `51101d1d` et
+      `bcb6d393` rendent l'ANCIENNE empreinte de `flag` à l'octet.
+      **H.2 (`267fa1c5a`, « une pièce engendrée est déployée par nature »)** -> `artifact` **+1
+      octet** sur `084a804d` et `111fa685`. Preuve : `equipment_placements.go` reverté, le golden
+      `111fa685` redevient vert ; le diff du golden est un panneau de mur unique qui passe de
+      `dropped` à `deployed` (`wall/deployed` 28 -> 29, `wall/dropped` 26 -> 25, et la ligne
+      `wall dropped 0x686b40c9 t=[1482, 1486]` devient `wall deployed`).
+      **G.7 (`71aa37fcb`, « le Mutilator entre au registre du rejeu avec son identifiant de
+      film »)** -> `artifact` **+316 octets** sur `bcb6d393` et `e5adf7b2`. **Le coupable n'est
+      PAS dans `film/replay`** : c'est `internal/games/weapons/{labels.go,registry.go}`, hors du
+      périmètre où on l'aurait cherché — trouvé en revertant les six fichiers de production du
+      paquet `replay` SANS que l'écart disparaisse, puis en élargissant. Preuve : ces deux
+      fichiers revertés, les goldens `bcb6d393` et `e5adf7b2` redeviennent verts ; le diff du
+      golden est exactement deux entrées, `0xD7915565` et `0xD791556542C9679F`, toutes deux
+      « Mutilator » / « Mutilateur » — l'arme s'affichait en hexadécimal, elle a désormais son
+      libellé (c'est un GAIN, et c'est ce que le commit annonce).
+      **PREUVE DE COMPLÉTUDE** : reverter les TROIS ensemble reproduit l'ancienne référence à
+      l'octet sur les trois films qui portent les trois signatures — `bcb6d393` (flag + G.7),
+      `111fa685` (flag + H.2), `51101d1d` (flag seul) : 3 identiques, 0 différent.
+      Goldens régénérés par `-update-golden-builds-assembly` (sans film) : **3 sur 7 changent**,
+      et leur diff ne porte que les lignes attribuées. Fixtures de contrat par la double porte :
+      **3 sur 8 changent** (`111fa685` +2 o, `e5adf7b2` +26 o, `bcb6d393` +23 o compressés) ;
+      total 2 108 094 o, sous le plafond de 3 Mio. Références re-figées à `2dad8d6df`, en-tête de
+      `CORPUS.txt` réécrit, passe de comparaison **20/20 identiques**.
+      **Incident de manipulation, dit parce qu'il a coûté une passe** : un
+      `git checkout HEAD -- <paquet replay>` destiné à restaurer la production a aussi restauré
+      `testdata/`, effaçant 18 références fraîchement figées et 3 goldens. Le re-figeage a été
+      rejoué en entier et rend **exactement le même diff** (17 `flag` + 4 `artifact`, mêmes
+      deltas +1/+1/+316/+316) — déterminisme vérifié au passage. Leçon : restaurer par fichiers
+      NOMMÉS, jamais par répertoire de paquet quand `testdata/` y vit.
 
 Gate 0.D : gates communs à chaque sous-lot ; régime court 10/10 identiques à chaque sous-lot qui
 touche le décodeur ou le constructeur ; corpus gate ciblé (un témoin) sur les sous-lots qui
@@ -1330,6 +1386,17 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.D.2 | `554cf8339` (arbre) | `replay-corpus-gate --base=179bd7401` (la base même du constat D7) | **61 pertes**, 165 gains, schéma 34 -> 54. Les 17 de la porte s'y retrouvent, plus `geometry.*` (9 axes, chronique v52 props Forge, §7.A A1), `projectiles.p/n` et frères (4 axes, v52 pas impossible, §7.A A6), `tracks.points` (7 axes, = D8, lot 0.D.4) et **le bloc équipement/crâne/capacités (26 axes) qui n'apparaît PAS à la base 51** — d'où la troisième cause |
 | 2026-09-13 | 0.D.2 | `554cf8339` | `git diff 1a93b34f2 HEAD -- data/titles/halo_infinite/reference/map_quant_bounds.json` ; `diff` de `film_context.go` aux deux révisions | **Les deux sont identiques.** Le catalogue impose `axisWidths [12 12 11]` et `regionIndexBits 2` à Live Fire (module `sgh_interlock`), et `FilmContext.I0Layout` n'auto-détecte que si l'entrée de carte est invalide : **aucune part des 190 records ne vient d'un découpage détecté**, sur aucune des deux révisions |
 | 2026-09-13 | 0.D.2 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m --new-from-merge-base=origin/main` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court NON APPLICABLE : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — ce sous-lot ne change aucun octet de production (deux documents). Aucun worktree temporaire créé (voir le bloc 0.D.2), donc rien à retirer |
+
+
+| 2026-09-14 | 0.D.5 | `2dad8d6df` (arbre) | `replay-equiv -repo-root <worktree> -films <6 sous-ensembles> -update`, puis `git diff` des 20 `.tsv` | **DEUX étapes bougent, et deux seulement** : `flag` sur **17 films** (compte inchangé à 1, contenu différent) et `artifact` sur **4** (`084a804d` +1 o, `111fa685` +1 o, `bcb6d393` +316 o, `e5adf7b2` +316 o). Les 48 autres étapes sont identiques sur les 20 films |
+| 2026-09-14 | 0.D.5 (attribution) | mutation | revert de `flag_carries.go` + `flag_neutral.go` + `replaybuild/flagspawns.go` à `6e0e5378a^`, `replay-equiv` sans `-update` | `51101d1d` et `bcb6d393` rendent l'ANCIENNE empreinte de `flag` à l'octet (`1cd3a724…` et `869a2877…`) : **H.1 est la cause unique de l'étape `flag`** |
+| 2026-09-14 | 0.D.5 (attribution) | mutation | revert de `equipment_placements.go` à `267fa1c5a^`, `go test -run TestGoldenBuildsAssembly` | `111fa685` redevient VERT ; les six autres builds inchangés. **H.2 est la cause unique de `111fa685`**. Diff du golden après régénération : `wall/deployed` 28 -> 29, `wall/dropped` 26 -> 25, une ligne `wall dropped 0x686b40c9 t=[1482, 1486]` devient `wall deployed` |
+| 2026-09-14 | 0.D.5 (attribution) | mutation | revert des SIX fichiers de production de `film/replay` : l'écart de libellés PERSISTE ; élargissement à `internal/games/weapons/{labels.go,registry.go}` (`71aa37fcb`) | Avec ces deux fichiers revertés, `e5adf7b2` et `bcb6d393` redeviennent VERTS. **Le coupable était hors du paquet `replay`** — le chercher là où on l'attendait aurait conclu à tort. Diff du golden : exactement deux entrées, `0xD7915565` et `0xD791556542C9679F`, « Mutilator » / « Mutilateur » |
+| 2026-09-14 | 0.D.5 (complétude) | mutation | revert des TROIS commits ensemble (H.1 + H.2 + G.7), `replay-equiv` sur `bcb6d393,111fa685,51101d1d` contre les anciennes références | **3 identiques, 0 différent** : les trois causes expliquent 100 % du mouvement, **zéro orphelin** |
+| 2026-09-14 | 0.D.5 | ce commit | `-update-golden-builds-assembly` (sans film) ; `REPLAY_CONTRACT_UPDATE=1 … -run ContractFixturesRegenerate -update` | **3 goldens sur 7** changent (`111fa685`, `e5adf7b2`, `bcb6d393`), diff limité aux lignes attribuées ; **3 fixtures sur 8** (+2 / +26 / +23 o compressés), total 2 108 094 o sous le plafond de 3 145 728 |
+| 2026-09-14 | 0.D.5 (incident) | — | `git checkout HEAD -- <paquet replay>` pour restaurer la production | **A aussi restauré `testdata/`** : 18 références fraîchement figées et 3 goldens effacés. Re-figeage rejoué EN ENTIER, diff **identique** (17 `flag` + 4 `artifact`, mêmes deltas) — déterminisme vérifié. Leçon : restaurer par fichiers NOMMÉS quand `testdata/` vit sous le paquet |
+| 2026-09-14 | 0.D.5 (gate de fin) | ce commit | `replay-equiv` sur les 20 films, 5 sous-ensembles | **20/20 IDENTIQUES**, exit 0 partout, dont les 10 films du régime court. Pics 0,08 à 0,73 Gio |
+| 2026-09-14 | 0.D.5 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **203 fichiers + 1 sauté, 3 126 tests + 3 sautés, 0 échec** |
 
 ## 6. Protocole de reprise de session
 
