@@ -393,9 +393,31 @@ figées) ; `go test ./internal/games/halo_infinite/film/... -run 'Golden|Keyfram
 Gate 0.B : gates communs ; `make check-types` ; `make test-web` ; `make openapi-check` ;
 `go test ./internal/games/halo_infinite/film/replay/ ./internal/replaybuild/ ./internal/domain/replaydoc/`.
 
-- [ ] 0.B.7 (après fusion de 0.A) **Une fixture par build** : `contract_fixtures_test.go` itère
+- [!] 0.B.7 (après fusion de 0.A) **Une fixture par build** : `contract_fixtures_test.go` itère
       les mini-films de 0.A.2 ; taille totale bornée (consignée). — S, exécuteur du lot 0.C ou
       relecteur de 0.B.
+      **BLOQUÉ SUR LE BUDGET (2026-09-13) — mesure faite, coupe NON faite, RIEN DE COMMIS.**
+      L'implémentation existe et passe tous les gates sauf celui de la taille : la table de
+      `contract_fixtures_test.go` est DÉRIVÉE de `goldenBuilds()` (8 entrées, 7 builds —
+      HI_1_13_0 en a deux : `000d5950` et `fb1a1a72`), chaque document est cuit depuis son
+      `testdata/inputs_<short8>.bin.gz` par le chemin d'assemblage du golden du build (aucun
+      film lu), le fichier devient `replay_schema_54_<short8>.json.gz` et le `manifest.json`
+      liste par fixture fichier / film / build / version / taille. Côté web,
+      `goFixtures.contract.test.ts` (8 × 9 cas) et la matrice de compatibilité (8 × 4 cas)
+      itèrent le manifeste ; `testDoc.ts` y prend toujours sa version et
+      `testDoc.guard.test.ts` reste vert. La porte de régénération garde sa double condition
+      et sort désormais en ÉCHEC en nommant ce qu'elle a réécrit (motif 0.A/R2-C1).
+      **MESURE : 6 142 690 o (5,86 Mio) pour les 8 documents, contre un plafond de 3 Mio** —
+      `000d5950` 401 589 · `a521164d` 654 504 · `60ae07c4` 625 864 · `11de8353` 1 154 006 ·
+      `111fa685` 1 236 186 · `e5adf7b2` 1 184 632 · `bcb6d393` 262 039 · `fb1a1a72` 623 870.
+      **D4 estimait ~2,8 Mio en supposant des mini-bobines** ; or 0.A.2 a tranché que les
+      entrées se décodent du FILM ENTIER (les positions d'une bobine n'ont pas de continuité),
+      donc un document par build pèse 1,5 à 3 fois celui du film de référence. Les points de
+      piste font 85 à 89 % de chaque document ; totaux simulés : 1 point sur 5 → 1,76 Mio,
+      1 sur 10 → 1,19 Mio, 1 sur 25 → 0,84 Mio ; retirer l'indentation ne gagne que 8 %.
+      Arbitrage du pilote requis (quelle coupe, ou quel plafond). L'arbre est laissé à HEAD ;
+      le diff source est hors dépôt (`0B7_implementation_source.patch` à la racine du worktree
+      `LevelUp-wt-decfilm-0B7`), les fixtures se régénèrent en 8 s.
 
 #### Lot 0.C — ADR 0034 et registre — S, exécuteur Opus medium
 
@@ -946,6 +968,12 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 | 2026-09-13 | 0.B (CI) | `a8f8e3c70` | push `feat/recherche-decodeur-film` : workflows CI, Deploy Pre-Check, Secrets | **3 succès sur 3** (CI = Frontend + Go Build/Test + Go Lint) |
 | 2026-09-13 | 0.C (CI) | `661936101` | push `feat/recherche-decodeur-film` : workflows CI, Secrets | **2 succès sur 2** |
+| 2026-09-13 | 0.B.7 | arbre de travail (NON commis) | `REPLAY_CONTRACT_UPDATE=1 go test ./internal/games/halo_infinite/film/replay/ -run ContractFixturesRegenerate -update` | 8 fixtures écrites depuis les entrées figées, 7,6 s, aucun film lu. JSON 2,1 à 10,4 Mo ; compressé 262 039 à 1 236 186 o ; **TOTAL 6 142 690 o = 5,86 Mio, contre un plafond de 3 Mio**. La porte sort en **ÉCHEC** en nommant les 8 fichiers réécrits (motif 0.A/R2-C1) |
+| 2026-09-13 | 0.B.7 | idem | `cmp replay_schema_54.json.gz replay_schema_54_000d5950.json.gz` (neutralité du changement de chemin) | **IDENTIQUES octet pour octet** — dériver la table de `goldenBuilds()` ne change rien au document du film de référence |
+| 2026-09-13 | 0.B.7 | idem | `gofmt -l ./internal` ; `go vet ./internal/games/halo_infinite/film/replay/` ; `go test ./internal/games/halo_infinite/film/replay/ ./internal/archlint/` | gofmt vide ; vet propre ; archlint **ok** (17,5 s) ; replay **tout vert SAUF `TestContractFixturesTiennentDansLeBudget`** (5,86 Mio > 3 Mio) — `MatchCommitted` (manifeste compris) et `CarryCurrentSchema` verts sur les 8 builds, `Regenerate` sauté sans sa double porte. Paquet 7,8 s → 14,4 s (7 assemblages de plus) |
+| 2026-09-13 | 0.B.7 | idem | `npx tsc -b --force` ; `npx eslint` (3 fichiers web touchés) ; `make go-api-lint` | tsc **exit 0** ; eslint **0 erreur** ; lint Go **0 issues** (baseline non accrue) |
+| 2026-09-13 | 0.B.7 | idem | `npx vitest run src/features/match-replay src/lib/replay` | **202 fichiers passés + 1 sauté, 3 123 tests + 3 sautés** (3 029 avant le lot, soit +94) ; les 8 builds traversent contrat zod strict, normalisation et logiques pures — `HI_1_4_1`, `HI_1_8_0`, `HI_1_9_0`, `HI_1_10_0`, `HI_1_11_0`, `HI_1_12_0` et les deux `HI_1_13_0` — **aucun défaut de frontière par build** |
+| 2026-09-13 | 0.B.7 | idem | simulation des coupes (node, lecture seule des fixtures produites, aucun décodage) | `tracks[].points` = **85 à 89 %** de chaque document. Totaux gzip simulés : 1 point sur 5 **1 842 400 o (1,76 Mio)** · 1 sur 10 1 246 973 (1,19) · 1 sur 25 879 340 (0,84) · 2 points par piste 610 054 (0,58). Sans indentation : −8 % seulement (401 589 → 368 650 sur le film de référence). Full sur 5 builds (les 3 plus lourds retirés) : 2,57 Mio |
 
 ## 6. Protocole de reprise de session
 
