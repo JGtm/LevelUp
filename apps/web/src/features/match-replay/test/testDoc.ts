@@ -15,7 +15,7 @@
  *
  * CE QU'ELLE N'EST PAS, ET POURQUOI ELLE RESTE MINIMALE. Elle n'est pas le document COMPLET
  * produit par Go : celui-ci vit dans `fixtures/go/`, pèse 3,3 Mio et sert le test de contrat
- * (`contract/goFixtures.contract.test.ts`), qui le fait passer par la frontière et par les
+ * (`test/goFixtures.contract.test.ts`), qui le fait passer par la frontière et par les
  * logiques pures. Ici, ce qu'on veut est un document MINIMAL que chaque test surcharge de ce
  * qu'il observe — un document complet ferait dépendre 250 tests de valeurs qu'ils ne
  * décrivent pas. Les deux sont complémentaires : l'un prouve que la frontière tient sur le

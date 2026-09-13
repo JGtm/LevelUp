@@ -33,7 +33,7 @@
  *
  * QUAND LA MONTER : le jour où une montée RETIRE ou RÉINTERPRÈTE un champ que le web lit. Ce
  * jour-là, et seulement ce jour-là. Le test de contrat vérifie qu'aucune fixture produite par
- * Go n'est en dessous (`test/contract/goFixtures.contract.test.ts`).
+ * Go n'est en dessous (`test/goFixtures.contract.test.ts`).
  */
 export const MIN_RENDERABLE_SCHEMA_VERSION = 27
 
