@@ -44,8 +44,8 @@
 - [x] E.3 Cocher Notion 9.
 
 ## Lot F — tâche Notion 10 : nettoyage worktrees/branches, bascule dossier LevelUp
-- [ ] F.1 Inventaire daté (fusionné dans feat/v75 / non fusionné).
-- [ ] F.2 Suppression du fusionné (worktrees, branches locales, distantes) ; `wt/ti11-cadre` conservée.
+- [x] F.1 Inventaire daté (fusionné dans feat/v75 / non fusionné).
+- [~] F.2 Suppression du fusionné (worktrees, branches locales, distantes) ; `wt/ti11-cadre` conservée.
 - [ ] F.3 Archivage `.ai/` racine → `V7.5/` ; sort de `cmd/investigate_matches`.
 - [ ] F.4 Bascule vers `LevelUp` avec l'utilisateur ; cocher Notion 10.
 
@@ -301,3 +301,21 @@ lot H, pas avant. Effort L.
   nouveaux par version). Lot H fusionné dans feat/v75 et poussé. Serveur relancé. Lot H clos ;
   les 5 points de branchement (P1-P5) relèvent du plan d'architecture (lot I), pas de ce plan.
   Suite : lot F (nettoyage worktrees/branches, bascule LevelUp) avec l'utilisateur.
+- 2026-09-13 : lot F. F.1 inventaire (scratchpad `worktrees_nettoyage.txt`, `remote_merged.txt`) :
+  74 worktrees, 79 branches locales (75 fusionnées dans feat/v75), 71 distantes (68 fusionnées).
+  `wt/mesure-ti9` (mesure du point 3, jamais fusionnée) fusionnée (`f899967db`). F.2 exécuté sur
+  le périmètre approuvé : **67 branches distantes supprimées** sur origin (restent main,
+  feat/v75, dependabot, claude/*, et 3 non fusionnées : feat/weapon-sameclock, fix/ci-todo-
+  expiry-season-pass, wt/ti11-cadre), **50 worktrees propres et fusionnés supprimés** avec
+  leurs branches ; 24 worktrees restent : 4 non fusionnés (film-residus, section3-chunk00,
+  ti11-cadre : autre session ; mesure-ti9 : à supprimer), 2 racines, et **18 SALES** (11
+  `LevelUp/.claude/worktrees/agent-*` portant des rapports R1-R12 et des bancs de recherche du
+  3-4 septembre JAMAIS commités ; formtab 31 fichiers modifiés ; psa-cause ; son-propulseur ;
+  origine-equipement ; arme-source ; lusr-cause ; rejeu-fil) — décision utilisateur requise.
+  INCIDENT : `git worktree remove` de 8 worktrees portant une jonction `node_modules` vers le
+  dossier principal a suivi la jonction et vidé `.bin` ; un `npm ci` lancé pour réparer a
+  échoué (EPERM : lightningcss tenu par le serveur Vite de l'utilisateur) après avoir supprimé
+  la moitié des paquets ; `npm install` a tout restauré (370 paquets, lockfile inchangé),
+  typecheck et vitest à revérifier. Règle : supprimer la jonction (`cmd /c rmdir`) AVANT tout
+  `git worktree remove`, jamais `npm ci` pendant que Vite tourne. `cmd/investigate_matches`
+  n'existe plus (rien à faire). F.3 (archivage `.ai` racine) : agent en cours.
