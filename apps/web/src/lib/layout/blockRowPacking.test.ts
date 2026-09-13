@@ -48,7 +48,6 @@ describe('packBlockRows', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].blocks.map((b) => b.key)).toEqual(['ctf', 'koth', 'oddball'])
     expect(rows[0].spans).toEqual([2, 2, 2])
-    expect(rows[0].rowRemainder).toBe(0)
   })
 
   it('isole un gros bloc sur sa propre rangée', () => {
@@ -57,8 +56,7 @@ describe('packBlockRows', () => {
       { key: 'ctf', n: 2 },
     ])
     expect(rows.map((r) => r.blocks.map((b) => b.key))).toEqual([['combat'], ['ctf']])
-    expect(rows[0].rowRemainder).toBe(0)
-    expect(rows[1].rowRemainder).toBe(4)
+    expect(rows.map((r) => r.spans)).toEqual([[6], [2]])
   })
 
   it('associe un demi et un tiers sans jamais dépasser la grille', () => {
@@ -100,8 +98,21 @@ describe('rowGridTemplate', () => {
     expect(rowGridTemplate(rows[0])).toBe('2fr 2fr 2fr')
   })
 
-  it('ajoute une piste fantôme pour les colonnes libres', () => {
+  it('donne au bloc seul toute la rangée, sans piste fantôme', () => {
+    // Régression 2026-09-13 : la piste `4fr` fantôme laissait ce bloc à un tiers de
+    // la rangée et un trou à droite. Une seule piste `fr` occupe tout l'espace.
     const rows = pack([{ key: 'a', n: 2 }])
-    expect(rowGridTemplate(rows[0])).toBe('2fr 4fr')
+    expect(rowGridTemplate(rows[0])).toBe('2fr')
+  })
+
+  it('partage une rangée incomplète au prorata des largeurs des blocs présents', () => {
+    // 2 + 3 = 5 colonnes sur 6 : plus de piste libre, les deux blocs se partagent
+    // la rangée en deux cinquièmes / trois cinquièmes.
+    const rows = pack([
+      { key: 'a', n: 2 },
+      { key: 'b', n: 5 },
+    ])
+    expect(rows).toHaveLength(1)
+    expect(rowGridTemplate(rows[0])).toBe('2fr 3fr')
   })
 })

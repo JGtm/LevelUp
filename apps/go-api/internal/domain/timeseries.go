@@ -316,4 +316,17 @@ type TimeseriesPageResponse struct {
 	// (Infinite → nil → le front retombe sur « Outils de destruction »). MÊME builder
 	// partagé que Synthesis/Sessions (buildWeaponAccuracy). Nil si aucune arme valide.
 	WeaponAccuracy []SynthesisWeaponAccuracyEntry `json:"weapon_accuracy,omitempty"`
+	// WeaponRange : portée et dénivelé des engagements (mes frags ET mes morts, par arme),
+	// sur le MÊME scope filtré que le reste de la page. Section déplacée de la Synthèse vers
+	// l'onglet Résumé le 2026-09-13 ; même producteur, même contrat de dégradation :
+	// nil (champ omis) pour un titre sans positions par kill, un scope non décodé ou une
+	// lecture en échec — jamais une section vide. Gated côté front par la capability
+	// produit `weapon_range`. Cf. service/synthesis_weapon_range.go.
+	WeaponRange *SynthesisWeaponRange `json:"weapon_range,omitempty"`
+	// EquipmentUsage : bloc « servi ou gâché » de l'équipement en variante COMPTES, sur le
+	// scope filtré. Section déplacée de la Synthèse vers l'onglet Progression le 2026-09-13 ;
+	// même producteur (squadagg.BuildEquipmentUsageBlock) et même scope. nil quand le scope
+	// n'a aucun match ; Available=false avec raison machine pour un titre sans
+	// film.usage_summary.
+	EquipmentUsage *EquipmentUsageBlock `json:"equipment_usage,omitempty"`
 }

@@ -257,3 +257,38 @@ en = "Media gallery"
 [media.like.error]
 fr = "Impossible d'enregistrer ce like."
 en = "Could not save this like."
+
+# Bouton coeur : libelles d'accessibilite + infobulle listant les personnes qui
+# ont aime le media (remplace la ligne de noms affichee sous la vignette).
+
+[media.like.aria_like]
+fr = "Aimer"
+en = "Like"
+
+[media.like.aria_unlike]
+fr = "Retirer la mention J'aime"
+en = "Remove like"
+
+[media.like.tooltip]
+fr = "Aimé par {names}"
+en = "Liked by {names}"
+
+[media.like.conjunction]
+fr = "et"
+en = "and"
+
+[media.like.others_one]
+fr = "1 autre"
+en = "1 other"
+
+[media.like.others_many]
+fr = "{count} autres"
+en = "{count} others"
+
+[media.like.anonymous_one]
+fr = "1 personne"
+en = "1 person"
+
+[media.like.anonymous_many]
+fr = "{count} personnes"
+en = "{count} people"

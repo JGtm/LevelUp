@@ -48,6 +48,13 @@ export interface ValueGridRow {
    * séparés par un filet ; la valeur elle-même n'est jamais affichée.
    */
   group: string
+  /**
+   * SOUS-LIBELLÉ optionnel, posé sous le nom en petit (la carte d'un match, le
+   * nombre d'occupations d'un socle...). Ajouté le 2026-09-13 pour les grilles du
+   * bloc « formes retenues », qui nomment une ligne par « heure · mode » et sa
+   * carte dessous. Absent = rendu strictement inchangé.
+   */
+  sublabel?: string
   /** Encre du trait d'identité posé devant le nom (CSS). Absent = pas de trait. */
   accent?: string
   /** Ligne mise en avant (le joueur de la page) : nom en gras. */
@@ -65,6 +72,13 @@ export interface ValueGridColumnInput {
    * demi-borne de 2:30 est une graduation juste, « 3 » ne l'est pas).
    */
   duration?: boolean
+  /**
+   * Le MILIEU de l'axe ne s'arrondit pas à l'entier. Vrai pour une colonne dont
+   * la borne peut être petite alors que l'unité est fine (un taux en pourcentage
+   * borné à 1 % écrivait « 1 % » au milieu comme à la fin). Impliqué par
+   * `duration`, qui a la même raison d'être.
+   */
+  fractionalAxis?: boolean
   /**
    * La colonne affiche son TOTAL en en-tête. Faux pour une colonne dont la somme n'a pas de
    * sens — un « meilleur temps » ne s'additionne pas (cf. `objectiveTeamTotal`, agrégat `max`).
@@ -190,7 +204,7 @@ export function buildValueGrid(input: ValueGridInput): ValueGridModel {
       bound,
       axis: [
         format(0, colIndex),
-        format(axisMid(bound, col.duration === true), colIndex),
+        format(axisMid(bound, col.duration === true || col.fractionalAxis === true), colIndex),
         format(bound, colIndex),
       ] as [string, string, string],
     }

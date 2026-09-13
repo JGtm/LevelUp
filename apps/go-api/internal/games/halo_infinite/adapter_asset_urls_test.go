@@ -131,7 +131,7 @@ var (
 	idBR75          = weaponIDDe(3105272441439086495)  // tag 2b1824d5
 	idSidekick      = weaponIDDe(17584332298403800991) // tag f408190f
 	idMA5KAvenger   = weaponIDDe(17709057395522743307) // tag f5c335df — SANS weapon_key
-	idMutilator     = weaponIDDe(15533290483178104735) // tag d7915565 — HORS registre
+	idMutilator     = weaponIDDe(15533290483178104735) // tag d7915565 — au registre depuis le 2026-09-10, id filmshell le 2026-09-13
 	idGravityHammer = weaponIDDe(9519138350859642783)  // tag 841ac5e5
 	idDiminisher    = weaponIDDe(9519138352544146591)  // même tag : VARIANTE
 	idCindershot    = weaponIDDe(2523220517889599391)  // tag 230447b1
@@ -167,9 +167,13 @@ func TestAssetURLAdapter_WeaponImageURL_ResoutParTagWeap(t *testing.T) {
 		// « Mk50 Sidekick ». L'ancienne résolution était keyée sur ce nom : corriger la
 		// traduction faisait disparaître l'image. Le tag, lui, ne bouge pas.
 		{"Sidekick malgré la divergence Mk51/Mk50", idSidekick, weaponURLBase + "jeu/contour-03.png"},
-		// Deux armes que `weapon_key` ne couvre pas — la clé essayée puis réfutée.
+		// Une arme que `weapon_key` ne couvre pas — la clé essayée puis réfutée.
 		{"MA5K Avenger sans weapon_key", idMA5KAvenger, weaponURLBase + "jeu/contour-36.png"},
-		{"Mutilator hors registre", idMutilator, weaponURLBase + "jeu/contour-37.png"},
+		// Le Mutilator servait déjà son icône par le TAG alors qu'il n'avait ni ligne de
+		// registre (posée le 2026-09-10) ni identifiant filmshell (posé le 2026-09-13) : c'est
+		// précisément ce que la résolution par tag garantit, et elle reste vraie maintenant
+		// qu'il est au registre.
+		{"Mutilator", idMutilator, weaponURLBase + "jeu/contour-37.png"},
 		// Une variante partage le tag de son arme de base : elle suit, sans entrée dédiée.
 		{"Gravity Hammer", idGravityHammer, weaponURLBase + "jeu/contour-16.png"},
 		{"Diminisher of Hope (variante)", idDiminisher, weaponURLBase + "jeu/contour-16.png"},

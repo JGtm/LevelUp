@@ -1,7 +1,7 @@
 //go:build cgo
 
 // weapon_registry_test.go — applique le seed du registre d'armes sur DuckDB
-// :memory: et verrouille : cardinalités (84 armes / 51 familles / 102 ids),
+// :memory: et verrouille : cardinalités (84 armes / 51 familles / 103 ids),
 // intégrité référentielle (family_key ∈ weapon_families, weapon_ids → weapons),
 // enums class/faction, idempotence (double apply), et quelques résolutions
 // (dont le long-tail H5 : grenades/mêlée + hors-arsenal non-combat mappés depuis
@@ -50,8 +50,8 @@ func TestWeaponRegistry_SeedCardinalities(t *testing.T) {
 	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 53 {
 		t.Errorf("weapon_families = %d, want 53 (51 + famille equipment + famille mutilator le 2026-09-10)", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 102 {
-		t.Errorf("weapon_ids = %d, want 102 (36 filmshell + 66 stock_id)", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 103 {
+		t.Errorf("weapon_ids = %d, want 103 (37 filmshell + 66 stock_id ; id filmshell du Mutilator pose le 2026-09-13)", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids WHERE id_kind='stock_id'"); got != 66 {
 		t.Errorf("weapon_ids stock_id = %d, want 66", got)

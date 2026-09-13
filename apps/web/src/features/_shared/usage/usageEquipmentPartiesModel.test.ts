@@ -39,7 +39,7 @@ describe('buildPartiesDonutModel — P10/P11', () => {
     }
     const model = buildPartiesDonutModel(parties, [], 'objets pris dans le lobby', t, 'fr')!
     expect(model).not.toBeNull()
-    expect(model.series[0].datapoints.map((p) => p.name)).toEqual(['Moi', 'Reste de mon équipe', 'Eux (anonyme)'])
+    expect(model.series[0].datapoints.map((p) => p.name)).toEqual(['Moi', 'Reste de mon équipe', 'Équipe adverse'])
     expect(model.subtotals).toHaveLength(1)
     expect(model.subtotals[0].label).toBe('Mon équipe')
     // (20 + 32) / 100 = 52 %
@@ -70,13 +70,13 @@ describe('buildPartiesDonutModel — P10/P11', () => {
       'Madina',
       'Choco',
       'Reste de mon équipe',
-      'Eux (anonyme)',
+      'Équipe adverse',
     ])
     expect(model.sliceColors.Madina).toBe('squad-player-2')
     expect(model.sliceColors.Choco).toBe('squad-player-3')
     expect(model.sliceColors.Moi).toBe('squad-player-1')
     expect(model.sliceColors['Reste de mon équipe']).toBe('team-ally')
-    expect(model.sliceColors['Eux (anonyme)']).toBe('team-enemy')
+    expect(model.sliceColors['Équipe adverse']).toBe('team-enemy')
     expect(model.subtotals).toHaveLength(2)
     expect(model.subtotals[0].label).toBe('Mon escouade')
     // (143 + 223) / 892 = 41.03 %
@@ -97,7 +97,7 @@ describe('buildPartiesDonutModel — P10/P11', () => {
     }
     const trackedPlayers: SessionUsageSquadPlayer[] = [{ xuid: 'f1', gamertag: 'Madina' }]
     const model = buildPartiesDonutModel(parties, trackedPlayers, 'objets pris dans le lobby', t, 'fr')!
-    expect(model.series[0].datapoints.map((p) => p.name)).toEqual(['Moi', 'Reste de mon équipe', 'Eux (anonyme)'])
+    expect(model.series[0].datapoints.map((p) => p.name)).toEqual(['Moi', 'Reste de mon équipe', 'Équipe adverse'])
     // Aucun ami avec value>0 : un seul sous-total, comme le cas solo.
     expect(model.subtotals).toHaveLength(1)
   })

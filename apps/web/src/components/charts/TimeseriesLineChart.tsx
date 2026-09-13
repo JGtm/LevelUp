@@ -84,6 +84,24 @@ export interface TimeseriesLineChartProps {
   xAxisLabelRotate?: number
   /** ECharts `axisLabel.interval` pour l'axe X (0 = toutes les étiquettes). */
   xAxisLabelInterval?: number
+  /**
+   * Rend la legende. Default `true` — le comportement de tous les appelants anterieurs.
+   *
+   * `false` sur une serie UNIQUE : le titre la nomme deja, et une legende d'une seule
+   * entree occupe une bande de pied sans rien apprendre (maquette 4c520da6).
+   */
+  showLegend?: boolean
+  /** Libelle de l'axe Y (`nameLocation: middle`). Absent = axe sans nom. */
+  yAxisLabel?: string
+  /** Formateur des etiquettes de l'axe Y (ex. `{value} %`). */
+  yAxisLabelFormatter?: string
+  /**
+   * Etiquette posee sur le DERNIER point de la premiere serie, qui est aussi grossi.
+   *
+   * POURQUOI LE DERNIER SEULEMENT : une valeur sur chaque point transforme une courbe en
+   * tableau. Le dernier est celui qu'on vient lire — les autres se lisent sur l'axe.
+   */
+  lastPointLabel?: string
 }
 
 export function TimeseriesLineChart({
@@ -103,6 +121,10 @@ export function TimeseriesLineChart({
   seriesColorResolver,
   xAxisLabelRotate,
   xAxisLabelInterval,
+  showLegend,
+  yAxisLabel,
+  yAxisLabelFormatter,
+  lastPointLabel,
 }: TimeseriesLineChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPoint2D>[]) =>
@@ -117,6 +139,10 @@ export function TimeseriesLineChart({
         seriesColorResolver,
         xAxisLabelRotate,
         xAxisLabelInterval,
+        showLegend,
+        yAxisLabel,
+        yAxisLabelFormatter,
+        lastPointLabel,
       }),
     [
       timeAxis,
@@ -129,6 +155,10 @@ export function TimeseriesLineChart({
       seriesColorResolver,
       xAxisLabelRotate,
       xAxisLabelInterval,
+      showLegend,
+      yAxisLabel,
+      yAxisLabelFormatter,
+      lastPointLabel,
     ],
   )
 
@@ -156,6 +186,10 @@ interface BuildOpts {
   seriesColorResolver?: (s: ChartSeries<ChartPoint2D>, idx: number) => string | undefined
   xAxisLabelRotate?: number
   xAxisLabelInterval?: number
+  showLegend?: boolean
+  yAxisLabel?: string
+  yAxisLabelFormatter?: string
+  lastPointLabel?: string
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -174,6 +208,10 @@ export function buildTimeseriesLineOption(
     seriesColorResolver,
     xAxisLabelRotate,
     xAxisLabelInterval,
+    showLegend = true,
+    yAxisLabel,
+    yAxisLabelFormatter,
+    lastPointLabel,
   } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -217,6 +255,22 @@ export function buildTimeseriesLineOption(
       }
     })
 
+    // Le DERNIER point de la PREMIERE serie est appuye et etiquete quand l'appelant le
+    // demande : c'est la valeur qu'on vient lire, les autres se lisent sur l'axe.
+    const dernier = data.length - 1
+    if (lastPointLabel && idx === 0 && dernier >= 0) {
+      const point = data[dernier] as Record<string, unknown>
+      point.symbolSize = 10
+      point.label = {
+        show: true,
+        formatter: lastPointLabel,
+        position: 'right',
+        color,
+        fontSize: 11,
+        fontWeight: 600,
+      }
+    }
+
     return {
       name,
       type: 'line' as const,
@@ -239,7 +293,8 @@ export function buildTimeseriesLineOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 56, left: 56, right: 16 },
+    // `right` : la place de l'etiquette du dernier point, quand elle est demandee.
+    grid: { top: 24, bottom: showLegend ? 56 : 40, left: 56, right: lastPointLabel ? 56 : 16 },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
@@ -255,9 +310,27 @@ export function buildTimeseriesLineOption(
         },
       } : {}),
     },
-    legend: { ...getLegendBase(tc), data: echartsSeries.map((s) => s.name) },
+    legend: {
+      ...getLegendBase(tc),
+      show: showLegend,
+      data: echartsSeries.map((s) => s.name),
+    },
     xAxis,
-    yAxis: { ...axis, type: 'value' },
+    yAxis: {
+      ...axis,
+      type: 'value',
+      ...(yAxisLabel
+        ? {
+            name: yAxisLabel,
+            nameLocation: 'middle',
+            nameGap: 44,
+            nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
+          }
+        : {}),
+      ...(yAxisLabelFormatter
+        ? { axisLabel: { ...(axis.axisLabel as Record<string, unknown>), formatter: yAxisLabelFormatter } }
+        : {}),
+    },
     series: echartsSeries,
   }
 }

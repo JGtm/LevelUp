@@ -8,7 +8,7 @@
  * PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : le bloc devient importable par `features/synthesis`
  * et `features/squad` sans violer `lint-cross-feature-imports` — déplacement pur.
  *
- * 1. `buildCadenceGrid` — cadences par dix minutes : lignes = moi + coéquipiers
+ * 1. `buildCadenceGrid` — cadences PAR MATCH mesuré : lignes = moi + coéquipiers
  *    suivis, puis les agrégats (mon équipe, lobby) derrière un filet ; colonnes =
  *    grandeurs d'équipement.
  * 2. `buildObjectiveFamilyGrid` — ma part d'équipe par famille de mode × rôle.
@@ -82,9 +82,10 @@ interface PlayerRowSpec<T> {
 }
 
 /**
- * buildCadenceGrid — la grille des cadences par dix minutes de jeu mesuré. Un champ
- * de cadence absent (match sans échelle de temps, scope camp connu vide) rend une
- * cellule NON MESURÉE — le contrat refuse les cadences inventées, la grille aussi.
+ * buildCadenceGrid — la grille des cadences PAR MATCH MESURÉ (décision utilisateur
+ * du 2026-09-13 : « Cadence c'est par match, pas par minutes »). Un champ de cadence
+ * absent (scope camp connu vide) rend une cellule NON MESURÉE — le contrat refuse les
+ * cadences inventées, la grille aussi.
  */
 export function buildCadenceGrid(input: UsageCadenceGridInput): ValueGridModel | null {
   const { metrics, t, locale } = input
@@ -99,7 +100,7 @@ export function buildCadenceGrid(input: UsageCadenceGridInput): ValueGridModel |
       group: 'players',
       kind: 'me',
       emphasis: true,
-      rate: (m) => m.player_per_10min ?? null,
+      rate: (m) => m.player_per_match ?? null,
       raw: (m) => m.player_total,
     },
     ...input.squadPlayers.map(
@@ -109,7 +110,7 @@ export function buildCadenceGrid(input: UsageCadenceGridInput): ValueGridModel |
         group: 'players',
         kind: 'squad',
         squadIndex: i,
-        rate: (m) => squadRow(m, p.xuid)?.per_10min ?? null,
+        rate: (m) => squadRow(m, p.xuid)?.per_match ?? null,
         raw: (m) => squadRow(m, p.xuid)?.total ?? null,
       }),
     ),
@@ -118,7 +119,7 @@ export function buildCadenceGrid(input: UsageCadenceGridInput): ValueGridModel |
       label: t.rowMyTeam,
       group: 'aggregates',
       kind: 'aggregate',
-      rate: (m) => m.team_per_10min ?? null,
+      rate: (m) => m.team_per_match ?? null,
       raw: (m) => m.team_total ?? null,
     },
     {
@@ -126,7 +127,7 @@ export function buildCadenceGrid(input: UsageCadenceGridInput): ValueGridModel |
       label: t.rowLobby,
       group: 'aggregates',
       kind: 'aggregate',
-      rate: (m) => m.lobby_per_10min ?? null,
+      rate: (m) => m.lobby_per_match ?? null,
       raw: (m) => m.lobby_total,
     },
   ]

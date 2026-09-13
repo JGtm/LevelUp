@@ -130,6 +130,47 @@ func buildWeaponLabels(
 	return out
 }
 
+// CompleteWeaponLabels nomme, DANS UN DOCUMENT DÉJÀ CUIT, les armes que le catalogue
+// courant sait nommer et que l'artefact avait laissées sans nom.
+//
+// POURQUOI. Une arme absente du registre au moment de la cuisson n'entre pas dans
+// `WeaponLabels` (cf. buildWeaponLabels) : elle garde son hexadécimal. Quand le registre
+// apprend ensuite cette arme — c'est arrivé au Mutilator le 2026-09-13 — tous les artefacts
+// déjà cuits resteraient muets jusqu'à une re-cuisson complète. C'est exactement ce que la
+// règle du dépôt interdit : on ne stocke jamais une résolution qui peut s'améliorer, donc on
+// la rejoue à la requête, comme le service le fait déjà pour la clé, la teinte et le rôle.
+//
+// LES LIBELLÉS DÉJÀ PRÉSENTS NE SONT JAMAIS ÉCRASÉS : l'artefact fait foi sur ce qu'il a
+// nommé ; cette passe ne fait que COMBLER. Elle rend le nombre d'entrées ajoutées, pour que
+// l'appelant puisse le journaliser.
+//
+// La liste des sources d'identifiants d'arme (loadouts, tirs, socles) n'est PAS recopiée
+// ici : c'est buildWeaponLabels qui la tient, et une seconde copie dériverait au premier
+// canal ajouté.
+func CompleteWeaponLabels(doc *ReplayDocument, cat LabelCatalog) int {
+	if doc == nil {
+		return 0
+	}
+	complet := buildWeaponLabels(doc.Loadouts, doc.Shots, doc.WeaponPads, cat)
+	if len(complet) == 0 {
+		return 0
+	}
+	var ajoutes int
+	for id, lbl := range complet {
+		if _, deja := doc.WeaponLabels[id]; deja {
+			continue
+		}
+		if doc.WeaponLabels == nil {
+			// Un artefact cuit sans AUCUNE arme nommée a une table nulle : la passe doit
+			// pouvoir la créer, sinon le cas le plus dégradé est le seul non réparable.
+			doc.WeaponLabels = make(map[string]WeaponLabel, len(complet))
+		}
+		doc.WeaponLabels[id] = lbl
+		ajoutes++
+	}
+	return ajoutes
+}
+
 // FamilyOfWeaponID rend la FAMILLE (high-32) d'un identifiant d'arme tel que le document
 // les écrit : soit une famille seule (8 chiffres hexadécimaux après « 0x »), soit un
 // identifiant GLOBAL 64 bits (16 chiffres) dont la famille est la moitié haute.

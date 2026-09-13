@@ -393,37 +393,13 @@ en = "Objectives"
 fr = "Captures de drapeau"
 en = "Flag captures"
 
-[synthesis.kpi.flag_returns]
-fr = "Retours de drapeau"
-en = "Flag returns"
-
-[synthesis.kpi.flag_steals]
-fr = "Vols de drapeau"
-en = "Flag steals"
-
-[synthesis.kpi.flag_carrier_time]
-fr = "Temps porteur (drapeau)"
-en = "Flag carrier time"
-
 [synthesis.kpi.zone_captures]
 fr = "Zones capturées"
 en = "Zones captured"
 
-[synthesis.kpi.zone_secures]
-fr = "Zones sécurisées"
-en = "Zones secured"
-
-[synthesis.kpi.zone_time]
-fr = "Temps en zone"
-en = "Time in zones"
-
 [synthesis.kpi.skull_grabs]
 fr = "Récupérations du crâne"
 en = "Skull grabs"
-
-[synthesis.kpi.skull_carrier_time]
-fr = "Temps porteur (crâne)"
-en = "Skull carrier time"
 
 [synthesis.empty.synthesis_unavailable]
 fr = "Synthèse indisponible"
@@ -454,21 +430,9 @@ en = "By mode"
 fr = "Portée des engagements"
 en = "Engagement range"
 
-[synthesis.weapon_range.lede]
-fr = "À quelle distance vous fraguez, à quelle distance vous mourez — par arme, sur la période filtrée. Une portée d'usage : la vôtre, pas celle de l'arme."
-en = "How far away you get your kills, how far away you die — by weapon, over the filtered period. A range of use: yours, not the weapon's."
-
 [synthesis.weapon_range.card_title]
-fr = "Portée par arme — mes frags et mes morts"
-en = "Range by weapon — my kills and my deaths"
-
-[synthesis.weapon_range.card_count]
-fr = "{weapons, plural, one {# arme} other {# armes}} · {kills, number} frags et {deaths, number} morts mesurés"
-en = "{weapons, plural, one {# weapon} other {# weapons}} · {kills, number} kills and {deaths, number} deaths measured"
-
-[synthesis.weapon_range.range_subtitle]
-fr = "Portée"
-en = "Range"
+fr = "Portée par arme"
+en = "Range by weapon"
 
 [synthesis.weapon_range.range_subtitle_detail]
 fr = "Le bâton court du 10e au 90e centile ; le losange marque la médiane. Frags au-dessus, morts en dessous — sur les morts, l'arme est celle du tueur."

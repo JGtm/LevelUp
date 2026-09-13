@@ -36,6 +36,32 @@ func TestSkillChainLiterals_NoDrift(t *testing.T) {
 	}
 }
 
+// TestChainsEqualsSyncConstants — la LISTE entière, pas seulement cinq pair_names.
+// skillchain.Chains() est désormais la source du gate d'intégration (invariant I14,
+// G.5b) : ses valeurs doivent être exactement les constantes sync.LUSRChain*, dans
+// le même ordre. Ajouter une chaîne au titre sans ajouter sa constante sync — ou
+// l'inverse — rend ce test rouge, ce que TestSkillChainLiterals_NoDrift seul ne
+// faisait pas (constat R7 de la revue du 2026-09-13).
+func TestChainsEqualsSyncConstants(t *testing.T) {
+	want := []string{
+		sync.LUSRChainArenaSlayer,
+		sync.LUSRChainArenaObjectif,
+		sync.LUSRChainBTB,
+		sync.LUSRChainChaos,
+	}
+	got := skillchain.Chains()
+	if len(got) != len(want) {
+		t.Fatalf("skillchain.Chains() = %v (%d), constantes sync = %v (%d)",
+			got, len(got), want, len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("chaîne n°%d : skillchain = %q, sync = %q (dérive de littéral ou d'ordre)",
+				i, got[i], want[i])
+		}
+	}
+}
+
 // TestDispatcherEqualsClassifier prouve que le dispatcher sync.GetLUSRChain (câblé
 // dans le TestMain) délègue exactement à skillchain.ClassifyLUSRChain sur un corpus
 // — équivalence de bout en bout du seam.

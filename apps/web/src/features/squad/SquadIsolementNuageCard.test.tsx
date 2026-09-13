@@ -13,6 +13,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import type { SquadEchangeJoueur, SquadIsolementPoint, SquadNuageIsolement } from '@/lib/api/types'
 
 import { SquadIsolementNuageCard } from './SquadIsolementNuageCard'
+import { OPACITE_SESSION } from './squadIsolement.logic'
 
 // jsdom n'a pas de canvas : on mocke echarts-for-react (comme FirstBloodLanes) pour
 // capturer l'option ECharts construite, notamment le formatter de tooltip.
@@ -99,11 +100,11 @@ describe('SquadIsolementNuageCard', () => {
     const { unmount } = renderWithProviders(
       <SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />,
     )
-    const fr = screen.getByText('Isolement et couverture').textContent ?? ''
+    const fr = screen.getByText('Pourquoi la vengeance ne vient pas').textContent ?? ''
     unmount()
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />)
-    const en = screen.getByText('Isolation and coverage').textContent ?? ''
+    const en = screen.getByText('Why revenge does not come').textContent ?? ''
     expect(fr.length).toBeGreaterThan(0)
     expect(en.length).toBeGreaterThan(0)
     expect(en).not.toBe(fr)
@@ -212,7 +213,11 @@ describe('SquadIsolementNuageCard', () => {
     }
     const datum = option.series[0].data[0]
     expect(datum.itemStyle.borderType).toBe('dashed')
-    expect(datum.itemStyle.opacity).toBeUndefined()
+    // L'OPACITÉ N'EST PLUS LE SIGNE DE L'ÉCHANTILLON FAIBLE (c'est le cercle pointillé) :
+    // elle est celle de TOUT point de session (0,45, maquette 4c520da6), pour que le nuage
+    // ne recouvre pas les repères par joueur. Les deux points de session la portent donc,
+    // faible échantillon ou non — ce qui les sépare reste la bordure tiretée.
+    expect(datum.itemStyle.opacity).toBe(OPACITE_SESSION)
   })
 
   it('échantillon suffisant : cercle plein, aucune bordure pointillée', async () => {
