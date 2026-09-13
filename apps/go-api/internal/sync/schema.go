@@ -121,6 +121,19 @@ CREATE OR REPLACE VIEW match_skill_rank_latest AS
             written_at DESC,
             id DESC
     ) = 1;
+-- match_skill_rank_latest_by_type : une ligne par (match_id, rating_type), la plus
+-- recente, SANS arbitrage CSR vs LUSR (graphe d'evolution de la page Carriere,
+-- Q8LUSRHistoryPlayer). Posee AUSSI ici (revue finitions R1, 2026-09-13) : une player
+-- DB creee par ce seul chemin (onboarding entre deux boots, Halo 5 hors boucle de
+-- migration du boot) doit porter la vue, sinon la page Carriere tombe en Catalog Error.
+-- A l'identique de games/halo_infinite/migrations/steps_player_match_skill_rank.go
+-- (player_msr_view_latest_by_type_v1).
+CREATE OR REPLACE VIEW match_skill_rank_latest_by_type AS
+    SELECT * FROM match_skill_rank
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY match_id, rating_type
+        ORDER BY written_at DESC, id DESC
+    ) = 1;
 
 CREATE SEQUENCE IF NOT EXISTS career_progression_id_seq;
 CREATE TABLE IF NOT EXISTS career_progression (
