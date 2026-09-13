@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { GifHoverThumbnail } from '@/components/ui/gif-hover-thumbnail'
+import { Tooltip } from '@/components/ui/tooltip'
 import { CoverFlowModal } from './CoverFlowModal'
 import { getMediaText } from './i18n'
 import { getMediaModalsText } from './i18n-modals'
@@ -53,22 +54,6 @@ function OpenMatchIcon({ className }: { className?: string }) {
   )
 }
 
-// LikersLine — affiche "Alice, Bob et 3 autres ♥" sous le bouton like
-function LikersLine({ likers, totalLikers }: { likers?: string[]; totalLikers?: number }) {
-  if (!totalLikers || totalLikers === 0) return null
-  const names = likers ?? []
-  const rest = totalLikers - names.length
-  let label: string
-  if (names.length === 0) {
-    label = `${totalLikers} ♥`
-  } else if (rest <= 0) {
-    label = `${names.join(', ')} ♥`
-  } else {
-    label = `${names.join(', ')} et ${rest} autre${rest > 1 ? 's' : ''} ♥`
-  }
-  return <p className="text-3xs text-rose-400 leading-tight">{label}</p> // color-allow: rose pour like indicator — CLAUDE.md §20
-}
-
 function HeartIcon({ filled, className }: { filled: boolean; className?: string }) {
   return (
     <svg
@@ -95,16 +80,31 @@ interface MediaLikeButtonProps {
   onToggle: () => void
   compact?: boolean
   disabled?: boolean
+  /** Noms connus des personnes ayant aimé, pour l'infobulle du compteur. */
+  likers?: string[]
+  /** Nombre total de personnes ayant aimé (peut dépasser `likers.length`). */
+  totalLikers?: number
 }
 
+/**
+ * Bouton coeur + compteur. Au survol (et au focus clavier), une infobulle
+ * énumère les personnes qui ont aimé le média ; sans aucun like, aucune
+ * infobulle n'est montée. L'infobulle passe par un portail : elle n'est pas
+ * rognée par le `overflow-hidden` de la vignette.
+ */
 export function MediaLikeButton({
   isLiked,
   likeCount,
   onToggle,
   compact = false,
   disabled = false,
+  likers,
+  totalLikers,
 }: MediaLikeButtonProps) {
   const [isAnimating, setIsAnimating] = useState(false)
+  const locale = useAppShellStore((s) => s.locale)
+  const text = getMediaText(locale)
+  const likersLabel = text.like.likersTooltip(likers, totalLikers)
 
   function handleClick(event: React.MouseEvent) {
     event.stopPropagation()
@@ -113,16 +113,16 @@ export function MediaLikeButton({
     setTimeout(() => setIsAnimating(false), 250)
   }
 
-  return (
+  const button = (
     <button
       type="button"
       disabled={disabled}
       onClick={handleClick}
       // color-allow: rose pour le bouton like (heart) — CLAUDE.md §20 tolère rose pour liked
       className={compact
-        ? `absolute right-1.5 top-1.5 flex h-6 min-w-6 items-center justify-center gap-1 rounded-full px-2 text-3xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-card/90 text-rose-400' : 'bg-card/70 text-muted-foreground hover:text-rose-300'}` // color-allow: rose like button compact
+        ? `flex h-6 min-w-6 items-center justify-center gap-1 rounded-full px-2 text-3xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-card/90 text-rose-400' : 'bg-card/70 text-muted-foreground hover:text-rose-300'}` // color-allow: rose like button compact
         : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-border bg-card/80 text-foreground hover:border-rose-400/40 hover:text-rose-300'}`} // color-allow: rose like button
-      aria-label={isLiked ? 'Retirer le like' : 'Liker'}
+      aria-label={isLiked ? text.like.ariaUnlike : text.like.ariaLike}
     >
       <HeartIcon
         filled={isLiked}
@@ -133,6 +133,11 @@ export function MediaLikeButton({
         : <span>{likeCount}</span>}
     </button>
   )
+
+  const withTooltip = likersLabel ? <Tooltip content={likersLabel}>{button}</Tooltip> : button
+  // En mode compact la position (coin haut droit de la vignette) est portée par
+  // un conteneur : le wrapper de l'infobulle est lui-même `relative`.
+  return compact ? <div className="absolute right-1.5 top-1.5">{withTooltip}</div> : withTooltip
 }
 
 interface MediaThumbnailCardProps {
@@ -290,6 +295,8 @@ export function MediaThumbnailCard({
           likeCount={item.like_count}
           onToggle={() => onToggleLike(item)}
           disabled={likeDisabled}
+          likers={item.likers}
+          totalLikers={item.total_likers}
         />
       </div>
 
@@ -346,7 +353,6 @@ export function MediaThumbnailCard({
           )}
           {dateStr && <span className="ml-auto shrink-0 text-xs text-muted-foreground">{dateStr}</span>}
         </div>
-        <LikersLine likers={item.likers} totalLikers={item.total_likers} />
       </div>
     </article>
   )
