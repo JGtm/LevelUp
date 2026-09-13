@@ -216,32 +216,88 @@ figées) ; `go test ./internal/games/halo_infinite/film/... -run 'Golden|Keyfram
 
 #### Lot 0.B — La frontière Go / web (architecture §12) — M, exécuteur Opus high
 
-- [ ] 0.B.1 **Fixtures de contrat produites par Go.** Test Go `replay/contract_fixtures_test.go`
+- [x] 0.B.1 **Fixtures de contrat produites par Go.** Test Go `replay/contract_fixtures_test.go`
       qui cuit `minifilm_000d5950` et écrit
       `apps/web/src/features/match-replay/test/fixtures/go/replay_schema_<N>.json` (mode
       `-update`, sinon compare comme un golden). Vitest fait passer chaque fixture par
       `normalizeReplayDocument` et par les logiques pures des calques (`*_logic.ts`,
       `rosterLogic.ts`, `replayLogic.ts`). `testDoc.ts` se construit depuis la fixture (le
       `schemaVersion: 1` écrit à la main disparaît).
-- [ ] 0.B.2 **Matrice de compatibilité.** `replaySchemaStatusLogic.ts` nomme
+      **Fait** (2026-09-13) : la cuisson réutilise `buildGolden` (mêmes entrées figées que
+      `TestGoldenAssembly`, zéro octet de film). La fixture est **compressée**
+      (`replay_schema_54.json.gz`, 401 589 o contre 3 318 459 en clair — même régime que
+      `testdata/inputs_000d5950.bin.gz`, 1 033 495 o), et le dossier porte un
+      `manifest.json` (version + liste) que `testDoc.ts` lit pour sa version de schéma :
+      le document complet n'est plus chargé que par le test de contrat. Régénération à
+      DEUX conditions (`-update` **et** `REPLAY_CONTRACT_UPDATE=1`) pour qu'une
+      régénération du golden d'assemblage ne re-bénisse pas le contrat du web en silence.
+      Consommateur : `test/goFixtures.contract.test.ts` (contrat zod, normalisation,
+      `replayLogic`, `rosterLogic`, `abilityChargeLogic`, `equipmentUsageLogic`,
+      `equippedLogic`, `hillHoldLogic`, `padControlLogic`, `roundsLogic`, `seatLogic`).
+- [x] 0.B.2 **Matrice de compatibilité.** `replaySchemaStatusLogic.ts` nomme
       `MIN_RENDERABLE_SCHEMA_VERSION` ; test : toute fixture au-dessus rend, toute fixture en
       dessous donne l'état `stale` du badge, jamais une exception. Chaîne UI neuve éventuelle en
       FR et EN dans `i18n.ts`.
-- [ ] 0.B.3 **Contrat à l'exécution (zod).** Schéma zod du document de rejeu, assertion de type
+      **Fait** (2026-09-13) : `MIN_RENDERABLE_SCHEMA_VERSION = 27`, valeur **décidée par
+      l'exécuteur faute de valeur au plan** et justifiée sur pièces — la chronique ne porte
+      que deux montées qui RETIRENT au client un champ promis (v6 `Inventory.a`,
+      v27 `weaponChanges[].until`) ; à partir de 27 toute montée est additive ou de contenu.
+      **À confirmer par le pilote** (cf. « ce qui a besoin du pilote »). Le test de contrat
+      vérifie que toute fixture Go est ≥ ce seuil ; sous le seuil, le badge dit `stale`
+      MÊME sans en-tête à comparer (au lieu de `unknown`) et ne nomme aucune cible inventée
+      — d'où une chaîne neuve FR + EN (`schemaBadgeStaleNoTargetFmt`), parité par typage.
+- [x] 0.B.3 **Contrat à l'exécution (zod).** Schéma zod du document de rejeu, assertion de type
       dans les deux sens contre le type généré d'OpenAPI (dérive impossible sans rougir `tsc`),
       actif dans les tests et derrière le badge admin (erreur de validation affichée dans le
       badge, jamais un rendu qui tombe). Aucune dépendance nouvelle.
-- [ ] 0.B.4 **Empreinte de forme côté Go.** `replay/document_shape_test.go` : hachage réfléchi de
+      **Fait** (2026-09-13) : `lib/replay/replayDocumentSchema.ts` — les 57 clés de la
+      RACINE, validées pour leur nature (nombre, chaîne, tableau, objet, table) ; les types
+      d'éléments sont portés par `z.custom<T>()` (donc vus de `tsc`) et **non re-validés**,
+      choix écrit dans l'en-tête (la forme profonde est gardée côté producteur par 0.B.4).
+      Trois assertions de type : égalité stricte des ensembles de clés + assignabilité dans
+      les deux sens (`replayDocumentSchema.test.ts`). Branché dans `lib/replay/queries.ts`
+      AVANT `normalizeReplayDocument` (après elle, tout tableau est comblé) ; le manquement
+      voyage par `ReplayDocumentReady.contractIssue` jusqu'au badge admin, nouvel état
+      `invalid` (ton `destructive`), chaîne FR + EN. Aucun rendu ne tombe : le document est
+      servi quand même. Effet de bord assumé de la règle n° 6 : le motif `Equals`/`Expect`
+      en serait à sa 3e copie -> centralisé dans `lib/types/typeEquality.ts` avec son
+      garde-rail `typeEquality.guard.test.ts`, deux copies migrées.
+- [x] 0.B.4 **Empreinte de forme côté Go.** `replay/document_shape_test.go` : hachage réfléchi de
       `ReplayDocument` (champs, balises JSON, `omitempty`) figé dans
       `testdata/document_shape.golden` avec la `SchemaVersion` ; rougit si la forme change sans
       montée de `SchemaVersion` ou sans entrée dans `document_chronicle.go` pour la version
       neuve ; même empreinte sur le jumeau `domain/replaydoc` (les deux formes doivent coïncider).
-- [ ] 0.B.5 **Les anciens goldens ne se régénèrent jamais.** Test qui, pour chaque version de la
+      **Fait** (2026-09-13) : golden de 908 lignes (en-tête + forme EN CLAIR, pas seulement
+      le hachage — une empreinte qui bouge ne dit pas ce qui a bougé). Le ratchet est dans la
+      **régénération** : elle est REFUSÉE quand l'empreinte change alors que `SchemaVersion`
+      n'a pas bougé. Éprouvé par mutation (champ ajouté à `ReplayDocument`) : golden rouge,
+      jumeaux rouges, régénération refusée ; mutation annulée. Deux neutralisations
+      explicites, sans quoi les jumeaux ne coïncident pas (découvertes D3) : champs triés
+      par nom (l'ordre n'est pas le contrat — `replayview/parity_test.go` compare déjà par
+      arbres) et types nommés rendus par leur type de BASE. Le test miroir existant
+      (`replayview/parity_test.go`) n'est pas refait : il est cité, et cette empreinte
+      n'ajoute que l'unicité des deux formes dans le même golden que la version.
+      Entrée de chronique exigée pour la version courante via
+      `testutil.ReplayChronicleVersions` (helper partagé avec 0.B.5, méta-testé).
+- [x] 0.B.5 **Les anciens goldens ne se régénèrent jamais.** Test qui, pour chaque version de la
       chronique inférieure à la courante, vérifie `replaybuild.Digest{SchemaVersion: v}.UpToDate()
       == false`, et que `writeArtifactBytes` refuse une rétrogradation (preuve par version, le
       garde existe).
-- [ ] 0.B.6 **Ratchet sur les fixtures.** `testDoc.guard.test.ts` étendu : aucun littéral
+      **Fait** (2026-09-13) : `replaybuild/artifact_schema_history_test.go`, liste des 51
+      versions DÉRIVÉE de `document_chronicle.go` (jamais écrite à la main). Trois preuves
+      par version : `Digest.UpToDate()` et `ArtifactUpToDate(path)` faux ; `StoreArtifact`
+      refuse le dépôt et n'écrit rien ; `writeArtifactBytes` refuse l'appauvrissement à
+      schéma égal. **Découverte D1** : `writeArtifactBytes` ne refuse PAS une rétrogradation
+      de VERSION — le refus de version vit en amont dans `validateArtifact`.
+- [x] 0.B.6 **Ratchet sur les fixtures.** `testDoc.guard.test.ts` étendu : aucun littéral
       `schemaVersion:` dans les tests web hors `fixtures/go/`.
+      **Fait** (2026-09-13) : signature `(?:latestS|s)chemaVersion\s*(?::|=\{)\s*-?\d` — les
+      props JSX sont visées comme les littéraux d'objet, et les annotations de type
+      (`schemaVersion: number`) comme les valeurs dérivées ne rougissent pas. Contre-test
+      d'inertie inclus (trois fautifs, trois légitimes). Les deux tests qui écrivaient un
+      numéro (`replaySchemaStatusLogic.test.ts`, `ReplaySchemaBadge.test.tsx`) le dérivent
+      désormais du manifeste Go. Les fixtures étant du JSON, elles sont hors du balayage par
+      construction.
 
 Gate 0.B : gates communs ; `make check-types` ; `make test-web` ; `make openapi-check` ;
 `go test ./internal/games/halo_infinite/film/replay/ ./internal/replaybuild/ ./internal/domain/replaydoc/`.
@@ -705,13 +761,29 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
-| | | | |
+| 2026-09-13 | 0.B | **D1 — `writeArtifactBytes` ne refuse PAS une rétrogradation de VERSION.** L'architecture §12 point 5 affirme que « le point d'écriture unique refuse toute rétrogradation » ; sur pièces il ne refuse que l'APPAUVRISSEMENT à schéma ÉGAL (`wouldDowngrade`, `artifact_store.go:88-98`), et à schéma DIFFÉRENT il se tait délibérément (`artifact_store.go:85-87`, verrouillé par `TestWriteArtifact_MonteeDeSchemaToujoursEcrite`). Le refus de version vit en amont, dans `validateArtifact` (`artifact_store.go:112`), sur le seul écrivain qui puisse porter une autre version (`StoreArtifact`, dépôt d'ouvrier) ; les trois autres sérialisent un document du producteur courant. Le résultat est correct, la phrase du document ne l'est pas. NON TRAITÉ. | ADR 0034 (lot 0.C.1) : y écrire où vit chaque refus ; corriger la phrase de l'architecture §12 |
+| 2026-09-13 | 0.B | **D2 — la chronique n'a pas une forme d'en-tête mais TROIS**, nées à des mois différents : `// v<N> (` (v2-v20, v40-v50, v52-v54), `// SCHEMA <N> (` (v29), `// CE QUE LA VERSION <N> ` (v21-v39 pour l'essentiel). Et deux numéros n'existent pas : **32 et 51 ont été SAUTÉS** à la renumérotation de deux lots parallèles (écrit dans l'entrée v33) ; la v1 est antérieure à la chronique. Tout garde-rail qui dériverait la liste d'un intervalle `1..N` affirmerait des versions jamais cuites. NON TRAITÉ (l'extracteur `testutil.ReplayChronicleVersions` reconnaît les trois formes et ne comble aucun trou). | ADR 0034 (lot 0.C.1) : forme normative d'une entrée de chronique |
+| 2026-09-13 | 0.B | **D3 — deux écarts entre le document STOCKÉ et son jumeau SERVI**, tous deux invisibles sur le fil JSON et donc légitimes, mais qui ont dû être neutralisés explicitement pour que l'empreinte de forme coïncide : (a) `replay.Coverage` et `replaydoc.Coverage` déclarent les mêmes champs dans un ORDRE différent ; (b) `IdentityLink.Method` est de type nommé `LinkMethod` côté stocké, `string` côté servi. NON TRAITÉ. | rien à traiter ; la neutralisation est écrite dans `document_shape_test.go` |
+| 2026-09-13 | 0.B | **D4 — budget de taille pour 0.B.7.** Le document du film de référence pèse 3 318 459 o indenté, **401 589 o compressé**. À sept mini-films (V7), le jeu de fixtures pèserait ~2,8 Mio compressés si chaque build produit un document de cette taille — à mesurer réellement au lot 0.B.7, les mini-films de 0.A.2 étant plus courts que le film de référence. | lot 0.B.7 (taille totale bornée et consignée) |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
 |---|---|---|---|---|
-| | | | | |
+| 2026-09-13 | 0.B | `df2d90c35` | `gofmt -l ./internal ./cmd` | sortie vide |
+| 2026-09-13 | 0.B | `df2d90c35` | `go vet ./internal/games/halo_infinite/film/replay/ ./internal/replaybuild/ ./internal/domain/replaydoc/ ./internal/archlint/ ./internal/testutil/` | 0 diagnostic |
+| 2026-09-13 | 0.B | `df2d90c35` | `go test ./internal/games/halo_infinite/film/replay/ ./internal/replaybuild/ ./internal/domain/replaydoc/ ./internal/archlint/ ./internal/testutil/` | ok — replay 7,76 s ; replaybuild 0,93 s ; archlint 10,92 s ; testutil 0,17 s ; replaydoc « no test files » |
+| 2026-09-13 | 0.B | `df2d90c35` | `go test ./internal/service/replayview/ ./contracttest/` (contrôle ajouté : parité des jumeaux + compte de champs figé) | ok — 0,20 s / 0,36 s |
+| 2026-09-13 | 0.B | `df2d90c35` | `go test ./...` (suite complète, `delivery-checklist` §1 ; code de sortie relevé hors tube — piège du pipe) | **code de sortie 0**, 323 paquets, zéro `FAIL`. `-tags=integration` NON joué : le diff ne touche ni `persist/`, ni `sync/`, ni `migration/` |
+| 2026-09-13 | 0.B | `df2d90c35` | `make go-api-lint` | 0 issue (2 `govet inline` sur `reflect.Ptr` corrigés en `reflect.Pointer` avant de reverdir ; baseline non accrue) |
+| 2026-09-13 | 0.B | `df2d90c35` | `make check-types` puis `cd apps/web && npx tsc -b --force` | 0 erreur dans les deux cas (le `--force` neutralise le cache `.tsbuildinfo`) |
+| 2026-09-13 | 0.B | `df2d90c35` | `make test-web` | 700 fichiers passés + 1 sauté ; 7 417 tests passés + 17 sautés ; 98,05 s |
+| 2026-09-13 | 0.B | `df2d90c35` | `make openapi-check` | `api/openapi.yaml` à jour (712 826 o) ; `generated.ts` dérive bien — aucun champ neuf au contrat public, ce lot ne touche pas la forme servie |
+| 2026-09-13 | 0.B | `df2d90c35` | `npx eslint` (web touché) + `npm run lint:colors` + `npm run lint:fields` | 0 erreur (9 avertissements PRÉEXISTANTS, aucun dans les fichiers du lot) ; couleurs propres ; libellés propres |
+| 2026-09-13 | 0.B.1 | `277f9e177` | `REPLAY_CONTRACT_UPDATE=1 go test ./internal/games/halo_infinite/film/replay/ -run ContractFixtures -update` | fixture écrite : 3 318 459 o de JSON, **401 589 o compressés** ; puis comparaison verte sans `-update` |
+| 2026-09-13 | 0.B.4 | `765fccd4a` | ÉPREUVE PAR MUTATION (champ `SondeMutation` ajouté à `ReplayDocument`, puis annulé) | golden de forme ROUGE (`6581c32e42b003aa` -> `cffde9839c41a928`), jumeaux ROUGES, **régénération REFUSÉE** (« SchemaVersion est resté à 54 ») ; `git diff` vide après annulation |
+| 2026-09-13 | 0.B.5 | `76e15eb9c` | `go test ./internal/replaybuild/ -run 'SchemaAnterieur\|DepotRefuse\|AppauvrissementAChaqueSchema' -v` | 51 sous-tests par version (v2 à v53, moins 32 et 51), 3 familles de preuve, tous verts |
+| 2026-09-13 | 0.B.6 | ce commit | `npx vitest run src/features/match-replay/test/testDoc.guard.test.ts` | 5 tests verts, dont le contre-test d'inertie (3 fautifs détectés, 3 formes légitimes ignorées) |
 
 ## 6. Protocole de reprise de session
 
