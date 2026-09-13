@@ -1,3 +1,33 @@
+## [2026-09-14] Chantier decodeur — lot 0.D, sous-lots 0.D.1, 0.D.2, 0.D.5 — Complete (feat/decfilm-0D fusionnee dans feat/recherche-decodeur-film ; 0.D.1 bis, 0.D.3, 0.D.4, 0.D.6 restent)
+
+**Decision technique principale.** 0.D.1 (D6, manches 3 -> 1 sur fb1a1a72) : verdict executeur
+« manches fantomes » (six preuves, garde `contiguousRounds`) NON RETENU par l'utilisateur
+(mecanique de jeu : manches et prolongations, pas de mi-temps ; le score n'est pas un oracle en
+CTF ; ce que le film ecrit se lit) -> rouvert en 0.D.1 bis (ecrivain du champ manche, piste
+prolongation : 814 s pour 720 s). 0.D.2 (D7, bloc monde de 60ae07c4) : divergence voulue prouvee a
+quatre points de base — la borne maxUnrollPerStep n'explique rien, la porte de region v53 explique
+tout le bloc et rien de publie ne baisse (188/188 armes au sol, 297/297 ramassages, spawned ->
+dropped a somme constante) ; troisieme cause distincte (equipmentChanges/n 33 -> 29, abilities
+29 -> 27, abilityLabels 4 -> 3 entre les schemas 34 et 51) au registre avec bissection. 0.D.5 :
+seconde fusion de feat/v75 (c28f7da59, 55 commits) attribuee PAR MUTATION : H.1 (neutralite d'un
+socle) bouge `flag` sur 17 films, H.2 (piece engendree) +1 o sur 2 films, G.7 (Mutilator au
+registre des armes, `internal/games/weapons/`) +316 o sur 2 films ; reverter les trois reproduit
+l'ancienne reference a l'octet ; 3 goldens et 3 fixtures regeneres, 20 references re-figees a
+2dad8d6df, 20/20 identiques.
+
+**Resultats observes.** Gates : go test film + archlint + objectiveevents verts, lint 0, tsc 0,
+vitest 3 126. Incidents d'outillage consignes : `git checkout HEAD -- <paquet>` restaure aussi
+`testdata/` (18 references effacees, re-figeage rejoue, diff identique = determinisme) ;
+plafond memoire des enfants d'equivalence depasse sous contention CPU (e5adf7b2 3,82 Gio en
+charge, 0,88 Gio seul) ; le troisieme coupable d'une difference peut vivre hors du paquet ou
+on l'attend (`games/weapons/`).
+
+**Prochaine etape.** Push + CI de l'integration ; fenetre de 5 min aux sessions du checkout
+principal puis avance rapide vers feat/v75 ; 0.D.6 (temoin utilisateur bfecd02b, tous les axes
+bump par bump), 0.D.1 bis, 0.D.3, 0.D.4.
+
+---
+
 ## [2026-09-13] Chantier decodeur — lot 0.E (audit des heuristiques qui decident a la place de la grammaire, D13/D14) — Complete (feat/decfilm-0E fusionnee dans feat/recherche-decodeur-film)
 
 **Decision technique principale.** Audit (skill adversarial-audit, 6 auditeurs en fan-out,
