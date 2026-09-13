@@ -137,8 +137,15 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
       de `objectiveevents/extract.go`), pas par liste de statistiques. Parc du 13/09 (schéma 54,
       recuit depuis l'audit) : `8bc6074f` 119 -> 0 pulses par image (drapeau déjà retiré),
       `32d9a94f` 148 -> 55.
-- [ ] D.2 Dénominateur de couverture du calque : le pourcentage ne compte plus les actions
+- [x] D.2 Dénominateur de couverture du calque : le pourcentage ne compte plus les actions
       hors objectif ; un calque dont 99 % des actions sont des frags n'affiche plus « 100 % ».
+      SUR PIÈCES, le pourcentage n'est PAS côté web : `coverage.objectives` n'a aucun lecteur
+      dans `apps/web` (grep `.coverage` complet) — il est produit par `buildObjectiveActions`
+      (`internal/games/halo_infinite/film/replay/objectives.go`) et par les deux comptes de
+      `replaybuild.identifiedEvents`. Les trois sont restreints aux familles d'objectif ;
+      la PUBLICATION (`doc.Objectives`) ne perd rien (doctrine R1). Parc du 13/09 : `8bc6074f`
+      218 -> 99 disponibles, `32d9a94f` 148 -> 55. Aucun champ ne bouge, `SchemaVersion`
+      inchangé : les artefacts déjà cuits gardent l'ancien dénominateur jusqu'à recuisson.
 - [ ] D.3 Tests vitest (familles filtrées, dénominateur), tsc (cache purgé), eslint 0 erreur,
       push, CI verte. Aucune string UI nouvelle sans FR+EN.
 
