@@ -48,6 +48,13 @@ export interface ValueGridRow {
    * séparés par un filet ; la valeur elle-même n'est jamais affichée.
    */
   group: string
+  /**
+   * SOUS-LIBELLÉ optionnel, posé sous le nom en petit (la carte d'un match, le
+   * nombre d'occupations d'un socle...). Ajouté le 2026-09-13 pour les grilles du
+   * bloc « formes retenues », qui nomment une ligne par « heure · mode » et sa
+   * carte dessous. Absent = rendu strictement inchangé.
+   */
+  sublabel?: string
   /** Encre du trait d'identité posé devant le nom (CSS). Absent = pas de trait. */
   accent?: string
   /** Ligne mise en avant (le joueur de la page) : nom en gras. */
