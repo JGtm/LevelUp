@@ -59,10 +59,29 @@ export function columnsOfFamily(
   return matchesOfFamily(block, family)[0]?.objective?.columns ?? []
 }
 
-/** La valeur d'un joueur sur une colonne d'un match (0 s'il n'a pas de ligne). */
-export function objectiveValue(match: SquadFormesMatch, xuid: string, column: string): number {
+/**
+ * objectiveCell — la valeur d'un joueur sur une colonne d'un match, qui peut
+ * valoir « non mesuré ».
+ *
+ * TOUTES LES COLONNES NE SE LISENT PAS PAREIL, ET C'EST LA COLONNE QUI LE DIT.
+ * Les grandeurs de `match_objective_stats` viennent du sync : dès qu'un match a une ligne,
+ * toutes ses colonnes ont une valeur, et un 0 y est une mesure. Les grandeurs
+ * lues du FILM (les prises nettes de drapeau) n'existent que pour les matchs
+ * dont l'artefact a été lu — le serveur les marque `optional` et n'écrit alors
+ * AUCUNE clé. Les afficher à zéro dirait « il n'a rien pris » là où la vérité
+ * est « on n'a pas regardé ».
+ *
+ * `null` = non mesuré, et la grille le rend en hachure.
+ */
+export function objectiveCell(
+  match: SquadFormesMatch,
+  xuid: string,
+  column: SquadFormesObjectiveColumn,
+): number | null {
   const row = (match.objective?.players ?? []).find((p) => p.xuid === xuid)
-  return row?.values?.[column] ?? 0
+  const v = row?.values?.[column.key]
+  if (v == null) return column.optional ? null : 0
+  return v
 }
 
 /** L'agrégat d'un ensemble de colonnes : mes totaux, ceux de mon camp, du lobby. */

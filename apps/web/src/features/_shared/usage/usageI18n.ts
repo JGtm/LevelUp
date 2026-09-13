@@ -64,6 +64,12 @@ export interface UsageText {
   viewRoles: string
   viewFamilies: string
   viewSquadRoles: string
+  /** Les prises NETTES de drapeau : titre de la vue, et sa phrase de lecture. */
+  viewFlagGrabsNet: string
+  flagGrabsNetFmt: (net: string, team: string, raw: string) => string
+  flagGrabsNetRuleFmt: (seconds: string) => string
+  flagGrabsNetScopeFmt: (measured: number, total: number) => string
+  flagGrabsNetShareFmt: (pct: string) => string
   /** Intitulés des trois colonnes de jauge (§7 : les trois dénominateurs). */
   gaugeTeamOfLobby: string
   gaugePlayerOfTeam: string
@@ -202,6 +208,16 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     viewRoles: 'Par rôle, toutes familles confondues',
     viewFamilies: "Ma part d'équipe, par famille de mode",
     viewSquadRoles: "Part d'équipe par joueur et par rôle",
+    viewFlagGrabsNet: 'Prises nettes de drapeau',
+    flagGrabsNetFmt: (net, team, raw) =>
+      `${net} prises nettes sur les ${team} de ton équipe — le compteur officiel en affiche ${raw}.`,
+    flagGrabsNetRuleFmt: (seconds) =>
+      `Jonglage replié (fenêtre ${seconds} s) : une reprise du même drapeau par le même joueur ` +
+      `dans ce délai compte pour une seule prise.`,
+    flagGrabsNetScopeFmt: (measured, total) =>
+      `Mesuré sur ${measured} des ${total} matchs à objectif de la session : les autres n'ont pas ` +
+      `de film décodé, et ne comptent pour aucune prise.`,
+    flagGrabsNetShareFmt: (pct) => `Ta part : ${pct}.`,
     gaugeTeamOfLobby: 'Mon équipe dans le lobby',
     gaugePlayerOfTeam: 'Ma part dans mon équipe',
     gaugePlayerOfLobby: 'Ma part dans le lobby',
@@ -301,6 +317,16 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     viewRoles: 'By role, all families combined',
     viewFamilies: 'My team share, by mode family',
     viewSquadRoles: 'Team share by player and role',
+    viewFlagGrabsNet: 'Net flag grabs',
+    flagGrabsNetFmt: (net, team, raw) =>
+      `${net} net grabs out of your team's ${team} — the official counter shows ${raw}.`,
+    flagGrabsNetRuleFmt: (seconds) =>
+      `Juggling folded (${seconds}s window): the same player re-grabbing the same flag within ` +
+      `that delay counts as a single grab.`,
+    flagGrabsNetScopeFmt: (measured, total) =>
+      `Measured on ${measured} of the session's ${total} objective matches: the others have no ` +
+      `decoded film, and count towards no grab.`,
+    flagGrabsNetShareFmt: (pct) => `Your share: ${pct}.`,
     gaugeTeamOfLobby: 'My team in the lobby',
     gaugePlayerOfTeam: 'My share of my team',
     gaugePlayerOfLobby: 'My share of the lobby',

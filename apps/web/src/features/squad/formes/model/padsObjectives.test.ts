@@ -17,7 +17,7 @@ import {
   matchesOfFamily,
   objectiveFamilies,
   objectiveMatches,
-  objectiveValue,
+  objectiveCell,
   roleLobbyParts,
 } from './objectives'
 import {
@@ -123,6 +123,15 @@ describe('objectifs', () => {
 
   it('rend 0 pour un joueur absent de la feuille d’objectif', () => {
     const match = matchesOfFamily(block, 'ctf')[0]
-    expect(objectiveValue(match, 'x-inconnu', 'flag_returns')).toBe(0)
+    expect(objectiveCell(match, 'x-inconnu', { key: 'flag_returns', role: 'defend' })).toBe(0)
+  })
+
+  it('rend « non mesuré » (null), pas 0, pour une grandeur optionnelle absente', () => {
+    // Une grandeur lue du film manque sur un match sans artefact : l’afficher à
+    // zéro dirait « il n’a rien pris » là où la vérité est « on n’a pas regardé ».
+    const match = matchesOfFamily(block, 'ctf')[0]
+    const col = { key: 'flag_grabs_net', role: 'take', optional: true }
+    expect(objectiveCell(match, FORMES_MAIN_XUID, col)).toBeNull()
+    expect(objectiveCell(match, FORMES_MAIN_XUID, { ...col, optional: false })).toBe(0)
   })
 })
