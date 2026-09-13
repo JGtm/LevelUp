@@ -63,6 +63,14 @@ d'`e5adf7b2` depasse le plafond memoire (pic 3,822 GiB contre 3 GiB souple / 4 G
 `filmproc.DefaultLimitGiB`, constante sans drapeau), quand la cuisson HEAD du meme temoin a
 ABOUTI. Le code 1 du gate couvre donc trois lignes dont aucune n'est une perte de matiere.
 
+**CI.** Quatre commits pousses sur `feat/finitions-rejeu` (`6e0e5378a` H.1, `267fa1c5a` H.2,
+`9269dc24b` H.3, `e538d24cb` H.4). **CI VERTE AU NIVEAU JOB** (run `34773808291`, success) :
+Go Lint, Go Coverage + Baseline non-regression (`./...` complet, CGO), OpenAPI Lint, Go Lease
+Enforcement, Go Build + Test ubuntu ET windows, Frontend TypeScript + Vite, Go Contract Test —
+tous `success`, E2E React `skipped` ; plus `Secrets (gitleaks)` et `Deploy Pre-Check` en
+`success`. Le hook `knip-ratchet` a bloque le premier push : `node_modules` absent du worktree,
+repare par `npm ci` dans `apps/web` — pas un defaut de code.
+
 **Conclusion / prochaine etape.** H.1, H.2 et H.4 sont `[x]` ; **H.3 est `[!]`** — la question
 posee n'avait pas de bonne reponse parmi les deux proposees, et l'autorisation utilisateur de
 recuisson pour ces deux films reste INUTILISEE (les recuire reproduirait les memes artefacts).
