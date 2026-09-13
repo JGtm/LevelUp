@@ -327,3 +327,9 @@ lot H, pas avant. Effort L.
   conservées pour arbitrage utilisateur. Jonctions retirées avant chaque remove ; node_modules
   principal vérifié après. F.4 : procédure écrite `.ai/PROCEDURE_BASCULE_LEVELUP_2026-09-13.md`,
   exécution PLUS TARD sur signal utilisateur (17 sessions ouvertes dans le dossier).
+- 2026-09-13 (décision utilisateur) : branches WIP `wt/form-tab-suppression` (dépassée par le lot
+  5.3 `be5095e00`) et `wt/origine-equipement` (json plus ancien que feat/v75 + 39 Mio de dumps
+  .mvar) SUPPRIMÉES. Conservées, à planifier : `wt/psa-index-cause` (garde data-health index
+  PSA, alerte seule ; rectifier le numéro d'issue DuckDB 23046 -> 23645 dans CLAUDE.md et ADR)
+  et `wt/lusr-h5-cause` (cause prouvée : double source de titre dans le câblage sync V2, classe
+  ouverte ; purge des lignes `h5_arena` par reconstruction CTAS + garde-rail au câblage).
