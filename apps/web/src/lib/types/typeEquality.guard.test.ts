@@ -21,11 +21,21 @@ import { describe, expect, it } from 'vitest'
  * du lot 0.B : une copie écrite `<T>() => T extends L ? 1 : 2` (paramètres `L`/`R` au lieu de
  * `A`/`B`) traversait le garde, verte. Un garde qui ne reconnaît le motif que sous les noms
  * d'une seule copie ne garde que cette copie — et le helper re-diverge exactement comme la
- * règle n° 6 le prédit. Ce qui identifie le motif, c'est le conditionnel différé lui-même :
- * une fonction générique qui compare `T` à un identifiant et rend `1` ou `2`.
+ * règle n° 6 le prédit.
+ *
+ * PUIS ELLE A GARDÉ `<T>` EN LITTÉRAL, et c'est le constat R2-1 de la ronde 2 : une copie
+ * écrite `<Q>() => Q extends X ? 1 : 2` traversait encore. La généralisation était à moitié
+ * faite, ce qui est la pire des trois situations — le commentaire promettait « la forme,
+ * jamais les noms », et le contre-test s'intitulait « sous n'importe quels noms » en
+ * n'écrivant que `<T>`.
+ *
+ * CE QUI IDENTIFIE LE MOTIF, ET RIEN D'AUTRE : une fonction générique dont le paramètre est
+ * comparé à un identifiant et qui rend `1` ou `2`. Les DEUX occurrences du paramètre sont liées
+ * par une RÉFÉRENCE ARRIÈRE (`\1`) — sans elle, `<Q>() => T extends X` passerait pour le motif
+ * alors que ce n'en est pas un.
  */
 const MOTIF = new RegExp(
-  '<T>\\(\\)\\s*=>\\s*T\\s+extends\\s+[A-Za-z_$][\\w$]*\\s*\\?\\s*1\\s*:\\s*2',
+  '<([A-Za-z_$][\\w$]*)>\\(\\)\\s*=>\\s*\\1\\s+extends\\s+[A-Za-z_$][\\w$]*\\s*\\?\\s*1\\s*:\\s*2',
 )
 
 /** Le seul fichier qui a le droit de le porter. */
@@ -66,11 +76,15 @@ describe('garde-rail : une seule égalité stricte de types', () => {
     expect(MOTIF.test(readFileSync(join(racineSrc(), 'lib', 'types', FOYER), 'utf8'))).toBe(true)
   })
 
-  it('reconnaît le motif SOUS N’IMPORTE QUELS NOMS DE PARAMÈTRES (constat C2)', () => {
+  it('reconnaît le motif SOUS N’IMPORTE QUELS NOMS — des DEUX côtés (constats C2 et R2-1)', () => {
     const copies = [
       'type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2',
       'type _Egaux<L, R> = (<T>() => T extends L ? 1 : 2) extends <T>() => T extends R ? 1 : 2',
       'type Same<Gauche, Droite> = (<T>() => T extends Gauche ? 1 : 2) extends never',
+      // R2-1 : le PARAMÈTRE GÉNÉRIQUE INTERNE aussi se renomme — c’est par là que la mutation
+      // de la ronde 2 est passée.
+      'type _Same<X, Y> = (<Q>() => Q extends X ? 1 : 2) extends <Q>() => Q extends Y ? 1 : 2',
+      'type Eq<Un, Deux> = (<Z>() => Z extends Un ? 1 : 2) extends <Z>() => Z extends Deux ? 1 : 2',
     ]
     for (const copie of copies) {
       expect(MOTIF.test(copie), copie).toBe(true)
@@ -82,6 +96,9 @@ describe('garde-rail : une seule égalité stricte de types', () => {
       "import type { Equals, Expect } from '@/lib/types/typeEquality'",
       'type Assignable<A, B> = A extends B ? true : false',
       'const x = items.filter((T) => T.extends)',
+      // La référence arrière lie les deux occurrences : un paramètre déclaré puis un AUTRE
+      // identifiant comparé n’est pas ce motif.
+      'type Faux<A, B> = (<Q>() => T extends A ? 1 : 2) extends never',
     ]) {
       expect(MOTIF.test(innocent), innocent).toBe(false)
     }
