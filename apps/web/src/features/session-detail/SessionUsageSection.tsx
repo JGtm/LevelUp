@@ -43,7 +43,11 @@ import { useMemo } from 'react'
 import { ValueGrid } from '@/components/charts/ValueGrid'
 import { SectionCard } from '@/components/ui/section-card'
 import { tokenCssVar } from '@/lib/accessibility'
-import type { SessionUsageBlock, SessionUsageMetric } from '@/lib/api/types'
+import type {
+  SessionFlagGrabsNetBlock,
+  SessionUsageBlock,
+  SessionUsageMetric,
+} from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -53,7 +57,11 @@ import { buildObjectiveFamilyGrid, buildSquadRoleGrid } from '@/features/_shared
 import { USAGE_TEXT, powerupLabel, roleLabel, type UsageText } from '@/features/_shared/usage/usageI18n'
 import { buildLobbyTrack } from '@/features/_shared/usage/usageLobbyTrackModel'
 import { metricLabel, padMetric, roleToken } from '@/features/_shared/usage/usageMetricKinds'
-import { formatUsageRate } from '@/features/_shared/usage/usageFormat'
+import {
+  formatUsageCount,
+  formatUsagePct,
+  formatUsageRate,
+} from '@/features/_shared/usage/usageFormat'
 import { sortRoles } from '@/features/_shared/usage/usageObjectives'
 import { teamOfLobbyParityPct } from '@/features/_shared/usage/usageParity'
 import { buildRegularityBand } from '@/features/_shared/usage/usageRegularityBandModel'
@@ -320,7 +328,52 @@ function ObjectivesCard({ usage, meLabel, t, locale, compact }: CardProps) {
             <ValueGrid model={squadGrid} dense={compact} />
           </section>
         )}
+        <FlagGrabsNetView block={obj.flag_grabs_net} t={t} locale={locale} />
       </div>
     </SectionCard>
+  )
+}
+
+/**
+ * FlagGrabsNetView — les PRISES NETTES de drapeau, sous les rôles.
+ *
+ * ELLE VIT À PART DES TROIS RÔLES, ET C'EST UNE CONSÉQUENCE DE LA MESURE. La
+ * grandeur est lue du FILM : elle n'existe que pour les matchs dont l'artefact a
+ * été lu, alors que les rôles se mesurent sur tous les matchs à objectif. La
+ * verser dans « prendre » aurait compté un match sans film comme un match sans
+ * prise. Elle porte donc ses propres dénominateurs, écrits en toutes lettres.
+ *
+ * LE COMPTEUR BRUT EST AFFICHÉ À CÔTÉ, et c'est le cœur du bloc : c'est l'écart
+ * entre les deux qui dit ce que le compteur officiel compte en trop.
+ */
+function FlagGrabsNetView({
+  block,
+  t,
+  locale,
+}: {
+  block: SessionFlagGrabsNetBlock | null | undefined
+  t: UsageText
+  locale: Locale
+}) {
+  if (block == null || block.lobby_raw_total <= 0) return null
+  const net = formatUsageCount(block.team_total, locale)
+  const raw = formatUsageCount(block.team_raw_total, locale)
+  return (
+    <section aria-label={t.viewFlagGrabsNet}>
+      <ViewTitle>{t.viewFlagGrabsNet}</ViewTitle>
+      <p className="text-2xs leading-relaxed text-muted-foreground">
+        {t.flagGrabsNetFmt(formatUsageCount(block.player_total, locale), net, raw)}{' '}
+        {block.player_share_of_team_pct != null &&
+          t.flagGrabsNetShareFmt(formatUsagePct(block.player_share_of_team_pct, locale))}
+      </p>
+      {block.window_seconds != null && block.window_seconds > 0 && (
+        <p className="mt-1 text-3xs leading-relaxed text-muted-foreground">
+          {t.flagGrabsNetRuleFmt(formatUsageCount(block.window_seconds, locale))}
+        </p>
+      )}
+      <p className="mt-1 text-3xs leading-relaxed text-muted-foreground">
+        {t.flagGrabsNetScopeFmt(block.matches_measured, block.matches_with_objectives)}
+      </p>
+    </section>
   )
 }

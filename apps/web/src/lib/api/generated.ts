@@ -10680,6 +10680,28 @@ export interface components {
             /** Format: double */
             team_mmr?: number;
         };
+        SessionFlagGrabsNetBlock: {
+            /** Format: int64 */
+            lobby_raw_total: number;
+            /** Format: int64 */
+            lobby_total: number;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_with_objectives: number;
+            /** Format: int64 */
+            player_raw_total: number;
+            /** Format: double */
+            player_share_of_team_pct?: number;
+            /** Format: int64 */
+            player_total: number;
+            /** Format: int64 */
+            team_raw_total: number;
+            /** Format: int64 */
+            team_total: number;
+            /** Format: double */
+            window_seconds?: number;
+        };
         SessionGroup: {
             /** Format: int64 */
             duration_seconds: number;
@@ -10746,6 +10768,7 @@ export interface components {
         };
         SessionObjectivesBlock: {
             families?: components["schemas"]["SessionObjectiveFamilyBlock"][] | null;
+            flag_grabs_net?: components["schemas"]["SessionFlagGrabsNetBlock"];
             /** Format: double */
             lobby_parity_pct?: number;
             /** Format: double */
@@ -11285,11 +11308,14 @@ export interface components {
         SquadFormesObjective: {
             columns?: components["schemas"]["SquadFormesObjectiveColumn"][] | null;
             family: string;
+            /** Format: double */
+            flag_juggle_window_seconds?: number;
             players?: components["schemas"]["SquadFormesObjectivePlayer"][] | null;
         };
         SquadFormesObjectiveColumn: {
             duration?: boolean;
             key: string;
+            optional?: boolean;
             role: string;
         };
         SquadFormesObjectivePlayer: {

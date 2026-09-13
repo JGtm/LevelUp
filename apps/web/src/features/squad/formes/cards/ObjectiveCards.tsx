@@ -22,8 +22,8 @@ import {
   aggregateRole,
   columnsOfFamily,
   matchesOfFamily,
+  objectiveCell,
   objectiveFamilies,
-  objectiveValue,
   roleLobbyParts,
 } from '../model/objectives'
 import type { FormesViewModel } from '../viewModel'
@@ -177,6 +177,7 @@ export function ObjectivesRawGridCard({ vm }: { vm: FormesViewModel }) {
           duration: c.duration,
         }))
         const byId = new Map(matches.map((m) => [m.match_id, m]))
+        const byKey = new Map(cols.map((c) => [c.key, c]))
         return (
           <div key={family}>
             <FormesSubtitle>{ct.familyMatchesFmt(familyLabel(vm, family), matches.length)}</FormesSubtitle>
@@ -185,11 +186,22 @@ export function ObjectivesRawGridCard({ vm }: { vm: FormesViewModel }) {
               columns={columns}
               value={(row, col) => {
                 const match = byId.get(row.key)
-                return match ? objectiveValue(match, vm.mainXuid, col.key) : null
+                const spec = byKey.get(col.key)
+                if (!match || !spec) return null
+                // Une grandeur lue du film manque sur un match sans artefact :
+                // la case dit « non mesuré », jamais zéro.
+                return objectiveCell(match, vm.mainXuid, spec)
               }}
               ink={() => squadPlayerInk(0)}
               format={(v, col) => vm.fmtCount(v, col.duration)}
-              tooltip={(row, col, text) => t.common.valueTipFmt(row.label, col.label, text)}
+              tooltip={(row, col, text) => {
+                const base = t.common.valueTipFmt(row.label, col.label, text)
+                // La grandeur nette ne se lit pas sans sa règle : l'infobulle
+                // la porte, avec la fenêtre du match.
+                const w = byId.get(row.key)?.objective?.flag_juggle_window_seconds
+                if (!byKey.get(col.key)?.optional || w == null) return base
+                return `${base} — ${t.common.juggleFoldedFmt(vm.fmtCount(w))}`
+              }}
               notMeasuredLabel={t.common.notMeasured}
               axisTitle={t.common.gesturesAxis}
             />
