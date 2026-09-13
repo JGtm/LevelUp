@@ -48,6 +48,10 @@ export interface UsageText {
   cardHintRegularity: string
   /** « Matchs mesurés N/M » — TOUJOURS visible (couverture des films partielle). */
   measuredFmt: (measured: number, total: number) => string
+  /** La même couverture, en PIED de carte et en phrase (2026-09-13, demande
+   *  utilisateur) : le bandeau des quatre cartes d'équipement ne porte plus de compteur,
+   *  la couverture s'écrit UNE fois par rangée sous la carte de gauche. */
+  measuredFooterFmt: (measured: number, total: number) => string
   /** « Matchs avec objectifs N/M » — le bloc 3 a son propre scope (hors films). */
   objectivesScopeFmt: (withObjectives: number, total: number) => string
   /** Raisons du bloc indisponible (contrat : unavailable_reason machine).
@@ -192,6 +196,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     cardHintObjectives:
       "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif). Ce bloc se mesure hors film : il couvre plus de matchs que les deux autres. Le rôle « Tenir » se mesure en durée — ses totaux sont en minutes:secondes, ses parts restent des pourcentages.",
     measuredFmt: (m, t) => `Matchs mesurés ${m}/${t}`,
+    measuredFooterFmt: (m, t) => `Mesuré sur ${m} matchs sur ${t}`,
     objectivesScopeFmt: (n, t) => `Matchs avec objectifs ${n}/${t}`,
     unavailableLoadFailed: "La lecture du résumé d'usage a échoué.",
     unavailableNoMeasured: "Aucun match de cette session n'a de film mesuré.",
@@ -291,6 +296,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     cardHintObjectives:
       'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount). This block is measured outside the film: it covers more matches than the other two. The "Hold" role is measured in duration — its totals are minutes:seconds, its shares remain percentages.',
     measuredFmt: (m, t) => `Measured matches ${m}/${t}`,
+    measuredFooterFmt: (m, t) => `Measured on ${m} matches out of ${t}`,
     objectivesScopeFmt: (n, t) => `Matches with objectives ${n}/${t}`,
     unavailableLoadFailed: 'Loading the usage summary failed.',
     unavailableNoMeasured: 'No match of this session has a measured film.',
