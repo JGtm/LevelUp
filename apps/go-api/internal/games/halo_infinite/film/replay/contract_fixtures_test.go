@@ -7,7 +7,7 @@ package replay
 // qui declarait `schemaVersion: 1` — un document que le serveur n'envoie jamais. Aucune preuve
 // ne traversait la frontiere : un champ renomme cote cuisson laissait le web vert jusqu'a la
 // production. Ce test ferme le trou dans le seul sens qui vaille : le PRODUCTEUR ecrit la
-// fixture, le CONSOMMATEUR la relit (voir apps/web/src/features/match-replay/test/contract/).
+// fixture, le CONSOMMATEUR la relit (voir apps/web/src/features/match-replay/test/goFixtures.contract.test.ts).
 //
 // LA CUISSON N'EST PAS REINVENTEE ICI. Le document vient de [buildGolden] — exactement la
 // meme sequence que `TestGoldenAssembly` : les entrees figees de `testdata/inputs_000d5950.bin.gz`
