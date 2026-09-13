@@ -56,7 +56,7 @@ du match trop proche ; 404 médaille + fond de carte 571afb7f ; deux notes de pi
 valider ; « Drapeaux saisis » → prises nettes.
 
 **Prochaine étape.** Verdicts utilisateur sur les découvertes ; niveaux d'armes quand bande
-passante ; prises nettes 2.2 (captures après rattrapage) en cours à la clôture de cette entrée.
+passante ; prises nettes 2.2 vérifiées sur données réelles le 14/09 (passe 4 : Sessions et Escouade conformes, dénominateurs propres 28 sur 370) ; un défaut d'infobulle (« Prises nettes : — » au lieu de « non mesuré ») corrigé dans `GrilleForm` avec test. Chantier CLOS ; CI verte sur toutes les fusions.
 
 ---
 

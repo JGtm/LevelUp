@@ -128,7 +128,6 @@ export interface FormesText {
     segmentTipFmt: (name: string, row: string, value: string, total: string) => string
     rangeTipFmt: (row: string, from: string, to: string) => string
     meanTipFmt: (row: string, value: string) => string
-    notMeasuredTipFmt: (row: string) => string
   }
 }
 
@@ -373,7 +372,6 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       segmentTipFmt: (name, row, value, total) => `${name} — ${row} : ${value} sur ${total}`,
       rangeTipFmt: (row, from, to) => `${row} — du match le plus faible ${from} au plus fort ${to}`,
       meanTipFmt: (row, value) => `${row} — moyenne par match : ${value}`,
-      notMeasuredTipFmt: (row) => `${row} — non mesuré (pas de film décodé)`,
     },
   },
   en: {
@@ -536,7 +534,6 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       segmentTipFmt: (name, row, value, total) => `${name} — ${row}: ${value} out of ${total}`,
       rangeTipFmt: (row, from, to) => `${row} — from the lowest match ${from} to the highest ${to}`,
       meanTipFmt: (row, value) => `${row} — average per match: ${value}`,
-      notMeasuredTipFmt: (row) => `${row} — not measured (no decoded film)`,
     },
   },
 }

@@ -48,11 +48,11 @@
 ### Étape 2 — Web
 - [x] 2.1 Cartes d'objectif des formes retenues et bloc Sessions : colonne « Prises nettes »
   (FR) / « Net grabs » (EN), infobulle « jonglage replié (fenêtre N s) », « non mesuré » sans film.
-- [ ] 2.2 Rattrapage FAIT le 14/09 00:01 (serveur arrêté) : `--dry-run` puis réel — 13 matchs écrits, 1 891 sans artefact, 63 sans calque de drapeau, 0 échec, 106 lignes joueur, 617 brutes → 370 nettes (40,0 %), identique à la mesure de l'étape 0 ; témoin 7fce3219 : brut 85 → net 28. Serveur relancé. Captures (passe 4) en cours — sur un match CTF réel (témoin `7fce3219`) — EN ATTENTE du backfill `levelup backfill-flag-grabs-net` (serveur arrêté, base partagée en écriture), à faire par le superviseur après la revue adversariale et la passe visuelle en cours.
+- [x] 2.2 Rattrapage FAIT le 14/09 00:01 (serveur arrêté) : `--dry-run` puis réel — 13 matchs écrits, 1 891 sans artefact, 63 sans calque de drapeau, 0 échec, 106 lignes joueur, 617 brutes → 370 nettes (40,0 %), identique à la mesure de l'étape 0 ; témoin 7fce3219 : brut 85 → net 28. Serveur relancé. Captures (passe 4, données réelles) CONFORMES : Sessions (session du 28/07, 11 matchs) « 4 prises nettes sur les 23 de ton équipe — le film lit 53 ramassages… », règle 1,5 s, « Mesuré sur 3 des 4 matchs de Capture du drapeau », 128 ouvertures ; Escouade : colonne « Prises nettes » (Drapeau) avec tiret hachuré sans film, « Ma part par famille de mode » 7,6 % (28 sur 370) sur 12/13 matchs (dénominateur propre), rôles inchangés. Défaut corrigé par le superviseur : l'infobulle d'une cellule à grandeur absente disait « Prises nettes : — » (GrilleForm ne traitait que la ligne entière) → « non mesuré (pas de film décodé) », test `GrilleForm.test.tsx`, orphelin `notMeasuredTipFmt` retiré. Étape 2 CLOSE. sur un match CTF réel (témoin `7fce3219`) — EN ATTENTE du backfill `levelup backfill-flag-grabs-net` (serveur arrêté, base partagée en écriture), à faire par le superviseur après la revue adversariale et la passe visuelle en cours.
 - Gate : tsc, eslint, vitest, capture.
 
 ### Étape 3 — Clôture
-- [ ] thought_log, référence équipement/objectifs amendée, plan statué, CI verte, fusion.
+- [x] thought_log, plan statué, CI verte sur la fusion (`90b79a96d`), rattrapage exécuté. [!] Référence équipement/objectifs (`.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`) non amendée : la grandeur est un fait du CANAL DRAPEAU du film (`flag_carries`), documenté en tête de `flag_grabs_net.go` et dans le rapport d'étape 0 — à verser à la référence lors de sa prochaine révision par la session film.
 
 ## 2 bis. Revue adversariale avant fusion (2026-09-13)
 

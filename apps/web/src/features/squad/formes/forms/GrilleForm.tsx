@@ -88,8 +88,12 @@ export function GrilleForm({
     value: (r, c) => (rows[r].measured === false ? null : value(rows[r], columns[c])),
     format: (v, c) => format(v, columns[c]),
     color: (r, c) => ink(rows[r], columns[c]),
+    // Une cellule sans valeur dit qu'elle n'est PAS MESURÉE, que ce soit la ligne
+    // entière (match sans film) ou cette seule grandeur (grandeur optionnelle absente,
+    // ex. prises nettes sur un match dont l'artefact n'a pas été lu). Sans ce second
+    // cas, l'infobulle écrivait « Prises nettes : — » (constaté le 2026-09-14).
     tooltip: (r, c, text) =>
-      rows[r].measured === false
+      rows[r].measured === false || value(rows[r], columns[c]) == null
         ? `${rows[r].label} — ${notMeasuredLabel}`
         : tooltip(rows[r], columns[c], text),
     notMeasured: '—',
