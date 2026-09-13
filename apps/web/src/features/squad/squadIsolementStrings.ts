@@ -51,6 +51,21 @@ export function getSquadIsolementText(locale: Locale) {
      *  tooltip — les quatre libellés eux-mêmes étaient déjà affichés dans les coins
      *  (`quadrant` ci-dessus, consommé par `markArea`). */
     pointQuadrant: (q: QuadrantIsolement) => m('squad.isolement.point_quadrant', { quadrant: m(quadrantKeys[q]) }),
+    cardTitle: m('squad.isolement.card_title'),
+    say: (v: {
+      loin: string
+      loinIso: string
+      loinCouv: string
+      proche: string
+      procheIso: string
+      procheCouv: string
+    }) => m('squad.isolement.say', { ...v }),
+    figure: m('squad.isolement.figure'),
+    legendDeaths: (n: number) => m('squad.isolement.legend_deaths', { n }),
+    legendSession: m('squad.isolement.legend_session'),
+    legendLowSample: (floor: number) => m('squad.isolement.legend_low_sample', { floor }),
+    footRadar: m('squad.isolement.foot_radar'),
+    footDenominator: (floor: number) => m('squad.isolement.foot_denominator', { floor }),
     emptyTitle: m('squad.isolement.empty_title'),
     emptyDescription: m('squad.isolement.empty_description'),
   }

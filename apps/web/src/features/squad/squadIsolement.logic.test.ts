@@ -7,8 +7,8 @@ import {
   pointAttenue,
   pointMedianJoueur,
   quadrantDuPoint,
-  tailleDuPoint,
-  tailleMedianeDuPoint,
+  tailleMedianeEchelle,
+  TAILLE_SESSION,
 } from './squadIsolement.logic'
 
 function couverture(brut: number, n: number, echantillonFaible: boolean, matchs = 3) {
@@ -113,17 +113,16 @@ describe('pointAttenue', () => {
   })
 })
 
-describe('tailleDuPoint', () => {
-  it('croît avec les morts examinées', () => {
-    expect(tailleDuPoint(20)).toBeGreaterThan(tailleDuPoint(5))
-  })
-
-  it('plafonne pour une session très chargée', () => {
-    expect(tailleDuPoint(1000)).toBe(tailleDuPoint(500))
-  })
-
-  it('reste au-dessus du minimum même à 0 mort', () => {
-    expect(tailleDuPoint(0)).toBeGreaterThan(0)
+describe('TAILLE_SESSION', () => {
+  // CE QUI A CHANGÉ LE 2026-09-13, et pourquoi ce test a remplacé `tailleDuPoint`.
+  // La taille d'un point de session croissait avec ses morts examinées et plafonnait à
+  // 30 px : sur des données réelles (jusqu'à 118 morts par session) TOUS les points
+  // saturaient, recouvraient les repères par joueur, et l'utilisateur ne voyait plus
+  // qu'une tache. La taille est l'encodage du GROS point ; les sessions disent la
+  // dispersion.
+  it('est une constante — un seul encodage de taille par graphe', () => {
+    expect(TAILLE_SESSION).toBeGreaterThan(0)
+    expect(TAILLE_SESSION).toBeLessThan(12)
   })
 })
 
@@ -154,17 +153,31 @@ describe('pointMedianJoueur', () => {
   })
 })
 
-describe('tailleMedianeDuPoint', () => {
-  it('rend un point visiblement PLUS GROS que le plus gros point de session à décompte égal', () => {
-    const total = 40
-    expect(tailleMedianeDuPoint(total)).toBeGreaterThan(tailleDuPoint(total))
+describe('tailleMedianeEchelle', () => {
+  it('reste toujours PLUS GROS qu un point de session', () => {
+    expect(tailleMedianeEchelle(0, 0, 100)).toBeGreaterThan(TAILLE_SESSION)
+    expect(tailleMedianeEchelle(100, 0, 100)).toBeGreaterThan(TAILLE_SESSION)
   })
 
-  it('croît avec le total des morts examinées', () => {
-    expect(tailleMedianeDuPoint(80)).toBeGreaterThan(tailleMedianeDuPoint(10))
+  it('croît avec le total, sur la plage RÉELLE du nuage', () => {
+    // L'échelle est relative : c'est ce qui rend l'écart lisible sur un roster dont les
+    // totaux se comptent en centaines (une échelle absolue y saturait, et les trois
+    // joueurs sortaient au même diamètre).
+    expect(tailleMedianeEchelle(900, 200, 1000)).toBeGreaterThan(
+      tailleMedianeEchelle(300, 200, 1000),
+    )
   })
 
-  it('plafonne pour un total très chargé', () => {
-    expect(tailleMedianeDuPoint(10000)).toBe(tailleMedianeDuPoint(2000))
+  it('borne aux extrêmes : hors plage, la taille ne dépasse jamais les bouts', () => {
+    const bas = tailleMedianeEchelle(0, 10, 100)
+    const haut = tailleMedianeEchelle(1000, 10, 100)
+    expect(bas).toBe(tailleMedianeEchelle(10, 10, 100))
+    expect(haut).toBe(tailleMedianeEchelle(100, 10, 100))
+  })
+
+  it('plage dégénérée (min === max) : la taille médiane, pas un extrême', () => {
+    const t = tailleMedianeEchelle(50, 50, 50)
+    expect(t).toBeGreaterThan(tailleMedianeEchelle(10, 10, 100))
+    expect(t).toBeLessThan(tailleMedianeEchelle(100, 10, 100))
   })
 })

@@ -1,26 +1,23 @@
 /**
- * SquadEchangeDelaiCard — « Délai d'échange » (onglet Dynamique).
+ * SquadEchangeDelaiCard — « Combien, et à quelle vitesse » (onglet Synergies).
  *
- * COMBIEN DE TEMPS met votre camp à venger une mort. Les cinq premières barres
- * couvrent la fenêtre d'échange (0-1 … 4-5 s, la borne de 5 s comprise) ; les deux
- * dernières sont HORS FENÊTRE et rendues en teinte atténuée : elles sont MONTRÉES et
- * n'entrent dans AUCUN taux.
+ * COMBIEN DE TEMPS met votre camp à venger une mort. Les cinq premières barres couvrent la
+ * fenêtre d'échange (0-1 … 4-5 s, la borne de 5 s comprise) ; les deux dernières sont HORS
+ * FENÊTRE : elles sont MONTRÉES, HACHURÉES, et n'entrent dans AUCUN taux.
  *
- * POURQUOI LES MONTRER. Une distribution qui s'arrêterait net à 5 s ne dirait pas si
- * la fenêtre coupe une population dense ou du vide — « 40 % de morts vengées » se lit
- * très différemment selon que les ripostes manquées arrivent à 5,2 s ou à 40 s.
+ * POURQUOI LES MONTRER. Une distribution qui s'arrêterait net à 5 s ne dirait pas si la
+ * fenêtre coupe une population dense ou du vide — « 19 % de morts vengées » se lit très
+ * différemment selon que les ripostes manquées arrivent à 5,2 s ou à 40 s.
  *
- * LA FENÊTRE EST MARQUÉE DANS L'AIDE ⓘ DU TITRE ET DANS LES ÉTIQUETTES DE BARRE
- * (suffixe « hors fenêtre »), pas par une markLine : le wrapper `HistogramChart`
- * n'expose pas de markLine, et en fabriquer une exigerait un second wrapper.
+ * TROIS INDICES POUR LA MÊME CHOSE, et c'est voulu : la HACHURE sur la barre, le REPÈRE
+ * vertical tireté « fenêtre N s » posé sur la borne, et le MOT (« hors fenêtre » en
+ * étiquette d'axe, la note de pied). Un seuil qui décide d'un taux ne peut pas se deviner.
  *
- * CE QUI A ÉTÉ RETIRÉ le 2026-09-09 (retour utilisateur) : la phrase narrative
- * (« N ripostes sur M arrivent dans la fenêtre… ») et la note de couverture, qui redisaient
- * en toutes lettres ce que la distribution montre déjà. La définition et la fenêtre, elles,
- * ne se déduisent pas d'un graphe : elles passent en infobulle.
+ * DÉPLACÉE DE « DYNAMIQUE » VERS « SYNERGIES » le 2026-09-13 (maquette 4c520da6) : elle est
+ * la deuxième carte du récit de l'échange — d'abord le compte, puis la vitesse, puis qui.
  *
- * Les intervalles sont PRÉ-BINNÉS par le serveur (ADR 0010) : ce composant ne
- * choisit aucune borne.
+ * Les intervalles sont PRÉ-BINNÉS par le serveur (ADR 0010) : ce composant ne choisit
+ * aucune borne.
  */
 import { useMemo } from 'react'
 
@@ -45,10 +42,10 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
   const secondes = echange.fenetre_ms / 1000
   const series = useMemo(() => delaisSeries(echange), [echange])
   const resume = useMemo(() => resumeDelais(echange), [echange])
-  const buckets = echange.delais ?? []
+  const buckets = useMemo(() => echange.delais ?? [], [echange.delais])
 
-  // Étiquette d'axe : les bornes sont en SECONDES, et une barre hors fenêtre le dit
-  // en toutes lettres — une barre atténuée sans mot laisserait deviner.
+  // Étiquette d'axe : les bornes sont en SECONDES, et une barre hors fenêtre le dit en
+  // toutes lettres — une barre hachurée sans mot laisserait deviner.
   const formatBin = useMemo(
     () => (point: ChartPointHistogram) => {
       const b = buckets.find((x) => x.debut_ms / 1000 === point.binStart)
@@ -60,32 +57,39 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
     [buckets, t],
   )
 
-  // ATTÉNUATION, pas seconde teinte : les barres hors fenêtre gardent la couleur de
-  // série et perdent en OPACITÉ — un seul indice graphique.
-  //
-  // Le plan disait « barres hachurées » ; le liseré tireté qui traduisait ce mot n'était
-  // pas visible (même couleur que le remplissage, sous la même opacité globale), et il a
-  // été retiré le 2026-09-06 plutôt que maquillé. LE SECOND INDICE EST LE MOT : chaque
-  // étiquette d'axe concernée porte le suffixe « hors fenêtre », et le pied de carte le
-  // redit. Un indice qu'on lit vaut mieux qu'un indice qu'on prétend peindre.
-  //
-  // MESURÉ SUR PIÈCES le 2026-09-06 (revue W2) : AUCUN token sémantique du dépôt
-  // n'est achromatique dans les quatre palettes. `divergent-neutral` — le candidat
-  // évident — vaut #60A5FA (blue-400) dans la palette PAR DÉFAUT, soit un bleu PLUS
-  // SOUTENU que la série (`chart-series-1` = blue-300) ; il n'est gris que sous
-  // okabe-ito, cividis et tol-bright. Un token « neutre » aurait donc peint ces
-  // barres en bleu appuyé pour la majorité des utilisateurs.
-  const binAttenuated = useMemo(
+  const binHatched = useMemo(
     () => (point: ChartPointHistogram) =>
       buckets.find((x) => x.debut_ms / 1000 === point.binStart)?.hors_fenetre === true,
     [buckets],
   )
+
+  // Le repère se pose sur la borne : le PREMIER intervalle hors fenêtre en marque le début.
+  const windowMark = useMemo(() => {
+    const index = buckets.findIndex((b) => b.hors_fenetre)
+    return index > 0 ? { binIndex: index, label: t.delayWindowMark(secondes) } : undefined
+  }, [buckets, t, secondes])
+
+  // L'intervalle le plus peuplé DANS la fenêtre : c'est le « pic » que la phrase nomme.
+  const pic = useMemo(() => {
+    const dedans = buckets.filter((b) => !b.hors_fenetre)
+    if (dedans.length === 0) return ''
+    const top = dedans.reduce((a, b) => (b.nombre > a.nombre ? b : a))
+    return top.ouvert
+      ? t.delayBinOpen(top.debut_ms / 1000)
+      : t.delayBin(top.debut_ms / 1000, top.fin_ms / 1000)
+  }, [buckets, t])
 
   const help = (
     <span className="space-y-1.5">
       <span className="block">{t.definition(secondes)}</span>
       <span className="block">{t.delayWindow(secondes)}</span>
     </span>
+  )
+
+  const footer = (
+    <div className="border-t border-border px-3 py-2">
+      <p className="text-xs text-muted-foreground">{t.delayFoot(secondes)}</p>
+    </div>
   )
 
   return (
@@ -98,18 +102,35 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
           <InfoTooltip content={help} />
         </span>
       )}
+      footer={footer}
     >
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-delai">
         {resume.total === 0 ? (
           <EmptyStateNotice title={t.emptyTitle} description={t.delayNarrativeEmpty} />
         ) : (
-          <HistogramChart
-            series={series}
-            xAxisLabel={t.delayXAxis}
-            yAxisLabel={t.delayYAxis}
-            formatBin={formatBin}
-            binAttenuated={binAttenuated}
-          />
+          <>
+            {/* La ligne narrative vit AU-DESSUS du graphe, jamais en dessous. */}
+            <p className="border-l-2 border-info pl-3 text-sm text-foreground">
+              {t.delaySay({
+                morts: echange.couverture.n,
+                dedans: resume.dansLaFenetre,
+                dehors: resume.horsFenetre,
+                pic,
+              })}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {t.delayFigure(resume.total, echange.couverture.n)}
+            </p>
+            <HistogramChart
+              series={series}
+              xAxisLabel={t.delayXAxis}
+              yAxisLabel={t.delayYAxis}
+              formatBin={formatBin}
+              binHatched={binHatched}
+              showValues
+              windowMark={windowMark}
+            />
+          </>
         )}
       </div>
     </SectionCard>

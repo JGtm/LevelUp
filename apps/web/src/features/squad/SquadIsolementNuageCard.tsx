@@ -44,12 +44,14 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { getSquadPlayerColors } from './colors'
 import {
   medianesNuage,
+  OPACITE_SESSION,
+  plafondAxe,
   PLANCHER_MORTS_SESSION,
   pointAttenue,
   pointMedianJoueur,
   quadrantDuPoint,
-  tailleDuPoint,
-  tailleMedianeDuPoint,
+  tailleMedianeEchelle,
+  TAILLE_SESSION,
   type MedianesNuage,
 } from './squadIsolement.logic'
 import { getSquadIsolementText, type SquadIsolementText } from './squadIsolementStrings'
@@ -85,10 +87,28 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
   const series = useMemo(() => seriesParJoueur(points, joueurs), [points, joueurs])
   const medianes = useMemo(() => medianesNuage(points), [points])
 
+  // Les extremes REELS du nuage : la taille des gros points s'y projette, et la legende de
+  // taille les nomme. Une echelle absolue ne dirait plus rien au-dela de son plafond.
+  const totaux = useMemo(
+    () => series.map((s) => pointMedianJoueur(s.datapoints)?.mortsExaminees ?? 0).filter((n) => n > 0),
+    [series],
+  )
+  const mortsMin = totaux.length > 0 ? Math.min(...totaux) : 0
+  const mortsMax = totaux.length > 0 ? Math.max(...totaux) : 0
+
+  // La phrase du haut compare les DEUX EXTREMES d'isolement du roster : le plus expose et
+  // le moins expose. Sur un seul joueur, il n'y a rien a opposer.
+  const contraste = useMemo(() => contrasteIsolement(series), [series])
+
+  // Les axes s'ajustent aux donnees (bas ancre a zero) : bornes a 100 % en dur, la moitie
+  // du canvas restait vide et les trois reperes se chevauchaient.
+  const maxX = useMemo(() => plafondAxe(points.map((p) => p.part_isolee.taux)), [points])
+  const maxY = useMemo(() => plafondAxe(points.map((p) => p.couverture.taux)), [points])
+
   const buildOption = useMemo(
     () => (s: ChartSeries<SquadIsolementPoint>[]) =>
-      buildNuageOption(s, { playerColors, medianes, t, pctFmt }),
-    [playerColors, medianes, t, pctFmt],
+      buildNuageOption(s, { playerColors, medianes, t, pctFmt, mortsMin, mortsMax, maxX, maxY }),
+    [playerColors, medianes, t, pctFmt, mortsMin, mortsMax, maxX, maxY],
   )
 
   // Planchers et définition en infobulle ⓘ plutôt qu'en pied de carte (retour utilisateur
@@ -101,10 +121,20 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
     </span>
   )
 
+  const footer = (
+    <div className="space-y-1 border-t border-border px-3 py-2">
+      <p className="text-xs text-muted-foreground">{t.footRadar}</p>
+      <p className="text-xs text-muted-foreground">
+        {t.footDenominator(nuage.plancher_echantillon_faible)}
+      </p>
+    </div>
+  )
+
   return (
     <SectionCard
-      title={t.sectionTitle}
+      title={t.cardTitle}
       label={t.sectionLabel}
+      footer={footer}
       titleAdornment={(label) => (
         <span className="flex items-center gap-1.5">
           {label}
@@ -112,11 +142,63 @@ export function SquadIsolementNuageCard({ nuage, joueurs }: SquadIsolementNuageC
         </span>
       )}
     >
-      <div className="px-3 py-2" data-testid="squad-isolement-nuage">
+      <div className="space-y-2 px-3 py-2" data-testid="squad-isolement-nuage">
         {vide ? (
           <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
-          <ChartCard series={series} buildOption={buildOption} height={340} />
+          <>
+            {/* La ligne narrative vit AU-DESSUS du graphe, jamais en dessous. */}
+            {contraste && (
+              <p className="border-l-2 border-info pl-3 text-sm text-foreground">
+                {t.say({
+                  loin: contraste.loin.gamertag,
+                  loinIso: pctFmt.format(contraste.loin.isolement),
+                  loinCouv: pctFmt.format(contraste.loin.couverture),
+                  proche: contraste.proche.gamertag,
+                  procheIso: pctFmt.format(contraste.proche.isolement),
+                  procheCouv: pctFmt.format(contraste.proche.couverture),
+                })}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">{t.figure}</p>
+            <ChartCard series={series} buildOption={buildOption} height={380} />
+            {/* LEGENDE DE TAILLE, en DOM : ECharts n'en a pas pour un encodage de taille.
+                Elle porte les VRAIES valeurs extremes du roster — un encodage qu'on ne
+                nomme pas ne se lit pas. */}
+            <div
+              className="flex flex-wrap items-center gap-4 text-2xs text-muted-foreground"
+              data-testid="squad-isolement-legende-taille"
+            >
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block rounded-full bg-muted-foreground/50"
+                  style={{ width: TAILLE_MIN_LEGENDE, height: TAILLE_MIN_LEGENDE }}
+                />
+                {t.legendDeaths(mortsMin)}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block rounded-full bg-muted-foreground/50"
+                  style={{ width: TAILLE_MAX_LEGENDE, height: TAILLE_MAX_LEGENDE }}
+                />
+                {t.legendDeaths(mortsMax)}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block rounded-full bg-muted-foreground/50"
+                  style={{ width: TAILLE_SESSION, height: TAILLE_SESSION }}
+                />
+                {t.legendSession}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block rounded-full border border-dashed border-muted-foreground"
+                  style={{ width: TAILLE_MIN_LEGENDE, height: TAILLE_MIN_LEGENDE }}
+                />
+                {t.legendLowSample(nuage.plancher_echantillon_faible)}
+              </span>
+            </div>
+          </>
         )}
       </div>
     </SectionCard>
@@ -143,6 +225,44 @@ interface BuildOpts {
   medianes: MedianesNuage | null
   t: SquadIsolementText
   pctFmt: Intl.NumberFormat
+  /** Extremes REELS des morts examinees par joueur — l'echelle de taille des gros points. */
+  mortsMin: number
+  mortsMax: number
+  /** Plafonds des axes en pourcents (le bas reste a zero). */
+  maxX: number
+  maxY: number
+}
+
+/** Diametres (px) des pastilles de la legende de taille — les deux bouts de l'echelle. */
+const TAILLE_MIN_LEGENDE = 12
+const TAILLE_MAX_LEGENDE = 22
+
+/** Le joueur le PLUS et le MOINS expose hors radar — les deux bouts de la phrase du haut. */
+interface ContrasteIsolement {
+  loin: { gamertag: string; isolement: number; couverture: number }
+  proche: { gamertag: string; isolement: number; couverture: number }
+}
+
+/**
+ * contrasteIsolement designe les deux extremes d'isolement du roster.
+ *
+ * `null` sous deux joueurs agregeables : une phrase qui compare a besoin de deux termes, et
+ * un roster d'un seul joueur n'oppose rien.
+ */
+function contrasteIsolement(
+  series: ChartSeries<SquadIsolementPoint>[],
+): ContrasteIsolement | null {
+  const agreges = series
+    .map((s) => {
+      const agg = pointMedianJoueur(s.datapoints)
+      if (!agg) return null
+      const gamertag = (s.meta as { gamertag?: string } | undefined)?.gamertag ?? s.key
+      return { gamertag, isolement: agg.isolement, couverture: agg.couverture }
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+  if (agreges.length < 2) return null
+  const trie = [...agreges].sort((a, b) => b.isolement - a.isolement)
+  return { loin: trie[0], proche: trie[trie.length - 1] }
 }
 
 /** Un point de la donnée ECharts : la valeur [x,y] en POURCENTS (0..100, lisible sur les
@@ -169,16 +289,22 @@ interface EchartMedianDatum {
  *  l'ancienne opacité réduite (`opaciteDuPoint`, retirée, plus fiable pour le contraste). */
 function itemStyleDuPoint(point: SquadIsolementPoint, color: string): Record<string, unknown> {
   if (pointAttenue(point)) {
-    return { color: 'transparent', borderColor: color, borderWidth: 1.5, borderType: 'dashed' }
+    return {
+      color: 'transparent',
+      borderColor: color,
+      borderWidth: 1.5,
+      borderType: 'dashed',
+      opacity: OPACITE_SESSION,
+    }
   }
-  return { color }
+  return { color, opacity: OPACITE_SESSION }
 }
 
 function buildNuageOption(
   series: ChartSeries<SquadIsolementPoint>[],
   opts: BuildOpts,
 ): EChartsCoreOption {
-  const { playerColors, medianes, t, pctFmt } = opts
+  const { playerColors, medianes, t, pctFmt, mortsMin, mortsMax, maxX, maxY } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -191,7 +317,9 @@ function buildNuageOption(
     const color = playerColors[gamertag] ?? resolveToken('info')
     const data: EchartScatterDatum[] = s.datapoints.map((p) => ({
       value: [p.part_isolee.taux * 100, p.couverture.taux * 100],
-      symbolSize: tailleDuPoint(p.morts_examinees),
+      // TAILLE FIXE, opacite 0,45 : les sessions disent la DISPERSION, jamais le volume.
+      // Un seul encodage de taille par graphe, et c'est celui du gros point par joueur.
+      symbolSize: TAILLE_SESSION,
       itemStyle: itemStyleDuPoint(p, color),
       raw: p,
     }))
@@ -220,12 +348,12 @@ function buildNuageOption(
           [
             { coord: [0, my], name: t.quadrant('procheCouvert'),
               itemStyle: { color: 'transparent' }, label: { position: 'insideTopLeft' } },
-            { coord: [mx, 100] },
+            { coord: [mx, maxY] },
           ],
           [
             { coord: [mx, my], name: t.quadrant('loinCouvert'),
               itemStyle: { color: 'transparent' }, label: { position: 'insideTopRight' } },
-            { coord: [100, 100] },
+            { coord: [maxX, maxY] },
           ],
           [
             { coord: [0, 0], name: t.quadrant('procheSeul'),
@@ -236,7 +364,7 @@ function buildNuageOption(
             { coord: [mx, 0], name: t.quadrant('loinSansSecours'),
               itemStyle: { color: warningColor, opacity: 0.08 },
               label: { position: 'insideBottomRight', color: warningColor, fontWeight: 600 } },
-            { coord: [100, my] },
+            { coord: [maxX, my] },
           ],
         ],
       }
@@ -254,7 +382,7 @@ function buildNuageOption(
           data: [
             {
               value: [medianAgg.isolement * 100, medianAgg.couverture * 100],
-              symbolSize: tailleMedianeDuPoint(medianAgg.mortsExaminees),
+              symbolSize: tailleMedianeEchelle(medianAgg.mortsExaminees, mortsMin, mortsMax),
               itemStyle: { color, borderColor: tc.card, borderWidth: 2 },
               label: {
                 show: true,
@@ -332,7 +460,7 @@ function buildNuageOption(
       ...axis,
       type: 'value',
       min: 0,
-      max: 100,
+      max: maxX,
       name: t.xAxis,
       nameLocation: 'middle',
       nameGap: 32,
@@ -343,7 +471,7 @@ function buildNuageOption(
       ...axis,
       type: 'value',
       min: 0,
-      max: 100,
+      max: maxY,
       name: t.yAxis,
       nameLocation: 'middle',
       nameGap: 40,
