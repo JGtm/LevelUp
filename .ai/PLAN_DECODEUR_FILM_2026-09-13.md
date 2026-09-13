@@ -113,11 +113,27 @@ bloque le gate du lot courant.
 
 ### 2.2 Environnement d'exécution (à recopier dans chaque brief)
 
-- Le cache de films (`data/cache/film_chunks`, 1 351 films, 7 builds) et le parc
-  (`data/cache/replays`) ne vivent que dans `LevelUp-go-migration`. Depuis un worktree :
-  `LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration` pour
-  `replay-equiv` ; le corpus gate détecte le parc par le `.git` commun ; les instruments corpus
-  lisent `CHUNK00_FILMS` (répertoires absolus `C:/...`, séparés par `;`).
+- Le cache de films (`data/cache/film_chunks`, 1 351 films, 7 builds), les manifestes
+  (`data/cache/film_manifests`) et le parc (`data/cache/replays`) ne vivent que dans
+  `LevelUp-go-migration`. Le corpus gate détecte le parc par le `.git` commun ; les instruments
+  corpus lisent `CHUNK00_FILMS` (répertoires absolus `C:/...`, séparés par `;`).
+- **`replay-equiv` depuis un worktree : `-repo-root <le worktree>` et DEUX jonctions**, jamais
+  `LEVELUP_REPO_ROOT` vers le principal (corrigé le 2026-09-13, découverte D3 — l'ancienne
+  consigne de cette section était fausse). `dossierEquivalence()`
+  (`cmd/replay-equiv/main.go:150`) dérive du SEUL `-repo-root` : pointer la racine sur le
+  checkout principal ferait lire ses références et ses `.facts.json`, et `-update` y
+  ÉCRIRAIT. `-corpus` ne déplace QUE la liste des films, jamais les références. Poser donc,
+  une fois par worktree (gitignorées, lecture seule) :
+
+  ```
+  mklink /J data\cache\film_chunks    <principal>\data\cache\film_chunks
+  mklink /J data\cache\film_manifests <principal>\data\cache\film_manifests
+  ```
+
+  PIÈGE : sans `film_manifests`, `replaybuild` ne voit aucun chunk au manifeste et rend un
+  `score` NUL **sans erreur** (`replaybuild/matchfacts.go:95`) — l'écart se lit alors comme
+  une régression du décodeur. Les catalogues (bornes, libellés, géométrie) sont versionnés :
+  ils viennent du worktree, rien à monter.
 - **Un seul décodage à la fois sur la machine** (`filmproc.AcquireSolo`) : jamais deux gates
   de décodage en parallèle, jamais de boucle de shell autour d'un CLI qui décode, jamais
   d'écriture dans le parc. Signal d'étouffement (`fork: Resource temporarily unavailable`) =
@@ -144,8 +160,8 @@ Lots qui touchent le décodeur ou le constructeur (tout M1, M2, M3, 4.1), deux r
 
 | Régime | Quand | Commandes |
 |---|---|---|
-| **Court** (à chaque lot) | clôture de tout lot décodeur | `go run ./cmd/replay-equiv -films <échantillon 0.A.1>` (10 films au plus : un par build, plus `60ae07c4`, `d9781168`, `fb1a1a72`) |
-| **Complet** | clôture de jalon (M0 à M4) ; lots 1.2 et 2.5 ; sur demande du relecteur | `go run ./cmd/replay-equiv` (corpus entier) puis `go run ./cmd/replay-corpus-gate --base=<sha de l'intégration avant le lot>` |
+| **Court** (à chaque lot) | clôture de tout lot décodeur | `go run ./cmd/replay-equiv -repo-root <worktree> -films <échantillon nommé en tête de CORPUS.txt>` (10 films : un par build, plus `50247b26`, `d9781168`, `fb1a1a72`) |
+| **Complet** | clôture de jalon (M0 à M4) ; lots 1.2 et 2.5 ; sur demande du relecteur | `go run ./cmd/replay-equiv -repo-root <worktree>` (corpus entier, 20 films, ~16 min — le découper en sous-ensembles si l outillage borne la durée d une commande) puis `go run ./cmd/replay-corpus-gate --base=<sha de l intégration avant le lot>` |
 
 Résultat consigné en §5 (commit, commande, sortie, durée). **Un gate non consigné n'a pas eu
 lieu.** Un lot dont le régime court montre une différence inattendue passe en régime complet
@@ -173,7 +189,7 @@ fichiers disjoints) ; 0.C ensuite, pendant les revues.
 
 #### Lot 0.A — Oracles du décodeur (Go) — M, exécuteur Opus high
 
-- [!] 0.A.1 **Corpus d'équivalence par build.** `replay/testdata/equivalence/CORPUS.txt` gagne une
+- [x] 0.A.1 **Corpus d'équivalence par build.** `replay/testdata/equivalence/CORPUS.txt` gagne une
       colonne `version / build` (découverte 1 du lot H) et un témoin par build présent au cache
       (`HI_1_4_1`, `1_8_0`, `1_9_0`, `1_10_0`, `1_11_0`, `1_12_0`, `1_13_0`), en réutilisant les
       témoins du lot H (`111fa685`, `e5adf7b2`, `60ae07c4`, `a349fea8`) ; cible 20 films au plus.
@@ -214,17 +230,28 @@ fichiers disjoints) ; 0.C ensuite, pendant les revues.
 Gate 0.A : gates communs ; `go run ./cmd/replay-equiv` (0 différence sur 13, références neuves
 figées) ; `go test ./internal/games/halo_infinite/film/... -run 'Golden|KeyframeClosure|GrammarRev'`.
 
-> **STATUT 0.A au 2026-09-13 — LOT ARRÊTÉ À 0.A.1a, décision du pilote requise.** Le gate
-> d'entrée du lot (`replay-equiv` = 0 différence sur les 13 films existants) est FAUX sur l'arbre
-> courant : 13 films sur 13 diffèrent, tous à la première étape observée (`score`). Cause mesurée
-> (§4, découverte D1) : les références datent du commit `179bd7401` où `replay.SchemaVersion`
-> valait 34 ; elle vaut 54 — vingt montées de schéma, donc vingt changements VOULUS du contenu
-> cuit. Ce n'est ni une régression ni une dérive de grammaire : le corpus d'équivalence n'a jamais
-> été re-figé depuis le 2026-09-03. Conformément au brief (« si une référence existante diffère :
-> ARRÊT, ne régénère rien »), AUCUNE référence n'a été régénérée et 0.A.2 à 0.A.5 n'ont pas été
-> commencés. **Décision attendue** : re-figer les 20 films à un commit nommé (ce qui acte la sortie
-> courante comme ligne de base) avant de rouvrir le lot. Seul 0.A.1b (colonne `version / build` et
-> échantillon court de `CORPUS.txt`) est livré, car il ne régénère aucune référence.
+> **STATUT 0.A au 2026-09-13 — 0.A.1 CLOS, 0.A.2 à 0.A.5 en attente du signal du pilote.**
+>
+> Le gate d'entrée du lot (`replay-equiv` = 0 différence) était FAUX sur l'arbre courant avant
+> toute modification : 13 films sur 13 différaient. Cause mesurée (§4, D1) : les références
+> dataient du commit `179bd7401` où `replay.SchemaVersion` valait 34 ; elle vaut 54 — vingt
+> montées de schéma, donc vingt changements VOULUS du contenu cuit, jamais re-figés depuis le
+> 2026-09-03. **Décision du pilote du 2026-09-13** : re-figer les 20 films au commit
+> d'intégration `cbfdc269d`, après avoir DISTINGUÉ écart par écart les divergences voulues des
+> constats de régression.
+>
+> **Classification faite, verdict : ZÉRO constat de régression.** 110 couples film × étape ont
+> bougé sur 650 ; tous sont rattachés à une entrée datée. Les trois seules baisses de compte :
+> `objectives` → 0 sur quatre films (garde d'effectif, commit `ebd012e3b`, plus de huit sièges
+> au statborg — refus tracé à l'exécution), `projectiles` −11 sur `60ae07c4` (chronique v53,
+> Live Fire seule carte à index de région sur 2 bits), `artifact` (longueur en octets, grandeur
+> dérivée, sans aucune baisse de couche sur deux des quatre films). Détail, preuves et commandes
+> de rejeu : `.ai/V7.5/RAPPORT_REFIGEAGE_EQUIVALENCE_2026-09-13.md`.
+>
+> Les références re-figées sont marquées PROVISOIRES dans l'historique des commits jusqu'à
+> l'acceptation du pilote (croisement prévu avec `replay-corpus-gate --base=179bd7401` sur les
+> 12 témoins). 0.A.2 à 0.A.5 ne sont pas commencés : ils reprennent sur signal.
+
 
 #### Lot 0.B — La frontière Go / web (architecture §12) — M, exécuteur Opus high
 
@@ -720,7 +747,8 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.A.1 | **D1 — Le corpus d'équivalence est périmé, pas en régression.** 13/13 films diffèrent à l'étape `score`. Références écrites au commit `179bd7401` (lot 4b) sous `replay.SchemaVersion = 34` ; la constante vaut 54 (`film/replay/document.go:75`). Vingt montées de schéma = vingt changements voulus du contenu cuit depuis le figeage (dont la borne de déroulage `maxUnrollPerStep` 100 000 → 16, commit `f22474816`, `objectiveevents/named_bounds.go:84`, alors que l'en-tête de `CORPUS.txt` disait les quatre bombes figées SOUS 100 000). Aucune référence régénérée. | Décision du pilote : re-figer les 20 films à un commit nommé. Bloque S3 et le gate d'entrée de tout lot décodeur |
 | 2026-09-13 | 0.A.1 | **D2 — Ce gate n'a aucun gardien.** `go test ./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/sync/killcollector/` est VERT (10 paquets, exit 0) alors que l'équivalence est rouge sur 13/13 depuis ~30 commits. La CI ne voit ni `replay-equiv` ni le corpus gate (§2.3) : une dérive de cuisson peut vivre des semaines sans un seul signal. | Renforce le besoin de 0.A.4 (empreinte) et du registre §5 ; candidat à un gate CI au jalon M0 |
 | 2026-09-13 | 0.A.1 | **D3 — `-corpus` ne déplace pas les références, contrairement à ce que suppose le mode opératoire des worktrees.** `dossierEquivalence()` (`cmd/replay-equiv/main.go:150`) dérive du SEUL `-repo-root` : `LEVELUP_REPO_ROOT=<principal>` ferait lire les références ET les `.facts.json` du checkout principal, et `-update` y ÉCRIRAIT. Depuis un worktree, la seule voie correcte est `-repo-root <worktree>` + jonctions `data/cache/film_chunks` ET `data/cache/film_manifests` vers le principal (le manifeste manquant rend `score` nul sans erreur : `replaybuild/matchfacts.go:95`). | §2.2 du plan et brief des lots suivants : corriger le mode opératoire |
-| 2026-09-13 | 0.A.1 | **D4 — Le régime court ne couvre pas la grammaire la plus ancienne.** L'échantillon défini par V2 (un film par build + 3 nommés) donne 9 films et exclut par construction les deux films SANS section d'identification (`50247b26` v31, `a349fea8` v33), qui ne portent pas de build. Le plafond est de 10 : un dixième slot est libre. | Arbitrage : ajouter `50247b26` à l'échantillon court (non fait, hors décision) |
+| 2026-09-13 | 0.A.1 | **D4 — Le régime court ne couvre pas la grammaire la plus ancienne.** L'échantillon défini par V2 (un film par build + 3 nommés) donne 9 films et exclut par construction les deux films SANS section d'identification (`50247b26` v31, `a349fea8` v33), qui ne portent pas de build. Le plafond est de 10 : un dixième slot est libre. | **TRANCHÉ le 2026-09-13 (pilote)** : `50247b26` entre à l échantillon court, qui passe à 10 films — M1 (lots 1.5 à 1.8) exerce précisément le repli des films sans section. Fait dans `CORPUS.txt` et §2.3 |
+| 2026-09-13 | 0.A.1c | **D5 — Le re-figeage ne cache aucune régression.** Classification des 110 couples film × étape qui bougent entre le schéma 34 et le schéma 54 (sur 650 comparés) : tous rattachés à une entrée datée, **ZÉRO constat de régression**. Seules baisses de compte : `objectives` → 0 sur 4 films (garde d'effectif `ebd012e3b`, sièges > 8 slots, refus tracé à l'exécution), `projectiles` −11 sur `60ae07c4` (chronique v53, porte d'i0, Live Fire seule carte à index de région sur 2 bits), `artifact` (longueur en octets, grandeur dérivée). Prédiction de la chronique v54 vérifiée : `deaths` et `killRefs` ne bougent que sur les deux films v39 du corpus. Rapport : `.ai/V7.5/RAPPORT_REFIGEAGE_EQUIVALENCE_2026-09-13.md` | Aucun report : rien à instruire. Croisement pilote prévu par `replay-corpus-gate --base=179bd7401` sur les 12 témoins |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -729,7 +757,9 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.A.1a | `cbfdc269d` (arbre inchangé) | `replay-equiv -repo-root <worktree>` (corpus entier, 13 films) | **ROUGE — 0 identique, 13 différents**, tous à l'étape `score`. Durées : `000d5950` 15,3 s · `01e1f945` 19,5 s · `64e8adfa` 40,3 s · `7344d24f` 23,2 s · `696a9d7c` 23,5 s · `084a804d` 2 min 01 s · `1c4c63c2` 2 min 44 s · `53ce4390` 33,2 s · `d9781168` 26,6 s · `9f57c612` 17,1 s · `60ae07c4` 27,7 s · `51101d1d` 5,5 s · `a349fea8` 2 min 10 s. **Total 647 s**, pic max 0,69 Gio (`1c4c63c2`). Ligne de base du budget (§7.8 de l'architecture) |
 | 2026-09-13 | 0.A.1b | `<commit du lot>` | lecture d'en-tête `chunk_00` des 20 films (u32 LE offset 0 + chaîne `HI_1_x_y`) | 20/20 résolus, conformes à la table du brief : v31 et v33 `a349fea8` sans section ; `a521164d` 33/HI_1_4_1 ; `60ae07c4` 37/HI_1_8_0 ; `11de8353` 38/HI_1_9_0 ; `084a804d`,`1c4c63c2`,`111fa685` 39/HI_1_10_0 ; `e5adf7b2` 40/HI_1_11_0 ; `bcb6d393` 40/HI_1_12_0 ; le reste 41/HI_1_13_0. `CORPUS.txt` à 20 lignes, 7 champs chacune |
 | 2026-09-13 | 0.A (communs) | `<commit du lot>` | `gofmt -l ./internal ./cmd` ; `go vet` ; `go test` (film, archlint, killcollector) | gofmt vide ; vet propre ; **tests VERTS, 10 paquets, exit 0** — cf. découverte D2 : vert malgré l'équivalence rouge |
-| 2026-09-13 | 0.A.1c à 0.A.5 | — | — | **NON EXÉCUTÉS** : lot arrêté à 0.A.1a sur instruction (« si une référence existante diffère : ARRÊT, ne régénère rien ») |
+| 2026-09-13 | 0.A.1c | `061b6f5b7` | `replay-equiv -repo-root <worktree> -films <7 sous-ensembles> -update` | **20/20 figés** au commit `cbfdc269d`, schéma 54, `# digest-grammar: 2`, 50 étapes chacun. Durées : 000d5950 26,2 s · 01e1f945 23,4 s · 64e8adfa 29,3 s · 7344d24f 36,7 s · 696a9d7c 41,5 s · 53ce4390 33,6 s · d9781168 26,1 s · 9f57c612 16,8 s · 60ae07c4 27,3 s · 51101d1d 5,3 s · 084a804d 2 min 46,8 s · 1c4c63c2 2 min 32,0 s · a349fea8 3 min 57,7 s · bcb6d393 23,0 s · a521164d 1 min 15,8 s · 111fa685 42,7 s · 11de8353 42,6 s · e5adf7b2 46,5 s · fb1a1a72 1 min 23,8 s · 50247b26 1 min 19,3 s. **Total ~16 min**, pic max 0,68 Gio (1c4c63c2) |
+| 2026-09-13 | 0.A.1c | `<commit du lot>` | classification `.tsv` ancien (`git show cbfdc269d:...`) contre `.tsv` neuf, 13 films × 50 étapes — **aucun décodage** | 650 couples comparés : **540 identiques, 110 différents, 34 étapes sur 50 intactes sur tous les films**. Trois baisses de compte seulement, toutes expliquées (D5). **ZÉRO constat de régression.** Rapport `.ai/V7.5/RAPPORT_REFIGEAGE_EQUIVALENCE_2026-09-13.md` |
+| 2026-09-13 | 0.A.2 à 0.A.5 | — | — | **NON COMMENCÉS** : reprennent sur signal du pilote, après son croisement `replay-corpus-gate --base=179bd7401` |
 
 ## 6. Protocole de reprise de session
 
