@@ -47,6 +47,7 @@ func (s *TeammatesService) loadSquadFormes(
 		Repo:              s.formesUsageRepo,
 		Objectives:        s.formesObjectiveRepo,
 		PlayerXUID:        playerXUID,
+		MainGamertag:      s.gamertag,
 		Metas:             formesMatchMetas(filteredMatches, history),
 		SelectedGamertags: req.SelectedGamertags,
 		RepoRoot:          s.repoRoot,

@@ -194,6 +194,19 @@ func TestBuild_ColonnesObjectifPiloteesParLaDonnee(t *testing.T) {
 	if len(obj.Players) != 2 {
 		t.Fatalf("les deux camps attendus, obtenu %+v", obj.Players)
 	}
+	// LE CAMP EST RECOLLÉ DEPUIS LES PARTICIPANTS : sans lui, tout l'objectif se
+	// lit comme adverse et le rapport de force affiche « 0 % » partout (défaut
+	// mesuré sur données réelles le 2026-09-13).
+	byXUID := map[string]*domain.SquadFormesObjectivePlayer{}
+	for i := range obj.Players {
+		byXUID[obj.Players[i].XUID] = &obj.Players[i]
+	}
+	if p := byXUID["moi"]; p == nil || p.TeamID == nil || *p.TeamID != 0 {
+		t.Fatalf("le joueur de la page devait être rangé dans son camp, obtenu %+v", byXUID["moi"])
+	}
+	if p := byXUID["adv"]; p == nil || p.TeamID == nil || *p.TeamID != 1 {
+		t.Fatalf("l'adversaire devait être rangé dans le sien, obtenu %+v", byXUID["adv"])
+	}
 	// L'ordre des colonnes suit les rôles (prendre, défendre, tenir), jamais une map.
 	if obj.Columns[len(obj.Columns)-1].Role != string(narrative.ObjectiveRoleHold) {
 		t.Fatalf("la durée ferme la marche, obtenu %+v", obj.Columns)
@@ -215,5 +228,28 @@ func TestBuild_ScopeVide(t *testing.T) {
 	got := Build(Input{PlayerXUID: "moi"})
 	if !got.Available || got.MatchesTotal != 0 || len(got.Matches) != 0 {
 		t.Fatalf("scope vide: bloc disponible à 0 match, obtenu %+v", got)
+	}
+}
+
+// Une ligne d'objectif dont le camp est INCONNU des participants reste publiée
+// SANS camp : elle compte dans le lobby et dans aucun des deux côtés. Inventer
+// un camp ferait un rapport de force faux ; l'effacer perdrait le dénominateur.
+func TestBuild_ObjectifCampInconnuResteSansCamp(t *testing.T) {
+	in := fixture()
+	in.Objectives = []ObjectiveColumnRow{
+		{MatchID: "m2", XUID: "moi", Family: narrative.FamilyCTF,
+			Values: map[string]float64{"flag_returns": 2}},
+		{MatchID: "m2", XUID: "fantome", Family: narrative.FamilyCTF,
+			Values: map[string]float64{"flag_returns": 5}},
+	}
+	got := Build(in)
+	obj := got.Matches[1].Objective
+	if obj == nil {
+		t.Fatal("le bloc objectif doit exister")
+	}
+	for _, p := range obj.Players {
+		if p.XUID == "fantome" && p.TeamID != nil {
+			t.Fatalf("un xuid absent des participants ne reçoit pas de camp, obtenu %+v", p)
+		}
 	}
 }
