@@ -74,6 +74,13 @@ describe('buildHeatmap2DOption', () => {
     ])
   })
 
+  // RÉGRESSION MUETTE CORRIGÉE LE 2026-09-13 : sans `dimension: 2`, ECharts classe la case
+  // sur sa DERNIÈRE dimension — `detail`, un objet — et aucune case ne reçoit sa couleur.
+  it('classe les cases sur la VALEUR (dimension 2), pas sur leur detail', () => {
+    const opt = buildHeatmap2DOption(series) as { visualMap: { dimension: number } }
+    expect(opt.visualMap.dimension).toBe(2)
+  })
+
   it('valueRange override min/max', () => {
     const opt = buildHeatmap2DOption(series, { valueRange: [0, 100] }) as {
       visualMap: { min: number; max: number }
@@ -282,5 +289,76 @@ describe('buildHeatmap2DOption — saturationCap (optionnel)', () => {
       saturationCap: 30,
     }) as { visualMap: { min: number; max: number } }
     expect(opt.visualMap.max).toBe(100)
+  })
+})
+
+// ─── CASES SANS MESURE : LA FORME PAR DÉFAUT, ET L'OPT-OUT ────────────────────
+//
+// Le défaut reste la décision D3 (case peinte, hachurée, tiret). `emptyCells: 'hidden'` est
+// une dérogation OPT-IN pour les grilles où les cases vides sont majoritaires et régulières
+// (calendrier jour × heure) : la case reste ÉMISE — sans quoi les axes, déduits de l'ordre
+// d'apparition, se décaleraient — mais ne porte plus ni style propre ni étiquette.
+describe('buildHeatmap2DOption — cases sans mesure', () => {
+  const avecVide: ChartSeries<ChartPointHeatmap>[] = [
+    {
+      key: 'm',
+      datapoints: [
+        { x: 'A', y: 'A', value: null },
+        { x: 'B', y: 'A', value: 4 },
+      ],
+    },
+  ]
+
+  type Rendu = {
+    series: { data: RawCell[]; label: { formatter: (p: { data: RawCell }) => string } }[]
+    xAxis: { data: string[] }
+  }
+
+  it('par défaut, la case vide porte son style propre (hachure D3) et un tiret', () => {
+    const opt = buildHeatmap2DOption(avecVide) as Rendu
+    const vide = opt.series[0].data.find((d) => typeof tupleOf(d)[2] !== 'number')!
+    expect(Array.isArray(vide)).toBe(false)
+    expect((vide as { itemStyle?: unknown }).itemStyle).toBeDefined()
+    expect(opt.series[0].label.formatter({ data: vide })).toBe('—')
+  })
+
+  it('en mode hidden, la case vide n’a plus ni style propre ni étiquette', () => {
+    const opt = buildHeatmap2DOption(avecVide, { emptyCells: 'hidden' }) as Rendu
+    const vide = opt.series[0].data.find((d) => typeof tupleOf(d)[2] !== 'number')!
+    expect(Array.isArray(vide)).toBe(true)
+    expect(opt.series[0].label.formatter({ data: vide })).toBe('')
+  })
+
+  it('en mode hidden, la case vide reste ÉMISE : les axes ne se décalent pas', () => {
+    const opt = buildHeatmap2DOption(avecVide, { emptyCells: 'hidden' }) as Rendu
+    expect(opt.series[0].data).toHaveLength(2)
+    expect(opt.xAxis.data).toEqual(['A', 'B'])
+  })
+
+  // LE DAMIER, c'est le `splitArea` des DEUX axes, pas les cases : leurs bandes alternées se
+  // croisent et composent un échiquier, seul visible là où aucune case n'est peinte. Le
+  // laisser allumé en mode hidden ferait de l'absence la chose la plus voyante du graphe.
+  it('en mode hidden, les bandeaux d’axes s’éteignent aussi (plus de damier)', () => {
+    const opt = buildHeatmap2DOption(avecVide, { emptyCells: 'hidden' }) as unknown as {
+      xAxis: { splitArea: { show: boolean } }
+      yAxis: { splitArea: { show: boolean } }
+    }
+    expect(opt.xAxis.splitArea.show).toBe(false)
+    expect(opt.yAxis.splitArea.show).toBe(false)
+  })
+
+  it('par défaut, les bandeaux d’axes restent allumés (rendu historique des autres consommateurs)', () => {
+    const opt = buildHeatmap2DOption(avecVide) as unknown as {
+      xAxis: { splitArea: { show: boolean } }
+      yAxis: { splitArea: { show: boolean } }
+    }
+    expect(opt.xAxis.splitArea.show).toBe(true)
+    expect(opt.yAxis.splitArea.show).toBe(true)
+  })
+
+  it('en mode hidden, une case MESURÉE garde son étiquette de compte', () => {
+    const opt = buildHeatmap2DOption(avecVide, { emptyCells: 'hidden' }) as Rendu
+    const mesuree = opt.series[0].data.find((d) => typeof tupleOf(d)[2] === 'number')!
+    expect(opt.series[0].label.formatter({ data: mesuree })).toBe('0')
   })
 })

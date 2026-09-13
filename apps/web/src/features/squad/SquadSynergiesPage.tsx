@@ -24,15 +24,20 @@ import { WinRateVsHistoryBulletChart } from './WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
-import { SquadAssistPairsTable } from './SquadAssistPairsTable'
+import { SquadAssistPairsChart } from './SquadAssistPairsChart'
 import { SquadEchangeConstatCard } from './SquadEchangeConstatCard'
+import { SquadEchangeCompteCard } from './SquadEchangeCompteCard'
+import { SquadEchangeDelaiCard } from './SquadEchangeDelaiCard'
+import { SquadEchangeDonneRecuCard } from './SquadEchangeDonneRecuCard'
 import { SquadEchangeMatrixCard } from './SquadEchangeMatrixCard'
+import { SquadEchangeTauxSessionCard } from './SquadEchangeTauxSessionCard'
 import { SquadIsolementNuageCard } from './SquadIsolementNuageCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
 import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
 import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
+import { FormesRetenuesSection } from './formes/FormesRetenuesSection'
 import { SquadFragSection } from './SquadFragSection'
 import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { getSquadPlayerColors } from './colors'
@@ -90,6 +95,11 @@ export function SquadSynergiesPage() {
     (p) => pageData?.frag_classes?.[p] || pageData?.performance_series?.[p],
   )
 
+  // Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers. Le
+  // graphe des assistances s'en sert pour l'ordre des barres ET pour les couleurs par
+  // joueur — mêmes teintes que partout ailleurs sur la page.
+  const roster = [mainPlayerKey, ...confirmedGamertags]
+
   const mapAssets = mappings?.assets?.['map']
   const mapLabelOf = (mapUI: string) => mapAssets?.[mapUI]?.label ?? mapUI
   const mapBreakdown = pageData?.map_breakdown ?? []
@@ -115,10 +125,32 @@ export function SquadSynergiesPage() {
 
   return (
     <div className="space-y-4">
-      {/* « Constat du moment » EN TÊTE de l'onglet. La carte se rend d'elle-même sous ses
-          deux seuils (30 morts d'équipe ET 5 points d'écart) : rien à passer ici, et
-          rien du tout à l'écran quand elle n'a rien à dire. */}
+      {/* « Constat du moment » EN TÊTE, AU-DESSUS du « Compte » : c'est le titre narratif
+          du récit de l'échange (le « Cap du moment » de la maquette 4c520da6), pas un
+          doublon d'une des six cartes. Il se rend de lui-même sous ses deux seuils
+          (30 morts d'équipe ET 5 points d'écart) : rien à passer ici, et rien du tout à
+          l'écran quand il n'a rien à dire. */}
       <SquadEchangeConstatCard echange={echange} />
+      {/* L'ÉCHANGE, SIX CARTES, DANS L'ORDRE DE LECTURE DE LA MAQUETTE 4c520da6 :
+          combien (Le compte) → à quelle vitesse → qui couvre qui → pourquoi la vengeance
+          ne vient pas → donné/reçu → l'évolution par soirée. Les deux premières comptent,
+          la troisième dit qui, la quatrième explique — et c'est elle qui donne quelque
+          chose à corriger. */}
+      {echange && (
+        <>
+          <SquadEchangeCompteCard echange={echange} />
+          <SquadEchangeDelaiCard echange={echange} />
+          <SquadEchangeMatrixCard echange={echange} />
+          {echange.nuage_isolement && (
+            <SquadIsolementNuageCard
+              nuage={echange.nuage_isolement}
+              joueurs={echange.joueurs ?? []}
+            />
+          )}
+          <SquadEchangeDonneRecuCard echange={echange} />
+          <SquadEchangeTauxSessionCard echange={echange} />
+        </>
+      )}
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
           message) au lieu de faire disparaître le bloc quand mapBreakdown
           est vide ou sans champs de performance. */}
@@ -181,16 +213,12 @@ export function SquadSynergiesPage() {
           <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {t.assists.title}
           </p>
-          {/* La description dit CE QUE MESURE le tableau (« qui prépare les éliminations
-              de qui »), que ni le titre ni les en-têtes de colonne ne disent. Même classe
-              que le bandeau de couverture juste en dessous. */}
+          {/* La description dit CE QUE MESURE le graphe (« qui prépare les éliminations de
+              qui »), que le titre seul ne dit pas. Même classe que le bandeau de
+              couverture juste en dessous. */}
           <p className="mb-2 text-xs text-muted-foreground">{t.assists.description}</p>
-          <SquadAssistPairsTable block={assistPairs} />
+          <SquadAssistPairsChart block={assistPairs} roster={roster} />
         </section>
-      )}
-      {echange && <SquadEchangeMatrixCard echange={echange} />}
-      {echange?.nuage_isolement && (
-        <SquadIsolementNuageCard nuage={echange.nuage_isolement} joueurs={echange.joueurs ?? []} />
       )}
       <SquadMapHeatmapChart
         title={t.heatmap.title}
@@ -205,6 +233,8 @@ export function SquadSynergiesPage() {
           tier5: t.heatmap.pieceTier5,
         }}
         noScoreLabel={t.heatmap.noScore}
+        xAxisName={t.heatmap.xAxis}
+        yAxisName={t.heatmap.yAxis}
       />
       <SquadSessionTimelineChart
         title={t.timeline.title}
@@ -250,6 +280,20 @@ export function SquadSynergiesPage() {
           matrix={pageData?.impact_matrix ?? { matches: [], players: [], cells: [], badge_ord: [] }}
         />
       </section>
+      {/* Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09,
+          E6.2-E6.4) — variante comptes (P9), une ligne par coéquipier suivi. Aucune
+          requête neuve : lit `pageData.equipment_usage` de la même réponse déjà
+          chargée par `useTeammates`. Le Go le publie sur `TeammatesPageResponse`
+          (POST /pages/teammates, lot E6.1bis du 2026-09-09) ; la section se retire
+          d'elle-même si le champ est absent (titre sans résumé d'usage, scope vide). */}
+      <EquipmentUsageSection usage={pageData?.equipment_usage} mode="squad" t={USAGE_TEXT[locale]} locale={locale} />
+      {/* « Les formes retenues » (artefact 2ec1b8eb, lot D2) : les dix-neuf cartes des
+          trois blocs, sur UNE ligne. Aucune requête neuve — lit `pageData.formes_retenues`
+          de la réponse déjà chargée par `useTeammates`. La section se retire d'elle-même
+          quand le bloc est absent (titre sans film, scope vide). */}
+      <FormesRetenuesSection block={pageData?.formes_retenues} locale={locale} />
+      {/* MÉDAILLES EN DERNIER (décision utilisateur, 2026-09-13) : c'est un palmarès, pas
+          une mesure — il se lit après tout ce qui explique le jeu, jamais avant. */}
       <section className="space-y-3">
         <h3 className="text-base font-semibold text-foreground">{t.medals.title}</h3>
         <MedalDigest
@@ -258,13 +302,6 @@ export function SquadSynergiesPage() {
           t={t.medals}
         />
       </section>
-      {/* Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09,
-          E6.2-E6.4) — variante comptes (P9), une ligne par coéquipier suivi. Aucune
-          requête neuve : lit `pageData.equipment_usage` de la même réponse déjà
-          chargée par `useTeammates`. Le Go le publie sur `TeammatesPageResponse`
-          (POST /pages/teammates, lot E6.1bis du 2026-09-09) ; la section se retire
-          d'elle-même si le champ est absent (titre sans résumé d'usage, scope vide). */}
-      <EquipmentUsageSection usage={pageData?.equipment_usage} mode="squad" t={USAGE_TEXT[locale]} locale={locale} />
     </div>
   )
 }

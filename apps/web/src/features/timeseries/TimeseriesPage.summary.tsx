@@ -22,6 +22,9 @@ import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdow
 // (timeseries=>synthesis, cf. tools/lint-cross-feature-imports.mjs), analogue à
 // session-detail=>synthesis.
 import { SynthesisWeaponAccuracyChart } from '@/features/synthesis/SynthesisWeaponAccuracyChart'
+// Portée des engagements : section migrée de la Synthèse vers cet onglet le 2026-09-13
+// (pendant de la précision par arme). Même import cross-feature déclaré que ci-dessus.
+import { SynthesisWeaponRangeSection } from '@/features/synthesis/SynthesisWeaponRangeSection'
 import {
   TimeseriesAssistsTrend,
   TimeseriesAvgLifeTrend,
@@ -70,6 +73,10 @@ export function TimeseriesSummaryTab({
   // « Écart au FDA attendu » se place à DROITE du FDA (2 colonnes) au lieu d'un bloc
   // pleine largeur en dessous. Absente (Halo 5) → FDA seul, pleine largeur.
   const hasExpectedStats = useCapability('expected_stats')
+  // Portée et dénivelé mesurés des engagements : capability PRODUIT `weapon_range`
+  // (title.CapWeaponRange). Halo 5 ne la déclare pas — ses événements de frag n'ont pas
+  // d'arme, la jointure mesurée rendrait zéro ligne et la section serait vide.
+  const hasWeaponRange = useCapability('weapon_range')
   const soloPerf = data.solo_session_perf
   const soloGranularity: 'session' | 'week' | 'month' =
     soloPerf?.granularity === 'week' || soloPerf?.granularity === 'month'
@@ -236,6 +243,12 @@ export function TimeseriesSummaryTab({
           heightScale={1.1}
         />
       </div>
+
+      {/* Portée des engagements — pleine largeur, juste avant la précision par arme : les
+          deux répondent à « avec quoi, et comment ». La section se retire d'elle-même quand
+          rien n'est mesuré sur le scope ; le gate reste la capability produit `weapon_range`
+          (Halo 5 ne la déclare pas — ses événements de frag n'ont pas d'arme). */}
+      {hasWeaponRange && <SynthesisWeaponRangeSection range={data.weapon_range} />}
 
       {/* Précision par arme (Halo 5 natif, survol lié au sunburst) | Tendance FDA. Titre
           sans précision native (Infinite → weapon_accuracy vide) : la tendance FDA occupe

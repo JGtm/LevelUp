@@ -14,11 +14,25 @@
  * auto-ajuster min/max (comportement par défaut des 4 autres consommateurs)
  * décentrerait le neutre.
  *
- * Lundi en haut, Dimanche en bas : le wrapper déduit l'ordre de l'axe Y de la
- * PREMIÈRE APPARITION de chaque jour dans les datapoints (pas d'option
- * `inverse`, contrairement à l'ancienne implémentation ECharts à la main) —
- * les points sont donc émis Dimanche → Lundi pour que Lundi occupe le dernier
- * index (le haut d'un axe catégoriel non inversé).
+ * FORME RESTAURÉE LE 2026-09-13 (demande utilisateur) : Lundi en haut, titres
+ * sur les deux axes, et échelle de couleur VERTICALE à droite graduée en
+ * pourcentage — le rendu d'avant le passage au wrapper. Les trois options
+ * manquantes ont été AJOUTÉES au wrapper (`yAxisInverse`, `axisNames`,
+ * `visualMapOrient`/`Formatter`/`Text`) plutôt que de rouvrir un builder local :
+ * elles sont toutes optionnelles, les quatre autres consommateurs du wrapper
+ * gardent leur rendu à l'octet près.
+ *
+ * Les points sont donc émis Lundi → Dimanche, dans le sens de la semaine, et
+ * c'est `yAxisInverse` qui met Lundi en haut : l'ordre des DONNÉES ne porte plus
+ * une décision d'AFFICHAGE.
+ *
+ * `emptyCells="hidden"` est le QUATRIÈME trait restauré, et le seul qui déroge à une
+ * doctrine du dépôt (D3, « l'absence a sa propre forme »). Sur ce calendrier les cases
+ * sans mesure sont MAJORITAIRES et RÉGULIÈRES — les heures de nuit, toutes les semaines :
+ * hachurées, elles formaient un damier plus voyant que les mesures, et le graphe montrait
+ * surtout quand le joueur ne joue PAS. L'heure vide reste lisible sans forme propre (une
+ * colonne nue sous une graduation horaire ne se confond avec rien) ; la dérogation vaut
+ * pour ce seul consommateur, le défaut du wrapper ne bouge pas.
  */
 import { useCallback, useMemo } from 'react'
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
@@ -35,8 +49,8 @@ interface Props {
   height?: number
 }
 
-/** Construit les 168 points (24 h × 7 j), Dimanche → Lundi (cf. doc de tête —
- *  ordre d'apparition qui place Lundi en haut de l'axe Y non inversé). */
+/** Construit les 168 points (24 h × 7 j), Lundi → Dimanche (l'axe Y inversé du
+ *  wrapper place Lundi en haut — cf. doc de tête). */
 function buildPoints(cells: HeatmapCell[], dowLabelsList: readonly string[]): ChartPointHeatmap[] {
   const lookup = new Map<string, { win_rate: number; count: number }>()
   for (const c of cells) {
@@ -46,7 +60,7 @@ function buildPoints(cells: HeatmapCell[], dowLabelsList: readonly string[]): Ch
   }
 
   const points: ChartPointHeatmap[] = []
-  for (let d = 6; d >= 0; d--) {
+  for (let d = 0; d < 7; d++) {
     for (let h = 0; h < 24; h++) {
       const cell = lookup.get(`${d}-${h}`)
       points.push({
@@ -70,6 +84,9 @@ export function SynthesisHeatmapChart({ cells, title, height }: Props) {
     [cells, dowLabelsList],
   )
 
+  // Une graduation de l'échelle : un taux 0..1 rendu en pourcentage entier.
+  const formatVisualMap = useCallback((value: number) => `${(value * 100).toFixed(0)}%`, [])
+
   const formatTooltip = useCallback(
     (point: ChartPointHeatmap) => {
       const count = (point.detail?.count as number | undefined) ?? 0
@@ -87,6 +104,12 @@ export function SynthesisHeatmapChart({ cells, title, height }: Props) {
       paletteMode="divergent"
       valueRange={[0, 1]}
       formatTooltip={formatTooltip}
+      yAxisInverse
+      axisNames={{ x: txt.hourAxis, y: txt.dayAxis }}
+      visualMapOrient="vertical"
+      visualMapFormatter={formatVisualMap}
+      visualMapText={[txt.wins, '']}
+      emptyCells="hidden"
     />
   )
 }

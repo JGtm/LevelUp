@@ -4,16 +4,17 @@ package main
 
 // diag.go — diagnostic et réparation des index ART de `match_skill_rank`.
 //
-// Principe du diagnostic, repris de cmd/repair_psa_index/diag.go (même famille de
-// défaut, même doctrine) : pour un axe indexé, deux comptages qui DOIVENT être
-// égaux sont comparés —
-//   - référence par SCAN FORCÉ : la clé de regroupement est une EXPRESSION
-//     (`col || ''`, `CAST(col AS VARCHAR)`) qu'aucun index ART ne peut servir ;
-//   - mesure par LOOKUP INDEXÉ (`WHERE col = ?`), que le planner sert par l'index.
+// LA RÈGLE DE COMPARAISON N'EST PAS ICI. Elle vit dans
+// `internal/platform/duckdb/indexcheck` (scan forcé par expression de clé vs
+// lookup indexé par colonnes nues), et la CARTE DES AXES avec elle
+// (`indexcheck.MatchSkillRankAxes`). Cet outil et la sonde data-health
+// périodique (`internal/scheduler/data_health_msr_index.go`) en sont les deux
+// consommateurs : recopier l'une ou l'autre les ferait diverger en silence dès
+// qu'une migration ajoute un index. Garde-rail :
+// `internal/archlint/no_local_msr_axes_test.go`.
 //
-// Tout écart = index désynchronisé de la table (bug DuckDB #23645). Les clés NULL
-// sont exclues : `col = NULL` ne matche jamais et produirait un faux écart ; leur
-// nombre est reporté.
+// CE QUI RESTE ICI est le propre de l'OUTIL : la décision des index à
+// reconstruire et la réparation elle-même.
 //
 // DDL DE RÉPARATION : jamais recopiée. Elle est CAPTURÉE dans la base
 // (`duckdb_indexes().sql`) avant le DROP, puis rejouée — c'est par construction
@@ -25,191 +26,37 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sort"
-	"strings"
+
+	"levelup/go-api/internal/platform/duckdb/indexcheck"
 )
 
 // maxSampledKeys borne le nombre de clés sondées par axe. L'axe du triplet porte
 // ~1 clé par ligne (des milliers) ; au-delà de cette borne le diagnostic reste
-// représentatif et le rapport dit explicitement qu'il a été tronqué.
+// représentatif et le rapport dit explicitement qu'il a été tronqué. L'outil
+// prend les PREMIÈRES clés (ordre déterministe), pas un tirage : un diagnostic
+// manuel doit être reproductible d'une exécution à l'autre.
 const maxSampledKeys = 5000
 
-// axis décrit un axe de vérification.
-type axis struct {
-	name string
-	// keyExprs : expressions de regroupement, SCAN FORCÉ (jamais servi par un ART).
-	keyExprs []string
-	// lookupWhere : prédicat de lookup, colonnes NUES (l'index peut servir).
-	lookupWhere string
-	// indexes : index susceptibles de servir ce lookup → à reconstruire si écart.
-	indexes []string
-}
+// msrAxes — la carte partagée, lue une fois (copie défensive côté paquet).
+var msrAxes = indexcheck.MatchSkillRankAxes()
 
-// msrAxes — les trois axes indexés de match_skill_rank (un par index posé par
-// steps_player_match_skill_rank.go).
-var msrAxes = []axis{
-	{
-		name:        "playlist_group (idx_msr_playlist)",
-		keyExprs:    []string{"playlist_group || ''"},
-		lookupWhere: "playlist_group = ?",
-		indexes:     []string{"idx_msr_playlist"},
-	},
-	{
-		name:        "rating_type (idx_msr_rating_type)",
-		keyExprs:    []string{"rating_type || ''"},
-		lookupWhere: "rating_type = ?",
-		indexes:     []string{"idx_msr_rating_type"},
-	},
-	{
-		// L'index porte (match_id, rating_type, written_at). Le lookup sonde le
-		// triplet entier : c'est le seul prédicat que cet index sert pleinement.
-		name:        "match_id+rating_type+written_at (idx_msr_match_lookup)",
-		keyExprs:    []string{"match_id || ''", "rating_type || ''", "CAST(written_at AS VARCHAR)"},
-		lookupWhere: "match_id = ? AND rating_type = ? AND written_at = CAST(? AS TIMESTAMP)",
-		indexes:     []string{"idx_msr_match_lookup"},
-	},
-}
-
-// divergence — une clé dont le lookup indexé ne rend pas le compte du scan.
-type divergence struct {
-	key     []string
-	scanned int
-	indexed int
-}
-
-// axisReport — résultat du diagnostic d'un axe.
-type axisReport struct {
-	axis        string
-	keys        int
-	nullKeys    int
-	truncated   bool // le nombre de clés distinctes dépassait maxSampledKeys
-	scannedRows int
-	indexedRows int
-	divergences []divergence
-}
-
-func (r axisReport) ok() bool { return len(r.divergences) == 0 }
-
-// keyCount — une clé distincte et son compte de référence (par scan).
-type keyCount struct {
-	key   []string
-	count int
-}
-
-// scanReference établit, par SCAN FORCÉ, le compte de référence par clé.
-func scanReference(ctx context.Context, db *sql.DB, a axis, rep *axisReport) ([]keyCount, error) {
-	exprs := strings.Join(a.keyExprs, ", ")
-	groupSQL := fmt.Sprintf(
-		`SELECT %s, COUNT(*) FROM match_skill_rank GROUP BY %s ORDER BY %s`, exprs, exprs, exprs)
-	rows, err := db.QueryContext(ctx, groupSQL)
-	if err != nil {
-		return nil, fmt.Errorf("scan de référence (%s): %w", a.name, err)
+// diagOptions — les options de passe de CET outil.
+func diagOptions() indexcheck.Options {
+	return indexcheck.Options{
+		Table:   indexcheck.MatchSkillRankTable,
+		MaxKeys: maxSampledKeys,
+		Sample:  false,
 	}
-	defer rows.Close()
-
-	var refs []keyCount
-	for rows.Next() {
-		vals := make([]sql.NullString, len(a.keyExprs))
-		dest := make([]any, 0, len(a.keyExprs)+1)
-		for i := range vals {
-			dest = append(dest, &vals[i])
-		}
-		var n int
-		dest = append(dest, &n)
-		if err := rows.Scan(dest...); err != nil {
-			return nil, fmt.Errorf("scan de référence (%s): %w", a.name, err)
-		}
-		key := make([]string, 0, len(vals))
-		nullKey := false
-		for _, v := range vals {
-			if !v.Valid {
-				nullKey = true
-				break
-			}
-			key = append(key, v.String)
-		}
-		if nullKey {
-			rep.nullKeys++
-			continue
-		}
-		if len(refs) >= maxSampledKeys {
-			rep.truncated = true
-			continue
-		}
-		refs = append(refs, keyCount{key: key, count: n})
-		rep.scannedRows += n
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("itération du scan (%s): %w", a.name, err)
-	}
-	return refs, nil
-}
-
-// diagnoseAxis compare, clé par clé, le comptage par scan et le comptage indexé.
-func diagnoseAxis(ctx context.Context, db *sql.DB, a axis) (axisReport, error) {
-	rep := axisReport{axis: a.name}
-
-	refs, err := scanReference(ctx, db, a, &rep)
-	if err != nil {
-		return rep, err
-	}
-	rep.keys = len(refs)
-
-	stmt, err := db.PrepareContext(ctx, `SELECT COUNT(*) FROM match_skill_rank WHERE `+a.lookupWhere)
-	if err != nil {
-		return rep, fmt.Errorf("préparation du lookup (%s): %w", a.name, err)
-	}
-	defer stmt.Close()
-
-	for _, ref := range refs {
-		args := make([]any, 0, len(ref.key))
-		for _, k := range ref.key {
-			args = append(args, k)
-		}
-		var indexed int
-		if err := stmt.QueryRowContext(ctx, args...).Scan(&indexed); err != nil {
-			return rep, fmt.Errorf("lookup indexé (%s, clé %v): %w", a.name, ref.key, err)
-		}
-		rep.indexedRows += indexed
-		if indexed != ref.count {
-			rep.divergences = append(rep.divergences, divergence{
-				key: ref.key, scanned: ref.count, indexed: indexed,
-			})
-		}
-	}
-	return rep, nil
 }
 
 // diagnoseAll passe les trois axes et retourne les rapports dans l'ordre.
-func diagnoseAll(ctx context.Context, db *sql.DB) ([]axisReport, error) {
-	reports := make([]axisReport, 0, len(msrAxes))
-	for _, a := range msrAxes {
-		rep, err := diagnoseAxis(ctx, db, a)
-		if err != nil {
-			return reports, err
-		}
-		reports = append(reports, rep)
-	}
-	return reports, nil
+func diagnoseAll(ctx context.Context, db *sql.DB) ([]indexcheck.Report, error) {
+	return indexcheck.RunAll(ctx, db, msrAxes, diagOptions())
 }
 
 // indexesToRebuild — union (ordonnée) des index des axes en écart.
-func indexesToRebuild(reports []axisReport) []string {
-	seen := map[string]bool{}
-	for i, rep := range reports {
-		if rep.ok() || i >= len(msrAxes) {
-			continue
-		}
-		for _, name := range msrAxes[i].indexes {
-			seen[name] = true
-		}
-	}
-	out := make([]string, 0, len(seen))
-	for name := range seen {
-		out = append(out, name)
-	}
-	sort.Strings(out)
-	return out
+func indexesToRebuild(reports []indexcheck.Report) []string {
+	return indexcheck.IndexesToRebuild(reports, msrAxes)
 }
 
 // captureIndexDDL relève, dans la base, la DDL des index de match_skill_rank.

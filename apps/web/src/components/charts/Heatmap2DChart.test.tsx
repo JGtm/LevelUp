@@ -70,3 +70,19 @@ describe('Heatmap2DChart — légende de la case vide (D3)', () => {
     expect(screen.queryByTestId('chart-card-legend')).toBeNull()
   })
 })
+
+describe('Heatmap2DChart — légende muette en mode hidden', () => {
+  // La légende NOMME la forme des cases vides. Sans forme à nommer, elle annoncerait une
+  // absence que rien ne montre — le consommateur en mode `hidden` ne doit pas la voir.
+  it('n’affiche PAS la légende quand les cases vides ne se peignent pas', async () => {
+    render(<Heatmap2DChart series={SERIES_AVEC_CASE_VIDE} emptyCells="hidden" />)
+    await screen.findByTestId('heatmap-echarts-stub')
+    expect(screen.queryByTestId('heatmap-empty-cell-legend')).toBeNull()
+  })
+
+  it('l’affiche toujours en mode par défaut (les autres consommateurs héritent sans changement)', async () => {
+    render(<Heatmap2DChart series={SERIES_AVEC_CASE_VIDE} />)
+    await screen.findByTestId('heatmap-echarts-stub')
+    expect(screen.getByTestId('heatmap-empty-cell-legend')).toBeInTheDocument()
+  })
+})

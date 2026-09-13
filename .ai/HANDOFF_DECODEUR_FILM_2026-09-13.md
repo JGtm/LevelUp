@@ -74,6 +74,43 @@ et la lecture de la table des slots et du désignateur d'équipe dans `facts` po
 l'équipe réelle et le roster SANS ouvrir de base (aujourd'hui `replay` écrit `Team: -1` en dur
 et le rejeu hors ligne perd l'équipe : origine des « sans équipe » impossibles).
 
+## 3 bis. Quatre faits mesurés le 13/09 (lots F et H des finitions) que le décodeur doit absorber
+
+Sources : `.ai/V7.5/RAPPORT_F0_DEPLOIEMENT_103_2026-09-13.md` (25 films, 5 761 poses, 931 événements
+de type 103), lot H (`equipment_placements.go`, `equipmentIsSpawnedPiece`), revue
+`.ai/V7.5/REVUE_FINITIONS_GH_2026-09-13.md`.
+
+1. **Une pièce engendrée est déployée par nature.** Le mur de protection est le seul équipement du
+   manifeste qui crée un objet distinct à l'usage (ses panneaux, `kind = "deployed"` dans
+   `replay_labels.toml`). Un panneau n'existe qu'une fois le mur déployé : il ne peut être ni
+   « lâché à la mort » ni « inconnu ». 10 panneaux du parc étaient pourtant classés ainsi parce
+   que leur apparition coïncidait avec la mort du poseur. Règle de production depuis le 13/09 :
+   tout objet dont le manifeste dit `kind = "deployed"` reçoit `origin = deployed` AVANT toute
+   mesure temporelle. Tout nouveau décodeur doit porter cette règle, et un garde-rail Go doit
+   apparier ses identifiants au manifeste (aujourd'hui seul le garde web `placementPanels.guard`
+   rougit — P2 D-H2).
+2. **L'événement 103 `EquipmentSpawnedObject` désigne la pièce engendrée, et rien d'autre.** Sa
+   deuxième référence (`ref1`, index 13 bits base 512 + génération 2 bits) se résout à 93,6 % sur
+   une entité `ti=37` réellement créée (témoin de hasard 2,2 %), dt médian +49 ms ; 216/216 poses
+   de panneau publiées sont désignées, 0 sur les 91 poses `deployed` d'un déployable porté
+   (capteur, écran, traqueur, champ de réparation, appareil de mur), 4 sur 4 853 poses `dropped`
+   (dont 3 panneaux). Le 103 ne tire donc PAS à la mort (la phrase de R5 §3.2 est réfutée) et ne
+   dit rien d'un appareil porté : il ne peut pas servir à séparer déploiement et lâcher, sauf pour
+   le mur. Sa première référence (`ref0`) désigne un `ti=37` de longue durée vu aux images-clés
+   (737/739) et jamais créé en delta : PISTE pour identifier l'équipement SOURCE d'un déploiement
+   (D-F2), non instruite.
+3. **L'origine d'une pose d'appareil porté est purement temporelle** : création dans les 200 ms de
+   la fin de vie du porteur = lâché, sinon déployé (populations à trois ordres de grandeur ; la
+   clause de distance de 1,5 m a été retirée, elle promouvait à tort 22 poses). Aucun canal du
+   film ne porte le déploiement d'un capteur, d'un traqueur, d'un écran ou d'un champ de
+   réparation ; aucun de ces objets n'engendre de pièce (mesure F.0 §4, témoin positif = mur).
+4. **Live Fire a un index de région sur 2 bits** : `DetectI0Layout` l'impute à X et lit
+   `[13 12 11]` (le découpage d'`aquarius`) au lieu de `[12 12 11]`. La production est indemne
+   parce qu'elle IMPOSE le découpage du catalogue (`FilmContext.I0Layout`, `resolveI0Layout`) ; tout
+   instrument ou décodeur qui DÉTECTE le découpage au lieu de l'imposer se trompe de carte sur
+   `0797ce72` et `c88ec007` (29 m d'écart) — D-H1. Règle : imposer depuis le catalogue, détecter
+   seulement en repli et le dire.
+
 ## 4. Le problème du record d'image-clé, expliqué
 
 Le film écrit un instantané d'état complet (« image-clé ») toutes les vingt secondes environ,

@@ -170,13 +170,13 @@ test.describe('Bug : like change la vidéo', () => {
 
     networkLog.length = 0 // Reset le log juste avant le clic like
 
-    // Debug : combien de boutons "Liker" dans le DOM ?
-    const allLikeButtons = await page.locator('button[aria-label="Liker"], button[aria-label="Retirer le like"]').count()
+    // Debug : combien de boutons « Aimer » dans le DOM ?
+    const allLikeButtons = await page.locator('button[aria-label="Aimer"], button[aria-label^="Retirer la mention"]').count()
     console.log(`[debug] Total boutons like dans le DOM : ${allLikeButtons}`)
 
     // 5. Cliquer sur le bouton like SPÉCIFIQUEMENT dans le cover-flow header
     // Le cover-flow header a la classe bg-black/60 et contient le bouton non-compact
-    const likeButton = coverFlow.locator('button[aria-label="Liker"], button[aria-label="Retirer le like"]').first()
+    const likeButton = coverFlow.locator('button[aria-label="Aimer"], button[aria-label^="Retirer la mention"]').first()
     await expect(likeButton).toBeVisible()
     const likeAriaBefore = await likeButton.getAttribute('aria-label')
     const likeBox = await likeButton.boundingBox()

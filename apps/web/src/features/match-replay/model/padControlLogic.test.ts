@@ -18,8 +18,6 @@ import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
 import {
   buildPadControl,
-  padControlGaps,
-  padControlMissing,
   type PadControl,
 } from './padControlLogic'
 import { testReplayDoc } from '../test/testDoc'
@@ -205,32 +203,11 @@ describe('buildPadControl — ce qui n’est PAS attribué', () => {
       } as unknown as Partial<ReplayDocument>),
       SB,
     )
+    // La VENTILATION PAR CAUSE n'est plus rendue (pied de carte retiré le 2026-09-13) ; ce qui
+    // reste mesuré, et rendu ligne par ligne, c'est ce que le graphe attribue et ce qu'il annote.
     expect(control.attributed).toBe(2)
-    expect(padControlMissing(control)).toBe(2)
-    const gaps = padControlGaps(control)
-    expect(gaps.reduce((n, g) => n + g.count, 0)).toBe(2)
-    expect(gaps.map((g) => g.key)).toEqual(['ambiguous', 'powerup'])
   })
 
-  it('ventile le reste en « datée sans ramasseur nommé » plutôt que de laisser un trou', () => {
-    const control = buildPadControl(
-      temoin({
-        padPickups: [prise(0, 'a1'), prise(0, null), prise(1, null)],
-        coverage: {
-          padDating: {
-            occupations: 3,
-            dated: 2,
-            named: 1,
-            ambiguous: 0,
-            uncovered: 0,
-            powerupOccupations: 0,
-          },
-        },
-      } as unknown as Partial<ReplayDocument>),
-      SB,
-    )
-    expect(padControlGaps(control)).toEqual([{ key: 'unnamed', count: 2 }])
-  })
 
 })
 
@@ -314,33 +291,24 @@ describe('buildPadControl — la partition « game changers » (plan 2026-09-05)
     } as unknown as Partial<ReplayDocument>)
   }
 
-  it('PARTITIONNE AVANT LE TRI : un socle replié très disputé ne double jamais un élu', () => {
+  it('ORDONNE AVANT DE TRIER : un socle non élu très disputé ne double jamais un élu', () => {
+    // LE VOTE EST UN ORDRE, PLUS UN REPLI (2026-09-13) : toutes les armes sont rendues, les
+    // socles décisifs en tête, chaque bloc trié par volume.
     const control = buildPadControl(temoinCatalogue(), SB)
-    // Élus : Sniper (1) et socle de bonus (1) — à égalité, l'identifiant départage.
-    expect(control.forwardWeapons).toEqual([SNIPER, 'powerup_overshield'])
-    // Repliés, TRIÉS PAR VOLUME dans leur bloc : Crémateur (3) devant BR (2).
-    expect(control.collapsedWeapons).toEqual([EPEE, BR])
-    // L'ordre d'écran déplié est la concaténation exacte : élus d'abord, repliés ensuite.
+    // Élus : Sniper (1) et socle de bonus (1) — à égalité, l'identifiant départage. Puis les
+    // autres, TRIÉS PAR VOLUME : Crémateur (3) devant BR (2).
     expect(control.weapons).toEqual([SNIPER, 'powerup_overshield', EPEE, BR])
   })
 
-  it('replie la clé votée NON et le label SANS clé (D6) ; le socle powerup_* est en avant', () => {
-    const control = buildPadControl(temoinCatalogue(), SB)
-    expect(control.collapsedWeapons).toContain(EPEE)
-    expect(control.collapsedWeapons).toContain(BR)
-    expect(control.forwardWeapons).toContain('powerup_overshield')
-  })
-
-  it('un artefact SANS catalogue replie tout : clé absente = jamais promu (D6)', () => {
+  it('un artefact SANS catalogue garde toutes les armes, par volume : clé absente = jamais promu (D6)', () => {
     const control = buildPadControl(
       temoin({ padPickups: [prise(0, 'a1'), prise(1, 'b1')] } as Partial<ReplayDocument>),
       SB,
     )
-    expect(control.forwardWeapons).toEqual([])
-    expect(control.collapsedWeapons).toEqual(control.weapons)
+    expect(control.weapons).toHaveLength(2)
   })
 
-  it('le TOTAL ne ment pas : lignes, camps et somme attribuée comptent les armes repliées', () => {
+  it('le TOTAL ne ment pas : lignes, camps et somme attribuée comptent TOUTES les armes', () => {
     const control = buildPadControl(temoinCatalogue(), SB)
     const alpha = parNom(control).get('Alpha')
     // Alpha : Sniper 1 + Crémateur 1 + BR 1 + bonus 1 — les trois repliés comptent.

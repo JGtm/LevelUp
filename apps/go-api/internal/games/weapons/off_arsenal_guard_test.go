@@ -57,16 +57,15 @@ var horsArsenalHINF = []string{
 	// Gungoose (2026-09-10) : meme propriete constatee que les autres chassis — aucun record
 	// de degat 0xd2, donc invisible de la voie `weapon_kills`, donc pas de double comptage.
 	"hinf_gungoose",
-	// Mutilator (2026-09-10) — LA SEULE ENTREE DE CETTE LISTE QUI EST UNE VRAIE ARME DE
-	// L ARSENAL, et il faut le dire plutot que de la noyer parmi les chassis. Elle n y figure
-	// pas parce qu elle serait invisible par nature, mais parce qu AUCUN identifiant numerique
-	// (filmshell ou stock_id) n est catalogue pour elle a ce jour : sans id, elle ne peut pas
-	// apparaitre par la voie `weapon_kills`, donc pas de double comptage — c est un CONSTAT
-	// d inventaire, pas une propriete du jeu.
-	// RETRAIT ATTENDU : le jour ou son id numerique est catalogue, cette ligne DOIT partir
-	// d ici (sinon le garde-rail cesserait de garder pour elle) et le double comptage devra
-	// etre revérifie.
-	"hinf_mutilator",
+	// Mutilator : RETIRE LE 2026-09-13, comme son entree du 2026-09-10 le prescrivait. Son
+	// identifiant filmshell (0xd791556542c9679f, mesure depuis le seed de `labels.go`) est
+	// desormais catalogue : c est une arme de l arsenal comme les autres, elle se resout par
+	// weapon_id et n a plus rien a faire dans la liste des cles SANS identifiant.
+	// DOUBLE COMPTAGE REVERIFIE, comme la ligne retiree l exigeait : il n y a plus qu UNE voie
+	// de comptage depuis la decision D11 du 2026-09-01 — le filtre `wi.weapon_key IS NULL` de
+	// l ex-`resolveOffArsenalKeys` a ete supprime avec sa fonction (cf. l en-tete de ce fichier
+	// et `platform/duckdb/weapon_resolver.go`, `resolveWeaponKeyDimensions`). Aucune seconde
+	// voie ne peut donc recompter ses frags.
 	"hinf_pelican",
 	"hinf_phantom",
 	"hinf_repulsor",

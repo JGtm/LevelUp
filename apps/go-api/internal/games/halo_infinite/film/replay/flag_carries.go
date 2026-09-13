@@ -95,7 +95,24 @@ const (
 type FlagSpawn struct {
 	// Team est l'equipe proprietaire, telle que le fichier de carte la donne.
 	Team int
-	X, Y float32
+	// Neutral dit que ce socle est celui de la variante « drapeau neutre ». IL N'EST PAS
+	// DEDUCTIBLE DE `Team`, et c'est la correction du 2026-09-13 (decouverte D-B2).
+	//
+	// LES DEUX MENSONGES DU `team_index`, SYMETRIQUES. Le socle central d'Illusion porte
+	// `team_index = 0` alors qu'il EST neutre (corrige le 2026-09-13 par le label, cf.
+	// [mapvar.Objective.IsCTFNeutral]) ; et HUIT socles du catalogue — Cliffside,
+	// Highpower Heavies, Solitude, Solitude - Ranked, plus quatre entrees sans
+	// `public_name` — portent `team_index = -1` alors qu'ils sont des socles D'EQUIPE
+	// sans label neutre. Trier le panier neutre sur `Team == TeamNeutral` faisait tomber
+	// ces huit socles du cote neutre et pouvait basculer un film en variante « drapeau
+	// neutre » a tort (`flag_neutral.go`).
+	//
+	// LA NEUTRALITE EST DONC UN FAIT A PART ENTIERE, pose depuis le LABEL et jamais
+	// devine : `Team` reste ce que le fichier de carte dit (y compris « inconnue » a -1),
+	// `Neutral` dit la variante. Les huit socles gardent leur equipe inconnue et sortent
+	// du panier neutre.
+	Neutral bool
+	X, Y    float32
 }
 
 // FlagCarryScan porte TOUT ce que le film et le catalogue de carte rendent du drapeau. Les

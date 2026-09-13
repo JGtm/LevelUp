@@ -405,6 +405,71 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   (`performance_chain`), non mesurée. Périmètre C.1 = LUSR seul.
 
 
+### Lot H (2026-09-13)
+
+- **D-H1 — L'ORACLE DE CARTE DES MESURES DE RECHERCHE EST AVEUGLE AUX CARTES À INDEX DE RÉGION
+  DE 2 BITS.** `f1Carte` (`f1_origine_mesure_research_test.go`) et son homologue de F.0 §0.3
+  (`TestF0CalibreCarte`) filtrent les entrées candidates du catalogue de bornes sur l'ÉGALITÉ
+  EXACTE entre `MapQuantEntry.AxisWidths` et le découpage lu dans le film par
+  `DetectI0Layout`. Or `DetectI0Layout` déduit les largeurs d'un profil de bascule par position
+  de bit : sur une carte dont l'en-tête d'i0 porte un index de région de **2 bits** au lieu
+  d'un — Live Fire est la seule du catalogue, entrée le 2026-08-27 avec `region = 1` et
+  `regionIndexBits = 2` —, ce bit d'en-tête supplémentaire est imputé à l'axe X. Le film rend
+  `[13 12 11]`, le catalogue déclare `[12 12 11]`, et Live Fire n'est JAMAIS proposée. Mesuré
+  en H.3 sur `0797ce72` et `c88ec007` : l'oracle retient `aquarius` (seule entrée en
+  `[13 12 11]`) à 29,2 et 29,9 m, quand Live Fire, à découpage IMPOSÉ, rend 0,066 et 0,082 m.
+  **La production est INDEMNE** : elle impose le découpage de l'entrée
+  (`build_from_film.go`), elle ne le lit pas dans le film. Conséquence à traiter : les mesures
+  de recherche qui identifient une carte par ce filtre EXCLUENT silencieusement tout film de
+  Live Fire — deux films en F.1, et tout futur corpus. Traitement possible : essayer aussi les
+  entrées dont les largeurs coïncident APRÈS retrait de l'excédent d'index de région, ou
+  classer par écart aux repères à découpage imposé (l'instrument de H.3 le fait déjà et
+  départage à trois ordres de grandeur). Le dépôt PORTAIT DÉJÀ la réponse : le manifeste du
+  corpus témoin (`config/replay_corpus.toml`, 2026-09-12) déclare `0797ce72` sous
+  `carte = "Live Fire"`, famille `region_index_2_bits`. NON TRAITÉ.
+- **D-H2 — `usageWallPanelIDs` n'a PAS de garde-rail au niveau des IDENTIFIANTS.**
+  `usage_summary_families_guard_test.go` recolle au manifeste la liste des FAMILLES qui
+  engendrent une pièce (`usageFamiliesWithSpawnedPiece`), mais rien ne vérifie que les deux
+  identifiants `0x528fce46` / `0x686b40c9` sont bien, et sont les seuls, à porter
+  `kind = "deployed"` au manifeste. Depuis H.2 cette table décide en plus de l'ORIGINE PUBLIÉE
+  d'une pose : un troisième objet `kind = "deployed"` ajouté au manifeste ne serait pas promu,
+  en silence. Traitement possible : étendre le garde-rail existant à l'extraction des `id` des
+  blocs `[[equipment_objects]]` porteurs de `kind = "deployed"`. NON TRAITÉ (périmètre H fermé).
+
+- **C.9 — diagnostic pour le pilote** : sur les 4 bases purgées, le recensement d'après ne
+  compte qu'UNE vue `match_skill_rank_latest%`. Or il est MESURÉ qu'une vue dépendante survit
+  au `DROP TABLE` du swap et se re-lie à la table renommée : si
+  `match_skill_rank_latest_by_type` avait existé, elle serait encore là et le compte serait 2.
+  Le compte de 1 dit donc que la vue n'existait pas — la migration
+  `player_msr_view_latest_by_type_v1` (née en C.3 bis) n'avait pas encore été jouée sur ces
+  bases. Rien n'a été perdu ; elle sera créée au prochain boot. Vérification directe :
+  `SELECT name FROM schema_migrations WHERE name = 'player_msr_view_latest_by_type_v1'`
+  (absente = confirmé). Si elle y figurait, `repair_msr_index -ensure-views` la repose.
+- **P0 TRAITÉ (C.8)** — désynchronisation d'index ART sur `match_skill_rank` (JGtm) :
+  détectée au dry-run de la purge, outillée le 2026-09-13 (`cmd/repair_msr_index` + pré-vol
+  de la purge). La FAMILLE de défaut est confirmée au-delà de `personal_score_awards` : tout
+  lecteur applicatif qui interroge `match_skill_rank` par prédicat indexé a pu servir des
+  lignes amputées sur cette base. À re-sonder périodiquement — l'outil en `-dry-run` est le
+  détecteur. Exécution de la réparation : pilote, serveur arrêté.
+- **Lot C — `migration.RebuildMatchSkillRankART`
+  (`internal/migration/steps_player_rebuild_match_skill_rank.go:71`) repose
+  `ADD PRIMARY KEY (match_id)`** : c'est le schéma PRÉ-append-only. Sur une player DB
+  d'aujourd'hui (PK technique `id`, N lignes par match_id) ce rebuild échouerait, et s'il
+  passait il détruirait l'invariant append-only et la vue `_latest`. Son unique appelant
+  est `cmd/force_rebuild_art`. À arbitrer : corriger (aligner sur la DDL de
+  `steps_player_match_skill_rank.go`) ou supprimer avec son CLI.
+- **Lot C — `Q24LUSRHistory` (`platform/duckdb/queries_career_encounters.go`) reste en
+  lecture brute** : allowlist `TestNoRawAppendOnlyReads`, justification datée du
+  2026-07-10 (décision B7 : `_latest` injecterait des valeurs d'échelle CSR dans un
+  pipeline purement LUSR). Le résidu `h5_arena` y survit donc jusqu'à la purge C.5 ;
+  après la purge, la question redevient théorique. Non traité (décision existante).
+- **Lot C — le post-import OpenSpartan ne stampe le titre que pour l'étape LUSR** : les
+  étapes `recomputePerfScores` (→ `GetPerformanceChain`, title-aware depuis `5be99a2c3`)
+  et suivantes reçoivent encore le ctx brut. Même famille de défaut sur une autre colonne
+  (`performance_chain`), non mesurée. Périmètre C.1 = LUSR seul.
+
+
+
 ## Journal
 - 2026-09-13 : plan écrit ; lot A fait (commit deps + push).
 - 2026-09-13 : lot B.1 clos (`feat/finitions-hygiene`) — merge `wt/psa-index-cause` (garde data-health PSA, 5 reproducteurs derrière `psarepro`), rapport déplacé en `.ai/V7.5/RAPPORT_VOLET2_INDEX_PSA_2026-08-28.md`, `#23046` -> `#23645` sur 133 fichiers Go + 6 docs + CLAUDE.md (196 occurrences Go), registre L538 réécrit (cause amont prouvée, garde alerte-seule 41 ms/base, condition de reprise = 1.5.6 avec #24744 ou jauge > 0). Gates : `go build ./...` exit 0, `go test ./internal/archlint/... ./internal/scheduler/...` exit 0, `go test -tags=integration -p 1 ./internal/scheduler/... ./internal/migration/...` exit 0.
@@ -462,6 +527,56 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   `node_modules` — `npm ci` dans le worktree, puis 0/0/0. `.golangci-cache*/` ajouté au `.gitignore`
   (même raison que `.gocache*/` : cache GLOBAL par défaut, à isoler par worktree).
 
+- 2026-09-13 : **lot G (fiabilité) CLOS** sur `feat/finitions-fiabilite`, 6 commits. G.1 → G.6
+  tous `[x]`. **G.1** — `RebuildMatchSkillRankART` reposait `ADD PRIMARY KEY (match_id)`, le
+  schéma PRÉ-append-only : sur une player DB d'aujourd'hui il échoue, et s'il passait il
+  détruirait l'invariant de l'ADR 0026 et la vue `_latest`. Supprimé avec son unique appelant
+  `cmd/force_rebuild_art` — vérifié sur pièces qu'il n'était le SEUL chemin d'aucune réparation
+  (shared `match_participants` → `cmd/rebuild_mp` ; player `player_match_enrichment` →
+  `cmd/rebuild_pme_art` et `levelup rebuild-pme`), qu'aucun step de `migration/order.go` n'en
+  dépendait et qu'il n'avait aucun test. 3 lignes package-level retirées de la baseline (61 788
+  → 61 785), note datée dans `check_test_baseline.sh` ; 6 mentions de code et l'ADR 0017
+  rectifiées. **G.2** — le ratchet anti-ART voit enfin les écritures à NOM DE TABLE INTERPOLÉ
+  (D-B1) : `TestNoInterpolatedWriteOnProtectedTables` juge `UPDATE %s` / `DELETE FROM %s` /
+  `INSERT INTO %s` et les concaténations `"UPDATE " + table`, suspectes quand le littéral ne
+  porte AUCUN `?` (set-based) ou porte un `ON CONFLICT … DO UPDATE`. Le témoin porte la forme
+  HISTORIQUE VERBATIM (`git show 044751026^`) et elle est ROUGE ; la forme livrée en B.3.6 reste
+  VERTE. Aucune allowlist agrandie. **G.3** — sonde data-health « index `match_skill_rank`
+  désynchronisé », et la règle de comparaison EXTRAITE plutôt que recopiée : nouveau paquet
+  `internal/platform/duckdb/indexcheck` (scan forcé vs lookup indexé, carte des axes), consommé
+  par la sonde ET par `cmd/repair_msr_index`. Alerte seule, `OpenReadForQuery`, 200 clés par axe
+  en tirage réservoir, jauge gelée si non mesuré, title-agnostic. **Coût mesuré : 56 ms pour 206
+  clés comparées sur 2 000 lignes** (fixture montée par les migrations réelles). Garde-rail
+  `archlint/no_local_msr_axes_test.go`, morsure vérifiée par mutation. **G.4** — le stamp du
+  titre remonte à l'ENTRÉE du post-import OpenSpartan : C.1 ne l'avait posé que sur
+  `recomputeLUSR`, et `recomputePerfScores` (→ `GetPerformanceChain`, dont la sortie est
+  PERSISTÉE dans `performance_chain`) recevait encore le ctx de la requête. Le ratchet C.1
+  `TestPostImportLUSRCallIsTitleStamped` est REMPLACÉ (son littéral n'existe plus) par
+  `TestRunStampeLeTitreAvantLaPremiereEtape`, qui couvre toutes les étapes ; il n'était pas dans
+  la baseline. **G.5** — deux listes qui se répondaient sans se comparer : parité Go ↔ TS des
+  familles d'objectif par un ratchet Go qui LIT `objectiveFamilies.ts` (morsure vérifiée par
+  mutation ; le TSDoc affirmait la garantie, il nomme désormais le test qui la tient), et
+  `infiniteLUSRChains` du gate d'intégration dérivée de `skillchain.Chains()` neuf, dont
+  l'exhaustivité est mesurée sur un corpus couvrant CHAQUE branche de `ClassifyLUSRChain`, dans
+  les deux sens.
+- 2026-09-13 : **G.4 — requête livrée au pilote** (lecture seule, serveur arrêté), comptage des
+  chaînes de performance ÉTRANGÈRES sur une player DB Infinite. Lecture par la vue `_latest`
+  (règle ART n°2) ; les 7 chaînes légitimes d'Infinite sont celles de `GetPerformanceChain`
+  (4 chaînes LUSR + `ranked_slayer` + `ranked_objectif` + `firefight`). Une valeur `h5_arena`
+  serait la trace du défaut.
+
+  ```
+  duckdb -c "ATTACH 'data/titles/halo_infinite/players/<GAMERTAG>/stats.duckdb' AS p (READ_ONLY);
+  SELECT performance_chain, COUNT(*) AS lignes
+  FROM p.player_match_enrichment_latest
+  WHERE performance_chain IS NOT NULL AND performance_chain <> ''
+    AND performance_chain NOT IN ('arena_slayer','arena_objectif','btb','chaos',
+                                  'ranked_slayer','ranked_objectif','firefight')
+  GROUP BY 1 ORDER BY lignes DESC;"
+  ```
+
+  Attendu si le défaut n'a jamais mordu : 0 ligne. À passer sur les 4 player DB Infinite.
+
 ### Revue finale E.3 (2026-09-13) — P2 consignés, NON traités
 - R6 — listes de familles d'objectif Go (`objectiveevents/families.go`) et TS (`model/objectiveFamilies.ts`) indépendantes, aucun test de parité ; le TSDoc prétend le contraire. Une 7e famille rendrait le Go rouge et le TS silencieusement muet.
 - R7 — `infiniteLUSRChains` (gate d'intégration I14) recopiée, sans test d'exhaustivité contre `skillchain/classify.go`.
@@ -471,3 +586,56 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
 - R11 — dette de taille non consignée : `equipment_placements.go` 594 -> 628 L ; `buildSyncEngineFactoryParityComplete` 85 -> 110 L.
 - R14 — `ListMapsByTitle` : `COALESCE(name_canonical,'')` fait passer les cartes sans nom canonique en tête du tri (le commentaire dit « tri inchangé »).
 - R15 — deux formulations imprécises : référence équipement §1 (« de la dernière position » -> « de la fin de vie ») ; godoc `originDropMaxDist` (le crâne n'est qu'un test).
+
+### Lot G (2026-09-13)
+
+- **D-G1 — `internal/ops/restore.go:223` vide une table par `DELETE FROM %q` interpolé**, nom de
+  table venu du jeu de parquets de sauvegarde, sans aucune valeur liée. C'est la forme
+  déclencheuse ART, et elle s'applique indifféremment à une table protégée si la sauvegarde en
+  contient une. Le nouveau scan G.2 ne la juge PAS : il corrèle FILE-level sur le nom d'une table
+  protégée ou critique, et `restore.go` n'en nomme aucune (son universalité est justement ce qui
+  le rend générique). Limite assumée et documentée dans le fichier de test. Traitement possible :
+  restaurer par swap CTAS (`CREATE TABLE __restored AS SELECT … ; DROP ; RENAME`) au lieu du
+  couple DELETE + INSERT. NON TRAITÉ.
+
+## Lot G — fiabilité (`feat/finitions-fiabilite`, Go) — arbitré le 13/09 soir (points 1 à 5 des recos)
+Contrat `plan-execution`, périmètre FERMÉ, découvertes consignées non traitées sauf P0.
+- [x] G.1 Supprimer `migration.RebuildMatchSkillRankART` (`internal/migration/steps_player_rebuild_match_skill_rank.go`) et son unique appelant `cmd/force_rebuild_art`, avec tests, imports, mentions docs (`docs/COMMANDS.md` FR+EN, `.ai/project_map.md`) et entrées de baseline de tests retirées dans le MÊME commit. Si un autre appelant existe, statuer `[!]` avec preuve.
+- [x] G.2 `internal/sync/no_art_patterns_test.go` : détecter aussi les écritures à nom de table INTERPOLÉ (`fmt.Sprintf("UPDATE %s`, `"UPDATE " + table`, `DELETE FROM %s`, `INSERT INTO %s … ON CONFLICT`) sur les tables protégées ; le cas de `seed_demo_corpus.go` (forme ligne à ligne à valeurs liées) doit rester VERT ; un cas témoin rouge (fixture de test) prouve la morsure ; aucune allowlist agrandie.
+- [x] G.3 Sonde data-health « index désynchronisé » étendue à `match_skill_rank` des player DB (`internal/scheduler/`), calquée sur `data_health_psa_index.go` (alerte seule, `OpenReadForQuery`, échantillon borné, jauge gelée si non mesuré, entrée dans `WarningsTotal`, title-agnostic, coût mesuré). Réutiliser la règle de comparaison de `cmd/repair_msr_index/diag.go` plutôt que la recopier (extraire un helper partagé si besoin, avec garde-rail ≤ 2 copies). Le message d'alerte nomme `repair_msr_index -repair`.
+- [x] G.4 `internal/service/openspartan_post_import_service.go` : le titre de la base est stampé UNE fois à l'entrée du post-import, pour TOUTES les étapes (LUSR, `recomputePerfScores` → `GetPerformanceChain`, suivantes) ; test : un ctx entrant portant un autre titre ne change pas la chaîne de performance écrite. Mesure : requête lecture seule sur les 4 player DB Infinite (serveur ARRÊTÉ par le pilote, pas par l'agent) pour compter les `performance_chain` étrangères — l'agent livre la requête, le pilote l'exécute.
+- [x] G.5 Tests de parité : (a) Go ↔ TS des familles d'objectif (`objectiveevents/families.go` ↔ `features/match-replay/model/objectiveFamilies.ts`, ratchet Go qui lit le fichier TS, modèle `archlint/*_test.go`) ; (b) `infiniteLUSRChains` du gate d'intégration dérivée de `games/halo_infinite/skillchain` (export d'une liste ou test d'exhaustivité contre `ClassifyLUSRChain`), plus de copie manuelle.
+- [x] G.6 Gates : build, vet, `go test` hors himap, `-tags=integration -p 1` sur sync/persist/migration/duckdb/scheduler/service, lint, baseline de tests, push, CI verte au niveau job.
+
+## Lot H — rejeu (`feat/finitions-rejeu`, Go + config) — points 6 à 8 des recos
+- [x] H.1 D-B2 : `FlagSpawn.Neutral` posé depuis le label (`PointObjective.Neutral` -> `replaybuild/flagspawns.go`), `flag_neutral.go` trie dessus au lieu de `Team == TeamNeutral`. `flagSpawnTeam` est inchangée et documentée pour ce qu'elle ne dit PAS (une équipe, pas une variante). **Recensement du catalogue versionné** (`TestCatalogueRecensementDesSoclesNeutres`, 434 socles `flag_spawn` ponctuels) : **63 socles neutres au label, inchangé** ; **8 socles à `team_index = -1` SANS label** (Cliffside, Highpower Heavies, Solitude, Solitude - Ranked, 4 entrées du map_id `1042b738` sans `public_name`) — panier neutre **71 -> 63**. Tests : tri unitaire (`TestFlagSoclesSansEquipeNeTombentPasDansLePanierNeutre` : 6 naissances au socle sans équipe ne basculent plus la variante), recensement, et `flagSpawnTeam` + report de neutralité côté `replaybuild` (`flagspawns_test.go`, nouveau).
+- [x] H.2 D-F1 : `equipmentIsSpawnedPiece` (posée avec sa table `usageWallPanelIDs`, transcription du `kind = "deployed"` du manifeste, recollée par `usage_summary_families_guard_test.go` — aucune 3e copie) ; `buildEquipmentPlacements` force `OriginDeployed` sur ces objets, après `equipmentOrigin` et sans passer par elle, ce qui couvre AUSSI la pose sans poseur (`unknown`). Godoc d'`EquipmentPlacement.Origin` mis à jour dans le même commit. Tests : `TestPieceEngendreeEstToujoursDeployee` (panneau en fin de vie + panneau sans poseur -> `deployed` ; **deux témoins négatifs** sur l'appareil PORTÉ `0x8e2dc574`, qui reste `dropped`/`deployed` selon le temps) et `TestEquipmentIsSpawnedPiece` (frontière du prédicat). **Mesure avant/après sur le PARC ENTIER** (`TestH2MesurePiecesEngendrees`, instrument versionné, lecture seule du cache d'artefacts, aucune cuisson : la règle est une réécriture pure du champ `origin` sur l'`id`, donc l'appliquer à une pose publiée rend ce que le constructeur rendrait) — **76 artefacts, 13 854 poses** : `wall/deployed` **350 -> 360**, `wall/dropped` **322 -> 317**, `wall/unknown` **13 -> 8** ; **aucune autre famille ne bouge** (33 autres croisements famille × origine identiques). **10 poses basculent, toutes des panneaux** : `0x528fce46` 3 `dropped` + 4 `unknown` = **les 7 attendus, à l'unité**, plus `0x686b40c9` 2 `dropped` + 1 `unknown` (films hors des 25 de F.0, dont le §2.3 ne voyait que 3 poses, toutes `deployed`).
+- [!] H.3 D-F5 : **NI l'un NI l'autre — CES DEUX FILMS SONT LIVE FIRE, ET LEURS ARTEFACTS SONT JUSTES. AUCUNE RECUISSON N'EST À FAIRE**, l'autorisation utilisateur reste inutilisée. Les trois datations demandées, faites : (a) **artefacts** — `schemaVersion` **54**, c'est-à-dire le schéma COURANT, posé le 2026-09-12 18:18 (`104b74e15`) ; mtime 2026-09-13 00:39 et 00:50 ; (b) **bornes `aquarius`** — **jamais modifiées depuis leur introduction le 2026-07-31** (`2044b7139`), vérifié par `git show` sur les 4 commits qui touchent `map_quant_bounds.json` (`2044b7139`, `3f02079cd`, `74920ce4a` et les intermédiaires : octet pour octet identiques), le fichier entier étant figé depuis le 2026-08-27 ; (c) les artefacts sont donc POSTÉRIEURS aux bornes — aucune des deux hypothèses de D-F5 ne tient. **La mesure qui tranche** (`h3_aquarius_reperes_research_test.go`, versionné, lecture seule) : en imposant à chaque entrée SON PROPRE découpage — ce que fait la production (`build_from_film.go` : `scan.Layout = fc.ImposedLayout()`) et ce que l'oracle de F.0 §0.3 / F.1 ne fait pas —, **`live fire` (`sgh_interlock`) reproduit les repères publiés à 0,066 m et 0,082 m**, très en dessous du seuil de 0,20 m ; `aquarius` reste à 29,201 m et 29,871 m, soit les 29,2 / 29,9 m de D-F5 reproduits à l'identique. Confirmation par un second chemin : la **régression affine** des coordonnées publiées sur un décodage de référence retrouve les bornes de Live Fire sur Y (min −10,15 / −10,28 contre −10,103 au catalogue ; max 53,729 / 53,714 contre 53,672) et sur Z (min −9,38 / −9,35 contre −9,331 ; max 13,626 / 13,603 contre 13,568), l'axe X seul étant décalé d'une étendue entière — la signature d'UN BIT DE TROP lu sur cet axe. **Cause** : l'en-tête d'i0 de Live Fire porte un index de région de **2 bits** (sa région jouée est la 1, catalogue du 2026-08-27), `DetectI0Layout` impute ce bit d'en-tête à X et lit `[13 12 11]` là où le catalogue déclare `[12 12 11]` ; l'oracle filtrant les candidates sur l'égalité EXACTE des largeurs, Live Fire n'est jamais proposée et `aquarius` — seule entrée en `[13 12 11]` — gagne par défaut. **CORROBORATION DOCUMENTAIRE, INDÉPENDANTE DE LA MESURE** : `config/replay_corpus.toml` porte déjà `0797ce72` comme témoin `region_index_2_bits`, `carte = "Live Fire"`, « seule carte du catalogue à index de région sur 2 bits » — écrit le 2026-09-12 pour le correctif de la porte de position des objets du monde (schéma 53). Le dépôt savait ; c'est l'oracle de F.1 qui ne pouvait pas le voir. Le défaut est donc dans l'INSTRUMENT DE RECHERCHE, pas en production : consigné en §Découvertes (D-H1), NON traité (périmètre H fermé).
+- [x] H.4 Gates (tous joués dans la session, sorties ci-dessous) :
+      - `gofmt -l` sur les deux paquets touchés : **aucune sortie** ; `go build ./...` : **exit 0** ; `go vet` (hook lefthook, à chaque commit) : **vert**.
+      - `go test ./internal/games/halo_infinite/film/replay/... ./internal/games/halo_infinite/film/filmdec/... ./internal/replaybuild/... ./internal/archlint/...` : **`ok` sur les 5 paquets** (replay 7,690 s · mapvar 0,153 s · filmdec 8,781 s · replaybuild 0,650 s · archlint 29,081 s), exit 0.
+      - `golangci-lint run --timeout 5m --new-from-merge-base=origin/feat/v75` : **0 issues**, exit 0. (L'avertissement « unknown linters in //nolint directives » est la découverte D-B4 du lot B, préexistante et déjà consignée.)
+      - **`replay-corpus-gate` en racine jetable** (`--reference=base --base origin/feat/v75 --source-root <worktree> --parc-root <principal> --work-root <worktree>/.gate-work`, 12 témoins, 25 cuissons, ~45 min) — **les compteurs `deployed` BOUGENT, et exactement là où ils devaient** :
+        - **9 témoins `ok` à 0 gain / 0 perte**, dont `0797ce72` (13,18 s).
+        - **2 témoins « PERTE » à 2 gains ET 2 pertes chacun — la RECLASSIFICATION H.2, pose par pose.** Vérifié en rouvrant les deux artefacts cuits : `084a804d` `wall/unknown` **2 -> 1** et `wall/deployed` **3 -> 4** (totaux `unknown` 274 -> 273, `deployed` 51 -> 52) ; `111fa685` `wall/dropped` **26 -> 25** et `wall/deployed` **28 -> 29** (totaux `dropped` 494 -> 493, `deployed` 77 -> 78). **Le total de poses ne bouge dans aucun des deux.** Le gate n'a pas de notion de « déplacé » : un compteur qui baisse est une « perte », et c'est ici le compteur que H.2 vide volontairement.
+        - **1 témoin `ERREUR` — CÔTÉ BASE, sur du code que ce lot ne touche pas.** `e5adf7b2` : `cuisson reference : replay-build-base.exe --map "Fragmentation" : exit status 13`, c'est-à-dire `plafond memoire depasse — cuisson abandonnee pic_octets=4104335096 pic_gio=3,822` contre un plafond souple de 3 GiB / dur de 4 GiB. **La cuisson HEAD du même témoin, elle, a ABOUTI** (artefact de 5 835 193 octets écrit à 19:37). C'est donc la révision de RÉFÉRENCE (`origin/feat/v75`) qui bute sur le plafond, pas le diff ; le plafond est une constante du code (`filmproc.DefaultLimitGiB = 3`), sans drapeau ni variable d'environnement pour le relever.
+        - Le gate sort donc en **code 1** pour ces trois lignes : 2 reclassifications attendues et 1 plafond mémoire préexistant côté base. **Aucune perte de matière.**
+      - Push `origin feat/finitions-rejeu` (hook `knip-ratchet` réparé par `npm ci` dans le worktree — `node_modules` manquant, pas un défaut de code). **CI VERTE AU NIVEAU JOB** sur `e538d24cb` : run `34773808291` **success** — Go Lint, Go Coverage + Baseline non-régression (`./...` complet, CGO), OpenAPI Lint, Go Lease Enforcement (ADR 0013), Go Build + Test ubuntu **et** windows, Frontend (TypeScript + Vite), Go Contract Test — tous `success`, E2E React `skipped` ; plus `Secrets (gitleaks)` **success** et `Deploy Pre-Check` **success**.
+
+## Lot I — clôture (pilote)
+- [x] I.1 (13/09 soir) Lot G fusionné `70e9d07fd` (CI branche verte 34773829242), lot H fusionné `11b1cef2d`+`676978ed0` (CI branche verte 34773808291) ; revue bornée `.ai/V7.5/REVUE_FINITIONS_GH_2026-09-13.md` : 0 P0, 2 P1 corrigés (`605b59d6c` : périmètre anti-ART par le helper unique ; assertion morte du stamp retirée), 9 P2 consignés ci-dessous ; worktrees et branches des lots supprimés. Hors lot : `formes.fixtures.ts:142` (autre session, lot ajust-D2) faisait rougir `lint:fields` au pre-push (« Aquarius » = libellé du dictionnaire) — libellé de fixture remplacé par « Cliffside » pour débloquer le push de la branche partagée.
+- 2026-09-13 (pilote) : mesure G.4 exécutée, serveur arrêté, sur les 4 player DB Infinite
+  (`player_match_enrichment_latest`) : 0 chaîne de performance étrangère (JGtm 1 060 lignes
+  sur 3 chaînes, Madina97294 1 147 sur 6, Chocoboflor 521 sur 3, XxDaemonGamerxX 16 sur 2, toutes
+  légitimes). Le défaut G.4 n'a jamais mordu : fermeture préventive, aucune donnée à rattraper.
+  Lot G fusionné dans feat/v75 (CI de branche verte, run 34773829242).
+
+### Revue G/H (E.3 bis, 2026-09-13 soir) — P2 consignés, NON traités
+- `indexcheck.MatchSkillRankAxes()` : copie superficielle (`KeyExprs`/`Indexes` partagés) malgré le godoc « défensive ».
+- `indexcheck.scanReference` : `Report.Truncated` jamais vrai en mode `Sample` (sans conséquence).
+- `families_parite_ts_test.go` : le motif `[a-z_]+` ne verrait pas une famille TS avec chiffre ou majuscule.
+- `skillchain/chains.go` : l'exhaustivité repose sur un corpus manuel ; une 5e chaîne au seul classifier passe.
+- `equipment_placements.go` 628 -> 639 L et `no_art_patterns_test.go` 823 L (règle 5, baseline).
+- D-H2 : pas de garde-rail Go appariant `usageWallPanelIDs` au manifeste (le garde web `placementPanels.guard.test.ts` rougit, mais nomme la table web).
+- `docs/adr/0017:4` garde un emoji dans la ligne Status réécrite par G.1.
+- `TestCatalogueRecensementDesSoclesNeutres` : dernière assertion tautologique.

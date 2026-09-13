@@ -40,6 +40,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // Cles metriques canoniques utilisees dans MetricXKey/MetricYKey.
@@ -91,6 +92,12 @@ type TimeseriesService struct {
 	// du joueur suivi sur le scope. Câblé gated (capability match.objective.stats,
 	// Infinite) ; nil → bloc ObjectiveStats omis. Best-effort.
 	objectiveStatsRepo port.ObjectiveStatsRepository
+	// weaponRangeRepo / sessionUsageRepo + usageFriends : les deux sections migrées depuis
+	// la Synthèse le 2026-09-13. Optionnels, gated au câblage — cf.
+	// timeseries_service_sections.go.
+	weaponRangeRepo  port.WeaponRangeRepository
+	sessionUsageRepo port.SessionUsageRepository
+	usageFriends     teammates.FriendGamertagsResolver
 }
 
 // highlightEventsLoader expose la sous-API du HighlightEventsRepo per-player
@@ -331,11 +338,16 @@ func (s *TimeseriesService) GetPage(
 		resp.IntensityRows = buildIntensityRows(corrected, matches, s.playerXUID, timeline.GameplayDurationsMS(timelines))
 	}
 
+	// Portée des engagements (onglet Résumé) + Usages d'équipement (onglet Progression) :
+	// sections migrées depuis la Synthèse, MÊME producteur, MÊME scope filtré.
+	filteredCanon := filterCanonicalByMatchIDs(canonicalRows, matches)
+	s.attachMigratedSections(ctx, &resp, filteredCanon)
+
 	// BriefingKPIs : KPIs sur les rows canoniques filtres (memes match_ids que
 	// matches). Alimente le composant <SessionBriefing> en mode solo. Reutilise
 	// ComputeKPIStats sans re-filtrer les filtres metier.
-	if filtered := filterCanonicalByMatchIDs(canonicalRows, matches); len(filtered) > 0 {
-		briefingKPIs := analysis.ComputeKPIStats(filtered, games.EffectiveHpToKill(s.titleSlug))
+	if len(filteredCanon) > 0 {
+		briefingKPIs := analysis.ComputeKPIStats(filteredCanon, games.EffectiveHpToKill(s.titleSlug))
 		resp.BriefingKPIs = &briefingKPIs
 	}
 

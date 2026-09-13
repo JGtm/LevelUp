@@ -117,10 +117,15 @@ export function padScaleFor(weapon: string, labels: PadLabels): PadScale {
  *
  * 1. une famille d'équipement connue rend son libellé bilingue local (`padEquipmentFamily`) ;
  * 2. sinon le libellé bilingue du document, s'il nomme cet identifiant ;
- * 3. sinon l'identifiant lui-même — et c'est VOULU pour une arme hors catalogue du titre
- *    (l'hexadécimal est alors la seule chose vraie qu'on puisse écrire, cf. la famille
- *    `0xD7915565` du registre des reports). Une famille d'équipement, elle, ne peut jamais
- *    tomber dans ce cas : elle est nommée à l'étape 1 ou elle n'est pas dans la table.
+ * 3. sinon l'identifiant lui-même — et c'est VOULU pour une arme hors catalogue du titre :
+ *    l'hexadécimal est alors la seule chose vraie qu'on puisse écrire.
+ *    L'EXEMPLE CITÉ ICI JUSQU'AU 2026-09-13 ÉTAIT FAUX. La famille `0xD7915565` (Mutilator)
+ *    n'était pas une arme « hors catalogue » : elle était nommée depuis avril, et il ne
+ *    manquait que son identifiant au registre du rejeu — un défaut, corrigé côté serveur, et
+ *    non un cas assumé. Le repli reste inchangé, mais il ne se justifie plus par elle : une
+ *    arme du jeu qui tombe à l'étape 3 est un manque à instruire, pas une fatalité.
+ *    Une famille d'équipement, elle, ne peut jamais tomber dans ce cas : elle est nommée à
+ *    l'étape 1 ou elle n'est pas dans la table.
  */
 export function padNameFor(
   weapon: string,

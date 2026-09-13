@@ -77,6 +77,16 @@ type DataHealthCheckResult struct {
 	PSAIndexDesyncPlayers     int
 	PSAIndexDesyncKeys        int
 	PSAIndexRowsMissing       int
+	// MSRIndex* (G.3 des finitions v7.5, 2026-09-13) : meme garde, meme doctrine,
+	// sur `match_skill_rank` — ou la desynchronisation a ete MESUREE le 2026-09-13
+	// (idx_msr_playlist : 22 lignes servies pour 1 826 reelles, player DB JGtm).
+	// DETECTION SEULE (cf. data_health_msr_index.go). MSRIndexDesyncKeys entre dans
+	// WarningsTotal ; MSRIndexPlayersUnmeasured gele la jauge expvar.
+	MSRIndexPlayersScanned    int
+	MSRIndexPlayersUnmeasured int
+	MSRIndexDesyncPlayers     int
+	MSRIndexDesyncKeys        int
+	MSRIndexRowsMissing       int
 	Duration                  time.Duration
 }
 
@@ -207,7 +217,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	}
 
 	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills +
-		res.GarbageBannerURLs + res.PSAIndexDesyncKeys
+		res.GarbageBannerURLs + res.PSAIndexDesyncKeys + res.MSRIndexDesyncKeys
 	res.Duration = time.Since(start)
 
 	// Publie la jauge expvar des trous LUSR (dernier scan complet uniquement). Les
@@ -215,6 +225,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// monitoring + auto-heal), mais sont toujours loggés.
 	publishLUSRGaugeIfComplete(ctx, res)
 	publishPSAIndexGaugeIfComplete(ctx, res)
+	publishMSRIndexGaugeIfComplete(ctx, res)
 
 	// Auto-heal (remédiation bornée) : 1 joueur/cycle max, le plus impacté, seulement
 	// si le kill-switch est ON (défaut OFF → alerte seule).
@@ -229,7 +240,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// loggué en WARN — il n'a pas pu tout mesurer et ne doit pas passer pour « sain ».
 	// Idem si des joueurs LUSR n'ont pas pu être mesurés (scan partiel, jauge gelée) :
 	// « unmeasured ≠ sain ».
-	unmeasured := res.LUSRPlayersUnmeasured + res.PSAIndexPlayersUnmeasured
+	unmeasured := res.LUSRPlayersUnmeasured + res.PSAIndexPlayersUnmeasured + res.MSRIndexPlayersUnmeasured
 	logHealth := slog.InfoContext
 	if res.ProbeErrors > 0 || unmeasured > 0 {
 		logHealth = slog.WarnContext
@@ -245,6 +256,8 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"lusr_players_unmeasured", 0,
 			"psa_index_players_scanned", res.PSAIndexPlayersScanned,
 			"psa_index_desync_keys", 0,
+			"msr_index_players_scanned", res.MSRIndexPlayersScanned,
+			"msr_index_desync_keys", 0,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
 	} else {
@@ -265,6 +278,11 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"psa_index_desync_players", res.PSAIndexDesyncPlayers,
 			"psa_index_desync_keys", res.PSAIndexDesyncKeys,
 			"psa_index_rows_missing", res.PSAIndexRowsMissing,
+			"msr_index_players_scanned", res.MSRIndexPlayersScanned,
+			"msr_index_players_unmeasured", res.MSRIndexPlayersUnmeasured,
+			"msr_index_desync_players", res.MSRIndexDesyncPlayers,
+			"msr_index_desync_keys", res.MSRIndexDesyncKeys,
+			"msr_index_rows_missing", res.MSRIndexRowsMissing,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
 	}
@@ -345,6 +363,10 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 	// 6. Index ART de personal_score_awards désynchronisé (read-only, borné,
 	// DÉTECTION SEULE — implémentation dans data_health_psa_index.go).
 	s.auditTitlePSAIndex(ctx, pr, slug, res)
+
+	// 7. Index ART de match_skill_rank desynchronise (read-only, borne, DETECTION
+	// SEULE — implementation dans data_health_msr_index.go).
+	s.auditTitleMSRIndex(ctx, pr, slug, res)
 
 	return true
 }

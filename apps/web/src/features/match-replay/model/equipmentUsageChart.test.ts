@@ -55,7 +55,7 @@ const TEAMS: EquipmentUsageTeam[] = [
     total: tally({
       grapplePulls: 3,
       episodes: { camo: { count: 1, ms: 5000, kills: 0 } },
-      grenades: { 0: 10 },
+      deployed: { wall: 10 },
     }),
   },
   {
@@ -100,14 +100,14 @@ const GROUPS: UsageColumnGroup[] = [
     ],
   },
   {
-    key: 'grenades',
-    label: 'Grenades lancées',
-    hint: 'réserve grenades',
+    key: 'equipment',
+    label: 'Équipement',
+    hint: 'réserve équipement',
     columns: [
       {
-        key: 'grenade.0',
-        label: 'Fragmentation',
-        value: (x) => x.grenades[0] ?? 0,
+        key: 'wall',
+        label: 'Mur de protection',
+        value: (x) => x.deployed.wall ?? 0,
         format: (v) => String(v),
       },
     ],
@@ -120,13 +120,13 @@ const VISUAL = {
 }
 
 describe('l’encre d’une famille de geste', () => {
-  it('donne une teinte DIFFÉRENTE à chacune des quatre familles (E2 : deployed+dropped -> equipment)', () => {
+  it('donne une teinte DIFFÉRENTE à chacune des trois familles (E2 : deployed+dropped -> equipment)', () => {
     const encres = Object.values(USAGE_GROUP_TOKENS)
     expect(new Set(encres).size).toBe(encres.length)
   })
 
   it('rend une variable CSS de jeton, jamais un hex', () => {
-    expect(usageGroupColor('grenades')).toMatch(/^var\(--ac-[a-z-]+\)$/)
+    expect(usageGroupColor('equipment')).toMatch(/^var\(--ac-[a-z-]+\)$/)
   })
 
   it('suit la FAMILLE et pas son rang : une famille absente ne repeint pas les autres', () => {
@@ -134,7 +134,7 @@ describe('l’encre d’une famille de geste', () => {
     const sansGrappin = usageLeaves(GROUPS.slice(1))
     const encre = (leaves: ReturnType<typeof usageLeaves>, label: string) =>
       usageGroupColor(leaves.find((l) => l.column.label === label)!.group)
-    expect(encre(sansGrappin, 'Fragmentation')).toBe(encre(complet, 'Fragmentation'))
+    expect(encre(sansGrappin, 'Mur de protection')).toBe(encre(complet, 'Mur de protection'))
   })
 })
 
@@ -146,7 +146,6 @@ describe('usageGestureCount — la part se compte en GESTES', () => {
   it('somme les familles déployées et lâchées de la colonne équipement fusionnée (E2)', () => {
     expect(usageGestureCount(tally({ deployed: { wall: 2, sensor: 1 } }), 'equipment')).toBe(3)
     expect(usageGestureCount(tally({ dropped: { wall: 1 } }), 'equipment')).toBe(1)
-    expect(usageGestureCount(ALPHA, 'grenades')).toBe(4)
     expect(usageGestureCount(ALPHA, 'grapple')).toBe(2)
   })
 
@@ -196,7 +195,7 @@ describe('buildUsageGrid — la grille par joueur', () => {
       usageGroupColor('grapple'),
       usageGroupColor('grapple'),
     ])
-    expect(m.cells[0][3].color).toBe(usageGroupColor('grenades'))
+    expect(m.cells[0][3].color).toBe(usageGroupColor('equipment'))
   })
 
   it('laisse vide une colonne NON MESURÉE, sans la confondre avec un zéro', () => {
@@ -219,7 +218,8 @@ describe('buildUsageShares — la part de chaque équipe', () => {
 
   it('n’écrit aucun segment pour un camp qui n’a rien fait de cette famille', () => {
     const lignes = buildUsageShares({ teams: TEAMS, groups: GROUPS, ...VISUAL })
-    expect(lignes.find((l) => l.key === 'grenades')!.segments.map((s) => s.count)).toEqual([10])
+    // 10 poses de mur + 1 activation de power-up (l'épisode camo du camp t0, cf. `usageGestureCount`).
+    expect(lignes.find((l) => l.key === 'equipment')!.segments.map((s) => s.count)).toEqual([11])
   })
 
   it('ne rend aucune ligne pour une famille qu’aucun camp n’a employée', () => {
