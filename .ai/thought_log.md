@@ -106984,3 +106984,36 @@ le balayage de prefixes avec le garde « au moins un composant decode » est l'o
 calibrer. Rapport complet : `.ai/MESURE_ENTETE_TI9_47BITS_2026-09-11.md`. Decouverte hors
 perimetre, consignee et NON traitee : verifier le piege « 0 composant » dans les bancs de
 calibration existants de `filmdec`.
+
+---
+
+## [2026-09-03] Son du propulseur — la banque `sb_007_abl_evade` n'a qu'UN geste, livre en trois variantes — Complete
+
+**Ce que la mesure corrige d'abord.** La table du 2026-08-26 donnait
+`sb_007_abl_evade 916d040a globals 6 2` : **six MEDIAS, deux evenements**, et non « six
+evenements ». Le choix du stem ne se faisait donc pas parmi six gestes.
+
+**Decision technique : les deux evenements sont nommes, et ils forment une paire de
+perspectives.** Gabarits `play_007_abl_evade_*` contre les 138 886 jetons du binaire,
+14 formes, 2 cibles, **esperance 0,00091** — `307114b6 = play_007_abl_evade_blast_player` et
+`c4c81ff9 = play_007_abl_evade_blast_nonplayer`. Une passe independante par vocabulaire curie
+(189 mots, esperance 0,0032) sort la meme premiere ligne et aucun concurrent.
+
+**La preuve qui ne vient pas du hachage.** Les trois medias de `blast_player` sont STEREO
+(118-128 kbps), les trois de `blast_nonplayer` MONO (73-79 kbps), sans exception : la
+perspective du porteur n'est pas spatialisee, celle des autres l'est. Lue apres le cassage,
+elle ne l'a pas oriente.
+
+**Resultats observes.** Trois `.wav` livres dans `static/sounds/halo_infinite/` —
+`thruster_activate{,_v2,_v3}.wav`, 0,996 / 0,895 / 0,830 s, 48 kHz stereo PCM 16 bits, crete
+-1,00 dBTP, RMS -18 a -19 dB (voisins : `grapple_fire` -15,7, `camo_activate` -19,7). Duree
+egale au compte d'echantillons de la source (non tronquee), enveloppe d'impulsion mesuree
+(-7,3 dB au premier dixieme, -57,1 au dernier). `-variante` ajoute a `_outils/rendu` (additif,
+defaut inchange) : l'outil canonique ne savait servir qu'une variante par couche.
+
+**Conclusion / prochaine etape.** Le cablage web n'est PAS dans ce lot (consigne). Il devra
+declarer `thruster_activate` plus ses deux variantes via `SOUND_VARIANTS`. **Avertissement :
+le garde-rail `replaySoundAssets.guard.test.ts` interdit l'asset mort — les trois fichiers
+sont rouges tant que les stems ne sont pas declares ; les deux lots doivent atterrir
+ensemble.** Rapport complet : `.ai/V7.5/RE_SON_PROPULSEUR_2026-09-03.md`.
+
