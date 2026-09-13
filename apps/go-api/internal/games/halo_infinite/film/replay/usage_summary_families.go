@@ -43,6 +43,13 @@ const (
 	usageFamilyRepulsor = "repulsor"
 )
 
+// UsageFamilyWallKey — LA clé de famille du mur de protection, exportée pour les
+// lecteurs de `deployed_json` hors de ce paquet (bloc « formes retenues » de la page
+// Escouade, 2026-09-13 : le mur y est l'un des cinq gestes d'équipement mesurés).
+// Exportée plutôt que recopiée : deux orthographes de la même famille finiraient par
+// diverger, et le compilateur ne dirait rien.
+const UsageFamilyWallKey = usageFamilyWall
+
 // usageGrenadeFamilies — les familles de GRENADE du manifeste (liste `gggl` du jeu).
 // Un lâcher de grenade à la mort n'est PAS un « objet lâché au sol » au sens du
 // résumé (décision utilisateur du 2026-09-04 : les grenades ne sont pas des

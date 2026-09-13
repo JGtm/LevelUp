@@ -603,6 +603,13 @@ type TeammatesPageResponse struct {
 	// scope filtré n'a aucun match ; Available=false avec raison machine pour un
 	// titre sans film.usage_summary.
 	EquipmentUsage *EquipmentUsageBlock `json:"equipment_usage,omitempty"`
+
+	// SquadFormes : le bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du
+	// 2026-09-13) — la matière des dix-neuf cartes des trois blocs (usages
+	// d'équipement, contrôle des armes spéciales, objectifs) sur le MÊME scope
+	// filtré que EquipmentUsage. Nil si le scope filtré n'a aucun match ;
+	// Available=false avec raison machine pour un titre sans film.usage_summary.
+	SquadFormes *SquadFormesBlock `json:"formes_retenues,omitempty"`
 }
 
 // DataIssue décrit un chargement dégradé (best-effort) d'une page.

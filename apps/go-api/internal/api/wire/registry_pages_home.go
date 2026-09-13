@@ -239,6 +239,15 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	// avec raison machine). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
 		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb))
+		// Bloc « formes retenues » (lot D2, 2026-09-13) : MÊME repo d'usage, plus les
+		// colonnes d'objectif quand le titre les publie — deux gates indépendantes, la
+		// seconde ne retirant que les cartes d'objectif. Le catalogue d'armes du titre
+		// se lit à la requête depuis la racine du dépôt (noms des socles).
+		var objectives port.SquadFormesObjectiveRepository
+		if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
+			objectives = duckdb.NewObjectiveStatsRepo(pdb)
+		}
+		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives, r.cfg.RepoRoot)
 	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
