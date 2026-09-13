@@ -74,14 +74,32 @@ type GroundWeapon struct {
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
 	Z float32 `json:"z,omitempty"`
-	// W est la famille d'arme en hexadécimal 8 chiffres — MÊME convention et MÊME espace
-	// d'identifiants que Loadout.W et WeaponChange.W (le mot d'identité du record de création
-	// se résout dans le même catalogue, c'est le filtre de la chaîne des socles).
+	// W est la famille d'arme en hexadécimal 8 chiffres, écrite `%08x` : MINUSCULES ET SANS
+	// PRÉFIXE `0x`.
+	//
+	// CE N'EST PAS LA MÊME ÉCRITURE QUE Loadout.W / WeaponChange.W, et ce commentaire a
+	// longtemps affirmé le contraire (« MÊME convention et MÊME espace d'identifiants ») —
+	// rectifié le 2026-09-13 (rapport 6.6, découverte 1). Les deux désignent bien la MÊME
+	// famille d'arme, mais `Loadout.W` s'écrit `0x%08X` (majuscules, préfixé). Mesuré sur
+	// `0891225f` : les deux ensembles portent les mêmes 8 familles et leur intersection
+	// BRUTE est VIDE. Joindre l'un sur l'autre sans normaliser ne rend donc rien — et
+	// silencieusement, puisqu'une jointure vide ressemble à une absence de données.
+	//
+	// Le web normalise avant de joindre (`weaponLabelKeyOf`,
+	// `features/match-replay/layers/useReplayGroundWeapons.ts`, lot 6.5). Tout nouveau
+	// consommateur doit faire de même. Le format de CE champ ne change pas : le parc cuit
+	// l'écrit ainsi, et le rectifier imposerait une recuisson complète pour une casse.
 	W string `json:"w"`
-	// Origin est l'origine MESURÉE de l'apparition, même vocabulaire que les poses
-	// d'équipement : `dropped` (une vie de bipède s'achève à moins de 2 frames et 1,5 m —
-	// l'arme d'un mort) ou `spawned` (le reste : l'arme de départ abandonnée en ramassant
-	// autre chose, l'arme éjectée d'un râtelier).
+	// Origin est l'origine MESURÉE de l'apparition : `dropped` (une vie de bipède s'achève à
+	// moins de 2 frames et 1,5 m — l'arme d'un mort) ou `spawned` (le reste : l'arme de départ
+	// abandonnée en ramassant autre chose, l'arme éjectée d'un râtelier).
+	//
+	// MÊME VOCABULAIRE QUE LES POSES D'ÉQUIPEMENT, PLUS LA MÊME RÈGLE (2026-09-13, item F.1) :
+	// l'équipement a perdu sa clause de DISTANCE — son `dropped` ne pose plus qu'une question
+	// temporelle. L'ARME AU SOL garde les deux, et c'est délibéré : sa question n'est pas « cet
+	// objet a-t-il été déployé ou lâché ? » mais « d'où cette arme vient-elle ? », pour laquelle
+	// le LIEU de la fin de vie est le fait même. Les deux origines ne se comparent donc plus
+	// terme à terme.
 	Origin string `json:"origin"`
 	// Dropper est le slot de la VIE DE BIPÈDE QUI S'ACHÈVE à moins de `originDropWindowUS`
 	// (2 frames) et `originDropMaxDist` (1,5 m) de la naissance de l'objet (`gwPadsClass`,

@@ -205,7 +205,14 @@ func (e *SyncEngine) RecomputeLUSRCanonical(ctx context.Context) (int, error) {
 	}
 	defer releaseShared()
 
-	return RecomputeLUSRCanonicalForPlayer(ctx, playerHandle.SQLDb(), sharedDB, e.xuid)
+	// Titre du MOTEUR dans le ctx (miroir de engine_postsync_scoring.go) : le seam
+	// LUSR lit ctxkeys.TitleSlug alors que les bases ouvertes ici sont celles de
+	// e.titleSlug. Un ctx portant un AUTRE titre (onglet admin sur le second titre,
+	// header X-LevelUp-Title) écrirait sa chaîne dans CETTE base — corruption
+	// h5_arena du 2026-06-26 (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3 G4).
+	// Ce point unique couvre tous les appelants (admin, CLI, backfill_orchestrator).
+	titleCtx := ctxkeys.WithTitleSlug(ctx, e.titleSlug)
+	return RecomputeLUSRCanonicalForPlayer(titleCtx, playerHandle.SQLDb(), sharedDB, e.xuid)
 }
 
 // RunBackfillCSR ré-importe les CSR par-match depuis l'API Halo skill pour
@@ -487,7 +494,7 @@ func loadAllMatchIDsForPlayer(ctx context.Context, sharedDB *sql.DB, xuid string
 // loadFlaggedMatchIDs retourne les match_id dont la dominance a DÉJÀ été calculée
 // (dominance_flag NON-NULL, valeur 0 INCLUSE) — player DB.
 //
-// Append-only #23046 — IDEMPOTENCE : on inclut dominance_flag=0. Un match
+// Append-only #23645 — IDEMPOTENCE : on inclut dominance_flag=0. Un match
 // non-dominant (0 = ni domination ni humiliation ni comeback = la MAJORITÉ des
 // matchs) recalculé donne TOUJOURS 0 ; le traiter comme « non calculé » le ferait
 // ré-INSÉRER (stage='dominance', valeur 0) à chaque backfill admin non-force →

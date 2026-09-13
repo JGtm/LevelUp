@@ -22,6 +22,7 @@ package sync
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sync"
 	"testing"
@@ -176,6 +177,7 @@ func TestGate_DeltaSkip_EnrichmentConverges_integration(t *testing.T) {
 					i, u.gamertag, v.Count)
 			}
 		}
+		assertNoForeignLUSRChain(ctx, t, playerSQL, i, u.gamertag)
 	}
 
 	// Invariants GLOBAUX (une fois, pas par joueur) : zéro FAIL non plus.
@@ -321,5 +323,33 @@ func TestGate_ConcurrentSquadSync_Converges_integration(t *testing.T) {
 			t.Errorf("user%d (%s) : %d violation(s) FAIL après course concurrente : %v",
 				i, u.gamertag, len(fails), fails)
 		}
+	}
+}
+
+// infiniteLUSRChains — les chaînes LUSR du titre halo_infinite, LUES SUR PIÈCES dans
+// internal/games/halo_infinite/skillchain/classify.go (seules valeurs retournées par
+// ClassifyLUSRChain, hors "" = match exclu du LUSR). Les constantes sync.LUSRChain*
+// sont verrouillées byte-identiques aux littéraux du package de titre par
+// TestSkillChainLiterals_NoDrift : une chaîne ajoutée au titre sans l'être ici rend
+// le gate rouge, jamais silencieux.
+var infiniteLUSRChains = []string{
+	LUSRChainArenaSlayer,
+	LUSRChainArenaObjectif,
+	LUSRChainBTB,
+	LUSRChainChaos,
+}
+
+// assertNoForeignLUSRChain branche l'invariant I14 sur le gate : aucune ligne
+// match_skill_rank d'une player DB Infinite ne porte la chaîne LUSR d'un autre titre.
+// Filet de données du correctif structurel C.1/C.2 (incident 2026-06-26 : 2 479 lignes
+// h5_arena écrites dans 4 player DB halo_infinite).
+func assertNoForeignLUSRChain(ctx context.Context, t *testing.T, playerDB *sql.DB, idx int, gamertag string) {
+	t.Helper()
+	rep, err := invariants.CheckPlayerLUSRChains(ctx, playerDB, infiniteLUSRChains)
+	if err != nil {
+		t.Fatalf("CheckPlayerLUSRChains user%d (%s): %v", idx, gamertag, err)
+	}
+	if fails := rep.Failures(); len(fails) > 0 {
+		t.Errorf("user%d (%s) : chaîne(s) LUSR étrangère(s) au titre de la base : %v", idx, gamertag, fails)
 	}
 }

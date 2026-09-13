@@ -217,7 +217,7 @@ ORDER BY xuid, count DESC`
 // d'épaule, arme TENUE). Sur Infinite kill_kind est NULL → 0. buildFragDistribution les
 // retire des classes gun (déjà servis par les compteurs natifs) ; le breakdown par arme
 // garde kills complet.
-// Requête sur v_weapon_kills (append-only #23046 Phase 2 : la vue ne retourne
+// Requête sur v_weapon_kills (append-only #23645 Phase 2 : la vue ne retourne
 // que la dernière génération par (match_id,xuid) — sinon COUNT(*) fan-out).
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q28BulkWeaponKills = `

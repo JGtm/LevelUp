@@ -288,8 +288,11 @@ data/ui_prefs.json
 # Build artifacts Go
 # GOCACHE isoles poses a la main (merges, gates paralleles, executeurs en worktree) :
 # convention recurrente du depot (ex. .gocache-merge, .gocache-merge-31). Caches de build
-# purement jetables, plusieurs Go par dossier — jamais versionnes.
+# purement jetables, plusieurs Go par dossier — jamais versionnes. Le cache de golangci-lint
+# suit la meme regle et pour la meme raison : il est GLOBAL par defaut, donc isole par
+# worktree des que deux gates tournent en parallele (lot F, 2026-09-13).
 .gocache*/
+.golangci-cache*/
 apps/go-api/bin/
 apps/go-api/*.exe
 data/auth/

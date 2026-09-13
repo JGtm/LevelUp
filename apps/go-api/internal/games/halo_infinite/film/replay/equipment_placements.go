@@ -226,17 +226,29 @@ const (
 // classement, donc celui-ci ne se règle pas, il se constate.
 const originDropWindowUS = 200_000
 
-// originDropMaxDist est la distance MAXIMALE, en mètres, entre la pose et la dernière position
-// du poseur pour que la pose soit un LÂCHER. 1,5 m — le seuil du plan, écrit avant la mesure,
-// et là encore validé des deux côtés : les lâchers sont à 0,63 m de médiane, les déploiements
-// à 5,6 à 21,3 m. Un objet lâché tombe aux pieds de celui qui le portait.
+// originDropMaxDist est la distance MAXIMALE, en mètres, entre un objet créé et la dernière
+// position de celui qui le portait. 1,5 m — le seuil du plan des poses, écrit avant la mesure,
+// validé des deux côtés à l'époque (lâchers à 0,63 m de médiane, déploiements à 5,6 à 21,3 m).
+//
+// ELLE NE SERT PLUS À CLASSER UNE POSE D'ÉQUIPEMENT (item F.1, 2026-09-13) : `equipmentOrigin`
+// ne pose plus qu'une question temporelle, parce que cette clause promouvait `deployed` des
+// lâchers à la mort dont le corps avait glissé (8 appareils de mur sur 295 poses, mesure E0 du
+// 2026-09-10 ; 15 poses sur 5 761 au corpus de F.0). La constante reste parce que TROIS AUTRES
+// chaînes du paquet posent leur propre question avec elle — les ARMES AU SOL
+// (`ground_weapon_rules.go`, le socle d'où l'arme vient), le DRAPEAU (`flag_objects.go`,
+// `flag_carries_lives.go`) et le CRÂNE. Aucune ne classe une pose d'équipement.
 const originDropMaxDist = 1.5
 
 // equipLife est une vie de bipède : les positions d'un même slot sans trou majeur, réduites à
-// ce dont l'origine a besoin — quand elle finit, et où.
+// quand elle finit et où.
 type equipLife struct {
 	from, to uint64
 	// x, y, z est la DERNIÈRE position répliquée de la vie : là où le poseur s'arrête.
+	//
+	// PLUS AUCUN LECTEUR CÔTÉ ÉQUIPEMENT depuis le 2026-09-13 (item F.1) : l'origine d'une pose
+	// d'équipement est une question purement TEMPORELLE. Ces trois champs servent la chaîne des
+	// ARMES AU SOL (`gwPadsClass`, `ground_weapon_objects.go`), qui pose une autre question — le
+	// socle d'où l'arme vient — et pour laquelle le lieu de la fin de vie est le fait même.
 	x, y, z float32
 }
 
@@ -270,6 +282,31 @@ func equipmentLives(positions []filmdec.BipedPosition) map[uint32][]equipLife {
 
 // equipmentOrigin classe une pose : lâchée à la fin de la vie du poseur, ou déployée.
 //
+// LA QUESTION EST TEMPORELLE, ET ELLE L'EST SEULE (item F.1 du 2026-09-13). La clause de
+// DISTANCE qui doublait la fenêtre — « et à moins d'`originDropMaxDist` de la dernière position
+// du poseur » — a été RETIRÉE : elle promouvait `deployed` des créations qui tombent à l'image
+// exacte de la fin d'une vie, c'est-à-dire des lâchers à la mort dont le corps a glissé de plus
+// d'un mètre et demi avant que sa dernière position ne soit répliquée. Le fait temporel, lui,
+// tient : les lâchers sont à 20-40 ms de la fin de vie et les déploiements à 14-42 SECONDES —
+// trois ordres de grandeur, mesurés des deux côtés, et n'importe quel seuil entre 1 s et 10 s
+// rendrait le même classement.
+//
+// CE QUI A ÉTÉ CHERCHÉ AVANT DE RETIRER LA CLAUSE, ET QUI N'EXISTE PAS. L'instruction F.0
+// (`.ai/V7.5/RAPPORT_F0_DEPLOIEMENT_103_2026-09-13.md`) a marché la LISTE COMPLÈTE d'événements
+// de 25 films et RÉSOLU les références du type 103 `EquipmentSpawnedObject` (index 13 bits,
+// base 512, plus la génération : 93,6 % de résolution contre 2,2 % au témoin de hasard). Le
+// verdict est net et il ferme la piste : le 103 est le fait « une PIÈCE a été engendrée » — il
+// désigne 216 des 216 poses de panneau de mur publiées, et **ZÉRO** pose d'un appareil PORTÉ,
+// ni déployé (0 sur 31) ni lâché (0 sur 145). Le film ne porte donc aucun signal d'événement
+// pour le déploiement d'un capteur, d'un traqueur, d'un écran ou d'un champ de réparation, et
+// l'origine d'une pose ne peut pas se lire dessus. La voie indirecte — « une pièce de la même
+// famille est-elle née à ±5 s ? » — a été mesurée aussi, et elle ne sépare pas davantage
+// (14,7 % sur les `deployed` contre 21,8 % sur les `dropped`).
+//
+// `originDropMaxDist` SURVIT au paquet : la chaîne des ARMES AU SOL, celle du DRAPEAU et celle
+// du crâne s'en servent pour leur propre question, qui n'est pas celle-ci. Ce retrait ne porte
+// que sur l'équipement.
+//
 // LA VIE RETENUE EST CELLE QUI CONTIENT L'INSTANT DE LA POSE, à défaut la plus proche en
 // temps : écarter silencieusement une pose dont la vie ne couvre pas l'instant biaiserait la
 // mesure vers les cas faciles.
@@ -295,9 +332,6 @@ func equipmentOrigin(lives []equipLife, p filmdec.EquipmentPlacement) string {
 		}
 	}
 	if equipTimeGap(p.T0US, best.to) > originDropWindowUS {
-		return OriginDeployed
-	}
-	if dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{best.x, best.y, best.z}) >= originDropMaxDist {
 		return OriginDeployed
 	}
 	return OriginDropped

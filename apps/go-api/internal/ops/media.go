@@ -531,7 +531,7 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 	}
 
 	// Nouvelle entrée. Dédup applicative file_path : l'ex-contrainte UNIQUE(file_path)
-	// a été retirée pour éradiquer le bug ART DuckDB #23046 (file_path est muté par
+	// a été retirée pour éradiquer le bug ART DuckDB #23645 (file_path est muté par
 	// conversion/HLS/reconcile → muter une colonne indexée ART = FATAL invalidated,
 	// blast MAX shared_social). On reproduit la dédup en applicatif (SELECT-then-INSERT) :
 	// skip si une ligne porte déjà ce file_path. Race-safe car insertMediaFile tourne sous

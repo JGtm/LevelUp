@@ -23,7 +23,7 @@
 // Choix de schéma (décision 2026-06-23) : PK simple + INSERT OR IGNORE, comme
 // labels.go / career_ranks / mode_name_tr. C'est un référentiel STATIQUE
 // seedé au boot (zéro writer concurrent, zéro UPDATE per-match) → hors périmètre
-// du bug ART #23046, donc pas d'append-only `_latest`. L'extensibilité (TTK & co
+// du bug ART #23645, donc pas d'append-only `_latest`. L'extensibilité (TTK & co
 // « un jour ») passe par la colonne `extra` JSON, pas par une nouvelle génération.
 //
 // Seed = table §6 du plan, VÉRIFIÉE halopedia.org + wiki.halo.fr. Les filmshell
@@ -57,7 +57,7 @@ import (
 // auto-guérit tout ajout futur (aucun nouveau step à versionner).
 //
 // Sûreté : le seed est INSERT OR IGNORE + CREATE TABLE IF NOT EXISTS (référentiel
-// STATIQUE, PK simple, zéro writer concurrent, hors périmètre du bug ART #23046 —
+// STATIQUE, PK simple, zéro writer concurrent, hors périmètre du bug ART #23645 —
 // décision 2026-06-23). Le rejouer n'insère QUE les lignes manquantes : aucune
 // écriture destructive, aucun UPDATE. Retourne le nombre de lignes nouvellement
 // insérées (delta pré/post seed) pour la télémétrie de boot.

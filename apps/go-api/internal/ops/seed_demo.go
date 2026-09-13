@@ -983,7 +983,7 @@ func recreateSharedViews(ctx context.Context, db *sql.DB) error {
 		CREATE OR REPLACE VIEW v_match_full AS SELECT mr.* FROM match_registry mr`); err != nil {
 		return fmt.Errorf("v_match_full: %w", err)
 	}
-	// v_weapon_kills : tolère table absente. Append-only #23046 (Phase 2) : la vue
+	// v_weapon_kills : tolère table absente. Append-only #23645 (Phase 2) : la vue
 	// ne retourne que la dernière génération par (match_id,xuid) — comme la migration
 	// shared_append_only_weapon_kills_v1 (le demo copie prod qui porte generation_id).
 	_, _ = db.ExecContext(ctx, `

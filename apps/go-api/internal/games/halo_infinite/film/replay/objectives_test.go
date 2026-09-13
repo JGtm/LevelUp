@@ -276,3 +276,54 @@ func TestActionSansPontEstComptee(t *testing.T) {
 		})
 	}
 }
+
+// TestCouvertureNeCompteQueLesFamillesDObjectif — LE DENOMINATEUR DU CALQUE DES OBJECTIFS
+// (D.2, 2026-09-13).
+//
+// Les tables nommees portent `kills` (ancre d'identite du balayage) et `assists` (controle
+// croise) : publiees comme les autres, elles faisaient 119 des 218 « actions disponibles » de
+// `8bc6074f` et 93 des 148 de `32d9a94f`. Les deux artefacts annoncaient 100 % de couverture
+// d'objectifs sur un calque majoritairement hors sujet.
+//
+// LA PUBLICATION NE PERD RIEN : une lecture vraie du film ne se jette pas (doctrine R1).
+//
+// MUTATION : recompter `len(evs)` -> `available` remonte a 4, rouge.
+func TestCouvertureNeCompteQueLesFamillesDObjectif(t *testing.T) {
+	evs := []objectiveevents.IdentifiedEvent{
+		ident(100, "a", objectiveevents.StatKills),
+		ident(200, "a", objectiveevents.StatZoneCaptures),
+		ident(300, "b", objectiveevents.StatAssists),
+		ident(400, "b", objectiveevents.StatFlagGrabs),
+	}
+	got, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 10})
+	if len(got) != 4 {
+		t.Fatalf("%d actions publiees, attendu 4 — une lecture vraie a ete jetee", len(got))
+	}
+	if cov.Available != 2 || cov.Attached != 2 {
+		t.Errorf("couverture = %d/%d, attendu 2/2 (les frags et les assistances sortent)",
+			cov.Attached, cov.Available)
+	}
+	if !cov.Balanced() {
+		t.Errorf("couverture desequilibree : %+v", cov)
+	}
+}
+
+// TestCouvertureFamillesRejetsEtHorloge — les REJETS suivent la meme regle que le
+// denominateur : un frag hors fenetre ou sans identite ne grossit aucune categorie.
+func TestCouvertureFamillesRejetsEtHorloge(t *testing.T) {
+	evs := []objectiveevents.IdentifiedEvent{
+		ident(999_000, "a", objectiveevents.StatKills),       // hors fenetre, hors objectif
+		ident(999_000, "a", objectiveevents.StatZoneSecures), // hors fenetre, objectif
+		ident(100, "", objectiveevents.StatAssists),          // sans identite, hors objectif
+		ident(200, "", objectiveevents.StatFlagReturns),      // sans identite, objectif
+	}
+	_, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 10})
+	if cov.Available != 2 || cov.OutOfWindow != 1 || cov.NoSlot != 1 || !cov.Balanced() {
+		t.Errorf("couverture = %+v ; attendu disponibles 2, horsFenetre 1, sansSlot 1", cov)
+	}
+	// HORLOGE INUTILISABLE : tout le calque part hors fenetre — les familles d'objectif seules.
+	_, sansHorloge := buildObjectiveActions(evs, 0, 0, scoreClock{})
+	if sansHorloge.Available != 2 || sansHorloge.OutOfWindow != 2 || !sansHorloge.Balanced() {
+		t.Errorf("sans horloge : %+v ; attendu disponibles 2, horsFenetre 2", sansHorloge)
+	}
+}

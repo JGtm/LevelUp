@@ -183,6 +183,423 @@ donc aucun rendu ne change. Critere S9 ajoute (archetypes utiles a 100 % en imag
 Toujours aucun commit ; lancement de 0.A et 0.B sur go explicite.
 
 ---
+## [2026-09-13] Lot F.1 et F.2 des finitions v7.5 — l'origine d'une pose d'equipement devient purement TEMPORELLE — Complete (worktree wt-finitions-equipement, branche feat/finitions-equipement)
+
+**Decision technique principale.** F.0 ayant refute la branche « le film le dit » (le type 103
+est muet pour tout appareil PORTE : 0 sur 31 poses `deployed` et 0 sur 145 `dropped`), c'est la
+branche de REPLI du plan qui s'applique : `equipmentOrigin` ne pose plus qu'une question —
+« cette creation est-elle a moins de 200 ms de la fin d'une vie ? » — et la clause de DISTANCE
+disparait. Deux choix de fond. **La constante `originDropMaxDist` N'EST PAS supprimee** : le
+plan le demandait dans la branche « oui », mais sur pieces elle sert TROIS autres chaines du
+paquet — les armes au sol (`gwPadsClass`, le socle d'ou l'arme vient), le drapeau
+(`flag_objects.go`, `flag_carries_lives.go`) et le crane — qui posent une question differente.
+La supprimer aurait casse le paquet ; elle reste avec un commentaire qui dit qu'elle ne classe
+plus une pose d'equipement et pourquoi. **La mesure avant/apres ne recuit AUCUN artefact** :
+l'instrument rejoue la chaine de production (positions de bipede + poses `ti=37` +
+`equipmentLives`) et applique les DEUX regles aux MEMES poses, la regle d'avant etant recopiee
+sous le nom `f1OrigineAvant` avec le commentaire qui interdit de la prendre pour la regle
+vivante. Rien n'est ecrit nulle part.
+
+**Resultats observes.** **La carte de chaque film a du etre FERMEE avant de pouvoir mesurer une
+distance en metres**, et la premiere methode etait fausse : comparer la BOITE ENGLOBANTE des
+positions recalculees a celle que l'artefact publie rendait 0,47 m et 0,01 m sur deux films et
+**240,58 m** sur un troisieme dont la carte etait pourtant la bonne — parce que la production
+ECARTE les positions aberrantes avant de publier ses bornes. Remplacee par la MEDIANE des
+coordonnees par piste, robuste par construction : les 21 films mesures tiennent alors sous
+**0,20 m**. Deuxieme piege paye : le catalogue porte une quarantaine de canevas de Forge aux
+memes bornes, et les essayer un par un rebalayait le film quarante fois — la campagne restait
+bloquee sur un film BTB jusqu'a la deduplication des candidates. **Mesure finale, 21 films sur
+25, 5 363 poses** : `deployed` 472 -> 450 (**-22**), `dropped` 4 509 -> 4 531 (**+22**),
+`unknown` inchange. **Les 22 poses vont TOUTES dans le meme sens**, toutes a 19,9-171,7 ms de la
+fin de vie et a 1,51-2,70 m : mur 7, grenade a fragmentation 10, grappin 2, propulseur 1,
+traqueur 1, grenade spike 1. **L'attendu etait 15, et l'ecart est explique, pas excuse** : les
+15 cas du rapport F.0 §3.1 etaient reperes par « t0 == derniere frame du poseur », un proxy a la
+granularite de 100 ms, alors que le critere REEL est la fenetre de 200 ms — elle attrape 8 poses
+de plus, toutes sur `4f77afc1`, entre 44 et 172 ms de la fin de vie. 14 des 15 sont bien dans
+les 22 ; le quinzieme est sur `0797ce72`, film EXCLU de la mesure. **Quatre films hors mesure,
+dits** : deux sans artefact local, et deux films d'Aquarius dont AUCUNE carte du catalogue ne
+reproduit les reperes publies (29,2 et 29,9 m d'ecart median, contre moins de 0,20 m ailleurs) —
+decouverte D-F5, consignee et non traitee. **Le test est verrouille par MUTATION** : remettre la
+clause de distance fait echouer `TestEquipmentOriginSepareLacherDuDeploiement` sur exactement le
+cas « au bon instant, a 5 m », et un controle « loin ET apres la fenetre » borne la portee du
+changement.
+
+**F.2 statue `[!]`, avec sa mesure.** Aucune piece engendree n'est identifiable pour le capteur
+(28 consommations), le traqueur (6) ni l'ecran occultant (8) : leurs fenetres ne montrent que
+l'objet PORTE lui-meme — un seul GlobalID sert la forme portee et la forme deployee, ce qui est
+precisement pourquoi `origin` ne peut pas les separer. Et le CHAMP DE REPARATION ne porte
+qu'**UNE** consommation exploitable dans les 76 artefacts du parc. Le temoin POSITIF passe (le
+mur rend `0x528fce46` a x20,3 d'enrichissement), donc le negatif est ANCRE. Rien n'est ajoute au
+manifeste ni a `usageFamiliesWithSpawnedPiece` : y inscrire une famille sans piece ferait relire
+son « utilise » sur `DeployedByFamily`, le defaut exact que `us6` a corrige le 2026-09-10.
+
+**F.3 : le gate corpus sort en 1, et c'est ATTENDU.** `replay-corpus-gate --reference=base` en
+RACINE JETABLE (12 temoins, 24 cuissons, parc du principal en LECTURE) rend PERTE sur 4 temoins
+— et chacune de ces « pertes » est un compteur `coverage.placements.deployed` qui baisse, avec
+AUTANT DE GAINS QUE DE PERTES (3/3, 4/4, 2/2, 2/2) : c'est la reclassification elle-meme, qu'un
+gate concu pour detecter les regressions compte comme une baisse. Aucun autre axe ne bouge — 0
+perte hors `coverage.placements.*`. Le gate rend au passage la piece qui MANQUAIT a la mesure :
+`0797ce72` y voit son mur passer de 21 a 20 `deployed`, alors que l'instrument F.1 avait du
+exclure ce film faute de carte — les 15 cas de F.0 §3.1 sont donc tous couverts.
+
+**Conclusion / prochaine etape.** `SchemaVersion` N'EST PAS bumpe : seule la CLASSIFICATION
+change, aucun champ ne bouge — les artefacts deja cuits gardent leur ancienne origine jusqu'a
+recuisson, et `F.4` (la recuisson du parc) reste a la main de l'utilisateur, non lancee. Deux
+documents ont ete corriges dans le meme lot : une NOTE DATEE en tete du rapport R5 (sa ligne
+« le 103 tire aussi a la mort » est refutee, le rapport n'est pas reecrit) et le fichier de
+reference de l'equipement (§1 la reserve de `dropped` n'est plus « < 200 ms ET < 1,5 m », §1 bis
+ce que le canal des evenements porte, §6 deux affirmations de plus a ne plus repeter).
+
+## [2026-09-13] Lot F.0 des finitions v7.5 — le type 103 `EquipmentSpawnedObject`, references RESOLUES — Complete (instruction, worktree wt-finitions-equipement, branche feat/finitions-equipement)
+
+**Decision technique principale.** F.0 est une INSTRUCTION : aucun code de production touche,
+aucune DuckDB, aucune ecriture sous `data/`. Six instruments de recherche sous gardes
+d'environnement dans `film/filmdec/` (`f0_103_{contexte,artefact,verdicts,pieces,corpus,sonde}`),
+plus UN changement additif au marcheur de R7 — `r7Ev.Refs` porte desormais les TROIS references
+gardees avec leur generation (`r7Refs3`), la marche restant inchangee bit pour bit (controle :
+97,9 % de fins propres sur les memes films, l'ordre de grandeur publie par R7). Le choix de fond
+a ete de ne RIEN recalculer de la production : l'origine d'une pose (`deployed`/`dropped`) est
+lue dans l'artefact deja cuit, jointe au balayage du film sur `(t0, GlobalID)` — 99,7 % de
+jointure, chiffre publie. Deuxieme choix : la carte de chaque film se DEDUIT du film
+(`DetectI0Layout` + oracle de trame restreint aux entrees de catalogue de memes largeurs d'axe),
+jamais d'une base ; et tout ce que le rapport juge est INVARIANT D'ECHELLE (position et rayon
+d'accord de l'oracle sont tous deux proportionnels a l'etendue), ce qui rend le choix de carte
+sans effet sur les verdicts — controle `TestF0InvarianceEchelle`.
+
+**Resultats observes.** **La sonde a tranche en une passe : `ref1 + 512` est le slot de l'objet
+cree.** Cinq occurrences consecutives de `9e8fb31b` portent ref1 = 1011, 1013, 1071, 1125, 1182
+pendant qu'un PANNEAU DE MUR (`0x528fce46`) nait 33 ms plus tot aux slots 1523, 1525, 1583, 1637,
+1694 — ecart constant de 512, la meme base que R1 avait etablie sur le type 117. Sur le parc
+(25 films, 931 occurrences) : **93,6 % des ref1 presentes se resolvent en cle de vie d'entite
+(25,0 % `ti=37`, 68,6 % `ti=41`) contre 2,2 % pour le temoin de hasard** — facteur 42 — dt median
++49 ms, et les objets `ti=37` designes sont `0x528fce46` 227 fois et `0x686b40c9` 3 fois, les DEUX
+panneaux de mur du manifeste. `ref2` est absente 928 fois sur 931, ce qui confirme sur 931 cas le
+decodage manuel de deux tetes fait par R5. **Deux affirmations anterieures tombent.** (a) « Le 103
+tire aussi a la mort » (R5 §3.2, 90 tetes appariees en TEMPS SEUL a +/-1,2 s) est REFUTEE : avec
+la reference resolue, 4 poses designees sur 4 853 `dropped`, dont 3 sont elles-memes des panneaux.
+(b) L'espoir du plan — « si ref1 est l'objet engendre, le 103 EST le fait deploye » — se verifie
+et ne sert pourtant PAS : le 103 designe 216 des 216 poses de panneau publiees et **ZERO des 91
+poses `deployed` d'un deployable PORTE** (appareil de mur 34, capteur 48, ecran 4, traqueur 3,
+champ de reparation 2). C'est, par un canal sans aucune etape commune (les evenements nommes), la
+confirmation exacte du verdict E0 du 2026-09-10 obtenu par les consommations de charge : le film
+ne voit le deploiement que de la famille qui engendre une piece. **La voie INDIRECTE a ete
+mesuree et elle echoue aussi** : une pose d'appareil de mur classee `deployed` n'a pas plus de
+panneau voisin a +/-5 s qu'une pose classee `dropped` — elle en a MOINS (14,7 % contre 21,8 %),
+les deux etant le bruit de fond d'un match ou des murs s'ouvrent ailleurs. **D13 se ferme sur le
+corpus, pas sur une hypothese** : le recensement des 76 artefacts exploitables du cache donne
+**UNE seule consommation de charge de champ de reparation dans tout le parc** (film `5676a9ba`) —
+les dix films imposes par le plan n'en portaient aucune, d'ou l'ajout de 15 films choisis par ce
+recensement. Le temoin POSITIF obligatoire passe (le mur rend `0x528fce46` a x20,3
+d'enrichissement autour de ses 65 consommations) ; le capteur (28 consommations), le traqueur (6)
+et l'ecran (8) ne rendent que l'OBJET PORTE LUI-MEME (`0x4396db42` x14,0, `0x4744d742` x17,2) —
+un seul GlobalID sert la forme portee et la forme deployee, ce qui est precisement pourquoi
+`origin` ne peut pas les separer. Enfin, les « 6 651 apparitions pour 295 poses publiees » de
+`000d5950` sont ventilees : 6 250 positions de bit qui passent un en-tete NON SELECTIF, ~100
+records dont le mot de 32 bits ne se resout nulle part (98 identifiants distincts pour 101
+records — la signature d'une lecture au mauvais endroit), ~100 records d'identite valide que
+l'oracle de vie delta ecarte parce que l'objet NE BOUGE PAS (les objets de socle).
+
+**Conclusion / prochaine etape.** **La branche « si F.0 dit oui » de l'item F.1 est FERMEE** : le
+103 ne peut pas porter l'origine d'une pose (il est muet sur 5 545 des 5 761 poses du corpus), et
+supprimer `originDropWindowUS`/`originDropMaxDist` a son profit rendrait l'origine indeterminee.
+La branche applicable est la seconde du plan : retirer la seule clause de DISTANCE, garder le
+fait temporel, mesurer avant/apres par famille. **F.2 se statue `[!]` avec sa mesure** : rien a
+ajouter au manifeste ni a `usageFamiliesWithSpawnedPiece` — y inscrire une famille sans piece
+ferait relire son « utilise » sur `DeployedByFamily`, le defaut exact que `us6` a corrige le
+2026-09-10. Les deux attendent le feu vert du pilote : F.0 etait a rendre AVANT tout code de
+production. Decouvertes consignees et NON traitees : 7 poses de panneau classees `dropped`/
+`unknown` (l'inverse de D12, meme cause), `ref0` designant un `ti=37` de longue duree jamais cree
+en delta (piste d'identification de l'equipement SOURCE, sujet du lot I), et l'effondrement de la
+selectivite de l'en-tete NEW `ti=37` sur les films BTB (71 % de records hors manifeste contre
+25 % en arene).
+
+## [2026-09-13] Lot B des finitions v7.5 — PSA, retrait de la migration des jetons, hygiene XS — Complete (worktree wt-finitions-hygiene, branche feat/finitions-hygiene, 4 commits)
+
+**Decision technique principale.** Trois sous-lots du `PLAN_FINITIONS_2026-09-13.md`, un commit
+chacun plus le merge PSA. **B.1** : fusion de `wt/psa-index-cause` (garde data-health de l'index
+PSA, alerte seule, 5 reproducteurs derriere le build tag `psarepro` donc hors de tous les gates),
+rapport du volet 2 date et range sous `.ai/V7.5/`, et rectification du numero d'issue amont —
+le bug « Failed to delete all rows from index » est **duckdb/duckdb#23645**, pas #23046 (qui est
+une corruption de tas en 1.5.0, symptome sans rapport) : 196 occurrences sur 133 fichiers Go,
+6 documents et CLAUDE.md. Les rapports dates, `.ai/archive/` et `.ai/migrations/squashed/` ne sont
+PAS touches — ils temoignent de ce qui a ete ecrit a l'epoque. **B.2** : retrait de la migration
+one-shot des jetons legacy, son critere etant tenu en prod (rt_migrated=0 a CHAQUE boot du
+2026-06-14 au 2026-09-13, soit 91 jours pour un seuil a 30) — retrait donc execute en avance sur
+l'echeance du 2026-10-01. Les garde-rails RESTENT et se durcissent : les allowlists des guards 2
+et 3 du sentinel passent a ZERO entree, elles n'excusent plus une exception mais interdisent une
+resurrection. **B.3** : dix items d'hygiene, dont deux corrections de fond (D9 et D15) et une
+qui n'etait pas prevue telle quelle (G6, ci-dessous).
+
+**Resultats observes.** **D9, corrige a la source** : le socle central d'Illusion porte
+`ctf_neutral_include` ET `team_index = 0` ; tout l'aval triant la neutralite sur le team_index, ce
+socle devenait un TROISIEME drapeau d'equipe fige au milieu de la carte. Recensement du catalogue :
+sur 63 socles neutres, le LABEL est juste 63 fois et le team_index 62 — c'est donc le label qui
+tranche. Correction portee par `mapvar.Objective.IsCTFNeutral` + un champ `Neutral` sur
+`PointObjective` (la projection laissait tomber `Labels`, sans quoi l'information n'existait plus
+en aval) ; 3 tests, mutation verifiee. **G6 : le defaut EXISTAIT, et il etait invisible par
+construction.** L'`UPDATE kill_positions` de l'outil de demo etait introuvable au grep parce que le
+nom de table etait INTERPOLE — ce qui le rendait aussi invisible aux deux ratchets anti-ART, qui
+scannent des litteraux et couvrent pourtant `weapon_kills`, `medals_earned`, `killer_victim_pairs`
+et `match_participants`, toutes presentes dans la meme boucle. C'etait un UPDATE set-based nu, la
+forme declencheuse exacte. Corrige en N UPDATE row-by-row a valeurs liees — le remede que le projet
+prescrit deja — et **non en INSERT-only**, qui aurait laisse les xuid REELS dans une base publiee
+publiquement : sur un chemin d'anonymisation, la seule ecriture correcte est celle qui REMPLACE.
+La fonction n'avait aucun test direct alors qu'elle est le dernier rempart avant publication ; elle
+en a un. **H4 : l'arbitrage demandait de supprimer trois outils ; deux ne devaient pas l'etre**, et
+l'annexe G9 de l'audit qui lui servait de source le disait deja (P1-2, P1-4) : `vehicle-sprite` et
+`weapon-sounds` sont les seuls producteurs de 197 assets VERSIONNES servis en production (20 sprites
+lus par `useReplayVehicles.ts`, 177 sons). Seul `vs-measure` etait jetable — 0 consommateur, son
+propre en-tete ordonnait sa suppression — et il est supprime. **G2 statue `[~]`** : deja livre par
+`128ae9d15` (CORPUS-R1 C3), verifie sur pieces. **Echeance killpos du 2026-11-08 soldee par
+anticipation** : critere tenu par le pipeline de sync (114 038 lignes sur 1 307 matchs).
+
+**Gates.** `go build ./...` 0, `go vet ./...` 0, `go test` hors himap 0 (170 paquets, 0 `--- FAIL`),
+`go test -tags=integration -p 1` sur sync/persist/migration/duckdb/ops/scheduler 0 (19 paquets),
+`golangci-lint --new-from-merge-base=origin/main` **0 issue**, `gofmt -l` vide.
+
+**Conclusion / prochaine etape.** Lot B CLOS, **7 commits pousses sur `feat/finitions-hygiene`, CI
+VERTE au niveau JOB** (run 34756564137 : 8 jobs verts, E2E React skippe par conception ; + Deploy
+Pre-Check et gitleaks verts). INCIDENT CI RENCONTRE ET REPARE : le job « Go Coverage + Baseline
+non-regression » a rougi sur deux commits successifs, et la cause etait MIENNE, pas un flake. La
+suite elle-meme etait verte (`go test` exit=0, 108 756 lignes JSONL) ; c'est le controle de PRESENCE
+de `check_test_baseline.sh` qui echouait, et il avait raison — B.2 a supprime 23 tests avec le code
+de la migration des jetons, et `.ai/baselines/tests_pre_migration.jsonl` est un CUMUL qui continuait
+de les exiger. Correctif `b566823cb` : retrait chirurgical des 23 entrees (120 lignes JSONL,
+23 `run` + 23 `pass` + 74 `output`, aucun event de niveau PACKAGE touche), verifie par difference
+des paires (Package, Test) — 23 disparues, 0 apparue. PAS de re-capture complete, qui aurait absorbe
+en silence toute autre derive depuis le 2026-06-26. Contre-epreuve locale du gate exact :
+9 716/9 716 tests presents, 0 echec, exit 0. LECON POUR LES LOTS SUIVANTS : supprimer un test
+supprime aussi son entree de baseline, dans le MEME commit.
+Quatre decouvertes consignees et NON traitees au plan : (D-B1) le ratchet anti-ART est
+aveugle aux noms de table interpoles — le cas de la demo est corrige, le TROU du garde-rail reste ;
+(D-B2) 8 socles `flag_spawn` d'equipe portent `team_index = -1`, defaut symetrique de D9, que la
+correction par label ne touche pas ; (D-B3) l'ecart d'arbitrage sur H4 ; (D-B4) deux `//nolint`
+mettent une justification en prose la ou le linter attend des noms de linters, et ne suppriment donc
+probablement rien. Reste au pilote : fusion dans `feat/v75`, et les lots C (LUSR) et D (rejeu web).
+Deux choix a valider par l'utilisateur : les notes de cloture des ADR 0023 et 0026 sont ecrites en
+FRANCAIS et non en anglais, parce que ces deux documents sont integralement en francais (inserer un
+paragraphe anglais au milieu aurait ete une regression de lisibilite) ; et la correction de G6
+s'ecarte de l'instruction « INSERT-only » pour la raison de fuite exposee ci-dessus.
+## [2026-09-13] Lot D (D10) — pulses d'objectif et dénominateur de couverture restreints aux familles d'objectif — Complete (worktree LevelUp-wt-finitions-d10, branche feat/finitions-d10)
+
+**Decision technique principale.** Items D.1 à D.3 du `PLAN_FINITIONS_2026-09-13.md`. Le fait qui
+commande les deux correctifs : `doc.objectives` n'est PAS une liste d'objectifs — les tables de
+`objectiveevents/named.go` portent aussi `kills` (`comp 2 A`, ancre d'identité du balayage) et
+`assists` (`comp 3 A`, contrôle croisé), publiés comme les captures. Le contrat de transport
+(`ObjectiveAction`) n'a qu'un champ `stat` : aucun `kind`, aucune `family`. Le seul discriminant
+est donc le NOM, et la convention est vérifiable — toute statistique d'objectif est préfixée par
+sa famille, et les familles sont exactement les six `ObjectiveType*` d'`objectiveevents/extract.go`
+(`flag`, `zone`, `hill`, `skull`, `vip`, `bomb`). D'où une liste blanche de FAMILLES des deux
+côtés (`model/objectiveFamilies.ts` côté web, `objectiveevents/families.go` côté Go) plutôt qu'une
+liste noire `kills`/`assists` — qui laisserait passer sans un mot la prochaine statistique hors
+objectif que le balayage nommera — et un garde-rail Go (`TestStatsNommeesPortentLeurFamille`) qui
+rougit si une table nomme une statistique hors convention ou une famille non déclarée.
+
+D.2 a été instruit SUR PIÈCES avant d'être codé : le pourcentage de couverture du calque n'est pas
+calculé côté web. Aucun fichier d'`apps/web` ne lit `coverage.objectives` (grep complet des
+`.coverage` : les seuls lecteurs de couverture du rejeu sont `zones.catalog`, `abilityCharges`,
+`padDating`, `bridge`, `score`, `translocations`). Il est produit par `buildObjectiveActions`
+(`internal/games/halo_infinite/film/replay/objectives.go`) et par les deux comptes que
+`replaybuild.identifiedEvents` lui passe (`unnamed`, `refused`). Les trois sont désormais
+restreints aux familles d'objectif. La PUBLICATION, elle, ne perd rien : `doc.Objectives` porte
+toujours tout ce que le film nommait (doctrine R1, « une action est une action ») — seule la
+COUVERTURE se restreint, et `Balanced()` tient parce que `Attached` suit la même règle.
+
+**Résultats observés.** Parc local du 2026-09-13 (schéma 54, recuit depuis l'audit du 10/09 qui
+mesurait 15 808 actions sur `8bc6074f`) : `8bc6074f` porte 218 actions dont 119 `kills`/`assists`
+— 119 pulses construits par image de scène avant (la famille drapeau était déjà retirée par
+`flagPulsesRetired`), 0 après, et `coverage.objectives.available` 218 -> 99. `32d9a94f`
+(Strongholds) : 148 actions dont 93 hors objectif — 148 pulses avant, 55 après, disponibles
+148 -> 55. Les deux artefacts annonçaient `attached == available`, c'est-à-dire « 100 % de
+couverture d'objectifs » sur un calque majoritairement hors sujet. Gates : `go build ./...`,
+`go vet` (3 paquets), `go test ./...` exit 0, `golangci-lint --new-from-merge-base=origin/main`
+0 issue, `tsc --noEmit` 0, `eslint .` 0 erreur / 31 avertissements préexistants,
+`vitest run src/features/match-replay` 2 727 tests, `vitest run` complet 7 389 tests, knip-ratchet
+0/0/0. Aucune string UI ajoutée (le module de familles n'en porte aucune).
+
+**Découvertes non traitées (hors périmètre).** (1) `model/objectiveMark.ts` garde sa table
+`EVENT_STATS` de statistiques nommées une à une (`zone_captures`, `zone_secures`,
+`bomb_detonations`) : elle répond à une autre question (quelle MARQUE de fiche pour quel geste) et
+n'a pas été migrée vers le prédicat de famille. (2) `internal/replaybuild/matchfacts.go` passe de
+501 à 504 lignes — au-dessus du seuil de 500 avant ce lot ; l'extraction serait un refactor hors
+périmètre. (3) Les artefacts déjà cuits gardent l'ancien dénominateur : le correctif ne se voit
+qu'à la recuisson. Aucun champ du document ne bouge et `SchemaVersion` reste à 54.
+
+**Conclusion / prochaine étape.** D.1 `[x]`, D.2 `[x]`, D.3 `[x]`. Branche `feat/finitions-d10`
+poussée, fusion dans `feat/v75` par le pilote (lot E.1). La recuisson du parc pour que
+`coverage.objectives` dise la vérité sur les artefacts existants est une décision pilote/utilisateur,
+non prise ici.
+## [2026-09-13] Lot C — C.9 : le swap de la purge ne restaurait qu'une vue sur deux — Complete (feat/finitions-lusr)
+
+**Decision technique principale.** Defaut trouve par le pilote APRES l'execution d'E.2 (purge
+commitee sur les 4 bases) : le recensement d'apres ne compte qu'UNE vue `match_skill_rank_latest%`.
+Cause : mon outil capturait la DDL de la vue par son NOM (`view_name = 'match_skill_rank_latest'`)
+alors que C.3 bis en a ajoute une seconde le meme jour. Une capture par nom est une liste en dur
+deguisee : elle ne suit pas les migrations, et l'objet oublie ne se manifeste qu'au premier lecteur
+qui tombe sur « table does not exist ». Corrige : capture de TOUTES les vues non internes dont le
+SQL reference `match_skill_rank` (filtre sur le SQL), DROP de chacune avant le swap, recreation de
+chacune apres, avec une passe de retry pour les vues qui en referencent d'autres, et une GARDE DE
+CARDINALITE sur les vues executee DANS la transaction — une vue manquante fait rollback du swap
+entier, comme la garde sur les lignes.
+
+**Resultats observes.** Deux mesures ont change la forme du correctif. (1) Sur DuckDB, `DROP TABLE`
+ne supprime PAS une vue dependante : elle survit au catalogue et se RE-LIE a la table recreee par le
+RENAME. Consequence directe : mon premier test (« les deux vues sont la apres la purge ») passait
+MEME avec le bug — la vue oubliee etait la par accident. Le garde utile porte donc sur la CAPTURE
+elle-meme (`TestCaptureDependentViews_SeesEveryViewOnTheTable`, qui compare ce que l'outil capture a
+ce que `duckdb_views()` liste) ; verifie par mutation : remettre le filtre par nom fait echouer ce
+test ET la garde de cardinalite (« 2 vue(s) restauree(s) sur 1, rollback »). (2) Cette meme mesure
+DONNE LE DIAGNOSTIC que le pilote cherchait : si `match_skill_rank_latest_by_type` avait existe sur
+les bases reelles, elle aurait survecu et le compte d'apres serait 2. Il est de 1 — la vue n'existait
+pas, la migration `player_msr_view_latest_by_type_v1` n'avait pas encore ete jouee sur ces bases.
+Rien n'a ete perdu. Cote `repair_msr_index` : test prouvant que DROP/CREATE INDEX ne touche aucune
+vue (verifie plutot que suppose — c'est exactement ce qu'on croyait du swap), et drapeau
+`-ensure-views` qui repose les vues avec la DDL des migrations via un helper exporte
+`halomigrations.EnsureMatchSkillRankViews` (meme mecanique que `migration.EnsureMatchKillEvents`) :
+c'est la seule voie sure quand le step est deja inscrit au ledger, puisque le runner ne rejoue
+jamais un step applique. Gates : build, vet, suite complete hors himap (172 paquets),
+`-tags=integration -p 1` sur duckdb/migration/games-migrations, lint 0 issue — tous exit 0.
+
+**Conclusion / prochaine etape.** C.9 `[x]`. Pour le pilote : verifier
+`SELECT name FROM schema_migrations WHERE name = 'player_msr_view_latest_by_type_v1'` sur une base
+purgee — absente confirme que rien n'a ete perdu et que le prochain boot posera la vue ; presente
+signifierait qu'elle a ete perdue, et `repair_msr_index -db <base> -ensure-views` la repose sans
+toucher au ledger ni aux donnees. Lecon transverse a retenir : ne jamais nommer un objet de schema
+dans un outil qui le reconstruit — le catalogue est la source, pas la memoire du redacteur.
+
+## [2026-09-13] Lot C — C.8 (P0) : l'index ART de `match_skill_rank` ment aussi, outillage de diag/reparation — Complete (feat/finitions-lusr)
+
+**Decision technique principale.** P0 remonte par le pilote pendant le dry-run de la purge E.2,
+serveur arrete : sur la player DB de JGtm, `COUNT(*) FILTER (WHERE playlist_group='h5_arena')`
+(scan complet) rend 1 826 lignes tandis que `WHERE playlist_group = 'h5_arena' GROUP BY rating_type`
+(lookup servi par `idx_msr_playlist`) n'en rend que 11 + 11. La donnee est INTACTE — seuls les
+lookups mentent. C'est la signature exacte de la desynchronisation d'index ART (duckdb#23645), deja
+constatee le 2026-08-27 sur `personal_score_awards` : **la famille ne se limitait donc pas a PSA**,
+et le point commun n'est pas le tombstone (PSA = INSERT+tombstone, match_skill_rank = INSERT pur
+append-only). Les 3 autres joueurs rendent des comptes coherents.
+
+Deux livrables. (1) `cmd/repair_msr_index`, calque sur `cmd/repair_psa_index` : meme structure
+diag + `-repair`, meme doctrine (DROP INDEX + CREATE INDEX + CHECKPOINT, serveur arrete, une base a
+la fois, JAMAIS de DELETE ni d'UPDATE — ce serait le vecteur ART lui-meme). Le diag compare, pour
+chacun des trois axes indexes de la table, le compte par lookup (`WHERE col = ?`) au compte par scan
+force (`GROUP BY col || ''`, qu'aucun ART ne peut servir) et rend le nombre de cles en ecart ; les
+cles NULL sont exclues (`col = NULL` ne matche jamais, ce serait un faux ecart). La DDL rejouee
+n'est PAS recopiee : elle est capturee dans la base (`duckdb_indexes().sql`) avant le DROP — une DDL
+recopiee dans un outil derive en silence des que la migration evolue, et l'autorite reste
+`games/halo_infinite/migrations/steps_player_match_skill_rank.go`. (2) `purge_foreign_lusr_chain`
+durci : le recensement ET le filtre du CTAS passent par `playlist_group || ''` (scan force), et un
+controle PRE-VOL compare lookup et scan — en dry-run l'ecart est signale, en `-commit` il INTERDIT
+l'ecriture et nomme `repair_msr_index`.
+
+**Resultats observes.** Sans ce durcissement, la purge aurait recense 22 lignes etrangeres sur JGtm
+puis fait rollback sur sa garde de cardinalite : le garde-fou a fonctionne, mais il fallait remonter
+d'un cran — une reconstruction menee sur des comptes faux est une reconstruction non maitrisee. Le
+defaut n'est pas reproductible sur commande (il est amont), donc les tests portent sur ce qui est
+testable, comme au lot PSA : la REGLE DE COMPARAISON (table de cas sur `indexesToRebuild`, avec les
+comptes reels de JGtm 1 826/22) et la NON-REGRESSION sur base saine (aucun faux positif sur les 3
+axes, reparation qui ne perd aucune ligne et repose tous les index, refus explicite si la DDL d'un
+index n'est pas capturable). Cote purge : le pre-vol passe sur base saine, et refuse le commit sur
+un recensement desynchronise en nommant l'outil. Fixtures baties par les migrations reelles. Gates :
+`go build` / `go vet ./...` exit 0, suite complete hors himap exit 0 (172 paquets), `-tags=integration
+-p 1` sur `platform/duckdb` + `migration` exit 0, `make go-api-lint` 0 issue.
+
+**Conclusion / prochaine etape.** C.8 `[x]`. Ce qui reste au pilote, serveur arrete et sauvegarde
+faite : `repair_msr_index -db <base>` (diag) puis `-repair` sur JGtm, AVANT de reprendre la purge
+E.2 — la purge se refuse d'elle-meme tant que l'index ment. Registre des reports : la ligne PSA est
+elargie, les DEUX tables sont a re-sonder periodiquement (les outils en `-dry-run` sont les
+detecteurs). Question ouverte consignee : quel pattern d'ecriture arme le defaut, puisque ce n'est
+pas le tombstone.
+
+## [2026-09-13] Lot C — C.3 bis : la vue `_latest` n'etait pas la bonne pour le graphe d'evolution — Complete (feat/finitions-lusr)
+
+**Decision technique principale.** Correction demandee par le pilote apres relecture sur pieces, et
+il a raison : brancher `Q8LUSRHistoryPlayer` sur `match_skill_rank_latest` etait un CHANGEMENT DE
+DONNEES RENDUES, pas une correction. Cette vue partitionne par `match_id` SEUL avec priorite
+CSR > LUSR — elle repond a « quel rang afficher pour ce match ? ». Le graphe « Evolution LUSR / CSR »
+pose une autre question : il trace DEUX series (`CareerChartsSection.lusrEvolution.tsx:104-112`,
+LUSR pleine + CSR pointillee) et `career_repo_lusr.go` calcule ses deltas par
+`(rating_type, playlist_group)`. Sur tout match classe portant les deux lignes, le point LUSR
+disparaissait. J'avais justifie la perte par `games/halo_5/livesync/csr_match.go` (« les matchs
+classes affichent le CSR ») : cette regle est propre a Halo 5, elle ne fait pas autorite sur
+Infinite — erreur de raisonnement, pas d'execution.
+
+Nouvelle vue `match_skill_rank_latest_by_type`, posee par une migration player nommee
+(`player_msr_view_latest_by_type_v1`, `steps_player_match_skill_rank.go`, idempotente, gardee par
+`ColumnExists(id)`, inscrite a `canonicalOrder` juste apres `player_msr_view_priority_csr_v1`) :
+`PARTITION BY match_id, rating_type ORDER BY written_at DESC, id DESC`. Une ligne par match ET par
+type, la plus recente — les lignes `h5_arena` du 2026-06-26 restent masquees par la ligne de replay
+d'aout, et aucun type n'est arbitre contre un autre. Les deux vues coexistent et repondent a deux
+questions distinctes ; le commentaire de chacune le dit.
+
+**Resultats observes.** Le nouveau test `TestQ8LUSRHistoryPlayer_KeepsBothRatingTypesOnRankedMatch`
+echoue bien sur l'ancienne vue (« lignes servies = 1 (map[{m_ranked CSR}:Ranked Arena]), want 2 ») :
+la regression que le pilote a vue par lecture est desormais cadenassee par un test. Le ratchet
+`no_raw_rating_reads_test.go` ne VOYAIT PAS `_latest_by_type` (la frontiere de mot echouait devant
+`_`) : la lecture passait par accident. Motif elargi explicitement a `(_latest(?:_by_type)?)?`,
+commentaire date ; allowlist inchangee a 4 entrees. Effet de bord revelateur : quatre fixtures de
+`platform/duckdb` (`player_repos_test.go`, `patterns_repo_db_test.go` x2, `repos_extra_test.go`)
+RECOPIENT la DDL de la vue au lieu de passer par les migrations — le piege deja consigne en memoire
+(« DDL de test recopiees = derive indetectable ») ; deux tests d'integration sont tombes sur
+« Table with name match_skill_rank_latest_by_type does not exist ». La vue y a ete ajoutee en
+miroir avec renvoi au nom du step, mais la dette reste. Gates : `go build` / `go vet ./...` exit 0,
+suite complete hors himap exit 0 (171 paquets), `-tags=integration -p 1` sur
+sync/persist/migration/platform/duckdb exit 0, `make go-api-lint` 0 issue.
+
+**Conclusion / prochaine etape.** C.3 bis `[x]`. Rien d'autre du lot C ne change : C.1, C.2, C.4,
+C.5, C.6 sont intacts. La purge des 4 bases reste au pilote (E.2). Lecon a retenir : quand une
+bascule de lecteur change ce qui est RENDU a l'ecran, la question n'est pas « la vue est-elle
+canonique ? » mais « que trace ce graphe, et par quelle cle ? » — la reponse etait dans le
+composant web, que je n'avais pas ouvert.
+
+## [2026-09-13] Lot C — LUSR : cause de la corruption `h5_arena` fermee a la source, lecteur corrige, outil de purge — Complete (worktree wt-finitions-lusr, branche feat/finitions-lusr)
+
+**Decision technique principale.** Le lot C du `.ai/PLAN_FINITIONS_2026-09-13.md` ferme la CLASSE
+de defaut derriere la corruption LUSR du 2026-06-26 (2 461 lignes `h5_arena` ecrites dans les
+player DB halo_infinite de 4 joueurs), pas seulement son chemin. La cause, prouvee par l'enquete
+d'aout (rapport versionne en `.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md`), est une DOUBLE
+SOURCE DE TITRE : handles DB depuis le titre du cycle, moteur depuis le titre du profil. Trois
+gardes, dans cet ordre de portee : (C.2) au cablage V2, le moteur est desormais construit sur
+`deps.TitleSlug` — la double source n'existe plus, elle est COMPAREE, et un profil de titre
+etranger est refuse par la fabrique avec une erreur nommant joueur, titre du profil, titre du
+cycle ; le profil remonte `failed` dans le CycleResult, jamais en silence. Ratchet
+`TestSyncV2WiringHasSingleTitleSource` : toute ligne du fichier portant `p.TitleSlug` doit porter
+`deps.TitleSlug`. (C.1) `SyncEngine.RecomputeLUSRCanonical` stampe `ctxkeys.WithTitleSlug(ctx,
+e.titleSlug)` — UN seul point qui couvre les quatre appelants (action admin de replay, CLI
+`levelup backfill`, orchestrateur de backfill, service) ; le post-import OpenSpartan stampe le
+titre de la base qu'il ouvre. (C.4) invariant de donnees `lusr_chain_foreign_title` (SeverityFail),
+branche au gate d'integration avec les 4 chaines Infinite lues sur pieces dans
+`games/halo_infinite/skillchain/classify.go` ; il lit la TABLE BRUTE, et c'est le point : une
+chaine fausse survit sous la ligne gagnante de `_latest` apres un replay correct.
+
+**Resultats observes.** Deux affirmations du plan se sont revelees fausses a la verification sur
+pieces, et c'est ce qui a le plus change le lot. (1) La vue `match_skill_rank_latest` ne partitionne
+PAS par `(match_id, rating_type)` : la version finale (`applyMSRViewPriorityCSR`) partitionne par
+`match_id` seul, priorite CSR > LUSR > LUSR_V2 puis `start_time`, `written_at`, `id`. La bascule
+C.3 de `Q8LUSRHistoryPlayer` vers la vue reste juste — mieux, elle applique la regle produit deja
+ecrite dans `games/halo_5/livesync/csr_match.go` (« les matchs classes affichent le CSR, les
+sociaux le LUSR ») — mais sa consequence devait etre ecrite noir sur blanc, pas supposee. Ce
+lecteur brut rendait le graphe d'evolution de la page Carriere structurellement NON REPARABLE par
+un replay append-only. L'allowlist de `TestNoRawAppendOnlyReads` passe de 5 a 4 entrees. (2) Le
+filtre de purge devait etre `IS DISTINCT FROM` et non `<>` : `NULL <> 'x'` vaut NULL, donc un `<>`
+nu aurait JETE toutes les lignes a `playlist_group` NULL (les CSR) — un cas de test le cadenasse.
+`cmd/purge_foreign_lusr_chain` ne fait jamais de DELETE (vecteur ART) : reconstruction CTAS
+transactionnelle avec garde de cardinalite avant le DROP, et le DDL des index et de la vue est
+CAPTURE dans la base (`duckdb_indexes` / `duckdb_views`) puis rejoue plutot que recopie — une DDL
+recopiee derive des migrations du titre en silence. Gates : `go build` et `go vet ./...` exit 0,
+suite complete hors himap exit 0 (171 paquets), gate d'integration `-p 1` sur
+sync/persist/migration/platform/duckdb exit 0, `make go-api-lint` 0 issue. Deux ratchets
+preexistants ont mordu pendant le lot et ont ete repares, pas contournes :
+`TestNoUnauthorizedSharedSocialMention` (le mot `shared_social` dans un commentaire) et un INSERT
+positionnel de `invariants_violation_test.go` casse par l'ajout d'une colonne a la DDL de test.
+
+**Conclusion / prochaine etape.** C.1 a C.7 `[x]`. Le registre des reports (L537) passe de « cause
+non elucidee » a « ELUCIDEE », avec le recensement du 13/09 et le mode d'emploi de la purge. Ce
+qui RESTE au pilote : la purge elle-meme sur les 4 bases (lot E.2, serveur arrete, sauvegarde
+prealable, `-dry-run` puis `-commit`, une base a la fois) — l'executeur n'ouvre aucune base de
+`data/`. Trois decouvertes hors perimetre consignees au plan, NON traitees, dont une a arbitrer :
+`migration.RebuildMatchSkillRankART` repose `ADD PRIMARY KEY (match_id)`, le schema PRE-append-only
+— sur une player DB d'aujourd'hui ce rebuild echouerait, et s'il passait il detruirait l'invariant
+append-only et la vue `_latest` ; son unique appelant est `cmd/force_rebuild_art`.
 
 ## [2026-09-13] F.3 — archivage des plans et handoffs clos de la racine `.ai/` vers `V7.5/` — Complete (worktree wt/archive-ai)
 
@@ -107714,3 +108131,101 @@ profil par build (transposition + n2 + longueur de record). Rien n'est branché 
 geste suivant le plus rentable reste hors de ce lot : corriger le modèle de record d'image-clé du
 décodeur (`keyframe_record_walk.go`), et — découverte de ce lot — remplacer la lecture de `b55`
 par `b37` dans `objectiveevents/film.go`.
+
+---
+
+## [2026-09-13] Finitions v7.5 — instruction des reliquats, échéances datées, lots PSA/LUSR, Dependabot — Complété (analyse, aucun code touché)
+
+**Décision** : instruction sur pièces avant arbitrage utilisateur ; aucun fichier de production
+modifié, aucune base ouverte (serveur local actif sur :8000, cookie de session signé HMAC,
+pas de CLI duckdb sur le poste — la vérification LUSR « 5 min en lecture seule » exige le
+serveur arrêté et reste à faire).
+
+**Constats** : (1) l'artefact « Bilan plan maître v7.5 » n'est pas lisible par l'agent
+(lecteur public non membre) et la copie HTML locale n'est que la coquille du visualiseur
+(0 occurrence du texte) — l'inventaire des échéances a été reconstitué depuis le code :
+2026-10-01 migration boot des tokens legacy (local : 1 528 boots, 0 RT migré depuis le
+2026-05-29) ; ≥ 2026-Q4 kill-switchs BatchQueue synchrone et convergence events ; ≥ 2026-Q3
+(échu) LegacySharedReader (30 usages prod, 57 tests) ; 2026-10-31 drapeaux image-clé du
+décodeur (défaut OFF) ; 2026-11-01 tolérance `patternsOutput.Body` ; 2026-11-04 tolérance
+libellés FR de `citation_mappings.category`. Prod (main = v7.3.2) embarque déjà les cinq
+premiers. (2) `wt/psa-index-cause` fusionne sans conflit dans feat/v75 (`git merge-tree`
+propre) ; le numéro d'issue DuckDB fautif (#23046 au lieu de #23645) est présent dans
+CLAUDE.md, ADR 0026/0030, docs/WEAPONS.md FR/EN, le registre L538 et ~25 fichiers Go.
+(3) `wt/lusr-h5-cause` : les trois trous T1/T2/T3 sont toujours ouverts sur feat/v75
+(`sync_v2_wiring.go` L93-150 vs L283 ; `registry_lusr_gaps.go` replay sans ctx stampé ;
+`openspartan_post_import_service.go:152`) ; `RecomputeLUSRCanonical` (`engine_backfills.go:187`)
+ne stampe pas le titre. Piste nouvelle : la vue `match_skill_rank_latest` est keyée
+(match_id, rating_type) par written_at — faire lire `_latest` à `Q8LUSRHistoryPlayer` efface
+la série « Arène » fantôme sans toucher aux données (reste les 2 lignes Madina non rejouables,
+à purger par CTAS avant la copie des bases). (4) Dependabot : 5 PR ouvertes sur main (79-83),
+CI verte, 3 alertes de sécurité (js-yaml < 4.3.2 high, browserslist ≤ 4.28.6 high,
+baseline-browser-mapping < 2.11.0 medium) ; le lock de feat/v75 est déjà sain sauf js-yaml
+4.3.1 ; main a 0 commit hors feat/v75, feat/v75 en a 2 811 hors main ; le remote `fork`
+porte deux branches dependabot de ChaseWoodhams (hors périmètre). (5) La tâche Notion
+« Deux lots à planifier » n'existe pas dans le Backlog (recherche vide) — texte tenu du
+message utilisateur.
+
+**Prochaine étape** : arbitrage utilisateur (dette D/G/H, échéances à anticiper, stratégie
+Dependabot : bumps sur feat/v75 + fermeture des PR vs fusion sur main = 5 déploiements prod),
+puis plan des lots PSA (S) et LUSR (M).
+
+**Complément (même jour, après décisions utilisateur)** : (a) census LUSR sur pièces, serveur
+arrêté, `diag_q` en lecture seule : lignes brutes `h5_arena` dans les player DB Infinite =
+JGtm 913, Madina 1 064, Chocoboflor 471, Daemon 31, chacune en double LUSR + LUSR_V2
+(4 958 lignes) ; dans `_latest` il ne reste que les 2 lignes Madina ; les 4 bases halo_5 ne
+portent QUE `h5_arena` (pas de corruption miroir). (b) Prod (ssh lvelup, lecture seule) : aucun
+kill-switch surchargé dans `.env.local` ; `auth_migration` : 2 RT migrés le 2026-06-13 puis
+rt_migrated=0 à chaque boot jusqu'au 2026-09-13 (critère 30 j tenu trois fois) ; convergence
+events : 108 échecs journalisés (86 en juillet, 8 en août, 9 en septembre — lease shared
+indisponible et player DB halo_5 introuvable), backlog processed=1 ; `/debug/vars` répond 401
+(compteurs non lus). (c) Dependabot repris sur feat/v75 : 13 bumps mineurs npm + js-yaml 4.3.2
+(override `^4.3.0`, lock seul) + browserslist 4.28.9 / baseline-browser-mapping 2.11.23 +
+kin-openapi 0.149.0 (jsonschema 6.0.3). Gates : tsc 0, eslint 0 erreur / 31 avertissements
+préexistants (rapport lot E du 12/09), vitest 697 fichiers / 7 382 tests verts, `go build ./...`,
+`go vet` et `go test ./internal/api/... ./cmd/openapi-diff/...` verts. Non commité : attente du
+signal utilisateur (règle 16), puis push + CI + fermeture des PR 79-83.
+
+**Rectificatif (même jour)** : l'artefact « Bilan plan maître v7.5 » ÉTAIT lisible — le contenu
+est dans le dossier `Bilan plan maître v7.5_files/_t_ShO_.htm` de l'enregistrement local (l'iframe
+sauvegardée), pas dans le `.htm` racine. Ses « Échéances datées » sont quatre : (1) 2026-10-01
+retrait de la migration boot des jetons — critère TENU en prod (0 RT migré depuis le 2026-06-13) ;
+(2) 2026-10-01 rotation Q2 du journal — 1 030 entrées avril-juin encore dans le journal actif et
+absentes de `archive/thought_log_2026-Q2.md` (qui en porte 1 213 autres, 2 communes) : rotation
+mécanique le 1er octobre, pas avant (règle « trimestre courant + précédent ») ; (3) 2026-11-08
+killpos — critère DÉJÀ TENU : `BuildKillPositions` est appelé par `killcollector/positions.go:347`,
+écrit par `persist/shared_persister.go` (INSERT-only) ; `kill_positions_latest` porte 114 038
+lignes sur 1 307 matchs Infinite (recuisson des 12-13/09) — le plan
+`V7.5/PLAN_LOT_PONT_ET_KILLPOSITIONS.md` items 2.3/2.4/2.6 est à statuer `[~]`, et le garde local
+88 % (`replay_local_gate.go`, même date) reste une décision utilisateur ; (4) TypeScript 7 —
+condition NON tenue : typescript-eslint 8.70 exige `typescript <6.1.0`, openapi-typescript 7.13
+exige `^5.x`. Les autres kill-switchs datés relevés dans le code (BatchQueue, convergence,
+LegacySharedReader, image-clé, patterns, catégories de citations) ne sont pas dans l'artefact.
+
+---
+
+## [2026-09-13] Finitions v7.5 — E.2 purge LUSR exécutée, E.3 revue finale, R1 corrigé — Complété
+
+**E.2 (données réelles, serveur arrêté, sauvegarde `data/backups/2026-09-13_purge_lusr_h5_arena/`)** :
+le dry-run de `purge_foreign_lusr_chain` sur JGtm rendait 22 lignes étrangères pour 1 826 au scan —
+index `idx_msr_playlist` DÉSYNCHRONISÉ (famille duckdb#23645, comme PSA le 27/08), les 3 autres
+bases saines. Séquence : `repair_msr_index -data data` (diag 4 bases : 1 axe en écart sur JGtm) ;
+`repair_msr_index -db …/JGtm/stats.duckdb -repair` (DROP+CREATE idx_msr_playlist, 35 502 lignes
+intactes, 0 écart après) ; `purge_foreign_lusr_chain -db … -commit` sur les 4 bases : JGtm
+35 502 -> 33 676 (-1 826), Madina97294 37 252 -> 35 124 (-2 128), Chocoboflor 18 644 -> 17 702
+(-942), XxDaemonGamerxX 704 -> 642 (-62) ; 0 ligne `h5_arena` après (brut et `_latest`), 3 index
+reposés, vue `_latest` présente. Serveur relancé (200). Défaut d'outil trouvé après coup (une
+seule vue recréée) -> C.9 ; sans effet ici, la vue par type n'était pas encore posée sur ces bases.
+
+**E.3 revue adversariale** (`.ai/V7.5/REVUE_FINITIONS_2026-09-13.md`) : 1 P0, 0 P1, 14 P2.
+R1 (P0) : `match_skill_rank_latest_by_type` n'était créée que par la migration player ; une base
+créée par `EnsurePlayerSchema` seul (onboarding entre deux boots, Halo 5 hors boucle de migration
+du boot) faisait tomber la page Carrière en Catalog Error. Corrigé : vue posée aussi dans
+`sync/schema.go` (à l'identique du step), garde `schema_msr_views_test.go`. R2-R5 (numéro
+d'issue `#23046` résiduel dans l'outil de purge, phrase auto-contradictoire de la garde PSA, ADR
+0026 attribuant la corruption de tas à #23645, ADR 0023 au présent sur un fichier supprimé) :
+corrigés comme défauts introduits par le lot. R6-R11, R14, R15 consignés au plan, non traités.
+
+**Conclusion** : lots A-F fusionnés dans feat/v75, CI verte au niveau job après chaque fusion ;
+reste à la main de l'utilisateur : recuisson du parc (F.4, D.2), item Notion « retrait migration
+boot » à cocher, découvertes consignées (dont `RebuildMatchSkillRankART` au schéma pré-append-only).

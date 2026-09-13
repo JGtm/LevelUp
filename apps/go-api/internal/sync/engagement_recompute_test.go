@@ -68,7 +68,7 @@ func openPlayerForRecompute(t *testing.T, withPaces, withCoefsTable bool) *sql.D
 	if _, err := db.Exec(pmeDDL); err != nil {
 		t.Fatalf("CREATE player_match_enrichment: %v", err)
 	}
-	// Append-only #23046 : convertit player_match_enrichment + crée la vue _latest
+	// Append-only #23645 : convertit player_match_enrichment + crée la vue _latest
 	// (loadRatioSamples lit player_match_enrichment_latest) — UNIQUEMENT si withPaces.
 	// Les tests withPaces=false veulent justement des colonnes paces ABSENTES pour
 	// exercer le skip 'unavailable' (batchRecomputeCoefficients court-circuite sur

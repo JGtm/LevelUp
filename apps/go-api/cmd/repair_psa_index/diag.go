@@ -8,7 +8,7 @@ package main
 //     une expression — `col || ''` / `CAST(col AS VARCHAR)` — qu'aucun index ART
 //     ne peut servir) ;
 //   - le comptage par LOOKUP INDEXÉ (`WHERE col = ?`), qui passe par l'index.
-// Tout écart = index désynchronisé de la table (bug DuckDB ART #23046).
+// Tout écart = index désynchronisé de la table (bug DuckDB ART #23645).
 //
 // Les clés NULL sont exclues du diagnostic : elles ne sont pas interrogeables par
 // égalité (`col = NULL` ne matche jamais) et produiraient un faux écart. Leur

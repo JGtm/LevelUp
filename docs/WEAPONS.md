@@ -216,7 +216,7 @@ Table `weapon_kills` lives in the shared DB
 | `delayed_damage` | BOOLEAN | Projectile travel may have inflated the delta |
 | `player_index` | INTEGER | Resolved film player index |
 
-**Append-only (#23046 hardening).** The table was converted to append-only
+**Append-only (#23645 hardening).** The table was converted to append-only
 (`internal/migration/steps_shared_append_only_weapon_kills.go`): two columns
 were added — `generation_id BIGINT` and `written_at TIMESTAMP`. Each
 `InsertWeaponKills` call allocates one generation from

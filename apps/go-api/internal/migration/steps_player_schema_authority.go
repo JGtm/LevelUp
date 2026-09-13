@@ -44,7 +44,7 @@ import "database/sql"
 
 // PlayerPersonalScoreAwardsDDL — schéma canonique de personal_score_awards (player DB).
 //
-// APPEND-ONLY (campagne ART #23046, Phase 2, ADR 0026) : plus de DELETE+INSERT sur les
+// APPEND-ONLY (campagne ART #23645, Phase 2, ADR 0026) : plus de DELETE+INSERT sur les
 // index. Chaque écriture INSÈRE pur avec UN generation_id (séquence psa_generation_seq,
 // partagé par le batch) + written_at + is_tombstone. Lecture via la vue
 // personal_score_awards_latest (DENSE_RANK, génération MAX, tombstones exclus) — créée
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS personal_score_awards (
 CREATE INDEX IF NOT EXISTS idx_psa_match    ON personal_score_awards(match_id);
 -- idx_psa_xuid : SUPPRIMÉ (décision 2026-08-05, miroir exact d'idx_career_xuid). Dans une
 -- player DB, xuid est QUASI CONSTANT (une DB = un joueur) → sélectivité nulle, l'index
--- n'accélère aucun filtre. Sa surface ART #23046 est déjà éteinte par construction
+-- n'accélère aucun filtre. Sa surface ART #23645 est déjà éteinte par construction
 -- (personal_score_awards est append-only INSERT-only, ADR 0026), mais un index sans
 -- lecteur ni gain est du coût d'écriture pur + une surface à rallumer au premier DELETE
 -- de régression. La convergence des DB EXISTANTES est assurée par le step
@@ -133,7 +133,7 @@ func init() {
 		Name:     "drop_career_xuid_art_index_v1",
 		TargetDB: TargetPlayer,
 		Description: "Retire idx_career_xuid (xuid quasi constant dans une player DB : " +
-			"sélectivité nulle, surface ART #23046 pure perte)",
+			"sélectivité nulle, surface ART #23645 pure perte)",
 		ApplySchema: func(db *sql.DB) error {
 			return execScript(db, `DROP INDEX IF EXISTS idx_career_xuid;`)
 		},
