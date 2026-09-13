@@ -226,6 +226,45 @@ type SessionObjectivesBlock struct {
 	Roles []SessionObjectiveRoleMetric `json:"roles"`
 	// Families : le même découpage, par famille de mode.
 	Families []SessionObjectiveFamilyBlock `json:"families,omitempty"`
+	// FlagGrabsNet : les PRISES NETTES de drapeau du scope, publiées À PART des
+	// rôles ci-dessus. Absent = aucune prise lue sur ce scope (mode sans
+	// drapeau, ou aucun film lu).
+	//
+	// POURQUOI PAS DANS `Roles` : la grandeur entre bien dans « prendre » au
+	// niveau de la table des rôles, mais elle n'est mesurée que sur les matchs
+	// dont le film a été lu. La verser dans la somme du rôle ferait compter un
+	// match sans film comme un match sans prise, et changerait le dénominateur
+	// des parts selon la couverture du film. Elle porte donc SES dénominateurs.
+	FlagGrabsNet *SessionFlagGrabsNetBlock `json:"flag_grabs_net,omitempty"`
+}
+
+// SessionFlagGrabsNetBlock — les prises de drapeau du scope, brutes et nettes.
+//
+// LE COMPTEUR OFFICIEL COMPTE LE JONGLAGE (lancer le drapeau devant soi pour
+// courir plus vite, puis le reprendre). Les deux totaux sont publiés ensemble
+// pour que l'écart se VOIE : c'est lui qui justifie la grandeur nette.
+type SessionFlagGrabsNetBlock struct {
+	// MatchesWithObjectives / MatchesMeasured : le dénominateur de tout ce qui
+	// suit. Un match à objectif sans film lu n'a AUCUNE prise ici — ce n'est
+	// pas un match sans prise, c'est un match non mesuré, et l'écart entre les
+	// deux nombres le dit.
+	MatchesWithObjectives int `json:"matches_with_objectives"`
+	MatchesMeasured       int `json:"matches_measured"`
+	// WindowSeconds : la fenêtre de jonglage appliquée. ZÉRO quand le scope en
+	// mêle PLUSIEURS (parc partiellement re-projeté après un changement de
+	// règle) : il n'y a alors pas UNE fenêtre, et en publier une mentirait sur
+	// l'autre.
+	WindowSeconds float64 `json:"window_seconds,omitempty"`
+	// Totaux nets puis bruts, sur les trois périmètres habituels.
+	PlayerTotal    int `json:"player_total"`
+	TeamTotal      int `json:"team_total"`
+	LobbyTotal     int `json:"lobby_total"`
+	PlayerRawTotal int `json:"player_raw_total"`
+	TeamRawTotal   int `json:"team_raw_total"`
+	LobbyRawTotal  int `json:"lobby_raw_total"`
+	// PlayerShareOfTeamPct : part du joueur dans les prises nettes de son camp.
+	// Absent quand le camp n'a pris aucun drapeau — pas de part, jamais 0 %.
+	PlayerShareOfTeamPct *float64 `json:"player_share_of_team_pct,omitempty"`
 }
 
 // SessionUsageBlock — le bloc complet servi avec la page détail de session

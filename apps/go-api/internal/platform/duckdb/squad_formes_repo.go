@@ -21,11 +21,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squadformes"
 )
 
@@ -174,6 +176,56 @@ func (r *ObjectiveStatsRepo) LoadObjectiveColumnRows(
 		}
 		for i, c := range cols {
 			row.Values[c] = values[i]
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+// LoadFlagGrabsNet retourne, sur un scope fermé de matchs, LES PRISES NETTES DE
+// DRAPEAU par match et par joueur — les deux camps, comme les colonnes ci-dessus.
+//
+// LECTURE SÉPARÉE, PAS UN JOIN, ET C'EST DÉLIBÉRÉ. La grandeur vit dans une
+// autre table (`match_flag_grabs_net`, alimentée par le film) que
+// `match_objective_stats` (alimentée par l'API). Un LEFT JOIN aurait fait
+// tomber TOUTES les colonnes d'objectif le jour où la vue `_latest` du film
+// manque — sur une base non migrée, ou sur un titre qui ne produit pas la
+// grandeur. Deux lectures indépendantes dégradent indépendamment.
+//
+// UN MATCH ABSENT DE LA MAP N'EST PAS UN MATCH À ZÉRO : son film n'a pas été lu,
+// et la grandeur s'affiche « non mesurée ». C'est le sens de l'absence de clé.
+//
+// Best-effort : une erreur de requête (vue absente) dégrade en nil + warn.
+func (r *ObjectiveStatsRepo) LoadFlagGrabsNet(
+	ctx context.Context, matchIDs []string,
+) ([]sessionusage.FlagGrabsNetRow, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ObjectiveStatsRepo: shared reader: %w", err)
+	}
+	defer release()
+
+	q := `SELECT match_id, xuid, flag_grabs_raw, flag_grabs_net, juggle_window_ms
+		FROM match_flag_grabs_net_latest
+		WHERE match_id IN (` + Placeholders(len(matchIDs)) + `)`
+	rows, err := db.QueryContext(ctx, q, ToAnySlice(matchIDs)...)
+	if err != nil {
+		slog.WarnContext(ctx, "ObjectiveStatsRepo: prises nettes illisibles (best-effort)",
+			"match_count", len(matchIDs), "err", err)
+		return nil, nil
+	}
+	defer rows.Close()
+
+	var out []sessionusage.FlagGrabsNetRow
+	for rows.Next() {
+		var row sessionusage.FlagGrabsNetRow
+		if err := rows.Scan(&row.MatchID, &row.XUID, &row.Raw, &row.Net, &row.WindowMS); err != nil {
+			return nil, fmt.Errorf("ObjectiveStatsRepo: prises nettes (scan): %w", err)
 		}
 		out = append(out, row)
 	}

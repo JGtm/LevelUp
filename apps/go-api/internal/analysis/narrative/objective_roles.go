@@ -88,6 +88,80 @@ var objectiveRoleExcludedActionColumns = []string{
 	objectiveColSkullScoringTicks,
 }
 
+// GrandeurFlagGrabsNet — LES PRISES NETTES DE DRAPEAU, première grandeur d'un
+// rôle qui ne soit PAS une colonne de `match_objective_stats`.
+//
+// # POURQUOI ELLE EXISTE, ET POURQUOI `flag_grabs` N'Y ENTRE PAS
+//
+// Le compteur officiel `flag_grabs` est écarté des tables de poids depuis
+// l'origine, et à juste titre : il compte CHAQUE ramassage, donc aussi le
+// JONGLAGE (lancer le drapeau devant soi pour courir plus vite, puis le
+// reprendre). Le faire entrer dans « prendre » aurait récompensé le jonglage —
+// mesure du 2026-09-13 : 40 % du compteur en est, et sur un film le premier au
+// brut tombe TROISIÈME au net.
+//
+// La grandeur NETTE, elle, dit bien ce que le rôle « prendre » veut dire. Elle
+// entre donc dans le rôle, et le compteur brut reste dehors.
+//
+// # POURQUOI ELLE N'EST PAS UNE COLONNE DE PLUS DANS LES TABLES CI-DESSUS
+//
+// Elle ne vient pas de la même table : elle est lue du FILM et vit dans
+// `match_flag_grabs_net` (append-only, vue `_latest`), pas dans
+// `match_objective_stats` que l'API alimente. Trois choses le rendent NON
+// négociable :
+//
+//   - `ObjectiveRoleColumns` est la source d'où la couche repo GÉNÈRE ses SUM
+//     sur `match_objective_stats_latest` — y glisser ce nom produirait un
+//     `SUM(flag_grabs_net)` sur une table qui n'a pas la colonne ;
+//   - `ObjectiveFamilyActionWeights` pilote l'index de participation, dont le
+//     garde-rail exige que chaque clé soit une colonne réelle du schéma ;
+//   - la partition prendre ∪ défendre ∪ écartées == clés des tables de poids
+//     resterait fausse.
+//
+// D'où la séparation : les COLONNES d'un côté, les GRANDEURS AUTRES de l'autre,
+// et [ObjectiveRoleGrandeurs] qui rend l'union pour les lecteurs qui affichent.
+const GrandeurFlagGrabsNet = "flag_grabs_net"
+
+// objectiveRoleExtraGrandeurs : par rôle, les grandeurs qui ne sont pas des
+// colonnes de `match_objective_stats`. Une seule à ce jour.
+var objectiveRoleExtraGrandeurs = map[ObjectiveRole][]string{
+	ObjectiveRoleTake: {GrandeurFlagGrabsNet},
+}
+
+// objectiveExtraGrandeurFamily : la famille de mode à laquelle chaque grandeur
+// hors colonne appartient. Sans elle, une grandeur de CTF apparaîtrait sur la
+// grille d'un mode à zones.
+var objectiveExtraGrandeurFamily = map[string]ObjectiveFamily{
+	GrandeurFlagGrabsNet: FamilyCTF,
+}
+
+// ObjectiveRoleExtraGrandeurs retourne les grandeurs HORS COLONNE d'un rôle,
+// dans un ordre déterministe (copie). Vide pour les rôles qui n'en ont pas.
+//
+// ⚠ NE JAMAIS les passer à un générateur de SQL sur `match_objective_stats` :
+// ces noms ne sont pas des colonnes de cette table (cf. [GrandeurFlagGrabsNet]).
+func ObjectiveRoleExtraGrandeurs(role ObjectiveRole) []string {
+	return append([]string(nil), objectiveRoleExtraGrandeurs[role]...)
+}
+
+// ObjectiveExtraGrandeurFamily retourne la famille d'une grandeur hors colonne,
+// et false si le nom n'en est pas une.
+func ObjectiveExtraGrandeurFamily(grandeur string) (ObjectiveFamily, bool) {
+	fam, ok := objectiveExtraGrandeurFamily[grandeur]
+	return fam, ok
+}
+
+// ObjectiveRoleGrandeurs retourne TOUTES les grandeurs d'un rôle : ses colonnes
+// de `match_objective_stats` d'abord, puis les grandeurs mesurées ailleurs.
+//
+// C'est la lecture des AFFICHEURS (grilles d'objectif, cartes de rôle). Les
+// producteurs de SQL, eux, appellent [ObjectiveRoleColumns] — et l'écart entre
+// les deux fonctions EST la frontière entre « ce que la table porte » et « ce
+// que le rôle veut dire ».
+func ObjectiveRoleGrandeurs(role ObjectiveRole) []string {
+	return append(ObjectiveRoleColumns(role), objectiveRoleExtraGrandeurs[role]...)
+}
+
 // ObjectiveRoleColumns retourne les colonnes de `match_objective_stats` du rôle,
 // dans un ordre déterministe (copie — l'appelant peut la garder). Le rôle « tenir »
 // est dérivé d'ObjectiveFamilyHoldColumns (source unique des durées), jamais d'une

@@ -43,6 +43,7 @@ schema_version = 1
 "film.replay_artifact"    = "supported"
 "film.usage_summary"      = "not_exposed"
 "film.bomb_stats"         = "not_exposed"
+"film.flag_grabs_net"     = "not_exposed"
 "film.kill_source"        = "not_exposed"
 "film.weapon_shots"       = "not_exposed"
 "film.kill_positions"     = "not_exposed"
