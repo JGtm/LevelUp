@@ -10,17 +10,20 @@
 
 | Quoi | Où | État |
 |---|---|---|
-| Recherche (5 phases, 21 instruments, 6 notes, relevé Ghidra 8 à 8.6) | branche `wt/section3-chunk00`, worktree `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-section3-chunk00`, tête `654a8f55f` (fusion de `wt/film-residus`) | committé, NON poussé, NON fusionné dans `feat/v75` |
-| Branche satellite de la phase 5b | `wt/film-residus`, worktree `LevelUp-wt-film-residus` | fusionnée dans `wt/section3-chunk00` ; branche et worktree à supprimer après vérification |
-| Document d'architecture cible, amendé au fil des phases (sections 5 bis et 5 bis.1) | `feat/v75`, `.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md`, tête `0053b6634` | committé, NON poussé |
-| Journal | `.ai/thought_log.md` : entrée `[2026-09-12] Architecture cible du décodeur de film` + addendums 1 à 5b sur `feat/v75` ; six entrées détaillées par phase sur `wt/section3-chunk00` | à jour |
+| Recherche (5 phases, 21 instruments, 6 notes, relevé Ghidra 8 à 8.6) | **branche `feat/recherche-decodeur-film`** (créée depuis `feat/v75` le 2026-09-13, fusion de `wt/section3-chunk00` au commit `34166d69e`), worktree `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-recherche-film` | committée et POUSSÉE (CI déclenchée) ; à fusionner dans `feat/v75` quand le worktree partagé est libre (une autre session y travaillait le 13/09 à midi : `go.mod`, `package.json`, journal non committés) |
+| Instruments après fusion | `apps/go-api/internal/games/halo_infinite/film/filmdec/*_research_test.go` (le lot E a déplacé `filmdec` ; la fusion avec `merge.directoryRenames=true` les a suivis) | gates verts au nouveau chemin |
+| Branches de recherche d'origine | `wt/section3-chunk00` (conservée, entièrement contenue dans `feat/recherche-decodeur-film`) ; `wt/film-residus` supprimée ; les deux worktrees `LevelUp-wt-section3-chunk00` et `LevelUp-wt-film-residus` supprimés | nettoyé |
+| Document d'architecture cible, amendé au fil des phases (sections 5 bis et 5 bis.1) | `feat/v75`, `.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md` (et sur `feat/recherche-decodeur-film`) | committé et poussé sur `origin/feat/v75` |
+| Journal | `.ai/thought_log.md` : entrée `[2026-09-12] Architecture cible du décodeur de film` + addendums 1 à 5b sur `feat/v75` ; six entrées détaillées par phase sur la branche de recherche | à jour |
 | Notes de RE | `.ai/V7.5/film_re/NOTE_SECTION3_CHUNK00_2026-09-12.md`, `NOTE_SECTION3_SLOTS_2026-09-12.md`, `NOTE_EQUIPE_FILM_2026-09-12.md`, `NOTE_PROFIL_PAR_BUILD_2026-09-12.md`, `NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md`, `NOTE_RESIDUS_CHUNK00_2026-09-13.md` (branche de recherche) | chacune avec résumé numéroté, prouvé / hypothèse / réfuté, commandes de rejeu |
 
 Aucun code de production n'a été modifié. Tous les instruments sont des `*_research_test.go`
 sous la garde d'environnement `CHUNK00_FILMS` (liste de répertoires de film séparés par `;`,
 chemins Windows `C:/...` obligatoires), sautés en CI. Gates verts sur la branche fusionnée :
-`gofmt`, `go vet`, `go test ./internal/analysis/filmdec/`, `go test ./internal/archlint/`
-(ratchet des variables de paquet intact : aucune ajoutée).
+`gofmt`, `go vet`, `go test ./internal/games/halo_infinite/film/filmdec/`,
+`go test ./internal/archlint/` (ratchet des variables de paquet intact : aucune ajoutée).
+Les commandes de rejeu des notes citent encore `./internal/analysis/filmdec/` : lire
+`./internal/games/halo_infinite/film/filmdec/` à la place.
 
 Pièges d'outillage rencontrés : Ghidra est une instance PARTAGÉE (`HaloInfinite.exe`, base
 `0x140000000`, MCP `mcp__ghidra__*` ou HTTP `127.0.0.1:8089`), toujours en lecture seule ; la
