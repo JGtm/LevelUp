@@ -73,6 +73,15 @@ func reopen(t *testing.T, path string) *sql.DB {
 	return db
 }
 
+// closeDB ferme explicitement un handle avant que l'outil rouvre la base en RW
+// exclusif (le Cleanup de reopen refermera sans effet : Close est idempotent).
+func closeDB(t *testing.T, db *sql.DB) {
+	t.Helper()
+	if err := db.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+}
+
 func countRows(t *testing.T, db *sql.DB, query string, args ...any) int {
 	t.Helper()
 	var n int
@@ -201,5 +210,119 @@ func TestCheckIndexCoherence_BlocksCommitOnDesync(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("le refus doit mentionner %q pour être actionnable ; err = %v", want, err)
 		}
+	}
+}
+
+// dependentViewNames liste les vues non internes qui référencent match_skill_rank.
+func dependentViewNames(t *testing.T, db *sql.DB) []string {
+	t.Helper()
+	rows, err := db.Query(`SELECT view_name FROM duckdb_views()
+		WHERE internal = FALSE AND sql IS NOT NULL AND lower(sql) LIKE '%match_skill_rank%'
+		ORDER BY view_name`)
+	if err != nil {
+		t.Fatalf("duckdb_views(): %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+// TestPurge_KeepsAllDependentViews — garde C.9 (2026-09-13).
+//
+// Le swap DROP+RENAME ne doit perdre AUCUNE vue. L'outil ne capturait que le nom
+// `match_skill_rank_latest` ; depuis C.3 bis la table en porte deux, et une vue
+// filtrée par nom disparaît en silence de l'outil — le trou ne se voit qu'au premier
+// lecteur qui tombe sur « table does not exist ». Les deux vues sont posées ICI par
+// les MIGRATIONS RÉELLES, pas par une DDL de test : c'est la seule façon que le test
+// suive l'ajout d'une troisième vue.
+func TestPurge_KeepsAllDependentViews(t *testing.T) {
+	path := newFixturePlayerDB(t)
+
+	db := reopen(t, path)
+	before := dependentViewNames(t, db)
+	if len(before) < 2 {
+		t.Fatalf("vues dépendantes avant purge = %v, want ≥ 2 "+
+			"(match_skill_rank_latest ET match_skill_rank_latest_by_type)", before)
+	}
+	for _, want := range []string{"match_skill_rank_latest", "match_skill_rank_latest_by_type"} {
+		found := false
+		for _, n := range before {
+			if n == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("la migration n'a pas posé %s ; vues = %v", want, before)
+		}
+	}
+	closeDB(t, db)
+
+	if err := run(context.Background(), path, "h5_arena", false, true); err != nil {
+		t.Fatalf("run commit: %v", err)
+	}
+
+	db = reopen(t, path)
+	after := dependentViewNames(t, db)
+	if len(after) != len(before) {
+		t.Fatalf("vues après purge = %v, want %v (aucune vue ne doit être perdue)", after, before)
+	}
+	// Chaque vue doit être INTERROGEABLE, pas seulement présente au catalogue : une
+	// vue laissée liée à l'ancienne table serait listée mais casserait à la lecture.
+	for _, name := range after {
+		var n int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM "` + name + `"`).Scan(&n); err != nil {
+			t.Errorf("la vue %s est listée mais illisible après le swap : %v", name, err)
+		}
+	}
+	// Et elle doit servir la donnée PURGÉE (3 lignes saines, 0 étrangère).
+	if n := countRows(t, db, `SELECT COUNT(*) FROM match_skill_rank_latest_by_type`); n != 3 {
+		t.Errorf("match_skill_rank_latest_by_type sert %d lignes, want 3", n)
+	}
+	if n := countRows(t, db,
+		`SELECT COUNT(*) FROM match_skill_rank_latest_by_type WHERE playlist_group = 'h5_arena'`); n != 0 {
+		t.Errorf("la vue _by_type sert encore %d ligne(s) h5_arena", n)
+	}
+}
+
+// TestCaptureDependentViews_SeesEveryViewOnTheTable — LE garde de C.9.
+//
+// C'est ici que se joue le défaut, pas en bout de chaîne : mesuré sur DuckDB, une vue
+// dépendante SURVIT au `DROP TABLE` et se re-lie à la table recréée par le RENAME —
+// une vue oubliée par la capture reste donc présente par accident, et l'assertion
+// d'état final ne voit rien. Ce qu'il faut cadenasser, c'est que l'outil VOIE toutes
+// les vues : filtre sur le SQL (`LIKE '%match_skill_rank%'`), jamais sur un nom.
+// Les vues sont posées par les MIGRATIONS RÉELLES : une troisième vue ajoutée demain
+// fait échouer ce test si la capture l'ignore.
+func TestCaptureDependentViews_SeesEveryViewOnTheTable(t *testing.T) {
+	db := reopen(t, newFixturePlayerDB(t))
+
+	captured, err := captureDependentViews(context.Background(), db)
+	if err != nil {
+		t.Fatalf("captureDependentViews: %v", err)
+	}
+	got := map[string]string{}
+	for _, v := range captured {
+		got[v.name] = v.ddl
+	}
+	for _, want := range dependentViewNames(t, db) {
+		ddl, ok := got[want]
+		if !ok {
+			t.Errorf("vue %q NON capturée — elle serait perdue par le swap ; capturées = %v",
+				want, viewNames(captured))
+			continue
+		}
+		if !strings.Contains(strings.ToLower(ddl), "match_skill_rank") {
+			t.Errorf("DDL capturée pour %q ne référence pas la table : %q", want, ddl)
+		}
+	}
+	if len(captured) != len(dependentViewNames(t, db)) {
+		t.Errorf("capturées = %v, vues réelles = %v", viewNames(captured), dependentViewNames(t, db))
 	}
 }
