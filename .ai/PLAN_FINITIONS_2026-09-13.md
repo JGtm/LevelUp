@@ -274,6 +274,24 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   le correctif D.2 ne se voit qu'à la recuisson. Aucun champ du document ne bouge,
   `SchemaVersion` reste à 54 — la recuisson est donc une décision de fraîcheur, pas de contrat.
 
+### Lot F.0 (2026-09-13)
+
+- **D-F1 — 7 poses de PANNEAU de mur du parc sont classées `dropped` (3) ou `unknown` (4)**,
+  alors qu'un panneau n'existe qu'une fois déployé et ne peut donc pas être lâché à la mort.
+  C'est le défaut SYMÉTRIQUE de D12 — même cause (`equipmentOrigin` ne pose qu'une question
+  temporelle), sens inverse. 7 sur 216 panneaux. À traiter AVEC D12, pas à part. NON TRAITÉ.
+- **D-F2 — `ref0` du type 103 désigne un `ti=37` que les images-clés voient (737 sur 739
+  recensées) et que les paquets delta ne créent JAMAIS** (2,8 % de résolution). Ce n'est pas
+  l'appareil porté. Si c'est l'entité qui ENGENDRE la pièce, elle ouvrirait l'identification de
+  l'équipement SOURCE d'un déploiement — sujet du lot I (refonte du décodeur). NON TRAITÉ.
+- **D-F3 — la sélectivité de l'en-tête NEW `ti=37` s'effondre sur les films BTB** : 2 263
+  records acceptés hors manifeste sur 3 185 (71 %) sur `4f77afc1` et 927 sur 1 605 (58 %) sur
+  `5676a9ba`, contre ~25 % sur un film d'arène. Aucune mesure du dépôt ne borne aujourd'hui ce
+  taux pour l'équipement (la borne connue vaut pour les ARMES au sol). NON TRAITÉ.
+- **D-F4 — `0x412000aa` est désigné une fois par un `ref1` de 103** sur `9e8fb31b`, à
+  +19 386 ms — très probablement une collision de clé `(slot, génération)` rebouclée, mais
+  l'identifiant est hors manifeste et n'a pas été instruit. NON TRAITÉ.
+
 
 ## Journal
 - 2026-09-13 : plan écrit ; lot A fait (commit deps + push).
@@ -291,3 +309,15 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   `buildObjectiveActions` + les deux comptes de `replaybuild.identifiedEvents`, publication
   inchangée (doctrine R1). Mesures : `8bc6074f` 119 -> 0 pulses/image et 218 -> 99 disponibles,
   `32d9a94f` 148 -> 55 des deux côtés.
+- 2026-09-13 : **F.0 rendu** (`feat/finitions-equipement`, commit `a88504d97`, push, CI). Instruction
+  pure : aucun code de production, aucune DuckDB, aucune écriture sous `data/`. Cinq instruments sous
+  gardes d'environnement (`filmdec/f0_103_*`) + un changement ADDITIF au marcheur de R7 (`r7Ev.Refs`
+  porte les trois références et leur génération ; marche inchangée bit pour bit, contrôle 97,9 % de
+  fins propres). Corpus : les 10 films imposés + 15 choisis par le recensement du parc d'artefacts
+  (`TestF0CorpusSpent`), parce que les 10 imposés ne portaient AUCUNE consommation de charge de champ
+  de réparation. Rapport : `.ai/V7.5/RAPPORT_F0_DEPLOIEMENT_103_2026-09-13.md`. Gates : `go build
+  ./...` 0, `go vet ./internal/games/halo_infinite/film/...` 0, `go test` sur les 8 paquets `film/*`
+  0, `golangci-lint --new-from-merge-base=origin/feat/v75` **0 issue**. Piège rencontré, déjà connu du
+  lot B : `knip-ratchet` bloque le push d'un worktree frais (197/168 contre un plafond de 0) faute de
+  `node_modules` — `npm ci` dans le worktree, puis 0/0/0. `.golangci-cache*/` ajouté au `.gitignore`
+  (même raison que `.gocache*/` : cache GLOBAL par défaut, à isoler par worktree).
