@@ -623,9 +623,19 @@ Contrat `plan-execution`, périmètre FERMÉ, découvertes consignées non trait
       - Push `origin feat/finitions-rejeu` (hook `knip-ratchet` réparé par `npm ci` dans le worktree — `node_modules` manquant, pas un défaut de code). **CI VERTE AU NIVEAU JOB** sur `e538d24cb` : run `34773808291` **success** — Go Lint, Go Coverage + Baseline non-régression (`./...` complet, CGO), OpenAPI Lint, Go Lease Enforcement (ADR 0013), Go Build + Test ubuntu **et** windows, Frontend (TypeScript + Vite), Go Contract Test — tous `success`, E2E React `skipped` ; plus `Secrets (gitleaks)` **success** et `Deploy Pre-Check` **success**.
 
 ## Lot I — clôture (pilote)
-- [ ] I.1 Fusions G et H, CI verte ; revue adversariale bornée (P0/P1 seuls) ; thought_log ; worktrees supprimés.
+- [x] I.1 (13/09 soir) Lot G fusionné `70e9d07fd` (CI branche verte 34773829242), lot H fusionné `11b1cef2d`+`676978ed0` (CI branche verte 34773808291) ; revue bornée `.ai/V7.5/REVUE_FINITIONS_GH_2026-09-13.md` : 0 P0, 2 P1 corrigés (`605b59d6c` : périmètre anti-ART par le helper unique ; assertion morte du stamp retirée), 9 P2 consignés ci-dessous ; worktrees et branches des lots supprimés. Hors lot : `formes.fixtures.ts:142` (autre session, lot ajust-D2) faisait rougir `lint:fields` au pre-push (« Aquarius » = libellé du dictionnaire) — libellé de fixture remplacé par « Cliffside » pour débloquer le push de la branche partagée.
 - 2026-09-13 (pilote) : mesure G.4 exécutée, serveur arrêté, sur les 4 player DB Infinite
   (`player_match_enrichment_latest`) : 0 chaîne de performance étrangère (JGtm 1 060 lignes
   sur 3 chaînes, Madina97294 1 147 sur 6, Chocoboflor 521 sur 3, XxDaemonGamerxX 16 sur 2, toutes
   légitimes). Le défaut G.4 n'a jamais mordu : fermeture préventive, aucune donnée à rattraper.
   Lot G fusionné dans feat/v75 (CI de branche verte, run 34773829242).
+
+### Revue G/H (E.3 bis, 2026-09-13 soir) — P2 consignés, NON traités
+- `indexcheck.MatchSkillRankAxes()` : copie superficielle (`KeyExprs`/`Indexes` partagés) malgré le godoc « défensive ».
+- `indexcheck.scanReference` : `Report.Truncated` jamais vrai en mode `Sample` (sans conséquence).
+- `families_parite_ts_test.go` : le motif `[a-z_]+` ne verrait pas une famille TS avec chiffre ou majuscule.
+- `skillchain/chains.go` : l'exhaustivité repose sur un corpus manuel ; une 5e chaîne au seul classifier passe.
+- `equipment_placements.go` 628 -> 639 L et `no_art_patterns_test.go` 823 L (règle 5, baseline).
+- D-H2 : pas de garde-rail Go appariant `usageWallPanelIDs` au manifeste (le garde web `placementPanels.guard.test.ts` rougit, mais nomme la table web).
+- `docs/adr/0017:4` garde un emoji dans la ligne Status réécrite par G.1.
+- `TestCatalogueRecensementDesSoclesNeutres` : dernière assertion tautologique.
