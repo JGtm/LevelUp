@@ -148,9 +148,46 @@ export function tacticalGridFromRaster(
   return buildTacticalGrid(
     cells,
     { cell: pasM, nx, ny, minX: bornes.min_x, minY: bornes.min_y },
-    { lo: echelle.p50, hi: echelle.p95 },
+    // LA LECTURE SIGNÉE PASSE SA BORNE, PAS SES QUANTILES (maquette 034b1915) : « Où je
+    // gagne » va de −borne à +borne autour du zéro. Étalonnée sur p50→p95 comme les
+    // autres, toute sa moitié négative disparaissait — une cellule ≤ 0 y était traitée
+    // comme « jamais atteinte » (cf. `cellIntensity`, heatPaint.ts).
+    { lo: echelle.p50, hi: echelle.p95, signee: echelle.symetrique, borne: echelle.borne },
     echelle.n_cellules,
   )
+}
+
+/**
+ * LÉGENDE DU PLAN — les deux bornes affichées de part et d'autre de la rampe, et le mode
+ * de rampe à employer (maquette 034b1915).
+ *
+ * Une lecture SIGNÉE se lit de −borne à +borne autour du zéro ; les autres de 0 au p95,
+ * saturées au-delà. L'unité n'est accolée qu'à la borne haute — la répéter des deux côtés
+ * n'ajoute rien et coupe la rampe en deux.
+ */
+export function planLegend(
+  echelle: EchelleTactique,
+  unite: string,
+  format: (n: number) => string,
+): { lo: string; hi: string; mode: 'intensity' | 'divergent' } {
+  if (echelle.symetrique) {
+    const borne = Math.abs(echelle.borne)
+    return {
+      lo: `− ${format(borne)}`,
+      hi: `+ ${format(borne)} ${unite}`.trim(),
+      mode: 'divergent',
+    }
+  }
+  return { lo: format(0), hi: `${format(echelle.p95)} ${unite}`.trim(), mode: 'intensity' }
+}
+
+/**
+ * QUESTIONS SANS CELLULE. « Mes routes de spawn » empile des trajets : il n'y a pas de
+ * grandeur par cellule à détailler, donc pas de match à ouvrir depuis le plan. La carte
+ * « Cellule sélectionnée » le DIT, au lieu d'inviter à un clic qui ne rendrait rien.
+ */
+export function questionSansCellule(question: TacticalQuestion): boolean {
+  return question === 'routes'
 }
 
 /**
@@ -270,3 +307,102 @@ export function trouveCellule(
 // pré-calcule plus de frame, il construit `?t=&clock=` et laisse la ROUTE du rejeu
 // convertir une fois le document (et son calage) chargé
 // (`lib/replay/replayLogic.resolveTacticalReplayInstant` + `msToFrames`).
+
+/**
+ * planSelectionRect — le cadre de la cellule sélectionnée, en pixels canvas.
+ *
+ * MÊME PROJECTION QUE LA PEINTURE (`planCanvasView`) : le cadre se pose exactement sur la
+ * cellule peinte, jamais à côté. `null` quand rien n'est sélectionné ou que les bornes ne
+ * sont pas exploitables.
+ *
+ * IL EXISTE PARCE QUE LE CLIC NE SE VOYAIT PAS. Avant ce cadre, cliquer une zone chaude ne
+ * changeait rien de visible sur le plan : le seul retour était un panneau situé plus bas,
+ * qui met plusieurs secondes à se remplir. C'est la moitié du « je clique, ça ne change
+ * jamais rien » constaté par l'utilisateur (2026-09-13).
+ */
+export function planSelectionRect(
+  selected: { col: number; row: number } | null,
+  bornes: BornesMonde,
+  pasM: number,
+  canvasWidth: number,
+): { x: number; y: number; size: number } | null {
+  if (!selected) return null
+  const vue = planCanvasView(bornes, canvasWidth)
+  if (!vue || !(pasM > 0)) return null
+  return {
+    x: vue.topLeftWorld.x + selected.col * pasM * vue.scale,
+    y: vue.topLeftWorld.y + selected.row * pasM * vue.scale,
+    size: pasM * vue.scale,
+  }
+}
+
+// ─── Section « Coordination d'équipe » (maquette 034b1915) ────────────────────
+
+/**
+ * libelleRayons — « 18 m », ou « 18 m ou 24 m » quand le filtre mélange deux formats.
+ * JAMAIS une moyenne : la moyenne de deux règles du jeu n'est la règle d'aucun match.
+ */
+export function libelleRayons(t: TacticalText, rayons: readonly number[]): string {
+  return rayons.map((r) => t.radiusValue(r)).join(t.radiusJoin)
+}
+
+/**
+ * positionCategorie — où tombe une distance sur l'axe des CATÉGORIES de l'histogramme des
+ * distances, en indice fractionnaire (18 m sur des intervalles de 10 m = 1,3).
+ *
+ * L'indice `i` désigne le CENTRE de la barre `i`, pas son bord gauche : le bord gauche est
+ * donc à `i − 0,5`, et on y ajoute la position dans l'intervalle. Arrondir à une frontière
+ * de barre déplacerait la règle du jeu à l'écran.
+ *
+ * `null` quand la distance sort des intervalles servis : mieux vaut aucun seuil qu'un seuil
+ * collé au bord du graphe, qui se lirait comme une valeur mesurée.
+ */
+export function positionCategorie(
+  distance: number,
+  bins: readonly { min_m: number; max_m?: number | null }[],
+): number | null {
+  for (let i = 0; i < bins.length; i += 1) {
+    const min = bins[i].min_m
+    const max = bins[i].max_m
+    if (max == null) return distance >= min ? i : null
+    if (distance >= min && distance < max) {
+      return i - 0.5 + (distance - min) / (max - min)
+    }
+  }
+  return null
+}
+
+/**
+ * planCanvasViewContain — la projection monde -> canvas d'un cadre à rapport IMPOSÉ : le
+ * monde est mis À L'ÉCHELLE POUR TENIR EN ENTIER, centré, sans déformation.
+ *
+ * POURQUOI ELLE EXISTE, À CÔTÉ DE `planCanvasView`. Le plan d'une carte met son CADRE au
+ * rapport du monde : une seule échelle suffit, lue sur X. Une VIGNETTE de la grille, elle,
+ * ne peut pas faire ça — des cartes de rapports différents donneraient des vignettes de
+ * hauteurs différentes, et la grille perdrait ses lignes. Son cadre est donc fixe, et c'est
+ * le CALQUE qui s'adapte : même échelle sur les deux axes (la plus contraignante), le reste
+ * en marge. Étirer le calque pour remplir aurait déformé la carte — une zone chaude ronde y
+ * deviendrait ovale, et deux vignettes ne se compareraient plus.
+ *
+ * `null` si les bornes ou le canvas ne sont pas exploitables.
+ */
+export function planCanvasViewContain(
+  bornes: BornesMonde,
+  canvasWidth: number,
+  canvasHeight: number,
+): { topLeftWorld: { x: number; y: number }; scale: number } | null {
+  const largeur = bornes.max_x - bornes.min_x
+  const hauteur = bornes.max_y - bornes.min_y
+  if (!bornes.valide || !(largeur > 0) || !(hauteur > 0)) return null
+  if (!(canvasWidth > 0) || !(canvasHeight > 0)) return null
+  const scale = Math.min(canvasWidth / largeur, canvasHeight / hauteur)
+  // Marges de centrage, puis l'origine du MONDE (et non `min_x`) : le peintre place une
+  // cellule à `topLeftWorld + col x pas x scale`, et `col` est l'adresse serveur, ancrée
+  // sur l'origine du monde (cf. `planCanvasView`).
+  const margeX = (canvasWidth - largeur * scale) / 2
+  const margeY = (canvasHeight - hauteur * scale) / 2
+  return {
+    topLeftWorld: { x: margeX - bornes.min_x * scale, y: margeY - bornes.min_y * scale },
+    scale,
+  }
+}

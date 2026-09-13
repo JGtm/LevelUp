@@ -29,11 +29,14 @@ import type { Locale } from '@/lib/i18n/locale'
 import type { TacticalText } from './i18n'
 import { useTacticalCellule, useTacticalRaster } from './queries'
 import { TacticalCellCard } from './TacticalCellCard'
+import { TacticalCoordinationCard } from './TacticalCoordinationCard'
 import { TacticalPlanCard } from './TacticalPlanCard'
 import { TacticalToolbar } from './TacticalToolbar'
 import {
+  libelleRayons,
   pageTitle,
   ratioSafe,
+  sourceForQuestion,
   tacticalGridFromRaster,
   trouveCellule,
   type TacticalQuestion,
@@ -147,19 +150,22 @@ export function TacticalAnalysisView({
       )}
       {!raster.isPending && !raster.isError && raster.data && (
         <div className="flex flex-col gap-3 p-3">
-          <KPIStrip cards={buildKpiCards(t, locale, raster.data)} />
+          <KPIStrip cards={buildKpiCards(t, locale, raster.data, question)} />
           <TacticalPlanCard
             t={t}
+            locale={locale}
             playerSlug={playerSlug}
             mapId={mapId}
             question={question}
             grid={grid}
             bornes={raster.data.bornes}
+            echelle={raster.data.echelle}
             pasM={raster.data.pas_m}
             matchsFiltres={raster.data.matchs_filtres}
             matchsRetenus={raster.data.matchs_retenus}
             matchsEnAttente={raster.data.matchs_en_attente ?? 0}
             matchsNonCuisables={raster.data.matchs_non_cuisables ?? 0}
+            selected={selected}
             onCellSelect={(col, row) => setSelected({ col, row })}
           />
           <TacticalCellCard
@@ -172,6 +178,16 @@ export function TacticalAnalysisView({
             contributionsLoading={cellule.isPending && selected !== null}
             matchsNonOuvrables={cellule.data?.matchs_non_ouvrables ?? 0}
           />
+          {raster.data.coordination && (
+            <TacticalCoordinationCard
+              t={t}
+              locale={locale}
+              coordination={raster.data.coordination}
+              echange={raster.data.echange ?? null}
+              isolement={raster.data.isolement ?? null}
+              matchsFiltres={raster.data.matchs_filtres}
+            />
+          )}
         </div>
       )}
     </>
@@ -179,11 +195,23 @@ export function TacticalAnalysisView({
 }
 
 /**
- * buildKpiCards — les quatre tuiles du bandeau : matchs retenus, couverture, échange,
- * isolement. Échange et isolement sont OMIS quand le contrat ne les publie pas (question
- * qui ne les mesure pas) — une carte à 0 % mentirait, l'absence de carte ne ment pas.
+ * buildKpiCards — les QUATRE tuiles du bandeau de la maquette 034b1915 : matchs retenus,
+ * couverture, morts en isolement, échange après ma mort.
+ *
+ * CHAQUE SOUS-TITRE DIT LA RÈGLE, PAS UN COMPTE DE PLUS (c'est la différence avec la
+ * version précédente, où « 38 sur 56 » était répété sous deux tuiles) : d'où viennent les
+ * matchs (rejeux cuits / base partagée), la fenêtre de l'échange (5 s, publiée par le
+ * serveur), le rayon de l'isolement (la portée du radar mesurée par variante).
+ *
+ * ÉCHANGE ET ISOLEMENT SONT OMIS QUAND LE CONTRAT NE LES PUBLIE PAS (titre qui ne sait pas
+ * lire la source des morts) — une tuile à 0 % mentirait, l'absence de tuile ne ment pas.
  */
-function buildKpiCards(t: TacticalText, locale: Locale, data: TacticalRaster): KPICardData[] {
+function buildKpiCards(
+  t: TacticalText,
+  locale: Locale,
+  data: TacticalRaster,
+  question: TacticalQuestion,
+): KPICardData[] {
   const pct = new Intl.NumberFormat(intlLocale(locale), {
     style: 'percent',
     minimumFractionDigits: 1,
@@ -196,51 +224,68 @@ function buildKpiCards(t: TacticalText, locale: Locale, data: TacticalRaster): K
       id: 'tactical-matches-retained',
       label: t.kpiMatchsRetained,
       primary: num.format(data.matchs_retenus),
-      secondary: t.kpiSecondary(data.matchs_retenus, data.matchs_filtres),
+      secondary: t.kpiMatchsRetainedSecondary(data.matchs_filtres),
     },
     {
       id: 'tactical-coverage',
       label: t.kpiCoverage,
       primary: pct.format(ratioSafe(data.matchs_retenus, data.matchs_filtres)),
-      secondary: t.kpiSecondary(data.matchs_retenus, data.matchs_filtres),
+      // LA PROVENANCE, pas le rapport déjà lu sur la tuile voisine : une couverture de
+      // 68 % ne se lit pas pareil selon qu'elle dépend d'une cuisson (elle montera) ou de
+      // la base partagée (elle ne montera pas).
+      secondary: sourceForQuestion(t, question) === t.sourceReplay
+        ? t.kpiCoverageReplay
+        : t.kpiCoverageShared,
     },
   ]
+  if (data.isolement) {
+    const sansRayon = data.matchs_sans_rayon ?? 0
+    const rayons = data.coordination?.rayons_m ?? []
+    cards.push({
+      id: 'tactical-isolation',
+      label: t.kpiIsolation,
+      primary: pct.format(data.isolement.taux),
+      secondary: withLowSampleNote(
+        rayons.length > 0
+          ? t.kpiIsolationRadius(libelleRayons(t, rayons))
+          : t.kpiSecondary(data.isolement.brut, data.isolement.n),
+        data.isolement.echantillon_faible,
+        t.lowSample,
+      ),
+      // ▼ : moins on meurt isolé, mieux c'est. LA FLÈCHE DIT LE SENS SOUHAITABLE DE LA
+      // GRANDEUR, PAS UNE VARIATION — d'où le mot à côté, et d'où le refus du `trend` de
+      // `KPIStrip`, qui se compare à une référence que cet onglet ne sert pas. La maquette
+      // 034b1915 posait ▼ seul ; seul, il se lit comme « en baisse ».
+      custom: (
+        <div className="flex flex-col gap-0.5">
+          <span className="text-2xs text-muted-foreground">{t.kpiLowerIsBetter}</span>
+          {sansRayon > 0 && (
+            <span className="text-2xs text-muted-foreground" data-testid="tactical-isolation-no-radius">
+              {t.kpiNoRadiusNote(sansRayon)}
+            </span>
+          )}
+        </div>
+      ),
+    })
+  }
   if (data.echange) {
     cards.push({
       id: 'tactical-trade',
       label: t.kpiTrade,
       primary: pct.format(data.echange.taux),
-      secondary: kpiSecondaryWithReserve(t, data.echange.brut, data.echange.n, data.echange.echantillon_faible),
-    })
-  }
-  if (data.isolement) {
-    const sansRayon = data.matchs_sans_rayon ?? 0
-    cards.push({
-      id: 'tactical-isolation',
-      label: t.kpiIsolation,
-      primary: pct.format(data.isolement.taux),
-      secondary: kpiSecondaryWithReserve(t, data.isolement.brut, data.isolement.n, data.isolement.echantillon_faible),
-      custom:
-        sansRayon > 0 ? (
-          <span className="text-2xs text-muted-foreground" data-testid="tactical-isolation-no-radius">
-            {t.kpiNoRadiusNote(sansRayon)}
-          </span>
-        ) : undefined,
+      // LA FENÊTRE EST PUBLIÉE PAR LE SERVEUR, jamais recopiée ici : elle divergerait du
+      // calcul au premier ajustement. Absente (réponse d'une version antérieure), on
+      // retombe sur le compte brut — « sous 0 s » aurait été un chiffre FAUX, pas une
+      // valeur manquante.
+      secondary: withLowSampleNote(
+        data.coordination && data.coordination.fenetre_echange_secondes > 0
+          ? t.kpiTradeWindow(data.coordination.fenetre_echange_secondes)
+          : t.kpiSecondary(data.echange.brut, data.echange.n),
+        data.echange.echantillon_faible,
+        t.lowSample,
+      ),
     })
   }
   return cards
 }
 
-/**
- * kpiSecondaryWithReserve — accole la réserve d'échantillon faible au sous-titre, par la
- * forme unique du dépôt (`withLowSampleNote`, même source que `SquadEchangeKpi.tsx` : le
- * drapeau `echantillon_faible` interdit de comparer la valeur, il ne la cache pas).
- */
-function kpiSecondaryWithReserve(
-  t: TacticalText,
-  brut: number,
-  n: number,
-  echantillonFaible: boolean,
-): string {
-  return withLowSampleNote(t.kpiSecondary(brut, n), echantillonFaible, t.lowSample)
-}
