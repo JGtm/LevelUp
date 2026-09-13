@@ -187,18 +187,20 @@ function elevationLegendItems(t: Translate): ChartLegendItem[] {
 }
 
 /**
- * SubtitleRow — le titre d'un des deux blocs, et son mode d'emploi dans une aide ⓘ.
+ * titleWithHelp — le bandeau de titre d'une carte, et son mode d'emploi derrière une aide ⓘ.
  *
- * Le détail de lecture (« bâton du 10e au 90e centile, losange sur la médiane ») était écrit
- * en clair à côté du titre : trois lignes de texte gris au-dessus de chaque graphe, lues une
- * fois puis jamais. Il vit désormais derrière l'icône, comme partout ailleurs dans l'app.
+ * Le détail de lecture (« bâton du 10e au 90e centile, losange sur la médiane ») s'écrivait
+ * SOUS le titre de carte, sur une ligne de sous-titre à lui : un titre pour la carte, un
+ * second titre pour le même graphe. Depuis le 2026-09-13 les deux graphes ont chacun leur
+ * carte, et l'aide vit dans le bandeau — même gabarit que `cardTitleAdornment` du bloc
+ * « Usages d'équipement ».
  */
-function SubtitleRow({ title, help }: { title: string; help: string }) {
-  return (
-    <p className="flex items-center gap-1.5 px-3 pt-2.5 text-xs font-semibold text-foreground">
-      {title}
+function titleWithHelp(help: string) {
+  return (label: string) => (
+    <span className="flex items-center gap-1.5">
+      {label}
       <InfoTooltip content={help} iconClass="w-3.5 h-3.5" />
-    </p>
+    </span>
   )
 }
 
@@ -296,25 +298,27 @@ function useWeaponRangeOptions(lines: WeaponRangeLine[], f: RangeFormats, t: Tra
 }
 
 /**
- * RangeCardBody — les deux graphes, OU la phrase qui explique pourquoi il n'y en a pas.
+ * RangeChartBody — le graphe de portée, OU la phrase qui explique pourquoi il n'y en a pas.
  *
- * Le second cas est nominal (toutes les armes sous le seuil de publication) : la carte garde
- * ses tuiles, ses armes nommées et sa note de couverture, et le corps DIT pourquoi il est
- * vide. Un graphe sans barre ne se lit pas « rien à montrer », il se lit « bug ».
+ * Le second cas est nominal (toutes les armes sous le seuil de publication) : la section garde
+ * ses tuiles et ses armes nommées, et le corps DIT pourquoi il est vide. Un graphe sans barre
+ * ne se lit pas « rien à montrer », il se lit « bug ».
  */
-function RangeCardBody({
+function RangeChartBody({
   publiable,
   series,
-  buildRange,
-  buildElevation,
+  buildOption,
   height,
+  legendItems,
+  legendLabel,
   t,
 }: {
   publiable: boolean
   series: ChartSeries<WeaponRangeLine>[]
-  buildRange: () => EChartsCoreOption
-  buildElevation: () => EChartsCoreOption
+  buildOption: () => EChartsCoreOption
   height: number
+  legendItems: ChartLegendItem[]
+  legendLabel: string
   t: Translate
 }) {
   if (!publiable) {
@@ -325,41 +329,13 @@ function RangeCardBody({
     )
   }
   return (
-    <>
-      <SubtitleRow
-        title={t('synthesis.weapon_range.range_subtitle')}
-        help={t('synthesis.weapon_range.range_subtitle_detail')}
-      />
-      <ChartCard
-        series={series}
-        buildOption={buildRange}
-        height={height}
-        className={NESTED_CHART_CHROME}
-        legend={
-          <ChartLegend
-            items={rangeLegendItems(t)}
-            ariaLabel={t('synthesis.weapon_range.legend_label')}
-          />
-        }
-      />
-
-      <SubtitleRow
-        title={t('synthesis.weapon_range.elevation_subtitle')}
-        help={t('synthesis.weapon_range.elevation_subtitle_detail')}
-      />
-      <ChartCard
-        series={series}
-        buildOption={buildElevation}
-        height={height}
-        className={NESTED_CHART_CHROME}
-        legend={
-          <ChartLegend
-            items={elevationLegendItems(t)}
-            ariaLabel={t('synthesis.weapon_range.legend_elevation_label')}
-          />
-        }
-      />
-    </>
+    <ChartCard
+      series={series}
+      buildOption={buildOption}
+      height={height}
+      className={NESTED_CHART_CHROME}
+      legend={<ChartLegend items={legendItems} ariaLabel={legendLabel} />}
+    />
   )
 }
 
@@ -394,38 +370,49 @@ export function SynthesisWeaponRangeSection({ range }: SynthesisWeaponRangeSecti
   return (
     <section className="space-y-3">
       <SectionSubtitle>{t('synthesis.weapon_range.heading')}</SectionSubtitle>
-      <p className="max-w-[68ch] text-xs text-muted-foreground">
-        {t('synthesis.weapon_range.lede')}
-      </p>
 
       <RangeTiles range={range} t={t} f={f} />
 
-      <SectionCard
-        title={t('synthesis.weapon_range.card_title')}
-        label={t('synthesis.weapon_range.card_title')}
-        titleAdornment={(label) => (
-          <span className="flex flex-wrap items-baseline justify-between gap-2">
-            <span>{label}</span>
-            <span className="text-3xs font-normal tabular-nums text-muted-foreground">
-              {t('synthesis.weapon_range.card_count', {
-                weapons: lines.length,
-                kills: range.measured_kills,
-                deaths: range.measured_deaths,
-              })}
-            </span>
-          </span>
-        )}
-        footer={<RangeFooter lines={lines} t={t} f={f} />}
-      >
-        <RangeCardBody
-          publiable={publiable}
-          series={series}
-          buildRange={buildRange}
-          buildElevation={buildElevation}
-          height={height}
-          t={t}
-        />
-      </SectionCard>
+      {/* DEUX CARTES SUR UNE RANGÉE (2026-09-13). Portée et dénivelé répondaient à deux
+          questions distinctes sous un seul titre, l'une sous l'autre : la carte faisait deux
+          écrans de haut et le dénivelé se lisait comme une annexe de la portée. En demi-
+          largeur les étiquettes d'armes restent sur l'axe vertical (elles ne rétrécissent
+          pas) et seul l'axe des mètres se resserre — le tableau dépliable garde la valeur
+          exacte. Empilement automatique sous `lg` : à 1024 px la moitié ne suffirait plus. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <SectionCard
+          title={t('synthesis.weapon_range.card_title')}
+          label={t('synthesis.weapon_range.card_title')}
+          titleAdornment={titleWithHelp(t('synthesis.weapon_range.range_subtitle_detail'))}
+          footer={<RangeFooter lines={lines} t={t} f={f} />}
+        >
+          <RangeChartBody
+            publiable={publiable}
+            series={series}
+            buildOption={buildRange}
+            height={height}
+            legendItems={rangeLegendItems(t)}
+            legendLabel={t('synthesis.weapon_range.legend_label')}
+            t={t}
+          />
+        </SectionCard>
+
+        <SectionCard
+          title={t('synthesis.weapon_range.elevation_subtitle')}
+          label={t('synthesis.weapon_range.elevation_subtitle')}
+          titleAdornment={titleWithHelp(t('synthesis.weapon_range.elevation_subtitle_detail'))}
+        >
+          <RangeChartBody
+            publiable={publiable}
+            series={series}
+            buildOption={buildElevation}
+            height={height}
+            legendItems={elevationLegendItems(t)}
+            legendLabel={t('synthesis.weapon_range.legend_elevation_label')}
+            t={t}
+          />
+        </SectionCard>
+      </div>
     </section>
   )
 }

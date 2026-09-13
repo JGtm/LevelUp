@@ -1,5 +1,10 @@
-// Package service — synthesis_weapon_range.go : LA SECTION « PORTÉE PAR ARME » DE LA SYNTHÈSE
+// Package service — weapon_range_section.go : LA SECTION « PORTÉE PAR ARME »
 // (plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md, lot 4).
+//
+// SECTION MIGRÉE LE 2026-09-13 : elle a quitté la Synthèse pour l'onglet Résumé des Séries
+// temporelles, sans changer de producteur. Le chargement vit dans une FONCTION LIBRE
+// (`buildWeaponRangeSection`) prenant son scope canonique en paramètre — un service qui
+// appellerait un autre service serait un couplage horizontal (skill arch-rules).
 //
 // Fichier séparé de synthesis_service.go, qui frôle déjà le plafond de 500 lignes du dépôt.
 // La frontière suit la donnée : ce qui est propre à la portée vit ici, l'orchestration de la
@@ -25,47 +30,55 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// loadWeaponRange charge et assemble la section « Portée par arme ».
+// weaponRangeQuery — tout ce dont la section a besoin : son repo, le titre, le joueur et le
+// scope canonique DÉJÀ FILTRÉ par la page appelante. Aucune des deux pages ne refiltre ici :
+// chacune pose la même question à ses propres matchs.
+type weaponRangeQuery struct {
+	Repo      port.WeaponRangeRepository
+	TitleSlug string
+	Gamertag  string
+	Rows      []canonical.PlayerMatchRow
+}
+
+// buildWeaponRangeSection charge et assemble la section pour un scope donné.
 //
 // BEST-EFFORT, EXACTEMENT COMME loadWeaponAccuracy : nil (section omise) si le repo n'est pas
 // câblé, si le joueur ou le scope est vide, si le titre ne produit pas de positions par kill
 // (`games.ErrCapabilityNotSupported` -> Debug, c'est une absence légitime) ou si la lecture
 // échoue (-> Warn, c'est une anomalie). Une section absente ne casse jamais la page.
-func (s *SynthesisService) loadWeaponRange(
-	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
-) *domain.SynthesisWeaponRange {
-	if s.weaponRangeRepo == nil || s.gamertag == "" || len(filteredCanon) == 0 {
+func buildWeaponRangeSection(ctx context.Context, q weaponRangeQuery) *domain.SynthesisWeaponRange {
+	if q.Repo == nil || q.Gamertag == "" || len(q.Rows) == 0 {
 		return nil
 	}
-	scope := weaponRangeScope(filteredCanon)
-	filters := port.WeaponRangeFilters{MatchIDs: scope.matchIDs, Gamertag: s.gamertag}
+	scope := weaponRangeScope(q.Rows)
+	filters := port.WeaponRangeFilters{MatchIDs: scope.matchIDs, Gamertag: q.Gamertag}
 
-	kills, err := s.weaponRangeRepo.LoadWeaponRange(ctx, s.titleSlug, filters)
+	kills, err := q.Repo.LoadWeaponRange(ctx, q.TitleSlug, filters)
 	if err != nil {
-		s.logWeaponRangeFailure(ctx, "portee", len(scope.matchIDs), err)
+		logWeaponRangeFailure(ctx, q, "portee", len(scope.matchIDs), err)
 		return nil
 	}
 	if len(kills) == 0 {
 		// Scope réel mais aucun frag mesuré : le décodeur n'a pas (encore) couvert ces
 		// matchs. Pas une panne, pas une section vide — pas de section.
-		slog.DebugContext(ctx, "synthesis: portee par arme — aucun frag mesure sur le scope",
-			"title", s.titleSlug, "gamertag", s.gamertag, "match_count", len(scope.matchIDs))
+		slog.DebugContext(ctx, "portee par arme — aucun frag mesure sur le scope",
+			"title", q.TitleSlug, "gamertag", q.Gamertag, "match_count", len(scope.matchIDs))
 		return nil
 	}
 
 	// L'ENTAME EST UN BONUS, SON ABSENCE N'EMPORTE PAS LA SECTION. Sa couverture est
 	// partielle par construction tant que le backfill n'a pas tourné (D5) : la portée se
 	// publie sans elle, et le bloc Opening reste nil plutôt que de valoir zéro.
-	openings, err := s.weaponRangeRepo.LoadWeaponOpening(ctx, s.titleSlug, filters)
+	openings, err := q.Repo.LoadWeaponOpening(ctx, q.TitleSlug, filters)
 	if err != nil {
-		s.logWeaponRangeFailure(ctx, "entame", len(scope.matchIDs), err)
+		logWeaponRangeFailure(ctx, q, "entame", len(scope.matchIDs), err)
 		openings = nil
 	}
 
 	block := buildWeaponRangeBlock(kills, openings, scope)
-	s.hydrateWeaponRangeLabels(ctx, block)
-	slog.DebugContext(ctx, "synthesis: portee par arme",
-		"title", s.titleSlug, "gamertag", s.gamertag,
+	hydrateWeaponRangeLabels(ctx, q, block)
+	slog.DebugContext(ctx, "portee par arme",
+		"title", q.TitleSlug, "gamertag", q.Gamertag,
 		"armes", len(block.Weapons), "frags_mesures", block.MeasuredKills,
 		"morts_mesurees", block.MeasuredDeaths, "entames", len(openings))
 	return block
@@ -73,16 +86,16 @@ func (s *SynthesisService) loadWeaponRange(
 
 // logWeaponRangeFailure distingue l'absence légitime de l'anomalie — parité loadWeaponAccuracy.
 // Une capability manquante en Warn noierait les vrais bugs SQL sur un titre sans décodeur.
-func (s *SynthesisService) logWeaponRangeFailure(
-	ctx context.Context, lecture string, matchCount int, err error,
+func logWeaponRangeFailure(
+	ctx context.Context, q weaponRangeQuery, lecture string, matchCount int, err error,
 ) {
 	if errors.Is(err, games.ErrCapabilityNotSupported) {
-		slog.DebugContext(ctx, "synthesis: portee par arme — capability absente",
-			"lecture", lecture, "title", s.titleSlug, "gamertag", s.gamertag)
+		slog.DebugContext(ctx, "portee par arme — capability absente",
+			"lecture", lecture, "title", q.TitleSlug, "gamertag", q.Gamertag)
 		return
 	}
-	slog.WarnContext(ctx, "synthesis: portee par arme — lecture en echec (best-effort, section degradee)",
-		"lecture", lecture, "title", s.titleSlug, "gamertag", s.gamertag,
+	slog.WarnContext(ctx, "portee par arme — lecture en echec (best-effort, section degradee)",
+		"lecture", lecture, "title", q.TitleSlug, "gamertag", q.Gamertag,
 		"match_count", matchCount, "err", err)
 }
 
@@ -121,17 +134,17 @@ func weaponRangeScope(filteredCanon []canonical.PlayerMatchRow) weaponRangeScope
 // sans quoi elle dirait « 3 armes » et n'apprendrait rien. Best-effort : une clé que la
 // metadata ne connaît pas garde un libellé vide, et le front retombe sur `WeaponKey` — jamais
 // un nom inventé côté Go (aucun libellé FR/EN en dur, règle transverse multi-titre).
-func (s *SynthesisService) hydrateWeaponRangeLabels(
-	ctx context.Context, block *domain.SynthesisWeaponRange,
+func hydrateWeaponRangeLabels(
+	ctx context.Context, q weaponRangeQuery, block *domain.SynthesisWeaponRange,
 ) {
 	keys := collectWeaponKeys(block)
 	if len(keys) == 0 {
 		return
 	}
-	labels, err := s.weaponRangeRepo.ResolveWeaponLabels(ctx, keys)
+	labels, err := q.Repo.ResolveWeaponLabels(ctx, keys)
 	if err != nil {
-		slog.WarnContext(ctx, "synthesis: portee par arme — libelles non resolus (repli sur les cles)",
-			"title", s.titleSlug, "armes", len(keys), "err", err)
+		slog.WarnContext(ctx, "portee par arme — libelles non resolus (repli sur les cles)",
+			"title", q.TitleSlug, "armes", len(keys), "err", err)
 		return
 	}
 	for i := range block.Weapons {

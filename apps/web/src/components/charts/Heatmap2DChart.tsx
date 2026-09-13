@@ -113,6 +113,31 @@ export interface Heatmap2DChartProps {
    * L'appelant est responsable de l'échappement de ce qu'il injecte.
    */
   formatTooltip?: (point: ChartPointHeatmap) => string
+  /**
+   * Axe Y INVERSÉ : la première catégorie rencontrée occupe le HAUT et non le bas
+   * (`yAxis.inverse` d'ECharts). Absent = comportement historique.
+   *
+   * Sans cette option, un calendrier jour × heure devait émettre ses points à l'envers
+   * (Dimanche → Lundi) pour que Lundi finisse en haut : l'ordre des DONNÉES portait une
+   * décision d'AFFICHAGE, et la lecture du builder ne disait plus le sens de la semaine.
+   */
+  yAxisInverse?: boolean
+  /**
+   * Titres des deux axes (`axis.name`). Absents = axes sans titre (historique). Un
+   * calendrier en a besoin : « Heure » et « Jour » ne se devinent pas d'une rangée de
+   * nombres à deux chiffres.
+   */
+  axisNames?: { x?: string; y?: string }
+  /**
+   * Échelle de couleur VERTICALE, posée à droite du tracé, au lieu de l'horizontale en
+   * pied (défaut). Pour un tracé large et peu haut (24 colonnes × 7 lignes), la barre
+   * verticale longe la hauteur du graphe au lieu de lui voler une rangée.
+   */
+  visualMapOrient?: 'horizontal' | 'vertical'
+  /** Formatage d'une graduation de l'échelle (ex. un taux 0..1 rendu en %). */
+  visualMapFormatter?: (value: number) => string
+  /** Libellés des deux extrémités de l'échelle (`visualMap.text`, haut puis bas). */
+  visualMapText?: [string, string]
 }
 
 export function Heatmap2DChart({
@@ -126,6 +151,11 @@ export function Heatmap2DChart({
   valueRange,
   saturationCap,
   formatTooltip,
+  yAxisInverse,
+  axisNames,
+  visualMapOrient,
+  visualMapFormatter,
+  visualMapText,
 }: Heatmap2DChartProps) {
   // Palette d'accessibilité active : pilote la rampe CVD-safe (rebuild via
   // useColorPaletteVersion dans ChartCard + ce sélecteur au changement de palette).
@@ -133,8 +163,30 @@ export function Heatmap2DChart({
   const locale = useAppShellStore((s) => s.locale)
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointHeatmap>[]) =>
-      buildHeatmap2DOption(s, { paletteMode, valueRange, saturationCap, colorPalette, formatTooltip }),
-    [paletteMode, valueRange, saturationCap, colorPalette, formatTooltip],
+      buildHeatmap2DOption(s, {
+        paletteMode,
+        valueRange,
+        saturationCap,
+        colorPalette,
+        formatTooltip,
+        yAxisInverse,
+        axisNames,
+        visualMapOrient,
+        visualMapFormatter,
+        visualMapText,
+      }),
+    [
+      paletteMode,
+      valueRange,
+      saturationCap,
+      colorPalette,
+      formatTooltip,
+      yAxisInverse,
+      axisNames,
+      visualMapOrient,
+      visualMapFormatter,
+      visualMapText,
+    ],
   )
 
   // Décision D3 : une case sans mesure se nomme, sans que l'appelant ait à le
@@ -171,6 +223,42 @@ interface BuildOpts {
   /** Palette d'accessibilité active — pilote la rampe CVD-safe (cf. heatmapColors). */
   colorPalette?: ColorPalette
   formatTooltip?: (point: ChartPointHeatmap) => string
+  /** Cf. les props homonymes du composant — toutes absentes = rendu historique. */
+  yAxisInverse?: boolean
+  axisNames?: { x?: string; y?: string }
+  visualMapOrient?: 'horizontal' | 'vertical'
+  visualMapFormatter?: (value: number) => string
+  visualMapText?: [string, string]
+}
+
+/**
+ * Position de l'échelle de couleur ET marge du tracé, qui vont ensemble : une échelle
+ * verticale à droite a besoin de la place que l'horizontale en pied prenait en bas.
+ */
+/**
+ * Titre d'axe posé AU MILIEU de son axe, à distance des graduations — la seule position qui
+ * ne peut chevaucher ni la première ni la dernière étiquette. `undefined` quand l'appelant ne
+ * passe pas de titre : l'axe reste exactement celui d'avant l'ajout de l'option.
+ */
+function axisNameOpts(name: string | undefined, gap: number) {
+  if (!name) return {}
+  return { name, nameLocation: 'middle' as const, nameGap: gap }
+}
+
+function visualMapLayout(orient: 'horizontal' | 'vertical') {
+  if (orient === 'vertical') {
+    // `left`/`bottom` plus généreux que l'horizontale : ils logent les TITRES d'axes, posés
+    // au milieu de leur axe (cf. `axisNameOpts`) — sans cette marge, le titre se superpose
+    // aux graduations.
+    return {
+      grid: { top: 32, bottom: 56, left: 116, right: 130 },
+      placement: { orient, right: 30, top: 'center', itemWidth: 12, itemHeight: 140 },
+    }
+  }
+  return {
+    grid: { top: 24, bottom: 80, left: 96, right: 24 },
+    placement: { orient, left: 'center', bottom: 8 },
+  }
 }
 
 /**
@@ -235,7 +323,8 @@ export function buildHeatmap2DOption(
   opts: BuildOpts = {},
 ): EChartsCoreOption {
   const { paletteMode = 'sequential', valueRange, saturationCap, colorPalette = 'default' } = opts
-  const { formatTooltip } = opts
+  const { formatTooltip, yAxisInverse, axisNames, visualMapFormatter, visualMapText } = opts
+  const layout = visualMapLayout(opts.visualMapOrient ?? 'horizontal')
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -276,7 +365,7 @@ export function buildHeatmap2DOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 80, left: 96, right: 24 },
+    grid: layout.grid,
     // Requis pour qu'ECharts applique les `itemStyle.decal` posés à la main
     // ci-dessus (même flag que `MatchSummaryCharts.ARIA_DECAL`).
     aria: { decal: { show: true } },
@@ -295,17 +384,24 @@ export function buildHeatmap2DOption(
         return `${escapeHtml(ys[yi])} × ${escapeHtml(xs[xi])}<br/>Win Rate: <b>${(v * 100).toFixed(1)}%</b><br/>Matchs: <b>${count}</b>`
       },
     },
-    xAxis: { ...axis, type: 'category', data: xs, splitArea: { show: true } },
-    yAxis: { ...axis, type: 'category', data: ys, splitArea: { show: true } },
+    xAxis: { ...axis, type: 'category', data: xs, splitArea: { show: true }, ...axisNameOpts(axisNames?.x, 28) },
+    yAxis: {
+      ...axis,
+      type: 'category',
+      data: ys,
+      splitArea: { show: true },
+      ...axisNameOpts(axisNames?.y, 76),
+      inverse: yAxisInverse,
+    },
     visualMap: {
       min: minV,
       max: maxV,
       calculable: true,
-      orient: 'horizontal',
-      left: 'center',
-      bottom: 8,
+      ...layout.placement,
       inRange: { color: colors },
       textStyle: { color: tc.axisLabel, fontSize: 10 },
+      formatter: visualMapFormatter,
+      text: visualMapText,
     },
     series: [
       {

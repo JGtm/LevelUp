@@ -2,12 +2,15 @@
  * EquipmentUsageSection.tsx — L'ORCHESTRATEUR du bloc « servi ou gâché » en variante
  * COMPTES (décision P9, PLAN_EQUIPEMENT_GACHIS_2026-09-09, étapes E5.8-E5.10/E6.2-E6.4).
  *
- * DEUX CARTES (le gabarit `SectionCard`, même patron que `SessionUsageSection`) :
- *   1. « Usages d'équipement » — une ligne par grandeur (barre en comptes, P9) puis le
- *      donut « part de l'équipement du lobby » (P10/P11) ;
- *   2. « Contrôle des armes spéciales » — même paire, sur les prises de socle. Le tir
- *      n'est pas mesuré à ce grain (P5/E6.1) : la barre y est un compte simple, sans
- *      pile d'issues.
+ * QUATRE CARTES SUR DEUX RANGÉES (le gabarit `SectionCard`) — découpage du 2026-09-13.
+ * Chaque vue portait jusqu'ici un sous-titre à l'intérieur d'une carte à deux étages : la
+ * barre et son donut se lisaient comme un seul objet, alors qu'ils répondent à deux
+ * questions (« qu'ai-je fait de ce que j'ai pris » et « quelle part du lobby était pour
+ * moi »). Le sous-titre de chaque vue est devenu le TITRE de sa carte :
+ *   1. « Usages d'équipement » (barres) | « Ma part de l'équipement du lobby » (donut) ;
+ *   2. « Contrôle des armes spéciales » (barres) | « Ma part des armes spéciales du lobby ».
+ * Le tir n'est pas mesuré au grain des socles (P5/E6.1) : la barre de la seconde rangée est
+ * un compte simple, sans pile d'issues. En mode squad, les deux donuts disent « Notre part ».
  *
  * DEUX MODES, une seule différence : la BASE des lignes de la barre équipement.
  *   - 'solo' (Synthèse) : une ligne par FAMILLE (`usage.families`, déjà triée côté Go).
@@ -47,14 +50,6 @@ export interface EquipmentUsageSectionProps {
   mode: 'solo' | 'squad'
   t: UsageText
   locale: Locale
-}
-
-function ViewTitle({ children }: { children: string }) {
-  return (
-    <h4 className="mb-2 text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
-      {children}
-    </h4>
-  )
 }
 
 /** Même gabarit de bandeau de titre que `SessionUsageSection` (aide sur le libellé). */
@@ -131,7 +126,8 @@ interface CardContentProps {
   locale: Locale
 }
 
-function EquipmentCard({ usage, mode, t, locale }: CardContentProps) {
+/** La rangée « équipement » : les comptes à gauche, la part du lobby à droite. */
+function EquipmentCards({ usage, mode, t, locale }: CardContentProps) {
   const rows = mode === 'solo' ? familyRows(usage, t) : playerEquipmentRows(usage, t)
   const grid = buildCountsGrid(rows, { t, locale, unit: 'equipment' })
   const donut = buildPartiesDonutModel(
@@ -141,32 +137,35 @@ function EquipmentCard({ usage, mode, t, locale }: CardContentProps) {
     t,
     locale,
   )
+  const measured = t.measuredFmt(usage.matches_measured, usage.matches_total)
   return (
-    <SectionCard
-      title={t.blockEquipment}
-      label={t.blockEquipment}
-      titleAdornment={cardTitleAdornment(
-        t.measuredFmt(usage.matches_measured, usage.matches_total),
-        t.cardHintEquipmentCounts,
-      )}
-    >
-      <div className="flex flex-col gap-4 p-3">
-        <div>
-          <ViewTitle>{mode === 'solo' ? t.viewCountsSolo : t.viewCountsSquad}</ViewTitle>
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <SectionCard
+        title={t.blockEquipment}
+        label={t.blockEquipment}
+        titleAdornment={cardTitleAdornment(measured, t.cardHintEquipmentCounts)}
+      >
+        <div className="p-3">
           <UsageCountsGrid grid={grid} />
         </div>
-        {donut != null && (
-          <div>
-            <ViewTitle>{mode === 'solo' ? t.viewEquipmentPartsSolo : t.viewEquipmentPartsSquad}</ViewTitle>
+      </SectionCard>
+      {donut != null && (
+        <SectionCard
+          title={mode === 'solo' ? t.viewEquipmentPartsSolo : t.viewEquipmentPartsSquad}
+          label={mode === 'solo' ? t.viewEquipmentPartsSolo : t.viewEquipmentPartsSquad}
+          titleAdornment={cardTitleAdornment(measured, t.cardHintEquipmentCounts)}
+        >
+          <div className="p-3">
             <UsageEquipmentDonutCard model={donut} />
           </div>
-        )}
-      </div>
-    </SectionCard>
+        </SectionCard>
+      )}
+    </div>
   )
 }
 
-function PadControlCard({ usage, mode, t, locale }: CardContentProps) {
+/** La rangée « armes spéciales » : mêmes deux questions, sur les prises de socle. */
+function PadControlCards({ usage, mode, t, locale }: CardContentProps) {
   const rows = playerWeaponRows(usage, t)
   const grid = buildCountsGrid(rows, { t, locale, unit: 'weapon' })
   const donut = buildPartiesDonutModel(
@@ -176,28 +175,30 @@ function PadControlCard({ usage, mode, t, locale }: CardContentProps) {
     t,
     locale,
   )
+  const measured = t.measuredFmt(usage.matches_measured, usage.matches_total)
   return (
-    <SectionCard
-      title={t.blockPadControl}
-      label={t.blockPadControl}
-      titleAdornment={cardTitleAdornment(
-        t.measuredFmt(usage.matches_measured, usage.matches_total),
-        t.cardHintWeaponCounts,
-      )}
-    >
-      <div className="flex flex-col gap-4 p-3">
-        <div>
-          <ViewTitle>{mode === 'solo' ? t.viewCountsSolo : t.viewCountsSquad}</ViewTitle>
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <SectionCard
+        title={t.blockPadControl}
+        label={t.blockPadControl}
+        titleAdornment={cardTitleAdornment(measured, t.cardHintWeaponCounts)}
+      >
+        <div className="p-3">
           <UsageCountsGrid grid={grid} />
         </div>
-        {donut != null && (
-          <div>
-            <ViewTitle>{mode === 'solo' ? t.viewWeaponPartsSolo : t.viewWeaponPartsSquad}</ViewTitle>
+      </SectionCard>
+      {donut != null && (
+        <SectionCard
+          title={mode === 'solo' ? t.viewWeaponPartsSolo : t.viewWeaponPartsSquad}
+          label={mode === 'solo' ? t.viewWeaponPartsSolo : t.viewWeaponPartsSquad}
+          titleAdornment={cardTitleAdornment(measured, t.cardHintWeaponCounts)}
+        >
+          <div className="p-3">
             <UsageEquipmentDonutCard model={donut} />
           </div>
-        )}
-      </div>
-    </SectionCard>
+        </SectionCard>
+      )}
+    </div>
   )
 }
 
@@ -213,8 +214,8 @@ export function EquipmentUsageSection({ usage, mode, t, locale }: EquipmentUsage
   }
   return (
     <>
-      <EquipmentCard usage={usage} mode={mode} t={t} locale={locale} />
-      <PadControlCard usage={usage} mode={mode} t={t} locale={locale} />
+      <EquipmentCards usage={usage} mode={mode} t={t} locale={locale} />
+      <PadControlCards usage={usage} mode={mode} t={t} locale={locale} />
     </>
   )
 }

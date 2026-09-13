@@ -1527,19 +1527,11 @@ export interface SynthesisPageResponse {
   // Précision par arme (Halo 5 natif) — toutes les armes tirées, accuracy 0..1.
   // Omis pour les titres qui ne peuplent pas weapon_accuracy (Infinite).
   weapon_accuracy?: SynthesisWeaponAccuracyEntry[]
-  // Portée et dénivelé mesurés des engagements (section « Portée par arme »).
-  // Omis quand la capability produit `weapon_range` manque ou quand rien n'est mesuré
-  // sur le scope — jamais un bloc à zéro (cf. .ai/PLAN_DUELS_PORTEE_2026-09-06.md, D5/D9).
-  weapon_range?: SynthesisWeaponRange
   // PLAN_COMBAT_PROFILE_WIRING Phase 1
   combat_profile?: CombatProfileBlock | null
   // KPI objectifs (cumul CTF/Zones/Oddball sur le scope) — omis pour un titre sans
   // capability match.objective.stats (Halo 5) ou un scope sans match à objectif.
   objective_stats?: ObjectiveAggregate | null
-  // Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09, E5) —
-  // variante comptes (P9), une ligne par famille. Absent si le scope filtré n'a aucun
-  // match ; `available:false` avec raison machine pour un titre sans film.usage_summary.
-  equipment_usage?: EquipmentUsageBlock
 }
 
 // Cumul des stats objectifs (CTF/Zones/Oddball) sur un scope — partagé Synthèse/Escouade.
