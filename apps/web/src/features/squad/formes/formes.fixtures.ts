@@ -139,7 +139,7 @@ export function formesFixture(): SquadFormesBlock {
         match_id: 'm-flag',
         start_time: '2026-07-31T17:56:00Z',
         mode_label: 'Drapeau',
-        map_label: 'Aquarius',
+        map_label: 'Cliffside',
         duration_seconds: 420,
         measured: true,
         player_team: 1,

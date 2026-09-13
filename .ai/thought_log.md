@@ -107743,3 +107743,32 @@ corrigés comme défauts introduits par le lot. R6-R11, R14, R15 consignés au p
 **Conclusion** : lots A-F fusionnés dans feat/v75, CI verte au niveau job après chaque fusion ;
 reste à la main de l'utilisateur : recuisson du parc (F.4, D.2), item Notion « retrait migration
 boot » à cocher, découvertes consignées (dont `RebuildMatchSkillRankART` au schéma pré-append-only).
+
+---
+
+## [2026-09-13] Finitions v7.5, suite — lots G (fiabilité) et H (rejeu), revue bornée — Complété
+
+**Décisions** : huit recommandations retenues par l'utilisateur sur les découvertes consignées,
+découpées en lot G (fiabilité : outil de reconstruction pré-append-only supprimé, ratchet anti-ART
+étendu aux noms de table interpolés, sonde data-health « index match_skill_rank désynchronisé »
+avec règle partagée `indexcheck`, titre stampé à l'entrée du post-import OpenSpartan, parités
+Go↔TS des familles d'objectif et `skillchain.Chains()`) et lot H (rejeu : neutralité des socles
+de drapeau en champ explicite — 8 socles `team_index=-1` sortis du panier neutre, 63 neutres
+inchangés ; pièce engendrée toujours `deployed` — 10 panneaux basculent, aucune autre famille ;
+D-F5 : les deux « films d'Aquarius » sont LIVE FIRE, artefacts et catalogue justes, seul
+l'instrument de recherche imposait le mauvais découpage — rien à recuire, `[!]`).
+
+**Résultats** : mesure G.4 par le pilote (serveur arrêté) : 0 chaîne de performance étrangère
+sur les 4 bases Infinite, fermeture préventive. CI verte au niveau job sur les deux branches
+puis sur feat/v75 après chaque fusion. Revue bornée (`REVUE_FINITIONS_GH_2026-09-13.md`) :
+0 P0, 2 P1 corrigés (trois copies inline du périmètre anti-ART remplacées par le helper unique ;
+assertion du stamp rendue mordante), 9 P2 consignés au plan.
+
+**Incident de branche partagée** : une autre session fusionne ses lots d'ajustements UI sur le
+même feat/v75 local ; un push retardé par les hooks est parti avec une fusion ensuite amendée
+(refus non fast-forward), réconcilié par fusion de la version distante (aucun push forcé) ; puis
+le pre-push `lint:fields` rougissait sur `formes.fixtures.ts:142` (« Aquarius », lot ajust-D2 de
+l'autre session) — libellé de fixture remplacé par « Cliffside » pour débloquer la branche.
+
+**Conclusion** : chantier des finitions clos ; à la main de l'utilisateur : recuisson du parc
+(F.4, D.2, H.2), item Notion « retrait migration boot », P2 consignés.
