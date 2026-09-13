@@ -24569,6 +24569,215 @@ components:
         - durations_seconds
         - players
       type: object
+    SquadFormesBlock:
+      additionalProperties: false
+      properties:
+        available:
+          type: boolean
+        main_xuid:
+          type: string
+        matches:
+          items:
+            $ref: '#/components/schemas/SquadFormesMatch'
+          type:
+            - array
+            - "null"
+        matches_measured:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        squad:
+          items:
+            $ref: '#/components/schemas/SessionUsageSquadPlayer'
+          type:
+            - array
+            - "null"
+        unavailable_reason:
+          type: string
+        weapons:
+          items:
+            $ref: '#/components/schemas/SquadFormesWeapon'
+          type:
+            - array
+            - "null"
+      required:
+        - available
+        - matches_total
+        - matches_measured
+      type: object
+    SquadFormesLobbyPlayer:
+      additionalProperties: false
+      properties:
+        camo:
+          format: int64
+          type: integer
+        dropped:
+          format: int64
+          type: integer
+        gamertag:
+          type: string
+        grapple:
+          format: int64
+          type: integer
+        overshield:
+          format: int64
+          type: integer
+        pad_pickups:
+          format: int64
+          type: integer
+        pads_by_weapon:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        team_id:
+          format: int64
+          type: integer
+        wall:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - xuid
+        - camo
+        - overshield
+        - wall
+        - grapple
+        - dropped
+        - pad_pickups
+      type: object
+    SquadFormesMatch:
+      additionalProperties: false
+      properties:
+        duration_seconds:
+          format: double
+          type: number
+        lobby:
+          items:
+            $ref: '#/components/schemas/SquadFormesLobbyPlayer'
+          type:
+            - array
+            - "null"
+        lobby_size:
+          format: int64
+          type: integer
+        map_label:
+          type: string
+        match_id:
+          type: string
+        measured:
+          type: boolean
+        mode_label:
+          type: string
+        objective:
+          $ref: '#/components/schemas/SquadFormesObjective'
+        pad_named:
+          format: int64
+          type: integer
+        pad_unnamed:
+          format: int64
+          type: integer
+        player_team:
+          format: int64
+          type: integer
+        start_time:
+          type: string
+        team_size:
+          format: int64
+          type: integer
+        weapon_pads:
+          items:
+            $ref: '#/components/schemas/SquadFormesWeaponPad'
+          type:
+            - array
+            - "null"
+      required:
+        - match_id
+        - measured
+      type: object
+    SquadFormesObjective:
+      additionalProperties: false
+      properties:
+        columns:
+          items:
+            $ref: '#/components/schemas/SquadFormesObjectiveColumn'
+          type:
+            - array
+            - "null"
+        family:
+          type: string
+        players:
+          items:
+            $ref: '#/components/schemas/SquadFormesObjectivePlayer'
+          type:
+            - array
+            - "null"
+      required:
+        - family
+      type: object
+    SquadFormesObjectiveColumn:
+      additionalProperties: false
+      properties:
+        duration:
+          type: boolean
+        key:
+          type: string
+        role:
+          type: string
+      required:
+        - key
+        - role
+      type: object
+    SquadFormesObjectivePlayer:
+      additionalProperties: false
+      properties:
+        team_id:
+          format: int64
+          type: integer
+        values:
+          additionalProperties:
+            format: double
+            type: number
+          type: object
+        xuid:
+          type: string
+      required:
+        - xuid
+      type: object
+    SquadFormesWeapon:
+      additionalProperties: false
+      properties:
+        class:
+          type: string
+        key:
+          type: string
+        label:
+          type: string
+        weapon_key:
+          type: string
+      required:
+        - key
+        - class
+      type: object
+    SquadFormesWeaponPad:
+      additionalProperties: false
+      properties:
+        named:
+          format: int64
+          type: integer
+        occupations:
+          format: int64
+          type: integer
+        weapon:
+          type: string
+      required:
+        - weapon
+        - occupations
+        - named
+      type: object
     SquadHeader:
       additionalProperties: false
       properties:
@@ -26793,6 +27002,8 @@ components:
           type:
             - array
             - "null"
+        formes_retenues:
+          $ref: '#/components/schemas/SquadFormesBlock'
         frag_classes:
           additionalProperties:
             items:

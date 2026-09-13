@@ -11227,6 +11227,92 @@ export interface components {
             team_expected: number[] | null;
             team_observed: number[] | null;
         };
+        SquadFormesBlock: {
+            available: boolean;
+            main_xuid?: string;
+            matches?: components["schemas"]["SquadFormesMatch"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            squad?: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            unavailable_reason?: string;
+            weapons?: components["schemas"]["SquadFormesWeapon"][] | null;
+        };
+        SquadFormesLobbyPlayer: {
+            /** Format: int64 */
+            camo: number;
+            /** Format: int64 */
+            dropped: number;
+            gamertag?: string;
+            /** Format: int64 */
+            grapple: number;
+            /** Format: int64 */
+            overshield: number;
+            /** Format: int64 */
+            pad_pickups: number;
+            pads_by_weapon?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            team_id?: number;
+            /** Format: int64 */
+            wall: number;
+            xuid: string;
+        };
+        SquadFormesMatch: {
+            /** Format: double */
+            duration_seconds?: number;
+            lobby?: components["schemas"]["SquadFormesLobbyPlayer"][] | null;
+            /** Format: int64 */
+            lobby_size?: number;
+            map_label?: string;
+            match_id: string;
+            measured: boolean;
+            mode_label?: string;
+            objective?: components["schemas"]["SquadFormesObjective"];
+            /** Format: int64 */
+            pad_named?: number;
+            /** Format: int64 */
+            pad_unnamed?: number;
+            /** Format: int64 */
+            player_team?: number;
+            start_time?: string;
+            /** Format: int64 */
+            team_size?: number;
+            weapon_pads?: components["schemas"]["SquadFormesWeaponPad"][] | null;
+        };
+        SquadFormesObjective: {
+            columns?: components["schemas"]["SquadFormesObjectiveColumn"][] | null;
+            family: string;
+            players?: components["schemas"]["SquadFormesObjectivePlayer"][] | null;
+        };
+        SquadFormesObjectiveColumn: {
+            duration?: boolean;
+            key: string;
+            role: string;
+        };
+        SquadFormesObjectivePlayer: {
+            /** Format: int64 */
+            team_id?: number;
+            values?: {
+                [key: string]: number;
+            };
+            xuid: string;
+        };
+        SquadFormesWeapon: {
+            class: string;
+            key: string;
+            label?: string;
+            weapon_key?: string;
+        };
+        SquadFormesWeaponPad: {
+            /** Format: int64 */
+            named: number;
+            /** Format: int64 */
+            occupations: number;
+            weapon: string;
+        };
         SquadHeader: {
             all_time_kpis?: components["schemas"]["KPIStats"];
             kpis_by_xuid?: {
@@ -12138,6 +12224,7 @@ export interface components {
             echange?: components["schemas"]["SquadEchange"];
             equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
+            formes_retenues?: components["schemas"]["SquadFormesBlock"];
             frag_classes?: {
                 [key: string]: components["schemas"]["FragClassEntry"][] | null;
             };
