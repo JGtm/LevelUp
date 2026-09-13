@@ -24,7 +24,42 @@ type TacticalMapCard struct {
 	// Elle reste affichee (le joueur doit voir qu'il y a joue) mais desaturee et
 	// non ouvrable — une lecture de placement sur trois matchs est du bruit.
 	SousPlancher bool `json:"sous_plancher"`
+
+	// ─── LE MINI-PLAN DE LA VIGNETTE (lot F, 2026-09-13, maquette 034b1915) ────
+	//
+	// La vignette ne montre pas qu'un fond de carte : elle montre OU LE JOUEUR Y MEURT.
+	// C'est ce qui fait de la grille un choix plutot qu'une liste — on ouvre la carte dont
+	// la forme intrigue.
+	//
+	// LE PAS EST FIXE (`TacticalTuilePasM`), PAS ADAPTATIF : une vignette fait 200 px de
+	// large, et une grille fine y est illisible. Un pas adaptatif par carte ferait en plus
+	// varier la finesse d'une vignette a l'autre, c'est-a-dire rendrait deux vignettes
+	// incomparables a l'oeil — exactement ce qu'une grille de cartes doit permettre.
+	//
+	// CES CHAMPS SONT ABSENTS quand le titre ne sait pas lire les positions, ou quand la
+	// lecture a echoue : la vignette s'affiche alors avec son seul fond, comme avant. Une
+	// degradation, jamais une panne (meme regime que le KPI d'echange).
+
+	// Cellules sont les cellules MESUREES de la carte, plancher applique — memes valeurs
+	// et meme adressage (ancre sur l'origine du monde) que la lecture « ou je meurs ».
+	Cellules []CelluleTactique `json:"cellules,omitempty"`
+
+	// Bornes est le cadre du monde couvert par ces cellules.
+	Bornes BornesMonde `json:"bornes,omitempty"`
+
+	// PasM est le pas de la grille du mini-plan, en metres (TacticalTuilePasM).
+	PasM float64 `json:"pas_m,omitempty"`
+
+	// Echelle porte les quantiles p50/p95 du mini-plan — l'etalonnage de la peinture.
+	Echelle EchelleTactique `json:"echelle,omitempty"`
 }
+
+// TacticalTuilePasM est le pas de grille du mini-plan d'une vignette, en metres.
+//
+// PLUS GROSSIER QUE LE PLAN D'UNE CARTE (0,5 a 2 m), et c'est la raison d'etre de la
+// constante : a 200 px de large pour une carte de 100 m, une cellule de 2 m ferait 4 px.
+// A 6 m elle en fait 12 — une tache, pas un pixel.
+const TacticalTuilePasM = 6.0
 
 // TacticalMapsPage est la reponse de l'ecran d'entree.
 type TacticalMapsPage struct {
@@ -162,9 +197,18 @@ type TacticalRaster struct {
 	MortsEquipeATerre int `json:"morts_equipe_a_terre,omitempty"`
 
 	// Isolement est la part des morts SANS coequipier visible a portee, sous la forme
-	// canonique (taux + brut + par match + N + echantillon faible). nil hors de la lecture
-	// « isole ».
+	// canonique (taux + brut + par match + N + echantillon faible).
+	//
+	// SERVI SUR TOUTES LES QUESTIONS depuis le lot F (2026-09-13, conformite a la maquette
+	// 034b1915) : il ne depend pas de la question, seulement des morts du joueur sur la
+	// carte. Le reserver a « ou je meurs isole » obligeait a changer de question pour lire
+	// un chiffre qui ne changeait pas. nil quand le titre ne sait pas lire les positions.
 	Isolement *Couverture `json:"isolement,omitempty"`
+
+	// Coordination porte la FORME de la distance a l'equipier au moment de mes morts —
+	// mediane et distribution par intervalles (binning SERVEUR, ADR 0010). nil quand
+	// aucune mort n'a pu etre lue. Cf. domain/tactical_coordination.go.
+	Coordination *TacticalCoordination `json:"coordination,omitempty"`
 
 	// Echange est le taux de morts vengees de mon equipe SUR CETTE CARTE. nil quand
 	// le titre ne sait pas lire la source des morts (capability `film.kill_source`

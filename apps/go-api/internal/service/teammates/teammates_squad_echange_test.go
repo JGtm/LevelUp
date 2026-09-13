@@ -39,6 +39,12 @@ func (m *mockTacticalRepo) KillPositions(context.Context, domain.TacticalQuery) 
 	return domain.TacticalPositions{}, errors.New("non appele")
 }
 
+// MortsParCarte sert les mini-plans des vignettes de l'onglet Tactique (lot F) : jamais
+// appelee ici — la page Escouade ne lit pas la grille des cartes.
+func (m *mockTacticalRepo) MortsParCarte(context.Context, domain.TacticalQuery) (map[string][]domain.PositionSample, error) {
+	return nil, errors.New("non appele")
+}
+
 func (m *mockTacticalRepo) Univers(context.Context, domain.TacticalQuery) (domain.TacticalUnivers, error) {
 	return domain.TacticalUnivers{}, errors.New("non appele")
 }
