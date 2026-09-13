@@ -234,9 +234,9 @@ v41 de même mode et carte quand c'est possible ; tableau calque x version = dé
 aberrant, avec les compteurs de couverture de l'artefact et les oracles existants (API, table
 des scores, `swap.sh`, corpus). Livrable : rapport + liste des points où le profil de
 déchiffrage doit brancher sur la version, chiffrés.
-- [ ] H.1 Corpus par version (choix des films, cache complet vérifié).
-- [ ] H.2 Mesure calque par calque (tableau).
-- [ ] H.3 Rapport et plan des divergences ; témoins v39/v40 ajoutés au corpus gate.
+- [x] H.1 Corpus par version (choix des films, cache complet vérifié).
+- [x] H.2 Mesure calque par calque (tableau).
+- [x] H.3 Rapport et plan des divergences ; témoins v39/v40 ajoutés au corpus gate.
 
 ## Lot I — architecture « profil de déchiffrage » (proposé le 2026-09-12, APRÈS la release, sur
 ## feu vert utilisateur après H)
@@ -280,3 +280,24 @@ lot H, pas avant. Effort L.
   **Lot E fusionné dans feat/v75** (`a3e4e516b`) ; `internal/analysis/{filmdec,replay}` n'existent
   plus, tout est sous `internal/games/halo_infinite/film/`. Serveur relancé (air, health 200).
   Notion 9 coché. Push feat/v75 pour la CI. Prochain : lot H.
+- 2026-09-13 : lot H rendu (`wt/mesure-versions`, `d32b710a1` `b87cfb0e4` `ec02f1dfc`, aucun code
+  de production). **Résultat central : la clé de déchiffrage est le BUILD (lu en clair dans la
+  section d'identification de chunk_00 : HI_1_4_1 .. HI_1_13_0), pas la version majeure** — la
+  frontière la plus nette tombe à l'intérieur de la v40 (HI_1_11_0 vs HI_1_12_0). Cinq
+  divergences nommées : D1 lancers de grenade VIDES sur tous les builds < HI_1_12_0 (liste
+  blanche `GrenadeTypeIDsByRank` datée d'un seul build ; 82 films, 5 000-10 000 lancers) ; D2
+  identité éteinte sur 5 films sans section d'identification (v31/v33) ; D3 registre ECS par
+  build (empreinte inconnue sur 228 films, journalisé en WARN sans conséquence) ; D4 marche des
+  morts calibrée à vide sur les vieux films (= résidu BTB 2023) ; D5 bande de slots bipède
+  [512,767] -> [512,8064] selon le build. Identiques prouvés : pied de film (la version ne
+  commande QUE le gamertag), trajectoires, projectiles, armes au sol, socles, équipement,
+  inventaire, véhicules, médailles, score. 4 témoins ajoutés au corpus (v39, v40 HI_1_11_0, v37,
+  v33 sans identification) = 12. Gate corpus joué par le pilote base libre le 13-09 matin.
+- 2026-09-13 : CI feat/v75 ROUGE sur `e528e347f` (job Coverage + Baseline) : la baseline de
+  tests (`.ai/baselines/tests_pre_migration.jsonl`) nommait encore `internal/analysis/replay`
+  (868 entrées) et `replay/mapvar` (56), déplacés par le lot E ; le lot E avait corrigé le
+  script mais pas la baseline. Réécriture pure des chemins, poussée ; CI à surveiller.
+- 2026-09-13 : gate corpus H : **12 témoins sur 12 `ok`, 54 -> 54, 0 gain, 0 perte** (dont les 4
+  nouveaux par version). Lot H fusionné dans feat/v75 et poussé. Serveur relancé. Lot H clos ;
+  les 5 points de branchement (P1-P5) relèvent du plan d'architecture (lot I), pas de ce plan.
+  Suite : lot F (nettoyage worktrees/branches, bascule LevelUp) avec l'utilisateur.
