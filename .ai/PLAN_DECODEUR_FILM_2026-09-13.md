@@ -80,6 +80,7 @@ bloque le gate du lot courant.
 | D11 | Le web n'est touché qu'à la frontière de normalisation (0.B, 4.2, 4.3) ; aucune retouche de rendu | architecture §11, §12 |
 | D12 | Les chemins neufs (faits persistés, profils) passent par `PathResolver` et par un catalogue versionné jamais écrit à l'exécution (ratchet `no_runtime_versioned_catalog_write_test` étendu) | CLAUDE.md, principe 15 |
 | D13 | **La grammaire prime PARTOUT, pas seulement dans `filmdec`.** Toute heuristique de production (fenêtre temporelle, seuil de distance, majorité, inférence statistique) qui décide un FAIT que le film écrit (événement nommé, record de création, composant) est remplacée par la lecture de ce que le film écrit ; l'heuristique ne survit qu'en REPLI COMPTÉ dans la couverture (accord / repli / contradiction), jamais en décision première. Le mur n'est qu'un exemple (événement 103 et panneaux contre fenêtre de 200 ms) ; la règle vaut pour chaque fait. Inventaire au lot 0.E, conversions dans la famille 1.9 | utilisateur, 2026-09-13 |
+| D14 | **Un repli est NOMMÉ comme tel, compté, et RETIRÉ quand la lecture est fiable.** (a) Tout repli vit dans un registre unique du code (table `facts` : nom, fait, condition de déclenchement, date de pose, critère de retrait), et le code qui l'exécute le nomme (aucun repli anonyme au milieu d'une fonction) ; ratchet : un repli hors registre = rouge. (b) Un repli ne se déclenche que sur un diagnostic typé « le film est muet ici », JAMAIS sur un désaccord avec la lecture ni sur une lecture disponible : ordre fixe = lire d'abord, repli ensuite ; s'il se déclenche alors que la lecture existait, c'est une contradiction comptée, pas un repli. (c) Chaque fait publie `coverage.<fait>.{grammaire, repli, contradiction}` ; l'artefact dit quelle part de lui vient d'un repli. (d) Critère de retrait obligatoire (règle 11 : date de pose, cible de retrait, critère mesurable) : un repli dont le compte est à 0 sur le corpus gate à la clôture d'un jalon est SUPPRIMÉ au jalon suivant, avec ses tests ; on ne garde pas un repli « au cas où », parce qu'un repli bancal qui se déclenche à tort corrompt un fait que la lecture aurait donné juste | utilisateur, 2026-09-13 |
 
 ### 1.4 Décisions validées par l'utilisateur le 2026-09-13 (fermes)
 
@@ -484,7 +485,11 @@ table de `chunk_00`, pied de film).
       heuristique : `fichier:ligne`, fait décidé, heuristique (paramètres), ce que le film écrit
       à la place (canal, événement, record, composant ; PORTÉ aujourd'hui / À PORTER : bloquant
       nommé), preuve ou incertitude (note de RE, rapport, mesure), coût (S / M / L), gain
-      attendu (films, poses, kills concernés). Sources à croiser : `REFERENCE_CANAUX_EQUIPEMENT`
+      attendu (films, poses, kills concernés) ; **et, pour chaque heuristique qui restera un
+      repli : sa condition typée de déclenchement (« film muet » : laquelle) et son critère de
+      retrait mesurable (D14)** ; noter aussi si le repli actuel est NOMMÉ dans le code ou
+      anonyme, et s'il peut se déclencher alors que la lecture existe (risque de déclenchement
+      indésirable). Sources à croiser : `REFERENCE_CANAUX_EQUIPEMENT`
       §4 (qui lit quoi), `RAPPORT_F0_DEPLOIEMENT_103`, `RAPPORT_LOT_H_VERSIONS`, notes `film_re/`.
 - [ ] 0.E.2 Classement en trois tables : (A) le film l'écrit ET le lecteur existe (conversion
       courte, lot 1.9.x) ; (B) le film l'écrit, lecteur À PORTER (lot 3.6, bloquant nommé) ;
@@ -673,10 +678,19 @@ localisées.
 #### Famille 1.9 — La grammaire à la place de l'heuristique, un fait par lot (D13) — S à M chacun, high
 
 Ordre fixé par le registre du lot 0.E (table A, gain décroissant). Chaque lot : la lecture de ce
-que le film écrit devient la décision ; l'heuristique devient un REPLI compté
-(`coverage.<fait>.{grammaire, repli, contradiction}`) ; test par mutation ; corpus gate zéro
-perte, gains nommés ; `SchemaVersion` si le contenu cuit change ; `GrammarRev` si un lecteur
-change. Premier lot fixé par l'utilisateur :
+que le film écrit devient la décision ; l'heuristique devient un REPLI NOMMÉ (D14 : entrée au
+registre des replis avec sa condition « film muet » et son critère de retrait, déclenché après
+la lecture et jamais à sa place), compté (`coverage.<fait>.{grammaire, repli, contradiction}`) ;
+test par mutation ; corpus gate zéro perte, gains nommés ; `SchemaVersion` si le contenu cuit
+change ; `GrammarRev` si un lecteur change. Le premier lot de la famille pose le registre des
+replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur :
+
+- [ ] 1.9.0 **Registre des replis** (`facts`, ou `replay` tant que la couche n'existe pas) :
+      table nommée (nom, fait, condition typée, date de pose, cible et critère de retrait),
+      ratchet `archlint/no_unregistered_fallback_test.go` (un repli hors registre = rouge ;
+      convention de nommage détectable), rapport de couverture par fait ; les replis EXISTANTS
+      recensés par 0.E y entrent tels quels avec leur critère, sans changer de comportement
+      (équivalence zéro différence).
 
 - [ ] 1.9.1 **Origine d'une pose d'équipement.** Sur pièces : `replay/equipment_placements.go`
       (`equipmentOrigin`, fenêtre de 200 ms depuis F.1 `c45c411eb`), `REFERENCE_CANAUX_EQUIPEMENT`
