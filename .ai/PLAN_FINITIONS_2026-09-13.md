@@ -12,16 +12,16 @@
 ## Décisions utilisateur (ne pas rediscuter)
 
 - D1 : NON (l'info est déjà servie par l'API). D8 : hors périmètre (couvert par la refonte du
-  décodeur, lot I). D2, D4, D5 : lots ultérieurs avec recuisson. D6, D12, D14, D16, G5, G8,
-  G9, H2, H3, H5 : NON / plus tard. D13 : à planifier à part (équipement à gérer, M).
+  décodeur, lot I). D2, D4, D5 : lots ultérieurs avec recuisson. D3, D6, D11, D14, D16, G5, G8,
+  G9, H2, H3, H5 : NON / plus tard. D12 et D13 : CORRIGER (lot F, second message du 13/09).
 - Retenus ici : D9, D10, D15, G2, G3, G4, G6 (ADR), G7, H1, H4, retrait de la migration boot
   des jetons (échéance 2026-10-01, critère tenu en prod), statut killpos (échéance 2026-11-08,
   critère tenu), lot PSA, lot LUSR.
 
 ## Lot A — Dependabot (pilote) — FAIT
 - [x] A.1 Bumps sur feat/v75, gates verts, commit `chore(deps)`, push.
-- [ ] A.2 CI feat/v75 verte au niveau job.
-- [ ] A.3 Fermer les PR 79-83 avec renvoi vers le commit.
+- [x] A.2 CI feat/v75 verte au niveau job (run 34752283478, 8 jobs verts, E2E skipped).
+- [x] A.3 PR 79-83 fermées avec renvoi vers e63d89bc7 (13/09).
 
 ## Lot B — hygiène + PSA + jetons + killpos (`feat/finitions-hygiene`, Go/config/docs)
 
@@ -75,8 +75,10 @@ au 2026-09-13 (2 RT migrés le 2026-06-13, jamais depuis) ; local idem depuis le
       `noTrack` (raison à écrire, pas le double comptage). Doc seule.
 - [x] B.3.6 G6 — ADR 0026 : documenter `decode_pass` (colonne de `kill_positions`, passe de
       décodage, clé de la vue `_latest`). Si `seed_demo_corpus.go` porte encore un
-      `UPDATE kill_positions` : allowlister avec justification datée dans
-      `internal/sync/no_art_patterns_test.go` (outil de démo, base jetable) — sinon `[~]`.
+      `UPDATE kill_positions` : le CORRIGER (décision utilisateur 13/09 : « pas de risques », pas
+      d'allowlist). FAIT : UPDATE set-based interpolé -> N UPDATE ligne à ligne à valeurs liées
+      (forme prescrite par le ratchet ; INSERT-only refusé sur un chemin d'anonymisation), test
+      d'intégration ajouté (commit 044751026).
 - [x] B.3.7 G7 — commentaire de `GroundWeapon.W` (`document_ground_weapon_items.go`) : espace
       de clés distinct de `Loadout.W` (rapport 6.6 découverte 1). Doc seule.
 - [x] B.3.8 H1 — `MatchMetrics` (`internal/domain/stats.go`) : supprimer si aucun usage
@@ -137,6 +139,48 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
       hors objectif ; un calque dont 99 % des actions sont des frags n'affiche plus « 100 % ».
 - [ ] D.3 Tests vitest (familles filtrées, dénominateur), tsc (cache purgé), eslint 0 erreur,
       push, CI verte. Aucune string UI nouvelle sans FR+EN.
+
+## Lot F — équipement : D12 mur et D13 champ de réparation (`feat/finitions-equipement`, Go, INSTRUCTION D'ABORD)
+Décision utilisateur (13/09, second et troisième messages) : « jamais un équipement ne doit avoir
+un événement sur une règle arbitraire ; le film dit s'il est utilisé ou déployé » et « on décode
+mal l'événement d'apparition ; les développeurs du Theater ont un signal fiable ». Relu sur
+pièces : ce qui est PROUVÉ est seulement que (a) la lecture en TÊTE de liste du type 103
+`EquipmentSpawnedObject` (rapport R5) et (b) les créations `ti=37` dont le GlobalID est au
+manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'ont JAMAIS été faites :
+1. marcher le 103 dans la LISTE COMPLÈTE (le marcheur de R7 existe) et RÉSOUDRE ses deux
+   références objet (R5 §3.1 : ref0 et ref1 ≈ objets sur 13 bits, jamais résolues en handles
+   d'entité) — si ref1 est l'équipement source et ref0 l'objet engendré, le 103 EST le fait
+   « déployé » ;
+2. le film voit bien plus d'apparitions que l'artefact n'en publie (6 651 ancres pour 295
+   poses publiées sur `000d5950`) : les GlobalID non mappés des objets créés peuvent porter la
+   forme DÉPLOYÉE du capteur, du traqueur et du champ de réparation (mesure E0 : 0 `spent` sur
+   202 couvert par une pose connue — la pièce engendrée n'est peut-être simplement pas au
+   manifeste) ;
+3. les 90 têtes 103 « vers un lâcher » de R5 sont un appariement TEMPS SEUL à ±1,2 s sans
+   référence résolue : l'affirmation « le 103 tire aussi à la mort » n'est pas établie.
+- [ ] F.0 Instruction (mesure, aucun code de production) : sur les 8 cas de D12 (identifiants
+      dans l'audit §12 et le rapport de dette vague 5) et sur 3 films à oracle Theater connu
+      (`000d5950`, `1cd3848a`, `215e7022`), marcher la liste complète, isoler chaque 103, résoudre
+      ref0/ref1 contre les records de création `ti=37` et les handles d'unité ; recenser les
+      GlobalID des objets créés dans les 2 s d'un `spent` de capteur/traqueur/champ. Verdict
+      attendu par question : le 103 tire-t-il à la mort avec référence résolue (oui/non, compte) ;
+      le déploiement d'un capteur/champ engendre-t-il un objet (GlobalID, compte) ;
+      le 8/8 de D12 est-il séparé par le 103 (oui/non).
+- [ ] F.1 D12 — si F.0 dit oui : l'origine d'une pose se lit sur le 103 résolu (objet référencé
+      = déployé, sinon lâché) ; `originDropWindowUS` et `originDropMaxDist` sont SUPPRIMÉS, pas
+      assouplis. Si F.0 dit non (film sans signal) : retirer la seule clause de distance, le
+      fait temporel restant (rapport écrit, décision utilisateur rejouée sur pièces).
+- [ ] F.2 D13 — si F.0 trouve la pièce engendrée du champ de réparation : l'ajouter au
+      manifeste `replay_labels.toml` et à `usageFamiliesWithSpawnedPiece`, « utilisé » = pièce
+      créée, comme le mur ; mesurer la couverture. Sinon `[!]` avec la mesure et colonne
+      « non mesuré ».
+- [ ] F.3 Aucun `SchemaVersion` bumpé si seule la classification change ; gate corpus
+      `replay-corpus-gate` ; `go test` du paquet replay et filmdec ; lint ; push ; CI.
+- [ ] F.4 Recuisson du parc : DEMANDER à l'utilisateur avant (22 min de coupure).
+
+## Décisions complémentaires (13/09, second message)
+- D3 : IGNORÉ (assez de cartes dessinées). D11 : rien (l'API sert la donnée). D16 : refonte
+  du décodeur. G5 : plus tard. G6 : CORRIGER l'UPDATE (pas d'allowlist) — transmis au lot B.
 
 ## Lot E — clôture (pilote)
 - [ ] E.1 Fusions B, C, D dans feat/v75 (`-X theirs` inutile : branches courtes), CI verte.
