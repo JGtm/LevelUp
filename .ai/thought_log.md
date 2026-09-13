@@ -1,3 +1,133 @@
+## [2026-09-13] Lot F.1 et F.2 des finitions v7.5 — l'origine d'une pose d'equipement devient purement TEMPORELLE — Complete (worktree wt-finitions-equipement, branche feat/finitions-equipement)
+
+**Decision technique principale.** F.0 ayant refute la branche « le film le dit » (le type 103
+est muet pour tout appareil PORTE : 0 sur 31 poses `deployed` et 0 sur 145 `dropped`), c'est la
+branche de REPLI du plan qui s'applique : `equipmentOrigin` ne pose plus qu'une question —
+« cette creation est-elle a moins de 200 ms de la fin d'une vie ? » — et la clause de DISTANCE
+disparait. Deux choix de fond. **La constante `originDropMaxDist` N'EST PAS supprimee** : le
+plan le demandait dans la branche « oui », mais sur pieces elle sert TROIS autres chaines du
+paquet — les armes au sol (`gwPadsClass`, le socle d'ou l'arme vient), le drapeau
+(`flag_objects.go`, `flag_carries_lives.go`) et le crane — qui posent une question differente.
+La supprimer aurait casse le paquet ; elle reste avec un commentaire qui dit qu'elle ne classe
+plus une pose d'equipement et pourquoi. **La mesure avant/apres ne recuit AUCUN artefact** :
+l'instrument rejoue la chaine de production (positions de bipede + poses `ti=37` +
+`equipmentLives`) et applique les DEUX regles aux MEMES poses, la regle d'avant etant recopiee
+sous le nom `f1OrigineAvant` avec le commentaire qui interdit de la prendre pour la regle
+vivante. Rien n'est ecrit nulle part.
+
+**Resultats observes.** **La carte de chaque film a du etre FERMEE avant de pouvoir mesurer une
+distance en metres**, et la premiere methode etait fausse : comparer la BOITE ENGLOBANTE des
+positions recalculees a celle que l'artefact publie rendait 0,47 m et 0,01 m sur deux films et
+**240,58 m** sur un troisieme dont la carte etait pourtant la bonne — parce que la production
+ECARTE les positions aberrantes avant de publier ses bornes. Remplacee par la MEDIANE des
+coordonnees par piste, robuste par construction : les 21 films mesures tiennent alors sous
+**0,20 m**. Deuxieme piege paye : le catalogue porte une quarantaine de canevas de Forge aux
+memes bornes, et les essayer un par un rebalayait le film quarante fois — la campagne restait
+bloquee sur un film BTB jusqu'a la deduplication des candidates. **Mesure finale, 21 films sur
+25, 5 363 poses** : `deployed` 472 -> 450 (**-22**), `dropped` 4 509 -> 4 531 (**+22**),
+`unknown` inchange. **Les 22 poses vont TOUTES dans le meme sens**, toutes a 19,9-171,7 ms de la
+fin de vie et a 1,51-2,70 m : mur 7, grenade a fragmentation 10, grappin 2, propulseur 1,
+traqueur 1, grenade spike 1. **L'attendu etait 15, et l'ecart est explique, pas excuse** : les
+15 cas du rapport F.0 §3.1 etaient reperes par « t0 == derniere frame du poseur », un proxy a la
+granularite de 100 ms, alors que le critere REEL est la fenetre de 200 ms — elle attrape 8 poses
+de plus, toutes sur `4f77afc1`, entre 44 et 172 ms de la fin de vie. 14 des 15 sont bien dans
+les 22 ; le quinzieme est sur `0797ce72`, film EXCLU de la mesure. **Quatre films hors mesure,
+dits** : deux sans artefact local, et deux films d'Aquarius dont AUCUNE carte du catalogue ne
+reproduit les reperes publies (29,2 et 29,9 m d'ecart median, contre moins de 0,20 m ailleurs) —
+decouverte D-F5, consignee et non traitee. **Le test est verrouille par MUTATION** : remettre la
+clause de distance fait echouer `TestEquipmentOriginSepareLacherDuDeploiement` sur exactement le
+cas « au bon instant, a 5 m », et un controle « loin ET apres la fenetre » borne la portee du
+changement.
+
+**F.2 statue `[!]`, avec sa mesure.** Aucune piece engendree n'est identifiable pour le capteur
+(28 consommations), le traqueur (6) ni l'ecran occultant (8) : leurs fenetres ne montrent que
+l'objet PORTE lui-meme — un seul GlobalID sert la forme portee et la forme deployee, ce qui est
+precisement pourquoi `origin` ne peut pas les separer. Et le CHAMP DE REPARATION ne porte
+qu'**UNE** consommation exploitable dans les 76 artefacts du parc. Le temoin POSITIF passe (le
+mur rend `0x528fce46` a x20,3 d'enrichissement), donc le negatif est ANCRE. Rien n'est ajoute au
+manifeste ni a `usageFamiliesWithSpawnedPiece` : y inscrire une famille sans piece ferait relire
+son « utilise » sur `DeployedByFamily`, le defaut exact que `us6` a corrige le 2026-09-10.
+
+**F.3 : le gate corpus sort en 1, et c'est ATTENDU.** `replay-corpus-gate --reference=base` en
+RACINE JETABLE (12 temoins, 24 cuissons, parc du principal en LECTURE) rend PERTE sur 4 temoins
+— et chacune de ces « pertes » est un compteur `coverage.placements.deployed` qui baisse, avec
+AUTANT DE GAINS QUE DE PERTES (3/3, 4/4, 2/2, 2/2) : c'est la reclassification elle-meme, qu'un
+gate concu pour detecter les regressions compte comme une baisse. Aucun autre axe ne bouge — 0
+perte hors `coverage.placements.*`. Le gate rend au passage la piece qui MANQUAIT a la mesure :
+`0797ce72` y voit son mur passer de 21 a 20 `deployed`, alors que l'instrument F.1 avait du
+exclure ce film faute de carte — les 15 cas de F.0 §3.1 sont donc tous couverts.
+
+**Conclusion / prochaine etape.** `SchemaVersion` N'EST PAS bumpe : seule la CLASSIFICATION
+change, aucun champ ne bouge — les artefacts deja cuits gardent leur ancienne origine jusqu'a
+recuisson, et `F.4` (la recuisson du parc) reste a la main de l'utilisateur, non lancee. Deux
+documents ont ete corriges dans le meme lot : une NOTE DATEE en tete du rapport R5 (sa ligne
+« le 103 tire aussi a la mort » est refutee, le rapport n'est pas reecrit) et le fichier de
+reference de l'equipement (§1 la reserve de `dropped` n'est plus « < 200 ms ET < 1,5 m », §1 bis
+ce que le canal des evenements porte, §6 deux affirmations de plus a ne plus repeter).
+
+## [2026-09-13] Lot F.0 des finitions v7.5 — le type 103 `EquipmentSpawnedObject`, references RESOLUES — Complete (instruction, worktree wt-finitions-equipement, branche feat/finitions-equipement)
+
+**Decision technique principale.** F.0 est une INSTRUCTION : aucun code de production touche,
+aucune DuckDB, aucune ecriture sous `data/`. Six instruments de recherche sous gardes
+d'environnement dans `film/filmdec/` (`f0_103_{contexte,artefact,verdicts,pieces,corpus,sonde}`),
+plus UN changement additif au marcheur de R7 — `r7Ev.Refs` porte desormais les TROIS references
+gardees avec leur generation (`r7Refs3`), la marche restant inchangee bit pour bit (controle :
+97,9 % de fins propres sur les memes films, l'ordre de grandeur publie par R7). Le choix de fond
+a ete de ne RIEN recalculer de la production : l'origine d'une pose (`deployed`/`dropped`) est
+lue dans l'artefact deja cuit, jointe au balayage du film sur `(t0, GlobalID)` — 99,7 % de
+jointure, chiffre publie. Deuxieme choix : la carte de chaque film se DEDUIT du film
+(`DetectI0Layout` + oracle de trame restreint aux entrees de catalogue de memes largeurs d'axe),
+jamais d'une base ; et tout ce que le rapport juge est INVARIANT D'ECHELLE (position et rayon
+d'accord de l'oracle sont tous deux proportionnels a l'etendue), ce qui rend le choix de carte
+sans effet sur les verdicts — controle `TestF0InvarianceEchelle`.
+
+**Resultats observes.** **La sonde a tranche en une passe : `ref1 + 512` est le slot de l'objet
+cree.** Cinq occurrences consecutives de `9e8fb31b` portent ref1 = 1011, 1013, 1071, 1125, 1182
+pendant qu'un PANNEAU DE MUR (`0x528fce46`) nait 33 ms plus tot aux slots 1523, 1525, 1583, 1637,
+1694 — ecart constant de 512, la meme base que R1 avait etablie sur le type 117. Sur le parc
+(25 films, 931 occurrences) : **93,6 % des ref1 presentes se resolvent en cle de vie d'entite
+(25,0 % `ti=37`, 68,6 % `ti=41`) contre 2,2 % pour le temoin de hasard** — facteur 42 — dt median
++49 ms, et les objets `ti=37` designes sont `0x528fce46` 227 fois et `0x686b40c9` 3 fois, les DEUX
+panneaux de mur du manifeste. `ref2` est absente 928 fois sur 931, ce qui confirme sur 931 cas le
+decodage manuel de deux tetes fait par R5. **Deux affirmations anterieures tombent.** (a) « Le 103
+tire aussi a la mort » (R5 §3.2, 90 tetes appariees en TEMPS SEUL a +/-1,2 s) est REFUTEE : avec
+la reference resolue, 4 poses designees sur 4 853 `dropped`, dont 3 sont elles-memes des panneaux.
+(b) L'espoir du plan — « si ref1 est l'objet engendre, le 103 EST le fait deploye » — se verifie
+et ne sert pourtant PAS : le 103 designe 216 des 216 poses de panneau publiees et **ZERO des 91
+poses `deployed` d'un deployable PORTE** (appareil de mur 34, capteur 48, ecran 4, traqueur 3,
+champ de reparation 2). C'est, par un canal sans aucune etape commune (les evenements nommes), la
+confirmation exacte du verdict E0 du 2026-09-10 obtenu par les consommations de charge : le film
+ne voit le deploiement que de la famille qui engendre une piece. **La voie INDIRECTE a ete
+mesuree et elle echoue aussi** : une pose d'appareil de mur classee `deployed` n'a pas plus de
+panneau voisin a +/-5 s qu'une pose classee `dropped` — elle en a MOINS (14,7 % contre 21,8 %),
+les deux etant le bruit de fond d'un match ou des murs s'ouvrent ailleurs. **D13 se ferme sur le
+corpus, pas sur une hypothese** : le recensement des 76 artefacts exploitables du cache donne
+**UNE seule consommation de charge de champ de reparation dans tout le parc** (film `5676a9ba`) —
+les dix films imposes par le plan n'en portaient aucune, d'ou l'ajout de 15 films choisis par ce
+recensement. Le temoin POSITIF obligatoire passe (le mur rend `0x528fce46` a x20,3
+d'enrichissement autour de ses 65 consommations) ; le capteur (28 consommations), le traqueur (6)
+et l'ecran (8) ne rendent que l'OBJET PORTE LUI-MEME (`0x4396db42` x14,0, `0x4744d742` x17,2) —
+un seul GlobalID sert la forme portee et la forme deployee, ce qui est precisement pourquoi
+`origin` ne peut pas les separer. Enfin, les « 6 651 apparitions pour 295 poses publiees » de
+`000d5950` sont ventilees : 6 250 positions de bit qui passent un en-tete NON SELECTIF, ~100
+records dont le mot de 32 bits ne se resout nulle part (98 identifiants distincts pour 101
+records — la signature d'une lecture au mauvais endroit), ~100 records d'identite valide que
+l'oracle de vie delta ecarte parce que l'objet NE BOUGE PAS (les objets de socle).
+
+**Conclusion / prochaine etape.** **La branche « si F.0 dit oui » de l'item F.1 est FERMEE** : le
+103 ne peut pas porter l'origine d'une pose (il est muet sur 5 545 des 5 761 poses du corpus), et
+supprimer `originDropWindowUS`/`originDropMaxDist` a son profit rendrait l'origine indeterminee.
+La branche applicable est la seconde du plan : retirer la seule clause de DISTANCE, garder le
+fait temporel, mesurer avant/apres par famille. **F.2 se statue `[!]` avec sa mesure** : rien a
+ajouter au manifeste ni a `usageFamiliesWithSpawnedPiece` — y inscrire une famille sans piece
+ferait relire son « utilise » sur `DeployedByFamily`, le defaut exact que `us6` a corrige le
+2026-09-10. Les deux attendent le feu vert du pilote : F.0 etait a rendre AVANT tout code de
+production. Decouvertes consignees et NON traitees : 7 poses de panneau classees `dropped`/
+`unknown` (l'inverse de D12, meme cause), `ref0` designant un `ti=37` de longue duree jamais cree
+en delta (piste d'identification de l'equipement SOURCE, sujet du lot I), et l'effondrement de la
+selectivite de l'en-tete NEW `ti=37` sur les films BTB (71 % de records hors manifeste contre
+25 % en arene).
+
 ## [2026-09-13] Lot B des finitions v7.5 — PSA, retrait de la migration des jetons, hygiene XS — Complete (worktree wt-finitions-hygiene, branche feat/finitions-hygiene, 4 commits)
 
 **Decision technique principale.** Trois sous-lots du `PLAN_FINITIONS_2026-09-13.md`, un commit

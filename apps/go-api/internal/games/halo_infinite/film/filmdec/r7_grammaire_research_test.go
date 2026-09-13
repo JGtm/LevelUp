@@ -130,37 +130,48 @@ var r7Noms = map[int]string{
 	122: "PlayerTriggerRadialMenu",
 }
 
-// r7Ref lit UNE reference gardee du domaine dom. Rend (index, presente, decodable).
-func r7Ref(br *BitReader, dom int) (uint64, bool, bool) {
+// r7RefVal est UNE reference gardee lue : sa presence, son domaine, son index et sa
+// GENERATION (les 2 bits que la marche sautait avant le lot F.0 du 2026-09-13). Index et
+// generation forment ensemble la cle d'une VIE d'entite — la meme paire que
+// `EquipmentLifeKey` et que l'en-tete NEW d'un record de creation.
+type r7RefVal struct {
+	Present bool
+	Dom     int
+	Width   uint
+	Index   uint64
+	Gen     uint32
+}
+
+// r7Ref lit UNE reference gardee du domaine dom. Rend (valeur, decodable).
+func r7Ref(br *BitReader, dom int) (r7RefVal, bool) {
+	v := r7RefVal{Dom: dom}
 	if !br.ReadBit() {
-		return 0, false, true
+		return v, true
 	}
 	w := r7DomWidth[dom]
 	if dom == 1 && br.ReadBit() { // sonde du domaine 1
 		w = 9
 	}
-	idx := br.ReadBits(w)
-	br.Skip(2) // generation
-	return idx, true, true
+	v.Present, v.Width = true, w
+	v.Index = br.ReadBits(w)
+	v.Gen = uint32(br.ReadBits(2)) // generation (sautee avant le lot F.0, lue depuis)
+	return v, true
 }
 
-// r7RefsSkip consomme les 3 references d'en-tete du type. Rend l'index de ref0 (utile pour
-// le pont slot) et false si le cadrage est refute par une porte impossible.
-func r7RefsSkip(br *BitReader, typ int) (uint64, bool, bool) {
+// r7Refs3 consomme les 3 references d'en-tete du type et les REND TOUTES. Rend false si le
+// cadrage est refute par un type sans table de domaines.
+func r7Refs3(br *BitReader, typ int) ([3]r7RefVal, bool) {
+	var out [3]r7RefVal
 	doms, ok := r7Domains[typ]
 	if !ok {
-		return 0, false, false
+		return out, false
 	}
-	var idx0 uint64
-	var has0 bool
 	for i := 0; i < 3; i++ {
-		idx, has, dec := r7Ref(br, doms[i])
+		v, dec := r7Ref(br, doms[i])
 		if !dec {
-			return 0, false, false
+			return out, false
 		}
-		if i == 0 {
-			idx0, has0 = idx, has
-		}
+		out[i] = v
 	}
-	return idx0, has0, true
+	return out, true
 }

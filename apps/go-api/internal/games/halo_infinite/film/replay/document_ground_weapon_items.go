@@ -90,10 +90,16 @@ type GroundWeapon struct {
 	// consommateur doit faire de même. Le format de CE champ ne change pas : le parc cuit
 	// l'écrit ainsi, et le rectifier imposerait une recuisson complète pour une casse.
 	W string `json:"w"`
-	// Origin est l'origine MESURÉE de l'apparition, même vocabulaire que les poses
-	// d'équipement : `dropped` (une vie de bipède s'achève à moins de 2 frames et 1,5 m —
-	// l'arme d'un mort) ou `spawned` (le reste : l'arme de départ abandonnée en ramassant
-	// autre chose, l'arme éjectée d'un râtelier).
+	// Origin est l'origine MESURÉE de l'apparition : `dropped` (une vie de bipède s'achève à
+	// moins de 2 frames et 1,5 m — l'arme d'un mort) ou `spawned` (le reste : l'arme de départ
+	// abandonnée en ramassant autre chose, l'arme éjectée d'un râtelier).
+	//
+	// MÊME VOCABULAIRE QUE LES POSES D'ÉQUIPEMENT, PLUS LA MÊME RÈGLE (2026-09-13, item F.1) :
+	// l'équipement a perdu sa clause de DISTANCE — son `dropped` ne pose plus qu'une question
+	// temporelle. L'ARME AU SOL garde les deux, et c'est délibéré : sa question n'est pas « cet
+	// objet a-t-il été déployé ou lâché ? » mais « d'où cette arme vient-elle ? », pour laquelle
+	// le LIEU de la fin de vie est le fait même. Les deux origines ne se comparent donc plus
+	// terme à terme.
 	Origin string `json:"origin"`
 	// Dropper est le slot de la VIE DE BIPÈDE QUI S'ACHÈVE à moins de `originDropWindowUS`
 	// (2 frames) et `originDropMaxDist` (1,5 m) de la naissance de l'objet (`gwPadsClass`,

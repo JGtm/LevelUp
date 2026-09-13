@@ -11,6 +11,23 @@ Gardés par `EQUIP_EVENTS_ROOT` / `EQUIP_EVENTS_ARTS` / `EQUIP_EVENTS_IDS`, skip
 `CGO_ENABLED=0`, lecture O(1) par paquet (têtes de liste uniquement — aucune trame décodée),
 `go vet ./internal/analysis/filmdec/` vert. Commandes rejouables en annexe.
 
+> ## NOTE DU 2026-09-13 — UNE LIGNE DE CE RAPPORT EST REFUTEE
+>
+> **Refute le 2026-09-13 par F.0 §2.2** (`.ai/V7.5/RAPPORT_F0_DEPLOIEMENT_103_2026-09-13.md`) :
+> la phrase du §3.2 « 99 vers un deployed, 90 vers un dropped/unknown — les objets laches a la
+> mort SONT aussi des apparitions d'objets d'equipement », lue depuis comme « le type 103 tire
+> aussi a la mort », ne tient pas. Ces 90 appariements sont un croisement en TEMPS SEUL a
+> +/-1,2 s, sans reference resolue. Avec les references RESOLUES (index 13 bits, base 512, plus
+> la generation — 93,6 % de resolution contre 2,2 % au temoin de hasard, sur 25 films et 931
+> occurrences), le compte tombe a **4 poses designees sur 4 853 classees `dropped`, dont 3 sont
+> elles-memes des panneaux de mur**. Le 103 est le fait « une PIECE a ete engendree » : il
+> designe 216 des 216 poses de panneau publiees et ZERO pose d'un appareil PORTE, ni deployee
+> ni lachee.
+>
+> Le reste du rapport tient, y compris son verdict d'ensemble (« la tete seule est
+> inutilisable ») et sa reserve n° 1 (« tout rappel mesure ici est un rappel en tete de
+> liste »). Ce rapport n'est PAS reecrit : il dit ce qui etait mesure le 2026-09-03.
+
 ## Verdict en quatre phrases
 
 **Un seul équipement a un événement d'usage fiable en tête de paquet : le translocateur

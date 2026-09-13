@@ -71,6 +71,12 @@ func TestEquipmentLivesIgnoreLesQuantaSansBornes(t *testing.T) {
 
 // TestEquipmentOriginSeparelLacherDuDeploiement — les deux cas que la mesure du corpus separe
 // par trois ordres de grandeur (lachers a 20-40 ms, deploiements a 14-42 s).
+//
+// LE CAS « au bon instant mais trop loin » A CHANGE DE VERDICT LE 2026-09-13 (item F.1) : il
+// rend desormais `dropped`. C'est le but du lot — la clause de DISTANCE promouvait `deployed`
+// des lachers a la mort dont le corps avait glisse de plus d'un metre et demi avant que sa
+// derniere position ne soit repliquee. Ce test est donc la MUTATION de la regle : remettre la
+// clause de distance le fait echouer.
 func TestEquipmentOriginSepareLacherDuDeploiement(t *testing.T) {
 	// Une vie de 0 a la frame 100, qui s'acheve en (10, 10, 0).
 	pos := []filmdec.BipedPosition{
@@ -89,8 +95,11 @@ func TestEquipmentOriginSepareLacherDuDeploiement(t *testing.T) {
 		{"deploye au milieu de la vie", origPose(50, 5, 5, 0), OriginDeployed},
 		// LA FENETRE : 3 frames apres la fin de vie, c'est au-dela des 2 frames du seuil.
 		{"trop tard apres la fin de vie", origPose(103, 10, 10, 0), OriginDeployed},
-		// LA DISTANCE : au bon instant mais a 5 m — un objet lache tombe aux pieds.
-		{"au bon instant mais trop loin", origPose(100, 15, 10, 0), OriginDeployed},
+		// LA DISTANCE NE COMPTE PLUS (F.1, 2026-09-13) : a l'instant de la fin de vie, une
+		// creation est un lacher, qu'elle tombe aux pieds du mort ou cinq metres plus loin.
+		{"au bon instant, a 5 m", origPose(100, 15, 10, 0), OriginDropped},
+		// ... et le controle qui borne la portee du changement : LOIN ET TARD reste `deployed`.
+		{"loin ET apres la fenetre", origPose(103, 15, 10, 0), OriginDeployed},
 	}
 	for _, c := range cas {
 		if got := equipmentOrigin(lives, c.pose); got != c.want {
@@ -121,7 +130,7 @@ func TestEquipmentOriginChoisitLaVieQuiContientLInstant(t *testing.T) {
 		t.Fatalf("%d vie(s), attendu 2", len(lives))
 	}
 	// Lache a la fin de la PREMIERE vie : si la machine prenait la derniere vie, elle
-	// classerait `deployed` (90 frames d'ecart et 41 m).
+	// classerait `deployed` (90 frames d'ecart, tres au-dela de la fenetre).
 	if got := equipmentOrigin(lives, origPose(30, 3, 0, 0)); got != OriginDropped {
 		t.Errorf("lacher de la 1re vie classe %q, attendu %q", got, OriginDropped)
 	}
