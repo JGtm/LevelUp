@@ -313,7 +313,9 @@ git commit -m "refactor(phase2): ..."
   (appartenance d'un match à la session d'une composition indépendante de la présence à la
   fin — quitter un match n'est pas quitter la session ; `composition_sessions[].match_count`
   seule source d'un compte de session, `/filters/resolve` en repli de chargement seulement ;
-  2 ratchets).
+  2 ratchets) · `0034` **décodeur de film** (profil par build immuable, cinq couches
+  `source`→`profile`→`grammar`→`facts`→`replay`, porte unique aux octets, build inconnu = erreur
+  typée + film mis de côté, faits / publication séparés, équipe = le film seul).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).
