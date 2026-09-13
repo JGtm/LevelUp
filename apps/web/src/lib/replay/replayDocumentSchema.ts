@@ -7,20 +7,37 @@
  * généré aurait suivi) NI aucun test : il arrive en production, et le rendu tombe sur
  * `undefined.map`. C'est le trou que ce schéma ferme, à la frontière de transport.
  *
- * # CE QU'IL VALIDE, ET CE QU'IL NE VALIDE PAS — dit franchement
+ * # CE QU'IL VALIDE — LA RACINE, ET EXACTEMENT
  *
- * Il valide LA RACINE : chaque champ du document est-il présent quand il doit l'être, et de la
- * NATURE promise (nombre, chaîne, tableau, objet, table) ? C'est là que vivent les 57 clés que
- * la frontière `normalizeReplayDocument` énumère, et c'est exactement ce qu'un renommage ou un
- * changement de nature casse.
+ * La racine est un objet STRICT : les 57 clés du contrat, ni plus ni moins. Trois manquements
+ * en sortent nommés :
  *
- * Il NE DESCEND PAS dans les éléments : `z.custom<T>()` porte le TYPE (donc `tsc` voit la
- * forme complète) sans re-valider chaque point de trajectoire. Le motif est délibéré et son
- * coût est mesuré : un document réel porte des centaines de milliers de points, et les
- * parcourir un à un à chaque chargement coûterait plus cher que le décodage JSON lui-même.
- * La forme PROFONDE a son propre gardien, côté producteur : l'empreinte réfléchie de
- * `ReplayDocument` (`replay/document_shape_test.go`), qui refuse un changement de forme sans
- * montée de `SchemaVersion`.
+ *  - une clé REQUISE absente (`matchId`, `bounds`, `frameCount`, `schemaVersion`, `titleSlug`,
+ *    `tracks`) ;
+ *  - une clé de NATURE changée (un calque devenu objet, une borne devenue chaîne) ;
+ *  - une clé INCONNUE — c'est-à-dire un champ RENOMMÉ (`shots` devenu `shotz`), ou un
+ *    producteur en avance sur les types générés du web.
+ *
+ * LE TROISIÈME CAS EST LA RAISON DU MODE STRICT, et il a coûté une revue (ronde 1 du lot 0.B,
+ * constat C1) : `z.object` DÉPOUILLE les clés inconnues et `.optional()` accepte l'absence —
+ * si bien qu'un calque renommé passait le contrat en silence, le badge disait « à jour », et le
+ * calque se rendait vide. Le mode strict ne bloque jamais le rendu : le manquement voyage
+ * jusqu'au badge admin, le document est servi tel quel (cf. `validateReplayDocument`).
+ *
+ * # CE QU'IL NE VALIDE PAS, ET C'EST ÉCRIT ICI POUR QU'ON NE S'Y TROMPE PAS
+ *
+ * Il NE DESCEND PAS dans les éléments des calques ni dans les blocs : `z.custom<T>()` porte le
+ * TYPE (donc `tsc` voit la forme complète) sans re-valider chaque point de trajectoire. Un
+ * champ renommé À L'INTÉRIEUR d'un `Shot`, d'un `Track` ou de `coverage` n'est donc PAS attrapé
+ * ici. Le motif est délibéré et son coût est mesuré : un document réel porte des centaines de
+ * milliers de points, et les parcourir un à un à chaque chargement coûterait plus cher que le
+ * décodage JSON lui-même. La forme PROFONDE a son propre gardien, côté producteur : l'empreinte
+ * réfléchie de `ReplayDocument` (`replay/document_shape_test.go`), qui refuse un changement de
+ * forme sans montée de `SchemaVersion`.
+ *
+ * Les TABLES de libellés (`weaponLabels`, `abilityLabels`, `vehicleLabels`, `killEffects`) ne
+ * sont pas strictes non plus, et ne peuvent pas l'être : leurs clés SONT la donnée (un
+ * identifiant d'arme par entrée). Seule la nature de leur valeur y est tenue.
  *
  * # CE QUI EMPÊCHE CE SCHÉMA DE DÉRIVER DU CONTRAT
  *
@@ -54,7 +71,7 @@ function bloc<T>() {
   return z.custom<T>((v) => typeof v === 'object' && v !== null).optional()
 }
 
-/** Une table FACULTATIVE clé -> valeur (les catalogues de libellés). */
+/** Une table FACULTATIVE clé -> valeur (les catalogues de libellés ; cf. en-tête). */
 function table<V>() {
   return z.record(z.string(), z.custom<V>()).optional()
 }
@@ -62,9 +79,10 @@ function table<V>() {
 /**
  * Les bornes du monde. Validées POUR DE VRAI (et pas par `z.custom`) parce que tout le rendu
  * en dépend : une borne manquante ou non numérique fait une scène de taille NaN, c'est-à-dire
- * une page blanche sans message.
+ * une page blanche sans message. STRICTES pour la même raison que la racine : une borne
+ * renommée est une borne absente, et le silence est le pire des deux.
  */
-const bornes = z.object({
+const bornes = z.strictObject({
   maxX: z.number(),
   maxY: z.number(),
   maxZ: z.number().optional(),
@@ -78,8 +96,10 @@ const bornes = z.object({
  *
  * L'ORDRE EST CELUI DU CONTRAT, et ce n'est pas de la coquetterie : c'est ce qui rend la
  * confrontation lisible en revue quand le contrat gagne une clé.
+ *
+ * STRICT : toute clé hors de cette liste est un manquement nommé (cf. en-tête).
  */
-export const replayDocumentSchema = z.object({
+export const replayDocumentSchema = z.strictObject({
   abilities: calque<Elem<'abilities'>>(),
   abilityCharges: calque<Elem<'abilityCharges'>>(),
   abilityImpulses: calque<Elem<'abilityImpulses'>>(),
@@ -152,12 +172,20 @@ export type ReplayDocumentFromSchema = z.infer<typeof replayDocumentSchema>
  * IL NE LÈVE JAMAIS, ET NE JETTE JAMAIS LE DOCUMENT. Un contrat violé est un signal pour
  * l'exploitant (le badge admin le montre), pas une raison de refuser d'afficher : le rendu
  * dégrade déjà champ par champ, et une page blanche apprendrait moins qu'un rejeu incomplet.
+ *
+ * LA CLÉ INCONNUE EST NOMMÉE EXPLICITEMENT : zod la range dans `issue.keys` et non dans le
+ * chemin, si bien qu'un message construit sur le seul chemin dirait « racine : … » sans jamais
+ * dire QUOI — c'est-à-dire sans donner le nom du champ renommé, la seule information utile de
+ * ce manquement.
  */
 export function validateReplayDocument(raw: unknown): string | null {
   const r = replayDocumentSchema.safeParse(raw)
   if (r.success) return null
   const premier = r.error.issues[0]
   if (!premier) return 'document non conforme au contrat'
+  if (premier.code === 'unrecognized_keys') {
+    return `cle(s) inconnue(s) : ${premier.keys.join(', ')}`
+  }
   const chemin = premier.path.join('.')
   return chemin ? `${chemin} : ${premier.message}` : premier.message
 }
