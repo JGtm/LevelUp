@@ -16,6 +16,17 @@ parallele de 0.D (audit sans decodage, second slot d'agent).
 
 **Prochaine etape.** Registre 0.E -> ordre des conversions 1.9.x ; 0.D en cours.
 
+**Addendum (meme soir, D14).** L'utilisateur : « les replis doivent etre notes comme tels ; si la
+lecture est fiable on n'aura plus besoin des replis bancals qui pourraient se declencher de
+maniere indesirable ». Decision D14 au plan : registre unique des replis dans le code (nom, fait,
+condition typee « film muet », date, critere de retrait), ratchet « repli hors registre = rouge »
+(lot 1.9.0), ordre fixe lire-puis-repli (un repli qui tire alors que la lecture existait =
+contradiction comptee), compteurs `coverage.<fait>.{grammaire, repli, contradiction}`, retrait
+obligatoire (compte a 0 au corpus gate d'un jalon = suppression au jalon suivant, tests compris).
+ADR 0034 amende (D-10). Brief de l'audit 0.E etendu : par ligne, repli nomme ou anonyme, risque
+de declenchement alors que la lecture existe, critere de retrait ; cinquieme table « replis
+anonymes aujourd'hui ».
+
 ---
 
 ## [2026-09-13] Chantier decodeur — item 0.B.7 (une fixture de contrat par build) — Complete (feat/decfilm-0B7 fusionnee dans feat/recherche-decodeur-film)
