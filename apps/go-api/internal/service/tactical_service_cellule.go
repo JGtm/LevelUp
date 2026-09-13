@@ -40,6 +40,7 @@ import (
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // Cellule rend le detail d'une cellule de la grille : ses contributions ouvrables et le
@@ -61,15 +62,16 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 
 	var (
 		contributions []domain.TacticalContribution
+		resultats     map[string]string
 		err           error
 	)
 	switch {
 	case lectureDArtefact(req.Question):
-		contributions, err = s.celluleArtefact(ctx, req, scope)
+		contributions, resultats, err = s.celluleArtefact(ctx, req, scope)
 	case req.Question == domain.TacticalQuestionIsole:
-		contributions, err = s.celluleIsole(ctx, req, scope)
+		contributions, resultats, err = s.celluleIsole(ctx, req, scope)
 	default:
-		contributions, err = s.celluleDeKills(ctx, req, scope)
+		contributions, resultats, err = s.celluleDeKills(ctx, req, scope)
 	}
 	if err != nil {
 		return out, err
@@ -97,6 +99,9 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 			continue
 		}
 		c.MatchStartedAt = debut
+		// L'ISSUE VIENT DE L'UNIVERS DE LA LECTURE, jamais d'une seconde requete : c'est
+		// le meme `TacticalMatch` qui a decide que le match entrait dans la mesure.
+		c.Resultat = resultats[c.MatchID]
 		filtrees = append(filtrees, c)
 	}
 	sort.SliceStable(filtrees, func(i, j int) bool {
@@ -134,20 +139,20 @@ func matchsNonOuvrables(matchIDs []string, ouvrables map[string]time.Time) int {
 // ou je meurs, ou je tue, ou je gagne. Meme source que rasterDeKills, projetee sur UNE
 // cellule au lieu d'etre sommee sur toute la grille.
 func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.TacticalCelluleRequest,
-	scope domain.TacticalScope) ([]domain.TacticalContribution, error) {
+	scope domain.TacticalScope) ([]domain.TacticalContribution, map[string]string, error) {
 	if !positionsDeKillLisibles(s.caps) {
 		s.logger.WarnContext(ctx, "tactique: aucune position de kill lisible pour ce titre (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question)
-		return nil, games.ErrCapabilityNotSupported
+		return nil, nil, games.ErrCapabilityNotSupported
 	}
 	lecture, err := s.repo.KillPositions(ctx, requeteDuScope(s.xuid, req.MapID, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: lecture des positions en echec (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question, "err", err)
-		return nil, err
+		return nil, nil, err
 	}
 	if len(lecture.Univers.Matchs) == 0 {
-		return nil, domain.ErrTacticalCarteInconnue
+		return nil, nil, domain.ErrTacticalCarteInconnue
 	}
 	dans := cible(lecture.Univers.Equipes, req.Qui, s.xuid, scope.Coequipiers)
 	prendVictime, prendTueur := facesDeLaQuestion(req.Question)
@@ -172,7 +177,7 @@ func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.Tactica
 			}
 		}
 	}
-	return out, nil
+	return out, resultatsDeLUnivers(lecture.Univers), nil
 }
 
 // celluleIsole sert « ou je meurs isole ». MEME REGLE QUE coordination.Isolement
@@ -182,20 +187,20 @@ func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.Tactica
 // ne rend que X/Y/MatchID (domain.MortAExaminer) — il n'a pas besoin du xuid ni de
 // l'instant, quand ce detail de cellule a besoin des deux pour construire un lien de rejeu.
 func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalCelluleRequest,
-	scope domain.TacticalScope) ([]domain.TacticalContribution, error) {
+	scope domain.TacticalScope) ([]domain.TacticalContribution, map[string]string, error) {
 	if !positionsDeKillLisibles(s.caps) {
 		s.logger.WarnContext(ctx, "tactique: aucune position de kill lisible pour ce titre (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID)
-		return nil, games.ErrCapabilityNotSupported
+		return nil, nil, games.ErrCapabilityNotSupported
 	}
 	lecture, err := s.repo.MortsAvecContexte(ctx, requeteDuScope(s.xuid, req.MapID, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: lecture d'isolement en echec (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "err", err)
-		return nil, err
+		return nil, nil, err
 	}
 	if len(lecture.Univers.Matchs) == 0 {
-		return nil, domain.ErrTacticalCarteInconnue
+		return nil, nil, domain.ErrTacticalCarteInconnue
 	}
 	rayons, _ := s.rayonsParMatch(lecture.Univers.Matchs)
 	dans := cible(lecture.Univers.Equipes, req.Qui, s.xuid, scope.Coequipiers)
@@ -229,7 +234,7 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 			Clock: domain.TacticalClockMatch,
 		})
 	}
-	return out, nil
+	return out, resultatsDeLUnivers(lecture.Univers), nil
 }
 
 // celluleArtefact sert « ou je passe mon temps » et « par ou je sors du spawn », sur les
@@ -246,25 +251,25 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 // champ TOUJOURS present au schema 6 (ecrit a la cuisson) : aucun cas de « temps sans
 // instant » n'a ete rencontre sur le corpus courant (verdict consigne au journal du lot).
 func (s *TacticalService) celluleArtefact(ctx context.Context, req domain.TacticalCelluleRequest,
-	scope domain.TacticalScope) ([]domain.TacticalContribution, error) {
+	scope domain.TacticalScope) ([]domain.TacticalContribution, map[string]string, error) {
 	if !s.caps.Has(games.CapFilmReplayArtifact) {
 		s.logger.WarnContext(ctx, "tactique: lecture d'artefact indisponible (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question)
-		return nil, games.ErrCapabilityNotSupported
+		return nil, nil, games.ErrCapabilityNotSupported
 	}
 	if s.rasters == nil {
 		s.logger.ErrorContext(ctx, "tactique: detail de cellule d'artefact demande sans lecteur de sidecars cable",
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question)
-		return nil, games.ErrCapabilityNotSupported
+		return nil, nil, games.ErrCapabilityNotSupported
 	}
 	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(req.MapID, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: univers du detail de cellule en echec",
 			"player", s.xuid, "map_id", req.MapID, "err", err)
-		return nil, err
+		return nil, nil, err
 	}
 	if len(univers.Matchs) == 0 {
-		return nil, domain.ErrTacticalCarteInconnue
+		return nil, nil, domain.ErrTacticalCarteInconnue
 	}
 	dans := cible(univers.Equipes, req.Qui, s.xuid, scope.Coequipiers)
 
@@ -281,7 +286,40 @@ func (s *TacticalService) celluleArtefact(ctx context.Context, req domain.Tactic
 		}
 		out = append(out, contributionsDuSidecar(sc, m.MatchID, req.Question, celluleVisee(req), dans)...)
 	}
-	return out, nil
+	return out, resultatsDeLUnivers(univers), nil
+}
+
+// resultatsDeLUnivers projette l'issue de chaque match de l'univers sous sa forme
+// CANONIQUE (`canonical.Outcome`), pour que la liste des contributions puisse dire
+// « victoire » ou « defaite » a cote de la date.
+//
+// UN RESULTAT INCONNU N'ENTRE PAS DANS LA TABLE : une chaine vide cote contrat vaut
+// « on ne sait pas », et le web n'affiche alors aucune pastille — jamais un repli qui se
+// lirait comme une defaite.
+func resultatsDeLUnivers(univers domain.TacticalUnivers) map[string]string {
+	out := make(map[string]string, len(univers.Matchs))
+	for _, m := range univers.Matchs {
+		if r := resultatCanonique(m.Outcome); r != "" {
+			out[m.MatchID] = r
+		}
+	}
+	return out
+}
+
+// resultatCanonique traduit le code Halo brut (domain.Outcome*) en `canonical.Outcome`.
+func resultatCanonique(code int) string {
+	switch code {
+	case domain.OutcomeWin:
+		return string(canonical.OutcomeWin)
+	case domain.OutcomeLoss:
+		return string(canonical.OutcomeLoss)
+	case domain.OutcomeDraw:
+		return string(canonical.OutcomeTie)
+	case domain.OutcomeDNF:
+		return string(canonical.OutcomeDNF)
+	default:
+		return ""
+	}
 }
 
 // celluleVisee rend le predicat « cette cellule DU SIDECAR tombe-t-elle dans la cellule
