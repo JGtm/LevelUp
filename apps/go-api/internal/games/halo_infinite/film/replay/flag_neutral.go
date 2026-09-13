@@ -69,7 +69,11 @@ func flagChooseSpawns(scan FlagCarryScan) flagSpawnChoice {
 	out := flagSpawnChoice{}
 	var neutres, equipes []FlagSpawn
 	for _, s := range scan.Spawns {
-		if s.Team == TeamNeutral {
+		// LE PANIER NEUTRE SE TRIE SUR LE FAIT, PAS SUR L'EQUIPE (correction du 2026-09-13,
+		// decouverte D-B2). Huit socles du catalogue portent `team_index = -1` sans etre
+		// neutres : lus par leur equipe, ils gonflaient ce panier et pouvaient faire basculer
+		// un film en variante « drapeau neutre » a tort. Cf. [FlagSpawn.Neutral].
+		if s.Neutral {
 			neutres = append(neutres, s)
 			continue
 		}
