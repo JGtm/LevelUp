@@ -1,3 +1,37 @@
+## [2026-09-13] Chantier decodeur — lot 0.E (audit des heuristiques qui decident a la place de la grammaire, D13/D14) — Complete (feat/decfilm-0E fusionnee dans feat/recherche-decodeur-film)
+
+**Decision technique principale.** Audit (skill adversarial-audit, 6 auditeurs en fan-out,
+verification adverse par l'auditeur principal) : 528 sites de decision LUS dans replay, killsource,
+objectiveevents, replaybuild, killcollector et les inferences de filmdec ; registre
+`.ai/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md` (864 l., 133 lignes, 241 `fichier:ligne`
+tous resolus). Tables : (A) le film l'ecrit et le lecteur existe = 8 conversions courtes ->
+famille 1.9 ordonnee (1.9.2 decoupage i0 du catalogue, 27 faux records/267 400 sur Live Fire ;
+1.9.3 couple tueur/victime lu au kill-event 85, 64/372 ; 1.9.4 carte par le nom de match, 6
+cartes jumelles ; 1.9.5 porteur du crane au canal des armes tenues ; 1.9.6 drapeau rentrant deja
+nomme ; 1.9.7 dead-state/kill-feed par identite de paquet ; 1.9.8 chunk du pied par le manifeste) ;
+(B) le film l'ecrit, lecteur a porter = 8 familles / 40 sites (equipe LUE ET JETEE dans
+`traverse.go:515-517` pendant que 9 decisions s'en passent dont une calibration sur un oracle
+de la base ; 11 voies d'inference de l'index de joueur pour une table que chunk_00 ecrit 32/32 ;
+mur par 103 ; premiere colline ; bande de slots ; registre ECS suppose 1.13) ; (C) 38 heuristiques
+legitimes avec negatif MESURE ; (D) 17 non etablis ; (E) 62 replis ANONYMES dont 9 a defaut deja
+mesure. Correction du plan : 1.9.1 ne peut pas s'appuyer sur le record de creation ti=37 (porte
+fermee 503/503) : le mur se convertit par 103 + panneaux, les appareils portes gardent un repli
+temporel NOMME et compte ; 1.9.0 = registre des replis + ratchet, prealable de la famille.
+Trou trouve en plus : `identity_registry_section.go:288` ne traduit pas `OriginRoundResidue`
+(voie la plus fragile publiee comme `MethodNone`, invisible du compteur de retrait). Une entree
+perimee du registre des reports ecartee (pont aplati `PontParSlot`, accesseur supprime au lot 6.1).
+
+**Resultats observes.** Aucun fichier de production modifie ; lecture pilote : trois constats de
+tete re-verifies sur pieces (designateur lu et jete ; porte ti=37 fermee 503/503 ; election du
+proprietaire de zone calibree sur l'equipe de la base). Limites ecrites : web non audite,
+grammaire filmdec hors axe, aucune mesure refaite (chiffres recopies avec leur source), 31 lignes
+sur 79 « gain non chiffre ».
+
+**Prochaine etape.** 0.D.1 en cours ; CI de l'integration ; push ff vers feat/v75 ; M1 dans
+l'ordre 1.1 -> 1.8 puis famille 1.9 (1.9.0 d'abord).
+
+---
+
 ## [2026-09-13] Chantier decodeur — directive utilisateur D13 : la grammaire prime PARTOUT — En cours (plan amende, lot 0.E lance)
 
 **Decision technique principale.** L'utilisateur, sur l'exemple du mur (drop wall contre lacher a

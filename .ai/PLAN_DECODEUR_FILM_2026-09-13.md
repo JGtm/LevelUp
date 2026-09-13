@@ -820,11 +820,13 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       (`equipmentOrigin`, fenêtre de 200 ms depuis F.1 `c45c411eb`), `REFERENCE_CANAUX_EQUIPEMENT`
       §1 (le type 103 `EquipmentSpawnedObject` désigne 216 panneaux de mur sur 216 et aucun
       appareil porté). Mur : `deployed` = pose désignée par un 103 (panneaux), sinon `dropped` ;
-      appareils portés (capteur, traqueur, écran, champ) : l'enregistrement de création de l'objet
-      (archétype équipement ti=37, `consumeDefaultStateTI37` : référence de créateur,
-      `ability-enabled-id`) s'il porte la cause, sinon repli temporel compté. Les 22 poses
-      requalifiées par F.1 sont rejugées une à une (instruments `f1_origine_*`). Corpus gate sur
-      `0797ce72`, `4f77afc1` et l'échantillon court.
+      appareils portés (capteur, traqueur, écran, champ) : AUCUN signal écrit connu (la référence
+      de créateur et `ability-enabled-id` du record de création ti=37 ont leur porte FERMÉE sur
+      503 records sur 503, `filmdec/equipment_creation.go:29` ; corrigé par l'audit 0.E, B3) ; la
+      fenêtre temporelle reste, comme REPLI NOMMÉ et compté (D14), avec la question ouverte de la
+      table (D) du registre 0.E comme condition de retrait. Les 22 poses requalifiées par F.1 sont
+      rejugées une à une (instruments `f1_origine_*`). Corpus gate sur `0797ce72`, `4f77afc1` et
+      l'échantillon court.
 - [ ] 1.9.2 **Le découpage d'i0 vient du catalogue de carte, plus de l'auto-détection.**
       `internal/sync/killcollector/positions.go:253` (et `hits.go:157`) construisent
       `DefaultScanFilmOptions()` avec `Layout` nil alors que `entry` est le paramètre de la fonction
@@ -864,11 +866,9 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       (`objectiveevents/extract.go:144`), mais `killsource/chunks.go:78` perd `Meta()`.
       RÉSERVE : le manifeste est un fichier EXTERNE — l'argmax reste en repli COMPTÉ. S.
 
-**Item 1.9.0 proposé (préalable), à arbitrer par le pilote** : le REGISTRE DES REPLIS. Nommer et
-COMPTER les **62 replis anonymes** de la table (E) du registre 0.E, poser le ratchet « aucun repli
-sans nom ni compteur », et publier la ventilation `coverage.<fait>.{grammaire, repli, contradiction}`
-que cette famille exige de chaque lot. Sans lui, le critère de retrait D14 (« compte de repli à 0 sur
-le corpus gate ») n'est mesurable pour presque aucune ligne du registre.
+Arbitrage du pilote (2026-09-13) : l'item 1.9.0 ci-dessus EST le registre des replis proposé par
+l'audit ; il entre les **62 replis anonymes** de la table (E) du registre 0.E, et ses 9 replis à
+défaut déjà mesuré sont listés dans son journal.
 
 **Hors famille 1.9, routés par le lot 0.E** : `replay/projectiles.go:106` — **6,0 % des trajectoires
 du parc** (947 sur 15 735) sont coupées par un garde-fou qui compense une faute de déquantification
