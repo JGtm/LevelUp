@@ -7,5 +7,5 @@ package migration
 //
 // La table milestone_catalog y est créée PK-only (pas d'index secondaire sur
 // title_slug/metric, colonnes mutées par MilestoneCatalogRepo.Upsert = surface ART
-// #23046) — aligné sur l'éradication ART. Drop sur DB existantes :
+// #23645) — aligné sur l'éradication ART. Drop sur DB existantes :
 // drop_metadata_art_surface_indexes_v2.

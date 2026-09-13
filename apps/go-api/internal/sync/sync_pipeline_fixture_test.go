@@ -59,11 +59,11 @@ func buildPipelineFixture(t *testing.T) *pipelineFixture {
 
 	shared := openFixtureDB(t, buildSharedDDL())
 	player := openFixtureDB(t, buildPlayerDDL())
-	// Append-only #23046 : convertit player_match_enrichment + crée la vue _latest.
+	// Append-only #23645 : convertit player_match_enrichment + crée la vue _latest.
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(player); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
-	// Append-only #23046 (Phase 2) : convertit match_citations (generation_id) +
+	// Append-only #23645 (Phase 2) : convertit match_citations (generation_id) +
 	// crée la vue match_citations_latest + les séquences.
 	if err := migration.EnsureMatchCitationsAppendOnly(player); err != nil {
 		t.Fatalf("EnsureMatchCitationsAppendOnly: %v", err)
@@ -886,7 +886,7 @@ func TestPipelineFixture_Citations_Idempotent(t *testing.T) {
 	runCitations()
 	n2, phys2 := latestCount(), physCount()
 
-	// Append-only #23046 — idempotence LOGIQUE : match_citations_latest stable
+	// Append-only #23645 — idempotence LOGIQUE : match_citations_latest stable
 	// (zéro doublon visible) entre les deux runs.
 	if n2 != n1 {
 		t.Fatalf("doublon logique (match_citations_latest) : run1=%d run2=%d", n1, n2)
@@ -988,7 +988,7 @@ func TestPipelineFixture_EngagementScore_Idempotent(t *testing.T) {
 	var rows1 int
 	f.player.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment WHERE stage = 'engagement'`).Scan(&rows1)
 
-	// Append-only #23046 — IDEMPOTENCE STRICTE : le 2e run (force=false) doit skiper
+	// Append-only #23645 — IDEMPOTENCE STRICTE : le 2e run (force=false) doit skiper
 	// TOUS les matchs déjà tentés, Y COMPRIS m1 (ranked, score=NULL insufficient_history).
 	// Sans cela, m1 serait ré-INSÉRÉ à chaque cycle → croissance non bornée (bug audit
 	// 2026-06-21). n2 == 0 ET la table ne grossit PAS.

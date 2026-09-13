@@ -18,7 +18,7 @@ package main
 // carnage. match_participants N'EST PAS append-only (absente de tablesProtegees / ADR 0026) :
 // l'UPDATE cible single-writer serialise est le pattern sanctionne (PostSyncEnrichment).
 // Colonnes NON indexees + WHERE sur la PK non modifiee -> aucune suppression d'index (le
-// declencheur ART #23046). Outil dans cmd/ -> hors perimetre des garde-rails (no_art_patterns,
+// declencheur ART #23645). Outil dans cmd/ -> hors perimetre des garde-rails (no_art_patterns,
 // shared_write_guard excluent /cmd/ : one-shot mono-process, serveur arrete) : aucune
 // entree d'allowlist requise.
 //

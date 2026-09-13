@@ -33,7 +33,7 @@ package migrations
 //
 // UPDATE de deux lignes désignées par leur clé primaire sur un référentiel STATIQUE, sans
 // writer concurrent — le périmètre exact que la décision du 2026-06-23 place hors du bug
-// ART #23046. Idempotent : rejoué, il réécrit les mêmes valeurs.
+// ART #23645. Idempotent : rejoué, il réécrit les mêmes valeurs.
 
 import (
 	"database/sql"

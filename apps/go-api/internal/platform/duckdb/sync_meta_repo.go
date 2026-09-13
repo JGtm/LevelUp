@@ -4,7 +4,7 @@
 // et notifications_boot.go (readLastSeenAppVersion/writeLastSeenAppVersion).
 //
 // Écriture ART-safe : SELECT-then-UPDATE-or-INSERT (JAMAIS d'ON CONFLICT sur la PK
-// `key`, qui réécrirait via l'index ART DuckDB — bug #23046). sync_meta est une
+// `key`, qui réécrirait via l'index ART DuckDB — bug #23645). sync_meta est une
 // table clé/valeur sans index secondaire.
 //
 // ADR 0013 : WriteSyncMeta écrit SOUS LEASE dblease (KindPlayer, un seul writer par DB)

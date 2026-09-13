@@ -104,7 +104,7 @@ func scanRegistryScores(sc rowScanner) (RegistryScores, bool, error) {
 //
 // Forme volontairement row-by-row, `WHERE match_id = ?`, toutes les valeurs liées à des
 // placeholders. Un `UPDATE … FROM (VALUES …)` ou un UPDATE set-based nu déclencheraient le
-// bug ART #23046 sur une table indexée ; le ratchet `internal/sync/no_art_patterns_test.go`
+// bug ART #23645 sur une table indexée ; le ratchet `internal/sync/no_art_patterns_test.go`
 // les interdit dans le code serveur mais EXCLUT explicitement `cmd/` de son périmètre
 // (`no_art_patterns_test.go:220`). Cette forme est donc un choix conforme à la doctrine, PAS
 // une forme imposée par un garde-rail existant — c'est `no_bulk_update_test.go`, local à ce

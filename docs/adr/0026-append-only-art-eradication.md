@@ -1,4 +1,4 @@
-# ADR 0026 — Tables append-only pour éradiquer le bug DuckDB ART #23046
+# ADR 0026 — Tables append-only pour éradiquer le bug DuckDB ART #23645
 
 - **Statut** : Accepté (campagne livrée 2026-06-21)
 - **Contexte technique** : DuckDB 1.5.x file-backed, driver CGO
@@ -9,7 +9,7 @@
 Sur DuckDB file-backed (1.5.x), l'enforcement d'une contrainte `PRIMARY KEY`/`UNIQUE`
 passe par un index **ART** (Adaptive Radix Tree). Sous churn — `DELETE` ligne-à-ligne,
 `UPDATE` d'une colonne indexée, `INSERT ... ON CONFLICT DO UPDATE`, `INSERT OR
-REPLACE/IGNORE` — l'ART corrompt le heap (bug amont #23046) :
+REPLACE/IGNORE` — l'ART corrompt le heap (bug amont #23645) :
 
 ```
 Failed to delete all rows from index

@@ -487,7 +487,7 @@ func loadAllMatchIDsForPlayer(ctx context.Context, sharedDB *sql.DB, xuid string
 // loadFlaggedMatchIDs retourne les match_id dont la dominance a DÉJÀ été calculée
 // (dominance_flag NON-NULL, valeur 0 INCLUSE) — player DB.
 //
-// Append-only #23046 — IDEMPOTENCE : on inclut dominance_flag=0. Un match
+// Append-only #23645 — IDEMPOTENCE : on inclut dominance_flag=0. Un match
 // non-dominant (0 = ni domination ni humiliation ni comeback = la MAJORITÉ des
 // matchs) recalculé donne TOUJOURS 0 ; le traiter comme « non calculé » le ferait
 // ré-INSÉRER (stage='dominance', valeur 0) à chaque backfill admin non-force →

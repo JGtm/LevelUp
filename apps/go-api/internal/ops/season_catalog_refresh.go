@@ -4,7 +4,7 @@
 //
 // ART-safe : écritures via duckdb.UpsertRowNoConflict (SELECT-then-write,
 // canonique K1d/K1j), JAMAIS d'`INSERT ... ON CONFLICT DO UPDATE`. Table PK-only
-// (pas d'index secondaire) → l'UPDATE ne touche pas de surface ART #23046. Même
+// (pas d'index secondaire) → l'UPDATE ne touche pas de surface ART #23645. Même
 // politique que refreshPlaylistsCatalog (cf. ADR 0019).
 //
 // Écrit dans la SHARED DB (pas metadata) : la source est le scrape Waypoint et le

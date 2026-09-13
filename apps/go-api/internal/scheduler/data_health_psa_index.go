@@ -11,7 +11,7 @@ package scheduler
 // L'issue upstream qui décrit EXACTEMENT ce symptôme est duckdb/duckdb#23645
 // (« Failed to delete all rows from index », TOUJOURS OUVERTE, reproduite en
 // 1.5.5 — la version que nous embarquons ; un commentaire y documente le même
-// canari « comptage filtré < GROUP BY »). Ce n'est PAS #23046, que CLAUDE.md cite
+// canari « comptage filtré < GROUP BY »). Ce n'est PAS #23645, que CLAUDE.md cite
 // et qui porte sur une corruption de tas en 1.5.0 (découverte notée au rapport,
 // non traitée ici). La cause n'a PAS pu être reproduite localement sur 1.5.5
 // (12 scénarios, cf. RAPPORT_VOLET2_INDEX_PSA.md) : on ne sait donc pas si le

@@ -6,7 +6,7 @@
 // est désormais une PROJECTION DE L'ARTEFACT de rejeu, écrite en INSERT purs par
 // `persist.PlayerPositionsPersister` sous le lease RW, depuis les dérivations post-rangement
 // (`sync/replayartifacts/positions.go`). Un DELETE indexé sur une table écrite dans le cycle de
-// sync est le déclencheur direct du bug ART DuckDB #23046 — la doctrine (ADR 0019/0026) l'exclut,
+// sync est le déclencheur direct du bug ART DuckDB #23645 — la doctrine (ADR 0019/0026) l'exclut,
 // et `match_player_positions` figure maintenant dans les listes de `no_art_patterns_test.go` et
 // `append_only_state_guard_test.go`.
 //

@@ -127,7 +127,7 @@ func TestPostSyncEnrichmentPersister_BatchUpdateMulti_UpdatesMultiCols(t *testin
 	db := openEnrichmentTestDB(t)
 	p := NewPostSyncEnrichmentPersister(db)
 
-	// Append-only #23046 : BatchUpdateMulti écrit plusieurs colonnes d'UN SEUL stage
+	// Append-only #23645 : BatchUpdateMulti écrit plusieurs colonnes d'UN SEUL stage
 	// par INSERT partiel (un INSERT = un stage). On teste perf={score, chain} — ce que
 	// fait le vrai caller (performance.go). Mélanger des stages (dominance+perf) est
 	// désormais rejeté par deriveEnrichmentStage (cf. test dédié ci-dessous).
