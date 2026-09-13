@@ -51,10 +51,14 @@ function lastOf(matches: SquadFormesMatch[], limit: number): { rows: SquadFormes
  * plus récents, dans l'ordre du temps.
  */
 export function measuredWindow(block: SquadFormesBlock, limit = MATCH_ROWS_LIMIT): MatchWindow {
-  const all = allMatches(block)
-  const measured = all.filter((m) => m.measured)
+  const measured = allMatches(block).filter((m) => m.measured)
   const { rows, hidden } = lastOf(measured, limit)
-  return { rows, hidden, unmeasured: all.length - measured.length }
+  // LES MATCHS SANS FILM SE COMPTENT, ILS NE SE LISTENT PAS. Le contrat ne
+  // publie que les matchs qui ont quelque chose à dire (film ou feuille
+  // d'objectif) ; la portée entière, elle, reste dans les deux compteurs du
+  // bloc. Dériver ce nombre de la longueur de la liste ferait dire à l'écran
+  // « 0 match sans film » sur une soirée qui en compte mille.
+  return { rows, hidden, unmeasured: Math.max(0, block.matches_total - block.matches_measured) }
 }
 
 /**
