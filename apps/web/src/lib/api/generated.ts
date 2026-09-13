@@ -11947,6 +11947,14 @@ export interface components {
             /** Format: int64 */
             rows: number;
         };
+        TacticalBinDistance: {
+            /** Format: double */
+            max_m?: number;
+            /** Format: double */
+            min_m: number;
+            /** Format: int64 */
+            n: number;
+        };
         TacticalCelluleAdresse: {
             /**
              * Format: int64
@@ -11990,7 +11998,22 @@ export interface components {
             match_id: string;
             /** Format: date-time */
             match_started_at: string;
+            resultat?: string;
             xuid: string;
+        };
+        TacticalCoordination: {
+            /** Format: double */
+            distance_mediane_m?: number;
+            distribution_distances: components["schemas"]["TacticalBinDistance"][] | null;
+            /** Format: int64 */
+            fenetre_echange_secondes: number;
+            /** Format: int64 */
+            matchs_mesures: number;
+            /** Format: int64 */
+            morts_sans_distance: number;
+            /** Format: int64 */
+            n_distances: number;
+            rayons_m: number[] | null;
         };
         TacticalGrappe: {
             id: string;
@@ -12004,13 +12027,18 @@ export interface components {
             y: number;
         };
         TacticalMapCard: {
+            bornes?: components["schemas"]["BornesMonde"];
+            cellules?: components["schemas"]["CelluleTactique"][] | null;
             /** Format: int64 */
             defaites: number;
+            echelle?: components["schemas"]["EchelleTactique"];
             map_id: string;
             map_name: string;
             map_name_fr: string;
             /** Format: int64 */
             matchs: number;
+            /** Format: double */
+            pas_m?: number;
             sous_plancher: boolean;
             /** Format: int64 */
             victoires: number;
@@ -12029,6 +12057,7 @@ export interface components {
         TacticalRaster: {
             bornes: components["schemas"]["BornesMonde"];
             cellules: components["schemas"]["CelluleTactique"][] | null;
+            coordination?: components["schemas"]["TacticalCoordination"];
             echange?: components["schemas"]["Couverture"];
             echelle: components["schemas"]["EchelleTactique"];
             /** Format: int64 */

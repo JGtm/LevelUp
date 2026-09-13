@@ -68,6 +68,18 @@ export interface HistogramChartProps {
    * les barres.
    */
   binAttenuated?: (point: ChartPointHistogram, index: number) => boolean
+  /**
+   * SEUILS TRACÉS EN POINTILLÉ sur l'axe des catégories (ajout 2026-09-13, distribution
+   * des distances à l'équipier de l'onglet Tactique).
+   *
+   * `at` est une position en INDICE DE CATÉGORIE, fractionnaire : un seuil de 18 m sur
+   * des intervalles de 10 m tombe à 1,8 — entre la deuxième et la troisième barre, là où
+   * il est vraiment. L'arrondir à une frontière de barre déplacerait la règle du jeu.
+   *
+   * PLUSIEURS SEUILS SONT LE CAS NORMAL : un filtre qui mélange Arène (18 m) et BTB
+   * (24 m) mélange deux règles du jeu, et leur moyenne n'est la règle d'aucun match.
+   */
+  thresholds?: readonly { at: number; label: string }[]
 }
 
 export function HistogramChart({
@@ -82,11 +94,19 @@ export function HistogramChart({
   yAxisLabel,
   formatBin,
   binAttenuated,
+  thresholds,
 }: HistogramChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointHistogram>[]) =>
-      buildHistogramOption(s, { colorToken, xAxisLabel, yAxisLabel, formatBin, binAttenuated }),
-    [colorToken, xAxisLabel, yAxisLabel, formatBin, binAttenuated],
+      buildHistogramOption(s, {
+        colorToken,
+        xAxisLabel,
+        yAxisLabel,
+        formatBin,
+        binAttenuated,
+        thresholds,
+      }),
+    [colorToken, xAxisLabel, yAxisLabel, formatBin, binAttenuated, thresholds],
   )
 
   return (
@@ -108,6 +128,7 @@ interface BuildOpts {
   yAxisLabel?: string
   formatBin?: (point: ChartPointHistogram) => string
   binAttenuated?: (point: ChartPointHistogram, index: number) => boolean
+  thresholds?: readonly { at: number; label: string }[]
 }
 
 /**
@@ -131,7 +152,7 @@ export function buildHistogramOption(
   opts: BuildOpts = {},
 ): EChartsCoreOption {
   const { colorToken, xAxisLabel, yAxisLabel: yLabelOpt, formatBin = defaultFormatBin } = opts
-  const { binAttenuated } = opts
+  const { binAttenuated, thresholds } = opts
   const yAxisLabel = yLabelOpt ?? 'Matchs'
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -191,7 +212,30 @@ export function buildHistogramOption(
         data: counts,
         barCategoryGap: '10%',
         itemStyle: { color, borderRadius: 2 },
+        ...(thresholds && thresholds.length > 0 ? { markLine: markLineSeuils(thresholds, tc) } : {}),
       },
     ],
+  }
+}
+
+/** Les seuils en pointillé — jeton `warning`, étiquette en haut de la ligne. */
+function markLineSeuils(
+  thresholds: readonly { at: number; label: string }[],
+  tc: ReturnType<typeof getEChartsThemeColors>,
+): Record<string, unknown> {
+  return {
+    silent: true,
+    symbol: 'none',
+    lineStyle: { color: resolveToken('warning'), type: 'dashed', width: 1.5 },
+    label: {
+      show: true,
+      position: 'insideEndTop',
+      color: resolveToken('warning'),
+      fontSize: 10,
+      backgroundColor: tc.tooltipBg,
+      padding: [1, 3],
+      formatter: (p: { name?: string }) => p.name ?? '',
+    },
+    data: thresholds.map((t) => ({ name: t.label, xAxis: t.at })),
   }
 }

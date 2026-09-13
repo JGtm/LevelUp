@@ -122,6 +122,7 @@ func (s *TacticalService) MapsPlayed(ctx context.Context, scope domain.TacticalS
 			SousPlancher: r.Matchs < domain.PlancherMatchsParCarte,
 		})
 	}
+	s.peindreLesVignettes(ctx, &page, scope)
 	s.logger.InfoContext(ctx, "tactique: cartes jouees",
 		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "cartes", len(page.Cartes),
 		"matchs_filtres", len(scope.MatchIDs), "coequipiers", len(scope.Coequipiers),
@@ -174,6 +175,9 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		// l'ordre d'evaluation des operandes decider si la reponse rendue est celle
 		// d'avant ou d'apres le remplissage.
 		err := s.rasterArtefact(ctx, &out, scope, dejaLus)
+		if err == nil {
+			s.mesurerCoordination(ctx, &out, scope)
+		}
 		return out, err
 	}
 	if question == domain.TacticalQuestionIsole {
@@ -181,10 +185,15 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		// plus : le contexte de chaque mort, ecrit au sync, et les positions pour le lieu.
 		// Elle n'attend AUCUN artefact — la ventilation en attente / non cuisables ne la
 		// concerne donc pas.
+		// `rasterIsole` POSE LUI-MEME la section : elle sort de la lecture des morts qu'il
+		// fait deja, et la redemander serait une seconde requete pour la meme table.
 		err := s.rasterIsole(ctx, &out, scope)
 		return out, err
 	}
 	err := s.rasterDeKills(ctx, &out, scope)
+	if err == nil {
+		s.mesurerCoordination(ctx, &out, scope)
+	}
 	return out, err
 }
 
