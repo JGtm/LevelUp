@@ -141,7 +141,7 @@ func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before cha
 	}
 	committed = true
 
-	// CHECKPOINT : sans lui le WAL peut être perdu (leçon ADR 0022 sur shared_social).
+	// CHECKPOINT : sans lui le WAL peut être perdu à la fermeture (leçon ADR 0022).
 	if _, err := db.ExecContext(ctx, `CHECKPOINT`); err != nil {
 		return fmt.Errorf("CHECKPOINT après swap: %w", err)
 	}
