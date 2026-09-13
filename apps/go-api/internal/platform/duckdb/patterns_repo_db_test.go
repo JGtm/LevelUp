@@ -76,6 +76,9 @@ func newPatternsTestPDB(t *testing.T) *PlayerDB {
 	// Lot B (ADR 0026) : le repo lit désormais la vue _latest. Le seed n'a qu'une
 	// version par match → pass-through suffit (pas de colonnes id/written_at ici).
 	mustExec(t, playerSQL, `CREATE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`)
+	// Vue PAR TYPE (miroir de la migration player_msr_view_latest_by_type_v1, 2026-09-13) :
+	// Q8LUSRHistoryPlayer la lit — un checkpoint par (match_id, rating_type).
+	mustExec(t, playerSQL, `CREATE VIEW match_skill_rank_latest_by_type AS SELECT * FROM match_skill_rank`)
 	_ = ctx
 
 	return &PlayerDB{
@@ -202,6 +205,9 @@ func newH5PatternsTestPDB(t *testing.T) *PlayerDB {
 	mustExec(t, playerSQL, `CREATE TABLE match_skill_rank (
 		match_id VARCHAR, rating_value DOUBLE, rating_type VARCHAR)`)
 	mustExec(t, playerSQL, `CREATE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`)
+	// Vue PAR TYPE (miroir de la migration player_msr_view_latest_by_type_v1, 2026-09-13) :
+	// Q8LUSRHistoryPlayer la lit — un checkpoint par (match_id, rating_type).
+	mustExec(t, playerSQL, `CREATE VIEW match_skill_rank_latest_by_type AS SELECT * FROM match_skill_rank`)
 	_ = ctx
 
 	return &PlayerDB{

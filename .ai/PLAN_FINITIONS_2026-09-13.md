@@ -114,6 +114,13 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
       `match_skill_rank_latest` (une ligne par match et rating_type, la plus récente) au lieu de
       la table brute ; mettre à jour le commentaire (règle ART n°2). Test existant du repo
       carrière adapté : une ligne périmée d'un match rejoué n'apparaît plus.
+- [x] C.3 bis (correction pilote) : `match_skill_rank_latest` partitionne par `match_id` SEUL
+      avec priorité CSR > LUSR — la brancher au graphe faisait DISPARAÎTRE le point LUSR de
+      tout match classé portant les deux lignes (perte de données rendues). Nouvelle vue
+      `match_skill_rank_latest_by_type` (migration player `player_msr_view_latest_by_type_v1`,
+      partition `(match_id, rating_type)`, `written_at DESC, id DESC`) ; `Q8LUSRHistoryPlayer`
+      la lit ; ratchet `no_raw_rating_reads_test.go` élargi explicitement au suffixe ;
+      test « match classé → les DEUX lignes servies ».
 - [x] C.4 Invariant `invariants.CheckPlayerLUSRChains(ctx, db, allowed)` (clé
       `lusr_chain_foreign_title`, `SeverityFail`, table brute) + test de violation ; branché au
       gate d'intégration avec la liste des chaînes du titre lue depuis
@@ -171,9 +178,21 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
   `[x]`. Deux constats « sur pièces » qui corrigent le plan : (1) la vue
   `match_skill_rank_latest` partitionne PAR `match_id` seul avec priorité CSR > LUSR >
   LUSR_V2 (et non par `(match_id, rating_type)` comme l'annonçait C.3) — la bascule reste
-  bonne et conforme à la règle produit déjà écrite dans `games/halo_5/livesync/csr_match.go`
-  (« les matchs classés affichent le CSR, les sociaux le LUSR ») ; (2) le filtre de purge
+  bonne quant au principe (ne plus lire le brut) mais FAUSSE quant à la vue choisie —
+  corrigé en C.3 bis, cf. entrée ci-dessous ; (2) le filtre de purge
   devait être `IS DISTINCT FROM` et non `<>` (un `<>` nu jette les lignes à
   `playlist_group` NULL). C.2 va au-delà du fail-loud : le moteur est désormais construit
   sur `deps.TitleSlug`, donc la double source de titre n'existe plus, elle est comparée.
   La PURGE des 4 bases reste à exécuter par le pilote (E.2).
+- 2026-09-13 : **C.3 bis** — correction demandée par le pilote, sur pièces. Brancher le graphe
+  d'évolution sur `match_skill_rank_latest` était un CHANGEMENT DE DONNÉES RENDUES, pas une
+  correction : la vue arbitre CSR > LUSR par `match_id`, alors que le graphe trace deux séries
+  (`CareerChartsSection.lusrEvolution.tsx:104-112`) et calcule ses deltas par
+  `(rating_type, playlist_group)` — le point LUSR de tout match classé à double ligne
+  disparaissait. La règle « les matchs classés affichent le CSR » est propre à Halo 5
+  (`games/halo_5/livesync/csr_match.go`), pas au titre Infinite. Vue dédiée
+  `match_skill_rank_latest_by_type` : une ligne par match ET par type, la plus récente — les
+  lignes `h5_arena` supersédées restent masquées, aucun type n'est arbitré contre un autre.
+  Effet de bord du lot : quatre fixtures de test de `platform/duckdb` recopient la DDL de la
+  vue `_latest` au lieu de passer par les migrations (piège connu du dépôt) ; la vue par type
+  y a été ajoutée en miroir, avec renvoi au nom du step.

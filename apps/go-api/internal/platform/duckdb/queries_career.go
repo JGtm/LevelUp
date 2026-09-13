@@ -204,18 +204,23 @@ ORDER BY cp.recorded_at ASC`
 // pour H5 : une série LUSR + une série CSR (au lieu de LUSR+LUSR_V2+CSR) — parité avec
 // Halo Infinite.
 //
-// LECTURE VIA match_skill_rank_latest (règle ART n°2, ADR 0026) — bascule du
-// 2026-09-13 (lot finitions LUSR, C.3). Cette requête lisait la table BRUTE au motif
-// que « le graphe veut TOUS les checkpoints » : c'est faux, il veut UN checkpoint par
-// match. Sur une table append-only, le brut sert AUSSI toutes les passes précédentes,
-// donc ce graphe était structurellement NON RÉPARABLE par un replay — les lignes de
-// chaîne h5_arena écrites le 2026-06-26 dans les player DB Infinite (913 / 1 064 / 471 /
-// 31 lignes) y traçaient encore une série « Arène » fantôme malgré la réparation
-// append-only d'août (rapport .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §6.2).
-// La vue arbitre par match_id : CSR > LUSR > LUSR_V2, puis start_time, written_at, id.
-// Conséquence assumée et conforme à la règle produit (cf. games/halo_5/livesync/
-// csr_match.go) : sur un match CLASSÉ qui porte les deux lignes, c'est le CSR qui est
-// servi — « les matchs classés affichent le CSR, les sociaux le LUSR ».
+// LECTURE VIA match_skill_rank_latest_by_type (règle ART n°2, ADR 0026) — bascule du
+// 2026-09-13 (lot finitions LUSR, C.3 bis). Cette requête lisait la table BRUTE au motif
+// que « le graphe veut TOUS les checkpoints » : il en veut UN par match ET PAR TYPE, pas
+// toutes les passes d'écriture. match_skill_rank est append-only : le brut sert aussi
+// chaque version supersédée, donc ce graphe était structurellement NON RÉPARABLE par un
+// replay — les lignes de chaîne h5_arena écrites le 2026-06-26 dans les player DB
+// Infinite (913 / 1 064 / 471 / 31 lignes) y traçaient encore une série « Arène »
+// fantôme malgré la réparation append-only d'août (rapport
+// .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §6.2).
+//
+// La vue employée ici partitionne par (match_id, rating_type) et retient la plus
+// récente : les lignes périmées disparaissent, les DEUX séries du graphe (LUSR pleine,
+// CSR pointillée — CareerChartsSection.lusrEvolution.tsx) sont conservées. Ne PAS lui
+// substituer match_skill_rank_latest, qui partitionne par match_id seul avec priorité
+// CSR : sur un match classé portant les deux lignes, le point LUSR disparaîtrait de la
+// série — perte de données rendues. Les deux vues répondent à deux questions
+// différentes ; celle-ci n'arbitre aucun type contre un autre.
 const Q8LUSRHistoryPlayer = `
 SELECT
     msr.match_id,
@@ -225,7 +230,7 @@ SELECT
     msr.playlist_group,
     NULLIF(TRIM(COALESCE(msr.tier, '')), '')               AS tier,
     COALESCE(msr.sub_tier, 0)                              AS sub_tier
-FROM match_skill_rank_latest msr
+FROM match_skill_rank_latest_by_type msr
 WHERE msr.rating_type <> 'LUSR_V2'`
 
 // Q8LUSRHistoryRegistryTpl : Phase B de Q8 — start_time + playlist depuis

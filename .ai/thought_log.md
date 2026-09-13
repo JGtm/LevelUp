@@ -1,3 +1,44 @@
+## [2026-09-13] Lot C — C.3 bis : la vue `_latest` n'etait pas la bonne pour le graphe d'evolution — Complete (feat/finitions-lusr)
+
+**Decision technique principale.** Correction demandee par le pilote apres relecture sur pieces, et
+il a raison : brancher `Q8LUSRHistoryPlayer` sur `match_skill_rank_latest` etait un CHANGEMENT DE
+DONNEES RENDUES, pas une correction. Cette vue partitionne par `match_id` SEUL avec priorite
+CSR > LUSR — elle repond a « quel rang afficher pour ce match ? ». Le graphe « Evolution LUSR / CSR »
+pose une autre question : il trace DEUX series (`CareerChartsSection.lusrEvolution.tsx:104-112`,
+LUSR pleine + CSR pointillee) et `career_repo_lusr.go` calcule ses deltas par
+`(rating_type, playlist_group)`. Sur tout match classe portant les deux lignes, le point LUSR
+disparaissait. J'avais justifie la perte par `games/halo_5/livesync/csr_match.go` (« les matchs
+classes affichent le CSR ») : cette regle est propre a Halo 5, elle ne fait pas autorite sur
+Infinite — erreur de raisonnement, pas d'execution.
+
+Nouvelle vue `match_skill_rank_latest_by_type`, posee par une migration player nommee
+(`player_msr_view_latest_by_type_v1`, `steps_player_match_skill_rank.go`, idempotente, gardee par
+`ColumnExists(id)`, inscrite a `canonicalOrder` juste apres `player_msr_view_priority_csr_v1`) :
+`PARTITION BY match_id, rating_type ORDER BY written_at DESC, id DESC`. Une ligne par match ET par
+type, la plus recente — les lignes `h5_arena` du 2026-06-26 restent masquees par la ligne de replay
+d'aout, et aucun type n'est arbitre contre un autre. Les deux vues coexistent et repondent a deux
+questions distinctes ; le commentaire de chacune le dit.
+
+**Resultats observes.** Le nouveau test `TestQ8LUSRHistoryPlayer_KeepsBothRatingTypesOnRankedMatch`
+echoue bien sur l'ancienne vue (« lignes servies = 1 (map[{m_ranked CSR}:Ranked Arena]), want 2 ») :
+la regression que le pilote a vue par lecture est desormais cadenassee par un test. Le ratchet
+`no_raw_rating_reads_test.go` ne VOYAIT PAS `_latest_by_type` (la frontiere de mot echouait devant
+`_`) : la lecture passait par accident. Motif elargi explicitement a `(_latest(?:_by_type)?)?`,
+commentaire date ; allowlist inchangee a 4 entrees. Effet de bord revelateur : quatre fixtures de
+`platform/duckdb` (`player_repos_test.go`, `patterns_repo_db_test.go` x2, `repos_extra_test.go`)
+RECOPIENT la DDL de la vue au lieu de passer par les migrations — le piege deja consigne en memoire
+(« DDL de test recopiees = derive indetectable ») ; deux tests d'integration sont tombes sur
+« Table with name match_skill_rank_latest_by_type does not exist ». La vue y a ete ajoutee en
+miroir avec renvoi au nom du step, mais la dette reste. Gates : `go build` / `go vet ./...` exit 0,
+suite complete hors himap exit 0 (171 paquets), `-tags=integration -p 1` sur
+sync/persist/migration/platform/duckdb exit 0, `make go-api-lint` 0 issue.
+
+**Conclusion / prochaine etape.** C.3 bis `[x]`. Rien d'autre du lot C ne change : C.1, C.2, C.4,
+C.5, C.6 sont intacts. La purge des 4 bases reste au pilote (E.2). Lecon a retenir : quand une
+bascule de lecteur change ce qui est RENDU a l'ecran, la question n'est pas « la vue est-elle
+canonique ? » mais « que trace ce graphe, et par quelle cle ? » — la reponse etait dans le
+composant web, que je n'avais pas ouvert.
+
 ## [2026-09-13] Lot C — LUSR : cause de la corruption `h5_arena` fermee a la source, lecteur corrige, outil de purge — Complete (worktree wt-finitions-lusr, branche feat/finitions-lusr)
 
 **Decision technique principale.** Le lot C du `.ai/PLAN_FINITIONS_2026-09-13.md` ferme la CLASSE
