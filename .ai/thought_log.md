@@ -1,7 +1,7 @@
 ## [2026-09-13] Lot F.0 des finitions v7.5 — le type 103 `EquipmentSpawnedObject`, references RESOLUES — Complete (instruction, worktree wt-finitions-equipement, branche feat/finitions-equipement)
 
 **Decision technique principale.** F.0 est une INSTRUCTION : aucun code de production touche,
-aucune DuckDB, aucune ecriture sous `data/`. Cinq instruments de recherche sous gardes
+aucune DuckDB, aucune ecriture sous `data/`. Six instruments de recherche sous gardes
 d'environnement dans `film/filmdec/` (`f0_103_{contexte,artefact,verdicts,pieces,corpus,sonde}`),
 plus UN changement additif au marcheur de R7 — `r7Ev.Refs` porte desormais les TROIS references
 gardees avec leur generation (`r7Refs3`), la marche restant inchangee bit pour bit (controle :
