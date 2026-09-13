@@ -496,6 +496,47 @@ apparaître la durée de chaque balayage (le binaire installe un handler slog) ;
 trois sont inertes par défaut, et les options doivent précéder `<matchId>` — le paquet flag arrête
 l'analyse au premier argument positionnel.
 
+#### Budget de temps du décodeur — bancs et `benchstat` (lot 0.A.5)
+
+`replay-equiv` imprime déjà une durée **par film** (sa propre colonne) : c'est le budget de bout
+en bout. Il ne dit pas **où** le temps est passé. Trois bancs isolent les étages que la révision
+structurelle (M2) va déplacer, pour qu'un ralentissement se localise au lieu de se constater :
+`BenchmarkBitReaderReadBits` (le primitif, sans grammaire), `BenchmarkTraverseEntity` (la boucle
+de composants sur des records d'image-clé réels) et `BenchmarkKeyframeClosure` (le balayage chaud
+d'une bobine entière).
+
+Ils tournent sur la mini-bobine par build `minifilm_bcb6d393`, jamais sur `data/` : un banc qui
+dépendrait du cache de films ne tournerait pas en CI. (`ScanBipedPositions`, que le plan nommait,
+ne s'exécute PAS sur une mini-bobine — il dérive sa bande de slots bipède des images-clés et
+refuse une bobine dont les images sont concaténées hors de leur continuité.)
+
+```bash
+cd apps/go-api
+# la ligne de base commise (à régénérer seulement sur un changement déclaré)
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ \
+  > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
+
+# comparer après un changement, sur la MÉDIANE (ce que benchstat rapporte)
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
+benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt /tmp/apres.txt
+# benchstat n'est pas vendorisé : go install golang.org/x/perf/cmd/benchstat@latest
+```
+
+**Le budget de +10 % ne s'applique QU'AUX DEUX BANCS SERRÉS, `BitReaderReadBits` et
+`TraverseEntity`.** Le premier a une médiane à 0,5 % de son minimum (un outlier isolé peut porter
+son max à +56 % : c'est la MÉDIANE qui se lit, et c'est ce que `benchstat` compare) ; le second
+disperse de +7 %.
+
+`BenchmarkKeyframeClosure` est **informatif, pas un gate**. Mesuré SANS aucun changement de code :
+71 % d'écart au sein d'une même passe, et +21 % de médiane d'une passe à l'autre sur le même
+commit ; deux passes ici ont rendu +62 % et +5 % de dispersion. L'écart suit la charge de la
+machine, pas le décodeur. Trancher un budget de +10 % dessus ferait rougir des lots innocents et
+laisserait passer de vrais ralentissements — il sert à voir un ordre de grandeur bouger (un
+facteur 2), rien de plus.
+
+`-count 10` donne à `benchstat` une distribution et non un point unique ; `-run '^$'` tient les
+tests hors du chronomètre.
+
 ### Notifications
 
 ```bash

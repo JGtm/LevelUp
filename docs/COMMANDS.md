@@ -474,6 +474,44 @@ per-scan durations (the binary installs an slog handler), `--cpuprofile` and `--
 pprof files (`go tool pprof`), the heap one after the build. All three are inert by default, and
 the options must precede `<matchId>` — the flag package stops at the first positional argument.
 
+
+#### Decoder time budget — benchmarks and `benchstat` (lot 0.A.5)
+
+`replay-equiv` already prints a duration **per film** (its own column), which is the end-to-end
+budget. It does not say **where** the time went. Three benchmarks isolate the layers that the
+structural revision (M2) is going to move, so a slowdown is located instead of merely noticed:
+`BenchmarkBitReaderReadBits` (the primitive, no grammar), `BenchmarkTraverseEntity` (the component
+loop over real keyframe records) and `BenchmarkKeyframeClosure` (the hot sweep over a whole reel).
+
+They run on the per-build mini-reel `minifilm_bcb6d393`, never on `data/`: a benchmark that needed
+the film cache would not run in CI. (`ScanBipedPositions`, which the plan named, cannot run on a
+mini-reel — it derives its biped slot band from keyframes and refuses a reel whose keyframes are
+concatenated out of continuity.)
+
+```bash
+cd apps/go-api
+# the committed baseline (regenerate only on a declared change)
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ \
+  > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
+
+# compare after a change, on the MEDIAN (what benchstat reports)
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
+benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt /tmp/apres.txt
+# benchstat is not vendored: go install golang.org/x/perf/cmd/benchstat@latest
+```
+
+**The +10 % budget applies to `BitReaderReadBits` and `TraverseEntity` ONLY.** Those two are
+tight: median within 0.5 % of the minimum for the first (an isolated outlier can push its max to
++56 %, which is why the median is the reading), +7 % spread for the second.
+
+`BenchmarkKeyframeClosure` is **informative, not a gate**. Measured on unchanged code: 71 % spread
+within a single pass, and a +21 % median shift from one pass to the next on the same commit; two
+passes here gave +62 % and +5 % spread. The variation tracks machine load, not the decoder.
+Ruling a +10 % budget on it would redden innocent lots and let real slowdowns through — it is there
+to show an order of magnitude moving (a factor of 2), nothing finer.
+
+`-count 10` gives `benchstat` a distribution rather than a single point; `-run '^$'` keeps the
+tests out of the timing.
 ### Notifications
 
 ```bash
