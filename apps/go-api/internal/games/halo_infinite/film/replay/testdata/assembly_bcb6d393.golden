@@ -300,7 +300,7 @@ refus des fermetures : 5 contestee(s) (l unicite manque : deux corps, deux joueu
 verdict : nominal
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
-19 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et
+21 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et
 n emprunte pas le nom d une arme voisine
   0x0A1992BC  en="S7 Sniper" fr="S7 Sniper" fx="ballistic"
   0x0A1992BC42C9679F  en="S7 Sniper" fr="S7 Sniper" fx="ballistic"
@@ -318,6 +318,8 @@ n emprunte pas le nom d une arme voisine
   0xB619D84A  en="CQS48 Bulldog" fr="CQS48 Bulldog" fx="ballistic"
   0xB619D84A42C9679F  en="CQS48 Bulldog" fr="CQS48 Bulldog" fx="ballistic"
   0xC3542946  en="Plasma Pistol" fr="Pistolet à plasma" fx="plasma"
+  0xD7915565  en="Mutilator" fr="Mutilateur" fx=""
+  0xD791556542C9679F  en="Mutilator" fr="Mutilateur" fx=""
   0xF408190F  en="Mk50 Sidekick" fr="MK50 Sidekick" fx="ballistic"
   0xF408190F42C9679F  en="Mk50 Sidekick" fr="MK50 Sidekick" fx="ballistic"
   0xFD98554C  en="VK78 Commando" fr="VK78 Commando" fx="ballistic"

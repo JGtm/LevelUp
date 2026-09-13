@@ -482,6 +482,9 @@ de contrat et les références d'équivalence figées à `cbfdc269d` ; les trois
 croisement au corpus gate (D6, D7, D8 de la §4) attendent un verdict ; et D9 dit que le codec
 des entrées de golden ne transporte pas tout ce que l'assemblage lit. Sous-lots strictement
 séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, la main rendue.
+ORDRE D'EXÉCUTION (révisé le 2026-09-13 au soir) : 0.D.0, 0.D.1, 0.D.2 sont clos ; viennent
+ensuite **0.D.5** (synchronisation de la seconde fusion, avant tout le reste — les oracles
+doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
 
 - [x] 0.D.0 **Synchronisation avec `feat/v75` : attribution, régénération, re-figeage.**
       Régime court (10 films) sur `215649efd` : lister, film par film, les étapes qui diffèrent
@@ -524,7 +527,7 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       Gate : gates communs (§2.3) ; `go test ./internal/games/halo_infinite/film/...
       ./internal/archlint/ ./internal/replaybuild/` vert ; régime court 10/10 identiques ;
       `make go-api-lint`.
-- [ ] 0.D.1 **D6 — `coverage.score.rounds` 3 -> 1 sur `fb1a1a72` (CTF multi-manche).**
+- [x] 0.D.1 **D6 — `coverage.score.rounds` 3 -> 1 sur `fb1a1a72` (CTF multi-manche).**
       Instruction bornée à une session : relever `RealRounds` slot par slot sur `fb1a1a72`
       (instrument corpus `CHUNK00_FILMS`), confronter à la feuille (`fb1a1a72.facts.json`, deux
       scores d'équipe) et à `rounds_decide` (`regulation.toml`), sachant que `materialRounds`
@@ -556,7 +559,7 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       retiré, remplacé par manches / prolongations, source = décision utilisateur du 2026-09-13) ;
       `SchemaVersion` 55 si le contenu cuit change. Le registre des reports est amendé dans le même
       geste (la ligne 0.D.1 « divergence voulue » devient « non établi, rouvert »).
-- [ ] 0.D.2 **D7 — bloc monde/équipement de `60ae07c4` (Live Fire, v37).**
+- [x] 0.D.2 **D7 — bloc monde/équipement de `60ae07c4` (Live Fire, v37).**
       Séparer l'effet du schéma 53 (porte de région sur 2 bits) de celui de la borne
       `maxUnrollPerStep = 16` : trouver les sha qui encadrent v53 (`document_chronicle.go`),
       jouer le corpus gate sur `60ae07c4` seul avec `--base=<sha juste avant v53>` contre le
@@ -566,6 +569,50 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       DÉFAUT (dire laquelle des deux entrées affirme « ne bouge pas » à tort, et si la perte est
       réelle) ou DIVERGENCE VOULUE. Correctif seulement si défaut à cause identifiée, même
       protocole qu'en 0.D.1 ; sinon registre.
+      **Fait** (2026-09-13). **VERDICT : DIVERGENCE VOULUE sur le bloc monde/équipement — et la
+      borne de déroulage n'y est pour RIEN.** Aucun correctif (règle 7). Méthode : quatre points
+      de base du corpus gate sur `60ae07c4` seul (manifeste réduit), `--source-root` laissé sur
+      ce worktree — la variante « vieux sha en `--source-root` » du brief aurait fait exporter
+      les faits par le `cmd/levelup` du 2026-09-11 (`facts.go` lance l'export depuis
+      `SourceRoot`), donc **aucun worktree temporaire n'a été créé ni retiré**. Faire varier
+      `--base` isole les mêmes révisions et donne QUATRE points au lieu de deux.
+      **(1) La borne `maxUnrollPerStep = 16` (`f22474816`) n'explique RIEN** : les rapports aux
+      bases `ebd012e3b` (son parent) et `f22474816` sont **identiques octet pour octet** (hors
+      durée) — 66 gains, 28 pertes, mêmes valeurs sur tous les axes.
+      **(2) La porte de région (`fb71e9b3c`, chronique v53) explique 100 % du bloc** : à la base
+      `1a93b34f2` (son parent) le gate rend 17 pertes ; à la base `c5a71dcbd` (le bump v53, juste
+      après) il rend **0 perte, 3 gains, exit 0**. Entre les deux il n'y a que ces deux commits.
+      **(3) Rien de publié n'est perdu**, lecture des deux artefacts cuits (`--keep-work`) :
+      `groundWeapons` publiées **188 -> 188**, `pickups` publiés **297 -> 297**,
+      `groundWeapons.kept` **218 -> 218**, `objects` **218 -> 218**. Les « pertes » sont de deux
+      natures et d'aucune autre : des compteurs d'ÉCHEC qui baissent (`rejected` 211 -> 116 avec
+      `accepted` 429 -> 334, soit −95 des deux côtés et `kept` constant : les 95 partants étaient
+      DÉJÀ écartés sur l'identité ; `unknown` 36 -> 5 ; `placements.unknown` 57 -> 4 ;
+      `pickups.originUnknown` 56 -> 40 ; `projectiles.truncated` 343 -> 3) et une
+      RE-CLASSIFICATION à somme constante (`spawned` 218 -> 35 avec `dropped` **0 -> 183**, somme
+      218 des deux côtés : positions fausses, la règle du lâcher ne mordait jamais et tout
+      tombait en `spawned` par défaut). Gains massifs en face : `placements` **57 -> 190**,
+      `projectiles` publiés **236 -> 417**, `dropperNamed` 0 -> 183, `withOwner` 0 -> 186,
+      `dated` 0 -> 31, `cycles` 0 -> 1.
+      **(4) L'entrée v53 n'est PAS démentie.** Elle dit « Les armes au sol, les tirs et les
+      ramassages ne bougent pas (217, 717, 108 des deux côtés) » — et sur `60ae07c4` les armes au
+      sol PUBLIÉES et les ramassages PUBLIÉS ne bougent effectivement pas (188 et 297 des deux
+      côtés). Ce qui bouge, ce sont les compteurs de COUVERTURE, dont l'entrée ne parle pas. Le
+      constat D7 comparait des compteurs de couverture à une phrase sur des comptes publiés.
+      **(5) Aucune part ne vient d'un découpage d'i0 DÉTECTÉ** (question du pilote) : le
+      catalogue impose `axisWidths [12 12 11]` et `regionIndexBits 2` pour Live Fire
+      (`map_quant_bounds.json`, entrée « live fire », module `sgh_interlock`), ce fichier est
+      **identique entre `1a93b34f2` et HEAD** (`git diff` vide), et `film_context.go` — qui
+      n'auto-détecte QUE si l'entrée de carte est invalide — est lui aussi **identique aux deux
+      révisions**. La détection ([13 12 11]) n'est donc atteinte sur aucun des deux côtés ; le
+      seul écart est bien le nombre de bits que la porte consomme. `killcollector/positions.go`
+      détecte encore (audit 0.E, A1), mais c'est le chemin des positions de kill, pas celui de la
+      cuisson : il ne touche aucun de ces chiffres.
+      **(6) TROISIÈME CAUSE, dite et non instruite** (brief : « si une troisième cause apparaît,
+      dis-la »). `skullCarries.grabs` 39 -> 8, tout le bloc `equipmentChanges` et les capacités
+      ne bougent NI à la porte NI à la borne : ils sont **déjà à leur valeur de HEAD à la base
+      `ebd012e3b` (schéma 51)**, donc leur cause est antérieure. Ligne au registre des reports,
+      avec ce qui est établi et sa condition de reprise.
 - [ ] 0.D.3 **D9 — le codec des entrées de golden est incomplet.**
       Compléter le codec `inputs_*.bin.gz` (`golden_inputs_test.go`) pour qu'il transporte les
       rangs de capacité et les origines de pose (tout ce que `decodeFilmInputs` rend et que
@@ -604,6 +651,59 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       qui efface un véhicule que le film montre encore) -> correctif + test par mutation + corpus
       gate zéro perte + `SchemaVersion` 55 si le contenu cuit change, repli NOMMÉ (D14) ; sinon
       registre avec le bump et l'axe.
+
+- [x] 0.D.5 **Synchronisation bis : la seconde fusion de `feat/v75` dans l'intégration.**
+      Même méthode qu'en 0.D.0, sur la fusion `c28f7da59` (55 commits de finitions et
+      d'ajustements : H.1 `flag_neutral`, H.2 « pièce engendrée = déployée » dans
+      `equipment_placements.go`, `identity.go`, `usage_summary_families.go`, `flag_carries.go`,
+      `replaybuild/flagspawns.go`). Régime court sur le sha de fusion ; lister les étapes qui
+      diffèrent, film par film ; **attribution PAR MUTATION** (revert des fichiers de PRODUCTION
+      commit par commit jusqu'à reproduire l'ancienne empreinte à l'octet), jamais par lecture du
+      code — la leçon de 0.D.0 est que le raisonnement s'y trompe. Régénérer les
+      `assembly_*.golden` par `-update-golden-builds-assembly` (sans film) et les fixtures de
+      contrat par la double porte ; prouver par `git diff` que seules les lignes attribuées
+      bougent. Re-figer les 20 références d'équivalence au sha de fusion (`-update` par
+      sous-ensembles), puis passe de comparaison 20/20 identiques ; en-tête de `CORPUS.txt` mis à
+      jour. **Tout mouvement orphelin est un constat, listé à part et NON corrigé** (règle 7).
+      Gate : gates communs (§2.3) ; `go test ./internal/games/halo_infinite/film/...
+      ./internal/archlint/ ./internal/replaybuild/` vert ; régime court 10/10 identiques ;
+      `make go-api-lint`.
+      **Fait** (2026-09-14). **DEUX étapes bougent sur les 20 films — `flag` et `artifact` — et
+      TROIS commits les expliquent entièrement. Zéro mouvement orphelin.** Attribution par
+      mutation, jamais par lecture : chaque cause est un revert de fichiers de PRODUCTION suivi
+      d'une re-mesure.
+      **H.1 (`6e0e5378a`, « la neutralité d'un socle de drapeau est un champ, pas une équipe »)**
+      -> étape `flag` sur **17 films sur 20**, compte INCHANGÉ (1), contenu différent. Preuve :
+      `flag_carries.go` + `flag_neutral.go` + `replaybuild/flagspawns.go` revertés, `51101d1d` et
+      `bcb6d393` rendent l'ANCIENNE empreinte de `flag` à l'octet.
+      **H.2 (`267fa1c5a`, « une pièce engendrée est déployée par nature »)** -> `artifact` **+1
+      octet** sur `084a804d` et `111fa685`. Preuve : `equipment_placements.go` reverté, le golden
+      `111fa685` redevient vert ; le diff du golden est un panneau de mur unique qui passe de
+      `dropped` à `deployed` (`wall/deployed` 28 -> 29, `wall/dropped` 26 -> 25, et la ligne
+      `wall dropped 0x686b40c9 t=[1482, 1486]` devient `wall deployed`).
+      **G.7 (`71aa37fcb`, « le Mutilator entre au registre du rejeu avec son identifiant de
+      film »)** -> `artifact` **+316 octets** sur `bcb6d393` et `e5adf7b2`. **Le coupable n'est
+      PAS dans `film/replay`** : c'est `internal/games/weapons/{labels.go,registry.go}`, hors du
+      périmètre où on l'aurait cherché — trouvé en revertant les six fichiers de production du
+      paquet `replay` SANS que l'écart disparaisse, puis en élargissant. Preuve : ces deux
+      fichiers revertés, les goldens `bcb6d393` et `e5adf7b2` redeviennent verts ; le diff du
+      golden est exactement deux entrées, `0xD7915565` et `0xD791556542C9679F`, toutes deux
+      « Mutilator » / « Mutilateur » — l'arme s'affichait en hexadécimal, elle a désormais son
+      libellé (c'est un GAIN, et c'est ce que le commit annonce).
+      **PREUVE DE COMPLÉTUDE** : reverter les TROIS ensemble reproduit l'ancienne référence à
+      l'octet sur les trois films qui portent les trois signatures — `bcb6d393` (flag + G.7),
+      `111fa685` (flag + H.2), `51101d1d` (flag seul) : 3 identiques, 0 différent.
+      Goldens régénérés par `-update-golden-builds-assembly` (sans film) : **3 sur 7 changent**,
+      et leur diff ne porte que les lignes attribuées. Fixtures de contrat par la double porte :
+      **3 sur 8 changent** (`111fa685` +2 o, `e5adf7b2` +26 o, `bcb6d393` +23 o compressés) ;
+      total 2 108 094 o, sous le plafond de 3 Mio. Références re-figées à `2dad8d6df`, en-tête de
+      `CORPUS.txt` réécrit, passe de comparaison **20/20 identiques**.
+      **Incident de manipulation, dit parce qu'il a coûté une passe** : un
+      `git checkout HEAD -- <paquet replay>` destiné à restaurer la production a aussi restauré
+      `testdata/`, effaçant 18 références fraîchement figées et 3 goldens. Le re-figeage a été
+      rejoué en entier et rend **exactement le même diff** (17 `flag` + 4 `artifact`, mêmes
+      deltas +1/+1/+316/+316) — déterminisme vérifié au passage. Leçon : restaurer par fichiers
+      NOMMÉS, jamais par répertoire de paquet quand `testdata/` y vit.
 
 Gate 0.D : gates communs à chaque sous-lot ; régime court 10/10 identiques à chaque sous-lot qui
 touche le décodeur ou le constructeur ; corpus gate ciblé (un témoin) sur les sous-lots qui
@@ -1222,6 +1322,9 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.D.0 | **D1 — DEUX commits de `feat/v75` changent le contenu cuit SANS montée de `SchemaVersion`.** F.1 (`c45c411eb`, « l'origine d'une pose d'equipement devient purement temporelle ») et D.2 (`3233ec2f8`, « la couverture du calque d'objectifs ne compte que les objectifs ») modifient tous deux des octets du document publié, et `SchemaVersion` vaut toujours 54 : les artefacts du parc cuits en 54 AVANT eux sont périmés sans être marqués (ADR 0034 D-6, « SchemaVersion rises when the cooked content or the document shape changes »). Les deux commits l'assument par écrit (D.2 : « aucun champ ne bouge, seule la valeur change, et `SchemaVersion` ne monte donc pas » ; « les artefacts deja cuits gardent l'ancien denominateur jusqu'a leur recuisson »). Ampleur MESURÉE par mutation (cf. §5) : D.2 touche 10 des 20 films du corpus, F.1 en touche 3, aucun autre commit du span ne touche l'artefact. **Décision du lot : PAS de montée ici** ; la première montée de M1 (lot 1.6, schéma 55) rattrape ces artefacts, et la recuisson du parc reste un signal séparé (D6). NON TRAITÉ. | lot 1.6 (schéma 55) ; recuisson du parc sur signal de l'utilisateur |
 | 2026-09-13 | 0.D.0 | **D2 — le plafond mémoire de `replay-equiv` tombe par CONTENTION CPU, pas par le film.** Trois films du corpus ont rendu `ECHEC (code 13)` à 3,81-3,83 Gio (plafond dur 3,75 Gio) quand une autre commande tournait sur la machine, et les MÊMES films passent à 0,19-1,06 Gio quand rien d'autre ne tourne : `a521164d` 3,81 Gio en lot contre **0,19 Gio seul**, `50247b26` 3,83 contre **1,06**, `111fa685` 3,81 contre **0,30**. Mécanisme : l'enfant tourne en priorité `below_normal` (`filmproc.LowerOwnPriority`) et son plafond souple est un `debug.SetMemoryLimit` — une limite SOUPLE, que le ramasse-miettes tient en tournant plus souvent ; privé de CPU, il prend du retard et l'empreinte dépasse le plafond DUR avant qu'il ne rattrape. Conséquence : un gate de décodage peut rougir pour une raison qui n'a rien à voir avec le décodeur, et le message (« plafond memoire depasse ») envoie chercher une fuite. `1c4c63c2` est le cas limite : 2,70 Gio seul à HEAD, mais 3,79 Gio seul sous mutation — il n'a fini qu'avec `-mem-gib 8` (pic 6,00 Gio, 11 min 58 s). NON TRAITÉ. **Condition de reprise** : un gate de décodage en CI, ou un lot qui fait tomber la mémoire du constructeur. Mesure de contournement, à écrire dans les briefs : ne rien lancer d'autre pendant un décodage. | §2.2 du plan (mode opératoire) ; candidat à un lot de robustesse du harnais |
 
+| 2026-09-13 | 0.D.1 | **D3 — le corpus gate lit TOUTE baisse de `coverage.score.rounds` comme une perte, alors que retirer une manche fantôme est le gain cherché.** `rounds` n'est pas dans la liste fermée des compteurs d'ÉCHEC de `internal/replaydiff/polarite.go`, donc il garde la lecture générique « plus = mieux ». Or l'instruction 0.D.1 prouve que la baisse 3 -> 1 sur `fb1a1a72` est une CORRECTION (manche 1 sans un seul enregistrement, manche 2 à 16 % de la densité de la manche 0 et recouvrant sa fenêtre). Conséquence : tout lot futur qui améliore la détection des manches fantômes sortira en « perte » au gate et devra être ré-instruit à la main, exactement comme celui-ci. Même famille que les 8 lignes de polarité douteuse du §7.B du rapport de re-figeage, et que la ligne « `shotsNoRide` / `ambiguousSlot` » déjà au registre. NON TRAITÉ (règle 7). | Le lot qui inventoriera les compteurs de VOIE et d'ÉCHEC du contrat de couverture (registre des reports, ligne du lot E2-bis) : y faire entrer `score.rounds` avec la bonne polarité, ou l'inscrire en ligne à ACCEPTER au gate |
+
+| 2026-09-13 | 0.D.2 | **D4 — le constat D7 groupait DEUX causes séparées par ~17 montées de schéma.** Les treize axes que D7 citait ensemble sur `60ae07c4` se scindent : le bloc ARMES AU SOL / POSES / PROJECTILES / RAMASSAGES vient à 100 % de la porte de région (`fb71e9b3c`, v53) et n'est pas une perte ; le bloc ÉQUIPEMENT / CRÂNE / CAPACITÉS (`skullCarries.grabs` 39 -> 8, tout `equipmentChanges`, `abilities/n` 29 -> 27, `abilityLabels/n` 4 -> 3) est déjà à sa valeur de HEAD au schéma 51 et vient d'ailleurs. **Leçon de méthode** : un constat de gate qui énumère des axes « qui bougent ensemble » ne prouve pas une cause commune — ici la co-occurrence venait uniquement de la largeur du segment comparé (34 -> 54). Un constat de gate devrait porter le segment le plus étroit où il tient encore. NON TRAITÉ. | Le lot qui révisera le protocole du corpus gate (même famille que la ligne « pas de mécanisme d'acceptation datée d'une perte instruite » au registre) : exiger d'un constat qu'il nomme le segment minimal, pas le segment de la campagne |
 | 2026-09-13 | pilote (message inter-sessions des finitions) | **Quatre faits des lots F/H à absorber** (`HANDOFF_DECODEUR_FILM` §3 bis sur `origin/feat/v75` 95e5b2ed6) : (1) pièce engendrée = déployée par nature (règle H.2 en production, garde-rail Go à poser) -> 1.9.1 ; (2) le 103 ne désigne que la pièce engendrée, `ref0` = piste de l'équipement source -> 1.9.1 + table D ; (3) origine des appareils portés purement temporelle -> repli nommé 1.9.1 ; (4) Live Fire, index de région 2 bits imputé à X par `DetectI0Layout` ([13 12 11] au lieu de [12 12 11]) : imposer le catalogue, ne jamais détecter en production -> 1.9.2 (A1 de l'audit). `origin/feat/v75` porte ~55 commits de plus que la fusion 215649efd, dont H.1 (neutralité d'un socle), H.2 (pièce engendrée), H.3 (Aquarius = Live Fire) qui touchent `replay/` : une NOUVELLE fusion + re-figeage attribué sera nécessaire avant la poussée vers `feat/v75` (sous-lot 0.D.5) | plan : 1.9.1, 1.9.2 ; §5 |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
@@ -1292,6 +1395,32 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.D.0 (gates) | ce commit | `golangci-lint run --timeout 20m --new-from-merge-base=origin/main` (cache ET dossier temporaire isolés) | **0 issues, exit 0** — baseline non accrue. NOTE : `make go-api-lint` échoue sur ce poste quand un AUTRE agent lint en parallèle (`%TEMP%/golangci-lint.lock` est global, `GOLANGCI_LINT_CACHE` ne l'isole pas), puis sur son `--timeout 5m` quand la machine est chargée |
 | 2026-09-13 | 0.D.0 (gates web) | ce commit | `npm ci` (absent du worktree) puis `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | tsc **exit 0** ; vitest **202 fichiers + 1 sauté, 3 130 tests + 3 sautés**. 3 tests de `replaySoundAssets.guard.test.ts` sortent en `Test timed out in 5000ms` pendant que `npm`/`golangci-lint` chargent la machine ; rejoués SEULS : **26/26 verts** — flottement de charge, hors diff (sons) |
 | 2026-09-13 | 0.D.0 (gate de fin) | ce commit | `replay-equiv -repo-root <worktree>` sur les 20 films, 5 sous-ensembles, machine au repos | **20/20 IDENTIQUES**, exit 0 partout — dont **les 10 films du régime court** (50247b26, a521164d, 60ae07c4, 11de8353, 111fa685, e5adf7b2, bcb6d393, 51101d1d, d9781168, fb1a1a72). Pics 0,08 à 0,74 Gio, tous très en dessous du plafond : `1c4c63c2` à **0,74 Gio** ici contre 3,79 sous charge (§4 D2) |
+
+
+| 2026-09-13 | 0.D.1 | ce commit | `FILM_CACHE_ROOT=<principal>/data/cache D6_FILMS=fb1a1a72,64e8adfa,d9781168 go test ./internal/analysis/objectiveevents/ -run D6MatiereDesManches -v` | **`fb1a1a72` : `RealRounds = [0]`.** Manches déclarées 0, 2 et 5 — **la manche 1 n'a AUCUN enregistrement**, ni joueur ni équipe. Manche 2 : 148 enregistrements sur une fenêtre [66 671, 814 115] qui recouvre celle de la manche 0 ([3 411, 800 871]) à **124/148**, densité **0,20 enr./s contre 1,26** (16 %). Manche 5 : UN enregistrement. Composant de score de mode : **2 sur 1 153**, donc `runs` = 1 en manche 0 et **0 en manches 1 et 2**. Témoins : `64e8adfa` (CTF, 2 manches) manche 1 = [760 501, 837 364], densité 140 % ; `d9781168` (Oddball, 3 manches) manches 1 et 2 sur segments propres, densité 313 % et 311 % |
+| 2026-09-13 | 0.D.1 | ce commit | MUTATION DANS L'INSTRUMENT : `contiguousRounds(runs, material, toutPresent)` — la garde `vue && !present[round]` (`bb06cce5a`) neutralisée sans toucher une ligne de production | `fb1a1a72` rend **`[0 1 2]`, exactement l'ancien 3** : la garde est la cause UNIQUE de la baisse. Les deux témoins multi-manche réels rendent `[0 1]` et `[0 1 2]` **des deux côtés** — la garde ne coûte rien à une vraie manche |
+| 2026-09-13 | 0.D.1 | ce commit | Oracles produit : `fb1a1a72.facts.json` et `config/titles/halo_infinite/mappings/regulation.toml` | Feuille : `teamScores [0,1]`, `gameVariantName "CTF:Arena"` — un total de captures. `[rounds_decide]` ne liste que les trois Oddball et son en-tête EXCLUT nommément `CTF:Arena` (« deux MI-TEMPS, pas des manches décisives [...] le compte de manches y vaut 0-1, ce qui serait un contresens ») |
+| 2026-09-13 | 0.D.1 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` (film, archlint, replaybuild, killcollector, objectiveevents) ; `go test` (12 paquets) ; `golangci-lint --timeout 20m --new-from-merge-base=origin/main` | gofmt vide ; vet 0 diagnostic ; **12 paquets ok** (filmdec 8,9 s, archlint 14,0 s, objectiveevents 0,5 s) ; lint **0 issues, exit 0**. L'instrument SAUTE sans ses deux variables (`--- SKIP`) : il ne pèse pas sur la CI |
+| 2026-09-13 | 0.D.1 (gate décodage) | ce commit | `git diff --stat HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` | **SORTIE VIDE : aucun octet de production ne change dans ce sous-lot** (un instrument `_research_test.go`, deux documents). Le régime court n'est donc PAS rejoué : `replay-equiv` ne dépend que du code de production, et 0.D.0 l'a laissé à 20/20 identiques au commit précédent. Gate consigné comme NON APPLICABLE, pas comme différé — une commande qui ne peut rien mesurer de neuf |
+
+
+| 2026-09-13 | 0.D.2 | `554cf8339` (arbre) | `replay-corpus-gate --base=ebd012e3b` puis `--base=f22474816`, manifeste réduit à `60ae07c4`, `--source-root` = ce worktree, `--parc-root` = le principal | **Les deux rapports sont IDENTIQUES octet pour octet** (hors `dureeMs`) : schéma de référence 51, **66 gains, 28 pertes**, mêmes valeurs sur tous les axes. **La borne `maxUnrollPerStep = 16` (`f22474816`) n'explique RIEN sur ce témoin.** Durées 52,3 s et 88,0 s |
+| 2026-09-13 | 0.D.2 | `554cf8339` (arbre) | `replay-corpus-gate --base=1a93b34f2` (parent de la porte) puis `--base=c5a71dcbd` (bump v53) | base 52 : **17 pertes**, 67 gains, exit 1 — base 53 : **0 perte, 3 gains, exit 0**. Entre les deux bases il n'y a que `fb71e9b3c` (la porte) et `c5a71dcbd` (le bump) : **la porte de région explique 100 % du bloc** |
+| 2026-09-13 | 0.D.2 | `554cf8339` (arbre) | `--base=1a93b34f2 --work-root <scratch> --keep-work`, puis comparaison des DEUX artefacts cuits, bloc par bloc | **Rien de publié ne baisse** : `groundWeapons` 188 -> 188, `pickups` 297 -> 297, `kept` 218 -> 218, `objects` 218 -> 218. Pertes = compteurs d'ÉCHEC (`rejected` 211 -> 116 pour `accepted` 429 -> 334, −95 des deux côtés ; `unknown` 36 -> 5 ; `placements.unknown` 57 -> 4 ; `originUnknown` 56 -> 40 ; `truncated` 343 -> 3) + RE-CLASSIFICATION à somme constante (`spawned` 218 -> 35, `dropped` **0 -> 183**, somme 218). Gains : `placements` **57 -> 190**, `projectiles` publiés **236 -> 417**, `dropperNamed` 0 -> 183, `withOwner` 0 -> 186, `dated` 0 -> 31, `cycles` 0 -> 1 |
+| 2026-09-13 | 0.D.2 | `554cf8339` (arbre) | `replay-corpus-gate --base=179bd7401` (la base même du constat D7) | **61 pertes**, 165 gains, schéma 34 -> 54. Les 17 de la porte s'y retrouvent, plus `geometry.*` (9 axes, chronique v52 props Forge, §7.A A1), `projectiles.p/n` et frères (4 axes, v52 pas impossible, §7.A A6), `tracks.points` (7 axes, = D8, lot 0.D.4) et **le bloc équipement/crâne/capacités (26 axes) qui n'apparaît PAS à la base 51** — d'où la troisième cause |
+| 2026-09-13 | 0.D.2 | `554cf8339` | `git diff 1a93b34f2 HEAD -- data/titles/halo_infinite/reference/map_quant_bounds.json` ; `diff` de `film_context.go` aux deux révisions | **Les deux sont identiques.** Le catalogue impose `axisWidths [12 12 11]` et `regionIndexBits 2` à Live Fire (module `sgh_interlock`), et `FilmContext.I0Layout` n'auto-détecte que si l'entrée de carte est invalide : **aucune part des 190 records ne vient d'un découpage détecté**, sur aucune des deux révisions |
+| 2026-09-13 | 0.D.2 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m --new-from-merge-base=origin/main` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court NON APPLICABLE : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — ce sous-lot ne change aucun octet de production (deux documents). Aucun worktree temporaire créé (voir le bloc 0.D.2), donc rien à retirer |
+
+
+| 2026-09-14 | 0.D.5 | `2dad8d6df` (arbre) | `replay-equiv -repo-root <worktree> -films <6 sous-ensembles> -update`, puis `git diff` des 20 `.tsv` | **DEUX étapes bougent, et deux seulement** : `flag` sur **17 films** (compte inchangé à 1, contenu différent) et `artifact` sur **4** (`084a804d` +1 o, `111fa685` +1 o, `bcb6d393` +316 o, `e5adf7b2` +316 o). Les 48 autres étapes sont identiques sur les 20 films |
+| 2026-09-14 | 0.D.5 (attribution) | mutation | revert de `flag_carries.go` + `flag_neutral.go` + `replaybuild/flagspawns.go` à `6e0e5378a^`, `replay-equiv` sans `-update` | `51101d1d` et `bcb6d393` rendent l'ANCIENNE empreinte de `flag` à l'octet (`1cd3a724…` et `869a2877…`) : **H.1 est la cause unique de l'étape `flag`** |
+| 2026-09-14 | 0.D.5 (attribution) | mutation | revert de `equipment_placements.go` à `267fa1c5a^`, `go test -run TestGoldenBuildsAssembly` | `111fa685` redevient VERT ; les six autres builds inchangés. **H.2 est la cause unique de `111fa685`**. Diff du golden après régénération : `wall/deployed` 28 -> 29, `wall/dropped` 26 -> 25, une ligne `wall dropped 0x686b40c9 t=[1482, 1486]` devient `wall deployed` |
+| 2026-09-14 | 0.D.5 (attribution) | mutation | revert des SIX fichiers de production de `film/replay` : l'écart de libellés PERSISTE ; élargissement à `internal/games/weapons/{labels.go,registry.go}` (`71aa37fcb`) | Avec ces deux fichiers revertés, `e5adf7b2` et `bcb6d393` redeviennent VERTS. **Le coupable était hors du paquet `replay`** — le chercher là où on l'attendait aurait conclu à tort. Diff du golden : exactement deux entrées, `0xD7915565` et `0xD791556542C9679F`, « Mutilator » / « Mutilateur » |
+| 2026-09-14 | 0.D.5 (complétude) | mutation | revert des TROIS commits ensemble (H.1 + H.2 + G.7), `replay-equiv` sur `bcb6d393,111fa685,51101d1d` contre les anciennes références | **3 identiques, 0 différent** : les trois causes expliquent 100 % du mouvement, **zéro orphelin** |
+| 2026-09-14 | 0.D.5 | ce commit | `-update-golden-builds-assembly` (sans film) ; `REPLAY_CONTRACT_UPDATE=1 … -run ContractFixturesRegenerate -update` | **3 goldens sur 7** changent (`111fa685`, `e5adf7b2`, `bcb6d393`), diff limité aux lignes attribuées ; **3 fixtures sur 8** (+2 / +26 / +23 o compressés), total 2 108 094 o sous le plafond de 3 145 728 |
+| 2026-09-14 | 0.D.5 (incident) | — | `git checkout HEAD -- <paquet replay>` pour restaurer la production | **A aussi restauré `testdata/`** : 18 références fraîchement figées et 3 goldens effacés. Re-figeage rejoué EN ENTIER, diff **identique** (17 `flag` + 4 `artifact`, mêmes deltas) — déterminisme vérifié. Leçon : restaurer par fichiers NOMMÉS quand `testdata/` vit sous le paquet |
+| 2026-09-14 | 0.D.5 (gate de fin) | ce commit | `replay-equiv` sur les 20 films, 5 sous-ensembles | **20/20 IDENTIQUES**, exit 0 partout, dont les 10 films du régime court. Pics 0,08 à 0,73 Gio |
+| 2026-09-14 | 0.D.5 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **203 fichiers + 1 sauté, 3 126 tests + 3 sautés, 0 échec** |
 
 ## 6. Protocole de reprise de session
 
