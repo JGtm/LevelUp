@@ -28,6 +28,11 @@ package replay
 // -10,10 / -9,33 au catalogue) et son max X (46,74 contre 46,51), l'axe X seul etant decale
 // d'une etendue entiere — la signature exacte d'UN BIT DE TROP lu sur cet axe.
 //
+// LE DEPOT LE DISAIT DEJA, AILLEURS : `config/replay_corpus.toml` porte `0797ce72` comme
+// temoin `region_index_2_bits`, `carte = "Live Fire"`, « seule carte du catalogue a index de
+// region sur 2 bits » — ecrit le 2026-09-12 pour le correctif de la porte de position des
+// objets du monde (schema 53). Corroboration entierement independante de cette mesure.
+//
 // CE TEST NE CORRIGE PAS L'ORACLE (perimetre H.3 ferme) : il l'etablit, et la decouverte est
 // consignee au plan.
 //
