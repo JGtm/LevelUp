@@ -1238,7 +1238,6 @@ func TestGoldenInputsRegenerate(t *testing.T) {
 }
 
 // decodeFilmInputs rejoue EXACTEMENT la sequence de decodage de BuildFromFilm — c est ce qui
-// decodeFilmInputs rejoue EXACTEMENT la sequence de decodage de BuildFromFilm — c est ce qui
 // garantit que le fixture porte les memes entrees que la production. Les bornes de carte sont
 // celles de Cliffhanger, lues dans le catalogue versionne du titre.
 func decodeFilmInputs(film, dir string) (*goldenInputs, error) {

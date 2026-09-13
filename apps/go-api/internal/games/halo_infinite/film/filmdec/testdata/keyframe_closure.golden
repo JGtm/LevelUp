@@ -1,7 +1,7 @@
 # FERMETURE DES RECORDS D'IMAGE-CLE PAR ARCHETYPE — golden du lot 0.A.3.
-# Une colonne par mesure : film, archetype, fermes, total, premier bloquant.
+# Une colonne par mesure : film, archetype, fermes, total, bloquant le plus frequent.
 # Le ratchet rougit sur une BAISSE de `fermes`. Regeneration :
-#   go test ./internal/games/halo_infinite/film/filmdec/ -run KeyframeClosureRatchet -update
+#   go test ./internal/games/halo_infinite/film/filmdec/ -run KeyframeClosureRatchet -update-keyframe-closure
 a521164d	ti=0	0	1	i11 game-engine-soft-ceilings-component
 a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
 a521164d	ti=4	10	10	

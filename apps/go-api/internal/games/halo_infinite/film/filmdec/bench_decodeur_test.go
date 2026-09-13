@@ -24,12 +24,18 @@ package filmdec
 //
 // # LA LIGNE DE BASE
 //
-//	go test -bench . -run '^$' -count 5 ./internal/games/halo_infinite/film/filmdec/ \
+//	go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ \
 //	  > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
 //
-// Comparaison a chaque cloture de M2 (budget : +10 % au plus) :
+// Comparaison a chaque cloture de M2, SUR LA MEDIANE (ce que `benchstat` compare) :
 //
-//	go test -bench . -run '^$' -count 5 ./internal/games/halo_infinite/film/filmdec/ > apres.txt
+// LE BUDGET DE +10 % NE VAUT QUE POUR LES DEUX BANCS SERRES (`BitReaderReadBits`,
+// `TraverseEntity`). `KeyframeClosure` est INFORMATIF : mesure de la revue R1, 71 % d ecart au
+// sein d une meme passe et +21 % de mediane d une passe a l autre SANS changement de code. Son
+// ecart suit la charge de la machine ; un budget de +10 % dessus ferait rougir des lots innocents
+// et laisserait passer de vrais ralentissements. Detail : `testdata/bench_baseline.txt`.
+//
+//	go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ > apres.txt
 //	benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt apres.txt
 
 import (

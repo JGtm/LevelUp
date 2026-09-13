@@ -26,9 +26,10 @@ package filmdec
 //
 // REGENERATION (jamais d edition a la main) :
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run KeyframeClosureRatchet -update
+//	go test ./internal/games/halo_infinite/film/filmdec/ -run KeyframeClosureRatchet -update-keyframe-closure
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -40,9 +41,20 @@ import (
 	"levelup/go-api/internal/analysis/filmsource"
 )
 
-// LE PAQUET N'A QU'UN SEUL DRAPEAU `-update`, deja declare par `fuzz_records_test.go`
-// (`updateGrainesFuzz`). En redeclarer un second ferait paniquer `flag` au demarrage des tests
-// (« flag redefined: update »), donc ce golden se regenere par CE drapeau-la : dans un paquet,
+// updateFermeture : LA PORTE DE REGENERATION DE CE GOLDEN, ET D AUCUN AUTRE.
+//
+// ELLE EST NOMMEE, ET C EST LE CORRECTIF DE LA REVUE R1 (P1-1). Ce golden a d abord ete
+// accroche au `-update` du corpus de graines du fuzz, sous le pretexte qu un second drapeau
+// ferait paniquer `flag`. C ETAIT FAUX : `flag` ne panique que sur un NOM deja pris, et le
+// paquet declare deja `-update-golden-familles` (`golden_minibobine_test.go`). Le cout de
+// l erreur etait exactement celui que le lot est cense empecher : avec une largeur faussee en
+// place, `go test ./...filmdec/ -update` (sans `-run`) repondait `ok` et REECRIVAIT ce golden
+// avec la grammaire cassee — le ratchet ne le disait que par un `t.Logf` invisible sans `-v`.
+// C est la reouverture du defaut C5 ferme le 2026-09-06 : « une porte de regeneration doit
+// nommer CE qu elle regenere » (`fuzz_records_test.go`).
+var updateFermeture = flag.Bool("update-keyframe-closure", false,
+	"reecrire testdata/keyframe_closure.golden (lot 0.A.3) — CE golden seulement")
+
 // `-update` reecrit TOUTES les references qui s'en servent, et c'est le comportement attendu.
 
 // closureGoldenPath : le golden, a cote des autres references du paquet.
@@ -66,13 +78,16 @@ func closureMiniFilms() []string {
 // TestKeyframeClosureRatchet : la couverture par archetype ne descend jamais.
 func TestKeyframeClosureRatchet(t *testing.T) {
 	got := mesurerFermetureBobines(t)
-	if *updateGrainesFuzz {
+	if *updateFermeture {
 		if err := os.MkdirAll(filepath.Dir(closureGoldenPath), 0o750); err != nil {
 			t.Fatalf("creation de testdata : %v", err)
 		}
 		if err := os.WriteFile(closureGoldenPath, []byte(got), 0o600); err != nil {
 			t.Fatalf("ecriture du golden : %v", err)
 		}
+		// ANNONCE SUR STDERR : un `t.Logf` est invisible sans `-v`, et une reecriture de reference
+		// qui ne se voit pas est exactement ce que la revue R1 a reproche a ce test.
+		fmt.Fprintf(os.Stderr, "REECRITURE: %s (%d octets)\n", closureGoldenPath, len(got))
 		t.Logf("golden de fermeture reecrit : %s", closureGoldenPath)
 		return
 	}
@@ -154,9 +169,9 @@ func mesurerFermetureBobines(t *testing.T) string {
 	t.Helper()
 	var b strings.Builder
 	b.WriteString("# FERMETURE DES RECORDS D'IMAGE-CLE PAR ARCHETYPE — golden du lot 0.A.3.\n")
-	b.WriteString("# Une colonne par mesure : film, archetype, fermes, total, premier bloquant.\n")
+	b.WriteString("# Une colonne par mesure : film, archetype, fermes, total, bloquant le plus frequent.\n")
 	b.WriteString("# Le ratchet rougit sur une BAISSE de `fermes`. Regeneration :\n")
-	b.WriteString("#   go test ./internal/games/halo_infinite/film/filmdec/ -run KeyframeClosureRatchet -update\n")
+	b.WriteString("#   go test ./internal/games/halo_infinite/film/filmdec/ -run KeyframeClosureRatchet -update-keyframe-closure\n")
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
 		stats := fermetureDUneBobine(t, dir)

@@ -6,7 +6,8 @@ package filmdec
 //
 // Le ratchet (`keyframe_closure_ratchet_test.go`) garde la couverture sur les bobines par build ;
 // CET instrument la mesure sur des FILMS ENTIERS du cache, et imprime, par archetype, la liste
-// ORDONNEE des composants avec leur statut — porte, manquant, BLOQUANT (le premier manquant).
+// ORDONNEE des composants avec leur statut — porte, BLOQUANT (le non-porte LE PLUS FREQUENT),
+// et ce qui se trouve derriere lui, donc inaccessible tant qu il n est pas porte.
 // C est le DIMENSIONNEMENT du lot 3.6 : il dit quels composants porter, et dans quel ordre.
 //
 // Dans une image-cle il n y a pas de masque de presence : TOUS les composants de l archetype sont
