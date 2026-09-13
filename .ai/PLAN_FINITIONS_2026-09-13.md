@@ -174,7 +174,7 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
    manifeste) ;
 3. les 90 têtes 103 « vers un lâcher » de R5 sont un appariement TEMPS SEUL à ±1,2 s sans
    référence résolue : l'affirmation « le 103 tire aussi à la mort » n'est pas établie.
-- [ ] F.0 Instruction (mesure, aucun code de production) : sur les 8 cas de D12 (identifiants
+- [x] F.0 Instruction (mesure, aucun code de production) : sur les 8 cas de D12 (identifiants
       dans l'audit §12 et le rapport de dette vague 5) et sur 3 films à oracle Theater connu
       (`000d5950`, `1cd3848a`, `215e7022`), marcher la liste complète, isoler chaque 103, résoudre
       ref0/ref1 contre les records de création `ti=37` et les handles d'unité ; recenser les
@@ -182,6 +182,24 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
       attendu par question : le 103 tire-t-il à la mort avec référence résolue (oui/non, compte) ;
       le déploiement d'un capteur/champ engendre-t-il un objet (GlobalID, compte) ;
       le 8/8 de D12 est-il séparé par le 103 (oui/non).
+      **RENDU le 2026-09-13 : `.ai/V7.5/RAPPORT_F0_DEPLOIEMENT_103_2026-09-13.md`** (25 films,
+      5 761 poses appariées, 931 occurrences du 103, instruments `filmdec/f0_103_*`).
+      Verdicts : (1) `ref1` du 103 EST l'objet engendré — index 13 bits BASE 512 + génération,
+      93,6 % de résolution contre 2,2 % au témoin de hasard, dt médian +49 ms, objets désignés
+      `0x528fce46` ×227 et `0x686b40c9` ×3, c'est-à-dire les DEUX panneaux de mur du manifeste ;
+      `ref0` désigne un `ti=37` de longue durée non identifié ; `ref2` est absente (3/931).
+      (2) **Le 103 ne tire PAS à la mort** : 4 poses désignées sur 4 853 `dropped`, et 216 des
+      217 poses désignées du parc sont des panneaux — l'affirmation « 90 têtes vers un dropped »
+      de R5 §3.2 (appariement en TEMPS SEUL) est RÉFUTÉE. (3) **Mais il n'existe que pour la
+      famille qui engendre une pièce** : 216/216 poses de panneau désignées, 0 sur les 91 poses
+      `deployed` d'un déployable PORTÉ (mur 34, capteur 48, écran 4, traqueur 3, champ 2).
+      (4) **Les 15 cas de D12 du parc recuit ne se tranchent donc pas sur le 103** — silence
+      total pour l'appareil porté (0/31 `deployed`, 0/145 `dropped`) — ni par la voie INDIRECTE
+      (une pièce voisine à ±5 s : 14,7 % sur les `deployed` contre 21,8 % sur les `dropped`).
+      (5) D13 : aucune pièce engendrée pour le capteur, le traqueur ni l'écran (leurs fenêtres
+      ne montrent que l'objet PORTÉ lui-même), et **le champ de réparation ne porte qu'UNE
+      consommation exploitable dans les 76 artefacts du parc** — non mesurable. Témoin positif
+      passé : le mur rend `0x528fce46` à ×20,3 d'enrichissement.
 - [ ] F.1 D12 — si F.0 dit oui : l'origine d'une pose se lit sur le 103 résolu (objet référencé
       = déployé, sinon lâché) ; `originDropWindowUS` et `originDropMaxDist` sont SUPPRIMÉS, pas
       assouplis. Si F.0 dit non (film sans signal) : retirer la seule clause de distance, le
