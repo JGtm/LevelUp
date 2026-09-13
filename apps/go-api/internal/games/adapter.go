@@ -204,6 +204,35 @@ const (
 	// et l'EXPOSITION de ces cinq statistiques, rien d'autre du mode Assaut. Ne pas l'élargir.
 	CapFilmBombStats CapabilityKey = "film.bomb_stats"
 
+	// CapFilmFlagGrabsNet — le titre produit, PAR MATCH et PAR JOUEUR, LES PRISES DE DRAPEAU
+	// BRUTES ET NETTES lues du calque de drapeau de l'artefact, persistées dans
+	// `shared.match_flag_grabs_net` (append-only + vue `_latest`).
+	//
+	// CE QUE « NETTE » VEUT DIRE : le compteur officiel `flag_grabs` compte chaque ramassage,
+	// donc aussi le JONGLAGE — un porteur qui lance le drapeau devant lui pour courir plus
+	// vite et le reprend une seconde plus tard gagne une prise à chaque aller-retour. Les
+	// prises nettes replient ces allers-retours (`objectiveevents.NetFlagGrabs`) ; la mesure
+	// du 2026-09-13 chiffre l'écart à 40 % du compteur officiel.
+	//
+	// POURQUOI UNE CLÉ NEUVE PLUTÔT QUE `match.objective.stats`. Même raison que
+	// `film.bomb_stats` ci-dessus : cette dernière gouverne le JOIN sur
+	// `match_objective_stats`, table alimentée par le SYNC API. La grandeur nette, elle, ne
+	// peut PAS venir de l'API — celle-ci ne publie qu'un total, sans la chronologie de
+	// portage qui seule permet de reconnaître un jonglage. Elle vient du film, et la
+	// convention du dépôt préfixe `film.*` tout ce qui en vient.
+	//
+	// ⚠ LA CAPABILITY NE SUFFIT PAS : le titre doit AUSSI déclarer sa fenêtre de jonglage
+	// (`regulation.toml`, `[flag_grabs_net] flag_juggle_window_s`). Les deux disent deux
+	// choses différentes — « je sais lire ce calque » et « voici ma règle » —, et l'absence
+	// de l'une ou l'autre donne le même silence propre : aucune ligne, grandeur non mesurée.
+	//
+	// Halo Infinite : supported. Halo 5 : ABSENTE — pas de décodeur de film, donc aucun
+	// artefact, donc aucun calque de drapeau à lire.
+	//
+	// ⚠ Clé FINE, même doctrine que les cinq `film.*` ci-dessus : elle gouverne la PRODUCTION
+	// et l'EXPOSITION de cette grandeur, rien d'autre du mode CTF. Ne pas l'élargir.
+	CapFilmFlagGrabsNet CapabilityKey = "film.flag_grabs_net"
+
 	// CapFilmReplayArtifact — le titre produit L'ARTEFACT DE REJEU 2D lui-même
 	// (`data/cache/replays/{slug}/{match}.json`) : trame de positions, kill-feed recalé,
 	// score, roster, calques d'objectif. C'est la SOURCE dont les quatre dérivés du film

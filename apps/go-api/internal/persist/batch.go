@@ -147,6 +147,19 @@ type SharedBatch struct {
 	// ⚠ L'API 343 ne publie AUCUNE statistique d'objectif pour l'Assaut : cette charge n'a
 	// pas d'équivalent dans `ObjectiveStats` ci-dessus, et les deux ne se recouvrent jamais.
 	BombStats *BombStatsBatch `json:"bomb_stats,omitempty"`
+
+	// FlagGrabsNet : LES PRISES DE DRAPEAU BRUTES ET NETTES d'une passe de lecture
+	// d'artefact — deux comptes par joueur, plus la fenêtre de jonglage sous laquelle ils
+	// ont été calculés. nil = aucun artefact lisible pour ce match, match hors CTF, ou
+	// titre qui ne déclare pas la fenêtre.
+	//
+	// Table cible `match_flag_grabs_net` : append-only, lecture par la vue
+	// `match_flag_grabs_net_latest` UNIQUEMENT (ADR 0026).
+	//
+	// ⚠ NE PAS confondre avec `ObjectiveStats.flag_grabs` ci-dessus, qui vient de l'API et
+	// compte CHAQUE ramassage, jonglage compris. Les deux coexistent sans se recouvrir :
+	// l'API garde son compteur, le film porte la grandeur nette.
+	FlagGrabsNet *FlagGrabsNetBatch `json:"flag_grabs_net,omitempty"`
 }
 
 // PlayerBatch contient les écritures pour stats.duckdb (du joueur Player).

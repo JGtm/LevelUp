@@ -147,6 +147,20 @@ schema_version = 1
 # ⚠ Clé FINE, même doctrine que les quatre film.* ci-dessus : elle gouverne la PRODUCTION
 # et l'EXPOSITION de ces cinq statistiques, rien d'autre du mode Assaut. Ne pas l'élargir.
 "film.bomb_stats"        = "supported"
+# Les PRISES DE DRAPEAU BRUTES ET NETTES, lues du calque de drapeau de l'artefact, par match
+# et par joueur → shared.match_flag_grabs_net (append-only + vue _latest).
+# CE QUE « NETTE » VEUT DIRE : le compteur officiel `flag_grabs` compte chaque ramassage, donc
+# aussi le JONGLAGE (lancer le drapeau devant soi pour courir plus vite, puis le reprendre).
+# Les prises nettes replient ces allers-retours ; mesure du 2026-09-13 : 40 % du compteur
+# officiel en est. Rapport : `.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`.
+# POURQUOI PAS match.objective.stats : celle-ci gouverne le JOIN sur match_objective_stats,
+# alimentée par le SYNC API — or l'API ne publie qu'un TOTAL, sans la chronologie de portage
+# qui seule permet de reconnaître un jonglage. La grandeur vient du film.
+# ⚠ LA CLÉ NE SUFFIT PAS : le titre doit AUSSI déclarer sa fenêtre dans regulation.toml
+# ([flag_grabs_net] flag_juggle_window_s). Les deux disent deux choses — « je sais lire ce
+# calque » et « voici ma règle » — et l'absence de l'une donne le même silence propre.
+# ABSENTE pour Halo 5 : pas de décodeur de film, donc aucun calque de drapeau à lire.
+"film.flag_grabs_net"    = "supported"
 # L'ARTEFACT DE REJEU 2D lui-même (data/cache/replays/halo_infinite/{match}.json) : trame de
 # positions, kill-feed recalé, score, roster, calques d'objectif. C'est la SOURCE dont les
 # quatre dérivés du film sont les projections (film.usage_summary, film.bomb_stats, la
