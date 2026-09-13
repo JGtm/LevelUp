@@ -472,6 +472,98 @@ Gate 0.B : gates communs ; `make check-types` ; `make test-web` ; `make openapi-
 
 Gate 0.C : `go test ./internal/archlint/ -run Mojibake` ; relecture pilote.
 
+#### Lot 0.D — Synchronisation avec `feat/v75` et instruction de D6 à D9 — M, exécuteur Opus high
+
+Créé le 2026-09-13, APRÈS la fusion de `origin/feat/v75` dans l'intégration du chantier
+(commit `215649efd`, 42 commits de finitions). Trois raisons, toutes constatées sur pièces :
+F.1 (`c45c411eb`, « l'origine d'une pose d'equipement devient purement temporelle ») change le
+CONTENU CUIT sans monter `SchemaVersion`, ce qui périme les goldens d'assemblage, les fixtures
+de contrat et les références d'équivalence figées à `cbfdc269d` ; les trois constats du
+croisement au corpus gate (D6, D7, D8 de la §4) attendent un verdict ; et D9 dit que le codec
+des entrées de golden ne transporte pas tout ce que l'assemblage lit. Sous-lots strictement
+séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, la main rendue.
+
+- [x] 0.D.0 **Synchronisation avec `feat/v75` : attribution, régénération, re-figeage.**
+      Régime court (10 films) sur `215649efd` : lister, film par film, les étapes qui diffèrent
+      des références, et attribuer chaque étape à un commit de `feat/v75`
+      (`git log d5f41d2a2..215649efd -- <chemins>`, sha et phrase citées). Attendu : seulement
+      des étapes liées à l'équipement (F.1) ; toute autre étape qui bouge est un constat, listé
+      à part et NON corrigé. Régénérer les `assembly_*.golden` par leur porte nommée (sans film)
+      et les fixtures de contrat par leur double porte ; prouver par `git diff --stat` et un
+      extrait que seules les lignes d'origine de pose d'équipement changent. Re-figer les 20
+      références d'équivalence à `215649efd` (`-update` par sous-ensembles), puis passe de
+      comparaison à 20/20 identiques ; en-tête de `CORPUS.txt` mis à jour. Consigner en §4 que
+      F.1 change le contenu cuit SANS montée de `SchemaVersion` (ADR 0034 D-6) et que la
+      décision est de NE PAS monter ici : la première montée de M1 (lot 1.6, schéma 55)
+      rattrape les artefacts du parc.
+      **Fait** (2026-09-13). **UNE SEULE ÉTAPE bouge sur les 20 films : `artifact`.** Les 49
+      autres sont identiques partout — aucun balayage n'a changé, et c'est attendu :
+      `equipmentOrigin` classe une pose APRÈS le balayage `placements`, qui digère
+      `opt.Placements` (la sortie brute de `filmdec`). 11 films sur 20 changent, 9 non.
+      **ATTRIBUTION PAR MUTATION, pas par raisonnement** (le raisonnement aurait été faux) :
+      revert des seuls fichiers de PRODUCTION d'un commit, re-mesure, comparaison à l'ancienne
+      empreinte. Résultat : **F.1 (`c45c411eb`) n'explique que 3 films** — `084a804d`,
+      `a521164d`, `d9781168`, −2 octets chacun —, et **D.2 (`3233ec2f8`, « la couverture du
+      calque d'objectifs ne compte que les objectifs ») en explique 10**, dont `a521164d` à
+      −47 octets. B.3 (`044751026`) n'a AUCUN effet : reverter F.1 et D.2 reproduit l'ancienne
+      empreinte **à l'octet sur les 11 films**, ce qui ferme l'attribution. L'attendu du brief
+      (« seulement des étapes liées à l'équipement ») était donc incomplet, et D.2 est consigné
+      en §4 (D1) avec F.1 : deux commits changent le contenu cuit sans monter `SchemaVersion`.
+      Goldens régénérés par la porte nommée (`-update-golden-builds-assembly`, aucun film lu) :
+      **un seul golden change, `assembly_a521164d.golden`**, et son diff est exclusivement des
+      origines de pose (`16 deployee(s) · 210 lachee(s)` -> `14 · 212` ; deux `grenade_frag`
+      passent de `deployed` à `dropped`). Fixtures de contrat régénérées par la double porte :
+      **une seule change**, `replay_schema_54_a521164d.json.gz` (191 488 -> 191 487 o, JSON
+      1 506 353 -> 1 506 351), plus sa ligne de manifeste ; les 7 autres sont identiques à
+      l'octet. Références re-figées à `215649efd` par 6 sous-ensembles, en-tête de `CORPUS.txt`
+      réécrit avec le tableau d'attribution. Pas de montée de `SchemaVersion` (décision §4 D1).
+      **Découverte D2 (§4)** : trois films ont rendu `ECHEC (code 13)` au plafond mémoire
+      pendant que d'autres commandes tournaient, et passent à un vingtième de cette empreinte
+      quand rien d'autre ne tourne — un gate de décodage peut donc rougir pour une raison
+      étrangère au décodeur.
+      Gate : gates communs (§2.3) ; `go test ./internal/games/halo_infinite/film/...
+      ./internal/archlint/ ./internal/replaybuild/` vert ; régime court 10/10 identiques ;
+      `make go-api-lint`.
+- [ ] 0.D.1 **D6 — `coverage.score.rounds` 3 -> 1 sur `fb1a1a72` (CTF multi-manche).**
+      Instruction bornée à une session : relever `RealRounds` slot par slot sur `fb1a1a72`
+      (instrument corpus `CHUNK00_FILMS`), confronter à la feuille (`fb1a1a72.facts.json`, deux
+      scores d'équipe) et à `rounds_decide` (`regulation.toml`), sachant que `materialRounds`
+      (`statborg.go`) ignore les slots d'ÉQUIPE alors que le registre dit que sur ce film les
+      manches viennent de ces slots. Verdict DÉFAUT (le compte publié est faux) ou DIVERGENCE
+      VOULUE (entrée citée). Si DÉFAUT : correctif minimal, test par mutation, corpus gate sur
+      `fb1a1a72` seul (manifeste réduit, `--base=215649efd`) à zéro perte et gains nommés,
+      `SchemaVersion` 55 + entrée de chronique + empreinte de forme + fixtures si le contenu
+      cuit change, `GrammarRev` si la grammaire change. Si DIVERGENCE : ligne au registre des
+      reports avec condition de reprise, rien de plus.
+- [ ] 0.D.2 **D7 — bloc monde/équipement de `60ae07c4` (Live Fire, v37).**
+      Séparer l'effet du schéma 53 (porte de région sur 2 bits) de celui de la borne
+      `maxUnrollPerStep = 16` : trouver les sha qui encadrent v53 (`document_chronicle.go`),
+      jouer le corpus gate sur `60ae07c4` seul avec `--base=<sha juste avant v53>` contre le
+      HEAD du commit v53 (worktree temporaire détaché, jonctions `data/cache` comprises, retiré
+      après), puis la borne. Attribuer `groundWeapons.spawned 218 -> 35`, `accepted/rejected`
+      −95 et `skullCarries.grabs 39 -> 8` à l'un ou à l'autre, chiffres à l'appui. Verdict
+      DÉFAUT (dire laquelle des deux entrées affirme « ne bouge pas » à tort, et si la perte est
+      réelle) ou DIVERGENCE VOULUE. Correctif seulement si défaut à cause identifiée, même
+      protocole qu'en 0.D.1 ; sinon registre.
+- [ ] 0.D.3 **D9 — le codec des entrées de golden est incomplet.**
+      Compléter le codec `inputs_*.bin.gz` (`golden_inputs_test.go`) pour qu'il transporte les
+      rangs de capacité et les origines de pose (tout ce que `decodeFilmInputs` rend et que
+      l'assemblage lit), monter la version du fixture (`TestGoldenInputsVersionGuard`),
+      régénérer les 7 `inputs_*.bin.gz` (cache de films, un décodage à la fois) puis les
+      `assembly_*.golden` et les fixtures de contrat. Preuve : sur les 7 builds, assemblage sur
+      entrées FRAÎCHES == assemblage sur entrées RELUES, par un test permanent (plus jamais
+      « 36 contre 136 »). Aucun code de production touché.
+- [ ] 0.D.4 **D8 — points de piste publiés en baisse (−2 / −9 / −4).**
+      Instruction bornée à une session au plus : sur `d9781168`, localiser les points disparus
+      (cuisson fraîche à `179bd7401` contre HEAD, diff des pistes), nommer l'étape et le commit
+      responsables ; verdict DÉFAUT ou DIVERGENCE ; correctif seulement si défaut à cause
+      identifiée (même protocole) ; sinon registre. Si la session ne suffit pas : registre avec
+      ce qui a été établi.
+
+Gate 0.D : gates communs à chaque sous-lot ; régime court 10/10 identiques à chaque sous-lot qui
+touche le décodeur ou le constructeur ; corpus gate ciblé (un témoin) sur les sous-lots qui
+corrigent ; `make go-api-lint`.
+
 #### Lot 0.E — Inventaire des heuristiques qui décident à la place de la grammaire (D13) — M, audit Opus high, en parallèle de 0.D
 
 Audit (skill `adversarial-audit` : périmètre × axe, registre daté, ne corrige rien). Périmètre :
@@ -501,7 +593,10 @@ table de `chunk_00`, pied de film).
 Gate 0.E : chaque `fichier:ligne` existe (grep) ; aucun fichier de production modifié
 (`git diff --stat` = le registre et le plan) ; relecture pilote.
 
-**Clôture M0** : fusion dans `feat/v75` sur signal (V3). Aucun octet d'artefact ne change.
+**Clôture M0** : fusion dans `feat/v75` sur signal (V3). Les lots 0.A à 0.C ne changent aucun
+octet d'artefact. Le lot 0.D, lui, hérite d'un contenu cuit DÉJÀ changé par `feat/v75` (F.1,
+`c45c411eb`) : il re-fige les oracles sur ce contenu, et ses sous-lots 0.D.1 / 0.D.2 peuvent
+monter `SchemaVersion` s'ils concluent au défaut.
 
 ---
 
@@ -993,6 +1088,9 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.A.2 | **D11 — `a521164d` (HI_1_4_1) ferme dix fois moins que les autres builds.** Fermeture totale d'image-clé : 1,0 % contre 9,7 à 15,7 % sur les six autres. Le « +200 o de HI_1_4_1 » est déjà au registre des reports (§1.2 du plan, handoff §5) ; cette mesure le CHIFFRE pour la première fois. | Lot 3.6 : traiter HI_1_4_1 en dernier, ou instruire d'abord son décalage d'en-tête — porter un composant n'y rendra rien tant que le cadre est décalé |
 | 2026-09-13 | 0.A.1c bis | **D8 — Points de piste publiés en baisse, sans entrée qui les nomme.** `tracks.points/n` −2 (`d9781168`), −9 (`084a804d`), −4 (`60ae07c4`) ; `tracks.points.hp/presents` 463 → 461 ; `abilities/n` 166 → 165. Points disparus en ENTIER (t, x, y, z baissent d'autant). Ce n'est PAS la garde des bornes (`boundsOf` ne mute pas `tracks`, `geometry.go:233-248`). Piste non prouvée : re-segmentation « une track = une vie » (v41, v43, v47) et recalage `bestDeathOffset` (v48) déplaçant les bords de vie. Ampleur 0,005-0,008 %. | À instruire : identifier les 9 points de `084a804d` (piste, instant, bord de vie ou non). Sévérité faible |
 
+| 2026-09-13 | 0.D.0 | **D1 — DEUX commits de `feat/v75` changent le contenu cuit SANS montée de `SchemaVersion`.** F.1 (`c45c411eb`, « l'origine d'une pose d'equipement devient purement temporelle ») et D.2 (`3233ec2f8`, « la couverture du calque d'objectifs ne compte que les objectifs ») modifient tous deux des octets du document publié, et `SchemaVersion` vaut toujours 54 : les artefacts du parc cuits en 54 AVANT eux sont périmés sans être marqués (ADR 0034 D-6, « SchemaVersion rises when the cooked content or the document shape changes »). Les deux commits l'assument par écrit (D.2 : « aucun champ ne bouge, seule la valeur change, et `SchemaVersion` ne monte donc pas » ; « les artefacts deja cuits gardent l'ancien denominateur jusqu'a leur recuisson »). Ampleur MESURÉE par mutation (cf. §5) : D.2 touche 10 des 20 films du corpus, F.1 en touche 3, aucun autre commit du span ne touche l'artefact. **Décision du lot : PAS de montée ici** ; la première montée de M1 (lot 1.6, schéma 55) rattrape ces artefacts, et la recuisson du parc reste un signal séparé (D6). NON TRAITÉ. | lot 1.6 (schéma 55) ; recuisson du parc sur signal de l'utilisateur |
+| 2026-09-13 | 0.D.0 | **D2 — le plafond mémoire de `replay-equiv` tombe par CONTENTION CPU, pas par le film.** Trois films du corpus ont rendu `ECHEC (code 13)` à 3,81-3,83 Gio (plafond dur 3,75 Gio) quand une autre commande tournait sur la machine, et les MÊMES films passent à 0,19-1,06 Gio quand rien d'autre ne tourne : `a521164d` 3,81 Gio en lot contre **0,19 Gio seul**, `50247b26` 3,83 contre **1,06**, `111fa685` 3,81 contre **0,30**. Mécanisme : l'enfant tourne en priorité `below_normal` (`filmproc.LowerOwnPriority`) et son plafond souple est un `debug.SetMemoryLimit` — une limite SOUPLE, que le ramasse-miettes tient en tournant plus souvent ; privé de CPU, il prend du retard et l'empreinte dépasse le plafond DUR avant qu'il ne rattrape. Conséquence : un gate de décodage peut rougir pour une raison qui n'a rien à voir avec le décodeur, et le message (« plafond memoire depasse ») envoie chercher une fuite. `1c4c63c2` est le cas limite : 2,70 Gio seul à HEAD, mais 3,79 Gio seul sous mutation — il n'a fini qu'avec `-mem-gib 8` (pic 6,00 Gio, 11 min 58 s). NON TRAITÉ. **Condition de reprise** : un gate de décodage en CI, ou un lot qui fait tomber la mémoire du constructeur. Mesure de contournement, à écrire dans les briefs : ne rien lancer d'autre pendant un décodage. | §2.2 du plan (mode opératoire) ; candidat à un lot de robustesse du harnais |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -1047,6 +1145,18 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.B.7 (coupe A) | ce commit | ÉPREUVE PAR MUTATION du ratchet « un seul jeu vivant » (copie déposée sous `replay_schema_53_bcb6d393.json.gz`) | `TestContractFixturesUnSeulJeuVivant` **ROUGE**, message nommant l'intruse ; fichier retiré → **vert**. `git status` propre après |
 | 2026-09-13 | 0.B.7 (coupe A) | ce commit | `gofmt -l ./internal` ; `go vet` ; `go test ./internal/games/halo_infinite/film/replay/ ./internal/archlint/` | gofmt vide ; vet propre ; **les deux paquets ok** (12,2 s / 12,7 s) — budget **vert à 2,01 Mio**, `MatchCommitted` (manifeste et `pointsStride` compris), `CarryCurrentSchema` et `UnSeulJeuVivant` verts sur les 8 |
 | 2026-09-13 | 0.B.7 (coupe A) | ce commit | `npx tsc -b --force` ; `npx eslint` (3 fichiers web) ; `npx vitest run src/features/match-replay src/lib/replay` ; `make go-api-lint` | tsc **exit 0** ; eslint **0** ; vitest **202 fichiers + 1 sauté, 3 124 tests + 3 sautés** ; lint Go **0 issues**. Seuil des 500 lignes tenu par extraction : `contract_fixtures_test.go` 433 L + `contract_fixtures_budget_test.go` 133 L |
+
+
+| 2026-09-13 | 0.D.0 | `215649efd` (arbre) | `replay-equiv -repo-root <worktree> -films <6 sous-ensembles> -update` | **20/20 figés** au commit `215649efd`, schéma 54, `# digest-grammar: 2`, 50 étapes chacun. **UNE SEULE étape bouge, `artifact`, sur 11 films** ; les 49 autres sont identiques sur les 20. Durées : 50247b26 2 min 29 · a521164d 1 min 30 · 60ae07c4 1 min 49 · 11de8353 1 min 12 · 111fa685 1 min 06 · e5adf7b2 1 min 18 · bcb6d393 25,6 s · 51101d1d 15,7 s · d9781168 1 min 14 · fb1a1a72 1 min 51 · 000d5950 41,5 s · 01e1f945 22,1 s · 64e8adfa 40,0 s · 7344d24f 26,0 s · 696a9d7c 21,7 s · 53ce4390 33,0 s · 9f57c612 26,2 s · 084a804d 2 min 19 · 1c4c63c2 3 min 09 · a349fea8 3 min 18 |
+| 2026-09-13 | 0.D.0 (attribution) | mutation, arbre `215649efd` moins F.1 | `git checkout c45c411eb^ -- equipment_placements.go document_ground_weapon_items.go` puis `replay-equiv` SANS `-update` sur les 11 films qui bougent | **F.1 n'explique que 3 films** : `d9781168` rend l'ANCIENNE empreinte à l'octet (2 641 104 / `3eb6bce0`), donc F.1 y est la cause unique ; `a521164d` rend une TROISIÈME valeur (3 405 277 / `9f0ffac3`, entre l'ancienne 3 405 324 et la neuve 3 405 275) et `084a804d` de même (9 330 764, entre 9 330 766 et 9 330 762) — F.1 y vaut −2 octets. Les 8 autres (`51101d1d`, `bcb6d393`, `696a9d7c`, `7344d24f`, `53ce4390`, `64e8adfa`, `fb1a1a72`, `1c4c63c2`) sont IDENTIQUES aux références neuves : **F.1 n'y change rien** |
+| 2026-09-13 | 0.D.0 (attribution) | mutation, arbre moins F.1 ET moins D.2 | `git checkout 3233ec2f8^ -- objectives.go coverage.go matchfacts.go` en plus, puis `replay-equiv` sans `-update` | **L'ANCIENNE empreinte est reproduite À L'OCTET sur les 10 films restants** : 51101d1d `7bc761b4` · bcb6d393 `00e82236` · 696a9d7c 2 223 087 · 7344d24f 2 352 860 · a521164d 3 405 324 `ed42d0f6` · 53ce4390 3 028 577 · 64e8adfa `e6f7ba81` · fb1a1a72 3 015 859 · 084a804d 9 330 766 · 1c4c63c2 6 864 012 `4898ac59`. **Attribution FERMÉE : F.1 + D.2 expliquent 100 % du mouvement, B.3 (`044751026`) n'a aucun effet.** `1c4c63c2` n'a fini qu'avec `-mem-gib 8` (11 min 58, pic 6,00 Gio — cf. §4 D2) |
+| 2026-09-13 | 0.D.0 | ce commit | `go test ./internal/games/halo_infinite/film/replay/ -run GoldenBuildsAssemblyRegenerate -update-golden-builds-assembly` puis `git diff` | 7 goldens réécrits, **UN SEUL change** : `assembly_a521164d.golden`, 5 lignes, **exclusivement des origines de pose** (`16 deployee(s) · 210 lachee(s)` -> `14 · 212` ; `grenade_frag/deployed 12 -> 10`, `dropped 110 -> 112` ; deux poses nommées passent de `deployed` à `dropped`). Aucun film lu |
+| 2026-09-13 | 0.D.0 | ce commit | `REPLAY_CONTRACT_UPDATE=1 go test ... -run ContractFixturesRegenerate -update` puis `git diff` | 8 fixtures réécrites, **UNE SEULE change** : `replay_schema_54_a521164d.json.gz` (191 488 -> 191 487 o compressés ; JSON 1 506 353 -> 1 506 351) et sa ligne de `manifest.json`. Les 7 autres identiques à l'octet. Total 2 108 043 o, sous le plafond de 3 145 728 ; 0 fixture d'une version périmée |
+| 2026-09-13 | 0.D.0 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` (film, archlint, replaybuild, killcollector, objectiveevents) | sortie vide ; 0 diagnostic |
+| 2026-09-13 | 0.D.0 (gates) | ce commit | `go test ./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/replaybuild/ ./internal/sync/killcollector/ ./internal/analysis/objectiveevents/ ./internal/domain/replaydoc/` | **12 paquets ok, exit 0** — filmdec 65,3 s · replay 67,0 s · archlint 133,8 s · replaybuild 3,3 s · killcollector 3,6 s · objectiveevents 4,7 s. `TestGoldenBuildsAssembly` et `TestContractFixturesMatchCommitted`, ROUGES à l'entrée du lot, sont verts |
+| 2026-09-13 | 0.D.0 (gates) | ce commit | `golangci-lint run --timeout 20m --new-from-merge-base=origin/main` (cache ET dossier temporaire isolés) | **0 issues, exit 0** — baseline non accrue. NOTE : `make go-api-lint` échoue sur ce poste quand un AUTRE agent lint en parallèle (`%TEMP%/golangci-lint.lock` est global, `GOLANGCI_LINT_CACHE` ne l'isole pas), puis sur son `--timeout 5m` quand la machine est chargée |
+| 2026-09-13 | 0.D.0 (gates web) | ce commit | `npm ci` (absent du worktree) puis `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | tsc **exit 0** ; vitest **202 fichiers + 1 sauté, 3 130 tests + 3 sautés**. 3 tests de `replaySoundAssets.guard.test.ts` sortent en `Test timed out in 5000ms` pendant que `npm`/`golangci-lint` chargent la machine ; rejoués SEULS : **26/26 verts** — flottement de charge, hors diff (sons) |
+| 2026-09-13 | 0.D.0 (gate de fin) | ce commit | `replay-equiv -repo-root <worktree>` sur les 20 films, 5 sous-ensembles, machine au repos | **20/20 IDENTIQUES**, exit 0 partout — dont **les 10 films du régime court** (50247b26, a521164d, 60ae07c4, 11de8353, 111fa685, e5adf7b2, bcb6d393, 51101d1d, d9781168, fb1a1a72). Pics 0,08 à 0,74 Gio, tous très en dessous du plafond : `1c4c63c2` à **0,74 Gio** ici contre 3,79 sous charge (§4 D2) |
 
 ## 6. Protocole de reprise de session
 
