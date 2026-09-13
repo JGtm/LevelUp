@@ -70,6 +70,16 @@ export interface UsageText {
   viewRoles: string
   viewFamilies: string
   viewSquadRoles: string
+  /** Les prises NETTES de drapeau : titre de la vue, et sa phrase de lecture. */
+  viewFlagGrabsNet: string
+  flagGrabsNetFmt: (net: string, team: string, raw: string) => string
+  flagGrabsNetRuleFmt: (seconds: string) => string
+  flagGrabsNetScopeFmt: (measured: number, total: number) => string
+  flagGrabsNetShareFmt: (pct: string) => string
+  /** Ce que le film a LU : ses ouvertures de portage, et ce qu'il a su attribuer. */
+  flagGrabsNetOpeningsFmt: (attributed: string, openings: string) => string
+  /** Le périmètre réduit de la comparaison d'équipe (matchs à camp connu). */
+  flagGrabsNetTeamScopeFmt: (known: number, measured: number) => string
   /** Intitulés des trois colonnes de jauge (§7 : les trois dénominateurs). */
   gaugeTeamOfLobby: string
   gaugePlayerOfTeam: string
@@ -209,6 +219,23 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     viewRoles: 'Par rôle, toutes familles confondues',
     viewFamilies: "Ma part d'équipe, par famille de mode",
     viewSquadRoles: "Part d'équipe par joueur et par rôle",
+    viewFlagGrabsNet: 'Prises nettes de drapeau',
+    flagGrabsNetFmt: (net, team, raw) =>
+      `${net} prises nettes sur les ${team} de ton équipe — le film lit ${raw} ramassages pour ` +
+      `ce camp, jonglage compris.`,
+    flagGrabsNetRuleFmt: (seconds) =>
+      `Jonglage replié (fenêtre ${seconds} s) : une reprise du même drapeau par le même joueur ` +
+      `dans ce délai compte pour une seule prise.`,
+    flagGrabsNetScopeFmt: (measured, total) =>
+      `Mesuré sur ${measured} des ${total} matchs de Capture du drapeau de la session : les ` +
+      `autres n'ont pas de film décodé, et ne comptent pour aucune prise.`,
+    flagGrabsNetShareFmt: (pct) => `Ta part : ${pct}.`,
+    flagGrabsNetOpeningsFmt: (attributed, openings) =>
+      `Sur ces matchs, le film a lu ${openings} ouvertures de portage, dont ${attributed} ` +
+      `attribuées à un joueur.`,
+    flagGrabsNetTeamScopeFmt: (known, measured) =>
+      `La comparaison avec ton camp porte sur ${known} de ces ${measured} matchs : les autres ` +
+      `n'ont pas de camp connu.`,
     gaugeTeamOfLobby: 'Mon équipe dans le lobby',
     gaugePlayerOfTeam: 'Ma part dans mon équipe',
     gaugePlayerOfLobby: 'Ma part dans le lobby',
@@ -309,6 +336,23 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     viewRoles: 'By role, all families combined',
     viewFamilies: 'My team share, by mode family',
     viewSquadRoles: 'Team share by player and role',
+    viewFlagGrabsNet: 'Net flag grabs',
+    flagGrabsNetFmt: (net, team, raw) =>
+      `${net} net grabs out of your team's ${team} — the film reads ${raw} pickups for that ` +
+      `side, juggling included.`,
+    flagGrabsNetRuleFmt: (seconds) =>
+      `Juggling folded (${seconds}s window): the same player re-grabbing the same flag within ` +
+      `that delay counts as a single grab.`,
+    flagGrabsNetScopeFmt: (measured, total) =>
+      `Measured on ${measured} of the session's ${total} Capture the Flag matches: the others ` +
+      `have no decoded film, and count towards no grab.`,
+    flagGrabsNetShareFmt: (pct) => `Your share: ${pct}.`,
+    flagGrabsNetOpeningsFmt: (attributed, openings) =>
+      `Across those matches the film read ${openings} carry openings, ${attributed} of which ` +
+      `were attributed to a player.`,
+    flagGrabsNetTeamScopeFmt: (known, measured) =>
+      `The comparison with your side covers ${known} of those ${measured} matches: the others ` +
+      `have no known side.`,
     gaugeTeamOfLobby: 'My team in the lobby',
     gaugePlayerOfTeam: 'My share of my team',
     gaugePlayerOfLobby: 'My share of the lobby',

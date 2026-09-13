@@ -119,6 +119,8 @@ export interface FormesText {
     matchesAxis: string
     totalFmt: (n: string) => string
     valueTipFmt: (row: string, column: string, value: string) => string
+    /** La règle des prises nettes, en toutes lettres, sous la valeur. */
+    juggleFoldedFmt: (seconds: string) => string
     matchTipFmt: (match: string, row: string, value: string, gap: string) => string
     gapTipFmt: (row: string, value: string, parity: string, gap: string) => string
     shareTipFmt: (row: string, side: string, value: string, detail: string) => string
@@ -139,6 +141,10 @@ const enCount = (n: number): string => n.toLocaleString('en-GB')
 
 const FR_COLUMNS: Record<string, string> = {
   flag_captures: 'Drapeaux capturés',
+  // Prises NETTES : le compteur officiel du jeu compte chaque ramassage, donc
+  // aussi le jonglage (lancer le drapeau devant soi pour courir plus vite, puis
+  // le reprendre). Cette grandeur-ci replie ces allers-retours.
+  flag_grabs_net: 'Prises nettes',
   flag_capture_assists: 'Aides à la capture',
   flag_steals: 'Drapeaux volés',
   flag_returners_killed: 'Rapatrieurs abattus',
@@ -170,6 +176,7 @@ const FR_COLUMNS: Record<string, string> = {
 
 const EN_COLUMNS: Record<string, string> = {
   flag_captures: 'Flags captured',
+  flag_grabs_net: 'Net grabs',
   flag_capture_assists: 'Capture assists',
   flag_steals: 'Flags stolen',
   flag_returners_killed: 'Returners killed',
@@ -354,6 +361,9 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       matchesAxis: 'les matchs de la période, dans l’ordre',
       totalFmt: (n) => `${n} au total`,
       valueTipFmt: (row, column, value) => `${row} — ${column} : ${value}`,
+      juggleFoldedFmt: (seconds) =>
+        `jonglage replié (fenêtre ${seconds} s) : une reprise du même drapeau par le même ` +
+        `joueur dans ce délai compte pour une seule prise`,
       matchTipFmt: (match, row, value, gap) => `${match} — ${row} : ${value} (${gap} pts)`,
       gapTipFmt: (row, value, parity, gap) =>
         `${row} : ${value} · parité ${parity} · écart ${gap} points`,
@@ -516,6 +526,9 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       matchesAxis: 'the matches of the period, in order',
       totalFmt: (n) => `${n} in total`,
       valueTipFmt: (row, column, value) => `${row} — ${column}: ${value}`,
+      juggleFoldedFmt: (seconds) =>
+        `juggling folded (${seconds}s window): the same player re-grabbing the same flag ` +
+        `within that delay counts as a single grab`,
       matchTipFmt: (match, row, value, gap) => `${match} — ${row}: ${value} (${gap} pts)`,
       gapTipFmt: (row, value, parity, gap) => `${row}: ${value} · parity ${parity} · gap ${gap} points`,
       shareTipFmt: (row, side, value, detail) => `${row} ${side}: ${value} (${detail})`,

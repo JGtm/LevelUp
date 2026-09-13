@@ -129,6 +129,8 @@ func main() {
 		exitErr = runBackfillUsageSummary(cfg, args)
 	case "backfill-bomb-stats":
 		exitErr = runBackfillBombStats(cfg, args)
+	case "backfill-flag-grabs-net":
+		exitErr = runBackfillFlagGrabsNet(cfg, args)
 	case "tactical-rasters":
 		exitErr = runTacticalRasters(cfg, args)
 	case "replay-facts-export":
@@ -202,6 +204,10 @@ Commandes:
   backfill-bomb-stats  Projette en base les statistiques d'Assaut portées par les artefacts de rejeu déjà cuits (match_bomb_stats
                   append-only + faits datés dans match_objective_events) : AUCUN décodage de film. À lancer APRÈS backfill-replay,
                   qui est la passe qui les fait naître dans les artefacts (--dry-run, --force, --match, --limit, serveur arrêté)
+  backfill-flag-grabs-net  Projette en base les prises de drapeau BRUTES et NETTES lues du calque de drapeau des artefacts de rejeu
+                  déjà rangés (match_flag_grabs_net append-only) : AUCUN décodage, AUCUNE recuisson — tout artefact de schéma >= 14
+                  est lisible tel quel. La fenêtre de jonglage vient de regulation.toml ; un changement de fenêtre EXIGE --force
+                  (--dry-run, --force, --match, --limit, serveur arrêté)
   backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild,
                   UN PROCESSUS PAR FILM (un film-bombe n'emporte plus la passe ni la machine ; gros films en dernier, reprenable par
                   SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite) (--dry-run, --limit, --force,

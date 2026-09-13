@@ -2191,6 +2191,7 @@ export type SessionUsagePadFamily = components['schemas']['SessionUsagePadFamily
 export type SessionUsagePowerup = components['schemas']['SessionUsagePowerup']
 export type SessionObjectivesBlock = components['schemas']['SessionObjectivesBlock']
 export type SessionObjectiveRoleMetric = components['schemas']['SessionObjectiveRoleMetric']
+export type SessionFlagGrabsNetBlock = components['schemas']['SessionFlagGrabsNetBlock']
 export type SessionObjectiveFamilyBlock = components['schemas']['SessionObjectiveFamilyBlock']
 
 // ─── PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E5/E6) : bloc « servi ou gâché » au grain

@@ -60,18 +60,7 @@ type passeBombePrete struct {
 // réponse est non — même contrat que capabilityUsageArmee : un TOML illisible est un INCIDENT
 // (WARN + compteur d'échecs), une clé absente est une configuration de titre (DEBUG).
 func capabilityBombeArmee(ctx context.Context, d Deps) (armee, incident bool) {
-	caps, err := games.LoadCapabilityMap(d.RepoRoot, d.TitleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: stats d'Assaut non produites — capabilities illisibles",
-			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "err", err)
-		return false, true
-	}
-	if !caps.Has(games.CapFilmBombStats) {
-		slog.DebugContext(ctx, "post-sync: stats d'Assaut — titre sans la capability, rien à produire",
-			"titleSlug", d.TitleSlug, "capability", string(games.CapFilmBombStats))
-		return false, false
-	}
-	return true, false
+	return porteCapability(ctx, d, games.CapFilmBombStats, "stats d'Assaut", nil)
 }
 
 // projeterStatsBombe tire d'UN document rangé la passe à écrire. Rend une passe VIDE
@@ -187,10 +176,11 @@ func persisterStatsBombe(ctx context.Context, d Deps, b *bilanDerivations, lus [
 // sans cette trace, la marque de dérivation se poserait sur un match dont RIEN n'a été écrit
 // (constat C1 de la revue A-R1).
 func echecBombe(b *bilanDerivations, prets []passeBombePrete) {
-	b.writerIndisponible()
+	ids := make([]string, 0, len(prets))
 	for i := range prets {
-		b.echec(prets[i].matchID)
+		ids = append(ids, prets[i].matchID)
 	}
+	echecFauteDeWriter(b, ids)
 }
 
 // projeterStatsBombeDuLot projette tous les documents du lot, AVANT tout writer. Rend les

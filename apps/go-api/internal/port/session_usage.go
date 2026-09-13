@@ -50,4 +50,12 @@ type SquadFormesUsageRepository interface {
 // d'objectif, jamais un échec.
 type SquadFormesObjectiveRepository interface {
 	LoadObjectiveColumnRows(ctx context.Context, matchIDs []string) ([]squadformes.ObjectiveColumnRow, error)
+	// LoadFlagGrabsNet : les PRISES NETTES de drapeau, une ligne par (match, joueur),
+	// lues du film. Un (match, joueur) ABSENT n'est pas un zéro : son
+	// artefact n'a pas été lu, et la grandeur s'affiche « non mesurée ».
+	//
+	// Lecture SÉPARÉE de la précédente parce que la table l'est : les colonnes
+	// d'objectif viennent du sync API, les prises nettes du film. Deux lectures
+	// indépendantes dégradent indépendamment.
+	LoadFlagGrabsNet(ctx context.Context, matchIDs []string) ([]sessionusage.FlagGrabsNetRow, error)
 }

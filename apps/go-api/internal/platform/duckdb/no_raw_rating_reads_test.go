@@ -56,7 +56,7 @@ func TestNoRawAppendOnlyReads(t *testing.T) {
 	// lecture brute. Sans cet ajout le motif ne matchait PAS `_latest_by_type` du tout
 	// (la frontière de mot échouait devant `_`) : la lecture passait, mais par accident
 	// plutôt que par décision — et un renommage futur l'aurait rendue invisible au garde.
-	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context|match_kill_events|kill_positions|match_bomb_stats)(_latest(?:_by_type)?)?\b`)
+	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context|match_kill_events|kill_positions|match_bomb_stats|match_flag_grabs_net)(_latest(?:_by_type)?)?\b`)
 
 	// Allowlist datée (2026-07-02) — lectures brutes VOLONTAIRES et documentées.
 	// 2026-09-13 (lot finitions LUSR, C.3 bis) : `queries_career.go` RETIRÉ de l'allowlist.

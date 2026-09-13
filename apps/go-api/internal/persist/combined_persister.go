@@ -126,6 +126,15 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 		// pour qu'un SetBombStats() ne puisse pas être silencieusement jeté.
 		// Transaction distincte, même fenêtre de lease.
 		sharedErr = NewBombStatsPersister(sharedDB).Persist(ctx, batch)
+		if sharedErr != nil {
+			return
+		}
+		// Prises de drapeau brutes et nettes lues de l'artefact (match_flag_grabs_net
+		// append-only). Même raisonnement que les trois ci-dessus : NO-OP tant que
+		// batch.Shared.FlagGrabsNet est nil, câblé quand même pour qu'un SetFlagGrabsNet()
+		// ne puisse pas être silencieusement jeté. Transaction distincte, même fenêtre de
+		// lease.
+		sharedErr = NewFlagGrabsNetPersister(sharedDB).Persist(ctx, batch)
 	}()
 	observePersistPhase("shared_write", writeStart, sharedErr == nil)
 

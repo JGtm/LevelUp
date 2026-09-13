@@ -132,6 +132,17 @@ func (b *BatchBuilder) SetBombStats(pass *BombStatsBatch) *BatchBuilder {
 	return b
 }
 
+// SetFlagGrabsNet fixe les prises de drapeau (brutes et nettes) d'une passe de
+// lecture d'artefact pour ce match.
+//
+// Set… et non Add… pour la même raison que ses sœurs : l'unité de production est
+// l'ARTEFACT ENTIER. Concaténer deux passes produirait un doublon de xuid que le
+// persister refuse — et, pire, mêlerait deux fenêtres de jonglage.
+func (b *BatchBuilder) SetFlagGrabsNet(pass *FlagGrabsNetBatch) *BatchBuilder {
+	b.batch.Shared.FlagGrabsNet = pass
+	return b
+}
+
 // AddXUIDAliases ajoute les rows xuid_aliases.
 func (b *BatchBuilder) AddXUIDAliases(rows []XUIDAliasInsert) *BatchBuilder {
 	b.batch.Shared.XUIDAliases = append(b.batch.Shared.XUIDAliases, rows...)
