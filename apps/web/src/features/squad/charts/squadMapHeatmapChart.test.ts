@@ -2,7 +2,7 @@
  * squadMapHeatmapChart.test.ts — teammates.03.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { buildSquadMapHeatmapOption } from './squadMapHeatmapChart'
+import { buildSquadMapHeatmapOption, xLabelInterval } from './squadMapHeatmapChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadMapHeatmap } from '@/lib/api/types'
 
@@ -114,5 +114,35 @@ describe('buildSquadMapHeatmapOption', () => {
     expect(vm.pieces).toHaveLength(5)
     expect(vm.pieces[0].color).toBe('color:perf-tier-5') // <30
     expect(vm.pieces[4].color).toBe('color:perf-tier-1') // ≥75
+  })
+})
+
+describe('etiquettes de cartes — lisibilite a 56 cartes (finitions 2026-09-13)', () => {
+  it('peu de cartes : toutes les cartes sont etiquetees', () => {
+    expect(xLabelInterval(2)).toBe(0)
+    expect(xLabelInterval(12)).toBe(0)
+    expect(xLabelInterval(18)).toBe(0)
+  })
+
+  it('beaucoup de cartes : une etiquette sur K, jamais plus de 18 ecrites', () => {
+    expect(xLabelInterval(19)).toBe(1)
+    expect(xLabelInterval(56)).toBe(3)
+    for (const n of [19, 24, 36, 56, 120]) {
+      const ecrites = Math.ceil(n / (xLabelInterval(n) + 1))
+      expect(ecrites).toBeLessThanOrEqual(18)
+    }
+  })
+
+  it('l option porte l intervalle calcule (et pas 0 en dur)', () => {
+    const beaucoup: SquadMapHeatmap = {
+      players: ['Me'],
+      maps_topn: Array.from({ length: 56 }, (_, i) => `Carte${i + 1}`),
+      cells: [],
+    }
+    const opt = buildSquadMapHeatmapOption(makeSeries(beaucoup), OPTS)
+    const xAxis = opt.xAxis as { axisLabel: { interval: number; rotate: number } }
+    expect(xAxis.axisLabel.interval).toBe(3)
+    // La rotation ne change pas : a 12 cartes l oblique reste le plus lisible.
+    expect(xAxis.axisLabel.rotate).toBe(-35)
   })
 })
