@@ -44,14 +44,8 @@ import { describe, expect, it } from 'vitest'
 import { normalizeReplayDocument } from '../../../lib/replay/replayNormalize'
 
 import type { ReplayDocument } from '@/lib/api/types'
+import type { Equals, Expect } from '@/lib/types/typeEquality'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-
-/** Égalité STRICTE de deux types (le double conditionnel différé est ce qui la rend stricte). */
-type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
-  ? true
-  : false
-
-type Expect<T extends true> = T
 
 /** Les clés de `T` dont la valeur est un TABLEAU que le transport a le droit de laisser `null`. */
 type NullableArrayKeys<T> = {
