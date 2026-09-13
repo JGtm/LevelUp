@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/sync/invariants"
 )
 
@@ -326,18 +327,16 @@ func TestGate_ConcurrentSquadSync_Converges_integration(t *testing.T) {
 	}
 }
 
-// infiniteLUSRChains — les chaînes LUSR du titre halo_infinite, LUES SUR PIÈCES dans
-// internal/games/halo_infinite/skillchain/classify.go (seules valeurs retournées par
-// ClassifyLUSRChain, hors "" = match exclu du LUSR). Les constantes sync.LUSRChain*
-// sont verrouillées byte-identiques aux littéraux du package de titre par
-// TestSkillChainLiterals_NoDrift : une chaîne ajoutée au titre sans l'être ici rend
-// le gate rouge, jamais silencieux.
-var infiniteLUSRChains = []string{
-	LUSRChainArenaSlayer,
-	LUSRChainArenaObjectif,
-	LUSRChainBTB,
-	LUSRChainChaos,
-}
+// infiniteLUSRChains — les chaînes LUSR du titre halo_infinite, DÉRIVÉES du package
+// de titre (skillchain.Chains), plus recopiées (G.5b, constat R7 de la revue du
+// 2026-09-13). La liste était auparavant réécrite ici avec un commentaire promettant
+// qu'« une chaîne ajoutée au titre sans l'être ici rend le gate rouge » : c'était
+// faux — TestSkillChainLiterals_NoDrift ne vérifie que cinq pair_names et les quatre
+// chaînes existantes. Une 5e chaîne ajoutée à ClassifyLUSRChain n'aurait rien fait
+// rougir et l'invariant I14 aurait classé des lignes LÉGITIMES comme étrangères.
+// L'exhaustivité de skillchain.Chains est, elle, tenue par skillchain.TestChainsEstExhaustive
+// (corpus couvrant chaque branche du classifier, dans les deux sens).
+var infiniteLUSRChains = skillchain.Chains()
 
 // assertNoForeignLUSRChain branche l'invariant I14 sur le gate : aucune ligne
 // match_skill_rank d'une player DB Infinite ne porte la chaîne LUSR d'un autre titre.
