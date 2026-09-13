@@ -98,7 +98,7 @@ describe('buildHistogramOption', () => {
 
 interface StyledBar {
   value: number
-  itemStyle: { color?: string; opacity?: number }
+  itemStyle: { color?: string; opacity?: number; decal?: Record<string, unknown> }
 }
 
 function barres(opt: unknown): Array<number | StyledBar> {
@@ -111,32 +111,39 @@ const troisBins: ChartPointHistogram[] = [
   { binStart: 2, binEnd: 3, count: 2 },
 ]
 
-describe('buildHistogramOption — binAttenuated', () => {
-  it('atténue les barres désignées et laisse les autres intactes', () => {
+describe('buildHistogramOption — binHatched', () => {
+  it('hachure ET atténue les barres désignées, et laisse les autres intactes', () => {
     const opt = buildHistogramOption(makeSeries(troisBins), {
-      binAttenuated: (p) => p.binStart >= 2,
+      binHatched: (p) => p.binStart >= 2,
     })
     const data = barres(opt)
     expect(typeof data[0]).toBe('number')
     expect(typeof data[1]).toBe('number')
-    const attenuee = data[2] as StyledBar
-    expect(attenuee.value).toBe(2)
-    // L'opacité est le SEUL indice graphique : le liseré tireté qu'assertait cette
-    // ligne n'a jamais été visible (même couleur que le remplissage, sous la même
-    // opacité globale). Cadenasser une promesse que l'écran ne tient pas est pire que
-    // ne rien cadenasser — correction R2 du 2026-09-06.
-    expect(attenuee.itemStyle.opacity).toBeLessThan(1)
+    const horsFenetre = data[2] as StyledBar
+    expect(horsFenetre.value).toBe(2)
+    expect(horsFenetre.itemStyle.opacity).toBeLessThan(1)
+    // LA HACHURE EST LE SECOND INDICE, et elle doit EXISTER dans l'option : la version
+    // 2026-09-06 promettait deux indices et n'en peignait qu'un (un liseré tireté de la
+    // couleur du remplissage). Un `decal` ECharts, lui, se voit.
+    expect(horsFenetre.itemStyle.decal).toBeDefined()
   })
 
-  it('n’introduit AUCUNE seconde teinte : la barre atténuée porte la couleur de série', () => {
+  it('active `aria.decal` — sans quoi ECharts IGNORE la hachure en silence', () => {
+    const opt = buildHistogramOption(makeSeries(troisBins), { binHatched: () => true }) as {
+      aria?: { decal?: { show?: boolean } }
+    }
+    expect(opt.aria?.decal?.show).toBe(true)
+  })
+
+  it('n’introduit AUCUNE seconde teinte : la barre hachurée porte la couleur de série', () => {
     const opt = buildHistogramOption(makeSeries(troisBins), {
       colorToken: 'chart-series-1',
-      binAttenuated: (p) => p.binStart >= 2,
+      binHatched: (p) => p.binStart >= 2,
     })
     const data = barres(opt)
-    const attenuee = data[2] as StyledBar
+    const horsFenetre = data[2] as StyledBar
     const serie = (opt as { series: Array<{ itemStyle: { color: string } }> }).series[0]
-    expect(attenuee.itemStyle.color).toBe(serie.itemStyle.color)
+    expect(horsFenetre.itemStyle.color).toBe(serie.itemStyle.color)
   })
 
   it('RÉTRO-COMPAT : sans la prop, `data` reste un tableau de nombres nus', () => {
@@ -148,7 +155,50 @@ describe('buildHistogramOption — binAttenuated', () => {
   })
 
   it('un prédicat toujours faux équivaut à l’absence de prop', () => {
-    const opt = buildHistogramOption(makeSeries(troisBins), { binAttenuated: () => false })
+    const opt = buildHistogramOption(makeSeries(troisBins), { binHatched: () => false })
     expect(barres(opt)).toEqual([3, 5, 2])
+  })
+})
+
+describe('buildHistogramOption — showValues et windowMark', () => {
+  function serie(opt: unknown) {
+    return (opt as {
+      series: Array<{
+        label?: { show?: boolean; position?: string }
+        markLine?: { data: Array<{ xAxis: number }>; label: { formatter: string } }
+      }>
+    }).series[0]
+  }
+
+  it('écrit la valeur AU-DESSUS de chaque barre quand on le demande', () => {
+    expect(serie(buildHistogramOption(makeSeries(troisBins), { showValues: true })).label).toEqual(
+      expect.objectContaining({ show: true, position: 'top' }),
+    )
+  })
+
+  it('ne montre AUCUNE étiquette par défaut (rétro-compat)', () => {
+    expect(serie(buildHistogramOption(makeSeries(troisBins))).label?.show).toBe(false)
+  })
+
+  it('pose le repère de fenêtre sur la FRONTIÈRE qui précède l’intervalle visé', () => {
+    const opt = buildHistogramOption(makeSeries(troisBins), {
+      windowMark: { binIndex: 2, label: 'fenêtre 5 s' },
+    })
+    const ml = serie(opt).markLine
+    // 1,5 = la frontière entre la 2e et la 3e catégorie, JAMAIS le centre d'une barre :
+    // une fenêtre est une borne, pas un intervalle.
+    expect(ml?.data).toEqual([{ xAxis: 1.5 }])
+    expect(ml?.label.formatter).toBe('fenêtre 5 s')
+  })
+
+  it('ne pose AUCUN repère hors des bornes (index 0 ou au-delà du dernier)', () => {
+    expect(
+      serie(buildHistogramOption(makeSeries(troisBins), { windowMark: { binIndex: 0, label: 'x' } }))
+        .markLine,
+    ).toBeUndefined()
+    expect(
+      serie(buildHistogramOption(makeSeries(troisBins), { windowMark: { binIndex: 9, label: 'x' } }))
+        .markLine,
+    ).toBeUndefined()
   })
 })

@@ -146,7 +146,7 @@ export function TacticalCoordinationCard({
                     ? t.coordinationBucket(point.binStart, point.binEnd)
                     : t.coordinationBucketLast(point.binStart)
                 }
-                binAttenuated={(point) => seuilBas !== null && point.binStart < seuilBas}
+                binHatched={(point) => seuilBas !== null && point.binStart < seuilBas}
                 thresholds={seuils}
               />
             )}

@@ -42,7 +42,6 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import { SquadFocusStrip } from './SquadFocusStrip'
-import { SquadEchangeKpi } from './SquadEchangeKpi'
 import { useSquadPresets } from './useSquadPresets'
 import { getSquadTeammateColors, SQUAD_MAIN_PLAYER_TOKEN } from './colors'
 import type { KPIStats, LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
@@ -853,10 +852,6 @@ export function SquadLayout() {
             texts={t}
             numLoc={t.intlLocale}
           />
-
-          {/* Taux d'echange du camp : une tuile de KPI commune aux trois onglets,
-              rendue seulement si la section existe au contrat. */}
-          <SquadEchangeKpi />
 
           {/* « Cap d'escouade » (Enregistrer cette compo) — remonté AU-DESSUS de la
               barre d'onglets L3, commun aux deux onglets (Synergies / Contributions). */}

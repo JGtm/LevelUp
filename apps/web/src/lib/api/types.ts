@@ -1359,6 +1359,12 @@ export type SquadEchangeBucket = components['schemas']['SquadEchangeBucket']
 export type SquadEchangeJoueur = components['schemas']['SquadEchangeJoueur']
 
 /**
+ * Le taux d'échange du camp sur UNE session (soirée) — la série de la carte « Taux
+ * d'échange par session ». Même mesure que `SquadEchange.couverture`, découpée par soirée.
+ */
+export type SquadEchangeSessionPoint = components['schemas']['SquadEchangeSessionPoint']
+
+/**
  * Le nuage « isolement x couverture » de l'onglet Synergies (`SquadEchange.nuage_isolement`,
  * plan tactique item 7.7) : un point par (joueur, session). `part_isolee` et `couverture`
  * sont des `Couverture` (taux + brut + par match + N + échantillon faible), jamais un float
