@@ -14,8 +14,19 @@ import { join, resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-/** La signature du motif, construite pour que CE fichier ne se dénonce pas lui-même. */
-const MOTIF = new RegExp(['\\(<T>\\(\\)', '=>', 'T', 'extends', 'A'].join('\\s*') + '\\s*\\?')
+/**
+ * La signature du motif — SA FORME, jamais les noms de ses paramètres.
+ *
+ * ELLE EXIGEAIT LE LITTÉRAL `A` COMME SECOND TERME, et c'est le constat C2 de la revue ronde 1
+ * du lot 0.B : une copie écrite `<T>() => T extends L ? 1 : 2` (paramètres `L`/`R` au lieu de
+ * `A`/`B`) traversait le garde, verte. Un garde qui ne reconnaît le motif que sous les noms
+ * d'une seule copie ne garde que cette copie — et le helper re-diverge exactement comme la
+ * règle n° 6 le prédit. Ce qui identifie le motif, c'est le conditionnel différé lui-même :
+ * une fonction générique qui compare `T` à un identifiant et rend `1` ou `2`.
+ */
+const MOTIF = new RegExp(
+  '<T>\\(\\)\\s*=>\\s*T\\s+extends\\s+[A-Za-z_$][\\w$]*\\s*\\?\\s*1\\s*:\\s*2',
+)
 
 /** Le seul fichier qui a le droit de le porter. */
 const FOYER = 'typeEquality.ts'
@@ -53,5 +64,26 @@ describe('garde-rail : une seule égalité stricte de types', () => {
 
   it('et le foyer, lui, le porte bien — sans quoi ce garde ne garderait rien', () => {
     expect(MOTIF.test(readFileSync(join(racineSrc(), 'lib', 'types', FOYER), 'utf8'))).toBe(true)
+  })
+
+  it('reconnaît le motif SOUS N’IMPORTE QUELS NOMS DE PARAMÈTRES (constat C2)', () => {
+    const copies = [
+      'type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2',
+      'type _Egaux<L, R> = (<T>() => T extends L ? 1 : 2) extends <T>() => T extends R ? 1 : 2',
+      'type Same<Gauche, Droite> = (<T>() => T extends Gauche ? 1 : 2) extends never',
+    ]
+    for (const copie of copies) {
+      expect(MOTIF.test(copie), copie).toBe(true)
+    }
+  })
+
+  it('et ne crie pas sur ce qui n’est pas le motif', () => {
+    for (const innocent of [
+      "import type { Equals, Expect } from '@/lib/types/typeEquality'",
+      'type Assignable<A, B> = A extends B ? true : false',
+      'const x = items.filter((T) => T.extends)',
+    ]) {
+      expect(MOTIF.test(innocent), innocent).toBe(false)
+    }
   })
 })
