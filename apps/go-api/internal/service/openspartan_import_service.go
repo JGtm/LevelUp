@@ -320,7 +320,7 @@ func (s *OpenSpartanImportService) writeOneMatch(
 	}
 
 	// Écriture per-match INSERT-only + atomique via persist.SharedPersister (ADR
-	// 0019/0026, anti-ART #23046) : registry + participants + medals + match_csrs
+	// 0019/0026, anti-ART #23645) : registry + participants + medals + match_csrs
 	// dans UNE transaction, jamais d'ON CONFLICT DO UPDATE per-helper (l'ancien
 	// chemin sync.Insert*/Upsert* pouvait laisser un état partiel). Idempotent :
 	// si le match existe déjà, Persist no-op. Modèle identique au livesync H5.

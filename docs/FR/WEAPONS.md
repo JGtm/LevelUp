@@ -224,7 +224,7 @@ La table `weapon_kills` vit dans la DB partagée
 | `delayed_damage` | BOOLEAN | Le vol du projectile a pu gonfler le delta |
 | `player_index` | INTEGER | Index de joueur film résolu |
 
-**Append-only (durcissement #23046).** La table a été convertie en append-only
+**Append-only (durcissement #23645).** La table a été convertie en append-only
 (`internal/migration/steps_shared_append_only_weapon_kills.go`) : deux colonnes
 ajoutées — `generation_id BIGINT` et `written_at TIMESTAMP`. Chaque appel à
 `InsertWeaponKills` alloue une génération depuis `weapon_kills_generation_seq`

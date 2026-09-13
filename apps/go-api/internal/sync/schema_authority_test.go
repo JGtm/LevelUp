@@ -198,7 +198,7 @@ func TestPlayerSchemaAuthority_EnsureIsNoOpOnFreshMigrations(t *testing.T) {
 
 // TestPlayerSchemaAuthority_NoCareerXuidIndex — décision A du 2026-08-05 :
 // idx_career_xuid est supprimé PARTOUT (xuid quasi constant dans une player DB →
-// sélectivité nulle ; surface ART #23046 pure perte). Ni la chaîne, ni le soin ne
+// sélectivité nulle ; surface ART #23645 pure perte). Ni la chaîne, ni le soin ne
 // doivent le laisser en place.
 func TestPlayerSchemaAuthority_NoCareerXuidIndex(t *testing.T) {
 	db := freshMigratedPlayerDB(t)

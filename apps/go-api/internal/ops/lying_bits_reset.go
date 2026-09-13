@@ -39,7 +39,7 @@ func (r LyingBitsResetResult) Total() int {
 // l'exécution. Idempotent : un second appel après exécution retourne des
 // compteurs nuls.
 //
-// Écriture ROW-BY-ROW par match_id (ADR 0019/0026, anti-ART #23046) : cette fonction
+// Écriture ROW-BY-ROW par match_id (ADR 0019/0026, anti-ART #23645) : cette fonction
 // tourne IN-PROCESS (action admin data-quality) — un bulk UPDATE multi-row nu sur
 // match_registry (même une mutation in-place, sans ON CONFLICT) touche N entrées de
 // l'index PK en un statement = déclencheur ART direct. On SELECT donc les match_ids

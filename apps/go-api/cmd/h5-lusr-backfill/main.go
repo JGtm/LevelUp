@@ -105,7 +105,7 @@ func main() {
 	runCtx := ctxkeys.WithTitleSlug(ctx, halo5.TitleSlug)
 
 	// Reset watermark + replay via le helper canonique : INSERT sentinelle
-	// is_reset=TRUE (append-only #23046), JAMAIS le DELETE WHERE xuid qui est le
+	// is_reset=TRUE (append-only #23645), JAMAIS le DELETE WHERE xuid qui est le
 	// vecteur ART sur idx_pssv2 (cf. ADR 0026 + RecomputeLUSRCanonicalForPlayer).
 	// Owner-only : ne touche que l'état de ce joueur.
 	processed, err := lusync.RecomputeLUSRCanonicalForPlayer(runCtx, playerDB, shared, xuid)

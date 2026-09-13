@@ -24,7 +24,7 @@ package replayartifacts
 //	                       fichier-ci garde la LECTURE et la DECISION ; le persister ecrit.
 //	ROW-BY-ROW             un `UPDATE ... WHERE match_id = ?` par match, sequentiel. La forme
 //	                       bulk sur `match_registry` est le declencheur direct du bug ART
-//	                       #23046 et `internal/sync/no_art_patterns_test.go` la refuse.
+//	                       #23645 et `internal/sync/no_art_patterns_test.go` la refuse.
 //	AU PLUS `maxPerCycle`  le lot du cycle est plafonne a cinq artefacts : le burst est borne
 //	                       par construction.
 //

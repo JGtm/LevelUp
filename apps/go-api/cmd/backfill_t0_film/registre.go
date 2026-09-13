@@ -13,7 +13,7 @@ package main
 //
 // UN `UPDATE ... WHERE match_id = ?` PAR MATCH, sequentiel, dans une transaction. C'est la
 // seule forme autorisee sur `match_registry` : la forme bulk (`UPDATE ... FROM (VALUES ...)`,
-// ou un UPDATE a condition large sans parametre) est le declencheur direct du bug ART #23046
+// ou un UPDATE a condition large sans parametre) est le declencheur direct du bug ART #23645
 // et le garde-rail `internal/sync/no_art_patterns_test.go` la refuse.
 
 import (

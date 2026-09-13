@@ -5,7 +5,7 @@ package migration
 //
 // idx_coach_proposal_user_status(user_id, title_slug, status) porte sur `status`,
 // muté par MarkAccepted/MarkDismissed/MarkSuperseded/MarkObsoleted (UPDATE SET status)
-// → surface ART DuckDB #23046 (vecteur UPDATE sur colonne indexée ; prouvé par le crash
+// → surface ART DuckDB #23645 (vecteur UPDATE sur colonne indexée ; prouvé par le crash
 // canonique match_skill_rank, qui a démontré qu'une player DB mono-writer peut FATAL-
 // invalider sur un UPDATE touchant un index ART). La table coach_proposal est minuscule
 // (quelques propositions par joueur) → l'index n'apporte aucun gain mesurable ; un scan

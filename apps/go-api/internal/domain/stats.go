@@ -24,38 +24,6 @@ type ParticipantRow struct {
 	DeathsExpected *float64
 }
 
-// ─── Métriques calculées ─────────────────────────────────────────────────────
-
-// MatchMetrics regroupe les métriques normalisées par minute pour une seule partie.
-// Utilisé en entrée de ComputeRelativePerformanceScore.
-type MatchMetrics struct {
-	MatchID          string
-	StartTime        time.Time
-	Outcome          *int
-	KillsPerMin      float64
-	DeathsPerMin     float64 // inverse : moins = mieux
-	AssistsPerMin    float64
-	KDA              float64
-	Accuracy         *float64 // nil si absent
-	ScorePerMin      *float64 // nil si absent
-	DamagePerMin     *float64 // nil si absent
-	RankPerfDiff     *float64 // (expected_rank - actual_rank), nil si absent
-	KillsVsExpected  *float64 // actual / expected, nil si absent
-	DeathsVsExpected *float64 // expected / actual (inversé), nil si absent
-	// Champs pour LUSR/TrueSkill
-	DamageDealtRaw *float64
-	DamageTakenRaw *float64
-	KillsExpected  *float64
-	DeathsExpected *float64
-	TeamMMR        *float64
-	EnemyMMR       *float64
-	Rank           *int
-	IsRanked       bool
-	PlaylistName   string
-	PairName       string
-	TeamID         *int
-}
-
 // ─── Résultats des onglets ───────────────────────────────────────────────────
 
 // CumulativePoint est un point d'une série cumulative (K/D, net score).

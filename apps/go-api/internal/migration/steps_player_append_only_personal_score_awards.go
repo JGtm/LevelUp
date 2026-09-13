@@ -1,12 +1,12 @@
 package migration
 
 // steps_player_append_only_personal_score_awards.go — éradication ART de
-// personal_score_awards (player DB) — Phase 2 campagne #23046 (2026-06-21).
+// personal_score_awards (player DB) — Phase 2 campagne #23645 (2026-06-21).
 //
 // **Pourquoi** : InsertPersonalScoreAwards (sync/writes.go) faisait
 // `DELETE FROM personal_score_awards WHERE match_id=? AND xuid=?` puis INSERT
 // batch en TX (REPLACE-semantics). Le DELETE retire N lignes des 4 index ART
-// (idx_psa_match/xuid/category/match_xuid) = vecteur DuckDB #23046 sur le
+// (idx_psa_match/xuid/category/match_xuid) = vecteur DuckDB #23645 sur le
 // chemin de sync LIVE (engine_process_match + convergePSA). Jumeau direct du
 // DELETE LUSR match_skill_rank corrigé en Phase 1.
 //
@@ -38,7 +38,7 @@ func init() {
 	Register(Migration{
 		Name:        "player_append_only_personal_score_awards_v1",
 		TargetDB:    TargetPlayer,
-		Description: "Rebuild personal_score_awards en append-only (generation_id + written_at + tombstone + vue latest) — élimine DELETE+INSERT sur index ART (#23046)",
+		Description: "Rebuild personal_score_awards en append-only (generation_id + written_at + tombstone + vue latest) — élimine DELETE+INSERT sur index ART (#23645)",
 		ApplySchema: applyAppendOnlyPersonalScoreAwards,
 	})
 }

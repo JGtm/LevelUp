@@ -30,7 +30,7 @@ func RecomputeLUSRCanonicalForPlayer(ctx context.Context, playerDB, sharedDB *sq
 	if strings.TrimSpace(xuid) == "" {
 		return 0, fmt.Errorf("RecomputeLUSRCanonicalForPlayer: xuid vide")
 	}
-	// Append-only #23046 (Phase 2) : plus de DELETE WHERE xuid (vecteur ART sur
+	// Append-only #23645 (Phase 2) : plus de DELETE WHERE xuid (vecteur ART sur
 	// PK + idx_pssv2). On INSÈRE une row sentinelle is_reset=TRUE par (xuid,
 	// playlist_group) existant ; la vue player_skill_state_v2_latest (WHERE NOT
 	// is_reset) masque alors le groupe → LoadState renvoie nil → le replay

@@ -31,6 +31,17 @@
 # ou renommer un test de ces packages fait désormais rougir le gate : c'est voulu, et
 # le remède est d'ajouter les nouvelles entrées dans le même commit.
 #
+# RETRAIT DU 2026-09-13 (lot B.2 des finitions v7.5) : 23 tests ont été RETIRÉS de la
+# baseline — 17 de `internal/platform/auth` (TestMigrateLegacyTokens_*,
+# TestEnvRefreshTokenForGamertag_*) et 6 de `cmd/server`
+# (TestMigrateLegacyAuthTokensAtBoot_*). Leur code de production a été supprimé avec la
+# clôture de la Phase 5 de l'ADR 0023 (migration one-shot des jetons legacy, critère tenu
+# en prod) : les tests d'une fonction qui n'existe plus ne peuvent pas rester exigés. Seules
+# ces 23 entrées ont bougé (120 lignes JSONL), vérifié par différence des paires
+# (Package, Test) avant/après. C'est le remède que ce script prescrit lui-même pour un
+# compte PARTIEL d'absences volontaires — jamais une re-capture complète, qui absorberait
+# en silence toute autre dérive.
+#
 # Le contrôle 2 a été ajouté le 2026-07-26 : le `|| true` sur le `go test -json`
 # (nécessaire pour pouvoir analyser le JSONL même quand la suite échoue) rendait
 # le gate MENTEUR — un test FAIL était compté comme « présent » par le contrôle 1

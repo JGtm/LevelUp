@@ -86,20 +86,26 @@ moins `000d5950` et `64e8adfa`.
       AUCUN des deux n'est localisable n'est pas écrite, et les quatre cas sont comptés
       (`KillPosReport`). Écrire différemment d'Halo 5 dans la même table aurait été le vrai
       défaut.
-- [!] 2.3 Écriture via `persist` — **NON TRAITÉ, et c'est un arrêt propre, pas un oubli.**
-      **Échéance 2026-11-08** (cf. « Échéance de l'étape 2bis » en fin de plan).
-      Justification : vérifié sur pièces, **aucun CLI du dépôt n'utilise `BatchBuilder`** ; le
-      chemin persist est piloté par le pipeline de sync, et la seule construction de
-      `BatchQueue` est dans `cmd/server/main.go`. Câbler une file WAL + ses persisters depuis un
-      binaire hors ligne est une DÉCISION DE CONCEPTION (quelle cible DB, quel lease, quelle
-      sémantique de rejeu WAL) sur le chemin critique anti-ART du dépôt (ADR 0019/0030). La
-      bâcler en fin de session serait le contraire de ce que ce chantier exige.
-- [!] 2.4 CLI `cmd/killpos-build` — NON TRAITÉ : il dépend de 2.3. **Échéance 2026-11-08.**
+- [~] 2.3 Écriture via `persist` — **COUVERT AUTREMENT, constaté sur pièces le 2026-09-13.**
+      Le report visait un drain WAL depuis un binaire HORS LIGNE ; c'est le pipeline de sync
+      qui a fini par porter l'écriture, donc par le chemin persist normal et sans qu'aucune
+      décision de conception hors ligne soit nécessaire. `BuildKillPositions` est appelé par
+      `sync/killcollector/positions.go:347`, et l'écriture passe par
+      `persist.KillPositionPersister` (INSERT pur, `persist/kill_position_persister.go`),
+      déclarée au `BatchBuilder` via `AddKillPositions` (`persist/builder.go:90`). La table a
+      même gagné depuis un arbitrage PAR PASSE (`decode_pass`, lot 1.7) et sa vue
+      `kill_positions_latest`. Le critère mesurable de l'échéance est donc tenu, et par un
+      chemin meilleur que celui qui était prévu.
+- [~] 2.4 CLI `cmd/killpos-build` — **SANS OBJET.** Il dépendait de 2.3 et n'a jamais été
+      écrit ; le besoin est servi par `levelup backfill-killsource`, qui rejoue la chaîne
+      complète. Un second binaire pour la même écriture serait une deuxième copie du chemin
+      critique anti-ART, exactement ce que l'ADR 0030 cherche à éviter.
 - [~] 2.5 Tests — le producteur pur a **cinq tests**, dont quatre portent sur des abstentions
       (hors tolérance, aucune position, deux corps pour un joueur, décalage d'horloge). Le test
-      d'intégration d'écriture est reporté avec 2.3.
-- [!] 2.6 Exécution sur un match de contrôle — NON TRAITÉ : dépend de 2.3 et 2.4.
-      **Échéance 2026-11-08.**
+      d'intégration d'écriture est couvert avec 2.3, par le gate d'intégration de `persist`.
+- [~] 2.6 Exécution sur un match de contrôle — **TENUE, et bien au-delà d'un match.** Relevé du
+      2026-09-13 : `kill_positions_latest` porte **114 038 lignes sur 1 307 matchs** Halo
+      Infinite.
 
 **Gate 2** :
 ```bash
@@ -265,3 +271,26 @@ l'interdit pour les kill-switches exactement pour cette raison. Ils portent donc
 `BuildKillPositions` et ses tests sont SUPPRIMÉS du dépôt. Un producteur qu'aucun appelant ne
 branche est du code mort avec des tests verts — le premier des anti-patrons de revue du dépôt, et
 le plus difficile à déloger une fois installé.
+
+#### ÉCHÉANCE SOLDÉE PAR ANTICIPATION — 2026-09-13
+
+Le critère mesurable (« `kill_positions` porte des lignes pour au moins un match Halo Infinite,
+écrites via `persist` ») est **tenu**, deux mois avant sa date, et par la PREMIÈRE des deux
+issues : l'étape n'a pas été programmée telle quelle, elle a été absorbée par le pipeline de
+sync. Constaté sur pièces :
+
+| | |
+|---|---|
+| APPELANT | `internal/sync/killcollector/positions.go:347` appelle `replay.BuildKillPositions` — le producteur n'est plus orphelin |
+| ÉCRITURE | `persist.KillPositionPersister` (INSERT pur), déclarée au `BatchBuilder` par `persist.AddKillPositions` (`builder.go:90`) — c'est bien le chemin persist, pas un drain hors ligne |
+| VOLUME | `kill_positions_latest` : **114 038 lignes sur 1 307 matchs** Halo Infinite au 2026-09-13 |
+| EN PRIME | la table a gagné un arbitrage PAR PASSE (`decode_pass` + vue `_latest`, lot 1.7), donc la capacité de RÉTRACTER une position qu'un re-décodage ne retrouve plus — ce que le plan d'origine ne prévoyait pas |
+
+Le CLI `cmd/killpos-build` (item 2.4) n'a jamais été écrit et **ne le sera pas** :
+`levelup backfill-killsource` rejoue la chaîne complète, et un second binaire pour la même
+écriture ajouterait une copie du chemin critique anti-ART.
+
+**Ce que cette clôture ne couvre PAS** : le garde local à 88 % (`replay_local_gate.go`), qui
+partageait cette date de réexamen, reste ouvert et à la main de l'utilisateur (suivi Notion).
+Les deux verrouillaient le même chantier, mais seul celui-ci avait un critère mesurable
+automatiquement.

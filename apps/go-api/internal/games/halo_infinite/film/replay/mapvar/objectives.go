@@ -148,6 +148,33 @@ const (
 	LabelHashHillMarker int32 = -1482301937
 )
 
+// LabelCTFNeutralInclude marque les objets qui n'existent que dans la variante « drapeau
+// neutre » du CTF. Sur un `flag_spawn`, c'est le socle CENTRAL, celui qui n'appartient a
+// aucun camp.
+const LabelCTFNeutralInclude = "ctf_neutral_include"
+
+// IsCTFNeutral dit si cet objectif porte le label de la variante « drapeau neutre ».
+//
+// POURQUOI CE PREDICAT EXISTE, ET POURQUOI LE `team_index` NE SUFFIT PAS : sur un socle
+// de drapeau, le label est la verite ; le `team_index`, lui, est une affinite
+// d'emplacement du fichier de carte, et il MENT. Recensement du catalogue versionne au
+// 2026-09-13 (`data/titles/halo_infinite/reference/map_objectives.json`, 2026-09-03) :
+// 63 `flag_spawn` portent ce label, 62 avec `team_index = -1` et UN avec `team_index = 0`
+// — le socle central d'Illusion (`9e821f5e`, `ctf_illusion.mvar`, `object_index` 201, au
+// point (0, 0)). Lu par son team_index, ce socle central devenait un TROISIEME drapeau
+// d'equipe 0 fige au milieu de la carte : la plus grande zone aveugle du parc, mesuree sur
+// `bc60b4d9` (rapport 6.11, decouverte D1 ; couverture 1,070 -> 1,030 apres correction).
+//
+// Le label, lui, ne se trompe sur aucune des 63 entrees — c'est donc lui qui tranche.
+func (o Objective) IsCTFNeutral() bool {
+	for _, l := range o.Labels {
+		if l == LabelCTFNeutralInclude {
+			return true
+		}
+	}
+	return false
+}
+
 // Role est le rôle d'objectif d'un objet, tel que le rejeu doit l'afficher.
 type Role string
 

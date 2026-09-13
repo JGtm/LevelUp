@@ -9,19 +9,26 @@
 //     assumée : c'est ce qui faisait la force du guard d'origine ; un motif
 //     restreint à `Getenv("PREFIX` laissait passer `os.Getenv(prefix + key)`
 //     et `fmt.Sprintf` (trou relevé par la revue adversariale r1).
-//  2. Tout appel à auth.EnvRefreshTokenForGamertag — la fonction reste exportée
-//     pour la migration boot ; hors d'elle, l'appeler revient à ressusciter la
-//     source env SANS jamais écrire le littéral (donc invisible au guard 1).
+//  2. Tout appel à auth.EnvRefreshTokenForGamertag — le helper n'existe plus
+//     depuis le 2026-09-13 ; le réécrire et l'appeler ressusciterait la source
+//     env SANS jamais écrire le littéral (donc invisible au guard 1).
 //  3. Tout appel à duckdb.ReadOAuthRefreshToken — dernier lecteur du credential
-//     store DuckDB. Motif INDÉPENDANT de l'alias d'import : le package est
-//     importé sous 5 noms différents dans le repo (duckdb, duckdbpkg, ddb,
-//     duckdbPlatform, platform_duckdb) ; un motif `\bduckdb(pkg)?\.` en ratait 3.
+//     store DuckDB, supprimé lui aussi le 2026-09-13. Motif INDÉPENDANT de
+//     l'alias d'import : le package est importé sous 5 noms différents dans le
+//     repo (duckdb, duckdbpkg, ddb, duckdbPlatform, platform_duckdb) ; un motif
+//     `\bduckdb(pkg)?\.` en ratait 3.
 //  4. cmd/token-capture et cmd/token-import qui écriraient à nouveau des
 //     fichiers .txt (régression UX — l'ancien flux exigeait copy-paste manuel).
 //
+// PHASE 5 CLOSE (2026-09-13) : la migration one-shot du boot a été retirée après
+// que son critère ait été tenu (rt_migrated=0 à chaque boot prod du 2026-06-14
+// au 2026-09-13 ; 2 RT migrés le 2026-06-13, jamais depuis). Les allowlists des
+// guards 2 et 3 sont donc VIDES : les guards ne protègent plus une exception,
+// ils interdisent une résurrection.
+//
 // Ces guards garantissent qu'aucun futur refactor ne réintroduit silencieusement
 // le bug Madina (env.local brûlé par le hot-reload Air) ni un credential store
-// parallèle. Chaque exception est listée avec justification DATÉE.
+// parallèle. Chaque exception restante est listée avec justification DATÉE.
 //
 // Sans build tag — exécuté en CI normale (juste grep sur sources).
 package auth
@@ -95,16 +102,18 @@ func scanProductionGoFiles(t *testing.T, allowlist map[string]string, match func
 
 // allowedEnvReaders : fichiers de PRODUCTION autorisés à mentionner
 // SPNKR_OAUTH_REFRESH_TOKEN_*. ADR 0023 Phase 5 (2026-08-25) : l'allowlist est
-// passée de ~30 entrées à 3, toutes justifiées et datées. Tout nouveau code doit
-// lire MultiUserTokenStore — aucune exception supplémentaire ne sera acceptée.
+// passée de ~30 entrées à 3. Le 2026-09-13, le retrait de la migration one-shot
+// du boot (critère tenu en prod : rt_migrated=0 à chaque boot depuis le
+// 2026-06-14) en a retiré deux : il ne reste QUE la lecture de stdin de
+// cmd/token-import, qui n'est pas une source d'environnement. Tout nouveau code
+// doit lire MultiUserTokenStore — aucune exception supplémentaire ne sera
+// acceptée.
 //
 // Mordant (mutation mentale) : réintroduire `os.Getenv("SPNKR_OAUTH_..." + key)`
 // dans n'importe quel fichier hors de cette liste — y compris via une
 // concaténation, un fmt.Sprintf ou une constante intermédiaire — fait échouer
 // ce test, puisqu'on cherche le LITTÉRAL et non une forme d'appel.
 var allowedEnvReaders = map[string]string{
-	"internal/platform/auth/migration.go":             "EXCEPTION UNIQUE ADR 0023 Phase 5 : EnvRefreshTokenForGamertag alimente la migration one-shot du boot (env legacy → store). Kill-switch daté — retrait cible 2026-10-01, critère « 0 token migré au boot sur 30 j de logs prod ».",
-	"cmd/server/main.go":                              "Wiring + godoc de migrateLegacyAuthTokensAtBoot (même kill-switch daté 2026-10-01). Ne LIT pas l'env var lui-même : il délègue à auth.EnvRefreshTokenForGamertag.",
 	"internal/platform/auth/capturecli/capturecli.go": "ParseRefreshTokenStdin accepte une ligne au format `SPNKR_OAUTH_REFRESH_TOKEN_X=valeur` collée par l'utilisateur (ergonomie de cmd/token-import). String match sur stdin, JAMAIS une lecture d'environnement.",
 }
 
@@ -123,35 +132,35 @@ func TestSentinel_NoNewEnvVarReaders(t *testing.T) {
 
 // ─── Guard 2 : auth.EnvRefreshTokenForGamertag ────────────────────────────
 
-// allowedEnvHelperCallers : appelants autorisés du helper exporté qui lit
-// l'env var. Il survit UNIQUEMENT pour la migration boot (kill-switch daté
-// 2026-10-01) ; tout autre appelant recréerait la source legacy sans jamais
-// écrire le littéral, donc sans déclencher le guard 1.
+// allowedEnvHelperCallers : VIDE depuis le 2026-09-13. Le helper
+// EnvRefreshTokenForGamertag a été supprimé avec la migration one-shot du boot
+// (ADR 0023 Phase 5 close ; critère tenu en prod : rt_migrated=0 à chaque boot
+// du 2026-06-14 au 2026-09-13). Le guard survit en RATCHET : il échoue si
+// quelqu'un réécrit ce helper et l'appelle, ce qui ressusciterait la source env
+// var sans jamais écrire le littéral — donc sans déclencher le guard 1.
 //
 // Mordant : ajouter `auth.EnvRefreshTokenForGamertag(gt)` dans un CLI ou un
 // service fait échouer ce test même si le fichier ne contient aucun littéral.
-var allowedEnvHelperCallers = map[string]string{
-	"internal/platform/auth/migration.go": "Définition + usage par la migration one-shot du boot (retrait 2026-10-01).",
-	"cmd/server/main.go":                  "legacyAuthSourcesReader de migrateLegacyAuthTokensAtBoot — seul appelant légitime.",
-}
+var allowedEnvHelperCallers = map[string]string{}
 
 func TestSentinel_NoNewEnvHelperCallers(t *testing.T) {
 	pattern := regexp.MustCompile(`\bEnvRefreshTokenForGamertag\(`)
 	violations := scanProductionGoFiles(t, allowedEnvHelperCallers, pattern.Match)
 
 	if len(violations) > 0 {
-		t.Errorf("REGRESSION ADR 0023 Phase 5 : %d appelant(s) de EnvRefreshTokenForGamertag hors migration boot "+
-			"— ce helper ressuscite la source env var :\n  - %s",
+		t.Errorf("REGRESSION ADR 0023 Phase 5 : %d appelant(s) de EnvRefreshTokenForGamertag — ce helper a été "+
+			"SUPPRIMÉ le 2026-09-13 ; le réécrire ressuscite la source env var :\n  - %s",
 			len(violations), strings.Join(violations, "\n  - "))
 	}
 }
 
 // ─── Guard 3 : duckdb.ReadOAuthRefreshToken (sync_meta legacy) ─────────────
 
-// duckdbAuthReadPattern détecte les appels au DERNIER lecteur DuckDB du
-// credential store legacy (sync_meta.oauth_refresh_token). Les écritures
-// (WriteOAuthRefreshToken) et les lectures MSAL n'existent plus depuis la
-// Phase 5 : leur simple réapparition ne compilerait pas.
+// duckdbAuthReadPattern détecte les appels au dernier lecteur DuckDB du
+// credential store legacy (sync_meta.oauth_refresh_token) — lui-même supprimé le
+// 2026-09-13 avec la migration boot. Les écritures (WriteOAuthRefreshToken) et
+// les lectures MSAL n'existent plus depuis la Phase 5 : leur simple réapparition
+// ne compilerait pas.
 //
 // INDÉPENDANT DE L'ALIAS D'IMPORT : internal/platform/duckdb est importé sous 5
 // noms dans le repo (duckdb, duckdbpkg, ddb, duckdbPlatform, platform_duckdb).
@@ -162,14 +171,13 @@ func TestSentinel_NoNewEnvHelperCallers(t *testing.T) {
 // échouer ce test, là où le motif précédent le laissait passer.
 var duckdbAuthReadPattern = regexp.MustCompile(`\b\w+\.ReadOAuthRefreshToken\b`)
 
-// allowedDuckDBAuthReaders : sites de PRODUCTION autorisés à lire
-// sync_meta.oauth_refresh_token. ADR 0023 Phase 5 (2026-08-25) : uniquement la
-// définition et la migration one-shot du boot (kill-switch daté, retrait cible
-// 2026-10-01).
-var allowedDuckDBAuthReaders = map[string]string{
-	"internal/platform/duckdb/queries_auth.go": "Définition de la fonction (dernier lecteur legacy, supprimé avec la migration boot le 2026-10-01).",
-	"cmd/server/main.go":                       "EXCEPTION UNIQUE : legacyAuthSourcesReader de migrateLegacyAuthTokensAtBoot (migration one-shot env+sync_meta → store).",
-}
+// allowedDuckDBAuthReaders : VIDE depuis le 2026-09-13. `queries_auth.go` et sa
+// fonction ReadOAuthRefreshToken ont été supprimés avec la migration one-shot du
+// boot : plus AUCUN code du projet ne lit sync_meta.oauth_refresh_token. Les
+// valeurs résiduelles restent dans les player DB jusqu'au drop physique de la
+// colonne (recette ADR 0026, prochain rebuild), mais elles n'ont plus de lecteur.
+// Le guard survit en RATCHET : réécrire un lecteur le fait échouer.
+var allowedDuckDBAuthReaders = map[string]string{}
 
 func TestSentinel_NoNewDuckDBAuthReaders(t *testing.T) {
 	violations := scanProductionGoFiles(t, allowedDuckDBAuthReaders, duckdbAuthReadPattern.Match)

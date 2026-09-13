@@ -14,7 +14,7 @@
 // Architecture identique à SharedPersister : 1 transaction par batch, INSERT-only,
 // idempotence par EXISTS(player_match_enrichment WHERE match_id = ? AND stage='live').
 //
-// Append-only #23046 : player_match_enrichment est append-only (id PK + stage).
+// Append-only #23645 : player_match_enrichment est append-only (id PK + stage).
 // Le collect live écrit UNE row stage='live' (baseline merge-on-read) ; l'ancre
 // d'idempotence est donc ciblée stage='live' (pas match_id seul, sinon une row
 // d'un autre stage — engagement/session post-sync — ferait skip tout le sous-batch).
@@ -235,7 +235,7 @@ func persistEnrichment(ctx context.Context, tx *sql.Tx, row *EnrichmentRow) erro
 		return nil
 	}
 	fields := enrichmentFields(row)
-	// Append-only #23046 : le collect live écrit UNE row baseline stage='live'
+	// Append-only #23645 : le collect live écrit UNE row baseline stage='live'
 	// (multi-colonnes). Les writers post-sync owner-stage l'overrident par colonne
 	// via la vue merge-on-read. Pas de split par stage ici (cf. décision design #1).
 	fields = append(fields, fieldEntry{"stage", "live"})
@@ -300,7 +300,7 @@ func persistCitations(ctx context.Context, tx *sql.Tx, rows []CitationInsert) er
 	if len(rows) == 0 {
 		return nil
 	}
-	// Append-only #23046 (Phase 2) : alloue UNE génération partagée par le batch
+	// Append-only #23645 (Phase 2) : alloue UNE génération partagée par le batch
 	// (match_citations_generation_seq) ; la vue match_citations_latest ne lit que
 	// la génération MAX par match_id. Plus de PK composite ni ON CONFLICT.
 	var gen int64
@@ -325,7 +325,7 @@ func persistPersonalScoreAwards(ctx context.Context, tx *sql.Tx, rows []Personal
 	if len(rows) == 0 {
 		return nil
 	}
-	// Append-only #23046 (Phase 2) : alloue UNE génération partagée par le batch
+	// Append-only #23645 (Phase 2) : alloue UNE génération partagée par le batch
 	// (psa_generation_seq) ; la vue personal_score_awards_latest ne lit que la
 	// génération MAX par (match_id,xuid). Sans ce marqueur, re-soumettre le même
 	// match dupliquerait les awards (le persister fait déjà un INSERT pur).

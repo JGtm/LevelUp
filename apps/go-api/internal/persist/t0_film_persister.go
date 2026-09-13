@@ -15,7 +15,7 @@
 // UN `UPDATE ... WHERE match_id = ?` par match, sequentiel, sous transaction et sous le writer
 // exclusif de l'appelant. C'est la forme AUTORISEE sur les tables critiques (cf.
 // `no_art_patterns_test.go` : la forme bulk `UPDATE ... FROM (VALUES ...)`, et l'UPDATE
-// set-based sans parametre, sont les deux declencheurs directs du bug ART #23046).
+// set-based sans parametre, sont les deux declencheurs directs du bug ART #23645).
 //
 // # CE QUE CE PERSISTER NE DECIDE PAS
 //

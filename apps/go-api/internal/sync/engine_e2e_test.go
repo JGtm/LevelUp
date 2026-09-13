@@ -31,7 +31,7 @@ func newInMemoryDBs(t *testing.T) (*sql.DB, *sql.DB) {
 	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
 	}
-	// Append-only #23046 : EnsurePlayerSchema crée la table append-only (id+stage) ;
+	// Append-only #23645 : EnsurePlayerSchema crée la table append-only (id+stage) ;
 	// cet appel crée la vue player_match_enrichment_latest (lue par le post-sync).
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerDB); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)

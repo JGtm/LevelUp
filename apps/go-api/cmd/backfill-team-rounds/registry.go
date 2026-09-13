@@ -108,7 +108,7 @@ func scanRegistryRounds(sc rowScanner) (RegistryRounds, bool, error) {
 //
 // Forme volontairement row-by-row, `WHERE match_id = ?`, toutes les valeurs liées à des
 // placeholders. Un `UPDATE … FROM (VALUES …)` ou un UPDATE set-based nu déclencheraient le
-// bug ART #23046 sur une table indexée ; le ratchet `internal/sync/no_art_patterns_test.go`
+// bug ART #23645 sur une table indexée ; le ratchet `internal/sync/no_art_patterns_test.go`
 // les interdit dans le code serveur mais EXCLUT explicitement `cmd/` de son périmètre.
 // C'est donc `no_bulk_update_test.go`, local à ce paquet, qui protège réellement la forme.
 func (r sqlRegistry) WriteRounds(ctx context.Context, matchID string, won0, won1, total int) error {

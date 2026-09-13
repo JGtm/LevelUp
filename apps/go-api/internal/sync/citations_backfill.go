@@ -298,7 +298,7 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 
 		compositeDeltas := analysis.ComputeCompositeTransitions(cumulPre, cumulPost, tierMax, mappings)
 
-		// Append-only #23046 (Phase 2) : plus de DELETE composites + write partiel.
+		// Append-only #23645 (Phase 2) : plus de DELETE composites + write partiel.
 		// On écrit une génération COMPLÈTE (feuilles préservées à l'identique +
 		// composites recalculés) ; writeCitations alloue une nouvelle génération qui
 		// supersède l'ancienne via match_citations_latest. Si l'ensemble est vide, la

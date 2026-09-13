@@ -60,16 +60,19 @@ carte   = "Banished Narrows"
 raison  = "CTF multi-manche ; le pont d'identite par manche ne tient pas encore dessus (defaut ouvert au registre) — a surveiller explicitement tant qu'il n'est pas ferme"
 
 # --- Oddball --------------------------------------------------------------------------------
-# Seul calque de "portage" qui n'a jamais ete instruit apres le balayage final (schema 41) :
-# d9781168 perd 6 portages de crane (36 -> 30, schema 23) sans qu'aucune des quatre
-# regressions candidates du balayage ne l'explique. Le garder au corpus, c'est refuser de
-# perdre CE signal-la une seconde fois.
+# LE RESIDU QUI MOTIVAIT CETTE ENTREE EST FERME (lot 6.2, 2026-09-10) : les 6 portages de crane
+# "perdus" (36 -> 30) ont ete REFUTES au HEAD — les 36 portages sont identiques du schema 48 au
+# HEAD, et ce qui manquait etait les VIES (19 publiees sans xuid au 48, 0 au HEAD, bissection
+# jusqu'a b6b0ee4c5). Le temoin reste au corpus pour ce qu'il EXERCE, pas pour ce qu'il a
+# revele : c'est le seul film du parc qui porte le calque skullCarries (porteur du crane par
+# canal de score, schema 23) ET son pont d'identite complete (SkullInput.Identity). Aucun autre
+# temoin ne couvre cette chaine.
 [[temoin]]
 id      = "d9781168"
 famille = "oddball"
 mode    = "Oddball:Arena"
 carte   = "Dredge"
-raison  = "porte le calque skullCarries (portages de crane) ; residu non instruit du balayage final (36 -> 30, schema 23) — surveiller toute perte supplementaire"
+raison  = "seul film du parc a porter le calque skullCarries (porteur du crane par canal de score, schema 23) et son pont d'identite complete ; couverture de reference 82,2 % de l'oracle API, 0 portage fantome — toute perte sur ce temoin est une regression de cette chaine-la"
 
 # --- Assaut / bombe -------------------------------------------------------------------------
 # Seul match Assaut du parc local (facts_census du 2026-09-06 sur les 106 artefacts

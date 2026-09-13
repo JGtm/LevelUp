@@ -157,6 +157,21 @@ const (
 // LA PORTE REFUSE PLUTÔT QUE D'AVERTIR. Un calque « non publiable » doit être retiré de
 // l'écran, pas affiché avec une note en bas de page : un tir posé sur le mauvais joueur est
 // pire qu'un tir absent, et c'est la leçon que ce chantier a déjà payée.
+//
+// CE QUE LA BRANCHE `!c.Balanced()` GARDE VRAIMENT, ET CE QU'ELLE NE GARDE PAS (précisé le
+// 2026-09-13, G4). Sur un [LayerCoverage], l'invariant est VRAI PAR CONSTRUCTION :
+// `Available` est posé une fois à `len(events)` par l'appelant, puis chaque événement passe
+// par `count()`, qui incrémente EXACTEMENT un compteur. La somme ne peut donc diverger que
+// si une boucle oublie d'appeler `count()` ou l'appelle deux fois — c'est un garde-fou
+// CONTRE UNE FAUTE DE CODE dans un futur calque, pas un détecteur de perte de données. Le
+// lire comme « le calque a vérifié qu'il n'a rien perdu » serait une illusion de contrôle :
+// ce qu'il a perdu est dans `NoSlot`, `Ambiguous`, `OutOfWindow` et `Unpublished`, que la
+// branche suivante (`publishMinRatio`) et `warnIfLossy` regardent, elles.
+//
+// La protection RÉELLE contre le double comptage est ailleurs, et elle porte sur une autre
+// couverture : le troisième invariant de [FlagCarriesCoverage.Balanced] — un portage fermé
+// ne peuple qu'UN fermoir — qui, lui, peut échouer sur des données réelles, et qui a
+// effectivement échoué (revue 6.R, constat C1).
 func verdictOf(c LayerCoverage) string {
 	switch {
 	case c.Available == 0:
