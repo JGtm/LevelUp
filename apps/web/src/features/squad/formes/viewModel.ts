@@ -19,7 +19,7 @@ import type { FormesCardsText } from './cardsI18n'
 import { squadPlayerInk } from './colors'
 import { formatCount, formatMatchTime, formatPct, formatSigned } from './format'
 import type { FormesText } from './i18n'
-import { allMatches, measuredMatches } from './model/access'
+import { measuredMatches } from './model/access'
 import { weaponIndex } from './model/pads'
 
 /** Un membre de l'escouade affichée : son identité et son encre. */
@@ -38,7 +38,6 @@ export interface FormesViewModel {
   squad: FormesSquadMember[]
   weapons: Record<string, SquadFormesWeapon>
   measured: SquadFormesMatch[]
-  matches: SquadFormesMatch[]
   fmtPct: (v: number) => string
   fmtSigned: (v: number) => string
   fmtCount: (v: number, isDuration?: boolean) => string
@@ -95,7 +94,6 @@ export function buildFormesViewModel(
     squad,
     weapons,
     measured: measuredMatches(block),
-    matches: allMatches(block),
     fmtPct: (v) => formatPct(v, locale),
     fmtSigned: (v) => formatSigned(v, locale),
     fmtCount: (v, isDuration) => formatCount(v, locale, isDuration),

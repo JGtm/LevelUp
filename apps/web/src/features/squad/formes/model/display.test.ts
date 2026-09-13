@@ -39,6 +39,18 @@ describe('measuredWindow', () => {
     expect(w.unmeasured).toBe(75)
   })
 
+  // Le contrat ne LISTE plus les matchs sans film (ils n'alimentent aucune
+  // carte) : leur nombre vient des compteurs de portée, et le pied des formes
+  // doit dire la même chose qu'avant l'allègement.
+  it('compte les matchs sans film depuis la PORTÉE, pas depuis la liste', () => {
+    const block = scope(100, 4)
+    block.matches = (block.matches ?? []).filter((m) => m.measured) // 25 lignes
+    const w = measuredWindow(block)
+    expect(w.rows).toHaveLength(MATCH_ROWS_LIMIT)
+    expect(w.hidden).toBe(5)
+    expect(w.unmeasured).toBe(75)
+  })
+
   it('garde les PLUS RÉCENTS et les rend du plus ancien au plus récent', () => {
     const block = scope(100, 1)
     const w = measuredWindow(block, 3)
@@ -58,6 +70,12 @@ describe('measuredWindow', () => {
     const w = measuredWindow(block)
     expect(w.rows).toHaveLength(1) // le match d'index 0 reste mesuré
     expect(w.unmeasured).toBe(9)
+  })
+
+  it('ne rend jamais un compte négatif si les compteurs se contredisent', () => {
+    const block = scope(3, 1)
+    block.matches_measured = 99
+    expect(measuredWindow(block).unmeasured).toBe(0)
   })
 })
 
