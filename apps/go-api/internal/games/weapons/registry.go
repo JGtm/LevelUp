@@ -668,6 +668,13 @@ var weaponRegistryInfiniteFilmshell = []weaponNumericID{
 	{keyHinfShockRifle, 0x1a22fee642c9679f}, // Ranked
 	{"hinf_disruptor", 0x84bd29ed42c9679f},
 	{"hinf_mangler", 0x80977ba542c9679f},
+	// Mutilator — id filmshell pose le 2026-09-13. L entree `hinf_mutilator` du registre
+	// avait ete posee le 2026-09-10 SANS son id : la famille 0xd7915565 restait donc absente
+	// de `FilmshellWeaponKeysByFamily`, seule jointure famille -> weapon_key du catalogue de
+	// rejeu, et l arme s affichait « 0xD7915565 » sur les socles comme dans la vue de match.
+	// L id est MESURE : il vient de `labels.go` (seed weapon_labels, « Mutilator » /
+	// « Mutilateur », present depuis avril). Garde-rail : TestFilmshellCouvreLeSeedDeLabels.
+	{"hinf_mutilator", 0xd791556542c9679f},
 	{"hinf_pulse_carbine", 0x30484ea642c9679f},
 	{"hinf_stalker_rifle", 0xdaf193c742c9679f},
 	{"hinf_vestige_carbine", 0x3e07021742c9679f},

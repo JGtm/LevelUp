@@ -40,7 +40,11 @@ import (
 // document sans armes — le rejeu se sert entier, mais le journal doit les distinguer
 // (même règle que la table d'objectifs).
 func (s *replayService) resolveWeaponLabels(ctx context.Context, doc *replay.ReplayDocument) {
-	if len(doc.WeaponLabels) == 0 {
+	// Un document sans aucune arme — ni libellé cuit, ni loadout, ni tir, ni socle — n'a rien
+	// à résoudre. Ne tester que `WeaponLabels` laisserait muet un artefact cuit AVANT que le
+	// registre connaisse ses armes : c'est précisément le cas que la complétion répare.
+	if len(doc.WeaponLabels) == 0 &&
+		len(doc.Loadouts) == 0 && len(doc.Shots) == 0 && len(doc.WeaponPads) == 0 {
 		return
 	}
 	cat, err := replaylabels.Load(s.repoRoot, s.titleSlug)
@@ -51,6 +55,15 @@ func (s *replayService) resolveWeaponLabels(ctx context.Context, doc *replay.Rep
 	}
 	if len(cat.Keys) == 0 {
 		return
+	}
+	// COMBLER D'ABORD, RÉSOUDRE ENSUITE. Une arme entrée au registre APRÈS la cuisson de
+	// l'artefact n'a aucun libellé dedans : elle s'affiche en hexadécimal (« 0xD7915565 » pour
+	// le Mutilator, jusqu'au 2026-09-13). Le catalogue de la requête la connaît désormais, et
+	// la même règle qui fait poser la clé ici fait poser le nom : on ne stocke jamais une
+	// résolution qui peut s'améliorer. Les libellés déjà cuits ne sont pas touchés.
+	if n := replay.CompleteWeaponLabels(doc, cat); n > 0 {
+		slog.InfoContext(ctx, "rejeu 2D : armes nommées à la requête (artefact cuit avant leur entrée au registre)",
+			"ajoutees", n, "titleSlug", s.titleSlug)
 	}
 	for id, lbl := range doc.WeaponLabels {
 		family, ok := replay.FamilyOfWeaponID(id)
