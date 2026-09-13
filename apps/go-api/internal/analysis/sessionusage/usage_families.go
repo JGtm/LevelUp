@@ -84,7 +84,7 @@ func computePadFamilies(playerXUID string, measured []MatchInput) []domain.Sessi
 
 // computePowerups agrège les occupations de socle de bonus par famille (clé
 // canonique verbatim, "powerup_camo"...), triées par clé.
-func computePowerups(measured []MatchInput, durationSeconds float64) []domain.SessionUsagePowerup {
+func computePowerups(measured []MatchInput, matchCount int) []domain.SessionUsagePowerup {
 	totals := map[string]int{}
 	for i := range measured {
 		for fam, v := range measured[i].PowerupPickups {
@@ -101,7 +101,7 @@ func computePowerups(measured []MatchInput, durationSeconds float64) []domain.Se
 		out = append(out, domain.SessionUsagePowerup{
 			FamilyKey:   fam,
 			Occupations: totals[fam],
-			Per10Min:    per10Min(float64(totals[fam]), durationSeconds),
+			PerMatch:    perMatch(float64(totals[fam]), matchCount),
 		})
 	}
 	return out

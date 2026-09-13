@@ -118,6 +118,16 @@ type TacticalRepository interface {
 	// Meme portee que KillPositions : tous les joueurs, l'axe « qui » se tranche au service.
 	MortsAvecContexte(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalMortsContexte, error)
 
+	// MortsParCarte rend MES morts localisees du perimetre, GROUPEES PAR CARTE — la
+	// matiere du mini-plan de chaque vignette de l'ecran d'entree (lot F).
+	//
+	// ELLE NE LEVE AUCUNE GARDE DE `KillPositions`, qui refuse toujours une carte vide :
+	// celle-la rend une GRILLE, qui n'a de sens que carte par carte ; celle-ci rend des
+	// points DEJA groupes par carte, dont chaque groupe devient sa propre grille. Elle est
+	// aussi bien plus etroite — une seule face (la victime, et c'est le joueur de la page),
+	// deux colonnes, le meme perimetre en liste blanche.
+	MortsParCarte(ctx context.Context, filtre domain.TacticalQuery) (map[string][]domain.PositionSample, error)
+
 	// MatchsOuvrables verifie, pour la liste de match_id donnee, lesquels `playerXUID` a
 	// REELLEMENT joues (ADR 0029, meme garde que Couche B / IsParticipant) et rend leur
 	// date de debut canonique — le tri des contributions d'une cellule s'appuie dessus. Un

@@ -29,6 +29,8 @@ import {
 } from './TimeseriesSquadAdapted'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
 import { TimeseriesEngagementGapTrend } from './TimeseriesEngagementGapTrend'
+import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
+import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
@@ -103,8 +105,13 @@ export function TimeseriesProgressionTab({
     <div className="space-y-8">
       {/* Premier frag / première mort (gauche, bande solo) | timeseries.14 — Par
           minute (droite). Titre et état vide portés par le manifest partagé
-          first_blood — même vocabulaire que l'Escouade et les Sessions. */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          first_blood — même vocabulaire que l'Escouade et les Sessions.
+
+          `items-center` (2026-09-13) : la bande de gauche est courte — deux pistes — là où
+          le graphe de droite occupe toute la hauteur de la rangée. Étirée par le défaut
+          `stretch`, elle se collait en haut avec un grand vide sous elle ; centrée, elle
+          regarde son voisin dans les yeux. */}
+      <div className="grid grid-cols-1 items-center gap-4 lg:grid-cols-2">
         <FirstBloodLanes
           data={firstBlood}
           maxSec={firstBloodMaxSec(firstBlood)}
@@ -215,25 +222,35 @@ export function TimeseriesProgressionTab({
         perDeathLabel={t('timeseries.progression.per_death')}
       />
 
-      {/* Engagement — pleine largeur. EngagementTimeseriesSection
-          rend déjà sa propre ChartCard avec titre interne, donc pas de
-          wrapper supplémentaire (sinon double titre). Gaté sur `engagement`. */}
+      {/* Engagement. EngagementTimeseriesSection rend déjà sa propre ChartCard avec titre
+          interne, donc pas de wrapper supplémentaire (sinon double titre). Gaté sur
+          `engagement`. */}
       <FeatureGate capability="engagement">
-        <EngagementTimeseriesSection
-          playerSlug={playerSlug}
-          filters={soloFilterContext}
-          filterHash={filterContextHash}
-          limit={30}
-        />
-        {/* Écart d'engagement cumulé (P4) — adjacent, réutilise la même query
-            d'engagement (dédup cache TanStack Query). */}
-        <TimeseriesEngagementGapTrend
-          playerSlug={playerSlug}
-          filters={soloFilterContext}
-          filterHash={filterContextHash}
-          limit={30}
-        />
+        {/* Engagement (gauche) | Écart d'engagement cumulé (droite), sur UNE rangée
+            (2026-09-13) : les deux lisent la même série et se répondent — empilés, il
+            fallait faire défiler pour comparer une pointe d'engagement à son effet cumulé.
+            L'Écart réutilise la même query (dédup cache TanStack Query). */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <EngagementTimeseriesSection
+            playerSlug={playerSlug}
+            filters={soloFilterContext}
+            filterHash={filterContextHash}
+            limit={30}
+          />
+          <TimeseriesEngagementGapTrend
+            playerSlug={playerSlug}
+            filters={soloFilterContext}
+            filterHash={filterContextHash}
+            limit={30}
+          />
+        </div>
       </FeatureGate>
+
+      {/* Usages d'équipement — section migrée de la Synthèse vers cet onglet le 2026-09-13.
+          Aucune requête neuve : le bloc arrive avec cette même réponse de page. Les deux
+          cartes se retirent d'elles-mêmes quand le bloc est absent ou indisponible pour ce
+          titre. */}
+      <EquipmentUsageSection usage={data.equipment_usage} mode="solo" t={USAGE_TEXT[locale]} locale={locale} />
 
       {/* Intensité — profil médian des parts de frags par phase + enveloppe
           P25–P75 (panneau solo pleine largeur). */}

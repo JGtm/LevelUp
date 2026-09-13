@@ -52,9 +52,16 @@ function tupleOf(d: CellDatum): RawTuple {
 }
 
 interface CapturedOption {
-  visualMap: { min: number; max: number; inRange: { color: string[] } }
-  xAxis: { data: string[] }
-  yAxis: { data: string[] }
+  visualMap: {
+    min: number
+    max: number
+    inRange: { color: string[] }
+    orient?: string
+    formatter?: (v: number) => string
+    text?: [string, string]
+  }
+  xAxis: { data: string[]; name?: string }
+  yAxis: { data: string[]; name?: string; inverse?: boolean }
   tooltip: { formatter: (p: unknown) => string }
   series: Array<{ data: CellDatum[] }>
 }
@@ -74,13 +81,29 @@ describe('SynthesisHeatmapChart — migration Heatmap2DChart (lot C2)', () => {
     expect(option.visualMap.inRange.color.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('Lundi en haut, Dimanche en bas (parité avec l’ancienne implémentation `yAxis.inverse`)', async () => {
+  // FORME RESTAURÉE le 2026-09-13 : les jours sont émis DANS LE SENS DE LA SEMAINE et
+  // c'est `yAxis.inverse` qui met Lundi en haut — l'ordre des données ne porte plus une
+  // décision d'affichage (cf. doc de tête du composant).
+  it('Lundi en haut, Dimanche en bas, par axe INVERSÉ', async () => {
     renderWithProviders(<SynthesisHeatmapChart cells={[cell({ dow: 0, hour: 0, count: 1, win_rate: 1 })]} />)
     await screen.findByTestId('synthesis-heatmap-stub')
     const option = captured[captured.length - 1].option as CapturedOption
-    // Axe Y catégoriel NON inversé : le DERNIER index se peint en haut.
-    expect(option.yAxis.data[0]).toBe('Dim')
-    expect(option.yAxis.data[option.yAxis.data.length - 1]).toBe('Lun')
+    expect(option.yAxis.data[0]).toBe('Lun')
+    expect(option.yAxis.data[option.yAxis.data.length - 1]).toBe('Dim')
+    expect(option.yAxis.inverse).toBe(true)
+  })
+
+  // Les trois autres traits du rendu restauré : les deux axes portent leur titre, et
+  // l'échelle de couleur est VERTICALE, graduée en pourcentage.
+  it('les deux axes sont titrés et l’échelle de couleur est verticale, en pourcentage', async () => {
+    renderWithProviders(<SynthesisHeatmapChart cells={[cell({ dow: 0, hour: 0, count: 1, win_rate: 1 })]} />)
+    await screen.findByTestId('synthesis-heatmap-stub')
+    const option = captured[captured.length - 1].option as CapturedOption
+    expect(option.xAxis.name).toBe('Heure')
+    expect(option.yAxis.name).toBe('Jour')
+    expect(option.visualMap.orient).toBe('vertical')
+    expect(option.visualMap.formatter?.(0.5)).toBe('50%')
+    expect(option.visualMap.text?.[0]).toBe('Victoires')
   })
 
   it('l’axe des heures couvre 00h à 23h, dans l’ordre', async () => {

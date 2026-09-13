@@ -358,6 +358,9 @@ export function MatchViewPage() {
             <MatchKillDistanceSection
               players={combat_tab.kill_distance_by_weapon}
               scoreboard={scoreboard}
+              roster={roster}
+              meXUID={meXUID}
+              friendGamertags={friendGamertags}
               t={t}
             />
             {/* Rangée suivante : Médailles À GAUCHE des Citations — grille fluide

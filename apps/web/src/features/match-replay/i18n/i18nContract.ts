@@ -10,7 +10,6 @@
  * LA PARITÉ FR/EN RESTE TENUE PAR LE TYPAGE : `Record<ReplayLocale, ReplayText>` dans
  * `i18n.ts` refuse toute langue à laquelle il manque un champ.
  */
-import type { PadControlGapKey } from '../model/padControlLogic'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
 
 /**
@@ -92,19 +91,21 @@ export interface EquipmentUsageText {
    * justement ne pas être établie. D'où deux libellés propres, et le typage tient la parité.
    */
   activeFamily: Record<'camo' | 'overshield', string>
-  activeCount: string
-  activeDuration: string
   /**
-   * LES DEUX COLONNES « FRAGS SOUS <FAMILLE> » (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.2,
-   * décision utilisateur 8a/8b) : la somme des frags du PORTEUR pendant ses épisodes de cette
-   * famille. En-tête complet plutôt que la composition `activeFamily` + suffixe (contrairement
-   * à `activeCount`/`activeDuration`) parce que la phrase se lit seule en tête de colonne
-   * étroite — « Frags sous camo » porte son sens, « Camouflage (Frags) » l'aurait fait deviner.
-   * La réserve mesurée (source non distinguée, bornes approximatives, camo sous le seuil de
-   * mesure en lecture large) est celle de `groupActiveHint`, pas un second texte : ces colonnes
-   * sont des sous-colonnes du MÊME état mesuré.
+   * LE DÉTAIL D'UNE CELLULE D'ÉTAT ACTIF, en infobulle (2026-09-13). Les trois colonnes
+   * « (épisodes) / (durée) / frags sous X » ont fusionné en UNE colonne de comptes : la durée
+   * cumulée et les frags qualifient ce compte au survol, ils n'ouvrent plus deux colonnes
+   * d'unités différentes sur la même mesure.
    */
-  activeKillsFamily: Record<'camo' | 'overshield', string>
+  activeCellTipFmt: (uses: number, duration: string, kills: number | null) => string
+  /**
+   * L'EN-TÊTE de la colonne d'un état actif. Le nom de famille SEUL ne suffit pas : la colonne
+   * fusionnée « équipement » nomme déjà le power-up du même nom (« Surbouclier »), et deux
+   * colonnes homonymes côte à côte ne se distinguent plus (la table des socles nomme même le
+   * camouflage « Camouflage actif »). Le qualificatif dit ce que CELLE-CI compte : les
+   * UTILISATIONS de l'effet, pas l'objet qu'on a pris.
+   */
+  activeColumnFmt: (family: string) => string
   /**
    * LA COLONNE FUSIONNÉE « équipement » (E2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : REMPLACE
    * `groupDeployed`/`groupDropped` — une famille, trois issues empilées (utilisé / gardé sans
@@ -129,10 +130,6 @@ export interface EquipmentUsageText {
    * réserve se montre au lieu de disqualifier la troisième).
    */
   coverageUnknownOriginFmt: (count: number) => string
-  groupGrenades: string
-  groupGrenadesHint: string
-  /** Repli quand le catalogue du titre ne nomme pas ce rang de grenade (le rang reste vrai). */
-  grenadeRankFmt: (rank: number) => string
   /** La ligne ANONYME, au niveau du match — jamais rattachée à un joueur. */
   powerupPads: string
   powerupPadsHint: string
@@ -142,7 +139,6 @@ export interface EquipmentUsageText {
   coverageGrappleFmt: (pulls: number, lives: number) => string
   /** Gestes mesurés dont le film ne nomme pas l'auteur : comptés hors tableau, jamais versés. */
   unattributedFmt: (count: number) => string
-  notMeasured: string
   /**
    * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`, LOT F.3) : « N frags
    * sous camouflage » / « N frags sous surbouclier », le nombre RÉEL du meilleur épisode du
@@ -175,12 +171,6 @@ export interface PadControlText {
   title: string
   /** Infobulle du titre : d'où vient l'attribution, et ce qu'elle refuse de faire. */
   titleHint: string
-  /**
-   * LE GRAPHE (2026-09-03) : une arme par ligne, deux bâtons superposés, une échelle commune.
-   * `axisPickups` nomme cette échelle — sans lui, une graduation « 0 1 2 3 » ne dit pas de
-   * quoi elle compte les unités.
-   */
-  axisPickups: string
   /** Infobulle d'un segment : le joueur, son camp, le socle, ses prises. */
   barTipFmt: (player: string, team: string, weapon: string, count: number) => string
   /**
@@ -189,16 +179,6 @@ export interface PadControlText {
    * dire « ce socle a changé de mains plus souvent que la ligne ne le montre » sans inventer.
    */
   unnamedFmt: (count: number) => string
-  /** Le dénominateur : « N prises attribuées sur M occupations de socle ». */
-  attributedFmt: (attributed: number, occupations: number) => string
-  /** L'annonce du reste, avant la ventilation par cause. */
-  missingFmt: (missing: number) => string
-  /**
-   * UN LIBELLÉ PAR CAUSE, et le typage tient la parité : `PadControlGapKey` énumère les cinq
-   * raisons pour lesquelles une occupation reste hors tableau, et aucune ne peut être oubliée
-   * dans une langue.
-   */
-  gapFmt: Record<PadControlGapKey, (count: number) => string>
 }
 
 export interface ReplayText {

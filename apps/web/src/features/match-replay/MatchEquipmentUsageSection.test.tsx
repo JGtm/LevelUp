@@ -167,7 +167,6 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
       // E2 (2026-09-09) : `groupDeployed`/`groupDropped` ont fusionné en UNE colonne
       // « équipement » par famille (P2/P3) — plus de section séparée à chercher ici.
       t.equipmentUsage.groupEquipment,
-      t.equipmentUsage.groupGrenades,
     ]) {
       expect(vue.getAllByText(famille).length).toBeGreaterThan(0)
     }
@@ -181,14 +180,12 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
     // Familles de pose : libellés de `placementFamily` (par règle de rendu).
     expect(vue.getByText(t.placementFamily.sensor)).toBeTruthy()
     expect(vue.getByText(t.placementFamily.field)).toBeTruthy()
-    // Type de grenade : le catalogue bilingue du DOCUMENT.
-    expect(vue.getByText('Fragmentation')).toBeTruthy()
-    // États actifs : nombre ET durée cumulée.
-    expect(vue.getByText(`Camouflage (${t.equipmentUsage.activeCount})`)).toBeTruthy()
-    expect(vue.getByText(`Camouflage (${t.equipmentUsage.activeDuration})`)).toBeTruthy()
-    // Frags sous effet actif (LOT F.2) : en-tête complet, une colonne par famille mesurée.
-    expect(vue.getByText(t.equipmentUsage.activeKillsFamily.camo)).toBeTruthy()
-    expect(vue.getByText(t.equipmentUsage.activeKillsFamily.overshield)).toBeTruthy()
+    // AUCUNE colonne de grenade depuis le 2026-09-13 (retrait demandé par l'utilisateur).
+    expect(vue.queryByText('Fragmentation')).toBeNull()
+    // États actifs : UNE colonne par famille, nommée par la famille seule — plus de suffixe
+    // « (épisodes) » ni « (durée) », plus de colonne « Frags sous … ».
+    expect(vue.getByText(t.equipmentUsage.activeColumnFmt(t.equipmentUsage.activeFamily.camo))).toBeTruthy()
+    expect(vue.getByText(t.equipmentUsage.activeColumnFmt(t.equipmentUsage.activeFamily.overshield))).toBeTruthy()
   })
 
   it('rend une ligne par joueur, y compris celui que le scoreboard ignore', () => {
@@ -209,14 +206,18 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
     expect(vue.getByLabelText(tip('Delta', t.equipmentUsage.groupGrapple, '0'))).toBeTruthy()
   })
 
-  it('affiche la durée cumulée en m:ss, et « 0:00 » quand la mesure vaut zéro', () => {
+  it('la durée cumulée et les frags passent dans l’INFOBULLE de la cellule, plus dans une colonne', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    const duree = `Camouflage (${t.equipmentUsage.activeDuration})`
-    const tip = t.equipmentUsage.gridTipFmt
-    expect(vue.getByLabelText(tip('Alpha', duree, '0:05'))).toBeTruthy()
+    const u = t.equipmentUsage
+    const tip = u.gridTipFmt
+    expect(
+      vue.getByLabelText(tip('Alpha', u.activeColumnFmt(u.activeFamily.camo), u.activeCellTipFmt(1, '0:05', null))),
+    ).toBeTruthy()
     // Bravo n'a aucun épisode de camouflage : la mesure a eu lieu et vaut zéro.
-    expect(vue.getByLabelText(tip('Bravo', duree, '0:00'))).toBeTruthy()
+    expect(
+      vue.getByLabelText(tip('Bravo', u.activeColumnFmt(u.activeFamily.camo), u.activeCellTipFmt(0, '0:00', null))),
+    ).toBeTruthy()
   })
 
   it('un épisode MESURÉ de durée nulle s’écrit « 0:00 », pas « — »', () => {
@@ -230,12 +231,11 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
       ],
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
-    const tip = t.equipmentUsage.gridTipFmt
+    const u = t.equipmentUsage
     expect(
-      vue.getByLabelText(tip('Alpha', `Camouflage (${t.equipmentUsage.activeCount})`, '1')),
-    ).toBeTruthy()
-    expect(
-      vue.getByLabelText(tip('Alpha', `Camouflage (${t.equipmentUsage.activeDuration})`, '0:00')),
+      vue.getByLabelText(
+        u.gridTipFmt('Alpha', u.activeColumnFmt(u.activeFamily.camo), u.activeCellTipFmt(1, '0:00', null)),
+      ),
     ).toBeTruthy()
   })
 
@@ -338,7 +338,7 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     expect(vue.queryByText(t.equipmentUsage.coverageUnknownOriginFmt(1))).toBeNull()
   })
 
-  it('n’ouvre AUCUNE colonne pour le répulseur ni le propulseur, et dit pourquoi', () => {
+  it('n’ouvre AUCUNE colonne pour le répulseur ni le propulseur', () => {
     poserArtefact({
       ...TEMOIN,
       equipmentPlacements: [
@@ -347,7 +347,6 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
       ],
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
-    expect(vue.getByText(t.equipmentUsage.notMeasured)).toBeTruthy()
     // Le témoin garde les épisodes camo/surbouclier de TEMOIN (non écrasés) : la colonne
     // « équipement » existe donc toujours pour EUX (E2, décision D9 amendée), mais ni le
     // répulseur ni le propulseur n'y ouvrent de colonne — c'est ce que ce test protège.
@@ -404,11 +403,11 @@ describe('MatchEquipmentUsageSection — le repli « game changers » (plan 2026
     expect(vue.queryByRole('button', { name: /Voir plus/ })).toBeNull()
   })
 
-  it('les GRENADES restent visibles sans déplier (hors vote, décision D4)', () => {
+  it('les GRENADES n’ont plus aucune colonne (retrait utilisateur du 2026-09-13)', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    expect(vue.getByText('Fragmentation')).toBeTruthy()
-    expect(vue.getAllByText(t.equipmentUsage.groupGrenades).length).toBeGreaterThan(0)
+    deplier(vue)
+    expect(vue.queryByText('Fragmentation')).toBeNull()
   })
 
   it('les FOOTNOTES comptent les familles repliées : la note du grappin reste, repliée', () => {
@@ -427,22 +426,21 @@ describe('MatchEquipmentUsageSection — parité FR/EN', () => {
     expect(vue.getByRole('region', { name: en.equipmentUsage.title })).toBeTruthy()
     expect(vue.getByRole('region', { name: en.equipmentUsage.viewByPlayer })).toBeTruthy()
     expect(vue.getAllByText(en.equipmentUsage.groupEquipment).length).toBeGreaterThan(0)
-    // Le catalogue du document est bilingue : le type de grenade suit la langue.
-    expect(vue.getByText('Frag')).toBeTruthy()
     expect(vue.getByText(en.placementFamily.sensor)).toBeTruthy()
-    // Frags sous effet actif (LOT F.2) : en-tête EN, pas la clé FR.
-    expect(vue.getByText(en.equipmentUsage.activeKillsFamily.camo)).toBeTruthy()
+    // États actifs : en-tête EN, pas la clé FR.
+    expect(vue.getByText(en.equipmentUsage.activeColumnFmt(en.equipmentUsage.activeFamily.camo))).toBeTruthy()
   })
 })
 
 describe('MatchEquipmentUsageSection — frags sous effet actif (LOT F.2)', () => {
-  it('écrit « — », jamais 0, quand la jointure n’a pas pu être tentée (killsRead faux)', () => {
+  it('dit « non mesurés », jamais 0, quand la jointure n’a pas pu être tentée (killsRead faux)', () => {
     // TEMOIN ne pose pas `coverage.equipment.killsRead` : la jointure est réputée non tentée.
     poserArtefact(TEMOIN)
     const vue = afficher()
+    const u = t.equipmentUsage
     expect(
       vue.getByLabelText(
-        t.equipmentUsage.gridTipFmt('Alpha', t.equipmentUsage.activeKillsFamily.camo, '—'),
+        u.gridTipFmt('Alpha', u.activeColumnFmt(u.activeFamily.camo), u.activeCellTipFmt(1, '0:05', null)),
       ),
     ).toBeTruthy()
   })
@@ -466,9 +464,10 @@ describe('MatchEquipmentUsageSection — frags sous effet actif (LOT F.2)', () =
       },
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
+    const u = t.equipmentUsage
     expect(
       vue.getByLabelText(
-        t.equipmentUsage.gridTipFmt('Alpha', t.equipmentUsage.activeKillsFamily.camo, '2'),
+        u.gridTipFmt('Alpha', u.activeColumnFmt(u.activeFamily.camo), u.activeCellTipFmt(1, '0:05', 2)),
       ),
     ).toBeTruthy()
   })

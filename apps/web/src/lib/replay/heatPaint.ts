@@ -76,6 +76,32 @@ export function heatRamp(stops: readonly string[]): string[] {
   return out
 }
 
+/**
+ * heatRampDivergent — la rampe d'une lecture SIGNÉE : même interpolation de couleur que
+ * `heatRamp`, mais l'OPACITÉ suit l'ÉCART AU NEUTRE (|2t − 1|), pas la position sur la
+ * rampe.
+ *
+ * POURQUOI. Sur une rampe divergente, le palier 0 est l'extrême NÉGATIF — une mesure forte.
+ * L'opacité croissante de `heatRamp` l'aurait rendu presque transparent, c'est-à-dire aurait
+ * effacé la moitié perdante du plan pour la seule raison qu'elle est à gauche.
+ */
+export function heatRampDivergent(stops: readonly string[]): string[] {
+  const rgb = stops.map(parseHex)
+  if (rgb.length < 2 || rgb.some((c) => c === null)) return []
+  const points = rgb as Rgb[]
+  const segments = points.length - 1
+  const out: string[] = []
+  for (let i = 0; i < HEAT_RAMP_STEPS; i++) {
+    const t = i / (HEAT_RAMP_STEPS - 1)
+    const seg = Math.min(segments - 1, Math.floor(t * segments))
+    const u = t * segments - seg
+    const ecart = Math.abs(2 * t - 1)
+    const alpha = HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * ecart
+    out.push(hexToRgba(mixHex(points[seg], points[seg + 1], u), Number(alpha.toFixed(3))))
+  }
+  return out
+}
+
 // ---------------------------------------------------------------------------------------
 // Tracé — LE NOYAU COMMUN : fusion des plages de même palier, bords alignés au pixel k.
 // ---------------------------------------------------------------------------------------
@@ -86,9 +112,32 @@ interface HeatScale {
   hi: number
 }
 
+/**
+ * Échelle SIGNÉE (lecture divergente, « Où je gagne ») : la grandeur va de −`borne` à
+ * +`borne` et le milieu de la rampe est le ZÉRO.
+ *
+ * POURQUOI UN TYPE À PART. La règle « une cellule ≤ 0 reste vide » est juste pour une
+ * grandeur positive (des morts, des kills, du temps) : une cellule jamais atteinte n'est
+ * pas une cellule froide. Elle est FAUSSE pour un écart signé, où une valeur négative est
+ * une mesure — et la seule qui dise « j'y perds ». Appliquée telle quelle, elle effaçait
+ * tout le côté défaite du plan.
+ */
+interface HeatScaleSigned {
+  borne: number
+}
+
 /** cellIntensity rend la position d'une valeur sur [0, 1], ou null si jamais atteinte
  *  (valeur ≤ 0) — une cellule jamais vue reste VIDE plutôt que froide. */
-function cellIntensity(value: number, scale: HeatScale): number | null {
+function cellIntensity(value: number, scale: HeatScale | HeatScaleSigned): number | null {
+  if ('borne' in scale) {
+    // Le ZÉRO n'est pas une mesure ici non plus : il dit « autant gagné que perdu », et la
+    // maquette le laisse au neutre de la rampe plutôt que de le peindre.
+    if (value === 0 || !Number.isFinite(value)) return null
+    const borne = Math.abs(scale.borne)
+    if (!(borne > 0)) return value > 0 ? 1 : 0
+    const t = 0.5 + value / (2 * borne)
+    return t < 0 ? 0 : t > 1 ? 1 : t
+  }
   if (!(value > 0)) return null
   const span = scale.hi - scale.lo
   if (!(span > 0)) return 1
@@ -101,7 +150,7 @@ interface HeatSource {
   nx: number
   ny: number
   filled: number
-  scale: HeatScale
+  scale: HeatScale | HeatScaleSigned
   /** Valeur brute de la cellule (row, col) — 0 ou absente si jamais atteinte. */
   valueAt(row: number, col: number): number
 }
@@ -441,6 +490,11 @@ export interface TacticalGrid extends GridFrame {
   hi: number
   /** Nombre de cellules fréquentées (non nulles). */
   filled: number
+  /** Lecture SIGNÉE (« Où je gagne ») : `lo`/`hi` sont alors ignorés au profit de
+   *  `borne`, et les valeurs négatives sont peintes au lieu d'être effacées. */
+  signee?: boolean
+  /** Borne de l'échelle symétrique (`EchelleTactique.borne`), en unité de la lecture. */
+  borne?: number
 }
 
 /** buildTacticalGrid assemble le format de dessin depuis les cellules serveur : l'échelle
@@ -448,16 +502,30 @@ export interface TacticalGrid extends GridFrame {
 export function buildTacticalGrid(
   cells: TacticalCell[],
   gridSize: GridFrame,
-  scale: { lo: number; hi: number },
+  scale: { lo: number; hi: number; signee?: boolean; borne?: number },
   filled: number,
 ): TacticalGrid {
-  return { ...gridSize, cells, lo: scale.lo, hi: scale.hi, filled }
+  return {
+    ...gridSize,
+    cells,
+    lo: scale.lo,
+    hi: scale.hi,
+    filled,
+    signee: scale.signee,
+    borne: scale.borne,
+  }
 }
 
 /** tacticalIntensity : même règle que `heatIntensity`, pour une grille éparse (valeur passée
  *  directement, pas d'index). */
 export function tacticalIntensity(grid: TacticalGrid, value: number): number | null {
-  return cellIntensity(value, { lo: grid.lo, hi: grid.hi })
+  return cellIntensity(value, tacticalScale(grid))
+}
+
+/** L'échelle d'une grille tactique : symétrique quand la lecture est signée. */
+function tacticalScale(grid: TacticalGrid): HeatScale | HeatScaleSigned {
+  if (grid.signee) return { borne: grid.borne ?? grid.hi }
+  return { lo: grid.lo, hi: grid.hi }
 }
 
 /** Cadrage pour `drawTacticalHeatmap` : canvas cadré EXACTEMENT sur les bornes du raster
@@ -484,7 +552,7 @@ export function drawTacticalHeatmap(
     nx: grid.nx,
     ny: grid.ny,
     filled: grid.filled,
-    scale: { lo: grid.lo, hi: grid.hi },
+    scale: tacticalScale(grid),
     valueAt: (row, col) => byPosition.get(`${col},${row}`) ?? 0,
   }
   const geometry: HeatGeometry = {

@@ -4,6 +4,11 @@
  * Ce que la page décide : RIEN. Le tri, le verdict de plancher, la barre et la couverture
  * viennent de `tacticalLogic` (pur, testé seul) ; les libellés du manifeste `tactical.toml`.
  *
+ * DEUX ÉCRANS, UNE BASCULE (maquette 034b1915, portée le 2026-09-13). L'écran 2 est
+ * affiché dès qu'une carte est choisie ; les deux boutons `aria-pressed` permettent d'en
+ * REVENIR. Sans eux, une fois la carte ouverte, rien ne ramenait à la grille : il fallait
+ * le bouton « page précédente » du navigateur.
+ *
  * LE CLIC SÉLECTIONNE, IL N'OUVRE PAS ENCORE (décision de la phase 4, consignée au plan) :
  * la vue d'analyse d'une carte est la phase 5, GELÉE jusqu'au lot D de l'audit du rejeu, et
  * sa route n'existe pas. Un `Link` vers une route inexistante ne compilerait pas ; un
@@ -22,6 +27,7 @@
 import { useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
 
+import { Button } from '@/components/ui/button'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SectionCard } from '@/components/ui/section-card'
 import { usePageScope } from '@/lib/page-scope/usePageScope'
@@ -119,8 +125,18 @@ export function TacticalPage() {
   // ce que la grille sait DÉJÀ de la carte (même source que les vignettes) ; si la
   // grille n'a pas encore chargé (URL ouverte directement sur `?carte=`), l'id sert de
   // repli — jamais une chaîne vide.
+  const carteSelectionnee = scope.carte
+    ? cartes.find((c) => c.map_id === scope.carte)
+    : undefined
+  const bascule = (
+    <TacticalScreenSwitch
+      t={t}
+      surAnalyse={!!scope.carte}
+      retourGrille={() => setScope({ carte: '' })}
+    />
+  )
+
   if (scope.carte) {
-    const carteSelectionnee = cartes.find((c) => c.map_id === scope.carte)
     const nomAffiche = carteSelectionnee ? nomCarte(carteSelectionnee, locale) : scope.carte
     return (
       <>
@@ -132,6 +148,7 @@ export function TacticalPage() {
           setScope={setScope}
           coequipierOptions={coequipierOptions}
         />
+        {bascule}
         <TacticalAnalysisView
           playerSlug={playerSlug}
           mapId={scope.carte}
@@ -155,16 +172,18 @@ export function TacticalPage() {
         setScope={setScope}
         coequipierOptions={coequipierOptions}
       />
+      {bascule}
       <SectionCard
         title={t.mapsTitle}
         label={t.mapsLabel}
         footer={
           cartes.length > 0 ? (
             <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+              {/* UNE phrase (maquette 034b1915) : cartes, matchs et plancher. La paire
+                  couverture + note de plancher disait la même chose en deux temps. */}
               <p data-testid="tactical-couverture">
-                {t.coverage(couverture.cartes, couverture.matchs)}
+                {t.intro(couverture.cartes, couverture.matchs, plancher)}
               </p>
-              {plancher > 0 && <p className="mt-1">{t.floorNote(plancher)}</p>}
             </div>
           ) : undefined
         }
@@ -206,5 +225,53 @@ export function TacticalPage() {
         </div>
       </SectionCard>
     </>
+  )
+}
+
+/**
+ * TacticalScreenSwitch — la bascule « Grille des cartes / Analyse d'une carte ».
+ *
+ * DEUX BOUTONS `aria-pressed`, PAS DEUX LIENS : l'écran affiché est décidé par `?carte=`
+ * dans l'URL, donc le retour à la grille EFFACE ce paramètre — c'est un changement d'état
+ * de page, pas une navigation vers un autre document.
+ *
+ * « Analyse d'une carte » EST DÉSACTIVÉ tant qu'aucune carte n'est choisie : il n'y a rien
+ * à analyser, et un bouton actif qui ne ferait rien mentirait sur ce qu'il fait.
+ */
+function TacticalScreenSwitch({
+  t,
+  surAnalyse,
+  retourGrille,
+}: {
+  t: ReturnType<typeof getTacticalText>
+  surAnalyse: boolean
+  retourGrille: () => void
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={t.screenLabel}
+      className="flex gap-1 px-3 pt-3"
+      data-testid="tactical-screen-switch"
+    >
+      <Button
+        type="button"
+        size="sm"
+        variant={surAnalyse ? 'outline' : 'default'}
+        aria-pressed={!surAnalyse}
+        onClick={retourGrille}
+      >
+        {t.screenGrid}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={surAnalyse ? 'default' : 'outline'}
+        aria-pressed={surAnalyse}
+        disabled={!surAnalyse}
+      >
+        {t.screenMap}
+      </Button>
+    </div>
   )
 }

@@ -78,16 +78,48 @@ export function pointAttenue(point: SquadIsolementPoint): boolean {
   return point.part_isolee.echantillon_faible
 }
 
-const TAILLE_MIN = 6
-const TAILLE_MAX = 30
+/**
+ * TAILLE_SESSION — diamètre (px) d'un point de SESSION, le même pour tous.
+ *
+ * FIXE, ET C'EST LA CORRECTION DU 2026-09-13. Auparavant il croissait avec les morts
+ * examinées (6 + N, plafonné à 30) : sur des données réelles (jusqu'à 118 morts par
+ * session), TOUS les points de session saturaient à 30 px et recouvraient les gros points
+ * par joueur — l'utilisateur ne voyait plus qu'UNE tache. La taille est l'encodage du
+ * GROS point (« combien de morts »), et un seul encodage de taille par graphe : les
+ * sessions disent la DISPERSION, pas le volume.
+ */
+export const TAILLE_SESSION = 7
 
 /**
- * tailleDuPoint rend le rayon du marqueur (px, `symbolSize` ECharts) : croît avec le
- * nombre de morts examinées, plafonné pour qu'une session très chargée n'écrase pas les
- * autres points du nuage.
+ * Opacité d'un point de session (maquette 4c520da6 : « opacité ~0,45 ») : toutes les
+ * sessions restent visibles sans masquer les repères par joueur.
  */
-export function tailleDuPoint(mortsExaminees: number): number {
-  return Math.min(TAILLE_MAX, TAILLE_MIN + mortsExaminees)
+export const OPACITE_SESSION = 0.45
+
+const TAILLE_MEDIANE_MIN_ECHELLE = 18
+const TAILLE_MEDIANE_MAX_ECHELLE = 46
+
+/**
+ * tailleMedianeEchelle rend le diamètre (px) du gros point d'un joueur en projetant son
+ * TOTAL de morts examinées sur la plage réelle du nuage (`min`..`max` des totaux par
+ * joueur), et non sur une constante arbitraire.
+ *
+ * POURQUOI UNE ÉCHELLE RELATIVE. La version précédente (`16 + total / 2`, plafond 46)
+ * saturait dès 60 morts : sur un roster réel (plusieurs centaines de morts par joueur),
+ * les trois joueurs sortaient au MÊME diamètre et la taille ne disait plus rien. Projeté
+ * sur les extrêmes observés, l'écart redevient lisible — et la légende de taille peut
+ * nommer ces deux extrêmes (« N morts » / « M morts »), ce qu'une échelle absolue ne
+ * permettait pas.
+ *
+ * `min === max` (un seul joueur, ou totaux égaux) → la taille médiane de la plage : il n'y
+ * a pas d'écart à montrer.
+ */
+export function tailleMedianeEchelle(total: number, min: number, max: number): number {
+  const bas = TAILLE_MEDIANE_MIN_ECHELLE
+  const haut = TAILLE_MEDIANE_MAX_ECHELLE
+  if (max <= min) return (bas + haut) / 2
+  const t = Math.min(1, Math.max(0, (total - min) / (max - min)))
+  return bas + t * (haut - bas)
 }
 
 export interface PointMedianJoueur {
@@ -117,16 +149,20 @@ export function pointMedianJoueur(points: SquadIsolementPoint[]): PointMedianJou
   }
 }
 
-const TAILLE_MEDIANE_MIN = 16
-const TAILLE_MEDIANE_MAX = 46
 
 /**
- * tailleMedianeDuPoint rend le rayon (px) du GROS point médian d'un joueur (D4) : plage
- * délibérément plus large et un facteur d'atténuation (/2) sur le total des morts
- * examinées (qui cumule potentiellement de nombreuses sessions), pour que ce point reste
- * visuellement plus gros que le plus gros point de SESSION (`tailleDuPoint`) à décompte
- * égal, sans saturer dès la deuxième session agrégée.
+ * plafondAxe rend le HAUT d'un axe en pourcents : la plus grande valeur observée, arrondie
+ * au multiple de 10 au-dessus, avec un minimum de 20 pour qu'un nuage très tassé garde une
+ * échelle lisible.
+ *
+ * POURQUOI PAS 100 EN DUR. Les deux axes étaient bornés à 0..100 % : sur des données
+ * réelles (isolement sous 40 %, couverture sous 50 %), plus de la moitié du canvas restait
+ * vide et les trois repères par joueur se chevauchaient dans un mouchoir de poche —
+ * l'utilisateur n'y voyait qu'une tache. Le BAS reste ancré à ZÉRO : c'est ce qui garde la
+ * comparaison honnête entre joueurs, et ce qu'un axe tronqué ferait mentir.
  */
-export function tailleMedianeDuPoint(totalMortsExaminees: number): number {
-  return Math.min(TAILLE_MEDIANE_MAX, TAILLE_MEDIANE_MIN + totalMortsExaminees / 2)
+export function plafondAxe(valeurs: number[], minimum = 20): number {
+  if (valeurs.length === 0) return 100
+  const max = Math.max(...valeurs) * 100
+  return Math.max(minimum, Math.min(100, Math.ceil(max / 10) * 10))
 }

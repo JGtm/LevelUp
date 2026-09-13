@@ -38,7 +38,6 @@ export function getSquadEchangeText(locale: Locale) {
     lowSampleHint: (floor: number) => m('squad.echange.low_sample_hint', { floor }),
     badgeMostCovered: (player: string) => m('squad.echange.badge_most_covered', { player }),
     badgeLeastCovered: (player: string) => m('squad.echange.badge_least_covered', { player }),
-    badgeCoveredDetail: (n: number) => m('squad.echange.badge_covered_detail', { n }),
     noPairs: m('squad.echange.no_pairs'),
     emptyTitle: m('squad.echange.empty_title'),
     matrixTooltip: (avenger: string, avenged: string, n: number, perMatch: string) =>
@@ -55,7 +54,6 @@ export function getSquadEchangeText(locale: Locale) {
     delayWindow: (seconds: number) => m('squad.echange.delay_window', { seconds }),
 
     kpiLabel: m('squad.echange.kpi_label'),
-    kpiSecondary: (brut: number, n: number) => m('squad.echange.kpi_secondary', { brut, n }),
     kpiVsUsual: (delta: string) => m('squad.echange.kpi_vs_usual', { delta }),
 
     constatTitle: m('squad.echange.constat_title'),
@@ -64,6 +62,58 @@ export function getSquadEchangeText(locale: Locale) {
     constatAttention: (delta: string, rate: string, usual: string) =>
       m('squad.echange.constat_attention', { delta, rate, usual }),
     constatBasis: (n: number, matches: number) => m('squad.echange.constat_basis', { n, matches }),
+
+    // ── Maquette 4c520da6 : « Le compte » ────────────────────────────────────
+    compteTitle: m('squad.echange.compte_title'),
+    compteLabel: m('squad.echange.compte_label'),
+    compteSay: m('squad.echange.compte_say'),
+    compteFoot: m('squad.echange.compte_foot'),
+    kpiRateSub: (seconds: number) => m('squad.echange.kpi_rate_sub', { seconds }),
+    kpiDelayLabel: m('squad.echange.kpi_delay_label'),
+    kpiDelaySub: m('squad.echange.kpi_delay_sub'),
+    kpiDelayValue: (seconds: string) => m('squad.echange.kpi_delay_value', { seconds }),
+    kpiUnansweredLabel: m('squad.echange.kpi_unanswered_label'),
+    kpiUnansweredSub: (n: number) => m('squad.echange.kpi_unanswered_sub', { n }),
+    kpiUnansweredRateLabel: m('squad.echange.kpi_unanswered_rate_label'),
+    kpiUnansweredRateSub: m('squad.echange.kpi_unanswered_rate_sub'),
+    kpiNoValue: m('squad.echange.kpi_no_value'),
+
+    // ── « Combien, et à quelle vitesse » ─────────────────────────────────────
+    delaySay: (v: { morts: number; dedans: number; dehors: number; pic: string }) =>
+      m('squad.echange.delay_say', { ...v }),
+    delayFigure: (n: number, morts: number) => m('squad.echange.delay_figure', { n, morts }),
+    delayWindowMark: (seconds: number) => m('squad.echange.delay_window_mark', { seconds }),
+    delayFoot: (seconds: number) => m('squad.echange.delay_foot', { seconds }),
+
+    // ── « Qui couvre qui » ───────────────────────────────────────────────────
+    matrixFigure: (n: number) => m('squad.echange.matrix_figure', { n }),
+    matrixReceived: (n: number) => m('squad.echange.matrix_received', { n }),
+    matrixRampZero: m('squad.echange.matrix_ramp_zero'),
+    matrixRampMax: (n: number) => m('squad.echange.matrix_ramp_max', { n }),
+    matrixFootOrientation: m('squad.echange.matrix_foot_orientation'),
+
+    // ── « Donné et reçu, par coéquipier » ────────────────────────────────────
+    donneRecuTitle: m('squad.echange.donne_recu_title'),
+    donneRecuLabel: m('squad.echange.donne_recu_label'),
+    donneRecuSay: (v: { joueur: string; recu: number; donne: number }) =>
+      m('squad.echange.donne_recu_say', { ...v }),
+    donneRecuSayEquilibre: m('squad.echange.donne_recu_say_equilibre'),
+    donneRecuFigure: m('squad.echange.donne_recu_figure'),
+    donneRecuGiven: m('squad.echange.donne_recu_given'),
+    donneRecuReceived: m('squad.echange.donne_recu_received'),
+    donneRecuFoot: m('squad.echange.donne_recu_foot'),
+
+    // ── « Taux d'échange par session » ───────────────────────────────────────
+    sessionRateTitle: m('squad.echange.session_rate_title'),
+    sessionRateLabel: m('squad.echange.session_rate_label'),
+    sessionRateSay: (v: { bas: string; haut: string; taux: string; n: number }) =>
+      m('squad.echange.session_rate_say', { ...v }),
+    sessionRateFigure: (seconds: number) => m('squad.echange.session_rate_figure', { seconds }),
+    sessionRateFoot: m('squad.echange.session_rate_foot'),
+    sessionRateEmptyTitle: m('squad.echange.session_rate_empty_title'),
+    sessionRateEmptyDescription: (floor: number) =>
+      m('squad.echange.session_rate_empty_description', { floor }),
+    sessionRateYAxis: m('squad.echange.session_rate_y_axis'),
   }
 }
 

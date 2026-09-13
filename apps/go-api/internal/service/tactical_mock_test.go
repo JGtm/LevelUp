@@ -16,26 +16,29 @@ import (
 
 // mockTacticalRepo double port.TacticalRepository et retient ce qu'on lui demande.
 type mockTacticalRepo struct {
-	maps      []domain.TacticalMapRow
-	pos       domain.TacticalPositions
-	ev        domain.TacticalKillEvents
-	univ      domain.TacticalUnivers
-	morts     domain.TacticalMortsContexte
-	ouvrables map[string]time.Time
-	errMaps   error
-	errPos    error
-	errEv     error
-	errUniv   error
-	errMorts  error
-	errOuvr   error
+	maps             []domain.TacticalMapRow
+	pos              domain.TacticalPositions
+	ev               domain.TacticalKillEvents
+	univ             domain.TacticalUnivers
+	morts            domain.TacticalMortsContexte
+	mortsParCarte    map[string][]domain.PositionSample
+	ouvrables        map[string]time.Time
+	errMaps          error
+	errPos           error
+	errEv            error
+	errUniv          error
+	errMorts         error
+	errMortsParCarte error
+	errOuvr          error
 
-	vuMaps      domain.TacticalQuery
-	vuPos       domain.TacticalQuery
-	vuEv        domain.TacticalQuery
-	vuUniv      domain.TacticalQuery
-	vuMorts     domain.TacticalQuery
-	vuOuvrXUID  string
-	vuOuvrMatch []string
+	vuMaps          domain.TacticalQuery
+	vuPos           domain.TacticalQuery
+	vuEv            domain.TacticalQuery
+	vuUniv          domain.TacticalQuery
+	vuMorts         domain.TacticalQuery
+	vuMortsParCarte domain.TacticalQuery
+	vuOuvrXUID      string
+	vuOuvrMatch     []string
 }
 
 // Univers : la lecture d'OCCUPATION (phase 6) n'a besoin que de l'univers — ses valeurs
@@ -170,4 +173,24 @@ func universFiltre(u domain.TacticalUnivers, garde map[string]bool) domain.Tacti
 		}
 	}
 	return out
+}
+
+// MortsParCarte : les morts du joueur groupees par carte — la matiere des mini-plans des
+// vignettes (lot F). Le double honore la LISTE BLANCHE comme les autres lectures : un mock
+// qui l'ignorerait rendrait invisible tout defaut de perimetre.
+func (m *mockTacticalRepo) MortsParCarte(_ context.Context, q domain.TacticalQuery) (map[string][]domain.PositionSample, error) {
+	m.vuMortsParCarte = q
+	if m.errMortsParCarte != nil || !perimetreAFiltrer(q) {
+		return m.mortsParCarte, m.errMortsParCarte
+	}
+	garde := gardeDuPerimetre(q)
+	out := make(map[string][]domain.PositionSample, len(m.mortsParCarte))
+	for mapID, points := range m.mortsParCarte {
+		for _, p := range points {
+			if garde[p.MatchID] {
+				out[mapID] = append(out[mapID], p)
+			}
+		}
+	}
+	return out, nil
 }

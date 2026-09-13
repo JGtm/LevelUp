@@ -1,169 +1,187 @@
 /**
- * MatchPositionsHeatmap — heatmap 2D top-down (x,y) des positions joueurs
- * keyframe décodées du film (couche 3 weapon-attribution-v3).
+ * MatchPositionsHeatmap — « OÙ ÇA SE JOUE » : les positions du match, sur le PLAN du match.
  *
- * Source : GET /players/{slug}/matches/{matchId}/positions (DTO MatchPlayerPosition).
- * Les positions sont MATCH-LEVEL (§N de .ai/RESEARCH_THEATER_RE.md) : pas
- * d'attribution xuid. team vaut -1 (inconnu) ou 0/1 (best-effort). Quand au moins
- * une position a team != -1, on propose un filtre par équipe ; sinon densité
- * globale uniquement.
+ * CE BLOC A ÉTÉ REFAIT LE 2026-09-13, sur un constat de l'utilisateur : « "Carte de chaleur
+ * des positions" est hideux comme graphe et je ne sais pas ce que ça rend, à quoi ça sert ou
+ * quel est le narratif. » Il avait raison sur la FORME, pas sur la donnée : les positions
+ * keyframe décodées du film (couche 3 weapon-attribution-v3) sont bonnes, mais elles étaient
+ * binnées en une grille 20×20 posée sur les bornes du nuage, SANS fond de carte, avec un
+ * nombre écrit dans chaque case. Un damier de chiffres ne dit rien d'un terrain.
  *
- * Rendu : binning (x,y) en grille GRID_SIZE×GRID_SIZE sur les bornes du match →
- * densité par cellule → réutilise le wrapper Heatmap2DChart (axes catégoriels =
- * centres de bin arrondis ; value = compte de positions ; detail.count idem pour
- * le label/tooltip du wrapper).
+ * CE QU'IL RESTE : le même calque que l'onglet Tactique et que le rejeu 2D — le FOND DE CARTE
+ * du match (`…/replay/background`, calé au centimètre) et le noyau de tracé partagé
+ * (`lib/replay/heatPaint.ts`, `drawTacticalHeatmap`). La grille suit le pas du rejeu (0,5 m) et
+ * l'échelle quantile p50→p95 ; une cellule jamais atteinte reste vide.
  *
- * Dégradation : pas de positions (titre sans film / match non backfillé → 503 →
- * data undefined, ou décodage vide) → composant masqué proprement (retourne null).
+ * TROIS PORTES, ET ELLES DISENT TROIS CHOSES :
+ *   1. aucune position décodée (titre sans film, match non backfillé) -> rien ;
+ *   2. la carte du match n'a pas d'image figée (seules 21 en ont) -> rien : « Où ça se joue »
+ *      est un plan, et un plan sans fond est le damier qu'on vient de retirer ;
+ *   3. les positions tombent toutes hors du cadre du fond -> rien (rien à peindre).
+ *
+ * LES CAMPS SONT CEUX DU FILM, PAS CEUX DU TABLEAU DES SCORES. `team` vaut -1 (inconnu) ou
+ * 0/1, attribué par regroupement SPATIAL best-effort (§N de RESEARCH_THEATER_RE) : aucune
+ * jointure ne le relie à un xuid ni à un camp nommé. Le filtre écrit donc « Camp A » / « Camp
+ * B », jamais « mon équipe » / « adversaires » — nommer un camp qu'on n'a pas mesuré serait
+ * exactement la devinette que le reste de la page refuse.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
-import type { ChartSeries } from '@/components/charts/ChartCard'
+import { heatmapRampTokens } from '@/components/charts/heatmapColors'
+import { SectionCard } from '@/components/ui/section-card'
 import { Button } from '@/components/ui/button'
+import { resolveToken } from '@/lib/accessibility/resolveToken'
+import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchPlayerPosition } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
+import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
+import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
 
-/** Taille de la grille de binning (GRID_SIZE × GRID_SIZE cellules). */
-const GRID_SIZE = 20
-
-/** team = -1 → équipe non attribuée (best-effort §N). */
-const TEAM_UNKNOWN = -1
+import {
+  buildPositionsGrid,
+  coveredShare,
+  hasTeamSplit,
+  mapFrame,
+  positionsCellSize,
+} from './_positionsHeat'
 
 type TeamFilter = 'all' | 0 | 1
 
 interface MatchPositionsHeatmapProps {
+  playerSlug: string
+  matchId: string
   positions: MatchPlayerPosition[] | undefined
   locale: Locale
 }
 
 const TEXT = {
   fr: {
-    title: 'Carte de chaleur des positions',
-    teamAll: 'Global',
-    team0: 'Équipe A',
-    team1: 'Équipe B',
-    empty: 'Aucune position décodée pour ce match.',
-    note: 'Positions au niveau match (sans attribution joueur).',
+    title: 'Où ça se joue',
+    teamAll: 'Tous',
+    team0: 'Camp A',
+    team1: 'Camp B',
+    narrative:
+      'Les endroits de la carte les plus occupés pendant ce match, tous camps ou camp par camp. Lecture : plus c’est chaud, plus on y a passé de temps.',
+    coverageFmt: (cell: number, share: number, total: number) =>
+      `Grille de ${cell.toFixed(1).replace('.', ',')} m · ${Math.round(share * 100)} % des ${total} positions décodées tombent sur le plan. Camps attribués par regroupement spatial, sans nom de joueur.`,
   },
   en: {
-    title: 'Positions heatmap',
-    teamAll: 'Global',
-    team0: 'Team A',
-    team1: 'Team B',
-    empty: 'No positions decoded for this match.',
-    note: 'Match-level positions (no per-player attribution).',
+    title: 'Where it plays out',
+    teamAll: 'All',
+    team0: 'Side A',
+    team1: 'Side B',
+    narrative:
+      'The busiest spots of the map during this match, all sides or side by side. Read it this way: the hotter, the longer it was held.',
+    coverageFmt: (cell: number, share: number, total: number) =>
+      `${cell.toFixed(1)} m grid · ${Math.round(share * 100)}% of the ${total} decoded positions land on the plan. Sides inferred from spatial clustering, with no player name.`,
   },
-} as const
+} as const satisfies Record<Locale, unknown>
 
-/**
- * binPositionsToHeatmap binne un set de positions (x,y) en une grille
- * GRID_SIZE×GRID_SIZE sur les bornes [min,max] de chaque axe, et renvoie un
- * datapoint par cellule NON VIDE (x/y = centre de bin arrondi, value = densité).
- *
- * Pur (testable sans React). Retourne [] si positions est vide ou si toutes les
- * positions sont colinéaires sur un axe de span nul (bornes dégénérées tolérées
- * via un span minimal de 1 pour éviter une division par zéro).
- */
-export function binPositionsToHeatmap(positions: MatchPlayerPosition[]): ChartPointHeatmap[] {
-  if (positions.length === 0) return []
-
-  let xmin = positions[0].x
-  let xmax = positions[0].x
-  let ymin = positions[0].y
-  let ymax = positions[0].y
-  for (const p of positions) {
-    if (p.x < xmin) xmin = p.x
-    if (p.x > xmax) xmax = p.x
-    if (p.y < ymin) ymin = p.y
-    if (p.y > ymax) ymax = p.y
-  }
-  const xSpan = Math.max(xmax - xmin, 1)
-  const ySpan = Math.max(ymax - ymin, 1)
-
-  // Accumulation densité par (xi, yi) de cellule.
-  const counts = new Map<string, number>()
-  const binIndex = (v: number, min: number, span: number): number => {
-    const i = Math.floor(((v - min) / span) * GRID_SIZE)
-    return Math.min(Math.max(i, 0), GRID_SIZE - 1)
-  }
-  for (const p of positions) {
-    const xi = binIndex(p.x, xmin, xSpan)
-    const yi = binIndex(p.y, ymin, ySpan)
-    const key = `${xi}:${yi}`
-    counts.set(key, (counts.get(key) ?? 0) + 1)
-  }
-
-  // Centre de bin arrondi → label catégoriel lisible pour les axes du wrapper.
-  const center = (i: number, min: number, span: number): string => {
-    const c = min + ((i + 0.5) / GRID_SIZE) * span
-    return c.toFixed(0)
-  }
-
-  const out: ChartPointHeatmap[] = []
-  for (const [key, count] of counts) {
-    const [xiStr, yiStr] = key.split(':')
-    const xi = Number(xiStr)
-    const yi = Number(yiStr)
-    out.push({
-      x: center(xi, xmin, xSpan),
-      y: center(yi, ymin, ySpan),
-      value: count,
-      detail: { count },
-    })
-  }
-  return out
-}
-
-/** hasTeamSplit indique si au moins une position porte une équipe attribuée (0/1). */
-function hasTeamSplit(positions: MatchPlayerPosition[]): boolean {
-  return positions.some((p) => p.team !== TEAM_UNKNOWN)
-}
-
-export function MatchPositionsHeatmap({ positions, locale }: MatchPositionsHeatmapProps) {
+export function MatchPositionsHeatmap({
+  playerSlug,
+  matchId,
+  positions,
+  locale,
+}: MatchPositionsHeatmapProps) {
   const t = TEXT[locale]
   const [teamFilter, setTeamFilter] = useState<TeamFilter>('all')
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const all = positions ?? []
+  const all = useMemo(() => positions ?? [], [positions])
+  const { data: background } = useReplayMapBackground(playerSlug, matchId)
+  const image = useReplayMapImage(playerSlug, matchId, !!background && all.length > 0)
+
+  const frame = useMemo(() => (background ? mapFrame(background.calibration) : null), [background])
   const teamSplit = useMemo(() => hasTeamSplit(all), [all])
+  const filtered = useMemo(
+    () => (teamFilter === 'all' ? all : all.filter((p) => p.team === teamFilter)),
+    [all, teamFilter],
+  )
+  const grid = useMemo(
+    () => (frame ? buildPositionsGrid(filtered, frame) : null),
+    [filtered, frame],
+  )
 
-  const filtered = useMemo(() => {
-    if (teamFilter === 'all') return all
-    return all.filter((p) => p.team === teamFilter)
-  }, [all, teamFilter])
+  // Rampe précalculée PAR THÈME, résolue une fois par changement de palette (même patron que
+  // `TacticalPlanCard` et `useReplayHeatmap`) — jamais recalculée par cellule.
+  const paletteVersion = useColorPaletteVersion()
+  const ramp = useMemo(() => {
+    void paletteVersion
+    return heatRamp(heatmapRampTokens('intensity').map(resolveToken))
+  }, [paletteVersion])
 
-  const series = useMemo<ChartSeries<ChartPointHeatmap>[]>(() => {
-    const datapoints = binPositionsToHeatmap(filtered)
-    if (datapoints.length === 0) return []
-    return [{ key: 'density', datapoints }]
-  }, [filtered])
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !grid || !frame || !image) return
+    const width = canvas.clientWidth
+    const height = canvas.clientHeight
+    if (width <= 0 || height <= 0) return
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, width, height)
+    // LE FOND ET LE CALQUE PARTAGENT LE MÊME CADRE : l'image est peinte sur toute la toile, et
+    // l'échelle du calque est celle de cette image — `scale` px par mètre monde. C'est la
+    // condition pour qu'une cellule tombe sur le couloir qu'elle décrit.
+    ctx.drawImage(image, 0, 0, width, height)
+    drawTacticalHeatmap(
+      ctx,
+      grid,
+      { topLeftWorld: { x: 0, y: 0 }, scale: width / frame.widthM },
+      { ramp, k: 1 },
+    )
+  }, [grid, frame, image, ramp])
 
-  // Dégradation : aucune position décodée → composant masqué proprement.
-  if (all.length === 0) return null
+  // Portes 1 à 3 : rien à montrer, et rien à promettre.
+  if (all.length === 0 || !frame || !grid) return null
 
+  const share = coveredShare(all, frame)
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-        <span className="text-sm font-medium">{t.title}</span>
-        {teamSplit && (
-          <div className="flex gap-1">
-            <TeamButton active={teamFilter === 'all'} onClick={() => setTeamFilter('all')}>
-              {t.teamAll}
-            </TeamButton>
-            <TeamButton active={teamFilter === 0} onClick={() => setTeamFilter(0)}>
-              {t.team0}
-            </TeamButton>
-            <TeamButton active={teamFilter === 1} onClick={() => setTeamFilter(1)}>
-              {t.team1}
-            </TeamButton>
-          </div>
-        )}
-      </div>
+    <SectionCard
+      title={t.title}
+      label={t.title}
+      footer={
+        <div className="space-y-1 border-t border-border px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
+          <p>{t.narrative}</p>
+          <p>{t.coverageFmt(positionsCellSize(frame), share, all.length)}</p>
+        </div>
+      }
+      titleAdornment={(label) => (
+        <span className="flex items-center justify-between gap-2">
+          <span>{label}</span>
+          {teamSplit && (
+            <span className="flex gap-1">
+              <TeamButton active={teamFilter === 'all'} onClick={() => setTeamFilter('all')}>
+                {t.teamAll}
+              </TeamButton>
+              <TeamButton active={teamFilter === 0} onClick={() => setTeamFilter(0)}>
+                {t.team0}
+              </TeamButton>
+              <TeamButton active={teamFilter === 1} onClick={() => setTeamFilter(1)}>
+                {t.team1}
+              </TeamButton>
+            </span>
+          )}
+        </span>
+      )}
+    >
       <div className="p-3">
-        <Heatmap2DChart series={series} emptyMessage={t.empty} height={360} />
-        <p className="mt-2 text-xs text-muted-foreground">{t.note}</p>
+        {/* Le cadre prend le RAPPORT DU MONDE (bornes du fond), jamais un 16:9 : le calque et
+            l'image se désaligneraient sur l'axe rogné (même règle que `TacticalPlanCard`). */}
+        <div
+          className="relative w-full overflow-hidden rounded-md bg-muted"
+          style={{ aspectRatio: `${frame.widthM} / ${frame.heightM}` }}
+          data-testid="match-positions-frame"
+        >
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 h-full w-full"
+            data-testid="match-positions-canvas"
+          />
+        </div>
       </div>
-    </div>
+    </SectionCard>
   )
 }
 

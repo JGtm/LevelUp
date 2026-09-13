@@ -370,9 +370,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       groupActiveHint:
         "Épisodes de camouflage et de surbouclier. Le film mesure que l'effet COURT ; il ne dit pas d'où il vient — un bonus ramassé au socle et une capacité déclenchée produisent le même épisode, et la source n'est pas distinguée. Le nombre et la durée cumulée se lisent ensemble : six épisodes d'une seconde et un épisode de six secondes ne racontent pas la même partie. Les frags sous effet actif se lisent à la précision de la retransmission près (les bornes de l'épisode) ; le camo seul reste sous le seuil de mesure en lecture large (26,2 % des épisodes avec au moins un frag).",
       activeFamily: { camo: 'Camouflage', overshield: 'Surbouclier' },
-      activeCount: 'épisodes',
-      activeDuration: 'durée',
-      activeKillsFamily: { camo: 'Frags sous camo', overshield: 'Frags sous surbouclier' },
+      activeColumnFmt: (family) => `${family} utilisé`,
+      activeCellTipFmt: (uses, duration, kills) =>
+        `${uses} utilisation${uses > 1 ? 's' : ''} · durée cumulée ${duration} · ${
+          kills === null ? "frags sous l'effet non mesurés" : `${kills} frag${kills > 1 ? 's' : ''} sous l'effet`
+        }`,
       groupEquipment: 'Équipement',
       groupEquipmentHint:
         "Chaque objet ramassé finit d'une seule façon : utilisé, gardé sans l'utiliser, ou lâché en mourant. « Utilisé » veut dire ACTIVÉ pour le camouflage et le surbouclier, POSÉ pour le reste (mur, capteur, écran occultant, traqueur, champ de réparation, balise du translocateur). Un mur déployé publie deux poses (l'appareil et ses panneaux) et n'en compte qu'une. Le grappin, le propulseur et le répulseur agissent sur leur porteur et n'ont pas de colonne ici — le répulseur parce qu'aucun canal du film ne mesure son activation, jamais parce qu'il ne sert à rien.",
@@ -382,10 +384,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       outcomeTotalTakenFmt: (count) => `${count} objet${count > 1 ? 's' : ''} pris`,
       coverageUnknownOriginFmt: (count) =>
         `${count} pose${count > 1 ? 's' : ''} d'origine inconnue (ni déployée, ni lâchée avec certitude).`,
-      groupGrenades: 'Grenades lancées',
-      groupGrenadesHint:
-        "Les lancers lus dans le film, par type. L'auteur du lancer est écrit dans le film — ce n'est pas une déduction de proximité.",
-      grenadeRankFmt: (rank) => `Rang ${rank}`,
       powerupPads: 'Socles de bonus de puissance vidés',
       powerupPadsHint:
         "Combien de fois un socle de bonus s'est vidé pendant le match. Ce compte ne descend sur AUCUN joueur, et ce n'est pas un oubli : un socle de bonus s'identifie par un nom, pas par un identifiant d'objet, donc aucun ramassage du film ne peut lui être rattaché. Un même socle peut se vider plusieurs fois — le bonus réapparaît.",
@@ -396,8 +394,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         `${pulls} traction${pulls > 1 ? 's' : ''} de grappin lue${pulls > 1 ? 's' : ''}, réparties sur ${lives} vie${lives > 1 ? 's' : ''}.`,
       unattributedFmt: (count) =>
         `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors des deux vues.`,
-      notMeasured:
-        "Le répulseur n'apparaît pas : neuf canaux du film ont été fouillés, aucun ne date son activation. Une colonne vide se lirait « zéro utilisation ». Le propulseur, lui, a désormais son canal d'usage mesuré — validé contre un relevé Theater — et ses poussées se voient sur la carte du rejeu, pas dans ce tableau : le geste dure une demi-seconde.",
       killBadgeFmt: {
         camo: (kills) => `${kills} frags sous camouflage`,
         overshield: (kills) => `${kills} frags sous surbouclier`,
@@ -409,23 +405,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       title: 'Contrôle des armes spéciales',
       titleHint:
         "Les armes de socle prises pendant le match, et par qui. Chaque prise vient de l'événement de ramassage écrit dans le film : il est daté à la milliseconde et porte son ramasseur. Une occupation de socle qu'aucun ramassage ne couvre — ou que plusieurs couvrent — n'est comptée pour personne : on ne devine pas un ramasseur, on s'abstient et on le dit sous le graphe.",
-      axisPickups: 'nombre de prises',
       barTipFmt: (player, team, weapon, count) =>
         `${player} (${team}) — ${weapon} : ${count} prise${count > 1 ? 's' : ''}`,
       unnamedFmt: (count) => `+ ${count} sans nom`,
-      attributedFmt: (attributed, occupations) =>
-        `${attributed} prise${attributed > 1 ? 's' : ''} attribuée${attributed > 1 ? 's' : ''} sur ${occupations} occupation${occupations > 1 ? 's' : ''} de socle mesurée${occupations > 1 ? 's' : ''}.`,
-      missingFmt: (missing) =>
-        `${missing} occupation${missing > 1 ? 's' : ''} hors tableau :`,
-      gapFmt: {
-        ambiguous: (n) =>
-          `${n} ambiguë${n > 1 ? 's' : ''} (plusieurs ramassages de la même arme dans la fenêtre)`,
-        uncovered: (n) => `${n} sans ramassage correspondant dans le film`,
-        unnamed: (n) => `${n} datée${n > 1 ? 's' : ''} sans ramasseur nommé`,
-        powerup: (n) =>
-          `${n} sur socle de bonus (jamais rattachable : un bonus s'identifie par un nom, pas par une famille d'arme)`,
-        unjoined: (n) => `${n} au nom d'un joueur que le film n'a pas vu vivre`,
-      },
     },
     collapsedColumnsShowFmt: (count) => `Voir plus (${count})`,
     collapsedColumnsHide: 'Replier',
@@ -817,9 +799,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       groupActiveHint:
         "Camo and overshield episodes. The film measures that the effect IS RUNNING; it never says where it came from — a power-up picked up from a pad and a triggered ability produce the same episode, and the source is not told apart. Count and cumulative duration read together: six one-second episodes and one six-second episode are not the same game. Kills under active effect read at the precision of the broadcast (the episode's bounds); camo alone stays under the measurement threshold in broad reading (26.2% of episodes with at least one kill).",
       activeFamily: { camo: 'Camo', overshield: 'Overshield' },
-      activeCount: 'episodes',
-      activeDuration: 'duration',
-      activeKillsFamily: { camo: 'Kills under camo', overshield: 'Kills under overshield' },
+      activeColumnFmt: (family) => `${family} used`,
+      activeCellTipFmt: (uses, duration, kills) =>
+        `${uses} use${uses > 1 ? 's' : ''} · ${duration} in total · ${
+          kills === null ? 'kills under the effect not measured' : `${kills} kill${kills > 1 ? 's' : ''} under the effect`
+        }`,
       groupEquipment: 'Equipment',
       groupEquipmentHint:
         "Every object picked up ends exactly one way: used, kept without using it, or dropped on death. \"Used\" means ACTIVATED for camo and overshield, PLACED for everything else (drop wall, sensor, shroud screen, seeker, repair field, translocator beacon). A deployed drop wall publishes two placements (the device and its panels) and counts as one. The grappleshot, thruster and repulsor act on their carrier and have no column here — the repulsor because no channel of the film measures its activation, never because it does nothing.",
@@ -829,10 +813,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       outcomeTotalTakenFmt: (count) => `${count} object${count > 1 ? 's' : ''} taken`,
       coverageUnknownOriginFmt: (count) =>
         `${count} placement${count > 1 ? 's' : ''} of unknown origin (neither deployed nor dropped for certain).`,
-      groupGrenades: 'Grenades thrown',
-      groupGrenadesHint:
-        'Throws read from the film, by type. The thrower is written in the film — not inferred from proximity.',
-      grenadeRankFmt: (rank) => `Rank ${rank}`,
       powerupPads: 'Power-up pads emptied',
       powerupPadsHint:
         'How many times a power-up pad went empty during the match. This count is attached to NO player, and that is not an oversight: a power-up pad is identified by a name, not by an object id, so no pickup in the film can be tied to it. One pad can empty several times — the power-up respawns.',
@@ -842,8 +822,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         `${pulls} grapple pull${pulls > 1 ? 's' : ''} read, spread over ${lives} ${lives > 1 ? 'lives' : 'life'}.`,
       unattributedFmt: (count) =>
         `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside both views.`,
-      notMeasured:
-        'The repulsor is absent: nine channels of the film were searched, none dates its activation. An empty column would read as "zero uses". The thruster now has its own measured usage channel — validated against a Theater reading — and its bursts show on the replay map, not in this table: the gesture lasts half a second.',
       killBadgeFmt: {
         camo: (kills) => `${kills} kills under camo`,
         overshield: (kills) => `${kills} kills under overshield`,
@@ -855,23 +833,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       title: 'Power weapon control',
       titleHint:
         'The pad weapons picked up during the match, and by whom. Every pickup comes from the pickup event written in the film: it is timed to the millisecond and carries its picker. A pad occupancy no pickup covers — or that several cover — is counted for nobody: a picker is never guessed, the measurement abstains and says so below the chart.',
-      axisPickups: 'pickup count',
       barTipFmt: (player, team, weapon, count) =>
         `${player} (${team}) — ${weapon}: ${count} pickup${count > 1 ? 's' : ''}`,
       unnamedFmt: (count) => `+ ${count} unnamed`,
-      attributedFmt: (attributed, occupations) =>
-        `${attributed} pickup${attributed > 1 ? 's' : ''} attributed out of ${occupations} measured pad occupanc${occupations > 1 ? 'ies' : 'y'}.`,
-      missingFmt: (missing) =>
-        `${missing} occupanc${missing > 1 ? 'ies' : 'y'} outside the table:`,
-      gapFmt: {
-        ambiguous: (n) =>
-          `${n} ambiguous (several pickups of the same weapon inside the window)`,
-        uncovered: (n) => `${n} with no matching pickup in the film`,
-        unnamed: (n) => `${n} timed with no named picker`,
-        powerup: (n) =>
-          `${n} on a power-up pad (never attachable: a power-up is identified by a name, not by a weapon family)`,
-        unjoined: (n) => `${n} named for a player the film never saw alive`,
-      },
     },
     collapsedColumnsShowFmt: (count) => `Show more (${count})`,
     collapsedColumnsHide: 'Collapse',

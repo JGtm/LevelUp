@@ -13,6 +13,9 @@ import {
   planEmptyReason,
   planEmptyText,
   planFrameStyle,
+  planLegend,
+  planSelectionRect,
+  questionSansCellule,
   ratioSafe,
   sourceForQuestion,
   statusMessages,
@@ -325,3 +328,80 @@ describe('tacticalGridFromRaster — bornes + pas -> grille de peinture', () => 
 // instantToFrame / TACTICAL_REPLAY_FRAME_INTERVAL_MS (lot M1, conversion mécanique instant ->
 // frame) sont retirées le 2026-09-08 (lot M1b) avec leurs tests : la conversion vit désormais
 // dans `lib/replay/replayLogic.resolveTacticalReplayInstant` (+ `msToFrames`), testée là-bas.
+
+// ─── Conformité à la maquette 034b1915 (lot F, 2026-09-13) ────────────────────
+
+const fmt = (n: number) => String(n)
+
+describe('planLegend — les deux bornes de la rampe et le mode de rampe', () => {
+  it('lecture de quantile : de 0 au p95, unité sur la borne haute seulement', () => {
+    const echelle: EchelleTactique = {
+      p50: 0.4, p95: 1.2, borne: 0, symetrique: false, n_cellules: 30,
+    }
+    expect(planLegend(echelle, 'morts par match', fmt)).toEqual({
+      lo: '0',
+      hi: '1.2 morts par match',
+      mode: 'intensity',
+    })
+  })
+
+  it('lecture signée : de −borne à +borne, rampe divergente', () => {
+    const echelle: EchelleTactique = {
+      p50: 0.2, p95: 0.9, borne: 0.9, symetrique: true, n_cellules: 30,
+    }
+    expect(planLegend(echelle, 'écart V − D', fmt)).toEqual({
+      lo: '− 0.9',
+      hi: '+ 0.9 écart V − D',
+      mode: 'divergent',
+    })
+  })
+})
+
+describe('questionSansCellule — « Mes routes de spawn » n’a pas de cellule', () => {
+  it('vrai pour les routes, faux pour les cinq autres lectures', () => {
+    expect(questionSansCellule('routes')).toBe(true)
+    for (const q of ['morts', 'kills', 'gagne', 'temps', 'isole'] as const) {
+      expect(questionSansCellule(q)).toBe(false)
+    }
+  })
+})
+
+describe('planSelectionRect — le cadre de la cellule choisie', () => {
+  it('se pose sur la cellule, à la MÊME échelle que la peinture', () => {
+    // 100 m de large sur 200 px => 2 px par mètre ; pas de 2 m => cellule de 4 px.
+    const rect = planSelectionRect({ col: 3, row: 5 }, BORNES, 2, 200)
+    expect(rect).toEqual({ x: 3 * 2 * 2, y: 5 * 2 * 2, size: 4 })
+  })
+
+  it('rien à encadrer tant qu’aucune cellule n’est choisie', () => {
+    expect(planSelectionRect(null, BORNES, 2, 200)).toBeNull()
+  })
+
+  it('des bornes inexploitables ne fabriquent pas un cadre', () => {
+    const mauvaises: BornesMonde = { ...BORNES, valide: false }
+    expect(planSelectionRect({ col: 1, row: 1 }, mauvaises, 2, 200)).toBeNull()
+  })
+})
+
+describe('tacticalGridFromRaster — une lecture SIGNÉE garde ses valeurs négatives', () => {
+  const cellules: CelluleTactique[] = [
+    { col: 0, lig: 0, valeur: -0.8, brut: -4, centre_x: 1, centre_y: 1, matchs: 4, matchs_victoire: 0, matchs_defaite: 4 },
+    { col: 1, lig: 0, valeur: 0.8, brut: 4, centre_x: 3, centre_y: 1, matchs: 4, matchs_victoire: 4, matchs_defaite: 0 },
+  ]
+  const signee: EchelleTactique = { p50: 0.4, p95: 0.8, borne: 0.8, symetrique: true, n_cellules: 2 }
+
+  it('peint les deux côtés autour du zéro (0 et 1 aux extrémités de la rampe)', () => {
+    const grid = tacticalGridFromRaster(cellules, BORNES, 2, signee)!
+    expect(grid.signee).toBe(true)
+    expect(tacticalIntensity(grid, -0.8)).toBe(0)
+    expect(tacticalIntensity(grid, 0.8)).toBe(1)
+    // Le zéro n'est pas une mesure : autant gagné que perdu, la cellule reste vide.
+    expect(tacticalIntensity(grid, 0)).toBeNull()
+  })
+
+  it('une lecture NON signée efface toujours les valeurs ≤ 0 (cellule jamais atteinte)', () => {
+    const quantile: EchelleTactique = { p50: 0.4, p95: 0.8, borne: 0, symetrique: false, n_cellules: 2 }
+    const grid = tacticalGridFromRaster(cellules, BORNES, 2, quantile)!
+    expect(tacticalIntensity(grid, -0.8)).toBeNull()
+  })
+})
