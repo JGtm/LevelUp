@@ -68,7 +68,7 @@ function groupesDe(over: Partial<ReplayDocument>): UsageColumnGroup[] {
     tracks: [vie(1, 'a1'), vie(2, 'b1')],
     ...over,
   } as Partial<ReplayDocument>)
-  return usageColumnGroups(buildEquipmentUsage(doc, SB), doc, t, 'fr')
+  return usageColumnGroups(buildEquipmentUsage(doc, SB), t)
 }
 
 /**
@@ -110,7 +110,7 @@ describe('partitionUsageGroups — les élus en avant, le reste replié', () => 
     // famille, empilée sur ses issues (P2/P3). Le vote continue de juger PAR FAMILLE : sensor
     // et threat_seeker (élus) entrent en avant, wall et translocator_beacon (non élus) se
     // replient — même mécanique qu'avant la fusion, sur un groupe unique.
-    expect(partition.forward.map((g) => g.key)).toEqual(['episodes', 'equipment', 'grenades'])
+    expect(partition.forward.map((g) => g.key)).toEqual(['episodes', 'equipment'])
     // L'ordre INTERNE de PLACEMENT_RENDER survit dans la partition (sensor avant seeker) ;
     // les deux power-ups (élus par le pont D5) suivent, dans l'ordre de `EPISODE_FAMILIES`.
     expect(colonnes(partition.forward, 'equipment')).toEqual([
@@ -150,14 +150,9 @@ describe('partitionUsageGroups — le pont D5 (socle -> épisode)', () => {
     // de socle) : seuls `powerup_camo`/`powerup_overshield` y sont. Retirer le pont
     // EPISODE_FAMILY_OF_POWERUP fait donc tomber ces colonnes du bloc en avant (mutation G1.3).
     const partition = partitionUsageGroups(groupesDe(TEMOIN))
-    expect(colonnes(partition.forward, 'episodes')).toEqual([
-      'camo.count',
-      'camo.ms',
-      'camo.kills',
-      'overshield.count',
-      'overshield.ms',
-      'overshield.kills',
-    ])
+    // UNE colonne par famille depuis le 2026-09-13 : durée cumulée et frags sous l'effet
+    // passent dans l'infobulle de la cellule, ils n'ouvrent plus deux colonnes de plus.
+    expect(colonnes(partition.forward, 'episodes')).toEqual(['camo.count', 'overshield.count'])
     expect(partition.collapsed.map((g) => g.key)).not.toContain('episodes')
     // Le MÊME pont élit AUSSI leur colonne dans le groupe `equipment` fusionné (E2) : deux
     // effets d'un seul et même pont, jamais une seconde règle.
@@ -167,8 +162,10 @@ describe('partitionUsageGroups — le pont D5 (socle -> épisode)', () => {
   })
 })
 
-describe('partitionUsageGroups — les grenades (D4) et le cas sans repli', () => {
-  it('garde les grenades TOUJOURS visibles, même quand tout le reste est replié', () => {
+describe('partitionUsageGroups — le cas sans repli', () => {
+  // LES LANCERS DE GRENADE N'ONT PLUS DE GROUPE (2026-09-13, retrait demandé par l'utilisateur) :
+  // un document qui n'apporte QUE des grenades et un grappin ne rend donc que le grappin, replié.
+  it('un document sans autre geste que des grenades ne rend que le grappin, replié', () => {
     const partition = partitionUsageGroups(
       groupesDe({
         grappleLines: [{ slot: 1, t0: 1, t1: 5, ax: 0, ay: 0 }],
@@ -176,7 +173,7 @@ describe('partitionUsageGroups — les grenades (D4) et le cas sans repli', () =
         grenadeLabels: [{ fr: 'Fragmentation', en: 'Frag' }],
       } as unknown as Partial<ReplayDocument>),
     )
-    expect(partition.forward.map((g) => g.key)).toEqual(['grenades'])
+    expect(partition.forward.map((g) => g.key)).toEqual([])
     expect(partition.collapsed.map((g) => g.key)).toEqual(['grapple'])
   })
 
@@ -196,7 +193,7 @@ describe('uniqueUsageGroups — une famille de geste, une occurrence', () => {
   it('fusionne les deux morceaux d’un groupe mixte pour la légende et la vue des parts', () => {
     const partition = partitionUsageGroups(groupesDe(TEMOIN))
     const deplie = uniqueUsageGroups([...partition.forward, ...partition.collapsed])
-    expect(deplie.map((g) => g.key)).toEqual(['episodes', 'equipment', 'grenades', 'grapple'])
+    expect(deplie.map((g) => g.key)).toEqual(['episodes', 'equipment', 'grapple'])
   })
 })
 
@@ -211,7 +208,7 @@ describe('equipmentGroup — la pile empilée (E2, PLAN_EQUIPEMENT_GACHIS_2026-0
       ...over,
     } as Partial<ReplayDocument>)
     const usage = buildEquipmentUsage(doc, SB)
-    const groups = usageColumnGroups(usage, doc, t, 'fr')
+    const groups = usageColumnGroups(usage, t)
     const group = groups.find((g) => g.key === 'equipment')
     const column = group?.columns.find((c) => c.key === `equipment.${family}`)
     const alpha = usage.byPlayer.find((r) => r.name === 'Alpha')

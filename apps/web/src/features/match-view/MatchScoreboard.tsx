@@ -20,7 +20,8 @@ import {
 } from '@tanstack/react-table'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
 import { ariaSortOf, sortSuffixOf } from './sortHeader'
-import { teamColorResolver, teamTintStyles } from './teamColor'
+import { teamTintStyles } from './teamColor'
+import { teamTokenCssVar } from './teamSeriesColor'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -110,8 +111,15 @@ function buildHighlightCols(
     { key: 'damage_dealt', label: t.sbColDamageDealt, inverted: false, fmt: (v) => v.toFixed(0) },
     { key: 'damage_taken', label: t.sbColDamageTaken, inverted: true, fmt: (v) => v.toFixed(0) },
     { key: 'avg_life_seconds', label: t.sbColAvgLife, inverted: false, fmt: (v) => formatDurationMMSS(v, '—'), tooltip: t.sbColAvgLifeTooltip },
-    { key: 'offensive_conversion', label: offensiveLabel, inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%`, tooltip: t.sbColOffensiveTooltip },
-    { key: 'defensive_resistance', label: defensiveLabel, inverted: false, fmt: (v) => v < 0 ? '∞' : `${((v - 1) * 100).toFixed(0)}%`, tooltip: t.sbColDefensiveTooltip },
+    // EN-TÊTES COURTS (2026-09-13, demande utilisateur) : « Rend. » / « Résist. » au lieu de
+    // « Rendement » / « Résistance », qui élargissaient deux colonnes de chiffres à deux
+    // caractères. Le libellé CANONIQUE (celui du registre, servi par le backend) n'est pas
+    // réécrit : il ouvre l'infobulle d'en-tête, devant l'explication de la mesure. Aucun
+    // dictionnaire de `FieldKey` n'est créé ici — ces deux abréviations vivent dans le
+    // dictionnaire UI de la feature (`i18n.ts`), pas dans une seconde table de libellés
+    // canoniques (garde-rail `no-field-label-dictionary.test.ts`).
+    { key: 'offensive_conversion', label: t.sbColOffensiveShort, inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%`, tooltip: `${offensiveLabel} — ${t.sbColOffensiveTooltip}` },
+    { key: 'defensive_resistance', label: t.sbColDefensiveShort, inverted: false, fmt: (v) => v < 0 ? '∞' : `${((v - 1) * 100).toFixed(0)}%`, tooltip: `${defensiveLabel} — ${t.sbColDefensiveTooltip}` },
   ]
 }
 
@@ -469,7 +477,17 @@ function TeamScoreboard({
         sortDescFirst: false,
         cell: (ctx) => {
           const lbl = ctx.row.original.top_weapon_label
-          return <span className="text-muted-foreground">{lbl ?? '—'}</span>
+          // TRONQUÉE (2026-09-13) : « Marteau antigravité » décalait toute la table vers la
+          // droite et chassait les colonnes de fin hors de l'écran. Le nom complet reste au
+          // survol (`title`) — on rogne l'affichage, jamais la donnée.
+          return (
+            <span
+              className="block max-w-[14ch] truncate text-muted-foreground"
+              title={lbl ?? undefined}
+            >
+              {lbl ?? '—'}
+            </span>
+          )
         },
       },
       hlDef('max_killing_spree'),
@@ -517,16 +535,23 @@ function TeamScoreboard({
   // nom officiel préfixé, puis « Équipe N », puis inconnue).
   const teamLabel = resolveTeamLabel(rows, teamSide, t)
   const teamID = parseTeamSideID(teamSide)
-  // Couleur d'IDENTITÉ de l'équipe, data-driven (jamais slug==) : cascade UNIQUE du dépôt
-  // (`teamColor.ts` — backend `team_color`, puis couleur officielle par team_id, puis token
-  // allié/ennemi surchargeable par les réglages d'accessibilité). Chaque équipe obtient
-  // ainsi sa couleur distincte (> 2 équipes = > 2 couleurs).
+  // LA TEINTE DE L'EN-TÊTE SUIT LE RÉGLAGE D'ACCESSIBILITÉ DE L'UTILISATEUR, et pas la
+  // couleur officielle du jeu. RÉGRESSION CORRIGÉE le 2026-09-13 : jusqu'au commit 3f116dfe6
+  // (2026-07-23, « couleur d'identite + logos d'equipe »), cet en-tête prenait
+  // `tokenCssVar('team-ally' | 'team-enemy')` — donc les couleurs réglées dans Accessibilité.
+  // Ce commit a mis devant la cascade d'IDENTITÉ (`teamColorResolver` : `team_color` du
+  // backend, puis couleur officielle par `team_id`) ; or sur Halo Infinite le `team_id` est
+  // TOUJOURS présent, si bien que la cascade n'atteignait jamais le jeton et que le réglage
+  // utilisateur n'avait plus AUCUN effet (« avant ça marchait très bien »). Le choix explicite
+  // de l'utilisateur passe devant la convention du jeu — c'est la même frontière que
+  // `teamSeriesColor.ts` tient déjà pour les graphes. Le LOGO et le NOM officiels restent :
+  // l'identité de l'équipe se lit là, la couleur sert l'accessibilité.
+  //
   // Accent lisible : fond subtil + soulignement + bordure gauche marquée. Le TEXTE reste
-  // en `var(--foreground)` (jamais teinté par une couleur d'identité potentiellement vive
-  // comme le jaune Valor) pour garantir le contraste. La RECETTE (22 % / 55 % / plein) est
+  // en `var(--foreground)` pour garantir le contraste. La RECETTE (22 % / 55 % / plein) est
   // celle du dépôt — `teamTintStyles`, partagée avec l'écran de victoire du rejeu ; seules
   // les ÉPAISSEURS restent ici, parce qu'elles disent le rôle de chaque trait.
-  const tint = teamTintStyles(teamColorResolver(rows)(teamID, isMyTeam))
+  const tint = teamTintStyles(teamTokenCssVar(isMyTeam))
   const teamHeaderBorder = `2px solid ${tint.border}`
   const teamHeaderLeftBorder = `4px solid ${tint.accent}`
   // Logo d'équipe : `/titles/{slug}/teams/{id}.png`. null si slug/team_id absent → pas de

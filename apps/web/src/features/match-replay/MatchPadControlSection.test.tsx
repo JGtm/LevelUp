@@ -7,17 +7,17 @@
  *      cadre vide répété sur chaque page de match est une promesse non tenue à l'infini.
  *   2. LES NOMS D'ARME viennent des tables EXISTANTES du rejeu (catalogue du document, familles
  *      de socle) — jamais une clé brute, jamais une seconde table de noms.
- *   3. UNE LIGNE PAR ARME, DEUX BÂTONS, UNE ÉCHELLE COMMUNE : le camp du joueur de la page est
- *      le bâton du haut, et l'axe compte les prises en entiers.
+ *   3. UNE ARME, UNE BARRE (2026-09-13) : un rail par socle valant 100 % de ses occupations
+ *      nommées, le camp du joueur de la page en tête, le total de la ligne à côté du nom.
  *   4. CE QUI N'A PAS DE RAMASSEUR NOMMÉ N'EST VERSÉ À PERSONNE : il est annoté à droite de sa
- *      ligne, hors des bâtons.
- *   5. CE QUI N'EST PAS ATTRIBUÉ SE DIT, avec sa cause : le lecteur doit pouvoir vérifier que
- *      prises affichées + occupations hors graphe = occupations mesurées.
+ *      ligne, hors de la barre.
+ *   5. TOUTES LES ARMES SONT VISIBLES AU CHARGEMENT : le vote « game changers » ordonne les
+ *      lignes, il n'en cache plus aucune (décision D3 révoquée par l'utilisateur le 13/09).
  *
  * Le calcul est éprouvé chez `padControlLogic.test.ts` ; ici on éprouve le RENDU.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render } from '@testing-library/react'
+import { render } from '@testing-library/react'
 
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
@@ -95,17 +95,6 @@ function poserArtefact(over: Partial<ReplayDocument> | null) {
   artefact.current = over ? testReplayDoc(over) : undefined
 }
 
-/**
- * La NOTE de bas de carte qui contient ce fragment. Un matcher de texte brut remonterait
- * jusqu'aux ancêtres (la section entière contient aussi la phrase) : on borne au paragraphe.
- */
-function note(vue: ReturnType<typeof render>, fragment: string): HTMLElement {
-  const paragraphes = [...vue.container.querySelectorAll('p')]
-  const trouve = paragraphes.find((p) => (p.textContent ?? '').includes(fragment))
-  if (!trouve) throw new Error(`aucune note ne contient : ${fragment}`)
-  return trouve
-}
-
 function afficher(locale: 'fr' | 'en' = 'fr') {
   return render(
     <MatchPadControlSection
@@ -163,8 +152,7 @@ describe('MatchPadControlSection — le graphe', () => {
     const segment = vue.getByLabelText(
       t.padControl.barTipFmt('Alpha', 'Équipe Eagle', 'S7 Sniper', 2),
     )
-    // Deux prises sur une échelle bornée à deux : le segment remplit son bâton et porte son
-    // nombre.
+    // Deux prises nommées sur deux : le segment remplit le rail et porte son nombre.
     expect(segment.textContent).toBe('2')
   })
 
@@ -178,11 +166,12 @@ describe('MatchPadControlSection — le graphe', () => {
     ])
   })
 
-  it('gradue l’axe en ENTIERS et nomme ce qu’il compte', () => {
+  it('écrit le TOTAL nommé du socle à côté de son nom : le dénominateur du rail', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    expect(vue.getByText(t.padControl.axisPickups)).toBeTruthy()
-    for (const tick of ['0', '1', '2']) expect(vue.getAllByText(tick).length).toBeGreaterThan(0)
+    // Deux prises nommées sur le socle S7 — la troisième occupation n'a pas de ramasseur.
+    const ligne = vue.getByText('S7 Sniper').parentElement
+    expect(ligne?.textContent).toContain('2')
   })
 
   it('annote à droite les occupations SANS ramasseur nommé, hors des bâtons', () => {
@@ -231,55 +220,40 @@ describe('MatchPadControlSection — le repli « game changers » (plan 2026-09-
     },
   } as unknown as Partial<ReplayDocument>
 
-  it('REPLIE PAR DÉFAUT le socle hors vote : pas de ligne, un bouton qui compte', () => {
+  it('AFFICHE TOUTES LES ARMES au chargement : le vote ordonne, il ne cache plus rien', () => {
     poserArtefact(TEMOIN_MIXTE)
     const vue = afficher()
     expect(vue.getByText('S7 Sniper')).toBeTruthy()
-    expect(vue.queryByText('BR75')).toBeNull()
-    expect(vue.getByRole('button', { name: t.collapsedColumnsShowFmt(1) })).toBeTruthy()
-  })
-
-  it('« Voir plus (N) » révèle la ligne repliée, puis « Replier » la cache à nouveau', () => {
-    poserArtefact(TEMOIN_MIXTE)
-    const vue = afficher()
-    fireEvent.click(vue.getByRole('button', { name: t.collapsedColumnsShowFmt(1) }))
     expect(vue.getByText('BR75')).toBeTruthy()
-    fireEvent.click(vue.getByRole('button', { name: t.collapsedColumnsHide }))
-    expect(vue.queryByText('BR75')).toBeNull()
-  })
-
-  it('la note de pied ne bouge pas : le TOTAL compte la prise du socle replié', () => {
-    poserArtefact(TEMOIN_MIXTE)
-    const vue = afficher()
-    // Trois prises attribuées — dont celle du BR replié — sur cinq occupations mesurées.
-    expect(note(vue, t.padControl.attributedFmt(3, 5))).toBeTruthy()
-  })
-
-  it('zéro socle replié = AUCUN bouton (le témoin de base n’a que des élus)', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
     expect(vue.queryByRole('button', { name: /Voir plus/ })).toBeNull()
     expect(vue.queryByRole('button', { name: t.collapsedColumnsHide })).toBeNull()
+  })
+
+  it('le TOTAL ne ment pas : la prise du socle non élu est bien à sa ligne', () => {
+    poserArtefact(TEMOIN_MIXTE)
+    const vue = afficher()
+    expect(
+      vue.getByLabelText(t.padControl.barTipFmt('Bravo', 'Équipe Eagle', 'BR75', 1)),
+    ).toBeTruthy()
   })
 })
 
 describe('MatchPadControlSection — ce que l’écran dit de sa mesure', () => {
-  it('écrit le dénominateur et ventile les occupations hors graphe par CAUSE', () => {
+  // LE PIED DE CARTE (« N prises attribuées sur N occupations… ») A ÉTÉ RETIRÉ le 2026-09-13
+  // sur demande de l'utilisateur : l'annotation de ligne est le seul aveu qui reste.
+  it('n’écrit AUCUN pied de carte : rien sous le graphe et sa légende', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    expect(note(vue, t.padControl.attributedFmt(2, 4))).toBeTruthy()
-    const manques = note(vue, t.padControl.missingFmt(2))
-    expect(manques.textContent).toContain(t.padControl.gapFmt.ambiguous(1))
-    expect(manques.textContent).toContain(t.padControl.gapFmt.powerup(1))
+    expect(vue.container.textContent).not.toContain('attribuée')
+    expect(vue.container.textContent).not.toContain('occupation')
   })
 
-  it('rend les mêmes nombres en anglais, sans laisser une string française', () => {
+  it('rend les mêmes libellés en anglais, sans laisser une string française', () => {
     poserArtefact(TEMOIN)
     const vue = afficher('en')
     const en = REPLAY_TEXT.en.padControl
     expect(vue.getByRole('region', { name: en.title })).toBeTruthy()
-    expect(note(vue, en.attributedFmt(2, 4))).toBeTruthy()
-    expect(vue.getByText(en.axisPickups)).toBeTruthy()
-    expect(vue.queryByText(t.padControl.axisPickups)).toBeNull()
+    expect(vue.getByText(en.unnamedFmt(1))).toBeTruthy()
+    expect(vue.queryByText(t.padControl.unnamedFmt(1))).toBeNull()
   })
 })

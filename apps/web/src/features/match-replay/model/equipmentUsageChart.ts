@@ -53,7 +53,6 @@ export const USAGE_GROUP_TOKENS: Record<UsageGroupKey, SemanticToken> = {
   grapple: 'frag-sidearm', // vert
   episodes: 'frag-heavy', // violet
   equipment: 'frag-shoulder', // cyan — reprend le jeton de l'ancien `deployed`
-  grenades: 'frag-grenade', // ambre
 }
 
 /** L'encre d'une famille, en variable CSS — jamais un hex (garde-rail color-tokens). */
@@ -95,6 +94,9 @@ export function usageLeaves(groups: UsageColumnGroup[]): UsageLeaf[] {
  *
  * Un épisode d'état actif est UN geste (sa durée et ses frags le décrivent, ils ne s'ajoutent
  * pas à lui). Les frags sous effet actif n'en sont pas un : ce sont des conséquences.
+ *
+ * LES LANCERS DE GRENADE N'ONT PLUS DE FAMILLE ICI depuis le 2026-09-13 (retrait demandé par
+ * l'utilisateur) : ils restent mesurés par `equipmentUsageLogic` et dessinés par le rejeu.
  */
 export function usageGestureCount(tally: EquipmentUsageTally, group: UsageGroupKey): number {
   const sum = (m: Record<string, number> | Record<number, number>): number =>
@@ -125,8 +127,6 @@ export function usageGestureCount(tally: EquipmentUsageTally, group: UsageGroupK
         (tally.episodes[EQUIP_FAMILY_CAMO]?.count ?? 0) +
         (tally.episodes[EQUIP_FAMILY_OVERSHIELD]?.count ?? 0)
       )
-    case 'grenades':
-      return sum(tally.grenades)
   }
 }
 
@@ -172,7 +172,15 @@ export function buildUsageGrid(input: UsageGridInput): ValueGridModel {
     value: (r, c) => leaves[c].column.value(players[r]),
     format: (v, c) => leaves[c].column.format(v),
     color: (_r, c) => usageGroupColor(leaves[c].group),
-    tooltip: (r, c, text) => input.tipFmt(players[r].name, leaves[c].column.label, text),
+    // Une colonne qui porte son PROPRE détail (états actifs : utilisations, durée cumulée,
+    // frags sous l'effet) l'écrit à la place de la valeur formatée — c'est ce qui lui évite
+    // d'ouvrir une colonne par unité (2026-09-13).
+    tooltip: (r, c, text) =>
+      input.tipFmt(
+        players[r].name,
+        leaves[c].column.label,
+        leaves[c].column.tooltip?.(players[r]) ?? text,
+      ),
   })
 }
 
