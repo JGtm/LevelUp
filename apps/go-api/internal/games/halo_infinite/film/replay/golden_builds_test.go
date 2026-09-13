@@ -65,6 +65,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
@@ -134,6 +135,7 @@ func TestGoldenBuildsRegenerate(t *testing.T) {
 	case cache == "":
 		t.Skip("regeneration des goldens par build : " + miniFilmCacheEnv + " non defini")
 	}
+	var ecrits []string
 	for _, b := range goldenBuilds() {
 		if b.Short8 == goldenFilm {
 			continue
@@ -141,7 +143,13 @@ func TestGoldenBuildsRegenerate(t *testing.T) {
 		t.Run(b.Build+"/"+b.Short8, func(t *testing.T) {
 			regenererGoldenBuild(t, b, filepath.Join(cache, b.Short8))
 		})
+		ecrits = append(ecrits, b.inputsPath())
 	}
+	// UNE PORTE DE REGENERATION NE REND JAMAIS `ok` (revue R2, C1) : `go test` jette la sortie d un
+	// paquet qui passe, donc une reecriture annoncee par `t.Logf` ou sur stderr est INVISIBLE avec
+	// la commande documentee (sans `-v`).
+	t.Fatalf("%d reference(s) reecrite(s) : %s ; relancer sans -update pour verifier",
+		len(ecrits), strings.Join(ecrits, ", "))
 }
 
 // regenererGoldenBuild decode le film et ecrit LE SEUL fixture d entrees. Il n ecrit PLUS le
@@ -196,6 +204,7 @@ func TestGoldenBuildsAssemblyRegenerate(t *testing.T) {
 	if !*updateGoldenBuildsAssembly {
 		t.Skip("regeneration des goldens d assemblage : passer -update-golden-builds-assembly")
 	}
+	var ecrits []string
 	for _, b := range goldenBuilds() {
 		if b.Short8 == goldenFilm {
 			continue // couvert par TestGoldenAssembly
@@ -206,11 +215,17 @@ func TestGoldenBuildsAssemblyRegenerate(t *testing.T) {
 			if err := os.WriteFile(b.assemblyPath(), []byte(rendu), 0o600); err != nil {
 				t.Fatalf("ecriture du golden d assemblage : %v", err)
 			}
-			fmt.Fprintf(os.Stderr, "REECRITURE: %s (%d octets)\n", b.assemblyPath(), len(rendu))
 			t.Logf("%s (%s) : golden %d lignes", b.Short8, b.Build,
 				bytes.Count([]byte(rendu), []byte("\n")))
 		})
+		ecrits = append(ecrits, b.assemblyPath())
 	}
+	// UNE PORTE DE REGENERATION NE REND JAMAIS `ok` (revue R2, C1) : `go test` jette la sortie d un
+	// paquet qui passe, donc une reecriture annoncee par `t.Logf` ou sur stderr est INVISIBLE avec
+	// la commande documentee (sans `-v`).
+	t.Fatalf("%d reference(s) reecrite(s) : %s ; "+
+		"relancer sans -update-golden-builds-assembly pour verifier",
+		len(ecrits), strings.Join(ecrits, ", "))
 }
 
 // assemblerGoldenBuild rejoue l assemblage d une entree, avec SON catalogue de carte.
@@ -235,7 +250,9 @@ func TestGoldenBuildsAssembly(t *testing.T) {
 			got := renderAssembly(assemblerGoldenBuild(t, b, g, entry))
 			want, err := os.ReadFile(b.assemblyPath()) //nolint:gosec // chemin construit depuis la table
 			if err != nil {
-				t.Fatalf("golden absent : %v — regenerer avec -update", err)
+				t.Fatalf("golden d assemblage absent (%s) : %v — regenerer avec "+
+					"-update-golden-builds-assembly (depuis les fixtures figes, sans film)",
+					b.assemblyPath(), err)
 			}
 			if string(want) != got {
 				t.Errorf("l assemblage a change par rapport a %s.\n%s",
@@ -276,7 +293,8 @@ func chargerGoldenBuild(t *testing.T, b goldenBuild) (*goldenInputs, filmdec.Map
 	t.Helper()
 	blob, err := os.ReadFile(b.inputsPath()) //nolint:gosec // chemin construit depuis la table
 	if err != nil {
-		t.Fatalf("fixture absent (%s) : %v — regenerer avec -update", b.inputsPath(), err)
+		t.Fatalf("fixture d entrees absent (%s) : %v — regenerer avec -update et "+
+			miniFilmCacheEnv, b.inputsPath(), err)
 	}
 	zr, err := gzip.NewReader(bytes.NewReader(blob))
 	if err != nil {

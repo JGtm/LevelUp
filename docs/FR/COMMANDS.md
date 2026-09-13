@@ -516,7 +516,7 @@ cd apps/go-api
 go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ \
   > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
 
-# comparer après un changement — budget : +10 % au plus, vérifié à chaque clôture de M2
+# comparer après un changement, sur la MÉDIANE (ce que benchstat rapporte)
 go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
 benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt /tmp/apres.txt
 # benchstat n'est pas vendorisé : go install golang.org/x/perf/cmd/benchstat@latest

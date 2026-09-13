@@ -55,8 +55,6 @@ import (
 var updateFermeture = flag.Bool("update-keyframe-closure", false,
 	"reecrire testdata/keyframe_closure.golden (lot 0.A.3) — CE golden seulement")
 
-// `-update` reecrit TOUTES les references qui s'en servent, et c'est le comportement attendu.
-
 // closureGoldenPath : le golden, a cote des autres references du paquet.
 const closureGoldenPath = "testdata/keyframe_closure.golden"
 
@@ -85,15 +83,18 @@ func TestKeyframeClosureRatchet(t *testing.T) {
 		if err := os.WriteFile(closureGoldenPath, []byte(got), 0o600); err != nil {
 			t.Fatalf("ecriture du golden : %v", err)
 		}
-		// ANNONCE SUR STDERR : un `t.Logf` est invisible sans `-v`, et une reecriture de reference
-		// qui ne se voit pas est exactement ce que la revue R1 a reproche a ce test.
-		fmt.Fprintf(os.Stderr, "REECRITURE: %s (%d octets)\n", closureGoldenPath, len(got))
-		t.Logf("golden de fermeture reecrit : %s", closureGoldenPath)
-		return
+		// UNE PORTE DE REGENERATION NE REND JAMAIS `ok` (revue R2, C1). `go test` JETTE la sortie
+		// d un paquet qui PASSE : un `t.Logf`, et meme une ecriture directe sur stderr, sont
+		// INVISIBLES avec la commande documentee (sans `-v`). Mesure : le golden etait reecrit,
+		// stdout rendait `ok`, stderr restait vide. Terminer en ECHEC est la seule forme qui rende
+		// la reecriture visible ET qui empeche de confondre une regeneration avec un run vert.
+		t.Fatalf("1 reference(s) reecrite(s) : %s (%d octets) ; "+
+			"relancer sans -update-keyframe-closure pour verifier", closureGoldenPath, len(got))
 	}
 	brut, err := os.ReadFile(closureGoldenPath) //nolint:gosec // chemin fige dans le code
 	if err != nil {
-		t.Fatalf("golden absent (%s) : %v — regenerer avec -update", closureGoldenPath, err)
+		t.Fatalf("golden absent (%s) : %v — regenerer avec -update-keyframe-closure",
+			closureGoldenPath, err)
 	}
 	comparerFermeture(t, string(brut), got)
 }
@@ -119,13 +120,13 @@ func comparerFermeture(t *testing.T, want, got string) {
 				cle, ref.closed, ref.total, cur.closed, cur.total, cur.blocking)
 		}
 		if cur.closed > ref.closed {
-			t.Logf("%s : fermeture en HAUSSE, %d/%d -> %d/%d — figer par -update",
+			t.Logf("%s : fermeture en HAUSSE, %d/%d -> %d/%d — figer par -update-keyframe-closure",
 				cle, ref.closed, ref.total, cur.closed, cur.total)
 		}
 	}
 	for cle, cur := range obtenu {
 		if _, ok := fige[cle]; !ok {
-			t.Logf("%s : archetype NEUF dans la mesure (%d/%d) — figer par -update",
+			t.Logf("%s : archetype NEUF dans la mesure (%d/%d) — figer par -update-keyframe-closure",
 				cle, cur.closed, cur.total)
 		}
 	}

@@ -46,7 +46,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"flag"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -85,14 +84,19 @@ func TestGrammarRevSuitLaGrammaire(t *testing.T) {
 	}
 	if *updateGrammarRev {
 		ecrireGoldenGrammarRev(t, GrammarRev, empreinte)
-		return
+		// UNE PORTE DE REGENERATION NE REND JAMAIS `ok` (revue R2, C1) : `go test` jette la sortie
+		// d un paquet qui passe, donc une reecriture annoncee par `t.Logf` ou sur stderr est
+		// INVISIBLE avec la commande documentee (sans `-v`).
+		t.Fatalf("1 reference(s) reecrite(s) : %s (revision %s, empreinte %s) ; "+
+			"relancer sans -update-grammar-rev pour verifier",
+			cheminGoldenGrammarRev, GrammarRev, empreinte)
 	}
 	revFigee, empFigee := lireGoldenGrammarRev(t)
 	switch {
 	case revFigee == GrammarRev && empFigee != empreinte:
 		t.Errorf("LA GRAMMAIRE A CHANGE SANS MONTEE DE REVISION.\n"+
 			"  revision : %s (inchangee)\n  empreinte figee   : %s\n  empreinte obtenue : %s (%d fichiers)\n"+
-			"Faire monter filmdec.GrammarRev (forme grammar-AAAA-MM-JJ), puis regenerer le golden.\n"+
+			"Faire monter filmdec.GrammarRev (forme grammar-AAAA-MM-JJ), puis regenerer par -update-grammar-rev.\n"+
 			"Se demander AUSSI : la sortie de killsource peut-elle changer (KillSourceDecoderRev, "+
 			"backlog de redecodage) ? le contenu cuit change-t-il (SchemaVersion, recuisson) ?",
 			revFigee, empFigee, empreinte, n)
@@ -100,10 +104,10 @@ func TestGrammarRevSuitLaGrammaire(t *testing.T) {
 		t.Errorf("LA REVISION A CHANGE SANS QUE LA GRAMMAIRE BOUGE.\n"+
 			"  revision figee : %s\n  revision du code : %s\n  empreinte : %s (inchangee)\n"+
 			"Une revision qui monte sans changement de source rouvre un backlog pour rien : "+
-			"la remettre, ou regenerer le golden si la montee est deliberee.",
+			"la remettre, ou regenerer par -update-grammar-rev si la montee est deliberee.",
 			revFigee, GrammarRev, empreinte)
 	case revFigee != GrammarRev:
-		t.Logf("revision et empreinte ont bouge ensemble (%s -> %s) : regenerer le golden par -update",
+		t.Logf("revision et empreinte ont bouge ensemble (%s -> %s) : regenerer le golden par -update-grammar-rev",
 			revFigee, GrammarRev)
 		t.Errorf("golden perime : revision %s, empreinte %s (%d fichiers)", GrammarRev, empreinte, n)
 	}
@@ -246,5 +250,4 @@ func ecrireGoldenGrammarRev(t *testing.T, revision, empreinte string) {
 		t.Fatalf("ecriture du golden %s : %v", cheminGoldenGrammarRev, err)
 	}
 	t.Logf("golden regenere : %s / %s", revision, empreinte)
-	fmt.Fprintln(os.Stderr, "grammar_rev.golden regenere")
 }
