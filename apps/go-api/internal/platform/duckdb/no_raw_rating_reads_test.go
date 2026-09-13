@@ -49,9 +49,13 @@ func TestNoRawAppendOnlyReads(t *testing.T) {
 	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context|match_kill_events|kill_positions|match_bomb_stats)(_latest)?\b`)
 
 	// Allowlist datée (2026-07-02) — lectures brutes VOLONTAIRES et documentées.
+	// 2026-09-13 (lot finitions LUSR, C.3) : `queries_career.go` RETIRÉ de l'allowlist.
+	// Q8LUSRHistoryPlayer lit désormais match_skill_rank_latest — le motif « le graphe
+	// veut TOUS les checkpoints » rendait le graphe d'évolution non réparable par un
+	// replay append-only (résidu h5_arena du 2026-06-26 encore tracé après la
+	// réparation d'août). L'allowlist est décroissante : 5 → 4 entrées.
 	allow := map[string]string{
 		"queries_home_citations.go":    "Q26g : filtre H5 placeholder CSR=0 appliqué AVANT le choix de ligne (la vue a déjà tranché CSR>LUSR) + tie-break written_at déterministe. (NB 2026-07-10 : l'ex-mention Q26f est obsolète — la classification effective_type vit en Go sur match_registry.is_ranked et lit déjà _latest, cf. leaderboard_repo/home_repo_skill_peak.)",
-		"queries_career.go":            "Q8LUSRHistoryPlayer : graphe d'évolution veut TOUS les checkpoints (raw volontaire, documenté)",
 		"queries_career_encounters.go": "Q24LUSRHistory (pipeline LUSR, échelle mu) : raw VOLONTAIRE — _latest (CSR>LUSR) injecterait des valeurs CSR (échelle ~1500) sur les matchs ranked à double ligne = rupture d'échelle. DÉCISION B7 (2026-07-10) : statu quo, ne pas migrer.",
 		"queries_squad.go":             "MAX(expected_win_prob) WHERE IS NOT NULL : stale-safe (colonne écrite seulement sur LUSR) ; _latest perdrait le winProb sur ranked",
 		"career_repo_csr_seasons.go":   "SELECT DISTINCT season_id : stale-safe (season_id invariant entre versions)",
