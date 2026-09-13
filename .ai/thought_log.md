@@ -1,3 +1,59 @@
+## [2026-09-13] Lot B des finitions v7.5 — PSA, retrait de la migration des jetons, hygiene XS — Complete (worktree wt-finitions-hygiene, branche feat/finitions-hygiene, 4 commits)
+
+**Decision technique principale.** Trois sous-lots du `PLAN_FINITIONS_2026-09-13.md`, un commit
+chacun plus le merge PSA. **B.1** : fusion de `wt/psa-index-cause` (garde data-health de l'index
+PSA, alerte seule, 5 reproducteurs derriere le build tag `psarepro` donc hors de tous les gates),
+rapport du volet 2 date et range sous `.ai/V7.5/`, et rectification du numero d'issue amont —
+le bug « Failed to delete all rows from index » est **duckdb/duckdb#23645**, pas #23046 (qui est
+une corruption de tas en 1.5.0, symptome sans rapport) : 196 occurrences sur 133 fichiers Go,
+6 documents et CLAUDE.md. Les rapports dates, `.ai/archive/` et `.ai/migrations/squashed/` ne sont
+PAS touches — ils temoignent de ce qui a ete ecrit a l'epoque. **B.2** : retrait de la migration
+one-shot des jetons legacy, son critere etant tenu en prod (rt_migrated=0 a CHAQUE boot du
+2026-06-14 au 2026-09-13, soit 91 jours pour un seuil a 30) — retrait donc execute en avance sur
+l'echeance du 2026-10-01. Les garde-rails RESTENT et se durcissent : les allowlists des guards 2
+et 3 du sentinel passent a ZERO entree, elles n'excusent plus une exception mais interdisent une
+resurrection. **B.3** : dix items d'hygiene, dont deux corrections de fond (D9 et D15) et une
+qui n'etait pas prevue telle quelle (G6, ci-dessous).
+
+**Resultats observes.** **D9, corrige a la source** : le socle central d'Illusion porte
+`ctf_neutral_include` ET `team_index = 0` ; tout l'aval triant la neutralite sur le team_index, ce
+socle devenait un TROISIEME drapeau d'equipe fige au milieu de la carte. Recensement du catalogue :
+sur 63 socles neutres, le LABEL est juste 63 fois et le team_index 62 — c'est donc le label qui
+tranche. Correction portee par `mapvar.Objective.IsCTFNeutral` + un champ `Neutral` sur
+`PointObjective` (la projection laissait tomber `Labels`, sans quoi l'information n'existait plus
+en aval) ; 3 tests, mutation verifiee. **G6 : le defaut EXISTAIT, et il etait invisible par
+construction.** L'`UPDATE kill_positions` de l'outil de demo etait introuvable au grep parce que le
+nom de table etait INTERPOLE — ce qui le rendait aussi invisible aux deux ratchets anti-ART, qui
+scannent des litteraux et couvrent pourtant `weapon_kills`, `medals_earned`, `killer_victim_pairs`
+et `match_participants`, toutes presentes dans la meme boucle. C'etait un UPDATE set-based nu, la
+forme declencheuse exacte. Corrige en N UPDATE row-by-row a valeurs liees — le remede que le projet
+prescrit deja — et **non en INSERT-only**, qui aurait laisse les xuid REELS dans une base publiee
+publiquement : sur un chemin d'anonymisation, la seule ecriture correcte est celle qui REMPLACE.
+La fonction n'avait aucun test direct alors qu'elle est le dernier rempart avant publication ; elle
+en a un. **H4 : l'arbitrage demandait de supprimer trois outils ; deux ne devaient pas l'etre**, et
+l'annexe G9 de l'audit qui lui servait de source le disait deja (P1-2, P1-4) : `vehicle-sprite` et
+`weapon-sounds` sont les seuls producteurs de 197 assets VERSIONNES servis en production (20 sprites
+lus par `useReplayVehicles.ts`, 177 sons). Seul `vs-measure` etait jetable — 0 consommateur, son
+propre en-tete ordonnait sa suppression — et il est supprime. **G2 statue `[~]`** : deja livre par
+`128ae9d15` (CORPUS-R1 C3), verifie sur pieces. **Echeance killpos du 2026-11-08 soldee par
+anticipation** : critere tenu par le pipeline de sync (114 038 lignes sur 1 307 matchs).
+
+**Gates.** `go build ./...` 0, `go vet ./...` 0, `go test` hors himap 0 (170 paquets, 0 `--- FAIL`),
+`go test -tags=integration -p 1` sur sync/persist/migration/duckdb/ops/scheduler 0 (19 paquets),
+`golangci-lint --new-from-merge-base=origin/main` **0 issue**, `gofmt -l` vide.
+
+**Conclusion / prochaine etape.** Lot B clos, 4 commits pousses sur `feat/finitions-hygiene`, CI a
+surveiller. Quatre decouvertes consignees et NON traitees au plan : (D-B1) le ratchet anti-ART est
+aveugle aux noms de table interpoles — le cas de la demo est corrige, le TROU du garde-rail reste ;
+(D-B2) 8 socles `flag_spawn` d'equipe portent `team_index = -1`, defaut symetrique de D9, que la
+correction par label ne touche pas ; (D-B3) l'ecart d'arbitrage sur H4 ; (D-B4) deux `//nolint`
+mettent une justification en prose la ou le linter attend des noms de linters, et ne suppriment donc
+probablement rien. Reste au pilote : fusion dans `feat/v75`, et les lots C (LUSR) et D (rejeu web).
+Deux choix a valider par l'utilisateur : les notes de cloture des ADR 0023 et 0026 sont ecrites en
+FRANCAIS et non en anglais, parce que ces deux documents sont integralement en francais (inserer un
+paragraphe anglais au milieu aurait ete une regression de lisibilite) ; et la correction de G6
+s'ecarte de l'instruction « INSERT-only » pour la raison de fuite exposee ci-dessus.
+
 ## [2026-09-13] F.3 — archivage des plans et handoffs clos de la racine `.ai/` vers `V7.5/` — Complete (worktree wt/archive-ai)
 
 **Decision technique principale.** Tâche Notion 10 (item F.3 du `PLAN_FORK_ET_RELEASE_2026-09-11.md`),
