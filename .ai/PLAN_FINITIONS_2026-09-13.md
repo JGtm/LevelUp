@@ -132,13 +132,29 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
       (exit 0), `make go-api-lint`, push, CI verte.
 
 ## Lot D — D10 rejeu web (`feat/finitions-d10`, web)
-- [ ] D.1 `features/match-replay/layers/objectivesLayer.ts` : les pulses ne sont construits que
+- [x] D.1 `features/match-replay/layers/objectivesLayer.ts` : les pulses ne sont construits que
       pour les familles d'objectif (zones, drapeau tant que non retiré, crâne, bombe, VIP) —
       jamais pour les frags ni les assistances (15 648 par image sur `8bc6074f`).
-- [ ] D.2 Dénominateur de couverture du calque : le pourcentage ne compte plus les actions
+      Tri par FAMILLE du nom de stat (`model/objectiveFamilies.ts`, dérivé des `ObjectiveType*`
+      de `objectiveevents/extract.go`), pas par liste de statistiques. Parc du 13/09 (schéma 54,
+      recuit depuis l'audit) : `8bc6074f` 119 -> 0 pulses par image (drapeau déjà retiré),
+      `32d9a94f` 148 -> 55.
+- [x] D.2 Dénominateur de couverture du calque : le pourcentage ne compte plus les actions
       hors objectif ; un calque dont 99 % des actions sont des frags n'affiche plus « 100 % ».
-- [ ] D.3 Tests vitest (familles filtrées, dénominateur), tsc (cache purgé), eslint 0 erreur,
+      SUR PIÈCES, le pourcentage n'est PAS côté web : `coverage.objectives` n'a aucun lecteur
+      dans `apps/web` (grep `.coverage` complet) — il est produit par `buildObjectiveActions`
+      (`internal/games/halo_infinite/film/replay/objectives.go`) et par les deux comptes de
+      `replaybuild.identifiedEvents`. Les trois sont restreints aux familles d'objectif ;
+      la PUBLICATION (`doc.Objectives`) ne perd rien (doctrine R1). Parc du 13/09 : `8bc6074f`
+      218 -> 99 disponibles, `32d9a94f` 148 -> 55. Aucun champ ne bouge, `SchemaVersion`
+      inchangé : les artefacts déjà cuits gardent l'ancien dénominateur jusqu'à recuisson.
+- [x] D.3 Tests vitest (familles filtrées, dénominateur), tsc (cache purgé), eslint 0 erreur,
       push, CI verte. Aucune string UI nouvelle sans FR+EN.
+      Gates du 13/09 : `tsc --noEmit` 0 ; `eslint .` 0 erreur / 31 avertissements préexistants ;
+      `vitest run src/features/match-replay` 2 727 tests ; `vitest run` complet 7 389 tests ;
+      `knip-ratchet` 0/0/0. Le dénominateur étant côté Go, gates Go ajoutés : `go build ./...`,
+      `go vet` (3 paquets), `go test ./...` exit 0, `golangci-lint --new-from-merge-base` 0 issue.
+      Aucune string UI ajoutée (le module de familles n'en porte aucune).
 
 ## Lot F — équipement : D12 mur et D13 champ de réparation (`feat/finitions-equipement`, Go, INSTRUCTION D'ABORD)
 Décision utilisateur (13/09, second et troisième messages) : « jamais un équipement ne doit avoir
@@ -229,6 +245,18 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   `//nolint:gosec,plr0913 // justification`. Le lint sort tout de même en 0 issue (dette gelée).
   NON TRAITÉ.
 
+- **Lot D** — `features/match-replay/model/objectiveMark.ts` garde sa table `EVENT_STATS`
+  (statistiques nommées une à une : `zone_captures`, `zone_secures`, `bomb_detonations`). Elle
+  répond à une autre question que le prédicat de famille (quelle MARQUE de fiche pour quel geste,
+  pas « est-ce un objectif ») et n'a pas été migrée.
+- **Lot D** — `apps/go-api/internal/replaybuild/matchfacts.go` passe de 501 à 504 lignes : il
+  était déjà au-dessus du seuil de 500 avant ce lot, et l'extraction serait un refactor hors
+  périmètre.
+- **Lot D** — les artefacts DÉJÀ CUITS gardent l'ancien dénominateur de `coverage.objectives` :
+  le correctif D.2 ne se voit qu'à la recuisson. Aucun champ du document ne bouge,
+  `SchemaVersion` reste à 54 — la recuisson est donc une décision de fraîcheur, pas de contrat.
+
+
 ## Journal
 - 2026-09-13 : plan écrit ; lot A fait (commit deps + push).
 - 2026-09-13 : lot B.1 clos (`feat/finitions-hygiene`) — merge `wt/psa-index-cause` (garde data-health PSA, 5 reproducteurs derrière `psarepro`), rapport déplacé en `.ai/V7.5/RAPPORT_VOLET2_INDEX_PSA_2026-08-28.md`, `#23046` -> `#23645` sur 133 fichiers Go + 6 docs + CLAUDE.md (196 occurrences Go), registre L538 réécrit (cause amont prouvée, garde alerte-seule 41 ms/base, condition de reprise = 1.5.6 avec #24744 ou jauge > 0). Gates : `go build ./...` exit 0, `go test ./internal/archlint/... ./internal/scheduler/...` exit 0, `go test -tags=integration -p 1 ./internal/scheduler/... ./internal/migration/...` exit 0.
@@ -236,3 +264,12 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
 - 2026-09-13 : lot B.3 clos. **B.3.1 (D9)** corrige a la SOURCE : le socle central d'Illusion est neutre par son LABEL (`ctf_neutral_include`), pas par son `team_index` qui vaut 0 — recensement du catalogue : sur 63 socles neutres le label est juste 63 fois, le team_index 62. `mapvar.Objective.IsCTFNeutral` + `PointObjective.Neutral` (la projection laissait tomber `Labels`) + les deux lecteurs (`replaybuild.flagSpawnTeam`, `BuildMapObjectives`) ; 3 tests, mutation verifiee (le retrait du correctif fait bien echouer le test). **B.3.2 (D15)** dedup par `map_asset_id`, requete enveloppante pour garder le tri d'affichage, test des homonymes. **B.3.3 (G2)** `[~]` : deja livre par `128ae9d15` (CORPUS-R1 C3) — `verifierCouverture` (report.go:149) fait sortir le gate en 2 en nommant chaque temoin absent et sa cause, appele depuis main.go:319, 4 tests qui ne touchent pas le cache reel. **B.3.4 (G3)** raison du temoin Oddball reecrite (residu ferme au lot 6.2 le 2026-09-10 — defaut REFUTE, pas corrige). **B.3.5 (G4)**, **B.3.7 (G7)** doc seule. **B.3.6 (G6)** ADR 0026 : `decode_pass` documente comme 4e mecanisme (le seul qui sait RETRACTER) + les 3 pieges ; l'`UPDATE kill_positions` de la demo EXISTAIT (invisible au grep : nom de table interpole) et a ete corrige en N UPDATE row-by-row a valeurs liees — PAS en INSERT-only, qui aurait laisse les xuid REELS dans une base publiee ; test d'anonymisation ajoute (la fonction n'en avait aucun). **B.3.8 (H1)** `MatchMetrics` supprime ; le `.png` de `decoupe_masque.go` est `[~]` (deja porte par `PathResolver.MapBackgroundPath`). **B.3.9 (H4)** SEUL `vs-measure` supprime : `vehicle-sprite` et `weapon-sounds` produisent 197 assets versionnes servis en production (cf. Decouverte D-B3). **B.3.10** echeance killpos soldee par anticipation. Gates : build 0, vet 0, `go test` hors himap 0 (170 paquets), `-tags=integration -p 1` sur sync/persist/migration/duckdb/ops/scheduler 0 (19 paquets), golangci-lint `--new-from-merge-base=origin/main` **0 issue**, gofmt propre.
 - 2026-09-13 : B.3.11 — branche `feat/finitions-hygiene` poussee (5 commits + le merge PSA). PIEGE RENCONTRE, a savoir pour les lots C et D : dans un worktree FRAIS, le hook de pre-push `knip-ratchet` rend 197 exports / 168 types morts contre un plafond de 0 et BLOQUE le push — c'est un FAUX POSITIF, knip ne sait pas resoudre les imports sans `node_modules`. Remede : `cd apps/web && npm ci` dans le worktree, apres quoi le ratchet rend 0/0/0. Ne PAS relever le plafond, ne PAS passer `--no-verify`.
 - 2026-09-13 : **CI VERTE sur `feat/finitions-hygiene` (`b566823cb`, run 34756564137)** — 8 jobs verts, E2E React skippe par conception, plus Deploy Pre-Check et gitleaks verts. Un incident en chemin, repare : le job « Go Coverage + Baseline non-regression » a rougi deux fois, cause MIENNE et pas un flake. La suite Go etait verte (`go test` exit=0) ; c'est le controle de PRESENCE de `check_test_baseline.sh` qui echouait — B.2 a supprime 23 tests avec le code de la migration des jetons, or `.ai/baselines/tests_pre_migration.jsonl` est un CUMUL qui continuait de les exiger. Retrait chirurgical des 23 entrees (120 lignes JSONL), verifie par difference des paires (Package, Test), jamais une re-capture complete. **LECON POUR LES LOTS C ET D : tout test supprime doit l'etre AUSSI de la baseline, dans le meme commit — sinon la CI rougit sur le job le plus long (~23 min de boucle de retour).**
+- 2026-09-13 : lot D (D10) clos sur `feat/finitions-d10`, 3 commits. D.1 et D.2 reposent sur le
+  même fait — `doc.objectives` porte `kills` et `assists` (ancre d'identité du balayage et
+  contrôle croisé), et le seul discriminant publié est le NOM de la statistique. Liste blanche de
+  FAMILLES des deux côtés (`model/objectiveFamilies.ts`, `objectiveevents/families.go`), dérivée
+  des `ObjectiveType*`, avec garde-rail Go `TestStatsNommeesPortentLeurFamille`. D.2 s'est révélé
+  Go et non web (aucun lecteur de `coverage.objectives` dans `apps/web`) : correctif dans
+  `buildObjectiveActions` + les deux comptes de `replaybuild.identifiedEvents`, publication
+  inchangée (doctrine R1). Mesures : `8bc6074f` 119 -> 0 pulses/image et 218 -> 99 disponibles,
+  `32d9a94f` 148 -> 55 des deux côtés.

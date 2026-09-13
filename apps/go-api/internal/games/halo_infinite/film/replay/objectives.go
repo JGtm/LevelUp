@@ -77,6 +77,16 @@ type ObjectiveAction struct {
 // que le contrat public reserve exactement a ce cas (« le pont ne couvre pas ce joueur »).
 // Mesure du depot sur `c0a82e88` : 17 actions nommees, 12 identifiees — la couverture annoncait
 // 12/12 et 0 `noSlot`.
+//
+// MAIS IL NE COMPTE QUE LES ACTIONS D'OBJECTIF (D.2, 2026-09-13). Les tables nommees portent
+// aussi `kills` (ancre d'identite du balayage) et `assists` (controle croise) : elles restent
+// PUBLIEES dans `doc.Objectives` — une lecture vraie ne se jette pas, c'est la doctrine R1 — mais
+// elles n'entrent plus dans la couverture DU CALQUE DES OBJECTIFS, ni au numerateur ni au
+// denominateur. Sur le parc du 2026-09-13 (schema 54) elles faisaient 119 des 218 « actions
+// disponibles » de `8bc6074f` et 93 des 148 de `32d9a94f` : les deux annoncaient une couverture
+// de 100 % dont la majorite n'etait pas un objectif (audit du 2026-09-10, §12-1). L'invariant
+// [LayerCoverage.Balanced] tient toujours — il tient desormais SUR LES FAMILLES D'OBJECTIF, et
+// `unnamed` comme `refused` arrivent deja restreints de l'appelant (replaybuild.identifiedEvents).
 func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, unnamed, refused int,
 	c scoreClock) ([]ObjectiveAction, LayerCoverage) {
 	// LA GARDE D'EFFECTIF EST DEJA TOMBEE CHEZ L'APPELANT : `evs` est vide et `refused` porte
@@ -84,13 +94,17 @@ func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, unnamed, refus
 	if refused > 0 {
 		return nil, LayerCoverage{Available: refused, RefusedByRoster: refused}
 	}
-	cov := LayerCoverage{Available: len(evs) + unnamed, NoSlot: unnamed}
+	objectifs := objectiveevents.CountObjectiveFamily(evs)
+	cov := LayerCoverage{Available: objectifs + unnamed, NoSlot: unnamed}
 	if c.intervalMS <= 0 || c.frames <= 0 {
-		cov.OutOfWindow = len(evs)
+		cov.OutOfWindow = objectifs
 		return nil, cov
 	}
 	out := make([]ObjectiveAction, 0, len(evs))
 	for _, e := range evs {
+		// La publication porte TOUT ce que le film nommait ; la couverture, elle, ne compte que
+		// les familles d'objectif (cf. l'en-tete). Les deux ne se confondent pas.
+		compte := objectiveevents.IsObjectiveFamilyStat(e.Stat)
 		if e.XUID == "" {
 			// Un evenement sans identite n'est pas posable : le rattacher a un slot
 			// arbitraire serait exactement l'erreur que le pont existe pour eviter. La
@@ -98,16 +112,22 @@ func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, unnamed, refus
 			// d'`objectiveevents` ecartent deja le xuid vide) : elle garde l'invariant du
 			// champ publie `ObjectiveAction.XUID`, jamais vide, contre une entree malformee.
 			// Le vrai peuplement de `NoSlot` vient d'`unnamed`, ci-dessus.
-			cov.NoSlot++
+			if compte {
+				cov.NoSlot++
+			}
 			continue
 		}
 		t, ok := c.frameOf(e.TimeMS)
 		if !ok {
-			cov.OutOfWindow++
+			if compte {
+				cov.OutOfWindow++
+			}
 			continue
 		}
 		out = append(out, ObjectiveAction{T: t, XUID: e.XUID, Stat: e.Stat, TimeMS: e.TimeMS})
-		cov.Attached++
+		if compte {
+			cov.Attached++
+		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].TimeMS != out[j].TimeMS {

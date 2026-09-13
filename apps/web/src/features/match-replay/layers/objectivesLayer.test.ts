@@ -328,6 +328,68 @@ describe('buildObjectivePulses — la famille DRAPEAU se retire devant l’objet
   })
 })
 
+/**
+ * SEULES LES FAMILLES D'OBJECTIF FONT UN PULSE (D.1, 2026-09-13).
+ *
+ * `doc.objectives` transporte TOUT ce que le statborg sait nommer : les frags (`kills`, ancre
+ * d'identité du balayage) et les assistances (`assists`, contrôle croisé) y voyagent avec les
+ * captures. Sur `8bc6074f` cela faisait 15 648 pulses par image de scène pour 160 actions
+ * d'objectif réelles — un anneau de capture allumé à chaque frag.
+ *
+ * MUTATION : retirer le filtre de famille -> le frag rallume un pulse, rouge.
+ */
+describe('buildObjectivePulses — les frags et les assistances ne font AUCUN pulse', () => {
+  const tracks = [
+    {
+      slot: 1, team: -1, xuid: 'A',
+      points: [{ t: 0, x: 1, y: 9 }, { t: 100, x: 1, y: 9 }],
+      startFrame: 0, endFrame: 100,
+    },
+  ]
+
+  it('un document de 99 % de frags et d’UNE prise de zone ne rend qu’UN pulse', () => {
+    const frags = Array.from({ length: 99 }, (_, i) => ({
+      t: i, xuid: 'A', stat: 'kills', timeMs: i * 100,
+    }))
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: tracks as never,
+      objectives: [...frags, { t: 30, xuid: 'A', stat: 'zone_captures', timeMs: 3_000 }],
+    })
+    const pulses = buildObjectivePulses(doc, normalizeMapObjectives(MO))
+    expect(pulses).toHaveLength(1)
+    expect(pulses[0].frame).toBe(30)
+  })
+
+  it('les assistances non plus, et une statistique sans famille pas davantage', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: tracks as never,
+      objectives: [
+        { t: 10, xuid: 'A', stat: 'assists', timeMs: 1_000 },
+        { t: 11, xuid: 'A', stat: 'kills', timeMs: 1_100 },
+        { t: 12, xuid: 'A', stat: 'une_stat_future_sans_famille', timeMs: 1_200 },
+      ],
+    })
+    expect(buildObjectivePulses(doc, normalizeMapObjectives(MO))).toHaveLength(0)
+  })
+
+  it('les autres familles d’objectif gardent leur pulse (crâne, VIP, bombe)', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: tracks as never,
+      objectives: [
+        { t: 10, xuid: 'A', stat: 'skull_grabs', timeMs: 1_000 },
+        { t: 11, xuid: 'A', stat: 'vip_selected', timeMs: 1_100 },
+        { t: 12, xuid: 'A', stat: 'bomb_detonations', timeMs: 1_200 },
+        { t: 13, xuid: 'A', stat: 'kills', timeMs: 1_300 },
+      ],
+    })
+    const pulses = buildObjectivePulses(doc, normalizeMapObjectives(MO))
+    expect(pulses.map((p) => p.frame)).toEqual([10, 11, 12])
+  })
+})
+
 describe('drawObjectivePulses', () => {
   const pulses = [{ frame: 10, x: 5, y: 5, team: 1 }]
 
