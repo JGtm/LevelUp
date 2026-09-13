@@ -462,8 +462,8 @@ en = "teammate > {rayon}"
 # valeurs affichées, JAMAIS une moyenne — une moyenne de deux règles du jeu
 # n'est la règle d'aucun match.
 [tactical.coordination.radius_value]
-fr = "{rayon, number} m"
-en = "{rayon, number} m"
+fr = "{rayon} m"
+en = "{rayon} m"
 
 [tactical.coordination.radius_join]
 fr = " ou "
@@ -527,3 +527,9 @@ en = "Coordination is read on deaths whose surroundings were measured. Widen the
 [tactical.kpi.lower_is_better]
 fr = "▼ moins c'est mieux"
 en = "▼ lower is better"
+
+# Cellules servies mais tombees HORS du cadre du fond de carte. Dit, jamais avale :
+# un plan ampute ressemblerait sinon a un plan complet. Zero = rien d'affiche.
+[tactical.plan.footer_off_frame]
+fr = "{hors, plural, one {# cellule mesuree tombe} other {# cellules mesurees tombent}} hors du cadre du plan, sur {total} — elles ne sont pas peintes."
+en = "{hors, plural, one {# measured cell falls} other {# measured cells fall}} outside the plan frame, out of {total} — they are not painted."

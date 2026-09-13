@@ -106,6 +106,8 @@ export function getTacticalText(locale: Locale) {
     // Pas de la grille : PUBLIÉ par le serveur (`pas_m`), affiché tel quel — un plan à
     // 2 m est plus grossier qu'un plan à 0,5 m, et cela doit se lire au pied de la carte.
     footerGrid: (pas: number) => m('tactical.plan.footer_grid', { pas }),
+    footerOffFrame: (hors: number, total: number) =>
+      m('tactical.plan.footer_off_frame', { hors, total }),
     // Les trois états vides du plan. Ils ne disent PAS la même chose : périmètre vide,
     // aucune mesure, ou mesures trop dispersées (cf. `planEmptyReason`).
     planEmptyNoMatchTitle: m('tactical.plan.empty_no_match_title'),
@@ -162,7 +164,10 @@ export function getTacticalText(locale: Locale) {
     coordinationNoDistance: (n: number) => m('tactical.coordination.no_distance', { n }),
     coordinationEmpty: m('tactical.coordination.empty'),
     coordinationEmptyDescription: m('tactical.coordination.empty_description'),
-    radiusValue: (rayon: number) => m('tactical.coordination.radius_value', { rayon }),
+    // La valeur arrive DEJA FORMATEE (`formatNumber`, lib/formatters) : l'arrondi est une
+    // regle de presentation du depot, pas une regle de message — « 9,905 m » etait le
+    // symptome d'un nombre passe brut a ICU.
+    radiusValue: (rayon: string) => m('tactical.coordination.radius_value', { rayon }),
     radiusJoin: m('tactical.coordination.radius_join') as string,
 
     // ── Unité de la légende, une par question ────────────────────────────────

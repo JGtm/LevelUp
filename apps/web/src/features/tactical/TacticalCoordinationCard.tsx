@@ -30,7 +30,7 @@ import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
 
 import type { TacticalText } from './i18n'
-import { libelleRayons, positionCategorie } from './tacticalView.logic'
+import { formatDistanceM, libelleRayons, positionCategorie } from './tacticalView.logic'
 
 export interface TacticalCoordinationCardProps {
   t: TacticalText
@@ -64,7 +64,7 @@ export function TacticalCoordinationCard({
     () => coordination.distribution_distances ?? [],
     [coordination.distribution_distances],
   )
-  const rayonTexte = libelleRayons(t, rayons)
+  const rayonTexte = libelleRayons(t, rayons, locale)
 
   const series = useMemo(
     () => [
@@ -91,9 +91,12 @@ export function TacticalCoordinationCard({
   const seuils = useMemo(
     () =>
       rayons
-        .map((rayon) => ({ at: positionCategorie(rayon, bins), label: t.radiusValue(rayon) }))
+        .map((rayon) => ({
+          at: positionCategorie(rayon, bins),
+          label: t.radiusValue(formatDistanceM(rayon, locale)),
+        }))
         .filter((s) => s.at !== null) as { at: number; label: string }[],
-    [rayons, bins, t],
+    [rayons, bins, t, locale],
   )
   // Une barre est APPUYÉE quand elle est AU-DELÀ du plus petit seuil : c'est la zone
   // d'isolement, celle dont le taux parle. Les autres restent atténuées (maquette).
@@ -129,7 +132,7 @@ export function TacticalCoordinationCard({
               {coordination.distance_mediane_m != null && (
                 <Ligne
                   label={t.coordinationMedian}
-                  value={t.radiusValue(coordination.distance_mediane_m)}
+                  value={t.radiusValue(formatDistanceM(coordination.distance_mediane_m, locale))}
                   testid="tactical-coordination-median"
                 />
               )}
