@@ -260,7 +260,7 @@ couverture : 243 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclie
 ## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine
 calibre=true decoupage="8/3" · 797 vie(s) d objet · 27525 ancre(s) -> 592 confirmee(s) par l oracle de position -> 591 pose(s)
 591 nommee(s) · 0 `other` (nature non etablie : le manifeste ne les revendique pas) · 571 avec poseur mesure · 487 avec cap de visee
-origine mesuree : 77 deployee(s) · 494 lachee(s) a la fin de la vie du poseur · 20 sans poseur
+origine mesuree : 78 deployee(s) · 493 lachee(s) a la fin de la vie du poseur · 20 sans poseur
   famille grapple  43
   famille grenade_dynamo 77
   famille grenade_frag 95
@@ -299,8 +299,8 @@ origine mesuree : 77 deployee(s) · 494 lachee(s) a la fin de la vie du poseur �
   famille x origine thruster/deployed            8
   famille x origine thruster/dropped             22
   famille x origine thruster/unknown             1
-  famille x origine wall/deployed                28
-  famille x origine wall/dropped                 26
+  famille x origine wall/deployed                29
+  famille x origine wall/dropped                 25
   famille x origine wall/unknown                 1
   thruster dropped 0x430dda48 t=[418, 426] pos=(-86.42, -50.76, 66.22) poseur=512 cap=309.9 deg
   grenade_dynamo dropped 0xaada07f3 t=[418, 444] pos=(-86.77, -50.83, 66.13) poseur=512 cap=309.9 deg
@@ -437,7 +437,7 @@ origine mesuree : 77 deployee(s) · 494 lachee(s) a la fin de la vie du poseur �
   sensor deployed 0x72b63d69 t=[1451, 1477] pos=(-76.62, -44.65, 64.80) poseur=545 cap=aucun
   sensor dropped 0x72b63d69 t=[1461, 1475] pos=(-95.03, -48.20, 64.44) poseur=555 cap=351.1 deg
   wall deployed 0x686b40c9 t=[1477, 1481] pos=(-96.23, -34.19, 67.43) poseur=567 cap=352.7 deg
-  wall dropped 0x686b40c9 t=[1482, 1486] pos=(-107.43, -66.38, 64.79) poseur=539 cap=150.2 deg
+  wall deployed 0x686b40c9 t=[1482, 1486] pos=(-107.43, -66.38, 64.79) poseur=539 cap=150.2 deg
   grenade_spike dropped 0x0f5716ff t=[1484, 1497] pos=(-106.98, -66.38, 64.83) poseur=539 cap=aucun
   grenade_spike dropped 0x0f5716ff t=[1484, 1489] pos=(-106.96, -66.41, 64.83) poseur=539 cap=aucun
   grapple dropped 0x273fe0eb t=[1516, 1523] pos=(-97.72, -45.22, 64.37) poseur=566 cap=aucun
