@@ -81,8 +81,8 @@ token : il doit se reconnecter (SSO Xbox) ou passer par `cmd/token-capture`.
 
 ### Priorité d'écriture
 
-- Au boot : `MigrateLegacyTokensAtBoot` copie env+DuckDB → store (idempotent) —
-  SEULE lecture legacy encore câblée, sous kill-switch daté (cf. Phase 5).
+- Au boot : plus rien. La migration one-shot `MigrateLegacyTokensAtBoot` a été
+  retirée le 2026-09-13 (cf. « Clôture de la Phase 5 » ci-dessous).
 - À chaque rotation : `UpdateOAuthRefreshToken(xuid, rt)` sur le store, point.
   (Le double-write `sync_meta` de compat a été retiré en Phase 5.)
 - `cmd/token-capture` et `cmd/token-import` écrivent directement au store (plus de manipulation `.env.local`).
@@ -163,19 +163,18 @@ comptes auth-only, aucun `reauth_required`/`AADSTS` depuis le 01/08.
 la même passe (règle projet « 0 code mort »). Il ne reste de `queries_auth.go`
 que `ReadOAuthRefreshToken`, pour la seule migration boot.
 
-**Exception unique, sous kill-switch daté** : `MigrateLegacyTokens`
-(`internal/platform/auth/migration.go`) + son wiring `migrateLegacyAuthTokensAtBoot`
-(`cmd/server/main.go`) continuent de lire env + `sync_meta` au boot pour recopier
-un RT resté en legacy vers le store.
+**Exception unique, sous kill-switch daté (LEVÉE le 2026-09-13)** :
+`MigrateLegacyTokens` (`internal/platform/auth/migration.go`) + son wiring
+`migrateLegacyAuthTokensAtBoot` (`cmd/server/main.go`) ont lu env + `sync_meta`
+au boot, du 2026-08-25 au 2026-09-13, pour recopier un RT resté en legacy vers le
+store.
 
 - Bascule du défaut : **2026-08-25** (plus aucun fallback runtime).
-- Date cible de retrait : **2026-10-01**.
+- Date cible de retrait annoncée : **2026-10-01** — retrait effectué en avance,
+  le **2026-09-13**, le critère étant tenu (cf. section suivante).
 - Critère mesurable : 0 token migré au boot sur 30 jours de logs prod, c.-à-d.
   `auth_migration: scan terminé` avec `rt_migrated=0` à chaque boot et aucun
   `auth_migration: RT migré vers store` (`grep 'auth_migration: RT migré' sync.log`).
-- Au retrait : supprimer `migration.go` + son test, le wiring boot,
-  `queries_auth.go` et les 2 entrées d'allowlist du sentinel. Le drop physique des
-  colonnes `sync_meta` suit la recette ADR 0026 au prochain rebuild.
 
 **Garde-rails posés** (`internal/platform/auth/sentinel_test.go`) : allowlist des
 lecteurs d'env var réduite de ~30 entrées à 1 (la migration boot), nouveau guard
@@ -190,6 +189,42 @@ déjà l'expiration de l'access_token Microsoft, pas un cache MSAL) ;
 `TokenProbeResult.has_msal_cache` supprimé ; codes d'erreur `msal_init_error` /
 `msal_acquire_error` renommés `device_flow_init_error` /
 `device_flow_acquire_error`. `openapi.yaml` + `generated.ts` régénérés.
+
+## Clôture de la Phase 5 — retrait de la migration boot (2026-09-13)
+
+La dernière exception de l'ADR est levée : le projet n'a plus **aucun** lecteur de
+source d'auth legacy, à aucun moment du cycle de vie du process.
+
+**Critère du kill-switch, constaté sur pièces le 2026-09-13** (et non estimé) :
+
+- Prod : `auth_migration: scan terminé` avec `rt_migrated=0` à **chaque** boot du
+  2026-06-14 au 2026-09-13, soit 91 jours pour un seuil à 30. Les 2 seuls RT
+  jamais migrés l'ont été le 2026-06-13, au tout premier boot après la bascule.
+- Local : idem, `rt_migrated=0` depuis le 2026-05-29.
+
+**Supprimé** : `internal/platform/auth/migration.go` (avec `MigrateLegacyTokens`,
+`EnvRefreshTokenForGamertag`, `LegacyPlayer`, `LegacySources`,
+`LegacySourcesReader`, `MigrationStats`) et son test ; `migrateLegacyAuthTokensAtBoot`
+et `legacyAuthSourcesReader` (`cmd/server/main.go`) et leur test de wiring ;
+`internal/platform/duckdb/queries_auth.go` (`ReadOAuthRefreshToken`,
+`readSyncMetaValue`) et son test d'intégration.
+
+**Conservé, et durci** : les garde-rails. Les allowlists des guards 2
+(`EnvRefreshTokenForGamertag`) et 3 (`ReadOAuthRefreshToken`) du sentinel passent
+à **0 entrée** — ils ne protègent plus une exception, ils interdisent une
+résurrection. Le guard 1 (littéral de l'env var) garde une seule entrée, sans
+rapport avec la migration : `capturecli.go` parse une ligne
+`SPNKR_OAUTH_REFRESH_TOKEN_X=valeur` collée sur **stdin** par l'utilisateur, ce
+qui n'est pas une lecture d'environnement.
+`internal/sync/no_legacy_source_used_test.go` reste inchangé : il n'a jamais porté
+d'exception.
+
+**Ce qui reste, et pourquoi ce n'est pas un lecteur d'auth** : la colonne
+`sync_meta.oauth_refresh_token` existe toujours physiquement dans les player DB
+(son drop suit la recette ADR 0026 au prochain rebuild), et
+`internal/ops/seed_demo_sync_meta.go` continue de la nommer — non pour la lire en
+tant que credential, mais pour l'exclure de l'extraction vers la démo publique.
+Une valeur résiduelle sans lecteur reste une valeur à ne pas publier.
 
 ## Alternatives considérées
 

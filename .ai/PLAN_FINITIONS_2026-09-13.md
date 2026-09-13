@@ -44,7 +44,7 @@
 ### B.2 Retrait de la migration boot des jetons legacy (ADR 0023, échéance 2026-10-01)
 Critère tenu : prod `auth_migration: scan terminé` rt_migrated=0 à chaque boot du 2026-06-14
 au 2026-09-13 (2 RT migrés le 2026-06-13, jamais depuis) ; local idem depuis le 2026-05-29.
-- [ ] B.2.1 Supprimer `internal/platform/auth/migration.go` + son test,
+- [x] B.2.1 Supprimer `internal/platform/auth/migration.go` + son test,
       `migrateLegacyAuthTokensAtBoot` + `legacyAuthSourcesReader` dans `cmd/server/main.go`,
       les helpers DuckDB de `internal/platform/duckdb/queries_auth.go` devenus orphelins,
       `auth.EnvRefreshTokenForGamertag` et tout appelant, les entrées d'allowlist de
@@ -52,10 +52,10 @@ au 2026-09-13 (2 RT migrés le 2026-06-13, jamais depuis) ; local idem depuis le
       contournée), la référence dans `internal/ops/seed_demo_sync_meta.go`,
       `internal/sync/no_legacy_source_used_test.go` mis à jour (le garde reste, l'exception
       disparaît). Aucun import mort.
-- [ ] B.2.2 `CLAUDE.md` § « Règle auth tokens » : retirer le paragraphe « Seule exception legacy
+- [x] B.2.2 `CLAUDE.md` § « Règle auth tokens » : retirer le paragraphe « Seule exception legacy
       restante » (dater le retrait 2026-09-13, critère constaté). ADR 0023 : note de clôture
       de la Phase 5 (EN-only).
-- [ ] B.2.3 Gate : `go build ./...`, `go vet ./...`, `go test ./internal/platform/auth/...
+- [x] B.2.3 Gate : `go build ./...`, `go vet ./...`, `go test ./internal/platform/auth/...
       ./internal/sync/... ./cmd/server/...` + `-tags=integration -p 1 ./internal/sync/...`.
 
 ### B.3 Hygiène XS
@@ -153,3 +153,4 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
 ## Journal
 - 2026-09-13 : plan écrit ; lot A fait (commit deps + push).
 - 2026-09-13 : lot B.1 clos (`feat/finitions-hygiene`) — merge `wt/psa-index-cause` (garde data-health PSA, 5 reproducteurs derrière `psarepro`), rapport déplacé en `.ai/V7.5/RAPPORT_VOLET2_INDEX_PSA_2026-08-28.md`, `#23046` -> `#23645` sur 133 fichiers Go + 6 docs + CLAUDE.md (196 occurrences Go), registre L538 réécrit (cause amont prouvée, garde alerte-seule 41 ms/base, condition de reprise = 1.5.6 avec #24744 ou jauge > 0). Gates : `go build ./...` exit 0, `go test ./internal/archlint/... ./internal/scheduler/...` exit 0, `go test -tags=integration -p 1 ./internal/scheduler/... ./internal/migration/...` exit 0.
+- 2026-09-13 : lot B.2 clos — migration one-shot des jetons legacy RETIREE (ADR 0023 Phase 5 close, en avance sur l'echeance 2026-10-01, critere tenu). Supprimes : `auth/migration.go` + test, `migrateLegacyAuthTokensAtBoot`/`legacyAuthSourcesReader` + `cmd/server/migration_boot_test.go`, `platform/duckdb/queries_auth.go` + son test d'integration. Allowlists sentinel 2 et 3 a 0 entree (ratchets anti-resurrection) ; guard 1 garde la seule entree `capturecli.go` (stdin, pas d'environnement). `no_legacy_source_used_test.go` inchange : il n'a jamais porte d'exception. Docs : CLAUDE.md, ADR 0023 (section « Cloture de la Phase 5 »), `ops/seed_demo_sync_meta.go`, `groupstore/migrate.go` (reference morte). Gates : `go build ./...` 0, `go vet ./...` 0, `go test ./internal/platform/auth/... ./internal/sync/... ./cmd/server/... ./internal/ops/... ./internal/platform/duckdb/...` 0, `go test -tags=integration -p 1 ./internal/sync/...` 0.

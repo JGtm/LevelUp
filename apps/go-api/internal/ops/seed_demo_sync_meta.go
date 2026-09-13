@@ -17,11 +17,12 @@
 // `oauth_refresh_token` est donc encore ÉCRIT à chaque rotation (double-write de
 // compat) et lu par les fallbacks legacy : un RT FRAIS y est présent en permanence —
 // raison d'être immédiate de ce verrou (la démo publique en recopiait un à chaque
-// deploy). Après v7.5.0 : plus aucun lecteur de runtime sauf la migration one-shot du
-// boot `migrateLegacyAuthTokensAtBoot` (kill-switch daté, retrait cible 2026-10-01),
-// et les valeurs restent présentes jusqu'au drop physique des colonnes (recette
-// ADR 0026, prochain rebuild). Dans les deux mondes : un RT résiduel y est réel, pas
-// théorique.
+// deploy). Après v7.5.0 : plus AUCUN lecteur, nulle part — la migration one-shot du
+// boot a été retirée le 2026-09-13 (son critère était tenu en prod depuis le
+// 2026-06-14). Les valeurs, elles, restent présentes jusqu'au drop physique des
+// colonnes (recette ADR 0026, prochain rebuild) : un RT résiduel y est donc réel et
+// pas théorique dans les deux mondes, et ce verrou reste nécessaire même sans
+// lecteur — l'extraction démo copierait la valeur, pas un appel de code.
 //
 // Ajouter une clé ci-dessous = affirmer, avec justification datée ET vérifiée sur
 // pièces, qu'elle n'est PAS un credential ET qu'elle a un lecteur réel côté démo.
