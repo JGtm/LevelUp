@@ -107079,3 +107079,73 @@ Vite, inventaire des tâches de fond à chaque point).
 des branches WIP (garde index PSA + rectification du numéro d'issue DuckDB ; purge et garde-rail
 LUSR h5_arena) avant la copie des bases ; puis séquence de release Notion (à la main de
 l'utilisateur).
+
+---
+
+## [2026-09-13] Finitions v7.5 — instruction des reliquats, échéances datées, lots PSA/LUSR, Dependabot — Complété (analyse, aucun code touché)
+
+**Décision** : instruction sur pièces avant arbitrage utilisateur ; aucun fichier de production
+modifié, aucune base ouverte (serveur local actif sur :8000, cookie de session signé HMAC,
+pas de CLI duckdb sur le poste — la vérification LUSR « 5 min en lecture seule » exige le
+serveur arrêté et reste à faire).
+
+**Constats** : (1) l'artefact « Bilan plan maître v7.5 » n'est pas lisible par l'agent
+(lecteur public non membre) et la copie HTML locale n'est que la coquille du visualiseur
+(0 occurrence du texte) — l'inventaire des échéances a été reconstitué depuis le code :
+2026-10-01 migration boot des tokens legacy (local : 1 528 boots, 0 RT migré depuis le
+2026-05-29) ; ≥ 2026-Q4 kill-switchs BatchQueue synchrone et convergence events ; ≥ 2026-Q3
+(échu) LegacySharedReader (30 usages prod, 57 tests) ; 2026-10-31 drapeaux image-clé du
+décodeur (défaut OFF) ; 2026-11-01 tolérance `patternsOutput.Body` ; 2026-11-04 tolérance
+libellés FR de `citation_mappings.category`. Prod (main = v7.3.2) embarque déjà les cinq
+premiers. (2) `wt/psa-index-cause` fusionne sans conflit dans feat/v75 (`git merge-tree`
+propre) ; le numéro d'issue DuckDB fautif (#23046 au lieu de #23645) est présent dans
+CLAUDE.md, ADR 0026/0030, docs/WEAPONS.md FR/EN, le registre L538 et ~25 fichiers Go.
+(3) `wt/lusr-h5-cause` : les trois trous T1/T2/T3 sont toujours ouverts sur feat/v75
+(`sync_v2_wiring.go` L93-150 vs L283 ; `registry_lusr_gaps.go` replay sans ctx stampé ;
+`openspartan_post_import_service.go:152`) ; `RecomputeLUSRCanonical` (`engine_backfills.go:187`)
+ne stampe pas le titre. Piste nouvelle : la vue `match_skill_rank_latest` est keyée
+(match_id, rating_type) par written_at — faire lire `_latest` à `Q8LUSRHistoryPlayer` efface
+la série « Arène » fantôme sans toucher aux données (reste les 2 lignes Madina non rejouables,
+à purger par CTAS avant la copie des bases). (4) Dependabot : 5 PR ouvertes sur main (79-83),
+CI verte, 3 alertes de sécurité (js-yaml < 4.3.2 high, browserslist ≤ 4.28.6 high,
+baseline-browser-mapping < 2.11.0 medium) ; le lock de feat/v75 est déjà sain sauf js-yaml
+4.3.1 ; main a 0 commit hors feat/v75, feat/v75 en a 2 811 hors main ; le remote `fork`
+porte deux branches dependabot de ChaseWoodhams (hors périmètre). (5) La tâche Notion
+« Deux lots à planifier » n'existe pas dans le Backlog (recherche vide) — texte tenu du
+message utilisateur.
+
+**Prochaine étape** : arbitrage utilisateur (dette D/G/H, échéances à anticiper, stratégie
+Dependabot : bumps sur feat/v75 + fermeture des PR vs fusion sur main = 5 déploiements prod),
+puis plan des lots PSA (S) et LUSR (M).
+
+**Complément (même jour, après décisions utilisateur)** : (a) census LUSR sur pièces, serveur
+arrêté, `diag_q` en lecture seule : lignes brutes `h5_arena` dans les player DB Infinite =
+JGtm 913, Madina 1 064, Chocoboflor 471, Daemon 31, chacune en double LUSR + LUSR_V2
+(4 958 lignes) ; dans `_latest` il ne reste que les 2 lignes Madina ; les 4 bases halo_5 ne
+portent QUE `h5_arena` (pas de corruption miroir). (b) Prod (ssh lvelup, lecture seule) : aucun
+kill-switch surchargé dans `.env.local` ; `auth_migration` : 2 RT migrés le 2026-06-13 puis
+rt_migrated=0 à chaque boot jusqu'au 2026-09-13 (critère 30 j tenu trois fois) ; convergence
+events : 108 échecs journalisés (86 en juillet, 8 en août, 9 en septembre — lease shared
+indisponible et player DB halo_5 introuvable), backlog processed=1 ; `/debug/vars` répond 401
+(compteurs non lus). (c) Dependabot repris sur feat/v75 : 13 bumps mineurs npm + js-yaml 4.3.2
+(override `^4.3.0`, lock seul) + browserslist 4.28.9 / baseline-browser-mapping 2.11.23 +
+kin-openapi 0.149.0 (jsonschema 6.0.3). Gates : tsc 0, eslint 0 erreur / 31 avertissements
+préexistants (rapport lot E du 12/09), vitest 697 fichiers / 7 382 tests verts, `go build ./...`,
+`go vet` et `go test ./internal/api/... ./cmd/openapi-diff/...` verts. Non commité : attente du
+signal utilisateur (règle 16), puis push + CI + fermeture des PR 79-83.
+
+**Rectificatif (même jour)** : l'artefact « Bilan plan maître v7.5 » ÉTAIT lisible — le contenu
+est dans le dossier `Bilan plan maître v7.5_files/_t_ShO_.htm` de l'enregistrement local (l'iframe
+sauvegardée), pas dans le `.htm` racine. Ses « Échéances datées » sont quatre : (1) 2026-10-01
+retrait de la migration boot des jetons — critère TENU en prod (0 RT migré depuis le 2026-06-13) ;
+(2) 2026-10-01 rotation Q2 du journal — 1 030 entrées avril-juin encore dans le journal actif et
+absentes de `archive/thought_log_2026-Q2.md` (qui en porte 1 213 autres, 2 communes) : rotation
+mécanique le 1er octobre, pas avant (règle « trimestre courant + précédent ») ; (3) 2026-11-08
+killpos — critère DÉJÀ TENU : `BuildKillPositions` est appelé par `killcollector/positions.go:347`,
+écrit par `persist/shared_persister.go` (INSERT-only) ; `kill_positions_latest` porte 114 038
+lignes sur 1 307 matchs Infinite (recuisson des 12-13/09) — le plan
+`V7.5/PLAN_LOT_PONT_ET_KILLPOSITIONS.md` items 2.3/2.4/2.6 est à statuer `[~]`, et le garde local
+88 % (`replay_local_gate.go`, même date) reste une décision utilisateur ; (4) TypeScript 7 —
+condition NON tenue : typescript-eslint 8.70 exige `typescript <6.1.0`, openapi-typescript 7.13
+exige `^5.x`. Les autres kill-switchs datés relevés dans le code (BatchQueue, convergence,
+LegacySharedReader, image-clé, patterns, catégories de citations) ne sont pas dans l'artefact.
