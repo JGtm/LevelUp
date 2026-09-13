@@ -346,12 +346,43 @@ Gate 0.B : gates communs ; `make check-types` ; `make test-web` ; `make openapi-
 
 #### Lot 0.C — ADR 0034 et registre — S, exécuteur Opus medium
 
-- [ ] 0.C.1 `docs/adr/0034-film-decoder-profile-and-layers.md` (EN) : couches cibles et règles de
+- [x] 0.C.1 `docs/adr/0034-film-decoder-profile-and-layers.md` (EN) : couches cibles et règles de
       dépendance, profil immuable, porte unique aux octets, politique de build inconnu (erreur
       typée, expvar, film mis de côté, entrées « présumées » listées par un test), séparation
       faits / publication, ratchets nommés, kill-switch daté de la double écriture.
-- [ ] 0.C.2 CLAUDE.md : ligne ADR 0034 dans la liste ; `docs/adr/README` si index.
-- [ ] 0.C.3 `V7.5/REGISTRE_REPORTS.md` : les lignes de la §1.2 (avec condition de reprise).
+      **Fait** (2026-09-13) : neuf décisions D-1 à D-9, statut `Accepted (2026-09-13)` avec
+      amendements annoncés aux clôtures de M2 et de M4, gabarit des ADR 0030 / 0033.
+      Chaque invariant nomme son garde-rail, et chacun porte son verdict : EXISTANT
+      (`archlint/{filmdec_package_vars_test.go,decode_lock_held_test.go,no_film_reread_test.go,`
+      `filmsource_leaf_test.go,no_title_package_in_analysis_test.go,`
+      `no_runtime_versioned_catalog_write_test.go,no_second_artifact_sink_test.go}`,
+      `sync/killcollector/decoder_rev_fingerprint_test.go`,
+      `film/replay/{document_shape_test.go,contract_fixtures_test.go}`,
+      `replaybuild/artifact_schema_history_test.go`, `service/replayview/parity_test.go`,
+      `testDoc.guard.test.ts`, `replayDocumentSchema.ts`) ou « to be added at step N »
+      (`GrammarRev` 0.A.4, `KeyframeClosure` 0.A.3, `ErrUnknownBuild` 1.5.2,
+      `TestProfilPresumes` 2.1.1, `TestProfilEgaleGlobales` 2.1.3, `TestDeuxFilmsEnParallele`
+      2.3.3, `no_raw_film_bytes_outside_source_test.go` 2.4.3, `film_layers_deps_test.go`
+      2.5.0, `film_file_size_test.go` 2.7.2, faits persistés 4.1.1, `layers` 4.2.1).
+      Kill-switch de la double écriture écrit règle 11 (bascule = date du lot 2.1, retrait
+      cible = lot 2.3, critère = 0 variable de paquet mutable). Une section
+      « Corrections to statements made elsewhere » consigne D1, D2 et D6 du lot 0.B ; la
+      limite de D5 (la borne 27 se vérifie sur de la prose, faute d'inventaire de clés par
+      version) est écrite dans D-8.2. Équipe = décision V4, sans repli sur la base.
+      Longueur : 274 lignes (218 hors lignes vides) — au-dessus de la cible de 250, assumé :
+      les neuf invariants et les trois corrections y tiennent chacun en une sous-section.
+- [x] 0.C.2 CLAUDE.md : ligne ADR 0034 dans la liste ; `docs/adr/README` si index.
+      **Fait** (2026-09-13) : 3 lignes ajoutées à la suite de `0033`, même style. `docs/adr/`
+      n'a PAS de README (`ls docs/adr/ | grep -i readme` vide) : rien d'autre à mettre à jour.
+- [x] 0.C.3 `V7.5/REGISTRE_REPORTS.md` : les lignes de la §1.2 (avec condition de reprise).
+      **Fait** (2026-09-13) : 5 lignes ajoutées à la fin du tableau principal, origine
+      « plan decodeur 2026-09-13 §1.2 » pour les trois items du hors-périmètre écrit
+      (sémantique des valeurs 1..6 de la table par type ; les sept résidus de format du
+      handoff §5 ; libellé affiché d'un désignateur), plus D7 et D8 du lot 0.B avec leur
+      condition de reprise recopiée de la §4. Les ports de composants ne sont PAS inscrits :
+      ils sont AU plan (lot 3.6, décision V1), donc pas un report. Le hors-périmètre
+      « retouche d'interface » et « port des chantiers voisins » non plus : ils n'ont pas de
+      condition de reprise propre (« hors chantier », « sans objet »).
 
 Gate 0.C : `go test ./internal/archlint/ -run Mojibake` ; relecture pilote.
 
@@ -832,6 +863,7 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.B revue R2 | ce commit | **Revue adversariale ronde 2** (sur les corrections de la R1 seulement) | **1 P1 + 3 P2 recevables, 0 jeté ; 2 corrigés dans le lot (R2-1, R2-2), 2 consignés en §4 (D7, D8)**. 18 conditions vérifiées tiennent ; 17 mutations jouées, 15 conformes. Les P0+P1 décroissent : 6 (R1) -> 1 (R2) |
 | 2026-09-13 | 0.B revue R2 | ce commit | Mutations rejouées après correction : `type _Same<X, Y> = (<Q>() => Q extends X ? 1 : 2) …` déposée hors `lib/types/` ; fragment FR (`cle(s) inconnue(s)`) remis dans la table EN | **les deux ROUGES** — la première nomme `bombCountdown.test.ts`, la seconde fait échouer le test de locale anglaise (`Unable to find … contract violated (unknown key(s): shotz)`). Arbres restaurés (`git diff` vide sur les deux fichiers) |
 | 2026-09-13 | 0.B revue R2 | ce commit | `npx tsc -b --force` ; `npx vitest run src/lib/replay src/lib/types src/features/match-replay` ; `npx eslint` (fichiers touchés) | tsc **exit 0** ; **203 fichiers passés + 1 sauté, 3 029 tests + 3 sautés** ; eslint **0 erreur** |
+| 2026-09-13 | 0.C | ce commit | `go test ./internal/archlint/ -run 'Mojibake\|Todo\|TODO' -v` | 6 tests verts (`TestNoMojibakeInGoModule`, `...InTitleConfigTOML`, `TestMojibakeOf_MatchesQ3Corpus`, `TestMojibakeRE_CatchesKnownPatterns`, `..._DetectsAMutation`, `TestNoExpiredTODO`) ; 1,61 s. NOTE : le motif `Todo` du plan ne matche PAS `TestNoExpiredTODO` (casse) — d'où `TODO` ajouté à l'alternance. Lot documentaire : aucun `.go` / `.ts` / `.toml` de production touché, donc pas de gate décodeur (`replay-equiv`, corpus gate) applicable |
 
 ## 6. Protocole de reprise de session
 
