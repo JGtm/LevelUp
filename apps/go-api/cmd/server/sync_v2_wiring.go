@@ -15,6 +15,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -277,10 +278,35 @@ func (r *dryRunPostSyncRunner) RunPostSync(ctx context.Context, p syncv2.PlayerP
 // CRITIQUE : toute modification de defaultRunnerFactory doit être
 // répliquée ICI sous peine de divergence runtime V1↔V2.
 func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngineFactory {
-	return func(_ context.Context, p syncv2.PlayerProfile) (*syncpkg.SyncEngine, error) {
-		// MT-11 / PMT-3 : le profil porte le titre → écrit dans les DB du bon
-		// titre (parité avec le path V1 BuildEngine). Slug vide → DefaultSlug.
-		engine := syncpkg.NewSyncEngineForTitle(deps.Cfg.RepoRoot, p.TitleSlug, p.Gamertag, p.XUID, &domain.HaloTokens{}, deps.TokenProvider)
+	return func(ctx context.Context, p syncv2.PlayerProfile) (*syncpkg.SyncEngine, error) {
+		// FAIL-LOUD — UNE SEULE SOURCE DE TITRE (C.2, 2026-09-13).
+		//
+		// Le cycle ouvre TOUS ses handles sur deps.TitleSlug (shared, player x2,
+		// persister batch) ; construire le moteur sur le titre du PROFIL
+		// donnait au moteur les bases d'un titre et la sémantique d'un autre. C'est
+		// la chaîne causale exacte de la corruption LUSR h5_arena du 2026-06-26
+		// (4 joueurs déclarés sous deux titres → passe « profil halo_5 » sur les
+		// bases halo_infinite ; rapport .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md
+		// §3). La partition livesync.HandlesTitle (b30eb9fe5) ferme le CHEMIN de juin,
+		// pas la CLASSE : un titre piloté par le SyncEngine la traverserait.
+		//
+		// Refus bruyant et non destructeur : le profil remonte `failed` dans le
+		// CycleResult. Slug vide = défaut historique accepté (NewSyncEngineForTitle
+		// retombe sur DefaultSlug) ; deps.TitleSlug est toujours résolu (main.go:376).
+		if p.TitleSlug != "" && p.TitleSlug != deps.TitleSlug {
+			err := fmt.Errorf("sync.v2: profil %q du titre %q soumis au cycle du titre %q — "+
+				"les handles DB sont ceux du cycle, refus (corruption LUSR h5_arena 2026-06-26)",
+				p.Gamertag, p.TitleSlug, deps.TitleSlug)
+			slog.ErrorContext(ctx, "sync.v2: profil d'un titre étranger refusé au câblage",
+				"event", "sync.v2.foreign_title_profile",
+				"gamertag", p.Gamertag, "profile_title", p.TitleSlug, "cycle_title", deps.TitleSlug,
+				"err", err)
+			return nil, err
+		}
+		// Le moteur est construit sur le titre du CYCLE — la même source que les
+		// handles ci-dessus. Le titre du profil n'est plus qu'un garde (ci-dessus) :
+		// ratchet TestSyncV2WiringHasSingleTitleSource.
+		engine := syncpkg.NewSyncEngineForTitle(deps.Cfg.RepoRoot, deps.TitleSlug, p.Gamertag, p.XUID, &domain.HaloTokens{}, deps.TokenProvider)
 
 		// 1. SharedProvider (B-swap si LEVELUP_USE_SHARED_PROVIDER=1)
 		if deps.Cfg.SharedProvider != nil {
