@@ -341,3 +341,7 @@ lot H, pas avant. Effort L.
   comptent 0 film, l'essentiel a toujours vécu dans go-migration, confirmé par l'utilisateur).
   Procédure de bascule amendée : comptage avant/après des caches, suppression du worktree
   seulement après. Notion 10 : tout fait sauf la bascule (sur signal).
+- 2026-09-13 (décisions utilisateur) : branches distantes `claude/*` (2, fusionnées),
+  `feat/weapon-sameclock` (juillet, dépassée par killsource) et `fix/ci-todo-expiry-season-pass`
+  (août, jamais fusionnée) supprimées. Restent sur origin : main, feat/v75, 5 dependabot (PR
+  ouvertes), `wt/ti11-cadre` (autre session).
