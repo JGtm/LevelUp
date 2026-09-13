@@ -26,7 +26,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     schemaBadgeUpToDateFmt: (schemaVersion) => `Schéma ${schemaVersion} · à jour`,
     schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
       `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion})`,
+    schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schéma ${schemaVersion} · à recuire`,
     schemaBadgeUnknownFmt: (schemaVersion) => `Schéma ${schemaVersion}`,
+    schemaBadgeInvalidFmt: (schemaVersion, issue) =>
+      `Schéma ${schemaVersion} · contrat non respecté (${issue})`,
     offscreenMarkerFmt: (name, meters) => `${name} · ${Math.round(meters)} m`,
     offscreenGroupMarkerFmt: (count, meters) => `${count} joueurs · ${Math.round(meters)} m`,
     openAtUncalibratedTitle: 'Instant non calé sur cet artefact',
@@ -473,7 +476,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     schemaBadgeUpToDateFmt: (schemaVersion) => `Schema ${schemaVersion} · up to date`,
     schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
       `Schema ${schemaVersion} · rebuild needed (latest: ${latestSchemaVersion})`,
+    schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schema ${schemaVersion} · rebuild needed`,
     schemaBadgeUnknownFmt: (schemaVersion) => `Schema ${schemaVersion}`,
+    schemaBadgeInvalidFmt: (schemaVersion, issue) =>
+      `Schema ${schemaVersion} · contract violated (${issue})`,
     offscreenMarkerFmt: (name, meters) => `${name} · ${Math.round(meters)} m`,
     offscreenGroupMarkerFmt: (count, meters) => `${count} players · ${Math.round(meters)} m`,
     openAtUncalibratedTitle: 'Instant not calibrated on this artifact',
