@@ -535,6 +535,27 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       `SchemaVersion` 55 + entrée de chronique + empreinte de forme + fixtures si le contenu
       cuit change, `GrammarRev` si la grammaire change. Si DIVERGENCE : ligne au registre des
       reports avec condition de reprise, rien de plus.
+      **ROUVERT le 2026-09-13 soir sur décision utilisateur (mécanique de jeu) : le verdict
+      « manches fantômes » n'est PAS retenu.** Le film ÉCRIT un désignateur de manche 2 sur 148
+      enregistrements ; le rejeter par la garde de contiguïté (`contiguousRounds`, « manche 1
+      absente donc manche 2 fantôme ») est une heuristique au sens de D13. Faits tranchés par
+      l'utilisateur : en Halo Infinite il n'y a PAS de mi-temps (le commentaire de
+      `regulation.toml` l. 198 « deux MI-TEMPS » est faux), il y a des MANCHES et des
+      PROLONGATIONS ; le score n'est pas un oracle en CTF (0-0 possible pendant 12-13 min, points
+      à la fin) ; si le film écrit l'information de manche, on lui fait confiance.
+- [ ] 0.D.1 bis **Ce que le désignateur 2 ÉCRIT sur `fb1a1a72` veut dire.** Instruction bornée
+      (une session) : (a) chez l'ÉCRIVAIN (Ghidra lecture seule) : le champ « manche » des
+      enregistrements statborg (joueur ET équipe) : index de manche, phase, prolongation ? quelles
+      valeurs le jeu y écrit, et quand ; (b) par mesure : `fb1a1a72` dure 814 s pour 720 s de temps
+      réglementaire, la piste PROLONGATION est à tester (les 148 enregistrements en « 2 » sont-ils
+      ceux d'une phase, d'une prolongation, d'un type de slot particulier ; leur fenêtre
+      [66,7 s ; 814 s] et leur densité 0,20/s sont à EXPLIQUER, pas à écarter) ; comparer à un
+      second film avec prolongation avérée et à un film sans ; (c) verdict : ce que le film écrit,
+      publié tel quel (manche / prolongation), avec la garde de contiguïté soit supprimée soit
+      NOMMÉE comme repli (D14) ; corriger le commentaire de `regulation.toml` (concept de mi-temps
+      retiré, remplacé par manches / prolongations, source = décision utilisateur du 2026-09-13) ;
+      `SchemaVersion` 55 si le contenu cuit change. Le registre des reports est amendé dans le même
+      geste (la ligne 0.D.1 « divergence voulue » devient « non établi, rouvert »).
 - [ ] 0.D.2 **D7 — bloc monde/équipement de `60ae07c4` (Live Fire, v37).**
       Séparer l'effet du schéma 53 (porte de région sur 2 bits) de celui de la borne
       `maxUnrollPerStep = 16` : trouver les sha qui encadrent v53 (`document_chronicle.go`),
