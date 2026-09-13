@@ -138,6 +138,25 @@ export interface Heatmap2DChartProps {
   visualMapFormatter?: (value: number) => string
   /** Libellés des deux extrémités de l'échelle (`visualMap.text`, haut puis bas). */
   visualMapText?: [string, string]
+  /**
+   * Traitement d'une case SANS MESURE (`value: null`).
+   *
+   * `'hatched'` (défaut) applique la décision D3 : la case est peinte en neutre, hachurée,
+   * porte un tiret et la légende la nomme — « l'absence a sa propre forme, jamais un vide ».
+   *
+   * `'hidden'` ne peint RIEN — ni la case, ni le BANDEAU D'AXE derrière elle
+   * (`splitArea`, qui compose en damier et se voit là où aucune case n'est peinte), ni le
+   * tiret, ni la légende. Les quatre vont ensemble : dire « une case sans mesure ne se
+   * montre pas » puis peindre un damier à sa place, c'est faire de l'absence la chose la
+   * plus voyante du graphe.
+   *
+   * Opt-in réservé aux grilles où les cases vides sont MAJORITAIRES et RÉGULIÈRES : sur le
+   * calendrier jour × heure, les heures de nuit occupent la moitié du tracé toutes les
+   * semaines. La case reste ÉMISE (les axes de ce wrapper sont déduits de l'ordre
+   * d'apparition des points : en omettre une décale les catégories) — seul son rendu
+   * disparaît.
+   */
+  emptyCells?: 'hatched' | 'hidden'
 }
 
 export function Heatmap2DChart({
@@ -156,6 +175,7 @@ export function Heatmap2DChart({
   visualMapOrient,
   visualMapFormatter,
   visualMapText,
+  emptyCells,
 }: Heatmap2DChartProps) {
   // Palette d'accessibilité active : pilote la rampe CVD-safe (rebuild via
   // useColorPaletteVersion dans ChartCard + ce sélecteur au changement de palette).
@@ -174,6 +194,7 @@ export function Heatmap2DChart({
         visualMapOrient,
         visualMapFormatter,
         visualMapText,
+        emptyCells,
       }),
     [
       paletteMode,
@@ -186,6 +207,7 @@ export function Heatmap2DChart({
       visualMapOrient,
       visualMapFormatter,
       visualMapText,
+      emptyCells,
     ],
   )
 
@@ -193,7 +215,10 @@ export function Heatmap2DChart({
   // demander — c'est ce qui permet aux quatre consommateurs existants d'hériter
   // sans modification. Pas de légende quand aucune case n'est vide (comportement
   // historique inchangé pour ces séries-là).
-  const hasEmptyCell = series.some((s) => s.datapoints.some((d) => d.value == null))
+  // La légende NOMME la forme des cases vides : sans forme à nommer (`emptyCells: 'hidden'`),
+  // elle annoncerait une absence que rien ne montre.
+  const hasEmptyCell =
+    emptyCells !== 'hidden' && series.some((s) => s.datapoints.some((d) => d.value == null))
 
   return (
     <ChartCard
@@ -229,6 +254,7 @@ interface BuildOpts {
   visualMapOrient?: 'horizontal' | 'vertical'
   visualMapFormatter?: (value: number) => string
   visualMapText?: [string, string]
+  emptyCells?: 'hatched' | 'hidden'
 }
 
 /**
@@ -310,10 +336,17 @@ function emptyCellItemStyle(tc: EChartsThemeColors) {
  * porte un `itemStyle` d'objet propre : c'est ce qui la rend visible (décision D3)
  * sans changer le rendu des cases mesurées, qui restent de simples tuples.
  */
-function buildCellData(dps: ChartPointHeatmap[], xs: string[], ys: string[], tc: EChartsThemeColors): HeatCellDatum[] {
+function buildCellData(
+  dps: ChartPointHeatmap[],
+  xs: string[],
+  ys: string[],
+  tc: EChartsThemeColors,
+  emptyCells: 'hatched' | 'hidden',
+): HeatCellDatum[] {
   return dps.map((d) => {
     const tuple: HeatCellTuple = [xs.indexOf(d.x), ys.indexOf(d.y), d.value ?? '-', d.detail]
-    return d.value == null ? { value: tuple, itemStyle: emptyCellItemStyle(tc) } : tuple
+    if (d.value != null || emptyCells === 'hidden') return tuple
+    return { value: tuple, itemStyle: emptyCellItemStyle(tc) }
   })
 }
 
@@ -324,6 +357,7 @@ export function buildHeatmap2DOption(
 ): EChartsCoreOption {
   const { paletteMode = 'sequential', valueRange, saturationCap, colorPalette = 'default' } = opts
   const { formatTooltip, yAxisInverse, axisNames, visualMapFormatter, visualMapText } = opts
+  const emptyCells = opts.emptyCells ?? 'hatched'
   const layout = visualMapLayout(opts.visualMapOrient ?? 'horizontal')
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -348,7 +382,7 @@ export function buildHeatmap2DOption(
   }
 
   const tc = getEChartsThemeColors()
-  const data = buildCellData(dps, xs, ys, tc)
+  const data = buildCellData(dps, xs, ys, tc, emptyCells)
 
   const remplies = dps.filter((d): d is ChartPointHeatmap & { value: number } => d.value != null)
   const valeurs = remplies.map((d) => d.value)
@@ -366,9 +400,10 @@ export function buildHeatmap2DOption(
   return {
     backgroundColor: CHART_BG,
     grid: layout.grid,
-    // Requis pour qu'ECharts applique les `itemStyle.decal` posés à la main
-    // ci-dessus (même flag que `MatchSummaryCharts.ARIA_DECAL`).
-    aria: { decal: { show: true } },
+    // Requis pour qu'ECharts applique les `itemStyle.decal` posés à la main ci-dessus (même
+    // flag que `MatchSummaryCharts.ARIA_DECAL`). Inutile quand les cases vides ne se peignent
+    // pas : plus aucune hachure à rendre.
+    aria: { decal: { show: emptyCells !== 'hidden' } },
     tooltip: {
       ...getTooltipBase(tc),
       position: 'top',
@@ -384,16 +419,29 @@ export function buildHeatmap2DOption(
         return `${escapeHtml(ys[yi])} × ${escapeHtml(xs[xi])}<br/>Win Rate: <b>${(v * 100).toFixed(1)}%</b><br/>Matchs: <b>${count}</b>`
       },
     },
-    xAxis: { ...axis, type: 'category', data: xs, splitArea: { show: true }, ...axisNameOpts(axisNames?.x, 28) },
+    xAxis: {
+      ...axis,
+      type: 'category',
+      data: xs,
+      splitArea: { show: emptyCells !== 'hidden' },
+      ...axisNameOpts(axisNames?.x, 28),
+    },
     yAxis: {
       ...axis,
       type: 'category',
       data: ys,
-      splitArea: { show: true },
+      splitArea: { show: emptyCells !== 'hidden' },
       ...axisNameOpts(axisNames?.y, 76),
       inverse: yAxisInverse,
     },
     visualMap: {
+      // `dimension: 2` EST OBLIGATOIRE, et son absence était un bug muet : une case est le
+      // tuple `[xIdx, yIdx, value, detail]`, et ECharts classe par défaut sur la DERNIÈRE
+      // dimension — donc sur `detail`, un objet, que le visualMap ne sait pas ranger. Aucune
+      // case ne recevait sa couleur : le tracé n'était plus qu'une grille de nombres, et
+      // seuls les bandeaux d'axes (`splitArea`) donnaient l'illusion d'un remplissage.
+      // La valeur mesurée est en dimension 2, et c'est elle que la rampe encode.
+      dimension: 2,
       min: minV,
       max: maxV,
       calculable: true,
@@ -420,8 +468,9 @@ export function buildHeatmap2DOption(
           show: true,
           formatter: (params: { data: HeatCellDatum }) => {
             const [, , brut, detail] = heatCellTuple(params.data)
-            // Case vide : un tiret (décision D3) — un « 0 » se lirait comme une mesure.
-            if (typeof brut !== 'number') return EMPTY_CELL_LABEL
+            // Case vide : un tiret (décision D3) — un « 0 » se lirait comme une mesure. En
+            // mode `hidden`, rien : la case n'a pas de forme, elle n'a pas d'étiquette.
+            if (typeof brut !== 'number') return emptyCells === 'hidden' ? '' : EMPTY_CELL_LABEL
             return String(detail?.count ?? 0)
           },
         },
