@@ -1,0 +1,22 @@
+goos: windows
+goarch: amd64
+pkg: levelup/go-api/internal/games/halo_infinite/film/filmdec
+cpu: AMD Ryzen 7 9850X3D 8-Core Processor           
+BenchmarkBitReaderReadBits-16    	   10000	    112447 ns/op	 582.82 MB/s
+BenchmarkBitReaderReadBits-16    	   10000	    115698 ns/op	 566.44 MB/s
+BenchmarkBitReaderReadBits-16    	   10000	    115495 ns/op	 567.44 MB/s
+BenchmarkBitReaderReadBits-16    	   10000	    115315 ns/op	 568.32 MB/s
+BenchmarkBitReaderReadBits-16    	   10000	    113167 ns/op	 579.11 MB/s
+2026/09/13 15:31:33 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=50 slots_non_vides=1067
+BenchmarkTraverseEntity-16       	       3	 368481900 ns/op
+BenchmarkTraverseEntity-16       	       3	 378702433 ns/op
+BenchmarkTraverseEntity-16       	       3	 367250567 ns/op
+BenchmarkTraverseEntity-16       	       3	 361276167 ns/op
+BenchmarkTraverseEntity-16       	       3	 363271300 ns/op
+BenchmarkKeyframeClosure-16      	       3	 377116600 ns/op
+BenchmarkKeyframeClosure-16      	       3	 417863367 ns/op
+BenchmarkKeyframeClosure-16      	       2	 532977150 ns/op
+BenchmarkKeyframeClosure-16      	       2	 645810500 ns/op
+BenchmarkKeyframeClosure-16      	       3	 385508733 ns/op
+PASS
+ok  	levelup/go-api/internal/games/halo_infinite/film/filmdec	27.776s

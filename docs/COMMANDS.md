@@ -474,6 +474,34 @@ per-scan durations (the binary installs an slog handler), `--cpuprofile` and `--
 pprof files (`go tool pprof`), the heap one after the build. All three are inert by default, and
 the options must precede `<matchId>` — the flag package stops at the first positional argument.
 
+
+#### Decoder time budget — benchmarks and `benchstat` (lot 0.A.5)
+
+`replay-equiv` already prints a duration **per film** (its own column), which is the end-to-end
+budget. It does not say **where** the time went. Three benchmarks isolate the layers that the
+structural revision (M2) is going to move, so a slowdown is located instead of merely noticed:
+`BenchmarkBitReaderReadBits` (the primitive, no grammar), `BenchmarkTraverseEntity` (the component
+loop over real keyframe records) and `BenchmarkKeyframeClosure` (the hot sweep over a whole reel).
+
+They run on the per-build mini-reel `minifilm_bcb6d393`, never on `data/`: a benchmark that needed
+the film cache would not run in CI. (`ScanBipedPositions`, which the plan named, cannot run on a
+mini-reel — it derives its biped slot band from keyframes and refuses a reel whose keyframes are
+concatenated out of continuity.)
+
+```bash
+cd apps/go-api
+# the committed baseline (regenerate only on a declared change)
+go test -bench . -run '^$' -count 5 ./internal/games/halo_infinite/film/filmdec/ \
+  > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
+
+# compare after a change — budget: +10 % at most, checked at every M2 close
+go test -bench . -run '^$' -count 5 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
+benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt /tmp/apres.txt
+# benchstat is not vendored: go install golang.org/x/perf/cmd/benchstat@latest
+```
+
+`-count 5` is the minimum for `benchstat` to have a distribution rather than a single point;
+`-run '^$'` keeps the tests out of the timing.
 ### Notifications
 
 ```bash

@@ -1,0 +1,19 @@
+# EMPREINTE DE LA GRAMMAIRE DU FILM — golden du lot 0.A.4.
+#
+# Une seule ligne de donnees : `revision<TAB>empreinte`.
+#   revision   filmdec.GrammarRev (forme grammar-AAAA-MM-JJ)
+#   empreinte  sha256 des sources .go hors _test.go de filmdec/ ET killsource/, chemin relatif
+#              compris, fins de ligne normalisees en LF.
+#
+# LA REGLE A TROIS ETAGES :
+#   GrammarRev            monte a TOUT changement de grammaire (largeur, cadre, ordre, lecteur).
+#   KillSourceDecoderRev  monte si la SORTIE de killsource peut changer -> backlog de redecodage.
+#   SchemaVersion         monte si le CONTENU CUIT change -> recuisson par backfill-replay.
+#
+# REGENERATION :
+#   go test ./internal/games/halo_infinite/film/filmdec/ -run GrammarRevSuitLaGrammaire -update
+#
+# HISTORIQUE
+#   2026-09-13  grammar-2026-09-13  premiere pose (lot 0.A.4). L'empreinte couvre desormais
+#               filmdec ET killsource : une largeur corrigee d'un seul cote fait sonner le gate.
+grammar-2026-09-13	bbc80c898c87a27e263cd9557a71f4cc9b7cc1e59a64f93c02706749e7d37ee7
