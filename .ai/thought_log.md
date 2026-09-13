@@ -61,6 +61,12 @@ bumps 51, 52, 53, 54 (comptes et durees cumulees), regle d'effacement a ~20 s (h
 confrontee au dead-state ti=40 ecrit par le film, verdict defaut / divergence. Temoin a nommer
 par l'utilisateur, sinon `084a804d`.
 
+**Addendum (temoin vehicules).** L'utilisateur nomme le temoin : match
+`bfecd02b-9798-4407-aa55-05244f4c1fa0` (film v41 HI_1_13_0, 29 chunks au cache, artefact du parc
+au schema 54 cuit le 13/09 00:43, absent des deux corpus) ; il n'a constate que les vehicules mais
+soupconne d'autres degradations : 0.D.6 se joue sur TOUS les axes, bump par bump (51 -> 54),
+attribution par mutation, et `bfecd02b` entre au manifeste du corpus gate.
+
 ---
 
 ## [2026-09-13] Chantier decodeur — directive utilisateur D13 : la grammaire prime PARTOUT — En cours (plan amende, lot 0.E lance)

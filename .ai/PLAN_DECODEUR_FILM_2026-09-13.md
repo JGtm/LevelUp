@@ -585,11 +585,17 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       ont bumpé ces derniers temps sans garder toutes les données »).** Angle mort connu de la
       classification : le calque véhicules naît au schéma 39, donc la comparaison 34 -> 54 ne peut
       PAS voir une dégradation entre 39 et 54 (ses axes sortent « nouveaux »). Instruction bornée
-      (une session) : (a) témoin nommé par l'utilisateur si fourni, sinon `084a804d` (BTB
-      véhicules) et un second film à véhicules du corpus ; (b) corpus gate sur ce(s) témoin(s) avec
-      `--base` aux bumps successifs 51, 52, 53, 54 (shas de la chronique) : axes `vehicles.*`,
-      `vehicleRides` (comptes ET durées cumulées par calque) ; nommer le bump où une piste ou une
-      occupation raccourcit ou disparaît ; (c) la règle d'effacement (« le véhicule reste dessiné
+      (une session) : (a) TÉMOIN NOMMÉ PAR L'UTILISATEUR : match
+      `bfecd02b-9798-4407-aa55-05244f4c1fa0` (`bfecd02b`, film v41 `HI_1_13_0`, 29 chunks au
+      cache, artefact du parc au schéma 54 cuit le 2026-09-13 à 00:43, absent des deux corpus) ;
+      l'utilisateur n'a constaté que les véhicules mais soupçonne d'autres dégradations : le gate
+      se joue sur TOUS les axes, pas seulement `vehicles.*` ; second témoin `084a804d` (BTB
+      véhicules) ; (b) corpus gate sur ces témoins avec `--base` aux bumps successifs 51, 52, 53,
+      54 (shas de la chronique) : toutes les pertes (comptes ET durées cumulées par calque),
+      chacune nommée avec son bump et attribuée par mutation au commit responsable ; nommer le bump
+      où une piste ou une occupation de véhicule raccourcit ou disparaît ; ajouter `bfecd02b` au
+      manifeste `config/replay_corpus.toml` (famille `vehicules_v41_utilisateur`, raison écrite) ;
+      (c) la règle d'effacement (« le véhicule reste dessiné
       jusqu'à la première preuve mesurée de son absence, fenêtre d'environ 20 s après la dernière
       preuve de présence », texte de `i18n.ts`, code à localiser dans `replay/vehicle_*.go`) est
       une HEURISTIQUE au sens de D13 : confronter à ce que le film ÉCRIT (dead-state ti=40 lisible
