@@ -137,8 +137,7 @@ func TestRunStampeLeTitreAvantLaPremiereEtape(t *testing.T) {
 	}
 	// Le stamp par étape a été retiré : s'il réapparaît, c'est que quelqu'un a
 	// re-stampé localement au lieu de s'appuyer sur celui de l'entrée.
-	if strings.Contains(texte, "ctxkeys.WithTitleSlug(ctx, opts.TitleSlug)") &&
-		!strings.Contains(texte, "func postImportCtx(") {
+	if strings.Contains(texte, "ctxkeys.WithTitleSlug(ctx, opts.TitleSlug)") {
 		t.Error("stamp de titre en ligne dans Run — passer par postImportCtx à l'entrée")
 	}
 }
