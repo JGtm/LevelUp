@@ -73,11 +73,24 @@ Et pour tout ce que ce rapport juge — `(slot, génération, GlobalID, instant)
 d'accord de l'oracle vaut `mppCalibPosEps·étendue` (`EquipmentPosEps`), tous deux proportionnels
 à l'étendue, `min` se simplifiant dans la différence. Deux cartes de mêmes largeurs d'axe
 rendent donc le même jeu de records ; seules les coordonnées en mètres changent, et ce rapport
-n'en lit aucune. Contrôle : `TestF0InvarianceEchelle`.
+n'en lit aucune.
+
+**Contrôle mesuré** (`TestF0InvarianceEchelle`) : chaque film est rebalayé avec les bornes d'une
+carte JUMELLE — mêmes largeurs d'axe, bornes différentes — et les signatures
+`(slot, génération, GlobalID, instant)` sont comparées.
+
+| Film | Bornes de référence | Jumelle d'échelle | Signatures | Écarts |
+|---|---|---|---|---|
+| `1cd3848a` | Behemoth | Fragmentation | 394 / 394 | **0** |
+| `46c3f91d` | Catalyst | Deadlock | 335 / 335 | **0** |
+| `d1dfbc02` | Prism | Scarr | 320 / 320 | **0** |
+
+(`9e8fb31b` skippe : aucune carte du catalogue ne partage les largeurs `[13 13 14]` de
+Cliffhanger sans partager ses bornes — le témoin n'existe pas, et le test le dit.)
 
 ### 0.4 Instrument et commandes rejouables
 
-Package `apps/go-api/internal/games/halo_infinite/film/filmdec/`, cinq fichiers `_test.go`,
+Package `apps/go-api/internal/games/halo_infinite/film/filmdec/`, six fichiers `_test.go`,
 skip par défaut (gardes d'environnement), `CGO_ENABLED=0` :
 
 | Fichier | Rôle |
@@ -87,6 +100,7 @@ skip par défaut (gardes d'environnement), `CGO_ENABLED=0` :
 | `f0_103_verdicts_research_test.go` | questions 1 à 3 |
 | `f0_103_pieces_research_test.go` | question 4 |
 | `f0_103_corpus_research_test.go` | recensement du parc d'artefacts (choix des films) |
+| `f0_103_sonde_research_test.go` | la SONDE : valeurs brutes, refs et créations contemporaines |
 
 Un changement ADDITIF au marcheur de R7 : `r7Ev.Refs` porte désormais les **trois** références
 avec leur génération (`r7Refs3`). La marche est inchangée bit pour bit — la lecture consommait
