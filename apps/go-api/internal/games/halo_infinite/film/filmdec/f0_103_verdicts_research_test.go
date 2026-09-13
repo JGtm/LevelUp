@@ -231,58 +231,12 @@ func TestF0Deploiement103(t *testing.T) {
 			f.CreStats.Anchors, f.CreStats.Accepted, f.PlaceStats.Confirmed,
 			f.PlaceStats.Placements, f.PlaceStats.Calibration.Widths)
 
-		// --- QUESTION 1 : les trois references, resolues, base par base ---
-		film := f0NouvelAgg()
-		for _, ev := range f.Ev103 {
-			for _, b := range f0Bases {
-				for i := 0; i < 3; i++ {
-					film[b][i].ajoute(ev.Refs[i], b, ev.TsUS, census, vies, index, proj)
-					parc[b][i].ajoute(ev.Refs[i], b, ev.TsUS, census, vies, index, proj)
-				}
-			}
-		}
-		t.Logf("  vies decodees : %d creations `ti=37` (cles distinctes %d) · %d trajectoires "+
-			"`ti=41` · %d slots recenses aux images-cles",
-			len(f.Creations), len(vies), len(proj), len(census))
-		f0LogAgg(t, "  Q1", film)
-		f0Temoin(t, f, census, vies, index, proj, temoin)
-
-		// --- QUESTIONS 2 et 3 : le 103 designe-t-il la pose ? ---
+		f0Question1(t, f, census, vies, index, proj, parc, temoin)
 		a, vu := f0LitArtefact(t, id)
 		if !vu {
 			continue
 		}
-		poses, orphArt, orphFilm := f0Joint(f, a)
-		t.Logf("  jointure artefact <-> film : %d poses appariees · %d poses d artefact sans "+
-			"correspondance · %d poses de film non publiees (schema %d)",
-			len(poses), orphArt, orphFilm, a.SchemaVersion)
-		refs := f0ViesReferencees(f, f0BaseRef)
-		fins := f0FinDeVie(a)
-		parOrigine := map[string][2]int{}
-		parIDOrigine := map[string][2]int{}
-		for _, p := range poses {
-			vue := 0
-			if refs[p.Cle] {
-				vue = 1
-			}
-			f0Bump(parOrigine, p.Origin, vue)
-			f0Bump(parcOrigine, p.Origin, vue)
-			cle := fmt.Sprintf("%s/0x%08x/%s", p.Family, p.ID, p.Origin)
-			f0Bump(parIDOrigine, cle, vue)
-			f0Bump(parcIDOrigine, cle, vue)
-			// QUESTION 3 : les cas de D12 — une pose `deployed` a l image EXACTE de la fin de
-			// vie de son poseur, c est-a-dire un lacher a la mort promu par la seule clause
-			// de distance de `equipmentOrigin`.
-			if p.Origin == "deployed" && p.Owner >= 0 &&
-				f0EstFinDeVie(fins, uint32(p.Owner), p.T0) {
-				d12 = append(d12, fmt.Sprintf(
-					"%s t0=%d 0x%08x %-8s poseur=%d · un 103 designe sa vie : %v",
-					id, p.T0, p.ID, p.Family, p.Owner, refs[p.Cle]))
-			}
-		}
-		f0LogCouverture(t, "  Q2 origine", parOrigine)
-		f0LogCouverture(t, "  Q2 objet  ", parIDOrigine)
-		f0PieceVoisine(t, poses, refs, parcVoisin)
+		d12 = append(d12, f0Questions23(t, f, a, parcOrigine, parcIDOrigine, parcVoisin)...)
 	}
 
 	t.Logf("")
@@ -297,6 +251,67 @@ func TestF0Deploiement103(t *testing.T) {
 	for _, l := range d12 {
 		t.Logf("      %s", l)
 	}
+}
+
+// f0Question1 resout les trois references de chaque 103 du film, base par base, et publie le
+// bilan du film ainsi que son temoin de hasard. Alimente l agregat de parc au passage.
+func f0Question1(t *testing.T, f f0Film, census map[uint64]map[int]int,
+	vies map[f0CleVie]f0Cible, index map[uint64]bool, proj map[f0CleVie]bool,
+	parc, temoin f0Agg) {
+	t.Helper()
+	film := f0NouvelAgg()
+	for _, ev := range f.Ev103 {
+		for _, b := range f0Bases {
+			for i := 0; i < 3; i++ {
+				film[b][i].ajoute(ev.Refs[i], b, ev.TsUS, census, vies, index, proj)
+				parc[b][i].ajoute(ev.Refs[i], b, ev.TsUS, census, vies, index, proj)
+			}
+		}
+	}
+	t.Logf("  vies decodees : %d creations `ti=37` (cles distinctes %d) · %d trajectoires "+
+		"`ti=41` · %d slots recenses aux images-cles",
+		len(f.Creations), len(vies), len(proj), len(census))
+	f0LogAgg(t, "  Q1", film)
+	f0Temoin(t, f, census, vies, index, proj, temoin)
+}
+
+// f0Questions23 croise les poses PUBLIEES du film avec les vies que les 103 designent, par
+// origine et par objet, et rend les lignes des cas de D12 (une pose `deployed` a l image
+// EXACTE de la fin de vie de son poseur — un lacher a la mort promu par la seule clause de
+// distance de `equipmentOrigin`).
+func f0Questions23(t *testing.T, f f0Film, a f0Art,
+	parcOrigine, parcIDOrigine, parcVoisin map[string][2]int) []string {
+	t.Helper()
+	poses, orphArt, orphFilm := f0Joint(f, a)
+	t.Logf("  jointure artefact <-> film : %d poses appariees · %d poses d artefact sans "+
+		"correspondance · %d poses de film non publiees (schema %d)",
+		len(poses), orphArt, orphFilm, a.SchemaVersion)
+	refs := f0ViesReferencees(f, f0BaseRef)
+	fins := f0FinDeVie(a)
+	parOrigine := map[string][2]int{}
+	parIDOrigine := map[string][2]int{}
+	var d12 []string
+	for _, p := range poses {
+		vue := 0
+		if refs[p.Cle] {
+			vue = 1
+		}
+		f0Bump(parOrigine, p.Origin, vue)
+		f0Bump(parcOrigine, p.Origin, vue)
+		cle := fmt.Sprintf("%s/0x%08x/%s", p.Family, p.ID, p.Origin)
+		f0Bump(parIDOrigine, cle, vue)
+		f0Bump(parcIDOrigine, cle, vue)
+		if p.Origin == "deployed" && p.Owner >= 0 &&
+			f0EstFinDeVie(fins, uint32(p.Owner), p.T0) {
+			d12 = append(d12, fmt.Sprintf(
+				"%s t0=%d 0x%08x %-8s poseur=%d · un 103 designe sa vie : %v",
+				f.ID, p.T0, p.ID, p.Family, p.Owner, refs[p.Cle]))
+		}
+	}
+	f0LogCouverture(t, "  Q2 origine", parOrigine)
+	f0LogCouverture(t, "  Q2 objet  ", parIDOrigine)
+	f0PieceVoisine(t, poses, refs, parcVoisin)
+	return d12
 }
 
 // f0LogAgg ecrit les resolutions base par base, reference par reference.
