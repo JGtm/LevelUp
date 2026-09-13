@@ -77,12 +77,22 @@ describe('buildSquadMapHeatmapOption', () => {
     expect(yAxis.nameLocation).toBe('start')
   })
 
-  it('reserve sous la grille de quoi loger etiquettes rotees, nom d axe ET reglette', () => {
-    // La reglette du visualMap vit a `bottom: 4` : si `grid.bottom` ne la depasse pas,
-    // elle se superpose aux etiquettes. Valeur mesuree, pas devinee.
+  it('reserve sous la grille de quoi loger etiquettes rotees ET nom d axe X', () => {
     const opt = buildSquadMapHeatmapOption(makeSeries(makeData()), OPTS)
     const grid = opt.grid as { bottom: number }
-    expect(grid.bottom).toBeGreaterThanOrEqual(130)
+    expect(grid.bottom).toBeGreaterThanOrEqual(100)
+  })
+
+  it('MASQUE la reglette du visualMap sans couper le mapping des couleurs', () => {
+    // Les cinq paliers sont deja nommes par la legende DOM du pied de carte : deux
+    // rangees identiques sous le meme graphe, c'est une de trop. `show: false` ne coupe
+    // que l'affichage du composant — les `pieces` restent, donc la teinte des cases aussi.
+    const vm = buildSquadMapHeatmapOption(makeSeries(makeData()), OPTS).visualMap as {
+      show: boolean
+      pieces: unknown[]
+    }
+    expect(vm.show).toBe(false)
+    expect(vm.pieces).toHaveLength(5)
   })
 
   it('data heatmap = matrice (xi, yi, value) avec value=null pour cellule sans score', () => {

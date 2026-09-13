@@ -219,9 +219,9 @@ func TestSessionUsageAggregate_DePersisterAuBloc(t *testing.T) {
 		t.Errorf("(joueur, camp, lobby) = (%v, %v, %v), attendu (5, 8, 12)",
 			pad.PlayerTotal, pad.TeamTotal, pad.LobbyTotal)
 	}
-	// ── Cadence sur la durée mesurée seule ──────────────────────────────────────
-	if !proche(pad.PlayerPer10Min, 5*600.0/900) {
-		t.Errorf("cadence joueur = %v, attendu 3.333", pad.PlayerPer10Min)
+	// ── Cadence PAR MATCH mesuré (2 matchs) ─────────────────────────────────────
+	if !proche(pad.PlayerPerMatch, 2.5) {
+		t.Errorf("cadence joueur = %v, attendu 2.5 par match", pad.PlayerPerMatch)
 	}
 	// ── Matchs au-dessus de la parité DU match ──────────────────────────────────
 	if pad.MatchesAboveTeamParity == nil || *pad.MatchesAboveTeamParity != 1 || pad.MatchesAboveLobbyParity != 1 {
@@ -236,8 +236,8 @@ func TestSessionUsageAggregate_DePersisterAuBloc(t *testing.T) {
 	if len(pad.Squad) != 1 || pad.Squad[0].XUID != "A" || pad.Squad[0].Total != 2 {
 		t.Fatalf("ligne squad = %+v, attendu A total 2", pad.Squad)
 	}
-	if !proche(pad.Squad[0].ShareOfTeamPct, 25) || !proche(pad.Squad[0].Per10Min, 2*600.0/900) {
-		t.Errorf("ligne squad A = %+v, attendu part équipe 25 %%, cadence 1.333", pad.Squad[0])
+	if !proche(pad.Squad[0].ShareOfTeamPct, 25) || !proche(pad.Squad[0].PerMatch, 1) {
+		t.Errorf("ligne squad A = %+v, attendu part équipe 25 %%, cadence 1 par match", pad.Squad[0])
 	}
 
 	// ── Ventilations : familles normalisées + bonus anonymes ────────────────────

@@ -8,7 +8,7 @@ package migrations
 // (player DB legacy), rebuild career_progression (défait corruption ART). Tous
 // consommateurs de tables créées par le god-file player (RACINE globale). repair_pme
 // réutilise migration.RebuildPlayerMatchEnrichmentART (util runtime resté dans le
-// package migration, appelé aussi par cmd/force_rebuild_art). Helpers
+// package migration, appelé aussi par cmd/rebuild_pme_art). Helpers
 // migration.LoadTableColumns + migration.FirstWords (b13). col* inlinés.
 
 import (

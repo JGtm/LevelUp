@@ -99,20 +99,21 @@ afterEach(() => {
 })
 
 describe('MatchKillDistanceSection', () => {
-  it('rend la section, un en-tête par joueur (X/Y frags mesurés) et un graphe par joueur', async () => {
+  it('rend UNE seule carte et nomme chaque joueur mesuré en légende', async () => {
     render(
       <MatchKillDistanceSection players={PLAYERS} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
     )
     await waitFor(() => expect(screen.getByText('Distance par arme')).toBeInTheDocument())
-    expect(screen.getByText('Alice — 3/8 frags mesurés')).toBeInTheDocument()
-    expect(screen.getByText('Bob — 1/5 frags mesurés')).toBeInTheDocument()
+    // La légende nomme les joueurs : c'est là que le gamertag tronqué sur l'axe se relit.
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+    expect(screen.getByText('Bob')).toBeInTheDocument()
     // La réserve de couverture reste au pied : le bâton ne prétend pas à l'exhaustivité.
     expect(screen.getByText(/couverture partielle/)).toBeInTheDocument()
   })
 
   it('replie sur le xuid quand le joueur est absent du scoreboard', async () => {
     render(<MatchKillDistanceSection players={PLAYERS} scoreboard={[]} t={MATCH_VIEW_TEXT.fr} />)
-    await waitFor(() => expect(screen.getByText('xuid(1) — 3/0 frags mesurés')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('xuid(1)')).toBeInTheDocument())
   })
 
   // PORTE 2 (le MATCH) : le titre mesure les positions, mais pas sur CE match-là.

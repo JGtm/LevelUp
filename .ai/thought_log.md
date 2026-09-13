@@ -1,3 +1,151 @@
+## [2026-09-13] Lot G des finitions v7.5 — fiabilite : un rebuild mortel retire, deux garde-rails qui mordent enfin, une regle de comparaison partagee — Complete (worktree wt-finitions-fiabilite, branche feat/finitions-fiabilite)
+
+**Decision technique principale.** Les cinq items du lot partagent une meme forme de defaut :
+un garde-rail, un commentaire ou une liste AFFIRMAIT une garantie que rien ne tenait. G.1 est
+l'exception, c'est du code actif dangereux : `migration.RebuildMatchSkillRankART` reposait
+`ADD PRIMARY KEY (match_id)` sur une table devenue append-only (PK technique `id`, N lignes par
+match_id, vue `_latest`) — sur une player DB d'aujourd'hui il echoue, et s'il passait il
+detruirait l'invariant de l'ADR 0026. Supprime avec son unique appelant `cmd/force_rebuild_art`
+apres avoir verifie SUR PIECES qu'il n'etait le SEUL chemin d'aucune reparation : le rebuild
+shared `match_participants` reste servi par `cmd/rebuild_mp`, le rebuild player
+`player_match_enrichment` par `cmd/rebuild_pme_art` et `levelup rebuild-pme`. Le CLI supprime
+etait par ailleurs mono-titre en dur, ouvrait DuckDB par `sql.Open` nu (hors provider/lease) et
+son etape `match_skill_rank` etait deja documentee comme cassee depuis mai.
+
+**La decision de fond de G.3** : ne PAS recopier une troisieme fois la regle « scan force vs
+lookup indexe ». Elle vivait en deux exemplaires (sonde PSA, `cmd/repair_psa_index`) et la sonde
+`match_skill_rank` demandee en aurait fait une 3e et une 4e — le seuil exact de la regle
+CLAUDE.md n°6. Extraction dans `internal/platform/duckdb/indexcheck` (mecanique + CARTE DES AXES
+de match_skill_rank), consomme par la sonde ET par `cmd/repair_msr_index` qui portait la seule
+copie. Le garde-rail interdit de nommer un `"idx_msr_*"` en litteral Go hors du paquet : les DDL
+des migrations, en raw string, et les commentaires ne matchent pas. La paire PSA reste en 2
+copies — tolere par la regle, consigne.
+
+**Resultats observes.** **La morsure de chaque garde-rail a ete VERIFIEE, pas supposee.**
+(1) G.2 : le temoin du ratchet anti-ART porte la forme HISTORIQUE VERBATIM de
+`seed_demo_corpus.go` avant B.3.6, relevee par `git show 044751026^` —
+`UPDATE %s SET %s FROM _xuid_map m WHERE %s.%s = m.old_xuid`, aucune valeur liee. Elle est
+ROUGE ; la forme livree en B.3.6 (`... WHERE %s = ?`) reste VERTE. (2) G.3 : une carte d'axes
+recopiee dans `cmd/repair_msr_index/diag.go` rend le ratchet rouge (mutation jouee puis
+annulee). (3) G.5a : retirer `'bomb'` du tableau TS rend le test de parite rouge. **Cout de la
+sonde G.3, MESURE sur fixture montee par les migrations reelles : 56 ms pour 206 cles comparees
+sur 2 000 lignes**, 3 axes, borne 200 cles/axe en tirage reservoir.
+
+**Deux pieges payes.** (a) Mon temoin de concatenation G.2 contenait `written_at = now()` : le
+ratchet `TestWrittenAtEcrituresEnUTC` d'`internal/migration` scanne TOUT le module, chaines de
+test comprises, et l'a pris pour une horloge nue dans un ordre SQL reel. Le run complet l'a
+attrape ; temoin reecrit sur `playlist_group`. Lecon : une chaine de test qui ressemble a du SQL
+de production est jugee comme telle par les autres ratchets. (b) G.4 a ECRASE un fichier
+existant : `openspartan_post_import_title_test.go` portait deja le ratchet C.1
+`TestPostImportLUSRCallIsTitleStamped`, qui exigeait le litteral
+`s.recomputeLUSR(ctxkeys.WithTitleSlug(ctx, opts.TitleSlug)`. Ce litteral n'existe plus puisque
+le stamp a remonte a l'entree de `Run` : le ratchet aurait echoue sur un code DEVENU MEILLEUR.
+Sa garantie est reprise et elargie par `TestRunStampeLeTitreAvantLaPremiereEtape` (toutes les
+etapes, plus une seule). Le test supprime n'etait PAS dans
+`.ai/baselines/tests_pre_migration.jsonl` (ne le 2026-09-13, baseline du 2026-06-26) — verifie
+par grep, aucune entree a retirer. Consigne parce qu'un remplacement silencieux de garde-rail
+est exactement ce qu'on reproche aux autres.
+
+**Baseline de tests.** Seules 3 lignes package-level de `cmd/force_rebuild_art` (start /
+« no test files » / skip) retirees, par filtre sur le nom de paquet (61 788 -> 61 785). Elles ne
+portaient AUCUN champ `Test` : le controle de presence ne les voyait pas, rien n'est relache.
+Note datee ajoutee a l'en-tete de `scripts/check_test_baseline.sh`, comme pour B.2.
+
+**Piege de gate, non imputable au lot.** Le run d'integration a tue `internal/platform/duckdb`
+au budget par defaut de 10 min (`panic: test timed out`, AUCUN `--- FAIL:`). Rejoue seul avec
+`-timeout 1800s` : **ok en 295,6 s**. Le run complet local etait ~1,5x plus lent que la mesure
+de la revue E.3 (`internal/sync` 237 s contre 167,8 s ; `migration` 340 s), et le diff du lot
+n'ajoute qu'un SOUS-paquet sous `platform/duckdb/` — le paquet lui-meme n'est pas touche, et la
+CI est verte sur le commit de base `4acf56aae`. Motif de flake local deja connu du depot.
+
+**Conclusion / prochaine etape.** Lot G clos, 6 commits, G.1 a G.6 tous `[x]`. Une decouverte
+consignee et NON traitee : **D-G1** — `internal/ops/restore.go:223` vide une table par
+`DELETE FROM %q` interpole sans valeur liee (forme declencheuse ART) ; le scan G.2 ne le juge
+pas car il correle au niveau du fichier sur le nom d'une table protegee et cet outil generique
+n'en nomme aucune. Limite ASSUMEE, documentee dans le fichier de test et au plan. Reste au
+pilote : la requete de mesure G.4 (comptage des `performance_chain` etrangeres sur les 4 player
+DB Infinite, lecture seule, serveur arrete) — elle est au journal du plan.
+## [2026-09-13] Lot H des finitions v7.5 — rejeu : neutralite d'un socle, piece engendree, et les deux films « Aquarius » qui n'en sont pas — Complete (worktree wt-finitions-rejeu, branche feat/finitions-rejeu)
+
+**Decision technique principale.** Les trois items du lot corrigent la meme faute de forme :
+**une valeur surchargee qu'on lit comme un fait**. H.1 — `TeamNeutral` (-1) vaut « socle
+neutre » sur 63 socles du catalogue et « equipe inconnue » sur 8 autres ; le tri du panier
+neutre de `flag_neutral.go` lisait l'equipe et ramassait donc les huit. La neutralite passe en
+CHAMP propre, `FlagSpawn.Neutral`, pose depuis le LABEL — la meme correction que D9, dans
+l'autre sens. H.2 — `equipmentOrigin` ne pose qu'une question temporelle, qui a un sens sur un
+objet PORTE et aucun sur une piece ENGENDREE ; `equipmentIsSpawnedPiece` force `deployed` avant
+toute mesure de temps, et la table employee est celle qui existe deja (`usageWallPanelIDs`,
+transcription du `kind = "deployed"` du manifeste, recollee par son garde-rail) — aucune
+troisieme copie. H.3 — l'oracle de carte des mesures de RECHERCHE lit les largeurs d'axe dans le
+film et filtre le catalogue sur leur egalite EXACTE ; la production, elle, IMPOSE le decoupage
+de l'entree. Sur une carte dont l'index de region fait 2 bits, les deux divergent d'un bit, et
+c'est toute la decouverte D-F5.
+
+**Resultats observes.** **H.1** — recensement du catalogue versionne (434 socles `flag_spawn`
+ponctuels) : 63 socles neutres au label, INCHANGE ; 8 socles a `team_index = -1` sans label
+(Cliffside, Highpower Heavies, Solitude, Solitude - Ranked, 4 entrees du map_id `1042b738` sans
+`public_name`) sortis du panier, qui passe de **71 a 63**. **H.2** — mesure avant/apres sur le
+PARC ENTIER, sans recuire quoi que ce soit (la regle est une reecriture pure du champ `origin`
+sur l'`id`, donc l'appliquer a une pose publiee rend ce que le constructeur rendrait) :
+76 artefacts, 13 854 poses ; `wall/deployed` **350 -> 360**, `wall/dropped` **322 -> 317**,
+`wall/unknown` **13 -> 8**, et **aucune autre famille ne bouge** (33 croisements famille x
+origine identiques). 10 poses basculent, toutes des panneaux : `0x528fce46` 3 `dropped` +
+4 `unknown` — **les 7 attendus, a l'unite** — plus `0x686b40c9` 2 + 1, sur des films hors des
+25 de F.0. **H.3 — les deux films « Aquarius » sont LIVE FIRE, et il n'y a rien a recuire.**
+Les trois datations : artefacts en `schemaVersion` **54**, le schema COURANT pose le 2026-09-12
+18:18 (`104b74e15`), mtime 2026-09-13 00:39 et 00:50 ; bornes `aquarius` **jamais modifiees
+depuis le 2026-07-31** (`git show` sur les quatre commits qui touchent le catalogue : identiques
+octet pour octet, fichier entier fige depuis le 2026-08-27) ; artefacts donc POSTERIEURS aux
+bornes — aucune des deux hypotheses de D-F5 ne tient. En imposant a chaque entree SON PROPRE
+decoupage, `live fire` (`sgh_interlock`) reproduit les reperes publies a **0,066 m** et
+**0,082 m**, quand `aquarius` reste a 29,201 et 29,871 m — les chiffres de D-F5, reproduits a
+l'identique. Confirmation par un second chemin : la regression affine des coordonnees publiees
+retrouve les bornes de Live Fire sur Y (min -10,15 / -10,28 contre -10,103 au catalogue) et sur
+Z (min -9,38 / -9,35 contre -9,331), l'axe X seul etant decale d'une etendue entiere — la
+signature d'UN BIT DE TROP lu sur cet axe. Cause : l'en-tete d'i0 de Live Fire porte un index de
+region de DEUX bits (region jouee 1, catalogue du 2026-08-27), `DetectI0Layout` l'impute a X et
+lit `[13 12 11]` la ou le catalogue declare `[12 12 11]` ; Live Fire n'est donc jamais candidate
+et `aquarius`, seule entree en `[13 12 11]`, gagne par defaut. **Le depot le disait deja
+ailleurs** : `config/replay_corpus.toml` porte `0797ce72` comme temoin `region_index_2_bits`,
+`carte = "Live Fire"`, ecrit le 2026-09-12 pour le correctif de la porte de position des objets
+du monde (schema 53). Corroboration entierement independante de la mesure.
+
+**Piege paye, et il vaut d'etre dit.** Le premier balayage de H.3 essayait chaque entree du
+catalogue A SES PROPRES largeurs et classait `breaker` en tete a 10,4 m : un classement qui ne
+classait rien, parce que decoder aux largeurs d'une autre carte ne DEPLACE pas les positions,
+il les DETRUIT. Ce n'est qu'en rejouant le chemin exact de la production — `scan.Layout =
+fc.ImposedLayout()` — que l'ecart s'est effondre de trois ordres de grandeur sur la bonne
+carte. La lecon est generale : une mesure qui ne rejoue pas la chaine de production ne mesure
+pas la production.
+
+**Le gate de corpus a dit PERTE, et c'est la bonne reponse.** `replay-corpus-gate
+--reference=base` (12 temoins, 25 cuissons, ~45 min, racine jetable sous le worktree) : 9 temoins
+a 0 gain / 0 perte, et DEUX temoins a 2 gains ET 2 pertes — exactement la reclassification H.2.
+Verifie en rouvrant les artefacts cuits : `084a804d` `wall/unknown` 2 -> 1 et `wall/deployed`
+3 -> 4 ; `111fa685` `wall/dropped` 26 -> 25 et `wall/deployed` 28 -> 29 ; **le total de poses ne
+bouge dans aucun des deux**. Le gate n'a pas de notion de « deplace » : un compteur qui baisse
+est une perte, et c'est ici celui que H.2 vide volontairement. Un troisieme temoin sort en
+ERREUR, **cote BASE et sur du code que ce lot ne touche pas** : la cuisson de reference
+d'`e5adf7b2` depasse le plafond memoire (pic 3,822 GiB contre 3 GiB souple / 4 GiB dur,
+`filmproc.DefaultLimitGiB`, constante sans drapeau), quand la cuisson HEAD du meme temoin a
+ABOUTI. Le code 1 du gate couvre donc trois lignes dont aucune n'est une perte de matiere.
+
+**CI.** Quatre commits pousses sur `feat/finitions-rejeu` (`6e0e5378a` H.1, `267fa1c5a` H.2,
+`9269dc24b` H.3, `e538d24cb` H.4). **CI VERTE AU NIVEAU JOB** (run `34773808291`, success) :
+Go Lint, Go Coverage + Baseline non-regression (`./...` complet, CGO), OpenAPI Lint, Go Lease
+Enforcement, Go Build + Test ubuntu ET windows, Frontend TypeScript + Vite, Go Contract Test —
+tous `success`, E2E React `skipped` ; plus `Secrets (gitleaks)` et `Deploy Pre-Check` en
+`success`. Le hook `knip-ratchet` a bloque le premier push : `node_modules` absent du worktree,
+repare par `npm ci` dans `apps/web` — pas un defaut de code.
+
+**Conclusion / prochaine etape.** H.1, H.2 et H.4 sont `[x]` ; **H.3 est `[!]`** — la question
+posee n'avait pas de bonne reponse parmi les deux proposees, et l'autorisation utilisateur de
+recuisson pour ces deux films reste INUTILISEE (les recuire reproduirait les memes artefacts).
+Deux decouvertes consignees et NON traitees : **D-H1** (l'oracle de carte des mesures de
+recherche exclut silencieusement tout film de Live Fire — la production est indemne) et
+**D-H2** (`usageWallPanelIDs` n'a pas de garde-rail au niveau des IDENTIFIANTS, alors que H.2 en
+fait le decideur de l'origine publiee). Suite : lot I, fusion et revue.
+
 ## [2026-09-13] Lot F.1 et F.2 des finitions v7.5 — l'origine d'une pose d'equipement devient purement TEMPORELLE — Complete (worktree wt-finitions-equipement, branche feat/finitions-equipement)
 
 **Decision technique principale.** F.0 ayant refute la branche « le film le dit » (le type 103
@@ -107595,3 +107743,32 @@ corrigés comme défauts introduits par le lot. R6-R11, R14, R15 consignés au p
 **Conclusion** : lots A-F fusionnés dans feat/v75, CI verte au niveau job après chaque fusion ;
 reste à la main de l'utilisateur : recuisson du parc (F.4, D.2), item Notion « retrait migration
 boot » à cocher, découvertes consignées (dont `RebuildMatchSkillRankART` au schéma pré-append-only).
+
+---
+
+## [2026-09-13] Finitions v7.5, suite — lots G (fiabilité) et H (rejeu), revue bornée — Complété
+
+**Décisions** : huit recommandations retenues par l'utilisateur sur les découvertes consignées,
+découpées en lot G (fiabilité : outil de reconstruction pré-append-only supprimé, ratchet anti-ART
+étendu aux noms de table interpolés, sonde data-health « index match_skill_rank désynchronisé »
+avec règle partagée `indexcheck`, titre stampé à l'entrée du post-import OpenSpartan, parités
+Go↔TS des familles d'objectif et `skillchain.Chains()`) et lot H (rejeu : neutralité des socles
+de drapeau en champ explicite — 8 socles `team_index=-1` sortis du panier neutre, 63 neutres
+inchangés ; pièce engendrée toujours `deployed` — 10 panneaux basculent, aucune autre famille ;
+D-F5 : les deux « films d'Aquarius » sont LIVE FIRE, artefacts et catalogue justes, seul
+l'instrument de recherche imposait le mauvais découpage — rien à recuire, `[!]`).
+
+**Résultats** : mesure G.4 par le pilote (serveur arrêté) : 0 chaîne de performance étrangère
+sur les 4 bases Infinite, fermeture préventive. CI verte au niveau job sur les deux branches
+puis sur feat/v75 après chaque fusion. Revue bornée (`REVUE_FINITIONS_GH_2026-09-13.md`) :
+0 P0, 2 P1 corrigés (trois copies inline du périmètre anti-ART remplacées par le helper unique ;
+assertion du stamp rendue mordante), 9 P2 consignés au plan.
+
+**Incident de branche partagée** : une autre session fusionne ses lots d'ajustements UI sur le
+même feat/v75 local ; un push retardé par les hooks est parti avec une fusion ensuite amendée
+(refus non fast-forward), réconcilié par fusion de la version distante (aucun push forcé) ; puis
+le pre-push `lint:fields` rougissait sur `formes.fixtures.ts:142` (« Aquarius », lot ajust-D2 de
+l'autre session) — libellé de fixture remplacé par « Cliffside » pour débloquer la branche.
+
+**Conclusion** : chantier des finitions clos ; à la main de l'utilisateur : recuisson du parc
+(F.4, D.2, H.2), item Notion « retrait migration boot », P2 consignés.

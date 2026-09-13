@@ -9,10 +9,6 @@ package migrations
 // titre = safe ; RunForDB combine global+title trié par canonicalOrder). DML ART-prone :
 // le rebuild append-only fait un CTAS swap (jamais d'UPDATE sur index ART).
 //
-// NB : RebuildMatchSkillRankART (steps_player_rebuild_match_skill_rank.go) n'est PAS ici —
-// ce n'est pas un step enregistré mais un util runtime exporté, appelé par
-// cmd/force_rebuild_art ; il reste dans le package migration.
-//
 // Helpers : migration.LoadTableColumns + migration.FirstWords (formes privées conservées
 // globalement, b13). consts col* inlinées.
 

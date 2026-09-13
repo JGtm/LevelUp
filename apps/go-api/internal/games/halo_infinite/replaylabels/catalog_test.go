@@ -173,10 +173,12 @@ func TestPariteObjetsEquipementDuCorpus(t *testing.T) {
 // chantier, mais qui doit rester une liste COURTE et VUE.
 //
 // Aucune n'apparaît dans les trois artefacts construits à ce jour (mesuré le 2026-08-02).
+// Le Mutilator en est SORTI le 2026-09-13 : ce n'était pas une curiosité de bac à sable mais
+// une arme de l'arsenal dont l'identifiant filmshell n'avait jamais été catalogué. Il est
+// désormais au registre, et l'allowlist ne garde que les deux sandwichs de Forge.
 var famillesSansWeaponKey = map[string]bool{
 	"Sandwich":        true,
 	"Mythic Sandwich": true,
-	"Mutilator":       true,
 }
 
 func TestFamillesDArmeConnuesDuDecodeurSontAuRegistre(t *testing.T) {

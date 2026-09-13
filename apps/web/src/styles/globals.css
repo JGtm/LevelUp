@@ -345,11 +345,15 @@
      COMPTAGE des vignettes, calculé en TS (lib/layout/blockRowPacking) et passé en
      `--block-row-cols`. Une variable CSS plutôt qu'un style inline seul : c'est le seul
      moyen d'annuler la grille sous 768 px, où une seule colonne tient. */
+  /* `stretch` (et non `start`) : les cartes d'une même rangée descendent toutes
+     jusqu'au bas de la plus haute, sinon leurs bordures s'arrêtent à des hauteurs
+     différentes et la rangée se lit comme un escalier (retour utilisateur
+     2026-09-13). Les cartes portent `h-full flex flex-col` pour que le fond suive. */
   .block-row {
     display: grid;
     gap: 1.5rem;
     grid-template-columns: 1fr;
-    align-items: start;
+    align-items: stretch;
   }
 
   @media (min-width: 768px) {

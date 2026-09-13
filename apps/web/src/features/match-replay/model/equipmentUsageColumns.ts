@@ -9,22 +9,19 @@
  *
  * AUCUN NOM DE FAMILLE N'EST ÉCRIT ICI. Les deux tables du rejeu les portent déjà —
  * `placementFamily` (indexée par RÈGLE DE RENDU, pas par famille) et `padEquipmentFamily` (les
- * socles de bonus) — et les types de grenade viennent du CATALOGUE DU DOCUMENT, bilingue et cuit
- * au build. Une troisième table de noms divergerait au premier ajout du manifeste du titre.
+ * socles de bonus). Une troisième table de noms divergerait au premier ajout du manifeste du
+ * titre.
  *
  * Pur : des fonctions de (mesures, textes) vers des colonnes. Aucun React.
  */
 import { formatDurationMMSS } from '@/lib/formatters/duration'
 
-import { catalogText } from '../i18n/catalogLabel'
 import { PLACEMENT_RENDER } from '../layers/equipmentPlacementsLayer'
 import { usageOutcomeColor } from './equipmentUsageChart'
 import type { EquipmentUsage, EquipmentUsageTally } from './equipmentUsageLogic'
 import { droppedFamilyOf, isGameChangerFamily } from './gameChangers'
 import { usageUsedOf } from './equipmentKeptLogic'
-import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayText } from '../i18n/i18nContract'
-import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { padEquipmentFamilyOf } from './weaponPadFamilies'
 
 
@@ -48,25 +45,15 @@ export function equipmentFamilyLabel(family: string, t: ReplayText): string {
   return family
 }
 
-/** Le nom d'un type de grenade : le catalogue bilingue du document, sinon son RANG. */
-export function grenadeTypeLabel(
-  doc: ReplayDocumentReady,
-  rank: number,
-  t: ReplayText,
-  locale: ReplayLocale,
-): string {
-  return catalogText(doc.grenadeLabels[rank], locale) ?? t.equipmentUsage.grenadeRankFmt(rank)
-}
-
 /**
- * LES QUATRE FAMILLES DE GESTE (E2, 2026-09-09 : `deployed` et `dropped` FUSIONNENT en
+ * LES TROIS FAMILLES DE GESTE (E2, 2026-09-09 : `deployed` et `dropped` FUSIONNENT en
  * `equipment` — une seule colonne par famille, empilée sur ses issues, P2/P3). Ces clés sont
  * l'axe de regroupement de tout ce que la section montre : les groupes de colonnes, la couleur
  * des barres, et les lignes de la vue « part de chaque équipe ». Le typage les rend
  * exhaustives — une famille ajoutée ici force la table des encres à la peindre
  * (cf. `equipmentUsageChart`).
  */
-export type UsageGroupKey = 'grapple' | 'episodes' | 'equipment' | 'grenades'
+export type UsageGroupKey = 'grapple' | 'episodes' | 'equipment'
 
 /**
  * Une colonne : son en-tête, sa VALEUR pour un compteur, et comment cette valeur s'écrit.
@@ -76,8 +63,8 @@ export type UsageGroupKey = 'grapple' | 'episodes' | 'equipment' | 'grenades'
  * graduation et sa cellule doivent s'écrire avec la MÊME plume, sans quoi l'axe et la valeur
  * qu'il gradue ne parlent pas la même langue.
  *
- * `value` rend `null` pour une grandeur NON MESURÉE (cf. `killsValue`), jamais un zéro : un
- * zéro est une mesure, et l'écran ne doit pas les confondre.
+ * `value` rend `null` pour une grandeur NON MESURÉE, jamais un zéro : un zéro est une mesure,
+ * et l'écran ne doit pas les confondre.
  */
 export interface UsageColumn {
   key: string
@@ -105,6 +92,13 @@ export interface UsageColumn {
   segments?: (
     tally: EquipmentUsageTally,
   ) => Array<{ key: string; value: number; color: string; label: string }> | undefined
+  /**
+   * LE DÉTAIL DE LA CELLULE, en infobulle (2026-09-13). ABSENT = infobulle standard
+   * « joueur — colonne : valeur ». Présent, il REMPLACE la valeur écrite : c'est ce qui permet
+   * à une seule colonne de porter plusieurs grandeurs du même geste (nombre d'utilisations,
+   * durée cumulée, frags sous l'effet) sans ouvrir une colonne par unité.
+   */
+  tooltip?: (tally: EquipmentUsageTally) => string
 }
 
 /** Un groupe de colonnes : l'en-tête de premier niveau et sa réserve de mesure. */
@@ -143,27 +137,19 @@ function durationFormat(seconds: number): string {
 }
 
 /**
- * Les FRAGS SOUS EFFET ACTIF. MÊME PRINCIPE QUE `intValue`, une exception : un match dont la
- * jointure n'a pas pu être tentée (`killsRead` faux) n'a RIEN de mesuré — la valeur est nulle,
- * la barre reste vide et la cellule écrit le repli de non-mesure, jamais un zéro qui se lirait
- * comme une mesure de zéro frag (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.2,
- * EquipmentUsageCoverage.killsRead).
- */
-function killsValue(kills: number | undefined, killsRead: boolean): number | null {
-  return killsRead ? intValue(kills) : null
-}
-
-/**
  * usageColumnGroups — les groupes de colonnes que la donnée justifie, dans un ordre écrit.
  *
- * Le grappin d'abord (une activation), les états actifs ensuite (une durée), puis ce qui se pose
- * sur le terrain, ce qui y tombe, et enfin les lancers. Un groupe sans colonne n'est pas rendu.
+ * Le grappin d'abord (une activation), les états actifs ensuite, puis ce qui se pose sur le
+ * terrain. Un groupe sans colonne n'est pas rendu.
+ *
+ * PLUS DE GROUPE « GRENADES » depuis le 2026-09-13 : l'utilisateur l'a retiré du bilan
+ * d'équipement (« dans "Usages d'équipement" j'ai dit que je voulais pas des grenades »). Les
+ * lancers restent MESURÉS par `equipmentUsageLogic` et dessinés par le rejeu — ils ne sont
+ * simplement plus une colonne de ce tableau.
  */
 export function usageColumnGroups(
   usage: EquipmentUsage,
-  doc: ReplayDocumentReady,
   t: ReplayText,
-  locale: ReplayLocale,
 ): UsageColumnGroup[] {
   const u = t.equipmentUsage
   const groups: UsageColumnGroup[] = []
@@ -186,28 +172,17 @@ export function usageColumnGroups(
   }
   if (usage.columns.episodes.length > 0) groups.push(activeEpisodesGroup(usage, u))
   if (usage.columns.equipment.length > 0) groups.push(equipmentGroup(usage, u, t))
-  if (usage.columns.grenades.length > 0) {
-    groups.push({
-      key: 'grenades',
-      label: u.groupGrenades,
-      hint: u.groupGrenadesHint,
-      // AUCUNE `family` : les grenades sont HORS VOTE (décision D4, tranchée par
-      // l'utilisateur : ce ne sont pas des équipements) — toujours visibles, jamais repliées.
-      columns: usage.columns.grenades.map((rank) => ({
-        key: `grenade.${rank}`,
-        label: grenadeTypeLabel(doc, rank, t, locale),
-        value: (x: EquipmentUsageTally) => intValue(x.grenades[rank]),
-        format: intFormat,
-      })),
-    })
-  }
   return groups
 }
 
 /**
- * activeEpisodesGroup — le groupe des ÉTATS ACTIFS et ses trois colonnes par famille (nombre,
- * durée, frags). Extrait de `usageColumnGroups` le 2026-09-05, quand l'ajout de la famille de
- * vote sur chaque colonne l'a fait franchir le plafond de taille de fonction du dépôt.
+ * activeEpisodesGroup — le groupe des ÉTATS ACTIFS, UNE colonne par famille.
+ *
+ * TROIS COLONNES SONT DEVENUES UNE LE 2026-09-13, sur cadrage utilisateur : « c'est quoi cette
+ * distinction "épisode" et "durée" ? j'ai jamais demandé ça. » La colonne compte les
+ * UTILISATIONS ; la durée cumulée et les frags sous l'effet passent dans l'infobulle de la
+ * cellule, où ils qualifient le même geste au lieu d'ouvrir deux colonnes d'unités différentes
+ * sur la même mesure.
  */
 function activeEpisodesGroup(
   usage: EquipmentUsage,
@@ -220,30 +195,21 @@ function activeEpisodesGroup(
     key: 'episodes',
     label: u.groupActive,
     hint: u.groupActiveHint,
-    columns: usage.columns.episodes.flatMap((fam) => [
-      {
-        key: `${fam}.count`,
-        label: `${u.activeFamily[fam]} (${u.activeCount})`,
-        value: (x: EquipmentUsageTally) => intValue(x.episodes[fam]?.count),
-        format: intFormat,
-        family: fam,
-      },
-      {
-        key: `${fam}.ms`,
-        label: `${u.activeFamily[fam]} (${u.activeDuration})`,
-        value: (x: EquipmentUsageTally) => durationValue(x.episodes[fam]?.ms),
-        format: durationFormat,
-        duration: true,
-        family: fam,
-      },
-      {
-        key: `${fam}.kills`,
-        label: u.activeKillsFamily[fam],
-        value: (x: EquipmentUsageTally) => killsValue(x.episodes[fam]?.kills, killsRead),
-        format: intFormat,
-        family: fam,
-      },
-    ]),
+    columns: usage.columns.episodes.map((fam) => ({
+      key: `${fam}.count`,
+      label: u.activeColumnFmt(u.activeFamily[fam]),
+      value: (x: EquipmentUsageTally) => intValue(x.episodes[fam]?.count),
+      format: intFormat,
+      family: fam,
+      // La durée cumulée et les frags sous l'effet QUALIFIENT le compte : ils vivent dans
+      // l'infobulle de la cellule, jamais dans deux colonnes de plus.
+      tooltip: (x: EquipmentUsageTally) =>
+        u.activeCellTipFmt(
+          intValue(x.episodes[fam]?.count),
+          durationFormat(durationValue(x.episodes[fam]?.ms)),
+          killsRead ? intValue(x.episodes[fam]?.kills) : null,
+        ),
+    })),
   }
 }
 

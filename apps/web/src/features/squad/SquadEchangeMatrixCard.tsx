@@ -19,6 +19,12 @@
  * vengeances n'est ni chaud ni froid — la rampe cold→hot lui collerait un jugement, et les
  * couleurs PAR JOUEUR (`squad-player-*`) feraient croire que la teinte désigne quelqu'un.
  *
+ * LA DIAGONALE EST UNE CASE IMPOSSIBLE, PAS UNE MESURE QUI MANQUE (`emptyCells="blank"`).
+ * Personne ne se venge soi-même. Le mode par défaut du wrapper la hachurait et posait sous
+ * le graphe une légende « aucune mesure sur cet axe » — qui annonçait un trou de données là
+ * où il n'y a qu'une impossibilité. Elle reste donc vide, sans damier ni légende ; les deux
+ * axes portent les mêmes gamertags, ce qui dit déjà pourquoi.
+ *
  * LA LIGNE « REÇU N » ET LES DEUX PUCES SONT EN DOM, SOUS LE GRAPHE, pas dans le canvas.
  * ECharts ne sait pas poser un second rang d'étiquettes sous un axe de catégories ; les
  * fabriquer en `graphic` aurait été une mise en page manuelle en pixels, illisible et
@@ -29,7 +35,7 @@ import { useMemo } from 'react'
 
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import { heatmapRampTokens } from '@/components/charts/heatmapColors'
-import { getEChartsThemeColors, melangeHex } from '@/components/charts/_utils'
+import { getEChartsThemeColors } from '@/components/charts/_utils'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -101,15 +107,6 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
     [t, perMatchFmt],
   )
 
-  // LA RAMPE EST PEINTE ICI, CASE PAR CASE. Le `visualMap` d'ECharts peint sa réglette
-  // mais ne teinte pas une heatmap catégorie × catégorie : mesuré sur pièces le
-  // 2026-09-13 — quatre cases de valeurs différentes ressortaient au même rgb(232,236,244),
-  // et le « dégradé » qu'on croyait voir était le `splitArea` alterné des axes.
-  const cellColor = useMemo(
-    () => (_v: number, ratio: number) => melangeHex(rampeBas, rampeHaut, ratio),
-    [rampeBas, rampeHaut],
-  )
-
   // Encre du nombre écrit dans la case : claire sur une case sombre (bas de rampe),
   // sombre sur une case claire (haut de rampe). Les deux encres sont celles du THÈME du
   // graphe (fond de carte / texte), pas des couleurs neuves.
@@ -168,7 +165,7 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
               paletteMode="frequency"
               valueRange={[0, maxEchanges]}
               showVisualMap={false}
-              cellColor={cellColor}
+              emptyCells="blank"
               cellLabelColor={cellLabelColor}
               formatTooltip={formatTooltip}
               height={260}

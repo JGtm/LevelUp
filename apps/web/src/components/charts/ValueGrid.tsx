@@ -23,15 +23,34 @@
  * dessine dans l'ORDRE DU TABLEAU, l'un après l'autre sur la même largeur de rail, et porte
  * SON PROPRE `aria-label` — le conteneur externe garde le sien (le total), comme avant.
  */
-import { Fragment } from 'react'
+import { Fragment, type CSSProperties } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
 
 import type { ValueGridModel, ValueGridSegment } from './valueGridModel'
 
-/** Largeur de la colonne des noms, et largeur mini d'une colonne de valeurs (px). */
+/**
+ * La hachure d'une cellule NON MESURÉE (option `hatchNotMeasured`) : un motif
+ * neutre du thème, jamais un jeton de donnée — une absence n'est pas une valeur.
+ */
+const NOT_MEASURED_HATCH: CSSProperties = {
+  backgroundImage:
+    'repeating-linear-gradient(45deg, transparent 0px, transparent 3px, var(--muted-foreground) 3px, var(--muted-foreground) 4px)',
+  opacity: 0.3,
+}
+
+/** Largeur PAR DÉFAUT de la colonne des noms, et largeur mini d'une colonne (px). */
 const NAME_WIDTH = 152
 const COLUMN_MIN = 126
+/**
+ * Les mêmes largeurs en COLONNE DIVISÉE (`dense`). Une grille rendue à demi-largeur
+ * gardait des colonnes de 126 px dont le rail ne faisait que 80 px : les trois
+ * graduations s'y chevauchaient et se lisaient « 0,0 %15,0 %30,0 % » (capture du
+ * 2026-09-13). En dense la colonne se resserre ET la graduation du milieu tombe —
+ * les deux bornes suffisent à lire une échelle.
+ */
+const DENSE_NAME_WIDTH = 104
+const DENSE_COLUMN_MIN = 104
 /** Gouttière entre colonnes (px) — reprise dans le calcul de largeur mini de la grille. */
 const COLUMN_GAP = 14
 /** Largeur réservée au nombre écrit à droite de chaque barre, gouttière comprise (px). */
@@ -42,13 +61,46 @@ interface Props {
   model: ValueGridModel
   /** Libellé de la colonne des noms. Absent = en-tête vide (le mock retenu). */
   rowHeaderLabel?: string
+  /**
+   * Colonne divisée : mêmes lignes et mêmes colonnes, resserrées (cf. DENSE_*).
+   * Absent = rendu STRICTEMENT inchangé pour tous les appelants existants.
+   */
+  dense?: boolean
+  /**
+   * INTITULÉ DES AXES, posé sous la grille (« gestes par match — une échelle par
+   * colonne »). Ajouté le 2026-09-13 : sans lui, trois colonnes graduées
+   * différemment se lisent comme une seule échelle. Absent = rendu inchangé.
+   */
+  axisTitle?: string
+  /**
+   * Une cellule NON MESURÉE porte une hachure au lieu d'un rail vide. Ajouté le
+   * 2026-09-13 (bloc « formes retenues » : un match sans film décodé doit se
+   * DISTINGUER d'un match mesuré à zéro). Faux = rendu inchangé.
+   */
+  hatchNotMeasured?: boolean
+  /**
+   * Largeur de la colonne des noms (px). Défaut : 152 (ou la largeur dense quand
+   * `dense` est posé). À élargir quand les noms portent un sous-libellé (une arme et
+   * ses occupations) — sans quoi les deux se coupent. Une largeur EXPLICITE l'emporte
+   * sur le mode dense (fusion des lots C et D2, 2026-09-13).
+   */
+  nameWidth?: number
 }
 
-export function ValueGrid({ model, rowHeaderLabel }: Props) {
+export function ValueGrid({
+  model,
+  rowHeaderLabel,
+  dense = false,
+  axisTitle,
+  hatchNotMeasured,
+  nameWidth: nameWidthProp,
+}: Props) {
   const { rows, columns, cells, separators } = model
+  const nameWidth = nameWidthProp ?? (dense ? DENSE_NAME_WIDTH : NAME_WIDTH)
+  const columnMin = dense ? DENSE_COLUMN_MIN : COLUMN_MIN
   const gridStyle = {
-    gridTemplateColumns: `${NAME_WIDTH}px repeat(${columns.length}, minmax(${COLUMN_MIN}px, 1fr))`,
-    minWidth: NAME_WIDTH + columns.length * (COLUMN_MIN + COLUMN_GAP),
+    gridTemplateColumns: `${nameWidth}px repeat(${columns.length}, minmax(${columnMin}px, 1fr))`,
+    minWidth: nameWidth + columns.length * (columnMin + COLUMN_GAP),
     columnGap: COLUMN_GAP,
   }
 
@@ -92,6 +144,9 @@ export function ValueGrid({ model, rowHeaderLabel }: Props) {
                 />
               )}
               <span className="truncate">{row.label}</span>
+              {row.sublabel && (
+                <span className="truncate text-3xs text-muted-foreground">{row.sublabel}</span>
+              )}
             </div>
             {columns.map((col, c) => {
               const cell = cells[r][c]
@@ -100,6 +155,7 @@ export function ValueGrid({ model, rowHeaderLabel }: Props) {
                   <Tooltip content={cell.tooltip} className="w-full">
                     <div
                       className="relative h-[11px] w-full min-w-[40px] bg-muted"
+                      style={hatchNotMeasured && cell.value == null ? NOT_MEASURED_HATCH : undefined}
                       tabIndex={0}
                       role="img"
                       aria-label={cell.tooltip}
@@ -137,19 +193,30 @@ export function ValueGrid({ model, rowHeaderLabel }: Props) {
           >
             <span className="absolute left-0 top-0.5">{col.axis[0]}</span>
             {/* Le milieu se cale sur le milieu du RAIL, pas de la cellule : la cellule porte
-                aussi le nombre écrit à droite de la barre. */}
-            <span
-              className="absolute top-0.5 -translate-x-1/2"
-              style={{ left: `calc((100% - ${VALUE_WIDTH + VALUE_GAP}px) / 2)` }}
-            >
-              {col.axis[1]}
-            </span>
+                aussi le nombre écrit à droite de la barre. Omis en dense : il n'y a plus
+                la place de l'écrire sans mordre sur ses voisins. */}
+            {!dense && (
+              <span
+                className="absolute top-0.5 -translate-x-1/2"
+                style={{ left: `calc((100% - ${VALUE_WIDTH + VALUE_GAP}px) / 2)` }}
+              >
+                {col.axis[1]}
+              </span>
+            )}
             <span className="absolute top-0.5" style={{ right: VALUE_WIDTH + VALUE_GAP }}>
               {col.axis[2]}
             </span>
           </div>
         ))}
       </div>
+      {axisTitle != null && (
+        <div
+          className="mt-0.5 text-3xs text-muted-foreground"
+          style={{ paddingLeft: nameWidth + COLUMN_GAP }}
+        >
+          {axisTitle}
+        </div>
+      )}
     </div>
   )
 }

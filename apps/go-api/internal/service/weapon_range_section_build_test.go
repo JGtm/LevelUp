@@ -48,7 +48,7 @@ func TestLoadWeaponRange_EntamesSansCoupFatalMesure_DeltaOmis(t *testing.T) {
 	}
 	repo := &mockWeaponRangeRepo{kills: kills, openings: openings}
 
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 9, 5))
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
 	if block == nil || block.Opening == nil {
 		t.Fatalf("bloc d'entame absent : %+v — 9 entames sont pourtant mesurées", block)
 	}
@@ -67,7 +67,7 @@ func TestLoadWeaponRange_EntamesSansCoupFatalMesure_DeltaOmis(t *testing.T) {
 func TestLoadWeaponRange_SansEntame_BlocNilJamaisZero(t *testing.T) {
 	repo := &mockWeaponRangeRepo{kills: wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)}
 
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 9, 5))
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
 	if block == nil {
 		t.Fatal("section nil : l'absence d'entame ne doit PAS emporter la portée")
 	}
@@ -85,7 +85,7 @@ func TestMergeWeaponSides_TriEtCoteUnique(t *testing.T) {
 	kills = append(kills, wrKills("hinf_shotgun", analysis.SideVictim, 9, 3, 0)...) // morts seules, 3 m
 	repo := &mockWeaponRangeRepo{kills: kills}
 
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 30, 10))
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 30, 10)))
 	if block == nil || len(block.Weapons) != 3 {
 		t.Fatalf("armes = %+v, attendu 3 lignes", block)
 	}
@@ -121,7 +121,7 @@ func TestMergeWeaponSides_LaMedianeDesFragsPrimeSurCelleDesMorts(t *testing.T) {
 	kills = append(kills, wrKills("hinf_hydra", analysis.SideKiller, 9, 15, 0)...)
 	repo := &mockWeaponRangeRepo{kills: kills}
 
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 30, 12))
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 30, 12)))
 	if block == nil || len(block.Weapons) != 2 {
 		t.Fatalf("armes = %+v, attendu 2 lignes", block)
 	}

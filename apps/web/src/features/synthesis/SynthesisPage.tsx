@@ -19,9 +19,6 @@ import { FragSunburst } from '@/components/charts/FragSunburst'
 import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
 import { SynthesisWeaponAccuracyChart } from './SynthesisWeaponAccuracyChart'
 import { AccentCard, SectionSubtitle } from './SynthesisCards'
-import { SynthesisWeaponRangeSection } from './SynthesisWeaponRangeSection'
-import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
-import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 import { useSynthesisFragCharts } from './useSynthesisFragCharts'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
@@ -50,11 +47,8 @@ import type {
   SynthesisQueryRequest,
   SynthesisWeaponKillEntry,
   SynthesisWeaponAccuracyEntry,
-  SynthesisWeaponRange,
   ObjectiveAggregate,
-  EquipmentUsageBlock,
 } from '@/lib/api/types'
-import { formatDurationMMSS } from '@/lib/formatters/duration'
 // EXPERIENCE_TO_CASCADE + setsEqual : source unique partagée avec useLocalFilterBar (H3).
 import { EXPERIENCE_TO_CASCADE, setsEqual } from '@/features/_shared/experienceCascade'
 
@@ -123,14 +117,11 @@ interface SynthesisOverviewSectionProps {
   topWeaponKills?: SynthesisWeaponKillEntry[]
   fragDistribution?: FragDistribution | null
   weaponAccuracy?: SynthesisWeaponAccuracyEntry[]
-  weaponRange?: SynthesisWeaponRange
   combatProfile?: CombatProfileBlock | null
   objectiveStats?: ObjectiveAggregate | null
-  // PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E5.8) — bloc « servi ou gâché », variante comptes.
-  equipmentUsage?: EquipmentUsageBlock
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, weaponRange, combatProfile, objectiveStats, equipmentUsage, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -172,10 +163,6 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
   // Précision par arme : Halo 5 natif (table weapon_accuracy). Capability-gated →
   // le graphe est masqué pour les titres qui ne fournissent pas la donnée (Infinite).
   const hasWeaponAccuracy = useCapability('weapon_accuracy')
-  // Portée et dénivelé mesurés des engagements : capability PRODUIT `weapon_range`
-  // (title.CapWeaponRange). Halo 5 ne la déclare pas — ses événements de frag n'ont pas
-  // d'arme, la jointure mesurée rendrait zéro ligne et la section serait vide.
-  const hasWeaponRange = useCapability('weapon_range')
   // KPI objectifs (CTF/Zones/Oddball) : gated capability + data-driven (KPI > 0 seulement).
   const hasObjectiveStats = useCapability('objective_stats')
 
@@ -448,29 +435,11 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                         {(objectiveStats.flag_captures ?? 0) > 0 && (
                           <AccentCard label={t('synthesis.kpi.flag_captures')} value={(objectiveStats.flag_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
                         )}
-                        {(objectiveStats.flag_returns ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.flag_returns')} value={(objectiveStats.flag_returns ?? 0).toLocaleString(numLoc)} accent="chart-series-2" />
-                        )}
-                        {(objectiveStats.flag_steals ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.flag_steals')} value={(objectiveStats.flag_steals ?? 0).toLocaleString(numLoc)} accent="chart-series-3" />
-                        )}
-                        {(objectiveStats.flag_carrier_seconds ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.flag_carrier_time')} value={formatDurationMMSS(objectiveStats.flag_carrier_seconds)} accent="chart-series-4" />
-                        )}
                         {(objectiveStats.zone_captures ?? 0) > 0 && (
                           <AccentCard label={t('synthesis.kpi.zone_captures')} value={(objectiveStats.zone_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
                         )}
-                        {(objectiveStats.zone_secures ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.zone_secures')} value={(objectiveStats.zone_secures ?? 0).toLocaleString(numLoc)} accent="chart-series-2" />
-                        )}
-                        {(objectiveStats.zone_seconds ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.zone_time')} value={formatDurationMMSS(objectiveStats.zone_seconds)} accent="chart-series-3" />
-                        )}
                         {(objectiveStats.skull_grabs ?? 0) > 0 && (
                           <AccentCard label={t('synthesis.kpi.skull_grabs')} value={(objectiveStats.skull_grabs ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
-                        )}
-                        {(objectiveStats.skull_carrier_seconds ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.skull_carrier_time')} value={formatDurationMMSS(objectiveStats.skull_carrier_seconds)} accent="chart-series-4" />
                         )}
                       </div>
                     </div>
@@ -508,18 +477,6 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
 
           </div>
         )}
-
-        {/* Portée des engagements (lot 5, plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md) — bloc
-            pleine largeur : il porte ses quatre tuiles et sa propre carte à deux graphes,
-            il n'entre pas dans la rangée de vignettes ci-dessus. La section se retire
-            d'elle-même quand le bloc est absent (rien de mesuré sur le scope). */}
-        {hasWeaponRange && <SynthesisWeaponRangeSection range={weaponRange} />}
-
-        {/* Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09,
-            E5.8-E5.10) — variante comptes (P9), une ligne par famille. Aucune requête
-            neuve : le bloc arrive avec cette même réponse de page. La section se retire
-            d'elle-même quand le bloc est absent ou indisponible pour ce titre. */}
-        <EquipmentUsageSection usage={equipmentUsage} mode="solo" t={USAGE_TEXT[locale]} locale={locale} />
 
     </section>
   )
@@ -797,10 +754,8 @@ export function SynthesisPage() {
           topWeaponKills={data.top_weapon_kills}
           fragDistribution={data.frag_distribution}
           weaponAccuracy={data.weapon_accuracy}
-          weaponRange={data.weapon_range}
           combatProfile={data.combat_profile}
           objectiveStats={data.objective_stats}
-          equipmentUsage={data.equipment_usage}
           playerSlug={playerSlug}
         />
       )}

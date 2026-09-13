@@ -31,7 +31,7 @@ describe('buildCadenceGrid — grille alignée des cadences', () => {
 
   it('solo : moi + les deux agrégats, un filet entre les deux groupes', () => {
     const grid = buildCadenceGrid({
-      metrics: [metric({ key: 'camo_episodes', player_per_10min: 0.8, lobby_per_10min: 5.2 })],
+      metrics: [metric({ key: 'camo_episodes', player_per_match: 0.8, lobby_per_match: 5.2 })],
       squadPlayers: [],
       meLabel: 'JGtm',
       t,
@@ -47,8 +47,8 @@ describe('buildCadenceGrid — grille alignée des cadences', () => {
       metrics: [
         metric({
           key: 'camo_episodes',
-          player_per_10min: 0.8,
-          squad: [{ xuid: '1', total: 4, per_10min: 0.5 }],
+          player_per_match: 0.8,
+          squad: [{ xuid: '1', total: 4, per_match: 0.5 }],
         }),
       ],
       squadPlayers: [{ xuid: '1', gamertag: 'Madina97294' }],
@@ -63,7 +63,7 @@ describe('buildCadenceGrid — grille alignée des cadences', () => {
 
   it('nil ≠ 0 : une cadence absente rend une cellule non mesurée, pas un zéro', () => {
     const grid = buildCadenceGrid({
-      metrics: [metric({ key: 'grapple_pulls', player_per_10min: 1.2 })],
+      metrics: [metric({ key: 'grapple_pulls', player_per_match: 1.2 })],
       squadPlayers: [],
       meLabel: 'JGtm',
       t,
