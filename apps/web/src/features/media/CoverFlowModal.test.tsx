@@ -256,7 +256,7 @@ describe('CoverFlowModal — stabilité de l\'item courant', () => {
       />,
     )
 
-    const likeButton = screen.getByRole('button', { name: /Liker|Retirer le like/ })
+    const likeButton = screen.getByRole('button', { name: /^Aimer$|^Retirer la mention/ })
     fireEvent.click(likeButton)
 
     expect(onToggleLike).toHaveBeenCalledTimes(1)

@@ -647,6 +647,8 @@ export function CoverFlowModal({
                 likeCount={currentItem.like_count}
                 onToggle={() => onToggleLike(currentItem)}
                 disabled={likeDisabled}
+                likers={currentItem.likers}
+                totalLikers={currentItem.total_likers}
               />
             </div>
             {/* Suppression définitive (item 3.1) — même règle de visibilité que
