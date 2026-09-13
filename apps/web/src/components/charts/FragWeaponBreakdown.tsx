@@ -39,6 +39,9 @@ const DIM_OPACITY = 0.28
  * `hoveredClass` (survol lié) : quand renseignée, les armes des AUTRES classes
  * sont estompées ; les armes de la classe survolée restent en pleine opacité.
  */
+/** Largeur maximale d'un nom d'arme sur l'axe (px) — au-delà, ellipse (cf. ). */
+const AXIS_LABEL_MAX_PX = 96
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildFragWeaponBreakdownOption(
   weapons: SynthesisWeaponKillEntry[],
@@ -77,7 +80,11 @@ export function buildFragWeaponBreakdownOption(
     yAxis: {
       type: 'category',
       data: ordered.map((w) => w.label),
-      axisLabel: { color: tc.axisLabel, fontSize: 11 },
+      // NOMS TRONQUÉS (2026-09-13, demande utilisateur). `containLabel` réserve à la colonne
+      // des noms la largeur du PLUS LONG : « Marteau antigravité » rognait d'un tiers la place
+      // des barres dans une carte de tiers de rangée. Le nom complet reste dans l'infobulle,
+      // qui l'écrit déjà en tête (`p.name`).
+      axisLabel: { color: tc.axisLabel, fontSize: 11, width: AXIS_LABEL_MAX_PX, overflow: 'truncate', ellipsis: '…' },
       axisTick: { show: false },
       axisLine: { show: false },
     },
