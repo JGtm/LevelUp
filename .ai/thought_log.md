@@ -52,6 +52,15 @@ piste prolongation), publier ce que le film ecrit, garde supprimee ou nommee en 
 commentaire de regulation.toml corrige, registre des reports amende. Memoire :
 reference_halo_ctf_rounds_overtime_no_halves.
 
+**Addendum (meme soir, vehicules au schema 54).** Signalement utilisateur : les images de
+vehicules peuvent disparaitre sur des artefacts au schema 54 ; « les versions ont bumpe ces
+derniers temps sans garder toutes les donnees ». Angle mort de la classification 34 -> 54 : le
+calque vehicules nait au schema 39, ses axes sortent « nouveaux », une degradation entre 39 et 54
+y est invisible. Sous-lot 0.D.6 ajoute : corpus gate sur temoin(s) vehicules avec `--base` aux
+bumps 51, 52, 53, 54 (comptes et durees cumulees), regle d'effacement a ~20 s (heuristique D13)
+confrontee au dead-state ti=40 ecrit par le film, verdict defaut / divergence. Temoin a nommer
+par l'utilisateur, sinon `084a804d`.
+
 ---
 
 ## [2026-09-13] Chantier decodeur — directive utilisateur D13 : la grammaire prime PARTOUT — En cours (plan amende, lot 0.E lance)
