@@ -1,3 +1,50 @@
+## [2026-09-13] Plan du chantier decodeur de film (cuisson, lecture) — En cours (plan ecrit, en attente de validation utilisateur, aucun commit)
+
+**Decision technique principale.** `.ai/PLAN_DECODEUR_FILM_2026-09-13.md` ecrit a partir du
+document d'architecture cible (sections 1 a 13), du handoff du 13/09 (sections 1 a 6), des
+addendums 1 a 5b du journal et du rapport du lot H (P1 a P5), apres verification sur pieces :
+chemins d'apres le lot E, `SchemaVersion = 54`, ratchet des variables de paquet a 96 (et non 118),
+corpus gate a 12 temoins, corpus d'equivalence a 13 films, aucun `Benchmark`, `teamRaw` (octet 55)
+sans consommateur, `Team: -1` en dur dans `replay/build.go:580`, trois sites lisent une image-cle
+par `TraverseEntity` (`navpoint_radial_scan.go:339`, `objective_scan.go:373`,
+`keyframe_record_walk.go:181`). Cinq jalons : M0 fondations (corpus par build, mini-films et
+goldens par build, ratchet de couverture d'image-cle, empreinte etendue a filmdec, budget de temps,
+six garde-rails Go/web de la section 12, ADR 0034) ; M1 correctifs courts sous gate (octet 37,
+registre a l'octet 8, cinq etats par defaut, cadre d'etat complet, identite et table des joueurs
+de chunk_00, registre d'identite par la table, equipe depuis la trame, kill feed par la table) ;
+M2 revision a zero difference (pas 1 a 7 : profil, familles, suppression des globales et du
+verrou, porte unique aux octets, cinq couches par `git mv`, empreintes par couche, scission des
+fichiers) ; M3 exploitation du profil (build inconnu actif, P1 registre par build, P2 grenades,
+P4 marche des morts, P5 bande de slots) ; M4 publication (faits persistes, revision par calque,
+un seul type publie, recuisson selective). Hors perimetre ecrit (§1.2) : les ports de composants
+(« 62 % »), les residus de recherche, toute retouche d'interface.
+
+**Resultats observes.** Douze decisions fermes (D1 a D12) et sept a valider par l'utilisateur
+(V1 a V7 : ports hors plan, autorisation permanente des gates de decodage, cadence de fusion
+par jalon, regle film/base pour l'equipe, filmsource sous film/internal/source, M4 inclus,
+taille des mini-films). Organisation : branche d'integration `feat/recherche-decodeur-film`,
+une branche `feat/decfilm-<lot>` et un worktree par agent, deux agents au plus (executeur +
+relecteur adversarial, jamais deux muteurs de filmdec), un seul decodage a la fois, journal des
+gates locaux dans le plan (§5). Grille `plan-review` passee : perimetre ferme par lot, gate en
+commandes exactes, statuts, ordre, decouvertes en §4, protocole de reprise en §6.
+
+**Prochaine etape.** Validation des V1 a V7 par l'utilisateur, puis « go » explicite ; lancement
+de 0.A et 0.B en parallele (deux worktrees), 0.C pendant les revues.
+
+**Addendum (meme jour, arbitrages utilisateur).** V1 : les ports de composants manquants
+ENTRENT dans le plan (lot 3.6, apres M2, archetype par archetype, gate = ratchet de couverture
+0.A.3 + oracle de fermeture ; preparation en instruments quand un slot d'agent est libre, jamais
+un troisieme agent) ; les 103 lecteurs existants gardent leur grammaire prouvee a l'ecrivain,
+M2 leur donne la forme cible. V2 : gates de decodage par ECHANTILLON (regime court = equivalence
+sur 10 films fixes en 0.A.1 a chaque lot ; regime complet = corpus entier + corpus gate aux
+clotures de jalon et aux lots 1.2 et 2.5). V3, V5, V6, V7 : ok. V4 : le film est la SEULE
+source de l'equipe, sans repli sur la base (base = compteurs de controle) ; verifie sur pieces
+que le web colore par `team_side` de la feuille (`rosterLogic.ts:160`), pas par l'artefact,
+donc aucun rendu ne change. Critere S9 ajoute (archetypes utiles a 100 % en image-cle).
+Toujours aucun commit ; lancement de 0.A et 0.B sur go explicite.
+
+---
+
 ## [2026-09-13] F.3 — archivage des plans et handoffs clos de la racine `.ai/` vers `V7.5/` — Complete (worktree wt/archive-ai)
 
 **Decision technique principale.** Tâche Notion 10 (item F.3 du `PLAN_FORK_ET_RELEASE_2026-09-11.md`),
