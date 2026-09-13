@@ -107050,3 +107050,32 @@ le garde-rail `replaySoundAssets.guard.test.ts` interdit l'asset mort — les tr
 sont rouges tant que les stems ne sont pas declares ; les deux lots doivent atterrir
 ensemble.** Rapport complet : `.ai/V7.5/RE_SON_PROPULSEUR_2026-09-03.md`.
 
+
+---
+
+## [2026-09-13] Lots H et F : mesure par version de film ; nettoyage worktrees, branches, dossiers — Complete (bascule LevelUp en attente de signal)
+
+**Décisions** : (H) mesure seule, aucun code de production : la clé de déchiffrage est le BUILD
+du jeu (lu dans chunk_00), pas la version majeure ; 5 divergences nommées (registre ECS par
+build, liste blanche des grenades datée d'un seul build, identité sans section d'identification,
+marche des morts à vide, bande de slots bipède) versées au futur plan d'architecture ; 4 témoins
+par version au corpus (gate 12/12 identiques 54 -> 54). (F) périmètre approuvé : tout ce qui est
+fusionné dans feat/v75 se supprime ; le non commité se vérifie fichier par fichier avant ; le
+travail unique passe en WIP sur sa branche ; ti11-cadre supprimée mais sa grammaire des 34
+champs conservée (tag `archive/ti11-cadre` + doc de référence) ; bascule vers `LevelUp`
+reportée sur signal (procédure écrite, caches de films comptés avant/après).
+
+**Résultats** : worktrees 74 -> 4, branches locales 79 -> 6, branches origin 71 -> 8, 11 dossiers
+orphelins et 3 dossiers de sauvegarde/archive effacés sur décision, 28 documents clos archivés de
+`.ai/` vers `V7.5`. CI feat/v75 : baseline de tests réécrite après le déplacement du lot E (le
+lot avait corrigé le script, pas la baseline) ; runs verts depuis.
+
+**Incidents** : `git worktree remove` a suivi des jonctions `node_modules` et vidé `.bin` du
+principal ; `npm ci` a aggravé (EPERM, Vite tenait lightningcss) ; `npm install` a tout restauré,
+typecheck et vitest revérifiés. Règles en mémoire (rmdir la jonction avant, jamais npm ci sous
+Vite, inventaire des tâches de fond à chaque point).
+
+**Prochaine étape** : bascule vers `LevelUp` sur signal utilisateur ; deux lots à planifier issus
+des branches WIP (garde index PSA + rectification du numéro d'issue DuckDB ; purge et garde-rail
+LUSR h5_arena) avant la copie des bases ; puis séquence de release Notion (à la main de
+l'utilisateur).
