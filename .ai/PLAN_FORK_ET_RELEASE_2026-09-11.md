@@ -333,3 +333,11 @@ lot H, pas avant. Effort L.
   PSA, alerte seule ; rectifier le numéro d'issue DuckDB 23046 -> 23645 dans CLAUDE.md et ADR)
   et `wt/lusr-h5-cause` (cause prouvée : double source de titre dans le câblage sync V2, classe
   ouverte ; purge des lignes `h5_arena` par reconstruction CTAS + garde-rail au câblage).
+- 2026-09-13 : F.3 fusionné (`5eaccf550`, 28 documents archivés, 8 références corrigées, 48 gardés
+  à la racine avec justification ; annexes de l'audit v7.5 hors périmètre). Alerte utilisateur :
+  les caches de films (`data/cache/film_chunks` 1 351 films 34 Gio, `film_manifests` 1 351,
+  `replays` 141) doivent être conservés — vérifié intacts dans `LevelUp-go-migration` ; les
+  worktrees supprimés le matin n'avaient que des dossiers de cache vides (les 3 survivants
+  comptent 0 film, l'essentiel a toujours vécu dans go-migration, confirmé par l'utilisateur).
+  Procédure de bascule amendée : comptage avant/après des caches, suppression du worktree
+  seulement après. Notion 10 : tout fait sauf la bascule (sur signal).

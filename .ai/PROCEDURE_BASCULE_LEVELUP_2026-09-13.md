@@ -31,7 +31,7 @@ Les autres worktrees `LevelUp-wt-*` restants n'ont pas de données (ils lisent c
    `git -C LevelUp-go-migration checkout --detach`.
 2. **Extraire `feat/v75` dans `LevelUp`** : `git -C LevelUp checkout feat/v75` puis
    `git -C LevelUp status --porcelain` vide.
-3. **Déplacer les données et réglages non suivis** (renommage sur le même disque, instantané) :
+3. **Déplacer les données et réglages non suivis — y compris, et d'abord, les CACHES DE FILMS** : `datacheilm_chunks` (1 351 films, 34 Gio au 2026-09-13), `datacheilm_manifests` (1 351) et `datacheeplays` (141 artefacts) sont irremplaçables (les films expirent côté Halo) ; compter les entrées AVANT et APRÈS le déplacement, et ne supprimer `LevelUp-go-migration` (étape 7) qu'après ce comptage. Le déplacement complet (renommage sur le même disque, instantané) :
    `robocopy LevelUp-go-migration\data LevelUp\data /E /MOVE /R:1 /W:1`, puis `.env.local`,
    `app_settings.json`, `.claude\settings.json`, `.claude\settings.local.json`,
    `.claude\hooks\`, `apps\web\node_modules` (même commande `robocopy /E /MOVE`). Vérifier
