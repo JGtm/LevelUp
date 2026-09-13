@@ -19,6 +19,26 @@
 # compresses), a ne pas comparer colonne a colonne avec les lignes de 2026-09-02.
 #
 #
+# REFERENCES RE-FIGEES AU COMMIT 215649efd, SCHEMA 54, LE 2026-09-13 (lot 0.D.0, APRES F.1).
+# L'integration du chantier a fusionne `origin/feat/v75` (42 commits de finitions), et DEUX de
+# ses commits changent le CONTENU CUIT sans monter `SchemaVersion` : les references de
+# cbfdc269d (bloc ci-dessous) en sont devenues perimees. UNE SEULE ETAPE bouge sur les
+# 20 films, `artifact` — les 49 autres sont identiques partout, aucun balayage n'a change.
+# Attribution faite PAR MUTATION, film par film (revert des seuls fichiers de PRODUCTION du
+# commit, re-mesure, comparaison a l'ancienne empreinte) :
+#
+#   c45c411eb  F.1  « l'origine d'une pose d'equipement devient purement temporelle »
+#                   3 films, -2 octets chacun : 084a804d, a521164d, d9781168
+#   3233ec2f8  D.2  « la couverture du calque d'objectifs ne compte que les objectifs »
+#                   10 films : 084a804d, 1c4c63c2, 51101d1d, 53ce4390, 64e8adfa, 696a9d7c,
+#                   7344d24f, a521164d (-47 octets), bcb6d393, fb1a1a72
+#   044751026  B.3  aucun effet mesure sur les 11 films qui bougent
+#
+# 9 films sont INCHANGES : 000d5950, 01e1f945, 11de8353, 111fa685, 50247b26, 60ae07c4,
+# 9f57c612, a349fea8, e5adf7b2. Les references de cbfdc269d restent lisibles par
+# `git show cbfdc269d:<chemin du .tsv>` ; celles du lot 4b par `git show 179bd7401:...`.
+#
+# HISTORIQUE — le bloc precedent, conserve tel quel :
 # REFERENCES FIGEES AU COMMIT cbfdc269d, SCHEMA 54, LE 2026-09-13 (lot 0.A.1c). Les references
 # precedentes dataient du lot 4b (commit 179bd7401) et d'un temps ou `replay.SchemaVersion`
 # valait 34 : elles etaient PERIMEES depuis vingt montees de schema, et `replay-equiv` rendait
