@@ -94,7 +94,7 @@ func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB) (B
 // que game_variant_name et map_name sont, eux, résolus (≠ leur id). Idempotent.
 // Retourne le nombre de rows mises à jour.
 //
-// Row-by-row par match_id (ADR 0019/0026, anti-ART #23046) : SELECT des match_ids
+// Row-by-row par match_id (ADR 0019/0026, anti-ART #23645) : SELECT des match_ids
 // cibles + de leur pair_name construit, puis N UPDATE sérialisés `WHERE match_id = ?`.
 // JAMAIS de bulk UPDATE multi-row nu (set-based) sur match_registry — même sous
 // write-lease, un statement touchant N entrées d'index est le déclencheur ART direct

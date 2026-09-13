@@ -10,7 +10,7 @@ package main
 //
 // Ce test rétablit la protection là où elle manque, sur le seul périmètre de ce paquet.
 // La forme interdite n'est pas une coquetterie : un UPDATE bulk multi-lignes touche N
-// entrées d'index en un statement, ce qui déclenche le bug DuckDB ART #23046
+// entrées d'index en un statement, ce qui déclenche le bug DuckDB ART #23645
 // (« Failed to delete all rows from index ») — celui qui a corrompu des bases en prod
 // (ADR 0019 / 0026 / 0030).
 
@@ -70,7 +70,7 @@ func TestPasDeFormeArtDansCePaquet(t *testing.T) {
 		for _, forme := range formesInterdites {
 			if strings.Contains(upper, forme) {
 				t.Errorf("%s contient la forme SQL interdite %q.\n"+
-					"Sur une table indexée elle déclenche le bug ART DuckDB #23046. "+
+					"Sur une table indexée elle déclenche le bug ART DuckDB #23645. "+
 					"Utiliser N UPDATE row-by-row `WHERE match_id = ?` (cf. registry.go WriteScores). "+
 					"Le ratchet du dépôt ne couvre PAS cmd/ — ce test est la seule protection ici.",
 					e.Name(), forme)

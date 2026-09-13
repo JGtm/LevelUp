@@ -278,7 +278,7 @@ func persistWeaponKills(ctx context.Context, tx *sql.Tx, rows []WeaponKillInsert
 	if len(rows) == 0 {
 		return nil
 	}
-	// Append-only #23046 (Phase 2) : alloue UNE génération partagée par le batch
+	// Append-only #23645 (Phase 2) : alloue UNE génération partagée par le batch
 	// (weapon_kills_generation_seq) ; la vue v_weapon_kills ne lit que la génération
 	// MAX par (match_id,xuid). Plus de DELETE préalable (vecteur ART sur idx_wk).
 	var gen int64
@@ -546,7 +546,7 @@ func persistCommendations(ctx context.Context, tx *sql.Tx, rows []CommendationIn
 // persistObjectiveStats insère les stats objectifs par joueur (match_objective_stats).
 // INSERT pur — table append-only créée directement (id PK seq + written_at + vue
 // _latest). Colonnes du mode absent = NULL (pointeurs nil). Aucun UPDATE / ON CONFLICT
-// (ART-safe #23046) ; la relecture passe par match_objective_stats_latest.
+// (ART-safe #23645) ; la relecture passe par match_objective_stats_latest.
 func persistObjectiveStats(ctx context.Context, tx *sql.Tx, rows []ObjectiveStatsInsert) error {
 	if len(rows) == 0 {
 		return nil
@@ -613,7 +613,7 @@ func persistObjectiveStats(ctx context.Context, tx *sql.Tx, rows []ObjectiveStat
 // InsertObjectiveStats est le point d'entrée EXPORTÉ (backfill CLI) pour écrire
 // des rows match_objective_stats hors du chemin SharedBatch : ouvre une
 // transaction sur db et réutilise persistObjectiveStats (INSERT-only ART-safe,
-// #23046). DRY — une seule copie du SQL d'INSERT (persistObjectiveStats).
+// #23645). DRY — une seule copie du SQL d'INSERT (persistObjectiveStats).
 // Pré-requis : db en accès RW exclusif (serveur arrêté, un seul writer par DB).
 func InsertObjectiveStats(ctx context.Context, db txBeginner, rows []ObjectiveStatsInsert) error {
 	if len(rows) == 0 {

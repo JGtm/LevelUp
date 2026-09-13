@@ -1041,7 +1041,7 @@ func Steps() []migration.Migration {
 					);
 					-- AUCUN index secondaire : display_name/name_fr sont MUTÉS par l'upsert
 					-- (SELECT-then-write, ops.RefreshSeasonCatalog). PK-only → l'UPDATE ne
-					-- touche pas d'index secondaire (surface ART #23046). Table minuscule
+					-- touche pas d'index secondaire (surface ART #23645). Table minuscule
 					-- (≤ ~15 saisons) → scan séquentiel instantané.
 				`)
 			},
@@ -1065,7 +1065,7 @@ func Steps() []migration.Migration {
 						PRIMARY KEY (title_slug, season_id, gamertag)
 					);
 					-- AUCUN index secondaire (PK-only) : insert-or-ignore, jamais d'UPDATE
-					-- sur colonne indexée → hors surface ART #23046. Table petite.
+					-- sur colonne indexée → hors surface ART #23645. Table petite.
 				`)
 			},
 		},
@@ -1416,7 +1416,7 @@ func Steps() []migration.Migration {
 						obsoleted_at          TIMESTAMP
 					);
 					-- PAS d'index sur (user_id, title_slug, status) : status est muté par
-					-- MarkAccepted/Dismissed/Superseded/Obsoleted → surface ART #23046 sur la
+					-- MarkAccepted/Dismissed/Superseded/Obsoleted → surface ART #23645 sur la
 					-- player DB. La query GET pending scanne (table minuscule). Drop sur DB
 					-- existantes : drop_coach_proposal_status_art_index_v1.
 					CREATE INDEX IF NOT EXISTS idx_coach_proposal_metric_axis

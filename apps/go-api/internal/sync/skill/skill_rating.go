@@ -151,8 +151,8 @@ func BatchComputeLUSRWithMedals(ctx context.Context, playerDB, sharedDB *sql.DB,
 
 	// 8. PAS de compaction des versions superseded. Le DELETE per-row sur
 	//    match_skill_rank (id NOT IN MAX(id)…) déclenche le bug ART DuckDB amont
-	//    #23046 — il a FAIT CRASHER JGtm (2026-06-20) malgré mono-writer + PK BIGINT :
-	//    l'hypothèse historique « sérialisé + PK BIGINT = sûr » est FAUSSE (#23046
+	//    #23645 — il a FAIT CRASHER JGtm (2026-06-20) malgré mono-writer + PK BIGINT :
+	//    l'hypothèse historique « sérialisé + PK BIGINT = sûr » est FAUSSE (#23645
 	//    corrompt le heap file-backed sous churn, pas seulement sous concurrence).
 	//    La table reste append-only PUR (INSERT seul) ; la vue match_skill_rank_latest
 	//    (MAX(id)) reste correcte avec les versions superseded présentes. Croissance

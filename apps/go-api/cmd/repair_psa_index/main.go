@@ -5,7 +5,7 @@
 // **Pourquoi** : découverte du lot 0, confirmée sur pièces le 2026-08-27 — sur la
 // DB XxDaemonGamerxX, `WHERE match_id = '05fffb2a-...'` rend 2 lignes là où le
 // scan complet en rend 4. L'index ART est désynchronisé de la table (bug DuckDB
-// #23046). Tout lecteur qui interroge par prédicat indexé (PersonalScoreAwardsRepo,
+// #23645). Tout lecteur qui interroge par prédicat indexé (PersonalScoreAwardsRepo,
 // et le futur loader ospm du lot 3) sert donc des données AMPUTÉES, silencieusement.
 //
 // **Ce que l'outil fait** :

@@ -26,7 +26,7 @@ func migByName(t *testing.T, name string) *migration.Migration {
 	return nil
 }
 
-// TestRepairPME_ConvertsLegacyToAppendOnly : append-only #23046 — sur une table
+// TestRepairPME_ConvertsLegacyToAppendOnly : append-only #23645 — sur une table
 // legacy SANS colonne id, la migration repair convertit en append-only (id PK + stage
 // + written_at + vue _latest) et PRÉSERVE les données. Plus de PK(match_id) : la
 // migration ne pose JAMAIS de PK match_id (qui rouvrirait le vecteur ART).

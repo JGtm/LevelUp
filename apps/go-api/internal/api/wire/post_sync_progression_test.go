@@ -115,7 +115,7 @@ func seedMatches(t *testing.T, env *progressionTestEnv, now time.Time, count int
 		`, matchID, testXUID, testGT, 1, outcome, 12+i%4, 8, 3, 1.5, 0.55, 1500, 600, 5+i%3); err != nil {
 			t.Fatalf("insert participant %s: %v", matchID, err)
 		}
-		// player_match_enrichment (stats.duckdb, performance_score) — append-only #23046 :
+		// player_match_enrichment (stats.duckdb, performance_score) — append-only #23645 :
 		// INSERT pur stage='perf' (plus d'ON CONFLICT : match_id n'est plus une PK).
 		if _, err := env.pdb.Player.Exec(ctx, `
 			INSERT INTO player_match_enrichment (match_id, performance_score, stage)

@@ -62,7 +62,7 @@ func persistPVEStats(ctx context.Context, tx *sql.Tx, row *PVEMatchStatsInsert) 
 	if row == nil {
 		return nil
 	}
-	// Append-only #23046 : pve_match_stats est append-only (PK technique id, vue
+	// Append-only #23645 : pve_match_stats est append-only (PK technique id, vue
 	// pve_match_stats_latest). L'ancien INSERT OR IGNORE n'a PLUS de contrainte
 	// (match_id, xuid) sur quoi dédupliquer → il INSÉRAIT un doublon à chaque retry
 	// (crash entre COMMIT et ACK) → croissance non bornée. Guard SELECT-then-INSERT

@@ -308,7 +308,7 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 // **D-E** : le batch est AUTO-NETTOYANT — la passe tourne à chaque run (force
 // compris), pas seulement lors d'une purge one-shot.
 //
-// **Écriture** : append-only (#23046) via PostSyncEnrichmentPersister — une row
+// **Écriture** : append-only (#23645) via PostSyncEnrichmentPersister — une row
 // partielle stage='perf' portant NULL. La vue player_match_enrichment_latest
 // rend bien ce NULL (merge-on-read PAR GROUPE : « si l'étape propriétaire a une
 // row, sa valeur, NULL inclus » — cf. buildPMELatestViewSQL). Aucun UPDATE, aucun

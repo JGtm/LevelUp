@@ -4,7 +4,7 @@
 // **Pourquoi** : l'ancien schéma avait PK (match_id, component_name), ce qui forçait
 // writeLUSRComponentHistory à écrire en `INSERT ... ON CONFLICT (match_id, component_name)
 // DO UPDATE` — donc un delete+insert interne sur l'index ART, déclencheur du bug DuckDB
-// amont #23046 ("Failed to delete all rows from index" → DB FATAL invalidated).
+// amont #23645 ("Failed to delete all rows from index" → DB FATAL invalidated).
 // lusr_component_history est la table SŒUR de match_skill_rank (même pipeline LUSR,
 // même horloge) ; match_skill_rank a déjà été migrée en append-only (phase 2.B).
 //

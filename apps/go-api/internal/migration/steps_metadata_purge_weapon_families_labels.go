@@ -27,7 +27,7 @@ package migration
 // `purge_weapons_name_fr_column` (steps_metadata_purge_weapons_name_fr.go, V721-05.1) —
 // DuckDB refuse `ALTER TABLE ... DROP COLUMN` tant qu'un index existe (ici la PK
 // `family_key`), donc on recrée la table sans les deux colonnes. `weapon_families` est un
-// référentiel STATIQUE explicitement HORS périmètre du bug ART #23046 (zéro writer
+// référentiel STATIQUE explicitement HORS périmètre du bug ART #23645 (zéro writer
 // concurrent, zéro écriture per-match — cf. tête de games/weapons/registry.go) : pas de
 // vue `_latest` ni de `written_at` ici, juste la PK simple recréée à l'identique.
 //

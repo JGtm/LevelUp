@@ -232,7 +232,7 @@ func upsertLUSRRatings(
 // writeLUSRComponentHistory persiste les 8 composantes d'un match dans
 // lusr_component_history en append-only (INSERT pur, jamais d'ON CONFLICT).
 //
-// La table est append-only (phase ART #23046) : N versions par
+// La table est append-only (phase ART #23645) : N versions par
 // (match_id, component_name) ; la lecture courante passe par la vue
 // lusr_component_history_latest. Le mode force (recalcul) écrit simplement une
 // nouvelle version plus récente (computed_at) — la vue la priorise. L'ancien
