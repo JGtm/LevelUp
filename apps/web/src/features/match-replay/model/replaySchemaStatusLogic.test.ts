@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest'
 import type { ReplayContractIssue } from '@/lib/replay/replayDocumentSchema'
 
 import { racineDuDepot } from '../test/featureFiles'
-import { goFixtureSchemaVersion } from '../test/goFixtures'
+import { goFixtureEntries, goFixtureSchemaVersion } from '../test/goFixtures'
 import {
   computeReplaySchemaStatus,
   MIN_RENDERABLE_SCHEMA_VERSION,
@@ -169,4 +169,56 @@ describe('le contrat non respecté prime sur toute question de version', () => {
   it('aucun manquement : le statut retombe sur la comparaison de versions', () => {
     expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, undefined).kind).toBe('upToDate')
   })
+})
+
+describe('la matrice appliquée à CHAQUE fixture publiée par Go', () => {
+  /**
+   * POURQUOI ITÉRER LE JEU ENTIER (lot 0.B.7, 2026-09-13). Le manifeste ne porte plus un
+   * document mais UN PAR BUILD du jeu. Une matrice de compatibilité qui ne statuerait que sur
+   * la version du producteur dirait la même chose huit fois ; ce qu'on veut savoir est que
+   * CHAQUE document publié est affichable par ce client, et que le badge sait quoi en dire.
+   *
+   * AUCUN DOCUMENT N'EST OUVERT ICI : les entrées du manifeste portent la version et le build,
+   * et c'est exactement ce dont le badge a besoin. Le document complet, lui, traverse la
+   * frontière dans `test/goFixtures.contract.test.ts` — deux preuves, deux coûts.
+   */
+  const FIXTURES = goFixtureEntries()
+
+  it('le jeu publié n’est pas vide — sans quoi cette matrice ne statuerait sur rien', () => {
+    expect(FIXTURES.length).toBeGreaterThan(0)
+  })
+
+  for (const f of FIXTURES) {
+    describe(`${f.build} / ${f.film}`, () => {
+      it('est affichable : sa version atteint le seuil de compatibilité', () => {
+        expect(
+          f.schemaVersion,
+          `${f.file} est sous le seuil : le web ne prétend pas afficher cette génération`,
+        ).toBeGreaterThanOrEqual(MIN_RENDERABLE_SCHEMA_VERSION)
+      })
+
+      it('se dit « à jour » face au producteur du jour', () => {
+        expect(computeReplaySchemaStatus(f.schemaVersion, PRODUCTEUR)).toEqual({
+          kind: 'upToDate',
+          schemaVersion: f.schemaVersion,
+        })
+      })
+
+      it('se dirait « à recuire » si le producteur prenait de l’avance', () => {
+        const apres = f.schemaVersion + 1
+        expect(computeReplaySchemaStatus(f.schemaVersion, apres)).toEqual({
+          kind: 'stale',
+          schemaVersion: f.schemaVersion,
+          latestSchemaVersion: apres,
+        })
+      })
+
+      it('et « inconnu » sans en-tête à comparer, jamais une exception', () => {
+        expect(computeReplaySchemaStatus(f.schemaVersion, undefined)).toEqual({
+          kind: 'unknown',
+          schemaVersion: f.schemaVersion,
+        })
+      })
+    })
+  }
 })
