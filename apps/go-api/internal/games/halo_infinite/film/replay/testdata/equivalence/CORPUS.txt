@@ -19,6 +19,27 @@
 # compresses), a ne pas comparer colonne a colonne avec les lignes de 2026-09-02.
 #
 #
+# REFERENCES RE-FIGEES AU COMMIT 2dad8d6df, SCHEMA 54, LE 2026-09-13 (lot 0.D.5, seconde fusion
+# de feat/v75 — c28f7da59, 55 commits de finitions et d'ajustements). DEUX ETAPES bougent sur les
+# 20 films, `flag` et `artifact` ; les 48 autres sont identiques partout. Attribution faite PAR
+# MUTATION (revert des seuls fichiers de PRODUCTION, re-mesure, comparaison a l'ancienne
+# empreinte), jamais par lecture du code :
+#
+#   6e0e5378a  H.1  « la neutralite d'un socle de drapeau est un champ, pas une equipe »
+#                   etape `flag` sur 17 films, compte INCHANGE (1), contenu different
+#   267fa1c5a  H.2  « une piece engendree est deployee par nature, jamais lachee »
+#                   `artifact` +1 octet sur 084a804d et 111fa685 (un panneau de mur passe de
+#                   `dropped` a `deployed`)
+#   71aa37fcb  G.7  « le Mutilator entre au registre du rejeu avec son identifiant de film »
+#                   `artifact` +316 octets sur bcb6d393 et e5adf7b2 (deux libelles d'arme
+#                   publies au lieu de leur hexadecimal : 0xD7915565 et 0xD791556542C9679F)
+#
+# PREUVE DE COMPLETUDE : reverter ces TROIS commits ensemble reproduit l'ancienne reference A
+# L'OCTET sur les trois films qui portent les trois signatures (`bcb6d393` flag + G.7,
+# `111fa685` flag + H.2, `51101d1d` flag seul). ZERO mouvement orphelin.
+# Les references de 215649efd restent lisibles par `git show 215649efd:<chemin du .tsv>`.
+#
+# HISTORIQUE — le bloc precedent (premiere fusion) :
 # REFERENCES RE-FIGEES AU COMMIT 215649efd, SCHEMA 54, LE 2026-09-13 (lot 0.D.0, APRES F.1).
 # L'integration du chantier a fusionne `origin/feat/v75` (42 commits de finitions), et DEUX de
 # ses commits changent le CONTENU CUIT sans monter `SchemaVersion` : les references de
