@@ -627,7 +627,7 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       responsables ; verdict DÉFAUT ou DIVERGENCE ; correctif seulement si défaut à cause
       identifiée (même protocole) ; sinon registre. Si la session ne suffit pas : registre avec
       ce qui a été établi.
-- [ ] 0.D.6 **Les véhicules qui disparaissent au schéma 54 (signalement utilisateur du
+- [x] 0.D.6 **Les véhicules qui disparaissent au schéma 54 (signalement utilisateur du
       2026-09-13 : « les images des véhicules peuvent disparaître sur le schéma 54 ; les versions
       ont bumpé ces derniers temps sans garder toutes les données »).** Angle mort connu de la
       classification : le calque véhicules naît au schéma 39, donc la comparaison 34 -> 54 ne peut
@@ -651,6 +651,48 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       qui efface un véhicule que le film montre encore) -> correctif + test par mutation + corpus
       gate zéro perte + `SchemaVersion` 55 si le contenu cuit change, repli NOMMÉ (D14) ; sinon
       registre avec le bump et l'axe.
+      **Fait** (2026-09-14). **VERDICT : AUCUN bump n'a perdu de donnée de véhicule, et la
+      « disparition d'image » a une cause mesurée qui n'est pas un bump.** Aucun correctif
+      (règle 7) ; deux lignes au registre des reports.
+      **(a) Le gate, sur TOUS les axes, aux quatre bumps demandés** (`--base` à `b6b198baf^`
+      = schéma 51, `b6b198baf` = 52, `c5a71dcbd` = 53, `104b74e15` = 54) sur `bfecd02b` :
+      **les quatre rendent exactement les mêmes deux pertes**, et aucune n'est un axe véhicule —
+      `coverage.placements.deployed` 4 -> 1 et `byFamilyOrigin.grenade_frag/deployed` 3 -> —,
+      c'est-à-dire la règle d'origine des poses (F.1 / H.2), déjà instruite en 0.D.0 et 0.D.5.
+      **(b) Élargi jusqu'à la NAISSANCE du calque** (`--base=7c85acf58^`, schéma 39) sur les DEUX
+      témoins : 97 pertes au total (15 sur `bfecd02b`, 82 sur `084a804d`), **zéro sur un axe
+      `vehicles.*`** — la question « un bump a-t-il raccourci une piste ou une occupation de
+      véhicule » se répond NON sur toute la vie du calque. Les 97 se rangent toutes dans des
+      familles déjà classées : `geometry.*` (19 axes, chronique v52 props Forge, §7.A A1),
+      `objectives.*` + `coverage.objectives` (53 + 2, garde d'effectif `ebd012e3b` et D.2, §7.A
+      A3), `projectiles.*` (9, v52 pas impossible, §7.A A6), `placements.*` (règles d'origine),
+      `abilities/n` 166 -> 165 (le bloc de la TROISIÈME CAUSE déjà au registre depuis 0.D.2),
+      `flagCarries.markerConfirmed/markerObserved` (§7.B B8, déjà « ligne à ACCEPTER »). Une
+      seule ligne neuve et minuscule : `coverage.flagCarries.teamBirths` 12 -> 11 sur
+      `084a804d` (§4).
+      **(c) La cause réelle de la disparition d'image, sur le témoin de l'utilisateur** :
+      `bfecd02b` (Snowbound, Team Slayer:Arena) publie **11 vies de véhicule dont 9 de châssis
+      `0x038df01a`, absent de la table des familles** — donc sans sprite, dessinées en marqueur
+      neutre, comportement ÉCRIT dans `vehicle_families.go` (« VALEUR INCONNUE = FAMILLE VIDE
+      [...] le client dessine un marqueur neutre »). Le châssis **n'a jamais figuré au dépôt**
+      (`git log -S` sur toute l'histoire : rien) : ce n'est pas une régression. Les neuf sont
+      IMMOBILES (aucun échantillon, un `spawn`, fenêtre = le match entier) et `labels.tsv` — la
+      seconde source que la table cite elle-même — porte trois entrées `vehi 038df01a` avec la
+      banque `sb_003_lvl_moments_ge_shared_autoturret_banished` : **ce sont des tourelles
+      automatiques bannies**. Identification neuve, non posée en table (il faudrait décider vers
+      quelle famille, et `familleShade` est une tourelle COVENANT — l'y mapper serait l'emprunt
+      que l'en-tête interdit).
+      **(d) La règle d'effacement confrontée à D13** : elle n'efface JAMAIS avant la dernière
+      preuve, elle PROLONGE (`t1max = t1 + 20 s`). Sur le témoin, 10 vies sur 11 ont
+      `t1 == t1max` = la dernière frame ; la seule qui s'efface est le `ghost` slot 777, **à la
+      frame 2874 (287,4 s), soit 5,3 s APRÈS son dernier échantillon**. **Aucun véhicule que le
+      film montre encore n'est effacé.** Le défaut au sens de D13 est ailleurs, et il est réel :
+      `VehicleTrack.End` ne prend qu'une valeur (`unknown`), donc la fin de vie est INFÉRÉE d'une
+      borne de recensement alors que le film l'ÉCRIT (dead-state `ti=40`, lisible depuis le
+      2026-09-05 sur `wt/vehicule-deadstate`, non fusionnée). Registre, avec le repli à NOMMER
+      au sens de D14 le jour de la fusion.
+      `bfecd02b` est entré au manifeste `config/replay_corpus.toml` (famille
+      `vehicules_v41_utilisateur`, raison écrite) : le corpus gate passe de 12 à 13 témoins.
 
 - [x] 0.D.5 **Synchronisation bis : la seconde fusion de `feat/v75` dans l'intégration.**
       Même méthode qu'en 0.D.0, sur la fusion `c28f7da59` (55 commits de finitions et
@@ -1327,6 +1369,8 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.D.2 | **D4 — le constat D7 groupait DEUX causes séparées par ~17 montées de schéma.** Les treize axes que D7 citait ensemble sur `60ae07c4` se scindent : le bloc ARMES AU SOL / POSES / PROJECTILES / RAMASSAGES vient à 100 % de la porte de région (`fb71e9b3c`, v53) et n'est pas une perte ; le bloc ÉQUIPEMENT / CRÂNE / CAPACITÉS (`skullCarries.grabs` 39 -> 8, tout `equipmentChanges`, `abilities/n` 29 -> 27, `abilityLabels/n` 4 -> 3) est déjà à sa valeur de HEAD au schéma 51 et vient d'ailleurs. **Leçon de méthode** : un constat de gate qui énumère des axes « qui bougent ensemble » ne prouve pas une cause commune — ici la co-occurrence venait uniquement de la largeur du segment comparé (34 -> 54). Un constat de gate devrait porter le segment le plus étroit où il tient encore. NON TRAITÉ. | Le lot qui révisera le protocole du corpus gate (même famille que la ligne « pas de mécanisme d'acceptation datée d'une perte instruite » au registre) : exiger d'un constat qu'il nomme le segment minimal, pas le segment de la campagne |
 | 2026-09-13 | pilote (message inter-sessions des finitions) | **Quatre faits des lots F/H à absorber** (`HANDOFF_DECODEUR_FILM` §3 bis sur `origin/feat/v75` 95e5b2ed6) : (1) pièce engendrée = déployée par nature (règle H.2 en production, garde-rail Go à poser) -> 1.9.1 ; (2) le 103 ne désigne que la pièce engendrée, `ref0` = piste de l'équipement source -> 1.9.1 + table D ; (3) origine des appareils portés purement temporelle -> repli nommé 1.9.1 ; (4) Live Fire, index de région 2 bits imputé à X par `DetectI0Layout` ([13 12 11] au lieu de [12 12 11]) : imposer le catalogue, ne jamais détecter en production -> 1.9.2 (A1 de l'audit). `origin/feat/v75` porte ~55 commits de plus que la fusion 215649efd, dont H.1 (neutralité d'un socle), H.2 (pièce engendrée), H.3 (Aquarius = Live Fire) qui touchent `replay/` : une NOUVELLE fusion + re-figeage attribué sera nécessaire avant la poussée vers `feat/v75` (sous-lot 0.D.5) | plan : 1.9.1, 1.9.2 ; §5 |
 
+| 2026-09-14 | 0.D.6 | **D5 — `coverage.flagCarries.teamBirths` 12 -> 11 sur `084a804d`, sans entrée qui le nomme.** Seule des 97 pertes du segment schéma 39 -> 54 à ne se ranger dans aucune famille déjà classée (§7.A, §7.B, ou les lignes du registre écrites en 0.D.2). `teamBirths` n'est pas un compteur d'échec : c'est un compte de naissances de drapeau d'équipe, donc une baisse est une richesse en moins. Ampleur 1 sur 12. NON TRAITÉ (règle 7). | Le lot drapeau qui reprendra les reliquats de la vague 6, ou le lot qui inventoriera les compteurs de `flagCarries` (même famille que la ligne du lot E2-bis au registre) : nommer le bump qui fait tomber la douzième naissance et dire si elle existait |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -1421,6 +1465,15 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 0.D.5 (incident) | — | `git checkout HEAD -- <paquet replay>` pour restaurer la production | **A aussi restauré `testdata/`** : 18 références fraîchement figées et 3 goldens effacés. Re-figeage rejoué EN ENTIER, diff **identique** (17 `flag` + 4 `artifact`, mêmes deltas) — déterminisme vérifié. Leçon : restaurer par fichiers NOMMÉS quand `testdata/` vit sous le paquet |
 | 2026-09-14 | 0.D.5 (gate de fin) | ce commit | `replay-equiv` sur les 20 films, 5 sous-ensembles | **20/20 IDENTIQUES**, exit 0 partout, dont les 10 films du régime court. Pics 0,08 à 0,73 Gio |
 | 2026-09-14 | 0.D.5 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **203 fichiers + 1 sauté, 3 126 tests + 3 sautés, 0 échec** |
+
+
+| 2026-09-14 | 0.D.6 | `fc5db87f7` (arbre) | `replay-corpus-gate --base=b6b198baf^` (51), `b6b198baf` (52), `c5a71dcbd` (53), `104b74e15` (54), manifeste réduit à `bfecd02b` | **Les quatre rendent exactement les MÊMES deux pertes**, aucune sur un axe véhicule : `coverage.placements.deployed` 4 -> 1 et `byFamilyOrigin.grenade_frag/deployed` 3 -> — (règle d'origine des poses, F.1 / H.2, déjà instruite). 5 gains, 2 pertes, ~19 s par run |
+| 2026-09-14 | 0.D.6 | `fc5db87f7` (arbre) | `replay-corpus-gate --base=7c85acf58^` (schéma **39**, naissance du calque véhicules) sur `bfecd02b` + `084a804d` | **97 pertes, ZÉRO sur un axe `vehicles.*`** — `bfecd02b` 15 (68 gains, 25,2 s), `084a804d` 82 (227 gains, 2 min 02). Répartition : `objectifs` 53, `carte` 19, `couverture` 11, `grenades` 9, `equipement` 5. Toutes rattachées à une famille déjà classée, sauf `coverage.flagCarries.teamBirths` 12 -> 11 (§4) |
+| 2026-09-14 | 0.D.6 | `fc5db87f7` | lecture de l'artefact du parc `bfecd02b` (schéma 54, cuit le 13/09 à 00:43) — **non oracle, lecture seule** | 11 vies publiées, **`familyUnknown 9`, `unknownChassis {038df01a: 9}`** ; les 9 sans famille sont IMMOBILES (aucun `samples`, un `spawn`, `t0=0 t1=t1max=5032` = le match entier) ; les 2 autres sont `ghost` (`5b80c406`) et portent leurs échantillons |
+| 2026-09-14 | 0.D.6 | `fc5db87f7` | `git log --oneline --all -S "038df01a"` ; `grep` dans `damagetag/data/labels.tsv` | Le châssis **n'a jamais figuré au dépôt** (aucun commit). `labels.tsv` porte **trois** entrées `vehi 038df01a` (l. 169, 343, 430), toutes `sb_003_lvl_moments_ge_shared_autoturret_banished` : **tourelle automatique bannie** — identification neuve, cohérente avec l'immobilité |
+| 2026-09-14 | 0.D.6 | `fc5db87f7` | confrontation D13 de la règle d'effacement (`vehicleCensusTolUS`, `vehicle_tracks.go:33`) au témoin | La règle **prolonge, elle n'efface jamais avant la dernière preuve** : 10 vies sur 11 ont `t1 == t1max` = dernière frame ; la seule effacée est le `ghost` slot 777 à la **frame 2874 (287,4 s), 5,3 s APRÈS son dernier échantillon** (`t1` 2821), son relais 778 reprenant à 3526. **Aucun véhicule que le film montre encore n'est effacé** |
+| 2026-09-14 | 0.D.6 | ce commit | `config/replay_corpus.toml` : entrée `bfecd02b` (famille `vehicules_v41_utilisateur`, Snowbound, Team Slayer:Arena) ; `go test ./internal/replaybuild/ ./cmd/replay-corpus-gate/` | corpus témoin de **12 à 13** ; les deux paquets **ok** |
+| 2026-09-14 | 0.D.6 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court NON APPLICABLE : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — aucun octet de production ne change (un manifeste de corpus, deux documents) |
 
 ## 6. Protocole de reprise de session
 

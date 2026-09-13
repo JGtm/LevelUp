@@ -182,3 +182,10 @@ famille = "version_33_sans_identification"
 mode    = "BTB Heavies:Total Control"
 carte   = "Fragmentation Heavies"
 raison  = "un des cinq films du cache dont chunk_00 ne porte AUCUNE section d'identification (3 en version 31, 2 en version 33) : sur eux le XUID de 64 bits est introuvable dans les chunks de replication (2 sur 25 contre 25 sur 25 partout ailleurs), donc zero identite, zero piste nommee et zero tir publie. Temoin de la degradation la plus lourde connue — et de sa reparation future"
+
+[[temoin]]
+id      = "bfecd02b"
+famille = "vehicules_v41_utilisateur"
+mode    = "Team Slayer:Arena"
+carte   = "Snowbound"
+raison  = "temoin NOMME PAR L'UTILISATEUR le 2026-09-13 (« les images des vehicules peuvent disparaitre sur le schema 54 »). Il porte ONZE vies de vehicule dont NEUF de chassis 0x038df01a, absent de la table statique des familles (vehicle_families.go) : elles sont publiees sans famille, donc dessinees en marqueur neutre — c'est la disparition d'image constatee. Les neuf sont immobiles (aucun echantillon, fenetre = le match entier), signature d'une tourelle fixe, et labels.tsv les nomme `sb_003_lvl_moments_ge_shared_autoturret_banished`. Seul temoin du corpus dont la MAJORITE du calque vehicules est sans sprite : toute resolution future de ce chassis, et toute regression de la table des familles, se voit ici en premier"
