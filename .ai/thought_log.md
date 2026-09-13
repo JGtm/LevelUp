@@ -41,6 +41,17 @@ replay/) : nouvelle fusion + re-figeage attribue avant la poussee (sous-lot 0.D.
 finitions n'a plus de push prevu ; une session « ajustements pre-v7.5 » commet sur le checkout
 principal par vagues : fenetre a demander avant la poussee ff.
 
+**Addendum (meme soir, D6 rouvert sur mecanique de jeu).** L'utilisateur tranche : en Halo
+Infinite il n'y a PAS de mi-temps, il y a des MANCHES et des PROLONGATIONS ; le score n'est pas un
+oracle en CTF (0-0 possible 12-13 min) ; si le film ecrit une information de manche, on lui fait
+confiance. Le verdict 0.D.1 « manches fantomes » (garde de contiguite `contiguousRounds`, commentaire
+« deux MI-TEMPS » de regulation.toml l. 198) n'est pas retenu : il rejette par heuristique un
+designateur ECRIT (D13). Sous-lot 0.D.1 bis ajoute au plan : que veut dire le designateur 2 chez
+l'ecrivain (statborg, Ghidra) et par mesure (fb1a1a72 dure 814 s pour 720 s reglementaires :
+piste prolongation), publier ce que le film ecrit, garde supprimee ou nommee en repli (D14),
+commentaire de regulation.toml corrige, registre des reports amende. Memoire :
+reference_halo_ctf_rounds_overtime_no_halves.
+
 ---
 
 ## [2026-09-13] Chantier decodeur — directive utilisateur D13 : la grammaire prime PARTOUT — En cours (plan amende, lot 0.E lance)
