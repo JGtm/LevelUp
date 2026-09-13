@@ -522,7 +522,7 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       Gate : gates communs (§2.3) ; `go test ./internal/games/halo_infinite/film/...
       ./internal/archlint/ ./internal/replaybuild/` vert ; régime court 10/10 identiques ;
       `make go-api-lint`.
-- [ ] 0.D.1 **D6 — `coverage.score.rounds` 3 -> 1 sur `fb1a1a72` (CTF multi-manche).**
+- [x] 0.D.1 **D6 — `coverage.score.rounds` 3 -> 1 sur `fb1a1a72` (CTF multi-manche).**
       Instruction bornée à une session : relever `RealRounds` slot par slot sur `fb1a1a72`
       (instrument corpus `CHUNK00_FILMS`), confronter à la feuille (`fb1a1a72.facts.json`, deux
       scores d'équipe) et à `rounds_decide` (`regulation.toml`), sachant que `materialRounds`
@@ -533,6 +533,36 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       `SchemaVersion` 55 + entrée de chronique + empreinte de forme + fixtures si le contenu
       cuit change, `GrammarRev` si la grammaire change. Si DIVERGENCE : ligne au registre des
       reports avec condition de reprise, rien de plus.
+      **Fait** (2026-09-13). **VERDICT : DIVERGENCE VOULUE — les manches 1 et 2 de `fb1a1a72`
+      sont des FANTÔMES, la baisse 3 -> 1 est une correction.** Aucun correctif (règle 7) ;
+      ligne au registre des reports avec sa condition de reprise. Instrument :
+      `objectiveevents/d6_manches_research_test.go` (aucun code de production touché),
+      `D6_FILMS=fb1a1a72,64e8adfa,d9781168`. Il est dans `objectiveevents` et NON dans `filmdec`
+      sous `CHUNK00_FILMS` : les enregistrements statborg ne sont lus que dans les chunks du
+      MANIFESTE (`manifestChunks`), et un film chargé par `filmsource.LoadDir(dir, nil)` — la
+      forme de `CHUNK00_FILMS` — en rend ZÉRO sans le dire, donc la mesure aurait été vide.
+      Six preuves : (1) **la manche 1 n'a aucun enregistrement**, ni joueur ni équipe
+      (`present[1] = false`) ; (2) la manche 2 n'est pas jouée APRÈS la manche 0 — sa fenêtre
+      [66 671, 814 115] commence à 66,7 s quand la manche 0 court jusqu'à 800,9 s, et 124 de ses
+      148 enregistrements tombent DANS la fenêtre de la manche 0, là où les deux témoins réels
+      occupent un segment propre (`64e8adfa` les 77 dernières secondes) ; (3) densité
+      **0,20 enr./s contre 1,26** pour la manche 0 (16 %), quand une manche réelle tient 140 %
+      (`64e8adfa`) et 313 % (`d9781168`) ; (4) ce film ne porte pas de fil de score de mode
+      (2 enregistrements sur 1 153 avec le composant 0), donc **`runs` vaut 0 en manches 1 et 2**
+      — la question du brief se répond NON ; (5) **cause reproduite par mutation** : neutraliser
+      la seule garde `vue && !present[round]` (`contiguousRounds`, commit `bb06cce5a`) rend
+      `[0 1 2]`, exactement l'ancien 3, tandis que les deux témoins réels rendent la même chose
+      des deux côtés — la garde ne coûte rien à une vraie manche ; (6) oracles produit
+      concordants : feuille `teamScores [0,1]` (un total de captures) et `regulation.toml`
+      `[rounds_decide]` qui EXCLUT `CTF:Arena` en écrivant « deux MI-TEMPS, pas des manches
+      décisives [...] le compte de manches y vaut 0-1, ce qui serait un contresens ».
+      **Rien n'est perdu** : les slots d'équipe ne portent aucun composant de score en manche 2
+      (`avecC0 = 0`), donc `cumulateRounds` ne jette aucune courbe. La prémisse du constat D6 —
+      « `materialRounds` ignore les slots d'équipe, donc les manches de ce film lui sont
+      invisibles » — est **fausse sur les deux moitiés** : `RealRounds` compte bien les slots
+      d'équipe dans sa suite cohérente, et sur ce film les slots d'équipe déclarent EXACTEMENT
+      les mêmes manches que les slots joueur (0 et 2, jamais 1). La mesure du 2026-09-08 citée au
+      registre (« les manches viennent des slots d'ÉQUIPE ») est amendée dans le même geste.
 - [ ] 0.D.2 **D7 — bloc monde/équipement de `60ae07c4` (Live Fire, v37).**
       Séparer l'effet du schéma 53 (porte de région sur 2 bits) de celui de la borne
       `maxUnrollPerStep = 16` : trouver les sha qui encadrent v53 (`document_chronicle.go`),
@@ -1032,6 +1062,8 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.D.0 | **D1 — DEUX commits de `feat/v75` changent le contenu cuit SANS montée de `SchemaVersion`.** F.1 (`c45c411eb`, « l'origine d'une pose d'equipement devient purement temporelle ») et D.2 (`3233ec2f8`, « la couverture du calque d'objectifs ne compte que les objectifs ») modifient tous deux des octets du document publié, et `SchemaVersion` vaut toujours 54 : les artefacts du parc cuits en 54 AVANT eux sont périmés sans être marqués (ADR 0034 D-6, « SchemaVersion rises when the cooked content or the document shape changes »). Les deux commits l'assument par écrit (D.2 : « aucun champ ne bouge, seule la valeur change, et `SchemaVersion` ne monte donc pas » ; « les artefacts deja cuits gardent l'ancien denominateur jusqu'a leur recuisson »). Ampleur MESURÉE par mutation (cf. §5) : D.2 touche 10 des 20 films du corpus, F.1 en touche 3, aucun autre commit du span ne touche l'artefact. **Décision du lot : PAS de montée ici** ; la première montée de M1 (lot 1.6, schéma 55) rattrape ces artefacts, et la recuisson du parc reste un signal séparé (D6). NON TRAITÉ. | lot 1.6 (schéma 55) ; recuisson du parc sur signal de l'utilisateur |
 | 2026-09-13 | 0.D.0 | **D2 — le plafond mémoire de `replay-equiv` tombe par CONTENTION CPU, pas par le film.** Trois films du corpus ont rendu `ECHEC (code 13)` à 3,81-3,83 Gio (plafond dur 3,75 Gio) quand une autre commande tournait sur la machine, et les MÊMES films passent à 0,19-1,06 Gio quand rien d'autre ne tourne : `a521164d` 3,81 Gio en lot contre **0,19 Gio seul**, `50247b26` 3,83 contre **1,06**, `111fa685` 3,81 contre **0,30**. Mécanisme : l'enfant tourne en priorité `below_normal` (`filmproc.LowerOwnPriority`) et son plafond souple est un `debug.SetMemoryLimit` — une limite SOUPLE, que le ramasse-miettes tient en tournant plus souvent ; privé de CPU, il prend du retard et l'empreinte dépasse le plafond DUR avant qu'il ne rattrape. Conséquence : un gate de décodage peut rougir pour une raison qui n'a rien à voir avec le décodeur, et le message (« plafond memoire depasse ») envoie chercher une fuite. `1c4c63c2` est le cas limite : 2,70 Gio seul à HEAD, mais 3,79 Gio seul sous mutation — il n'a fini qu'avec `-mem-gib 8` (pic 6,00 Gio, 11 min 58 s). NON TRAITÉ. **Condition de reprise** : un gate de décodage en CI, ou un lot qui fait tomber la mémoire du constructeur. Mesure de contournement, à écrire dans les briefs : ne rien lancer d'autre pendant un décodage. | §2.2 du plan (mode opératoire) ; candidat à un lot de robustesse du harnais |
 
+| 2026-09-13 | 0.D.1 | **D3 — le corpus gate lit TOUTE baisse de `coverage.score.rounds` comme une perte, alors que retirer une manche fantôme est le gain cherché.** `rounds` n'est pas dans la liste fermée des compteurs d'ÉCHEC de `internal/replaydiff/polarite.go`, donc il garde la lecture générique « plus = mieux ». Or l'instruction 0.D.1 prouve que la baisse 3 -> 1 sur `fb1a1a72` est une CORRECTION (manche 1 sans un seul enregistrement, manche 2 à 16 % de la densité de la manche 0 et recouvrant sa fenêtre). Conséquence : tout lot futur qui améliore la détection des manches fantômes sortira en « perte » au gate et devra être ré-instruit à la main, exactement comme celui-ci. Même famille que les 8 lignes de polarité douteuse du §7.B du rapport de re-figeage, et que la ligne « `shotsNoRide` / `ambiguousSlot` » déjà au registre. NON TRAITÉ (règle 7). | Le lot qui inventoriera les compteurs de VOIE et d'ÉCHEC du contrat de couverture (registre des reports, ligne du lot E2-bis) : y faire entrer `score.rounds` avec la bonne polarité, ou l'inscrire en ligne à ACCEPTER au gate |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -1098,6 +1130,13 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.D.0 (gates) | ce commit | `golangci-lint run --timeout 20m --new-from-merge-base=origin/main` (cache ET dossier temporaire isolés) | **0 issues, exit 0** — baseline non accrue. NOTE : `make go-api-lint` échoue sur ce poste quand un AUTRE agent lint en parallèle (`%TEMP%/golangci-lint.lock` est global, `GOLANGCI_LINT_CACHE` ne l'isole pas), puis sur son `--timeout 5m` quand la machine est chargée |
 | 2026-09-13 | 0.D.0 (gates web) | ce commit | `npm ci` (absent du worktree) puis `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | tsc **exit 0** ; vitest **202 fichiers + 1 sauté, 3 130 tests + 3 sautés**. 3 tests de `replaySoundAssets.guard.test.ts` sortent en `Test timed out in 5000ms` pendant que `npm`/`golangci-lint` chargent la machine ; rejoués SEULS : **26/26 verts** — flottement de charge, hors diff (sons) |
 | 2026-09-13 | 0.D.0 (gate de fin) | ce commit | `replay-equiv -repo-root <worktree>` sur les 20 films, 5 sous-ensembles, machine au repos | **20/20 IDENTIQUES**, exit 0 partout — dont **les 10 films du régime court** (50247b26, a521164d, 60ae07c4, 11de8353, 111fa685, e5adf7b2, bcb6d393, 51101d1d, d9781168, fb1a1a72). Pics 0,08 à 0,74 Gio, tous très en dessous du plafond : `1c4c63c2` à **0,74 Gio** ici contre 3,79 sous charge (§4 D2) |
+
+
+| 2026-09-13 | 0.D.1 | ce commit | `FILM_CACHE_ROOT=<principal>/data/cache D6_FILMS=fb1a1a72,64e8adfa,d9781168 go test ./internal/analysis/objectiveevents/ -run D6MatiereDesManches -v` | **`fb1a1a72` : `RealRounds = [0]`.** Manches déclarées 0, 2 et 5 — **la manche 1 n'a AUCUN enregistrement**, ni joueur ni équipe. Manche 2 : 148 enregistrements sur une fenêtre [66 671, 814 115] qui recouvre celle de la manche 0 ([3 411, 800 871]) à **124/148**, densité **0,20 enr./s contre 1,26** (16 %). Manche 5 : UN enregistrement. Composant de score de mode : **2 sur 1 153**, donc `runs` = 1 en manche 0 et **0 en manches 1 et 2**. Témoins : `64e8adfa` (CTF, 2 manches) manche 1 = [760 501, 837 364], densité 140 % ; `d9781168` (Oddball, 3 manches) manches 1 et 2 sur segments propres, densité 313 % et 311 % |
+| 2026-09-13 | 0.D.1 | ce commit | MUTATION DANS L'INSTRUMENT : `contiguousRounds(runs, material, toutPresent)` — la garde `vue && !present[round]` (`bb06cce5a`) neutralisée sans toucher une ligne de production | `fb1a1a72` rend **`[0 1 2]`, exactement l'ancien 3** : la garde est la cause UNIQUE de la baisse. Les deux témoins multi-manche réels rendent `[0 1]` et `[0 1 2]` **des deux côtés** — la garde ne coûte rien à une vraie manche |
+| 2026-09-13 | 0.D.1 | ce commit | Oracles produit : `fb1a1a72.facts.json` et `config/titles/halo_infinite/mappings/regulation.toml` | Feuille : `teamScores [0,1]`, `gameVariantName "CTF:Arena"` — un total de captures. `[rounds_decide]` ne liste que les trois Oddball et son en-tête EXCLUT nommément `CTF:Arena` (« deux MI-TEMPS, pas des manches décisives [...] le compte de manches y vaut 0-1, ce qui serait un contresens ») |
+| 2026-09-13 | 0.D.1 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` (film, archlint, replaybuild, killcollector, objectiveevents) ; `go test` (12 paquets) ; `golangci-lint --timeout 20m --new-from-merge-base=origin/main` | gofmt vide ; vet 0 diagnostic ; **12 paquets ok** (filmdec 8,9 s, archlint 14,0 s, objectiveevents 0,5 s) ; lint **0 issues, exit 0**. L'instrument SAUTE sans ses deux variables (`--- SKIP`) : il ne pèse pas sur la CI |
+| 2026-09-13 | 0.D.1 (gate décodage) | ce commit | `git diff --stat HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` | **SORTIE VIDE : aucun octet de production ne change dans ce sous-lot** (un instrument `_research_test.go`, deux documents). Le régime court n'est donc PAS rejoué : `replay-equiv` ne dépend que du code de production, et 0.D.0 l'a laissé à 20/20 identiques au commit précédent. Gate consigné comme NON APPLICABLE, pas comme différé — une commande qui ne peut rien mesurer de neuf |
 
 ## 6. Protocole de reprise de session
 
