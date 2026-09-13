@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { getTacticalText } from './i18n'
-import { libelleRayons, positionCategorie } from './tacticalView.logic'
+import { formatDistanceM, libelleRayons, positionCategorie } from './tacticalView.logic'
 
 const BINS = [
   { min_m: 0, max_m: 10 },
@@ -43,11 +43,23 @@ describe('positionCategorie — le seuil tombe à sa VRAIE place sur l’axe', (
 describe('libelleRayons — les portées, jamais leur moyenne', () => {
   const t = getTacticalText('fr')
 
+  it('arrondit au dixième, comme toute distance de la carte', () => {
+    // Le défaut fermé : la médiane sortait brute du serveur et ICU rendait « 9,905 m ».
+    expect(formatDistanceM(9.905, 'fr')).toBe('9,9')
+    expect(t.radiusValue(formatDistanceM(9.905, 'fr'))).toBe('9,9 m')
+  })
+
+  it('arrondit au dixième, comme toute distance de la carte', () => {
+    // Le défaut fermé : la médiane sortait brute du serveur et ICU rendait « 9,905 m ».
+    expect(formatDistanceM(9.905, 'fr')).toBe('9,9')
+    expect(t.radiusValue(formatDistanceM(9.905, 'fr'))).toBe('9,9 m')
+  })
+
   it('une seule portée', () => {
-    expect(libelleRayons(t, [18])).toBe('18 m')
+    expect(libelleRayons(t, [18], 'fr')).toBe('18 m')
   })
 
   it('deux formats dans le filtre : les deux valeurs, jointes', () => {
-    expect(libelleRayons(t, [18, 24])).toBe('18 m ou 24 m')
+    expect(libelleRayons(t, [18, 24], 'fr')).toBe('18 m ou 24 m')
   })
 })

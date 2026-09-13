@@ -25,9 +25,13 @@ import type { MatchPlayerPosition, ReplayMapBackgroundCalibration } from '@/lib/
 import {
   buildTacticalGrid,
   HEAT_SIGMA_M,
+  mapFrame as mapFrameDuNoyau,
+  type MapFrame,
   type TacticalCell,
   type TacticalGrid,
 } from '@/lib/replay/heatPaint'
+
+export type { MapFrame }
 
 /**
  * Pas de grille visé, en mètres monde : le RAYON D'ENGAGEMENT du rejeu (`HEAT_SIGMA_M`).
@@ -52,24 +56,15 @@ const Q_HIGH = 0.95
 /** `team = -1` → camp non attribué par le film (regroupement spatial best-effort). */
 export const TEAM_UNKNOWN = -1
 
-/** Le cadre monde du fond de carte, déduit de son calage. */
-export interface MapFrame {
-  /** Coin du monde correspondant au pixel (0,0) de l'image. */
-  originX: number
-  originY: number
-  /** Largeur et hauteur du fond, en mètres monde. */
-  widthM: number
-  heightM: number
-}
-
-/** mapFrame traduit le calage du fond en cadre monde exploitable. */
+/**
+ * mapFrame traduit le calage du fond en cadre monde exploitable.
+ *
+ * LE TYPE ET LE CALCUL VIVENT DANS LE NOYAU PARTAGÉ (`lib/replay/heatPaint.ts`) depuis le
+ * 2026-09-13 : le plan de l'onglet Tactique s'y est ajouté comme troisième lecteur, et à la
+ * troisième copie la définition remonte. Ce wrapper garde la signature typée du contrat.
+ */
 export function mapFrame(cal: ReplayMapBackgroundCalibration): MapFrame {
-  return {
-    originX: cal.originX,
-    originY: cal.originY,
-    widthM: cal.widthPx * cal.metersPerPixel,
-    heightM: cal.heightPx * cal.metersPerPixel,
-  }
+  return mapFrameDuNoyau(cal)
 }
 
 /** Le pas retenu : le plancher, agrandi si la carte dépasse le plafond de cellules. */
