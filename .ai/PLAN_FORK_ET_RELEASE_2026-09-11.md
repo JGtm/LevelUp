@@ -351,3 +351,6 @@ lot H, pas avant. Effort L.
   registre. 11 dossiers orphelins de worktrees (dont 3 plus anciens) effacés après retrait des
   jonctions. Restent sur disque : LevelUp, LevelUp-go-migration, film-residus, section3-chunk00
   (autre session) et 3 dossiers de sauvegardes/archives non touchés.
+- 2026-09-13 (correction utilisateur) : la GRAMMAIRE des 34 champs de ti=11 est conservée :
+  tag `archive/ti11-cadre` (c8aaf4afb, poussé) + `.ai/V7.5/replay2d/TI11_GRAMMAIRE_34_CHAMPS.md`
+  (table des feuilles, décodeur en .go.txt, docs PISTE_A/B et spec reprises de la branche).
