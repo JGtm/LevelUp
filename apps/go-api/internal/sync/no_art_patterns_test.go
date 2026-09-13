@@ -788,8 +788,11 @@ func TestInterpolatedWriteDetection_Sanity(t *testing.T) {
 			rouge:  true,
 		},
 		{
+			// NB : pas de `written_at = now()` dans ce temoin — le ratchet
+			// TestWrittenAtEcrituresEnUTC (internal/migration) scanne TOUT le module et
+			// prendrait la chaine de test pour une horloge nue dans un ordre SQL reel.
 			nom:    "concatenation set-based",
-			source: `q := "UPDATE " + table + " SET written_at = now() WHERE written_at IS NULL"`,
+			source: `q := "UPDATE " + table + " SET playlist_group = 'h5_arena' WHERE playlist_group IS NULL"`,
 			rouge:  true,
 		},
 		{
