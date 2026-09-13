@@ -104,7 +104,8 @@ Détail des tables : skill `db-schema`. Slugs actifs : `halo_infinite` (défaut)
 
 ## Règles critiques — écritures DuckDB (anti-corruption ART)
 
-Contexte : le bug DuckDB ART #23046 (`Failed to delete all rows from index`) a corrompu
+Contexte : le bug DuckDB ART #23645 (`Failed to delete all rows from index`, ouvert, présent
+en 1.5.5 embarquée) a corrompu
 des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON NÉGOCIABLES :
 
 1. **Toute écriture per-match sur une DB partagée** (shared, player, pve, metadata) passe

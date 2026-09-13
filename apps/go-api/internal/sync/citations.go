@@ -115,7 +115,7 @@ func BackfillMatchCitations(
 			CumulPre: cumulPre,
 		}, mappings)
 
-		// Append-only #23046 (Phase 2) : plus de DELETE avant réécriture. La
+		// Append-only #23645 (Phase 2) : plus de DELETE avant réécriture. La
 		// réécriture (writeCitations) alloue une nouvelle génération qui supersède
 		// la précédente via la vue match_citations_latest (recompute soustractif
 		// préservé : la nouvelle génération porte EXACTEMENT le nouvel ensemble).
@@ -747,7 +747,7 @@ func isEventsEmptyDefinitive(ctx context.Context, sharedDB *sql.DB, matchID stri
 // sur le film (isEventsEmptyDefinitive) — décision prise par le caller
 // BackfillMatchCitations.
 func writeCitations(ctx context.Context, db *sql.DB, matchID string, deltas []domain.CitationMatchDelta) error {
-	// Append-only #23046 (Phase 2) : plus de PK composite ni ON CONFLICT ni DELETE
+	// Append-only #23645 (Phase 2) : plus de PK composite ni ON CONFLICT ni DELETE
 	// préalable. Chaque réécriture d'un match alloue UNE génération
 	// (match_citations_generation_seq), partagée par toutes ses rows ; la vue
 	// match_citations_latest ne lit que la génération MAX par match_id. La

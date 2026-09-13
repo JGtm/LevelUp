@@ -1,7 +1,7 @@
 //go:build cgo
 
 // shared_weapon_kills_appendonly_test.go — déplacé depuis internal/migration
-// (campagne append-only ART #23046). weapon_kills est créée par le créateur de
+// (campagne append-only ART #23645). weapon_kills est créée par le créateur de
 // schéma shared TITLE-OWNED (steps_shared_core.go) ; la migration append-only
 // (generation_id + vue v_weapon_kills) reste GLOBALE (registre internal/migration).
 // Ce test câble le provider title-owned (StepsFor) puis RunForDB(TargetShared) pour

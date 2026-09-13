@@ -86,7 +86,7 @@ func applyMatchLives(db *sql.DB) error {
 //	                                      elles n'ont pas de xuid a y ecrire.
 //
 // UN SEUL INDEX, celui qui sert la vue `_latest` et la lecture par match. DuckDB est colonnaire :
-// un index ART ne sert que les acces ponctuels, et chaque index elargit la surface ART #23046 le
+// un index ART ne sert que les acces ponctuels, et chaque index elargit la surface ART #23645 le
 // jour ou quelqu'un ecrirait un DELETE.
 const ddlMatchLives = `
 	CREATE SEQUENCE IF NOT EXISTS match_lives_id_seq START 1;

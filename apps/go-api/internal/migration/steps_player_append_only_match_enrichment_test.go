@@ -1,7 +1,7 @@
 //go:build integration
 
 // Package migration — tests d'intégration CGO pour applyAppendOnlyMatchEnrichment
-// (player_match_enrichment append-only + vue merge-on-read par-groupe, #23046).
+// (player_match_enrichment append-only + vue merge-on-read par-groupe, #23645).
 //
 // Le test CENTRAL (Merge) prouve la sémantique merge-on-read : écritures partielles
 // par étape (stage), reconstitution multi-colonnes, reset à NULL légitime préservé,

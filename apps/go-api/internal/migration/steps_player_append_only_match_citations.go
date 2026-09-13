@@ -1,12 +1,12 @@
 package migration
 
 // steps_player_append_only_match_citations.go — éradication ART de
-// match_citations (player DB) — Phase 2 campagne #23046 (2026-06-21).
+// match_citations (player DB) — Phase 2 campagne #23645 (2026-06-21).
 //
 // **Pourquoi** : BackfillMatchCitations faisait `DELETE FROM match_citations
 // WHERE match_id=?` (deleteCitationForMatch) avant réécriture, sur une table à
 // PK composite (match_id, citation_name_norm). Le DELETE per-match retire N
-// lignes de l'index PK ART = vecteur DuckDB #23046 sur le chemin post-sync +
+// lignes de l'index PK ART = vecteur DuckDB #23645 sur le chemin post-sync +
 // heal convergent. Le recompute des citations EST soustractif (capLeafDelta peut
 // faire décroître/disparaître une citation) → le DELETE est LOAD-BEARING (pas
 // supprimable). La forme correcte est donc append-only générationnel.
@@ -30,7 +30,7 @@ func init() {
 	Register(Migration{
 		Name:        "player_append_only_match_citations_v1",
 		TargetDB:    TargetPlayer,
-		Description: "Rebuild match_citations en append-only (id PK + generation_id + vue latest par match) — élimine DELETE+PK composite ART (#23046)",
+		Description: "Rebuild match_citations en append-only (id PK + generation_id + vue latest par match) — élimine DELETE+PK composite ART (#23645)",
 		ApplySchema: applyAppendOnlyMatchCitations,
 	})
 }

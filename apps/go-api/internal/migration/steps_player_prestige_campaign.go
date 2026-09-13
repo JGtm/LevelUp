@@ -6,5 +6,5 @@ package migration
 // garanti par internal/migration/order.go (canonicalOrder).
 //
 // L'index ART idx_challenge_campaign (colonne campaign_id mutée par campaign_repo) N'EST PLUS
-// créé par la migration title-owned (éradication ART #23046) ; il est retiré des DB existantes
+// créé par la migration title-owned (éradication ART #23645) ; il est retiré des DB existantes
 // par drop_challenge_mutated_art_indexes_v1 (steps_player_drop_challenge_art_indexes.go).

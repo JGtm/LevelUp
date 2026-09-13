@@ -130,7 +130,7 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 		// (InsertWeaponKills, persist.SharedPersister), qui les exige. Aucun test de lecture
 		// Halo Infinite ne doit s'y adosser.
 		`CREATE SEQUENCE IF NOT EXISTS weapon_kills_generation_seq START 1`,
-		// Append-only #23046 (Phase 2) : PAS de PK composite (comme prod) — sinon
+		// Append-only #23645 (Phase 2) : PAS de PK composite (comme prod) — sinon
 		// re-insérer le même weapon_id dans une nouvelle génération conflitrait.
 		`CREATE TABLE weapon_kills (
 			match_id VARCHAR,
@@ -182,7 +182,7 @@ func NewInMemoryPlayer(t *testing.T) *sql.DB {
 	t.Cleanup(func() { _ = db.Close() })
 
 	// DDL legacy de bootstrap (PK match_id) ; la migration ci-dessous la convertit
-	// en append-only (#23046 : id PK + stage + written_at + vue player_match_enrichment_latest).
+	// en append-only (#23645 : id PK + stage + written_at + vue player_match_enrichment_latest).
 	stmts := []string{
 		`CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY,

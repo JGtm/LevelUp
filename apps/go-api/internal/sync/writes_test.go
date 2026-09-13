@@ -117,7 +117,7 @@ func TestInsertWeaponKills(t *testing.T) {
 		t.Errorf("expected 2 weapon_kills, got %d", count)
 	}
 
-	// Append-only #23046 (Phase 2) : la ré-insertion ne DELETE plus ; elle alloue une
+	// Append-only #23645 (Phase 2) : la ré-insertion ne DELETE plus ; elle alloue une
 	// nouvelle génération qui supersède via v_weapon_kills (dernière génération) → 1 row.
 	attrs2 := []intsync.WeaponKillRow{
 		{TimeMS: 3000, WeaponID: &wid1, Confidence: "low", AttributionPath: "swap"},
@@ -176,7 +176,7 @@ func TestWriteSessionAssignments_EmptySlice(t *testing.T) {
 	}
 }
 
-// TestWriteSessionAssignments_NewMatchInsertsRow : append-only #23046 — un match
+// TestWriteSessionAssignments_NewMatchInsertsRow : append-only #23645 — un match
 // sans row pré-existante reçoit désormais sa row session-stage (INSERT pur, plus
 // d'UPDATE no-op). Le writer retourne 1 et la session est lisible via la vue merge.
 func TestWriteSessionAssignments_NewMatchInsertsRow(t *testing.T) {

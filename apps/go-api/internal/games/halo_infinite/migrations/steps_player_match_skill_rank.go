@@ -69,7 +69,7 @@ func playerMatchSkillRankSteps() []migration.Migration {
 // lusrChainRework purge les lignes LUSR de match_skill_rank pour forcer un recompute
 // avec les nouvelles chaînes de playlists.
 //
-// Append-only #23046 : PAS de `DELETE FROM match_skill_rank WHERE rating_type='LUSR'`
+// Append-only #23645 : PAS de `DELETE FROM match_skill_rank WHERE rating_type='LUSR'`
 // — un DELETE per-row sur une table append-only INDEXÉE (PK id + idx_msr_*) est un
 // vecteur ART (« Failed to delete all rows from index »), même au boot. On purge via
 // rebuild CTAS (table sans index pendant la copie, index/PK reposés après), modèle

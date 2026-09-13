@@ -7,7 +7,7 @@ package migration
 // steps.go, Phase 1.5 b26, voie B — DERNIER root metadata). Tout le tier metadata est
 // désormais title-owned. Les noms restent dans internal/migration/order.go (canonicalOrder).
 //
-// Éradication ART (#23046) : les surfaces ART metadata (idx_battlepass_*_lookup,
+// Éradication ART (#23645) : les surfaces ART metadata (idx_battlepass_*_lookup,
 // idx_citation_mappings_medal/type, idx_map_images_registry_fetched sur colonnes mutées par
 // les Upsert/Replace ; idx_ms_cat_*, idx_ctmpl_*, idx_parc_title, idx_game_variants_catalog_mode,
 // idx_map_mode_pair_* ; catalog_fetch_queue) sont retirées par

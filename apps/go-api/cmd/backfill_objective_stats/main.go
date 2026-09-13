@@ -7,7 +7,7 @@
 // GetMatchStats (Players[].PlayerTeamStats[0].Stats.<BlocMode>) mais n'étaient
 // pas extraites avant le chantier V72-03. Le sync natif les persiste désormais ;
 // ce backfill couvre les matchs ANTÉRIEURS. Écriture APPEND-ONLY INSERT-only
-// (ART-safe #23046) via persist.InsertObjectiveStats ; lecture par la vue
+// (ART-safe #23645) via persist.InsertObjectiveStats ; lecture par la vue
 // match_objective_stats_latest.
 //
 // Reprise : un match est candidat s'il n'a PAS le bit MBitObjectiveStats posé

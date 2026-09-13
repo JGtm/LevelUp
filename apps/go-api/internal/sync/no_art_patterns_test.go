@@ -103,7 +103,7 @@ var tablesProtegees = []string{
 	// metadata.duckdb → cascade (modes/playlists/maps/citations/succès Xbox en échec
 	// sur toute l'app — incident sonde live 2026-06-19).
 	"catalog_fetch_queue",
-	// player_match_enrichment (append-only #23046, 2026-06-21) : la table la PLUS
+	// player_match_enrichment (append-only #23645, 2026-06-21) : la table la PLUS
 	// écrite, migrée append-only (id PK + stage + vue _latest). Tous les writers
 	// sont des INSERT purs taggés ; zéro ON CONFLICT/DELETE/UPDATE. Le durcissement
 	// complémentaire (interdire UPDATE + FROM brut) vit dans append_only_state_guard_test.go.
@@ -223,7 +223,7 @@ var allowlistArtPatterns = map[string]string{
 var allowlistRawDelete = map[string]string{
 	// (Entrée `internal/sync/skill_rating_postsync_persist.go` retirée en
 	// V4c/2026-07-07 : la fonction compactMatchSkillRankSuperseded (DELETE de
-	// compaction) a été SUPPRIMÉE — elle déclenchait le bug ART #23046 malgré
+	// compaction) a été SUPPRIMÉE — elle déclenchait le bug ART #23645 malgré
 	// mono-writer + PK BIGINT (crash JGtm 2026-06-20). La table match_skill_rank
 	// reste append-only pur, la vue _latest reste correcte. Le fichier a par
 	// ailleurs migré vers internal/sync/skill/ et ne contient plus aucun DELETE.

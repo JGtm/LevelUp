@@ -28,7 +28,7 @@ import (
 
 // NB : la compaction des versions superseded de match_skill_rank (ancien
 // compactMatchSkillRankSuperseded : DELETE id NOT IN MAX(id)…) a été SUPPRIMÉE —
-// elle déclenchait le bug ART DuckDB amont #23046 (crash JGtm 2026-06-20) malgré
+// elle déclenchait le bug ART DuckDB amont #23645 (crash JGtm 2026-06-20) malgré
 // mono-writer + PK BIGINT. La table reste append-only pur ; la vue
 // match_skill_rank_latest (MAX(id)) reste correcte avec les versions superseded.
 

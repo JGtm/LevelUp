@@ -50,7 +50,7 @@ func openMemForAggregates(t *testing.T) *sql.DB {
 		t.Fatalf("CREATE match_skill_rank: %v", err)
 	}
 
-	// Append-only #23046 : convertit player_match_enrichment (id PK + stage) + crée
+	// Append-only #23645 : convertit player_match_enrichment (id PK + stage) + crée
 	// la vue player_match_enrichment_latest (refreshAggregates / mv_player_matches la lit).
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
