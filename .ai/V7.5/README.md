@@ -226,3 +226,4 @@ fusions utilisateur) : `replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`.
   chemin de cuisson) : re-cuit l'artefact au schema courant, sans compteurs de joueur, dont la base a
   des lignes — meme predicat que `replayartifacts.etatArtefact`. Temoin dry-run du 2026-08-25 : 2
   reparables sur 951 films du cache. La commande exacte de remediation est au §5ter du plan ouvrier.
+- `replay2d/TI11_GRAMMAIRE_34_CHAMPS.md` (2026-09-13) — grammaire de l'entité ti=11 (descripteur d'objectif du HUD) conservée comme asset de recherche après suppression de la branche ; code figé sous le tag `archive/ti11-cadre`.
