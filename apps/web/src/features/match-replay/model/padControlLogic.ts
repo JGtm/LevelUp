@@ -17,7 +17,7 @@
  * comptée pour PERSONNE.
  *
  * CE QUI N'EST PAS ATTRIBUÉ NE DISPARAÎT PAS. Les occupations hors tableau sont comptées et
- * ventilées (`padControlGaps`) : ambiguës, non couvertes, datées sans ramasseur nommé, socles de
+ * comptées hors tableau : ambiguës, non couvertes, datées sans ramasseur nommé, socles de
  * bonus structurellement hors jointure, et ramasseur nommé mais absent du film. La somme des
  * lignes plus ces manques redonne le nombre d'occupations du document — sans quoi le tableau
  * laisserait croire que le match n'a connu que les prises qu'il affiche.
@@ -81,20 +81,16 @@ export type PadControlCoverage = NonNullable<
 export interface PadControl {
   byTeam: PadControlTeam[]
   /**
-   * Identifiants d'arme à mettre en colonne, ordre écrit (cf. `weaponsOf`) : les ÉLUES du
-   * vote d'abord, les REPLIÉES ensuite — c'est la concaténation exacte des deux listes
-   * ci-dessous, gardée pour l'écran déplié et l'axe du graphe.
+   * Identifiants d'arme à mettre en ligne, ordre écrit (cf. `weaponsOf`) : les socles DÉCISIFS
+   * d'abord, les autres ensuite, chaque bloc trié du plus disputé au moins disputé.
+   *
+   * LE VOTE « GAME CHANGERS » EST UN ORDRE, PLUS UN REPLI (2026-09-13). Le plan du 2026-09-05
+   * (décision D3) n'affichait d'emblée que les socles élus, le reste derrière « Voir plus (N) » ;
+   * l'utilisateur l'a révoqué — « pourquoi il est constamment replié et n'affiche jamais rien
+   * par défaut ? ». Toutes les armes sont désormais rendues ; le vote ne décide plus que de
+   * l'ordre de lecture.
    */
   weapons: string[]
-  /**
-   * LA PARTITION DU REPLI « GAME CHANGERS » (plan 2026-09-05) : les socles élus par le vote
-   * (`forwardWeapons`, visibles d'emblée) et les repliés (`collapsedWeapons`, derrière
-   * « Voir plus (N) »). Le tri « du plus disputé au moins disputé » survit DANS chaque liste.
-   * AUCUN TOTAL ne passe par ce découpage : `attributed`, les totaux de camp et de joueur
-   * comptent toutes les armes, repliées comprises — le total ne ment pas.
-   */
-  forwardWeapons: string[]
-  collapsedWeapons: string[]
   /**
    * Le bloc de datation du document. `null` n'arrive PAS en production — le service le pose
    * inconditionnellement, et un artefact qui porte un `xuid` d'occupation le porte forcément —
@@ -112,8 +108,8 @@ export interface PadControl {
   /**
    * LES OCCUPATIONS SANS RAMASSEUR NOMMÉ, SOCLE PAR SOCLE (clé = `weaponPads[].weapon`).
    *
-   * Le total de ces manques vit déjà dans `padControlGaps`, ventilé par CAUSE ; celui-ci les
-   * ramène à l'ARME, parce que l'écran les annote ligne par ligne (« + N sans nom ») et qu'un
+   * Ce compte ramène les manques à l'ARME, parce que l'écran les annote ligne par ligne
+   * (« + N sans nom ») et qu'un
    * lecteur doit pouvoir dire « le lance-roquettes a changé de mains trois fois de plus que ce
    * que la ligne montre ». Elles ne sont JAMAIS versées à un camp : ce serait inventer un
    * ramasseur, exactement ce que la datation a refusé de faire.
@@ -179,12 +175,9 @@ export function buildPadControl(
 
   const byTeam = teamsOf(players, tallies)
   const attributed = byTeam.reduce((sum, team) => sum + team.total.total, 0)
-  const { forward, collapsed } = weaponsOf(matchTotal, doc.weaponLabels)
   return {
     byTeam,
-    weapons: [...forward, ...collapsed],
-    forwardWeapons: forward,
-    collapsedWeapons: collapsed,
+    weapons: weaponsOf(matchTotal, doc.weaponLabels),
     coverage: doc.coverage?.padDating ?? null,
     attributed,
     unjoined,
@@ -231,9 +224,9 @@ function teamsOf(
 }
 
 /**
- * weaponsOf retient les socles qu'au moins une prise attribuée justifie, PARTITIONNÉS par le
- * vote « game changers » PUIS triés du plus disputé au moins disputé dans chaque partition
- * (plan 2026-09-05, G2.1) — un socle replié très disputé ne remonte jamais devant un élu.
+ * weaponsOf retient les socles qu'au moins une prise attribuée justifie, ORDONNÉS par le vote
+ * « game changers » PUIS du plus disputé au moins disputé dans chaque bloc (plan 2026-09-05,
+ * G2.1, amendé le 2026-09-13 : le vote ordonne, il ne cache plus rien).
  *
  * UNE COLONNE DE ZÉROS N'EST PAS UNE MESURE : un socle que personne n'a pris n'a pas de colonne,
  * il reste dans le compte des occupations non attribuées. À égalité, l'identifiant départage —
@@ -243,13 +236,13 @@ function teamsOf(
  * `padScaleFor`) : un socle de BONUS publie sa famille d'équipement — la table écrite
  * `padEquipmentFamilyOf` la reconnaît, jamais un test de préfixe — et se juge par elle ; un
  * socle d'ARME publie un hexadécimal, et se juge par la clé canonique du catalogue
- * (`weaponLabels[hex].key`). Un label SANS clé (artefact ancien, arme hors catalogue) est
- * REPLIÉ : dégradation voulue, on ne promeut pas ce qu'on ne sait pas nommer.
+ * (`weaponLabels[hex].key`). Un label SANS clé (artefact ancien, arme hors catalogue) passe en
+ * second : dégradation voulue, on ne promeut pas ce qu'on ne sait pas nommer.
  */
 function weaponsOf(
   matchTotal: Record<string, number>,
   labels: ReplayDocumentReady['weaponLabels'],
-): { forward: string[]; collapsed: string[] } {
+): string[] {
   const enAvant = (weapon: string): boolean => {
     const family = padEquipmentFamilyOf(weapon)
     if (family) return isGameChangerFamily(family)
@@ -258,44 +251,9 @@ function weaponsOf(
   const parVolume = (a: string, b: string) =>
     matchTotal[b] - matchTotal[a] || a.localeCompare(b)
   const weapons = Object.keys(matchTotal)
-  return {
-    forward: weapons.filter(enAvant).sort(parVolume),
-    collapsed: weapons.filter((w) => !enAvant(w)).sort(parVolume),
-  }
-}
-
-/** Les cinq raisons pour lesquelles une occupation n'est pas dans le tableau. */
-export type PadControlGapKey = 'ambiguous' | 'uncovered' | 'unnamed' | 'powerup' | 'unjoined'
-
-/** Une raison et son compte. */
-export interface PadControlGap {
-  key: PadControlGapKey
-  count: number
-}
-
-/**
- * padControlGaps ventile les occupations que le tableau ne montre pas.
- *
- * LA SOMME DOIT RETOMBER SUR SES PIEDS : prises affichées + manques = occupations du document.
- * `unnamed` (datée sans ramasseur nommé) est le reste que les quatre autres n'expliquent pas —
- * le calculer par soustraction plutôt que le lire évite d'afficher une ventilation qui ne boucle
- * pas quand un compteur du service évolue.
- */
-export function padControlGaps(control: PadControl): PadControlGap[] {
-  const cov = control.coverage
-  if (!cov) return []
-  const explained = cov.ambiguous + cov.uncovered + cov.powerupOccupations + control.unjoined
-  const unnamed = Math.max(0, cov.occupations - control.attributed - explained)
   return [
-    { key: 'ambiguous' as const, count: cov.ambiguous },
-    { key: 'uncovered' as const, count: cov.uncovered },
-    { key: 'unnamed' as const, count: unnamed },
-    { key: 'powerup' as const, count: cov.powerupOccupations },
-    { key: 'unjoined' as const, count: control.unjoined },
-  ].filter((g) => g.count > 0)
+    ...weapons.filter(enAvant).sort(parVolume),
+    ...weapons.filter((w) => !enAvant(w)).sort(parVolume),
+  ]
 }
 
-/** Le nombre total d'occupations hors tableau, ventilables ou non. */
-export function padControlMissing(control: PadControl): number {
-  return Math.max(0, (control.coverage?.occupations ?? 0) - control.attributed)
-}
