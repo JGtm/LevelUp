@@ -5,6 +5,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
 
@@ -58,6 +59,20 @@ type RegulationSet struct {
 	// scoreTimelineTokens : les jetons déclarés, dans un ordre stable — l'appariement
 	// (mot entier, jeton le plus long gagnant) les prend tels quels.
 	scoreTimelineTokens []string
+	// flagJuggleWindowS : la FENÊTRE DE JONGLAGE du drapeau, en secondes. Un porteur qui
+	// lance le drapeau devant lui puis le reprend dans cette fenêtre a fait UN geste, pas
+	// deux prises (`objectiveevents.NetFlagGrabs`).
+	//
+	// SCALAIRE ET NON TABLE PAR VARIANTE, et c'est une conséquence de la mesure : la coupure
+	// vit dans le GESTE (la durée d'un jet de drapeau suivi d'une reprise à la course), pas
+	// dans le réglage d'une playlist. La mesure du 2026-09-13 la situe entre 1,4 et 1,6 s sur
+	// les treize films CTF du parc, toutes variantes confondues
+	// (`.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`).
+	//
+	// MÊME DOCTRINE QUE LES TABLES CI-DESSUS : absent = PAS DE LECTURE. Un titre qui ne la
+	// déclare pas ne publie pas les prises nettes — jamais une fenêtre par défaut, qui
+	// rendrait une mesure d'apparence normale sur une règle qu'on n'a pas établie.
+	flagJuggleWindowS float64
 }
 
 // Les trois lectures possibles du bloc « Score dans le temps » de la vue match. Ce sont
@@ -90,6 +105,13 @@ type regulationTOML struct {
 	HoldTicks     map[string]int    `toml:"hold_ticks_per_point"`
 	RadarRange    map[string]int    `toml:"radar_range_m"`
 	ScoreTimeline map[string]string `toml:"score_timeline"`
+	FlagGrabsNet  flagGrabsNetTOML  `toml:"flag_grabs_net"`
+}
+
+// flagGrabsNetTOML — la section `[flag_grabs_net]`, un seul réglage à ce jour.
+type flagGrabsNetTOML struct {
+	// FlagJuggleWindowS : secondes. Absente (0) = le titre ne déclare pas la règle.
+	FlagJuggleWindowS float64 `toml:"flag_juggle_window_s"`
 }
 
 // Seconds retourne le temps réglementaire de la variante et true s'il est connu.
@@ -320,6 +342,14 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 	if err != nil {
 		return nil, err
 	}
+	// La fenêtre de jonglage suit la règle de tout ce fichier : ABSENTE veut dire « pas de
+	// lecture », NÉGATIVE OU NULLE veut dire une erreur de configuration. Écrire 0 pour
+	// désactiver la grandeur ferait croire à un interrupteur là où l'absence de clé EST
+	// l'interrupteur.
+	if doc.FlagGrabsNet.FlagJuggleWindowS < 0 {
+		return nil, fmt.Errorf("%s: [flag_grabs_net].flag_juggle_window_s négative (%v) — retirer la ligne pour ne pas publier la grandeur",
+			path, doc.FlagGrabsNet.FlagJuggleWindowS)
+	}
 	return &RegulationSet{
 		titleSlug:           doc.Meta.TitleSlug,
 		schemaVersion:       doc.Meta.SchemaVersion,
@@ -330,7 +360,18 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 		radarRange:          radar,
 		scoreTimeline:       timeline,
 		scoreTimelineTokens: timelineTokens,
+		flagJuggleWindowS:   doc.FlagGrabsNet.FlagJuggleWindowS,
 	}, nil
+}
+
+// FlagJuggleWindow retourne la fenêtre de jonglage du drapeau et true si le titre la
+// déclare. nil-safe ; clé absente → (0, false), et l'appelant NE PUBLIE PAS la grandeur
+// (jamais un repli sur une durée devinée).
+func (s *RegulationSet) FlagJuggleWindow() (time.Duration, bool) {
+	if s == nil || s.flagJuggleWindowS <= 0 {
+		return 0, false
+	}
+	return time.Duration(s.flagJuggleWindowS * float64(time.Second)), true
 }
 
 // tableEntiereValidee lit une table `game_variant_name → entier` et la valide : clé non

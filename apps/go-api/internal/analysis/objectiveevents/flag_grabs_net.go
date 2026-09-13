@@ -1,0 +1,252 @@
+package objectiveevents
+
+// flag_grabs_net.go — LES PRISES NETTES DE DRAPEAU : le compteur officiel, le jonglage replie.
+//
+// # LE DEFAUT QUE CETTE FONCTION CORRIGE
+//
+// `flag_grabs` (StatFlagGrabs, la table DRAPEAU du statborg — et la colonne du meme nom de
+// l'API) compte CHAQUE ramassage. Or un porteur qui LANCE le drapeau devant lui pour courir plus
+// vite, puis le reprend une seconde plus tard, se voit crediter une prise de plus a chaque
+// aller-retour : le compteur classe le JONGLAGE, pas la PRISE. Mesure du 2026-09-13 sur les
+// treize films CTF du parc local (rapport `.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`) :
+// 617 prises brutes, 370 nettes a 1,5 s — 40 % du compteur officiel est du jonglage, et sur un
+// film le premier au brut (27 prises) tombe TROISIEME au net (4).
+//
+// # LA DEFINITION, ET LES QUATRE CAS QU ELLE TRANCHE
+//
+// Une prise est NETTE si le portage PRECEDENT DU MEME DRAPEAU :
+//
+//	n existe pas                    premiere prise du drapeau                      -> NETTE
+//	est d un AUTRE joueur           passe de main, vol, reprise adverse            -> NETTE
+//	est du MEME joueur, ferme il y  le drapeau a vecu sa vie entre-temps           -> NETTE
+//	  a plus de `window`
+//	est du MEME joueur, ferme il y  JONGLAGE : le meme geste, compte une fois      -> repliee
+//	  a `window` ou moins
+//
+// DEUX EXCEPTIONS, ET ELLES VIENNENT DE LA DONNEE :
+//
+//	LE DRAPEAU RENTRE CHEZ LUI ENTRE LES DEUX. Un etat `home` entre la fin du portage precedent
+//	et la prise dit que le drapeau est retourne a son socle : le reprendre est une VRAIE prise,
+//	quelle que soit la duree. La mesure dit que ce cas ne se produit pas sous 1,5 s (aucun retour
+//	ne s effectue en une seconde et demie), mais la regle ne repose pas sur cette rarete — elle
+//	lit l etat.
+//
+//	UN PORTAGE QUE RIEN NE FERME NE REPLIE RIEN. Un portage [FlagSpanCarriedOpen] court jusqu a
+//	la fin de l axe : sa fin est une BORNE HAUTE, pas une mesure (cf. `replay.FlagStateCarriedOpen`).
+//	Replier une prise sur un ecart calcule contre une borne inventee ferait disparaitre une prise
+//	sur un film TRONQUE — exactement ceux que le pont par instants de mort vient de rendre
+//	exploitables. Un tel portage laisse donc la prise suivante NETTE.
+//
+// # LA FENETRE EST UNE DONNEE DU TITRE, JAMAIS UNE CONSTANTE
+//
+// Elle vit dans `config/titles/{slug}/mappings/regulation.toml`
+// (`[flag_grabs_net] flag_juggle_window_s`), au meme titre que le temps reglementaire ou la
+// cible de victoire : c est une regle du JEU, et un titre qui ne la declare pas ne publie pas
+// la grandeur. Cette fonction ne connait aucune valeur par defaut — une fenetre <= 0 rend un
+// resultat NON MESURE (`Measured` faux), jamais un repli silencieux.
+//
+// # UNITE : LA MILLISECONDE, ET C EST L APPELANT QUI CONVERTIT
+//
+// Les bornes des portages arrivent en millisecondes. L artefact de rejeu, lui, publie des
+// FRAMES : son lecteur multiplie par `frameIntervalMs` avant d appeler ici. Faire voyager des
+// frames dans une fonction title-agnostic y ferait entrer la cadence d un format de film.
+
+import "time"
+
+// Les QUATRE etats d un drapeau, dans le vocabulaire de cette fonction. Ce sont les MEMES
+// chaines que `replay.FlagState*` — une recopie volontaire (faire dependre `analysis` du
+// decodeur de film pour quatre chaines serait un couplage disproportionne) et TENUE par un
+// garde-rail cote `replay` (flag_grabs_net_sentinels_test.go), qui echoue le jour ou l une des
+// quatre diverge de sa source.
+const (
+	// FlagSpanCarried : un joueur le porte, et un FAIT DATE a mis fin a ce portage.
+	FlagSpanCarried = "carried"
+	// FlagSpanCarriedOpen : un joueur l a pris, et RIEN dans le film ne dit qu il l a lache.
+	FlagSpanCarriedOpen = "carried_open"
+	// FlagSpanDropped : il est au sol, la ou son dernier porteur l a laisse.
+	FlagSpanDropped = "dropped"
+	// FlagSpanHome : il est a sa base.
+	FlagSpanHome = "home"
+)
+
+// FlagSpan est UN intervalle d etat d un drapeau, borne en millisecondes.
+type FlagSpan struct {
+	// State : l une des quatre constantes ci-dessus. Une valeur inconnue est IGNOREE — elle
+	// n est ni un portage ni un retour au socle, et l inventer serait pire que la taire.
+	State string
+	// StartMS / EndMS bornent l intervalle. EndMS est INCLUS.
+	StartMS, EndMS int
+	// XUID est le porteur, en decimal. Vide pour les etats non portes — et pour un portage
+	// que le pont n a pas nomme : une prise sans proprietaire ne se compte a personne.
+	XUID string
+}
+
+// FlagTrack est LA VIE D UN DRAPEAU sur toute la partie. Le regroupement est par OBJET : en CTF
+// il y a deux drapeaux, donc au plus deux pistes. C est LUI qui porte l identite « meme
+// drapeau » de la definition — deux prises de deux drapeaux differents ne se replient jamais
+// l une l autre, meme a une milliseconde d ecart.
+type FlagTrack struct {
+	// Team est l equipe PROPRIETAIRE du drapeau (-1 = inconnue). Publiee pour se lire ; la
+	// regle n en depend pas, c est la piste qui fait l identite.
+	Team int
+	// Spans est la vie du drapeau. L ordre d entree n a pas d importance : la fonction trie.
+	Spans []FlagSpan
+}
+
+// FlagGrabsNetPlayer porte les deux comptes d UN joueur sur UN match.
+type FlagGrabsNetPlayer struct {
+	// XUID du joueur, en decimal.
+	XUID string
+	// Raw : les prises BRUTES lues sur les pistes — le compteur officiel, jonglage compris.
+	Raw int
+	// Net : les prises NETTES, jonglage replie.
+	Net int
+}
+
+// FlagGrabsNetResult est le resultat d un match.
+type FlagGrabsNetResult struct {
+	// Measured dit si la grandeur est PUBLIABLE. Faux quand la fenetre n est pas declaree :
+	// le titre ne connait pas la regle, donc il n y a pas de grandeur — jamais des zeros.
+	Measured bool
+	// WindowMS est la fenetre appliquee, en millisecondes. Elle voyage AVEC le resultat :
+	// « 4 prises nettes » ne veut rien dire sans elle, et deux parcs cuits sous deux fenetres
+	// differentes seraient autrement indistinguables.
+	WindowMS int
+	// Openings est le compte de l ORACLE : les evenements nommes `flag_grabs` + `flag_steals`
+	// du film. C est le DENOMINATEUR de `Raw` — les pistes ne portent que les prises que le
+	// pont a su nommer et situer, et sans ce compte « 25 prises brutes » se lirait comme une
+	// exhaustivite. Zero = l appelant n a pas fourni d evenements (le cas du backfill, qui lit
+	// un artefact ou seules les pistes sont publiees).
+	Openings int
+	// Players : une entree par joueur ayant au moins une prise brute, triee par xuid.
+	Players []FlagGrabsNetPlayer
+}
+
+// NetFlagGrabs compte, par joueur, les prises brutes et les prises nettes d un match.
+//
+// `evs` sert a UNE chose et une seule : le compte de l oracle (`Openings`). Il peut etre nil —
+// le resultat publie alors `Openings = 0`, qui se lit « non renseigne ». `tracks` porte la
+// mesure. `window` <= 0 rend un resultat NON MESURE.
+//
+// Fonction PURE : aucune horloge, aucune base, aucune chaine de langue.
+func NetFlagGrabs(evs []NamedEvent, tracks []FlagTrack, window time.Duration) FlagGrabsNetResult {
+	out := FlagGrabsNetResult{Openings: countFlagOpenings(evs)}
+	if window <= 0 {
+		return out
+	}
+	out.Measured = true
+	out.WindowMS = int(window / time.Millisecond)
+
+	counts := map[string]*FlagGrabsNetPlayer{}
+	for _, tr := range tracks {
+		accumulateFlagTrack(tr, out.WindowMS, counts)
+	}
+	out.Players = sortedNetPlayers(counts)
+	return out
+}
+
+// countFlagOpenings compte les OUVERTURES de l oracle : une prise au sol (`flag_grabs`) ou un
+// vol chez l adversaire (`flag_steals`). Les deux ouvrent un portage, et la piste ne distingue
+// plus laquelle une fois le portage ouvert.
+func countFlagOpenings(evs []NamedEvent) int {
+	n := 0
+	for _, e := range evs {
+		if e.Stat == StatFlagGrabs || e.Stat == StatFlagSteals {
+			n++
+		}
+	}
+	return n
+}
+
+// accumulateFlagTrack applique la regle a UNE piste de drapeau.
+func accumulateFlagTrack(tr FlagTrack, windowMS int, counts map[string]*FlagGrabsNetPlayer) {
+	spans := sortedFlagSpans(tr.Spans)
+	var prev *FlagSpan // dernier PORTAGE rencontre sur cette piste
+	for i := range spans {
+		sp := &spans[i]
+		if !isFlagCarry(sp.State) {
+			continue
+		}
+		if sp.XUID == "" {
+			// Un portage que le pont n a pas nomme n est la prise de PERSONNE. Il reste
+			// neanmoins le « portage precedent » : le drapeau a bel et bien change de mains,
+			// et l ignorer ferait replier une prise sur un portage qui n est plus le dernier.
+			prev = sp
+			continue
+		}
+		c := counts[sp.XUID]
+		if c == nil {
+			c = &FlagGrabsNetPlayer{XUID: sp.XUID}
+			counts[sp.XUID] = c
+		}
+		c.Raw++
+		if flagGrabEstNette(prev, sp, spans, windowMS) {
+			c.Net++
+		}
+		prev = sp
+	}
+}
+
+// flagGrabEstNette applique la definition (cf. l en-tete) a UNE prise.
+func flagGrabEstNette(prev, cur *FlagSpan, spans []FlagSpan, windowMS int) bool {
+	if prev == nil || prev.XUID != cur.XUID {
+		return true
+	}
+	if prev.State == FlagSpanCarriedOpen {
+		// La fin du portage precedent est une BORNE HAUTE, pas une mesure : aucun ecart ne
+		// s en deduit, donc rien ne se replie.
+		return true
+	}
+	if cur.StartMS-prev.EndMS > windowMS {
+		return true
+	}
+	return flagRentreEntre(spans, prev.EndMS, cur.StartMS)
+}
+
+// flagRentreEntre dit si le drapeau est repasse par SON SOCLE entre deux instants. Un etat
+// `home` qui CHEVAUCHE l intervalle suffit : le drapeau y etait, la reprise qui suit est une
+// vraie prise.
+func flagRentreEntre(spans []FlagSpan, deMS, aMS int) bool {
+	for i := range spans {
+		if spans[i].State != FlagSpanHome {
+			continue
+		}
+		if spans[i].EndMS >= deMS && spans[i].StartMS <= aMS {
+			return true
+		}
+	}
+	return false
+}
+
+// isFlagCarry dit si l etat est un PORTAGE (les deux etats portes, fermes ou non).
+func isFlagCarry(state string) bool {
+	return state == FlagSpanCarried || state == FlagSpanCarriedOpen
+}
+
+// sortedFlagSpans rend une COPIE triee par instant de debut : l appelant garde son ordre, et
+// deux artefacts ranges differemment rendent le meme compte.
+func sortedFlagSpans(in []FlagSpan) []FlagSpan {
+	out := make([]FlagSpan, len(in))
+	copy(out, in)
+	for i := 1; i < len(out); i++ {
+		for j := i; j > 0 && out[j].StartMS < out[j-1].StartMS; j-- {
+			out[j], out[j-1] = out[j-1], out[j]
+		}
+	}
+	return out
+}
+
+// sortedNetPlayers rend les joueurs tries par xuid — un contrat stable, jamais l ordre
+// d arrivee d une map.
+func sortedNetPlayers(counts map[string]*FlagGrabsNetPlayer) []FlagGrabsNetPlayer {
+	out := make([]FlagGrabsNetPlayer, 0, len(counts))
+	for _, c := range counts {
+		out = append(out, *c)
+	}
+	for i := 1; i < len(out); i++ {
+		for j := i; j > 0 && out[j].XUID < out[j-1].XUID; j-- {
+			out[j], out[j-1] = out[j-1], out[j]
+		}
+	}
+	return out
+}
