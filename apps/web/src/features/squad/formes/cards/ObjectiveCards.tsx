@@ -99,7 +99,7 @@ export function ObjectivesSharesByFamilyCard({ vm }: { vm: FormesViewModel }) {
       {objectiveFamilies(vm.block).map((family) => {
         const matches = matchesOfFamily(vm.block, family)
         const rows: JaugeRow[] = columnsOfFamily(vm.block, family).map((col) => {
-          const agg = aggregateColumns(matches, vm.mainXuid, [col.key])
+          const agg = aggregateColumns(matches, vm.mainXuid, [col])
           return {
             key: `${family}-${col.key}`,
             label: t.columns[col.key] ?? col.key,
@@ -228,7 +228,7 @@ export function ObjectivesGapSquadCard({ vm }: { vm: FormesViewModel }) {
       {objectiveFamilies(vm.block).map((family) => {
         const matches = matchesOfFamily(vm.block, family)
         const rows: EcartRow[] = columnsOfFamily(vm.block, family).map((col) => {
-          const agg = aggregateColumns(matches, vm.mainXuid, [col.key])
+          const agg = aggregateColumns(matches, vm.mainXuid, [col])
           return {
             key: `${family}-${col.key}`,
             label: t.columns[col.key] ?? col.key,

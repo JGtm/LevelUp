@@ -356,24 +356,42 @@ function FlagGrabsNetView({
   locale: Locale
 }) {
   if (block == null || block.lobby_raw_total <= 0) return null
-  const net = formatUsageCount(block.team_total, locale)
-  const raw = formatUsageCount(block.team_raw_total, locale)
+  const n = (v: number) => formatUsageCount(v, locale)
   return (
     <section aria-label={t.viewFlagGrabsNet}>
       <ViewTitle>{t.viewFlagGrabsNet}</ViewTitle>
+      {/* LE COUPLE COMPARABLE, et lui seul : le joueur ET son camp sur les matchs à camp
+          connu. Comparer un total joueur « tout le scope » à un total d'équipe restreint
+          ferait une part qui dépasse 100 %. */}
       <p className="text-2xs leading-relaxed text-muted-foreground">
-        {t.flagGrabsNetFmt(formatUsageCount(block.player_total, locale), net, raw)}{' '}
+        {t.flagGrabsNetFmt(
+          n(block.player_team_scope_total),
+          n(block.team_total),
+          n(block.team_raw_total),
+        )}{' '}
         {block.player_share_of_team_pct != null &&
           t.flagGrabsNetShareFmt(formatUsagePct(block.player_share_of_team_pct, locale))}
       </p>
       {block.window_seconds != null && block.window_seconds > 0 && (
         <p className="mt-1 text-3xs leading-relaxed text-muted-foreground">
-          {t.flagGrabsNetRuleFmt(formatUsageCount(block.window_seconds, locale))}
+          {t.flagGrabsNetRuleFmt(n(block.window_seconds))}
+        </p>
+      )}
+      {/* CE QUE LE FILM A LU, avec son dénominateur : sans les ouvertures, « 25 ramassages »
+          se lirait comme une exhaustivité. */}
+      {block.openings_total > 0 && (
+        <p className="mt-1 text-3xs leading-relaxed text-muted-foreground">
+          {t.flagGrabsNetOpeningsFmt(n(block.lobby_raw_total), n(block.openings_total))}
         </p>
       )}
       <p className="mt-1 text-3xs leading-relaxed text-muted-foreground">
-        {t.flagGrabsNetScopeFmt(block.matches_measured, block.matches_with_objectives)}
+        {t.flagGrabsNetScopeFmt(block.matches_measured, block.matches_with_flag_family)}
       </p>
+      {block.matches_team_known < block.matches_measured && (
+        <p className="mt-1 text-3xs leading-relaxed text-muted-foreground">
+          {t.flagGrabsNetTeamScopeFmt(block.matches_team_known, block.matches_measured)}
+        </p>
+      )}
     </section>
   )
 }
