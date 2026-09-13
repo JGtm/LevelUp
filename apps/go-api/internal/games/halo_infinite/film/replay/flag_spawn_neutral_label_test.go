@@ -1,9 +1,11 @@
 package replay
 
 import (
+	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/testutil"
 )
 
 // flag_spawn_neutral_label_test.go — LE LABEL TRANCHE LA NEUTRALITE D'UN SOCLE DE DRAPEAU,
@@ -132,5 +134,69 @@ func TestBuildMapObjectives_SocleCentralNeutreMalgreSonTeamIndex(t *testing.T) {
 	if equipes[0] != 1 || equipes[1] != 1 {
 		t.Errorf("socles d'equipe publies : %d en equipe 0 et %d en equipe 1, attendu 1 et 1",
 			equipes[0], equipes[1])
+	}
+}
+
+// ----------------------------------------------------------------------------------------
+// D-B2 — LE DEFAUT SYMETRIQUE : « SANS EQUIPE » N'EST PAS « NEUTRE » (corrige le 2026-09-13)
+// ----------------------------------------------------------------------------------------
+//
+// CE QUI ETAIT FAUX. D9 (ci-dessus) a corrige le socle qui se declarait d'une equipe alors
+// qu'il etait neutre. L'inverse existe aussi : HUIT socles du catalogue portent
+// `team_index = -1` — la valeur « aucun camp » — sans porter le label neutre. Ce sont des
+// socles D'EQUIPE dont le fichier de carte ne dit pas l'equipe. `flag_neutral.go` triant son
+// panier sur `Team == TeamNeutral`, ils y tombaient et pouvaient faire basculer un film en
+// variante « drapeau neutre » a tort.
+//
+// CE QUE CE RECENSEMENT FIGE. Le panier neutre passe de 71 socles (63 vrais + 8 faux) a 63,
+// et le compte des VRAIS socles neutres ne bouge pas : la correction ne retire rien de
+// legitime, elle ne retire que ce qui n'aurait jamais du entrer.
+
+// dbb2SoclesNeutresAuLabel : le nombre de socles `flag_spawn` du catalogue versionne qui
+// portent le label `ctf_neutral_include`. C'est le panier neutre APRES correction, et le
+// meme compte qu'AVANT pour les socles reellement neutres (recense le 2026-09-13).
+const dbb2SoclesNeutresAuLabel = 63
+
+// dbb2SoclesSansEquipeSansLabel : les socles a `team_index = -1` SANS label neutre — les
+// huit sortis du panier. Cliffside, Highpower Heavies, Solitude, Solitude - Ranked, plus
+// quatre entrees d'un meme map_id sans `public_name` (`1042b738`).
+const dbb2SoclesSansEquipeSansLabel = 8
+
+// TestCatalogueRecensementDesSoclesNeutres — LE RECENSEMENT, sur le catalogue VERSIONNE.
+//
+// Il echouera si le catalogue est regenere avec d'autres cartes : c'est voulu. Le compte est
+// la mesure qui fonde la correction ; s'il bouge, la correction se re-instruit plutot qu'elle
+// ne se suppose.
+func TestCatalogueRecensementDesSoclesNeutres(t *testing.T) {
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du depot: %v", err)
+	}
+	cat, err := LoadMapObjectives(filepath.Join(root,
+		"data", "titles", "halo_infinite", "reference", "map_objectives.json"))
+	if err != nil {
+		t.Fatalf("catalogue versionne d'objectifs: %v", err)
+	}
+	var auLabel, sansEquipeSansLabel int
+	for _, e := range cat.Maps {
+		for _, p := range e.PointsOfRole(mapvar.RoleFlagSpawn) {
+			switch {
+			case p.Neutral:
+				auLabel++
+			case p.TeamIndex == TeamNeutral:
+				sansEquipeSansLabel++
+			}
+		}
+	}
+	if auLabel != dbb2SoclesNeutresAuLabel {
+		t.Errorf("%d socles neutres au label, attendu %d", auLabel, dbb2SoclesNeutresAuLabel)
+	}
+	if sansEquipeSansLabel != dbb2SoclesSansEquipeSansLabel {
+		t.Errorf("%d socles a team_index = -1 sans label neutre, attendu %d",
+			sansEquipeSansLabel, dbb2SoclesSansEquipeSansLabel)
+	}
+	// LE PANIER D'AVANT, dit explicitement : c'est ce que le tri sur l'equipe ramassait.
+	if avant := auLabel + sansEquipeSansLabel; avant != dbb2SoclesNeutresAuLabel+dbb2SoclesSansEquipeSansLabel {
+		t.Errorf("panier neutre trie sur l'equipe = %d socles", avant)
 	}
 }
