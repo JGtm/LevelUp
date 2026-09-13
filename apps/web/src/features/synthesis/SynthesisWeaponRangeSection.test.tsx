@@ -335,6 +335,14 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
     expect(
       screen.getAllByText(/Aucune arme n'atteint le seuil de 8 mesures sur cette période/),
     ).toHaveLength(2)
+    // ET CHAQUE PHRASE PARLE DE SON GRAPHE (finitions 2026-09-13) : la carte « Dénivelé »
+    // reprenait mot pour mot celle de la portée (« les portées mesurées restent trop rares »).
+    expect(
+      screen.getByText(/les portées mesurées restent trop rares pour être publiées arme par arme/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/les dénivelés mesurés restent trop rares pour être publiés arme par arme/),
+    ).toBeInTheDocument()
     // Le tableau disparaît aussi : il n'aurait aucune ligne à redire.
     expect(screen.queryByText('Voir en tableau')).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
