@@ -1,3 +1,45 @@
+## [2026-09-13] Chantier decodeur — lot 0.A (oracles du decodeur) — Complete (branche feat/decfilm-0A fusionnee dans feat/recherche-decodeur-film)
+
+**Decision technique principale.** Les oracles AVANT le premier changement de comportement :
+(1) corpus d'equivalence par build : les references du lot 4b (schema 34) etaient PERIMEES
+(13/13 differents a l'etape `score`) ; classification de 650 couples film x etape puis
+croisement par le corpus gate a polarite (base 179bd7401 -> 54, 5 temoins, 133/247/114/445/165
+gains, 8/18/22/90/61 pertes) : six familles de divergence expliquees (geometrie retiree v52,
+bornes = region jouee, garde d'effectif, assists = feuille, signaux de controle des drapeaux,
+projectiles v52), huit fausses pertes de polarite (compteurs d'echec hors liste fermee, axes nes
+apres 34), et TROIS constats de regression a instruire (D6 `score.rounds` 3 -> 1 sur fb1a1a72 ;
+D7 bloc monde/equipement de 60ae07c4 ; D8 points de piste -2/-9/-4) ; 20 films re-figes a
+`cbfdc269d`, 20/20 deterministes, echantillon court de 10 films (V2) ; (2) sept mini-bobines par
+build (< 1 Mio, chunk_00, chunks en zlib = memes octets au decodeur, coupe au chunk) et goldens
+d'assemblage + d'entrees en table, portes de regeneration nommees et separees ; (3)
+`filmdec.KeyframeClosure` + instrument corpus + ratchet CI (fermeture par archetype ne descend
+jamais) : bloquant identique sur les 7 builds (ti=9 i4 forge-weather, ti=11 i4
+interaction-filter, ti=12 i1 navpoint-flags, ti=35 i60 simulation-state, ti=40 i30
+auto-turret-triggers, ti=43 i19 device-position-animation-name) ; (4) `GrammarRev` (const) +
+empreinte filmdec + killsource (131 fichiers, `grammar_rev.go` exclu pour que « revision montee
+sans grammaire » soit atteignable) ; (5) trois bancs, baseline `-count 10`, budget +10 % limite
+aux deux bancs serres, `KeyframeClosure` informatif (dispersion 71 %).
+
+**Resultats observes.** Revue R1 : 1 P1 (les deux goldens neufs accroches au `-update` du fuzz :
+`go test -update` nu les reecrivait en silence avec une grammaire cassee, reouverture du C5 du
+06/09) + 6 P2, 7 corriges ; R2 : 0 P1 + 5 P2 de texte, 5 corriges (une porte de regeneration
+sort desormais en ECHEC en nommant ce qu'elle a reecrit : la sortie d'un paquet vert est jetee
+par `go test`). Pilote : porte rejouee sans `-v` (FAIL + liste), goldens intacts apres restore,
+FR/EN alignes, gates verts, regime court 10/10. Corrections du plan : `replay-equiv` se lance
+avec `-repo-root <worktree>` + jonctions `film_chunks` et `film_manifests` (LEVELUP_REPO_ROOT
+ferait lire ET ecrire les references du principal) ; le corpus gate exige `--parc-root` et
+`--source-root` sur ce poste (le `.git` commun est un ancetre renomme sans base).
+
+**Decouvertes (§4, non traitees).** D9 : le golden par build decrit l'assemblage sur le
+sous-ensemble d'entrees que le codec transporte (frais 36 / relu 136 sur bcb6d393, 7/7 builds ;
+origines de pose differentes sur fb1a1a72), candidat 0.D ; D11 : HI_1_4_1 ferme 1,0 % (le
+« +200 o » chiffre) ; D2 : la CI ne garde ni l'equivalence ni le corpus gate.
+
+**Prochaine etape.** Push + CI ; lot 0.B.7 (une fixture de contrat par build) ; decision
+utilisateur sur le lot 0.D (D6, D7, D8, codec D9) avant M1.
+
+---
+
 ## [2026-09-13] Chantier decodeur — lot 0.C (ADR 0034, CLAUDE.md, registre des reports) — Complete (branche feat/decfilm-0C fusionnee dans feat/recherche-decodeur-film)
 
 **Decision technique principale.** `docs/adr/0034-film-decoder-profile-and-layers.md` (EN,
