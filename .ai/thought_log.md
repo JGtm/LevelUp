@@ -106895,3 +106895,49 @@ Hygiène : 56 python + 42 node de sessions précédentes et 2 commandes bloquée
 règle en mémoire.
 
 **Prochaine étape** : lot H, puis lot F (nettoyage worktrees/branches, bascule dossier LevelUp).
+
+---
+
+## [2026-09-13] Lot H — mesure par version de film, tous les calques — Complété
+
+**Décisions** : mesure pure, aucun code de production modifié (seul `config/replay_corpus.toml`
+change) ; cuisson des films en RACINE JETABLE (méthode du lot B-bis), aucune écriture dans le
+parc, aucune base DuckDB ouverte ; cartes et modes du corpus obtenus HORS BASE, depuis trois
+sources du dépôt (`config/replay_corpus.toml`, `replay/testdata/equivalence/CORPUS.txt` + ses 13
+`.facts.json`, `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`) — le film ne nomme pas sa carte,
+vérifié sur pièces.
+
+**Résultats** : inventaire exhaustif des 1 351 films par version ET par build (v31 x3, v33 x3,
+v37 x10, v38 x1, v39 x26, v40 x185 en deux builds, v41 x1123 ; zéro film incomplet). 16 films
+cuits en deux passes (sans puis avec faits) + 38 films sondés par des instruments qui n'ont
+besoin ni de carte ni de base. **La version majeure n'est pas la bonne clé : le BUILD l'est.**
+Cinq divergences nommées — D1 les lancers de grenade s'éteignent à l'intérieur de la version 40
+(0 reconnu sur 27 films des builds antérieurs à `HI_1_12_0`, 49-215 sur 8 films de `HI_1_12_0` ;
+le marqueur `0x4C0C00` est présent partout, c'est la liste blanche des tags `proj` qui est datée
+d'un seul build ; 82 films concernés) ; D2 l'identité entière tombe sur les 5 films dont
+`chunk_00` n'a pas de section d'identification (2-4 XUID trouvés sur 24-27 contre 100 % ailleurs :
+le XUID 64 bits n'est pas écrit dans la trame) ; D3 l'empreinte du registre ECS est inconnue sur
+9 films sur 9 hors v41 et connue sur 7 sur 7 en v41 (49 blocs / 1 029-1 033 slots contre
+50 / 1 067) — la grammaire elle-même est par build, sur 228 films ; D4 la calibration de la
+marche des morts retombe sur un « profil plat » sur 7 vieux films, dont les morts crédibles
+chutent à 4-11 % contre 28-64 % en v41 ; D5 la bande de slots bipède varie de `[512,767]` à
+`[512,8064]` selon le build. Dix calques prouvés IDENTIQUES d'une version à l'autre, dont le pied
+de film : comptes d'événements, de kills, de morts, de médailles et de `type_hint` rigoureusement
+identiques sous les deux découpages de gamertag sur 20 films — la version ne commande QUE
+l'implantation du gamertag, ce que le lot G a déjà corrigé. Deux faux suspects écartés : les tirs
+« sans slot » et les actions d'objectif non attribuées sont des effets Big Team Battle (le témoin
+v41 BTB porte le même verdict), pas des effets de version. Quatre témoins de version ajoutés au
+corpus gate.
+
+**Découvertes** : le corpus d'équivalence versionné portait déjà quatre films non-v41 sans que
+`CORPUS.txt` le dise ; l'en-tête de `registry_fingerprint.go` avait vu D3 sur UN film et l'avait
+noté comme une curiosité ; deux films `HI_1_12_0` ne portent que 3-4 marqueurs de lancer ;
+`007d53a4` rend 951 identifiants distincts derrière le marqueur contre 8-117 ailleurs.
+
+**Manque, et il ne peut être comblé qu'avec la base** : aucun témoin de mode à zones ou à bombe
+sur une version antérieure à 41 — ces deux calques ne sont mesurés sur aucune vieille grammaire.
+Le gate corpus lui-même n'a pas été joué (il exige `levelup replay-facts-export`, donc la base) :
+il revient au pilote, base libre, `--base=feat/v75`.
+
+**Prochaine étape** : décision utilisateur sur l'ordre P1..P5 du rapport (lot I, architecture
+« profil de déchiffrage ») ; puis lot F.
