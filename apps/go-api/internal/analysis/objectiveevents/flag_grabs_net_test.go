@@ -51,7 +51,7 @@ func TestNetFlagGrabs_JonglageReplie(t *testing.T) {
 		dropped(14_000, 15_000),
 		carry(15_000, 20_000, "A"),
 	}}
-	res := NetFlagGrabs(nil, []FlagTrack{tr}, fenetreRef)
+	res := NetFlagGrabs([]FlagTrack{tr}, fenetreRef)
 	if !res.Measured || res.WindowMS != 1500 {
 		t.Fatalf("resultat non mesure ou fenetre fausse : %+v", res)
 	}
@@ -69,7 +69,7 @@ func TestNetFlagGrabs_PasseDeMainCompte(t *testing.T) {
 		carry(4_300, 6_000, "B"),
 		carry(6_300, 9_000, "A"),
 	}}
-	res := NetFlagGrabs(nil, []FlagTrack{tr}, fenetreRef)
+	res := NetFlagGrabs([]FlagTrack{tr}, fenetreRef)
 	if brut, net := netOf(t, res, "A"); brut != 2 || net != 2 {
 		t.Fatalf("passe de main (A) : brut=%d net=%d, attendu 2 et 2", brut, net)
 	}
@@ -86,7 +86,7 @@ func TestNetFlagGrabs_RepriseApresRetourAuSocleCompte(t *testing.T) {
 		home(4_000, 4_400),
 		carry(4_400, 8_000, "A"),
 	}}
-	res := NetFlagGrabs(nil, []FlagTrack{tr}, fenetreRef)
+	res := NetFlagGrabs([]FlagTrack{tr}, fenetreRef)
 	if brut, net := netOf(t, res, "A"); brut != 2 || net != 2 {
 		t.Fatalf("retour au socle : brut=%d net=%d, attendu 2 et 2", brut, net)
 	}
@@ -97,7 +97,7 @@ func TestNetFlagGrabs_RepriseApresRetourAuSocleCompte(t *testing.T) {
 		dropped(4_000, 4_400),
 		carry(4_400, 8_000, "A"),
 	}}
-	res2 := NetFlagGrabs(nil, []FlagTrack{sans}, fenetreRef)
+	res2 := NetFlagGrabs([]FlagTrack{sans}, fenetreRef)
 	if brut, net := netOf(t, res2, "A"); brut != 2 || net != 1 {
 		t.Fatalf("temoin sans socle : brut=%d net=%d, attendu 2 et 1", brut, net)
 	}
@@ -110,7 +110,7 @@ func TestNetFlagGrabs_FilmTronqueNeReplieRien(t *testing.T) {
 		carryOpen(1_000, 30_000, "A"),
 		carry(30_100, 33_000, "A"),
 	}}
-	res := NetFlagGrabs(nil, []FlagTrack{tr}, fenetreRef)
+	res := NetFlagGrabs([]FlagTrack{tr}, fenetreRef)
 	if brut, net := netOf(t, res, "A"); brut != 2 || net != 2 {
 		t.Fatalf("film tronque : brut=%d net=%d, attendu 2 et 2", brut, net)
 	}
@@ -133,7 +133,7 @@ func TestNetFlagGrabs_CoupureA1400Et1600(t *testing.T) {
 				carry(1_000, 5_000, "A"),
 				carry(5_000+c.ecartMS, 9_000+c.ecartMS, "A"),
 			}}
-			res := NetFlagGrabs(nil, []FlagTrack{tr}, fenetreRef)
+			res := NetFlagGrabs([]FlagTrack{tr}, fenetreRef)
 			if brut, net := netOf(t, res, "A"); brut != 2 || net != c.netAttend {
 				t.Fatalf("%s : brut=%d net=%d, attendu 2 et %d", c.nom, brut, net, c.netAttend)
 			}
@@ -145,7 +145,7 @@ func TestNetFlagGrabs_DeuxDrapeauxNeSeReplientPas(t *testing.T) {
 	// Le meme joueur enchaine deux drapeaux DIFFERENTS a 200 ms : deux prises, deux nettes.
 	a := FlagTrack{Team: 0, Spans: []FlagSpan{carry(1_000, 4_000, "A")}}
 	b := FlagTrack{Team: 1, Spans: []FlagSpan{carry(4_200, 7_000, "A")}}
-	res := NetFlagGrabs(nil, []FlagTrack{a, b}, fenetreRef)
+	res := NetFlagGrabs([]FlagTrack{a, b}, fenetreRef)
 	if brut, net := netOf(t, res, "A"); brut != 2 || net != 2 {
 		t.Fatalf("deux drapeaux : brut=%d net=%d, attendu 2 et 2", brut, net)
 	}
@@ -159,7 +159,7 @@ func TestNetFlagGrabs_PortageSansXuidResteLePrecedent(t *testing.T) {
 		carry(4_200, 5_000, ""),
 		carry(5_200, 8_000, "A"),
 	}}
-	res := NetFlagGrabs(nil, []FlagTrack{tr}, fenetreRef)
+	res := NetFlagGrabs([]FlagTrack{tr}, fenetreRef)
 	if brut, net := netOf(t, res, "A"); brut != 2 || net != 2 {
 		t.Fatalf("portage anonyme intercalaire : brut=%d net=%d, attendu 2 et 2", brut, net)
 	}
@@ -167,23 +167,12 @@ func TestNetFlagGrabs_PortageSansXuidResteLePrecedent(t *testing.T) {
 
 func TestNetFlagGrabs_FenetreAbsenteNePubliePas(t *testing.T) {
 	tr := FlagTrack{Spans: []FlagSpan{carry(1_000, 4_000, "A"), carry(4_100, 6_000, "A")}}
-	res := NetFlagGrabs(nil, []FlagTrack{tr}, 0)
+	res := NetFlagGrabs([]FlagTrack{tr}, 0)
 	if res.Measured {
 		t.Fatal("fenetre absente : le resultat se declare mesure")
 	}
 	if len(res.Players) != 0 {
 		t.Fatalf("fenetre absente : %d joueurs publies, attendu 0 (jamais des zeros)", len(res.Players))
-	}
-}
-
-func TestNetFlagGrabs_OuverturesDeLOracle(t *testing.T) {
-	evs := []NamedEvent{
-		{Stat: StatFlagGrabs}, {Stat: StatFlagGrabs}, {Stat: StatFlagSteals},
-		{Stat: StatFlagCaptures}, {Stat: StatFlagReturns},
-	}
-	res := NetFlagGrabs(evs, nil, fenetreRef)
-	if res.Openings != 3 {
-		t.Fatalf("openings=%d, attendu 3 (2 prises + 1 vol)", res.Openings)
 	}
 }
 
@@ -194,7 +183,7 @@ func TestNetFlagGrabs_OrdreDEntreeIndifferent(t *testing.T) {
 		carry(10_800, 14_000, "A"),
 		carry(5_000, 10_000, "A"),
 	}
-	res := NetFlagGrabs(nil, []FlagTrack{{Spans: spans}}, fenetreRef)
+	res := NetFlagGrabs([]FlagTrack{{Spans: spans}}, fenetreRef)
 	if brut, net := netOf(t, res, "A"); brut != 3 || net != 1 {
 		t.Fatalf("ordre inverse : brut=%d net=%d, attendu 3 et 1", brut, net)
 	}
@@ -207,7 +196,7 @@ func TestNetFlagGrabs_NetJamaisSuperieurAuBrut(t *testing.T) {
 		home(6_000, 6_500), carry(6_500, 9_000, "B"), carryOpen(9_200, 40_000, "A"),
 	}}
 	for _, w := range []time.Duration{time.Second, fenetreRef, 8 * time.Second} {
-		res := NetFlagGrabs(nil, []FlagTrack{tr}, w)
+		res := NetFlagGrabs([]FlagTrack{tr}, w)
 		for _, p := range res.Players {
 			if p.Net > p.Raw {
 				t.Fatalf("fenetre %v : %s net=%d > brut=%d", w, p.XUID, p.Net, p.Raw)
