@@ -146,8 +146,13 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
       la PUBLICATION (`doc.Objectives`) ne perd rien (doctrine R1). Parc du 13/09 : `8bc6074f`
       218 -> 99 disponibles, `32d9a94f` 148 -> 55. Aucun champ ne bouge, `SchemaVersion`
       inchangé : les artefacts déjà cuits gardent l'ancien dénominateur jusqu'à recuisson.
-- [ ] D.3 Tests vitest (familles filtrées, dénominateur), tsc (cache purgé), eslint 0 erreur,
+- [x] D.3 Tests vitest (familles filtrées, dénominateur), tsc (cache purgé), eslint 0 erreur,
       push, CI verte. Aucune string UI nouvelle sans FR+EN.
+      Gates du 13/09 : `tsc --noEmit` 0 ; `eslint .` 0 erreur / 31 avertissements préexistants ;
+      `vitest run src/features/match-replay` 2 727 tests ; `vitest run` complet 7 389 tests ;
+      `knip-ratchet` 0/0/0. Le dénominateur étant côté Go, gates Go ajoutés : `go build ./...`,
+      `go vet` (3 paquets), `go test ./...` exit 0, `golangci-lint --new-from-merge-base` 0 issue.
+      Aucune string UI ajoutée (le module de familles n'en porte aucune).
 
 ## Lot E — clôture (pilote)
 - [ ] E.1 Fusions B, C, D dans feat/v75 (`-X theirs` inutile : branches courtes), CI verte.
@@ -160,6 +165,25 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
 
 ## Découvertes (consignées, NON traitées)
 - (à remplir par les lots)
+- **Lot D** — `features/match-replay/model/objectiveMark.ts` garde sa table `EVENT_STATS`
+  (statistiques nommées une à une : `zone_captures`, `zone_secures`, `bomb_detonations`). Elle
+  répond à une autre question que le prédicat de famille (quelle MARQUE de fiche pour quel geste,
+  pas « est-ce un objectif ») et n'a pas été migrée.
+- **Lot D** — `apps/go-api/internal/replaybuild/matchfacts.go` passe de 501 à 504 lignes : il
+  était déjà au-dessus du seuil de 500 avant ce lot, et l'extraction serait un refactor hors
+  périmètre.
+- **Lot D** — les artefacts DÉJÀ CUITS gardent l'ancien dénominateur de `coverage.objectives` :
+  le correctif D.2 ne se voit qu'à la recuisson. Aucun champ du document ne bouge,
+  `SchemaVersion` reste à 54 — la recuisson est donc une décision de fraîcheur, pas de contrat.
 
 ## Journal
 - 2026-09-13 : plan écrit ; lot A fait (commit deps + push).
+- 2026-09-13 : lot D (D10) clos sur `feat/finitions-d10`, 3 commits. D.1 et D.2 reposent sur le
+  même fait — `doc.objectives` porte `kills` et `assists` (ancre d'identité du balayage et
+  contrôle croisé), et le seul discriminant publié est le NOM de la statistique. Liste blanche de
+  FAMILLES des deux côtés (`model/objectiveFamilies.ts`, `objectiveevents/families.go`), dérivée
+  des `ObjectiveType*`, avec garde-rail Go `TestStatsNommeesPortentLeurFamille`. D.2 s'est révélé
+  Go et non web (aucun lecteur de `coverage.objectives` dans `apps/web`) : correctif dans
+  `buildObjectiveActions` + les deux comptes de `replaybuild.identifiedEvents`, publication
+  inchangée (doctrine R1). Mesures : `8bc6074f` 119 -> 0 pulses/image et 218 -> 99 disponibles,
+  `32d9a94f` 148 -> 55 des deux côtés.

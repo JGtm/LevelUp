@@ -1,3 +1,53 @@
+## [2026-09-13] Lot D (D10) — pulses d'objectif et dénominateur de couverture restreints aux familles d'objectif — Complete (worktree LevelUp-wt-finitions-d10, branche feat/finitions-d10)
+
+**Decision technique principale.** Items D.1 à D.3 du `PLAN_FINITIONS_2026-09-13.md`. Le fait qui
+commande les deux correctifs : `doc.objectives` n'est PAS une liste d'objectifs — les tables de
+`objectiveevents/named.go` portent aussi `kills` (`comp 2 A`, ancre d'identité du balayage) et
+`assists` (`comp 3 A`, contrôle croisé), publiés comme les captures. Le contrat de transport
+(`ObjectiveAction`) n'a qu'un champ `stat` : aucun `kind`, aucune `family`. Le seul discriminant
+est donc le NOM, et la convention est vérifiable — toute statistique d'objectif est préfixée par
+sa famille, et les familles sont exactement les six `ObjectiveType*` d'`objectiveevents/extract.go`
+(`flag`, `zone`, `hill`, `skull`, `vip`, `bomb`). D'où une liste blanche de FAMILLES des deux
+côtés (`model/objectiveFamilies.ts` côté web, `objectiveevents/families.go` côté Go) plutôt qu'une
+liste noire `kills`/`assists` — qui laisserait passer sans un mot la prochaine statistique hors
+objectif que le balayage nommera — et un garde-rail Go (`TestStatsNommeesPortentLeurFamille`) qui
+rougit si une table nomme une statistique hors convention ou une famille non déclarée.
+
+D.2 a été instruit SUR PIÈCES avant d'être codé : le pourcentage de couverture du calque n'est pas
+calculé côté web. Aucun fichier d'`apps/web` ne lit `coverage.objectives` (grep complet des
+`.coverage` : les seuls lecteurs de couverture du rejeu sont `zones.catalog`, `abilityCharges`,
+`padDating`, `bridge`, `score`, `translocations`). Il est produit par `buildObjectiveActions`
+(`internal/games/halo_infinite/film/replay/objectives.go`) et par les deux comptes que
+`replaybuild.identifiedEvents` lui passe (`unnamed`, `refused`). Les trois sont désormais
+restreints aux familles d'objectif. La PUBLICATION, elle, ne perd rien : `doc.Objectives` porte
+toujours tout ce que le film nommait (doctrine R1, « une action est une action ») — seule la
+COUVERTURE se restreint, et `Balanced()` tient parce que `Attached` suit la même règle.
+
+**Résultats observés.** Parc local du 2026-09-13 (schéma 54, recuit depuis l'audit du 10/09 qui
+mesurait 15 808 actions sur `8bc6074f`) : `8bc6074f` porte 218 actions dont 119 `kills`/`assists`
+— 119 pulses construits par image de scène avant (la famille drapeau était déjà retirée par
+`flagPulsesRetired`), 0 après, et `coverage.objectives.available` 218 -> 99. `32d9a94f`
+(Strongholds) : 148 actions dont 93 hors objectif — 148 pulses avant, 55 après, disponibles
+148 -> 55. Les deux artefacts annonçaient `attached == available`, c'est-à-dire « 100 % de
+couverture d'objectifs » sur un calque majoritairement hors sujet. Gates : `go build ./...`,
+`go vet` (3 paquets), `go test ./...` exit 0, `golangci-lint --new-from-merge-base=origin/main`
+0 issue, `tsc --noEmit` 0, `eslint .` 0 erreur / 31 avertissements préexistants,
+`vitest run src/features/match-replay` 2 727 tests, `vitest run` complet 7 389 tests, knip-ratchet
+0/0/0. Aucune string UI ajoutée (le module de familles n'en porte aucune).
+
+**Découvertes non traitées (hors périmètre).** (1) `model/objectiveMark.ts` garde sa table
+`EVENT_STATS` de statistiques nommées une à une (`zone_captures`, `zone_secures`,
+`bomb_detonations`) : elle répond à une autre question (quelle MARQUE de fiche pour quel geste) et
+n'a pas été migrée vers le prédicat de famille. (2) `internal/replaybuild/matchfacts.go` passe de
+501 à 504 lignes — au-dessus du seuil de 500 avant ce lot ; l'extraction serait un refactor hors
+périmètre. (3) Les artefacts déjà cuits gardent l'ancien dénominateur : le correctif ne se voit
+qu'à la recuisson. Aucun champ du document ne bouge et `SchemaVersion` reste à 54.
+
+**Conclusion / prochaine étape.** D.1 `[x]`, D.2 `[x]`, D.3 `[x]`. Branche `feat/finitions-d10`
+poussée, fusion dans `feat/v75` par le pilote (lot E.1). La recuisson du parc pour que
+`coverage.objectives` dise la vérité sur les artefacts existants est une décision pilote/utilisateur,
+non prise ici.
+
 ## [2026-09-13] F.3 — archivage des plans et handoffs clos de la racine `.ai/` vers `V7.5/` — Complete (worktree wt/archive-ai)
 
 **Decision technique principale.** Tâche Notion 10 (item F.3 du `PLAN_FORK_ET_RELEASE_2026-09-11.md`),
