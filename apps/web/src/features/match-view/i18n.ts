@@ -273,6 +273,15 @@ export interface MatchViewText {
   sbColTopWeaponTooltip: string
   sbColOffensiveTooltip: string
   sbColDefensiveTooltip: string
+  /**
+   * LES DEUX EN-TÊTES COURTS du tableau des scores (2026-09-13). Le libellé canonique du
+   * registre (« Rendement » / « Résistance », servi par `/field-mappings`) reste la source de
+   * vérité du NOM de la mesure : il est écrit en tête de l'infobulle d'en-tête. Ces deux
+   * chaînes ne sont qu'un affichage abrégé, propre à cette table étroite — ce ne sont PAS des
+   * libellés de `FieldKey` et elles n'en forment pas un dictionnaire.
+   */
+  sbColOffensiveShort: string
+  sbColDefensiveShort: string
   sbViewHistoryFmt: (gamertag: string) => string
   /** Format du score (séparateurs locale-sensitive : "12 345" FR / "12,345" EN). */
   sbFormatScore: (v: number) => string
@@ -534,6 +543,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColTopWeaponTooltip: 'Arme ayant réalisé le plus de frags dans le match.',
     sbColOffensiveTooltip: 'Rendement offensif : frags et assistances obtenus par dégât infligé.',
     sbColDefensiveTooltip: 'Résistance : dégâts encaissés avant chaque mort.',
+    sbColOffensiveShort: 'Rend.',
+    sbColDefensiveShort: 'Résist.',
     sbViewHistoryFmt: (gamertag) => `Voir l'historique avec ${gamertag}`,
     sbFormatScore: (v) => new Intl.NumberFormat('fr-FR').format(v),
     ctxRecent: 'récents',
@@ -849,6 +860,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColTopWeaponTooltip: 'Weapon with the most kills this match.',
     sbColOffensiveTooltip: 'Offensive yield: kills and assists per damage dealt.',
     sbColDefensiveTooltip: 'Resistance: damage absorbed before each death.',
+    sbColOffensiveShort: 'Eff.',
+    sbColDefensiveShort: 'Resist.',
     sbViewHistoryFmt: (gamertag) => `View history with ${gamertag}`,
     sbFormatScore: (v) => new Intl.NumberFormat('en-US').format(v),
     ctxRecent: 'recent',
