@@ -217,8 +217,7 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
 
 ## Lot E — clôture (pilote)
 - [ ] E.1 Fusions B, C, D dans feat/v75 (`-X theirs` inutile : branches courtes), CI verte.
-- [ ] E.2 Purge C.5 exécutée sur les 4 bases Infinite (sauvegarde `data/backups/` datée,
-      serveur arrêté, `-dry-run` puis `-commit`, recensement avant/après), serveur relancé.
+- [x] E.2 (13/09) index `idx_msr_playlist` de JGtm réparé (repair_msr_index, 35 502 lignes intactes) ; purge commitée sur les 4 bases : 1 826 / 2 128 / 942 / 62 lignes `h5_arena` retirées, 0 après, 3 index reposés ; sauvegarde `data/backups/2026-09-13_purge_lusr_h5_arena/` ; serveur relancé (200).
 - [ ] E.3 Revue adversariale finale (contexte frais) sur `git diff e372e5d28..feat/v75` hors
       `chore(deps)` ; seuls P0/P1 sont corrigés, le reste est consigné.
 - [ ] E.4 PR Dependabot fermées, Notion : item « ≥ 01/10 retrait migration boot » coché,
