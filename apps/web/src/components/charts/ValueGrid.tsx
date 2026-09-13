@@ -39,7 +39,7 @@ const NOT_MEASURED_HATCH: CSSProperties = {
   opacity: 0.3,
 }
 
-/** Largeur de la colonne des noms, et largeur mini d'une colonne de valeurs (px). */
+/** Largeur PAR DÉFAUT de la colonne des noms, et largeur mini d'une colonne (px). */
 const NAME_WIDTH = 152
 const COLUMN_MIN = 126
 /** Gouttière entre colonnes (px) — reprise dans le calcul de largeur mini de la grille. */
@@ -64,13 +64,25 @@ interface Props {
    * DISTINGUER d'un match mesuré à zéro). Faux = rendu inchangé.
    */
   hatchNotMeasured?: boolean
+  /**
+   * Largeur de la colonne des noms (px). Défaut : 152. À élargir quand les noms
+   * portent un sous-libellé (une arme et ses occupations) — sans quoi les deux
+   * se coupent.
+   */
+  nameWidth?: number
 }
 
-export function ValueGrid({ model, rowHeaderLabel, axisTitle, hatchNotMeasured }: Props) {
+export function ValueGrid({
+  model,
+  rowHeaderLabel,
+  axisTitle,
+  hatchNotMeasured,
+  nameWidth = NAME_WIDTH,
+}: Props) {
   const { rows, columns, cells, separators } = model
   const gridStyle = {
-    gridTemplateColumns: `${NAME_WIDTH}px repeat(${columns.length}, minmax(${COLUMN_MIN}px, 1fr))`,
-    minWidth: NAME_WIDTH + columns.length * (COLUMN_MIN + COLUMN_GAP),
+    gridTemplateColumns: `${nameWidth}px repeat(${columns.length}, minmax(${COLUMN_MIN}px, 1fr))`,
+    minWidth: nameWidth + columns.length * (COLUMN_MIN + COLUMN_GAP),
     columnGap: COLUMN_GAP,
   }
 
@@ -177,7 +189,12 @@ export function ValueGrid({ model, rowHeaderLabel, axisTitle, hatchNotMeasured }
         ))}
       </div>
       {axisTitle != null && (
-        <div className="mt-0.5 pl-[166px] text-3xs text-muted-foreground">{axisTitle}</div>
+        <div
+          className="mt-0.5 text-3xs text-muted-foreground"
+          style={{ paddingLeft: nameWidth + COLUMN_GAP }}
+        >
+          {axisTitle}
+        </div>
       )}
     </div>
   )

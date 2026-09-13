@@ -85,7 +85,7 @@ export function EcartForm({
             </div>
             <div className="relative h-5" style={{ backgroundColor: TRACK_INK }}>
               <div
-                className="absolute -top-[3px] bottom-[-3px] w-[3px]"
+                className="absolute -top-[3px] bottom-[-3px] flex w-[3px]"
                 style={{ left: 'calc(50% - 1.5px)' }}
               >
                 <Tooltip content={parityTipFmt(formatPct(row.parity))} className="h-full w-full">
@@ -100,7 +100,7 @@ export function EcartForm({
               </div>
               {gap != null && tip != null && (
                 <div
-                  className="absolute top-[3px] h-3.5"
+                  className="absolute top-[3px] flex h-3.5"
                   style={{ width: `${width}%`, left: gap >= 0 ? '50%' : `${50 - width}%` }}
                 >
                   <Tooltip content={tip} className="h-full w-full">

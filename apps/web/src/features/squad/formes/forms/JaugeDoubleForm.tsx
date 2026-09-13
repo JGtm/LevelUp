@@ -66,7 +66,9 @@ export function JaugeDoubleForm({
   const values = rows.flatMap((r) =>
     r.tracks.flatMap((t) => [t.pct ?? 0, t.max ?? 0, t.parity ?? 0]),
   )
-  const bound = niceBound(Math.max(1, ...values) * 1.1)
+  // La marge de 10 % aère la plus longue barre, mais l'axe d'une PART s'arrête à
+  // cent : une graduation à 125 % désignerait une valeur impossible.
+  const bound = Math.min(100, niceBound(Math.max(1, ...values) * 1.1))
   return (
     <div className="min-w-[560px]">
       {rows.map((row) => (
@@ -138,7 +140,7 @@ function JaugeLine(p: LineProps) {
       <div className="relative h-[15px]" style={{ backgroundColor: TRACK_INK }}>
         {spreadTip != null && track.min != null && track.max != null && (
           <div
-            className="absolute top-[6px] h-[3px]"
+            className="absolute top-[6px] flex h-[3px]"
             style={{
               left: pct(track.min),
               width: `${Math.max(0.6, ((track.max - track.min) / bound) * 100)}%`,
@@ -156,7 +158,7 @@ function JaugeLine(p: LineProps) {
           </div>
         )}
         {track.pct != null && shareTip != null && (
-          <div className="absolute left-0 top-[2px] h-[11px]" style={{ width: pct(track.pct) }}>
+          <div className="absolute left-0 top-[2px] flex h-[11px]" style={{ width: pct(track.pct) }}>
             <Tooltip content={shareTip} className="h-full w-full">
               <span
                 className="block h-full w-full"
@@ -170,7 +172,7 @@ function JaugeLine(p: LineProps) {
         )}
         {track.parity != null && (
           <div
-            className="absolute -top-[3px] bottom-[-3px] w-[3px]"
+            className="absolute -top-[3px] bottom-[-3px] flex w-[3px]"
             style={{ left: `calc(${Math.min(100, (track.parity / bound) * 100)}% - 1.5px)` }}
           >
             <Tooltip

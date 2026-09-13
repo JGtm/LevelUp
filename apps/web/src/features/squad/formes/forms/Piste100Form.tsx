@@ -96,16 +96,18 @@ export function Piste100Form({
                     // Tooltip (qui reste `flex-grow: 0` et dimensionnerait le segment à son
                     // texte au lieu de son compte — piège relevé sur la piste du lobby du
                     // bloc d'usage).
-                    <div key={seg.key} className="h-full" style={{ flex: seg.value }}>
+                    <div key={seg.key} className="flex h-full" style={{ flex: seg.value }}>
                       <Tooltip content={tip} className="h-full w-full">
                         <span
-                          className="flex h-full w-full items-center justify-center overflow-hidden whitespace-nowrap text-3xs font-semibold"
+                          className={`flex h-full w-full items-center justify-center overflow-hidden whitespace-nowrap text-3xs font-semibold${
+                            seg.hatch || seg.unmeasured ? ' text-muted-foreground' : ' text-white'
+                          }`}
                           style={
                             seg.unmeasured
                               ? UNMEASURED_HATCH
                               : seg.hatch
                                 ? ENEMY_HATCH
-                                : { backgroundColor: seg.ink, color: 'var(--background)' }
+                                : { backgroundColor: seg.ink }
                           }
                           tabIndex={0}
                           role="img"
@@ -120,7 +122,7 @@ export function Piste100Form({
               )}
               {showParity && total > 0 && (
                 <div
-                  className="absolute -top-[3px] bottom-[-3px] z-10 w-[3px]"
+                  className="absolute -top-[3px] bottom-[-3px] z-10 flex w-[3px]"
                   style={{ left: 'calc(50% - 1.5px)' }}
                 >
                   <Tooltip content={parityLabel} className="h-full w-full">

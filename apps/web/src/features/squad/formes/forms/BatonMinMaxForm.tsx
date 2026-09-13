@@ -31,6 +31,8 @@ export interface BatonSerie {
 export interface BatonMinMaxFormProps {
   series: BatonSerie[]
   formatValue: (v: number) => string
+  /** Le mot qui précède la moyenne écrite à droite (« moy »). */
+  meanPrefix: string
   rangeTipFmt: (row: string, from: string, to: string) => string
   meanTipFmt: (row: string, value: string) => string
   axisTitle: string
@@ -41,6 +43,7 @@ const COLUMNS = '182px 1fr 152px'
 export function BatonMinMaxForm({
   series,
   formatValue,
+  meanPrefix,
   rangeTipFmt,
   meanTipFmt,
   axisTitle,
@@ -68,7 +71,7 @@ export function BatonMinMaxForm({
             <div className="relative h-[18px]">
               <span className="absolute left-0 right-0 top-[8px] h-px bg-border" aria-hidden="true" />
               <div
-                className="absolute top-[6px] h-1.5"
+                className="absolute top-[6px] flex h-1.5"
                 style={{
                   left: `${(serie.min / bound) * 100}%`,
                   width: `${Math.max(0.6, ((serie.max - serie.min) / bound) * 100)}%`,
@@ -85,7 +88,7 @@ export function BatonMinMaxForm({
                 </Tooltip>
               </div>
               <div
-                className="absolute top-[2px] h-3.5 w-[3px]"
+                className="absolute top-[2px] flex h-3.5 w-[3px]"
                 style={{ left: `calc(${(serie.mean / bound) * 100}% - 1.5px)` }}
               >
                 <Tooltip content={meanTip} className="h-full w-full">
@@ -100,7 +103,7 @@ export function BatonMinMaxForm({
               </div>
             </div>
             <div className="text-3xs tabular-nums text-muted-foreground">
-              {`${formatValue(serie.min)} … ${formatValue(serie.max)}  ·  ${formatValue(serie.mean)}`}
+              {`${formatValue(serie.min)} … ${formatValue(serie.max)}  ·  ${meanPrefix} ${formatValue(serie.mean)}`}
             </div>
           </div>
         )

@@ -60,11 +60,13 @@ export function BandeForm({ rows, columns, parity, axisTitle }: BandeFormProps) 
             {row.cells.map((cell) => (
               <Tooltip key={cell.key} content={cell.tooltip} className="w-full">
                 <span
-                  className="flex h-[22px] w-full items-center justify-center text-3xs font-semibold"
+                  className={`flex h-[22px] w-full items-center justify-center text-3xs font-semibold${
+                    cell.pct == null ? ' text-muted-foreground' : ' text-white'
+                  }`}
                   style={
                     cell.pct == null
                       ? UNMEASURED_HATCH
-                      : { backgroundColor: bandCellInk(cell.pct - parity), color: 'var(--background)' }
+                      : { backgroundColor: bandCellInk(cell.pct - parity) }
                   }
                   tabIndex={0}
                   role="img"

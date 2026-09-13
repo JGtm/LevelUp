@@ -73,6 +73,13 @@ export interface ValueGridColumnInput {
    */
   duration?: boolean
   /**
+   * Le MILIEU de l'axe ne s'arrondit pas à l'entier. Vrai pour une colonne dont
+   * la borne peut être petite alors que l'unité est fine (un taux en pourcentage
+   * borné à 1 % écrivait « 1 % » au milieu comme à la fin). Impliqué par
+   * `duration`, qui a la même raison d'être.
+   */
+  fractionalAxis?: boolean
+  /**
    * La colonne affiche son TOTAL en en-tête. Faux pour une colonne dont la somme n'a pas de
    * sens — un « meilleur temps » ne s'additionne pas (cf. `objectiveTeamTotal`, agrégat `max`).
    */
@@ -197,7 +204,7 @@ export function buildValueGrid(input: ValueGridInput): ValueGridModel {
       bound,
       axis: [
         format(0, colIndex),
-        format(axisMid(bound, col.duration === true), colIndex),
+        format(axisMid(bound, col.duration === true || col.fractionalAxis === true), colIndex),
         format(bound, colIndex),
       ] as [string, string, string],
     }
