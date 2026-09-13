@@ -235,10 +235,23 @@ interface BuildOpts {
  * Position de l'échelle de couleur ET marge du tracé, qui vont ensemble : une échelle
  * verticale à droite a besoin de la place que l'horizontale en pied prenait en bas.
  */
+/**
+ * Titre d'axe posé AU MILIEU de son axe, à distance des graduations — la seule position qui
+ * ne peut chevaucher ni la première ni la dernière étiquette. `undefined` quand l'appelant ne
+ * passe pas de titre : l'axe reste exactement celui d'avant l'ajout de l'option.
+ */
+function axisNameOpts(name: string | undefined, gap: number) {
+  if (!name) return {}
+  return { name, nameLocation: 'middle' as const, nameGap: gap }
+}
+
 function visualMapLayout(orient: 'horizontal' | 'vertical') {
   if (orient === 'vertical') {
+    // `left`/`bottom` plus généreux que l'horizontale : ils logent les TITRES d'axes, posés
+    // au milieu de leur axe (cf. `axisNameOpts`) — sans cette marge, le titre se superpose
+    // aux graduations.
     return {
-      grid: { top: 32, bottom: 48, left: 96, right: 130 },
+      grid: { top: 32, bottom: 56, left: 116, right: 130 },
       placement: { orient, right: 30, top: 'center', itemWidth: 12, itemHeight: 140 },
     }
   }
@@ -371,13 +384,13 @@ export function buildHeatmap2DOption(
         return `${escapeHtml(ys[yi])} × ${escapeHtml(xs[xi])}<br/>Win Rate: <b>${(v * 100).toFixed(1)}%</b><br/>Matchs: <b>${count}</b>`
       },
     },
-    xAxis: { ...axis, type: 'category', data: xs, splitArea: { show: true }, name: axisNames?.x },
+    xAxis: { ...axis, type: 'category', data: xs, splitArea: { show: true }, ...axisNameOpts(axisNames?.x, 28) },
     yAxis: {
       ...axis,
       type: 'category',
       data: ys,
       splitArea: { show: true },
-      name: axisNames?.y,
+      ...axisNameOpts(axisNames?.y, 76),
       inverse: yAxisInverse,
     },
     visualMap: {
