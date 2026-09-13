@@ -239,6 +239,15 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	// avec raison machine). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
 		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb))
+		// Bloc « formes retenues » (lot D2, 2026-09-13) : MÊME repo d'usage, plus les
+		// colonnes d'objectif quand le titre les publie — deux gates indépendantes, la
+		// seconde ne retirant que les cartes d'objectif. Le catalogue d'armes du titre
+		// se lit à la requête depuis la racine du dépôt (noms des socles).
+		var objectives port.SquadFormesObjectiveRepository
+		if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
+			objectives = duckdb.NewObjectiveStatsRepo(pdb)
+		}
+		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives, r.cfg.RepoRoot)
 	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
@@ -321,15 +330,7 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithPersonalScoreAwardsRepo(duckdb.NewPersonalScoreAwardsRepo(pdb), pdb.XUID).
 		WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb)).
-		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
-		// Portée par arme (frags ET morts mesurés) : câblage INCONDITIONNEL, comme celui
-		// de la précision. Le repo est le seul à savoir si ce titre a des positions par
-		// kill — il rend games.ErrCapabilityNotSupported, le service omet la section.
-		// Un `if capability` ici ferait la même décision DEUX fois, à deux endroits qui
-		// divergeraient. Le classificateur est CELUI DE killDistanceRepoFor : ces deux
-		// lecteurs lisent exactement la même colonne `source_tag`, et un second
-		// résolveur les ferait nommer la même arme différemment.
-		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
+		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
@@ -344,14 +345,6 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 	// (Infinite ; absente pour Halo 5 → bloc objective_stats omis). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveStatsRepo(duckdb.NewObjectiveStatsRepo(pdb))
-	}
-	// Bloc « servi ou gâché » de l'équipement (étape E5) : MÊME repo que le bloc de
-	// la page Sessions — ses trois lectures prennent un scope FERMÉ de match_id, et
-	// seul l'ensemble d'identifiants change d'une page à l'autre. Gated par
-	// film.usage_summary (Infinite ; absente pour Halo 5 → bloc Available=false avec
-	// raison machine). Jamais slug==.
-	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver())
 	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }

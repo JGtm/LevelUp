@@ -25,6 +25,7 @@ import (
 
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/platform/duckdb/indexcheck"
 )
 
 func TestMain(m *testing.M) {
@@ -84,25 +85,25 @@ func TestDiagnoseAll_HealthyFixtureHasNoDivergence(t *testing.T) {
 		t.Fatalf("rapports = %d, want %d (un par axe indexé)", len(reports), len(msrAxes))
 	}
 	for _, r := range reports {
-		if !r.ok() {
+		if !r.OK() {
 			t.Errorf("axe %q : %d écart(s) sur une base SAINE (faux positif) : %+v",
-				r.axis, len(r.divergences), r.divergences)
+				r.Axis, len(r.Divergences), r.Divergences)
 		}
-		if r.scannedRows != r.indexedRows {
+		if r.ScannedRows != r.IndexedRows {
 			t.Errorf("axe %q : scan=%d indexé=%d — les deux comptages doivent coïncider",
-				r.axis, r.scannedRows, r.indexedRows)
+				r.Axis, r.ScannedRows, r.IndexedRows)
 		}
-		if r.keys == 0 {
-			t.Errorf("axe %q : aucune clé sondée — le diagnostic ne prouve rien", r.axis)
+		if r.Keys == 0 {
+			t.Errorf("axe %q : aucune clé sondée — le diagnostic ne prouve rien", r.Axis)
 		}
 	}
 
 	// L'axe playlist_group ignore la ligne à chaîne NULL (non interrogeable par
 	// égalité) et ne la compte pas comme un écart.
-	if got := reports[0].nullKeys; got != 1 {
+	if got := reports[0].NullKeys; got != 1 {
 		t.Errorf("clés NULL sur playlist_group = %d, want 1", got)
 	}
-	if got := reports[0].scannedRows; got != 5 {
+	if got := reports[0].ScannedRows; got != 5 {
 		t.Errorf("lignes scannées sur playlist_group = %d, want 5 (6 - la ligne NULL)", got)
 	}
 
@@ -118,42 +119,42 @@ func TestDiagnoseAll_HealthyFixtureHasNoDivergence(t *testing.T) {
 // un axe sans divergence ne déclenche rien, un axe en écart déclenche SES index,
 // et l'union est dédoublonnée et ordonnée.
 func TestIndexesToRebuild_ComparisonRule(t *testing.T) {
-	diverging := []divergence{{key: []string{"h5_arena"}, scanned: 1826, indexed: 22}}
+	diverging := []indexcheck.Divergence{{Key: []string{"h5_arena"}, Scanned: 1826, Indexed: 22}}
 
 	cases := []struct {
 		name    string
-		reports []axisReport
+		reports []indexcheck.Report
 		want    []string
 	}{
 		{
 			name:    "tous les axes sains",
-			reports: []axisReport{{axis: "a"}, {axis: "b"}, {axis: "c"}},
+			reports: []indexcheck.Report{{Axis: "a"}, {Axis: "b"}, {Axis: "c"}},
 			want:    nil,
 		},
 		{
 			name: "playlist_group en écart (le cas JGtm du 2026-09-13)",
-			reports: []axisReport{
-				{axis: "playlist_group", divergences: diverging},
-				{axis: "rating_type"},
-				{axis: "triplet"},
+			reports: []indexcheck.Report{
+				{Axis: "playlist_group", Divergences: diverging},
+				{Axis: "rating_type"},
+				{Axis: "triplet"},
 			},
 			want: []string{"idx_msr_playlist"},
 		},
 		{
 			name: "deux axes en écart → union ordonnée",
-			reports: []axisReport{
-				{axis: "playlist_group", divergences: diverging},
-				{axis: "rating_type", divergences: diverging},
-				{axis: "triplet"},
+			reports: []indexcheck.Report{
+				{Axis: "playlist_group", Divergences: diverging},
+				{Axis: "rating_type", Divergences: diverging},
+				{Axis: "triplet"},
 			},
 			want: []string{"idx_msr_playlist", "idx_msr_rating_type"},
 		},
 		{
 			name: "tous les axes en écart",
-			reports: []axisReport{
-				{axis: "playlist_group", divergences: diverging},
-				{axis: "rating_type", divergences: diverging},
-				{axis: "triplet", divergences: diverging},
+			reports: []indexcheck.Report{
+				{Axis: "playlist_group", Divergences: diverging},
+				{Axis: "rating_type", Divergences: diverging},
+				{Axis: "triplet", Divergences: diverging},
 			},
 			want: []string{"idx_msr_match_lookup", "idx_msr_playlist", "idx_msr_rating_type"},
 		},

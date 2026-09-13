@@ -9,11 +9,10 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // overviewRepoMock — un match mesuré à camp connu : moi (P), un ami (Alpha), un
@@ -105,22 +104,19 @@ func TestEquipmentUsageBlock_ErreurDeLectureDegradeSansEchouer(t *testing.T) {
 	}
 }
 
-// TestSynthesisPage_AttacheLeBlocEquipement — E5.5 bout en bout : le bloc voyage
-// avec la réponse existante de la page Synthèse (jamais un endpoint dédié), sur le
-// scope FILTRÉ, et les amis configurés y deviennent la part « mes amis ».
-func TestSynthesisPage_AttacheLeBlocEquipement(t *testing.T) {
-	repo := &mockSynthesisRepo{
-		synthRows: []legacymatch.SynthesisMatchRow{
-			{MatchID: "m1", StartTime: time.Now().UTC(), Outcome: 2, Kills: 10, Deaths: 3},
-		},
-	}
-	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr).
-		WithPersonalScoreAwardsRepo(nil, "P").
+// TestTimeseriesPage_AttacheLeBlocEquipement — le bloc voyage avec la réponse EXISTANTE de
+// la page Séries temporelles (jamais un endpoint dédié), sur le scope FILTRÉ, et les amis
+// configurés y deviennent la part « mes amis ». Il a quitté la Synthèse le 2026-09-13 :
+// c'est l'onglet Progression qui l'affiche désormais, mais ni le producteur ni le scope
+// n'ont changé.
+func TestTimeseriesPage_AttacheLeBlocEquipement(t *testing.T) {
+	svc := NewTimeseriesService(nil).
 		WithEquipmentUsage(overviewRepoMock(), func(context.Context) []string { return []string{"Alpha"} })
-	resp, err := svc.GetSynthesisPage(context.Background(), "P", domain.SynthesisRequest{Period: "all"})
-	if err != nil {
-		t.Fatalf("erreur inattendue : %v", err)
-	}
+	svc.playerXUID = "P"
+
+	var resp domain.TimeseriesPageResponse
+	svc.attachMigratedSections(context.Background(), &resp, eqUsageCanonRows("m1"))
+
 	block := resp.EquipmentUsage
 	if block == nil || !block.Available {
 		t.Fatalf("bloc équipement = %+v, attendu disponible", block)
@@ -135,9 +131,9 @@ func TestSynthesisPage_AttacheLeBlocEquipement(t *testing.T) {
 	if wall.FamilyKey != "wall" || wall.Used != 1 || wall.Kept != 1 || wall.Dropped != 1 {
 		t.Errorf("première famille = %+v, attendu wall (1, 1, 1)", wall)
 	}
-	// La deuxième famille est le CAPTEUR, servi sur ses charges consommées : sans
-	// elle, la page Synthèse n'aurait aucune ligne pour un équipement pris deux
-	// fois et utilisé deux fois (constat C1 de la revue de la vague 5).
+	// La deuxième famille est le CAPTEUR, servi sur ses charges consommées : sans elle, la
+	// page n'aurait aucune ligne pour un équipement pris deux fois et utilisé deux fois
+	// (constat C1 de la revue de la vague 5).
 	if len(block.Families) != 2 {
 		t.Fatalf("familles = %+v, attendu deux lignes (mur puis capteur)", block.Families)
 	}
@@ -147,20 +143,30 @@ func TestSynthesisPage_AttacheLeBlocEquipement(t *testing.T) {
 	}
 }
 
-// TestSynthesisPage_SansCapabiliteLeBlocDitPourquoi — titre sans film.usage_summary
-// (repo non câblé) : réponse partielle propre, jamais un 500 ni un bloc muet.
-func TestSynthesisPage_SansCapabiliteLeBlocDitPourquoi(t *testing.T) {
-	repo := &mockSynthesisRepo{
-		synthRows: []legacymatch.SynthesisMatchRow{{MatchID: "m1", StartTime: time.Now().UTC(), Outcome: 2}},
-	}
-	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr).
-		WithPersonalScoreAwardsRepo(nil, "P")
-	resp, err := svc.GetSynthesisPage(context.Background(), "P", domain.SynthesisRequest{Period: "all"})
-	if err != nil {
-		t.Fatalf("erreur inattendue : %v", err)
-	}
+// TestTimeseriesPage_SansCapabiliteLeBlocDitPourquoi — titre sans film.usage_summary (repo
+// non câblé) : réponse partielle propre, jamais un 500 ni un bloc muet. La portée des
+// engagements, elle, s'OMET (nil) : deux contrats de dégradation distincts, voulus.
+func TestTimeseriesPage_SansCapabiliteLeBlocDitPourquoi(t *testing.T) {
+	svc := NewTimeseriesService(nil)
+	svc.playerXUID = "P"
+
+	var resp domain.TimeseriesPageResponse
+	svc.attachMigratedSections(context.Background(), &resp, eqUsageCanonRows("m1"))
+
 	if resp.EquipmentUsage == nil || resp.EquipmentUsage.Available ||
 		resp.EquipmentUsage.UnavailableReason != domain.SessionUsageUnsupported {
 		t.Errorf("bloc = %+v, attendu indisponible/unsupported", resp.EquipmentUsage)
 	}
+	if resp.WeaponRange != nil {
+		t.Errorf("portée = %+v, attendu nil (repo non câblé)", resp.WeaponRange)
+	}
+}
+
+// eqUsageCanonRows — un scope canonique minimal : seuls les match_id comptent ici.
+func eqUsageCanonRows(ids ...string) []canonical.PlayerMatchRow {
+	rows := make([]canonical.PlayerMatchRow, 0, len(ids))
+	for _, id := range ids {
+		rows = append(rows, canonical.PlayerMatchRow{Summary: canonical.MatchSummary{MatchID: id}})
+	}
+	return rows
 }

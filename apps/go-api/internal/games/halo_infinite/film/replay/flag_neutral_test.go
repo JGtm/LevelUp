@@ -19,7 +19,9 @@ func flagNeutralScan(auNeutre, auxEquipes int) FlagCarryScan {
 		Spawns: []FlagSpawn{
 			{Team: 0, X: 0, Y: 0},
 			{Team: 1, X: 100, Y: 100},
-			{Team: TeamNeutral, X: 50, Y: 50},
+			// LE SOCLE NEUTRE PORTE SON FAIT, pas seulement son equipe : le tri lit
+			// `Neutral` depuis le 2026-09-13 (D-B2).
+			{Team: TeamNeutral, Neutral: true, X: 50, Y: 50},
 		},
 	}
 	// LES NAISSANCES DE REFERENCE TOMBENT TOT (pas de 0,1 s), avant tout portage : elles servent a
@@ -147,5 +149,48 @@ func TestFlagNaissancesLaDISTANCEDecideDuDenominateur(t *testing.T) {
 			t.Errorf("%s : neutre=%v (attendu %v), comptes neutre=%d equipes=%d",
 				c.nom, choix.Neutral, c.neutre, choix.NeutralBirths, choix.TeamBirths)
 		}
+	}
+}
+
+// TestFlagSoclesSansEquipeNeTombentPasDansLePanierNeutre — D-B2, LE TRI, EN UNITAIRE.
+//
+// LE CAS REEL QU'IL REPRODUIT : huit socles du catalogue versionne portent `team_index = -1`
+// sans porter le label neutre (Cliffside, Highpower Heavies, Solitude, Solitude - Ranked et
+// quatre entrees sans `public_name` — recensement dans `flag_spawn_neutral_label_test.go`).
+// Ce sont des socles D'EQUIPE dont la carte tait l'equipe.
+//
+// AVANT : le tri lisait `Team == TeamNeutral`, ces socles entraient dans le panier neutre, et
+// les naissances a leurs pieds comptaient POUR la variante « drapeau neutre » — trois
+// suffisent a basculer un film qui n'a qu'un seul drapeau par camp.
+//
+// APRES : le panier se trie sur `Neutral`. Le socle sans equipe reste un socle d'equipe, ses
+// naissances comptent au DENOMINATEUR, et le film reste en variante ordinaire.
+func TestFlagSoclesSansEquipeNeTombentPasDansLePanierNeutre(t *testing.T) {
+	scan := FlagCarryScan{
+		Scanned: true, Signals: flagTestSignals(),
+		Spawns: []FlagSpawn{
+			{Team: 0, X: 0, Y: 0},
+			// LE SOCLE FAUTIF : equipe inconnue au fichier de carte, AUCUN label neutre.
+			{Team: TeamNeutral, Neutral: false, X: 100, Y: 100},
+		},
+	}
+	// Six naissances au socle sans equipe : largement au-dessus de flagNeutralMinBirths, et
+	// strictement majoritaires. Triees sur l'equipe, elles basculaient le film.
+	for i := 0; i < 6; i++ {
+		scan.Free = append(scan.Free, flagFreeLifeAt(uint64(i+1)*100_000, 100, 100))
+	}
+	choix := flagChooseSpawns(scan)
+	if choix.Neutral {
+		t.Fatalf("variante neutre reconnue sur des socles D'EQUIPE a team_index = -1 : %+v", choix)
+	}
+	if choix.NeutralBirths != 0 {
+		t.Errorf("%d naissance(s) comptee(s) au panier neutre, attendu 0", choix.NeutralBirths)
+	}
+	if choix.TeamBirths != 6 {
+		t.Errorf("%d naissance(s) comptee(s) aux socles d'equipe, attendu 6", choix.TeamBirths)
+	}
+	if len(choix.Spawns) != 2 {
+		t.Fatalf("%d socles retenus, attendu 2 — le socle sans equipe reste un socle d'equipe",
+			len(choix.Spawns))
 	}
 }

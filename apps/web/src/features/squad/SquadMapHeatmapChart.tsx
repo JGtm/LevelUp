@@ -11,10 +11,10 @@
  *      les etiquettes rotees. La reglette etait donc coupee. La hauteur part maintenant du
  *      SOCLE reel (ce qui n'est pas la grille) et n'ajoute que les lignes.
  *
- * ET LA LEGENDE EXISTE AUSSI EN DOM. Les cinq paliers `perf-tier-*` sont rendus en pied de
- * `ChartCard` : ils survivent a un canvas trop court, se lisent a la loupe du navigateur,
- * et sont du texte selectionnable. La reglette du canvas reste — c'est elle qui permet de
- * filtrer les paliers d'un clic.
+ * ET IL N'Y A QU'UNE LEGENDE : celle du DOM. Les cinq paliers `perf-tier-*` sont rendus en
+ * pied de `ChartCard` — ils survivent a un canvas trop court, se lisent a la loupe du
+ * navigateur, et sont du texte selectionnable. La reglette du canvas disait exactement la
+ * meme chose juste au-dessus : elle est masquee (le MAPPING des couleurs, lui, reste).
  */
 import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -27,11 +27,10 @@ import {
 } from './charts/squadMapHeatmapChart'
 
 /**
- * Ce que la carte doit loger SOUS la premiere ligne de la grille : `grid.bottom` (132 px,
- * qui couvre les etiquettes rotees et le nom d'axe X) plus la reglette du visualMap posee
- * a `bottom: 4`, plus le `grid.top`. Mesure sur pieces, pas devinee.
+ * Ce que la carte doit loger hors des lignes : `grid.bottom` (104 px — etiquettes rotees et
+ * nom d'axe X) plus `grid.top`. Mesure sur pieces, pas devinee.
  */
-const HAUTEUR_SOCLE = 200
+const HAUTEUR_SOCLE = 170
 /** Hauteur d'une ligne de la matrice (un joueur). */
 const HAUTEUR_LIGNE = 60
 /** Plafond : au-dela, la carte pousse tout le reste de la page hors de l'ecran. */

@@ -99,6 +99,12 @@ type TeammatesService struct {
 	// film.usage_summary ; nil → bloc servi avec Available=false et raison
 	// machine. Cf. teammates_service_usage.go.
 	sessionUsageRepo port.SessionUsageRepository
+	// formesUsageRepo / formesObjectiveRepo / repoRoot (lot D2, 2026-09-13) : les
+	// deux sources du bloc « formes retenues » et la racine du dépôt, où se lit le
+	// catalogue d'armes du titre. Cf. teammates_service_formes.go.
+	formesUsageRepo     port.SquadFormesUsageRepository
+	formesObjectiveRepo port.SquadFormesObjectiveRepository
+	repoRoot            string
 }
 
 // NewTeammatesService crée un TeammatesService.
@@ -477,6 +483,9 @@ func (s *TeammatesService) GetPage(
 	// jamais l'intersection escouade, cf. teammates_service_usage.go.
 	equipmentUsage := s.loadEquipmentUsage(ctx, playerXUID, filteredMatches, req.SelectedGamertags)
 
+	// Bloc « formes retenues » (lot D2) : même scope, même escouade que ci-dessus.
+	squadFormes := s.loadSquadFormes(ctx, playerXUID, filteredMatches, matchHistory, req)
+
 	return domain.TeammatesPageResponse{
 		Options:             options,
 		Teammates:           teammates,
@@ -509,6 +518,7 @@ func (s *TeammatesService) GetPage(
 		LatestCompositionSession: latestCompositionSession,
 		DataIssues:               issues.list(),
 		EquipmentUsage:           equipmentUsage,
+		SquadFormes:              squadFormes,
 	}, nil
 }
 

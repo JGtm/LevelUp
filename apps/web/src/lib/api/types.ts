@@ -1440,6 +1440,15 @@ export interface TeammatesPageResponse {
    * best-effort).
    */
   equipment_usage?: EquipmentUsageBlock
+  /**
+   * Bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) — la
+   * MATIÈRE des dix-neuf cartes des trois blocs (usages d'équipement, contrôle
+   * des armes spéciales, objectifs) : une ligne par joueur et par match, les
+   * deux camps. Publié par `TeammatesService.WithSquadFormes` sur le MÊME scope
+   * filtré que `equipment_usage`. Absent = scope sans match ; `available:false`
+   * avec raison machine pour un titre sans `film.usage_summary`.
+   */
+  formes_retenues?: SquadFormesBlock
 }
 
 /** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
@@ -1533,19 +1542,11 @@ export interface SynthesisPageResponse {
   // Précision par arme (Halo 5 natif) — toutes les armes tirées, accuracy 0..1.
   // Omis pour les titres qui ne peuplent pas weapon_accuracy (Infinite).
   weapon_accuracy?: SynthesisWeaponAccuracyEntry[]
-  // Portée et dénivelé mesurés des engagements (section « Portée par arme »).
-  // Omis quand la capability produit `weapon_range` manque ou quand rien n'est mesuré
-  // sur le scope — jamais un bloc à zéro (cf. .ai/PLAN_DUELS_PORTEE_2026-09-06.md, D5/D9).
-  weapon_range?: SynthesisWeaponRange
   // PLAN_COMBAT_PROFILE_WIRING Phase 1
   combat_profile?: CombatProfileBlock | null
   // KPI objectifs (cumul CTF/Zones/Oddball sur le scope) — omis pour un titre sans
   // capability match.objective.stats (Halo 5) ou un scope sans match à objectif.
   objective_stats?: ObjectiveAggregate | null
-  // Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09, E5) —
-  // variante comptes (P9), une ligne par famille. Absent si le scope filtré n'a aucun
-  // match ; `available:false` avec raison machine pour un titre sans film.usage_summary.
-  equipment_usage?: EquipmentUsageBlock
 }
 
 // Cumul des stats objectifs (CTF/Zones/Oddball) sur un scope — partagé Synthèse/Escouade.
@@ -2202,6 +2203,21 @@ export type EquipmentUsageFamilyLine = components['schemas']['EquipmentUsageFami
 export type EquipmentUsagePlayerLine = components['schemas']['EquipmentUsagePlayerLine']
 export type EquipmentUsageParties = components['schemas']['EquipmentUsageParties']
 export type EquipmentUsageFriendCount = components['schemas']['EquipmentUsageFriendCount']
+
+// ─── Artefact « Les formes retenues » (2ec1b8eb, lot D2 du 2026-09-13) : la
+// matière des dix-neuf cartes de l'onglet Synergies. Contrat Go :
+// internal/domain/squad_formes.go. Le bloc ne porte AUCUN agrégat — les parts,
+// les parités et les étendues se calculent dans `features/squad/formes/model/`,
+// à l'endroit où elles s'affichent (quatre dénominateurs, six formes).
+
+export type SquadFormesBlock = components['schemas']['SquadFormesBlock']
+export type SquadFormesMatch = components['schemas']['SquadFormesMatch']
+export type SquadFormesLobbyPlayer = components['schemas']['SquadFormesLobbyPlayer']
+export type SquadFormesWeapon = components['schemas']['SquadFormesWeapon']
+export type SquadFormesWeaponPad = components['schemas']['SquadFormesWeaponPad']
+export type SquadFormesObjective = components['schemas']['SquadFormesObjective']
+export type SquadFormesObjectiveColumn = components['schemas']['SquadFormesObjectiveColumn']
+export type SquadFormesObjectivePlayer = components['schemas']['SquadFormesObjectivePlayer']
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 

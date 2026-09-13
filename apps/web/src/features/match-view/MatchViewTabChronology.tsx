@@ -177,10 +177,13 @@ export function MatchViewTabChronology({
         />
       </div>
 
-      {/* Heatmap positions (film keyframe, match-level §N). Le composant
-          se masque lui-même si aucune position n'a été décodée — titre
-          sans film, ou match non backfillé (503). */}
+      {/* « Où ça se joue » — les positions keyframe du film posées sur le PLAN du match
+          (même fond et même noyau de tracé que le rejeu 2D et l'onglet Tactique). Le
+          composant se masque lui-même sans position décodée, sans fond de carte pour
+          cette carte-là, ou si rien ne tombe sur le plan. */}
       <MatchPositionsHeatmap
+        playerSlug={playerSlug}
+        matchId={matchId}
         positions={matchPositions}
         locale={locale}
       />

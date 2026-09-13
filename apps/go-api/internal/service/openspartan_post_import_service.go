@@ -81,6 +81,18 @@ func (s *OpenSpartanPostImportService) Run(
 		return PostImportResult{}, errors.New("post-import: xuid and gamertag are required")
 	}
 	opts = applyPostImportDefaults(opts)
+	// LE TITRE DES BASES, STAMPÉ UNE FOIS, POUR TOUTES LES ÉTAPES. Toutes les bases
+	// ouvertes ci-dessous sont celles de opts.TitleSlug ; le ctx entrant, lui, porte
+	// le titre de la REQUÊTE (en-tête X-LevelUp-Title, session ouverte sur un autre
+	// onglet). Les étapes qui lisent ctxkeys.TitleSlug — le replay LUSR
+	// (GetLUSRChainForTitle) comme le recalcul des notes de performance
+	// (GetPerformanceChain, title-aware depuis 5be99a2c3) — écriraient sinon dans la
+	// base d'un titre la classification d'un AUTRE : c'est la corruption du
+	// 2026-06-26 (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.1 T3), dont C.1
+	// n'avait fermé que le volet LUSR. Le stamp est ici, À L'ENTRÉE, pour qu'une
+	// étape AJOUTÉE plus bas en hérite sans que personne ait à y penser
+	// (garde-rail : TestRunStampeLeTitreAvantLaPremiereEtape).
+	ctx = postImportCtx(ctx, opts.TitleSlug)
 
 	pr := titlePkg.NewPathResolver(s.cfg.RepoRoot)
 	playerDBPath := config.PlayerDBPath(s.cfg, opts.TitleSlug, gamertag)
@@ -98,13 +110,7 @@ func (s *OpenSpartanPostImportService) Run(
 	var result PostImportResult
 	s.ensureEnrichmentRows(ctx, playerDB, matchIDs, &result)
 	s.recomputeCSR(ctx, playerDB, sharedDBPath, xuid, &result)
-	// Le replay LUSR est title-aware (GetLUSRChainForTitle lit ctxkeys.TitleSlug) et
-	// les bases ouvertes ci-dessus sont celles de opts.TitleSlug : on stampe le titre
-	// de la BASE, jamais celui du ctx entrant (requête HTTP avec X-LevelUp-Title,
-	// session sur un autre titre). Sans ce stamp, l'import d'un joueur Infinite depuis
-	// un onglet Halo 5 écrirait la chaîne h5_arena dans sa base Infinite — corruption
-	// du 2026-06-26 (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.1 T3).
-	s.recomputeLUSR(ctxkeys.WithTitleSlug(ctx, opts.TitleSlug), playerDB, sharedDBPath, xuid, &result)
+	s.recomputeLUSR(ctx, playerDB, sharedDBPath, xuid, &result)
 	s.recomputeSessions(ctx, playerDBPath, sharedDBPath, xuid, opts, &result)
 	s.recomputePerfScores(ctx, playerDB, sharedDBPath, xuid, opts.ForcePerfScores, &result)
 	s.recomputeCitations(ctx, citationRecomputeInputs{
@@ -115,6 +121,13 @@ func (s *OpenSpartanPostImportService) Run(
 		matchIDs:       matchIDs,
 	}, playerDB, &result)
 	return result, nil
+}
+
+// postImportCtx stampe sur le ctx le titre des BASES du post-import — jamais celui
+// du ctx entrant. Fonction nommée, et pas un appel en ligne, pour que l'invariant
+// « le titre stampé est celui de la base » soit testable seul.
+func postImportCtx(ctx context.Context, titleSlug string) context.Context {
+	return ctxkeys.WithTitleSlug(ctx, titleSlug)
 }
 
 // recomputeCSR projette le CSR par-match du joueur depuis shared.match_csrs

@@ -8,7 +8,7 @@
  * porte QUE le formatage, sans classification ni forme de rendu, pour que chaque fichier
  * résultant reste sous le seuil.
  *
- * TOUT AXE EST NORMALISÉ (doctrine du handoff §1) : parts en %, cadences par dix minutes. Les
+ * TOUT AXE EST NORMALISÉ (doctrine du handoff §1) : parts en %, cadences PAR MATCH. Les
  * comptes bruts ne sortent d'ici QUE comme textes d'honnêteté, jamais comme valeur d'axe.
  *
  * Pur : aucun React, aucune couleur en dur, aucune lecture de store.
@@ -28,7 +28,7 @@ export function formatUsagePct(v: number | null | undefined, locale: Locale): st
   return locale === 'fr' ? `${s} %` : `${s}%`
 }
 
-/** Une cadence par dix minutes : une décimale. `null`/absent → tiret. */
+/** Une cadence PAR MATCH mesuré : une décimale. `null`/absent → tiret. */
 export function formatUsageRate(v: number | null | undefined, locale: Locale): string {
   if (v == null) return '—'
   return formatUsageDecimal(v, locale)

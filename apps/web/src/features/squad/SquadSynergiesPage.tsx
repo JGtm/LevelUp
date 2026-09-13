@@ -37,6 +37,7 @@ import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
 import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
 import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
+import { FormesRetenuesSection } from './formes/FormesRetenuesSection'
 import { SquadFragSection } from './SquadFragSection'
 import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { getSquadPlayerColors } from './colors'
@@ -286,7 +287,11 @@ export function SquadSynergiesPage() {
           (POST /pages/teammates, lot E6.1bis du 2026-09-09) ; la section se retire
           d'elle-même si le champ est absent (titre sans résumé d'usage, scope vide). */}
       <EquipmentUsageSection usage={pageData?.equipment_usage} mode="squad" t={USAGE_TEXT[locale]} locale={locale} />
-      {/* Ancrage lot D2 : section « Les formes retenues » vient ici, avant Médailles */}
+      {/* « Les formes retenues » (artefact 2ec1b8eb, lot D2) : les dix-neuf cartes des
+          trois blocs, sur UNE ligne. Aucune requête neuve — lit `pageData.formes_retenues`
+          de la réponse déjà chargée par `useTeammates`. La section se retire d'elle-même
+          quand le bloc est absent (titre sans film, scope vide). */}
+      <FormesRetenuesSection block={pageData?.formes_retenues} locale={locale} />
       {/* MÉDAILLES EN DERNIER (décision utilisateur, 2026-09-13) : c'est un palmarès, pas
           une mesure — il se lit après tout ce qui explique le jeu, jamais avant. */}
       <section className="space-y-3">

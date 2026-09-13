@@ -109,6 +109,11 @@ type EquipmentPlacement struct {
 	//	unknown   aucun poseur mesuré (aucun bipède contemporain à moins de 3 m). L'origine
 	//	          n'est pas établie, et elle ne se devine pas.
 	//
+	// UNE EXCEPTION, ET ELLE N'EST PAS UNE DEVINETTE (item H.2, 2026-09-13) : une PIÈCE
+	// ENGENDRÉE (`kind = "deployed"` au manifeste — les panneaux du mur) sort TOUJOURS en
+	// `deployed`, sans passer par la mesure temporelle. Elle n'existe que déployée, donc ni
+	// `dropped` ni `unknown` ne peut être vrai d'elle. Cf. `equipmentIsSpawnedPiece`.
+	//
 	// CE CHAMP EXISTE PARCE QUE `equipmentPlacements` N'EST PAS CE QUE SON NOM DIT : sur les
 	// 11 films calibrés, 3 242 des 3 661 poses à poseur mesuré (88,6 %) naissent dans les
 	// 2 frames qui suivent le dernier point de leur poseur. Dessiner un arc de mur à ces
@@ -432,6 +437,12 @@ func buildEquipmentPlacements(
 		if slot, h, ok := equipmentOwner(positions, p); ok {
 			pl.Owner, pl.H = int(slot), h
 			pl.Origin = equipmentOrigin(lives[slot], p)
+		}
+		// UNE PIÈCE ENGENDRÉE EST DÉPLOYÉE PAR NATURE — cf. [equipmentIsSpawnedPiece]. Le
+		// verdict écrase celui de la fenêtre temporelle ET celui de l'absence de poseur : les
+		// deux répondent à une question que cet objet ne pose pas.
+		if equipmentIsSpawnedPiece(pl.ID) {
+			pl.Origin = OriginDeployed
 		}
 		out = append(out, pl)
 	}

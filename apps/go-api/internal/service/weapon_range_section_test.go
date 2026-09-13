@@ -118,10 +118,11 @@ func wrCanonRows(matchs, kills, deaths int) []canonical.PlayerMatchRow {
 	return out
 }
 
-func wrService(repo port.WeaponRangeRepository) *SynthesisService {
-	return NewSynthesisService(&mockSynthesisRepo{}).
-		WithPlayerMatchesRepo(&mockSynthesisPlayerMatches{}, "halo_infinite", "GT").
-		WithWeaponRangeRepo(repo)
+// wrQuery — la question posée à la section : un repo, un titre, un joueur, un scope. La
+// section est une FONCTION LIBRE depuis sa migration vers les Séries temporelles : la
+// passer par un service serait tester le câblage, pas la section.
+func wrQuery(repo port.WeaponRangeRepository, rows []canonical.PlayerMatchRow) weaponRangeQuery {
+	return weaponRangeQuery{Repo: repo, TitleSlug: "halo_infinite", Gamertag: "GT", Rows: rows}
 }
 
 // TestLoadWeaponRange_Nominal_DeuxCotesEtEntame — le chemin complet.
@@ -146,7 +147,7 @@ func TestLoadWeaponRange_Nominal_DeuxCotesEtEntame(t *testing.T) {
 		},
 	}
 
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(2, 9, 7))
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(2, 9, 7)))
 	if block == nil {
 		t.Fatal("section nil, attendue peuplée")
 	}
@@ -226,7 +227,7 @@ func TestLoadWeaponRange_EntameEnEchec_LaPorteeSurvit(t *testing.T) {
 		openErr: errors.New("boom SQL"),
 	}
 
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 9, 5))
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
 	if block == nil {
 		t.Fatal("section nil alors que seule l'entame a échoué")
 	}
@@ -246,7 +247,7 @@ func TestLoadWeaponRange_SousLeSeuil_ArmesNommeesParCote(t *testing.T) {
 		"hinf_ravager": {Label: "Ravageur", LabelEN: "Ravager"},
 	}}
 
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 20, 10))
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 20, 10)))
 	if block == nil {
 		t.Fatal("section nil")
 	}
@@ -278,7 +279,7 @@ func TestLoadWeaponRange_LibellesNonResolus_LaSectionSurvit(t *testing.T) {
 		labelsErr: errors.New("metadata indisponible"),
 	}
 
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 9, 5))
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
 	if block == nil || len(block.Weapons) != 1 {
 		t.Fatalf("section = %+v, attendue peuplée", block)
 	}
@@ -291,40 +292,33 @@ func TestLoadWeaponRange_LibellesNonResolus_LaSectionSurvit(t *testing.T) {
 // ne doit paniquer ni rendre une section vide (une section vide se lit comme un résultat).
 func TestLoadWeaponRange_DegradationsSansSection(t *testing.T) {
 	cas := []struct {
-		nom  string
-		svc  *SynthesisService
-		rows []canonical.PlayerMatchRow
+		nom string
+		q   weaponRangeQuery
 	}{
 		{
 			nom: "repo non câblé",
-			svc: NewSynthesisService(&mockSynthesisRepo{}).
-				WithPlayerMatchesRepo(&mockSynthesisPlayerMatches{}, "halo_infinite", "GT"),
-			rows: wrCanonRows(1, 9, 5),
+			q:   wrQuery(nil, wrCanonRows(1, 9, 5)),
 		},
 		{
-			nom:  "scope vide",
-			svc:  wrService(&mockWeaponRangeRepo{kills: wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)}),
-			rows: nil,
+			nom: "scope vide",
+			q:   wrQuery(&mockWeaponRangeRepo{kills: wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)}, nil),
 		},
 		{
-			nom:  "capability absente",
-			svc:  wrService(&mockWeaponRangeRepo{killsErr: games.ErrCapabilityNotSupported}),
-			rows: wrCanonRows(1, 9, 5),
+			nom: "capability absente",
+			q:   wrQuery(&mockWeaponRangeRepo{killsErr: games.ErrCapabilityNotSupported}, wrCanonRows(1, 9, 5)),
 		},
 		{
-			nom:  "erreur SQL",
-			svc:  wrService(&mockWeaponRangeRepo{killsErr: errors.New("boom")}),
-			rows: wrCanonRows(1, 9, 5),
+			nom: "erreur SQL",
+			q:   wrQuery(&mockWeaponRangeRepo{killsErr: errors.New("boom")}, wrCanonRows(1, 9, 5)),
 		},
 		{
-			nom:  "scope non décodé (zéro frag mesuré)",
-			svc:  wrService(&mockWeaponRangeRepo{}),
-			rows: wrCanonRows(1, 9, 5),
+			nom: "scope non décodé (zéro frag mesuré)",
+			q:   wrQuery(&mockWeaponRangeRepo{}, wrCanonRows(1, 9, 5)),
 		},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			if block := c.svc.loadWeaponRange(context.Background(), c.rows); block != nil {
+			if block := buildWeaponRangeSection(context.Background(), c.q); block != nil {
 				t.Errorf("section = %+v, attendu nil", block)
 			}
 		})
@@ -336,11 +330,10 @@ func TestLoadWeaponRange_DegradationsSansSection(t *testing.T) {
 // log d'erreur pour rien.
 func TestLoadWeaponRange_GamertagVide(t *testing.T) {
 	repo := &mockWeaponRangeRepo{kills: wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)}
-	svc := NewSynthesisService(&mockSynthesisRepo{}).
-		WithPlayerMatchesRepo(&mockSynthesisPlayerMatches{}, "halo_infinite", "").
-		WithWeaponRangeRepo(repo)
+	q := wrQuery(repo, wrCanonRows(1, 9, 5))
+	q.Gamertag = ""
 
-	if block := svc.loadWeaponRange(context.Background(), wrCanonRows(1, 9, 5)); block != nil {
+	if block := buildWeaponRangeSection(context.Background(), q); block != nil {
 		t.Errorf("section = %+v, attendu nil", block)
 	}
 	if repo.killCalls != 0 {
@@ -364,7 +357,7 @@ func TestLoadWeaponRange_MatchSansCompteur_NiPaniqueNiZeroCompte(t *testing.T) {
 	rows := append(wrCanonRows(1, 9, 5), wrCanonRowSansCompteur("m_sans_scoreboard"))
 	repo := &mockWeaponRangeRepo{kills: wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)}
 
-	block := wrService(repo).loadWeaponRange(context.Background(), rows)
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, rows))
 	if block == nil {
 		t.Fatal("section nil : un match sans compteur ne doit pas emporter la section")
 	}
@@ -398,7 +391,7 @@ func TestLoadWeaponRange_ToutSousLeSeuil_SectionPresenteAvecZeroArme(t *testing.
 	kills = append(kills, wrKills("hinf_shotgun", analysis.SideVictim, 2, 3, 0)...)
 	repo := &mockWeaponRangeRepo{kills: kills}
 
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 20, 9))
+	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 20, 9)))
 	if block == nil {
 		t.Fatal("section nil alors que 9 frags sont mesurés : la couverture et les médianes " +
 			"restent publiables, seul le graphe par arme est vide")
@@ -460,7 +453,7 @@ func TestLogWeaponRangeFailure_RegimeDesNiveaux(t *testing.T) {
 		t.Run(c.nom, func(t *testing.T) {
 			buf.Reset()
 			repo := &mockWeaponRangeRepo{killsErr: c.err}
-			block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 9, 5))
+			block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
 			if block != nil {
 				t.Fatalf("section = %+v, attendu nil", block)
 			}

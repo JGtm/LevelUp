@@ -76,11 +76,10 @@ export function buildSquadMapHeatmapOption(
 
   return {
     backgroundColor: CHART_BG,
-    // `bottom` : etiquettes rotees + nom d'axe X + la reglette du visualMap, qui vit a
-    // `bottom: 4`. La HAUTEUR de la carte doit contenir tout cela (cf. HAUTEUR_* dans
-    // SquadMapHeatmapChart.tsx) — sinon la reglette sort du canvas.
     // `top: 30` : la place du nom d'axe Y, pose en TETE d'axe (cf. yAxis.nameLocation).
-    grid: { top: 30, bottom: 132, left: 8, right: 8, containLabel: true },
+    // `bottom: 104` : etiquettes rotees + nom d'axe X. La reglette du visualMap est
+    // masquee (cf. plus bas) : sa bande revient au trace.
+    grid: { top: 30, bottom: 104, left: 8, right: 8, containLabel: true },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',
@@ -126,6 +125,10 @@ export function buildSquadMapHeatmapOption(
       nameTextStyle: { color: tc.axisLabel, fontSize: 10, align: 'left' },
     },
     visualMap: {
+      // RÉGLETTE MASQUÉE, MAPPING CONSERVÉ (`show: false` ne coupe que l'affichage du
+      // composant). Les cinq paliers sont déjà nommés par la légende DOM du pied de carte,
+      // qui se lit mieux : deux rangées identiques sous le même graphe, c'est une de trop.
+      show: false,
       type: 'piecewise',
       pieces: [
         { lt: 30, color: resolveToken('perf-tier-5'), label: opts.pieceLabels.tier5 },

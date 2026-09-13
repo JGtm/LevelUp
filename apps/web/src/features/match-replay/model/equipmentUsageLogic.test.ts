@@ -274,7 +274,6 @@ describe('buildEquipmentUsage — grenades lancées', () => {
     const u = buildEquipmentUsage(doc, SB)
     const alpha = u.byPlayer.find((r) => r.name === 'Alpha')
     expect(alpha?.grenades).toEqual({ 0: 2, 1: 1 })
-    expect(u.columns.grenades).toEqual([0, 1])
     expect(u.byTeam.find((g) => g.side === 't1')?.total.grenades).toEqual({ 1: 1 })
   })
 
@@ -461,7 +460,6 @@ describe('buildEquipmentUsage — la double porte', () => {
       episodes: [],
       deployed: [],
       dropped: [],
-      grenades: [],
       equipment: [],
     })
   })
