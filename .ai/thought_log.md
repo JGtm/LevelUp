@@ -1,3 +1,45 @@
+## [2026-09-13] Chantier decodeur — lot 0.B (frontiere Go/web, architecture §12) — Complete (branche feat/decfilm-0B fusionnee dans feat/recherche-decodeur-film)
+
+**Decision technique principale.** Six garde-rails executables en CI entre la cuisson Go et la
+lecture web, sans aucun changement de rendu : (1) fixtures de contrat PRODUITES par Go
+(`replay/contract_fixtures_test.go`, `apps/web/src/features/match-replay/test/fixtures/go/`,
+`.json.gz` de 401 Kio, regeneration doublement verrouillee, manifeste compare) et consommees
+par vitest via `normalizeReplayDocument` + logiques pures ; (2) matrice de compatibilite
+`MIN_RENDERABLE_SCHEMA_VERSION = 27` (seules v6 `Inventory.a` et v27 `weaponChanges[].until`
+retirent un champ au client ; valeur EPINGLEE par test, borne exigee declaree par la chronique) ;
+(3) contrat zod STRICT a la racine et sur `bounds`, egalite de type dans les deux sens contre
+le type genere, manquement = DONNEE (`ReplayContractIssue`) dite en FR et EN par le badge admin,
+jamais un rendu qui tombe ; (4) empreinte de forme cote Go (`document_shape_test.go`, golden +
+SchemaVersion, jumeau `domain/replaydoc` a la meme forme, montee sans entree de chronique =
+rouge) ; (5) preuve par version que tout schema anterieur (v2..v53, 32 et 51 n'existent pas) se
+relit « a recuire » et que `StoreArtifact` refuse la retrogradation (`validateArtifact`) ;
+(6) ratchet : aucun numero de schema ecrit a la main dans les tests web (trois formes : litteral,
+cle citee, appel positionnel ; balayage etendu a `lib/replay/` et aux routes du rejeu).
+
+**Resultats observes.** Revue adversariale ronde 1 : 6 constats recevables, 0 jete, 17
+conditions qui tiennent, 3 mutations sur 5 traversaient (zod depouillait les cles inconnues ;
+gardes poreux ; borne 27 sans test) : les 6 corriges dans le lot, chaque mutation rejouee rouge.
+Ronde 2 (corrections seules) : 1 P1 (parametre generique en litteral dans le garde
+typeEquality) + 3 P2 ; 2 corriges (reference arriere ; fragment FR dans la phrase EN passe par
+i18n), 2 consignes (forme `const X = 7` invisible du ratchet ; strict non imbrique, a deriver a
+M4). Pilote : mutation `<Q>` rejouee rouge puis verte sur pieces. Gates : tsc -b --force 0,
+vitest 700 fichiers / 7 428 tests, go test replay + replaybuild + archlint, golangci 0 issue,
+openapi-check a jour. Fichiers > 500 L touches : `i18n.ts`, `i18nContract.ts`,
+`replayContract.test.ts` — dette anterieure, non creee par le lot.
+
+**Decouvertes (§4 du plan, non traitees).** `writeArtifactBytes` ne refuse pas une
+retrogradation de version (c'est `validateArtifact`) : phrase de l'architecture §12 inexacte,
+pour l'ADR 0034 ; la chronique a trois formes d'en-tete ; la borne 27 se verifie sur la PROSE
+de la chronique, le depot n'a pas d'inventaire de champs par version ; `domain/replaydoc` n'a
+aucun test propre ; deux ecarts stocke/servi neutralises pour l'empreinte (ordre des champs de
+`Coverage`, type de `IdentityLink.Method`).
+
+**Prochaine etape.** Push et CI de l'integration ; lot 0.A en cours (0.A.2 a 0.A.5) ; decision
+utilisateur sur le lot 0.D (D6 manches 3 -> 1 sur fb1a1a72, D7 bloc monde de Live Fire, D8
+points de piste) ; puis 0.C (ADR 0034) et 0.B.7.
+
+---
+
 ## [2026-09-13] Plan du chantier decodeur de film (cuisson, lecture) — En cours (plan ecrit, en attente de validation utilisateur, aucun commit)
 
 **Decision technique principale.** `.ai/PLAN_DECODEUR_FILM_2026-09-13.md` ecrit a partir du
