@@ -82,6 +82,22 @@ type SquadEchangeBucket struct {
 	Nombre int `json:"nombre"`
 }
 
+// SquadEchangeSessionPoint est le taux d'echange du camp sur UNE session (soiree).
+//
+// Le libelle de session est celui du reste de la page (SquadMatchRow.SessionLabel) : il
+// porte deja la date et la plage horaire, et c'est la cle sous laquelle l'utilisateur
+// reconnait sa soiree.
+type SquadEchangeSessionPoint struct {
+	SessionLabel string `json:"session_label"`
+
+	// Couverture est le taux + son brut + son N, jamais un float nu.
+	Couverture Couverture `json:"couverture"`
+
+	// MatchsMesures est le nombre de matchs de la session dont le journal des morts est
+	// lisible — le denominateur qui autorise (ou non) a lire le point.
+	MatchsMesures int `json:"matchs_mesures"`
+}
+
 // SquadEchange est la section « echange » du pageData de la page Escouade.
 //
 // Absente (nil) quand le titre ne sait pas lire la source des morts
@@ -127,6 +143,23 @@ type SquadEchange struct {
 	// fraction de la selection SANS dire laquelle serait un chiffre non reproductible.
 	MatchsMesures int `json:"matchs_mesures"`
 	MatchsTotal   int `json:"matchs_total"`
+
+	// DelaiMedianMs est le delai MEDIAN des echanges REELLEMENT SURVENUS DANS LA
+	// FENETRE (les deux intervalles hors fenetre en sont exclus : ils ne sont pas des
+	// echanges). Mesure sur les delais BRUTS, jamais interpole depuis les intervalles
+	// pre-binnes — une mediane lue sur un histogramme a 7 barres serait fausse de
+	// plusieurs centaines de millisecondes et changerait avec les bornes.
+	//
+	// Vaut 0 quand aucun echange n'est survenu : le client ne rend alors pas la tuile.
+	DelaiMedianMs int64 `json:"delai_median_ms"`
+
+	// TauxParSession est le taux d'echange du camp, UNE VALEUR PAR SESSION du perimetre
+	// filtre, dans l'ordre chronologique. Meme mesure que Couverture (couvertureDuCamp),
+	// meme fenetre, decoupee par soiree — c'est la maille dans laquelle on joue.
+	//
+	// Une session dont le journal des morts n'est lisible sur AUCUN match n'a pas de
+	// point : elle n'a pas un taux nul, elle n'a pas de taux.
+	TauxParSession []SquadEchangeSessionPoint `json:"taux_par_session"`
 
 	// NuageIsolement alimente le nuage de points « isolement x couverture » de l'onglet
 	// Synergies (plan tactique, item 7.7) : un point par (joueur, session), l'axe
