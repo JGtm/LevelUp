@@ -94,6 +94,14 @@ export interface FormesText {
     occupationsShortFmt: (n: number) => string
     /** Le dénominateur d'une piste dont l'escouade est le tout. */
     inSquadFmt: (n: number) => string
+    /**
+     * Le pied d'une forme par match ALIMENTÉE PAR LE FILM : ce qu'elle montre,
+     * ce qu'elle a laissé de côté faute de place, ce qu'elle a écarté faute de
+     * film. Une forme qui se borne sans le dire ment sur sa portée.
+     */
+    foldMeasuredFmt: (shown: number, hidden: number, unmeasured: number) => string
+    /** Le pied d'une forme bornée en nombre seulement (les matchs d'un mode). */
+    foldListFmt: (shown: number, hidden: number) => string
     matchesShortFmt: (n: number) => string
     gesturesAxis: string
     gesturesPerMatchAxis: string
@@ -121,6 +129,13 @@ export interface FormesText {
     notMeasuredTipFmt: (row: string) => string
   }
 }
+
+/**
+ * Un COMPTE de matchs, avec son séparateur de milliers : « 1 043 matchs », pas
+ * « 1043 matchs ». La typographie d'un millier fait partie du français.
+ */
+const frCount = (n: number): string => n.toLocaleString('fr-FR')
+const enCount = (n: number): string => n.toLocaleString('en-GB')
 
 const FR_COLUMNS: Record<string, string> = {
   flag_captures: 'Drapeaux capturés',
@@ -312,6 +327,17 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       unknownWeapon: 'arme non cataloguée',
       occupationsShortFmt: (n) => `${n} occ.`,
       inSquadFmt: (n) => `${n} dans l'escouade`,
+      foldMeasuredFmt: (shown, hidden, unmeasured) =>
+        `Affichés : les ${frCount(shown)} derniers matchs à film décodé` +
+        (hidden > 0 ? ` · ${frCount(hidden)} autres matchs mesurés ne sont pas affichés` : '') +
+        (unmeasured > 0
+          ? ` · ${frCount(unmeasured)} matchs sans film décodé sont hors de cette forme`
+          : '') +
+        '.',
+      foldListFmt: (shown, hidden) =>
+        `Affichés : les ${frCount(shown)} derniers matchs de ce mode` +
+        (hidden > 0 ? ` · ${frCount(hidden)} autres ne sont pas affichés` : '') +
+        '.',
       matchesShortFmt: (n) => (n > 1 ? `${n} matchs` : `${n} match`),
       gesturesAxis: 'gestes — une échelle par colonne',
       gesturesPerMatchAxis: 'gestes par match — une échelle par colonne',
@@ -463,6 +489,17 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       unknownWeapon: 'uncatalogued weapon',
       occupationsShortFmt: (n) => `${n} occ.`,
       inSquadFmt: (n) => `${n} in the squad`,
+      foldMeasuredFmt: (shown, hidden, unmeasured) =>
+        `Shown: the last ${enCount(shown)} matches with a decoded film` +
+        (hidden > 0 ? ` · ${enCount(hidden)} other measured matches are not shown` : '') +
+        (unmeasured > 0
+          ? ` · ${enCount(unmeasured)} matches without a decoded film are outside this form`
+          : '') +
+        '.',
+      foldListFmt: (shown, hidden) =>
+        `Shown: the last ${enCount(shown)} matches of this mode` +
+        (hidden > 0 ? ` · ${enCount(hidden)} others are not shown` : '') +
+        '.',
       matchesShortFmt: (n) => (n > 1 ? `${n} matches` : `${n} match`),
       gesturesAxis: 'actions — one scale per column',
       gesturesPerMatchAxis: 'actions per match — one scale per column',

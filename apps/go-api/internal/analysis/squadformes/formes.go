@@ -157,7 +157,16 @@ func Build(in Input) domain.SquadFormesBlock {
 				})
 			}
 		}
-		m.Objective = buildObjective(objByMatch[meta.MatchID], columnsByFamily)
+		// LE CAMP DE CHAQUE LIGNE D'OBJECTIF vient des PARTICIPANTS du match, la
+		// même source que le lobby : la feuille d'objectif, elle, ne porte pas
+		// l'appartenance. Sans ce recollement, aucune ligne n'a de camp et TOUT
+		// l'objectif se lit comme adverse (défaut mesuré sur données réelles le
+		// 2026-09-13 : « 0,0 % · −50,0 pts » sur toutes les familles de mode).
+		var teamOf map[string]int
+		if mi := byID[meta.MatchID]; mi != nil {
+			teamOf = mi.TeamOf
+		}
+		m.Objective = buildObjective(objByMatch[meta.MatchID], columnsByFamily, teamOf)
 		if m.Measured {
 			out.MatchesMeasured++
 		}
@@ -214,9 +223,13 @@ func fillFromMatchInput(
 
 // buildObjective rend le bloc objectif d'un match : sa famille, les colonnes de
 // cette famille (les mêmes pour tous ses matchs, sinon deux grilles du même mode
-// n'auraient pas les mêmes colonnes) et les valeurs des deux camps.
+// n'auraient pas les mêmes colonnes), les valeurs des deux camps ET LE CAMP DE
+// CHACUN — recollé depuis les participants, la feuille d'objectif ne le portant
+// pas. Une ligne sans camp connu reste publiée SANS camp : elle comptera dans le
+// lobby et dans aucun des deux côtés, ce qui est la vérité.
 func buildObjective(
 	rows []ObjectiveColumnRow, columnsByFamily map[narrative.ObjectiveFamily][]domain.SquadFormesObjectiveColumn,
+	teamOf map[string]int,
 ) *domain.SquadFormesObjective {
 	if len(rows) == 0 {
 		return nil
@@ -229,6 +242,10 @@ func buildObjective(
 	out := &domain.SquadFormesObjective{Family: string(fam), Columns: cols}
 	for _, r := range rows {
 		p := domain.SquadFormesObjectivePlayer{XUID: r.XUID, Values: map[string]float64{}}
+		if team, ok := teamOf[r.XUID]; ok {
+			t := team
+			p.TeamID = &t
+		}
 		for _, c := range cols {
 			p.Values[c.Key] = r.Values[c.Key]
 		}

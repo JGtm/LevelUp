@@ -60,6 +60,8 @@ export interface FormesRetenuesSectionProps {
   /** Le bloc `formes_retenues` de la réponse — absent : rien ne se rend. */
   block: SquadFormesBlock | null | undefined
   locale: Locale
+  /** Le nom du joueur de la page (`main_player` de la réponse) — voir viewModel. */
+  mainPlayerLabel?: string
 }
 
 /** Un intertitre de contexte : un petit titre suivi d'un filet. */
@@ -177,12 +179,19 @@ function objectivesConstat(vm: FormesViewModel): string {
   })
 }
 
-export function FormesRetenuesSection({ block, locale }: FormesRetenuesSectionProps) {
+export function FormesRetenuesSection({
+  block,
+  locale,
+  mainPlayerLabel,
+}: FormesRetenuesSectionProps) {
   const t = FORMES_TEXT[locale]
   const ct = FORMES_CARDS_TEXT[locale]
   const vm = useMemo(
-    () => (block != null && block.available ? buildFormesViewModel(block, t, ct, locale) : null),
-    [block, t, ct, locale],
+    () =>
+      block != null && block.available
+        ? buildFormesViewModel(block, t, ct, locale, mainPlayerLabel)
+        : null,
+    [block, t, ct, locale, mainPlayerLabel],
   )
   // Bloc absent du contrat (scope vide) ou indisponible (titre sans film) : la
   // section se retire, elle n'affiche pas une coquille vide.
