@@ -26,6 +26,16 @@ export interface MediaText {
     noMatchAssociated: string
     unknownMap: string
   }
+  like: {
+    /** aria-label du bouton coeur selon l'état courant. */
+    ariaLike: string
+    ariaUnlike: string
+    /**
+     * Infobulle du compteur : « Aimé par Alice, Bob et 3 autres ».
+     * Retourne `null` quand personne n'a aimé le média (pas d'infobulle).
+     */
+    likersTooltip: (likers: string[] | undefined, totalLikers: number | undefined) => string | null
+  }
   groupSection: {
     sessionOfPrefix: string
     likedSection: string
@@ -88,6 +98,35 @@ function t(locale: Locale, key: MediaManifestKey, values?: Record<string, string
   return formatMessage(mediaManifest, key, locale, values)
 }
 
+/**
+ * Énumération des personnes ayant aimé un média, dans la langue courante :
+ * « Alice », « Alice et Bob », « Alice, Bob et 3 autres ». Quand les noms ne
+ * sont pas connus mais que le compte l'est : « 3 personnes ». Chaîne vide quand
+ * personne n'a aimé — l'appelant n'affiche alors pas d'infobulle.
+ */
+function formatLikers(loc: Locale, names: string[], totalLikers: number): string {
+  if (totalLikers <= 0) {
+    return ''
+  }
+  if (names.length === 0) {
+    return totalLikers === 1
+      ? t(loc, 'media.like.anonymous_one')
+      : t(loc, 'media.like.anonymous_many', { count: totalLikers })
+  }
+  const and = t(loc, 'media.like.conjunction')
+  const rest = totalLikers - names.length
+  if (rest > 0) {
+    const others = rest === 1
+      ? t(loc, 'media.like.others_one')
+      : t(loc, 'media.like.others_many', { count: rest })
+    return `${names.join(', ')} ${and} ${others}`
+  }
+  if (names.length === 1) {
+    return names[0]
+  }
+  return `${names.slice(0, -1).join(', ')} ${and} ${names[names.length - 1]}`
+}
+
 export function getMediaText(locale?: string | null): MediaText {
   const loc = normalizeMediaLocale(locale)
   return {
@@ -103,6 +142,14 @@ export function getMediaText(locale?: string | null): MediaText {
     thumbnail: {
       noMatchAssociated: t(loc, 'media.thumbnail.no_match_associated'),
       unknownMap: t(loc, 'media.group.unknown_map'),
+    },
+    like: {
+      ariaLike: t(loc, 'media.like.aria_like'),
+      ariaUnlike: t(loc, 'media.like.aria_unlike'),
+      likersTooltip: (likers, totalLikers) => {
+        const names = formatLikers(loc, likers ?? [], totalLikers ?? 0)
+        return names ? t(loc, 'media.like.tooltip', { names }) : null
+      },
     },
     groupSection: {
       sessionOfPrefix: t(loc, 'media.group.session_of_prefix'),
