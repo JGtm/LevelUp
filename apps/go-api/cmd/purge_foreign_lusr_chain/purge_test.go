@@ -12,6 +12,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -147,5 +148,58 @@ func TestPurgeForeignLUSRChain_RefusesEmptyArguments(t *testing.T) {
 	}
 	if err := run(context.Background(), newFixturePlayerDB(t), "", false, true); err == nil {
 		t.Error("-chain vide doit être refusé (purge d'une chaîne non nommée)")
+	}
+}
+
+// TestCensus_ForcesScanAndMatchesLookupOnHealthyDB — sur une base saine, le compte
+// par scan forcé et le compte par lookup indexé coïncident, et le pré-vol passe.
+// C'est la non-régression du durcissement C.8 : le recensement lit désormais par
+// scan (`playlist_group || ”`), il doit continuer de rendre le compte exact.
+func TestCensus_ForcesScanAndMatchesLookupOnHealthyDB(t *testing.T) {
+	path := newFixturePlayerDB(t)
+	db := reopen(t, path)
+	ctx := context.Background()
+
+	c, err := censusForeignChain(ctx, db, "h5_arena")
+	if err != nil {
+		t.Fatalf("censusForeignChain: %v", err)
+	}
+	if c.ForeignRaw != 2 {
+		t.Errorf("lignes étrangères par scan = %d, want 2", c.ForeignRaw)
+	}
+	if c.ForeignIndexed != c.ForeignRaw {
+		t.Errorf("lookup=%d scan=%d : les deux comptages doivent coïncider sur une base saine",
+			c.ForeignIndexed, c.ForeignRaw)
+	}
+	if c.indexMismatch() {
+		t.Error("indexMismatch() vrai sur une base saine (faux positif)")
+	}
+	if err := checkIndexCoherence(ctx, path, "h5_arena", c, true); err != nil {
+		t.Errorf("le pré-vol doit passer sur une base saine ; err = %v", err)
+	}
+}
+
+// TestCheckIndexCoherence_BlocksCommitOnDesync — la règle de refus, isolée des
+// données (la désynchronisation ART n'est pas reproductible sur commande) : en
+// dry-run l'écart est signalé sans bloquer, en -commit il interdit toute écriture
+// et nomme l'outil de réparation.
+func TestCheckIndexCoherence_BlocksCommitOnDesync(t *testing.T) {
+	// Les comptes réels mesurés sur la base de JGtm le 2026-09-13.
+	desync := chainCensus{TotalRows: 12000, ForeignRaw: 1826, ForeignIndexed: 22}
+	ctx := context.Background()
+	const dbPath = "data/titles/halo_infinite/players/JGtm/stats.duckdb"
+
+	if err := checkIndexCoherence(ctx, dbPath, "h5_arena", desync, false); err != nil {
+		t.Errorf("en dry-run l'écart se SIGNALE sans bloquer ; err = %v", err)
+	}
+
+	err := checkIndexCoherence(ctx, dbPath, "h5_arena", desync, true)
+	if err == nil {
+		t.Fatal("en -commit, un index désynchronisé doit INTERDIRE l'écriture")
+	}
+	for _, want := range []string{"repair_msr_index", "1826", "22", "h5_arena"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("le refus doit mentionner %q pour être actionnable ; err = %v", want, err)
+		}
 	}
 }

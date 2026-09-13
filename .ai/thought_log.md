@@ -1,3 +1,46 @@
+## [2026-09-13] Lot C — C.8 (P0) : l'index ART de `match_skill_rank` ment aussi, outillage de diag/reparation — Complete (feat/finitions-lusr)
+
+**Decision technique principale.** P0 remonte par le pilote pendant le dry-run de la purge E.2,
+serveur arrete : sur la player DB de JGtm, `COUNT(*) FILTER (WHERE playlist_group='h5_arena')`
+(scan complet) rend 1 826 lignes tandis que `WHERE playlist_group = 'h5_arena' GROUP BY rating_type`
+(lookup servi par `idx_msr_playlist`) n'en rend que 11 + 11. La donnee est INTACTE — seuls les
+lookups mentent. C'est la signature exacte de la desynchronisation d'index ART (duckdb#23645), deja
+constatee le 2026-08-27 sur `personal_score_awards` : **la famille ne se limitait donc pas a PSA**,
+et le point commun n'est pas le tombstone (PSA = INSERT+tombstone, match_skill_rank = INSERT pur
+append-only). Les 3 autres joueurs rendent des comptes coherents.
+
+Deux livrables. (1) `cmd/repair_msr_index`, calque sur `cmd/repair_psa_index` : meme structure
+diag + `-repair`, meme doctrine (DROP INDEX + CREATE INDEX + CHECKPOINT, serveur arrete, une base a
+la fois, JAMAIS de DELETE ni d'UPDATE — ce serait le vecteur ART lui-meme). Le diag compare, pour
+chacun des trois axes indexes de la table, le compte par lookup (`WHERE col = ?`) au compte par scan
+force (`GROUP BY col || ''`, qu'aucun ART ne peut servir) et rend le nombre de cles en ecart ; les
+cles NULL sont exclues (`col = NULL` ne matche jamais, ce serait un faux ecart). La DDL rejouee
+n'est PAS recopiee : elle est capturee dans la base (`duckdb_indexes().sql`) avant le DROP — une DDL
+recopiee dans un outil derive en silence des que la migration evolue, et l'autorite reste
+`games/halo_infinite/migrations/steps_player_match_skill_rank.go`. (2) `purge_foreign_lusr_chain`
+durci : le recensement ET le filtre du CTAS passent par `playlist_group || ''` (scan force), et un
+controle PRE-VOL compare lookup et scan — en dry-run l'ecart est signale, en `-commit` il INTERDIT
+l'ecriture et nomme `repair_msr_index`.
+
+**Resultats observes.** Sans ce durcissement, la purge aurait recense 22 lignes etrangeres sur JGtm
+puis fait rollback sur sa garde de cardinalite : le garde-fou a fonctionne, mais il fallait remonter
+d'un cran — une reconstruction menee sur des comptes faux est une reconstruction non maitrisee. Le
+defaut n'est pas reproductible sur commande (il est amont), donc les tests portent sur ce qui est
+testable, comme au lot PSA : la REGLE DE COMPARAISON (table de cas sur `indexesToRebuild`, avec les
+comptes reels de JGtm 1 826/22) et la NON-REGRESSION sur base saine (aucun faux positif sur les 3
+axes, reparation qui ne perd aucune ligne et repose tous les index, refus explicite si la DDL d'un
+index n'est pas capturable). Cote purge : le pre-vol passe sur base saine, et refuse le commit sur
+un recensement desynchronise en nommant l'outil. Fixtures baties par les migrations reelles. Gates :
+`go build` / `go vet ./...` exit 0, suite complete hors himap exit 0 (172 paquets), `-tags=integration
+-p 1` sur `platform/duckdb` + `migration` exit 0, `make go-api-lint` 0 issue.
+
+**Conclusion / prochaine etape.** C.8 `[x]`. Ce qui reste au pilote, serveur arrete et sauvegarde
+faite : `repair_msr_index -db <base>` (diag) puis `-repair` sur JGtm, AVANT de reprendre la purge
+E.2 — la purge se refuse d'elle-meme tant que l'index ment. Registre des reports : la ligne PSA est
+elargie, les DEUX tables sont a re-sonder periodiquement (les outils en `-dry-run` sont les
+detecteurs). Question ouverte consignee : quel pattern d'ecriture arme le defaut, puisque ce n'est
+pas le tombstone.
+
 ## [2026-09-13] Lot C — C.3 bis : la vue `_latest` n'etait pas la bonne pour le graphe d'evolution — Complete (feat/finitions-lusr)
 
 **Decision technique principale.** Correction demandee par le pilote apres relecture sur pieces, et

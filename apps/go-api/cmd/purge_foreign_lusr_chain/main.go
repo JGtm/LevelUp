@@ -79,8 +79,13 @@ func run(ctx context.Context, dbPath, chain string, dryRun, commit bool) error {
 	slog.InfoContext(ctx, "purge_foreign_lusr_chain: recensement AVANT",
 		"db", dbPath, "chain", chain,
 		"rows_total", before.TotalRows, "rows_foreign_raw", before.ForeignRaw,
+		"rows_foreign_indexed", before.ForeignIndexed,
 		"rows_foreign_by_rating_type", before.ForeignByRatingType,
 		"rows_foreign_latest", before.ForeignLatest)
+
+	if err := checkIndexCoherence(ctx, dbPath, chain, before, commit); err != nil {
+		return err
+	}
 
 	if !commit {
 		slog.InfoContext(ctx, "purge_foreign_lusr_chain: DRY-RUN — aucune écriture (relancer avec -commit)",
@@ -109,4 +114,32 @@ func run(ctx context.Context, dbPath, chain string, dryRun, commit bool) error {
 		return fmt.Errorf("purge incomplète : %d ligne(s) %q subsistent", after.ForeignRaw, chain)
 	}
 	return nil
+}
+
+// checkIndexCoherence est le CONTRÔLE PRÉ-VOL de la purge : le compte de lignes
+// étrangères par lookup indexé doit égaler celui par scan forcé.
+//
+// Un écart signe la désynchronisation d'index ART (duckdb#23645) — mesurée le
+// 2026-09-13 sur la player DB de JGtm, où `WHERE playlist_group = 'h5_arena'` rendait
+// 22 lignes pour 1 826 réelles. La donnée est intacte, seuls les lookups mentent ;
+// mais tant que l'index ment, AUCUNE écriture ne doit partir sur cette base : une
+// reconstruction menée sur des comptes faux est une reconstruction non maîtrisée.
+//
+// En dry-run l'écart est signalé et le recensement continue (c'est le rôle d'un
+// diagnostic) ; en -commit il est BLOQUANT et nomme l'outil de réparation.
+func checkIndexCoherence(ctx context.Context, dbPath, chain string, c chainCensus, commit bool) error {
+	if !c.indexMismatch() {
+		return nil
+	}
+	slog.ErrorContext(ctx, "purge_foreign_lusr_chain: index desynchronise (ART) — lookup != scan",
+		"event", "purge.index_desync",
+		"db", dbPath, "chain", chain,
+		"rows_foreign_scan", c.ForeignRaw, "rows_foreign_indexed", c.ForeignIndexed)
+	if !commit {
+		return nil
+	}
+	return fmt.Errorf("index desynchronise sur %s : la chaine %q compte %d lignes par scan "+
+		"et %d par lookup indexe (bug DuckDB ART #23645). Reparer AVANT toute ecriture : "+
+		"go run ./cmd/repair_msr_index -db %s -repair — puis relancer cette purge",
+		dbPath, chain, c.ForeignRaw, c.ForeignIndexed, dbPath)
 }
