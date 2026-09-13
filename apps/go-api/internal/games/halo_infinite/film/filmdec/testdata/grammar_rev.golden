@@ -11,9 +11,15 @@
 #   SchemaVersion         monte si le CONTENU CUIT change -> recuisson par backfill-replay.
 #
 # REGENERATION :
-#   go test ./internal/games/halo_infinite/film/filmdec/ -run GrammarRevSuitLaGrammaire -update
+#   go test ./internal/games/halo_infinite/film/filmdec/ -run GrammarRevSuitLaGrammaire -update-grammar-rev
 #
 # HISTORIQUE
 #   2026-09-13  grammar-2026-09-13  premiere pose (lot 0.A.4). L'empreinte couvre desormais
 #               filmdec ET killsource : une largeur corrigee d'un seul cote fait sonner le gate.
-grammar-2026-09-13	bbc80c898c87a27e263cd9557a71f4cc9b7cc1e59a64f93c02706749e7d37ee7
+#   2026-09-13  grammar-2026-09-13  revue R1 (P2-3) : `grammar_rev.go` SORT de l ensemble hache
+#               (132 -> 131 fichiers). La constante DECRIT la grammaire, elle n en fait pas
+#               partie : tant qu elle etait hachee, faire monter la revision seule changeait
+#               aussi l empreinte, et la branche « revision changee sans que la grammaire bouge »
+#               etait du code mort. Revision INCHANGEE : aucune grammaire n a bouge, seul
+#               l ensemble hache s est corrige.
+grammar-2026-09-13	3c7757203d6fb6466aa9685bf8f71ded7676367fdcaba465d8fc1101d7f9063e

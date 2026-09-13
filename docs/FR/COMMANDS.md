@@ -513,17 +513,29 @@ refuse une bobine dont les images sont concaténées hors de leur continuité.)
 ```bash
 cd apps/go-api
 # la ligne de base commise (à régénérer seulement sur un changement déclaré)
-go test -bench . -run '^$' -count 5 ./internal/games/halo_infinite/film/filmdec/ \
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ \
   > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
 
 # comparer après un changement — budget : +10 % au plus, vérifié à chaque clôture de M2
-go test -bench . -run '^$' -count 5 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
 benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt /tmp/apres.txt
 # benchstat n'est pas vendorisé : go install golang.org/x/perf/cmd/benchstat@latest
 ```
 
-`-count 5` est le minimum pour que `benchstat` ait une distribution et non un point unique ;
-`-run '^$'` tient les tests hors du chronomètre.
+**Le budget de +10 % ne s'applique QU'AUX DEUX BANCS SERRÉS, `BitReaderReadBits` et
+`TraverseEntity`.** Le premier a une médiane à 0,5 % de son minimum (un outlier isolé peut porter
+son max à +56 % : c'est la MÉDIANE qui se lit, et c'est ce que `benchstat` compare) ; le second
+disperse de +7 %.
+
+`BenchmarkKeyframeClosure` est **informatif, pas un gate**. Mesuré SANS aucun changement de code :
+71 % d'écart au sein d'une même passe, et +21 % de médiane d'une passe à l'autre sur le même
+commit ; deux passes ici ont rendu +62 % et +5 % de dispersion. L'écart suit la charge de la
+machine, pas le décodeur. Trancher un budget de +10 % dessus ferait rougir des lots innocents et
+laisserait passer de vrais ralentissements — il sert à voir un ordre de grandeur bouger (un
+facteur 2), rien de plus.
+
+`-count 10` donne à `benchstat` une distribution et non un point unique ; `-run '^$'` tient les
+tests hors du chronomètre.
 
 ### Notifications
 

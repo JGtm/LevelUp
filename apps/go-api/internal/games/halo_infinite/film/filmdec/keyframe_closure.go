@@ -23,8 +23,10 @@ package filmdec
 //
 // Dans une image-cle il n'y a pas de masque de presence : TOUS les composants de l'archetype sont
 // la, dans l'ordre du registre. Un seul composant sans lecteur bloque donc tout ce qui le suit —
-// et c'est pour cela que `Blocking` nomme le PREMIER composant non porte, celui dont le port
-// debloque le plus. Neuf archetypes butent sur leur premier ou deuxieme composant.
+// et c'est pour cela que `Blocking` nomme le composant non porte LE PLUS FREQUENT — celui qui
+// arrete le plus de records, donc celui dont le port en debloque le plus. Ce n'est PAS « le
+// premier rencontre » : un archetype bute a des endroits differents selon le film, et prendre la
+// premiere occurrence vue ferait dependre la reponse de l'ordre de parcours.
 
 import (
 	"fmt"
@@ -38,11 +40,12 @@ type KeyframeClosureStat struct {
 	// Total : records bornes examines (le dernier record d'un payload n'a pas de suivant, donc
 	// pas de frontiere : il n'est pas compte).
 	Total int
-	// Blocking nomme le PREMIER composant non porte rencontre, sous la forme `i<idx> <nom>`, ou
+	// Blocking nomme le composant non porte LE PLUS FREQUENT, sous la forme `i<idx> <nom>`, ou
 	// l'index nu si le registre ne porte pas son nom. Vide quand aucun record n'a desynchronise.
 	//
-	// C'EST LE PLUS FREQUENT, PAS LE PREMIER VU : un archetype peut buter a deux endroits selon
-	// le film, et c'est celui qui bloque le plus de records qu'il faut porter d'abord.
+	// LE PLUS FREQUENT, PAS LE PREMIER VU : un archetype bute a des endroits differents selon le
+	// film, et c'est celui qui arrete le plus de records qu'il faut porter d'abord. A egalite, le
+	// nom le plus petit tranche — la sortie nourrit un golden, elle doit etre reproductible.
 	Blocking string
 }
 

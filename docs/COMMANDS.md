@@ -491,17 +491,27 @@ concatenated out of continuity.)
 ```bash
 cd apps/go-api
 # the committed baseline (regenerate only on a declared change)
-go test -bench . -run '^$' -count 5 ./internal/games/halo_infinite/film/filmdec/ \
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ \
   > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
 
-# compare after a change — budget: +10 % at most, checked at every M2 close
-go test -bench . -run '^$' -count 5 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
+# compare after a change, on the MEDIAN (what benchstat reports)
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ > /tmp/apres.txt
 benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt /tmp/apres.txt
 # benchstat is not vendored: go install golang.org/x/perf/cmd/benchstat@latest
 ```
 
-`-count 5` is the minimum for `benchstat` to have a distribution rather than a single point;
-`-run '^$'` keeps the tests out of the timing.
+**The +10 % budget applies to `BitReaderReadBits` and `TraverseEntity` ONLY.** Those two are
+tight: median within 0.5 % of the minimum for the first (an isolated outlier can push its max to
++56 %, which is why the median is the reading), +7 % spread for the second.
+
+`BenchmarkKeyframeClosure` is **informative, not a gate**. Measured on unchanged code: 71 % spread
+within a single pass, and a +21 % median shift from one pass to the next on the same commit; two
+passes here gave +62 % and +5 % spread. The variation tracks machine load, not the decoder.
+Ruling a +10 % budget on it would redden innocent lots and let real slowdowns through — it is there
+to show an order of magnitude moving (a factor of 2), nothing finer.
+
+`-count 10` gives `benchstat` a distribution rather than a single point; `-run '^$'` keeps the
+tests out of the timing.
 ### Notifications
 
 ```bash

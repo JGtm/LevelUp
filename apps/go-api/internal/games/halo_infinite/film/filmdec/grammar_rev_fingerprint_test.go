@@ -40,11 +40,12 @@ package filmdec
 //
 // REGENERATION :
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run GrammarRevSuitLaGrammaire -update
+//	go test ./internal/games/halo_infinite/film/filmdec/ -run GrammarRevSuitLaGrammaire -update-grammar-rev
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -58,6 +59,23 @@ import (
 // cheminGoldenGrammarRev : le golden, relatif au paquet.
 const cheminGoldenGrammarRev = "testdata/grammar_rev.golden"
 
+// updateGrammarRev : LA PORTE DE REGENERATION DE CE GOLDEN, ET D AUCUN AUTRE.
+//
+// NOMMEE, correctif de la revue R1 (P1-1) : accrochee au `-update` du fuzz, elle laissait
+// `go test ./...filmdec/ -update` (sans `-run`) refiger l empreinte d une grammaire CASSEE en
+// repondant `ok`. `flag` ne panique que sur un NOM deja pris — le paquet declare deja
+// `-update-golden-familles`.
+var updateGrammarRev = flag.Bool("update-grammar-rev", false,
+	"reecrire testdata/grammar_rev.golden (lot 0.A.4) — CE golden seulement")
+
+// fichierHorsGrammaire : le fichier qui PORTE la revision n'est pas de la grammaire.
+//
+// L EXCLURE REND LA SECONDE BRANCHE DU TEST ATTEIGNABLE (revue R1, P2-3). Tant que
+// `grammar_rev.go` etait hache, faire monter `GrammarRev` SEULE changeait aussi l empreinte :
+// le cas « la revision a change sans que la grammaire bouge » ne pouvait jamais se produire, et
+// son message etait du code mort. La constante decrit la grammaire, elle n en fait pas partie.
+const fichierHorsGrammaire = "grammar_rev.go"
+
 // TestGrammarRevSuitLaGrammaire : une source de grammaire qui change sans montee de
 // [GrammarRev] fait rougir ce test.
 func TestGrammarRevSuitLaGrammaire(t *testing.T) {
@@ -65,7 +83,7 @@ func TestGrammarRevSuitLaGrammaire(t *testing.T) {
 	if n == 0 {
 		t.Fatal("aucune source hachee : le test ne garderait rien")
 	}
-	if *updateGrainesFuzz {
+	if *updateGrammarRev {
 		ecrireGoldenGrammarRev(t, GrammarRev, empreinte)
 		return
 	}
@@ -151,7 +169,8 @@ func hacherSourcesGrammaire(h interface{ Write([]byte) (int, error) }, racine st
 			return nil
 		}
 		nom := d.Name()
-		if !strings.HasSuffix(nom, ".go") || strings.HasSuffix(nom, "_test.go") {
+		if !strings.HasSuffix(nom, ".go") || strings.HasSuffix(nom, "_test.go") ||
+			nom == fichierHorsGrammaire {
 			return nil
 		}
 		blob, errLire := os.ReadFile(chemin) //nolint:gosec // chemin construit depuis la racine du module

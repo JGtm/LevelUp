@@ -24,14 +24,44 @@ package replay
 // catalogue versionne du titre, par `NormalizeMapName` comme en production. C est ce que
 // `decodeFilmInputsForEntry` rend possible sans dupliquer la sequence de decodage.
 //
-// REGENERATION (jamais d edition a la main) :
+// # CE QUE CES GOLDENS DECRIVENT, ET CE QU ILS NE DECRIVENT PAS (decouverte D9, corrigee en R1)
 //
+// SUR LES SEPT BUILDS, l assemblage bati sur les entrees FRAICHEMENT decodees differe de celui
+// bati sur les memes entrees RELUES depuis le fixture. Mesures :
+//
+//	bcb6d393  « lecture(s) portent le rang SELECTIONNE » : 36 en frais, 136 en relu
+//	fb1a1a72  origine mesuree des poses : 20 deployee(s) / 319 lachee(s) en frais,
+//	          17 / 322 en relu — TROIS poses changent d ORIGINE, et 479 lignes sur 582 sont
+//	          decalees
+//
+// Le codec est pourtant un POINT FIXE (`TestGoldenBuildsInputsRoundTrip` vert sur les sept) : il
+// ne PERD rien de ce qu il porte. Il ne porte simplement pas tout ce que le decodage rend — ni
+// les rangs de capacite, ni les origines de pose.
+//
+// CONCLUSION HONNETE : le golden par build decrit l assemblage sur le SOUS-ENSEMBLE d entrees que
+// le codec transporte, PAS la sortie de production. Sur `fb1a1a72` il publie des origines
+// d equipement que la production ne produit pas. Il verrouille donc la non-regression du
+// CONSTRUCTEUR a entrees constantes, ce qui est deja beaucoup, et rien de plus.
+//
+// Reprise : completer le codec (`inputs_*.bin.gz`) pour qu il porte rangs de capacite et origines
+// de pose, puis re-figer les sept goldens. Candidat au lot 0.D, decision utilisateur. NON corrige
+// ici (regle 7). `000d5950` ne montrait pas l ecart — encore un cas ou le film de reference est
+// le seul sur lequel un defaut ne se voit pas.
+//
+// REGENERATION — DEUX PORTES SEPAREES, jamais d edition a la main (revue R1, P2-7) :
+//
+//	# les fixtures d entrees : re-decode les films, EXIGE le cache
 //	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
 //	  go test ./internal/games/halo_infinite/film/replay/ -run GoldenBuildsRegenerate -update
+//
+//	# les goldens d assemblage : DEPUIS les fixtures figes, aucun film lu
+//	go test ./internal/games/halo_infinite/film/replay/ \
+//	  -run GoldenBuildsAssemblyRegenerate -update-golden-builds-assembly
 
 import (
 	"bytes"
 	"compress/gzip"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -39,6 +69,14 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
+
+// updateGoldenBuildsAssembly : LA PORTE DES GOLDENS D ASSEMBLAGE PAR BUILD, et d eux seuls.
+//
+// Nommee, et SEPAREE de celle des fixtures d entrees (revue R1, P2-7). Le paquet a deja un
+// `-update` (`golden_inputs_test.go`) qui sert `000d5950` : un drapeau par reference est la seule
+// forme qui empeche un geste de refiger ce qu on ne voulait pas refiger.
+var updateGoldenBuildsAssembly = flag.Bool("update-golden-builds-assembly", false,
+	"reecrire les testdata/assembly_<short8>.golden par build, DEPUIS les fixtures figes")
 
 // goldenBuild est une entree de la table : le film, sa carte, son build.
 type goldenBuild struct {
@@ -106,7 +144,15 @@ func TestGoldenBuildsRegenerate(t *testing.T) {
 	}
 }
 
-// regenererGoldenBuild decode le film, ecrit le fixture d entrees puis le golden d assemblage.
+// regenererGoldenBuild decode le film et ecrit LE SEUL fixture d entrees. Il n ecrit PLUS le
+// golden d assemblage : celui-ci a sa propre porte (cf. TestGoldenBuildsAssemblyRegenerate).
+//
+// POURQUOI LES DEUX PORTES SONT SEPAREES (revue R1, P2-7). Tant qu un seul geste re-decodait les
+// films ET refigeait les deux references, une derive du DECODEUR entrait en reference en meme
+// temps qu un changement voulu de l ASSEMBLAGE : le golden d assemblage ne pouvait plus
+// contredire le fixture, puisqu il etait refait a partir de lui dans la meme commande. C est
+// exactement ce que `000d5950` ne fait pas — son golden se refige DEPUIS le fixture fige, sans
+// jamais toucher un film.
 func regenererGoldenBuild(t *testing.T, b goldenBuild, dir string) {
 	t.Helper()
 	entry, err := b.mapQuant()
@@ -135,24 +181,36 @@ func regenererGoldenBuild(t *testing.T, b goldenBuild, dir string) {
 	if err := os.WriteFile(b.inputsPath(), buf.Bytes(), 0o600); err != nil {
 		t.Fatalf("ecriture du fixture : %v", err)
 	}
-	// LE GOLDEN DECRIT CE QUE LE FIXTURE REPRODUIT, PAS CE QUE LE DECODAGE A RENDU.
-	// Mesure du lot 0.A.2 : sur six des sept builds, l assemblage bati sur `g` frais differe de
-	// celui bati sur `g` RELU (ex. bcb6d393 : « 136 lecture(s) portent le rang SELECTIONNE »
-	// contre 36). Le codec est pourtant un point fixe (TestGoldenBuildsInputsRoundTrip vert) :
-	// il ne PERD donc rien de ce qu il porte — il ne porte simplement pas tout ce que le
-	// decodage rend. Figer le rendu du `g` frais poserait un golden que la comparaison ne peut
-	// pas atteindre. Consigne en decouverte du lot ; non corrige ici (regle 7).
-	relu, err := decodeGoldenInputs(blob)
-	if err != nil {
-		t.Fatalf("relecture des entrees : %v", err)
+	fmt.Fprintf(os.Stderr, "REECRITURE: %s (%d octets)\n", b.inputsPath(), buf.Len())
+	t.Logf("%s (%s) : fixture %d octets compresses, %d positions, %d tirs, %d morts",
+		b.Short8, b.Build, buf.Len(), len(g.Positions), len(g.Fire), len(g.Deaths))
+}
+
+// TestGoldenBuildsAssemblyRegenerate : LA PORTE DES GOLDENS D ASSEMBLAGE, et d eux seuls.
+//
+// ELLE NE LIT AUCUN FILM — seulement les `inputs_*.bin.gz` deja figes. C est ce qui rend les deux
+// references independantes : refiger un assemblage ne peut plus faire entrer une derive du
+// decodeur, et re-decoder un film ne peut plus refiger un assemblage. Meme forme que
+// `TestGoldenAssembly` pour `000d5950`.
+func TestGoldenBuildsAssemblyRegenerate(t *testing.T) {
+	if !*updateGoldenBuildsAssembly {
+		t.Skip("regeneration des goldens d assemblage : passer -update-golden-builds-assembly")
 	}
-	rendu := renderAssembly(assemblerGoldenBuild(t, b, relu, entry))
-	if err := os.WriteFile(b.assemblyPath(), []byte(rendu), 0o600); err != nil {
-		t.Fatalf("ecriture du golden d assemblage : %v", err)
+	for _, b := range goldenBuilds() {
+		if b.Short8 == goldenFilm {
+			continue // couvert par TestGoldenAssembly
+		}
+		t.Run(b.Build+"/"+b.Short8, func(t *testing.T) {
+			g, entry := chargerGoldenBuild(t, b)
+			rendu := renderAssembly(assemblerGoldenBuild(t, b, g, entry))
+			if err := os.WriteFile(b.assemblyPath(), []byte(rendu), 0o600); err != nil {
+				t.Fatalf("ecriture du golden d assemblage : %v", err)
+			}
+			fmt.Fprintf(os.Stderr, "REECRITURE: %s (%d octets)\n", b.assemblyPath(), len(rendu))
+			t.Logf("%s (%s) : golden %d lignes", b.Short8, b.Build,
+				bytes.Count([]byte(rendu), []byte("\n")))
+		})
 	}
-	t.Logf("%s (%s) : fixture %d octets compresses, %d positions, %d tirs, %d morts ; golden %d lignes",
-		b.Short8, b.Build, buf.Len(), len(g.Positions), len(g.Fire), len(g.Deaths),
-		bytes.Count([]byte(rendu), []byte("\n")))
 }
 
 // assemblerGoldenBuild rejoue l assemblage d une entree, avec SON catalogue de carte.
