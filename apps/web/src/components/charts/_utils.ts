@@ -326,3 +326,29 @@ export function formatNumber(v: number, decimals = 1): string {
 /** Re-export pour les builders qui veulent récupérer le helper themeColors. */
 export { getEChartsThemeColors }
 export type { EChartsThemeColors }
+
+/**
+ * melangeHex interpole deux couleurs hexadécimales — `t = 0` rend `a`, `t = 1` rend `b`.
+ *
+ * Sert à PEINDRE une rampe séquentielle soi-même, quand le `visualMap` d'ECharts ne peut
+ * pas le faire (matrice « Qui couvre qui » de l'Escouade : la réglette peint sa propre
+ * bande mais ne teinte pas les cases d'une heatmap catégorie × catégorie).
+ *
+ * Une entrée illisible rend `b` : mieux vaut la couleur haute de la rampe qu'une couleur
+ * inventée ou une case invisible.
+ */
+export function melangeHex(a: string, b: string, t: number): string {
+  const lire = (hex: string) => /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim())
+  const ma = lire(a)
+  const mb = lire(b)
+  if (!ma || !mb) return b
+  const u = Math.min(1, Math.max(0, t))
+  const canal = (i: number) => {
+    const x = parseInt(ma[i], 16)
+    const y = parseInt(mb[i], 16)
+    return Math.round(x + (y - x) * u)
+      .toString(16)
+      .padStart(2, '0')
+  }
+  return `#${canal(1)}${canal(2)}${canal(3)}`
+}
