@@ -32,6 +32,10 @@ export interface SquadMapHeatmapOpts {
   mapLabelOf: (mapUI: string) => string
   pieceLabels: { tier1: string; tier2: string; tier3: string; tier4: string; tier5: string }
   noScoreLabel: string
+  /** Nom de l'axe X (« Carte ») — localise par l'appelant. */
+  xAxisName: string
+  /** Nom de l'axe Y (« Joueur ») — localise par l'appelant. */
+  yAxisName: string
 }
 
 export function buildSquadMapHeatmapOption(
@@ -72,7 +76,11 @@ export function buildSquadMapHeatmapOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 16, bottom: 110, left: 8, right: 8, containLabel: true },
+    // `bottom` : etiquettes rotees + nom d'axe X + la reglette du visualMap, qui vit a
+    // `bottom: 4`. La HAUTEUR de la carte doit contenir tout cela (cf. HAUTEUR_* dans
+    // SquadMapHeatmapChart.tsx) — sinon la reglette sort du canvas.
+    // `top: 30` : la place du nom d'axe Y, pose en TETE d'axe (cf. yAxis.nameLocation).
+    grid: { top: 30, bottom: 132, left: 8, right: 8, containLabel: true },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',
@@ -93,12 +101,29 @@ export function buildSquadMapHeatmapOption(
       data: xLabels,
       // margin : décolle les étiquettes (2 lignes « #N\nCarte ») du bas du graphe.
       axisLabel: { ...axis.axisLabel, rotate: -35, interval: 0, margin: 14 },
+      // AXES NOMMES (2026-09-13) : sans eux, une grille de gamertags par cartes laisse
+      // deviner ce qui est en ligne et ce qui est en colonne. `nameGap` passe SOUS les
+      // etiquettes rotees, dont la place est prise dans `grid.bottom`.
+      name: opts.xAxisName,
+      nameLocation: 'middle',
+      nameGap: 86,
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
     },
     yAxis: {
       ...axis,
       type: 'category',
       data: yLabels,
       inverse: true,
+      // NOM POSE EN TETE D'AXE, pas au milieu : les etiquettes de cet axe sont des
+      // gamertags (jusqu'a une centaine de pixels), et `containLabel` reserve leur place
+      // sans reserver celle du NOM — au milieu, « Joueur » tombait hors du canvas et ne
+      // s'affichait pas du tout (mesure sur capture le 2026-09-13).
+      name: opts.yAxisName,
+      // `start` et pas `end` : l'axe est INVERSE (`inverse: true`), donc son « end » est
+      // EN BAS, ou le nom retombait sur les etiquettes de cartes.
+      nameLocation: 'start',
+      nameGap: 12,
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10, align: 'left' },
     },
     visualMap: {
       type: 'piecewise',
