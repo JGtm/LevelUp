@@ -173,7 +173,7 @@ fichiers disjoints) ; 0.C ensuite, pendant les revues.
 
 #### Lot 0.A — Oracles du décodeur (Go) — M, exécuteur Opus high
 
-- [ ] 0.A.1 **Corpus d'équivalence par build.** `replay/testdata/equivalence/CORPUS.txt` gagne une
+- [!] 0.A.1 **Corpus d'équivalence par build.** `replay/testdata/equivalence/CORPUS.txt` gagne une
       colonne `version / build` (découverte 1 du lot H) et un témoin par build présent au cache
       (`HI_1_4_1`, `1_8_0`, `1_9_0`, `1_10_0`, `1_11_0`, `1_12_0`, `1_13_0`), en réutilisant les
       témoins du lot H (`111fa685`, `e5adf7b2`, `60ae07c4`, `a349fea8`) ; cible 20 films au plus.
@@ -183,13 +183,13 @@ fichiers disjoints) ; 0.C ensuite, pendant les revues.
       film consignée en §5 (budget de référence). L'ÉCHANTILLON du régime court (V2) est
       nommé en tête de `CORPUS.txt` (`# echantillon-court:`) : un film par build (7) plus
       `60ae07c4` (région sur 2 bits), `d9781168` (pire déroulage sain), `fb1a1a72` (multi-manche).
-- [ ] 0.A.2 **Mini-films par build et goldens.** Un `testdata/minifilm_<short8>/` par build (V7 :
+- [!] 0.A.2 **Mini-films par build et goldens.** Un `testdata/minifilm_<short8>/` par build (V7 :
       `chunk_00` + un chunk portant des images-clés + le pied, au plus 1 Mio, `PROVENANCE.txt`
       avec build, version, carte, commande de fabrication en Go). `TestGoldenAssembly` et
       `TestGoldenInputs*` deviennent des tables sur ces mini-films : un golden d'assemblage et un
       `inputs_<short8>.bin.gz` par build. Preuve : goldens verts en CI ; `TestGoldenInputsVersionGuard`
       refuse toute régénération sans montée explicite.
-- [ ] 0.A.3 **Inventaire et ratchet de couverture d'image-clé par archétype** (handoff §4 bis,
+- [!] 0.A.3 **Inventaire et ratchet de couverture d'image-clé par archétype** (handoff §4 bis,
       étape 1). Fonction de production `filmdec.KeyframeClosure(fc) map[ti]{closed,total,
       blocking string}` fondée sur `WalkKeyframeFullState` (108 bits, mots de taille, état par
       défaut) ; instrument corpus (`CHUNK00_FILMS`) qui imprime, par archétype, les composants
@@ -197,14 +197,14 @@ fichiers disjoints) ; 0.C ensuite, pendant les revues.
       sur les mini-films de 0.A.2 : « la couverture par archétype ne descend jamais » (golden
       `testdata/keyframe_closure.golden`). Preuve : golden commis ; une mutation de largeur
       (ti=6) rougit le ratchet.
-- [ ] 0.A.4 **Empreinte du décodeur étendue à `filmdec`.** Constante `filmdec.GrammarRev`
+- [!] 0.A.4 **Empreinte du décodeur étendue à `filmdec`.** Constante `filmdec.GrammarRev`
       (forme `grammar-AAAA-MM-JJ`) ; test miroir de `decoder_rev_fingerprint_test.go` qui hache
       tous les `.go` hors tests de `filmdec/` et de `killsource/` : une source qui change sans
       montée de `GrammarRev` rougit. L'en-tête du test écrit la règle : montée de `GrammarRev`
       obligatoire à tout changement de grammaire ; montée de `KillSourceDecoderRev` si la sortie
       de killsource peut changer (backlog) ; montée de `SchemaVersion` si le contenu cuit change.
       Preuve : golden avec historique ; une ligne changée dans `traverse.go` rougit.
-- [ ] 0.A.5 **Budget de temps.** `replay-equiv` publie la durée par film si ce n'est pas déjà le
+- [!] 0.A.5 **Budget de temps.** `replay-equiv` publie la durée par film si ce n'est pas déjà le
       cas (vérifier sur pièces) ; `BenchmarkBitReaderReadBits`, `BenchmarkTraverseEntity`,
       `BenchmarkScanBipedPositions` sur le mini-film `000d5950` ; `testdata/bench_baseline.txt`
       produit par `go test -bench . -run ^$ -count 5` et comparé par `benchstat` à chaque clôture
@@ -213,6 +213,18 @@ fichiers disjoints) ; 0.C ensuite, pendant les revues.
 
 Gate 0.A : gates communs ; `go run ./cmd/replay-equiv` (0 différence sur 13, références neuves
 figées) ; `go test ./internal/games/halo_infinite/film/... -run 'Golden|KeyframeClosure|GrammarRev'`.
+
+> **STATUT 0.A au 2026-09-13 — LOT ARRÊTÉ À 0.A.1a, décision du pilote requise.** Le gate
+> d'entrée du lot (`replay-equiv` = 0 différence sur les 13 films existants) est FAUX sur l'arbre
+> courant : 13 films sur 13 diffèrent, tous à la première étape observée (`score`). Cause mesurée
+> (§4, découverte D1) : les références datent du commit `179bd7401` où `replay.SchemaVersion`
+> valait 34 ; elle vaut 54 — vingt montées de schéma, donc vingt changements VOULUS du contenu
+> cuit. Ce n'est ni une régression ni une dérive de grammaire : le corpus d'équivalence n'a jamais
+> été re-figé depuis le 2026-09-03. Conformément au brief (« si une référence existante diffère :
+> ARRÊT, ne régénère rien »), AUCUNE référence n'a été régénérée et 0.A.2 à 0.A.5 n'ont pas été
+> commencés. **Décision attendue** : re-figer les 20 films à un commit nommé (ce qui acte la sortie
+> courante comme ligne de base) avant de rouvrir le lot. Seul 0.A.1b (colonne `version / build` et
+> échantillon court de `CORPUS.txt`) est livré, car il ne régénère aucune référence.
 
 #### Lot 0.B — La frontière Go / web (architecture §12) — M, exécuteur Opus high
 
@@ -705,13 +717,19 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
-| | | | |
+| 2026-09-13 | 0.A.1 | **D1 — Le corpus d'équivalence est périmé, pas en régression.** 13/13 films diffèrent à l'étape `score`. Références écrites au commit `179bd7401` (lot 4b) sous `replay.SchemaVersion = 34` ; la constante vaut 54 (`film/replay/document.go:75`). Vingt montées de schéma = vingt changements voulus du contenu cuit depuis le figeage (dont la borne de déroulage `maxUnrollPerStep` 100 000 → 16, commit `f22474816`, `objectiveevents/named_bounds.go:84`, alors que l'en-tête de `CORPUS.txt` disait les quatre bombes figées SOUS 100 000). Aucune référence régénérée. | Décision du pilote : re-figer les 20 films à un commit nommé. Bloque S3 et le gate d'entrée de tout lot décodeur |
+| 2026-09-13 | 0.A.1 | **D2 — Ce gate n'a aucun gardien.** `go test ./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/sync/killcollector/` est VERT (10 paquets, exit 0) alors que l'équivalence est rouge sur 13/13 depuis ~30 commits. La CI ne voit ni `replay-equiv` ni le corpus gate (§2.3) : une dérive de cuisson peut vivre des semaines sans un seul signal. | Renforce le besoin de 0.A.4 (empreinte) et du registre §5 ; candidat à un gate CI au jalon M0 |
+| 2026-09-13 | 0.A.1 | **D3 — `-corpus` ne déplace pas les références, contrairement à ce que suppose le mode opératoire des worktrees.** `dossierEquivalence()` (`cmd/replay-equiv/main.go:150`) dérive du SEUL `-repo-root` : `LEVELUP_REPO_ROOT=<principal>` ferait lire les références ET les `.facts.json` du checkout principal, et `-update` y ÉCRIRAIT. Depuis un worktree, la seule voie correcte est `-repo-root <worktree>` + jonctions `data/cache/film_chunks` ET `data/cache/film_manifests` vers le principal (le manifeste manquant rend `score` nul sans erreur : `replaybuild/matchfacts.go:95`). | §2.2 du plan et brief des lots suivants : corriger le mode opératoire |
+| 2026-09-13 | 0.A.1 | **D4 — Le régime court ne couvre pas la grammaire la plus ancienne.** L'échantillon défini par V2 (un film par build + 3 nommés) donne 9 films et exclut par construction les deux films SANS section d'identification (`50247b26` v31, `a349fea8` v33), qui ne portent pas de build. Le plafond est de 10 : un dixième slot est libre. | Arbitrage : ajouter `50247b26` à l'échantillon court (non fait, hors décision) |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
 |---|---|---|---|---|
-| | | | | |
+| 2026-09-13 | 0.A.1a | `cbfdc269d` (arbre inchangé) | `replay-equiv -repo-root <worktree>` (corpus entier, 13 films) | **ROUGE — 0 identique, 13 différents**, tous à l'étape `score`. Durées : `000d5950` 15,3 s · `01e1f945` 19,5 s · `64e8adfa` 40,3 s · `7344d24f` 23,2 s · `696a9d7c` 23,5 s · `084a804d` 2 min 01 s · `1c4c63c2` 2 min 44 s · `53ce4390` 33,2 s · `d9781168` 26,6 s · `9f57c612` 17,1 s · `60ae07c4` 27,7 s · `51101d1d` 5,5 s · `a349fea8` 2 min 10 s. **Total 647 s**, pic max 0,69 Gio (`1c4c63c2`). Ligne de base du budget (§7.8 de l'architecture) |
+| 2026-09-13 | 0.A.1b | `<commit du lot>` | lecture d'en-tête `chunk_00` des 20 films (u32 LE offset 0 + chaîne `HI_1_x_y`) | 20/20 résolus, conformes à la table du brief : v31 et v33 `a349fea8` sans section ; `a521164d` 33/HI_1_4_1 ; `60ae07c4` 37/HI_1_8_0 ; `11de8353` 38/HI_1_9_0 ; `084a804d`,`1c4c63c2`,`111fa685` 39/HI_1_10_0 ; `e5adf7b2` 40/HI_1_11_0 ; `bcb6d393` 40/HI_1_12_0 ; le reste 41/HI_1_13_0. `CORPUS.txt` à 20 lignes, 7 champs chacune |
+| 2026-09-13 | 0.A (communs) | `<commit du lot>` | `gofmt -l ./internal ./cmd` ; `go vet` ; `go test` (film, archlint, killcollector) | gofmt vide ; vet propre ; **tests VERTS, 10 paquets, exit 0** — cf. découverte D2 : vert malgré l'équivalence rouge |
+| 2026-09-13 | 0.A.1c à 0.A.5 | — | — | **NON EXÉCUTÉS** : lot arrêté à 0.A.1a sur instruction (« si une référence existante diffère : ARRÊT, ne régénère rien ») |
 
 ## 6. Protocole de reprise de session
 
