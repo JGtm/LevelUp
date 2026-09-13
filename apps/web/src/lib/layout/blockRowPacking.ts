@@ -10,9 +10,9 @@
  * colline » tenaient largement côte à côte, et parfois à trois.
  *
  * La règle est un simple comptage : combien de vignettes le bloc a-t-il à montrer ?
- *   - 3 ou moins       → tiers de largeur (une rangée de vignettes y tient)
- *   - de 4 à 8         → demi-largeur (deux rangées au plus)
- *   - 9 et plus        → pleine largeur
+ *   - 3 ou moins       → un tiers de la grille de référence
+ *   - de 4 à 8         → une demie
+ *   - 9 et plus        → la grille entière
  *
  * L'ORDRE EST PRÉSERVÉ : le tri choisi dans la barre d'outils (total de la catégorie,
  * nombre par médaille, nom) reste la seule chose qui ordonne les blocs. Le packing est
@@ -20,10 +20,14 @@
  * réordonne jamais pour mieux remplir : une grille qui se réarrange à chaque filtre
  * serait illisible.
  *
- * La dernière rangée peut rester incomplète : `rowRemainder` donne le nombre de colonnes
- * libres, que la vue rend en colonne fantôme. On ne dilate PAS les blocs pour combler —
- * une catégorie de 2 médailles étirée sur toute la largeur, c'est exactement le défaut
- * qu'on corrige.
+ * UNE RANGÉE OCCUPE TOUJOURS TOUTE LA LARGEUR (retour utilisateur 2026-09-13). Les
+ * largeurs ci-dessus sont des PROPORTIONS, pas des tailles absolues : sur une rangée
+ * incomplète, les pistes présentes se partagent toute la place au prorata de leurs
+ * spans (un bloc seul = 100 % ; un « tiers » avec une « demie » = deux cinquièmes et
+ * trois cinquièmes). La version précédente ajoutait une piste fantôme pour les colonnes
+ * libres : un bloc seul restait à un tiers de rangée et laissait un trou à droite —
+ * c'est ce défaut qui est corrigé ici. Le RAPPORT entre blocs d'une même rangée, lui,
+ * reste dicté par le comptage.
  */
 
 /** Colonnes de la grille de référence. 6 = PPCM des trois largeurs (2, 3, 6). */
@@ -48,8 +52,6 @@ export function blockSpan(itemCount: number): number {
 export interface PackedRow<T> {
   blocks: T[]
   spans: number[]
-  /** Colonnes libres en fin de rangée (0 si la rangée est pleine). */
-  rowRemainder: number
 }
 
 /**
@@ -64,7 +66,7 @@ export function packBlockRows<T>(blocks: readonly T[], countOf: (block: T) => nu
 
   const close = () => {
     if (current.length === 0) return
-    rows.push({ blocks: current, spans, rowRemainder: BLOCK_GRID_COLUMNS - used })
+    rows.push({ blocks: current, spans })
     current = []
     spans = []
     used = 0
@@ -82,11 +84,10 @@ export function packBlockRows<T>(blocks: readonly T[], countOf: (block: T) => nu
 }
 
 /**
- * Valeur `grid-template-columns` d'une rangée : une piste par bloc, plus une piste
- * fantôme pour les colonnes libres de la dernière rangée.
+ * Valeur `grid-template-columns` d'une rangée : UNE piste par bloc, et rien d'autre.
+ * Les unités `fr` se partagent tout l'espace disponible, donc une rangée incomplète est
+ * dilatée jusqu'au bord au lieu de laisser un trou à droite.
  */
 export function rowGridTemplate(row: PackedRow<unknown>): string {
-  const tracks = row.spans.map((s) => `${s}fr`)
-  if (row.rowRemainder > 0) tracks.push(`${row.rowRemainder}fr`)
-  return tracks.join(' ')
+  return row.spans.map((s) => `${s}fr`).join(' ')
 }
