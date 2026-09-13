@@ -42,8 +42,20 @@ anticipation** : critere tenu par le pipeline de sync (114 038 lignes sur 1 307 
 `go test -tags=integration -p 1` sur sync/persist/migration/duckdb/ops/scheduler 0 (19 paquets),
 `golangci-lint --new-from-merge-base=origin/main` **0 issue**, `gofmt -l` vide.
 
-**Conclusion / prochaine etape.** Lot B clos, 4 commits pousses sur `feat/finitions-hygiene`, CI a
-surveiller. Quatre decouvertes consignees et NON traitees au plan : (D-B1) le ratchet anti-ART est
+**Conclusion / prochaine etape.** Lot B CLOS, **7 commits pousses sur `feat/finitions-hygiene`, CI
+VERTE au niveau JOB** (run 34756564137 : 8 jobs verts, E2E React skippe par conception ; + Deploy
+Pre-Check et gitleaks verts). INCIDENT CI RENCONTRE ET REPARE : le job « Go Coverage + Baseline
+non-regression » a rougi sur deux commits successifs, et la cause etait MIENNE, pas un flake. La
+suite elle-meme etait verte (`go test` exit=0, 108 756 lignes JSONL) ; c'est le controle de PRESENCE
+de `check_test_baseline.sh` qui echouait, et il avait raison — B.2 a supprime 23 tests avec le code
+de la migration des jetons, et `.ai/baselines/tests_pre_migration.jsonl` est un CUMUL qui continuait
+de les exiger. Correctif `b566823cb` : retrait chirurgical des 23 entrees (120 lignes JSONL,
+23 `run` + 23 `pass` + 74 `output`, aucun event de niveau PACKAGE touche), verifie par difference
+des paires (Package, Test) — 23 disparues, 0 apparue. PAS de re-capture complete, qui aurait absorbe
+en silence toute autre derive depuis le 2026-06-26. Contre-epreuve locale du gate exact :
+9 716/9 716 tests presents, 0 echec, exit 0. LECON POUR LES LOTS SUIVANTS : supprimer un test
+supprime aussi son entree de baseline, dans le MEME commit.
+Quatre decouvertes consignees et NON traitees au plan : (D-B1) le ratchet anti-ART est
 aveugle aux noms de table interpoles — le cas de la demo est corrige, le TROU du garde-rail reste ;
 (D-B2) 8 socles `flag_spawn` d'equipe portent `team_index = -1`, defaut symetrique de D9, que la
 correction par label ne touche pas ; (D-B3) l'ecart d'arbitrage sur H4 ; (D-B4) deux `//nolint`
