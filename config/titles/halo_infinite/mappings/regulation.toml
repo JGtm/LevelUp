@@ -195,10 +195,16 @@ schema_version = 6
 #     16 matchs). Les declarer ne changerait rien a l'ecran, et transformerait les 2 matchs
 #     a manche nulle (score 3-3 contre 2-2 manches gagnees) en un affichage dont rien ne
 #     prouve qu'il soit celui du jeu.
-#   - CTF:Arena et Ranked:CTF : deux MI-TEMPS, pas des manches decisives. Le score est le
-#     total de captures (2-3) et c'est LUI le score du jeu ; le compte de manches y vaut
-#     0-1, ce qui serait un contresens. En prime la meme variante est tantot a une manche
-#     tantot a deux — aucune regle par variante n'y tiendrait.
+#   - CTF:Arena et Ranked:CTF : le score du jeu est le TOTAL DE CAPTURES (2-3), pas un compte
+#     de manches — c'est lui qu'on affiche, et le compte de manches y vaudrait 0-1, ce qui
+#     serait un contresens. En prime la meme variante est tantot a une manche tantot a deux.
+#     CORRIGE LE 2026-09-13 (decision utilisateur, mecanique de jeu) : la redaction precedente
+#     disait « deux MI-TEMPS ». IL N'Y A PAS DE MI-TEMPS EN HALO INFINITE — il y a des MANCHES
+#     et des PROLONGATIONS. Le motif d'exclusion de cette table ne change pas (le score n'est
+#     pas un compte de manches sur ces variantes) ; seul le mot etait faux. Voir le lot 0.D.1
+#     bis du PLAN_DECODEUR_FILM : sur `fb1a1a72` (CTF:Arena, 814 s pour 720 s reglementaires)
+#     le film ecrit un designateur de manche 2 que deux temoins CTF:Arena sans depassement
+#     (`53ce4390`, `51101d1d`) n'ecrivent PAS.
 #   - KOTH : mesure du 2026-08-24, une seule manche dans le corpus.
 #
 # Consommation : mappings.LoadRegulation -> RegulationSet.RoundsDecide(variante) ->
