@@ -573,7 +573,7 @@ temporelle, seuil de distance, majorité, calibration statistique, inférence pa
 morts) là où le film ÉCRIT le fait (événement nommé, record de création, composant d'état,
 table de `chunk_00`, pied de film).
 
-- [ ] 0.E.1 Registre `.ai/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md` : une ligne par
+- [x] 0.E.1 Registre `.ai/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md` : une ligne par
       heuristique : `fichier:ligne`, fait décidé, heuristique (paramètres), ce que le film écrit
       à la place (canal, événement, record, composant ; PORTÉ aujourd'hui / À PORTER : bloquant
       nommé), preuve ou incertitude (note de RE, rapport, mesure), coût (S / M / L), gain
@@ -583,12 +583,41 @@ table de `chunk_00`, pied de film).
       anonyme, et s'il peut se déclencher alors que la lecture existe (risque de déclenchement
       indésirable). Sources à croiser : `REFERENCE_CANAUX_EQUIPEMENT`
       §4 (qui lit quoi), `RAPPORT_F0_DEPLOIEMENT_103`, `RAPPORT_LOT_H_VERSIONS`, notes `film_re/`.
-- [ ] 0.E.2 Classement en trois tables : (A) le film l'écrit ET le lecteur existe (conversion
+      **Fait** : 133 lignes de registre, 528 sites de décision LUS (fonction entière + appelant),
+      201 fichiers de production ouverts, 241 `fichier:ligne` tous vérifiés existants.
+      **Amendement D14 (pilote, 2026-09-13) appliqué** : chaque ligne porte le repli associé
+      (NOMMÉ / ANONYME), sa condition de déclenchement souhaitable, le risque de déclenchement
+      alors que la lecture existe, et son critère de retrait mesurable.
+- [x] 0.E.2 Classement en trois tables : (A) le film l'écrit ET le lecteur existe (conversion
       courte, lot 1.9.x) ; (B) le film l'écrit, lecteur À PORTER (lot 3.6, bloquant nommé) ;
       (C) le film ne l'écrit pas (heuristique légitime : reste, avec sa couverture). Chaque ligne
       de (C) cite le négatif MESURÉ qui la fonde (jamais « probablement »).
-- [ ] 0.E.3 Ordre proposé des conversions (A), par gain décroissant, recopié en tête de la
+      **Fait** : (A) 8 · (B) 8, couvrant 40 sites de décision · (C) 38, chacune avec son négatif
+      mesuré et sa source · **(D) « non établi » 17** (les lignes sans négatif mesuré y sont
+      versées avec la question à instruire) · **(E) replis ANONYMES 62** (table D14, matière du
+      lot 1.9.0). **Correction au dimensionnement du plan** : les (B) ne vont PAS toutes au
+      lot 3.6 — elles ont déjà leur lot (1.4, 1.5, 1.6, 1.7, 1.8, 3.2, 3.5) ; seuls B7 (composants
+      d'objectif ti=11/ti=12) et B8 (respawn timer, état moteur, mapping d'équipe) entrent au 3.6.
+- [x] 0.E.3 Ordre proposé des conversions (A), par gain décroissant, recopié en tête de la
       famille 1.9 ; les (B) entrent dans le dimensionnement du lot 3.6.
+      **Fait** : items 1.9.2 à 1.9.8 recopiés ci-dessous, plus un item 1.9.0 proposé (registre des
+      replis + ratchet), sans lequel le critère de retrait D14 n'est mesurable pour aucune ligne.
+
+**Trois constats du lot 0.E que le pilote doit voir** (détail au registre §10 et §13) :
+
+1. **L'équipe est déjà LUE et JETÉE.** `filmdec/traverse.go:515-517` consomme les 4 bits du
+   `managed-player-team-designator-component` et ne publie rien ; neuf décisions de fait s'en
+   passent (dont une CALIBRATION sur un oracle de la BASE, `replay/zone_states_owner.go:353`).
+   Cinq commentaires du dépôt affirment l'inverse — doc inversée à corriger au lot 1.7. Et, dans le
+   même fichier, `replay/document.go:594` affirme « le film ne porte aucun gamertag » quand
+   `replay/lives.go:54` documente le contraire.
+2. **Onze voies d'inférence décident le même fait** — l'index de joueur d'un slot — que la table des
+   joueurs de `chunk_00` écrit à 32 slots sur 1 351 films sur 1 351. Leurs coûts sont chiffrés
+   (23 % de désaccord sur l'attribution des tirs ; 51 % d'assistants nommés en BTB ; 6 joueurs
+   publiés pour 8 sur `3372e7eb`). Lots 1.5 / 1.6 / 1.8.
+3. **62 replis ANONYMES** : une décision de secours sur laquelle aucun compteur ne se pose. Neuf
+   portent déjà un défaut mesuré (dont `replay/usage_summary.go:286`, qui crédite au dernier
+   occupant du MATCH alors que 32 à 95 % des poses tombent hors de toute fenêtre publiée).
 
 Gate 0.E : chaque `fichier:ligne` existe (grep) ; aucun fichier de production modifié
 (`git diff --stat` = le registre et le plan) ; relecture pilote.
@@ -796,7 +825,56 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       `ability-enabled-id`) s'il porte la cause, sinon repli temporel compté. Les 22 poses
       requalifiées par F.1 sont rejugées une à une (instruments `f1_origine_*`). Corpus gate sur
       `0797ce72`, `4f77afc1` et l'échantillon court.
-- [ ] 1.9.2 à 1.9.n : selon le registre 0.E (à recopier ici à la clôture de 0.E).
+- [ ] 1.9.2 **Le découpage d'i0 vient du catalogue de carte, plus de l'auto-détection.**
+      `internal/sync/killcollector/positions.go:253` (et `hits.go:157`) construisent
+      `DefaultScanFilmOptions()` avec `Layout` nil alors que `entry` est le paramètre de la fonction
+      et que `entry.Range()` est lu à la ligne suivante ; `MapQuantEntry.Layout()`
+      (`filmdec/map_bounds.go:69`) est déjà imposé sur l'autre chemin (`replay/build_from_film.go:87`).
+      Gain : **27 faux enregistrements sur 267 400 éliminés sur Live Fire** (mesure du 2026-09-03 sur
+      `60ae07c4`, `filmdec/film_context.go:33-42`) et deux passes de détection supprimées par film. S.
+- [ ] 1.9.3 **Le couple (tueur, victime) lu au kill-event 85, plus recollé sur le voisin.**
+      `internal/games/halo_infinite/film/killsource/feed.go:162` (`reconstructPairs`, fenêtre de
+      2 instants) contre `killsource/eventchain.go:242` (`readKillEvent`, victime ET tueur dans le
+      même enregistrement, déjà PORTÉ mais lu pour le seul assistant). Gain : **64 couples sur 372**
+      cessent d'être une reconstruction ; supprime la fabrication d'un couple quand la vraie victime
+      est un bot (`feed.go:149-151`). M.
+- [ ] 1.9.4 **La carte du film vient du nom de match, plus d'une signature de largeurs.**
+      `internal/sync/killcollector/hits.go:151` appelle `DetectFilmWorldRange(dir, path, "")` alors
+      que le même collecteur résout le nom de carte à `positions.go:210` et que le paramètre
+      `mapNameOverride` existe. Gain : **6 cartes jumelles** (3 paires mesurées, F.0 §6 réserve 2)
+      récupèrent leurs distances, aujourd'hui désactivées en silence. S.
+- [ ] 1.9.5 **Le porteur du crâne lu au canal des armes tenues.**
+      `internal/games/halo_infinite/film/replay/skull_carries.go:390` infère le porteur des tics de
+      score (trou > 3 s) alors que le crâne voyage dans le canal des armes tenues (famille
+      `0x0017592c`, `replay/held_object_carry.go:15`) et que `BuildHeldObjectCarry` est PORTÉ mais
+      n'a qu'UN appelant de production, `replay/bomb_carries.go:142`. Les tics deviennent le repli
+      compté. Gain non chiffré. S.
+- [ ] 1.9.6 **Le drapeau qui rentre pris dans `ev.flag`, déjà nommé en amont.**
+      `internal/games/halo_infinite/film/replay/flag_carries_lives.go:267` cherche « le seul drapeau
+      au sol » alors que `ev.flag` est posé par `flag_carries_home.go:82-98` et ne sert qu'à un
+      court-circuit (`:264`). Gain : les `ambiguousReturns` (compteur publié) que `ev.flag` tranche. S.
+- [ ] 1.9.7 **Dead-state et kill-feed appariés par l'identité de paquet, plus par 2,5 s.**
+      `internal/games/halo_infinite/film/killsource/options.go:114` (`tolMS = 2500`, justifiée par la
+      comparabilité et non par une mesure) employée à `match.go:30`, `:45`, `:103`, `:143` ; les deux
+      structures portent `(chunk, pidx)` (`killsource/scan.go:49`, `assist.go:169`) mais `Kill` ne le
+      transporte pas (`match.go:186-193`). La fenêtre devient le repli compté. M.
+- [ ] 1.9.8 **Le chunk du pied pris au type du manifeste, plus par argmax de kills.**
+      `internal/games/halo_infinite/film/killsource/feed.go:82` ; le type est porté par
+      `filmsource.Film.Meta()` (`analysis/filmsource/film.go:41`) et déjà lu par ce patron
+      (`objectiveevents/extract.go:144`), mais `killsource/chunks.go:78` perd `Meta()`.
+      RÉSERVE : le manifeste est un fichier EXTERNE — l'argmax reste en repli COMPTÉ. S.
+
+**Item 1.9.0 proposé (préalable), à arbitrer par le pilote** : le REGISTRE DES REPLIS. Nommer et
+COMPTER les **62 replis anonymes** de la table (E) du registre 0.E, poser le ratchet « aucun repli
+sans nom ni compteur », et publier la ventilation `coverage.<fait>.{grammaire, repli, contradiction}`
+que cette famille exige de chaque lot. Sans lui, le critère de retrait D14 (« compte de repli à 0 sur
+le corpus gate ») n'est mesurable pour presque aucune ligne du registre.
+
+**Hors famille 1.9, routés par le lot 0.E** : `replay/projectiles.go:106` — **6,0 % des trajectoires
+du parc** (947 sur 15 735) sont coupées par un garde-fou qui compense une faute de déquantification
+de `filmdec` ; c'est une CAUSE à corriger (lot B-bis), pas une conversion.
+`replaybuild/zones.go:141` — porter `GameVariantCategory` dans `port.MatchFacts` (la plus petite
+correction du périmètre, aucun décodage).
 
 **Clôture M1** : fusion dans `feat/v75` (V3) ; recuisson du parc + backlog killsource sur signal
 (tag git du binaire précédent, artefacts précédents conservés jusqu'à validation du corpus gate,
@@ -1145,6 +1223,8 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.B.7 (coupe A) | ce commit | ÉPREUVE PAR MUTATION du ratchet « un seul jeu vivant » (copie déposée sous `replay_schema_53_bcb6d393.json.gz`) | `TestContractFixturesUnSeulJeuVivant` **ROUGE**, message nommant l'intruse ; fichier retiré → **vert**. `git status` propre après |
 | 2026-09-13 | 0.B.7 (coupe A) | ce commit | `gofmt -l ./internal` ; `go vet` ; `go test ./internal/games/halo_infinite/film/replay/ ./internal/archlint/` | gofmt vide ; vet propre ; **les deux paquets ok** (12,2 s / 12,7 s) — budget **vert à 2,01 Mio**, `MatchCommitted` (manifeste et `pointsStride` compris), `CarryCurrentSchema` et `UnSeulJeuVivant` verts sur les 8 |
 | 2026-09-13 | 0.B.7 (coupe A) | ce commit | `npx tsc -b --force` ; `npx eslint` (3 fichiers web) ; `npx vitest run src/features/match-replay src/lib/replay` ; `make go-api-lint` | tsc **exit 0** ; eslint **0** ; vitest **202 fichiers + 1 sauté, 3 124 tests + 3 sautés** ; lint Go **0 issues**. Seuil des 500 lignes tenu par extraction : `contract_fixtures_test.go` 433 L + `contract_fixtures_budget_test.go` 133 L |
+| 2026-09-13 | 0.E | ce commit | recensement : `grep -rnE --include='*.go' '(Window\|Fenetre\|Tolerance\|Seuil\|Threshold\|Nearest\|Closest\|Majorit\|Infer\|Guess\|Devin\|Calibr\|Heuristi\|Repli\|Fallback\|MaxDist\|MinDist\|Epsilon\|Eps[A-Z]\|Detect\|Probe\|Auto)' <périmètre + filmdec> \| grep -v '_test\.go:'` puis lecture site par site | **509 hits** (321 hors `filmdec`) ; **528 sites de décision LUS** (fonction entière + appelant), **201 fichiers de production ouverts**, aucun modifié. Registre : **133 lignes** — (A) 8 · (B) 8 couvrant 40 sites · (C) 38 avec négatif mesuré · (D) non établi 17 · (E) replis ANONYMES 62. Vérification adverse par l'auditeur principal : **15 constats re-ouverts, 0 tombé, 2 amendés, 1 trou trouvé en plus** (`replay/identity_registry_section.go:288`), **1 écarté** (entrée périmée du registre des reports) |
+| 2026-09-13 | 0.E | ce commit | contrôle « chaque `fichier:ligne` du registre existe » (script en §12 du registre) | **241 références distinctes, 241 résolues, 0 manquante** ; les 53 références de tête vérifiées en plus avec le CONTENU de la ligne. `git diff --stat` = le registre + ce plan, **aucun fichier de production** |
 
 
 | 2026-09-13 | 0.D.0 | `215649efd` (arbre) | `replay-equiv -repo-root <worktree> -films <6 sous-ensembles> -update` | **20/20 figés** au commit `215649efd`, schéma 54, `# digest-grammar: 2`, 50 étapes chacun. **UNE SEULE étape bouge, `artifact`, sur 11 films** ; les 49 autres sont identiques sur les 20. Durées : 50247b26 2 min 29 · a521164d 1 min 30 · 60ae07c4 1 min 49 · 11de8353 1 min 12 · 111fa685 1 min 06 · e5adf7b2 1 min 18 · bcb6d393 25,6 s · 51101d1d 15,7 s · d9781168 1 min 14 · fb1a1a72 1 min 51 · 000d5950 41,5 s · 01e1f945 22,1 s · 64e8adfa 40,0 s · 7344d24f 26,0 s · 696a9d7c 21,7 s · 53ce4390 33,0 s · 9f57c612 26,2 s · 084a804d 2 min 19 · 1c4c63c2 3 min 09 · a349fea8 3 min 18 |
