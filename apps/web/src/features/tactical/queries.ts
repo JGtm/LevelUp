@@ -26,8 +26,10 @@ import type {
   TacticalMapsPage,
   TacticalRaster,
   TeammateOption,
+  ReplayMapBackground,
 } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
+import { mapFrame, type MapFrame } from '@/lib/replay/heatPaint'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 /** FNV-1a 32 bits — même algorithme que `useFiltersPreview` et `computeHash`. */
@@ -174,6 +176,36 @@ export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string): 
     retry: false,
   })
   return data ?? null
+}
+
+/**
+ * useTacticalMapBackgroundFrame — LE CALAGE du fond d'une carte : le rectangle MONDE que
+ * l'image couvre (`/tactical/{map_id}/background`, déjà servi par l'API depuis la phase 5).
+ *
+ * C'EST LE SEUL REPÈRE DANS LEQUEL LE CALQUE ET SON FOND COÏNCIDENT, et il n'était pas lu :
+ * le plan projetait sa chaleur sur la boîte englobante de ses propres cellules, c'est-à-dire
+ * dans un repère sans rapport avec l'image posée dessous (sur Illusion, 30 x 36 m contre
+ * 53 x 69 m). Les zones chaudes tombaient donc à côté du bâtiment.
+ *
+ * MÊME RÉGIME DE CACHE QUE L'IMAGE : le calage ne change qu'à une re-cuisson, et il ne dépend
+ * pas du joueur — la clé ne le porte donc pas. 404 = carte sans fond figé : cas NOMINAL
+ * (toutes les cartes n'en ont pas), aucune nouvelle tentative, le plan retombe alors sur ses
+ * propres bornes.
+ */
+export function useTacticalMapBackgroundFrame(playerSlug: string, mapId: string): MapFrame | null {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const { data } = useQuery({
+    queryKey: queryKeys.tacticalMapBackgroundFrame(titleSlug, mapId),
+    queryFn: () =>
+      api.get<ReplayMapBackground>(
+        `/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/background`,
+      ),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    enabled: !!playerSlug && !!mapId,
+    retry: false,
+  })
+  return data?.calibration ? mapFrame(data.calibration) : null
 }
 
 /**

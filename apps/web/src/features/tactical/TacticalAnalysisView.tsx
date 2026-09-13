@@ -37,7 +37,6 @@ import {
   pageTitle,
   ratioSafe,
   sourceForQuestion,
-  tacticalGridFromRaster,
   trouveCellule,
   type TacticalQuestion,
   type TacticalQui,
@@ -99,10 +98,6 @@ export function TacticalAnalysisView({
     if (selected !== null) setSelected(null)
   }
 
-  const grid = raster.data
-    ? tacticalGridFromRaster(raster.data.cellules ?? [], raster.data.bornes, raster.data.pas_m, raster.data.echelle)
-    : null
-
   const celluleSelectionnee =
     selected && raster.data ? trouveCellule(raster.data.cellules ?? [], selected.col, selected.row) : null
 
@@ -157,7 +152,7 @@ export function TacticalAnalysisView({
             playerSlug={playerSlug}
             mapId={mapId}
             question={question}
-            grid={grid}
+            cellules={raster.data.cellules ?? []}
             bornes={raster.data.bornes}
             echelle={raster.data.echelle}
             pasM={raster.data.pas_m}
@@ -247,7 +242,7 @@ function buildKpiCards(
       primary: pct.format(data.isolement.taux),
       secondary: withLowSampleNote(
         rayons.length > 0
-          ? t.kpiIsolationRadius(libelleRayons(t, rayons))
+          ? t.kpiIsolationRadius(libelleRayons(t, rayons, locale))
           : t.kpiSecondary(data.isolement.brut, data.isolement.n),
         data.isolement.echantillon_faible,
         t.lowSample,

@@ -7,7 +7,9 @@
  */
 import type { BornesMonde, CelluleTactique, EchelleTactique } from '@/lib/api/types'
 
-import { buildTacticalGrid, type TacticalGrid } from '@/lib/replay/heatPaint'
+import { intlLocale } from '@/lib/formatters'
+import type { Locale } from '@/lib/i18n/locale'
+import { buildTacticalGrid, type MapFrame, type TacticalGrid } from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
 
 /** Les six lectures offertes par la barre d'outils — même vocabulaire que le contrat
@@ -131,33 +133,6 @@ export function ratioSafe(numerateur: number, denominateur: number): number {
 }
 
 /**
- * tacticalGridFromRaster — la grille de peinture (`heatPaint.TacticalGrid`) dérivée du
- * raster serveur : bornes + pas de grille + cellules + échelle p50/p95. `null` si les
- * bornes ne sont pas exploitables (aucun point localisé pour cette question).
- */
-export function tacticalGridFromRaster(
-  cellules: readonly CelluleTactique[],
-  bornes: BornesMonde,
-  pasM: number,
-  echelle: EchelleTactique,
-): TacticalGrid | null {
-  if (!bornes.valide || !(pasM > 0)) return null
-  const nx = Math.max(1, Math.ceil((bornes.max_x - bornes.min_x) / pasM))
-  const ny = Math.max(1, Math.ceil((bornes.max_y - bornes.min_y) / pasM))
-  const cells = cellules.map((c) => ({ col: c.col, row: c.lig, value: c.valeur }))
-  return buildTacticalGrid(
-    cells,
-    { cell: pasM, nx, ny, minX: bornes.min_x, minY: bornes.min_y },
-    // LA LECTURE SIGNÉE PASSE SA BORNE, PAS SES QUANTILES (maquette 034b1915) : « Où je
-    // gagne » va de −borne à +borne autour du zéro. Étalonnée sur p50→p95 comme les
-    // autres, toute sa moitié négative disparaissait — une cellule ≤ 0 y était traitée
-    // comme « jamais atteinte » (cf. `cellIntensity`, heatPaint.ts).
-    { lo: echelle.p50, hi: echelle.p95, signee: echelle.symetrique, borne: echelle.borne },
-    echelle.n_cellules,
-  )
-}
-
-/**
  * LÉGENDE DU PLAN — les deux bornes affichées de part et d'autre de la rampe, et le mode
  * de rampe à employer (maquette 034b1915).
  *
@@ -191,44 +166,8 @@ export function questionSansCellule(question: TacticalQuestion): boolean {
 }
 
 /**
- * cellFromClick — la cellule (col, row) sous un clic sur le canvas.
- *
- * Le canvas peint le monde [min_x, max_x] × [min_y, max_y] EXACTEMENT sur toute sa
- * surface (aucune marge, aucun pan) : c'est la même convention que `TacticalPlanCard`
- * utilise pour peindre le fond ET la heatmap, donc le clic s'inverse par une simple
- * règle de trois. `null` si les bornes sont invalides, le canvas est vide, ou le clic
- * tombe hors de sa surface.
- *
- * L'ADRESSE RENDUE EST ANCRÉE SUR L'ORIGINE DU MONDE (`floor(x / pas)`), jamais sur
- * `min_x` : c'est la convention du serveur (`analysis/tactical.Grille.Cellule`), donc
- * celle de `CelluleTactique.col/lig` et de la requête de détail de cellule. Une adresse
- * relative aux bornes ne coïncidait avec celle du serveur que sur une carte calée
- * exactement sur (0, 0) — et `trouveCellule` ne retrouvait alors plus rien.
- *
- * `pasM` EST LE PAS PUBLIÉ PAR LA LECTURE (`TacticalRaster.pas_m`), pas une constante :
- * depuis le pas adaptatif (lot 3.2), la même carte peut se lire à 0,5, 1 ou 2 m.
- */
-export function cellFromClick(
-  clickX: number,
-  clickY: number,
-  canvasWidth: number,
-  canvasHeight: number,
-  bornes: BornesMonde,
-  pasM: number,
-): { col: number; row: number } | null {
-  if (!bornes.valide || !(pasM > 0) || canvasWidth <= 0 || canvasHeight <= 0) return null
-  if (clickX < 0 || clickY < 0 || clickX > canvasWidth || clickY > canvasHeight) return null
-  const worldX = bornes.min_x + (clickX / canvasWidth) * (bornes.max_x - bornes.min_x)
-  const worldY = bornes.min_y + (clickY / canvasHeight) * (bornes.max_y - bornes.min_y)
-  return {
-    col: Math.floor(worldX / pasM),
-    row: Math.floor(worldY / pasM),
-  }
-}
-
-/**
- * PLAN_ASPECT_DEFAUT — le rapport largeur/hauteur du cadre du plan quand les bornes ne
- * disent rien d'exploitable : 16/9, celui des vignettes de carte (`TacticalMapTile`,
+ * PLAN_ASPECT_DEFAUT — le rapport largeur/hauteur du cadre du plan quand ni le fond ni les
+ * bornes ne disent rien d'exploitable : 16/9, celui des vignettes de carte (`TacticalMapTile`,
  * `aspect-video`), qui affichent LE MÊME fond. Un plan vide a donc exactement la taille
  * d'une carte normale, avec son état vide par-dessus.
  */
@@ -249,48 +188,6 @@ export const PLAN_ASPECT_DEFAUT = 16 / 9
  */
 export const PLAN_HAUTEUR_MAX_PX = 720
 
-/**
- * planFrameStyle — le cadre du plan : rapport des bornes, hauteur bornée.
- *
- * Des bornes INEXPLOITABLES (non valides, d'étendue nulle ou négative, non finies)
- * rendent le cadre par défaut. C'est le cas d'un plan VIDE : `TacticalRaster.bornes` n'est
- * valide que si au moins une cellule passe le plancher.
- */
-export function planFrameStyle(bornes: BornesMonde): { aspectRatio: number; maxWidth: string } {
-  const largeur = bornes.max_x - bornes.min_x
-  const hauteur = bornes.max_y - bornes.min_y
-  const exploitables =
-    bornes.valide && Number.isFinite(largeur) && Number.isFinite(hauteur) && largeur > 0 && hauteur > 0
-  const aspectRatio = exploitables ? largeur / hauteur : PLAN_ASPECT_DEFAUT
-  return { aspectRatio, maxWidth: `${aspectRatio * PLAN_HAUTEUR_MAX_PX}px` }
-}
-
-/**
- * planCanvasView — la projection monde -> canvas du calque de chaleur : ce que
- * `drawTacticalHeatmap` attend (`TacticalLayerView`).
- *
- * POURQUOI `topLeftWorld` N'EST PAS (0, 0). Le peintre place une cellule à
- * `topLeftWorld.x + col × pas × scale`, et `col` est l'adresse SERVEUR — ancrée sur
- * l'origine du monde. Le canvas, lui, commence à `min_x`. L'origine du monde tombe donc
- * à `−min_x × scale` pixels du bord gauche, et c'est cette valeur-là qu'il faut passer :
- * avec (0, 0), tout le calque était décalé de `min_x` mètres, c'est-à-dire entièrement
- * hors du canvas sur une carte dont les coordonnées ne partent pas de zéro.
- *
- * L'ÉCHELLE EST UNIFORME (px par mètre, lue sur X) : le conteneur est mis à l'aspect-ratio
- * du monde, donc la même échelle vaut sur les deux axes.
- */
-export function planCanvasView(
-  bornes: BornesMonde,
-  canvasWidth: number,
-): { topLeftWorld: { x: number; y: number }; scale: number } | null {
-  const largeurMonde = bornes.max_x - bornes.min_x
-  if (!bornes.valide || !(largeurMonde > 0) || !(canvasWidth > 0)) return null
-  const scale = canvasWidth / largeurMonde
-  // `0 - v` plutôt que `-v` : sur des bornes calées à l'origine, `-0` est un pixel comme
-  // les autres pour le canvas, mais il se compare mal (et se lit mal au débogage).
-  return { topLeftWorld: { x: 0 - bornes.min_x * scale, y: 0 - bornes.min_y * scale }, scale }
-}
-
 /** trouveCellule — la cellule serveur à (col, row), ou `null` si jamais atteinte. */
 export function trouveCellule(
   cellules: readonly CelluleTactique[],
@@ -308,42 +205,43 @@ export function trouveCellule(
 // convertir une fois le document (et son calage) chargé
 // (`lib/replay/replayLogic.resolveTacticalReplayInstant` + `msToFrames`).
 
-/**
- * planSelectionRect — le cadre de la cellule sélectionnée, en pixels canvas.
- *
- * MÊME PROJECTION QUE LA PEINTURE (`planCanvasView`) : le cadre se pose exactement sur la
- * cellule peinte, jamais à côté. `null` quand rien n'est sélectionné ou que les bornes ne
- * sont pas exploitables.
- *
- * IL EXISTE PARCE QUE LE CLIC NE SE VOYAIT PAS. Avant ce cadre, cliquer une zone chaude ne
- * changeait rien de visible sur le plan : le seul retour était un panneau situé plus bas,
- * qui met plusieurs secondes à se remplir. C'est la moitié du « je clique, ça ne change
- * jamais rien » constaté par l'utilisateur (2026-09-13).
- */
-export function planSelectionRect(
-  selected: { col: number; row: number } | null,
-  bornes: BornesMonde,
-  pasM: number,
-  canvasWidth: number,
-): { x: number; y: number; size: number } | null {
-  if (!selected) return null
-  const vue = planCanvasView(bornes, canvasWidth)
-  if (!vue || !(pasM > 0)) return null
-  return {
-    x: vue.topLeftWorld.x + selected.col * pasM * vue.scale,
-    y: vue.topLeftWorld.y + selected.row * pasM * vue.scale,
-    size: pasM * vue.scale,
-  }
-}
-
 // ─── Section « Coordination d'équipe » (maquette 034b1915) ────────────────────
 
 /**
  * libelleRayons — « 18 m », ou « 18 m ou 24 m » quand le filtre mélange deux formats.
  * JAMAIS une moyenne : la moyenne de deux règles du jeu n'est la règle d'aucun match.
  */
-export function libelleRayons(t: TacticalText, rayons: readonly number[]): string {
-  return rayons.map((r) => t.radiusValue(r)).join(t.radiusJoin)
+export function libelleRayons(
+  t: TacticalText,
+  rayons: readonly number[],
+  locale: Locale,
+): string {
+  return rayons
+    .map((r) => t.radiusValue(formatDistanceM(r, locale)))
+    .join(t.radiusJoin)
+}
+
+/**
+ * DISTANCE_DECIMALES — une decimale pour toute distance en metres affichee par l'onglet.
+ *
+ * LE DEFAUT QU'ELLE FERME : la mediane sortait du serveur en flottant brut et ICU la rendait
+ * telle quelle — « Distance mediane a l'equipier : 9,905 m » (constate le 2026-09-13). Un
+ * millimetre n'a aucun sens sur une distance mesuree entre deux joueurs, et le reste de la
+ * carte est deja au dixieme.
+ */
+export const DISTANCE_DECIMALES = 1
+
+/**
+ * formatDistanceM — une distance en metres, AU PLUS au dixieme, dans la langue courante.
+ *
+ * « AU PLUS », et pas « exactement » : les rayons de la table de regulation sont des entiers
+ * (18 m, 24 m) et `formatNumber` les rembourrerait en « 18,0 m ». Une portee de radar ne se
+ * mesure pas au decimetre ; la mediane, elle, en a besoin d'un.
+ */
+export function formatDistanceM(metres: number, locale: Locale): string {
+  return new Intl.NumberFormat(intlLocale(locale), {
+    maximumFractionDigits: DISTANCE_DECIMALES,
+  }).format(metres)
 }
 
 /**
@@ -372,37 +270,207 @@ export function positionCategorie(
   return null
 }
 
+// ─── LA PROJECTION DU PLAN — refaite le 2026-09-13, sur constat utilisateur ───
+//
+// CE QUI ÉTAIT FAUX, ET QUI L'ÉTAIT DE TROIS FAÇONS À LA FOIS (mesuré sur Illusion, 54
+// matchs, « Où je meurs », réponse `/raster` du serveur en main) :
+//
+//  1. LE PEINTRE JETAIT LES CELLULES D'INDEX NÉGATIF. Le serveur adresse ses cellules sur
+//     l'ORIGINE DU MONDE (`col = floor(x / pas)`), donc en nombres signés ; `drawHeatmap`
+//     n'énumère que `0..nx` et `0..ny`. Sur Illusion : 11 cellules dessinées sur les 54
+//     servies. C'est tout le « calque quasi vide ».
+//  2. LE CALQUE ET LE FOND N'ÉTAIENT PAS DANS LE MÊME REPÈRE. Le cadre prenait la boîte
+//     englobante des cellules MESURÉES (30 x 36 m sur Illusion) et l'image du fond, qui
+//     couvre 53 x 69 m, y était étirée : aucune correspondance monde vers image. D'où des
+//     zones chaudes « à côté du bâtiment ».
+//  3. L'AXE Y N'ÉTAIT PAS INVERSÉ, alors que le calage publié avec chaque fond l'impose
+//     (`yMonde = originY - (py + 0.5) * metersPerPixel`).
+//
+// LE PLANCHER N'Y EST POUR RIEN, et c'est mesuré : 417 morts localisées sur 433 (96 %),
+// 54 cellules retenues à 2 m. La carte avait de quoi être peinte.
+//
+// CE QU'ON FAIT MAINTENANT — exactement ce que fait « Où ça se joue » (`_positionsHeat.ts`),
+// qui pose 100 % de ses positions sur le plan : le repère est LE CADRE DU FOND, les cellules
+// serveur y sont réindexées en 0-based, et Y est inversé.
+
 /**
- * planCanvasViewContain — la projection monde -> canvas d'un cadre à rapport IMPOSÉ : le
- * monde est mis À L'ÉCHELLE POUR TENIR EN ENTIER, centré, sans déformation.
+ * RepereTactique — le rectangle MONDE dans lequel le canvas du plan est tracé, et le pas de
+ * la grille servie.
  *
- * POURQUOI ELLE EXISTE, À CÔTÉ DE `planCanvasView`. Le plan d'une carte met son CADRE au
- * rapport du monde : une seule échelle suffit, lue sur X. Une VIGNETTE de la grille, elle,
- * ne peut pas faire ça — des cartes de rapports différents donneraient des vignettes de
- * hauteurs différentes, et la grille perdrait ses lignes. Son cadre est donc fixe, et c'est
- * le CALQUE qui s'adapte : même échelle sur les deux axes (la plus contraignante), le reste
- * en marge. Étirer le calque pour remplir aurait déformé la carte — une zone chaude ronde y
- * deviendrait ovale, et deux vignettes ne se compareraient plus.
- *
- * `null` si les bornes ou le canvas ne sont pas exploitables.
+ * Il vient du CADRE DU FOND quand la carte en a un (le cas normal : c'est lui qui aligne le
+ * calque sur l'image), et de la boîte englobante des cellules sinon — une carte sans fond
+ * figé n'affiche aucune image, le calque s'y lit seul et son cadrage propre reste le bon.
  */
-export function planCanvasViewContain(
+export interface RepereTactique {
+  minX: number
+  maxX: number
+  /** Y monde du bord HAUT du cadre (le Y décroît vers le bas de l'image). */
+  maxY: number
+  minY: number
+  pasM: number
+}
+
+/**
+ * repereDuPlan — le repère de projection : le cadre du fond s'il est connu, la boîte
+ * englobante des cellules sinon. `null` quand ni l'un ni l'autre n'est exploitable.
+ */
+export function repereDuPlan(
+  fond: MapFrame | null,
   bornes: BornesMonde,
-  canvasWidth: number,
-  canvasHeight: number,
-): { topLeftWorld: { x: number; y: number }; scale: number } | null {
+  pasM: number,
+): RepereTactique | null {
+  if (!(pasM > 0)) return null
+  if (fond && fond.widthM > 0 && fond.heightM > 0) {
+    return {
+      minX: fond.originX,
+      maxX: fond.originX + fond.widthM,
+      maxY: fond.originY,
+      minY: fond.originY - fond.heightM,
+      pasM,
+    }
+  }
   const largeur = bornes.max_x - bornes.min_x
   const hauteur = bornes.max_y - bornes.min_y
   if (!bornes.valide || !(largeur > 0) || !(hauteur > 0)) return null
+  return { minX: bornes.min_x, maxX: bornes.max_x, maxY: bornes.max_y, minY: bornes.min_y, pasM }
+}
+
+/** Le rapport largeur/hauteur du repère — celui que prend le cadre de la carte. */
+export function repereAspect(repere: RepereTactique): number {
+  return (repere.maxX - repere.minX) / (repere.maxY - repere.minY)
+}
+
+/** Nombre de colonnes et de lignes du repère, au pas servi. */
+export function repereDimensions(repere: RepereTactique): { nx: number; ny: number } {
+  return {
+    nx: Math.max(1, Math.ceil((repere.maxX - repere.minX) / repere.pasM)),
+    ny: Math.max(1, Math.ceil((repere.maxY - repere.minY) / repere.pasM)),
+  }
+}
+
+/** L'adresse 0-based, dans le repère, d'une cellule SERVEUR (ancrée sur l'origine du monde). */
+function adresseDansLeRepere(
+  col: number,
+  lig: number,
+  repere: RepereTactique,
+): { col: number; row: number } {
+  const centreX = (col + 0.5) * repere.pasM
+  const centreY = (lig + 0.5) * repere.pasM
+  return {
+    col: Math.floor((centreX - repere.minX) / repere.pasM),
+    row: Math.floor((repere.maxY - centreY) / repere.pasM),
+  }
+}
+
+/**
+ * grilleDuPlan — la grille de peinture, RÉINDEXÉE sur le repère.
+ *
+ * Chaque cellule serveur est replacée par son CENTRE monde, puis adressée en 0-based dans le
+ * cadre (Y inversé). Une cellule hors du cadre est IGNORÉE, jamais rabattue sur un bord : un
+ * point hors carte n'a rien à dire d'un bord (même règle que « Où ça se joue »).
+ */
+export function grilleDuPlan(
+  cellules: readonly CelluleTactique[],
+  repere: RepereTactique,
+  echelle: EchelleTactique,
+): TacticalGrid | null {
+  const { nx, ny } = repereDimensions(repere)
+  const cells: { col: number; row: number; value: number }[] = []
+  for (const c of cellules) {
+    const adresse = adresseDansLeRepere(c.col, c.lig, repere)
+    if (adresse.col < 0 || adresse.col >= nx || adresse.row < 0 || adresse.row >= ny) continue
+    cells.push({ col: adresse.col, row: adresse.row, value: c.valeur })
+  }
+  if (cells.length === 0) return null
+  return buildTacticalGrid(
+    cells,
+    { cell: repere.pasM, nx, ny, minX: repere.minX, minY: repere.minY },
+    { lo: echelle.p50, hi: echelle.p95, signee: echelle.symetrique, borne: echelle.borne },
+    cells.length,
+  )
+}
+
+/**
+ * vueDuPlan — la projection monde vers canvas d'un repère : ce que `drawTacticalHeatmap`
+ * attend, une fois les cellules réindexées en 0-based (l'origine du calque est donc le coin
+ * du canvas, et l'échelle celle du cadre).
+ */
+export function vueDuPlan(
+  repere: RepereTactique,
+  canvasWidth: number,
+): { topLeftWorld: { x: number; y: number }; scale: number } | null {
+  const largeur = repere.maxX - repere.minX
+  if (!(largeur > 0) || !(canvasWidth > 0)) return null
+  return { topLeftWorld: { x: 0, y: 0 }, scale: canvasWidth / largeur }
+}
+
+/**
+ * celluleDuClic — l'adresse SERVEUR (ancrée sur l'origine du monde) de la cellule sous un
+ * clic. C'est cette adresse-là que `/tactical/{map}/cellule` attend, et celle que portent
+ * les `CelluleTactique.col/lig` de la réponse agrégée.
+ *
+ * `null` si le clic tombe hors du canvas.
+ */
+export function celluleDuClic(
+  clickX: number,
+  clickY: number,
+  canvas: { width: number; height: number },
+  repere: RepereTactique,
+): { col: number; row: number } | null {
+  const { width, height } = canvas
+  if (!(width > 0) || !(height > 0)) return null
+  if (clickX < 0 || clickY < 0 || clickX > width || clickY > height) return null
+  const worldX = repere.minX + (clickX / width) * (repere.maxX - repere.minX)
+  const worldY = repere.maxY - (clickY / height) * (repere.maxY - repere.minY)
+  return { col: Math.floor(worldX / repere.pasM), row: Math.floor(worldY / repere.pasM) }
+}
+
+/**
+ * rectSelection — le cadre, en pixels canvas, de la cellule SERVEUR choisie. Même projection
+ * que la peinture, donc le cadre se pose exactement sur la cellule peinte. `null` quand rien
+ * n'est choisi ou que la cellule tombe hors du cadre du fond.
+ */
+export function rectSelection(
+  selected: { col: number; row: number } | null,
+  repere: RepereTactique,
+  canvasWidth: number,
+): { x: number; y: number; size: number } | null {
+  if (!selected) return null
+  const vue = vueDuPlan(repere, canvasWidth)
+  if (!vue) return null
+  const { nx, ny } = repereDimensions(repere)
+  const adresse = adresseDansLeRepere(selected.col, selected.row, repere)
+  if (adresse.col < 0 || adresse.col >= nx || adresse.row < 0 || adresse.row >= ny) return null
+  const taille = repere.pasM * vue.scale
+  return { x: adresse.col * taille, y: adresse.row * taille, size: taille }
+}
+
+/**
+ * vueContain — la projection d'un repère dans un cadre à rapport IMPOSÉ : le monde est mis à
+ * l'échelle pour TENIR EN ENTIER, centré, sans déformation.
+ *
+ * Sert aux VIGNETTES de la grille, dont le cadre est à hauteur fixe : au rapport du monde,
+ * des cartes de rapports différents donneraient des vignettes de hauteurs différentes et la
+ * grille perdrait ses lignes. Étirer le calque pour remplir aurait déformé la carte — une
+ * zone chaude ronde y deviendrait ovale, et deux vignettes ne se compareraient plus.
+ */
+export function vueContain(
+  repere: RepereTactique,
+  canvasWidth: number,
+  canvasHeight: number,
+): { topLeftWorld: { x: number; y: number }; scale: number } | null {
+  const largeur = repere.maxX - repere.minX
+  const hauteur = repere.maxY - repere.minY
+  if (!(largeur > 0) || !(hauteur > 0)) return null
   if (!(canvasWidth > 0) || !(canvasHeight > 0)) return null
   const scale = Math.min(canvasWidth / largeur, canvasHeight / hauteur)
-  // Marges de centrage, puis l'origine du MONDE (et non `min_x`) : le peintre place une
-  // cellule à `topLeftWorld + col x pas x scale`, et `col` est l'adresse serveur, ancrée
-  // sur l'origine du monde (cf. `planCanvasView`).
-  const margeX = (canvasWidth - largeur * scale) / 2
-  const margeY = (canvasHeight - hauteur * scale) / 2
+  // Les cellules sont déjà réindexées en 0-based dans le repère : l'origine du calque est
+  // donc le coin haut-gauche du cadre, décalé des marges de centrage.
   return {
-    topLeftWorld: { x: margeX - bornes.min_x * scale, y: margeY - bornes.min_y * scale },
+    topLeftWorld: {
+      x: (canvasWidth - largeur * scale) / 2,
+      y: (canvasHeight - hauteur * scale) / 2,
+    },
     scale,
   }
 }
