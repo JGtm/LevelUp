@@ -253,7 +253,7 @@ go run ./cmd/mapopads-build --from <dossier> --refresh-drifted   # re-valide con
 - Sortie : `data/titles/{slug}/reference/map_weapon_pads.json` (socles d'arme et de
   power-up), écriture atomique via le même helper `mapcatalog.WriteAtomic` que le chemin de
   rattrapage Forge de la synchro écrit dans ce même fichier
-  (`.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 — suivi séparément, hors de cette chaîne).
+  (`.ai/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 — suivi séparément, hors de cette chaîne).
 - Prérequis : ni jeu installé, ni réseau, ni cgo ; exige `map_objectives.json` (lien map_id ->
   nom de fichier) et un dépôt local de `.mvar` (`--from`).
 - À rejouer : `--refresh-drifted` — le `.mvar` d'une carte UGC ne concorde plus avec le

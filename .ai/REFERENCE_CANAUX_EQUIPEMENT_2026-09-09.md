@@ -296,5 +296,5 @@ Trois affirmations fausses à ne pas répéter :
 - `internal/analysis/replay/document_equipment_changes.go` — `taken` / `spent`
 - `internal/analysis/replay/usage_summary.go` — ce qui est persisté au grain session
 - `features/match-replay/model/equipmentUsageLogic.ts` — les canaux lus par la fiche
-- `.ai/HANDOFF_LECTURE_EQUIPEMENT_2026-09-04.md` — négatifs mesurés, pièges de mesure
-- `.ai/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` — décisions D5, D6, D9 ; lots C5 et C6
+- `.ai/V7.5/HANDOFF_LECTURE_EQUIPEMENT_2026-09-04.md` — négatifs mesurés, pièges de mesure
+- `.ai/V7.5/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` — décisions D5, D6, D9 ; lots C5 et C6

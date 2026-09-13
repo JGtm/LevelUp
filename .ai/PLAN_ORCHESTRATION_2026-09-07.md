@@ -321,7 +321,7 @@ suivies et n'est jamais touché ; suppression locale seulement, `origin` gardé 
   chaleur du lot D n'est pas dans `lib/replay/` contrairement à la prémisse de S.2. Reprise : Q7.
 - 2026-09-07 ; `analysis/replay/death_context.go:73,185` ; `EtatParti` n'est plus produit
   depuis 7C.9 (énumération morte). Reprise : Q8.
-- 2026-09-07 ; `.ai/PLAN_TACTIQUE_2026-09-06.md` phase 8 ; cases 8.1-8.4 vides, 8.4 (revue du
+- 2026-09-07 ; `.ai/V7.5/PLAN_TACTIQUE_2026-09-06.md` phase 8 ; cases 8.1-8.4 vides, 8.4 (revue du
   diff intégral) jamais faite bien que le commit dise « clôture ». Reprise : Q8.
 - 2026-09-07 ; `DECOUVERTES_TACTIQUE`, entrée « `LEFT JOIN match_registry` sans test » ; caduque
   depuis 7C.9 (le JOIN a disparu avec la lecture des instants). Reprise : Q8 (fermer).

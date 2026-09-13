@@ -37,9 +37,9 @@ contient pas.
 
 | Plan | Rapport |
 |---|---|
-| `.ai/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` lot **C6** (fusion déployé/lâché) | **REMPLACÉ** par les étapes E2 et E3 de ce plan. La forme validée a changé : trois issues au lieu de deux, et les bonus entrent dans la barre (correction de la décision D9, déjà écrite dans ce plan-là le 2026-09-09) |
+| `.ai/V7.5/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` lot **C6** (fusion déployé/lâché) | **REMPLACÉ** par les étapes E2 et E3 de ce plan. La forme validée a changé : trois issues au lieu de deux, et les bonus entrent dans la barre (correction de la décision D9, déjà écrite dans ce plan-là le 2026-09-09) |
 | Même plan, lot **C5** (blocs sur Escouade et Synthèse) | **ABSORBÉ** par les étapes E5 et E6 |
-| `.ai/PLAN_SESSION_USAGE_LISIBILITE_2026-09-09.md` | **CLOS**, livré le même jour. Ce plan reprend son vocabulaire et ses formes. Ne pas défaire son travail |
+| `.ai/V7.5/PLAN_SESSION_USAGE_LISIBILITE_2026-09-09.md` | **CLOS**, livré le même jour. Ce plan reprend son vocabulaire et ses formes. Ne pas défaire son travail |
 
 **Action à faire à l'ouverture de ce chantier** : annoter le plan de la vague C pour dire que
 C5 et C6 sont repris ici, sinon deux agents travailleront sur le même sujet.
