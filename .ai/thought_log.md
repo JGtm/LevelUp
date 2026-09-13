@@ -106941,3 +106941,46 @@ il revient au pilote, base libre, `--base=feat/v75`.
 
 **Prochaine étape** : décision utilisateur sur l'ordre P1..P5 du rapport (lot I, architecture
 « profil de déchiffrage ») ; puis lot F.
+## [2026-09-11] En-tete des records d'image-cle : il est PROPRE AU TYPE d'entite (ti=9 = 47 bits)
+
+**Statut** : Complete (mesure ; aucun code de production touche).
+
+**Decision technique principale** : rejouer la these du fork ChaseWoodhams (`2a8b21a51`) sur
+NOTRE arbre et NOS films, en n'ajoutant que des bancs sautes sans films. La grammaire rejouee
+est `[en-tete H bits][etat par defaut][porte has-components][masque + composants]`, avec H
+comme seule variable ; l'etat par defaut, la porte, le masque et la boucle de composants sont
+ceux de production (`consumeKeyframeDefaultState`, `decodeDeltaWithArch`). Le designateur
+d'equipe est RELU a `CompResult.StartBit` sur 4 bits au lieu d'etre capture : c'est ce qui
+permet de ne modifier aucun fichier de production. Trois films d'arene 4v4 dont la table des
+scores donne la verite 4-4 (`4a93f0e2` Dynasty CTF, `8b512df2` Forest CTF, `ce083875` Origin
+Neutral Bomb), lus en `read_only` pendant que le serveur local tenait la base.
+
+**Resultats observes** : these CONFIRMEE. A 47 bits, ti=9 rend 1151 records traverses, 0 desync,
+0 record vide, 1151 composants, 1151 lectures du designateur — huit entites par film, valeur
+STABLE (aucune divergence sur ~400 relevés), reparties 4-4, du premier au dernier chunk de
+replication. A 64 et 108 bits, ti=9 rend 0 composant. Contre-epreuve : le biped (ti=35) passe de
+13 449 composants a 64 bits a ZERO a 47 bits. Balayage 0..300 : 160 prefixes decodent au moins
+un composant, UN SEUL tient le critere 4-4 sur les trois films, et c'est 47.
+
+Le PIEGE « 0 desync » du fork est reel chez nous : ti=9 a 64 et 108 bits donne 0 desync et 0
+composant — un critere naif aurait declare ces largeurs bonnes. Tout banc de calibration doit
+publier le compte de composants a cote du compte de desyncs.
+
+Lien entite -> joueur : NON resolu, et deux pistes gratuites tuees. (1) L'etat par defaut de
+ti=9 (`V ; R(6) ; R(6) ; R(1)`) vaut 0/0/1 sur tous les records des trois films : aucun index.
+(2) Les huit entites ti=9 occupent des slots consecutifs de deux en deux (intercalees avec
+autant de ti=47, le bloc joueur), mais confronte a `weaponv3.ResolveXuidToPI` + la base, chaque
+equipe occupe des index de joueur ENTRELACES (ex. equipe 0 = 1,4,5,7) et non un bloc contigu :
+« rang de slot = index de joueur » est refute dans les trois films.
+
+**Conclusion / prochaine etape** : `document.go:345-346` et `:558-561` affirment a tort que le
+film ne porte pas l'equipe — a corriger le jour ou le lien sera resolu, pas avant (le
+comportement, lui, est bon : la base joint deja l'equipe avec le gamertag). Exploitation NON
+recommandee : gain utilisateur nul (la base a l'information, en mieux) et le lien entite ->
+joueur demande une retro-ingenierie du bloc ti=9/ti=47 ou du pont statborg, de cout inconnu.
+Ce qui reste acquis et utile : l'en-tete se calibre PAR TYPE (notre `keyframe_fullstate_loop.go`
+n'exprime qu'une largeur pour tous), le 64 des 48 autres types est un HERITAGE non verifie, et
+le balayage de prefixes avec le garde « au moins un composant decode » est l'outil pour les
+calibrer. Rapport complet : `.ai/MESURE_ENTETE_TI9_47BITS_2026-09-11.md`. Decouverte hors
+perimetre, consignee et NON traitee : verifier le piege « 0 composant » dans les bancs de
+calibration existants de `filmdec`.
