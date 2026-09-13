@@ -12,7 +12,7 @@
 // rejouables) gagnent encore l'arbitrage de match_skill_rank_latest.
 //
 // JAMAIS DE DELETE. `DELETE FROM match_skill_rank WHERE playlist_group='h5_arena'` sur
-// une table indexée est EXACTEMENT le vecteur du bug DuckDB ART #23046 qui a mis des
+// une table indexée est EXACTEMENT le vecteur du bug DuckDB ART #23645 qui a mis des
 // bases en FATAL en prod (règle CLAUDE.md n°1, ADR 0026). La purge se fait par
 // RECONSTRUCTION CTAS transactionnelle, modelée sur migration/append_only_rebuild.go
 // (rebuildAppendOnlyTx) : BEGIN, CTAS filtré, garde de cardinalité AVANT le DROP,

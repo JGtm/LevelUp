@@ -9,7 +9,7 @@
 Sur DuckDB file-backed (1.5.x), l'enforcement d'une contrainte `PRIMARY KEY`/`UNIQUE`
 passe par un index **ART** (Adaptive Radix Tree). Sous churn — `DELETE` ligne-à-ligne,
 `UPDATE` d'une colonne indexée, `INSERT ... ON CONFLICT DO UPDATE`, `INSERT OR
-REPLACE/IGNORE` — l'ART corrompt le heap (bug amont #23645) :
+REPLACE/IGNORE` — l'ART perd la cohérence de son index (bug amont #23645, « Failed to delete all rows from index ») :
 
 ```
 Failed to delete all rows from index
