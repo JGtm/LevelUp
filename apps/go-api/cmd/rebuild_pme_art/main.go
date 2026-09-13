@@ -5,10 +5,11 @@
 // pour defaire la corruption qui fait crasher DuckDB sous pression d'UPDATE
 // ("Failed to append to PRIMARY_player_match_enrichment_0: duplicate key").
 //
-// Pourquoi pas force_rebuild_art --player-db : ce dernier tente AUSSI de
-// rebuild match_skill_rank, table devenue append-only (v5.3) qui ne peut plus
-// porter de PRIMARY KEY -> echec + WAL non checkpointe. Ce CLI cible UNIQUEMENT
-// player_match_enrichment et CHECKPOINT explicitement pour ne laisser aucun WAL.
+// Ce CLI cible UNIQUEMENT player_match_enrichment et CHECKPOINT explicitement
+// pour ne laisser aucun WAL. Il ne touche PAS match_skill_rank : cette table est
+// append-only depuis la v5.3 (PK technique id, N lignes par match_id) et ne peut
+// plus porter de PRIMARY KEY(match_id) -- son ancien rebuild (force_rebuild_art)
+// a ete supprime le 2026-09-13, il echouait et laissait le WAL non checkpointe.
 //
 // Non destructif : garde anti-perte (rollback si le nombre de rows change).
 //
