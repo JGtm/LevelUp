@@ -59,8 +59,10 @@ describe('EquipmentUsageSection', () => {
     const labels = screen.getAllByText(/Mur de protection|Capteur de menaces/)
     expect(labels[0]).toHaveTextContent('Mur de protection')
     expect(labels[1]).toHaveTextContent('Capteur de menaces')
-    // Le bandeau "Matchs mesures" (une occurrence par carte)
-    expect(screen.getAllByText(t.measuredFmt(8, 8)).length).toBe(2)
+    // La couverture ne s'ecrit plus dans les bandeaux de titre (2026-09-13) : une seule
+    // ligne de pied par rangee, donc DEUX au total, et aucun "Matchs mesures N/M".
+    expect(screen.queryByText(t.measuredFmt(8, 8))).not.toBeInTheDocument()
+    expect(screen.getAllByText(t.measuredFooterFmt(8, 8)).length).toBe(2)
     // La barre "armes speciales" (pad_pickups) rend "Moi" pour le joueur de la route.
     expect(screen.getByText('Moi')).toBeInTheDocument()
     expect(screen.getByText('12 prises')).toBeInTheDocument()
