@@ -43,7 +43,7 @@ CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR);
 
 const playerDDL = `
 CREATE TABLE player_match_enrichment (match_id VARCHAR, session_id VARCHAR, session_label VARCHAR, is_with_friends BOOLEAN DEFAULT FALSE, teammates_signature VARCHAR, performance_score FLOAT, psa_checked_at TIMESTAMP);
-CREATE TABLE match_skill_rank (match_id VARCHAR, rating_type VARCHAR);
+CREATE TABLE match_skill_rank (match_id VARCHAR, rating_type VARCHAR, playlist_group VARCHAR);
 CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR);
 CREATE TABLE personal_score_awards (match_id VARCHAR, xuid VARCHAR);
 `
@@ -188,4 +188,60 @@ func keysOf(m map[string]Violation) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+// TestCheckPlayerLUSRChains_FlagsForeignChain — I14 : une ligne LUSR portant une
+// chaîne qui n'appartient pas au titre de la base est une corruption cross-titre
+// (incident 2026-06-26, rapport .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3
+// G3). Le check lit la table BRUTE : la ligne fautive survit sous la ligne gagnante
+// de la vue _latest après un replay correct, invisible de tout lecteur applicatif.
+func TestCheckPlayerLUSRChains_FlagsForeignChain(t *testing.T) {
+	db := openMemDB(t, playerDDL)
+	ctx := context.Background()
+	rows := []struct{ matchID, ratingType, group string }{
+		{"m1", "LUSR", "arena_slayer"}, // sain
+		{"m2", "LUSR", "h5_arena"},     // ÉTRANGER (Halo 5 dans une base Infinite)
+		{"m2", "LUSR_V2", "h5_arena"},  // la ligne d'audit jumelle
+		{"m3", "CSR", "Ranked Arena"},  // CSR : playlist classée, pas une chaîne LUSR
+		{"m4", "LUSR", ""},             // chaîne vide : match exclu du LUSR, pas une violation
+	}
+	for _, r := range rows {
+		if _, err := db.ExecContext(ctx,
+			`INSERT INTO match_skill_rank (match_id, rating_type, playlist_group) VALUES (?, ?, ?)`,
+			r.matchID, r.ratingType, r.group); err != nil {
+			t.Fatalf("insert %s/%s: %v", r.matchID, r.ratingType, err)
+		}
+	}
+
+	rep, err := CheckPlayerLUSRChains(ctx, db, []string{"arena_slayer"})
+	if err != nil {
+		t.Fatalf("CheckPlayerLUSRChains: %v", err)
+	}
+	v, ok := violationKeys(rep)["lusr_chain_foreign_title"]
+	if !ok {
+		t.Fatalf("aucune violation lusr_chain_foreign_title ; rep = %+v", rep.Violations)
+	}
+	if v.Severity != SeverityFail {
+		t.Errorf("severity = %q, want %q", v.Severity, SeverityFail)
+	}
+	if v.Count != 2 {
+		t.Errorf("count = %d, want 2 (les lignes LUSR + LUSR_V2 de m2 ; ni le CSR ni la chaîne vide)", v.Count)
+	}
+	if len(v.Sample) != 1 || v.Sample[0] != "h5_arena" {
+		t.Errorf("sample = %v, want [h5_arena]", v.Sample)
+	}
+
+	// Chaîne autorisée → zéro violation (pas de faux positif).
+	rep, err = CheckPlayerLUSRChains(ctx, db, []string{"arena_slayer", "h5_arena"})
+	if err != nil {
+		t.Fatalf("CheckPlayerLUSRChains (h5_arena autorisée): %v", err)
+	}
+	if len(rep.Violations) != 0 {
+		t.Errorf("violations = %v, want aucune quand la chaîne est déclarée par le titre", rep.Violations)
+	}
+
+	// Liste vide = harnais mal câblé → erreur, jamais « tout est étranger ».
+	if _, err := CheckPlayerLUSRChains(ctx, db, nil); err == nil {
+		t.Error("allowedChains vide doit remonter une erreur de harnais")
+	}
 }
