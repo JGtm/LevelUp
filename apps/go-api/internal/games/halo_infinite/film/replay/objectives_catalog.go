@@ -201,6 +201,12 @@ type PointObjective struct {
 	// TeamIndex : même sémantique (et même piège) que Zone.TeamIndex.
 	TeamIndex int
 	Center    mapvar.Vec3
+	// Neutral : l'objet porte le label de la variante « drapeau neutre »
+	// (`ctf_neutral_include`). Le champ est DÉRIVÉ ici parce que cette projection
+	// laisse tomber `Labels` : sans lui, l'information de neutralité n'existe plus
+	// en aval, et le seul indice restant serait `TeamIndex` — qui ment sur le socle
+	// central d'Illusion (cf. le godoc de mapvar.Objective.IsCTFNeutral).
+	Neutral bool
 }
 
 // PointsOfRole rend les objectifs PONCTUELS d'un rôle donné — le complément exact de
@@ -221,6 +227,7 @@ func (e MapObjectivesEntry) PointsOfRole(role mapvar.Role) []PointObjective {
 			ObjectIdx:  o.ObjectIdx,
 			TeamIndex:  o.TeamIndex,
 			Center:     o.Pos,
+			Neutral:    o.IsCTFNeutral(),
 		})
 	}
 	sort.SliceStable(out, func(i, j int) bool {
