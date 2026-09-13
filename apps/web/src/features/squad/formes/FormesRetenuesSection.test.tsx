@@ -77,6 +77,31 @@ describe('FormesRetenuesSection', () => {
     expect(down).toBeEmptyDOMElement()
   })
 
+  // DÉFAUT MESURÉ LE 2026-09-13 : sur une portée de 1 147 matchs, les formes par
+  // match rendaient une ligne par match — quinze écrans, presque tous hachurés.
+  it('replie les formes par match au-delà de vingt, et le dit', () => {
+    const block = formesFixture()
+    const base = (block.matches ?? [])[1]
+    // 60 matchs mesurés + les 3 de la fixture.
+    block.matches = [
+      ...Array.from({ length: 60 }, (_, i) => ({
+        ...base,
+        match_id: `bulk-${i}`,
+        start_time: new Date(Date.UTC(2026, 6, 1) - i * 3600_000).toISOString(),
+      })),
+      ...(block.matches ?? []),
+    ]
+    block.matches_total = block.matches.length
+    render(<FormesRetenuesSection block={block} locale="fr" />)
+    // Une ligne par match mesuré affiché, jamais une par match du scope.
+    const grip = screen.getByLabelText(frCards.cards.padsSquadByMatch.title)
+    expect(grip.querySelectorAll('[role="img"][aria-label*="Prises de socle"]').length).toBe(0)
+    expect(grip.textContent).toContain('Affichés : les 20 derniers matchs à film décodé')
+    expect(grip.textContent).toContain('matchs sans film décodé sont hors de cette forme')
+    // Le match sans film n'a plus de ligne du tout.
+    expect(grip.textContent).not.toContain(fr.common.noFilm)
+  })
+
   it('rend aussi en anglais, sans clé manquante', () => {
     render(<FormesRetenuesSection block={formesFixture()} locale="en" />)
     expect(screen.getByText(FORMES_TEXT.en.blocks.weapons.title)).toBeInTheDocument()

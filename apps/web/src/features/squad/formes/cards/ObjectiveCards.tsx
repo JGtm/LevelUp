@@ -10,7 +10,7 @@
  * UNE DURÉE NE SE COMPARE QU'À SA PROPRE PARITÉ : les colonnes « tenir » sont en
  * secondes et s'écrivent en m:ss.
  */
-import { FormesCard, FormesSubtitle } from '../FormesCard'
+import { FormesCaption, FormesCard, FormesSubtitle } from '../FormesCard'
 import { MINUS_INK, PLUS_INK, SPREAD_INK, TEAM_REST_INK, squadPlayerInk } from '../colors'
 import { EcartForm, type EcartRow } from '../forms/EcartForm'
 import { GrilleForm, type GrilleColumn, type GrilleRow } from '../forms/GrilleForm'
@@ -27,7 +27,11 @@ import {
   roleLobbyParts,
 } from '../model/objectives'
 import type { FormesViewModel } from '../viewModel'
+import { listWindow } from '../model/display'
 import { lobbyTrackRow } from './shared'
+
+/** La colonne des noms d'une grille par match — cf. EquipmentCards. */
+const MATCH_NAME_WIDTH = 240
 
 /** Le libellé d'une famille de mode (clé stable -> nom du titre). */
 function familyLabel(vm: FormesViewModel, family: string): string {
@@ -163,7 +167,10 @@ export function ObjectivesRawGridCard({ vm }: { vm: FormesViewModel }) {
       legend={[{ label: vm.squad[0]?.label ?? '', ink: squadPlayerInk(0) }]}
     >
       {objectiveFamilies(vm.block).map((family) => {
-        const matches = matchesOfFamily(vm.block, family)
+        // LA FEUILLE DE MATCH N'A PAS BESOIN DE FILM : aucun match n'est écarté
+        // ici, la forme se borne seulement en nombre (les plus récents).
+        const shown = listWindow(matchesOfFamily(vm.block, family))
+        const matches = shown.rows
         const cols = columnsOfFamily(vm.block, family)
         const rows: GrilleRow[] = matches.map((m) => ({
           key: m.match_id,
@@ -192,7 +199,9 @@ export function ObjectivesRawGridCard({ vm }: { vm: FormesViewModel }) {
               tooltip={(row, col, text) => t.common.valueTipFmt(row.label, col.label, text)}
               notMeasuredLabel={t.common.notMeasured}
               axisTitle={t.common.gesturesAxis}
+              nameWidth={MATCH_NAME_WIDTH}
             />
+            <FormesCaption>{t.common.foldListFmt(matches.length, shown.hidden)}</FormesCaption>
           </div>
         )
       })}
