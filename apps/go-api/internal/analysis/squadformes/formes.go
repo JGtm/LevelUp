@@ -73,6 +73,9 @@ type ObjectiveColumnRow struct {
 	XUID    string
 	Family  narrative.ObjectiveFamily
 	Values  map[string]float64
+	// FlagJuggleWindowSeconds : la fenêtre sous laquelle les prises nettes de
+	// cette ligne ont été calculées. Zéro = la ligne n'en porte pas.
+	FlagJuggleWindowSeconds float64
 }
 
 // WeaponInfo — ce que le catalogue du titre sait d'une famille d'arme de socle.
@@ -228,9 +231,22 @@ func buildObjective(
 	}
 	out := &domain.SquadFormesObjective{Family: string(fam), Columns: cols}
 	for _, r := range rows {
+		// La fenêtre est la MÊME pour toutes les lignes d'un match (une passe,
+		// une règle) : la première non nulle la donne.
+		if out.FlagJuggleWindowSeconds == 0 {
+			out.FlagJuggleWindowSeconds = r.FlagJuggleWindowSeconds
+		}
 		p := domain.SquadFormesObjectivePlayer{XUID: r.XUID, Values: map[string]float64{}}
 		for _, c := range cols {
-			p.Values[c.Key] = r.Values[c.Key]
+			v, mesure := r.Values[c.Key]
+			// UNE GRANDEUR OPTIONNELLE ABSENTE N'EST PAS UN ZÉRO : sa clé reste
+			// hors de `values`, et le web rend « non mesuré ». Les colonnes de
+			// `match_objective_stats`, elles, gardent leur 0 — il y est une
+			// mesure (cf. SquadFormesObjectiveColumn.Optional).
+			if c.Optional && !mesure {
+				continue
+			}
+			p.Values[c.Key] = v
 		}
 		out.Players = append(out.Players, p)
 	}
@@ -273,8 +289,11 @@ func projectObjectives(rows []ObjectiveColumnRow) (
 				if !seen[col] {
 					continue
 				}
+				_, optional := narrative.ObjectiveExtraGrandeurFamily(col)
 				list = append(list, domain.SquadFormesObjectiveColumn{
-					Key: col, Role: string(role), Duration: role == narrative.ObjectiveRoleHold,
+					Key: col, Role: string(role),
+					Duration: role == narrative.ObjectiveRoleHold,
+					Optional: optional,
 				})
 			}
 		}
@@ -283,9 +302,14 @@ func projectObjectives(rows []ObjectiveColumnRow) (
 	return byMatch, cols
 }
 
-// familyColumnsOfRole — les colonnes d'un rôle QUE CETTE FAMILLE possède :
+// familyColumnsOfRole — les grandeurs d'un rôle QUE CETTE FAMILLE possède :
 // l'intersection de la classification par rôle et du vocabulaire de la famille,
 // les deux tables uniques de narrative. Aucune liste locale, aucune curation.
+//
+// LES GRANDEURS HORS COLONNE (prises nettes de drapeau) s'y ajoutent par LEUR
+// PROPRE famille déclarée : elles ne sont dans aucune table de poids — c'est
+// exactement ce qui les empêche d'entrer dans un SUM sur
+// `match_objective_stats` — donc le vocabulaire ci-dessus ne les contient pas.
 func familyColumnsOfRole(fam narrative.ObjectiveFamily, role narrative.ObjectiveRole) []string {
 	vocab := map[string]bool{}
 	for col := range narrative.ObjectiveFamilyActionWeights[fam] {
@@ -298,6 +322,11 @@ func familyColumnsOfRole(fam narrative.ObjectiveFamily, role narrative.Objective
 	for _, col := range narrative.ObjectiveRoleColumns(role) {
 		if vocab[col] {
 			out = append(out, col)
+		}
+	}
+	for _, g := range narrative.ObjectiveRoleExtraGrandeurs(role) {
+		if f, ok := narrative.ObjectiveExtraGrandeurFamily(g); ok && f == fam {
+			out = append(out, g)
 		}
 	}
 	return out

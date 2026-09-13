@@ -30,6 +30,15 @@ type objectiveRoleRowsLoader interface {
 	LoadObjectiveRoleRows(ctx context.Context, matchIDs []string) ([]sessionusage.ObjectiveRow, error)
 }
 
+// flagGrabsNetLoader est la capability OPTIONNELLE qui sert les prises nettes de
+// drapeau. Interface SÉPARÉE de celle ci-dessus, et non une méthode de plus :
+// les deux grandeurs viennent de deux tables alimentées par deux producteurs
+// (l'API pour les rôles, le film pour les prises nettes), et un montage qui n'a
+// que l'une doit pouvoir servir l'autre sans l'implémenter.
+type flagGrabsNetLoader interface {
+	LoadFlagGrabsNet(ctx context.Context, matchIDs []string) ([]sessionusage.FlagGrabsNetRow, error)
+}
+
 // WithSessionUsage injecte le repo du résumé d'usage S1 (vues _latest), le xuid
 // du joueur suivi et le résolveur d'amis configurés (restriction des coéquipiers
 // suivis, même source que l'accueil). Câblé UNIQUEMENT pour les titres portant
@@ -146,6 +155,36 @@ func (s *SessionPageService) attachSessionObjectives(
 		TeamSize:   tc.TeamSize,
 		LobbySize:  tc.LobbySize,
 	})
+	s.attachFlagGrabsNet(ctx, block, matchIDs, tc)
+}
+
+// attachFlagGrabsNet ajoute les PRISES NETTES de drapeau au bloc objectifs.
+//
+// APRÈS ComputeObjectives, et pas dedans : la grandeur vient d'une autre table
+// et d'un autre producteur (le film), elle n'est mesurée que sur les matchs dont
+// l'artefact a été lu, et elle porte ses propres dénominateurs. Sans bloc
+// objectifs (scope sans mode à objectif), il n'y a rien à attacher.
+//
+// Best-effort et DIT : montage sans ce loader (titre qui ne produit pas la
+// grandeur) ⇒ silence ; lecture en échec ⇒ WARN, le reste du bloc est servi.
+func (s *SessionPageService) attachFlagGrabsNet(
+	ctx context.Context, block *domain.SessionUsageBlock,
+	matchIDs []string, tc sessionusage.TeamContext,
+) {
+	if block.Objectives == nil {
+		return
+	}
+	loader, ok := s.objectiveIndex.(flagGrabsNetLoader)
+	if !ok {
+		return
+	}
+	rows, err := loader.LoadFlagGrabsNet(ctx, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "session page: prises nettes indisponibles", "err", err)
+		return
+	}
+	block.Objectives.FlagGrabsNet = sessionusage.ComputeFlagGrabsNet(
+		rows, s.usageXUID, block.Objectives.MatchesWithObjectives, tc.PlayerTeam, tc.TeamOf)
 }
 
 // friendGamertags résout la liste des amis configurés (vide = aucune

@@ -157,6 +157,15 @@ type SquadFormesObjective struct {
 	Family  string                       `json:"family"`
 	Columns []SquadFormesObjectiveColumn `json:"columns,omitempty"`
 	Players []SquadFormesObjectivePlayer `json:"players,omitempty"`
+	// FlagJuggleWindowSeconds : la FENÊTRE DE JONGLAGE sous laquelle les prises
+	// nettes de ce match ont été calculées. Absente = le match n'en porte pas
+	// (pas de film lu, ou mode sans drapeau).
+	//
+	// ELLE VOYAGE AVEC LA MESURE parce que la mesure ne se lit pas sans elle :
+	// « 4 prises nettes » n'a de sens qu'assorti de « les reprises de moins de
+	// N secondes comptent pour une ». Le web en fait son infobulle ; le libellé,
+	// lui, reste côté web (aucune chaîne de langue ne descend d'ici).
+	FlagJuggleWindowSeconds float64 `json:"flag_juggle_window_seconds,omitempty"`
 }
 
 // SquadFormesObjectiveColumn — une grandeur du mode et son rôle.
@@ -169,6 +178,21 @@ type SquadFormesObjectiveColumn struct {
 	// Duration : la colonne porte des SECONDES (elle s'affiche en mm:ss et ne
 	// se compare jamais à un compte d'actions).
 	Duration bool `json:"duration,omitempty"`
+	// Optional : la grandeur PEUT MANQUER sur un match donné, et son absence
+	// n'est pas un zéro.
+	//
+	// POURQUOI CE DRAPEAU EXISTE. Les colonnes de `match_objective_stats`
+	// viennent du sync API : dès qu'un match a une ligne, toutes ses colonnes
+	// ont une valeur, et un 0 y est une mesure. Les grandeurs lues du FILM (les
+	// prises nettes de drapeau) n'existent que pour les matchs dont l'artefact
+	// a été lu — un match sans film décodé n'a AUCUNE valeur, et l'afficher à
+	// zéro dirait « il n'a rien pris » là où la vérité est « on n'a pas
+	// regardé ». Le web rend alors « non mesuré ».
+	//
+	// Une grandeur optionnelle ABSENTE ne figure pas dans `values` du joueur :
+	// c'est l'absence de clé qui porte l'information, jamais une valeur
+	// sentinelle.
+	Optional bool `json:"optional,omitempty"`
 }
 
 // SquadFormesObjectivePlayer — les valeurs d'un joueur sur les colonnes du match.

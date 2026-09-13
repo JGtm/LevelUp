@@ -107,13 +107,22 @@ go run ./cmd/levelup backfill-usage-summary [--dry-run] [--force] [--match ID] [
 go run ./cmd/levelup backfill-bomb-stats --dry-run
 go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--title S]
 
-# 4. Rasters d'occupation tactique -> fichiers sidecar JSON sous
+# 4. Prises nettes de drapeau -> match_flag_grabs_net (append-only). Elle lit les artefacts
+#    TELS QU'ILS SONT : aucun décodage, AUCUNE RECUISSON — tout artefact de schéma 14 ou
+#    plus porte déjà la chronologie de portage du drapeau. Indépendante de la passe (1),
+#    elle peut tourner avant elle.
+#    La fenêtre de jonglage vient de regulation.toml ; LA CHANGER EXIGE --force, car les
+#    lignes déjà écrites portent l'ancienne fenêtre et la reprise ne les reverrait jamais.
+go run ./cmd/levelup backfill-flag-grabs-net --dry-run
+go run ./cmd/levelup backfill-flag-grabs-net [--force] [--match ID] [--limit N] [--title S]
+
+# 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
 #    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 ```
 
-La passe (4) est idempotente : un sidecar n'est réécrit que s'il manque, si son propre
+La passe (5) est idempotente : un sidecar n'est réécrit que s'il manque, si son propre
 `schema_version` n'est plus le courant, ou si son `artifact_schema_version` ne correspond
 plus à celui de l'artefact dont il a été projeté (donc après une re-cuisson). Une seconde
 passe immédiate écrit zéro fichier. **Le schéma 3 du sidecar** ajoute les morts (avec la
