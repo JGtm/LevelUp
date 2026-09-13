@@ -1,3 +1,32 @@
+## [2026-09-13] Chantier decodeur — lot 0.C (ADR 0034, CLAUDE.md, registre des reports) — Complete (branche feat/decfilm-0C fusionnee dans feat/recherche-decodeur-film)
+
+**Decision technique principale.** `docs/adr/0034-film-decoder-profile-and-layers.md` (EN,
+274 l., gabarit des ADR 0030/0033) porte neuf invariants durables : cinq couches et un seul
+sens de dependance (compilateur d'abord via `internal/`, ratchets ensuite) ; porte unique aux
+octets ; profil immuable cle par BUILD avec provenance datee par valeur, grammaire prise chez
+l'ecrivain, inference jamais une valeur ; build inconnu = erreur typee + expvar + film mis de
+cote ; zero variable de paquet mutable, `LockProcessDecode` supprime et son ratchet inverse au
+lot 2.3, double ecriture = kill-switch a trois dates ; controle du changement a trois revisions
+(GrammarRev / KillSourceDecoderRev -> facts.Rev / SchemaVersion), pas structurel a zero
+difference contre lot de comportement au corpus gate ; faits persistes et publication separes,
+revision par calque, un seul type publie ; contrat Go/web en six points (borne 27 epinglee,
+strict racine + bounds, imbrique differe a M4) ; equipe = le film seul (V4). Section
+« Corrections to statements made elsewhere » : les trois inexactitudes relevees au lot 0.B.
+CLAUDE.md : ligne 0034. Registre des reports : 5 lignes (residus de recherche §1.2 du plan,
+D7 et D8 du lot 0.B).
+
+**Resultats observes.** Aucune revue adversariale (calibrage du skill : doc seule) ; lecture
+integrale par le pilote : 41 chemins cites verifies existants par l'executeur, 13 noms marques
+« to be added at step N » ; aucun chiffre invente (96 variables gelees, schema 54,
+`killsource-2026-09-12`, borne 27, versions 32 et 51 absentes). Gate mojibake/TODO vert ; le
+motif du plan `-run 'Mojibake|Todo'` ne matchait pas `TestNoExpiredTODO` (casse), corrige dans
+le plan. Diff limite aux quatre fichiers attendus.
+
+**Prochaine etape.** CI de l'integration ; lot 0.A (0.A.2 a 0.A.5) en cours ; decision
+utilisateur sur le lot 0.D (D6, D7, D8) ; 0.B.7 apres 0.A.
+
+---
+
 ## [2026-09-13] Chantier decodeur — lot 0.B (frontiere Go/web, architecture §12) — Complete (branche feat/decfilm-0B fusionnee dans feat/recherche-decodeur-film)
 
 **Decision technique principale.** Six garde-rails executables en CI entre la cuisson Go et la
