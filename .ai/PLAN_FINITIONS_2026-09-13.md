@@ -367,10 +367,44 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   0,20 m. Soit les bornes `aquarius` du catalogue ont changé depuis la cuisson de ces deux
   artefacts, soit ces artefacts sont antérieurs à une correction de bornes. Les deux films sont
   sortis de la mesure F.1 plutôt que mesurés en mètres faux. NON TRAITÉ.
+  **→ TRANCHÉ EN H.3 (2026-09-13) : AUCUNE DES DEUX HYPOTHÈSES. Ces films sont LIVE FIRE, pas
+  Aquarius ; leurs artefacts sont justes et le catalogue aussi.** Le défaut est dans l'oracle de
+  carte de la mesure — cf. l'item H.3 et la découverte D-H1.
 - **D-F4 — `0x412000aa` est désigné une fois par un `ref1` de 103** sur `9e8fb31b`, à
   +19 386 ms — très probablement une collision de clé `(slot, génération)` rebouclée, mais
   l'identifiant est hors manifeste et n'a pas été instruit. NON TRAITÉ.
 
+
+### Lot H (2026-09-13)
+
+- **D-H1 — L'ORACLE DE CARTE DES MESURES DE RECHERCHE EST AVEUGLE AUX CARTES À INDEX DE RÉGION
+  DE 2 BITS.** `f1Carte` (`f1_origine_mesure_research_test.go`) et son homologue de F.0 §0.3
+  (`TestF0CalibreCarte`) filtrent les entrées candidates du catalogue de bornes sur l'ÉGALITÉ
+  EXACTE entre `MapQuantEntry.AxisWidths` et le découpage lu dans le film par
+  `DetectI0Layout`. Or `DetectI0Layout` déduit les largeurs d'un profil de bascule par position
+  de bit : sur une carte dont l'en-tête d'i0 porte un index de région de **2 bits** au lieu
+  d'un — Live Fire est la seule du catalogue, entrée le 2026-08-27 avec `region = 1` et
+  `regionIndexBits = 2` —, ce bit d'en-tête supplémentaire est imputé à l'axe X. Le film rend
+  `[13 12 11]`, le catalogue déclare `[12 12 11]`, et Live Fire n'est JAMAIS proposée. Mesuré
+  en H.3 sur `0797ce72` et `c88ec007` : l'oracle retient `aquarius` (seule entrée en
+  `[13 12 11]`) à 29,2 et 29,9 m, quand Live Fire, à découpage IMPOSÉ, rend 0,066 et 0,082 m.
+  **La production est INDEMNE** : elle impose le découpage de l'entrée
+  (`build_from_film.go`), elle ne le lit pas dans le film. Conséquence à traiter : les mesures
+  de recherche qui identifient une carte par ce filtre EXCLUENT silencieusement tout film de
+  Live Fire — deux films en F.1, et tout futur corpus. Traitement possible : essayer aussi les
+  entrées dont les largeurs coïncident APRÈS retrait de l'excédent d'index de région, ou
+  classer par écart aux repères à découpage imposé (l'instrument de H.3 le fait déjà et
+  départage à trois ordres de grandeur). Le dépôt PORTAIT DÉJÀ la réponse : le manifeste du
+  corpus témoin (`config/replay_corpus.toml`, 2026-09-12) déclare `0797ce72` sous
+  `carte = "Live Fire"`, famille `region_index_2_bits`. NON TRAITÉ.
+- **D-H2 — `usageWallPanelIDs` n'a PAS de garde-rail au niveau des IDENTIFIANTS.**
+  `usage_summary_families_guard_test.go` recolle au manifeste la liste des FAMILLES qui
+  engendrent une pièce (`usageFamiliesWithSpawnedPiece`), mais rien ne vérifie que les deux
+  identifiants `0x528fce46` / `0x686b40c9` sont bien, et sont les seuls, à porter
+  `kind = "deployed"` au manifeste. Depuis H.2 cette table décide en plus de l'ORIGINE PUBLIÉE
+  d'une pose : un troisième objet `kind = "deployed"` ajouté au manifeste ne serait pas promu,
+  en silence. Traitement possible : étendre le garde-rail existant à l'extraction des `id` des
+  blocs `[[equipment_objects]]` porteurs de `kind = "deployed"`. NON TRAITÉ (périmètre H fermé).
 
 - **C.9 — diagnostic pour le pilote** : sur les 4 bases purgées, le recensement d'après ne
   compte qu'UNE vue `match_skill_rank_latest%`. Or il est MESURÉ qu'une vue dépendante survit
@@ -471,3 +505,30 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
 - R11 — dette de taille non consignée : `equipment_placements.go` 594 -> 628 L ; `buildSyncEngineFactoryParityComplete` 85 -> 110 L.
 - R14 — `ListMapsByTitle` : `COALESCE(name_canonical,'')` fait passer les cartes sans nom canonique en tête du tri (le commentaire dit « tri inchangé »).
 - R15 — deux formulations imprécises : référence équipement §1 (« de la dernière position » -> « de la fin de vie ») ; godoc `originDropMaxDist` (le crâne n'est qu'un test).
+
+## Lot G — fiabilité (`feat/finitions-fiabilite`, Go) — arbitré le 13/09 soir (points 1 à 5 des recos)
+Contrat `plan-execution`, périmètre FERMÉ, découvertes consignées non traitées sauf P0.
+- [ ] G.1 Supprimer `migration.RebuildMatchSkillRankART` (`internal/migration/steps_player_rebuild_match_skill_rank.go`) et son unique appelant `cmd/force_rebuild_art`, avec tests, imports, mentions docs (`docs/COMMANDS.md` FR+EN, `.ai/project_map.md`) et entrées de baseline de tests retirées dans le MÊME commit. Si un autre appelant existe, statuer `[!]` avec preuve.
+- [ ] G.2 `internal/sync/no_art_patterns_test.go` : détecter aussi les écritures à nom de table INTERPOLÉ (`fmt.Sprintf("UPDATE %s`, `"UPDATE " + table`, `DELETE FROM %s`, `INSERT INTO %s … ON CONFLICT`) sur les tables protégées ; le cas de `seed_demo_corpus.go` (forme ligne à ligne à valeurs liées) doit rester VERT ; un cas témoin rouge (fixture de test) prouve la morsure ; aucune allowlist agrandie.
+- [ ] G.3 Sonde data-health « index désynchronisé » étendue à `match_skill_rank` des player DB (`internal/scheduler/`), calquée sur `data_health_psa_index.go` (alerte seule, `OpenReadForQuery`, échantillon borné, jauge gelée si non mesuré, entrée dans `WarningsTotal`, title-agnostic, coût mesuré). Réutiliser la règle de comparaison de `cmd/repair_msr_index/diag.go` plutôt que la recopier (extraire un helper partagé si besoin, avec garde-rail ≤ 2 copies). Le message d'alerte nomme `repair_msr_index -repair`.
+- [ ] G.4 `internal/service/openspartan_post_import_service.go` : le titre de la base est stampé UNE fois à l'entrée du post-import, pour TOUTES les étapes (LUSR, `recomputePerfScores` → `GetPerformanceChain`, suivantes) ; test : un ctx entrant portant un autre titre ne change pas la chaîne de performance écrite. Mesure : requête lecture seule sur les 4 player DB Infinite (serveur ARRÊTÉ par le pilote, pas par l'agent) pour compter les `performance_chain` étrangères — l'agent livre la requête, le pilote l'exécute.
+- [ ] G.5 Tests de parité : (a) Go ↔ TS des familles d'objectif (`objectiveevents/families.go` ↔ `features/match-replay/model/objectiveFamilies.ts`, ratchet Go qui lit le fichier TS, modèle `archlint/*_test.go`) ; (b) `infiniteLUSRChains` du gate d'intégration dérivée de `games/halo_infinite/skillchain` (export d'une liste ou test d'exhaustivité contre `ClassifyLUSRChain`), plus de copie manuelle.
+- [ ] G.6 Gates : build, vet, `go test` hors himap, `-tags=integration -p 1` sur sync/persist/migration/duckdb/scheduler/service, lint, baseline de tests, push, CI verte au niveau job.
+
+## Lot H — rejeu (`feat/finitions-rejeu`, Go + config) — points 6 à 8 des recos
+- [x] H.1 D-B2 : `FlagSpawn.Neutral` posé depuis le label (`PointObjective.Neutral` -> `replaybuild/flagspawns.go`), `flag_neutral.go` trie dessus au lieu de `Team == TeamNeutral`. `flagSpawnTeam` est inchangée et documentée pour ce qu'elle ne dit PAS (une équipe, pas une variante). **Recensement du catalogue versionné** (`TestCatalogueRecensementDesSoclesNeutres`, 434 socles `flag_spawn` ponctuels) : **63 socles neutres au label, inchangé** ; **8 socles à `team_index = -1` SANS label** (Cliffside, Highpower Heavies, Solitude, Solitude - Ranked, 4 entrées du map_id `1042b738` sans `public_name`) — panier neutre **71 -> 63**. Tests : tri unitaire (`TestFlagSoclesSansEquipeNeTombentPasDansLePanierNeutre` : 6 naissances au socle sans équipe ne basculent plus la variante), recensement, et `flagSpawnTeam` + report de neutralité côté `replaybuild` (`flagspawns_test.go`, nouveau).
+- [x] H.2 D-F1 : `equipmentIsSpawnedPiece` (posée avec sa table `usageWallPanelIDs`, transcription du `kind = "deployed"` du manifeste, recollée par `usage_summary_families_guard_test.go` — aucune 3e copie) ; `buildEquipmentPlacements` force `OriginDeployed` sur ces objets, après `equipmentOrigin` et sans passer par elle, ce qui couvre AUSSI la pose sans poseur (`unknown`). Godoc d'`EquipmentPlacement.Origin` mis à jour dans le même commit. Tests : `TestPieceEngendreeEstToujoursDeployee` (panneau en fin de vie + panneau sans poseur -> `deployed` ; **deux témoins négatifs** sur l'appareil PORTÉ `0x8e2dc574`, qui reste `dropped`/`deployed` selon le temps) et `TestEquipmentIsSpawnedPiece` (frontière du prédicat). **Mesure avant/après sur le PARC ENTIER** (`TestH2MesurePiecesEngendrees`, instrument versionné, lecture seule du cache d'artefacts, aucune cuisson : la règle est une réécriture pure du champ `origin` sur l'`id`, donc l'appliquer à une pose publiée rend ce que le constructeur rendrait) — **76 artefacts, 13 854 poses** : `wall/deployed` **350 -> 360**, `wall/dropped` **322 -> 317**, `wall/unknown` **13 -> 8** ; **aucune autre famille ne bouge** (33 autres croisements famille × origine identiques). **10 poses basculent, toutes des panneaux** : `0x528fce46` 3 `dropped` + 4 `unknown` = **les 7 attendus, à l'unité**, plus `0x686b40c9` 2 `dropped` + 1 `unknown` (films hors des 25 de F.0, dont le §2.3 ne voyait que 3 poses, toutes `deployed`).
+- [!] H.3 D-F5 : **NI l'un NI l'autre — CES DEUX FILMS SONT LIVE FIRE, ET LEURS ARTEFACTS SONT JUSTES. AUCUNE RECUISSON N'EST À FAIRE**, l'autorisation utilisateur reste inutilisée. Les trois datations demandées, faites : (a) **artefacts** — `schemaVersion` **54**, c'est-à-dire le schéma COURANT, posé le 2026-09-12 18:18 (`104b74e15`) ; mtime 2026-09-13 00:39 et 00:50 ; (b) **bornes `aquarius`** — **jamais modifiées depuis leur introduction le 2026-07-31** (`2044b7139`), vérifié par `git show` sur les 4 commits qui touchent `map_quant_bounds.json` (`2044b7139`, `3f02079cd`, `74920ce4a` et les intermédiaires : octet pour octet identiques), le fichier entier étant figé depuis le 2026-08-27 ; (c) les artefacts sont donc POSTÉRIEURS aux bornes — aucune des deux hypothèses de D-F5 ne tient. **La mesure qui tranche** (`h3_aquarius_reperes_research_test.go`, versionné, lecture seule) : en imposant à chaque entrée SON PROPRE découpage — ce que fait la production (`build_from_film.go` : `scan.Layout = fc.ImposedLayout()`) et ce que l'oracle de F.0 §0.3 / F.1 ne fait pas —, **`live fire` (`sgh_interlock`) reproduit les repères publiés à 0,066 m et 0,082 m**, très en dessous du seuil de 0,20 m ; `aquarius` reste à 29,201 m et 29,871 m, soit les 29,2 / 29,9 m de D-F5 reproduits à l'identique. Confirmation par un second chemin : la **régression affine** des coordonnées publiées sur un décodage de référence retrouve les bornes de Live Fire sur Y (min −10,15 / −10,28 contre −10,103 au catalogue ; max 53,729 / 53,714 contre 53,672) et sur Z (min −9,38 / −9,35 contre −9,331 ; max 13,626 / 13,603 contre 13,568), l'axe X seul étant décalé d'une étendue entière — la signature d'UN BIT DE TROP lu sur cet axe. **Cause** : l'en-tête d'i0 de Live Fire porte un index de région de **2 bits** (sa région jouée est la 1, catalogue du 2026-08-27), `DetectI0Layout` impute ce bit d'en-tête à X et lit `[13 12 11]` là où le catalogue déclare `[12 12 11]` ; l'oracle filtrant les candidates sur l'égalité EXACTE des largeurs, Live Fire n'est jamais proposée et `aquarius` — seule entrée en `[13 12 11]` — gagne par défaut. **CORROBORATION DOCUMENTAIRE, INDÉPENDANTE DE LA MESURE** : `config/replay_corpus.toml` porte déjà `0797ce72` comme témoin `region_index_2_bits`, `carte = "Live Fire"`, « seule carte du catalogue à index de région sur 2 bits » — écrit le 2026-09-12 pour le correctif de la porte de position des objets du monde (schéma 53). Le dépôt savait ; c'est l'oracle de F.1 qui ne pouvait pas le voir. Le défaut est donc dans l'INSTRUMENT DE RECHERCHE, pas en production : consigné en §Découvertes (D-H1), NON traité (périmètre H fermé).
+- [x] H.4 Gates (tous joués dans la session, sorties ci-dessous) :
+      - `gofmt -l` sur les deux paquets touchés : **aucune sortie** ; `go build ./...` : **exit 0** ; `go vet` (hook lefthook, à chaque commit) : **vert**.
+      - `go test ./internal/games/halo_infinite/film/replay/... ./internal/games/halo_infinite/film/filmdec/... ./internal/replaybuild/... ./internal/archlint/...` : **`ok` sur les 5 paquets** (replay 7,690 s · mapvar 0,153 s · filmdec 8,781 s · replaybuild 0,650 s · archlint 29,081 s), exit 0.
+      - `golangci-lint run --timeout 5m --new-from-merge-base=origin/feat/v75` : **0 issues**, exit 0. (L'avertissement « unknown linters in //nolint directives » est la découverte D-B4 du lot B, préexistante et déjà consignée.)
+      - **`replay-corpus-gate` en racine jetable** (`--reference=base --base origin/feat/v75 --source-root <worktree> --parc-root <principal> --work-root <worktree>/.gate-work`, 12 témoins, 25 cuissons, ~45 min) — **les compteurs `deployed` BOUGENT, et exactement là où ils devaient** :
+        - **9 témoins `ok` à 0 gain / 0 perte**, dont `0797ce72` (13,18 s).
+        - **2 témoins « PERTE » à 2 gains ET 2 pertes chacun — la RECLASSIFICATION H.2, pose par pose.** Vérifié en rouvrant les deux artefacts cuits : `084a804d` `wall/unknown` **2 -> 1** et `wall/deployed` **3 -> 4** (totaux `unknown` 274 -> 273, `deployed` 51 -> 52) ; `111fa685` `wall/dropped` **26 -> 25** et `wall/deployed` **28 -> 29** (totaux `dropped` 494 -> 493, `deployed` 77 -> 78). **Le total de poses ne bouge dans aucun des deux.** Le gate n'a pas de notion de « déplacé » : un compteur qui baisse est une « perte », et c'est ici le compteur que H.2 vide volontairement.
+        - **1 témoin `ERREUR` — CÔTÉ BASE, sur du code que ce lot ne touche pas.** `e5adf7b2` : `cuisson reference : replay-build-base.exe --map "Fragmentation" : exit status 13`, c'est-à-dire `plafond memoire depasse — cuisson abandonnee pic_octets=4104335096 pic_gio=3,822` contre un plafond souple de 3 GiB / dur de 4 GiB. **La cuisson HEAD du même témoin, elle, a ABOUTI** (artefact de 5 835 193 octets écrit à 19:37). C'est donc la révision de RÉFÉRENCE (`origin/feat/v75`) qui bute sur le plafond, pas le diff ; le plafond est une constante du code (`filmproc.DefaultLimitGiB = 3`), sans drapeau ni variable d'environnement pour le relever.
+        - Le gate sort donc en **code 1** pour ces trois lignes : 2 reclassifications attendues et 1 plafond mémoire préexistant côté base. **Aucune perte de matière.**
+      - Push `origin feat/finitions-rejeu` et CI : cf. journal.
+
+## Lot I — clôture (pilote)
+- [ ] I.1 Fusions G et H, CI verte ; revue adversariale bornée (P0/P1 seuls) ; thought_log ; worktrees supprimés.
