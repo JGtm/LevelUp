@@ -1,0 +1,244 @@
+# REJEU 2D — ASSEMBLAGE REJOUE SUR ENTREES FIGEES — film 60ae07c4
+#
+# AUCUN OCTET DE FILM n est lu pour produire cette sortie : les entrees viennent de
+# testdata/inputs_60ae07c4.bin.gz, decodees une fois et figees. Ce fichier verrouille
+# l ASSEMBLAGE ; le DECODAGE est verrouille a part par la mini-bobine.
+
+## AXE DE TEMPS
+8117 frames · intervalle 100 ms · duree 811700 ms
+schema 54 · titre halo_infinite
+origine de la frame 0 sur l horloge du fil : 11847 ms
+coup d envoi date par le film : 33547 ms · 170/174 piste(s) en mouvement · rafale 7 · marge depuis la frame 0 : 21700 ms
+
+## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
+174 trace(s) · 45137 point(s) de grille
+170 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+occupation du slot dans le TEMPS) · 4 sans identite — un DEFAUT de nommage a instruire,
+jamais une categorie de donnee (decision produit du 2026-09-07)
+31827 point(s) portent un cap de visee · 31827 une elevation de visee · 14682 un bouclier · 177 une fraction de vie
+
+### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
+8 joueur(s)
+  2533274813765942  idx=0  "xToo Frosty"
+  2533274809233885  idx=1  "MarcooN1414"
+  2535428020470272  idx=2  "Mims5268"
+  2533274837723606  idx=3  "STCYYR"
+  2535406399121492  idx=4  "Noddy1314"
+  2533274858283686  idx=5  "Madina97294"
+  2533274969598328  idx=6  "DavidSuomi"
+  2535406887313903  idx=7  "Matyus89"
+
+## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
+1546 rattache(s) / 1635 disponible(s) = 94.6 %
+rejets : slot introuvable=48 · slot ambigu=41 · hors fenetre=0 · sans trace publiee=0
+somme de controle : rattaches + rejets = disponibles -> 1635 = 1635 (equilibre : true)
+verdict : nominal
+1546 tir(s) publie(s) · 662 avec un cap de visee lisible · 1546 avec une arme nommee
+
+## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
+0 rattache(s) / 0 disponible(s) = aucune donnee
+rejets : slot introuvable=0 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+somme de controle : rattaches + rejets = disponibles -> 0 = 0 (equilibre : true)
+verdict : aucune donnée
+par source : projectile=0 (aucun pont) · biped=0 (le pont a servi)
+par type : aucun
+
+## PROJECTILES — le dernier point est la DERNIERE POSITION REPLIQUEE, jamais un impact
+236 trajectoire(s) · 671 point(s) de grille
+1 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
+couverture : 658 piste(s) decodee(s) · 236 publiee(s) · 343 coupee(s) a un pas impossible
+
+## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
+326 etat(s) publie(s) · 251 avec grenades lues · 251 avec munitions lues
+4 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
+nombre de candidats est publie, pour que le departage reste visible
+75 lecture(s) VIDE(S) : 55 corroboree(s) par le fil des morts (`dead`), 20 inexpliquee(s)
+couverture : 332 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 6 ecartee(s) faute de piste publiee -> 326 publiee(s)
+rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
+
+## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
+689 lecture(s) · 251 par image-cle (~20 s) · 438 par delta (transmis AU CHANGEMENT)
+348 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
+couverture : 251 image-cle · 438 delta · 2 ecartee(s) sans piste · canal munitions refuse : false
+
+## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
+29 lecture(s) · 29 par i48 (rang complet, paquets delta) · 0 par image-cle (fenetre 16..23)
+rangs observes : 2:1 6:15 8:6 11:6 19:1
+lectures NOMMEES 28/29 — un rang hors table garde son numero, et la table est propre a la palette du film
+capacites nommees : 11=en:"Quantum Translocator"/fr:"translocateur quantique"/fam:"translocator_beacon", 2=en:"Drop Wall"/fr:"mur de protection"/fam:"wall", 6=en:"Repulsor"/fr:"repulseur"/fam:"repulsor", 8=en:"Active Camouflage"/fr:"camouflage actif"/fam:"powerup_camo"
+couverture : 29 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 29 publiee(s)
+
+## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
+11 episode(s) publie(s) · par famille : camo=11 · 6 fin(s) MESUREE(s) (le reste ferme a la mort)
+couverture : 174 vie(s) publiee(s) · camo 6 vie(s) / 11 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
+
+## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
+2 evenement(s) -> 2 publie(s) (2 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
+  slot=607 t=4589 (15.48,33.36,0.61) -> (17.87,21.70,0.09)
+  slot=634 t=5869 (10.97,16.16,0.04) -> (2.82,19.30,1.95)
+
+## IMPULSIONS DE CAPACITE — l usage MESURE du propulseur, attribue par le rang de la vie
+0 lecture(s) -> 0 geste(s) -> 0 publiee(s) · 0 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+
+## CHARGES D EQUIPEMENT — les lectures du film, jamais un compte d usages derive
+0 lecture(s) -> 0 publiee(s) · 0 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+
+## GRAPPIN — tractions datees par vie, l ancre en coordonnees monde (fenetre MESUREE)
+0 traction(s) sur 0 vie(s) · lectures : 0 tir(s) + 0 accroche(s) · 0 rate(s) · 0 corps non decodable(s)
+
+## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine
+calibre=true decoupage="8/3" · 361 vie(s) d objet · 11813 ancre(s) -> 57 confirmee(s) par l oracle de position -> 57 pose(s)
+57 nommee(s) · 0 `other` (nature non etablie : le manifeste ne les revendique pas) · 0 avec poseur mesure · 0 avec cap de visee
+origine mesuree : 0 deployee(s) · 0 lachee(s) a la fin de la vie du poseur · 57 sans poseur
+  famille grenade_frag 42
+  famille grenade_plasma 6
+  famille grenade_spike 5
+  famille repulsor 3
+  famille translocator_beacon 1
+  famille x origine grenade_frag/unknown         42
+  famille x origine grenade_plasma/unknown       6
+  famille x origine grenade_spike/unknown        5
+  famille x origine repulsor/unknown             3
+  famille x origine translocator_beacon/unknown  1
+  grenade_frag unknown 0xbcabbe43 t=[477, 506] pos=(19.77, 6.22, 6.70) poseur=-1 cap=aucun
+  grenade_spike unknown 0x0f5716ff t=[821, 839] pos=(36.83, 16.16, 7.68) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[957, 986] pos=(21.76, 13.14, -4.13) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[1130, 1169] pos=(29.83, 42.80, 7.79) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[1249, 1284] pos=(19.37, 12.50, -3.80) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[1249, 1285] pos=(19.35, 44.38, -3.80) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[1325, 1364] pos=(25.16, 11.73, -3.04) poseur=-1 cap=aucun
+  translocator_beacon unknown 0x730dc70f t=[1583, 1593] pos=(25.56, 11.67, 8.05) poseur=-1 cap=aucun
+  grenade_plasma unknown 0xcaaadcb0 t=[1583, 1607] pos=(25.54, 11.70, 7.99) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[2165, 2218] pos=(25.17, 4.00, -3.87) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[2368, 2396] pos=(32.91, 43.05, -4.51) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[2702, 2745] pos=(34.96, 49.27, -3.98) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[2702, 2741] pos=(34.96, 49.27, -3.98) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[2895, 2946] pos=(30.57, 43.82, -3.22) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[2927, 2959] pos=(29.56, 11.10, 8.26) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[2927, 2959] pos=(29.56, 11.10, 8.26) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[2928, 2950] pos=(31.99, 45.19, -3.66) poseur=-1 cap=aucun
+  grenade_spike unknown 0x0f5716ff t=[3333, 3344] pos=(26.61, 35.43, -3.77) poseur=-1 cap=aucun
+  grenade_spike unknown 0x0f5716ff t=[3333, 3347] pos=(26.61, 35.43, -3.77) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[3434, 3506] pos=(29.40, 4.87, 7.42) poseur=-1 cap=aucun
+  repulsor unknown 0x7ca85adc t=[3701, 3710] pos=(18.90, 10.35, 7.26) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[3864, 3896] pos=(18.39, 43.37, -3.72) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[4139, 4195] pos=(20.88, 43.75, 7.79) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[4174, 4213] pos=(20.05, 11.63, 7.75) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[4219, 4258] pos=(23.67, 11.03, 8.18) poseur=-1 cap=aucun
+  repulsor unknown 0x7ca85adc t=[4568, 4577] pos=(27.02, 12.15, -4.91) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[4737, 4764] pos=(32.72, 8.64, -4.41) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[4745, 4873] pos=(30.65, 15.41, 7.13) poseur=-1 cap=aucun
+  grenade_spike unknown 0x0f5716ff t=[4878, 4883] pos=(25.60, 15.89, -4.54) poseur=-1 cap=aucun
+  repulsor unknown 0x7ca85adc t=[4878, 4890] pos=(25.60, 47.75, -4.51) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[5336, 5363] pos=(32.52, 3.82, 6.63) poseur=-1 cap=aucun
+  grenade_plasma unknown 0xcaaadcb0 t=[5448, 5803] pos=(27.47, 7.95, -4.32) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[5518, 5543] pos=(20.65, 11.66, -3.67) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[5695, 5748] pos=(22.10, 43.98, -3.71) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[5739, 5804] pos=(21.08, 12.73, -3.92) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[5871, 5909] pos=(24.11, 7.41, 8.23) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[5889, 5893] pos=(22.02, 7.48, 6.84) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[5936, 5973] pos=(23.52, 5.58, -3.58) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[6270, 6303] pos=(30.56, 11.69, -3.67) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[6378, 6425] pos=(22.96, 40.99, -3.69) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[6442, 6479] pos=(20.77, 7.55, -3.98) poseur=-1 cap=aucun
+  grenade_spike unknown 0x0f5716ff t=[6444, 6453] pos=(23.61, 10.39, 7.98) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[6444, 6464] pos=(23.61, 10.39, 7.98) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[6626, 6664] pos=(27.93, 43.17, -3.46) poseur=-1 cap=aucun
+  grenade_plasma unknown 0xcaaadcb0 t=[6724, 6743] pos=(19.46, 43.64, 7.68) poseur=-1 cap=aucun
+  grenade_plasma unknown 0xcaaadcb0 t=[6925, 6963] pos=(31.35, 45.35, 8.25) poseur=-1 cap=aucun
+  grenade_plasma unknown 0xcaaadcb0 t=[6997, 7104] pos=(25.96, 17.78, 6.99) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[7058, 7061] pos=(29.63, 44.24, -4.85) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[7088, 7116] pos=(24.06, 42.45, -3.46) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[7170, 7228] pos=(29.11, 41.13, 7.54) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[7440, 7501] pos=(32.64, 11.16, 6.92) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[7779, 7866] pos=(32.23, 18.35, 7.01) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[7826, 7831] pos=(31.27, 38.87, 6.83) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[7972, 8030] pos=(24.68, 6.50, 6.89) poseur=-1 cap=aucun
+  grenade_plasma unknown 0xcaaadcb0 t=[7989, 8027] pos=(26.62, 8.54, -4.34) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[8075, 8116] pos=(19.46, 8.68, 6.90) poseur=-1 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[8075, 8116] pos=(19.07, 40.52, 6.85) poseur=-1 cap=aucun
+
+## SOCLES D ARME AU SOL — la RECURRENCE fait le socle, et le film dit quand il se vide
+balaye=true · bande 982 slot(s) · 13431 ancre(s) -> 429 acceptee(s) -> 218 retenue(s) par l IDENTITE (211 ecartee(s))
+0 lachee(s) a une mort · 218 apparue(s) sans mort a proximite, dont 30 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
+6 grappe(s) -> 6 socle(s) publie(s) · 42 occupation(s) : 0 datee(s) · 36 sans passage · 6 jamais videe(s)
+0 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
+POWER-UPS (voie ti=37) — balaye=true · 504 creation(s) acceptee(s) -> 13 retenue(s) par l IDENTITE `powerup_*` -> 1 socle(s) publie(s)
+  socle 0 0x48C19D2D pos=(19.95, 41.94, -2.56) apparitions=[0 2066 4264 7125] cycle=non etabli
+    presence t0=0 prouvee jusqu a 1281, absente a 1481
+    presence t0=2066 prouvee jusqu a 4082, absente a 4282
+    presence t0=4264 prouvee jusqu a 6282, absente a 6482
+    presence t0=7125 prouvee jusqu a 8082, absente a 8116
+  socle 1 0xF408190F pos=(29.06, 12.45, -3.67) apparitions=[0 864 1596 4264] cycle=non etabli
+    presence t0=0 prouvee jusqu a 281, absente a 481
+    presence t0=864 prouvee jusqu a 881, absente a 1081
+    presence t0=1596 prouvee jusqu a 3882, absente a 4082
+    presence t0=4264 prouvee jusqu a 8082, absente a 8116
+  socle 2 0xC3542946 pos=(22.35, 8.31, 6.73) apparitions=[0 1495 4264] cycle=non etabli
+    presence t0=0 prouvee jusqu a 681, absente a 881
+    presence t0=1495 prouvee jusqu a 4082, absente a 4282
+    presence t0=4264 prouvee jusqu a 8082, absente a 8116
+  socle 3 0x0A1992BC pos=(26.65, 10.96, 7.74) apparitions=[0 1714 2015 3516 3817 4266 5795 6096 7597 7898] cycle=non etabli
+    presence t0=0 prouvee jusqu a 281, absente a 481
+    presence t0=1714 prouvee jusqu a 1881, absente a 2081
+    presence t0=2015 prouvee jusqu a 2015, absente a 2081
+    presence t0=3516 prouvee jusqu a 3682, absente a 3882
+    presence t0=3817 prouvee jusqu a 3882, absente a 4082
+    presence t0=4266 prouvee jusqu a 4282, absente a 4482
+    presence t0=5795 prouvee jusqu a 6082, absente a 6282
+    presence t0=6096 prouvee jusqu a 6096, absente a 6282
+    presence t0=7597 prouvee jusqu a 7882, absente a 8082
+    presence t0=7898 prouvee jusqu a 8082, absente a 8116
+  socle 4 0xFD98554C pos=(24.80, 36.49, -3.67) apparitions=[0 2487 3668 4264] cycle=non etabli
+    presence t0=0 prouvee jusqu a 1081, absente a 1281
+    presence t0=2487 prouvee jusqu a 2882, absente a 3082
+    presence t0=3668 prouvee jusqu a 4082, absente a 4282
+    presence t0=4264 prouvee jusqu a 8082, absente a 8116
+  socle 5 0xFD98554C pos=(33.95, 39.14, -4.42) apparitions=[0 2066 4264 7085 8015] cycle=non etabli
+    presence t0=0 prouvee jusqu a 681, absente a 881
+    presence t0=2066 prouvee jusqu a 4082, absente a 4282
+    presence t0=4264 prouvee jusqu a 6282, absente a 6482
+    presence t0=7085 prouvee jusqu a 7482, absente a 7682
+    presence t0=8015 prouvee jusqu a 8082, absente a 8116
+  socle 6 powerup_camo pos=(27.05, 49.13, -4.09) apparitions=[213 515 1414 1717 2915 3218 4294 4597 5495 5798 6997 7300] cycle=non etabli
+    presence t0=213 prouvee jusqu a 481, absente a 681
+    presence t0=515 prouvee jusqu a 515, absente a 681
+    presence t0=1414 prouvee jusqu a 1681, absente a 1881
+    presence t0=1717 prouvee jusqu a 1717, absente a 1881
+    presence t0=2915 prouvee jusqu a 3082, absente a 3282
+    presence t0=3218 prouvee jusqu a 3218, absente a 3282
+    presence t0=4294 prouvee jusqu a 4482, absente a 4682
+    presence t0=4597 prouvee jusqu a 4597, absente a 4682
+    presence t0=5495 prouvee jusqu a 5682, absente a 5882
+    presence t0=5798 prouvee jusqu a 5798, absente a 5882
+    presence t0=6997 prouvee jusqu a 7282, absente a 7482
+    presence t0=7300 prouvee jusqu a 7300, absente a 7482
+36 occupation(s) achevee(s) publiee(s) · 0 datee(s) a l instant exact par l evenement natif · 0 avec un ramasseur nomme
+
+## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
+252 loadout(s) publie(s) · 6 famille(s) distincte(s)
+
+## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
+165 entree(s) · 161 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
+fermetures : 0 par le corps disponible · 4 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
+refus des fermetures : 11 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 1 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
+161 vie(s) nommee(s) / 178 — un rapport publie sans son denominateur ne se juge pas
+42 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
+verdict : nominal
+
+## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
+10 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et
+n emprunte pas le nom d une arme voisine
+  0x0A1992BC  en="S7 Sniper" fr="S7 Sniper" fx="ballistic"
+  0x0A1992BC42C9679F  en="S7 Sniper" fr="S7 Sniper" fx="ballistic"
+  0x48C19D2D  en="MA40 AR" fr="MA40 AR" fx="ballistic"
+  0x6ACDC44D  en="M392 Bandit" fr="Bandit EVO" fx="ballistic"
+  0x6ACDC44D42C9679F  en="M392 Bandit" fr="Bandit EVO" fx="ballistic"
+  0xC3542946  en="Plasma Pistol" fr="Pistolet à plasma" fx="plasma"
+  0xF408190F  en="Mk50 Sidekick" fr="MK50 Sidekick" fx="ballistic"
+  0xF408190F42C9679F  en="Mk50 Sidekick" fr="MK50 Sidekick" fx="ballistic"
+  0xFD98554C  en="VK78 Commando" fr="VK78 Commando" fx="ballistic"
+  0xFD98554C42C9679F  en="VK78 Commando" fr="VK78 Commando" fx="ballistic"
+
+## BORNES — l etendue des points publies, dans le repere monde partage
+x [-8.56, 37.04] · y [13.35, 47.79] · z [-5.30, 7.86]
