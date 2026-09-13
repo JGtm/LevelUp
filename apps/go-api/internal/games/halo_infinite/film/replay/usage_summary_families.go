@@ -83,6 +83,33 @@ var usageWallPanelIDs = map[string]bool{
 	"0x528fce46": true, "0x686b40c9": true,
 }
 
+// equipmentIsSpawnedPiece dit si CET objet est une PIÈCE ENGENDRÉE par un autre
+// équipement — aujourd'hui les deux panneaux du mur, et eux seuls.
+//
+// POURQUOI CES POSES NE PASSENT PAS PAR `equipmentOrigin` (item H.2, 2026-09-13,
+// découverte D-F1). `equipmentOrigin` ne pose qu'UNE question, temporelle : « cette
+// création tombe-t-elle à la fin d'une vie ? ». Elle a un sens sur un objet PORTÉ, qui
+// peut être posé de son vivant ou lâché à sa mort. Elle n'en a AUCUN sur une pièce
+// engendrée : le manifeste la déclare `kind = "deployed"`, c'est-à-dire qu'elle N'EXISTE
+// QUE DÉPLOYÉE — elle n'est jamais dans un inventaire, donc jamais lâchée à la mort, et
+// l'absence de poseur mesuré ne dit rien de son origine. La classer sur le temps
+// produisait le défaut SYMÉTRIQUE de celui que F.1 a corrigé : 7 panneaux du parc sur
+// 216 sortaient en `dropped` (3) ou `unknown` (4) — un panneau né à l'instant où son
+// poseur meurt (le mur déployé au dernier souffle), ou dont le poseur n'a pas été mesuré.
+//
+// LA MESURE QUI FERME LA QUESTION (rapport F.0 du 2026-09-13, §2.3) : l'événement 103
+// `EquipmentSpawnedObject` — le fait « une pièce a été engendrée » — désigne 216 des 216
+// poses de panneau publiées du parc, dans les TROIS origines (206 `deployed`,
+// 3 `dropped`, 4 `unknown`), et AUCUNE pose d'un appareil porté. Le film dit donc de ces
+// 7 poses exactement ce qu'il dit des 209 autres.
+//
+// ELLE VIT ICI, AVEC SA TABLE, et pas dans `equipment_placements.go` : la source est le
+// manifeste, et c'est ce fichier qui en porte la transcription et son garde-rail
+// (`usage_summary_families_guard_test.go`). Aucune troisième copie n'est créée.
+func equipmentIsSpawnedPiece(id string) bool {
+	return usageWallPanelIDs[id]
+}
+
 // usageFamilyIsDroppable dit si un LÂCHER de cette famille compte dans
 // `dropped_objects` : tout SAUF les grenades (§3 du handoff — « hors familles de
 // grenade »). Les appareils de capacité (grappin, propulseur…) et les bonus lâchés
