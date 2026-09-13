@@ -48,6 +48,18 @@ const HEATMAP_EMPTY_CELL_TEXT: Record<Locale, string> = {
 /** Caractère affiché SUR une case vide (décision D3 : « un tiret »), au lieu de rien. */
 const EMPTY_CELL_LABEL = '—'
 
+/**
+ * Motif de hachure INVISIBLE, posé au niveau de la SÉRIE.
+ *
+ * `aria.decal.show` est requis pour qu'ECharts applique le `decal` de la case VIDE — mais
+ * il hachure AUSSI, automatiquement, toute série qui n'en déclare pas, et cette hachure
+ * automatique délavait la rampe de couleur : les cases sortaient GRISES au lieu de bleues
+ * (défaut PRÉEXISTANT, mesuré sur capture le 2026-09-13). Un motif transparent ne peint
+ * rien et occupe la place que la hachure automatique aurait prise ; la case vide, elle,
+ * pose son propre motif, qui prend le dessus.
+ */
+const DECAL_NEUTRE = { color: 'transparent' }
+
 /** Épaisseur du liseré entre cases (décision D2 — « c'est aéré et joli »). */
 const CELL_BORDER_WIDTH = 4
 /** Arrondi des coins de case (décision D2). */
@@ -113,6 +125,38 @@ export interface Heatmap2DChartProps {
    * L'appelant est responsable de l'échappement de ce qu'il injecte.
    */
   formatTooltip?: (point: ChartPointHeatmap) => string
+  /**
+   * Couleur du NOMBRE écrit dans la case, décidée par l'appelant à partir de la position
+   * de la valeur sur la rampe (`ratio` 0..1, borné par le `visualMap` effectif).
+   *
+   * POURQUOI L'APPELANT ET PAS LE WRAPPER. Une rampe séquentielle va du sombre au clair :
+   * une couleur d'étiquette UNIQUE est illisible à l'un des deux bouts. Seul l'appelant
+   * sait quelle rampe il a demandée — il applique donc la règle « clair sur sombre,
+   * sombre sur clair ». Absent = couleur par défaut d'ECharts, le comportement de tous les
+   * appelants antérieurs.
+   */
+  /**
+   * Couleur de REMPLISSAGE d'une case, décidée par l'appelant depuis la position de la
+   * valeur sur la rampe (`ratio` 0..1).
+   *
+   * POURQUOI CETTE PROP EXISTE. Le `visualMap` continu d'ECharts peint sa réglette mais ne
+   * TEINTE PAS les cases d'une heatmap catégorie × catégorie : mesuré sur pièces le
+   * 2026-09-13 (quatre cases de valeurs différentes ressortaient au même rgb(232,236,244),
+   * et ce qu'on prenait pour un dégradé était le `splitArea` alterné des axes). L'appelant
+   * qui a besoin d'une rampe LISIBLE la peint donc lui-même. Absent = comportement
+   * historique, inchangé pour les quatre consommateurs existants.
+   */
+  cellColor?: (value: number, ratio: number) => string
+  cellLabelColor?: string
+  /**
+   * Rend le `visualMap` ECharts (la réglette de rampe sous le graphe). Default `true` —
+   * le comportement de tous les appelants antérieurs.
+   *
+   * `false` quand l'appelant pose SA PROPRE légende de rampe en DOM (mots compris :
+   * « 0 … N échanges »), que la réglette redirait sans les mots. Deux légendes pour la
+   * même échelle, c'est une de trop.
+   */
+  showVisualMap?: boolean
 }
 
 export function Heatmap2DChart({
@@ -126,6 +170,9 @@ export function Heatmap2DChart({
   valueRange,
   saturationCap,
   formatTooltip,
+  cellColor,
+  cellLabelColor,
+  showVisualMap,
 }: Heatmap2DChartProps) {
   // Palette d'accessibilité active : pilote la rampe CVD-safe (rebuild via
   // useColorPaletteVersion dans ChartCard + ce sélecteur au changement de palette).
@@ -133,8 +180,26 @@ export function Heatmap2DChart({
   const locale = useAppShellStore((s) => s.locale)
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointHeatmap>[]) =>
-      buildHeatmap2DOption(s, { paletteMode, valueRange, saturationCap, colorPalette, formatTooltip }),
-    [paletteMode, valueRange, saturationCap, colorPalette, formatTooltip],
+      buildHeatmap2DOption(s, {
+        paletteMode,
+        valueRange,
+        saturationCap,
+        colorPalette,
+        formatTooltip,
+        cellColor,
+        cellLabelColor,
+        showVisualMap,
+      }),
+    [
+      paletteMode,
+      valueRange,
+      saturationCap,
+      colorPalette,
+      formatTooltip,
+      cellColor,
+      cellLabelColor,
+      showVisualMap,
+    ],
   )
 
   // Décision D3 : une case sans mesure se nomme, sans que l'appelant ait à le
@@ -171,6 +236,9 @@ interface BuildOpts {
   /** Palette d'accessibilité active — pilote la rampe CVD-safe (cf. heatmapColors). */
   colorPalette?: ColorPalette
   formatTooltip?: (point: ChartPointHeatmap) => string
+  cellColor?: (value: number, ratio: number) => string
+  cellLabelColor?: string
+  showVisualMap?: boolean
 }
 
 /**
@@ -222,10 +290,19 @@ function emptyCellItemStyle(tc: EChartsThemeColors) {
  * porte un `itemStyle` d'objet propre : c'est ce qui la rend visible (décision D3)
  * sans changer le rendu des cases mesurées, qui restent de simples tuples.
  */
-function buildCellData(dps: ChartPointHeatmap[], xs: string[], ys: string[], tc: EChartsThemeColors): HeatCellDatum[] {
+function buildCellData(
+  dps: ChartPointHeatmap[],
+  xs: string[],
+  ys: string[],
+  tc: EChartsThemeColors,
+  couleurDeCase?: (value: number) => string,
+): HeatCellDatum[] {
   return dps.map((d) => {
     const tuple: HeatCellTuple = [xs.indexOf(d.x), ys.indexOf(d.y), d.value ?? '-', d.detail]
-    return d.value == null ? { value: tuple, itemStyle: emptyCellItemStyle(tc) } : tuple
+    if (d.value == null) return { value: tuple, itemStyle: emptyCellItemStyle(tc) }
+    // Case PEINTE PAR L'APPELANT : `visualMap` ne teinte pas une heatmap catégorie ×
+    // catégorie (cf. la doc de la prop `cellColor`).
+    return couleurDeCase ? { value: tuple, itemStyle: { color: couleurDeCase(d.value) } } : tuple
   })
 }
 
@@ -235,7 +312,7 @@ export function buildHeatmap2DOption(
   opts: BuildOpts = {},
 ): EChartsCoreOption {
   const { paletteMode = 'sequential', valueRange, saturationCap, colorPalette = 'default' } = opts
-  const { formatTooltip } = opts
+  const { formatTooltip, cellColor, cellLabelColor, showVisualMap = true } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -259,8 +336,6 @@ export function buildHeatmap2DOption(
   }
 
   const tc = getEChartsThemeColors()
-  const data = buildCellData(dps, xs, ys, tc)
-
   const remplies = dps.filter((d): d is ChartPointHeatmap & { value: number } => d.value != null)
   const valeurs = remplies.map((d) => d.value)
   const minV = valueRange?.[0] ?? (valeurs.length > 0 ? Math.min(...valeurs) : 0)
@@ -272,11 +347,21 @@ export function buildHeatmap2DOption(
   // bascule sur la rampe de fréquence (luminance monotone, CVD-safe).
   const colors = heatmapRampTokens(paletteMode, colorPalette).map(resolveToken)
 
+  /** Position d'une valeur sur la rampe effective, bornée à 0..1. */
+  const rampePosition = (v: number) => {
+    const etendue = maxV - minV
+    return etendue > 0 ? Math.min(1, Math.max(0, (v - minV) / etendue)) : 1
+  }
+  const data = buildCellData(dps, xs, ys, tc, cellColor ? (v) => cellColor(v, rampePosition(v)) : undefined)
+
   const axis = getAxisBase(tc)
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 80, left: 96, right: 24 },
+    // `bottom` : la place de la réglette de rampe, quand elle est rendue. Sans elle,
+    // l'espace lui revient (une bande vide de 56 px sous une matrice de trois lignes se
+    // voit autant qu'une réglette).
+    grid: { top: 24, bottom: showVisualMap ? 80 : 24, left: 96, right: 24 },
     // Requis pour qu'ECharts applique les `itemStyle.decal` posés à la main
     // ci-dessus (même flag que `MatchSummaryCharts.ARIA_DECAL`).
     aria: { decal: { show: true } },
@@ -298,6 +383,7 @@ export function buildHeatmap2DOption(
     xAxis: { ...axis, type: 'category', data: xs, splitArea: { show: true } },
     yAxis: { ...axis, type: 'category', data: ys, splitArea: { show: true } },
     visualMap: {
+      show: showVisualMap,
       min: minV,
       max: maxV,
       calculable: true,
@@ -319,6 +405,12 @@ export function buildHeatmap2DOption(
           borderWidth: CELL_BORDER_WIDTH,
           borderColor: tc.card,
           borderRadius: CELL_BORDER_RADIUS,
+          // `decal: 'none'` EXPLICITE : `aria.decal.show` (requis par la case VIDE, plus
+          // bas) demande sinon a ECharts de hachurer TOUTE case sans motif declare — la
+          // hachure automatique delavait la rampe de couleur, et les cases sortaient
+          // grises au lieu de bleues (defaut PREEXISTANT, mesure sur capture le
+          // 2026-09-13). Le motif de la case vide, lui, reste pose par case.
+          decal: DECAL_NEUTRE,
         },
         label: {
           show: true,
@@ -328,6 +420,11 @@ export function buildHeatmap2DOption(
             if (typeof brut !== 'number') return EMPTY_CELL_LABEL
             return String(detail?.count ?? 0)
           },
+          // Encre de l'étiquette, fournie par l'appelant : lui seul sait quelle rampe il a
+          // demandée, donc quelle encre s'y lit. Une CHAÎNE, jamais une fonction — un
+          // `label.color` fonctionnel fait disparaître TOUS les nombres de la heatmap
+          // (mesuré sur capture le 2026-09-13, deux fois de suite).
+          ...(cellLabelColor ? { color: cellLabelColor } : {}),
         },
         emphasis: {
           itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' }, // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
