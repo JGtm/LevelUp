@@ -89,7 +89,7 @@ export function MedalsView({ vm, locale, emptyTitle, emptyDescription }: MedalsV
 
 function MedalCategoryCard({ category, locale }: { category: MedalCategoryView; locale: ManifestLocale }) {
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-card">
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
         {/* title/aria-label explicites : lève l'ambiguïté « symbole identique partout »
             (l'anneau seul ne porte pas de libellé — CitationProgressRing est décoratif). */}
@@ -106,7 +106,7 @@ function MedalCategoryCard({ category, locale }: { category: MedalCategoryView; 
         </div>
         <div className="shrink-0 text-xs text-muted-foreground">{category.totalAwardedLabel}</div>
       </div>
-      <div className="p-3">
+      <div className="flex-1 p-3">
         <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
           {category.items.map((item) => (
             <MedalCard key={item.medal_id} item={item} locale={locale} />

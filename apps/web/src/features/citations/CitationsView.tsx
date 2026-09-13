@@ -59,14 +59,17 @@ export function CitationsView({
               style={{ '--block-row-cols': rowGridTemplate(row) } as CSSProperties}
             >
               {row.blocks.map((group) => (
-                <div key={group.category} className="rounded-lg border border-border bg-card">
+                <div
+                  key={group.category}
+                  className="flex h-full flex-col rounded-lg border border-border bg-card"
+                >
                   <div className="flex items-center justify-between border-b border-border px-3 py-2 text-sm font-medium">
                     <span>{categoryLabel(group.category)}</span>
                     <span className="text-xs font-normal text-muted-foreground">
                       {group.completed} / {group.items.length} {completedSuffix}
                     </span>
                   </div>
-                  <div className="p-3">
+                  <div className="flex-1 p-3">
                     <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
                       {group.items.map((item) => (
                         <CitationCard key={item.key} item={item} locale={locale} />
