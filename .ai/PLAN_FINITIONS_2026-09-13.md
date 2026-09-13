@@ -200,17 +200,63 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
       ne montrent que l'objet PORTÉ lui-même), et **le champ de réparation ne porte qu'UNE
       consommation exploitable dans les 76 artefacts du parc** — non mesurable. Témoin positif
       passé : le mur rend `0x528fce46` à ×20,3 d'enrichissement.
-- [ ] F.1 D12 — si F.0 dit oui : l'origine d'une pose se lit sur le 103 résolu (objet référencé
-      = déployé, sinon lâché) ; `originDropWindowUS` et `originDropMaxDist` sont SUPPRIMÉS, pas
-      assouplis. Si F.0 dit non (film sans signal) : retirer la seule clause de distance, le
-      fait temporel restant (rapport écrit, décision utilisateur rejouée sur pièces).
-- [ ] F.2 D13 — si F.0 trouve la pièce engendrée du champ de réparation : l'ajouter au
-      manifeste `replay_labels.toml` et à `usageFamiliesWithSpawnedPiece`, « utilisé » = pièce
-      créée, comme le mur ; mesurer la couverture. Sinon `[!]` avec la mesure et colonne
-      « non mesuré ».
-- [ ] F.3 Aucun `SchemaVersion` bumpé si seule la classification change ; gate corpus
-      `replay-corpus-gate` ; `go test` du paquet replay et filmdec ; lint ; push ; CI.
-- [ ] F.4 Recuisson du parc : DEMANDER à l'utilisateur avant (22 min de coupure).
+- [x] F.1 D12 — BRANCHE DE REPLI appliquée (F.0 a dit NON : le 103 est muet pour tout appareil
+      porté). `equipmentOrigin` ne pose plus qu'une question TEMPORELLE : la clause de distance
+      est retirée, le fait temporel reste. `originDropMaxDist` **survit au paquet** — trois
+      autres chaînes s'en servent pour leur propre question (armes au sol, drapeau, crâne) —
+      avec un commentaire qui dit pourquoi elle ne classe plus une pose d'équipement.
+      `equipment_origin_test.go` : le cas « au bon instant mais trop loin » rend désormais
+      `dropped`, un contrôle « loin ET après la fenêtre » borne la portée du changement, et la
+      MUTATION est vérifiée (remettre la clause fait échouer le test sur exactement ce cas).
+      **Mesure avant/après** (`f1_origine_{mesure,verdict}_research_test.go`, 25 films demandés,
+      **21 mesurés**, 5 363 poses) : `deployed` 472 -> 450 (**-22**), `dropped` 4 509 -> 4 531
+      (**+22**), `unknown` inchangé. **22 poses changent, toutes dans le même sens**, toutes à
+      19,9-171,7 ms de la fin de vie et à 1,51-2,70 m : mur 7, grenade à fragmentation 10,
+      grappin 2, propulseur 1, traqueur 1, grenade spike 1.
+      **ÉCART AVEC L'ATTENDU, DIT : 22 et non 15.** Les 15 cas du §3.1 de F.0 étaient repérés
+      par « t0 == dernière frame du poseur », un proxy à la granularité de 100 ms ; le critère
+      RÉEL est la fenêtre de 200 ms, qui attrape 8 poses de plus (44 à 172 ms de la fin de vie,
+      toutes sur `4f77afc1`). 14 des 15 sont bien dans les 22 ; le quinzième (`0797ce72`) est
+      sur un film EXCLU de la mesure. Aucune famille hors de la liste du §3.1 n'est touchée,
+      sauf une grenade spike lâchée au même instant que deux grenades du même poseur.
+      **4 films hors mesure, dits** : `000d5950` et `215e7022` n'ont pas d'artefact local ;
+      `0797ce72` et `c88ec007` (Aquarius) — aucune carte du catalogue ne reproduit leurs repères
+      publiés (écart médian 29,2 et 29,9 m), cf. Découverte D-F5.
+- [!] F.2 D13 — **NON TRAITÉ, et la mesure est la raison.** F.0 §4 : aucune pièce engendrée
+      n'est identifiable pour le capteur (28 consommations), le traqueur (6) ni l'écran
+      occultant (8) — leurs fenêtres ne montrent que l'objet PORTÉ lui-même (`0x4396db42` à
+      ×14,0, `0x4744d742` à ×17,2), c'est-à-dire le même GlobalID des deux côtés ; et le CHAMP
+      DE RÉPARATION ne porte qu'**UNE** consommation exploitable dans les 76 artefacts du parc,
+      ce qui le rend non mesurable. Le témoin POSITIF passe (le mur rend `0x528fce46` à ×20,3),
+      donc le négatif est ancré. **Rien n'est ajouté au manifeste ni à
+      `usageFamiliesWithSpawnedPiece`** : y inscrire une famille sans pièce ferait relire son
+      « utilisé » sur `DeployedByFamily`, le défaut exact que `us6` a corrigé le 2026-09-10.
+      Reprise : un parc portant plusieurs dizaines de consommations de champ de réparation.
+- [x] F.3 **`SchemaVersion` NON bumpé (reste 54)** : seule la CLASSIFICATION change, aucun champ
+      ne bouge — les artefacts déjà cuits gardent leur ancienne origine jusqu'à recuisson, ce qui
+      est la même règle que D.2 du lot D. Gates joués :
+      `go build ./...` 0 · `go vet ./internal/games/halo_infinite/film/...` 0 ·
+      `go test` sur `film/replay` et `film/filmdec` 0 ·
+      `golangci-lint --new-from-merge-base=origin/feat/v75 ./internal/games/halo_infinite/film/...`
+      **0 issue** · gofmt propre.
+      **`replay-corpus-gate --reference=base --base origin/feat/v75` en RACINE JETABLE**
+      (`--work-root <worktree>/.f3-work`, `--parc-root` = dépôt principal en LECTURE ; le verrou
+      de décodage reste celui du parc, c'est sa raison d'être — un verrou local laisserait deux
+      décodeurs se marcher dessus). 12 témoins, 24 cuissons. **Sortie 1, et c'est ATTENDU :
+      les 4 témoins « PERTE » ne perdent que des compteurs `deployed`, avec autant de GAINS que
+      de pertes (3/3, 4/4, 2/2, 2/2)** — c'est-à-dire la reclassification elle-même, comptée
+      comme une baisse par un gate qui ne sait pas qu'elle est voulue. Détail :
+      `d9781168` `placements.deployed` 16 -> 14 (grenade frag 13 -> 12, spike 2 -> 1) ;
+      `51ebbc0f` 17 -> 13 (plasma 2 -> absent, frag 9 -> 8, répulseur 5 -> 4) ;
+      `084a804d` 53 -> 51 (frag 23 -> 21) ; `0797ce72` 34 -> 33 (**mur 21 -> 20**).
+      **Ce dernier CORROBORE la mesure F.1** : `0797ce72` est le film que l'instrument avait dû
+      exclure faute de carte — le gate, qui prend la carte de la base du match, y voit bien le
+      cas de mur basculer. Les 15 cas de F.0 §3.1 sont donc tous couverts.
+      Aucun autre axe du gate (identité, calques, faits) ne bouge : **0 perte hors
+      `coverage.placements.*`**.
+- [!] F.4 Recuisson du parc : **NON LANCÉE** — décision de l'utilisateur (22 min de coupure).
+      Tant qu'elle n'a pas tourné, les artefacts du parc gardent l'ancienne origine ; la vue
+      match la recalcule à la volée, Sessions/Solo/Escouade non.
 
 ## Décisions complémentaires (13/09, second message)
 - D3 : IGNORÉ (assez de cartes dessinées). D11 : rien (l'API sert la donnée). D16 : refonte
@@ -288,6 +334,13 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   records acceptés hors manifeste sur 3 185 (71 %) sur `4f77afc1` et 927 sur 1 605 (58 %) sur
   `5676a9ba`, contre ~25 % sur un film d'arène. Aucune mesure du dépôt ne borne aujourd'hui ce
   taux pour l'équipement (la borne connue vaut pour les ARMES au sol). NON TRAITÉ.
+- **D-F5 — DEUX films d'Aquarius ne se raccrochent à aucune carte du catalogue.** `0797ce72`
+  et `c88ec007` portent le découpage d'i0 `[13 12 11]`, celui d'`aquarius` et de lui seul, mais
+  aucune entrée de cette classe ne reproduit les repères que LEURS PROPRES ARTEFACTS publient :
+  écart médian de **29,2 m** et **29,9 m** par piste, quand les 21 autres films tiennent sous
+  0,20 m. Soit les bornes `aquarius` du catalogue ont changé depuis la cuisson de ces deux
+  artefacts, soit ces artefacts sont antérieurs à une correction de bornes. Les deux films sont
+  sortis de la mesure F.1 plutôt que mesurés en mètres faux. NON TRAITÉ.
 - **D-F4 — `0x412000aa` est désigné une fois par un `ref1` de 103** sur `9e8fb31b`, à
   +19 386 ms — très probablement une collision de clé `(slot, génération)` rebouclée, mais
   l'identifiant est hors manifeste et n'a pas été instruit. NON TRAITÉ.
