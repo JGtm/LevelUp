@@ -4,7 +4,7 @@
 > compteur de tir comme source des tirs de projectile, les records de dégât comme porteurs des
 > touches, et l'enregistrement créateur du slot `objet + 0x114`.
 >
-> **Aller à `.ai/HANDOFF_PRECISION_PROJECTILES_2026-08-08.md`** (état, ce qui reste ouvert,
+> **Aller à `.ai/V7.5/HANDOFF_PRECISION_PROJECTILES_2026-08-08.md`** (état, ce qui reste ouvert,
 > prochain geste) et `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md` §0bis (le verdict en une page).
 >
 > Ce qui reste juste ici : le **plafond de validation** (pas de population mono-arme pour le

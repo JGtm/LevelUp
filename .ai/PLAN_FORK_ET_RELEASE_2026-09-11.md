@@ -46,7 +46,8 @@
 ## Lot F — tâche Notion 10 : nettoyage worktrees/branches, bascule dossier LevelUp
 - [ ] F.1 Inventaire daté (fusionné dans feat/v75 / non fusionné).
 - [ ] F.2 Suppression du fusionné (worktrees, branches locales, distantes) ; `wt/ti11-cadre` conservée.
-- [ ] F.3 Archivage `.ai/` racine → `V7.5/` ; sort de `cmd/investigate_matches`.
+- [x] F.3 Archivage `.ai/` racine → `V7.5/` (documents seulement, `wt/archive-ai`) ; `[!]` sort
+      de `cmd/investigate_matches` — hors périmètre de ce lot (code, pas documents), non traité.
 - [ ] F.4 Bascule vers `LevelUp` avec l'utilisateur ; cocher Notion 10.
 
 ## Découvertes (non traitées)
@@ -301,3 +302,20 @@ lot H, pas avant. Effort L.
   nouveaux par version). Lot H fusionné dans feat/v75 et poussé. Serveur relancé. Lot H clos ;
   les 5 points de branchement (P1-P5) relèvent du plan d'architecture (lot I), pas de ce plan.
   Suite : lot F (nettoyage worktrees/branches, bascule LevelUp) avec l'utilisateur.
+- 2026-09-13 : F.3 rendu (`wt/archive-ai`, documents seulement). Sur les 76 fichiers `.ai/*.md`
+  de la racine, 28 étaient clos (toutes cases statuées, ou clôture déclarée par leur propre
+  journal / le thought_log) et ont rejoint `.ai/V7.5/` (4 dans `v2/`, 24 à la racine de V7.5) ;
+  `.ai/V7.5/README.md` tient le détail fichier par fichier. Références corrigées dans 8 documents
+  restés vivants (`REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`, `HANDOFF_PRECISION_PROJECTILES.md`,
+  `PLAN_EQUIPEMENT_GACHIS_2026-09-09.md`, `DECOUVERTES_TACTIQUE_2026-09-07.md`,
+  `PLAN_ORCHESTRATION_2026-09-07.md`, `PLAN_V2_RESTES_2026-09-07.md`, `docs/COMMANDS.md`,
+  `docs/FR/COMMANDS.md`) ; les références internes aux documents eux-mêmes archivés ne sont pas
+  réécrites (convention déjà posée par `V7.5/README.md`). Découverte non traitée : un sous-dossier
+  `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05_annexes/` (28 fichiers de vérification) vit hors de
+  `V7.5/` à la racine de `.ai/`, hors du périmètre "fichiers `.ai/*.md`" de cette passe — non
+  déplacé. Quelques cas gardés à la racine malgré un doute initial après vérification sur pièces
+  (item réellement non statué trouvé dans le fichier, pas seulement dans son résumé) :
+  `PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md` (items R1-R4 de clôture de vague jamais statués),
+  `PLAN_RETOURS_VAGUE_A_LOT_COURT_2026-09-08.md` (2 des 9 correctifs seulement livrés, gates
+  finales non jouées) — le détail des `[!]`/doutes est dans `V7.5/README.md`. `[!]` sort de
+  `cmd/investigate_matches` : hors périmètre (code), non traité dans ce lot.

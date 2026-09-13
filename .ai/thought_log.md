@@ -1,3 +1,36 @@
+## [2026-09-13] F.3 — archivage des plans et handoffs clos de la racine `.ai/` vers `V7.5/` — Complete (worktree wt/archive-ai)
+
+**Decision technique principale.** Tâche Notion 10 (item F.3 du `PLAN_FORK_ET_RELEASE_2026-09-11.md`),
+documents seulement. Sur les 76 fichiers `.ai/*.md` de la racine, chacun a été jugé sur pièces
+(cases statuées `[x]`/`[~]`/`[!]`, journal du fichier lui-même, ou déclaration de clôture dans
+`thought_log.md`/`V7.5/REGISTRE_REPORTS.md`) plutôt que sur son titre ou sa date. Deux erreurs de
+premier jugement corrigées avant déplacement : `PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md` semblait
+clos (0 case `- [ ]`) mais porte quatre items de revue/clôture de vague (R1-R4) jamais statués,
+retrouvés seulement au grep large `\[ \]` (sans le tiret) ; `PLAN_RETOURS_VAGUE_A_LOT_COURT_2026-09-08.md`
+avait deux items (A8, A9) déclarés « Complete » au thought_log, mais son propre fichier montre
+que 7 des 9 correctifs et toutes les gates de clôture (`check-types`, `test-web`, revue,
+thought_log, `delivery-checklist`) restent `- [ ]`. Les deux sont restés à la racine.
+
+**Résultats observés.** 28 documents clos déplacés : 24 à la racine de `V7.5/`, 4 dans `V7.5/v2/`
+(chantier v2 rejeu/film, gelé le 07/09, suite dans `PLAN_V2_RESTES_2026-09-07.md` resté à la
+racine). Détail fichier par fichier (preuve de clôture citée) : `V7.5/README.md`, section « Passe
+d'hygiène du 2026-09-13 ». 8 documents restés vivants avaient une référence cassée vers un fichier
+déplacé, corrigée (`REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`, `HANDOFF_PRECISION_PROJECTILES.md`,
+`PLAN_EQUIPEMENT_GACHIS_2026-09-09.md`, `DECOUVERTES_TACTIQUE_2026-09-07.md`,
+`PLAN_ORCHESTRATION_2026-09-07.md`, `PLAN_V2_RESTES_2026-09-07.md`, `docs/COMMANDS.md`,
+`docs/FR/COMMANDS.md`) ; les références internes à des documents eux-mêmes archivés n'ont pas été
+réécrites (convention déjà posée par `V7.5/README.md` au H6 du 2026-08-05 : les journaux et
+citations historiques ne se réécrivent pas).
+
+**Découverte non traitée.** `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05_annexes/` (28 fichiers de
+vérification par worker) est un sous-dossier à la racine de `.ai/`, hors du périmètre « fichiers
+`.ai/*.md` » de cette passe malgré son lien évident avec l'audit du même nom (déplacé) — non
+traité, signalé au registre.
+
+**Conclusion / prochaine étape.** F.3 `[x]` ; `cmd/investigate_matches` `[!]` (code, hors
+périmètre documents de ce lot). Reste du lot F avec l'utilisateur : F.1/F.2 (inventaire et
+suppression des worktrees/branches fusionnés) puis F.4 (bascule vers le dossier `LevelUp`).
+
 ## [2026-09-11] Lot C (robustesse + i18n) — verrou Windows EN, film mort classé, ~20 littéraux FR migrés — Complete (worktree LevelUp-wt-robustesse-i18n)
 
 **Decision technique principale.** Trois items indépendants du plan fork ChaseWoodhams

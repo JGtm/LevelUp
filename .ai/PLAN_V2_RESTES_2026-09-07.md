@@ -1,7 +1,7 @@
 # Plan — Restes du chantier v2 rejeu/film (après gel du 2026-09-07)
 
-> Périmètre : les faits laissés au registre à la clôture du chantier v2 (`.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`,
-> handoffs `.ai/HANDOFF_V2_REJEU_FILM_2026-09-06.md` et `_2026-09-07.md`). Ce plan s'exécute sous le contrat du
+> Périmètre : les faits laissés au registre à la clôture du chantier v2 (`.ai/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md`,
+> handoffs `.ai/V7.5/v2/HANDOFF_V2_REJEU_FILM_2026-09-06.md` et `_2026-09-07.md`). Ce plan s'exécute sous le contrat du
 > skill `plan-execution` (ordre strict, aucun report d'une action exécutable, chaque item statué `[x]`/`[~]`/`[!]`,
 > zéro fix hors périmètre : toute découverte va en « Découvertes », pas dans le diff).
 > Base de départ : `feat/v75` une fois `feat/v2-integ` intégré (schéma 48). Vérifier avec `git log --oneline -3`

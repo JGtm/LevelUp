@@ -125,6 +125,55 @@ arme-par-kill, et les plans/handoffs qui restent à traiter ou à terminer.
 > la racine : six fichiers Go citent leur CHEMIN en commentaire — ce sont des références de code
 > vivant, pas des archives.
 
+> **Passe d'hygiene du 2026-09-13 (item F.3 du `PLAN_FORK_ET_RELEASE_2026-09-11.md`, tache
+> Notion 10).** 28 documents 100% clos (toutes cases `[x]`/`[~]`/`[!]`, ou cloture declaree
+> par leur propre journal / le `thought_log`) ont rejoint `V7.5/` -- racine sauf mention :
+>
+> - `AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md` -- audit source de `PLAN_CUISSON_PERF.md`, deja ici.
+> - `AUDIT_V7.2.0_MAIN_2026-08-06.md` -- registre d'audit du diff v7.2.0->main, aucun item repris ailleurs.
+> - `v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` -- audit source du chantier v2 rejeu/film, fusionne.
+> - `ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md` -- recherche mode->score, integree le 2026-08-05 (`feat/re-mode-score`).
+> - `HANDOFF_CONTAINMENT_ZONES_2026-08-08.md` -- lot 4 v7.5, negatifs etablis (lettre de zone hors portee).
+> - `HANDOFF_LECTURE_EQUIPEMENT_2026-09-04.md` -- chantier equipement du 03/09, "tout est merge" (dixit le handoff).
+> - `HANDOFF_PRECISION_PROJECTILES_2026-08-08.md` -- piste close le jour meme (doublon date du `HANDOFF_PRECISION_PROJECTILES.md` reste a la racine).
+> - `HANDOFF_SESSION_USAGE_BDD_2026-09-04.md` -- a nourri `PLAN_SESSION_USAGE_BDD_EXECUTION.md`, clos avec lui.
+> - `HANDOFF_TACTIQUE_2026-09-07.md` -- chantier Tactique fusionne dans `feat/v75` le 07/09.
+> - `v2/HANDOFF_V2_REJEU_FILM_2026-09-06.md` et `v2/HANDOFF_V2_REJEU_FILM_2026-09-07.md` -- etat du chantier v2, fusionne (schema 48).
+> - `PLAN_FONDS_CARTE_WEBP_ETAG_2026-09-09.md` -- tous items `[~]` "fusionne le 09-09".
+> - `PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03.md` -- clos, source du handoff equipement ci-dessus.
+> - `PLAN_LEGENDES_COULEURS_RETOURS_2026-09-09.md` -- statut CLOS (E1->E7) declare en tete du fichier.
+> - `PLAN_PERF_NOTE_OBJECTIFS.md` et `RAPPORT_SIM_PERF_NOTE_2026-08.md` -- note de perf, close le 28/08.
+> - `PLAN_RETOURS_VAGUE_B_IDENTITES_2026-09-08.md` -- abandonne le 09/09, objectif atteint par une autre voie (sondage E2).
+> - `PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` -- execute via `PLAN_MASTER_2026-09-09.md`, "reste ouvert ici : rien".
+> - `PLAN_SCORE_PAR_MANCHES.md` -- E0-E7 clos (ADR 0032), seul E2 partiel non bloquant.
+> - `PLAN_SESSION_USAGE_BDD_EXECUTION.md` et `PLAN_SESSION_USAGE_LISIBILITE_2026-09-09.md` -- toutes etapes `[x]`, commits identifies.
+> - `PLAN_TACTIQUE_2026-09-06.md` -- fusionne dans `feat/v75` le 07/09 (suite : `PLAN_TACTIQUE_SUITE_2026-09-07.md`, reste a la racine).
+> - `v2/PLAN_V2_REJEU_FILM_2026-09-05.md` -- chantier v2 gele le 07/09 (suite : `PLAN_V2_RESTES_2026-09-07.md`, reste a la racine).
+> - `RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`, `RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`,
+>   `RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md`, `RAPPORT_LOT_E_DECODEUR_SOUS_TITRE_2026-09-12.md`,
+>   `RAPPORT_LOT_H_VERSIONS_2026-09-13.md` -- rapports des lots B/B-bis/E/G/H du `PLAN_FORK_ET_RELEASE_2026-09-11.md`,
+>   tous fusionnes dans `feat/v75`.
+>
+> References croisees mises a jour dans les documents restes vivants (`REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`,
+> `HANDOFF_PRECISION_PROJECTILES.md`, `PLAN_EQUIPEMENT_GACHIS_2026-09-09.md`, `DECOUVERTES_TACTIQUE_2026-09-07.md`,
+> `PLAN_ORCHESTRATION_2026-09-07.md`, `PLAN_V2_RESTES_2026-09-07.md`, `docs/COMMANDS.md`, `docs/FR/COMMANDS.md`) ;
+> les references internes aux documents deja archives (V7.5 ou eux-memes deplaces dans cette meme passe)
+> ne sont pas reecrites (convention posee par ce README au H6 ci-dessus).
+> **Decouverte non traitee** : `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05_annexes/` (28 fichiers,
+> verifications par worker) est un sous-dossier a la racine de `.ai/`, hors du perimetre "fichiers
+> `.ai/*.md`" de cette passe -- non deplace ; ses trois references au chemin racine de l'audit
+> (`G10.md`, `V-GO-B1.md`, `V-GO-B2.md`) et le renvoi de `V-WEB-3a.md` vers le handoff usage BDD
+> pointent donc desormais vers un fichier qui vit sous `V7.5/`.
+> **Gardes a la racine malgre le doute** (justification ecrite au lieu d'un deplacement) :
+> `AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` (registre encore cite par les restes v2 ouverts),
+> `ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md` (chantier Forge pas encore ouvert, post-release),
+> `HANDOFF_ASSAUT_DESAMORCAGE_2026-09-04.md` (piste ouverte non bloquante, decision utilisateur
+> en attente), `HANDOFF_VEHICULES_2026-09-04.md` (branche jamais poussee, CI jamais executee),
+> `PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md` (items R1-R4 de cloture de vague non statues),
+> `PLAN_ORCHESTRATION_2026-09-07.md` (table de suivi encore ouverte sur P3-P5/L6-L8/R9),
+> `STEAKTACULAR.md` et `duckdb_7659_upstream_report.md` (hors du perimetre thematique de `V7.5`,
+> qui ne couvre que la recherche rejeu/film ; le second attend une reponse amont externe).
+
 État de l'art et index : `ETAT_DE_L_ART_KILLWEAPON.md`,
 `ADDENDUM_ETAT_DE_L_ART_2026-07-26.md`, `ETAT_DE_L_ART_CHANTIER_VOISIN.md`,
 `README_KILLWEAPON_INDEX.md`.
