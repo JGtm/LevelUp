@@ -34,16 +34,11 @@ import {
   type ReplayGroundWeapon,
   type ReplayWeaponChange,
 } from '@/lib/api/types'
+import type { Equals, Expect } from '@/lib/types/typeEquality'
 
 const REPO = racineDuDepot()
 const GO = resolve(REPO, 'apps/go-api/internal/games/halo_infinite/film/replay')
 const FILMDEC = resolve(REPO, 'apps/go-api/internal/games/halo_infinite/film/filmdec')
-
-/** Égalité STRICTE de deux types (le double conditionnel différé est ce qui la rend stricte). */
-type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
-  ? true
-  : false
-type Expect<T extends true> = T
 
 /** Les balises `json:` d'une structure Go nommée, dans l'ordre de déclaration. */
 function goJSONTags(file: string, struct: string): string[] {
