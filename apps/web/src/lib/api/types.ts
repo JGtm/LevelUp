@@ -3211,3 +3211,9 @@ export type TacticalGrappe = components['schemas']['TacticalGrappe']
 export type TacticalCelluleBody = components['schemas']['TacticalCelluleBody']
 export type TacticalCelluleReponse = components['schemas']['TacticalCelluleReponse']
 export type TacticalContribution = components['schemas']['TacticalContribution']
+
+// La section « Coordination d'équipe » (lot F, maquette 034b1915) : la FORME de la
+// distance à l'équipier au moment de mes morts. Binning SERVEUR (ADR 0010) — le web
+// dessine ce qu'il reçoit, il ne re-bucket rien.
+export type TacticalCoordination = components['schemas']['TacticalCoordination']
+export type TacticalBinDistance = components['schemas']['TacticalBinDistance']

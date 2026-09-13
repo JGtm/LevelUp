@@ -11,6 +11,11 @@
  * carte ne fait qu'afficher `matchs_non_ouvrables` en pied de liste (0 → rien, jamais un
  * zéro qui inviterait à le lire comme une absence de restriction).
  *
+ * LE LIEN EST UN `<Link>` DU ROUTEUR, JAMAIS UN `<a href>` : un `<a href>` natif provoque
+ * une navigation DOCUMENT — l'application entière se recharge, et le retour arrière la
+ * recharge une deuxième fois. C'est le « ça recharge la page » constaté par l'utilisateur
+ * (reproduit le 2026-09-13 : 1 évènement `load` et 2 `framenavigated` sur un clic de lien).
+ *
  * LE LIEN PORTE `?t=<instant_ms>&clock=<c.clock>`, JAMAIS UNE FRAME PRÉ-CALCULÉE ICI. Cette
  * carte n'a pas l'artefact de rejeu sous la main (il n'est pas toujours cuit) et ne peut donc
  * PAS savoir si l'instant est déjà exact (`clock: "film"`, questions `temps`/`routes`) ou
@@ -20,18 +25,25 @@
  * `instantToFrame` (tacticalView.logic.ts) est mort depuis ce lot — cette conversion a
  * remplacé sa seule utilisation, et il a été retiré avec ses tests.
  */
-import { useRouter } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SectionCard } from '@/components/ui/section-card'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { CelluleTactique, TacticalContribution } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
+import { useOutcomeMapping } from '@/lib/i18n/fieldMappings'
 import type { Locale } from '@/lib/i18n/locale'
+import { outcomeTokenFromCanonical } from '@/lib/outcome-color'
 import { formatClock } from '@/lib/replay/replayLogic'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import type { TacticalText } from './i18n'
-import { unitForQuestion, type TacticalQuestion } from './tacticalView.logic'
+import {
+  questionSansCellule,
+  unitForQuestion,
+  type TacticalQuestion,
+} from './tacticalView.logic'
 
 export interface TacticalCellCardProps {
   t: TacticalText
@@ -62,7 +74,14 @@ export function TacticalCellCard({
   return (
     <SectionCard title={t.cellTitle} label={t.cellTitle}>
       <div className="flex flex-col gap-3 p-3" data-testid="tactical-cell-card">
-        {!cellule ? (
+        {questionSansCellule(question) ? (
+          // « Mes routes de spawn » empile des trajets : il n'y a pas de grandeur par
+          // cellule à détailler. Le dire vaut mieux qu'inviter à un clic sans réponse.
+          <EmptyStateNotice
+            title={t.cellPlaceholderRoutes}
+            description={t.cellPlaceholderRoutesDescription}
+          />
+        ) : !cellule ? (
           <EmptyStateNotice title={t.cellPlaceholder} description={t.cellPlaceholderDescription} />
         ) : (
           <>
@@ -110,7 +129,6 @@ function TacticalCellContributions({
   matchsNonOuvrables,
 }: TacticalCellContributionsProps) {
   const titleSlug = useTitleSlug()
-  const router = useRouter()
   const dateFmt = new Intl.DateTimeFormat(intlLocale(locale), { dateStyle: 'medium' })
 
   return (
@@ -124,33 +142,16 @@ function TacticalCellContributions({
       )}
       {!loading && contributions !== null && contributions.length > 0 && (
         <ul className="flex flex-col gap-1">
-          {contributions.map((c, i) => {
-            const date = dateFmt.format(new Date(c.match_started_at))
-            const instant = formatClock(c.instant_ms)
-            const href = router.buildLocation({
-              to: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay',
-              params: { titleSlug, playerSlug, matchId: c.match_id },
-              // `t` est une CHAÎNE dans le schéma de la route (pas un nombre) : `FullSearchSchema`
-              // fusionne tous les schémas de recherche du dépôt, et un champ numérique y casse
-              // des lecteurs sans rapport qui supposent chaque valeur déjà une chaîne
-              // (`HelpPage.tsx`/`SettingsPage.tsx`, `new URLSearchParams(location.search)`).
-              // `c.clock` est un `string` côté contrat généré (Go publie `"match"`/`"film"`
-              // par construction, domain.TacticalClockMatch/Film) : la route revalide au
-              // moment de le lire (`z.enum`), ce cast n'écarte donc aucune garde réelle.
-              search: { t: String(c.instant_ms), clock: c.clock as 'match' | 'film' },
-            }).href
-            return (
-              <li key={`${c.match_id}-${c.instant_ms}-${i}`}>
-                <a
-                  href={href}
-                  className="text-xs text-primary hover:underline"
-                  data-testid="tactical-cell-contribution-link"
-                >
-                  {t.cellContributionLabel(date, instant)}
-                </a>
-              </li>
-            )
-          })}
+          {contributions.map((c, i) => (
+            <TacticalCellContributionRow
+              key={`${c.match_id}-${c.instant_ms}-${i}`}
+              t={t}
+              contribution={c}
+              date={dateFmt.format(new Date(c.match_started_at))}
+              titleSlug={titleSlug}
+              playerSlug={playerSlug}
+            />
+          ))}
         </ul>
       )}
       {matchsNonOuvrables > 0 && (
@@ -159,5 +160,61 @@ function TacticalCellContributions({
         </p>
       )}
     </div>
+  )
+}
+
+interface TacticalCellContributionRowProps {
+  t: TacticalText
+  contribution: TacticalContribution
+  date: string
+  titleSlug: string
+  playerSlug: string
+}
+
+/**
+ * UNE ligne de la liste : la date du match, SON ISSUE (mot et couleur du titre), et le lien
+ * « ouvrir à mm:ss » — la forme de la maquette 034b1915.
+ *
+ * L'ISSUE VIENT DU SERVEUR SOUS SA FORME CANONIQUE (`resultat` : win/loss/tie/dnf) : le mot
+ * est celui d'`outcomes.toml` (`useOutcomeMapping`), la couleur un jeton sémantique. Une
+ * issue inconnue n'affiche RIEN plutôt qu'un mot par défaut, qui se lirait comme une défaite.
+ */
+function TacticalCellContributionRow({
+  t,
+  contribution: c,
+  date,
+  titleSlug,
+  playerSlug,
+}: TacticalCellContributionRowProps) {
+  const instant = formatClock(c.instant_ms)
+  const issue = useOutcomeMapping(c.resultat ?? '')
+  const jeton = outcomeTokenFromCanonical(c.resultat ?? '')
+
+  return (
+    <li className="flex items-baseline gap-2 border-b border-border py-1 last:border-b-0">
+      <span className="text-xs text-muted-foreground">{date}</span>
+      {issue && jeton && (
+        <span className="text-xs font-medium" style={{ color: tokenCssVar(jeton) }}>
+          {issue.label}
+        </span>
+      )}
+      <Link
+        to="/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay"
+        params={{ titleSlug, playerSlug, matchId: c.match_id }}
+        // `t` est une CHAÎNE dans le schéma de la route (pas un nombre) : `FullSearchSchema`
+        // fusionne tous les schémas de recherche du dépôt, et un champ numérique y casse
+        // des lecteurs sans rapport qui supposent chaque valeur déjà une chaîne
+        // (`HelpPage.tsx`/`SettingsPage.tsx`, `new URLSearchParams(location.search)`).
+        // `c.clock` est un `string` côté contrat généré (Go publie `"match"`/`"film"`
+        // par construction, domain.TacticalClockMatch/Film) : la route revalide au
+        // moment de le lire (`z.enum`), ce cast n'écarte donc aucune garde réelle.
+        search={{ t: String(c.instant_ms), clock: c.clock as 'match' | 'film' }}
+        aria-label={t.cellContributionLabel(date, instant)}
+        className="ml-auto whitespace-nowrap text-xs text-primary hover:underline"
+        data-testid="tactical-cell-contribution-link"
+      >
+        {t.cellContributionOpen(instant)}
+      </Link>
+    </li>
   )
 }
