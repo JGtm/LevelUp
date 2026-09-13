@@ -341,3 +341,22 @@ func applyMSRViewLatestByType(db *sql.DB) error {
 	slog.InfoContext(ctx, "match_skill_rank_latest_by_type: vue (match_id, rating_type) posée")
 	return nil
 }
+
+// EnsureMatchSkillRankViews (ré)applique les DEUX vues de lecture de
+// match_skill_rank, avec la DDL des migrations — source unique.
+//
+// Existe pour les OUTILS OPS qui doivent reposer une vue sur une base réelle sans
+// rejouer une migration déjà inscrite au ledger (`schema_migrations`) : le runner ne
+// rejoue jamais un step appliqué, donc une vue perdue après coup ne reviendrait
+// JAMAIS de son propre chef. Même mécanique que migration.EnsureMatchKillEvents,
+// appelé par sync/schema.go hors du runner.
+//
+// Idempotent (CREATE OR REPLACE VIEW) et sans effet sur une base antérieure à la
+// conversion append-only (les deux steps se gardent sur la présence de `id`).
+// Ne touche AUCUNE donnée.
+func EnsureMatchSkillRankViews(db *sql.DB) error {
+	if err := applyMSRViewPriorityCSR(db); err != nil {
+		return err
+	}
+	return applyMSRViewLatestByType(db)
+}

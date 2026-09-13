@@ -248,3 +248,78 @@ func keysOf(m map[string]string) []string {
 	}
 	return out
 }
+
+// TestRepairIndexes_LeavesViewsUntouched — garde C.9 : la réparation d'index ne
+// touche QUE des index. DROP/CREATE INDEX n'a aucune raison d'affecter une vue, mais
+// c'est exactement ce qu'on a cru du swap de la purge avant de le mesurer : on le
+// vérifie plutôt que de le supposer. Les vues sont posées par les migrations réelles.
+func TestRepairIndexes_LeavesViewsUntouched(t *testing.T) {
+	db := newFixtureDB(t)
+	ctx := context.Background()
+
+	before, err := dependentViewNames(ctx, db)
+	if err != nil {
+		t.Fatalf("dependentViewNames: %v", err)
+	}
+	if len(before) < 2 {
+		t.Fatalf("vues avant = %v, want ≥ 2 (les deux vues de lecture de match_skill_rank)", before)
+	}
+
+	if err := repairIndexes(ctx, db, []string{"idx_msr_playlist", "idx_msr_rating_type", "idx_msr_match_lookup"}); err != nil {
+		t.Fatalf("repairIndexes: %v", err)
+	}
+
+	after, err := dependentViewNames(ctx, db)
+	if err != nil {
+		t.Fatalf("dependentViewNames après: %v", err)
+	}
+	if len(after) != len(before) {
+		t.Fatalf("vues avant=%v après=%v — la réparation d'index ne doit toucher aucune vue", before, after)
+	}
+	for _, name := range after {
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM "`+name+`"`).Scan(&n); err != nil {
+			t.Errorf("la vue %s est illisible après réparation des index : %v", name, err)
+		}
+	}
+}
+
+// TestEnsureReadViews_RestoresADroppedView — le drapeau -ensure-views repose une vue
+// perdue APRÈS que son step a été inscrit au ledger : le runner ne rejouerait jamais
+// ce step, la vue ne reviendrait donc jamais d'elle-même.
+func TestEnsureReadViews_RestoresADroppedView(t *testing.T) {
+	db := newFixtureDB(t)
+	ctx := context.Background()
+
+	before, err := dependentViewNames(ctx, db)
+	if err != nil {
+		t.Fatalf("dependentViewNames: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `DROP VIEW IF EXISTS match_skill_rank_latest_by_type`); err != nil {
+		t.Fatalf("DROP VIEW: %v", err)
+	}
+	if names, _ := dependentViewNames(ctx, db); len(names) != len(before)-1 {
+		t.Fatalf("la vue n'a pas été retirée pour le test ; vues = %v", names)
+	}
+
+	if err := ensureReadViews(ctx, db); err != nil {
+		t.Fatalf("ensureReadViews: %v", err)
+	}
+
+	after, err := dependentViewNames(ctx, db)
+	if err != nil {
+		t.Fatalf("dependentViewNames après: %v", err)
+	}
+	if len(after) != len(before) {
+		t.Fatalf("vues après -ensure-views = %v, want %v", after, before)
+	}
+	var n int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM match_skill_rank_latest_by_type`).Scan(&n); err != nil {
+		t.Errorf("la vue reposée est illisible : %v", err)
+	}
+	// Idempotent : une seconde passe ne casse rien (CREATE OR REPLACE).
+	if err := ensureReadViews(ctx, db); err != nil {
+		t.Errorf("seconde passe: %v", err)
+	}
+}
