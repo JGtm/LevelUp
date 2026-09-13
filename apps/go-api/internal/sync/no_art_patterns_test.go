@@ -594,3 +594,230 @@ func findRepoRoot(t *testing.T) string {
 	t.Fatalf("module root (go.mod) non trouvé depuis %s", wd)
 	return ""
 }
+
+// ─── D-B1 : les écritures à NOM DE TABLE INTERPOLÉ (G.2, 2026-09-13) ────────────────
+//
+// TROU COMBLÉ ICI. Les trois scans ci-dessus cherchent tous un nom de table
+// LITTÉRAL dans la source. `internal/ops/seed_demo_corpus.go` construisait ses
+// écritures par `fmt.Sprintf("UPDATE %s …", t.table)` : aucun littéral
+// `UPDATE weapon_kills` n'existait dans le fichier, si bien que ni le scan
+// principal ni le tripwire bulk ne pouvaient voir un UPDATE set-based nu sur
+// quatre tables qu'ils couvrent pourtant (weapon_kills, medals_earned,
+// killer_victim_pairs, match_participants). Le cas précis a été corrigé au lot
+// B.3.6 ; le GARDE-RAIL, lui, restait aveugle à la forme (Découverte D-B1).
+//
+// CE QUE CE SCAN DÉCIDE. Une écriture à nom de table interpolé est SUSPECTE
+// quand elle n'est pas ligne à ligne À VALEURS LIÉES — c'est-à-dire quand le
+// littéral ne porte AUCUN placeholder `?`. Sans valeur liée, un `UPDATE %s SET …
+// WHERE <prédicat>` est set-based : un seul statement qui touche N entrées
+// d'index, exactement le déclencheur ART. Avec `?`, la boucle est un UPDATE par
+// ligne (forme que le projet prescrit) — c'est la forme livrée par
+// `seed_demo_corpus.go` et elle doit rester VERTE. Un `ON CONFLICT … DO UPDATE`
+// dans un littéral interpolé est refusé même avec des valeurs liées : l'UPSERT
+// est un déclencheur en soi.
+//
+// PÉRIMÈTRE. Le nom de table étant inconnu à la lecture, la corrélation est
+// FILE-level, comme TestNoARTPatternsOnProtectedTables : seuls les fichiers qui
+// nomment par ailleurs au moins une table protégée ou critique sont jugés. Un
+// outil générique qui ne nomme aucune de ces tables (ex. `internal/ops/restore.go`,
+// qui vide une table par `DELETE FROM %q` avec un nom venu du jeu de parquets)
+// n'est donc PAS jugé ici — limite ASSUMÉE et consignée, pas un oubli.
+
+// reInterpolatedUpdate / reInterpolatedDelete / reInterpolatedInsert — formes
+// d'écriture dont le NOM DE TABLE est un verbe d'interpolation. `UPDATE` exige un
+// `SET` dans la fenêtre : sans lui, le `"… UPDATE %q: %w"` d'un fmt.Errorf
+// matcherait (faux positif mesuré sur mode_playlist_fr.go).
+var (
+	reInterpolatedUpdate = regexp.MustCompile(`(?is)\bUPDATE\s+%[sqv]\b.{0,400}?\bSET\b`)
+	reInterpolatedDelete = regexp.MustCompile(`(?is)\bDELETE\s+FROM\s+%[sqv]`)
+	reInterpolatedInsert = regexp.MustCompile(`(?is)\bINSERT\s+INTO\s+%[sqv]`)
+	// Concaténation : le verbe est la FIN du littéral, immédiatement suivi de `+`.
+	reConcatWrite = regexp.MustCompile("(?is)\\b(?:UPDATE|DELETE\\s+FROM|INSERT\\s+INTO)\\s*[\"`]\\s*\\+")
+	// ON CONFLICT … DO UPDATE, fenêtre bornée au statement courant.
+	reUpsertInWindow = regexp.MustCompile(`(?is)\bON\s+CONFLICT\b.{0,200}?\bDO\s+UPDATE\b`)
+	// Littéraux Go : raw string entre backticks, ou string interprétée.
+	reGoStringLiteral = regexp.MustCompile("(?s)`[^`]*`|\"(?:[^\"\\\\\n]|\\\\.)*\"")
+)
+
+// interpolatedWriteViolations rend les motifs suspects d'UN contenu source déjà
+// déscommenté. Fonction pure : c'est elle que le témoin rouge exerce.
+func interpolatedWriteViolations(text string) []string {
+	var out []string
+	for _, lit := range reGoStringLiteral.FindAllString(text, -1) {
+		var forme string
+		switch {
+		case reInterpolatedUpdate.MatchString(lit):
+			forme = "UPDATE <table interpolee>"
+		case reInterpolatedDelete.MatchString(lit):
+			forme = "DELETE FROM <table interpolee>"
+		case reInterpolatedInsert.MatchString(lit):
+			forme = "INSERT INTO <table interpolee>"
+		default:
+			continue
+		}
+		if reUpsertInWindow.MatchString(lit) {
+			out = append(out, forme+" + ON CONFLICT DO UPDATE")
+			continue
+		}
+		if !strings.Contains(lit, "?") {
+			out = append(out, forme+" sans valeur liee (set-based)")
+		}
+	}
+	for _, idx := range reConcatWrite.FindAllStringIndex(text, -1) {
+		fin := idx[0] + 400
+		if fin > len(text) {
+			fin = len(text)
+		}
+		fenetre := text[idx[0]:fin]
+		if reUpsertInWindow.MatchString(fenetre) {
+			out = append(out, "ecriture concatenee + ON CONFLICT DO UPDATE")
+			continue
+		}
+		if !strings.Contains(fenetre, "?") {
+			out = append(out, "ecriture concatenee sans valeur liee (set-based)")
+		}
+	}
+	return out
+}
+
+// dansLePerimetreART — périmètre commun des scans anti-ART : code de production
+// uniquement (hors tests, migrations one-shot, CLI et scripts mono-processus).
+// ops/ EST inclus (plomberie in-process, cf. E3 2026-07-03).
+func dansLePerimetreART(path string) bool {
+	if strings.HasSuffix(path, "_test.go") {
+		return false
+	}
+	for _, seg := range []string{"migration", "migrations", "cmd", "scripts"} {
+		if strings.Contains(path, "/"+seg+"/") || strings.Contains(path, "\\"+seg+"\\") {
+			return false
+		}
+	}
+	return true
+}
+
+// TestNoInterpolatedWriteOnProtectedTables — le scan de production de D-B1.
+func TestNoInterpolatedWriteOnProtectedTables(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+
+	tablesSurveillees := append(append([]string{}, tablesProtegees...), criticalMatchTables...)
+	regexTables := make([]*regexp.Regexp, 0, len(tablesSurveillees))
+	for _, table := range tablesSurveillees {
+		regexTables = append(regexTables, regexp.MustCompile(`(?i)\b`+regexp.QuoteMeta(table)+`\b`))
+	}
+
+	var violations []string
+	err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info.IsDir() {
+			name := info.Name()
+			if name == "vendor" || name == ".git" || name == "node_modules" ||
+				name == "data" || name == "logs" || name == "dist" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || !dansLePerimetreART(path) {
+			return nil
+		}
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
+		}
+		text := stripGoComments(string(content))
+		nommeUneTable := false
+		for _, re := range regexTables {
+			if re.MatchString(text) {
+				nommeUneTable = true
+				break
+			}
+		}
+		if !nommeUneTable {
+			return nil
+		}
+		rel, _ := filepath.Rel(repoRoot, path)
+		for _, v := range interpolatedWriteViolations(text) {
+			violations = append(violations, v+" file="+filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk: %v", err)
+	}
+
+	if len(violations) > 0 {
+		t.Errorf("ecriture a NOM DE TABLE INTERPOLE sans valeur liee (declencheur ART, "+
+			"invisible aux scans a nom litteral — cf. D-B1) : %d :\n  - %s\n"+
+			"Remede : N statements ligne a ligne `WHERE <cle> = ?` (modele "+
+			"internal/ops/seed_demo_corpus.go) ou INSERT-only via internal/persist.",
+			len(violations), strings.Join(violations, "\n  - "))
+	}
+}
+
+// TestInterpolatedWriteDetection_Sanity — LE TÉMOIN. Sans lui, un scan qui ne
+// détecte plus rien passerait pour vert. Les chaînes ci-dessous vivent dans CE
+// fichier de test : aucun fichier de production n'est fabriqué pour l'occasion.
+func TestInterpolatedWriteDetection_Sanity(t *testing.T) {
+	cas := []struct {
+		nom    string
+		source string
+		rouge  bool
+	}{
+		{
+			// VERBATIM : la forme que portait seed_demo_corpus.go avant B.3.6
+			// (`git show 044751026^:apps/go-api/internal/ops/seed_demo_corpus.go`,
+			// lignes 372-374). C'est elle que les trois autres scans ne voyaient pas.
+			nom:    "UPDATE interpole set-based (la forme reelle de D-B1)",
+			source: "stmt := fmt.Sprintf(`UPDATE %s SET %s FROM _xuid_map m WHERE %s.%s = m.old_xuid`, t.table, set, t.table, xuidCol)",
+			rouge:  true,
+		},
+		{
+			nom:    "UPDATE interpole ligne a ligne a valeurs liees (seed_demo_corpus)",
+			source: "stmt := fmt.Sprintf(`UPDATE %s SET %s WHERE %s = ?`, t.table, set, xuidCol)",
+			rouge:  false,
+		},
+		{
+			nom:    "DELETE FROM interpole",
+			source: "q := fmt.Sprintf(`DELETE FROM %s WHERE match_id IN (SELECT match_id FROM tmp)`, table)",
+			rouge:  true,
+		},
+		{
+			nom:    "INSERT INTO interpole avec UPSERT malgre les valeurs liees",
+			source: "q := fmt.Sprintf(`INSERT INTO %s (match_id, v) VALUES (?, ?) ON CONFLICT (match_id) DO UPDATE SET v = excluded.v`, table)",
+			rouge:  true,
+		},
+		{
+			// NB : pas de `written_at = now()` dans ce temoin — le ratchet
+			// TestWrittenAtEcrituresEnUTC (internal/migration) scanne TOUT le module et
+			// prendrait la chaine de test pour une horloge nue dans un ordre SQL reel.
+			nom:    "concatenation set-based",
+			source: `q := "UPDATE " + table + " SET playlist_group = 'h5_arena' WHERE playlist_group IS NULL"`,
+			rouge:  true,
+		},
+		{
+			nom:    "concatenation ligne a ligne a valeurs liees",
+			source: `q := "UPDATE " + table + " SET v = ? WHERE match_id = ?"`,
+			rouge:  false,
+		},
+		{
+			nom:    "message d erreur portant UPDATE %q (faux positif a ne pas rendre)",
+			source: "return fmt.Errorf(\"applyPlaylistFRSeeds UPDATE %q: %w\", seed.en, err)",
+			rouge:  false,
+		},
+		{
+			nom:    "INSERT INTO litteral (deja couvert par les autres scans)",
+			source: "q := `INSERT INTO match_skill_rank (match_id) VALUES (?)`",
+			rouge:  false,
+		},
+	}
+	for _, c := range cas {
+		got := interpolatedWriteViolations(c.source)
+		if c.rouge && len(got) == 0 {
+			t.Errorf("%s : le garde-rail NE MORD PAS (aucune violation rendue)", c.nom)
+		}
+		if !c.rouge && len(got) > 0 {
+			t.Errorf("%s : faux positif — violations rendues : %v", c.nom, got)
+		}
+	}
+}

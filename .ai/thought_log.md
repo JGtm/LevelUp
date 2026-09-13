@@ -1,3 +1,70 @@
+## [2026-09-13] Lot G des finitions v7.5 — fiabilite : un rebuild mortel retire, deux garde-rails qui mordent enfin, une regle de comparaison partagee — Complete (worktree wt-finitions-fiabilite, branche feat/finitions-fiabilite)
+
+**Decision technique principale.** Les cinq items du lot partagent une meme forme de defaut :
+un garde-rail, un commentaire ou une liste AFFIRMAIT une garantie que rien ne tenait. G.1 est
+l'exception, c'est du code actif dangereux : `migration.RebuildMatchSkillRankART` reposait
+`ADD PRIMARY KEY (match_id)` sur une table devenue append-only (PK technique `id`, N lignes par
+match_id, vue `_latest`) — sur une player DB d'aujourd'hui il echoue, et s'il passait il
+detruirait l'invariant de l'ADR 0026. Supprime avec son unique appelant `cmd/force_rebuild_art`
+apres avoir verifie SUR PIECES qu'il n'etait le SEUL chemin d'aucune reparation : le rebuild
+shared `match_participants` reste servi par `cmd/rebuild_mp`, le rebuild player
+`player_match_enrichment` par `cmd/rebuild_pme_art` et `levelup rebuild-pme`. Le CLI supprime
+etait par ailleurs mono-titre en dur, ouvrait DuckDB par `sql.Open` nu (hors provider/lease) et
+son etape `match_skill_rank` etait deja documentee comme cassee depuis mai.
+
+**La decision de fond de G.3** : ne PAS recopier une troisieme fois la regle « scan force vs
+lookup indexe ». Elle vivait en deux exemplaires (sonde PSA, `cmd/repair_psa_index`) et la sonde
+`match_skill_rank` demandee en aurait fait une 3e et une 4e — le seuil exact de la regle
+CLAUDE.md n°6. Extraction dans `internal/platform/duckdb/indexcheck` (mecanique + CARTE DES AXES
+de match_skill_rank), consomme par la sonde ET par `cmd/repair_msr_index` qui portait la seule
+copie. Le garde-rail interdit de nommer un `"idx_msr_*"` en litteral Go hors du paquet : les DDL
+des migrations, en raw string, et les commentaires ne matchent pas. La paire PSA reste en 2
+copies — tolere par la regle, consigne.
+
+**Resultats observes.** **La morsure de chaque garde-rail a ete VERIFIEE, pas supposee.**
+(1) G.2 : le temoin du ratchet anti-ART porte la forme HISTORIQUE VERBATIM de
+`seed_demo_corpus.go` avant B.3.6, relevee par `git show 044751026^` —
+`UPDATE %s SET %s FROM _xuid_map m WHERE %s.%s = m.old_xuid`, aucune valeur liee. Elle est
+ROUGE ; la forme livree en B.3.6 (`... WHERE %s = ?`) reste VERTE. (2) G.3 : une carte d'axes
+recopiee dans `cmd/repair_msr_index/diag.go` rend le ratchet rouge (mutation jouee puis
+annulee). (3) G.5a : retirer `'bomb'` du tableau TS rend le test de parite rouge. **Cout de la
+sonde G.3, MESURE sur fixture montee par les migrations reelles : 56 ms pour 206 cles comparees
+sur 2 000 lignes**, 3 axes, borne 200 cles/axe en tirage reservoir.
+
+**Deux pieges payes.** (a) Mon temoin de concatenation G.2 contenait `written_at = now()` : le
+ratchet `TestWrittenAtEcrituresEnUTC` d'`internal/migration` scanne TOUT le module, chaines de
+test comprises, et l'a pris pour une horloge nue dans un ordre SQL reel. Le run complet l'a
+attrape ; temoin reecrit sur `playlist_group`. Lecon : une chaine de test qui ressemble a du SQL
+de production est jugee comme telle par les autres ratchets. (b) G.4 a ECRASE un fichier
+existant : `openspartan_post_import_title_test.go` portait deja le ratchet C.1
+`TestPostImportLUSRCallIsTitleStamped`, qui exigeait le litteral
+`s.recomputeLUSR(ctxkeys.WithTitleSlug(ctx, opts.TitleSlug)`. Ce litteral n'existe plus puisque
+le stamp a remonte a l'entree de `Run` : le ratchet aurait echoue sur un code DEVENU MEILLEUR.
+Sa garantie est reprise et elargie par `TestRunStampeLeTitreAvantLaPremiereEtape` (toutes les
+etapes, plus une seule). Le test supprime n'etait PAS dans
+`.ai/baselines/tests_pre_migration.jsonl` (ne le 2026-09-13, baseline du 2026-06-26) — verifie
+par grep, aucune entree a retirer. Consigne parce qu'un remplacement silencieux de garde-rail
+est exactement ce qu'on reproche aux autres.
+
+**Baseline de tests.** Seules 3 lignes package-level de `cmd/force_rebuild_art` (start /
+« no test files » / skip) retirees, par filtre sur le nom de paquet (61 788 -> 61 785). Elles ne
+portaient AUCUN champ `Test` : le controle de presence ne les voyait pas, rien n'est relache.
+Note datee ajoutee a l'en-tete de `scripts/check_test_baseline.sh`, comme pour B.2.
+
+**Piege de gate, non imputable au lot.** Le run d'integration a tue `internal/platform/duckdb`
+au budget par defaut de 10 min (`panic: test timed out`, AUCUN `--- FAIL:`). Rejoue seul avec
+`-timeout 1800s` : **ok en 295,6 s**. Le run complet local etait ~1,5x plus lent que la mesure
+de la revue E.3 (`internal/sync` 237 s contre 167,8 s ; `migration` 340 s), et le diff du lot
+n'ajoute qu'un SOUS-paquet sous `platform/duckdb/` — le paquet lui-meme n'est pas touche, et la
+CI est verte sur le commit de base `4acf56aae`. Motif de flake local deja connu du depot.
+
+**Conclusion / prochaine etape.** Lot G clos, 6 commits, G.1 a G.6 tous `[x]`. Une decouverte
+consignee et NON traitee : **D-G1** — `internal/ops/restore.go:223` vide une table par
+`DELETE FROM %q` interpole sans valeur liee (forme declencheuse ART) ; le scan G.2 ne le juge
+pas car il correle au niveau du fichier sur le nom d'une table protegee et cet outil generique
+n'en nomme aucune. Limite ASSUMEE, documentee dans le fichier de test et au plan. Reste au
+pilote : la requete de mesure G.4 (comptage des `performance_chain` etrangeres sur les 4 player
+DB Infinite, lecture seule, serveur arrete) — elle est au journal du plan.
 ## [2026-09-13] Lot F.1 et F.2 des finitions v7.5 — l'origine d'une pose d'equipement devient purement TEMPORELLE — Complete (worktree wt-finitions-equipement, branche feat/finitions-equipement)
 
 **Decision technique principale.** F.0 ayant refute la branche « le film le dit » (le type 103
