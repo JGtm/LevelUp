@@ -45,7 +45,7 @@
 
 ## Lot F — tâche Notion 10 : nettoyage worktrees/branches, bascule dossier LevelUp
 - [x] F.1 Inventaire daté (fusionné dans feat/v75 / non fusionné).
-- [~] F.2 Suppression du fusionné (worktrees, branches locales, distantes) ; `wt/ti11-cadre` conservée.
+- [x] F.2 Suppression du fusionné (worktrees, branches locales, distantes) ; `wt/ti11-cadre` conservée.
 - [ ] F.3 Archivage `.ai/` racine → `V7.5/` ; sort de `cmd/investigate_matches`.
 - [ ] F.4 Bascule vers `LevelUp` avec l'utilisateur ; cocher Notion 10.
 
@@ -319,3 +319,11 @@ lot H, pas avant. Effort L.
   typecheck et vitest à revérifier. Règle : supprimer la jonction (`cmd /c rmdir`) AVANT tout
   `git worktree remove`, jamais `npm ci` pendant que Vite tourne. `cmd/investigate_matches`
   n'existe plus (rien à faire). F.3 (archivage `.ai` racine) : agent en cours.
+- 2026-09-13 (décisions utilisateur) : 14 worktrees redondants supprimés de force après
+  vérification fichier par fichier (rapports R1-R12, bancs, wav et entrées de journal déjà dans
+  feat/v75 ; l'entrée « Son du propulseur » recopiée d'abord) ; les 4 worktrees à travail unique
+  (formtab, psa-cause, origine-equipement, lusr-cause) commités en WIP sur leurs branches
+  (`74be54a5b`, `a8311a01f`, `eb9299395`, `be3ead47b`, non poussés) puis supprimés — branches
+  conservées pour arbitrage utilisateur. Jonctions retirées avant chaque remove ; node_modules
+  principal vérifié après. F.4 : procédure écrite `.ai/PROCEDURE_BASCULE_LEVELUP_2026-09-13.md`,
+  exécution PLUS TARD sur signal utilisateur (17 sessions ouvertes dans le dossier).
