@@ -550,3 +550,8 @@ Contrat `plan-execution`, périmètre FERMÉ, découvertes consignées non trait
 
 ## Lot I — clôture (pilote)
 - [ ] I.1 Fusions G et H, CI verte ; revue adversariale bornée (P0/P1 seuls) ; thought_log ; worktrees supprimés.
+- 2026-09-13 (pilote) : mesure G.4 exécutée, serveur arrêté, sur les 4 player DB Infinite
+  (`player_match_enrichment_latest`) : 0 chaîne de performance étrangère (JGtm 1 060 lignes
+  sur 3 chaînes, Madina97294 1 147 sur 6, Chocoboflor 521 sur 3, XxDaemonGamerxX 16 sur 2, toutes
+  légitimes). Le défaut G.4 n'a jamais mordu : fermeture préventive, aucune donnée à rattraper.
+  Lot G fusionné dans feat/v75 (CI de branche verte, run 34773829242).
