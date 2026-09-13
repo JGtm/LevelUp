@@ -36,12 +36,16 @@ export interface UsageText {
   blockUnavailableTitle: string
   /**
    * Aide d'en-tête de chaque carte : TOUT ce que le corps n'écrit plus (lecture des
-   * barres, trait de parité, cases de régularité, réserves de mesure). Une carte a UNE
-   * aide — pas une note par forme, sinon on a juste déplacé le pavé.
+   * barres, trait de parité, cases de régularité, réserves de mesure). UNE aide par
+   * carte — pas une note par forme sous le graphe, sinon on a juste déplacé le pavé.
    */
-  cardHintEquipment: string
   cardHintPadControl: string
   cardHintObjectives: string
+  /** Les trois blocs d'équipement (2026-09-13) : chacun porte SON aide — phrases de
+   *  l'ancienne aide unique, redistribuées vers le bloc qu'elles décrivent. */
+  cardHintCadences: string
+  cardHintShares: string
+  cardHintRegularity: string
   /** « Matchs mesurés N/M » — TOUJOURS visible (couverture des films partielle). */
   measuredFmt: (measured: number, total: number) => string
   /** « Matchs avec objectifs N/M » — le bloc 3 a son propre scope (hors films). */
@@ -64,10 +68,6 @@ export interface UsageText {
   gaugeTeamOfLobby: string
   gaugePlayerOfTeam: string
   gaugePlayerOfLobby: string
-  /** Repli des deux colonnes de jauge secondaires (D4). */
-  sharesShowMoreFmt: (count: number) => string
-  sharesHide: string
-  sharesHint: string
   /** Lignes de la grille des cadences. */
   rowMyTeam: string
   rowLobby: string
@@ -184,8 +184,12 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     blockPadControl: 'Contrôle des armes spéciales',
     blockObjectives: 'Objectifs par rôle et par famille',
     blockUnavailableTitle: "Usages d'équipement, armes spéciales et objectifs",
-    cardHintEquipment:
-      "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif). Plus bas, une case par match mesuré, dans l'ordre de la session : au-dessus, à hauteur ou en dessous de cette parité. Camouflage et surbouclier comptés ici sont les épisodes ACTIFS, mesurés par le film ; les bonus ramassés au sol, eux, restent anonymes et sont comptés dans « Contrôle des armes spéciales » — les deux ne s'additionnent jamais.",
+    cardHintCadences:
+      "Chaque valeur est un nombre PAR MATCH MESURÉ : le total de la ligne divisé par le nombre de matchs mesurés de la session. Camouflage et surbouclier comptés ici sont les épisodes ACTIFS, mesurés par le film ; les bonus ramassés au sol, eux, restent anonymes et sont comptés dans « Contrôle des armes spéciales » — les deux ne s'additionnent jamais.",
+    cardHintShares:
+      "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif). Les deux colonnes rapportées au lobby sont hachurées, celle rapportée à ton équipe est pleine.",
+    cardHintRegularity:
+      "Une case par match mesuré, dans l'ordre de la session : au-dessus, à hauteur ou en dessous de la parité d'équipe de ce match-là.",
     cardHintPadControl:
       "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif). Chaque ramassage vient de l'événement daté du film et porte son ramasseur : un ramassage que la mesure ne sait pas attribuer n'est compté pour personne, jamais deviné. Les bonus (camouflage, surbouclier) ne sont attribuables à personne par nature : ils sont comptés à part, et jamais additionnés aux épisodes actifs du bloc « Usages d'équipement ».",
     cardHintObjectives:
@@ -194,7 +198,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     objectivesScopeFmt: (n, t) => `Matchs avec objectifs ${n}/${t}`,
     unavailableLoadFailed: "La lecture du résumé d'usage a échoué.",
     unavailableNoMeasured: "Aucun match de cette session n'a de film mesuré.",
-    viewCadences: 'Cadences par 10 minutes de jeu mesuré',
+    viewCadences: 'Cadences par match',
     viewShares: 'Parts et parités',
     viewRegularity: 'Régularité match par match',
     viewLobbyTrack: 'Qui ramasse les armes spéciales',
@@ -204,10 +208,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     gaugeTeamOfLobby: 'Mon équipe dans le lobby',
     gaugePlayerOfTeam: 'Ma part dans mon équipe',
     gaugePlayerOfLobby: 'Ma part dans le lobby',
-    sharesShowMoreFmt: (n) => `Voir plus (${n})`,
-    sharesHide: 'Replier',
-    sharesHint:
-      "Les deux autres façons de rapporter la même mesure : ma part du lobby entier, et la part de mon équipe dans ce lobby. Rien n'est retiré du calcul.",
     rowMyTeam: 'Mon équipe',
     rowLobby: 'Lobby',
     segTeamRest: 'Reste de mon équipe',
@@ -217,14 +217,14 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
       `Match ${i} — part d'équipe ${share} (parité de session ${parity})`,
     bandTipUnmeasured: (i) => `Match ${i} — part non mesurée`,
     honestyFmt: (n, d) => `${n} sur ${d}`,
-    cadenceTipFmt: (who, metric, rate, raw) => `${who} — ${metric} : ${rate} par 10 min (${raw})`,
+    cadenceTipFmt: (who, metric, rate, raw) => `${who} — ${metric} : ${rate} par match (${raw} au total)`,
     gaugeTipFmt: (metric, gauge, share, raw) => `${metric} — ${gauge} : ${share} (${raw})`,
     trackTipFmt: (who, count, pct) => `${who} : ${count} ramassages (${pct})`,
     notMeasured: '—',
     padUnnamedFmt: (n) => `${n} ramassages sans joueur identifié — jamais attribués.`,
     powerupLine: 'Bonus ramassés (joueur non identifié)',
     powerupDetailFmt: (label, count) => `${label} ${count}`,
-    padCadenceFmt: (p, t, l) => `Ramassages par 10 min — moi ${p} · mon équipe ${t} · lobby ${l}`,
+    padCadenceFmt: (p, t, l) => `Ramassages par match — moi ${p} · mon équipe ${t} · lobby ${l}`,
     metricCamo: 'Camouflage',
     metricOvershield: 'Surbouclier',
     metricWall: 'Mur de protection',
@@ -285,8 +285,12 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     blockPadControl: 'Power weapon control',
     blockObjectives: 'Objectives by role and family',
     blockUnavailableTitle: 'Equipment, power weapons and objectives',
-    cardHintEquipment:
-      'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount). Below, one square per measured match, in session order: above, at, or below that parity. Camouflage and overshield counted here are the ACTIVE episodes measured by the film; power-ups picked up off the ground stay anonymous and are counted in "Power weapon control" — the two are never added together.',
+    cardHintCadences:
+      'Each value is a count PER MEASURED MATCH: the row total divided by the number of measured matches in the session. Camouflage and overshield counted here are the ACTIVE episodes measured by the film; power-ups picked up off the ground stay anonymous and are counted in "Power weapon control" — the two are never added together.',
+    cardHintShares:
+      'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount). The two columns measured against the lobby are hatched, the one measured against your team is solid.',
+    cardHintRegularity:
+      "One square per measured match, in session order: above, at, or below that match's team parity.",
     cardHintPadControl:
       'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount). Every pickup comes from the timed film event and carries its picker: a pickup the measurement cannot attribute is counted for nobody, never guessed. Power-ups (camouflage, overshield) are attributable to nobody by nature: they are counted separately, and never added to the active episodes of the "Equipment usage" block.',
     cardHintObjectives:
@@ -295,7 +299,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     objectivesScopeFmt: (n, t) => `Matches with objectives ${n}/${t}`,
     unavailableLoadFailed: 'Loading the usage summary failed.',
     unavailableNoMeasured: 'No match of this session has a measured film.',
-    viewCadences: 'Rates per 10 minutes of measured play',
+    viewCadences: 'Rate per match',
     viewShares: 'Shares and parity',
     viewRegularity: 'Match-by-match consistency',
     viewLobbyTrack: 'Who picks up the power weapons',
@@ -305,10 +309,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     gaugeTeamOfLobby: 'My team in the lobby',
     gaugePlayerOfTeam: 'My share of my team',
     gaugePlayerOfLobby: 'My share of the lobby',
-    sharesShowMoreFmt: (n) => `Show more (${n})`,
-    sharesHide: 'Collapse',
-    sharesHint:
-      "The two other ways of reporting the same measurement: my share of the whole lobby, and my team's share of that lobby. Nothing is removed from the calculation.",
     rowMyTeam: 'My team',
     rowLobby: 'Lobby',
     segTeamRest: 'Rest of my team',
@@ -318,14 +318,14 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
       `Match ${i} — team share ${share} (session parity ${parity})`,
     bandTipUnmeasured: (i) => `Match ${i} — share not measured`,
     honestyFmt: (n, d) => `${n} of ${d}`,
-    cadenceTipFmt: (who, metric, rate, raw) => `${who} — ${metric}: ${rate} per 10 min (${raw})`,
+    cadenceTipFmt: (who, metric, rate, raw) => `${who} — ${metric}: ${rate} per match (${raw} total)`,
     gaugeTipFmt: (metric, gauge, share, raw) => `${metric} — ${gauge}: ${share} (${raw})`,
     trackTipFmt: (who, count, pct) => `${who}: ${count} pickups (${pct})`,
     notMeasured: '—',
     padUnnamedFmt: (n) => `${n} pickups with no identified player — never attributed.`,
     powerupLine: 'Power-ups picked up (player not identified)',
     powerupDetailFmt: (label, count) => `${label} ${count}`,
-    padCadenceFmt: (p, t, l) => `Pickups per 10 min — me ${p} · my team ${t} · lobby ${l}`,
+    padCadenceFmt: (p, t, l) => `Pickups per match — me ${p} · my team ${t} · lobby ${l}`,
     metricCamo: 'Camouflage',
     metricOvershield: 'Overshield',
     metricWall: 'Drop wall',

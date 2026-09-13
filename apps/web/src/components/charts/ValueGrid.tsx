@@ -32,6 +32,15 @@ import type { ValueGridModel, ValueGridSegment } from './valueGridModel'
 /** Largeur de la colonne des noms, et largeur mini d'une colonne de valeurs (px). */
 const NAME_WIDTH = 152
 const COLUMN_MIN = 126
+/**
+ * Les mêmes largeurs en COLONNE DIVISÉE (`dense`). Une grille rendue à demi-largeur
+ * gardait des colonnes de 126 px dont le rail ne faisait que 80 px : les trois
+ * graduations s'y chevauchaient et se lisaient « 0,0 %15,0 %30,0 % » (capture du
+ * 2026-09-13). En dense la colonne se resserre ET la graduation du milieu tombe —
+ * les deux bornes suffisent à lire une échelle.
+ */
+const DENSE_NAME_WIDTH = 104
+const DENSE_COLUMN_MIN = 104
 /** Gouttière entre colonnes (px) — reprise dans le calcul de largeur mini de la grille. */
 const COLUMN_GAP = 14
 /** Largeur réservée au nombre écrit à droite de chaque barre, gouttière comprise (px). */
@@ -42,13 +51,20 @@ interface Props {
   model: ValueGridModel
   /** Libellé de la colonne des noms. Absent = en-tête vide (le mock retenu). */
   rowHeaderLabel?: string
+  /**
+   * Colonne divisée : mêmes lignes et mêmes colonnes, resserrées (cf. DENSE_*).
+   * Absent = rendu STRICTEMENT inchangé pour tous les appelants existants.
+   */
+  dense?: boolean
 }
 
-export function ValueGrid({ model, rowHeaderLabel }: Props) {
+export function ValueGrid({ model, rowHeaderLabel, dense = false }: Props) {
   const { rows, columns, cells, separators } = model
+  const nameWidth = dense ? DENSE_NAME_WIDTH : NAME_WIDTH
+  const columnMin = dense ? DENSE_COLUMN_MIN : COLUMN_MIN
   const gridStyle = {
-    gridTemplateColumns: `${NAME_WIDTH}px repeat(${columns.length}, minmax(${COLUMN_MIN}px, 1fr))`,
-    minWidth: NAME_WIDTH + columns.length * (COLUMN_MIN + COLUMN_GAP),
+    gridTemplateColumns: `${nameWidth}px repeat(${columns.length}, minmax(${columnMin}px, 1fr))`,
+    minWidth: nameWidth + columns.length * (columnMin + COLUMN_GAP),
     columnGap: COLUMN_GAP,
   }
 
@@ -137,13 +153,16 @@ export function ValueGrid({ model, rowHeaderLabel }: Props) {
           >
             <span className="absolute left-0 top-0.5">{col.axis[0]}</span>
             {/* Le milieu se cale sur le milieu du RAIL, pas de la cellule : la cellule porte
-                aussi le nombre écrit à droite de la barre. */}
-            <span
-              className="absolute top-0.5 -translate-x-1/2"
-              style={{ left: `calc((100% - ${VALUE_WIDTH + VALUE_GAP}px) / 2)` }}
-            >
-              {col.axis[1]}
-            </span>
+                aussi le nombre écrit à droite de la barre. Omis en dense : il n'y a plus
+                la place de l'écrire sans mordre sur ses voisins. */}
+            {!dense && (
+              <span
+                className="absolute top-0.5 -translate-x-1/2"
+                style={{ left: `calc((100% - ${VALUE_WIDTH + VALUE_GAP}px) / 2)` }}
+              >
+                {col.axis[1]}
+              </span>
+            )}
             <span className="absolute top-0.5" style={{ right: VALUE_WIDTH + VALUE_GAP }}>
               {col.axis[2]}
             </span>
