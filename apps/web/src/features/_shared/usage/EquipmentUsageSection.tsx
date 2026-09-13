@@ -52,15 +52,30 @@ export interface EquipmentUsageSectionProps {
   locale: Locale
 }
 
-/** Même gabarit de bandeau de titre que `SessionUsageSection` (aide sur le libellé). */
-function cardTitleAdornment(measured: string, hint: string) {
+/**
+ * Le bandeau de titre : le libellé PORTEUR DE SON AIDE, rien d'autre.
+ *
+ * LE COMPTEUR « Matchs mesurés N/M » A QUITTÉ LES QUATRE TITRES le 2026-09-13 (demande
+ * utilisateur) : répété quatre fois, il encombrait autant de bandeaux pour une seule
+ * information. La couverture s'écrit désormais UNE fois par rangée, en pied de la carte
+ * de gauche (`measuredFooter`).
+ */
+function cardTitleWithHint(hint: string) {
   return (label: string) => (
-    <span className="flex items-baseline gap-2">
-      <HeaderLabelTooltip text={hint} focusable>
-        <span>{label}</span>
-      </HeaderLabelTooltip>
-      <span className="text-3xs font-medium normal-case text-muted-foreground tabular-nums">{measured}</span>
-    </span>
+    <HeaderLabelTooltip text={hint} focusable>
+      <span>{label}</span>
+    </HeaderLabelTooltip>
+  )
+}
+
+/** La couverture de mesure de la rangée, en pied de sa première carte. */
+function measuredFooter(usage: EquipmentUsageBlock, t: UsageText) {
+  return (
+    <div className="border-t border-border px-3 py-2">
+      <p className="text-xs text-muted-foreground">
+        {t.measuredFooterFmt(usage.matches_measured, usage.matches_total)}
+      </p>
+    </div>
   )
 }
 
@@ -137,13 +152,13 @@ function EquipmentCards({ usage, mode, t, locale }: CardContentProps) {
     t,
     locale,
   )
-  const measured = t.measuredFmt(usage.matches_measured, usage.matches_total)
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <SectionCard
         title={t.blockEquipment}
         label={t.blockEquipment}
-        titleAdornment={cardTitleAdornment(measured, t.cardHintEquipmentCounts)}
+        titleAdornment={cardTitleWithHint(t.cardHintEquipmentCounts)}
+        footer={measuredFooter(usage, t)}
       >
         <div className="p-3">
           <UsageCountsGrid grid={grid} />
@@ -153,7 +168,7 @@ function EquipmentCards({ usage, mode, t, locale }: CardContentProps) {
         <SectionCard
           title={mode === 'solo' ? t.viewEquipmentPartsSolo : t.viewEquipmentPartsSquad}
           label={mode === 'solo' ? t.viewEquipmentPartsSolo : t.viewEquipmentPartsSquad}
-          titleAdornment={cardTitleAdornment(measured, t.cardHintEquipmentCounts)}
+          titleAdornment={cardTitleWithHint(t.cardHintEquipmentCounts)}
         >
           <div className="p-3">
             <UsageEquipmentDonutCard model={donut} />
@@ -175,13 +190,13 @@ function PadControlCards({ usage, mode, t, locale }: CardContentProps) {
     t,
     locale,
   )
-  const measured = t.measuredFmt(usage.matches_measured, usage.matches_total)
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <SectionCard
         title={t.blockPadControl}
         label={t.blockPadControl}
-        titleAdornment={cardTitleAdornment(measured, t.cardHintWeaponCounts)}
+        titleAdornment={cardTitleWithHint(t.cardHintWeaponCounts)}
+        footer={measuredFooter(usage, t)}
       >
         <div className="p-3">
           <UsageCountsGrid grid={grid} />
@@ -191,7 +206,7 @@ function PadControlCards({ usage, mode, t, locale }: CardContentProps) {
         <SectionCard
           title={mode === 'solo' ? t.viewWeaponPartsSolo : t.viewWeaponPartsSquad}
           label={mode === 'solo' ? t.viewWeaponPartsSolo : t.viewWeaponPartsSquad}
-          titleAdornment={cardTitleAdornment(measured, t.cardHintWeaponCounts)}
+          titleAdornment={cardTitleWithHint(t.cardHintWeaponCounts)}
         >
           <div className="p-3">
             <UsageEquipmentDonutCard model={donut} />

@@ -7,7 +7,7 @@
  * « Les deux frises » porte cette réserve en toutes lettres — sans elle, la
  * barre se lirait comme la totalité des socles.
  */
-import { FormesCard, FormesSubtitle } from '../FormesCard'
+import { FormesCaption, FormesCard, FormesSubtitle } from '../FormesCard'
 import { MINUS_INK, PLUS_INK, SPREAD_INK, TEAM_REST_INK, squadPlayerInk } from '../colors'
 import { RichText } from '../forms/RichText'
 import { BandeForm } from '../forms/BandeForm'
@@ -16,6 +16,7 @@ import { GrilleForm, type GrilleColumn, type GrilleRow } from '../forms/GrilleFo
 import { JaugeDoubleForm } from '../forms/JaugeDoubleForm'
 import { Piste100Form, type PisteRow } from '../forms/Piste100Form'
 import { PAD_AXIS, sharePct } from '../model/access'
+import { measuredWindow } from '../model/display'
 import {
   aggregateAxis,
   lobbyParts,
@@ -96,6 +97,7 @@ export function PadsShareSoloCard({ vm }: { vm: FormesViewModel }) {
   const { t, ct } = vm
   const agg = aggregateAxis(vm.block, PAD_AXIS)
   const parity = agg.lobby.parity ?? 0
+  const shown = measuredWindow(vm.block)
   return (
     <FormesCard
       title={ct.cards.padsShareSolo.title}
@@ -153,7 +155,7 @@ export function PadsShareSoloCard({ vm }: { vm: FormesViewModel }) {
           {
             key: 'my-share',
             label: t.common.myShare,
-            cells: vm.matches.map((m) => {
+            cells: shown.rows.map((m) => {
               const pct = myShareOfMatch(m, vm.mainXuid, PAD_AXIS)
               const label = `${vm.matchLabel(m)} · ${vm.matchMap(m)}`
               return {
@@ -172,10 +174,13 @@ export function PadsShareSoloCard({ vm }: { vm: FormesViewModel }) {
             }),
           },
         ]}
-        columns={matchColumns(vm)}
+        columns={matchColumns(vm, shown.rows)}
         parity={parity}
         axisTitle={t.common.matchesAxis}
       />
+      <FormesCaption>
+        {t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)}
+      </FormesCaption>
     </FormesCard>
   )
 }
@@ -279,6 +284,7 @@ export function PadsTwoFriezesCard({ vm }: { vm: FormesViewModel }) {
   const parts = lobbyParts(vm.measured, vm.squad.map((s) => s.xuid), PAD_AXIS)
   const named = namedPickups(vm.block)
   const unnamed = unnamedOccupations(vm.block)
+  const shown = measuredWindow(vm.block)
   return (
     <FormesCard
       title={ct.cards.padsTwoFriezes.title}
@@ -297,7 +303,7 @@ export function PadsTwoFriezesCard({ vm }: { vm: FormesViewModel }) {
           {
             key: 'team-share',
             label: t.padsColumns.pads,
-            cells: vm.matches.map((m) => {
+            cells: shown.rows.map((m) => {
               const pct = teamShareOfMatch(m, vm.mainXuid, PAD_AXIS)
               const label = `${vm.matchLabel(m)} · ${vm.matchMap(m)}`
               return {
@@ -316,10 +322,13 @@ export function PadsTwoFriezesCard({ vm }: { vm: FormesViewModel }) {
             }),
           },
         ]}
-        columns={matchColumns(vm)}
+        columns={matchColumns(vm, shown.rows)}
         parity={50}
         axisTitle={t.common.matchesAxis}
       />
+      <FormesCaption>
+        {t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)}
+      </FormesCaption>
       <FormesSubtitle>{ct.subtitles.whoLobbyShare}</FormesSubtitle>
       <Piste100Form
         rows={[
@@ -348,15 +357,11 @@ export function PadsTwoFriezesCard({ vm }: { vm: FormesViewModel }) {
 /** Carte 13 — « Emprise de l'escouade, match par match » (piste, 1 ligne/match). */
 export function PadsSquadByMatchCard({ vm }: { vm: FormesViewModel }) {
   const { t, ct } = vm
-  const rows: PisteRow[] = vm.matches.map((m) => {
-    if (!m.measured) {
-      return {
-        key: m.match_id,
-        label: vm.matchLabel(m),
-        sublabel: vm.matchMap(m),
-        segments: [{ key: `${m.match_id}-nm`, label: t.common.noFilm, value: 1, unmeasured: true }],
-      }
-    }
+  // QUE DES MATCHS MESURÉS, les plus récents : une ligne par match de la portée
+  // donnait mille lignes, presque toutes hachurées « sans film décodé » — le
+  // repli que l'artefact annonçait pour cette forme.
+  const shown = measuredWindow(vm.block)
+  const rows: PisteRow[] = shown.rows.map((m) => {
     const parts = lobbyParts([m], vm.squad.map((s) => s.xuid), PAD_AXIS)
     return lobbyTrackRow(vm, m.match_id, vm.matchLabel(m), parts, vm.matchMap(m))
   })
@@ -368,7 +373,6 @@ export function PadsSquadByMatchCard({ vm }: { vm: FormesViewModel }) {
         ...vm.squad.map((s) => ({ label: s.label, ink: s.ink })),
         { label: t.common.teamRest, ink: TEAM_REST_INK },
         { label: t.common.enemyTeam, hatch: true },
-        { label: t.common.noFilm, unmeasured: true },
         { label: t.common.parity, line: true },
       ]}
     >
@@ -381,6 +385,9 @@ export function PadsSquadByMatchCard({ vm }: { vm: FormesViewModel }) {
         formatCount={(v) => vm.fmtCount(v)}
         segmentTipFmt={t.common.segmentTipFmt}
       />
+      <FormesCaption>
+        {t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)}
+      </FormesCaption>
     </FormesCard>
   )
 }

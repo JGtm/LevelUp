@@ -94,6 +94,14 @@ export interface FormesText {
     occupationsShortFmt: (n: number) => string
     /** Le dénominateur d'une piste dont l'escouade est le tout. */
     inSquadFmt: (n: number) => string
+    /**
+     * Le pied d'une forme par match ALIMENTÉE PAR LE FILM : ce qu'elle montre,
+     * ce qu'elle a laissé de côté faute de place, ce qu'elle a écarté faute de
+     * film. Une forme qui se borne sans le dire ment sur sa portée.
+     */
+    foldMeasuredFmt: (shown: number, hidden: number, unmeasured: number) => string
+    /** Le pied d'une forme bornée en nombre seulement (les matchs d'un mode). */
+    foldListFmt: (shown: number, hidden: number) => string
     matchesShortFmt: (n: number) => string
     gesturesAxis: string
     gesturesPerMatchAxis: string
@@ -111,6 +119,8 @@ export interface FormesText {
     matchesAxis: string
     totalFmt: (n: string) => string
     valueTipFmt: (row: string, column: string, value: string) => string
+    /** La règle des prises nettes, en toutes lettres, sous la valeur. */
+    juggleFoldedFmt: (seconds: string) => string
     matchTipFmt: (match: string, row: string, value: string, gap: string) => string
     gapTipFmt: (row: string, value: string, parity: string, gap: string) => string
     shareTipFmt: (row: string, side: string, value: string, detail: string) => string
@@ -118,12 +128,22 @@ export interface FormesText {
     segmentTipFmt: (name: string, row: string, value: string, total: string) => string
     rangeTipFmt: (row: string, from: string, to: string) => string
     meanTipFmt: (row: string, value: string) => string
-    notMeasuredTipFmt: (row: string) => string
   }
 }
 
+/**
+ * Un COMPTE de matchs, avec son séparateur de milliers : « 1 043 matchs », pas
+ * « 1043 matchs ». La typographie d'un millier fait partie du français.
+ */
+const frCount = (n: number): string => n.toLocaleString('fr-FR')
+const enCount = (n: number): string => n.toLocaleString('en-GB')
+
 const FR_COLUMNS: Record<string, string> = {
   flag_captures: 'Drapeaux capturés',
+  // Prises NETTES : le compteur officiel du jeu compte chaque ramassage, donc
+  // aussi le jonglage (lancer le drapeau devant soi pour courir plus vite, puis
+  // le reprendre). Cette grandeur-ci replie ces allers-retours.
+  flag_grabs_net: 'Prises nettes',
   flag_capture_assists: 'Aides à la capture',
   flag_steals: 'Drapeaux volés',
   flag_returners_killed: 'Rapatrieurs abattus',
@@ -155,6 +175,7 @@ const FR_COLUMNS: Record<string, string> = {
 
 const EN_COLUMNS: Record<string, string> = {
   flag_captures: 'Flags captured',
+  flag_grabs_net: 'Net grabs',
   flag_capture_assists: 'Capture assists',
   flag_steals: 'Flags stolen',
   flag_returners_killed: 'Returners killed',
@@ -312,6 +333,17 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       unknownWeapon: 'arme non cataloguée',
       occupationsShortFmt: (n) => `${n} occ.`,
       inSquadFmt: (n) => `${n} dans l'escouade`,
+      foldMeasuredFmt: (shown, hidden, unmeasured) =>
+        `Affichés : les ${frCount(shown)} derniers matchs à film décodé` +
+        (hidden > 0 ? ` · ${frCount(hidden)} autres matchs mesurés ne sont pas affichés` : '') +
+        (unmeasured > 0
+          ? ` · ${frCount(unmeasured)} matchs sans film décodé sont hors de cette forme`
+          : '') +
+        '.',
+      foldListFmt: (shown, hidden) =>
+        `Affichés : les ${frCount(shown)} derniers matchs de ce mode` +
+        (hidden > 0 ? ` · ${frCount(hidden)} autres ne sont pas affichés` : '') +
+        '.',
       matchesShortFmt: (n) => (n > 1 ? `${n} matchs` : `${n} match`),
       gesturesAxis: 'gestes — une échelle par colonne',
       gesturesPerMatchAxis: 'gestes par match — une échelle par colonne',
@@ -328,6 +360,9 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       matchesAxis: 'les matchs de la période, dans l’ordre',
       totalFmt: (n) => `${n} au total`,
       valueTipFmt: (row, column, value) => `${row} — ${column} : ${value}`,
+      juggleFoldedFmt: (seconds) =>
+        `jonglage replié (fenêtre ${seconds} s) : une reprise du même drapeau par le même ` +
+        `joueur dans ce délai compte pour une seule prise`,
       matchTipFmt: (match, row, value, gap) => `${match} — ${row} : ${value} (${gap} pts)`,
       gapTipFmt: (row, value, parity, gap) =>
         `${row} : ${value} · parité ${parity} · écart ${gap} points`,
@@ -337,7 +372,6 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       segmentTipFmt: (name, row, value, total) => `${name} — ${row} : ${value} sur ${total}`,
       rangeTipFmt: (row, from, to) => `${row} — du match le plus faible ${from} au plus fort ${to}`,
       meanTipFmt: (row, value) => `${row} — moyenne par match : ${value}`,
-      notMeasuredTipFmt: (row) => `${row} — non mesuré (pas de film décodé)`,
     },
   },
   en: {
@@ -463,6 +497,17 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       unknownWeapon: 'uncatalogued weapon',
       occupationsShortFmt: (n) => `${n} occ.`,
       inSquadFmt: (n) => `${n} in the squad`,
+      foldMeasuredFmt: (shown, hidden, unmeasured) =>
+        `Shown: the last ${enCount(shown)} matches with a decoded film` +
+        (hidden > 0 ? ` · ${enCount(hidden)} other measured matches are not shown` : '') +
+        (unmeasured > 0
+          ? ` · ${enCount(unmeasured)} matches without a decoded film are outside this form`
+          : '') +
+        '.',
+      foldListFmt: (shown, hidden) =>
+        `Shown: the last ${enCount(shown)} matches of this mode` +
+        (hidden > 0 ? ` · ${enCount(hidden)} others are not shown` : '') +
+        '.',
       matchesShortFmt: (n) => (n > 1 ? `${n} matches` : `${n} match`),
       gesturesAxis: 'actions — one scale per column',
       gesturesPerMatchAxis: 'actions per match — one scale per column',
@@ -479,6 +524,9 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       matchesAxis: 'the matches of the period, in order',
       totalFmt: (n) => `${n} in total`,
       valueTipFmt: (row, column, value) => `${row} — ${column}: ${value}`,
+      juggleFoldedFmt: (seconds) =>
+        `juggling folded (${seconds}s window): the same player re-grabbing the same flag ` +
+        `within that delay counts as a single grab`,
       matchTipFmt: (match, row, value, gap) => `${match} — ${row}: ${value} (${gap} pts)`,
       gapTipFmt: (row, value, parity, gap) => `${row}: ${value} · parity ${parity} · gap ${gap} points`,
       shareTipFmt: (row, side, value, detail) => `${row} ${side}: ${value} (${detail})`,
@@ -486,7 +534,6 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       segmentTipFmt: (name, row, value, total) => `${name} — ${row}: ${value} out of ${total}`,
       rangeTipFmt: (row, from, to) => `${row} — from the lowest match ${from} to the highest ${to}`,
       meanTipFmt: (row, value) => `${row} — average per match: ${value}`,
-      notMeasuredTipFmt: (row) => `${row} — not measured (no decoded film)`,
     },
   },
 }

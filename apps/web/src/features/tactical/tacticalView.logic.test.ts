@@ -5,28 +5,27 @@ import type { BornesMonde, CelluleTactique, EchelleTactique } from '@/lib/api/ty
 
 import { getTacticalText } from './i18n'
 import {
-  cellFromClick,
+  celluleDuClic,
+  grilleDuPlan,
   pageTitle,
-  PLAN_ASPECT_DEFAUT,
-  PLAN_HAUTEUR_MAX_PX,
-  planCanvasView,
   planEmptyReason,
   planEmptyText,
-  planFrameStyle,
   planLegend,
-  planSelectionRect,
   questionSansCellule,
   ratioSafe,
+  rectSelection,
+  repereAspect,
+  repereDuPlan,
   sourceForQuestion,
   statusMessages,
-  tacticalGridFromRaster,
   unitForQuestion,
+  vueContain,
+  vueDuPlan,
 } from './tacticalView.logic'
 
 const tFr = getTacticalText('fr')
 const tEn = getTacticalText('en')
 
-const BORNES: BornesMonde = { min_x: 0, max_x: 100, min_y: 0, max_y: 50, valide: true }
 
 // ─── Titre de la vue ───────────────────────────────────────────────────────────
 
@@ -101,50 +100,6 @@ describe('statusMessages — bandeaux « en attente » / « non disponible »', 
   })
 })
 
-// ─── Cellule sous un clic ──────────────────────────────────────────────────────
-
-describe('cellFromClick — la cellule (col, row) sous un clic canvas', () => {
-  it('coin haut-gauche du canvas -> cellule (0, 0)', () => {
-    expect(cellFromClick(0, 0, 200, 100, BORNES, 10)).toEqual({ col: 0, row: 0 })
-  })
-
-  it('centre du canvas -> la cellule du centre du monde', () => {
-    // Canvas 200x100 px pour un monde 100x50 m, pas de 10 m : centre du monde =
-    // (50, 25), donc col = 5, row = 2 (pas de 10 -> colonnes 0..9, lignes 0..4).
-    expect(cellFromClick(100, 50, 200, 100, BORNES, 10)).toEqual({ col: 5, row: 2 })
-  })
-
-  it('un clic hors canvas ne rend rien', () => {
-    expect(cellFromClick(-1, 0, 200, 100, BORNES, 10)).toBeNull()
-    expect(cellFromClick(0, 101, 200, 100, BORNES, 10)).toBeNull()
-  })
-
-  it('des bornes invalides ne rendent rien', () => {
-    expect(cellFromClick(10, 10, 200, 100, { ...BORNES, valide: false }, 10)).toBeNull()
-  })
-
-  it('un pas de grille nul ou négatif ne rend rien', () => {
-    expect(cellFromClick(10, 10, 200, 100, BORNES, 0)).toBeNull()
-  })
-
-  // L'ADRESSE EST ANCRÉE SUR L'ORIGINE DU MONDE, PAS SUR LES BORNES DE LA LECTURE — même
-  // convention que `CelluleTactique.col/lig` côté serveur (`tactical.Grille.Cellule`).
-  // Une adresse relative aux bornes ne retrouvait aucune cellule serveur dès que la
-  // carte n'était pas calée sur (0, 0), c'est-à-dire sur toutes les cartes réelles.
-  it('rend une adresse ancrée sur l’origine du monde, bornes négatives comprises', () => {
-    const bornes: BornesMonde = { min_x: -20, max_x: -10, min_y: -8, max_y: -4, valide: true }
-    // Coin haut-gauche du canvas = (-20, -8) monde ; pas de 2 m -> (-10, -4).
-    expect(cellFromClick(0, 0, 200, 80, bornes, 2)).toEqual({ col: -10, row: -4 })
-    // Centre du canvas = (-15, -6) monde -> colonne -8, ligne -3.
-    expect(cellFromClick(100, 40, 200, 80, bornes, 2)).toEqual({ col: -8, row: -3 })
-  })
-
-  it('suit le pas publié : la même position rend une adresse différente à 0,5 et à 2 m', () => {
-    expect(cellFromClick(100, 50, 200, 100, BORNES, 0.5)).toEqual({ col: 100, row: 50 })
-    expect(cellFromClick(100, 50, 200, 100, BORNES, 2)).toEqual({ col: 25, row: 12 })
-  })
-})
-
 // ─── planEmptyReason — CE QUE LE PLAN VIDE DIT, ET IL DOIT DIRE VRAI ────────────
 
 describe('planEmptyReason — trois causes de plan vide, trois messages', () => {
@@ -202,67 +157,6 @@ describe('planEmptyText — le titre et la description de chaque cause', () => {
   })
 })
 
-// ─── planFrameStyle — LA TAILLE DU CADRE, ET SON DÉFAUT ─────────────────────────
-
-describe('planFrameStyle — le cadre du plan ne dégénère jamais', () => {
-  it('prend le rapport EXACT des bornes quand elles sont exploitables', () => {
-    // 100 m x 50 m -> 2:1. C'est ce qui garde le clic et la peinture alignés.
-    expect(planFrameStyle(BORNES).aspectRatio).toBe(2)
-  })
-
-  it('borne la hauteur : une largeur maximale déduite du rapport et du plafond', () => {
-    expect(planFrameStyle(BORNES).maxWidth).toBe(`${2 * PLAN_HAUTEUR_MAX_PX}px`)
-  })
-
-  // LE DÉFAUT CONSTATÉ LE 2026-09-09 : canvas 1 070 x 13 375 px sur le plan d'Illusion.
-  // Un rapport de 1/12,5 sur une largeur de conteneur libre donne une hauteur qui n'est
-  // plus une page. Le rapport reste EXACT (sans quoi la peinture se désaligne du clic) ;
-  // c'est la hauteur qui est plafonnée, par une largeur maximale.
-  it('un rapport très allongé reste exact mais ne peut plus faire 13 375 px de haut', () => {
-    const allongees: BornesMonde = { min_x: 0, max_x: 8, min_y: 0, max_y: 100, valide: true }
-    const cadre = planFrameStyle(allongees)
-    expect(cadre.aspectRatio).toBeCloseTo(0.08, 6)
-    // 0,08 x 720 = 57,6 px de large, donc 720 px de haut au plus — jamais 13 375.
-    expect(cadre.maxWidth).toBe(`${0.08 * PLAN_HAUTEUR_MAX_PX}px`)
-  })
-
-  it('des bornes inexploitables rendent le cadre par défaut, jamais un rapport dégénéré', () => {
-    const cas: BornesMonde[] = [
-      { ...BORNES, valide: false },
-      { min_x: 0, max_x: 0, min_y: 0, max_y: 0, valide: true },
-      { min_x: 0, max_x: 100, min_y: 0, max_y: 0, valide: true },
-      { min_x: 0, max_x: Number.POSITIVE_INFINITY, min_y: 0, max_y: 50, valide: true },
-      { min_x: 0, max_x: Number.NaN, min_y: 0, max_y: 50, valide: true },
-    ]
-    for (const bornes of cas) {
-      expect(planFrameStyle(bornes).aspectRatio).toBe(PLAN_ASPECT_DEFAUT)
-    }
-  })
-
-  it('le rapport par défaut est celui des vignettes de carte (le même fond)', () => {
-    expect(PLAN_ASPECT_DEFAUT).toBe(16 / 9)
-  })
-})
-
-// ─── planCanvasView — la projection monde -> canvas du calque de chaleur ─────────
-
-describe('planCanvasView — le cadrage du calque de chaleur', () => {
-  it('pose l’origine du canvas sur (min_x, min_y), pas sur l’origine du monde', () => {
-    const bornes: BornesMonde = { min_x: -20, max_x: -10, min_y: -8, max_y: -4, valide: true }
-    // 200 px pour 10 m -> 20 px/m ; la colonne 0 du monde (x = 0) tomberait à 400 px.
-    expect(planCanvasView(bornes, 200)).toEqual({ topLeftWorld: { x: 400, y: 160 }, scale: 20 })
-  })
-
-  it('rend une origine nulle quand les bornes partent de (0, 0)', () => {
-    expect(planCanvasView(BORNES, 200)).toEqual({ topLeftWorld: { x: 0, y: 0 }, scale: 2 })
-  })
-
-  it('ne rend rien sur des bornes invalides ou un canvas vide', () => {
-    expect(planCanvasView({ ...BORNES, valide: false }, 200)).toBeNull()
-    expect(planCanvasView(BORNES, 0)).toBeNull()
-  })
-})
-
 // ─── ratioSafe ──────────────────────────────────────────────────────────────────
 
 describe('ratioSafe — une proportion, jamais une division par zéro', () => {
@@ -275,59 +169,6 @@ describe('ratioSafe — une proportion, jamais une division par zéro', () => {
     expect(ratioSafe(3, -1)).toBe(0)
   })
 })
-
-// ─── tacticalGridFromRaster — la grille de peinture (noyau lib/replay/heatPaint, Q7) ──────
-
-/** Une cellule serveur minimale — les champs que `tacticalGridFromRaster` ne lit pas
- *  (`brut`, `matchs*`, `centre_*`) sont posés à 0, hors-sujet pour cette conversion. */
-function celluleDe(col: number, lig: number, valeur: number): CelluleTactique {
-  return { col, lig, valeur, brut: valeur, centre_x: 0, centre_y: 0, matchs: 3, matchs_defaite: 0, matchs_victoire: 0 }
-}
-
-const ECHELLE: EchelleTactique = { p50: 2, p95: 8, n_cellules: 5, borne: 8, symetrique: false }
-
-describe('tacticalGridFromRaster — bornes + pas -> grille de peinture', () => {
-  it('assemble dimensions, cellules et échelle depuis le raster serveur', () => {
-    const g = tacticalGridFromRaster([celluleDe(1, 2, 6)], BORNES, 10, ECHELLE)
-    expect(g).not.toBeNull()
-    expect(g).toMatchObject({
-      cell: 10,
-      nx: 10, // (100 - 0) / 10
-      ny: 5, // (50 - 0) / 10
-      minX: 0,
-      minY: 0,
-      lo: 2,
-      hi: 8,
-      filled: 5,
-    })
-    expect(g!.cells).toEqual([{ col: 1, row: 2, value: 6 }])
-  })
-
-  it('des bornes invalides ne rendent rien', () => {
-    expect(tacticalGridFromRaster([], { ...BORNES, valide: false }, 10, ECHELLE)).toBeNull()
-  })
-
-  it('un pas de grille nul ou négatif ne rend rien', () => {
-    expect(tacticalGridFromRaster([], BORNES, 0, ECHELLE)).toBeNull()
-  })
-
-  it('SNAPSHOT LÉGER — intensités sur une petite grille, sans canvas (entrée cellules)', () => {
-    const g = tacticalGridFromRaster(
-      [celluleDe(0, 0, 0), celluleDe(1, 0, 2), celluleDe(2, 0, 6)],
-      { min_x: 0, max_x: 3, min_y: 0, max_y: 1, valide: true },
-      1,
-      ECHELLE,
-    )!
-    // p50 = 2, p95 = 8 (ECHELLE) : valeur 0 (jamais atteinte) -> null ; 2 -> bas d'échelle
-    // (0) ; 6 -> aux deux tiers de l'échelle — même règle que `heatIntensity` (entrée points).
-    const intensites = g.cells.map((c) => tacticalIntensity(g, c.value))
-    expect(intensites).toEqual([null, 0, 2 / 3])
-  })
-})
-
-// instantToFrame / TACTICAL_REPLAY_FRAME_INTERVAL_MS (lot M1, conversion mécanique instant ->
-// frame) sont retirées le 2026-09-08 (lot M1b) avec leurs tests : la conversion vit désormais
-// dans `lib/replay/replayLogic.resolveTacticalReplayInstant` (+ `msToFrames`), testée là-bas.
 
 // ─── Conformité à la maquette 034b1915 (lot F, 2026-09-13) ────────────────────
 
@@ -366,42 +207,153 @@ describe('questionSansCellule — « Mes routes de spawn » n’a pas de cellule
   })
 })
 
-describe('planSelectionRect — le cadre de la cellule choisie', () => {
-  it('se pose sur la cellule, à la MÊME échelle que la peinture', () => {
-    // 100 m de large sur 200 px => 2 px par mètre ; pas de 2 m => cellule de 4 px.
-    const rect = planSelectionRect({ col: 3, row: 5 }, BORNES, 2, 200)
-    expect(rect).toEqual({ x: 3 * 2 * 2, y: 5 * 2 * 2, size: 4 })
+
+
+// ─── LA PROJECTION DU PLAN (correctif du 2026-09-13) ──────────────────────────
+//
+// Le cadre du fond d'Illusion, tel que l'API le publie : 1711 x 2224 px a 0,031 m/px,
+// origine monde (-25,751 ; 35,165) — soit 53,04 x 68,94 m.
+const FOND_ILLUSION = {
+  originX: -25.751434532165526,
+  originY: 35.164999237060556,
+  widthM: 1711 * 0.031,
+  heightM: 2224 * 0.031,
+}
+
+// Les bornes que la lecture publiait pour les MEMES donnees : 30 x 36 m, une fenetre qui ne
+// couvre que 40 % du fond. C'est tout l'ecart entre les deux reperes.
+const BORNES_MORTS: BornesMonde = { min_x: -14, max_x: 16, min_y: -20, max_y: 16, valide: true }
+
+const ECHELLE: EchelleTactique = {
+  p50: 0.105, p95: 0.167, borne: 0.167, symetrique: false, n_cellules: 54,
+}
+
+describe('repereDuPlan — le repere est celui du FOND, pas celui des donnees', () => {
+  it('prend le cadre du fond quand la carte en a un', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
+    expect(r.minX).toBeCloseTo(-25.751, 3)
+    expect(r.maxX).toBeCloseTo(-25.751 + 53.041, 3)
+    expect(r.maxY).toBeCloseTo(35.165, 3)
+    expect(repereAspect(r)).toBeCloseTo(53.041 / 68.944, 3)
   })
 
-  it('rien à encadrer tant qu’aucune cellule n’est choisie', () => {
-    expect(planSelectionRect(null, BORNES, 2, 200)).toBeNull()
+  it("retombe sur les bornes des cellules quand la carte n'a pas de fond fige", () => {
+    const r = repereDuPlan(null, BORNES_MORTS, 2)!
+    expect(r).toEqual({ minX: -14, maxX: 16, maxY: 16, minY: -20, pasM: 2 })
   })
 
-  it('des bornes inexploitables ne fabriquent pas un cadre', () => {
-    const mauvaises: BornesMonde = { ...BORNES, valide: false }
-    expect(planSelectionRect({ col: 1, row: 1 }, mauvaises, 2, 200)).toBeNull()
+  it('refuse un pas nul et des bornes inexploitables', () => {
+    expect(repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 0)).toBeNull()
+    expect(repereDuPlan(null, { ...BORNES_MORTS, valide: false }, 2)).toBeNull()
   })
 })
 
-describe('tacticalGridFromRaster — une lecture SIGNÉE garde ses valeurs négatives', () => {
+describe('grilleDuPlan — les cellules d’index NEGATIF sont peintes', () => {
+  // LE DEFAUT FERME : le serveur adresse ses cellules sur l'origine du monde, donc en
+  // nombres signes, et le peintre n'enumere que 0..nx / 0..ny. Sur Illusion, 11 cellules
+  // etaient dessinees sur les 54 servies.
   const cellules: CelluleTactique[] = [
-    { col: 0, lig: 0, valeur: -0.8, brut: -4, centre_x: 1, centre_y: 1, matchs: 4, matchs_victoire: 0, matchs_defaite: 4 },
-    { col: 1, lig: 0, valeur: 0.8, brut: 4, centre_x: 3, centre_y: 1, matchs: 4, matchs_victoire: 4, matchs_defaite: 0 },
+    { col: -7, lig: -10, valeur: 0.12, brut: 5, centre_x: -13, centre_y: -19, matchs: 3, matchs_victoire: 0, matchs_defaite: 0 },
+    { col: -1, lig: -7, valeur: 0.16, brut: 9, centre_x: -1, centre_y: -13, matchs: 4, matchs_victoire: 0, matchs_defaite: 0 },
+    { col: 7, lig: 7, valeur: 0.11, brut: 4, centre_x: 15, centre_y: 15, matchs: 3, matchs_victoire: 0, matchs_defaite: 0 },
+  ]
+
+  it('replace les trois cellules DANS la grille, indices positifs', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
+    const grid = grilleDuPlan(cellules, r, ECHELLE)!
+    expect(grid.filled).toBe(3)
+    for (const c of grid.cells) {
+      expect(c.col).toBeGreaterThanOrEqual(0)
+      expect(c.row).toBeGreaterThanOrEqual(0)
+      expect(c.col).toBeLessThan(grid.nx)
+      expect(c.row).toBeLessThan(grid.ny)
+    }
+  })
+
+  it('inverse Y : un Y monde ELEVE tombe dans une ligne HAUTE de l’image', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
+    const grid = grilleDuPlan(cellules, r, ECHELLE)!
+    const haut = grid.cells.find((c) => c.value === 0.11)! // centre_y = +15, proche du haut
+    const bas = grid.cells.find((c) => c.value === 0.12)! // centre_y = -19, plus bas
+    expect(haut.row).toBeLessThan(bas.row)
+  })
+
+  it('ignore une cellule hors du cadre du fond, jamais rabattue sur un bord', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
+    const loin: CelluleTactique = { ...cellules[0], col: 900, lig: 900 }
+    expect(grilleDuPlan([loin], r, ECHELLE)).toBeNull()
+  })
+})
+
+describe('celluleDuClic — le clic rend l’adresse SERVEUR, et le cadre s’y repose', () => {
+  it('aller-retour : cliquer au centre d’une cellule rend son adresse serveur', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
+    const grid = { width: 1000, height: Math.round(1000 / repereAspect(r)) }
+    // Centre monde de la cellule serveur (-1, -7) : (-1, -13).
+    const x = ((-1 - r.minX) / (r.maxX - r.minX)) * grid.width
+    const y = ((r.maxY - -13) / (r.maxY - r.minY)) * grid.height
+    expect(celluleDuClic(x, y, grid, r)).toEqual({ col: -1, row: -7 })
+  })
+
+  it('hors du canvas : aucune cellule', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
+    expect(celluleDuClic(-1, 10, { width: 100, height: 100 }, r)).toBeNull()
+    expect(celluleDuClic(10, 101, { width: 100, height: 100 }, r)).toBeNull()
+  })
+
+  it('le cadre de selection tombe sur la MEME case que la peinture', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
+    const grid = grilleDuPlan(
+      [{ col: -1, lig: -7, valeur: 0.16, brut: 9, centre_x: -1, centre_y: -13, matchs: 4, matchs_victoire: 0, matchs_defaite: 0 }],
+      r,
+      ECHELLE,
+    )!
+    const vue = vueDuPlan(r, 1000)!
+    const rect = rectSelection({ col: -1, row: -7 }, r, 1000)!
+    expect(rect.x).toBeCloseTo(grid.cells[0].col * r.pasM * vue.scale, 6)
+    expect(rect.y).toBeCloseTo(grid.cells[0].row * r.pasM * vue.scale, 6)
+    expect(rect.size).toBeCloseTo(r.pasM * vue.scale, 6)
+  })
+
+  it('rien a encadrer hors du cadre, ou sans selection', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
+    expect(rectSelection(null, r, 1000)).toBeNull()
+    expect(rectSelection({ col: 900, row: 900 }, r, 1000)).toBeNull()
+  })
+})
+
+describe('vueContain — la vignette ne deforme pas la carte', () => {
+  it('une seule echelle, la plus contraignante, et des marges de centrage', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
+    // Cadre 16:9 sur un monde en hauteur : c'est la HAUTEUR qui contraint.
+    const vue = vueContain(r, 320, 180)!
+    expect(vue.scale).toBeCloseTo(180 / (r.maxY - r.minY), 6)
+    expect(vue.topLeftWorld.y).toBeCloseTo(0, 6)
+    expect(vue.topLeftWorld.x).toBeGreaterThan(0)
+  })
+})
+
+describe('grilleDuPlan — une lecture SIGNEE garde ses valeurs negatives', () => {
+  const cellules: CelluleTactique[] = [
+    { col: -1, lig: -7, valeur: -0.8, brut: -4, centre_x: -1, centre_y: -13, matchs: 4, matchs_victoire: 0, matchs_defaite: 4 },
+    { col: 1, lig: -7, valeur: 0.8, brut: 4, centre_x: 3, centre_y: -13, matchs: 4, matchs_victoire: 4, matchs_defaite: 0 },
   ]
   const signee: EchelleTactique = { p50: 0.4, p95: 0.8, borne: 0.8, symetrique: true, n_cellules: 2 }
 
-  it('peint les deux côtés autour du zéro (0 et 1 aux extrémités de la rampe)', () => {
-    const grid = tacticalGridFromRaster(cellules, BORNES, 2, signee)!
+  it('peint les deux cotes autour du zero (0 et 1 aux extremites de la rampe)', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
+    const grid = grilleDuPlan(cellules, r, signee)!
     expect(grid.signee).toBe(true)
     expect(tacticalIntensity(grid, -0.8)).toBe(0)
     expect(tacticalIntensity(grid, 0.8)).toBe(1)
-    // Le zéro n'est pas une mesure : autant gagné que perdu, la cellule reste vide.
+    // Le zero n'est pas une mesure : autant gagne que perdu, la cellule reste vide.
     expect(tacticalIntensity(grid, 0)).toBeNull()
   })
 
-  it('une lecture NON signée efface toujours les valeurs ≤ 0 (cellule jamais atteinte)', () => {
+  it('une lecture NON signee efface toujours les valeurs <= 0 (cellule jamais atteinte)', () => {
+    const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
     const quantile: EchelleTactique = { p50: 0.4, p95: 0.8, borne: 0, symetrique: false, n_cellules: 2 }
-    const grid = tacticalGridFromRaster(cellules, BORNES, 2, quantile)!
+    const grid = grilleDuPlan(cellules, r, quantile)!
     expect(tacticalIntensity(grid, -0.8)).toBeNull()
   })
 })

@@ -73,6 +73,9 @@ type ObjectiveColumnRow struct {
 	XUID    string
 	Family  narrative.ObjectiveFamily
 	Values  map[string]float64
+	// FlagJuggleWindowSeconds : la fenêtre sous laquelle les prises nettes de
+	// cette ligne ont été calculées. Zéro = la ligne n'en porte pas.
+	FlagJuggleWindowSeconds float64
 }
 
 // WeaponInfo — ce que le catalogue du titre sait d'une famille d'arme de socle.
@@ -121,6 +124,20 @@ type Input struct {
 
 // Build assemble le bloc. Scope vide ⇒ bloc Available avec zéro match : « 0 sur
 // 0 » doit pouvoir s'afficher, le vide n'est pas une indisponibilité.
+//
+// # SEULS LES MATCHS QUI ONT QUELQUE CHOSE À DIRE SONT PUBLIÉS (2026-09-13)
+//
+// Un match du scope qui ne porte NI film décodé NI feuille d'objectif ne peut
+// alimenter aucune des dix-neuf cartes : les parts, les cadences et les socles
+// se lisent dans le film, les grandeurs d'objectif dans la feuille de match.
+// Publié quand même, il ne servait qu'à être compté — et sur une portée réelle
+// de 1 147 matchs, ces lignes vides pesaient les deux tiers du bloc.
+//
+// CE QUI EST COMPTÉ NE CHANGE PAS, ET C'EST TOUT L'ENJEU : [domain.SquadFormesBlock.MatchesTotal]
+// reste la portée ENTIÈRE et [domain.SquadFormesBlock.MatchesMeasured] le nombre
+// de matchs à film. Les écrans qui disent « N matchs sans film décodé sont hors
+// de cette forme » dérivent ce nombre des deux compteurs, jamais de la longueur
+// de la liste — sans quoi l'allègement se lirait comme une perte de portée.
 func Build(in Input) domain.SquadFormesBlock {
 	out := domain.SquadFormesBlock{
 		Available:    true,
@@ -157,9 +174,25 @@ func Build(in Input) domain.SquadFormesBlock {
 				})
 			}
 		}
-		m.Objective = buildObjective(objByMatch[meta.MatchID], columnsByFamily)
+		// LE CAMP DE CHAQUE LIGNE D'OBJECTIF vient des PARTICIPANTS du match, la
+		// même source que le lobby : la feuille d'objectif, elle, ne porte pas
+		// l'appartenance. Sans ce recollement, aucune ligne n'a de camp et TOUT
+		// l'objectif se lit comme adverse (défaut mesuré sur données réelles le
+		// 2026-09-13 : « 0,0 % · −50,0 pts » sur toutes les familles de mode).
+		var teamOf map[string]int
+		if mi := byID[meta.MatchID]; mi != nil {
+			teamOf = mi.TeamOf
+		}
+		m.Objective = buildObjective(objByMatch[meta.MatchID], columnsByFamily, teamOf)
 		if m.Measured {
 			out.MatchesMeasured++
+		}
+		// UN MATCH QUI NE PORTE NI FILM NI OBJECTIF N'A RIEN À PUBLIER — voir
+		// l'en-tête de fonction. Il reste compté (MatchesTotal, et donc le nombre
+		// de matchs sans film que les formes affichent en pied), il n'occupe
+		// simplement plus une ligne de contrat vide.
+		if !m.Measured && m.Objective == nil {
+			continue
 		}
 		out.Matches = append(out.Matches, m)
 	}
@@ -214,9 +247,13 @@ func fillFromMatchInput(
 
 // buildObjective rend le bloc objectif d'un match : sa famille, les colonnes de
 // cette famille (les mêmes pour tous ses matchs, sinon deux grilles du même mode
-// n'auraient pas les mêmes colonnes) et les valeurs des deux camps.
+// n'auraient pas les mêmes colonnes), les valeurs des deux camps ET LE CAMP DE
+// CHACUN — recollé depuis les participants, la feuille d'objectif ne le portant
+// pas. Une ligne sans camp connu reste publiée SANS camp : elle comptera dans le
+// lobby et dans aucun des deux côtés, ce qui est la vérité.
 func buildObjective(
 	rows []ObjectiveColumnRow, columnsByFamily map[narrative.ObjectiveFamily][]domain.SquadFormesObjectiveColumn,
+	teamOf map[string]int,
 ) *domain.SquadFormesObjective {
 	if len(rows) == 0 {
 		return nil
@@ -228,9 +265,26 @@ func buildObjective(
 	}
 	out := &domain.SquadFormesObjective{Family: string(fam), Columns: cols}
 	for _, r := range rows {
+		// La fenêtre est la MÊME pour toutes les lignes d'un match (une passe,
+		// une règle) : la première non nulle la donne.
+		if out.FlagJuggleWindowSeconds == 0 {
+			out.FlagJuggleWindowSeconds = r.FlagJuggleWindowSeconds
+		}
 		p := domain.SquadFormesObjectivePlayer{XUID: r.XUID, Values: map[string]float64{}}
+		if team, ok := teamOf[r.XUID]; ok {
+			t := team
+			p.TeamID = &t
+		}
 		for _, c := range cols {
-			p.Values[c.Key] = r.Values[c.Key]
+			v, mesure := r.Values[c.Key]
+			// UNE GRANDEUR OPTIONNELLE ABSENTE N'EST PAS UN ZÉRO : sa clé reste
+			// hors de `values`, et le web rend « non mesuré ». Les colonnes de
+			// `match_objective_stats`, elles, gardent leur 0 — il y est une
+			// mesure (cf. SquadFormesObjectiveColumn.Optional).
+			if c.Optional && !mesure {
+				continue
+			}
+			p.Values[c.Key] = v
 		}
 		out.Players = append(out.Players, p)
 	}
@@ -273,8 +327,11 @@ func projectObjectives(rows []ObjectiveColumnRow) (
 				if !seen[col] {
 					continue
 				}
+				_, optional := narrative.ObjectiveExtraGrandeurFamily(col)
 				list = append(list, domain.SquadFormesObjectiveColumn{
-					Key: col, Role: string(role), Duration: role == narrative.ObjectiveRoleHold,
+					Key: col, Role: string(role),
+					Duration: role == narrative.ObjectiveRoleHold,
+					Optional: optional,
 				})
 			}
 		}
@@ -283,9 +340,14 @@ func projectObjectives(rows []ObjectiveColumnRow) (
 	return byMatch, cols
 }
 
-// familyColumnsOfRole — les colonnes d'un rôle QUE CETTE FAMILLE possède :
+// familyColumnsOfRole — les grandeurs d'un rôle QUE CETTE FAMILLE possède :
 // l'intersection de la classification par rôle et du vocabulaire de la famille,
 // les deux tables uniques de narrative. Aucune liste locale, aucune curation.
+//
+// LES GRANDEURS HORS COLONNE (prises nettes de drapeau) s'y ajoutent par LEUR
+// PROPRE famille déclarée : elles ne sont dans aucune table de poids — c'est
+// exactement ce qui les empêche d'entrer dans un SUM sur
+// `match_objective_stats` — donc le vocabulaire ci-dessus ne les contient pas.
 func familyColumnsOfRole(fam narrative.ObjectiveFamily, role narrative.ObjectiveRole) []string {
 	vocab := map[string]bool{}
 	for col := range narrative.ObjectiveFamilyActionWeights[fam] {
@@ -298,6 +360,11 @@ func familyColumnsOfRole(fam narrative.ObjectiveFamily, role narrative.Objective
 	for _, col := range narrative.ObjectiveRoleColumns(role) {
 		if vocab[col] {
 			out = append(out, col)
+		}
+	}
+	for _, g := range narrative.ObjectiveRoleExtraGrandeurs(role) {
+		if f, ok := narrative.ObjectiveExtraGrandeurFamily(g); ok && f == fam {
+			out = append(out, g)
 		}
 	}
 	return out

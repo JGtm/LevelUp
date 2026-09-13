@@ -155,6 +155,11 @@ var canonicalOrder = []string{
 	// stats.go tombe entre steps_shared_append_only_weapon_kills.go et steps_shared_h5_*.go.
 	// Exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	"shared_create_bomb_stats", // shared
+	// Prises de drapeau brutes et nettes lues du film (append-only + vue _latest). Table
+	// NET-NEUVE, sans dépendance ; même raisonnement que sa sœur ci-dessus. Le fichier
+	// steps_shared_flag_grabs_net.go tombe, à l'ordre d'init() alphabétique, juste après
+	// steps_shared_bomb_stats.go et avant steps_shared_h5_*.go.
+	"shared_create_flag_grabs_net", // shared
 	// Capture de la mecanique de kill Halo 5 (kill_kind) : ALTER weapon_kills +
 	// recreation v_weapon_kills. DOIT suivre shared_append_only_weapon_kills_v1
 	// (vue generationnelle + generation_id deja crees). Phase 1 (capture seule) ;

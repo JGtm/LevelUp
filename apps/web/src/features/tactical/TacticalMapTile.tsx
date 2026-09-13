@@ -23,7 +23,7 @@
  * qu'elle ouvre : des cartes de rapports différents donneraient des vignettes de hauteurs
  * différentes, et la grille perdrait ses lignes (constaté sur Illusion, dont le monde est
  * en hauteur). C'est donc le CALQUE qui s'adapte — mis à l'échelle pour tenir en entier,
- * centré, JAMAIS étiré (`planCanvasViewContain`) : une zone chaude ronde doit rester ronde,
+ * centré, JAMAIS étiré (`vueContain`) : une zone chaude ronde doit rester ronde,
  * sans quoi deux vignettes ne se comparent plus.
  *
  * Sans bornes (carte sans mort mesurée, titre qui ne lit pas les positions), la vignette
@@ -40,9 +40,9 @@ import type { Locale } from '@/lib/i18n/locale'
 import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
 
 import type { TacticalText } from './i18n'
-import { useTacticalMapBackgroundUrl } from './queries'
+import { useTacticalMapBackgroundFrame, useTacticalMapBackgroundUrl } from './queries'
 import { barreResultats, estOuvrable, nomCarte } from './tacticalLogic'
-import { planCanvasViewContain, tacticalGridFromRaster } from './tacticalView.logic'
+import { grilleDuPlan, repereDuPlan, vueContain } from './tacticalView.logic'
 
 interface TacticalMapTileProps {
   carte: TacticalMapCard
@@ -67,6 +67,7 @@ export function TacticalMapTile({
   const nom = nomCarte(carte, locale)
   const parts = barreResultats(carte)
   const fond = useTacticalMapBackgroundUrl(playerSlug, carte.map_id)
+  const cadreFond = useTacticalMapBackgroundFrame(playerSlug, carte.map_id)
 
   const bordure = selectionnee ? 'border-2 border-primary' : 'border border-border'
   const attenuation = ouvrable ? '' : ' opacity-60 grayscale'
@@ -80,14 +81,15 @@ export function TacticalMapTile({
     void paletteVersion
     return heatRamp(heatmapRampTokens('intensity').map(resolveToken))
   }, [paletteVersion])
+  // MÊME REPÈRE QUE LE PLAN : le cadre du fond quand il est connu. Sans lui, le mini-plan se
+  // posait dans le repère de ses propres cellules, sans rapport avec l'image.
   const bornes = carte.bornes
-  const grid =
-    bornes && carte.pas_m && carte.echelle
-      ? tacticalGridFromRaster(carte.cellules ?? [], bornes, carte.pas_m, carte.echelle)
-      : null
+  const repere =
+    bornes && carte.pas_m ? repereDuPlan(cadreFond, bornes, carte.pas_m) : null
+  const grid = repere && carte.echelle ? grilleDuPlan(carte.cellules ?? [], repere, carte.echelle) : null
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !grid || !bornes) return
+    if (!canvas || !grid || !repere) return
     const width = canvas.clientWidth
     const height = canvas.clientHeight
     if (width <= 0 || height <= 0) return
@@ -96,10 +98,10 @@ export function TacticalMapTile({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
-    const vue = planCanvasViewContain(bornes, width, height)
+    const vue = vueContain(repere, width, height)
     if (!vue) return
     drawTacticalHeatmap(ctx, grid, vue, { ramp, k: 1 })
-  }, [grid, ramp, bornes])
+  }, [grid, ramp, repere])
 
   return (
     <button

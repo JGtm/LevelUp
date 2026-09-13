@@ -23155,6 +23155,65 @@ components:
         - deaths
         - assists
       type: object
+    SessionFlagGrabsNetBlock:
+      additionalProperties: false
+      properties:
+        lobby_raw_total:
+          format: int64
+          type: integer
+        lobby_total:
+          format: int64
+          type: integer
+        matches_measured:
+          format: int64
+          type: integer
+        matches_team_known:
+          format: int64
+          type: integer
+        matches_with_flag_family:
+          format: int64
+          type: integer
+        openings_total:
+          format: int64
+          type: integer
+        player_raw_total:
+          format: int64
+          type: integer
+        player_share_of_team_pct:
+          format: double
+          type: number
+        player_team_scope_raw_total:
+          format: int64
+          type: integer
+        player_team_scope_total:
+          format: int64
+          type: integer
+        player_total:
+          format: int64
+          type: integer
+        team_raw_total:
+          format: int64
+          type: integer
+        team_total:
+          format: int64
+          type: integer
+        window_seconds:
+          format: double
+          type: number
+      required:
+        - matches_with_flag_family
+        - matches_measured
+        - matches_team_known
+        - openings_total
+        - player_total
+        - lobby_total
+        - player_raw_total
+        - lobby_raw_total
+        - player_team_scope_total
+        - team_total
+        - player_team_scope_raw_total
+        - team_raw_total
+      type: object
     SessionGroup:
       additionalProperties: false
       properties:
@@ -23328,6 +23387,8 @@ components:
           type:
             - array
             - "null"
+        flag_grabs_net:
+          $ref: '#/components/schemas/SessionFlagGrabsNetBlock'
         lobby_parity_pct:
           format: double
           type: number
@@ -24735,6 +24796,9 @@ components:
             - "null"
         family:
           type: string
+        flag_juggle_window_seconds:
+          format: double
+          type: number
         players:
           items:
             $ref: '#/components/schemas/SquadFormesObjectivePlayer'
@@ -24751,6 +24815,8 @@ components:
           type: boolean
         key:
           type: string
+        optional:
+          type: boolean
         role:
           type: string
       required:

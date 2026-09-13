@@ -1,16 +1,27 @@
 /**
  * TacticalPlanCard — la carte « Plan » de la vue d'analyse (item 5.4).
  *
- * LE FOND (`<img>`, MÊME convention que `TacticalMapTile`) ET LE CALQUE DE CHALEUR
- * (`<canvas>`, `drawTacticalHeatmap` de `lib/replay/heatPaint.ts` — noyau partagé avec le
- * rejeu depuis le lot Q7, 2026-09-07) PARTAGENT EXACTEMENT LE MÊME
- * CADRE : le conteneur est mis à l'aspect-ratio DU MONDE (bornes du raster), jamais un
- * 16:9 fixe — sinon `object-cover` rognerait l'image sur un axe que le calque, lui, ne
- * rogne pas, et les deux se désaligneraient au clic.
+ * ─── LA PROJECTION A ÉTÉ REFAITE LE 2026-09-13 ───────────────────────────────
+ *
+ * Constat utilisateur : sur Illusion, le calque était quasi vide et ses quelques cellules
+ * tombaient À CÔTÉ du bâtiment. Trois causes empilées, toutes mesurées (cf. l'en-tête de
+ * `tacticalView.logic.ts`) : le peintre jetait les cellules d'index NÉGATIF (11 dessinées
+ * sur 54 servies), le cadre était la boîte englobante des MORTS et non celle du FOND, et
+ * l'axe Y n'était pas inversé.
+ *
+ * Le plan projette désormais sur LE CADRE DU FOND (`useTacticalMapBackgroundFrame`, le
+ * calage publié avec chaque image), exactement comme « Où ça se joue » de la vue Match et
+ * comme le rejeu 2D. Une carte sans fond figé retombe sur ses propres bornes : elle
+ * n'affiche aucune image, le calque s'y lit seul.
+ *
+ * LE FOND (`<img>`) ET LE CALQUE DE CHALEUR (`<canvas>`, `drawTacticalHeatmap` de
+ * `lib/replay/heatPaint.ts` — noyau partagé avec le rejeu depuis le lot Q7, 2026-09-07)
+ * PARTAGENT EXACTEMENT LE MÊME CADRE MONDE : celui du CALAGE du fond. Le conteneur prend son
+ * rapport, donc `object-cover` n'y rogne rien, et le calque s'y pose au mètre près.
  *
  * LE CADRE EST POSÉ MÊME QUAND RIEN N'EST PEINT (lot 3.2, 2026-09-09), et sa hauteur est
- * BORNÉE (`planFrameStyle`) : sans bornes exploitables il prend le rapport du fond, et
- * l'état vide se pose PAR-DESSUS. Auparavant, l'état vide remplaçait le cadre, et un
+ * BORNÉE (`PLAN_HAUTEUR_MAX_PX`) : sans repère exploitable il prend le rapport par défaut,
+ * et l'état vide se pose PAR-DESSUS. Auparavant, l'état vide remplaçait le cadre, et un
  * rapport très allongé rendait un canvas de 1 070 x 13 375 px.
  *
  * COULEURS : rampe d'INTENSITÉ (bleu → rouge → violet), MÊME token que la carte de
@@ -33,30 +44,29 @@ import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
-import type { BornesMonde, EchelleTactique } from '@/lib/api/types'
+import type { BornesMonde, CelluleTactique, EchelleTactique } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
 
-import {
-  drawTacticalHeatmap,
-  heatRamp,
-  heatRampDivergent,
-  type TacticalGrid,
-} from '@/lib/replay/heatPaint'
+import { drawTacticalHeatmap, heatRamp, heatRampDivergent } from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
-import { useTacticalMapBackgroundUrl } from './queries'
+import { useTacticalMapBackgroundFrame, useTacticalMapBackgroundUrl } from './queries'
 import {
-  cellFromClick,
-  planCanvasView,
+  celluleDuClic,
+  grilleDuPlan,
   planEmptyReason,
   planEmptyText,
-  planFrameStyle,
   planLegend,
-  planSelectionRect,
+  rectSelection,
+  repereAspect,
+  repereDuPlan,
   sourceForQuestion,
   statusMessages,
   TACTICAL_CELL_FLOOR,
   unitForQuestion,
+  vueDuPlan,
+  PLAN_ASPECT_DEFAUT,
+  PLAN_HAUTEUR_MAX_PX,
   type TacticalQuestion,
 } from './tacticalView.logic'
 
@@ -66,7 +76,9 @@ export interface TacticalPlanCardProps {
   playerSlug: string
   mapId: string
   question: TacticalQuestion
-  grid: TacticalGrid | null
+  /** Les cellules SERVEUR, adressées sur l'origine du monde — la projection est faite ici,
+   *  parce qu'elle dépend du cadre du fond, que seule cette carte connaît. */
+  cellules: readonly CelluleTactique[]
   bornes: BornesMonde
   /** L'échelle publiée par la lecture — elle décide de la rampe ET des bornes affichées. */
   echelle: EchelleTactique
@@ -88,7 +100,7 @@ export function TacticalPlanCard({
   playerSlug,
   mapId,
   question,
-  grid,
+  cellules,
   bornes,
   echelle,
   pasM,
@@ -100,6 +112,9 @@ export function TacticalPlanCard({
   onCellSelect,
 }: TacticalPlanCardProps) {
   const fond = useTacticalMapBackgroundUrl(playerSlug, mapId)
+  // LE CADRE DU FOND EST LE REPÈRE, quand il existe : c'est lui, et lui seul, qui fait
+  // coïncider le calque et l'image.
+  const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   // Rampe précalculée PAR THÈME, résolue une fois par changement de palette d'accessibilité
@@ -118,15 +133,17 @@ export function TacticalPlanCard({
     return modeRampe === 'divergent' ? heatRampDivergent(tokens) : heatRamp(tokens)
   }, [paletteVersion, modeRampe])
 
-  const bornesValides = bornes.valide && bornes.max_x > bornes.min_x && bornes.max_y > bornes.min_y
-  // LE CADRE EST TOUJOURS POSÉ, plein ou vide : rapport des bornes quand elles disent
-  // quelque chose, rapport du fond sinon, hauteur bornée dans les deux cas
-  // (cf. `planFrameStyle` — c'est ce qui ferme le canvas de 13 375 px).
-  const cadre = planFrameStyle(bornes)
+  // LE REPÈRE : le cadre du fond quand la carte en a un, la boîte englobante des cellules
+  // sinon. Le cadre de la carte prend son rapport, hauteur bornée (c'est ce qui ferme le
+  // canvas de 13 375 px constaté sur Illusion en 2026-09).
+  const repere = repereDuPlan(cadreFond, bornes, pasM)
+  const aspect = repere ? repereAspect(repere) : PLAN_ASPECT_DEFAUT
+  const cadre = { aspectRatio: aspect, maxWidth: `${aspect * PLAN_HAUTEUR_MAX_PX}px` }
+  const grid = repere ? grilleDuPlan(cellules, repere, echelle) : null
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !grid || !bornesValides) return
+    if (!canvas || !grid || !repere) return
     const width = canvas.clientWidth
     const height = canvas.clientHeight
     if (width <= 0 || height <= 0) return
@@ -135,13 +152,13 @@ export function TacticalPlanCard({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
-    const vue = planCanvasView(bornes, width)
+    const vue = vueDuPlan(repere, width)
     if (!vue) return
     drawTacticalHeatmap(ctx, grid, vue, { ramp, k: 1 })
     // LE CADRE DE LA CELLULE CHOISIE, par-dessus le calque (maquette 034b1915,
     // `strokeRect`) : c'est le SEUL retour immédiat au clic — le panneau de détail est
     // plus bas et met plusieurs secondes à se remplir.
-    const cadreSel = planSelectionRect(selected, bornes, pasM, width)
+    const cadreSel = rectSelection(selected, repere, width)
     if (!cadreSel) return
     // L'ENCRE DU CADRE EST CELLE DU TEXTE DE L'APP (`text-foreground` porté par le canvas,
     // lu par `getComputedStyle`) : un jeton sémantique de couleur dirait une SIGNIFICATION
@@ -149,19 +166,19 @@ export function TacticalPlanCard({
     ctx.strokeStyle = getComputedStyle(canvas).color
     ctx.lineWidth = 2
     ctx.strokeRect(cadreSel.x - 1, cadreSel.y - 1, cadreSel.size + 2, cadreSel.size + 2)
-  }, [grid, ramp, bornes, bornesValides, selected, pasM])
+  }, [grid, ramp, repere, selected])
 
   function handleClick(event: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current
-    if (!canvas || !bornesValides) return
+    if (!canvas || !repere) return
     const rect = canvas.getBoundingClientRect()
-    const cellule = cellFromClick(
+    // L'ADRESSE RENDUE EST CELLE DU SERVEUR (ancrée sur l'origine du monde) : c'est elle que
+    // `/tactical/{map}/cellule` attend, et celle que portent les cellules de la réponse.
+    const cellule = celluleDuClic(
       event.clientX - rect.left,
       event.clientY - rect.top,
-      canvas.clientWidth,
-      canvas.clientHeight,
-      bornes,
-      pasM,
+      { width: canvas.clientWidth, height: canvas.clientHeight },
+      repere,
     )
     if (cellule) onCellSelect(cellule.col, cellule.row)
   }
@@ -171,6 +188,9 @@ export function TacticalPlanCard({
   // POURQUOI le plan est vide, pas seulement QU'IL l'est : les trois causes n'appellent
   // pas la même action de l'utilisateur (cf. `planEmptyReason`).
   const raisonVide = planEmptyReason(grid?.filled ?? 0, matchsRetenus, matchsFiltres)
+  // Les cellules SERVIES mais tombées hors du cadre du fond : dites, jamais avalées — un
+  // plan amputé ressemblerait sinon à un plan complet.
+  const horsCadre = cellules.length - (grid?.filled ?? 0)
   const aucuneCellule = raisonVide !== null
 
   return (
@@ -191,6 +211,11 @@ export function TacticalPlanCard({
             <p className="mt-1" data-testid="tactical-plan-grid-step">
               {t.footerGrid(pasM)} · {t.footerFloor(TACTICAL_CELL_FLOOR)}
             </p>
+            {horsCadre > 0 && (
+              <p className="mt-1" data-testid="tactical-plan-off-frame">
+                {t.footerOffFrame(horsCadre, cellules.length)}
+              </p>
+            )}
           </div>
         ) : undefined
       }

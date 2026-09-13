@@ -58,23 +58,16 @@ import (
 // Le TOML est relu à chaque cycle, comme pour les deux autres gates : c'est une petite lecture
 // de fichier, et elle suit les règles vivantes sans redémarrage.
 func titreProduitDesArtefacts(ctx context.Context, d Deps) bool {
-	caps, err := games.LoadCapabilityMap(d.RepoRoot, d.TitleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: rejeu 2D non produit — capabilities illisibles",
-			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "err", err)
-		return false
-	}
-	if !caps.Has(games.CapFilmReplayArtifact) {
-		niveau := slog.LevelDebug
+	// LE NIVEAU EST UNE FONCTION, et c'est nécessaire : `premierRefusDeCeTitre` MARQUE le
+	// titre comme déjà vu. L'évaluer avant de savoir si la clé est présente consommerait le
+	// « premier refus » sur un titre qui, lui, produit (cf. porte.go).
+	armee, _ := porteCapability(ctx, d, games.CapFilmReplayArtifact, "rejeu 2D", func() slog.Level {
 		if premierRefusDeCeTitre(d.TitleSlug) {
-			niveau = slog.LevelInfo
+			return slog.LevelInfo
 		}
-		slog.Log(ctx, niveau, "post-sync: rejeu 2D — titre sans la capability, aucune production",
-			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug,
-			"capability", string(games.CapFilmReplayArtifact))
-		return false
-	}
-	return true
+		return slog.LevelDebug
+	})
+	return armee
 }
 
 // refusDejaDits mémorise les titres dont le refus a déjà été journalisé en INFO, pour la vie

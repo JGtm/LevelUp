@@ -25,6 +25,7 @@ import (
 	"log/slog"
 	"strconv"
 
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
@@ -42,6 +43,12 @@ type SquadFormesQuery struct {
 	// Objectives : les colonnes d'objectif. Nil ⇒ bloc sans cartes d'objectif.
 	Objectives port.SquadFormesObjectiveRepository
 	PlayerXUID string
+	// MainGamertag : le nom du joueur de la page, tel que la page le connaît
+	// déjà. C'est la source PRIMAIRE de son libellé — les lignes de
+	// `match_participants` d'un scope donné peuvent toutes avoir un gamertag
+	// vide, et l'écran affichait alors son XUID (défaut mesuré le 2026-09-13 ;
+	// règle du dépôt : aucune vie anonyme, aucun identifiant machine à l'écran).
+	MainGamertag string
 	// Metas : le scope dans l'ordre d'affichage — c'est LUI qui fait le scope.
 	Metas []squadformes.MatchMeta
 	// SelectedGamertags : les coéquipiers sélectionnés de la page.
@@ -85,7 +92,7 @@ func BuildSquadFormesBlock(ctx context.Context, q SquadFormesQuery) *domain.Squa
 	tc := sessionusage.BuildTeamContext(q.PlayerXUID, participants)
 	in := squadformes.Input{
 		PlayerXUID:   q.PlayerXUID,
-		SquadPlayers: formesSquadPlayers(q.PlayerXUID, participants, q.SelectedGamertags),
+		SquadPlayers: formesSquadPlayers(q.PlayerXUID, q.MainGamertag, participants, q.SelectedGamertags),
 		Metas:        q.Metas,
 		Matches:      sessionusage.BuildMatchInputs(matchIDs, films, players, tc),
 		Films:        films,
@@ -111,14 +118,20 @@ func BuildSquadFormesBlock(ctx context.Context, q SquadFormesQuery) *domain.Squa
 // formesSquadPlayers — le joueur de la page EN TÊTE, puis les coéquipiers
 // sélectionnés résolus contre les participants du scope (même résolution que le
 // bloc d'usage : ResolveScopeFriends, insensible à la casse du gamertag).
+//
+// LE NOM DU JOUEUR DE LA PAGE VIENT DE LA PAGE, et les participants ne sont que
+// son repli : sur un scope dont aucune ligne de participant ne porte son
+// gamertag, l'écran affichait son XUID.
 func formesSquadPlayers(
-	playerXUID string, participants []sessionusage.ParticipantRow, selected []string,
+	playerXUID, mainGamertag string, participants []sessionusage.ParticipantRow, selected []string,
 ) []domain.SessionUsageSquadPlayer {
-	me := domain.SessionUsageSquadPlayer{XUID: playerXUID}
+	me := domain.SessionUsageSquadPlayer{XUID: playerXUID, Gamertag: mainGamertag}
 	for _, p := range participants {
+		if me.Gamertag != "" {
+			break
+		}
 		if p.XUID == playerXUID && p.Gamertag != "" {
 			me.Gamertag = p.Gamertag
-			break
 		}
 	}
 	friends := sessionusage.ResolveScopeFriends(playerXUID, participants, selected)
@@ -154,6 +167,52 @@ func loadFormesObjectives(
 		slog.WarnContext(ctx, "formes retenues: colonnes d'objectif illisibles — cartes d'objectif omises",
 			"err", err, "match_count", len(matchIDs))
 		return nil
+	}
+	return joindrePrisesNettes(ctx, q, matchIDs, rows)
+}
+
+// joindrePrisesNettes ajoute la grandeur lue du FILM aux lignes lues de l'API.
+//
+// LA JOINTURE SE FAIT ICI, ET PAS EN SQL : les deux grandeurs vivent dans deux
+// tables alimentées par deux producteurs (cf. le commentaire de
+// LoadFlagGrabsNet). Un LEFT JOIN aurait fait tomber toutes les colonnes
+// d'objectif le jour où la vue du film manque.
+//
+// UN MATCH SANS PRISE LUE NE REÇOIT AUCUNE CLÉ : l'absence porte le « non
+// mesuré » jusqu'à l'écran, et écrire 0 ici dirait « il n'a rien pris ».
+// DÉGRADATION SEULE : lecture en échec ⇒ les lignes sortent telles quelles, le
+// bloc garde ses autres colonnes.
+func joindrePrisesNettes(
+	ctx context.Context, q SquadFormesQuery, matchIDs []string, rows []squadformes.ObjectiveColumnRow,
+) []squadformes.ObjectiveColumnRow {
+	if len(rows) == 0 {
+		return rows
+	}
+	nets, err := q.Objectives.LoadFlagGrabsNet(ctx, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "formes retenues: prises nettes illisibles — grandeur omise",
+			"err", err, "match_count", len(matchIDs))
+		return rows
+	}
+	parMatch := make(map[string]map[string]int, len(nets))
+	fenetre := map[string]float64{}
+	for _, n := range nets {
+		if parMatch[n.MatchID] == nil {
+			parMatch[n.MatchID] = map[string]int{}
+		}
+		parMatch[n.MatchID][n.XUID] = n.Net
+		fenetre[n.MatchID] = float64(n.WindowMS) / 1000
+	}
+	for i := range rows {
+		v, ok := parMatch[rows[i].MatchID][rows[i].XUID]
+		if !ok {
+			continue
+		}
+		if rows[i].Values == nil {
+			rows[i].Values = map[string]float64{}
+		}
+		rows[i].Values[narrative.GrandeurFlagGrabsNet] = float64(v)
+		rows[i].FlagJuggleWindowSeconds = fenetre[rows[i].MatchID]
 	}
 	return rows
 }

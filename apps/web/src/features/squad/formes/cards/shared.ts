@@ -8,15 +8,24 @@
  * cartes (équipement, socles, objectifs) et la moindre divergence sur l'ordre
  * des segments ferait trois lectures différentes du même camp.
  */
+import type { SquadFormesMatch } from '@/lib/api/types'
+
 import { TEAM_REST_INK } from '../colors'
 import { lobbyOf } from '../model/access'
 import type { PisteRow, PisteSegment } from '../forms/Piste100Form'
 import type { LobbyParts } from '../model/aggregates'
 import type { FormesViewModel } from '../viewModel'
 
-/** Les colonnes de la bande : un match, son heure, sa carte. */
-export function matchColumns(vm: FormesViewModel): { key: string; time: string; map: string }[] {
-  return vm.matches.map((m) => ({
+/**
+ * Les colonnes de la bande : un match, son heure, sa carte. Elle reçoit LA MÊME
+ * liste que les cases — une colonne de plus que de cases décalerait toute la
+ * frise.
+ */
+export function matchColumns(
+  vm: FormesViewModel,
+  matches: SquadFormesMatch[],
+): { key: string; time: string; map: string }[] {
+  return matches.map((m) => ({
     key: m.match_id,
     time: vm.matchTime(m),
     map: vm.matchMap(m),

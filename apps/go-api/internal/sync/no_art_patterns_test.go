@@ -144,6 +144,14 @@ var tablesProtegees = []string{
 	// Remplacer une passe = en écrire une nouvelle ; la vue match_bomb_stats_latest ne rend
 	// que la dernière ligne par (match_id, xuid).
 	"match_bomb_stats",
+	// match_flag_grabs_net (prises nettes de drapeau, 2026-09-13) : table append-only
+	// NET-NEUVE (prises brutes et nettes par joueur/match, lues du calque de drapeau de
+	// l'artefact, plus la fenêtre de jonglage appliquée). Son persister
+	// (internal/persist/flag_grabs_net_persister.go) n'émet que des INSERT dans une
+	// transaction unique — aucune entrée d'allowlist à prévoir, ni ici ni dans
+	// allowlistRawDelete. Remplacer une passe = en écrire une nouvelle ; la vue
+	// match_flag_grabs_net_latest ne rend que la dernière ligne par (match_id, xuid).
+	"match_flag_grabs_net",
 	// kill_positions / match_weapon_hit_distance (G4 du registre v2, enrôlement 2026-09-05) :
 	// les deux dernières tables du film restées HORS des deux listes anti-ART alors qu'elles
 	// sont append-only avec vue _latest depuis leur migration. Vérifié sur pièces avant

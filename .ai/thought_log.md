@@ -315,6 +315,68 @@ donc aucun rendu ne change. Critere S9 ajoute (archetypes utiles a 100 % en imag
 Toujours aucun commit ; lancement de 0.A et 0.B sur go explicite.
 
 ---
+## [2026-09-13] Ajustements pré-v7.5 — 10 pages, 8 lots parallèles + 7 lots de suite, 2 chantiers dérivés — Complété (feat/v75, 17 commits de fusion poussés, CI verte au niveau job)
+
+**Contexte.** Retour utilisateur en une liste dense sur dix pages (Accueil, Synthèse, Timeseries,
+Sessions, Escouade, Citations, Médailles, Tactique, Match view, Médias) avec trois artefacts à
+porter « fond et forme » (Les formes retenues 2ec1b8eb, L'échange sur la page Escouade 4c520da6,
+Onglet Tactique 034b1915) et la consigne « attention aux rendus, plus d'improvisation ». Plan :
+`.ai/PLAN_AJUSTEMENTS_PRE_V75_2026-09-13.md` (tous items statués) ; briefs archivés sous
+`.ai/V7.5/briefs_ajustements_2026-09-13/`.
+
+**Décision technique principale.** Orchestration : 4 reconnaissances Explore (fichiers:lignes,
+causes localisées) → 8 exécuteurs Opus en parallèle, un worktree `LevelUp-wt-ajust-<lot>` chacun
+(jonctions node_modules, GOCACHE privé, port Vite dédié), briefs sur pièces + artefacts copiés
+en entier, vérification de rendu OBLIGATOIRE par capture Playwright lue par l'exécuteur ; fusion
+lot par lot par le superviseur avec relecture des captures, puis trois passes visuelles finales sur
+données réelles (session signée HMAC, lecture seule) qui ont trouvé ce que les fixtures ne
+montraient pas. Lots persist/sync (prises nettes) → 2 relecteurs adversariaux aveugles (13
+constats, tous corrigés et verrouillés par test, M6/M7 rejoués rouges) avant fusion.
+
+**Résultats observés (tous vérifiés sur capture, données réelles).** Accueil : miniatures
+(cause : fetch+createImageBitmap hors cache, 20/20 requêtes interrompues, tuile vide silencieuse
+depuis le 20/05) ; « J'aime » en infobulle. Synthèse : 6 cartes d'objectif retirées ; calendrier
+Activité restauré — vraie cause : depuis `7568a7bd2` le visualMap classait sur la dimension
+`detail`, AUCUNE case n'était teintée sur les 5 consommateurs du wrapper (`dimension: 2`).
+Timeseries : Portée par arme + Dénivelé côte à côte, usages en 4 cartes, « Équipe adverse »,
+Premier frag centré, Écart cumulé à droite. Sessions : cadence PAR MATCH (décision utilisateur,
+Go `per10Min` remplacé), 3 blocs, parts dépliées, compact = étendu, part lobby hachurée.
+Escouade : 6 cartes de l'échange (nuage : la cause du « point unique » prouvée), assistances en
+barres empilées, joueur × carte avec axes + légende unique, Médailles en dernier, 19 cartes des
+formes retenues (bloc Go `formes_retenues`) — puis sur données réelles : objectifs à 0 % partout
+(lignes publiées sans camp → recollé, 100 %), XUID brut → gamertag, repli par match (20). Citations/
+Médailles : piste fantôme retirée, hauteurs alignées. Tactique : le clic ne rechargeait PAS (c'est
+le lien du panneau, balise native) mais n'avait aucun retour visuel ; conformité maquette
+(bascule, mini-plans, rampe, Coordination d'équipe Go+web) ; puis calque hors plan = 3 défauts de
+projection (indices signés jetés 11/54, cadre bbox au lieu du fond, Y non inversé) → 54/54. Match
+view : Distance par arme en sections, Où ça se joue (fond + calque), usages sans grenade/épisode/
+pavé, socles une barre dépliés, couleurs d'équipe = régression datée `3f116dfe6` (23/07)
+rétablie, troncatures ; Mutilateur nommé (id film manquant au registre + complétion à la requête).
+
+**Chantiers dérivés.** Prises nettes de drapeau (jonglage replié, fenêtre 1,5 s mesurée sur une
+coupure nette : 617 → 370, 40 %) : mesure, table append-only par passe, rôle « prendre », Escouade
++ Sessions, rattrapage exécuté (13 matchs). Niveaux d'armes base/terrain/puissance : planifié,
+non démarré (`.ai/PLAN_NIVEAUX_ARMES_2026-09-13.md`).
+
+**Incidents.** (1) Air servait un binaire périmé : gcc absent de son PATH, 43 × « exit status 1 »
+silencieux — relancé avec msys64/ucrt64 en tête ; vérifier la date de `tmp/server.exe` avant toute
+passe visuelle (mémoire). (2) Une autre session a poussé feat/v75 depuis le principal et emporté
+les fusions avant gates cumulés — CI verte quand même ; coordination établie (fenêtre 5 min).
+(3) Garde-fous vitest qui balaient le disque : faux rouges à 5 s sous charge, verts à 30 s.
+(4) Vite du lot E resté en vie (5186) et verrouillant son worktree.
+
+**Découvertes non traitées (plan §4).** Rail médias de l'accueil à 10 s ; donut Répartition des
+frags illisible (Synthèse) ; barre nue « Résultats de la dernière session » ; badges « À vérifier »
+= tournée de revue du 25/07 jamais close (décision utilisateur) ; `/pages/teammates` 12,5 s / 3,1 Mo
+(le poids n'explique pas : 72 % en lignes d'objectif, profilage serveur à faire) ; palette joueurs
+du match trop proche ; 404 médaille + fond de carte 571afb7f ; deux notes de pied d'usage à
+valider ; « Drapeaux saisis » → prises nettes.
+
+**Prochaine étape.** Verdicts utilisateur sur les découvertes ; niveaux d'armes quand bande
+passante ; prises nettes 2.2 vérifiées sur données réelles le 14/09 (passe 4 : Sessions et Escouade conformes, dénominateurs propres 28 sur 370) ; un défaut d'infobulle (« Prises nettes : — » au lieu de « non mesuré ») corrigé dans `GrilleForm` avec test. Chantier CLOS ; CI verte sur toutes les fusions.
+
+---
+
 ## [2026-09-13] Lot G des finitions v7.5 — fiabilite : un rebuild mortel retire, deux garde-rails qui mordent enfin, une regle de comparaison partagee — Complete (worktree wt-finitions-fiabilite, branche feat/finitions-fiabilite)
 
 **Decision technique principale.** Les cinq items du lot partagent une meme forme de defaut :

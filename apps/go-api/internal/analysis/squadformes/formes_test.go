@@ -1,6 +1,8 @@
 package squadformes
 
 import (
+	"fmt"
+	"reflect"
 	"testing"
 
 	"levelup/go-api/internal/analysis/narrative"
@@ -9,6 +11,18 @@ import (
 )
 
 func team(v int) *int { return &v }
+
+// matchOf — le match publié sous cet identifiant. Les tests ne raisonnent JAMAIS
+// par rang : la liste publiée ne porte que les matchs qui ont quelque chose à
+// dire (film ou feuille d'objectif), sa longueur n'est pas celle de la portée.
+func matchOf(b domain.SquadFormesBlock, id string) *domain.SquadFormesMatch {
+	for i := range b.Matches {
+		if b.Matches[i].MatchID == id {
+			return &b.Matches[i]
+		}
+	}
+	return nil
+}
 
 // registryWeapon — une arme telle que le service la résout (nom du catalogue du
 // titre, dimensions du registre canonique).
@@ -62,8 +76,10 @@ func TestBuild_ScopeEtCouverture(t *testing.T) {
 	if got.MainXUID != "moi" || len(got.Squad) != 2 {
 		t.Fatalf("escouade attendue moi + 1, obtenu %+v", got.Squad)
 	}
-	if len(got.Matches) != 2 {
-		t.Fatalf("2 matchs attendus, obtenu %d", len(got.Matches))
+	// La PORTÉE fait deux matchs, la liste PUBLIÉE n'en porte qu'un : le match
+	// sans film ni objectif n'alimente aucune carte.
+	if len(got.Matches) != 1 || got.Matches[0].MatchID != "m2" {
+		t.Fatalf("seul le match mesuré est publié, obtenu %+v", got.Matches)
 	}
 }
 
@@ -71,7 +87,25 @@ func TestBuild_ScopeEtCouverture(t *testing.T) {
 // rendre en « non mesuré », jamais en zéros.
 func TestBuild_MatchNonMesureSansLobby(t *testing.T) {
 	got := Build(fixture())
-	m1 := got.Matches[0]
+	if matchOf(got, "m1") != nil {
+		t.Fatal("un match sans film NI objectif n'a rien à publier")
+	}
+	// Il reste COMPTÉ : c'est de ces deux nombres que l'écran tire « N matchs
+	// sans film décodé sont hors de cette forme ».
+	if got.MatchesTotal-got.MatchesMeasured != 1 {
+		t.Fatalf("le match sans film doit rester compté, obtenu %d/%d",
+			got.MatchesMeasured, got.MatchesTotal)
+	}
+
+	// Un match SANS FILM mais AVEC objectif, lui, est publié — sans lobby.
+	in := fixture()
+	in.Objectives = []ObjectiveColumnRow{{MatchID: "m1", XUID: "moi",
+		Family: narrative.FamilyZonesStrongholds, Values: map[string]float64{"zone_secures": 3}}}
+	withObj := Build(in)
+	m1 := matchOf(withObj, "m1")
+	if m1 == nil {
+		t.Fatal("un match à objectif se publie même sans film")
+	}
 	if m1.Measured || len(m1.Lobby) != 0 {
 		t.Fatalf("m1 devait rester non mesuré et sans lobby, obtenu %+v", m1)
 	}
@@ -85,7 +119,7 @@ func TestBuild_MatchNonMesureSansLobby(t *testing.T) {
 
 func TestBuild_LobbyDesDeuxCamps(t *testing.T) {
 	got := Build(fixture())
-	m2 := got.Matches[1]
+	m2 := *matchOf(got, "m2")
 	if len(m2.Lobby) != 3 {
 		t.Fatalf("les deux camps attendus (3 joueurs), obtenu %d", len(m2.Lobby))
 	}
@@ -117,7 +151,7 @@ func TestBuild_LobbyDesDeuxCamps(t *testing.T) {
 // le compte des murs.
 func TestBuild_MurSeulementLaFamilleMur(t *testing.T) {
 	got := Build(fixture())
-	for _, p := range got.Matches[1].Lobby {
+	for _, p := range matchOf(got, "m2").Lobby {
 		if p.XUID == "moi" && p.Wall != 3 {
 			t.Fatalf("mur attendu 3 (jamais 12 avec le capteur), obtenu %d", p.Wall)
 		}
@@ -171,7 +205,7 @@ func TestBuild_ColonnesObjectifPiloteesParLaDonnee(t *testing.T) {
 			Values: map[string]float64{"flag_returns": 0, "flag_captures": 0, "time_as_flag_carrier_seconds": 17.2}},
 	}
 	got := Build(in)
-	obj := got.Matches[1].Objective
+	obj := matchOf(got, "m2").Objective
 	if obj == nil {
 		t.Fatal("le match porte un objectif, le bloc doit exister")
 	}
@@ -194,6 +228,19 @@ func TestBuild_ColonnesObjectifPiloteesParLaDonnee(t *testing.T) {
 	if len(obj.Players) != 2 {
 		t.Fatalf("les deux camps attendus, obtenu %+v", obj.Players)
 	}
+	// LE CAMP EST RECOLLÉ DEPUIS LES PARTICIPANTS : sans lui, tout l'objectif se
+	// lit comme adverse et le rapport de force affiche « 0 % » partout (défaut
+	// mesuré sur données réelles le 2026-09-13).
+	byXUID := map[string]*domain.SquadFormesObjectivePlayer{}
+	for i := range obj.Players {
+		byXUID[obj.Players[i].XUID] = &obj.Players[i]
+	}
+	if p := byXUID["moi"]; p == nil || p.TeamID == nil || *p.TeamID != 0 {
+		t.Fatalf("le joueur de la page devait être rangé dans son camp, obtenu %+v", byXUID["moi"])
+	}
+	if p := byXUID["adv"]; p == nil || p.TeamID == nil || *p.TeamID != 1 {
+		t.Fatalf("l'adversaire devait être rangé dans le sien, obtenu %+v", byXUID["adv"])
+	}
 	// L'ordre des colonnes suit les rôles (prendre, défendre, tenir), jamais une map.
 	if obj.Columns[len(obj.Columns)-1].Role != string(narrative.ObjectiveRoleHold) {
 		t.Fatalf("la durée ferme la marche, obtenu %+v", obj.Columns)
@@ -215,5 +262,84 @@ func TestBuild_ScopeVide(t *testing.T) {
 	got := Build(Input{PlayerXUID: "moi"})
 	if !got.Available || got.MatchesTotal != 0 || len(got.Matches) != 0 {
 		t.Fatalf("scope vide: bloc disponible à 0 match, obtenu %+v", got)
+	}
+}
+
+// Une ligne d'objectif dont le camp est INCONNU des participants reste publiée
+// SANS camp : elle compte dans le lobby et dans aucun des deux côtés. Inventer
+// un camp ferait un rapport de force faux ; l'effacer perdrait le dénominateur.
+func TestBuild_ObjectifCampInconnuResteSansCamp(t *testing.T) {
+	in := fixture()
+	in.Objectives = []ObjectiveColumnRow{
+		{MatchID: "m2", XUID: "moi", Family: narrative.FamilyCTF,
+			Values: map[string]float64{"flag_returns": 2}},
+		{MatchID: "m2", XUID: "fantome", Family: narrative.FamilyCTF,
+			Values: map[string]float64{"flag_returns": 5}},
+	}
+	got := Build(in)
+	obj := matchOf(got, "m2").Objective
+	if obj == nil {
+		t.Fatal("le bloc objectif doit exister")
+	}
+	for _, p := range obj.Players {
+		if p.XUID == "fantome" && p.TeamID != nil {
+			t.Fatalf("un xuid absent des participants ne reçoit pas de camp, obtenu %+v", p)
+		}
+	}
+}
+
+// LA NON-RÉGRESSION DE L'ALLÈGEMENT (2026-09-13). Mille matchs de plus qui ne
+// portent NI film NI objectif ne doivent RIEN changer au bloc publié — ni une
+// ligne de lobby, ni une arme, ni un socle, ni une colonne d'objectif — et tout
+// changer aux seuls compteurs de portée. C'est exactement la propriété qui rend
+// l'allègement invisible à l'écran : les cartes lisent le contenu, les pieds de
+// forme lisent les compteurs.
+func TestBuild_MatchsVidesNeChangentQueLesCompteurs(t *testing.T) {
+	base := Build(fixture())
+
+	in := fixture()
+	for i := 0; i < 1000; i++ {
+		in.Metas = append(in.Metas, MatchMeta{
+			MatchID:   fmt.Sprintf("vide-%03d", i),
+			StartTime: "2025-01-01T00:00:00Z",
+		})
+	}
+	got := Build(in)
+
+	if got.MatchesTotal != base.MatchesTotal+1000 {
+		t.Fatalf("la portée doit compter les mille matchs, obtenu %d", got.MatchesTotal)
+	}
+	if got.MatchesMeasured != base.MatchesMeasured {
+		t.Fatalf("aucun d'eux n'est mesuré, obtenu %d", got.MatchesMeasured)
+	}
+	if !reflect.DeepEqual(got.Matches, base.Matches) {
+		t.Fatalf("le contenu publié a changé :\n avant %+v\n après %+v", base.Matches, got.Matches)
+	}
+	if !reflect.DeepEqual(got.Weapons, base.Weapons) {
+		t.Fatalf("les armes ont changé : %+v vs %+v", base.Weapons, got.Weapons)
+	}
+	if !reflect.DeepEqual(got.Squad, base.Squad) {
+		t.Fatalf("l'escouade a changé : %+v vs %+v", base.Squad, got.Squad)
+	}
+}
+
+// Le même invariant avec des matchs à OBJECTIF SEUL : eux se publient, et le
+// reste du bloc ne bouge pas pour autant.
+func TestBuild_MatchsAObjectifSeulSontPublies(t *testing.T) {
+	in := fixture()
+	in.Metas = append(in.Metas, MatchMeta{MatchID: "obj-seul", StartTime: "2026-07-31T18:10:00Z"})
+	in.Objectives = []ObjectiveColumnRow{{MatchID: "obj-seul", XUID: "moi",
+		Family: narrative.FamilyCTF, Values: map[string]float64{"flag_returns": 4}}}
+	got := Build(in)
+
+	m := matchOf(got, "obj-seul")
+	if m == nil || m.Objective == nil {
+		t.Fatalf("un match à objectif seul se publie, obtenu %+v", got.Matches)
+	}
+	if m.Measured || len(m.Lobby) != 0 {
+		t.Fatalf("il n'a ni film ni lobby, obtenu %+v", m)
+	}
+	if got.MatchesMeasured != 1 || got.MatchesTotal != 3 {
+		t.Fatalf("compteurs attendus 1/3, obtenu %d/%d", got.MatchesMeasured, got.MatchesTotal)
 	}
 }

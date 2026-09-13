@@ -59,10 +59,29 @@ export function columnsOfFamily(
   return matchesOfFamily(block, family)[0]?.objective?.columns ?? []
 }
 
-/** La valeur d'un joueur sur une colonne d'un match (0 s'il n'a pas de ligne). */
-export function objectiveValue(match: SquadFormesMatch, xuid: string, column: string): number {
+/**
+ * objectiveCell — la valeur d'un joueur sur une colonne d'un match, qui peut
+ * valoir « non mesuré ».
+ *
+ * TOUTES LES COLONNES NE SE LISENT PAS PAREIL, ET C'EST LA COLONNE QUI LE DIT.
+ * Les grandeurs de `match_objective_stats` viennent du sync : dès qu'un match a une ligne,
+ * toutes ses colonnes ont une valeur, et un 0 y est une mesure. Les grandeurs
+ * lues du FILM (les prises nettes de drapeau) n'existent que pour les matchs
+ * dont l'artefact a été lu — le serveur les marque `optional` et n'écrit alors
+ * AUCUNE clé. Les afficher à zéro dirait « il n'a rien pris » là où la vérité
+ * est « on n'a pas regardé ».
+ *
+ * `null` = non mesuré, et la grille le rend en hachure.
+ */
+export function objectiveCell(
+  match: SquadFormesMatch,
+  xuid: string,
+  column: SquadFormesObjectiveColumn,
+): number | null {
   const row = (match.objective?.players ?? []).find((p) => p.xuid === xuid)
-  return row?.values?.[column] ?? 0
+  const v = row?.values?.[column.key]
+  if (v == null) return column.optional ? null : 0
+  return v
 }
 
 /** L'agrégat d'un ensemble de colonnes : mes totaux, ceux de mon camp, du lobby. */
@@ -105,11 +124,18 @@ function closeSpread(parts: number[], above: number): Spread {
  * aggregateColumns — l'agrégat de colonnes sur un ensemble de matchs. Les
  * colonnes passées DOIVENT partager leur unité (des actions, ou des secondes) :
  * additionner un temps de portage à des retours de drapeau ne voudrait rien dire.
+ *
+ * UN MATCH QUI NE MESURE PAS UNE COLONNE OPTIONNELLE SORT DE L'AGRÉGAT — de son
+ * numérateur ET de son dénominateur. Les grandeurs lues du film n'existent que
+ * pour les matchs dont l'artefact a été lu ; les compter à zéro sur les autres
+ * ferait passer « on n'a pas regardé » pour « il n'a rien pris », et la part de
+ * ce joueur baisserait d'autant. C'est le faux zéro que le serveur refuse déjà
+ * en n'écrivant AUCUNE clé (cf. SquadFormesObjectiveColumn.optional).
  */
 export function aggregateColumns(
   matches: SquadFormesMatch[],
   mainXuid: string,
-  columns: string[],
+  columns: SquadFormesObjectiveColumn[],
 ): ObjectiveAggregate {
   let me = 0
   let team = 0
@@ -122,6 +148,7 @@ export function aggregateColumns(
   let lobbyAbove = 0
 
   for (const match of matches) {
+    if (!matchMeasuresAll(match, columns)) continue
     const sizes = matchSizes(match)
     teamSizes.push(sizes.team)
     lobbySizes.push(sizes.lobby)
@@ -129,7 +156,7 @@ export function aggregateColumns(
     let mTeam = 0
     let mLobby = 0
     for (const row of match.objective?.players ?? []) {
-      const v = columns.reduce((a, c) => a + (row.values?.[c] ?? 0), 0)
+      const v = columns.reduce((a, c) => a + (row.values?.[c.key] ?? 0), 0)
       mLobby += v
       if (match.player_team != null && row.team_id === match.player_team) mTeam += v
       if (row.xuid === mainXuid) mMe += v
@@ -166,20 +193,46 @@ export function aggregateColumns(
 }
 
 /**
+ * matchMeasuresAll — ce match mesure-t-il TOUTES les colonnes optionnelles de
+ * l'ensemble ? Une colonne ordinaire est toujours mesurée dès que le match a une
+ * feuille d'objectif ; une colonne optionnelle ne l'est que si au moins un joueur
+ * en porte la clé.
+ */
+function matchMeasuresAll(
+  match: SquadFormesMatch,
+  columns: SquadFormesObjectiveColumn[],
+): boolean {
+  const players = match.objective?.players ?? []
+  return columns.every(
+    (c) => !c.optional || players.some((p) => p.values?.[c.key] != null),
+  )
+}
+
+/**
  * aggregateRole — un rôle sur TOUS les matchs à objectif du scope, quelles que
  * soient leurs familles : c'est la réconciliation que permet le rôle.
+ *
+ * LES GRANDEURS OPTIONNELLES N'Y ENTRENT PAS, ET C'EST UNE DÉCISION. Un rôle
+ * agrégé est une SOMME de grandeurs hétérogènes ramenées à une part ; y mêler
+ * une grandeur mesurée sur trois matchs quand les autres le sont sur cinq
+ * donnerait un total dont le dénominateur change d'un scope à l'autre, sans que
+ * rien à l'écran ne le dise. Les prises nettes gardent donc leurs propres
+ * cartes — la grille brute et l'écart par colonne, calculés sur les seuls matchs
+ * mesurés — et la carte de rôle reste comparable d'une session à l'autre.
  */
 export function aggregateRole(block: SquadFormesBlock, role: ObjectiveRole): ObjectiveAggregate {
   const matches = objectiveMatches(block).filter((m) =>
-    (m.objective?.columns ?? []).some((c) => c.role === role),
+    (m.objective?.columns ?? []).some((c) => c.role === role && !c.optional),
   )
   // Chaque match n'additionne que SES colonnes du rôle : deux familles n'ont pas
   // les mêmes, et la somme se fait match par match dans aggregateColumns.
-  const columns = new Set<string>()
+  const columns = new Map<string, SquadFormesObjectiveColumn>()
   for (const m of matches) {
-    for (const c of m.objective?.columns ?? []) if (c.role === role) columns.add(c.key)
+    for (const c of m.objective?.columns ?? []) {
+      if (c.role === role && !c.optional) columns.set(c.key, c)
+    }
   }
-  return aggregateColumns(matches, block.main_xuid ?? '', [...columns])
+  return aggregateColumns(matches, block.main_xuid ?? '', [...columns.values()])
 }
 
 /** Les segments de la piste du lobby pour un rôle (escouade / reste / adverse). */
@@ -193,7 +246,12 @@ export function roleLobbyParts(
   let teamRest = 0
   let opponents = 0
   for (const match of objectiveMatches(block)) {
-    const cols = (match.objective?.columns ?? []).filter((c) => c.role === role).map((c) => c.key)
+    // MÊME RÈGLE QUE aggregateRole : les grandeurs optionnelles restent dehors.
+    // La piste du lobby est une répartition à 100 % — y verser une grandeur que
+    // certains matchs ne mesurent pas décalerait les segments sans le dire.
+    const cols = (match.objective?.columns ?? [])
+      .filter((c) => c.role === role && !c.optional)
+      .map((c) => c.key)
     if (cols.length === 0) continue
     for (const row of match.objective?.players ?? []) {
       const v = cols.reduce((a, c) => a + (row.values?.[c] ?? 0), 0)
