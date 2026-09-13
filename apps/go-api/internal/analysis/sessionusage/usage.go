@@ -22,9 +22,10 @@
 //     sont 100/effectif MOYEN. Les deux coexistent : le compte « au-dessus de la
 //     parité » se juge match par match, la ligne de parité affichée est la
 //     moyenne.
-//  4. Les cadences par 10 min ne portent que sur les matchs à durée CONNUE
-//     (numérateur et dénominateur) : un match mesuré sans échelle de temps reste
-//     dans les totaux et les parts, jamais dans une cadence.
+//  4. Les cadences sont PAR MATCH MESURÉ (décision utilisateur du 2026-09-13 :
+//     « Cadence c'est par match, pas par minutes ») : total du scope divisé par
+//     le NOMBRE de matchs de ce scope. La durée jouée ne sert plus de
+//     dénominateur — un match mesuré sans échelle de temps compte comme les autres.
 package sessionusage
 
 import (
@@ -135,18 +136,15 @@ func ComputeUsage(in Input) domain.SessionUsageBlock {
 	if len(measured) == 0 {
 		return out
 	}
-	// Dénominateurs des cadences : durée des seuls matchs à durée CONNUE (un
-	// match mesuré sans échelle de temps est exclu des cadences, numérateur et
-	// dénominateur — sinon il gonflerait le taux en silence) ; la cadence
-	// d'équipe se restreint en plus aux matchs à camp connu (règle de scope).
-	var durAll, durTeam float64
+	// Dénominateur des cadences : le NOMBRE de matchs mesurés (décision
+	// utilisateur du 2026-09-13 : « Cadence c'est par match, pas par minutes »).
+	// La durée mesurée reste publiée à part (MeasuredDurationSeconds) — elle ne
+	// sert plus d'aucun dénominateur de cadence.
+	var durAll float64
 	for _, m := range measured {
 		out.PadUnnamedTotal += m.PadUnnamed
 		if m.DurationSeconds > 0 {
 			durAll += m.DurationSeconds
-			if m.PlayerTeam != nil {
-				durTeam += m.DurationSeconds
-			}
 		}
 	}
 	out.MeasuredDurationSeconds = durAll
@@ -154,13 +152,13 @@ func ComputeUsage(in Input) domain.SessionUsageBlock {
 	out.LobbySizeAvg, out.LobbyParityPct = averageAndParity(measured, func(m MatchInput) int { return m.LobbySize })
 
 	for _, key := range metricKeys(in.PlayerXUID, measured) {
-		m := computeMetric(in.PlayerXUID, key, measured, durAll, durTeam)
-		appendSquadLines(&m, measured, in.SquadXUIDs, durAll)
+		m := computeMetric(in.PlayerXUID, key, measured)
+		appendSquadLines(&m, measured, in.SquadXUIDs, len(measured))
 		attachOutcomes(&m, in.PlayerXUID, measured)
 		out.Metrics = append(out.Metrics, m)
 	}
 	out.PadFamilies = computePadFamilies(in.PlayerXUID, measured)
-	out.PowerupPickups = computePowerups(measured, durAll)
+	out.PowerupPickups = computePowerups(measured, len(measured))
 	return out
 }
 
@@ -319,29 +317,26 @@ func metricValue(key string, p *PlayerRow) int {
 // RÈGLE DE SCOPE (ronde de correction S2, appliquée à l'identique dans
 // computePadFamilies et objectiveRoleMetrics) : les grandeurs de session
 // RELATIVES À L'ÉQUIPE (team_total, player_share_of_team, team_share_of_lobby,
-// team_per_10min, matches_above_team_parity) se calculent sur le SOUS-ENSEMBLE
+// team_per_match, matches_above_team_parity) se calculent sur le SOUS-ENSEMBLE
 // des matchs mesurés à camp CONNU — numérateurs ET dénominateurs. Croiser les
 // scopes (joueur/lobby sommés sur tous les matchs contre une équipe sommée sur
 // les seuls matchs à camp connu) ferait dépasser 100 % à player_share_of_team
 // dès qu'une session mêle équipe et FFA, et diluerait team_share_of_lobby.
 // Sous-ensemble vide : toutes ces valeurs restent nil — jamais un 0 inventé
 // pour dire « inconnu ». Les grandeurs joueur/lobby, elles, portent sur TOUS
-// les matchs mesurés. Cadences : matchs à durée connue seulement (durAll /
-// durTeam, calculés par l'appelant), numérateur et dénominateur.
-func computeMetric(playerXUID, key string, measured []MatchInput, durAll, durTeam float64) domain.SessionUsageMetric {
+// les matchs mesurés. Cadences : total du scope divisé par le NOMBRE de matchs
+// de ce scope (tous les matchs mesurés pour joueur/lobby, les seuls matchs à
+// camp connu pour l'équipe).
+func computeMetric(playerXUID, key string, measured []MatchInput) domain.SessionUsageMetric {
 	out := domain.SessionUsageMetric{Key: key}
 	var teamSum, playerTeamScope, lobbyTeamScope float64 // scope camp connu
-	var playerDur, teamDur, lobbyDur float64             // scope durée connue
 	teamKnown, aboveTeamParity := false, 0
+	teamMatches := 0 // matchs mesurés à camp connu (dénominateur de la cadence d'équipe)
 	for i := range measured {
 		m := &measured[i]
 		p, t, l := matchSums(playerXUID, key, m)
 		out.PlayerTotal += float64(p)
 		out.LobbyTotal += float64(l)
-		if m.DurationSeconds > 0 {
-			playerDur += float64(p)
-			lobbyDur += float64(l)
-		}
 		point := domain.SessionUsageMatchPoint{MatchID: m.MatchID}
 		point.PlayerShareOfLobbyPct = sharePct(float64(p), float64(l))
 		if m.PlayerTeam != nil {
@@ -349,9 +344,7 @@ func computeMetric(playerXUID, key string, measured []MatchInput, durAll, durTea
 			teamSum += float64(t)
 			playerTeamScope += float64(p)
 			lobbyTeamScope += float64(l)
-			if m.DurationSeconds > 0 {
-				teamDur += float64(t)
-			}
+			teamMatches++
 			point.PlayerShareOfTeamPct = sharePct(float64(p), float64(t))
 			point.TeamShareOfLobbyPct = sharePct(float64(t), float64(l))
 		}
@@ -372,12 +365,12 @@ func computeMetric(playerXUID, key string, measured []MatchInput, durAll, durTea
 		out.TeamTotal = &teamSum
 		out.TeamShareOfLobbyPct = sharePct(teamSum, lobbyTeamScope)
 		out.PlayerShareOfTeamPct = sharePct(playerTeamScope, teamSum)
-		out.TeamPer10Min = per10Min(teamDur, durTeam)
+		out.TeamPerMatch = perMatch(teamSum, teamMatches)
 		out.MatchesAboveTeamParity = &aboveTeamParity
 	}
 	out.PlayerShareOfLobbyPct = sharePct(out.PlayerTotal, out.LobbyTotal)
-	out.PlayerPer10Min = per10Min(playerDur, durAll)
-	out.LobbyPer10Min = per10Min(lobbyDur, durAll)
+	out.PlayerPerMatch = perMatch(out.PlayerTotal, len(measured))
+	out.LobbyPerMatch = perMatch(out.LobbyTotal, len(measured))
 	return out
 }
 
@@ -409,11 +402,13 @@ func sharePct(num, den float64) *float64 {
 	return &v
 }
 
-// per10Min — cadence par dix minutes de jeu mesuré ; nil sans durée.
-func per10Min(total, durationSeconds float64) *float64 {
-	if durationSeconds <= 0 {
+// perMatch — cadence PAR MATCH MESURÉ : total du scope divisé par le nombre de
+// matchs de ce scope. nil quand le scope est vide (0/0 n'est pas 0 — décision
+// utilisateur du 2026-09-13, le référentiel des cadences est le match).
+func perMatch(total float64, matches int) *float64 {
+	if matches <= 0 {
 		return nil
 	}
-	v := total * 600 / durationSeconds
+	v := total / float64(matches)
 	return &v
 }

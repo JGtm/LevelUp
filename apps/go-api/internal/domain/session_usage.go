@@ -3,7 +3,7 @@
 // .ai/HANDOFF_SESSION_USAGE_BDD_2026-09-04.md §5/S2).
 //
 // DOCTRINE DU CONTRAT (§1 du handoff) : TOUT axe de comparaison est NORMALISÉ —
-// parts en pourcentage, parités (100/effectif), cadences par dix minutes. Les
+// parts en pourcentage, parités (100/effectif), cadences PAR MATCH mesuré. Les
 // comptes bruts (player_total, team_total, lobby_total, pad_unnamed_total,
 // occupations de bonus) ne survivent que comme DÉNOMINATEURS D'HONNÊTETÉ, à
 // afficher en texte à côté d'un taux — jamais comme axe. La référence (l'équipe
@@ -69,14 +69,14 @@ type SessionUsageSquadPlayer struct {
 // SessionUsageSquadShare — la ligne d'UN coéquipier suivi sur UNE grandeur,
 // mêmes conventions ET mêmes scopes que les champs Player* (total = dénominateur
 // d'honnêteté sur tout le scope ; part d'équipe sur les matchs à camp connu ;
-// cadence sur les matchs à durée connue ; nil quand le dénominateur est nul).
+// cadence PAR MATCH MESURÉ ; nil quand le dénominateur est nul).
 // Alignée sur SessionUsageBlock.SquadPlayers par XUID.
 type SessionUsageSquadShare struct {
 	XUID            string   `json:"xuid"`
 	Total           float64  `json:"total"`
 	ShareOfTeamPct  *float64 `json:"share_of_team_pct,omitempty"`
 	ShareOfLobbyPct *float64 `json:"share_of_lobby_pct,omitempty"`
-	Per10Min        *float64 `json:"per_10min,omitempty"`
+	PerMatch        *float64 `json:"per_match,omitempty"`
 }
 
 // SessionUsageMatchPoint — les parts d'UN match mesuré (une case de la bande de
@@ -141,14 +141,14 @@ type SessionUsageMetric struct {
 	// UNIQUEMENT. Absent partout ailleurs — un titre dont le canal des ramassages
 	// n'est pas mesuré ne publie RIEN ici, jamais des zéros.
 	Outcomes *SessionUsageOutcomes `json:"outcomes,omitempty"`
-	// Cadences par DIX MINUTES de jeu mesuré À DURÉE CONNUE — numérateur ET
-	// dénominateur sur ces seuls matchs (un match sans échelle de temps n'entre
-	// dans aucune cadence : compté au numérateur seul, il la gonflerait en
-	// silence). TeamPer10Min : scope camp connu en plus (durée mesurée des matchs
-	// à camp connu) — nil quand ce scope est vide, jamais une cadence inventée.
-	PlayerPer10Min *float64 `json:"player_per_10min,omitempty"`
-	TeamPer10Min   *float64 `json:"team_per_10min,omitempty"`
-	LobbyPer10Min  *float64 `json:"lobby_per_10min,omitempty"`
+	// Cadences PAR MATCH MESURÉ (décision utilisateur du 2026-09-13 : « Cadence
+	// c'est par match, pas par minutes ») — total divisé par le NOMBRE de matchs
+	// du scope, jamais par une durée. TeamPerMatch : scope camp connu (nombre de
+	// matchs mesurés à camp connu) — nil quand ce scope est vide, jamais une
+	// cadence inventée.
+	PlayerPerMatch *float64 `json:"player_per_match,omitempty"`
+	TeamPerMatch   *float64 `json:"team_per_match,omitempty"`
+	LobbyPerMatch  *float64 `json:"lobby_per_match,omitempty"`
 	// Matchs où la part du joueur dépasse LA PARITÉ DU MATCH (100/effectif de CE
 	// match, pas la moyenne de session), contre chacun des deux dénominateurs.
 	// MatchesAboveTeamParity : nil quand aucun match mesuré n'a de camp connu
@@ -180,11 +180,11 @@ type SessionUsagePadFamily struct {
 // SessionUsagePowerup — occupations de socle de BONUS, ANONYMES par construction
 // (un bonus s'identifie par un nom, jamais rattachable à un joueur — §4 du
 // handoff). Grandeur de MATCH : ni part d'équipe ni part de joueur, seulement le
-// total (texte) et sa cadence.
+// total (texte) et sa cadence par match.
 type SessionUsagePowerup struct {
 	FamilyKey   string   `json:"family_key"` // nom canonique ("powerup_camo", ...)
 	Occupations int      `json:"occupations"`
-	Per10Min    *float64 `json:"per_10min,omitempty"`
+	PerMatch    *float64 `json:"per_match,omitempty"`
 }
 
 // SessionObjectiveRoleMetric — un rôle d'objectif agrégé. Role est une clé de
@@ -197,7 +197,7 @@ type SessionObjectiveRoleMetric struct {
 	IsDuration bool   `json:"is_duration,omitempty"`
 	SessionUsageShares
 	// Squad : une ligne par coéquipier suivi (contexte escouade uniquement),
-	// alignée sur SessionUsageBlock.SquadPlayers. Per10Min reste nil : les rôles
+	// alignée sur SessionUsageBlock.SquadPlayers. PerMatch reste nil : les rôles
 	// d'objectif se publient en parts, jamais en cadence.
 	Squad []SessionUsageSquadShare `json:"squad,omitempty"`
 }

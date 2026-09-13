@@ -10837,7 +10837,7 @@ export interface components {
         SessionUsageMetric: {
             key: string;
             /** Format: double */
-            lobby_per_10min?: number;
+            lobby_per_match?: number;
             /** Format: double */
             lobby_total: number;
             /** Format: int64 */
@@ -10847,7 +10847,7 @@ export interface components {
             outcomes?: components["schemas"]["SessionUsageOutcomes"];
             per_match?: components["schemas"]["SessionUsageMatchPoint"][] | null;
             /** Format: double */
-            player_per_10min?: number;
+            player_per_match?: number;
             /** Format: double */
             player_share_of_lobby_pct?: number;
             /** Format: double */
@@ -10856,7 +10856,7 @@ export interface components {
             player_total: number;
             squad?: components["schemas"]["SessionUsageSquadShare"][] | null;
             /** Format: double */
-            team_per_10min?: number;
+            team_per_match?: number;
             /** Format: double */
             team_share_of_lobby_pct?: number;
             /** Format: double */
@@ -10899,7 +10899,7 @@ export interface components {
             /** Format: int64 */
             occupations: number;
             /** Format: double */
-            per_10min?: number;
+            per_match?: number;
         };
         SessionUsageSquadPlayer: {
             gamertag: string;
@@ -10907,7 +10907,7 @@ export interface components {
         };
         SessionUsageSquadShare: {
             /** Format: double */
-            per_10min?: number;
+            per_match?: number;
             /** Format: double */
             share_of_lobby_pct?: number;
             /** Format: double */

@@ -23581,7 +23581,7 @@ components:
       properties:
         key:
           type: string
-        lobby_per_10min:
+        lobby_per_match:
           format: double
           type: number
         lobby_total:
@@ -23601,7 +23601,7 @@ components:
           type:
             - array
             - "null"
-        player_per_10min:
+        player_per_match:
           format: double
           type: number
         player_share_of_lobby_pct:
@@ -23619,7 +23619,7 @@ components:
           type:
             - array
             - "null"
-        team_per_10min:
+        team_per_match:
           format: double
           type: number
         team_share_of_lobby_pct:
@@ -23702,7 +23702,7 @@ components:
         occupations:
           format: int64
           type: integer
-        per_10min:
+        per_match:
           format: double
           type: number
       required:
@@ -23723,7 +23723,7 @@ components:
     SessionUsageSquadShare:
       additionalProperties: false
       properties:
-        per_10min:
+        per_match:
           format: double
           type: number
         share_of_lobby_pct:
