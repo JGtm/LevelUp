@@ -10688,11 +10688,19 @@ export interface components {
             /** Format: int64 */
             matches_measured: number;
             /** Format: int64 */
-            matches_with_objectives: number;
+            matches_team_known: number;
+            /** Format: int64 */
+            matches_with_flag_family: number;
+            /** Format: int64 */
+            openings_total: number;
             /** Format: int64 */
             player_raw_total: number;
             /** Format: double */
             player_share_of_team_pct?: number;
+            /** Format: int64 */
+            player_team_scope_raw_total: number;
+            /** Format: int64 */
+            player_team_scope_total: number;
             /** Format: int64 */
             player_total: number;
             /** Format: int64 */

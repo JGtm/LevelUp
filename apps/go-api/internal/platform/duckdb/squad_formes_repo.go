@@ -210,7 +210,7 @@ func (r *ObjectiveStatsRepo) LoadFlagGrabsNet(
 	}
 	defer release()
 
-	q := `SELECT match_id, xuid, flag_grabs_raw, flag_grabs_net, juggle_window_ms
+	q := `SELECT match_id, xuid, flag_grabs_raw, flag_grabs_net, openings, juggle_window_ms
 		FROM match_flag_grabs_net_latest
 		WHERE match_id IN (` + Placeholders(len(matchIDs)) + `)`
 	rows, err := db.QueryContext(ctx, q, ToAnySlice(matchIDs)...)
@@ -224,7 +224,7 @@ func (r *ObjectiveStatsRepo) LoadFlagGrabsNet(
 	var out []sessionusage.FlagGrabsNetRow
 	for rows.Next() {
 		var row sessionusage.FlagGrabsNetRow
-		if err := rows.Scan(&row.MatchID, &row.XUID, &row.Raw, &row.Net, &row.WindowMS); err != nil {
+		if err := rows.Scan(&row.MatchID, &row.XUID, &row.Raw, &row.Net, &row.Openings, &row.WindowMS); err != nil {
 			return nil, fmt.Errorf("ObjectiveStatsRepo: prises nettes (scan): %w", err)
 		}
 		out = append(out, row)

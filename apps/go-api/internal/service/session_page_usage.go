@@ -15,6 +15,7 @@ import (
 	"context"
 	"log/slog"
 
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
@@ -183,8 +184,36 @@ func (s *SessionPageService) attachFlagGrabsNet(
 		slog.WarnContext(ctx, "session page: prises nettes indisponibles", "err", err)
 		return
 	}
-	block.Objectives.FlagGrabsNet = sessionusage.ComputeFlagGrabsNet(
-		rows, s.usageXUID, block.Objectives.MatchesWithObjectives, tc.PlayerTeam, tc.TeamOf)
+	block.Objectives.FlagGrabsNet = sessionusage.ComputeFlagGrabsNet(sessionusage.FlagGrabsNetInput{
+		Rows:              rows,
+		PlayerXUID:        s.usageXUID,
+		MatchesFlagFamily: matchsFamilleDrapeau(block.Objectives),
+		PlayerTeam:        tc.PlayerTeam,
+		TeamOf:            tc.TeamOf,
+	})
+}
+
+// matchsFamilleDrapeau — les matchs de la famille DRAPEAU de la session, dénominateur
+// de couverture des prises nettes.
+//
+// PAS `MatchesWithObjectives`, ET C'EST UNE CORRECTION DE REVUE : ce compteur-là porte
+// TOUTES les familles à objectif. L'employer disait « mesuré sur 2 des 7 matchs » sur une
+// session de cinq parties de Bastion et deux de drapeau — et attribuait au film l'absence
+// de cinq matchs qui n'ont tout simplement pas de drapeau.
+//
+// La famille se lit sur le bloc déjà calculé (`ComputeObjectives` la publie avec son
+// compte de matchs) : aucune requête de plus, et un seul discriminant de famille dans
+// tout le produit.
+func matchsFamilleDrapeau(obj *domain.SessionObjectivesBlock) int {
+	if obj == nil {
+		return 0
+	}
+	for i := range obj.Families {
+		if obj.Families[i].Family == string(narrative.FamilyCTF) {
+			return obj.Families[i].Matches
+		}
+	}
+	return 0
 }
 
 // friendGamertags résout la liste des amis configurés (vide = aucune
