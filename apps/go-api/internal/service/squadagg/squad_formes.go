@@ -121,8 +121,10 @@ func formesSquadPlayers(
 			break
 		}
 	}
-	out := []domain.SessionUsageSquadPlayer{me}
-	return append(out, sessionusage.ResolveScopeFriends(playerXUID, participants, selected)...)
+	friends := sessionusage.ResolveScopeFriends(playerXUID, participants, selected)
+	out := make([]domain.SessionUsageSquadPlayer, 0, 1+len(friends))
+	out = append(out, me)
+	return append(out, friends...)
 }
 
 // formesGamertags — xuid -> gamertag sur le scope. Un xuid sans nom garde sa
