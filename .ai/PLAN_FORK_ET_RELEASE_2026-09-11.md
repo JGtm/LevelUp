@@ -354,3 +354,7 @@ lot H, pas avant. Effort L.
 - 2026-09-13 (correction utilisateur) : la GRAMMAIRE des 34 champs de ti=11 est conservée :
   tag `archive/ti11-cadre` (c8aaf4afb, poussé) + `.ai/V7.5/replay2d/TI11_GRAMMAIRE_34_CHAMPS.md`
   (table des feuilles, décodeur en .go.txt, docs PISTE_A/B et spec reprises de la branche).
+- 2026-09-13 (décision utilisateur) : dossiers `LevelUp-backups` (sauvegarde du 02-08), `LevelUp-
+  backup-perfnote-2026-08-27` et `LevelUp-archive-ce-weapon-attribution-v3` (dumps Cheat Engine du
+  30-08) SUPPRIMÉS (1,2 Go). Restent sous `Scripts/` : `LevelUp`, `LevelUp-go-migration`,
+  `LevelUp-wt-film-residus` et `LevelUp-wt-section3-chunk00` (autre session).
