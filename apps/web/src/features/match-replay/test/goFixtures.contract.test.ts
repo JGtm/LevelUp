@@ -86,6 +86,17 @@ describe('chaque document produit par Go traverse la frontière du web', () => {
         expect(validateReplayDocument(f.doc)).toBeNull()
       })
 
+      it('et un calque RENOMMÉ sur ce même document sort en manquement NOMMÉ', () => {
+        // LA MUTATION DE LA REVUE RONDE 1 (constat C1), rejouée ici pour de bon. Elle
+        // traversait : `z.object` dépouillait la clé inconnue, `shots?` acceptait l'absence,
+        // `validateReplayDocument` rendait `null`, le badge disait « à jour » et le calque des
+        // tirs se rendait VIDE. C'est le renommage silencieux que le contrat existe pour voir.
+        const { shots, ...sansShots } = f.doc
+        const issue = validateReplayDocument({ ...sansShots, shotz: shots })
+        expect(issue).not.toBeNull()
+        expect(issue).toContain('shotz')
+      })
+
       it('porte de la matière — sans quoi les contrôles suivants seraient vides de sens', () => {
         expect(f.doc.tracks?.length ?? 0).toBeGreaterThan(0)
         expect(f.doc.frameCount).toBeGreaterThan(0)

@@ -117,6 +117,21 @@ describe('le contrat du document de rejeu, à l’exécution', () => {
     expect(validateReplayDocument(42)).not.toBeNull()
   })
 
+  it('refuse une clé INCONNUE à la racine, et la NOMME (mode strict, constat C1)', () => {
+    const issue = validateReplayDocument({ ...docMinimal(), shotz: [] })
+    expect(issue).not.toBeNull()
+    expect(issue).toContain('shotz')
+  })
+
+  it('refuse une clé inconnue DANS les bornes — une borne renommée est une borne absente', () => {
+    const issue = validateReplayDocument({
+      ...docMinimal(),
+      bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10, maxXX: 3 },
+    })
+    expect(issue).not.toBeNull()
+    expect(issue).toContain('maxXX')
+  })
+
   it('laisse passer les éléments sans les inspecter — la frontière est écrite, pas devinée', () => {
     // Un tir dont la forme est absurde : le schéma ne descend pas, et c'est documenté.
     expect(validateReplayDocument({ ...docMinimal(), shots: [{ n_importe: 'quoi' }] })).toBeNull()
