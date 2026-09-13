@@ -133,3 +133,49 @@ famille = "region_index_2_bits"
 mode    = "Slayer:Arena Super Fiesta"
 carte   = "Live Fire"
 raison  = "seule carte du catalogue a index de region sur 2 bits ; porte de position des objets du monde par largeur d'index (schema 53) — projectiles et lancers par projectile invisibles a tout autre temoin"
+
+# --- Versions anciennes du format de film (lot H, 2026-09-13) -------------------------------
+# POURQUOI CETTE FAMILLE EXISTE. Jusqu'au lot G, la version majeure du film (u32 LE en tete de
+# chunk_00) n'etait lue par personne : le kill feed de 211 films de 2025 (versions 39-40) sortait
+# vide, et le gate est reste VERT pendant tout ce temps parce que les huit temoins etaient TOUS
+# des films de version 41 sauf deux (084a804d en 39, bcb6d393 en 40) — donc un corpus qui ne
+# regardait pratiquement qu'une seule grammaire. La mesure du lot H
+# (.ai/RAPPORT_LOT_H_VERSIONS_2026-09-13.md) a montre que la version majeure n'est meme pas la
+# bonne cle : le calque des lancers de grenade s'eteint au BUILD, a l'interieur de la version 40
+# (HI_1_11_0 : 0 lancer sur 12 films ; HI_1_12_0 : 49 a 215 sur 8 films), et l'identite entiere
+# s'eteint sur les cinq films dont chunk_00 ne porte pas de section d'identification.
+# Les quatre temoins ci-dessous ferment ce trou : un par grammaire distincte mesuree.
+#
+# CE QU'ILS GARDENT EN L'ETAT. Sur ces films, plusieurs calques sont DEJA vides au HEAD (lancers
+# de grenade sur les quatre, identite et tirs publies sur a349fea8). Le gate compare deux
+# cuissons : leur role n'est pas de prouver que ces calques marchent, c'est d'interdire qu'un
+# correctif de profil en casse d'AUTRES en passant — et, le jour ou le profil par build sera
+# branche, de mesurer le gain la ou il doit apparaitre.
+
+[[temoin]]
+id      = "111fa685"
+famille = "version_39"
+mode    = "BTB (2025-03)"
+carte   = "Command"
+raison  = "version 39 / build HI_1_10_0 (26 films au cache) ; meme carte que le temoin version_40_build_1_12 potentiel b81f6415, ce qui isole la version des bornes ; lancers de grenade a zero (liste blanche de tags proj datee d'un seul build), identite et kill feed nominaux depuis le lot G"
+
+[[temoin]]
+id      = "e5adf7b2"
+famille = "version_40_build_1_11"
+mode    = "BTB (2025-07)"
+carte   = "Fragmentation"
+raison  = "version 40 mais build HI_1_11_0 : la SEULE grammaire ou la version majeure ment (bcb6d393, version 40 aussi, est en HI_1_12_0 et publie ses lancers de grenade ; celui-ci en publie zero sur 1 082 marqueurs). Temoin de la regle profil = (version, build), pas version seule"
+
+[[temoin]]
+id      = "60ae07c4"
+famille = "version_37"
+mode    = "Ranked:Oddball"
+carte   = "Live Fire - Ranked"
+raison  = "version 37 / build HI_1_8_0 (10 films), et carte a index de region sur 2 bits comme 0797ce72 : le seul temoin qui croise une vieille grammaire ET la porte de position a largeur d'index non triviale ; porte aussi le calque crane (48 portages) sur une version ancienne"
+
+[[temoin]]
+id      = "a349fea8"
+famille = "version_33_sans_identification"
+mode    = "BTB Heavies:Total Control"
+carte   = "Fragmentation Heavies"
+raison  = "un des cinq films du cache dont chunk_00 ne porte AUCUNE section d'identification (3 en version 31, 2 en version 33) : sur eux le XUID de 64 bits est introuvable dans les chunks de replication (2 sur 25 contre 25 sur 25 partout ailleurs), donc zero identite, zero piste nommee et zero tir publie. Temoin de la degradation la plus lourde connue — et de sa reparation future"
