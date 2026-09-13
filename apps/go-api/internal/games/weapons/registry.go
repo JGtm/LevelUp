@@ -324,6 +324,23 @@ func RolesByKey() map[string]string {
 	return out
 }
 
+// ClassesByKey rend l'index `weapon_key -> class` (axe de MANIPULATION : shoulder,
+// heavy, sidearm, melee, grenade, equipment, vehicle...) du registre canonique.
+//
+// POURQUOI EXPORTÉ (lot « formes retenues » de l'Escouade, 2026-09-13). Le bloc
+// « contrôle des armes spéciales » range les socles en trois familles produit — armes
+// lourdes, armes de précision, autres socles. Ces deux dimensions EXISTENT déjà ici
+// (class et role) : les redéclarer dans un TOML de titre ferait une SECONDE source
+// d'identité d'arme, exactement ce que le registre a supprimé (V72-06). Le jumeau de
+// [RolesByKey], même contrat : statique, in-process, aucune ouverture de base.
+func ClassesByKey() map[string]string {
+	out := make(map[string]string, len(weaponRegistryWeapons))
+	for _, w := range weaponRegistryWeapons {
+		out[w.key] = w.class
+	}
+	return out
+}
+
 func seedWeaponFilmshellIDs(db *sql.DB) error {
 	const q = `INSERT OR IGNORE INTO weapon_ids (title_slug, id_kind, id_value, weapon_key) VALUES (?, 'filmshell', ?, ?)`
 	for _, f := range weaponRegistryInfiniteFilmshell {
