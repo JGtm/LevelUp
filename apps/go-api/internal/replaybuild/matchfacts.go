@@ -320,8 +320,10 @@ func withFlagIdentity(in replay.FlagInput, pont *pontParManche) replay.FlagInput
 // commodite de journal : il devient `coverage.objectives.noSlot` dans l'artefact servi (cf.
 // replay/objectives.go). Sans lui la perte n'existait que dans un `slog` non durable, qui ne
 // voyage ni dans le document ni dans le contrat — et `noSlot` valait 0 sur les 111 artefacts du
-// parc, sans une seule exception. Le fil des morts ILLISIBLE rend `len(named)` : le calque est
-// alors integralement perdu, et c'est cette perte-la qu'il faut publier, pas zero.
+// parc, sans une seule exception. Le fil des morts ILLISIBLE rend tout le calque perdu, et c'est
+// cette perte-la qu'il faut publier, pas zero. LES DEUX COMPTES SONT RESTREINTS AUX FAMILLES
+// D'OBJECTIF (D.2, 2026-09-13) : ils font le denominateur de `coverage.objectives`, ou `kills` et
+// `assists` n'ont rien a faire (raison mesuree : replay/objectives.go).
 func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 	recs []objectiveevents.StatRecord, facts port.MatchFacts,
 	pont *pontParManche) ([]objectiveevents.IdentifiedEvent, int, int) {
@@ -337,14 +339,15 @@ func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 		slog.WarnContext(ctx, "replaybuild: actions d'objectif REFUSEES — effectif hors du format du statborg",
 			"match_id", matchID, "nommees", len(named), "sieges", sieges,
 			"lignes", len(facts.Players), "slots", objectiveevents.StatPlayerSlots)
-		return nil, 0, len(named)
+		return nil, 0, objectiveevents.CountObjectiveFamily(named)
 	}
 	if deaths.err != nil {
 		slog.WarnContext(ctx, "replaybuild: fil des morts illisible — actions d'objectif non identifiees",
 			"err", deaths.err, "match_id", matchID, "nommees", len(named))
-		return nil, len(named), 0
+		return nil, objectiveevents.CountObjectiveFamily(named), 0
 	}
-	out, nonNommes := objectiveevents.IdentifyNamedEventsByRound(named, pont.identite())
+	out, _ := objectiveevents.IdentifyNamedEventsByRound(named, pont.identite())
+	nonNommes := objectiveevents.CountObjectiveFamily(named) - objectiveevents.CountObjectiveFamily(out)
 	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
 		"match_id", matchID, "nommees", len(named), "identifiees", len(out),
 		"nonNommees", nonNommes, "lignes", len(facts.Players))

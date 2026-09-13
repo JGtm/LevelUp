@@ -21,6 +21,14 @@
  * et d'Oddball, eux, n'ont pas d'objet vivant et gardent leur rôle entier — la fonction n'est
  * donc pas supprimée, seule la FAMILLE drapeau sort.
  *
+ * ET SEULES LES FAMILLES D'OBJECTIF EN FONT UN (D.1, 2026-09-13). `doc.objectives` n'est pas une
+ * liste d'objectifs : il porte TOUT ce que le statborg sait nommer, `kills` et `assists`
+ * compris — l'ancre d'identité du balayage et son contrôle croisé (`objectiveevents/named.go`).
+ * Sur `8bc6074f` cela faisait 15 648 pulses construits par image de scène pour 160 actions
+ * d'objectif réelles (audit du 2026-09-10 §12-1), et un anneau de capture allumé à chaque frag.
+ * Le tri se fait sur la FAMILLE du nom (`model/objectiveFamilies.ts`), pas sur une liste de
+ * statistiques : c'est le seul discriminant que le contrat de transport publie.
+ *
  * CE QUE LE SERVEUR A DÉJÀ DÉCIDÉ, et que ce calque ne rejoue pas : quels rôles servir
  * (table du titre jointe au pair_name), quelles équipes afficher (les modes à possession
  * dynamique arrivent neutres). Le front dessine CE QUI ARRIVE — un document sans
@@ -40,6 +48,7 @@
 import type { ReplayMapObjectives } from '@/lib/api/types'
 
 import { buildCarrierPosAt } from '../model/carrierPosition'
+import { objectiveFamilyOf } from '../model/objectiveFamilies'
 import { type XY } from '../../../lib/replay/replayLogic'
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
@@ -246,14 +255,6 @@ function drawMarker(
 }
 
 /**
- * Préfixe des statistiques d'objectif de CAPTURE DE DRAPEAU, tel que le serveur les nomme
- * (`objectiveevents/named.go` : `flag_grabs`, `flag_steals`, `flag_captures`, `flag_returns`,
- * `flag_carriers_killed`, `flag_capture_assists`). C'est ce préfixe qui distingue une action
- * dont l'OBJET est désormais publié d'une action de zone ou de crâne, qui n'en a pas.
- */
-const FLAG_STAT_PREFIX = 'flag_'
-
-/**
  * flagPulsesRetired dit si la famille DRAPEAU des pulses doit se taire : elle se tait dès que le
  * document publie la vie des drapeaux, parce qu'alors le substitut a un remplaçant EXACT.
  *
@@ -317,7 +318,11 @@ export function buildObjectivePulses(
   const posOf = buildCarrierPosAt(doc)
   const out: ObjectivePulse[] = []
   for (const a of doc.objectives) {
-    if (dropFlags && a.stat.startsWith(FLAG_STAT_PREFIX)) continue
+    // SEULES LES FAMILLES D'OBJECTIF FONT UN PULSE (cf. l'en-tête, D.1 du 2026-09-13) : les
+    // frags et les assistances voyagent dans le même tableau et n'ont rien à annoncer ici.
+    const family = objectiveFamilyOf(a.stat)
+    if (family === null) continue
+    if (dropFlags && family === 'flag') continue
     // AUCUN RECALAGE ICI : `a.t` est déjà une frame du document (cf. en-tête). L'action que
     // la grille ne portait pas a été comptée hors fenêtre côté Go et n'est pas publiée.
     const frame = a.t
