@@ -190,6 +190,8 @@ func d6ImprimeDecision(t *testing.T, recs []StatRecord) {
 	t.Logf("  SANS la garde de manche fantome (`vue && !present`, commit bb06cce5a) : %v",
 		d6Triees(contiguousRounds(runs, material, d6ToutPresent(recs))))
 	d6ImprimeRecouvrement(t, recs)
+	d6ImprimeRepartition(t, recs)
+	d6ImprimeComposants(t, recs)
 	d6ImprimeDensite(t, recs)
 }
 
@@ -351,4 +353,83 @@ func d6Triees(m map[int]bool) []int {
 	}
 	sort.Ints(out)
 	return out
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// LOT 0.D.1 bis — CE QUE LE CHAMP « MANCHE » PORTE VRAIMENT
+//
+// Le registre du film NOMME les composants de l archetype 6 (cf.
+// `.ai/V7.5/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md` §17.1) :
+//
+//	0..27   statborg-current-round-value-stat-component     (la manche EN COURS)
+//	28..55  statborg-finalized-rounds-values-stat-component  (les manches TERMINEES)
+//	56      statborg-round-outcomes-component                (l issue des manches)
+//	57      statborg-entry-index-and-type-component
+//
+// Deux questions se tranchent donc SUR LE FILM, sans Ghidra :
+//
+//	(1) les enregistrements d une manche > 0 sont-ils GROUPES A LA FIN du match (prolongation
+//	    ou manche jouee apres les autres) ou SAUPOUDRES sur toute sa duree (ancrage) ? La
+//	    repartition par tranches de 60 s le dit sans appel au jugement ;
+//	(2) le film porte-t-il les composants 28..55 et 56 — ceux qui n existent QUE s il y a
+//	    plusieurs manches ? Leur presence est une ECRITURE du jeu, pas une inference.
+
+// d6ImprimeRepartition imprime, par manche, le nombre d enregistrements par tranche de 60 s.
+func d6ImprimeRepartition(t *testing.T, recs []StatRecord) {
+	t.Helper()
+	const seau = 60_000
+	fin := 0
+	for _, r := range recs {
+		if r.TimeMS > fin {
+			fin = r.TimeMS
+		}
+	}
+	t.Logf("  --- repartition par tranche de 60 s (colonne = tranche, valeur = enregistrements) ---")
+	for _, round := range d6ManchesVues(recs) {
+		par := make([]int, fin/seau+2)
+		for _, r := range recs {
+			if r.Round == round {
+				par[r.TimeMS/seau]++
+			}
+		}
+		t.Logf("  manche %d : %v", round, par)
+	}
+}
+
+// d6ImprimeComposants imprime, par manche, les index de composant vus et leur compte.
+func d6ImprimeComposants(t *testing.T, recs []StatRecord) {
+	t.Helper()
+	t.Logf("  --- composants vus par manche (0-27 manche en cours, 28-55 manches finalisees, 56 issues) ---")
+	for _, round := range d6ManchesVues(recs) {
+		vus := map[int]int{}
+		for _, r := range recs {
+			if r.Round != round {
+				continue
+			}
+			for i := range r.Comps {
+				vus[i]++
+			}
+		}
+		idx := make([]int, 0, len(vus))
+		for i := range vus {
+			idx = append(idx, i)
+		}
+		sort.Ints(idx)
+		var courant, finalise, issues, autres int
+		for _, i := range idx {
+			switch {
+			case i <= 27:
+				courant += vus[i]
+			case i <= 55:
+				finalise += vus[i]
+			case i == 56:
+				issues += vus[i]
+			default:
+				autres += vus[i]
+			}
+		}
+		t.Logf("  manche %d : index %v", round, idx)
+		t.Logf("           lectures — manche en cours %d · manches FINALISEES %d · issues de manche %d · entry-index %d",
+			courant, finalise, issues, autres)
+	}
 }

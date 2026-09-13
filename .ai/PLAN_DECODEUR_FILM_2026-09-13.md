@@ -546,7 +546,7 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       `regulation.toml` l. 198 « deux MI-TEMPS » est faux), il y a des MANCHES et des
       PROLONGATIONS ; le score n'est pas un oracle en CTF (0-0 possible pendant 12-13 min, points
       à la fin) ; si le film écrit l'information de manche, on lui fait confiance.
-- [ ] 0.D.1 bis **Ce que le désignateur 2 ÉCRIT sur `fb1a1a72` veut dire.** Instruction bornée
+- [!] 0.D.1 bis **Ce que le désignateur 2 ÉCRIT sur `fb1a1a72` veut dire.** Instruction bornée
       (une session) : (a) chez l'ÉCRIVAIN (Ghidra lecture seule) : le champ « manche » des
       enregistrements statborg (joueur ET équipe) : index de manche, phase, prolongation ? quelles
       valeurs le jeu y écrit, et quand ; (b) par mesure : `fb1a1a72` dure 814 s pour 720 s de temps
@@ -559,6 +559,57 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       retiré, remplacé par manches / prolongations, source = décision utilisateur du 2026-09-13) ;
       `SchemaVersion` 55 si le contenu cuit change. Le registre des reports est amendé dans le même
       geste (la ligne 0.D.1 « divergence voulue » devient « non établi, rouvert »).
+      **Fait, et STATUÉ `[!]`** (2026-09-14). **Le verdict de 0.D.1 est RETIRÉ ; le verdict de
+      remplacement n'est PAS établi.** Ce qui est livré : le retrait motivé sur mesure, la
+      correction de `regulation.toml`, l'amendement du registre, et la garde NOMMÉE au sens de
+      D14. Ce qui manque : le sens exact du désignateur. Aucun code de production touché, aucune
+      montée de schéma.
+      **(a) L'ÉCRIVAIN, par la RE déjà au dépôt** (pas de mesure Ghidra neuve : l'existant
+      répondait). `FUN_140C18794` est le désérialiseur de l'archétype 6 — décompilé ici : il
+      traite une PAIRE de slots de stat (`param_1+8`, `param_1+0xc`), lit pour chacun **un champ
+      de 5 bits** qu'il range à `base + 4 + idx*8`, puis une valeur à longueur variable à
+      `base + idx*8`, puis deux drapeaux vers le masque `base + 0x1c0`. Le registre ECS du film
+      NOMME les 58 composants de cet archétype (`ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS` §17.1) :
+      **0-27 `statborg-current-round-value-stat-component`, 28-55
+      `statborg-finalized-rounds-values-stat-component`, 56 `statborg-round-outcomes-component`,
+      57 `statborg-entry-index-and-type-component`**. Et le getter natif
+      `Team_GetCurrentRoundStatValue` @ `0x142C6B118` lit
+      `world + statSlot*0x88 + teamIdx*0x1DF0 + 0x38 + round*4` : **la manche EST une dimension
+      du moteur**. Ce qui reste NON PROUVÉ : que le champ de 5 bits soit CETTE dimension.
+      **(b) La mesure, et elle RÉFUTE une preuve de 0.D.1.** Répartition par tranches de 60 s :
+      la « manche 2 » de `fb1a1a72` est **BIMODALE**, pas saupoudrée —
+      `[0 50 44 0 0 0 0 0 0 0 0 0 13 41 0]`, soit 94 enregistrements entre 60 et 180 s et 54
+      entre **720 et 840 s**. La densité moyenne de 16 % diluait deux amas en un plateau : la
+      preuve (3) de 0.D.1 tombe. Forme de référence d'une vraie manche (`d9781168`, 3 manches) :
+      blocs CONTIGUS et DISJOINTS (`[248 1173 829 690 1 …]`, `[0 0 0 25 710 831 843 226 …]`,
+      `[… 528 732 518 1118 615]`). **Le film ÉCRIT bien de l'information de manche sur ces
+      enregistrements** : ils portent **55 lectures des composants 28-55 (manches FINALISÉES)**
+      quand la manche 0 du même film en porte ZÉRO. **Contrôles de la MÊME variante sans
+      dépassement** : `53ce4390` (CTF:Arena, ~780 s) et `51101d1d` (CTF:Arena Neutral Flag,
+      ~270 s) ne déclarent **aucune manche au-delà de 0**, avec 1 et 0 lecture finalisée.
+      `fb1a1a72` dure **814 s pour 720 s réglementaires** et son amas tardif tombe exactement
+      dans le dépassement : la piste PROLONGATION est SOUTENUE, pas prouvée.
+      **PIÈGE À DIRE, trouvé en fin de session : les deux horloges ne coïncident pas.** Le
+      `frameCount` du document donne `fb1a1a72` à **757 s** (7 568 frames de 100 ms) quand
+      l'horloge DU FILM porte des enregistrements jusqu'à **814 s** — un décalage d'origine que
+      je n'ai pas mesuré. Or `analysis.ComputeOvertime` (source unique `OvertimeMarginSeconds`
+      = 40 s, `overtime.go`) juge sur la durée du MATCH : à 757 s pour 720 s réglementaires,
+      `fb1a1a72` n'est **PAS** en prolongation au sens de la production, alors qu'à 814 s il le
+      serait. Et `64e8adfa` (CTF:Arena, **834 s** au document, donc au-delà de 720 + 40) déclare
+      des manches 0 et 1 en blocs contigus, pas un « 2 ». **La corrélation prolongation /
+      désignateur 2 n'est donc PAS établie** — c'est la première chose à trancher à la reprise,
+      et il faut le faire sur une durée de MATCH, jamais sur l'horloge du film.
+      **(c) Verdict : NON ÉTABLI.** Ce que le « 2 » désigne (manche jouée, marqueur de manches
+      finalisées, index de phase de prolongation) n'est pas tranché, et l'amas de 60-180 s n'est
+      pas expliqué. La garde `contiguousRounds` n'est donc NI supprimée NI convertie : elle est
+      **NOMMÉE au registre comme heuristique D13 avec son contrat D14** (déclenchement typé,
+      compteurs `coverage.score.rounds.{grammaire, repli, contradiction}` à publier, critère de
+      retrait « 0 manche refusée par la contiguïté sur le corpus gate », date de pose
+      2026-08-18, cible de retrait clôture de M1). `regulation.toml` corrigé (« deux MI-TEMPS »
+      -> manches / prolongations, source = décision utilisateur du 2026-09-13) ; la ligne du
+      registre passe de « divergence voulue » à « VERDICT RETIRÉ — non établi, rouvert », avec
+      ce qui reste vrai de 0.D.1 et ce qui manque. Corpus gate NON joué : sans changement de
+      production il ne peut rien mesurer (`git diff` des `.go` hors tests : vide).
 - [x] 0.D.2 **D7 — bloc monde/équipement de `60ae07c4` (Live Fire, v37).**
       Séparer l'effet du schéma 53 (porte de région sur 2 bits) de celui de la borne
       `maxUnrollPerStep = 16` : trouver les sha qui encadrent v53 (`document_chronicle.go`),
@@ -1474,6 +1525,14 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 0.D.6 | `fc5db87f7` | confrontation D13 de la règle d'effacement (`vehicleCensusTolUS`, `vehicle_tracks.go:33`) au témoin | La règle **prolonge, elle n'efface jamais avant la dernière preuve** : 10 vies sur 11 ont `t1 == t1max` = dernière frame ; la seule effacée est le `ghost` slot 777 à la **frame 2874 (287,4 s), 5,3 s APRÈS son dernier échantillon** (`t1` 2821), son relais 778 reprenant à 3526. **Aucun véhicule que le film montre encore n'est effacé** |
 | 2026-09-14 | 0.D.6 | ce commit | `config/replay_corpus.toml` : entrée `bfecd02b` (famille `vehicules_v41_utilisateur`, Snowbound, Team Slayer:Arena) ; `go test ./internal/replaybuild/ ./cmd/replay-corpus-gate/` | corpus témoin de **12 à 13** ; les deux paquets **ok** |
 | 2026-09-14 | 0.D.6 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court NON APPLICABLE : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — aucun octet de production ne change (un manifeste de corpus, deux documents) |
+
+
+| 2026-09-14 | 0.D.1 bis | `7ffdc3f8b` (arbre) | Ghidra lecture seule : `decompile_function 140C18794` ; `get_xrefs_to` | Désérialiseur de l'archétype 6 : traite une PAIRE de slots de stat (`param_1+8`, `param_1+0xc`), lit **un champ de 5 bits par slot** rangé à `base + 4 + idx*8`, puis une valeur à longueur variable à `base + idx*8`, puis deux drapeaux vers le masque `base + 0x1c0`. Référencé **uniquement depuis des DONNÉES** (`145435cd8`, `143c96b38`) : c'est une entrée de vtable, pas un appel direct |
+| 2026-09-14 | 0.D.1 bis | `7ffdc3f8b` | RE déjà au dépôt, relue sur pièces (`ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS` §17.1) | Le registre ECS du film NOMME les 58 composants de l'archétype 6 : **0-27 `current-round-value`, 28-55 `finalized-rounds-values`, 56 `round-outcomes`, 57 `entry-index-and-type`**. Getter natif `Team_GetCurrentRoundStatValue` @ `0x142C6B118` : `world + statSlot*0x88 + teamIdx*0x1DF0 + 0x38 + round*4` — **la manche est une dimension du moteur**. NON prouvé : que le champ de 5 bits soit cette dimension |
+| 2026-09-14 | 0.D.1 bis | `7ffdc3f8b` | instrument étendu (répartition par tranches de 60 s + recensement des composants), `D6_FILMS=fb1a1a72,d9781168` | **`fb1a1a72` manche 2 est BIMODALE** : `[0 50 44 0 0 0 0 0 0 0 0 0 13 41 0]` — 94 enregistrements à 60-180 s, **54 à 720-840 s**. La preuve (3) de 0.D.1 (« saupoudré, densité 16 % ») est RÉFUTÉE. Forme d'une vraie manche (`d9781168`) : blocs contigus et DISJOINTS. **Composants** : la manche 2 porte **55 lectures de `finalized-rounds-values` (28-55)**, la manche 0 du même film en porte **ZÉRO** |
+| 2026-09-14 | 0.D.1 bis | `7ffdc3f8b` | contrôles de la MÊME variante, `D6_FILMS=53ce4390,51101d1d` | `53ce4390` (CTF:Arena, ~780 s) et `51101d1d` (CTF:Arena Neutral Flag, ~270 s) : **`RealRounds = [0]`, aucune manche déclarée au-delà de 0**, 1 et 0 lecture finalisée. `fb1a1a72` (814 s pour 720 s réglementaires) est le seul des trois à écrire un « 2 », et son amas tardif tombe dans le dépassement : **piste PROLONGATION soutenue, pas prouvée** |
+| 2026-09-14 | 0.D.1 bis | ce commit | `config/titles/halo_infinite/mappings/regulation.toml` l. 198 ; `.ai/V7.5/REGISTRE_REPORTS.md` | Commentaire corrigé (« deux MI-TEMPS » -> manches / prolongations, source = décision utilisateur du 2026-09-13), motif d'exclusion inchangé. Registre : la ligne 0.D.1 devient « **VERDICT RETIRÉ — non établi, rouvert** » ; ligne neuve qui NOMME `contiguousRounds` comme heuristique D13 avec son contrat D14 (déclenchement typé, compteurs à publier, critère de retrait, date de pose 2026-08-18, cible clôture M1) |
+| 2026-09-14 | 0.D.1 bis (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court et corpus gate NON APPLICABLES : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — aucun octet de production ne change (un instrument, un commentaire TOML, deux documents) |
 
 ## 6. Protocole de reprise de session
 
