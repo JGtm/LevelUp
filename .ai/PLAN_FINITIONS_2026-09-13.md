@@ -144,6 +144,18 @@ que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_ar
       `purge_foreign_lusr_chain` durci (recensement et filtre CTAS par scan forcé
       `playlist_group || ''`, contrôle pré-vol lookup=scan qui REFUSE `-commit` et nomme
       `repair_msr_index`). Les 3 autres joueurs rendent des comptes cohérents.
+- [x] C.9 (2026-09-13, après l'exécution d'E.2) Le swap de la purge ne restaurait qu'UNE
+      vue : l'outil capturait le NOM `match_skill_rank_latest`, alors que C.3 bis en a ajouté
+      une seconde (`match_skill_rank_latest_by_type`). Corrigé : capture de TOUTES les vues
+      non internes dont le SQL référence `match_skill_rank` (filtre sur le SQL, jamais sur un
+      nom), DROP + recréation de chacune avec résolution des dépendances, et garde de
+      cardinalité sur les vues DANS la transaction (rollback si une manque). Mesure DuckDB
+      consignée : `DROP TABLE` ne supprime PAS une vue dépendante — elle survit et se re-lie
+      à la table renommée, ce qui MASQUE le défaut en bout de chaîne ; le garde porte donc sur
+      la CAPTURE. `repair_msr_index` : test prouvant que DROP/CREATE INDEX ne touche aucune
+      vue, plus un drapeau `-ensure-views` qui repose les vues avec la DDL des migrations
+      (`halomigrations.EnsureMatchSkillRankViews`, CREATE OR REPLACE, aucune donnée touchée)
+      — seule voie sûre quand le step est déjà inscrit au ledger.
 - [x] C.7 Gate : `go build ./...`, `go vet ./...`, `go test ./...` (hors himap),
       `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/migration/... ./internal/platform/duckdb/...`
       (exit 0), `make go-api-lint`, push, CI verte.
@@ -273,6 +285,15 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   `SchemaVersion` reste à 54 — la recuisson est donc une décision de fraîcheur, pas de contrat.
 
 
+- **C.9 — diagnostic pour le pilote** : sur les 4 bases purgées, le recensement d'après ne
+  compte qu'UNE vue `match_skill_rank_latest%`. Or il est MESURÉ qu'une vue dépendante survit
+  au `DROP TABLE` du swap et se re-lie à la table renommée : si
+  `match_skill_rank_latest_by_type` avait existé, elle serait encore là et le compte serait 2.
+  Le compte de 1 dit donc que la vue n'existait pas — la migration
+  `player_msr_view_latest_by_type_v1` (née en C.3 bis) n'avait pas encore été jouée sur ces
+  bases. Rien n'a été perdu ; elle sera créée au prochain boot. Vérification directe :
+  `SELECT name FROM schema_migrations WHERE name = 'player_msr_view_latest_by_type_v1'`
+  (absente = confirmé). Si elle y figurait, `repair_msr_index -ensure-views` la repose.
 - **P0 TRAITÉ (C.8)** — désynchronisation d'index ART sur `match_skill_rank` (JGtm) :
   détectée au dry-run de la purge, outillée le 2026-09-13 (`cmd/repair_msr_index` + pré-vol
   de la purge). La FAMILLE de défaut est confirmée au-delà de `personal_score_awards` : tout

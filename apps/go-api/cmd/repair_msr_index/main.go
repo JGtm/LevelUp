@@ -48,6 +48,8 @@ import (
 	"strings"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 )
 
 const (
@@ -64,6 +66,9 @@ func main() {
 	dbPath := flag.String("db", "", "chemin explicite d'une seule stats.duckdb (prioritaire sur -data)")
 	players := flag.String("players", strings.Join(defaultPlayers, ","), "gamertags séparés par des virgules")
 	repair := flag.Bool("repair", false, "réparer les index en écart (sans ce drapeau : dry-run en lecture seule)")
+	ensureViews := flag.Bool("ensure-views", false,
+		"(ré)appliquer les vues de lecture de match_skill_rank avec la DDL des migrations — "+
+			"pour reposer une vue absente sans rejouer un step déjà inscrit au ledger. Écrit (DDL seule).")
 	flag.Parse()
 
 	targets, err := resolveTargets(*dbPath, *dataRoot, *players)
@@ -73,7 +78,7 @@ func main() {
 	}
 
 	mode := "DRY-RUN (lecture seule)"
-	if *repair {
+	if *repair || *ensureViews {
 		mode = "RÉPARATION (écriture DDL)"
 	}
 	fmt.Printf("== repair_msr_index — %s ==\n", mode)
@@ -82,7 +87,7 @@ func main() {
 	ctx := context.Background()
 	failures := 0
 	for _, t := range targets {
-		if err := processTarget(ctx, t, *repair); err != nil {
+		if err := processTarget(ctx, t, *repair, *ensureViews); err != nil {
 			fmt.Printf("  ERREUR : %v\n\n", err)
 			failures++
 		}
@@ -129,14 +134,20 @@ func resolveTargets(dbPath, dataRoot, players string) ([]target, error) {
 // processTarget applique les 3 phases (diagnostic, réparation, re-vérification)
 // à une DB. En dry-run, un écart est SIGNALÉ sans erreur : c'est le résultat
 // attendu d'un diagnostic.
-func processTarget(ctx context.Context, t target, repair bool) error {
+func processTarget(ctx context.Context, t target, repair, ensureViews bool) error {
 	fmt.Printf("── %s ──\n%s\n", t.label, t.path)
 
-	db, err := openDB(t.path, repair)
+	db, err := openDB(t.path, repair || ensureViews)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
+
+	if ensureViews {
+		if err := ensureReadViews(ctx, db); err != nil {
+			return err
+		}
+	}
 
 	total, err := countRows(ctx, db)
 	if err != nil {
@@ -252,4 +263,53 @@ func printReports(phase string, reports []axisReport) {
 			fmt.Printf("     %s : scan=%d indexé=%d\n", strings.Join(d.key, " | "), d.scanned, d.indexed)
 		}
 	}
+}
+
+// ensureReadViews repose les vues de lecture de match_skill_rank avec la DDL des
+// MIGRATIONS (halomigrations.EnsureMatchSkillRankViews) — jamais une DDL recopiée ici.
+//
+// Pourquoi un drapeau dédié : le runner de migrations ne rejoue jamais un step déjà
+// inscrit à `schema_migrations`. Une vue perdue APRÈS que son step a été appliqué ne
+// reviendrait donc jamais d'elle-même, et la page Carrière tomberait sur « table does
+// not exist » à chaque lecture. C'est la seule voie SÛRE de la reposer : DDL d'autorité,
+// CREATE OR REPLACE, aucune donnée touchée, aucun ledger réécrit.
+func ensureReadViews(ctx context.Context, db *sql.DB) error {
+	before, err := dependentViewNames(ctx, db)
+	if err != nil {
+		return err
+	}
+	if err := halomigrations.EnsureMatchSkillRankViews(db); err != nil {
+		return fmt.Errorf("EnsureMatchSkillRankViews: %w", err)
+	}
+	if _, err := db.ExecContext(ctx, `CHECKPOINT`); err != nil {
+		return fmt.Errorf("CHECKPOINT après pose des vues: %w", err)
+	}
+	after, err := dependentViewNames(ctx, db)
+	if err != nil {
+		return err
+	}
+	fmt.Println("vues de lecture : avant=", before, "apres=", after)
+	return nil
+}
+
+// dependentViewNames liste les vues non internes dont le SQL référence match_skill_rank.
+func dependentViewNames(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT view_name FROM duckdb_views()
+		WHERE internal = FALSE AND sql IS NOT NULL
+		  AND lower(sql) LIKE '%match_skill_rank%'
+		ORDER BY view_name`)
+	if err != nil {
+		return nil, fmt.Errorf("duckdb_views(): %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			return nil, fmt.Errorf("duckdb_views() scan: %w", err)
+		}
+		out = append(out, n)
+	}
+	return out, rows.Err()
 }
