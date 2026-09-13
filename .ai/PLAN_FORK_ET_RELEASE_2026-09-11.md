@@ -235,8 +235,8 @@ aberrant, avec les compteurs de couverture de l'artefact et les oracles existant
 des scores, `swap.sh`, corpus). Livrable : rapport + liste des points où le profil de
 déchiffrage doit brancher sur la version, chiffrés.
 - [x] H.1 Corpus par version (choix des films, cache complet vérifié) — 8 films (3 en v39, 3 en v40, 2 en v31-38) + 8 témoins, cartes et modes obtenus HORS BASE (corpus toml, CORPUS.txt des faits versionnés, rapport BTB 2025) ; 1 351 films inventoriés par version ET par build, zéro incomplet.
-- [ ] H.2 Mesure calque par calque (tableau).
-- [ ] H.3 Rapport et plan des divergences ; témoins v39/v40 ajoutés au corpus gate.
+- [x] H.2 Mesure calque par calque (tableau) — 16 films cuits en racine jetable (2 passes, sans puis avec faits) + 38 films sondes par instrument sans carte ; 5 divergences NOMMEES (D1 lancers de grenade au build, D2 identite sur les films sans section d identification, D3 empreinte du registre ECS, D4 calibration de la marche des morts, D5 bande de slots bipede) et 10 calques prouves identiques.
+- [x] H.3 Rapport `.ai/RAPPORT_LOT_H_VERSIONS_2026-09-13.md` (504 L) : tableau calque x version, 5 points de branchement chiffres (P1 registre ECS 228 films, P2 tags de grenade 82 films, P3 index de joueur 5 films, P4 calibration des morts, P5 bande de slots), ce qui est identique avec preuve. 4 temoins ajoutes a `config/replay_corpus.toml` (`111fa685` v39, `e5adf7b2` v40/HI_1_11_0, `60ae07c4` v37, `a349fea8` v33 sans identification). `[!]` Le gate corpus lui-meme n est PAS joue : il exige `levelup replay-facts-export`, donc l ouverture en lecture de la base partagee, que la consigne du lot interdit — il revient au pilote, base libre.
 
 ## Lot I — architecture « profil de déchiffrage » (proposé le 2026-09-12, APRÈS la release, sur
 ## feu vert utilisateur après H)
