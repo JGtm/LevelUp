@@ -333,3 +333,44 @@ func TestCellule_CapabiliteAbsente(t *testing.T) {
 		t.Fatal("attendu ErrCapabilityNotSupported")
 	}
 }
+
+// TestCellule_ResultatCanoniqueDuMatch — L'ISSUE VOYAGE AVEC LA CONTRIBUTION (lot F,
+// 2026-09-13, maquette 034b1915 : la liste dit « date · victoire · ouvrir a mm:ss »).
+//
+// Ce que ce test attrape : une issue qui viendrait d'ailleurs que de l'UNIVERS DE LA
+// LECTURE, et une issue INCONNUE traduite en une valeur de repli — « loss » par defaut se
+// lirait comme une defaite mesuree.
+func TestCellule_ResultatCanoniqueDuMatch(t *testing.T) {
+	repo := &mockTacticalRepo{}
+	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
+	for id, outcome := range map[string]int{"m1": domain.OutcomeWin, "m2": domain.OutcomeUnknown} {
+		u := universUnMatch(id, outcome)
+		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
+		repo.pos.Univers.Equipes[id] = u.Equipes[id]
+	}
+	repo.pos.Points = []domain.TacticalKillPosition{
+		{MatchID: "m1", KillerXUID: tsAdv, VictimXUID: tsMoi, KillerX: 9, KillerY: 9, VictimX: 2.1, VictimY: 2.1, TimeMs: 1000},
+		{MatchID: "m2", KillerXUID: tsAdv, VictimXUID: tsMoi, KillerX: 9, KillerY: 9, VictimX: 2.2, VictimY: 2.2, TimeMs: 2000},
+	}
+	base := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	repo.ouvrables = map[string]time.Time{"m1": base, "m2": base.Add(-time.Hour)}
+
+	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
+	got, err := svc.Cellule(context.Background(), celluleDemande(repo, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, 4, 4))
+	if err != nil {
+		t.Fatalf("Cellule: %v", err)
+	}
+	if len(got.Contributions) != 2 {
+		t.Fatalf("contributions = %+v, want 2", got.Contributions)
+	}
+	parMatch := map[string]string{}
+	for _, c := range got.Contributions {
+		parMatch[c.MatchID] = c.Resultat
+	}
+	if parMatch["m1"] != "win" {
+		t.Errorf("resultat de m1 = %q, want \"win\" (forme canonique, jamais le code brut)", parMatch["m1"])
+	}
+	if parMatch["m2"] != "" {
+		t.Errorf("resultat de m2 = %q, want \"\" : une issue inconnue ne se remplace pas", parMatch["m2"])
+	}
+}

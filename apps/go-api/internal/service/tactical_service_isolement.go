@@ -17,6 +17,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -59,9 +60,12 @@ func (s *TacticalService) rasterIsole(ctx context.Context, out *domain.TacticalR
 
 	rayons, sansRayon := s.rayonsParMatch(lecture.Univers.Matchs)
 	dans := cible(lecture.Univers.Equipes, out.Qui, s.xuid, scope.Coequipiers)
-	bilan := coordination.Isolement(
-		mortsDeLaCible(lecture, dans), rayons, len(rayons))
+	morts := mortsDeLaCible(lecture, dans)
+	bilan := coordination.Isolement(morts, rayons, len(rayons))
 	bilan.MatchsSansRayon = sansRayon
+	// LA SECTION « COORDINATION » SORT DE LA MEME LECTURE, jamais d'une seconde requete :
+	// c'est la meme table de morts, deja en main.
+	out.Coordination = construireCoordination(morts, rayons)
 
 	// L'UNIVERS DE CETTE LECTURE EST CELUI DES MATCHS AYANT UN RAYON. Rasteriser sur tous
 	// les matchs mesures diviserait les cellules par des matchs qu'on a refuse de lire —
@@ -166,4 +170,81 @@ func (s *TacticalService) rayonsParMatch(matchs []domain.TacticalMatch) (map[str
 		out[m.MatchID] = float64(metres)
 	}
 	return out, sans
+}
+
+// construireCoordination assemble la section « Coordination d'equipe » : la FORME de la
+// distance a l'equipier (mediane, distribution) et les denominateurs que la note nomme.
+//
+// LES RAYONS SORTENT DISTINCTS ET TRIES, jamais moyennes : un filtre qui melange Arene
+// (18 m) et BTB (24 m) melange DEUX REGLES DU JEU, et la moyenne des deux n'est la regle
+// d'aucun match. Le web pose alors deux seuils sur l'histogramme.
+func construireCoordination(morts []domain.MortAExaminer,
+	rayons map[string]float64,
+) *domain.TacticalCoordination {
+	d := coordination.Distances(morts, rayons)
+	return &domain.TacticalCoordination{
+		DistanceMedianeM:       d.Mediane,
+		Distribution:           d.Distribution,
+		NDistances:             d.N,
+		MortsSansDistance:      d.MortsSansDistance,
+		RayonsM:                rayonsDistincts(rayons),
+		MatchsMesures:          len(rayons),
+		FenetreEchangeSecondes: int(coordination.FenetreEchangeMs / 1000),
+	}
+}
+
+// rayonsDistincts rend les portees DISTINCTES des matchs lus, triees croissant.
+func rayonsDistincts(rayons map[string]float64) []float64 {
+	vus := make(map[float64]bool, 2)
+	out := make([]float64, 0, 2)
+	for _, r := range rayons {
+		if vus[r] {
+			continue
+		}
+		vus[r] = true
+		out = append(out, r)
+	}
+	sort.Float64s(out)
+	return out
+}
+
+// mesurerCoordination sert la section « Coordination d'equipe » pour les lectures QUI NE
+// SONT PAS « ou je meurs isole ».
+//
+// POURQUOI UNE LECTURE DE PLUS, ET POURQUOI ELLE EST LEGITIME : la section est affichee
+// sur TOUTES les questions (maquette 034b1915) — savoir ou l'on meurt et savoir si l'on y
+// meurt seul sont deux reponses a la meme question de placement. C'est exactement le
+// regime deja en place pour le KPI d'ECHANGE (`lireLeJournal`), qui lit lui aussi le
+// journal des morts a chaque raster.
+//
+// LE TAUX D'ISOLEMENT EST POSE ICI AUSSI : il ne depend pas de la question, seulement des
+// morts du joueur sur la carte. Le reserver a la question « isole » obligeait a changer de
+// question pour lire un chiffre qui ne change pas.
+//
+// UN ECHEC EST JOURNALISE PUIS DEGRADE : la lecture de placement reste servie, la section
+// reste silencieuse. Aucune erreur avalee.
+func (s *TacticalService) mesurerCoordination(ctx context.Context, out *domain.TacticalRaster,
+	scope domain.TacticalScope,
+) {
+	if !positionsDeKillLisibles(s.caps) {
+		return
+	}
+	lecture, err := s.repo.MortsAvecContexte(ctx, requeteDuScope(s.xuid, out.MapID, scope))
+	if err != nil {
+		s.logger.ErrorContext(ctx, "tactique: coordination non servie (lecture des morts en echec)",
+			"player", s.xuid, "map_id", out.MapID, "question", out.Question, "err", err)
+		return
+	}
+	if len(lecture.Univers.Matchs) == 0 {
+		return
+	}
+	rayons, sansRayon := s.rayonsParMatch(lecture.Univers.Matchs)
+	dans := cible(lecture.Univers.Equipes, out.Qui, s.xuid, scope.Coequipiers)
+	morts := mortsDeLaCible(lecture, dans)
+	bilan := coordination.Isolement(morts, rayons, len(rayons))
+	cov := bilan.Couverture
+	out.Isolement = &cov
+	out.MatchsSansRayon = sansRayon
+	out.MortsEquipeATerre = bilan.EquipeATerre
+	out.Coordination = construireCoordination(morts, rayons)
 }

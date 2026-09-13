@@ -157,8 +157,12 @@ describe('TacticalPage — la grille des cartes', () => {
   it('sert le compte de victoires ET de défaites — jamais un taux seul', async () => {
     renderWithProviders(<TacticalPage />)
     const streets = await screen.findByTestId('tactical-map-streets')
-    expect(streets.textContent).toContain('14 victoires')
-    expect(streets.textContent).toContain('9 défaites')
+    // UNE SEULE LIGNE depuis la conformité à la maquette 034b1915 : « N matchs · V V / D D ».
+    // Le nom accessible de la barre, lui, garde les deux comptes en toutes lettres.
+    expect(streets.textContent).toContain('24 matchs · 14 V / 9 D')
+    const barre = streets.querySelector('[role="img"]')
+    expect(barre?.getAttribute('aria-label')).toContain('14 victoires')
+    expect(barre?.getAttribute('aria-label')).toContain('9 défaites')
   })
 
   it('carte SOUS LE PLANCHER : désaturée, désactivée, avec sa raison en clair', async () => {
@@ -225,7 +229,9 @@ describe('TacticalPage — la grille des cartes', () => {
     const couverture = await screen.findByTestId('tactical-couverture')
     expect(couverture.textContent).toContain('2 cartes jouées')
     expect(couverture.textContent).toContain('33 matchs')
-    expect(screen.getByText(/à partir de 10 matchs/)).toBeInTheDocument()
+    // Le plancher est dit DANS LA MÊME PHRASE (maquette 034b1915) : la note séparée
+    // disait la même chose une deuxième fois.
+    expect(couverture.textContent).toContain('sous 10 matchs')
   })
 
   it('aucune carte : état vide explicite, jamais une grille muette', async () => {

@@ -55,11 +55,19 @@ var (
 	// d'accompagner, et les matchs dont la variante n'a pas de rayon mesure. Son unique taux
 	// est `Couverture`, du type canonique ; le reste sont des comptes entiers et des
 	// positions. Un lecteur ne peut prendre aucun de ses champs pour un quotient.
+	// `domain.TaCoordDistances` AJOUTE LE 2026-09-13 (lot F, section « Coordination
+	// d'equipe » de l'onglet Tactique, maquette 034b1915). JUSTIFICATION : `Distances` le
+	// rend pour que la lecture publie la FORME de la distance a l'equipier au moment des
+	// morts — une MEDIANE en metres, un histogramme de COMPTES (binning serveur, ADR 0010),
+	// le nombre de morts mesurees et le nombre de morts sans distance. AUCUN QUOTIENT n'y
+	// figure : que des metres et des entiers. Le seul taux de ce paquet reste celui de
+	// `Mesurer`, et le taux d'isolement continue de sortir sous `domain.BilanIsolement`.
 	typesQualifiesAutorises = map[string]bool{
-		"domain.Couverture":     true,
-		"domain.BilanEchanges":  true,
-		"domain.MortSuivie":     true,
-		"domain.BilanIsolement": true,
+		"domain.Couverture":       true,
+		"domain.BilanEchanges":    true,
+		"domain.MortSuivie":       true,
+		"domain.BilanIsolement":   true,
+		"domain.TaCoordDistances": true,
 	}
 )
 

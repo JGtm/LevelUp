@@ -20,16 +20,22 @@ export function getTacticalText(locale: Locale) {
     error: m('tactical.maps.error'),
     emptyTitle: m('tactical.maps.empty_title'),
     emptyDescription: m('tactical.maps.empty_description'),
-    matches: (n: number) => m('tactical.maps.matches', { n }),
-    record: (wins: number, losses: number) => m('tactical.maps.record', { wins, losses }),
     recordLabel: (wins: number, losses: number, n: number) =>
       m('tactical.maps.record_label', { wins, losses, n }),
     select: (map: string) => m('tactical.maps.select', { map }),
     selected: m('tactical.maps.selected'),
     floorReason: (n: number, floor: number) => m('tactical.maps.floor_reason', { n, floor }),
-    floorNote: (floor: number) => m('tactical.maps.floor_note', { floor }),
-    coverage: (maps: number, matches: number) =>
-      m('tactical.maps.coverage', { maps, matches }),
+    // Phrase d'introduction de la grille (maquette 034b1915) : cartes, matchs et
+    // plancher en UNE phrase — elle a remplacé la paire couverture + note de plancher.
+    intro: (maps: number, matches: number, floor: number) =>
+      m('tactical.maps.intro', { maps, matches, floor }),
+    // Résumé d'une vignette sur une seule ligne : « N matchs · V V / D D ».
+    tileSummary: (n: number, wins: number, losses: number) =>
+      m('tactical.maps.tile_summary', { n, wins, losses }),
+    // Bascule d'écran (grille / analyse).
+    screenLabel: m('tactical.screen.label'),
+    screenGrid: m('tactical.screen.grid'),
+    screenMap: m('tactical.screen.map'),
 
     // ── Barre de filtres L2 ─────────────────────────────────────────────────
     filterLabels: {
@@ -56,13 +62,17 @@ export function getTacticalText(locale: Locale) {
       m('tactical.filter.unknown_teammate_description', { names }),
 
     // ── Vue d'analyse (Phase 5) ──────────────────────────────────────────────
+    // ORDRE DE LA MAQUETTE 034b1915, et il n'est pas arbitraire : on va du plus large au
+    // plus précis (où je passe mon temps, où je meurs, où je tue), puis des lectures
+    // dérivées (isolement, écart victoires/défaites), puis des routes, qui ne sont pas une
+    // grandeur par cellule.
     analysisQuestions: [
+      { id: 'temps' as const, label: m('tactical.analysis.questions.temps') as string },
       { id: 'morts' as const, label: m('tactical.analysis.questions.morts') as string },
       { id: 'kills' as const, label: m('tactical.analysis.questions.kills') as string },
-      { id: 'gagne' as const, label: m('tactical.analysis.questions.gagne') as string },
-      { id: 'temps' as const, label: m('tactical.analysis.questions.temps') as string },
-      { id: 'routes' as const, label: m('tactical.analysis.questions.routes') as string },
       { id: 'isole' as const, label: m('tactical.analysis.questions.isole') as string },
+      { id: 'gagne' as const, label: m('tactical.analysis.questions.gagne') as string },
+      { id: 'routes' as const, label: m('tactical.analysis.questions.routes') as string },
     ],
     kpiMatchsRetained: m('tactical.kpi.matches_retained'),
     kpiCoverage: m('tactical.kpi.coverage'),
@@ -77,7 +87,19 @@ export function getTacticalText(locale: Locale) {
     // Note de couverture de la tuile « Morts en isolement » : `matchs_sans_rayon`
     // est déjà publié par le contrat (aucun calcul côté web).
     kpiNoRadiusNote: (n: number) => m('tactical.kpi.no_radius_note', { n }),
+    // Sous-titres des quatre tuiles (maquette 034b1915).
+    kpiMatchsRetainedSecondary: (n: number) => m('tactical.kpi.matches_retained_secondary', { n }),
+    kpiCoverageReplay: m('tactical.kpi.coverage_replay'),
+    kpiCoverageShared: m('tactical.kpi.coverage_shared'),
+    kpiTradeWindow: (secondes: number) => m('tactical.kpi.trade_window', { secondes }),
+    kpiIsolationRadius: (rayon: string) => m('tactical.kpi.isolation_radius', { rayon }),
+    kpiLowerIsBetter: m('tactical.kpi.lower_is_better'),
     planTitle: m('tactical.plan.title'),
+    planLegendLabel: (lo: string, hi: string) => m('tactical.plan.legend_label', { lo, hi }),
+    planScaleQuantile: m('tactical.plan.scale_quantile'),
+    planScaleDivergent: (plancher: number) => m('tactical.plan.scale_divergent', { plancher }),
+    planFooterRetained: (retenus: number, filtres: number, source: string) =>
+      m('tactical.plan.footer_retained', { retenus, filtres, source }),
     footerFloor: (n: number) => m('tactical.plan.footer_floor', { n }),
     sourceReplay: m('tactical.plan.source_replay'),
     sourceJournal: m('tactical.plan.source_journal'),
@@ -106,6 +128,10 @@ export function getTacticalText(locale: Locale) {
     cellContributionLabel: (date: string, instant: string) =>
       m('tactical.cell.contribution_label', { date, instant }),
     cellFooterNotOpenable: (n: number) => m('tactical.cell.footer_not_openable', { n }),
+    cellContributionOpen: (instant: string) => m('tactical.cell.contribution_open', { instant }),
+    // « Mes routes de spawn » : la lecture n'a pas de cellule à détailler.
+    cellPlaceholderRoutes: m('tactical.cell.placeholder_routes'),
+    cellPlaceholderRoutesDescription: m('tactical.cell.placeholder_routes_description'),
 
     // ── Titre de la vue, barre d'outils ──────────────────────────────────────
     analysisPageTitle: (map: string, question: string) =>
@@ -119,6 +145,25 @@ export function getTacticalText(locale: Locale) {
     whoOpponents: m('tactical.toolbar.who_opponents'),
     spawnLabel: m('tactical.toolbar.spawn_label'),
     spawnAll: m('tactical.toolbar.spawn_all'),
+
+    // ── Section « Coordination d'équipe » ────────────────────────────────────
+    coordinationTitle: m('tactical.coordination.title'),
+    coordinationMedian: m('tactical.coordination.median'),
+    coordinationChartTitle: m('tactical.coordination.chart_title'),
+    coordinationChartY: m('tactical.coordination.chart_y'),
+    coordinationBucket: (min: number, max: number) =>
+      m('tactical.coordination.bucket', { min, max }),
+    coordinationBucketLast: (min: number) => m('tactical.coordination.bucket_last', { min }),
+    coordinationThresholdLabel: m('tactical.coordination.threshold_label'),
+    coordinationNoteRules: (secondes: number, rayon: string) =>
+      m('tactical.coordination.note_rules', { secondes, rayon }),
+    coordinationNoteCoverage: (retenus: number, filtres: number) =>
+      m('tactical.coordination.note_coverage', { retenus, filtres }),
+    coordinationNoDistance: (n: number) => m('tactical.coordination.no_distance', { n }),
+    coordinationEmpty: m('tactical.coordination.empty'),
+    coordinationEmptyDescription: m('tactical.coordination.empty_description'),
+    radiusValue: (rayon: number) => m('tactical.coordination.radius_value', { rayon }),
+    radiusJoin: m('tactical.coordination.radius_join') as string,
 
     // ── Unité de la légende, une par question ────────────────────────────────
     units: {
