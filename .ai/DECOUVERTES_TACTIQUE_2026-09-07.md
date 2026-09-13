@@ -1,7 +1,7 @@
 # Decouvertes du chantier Tactique — registre a part (decision utilisateur 2026-09-07)
 
 Regle : on CONSIGNE, on ne traite pas. Chaque entree : date ; fichier:ligne ; fait ; condition de reprise.
-Le §7 du plan `.ai/PLAN_TACTIQUE_2026-09-06.md` reste la source des decouvertes des phases 1 a 7A ;
+Le §7 du plan `.ai/V7.5/PLAN_TACTIQUE_2026-09-06.md` reste la source des decouvertes des phases 1 a 7A ;
 ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
 
 ## 7C — faits d'isolement au sync (branche `feat/tactique`, HEAD `c894e0282`)

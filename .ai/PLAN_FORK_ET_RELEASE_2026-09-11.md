@@ -46,7 +46,7 @@
 ## Lot F — tâche Notion 10 : nettoyage worktrees/branches, bascule dossier LevelUp
 - [x] F.1 Inventaire daté (fusionné dans feat/v75 / non fusionné).
 - [x] F.2 Suppression du fusionné (worktrees, branches locales, distantes) ; `wt/ti11-cadre` conservée.
-- [ ] F.3 Archivage `.ai/` racine → `V7.5/` ; sort de `cmd/investigate_matches`.
+- [x] F.3 Archivage `.ai/` racine → `V7.5/` ; sort de `cmd/investigate_matches`.
 - [ ] F.4 Bascule vers `LevelUp` avec l'utilisateur ; cocher Notion 10.
 
 ## Découvertes (non traitées)

@@ -244,7 +244,7 @@ go run ./cmd/mapopads-build --from <dir> --refresh-drifted   # re-validate again
 
 - Output: `data/titles/{slug}/reference/map_weapon_pads.json` (weapon/power-up spawn pads),
   written atomically via the same `mapcatalog.WriteAtomic` helper used by the sync runtime's
-  own Forge catch-up path into this file (`.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 —
+  own Forge catch-up path into this file (`.ai/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 —
   tracked separately, not part of this chain).
 - Prereq: no game install, no network, no cgo ; requires `map_objectives.json` (map_id →
   filename link) and a local dump of `.mvar` files (`--from`).
