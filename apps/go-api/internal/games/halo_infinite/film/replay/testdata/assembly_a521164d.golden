@@ -147,7 +147,7 @@ couverture : 179 vie(s) publiee(s) · camo 3 vie(s) / 7 episode(s) · surbouclie
 ## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine
 calibre=true decoupage="8/3" · 405 vie(s) d objet · 14236 ancre(s) -> 274 confirmee(s) par l oracle de position -> 274 pose(s)
 274 nommee(s) · 0 `other` (nature non etablie : le manifeste ne les revendique pas) · 226 avec poseur mesure · 195 avec cap de visee
-origine mesuree : 16 deployee(s) · 210 lachee(s) a la fin de la vie du poseur · 48 sans poseur
+origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur · 48 sans poseur
   famille grapple  17
   famille grenade_dynamo 8
   famille grenade_frag 159
@@ -161,8 +161,8 @@ origine mesuree : 16 deployee(s) · 210 lachee(s) a la fin de la vie du poseur �
   famille x origine grapple/unknown              1
   famille x origine grenade_dynamo/dropped       4
   famille x origine grenade_dynamo/unknown       4
-  famille x origine grenade_frag/deployed        12
-  famille x origine grenade_frag/dropped         110
+  famille x origine grenade_frag/deployed        10
+  famille x origine grenade_frag/dropped         112
   famille x origine grenade_frag/unknown         37
   famille x origine grenade_plasma/dropped       28
   famille x origine grenade_spike/dropped        30
@@ -188,8 +188,8 @@ origine mesuree : 16 deployee(s) · 210 lachee(s) a la fin de la vie du poseur �
   grenade_frag dropped 0xbcabbe43 t=[634, 713] pos=(28.47, -3.62, 8.25) poseur=531 cap=264.6 deg
   grenade_plasma dropped 0xcaaadcb0 t=[634, 714] pos=(28.47, -3.62, 8.25) poseur=531 cap=264.6 deg
   grenade_plasma dropped 0xcaaadcb0 t=[634, 714] pos=(28.47, -3.62, 8.25) poseur=531 cap=264.6 deg
-  grenade_frag deployed 0xbcabbe43 t=[642, 690] pos=(42.59, -3.17, 4.49) poseur=526 cap=91.9 deg
-  grenade_frag deployed 0xbcabbe43 t=[642, 687] pos=(42.58, -3.16, 4.49) poseur=526 cap=91.9 deg
+  grenade_frag dropped 0xbcabbe43 t=[642, 690] pos=(42.59, -3.17, 4.49) poseur=526 cap=91.9 deg
+  grenade_frag dropped 0xbcabbe43 t=[642, 687] pos=(42.58, -3.16, 4.49) poseur=526 cap=91.9 deg
   grenade_frag unknown 0xbcabbe43 t=[644, 685] pos=(41.99, -2.21, 7.45) poseur=-1 cap=aucun
   grenade_frag unknown 0xbcabbe43 t=[644, 676] pos=(42.01, -2.20, 7.45) poseur=-1 cap=aucun
   grenade_frag unknown 0xbcabbe43 t=[644, 726] pos=(41.80, -2.58, 5.10) poseur=-1 cap=aucun
