@@ -25,6 +25,7 @@ import (
 	"log/slog"
 	"strconv"
 
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
@@ -166,6 +167,52 @@ func loadFormesObjectives(
 		slog.WarnContext(ctx, "formes retenues: colonnes d'objectif illisibles — cartes d'objectif omises",
 			"err", err, "match_count", len(matchIDs))
 		return nil
+	}
+	return joindrePrisesNettes(ctx, q, matchIDs, rows)
+}
+
+// joindrePrisesNettes ajoute la grandeur lue du FILM aux lignes lues de l'API.
+//
+// LA JOINTURE SE FAIT ICI, ET PAS EN SQL : les deux grandeurs vivent dans deux
+// tables alimentées par deux producteurs (cf. le commentaire de
+// LoadFlagGrabsNet). Un LEFT JOIN aurait fait tomber toutes les colonnes
+// d'objectif le jour où la vue du film manque.
+//
+// UN MATCH SANS PRISE LUE NE REÇOIT AUCUNE CLÉ : l'absence porte le « non
+// mesuré » jusqu'à l'écran, et écrire 0 ici dirait « il n'a rien pris ».
+// DÉGRADATION SEULE : lecture en échec ⇒ les lignes sortent telles quelles, le
+// bloc garde ses autres colonnes.
+func joindrePrisesNettes(
+	ctx context.Context, q SquadFormesQuery, matchIDs []string, rows []squadformes.ObjectiveColumnRow,
+) []squadformes.ObjectiveColumnRow {
+	if len(rows) == 0 {
+		return rows
+	}
+	nets, err := q.Objectives.LoadFlagGrabsNet(ctx, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "formes retenues: prises nettes illisibles — grandeur omise",
+			"err", err, "match_count", len(matchIDs))
+		return rows
+	}
+	parMatch := make(map[string]map[string]int, len(nets))
+	fenetre := map[string]float64{}
+	for _, n := range nets {
+		if parMatch[n.MatchID] == nil {
+			parMatch[n.MatchID] = map[string]int{}
+		}
+		parMatch[n.MatchID][n.XUID] = n.Net
+		fenetre[n.MatchID] = float64(n.WindowMS) / 1000
+	}
+	for i := range rows {
+		v, ok := parMatch[rows[i].MatchID][rows[i].XUID]
+		if !ok {
+			continue
+		}
+		if rows[i].Values == nil {
+			rows[i].Values = map[string]float64{}
+		}
+		rows[i].Values[narrative.GrandeurFlagGrabsNet] = float64(v)
+		rows[i].FlagJuggleWindowSeconds = fenetre[rows[i].MatchID]
 	}
 	return rows
 }

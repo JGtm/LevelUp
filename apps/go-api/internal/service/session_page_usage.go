@@ -15,6 +15,7 @@ import (
 	"context"
 	"log/slog"
 
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
@@ -28,6 +29,15 @@ import (
 // match.objective.stats), le sous-bloc Objectives est simplement omis.
 type objectiveRoleRowsLoader interface {
 	LoadObjectiveRoleRows(ctx context.Context, matchIDs []string) ([]sessionusage.ObjectiveRow, error)
+}
+
+// flagGrabsNetLoader est la capability OPTIONNELLE qui sert les prises nettes de
+// drapeau. Interface SÉPARÉE de celle ci-dessus, et non une méthode de plus :
+// les deux grandeurs viennent de deux tables alimentées par deux producteurs
+// (l'API pour les rôles, le film pour les prises nettes), et un montage qui n'a
+// que l'une doit pouvoir servir l'autre sans l'implémenter.
+type flagGrabsNetLoader interface {
+	LoadFlagGrabsNet(ctx context.Context, matchIDs []string) ([]sessionusage.FlagGrabsNetRow, error)
 }
 
 // WithSessionUsage injecte le repo du résumé d'usage S1 (vues _latest), le xuid
@@ -146,6 +156,64 @@ func (s *SessionPageService) attachSessionObjectives(
 		TeamSize:   tc.TeamSize,
 		LobbySize:  tc.LobbySize,
 	})
+	s.attachFlagGrabsNet(ctx, block, matchIDs, tc)
+}
+
+// attachFlagGrabsNet ajoute les PRISES NETTES de drapeau au bloc objectifs.
+//
+// APRÈS ComputeObjectives, et pas dedans : la grandeur vient d'une autre table
+// et d'un autre producteur (le film), elle n'est mesurée que sur les matchs dont
+// l'artefact a été lu, et elle porte ses propres dénominateurs. Sans bloc
+// objectifs (scope sans mode à objectif), il n'y a rien à attacher.
+//
+// Best-effort et DIT : montage sans ce loader (titre qui ne produit pas la
+// grandeur) ⇒ silence ; lecture en échec ⇒ WARN, le reste du bloc est servi.
+func (s *SessionPageService) attachFlagGrabsNet(
+	ctx context.Context, block *domain.SessionUsageBlock,
+	matchIDs []string, tc sessionusage.TeamContext,
+) {
+	if block.Objectives == nil {
+		return
+	}
+	loader, ok := s.objectiveIndex.(flagGrabsNetLoader)
+	if !ok {
+		return
+	}
+	rows, err := loader.LoadFlagGrabsNet(ctx, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "session page: prises nettes indisponibles", "err", err)
+		return
+	}
+	block.Objectives.FlagGrabsNet = sessionusage.ComputeFlagGrabsNet(sessionusage.FlagGrabsNetInput{
+		Rows:              rows,
+		PlayerXUID:        s.usageXUID,
+		MatchesFlagFamily: matchsFamilleDrapeau(block.Objectives),
+		PlayerTeam:        tc.PlayerTeam,
+		TeamOf:            tc.TeamOf,
+	})
+}
+
+// matchsFamilleDrapeau — les matchs de la famille DRAPEAU de la session, dénominateur
+// de couverture des prises nettes.
+//
+// PAS `MatchesWithObjectives`, ET C'EST UNE CORRECTION DE REVUE : ce compteur-là porte
+// TOUTES les familles à objectif. L'employer disait « mesuré sur 2 des 7 matchs » sur une
+// session de cinq parties de Bastion et deux de drapeau — et attribuait au film l'absence
+// de cinq matchs qui n'ont tout simplement pas de drapeau.
+//
+// La famille se lit sur le bloc déjà calculé (`ComputeObjectives` la publie avec son
+// compte de matchs) : aucune requête de plus, et un seul discriminant de famille dans
+// tout le produit.
+func matchsFamilleDrapeau(obj *domain.SessionObjectivesBlock) int {
+	if obj == nil {
+		return 0
+	}
+	for i := range obj.Families {
+		if obj.Families[i].Family == string(narrative.FamilyCTF) {
+			return obj.Families[i].Matches
+		}
+	}
+	return 0
 }
 
 // friendGamertags résout la liste des amis configurés (vide = aucune

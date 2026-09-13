@@ -72,18 +72,7 @@ type resumeUsagePret struct {
 // configuration de titre (DEBUG, aucun compteur) — les deux se distinguent de
 // « l'étape n'a jamais tourné ».
 func capabilityUsageArmee(ctx context.Context, d Deps) (armee, incident bool) {
-	caps, err := games.LoadCapabilityMap(d.RepoRoot, d.TitleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: résumé d'usage non produit — capabilities illisibles",
-			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "err", err)
-		return false, true
-	}
-	if !caps.Has(games.CapFilmUsageSummary) {
-		slog.DebugContext(ctx, "post-sync: résumé d'usage — titre sans la capability, rien à produire",
-			"titleSlug", d.TitleSlug, "capability", string(games.CapFilmUsageSummary))
-		return false, false
-	}
-	return true, false
+	return porteCapability(ctx, d, games.CapFilmUsageSummary, "résumé d'usage", nil)
 }
 
 // persisterResumesUsage projette puis écrit les résumés des artefacts rangés du lot.

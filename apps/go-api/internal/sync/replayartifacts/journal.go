@@ -94,6 +94,14 @@ const (
 	// son artefact ne porte simplement aucun calque de bombe, et c est le cas majoritaire.
 	CompteurBombStatsEcrits = "postsync_replay_bomb_stats_ecrits_total"
 	CompteurBombStatsEchecs = "postsync_replay_bomb_stats_echecs_total"
+	// Prises de drapeau brutes et nettes projetees des artefacts ranges, ecrites dans
+	// `match_flag_grabs_net` (cf. flaggrabsnet.go). CompteurPrisesNettesEcrites : passes
+	// persistees ; CompteurPrisesNettesEchecs : writer indisponible, capabilities ou
+	// regulation illisibles, ou INSERT refuse — un defaut, jamais un etat normal.
+	// UN FILM QUI N EST PAS DU CTF NE COMPTE NI DANS L UN NI DANS L AUTRE : c est le cas
+	// majoritaire du parc (63 artefacts sur 76 au releve du 2026-09-13).
+	CompteurPrisesNettesEcrites = "postsync_replay_flag_grabs_net_ecrites_total"
+	CompteurPrisesNettesEchecs  = "postsync_replay_flag_grabs_net_echecs_total"
 	// Positions joueurs projetees des artefacts ranges, ecrites dans `match_player_positions`
 	// (cf. positions.go, decision utilisateur 1). CompteurPositionsEcrites : passes persistees ;
 	// CompteurPositionsEchecs : writer indisponible, absent du cablage, ou INSERT refuse — un

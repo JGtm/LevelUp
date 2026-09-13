@@ -131,6 +131,11 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	reporterT0Film(ctx, d, b, rapportsT0(lus))
 	persisterResumesUsage(ctx, d, b, lus)
 	persisterStatsBombe(ctx, d, b, lus)
+	// LES PRISES NETTES DE DRAPEAU, juste apres sa soeur d'Assaut : meme forme, meme segment
+	// d'ecriture, meme cout (une lecture de calque deja deserialise). Les deux ecrivent des
+	// tables append-only distinctes et ne se croisent jamais — un film est du CTF ou de
+	// l'Assaut, pas les deux.
+	persisterPrisesNettes(ctx, d, b, lus)
 	// LES RASTERS TACTIQUES, QUATRIEME PROJECTION — memes artefacts lus, meme place (apres
 	// toute cuisson). La seule qui n'ecrit AUCUNE base : son resultat est un fichier pose a
 	// cote de son artefact (cf. raster.go), donc hors du segment d'ecriture shared partage
