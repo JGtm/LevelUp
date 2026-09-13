@@ -160,3 +160,400 @@ réseau (cf. §2/§3 + §7). Donc le kill-weapon tombe **avec** le décodeur ECS
 > ⚠️ Note méthode : certaines adresses (écrivain du score, handler de kill) ont été localisées par l'utilisateur via
 > un write-watchpoint sur le jeu lancé. L'**analyse** ci-dessus est 100% **statique** sur le fichier .exe. L'agent n'a
 > pas fourni de procédure de contournement anti-triche (refus assumé) ; lire le fichier est sans risque.
+
+---
+
+## 8. L'ÉCRIVAIN DE `chunk_00` (2026-09-12) — la grammaire complète de la « section 3 »
+
+Ancre de départ : les chaînes d'identification de build que le film écrit en clair
+(`HI_1_13_0` à `0x1436a37c0`, `release` à `0x143690658`). Leurs xrefs mènent à
+`FUN_140b32390`, qui construit la structure d'informations de build, puis à
+`FUN_140b32438`, qui la recopie dans des globales. **Deux de ces globales sont les deux u32
+inconnus de l'en-tête du film** (`NOTE_CARTE_CHUNK00_2026-08-30`, question ouverte n°4) :
+`DAT_144e4ef50` (identifiant de build pipeline, `0x41ba9` dans cet exe) et `DAT_144e4ef54`
+(**changelist**, `0x86f6bf`, formaté par `" changelist: %d"`).
+
+La fonction qui LIT ces trois globales ensemble et les recopie dans des champs de 32 octets est
+l'initialiseur de l'écrivain de film. Tout en découle.
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| `0x140b32390` | construit la structure d'infos de build (version, branche, saveur, date, heure, projet, hash, changelist) | xrefs des chaînes `HI_1_13_0` / `release` |
+| `0x140b32438` | recopie cette structure vers les globales `DAT_144e4ef30..90` | appelé par `FUN_140b32390` |
+| `DAT_144e4ef38` / `ef88` / `ef78` | version · build · saveur (les trois champs de 32 o du film) | recopiés à `+0xcb524/0xcb544/0xcb564` |
+| `DAT_144e4ef50` / `ef54` | **les deux u32 de `0x0CB454`** : id de build, **changelist** | même ordre, même magnitude que les valeurs du film |
+| **`0x14299b674`** | **initialiseur de l'écrivain de film** : remplit le tampon de `chunk_00` | écrit les trois chaînes à `+0xcb524/44/64`, les deux u32 à `+0xcb584/88`, `_time64()` à `+0xcb790` |
+| — boucle registre | `FUN_142998c7c(base+0x138 + i*0x4100)` tant que `< 0xcb200` → **50 blocs** de 64 slots de 260 o | `0xcb200 / 0x4100 = 50` exactement |
+| — boucle table par type | `(**(vtable+0x30))()` sur les objets de `DAT_144e61d88+0x210`, écrits à `+0xcb338 + j*4` tant que `j*4 < 0x1ec` → **123 u32** | `0x1ec / 4 = 123` ; appuie la lecture « version de sérialisation PAR TYPE » : la valeur sort d'une méthode virtuelle du descripteur de type |
+| `0x14299cb5c` | ouvre le tampon de sortie de **`0x1E1B80` = 1 973 120 octets** et lance la sérialisation | `FUN_1429907c8(buf, 0x1e1b80)` — égal à la taille inflatée mesurée le 30/08 |
+| **`0x14299b198`** | **sérialise la TÊTE** : 2 u32, registre (`0x659000` bits), table par type (`0xF60` bits), 3 × `0x100` bits, 2 × `0x20` bits, **1 booléen d'UN bit** (`FUN_1406d49c4`) | désassemblage : `LEA R8,[RBX+off] ; MOV R9D,bits ; CALL FUN_1406d60f4`, offsets strictement contigus |
+| **`0x14299b278`** | **sérialise la SUITE** : 2 × `0x800` bits (noms UTF-16 de 128 car.), 4 × `0x20` bits (dont **l'horodatage du match**), 3 × `0x8000` bits, 2 × `0x80` bits, puis le corps | idem |
+| `0x1406d60f4` | **écrivain de bits générique** `(writer, _, src, nbits)` : MSB-first, byte-swap 64 bits, curseur `*(w+0x2c) += nbits` | décompilé |
+| `0x1406d49c4` | écrivain d'UN bit (booléen) | appelé sans largeur |
+| `0x1406d6498` | écrivain d'un scalaire `(writer, valeur, nbits)` | décompilé |
+| `0x1407ebe7c` | écrivain de chaîne ASCII terminée par NUL, largeur max en 4ᵉ arg (8 bits/caractère) | décompilé |
+| **`0x1407ec560`** | **SÉRIALISEUR DU CORPS** (= la « section 3 ») : champs de 3/3/2/7/64/32/3 bits, sous-structures, **2 chaînes ASCII de 256 car. max** (`+0xEA810`, `+0xEA910`), `0x6C0` bits, puis la boucle de slots | décompilé + désassemblé |
+| — boucle de slots | `for (p = jeu+0xEAAF0 ; p != +0x113AF0 ; p += 0x1450)` → **32 enregistrements de 0x1450 octets** | `0x28A00 / 0x1450 = 32` ; et `0xEAAF0 + 0x28A00 = 0x113AF0` ferme sur la fin du tampon |
+| **`0x1407ecb08`** | **SÉRIALISEUR D'UN SLOT** : `1+1+1` bits booléens, `32` bits, `2` bits, `48` bits, puis **`64` bits = LE XUID**, puis le sous-enregistrement `FUN_1407edea8`, puis `32` bits | désassemblage ; vérifié sur films : 44 XUID de `match_participants` retrouvés à 85 bits de l'en-tête, 0 faux positif sur 240 leurres |
+| `0x1407edea8` | sous-enregistrement du slot (`slot+0x18` … `+0x1448`) : apparence, personnalisation, dotation | callees `FUN_1407ecd00/ece18/edaf4/edcc4/edd3c/eddb4/ede30` — **non décodé** |
+| `0x140b857d8` · `0x1410bc140` · `0x140b85504` | sous-sérialiseurs du corps (`jeu+0xE951C`, `+0xEA72C`, objet optionnel à `jeu+0x28`) | **non décodés** |
+
+**Conséquences immédiates.**
+
+1. **Le registre ECS commence à l'octet 8 du tampon inflaté**, pas à 0 : `0x659000` bits écrits
+   depuis `base+8`. `parseRegistry` lit depuis 0 ; son champ « kind » du slot *i* est en réalité le
+   champ situé 8 octets avant le nom du slot *i*. Cela explique d'un coup « kind = 0 sur 1 066 des
+   1 067 slots » et le « niveau lu un cran plus loin » de `registryBlockTail`.
+   **Découverte hors périmètre, non traitée.**
+2. **La table par type commence bien à `0x0CB208` et compte exactement 123 entrées** : la question
+   ouverte n°2 de la note du 30/08 est fermée par l'écrivain, avec fermeture arithmétique
+   (`0x0CB208 + 123 × 4 = 0x0CB3F4` = l'offset du champ version).
+3. **Après le booléen d'un bit à `0x0CB45C`, tout le reste du fichier est décalé d'un bit.** C'est
+   la raison mécanique pour laquelle aucune lecture alignée sur l'octet ne rendait rien dans la
+   section 3.
+
+Détail, offsets et commandes de rejeu : `.ai/V7.5/film_re/NOTE_SECTION3_CHUNK00_2026-09-12.md`.
+
+### 8.1 Le sous-enregistrement de slot, ouvert d'un cran (2026-09-12)
+
+`FUN_1407edea8(sub = slot+0x18, writer)` appelle d'abord `FUN_1407ecd00`, qui sérialise trois
+listes préfixées par leur longueur — la source mécanique de la longueur variable d'un
+enregistrement de slot :
+
+| source (sub-relative) | forme | écrivain |
+|---|---|---|
+| `+0x000`..`+0x100` | **masque de présence de 2 048 bits** (64 u32), préfixé par le rang du bit le plus haut, puis écrit bit à bit | `FUN_1407ecd78` (`MOV EAX,0x3f` = balayage arrière des 64 mots, puis `BT`/`SETC` + `FUN_1406d49c4`) |
+| `+0x100` / `+0x108` | u32 de longueur N, puis **N octets** (`N << 3` bits) | `FUN_1411b1a24` puis `FUN_1406d60f4` |
+| `+0x908` / `+0x910` | u32 de longueur M, puis **M × 4 octets** (`M << 5` bits) | `FUN_1411b198c` puis `FUN_1406d60f4` |
+
+Puis, toujours dans `FUN_1407edea8` : `+0xC48` sur `0x340` bits (104 o), `+0xC14` via
+`FUN_1407ece18` (`0x10`), `+0xC38` sur `0x80` bits, `+0xCB0` via `FUN_1407edaf4(writer,
+DAT_143686818, valeur)` — **le pointeur de données `0x143686818` est un candidat table de
+correspondance** —, `+0xCB8` sur `0x40` bits, puis `FUN_1407edcc4`, `FUN_1407edd3c`,
+`FUN_1407eddb4`, `FUN_1407ede30`.
+
+**Correction du 2026-09-12 (phase 2)** : la phrase qui concluait cette section — « le gamertag et
+l'équipe ne sont dans aucun des champs ci-dessus » — est FAUSSE pour le gamertag. `FUN_1407ece18`
+n'est pas un écrivain de scalaire de 16 bits : c'est un **écrivain de chaîne UTF-16**, qui écrit des
+unités de 16 bits MSB d'abord jusqu'à l'unité nulle incluse, au plus `R9D` unités. Le champ
+`sub+0xc14` sur `0x10` unités EST donc le gamertag. Voir 8.2. Pour l'équipe, la phrase tient : elle
+n'est dans aucun des champs décodés, et la phase 2 l'établit par la mesure.
+
+### 8.2 L'enregistrement de slot, décodé au complet (2026-09-12, phase 2)
+
+Le sous-enregistrement `FUN_1407edea8(sub = slot+0x18, writer)` est désassemblé **en entier**, et la
+largeur de chaque champ est lue **dans le code de son écrivain** — pas déduite, pas supposée. Les
+fonctions ci-dessous sont toutes des écrivains de bits du même moule : `MOV ECX,<largeur> ;
+ADD dword ptr [RDX + 0x2c],ECX`, la convention de curseur déjà connue du dossier.
+
+| Fonction | Rôle | Largeur | Preuve |
+|---|---|---|---|
+| **`0x1407edea8`** | **sous-enregistrement de slot, 16 champs** | — | désassemblage complet : `CALL 0x1407ecd00` ; `+0xc48`/`0x340` ; `+0xc14`/`0x10` via `1407ece18` ; `+0xc38`/`0x80` ; `+0xcb0` via `1407edaf4` ; `+0xcb8`/`0x40` ; `+0xc12` via `1407edcc4` ; `+0xc36` via `1407edd3c` ; `+0xc35` via `1407eddb4` ; `+0xc10` inline ; `+0xc34` via `1407ede30` ; `+0xc11 & 1` inline ; `+0xcc0`/`0x39e0` ; `+0x1400`/`0x160` (tail call) |
+| `0x1407ecd00` | les trois listes préfixées : masque, N octets, M mots | — | `CALL 1407ecd78` ; `[RBX+0x100]` → `1411b1a24` puis `0x108` sur `N<<3` ; `[RBX+0x908]` → `1411b198c` puis `0x910` sur `M<<5` |
+| `0x1407ecd78` | écrit le masque de présence : cherche le rang du bit le plus haut (`MOV EAX,0x3f`, balayage arrière des 64 mots), écrit ce rang, puis ce nombre de bits un par un | — | désassemblage |
+| **`0x1424ccf94`** | préfixe du masque : écrit `R8 - 1` sur **11 bits** | `0xb` | `LEA R9D,[R8 + -0x1] ; MOV ECX,0xb` |
+| **`0x1411b1a24`** | longueur N de la liste d'octets | **12 bits** | `MOV ECX,0xc` |
+| **`0x1411b198c`** | longueur M de la liste de mots de 32 bits | **8 bits** | `MOV ECX,0x8` (`ADD [RDX+0x2c],0x8`) |
+| **`0x1407ece18`** | **écrivain de CHAÎNE UTF-16** : unités de 16 bits MSB d'abord, boucle jusqu'à `R9D` unités, **s'arrête APRÈS l'unité nulle** | 16 bits par unité | `MOVZX EDI,word ptr [RSI + R9*0x2]` ; `SHL R8,0x10 ; OR R8,RDI` ; `TEST DI,DI ; JNZ` |
+| **`0x1407edaf4`** | écrivain de u32 **ÉTIQUETÉ** : `(writer, nom, valeur)`, le nom n'est pas sérialisé | **32 bits** | `MOV ECX,0x20` ; `DAT_143686818` = `"desired-representation"` |
+| **`0x1407edcc4`** | u16 | **10 bits** | `MOVZX R9D,word ptr [R8] ; MOV ECX,0xa` |
+| **`0x1407edd3c`** | u16 | **14 bits** | `MOV ECX,0xe` |
+| **`0x1407eddb4`** | char signé, écrit **VALEUR + 1** (donc -1 représentable) | **6 bits** | `MOVSX R9D,R8B ; INC R9D ; MOV ECX,0x6` |
+| **`0x1407ede30`** | octet | **7 bits** | `MOVZX R9D,byte ptr [R8] ; MOV ECX,0x7` |
+
+**Le gamertag est à `sub+0xc14`** (16 unités au plus). Mesuré : 616/636 noms égaux au `roster[].name`
+des documents de rejeu sur 76 films ; 44/44 sur les films témoins.
+
+**Le second champ de nom est le bloc brut `sub+0x1400`** (44 octets = 22 unités UTF-16). Comme il
+passe par `FUN_1406d60f4` (recopie de l'image mémoire), il est en UTF-16 **petit-boutiste**, là où
+`FUN_1407ece18` produit du **gros-boutiste** : 640/640 blocs rendent le gamertag de leur
+enregistrement en petit-boutiste, **0/44 en gros-boutiste**. Les deux conventions d'écriture se
+voient donc directement dans les octets du film.
+
+#### La structure de personnalisation, et le sérialiseur qui la nomme
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| **`0x140969c54`** | **sérialiseur DELTA de la MÊME structure de slot** : mêmes offsets `+0xc10`, `+0xc12`, `+0xc14`, `+0xc34`, `+0xc36`, `+0xc38`, `+0xc48`, `+0xcb0`, `+0xcb8`, même `FUN_1407ecd00` | désassemblage |
+| **`0x1407ec27c`** | **sérialiseur CHAMP PAR CHAMP de la personnalisation**, appelé sur `sub+0xcc0` | `LEA RDX,[RSI + 0xcc0] ; CALL 0x1407ec27c` dans `140969c54` |
+| — champs nommés | `variantName` `[0x4f]`, `styleName` `[0x50]`, `themeName` `[0x1cc]`, `coatingName` `[0x1cd]`, `actionPose` `[0x1ce]`, `model_region`/`model_permutation` (paires, comptées par `[0]`) | noms passés en clair à `FUN_1407edaf4` |
+| `0x1407ebf44` | 24 attaches d'armure de `0x24` octets, base `cust+0x14C` | `0x14C + 24 × 0x24 = 0x4AC` |
+| `0x1407eda5c` | 7 objets de `0x58` octets, base `cust+0x4AC` (variant, style, theme/coating/marker, 8 × region+perm) | `0x4AC + 7 × 0x58 = 0x714` |
+| `0x143686770`..`0x1436868a0` | pool de chaînes : `unarmed`, `variantName`, `styleName`, `regionOverrideName`, `themeName`, `coatingName`, `markerName`, `desired-representation`, `variant-name`, `queued-replay-mission`, `unknown`, `region`, `permutation`, `model_permutation`, `model_region` | lecture mémoire |
+
+**Fermeture arithmétique** : le plus haut indice touché par `FUN_1407ec27c` est `param_2[0x1ce]`
+(`actionPose`), soit l'octet `0x738`, et `0x738 + 4 = 0x73C = 1 852` — **exactement** la largeur du
+bloc brut que l'écrivain de film recopie (`0x39e0` bits). Les deux sérialiseurs décrivent donc la
+même structure : **la personnalisation est bien dans l'enregistrement de slot du film.**
+
+**MAIS elle y est VIDE** : mesuré sur 44 enregistrements de 6 films et 2 builds, **0 octet non nul
+sur 81 488**. Le format la réserve, le flux enregistré ne la porte pas. Détail et verdict chiffré :
+`.ai/V7.5/film_re/NOTE_SECTION3_SLOTS_2026-09-12.md`.
+
+#### Ce que la phase 2 corrige du relevé par build
+
+`TestD1Builds` classe les 1 351 `chunk_00` du cache en **7 builds** (13 groupes build/version/table),
+et non deux comme la phase 1 le concluait. La carte d'en-tête de la section 8 vaut pour `HI_1_12_0`
+et `HI_1_13_0` **seulement** : sur les builds antérieurs, l'offset de la chaîne de build recule de
+`16 644` (`HI_1_11_0`), `16 648` (`HI_1_10_0`/`HI_1_9_0`/`HI_1_8_0`) ou `16 668` (`HI_1_4_1`) octets,
+soit **un bloc de registre ECS (`0x4100 = 16 640`) plus 4 octets par entrée manquante de la table
+par type** — trois fermetures sans ajustement. La longueur d'un enregistrement de slot y change
+aussi, d'une **constante par build** (-2 880, -4 320, +1 600 bits), le XUID et le gamertag restant
+lisibles partout (11 550/11 728 enregistrements).
+
+### 8.3 L'ÉQUIPE D'UN JOUEUR : elle n'est pas dans `chunk_00`, elle est dans la trame (2026-09-12, phase 3)
+
+La phase 2 avait fermé la question **par la négative** : aucun des champs courts de
+l'enregistrement de slot de `chunk_00` ne porte l'équipe (huit des neuf sont constants sur tout le
+corpus). La phase 3 la ferme **par le positif**, en suivant le CONSOMMATEUR (méthode, règle 1) :
+l'équipe est une donnée **répliquée**, portée par un composant ECS de la trame d'état (paquets de
+type 2), et non par l'en-tête du film.
+
+**Le chemin, depuis la chaîne de nom du composant.** Le tableau des descripteurs de composant a un
+pas de `0x50` (dix pointeurs), le champ de nom en `+0x08`, le SÉRIALISEUR en `+0x18` et le
+DÉSÉRIALISEUR en `+0x30` — forme vérifiée sur deux entrées distinctes (elle explique la mention
+« deser thunk (vtable+0x28) » déjà portée par `filmdec/components_team_mapping.go`, qui compte
+depuis le champ de nom).
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| `0x143c953c0` | chaîne `"managed-player-team-designator-component"` | `search_strings` |
+| `0x141177eb0` | thunk de nom (`LEA RAX,[chaîne] ; RET`) | xref de la chaîne |
+| **`0x143d08ad0`** | **descripteur du composant** : nom en `+0x08`, écrivain en `+0x18`, lecteur en `+0x30` | xref du thunk ; lecture mémoire |
+| **`0x142edbd3c`** | **écrivain (sérialiseur)** du composant | `descripteur + 0x18` |
+| **`0x140f581e8`** | **lecteur (désérialiseur)** : un seul appel, `FUN_1407ef804` | `descripteur + 0x30` ; décompilé — concorde avec `ecs_table.tsv:228` |
+| **`0x1407ef804`** | **primitive : lit 4 BITS et STOCKE la valeur MOINS UN** | `ADD dword ptr [RCX+0x2c],0x4` ; `SHR R9,0x3c` ; `DEC R9B` |
+| `0x1445c0c00` | descripteur de l'énumération de script `mp_team_designator` (« Enum for MP team designators »), **9 entrées** à `0x144723da0` | lecture mémoire |
+| `0x144723da0` | les 9 noms, dans l'ordre : `First`, `Second`, `Third`, `Fourth`, `Fifth`, `Sixth`, `Seventh`, `Eighth`, `Neutral` | lecture mémoire des 9 pointeurs |
+
+**Le codage, et c'est une prédiction, pas une lecture.** `DEC R9B` fixe la convention : le champ de
+4 bits porte `désignateur + 1`, donc `0` code **-1 = aucune équipe**. Le lecteur de la composante
+globale le confirme par son test de validité (`INC AL ; CMP AL,0x9 ; JA` → domaine `-1..8`, soit
+les neuf désignateurs plus « aucun »). Prédiction écrite avant toute mesure sur les films :
+**`brut = team_id + 1`**.
+
+**Vérifié sur les films.** Archétype **ti=9** (« managed-player »), composant **i0**, champ à
+**186 bits du début du record d'image-clé** (décalage MESURÉ, pas porté : les largeurs de l'en-tête
+par entité et du bloc d'état par défaut de ti=9 ne sont pas tranchées par le dossier). Corpus de
+22 films (14 d'arène, 6 de Grande bataille, 2 de FFA) :
+
+- **16 films sur 18 en accord EXACT** avec `match_participants.team_id`, **160/176 slots**, dont
+  **24/24 deux fois** en Grande bataille (`03af54c3`, `213a87dc`) ;
+- **le seul décalage de tout le record** qui satisfasse l'oracle : **1 sur 456/457 par film**,
+  soit 0 faux positif sur 7 292 positions ; **0 touche sur 576** décalages voisins ;
+- **témoin négatif naturel** : les deux films de FFA lisent `0` sur les huit entités — le moteur
+  ne donne aucun désignateur en FFA, là où l'API fabrique un `team_id` par joueur ;
+- **8 entités ti=9 par image-clé en arène, 24 en Grande bataille**, slots consécutifs de pas 2,
+  longueur de record constante (459/460 bits selon le build) ;
+- le désignateur bouge **si et seulement si** la suite des slots bouge (22/22 films) : il est
+  stable par ENTITÉ, et c'est la réattribution de slot qui déplace l'appariement.
+
+**Ce que la section 8.1 disait, et ce qui tient.** « Le gamertag et l'équipe ne sont dans aucun des
+champs ci-dessus » : faux pour le gamertag (corrigé en 8.2), **vrai pour l'équipe**, et la phase 3
+dit désormais où elle est à la place.
+
+#### Le composant qui porte `team` dans son nom, et qui n'est PAS l'équipe d'un joueur
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| `0x143c985c0` | chaîne `"game-engine-team-mapping-component"` | `search_strings` |
+| `0x143d0f7a0` | son descripteur (nom `0x141173050` en `+0x08`) | xref du thunk |
+| `0x142f068bc` · `0x140f58200` | écrivain · lecteur — déjà portés par `filmdec/components_team_mapping.go` | `descripteur + 0x18` / `+ 0x30` |
+| **`0x142f1b44c`** | **vidangeur de debug du masque de champs sales : il NOMME les six champs** dans l'ordre des bits — `team-mapping` (0), `shared-team-lives` (1), `current-state` (2), `game-finished` (3), `current-round` (4), `round-timer` (5) | décompilé (`FUN_14064d734(dest, "team-mapping:", 0x400)`) |
+
+Son état fait 20 octets : six champs de 2 octets puis un tableau de **HUIT** octets signés, gaté
+par le masque de `+0x06`, chaque entrée lue par `FUN_1407ef804` (4 bits, valeur-1) et mise à `-1`
+si le bit est absent. **Huit entrées, pas trente-deux : c'est une table par ÉQUIPE, pas par
+joueur**, et le vocabulaire de ses six champs est celui d'un composant global du moteur de jeu.
+
+#### Le chunk de type 8 « PLAYER_METADATA » n'existe pas dans ce corpus
+
+Mesure sur les **1 351 manifestes** du cache : les seuls types déclarés sont **1 (x1 351),
+2 (x37 661) et 3 (x1 351)**. Aucun type 8, aucun type 12. La piste « le roster et les équipes sont
+dans un chunk de type 8 » est donc **réfutée pour ce corpus**.
+
+Détail, contrôles chiffrés, chemin actuel de la production et ses pertes :
+`.ai/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md`.
+
+### 8.4 Le lecteur d'ÉTAT COMPLET, et l'explication de l'offset 186 (2026-09-12, phase 4)
+
+La phase 3 avait MESURÉ le champ d'équipe à 186 bits du début d'un record d'image-clé sans
+pouvoir l'expliquer : les trois largeurs d'en-tête que le dossier portait (47 du fork, 64 de
+`keyframeHeaderBits`, 108 de `keyframeFullStateHeaderBits`) ne fermaient pas. La phase 4 l'a
+dérivée en suivant le lecteur, et la chaîne ci-dessous est la raison.
+
+**Le point de bascule : la table d'image-clé n'est PAS lue par le lecteur de record NEW.** Le
+modèle du dépôt (en-tête 64 bits, état par défaut, MASQUE de présence, composants) a une borne
+supérieure arithmétique de `64 + 22 + 65 = 151` bits avant le premier composant — **35 bits trop
+court**, quelle que soit la donnée. C'est le lecteur d'ÉTAT COMPLET `FUN_142e2bfd0` qui la lit, et
+sa boucle n'a **aucun masque de présence**.
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| **`0x142e2bfd0`** | **lecteur d'ÉTAT COMPLET** — en-tête PAR ENTITÉ de **108 bits** : `R(32)` id, `R(32)` typeIndex, `R(32)`, `R(4)`, `R(8)` ; puis `R(32) n1` [si `>0` → état par défaut], `R(32)` de contrôle **si `FUN_14076cea8()`**, `R(32) n2` [si `>0` → `vtable[0x88]` puis la boucle] | décompilé ; chaque lecture inline incrémente `*(param_1+0x2c)` de la largeur annoncée |
+| `0x142e29cf8` | **`R(4)`** — le 4ᵉ champ de l'en-tête par entité | désassemblage : `*(param_1+0x2c) += 4` |
+| `0x142e2c690` | la boucle des 64 entrées nommées de l'archétype, **sans masque de présence** | via `FUN_1428e2b68` |
+| `0x14076cea8` | prédicat RUNTIME (`DAT_144c23326` si `FUN_1404f2b4c()`, sinon `DAT_1450e24e8`) qui gate le mot de contrôle de 32 bits — **indécidable statiquement** ; mesuré FAUX sur les films du cache | décompilé |
+| **`0x1436fff28`** | **vtable de l'archétype ti=9 (`managed-player`)**, relue octet à octet | xrefs [DATA] sur `0x1410d7540`, puis `vtable+0x60 == 0x1410d7540` |
+| `0x14111fd9c` (`vtable+0x30`) | `XORPS XMM0,XMM0 ; MOV RAX,RDX ; MOVUPS [RDX],XMM0 ; MOVUPS [RDX+0x10],XMM0 ; MOV dword [RDX],1 ; RET` — **0 bit** | octets relus : `0f57c0 488bc2 0f1102 0f114210 c70201000000 c3` |
+| `0x141071a58` (`vtable+0x88`) | `memset(dst, 0, 0x88)` puis des constantes ; **ne reçoit pas le lecteur de bits → 0 bit** | décompilé |
+| `0x1410d7540` (`vtable+0x60`) | état par défaut de `managed-player` : `FUN_1406cf008` = `R(1)` ; si 1 → `R(8)` ; `R(6)` ; `R(6)` ; `R(1)` — **14 ou 22 bits** | décompilé |
+| **`0x1406cf008`** | **lit UN bit** et le rend : c'est la porte du préfixe de version ET le prédicat « mode film » du corps | `*(param_1+0x2c) += 1` |
+| `0x1406d7610` | le MASQUE de présence du chemin NEW : `R(1)` ; si 1 → `R(64)` ; sinon `R(3)` = compte puis compte × `R(6)` | décompilé — c'est exactement `consumeMask` du dépôt |
+| `0x1408f1aa4` | lecteur de record NEW : `R(6)` typeIndex, `vtable[0x60]`, `vtable[0x88]`, `vtable[0x30]`, puis `FUN_14076cb60` | décompilé |
+| `0x1406cbaa0` | la boucle de records (`param_1` = 1 NEW / 2 DELTA / 3 destruction) ; en mode film, `R(1)` + `R(8)` de version AVANT `FUN_1408f1aa4` | décompilé |
+
+**La somme, pour ti=9, sans aucun ajustement :**
+
+```
+  108   en-tête par entité       FUN_142e2bfd0
++  32   n1                       R(32), testé > 0
++  14   état par défaut          FUN_1410d7540, préfixe de version à 0
++  32   n2                       R(32), testé > 0
+= 186   premier composant        managed-player-team-designator-component, R(4)
+```
+
+**Deux fermetures arithmétiques gratuites confirment l'en-tête de 108 bits**, mesurées sur
+2 424 records ti=9 : `n1 = 12` (= la taille exacte de la structure que `FUN_1410d7540` remplit :
+`uint @ +0`, `uint @ +4`, `bool @ +8`) et `n2 = 136 = 0x88` (= le `memset(dst, 0, 0x88)` de
+`vtable[0x88]`) sur les films du build courant. Un en-tête mal dimensionné lirait deux mots de
+32 bits quelconques.
+
+**Règle de profil qui en découle** (`KeyframeLayout` de l'architecture cible, section 5) :
+`début des composants(ti) = 172 + largeur de l'état par défaut(ti)`, plus 32 si le drapeau de
+contrôle du build est actif. Mesurée identique sur cinq builds (`HI_1_4_1`, `HI_1_8_0`,
+`HI_1_10_0`, `HI_1_11_0`, `HI_1_13_0`).
+
+**Corollaire pour le champ de 2 bits de `FUN_1407ecb08`** (section 8, slot `+0x08`) : il est écrit
+comme un **octet SIGNÉ sur 2 bits**, son domaine est `-2..1` et il a été mesuré à **1** sur des
+enregistrements réels. Le balayage de roster qui l'exigeait nul rendait ces slots invisibles.
+
+Détail, contrôles chiffrés et commandes de rejeu :
+`.ai/V7.5/film_re/NOTE_PROFIL_PAR_BUILD_2026-09-12.md`.
+
+### 8.5 Cinq états par défaut d'archétype, relus et confirmés par la mesure (2026-09-13, phase 5a)
+
+La phase 4 avait établi la FORME du record d'image-clé (lecteur d'état complet `FUN_142e2bfd0`,
+début des composants = `172 + largeur de l'état par défaut(ti)`). La phase 5a l'a CHIFFRÉE
+archétype par archétype, et la mesure a désigné cinq archétypes dont le dépôt consomme **0 bit**
+d'état par défaut alors que leur `vtable[0x60]` en lit plusieurs. Chaque largeur ci-dessous est
+tenue par **deux chaînes sans étape commune** : le décompilé (colonne « grammaire ») et la
+mesure sur les films (colonnes « oracle `n2` » et « fermeture »).
+
+| ti | `vtable[0x60]` | grammaire relue (décompilé) | largeur, préfixe de version à 0 | oracle `n2` | fermeture mesurée |
+|---|---|---|---|---|---|
+| **14** | `0x140FED6F4` | `FUN_1406cf008` = R(1) ; si 1 → R(8) ; puis **R(5)** | **6 bits** | `n2 = 28` constant | **864/864 · 1 792/1 792 · 2 368/2 368** (3 builds) |
+| **17** | `0x14101A0A4` | V ; puis **R(7)** | **8 bits** | `n2 = 432` constant | **891/891 · 1 947/1 947 · 2 541/2 541** (3 builds) |
+| **21** | `0x141133C24` | **aucun préfixe de version** ; un unique **R(0x12)** | **18 bits** | `n2 = 244` constant | 0/373 (largeur juste, composant encore faux) |
+| **29** | `0x14116F514` | **`FUN_1406cf008` SEUL** — R(1) ; si 1 → R(8) ; rien d'autre | **1 bit** | `n2` constant AUSSI à 0 bit — l'oracle ne tranche pas | **27/27 · 56/56 · 55/74** |
+| **47** | `0x1410F44F8` | V ; puis **R(5)** | **6 bits** | `n2 = 252` constant | 0/1 679 (idem `ti=21`) |
+
+`V` désigne le préfixe de version commun du dossier : `FUN_1406cf008` = `R(1)`, et si le bit
+vaut 1, `R(8)`. Il vaut **0 sur tout le corpus** (6 films, 3 builds), comme pour `ti=9` en
+phase 4 — les largeurs ci-dessus sont donc les largeurs nominales, 8 bits de plus si le bit de
+version est mis.
+
+**Deux corrections de dossier tombent avec cette lecture :**
+
+1. **`ti=14` n'est pas un STUB.** `default_state_arch.go` le range parmi les stubs
+   (« + ti14 = FUN_140467a20, un `return;` partagé ») ; `KEYFRAME_ARCHETYPE_DEFAULTSTATE_TABLE.md`
+   lui donne `0x140FED6F4`, classé REAL. **La table a raison** : `FUN_140FED6F4` consomme 6 bits,
+   et les poser fait fermer 5 024 records sur 5 024.
+2. **`ti=14` n'est pas « R(5) » non plus.** La ligne « RESTE À FAIRE » de la table donnait
+   « ti=14→R(5) » : le `R(5)` est exact, mais le préfixe de version d'un bit manquait, d'où 6 et
+   non 5.
+
+**Ce que l'oracle `n2` peut et ne peut pas faire — borné par `ti=29`.** La phase 4 présentait
+`n2` comme un détecteur gratuit de largeur d'état par défaut fausse. La phase 5a le confirme
+dans un sens (`n2` dispersé ⇒ largeur fausse à coup sûr) et le **réfute dans l'autre** : sur
+`ti=29`, `n2` est constant à la largeur portée (0 bit) alors que la vraie largeur est 1 bit. Une
+zone de bits constante rend plusieurs décalages également « constants ». `n2` détecte ; seule la
+FERMETURE (la marche atterrit sur l'ancre du record suivant) mesure.
+
+**Le chiffre qui motive un lot de production.** Sur 62 686 records d'image-clé bornés (6 films,
+3 builds) : le modèle de la production (en-tête 64 bits + masque) en ferme **0** ; la forme
+d'état complet en ferme **8 796 (14,0 %)** contre un plancher de hasard mesuré à **0,8 %** (le
+même lecteur, en-tête décalé d'un bit) ; en ajoutant `ti=14`, `ti=17` et `ti=29`, **19 337
+(30,8 %)**. Et la production ne déraille pas par manque de couverture : sous son modèle, **5,5 %
+seulement des records désynchronisent**, les 92 % restants marchent jusqu'au bout et atterrissent
+au mauvais bit.
+
+Détail, contrôles chiffrés et commandes de rejeu :
+`.ai/V7.5/film_re/NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md`.
+### 8.6 L'ÉCRIVAIN d'état complet, le drapeau de contrôle et le nom d'un désignateur (2026-09-13, phase 5b)
+
+> Section écrite par le lot « résidus » dans le worktree `wt/film-residus`. La section 8.5 est
+> écrite en parallèle par un autre lot ; les deux seront fusionnées par le pilote.
+
+La phase 4 avait lu le **lecteur** d'état complet `FUN_142e2bfd0` et noté qu'un mot de 32 bits
+« de contrôle » y est lu entre l'état par défaut et `n2` quand `FUN_14076cea8()` est vrai. Ce lot
+a lu le **symétrique**, et il dit ce que ce mot contient : ce n'est pas un champ, c'est une
+**sentinelle constante**.
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| **`0x142e2d08c`** | **ÉCRIVAIN d'ÉTAT COMPLET** — le symétrique de `FUN_142e2bfd0` : `R(32)` id, `R(32)` typeIndex, `R(32)`, `R(4)`, `R(8)` ; puis `R(32) n1` [si `>0` → `vtable[0x58]` = l'état par défaut], **la sentinelle si le drapeau**, `R(32) n2` [si `>0` → `FUN_1428e38ec`] | décompilé ; l'écrivain de bits est inliné, chaque champ incrémente `*(param_1+0x2c)` de sa largeur |
+| **`0x0FFDDCBA`** | **LA SENTINELLE** écrite sur 32 bits quand `DAT_1450e24e8 != 0` — un marqueur de détection de corruption, pas une donnée. Le nom `filmComponentCorruptionCheck` que le dépôt porte déjà est donc exact | `if (DAT_1450e24e8 != '\0') { … 0xffddcba … }` dans `FUN_142e2d08c` |
+| `DAT_1450e24e8` | le drapeau côté **écrivain**. **Aucune écriture** dans l'image (3 lectures : `FUN_142e2d08c`, `FUN_14076cea8`, et `FUN_14299b674`, l'initialiseur de l'écrivain de film) ; valeur statique **0** | `get_xrefs_to` + lecture mémoire |
+| `DAT_144c23326` | le drapeau côté **lecteur**, choisi par `FUN_14076cea8` quand `FUN_1404f2b4c()` est vrai. **Aucune écriture** ; valeur statique **0** | idem |
+| **`0x1404f2b4c`** | le prédicat de choix : `*(uint *)(index * 0x1134f0 + 0xea71c + DAT_145121d28) == 2`. Le pas `0x1134F0` est la taille de la structure de session que `FUN_14095944c` recopie pour le film, et `+0xEA71C` est un champ que l'écrivain du corps sérialise — les deux chemins parlent du même objet | décompilé |
+| `0x1407ec828` | **`jeu+0xEA71C` est écrit sur 2 BITS**, pas 1 comme la section 8 le portait : `MOV R9D,[RSI+0xea71c]` puis `SHL RDX,0x2` à `1407ec844`. Domaine `0..3` — la valeur `2` est donc représentable dans le film | désassemblage |
+
+**Mesure sur les films (négatif publié avec son témoin positif).** La sentinelle `0x0FFDDCBA`,
+cherchée à tout décalage de bit dans **250 paquets de type 2** de 10 films couvrant les **7
+builds** : **0 occurrence**. Témoin positif du même instrument : à la position où elle tomberait
+(`i0 - 32`), on lit `n2` sur **4 368 records ti=9 sur 4 368**. Troisième lentille : le critère
+interne d'équipe passe à `d = 186` sur 8 films sur 10, **à `d = 218` sur 0 sur 10** (on y lit `15`
+partout, hors du domaine `1..9`). **Le drapeau est inactif dans tous les films du cache**, et
+c'est désormais mesuré, non plus déduit.
+
+#### Le consommateur d'affichage du désignateur d'équipe
+
+La table `mp_team_designator` (§8.3) n'a **aucune référence de code** : ni son descripteur
+(`0x1445c0c00`), ni son tableau de 9 noms (`0x144723da0`, dont la seule référence est le
+descripteur). Le descripteur appartient à une table d'entrées de pas **`0x58`** (vérifié sur
+`0x1445c0ba8`), consommée **par nom** à l'exécution par le système de script. Le consommateur se
+trouve donc en suivant le nom de la fonction de script, pas la table.
+
+| Fonction / donnée | Rôle | Preuve |
+|---|---|---|
+| `0x1436e34f0` | chaîne `"AddTeamDesignatorStringIdsToList"` | `search_strings` |
+| `0x140ee83dc` @`140ee863d` | l'enregistrement qui apparie ce nom au pointeur de fonction `0x142d417c0` | désassemblage : `LEA RAX,[0x1436e34f0] ; MOV [RBP+0xb0],RAX` puis `LEA RAX,[0x142d417c0] ; MOV [RBP+0xb8],RAX` |
+| **`0x142d417c0`** → **`0x142d40c1c`** | **empile, dans cet ordre, les identifiants de chaîne `team_0`, `team_1`, …, `team_7`, `team_neutral`** — neuf entrées | décompilé |
+| `0x1436daff0` · `0x1436db008` | `"First"` · `"Neutral"` — les deux extrémités du tableau de 9 noms de `mp_team_designator` | lecture mémoire |
+
+**Conséquence.** Deux voies sans étape commune — la table de l'énumération (lue en données) et la
+liste d'identifiants de chaîne (lue en code) — donnent **neuf entrées, même ordre**, et la seconde
+**nomme la numérotation** : elle part de `team_0`. La correspondance `team_id 0` → désignateur 0 →
+`team_0` → `First` est donc **prouvée pour l'indexation**. Ce qui ne l'est pas : que l'étiquette
+affichée de `team_0` soit « Eagle » — le binaire ne porte que l'identifiant, le libellé vit dans
+les fichiers de chaînes du jeu. La seule trace d'Eagle/Cobra dans l'exe est côté variante de mode
+(`eagleStartScore` à `variante+0x1108` via `FUN_142c76fc0`, `cobraStartScore` à `+0x110C` via
+`FUN_142c76ef8` : Eagle au plus petit offset), cohérent mais pas probant.
+
+#### Deux corollaires mesurés sur les films
+
+1. **La longueur d'un enregistrement de slot VACANT se calcule** :
+   `85 + 64 + 11 + 1 + 12 + 8 + 832 + 16 + 128 + 32 + 64 + 46` = **1 299 bits**, plus le bloc de
+   personnalisation, le bloc de queue (352) et le u32 final (32). Sur `HI_1_10_0`/`HI_1_11_0` :
+   **13 619 bits**, et c'est **au bit près** le surplus des deux écarts aberrants laissés par la
+   phase 4. Un tel enregistrement est doublement invisible au balayage (booléens de tête `0/0/0`,
+   XUID nul) ; son seul bit non nul est le champ de 6 bits `sub+0xc35`, qui y vaut **0** là où un
+   slot occupé porte **-1**.
+2. **La transposition de la grammaire du slot par build (§8.2) est portée par le SEUL bloc de
+   personnalisation `sub+0xcc0`** : 1 852 o (`HI_1_12_0`/`HI_1_13_0`), 1 492 (`HI_1_10_0`/
+   `HI_1_11_0`), 1 312 (`HI_1_8_0`/`HI_1_9_0`), 2 052 (`HI_1_4_1`). Mesuré sur les films sans
+   exécutable de ces builds, en coupant l'enregistrement autour du bloc de queue : tout le reste
+   de l'enregistrement vaut **270 bits sur les sept builds**. Deux des trois écarts ferment sur le
+   pas des 24 attaches d'armure de `FUN_1407ebf44` (`360 = 10 × 0x24`, `540 = 15 × 0x24`) ; le
+   troisième (`+200` octets) ne ferme sur aucun pas connu.
+
+**Et l'octet 55 du pied de film n'est pas l'équipe.** Balayage aveugle des 60 octets du bloc
+d'événement (chunk de type 3), trois lectures par octet, contre l'équipe prouvée par la trame :
+**`b37` et `b38` valent l'équipe sur 665 événements sur 665** (14 films), tandis que `b55` — celui
+que `objectiveevents/film.go` lit sous le nom `teamRaw` — **vaut 0 sur les 665**. Plancher de
+bruit mesuré : **4 lectures parfaites sur 180 essayées**, et ce sont les deux de `b37` et les deux
+de `b38`.
+
+Détail, contrôles chiffrés et commandes de rejeu :
+`.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md`.

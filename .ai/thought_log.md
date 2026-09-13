@@ -107079,3 +107079,452 @@ Vite, inventaire des tâches de fond à chaque point).
 des branches WIP (garde index PSA + rectification du numéro d'issue DuckDB ; purge et garde-rail
 LUSR h5_arena) avant la copie des bases ; puis séquence de release Notion (à la main de
 l'utilisateur).
+---
+
+## [2026-09-12] Section 3 de chunk_00 : le film porte la table des joueurs du match — Complete
+
+**Contexte** : la carte de `chunk_00` du 2026-08-30 laissait une troisième section d'environ
+538 ko par film, propre au match, non décodée — « la plus grosse donnée inexplorée du format ».
+Les statistiques sur les octets (entropie, périodicité 2..1024, zlib imbriqué, paquets de 16 o,
+identifiants en clair) avaient toutes échoué. Chantier borné dans le worktree dédié
+`LevelUp-wt-section3-chunk00` (branche `wt/section3-chunk00`), sans commit.
+
+**Décision technique principale** : ne pas remesurer les octets, suivre le CONSOMMATEUR/l'écrivain
+dans `HaloInfinite.exe` (méthode, règle 1), en partant de l'ancre que le lot D avait laissée : les
+chaînes d'identification de build. `HI_1_13_0` (`0x1436a37c0`) → `FUN_140b32390` (structure d'infos
+de build) → `FUN_140b32438` (globales) → **`FUN_14299b674`**, l'initialiseur de l'écrivain de film,
+qui recopie version/build/saveur dans des champs de 32 octets aux offsets exacts mesurés le 30/08.
+De là, `FUN_14299cb5c` (tampon de `0x1E1B80` = 1 973 120 octets, la taille inflatée connue), puis
+**`FUN_14299b198` et `FUN_14299b278`** dont le désassemblage donne la carte complète du fichier,
+champ par champ, avec la largeur en BITS (`MOV R9D,<bits> ; CALL FUN_1406d60f4`).
+
+**Le point dur** : un booléen d'UN BIT à `0x0CB45C` (`FUN_1406d49c4`) décale tout le reste du
+fichier d'un bit. Aucune lecture alignée sur l'octet ne pouvait rendre quoi que ce soit après cet
+offset — c'est toute l'explication du « amorphe » du 30/08.
+
+**Résultats observés** :
+- Contrôle d'échelle sur 250 films : **8 enregistrements sur 198 films, 24 sur 2 films** (taille
+  exacte d'une « Grande bataille »), **jamais plus de 32** — la borne de l'écrivain. Le balayage
+  ignore tout des modes de jeu.
+- **Fermeture arithmétique sans ajustement** : `0x000008 + 0x659000/8 = 0x0CB208` (début de la
+  table par type) et `0x0CB208 + 123 x 4 = 0x0CB3F4` (offset du champ version, mesuré le 30/08 par
+  une tout autre voie). La table par type compte **exactement 123 entrées à `0x0CB208`** :
+  question ouverte n°2 du 30/08 FERMÉE.
+- Les deux u32 inconnus de `0x0CB454` sont l'**identifiant de build** et le **changelist**
+  (globales `DAT_144e4ef50` / `DAT_144e4ef54`) : question ouverte n°4 FERMÉE.
+- **L'horodatage du match est dans le film** : 32 bits à `0x0CB65C x 8 + 1`. Un seul décalage de
+  bit sur dix-sept rend une valeur plausible, et c'est celui que l'écrivain prédit. Confronté à
+  `match_registry.start_time_utc` : **+19 s, +29 s, +43 s** (seuil écrit avant la mesure : 120 s).
+- **Le corps se termine par 32 enregistrements de `0x1450` octets, un par slot**
+  (`0x28A00 / 0x1450 = 32`, borne littérale `LEA RSI,[RDI+0x28a00]`), sérialisés par
+  **`FUN_1407ecb08`** : 1+1+1 bits booléens, 32 bits, 2 bits, 48 bits, puis **64 bits = le XUID**.
+- **44 des 45 XUID humains de `match_participants` retrouvés exactement une fois** sur 6 films et
+  2 builds, **44/44 avec l'en-tête conforme** (1/0/0 + u32 nul + 2 bits nuls), **0 faux positif
+  sur 240 leurres** tirés au hasard dans la même plage d'XUID Xbox.
+- **Le roster se reconstruit sans aucune entrée externe** : le seul motif d'en-tête rend 8/8/8/8/4/8
+  enregistrements contre 1 à 2 positions parasites par film, toutes éliminées par deux filtres
+  écrits d'avance.
+- Contrôle croisé interne le plus fort du lot : **la longueur d'un enregistrement suit le JOUEUR,
+  pas le match** — `2533274823110022` fait 27 969 bits sur 4 films, `2533274858283686` fait
+  28 081 bits sur 4 films, à travers deux builds. 2/2.
+- Gates : `go vet` net, `go test ./internal/analysis/filmdec/` ok, `go test ./internal/archlint/` ok. Aucun code de production touché, aucune variable de
+  paquet ajoutée.
+
+**Découvertes non traitées (règle 7)** : (a) **le registre ECS commence à l'octet 8**, pas à 0 —
+`parseRegistry` lit décalé de 8 octets, ce qui explique d'un coup « kind = 0 sur 1 066 des
+1 067 slots » (30/08) et « le niveau lu un cran plus loin » du commentaire de `registryBlockTail` ;
+la question « défaut ou décalage intentionnel compensé ailleurs » n'est PAS tranchée et y toucher
+casserait des décodages validés ; (b) `parseRegistry` divise toujours le fichier entier par la
+taille d'un bloc, la borne exacte est 50 ; (c) le cache local ne contient plus que deux builds
+(1 123 `HI_1_13_0`, 146 `HI_1_12_0` sur 1 351 répertoires) — les builds `HI_1_5_1` à `HI_1_11_0`
+du recensement du 30/08 ont disparu, donc la vérification a porté sur deux builds et non trois.
+
+**Livrables** : `.ai/V7.5/film_re/NOTE_SECTION3_CHUNK00_2026-09-12.md` (carte complète, contrôles
+chiffrés, commandes de rejeu), section 8 de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md` (tableau
+des fonctions avec preuve), instruments
+`apps/go-api/internal/analysis/filmdec/section3_ecrivain_research_test.go` et
+`section3_roster_research_test.go` (garde `CHUNK00_FILMS`).
+
+**Prochaine étape** : désassembler `FUN_1407ecd00` (premier sous-sérialiseur du slot, `sub+0x00` à
+`sub+0xC10`) pour l'ÉQUIPE et le GAMERTAG — le contrôle positif est déjà en main (les gamertags
+UTF-16 lisibles mesurés le 30/08 doivent tomber dans l'enregistrement du bon XUID). Puis vérifier
+si l'ordre des enregistrements coïncide avec le `player_index` 5 bits de production
+(`resolvePlayerIndices`) : si oui, une table explicite remplace l'inférence par le fil des morts.
+
+---
+
+## [2026-09-12] Section 3 de chunk_00, phase 2 : la grammaire du slot, le gamertag, l'ordre — et la personnalisation reservee mais vide — Complete
+
+**Contexte** : reprise d'une phase 2 interrompue par la limite de quota. Un agent precedent avait
+ecrit trois instruments (`section3_slot_{grammar,ordre,perso}_research_test.go`, 1 018 L) sans les
+executer ni les consigner. Objectifs : grammaire complete d'un enregistrement de slot (equipe et
+gamertag en priorite), verdict sur l'hypothese de l'utilisateur « l'enregistrement porte la
+personnalisation du joueur », ordre des slots contre le `player_index` de production, et
+verification multi-build. Worktree dedie `LevelUp-wt-section3-chunk00` (branche
+`wt/section3-chunk00`), sans commit, aucun code de production touche.
+
+**Decision technique principale** : ne rien faire reposer sur le decompile. Chaque largeur de champ
+du sous-enregistrement `FUN_1407edea8` a ete relue **dans le desassemblage de son propre ecrivain**
+(`MOV ECX,<largeur>`), ce qui a corrige une lecture de la phase 1 : `FUN_1407ece18` n'est pas un
+ecrivain de scalaire de 16 bits mais un **ecrivain de chaine UTF-16** (`TEST DI,DI ; JNZ`), donc
+`sub+0xc14` EST le gamertag — la section 8.1 du relevé Ghidra affirmait le contraire. Pour le
+verdict personnalisation, la voie decisive a ete le **serialiseur DELTA de la meme structure**
+(`FUN_140969c54`), qui passe `sub+0xcc0` champ par champ a `FUN_1407ec27c` avec les noms en clair
+(`variantName`, `coatingName`, `actionPose`, ...) — et la fermeture `0x738 + 4 = 0x73C = 1 852`
+prouve que c'est bien le bloc brut de l'ecrivain de film.
+
+**Resultats observes** :
+- **Grammaire : elle FERME.** La longueur totale d'un enregistrement est PREDITE a partir de quatre
+  nombres lus dans le flux : **38/38** ecarts sur les 6 films temoins, **560/567** sur 76 films
+  (les 7 restants encadrent une position parasite du balayage, desormais comptee a part).
+- **Gamertag : 616/636** noms egaux au `roster[].name` des documents de rejeu sur 76 films ; 8/8
+  contre l'oracle du seul film temoin qui en a un. Contrôle positif du 30/08 PASSE.
+- **Un SECOND champ de nom** : le bloc brut `sub+0x1400` (44 o), en UTF-16 petit-boutiste —
+  **640/640** blocs portent le gamertag de leur enregistrement, **0/44** en gros-boutiste. Offset du
+  nom dans le bloc : 0 en `HI_1_13_0`, 12 en `HI_1_12_0`.
+- **Contradiction texte du 30/08 TRANCHEE** : 18 touches du balayage UTF-16 aligne sur l'octet,
+  **9 dans le champ de nom, 9 dans le bloc de queue, 0 hors grammaire**. Il y avait bien deux champs
+  de texte ; aucune des deux lectures n'etait fortuite.
+- **VERDICT PERSONNALISATION : structure PROUVEE, contenu REFUTE.** Le bloc `sub+0xcc0` (1 852 o)
+  est ecrit **integralement a zero** : 0 octet non nul sur 81 488 (44 enregistrements, 6 films,
+  2 builds), 0/24 attaches d'armure, tous les champs nommes a `00000000`. Et aucune autre zone ne
+  porte de tenue : le prefixe commun d'une zone chez un meme joueur d'un match a l'autre s'arrete a
+  **0 a 16 octets** sur 447/702/668. Lecon de methode : **P-STA sans P-DIS ne prouve rien** — les
+  trois zones « stables 3/3 joueurs » etaient les trois zones de zeros, ce que P-DIS revele (1 seule
+  empreinte, partagee par 36 xuids).
+- **Second volet de l'hypothese REFUTE** : les deux classes de longueur ne sont pas « avec / sans
+  bloc de personnalisation » (largeur fixe, toujours ecrite) mais **les trois listes prefixees**
+  vides ou pleines. Fermeture : `702 x 8 + 167 x 32 = 10 960` et l'ecart mesure vaut
+  `10 992 = 10 960 + 32` (les 32 bits de difference de longueur des deux gamertags).
+- **Equipe : fermee par la NEGATIVE.** Les neuf champs courts candidats sont CONSTANTS sur les 44
+  enregistrements (`f10=183` partout, les autres a 0 ou -1) ; seul `f1` varie et il vaut exactement
+  « les listes sont pleines ». Aucun ne partage un roster en deux moities egales (0/6 films).
+- **Ordre des slots = `player_index` de production** : 605/637 slots en egalite stricte, 72/76 films
+  en coincidence totale, et surtout **76/76 films ou `filmIndex - rang` est CONSTANT** — les 4 films
+  en desaccord sont une troncature de tete du lecteur, pas une permutation.
+- **Multi-build : la premisse de la phase 1 etait fausse.** Le cache porte **7 builds** (13 groupes),
+  pas deux. La grammaire du slot s'y transpose par **une seule constante** (-2 880 bits en
+  `HI_1_11_0`/`HI_1_10_0`, -4 320 en `HI_1_9_0`/`HI_1_8_0`, +1 600 en `HI_1_4_1`), identique sur tous
+  les enregistrements d'un film, et le XUID comme le nom survivent partout
+  (**11 550/11 728** gamertags imprimables). Le decalage d'en-tete se ferme trois fois :
+  `16 640 (un bloc de registre) + 4 x (entrees manquantes de la table par type)`.
+- Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
+  `go test ./internal/analysis/filmdec/` sans garde **ok**, `go test ./internal/archlint/` **ok**.
+  Aucune variable de paquet ajoutee, fichiers a 427/479/439/229 L (seuil 500), fonctions sous 80 L.
+
+**Corrections apportees aux instruments laisses par la phase 2 interrompue** : (1) l'oracle lisait
+`tracks[].team` des documents de rejeu, or ce champ vaut **-1 partout** (schemas 2 et 53) — l'equipe
+arrive maintenant par `CHUNK00_EQUIPES` ; (2) `CHUNK00_REPLAYS` accepte plusieurs repertoires ;
+(3) G-TXT utilisait une tolerance de 8 bits qui excluait toutes les touches reelles — remplacee par
+un test d'**appartenance aux plages** des deux champs de texte (18/18) ; (4) G-T44 supposait l'offset
+du nom dans le bloc de queue, il le **cherche** desormais ; (5) l'instrument perso mesurait les
+champs nommes d'un bloc **vide** sans l'avoir verifie : P-ZER passe maintenant en premier ; (6) les
+zones porteuses (masque, liste d'octets, liste de mots) n'etaient pas capturees du tout ;
+(7) un test de stabilite par joueur des champs courts, redondant avec la distribution globale, a ete
+supprime (regle 7).
+
+**Decouvertes non traitees (regle 7)** : (a) le decalage de 8 octets de `parseRegistry` — connu, non
+tranche, pas touche ; (b) `TestD1Builds` compte 124 entrees de table par type la ou l'ecrivain en
+ecrit 123 (heuristique de `lireEntete`), les ecarts RELATIFS entre builds restent coherents ;
+(c) le lecteur chaine perd la tete de la table sur 4 films sur 76 ; (d) 5 films du cache n'ont pas de
+section d'identification et se comportent comme `HI_1_4_1`.
+
+**Livrables** : `.ai/V7.5/film_re/NOTE_SECTION3_SLOTS_2026-09-12.md` (verdict, grammaire champ par
+champ, controles chiffres, profil par build, commandes de rejeu), section **8.2** de
+`.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md` (+ correction de la conclusion de 8.1, devenue fausse
+pour le gamertag), instruments
+`apps/go-api/internal/analysis/filmdec/section3_slot_{grammar,ordre,perso,builds}_research_test.go`.
+
+**Prochaine etape** : chercher l'equipe dans les trois listes prefixees en suivant le CONSOMMATEUR
+(methode, regle 1) — trouver le desserialiseur de `FUN_1407ecd00` et lire qui compare le resultat a
+des constantes. Puis, si la table des slots doit servir en production, rendre le lecteur robuste a
+la troncature de tete et calibrer la constante de build sur le film lui-meme.
+
+## [2026-09-12] Équipe dans le film, phase 3 : elle n'est pas dans `chunk_00`, elle est dans la trame — Complete
+
+**Statut** : Complété. Branche `wt/section3-chunk00`, aucun commit, aucun code de production
+modifié.
+
+**Question** : où le film Theater porte-t-il l'équipe de chaque joueur ? La phase 2 avait fermé la
+question par la négative sur l'enregistrement de slot de `chunk_00` (huit des neuf champs courts
+constants sur tout le corpus) et laissait trois branches ouvertes : les trois listes préfixées du
+sous-enregistrement, le composant `game-engine-team-mapping-component` de la trame, ou un chunk de
+type 8 « PLAYER_METADATA ».
+
+**Décision technique principale** : suivre le CONSOMMATEUR (méthode, règle 1) au lieu de continuer à
+corréler des champs. Le nom du composant ECS a mené en trois sauts au descripteur, puis au lecteur,
+puis à la primitive qui donne la largeur ET la convention de valeur. **L'équipe est dans la trame
+d'état (paquets de type 2), composant `managed-player-team-designator-component` de l'archétype
+ti=9, composant i0, 4 bits, à 186 bits du début du record d'image-clé, et la valeur écrite vaut le
+désignateur PLUS UN** (donc 0 = aucune équipe). Écrivain `0x142edbd3c`, lecteur `0x140f581e8`,
+primitive `FUN_1407ef804`, descripteur `0x143d08ad0`, énumération `mp_team_designator` à
+`0x144723da0` (9 noms, `First`..`Eighth`, `Neutral`).
+
+**Résultats observés** (22 films : 14 d'arène, 6 de Grande bataille, 2 de FFA) :
+(1) l'archétype ti=9 porte bien ce composant en i0 dans le registre du FILM, 22/22 ;
+(2) 8 entités ti=9 par image-clé en arène, **24 en Grande bataille**, slots consécutifs de pas 2,
+longueur de record constante (459/460 bits selon le build) ;
+(3) **16 films sur 18 en accord EXACT terme à terme** avec `match_participants.team_id`,
+**160/176 slots**, dont **24/24 deux fois** en Grande bataille ;
+(4) le balayage complet du record ne rend **qu'UN décalage** satisfaisant l'oracle, `d = 186`, sur
+16/16 films à équipes — 0 faux positif sur 7 292 positions, **0 touche sur 576** décalages voisins ;
+(5) **témoin négatif naturel propre** : les deux films de FFA lisent `0` sur les huit entités, le
+moteur ne donne aucun désignateur en FFA (l'écart avec la base vient de la base, qui fabrique un
+`team_id` par joueur) ;
+(6) contrôle interne gratuit, 22/22 : le désignateur bouge **si et seulement si** la suite des slots
+des entités ti=9 bouge — il est stable par entité, c'est la réattribution de slot qui déplace
+l'appariement ;
+(7) `game-engine-team-mapping-component` est **réfuté** comme source : état de 20 octets, table de
+**huit** entrées gatée par un masque à `+0x06`, six champs nommés par le vidangeur de debug
+`FUN_142f1b44c` (`team-mapping`, `shared-team-lives`, `current-state`, `game-finished`,
+`current-round`, `round-timer`) — un composant global de partie, pas un joueur ;
+(8) le chunk de type 8 est **réfuté par la mesure** : les 1 351 manifestes du cache ne déclarent que
+les types 1, 2 et 3 ;
+(9) **une affirmation de la production est réfutée** : `replay/document.go:577`, `document.go:365`
+et `build.go:577` déclarent « l'équipe n'est PAS dans le film » et écrivent `Team: -1` en dur.
+Le chemin actuel passe par la base (`match_participants.team_id` → `equipesParXUID` →
+`FlagInput.TeamOf`, et `objectiveevents.Roster`), et ses pertes sont déjà comptées par le code
+lui-même (`CarrierTeamUnknown` : « table `TeamOf` vide, CLI hors ligne »).
+
+**Découvertes non traitées (règle 7)** : (a) la production lit `b55` du pied de film là où
+l'archive a confirmé `b37`/`b38` — trois affirmations, deux offsets, aucune tranchée ; (b) le
+décalage de 8 octets de `parseRegistry`, connu, non tranché ; (c) aucune entité ti=9 dans le
+PREMIER paquet de type 2 (`chunk_01`), cause non établie ; (d) le lecteur de la table des slots de
+`chunk_00` casse sur les gros rosters (contourné par un repli documenté, cause non traitée) ;
+(e) la réattribution de slot en cours de match, qui impose d'indexer par SLOT et non par rang.
+
+**Livrables** : `.ai/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md` (verdict, chaîne de
+l'exécutable, six contrôles chiffrés, chemin actuel de la production et ses pertes, commandes de
+rejeu), section **8.3** de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
+`apps/go-api/internal/analysis/filmdec/equipe_film_{recon,designateur,oracle}_research_test.go`.
+Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
+`go test ./internal/analysis/filmdec/` sans garde ok, `go test ./internal/archlint/` ok.
+
+**Prochaine étape** : expliquer le décalage 186 au lieu de le mesurer (il vaut l'en-tête par entité
+plus le bloc d'état par défaut de ti=9, deux largeurs non tranchées — même question que le plan
+R7-e et que la valeur 47 du fork chasewoodhams), puis vérifier `d = 186` sur les builds antérieurs.
+Pour un branchement en production : rendre le lecteur de `chunk_00` robuste aux gros rosters et
+indexer le désignateur par slot ; l'artefact de rejeu pourrait alors porter l'équipe réelle sans
+ouvrir aucune base.
+
+## [2026-09-12] Profil par build, phase 4 : 186 dérivé, builds anciens mesurés, lecteur de roster réparé — Complété
+
+**Statut** : Complété. Travail hors ligne, lecture seule (Ghidra instance partagée, aucun
+renommage ni sauvegarde ; DuckDB lu uniquement dans la sauvegarde
+`data/backups/pre-chaine-2026-09-09/`). Aucun code de production modifié, aucun commit.
+Worktree dédié `LevelUp-wt-section3-chunk00`, branche `wt/section3-chunk00`.
+
+**Décision technique n°1 — EXPLIQUER 186 au lieu de le mesurer, en suivant le LECTEUR.** La
+phase 3 avait mesuré le champ d'équipe à 186 bits du début d'un record d'image-clé sans pouvoir
+le dériver : les trois largeurs d'en-tête du dossier (47 / 64 / 108) ne fermaient pas. La lecture
+de l'exécutable donne la raison : **la table d'image-clé n'est PAS lue par le lecteur de record
+NEW**. Le modèle du dépôt (en-tête 64 bits, état par défaut, MASQUE de présence, composants) a une
+borne supérieure arithmétique de `64 + 22 + 65 = 151` bits — 35 bits trop court, quelle que soit
+la donnée — et la mesure le confirme : il place i0 à 82 sur 80 records sur 80, le masque relu à
+cette position rendant la forme absurde « aucun composant présent ». C'est le lecteur d'ÉTAT
+COMPLET `FUN_142e2bfd0` qui la lit, et sa boucle n'a **aucun masque de présence**.
+
+**La somme ferme sans aucun ajustement** : `186 = 108 (en-tête par entité) + 32 (n1) + 14 (état
+par défaut de ti=9, `FUN_1410d7540`, préfixe de version à 0) + 32 (n2)`, puis le premier
+composant, `R(4)`. Mesure : **186 sur 2 424 records ti=9 sur 2 424**. Deux fermetures
+arithmétiques gratuites la confirment : `n1 = 12` = la taille exacte de la structure que
+`FUN_1410d7540` remplit, et `n2 = 136 = 0x88` = le `memset(dst,0,0x88)` de `vtable[0x88]`. La
+vtable de ti=9 (`0x1436fff28`) a été relue octet à octet ; `vtable+0x30` et `vtable+0x88`
+consomment 0 bit. **Donnée de profil** (`KeyframeLayout`, architecture cible section 5) :
+`début des composants(ti) = 172 + largeur de l'état par défaut(ti)`.
+
+**Décision technique n°2 — vérifier sur les builds anciens plutôt que supposer une transposition.**
+La phase 2 avait montré que la grammaire de `chunk_00` se transpose d'une constante par build
+(-4 320 / -2 880 / +1 600 bits) ; il était naturel d'attendre la même chose sur la trame. **C'est
+faux, et c'est le résultat** : 186 se dérive à l'identique sur cinq builds (`HI_1_4_1`,
+`HI_1_8_0`, `HI_1_10_0`, `HI_1_11_0`, `HI_1_13_0`), l'état par défaut de ti=9 faisant 14 bits et
+`n1` valant 12 partout. Ce qui bouge est `n2` (88 contre 136) et la longueur du record (459 contre
+460). Oracle externe rejoué : **9 films sur 10 en accord TOTAL avec `match_participants.team_id`,
+168 slots sur 176**, dont six Grandes batailles à 24/24, et **0 touche sur 320 décalages voisins**.
+Le dixième est le témoin négatif FFA (`1950c59b`, `HI_1_8_0`, `[0 0 0 0 0 0 0 0]`).
+
+**Décision technique n°3 — traiter la CAUSE du lecteur de roster, pas le symptôme.** Quatre causes
+candidates écrites avant la mesure, puis un relâchement de critère à la fois. Une seule restitue
+le compte : **le champ de 2 bits de `slot+0x08`**, que le balayage exigeait nul alors que
+`FUN_1407ecb08` l'écrit comme un octet SIGNÉ sur 2 bits. La sonde ciblée le nomme
+(`1c4c63c2` xuid 2535450607961405 au bit 11 137 668, `111fa685` xuid 2535454874175468 au bit
+10 812 405 : `b=1/0/0`, `u32=0`, jeton non nul, `deux=1`). Un enregistrement invisible DOUBLE
+l'écart au voisin, et le regroupement terminal perdait alors toute la tête de la table :
+`1c4c63c2` rendait 11 enregistrements au lieu de 24, `a26dbcdb` en rendait 3.
+
+**Résultats observés.** Correction = retrait du critère `deux == 0` plus le filtre de parasite déjà
+établi par la phase 2 (nom non imprimable) ; le seuil de regroupement n'est pas touché. Preuve par
+un oracle 100 % interne — **la grammaire prédit l'écart** : chaque écart doit valoir la longueur
+prédite plus une seule constante par film. Sur les **86 films** du cache à plus de 16 joueurs en
+base : **1 890 écarts sur 1 892 ferment**, 1 978 enregistrements lus contre 1 851 avant, 22 films
+gagnent des enregistrements, 13 en perdent (parasites), 0 film au-delà de la borne de 32 de
+l'écrivain. Sur 400 films, la distribution des comptes se concentre sur 8 (299 vers 351) et 24
+(14 vers 22), les comptes de 9 à 15 disparaissant complètement. L'oracle d'équipe passe de 4 à
+**9 films sur 10** en accord total.
+
+**Résidus publiés** : 2 écarts aberrants sur 1 892 (`b1bcbe24`, `1c5c10cc`), non expliqués ; le
+compte lu vaut le compte d'entités ti=9 sur 59 films sur 86 et tient dans [-1, +1] sur 75 sur 86 —
+ce n'est pas une erreur de lecture (la grammaire ferme sur ces films) mais deux grandeurs
+différentes : la table est le roster à l'écriture de `chunk_00`, la trame compte les joueurs
+PRÉSENTS à l'image-clé. La sonde mesure **23 XUID de la base absents du flux** sur 11 films.
+
+**Découvertes non traitées (règle 7)** : (a) le décalage de 8 octets de `parseRegistry`, toujours
+non tranché, non touché ; (b) **le modèle de record d'image-clé de la PRODUCTION est faux**
+(`keyframe_record_walk.go` + `TraverseEntity` avec en-tête 64 bits et masque) — c'est la cause de
+fond des déraillements des lots R3/R4/R5, et le dépôt portait la bonne forme depuis R7-d
+(`keyframe_fullstate_loop.go`) sans l'avoir branchée ; (c) `n2` est un détecteur gratuit de largeur
+d'état par défaut fausse (constant sur les 13 archétypes à état fixe, dispersé sur les 21 autres) ;
+(d) le pied de film `b37`/`b38` contre `b55`, contradiction datée de l'archive ; (e) la
+réattribution de slot ne se voit PAS dans `chunk_00` — c'est un phénomène de la trame, et un
+décodeur doit indexer le désignateur par SLOT.
+
+**Livrables** : `.ai/V7.5/film_re/NOTE_PROFIL_PAR_BUILD_2026-09-12.md` (dérivation de 186, table
+de profil par build, cause et correction du lecteur, prouvé/hypothèse/réfuté, commandes de rejeu),
+section **8.4** de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
+`apps/go-api/internal/analysis/filmdec/profil_{entete,fermeture,builds,roster,roster_bilan}_research_test.go`.
+Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
+`go test ./internal/analysis/filmdec/` sans garde ok, `go test ./internal/archlint/` ok — le
+ratchet des variables de paquet de `filmdec` n'est pas touché (aucune variable de niveau paquet
+ajoutée).
+
+**Prochaine étape** : brancher la lecture en production. Les trois pièces sont réunies — la
+dérivation de l'offset (`172 + état par défaut`), le lecteur de roster qui tient sur les gros
+rosters et sur les builds anciens, et le pont rang vers xuid. Le geste le plus rentable en amont
+est de corriger le modèle de record d'image-clé du décodeur (découverte b), qui débloquerait bien
+plus que l'équipe.
+
+
+## [2026-09-13] Image-clé sous la forme d'état complet, phase 5a : le correctif chiffré archétype par archétype — Complété
+
+**Statut** : Complété. Recherche seulement, **aucun code de production modifié, aucun commit**.
+Worktree dédié `LevelUp-wt-section3-chunk00` (branche `wt/section3-chunk00`).
+
+**Question**. La phase 4 avait réfuté le modèle de record d'image-clé de la production (en-tête
+64 bits + masque de présence) et dérivé la bonne forme (lecteur d'état complet `FUN_142e2bfd0` :
+en-tête 108 bits + `n1` + état par défaut + `n2` + composants, sans masque). Elle l'avait laissée
+en découverte hors périmètre. Ce lot CHIFFRE le gain, archétype par archétype, avant qu'un lot de
+production soit décidé.
+
+**Décision technique principale**. Trois instruments sous garde `CHUNK00_FILMS`, tous en
+réutilisant le code existant sans le modifier : la bonne forme est jouée par
+`WalkKeyframeFullState` (porté au lot R7-d, jamais branché) avec les déserialiseurs d'état par
+défaut du dépôt ; le modèle de production est joué par SON PROPRE CODE (`readKeyframeHeader` +
+`walkOneKeyframeRecord`). Critère de succès unique et vérifiable sans oracle externe : **un
+record FERME quand la marche atterrit exactement sur l'ancre du record suivant**. Témoin de
+hasard obligatoire (règle 4 de la méthode) : le même lecteur avec l'en-tête décalé d'UN bit.
+
+**Résultats mesurés** (6 films, 3 builds, **62 686 records d'image-clé bornés**) :
+
+- **La production ferme 0 record sur 62 686.** Pas un taux faible : un compte nul, sur les six
+  films et les trois builds.
+- **La bonne forme en ferme 8 796 (14,0 %)**, contre un plancher de hasard **mesuré** à 529
+  (0,8 %). Cinq archétypes passent de 0 % à un taux quasi parfait : `ti=6` 7 820/7 822,
+  `ti=15`/`ti=18`/`ti=22` 163/163 chacun, `ti=4` 112/157. **8 archétypes gagnent, 0 régressent.**
+- **Le témoin de hasard a servi deux fois** : il a disqualifié le gain apparent de `ti=38`
+  (1,7 % contre 1,7 %, donc rien) et il a DÉSIGNÉ `ti=29`, qui ferme 138/157 à +1 bit et 0/157
+  à la largeur portée — c'est-à-dire un état par défaut d'un bit non consommé.
+- **Cinq largeurs d'état par défaut manquantes, chacune tenue par DEUX chaînes** (oracle `n2`
+  et/ou fermeture, plus le décompilé Ghidra relu le jour même) : `ti=14` → 6 bits
+  (`FUN_140FED6F4` = V ; R(5)), `ti=17` → 8 (`FUN_14101A0A4` = V ; R(7)), `ti=21` → 18
+  (`FUN_141133C24` = R(0x12), sans préfixe de version), `ti=29` → 1 (`FUN_14116F514` = préfixe
+  de version SEUL), `ti=47` → 6 (`FUN_1410F44F8` = V ; R(5)). Toutes portées à 0 bit aujourd'hui.
+  Les trois premières font fermer **10 541 records de plus** → **projection 19 337 / 62 686 =
+  30,8 %**, pour trois entrées dans `defaultStateDeserByTI` écrites avec des primitives déjà
+  présentes.
+- **La production ne déraille pas par manque de couverture, mais par le cadre** : sous son
+  modèle, **5,5 % seulement des records désynchronisent**, les 92 % restants marchent jusqu'au
+  bout et atterrissent au mauvais bit — le masque de présence fait croire qu'aucun composant
+  n'est présent.
+- **Il n'existe aucun compteur de production « la table d'image-clé a déraillé »** :
+  `KillSourceHealth` compte des candidats d'attribution de mort ; `WalkKeyframeRecords` n'a
+  aucun appelant hors du paquet ; le SEUL chemin de production qui parse le corps d'un record
+  d'image-clé est `ScanNavpointRadial` (ti=12), appelé par l'armement d'Assaut du rejeu — et sur
+  ce corpus il ne s'engage même pas (bande de slots vide, aucun film d'Assaut). Là où un
+  balayage s'engage (`ti=11`), son propre témoin `KeyChained` vaut **0 sur 27**.
+
+**Négatifs publiés avec leur témoin positif**. Le témoin positif écrit avant la mesure
+(« `ti=9` doit fermer à 100 % ») ÉCHOUE : 0/1 679, les 1 679 marches butant toutes sur le même
+composant non porté `i4 managed-player-forge-weather-effect-overrides-component`. C'est un manque
+de couverture, pas un défaut de forme, et la dérivation de la phase 4 (premier composant à 186)
+n'est pas touchée — ce qui confirme le cadre, ce sont les cinq archétypes qui ferment à 100 %
+contre 0 % pour les deux autres modèles. Réfuté aussi : « `n2` constant prouve que la largeur est
+juste » (contre-exemple `ti=29`), et « corriger le cadre suffirait à débloquer ce que la
+production lit » (`ti=11` et `ti=12` désynchronisent à 100 % sous la bonne forme, sur leur
+deuxième et cinquième composant).
+
+**Découvertes non traitées (règle 7)** : (a) le décalage de 8 octets de `parseRegistry`, toujours
+NON TRANCHÉ, non touché ; (b) `ti=14` est classé STUB à tort dans `default_state_arch.go` alors
+que `KEYFRAME_ARCHETYPE_DEFAULTSTATE_TABLE.md` a raison — contradiction du dossier tranchée par
+la mesure, à corriger dans le lot de production ; (c) six archétypes sont bloqués par leur
+premier ou deuxième composant (1 176 records) ; (d) `ti=13` reste muet alors que sa grammaire
+portée est bit-exacte avec le décompilé ; (e) deux films de `HI_1_12_0` déclenchent
+l'avertissement « empreinte du registre ECS INCONNUE ».
+
+**Livrables** : `.ai/V7.5/film_re/NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md` (tableau archétype ×
+modèle par build et par film, liste des états par défaut à corriger avec la largeur impliquée,
+estimation de ce que la production déraille, prouvé/hypothèse/réfuté, commandes de rejeu),
+section **8.5** de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
+`apps/go-api/internal/analysis/filmdec/imagecle_{fermeture,oracle_n2,production}_research_test.go`.
+Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
+`go test ./internal/analysis/filmdec/` sans garde **ok**, `go test ./internal/archlint/` **ok** —
+le ratchet des variables de paquet de `filmdec` n'est pas touché (aucune variable de niveau
+paquet ajoutée).
+
+**Conclusion / prochaine étape**. Le pilote a son chiffre : **0 record fermé aujourd'hui,
+8 796 (14,0 %) avec le seul correctif de forme, 19 337 (30,8 %) en y ajoutant trois largeurs
+d'état par défaut mesurées et confirmées au décompilé.** Le lot de production le moins cher et le
+mieux tenu est donc : (1) les trois entrées `defaultStateDeserByTI` de `ti=14`, `ti=17`, `ti=29`
+(plus `ti=21` et `ti=47`, prouvées mais sans fermeture), (2) la correction du commentaire STUB de
+`ti=14`, (3) le branchement de `WalkKeyframeFullState` à la place de `TraverseEntity` dans
+`navpoint_radial_scan.go` et `objective_scan.go`. **Ce lot n'a rien branché : il chiffre.** Et il
+faut dire au pilote que le correctif ne répare aujourd'hui la sortie d'AUCUNE page — il ouvre une
+voie (l'équipe à 186, les champs d'objectif, l'armement) que le cadre faux fermait.
+## [2026-09-13] Résidus chunk_00 / slots / équipe, phase 5b : les six résidus sont fermés, dont cinq par une fermeture arithmétique — Complete
+
+**Statut** : Complété. Branche `wt/film-residus` (worktree dédié `LevelUp-wt-film-residus`),
+aucun commit, aucun code de production modifié, aucune base ouverte en écriture.
+
+**Décision technique principale.** Les six résidus laissés par les phases 1 à 4 se traitent tous
+par la même méthode : trouver, dans le flux, une ANCRE que la grammaire ne conditionne pas, et
+mesurer de part et d'autre. Trois ancres ont porté le lot. (1) Le bloc de queue d'un
+enregistrement de slot porte le gamertag en UTF-16 petit-boutiste : on le retrouve par recherche
+de motif, donc on peut couper l'enregistrement en deux moitiés mesurables séparément, ce qui
+localise la transposition par build SANS exécutable de ces builds. (2) La longueur d'un
+enregistrement entièrement à zéro se CALCULE depuis la grammaire (1 299 + perso + 352 + 32), ce
+qui transforme « écart aberrant » en hypothèse testable au bit près. (3) L'équipe par joueur,
+prouvée en phase 3 dans la trame, sert d'oracle interne pour trancher la contradiction du pied de
+film, sans passer par la base.
+
+**Résultats observés.** R1 : les deux écarts aberrants sont chacun exactement UN slot vacant
+(13 619 bits sur `HI_1_10_0`/`HI_1_11_0`, reste 0), et la fermeture générale passe de 1 890/1 892
+à **2 121/2 121 écarts sur 96 films** ; la longueur d'un slot vide (ouvert n°3 de la phase 1) est
+fermée au passage. R2 : la transposition par build est portée par le SEUL bloc de personnalisation
+`sub+0xcc0` (1 852 / 1 492 / 1 312 / 2 052 octets), tout le reste de l'enregistrement valant
+**270 bits sur les sept builds** ; le lecteur par grammaire, calibré sur le film et enjambant les
+slots vacants, rend le compte du balayage sur **1 351 films sur 1 351** et lit **32 slots exactement
+sur 1 351 films sur 1 351** — la borne de l'écrivain vérifiée par la lecture sur tout le cache.
+R3 : `HI_1_9_0` rejoint la table de profil (i0 dérivé 186, n1 12, n2 88, record 459, transposition
+-4 320) et son oracle d'équipe ferme à 23/23 rangs, recalage unique sur deux essais ; `HI_1_12_0`
+est ajouté. R4 : l'écrivain d'état complet `FUN_142e2d08c` montre que le mot gaté par le drapeau
+est la SENTINELLE `0x0FFDDCBA` — cherchée à tout décalage dans 250 paquets de 7 builds :
+**0 occurrence**, avec témoin positif à 4 368/4 368 ; à `d = 218` le critère interne échoue sur
+10 films sur 10. R5 : le consommateur d'affichage est `AddTeamDesignatorStringIdsToList` →
+`FUN_142d40c1c`, qui empile `team_0`..`team_7`, `team_neutral` dans cet ordre — la correspondance
+`team_id 0` ↔ `First` est **prouvée pour l'indexation** par une seconde chaîne ; et aucun film du
+cache ne porte plus de deux désignateurs (les trois seuls matchs à plus de 2 `team_id` en base
+lisent une valeur unique dans le film). R6 : balayage aveugle des 60 octets du pied contre
+l'équipe prouvée — **`b37` et `b38` valent l'équipe 665 fois sur 665**, `b55` (ce que la production
+lit) vaut **0 sur les 665**, plancher de bruit 4 lectures parfaites sur 180 essayées.
+
+**Livrables.** Quatre instruments sous garde `CHUNK00_FILMS` (`residus_vacants`, `residus_slots`,
+`residus_trame`, `residus_pied` `_research_test.go`), la note
+`.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md`, la section 8.6 de
+`RE_EXE_GHIDRA_FINDINGS.md`. Gates : `gofmt -l` net, `go vet` net, `go test
+./internal/analysis/filmdec/` sans garde ok, `go test ./internal/archlint/` ok.
+
+**Conclusion / prochaine étape.** Les trois pièces d'un décodeur multi-build sont désormais
+complètes et vérifiées sur tout le cache : le pont rang → xuid, le désignateur par slot, et le
+profil par build (transposition + n2 + longueur de record). Rien n'est branché en production. Le
+geste suivant le plus rentable reste hors de ce lot : corriger le modèle de record d'image-clé du
+décodeur (`keyframe_record_walk.go`), et — découverte de ce lot — remplacer la lecture de `b55`
+par `b37` dans `objectiveevents/film.go`.
