@@ -15,6 +15,8 @@ const OPTS = {
   mapLabelOf: (m: string) => m.toUpperCase(),
   pieceLabels: { tier1: 'T1', tier2: 'T2', tier3: 'T3', tier4: 'T4', tier5: 'T5' },
   noScoreLabel: '-',
+  xAxisName: 'Carte',
+  yAxisName: 'Joueur',
 }
 
 function makeData(): SquadMapHeatmap {
@@ -58,6 +60,29 @@ describe('buildSquadMapHeatmapOption', () => {
     const yAxis = opt.yAxis as { data: string[]; inverse: boolean }
     expect(yAxis.data).toEqual(['Me', 'Friend1'])
     expect(yAxis.inverse).toBe(true)
+  })
+
+  // Les deux axes n'avaient AUCUN nom jusqu'au 2026-09-13 : une grille de gamertags par
+  // cartes laissait deviner ce qui etait en ligne et ce qui etait en colonne.
+  it('nomme les DEUX axes, avec le libelle fourni par l appelant (donc localise)', () => {
+    const opt = buildSquadMapHeatmapOption(makeSeries(makeData()), OPTS)
+    const xAxis = opt.xAxis as { name: string; nameLocation: string }
+    const yAxis = opt.yAxis as { name: string; nameLocation: string }
+    expect(xAxis.name).toBe('Carte')
+    expect(yAxis.name).toBe('Joueur')
+    expect(xAxis.nameLocation).toBe('middle')
+    // L'axe Y est INVERSE : son nom se pose en `start` (donc EN HAUT). En `middle` il
+    // tombait hors du canvas — `containLabel` reserve la place des etiquettes, pas celle
+    // du nom — et en `end` il retombait sur les etiquettes de cartes.
+    expect(yAxis.nameLocation).toBe('start')
+  })
+
+  it('reserve sous la grille de quoi loger etiquettes rotees, nom d axe ET reglette', () => {
+    // La reglette du visualMap vit a `bottom: 4` : si `grid.bottom` ne la depasse pas,
+    // elle se superpose aux etiquettes. Valeur mesuree, pas devinee.
+    const opt = buildSquadMapHeatmapOption(makeSeries(makeData()), OPTS)
+    const grid = opt.grid as { bottom: number }
+    expect(grid.bottom).toBeGreaterThanOrEqual(130)
   })
 
   it('data heatmap = matrice (xi, yi, value) avec value=null pour cellule sans score', () => {
