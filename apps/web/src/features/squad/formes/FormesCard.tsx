@@ -88,6 +88,16 @@ export function FormesCard({ title, children, legend, note }: FormesCardProps) {
   )
 }
 
+/**
+ * FormesCaption — LA PHRASE DE PIED D'UNE FORME : sa portée réelle quand elle ne
+ * montre pas tout (le repli des formes par match), ou sa réserve de mesure. Elle
+ * vit DANS le corps, sous la forme qu'elle qualifie — jamais dans la note, qui
+ * dit la méthode et vaut pour toute la carte.
+ */
+export function FormesCaption({ children }: { children: string }) {
+  return <p className="mt-2 text-3xs text-muted-foreground">{children}</p>
+}
+
 /** Le sous-titre d'une sous-forme, quand une carte en porte deux. */
 export function FormesSubtitle({ children }: { children: string }) {
   return (
