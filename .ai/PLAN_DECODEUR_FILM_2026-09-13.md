@@ -115,8 +115,12 @@ bloque le gate du lot courant.
 
 - Le cache de films (`data/cache/film_chunks`, 1 351 films, 7 builds), les manifestes
   (`data/cache/film_manifests`) et le parc (`data/cache/replays`) ne vivent que dans
-  `LevelUp-go-migration`. Le corpus gate détecte le parc par le `.git` commun ; les instruments
-  corpus lisent `CHUNK00_FILMS` (répertoires absolus `C:/...`, séparés par `;`).
+  `LevelUp-go-migration`. **Le corpus gate n'auto-détecte PAS le parc sur ce poste** (corrigé le
+  2026-09-13) : le `.git` commun est `C:/Users/Guillaume/Downloads/Scripts/LevelUp`, un ancêtre
+  RENOMMÉ qui ne porte aucune base — la détection tombe à côté en silence. Ses deux racines se
+  passent donc explicitement : `--parc-root C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`
+  et `--source-root <le worktree>`. Les instruments corpus lisent `CHUNK00_FILMS` (répertoires
+  absolus `C:/...`, séparés par `;`).
 - **`replay-equiv` depuis un worktree : `-repo-root <le worktree>` et DEUX jonctions**, jamais
   `LEVELUP_REPO_ROOT` vers le principal (corrigé le 2026-09-13, découverte D3 — l'ancienne
   consigne de cette section était fausse). `dossierEquivalence()`
@@ -161,7 +165,7 @@ Lots qui touchent le décodeur ou le constructeur (tout M1, M2, M3, 4.1), deux r
 | Régime | Quand | Commandes |
 |---|---|---|
 | **Court** (à chaque lot) | clôture de tout lot décodeur | `go run ./cmd/replay-equiv -repo-root <worktree> -films <échantillon nommé en tête de CORPUS.txt>` (10 films : un par build, plus `50247b26`, `d9781168`, `fb1a1a72`) |
-| **Complet** | clôture de jalon (M0 à M4) ; lots 1.2 et 2.5 ; sur demande du relecteur | `go run ./cmd/replay-equiv -repo-root <worktree>` (corpus entier, 20 films, ~16 min — le découper en sous-ensembles si l outillage borne la durée d une commande) puis `go run ./cmd/replay-corpus-gate --base=<sha de l intégration avant le lot>` |
+| **Complet** | clôture de jalon (M0 à M4) ; lots 1.2 et 2.5 ; sur demande du relecteur | `go run ./cmd/replay-equiv -repo-root <worktree>` (corpus entier, 20 films, ~16 min — le découper en sous-ensembles si l outillage borne la durée d une commande) puis `go run ./cmd/replay-corpus-gate --base=<sha de l intégration avant le lot> --parc-root C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration --source-root <worktree>` (les deux racines sont OBLIGATOIRES sur ce poste, cf. §2.2) |
 
 Résultat consigné en §5 (commit, commande, sortie, durée). **Un gate non consigné n'a pas eu
 lieu.** Un lot dont le régime court montre une différence inattendue passe en régime complet
@@ -199,13 +203,13 @@ fichiers disjoints) ; 0.C ensuite, pendant les revues.
       film consignée en §5 (budget de référence). L'ÉCHANTILLON du régime court (V2) est
       nommé en tête de `CORPUS.txt` (`# echantillon-court:`) : un film par build (7) plus
       `60ae07c4` (région sur 2 bits), `d9781168` (pire déroulage sain), `fb1a1a72` (multi-manche).
-- [!] 0.A.2 **Mini-films par build et goldens.** Un `testdata/minifilm_<short8>/` par build (V7 :
+- [x] 0.A.2 **Mini-films par build et goldens.** Un `testdata/minifilm_<short8>/` par build (V7 :
       `chunk_00` + un chunk portant des images-clés + le pied, au plus 1 Mio, `PROVENANCE.txt`
       avec build, version, carte, commande de fabrication en Go). `TestGoldenAssembly` et
       `TestGoldenInputs*` deviennent des tables sur ces mini-films : un golden d'assemblage et un
       `inputs_<short8>.bin.gz` par build. Preuve : goldens verts en CI ; `TestGoldenInputsVersionGuard`
       refuse toute régénération sans montée explicite.
-- [!] 0.A.3 **Inventaire et ratchet de couverture d'image-clé par archétype** (handoff §4 bis,
+- [x] 0.A.3 **Inventaire et ratchet de couverture d'image-clé par archétype** (handoff §4 bis,
       étape 1). Fonction de production `filmdec.KeyframeClosure(fc) map[ti]{closed,total,
       blocking string}` fondée sur `WalkKeyframeFullState` (108 bits, mots de taille, état par
       défaut) ; instrument corpus (`CHUNK00_FILMS`) qui imprime, par archétype, les composants
@@ -213,14 +217,14 @@ fichiers disjoints) ; 0.C ensuite, pendant les revues.
       sur les mini-films de 0.A.2 : « la couverture par archétype ne descend jamais » (golden
       `testdata/keyframe_closure.golden`). Preuve : golden commis ; une mutation de largeur
       (ti=6) rougit le ratchet.
-- [!] 0.A.4 **Empreinte du décodeur étendue à `filmdec`.** Constante `filmdec.GrammarRev`
+- [x] 0.A.4 **Empreinte du décodeur étendue à `filmdec`.** Constante `filmdec.GrammarRev`
       (forme `grammar-AAAA-MM-JJ`) ; test miroir de `decoder_rev_fingerprint_test.go` qui hache
       tous les `.go` hors tests de `filmdec/` et de `killsource/` : une source qui change sans
       montée de `GrammarRev` rougit. L'en-tête du test écrit la règle : montée de `GrammarRev`
       obligatoire à tout changement de grammaire ; montée de `KillSourceDecoderRev` si la sortie
       de killsource peut changer (backlog) ; montée de `SchemaVersion` si le contenu cuit change.
       Preuve : golden avec historique ; une ligne changée dans `traverse.go` rougit.
-- [!] 0.A.5 **Budget de temps.** `replay-equiv` publie la durée par film si ce n'est pas déjà le
+- [x] 0.A.5 **Budget de temps.** `replay-equiv` publie la durée par film si ce n'est pas déjà le
       cas (vérifier sur pièces) ; `BenchmarkBitReaderReadBits`, `BenchmarkTraverseEntity`,
       `BenchmarkScanBipedPositions` sur le mini-film `000d5950` ; `testdata/bench_baseline.txt`
       produit par `go test -bench . -run ^$ -count 5` et comparé par `benchstat` à chaque clôture
@@ -230,28 +234,33 @@ fichiers disjoints) ; 0.C ensuite, pendant les revues.
 Gate 0.A : gates communs ; `go run ./cmd/replay-equiv` (0 différence sur 13, références neuves
 figées) ; `go test ./internal/games/halo_infinite/film/... -run 'Golden|KeyframeClosure|GrammarRev'`.
 
-> **STATUT 0.A au 2026-09-13 — 0.A.1 CLOS, 0.A.2 à 0.A.5 en attente du signal du pilote.**
+> **STATUT 0.A au 2026-09-13 — LOT CLOS, 0.A.1 à 0.A.5 tous `[x]`.**
 >
-> Le gate d'entrée du lot (`replay-equiv` = 0 différence) était FAUX sur l'arbre courant avant
-> toute modification : 13 films sur 13 différaient. Cause mesurée (§4, D1) : les références
-> dataient du commit `179bd7401` où `replay.SchemaVersion` valait 34 ; elle vaut 54 — vingt
-> montées de schéma, donc vingt changements VOULUS du contenu cuit, jamais re-figés depuis le
-> 2026-09-03. **Décision du pilote du 2026-09-13** : re-figer les 20 films au commit
-> d'intégration `cbfdc269d`, après avoir DISTINGUÉ écart par écart les divergences voulues des
-> constats de régression.
+> **0.A.1** — Le gate d'entrée était FAUX avant toute modification (13/13 différents) : les
+> références dataient du commit `179bd7401` où `replay.SchemaVersion` valait 34, contre 54
+> aujourd'hui. Sur décision du pilote, les 20 films ont été re-figés au commit d'intégration
+> `cbfdc269d`, APRÈS classification écart par écart (rapport
+> `.ai/V7.5/RAPPORT_REFIGEAGE_EQUIVALENCE_2026-09-13.md`) : zéro constat orphelin sur l'oracle
+> d'équivalence, puis TROIS constats à instruire trouvés par le croisement au corpus gate (D6, D7,
+> D8 en §4, en attente d'arbitrage). Déterminisme prouvé : **20/20 identiques**. `CORPUS.txt` porte
+> la colonne `version / build` sur les 20 lignes et l'échantillon court à 10 films.
 >
-> **Classification faite sur l oracle d équivalence, verdict : ZÉRO constat orphelin SUR CET ORACLE.** 110 couples film × étape ont
-> bougé sur 650 ; tous sont rattachés à une entrée datée. Les trois seules baisses de compte :
-> `objectives` → 0 sur quatre films (garde d'effectif, commit `ebd012e3b`, plus de huit sièges
-> au statborg — refus tracé à l'exécution), `projectiles` −11 sur `60ae07c4` (chronique v53,
-> Live Fire seule carte à index de région sur 2 bits), `artifact` (longueur en octets, grandeur
-> dérivée, sans aucune baisse de couche sur deux des quatre films). Détail, preuves et commandes
-> de rejeu : `.ai/V7.5/RAPPORT_REFIGEAGE_EQUIVALENCE_2026-09-13.md`.
+> **0.A.2** — Sept mini-bobines, une par build, toutes avec `chunk_00` (941 808 à 1 046 290 octets,
+> sous le plafond V7). `minifilm_000d5950` intacte. Goldens en TABLE : `inputs_<short8>.bin.gz` et
+> `assembly_<short8>.golden` par build, `000d5950` entrée de la table.
 >
-> Les références re-figées sont marquées PROVISOIRES dans l'historique des commits jusqu'à
-> l'acceptation du pilote (croisement prévu avec `replay-corpus-gate --base=179bd7401` sur les
-> 12 témoins). 0.A.2 à 0.A.5 ne sont pas commencés : ils reprennent sur signal.
-
+> **0.A.3** — `filmdec.KeyframeClosure` en production, instrument corpus sous `CHUNK00_FILMS`,
+> ratchet CI sur les sept bobines (golden 221 lignes). Mutation `R(6)` → `R(7)` sur ti=6 : rouge
+> sur six bobines, remise en place, vert.
+>
+> **0.A.4** — `filmdec.GrammarRev` (const) et son empreinte sur `filmdec` + `killsource`, règle à
+> trois étages écrite dans le test et le golden. Mutation dans `traverse.go` : rouge, remise, vert.
+>
+> **0.A.5** — `replay-equiv` imprimait DÉJÀ la durée par film (vérifié sur pièces). Trois bancs,
+> baseline `-count 5` commise, `benchstat` documenté en EN et en FR.
+>
+> Gate de fin : `replay-equiv` **10/10 identiques** sur l'échantillon court après tous les
+> changements — aucun comportement modifié, comme le lot l'exigeait.
 
 #### Lot 0.B — La frontière Go / web (architecture §12) — M, exécuteur Opus high
 
@@ -751,6 +760,9 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.A.1c | **D5 — Le re-figeage ne cache aucune régression.** Classification des 110 couples film × étape qui bougent entre le schéma 34 et le schéma 54 (sur 650 comparés) : tous rattachés à une entrée datée, **ZÉRO constat de régression**. Seules baisses de compte : `objectives` → 0 sur 4 films (garde d'effectif `ebd012e3b`, sièges > 8 slots, refus tracé à l'exécution), `projectiles` −11 sur `60ae07c4` (chronique v53, porte d'i0, Live Fire seule carte à index de région sur 2 bits), `artifact` (longueur en octets, grandeur dérivée). Prédiction de la chronique v54 vérifiée : `deaths` et `killRefs` ne bougent que sur les deux films v39 du corpus. Rapport : `.ai/V7.5/RAPPORT_REFIGEAGE_EQUIVALENCE_2026-09-13.md` | **AMENDÉE le même jour** : le croisement par le corpus gate (D6 à D8) voit sur les AXES DU DOCUMENT trois pertes que cet oracle ne pouvait pas voir. D5 reste vraie pour l équivalence, elle ne vaut pas verdict global |
 | 2026-09-13 | 0.A.1c bis | **D6 — `coverage.score.rounds` 3 → 1 sur `fb1a1a72`, CTF que le registre tient pour MULTI-MANCHE.** `materialRounds` IGNORE les slots d'équipe (`statborg.go:557`) ; or sur ce film « les enregistrements de slot JOUEUR declarent TOUS la manche 0 [...] les manches viennent des slots d EQUIPE » (`REGISTRE_REPORTS.md` ligne 592, volet statborg **TOUJOURS OUVERT sur ce film exact**). Deux lectures non tranchées : correction de manches fantômes (oracles POUR : feuille `teamScores [0,1]`, `regulation.toml [rounds_decide]` ne liste que les Oddball) contre perte d'information sur un film réellement multi-manche. | À instruire : relever `RealRounds` slot par slot sur une cuisson de `fb1a1a72` (combien de manches déclarent les slots d'ÉQUIPE, `runs` passe-t-il `statMinRoundRun` en manches 1 et 2). Rattacher au volet statborg de la ligne 592 |
 | 2026-09-13 | 0.A.1c bis | **D7 — Le bloc monde/équipement s'effondre sur `60ae07c4` et l'entrée la plus proche le CONTREDIT.** `groundWeapons.spawned` 218 → 35, `accepted` 429 → 334 et `rejected` 211 → 116 (exactement −95 chacun : 190 enregistrements quittent la classification), `powerupAccepted` 504 → 399, `skullCarries.grabs` 39 → 8, `placements.lives` 361 → 327, `equipmentChanges.decoded` 38 → 33. La chronique v53 mesure pourtant, sur l'autre film Live Fire : « Les armes au sol, les tirs et les ramassages **ne bougent pas** (217, 717, 108 des deux côtés) ». Les 27 enregistrements hors arène ne couvrent pas 190. Confondant : `60ae07c4` est le seul témoin à la fois Live Fire (v53) et Oddball (borne `f22474816`). | À instruire : cuire `60ae07c4` aux deux révisions encadrant v53 seule et relever `coverage.groundWeapons`. Si v53 explique 190, l'entrée v53 est fausse sur ce point et doit être amendée |
+| 2026-09-13 | 0.A.2 | **D9 — Le codec du fixture d'entrées ne porte pas tout ce que le décodage rend.** Sur SIX des sept builds, l'assemblage bâti sur les entrées fraîchement décodées diffère de celui bâti sur les mêmes entrées RELUES depuis le fixture (`bcb6d393` : « 136 lecture(s) portent le rang SELECTIONNE » contre 36). Le codec est pourtant un point fixe — `TestGoldenBuildsInputsRoundTrip` vert sur les sept : il ne PERD rien de ce qu'il porte, il ne porte simplement pas les rangs de capacité que le décodage rend. `000d5950` ne le montrait pas (encore un cas où le film de référence est le seul sur lequel un défaut ne se voit pas). | Non corrigé (règle 7). Le golden décrit ce que le FIXTURE reproduit, seule chose que la comparaison puisse atteindre. À instruire : faire porter les rangs de capacité par `encodeGoldenInputs`, ou écrire dans le codec pourquoi ils n'y sont pas |
+| 2026-09-13 | 0.A.2 | **D10 — `ScanBipedPositions` ne s'exécute pas sur une mini-bobine.** Il dérive sa bande de slots bipède des images-clés et refuse le film quand elle est vide (« aucun slot biped (ti=35) dans les keyframes du film », `offline_biped.go`) : les images-clés d'une bobine sont concaténées hors continuité et la bande ne s'y établit pas. Le banc du plan a donc été remplacé par `BenchmarkKeyframeClosure`, le balayage chaud équivalent, que le brief autorisait. | Sans objet si M2 garde des bobines ; à reconsidérer si un banc doit un jour mesurer la dérivation de bande — il faudrait alors un film entier, donc un banc hors CI |
+| 2026-09-13 | 0.A.2 | **D11 — `a521164d` (HI_1_4_1) ferme dix fois moins que les autres builds.** Fermeture totale d'image-clé : 1,0 % contre 9,7 à 15,7 % sur les six autres. Le « +200 o de HI_1_4_1 » est déjà au registre des reports (§1.2 du plan, handoff §5) ; cette mesure le CHIFFRE pour la première fois. | Lot 3.6 : traiter HI_1_4_1 en dernier, ou instruire d'abord son décalage d'en-tête — porter un composant n'y rendra rien tant que le cadre est décalé |
 | 2026-09-13 | 0.A.1c bis | **D8 — Points de piste publiés en baisse, sans entrée qui les nomme.** `tracks.points/n` −2 (`d9781168`), −9 (`084a804d`), −4 (`60ae07c4`) ; `tracks.points.hp/presents` 463 → 461 ; `abilities/n` 166 → 165. Points disparus en ENTIER (t, x, y, z baissent d'autant). Ce n'est PAS la garde des bornes (`boundsOf` ne mute pas `tracks`, `geometry.go:233-248`). Piste non prouvée : re-segmentation « une track = une vie » (v41, v43, v47) et recalage `bestDeathOffset` (v48) déplaçant les bords de vie. Ampleur 0,005-0,008 %. | À instruire : identifier les 9 points de `084a804d` (piste, instant, bord de vie ou non). Sévérité faible |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
@@ -763,7 +775,12 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.A.1c | `061b6f5b7` | `replay-equiv -repo-root <worktree> -films <7 sous-ensembles> -update` | **20/20 figés** au commit `cbfdc269d`, schéma 54, `# digest-grammar: 2`, 50 étapes chacun. Durées : 000d5950 26,2 s · 01e1f945 23,4 s · 64e8adfa 29,3 s · 7344d24f 36,7 s · 696a9d7c 41,5 s · 53ce4390 33,6 s · d9781168 26,1 s · 9f57c612 16,8 s · 60ae07c4 27,3 s · 51101d1d 5,3 s · 084a804d 2 min 46,8 s · 1c4c63c2 2 min 32,0 s · a349fea8 3 min 57,7 s · bcb6d393 23,0 s · a521164d 1 min 15,8 s · 111fa685 42,7 s · 11de8353 42,6 s · e5adf7b2 46,5 s · fb1a1a72 1 min 23,8 s · 50247b26 1 min 19,3 s. **Total ~16 min**, pic max 0,68 Gio (1c4c63c2) |
 | 2026-09-13 | 0.A.1c | `<commit du lot>` | classification `.tsv` ancien (`git show cbfdc269d:...`) contre `.tsv` neuf, 13 films × 50 étapes — **aucun décodage** | 650 couples comparés : **540 identiques, 110 différents, 34 étapes sur 50 intactes sur tous les films**. Trois baisses de compte seulement, toutes expliquées (D5). **ZERO constat orphelin sur cet oracle** — amende par le corpus gate, cf. la ligne suivante. Rapport `.ai/V7.5/RAPPORT_REFIGEAGE_EQUIVALENCE_2026-09-13.md` |
 | 2026-09-13 | 0.A.1c bis | `6512f14ba` (arbre) | `replay-corpus-gate --base=179bd7401`, manifeste réduit à 5 témoins (pilote) | **PERTE sur 5/5** — gains 133/247/114/445/165, pertes 8/18/22/90/61. Classification bis (aucun décodage de l'exécuteur) : **6 familles expliquées (§7.A), 8 de polarité douteuse (§7.B), 3 constats à instruire (§7.C = D6, D7, D8)**. Le gate compare les axes du DOCUMENT, l'équivalence les sorties de BALAYAGE : les deux oracles ne voient pas la même chose, et c'est le second qui a trouvé les trois constats |
-| 2026-09-13 | 0.A.2 à 0.A.5 | — | — | **NON COMMENCÉS** : reprennent sur signal du pilote, après son croisement `replay-corpus-gate --base=179bd7401` |
+| 2026-09-13 | 0.A.2 (déterminisme) | `0493e3102` | `replay-equiv -repo-root <worktree>` sur les 20 films, 6 sous-ensembles | **20/20 IDENTIQUES** — preuve de déterminisme des références re-figées, premier gate de 0.A.2. Durées : 15,1 / 18,8 / 28,0 / 21,8 / 21,5 / 31,8 / 25,7 / 16,8 / 26,9 / 5,4 s · 084a804d 2 min 06 · 1c4c63c2 2 min 08 · a349fea8 2 min 07 · bcb6d393 12,4 · a521164d 38,9 · 111fa685 44,7 · 11de8353 47,3 · e5adf7b2 42,0 · fb1a1a72 32,8 · 50247b26 1 min 56 |
+| 2026-09-13 | 0.A.2 | `1937135cf`, `02047ea06` | `go test -run MiniFilmBuildsRegenerate -update` puis `-run GoldenBuildsRegenerate -update` | 7 bobines écrites, 941 808 à 1 046 290 octets (90 à 100 % du plafond V7) ; 7 fixtures d'entrées (642 Ko à 1,7 Mo compressés, 11 Mio au total) et 7 goldens d'assemblage |
+| 2026-09-13 | 0.A.3 | `1937135cf` | `go test -run KeyframeClosureRatchet` ; mutation `consumeDefaultStateTI6` R(6)→R(7) | Golden 221 lignes, ratchet VERT ; sous mutation **6 lignes BAISSE** (ti=6 de 910/911, 1438/1439, 764/766, 670/671, 574/575, 528/528 à ZÉRO), test ROUGE ; largeur remise, vert |
+| 2026-09-13 | 0.A.4 | `00340fe16` | `go test -run GrammarRevSuitLaGrammaire` ; ligne ajoutée dans `traverse.go` | Empreinte `bbc80c89…` sur filmdec + killsource ; sous mutation **« LA GRAMMAIRE A CHANGE SANS MONTEE DE REVISION »**, rouge ; ligne retirée, vert, `git diff` vide |
+| 2026-09-13 | 0.A.5 | `00340fe16` | `go test -bench . -run '^$' -count 5` | `bench_baseline.txt` commise : BitReaderReadBits ~113 µs/op (≈570 MB/s), TraverseEntity ~367 ms/op, KeyframeClosure ~377-646 ms/op (5 mesures chacun) |
+| 2026-09-13 | 0.A (clôture) | `02047ea06` | gates communs + `replay-equiv` échantillon court (10 films) | `gofmt` vide ; `go vet` propre ; `go test` **10 paquets, exit 0** ; `make go-api-lint` **0 issues** ; équivalence **10/10 IDENTIQUES** — aucun comportement modifié par le lot |
 
 ## 6. Protocole de reprise de session
 
