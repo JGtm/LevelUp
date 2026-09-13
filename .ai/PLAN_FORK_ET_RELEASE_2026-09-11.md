@@ -358,3 +358,9 @@ lot H, pas avant. Effort L.
   backup-perfnote-2026-08-27` et `LevelUp-archive-ce-weapon-attribution-v3` (dumps Cheat Engine du
   30-08) SUPPRIMÉS (1,2 Go). Restent sous `Scripts/` : `LevelUp`, `LevelUp-go-migration`,
   `LevelUp-wt-film-residus` et `LevelUp-wt-section3-chunk00` (autre session).
+- 2026-09-13 : message d'une autre session (finitions F/H) : quatre faits mesurés à absorber
+  dans toute révision du décodeur, écrits en §3 bis de `.ai/HANDOFF_DECODEUR_FILM_2026-09-13.md`
+  (pièce engendrée = déployée par nature ; événement 103 = pièce engendrée seulement ; origine
+  d'une pose portée purement temporelle ; index de région Live Fire à IMPOSER depuis le catalogue,
+  jamais détecté — cohérent avec le lot B-bis). Aucun lot de décodeur en cours ici : versés en
+  entrée du lot I (architecture cible, pas 0 et 2 : le profil impose, il ne détecte pas).
