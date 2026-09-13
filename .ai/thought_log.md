@@ -1,3 +1,29 @@
+## [2026-09-13] Chantier decodeur — item 0.B.7 (une fixture de contrat par build) — Complete (feat/decfilm-0B7 fusionnee dans feat/recherche-decodeur-film)
+
+**Decision technique principale.** `contract_fixtures_test.go` itere la table des builds de
+`golden_builds_test.go` (7 mini-bobines + `000d5950`), chaque fixture cuite depuis ses
+`inputs_<short8>.bin.gz` figes sans lire de film ; documents PLEINS mesures a 5,86 Mio contre un
+plafond de 3 Mio (l'estimation D4 supposait des bobines, or 0.A.2 decode les entrees du film
+entier) ; coupe A retenue par le pilote : pistes amincies a 1 point sur 5 (premier et dernier
+conserves : le web lit la fin de fenetre de vie dans le dernier point), reference `000d5950`
+intacte (renommage git, 0 octet neuf), `pointsStride` declare par fixture dans le manifeste et
+valide cote web ; total 2,01 Mio. Regle « un seul jeu vivant » : la regeneration purge le jeu de
+la version precedente, `TestContractFixturesUnSeulJeuVivant` eprouve par mutation. Les fixtures
+servent le contrat de FORME, pas la reproduction du document servi (D9). Fichier > 500 L scinde
+(`contract_fixtures_budget_test.go`).
+
+**Resultats observes.** Les 7 builds traversent la frontiere web sans defaut (normalisation,
+zod strict, logiques pures, matrice), y compris HI_1_4_1 ; vitest 202 fichiers / 3 124 tests ;
+go test replay + archlint verts ; lint 0 issue ; tsc -b --force 0. Pilote : tailles et manifeste
+verifies sur disque (2 108 044 o, 8 entrees), test de contrat rejoue (77 verts), aucun lien dans
+le worktree (installation npm locale). Pas de revue adversariale (extension de code deja revu,
+tests et fixtures ; calibrage du skill).
+
+**Prochaine etape.** CI ; M0 clos hors lot 0.D, en attente de la decision utilisateur
+(instruction bornee de D6, D7, D8 et du codec D9 avant M1, ou consignation).
+
+---
+
 ## [2026-09-13] Chantier decodeur — lot 0.A (oracles du decodeur) — Complete (branche feat/decfilm-0A fusionnee dans feat/recherche-decodeur-film)
 
 **Decision technique principale.** Les oracles AVANT le premier changement de comportement :
