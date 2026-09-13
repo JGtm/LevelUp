@@ -266,15 +266,7 @@ func TestNoARTPatternsOnProtectedTables(t *testing.T) {
 			// mono-processus), et le présent guard-rail. NB (E3, 2026-07-03) : ops/
 			// N'EST PLUS exclu — sa plomberie (catalog_refresh, lying_bits_reset,
 			// data_quality) tourne IN-PROCESS, donc soumise au tripwire.
-			if strings.HasSuffix(path, "_test.go") ||
-				strings.Contains(path, "/migration/") ||
-				strings.Contains(path, "\\migration\\") ||
-				strings.Contains(path, "/migrations/") ||
-				strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/cmd/") ||
-				strings.Contains(path, "\\cmd\\") ||
-				strings.Contains(path, "/scripts/") ||
-				strings.Contains(path, "\\scripts\\") {
+			if !dansLePerimetreART(path) {
 				return nil
 			}
 
@@ -344,11 +336,7 @@ func TestNoRawDeleteOnAppendOnlyTables(t *testing.T) {
 			if !strings.HasSuffix(path, ".go") {
 				return nil
 			}
-			if strings.HasSuffix(path, "_test.go") ||
-				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
-				strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
-				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
+			if !dansLePerimetreART(path) {
 				return nil
 			}
 			content, readErr := os.ReadFile(path)
@@ -500,11 +488,7 @@ func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 			if !strings.HasSuffix(path, ".go") {
 				return nil
 			}
-			if strings.HasSuffix(path, "_test.go") ||
-				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
-				strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
-				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
+			if !dansLePerimetreART(path) {
 				return nil
 			}
 			content, readErr := os.ReadFile(path)
