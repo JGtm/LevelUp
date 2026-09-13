@@ -19,7 +19,6 @@ import {
   escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
-  getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
 import type { FragClassEntry } from '@/lib/api/types'
@@ -53,6 +52,23 @@ function killsByClass(entries: FragClassEntry[]): Map<string, number> {
   return m
 }
 
+/**
+ * Les classes de frags REELLEMENT presentes, dans l'ordre canonique — la meme liste que
+ * celle des segments du graphe. Exportee pour que la legende du pied de carte (DOM) se
+ * construise sur la MEME source que les series : deux listes calculees separement
+ * divergeraient au premier changement de regle.
+ */
+export function fragBreakdownClasses(
+  rows: Record<string, FragClassEntry[]>,
+  playerOrder?: string[],
+): string[] {
+  const players = orderedPlayers(rows, playerOrder)
+  if (players.length === 0) return []
+  const byPlayer = new Map<string, Map<string, number>>()
+  for (const player of players) byPlayer.set(player, killsByClass(rows[player] ?? []))
+  return presentClasses(byPlayer)
+}
+
 export function buildFragBreakdownOption(
   rows: Record<string, FragClassEntry[]>,
   opts: FragBreakdownOpts,
@@ -79,7 +95,9 @@ export function buildFragBreakdownOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 32, bottom: 24, left: 8, right: 24, containLabel: true },
+    // La bande du haut (32 px) logeait la légende ECharts, désormais hors canvas ; celle
+    // du bas n'a plus à loger qu'elle-même, `containLabel` réservant les graduations.
+    grid: { top: 8, bottom: 8, left: 8, right: 24, containLabel: true },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
@@ -101,7 +119,13 @@ export function buildFragBreakdownOption(
         return `${escapeHtml(arr[0].name ?? '')}<br/>${lines.join('<br/>')}<br/>Total : <b>${total}</b>`
       },
     },
-    legend: { ...getLegendBase(tc), data: classes.map((cls) => opts.classLabel(cls)) },
+    // PAS DE LÉGENDE DANS LE CANVAS (finitions 2026-09-13) : à sept classes et en demi-
+    // largeur, elle prenait deux rangées posées AU FOND du canvas, là où s'impriment les
+    // graduations de l'axe des frags — « 1 000 … 7 000 » se lisaient par-dessus les
+    // libellés de classes (capture Escouade sur 55 sessions). La légende vit désormais
+    // sous le graphe, en DOM (`ChartCard legend` + `ChartLegend`), comme la matrice
+    // joueur × carte : elle ne peut plus recouvrir quoi que ce soit, et reste lisible
+    // même sur un canvas court.
     xAxis: { ...axis, type: 'value', minInterval: 1 },
     yAxis: {
       ...axis,

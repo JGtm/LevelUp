@@ -104,6 +104,7 @@ export const synthesisManifest = {
   "synthesis.weapon_range.elevation_subtitle": { fr: "Dénivelé", en: "Elevation" },
   "synthesis.weapon_range.elevation_subtitle_detail": { fr: "D'où vous avez fragué et d'où l'on vous a fragué, à ±1 m près. Deux barres par arme : vos frags au-dessus, vos morts en dessous.", en: "Where you killed from and where you were killed from, to within ±1 m. Two bars per weapon: your kills on top, your deaths below." },
   "synthesis.weapon_range.empty_below_threshold": { fr: "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les portées mesurées restent trop rares pour être publiées arme par arme.", en: "No weapon reaches the {min, number} measurement threshold over this period: measured ranges are still too rare to publish weapon by weapon." },
+  "synthesis.weapon_range.empty_below_threshold_elevation": { fr: "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les dénivelés mesurés restent trop rares pour être publiés arme par arme.", en: "No weapon reaches the {min, number} measurement threshold over this period: measured elevations are still too rare to publish weapon by weapon." },
   "synthesis.weapon_range.heading": { fr: "Portée des engagements", en: "Engagement range" },
   "synthesis.weapon_range.legend_elevation_label": { fr: "Légende du dénivelé", en: "Elevation legend" },
   "synthesis.weapon_range.legend_label": { fr: "Légende", en: "Legend" },

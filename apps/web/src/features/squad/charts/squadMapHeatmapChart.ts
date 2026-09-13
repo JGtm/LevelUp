@@ -28,6 +28,29 @@ import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadMapHeatmap, SquadMapHeatmapCell } from '@/lib/api/types'
 import { truncateMap } from '@/lib/charts/matchLabels'
 
+/**
+ * Combien d'étiquettes de carte la bande sous le graphe peut porter SANS que deux voisines
+ * se chevauchent.
+ *
+ * MESURÉ, PAS DEVINÉ (capture du 2026-09-13, Escouade sur 55 sessions) : à 56 cartes les 56
+ * étiquettes obliques se superposaient en un pâté illisible. Une étiquette tronquée
+ * (`truncateMap`, 9 caractères + points de suspension) occupe ~45 px d'emprise horizontale
+ * une fois tournée ; sur la largeur utile d'une carte pleine (~1 200 px) cela fait 18
+ * étiquettes qui respirent. Au-delà de ce compte, on n'en écrit plus qu'UNE SUR K — la
+ * numérotation « #N » de chaque étiquette dit combien de colonnes le saut a passées, et
+ * l'infobulle de chaque case nomme toujours sa carte en entier.
+ */
+const MAX_ETIQUETTES_X = 18
+
+/**
+ * `axisLabel.interval` d'ECharts : nombre d'étiquettes SAUTÉES entre deux écrites (0 = toutes).
+ * Exporté pour être vérifié hors rendu.
+ */
+export function xLabelInterval(mapCount: number): number {
+  if (mapCount <= MAX_ETIQUETTES_X) return 0
+  return Math.ceil(mapCount / MAX_ETIQUETTES_X) - 1
+}
+
 export interface SquadMapHeatmapOpts {
   mapLabelOf: (mapUI: string) => string
   pieceLabels: { tier1: string; tier2: string; tier3: string; tier4: string; tier5: string }
@@ -99,7 +122,9 @@ export function buildSquadMapHeatmapOption(
       type: 'category',
       data: xLabels,
       // margin : décolle les étiquettes (2 lignes « #N\nCarte ») du bas du graphe.
-      axisLabel: { ...axis.axisLabel, rotate: -35, interval: 0, margin: 14 },
+      // interval : toutes les cartes tant qu'elles tiennent, une sur K au-delà (cf.
+      // `xLabelInterval`) — 56 cartes, c'était 56 étiquettes l'une sur l'autre.
+      axisLabel: { ...axis.axisLabel, rotate: -35, interval: xLabelInterval(mapsTopn.length), margin: 14 },
       // AXES NOMMES (2026-09-13) : sans eux, une grille de gamertags par cartes laisse
       // deviner ce qui est en ligne et ce qui est en colonne. `nameGap` passe SOUS les
       // etiquettes rotees, dont la place est prise dans `grid.bottom`.

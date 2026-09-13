@@ -100,3 +100,20 @@ describe('EquipmentUsageSection', () => {
     expect(screen.queryByText(t.rowMyTeam)).not.toBeInTheDocument()
   })
 })
+
+describe('couverture de mesure — accord en nombre (finitions 2026-09-13)', () => {
+  it('un seul match : « match » au singulier, en FR comme en EN', () => {
+    expect(USAGE_TEXT.fr.measuredFooterFmt(1, 1)).toBe('Mesuré sur 1 match sur 1')
+    expect(USAGE_TEXT.en.measuredFooterFmt(1, 1)).toBe('Measured on 1 match out of 1')
+  })
+
+  it('plusieurs matchs : pluriel', () => {
+    expect(USAGE_TEXT.fr.measuredFooterFmt(104, 1147)).toBe('Mesuré sur 104 matchs sur 1147')
+    expect(USAGE_TEXT.en.measuredFooterFmt(104, 1147)).toBe('Measured on 104 matches out of 1147')
+  })
+
+  it('aucun match mesuré : singulier en FR (« 0 match »), pluriel en EN', () => {
+    expect(USAGE_TEXT.fr.measuredFooterFmt(0, 12)).toBe('Mesuré sur 0 match sur 12')
+    expect(USAGE_TEXT.en.measuredFooterFmt(0, 12)).toBe('Measured on 0 matches out of 12')
+  })
+})

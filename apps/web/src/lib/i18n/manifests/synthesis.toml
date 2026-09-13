@@ -556,3 +556,10 @@ en = "You close the distance in {pct} of kills"
 [synthesis.weapon_range.empty_below_threshold]
 fr = "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les portées mesurées restent trop rares pour être publiées arme par arme."
 en = "No weapon reaches the {min, number} measurement threshold over this period: measured ranges are still too rare to publish weapon by weapon."
+
+# État vide de la carte « Dénivelé » — sa PROPRE phrase (finitions 2026-09-13). La carte
+# reprenait mot pour mot l'état vide de « Portée par arme » (« les portées mesurées restent
+# trop rares… ») : sur la carte du dénivelé, la phrase parlait d'autre chose que son graphe.
+[synthesis.weapon_range.empty_below_threshold_elevation]
+fr = "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les dénivelés mesurés restent trop rares pour être publiés arme par arme."
+en = "No weapon reaches the {min, number} measurement threshold over this period: measured elevations are still too rare to publish weapon by weapon."
