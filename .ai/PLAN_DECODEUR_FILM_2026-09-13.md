@@ -580,6 +580,24 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       responsables ; verdict DÉFAUT ou DIVERGENCE ; correctif seulement si défaut à cause
       identifiée (même protocole) ; sinon registre. Si la session ne suffit pas : registre avec
       ce qui a été établi.
+- [ ] 0.D.6 **Les véhicules qui disparaissent au schéma 54 (signalement utilisateur du
+      2026-09-13 : « les images des véhicules peuvent disparaître sur le schéma 54 ; les versions
+      ont bumpé ces derniers temps sans garder toutes les données »).** Angle mort connu de la
+      classification : le calque véhicules naît au schéma 39, donc la comparaison 34 -> 54 ne peut
+      PAS voir une dégradation entre 39 et 54 (ses axes sortent « nouveaux »). Instruction bornée
+      (une session) : (a) témoin nommé par l'utilisateur si fourni, sinon `084a804d` (BTB
+      véhicules) et un second film à véhicules du corpus ; (b) corpus gate sur ce(s) témoin(s) avec
+      `--base` aux bumps successifs 51, 52, 53, 54 (shas de la chronique) : axes `vehicles.*`,
+      `vehicleRides` (comptes ET durées cumulées par calque) ; nommer le bump où une piste ou une
+      occupation raccourcit ou disparaît ; (c) la règle d'effacement (« le véhicule reste dessiné
+      jusqu'à la première preuve mesurée de son absence, fenêtre d'environ 20 s après la dernière
+      preuve de présence », texte de `i18n.ts`, code à localiser dans `replay/vehicle_*.go`) est
+      une HEURISTIQUE au sens de D13 : confronter à ce que le film ÉCRIT (dead-state ti=40 lisible
+      depuis le 2026-09-05, `wt/vehicule-deadstate` ; piège connu : le filtre `DesyncAt == -1`
+      jetait des morts de véhicule lues) ; (d) verdict DÉFAUT (données perdues à un bump, ou repli
+      qui efface un véhicule que le film montre encore) -> correctif + test par mutation + corpus
+      gate zéro perte + `SchemaVersion` 55 si le contenu cuit change, repli NOMMÉ (D14) ; sinon
+      registre avec le bump et l'axe.
 
 Gate 0.D : gates communs à chaque sous-lot ; régime court 10/10 identiques à chaque sous-lot qui
 touche le décodeur ou le constructeur ; corpus gate ciblé (un témoin) sur les sous-lots qui
