@@ -244,26 +244,48 @@ type SessionObjectivesBlock struct {
 // courir plus vite, puis le reprendre). Les deux totaux sont publiés ensemble
 // pour que l'écart se VOIE : c'est lui qui justifie la grandeur nette.
 type SessionFlagGrabsNetBlock struct {
-	// MatchesWithObjectives / MatchesMeasured : le dénominateur de tout ce qui
-	// suit. Un match à objectif sans film lu n'a AUCUNE prise ici — ce n'est
-	// pas un match sans prise, c'est un match non mesuré, et l'écart entre les
-	// deux nombres le dit.
-	MatchesWithObjectives int `json:"matches_with_objectives"`
+	// MatchesWithFlagFamily / MatchesMeasured : le dénominateur de couverture.
+	// Un match À DRAPEAU sans film lu n'a AUCUNE prise ici — ce n'est pas un
+	// match sans prise, c'est un match non mesuré, et l'écart entre les deux
+	// nombres le dit.
+	//
+	// LE DÉNOMINATEUR EST LA FAMILLE DRAPEAU, PAS « les matchs à objectif » :
+	// compter les matchs de zones ou de crâne attribuerait au film l'absence de
+	// matchs qui n'ont simplement pas de drapeau.
+	MatchesWithFlagFamily int `json:"matches_with_flag_family"`
 	MatchesMeasured       int `json:"matches_measured"`
+	// MatchesTeamKnown : ceux des matchs mesurés où le camp du joueur suivi est
+	// connu — le SEUL périmètre sur lequel une part d'équipe a un sens.
+	MatchesTeamKnown int `json:"matches_team_known"`
+	// OpeningsTotal : les OUVERTURES DE PORTAGE comptées par l'oracle du film sur
+	// ces matchs (une fois par match). C'est le dénominateur de `lobby_raw_total`
+	// — les pistes ne portent que les prises que le pont a su nommer et situer.
+	OpeningsTotal int `json:"openings_total"`
 	// WindowSeconds : la fenêtre de jonglage appliquée. ZÉRO quand le scope en
 	// mêle PLUSIEURS (parc partiellement re-projeté après un changement de
 	// règle) : il n'y a alors pas UNE fenêtre, et en publier une mentirait sur
 	// l'autre.
 	WindowSeconds float64 `json:"window_seconds,omitempty"`
-	// Totaux nets puis bruts, sur les trois périmètres habituels.
+	// Totaux nets puis bruts du joueur et du lobby, sur TOUS les matchs mesurés.
+	//
+	// ⚠ CES DEUX-LÀ NE SE COMPARENT PAS À `TeamTotal` : l'équipe ne se compte que
+	// sur les matchs à camp connu. Le couple comparable est
+	// (PlayerTeamScopeTotal, TeamTotal) juste en dessous.
 	PlayerTotal    int `json:"player_total"`
-	TeamTotal      int `json:"team_total"`
 	LobbyTotal     int `json:"lobby_total"`
 	PlayerRawTotal int `json:"player_raw_total"`
-	TeamRawTotal   int `json:"team_raw_total"`
 	LobbyRawTotal  int `json:"lobby_raw_total"`
-	// PlayerShareOfTeamPct : part du joueur dans les prises nettes de son camp.
-	// Absent quand le camp n'a pris aucun drapeau — pas de part, jamais 0 %.
+	// PlayerTeamScopeTotal / TeamTotal : le couple COMPARABLE, tous deux
+	// restreints aux matchs à camp connu (même règle que les métriques d'usage :
+	// numérateur ET dénominateur sur le même périmètre, sinon la part dépasse
+	// 100 % dès qu'un match du scope a un camp inconnu).
+	PlayerTeamScopeTotal    int `json:"player_team_scope_total"`
+	TeamTotal               int `json:"team_total"`
+	PlayerTeamScopeRawTotal int `json:"player_team_scope_raw_total"`
+	TeamRawTotal            int `json:"team_raw_total"`
+	// PlayerShareOfTeamPct : part du joueur dans les prises nettes de son camp,
+	// sur ce même périmètre. Absent quand le camp n'a pris aucun drapeau — pas
+	// de part, jamais 0 %.
 	PlayerShareOfTeamPct *float64 `json:"player_share_of_team_pct,omitempty"`
 }
 

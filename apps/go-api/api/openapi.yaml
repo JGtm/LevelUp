@@ -23167,7 +23167,13 @@ components:
         matches_measured:
           format: int64
           type: integer
-        matches_with_objectives:
+        matches_team_known:
+          format: int64
+          type: integer
+        matches_with_flag_family:
+          format: int64
+          type: integer
+        openings_total:
           format: int64
           type: integer
         player_raw_total:
@@ -23176,6 +23182,12 @@ components:
         player_share_of_team_pct:
           format: double
           type: number
+        player_team_scope_raw_total:
+          format: int64
+          type: integer
+        player_team_scope_total:
+          format: int64
+          type: integer
         player_total:
           format: int64
           type: integer
@@ -23189,14 +23201,18 @@ components:
           format: double
           type: number
       required:
-        - matches_with_objectives
+        - matches_with_flag_family
         - matches_measured
+        - matches_team_known
+        - openings_total
         - player_total
-        - team_total
         - lobby_total
         - player_raw_total
-        - team_raw_total
         - lobby_raw_total
+        - player_team_scope_total
+        - team_total
+        - player_team_scope_raw_total
+        - team_raw_total
       type: object
     SessionGroup:
       additionalProperties: false
