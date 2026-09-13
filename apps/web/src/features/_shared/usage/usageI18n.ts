@@ -153,10 +153,7 @@ export interface UsageText {
   /** Aide d'en-tête des deux cartes en variante comptes (pas de trait de parité ici). */
   cardHintEquipmentCounts: string
   cardHintWeaponCounts: string
-  /** Sous-titre de la vue barres : solo (familles) vs escouade (une ligne par joueur). */
-  viewCountsSolo: string
-  viewCountsSquad: string
-  /** Sous-titre de la vue donut, équipement puis armes spéciales, solo vs escouade. */
+  /** Titre de la carte donut, équipement puis armes spéciales, solo vs escouade. */
   viewEquipmentPartsSolo: string
   viewEquipmentPartsSquad: string
   viewWeaponPartsSolo: string
@@ -211,7 +208,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     rowMyTeam: 'Mon équipe',
     rowLobby: 'Lobby',
     segTeamRest: 'Reste de mon équipe',
-    segEnemy: 'Eux (anonyme)',
+    segEnemy: 'Équipe adverse',
     bandAboveFmt: (team) => `${team} au-dessus de la parité`,
     bandTipFmt: (i, share, parity) =>
       `Match ${i} — part d'équipe ${share} (parité de session ${parity})`,
@@ -265,8 +262,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
       "Chaque barre est le nombre d'objets pris sur la période ; son remplissage dit ce qui en a été fait. Les deux repères dans la barre sont des taux qui t'excluent : le trait plein est le taux du reste de ton équipe, le pointillé celui de eux.",
     cardHintWeaponCounts:
       "Chaque barre est le nombre de prises de socle d'arme sur la période. Le tir n'est pas mesuré à ce grain : la barre est un compte simple, pas ce qui a été fait de la prise.",
-    viewCountsSolo: "Ce que j'ai pris, et ce que j'en ai fait",
-    viewCountsSquad: "Ce que chacun a pris, et ce qu'il en a fait",
     viewEquipmentPartsSolo: "Ma part de l'équipement du lobby",
     viewEquipmentPartsSquad: "Notre part de l'équipement du lobby",
     viewWeaponPartsSolo: 'Ma part des armes spéciales du lobby',
@@ -312,7 +307,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     rowMyTeam: 'My team',
     rowLobby: 'Lobby',
     segTeamRest: 'Rest of my team',
-    segEnemy: 'Them (anonymous)',
+    segEnemy: 'Opposing team',
     bandAboveFmt: (team) => `${team} above parity`,
     bandTipFmt: (i, share, parity) =>
       `Match ${i} — team share ${share} (session parity ${parity})`,
@@ -366,8 +361,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
       'Each bar is the number of items taken over the period; its fill says what became of them. The two marks in the bar are rates that exclude you: the solid mark is the rate of the rest of your team, the dotted one is theirs.',
     cardHintWeaponCounts:
       "Each bar is the number of power weapon pad pickups over the period. Firing isn't measured at this grain: the bar is a plain count, not what became of the pickup.",
-    viewCountsSolo: "What I've taken, and what I did with it",
-    viewCountsSquad: 'What each of us took, and what we did with it',
     viewEquipmentPartsSolo: "My share of the lobby's equipment",
     viewEquipmentPartsSquad: "Our share of the lobby's equipment",
     viewWeaponPartsSolo: "My share of the lobby's power weapons",

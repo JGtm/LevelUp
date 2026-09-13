@@ -92,11 +92,13 @@ beforeEach(() => {
 })
 
 describe('SynthesisWeaponRangeSection — rendu nominal', () => {
-  it('affiche la carte, son compte d’armes et les deux graphes', () => {
+  // DEUX CARTES DEPUIS LE 2026-09-13 : la portée et le dénivelé répondaient à deux questions
+  // sous un seul titre. Chacune porte son graphe ; le compte d'armes (« 2 armes · … »), lu
+  // une fois puis jamais, a été retiré du bandeau.
+  it('affiche les DEUX cartes, chacune avec son graphe', () => {
     renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
-    const card = screen.getByRole('region', { name: 'Portée par arme — mes frags et mes morts' })
-    expect(card).toBeInTheDocument()
-    expect(flat(card.querySelector('h3')?.textContent)).toContain('2 armes')
+    expect(screen.getByRole('region', { name: 'Portée par arme' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Dénivelé' })).toBeInTheDocument()
     // Deux ChartCard : le canvas lui-même est chargé en `lazy`, on pince la carte.
     expect(screen.getAllByTestId('chart-card')).toHaveLength(2)
   })
@@ -328,9 +330,11 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
     expect(textOf(/^1 214 frags mesurés sur 1 602$/).length).toBeGreaterThan(0)
     // Aucun graphe, mais une phrase qui DIT pourquoi — jamais un canevas vide sans mot.
     expect(screen.queryAllByTestId('chart-card')).toHaveLength(0)
+    // Une raison PAR CARTE : chacune des deux dit pourquoi elle ne trace rien — une seule
+    // phrase laisserait l'autre carte muette.
     expect(
-      screen.getByText(/Aucune arme n'atteint le seuil de 8 mesures sur cette période/),
-    ).toBeInTheDocument()
+      screen.getAllByText(/Aucune arme n'atteint le seuil de 8 mesures sur cette période/),
+    ).toHaveLength(2)
     // Le tableau disparaît aussi : il n'aurait aucune ligne à redire.
     expect(screen.queryByText('Voir en tableau')).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()

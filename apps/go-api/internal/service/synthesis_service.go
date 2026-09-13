@@ -38,7 +38,6 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
-	"levelup/go-api/internal/service/teammates"
 )
 
 // SynthesisService orchestre les données de la page Synthèse.
@@ -64,12 +63,6 @@ type SynthesisService struct {
 	// weapon_accuracy (Halo 5 natif). Quand nil OU titre sans table (Infinite),
 	// le champ WeaponAccuracy est omis de la réponse.
 	weaponAccuracyRepo port.WeaponAccuracyRepository
-	// weaponRangeRepo : charge les frags MESURÉS (position des deux joueurs connue) des
-	// deux côtés, pour la section « Portée par arme » — où je frague, où je meurs, et d'en
-	// haut ou d'en bas. Câblé INCONDITIONNELLEMENT (jamais slug==) : c'est le repo qui dit
-	// « ce titre ne sait pas faire » par games.ErrCapabilityNotSupported, et le service qui
-	// dégrade en omettant le champ. Cf. synthesis_weapon_range.go.
-	weaponRangeRepo port.WeaponRangeRepository
 	// vehicleDestructionRepo : source ALTERNATIVE (par titre) des compteurs
 	// « véhicules détruits » / « vol à la tire ». Câblé UNIQUEMENT pour les titres à
 	// commendations NATIVES (Halo 5, capability commendations.native — cf. registry
@@ -81,11 +74,6 @@ type SynthesisService struct {
 	// scope. Câblé UNIQUEMENT pour les titres à capability match.objective.stats
 	// (Infinite ; nil pour Halo 5 → bloc objective_stats omis). Best-effort.
 	objectiveStatsRepo port.ObjectiveStatsRepository
-	// sessionUsageRepo / usageFriends : le bloc « servi ou gâché » de l'équipement
-	// (étape E5). Câblés gated par film.usage_summary ; nil ⇒ bloc indisponible
-	// avec raison machine. Cf. synthesis_service_usage.go.
-	sessionUsageRepo port.SessionUsageRepository
-	usageFriends     teammates.FriendGamertagsResolver
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug  string
@@ -137,13 +125,6 @@ func (s *SynthesisService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) 
 // WithWeaponAccuracyRepo injecte le loader pour le classement précision par arme.
 func (s *SynthesisService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepository) *SynthesisService {
 	s.weaponAccuracyRepo = repo
-	return s
-}
-
-// WithWeaponRangeRepo injecte le loader de la section « Portée par arme » (frags et morts
-// MESURÉS, distance et dénivelé). Voir le champ pour le contrat de dégradation.
-func (s *SynthesisService) WithWeaponRangeRepo(repo port.WeaponRangeRepository) *SynthesisService {
-	s.weaponRangeRepo = repo
 	return s
 }
 
@@ -248,18 +229,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	// titre sans table weapon_accuracy (Infinite) → champ omis.
 	weaponAccuracy := s.loadWeaponAccuracy(ctx, filteredCanon)
 
-	// Portée et dénivelé des engagements (frags ET morts mesurés) : best-effort, nil si
-	// repo absent, titre sans positions par kill, ou scope non décodé → section omise.
-	weaponRange := s.loadWeaponRange(ctx, filteredCanon)
-
 	// KPI objectifs (cumul CTF/Zones/Oddball sur le scope) : best-effort, nil si repo
 	// absent (capability match.objective.stats non déclarée — Halo 5) ou scope sans
 	// match à objectif → bloc omis.
 	objectiveStats := s.loadObjectiveStats(ctx, filteredCanon)
-
-	// Bloc « servi ou gâché » de l'équipement (étape E5) : best-effort, gaté par
-	// film.usage_summary — nil quand le scope filtré n'a aucun match.
-	equipmentUsage := s.loadEquipmentUsage(ctx, filteredCanon)
 
 	scope := domain.SynthesisScope{
 		Period:         period,
@@ -294,10 +267,8 @@ func (s *SynthesisService) GetSynthesisPage(
 		TopWeaponKills:    topWeaponKills,
 		FragDistribution:  fragDistribution,
 		WeaponAccuracy:    weaponAccuracy,
-		WeaponRange:       weaponRange,
 		CombatProfile:     combatProfile,
 		ObjectiveStats:    objectiveStats,
-		EquipmentUsage:    equipmentUsage,
 	}, nil
 }
 
