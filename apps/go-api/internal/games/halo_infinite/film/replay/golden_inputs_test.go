@@ -1238,6 +1238,7 @@ func TestGoldenInputsRegenerate(t *testing.T) {
 }
 
 // decodeFilmInputs rejoue EXACTEMENT la sequence de decodage de BuildFromFilm — c est ce qui
+// decodeFilmInputs rejoue EXACTEMENT la sequence de decodage de BuildFromFilm — c est ce qui
 // garantit que le fixture porte les memes entrees que la production. Les bornes de carte sont
 // celles de Cliffhanger, lues dans le catalogue versionne du titre.
 func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
@@ -1245,6 +1246,14 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 	if err != nil {
 		return nil, err
 	}
+	return decodeFilmInputsForEntry(film, dir, entry)
+}
+
+// decodeFilmInputsForEntry est le MEME decodage, pour une carte quelconque (lot 0.A.2 : un
+// fixture d entrees par build, donc une carte par build). `decodeFilmInputs` en est le cas
+// particulier de Cliffhanger, et le seul chemin qui change est la LECTURE DU CATALOGUE.
+func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*goldenInputs, error) {
+	var err error
 	// MEME GESTE QUE LA PRODUCTION (cf. installWorldObjectPrecision) : les largeurs d'axe du
 	// chemin world-object viennent de l'entree de catalogue, pas du defaut de paquet. Sur
 	// Cliffhanger les deux coincident — c'est precisement pourquoi l'oubli avait survecu des
