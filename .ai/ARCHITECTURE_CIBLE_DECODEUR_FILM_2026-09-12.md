@@ -242,7 +242,10 @@ film témoin), pas une valeur « historique » comme l'en-tête de 64 bits l'a �
   le profil NE SAIT PAS (carte hors catalogue, build inconnu), on ne devine pas : erreur typée
   et film mis de côté (principe 10). L'inférence de chaînes (`frame_chain_infer.go`) est d'une
   autre nature, elle résout l'archétype d'un transitoire à partir du flux et non une constante
-  du format : elle reste dans `grammar`, sans état de paquet.
+  du format : elle reste dans `grammar`, sans état de paquet. Mesure du lot H des finitions
+  (2026-09-13, handoff § 3 bis, fait 4) qui le confirme : sur Live Fire, `DetectI0Layout` impute
+  l'index de région sur 2 bits à l'axe X (`[13 12 11]` au lieu de `[12 12 11]`) ; le découpage
+  s'impose depuis le catalogue, jamais par détection en production.
 
 ## 5 bis. Ce que le film déclare de lui-même, et ce qu'il ne déclare pas (ajout)
 
