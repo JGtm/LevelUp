@@ -1,3 +1,53 @@
+## [2026-09-13] Lot C — LUSR : cause de la corruption `h5_arena` fermee a la source, lecteur corrige, outil de purge — Complete (worktree wt-finitions-lusr, branche feat/finitions-lusr)
+
+**Decision technique principale.** Le lot C du `.ai/PLAN_FINITIONS_2026-09-13.md` ferme la CLASSE
+de defaut derriere la corruption LUSR du 2026-06-26 (2 461 lignes `h5_arena` ecrites dans les
+player DB halo_infinite de 4 joueurs), pas seulement son chemin. La cause, prouvee par l'enquete
+d'aout (rapport versionne en `.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md`), est une DOUBLE
+SOURCE DE TITRE : handles DB depuis le titre du cycle, moteur depuis le titre du profil. Trois
+gardes, dans cet ordre de portee : (C.2) au cablage V2, le moteur est desormais construit sur
+`deps.TitleSlug` — la double source n'existe plus, elle est COMPAREE, et un profil de titre
+etranger est refuse par la fabrique avec une erreur nommant joueur, titre du profil, titre du
+cycle ; le profil remonte `failed` dans le CycleResult, jamais en silence. Ratchet
+`TestSyncV2WiringHasSingleTitleSource` : toute ligne du fichier portant `p.TitleSlug` doit porter
+`deps.TitleSlug`. (C.1) `SyncEngine.RecomputeLUSRCanonical` stampe `ctxkeys.WithTitleSlug(ctx,
+e.titleSlug)` — UN seul point qui couvre les quatre appelants (action admin de replay, CLI
+`levelup backfill`, orchestrateur de backfill, service) ; le post-import OpenSpartan stampe le
+titre de la base qu'il ouvre. (C.4) invariant de donnees `lusr_chain_foreign_title` (SeverityFail),
+branche au gate d'integration avec les 4 chaines Infinite lues sur pieces dans
+`games/halo_infinite/skillchain/classify.go` ; il lit la TABLE BRUTE, et c'est le point : une
+chaine fausse survit sous la ligne gagnante de `_latest` apres un replay correct.
+
+**Resultats observes.** Deux affirmations du plan se sont revelees fausses a la verification sur
+pieces, et c'est ce qui a le plus change le lot. (1) La vue `match_skill_rank_latest` ne partitionne
+PAS par `(match_id, rating_type)` : la version finale (`applyMSRViewPriorityCSR`) partitionne par
+`match_id` seul, priorite CSR > LUSR > LUSR_V2 puis `start_time`, `written_at`, `id`. La bascule
+C.3 de `Q8LUSRHistoryPlayer` vers la vue reste juste — mieux, elle applique la regle produit deja
+ecrite dans `games/halo_5/livesync/csr_match.go` (« les matchs classes affichent le CSR, les
+sociaux le LUSR ») — mais sa consequence devait etre ecrite noir sur blanc, pas supposee. Ce
+lecteur brut rendait le graphe d'evolution de la page Carriere structurellement NON REPARABLE par
+un replay append-only. L'allowlist de `TestNoRawAppendOnlyReads` passe de 5 a 4 entrees. (2) Le
+filtre de purge devait etre `IS DISTINCT FROM` et non `<>` : `NULL <> 'x'` vaut NULL, donc un `<>`
+nu aurait JETE toutes les lignes a `playlist_group` NULL (les CSR) — un cas de test le cadenasse.
+`cmd/purge_foreign_lusr_chain` ne fait jamais de DELETE (vecteur ART) : reconstruction CTAS
+transactionnelle avec garde de cardinalite avant le DROP, et le DDL des index et de la vue est
+CAPTURE dans la base (`duckdb_indexes` / `duckdb_views`) puis rejoue plutot que recopie — une DDL
+recopiee derive des migrations du titre en silence. Gates : `go build` et `go vet ./...` exit 0,
+suite complete hors himap exit 0 (171 paquets), gate d'integration `-p 1` sur
+sync/persist/migration/platform/duckdb exit 0, `make go-api-lint` 0 issue. Deux ratchets
+preexistants ont mordu pendant le lot et ont ete repares, pas contournes :
+`TestNoUnauthorizedSharedSocialMention` (le mot `shared_social` dans un commentaire) et un INSERT
+positionnel de `invariants_violation_test.go` casse par l'ajout d'une colonne a la DDL de test.
+
+**Conclusion / prochaine etape.** C.1 a C.7 `[x]`. Le registre des reports (L537) passe de « cause
+non elucidee » a « ELUCIDEE », avec le recensement du 13/09 et le mode d'emploi de la purge. Ce
+qui RESTE au pilote : la purge elle-meme sur les 4 bases (lot E.2, serveur arrete, sauvegarde
+prealable, `-dry-run` puis `-commit`, une base a la fois) — l'executeur n'ouvre aucune base de
+`data/`. Trois decouvertes hors perimetre consignees au plan, NON traitees, dont une a arbitrer :
+`migration.RebuildMatchSkillRankART` repose `ADD PRIMARY KEY (match_id)`, le schema PRE-append-only
+— sur une player DB d'aujourd'hui ce rebuild echouerait, et s'il passait il detruirait l'invariant
+append-only et la vue `_latest` ; son unique appelant est `cmd/force_rebuild_art`.
+
 ## [2026-09-13] F.3 — archivage des plans et handoffs clos de la racine `.ai/` vers `V7.5/` — Complete (worktree wt/archive-ai)
 
 **Decision technique principale.** Tâche Notion 10 (item F.3 du `PLAN_FORK_ET_RELEASE_2026-09-11.md`),

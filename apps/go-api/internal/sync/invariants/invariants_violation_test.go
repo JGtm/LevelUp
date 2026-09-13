@@ -75,7 +75,7 @@ func TestCheckPlayer_AllPlayerChecksFireOnViolations(t *testing.T) {
 	mustExec(t, shared, `INSERT INTO match_participants VALUES ('m1',?),('m2',?),('m3',?)`, xuid, xuid, xuid)
 	mustExec(t, shared, `INSERT INTO medals_earned VALUES ('m2',?,100)`, xuid)
 	mustExec(t, player, `INSERT INTO player_match_enrichment (match_id) VALUES ('m2'),('m3')`)
-	mustExec(t, player, `INSERT INTO match_skill_rank VALUES ('m3','LUSR_V2')`)
+	mustExec(t, player, `INSERT INTO match_skill_rank (match_id, rating_type) VALUES ('m3','LUSR_V2')`)
 
 	rep, err := CheckPlayer(context.Background(), player, shared, xuid)
 	if err != nil {
