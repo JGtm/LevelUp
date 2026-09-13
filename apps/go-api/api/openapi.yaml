@@ -26120,8 +26120,6 @@ components:
             - "null"
         detailed_stats:
           $ref: '#/components/schemas/SynthesisDetailedStats'
-        equipment_usage:
-          $ref: '#/components/schemas/EquipmentUsageBlock'
         frag_distribution:
           $ref: '#/components/schemas/FragDistribution'
         heatmap_data:
@@ -26160,8 +26158,6 @@ components:
           type:
             - array
             - "null"
-        weapon_range:
-          $ref: '#/components/schemas/SynthesisWeaponRange'
       required:
         - scope
         - overview
@@ -27396,6 +27392,8 @@ components:
           $ref: '#/components/schemas/TimeseriesCumulTab'
         distributions_tab:
           $ref: '#/components/schemas/TimeseriesDistributionsTab'
+        equipment_usage:
+          $ref: '#/components/schemas/EquipmentUsageBlock'
         first_blood:
           items:
             $ref: '#/components/schemas/FirstBloodPlayerSeries'
@@ -27453,6 +27451,8 @@ components:
           type:
             - array
             - "null"
+        weapon_range:
+          $ref: '#/components/schemas/SynthesisWeaponRange'
       required:
         - total_matches
         - match_rows

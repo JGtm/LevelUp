@@ -389,7 +389,13 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb)).
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
-		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID)
+		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID).
+		// Portée des engagements (onglet Résumé) : câblage INCONDITIONNEL, MÊME repo et
+		// MÊME classificateur que la Synthèse (SynthesisCtx). Le repo est le seul à savoir
+		// si ce titre a des positions par kill — il rend games.ErrCapabilityNotSupported et
+		// le service omet la section ; un `if capability` ici prendrait la même décision à
+		// deux endroits qui divergeraient.
+		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
@@ -402,6 +408,13 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	// (Infinite ; absente pour Halo 5 → bloc objective_stats omis). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveStatsRepo(duckdb.NewObjectiveStatsRepo(pdb))
+	}
+	// Usages d'équipement (onglet Progression) : MÊME repo que la Synthèse et la page
+	// Sessions — les trois lectures prennent un scope FERMÉ de match_id, seul l'ensemble
+	// d'identifiants change d'une page à l'autre. Gated par film.usage_summary (absente
+	// pour Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
+		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver())
 	}
 	return svc, nil
 }

@@ -11871,7 +11871,6 @@ export interface components {
             combat_profile?: components["schemas"]["CombatProfileBlock"];
             comparison_metrics: components["schemas"]["ComparisonMetricItem"][] | null;
             detailed_stats: components["schemas"]["SynthesisDetailedStats"];
-            equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
             frag_distribution?: components["schemas"]["FragDistribution"];
             heatmap_data: components["schemas"]["TemporalHeatmapCell"][] | null;
             highlights_preview: components["schemas"]["SynthesisHighlightsPreview"];
@@ -11883,7 +11882,6 @@ export interface components {
             top_weapon_kills?: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
             top_weeks: components["schemas"]["TopWeekEntry"][] | null;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
-            weapon_range?: components["schemas"]["SynthesisWeaponRange"];
         };
         SynthesisScope: {
             /** Format: date-time */
@@ -12360,6 +12358,7 @@ export interface components {
             briefing_kpis?: components["schemas"]["KPIStats"];
             cumul_tab: components["schemas"]["TimeseriesCumulTab"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
+            equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             frag_distribution?: components["schemas"]["FragDistribution"];
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
@@ -12375,6 +12374,7 @@ export interface components {
             /** Format: int64 */
             total_matches: number;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
+            weapon_range?: components["schemas"]["SynthesisWeaponRange"];
         };
         TimeseriesSummaryTab: Record<string, never>;
         TimeseriesWeaponKill: {
