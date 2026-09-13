@@ -18,12 +18,33 @@ MATCH. Ce qui remonte au grain session est une autre affaire — §3.
 |---|---|---|---|
 | `equipmentEpisodes` | L'état ACTIF : **camouflage** et **surbouclier** seulement. Nombre d'épisodes, durée, frags pendant | Par VIE | Deux familles seulement, « parce que deux seulement sont mesurées — les autres restent sans état plutôt que devinés » (`document.go:147`) |
 | `equipmentPlacements` `origin: deployed` | Les DÉPLOIEMENTS d'objets sur la carte, par famille (`wall` / `sensor` / `other`) | Par pose, poseur mesuré | `t1` est une mise au repos, pas une disparition. ~5 % des poses sont `origin: unknown`. **ET SURTOUT (2026-09-10)** : sur un objet PORTÉ, `deployed` ne mesure PAS un déploiement mais un lâcher volontaire à mi-vie — seul le mur, qui engendre une pièce, y publie son geste (§1 bis) |
-| `equipmentPlacements` `origin: dropped` | Ce qui TOMBE à la mort : déployables **et bonus** | Par pose | Classé `dropped` à < 200 ms et < 1,5 m de la dernière position du porteur. Les deux populations sont séparées par trois ordres de grandeur |
+| `equipmentPlacements` `origin: dropped` | Ce qui TOMBE à la mort : déployables **et bonus** | Par pose | Classé `dropped` à < 200 ms de la dernière position du porteur. **La clause de distance (< 1,5 m) a été RETIRÉE le 2026-09-13** (item F.1) : elle promouvait `deployed` des lâchers à la mort dont le corps avait glissé. Les deux populations sont séparées par trois ordres de grandeur sur le seul axe du TEMPS (lâchers 20-40 ms, déploiements 14-42 s) |
 | `equipmentChanges` | Les RAMASSAGES (`taken`) et les CONSOMMATIONS (`spent`), datés à la ms | Par VIE (`Slot`) | Les annonces de RÉAPPARITION en sont écartées. Témoin de complétude : ~16 émissions manquées sur 319 sur trois films ; **71 sur 1 954 = 3,63 % sur les 64 artefacts du parc** (mesure E0 du 2026-09-09, §2) |
 | `grappleLines` | Les TRACTIONS de grappin — la seule activation de capacité mesurée et attribuée | Par VIE | — |
 | `abilityCharges` | Les CHARGES RESTANTES, lues au changement | Par VIE | **Grappin et propulseur SEULEMENT.** Rien n'est transmis au ramassage, donc le maximum n'est pas établissable. Le répulseur n'arme jamais ce canal (négatif mesuré, rapport R11) |
 | `abilityLabels` | Nomme les RANGS de capacité, palette propre au match | Match | Une capacité non classée ne reçoit aucun nom. **25,21 % des rangs lus par `equipmentChanges` ne sont pas nommés** — dont 8 artefacts sur 64 SANS table du tout (mesure E0, §2) |
 | `padPickups` × `weaponPads` | Les socles d'ARME (famille en 8 hexa) et les socles de BONUS vidés (`powerup_*`) | Match, ramasseur nommé depuis le schéma 30 | Un socle de bonus n'est jamais rattachable à un joueur |
+
+### Le canal des ÉVÉNEMENTS du film, et ce qu'il porte de l'équipement (2026-09-13)
+
+**Un seul événement nommé parle d'un objet d'équipement qui apparaît : le type 103
+`EquipmentSpawnedObject`, et il dit « une PIÈCE a été engendrée », jamais « un équipement a été
+déployé ».** Sa deuxième référence désigne l'objet créé (index 13 bits, base 512, plus la
+génération : 93,6 % de résolution contre 2,2 % au témoin de hasard, dt médian +49 ms, sur
+25 films et 931 occurrences). Sur les 5 761 poses publiées du corpus il désigne **216 des 216
+poses de panneau de mur** — et **AUCUNE pose d'un appareil PORTÉ**, ni déployée (0 sur 91) ni
+lâchée (0 sur 4 853 `dropped`, aux 3 panneaux mal classés près). Conséquences, toutes deux
+fermes :
+
+1. **Le 103 ne tire pas à la mort** — l'affirmation inverse, tirée d'un appariement en TEMPS
+   SEUL du rapport R5 §3.2, est réfutée.
+2. **Le film ne porte aucun signal de déploiement pour le capteur, le traqueur, l'écran
+   occultant et le champ de réparation.** L'origine d'une pose ne peut donc pas se lire sur un
+   événement : elle reste une mesure temporelle (`equipmentOrigin`, fenêtre de 200 ms — la
+   clause de distance a été retirée le 2026-09-13, item F.1).
+
+Détail, méthode, témoins et commandes rejouables :
+`.ai/V7.5/RAPPORT_F0_DEPLOIEMENT_103_2026-09-13.md`.
 
 ### Négatifs MESURÉS — ne pas les rechercher à nouveau
 
@@ -289,6 +310,12 @@ Trois affirmations fausses à ne pas répéter :
 - ~~« Un déployable est utilisé quand il est posé. »~~ (2026-09-10) → seulement le **mur**.
   Pour les autres, une pose `deployed` est un **lâcher volontaire à mi-vie** ; leur usage se
   lit sur les **consommations de charge** (§1 bis).
+- ~~« Le type 103 tire aussi à la mort. »~~ (2026-09-13) → non : 4 poses désignées sur 4 853
+  `dropped`, dont 3 sont des panneaux de mur. L'affirmation venait d'un appariement en TEMPS
+  SEUL (R5 §3.2) ; avec la référence résolue elle tombe.
+- ~~« Une pose est un lâcher parce qu'elle tombe aux pieds du mort. »~~ (2026-09-13) → la
+  question est purement TEMPORELLE depuis l'item F.1 ; la distance ne classe plus rien côté
+  équipement.
 
 ## 7. Références
 
