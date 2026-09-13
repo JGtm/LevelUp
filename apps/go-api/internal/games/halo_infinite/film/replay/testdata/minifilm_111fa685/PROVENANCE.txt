@@ -1,0 +1,27 @@
+MINI-BOBINE PAR BUILD — film 111fa685 (Command, BTB:Fiesta Slayer, version 39, build HI_1_10_0)
+
+CE FICHIER DIT D OU VIENT CHAQUE OCTET. Elle se REGENERE, elle ne s edite pas :
+
+    REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
+      go test ./internal/games/halo_infinite/film/replay/ -run MiniFilmBuildsRegenerate -update
+
+chunk_00.bin  446832 octets (zlib) — LE CHUNK DE REGISTRE du film (type 1), 1944952 octets une fois
+              decompresse, OCTET POUR OCTET. Il porte l identite, le registre des composants, la
+              table des joueurs et le build en clair (HI_1_10_0). C est ce chunk qui manque a la bobine
+              historique 000d5950, et sans lequel aucune bobine ne peut etre lue par son PROFIL.
+chunk_01.bin  296723 octets (zlib) — 14 paquet(s) d IMAGE-CLE (type 2) REELS, 2231494 octets une fois
+              decompresses, extraits des chunks de replication [1 2 3 4 5 6 7 8 9 10 11 12 13 14].
+              COUPEE au budget : 14 image(s)-cle retenue(s) sur les 29 du film.
+              Une image-cle porte l etat COMPLET de toutes les entites : c est la matiere de la
+              fermeture par archetype (lot 0.A.3) et du port des composants manquants (lot 3.6).
+chunk_02.bin  299681 octets (zlib) — LE PIED du film (chunk 30, type 3), 1323327 octets une fois
+              decompresse, OCTET POUR OCTET : le fil des morts.
+
+LE CONDITIONNEMENT EST DU ZLIB ET NE CHANGE AUCUN OCTET. Les chunks du cache sont stockes
+DECOMPRESSES ; l inflate du depot decompresse ce qui est compresse et laisse passer ce qui ne
+l est pas, donc le decodeur recoit exactement les memes octets. Sans ce conditionnement, chunk_00
+pesait a lui seul 1.85 Mio — deja plus que le plafond de 1 Mio par build (arbitrage V7 du plan).
+
+CE QUE CETTE BOBINE N EST PAS : un film valide. Les paquets d image-cle sont concatenes hors de
+leur continuite, donc les POSITIONS de biped — qui s accumulent par deltas — y sont sans
+signification, comme dans la bobine historique.
