@@ -274,6 +274,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			id BIGINT, written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		// Vue latest (miroir de schema.go) : player_matches_repo.go la requête.
 		`CREATE OR REPLACE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`,
+		// Vue PAR TYPE (miroir de la migration player_msr_view_latest_by_type_v1,
+		// 2026-09-13) : Q8LUSRHistoryPlayer la lit pour servir un checkpoint par
+		// (match_id, rating_type) sans arbitrer CSR contre LUSR.
+		`CREATE OR REPLACE VIEW match_skill_rank_latest_by_type AS SELECT * FROM match_skill_rank`,
 		// match_csrs (shared, append-only) : CSR par match/participant — source
 		// unique de season_id + measurement_matches_remaining (cf.
 		// loadMatchCSRMetaForMatches). Ces colonnes ne sont PAS sur

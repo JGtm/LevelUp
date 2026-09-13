@@ -225,6 +225,9 @@ func TestCompareRepo_GetPlayerATH(t *testing.T) {
 		// match_skill_rank_latest, jamais la table brute. Sur ce fixture
 		// mono-version, un simple passthrough suffit.
 		`CREATE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`,
+		// Vue PAR TYPE (miroir de player_msr_view_latest_by_type_v1, 2026-09-13) :
+		// Q8LUSRHistoryPlayer la lit — un checkpoint par (match_id, rating_type).
+		`CREATE VIEW match_skill_rank_latest_by_type AS SELECT * FROM match_skill_rank`,
 		`CREATE TABLE career_progression (
 			rank INTEGER, current_xp INTEGER, recorded_at TIMESTAMPTZ,
 			rank_name VARCHAR, rank_tier VARCHAR, xp_for_next_rank INTEGER,

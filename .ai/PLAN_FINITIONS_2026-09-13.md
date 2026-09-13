@@ -101,33 +101,40 @@ Source : `RAPPORT_VOLET1_LUSR_H5.md` sur `wt/lusr-h5-cause` (§5.3 G1-G4, §6). 
 13/09 (serveur arrêté) : lignes brutes `h5_arena` dans les player DB Infinite = JGtm 913,
 Madina 1 064, Chocoboflor 471, Daemon 31, chacune en LUSR + LUSR_V2 ; `_latest` n'en garde
 que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_arena`.
-- [ ] C.1 `SyncEngine.RecomputeLUSRCanonical` (`internal/sync/engine_backfills.go:187`) stampe
+- [x] C.1 `SyncEngine.RecomputeLUSRCanonical` (`internal/sync/engine_backfills.go:187`) stampe
       `ctxkeys.WithTitleSlug(ctx, e.titleSlug)` avant `RecomputeLUSRCanonicalForPlayer` (miroir
       de `engine_postsync_scoring.go:162`). Couvre `registry_lusr_gaps.go` (replay admin) ;
       `service/openspartan_post_import_service.go:152` stampe aussi le titre de la base qu'il
       ouvre. Test : un ctx porteur d'un autre titre ne change pas la chaîne écrite.
-- [ ] C.2 Fail-loud au câblage V2 : `cmd/server/sync_v2_wiring.go`, avant L283 — si
+- [x] C.2 Fail-loud au câblage V2 : `cmd/server/sync_v2_wiring.go`, avant L283 — si
       `p.TitleSlug != "" && p.TitleSlug != deps.TitleSlug`, erreur `ErrorContext` nommant
       profil, titre du profil, titre du cycle et l'incident 2026-06-26 ; le profil remonte
       `failed` dans le `CycleResult`. Test `TestBuildSyncEngineFactory_RefusesForeignTitleProfile`
       (3 cas du rapport). Ratchet `TestSyncV2WiringHasSingleTitleSource` (toute ligne portant
       `p.TitleSlug` porte aussi `deps.TitleSlug`).
-- [ ] C.3 Lecteur : `Q8LUSRHistoryPlayer` (`platform/duckdb/queries_career.go:207`) lit
+- [x] C.3 Lecteur : `Q8LUSRHistoryPlayer` (`platform/duckdb/queries_career.go:207`) lit
       `match_skill_rank_latest` (une ligne par match et rating_type, la plus récente) au lieu de
       la table brute ; mettre à jour le commentaire (règle ART n°2). Test existant du repo
       carrière adapté : une ligne périmée d'un match rejoué n'apparaît plus.
-- [ ] C.4 Invariant `invariants.CheckPlayerLUSRChains(ctx, db, allowed)` (clé
+- [x] C.3 bis (correction pilote) : `match_skill_rank_latest` partitionne par `match_id` SEUL
+      avec priorité CSR > LUSR — la brancher au graphe faisait DISPARAÎTRE le point LUSR de
+      tout match classé portant les deux lignes (perte de données rendues). Nouvelle vue
+      `match_skill_rank_latest_by_type` (migration player `player_msr_view_latest_by_type_v1`,
+      partition `(match_id, rating_type)`, `written_at DESC, id DESC`) ; `Q8LUSRHistoryPlayer`
+      la lit ; ratchet `no_raw_rating_reads_test.go` élargi explicitement au suffixe ;
+      test « match classé → les DEUX lignes servies ».
+- [x] C.4 Invariant `invariants.CheckPlayerLUSRChains(ctx, db, allowed)` (clé
       `lusr_chain_foreign_title`, `SeverityFail`, table brute) + test de violation ; branché au
       gate d'intégration avec la liste des chaînes du titre lue depuis
       `games/halo_infinite/skillchain` (vérifier la liste SUR PIÈCES, ne pas la recopier).
-- [ ] C.5 Outil `cmd/purge_foreign_lusr_chain` : une base à la fois, `-dry-run` par défaut,
+- [x] C.5 Outil `cmd/purge_foreign_lusr_chain` : une base à la fois, `-dry-run` par défaut,
       `-commit` explicite, reconstruction CTAS transactionnelle sur le modèle de
       `migration/append_only_rebuild.go` (garde de cardinalité avant DROP, vue `_latest`
       recréée, CHECKPOINT), JAMAIS de DELETE. Test sur fixture (2 lignes étrangères, 3 saines).
       L'EXÉCUTION sur les 4 bases est faite par le pilote (serveur arrêté, sauvegarde préalable).
-- [ ] C.6 Registre L537 : cause PROUVÉE (double source de titre, profils déclarés sous deux
+- [x] C.6 Registre L537 : cause PROUVÉE (double source de titre, profils déclarés sous deux
       titres) + gardes C.1/C.2/C.4 + purge à exécuter.
-- [ ] C.7 Gate : `go build ./...`, `go vet ./...`, `go test ./...` (hors himap),
+- [x] C.7 Gate : `go build ./...`, `go vet ./...`, `go test ./...` (hors himap),
       `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/migration/... ./internal/platform/duckdb/...`
       (exit 0), `make go-api-lint`, push, CI verte.
 
@@ -257,6 +264,24 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   `SchemaVersion` reste à 54 — la recuisson est donc une décision de fraîcheur, pas de contrat.
 
 
+- **Lot C — `migration.RebuildMatchSkillRankART`
+  (`internal/migration/steps_player_rebuild_match_skill_rank.go:71`) repose
+  `ADD PRIMARY KEY (match_id)`** : c'est le schéma PRÉ-append-only. Sur une player DB
+  d'aujourd'hui (PK technique `id`, N lignes par match_id) ce rebuild échouerait, et s'il
+  passait il détruirait l'invariant append-only et la vue `_latest`. Son unique appelant
+  est `cmd/force_rebuild_art`. À arbitrer : corriger (aligner sur la DDL de
+  `steps_player_match_skill_rank.go`) ou supprimer avec son CLI.
+- **Lot C — `Q24LUSRHistory` (`platform/duckdb/queries_career_encounters.go`) reste en
+  lecture brute** : allowlist `TestNoRawAppendOnlyReads`, justification datée du
+  2026-07-10 (décision B7 : `_latest` injecterait des valeurs d'échelle CSR dans un
+  pipeline purement LUSR). Le résidu `h5_arena` y survit donc jusqu'à la purge C.5 ;
+  après la purge, la question redevient théorique. Non traité (décision existante).
+- **Lot C — le post-import OpenSpartan ne stampe le titre que pour l'étape LUSR** : les
+  étapes `recomputePerfScores` (→ `GetPerformanceChain`, title-aware depuis `5be99a2c3`)
+  et suivantes reçoivent encore le ctx brut. Même famille de défaut sur une autre colonne
+  (`performance_chain`), non mesurée. Périmètre C.1 = LUSR seul.
+
+
 ## Journal
 - 2026-09-13 : plan écrit ; lot A fait (commit deps + push).
 - 2026-09-13 : lot B.1 clos (`feat/finitions-hygiene`) — merge `wt/psa-index-cause` (garde data-health PSA, 5 reproducteurs derrière `psarepro`), rapport déplacé en `.ai/V7.5/RAPPORT_VOLET2_INDEX_PSA_2026-08-28.md`, `#23046` -> `#23645` sur 133 fichiers Go + 6 docs + CLAUDE.md (196 occurrences Go), registre L538 réécrit (cause amont prouvée, garde alerte-seule 41 ms/base, condition de reprise = 1.5.6 avec #24744 ou jauge > 0). Gates : `go build ./...` exit 0, `go test ./internal/archlint/... ./internal/scheduler/...` exit 0, `go test -tags=integration -p 1 ./internal/scheduler/... ./internal/migration/...` exit 0.
@@ -273,3 +298,25 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   `buildObjectiveActions` + les deux comptes de `replaybuild.identifiedEvents`, publication
   inchangée (doctrine R1). Mesures : `8bc6074f` 119 -> 0 pulses/image et 218 -> 99 disponibles,
   `32d9a94f` 148 -> 55 des deux côtés.
+- 2026-09-13 : **lot C (LUSR) CLOS** sur `feat/finitions-lusr`, 7 commits. C.1 → C.7 tous
+  `[x]`. Deux constats « sur pièces » qui corrigent le plan : (1) la vue
+  `match_skill_rank_latest` partitionne PAR `match_id` seul avec priorité CSR > LUSR >
+  LUSR_V2 (et non par `(match_id, rating_type)` comme l'annonçait C.3) — la bascule reste
+  bonne quant au principe (ne plus lire le brut) mais FAUSSE quant à la vue choisie —
+  corrigé en C.3 bis, cf. entrée ci-dessous ; (2) le filtre de purge
+  devait être `IS DISTINCT FROM` et non `<>` (un `<>` nu jette les lignes à
+  `playlist_group` NULL). C.2 va au-delà du fail-loud : le moteur est désormais construit
+  sur `deps.TitleSlug`, donc la double source de titre n'existe plus, elle est comparée.
+  La PURGE des 4 bases reste à exécuter par le pilote (E.2).
+- 2026-09-13 : **C.3 bis** — correction demandée par le pilote, sur pièces. Brancher le graphe
+  d'évolution sur `match_skill_rank_latest` était un CHANGEMENT DE DONNÉES RENDUES, pas une
+  correction : la vue arbitre CSR > LUSR par `match_id`, alors que le graphe trace deux séries
+  (`CareerChartsSection.lusrEvolution.tsx:104-112`) et calcule ses deltas par
+  `(rating_type, playlist_group)` — le point LUSR de tout match classé à double ligne
+  disparaissait. La règle « les matchs classés affichent le CSR » est propre à Halo 5
+  (`games/halo_5/livesync/csr_match.go`), pas au titre Infinite. Vue dédiée
+  `match_skill_rank_latest_by_type` : une ligne par match ET par type, la plus récente — les
+  lignes `h5_arena` supersédées restent masquées, aucun type n'est arbitré contre un autre.
+  Effet de bord du lot : quatre fixtures de test de `platform/duckdb` recopient la DDL de la
+  vue `_latest` au lieu de passer par les migrations (piège connu du dépôt) ; la vue par type
+  y a été ajoutée en miroir, avec renvoi au nom du step.

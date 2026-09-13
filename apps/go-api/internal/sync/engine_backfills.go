@@ -205,7 +205,14 @@ func (e *SyncEngine) RecomputeLUSRCanonical(ctx context.Context) (int, error) {
 	}
 	defer releaseShared()
 
-	return RecomputeLUSRCanonicalForPlayer(ctx, playerHandle.SQLDb(), sharedDB, e.xuid)
+	// Titre du MOTEUR dans le ctx (miroir de engine_postsync_scoring.go) : le seam
+	// LUSR lit ctxkeys.TitleSlug alors que les bases ouvertes ici sont celles de
+	// e.titleSlug. Un ctx portant un AUTRE titre (onglet admin sur le second titre,
+	// header X-LevelUp-Title) écrirait sa chaîne dans CETTE base — corruption
+	// h5_arena du 2026-06-26 (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3 G4).
+	// Ce point unique couvre tous les appelants (admin, CLI, backfill_orchestrator).
+	titleCtx := ctxkeys.WithTitleSlug(ctx, e.titleSlug)
+	return RecomputeLUSRCanonicalForPlayer(titleCtx, playerHandle.SQLDb(), sharedDB, e.xuid)
 }
 
 // RunBackfillCSR ré-importe les CSR par-match depuis l'API Halo skill pour

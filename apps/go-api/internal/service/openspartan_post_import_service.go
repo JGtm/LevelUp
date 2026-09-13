@@ -98,7 +98,13 @@ func (s *OpenSpartanPostImportService) Run(
 	var result PostImportResult
 	s.ensureEnrichmentRows(ctx, playerDB, matchIDs, &result)
 	s.recomputeCSR(ctx, playerDB, sharedDBPath, xuid, &result)
-	s.recomputeLUSR(ctx, playerDB, sharedDBPath, xuid, &result)
+	// Le replay LUSR est title-aware (GetLUSRChainForTitle lit ctxkeys.TitleSlug) et
+	// les bases ouvertes ci-dessus sont celles de opts.TitleSlug : on stampe le titre
+	// de la BASE, jamais celui du ctx entrant (requête HTTP avec X-LevelUp-Title,
+	// session sur un autre titre). Sans ce stamp, l'import d'un joueur Infinite depuis
+	// un onglet Halo 5 écrirait la chaîne h5_arena dans sa base Infinite — corruption
+	// du 2026-06-26 (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.1 T3).
+	s.recomputeLUSR(ctxkeys.WithTitleSlug(ctx, opts.TitleSlug), playerDB, sharedDBPath, xuid, &result)
 	s.recomputeSessions(ctx, playerDBPath, sharedDBPath, xuid, opts, &result)
 	s.recomputePerfScores(ctx, playerDB, sharedDBPath, xuid, opts.ForcePerfScores, &result)
 	s.recomputeCitations(ctx, citationRecomputeInputs{

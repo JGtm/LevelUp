@@ -63,6 +63,12 @@ func playerMatchSkillRankSteps() []migration.Migration {
 			Description: "Recrée match_skill_rank_latest avec priorité CSR > LUSR par match_id (sémantique préservée sans garde SQL)",
 			ApplySchema: applyMSRViewPriorityCSR,
 		},
+		{
+			Name:        "player_msr_view_latest_by_type_v1",
+			TargetDB:    migration.TargetPlayer,
+			Description: "match_skill_rank_latest_by_type : une ligne par (match_id, rating_type), la plus récente — sans arbitrage CSR vs LUSR",
+			ApplySchema: applyMSRViewLatestByType,
+		},
 	}
 }
 
@@ -284,5 +290,54 @@ func applyMSRViewPriorityCSR(db *sql.DB) error {
 	}
 
 	slog.InfoContext(ctx, "match_skill_rank_latest: vue recréée avec priorité CSR > LUSR (Phase 2.E)")
+	return nil
+}
+
+// applyMSRViewLatestByType pose match_skill_rank_latest_by_type : la vue de lecture des
+// consommateurs qui veulent UN checkpoint par match ET PAR TYPE de rating.
+//
+// Pourquoi une SECONDE vue plutôt que la réutilisation de match_skill_rank_latest.
+// Cette dernière partitionne par match_id SEUL, avec priorité CSR > LUSR > LUSR_V2 :
+// elle répond à la question « quel rang afficher pour ce match ? » — une seule réponse
+// par match, et sur un match classé c'est le CSR. Le graphe « Évolution LUSR / CSR » de
+// la page Carrière pose une AUTRE question : il trace deux séries, une pleine (LUSR) et
+// une pointillée (CSR), et les deltas sont calculés par (rating_type, playlist_group).
+// Lui servir match_skill_rank_latest ferait DISPARAÎTRE le point LUSR de tout match
+// classé portant les deux lignes — une perte de données rendues, pas une correction.
+//
+// Ce que la vue par type apporte quand même, et c'est son objet : match_skill_rank est
+// append-only, la table brute sert TOUTES les passes d'écriture. Les lignes de chaîne
+// h5_arena écrites le 2026-06-26 dans les player DB Infinite ont été supersédées par le
+// replay d'août (written_at postérieur) mais y survivent ; la vue par type ne sert que
+// la plus récente de chaque (match_id, rating_type) et les masque donc, sans jamais
+// arbitrer un type contre un autre (rapport
+// .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §6.2 ; ADR 0026, règle ART n°2).
+//
+// Idempotent (CREATE OR REPLACE VIEW) et gardé par la présence de la colonne `id` :
+// sur une base antérieure à la conversion append-only, written_at/id n'existent pas.
+func applyMSRViewLatestByType(db *sql.DB) error {
+	ctx := migration.BootCtx()
+
+	hasIDCol, err := migration.ColumnExists(db, "match_skill_rank", "id")
+	if err != nil {
+		return fmt.Errorf("msr_view_latest_by_type: check id column: %w", err)
+	}
+	if !hasIDCol {
+		return nil
+	}
+
+	const stmt = `
+		CREATE OR REPLACE VIEW match_skill_rank_latest_by_type AS
+			SELECT * FROM match_skill_rank
+			QUALIFY ROW_NUMBER() OVER (
+				PARTITION BY match_id, rating_type
+				ORDER BY written_at DESC, id DESC
+			) = 1
+	`
+	if _, err := db.ExecContext(ctx, stmt); err != nil {
+		return fmt.Errorf("msr_view_latest_by_type: create view: %w", err)
+	}
+
+	slog.InfoContext(ctx, "match_skill_rank_latest_by_type: vue (match_id, rating_type) posée")
 	return nil
 }
