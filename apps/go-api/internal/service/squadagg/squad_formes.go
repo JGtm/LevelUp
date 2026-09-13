@@ -42,6 +42,12 @@ type SquadFormesQuery struct {
 	// Objectives : les colonnes d'objectif. Nil ⇒ bloc sans cartes d'objectif.
 	Objectives port.SquadFormesObjectiveRepository
 	PlayerXUID string
+	// MainGamertag : le nom du joueur de la page, tel que la page le connaît
+	// déjà. C'est la source PRIMAIRE de son libellé — les lignes de
+	// `match_participants` d'un scope donné peuvent toutes avoir un gamertag
+	// vide, et l'écran affichait alors son XUID (défaut mesuré le 2026-09-13 ;
+	// règle du dépôt : aucune vie anonyme, aucun identifiant machine à l'écran).
+	MainGamertag string
 	// Metas : le scope dans l'ordre d'affichage — c'est LUI qui fait le scope.
 	Metas []squadformes.MatchMeta
 	// SelectedGamertags : les coéquipiers sélectionnés de la page.
@@ -85,7 +91,7 @@ func BuildSquadFormesBlock(ctx context.Context, q SquadFormesQuery) *domain.Squa
 	tc := sessionusage.BuildTeamContext(q.PlayerXUID, participants)
 	in := squadformes.Input{
 		PlayerXUID:   q.PlayerXUID,
-		SquadPlayers: formesSquadPlayers(q.PlayerXUID, participants, q.SelectedGamertags),
+		SquadPlayers: formesSquadPlayers(q.PlayerXUID, q.MainGamertag, participants, q.SelectedGamertags),
 		Metas:        q.Metas,
 		Matches:      sessionusage.BuildMatchInputs(matchIDs, films, players, tc),
 		Films:        films,
@@ -111,14 +117,20 @@ func BuildSquadFormesBlock(ctx context.Context, q SquadFormesQuery) *domain.Squa
 // formesSquadPlayers — le joueur de la page EN TÊTE, puis les coéquipiers
 // sélectionnés résolus contre les participants du scope (même résolution que le
 // bloc d'usage : ResolveScopeFriends, insensible à la casse du gamertag).
+//
+// LE NOM DU JOUEUR DE LA PAGE VIENT DE LA PAGE, et les participants ne sont que
+// son repli : sur un scope dont aucune ligne de participant ne porte son
+// gamertag, l'écran affichait son XUID.
 func formesSquadPlayers(
-	playerXUID string, participants []sessionusage.ParticipantRow, selected []string,
+	playerXUID, mainGamertag string, participants []sessionusage.ParticipantRow, selected []string,
 ) []domain.SessionUsageSquadPlayer {
-	me := domain.SessionUsageSquadPlayer{XUID: playerXUID}
+	me := domain.SessionUsageSquadPlayer{XUID: playerXUID, Gamertag: mainGamertag}
 	for _, p := range participants {
+		if me.Gamertag != "" {
+			break
+		}
 		if p.XUID == playerXUID && p.Gamertag != "" {
 			me.Gamertag = p.Gamertag
-			break
 		}
 	}
 	friends := sessionusage.ResolveScopeFriends(playerXUID, participants, selected)
