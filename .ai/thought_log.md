@@ -1,3 +1,25 @@
+## [2026-09-14] Chantier decodeur — M0 fusionne dans feat/v75 — Complete (avance rapide de origin/feat/v75 vers l'integration)
+
+**Decision technique principale.** Sur signal utilisateur (V3), `feat/v75` avance rapidement vers
+l'integration `feat/recherche-decodeur-film`, qui contient `origin/feat/v75` 1c05859cf (trois
+fusions successives de feat/v75 : 4acf56aae, c28f7da59, 1c05859cf, chacune re-figee et attribuee
+par mutation) + M0 (0.A, 0.B, 0.B.7, 0.C, 0.E) + 0.D.0/0.D.1/0.D.1bis/0.D.2/0.D.5/0.D.6. CI verte au
+niveau job sur fc5db87f7 ; gates locaux verts apres la derniere fusion (replay, archlint,
+objectiveevents, replaybuild ; tsc ; vitest 3 130). Coordination inter-sessions : fenetre de 5 min
+demandee aux sessions du checkout principal (ajustements, fork/release, df), qui tiennent le gel et
+feront `git pull --ff-only` au signal de fin ; la branche a bouge deux fois pendant la preparation
+(55 puis 22 commits), d'ou trois synchronisations.
+
+**Resultats observes.** Aucun octet de sortie change par M0 lui-meme ; les changements de contenu
+cuit viennent de feat/v75 (F.1, D.2, H.1, H.2, G.7) et sont attribues ; deux montees de schema
+manquantes consignees (F.1, D.2).
+
+**Prochaine etape.** 0.D.3 (codec) et 0.D.4 (points de piste) en cours ; decisions utilisateur en
+attente : tourelle fixe au calque vehicules, fin de vie des vehicules lue dans l'etat ecrit
+(conversion 1.9.x), seconde session sur le designateur de manche. Puis M1 (1.1).
+
+---
+
 ## [2026-09-14] Chantier decodeur — lot 0.D, sous-lots 0.D.1, 0.D.2, 0.D.5 — Complete (feat/decfilm-0D fusionnee dans feat/recherche-decodeur-film ; 0.D.1 bis, 0.D.3, 0.D.4, 0.D.6 restent)
 
 **Decision technique principale.** 0.D.1 (D6, manches 3 -> 1 sur fb1a1a72) : verdict executeur
