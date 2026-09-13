@@ -113,16 +113,16 @@ func TestComputeUsage_PariteSurEffectifsInegaux(t *testing.T) {
 	}
 }
 
-func TestComputeUsage_CadenceSurDureeMesureeSeule(t *testing.T) {
+func TestComputeUsage_CadenceParMatchMesure(t *testing.T) {
 	out := ComputeUsage(sessionDeTest())
 	m := findMetric(t, out.Metrics, MetricPadPickups)
-	// 5 prises sur 900 s mesurées = 3.333/10 min. Si m3 comptait dans la durée
-	// (ou dans les prises), la cadence serait fausse.
-	if !closeTo(m.PlayerPer10Min, 5*600.0/900) {
-		t.Errorf("cadence joueur = %v, attendu 3.333", m.PlayerPer10Min)
+	// 5 prises sur 2 matchs mesurés = 2,5 par match. m3 (non mesuré) ne compte ni
+	// au numérateur ni au dénominateur.
+	if !closeTo(m.PlayerPerMatch, 2.5) {
+		t.Errorf("cadence joueur = %v, attendu 2.5 par match", m.PlayerPerMatch)
 	}
-	if !closeTo(m.TeamPer10Min, 8*600.0/900) || !closeTo(m.LobbyPer10Min, 12*600.0/900) {
-		t.Errorf("cadences camp/lobby = (%v, %v), attendu (5.333, 8)", m.TeamPer10Min, m.LobbyPer10Min)
+	if !closeTo(m.TeamPerMatch, 4) || !closeTo(m.LobbyPerMatch, 6) {
+		t.Errorf("cadences camp/lobby = (%v, %v), attendu (4, 6) par match", m.TeamPerMatch, m.LobbyPerMatch)
 	}
 }
 
@@ -156,8 +156,8 @@ func TestComputeUsage_LignesEscouade(t *testing.T) {
 	if !closeTo(l.ShareOfTeamPct, 25) || !closeTo(l.ShareOfLobbyPct, 100*2.0/12) {
 		t.Errorf("parts A = (%v, %v), attendu (25, 16.67)", l.ShareOfTeamPct, l.ShareOfLobbyPct)
 	}
-	if !closeTo(l.Per10Min, 2*600.0/900) {
-		t.Errorf("cadence A = %v, attendu 1.333", l.Per10Min)
+	if !closeTo(l.PerMatch, 1) {
+		t.Errorf("cadence A = %v, attendu 1 par match (2 sur 2 matchs)", l.PerMatch)
 	}
 	// Métrique dynamique (deployed_wall observée sur A) : ligne escouade aussi.
 	w := findMetric(t, out.Metrics, MetricDeployedPrefix+"wall")
@@ -187,14 +187,14 @@ func TestComputeUsage_FFAPartsEquipeNilJamaisZero(t *testing.T) {
 		t.Errorf("camp FFA = %v, attendu nil (aucun camp connu — jamais un 0 inventé)", *m.TeamTotal)
 	}
 	// C2 : une cadence d'équipe sur une session sans camp connu serait inventée.
-	if m.TeamPer10Min != nil {
-		t.Errorf("cadence d'équipe FFA = %v, attendu nil (jamais &0)", *m.TeamPer10Min)
+	if m.TeamPerMatch != nil {
+		t.Errorf("cadence d'équipe FFA = %v, attendu nil (jamais &0)", *m.TeamPerMatch)
 	}
 	if m.MatchesAboveTeamParity != nil {
 		t.Errorf("au-dessus parité équipe FFA = %v, attendu nil", *m.MatchesAboveTeamParity)
 	}
-	if !closeTo(m.PlayerPer10Min, 2*600.0/300) {
-		t.Errorf("cadence joueur FFA = %v, attendu 4 (le joueur, lui, mesure)", m.PlayerPer10Min)
+	if !closeTo(m.PlayerPerMatch, 2) {
+		t.Errorf("cadence joueur FFA = %v, attendu 2 par match (le joueur, lui, mesure)", m.PlayerPerMatch)
 	}
 	if !closeTo(m.PlayerShareOfLobbyPct, 100*2.0/3) {
 		t.Errorf("part lobby = %v, attendu 66.67 (le lobby, lui, mesure)", m.PlayerShareOfLobbyPct)
@@ -253,16 +253,16 @@ func TestComputeUsage_SessionMixteEquipeEtFFAResteDansLeScope(t *testing.T) {
 	if !closeTo(m.TeamShareOfLobbyPct, 50) {
 		t.Errorf("camp/lobby = %v, attendu 50 %% (1/2 sur m1) — un croisement donnerait 8.33 %%", m.TeamShareOfLobbyPct)
 	}
-	// Cadence d'équipe sur la durée des matchs à camp connu (600 s), pas 900.
-	if !closeTo(m.TeamPer10Min, 1) {
-		t.Errorf("cadence d'équipe = %v, attendu 1 (1 sur 600 s) — sur 900 s elle serait 0.667", m.TeamPer10Min)
+	// Cadence d'équipe sur les seuls matchs à camp connu (m1), pas sur les deux.
+	if !closeTo(m.TeamPerMatch, 1) {
+		t.Errorf("cadence d'équipe = %v, attendu 1 (1 sur 1 match à camp connu) — sur 2 matchs elle serait 0.5", m.TeamPerMatch)
 	}
 	if m.MatchesAboveTeamParity == nil || *m.MatchesAboveTeamParity != 0 {
 		t.Errorf("au-dessus parité équipe = %v, attendu 0 (connu, pas nil : m1 a un camp)", m.MatchesAboveTeamParity)
 	}
-	// Cadences joueur/lobby : scope complet (900 s).
-	if !closeTo(m.PlayerPer10Min, 4) || !closeTo(m.LobbyPer10Min, 8) {
-		t.Errorf("cadences joueur/lobby = (%v, %v), attendu (4, 8)", m.PlayerPer10Min, m.LobbyPer10Min)
+	// Cadences joueur/lobby : scope complet (les 2 matchs mesurés).
+	if !closeTo(m.PlayerPerMatch, 3) || !closeTo(m.LobbyPerMatch, 6) {
+		t.Errorf("cadences joueur/lobby = (%v, %v), attendu (3, 6) par match", m.PlayerPerMatch, m.LobbyPerMatch)
 	}
 	// Même règle sur la ventilation par famille (computePadFamilies).
 	if len(out.PadFamilies) != 1 {
@@ -275,11 +275,11 @@ func TestComputeUsage_SessionMixteEquipeEtFFAResteDansLeScope(t *testing.T) {
 	}
 }
 
-// C6 : un match mesuré SANS échelle de temps (durée 0, aucun repli) reste dans
-// les totaux et les parts mais sort des cadences — numérateur ET dénominateur.
-// Avant correctif, ses prises entraient au numérateur sans durée au
-// dénominateur : cadence joueur 5*600/600 = 5 au lieu de 1.
-func TestComputeUsage_MatchSansDureeExcluDesCadences(t *testing.T) {
+// C6 : un match mesuré SANS échelle de temps (durée 0, aucun repli) compte
+// PARTOUT — totaux, parts ET cadences. Depuis que le référentiel des cadences
+// est le MATCH (décision utilisateur du 2026-09-13), une durée manquante n'en
+// exclut plus rien ; seule la durée mesurée publiée l'ignore encore.
+func TestComputeUsage_MatchSansDureeCompteDansLesCadences(t *testing.T) {
 	in := Input{
 		PlayerXUID: "P",
 		Matches: []MatchInput{
@@ -317,12 +317,13 @@ func TestComputeUsage_MatchSansDureeExcluDesCadences(t *testing.T) {
 	if len(m.PerMatch) != 2 {
 		t.Errorf("per_match = %+v, attendu m1 ET m2 (les parts d'un match sans durée restent valides)", m.PerMatch)
 	}
-	// Cadences : m2 exclu du numérateur ET du dénominateur.
-	if !closeTo(m.PlayerPer10Min, 1) {
-		t.Errorf("cadence joueur = %v, attendu 1 (1 sur 600 s) — 5 = numérateur gonflé par m2", m.PlayerPer10Min)
+	// Cadences : m2 compte comme n'importe quel match mesuré (2 matchs au
+	// dénominateur), sa durée inconnue n'y change rien.
+	if !closeTo(m.PlayerPerMatch, 2.5) {
+		t.Errorf("cadence joueur = %v, attendu 2.5 (5 sur 2 matchs)", m.PlayerPerMatch)
 	}
-	if !closeTo(m.TeamPer10Min, 1) || !closeTo(m.LobbyPer10Min, 2) {
-		t.Errorf("cadences camp/lobby = (%v, %v), attendu (1, 2)", m.TeamPer10Min, m.LobbyPer10Min)
+	if !closeTo(m.TeamPerMatch, 2.5) || !closeTo(m.LobbyPerMatch, 4) {
+		t.Errorf("cadences camp/lobby = (%v, %v), attendu (2.5, 4) par match", m.TeamPerMatch, m.LobbyPerMatch)
 	}
 }
 
@@ -354,7 +355,7 @@ func TestComputeUsage_VentilationsSoclesEtBonus(t *testing.T) {
 		out.PowerupPickups[1].FamilyKey != "powerup_overshield" || out.PowerupPickups[1].Occupations != 1 {
 		t.Fatalf("powerup_pickups = %+v, attendu camo=3 puis overshield=1", out.PowerupPickups)
 	}
-	if !closeTo(out.PowerupPickups[0].Per10Min, 3*600.0/900) {
-		t.Errorf("cadence camo = %v, attendu 2", out.PowerupPickups[0].Per10Min)
+	if !closeTo(out.PowerupPickups[0].PerMatch, 1.5) {
+		t.Errorf("cadence camo = %v, attendu 1.5 par match", out.PowerupPickups[0].PerMatch)
 	}
 }

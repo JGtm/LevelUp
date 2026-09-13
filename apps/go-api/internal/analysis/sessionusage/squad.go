@@ -171,10 +171,10 @@ func lowerSet(values []string) map[string]struct{} {
 // appendSquadLines pose sur la métrique la ligne de chaque coéquipier suivi :
 // total (dénominateur d'honnêteté), parts contre les mêmes dénominateurs ET les
 // mêmes scopes que le joueur de la route (part d'équipe sur les matchs à camp
-// connu, cadence sur les matchs à durée connue — règle de scope de
-// computeMetric), cadence sur la même durée mesurée (durAll).
+// connu — règle de scope de computeMetric), cadence rapportée au même NOMBRE de
+// matchs mesurés que celle du joueur (matchCount).
 func appendSquadLines(
-	m *domain.SessionUsageMetric, measured []MatchInput, squadXUIDs []string, durAll float64,
+	m *domain.SessionUsageMetric, measured []MatchInput, squadXUIDs []string, matchCount int,
 ) {
 	if len(squadXUIDs) == 0 {
 		return
@@ -187,9 +187,8 @@ func appendSquadLines(
 	for _, x := range squadXUIDs {
 		tracked[x] = true
 	}
-	totals := map[string]float64{}    // tout le scope mesuré (Total, part lobby)
+	totals := map[string]float64{}    // tout le scope mesuré (Total, part lobby, cadence)
 	teamScope := map[string]float64{} // matchs à camp connu (part d'équipe)
-	durKnown := map[string]float64{}  // matchs à durée connue (cadence)
 	for i := range measured {
 		mi := &measured[i]
 		for j := range mi.Players {
@@ -202,9 +201,6 @@ func appendSquadLines(
 			if mi.PlayerTeam != nil {
 				teamScope[p.XUID] += v
 			}
-			if mi.DurationSeconds > 0 {
-				durKnown[p.XUID] += v
-			}
 		}
 	}
 	for _, x := range squadXUIDs {
@@ -213,7 +209,7 @@ func appendSquadLines(
 			Total:           totals[x],
 			ShareOfTeamPct:  sharePct(teamScope[x], teamTotal),
 			ShareOfLobbyPct: sharePct(totals[x], m.LobbyTotal),
-			Per10Min:        per10Min(durKnown[x], durAll),
+			PerMatch:        perMatch(totals[x], matchCount),
 		})
 	}
 }

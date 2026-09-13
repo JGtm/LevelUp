@@ -59,12 +59,13 @@ describe('SessionUsageSection — porte de donnée (le titre publie)', () => {
 })
 
 /**
- * Colonne divisée (drawer de comparaison ouvert) — D8 du plan de lisibilité 2026-09-09.
+ * Colonne divisée (drawer de comparaison ouvert) — demande utilisateur du 2026-09-13 :
+ * « il manque des éléments du drawer ».
  *
- * Le compact retire des FORMES LARGES, jamais de la donnée : ce qu'on vient comparer
- * (parts et cadences) reste des deux côtés. Ce test empêche la dérive inverse — remettre
- * la piste du lobby ou la bande de régularité dans une demi-colonne, où elles ne feraient
- * que défiler.
+ * LE COMPACT NE RETIRE PLUS RIEN, il resserre : les mêmes vues sont rendues des deux
+ * côtés, avec des rails et des cases plus petits. Ce test empêche le retour de la
+ * dérive précédente — masquer la régularité, la piste du lobby ou les grilles dès que
+ * la colonne est divisée.
  */
 describe('SessionUsageSection — version compacte du drawer', () => {
   const MEASURED: SessionUsageBlock = {
@@ -86,13 +87,14 @@ describe('SessionUsageSection — version compacte du drawer', () => {
   it('pleine largeur : la piste du lobby et la régularité sont rendues', () => {
     render(<SessionUsageSection usage={MEASURED} meLabel="moi" />)
     expect(screen.getByLabelText(USAGE_TEXT.fr.viewRegularity)).toBeInTheDocument()
+    expect(screen.getAllByLabelText(USAGE_TEXT.fr.viewLobbyTrack).length).toBeGreaterThan(0)
   })
 
-  it('compact : les formes larges disparaissent, les parts restent', () => {
+  it('compact : les mêmes vues sont rendues, rien ne disparaît', () => {
     render(<SessionUsageSection usage={MEASURED} meLabel="moi" compact />)
-    expect(screen.queryByLabelText(USAGE_TEXT.fr.viewRegularity)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(USAGE_TEXT.fr.viewLobbyTrack)).not.toBeInTheDocument()
-    expect(screen.getByLabelText(USAGE_TEXT.fr.viewShares)).toBeInTheDocument()
+    expect(screen.getByLabelText(USAGE_TEXT.fr.viewRegularity)).toBeInTheDocument()
+    expect(screen.getAllByLabelText(USAGE_TEXT.fr.viewLobbyTrack).length).toBeGreaterThan(0)
+    expect(screen.getAllByLabelText(USAGE_TEXT.fr.viewShares).length).toBeGreaterThan(0)
   })
 })
 
@@ -139,7 +141,9 @@ describe('SessionUsageSection — E4.5/E4.3 : le bilan équipement remplace le g
   it("deployed_wall s'efface derrière son équivalent equipment_wall, dont la pile se rend", () => {
     const { container } = render(<SessionUsageSection usage={WITH_BILAN} meLabel="moi" />)
     // La pile à trois segments (E4.3) vient de equipment_wall, seule survivante :
-    // deployed_wall n'ouvre pas de deuxième ligne pour la même famille.
+    // deployed_wall n'ouvre pas de deuxième ligne pour la même famille. Elle est
+    // Une seule pile dessinée : la jauge « dans le lobby » n'a pas de part dans ce
+    // contrat partiel, donc pas de tranche à remplir.
     expect(container.querySelectorAll('[data-outcome-key]')).toHaveLength(3)
   })
 })

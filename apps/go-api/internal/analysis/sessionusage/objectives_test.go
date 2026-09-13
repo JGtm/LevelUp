@@ -123,8 +123,8 @@ func TestComputeObjectives_LignesEscouade(t *testing.T) {
 	if l.Total != 1 || !closeTo(l.ShareOfTeamPct, 25) {
 		t.Errorf("ligne A = %+v, attendu total 1, part équipe 25 %%", l)
 	}
-	if l.Per10Min != nil {
-		t.Error("les rôles d'objectif n'ont pas de cadence — Per10Min doit rester nil")
+	if l.PerMatch != nil {
+		t.Error("les rôles d'objectif n'ont pas de cadence — PerMatch doit rester nil")
 	}
 }
 
