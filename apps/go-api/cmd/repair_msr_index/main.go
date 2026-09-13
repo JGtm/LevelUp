@@ -50,6 +50,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/platform/duckdb/indexcheck"
 )
 
 const (
@@ -229,38 +230,38 @@ func openDB(path string, write bool) (*sql.DB, error) {
 	return db, nil
 }
 
-func countDivergentAxes(reports []axisReport) int {
+func countDivergentAxes(reports []indexcheck.Report) int {
 	n := 0
 	for _, r := range reports {
-		if !r.ok() {
+		if !r.OK() {
 			n++
 		}
 	}
 	return n
 }
 
-func printReports(phase string, reports []axisReport) {
+func printReports(phase string, reports []indexcheck.Report) {
 	fmt.Printf("  [%s]\n", phase)
 	for _, r := range reports {
 		status := "OK"
-		if !r.ok() {
-			status = fmt.Sprintf("ÉCART (%d clés)", len(r.divergences))
+		if !r.OK() {
+			status = fmt.Sprintf("ÉCART (%d clés)", len(r.Divergences))
 		}
 		fmt.Printf("   %-54s clés=%-6d scan=%-7d indexé=%-7d %s\n",
-			r.axis, r.keys, r.scannedRows, r.indexedRows, status)
-		if r.nullKeys > 0 {
-			fmt.Printf("     (%d clé(s) NULL ignorée(s) — non interrogeables par égalité)\n", r.nullKeys)
+			r.Axis, r.Keys, r.ScannedRows, r.IndexedRows, status)
+		if r.NullKeys > 0 {
+			fmt.Printf("     (%d clé(s) NULL ignorée(s) — non interrogeables par égalité)\n", r.NullKeys)
 		}
-		if r.truncated {
+		if r.Truncated {
 			fmt.Printf("     (échantillon tronqué à %d clés — les totaux ci-dessus ne portent que sur elles)\n",
 				maxSampledKeys)
 		}
-		for i, d := range r.divergences {
+		for i, d := range r.Divergences {
 			if i >= maxListedDivergent {
-				fmt.Printf("     ... et %d autre(s) clé(s) en écart\n", len(r.divergences)-maxListedDivergent)
+				fmt.Printf("     ... et %d autre(s) clé(s) en écart\n", len(r.Divergences)-maxListedDivergent)
 				break
 			}
-			fmt.Printf("     %s : scan=%d indexé=%d\n", strings.Join(d.key, " | "), d.scanned, d.indexed)
+			fmt.Printf("     %s : scan=%d indexé=%d\n", strings.Join(d.Key, " | "), d.Scanned, d.Indexed)
 		}
 	}
 }

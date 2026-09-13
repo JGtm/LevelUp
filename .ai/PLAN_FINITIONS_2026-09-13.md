@@ -462,6 +462,56 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   `node_modules` — `npm ci` dans le worktree, puis 0/0/0. `.golangci-cache*/` ajouté au `.gitignore`
   (même raison que `.gocache*/` : cache GLOBAL par défaut, à isoler par worktree).
 
+- 2026-09-13 : **lot G (fiabilité) CLOS** sur `feat/finitions-fiabilite`, 6 commits. G.1 → G.6
+  tous `[x]`. **G.1** — `RebuildMatchSkillRankART` reposait `ADD PRIMARY KEY (match_id)`, le
+  schéma PRÉ-append-only : sur une player DB d'aujourd'hui il échoue, et s'il passait il
+  détruirait l'invariant de l'ADR 0026 et la vue `_latest`. Supprimé avec son unique appelant
+  `cmd/force_rebuild_art` — vérifié sur pièces qu'il n'était le SEUL chemin d'aucune réparation
+  (shared `match_participants` → `cmd/rebuild_mp` ; player `player_match_enrichment` →
+  `cmd/rebuild_pme_art` et `levelup rebuild-pme`), qu'aucun step de `migration/order.go` n'en
+  dépendait et qu'il n'avait aucun test. 3 lignes package-level retirées de la baseline (61 788
+  → 61 785), note datée dans `check_test_baseline.sh` ; 6 mentions de code et l'ADR 0017
+  rectifiées. **G.2** — le ratchet anti-ART voit enfin les écritures à NOM DE TABLE INTERPOLÉ
+  (D-B1) : `TestNoInterpolatedWriteOnProtectedTables` juge `UPDATE %s` / `DELETE FROM %s` /
+  `INSERT INTO %s` et les concaténations `"UPDATE " + table`, suspectes quand le littéral ne
+  porte AUCUN `?` (set-based) ou porte un `ON CONFLICT … DO UPDATE`. Le témoin porte la forme
+  HISTORIQUE VERBATIM (`git show 044751026^`) et elle est ROUGE ; la forme livrée en B.3.6 reste
+  VERTE. Aucune allowlist agrandie. **G.3** — sonde data-health « index `match_skill_rank`
+  désynchronisé », et la règle de comparaison EXTRAITE plutôt que recopiée : nouveau paquet
+  `internal/platform/duckdb/indexcheck` (scan forcé vs lookup indexé, carte des axes), consommé
+  par la sonde ET par `cmd/repair_msr_index`. Alerte seule, `OpenReadForQuery`, 200 clés par axe
+  en tirage réservoir, jauge gelée si non mesuré, title-agnostic. **Coût mesuré : 56 ms pour 206
+  clés comparées sur 2 000 lignes** (fixture montée par les migrations réelles). Garde-rail
+  `archlint/no_local_msr_axes_test.go`, morsure vérifiée par mutation. **G.4** — le stamp du
+  titre remonte à l'ENTRÉE du post-import OpenSpartan : C.1 ne l'avait posé que sur
+  `recomputeLUSR`, et `recomputePerfScores` (→ `GetPerformanceChain`, dont la sortie est
+  PERSISTÉE dans `performance_chain`) recevait encore le ctx de la requête. Le ratchet C.1
+  `TestPostImportLUSRCallIsTitleStamped` est REMPLACÉ (son littéral n'existe plus) par
+  `TestRunStampeLeTitreAvantLaPremiereEtape`, qui couvre toutes les étapes ; il n'était pas dans
+  la baseline. **G.5** — deux listes qui se répondaient sans se comparer : parité Go ↔ TS des
+  familles d'objectif par un ratchet Go qui LIT `objectiveFamilies.ts` (morsure vérifiée par
+  mutation ; le TSDoc affirmait la garantie, il nomme désormais le test qui la tient), et
+  `infiniteLUSRChains` du gate d'intégration dérivée de `skillchain.Chains()` neuf, dont
+  l'exhaustivité est mesurée sur un corpus couvrant CHAQUE branche de `ClassifyLUSRChain`, dans
+  les deux sens.
+- 2026-09-13 : **G.4 — requête livrée au pilote** (lecture seule, serveur arrêté), comptage des
+  chaînes de performance ÉTRANGÈRES sur une player DB Infinite. Lecture par la vue `_latest`
+  (règle ART n°2) ; les 7 chaînes légitimes d'Infinite sont celles de `GetPerformanceChain`
+  (4 chaînes LUSR + `ranked_slayer` + `ranked_objectif` + `firefight`). Une valeur `h5_arena`
+  serait la trace du défaut.
+
+  ```
+  duckdb -c "ATTACH 'data/titles/halo_infinite/players/<GAMERTAG>/stats.duckdb' AS p (READ_ONLY);
+  SELECT performance_chain, COUNT(*) AS lignes
+  FROM p.player_match_enrichment_latest
+  WHERE performance_chain IS NOT NULL AND performance_chain <> ''
+    AND performance_chain NOT IN ('arena_slayer','arena_objectif','btb','chaos',
+                                  'ranked_slayer','ranked_objectif','firefight')
+  GROUP BY 1 ORDER BY lignes DESC;"
+  ```
+
+  Attendu si le défaut n'a jamais mordu : 0 ligne. À passer sur les 4 player DB Infinite.
+
 ### Revue finale E.3 (2026-09-13) — P2 consignés, NON traités
 - R6 — listes de familles d'objectif Go (`objectiveevents/families.go`) et TS (`model/objectiveFamilies.ts`) indépendantes, aucun test de parité ; le TSDoc prétend le contraire. Une 7e famille rendrait le Go rouge et le TS silencieusement muet.
 - R7 — `infiniteLUSRChains` (gate d'intégration I14) recopiée, sans test d'exhaustivité contre `skillchain/classify.go`.
@@ -471,3 +521,32 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
 - R11 — dette de taille non consignée : `equipment_placements.go` 594 -> 628 L ; `buildSyncEngineFactoryParityComplete` 85 -> 110 L.
 - R14 — `ListMapsByTitle` : `COALESCE(name_canonical,'')` fait passer les cartes sans nom canonique en tête du tri (le commentaire dit « tri inchangé »).
 - R15 — deux formulations imprécises : référence équipement §1 (« de la dernière position » -> « de la fin de vie ») ; godoc `originDropMaxDist` (le crâne n'est qu'un test).
+
+### Lot G (2026-09-13)
+
+- **D-G1 — `internal/ops/restore.go:223` vide une table par `DELETE FROM %q` interpolé**, nom de
+  table venu du jeu de parquets de sauvegarde, sans aucune valeur liée. C'est la forme
+  déclencheuse ART, et elle s'applique indifféremment à une table protégée si la sauvegarde en
+  contient une. Le nouveau scan G.2 ne la juge PAS : il corrèle FILE-level sur le nom d'une table
+  protégée ou critique, et `restore.go` n'en nomme aucune (son universalité est justement ce qui
+  le rend générique). Limite assumée et documentée dans le fichier de test. Traitement possible :
+  restaurer par swap CTAS (`CREATE TABLE __restored AS SELECT … ; DROP ; RENAME`) au lieu du
+  couple DELETE + INSERT. NON TRAITÉ.
+
+## Lot G — fiabilité (`feat/finitions-fiabilite`, Go) — arbitré le 13/09 soir (points 1 à 5 des recos)
+Contrat `plan-execution`, périmètre FERMÉ, découvertes consignées non traitées sauf P0.
+- [x] G.1 Supprimer `migration.RebuildMatchSkillRankART` (`internal/migration/steps_player_rebuild_match_skill_rank.go`) et son unique appelant `cmd/force_rebuild_art`, avec tests, imports, mentions docs (`docs/COMMANDS.md` FR+EN, `.ai/project_map.md`) et entrées de baseline de tests retirées dans le MÊME commit. Si un autre appelant existe, statuer `[!]` avec preuve.
+- [x] G.2 `internal/sync/no_art_patterns_test.go` : détecter aussi les écritures à nom de table INTERPOLÉ (`fmt.Sprintf("UPDATE %s`, `"UPDATE " + table`, `DELETE FROM %s`, `INSERT INTO %s … ON CONFLICT`) sur les tables protégées ; le cas de `seed_demo_corpus.go` (forme ligne à ligne à valeurs liées) doit rester VERT ; un cas témoin rouge (fixture de test) prouve la morsure ; aucune allowlist agrandie.
+- [x] G.3 Sonde data-health « index désynchronisé » étendue à `match_skill_rank` des player DB (`internal/scheduler/`), calquée sur `data_health_psa_index.go` (alerte seule, `OpenReadForQuery`, échantillon borné, jauge gelée si non mesuré, entrée dans `WarningsTotal`, title-agnostic, coût mesuré). Réutiliser la règle de comparaison de `cmd/repair_msr_index/diag.go` plutôt que la recopier (extraire un helper partagé si besoin, avec garde-rail ≤ 2 copies). Le message d'alerte nomme `repair_msr_index -repair`.
+- [x] G.4 `internal/service/openspartan_post_import_service.go` : le titre de la base est stampé UNE fois à l'entrée du post-import, pour TOUTES les étapes (LUSR, `recomputePerfScores` → `GetPerformanceChain`, suivantes) ; test : un ctx entrant portant un autre titre ne change pas la chaîne de performance écrite. Mesure : requête lecture seule sur les 4 player DB Infinite (serveur ARRÊTÉ par le pilote, pas par l'agent) pour compter les `performance_chain` étrangères — l'agent livre la requête, le pilote l'exécute.
+- [x] G.5 Tests de parité : (a) Go ↔ TS des familles d'objectif (`objectiveevents/families.go` ↔ `features/match-replay/model/objectiveFamilies.ts`, ratchet Go qui lit le fichier TS, modèle `archlint/*_test.go`) ; (b) `infiniteLUSRChains` du gate d'intégration dérivée de `games/halo_infinite/skillchain` (export d'une liste ou test d'exhaustivité contre `ClassifyLUSRChain`), plus de copie manuelle.
+- [x] G.6 Gates : build, vet, `go test` hors himap, `-tags=integration -p 1` sur sync/persist/migration/duckdb/scheduler/service, lint, baseline de tests, push, CI verte au niveau job.
+
+## Lot H — rejeu (`feat/finitions-rejeu`, Go + config) — points 6 à 8 des recos
+- [ ] H.1 D-B2 : neutralité des socles de drapeau en champ EXPLICITE de `FlagSpawn` (plus surchargée sur `Team`), posée depuis le label (`IsCTFNeutral`) ; les 8 socles à `team_index = -1` (Cliffside, Highpower Heavies, Solitude, Solitude - Ranked + 4 sans nom) ne tombent plus dans le panier neutre ; `flag_neutral.go` lit le champ ; tests (dont un film qui basculait à tort en variante neutre si mesurable, sinon test unitaire du tri).
+- [ ] H.2 D-F1 : une pose d'une PIÈCE ENGENDRÉE (objets `kind = "deployed"` au manifeste, ex. panneaux de mur) est TOUJOURS `deployed`, jamais `dropped`/`unknown` (`equipment_placements.go`) ; test ; mesure avant/après en racine jetable (attendu : 7 panneaux basculent, rien d'autre).
+- [ ] H.3 D-F5 : dater les artefacts `0797ce72` et `c88ec007` (Aquarius) et la dernière modification des bornes `aquarius` du catalogue ; conclure lequel est périmé ; si ce sont les artefacts, les recuire TOUS LES DEUX SEULEMENT (autorisation utilisateur donnée le 13/09 pour ces deux films, jamais le parc) via la commande de cuisson canonique, serveur ARRÊTÉ par le pilote ; vérifier l'écart aux repères < 0,20 m après.
+- [ ] H.4 Gates : build, vet, `go test` replay + filmdec + replaybuild, `replay-corpus-gate` en racine jetable, lint, push, CI verte.
+
+## Lot I — clôture (pilote)
+- [ ] I.1 Fusions G et H, CI verte ; revue adversariale bornée (P0/P1 seuls) ; thought_log ; worktrees supprimés.
