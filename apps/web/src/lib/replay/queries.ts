@@ -13,6 +13,7 @@ import type { ReplayDocument, ReplayMapBackground, ReplayMapCallouts } from '@/l
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { validateReplayDocument } from './replayDocumentSchema'
 import { normalizeReplayDocument } from './replayNormalize'
 
 /**
@@ -44,10 +45,22 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
         `/players/${playerSlug}/matches/${matchId}/replay`,
         'X-Replay-Latest-Schema-Version',
       )
+      // LE CONTRAT EST CONTRÔLÉ ICI, ET NULLE PART AILLEURS (lot 0.B, 2026-09-13). Les types
+      // générés d'OpenAPI n'existent plus à l'exécution : un champ renommé par le producteur,
+      // ou dont la nature change, ne fait rougir ni `tsc` ni aucun test — il arrive en
+      // production et le rendu tombe sur `undefined.map`. Le contrôle est posé AVANT la
+      // normalisation, sur le document de TRANSPORT : après elle, tout tableau est comblé et
+      // le manquement aurait disparu.
+      //
+      // IL NE JETTE RIEN. Un document non conforme se rend quand même, dégradé champ par
+      // champ comme il l'a toujours fait ; le manquement voyage jusqu'au badge admin
+      // (`ReplaySchemaBadge`), seul endroit où il soit lisible sans rouvrir le réseau.
+      const contractIssue = validateReplayDocument(raw)
       const normalized = normalizeReplayDocument(raw)
       return {
         ...normalized,
         latestSchemaVersion: header !== null ? Number(header) : undefined,
+        contractIssue: contractIssue ?? undefined,
       }
     },
     staleTime: 5 * 60_000,

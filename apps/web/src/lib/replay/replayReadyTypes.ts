@@ -11,6 +11,7 @@
  * le DROIT de lire (aucun tableau nullable), `replayNormalize.ts` dit comment on l'obtient.
  * Les deux se lisent ensemble ; la doctrine complète est en tête de `replayNormalize.ts`.
  */
+import type { ReplayContractIssue } from '@/lib/replay/replayDocumentSchema'
 import { type ReplayScoreTimelineReady } from '@/lib/replay/scoreTimeline'
 import type {
   ReplayDocument,
@@ -354,6 +355,16 @@ export type ReplayDocumentReady = Omit<
    * cache, proxy qui le filtre) : le badge admin retombe alors sur la seule version lue.
    */
   latestSchemaVersion?: number
+  /**
+   * LE PREMIER MANQUEMENT AU CONTRAT, s'il y en a un (lot 0.B, 2026-09-13) : posé par
+   * `validateReplayDocument` à la frontière de transport (`lib/replay/queries.ts`), sur le
+   * document AVANT normalisation. Absent = le document respecte le contrat.
+   *
+   * IL NE CHANGE AUCUN RENDU, et c'est délibéré : le rejeu se dégrade déjà champ par champ, et
+   * une page blanche apprendrait moins qu'un rejeu incomplet. Son seul lecteur est le badge
+   * admin de version de schéma, qui le nomme.
+   */
+  contractIssue?: ReplayContractIssue
 }
 
 /** ReplayVipPeriod — UNE période de port de la couronne, telle que le rendu la lit (plate). */

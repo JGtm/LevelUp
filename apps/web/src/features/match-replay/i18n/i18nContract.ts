@@ -212,19 +212,38 @@ export interface ReplayText {
   /**
    * LE BADGE ADMIN « version de schéma » (lot A, 2026-09-11) : visible UNIQUEMENT quand
    * `useAppShellStore((s) => s.isAdmin)` est vrai (règle produit — un non-admin ne voit rien,
-   * pas même un badge vide). Trois formes, une par `ReplaySchemaStatus.kind`
+   * pas même un badge vide). Cinq formes, une par état de `ReplaySchemaStatus`
    * (`model/replaySchemaStatusLogic.ts`) :
    *  - `schemaBadgeUpToDateFmt` : l'artefact porte déjà la version que le producteur écrirait
    *    aujourd'hui ;
    *  - `schemaBadgeStaleFmt` : l'artefact est en retard — le second nombre est la version
    *    COURANTE du producteur, à recuire ;
+   *  - `schemaBadgeStaleNoTargetFmt` (2026-09-13, lot 0.B) : l'artefact est SOUS la version
+   *    minimale que ce client déclare afficher, et aucune version de producteur n'est
+   *    connue (en-tête absent). Il est à recuire, mais on ne peut nommer aucune cible :
+   *    l'écrire quand même ferait passer un seuil de compatibilité pour la version du jour ;
    *  - `schemaBadgeUnknownFmt` : aucune comparaison possible (en-tête `X-Replay-Latest-
    *    Schema-Version` absent — artefact antérieur à ce lot, ou réponse mise en cache) : le
-   *    badge dit la seule chose qu'il sait, la version LUE, sans jamais affirmer un statut.
+   *    badge dit la seule chose qu'il sait, la version LUE, sans jamais affirmer un statut ;
+   *  - `schemaBadgeInvalidFmt` (2026-09-13, lot 0.B) : le document ne respecte pas le contrat
+   *    (`lib/replay/replayDocumentSchema.ts`, validé à la frontière de transport). Le second
+   *    argument est le PREMIER manquement, chemin compris — un badge qui dirait seulement
+   *    « invalide » obligerait à rouvrir le réseau pour savoir quoi. Le DÉTAIL lui-même se dit
+   *    par les trois entrées `contract*` ci-dessous, une par genre de manquement
+   *    (`ReplayContractIssue`) : le module de schéma rend des DONNÉES, jamais une phrase — une
+   *    phrase fabriquée là-bas ne passerait par aucune table de langue, et c'est exactement le
+   *    défaut qu'a trouvé la ronde 2 de la revue (fragment FR au milieu d'une phrase EN).
+   *    `contractInvalidFieldFmt` reçoit le texte de zod, en anglais et NON traduit : c'est un
+   *    diagnostic technique d'administrateur, pas une phrase de produit.
    */
   schemaBadgeUpToDateFmt: (schemaVersion: number) => string
   schemaBadgeStaleFmt: (schemaVersion: number, latestSchemaVersion: number) => string
+  schemaBadgeStaleNoTargetFmt: (schemaVersion: number) => string
   schemaBadgeUnknownFmt: (schemaVersion: number) => string
+  schemaBadgeInvalidFmt: (schemaVersion: number, detail: string) => string
+  contractUnknownKeysFmt: (keys: string) => string
+  contractInvalidFieldFmt: (path: string, detail: string) => string
+  contractMalformed: string
   /**
    * L'ÉTIQUETTE DE LA FLÈCHE HORS CADRE (plan escouade hors cadre, chantier B, décision D2,
    * 2026-09-10) : le nom du joueur (ou du porteur d'objectif) ET la distance jusqu'à sa
