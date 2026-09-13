@@ -92,6 +92,7 @@ describe('FormesRetenuesSection', () => {
       ...(block.matches ?? []),
     ]
     block.matches_total = block.matches.length
+    block.matches_measured = block.matches.filter((m) => m.measured).length
     render(<FormesRetenuesSection block={block} locale="fr" />)
     // Une ligne par match mesuré affiché, jamais une par match du scope.
     const grip = screen.getByLabelText(frCards.cards.padsSquadByMatch.title)
