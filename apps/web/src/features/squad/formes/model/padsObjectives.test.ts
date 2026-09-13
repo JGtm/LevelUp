@@ -96,7 +96,9 @@ describe('objectifs', () => {
   })
 
   it('agrège une colonne sur les deux camps', () => {
-    const agg = aggregateColumns(matchesOfFamily(block, 'ctf'), FORMES_MAIN_XUID, ['flag_returns'])
+    const agg = aggregateColumns(matchesOfFamily(block, 'ctf'), FORMES_MAIN_XUID, [
+      { key: 'flag_returns', role: 'defend' },
+    ])
     // Retours : moi 2, mon camp 2, lobby 3.
     expect(agg.me).toBe(2)
     expect(agg.team).toBe(2)
