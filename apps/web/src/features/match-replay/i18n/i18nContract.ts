@@ -228,13 +228,22 @@ export interface ReplayText {
    *  - `schemaBadgeInvalidFmt` (2026-09-13, lot 0.B) : le document ne respecte pas le contrat
    *    (`lib/replay/replayDocumentSchema.ts`, validé à la frontière de transport). Le second
    *    argument est le PREMIER manquement, chemin compris — un badge qui dirait seulement
-   *    « invalide » obligerait à rouvrir le réseau pour savoir quoi.
+   *    « invalide » obligerait à rouvrir le réseau pour savoir quoi. Le DÉTAIL lui-même se dit
+   *    par les trois entrées `contract*` ci-dessous, une par genre de manquement
+   *    (`ReplayContractIssue`) : le module de schéma rend des DONNÉES, jamais une phrase — une
+   *    phrase fabriquée là-bas ne passerait par aucune table de langue, et c'est exactement le
+   *    défaut qu'a trouvé la ronde 2 de la revue (fragment FR au milieu d'une phrase EN).
+   *    `contractInvalidFieldFmt` reçoit le texte de zod, en anglais et NON traduit : c'est un
+   *    diagnostic technique d'administrateur, pas une phrase de produit.
    */
   schemaBadgeUpToDateFmt: (schemaVersion: number) => string
   schemaBadgeStaleFmt: (schemaVersion: number, latestSchemaVersion: number) => string
   schemaBadgeStaleNoTargetFmt: (schemaVersion: number) => string
   schemaBadgeUnknownFmt: (schemaVersion: number) => string
-  schemaBadgeInvalidFmt: (schemaVersion: number, issue: string) => string
+  schemaBadgeInvalidFmt: (schemaVersion: number, detail: string) => string
+  contractUnknownKeysFmt: (keys: string) => string
+  contractInvalidFieldFmt: (path: string, detail: string) => string
+  contractMalformed: string
   /**
    * L'ÉTIQUETTE DE LA FLÈCHE HORS CADRE (plan escouade hors cadre, chantier B, décision D2,
    * 2026-09-10) : le nom du joueur (ou du porteur d'objectif) ET la distance jusqu'à sa

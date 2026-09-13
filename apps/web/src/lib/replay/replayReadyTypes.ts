@@ -11,6 +11,7 @@
  * le DROIT de lire (aucun tableau nullable), `replayNormalize.ts` dit comment on l'obtient.
  * Les deux se lisent ensemble ; la doctrine complète est en tête de `replayNormalize.ts`.
  */
+import type { ReplayContractIssue } from '@/lib/replay/replayDocumentSchema'
 import { type ReplayScoreTimelineReady } from '@/lib/replay/scoreTimeline'
 import type {
   ReplayDocument,
@@ -363,7 +364,7 @@ export type ReplayDocumentReady = Omit<
    * une page blanche apprendrait moins qu'un rejeu incomplet. Son seul lecteur est le badge
    * admin de version de schéma, qui le nomme.
    */
-  contractIssue?: string
+  contractIssue?: ReplayContractIssue
 }
 
 /** ReplayVipPeriod — UNE période de port de la couronne, telle que le rendu la lit (plate). */

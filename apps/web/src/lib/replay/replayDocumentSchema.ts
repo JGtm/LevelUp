@@ -166,26 +166,48 @@ export const replayDocumentSchema = z.strictObject({
 export type ReplayDocumentFromSchema = z.infer<typeof replayDocumentSchema>
 
 /**
- * validateReplayDocument rend `null` si le document respecte le contrat, sinon une phrase
- * COURTE qui nomme le premier manquement.
+ * ReplayContractIssue — LE MANQUEMENT, EN DONNÉES ET NON EN PHRASE.
+ *
+ * POURQUOI CE TYPE EXISTE (2026-09-13, ronde 2 de la revue, constat R2-2). Cette fonction
+ * rendait une PHRASE, et cette phrase était française : en locale anglaise, le badge affichait
+ * `contract violated (cle(s) inconnue(s) : shotz)` — un fragment FR écrit hors d'`i18n.ts`,
+ * inséré au milieu d'une phrase EN. La règle n° 1 du dépôt veut toute chaîne d'interface en FR
+ * ET en EN, tenue par le typage de parité ; une phrase fabriquée ici ne peut pas l'être.
+ *
+ * Ce module rend donc ce qu'il SAIT (quel genre de manquement, quelle clé, quel chemin) et
+ * laisse l'interface le DIRE (`REPLAY_TEXT[locale].contract*`, cf. `ReplaySchemaBadge`).
+ *
+ * `detail` reste le texte de zod, en anglais et non traduit : c'est un diagnostic technique
+ * destiné à un administrateur (« expected number, received string »), pas une phrase de
+ * produit. Le traduire exigerait de réécrire la table d'erreurs de la bibliothèque.
+ */
+export type ReplayContractIssue =
+  | { kind: 'unknownKeys'; keys: string[] }
+  | { kind: 'invalidField'; path: string; detail: string }
+  | { kind: 'malformed' }
+
+/**
+ * validateReplayDocument rend `null` si le document respecte le contrat, sinon le PREMIER
+ * manquement, en données.
  *
  * IL NE LÈVE JAMAIS, ET NE JETTE JAMAIS LE DOCUMENT. Un contrat violé est un signal pour
  * l'exploitant (le badge admin le montre), pas une raison de refuser d'afficher : le rendu
  * dégrade déjà champ par champ, et une page blanche apprendrait moins qu'un rejeu incomplet.
  *
- * LA CLÉ INCONNUE EST NOMMÉE EXPLICITEMENT : zod la range dans `issue.keys` et non dans le
- * chemin, si bien qu'un message construit sur le seul chemin dirait « racine : … » sans jamais
- * dire QUOI — c'est-à-dire sans donner le nom du champ renommé, la seule information utile de
- * ce manquement.
+ * LA CLÉ INCONNUE EST PORTÉE À PART : zod la range dans `issue.keys` et non dans le chemin, si
+ * bien qu'un manquement construit sur le seul chemin dirait « racine » sans jamais dire QUOI —
+ * c'est-à-dire sans donner le nom du champ renommé, la seule information utile de ce cas.
  */
-export function validateReplayDocument(raw: unknown): string | null {
+export function validateReplayDocument(raw: unknown): ReplayContractIssue | null {
   const r = replayDocumentSchema.safeParse(raw)
   if (r.success) return null
   const premier = r.error.issues[0]
-  if (!premier) return 'document non conforme au contrat'
+  if (!premier) return { kind: 'malformed' }
   if (premier.code === 'unrecognized_keys') {
-    return `cle(s) inconnue(s) : ${premier.keys.join(', ')}`
+    return { kind: 'unknownKeys', keys: [...premier.keys] }
   }
   const chemin = premier.path.join('.')
-  return chemin ? `${chemin} : ${premier.message}` : premier.message
+  return chemin
+    ? { kind: 'invalidField', path: chemin, detail: premier.message }
+    : { kind: 'malformed' }
 }

@@ -88,13 +88,13 @@ describe('le contrat du document de rejeu, à l’exécution', () => {
     delete sansMatchID.matchId
     const issue = validateReplayDocument({ ...sansMatchID, match_id: '000d5950' })
     expect(issue).not.toBeNull()
-    expect(issue).toContain('matchId')
+    expect(issue).toEqual({ kind: 'invalidField', path: 'matchId', detail: expect.any(String) })
   })
 
   it('refuse un calque dont la NATURE change (tableau devenu objet)', () => {
     const issue = validateReplayDocument({ ...docMinimal(), shots: { t: 1 } })
     expect(issue).not.toBeNull()
-    expect(issue).toContain('shots')
+    expect(issue).toMatchObject({ kind: 'invalidField', path: 'shots' })
   })
 
   it('refuse une borne non numérique — une scène de taille NaN est une page blanche muette', () => {
@@ -103,7 +103,7 @@ describe('le contrat du document de rejeu, à l’exécution', () => {
       bounds: { minX: 0, minY: 0, maxX: '10', maxY: 10 },
     })
     expect(issue).not.toBeNull()
-    expect(issue).toContain('bounds.maxX')
+    expect(issue).toMatchObject({ kind: 'invalidField', path: 'bounds.maxX' })
   })
 
   it('accepte un calque ABSENT et un calque NUL : les deux disent « aucune donnée »', () => {
@@ -120,7 +120,7 @@ describe('le contrat du document de rejeu, à l’exécution', () => {
   it('refuse une clé INCONNUE à la racine, et la NOMME (mode strict, constat C1)', () => {
     const issue = validateReplayDocument({ ...docMinimal(), shotz: [] })
     expect(issue).not.toBeNull()
-    expect(issue).toContain('shotz')
+    expect(issue).toEqual({ kind: 'unknownKeys', keys: ['shotz'] })
   })
 
   it('refuse une clé inconnue DANS les bornes — une borne renommée est une borne absente', () => {
@@ -129,7 +129,7 @@ describe('le contrat du document de rejeu, à l’exécution', () => {
       bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10, maxXX: 3 },
     })
     expect(issue).not.toBeNull()
-    expect(issue).toContain('maxXX')
+    expect(issue).toEqual({ kind: 'unknownKeys', keys: ['maxXX'] })
   })
 
   it('laisse passer les éléments sans les inspecter — la frontière est écrite, pas devinée', () => {

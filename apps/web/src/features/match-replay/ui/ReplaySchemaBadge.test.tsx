@@ -85,19 +85,72 @@ describe('ReplaySchemaBadge', () => {
       screen.getByText(`Schéma ${MIN_RENDERABLE_SCHEMA_VERSION - 1} · à recuire`),
     ).toBeInTheDocument()
   })
-
   it('NOMME le manquement quand le document ne respecte pas le contrat', () => {
     render(
       <ReplaySchemaBadge
         isAdmin
         schemaVersion={PRODUCTEUR}
         latestSchemaVersion={PRODUCTEUR}
-        contractIssue="matchId : champ requis"
+        contractIssue={{ kind: 'unknownKeys', keys: ['shotz'] }}
         locale="fr"
       />,
     )
     expect(
-      screen.getByText(`Schéma ${PRODUCTEUR} · contrat non respecté (matchId : champ requis)`),
+      screen.getByText(`Schéma ${PRODUCTEUR} · contrat non respecté (clé(s) inconnue(s) : shotz)`),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * LE MANQUEMENT SE DIT EN ANGLAIS EN LOCALE ANGLAISE (ronde 2 de la revue, constat R2-2).
+   * Il était fabriqué côté schéma, en français : le badge anglais affichait
+   * `contract violated (cle(s) inconnue(s) : shotz)` — un fragment FR hors d'`i18n.ts`, au
+   * milieu d'une phrase EN, ce que la règle n° 1 du dépôt interdit. La LISTE DES CLÉS, elle,
+   * reste brute des deux côtés : c'est une donnée, pas de la langue.
+   */
+  it('et il se dit en ANGLAIS en locale anglaise, liste de clés comprise', () => {
+    render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={PRODUCTEUR}
+        latestSchemaVersion={PRODUCTEUR}
+        contractIssue={{ kind: 'unknownKeys', keys: ['shotz'] }}
+        locale="en"
+      />,
+    )
+    expect(
+      screen.getByText(`Schema ${PRODUCTEUR} · contract violated (unknown key(s): shotz)`),
+    ).toBeInTheDocument()
+  })
+
+  it('dit le CHAMP fautif quand ce n’est pas une clé inconnue', () => {
+    render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={PRODUCTEUR}
+        latestSchemaVersion={PRODUCTEUR}
+        contractIssue={{ kind: 'invalidField', path: 'bounds.maxX', detail: 'expected number' }}
+        locale="en"
+      />,
+    )
+    expect(
+      screen.getByText(`Schema ${PRODUCTEUR} · contract violated (bounds.maxX: expected number)`),
+    ).toBeInTheDocument()
+  })
+
+  it('et sait le dire quand il ne sait rien de plus (document informe)', () => {
+    render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={PRODUCTEUR}
+        latestSchemaVersion={PRODUCTEUR}
+        contractIssue={{ kind: 'malformed' }}
+        locale="en"
+      />,
+    )
+    expect(
+      screen.getByText(
+        `Schema ${PRODUCTEUR} · contract violated (document does not match the contract)`,
+      ),
     ).toBeInTheDocument()
   })
 

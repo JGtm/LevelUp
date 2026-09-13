@@ -13,6 +13,8 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import type { ReplayContractIssue } from '@/lib/replay/replayDocumentSchema'
+
 import { racineDuDepot } from '../test/featureFiles'
 import { goFixtureSchemaVersion } from '../test/goFixtures'
 import {
@@ -138,21 +140,33 @@ describe('la borne de compatibilité est ÉPINGLÉE, pas seulement écrite', () 
 })
 
 describe('le contrat non respecté prime sur toute question de version', () => {
+  /**
+   * LE MANQUEMENT EST UNE DONNÉE, pas une phrase (ronde 2 de la revue, constat R2-2) : ce
+   * module ne le met jamais en mots — c'est le badge qui le fait, par `i18n.ts`, dans les deux
+   * langues. Le type l'impose désormais, et c'est aussi ce qui a fait disparaître le cas
+   * « chaîne vide » que ce fichier testait : une chaîne vide n'est plus représentable.
+   */
+  const MANQUEMENT: ReplayContractIssue = { kind: 'unknownKeys', keys: ['shotz'] }
+
   it('rend "invalid" et porte le manquement, même sur un artefact à jour', () => {
-    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, 'matchId : champ requis')).toEqual({
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, MANQUEMENT)).toEqual({
       kind: 'invalid',
       schemaVersion: PRODUCTEUR,
-      issue: 'matchId : champ requis',
+      issue: MANQUEMENT,
     })
   })
 
   it('rend "invalid" aussi sous le seuil d\'affichage : la conformité passe avant', () => {
     expect(
-      computeReplaySchemaStatus(MIN_RENDERABLE_SCHEMA_VERSION - 1, undefined, 'bounds : absent').kind,
+      computeReplaySchemaStatus(MIN_RENDERABLE_SCHEMA_VERSION - 1, undefined, {
+        kind: 'invalidField',
+        path: 'bounds.maxX',
+        detail: 'expected number',
+      }).kind,
     ).toBe('invalid')
   })
 
-  it('une chaîne VIDE n\'est pas un manquement : elle ne doit pas allumer le badge', () => {
-    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, '').kind).toBe('upToDate')
+  it('aucun manquement : le statut retombe sur la comparaison de versions', () => {
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, undefined).kind).toBe('upToDate')
   })
 })

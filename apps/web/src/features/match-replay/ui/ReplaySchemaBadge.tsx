@@ -26,8 +26,30 @@
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
+import type { ReplayContractIssue } from '@/lib/replay/replayDocumentSchema'
+
 import { computeReplaySchemaStatus, type ReplaySchemaStatus } from '../model/replaySchemaStatusLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+
+/**
+ * detailDe met le manquement EN MOTS, dans la langue du lecteur (ronde 2 de la revue, constat
+ * R2-2). Il était fabriqué côté schéma, en français, et se retrouvait donc au milieu de la
+ * phrase anglaise du badge : `contract violated (cle(s) inconnue(s) : shotz)`. La liste des
+ * clés et le texte de zod, eux, restent bruts — ce sont des données, pas de la langue.
+ */
+function detailDe(
+  issue: ReplayContractIssue,
+  t: (typeof REPLAY_TEXT)[ReplayLocale],
+): string {
+  switch (issue.kind) {
+    case 'unknownKeys':
+      return t.contractUnknownKeysFmt(issue.keys.join(', '))
+    case 'invalidField':
+      return t.contractInvalidFieldFmt(issue.path, issue.detail)
+    default:
+      return t.contractMalformed
+  }
+}
 
 /** Le libellé d'un statut, dans la langue courante. Pur : c'est ce qui le rend testable seul. */
 function libelleDe(status: ReplaySchemaStatus, t: (typeof REPLAY_TEXT)[ReplayLocale]): string {
@@ -35,7 +57,7 @@ function libelleDe(status: ReplaySchemaStatus, t: (typeof REPLAY_TEXT)[ReplayLoc
     case 'upToDate':
       return t.schemaBadgeUpToDateFmt(status.schemaVersion)
     case 'invalid':
-      return t.schemaBadgeInvalidFmt(status.schemaVersion, status.issue)
+      return t.schemaBadgeInvalidFmt(status.schemaVersion, detailDe(status.issue, t))
     case 'stale':
       return status.latestSchemaVersion === undefined
         ? t.schemaBadgeStaleNoTargetFmt(status.schemaVersion)
@@ -55,7 +77,7 @@ export function ReplaySchemaBadge({
   isAdmin: boolean
   schemaVersion: number
   latestSchemaVersion: number | undefined
-  contractIssue?: string
+  contractIssue?: ReplayContractIssue
   locale: ReplayLocale
 }) {
   if (!isAdmin) return null
