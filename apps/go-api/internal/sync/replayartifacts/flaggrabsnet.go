@@ -44,6 +44,7 @@ import (
 	"context"
 	"log/slog"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
@@ -86,19 +87,48 @@ func FenetreJonglage(repoRoot, titleSlug string) (time.Duration, bool, error) {
 // EXPORTÉE pour la même raison que [FenetreJonglage] : le backfill rejoue EXACTEMENT cette
 // projection sur les artefacts déjà rangés.
 func ProjeterPrisesNettes(matchID string, doc *replay.ReplayDocument, window time.Duration) persist.FlagGrabsNetBatch {
-	tracks, _, ok := replay.FlagTracksOf(doc)
+	tracks, openings, ok := replay.FlagTracksOf(doc)
 	if !ok {
 		return persist.FlagGrabsNetBatch{}
 	}
-	res := objectiveevents.NetFlagGrabs(nil, tracks, window)
+	res := objectiveevents.NetFlagGrabs(tracks, window)
 	if !res.Measured || len(res.Players) == 0 {
+		// AUCUN PORTAGE NOMME : la passe ne prouve pas qu'elle a su LIRE le calque, donc elle
+		// n'ecrit rien — et surtout pas un roster entier a zero, qui affirmerait « personne
+		// n'a pris de drapeau » sur un film ou le pont n'a simplement nomme personne.
 		return persist.FlagGrabsNetBatch{}
 	}
-	out := persist.FlagGrabsNetBatch{MatchID: matchID, WindowMS: res.WindowMS}
-	out.Players = make([]persist.FlagGrabsNetRow, 0, len(res.Players))
-	for _, p := range res.Players {
-		out.Players = append(out.Players, persist.FlagGrabsNetRow{XUID: p.XUID, Raw: p.Raw, Net: p.Net})
+	out := persist.FlagGrabsNetBatch{MatchID: matchID, WindowMS: res.WindowMS, Openings: openings}
+	out.Players = completerRosterAZero(doc, res.Players)
+	return out
+}
+
+// completerRosterAZero rend les lignes de la passe : celles qu'on a mesurees, PLUS une ligne
+// A ZERO pour chaque humain du roster que la mesure ne nomme pas.
+//
+// POURQUOI CE ZERO EST UNE MESURE, ET PAS UN REMPLISSAGE. Sur un match dont le calque a ete
+// LU, « ce joueur n'a jamais touche le drapeau » est un fait ; sans sa ligne, il serait
+// indistinguable d'un joueur d'un match sans film — les deux rendraient « non mesure » a
+// l'ecran. La ligne a zero est ce qui separe les deux.
+//
+// LES BOTS N'EN ONT PAS : un bot n'a pas de xuid (`RosterEntry.Bot`, XUID vide), et la table
+// est clef par xuid. Leur absence n'est pas un zero, c'est une identite que la base ne porte
+// pas — exactement ce que dit le schema de `match_bomb_stats`.
+func completerRosterAZero(doc *replay.ReplayDocument, mesures []objectiveevents.FlagGrabsNetPlayer) []persist.FlagGrabsNetRow {
+	out := make([]persist.FlagGrabsNetRow, 0, len(mesures)+len(doc.Roster))
+	vus := make(map[string]bool, len(mesures))
+	for _, p := range mesures {
+		out = append(out, persist.FlagGrabsNetRow{XUID: p.XUID, Raw: p.Raw, Net: p.Net})
+		vus[p.XUID] = true
 	}
+	for _, r := range doc.Roster {
+		if r.XUID == "" || vus[r.XUID] {
+			continue
+		}
+		vus[r.XUID] = true
+		out = append(out, persist.FlagGrabsNetRow{XUID: r.XUID})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].XUID < out[j].XUID })
 	return out
 }
 
@@ -106,18 +136,7 @@ func ProjeterPrisesNettes(matchID string, doc *replay.ReplayDocument, window tim
 // quand la réponse est non — même contrat que capabilityBombeArmee : un TOML illisible est un
 // INCIDENT (WARN + compteur d'échecs), une clé absente est une configuration de titre (DEBUG).
 func capabilitePrisesNettesArmee(ctx context.Context, d Deps) (armee, incident bool) {
-	caps, err := games.LoadCapabilityMap(d.RepoRoot, d.TitleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: prises nettes non produites — capabilities illisibles",
-			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "err", err)
-		return false, true
-	}
-	if !caps.Has(games.CapFilmFlagGrabsNet) {
-		slog.DebugContext(ctx, "post-sync: prises nettes — titre sans la capability, rien à produire",
-			"titleSlug", d.TitleSlug, "capability", string(games.CapFilmFlagGrabsNet))
-		return false, false
-	}
-	return true, false
+	return porteCapability(ctx, d, games.CapFilmFlagGrabsNet, "prises nettes", nil)
 }
 
 // regleJonglageArmee résout la fenêtre du titre et dit, comme ci-dessus, si son absence est un
@@ -216,10 +235,11 @@ func ecrirePrisesNettes(
 // writer : sans cette trace, la marque de dérivation se poserait sur un match dont RIEN n'a
 // été écrit.
 func echecPrisesNettes(b *bilanDerivations, prets []passePrisesNettesPrete) {
-	b.writerIndisponible()
+	ids := make([]string, 0, len(prets))
 	for i := range prets {
-		b.echec(prets[i].matchID)
+		ids = append(ids, prets[i].matchID)
 	}
+	echecFauteDeWriter(b, ids)
 }
 
 // projeterPrisesNettesDuLot projette tous les documents du lot, AVANT tout writer. Rend les

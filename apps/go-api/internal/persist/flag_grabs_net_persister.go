@@ -18,8 +18,18 @@
 //
 // INSERT purs. Aucun DELETE, aucun UPDATE, aucun ON CONFLICT — rien a faire figurer dans
 // l'allowlist de `no_art_patterns_test.go`, et `match_flag_grabs_net` y entre au contraire
-// dans les tables PROTEGEES. « Remplacer » une passe consiste a en ecrire une nouvelle : la
-// vue `match_flag_grabs_net_latest` ne rend que la derniere ligne par (match_id, xuid).
+// dans les tables PROTEGEES (ainsi que dans `sync/append_only_state_guard_test.go` et la
+// regexp de `duckdb/no_raw_rating_reads_test.go` — recette ADR 0026 etape 5). « Remplacer »
+// une passe consiste a en ecrire une nouvelle : la vue `match_flag_grabs_net_latest` rend la
+// DERNIERE PASSE ENTIERE par match, jamais la derniere ligne par cle.
+//
+// ─── L UNITE D ECRITURE EST LA PASSE, ET `decode_pass` EST CE QUI LA NOMME ────────────────
+//
+// Toutes les lignes d une passe portent le MEME `decode_pass` — tire une seule fois par
+// [newDecodePassID], meme doctrine que kill_events_persister.go et kill_opening_persister.go.
+// C est lui, et non `written_at`, qui fait gagner une generation ENTIERE : un joueur que la
+// nouvelle passe ne nomme plus est RETRACTE, et sa ligne ne survit pas avec l ANCIENNE
+// fenetre de jonglage a cote des nouvelles.
 //
 // ─── UNE PASSE VIDE N'EST PAS UNE PASSE A ZERO ────────────────────────────────────────────
 //
@@ -49,6 +59,10 @@ import (
 // se dit donc par l'ABSENCE DE LIGNE, jamais par un NULL de colonne.
 type FlagGrabsNetRow struct {
 	// XUID du joueur, en decimal (la clef de match_participants). Obligatoire.
+	//
+	// UN JOUEUR DU ROSTER QUI N A JAMAIS TOUCHE LE DRAPEAU A UNE LIGNE A ZERO, et c est une
+	// mesure : sur un match LU, « il n a rien pris » et « on n a pas regarde » sont deux
+	// choses, et seule la presence de la ligne les separe.
 	XUID string `json:"xuid"`
 	// Raw : les prises BRUTES lues sur le calque de drapeau — le compteur officiel tel que le
 	// film le rend, jonglage compris.
@@ -68,6 +82,12 @@ type FlagGrabsNetBatch struct {
 	// indistinguables dans la meme colonne. Obligatoire et strictement positive — une passe
 	// sans fenetre n'a pas de regle, donc pas de prise nette.
 	WindowMS int `json:"juggle_window_ms"`
+	// Openings est le nombre d OUVERTURES DE PORTAGE que l oracle du film a comptees sur ce
+	// match (`coverage.flagCarries.openings`). C est le DENOMINATEUR de `Raw` : les pistes ne
+	// portent que les prises que le pont a su nommer ET situer. Valeur de MATCH, ecrite sur
+	// chaque ligne de la passe. Peut valoir zero sur un artefact qui ne la publie pas — elle
+	// se lit alors « non renseigne », jamais « aucune ouverture ».
+	Openings int `json:"openings"`
 	// Players : les joueurs ayant au moins une prise brute. Un joueur qui n'a jamais touche
 	// le drapeau n'a pas de ligne — le noyau ne connait pas le roster et n'invente pas de
 	// ligne a zero.
@@ -100,8 +120,9 @@ func (p *FlagGrabsNetPersister) Persist(ctx context.Context, batch *MatchBatch) 
 
 const insertFlagGrabsNetSQL = `
 	INSERT INTO match_flag_grabs_net (
-		match_id, xuid, written_at, flag_grabs_raw, flag_grabs_net, juggle_window_ms
-	) VALUES (?, ?, ?, ?, ?, ?)`
+		match_id, decode_pass, xuid, written_at,
+		flag_grabs_raw, flag_grabs_net, openings, juggle_window_ms
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 
 // PersistPass ecrit UNE passe en 1 transaction, en INSERT purs.
 //
@@ -117,13 +138,20 @@ func (p *FlagGrabsNetPersister) PersistPass(ctx context.Context, in FlagGrabsNet
 		return nil
 	}
 
+	// Le tirage AVANT la transaction : un decode_pass non distinguable ferait rendre a la vue
+	// _latest un MELANGE de passes, sans aucun symptome visible (cf. newDecodePassID).
+	pass, err := newDecodePassID()
+	if err != nil {
+		return err
+	}
+
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("persist: BeginTx match_flag_grabs_net %s: %w", in.MatchID, err)
 	}
 	defer func() { _ = tx.Rollback() }() // no-op apres Commit
 
-	if err := insertFlagGrabsNetRows(ctx, tx, in, time.Now().UTC()); err != nil {
+	if err := insertFlagGrabsNetRows(ctx, tx, in, pass, time.Now().UTC()); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -132,9 +160,9 @@ func (p *FlagGrabsNetPersister) PersistPass(ctx context.Context, in FlagGrabsNet
 	return nil
 }
 
-// insertFlagGrabsNetRows ecrit les lignes. `now` est partage par toutes les lignes de la
-// passe — c'est l'arbitre de la vue `_latest`.
-func insertFlagGrabsNetRows(ctx context.Context, tx *sql.Tx, in FlagGrabsNetBatch, now time.Time) error {
+// insertFlagGrabsNetRows ecrit les lignes. `pass` et `now` sont partages par toutes les lignes
+// de la passe : c'est `pass` qui arbitre la vue `_latest`, `now` ne fait que l'ordonner.
+func insertFlagGrabsNetRows(ctx context.Context, tx *sql.Tx, in FlagGrabsNetBatch, pass string, now time.Time) error {
 	stmt, err := tx.PrepareContext(ctx, insertFlagGrabsNetSQL)
 	if err != nil {
 		return fmt.Errorf("persist: prepare match_flag_grabs_net %s: %w", in.MatchID, err)
@@ -143,7 +171,7 @@ func insertFlagGrabsNetRows(ctx context.Context, tx *sql.Tx, in FlagGrabsNetBatc
 
 	for _, pl := range in.Players {
 		if _, err := stmt.ExecContext(ctx,
-			in.MatchID, pl.XUID, now, pl.Raw, pl.Net, in.WindowMS,
+			in.MatchID, pass, pl.XUID, now, pl.Raw, pl.Net, in.Openings, in.WindowMS,
 		); err != nil {
 			return fmt.Errorf("persist: INSERT match_flag_grabs_net %s/%s: %w", in.MatchID, pl.XUID, err)
 		}
@@ -171,6 +199,9 @@ func validateFlagGrabsNetBatch(in FlagGrabsNetBatch) error {
 	if in.WindowMS <= 0 {
 		return fmt.Errorf("persist: %s: juggle_window_ms = %d — une passe sans fenetre n'a pas "+
 			"de regle, donc pas de prise nette", in.MatchID, in.WindowMS)
+	}
+	if in.Openings < 0 {
+		return fmt.Errorf("persist: %s: openings = %d — ce n'est pas un compte", in.MatchID, in.Openings)
 	}
 	vus := make(map[string]bool, len(in.Players))
 	for i := range in.Players {

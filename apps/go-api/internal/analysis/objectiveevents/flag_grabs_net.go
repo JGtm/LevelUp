@@ -56,8 +56,8 @@ import "time"
 // Les QUATRE etats d un drapeau, dans le vocabulaire de cette fonction. Ce sont les MEMES
 // chaines que `replay.FlagState*` — une recopie volontaire (faire dependre `analysis` du
 // decodeur de film pour quatre chaines serait un couplage disproportionne) et TENUE par un
-// garde-rail cote `replay` (flag_grabs_net_sentinels_test.go), qui echoue le jour ou l une des
-// quatre diverge de sa source.
+// garde-rail cote `replay` (flag_grabs_net_bridge_test.go, TestFlagStates_SentinellesObjectiveEvents),
+// qui echoue le jour ou l une des quatre diverge de sa source.
 const (
 	// FlagSpanCarried : un joueur le porte, et un FAIT DATE a mis fin a ce portage.
 	FlagSpanCarried = "carried"
@@ -112,25 +112,29 @@ type FlagGrabsNetResult struct {
 	// « 4 prises nettes » ne veut rien dire sans elle, et deux parcs cuits sous deux fenetres
 	// differentes seraient autrement indistinguables.
 	WindowMS int
-	// Openings est le compte de l ORACLE : les evenements nommes `flag_grabs` + `flag_steals`
-	// du film. C est le DENOMINATEUR de `Raw` — les pistes ne portent que les prises que le
-	// pont a su nommer et situer, et sans ce compte « 25 prises brutes » se lirait comme une
-	// exhaustivite. Zero = l appelant n a pas fourni d evenements (le cas du backfill, qui lit
-	// un artefact ou seules les pistes sont publiees).
-	Openings int
 	// Players : une entree par joueur ayant au moins une prise brute, triee par xuid.
+	//
+	// UN JOUEUR SANS PRISE N A PAS D ENTREE ICI, et ce n est pas une omission : cette
+	// fonction ne connait pas le roster du match. C est a l appelant, qui le connait, de
+	// completer a ZERO les joueurs presents — un zero mesure est une mesure, mais elle ne
+	// peut pas se deduire de pistes ou le joueur n apparait pas.
 	Players []FlagGrabsNetPlayer
 }
 
 // NetFlagGrabs compte, par joueur, les prises brutes et les prises nettes d un match.
 //
-// `evs` sert a UNE chose et une seule : le compte de l oracle (`Openings`). Il peut etre nil —
-// le resultat publie alors `Openings = 0`, qui se lit « non renseigne ». `tracks` porte la
-// mesure. `window` <= 0 rend un resultat NON MESURE.
+// `tracks` porte la mesure ; `window` <= 0 rend un resultat NON MESURE.
+//
+// LE DENOMINATEUR DU BRUT N EST PAS ICI, ET C EST DELIBERE. Le compte des OUVERTURES de
+// l oracle (`flag_grabs` + `flag_steals` fusionnes) est un fait de COUVERTURE du document
+// (`coverage.flagCarries.openings`), pas une lecture des pistes : le recompter ici a partir
+// d evenements que l artefact ne publie pas aurait fait un parametre toujours nil, donc un
+// denominateur toujours zero. Il voyage avec la projection (`replayartifacts`), qui le lit ou
+// il vit.
 //
 // Fonction PURE : aucune horloge, aucune base, aucune chaine de langue.
-func NetFlagGrabs(evs []NamedEvent, tracks []FlagTrack, window time.Duration) FlagGrabsNetResult {
-	out := FlagGrabsNetResult{Openings: countFlagOpenings(evs)}
+func NetFlagGrabs(tracks []FlagTrack, window time.Duration) FlagGrabsNetResult {
+	out := FlagGrabsNetResult{}
 	if window <= 0 {
 		return out
 	}
@@ -143,19 +147,6 @@ func NetFlagGrabs(evs []NamedEvent, tracks []FlagTrack, window time.Duration) Fl
 	}
 	out.Players = sortedNetPlayers(counts)
 	return out
-}
-
-// countFlagOpenings compte les OUVERTURES de l oracle : une prise au sol (`flag_grabs`) ou un
-// vol chez l adversaire (`flag_steals`). Les deux ouvrent un portage, et la piste ne distingue
-// plus laquelle une fois le portage ouvert.
-func countFlagOpenings(evs []NamedEvent) int {
-	n := 0
-	for _, e := range evs {
-		if e.Stat == StatFlagGrabs || e.Stat == StatFlagSteals {
-			n++
-		}
-	}
-	return n
 }
 
 // accumulateFlagTrack applique la regle a UNE piste de drapeau.

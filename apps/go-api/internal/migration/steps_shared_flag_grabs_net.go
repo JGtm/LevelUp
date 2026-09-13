@@ -11,34 +11,78 @@ package migration
 // colonnes de l'autre — un re-sync API effacerait de la vue les prises nettes. La separation
 // n'est pas un rangement, c'est ce qui empeche une perte silencieuse.
 //
-// ─── LES TROIS COLONNES, ET POURQUOI LA TROISIEME EXISTE ──────────────────────────────────
+// ─── LES CINQ COLONNES DE MESURE, ET POURQUOI CHACUNE EXISTE ──────────────────────────────
 //
 //	flag_grabs_raw     les prises BRUTES lues sur le calque de drapeau de l'artefact
-//	                   (`flagCarries[].spans`, etats portes). C'est le compteur officiel tel
-//	                   que le FILM le rend — il se compare a `match_objective_stats.flag_grabs`
-//	                   sans s'y substituer.
+//	                   (`flagCarries[].spans`, etats portes). C'est ce que LE FILM lit — a ne
+//	                   pas confondre avec `match_objective_stats.flag_grabs`, le compteur de
+//	                   l'API, qui est une autre chaine et n'entre jamais ici.
 //	flag_grabs_net     les memes prises, JONGLAGE REPLIE (`objectiveevents.NetFlagGrabs`).
+//	openings           le nombre d'OUVERTURES DE PORTAGE que l'oracle du film a comptees sur
+//	                   CE match (`coverage.flagCarries.openings`, `flag_grabs` + `flag_steals`
+//	                   fusionnes). C'est le DENOMINATEUR de `flag_grabs_raw` : les pistes ne
+//	                   portent que les prises que le pont a su nommer ET situer, et sans ce
+//	                   compte « 25 prises brutes » se lirait comme une exhaustivite. Valeur de
+//	                   MATCH, donc identique sur toutes les lignes d'une passe — repetee plutot
+//	                   que rangee dans une seconde table, parce qu'une table a une colonne pour
+//	                   un entier par match couterait une jointure a chaque lecture.
 //	juggle_window_ms   LA FENETRE SOUS LAQUELLE CETTE LIGNE A ETE CALCULEE. Sans elle,
 //	                   « 4 prises nettes » ne veut rien dire, et deux passes cuites sous deux
-//	                   fenetres differentes seraient indistinguables dans la meme colonne. Elle
-//	                   voyage donc AVEC la mesure, comme la `source` d'un fait date.
+//	                   fenetres differentes seraient indistinguables dans la meme colonne.
+//	decode_pass        l'identifiant de la PASSE (cf. ci-dessous).
 //
-// ─── ABSENT N'EST PAS ZERO ────────────────────────────────────────────────────────────────
+// ─── L'UNITE DE GENERATION EST LA PASSE, PAS LA LIGNE — ET C'EST VITAL ICI ─────────────────
 //
-// Un match sans film decode, un film qui n'est pas du CTF, un titre qui ne declare pas la
-// fenetre : AUCUNE LIGNE. La grandeur se lit alors « non mesuree », jamais « zero prise ».
-// Les trois colonnes sont NOT NULL pour cette raison exacte — une ligne qui existe AFFIRME,
-// et ce qu'on n'a pas mesure n'a pas de ligne.
+// La vue retient LA DERNIERE PASSE ENTIERE PAR MATCH (`decode_pass`), sur le modele exact de
+// `kill_openings_latest` et de `match_kill_events_latest`. Elle a d'abord arbitre par CLE —
+// derniere ligne par `(match_id, xuid)` — et c'etait un DEFAUT, releve en revue :
 //
-// ─── FORME APPEND-ONLY (ADR 0026), COMME SES DEUX SOEURS ──────────────────────────────────
+//	LA FENETRE AURAIT FUITE D'UNE PASSE A L'AUTRE. Une re-projection `--force` sous une
+//	  NOUVELLE fenetre qui ne retrouve plus un joueur (pont qui ne le nomme plus, decodeur
+//	  ameliore qui ecarte ses portages) laissait sa ligne de la passe PRECEDENTE dans la vue,
+//	  avec l'ANCIENNE fenetre. Le scope portait alors DEUX fenetres, et les lecteurs qui
+//	  exigent une fenetre unique (`sessionusage.ComputeFlagGrabsNet`) cessaient d'en annoncer
+//	  AUCUNE — un symptome a l'ecran, dont la cause etait invisible en base.
+//	UN JOUEUR RETIRE NE SE RETRACTAIT PAS. Il restait servi a jamais, melange aux lignes de
+//	  la passe courante.
 //
-// Table CREEE DIRECTEMENT append-only (id PK sequence + `written_at` + vue `_latest`) — PAS
-// via ApplyAppendOnlyRebuild, qui est la recette de CONVERSION d'une table mutable existante.
-// ART-safe par construction (#23645) : ecriture = INSERT pur
-// (`persist.FlagGrabsNetPersister`), LECTURE VIA `match_flag_grabs_net_latest` UNIQUEMENT —
-// une lecture brute servirait les lignes d'une passe de decodage precedente, voire d'une
-// fenetre precedente. Un seul index, `match_id` : le seul acces ponctuel reel est « les prises
-// de CE match », et chaque index en plus elargit la surface ART.
+// La cle fonctionnelle `(match_id, xuid)` reste celle de la JOINTURE — c'est par elle que le
+// lecteur rejoint `match_participants` — mais elle n'arbitre plus rien.
+//
+// ─── LA RETRACTATION EXIGE QUE LA PASSE SUIVANTE ECRIVE AU MOINS UNE LIGNE (assume) ───────
+//
+// Ce que la vue rend, c'est la derniere passe QUI EXISTE. Une passe qui ne lit aucun portage
+// nomme n'ecrit rien du tout — ni lignes ni `decode_pass` neuf — et la vue continue de servir
+// la passe precedente entiere. Meme arbitrage que `kill_openings`, et pour la meme raison :
+// ecrire une passe vide obligerait a distinguer en base un match sans drapeau lisible d'un
+// match jamais lu, au prix d'une ligne sentinelle dont aucun lecteur n'a l'usage.
+//
+// ─── ABSENT N'EST PAS ZERO, ET UN ZERO MESURE S'ECRIT 0 ───────────────────────────────────
+//
+// Un match sans film lu, un film qui n'est pas du CTF, un titre qui ne declare pas la
+// fenetre : AUCUNE LIGNE. La grandeur se lit alors « non mesuree ».
+//
+// Mais sur un match QUI EST lu, un joueur du roster qui n'a jamais touche le drapeau a une
+// ligne A ZERO — c'est une mesure, et la taire le rendrait indistinguable d'un joueur d'un
+// match non mesure. Les cinq colonnes sont donc NOT NULL : une ligne qui existe AFFIRME.
+//
+// ─── FORME APPEND-ONLY (ADR 0026), CREEE DIRECTEMENT ──────────────────────────────────────
+//
+// Table CREEE DIRECTEMENT append-only — PAS via ApplyAppendOnlyRebuild, qui est la recette de
+// CONVERSION d'une table mutable existante. ART-safe par construction (#23645) : ecriture =
+// INSERT pur (`persist.FlagGrabsNetPersister`), LECTURE VIA `match_flag_grabs_net_latest`
+// UNIQUEMENT. Un seul index, `match_id` : le seul acces ponctuel reel est « les prises de CE
+// match », et chaque index en plus elargit la surface ART. Enrolee dans les DEUX listes
+// anti-ART (`sync/append_only_state_guard_test.go`, `duckdb/no_raw_rating_reads_test.go`) —
+// recette ADR 0026 etape 5.
+//
+// ─── LA MIGRATION A ETE MODIFIEE EN PLACE LE 2026-09-13, ET C'EST LICITE ──────────────────
+//
+// Un step de migration est name-keyed : le modifier apres coup ne rejoue RIEN sur une base qui
+// l'a deja applique, ce qui produit d'ordinaire deux schemas divergents. Ici la table N'EXISTE
+// NULLE PART — creee le 2026-09-13 sur cette meme branche, jamais deployee, jamais fusionnee.
+// Le seul schema existant est celui des bases de test, recreees a chaque run. Meme licence,
+// meme justification, que la modification en place de `shared_create_kill_openings`.
 //
 // ─── CONSEQUENCE ASSUMEE — la table est creee dans le shared de TOUS les titres ────────────
 //
@@ -57,8 +101,9 @@ func init() {
 		Name:     "shared_create_flag_grabs_net",
 		TargetDB: TargetShared,
 		Description: "Table append-only match_flag_grabs_net (prises de drapeau brutes et nettes " +
-			"par joueur/match, lues du film, avec la fenetre de jonglage appliquee) + index " +
-			"match_id + vue match_flag_grabs_net_latest",
+			"par joueur/match, lues du film, avec les ouvertures de l oracle et la fenetre de " +
+			"jonglage appliquee) + decode_pass + index match_id + vue match_flag_grabs_net_latest " +
+			"(derniere passe ENTIERE par match)",
 		ApplySchema: applyMatchFlagGrabsNet,
 	})
 }
@@ -90,25 +135,21 @@ func MatchFlagGrabsNetLatestViewSQL(tableRef string) string {
 }
 
 // ddlMatchFlagGrabsNet : la table et son unique index. %s (verbatim) = la reference de table.
+//
+// AUCUN commentaire SQL dans le script : le splitter d `ExecScript` coupe naivement sur `;`,
+// et un `;` glisse dans un commentaire `--` casserait la migration (piege ADR 0026).
+// L explication vit dans l en-tete de ce fichier.
 const ddlMatchFlagGrabsNet = `
 	CREATE SEQUENCE IF NOT EXISTS match_flag_grabs_net_id_seq START 1;
 	CREATE TABLE IF NOT EXISTS %s (
-		-- identite technique (append-only : PK non naturelle, ADR 0026)
-		id               BIGINT  PRIMARY KEY DEFAULT nextval('match_flag_grabs_net_id_seq'),
-		match_id         VARCHAR NOT NULL,
-		-- xuid en decimal, la meme clef que match_participants.xuid. Un bot n'a pas de XUID :
-		-- il n'a donc pas de ligne ici, et son absence n'est pas un zero.
-		xuid             VARCHAR NOT NULL,
-
-		-- ── LES DEUX COMPTES ET LEUR REGLE — NOT NULL : une ligne qui existe AFFIRME ────
-		flag_grabs_raw   INTEGER NOT NULL,
-		flag_grabs_net   INTEGER NOT NULL,
-		-- juggle_window_ms : la fenetre sous laquelle flag_grabs_net a ete calcule. Elle
-		-- voyage avec la mesure — « 4 prises nettes » ne se lit pas sans elle.
-		juggle_window_ms INTEGER NOT NULL,
-
-		-- written_at : l'arbitre de la vue _latest. Toutes les lignes d'une meme passe le
-		-- partagent (pose par le persister), pour que la vue retienne une generation entiere.
+		id               BIGINT    PRIMARY KEY DEFAULT nextval('match_flag_grabs_net_id_seq'),
+		match_id         VARCHAR   NOT NULL,
+		decode_pass      VARCHAR   NOT NULL,
+		xuid             VARCHAR   NOT NULL,
+		flag_grabs_raw   INTEGER   NOT NULL,
+		flag_grabs_net   INTEGER   NOT NULL,
+		openings         INTEGER   NOT NULL,
+		juggle_window_ms INTEGER   NOT NULL,
 		written_at       TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 	);
 	CREATE INDEX IF NOT EXISTS idx_match_flag_grabs_net_match
@@ -117,15 +158,12 @@ const ddlMatchFlagGrabsNet = `
 
 // ddlMatchFlagGrabsNetLatest : LE SEUL CHEMIN DE LECTURE AUTORISE (ADR 0026).
 //
-// Patron EXACT de `MatchBombStatsLatestViewSQL` : derniere ligne par `(match_id, xuid)`,
-// `written_at DESC` puis `id DESC` pour departager deux ecritures tombees dans la meme
-// milliseconde.
+// Patron EXACT de `kill_openings_latest` : la DERNIERE PASSE ENTIERE par match, jamais la
+// derniere ligne par cle (cf. l en-tete — la fenetre fuirait d une passe a l autre).
 const ddlMatchFlagGrabsNetLatest = `
 	CREATE OR REPLACE VIEW match_flag_grabs_net_latest AS
-	SELECT *
-	FROM %s
-	QUALIFY ROW_NUMBER() OVER (
-		PARTITION BY match_id, xuid
-		ORDER BY written_at DESC, id DESC
-	) = 1;
+	SELECT * FROM %s AS f
+	QUALIFY f.decode_pass = FIRST_VALUE(f.decode_pass) OVER (
+		PARTITION BY f.match_id ORDER BY f.written_at DESC, f.id DESC
+	);
 `
