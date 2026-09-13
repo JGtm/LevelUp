@@ -30,6 +30,7 @@ package teammates
 import (
 	"context"
 	"log/slog"
+	"sort"
 
 	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/domain"
@@ -129,6 +130,8 @@ func (s *TeammatesService) buildSquadEchange(
 	out.Couverture = couvertureDuCamp(bilan.Morts, campScope, mesures)
 	out.Cellules = cellulesDuRoster(bilan.Paires, gtByXUID, mesures)
 	out.Delais = distributionDesDelais(scope, campScope)
+	out.DelaiMedianMs = delaiMedianDesEchanges(scope, campScope)
+	out.TauxParSession = tauxParSession(scope, scopeRows, campScope)
 
 	habituel := restreindreAuxMatchs(lecture, habituelIDs)
 	bilanHabituel := coordination.Echanges(habituel.Events, habituel.Univers.Equipes)
@@ -313,6 +316,75 @@ func distributionDesDelais(lecture domain.TacticalKillEvents, camp func(string, 
 			b.FinMs = bornesDelaiMs[i+1]
 		}
 		out = append(out, b)
+	}
+	return out
+}
+
+// delaiMedianDesEchanges rend le delai MEDIAN des echanges survenus DANS LA FENETRE.
+//
+// Sur les delais BRUTS, jamais interpole depuis `Delais` : une mediane lue sur sept
+// intervalles d'une seconde se trompe de plusieurs centaines de millisecondes et
+// changerait a chaque ajustement d'une borne. Les ripostes HORS FENETRE sont exclues —
+// ce ne sont pas des echanges, et les inclure deplacerait la mediane vers une population
+// que le taux ne compte pas.
+//
+// Convention de mediane : sur un effectif PAIR, la moyenne des deux valeurs centrales
+// (arrondie a la milliseconde) — la meme que partout ailleurs dans le depot.
+// Zero quand aucun echange n'est survenu : le client ne rend alors pas la tuile.
+func delaiMedianDesEchanges(lecture domain.TacticalKillEvents, camp func(string, string) bool) int64 {
+	delais := make([]int64, 0, len(lecture.Events))
+	for _, m := range coordination.Ripostes(lecture.Events, lecture.Univers.Equipes) {
+		if !m.Vengee || !camp(m.MatchID, m.VictimeXUID) {
+			continue
+		}
+		if m.DelaiMs > coordination.FenetreEchangeMs {
+			continue
+		}
+		delais = append(delais, m.DelaiMs)
+	}
+	if len(delais) == 0 {
+		return 0
+	}
+	sort.Slice(delais, func(i, j int) bool { return delais[i] < delais[j] })
+	milieu := len(delais) / 2
+	if len(delais)%2 == 1 {
+		return delais[milieu]
+	}
+	return (delais[milieu-1] + delais[milieu]) / 2
+}
+
+// tauxParSession decoupe la MEME mesure que `Couverture` par session (soiree).
+//
+// La maille est celle du nuage d'isolement (`sessionsDuScope`, meme fichier voisin) :
+// la session est la plus petite maille ou un taux d'echange veut dire quelque chose, et
+// c'est celle dans laquelle on joue. L'ordre est chronologique.
+//
+// Une session dont AUCUN match n'est mesure (journal des morts illisible) n'a pas de
+// point : elle n'a pas un taux nul, elle n'a pas de taux. Meme doctrine que l'omission de
+// la section entiere.
+func tauxParSession(
+	scope domain.TacticalKillEvents, scopeRows []domain.SquadMatchRow, camp func(string, string) bool,
+) []domain.SquadEchangeSessionPoint {
+	matchesDuScope := make(map[string]struct{}, len(scope.Univers.Matchs))
+	for _, m := range scope.Univers.Matchs {
+		matchesDuScope[m.MatchID] = struct{}{}
+	}
+	sessions, labels := sessionsDuScope(scopeRows, matchesDuScope)
+	out := make([]domain.SquadEchangeSessionPoint, 0, len(labels))
+	for _, label := range labels {
+		sessionScope := restreindreAuxMatchs(scope, sessions[label])
+		mesures := matchsMesures(sessionScope)
+		if mesures == 0 {
+			continue
+		}
+		bilan := coordination.Echanges(sessionScope.Events, sessionScope.Univers.Equipes)
+		couv := couvertureDuCamp(bilan.Morts, camp, mesures)
+		if couv.N == 0 {
+			continue
+		}
+		out = append(out, domain.SquadEchangeSessionPoint{
+			SessionLabel: label, Couverture: couv, MatchsMesures: mesures,
+		})
 	}
 	return out
 }
