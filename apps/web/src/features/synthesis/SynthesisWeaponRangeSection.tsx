@@ -311,7 +311,7 @@ function RangeChartBody({
   height,
   legendItems,
   legendLabel,
-  t,
+  emptyMessage,
 }: {
   publiable: boolean
   series: ChartSeries<WeaponRangeLine>[]
@@ -319,14 +319,15 @@ function RangeChartBody({
   height: number
   legendItems: ChartLegendItem[]
   legendLabel: string
-  t: Translate
+  /**
+   * La phrase d'état vide DE CETTE CARTE — chaque carte a la sienne (finitions
+   * 2026-09-13) : le dénivelé affichait la phrase de la portée (« les portées mesurées
+   * restent trop rares… »), qui ne parlait pas de son graphe.
+   */
+  emptyMessage: string
 }) {
   if (!publiable) {
-    return (
-      <p className="px-3 pb-1 pt-2.5 text-xs text-muted-foreground">
-        {t('synthesis.weapon_range.empty_below_threshold', { min: WEAPON_RANGE_MIN_MEASURED })}
-      </p>
-    )
+    return <p className="px-3 pb-1 pt-2.5 text-xs text-muted-foreground">{emptyMessage}</p>
   }
   return (
     <ChartCard
@@ -393,7 +394,9 @@ export function SynthesisWeaponRangeSection({ range }: SynthesisWeaponRangeSecti
             height={height}
             legendItems={rangeLegendItems(t)}
             legendLabel={t('synthesis.weapon_range.legend_label')}
-            t={t}
+            emptyMessage={t('synthesis.weapon_range.empty_below_threshold', {
+              min: WEAPON_RANGE_MIN_MEASURED,
+            })}
           />
         </SectionCard>
 
@@ -409,7 +412,9 @@ export function SynthesisWeaponRangeSection({ range }: SynthesisWeaponRangeSecti
             height={height}
             legendItems={elevationLegendItems(t)}
             legendLabel={t('synthesis.weapon_range.legend_elevation_label')}
-            t={t}
+            emptyMessage={t('synthesis.weapon_range.empty_below_threshold_elevation', {
+              min: WEAPON_RANGE_MIN_MEASURED,
+            })}
           />
         </SectionCard>
       </div>
