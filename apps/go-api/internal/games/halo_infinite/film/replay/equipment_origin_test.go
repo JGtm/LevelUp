@@ -193,3 +193,102 @@ func TestBuildEquipmentPlacementsPublieUneOrigineToujours(t *testing.T) {
 		t.Errorf("couverture desequilibree : %+v", cov)
 	}
 }
+
+// origPoseOf — la meme pose brute, pour un GlobalID choisi (le `eqip` de l'objet).
+func origPoseOf(frame int, globalID uint32, x, y, z float32) filmdec.EquipmentPlacement {
+	p := origPose(frame, x, y, z)
+	p.GlobalID = globalID
+	return p
+}
+
+// wallPanelGlobalID — le `eqip` d'un PANNEAU du mur (`kind = "deployed"` au manifeste), tel
+// que `usageWallPanelIDs` le transcrit. Ecrit ici en uint32 : c'est la forme que le film rend.
+const wallPanelGlobalID uint32 = 0x528fce46
+
+// wallDeviceGlobalID — l'appareil de mur PORTE (`kind = "carried"`), le temoin negatif : sur
+// lui, la question temporelle garde tout son sens et la regle ne doit RIEN changer.
+const wallDeviceGlobalID uint32 = 0x8e2dc574
+
+// TestPieceEngendreeEstToujoursDeployee — H.2, D-F1 : une PIECE ENGENDREE ne peut etre ni
+// lachee a la mort ni d'origine inconnue.
+//
+// LES DEUX CAS QUE LE PARC PORTE (rapport F.0 §2.3, 7 panneaux sur 216) :
+//   - un panneau ne A L'INSTANT EXACT de la fin d'une vie — le mur deploye au dernier souffle.
+//     La fenetre de 200 ms le classait `dropped` (3 cas du parc) ;
+//   - un panneau SANS POSEUR mesure — aucun bipede a moins de 3 m. L'origine restait
+//     `unknown` (4 cas du parc).
+//
+// Dans les deux cas le film DIT que la piece a ete engendree (l'evenement 103 designe 216 des
+// 216 poses de panneau publiees, dans les trois origines). Un panneau n'existe qu'une fois
+// deploye : il n'entre jamais dans un inventaire, donc il ne tombe jamais a la mort.
+func TestPieceEngendreeEstToujoursDeployee(t *testing.T) {
+	// Une vie de 0 a la frame 40, qui s'acheve en (4, 0, 0). L'echantillon de la frame 20 est
+	// ce qui donne un POSEUR aux poses de mi-vie : sans lui elles sortiraient toutes sans
+	// poseur, et le temoin negatif ne temoignerait de rien.
+	pos := []filmdec.BipedPosition{
+		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
+	}
+	raw := []filmdec.EquipmentPlacement{
+		// 1. PANNEAU ne a la fin de la vie de son poseur, a ses pieds : `dropped` avant H.2.
+		origPoseOf(40, wallPanelGlobalID, 4, 0, 0),
+		// 2. PANNEAU sans poseur mesure (300 m de tout bipede) : `unknown` avant H.2.
+		origPoseOf(20, wallPanelGlobalID, 300, 0, 0),
+		// 3. TEMOIN NEGATIF : l'appareil PORTE, meme instant, memes pieds. Il reste `dropped`
+		//    — c'est bien un objet que le mort laisse tomber.
+		origPoseOf(40, wallDeviceGlobalID, 4, 0, 0),
+		// 4. TEMOIN NEGATIF : l'appareil porte, deploye au milieu de la vie. Inchange.
+		origPoseOf(20, wallDeviceGlobalID, 2, 0, 0),
+	}
+	st := filmdec.EquipmentPlacementStats{Lives: 4, Anchors: 12, Confirmed: 4}
+	st.Calibration.Widths = filmdec.CurrentMPPWidths()
+	clock := replayClock{origin: eqOrigin, step: eqStep, frames: 200, families: map[uint32]string{
+		wallPanelGlobalID: usageFamilyWall, wallDeviceGlobalID: usageFamilyWall,
+	}}
+	out, cov := buildEquipmentPlacements(raw, st, pos, clock, filmdec.WorldObjectKeyframes{})
+	if len(out) != 4 {
+		t.Fatalf("%d pose(s) publiee(s), attendu 4", len(out))
+	}
+
+	origines := map[string]map[string]int{}
+	for _, pl := range out {
+		if origines[pl.ID] == nil {
+			origines[pl.ID] = map[string]int{}
+		}
+		origines[pl.ID][pl.Origin]++
+	}
+	panneau := origines["0x528fce46"]
+	if panneau[OriginDeployed] != 2 || len(panneau) != 1 {
+		t.Errorf("origines des PANNEAUX : %v, attendu 2 %q et rien d'autre",
+			panneau, OriginDeployed)
+	}
+	appareil := origines["0x8e2dc574"]
+	if appareil[OriginDropped] != 1 || appareil[OriginDeployed] != 1 {
+		t.Errorf("origines de l'APPAREIL PORTE : %v, attendu 1 %q et 1 %q — la regle des "+
+			"pieces engendrees a deborde sur un objet porte",
+			appareil, OriginDropped, OriginDeployed)
+	}
+	// L'invariant de couverture tient : la promotion passe par le meme comptage.
+	if cov.Deployed+cov.Dropped+cov.Unknown != cov.Placements {
+		t.Errorf("couverture desequilibree : %+v", cov)
+	}
+	if cov.Unknown != 0 {
+		t.Errorf("%d pose(s) d'origine inconnue, attendu 0 — le panneau sans poseur doit "+
+			"sortir en %q", cov.Unknown, OriginDeployed)
+	}
+}
+
+// TestEquipmentIsSpawnedPiece — le predicat, et sa frontiere : les DEUX panneaux du manifeste
+// et personne d'autre. L'appareil porte, le capteur, une famille inconnue : faux.
+func TestEquipmentIsSpawnedPiece(t *testing.T) {
+	for id, want := range map[string]bool{
+		"0x528fce46": true,  // panneau (palette rang 19)
+		"0x686b40c9": true,  // panneau (ability_deployable_wall)
+		"0x8e2dc574": false, // appareil de mur PORTE
+		"0x72199cba": false, // capteur de menaces
+		"":           false,
+	} {
+		if got := equipmentIsSpawnedPiece(id); got != want {
+			t.Errorf("equipmentIsSpawnedPiece(%q) = %v, attendu %v", id, got, want)
+		}
+	}
+}
