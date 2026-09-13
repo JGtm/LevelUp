@@ -107567,3 +107567,31 @@ lignes sur 1 307 matchs Infinite (recuisson des 12-13/09) — le plan
 condition NON tenue : typescript-eslint 8.70 exige `typescript <6.1.0`, openapi-typescript 7.13
 exige `^5.x`. Les autres kill-switchs datés relevés dans le code (BatchQueue, convergence,
 LegacySharedReader, image-clé, patterns, catégories de citations) ne sont pas dans l'artefact.
+
+---
+
+## [2026-09-13] Finitions v7.5 — E.2 purge LUSR exécutée, E.3 revue finale, R1 corrigé — Complété
+
+**E.2 (données réelles, serveur arrêté, sauvegarde `data/backups/2026-09-13_purge_lusr_h5_arena/`)** :
+le dry-run de `purge_foreign_lusr_chain` sur JGtm rendait 22 lignes étrangères pour 1 826 au scan —
+index `idx_msr_playlist` DÉSYNCHRONISÉ (famille duckdb#23645, comme PSA le 27/08), les 3 autres
+bases saines. Séquence : `repair_msr_index -data data` (diag 4 bases : 1 axe en écart sur JGtm) ;
+`repair_msr_index -db …/JGtm/stats.duckdb -repair` (DROP+CREATE idx_msr_playlist, 35 502 lignes
+intactes, 0 écart après) ; `purge_foreign_lusr_chain -db … -commit` sur les 4 bases : JGtm
+35 502 -> 33 676 (-1 826), Madina97294 37 252 -> 35 124 (-2 128), Chocoboflor 18 644 -> 17 702
+(-942), XxDaemonGamerxX 704 -> 642 (-62) ; 0 ligne `h5_arena` après (brut et `_latest`), 3 index
+reposés, vue `_latest` présente. Serveur relancé (200). Défaut d'outil trouvé après coup (une
+seule vue recréée) -> C.9 ; sans effet ici, la vue par type n'était pas encore posée sur ces bases.
+
+**E.3 revue adversariale** (`.ai/V7.5/REVUE_FINITIONS_2026-09-13.md`) : 1 P0, 0 P1, 14 P2.
+R1 (P0) : `match_skill_rank_latest_by_type` n'était créée que par la migration player ; une base
+créée par `EnsurePlayerSchema` seul (onboarding entre deux boots, Halo 5 hors boucle de migration
+du boot) faisait tomber la page Carrière en Catalog Error. Corrigé : vue posée aussi dans
+`sync/schema.go` (à l'identique du step), garde `schema_msr_views_test.go`. R2-R5 (numéro
+d'issue `#23046` résiduel dans l'outil de purge, phrase auto-contradictoire de la garde PSA, ADR
+0026 attribuant la corruption de tas à #23645, ADR 0023 au présent sur un fichier supprimé) :
+corrigés comme défauts introduits par le lot. R6-R11, R14, R15 consignés au plan, non traités.
+
+**Conclusion** : lots A-F fusionnés dans feat/v75, CI verte au niveau job après chaque fusion ;
+reste à la main de l'utilisateur : recuisson du parc (F.4, D.2), item Notion « retrait migration
+boot » à cocher, découvertes consignées (dont `RebuildMatchSkillRankART` au schéma pré-append-only).

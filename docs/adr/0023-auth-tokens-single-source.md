@@ -160,8 +160,9 @@ comptes auth-only, aucun `reauth_required`/`AADSTS` depuis le 01/08.
 - télémétrie `observability/legacy_source.go` (plus aucun émetteur).
 
 **Phase 6 absorbée** : le nettoyage de code mort prévu séparément est fait dans
-la même passe (règle projet « 0 code mort »). Il ne reste de `queries_auth.go`
-que `ReadOAuthRefreshToken`, pour la seule migration boot.
+la même passe (règle projet « 0 code mort »). Il ne restait de `queries_auth.go`
+que `ReadOAuthRefreshToken`, pour la seule migration boot — fichier supprimé avec elle le
+2026-09-13 (voir « Clôture de la Phase 5 »).
 
 **Exception unique, sous kill-switch daté (LEVÉE le 2026-09-13)** :
 `MigrateLegacyTokens` (`internal/platform/auth/migration.go`) + son wiring
@@ -177,7 +178,8 @@ store.
   `auth_migration: RT migré vers store` (`grep 'auth_migration: RT migré' sync.log`).
 
 **Garde-rails posés** (`internal/platform/auth/sentinel_test.go`) : allowlist des
-lecteurs d'env var réduite de ~30 entrées à 1 (la migration boot), nouveau guard
+lecteurs d'env var réduite de ~30 entrées à 1 (la migration boot), puis à 0 le 2026-09-13
+(voir « Clôture de la Phase 5 » ; seule reste l'entrée stdin de `capturecli.go` sur le guard 1), nouveau guard
 sur `duckdb.ReadOAuthRefreshToken` (2 sites + tests) ;
 `internal/sync/no_legacy_source_used_test.go` interdit désormais tout littéral de
 credential legacy dans le package sync ;

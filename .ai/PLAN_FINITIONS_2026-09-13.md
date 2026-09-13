@@ -292,12 +292,10 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   du décodeur. G5 : plus tard. G6 : CORRIGER l'UPDATE (pas d'allowlist) — transmis au lot B.
 
 ## Lot E — clôture (pilote)
-- [ ] E.1 Fusions B, C, D dans feat/v75 (`-X theirs` inutile : branches courtes), CI verte.
+- [x] E.1 Fusions dans feat/v75 : B `279b5c835`+`1f4e55ead`, D `56e425c8e`, C `52828bc05`+`a16e78c28` (C.8/C.9), F `0f96d42e2` — CI verte au niveau job après chaque fusion.
 - [x] E.2 (13/09) index `idx_msr_playlist` de JGtm réparé (repair_msr_index, 35 502 lignes intactes) ; purge commitée sur les 4 bases : 1 826 / 2 128 / 942 / 62 lignes `h5_arena` retirées, 0 après, 3 index reposés ; sauvegarde `data/backups/2026-09-13_purge_lusr_h5_arena/` ; serveur relancé (200).
-- [ ] E.3 Revue adversariale finale (contexte frais) sur `git diff e372e5d28..feat/v75` hors
-      `chore(deps)` ; seuls P0/P1 sont corrigés, le reste est consigné.
-- [ ] E.4 PR Dependabot fermées, Notion : item « ≥ 01/10 retrait migration boot » coché,
-      tâche « Deux lots à planifier » tracée ; thought_log ; suppression des worktrees.
+- [x] E.3 Revue adversariale finale (contexte frais, `.ai/V7.5/REVUE_FINITIONS_2026-09-13.md`) : 1 P0 (R1 : vue `match_skill_rank_latest_by_type` absente d'une player DB créée par `EnsurePlayerSchema` seul — page Carrière Halo 5 et onboarding en Catalog Error) CORRIGÉ dans `sync/schema.go` + garde `schema_msr_views_test.go` ; 0 P1 ; 14 P2 : R2-R5 (numéros d'issue et phrases d'ADR inversés par le lot lui-même) corrigés comme défauts du lot, R6-R11, R14, R15 consignés ci-dessous, R12/R13 = clôture.
+- [x] E.4 PR 79-83 fermées ; worktrees et branches des lots supprimés ; thought_log ; Notion NON touché (carnet utilisateur : l'item « ≥ 01/10 retrait migration boot » est à cocher par l'utilisateur, fait le 13/09).
 
 ## Découvertes (consignées, NON traitées)
 
@@ -463,3 +461,13 @@ manifeste ne séparent pas déploiement et lâcher à la mort. Trois choses n'on
   lot B : `knip-ratchet` bloque le push d'un worktree frais (197/168 contre un plafond de 0) faute de
   `node_modules` — `npm ci` dans le worktree, puis 0/0/0. `.golangci-cache*/` ajouté au `.gitignore`
   (même raison que `.gocache*/` : cache GLOBAL par défaut, à isoler par worktree).
+
+### Revue finale E.3 (2026-09-13) — P2 consignés, NON traités
+- R6 — listes de familles d'objectif Go (`objectiveevents/families.go`) et TS (`model/objectiveFamilies.ts`) indépendantes, aucun test de parité ; le TSDoc prétend le contraire. Une 7e famille rendrait le Go rouge et le TS silencieusement muet.
+- R7 — `infiniteLUSRChains` (gate d'intégration I14) recopiée, sans test d'exhaustivité contre `skillchain/classify.go`.
+- R8 — `purge_test.go` ne prouve pas la restauration du DEFAUT `written_at` (mutation verte).
+- R9 — précondition de disjonction DemoXUID / SourceXUID de `applyUniversalAnonymization` non assertée ni testée.
+- R10 — `cmd/repair_msr_index/main.go` bâtit le chemin player à la main (`halo_infinite` et 4 gamertags en dur) au lieu de `PathResolver` ; 2e copie du littéral (1re : `repair_psa_index`).
+- R11 — dette de taille non consignée : `equipment_placements.go` 594 -> 628 L ; `buildSyncEngineFactoryParityComplete` 85 -> 110 L.
+- R14 — `ListMapsByTitle` : `COALESCE(name_canonical,'')` fait passer les cartes sans nom canonique en tête du tri (le commentaire dit « tri inchangé »).
+- R15 — deux formulations imprécises : référence équipement §1 (« de la dernière position » -> « de la fin de vie ») ; godoc `originDropMaxDist` (le crâne n'est qu'un test).
