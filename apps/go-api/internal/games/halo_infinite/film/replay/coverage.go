@@ -151,6 +151,15 @@ type Coverage struct {
 	// Objectives est la couverture du calque des actions d'objectif (cf. objectives.go).
 	// Son dénominateur est le nombre d'événements identifiés fournis au build : publier
 	// 40 actions sans dire que 55 existaient laisserait croire à l'exhaustivité.
+	//
+	// IL NE COMPTE QUE LES FAMILLES D'OBJECTIF (D.2, 2026-09-13), alors que `Objectives` du
+	// document publie TOUT ce que le film nommait : les tables nommées portent aussi `kills`
+	// (ancre d'identité du balayage) et `assists` (contrôle croisé), qui faisaient 119 des
+	// 218 « disponibles » de `8bc6074f` et 93 des 148 de `32d9a94f` — deux artefacts qui
+	// annonçaient 100 % de couverture d'objectifs. `Attached` suit la même règle, donc
+	// `Balanced()` tient : l'invariant porte sur les familles d'objectif, pas sur la liste
+	// publiée. LES ARTEFACTS ANTÉRIEURS GARDENT L'ANCIEN DÉNOMINATEUR jusqu'à leur recuisson —
+	// aucun champ ne bouge, seule la valeur change, et `SchemaVersion` ne monte donc pas.
 	Objectives LayerCoverage `json:"objectives"`
 	// Equipment est la couverture des épisodes d'état actif d'équipement (schéma 7, cf.
 	// equipment_episodes.go) : combien de vies publiées portent des épisodes, par famille.
