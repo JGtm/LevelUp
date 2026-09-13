@@ -23,8 +23,16 @@ import {
 import { canvasScale, worldToCanvas } from './replayLogic'
 import { normalizeReplayDocument, type ReplayDocumentReady } from './replayNormalize'
 
+// La VERSION DE SCHÉMA du document de test vient du producteur (2026-09-13, lot 0.B, constat
+// C4 de la revue ronde 1) : elle valait 1 en dur, c'est-à-dire un numéro que le serveur n'a
+// jamais servi. C'est la SEULE chose que ce fichier emprunte hors de `lib/` — un lecteur de
+// manifeste, dans un test, jamais du code de production de la feature (même exception que
+// `lib/i18n/no-anglicisms.guard.test.ts`, qui lit les tables i18n des features).
+import { goFixtureSchemaVersion } from '@/features/match-replay/test/goFixtures'
+
 // -----------------------------------------------------------------------------------------
-// Doubles de test — locaux à ce fichier (pas de dépendance à une feature depuis `lib/`).
+// Doubles de test — locaux à ce fichier pour tout le reste (aucune dépendance au code de
+// production d'une feature depuis `lib/`).
 // -----------------------------------------------------------------------------------------
 
 const BOUNDS: ReplayBounds = { minX: 0, minY: 0, maxX: 40, maxY: 40 }
@@ -39,7 +47,7 @@ interface Vie {
 /** Document de rejeu minimal, normalisé par la même frontière que le serveur. */
 function testReplayDoc(over: Partial<ReplayDocument> & { tracks?: Vie[] }): ReplayDocumentReady {
   return normalizeReplayDocument({
-    schemaVersion: 1,
+    schemaVersion: goFixtureSchemaVersion(),
     matchId: 'm',
     titleSlug: 'halo_infinite',
     frameCount: 200,

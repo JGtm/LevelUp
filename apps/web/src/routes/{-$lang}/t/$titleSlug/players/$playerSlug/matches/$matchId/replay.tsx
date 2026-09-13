@@ -215,6 +215,7 @@ function ReplayPage() {
                 isAdmin={isAdmin}
                 schemaVersion={data.schemaVersion}
                 latestSchemaVersion={data.latestSchemaVersion}
+                contractIssue={data.contractIssue}
                 locale={locale}
               />
             )}

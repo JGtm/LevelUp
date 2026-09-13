@@ -25,6 +25,9 @@ import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
 import { useMatchReplay } from '@/lib/replay/queries'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { renderWithProviders } from '@/test/render-utils'
+// La version de schema du document simule vient du PRODUCTEUR (lot 0.B, constat C4 de la revue
+// ronde 1) : elle valait 4 en dur, c'est-a-dire un numero que le serveur n a jamais servi.
+import { goFixtureSchemaVersion } from '@/features/match-replay/test/goFixtures'
 
 vi.mock('@/lib/api/client', () => ({
   api: { get: vi.fn(), getWithHeader: vi.fn() },
@@ -108,7 +111,7 @@ describe('page de rejeu — porte de titre `replay`', () => {
 
   it('titre AVEC la clé : la page est montée et demande son artefact', async () => {
     titreAvecCapabilities(['matchmaking', 'replay'])
-    apiGet.mockResolvedValue({ data: { schemaVersion: 4, tracks: [] }, header: null })
+    apiGet.mockResolvedValue({ data: { schemaVersion: goFixtureSchemaVersion(), tracks: [] }, header: null })
 
     renderWithProviders(<SousLesDeuxPortes />)
 
