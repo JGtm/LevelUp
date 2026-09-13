@@ -342,6 +342,13 @@ func demoXUIDForIndex(i int) string {
 // physiquement présente dans une base publiée publiquement. Une vue `_latest` la masquerait
 // à la lecture sans la retirer du fichier. Sur ce chemin-ci, la seule écriture correcte est
 // celle qui REMPLACE : l'anonymisation doit faire disparaître la valeur, pas la superposer.
+//
+// PRÉCONDITION DE LA FORME SÉQUENTIELLE : aucun `DemoXUID` ne doit être égal au `SourceXUID`
+// d'une autre entrée, sinon la passe d'une entrée re-remapperait les lignes déjà réécrites
+// par une précédente (la jointure, elle, lisait l'état d'origine en un seul statement).
+// Elle tient PAR CONSTRUCTION : `demoXUIDForIndex` produit des compteurs remplis de zéros
+// ("0000000000000000", "0000000000000001", …) et un xuid Xbox réel ne prend jamais cette
+// forme. Un futur générateur d'identités démo devra préserver cette disjonction.
 func applyUniversalAnonymization(ctx context.Context, dst *sql.DB, roster []demoRosterEntry) error {
 	// (table, [(xuidCol, gamertagCol)]) — gamertagCol vide = pas de colonne nom.
 	type remap struct {
