@@ -285,7 +285,7 @@ func TestPlayerPersister_AtomicityOnFailure_RollsBackAll(t *testing.T) {
 	db := openPlayerTestDB(t)
 	p := NewPlayerPersister(db)
 
-	// Append-only #23046 (Phase 2) : enrichment, skill_rank, lusr_component_history,
+	// Append-only #23645 (Phase 2) : enrichment, skill_rank, lusr_component_history,
 	// citations sont TOUS append-only (PK techniques séquentielles → plus aucun
 	// conflit de PK exploitable). On injecte donc l'échec mid-batch de façon
 	// append-only-proof : une citation de value=NaN → conversion NaN→INTEGER rejetée

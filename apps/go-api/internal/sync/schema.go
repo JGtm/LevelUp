@@ -36,7 +36,7 @@ var playerSchemaSQL = migration.PlayerPersonalScoreAwardsDDL +
 // playerCoreSchemaSQL — tables player dont le DDL de soin n'est pas partagé avec un step
 // de migration (leur création vit dans create_baseline_player_v1, title-owned).
 const playerCoreSchemaSQL = `
--- player_match_enrichment : APPEND-ONLY (campagne ART #23046, 2026-06-21). La
+-- player_match_enrichment : APPEND-ONLY (campagne ART #23645, 2026-06-21). La
 -- table la PLUS écrite du projet (écritures incrémentales partielles perf/engagement/
 -- session/friends/bot/exclusion/psa) ne peut plus naître avec PK(match_id) + index
 -- ART mutés. PK technique id (séquence pme_seq) + colonne stage discriminant
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS career_progression (
 ALTER TABLE career_progression ADD COLUMN IF NOT EXISTS last_fetch_status VARCHAR;
 -- idx_career_xuid : SUPPRIMÉ (décision 2026-08-05, arbitrage doctrinal option 2). Dans
 -- une player DB, xuid est QUASI CONSTANT (une DB = un joueur) → sélectivité nulle,
--- l'index n'accélère aucun filtre mais porte la classe de corruption ART DuckDB #23046
+-- l'index n'accélère aucun filtre mais porte la classe de corruption ART DuckDB #23645
 -- (ADR 0019/0026), la plus chère de l'histoire du projet. La convergence des DB
 -- EXISTANTES est assurée par le step drop_career_xuid_art_index_v1 (migration player).
 `
@@ -343,7 +343,7 @@ func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// playerAppendOnlyCares — conversions append-only (#23046, ADR 0026) garanties à CHAQUE
+// playerAppendOnlyCares — conversions append-only (#23645, ADR 0026) garanties à CHAQUE
 // ouverture d'une player DB, en plus du DDL de soin. playerSchemaSQL crée les TABLES mais
 // jamais les vues `_latest` (leur bind échouerait sur une table legacy non convertie) :
 // sans ces appels, une player DB NEUVE ouverte hors chaîne de migrations aurait la table

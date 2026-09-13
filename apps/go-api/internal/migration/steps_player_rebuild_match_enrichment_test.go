@@ -71,7 +71,7 @@ func TestRebuildPlayerMatchEnrichmentART_PreservesAllRows(t *testing.T) {
 	}
 }
 
-// TestRebuildPlayerMatchEnrichmentART_AppendOnlyAfterRebuild : append-only #23046 —
+// TestRebuildPlayerMatchEnrichmentART_AppendOnlyAfterRebuild : append-only #23645 —
 // le rebuild délègue à la conversion append-only. Après rebuild : colonne id présente,
 // vue player_match_enrichment_latest queryable, et PLUS de PK(match_id) (les match_id
 // dupliqués sont permis — 1 row par stage).
@@ -94,7 +94,7 @@ func TestRebuildPlayerMatchEnrichmentART_AppendOnlyAfterRebuild(t *testing.T) {
 	}
 }
 
-// TestRebuildPlayerMatchEnrichmentART_PreservesOriginalColumns : append-only #23046 —
+// TestRebuildPlayerMatchEnrichmentART_PreservesOriginalColumns : append-only #23645 —
 // les colonnes d'origine sont PRÉSERVÉES (after ⊇ before) ; le rebuild AJOUTE
 // id/stage/written_at + les colonnes canoniques (ensurePMEColumns).
 func TestRebuildPlayerMatchEnrichmentART_PreservesOriginalColumns(t *testing.T) {
@@ -162,7 +162,7 @@ func TestRebuildPlayerMatchEnrichmentART_Idempotent(t *testing.T) {
 	}
 }
 
-// TestRebuildPlayerMatchEnrichmentART_EradicatesARTIndexes : append-only #23046 —
+// TestRebuildPlayerMatchEnrichmentART_EradicatesARTIndexes : append-only #23645 —
 // INVERSION de doctrine (vs le fix 2026-06-19 qui les rejouait). Les 3 ex-index ART
 // mutés (idx_pme_engagement_history/_paces/_session) sont ÉRADIQUÉS par le swap
 // append-only et ne doivent JAMAIS revenir (seul idx_pme_match_lookup est toléré).

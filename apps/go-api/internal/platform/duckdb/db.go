@@ -405,7 +405,7 @@ func openCachedDB(
 // SELECT→INSERT entre goroutines.
 // UpsertRowNoConflict fait un SELECT d'existence puis UPDATE (si présent) ou INSERT
 // (sinon) sur un *sql.DB brut — ART-safe : JAMAIS d'ON CONFLICT sur la PK (qui réécrit
-// via l'index ART DuckDB, bug #23046). existsQuery doit retourner ≥1 ligne si la clé
+// via l'index ART DuckDB, bug #23645). existsQuery doit retourner ≥1 ligne si la clé
 // existe.
 //
 // SOURCE UNIQUE (K1d, dédup #6, 2026-07-05) : ce pattern était copié-collé dans

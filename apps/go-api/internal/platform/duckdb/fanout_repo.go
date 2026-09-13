@@ -79,7 +79,7 @@ func (r *FanoutRepo) LoadExistingEnrichments(
 
 // InsertStubEnrichments insère une row baseline stage='live' dans player_match_enrichment
 // pour les matchs manquants d'un coéquipier (matchs vus seulement via shared — même motif
-// que ensurePlayerEnrichmentRows). Append-only #23046 : INSERT pur (le caller pré-filtre
+// que ensurePlayerEnrichmentRows). Append-only #23645 : INSERT pur (le caller pré-filtre
 // déjà via LoadExistingEnrichments → aucun conflit). Le post-sync taggé peuple ensuite.
 func (r *FanoutRepo) InsertStubEnrichments(
 	ctx context.Context,

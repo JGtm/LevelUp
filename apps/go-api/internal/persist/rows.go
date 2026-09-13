@@ -213,7 +213,7 @@ type XUIDAliasInsert struct {
 //
 // ART-SAFETY : INSERT OR IGNORE sur la clé naturelle non-mutée
 // (match_id, xuid, commendation_id) — jamais d'UPDATE sur Count, aucun index
-// secondaire sur une colonne mutée (cf. campagne ART #23046). CommendationID est
+// secondaire sur une colonne mutée (cf. campagne ART #23645). CommendationID est
 // l'UUID natif de commendation (clé naturelle, jamais résolu en numérique côté h5).
 type CommendationInsert struct {
 	MatchID        string `json:"match_id"`

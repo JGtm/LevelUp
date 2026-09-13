@@ -25,7 +25,7 @@ func applyNamedMig(t *testing.T, db *sql.DB, name string) {
 }
 
 // TestPlayerSkillStateV2ResetMarker_AppendOnlyReset vérifie le mécanisme de reset
-// watermark append-only (#23046 Phase 2) sur une table LEGACY (sans is_reset) :
+// watermark append-only (#23645 Phase 2) sur une table LEGACY (sans is_reset) :
 //  1. la migration ALTER ajoute is_reset + recrée la vue filtrée ;
 //  2. une row sentinelle is_reset=TRUE masque le groupe dans _latest (LoadState→nil) ;
 //  3. un état frais (written_at postérieur) réapparaît.

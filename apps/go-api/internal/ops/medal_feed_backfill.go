@@ -361,7 +361,7 @@ func medaillesDuMatch(ctx context.Context, db *sql.DB, matchID string) ([]evenem
 // un match est entierement rattrape ou pas touche.
 //
 // UPDATE ligne a ligne, jamais la forme bulk `UPDATE ... FROM (VALUES ...)` : c est
-// elle qui declenche le bug ART #23046 en touchant N entrees d index en un
+// elle qui declenche le bug ART #23645 en touchant N entrees d index en un
 // statement (garde-rail sync/no_art_patterns_test.go). Serialisee et mono-process,
 // la forme ligne a ligne est celle que la doctrine autorise.
 func ecrireCorrections(ctx context.Context, db *sql.DB, matchID string, corrections []correction) error {

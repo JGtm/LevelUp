@@ -3,7 +3,7 @@ package main
 // cmd_rebuild_pme.go — sous-commande `levelup rebuild-pme-art` : reconstruit
 // l'index ART de player_match_enrichment (swap CTAS transactionnel, garde
 // anti-perte, recrée les indexes) pour défaire la corruption DuckDB 1.5.x
-// (issue amont #23046) qui fait crasher les backfills UPDATE-lourds
+// (issue amont #23645) qui fait crasher les backfills UPDATE-lourds
 // (ex. engagement-coefs --with-scores).
 //
 // Non destructif : refuse de détruire l'original si le nombre de rows change.

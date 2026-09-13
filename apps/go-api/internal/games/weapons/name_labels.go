@@ -16,7 +16,7 @@ package weapons
 // fichier versionne, reconcilie a CHAQUE boot (meme motif que ReconcileRegistry
 // — le registre saute tout step deja « done », donc un ajout au fichier n'atteindrait
 // jamais une DB prod migree). Referentiel STATIQUE, PK simple, zero writer concurrent,
-// hors surface ART #23046. INSERT OR REPLACE pour que les corrections du fichier se
+// hors surface ART #23645. INSERT OR REPLACE pour que les corrections du fichier se
 // propagent au boot suivant.
 
 import (

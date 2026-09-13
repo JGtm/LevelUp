@@ -9,7 +9,7 @@ package migration
 // (`cmd/diag_weapons_v3 -positions -write`), sur le handle de LECTURE du pool. Deux defauts :
 //
 //	le VECTEUR ART      un `DELETE FROM ... WHERE match_id = ?` sur une table indexee est le
-//	                    declencheur du bug DuckDB #23046 (ADR 0019/0026). L'outil tournait
+//	                    declencheur du bug DuckDB #23645 (ADR 0019/0026). L'outil tournait
 //	                    « serveur arrete », donc hors pression concurrente — mais la table
 //	                    devient desormais une PROJECTION DE L'ARTEFACT ecrite dans le cycle de
 //	                    sync, c'est-a-dire exactement le regime que la doctrine interdit.

@@ -8,7 +8,7 @@
 //   - record_history (stats.duckdb par joueur, timeline).
 //
 // Neutralisation = recette ADR 0026 (rebuild par CTAS filtré + swap
-// transactionnel), JAMAIS de DELETE brut (surface ART #23046). On reconstruit la
+// transactionnel), JAMAIS de DELETE brut (surface ART #23645). On reconstruit la
 // table en ne gardant QUE les lignes plausibles (métrique suivie ET valeur dans
 // ses bornes) puis on recrée PK / index / vue à l'identique. Une clé dont toutes
 // les versions étaient corrompues disparaît ; une clé dont seule la dernière

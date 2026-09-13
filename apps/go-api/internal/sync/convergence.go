@@ -132,7 +132,7 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 	// les matchs récents d'abord, aligné sur le contrat convergenceHorizon.
 	rows, err := playerDB.QueryContext(ctx, `
 		SELECT e.match_id
-		-- Append-only #23046 : _latest. psa_checked_at vit sur le stage 'psa' ; sur la
+		-- Append-only #23645 : _latest. psa_checked_at vit sur le stage 'psa' ; sur la
 		-- table brute les rows des autres stages ont psa_checked_at NULL → ce filtre
 		-- retournerait TOUS les matchs même déjà checkés → re-fetch PSA infini.
 		FROM player_match_enrichment_latest e
@@ -209,7 +209,7 @@ func convergePSACollect(ctx context.Context, playerDB *sql.DB, client HaloClient
 				continue
 			}
 		}
-		// Append-only #23046 : INSERT pur stage='psa' (marqueur terminal). La vue
+		// Append-only #23645 : INSERT pur stage='psa' (marqueur terminal). La vue
 		// merge expose psa_checked_at par match ; selectMatchesMissingPSA lit _latest.
 		if _, err := playerDB.ExecContext(ctx,
 			`INSERT INTO player_match_enrichment (match_id, psa_checked_at, stage) VALUES (?, now(), 'psa')`, mid); err != nil {

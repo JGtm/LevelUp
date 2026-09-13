@@ -1,7 +1,7 @@
 package migration
 
 // append_only_rebuild.go — helper unique de conversion d'une table en append-only
-// (campagne d'éradication du bug DuckDB ART #23046).
+// (campagne d'éradication du bug DuckDB ART #23645).
 //
 // **Contexte** : sur DuckDB file-backed, l'enforcement d'une PK/UNIQUE via index
 // ART corrompt le heap sous churn (DELETE per-row / UPDATE de colonne indexée /

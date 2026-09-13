@@ -2,7 +2,7 @@
 // Extrait de service.CatalogFetcherService (K1j, 2026-07-06) pour que la couche service ne
 // tienne plus de *sql.DB brut (ADR 0025 D-MV2) et n'ait plus sa copie locale de l'upsert
 // ART-safe (le repo utilise UpsertRowNoConflict canonique). Toutes les écritures sont
-// ART-safe (SELECT-then-write, JAMAIS d'ON CONFLICT sur metadata.duckdb, bug #23046).
+// ART-safe (SELECT-then-write, JAMAIS d'ON CONFLICT sur metadata.duckdb, bug #23645).
 //
 // Tient un *sql.DB brut (comportement identique à l'ex-service : ni recovery ni reopen —
 // le CLI populate-playlists-catalog l'ouvre via sql.Open, le serveur via dataQualityHandles).

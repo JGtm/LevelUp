@@ -593,7 +593,7 @@ func loadHistoryForCategory(ctx context.Context, playerDB *sql.DB, modeCategory,
 // loadExistingEngagementScores retourne le set des match_id dont l'engagement a
 // déjà été TENTÉ (présence d'une row stage='engagement'), pour skip en non-force.
 //
-// Append-only #23046 — IDEMPOTENCE : on lit la présence du stage, PAS
+// Append-only #23645 — IDEMPOTENCE : on lit la présence du stage, PAS
 // engagement_score IS NOT NULL. Un match insufficient_history (score NULL LÉGITIME
 // et PERMANENT — les ~10 premiers matchs d'une catégorie n'auront jamais assez
 // d'historique) serait sinon ré-INSÉRÉ à CHAQUE post-sync → croissance non bornée

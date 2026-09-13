@@ -166,7 +166,7 @@ const stagePrimeEnrichment = "prime_enrichment"
 // (stage='live') per imported match_id. Required because the recompute stages
 // (sessions, performance_score) source their work-list from PME rows.
 //
-// Append-only #23046 : pure INSERT (no ON CONFLICT — match_id n'est plus une PK).
+// Append-only #23645 : pure INSERT (no ON CONFLICT — match_id n'est plus une PK).
 // Idempotence via pré-filtre delta : seuls les matchs sans aucune row PME reçoivent
 // la baseline (évite les doublons stage='live' sur ré-import).
 func (s *OpenSpartanPostImportService) ensureEnrichmentRows(

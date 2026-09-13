@@ -59,7 +59,7 @@ func newPatternsTestPDB(t *testing.T) *PlayerDB {
 	mustExec(t, playerSQL, `CREATE TABLE player_match_enrichment (
 		match_id VARCHAR, performance_score DOUBLE, session_id VARCHAR,
 		is_with_friends BOOLEAN, engagement_score DOUBLE, engagement_score_brut DOUBLE)`)
-	// Append-only #23046 : convertit player_match_enrichment (id PK + stage +
+	// Append-only #23645 : convertit player_match_enrichment (id PK + stage +
 	// written_at) et crée la vue player_match_enrichment_latest (lue par le repo).
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerSQL); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)

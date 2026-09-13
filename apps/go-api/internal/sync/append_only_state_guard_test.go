@@ -45,7 +45,7 @@ var appendOnlyStateTables = []string{
 	// lusr_component_history_latest. Writers (loaders + persister) = INSERT pur.
 	"lusr_component_history",
 	// player_match_enrichment : la table la PLUS écrite, migrée append-only
-	// (#23046, 2026-06-21) — id PK + colonne stage + written_at, lecture via
+	// (#23645, 2026-06-21) — id PK + colonne stage + written_at, lecture via
 	// player_match_enrichment_latest (merge-on-read par-groupe). INSERT pur taggé.
 	"player_match_enrichment",
 	// match_lives / match_death_context (7C isolement au sync, 2026-09-07) : tables
@@ -318,7 +318,7 @@ var mediaAppendOnlyTables = []string{
 
 // allowlistMediaMutation : sites de prod où un DELETE/UPDATE sur une table média
 // append-only serait toléré. Format : "fichier — raison (date)". Toute entrée doit
-// prouver l'absence de déclencheur ART (le bug DuckDB #23046 FATAL-invalide le handle
+// prouver l'absence de déclencheur ART (le bug DuckDB #23645 FATAL-invalide le handle
 // partagé pour tout le process — cf. incident catalog_fetch_queue 2026-06-19).
 //
 // Vide au 2026-08-03 : aucune mutation tolérée. Les seuls DELETE existants vivent
@@ -407,7 +407,7 @@ func TestNoMutationOnMediaAppendOnlyTables(t *testing.T) {
 	if len(violations) > 0 {
 		t.Errorf("RÉGRESSION append-only MÉDIA : %d mutation(s) interdite(s) "+
 			"(append-only = INSERT pur + vue _latest ; un DELETE/UPDATE indexé déclenche "+
-			"le bug ART DuckDB #23046 qui FATAL-invalide le handle shared_social) :\n  - %s",
+			"le bug ART DuckDB #23645 qui FATAL-invalide le handle shared_social) :\n  - %s",
 			len(violations), strings.Join(violations, "\n  - "))
 	}
 }

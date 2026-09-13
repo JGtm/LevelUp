@@ -146,7 +146,7 @@ func TestPVEPersister_Persist_DuplicatePK_Idempotent(t *testing.T) {
 		t.Fatalf("2e Persist (idempotent attendu): %v", err)
 	}
 
-	// Append-only #23046 : VRAI oracle d'idempotence = cardinalité. Le guard
+	// Append-only #23645 : VRAI oracle d'idempotence = cardinalité. Le guard
 	// SELECT-then-INSERT skippe le 2e Persist → 1 SEULE row physique (sinon croissance
 	// non bornée sur retry, masquée par un Scan mono-ligne).
 	var n int

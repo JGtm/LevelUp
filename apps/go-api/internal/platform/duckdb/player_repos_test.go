@@ -338,7 +338,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 		`CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
 			SELECT * FROM player_csr_snapshots
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1`,
-		// match_citations : append-only GÉNÉRATION (#23046 Phase 2) — generation_id
+		// match_citations : append-only GÉNÉRATION (#23645 Phase 2) — generation_id
 		// + vue _latest (DENSE_RANK par match_id). Pas de colonne id en fixture pour
 		// préserver les INSERT positionnels VALUES (match_id, citation_name_norm,
 		// value). Les readers (queries_citations, home_citations) lisent _latest.
@@ -382,7 +382,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			t.Fatalf("seedPlayerSchema DDL: %v\nSQL: %s", err, q)
 		}
 	}
-	// Append-only #23046 : convertit player_match_enrichment (id PK + stage + written_at)
+	// Append-only #23645 : convertit player_match_enrichment (id PK + stage + written_at)
 	// et crée la vue player_match_enrichment_latest (lue par tous les readers du package).
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)

@@ -27,7 +27,7 @@ package migrations
 // Table NET-NEUVE : `id` PK adossée à une séquence + `decode_pass` + `written_at`, et lecture
 // par la vue `kill_openings_latest` UNIQUEMENT — jamais `ApplyAppendOnlyRebuild`, qui est la
 // recette de CONVERSION d'une table mutable existante (kill_positions y est passée en G.2).
-// ART-safe par construction (#23046) : écriture = INSERT pur (`persist.KillOpeningPersister`),
+// ART-safe par construction (#23645) : écriture = INSERT pur (`persist.KillOpeningPersister`),
 // un re-décodage écrit une NOUVELLE passe que la vue fait gagner, il ne réécrit rien.
 //
 // ─── L'UNITÉ DE GÉNÉRATION EST LA PASSE, PAS LA LIGNE — ET C'EST VITAL ICI ─────────────────

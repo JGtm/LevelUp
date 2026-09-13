@@ -78,7 +78,7 @@ func main() {
 		newFlag = 0
 	}
 
-	// Append-only #23046 : INSERT pur stage='dominance' (plus d'UPDATE/ON CONFLICT —
+	// Append-only #23645 : INSERT pur stage='dominance' (plus d'UPDATE/ON CONFLICT —
 	// match_id n'est plus une PK). La vue merge-on-read expose la dernière valeur.
 	_, err = player.Exec(
 		`INSERT INTO player_match_enrichment (match_id, dominance_flag, stage) VALUES (?, ?, 'dominance')`,

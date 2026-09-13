@@ -42,7 +42,7 @@ package migration
 //
 // Table CREEE DIRECTEMENT append-only (id PK sequence + `written_at` + vue `_latest`) — PAS via
 // ApplyAppendOnlyRebuild, qui est la recette de CONVERSION d'une table mutable existante.
-// ART-safe par construction (#23046) : ecriture = INSERT pur
+// ART-safe par construction (#23645) : ecriture = INSERT pur
 // (`persist.BombStatsPersister`), LECTURE VIA `match_bomb_stats_latest` UNIQUEMENT — une
 // lecture brute servirait les lignes d'une passe de decodage precedente. Un seul index,
 // `match_id` : DuckDB est colonnaire, le seul acces ponctuel reel est « les stats de CE match »,

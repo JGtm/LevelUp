@@ -49,6 +49,16 @@ type FlagCarriesCoverage struct {
 	CarrierTeamUnknown int `json:"carrierTeamUnknown,omitempty"`
 	// ClosedByReturn / ClosedByHome : portages fermes parce que leur drapeau est RENTRE CHEZ LUI
 	// — retour credite, puis rentree de l'objet. `omitempty` des DEUX cotes, comme leurs freres.
+	//
+	// COMMENT LIRE UNE BAISSE DES QUATRE `closedBy*` (precise le 2026-09-13, G4). Ces compteurs
+	// se comptent sur `closed`, qui se compte lui-meme sur `carries` — et `carries` est ce qui
+	// RESTE des `openings` une fois retires `noBridge`, `noTrack` et `outOfWindow`. Sur un film
+	// ou beaucoup de prises n'ont pas de piste (`noTrack` haut), les `closedBy*` baissent donc
+	// MECANIQUEMENT : le portage n'a jamais ete publie, il n'y a rien a fermer. Ce n'est ni une
+	// regression des chaines de fermeture, ni du double comptage evite — c'est du materiau qui
+	// n'est jamais entre. Le compteur a regarder dans ce cas est `noTrack`, pas ceux-ci ; la
+	// seule anomalie que les `closedBy*` signalent en propre est leur somme DEPASSANT `closed`,
+	// que le troisieme invariant de Balanced() interdit.
 	ClosedByReturn    int `json:"closedByReturn,omitempty"`
 	ClosedByHome      int `json:"closedByHome,omitempty"`
 	DropsRepositioned int `json:"dropsRepositioned"`

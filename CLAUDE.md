@@ -104,7 +104,8 @@ Détail des tables : skill `db-schema`. Slugs actifs : `halo_infinite` (défaut)
 
 ## Règles critiques — écritures DuckDB (anti-corruption ART)
 
-Contexte : le bug DuckDB ART #23046 (`Failed to delete all rows from index`) a corrompu
+Contexte : le bug DuckDB ART #23645 (`Failed to delete all rows from index`, ouvert, présent
+en 1.5.5 embarquée) a corrompu
 des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON NÉGOCIABLES :
 
 1. **Toute écriture per-match sur une DB partagée** (shared, player, pve, metadata) passe
@@ -146,11 +147,10 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
   ou `token-import` (RT sur stdin). Pré-requis : joueur déclaré dans `db_profiles.json`.
 - **Cache process** : après rotation externe d'un RT, appeler
   `halo.InvalidateCachedPlayerTokens(xuid)` (sinon le cache 50 min sert l'ancien chain).
-- **Seule exception legacy restante** : la migration one-shot du boot
-  (`auth.MigrateLegacyTokens` + `migrateLegacyAuthTokensAtBoot`) lit encore env +
-  `sync_meta` pour recopier un RT résiduel vers le store. Kill-switch daté : bascule
-  2026-08-25, **retrait cible 2026-10-01**, critère « 0 token migré au boot sur 30 j de
-  logs prod ». Garde-rails : `auth/sentinel_test.go` (allowlist à 1 entrée),
+- **Aucune exception legacy** : la migration one-shot du boot a été retirée le 2026-09-13
+  (critère tenu en prod depuis le 2026-06-14 : `rt_migrated=0` à chaque boot). Plus aucun
+  code ne lit env ni `sync_meta` pour un credential. Garde-rails : `auth/sentinel_test.go`
+  (allowlists des guards 2 et 3 VIDES — ce sont des ratchets anti-résurrection),
   `sync/no_legacy_source_used_test.go`. Aucune logique métier dans le package `auth`.
 - Helper canonique CLI : `auth.RefreshHaloTokensViaStoreFirst(...)` ; access_token brut :
   `auth.ResolveMSAccessTokenStoreFirst(...)`.
