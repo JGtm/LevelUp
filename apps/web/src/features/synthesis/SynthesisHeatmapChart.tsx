@@ -25,6 +25,14 @@
  * Les points sont donc émis Lundi → Dimanche, dans le sens de la semaine, et
  * c'est `yAxisInverse` qui met Lundi en haut : l'ordre des DONNÉES ne porte plus
  * une décision d'AFFICHAGE.
+ *
+ * `emptyCells="hidden"` est le QUATRIÈME trait restauré, et le seul qui déroge à une
+ * doctrine du dépôt (D3, « l'absence a sa propre forme »). Sur ce calendrier les cases
+ * sans mesure sont MAJORITAIRES et RÉGULIÈRES — les heures de nuit, toutes les semaines :
+ * hachurées, elles formaient un damier plus voyant que les mesures, et le graphe montrait
+ * surtout quand le joueur ne joue PAS. L'heure vide reste lisible sans forme propre (une
+ * colonne nue sous une graduation horaire ne se confond avec rien) ; la dérogation vaut
+ * pour ce seul consommateur, le défaut du wrapper ne bouge pas.
  */
 import { useCallback, useMemo } from 'react'
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
@@ -101,6 +109,7 @@ export function SynthesisHeatmapChart({ cells, title, height }: Props) {
       visualMapOrient="vertical"
       visualMapFormatter={formatVisualMap}
       visualMapText={[txt.wins, '']}
+      emptyCells="hidden"
     />
   )
 }
