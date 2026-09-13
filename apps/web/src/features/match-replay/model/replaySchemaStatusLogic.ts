@@ -16,6 +16,11 @@
  * INVALIDE, ce qui prime sur toute question de version.
  */
 
+// LE MANQUEMENT EST UNE DONNÉE, PAS UNE PHRASE (ronde 2 de la revue, constat R2-2) : ce module
+// ne décide que du STATUT ; c'est le badge qui met le manquement en mots, par `i18n.ts`, dans
+// les deux langues.
+import type { ReplayContractIssue } from '@/lib/replay/replayDocumentSchema'
+
 /**
  * MIN_RENDERABLE_SCHEMA_VERSION — LA VERSION MINIMALE QUE CE CLIENT DÉCLARE SAVOIR AFFICHER.
  *
@@ -41,7 +46,7 @@ export type ReplaySchemaStatus =
   | { kind: 'unknown'; schemaVersion: number }
   | { kind: 'upToDate'; schemaVersion: number }
   | { kind: 'stale'; schemaVersion: number; latestSchemaVersion?: number }
-  | { kind: 'invalid'; schemaVersion: number; issue: string }
+  | { kind: 'invalid'; schemaVersion: number; issue: ReplayContractIssue }
 
 /**
  * computeReplaySchemaStatus compare la version de l'artefact lu à celle du producteur, et dit
@@ -65,7 +70,7 @@ export type ReplaySchemaStatus =
 export function computeReplaySchemaStatus(
   schemaVersion: number,
   latestSchemaVersion: number | undefined,
-  contractIssue?: string,
+  contractIssue?: ReplayContractIssue,
 ): ReplaySchemaStatus {
   if (contractIssue) {
     return { kind: 'invalid', schemaVersion, issue: contractIssue }

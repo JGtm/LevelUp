@@ -28,8 +28,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion})`,
     schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schéma ${schemaVersion} · à recuire`,
     schemaBadgeUnknownFmt: (schemaVersion) => `Schéma ${schemaVersion}`,
-    schemaBadgeInvalidFmt: (schemaVersion, issue) =>
-      `Schéma ${schemaVersion} · contrat non respecté (${issue})`,
+    schemaBadgeInvalidFmt: (schemaVersion, detail) =>
+      `Schéma ${schemaVersion} · contrat non respecté (${detail})`,
+    contractUnknownKeysFmt: (keys) => `clé(s) inconnue(s) : ${keys}`,
+    contractInvalidFieldFmt: (path, detail) => `${path} : ${detail}`,
+    contractMalformed: 'document non conforme au contrat',
     offscreenMarkerFmt: (name, meters) => `${name} · ${Math.round(meters)} m`,
     offscreenGroupMarkerFmt: (count, meters) => `${count} joueurs · ${Math.round(meters)} m`,
     openAtUncalibratedTitle: 'Instant non calé sur cet artefact',
@@ -478,8 +481,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       `Schema ${schemaVersion} · rebuild needed (latest: ${latestSchemaVersion})`,
     schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schema ${schemaVersion} · rebuild needed`,
     schemaBadgeUnknownFmt: (schemaVersion) => `Schema ${schemaVersion}`,
-    schemaBadgeInvalidFmt: (schemaVersion, issue) =>
-      `Schema ${schemaVersion} · contract violated (${issue})`,
+    schemaBadgeInvalidFmt: (schemaVersion, detail) =>
+      `Schema ${schemaVersion} · contract violated (${detail})`,
+    contractUnknownKeysFmt: (keys) => `unknown key(s): ${keys}`,
+    contractInvalidFieldFmt: (path, detail) => `${path}: ${detail}`,
+    contractMalformed: 'document does not match the contract',
     offscreenMarkerFmt: (name, meters) => `${name} · ${Math.round(meters)} m`,
     offscreenGroupMarkerFmt: (count, meters) => `${count} players · ${Math.round(meters)} m`,
     openAtUncalibratedTitle: 'Instant not calibrated on this artifact',

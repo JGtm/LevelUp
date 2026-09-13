@@ -94,7 +94,7 @@ describe('chaque document produit par Go traverse la frontière du web', () => {
         const { shots, ...sansShots } = f.doc
         const issue = validateReplayDocument({ ...sansShots, shotz: shots })
         expect(issue).not.toBeNull()
-        expect(issue).toContain('shotz')
+        expect(issue).toEqual({ kind: 'unknownKeys', keys: ['shotz'] })
       })
 
       it('porte de la matière — sans quoi les contrôles suivants seraient vides de sens', () => {
