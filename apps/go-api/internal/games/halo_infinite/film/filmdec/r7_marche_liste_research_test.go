@@ -56,6 +56,11 @@ type r7Ev struct {
 	BitFin   int // bit apres la charge
 	Ref0     uint64
 	HasRef0  bool
+	// Refs porte les TROIS references gardees de l'en-tete, index ET generation. Ajout du
+	// 2026-09-13 (lot F.0) : la marche est INCHANGEE bit pour bit — la lecture des references
+	// consommait deja les trois, elle n en rendait qu une. Ref0/HasRef0 restent pour les
+	// appelants anterieurs (r7_cibles, r7_oracle117), qui ne lisent que la premiere.
+	Refs [3]r7RefVal
 }
 
 // r7Marche parcourt la liste d'evenements d'un paquet delta a partir du bit 1 (le bit de
@@ -90,10 +95,11 @@ func r7MarcheDecalee(pay []byte, ctx r7Ctx, decale int) ([]r7Ev, r7Stop, int, in
 		if typ >= 123 {
 			return evs, r7StopTypeInconnu, typ, br.BitPos()
 		}
-		ref0, has0, ok := r7RefsSkip(br, typ)
+		refs, ok := r7Refs3(br, typ)
 		if !ok {
 			return evs, r7StopSansDomaine, typ, br.BitPos()
 		}
+		ref0, has0 := refs[0].Index, refs[0].Present
 		if !r7SkipCharge(br, typ, ctx) {
 			return evs, r7StopOpaque, typ, br.BitPos()
 		}
@@ -102,7 +108,7 @@ func r7MarcheDecalee(pay []byte, ctx r7Ctx, decale int) ([]r7Ev, r7Stop, int, in
 			return evs, r7StopBuffer, typ, br.BitPos()
 		}
 		evs = append(evs, r7Ev{Typ: typ, Pos: pos, BitDebut: debut, BitFin: br.BitPos(),
-			Ref0: ref0, HasRef0: has0})
+			Ref0: ref0, HasRef0: has0, Refs: refs})
 	}
 }
 
