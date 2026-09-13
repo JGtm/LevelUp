@@ -16,7 +16,16 @@
  * `objectiveevents/extract.go`. Les deux statistiques hors objectif, elles, n'ont AUCUN préfixe.
  * La liste ci-dessous n'est donc pas une énumération devinée des stats connues — qui périmerait
  * au premier emplacement nommé — mais la liste des FAMILLES, stable et fermée côté serveur
- * (garde-rail Go : `objectiveevents.TestStatsNommeesPortentLeurFamille`).
+ * (garde-rail Go : `objectiveevents.TestStatsNommeesPortentLeurFamille`, qui tient la règle de
+ * nommage sur toutes les tables du décodeur).
+ *
+ * LA PARITÉ AVEC LA LISTE GO EST TENUE PAR UN TEST, depuis le 2026-09-13 :
+ * `objectiveevents.TestFamillesObjectifPariteGoTS` LIT ce fichier et compare le tableau
+ * ci-dessous ET le type union `ObjectiveFamily` à la liste Go, ordre compris. Jusque-là ce
+ * commentaire affirmait la garantie sans qu'aucun test ne l'assure : une 7e famille ajoutée au
+ * décodeur rendait le Go rouge et laissait ce fichier VERT, et le calque cessait sans un mot de
+ * dessiner les pulses de cette famille (constat R6 de la revue du 2026-09-13). Toute famille
+ * ajoutée ici s'ajoute dans `objectiveevents/families.go` — et réciproquement.
  *
  * POURQUOI UNE LISTE BLANCHE ET NON UNE LISTE NOIRE `kills`/`assists` : une statistique future
  * qui ne serait pas un objectif (le balayage en ajoute au fil des corpus) passerait une liste

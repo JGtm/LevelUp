@@ -85,3 +85,72 @@ func TestRaster_QuestionEtAxeNommentLaValeurRefusee(t *testing.T) {
 		t.Errorf("axe : err = %v, attendue la sentinelle NOMMANT « tout-le-monde »", err)
 	}
 }
+
+// TestMapsPlayed_MiniPlanDesVignettes — LE MINI-PLAN « OU JE MEURS » D'UNE VIGNETTE (lot F,
+// 2026-09-13, maquette 034b1915).
+//
+// Ce que ce test attrape : un mini-plan qui ne serait pas servi, un pas qui redeviendrait
+// adaptatif (deux vignettes a des finesses differentes ne se comparent plus a l'oeil), et
+// une carte SANS mort mesuree qui recevrait un cadre vide au lieu de rien.
+func TestMapsPlayed_MiniPlanDesVignettes(t *testing.T) {
+	repo := &mockTacticalRepo{
+		maps: []domain.TacticalMapRow{
+			{MapID: "a", MapName: "Aquarius", Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
+			{MapID: "b", MapName: "Bazaar", Matchs: domain.PlancherMatchsParCarte, Victoires: 5, Defaites: 5},
+		},
+		// Trois matchs DISTINCTS au meme endroit : la cellule passe le plancher.
+		mortsParCarte: map[string][]domain.PositionSample{
+			"a": {
+				{MatchID: "m1", X: 2, Y: 2}, {MatchID: "m2", X: 2.5, Y: 2.5},
+				{MatchID: "m3", X: 3, Y: 3},
+			},
+		},
+	}
+	// LE PERIMETRE EST EXPLICITE : le double honore la liste blanche comme le vrai lecteur,
+	// et une liste VIDE veut dire « aucun match », pas « tous ».
+	page, err := NewTacticalService(repo, capsCompletes(), tsMoi).
+		MapsPlayed(context.Background(), domain.TacticalScope{MatchIDs: []string{"m1", "m2", "m3"}})
+	if err != nil {
+		t.Fatalf("MapsPlayed: %v", err)
+	}
+	if len(page.Cartes) != 2 {
+		t.Fatalf("cartes = %d, attendu 2", len(page.Cartes))
+	}
+	a := page.Cartes[0]
+	if len(a.Cellules) == 0 {
+		t.Fatal("la vignette de la carte a n'a aucun mini-plan")
+	}
+	if a.PasM != domain.TacticalTuilePasM {
+		t.Errorf("pas = %v m, attendu %v m (FIXE, jamais adaptatif)", a.PasM, domain.TacticalTuilePasM)
+	}
+	if !a.Bornes.Valide {
+		t.Error("les bornes de la vignette ne sont pas valides")
+	}
+	if a.Cellules[0].Matchs != 3 {
+		t.Errorf("matchs distincts de la cellule = %d, attendu 3", a.Cellules[0].Matchs)
+	}
+	b := page.Cartes[1]
+	if len(b.Cellules) != 0 || b.Bornes.Valide {
+		t.Errorf("la carte b n'a aucune mort mesuree : elle ne doit porter aucun cadre (%+v)", b)
+	}
+}
+
+// TestMapsPlayed_MiniPlanEnEchecNArretePasLaGrille : la grille se lit sur le REGISTRE, qui
+// ne depend d'aucun film. Une lecture de positions en echec laisse les vignettes avec leur
+// seul fond — une degradation, jamais une panne de page.
+func TestMapsPlayed_MiniPlanEnEchecNArretePasLaGrille(t *testing.T) {
+	repo := &mockTacticalRepo{
+		maps: []domain.TacticalMapRow{
+			{MapID: "a", MapName: "Aquarius", Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
+		},
+		errMortsParCarte: errors.New("lecture en echec"),
+	}
+	page, err := NewTacticalService(repo, capsCompletes(), tsMoi).
+		MapsPlayed(context.Background(), domain.TacticalScope{})
+	if err != nil {
+		t.Fatalf("MapsPlayed: %v (une vignette muette n'est pas une panne de grille)", err)
+	}
+	if len(page.Cartes) != 1 || len(page.Cartes[0].Cellules) != 0 {
+		t.Fatalf("cartes = %+v, attendu une carte sans mini-plan", page.Cartes)
+	}
+}

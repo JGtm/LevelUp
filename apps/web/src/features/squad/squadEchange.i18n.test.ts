@@ -21,7 +21,9 @@ import { squadManifest } from '@/lib/i18n/generated/squad'
 
 import constatCardSource from './SquadEchangeConstatCard?raw'
 import delaiCardSource from './SquadEchangeDelaiCard?raw'
-import kpiSource from './SquadEchangeKpi?raw'
+import compteCardSource from './SquadEchangeCompteCard?raw'
+import donneRecuCardSource from './SquadEchangeDonneRecuCard?raw'
+import tauxSessionCardSource from './SquadEchangeTauxSessionCard?raw'
 import matrixCardSource from './SquadEchangeMatrixCard?raw'
 import accesseurSource from './squadEchangeStrings?raw'
 import { getSquadEchangeText } from './squadEchangeStrings'
@@ -86,7 +88,14 @@ describe('manifest squad.echange.*', () => {
     // y passait — declaree, exposee par `emptyDescription`, et affichee par AUCUN
     // composant. Le garde annoncait donc « aucune orpheline » a tort. Il va desormais
     // jusqu'au bout de la chaine : manifest -> accesseur -> composant.
-    const composants = [matrixCardSource, delaiCardSource, kpiSource, constatCardSource].join(
+    const composants = [
+      matrixCardSource,
+      delaiCardSource,
+      compteCardSource,
+      donneRecuCardSource,
+      tauxSessionCardSource,
+      constatCardSource,
+    ].join(
       String.fromCharCode(10),
     )
     const accesseurs = [...accesseurSource.matchAll(/^\s{4}([A-Za-z][A-Za-z0-9]*):/gm)].map(

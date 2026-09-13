@@ -79,6 +79,8 @@ bloque le gate du lot courant.
 | D10 | ADR 0034 porte les invariants (couches, profil, porte unique aux octets, build inconnu, faits / publication) ; écrit à M0, amendé à la clôture de M2 et de M4 ; EN-only | architecture §13, règle 15 |
 | D11 | Le web n'est touché qu'à la frontière de normalisation (0.B, 4.2, 4.3) ; aucune retouche de rendu | architecture §11, §12 |
 | D12 | Les chemins neufs (faits persistés, profils) passent par `PathResolver` et par un catalogue versionné jamais écrit à l'exécution (ratchet `no_runtime_versioned_catalog_write_test` étendu) | CLAUDE.md, principe 15 |
+| D13 | **La grammaire prime PARTOUT, pas seulement dans `filmdec`.** Toute heuristique de production (fenêtre temporelle, seuil de distance, majorité, inférence statistique) qui décide un FAIT que le film écrit (événement nommé, record de création, composant) est remplacée par la lecture de ce que le film écrit ; l'heuristique ne survit qu'en REPLI COMPTÉ dans la couverture (accord / repli / contradiction), jamais en décision première. Le mur n'est qu'un exemple (événement 103 et panneaux contre fenêtre de 200 ms) ; la règle vaut pour chaque fait. Inventaire au lot 0.E, conversions dans la famille 1.9 | utilisateur, 2026-09-13 |
+| D14 | **Un repli est NOMMÉ comme tel, compté, et RETIRÉ quand la lecture est fiable.** (a) Tout repli vit dans un registre unique du code (table `facts` : nom, fait, condition de déclenchement, date de pose, critère de retrait), et le code qui l'exécute le nomme (aucun repli anonyme au milieu d'une fonction) ; ratchet : un repli hors registre = rouge. (b) Un repli ne se déclenche que sur un diagnostic typé « le film est muet ici », JAMAIS sur un désaccord avec la lecture ni sur une lecture disponible : ordre fixe = lire d'abord, repli ensuite ; s'il se déclenche alors que la lecture existait, c'est une contradiction comptée, pas un repli. (c) Chaque fait publie `coverage.<fait>.{grammaire, repli, contradiction}` ; l'artefact dit quelle part de lui vient d'un repli. (d) Critère de retrait obligatoire (règle 11 : date de pose, cible de retrait, critère mesurable) : un repli dont le compte est à 0 sur le corpus gate à la clôture d'un jalon est SUPPRIMÉ au jalon suivant, avec ses tests ; on ne garde pas un repli « au cas où », parce qu'un repli bancal qui se déclenche à tort corrompt un fait que la lecture aurait donné juste | utilisateur, 2026-09-13 |
 
 ### 1.4 Décisions validées par l'utilisateur le 2026-09-13 (fermes)
 
@@ -533,36 +535,27 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
       `SchemaVersion` 55 + entrée de chronique + empreinte de forme + fixtures si le contenu
       cuit change, `GrammarRev` si la grammaire change. Si DIVERGENCE : ligne au registre des
       reports avec condition de reprise, rien de plus.
-      **Fait** (2026-09-13). **VERDICT : DIVERGENCE VOULUE — les manches 1 et 2 de `fb1a1a72`
-      sont des FANTÔMES, la baisse 3 -> 1 est une correction.** Aucun correctif (règle 7) ;
-      ligne au registre des reports avec sa condition de reprise. Instrument :
-      `objectiveevents/d6_manches_research_test.go` (aucun code de production touché),
-      `D6_FILMS=fb1a1a72,64e8adfa,d9781168`. Il est dans `objectiveevents` et NON dans `filmdec`
-      sous `CHUNK00_FILMS` : les enregistrements statborg ne sont lus que dans les chunks du
-      MANIFESTE (`manifestChunks`), et un film chargé par `filmsource.LoadDir(dir, nil)` — la
-      forme de `CHUNK00_FILMS` — en rend ZÉRO sans le dire, donc la mesure aurait été vide.
-      Six preuves : (1) **la manche 1 n'a aucun enregistrement**, ni joueur ni équipe
-      (`present[1] = false`) ; (2) la manche 2 n'est pas jouée APRÈS la manche 0 — sa fenêtre
-      [66 671, 814 115] commence à 66,7 s quand la manche 0 court jusqu'à 800,9 s, et 124 de ses
-      148 enregistrements tombent DANS la fenêtre de la manche 0, là où les deux témoins réels
-      occupent un segment propre (`64e8adfa` les 77 dernières secondes) ; (3) densité
-      **0,20 enr./s contre 1,26** pour la manche 0 (16 %), quand une manche réelle tient 140 %
-      (`64e8adfa`) et 313 % (`d9781168`) ; (4) ce film ne porte pas de fil de score de mode
-      (2 enregistrements sur 1 153 avec le composant 0), donc **`runs` vaut 0 en manches 1 et 2**
-      — la question du brief se répond NON ; (5) **cause reproduite par mutation** : neutraliser
-      la seule garde `vue && !present[round]` (`contiguousRounds`, commit `bb06cce5a`) rend
-      `[0 1 2]`, exactement l'ancien 3, tandis que les deux témoins réels rendent la même chose
-      des deux côtés — la garde ne coûte rien à une vraie manche ; (6) oracles produit
-      concordants : feuille `teamScores [0,1]` (un total de captures) et `regulation.toml`
-      `[rounds_decide]` qui EXCLUT `CTF:Arena` en écrivant « deux MI-TEMPS, pas des manches
-      décisives [...] le compte de manches y vaut 0-1, ce qui serait un contresens ».
-      **Rien n'est perdu** : les slots d'équipe ne portent aucun composant de score en manche 2
-      (`avecC0 = 0`), donc `cumulateRounds` ne jette aucune courbe. La prémisse du constat D6 —
-      « `materialRounds` ignore les slots d'équipe, donc les manches de ce film lui sont
-      invisibles » — est **fausse sur les deux moitiés** : `RealRounds` compte bien les slots
-      d'équipe dans sa suite cohérente, et sur ce film les slots d'équipe déclarent EXACTEMENT
-      les mêmes manches que les slots joueur (0 et 2, jamais 1). La mesure du 2026-09-08 citée au
-      registre (« les manches viennent des slots d'ÉQUIPE ») est amendée dans le même geste.
+      **ROUVERT le 2026-09-13 soir sur décision utilisateur (mécanique de jeu) : le verdict
+      « manches fantômes » n'est PAS retenu.** Le film ÉCRIT un désignateur de manche 2 sur 148
+      enregistrements ; le rejeter par la garde de contiguïté (`contiguousRounds`, « manche 1
+      absente donc manche 2 fantôme ») est une heuristique au sens de D13. Faits tranchés par
+      l'utilisateur : en Halo Infinite il n'y a PAS de mi-temps (le commentaire de
+      `regulation.toml` l. 198 « deux MI-TEMPS » est faux), il y a des MANCHES et des
+      PROLONGATIONS ; le score n'est pas un oracle en CTF (0-0 possible pendant 12-13 min, points
+      à la fin) ; si le film écrit l'information de manche, on lui fait confiance.
+- [ ] 0.D.1 bis **Ce que le désignateur 2 ÉCRIT sur `fb1a1a72` veut dire.** Instruction bornée
+      (une session) : (a) chez l'ÉCRIVAIN (Ghidra lecture seule) : le champ « manche » des
+      enregistrements statborg (joueur ET équipe) : index de manche, phase, prolongation ? quelles
+      valeurs le jeu y écrit, et quand ; (b) par mesure : `fb1a1a72` dure 814 s pour 720 s de temps
+      réglementaire, la piste PROLONGATION est à tester (les 148 enregistrements en « 2 » sont-ils
+      ceux d'une phase, d'une prolongation, d'un type de slot particulier ; leur fenêtre
+      [66,7 s ; 814 s] et leur densité 0,20/s sont à EXPLIQUER, pas à écarter) ; comparer à un
+      second film avec prolongation avérée et à un film sans ; (c) verdict : ce que le film écrit,
+      publié tel quel (manche / prolongation), avec la garde de contiguïté soit supprimée soit
+      NOMMÉE comme repli (D14) ; corriger le commentaire de `regulation.toml` (concept de mi-temps
+      retiré, remplacé par manches / prolongations, source = décision utilisateur du 2026-09-13) ;
+      `SchemaVersion` 55 si le contenu cuit change. Le registre des reports est amendé dans le même
+      geste (la ligne 0.D.1 « divergence voulue » devient « non établi, rouvert »).
 - [x] 0.D.2 **D7 — bloc monde/équipement de `60ae07c4` (Live Fire, v37).**
       Séparer l'effet du schéma 53 (porte de région sur 2 bits) de celui de la borne
       `maxUnrollPerStep = 16` : trouver les sha qui encadrent v53 (`document_chronicle.go`),
@@ -635,6 +628,64 @@ séquentiels : un sous-lot = des commits `0.D.<n>`, un gate, une ligne en §5, l
 Gate 0.D : gates communs à chaque sous-lot ; régime court 10/10 identiques à chaque sous-lot qui
 touche le décodeur ou le constructeur ; corpus gate ciblé (un témoin) sur les sous-lots qui
 corrigent ; `make go-api-lint`.
+
+#### Lot 0.E — Inventaire des heuristiques qui décident à la place de la grammaire (D13) — M, audit Opus high, en parallèle de 0.D
+
+Audit (skill `adversarial-audit` : périmètre × axe, registre daté, ne corrige rien). Périmètre :
+`film/replay`, `film/killsource`, `analysis/objectiveevents`, `replaybuild` (assemblage des faits),
+`sync/killcollector`. Axe : toute décision de production prise par heuristique (fenêtre
+temporelle, seuil de distance, majorité, calibration statistique, inférence par le fil des
+morts) là où le film ÉCRIT le fait (événement nommé, record de création, composant d'état,
+table de `chunk_00`, pied de film).
+
+- [x] 0.E.1 Registre `.ai/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md` : une ligne par
+      heuristique : `fichier:ligne`, fait décidé, heuristique (paramètres), ce que le film écrit
+      à la place (canal, événement, record, composant ; PORTÉ aujourd'hui / À PORTER : bloquant
+      nommé), preuve ou incertitude (note de RE, rapport, mesure), coût (S / M / L), gain
+      attendu (films, poses, kills concernés) ; **et, pour chaque heuristique qui restera un
+      repli : sa condition typée de déclenchement (« film muet » : laquelle) et son critère de
+      retrait mesurable (D14)** ; noter aussi si le repli actuel est NOMMÉ dans le code ou
+      anonyme, et s'il peut se déclencher alors que la lecture existe (risque de déclenchement
+      indésirable). Sources à croiser : `REFERENCE_CANAUX_EQUIPEMENT`
+      §4 (qui lit quoi), `RAPPORT_F0_DEPLOIEMENT_103`, `RAPPORT_LOT_H_VERSIONS`, notes `film_re/`.
+      **Fait** : 133 lignes de registre, 528 sites de décision LUS (fonction entière + appelant),
+      201 fichiers de production ouverts, 241 `fichier:ligne` tous vérifiés existants.
+      **Amendement D14 (pilote, 2026-09-13) appliqué** : chaque ligne porte le repli associé
+      (NOMMÉ / ANONYME), sa condition de déclenchement souhaitable, le risque de déclenchement
+      alors que la lecture existe, et son critère de retrait mesurable.
+- [x] 0.E.2 Classement en trois tables : (A) le film l'écrit ET le lecteur existe (conversion
+      courte, lot 1.9.x) ; (B) le film l'écrit, lecteur À PORTER (lot 3.6, bloquant nommé) ;
+      (C) le film ne l'écrit pas (heuristique légitime : reste, avec sa couverture). Chaque ligne
+      de (C) cite le négatif MESURÉ qui la fonde (jamais « probablement »).
+      **Fait** : (A) 8 · (B) 8, couvrant 40 sites de décision · (C) 38, chacune avec son négatif
+      mesuré et sa source · **(D) « non établi » 17** (les lignes sans négatif mesuré y sont
+      versées avec la question à instruire) · **(E) replis ANONYMES 62** (table D14, matière du
+      lot 1.9.0). **Correction au dimensionnement du plan** : les (B) ne vont PAS toutes au
+      lot 3.6 — elles ont déjà leur lot (1.4, 1.5, 1.6, 1.7, 1.8, 3.2, 3.5) ; seuls B7 (composants
+      d'objectif ti=11/ti=12) et B8 (respawn timer, état moteur, mapping d'équipe) entrent au 3.6.
+- [x] 0.E.3 Ordre proposé des conversions (A), par gain décroissant, recopié en tête de la
+      famille 1.9 ; les (B) entrent dans le dimensionnement du lot 3.6.
+      **Fait** : items 1.9.2 à 1.9.8 recopiés ci-dessous, plus un item 1.9.0 proposé (registre des
+      replis + ratchet), sans lequel le critère de retrait D14 n'est mesurable pour aucune ligne.
+
+**Trois constats du lot 0.E que le pilote doit voir** (détail au registre §10 et §13) :
+
+1. **L'équipe est déjà LUE et JETÉE.** `filmdec/traverse.go:515-517` consomme les 4 bits du
+   `managed-player-team-designator-component` et ne publie rien ; neuf décisions de fait s'en
+   passent (dont une CALIBRATION sur un oracle de la BASE, `replay/zone_states_owner.go:353`).
+   Cinq commentaires du dépôt affirment l'inverse — doc inversée à corriger au lot 1.7. Et, dans le
+   même fichier, `replay/document.go:594` affirme « le film ne porte aucun gamertag » quand
+   `replay/lives.go:54` documente le contraire.
+2. **Onze voies d'inférence décident le même fait** — l'index de joueur d'un slot — que la table des
+   joueurs de `chunk_00` écrit à 32 slots sur 1 351 films sur 1 351. Leurs coûts sont chiffrés
+   (23 % de désaccord sur l'attribution des tirs ; 51 % d'assistants nommés en BTB ; 6 joueurs
+   publiés pour 8 sur `3372e7eb`). Lots 1.5 / 1.6 / 1.8.
+3. **62 replis ANONYMES** : une décision de secours sur laquelle aucun compteur ne se pose. Neuf
+   portent déjà un défaut mesuré (dont `replay/usage_summary.go:286`, qui crédite au dernier
+   occupant du MATCH alors que 32 à 95 % des poses tombent hors de toute fenêtre publiée).
+
+Gate 0.E : chaque `fichier:ligne` existe (grep) ; aucun fichier de production modifié
+(`git diff --stat` = le registre et le plan) ; relecture pilote.
 
 **Clôture M0** : fusion dans `feat/v75` sur signal (V3). Les lots 0.A à 0.C ne changent aucun
 octet d'artefact. Le lot 0.D, lui, hérite d'un contenu cuit DÉJÀ changé par `feat/v75` (F.1,
@@ -812,6 +863,91 @@ notes, `CarrierTeamUnknown` inchangé ou en baisse) ; FFA : `teams.film = 0`, ba
 
 Preuve : corpus gate zéro perte sur les axes kills / morts / sources ; `replay-equiv` différences
 localisées.
+
+#### Famille 1.9 — La grammaire à la place de l'heuristique, un fait par lot (D13) — S à M chacun, high
+
+Ordre fixé par le registre du lot 0.E (table A, gain décroissant). Chaque lot : la lecture de ce
+que le film écrit devient la décision ; l'heuristique devient un REPLI NOMMÉ (D14 : entrée au
+registre des replis avec sa condition « film muet » et son critère de retrait, déclenché après
+la lecture et jamais à sa place), compté (`coverage.<fait>.{grammaire, repli, contradiction}`) ;
+test par mutation ; corpus gate zéro perte, gains nommés ; `SchemaVersion` si le contenu cuit
+change ; `GrammarRev` si un lecteur change. Le premier lot de la famille pose le registre des
+replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur :
+
+- [ ] 1.9.0 **Registre des replis** (`facts`, ou `replay` tant que la couche n'existe pas) :
+      table nommée (nom, fait, condition typée, date de pose, cible et critère de retrait),
+      ratchet `archlint/no_unregistered_fallback_test.go` (un repli hors registre = rouge ;
+      convention de nommage détectable), rapport de couverture par fait ; les replis EXISTANTS
+      recensés par 0.E y entrent tels quels avec leur critère, sans changer de comportement
+      (équivalence zéro différence).
+
+- [ ] 1.9.1 **Origine d'une pose d'équipement.** Sur pièces : `replay/equipment_placements.go`
+      (`equipmentOrigin`, fenêtre de 200 ms depuis F.1 `c45c411eb`), `REFERENCE_CANAUX_EQUIPEMENT`
+      §1 (le type 103 `EquipmentSpawnedObject` désigne 216 panneaux de mur sur 216 et aucun
+      appareil porté). Mur : `deployed` = pose désignée par un 103 (panneaux), sinon `dropped` ;
+      **règle déjà en production depuis le lot H.2 des finitions (`267fa1c5a`,
+      `equipment_placements.go`, `equipmentIsSpawnedPiece`) : tout objet dont le manifeste
+      `replay_labels.toml` dit `kind = "deployed"` reçoit `origin = deployed` AVANT toute mesure
+      temporelle ; ce lot y ajoute le garde-rail Go qui apparie les identifiants au manifeste
+      (P2 D-H2 de la revue finitions G/H, seul le garde web rougit aujourd'hui) et la lecture du
+      103 comme contrôle (216/216 panneaux désignés)** ; la première référence du 103 (`ref0`,
+      entité ti=37 de longue durée vue aux images-clés 737/739, jamais créée en delta) est une
+      PISTE pour l'équipement SOURCE d'un déploiement, non instruite (table D du registre 0.E) ;
+      appareils portés (capteur, traqueur, écran, champ) : AUCUN signal écrit connu (la référence
+      de créateur et `ability-enabled-id` du record de création ti=37 ont leur porte FERMÉE sur
+      503 records sur 503, `filmdec/equipment_creation.go:29` ; corrigé par l'audit 0.E, B3) ; la
+      fenêtre temporelle reste, comme REPLI NOMMÉ et compté (D14), avec la question ouverte de la
+      table (D) du registre 0.E comme condition de retrait. Les 22 poses requalifiées par F.1 sont
+      rejugées une à une (instruments `f1_origine_*`). Corpus gate sur `0797ce72`, `4f77afc1` et
+      l'échantillon court.
+- [ ] 1.9.2 **Le découpage d'i0 vient du catalogue de carte, plus de l'auto-détection.**
+      `internal/sync/killcollector/positions.go:253` (et `hits.go:157`) construisent
+      `DefaultScanFilmOptions()` avec `Layout` nil alors que `entry` est le paramètre de la fonction
+      et que `entry.Range()` est lu à la ligne suivante ; `MapQuantEntry.Layout()`
+      (`filmdec/map_bounds.go:69`) est déjà imposé sur l'autre chemin (`replay/build_from_film.go:87`).
+      Gain : **27 faux enregistrements sur 267 400 éliminés sur Live Fire** (mesure du 2026-09-03 sur
+      `60ae07c4`, `filmdec/film_context.go:33-42`) et deux passes de détection supprimées par film. S.
+- [ ] 1.9.3 **Le couple (tueur, victime) lu au kill-event 85, plus recollé sur le voisin.**
+      `internal/games/halo_infinite/film/killsource/feed.go:162` (`reconstructPairs`, fenêtre de
+      2 instants) contre `killsource/eventchain.go:242` (`readKillEvent`, victime ET tueur dans le
+      même enregistrement, déjà PORTÉ mais lu pour le seul assistant). Gain : **64 couples sur 372**
+      cessent d'être une reconstruction ; supprime la fabrication d'un couple quand la vraie victime
+      est un bot (`feed.go:149-151`). M.
+- [ ] 1.9.4 **La carte du film vient du nom de match, plus d'une signature de largeurs.**
+      `internal/sync/killcollector/hits.go:151` appelle `DetectFilmWorldRange(dir, path, "")` alors
+      que le même collecteur résout le nom de carte à `positions.go:210` et que le paramètre
+      `mapNameOverride` existe. Gain : **6 cartes jumelles** (3 paires mesurées, F.0 §6 réserve 2)
+      récupèrent leurs distances, aujourd'hui désactivées en silence. S.
+- [ ] 1.9.5 **Le porteur du crâne lu au canal des armes tenues.**
+      `internal/games/halo_infinite/film/replay/skull_carries.go:390` infère le porteur des tics de
+      score (trou > 3 s) alors que le crâne voyage dans le canal des armes tenues (famille
+      `0x0017592c`, `replay/held_object_carry.go:15`) et que `BuildHeldObjectCarry` est PORTÉ mais
+      n'a qu'UN appelant de production, `replay/bomb_carries.go:142`. Les tics deviennent le repli
+      compté. Gain non chiffré. S.
+- [ ] 1.9.6 **Le drapeau qui rentre pris dans `ev.flag`, déjà nommé en amont.**
+      `internal/games/halo_infinite/film/replay/flag_carries_lives.go:267` cherche « le seul drapeau
+      au sol » alors que `ev.flag` est posé par `flag_carries_home.go:82-98` et ne sert qu'à un
+      court-circuit (`:264`). Gain : les `ambiguousReturns` (compteur publié) que `ev.flag` tranche. S.
+- [ ] 1.9.7 **Dead-state et kill-feed appariés par l'identité de paquet, plus par 2,5 s.**
+      `internal/games/halo_infinite/film/killsource/options.go:114` (`tolMS = 2500`, justifiée par la
+      comparabilité et non par une mesure) employée à `match.go:30`, `:45`, `:103`, `:143` ; les deux
+      structures portent `(chunk, pidx)` (`killsource/scan.go:49`, `assist.go:169`) mais `Kill` ne le
+      transporte pas (`match.go:186-193`). La fenêtre devient le repli compté. M.
+- [ ] 1.9.8 **Le chunk du pied pris au type du manifeste, plus par argmax de kills.**
+      `internal/games/halo_infinite/film/killsource/feed.go:82` ; le type est porté par
+      `filmsource.Film.Meta()` (`analysis/filmsource/film.go:41`) et déjà lu par ce patron
+      (`objectiveevents/extract.go:144`), mais `killsource/chunks.go:78` perd `Meta()`.
+      RÉSERVE : le manifeste est un fichier EXTERNE — l'argmax reste en repli COMPTÉ. S.
+
+Arbitrage du pilote (2026-09-13) : l'item 1.9.0 ci-dessus EST le registre des replis proposé par
+l'audit ; il entre les **62 replis anonymes** de la table (E) du registre 0.E, et ses 9 replis à
+défaut déjà mesuré sont listés dans son journal.
+
+**Hors famille 1.9, routés par le lot 0.E** : `replay/projectiles.go:106` — **6,0 % des trajectoires
+du parc** (947 sur 15 735) sont coupées par un garde-fou qui compense une faute de déquantification
+de `filmdec` ; c'est une CAUSE à corriger (lot B-bis), pas une conversion.
+`replaybuild/zones.go:141` — porter `GameVariantCategory` dans `port.MatchFacts` (la plus petite
+correction du périmètre, aucun décodage).
 
 **Clôture M1** : fusion dans `feat/v75` (V3) ; recuisson du parc + backlog killsource sur signal
 (tag git du binaire précédent, artefacts précédents conservés jusqu'à validation du corpus gate,
@@ -1109,6 +1245,7 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.D.1 | **D3 — le corpus gate lit TOUTE baisse de `coverage.score.rounds` comme une perte, alors que retirer une manche fantôme est le gain cherché.** `rounds` n'est pas dans la liste fermée des compteurs d'ÉCHEC de `internal/replaydiff/polarite.go`, donc il garde la lecture générique « plus = mieux ». Or l'instruction 0.D.1 prouve que la baisse 3 -> 1 sur `fb1a1a72` est une CORRECTION (manche 1 sans un seul enregistrement, manche 2 à 16 % de la densité de la manche 0 et recouvrant sa fenêtre). Conséquence : tout lot futur qui améliore la détection des manches fantômes sortira en « perte » au gate et devra être ré-instruit à la main, exactement comme celui-ci. Même famille que les 8 lignes de polarité douteuse du §7.B du rapport de re-figeage, et que la ligne « `shotsNoRide` / `ambiguousSlot` » déjà au registre. NON TRAITÉ (règle 7). | Le lot qui inventoriera les compteurs de VOIE et d'ÉCHEC du contrat de couverture (registre des reports, ligne du lot E2-bis) : y faire entrer `score.rounds` avec la bonne polarité, ou l'inscrire en ligne à ACCEPTER au gate |
 
 | 2026-09-13 | 0.D.2 | **D4 — le constat D7 groupait DEUX causes séparées par ~17 montées de schéma.** Les treize axes que D7 citait ensemble sur `60ae07c4` se scindent : le bloc ARMES AU SOL / POSES / PROJECTILES / RAMASSAGES vient à 100 % de la porte de région (`fb71e9b3c`, v53) et n'est pas une perte ; le bloc ÉQUIPEMENT / CRÂNE / CAPACITÉS (`skullCarries.grabs` 39 -> 8, tout `equipmentChanges`, `abilities/n` 29 -> 27, `abilityLabels/n` 4 -> 3) est déjà à sa valeur de HEAD au schéma 51 et vient d'ailleurs. **Leçon de méthode** : un constat de gate qui énumère des axes « qui bougent ensemble » ne prouve pas une cause commune — ici la co-occurrence venait uniquement de la largeur du segment comparé (34 -> 54). Un constat de gate devrait porter le segment le plus étroit où il tient encore. NON TRAITÉ. | Le lot qui révisera le protocole du corpus gate (même famille que la ligne « pas de mécanisme d'acceptation datée d'une perte instruite » au registre) : exiger d'un constat qu'il nomme le segment minimal, pas le segment de la campagne |
+| 2026-09-13 | pilote (message inter-sessions des finitions) | **Quatre faits des lots F/H à absorber** (`HANDOFF_DECODEUR_FILM` §3 bis sur `origin/feat/v75` 95e5b2ed6) : (1) pièce engendrée = déployée par nature (règle H.2 en production, garde-rail Go à poser) -> 1.9.1 ; (2) le 103 ne désigne que la pièce engendrée, `ref0` = piste de l'équipement source -> 1.9.1 + table D ; (3) origine des appareils portés purement temporelle -> repli nommé 1.9.1 ; (4) Live Fire, index de région 2 bits imputé à X par `DetectI0Layout` ([13 12 11] au lieu de [12 12 11]) : imposer le catalogue, ne jamais détecter en production -> 1.9.2 (A1 de l'audit). `origin/feat/v75` porte ~55 commits de plus que la fusion 215649efd, dont H.1 (neutralité d'un socle), H.2 (pièce engendrée), H.3 (Aquarius = Live Fire) qui touchent `replay/` : une NOUVELLE fusion + re-figeage attribué sera nécessaire avant la poussée vers `feat/v75` (sous-lot 0.D.5) | plan : 1.9.1, 1.9.2 ; §5 |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -1164,6 +1301,8 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.B.7 (coupe A) | ce commit | ÉPREUVE PAR MUTATION du ratchet « un seul jeu vivant » (copie déposée sous `replay_schema_53_bcb6d393.json.gz`) | `TestContractFixturesUnSeulJeuVivant` **ROUGE**, message nommant l'intruse ; fichier retiré → **vert**. `git status` propre après |
 | 2026-09-13 | 0.B.7 (coupe A) | ce commit | `gofmt -l ./internal` ; `go vet` ; `go test ./internal/games/halo_infinite/film/replay/ ./internal/archlint/` | gofmt vide ; vet propre ; **les deux paquets ok** (12,2 s / 12,7 s) — budget **vert à 2,01 Mio**, `MatchCommitted` (manifeste et `pointsStride` compris), `CarryCurrentSchema` et `UnSeulJeuVivant` verts sur les 8 |
 | 2026-09-13 | 0.B.7 (coupe A) | ce commit | `npx tsc -b --force` ; `npx eslint` (3 fichiers web) ; `npx vitest run src/features/match-replay src/lib/replay` ; `make go-api-lint` | tsc **exit 0** ; eslint **0** ; vitest **202 fichiers + 1 sauté, 3 124 tests + 3 sautés** ; lint Go **0 issues**. Seuil des 500 lignes tenu par extraction : `contract_fixtures_test.go` 433 L + `contract_fixtures_budget_test.go` 133 L |
+| 2026-09-13 | 0.E | ce commit | recensement : `grep -rnE --include='*.go' '(Window\|Fenetre\|Tolerance\|Seuil\|Threshold\|Nearest\|Closest\|Majorit\|Infer\|Guess\|Devin\|Calibr\|Heuristi\|Repli\|Fallback\|MaxDist\|MinDist\|Epsilon\|Eps[A-Z]\|Detect\|Probe\|Auto)' <périmètre + filmdec> \| grep -v '_test\.go:'` puis lecture site par site | **509 hits** (321 hors `filmdec`) ; **528 sites de décision LUS** (fonction entière + appelant), **201 fichiers de production ouverts**, aucun modifié. Registre : **133 lignes** — (A) 8 · (B) 8 couvrant 40 sites · (C) 38 avec négatif mesuré · (D) non établi 17 · (E) replis ANONYMES 62. Vérification adverse par l'auditeur principal : **15 constats re-ouverts, 0 tombé, 2 amendés, 1 trou trouvé en plus** (`replay/identity_registry_section.go:288`), **1 écarté** (entrée périmée du registre des reports) |
+| 2026-09-13 | 0.E | ce commit | contrôle « chaque `fichier:ligne` du registre existe » (script en §12 du registre) | **241 références distinctes, 241 résolues, 0 manquante** ; les 53 références de tête vérifiées en plus avec le CONTENU de la ligne. `git diff --stat` = le registre + ce plan, **aucun fichier de production** |
 
 
 | 2026-09-13 | 0.D.0 | `215649efd` (arbre) | `replay-equiv -repo-root <worktree> -films <6 sous-ensembles> -update` | **20/20 figés** au commit `215649efd`, schéma 54, `# digest-grammar: 2`, 50 étapes chacun. **UNE SEULE étape bouge, `artifact`, sur 11 films** ; les 49 autres sont identiques sur les 20. Durées : 50247b26 2 min 29 · a521164d 1 min 30 · 60ae07c4 1 min 49 · 11de8353 1 min 12 · 111fa685 1 min 06 · e5adf7b2 1 min 18 · bcb6d393 25,6 s · 51101d1d 15,7 s · d9781168 1 min 14 · fb1a1a72 1 min 51 · 000d5950 41,5 s · 01e1f945 22,1 s · 64e8adfa 40,0 s · 7344d24f 26,0 s · 696a9d7c 21,7 s · 53ce4390 33,0 s · 9f57c612 26,2 s · 084a804d 2 min 19 · 1c4c63c2 3 min 09 · a349fea8 3 min 18 |

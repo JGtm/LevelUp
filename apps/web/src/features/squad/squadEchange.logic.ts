@@ -14,6 +14,8 @@ import { isFullHistoryScope } from '@/lib/baseline'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import type { ChartPointHistogram } from '@/components/charts/HistogramChart'
+import type { ChartPoint2D } from '@/components/charts/TimeseriesLineChart'
+import type { ChartPointStacked } from '@/components/charts/BarStackedChart'
 import type { KPITrend } from '@/components/layout/KPIStrip'
 
 /**
@@ -275,4 +277,126 @@ export function resumeDelais(echange: SquadEchange): ResumeDelais {
     else dansLaFenetre += b.nombre
   }
   return { dansLaFenetre, horsFenetre, total: dansLaFenetre + horsFenetre }
+}
+
+/**
+ * Les quatre grandeurs de la carte « Le compte » (maquette 4c520da6, bloc 0).
+ *
+ * UN TAUX SEUL EST TROMPEUR — il se calcule sur les morts de votre camp, donc il bouge
+ * quand vous mourez plus. Il ne sort donc jamais sans son COMPTE BRUT (« N morts sans
+ * réponse ») ni sa QUANTITÉ PAR MATCH, qui ne dépendent pas, elles, du nombre de morts.
+ */
+export interface CompteEchange {
+  /** Taux d'échange du camp, unité 0..1. */
+  taux: number
+  /** Écart à l'habituel (unité 0..1) et son arrondi en points — voir `ecartEchange`. */
+  ecart: number
+  ecartPoints: number
+  /** Vrai quand l'écart doit se taire (périmètre = tout l'historique). */
+  pleinHistorique: boolean
+  /** Délai médian des échanges survenus, en SECONDES. `null` si aucun échange mesuré. */
+  delaiMedianS: number | null
+  /** Morts de votre camp restées sans réponse, et leur dénominateur. */
+  sansReponse: number
+  mortsEquipe: number
+  /** Les mêmes morts sans réponse ramenées aux matchs MESURÉS. `null` sans match mesuré. */
+  sansReponseParMatch: number | null
+  /** Réserve d'échantillon faible du périmètre (jamais un masquage : une mention). */
+  echantillonFaible: boolean
+}
+
+/**
+ * compteEchange assemble les quatre tuiles. Aucun quotient nouveau n'est inventé : le taux
+ * et son brut viennent de `couverture` (mesurés côté Go), l'écart de `ecartEchange`, et les
+ * deux dernières grandeurs sont la SOUSTRACTION du brut au dénominateur — pas un taux.
+ */
+export function compteEchange(echange: SquadEchange): CompteEchange {
+  const { ecart, ecartPoints, pleinHistorique } = ecartEchange(echange)
+  const mortsEquipe = echange.couverture.n
+  const sansReponse = Math.max(0, mortsEquipe - echange.couverture.brut)
+  const medianMs = echange.delai_median_ms ?? 0
+  return {
+    taux: echange.couverture.taux,
+    ecart,
+    ecartPoints,
+    pleinHistorique,
+    delaiMedianS: medianMs > 0 ? medianMs / 1000 : null,
+    sansReponse,
+    mortsEquipe,
+    sansReponseParMatch: echange.matchs_mesures > 0 ? sansReponse / echange.matchs_mesures : null,
+    echantillonFaible: echange.couverture.echantillon_faible,
+  }
+}
+
+/** Ce qu'un joueur du roster a DONNÉ (sa ligne) et REÇU (sa colonne) dans la matrice. */
+export interface DonneRecuJoueur {
+  gamertag: string
+  donne: number
+  recu: number
+}
+
+/**
+ * donneRecuParJoueur somme la LIGNE (donné) et la COLONNE (reçu) de chaque joueur du
+ * roster. Dérivé des mêmes `cellules` que la matrice : aucune mesure nouvelle, aucun
+ * appel serveur — c'est la même donnée, en plus grossier (maquette 4c520da6, bloc 4).
+ */
+export function donneRecuParJoueur(echange: SquadEchange): DonneRecuJoueur[] {
+  const cellules = echange.cellules ?? []
+  return (echange.joueurs ?? []).map((j) => ({
+    gamertag: j.gamertag,
+    donne: cellules.filter((c) => c.vengeur_xuid === j.xuid).reduce((t, c) => t + c.nombre, 0),
+    recu: cellules.filter((c) => c.venge_xuid === j.xuid).reduce((t, c) => t + c.nombre, 0),
+  }))
+}
+
+/**
+ * donneRecuSeries projette `donneRecuParJoueur` en série de barres GROUPÉES : une
+ * catégorie par joueur, deux composantes « donné » / « reçu ».
+ */
+export function donneRecuSeries(
+  echange: SquadEchange,
+  cleDonne: string,
+  cleRecu: string,
+): ChartSeries<ChartPointStacked>[] {
+  const datapoints = donneRecuParJoueur(echange).map<ChartPointStacked>((r) => ({
+    category: r.gamertag,
+    components: { [cleDonne]: r.donne, [cleRecu]: r.recu },
+  }))
+  return [{ key: 'donne-recu', datapoints }]
+}
+
+/**
+ * Nombre MINIMAL de sessions sous lequel « Taux d'échange par session » n'a rien à
+ * montrer. Trois soirées ne font pas une tendance — c'est la même doctrine que le constat
+ * du moment : sous le seuil de significativité, on n'affiche pas un graphe, on dit
+ * pourquoi.
+ */
+export const PLANCHER_SESSIONS_TENDANCE = 3
+
+/**
+ * tauxSessionSeries projette le taux d'échange par session en une SEULE série, X en
+ * catégories (le libellé de session porte déjà la date), Y en POURCENTS.
+ *
+ * Une seule série, donc pas de légende : le titre la nomme (maquette 4c520da6, bloc 5).
+ */
+export function tauxSessionSeries(echange: SquadEchange): ChartSeries<ChartPoint2D>[] {
+  const datapoints = (echange.taux_par_session ?? []).map<ChartPoint2D>((p) => ({
+    x: libelleCourtSession(p.session_label),
+    y: p.couverture.taux * 100,
+  }))
+  return datapoints.length > 0 ? [{ key: 'taux-session', datapoints }] : []
+}
+
+/**
+ * libelleCourtSession réduit un libellé de session à sa DATE.
+ *
+ * Le libellé complet (« 13/10/2025 22:27–22:46 (3) ») porte la plage horaire et le nombre
+ * de matchs : posé sur quarante graduations d'axe, il se chevauche et devient illisible.
+ * L'axe dit QUAND — la soirée —, pas le détail, qui reste dans l'infobulle du point.
+ *
+ * Un libellé sans espace est rendu tel quel : on ne coupe jamais à l'aveugle.
+ */
+export function libelleCourtSession(label: string): string {
+  const espace = label.indexOf(' ')
+  return espace > 0 ? label.slice(0, espace) : label
 }

@@ -15,7 +15,7 @@
  *     vérifie les DEUX moitiés : absente du texte rendu, présente dans l'aide du rail.
  */
 import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 import type { SessionUsageOutcomes } from '@/lib/api/types'
 
@@ -50,24 +50,25 @@ function rows(outcomes?: SessionUsageOutcomes) {
   ]
 }
 
-describe('UsageGaugeGrid — repli des dénominateurs secondaires (D4)', () => {
-  it('replié : seule « ma part dans mon équipe » est rendue', () => {
+describe('UsageGaugeGrid — les trois dénominateurs, toujours rendus (2026-09-13)', () => {
+  it('rend les trois colonnes sans aucun bouton de repli', () => {
     render(<UsageGaugeGrid rows={rows()} t={t} />)
-    expect(screen.getByText(t.gaugePlayerOfTeam)).toBeInTheDocument()
-    expect(screen.queryByText(t.gaugePlayerOfLobby)).not.toBeInTheDocument()
-    expect(screen.queryByText(t.gaugeTeamOfLobby)).not.toBeInTheDocument()
-    // Une seule valeur affichée : celle de la colonne rendue.
-    expect(screen.getByText('20,5 %')).toBeInTheDocument()
-    expect(screen.queryByText('45,6 %')).not.toBeInTheDocument()
-  })
-
-  it('déplié : les trois dénominateurs reviennent, rien n avait été retiré du calcul', () => {
-    render(<UsageGaugeGrid rows={rows()} t={t} />)
-    fireEvent.click(screen.getByRole('button', { name: t.sharesShowMoreFmt(2) }))
     expect(screen.getByText(t.gaugeTeamOfLobby)).toBeInTheDocument()
     expect(screen.getByText(t.gaugePlayerOfTeam)).toBeInTheDocument()
     expect(screen.getByText(t.gaugePlayerOfLobby)).toBeInTheDocument()
+    expect(screen.getByText('20,5 %')).toBeInTheDocument()
     expect(screen.getByText('45,6 %')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('hachure les deux colonnes rapportées au lobby, jamais celle de mon équipe', () => {
+    render(<UsageGaugeGrid rows={rows()} t={t} />)
+    const teamRail = screen.getByRole('img', { name: new RegExp(t.gaugePlayerOfTeam) })
+    const lobbyRail = screen.getByRole('img', { name: new RegExp(t.gaugePlayerOfLobby) })
+    const teamOfLobbyRail = screen.getByRole('img', { name: new RegExp(t.gaugeTeamOfLobby) })
+    expect(teamRail.querySelector('[data-gauge-denominator="lobby"]')).not.toBeInTheDocument()
+    expect(lobbyRail.querySelector('[data-gauge-denominator="lobby"]')).toBeInTheDocument()
+    expect(teamOfLobbyRail.querySelector('[data-gauge-denominator="lobby"]')).toBeInTheDocument()
   })
 })
 
@@ -75,7 +76,7 @@ describe('UsageGaugeGrid — le compte brut vit dans l infobulle (D2)', () => {
   it('la cellule porte le pourcentage seul ; le rail porte la fraction', () => {
     render(<UsageGaugeGrid rows={rows()} t={t} />)
     expect(screen.queryByText(/9 sur 20/)).not.toBeInTheDocument()
-    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    const rail = screen.getByRole('img', { name: new RegExp(t.gaugePlayerOfTeam) })
     expect(rail).toHaveAttribute('aria-label', expect.stringContaining('9 sur 20'))
   })
 })
@@ -91,36 +92,36 @@ describe('UsageGauge — E4.1/E4.2 : la pile des trois issues et les deux repèr
   }
 
   it('remplit la tranche de trois segments, dans l ordre utilisé -> gardé -> lâché (§3.1, S10)', () => {
-    const { container } = render(<UsageGaugeGrid rows={rows(outcomes)} t={t} />)
-    const rail = screen.getByRole('img', { name: /Camouflage/ })
-    const segments = rail.querySelectorAll('[data-outcome-key]')
-    expect(Array.from(segments).map((el) => el.getAttribute('data-outcome-key'))).toEqual([
+    render(<UsageGaugeGrid rows={rows(outcomes)} t={t} />)
+    const rail = screen.getByRole('img', { name: new RegExp(t.gaugePlayerOfTeam) })
+    const segments = Array.from(rail.querySelectorAll('[data-outcome-key]'))
+    expect(segments.map((el) => el.getAttribute('data-outcome-key'))).toEqual([
       'used',
       'kept',
       'dropped',
     ])
     // Zéro fond uni ALLY_INK quand une pile existe : la tranche n'est QUE des segments.
-    expect(container.querySelector('[data-outcome-fill]')).not.toBeInTheDocument()
+    expect(rail.querySelector('[data-outcome-fill]')).not.toBeInTheDocument()
   })
 
   it('une famille sans troisième issue (gardé = 0) rend deux segments', () => {
     const twoOutcomes: SessionUsageOutcomes = { used: 6, dropped: 4, kept: 0, taken: 10 }
     render(<UsageGaugeGrid rows={rows(twoOutcomes)} t={t} />)
-    const rail = screen.getByRole('img', { name: /Camouflage/ })
-    const segments = rail.querySelectorAll('[data-outcome-key]')
+    const rail = screen.getByRole('img', { name: new RegExp(t.gaugePlayerOfTeam) })
+    const segments = Array.from(rail.querySelectorAll('[data-outcome-key]'))
     expect(segments).toHaveLength(2)
   })
 
   it('sans outcomes (grandeur hors bilan) : rendu inchangé, un seul aplat, aucun segment', () => {
     render(<UsageGaugeGrid rows={rows()} t={t} />)
-    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    const rail = screen.getByRole('img', { name: new RegExp(t.gaugePlayerOfTeam) })
     expect(rail.querySelectorAll('[data-outcome-key]')).toHaveLength(0)
     expect(rail.querySelector('[data-outcome-fill]')).toBeInTheDocument()
   })
 
   it('pose les deux repères de taux DANS la tranche, sans chiffre affiché (E4.2)', () => {
     render(<UsageGaugeGrid rows={rows(outcomes)} t={t} />)
-    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    const rail = screen.getByRole('img', { name: new RegExp(t.gaugePlayerOfTeam) })
     const teammatesRef = rail.querySelector('[data-outcome-ref="teammates"]')
     const opponentsRef = rail.querySelector('[data-outcome-ref="opponents"]')
     expect(teammatesRef).toBeInTheDocument()
@@ -134,14 +135,14 @@ describe('UsageGauge — E4.1/E4.2 : la pile des trois issues et les deux repèr
   it('repères absents (scope à camp inconnu) : aucune marque, jamais posée à 0 %', () => {
     const noRef: SessionUsageOutcomes = { used: 6, dropped: 3, kept: 1, taken: 11 }
     render(<UsageGaugeGrid rows={rows(noRef)} t={t} />)
-    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    const rail = screen.getByRole('img', { name: new RegExp(t.gaugePlayerOfTeam) })
     expect(rail.querySelector('[data-outcome-ref="teammates"]')).not.toBeInTheDocument()
     expect(rail.querySelector('[data-outcome-ref="opponents"]')).not.toBeInTheDocument()
   })
 
   it('le compte brut des trois issues reste en infobulle (E4.6)', () => {
     render(<UsageGaugeGrid rows={rows(outcomes)} t={t} />)
-    const rail = screen.getByRole('img', { name: /Camouflage/ })
+    const rail = screen.getByRole('img', { name: new RegExp(t.gaugePlayerOfTeam) })
     const label = rail.getAttribute('aria-label') ?? ''
     expect(label).toContain('utilisé 6')
     expect(label).toContain('gardé 1')

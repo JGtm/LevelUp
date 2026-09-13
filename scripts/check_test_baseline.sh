@@ -42,6 +42,12 @@
 # compte PARTIEL d'absences volontaires — jamais une re-capture complète, qui absorberait
 # en silence toute autre dérive.
 #
+# RETRAIT DU 2026-09-13 (lot G.1 des finitions v7.5) : 3 lignes package-level du
+# package `cmd/force_rebuild_art` (start / output « no test files » / skip) ont été
+# retirées avec la suppression du CLI. Elles ne portaient AUCUN champ `Test` : le
+# contrôle de présence ne les voyait pas, leur retrait ne relâche donc rien — il
+# garde seulement la baseline en phase avec l'arbre.
+#
 # Le contrôle 2 a été ajouté le 2026-07-26 : le `|| true` sur le `go test -json`
 # (nécessaire pour pouvoir analyser le JSONL même quand la suite échoue) rendait
 # le gate MENTEUR — un test FAIL était compté comme « présent » par le contrôle 1

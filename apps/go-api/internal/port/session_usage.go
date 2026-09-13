@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"levelup/go-api/internal/analysis/sessionusage"
+	"levelup/go-api/internal/analysis/squadformes"
 )
 
 // SessionUsageRepository charge, sur un scope fermé de matchs (la session
@@ -27,4 +28,26 @@ type SessionUsageRepository interface {
 	// LoadParticipants : les participants (match_participants) du scope —
 	// appartenance de camp (attribution) + présence à la fin (effectifs).
 	LoadParticipants(ctx context.Context, matchIDs []string) ([]sessionusage.ParticipantRow, error)
+}
+
+// SquadFormesUsageRepository — le résumé d'usage, PLUS le grain match des socles
+// (`pad_named`, `weapon_pads_json`) que seul le bloc « formes retenues » lit.
+//
+// Interface SÉPARÉE plutôt que trois méthodes de plus sur SessionUsageRepository :
+// les lecteurs existants (page Sessions, Synthèse, Escouade/équipement) n'ont que
+// faire des socles au grain match, et élargir leur port aurait obligé chaque
+// double de test à implémenter une méthode qu'il n'appelle jamais.
+type SquadFormesUsageRepository interface {
+	SessionUsageRepository
+	// LoadUsageFilmPads : par match_id, les occupations de socle du match et les
+	// prises qui portent un nom. Un match absent n'est pas mesuré.
+	LoadUsageFilmPads(ctx context.Context, matchIDs []string) (map[string]squadformes.FilmPads, error)
+}
+
+// SquadFormesObjectiveRepository — les colonnes d'objectif par joueur (les deux
+// camps) du scope. Implémenté par duckdb.ObjectiveStatsRepo, câblé gated par la
+// capability des stats d'objectif ; nil ⇒ le bloc se sert sans ses cartes
+// d'objectif, jamais un échec.
+type SquadFormesObjectiveRepository interface {
+	LoadObjectiveColumnRows(ctx context.Context, matchIDs []string) ([]squadformes.ObjectiveColumnRow, error)
 }

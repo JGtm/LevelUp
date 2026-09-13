@@ -32,14 +32,8 @@ fr = "Aucun match ne correspond aux filtres en cours. Élargis la période ou re
 en = "No match matches the current filters. Widen the period or remove a filter."
 
 # ── Vignette d'une carte ──────────────────────────────────────────────────────
-[tactical.maps.matches]
-fr = "{n, plural, one {# match} other {# matchs}}"
-en = "{n, plural, one {# match} other {# matches}}"
 
 # Barre victoires / défaites : le compte brut, jamais un taux seul.
-[tactical.maps.record]
-fr = "{wins, plural, one {# victoire} other {# victoires}} · {losses, plural, one {# défaite} other {# défaites}}"
-en = "{wins, plural, one {# win} other {# wins}} · {losses, plural, one {# loss} other {# losses}}"
 
 # Nom accessible de la barre : les deux comptes ET leur dénominateur, parce que
 # victoires + défaites peut être inférieur au nombre de matchs (nuls, résultat inconnu).
@@ -63,14 +57,8 @@ en = "Selected map"
 fr = "{n, plural, one {# match} other {# matchs}} sur {floor} requis"
 en = "{n, plural, one {# match} other {# matches}} of {floor} required"
 
-[tactical.maps.floor_note]
-fr = "Une carte s'ouvre à partir de {floor} matchs : en dessous, une lecture de placement ne mesure que du bruit."
-en = "A map opens from {floor} matches on: below that, a positioning reading measures nothing but noise."
 
 # ── Pied de carte : couverture ────────────────────────────────────────────────
-[tactical.maps.coverage]
-fr = "{maps, plural, one {# carte jouée} other {# cartes jouées}}, {matches, plural, one {# match} other {# matchs}}"
-en = "{maps, plural, one {# map played} other {# maps played}}, {matches, plural, one {# match} other {# matches}}"
 
 # ── Barre de filtres L2 (phase 4 bis) ─────────────────────────────────────────
 # Vocabulaire ARRÊTÉ : « expérience », « playlists », « modes », « vue »,
@@ -260,8 +248,8 @@ en = "Try again later or change the question."
 
 # ── Barre d'outils (question / qui / spawn) ───────────────────────────────────
 [tactical.toolbar.question_label]
-fr = "Question"
-en = "Question"
+fr = "La question"
+en = "The question"
 
 [tactical.toolbar.who_label]
 fr = "Qui"
@@ -379,3 +367,163 @@ en = "small sample"
 [tactical.kpi.no_radius_note]
 fr = "{n, plural, one {# match sans rayon connu, écarté} other {# matchs sans rayon connu, écartés}}"
 en = "{n, plural, one {# match with unknown radius, excluded} other {# matches with unknown radius, excluded}}"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Conformité à la maquette 034b1915 (lot F, 2026-09-13). Chaque clé ci-dessous
+# porte un ÉLÉMENT de la maquette, dans les mots de la maquette.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Écran 1 : la phrase d'introduction du pied de la grille ───────────────────
+# Elle REMPLACE la paire couverture + note de plancher : c'était la même chose
+# dite en deux temps, et la maquette la dit en une phrase.
+[tactical.maps.intro]
+fr = "{maps, plural, one {# carte jouée} other {# cartes jouées}} sur la période, {matches, plural, one {# match} other {# matchs}}. Les cartes sous {floor} matchs sont affichées mais pas ouvrables : sous ce plancher, une zone chaude ne distingue pas une habitude d'un hasard."
+en = "{maps, plural, one {# map played} other {# maps played}} over the period, {matches, plural, one {# match} other {# matches}}. Maps under {floor} matches are shown but cannot be opened: below that floor, a hot zone tells a habit from a coincidence."
+
+# Résumé d'une vignette, SUR UNE SEULE LIGNE (maquette) : le compte de matchs et
+# le bilan victoires / défaites.
+[tactical.maps.tile_summary]
+fr = "{n, plural, one {# match} other {# matchs}} · {wins} V / {losses} D"
+en = "{n, plural, one {# match} other {# matches}} · {wins} W / {losses} L"
+
+# ── Bascule d'écran (deux boutons aria-pressed) ───────────────────────────────
+[tactical.screen.label]
+fr = "Écran"
+en = "Screen"
+
+[tactical.screen.grid]
+fr = "Grille des cartes"
+en = "Map grid"
+
+[tactical.screen.map]
+fr = "Analyse d'une carte"
+en = "Single map analysis"
+
+# ── Légende et pied du plan ───────────────────────────────────────────────────
+# Nom accessible de la rampe de légende : elle porte les deux bornes et l'unité.
+[tactical.plan.legend_label]
+fr = "Échelle de la lecture, de {lo} à {hi}"
+en = "Reading scale, from {lo} to {hi}"
+
+# Phrase d'échelle — DEUX formes, parce que les deux lectures ne se lisent pas pareil.
+[tactical.plan.scale_quantile]
+fr = "Échelle quantile p50 vers p95, saturée au-delà. Une cellule jamais atteinte reste vide — elle n'est pas peinte en froid."
+en = "Quantile scale p50 to p95, saturated beyond. A cell never reached stays empty — it is not painted cold."
+
+[tactical.plan.scale_divergent]
+fr = "Échelle divergente : le vert est joué davantage en victoire, le rouge en défaite. Sous {plancher, plural, one {# match distinct} other {# matchs distincts}} la cellule ne s'affiche pas."
+en = "Divergent scale: green is played more in wins, red in losses. Below {plancher, plural, one {# distinct match} other {# distinct matches}} the cell is not shown."
+
+# Ligne de dénominateurs du pied : combien de matchs la lecture a retenus, sur
+# combien le filtre en comptait, et d'où viennent les positions.
+[tactical.plan.footer_retained]
+fr = "{retenus, plural, one {# match retenu} other {# matchs retenus}} sur {filtres} filtrés · {source}"
+en = "{retenus, plural, one {# retained match} other {# retained matches}} out of {filtres} filtered · {source}"
+
+# ── Cellule sélectionnée ──────────────────────────────────────────────────────
+# « Mes routes de spawn » n'a pas de cellule : la lecture est un empilement de
+# trajets, pas une grandeur par cellule.
+[tactical.cell.placeholder_routes]
+fr = "Les routes n'ont pas de cellule"
+en = "Routes have no cell"
+
+[tactical.cell.placeholder_routes_description]
+fr = "Choisis une autre question pour ouvrir un match depuis le plan."
+en = "Pick another question to open a match from the plan."
+
+# Lien d'une contribution, forme de la maquette : « ouvrir à mm:ss ».
+[tactical.cell.contribution_open]
+fr = "ouvrir à {instant}"
+en = "open at {instant}"
+
+# ── Bandeau de KPI : les sous-titres de la maquette ───────────────────────────
+[tactical.kpi.matches_retained_secondary]
+fr = "sur {n} filtrés"
+en = "out of {n} filtered"
+
+[tactical.kpi.coverage_replay]
+fr = "rejeux cuits"
+en = "baked replays"
+
+[tactical.kpi.coverage_shared]
+fr = "base partagée"
+en = "shared database"
+
+[tactical.kpi.trade_window]
+fr = "sous {secondes} s"
+en = "within {secondes} s"
+
+[tactical.kpi.isolation_radius]
+fr = "équipier > {rayon}"
+en = "teammate > {rayon}"
+
+# Rayon d'isolement : la PORTÉE DU RADAR mesurée par variante (regulation.toml,
+# 18 m en Arène, 24 m en BTB). Plusieurs variantes dans le filtre = plusieurs
+# valeurs affichées, JAMAIS une moyenne — une moyenne de deux règles du jeu
+# n'est la règle d'aucun match.
+[tactical.coordination.radius_value]
+fr = "{rayon, number} m"
+en = "{rayon, number} m"
+
+[tactical.coordination.radius_join]
+fr = " ou "
+en = " or "
+
+# ── Section « Coordination d'équipe » ─────────────────────────────────────────
+[tactical.coordination.title]
+fr = "Coordination d'équipe"
+en = "Team coordination"
+
+[tactical.coordination.median]
+fr = "Distance médiane à l'équipier"
+en = "Median distance to teammate"
+
+[tactical.coordination.chart_title]
+fr = "Distance à l'équipier le plus proche, au moment de ma mort"
+en = "Distance to the nearest teammate, at the moment of my death"
+
+[tactical.coordination.chart_y]
+fr = "Morts"
+en = "Deaths"
+
+[tactical.coordination.bucket]
+fr = "{min}-{max}"
+en = "{min}-{max}"
+
+[tactical.coordination.bucket_last]
+fr = "{min}+"
+en = "{min}+"
+
+[tactical.coordination.threshold_label]
+fr = "Seuil d'isolement"
+en = "Isolation threshold"
+
+[tactical.coordination.note_rules]
+fr = "Échange : un équipier tue mon tueur dans les {secondes} s. Isolement : plus proche équipier au-delà de {rayon}."
+en = "Trade: a teammate kills my killer within {secondes} s. Isolation: nearest teammate beyond {rayon}."
+
+[tactical.coordination.note_coverage]
+fr = "Lecture sur {retenus} matchs mesurés sur {filtres} — les positions viennent du journal des morts, jamais d'une estimation."
+en = "Read on {retenus} measured matches out of {filtres} — positions come from the death log, never from an estimate."
+
+# Les morts SANS distance mesurée : aucun coéquipier VISIBLE à cet instant, donc
+# aucune distance à mesurer. Une absence de mesure, JAMAIS une distance infinie —
+# la distinction porte tout le verdict (cf. domain.MortAExaminer.PlusProcheM).
+[tactical.coordination.no_distance]
+fr = "{n, plural, one {# mort sans coéquipier visible} other {# morts sans coéquipier visible}} : aucune distance à mesurer, elles comptent dans l'isolement mais pas dans la distribution."
+en = "{n, plural, one {# death with no visible teammate} other {# deaths with no visible teammate}}: no distance to measure; they count as isolation but not in the distribution."
+
+[tactical.coordination.empty]
+fr = "Aucune mort mesurée dans ce filtre"
+en = "No measured death within this filter"
+
+[tactical.coordination.empty_description]
+fr = "La coordination se lit sur les morts dont le voisinage a été mesuré. Élargis la période ou la composition."
+en = "Coordination is read on deaths whose surroundings were measured. Widen the period or the squad."
+
+# Sens SOUHAITABLE de la grandeur, pas une variation : aucune periode de
+# comparaison n'est servie sur cet onglet, et une fleche de tendance sans
+# reference dirait une evolution qu'on ne mesure pas.
+[tactical.kpi.lower_is_better]
+fr = "▼ moins c'est mieux"
+en = "▼ lower is better"

@@ -146,7 +146,6 @@ export interface EquipmentUsageColumns {
   episodes: EquipmentEpisodeFamily[]
   deployed: string[]
   dropped: string[]
-  grenades: number[]
   /**
    * LA LISTE FUSIONNÉE (E2) : les déployables ET les deux power-ups, canonique
    * (`KEPT_FAMILIES`), ADDITIVE aux quatre champs ci-dessus — `deployed`/`dropped`/`episodes`
@@ -406,10 +405,13 @@ function teamsOf(
 /**
  * columnsOf retient les colonnes qu'au moins un joueur justifie, dans un ordre ÉCRIT.
  *
- * L'ordre vient des tables de référence (`PLACEMENT_RENDER`, `PLACEMENT_DROPPED_FAMILIES`, le
- * rang du catalogue de grenades) et non de l'ordre de rencontre dans le film : deux matchs
- * doivent présenter leurs colonnes dans le même ordre, sans quoi les comparer devient un
- * exercice de relecture.
+ * L'ordre vient des tables de référence (`PLACEMENT_RENDER`, `PLACEMENT_DROPPED_FAMILIES`) et
+ * non de l'ordre de rencontre dans le film : deux matchs doivent présenter leurs colonnes dans
+ * le même ordre, sans quoi les comparer devient un exercice de relecture.
+ *
+ * LES LANCERS DE GRENADE N'OUVRENT PLUS DE COLONNE (2026-09-13, retrait demandé par
+ * l'utilisateur : « je voulais pas des grenades »). Ils restent COMPTÉS (`tally.grenades`,
+ * `tallyTotal`) et dessinés par le rejeu — ils ne sont simplement plus une colonne du bilan.
  */
 function columnsOf(rows: EquipmentUsageRow[]): EquipmentUsageColumns {
   const used = (pick: (r: EquipmentUsageRow) => Record<string, number> | Record<number, number>) => {
@@ -419,7 +421,6 @@ function columnsOf(rows: EquipmentUsageRow[]): EquipmentUsageColumns {
   }
   const deployedUsed = used((r) => r.deployed)
   const droppedUsed = used((r) => r.dropped)
-  const grenadesUsed = used((r) => r.grenades)
   // LA COLONNE « ÉQUIPEMENT » FUSIONNÉE (E2) : une famille de `KEPT_FAMILIES` y entre dès
   // qu'AU MOINS UN joueur en porte une trace mesurée — utilisée, posée, lâchée, OU gardée sans
   // l'utiliser. Un objet gardé du début à la fin, jamais posé ni lâché, doit quand même ouvrir
@@ -437,7 +438,6 @@ function columnsOf(rows: EquipmentUsageRow[]): EquipmentUsageColumns {
     episodes: EPISODE_FAMILIES.filter((f) => rows.some((r) => (r.episodes[f]?.count ?? 0) > 0)),
     deployed: Object.keys(PLACEMENT_RENDER).filter((f) => deployedUsed.has(f)),
     dropped: PLACEMENT_DROPPED_FAMILIES.filter((f) => droppedUsed.has(f)),
-    grenades: [...grenadesUsed].map(Number).sort((a, b) => a - b),
     equipment: equipmentOrder.filter((f) => equipmentUsed.includes(f)),
   }
 }

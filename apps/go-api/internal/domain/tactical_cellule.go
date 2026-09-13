@@ -97,6 +97,17 @@ type TacticalContribution struct {
 	// coequipier ou un adversaire.
 	XUID string `json:"xuid"`
 
+	// Resultat est l'issue du match POUR L'EQUIPE DU JOUEUR DE LA PAGE, sous sa forme
+	// CANONIQUE (`canonical.Outcome` : "win" / "loss" / "tie" / "dnf"). Vide quand le
+	// substrat ne la connait pas (OutcomeUnknown) — jamais une valeur de repli, qui se
+	// lirait comme une defaite.
+	//
+	// POURQUOI ELLE VOYAGE. La liste des contributions est une liste de MATCHS a rouvrir :
+	// sans son issue, deux lignes de la meme journee ne se distinguent que par une heure.
+	// Le LIBELLE et la COULEUR restent cote web (`useOutcomeMapping`, outcomes.toml) — on
+	// ne sert jamais de texte localise ici.
+	Resultat string `json:"resultat,omitempty"`
+
 	// MatchStartedAt est la date de DEBUT DU MATCH (canonique, cf.
 	// platform/duckdb.StartTimeCanonicalSQL), tiree de la MEME verification d'ouvrabilite
 	// qui a admis cette contribution. La carte web l'affiche a cote de l'instant — un

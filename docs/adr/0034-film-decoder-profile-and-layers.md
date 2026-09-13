@@ -219,6 +219,37 @@ Nothing on screen changes: the web colours players by `team_side` from the match
 (`lib/replay/rosterLogic.ts`), not by the artifact. What changes is that an offline cook — no
 database at all — produces a complete roster with real teams.
 
+### D-10 — Grammar decides everywhere; a fallback is named, counted, and retired
+
+User decisions, 2026-09-13 (plan decisions D13 and D14). D-3 applies beyond `filmdec`: in the
+facts layer too, a fact the film *writes* (a named event, a creation record, a state component,
+a `chunk_00` table, the footer) is read from what the film writes. A production heuristic — a
+time window, a distance threshold, a majority vote, a statistical calibration, an inference over
+the death thread — never decides such a fact first. The wall is the worked example: the
+`EquipmentSpawnedObject` event names 216 of 216 wall panels, while the pose origin was decided
+by a 200 ms window.
+
+A heuristic that survives does so as a **fallback**, under four rules:
+
+1. **Named.** Every fallback lives in one registry in the code (name, fact, typed trigger, date
+   posted, retirement criterion), and the code that runs it names it. A fallback outside the
+   registry reddens a ratchet (`archlint/no_unregistered_fallback_test.go`, to be added at
+   step 1.9.0). No anonymous "else" deciding a fact in the middle of a function.
+2. **Ordered.** Read first, fall back second. A fallback fires only on a typed diagnostic
+   "the film is silent here", never on a disagreement with the reading and never while the
+   reading is available. If it fires where the reading existed, that is a counted
+   contradiction, not a fallback.
+3. **Counted.** Each fact publishes `coverage.<fact>.{grammar, fallback, contradiction}`; the
+   artifact says which part of itself came from a fallback.
+4. **Retired.** A fallback carries a retirement criterion (CLAUDE.md rule 11: date posted,
+   target removal, measurable criterion). A fallback whose count is 0 on the corpus gate at a
+   milestone closure is **deleted** at the next milestone, tests included. Nothing is kept "in
+   case": a stale fallback that fires wrongly corrupts a fact the reading would have got right.
+
+Before a fact is declared "not in the film", the measured negative (report, note, figure) is
+cited; otherwise the question is *open*, which is a research item, not a licence for a heuristic.
+The inventory of today's heuristics is the plan's lot 0.E; conversions are its family 1.9.
+
 ## Corrections to statements made elsewhere
 
 Found on the tree during lot 0.B (2026-09-13), written here so the wrong sentence is not repeated:

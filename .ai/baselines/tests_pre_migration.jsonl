@@ -251,9 +251,6 @@
 {"Time":"2026-06-26T23:44:47.8068246+02:00","Action":"start","Package":"levelup/go-api/cmd/fix_weapon_bitmask"}
 {"Time":"2026-06-26T23:44:47.8075483+02:00","Action":"output","Package":"levelup/go-api/cmd/fix_weapon_bitmask","Output":"?   \tlevelup/go-api/cmd/fix_weapon_bitmask\t[no test files]\n"}
 {"Time":"2026-06-26T23:44:47.8075483+02:00","Action":"skip","Package":"levelup/go-api/cmd/fix_weapon_bitmask","Elapsed":0.001}
-{"Time":"2026-06-26T23:44:47.8431954+02:00","Action":"start","Package":"levelup/go-api/cmd/force_rebuild_art"}
-{"Time":"2026-06-26T23:44:47.8431954+02:00","Action":"output","Package":"levelup/go-api/cmd/force_rebuild_art","Output":"?   \tlevelup/go-api/cmd/force_rebuild_art\t[no test files]\n"}
-{"Time":"2026-06-26T23:44:47.8431954+02:00","Action":"skip","Package":"levelup/go-api/cmd/force_rebuild_art","Elapsed":0}
 {"Time":"2026-06-26T23:44:47.8605235+02:00","Action":"start","Package":"levelup/go-api/cmd/gen_test_fixtures"}
 {"Time":"2026-06-26T23:44:47.8605235+02:00","Action":"output","Package":"levelup/go-api/cmd/gen_test_fixtures","Output":"?   \tlevelup/go-api/cmd/gen_test_fixtures\t[no test files]\n"}
 {"Time":"2026-06-26T23:44:47.8605235+02:00","Action":"skip","Package":"levelup/go-api/cmd/gen_test_fixtures","Elapsed":0}

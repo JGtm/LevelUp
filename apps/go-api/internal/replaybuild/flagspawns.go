@@ -66,7 +66,8 @@ func (b *Builder) flagSpawns(matchID, mapID string) []replay.FlagSpawn {
 	out := make([]replay.FlagSpawn, 0, 3)
 	for _, p := range entry.PointsOfRole(mapvar.RoleFlagSpawn) {
 		out = append(out, replay.FlagSpawn{
-			Team: flagSpawnTeam(p), X: float32(p.Center.X), Y: float32(p.Center.Y),
+			Team: flagSpawnTeam(p), Neutral: p.Neutral,
+			X: float32(p.Center.X), Y: float32(p.Center.Y),
 		})
 	}
 	return out
@@ -79,11 +80,17 @@ func (b *Builder) flagSpawns(matchID, mapID string) []replay.FlagSpawn {
 // LE LABEL PRIME SUR LE `team_index`, ET CE N'EST PAS UNE PRECAUTION THEORIQUE. Le socle
 // central d'Illusion (`9e821f5e`, object_index 201, au point (0, 0)) porte
 // `ctf_neutral_include` ET `team_index = 0` : lu par son team_index, il devenait un
-// TROISIEME drapeau d'equipe 0 fige au milieu de la carte, que le calque ne pouvait pas
-// ecarter (`flag_neutral.go` trie sur `Team == TeamNeutral`) et qui creait la plus grande
-// zone aveugle du parc. Corrige le 2026-09-13 (rapport 6.11, decouverte D1). Le recensement
-// du catalogue est dans le godoc de [mapvar.Objective.IsCTFNeutral] : sur 63 socles
-// neutres, le label est juste 63 fois, le team_index 62.
+// TROISIEME drapeau d'equipe 0 fige au milieu de la carte, et il creait la plus grande zone
+// aveugle du parc. Corrige le 2026-09-13 (rapport 6.11, decouverte D1). Le recensement du
+// catalogue est dans le godoc de [mapvar.Objective.IsCTFNeutral] : sur 63 socles neutres,
+// le label est juste 63 fois, le team_index 62.
+//
+// CE QUE CETTE FONCTION NE DIT PAS, ET CE QUI LE DIT (2026-09-13, decouverte D-B2). Elle
+// rend une EQUIPE, pas une variante : `TeamNeutral` y signifie tantot « socle neutre »,
+// tantot « equipe inconnue » — huit socles du catalogue portent `team_index = -1` sans
+// etre neutres. La neutralite voyage donc dans son propre champ,
+// [replay.FlagSpawn.Neutral], pose depuis le meme label, et c'est LUI que le tri du calque
+// lit (`flag_neutral.go`).
 func flagSpawnTeam(p replay.PointObjective) int {
 	if p.Neutral {
 		return replay.TeamNeutral
