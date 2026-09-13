@@ -232,8 +232,12 @@ func projeterCorpusFlagGrabsNet(
 			continue
 		}
 		projetes++
-		comptabiliserPasse(&b, batch)
+		brut, net := comptabiliserPasse(&b, batch)
 		if o.dryRun {
+			// UNE LIGNE PAR MATCH, et c est le but de --dry-run : l operateur doit pouvoir
+			// CONTROLER ce qui sera ecrit avant un --force, pas seulement un total.
+			fmt.Printf("  %-40s joueurs=%2d brut=%3d net=%3d ouvertures=%3d fenetre=%4d ms\n",
+				id, len(batch.Players), brut, net, batch.Openings, batch.WindowMS)
 			continue
 		}
 		if err := p.PersistPass(ctx, batch); err != nil {
@@ -247,9 +251,9 @@ func projeterCorpusFlagGrabsNet(
 	return b
 }
 
-// comptabiliserPasse additionne les totaux du bilan, et imprime la ligne du --dry-run.
-func comptabiliserPasse(b *bilanFlagGrabsNetBackfill, batch persist.FlagGrabsNetBatch) {
-	brut, net := 0, 0
+// comptabiliserPasse additionne les totaux du bilan et rend le couple (brut, net) de CE
+// match, que le --dry-run imprime.
+func comptabiliserPasse(b *bilanFlagGrabsNetBackfill, batch persist.FlagGrabsNetBatch) (brut, net int) {
 	for _, pl := range batch.Players {
 		brut += pl.Raw
 		net += pl.Net
@@ -257,6 +261,7 @@ func comptabiliserPasse(b *bilanFlagGrabsNetBackfill, batch persist.FlagGrabsNet
 	b.totalJoueurs += len(batch.Players)
 	b.totalBrutes += brut
 	b.totalNettes += net
+	return brut, net
 }
 
 // lireUnArtefactPrisesNettes lit UN artefact et en tire la passe a ecrire, ou dit pourquoi il
