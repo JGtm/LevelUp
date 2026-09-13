@@ -1,3 +1,23 @@
+## [2026-09-13] Chantier decodeur — directive utilisateur D13 : la grammaire prime PARTOUT — En cours (plan amende, lot 0.E lance)
+
+**Decision technique principale.** L'utilisateur, sur l'exemple du mur (drop wall contre lacher a
+la mort, aujourd'hui decide par une fenetre temporelle de 200 ms depuis F.1 alors que le type 103
+designe 216 panneaux de mur sur 216), pose la regle generale : toute heuristique de production qui
+decide un fait que le film ECRIT est remplacee par la lecture, l'heuristique ne survit qu'en repli
+compte. Plan : decision D13 (§1.3) ; lot 0.E = audit-inventaire des heuristiques (registre date,
+trois tables : le film l'ecrit et le lecteur existe / le film l'ecrit, lecteur a porter / le film
+ne l'ecrit pas avec le negatif mesure) ; famille 1.9 en M1 = conversions dans l'ordre du registre,
+1.9.1 fixe = origine d'une pose d'equipement (mur par 103 + panneaux ; appareils portes par le
+record de creation ti=37 s'il porte la cause ; repli temporel compte).
+
+**Resultats observes.** Verifie sur pieces avant de repondre (REFERENCE_CANAUX_EQUIPEMENT §1, §2,
+§5, §6 ; corps du commit F.1 c45c411eb : 22 poses requalifiees dont 7 murs). Le lot 0.E court en
+parallele de 0.D (audit sans decodage, second slot d'agent).
+
+**Prochaine etape.** Registre 0.E -> ordre des conversions 1.9.x ; 0.D en cours.
+
+---
+
 ## [2026-09-13] Chantier decodeur — item 0.B.7 (une fixture de contrat par build) — Complete (feat/decfilm-0B7 fusionnee dans feat/recherche-decodeur-film)
 
 **Decision technique principale.** `contract_fixtures_test.go` itere la table des builds de

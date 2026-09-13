@@ -79,6 +79,7 @@ bloque le gate du lot courant.
 | D10 | ADR 0034 porte les invariants (couches, profil, porte unique aux octets, build inconnu, faits / publication) ; écrit à M0, amendé à la clôture de M2 et de M4 ; EN-only | architecture §13, règle 15 |
 | D11 | Le web n'est touché qu'à la frontière de normalisation (0.B, 4.2, 4.3) ; aucune retouche de rendu | architecture §11, §12 |
 | D12 | Les chemins neufs (faits persistés, profils) passent par `PathResolver` et par un catalogue versionné jamais écrit à l'exécution (ratchet `no_runtime_versioned_catalog_write_test` étendu) | CLAUDE.md, principe 15 |
+| D13 | **La grammaire prime PARTOUT, pas seulement dans `filmdec`.** Toute heuristique de production (fenêtre temporelle, seuil de distance, majorité, inférence statistique) qui décide un FAIT que le film écrit (événement nommé, record de création, composant) est remplacée par la lecture de ce que le film écrit ; l'heuristique ne survit qu'en REPLI COMPTÉ dans la couverture (accord / repli / contradiction), jamais en décision première. Le mur n'est qu'un exemple (événement 103 et panneaux contre fenêtre de 200 ms) ; la règle vaut pour chaque fait. Inventaire au lot 0.E, conversions dans la famille 1.9 | utilisateur, 2026-09-13 |
 
 ### 1.4 Décisions validées par l'utilisateur le 2026-09-13 (fermes)
 
@@ -470,6 +471,31 @@ Gate 0.B : gates communs ; `make check-types` ; `make test-web` ; `make openapi-
 
 Gate 0.C : `go test ./internal/archlint/ -run Mojibake` ; relecture pilote.
 
+#### Lot 0.E — Inventaire des heuristiques qui décident à la place de la grammaire (D13) — M, audit Opus high, en parallèle de 0.D
+
+Audit (skill `adversarial-audit` : périmètre × axe, registre daté, ne corrige rien). Périmètre :
+`film/replay`, `film/killsource`, `analysis/objectiveevents`, `replaybuild` (assemblage des faits),
+`sync/killcollector`. Axe : toute décision de production prise par heuristique (fenêtre
+temporelle, seuil de distance, majorité, calibration statistique, inférence par le fil des
+morts) là où le film ÉCRIT le fait (événement nommé, record de création, composant d'état,
+table de `chunk_00`, pied de film).
+
+- [ ] 0.E.1 Registre `.ai/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md` : une ligne par
+      heuristique : `fichier:ligne`, fait décidé, heuristique (paramètres), ce que le film écrit
+      à la place (canal, événement, record, composant ; PORTÉ aujourd'hui / À PORTER : bloquant
+      nommé), preuve ou incertitude (note de RE, rapport, mesure), coût (S / M / L), gain
+      attendu (films, poses, kills concernés). Sources à croiser : `REFERENCE_CANAUX_EQUIPEMENT`
+      §4 (qui lit quoi), `RAPPORT_F0_DEPLOIEMENT_103`, `RAPPORT_LOT_H_VERSIONS`, notes `film_re/`.
+- [ ] 0.E.2 Classement en trois tables : (A) le film l'écrit ET le lecteur existe (conversion
+      courte, lot 1.9.x) ; (B) le film l'écrit, lecteur À PORTER (lot 3.6, bloquant nommé) ;
+      (C) le film ne l'écrit pas (heuristique légitime : reste, avec sa couverture). Chaque ligne
+      de (C) cite le négatif MESURÉ qui la fonde (jamais « probablement »).
+- [ ] 0.E.3 Ordre proposé des conversions (A), par gain décroissant, recopié en tête de la
+      famille 1.9 ; les (B) entrent dans le dimensionnement du lot 3.6.
+
+Gate 0.E : chaque `fichier:ligne` existe (grep) ; aucun fichier de production modifié
+(`git diff --stat` = le registre et le plan) ; relecture pilote.
+
 **Clôture M0** : fusion dans `feat/v75` sur signal (V3). Aucun octet d'artefact ne change.
 
 ---
@@ -643,6 +669,25 @@ notes, `CarrierTeamUnknown` inchangé ou en baisse) ; FFA : `teams.film = 0`, ba
 
 Preuve : corpus gate zéro perte sur les axes kills / morts / sources ; `replay-equiv` différences
 localisées.
+
+#### Famille 1.9 — La grammaire à la place de l'heuristique, un fait par lot (D13) — S à M chacun, high
+
+Ordre fixé par le registre du lot 0.E (table A, gain décroissant). Chaque lot : la lecture de ce
+que le film écrit devient la décision ; l'heuristique devient un REPLI compté
+(`coverage.<fait>.{grammaire, repli, contradiction}`) ; test par mutation ; corpus gate zéro
+perte, gains nommés ; `SchemaVersion` si le contenu cuit change ; `GrammarRev` si un lecteur
+change. Premier lot fixé par l'utilisateur :
+
+- [ ] 1.9.1 **Origine d'une pose d'équipement.** Sur pièces : `replay/equipment_placements.go`
+      (`equipmentOrigin`, fenêtre de 200 ms depuis F.1 `c45c411eb`), `REFERENCE_CANAUX_EQUIPEMENT`
+      §1 (le type 103 `EquipmentSpawnedObject` désigne 216 panneaux de mur sur 216 et aucun
+      appareil porté). Mur : `deployed` = pose désignée par un 103 (panneaux), sinon `dropped` ;
+      appareils portés (capteur, traqueur, écran, champ) : l'enregistrement de création de l'objet
+      (archétype équipement ti=37, `consumeDefaultStateTI37` : référence de créateur,
+      `ability-enabled-id`) s'il porte la cause, sinon repli temporel compté. Les 22 poses
+      requalifiées par F.1 sont rejugées une à une (instruments `f1_origine_*`). Corpus gate sur
+      `0797ce72`, `4f77afc1` et l'échantillon court.
+- [ ] 1.9.2 à 1.9.n : selon le registre 0.E (à recopier ici à la clôture de 0.E).
 
 **Clôture M1** : fusion dans `feat/v75` (V3) ; recuisson du parc + backlog killsource sur signal
 (tag git du binaire précédent, artefacts précédents conservés jusqu'à validation du corpus gate,
