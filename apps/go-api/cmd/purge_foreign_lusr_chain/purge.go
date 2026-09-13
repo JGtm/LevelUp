@@ -98,17 +98,16 @@ func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before cha
 	if err != nil {
 		return fmt.Errorf("capture des index: %w", err)
 	}
-	viewDDL, err := captureDDL(ctx, db,
-		`SELECT sql FROM duckdb_views() WHERE view_name = 'match_skill_rank_latest' AND sql IS NOT NULL`)
+	views, err := captureDependentViews(ctx, db)
 	if err != nil {
-		return fmt.Errorf("capture de la vue _latest: %w", err)
+		return err
 	}
-	if len(viewDDL) != 1 {
-		return fmt.Errorf("vue match_skill_rank_latest introuvable (%d définition(s)) — "+
-			"base non migrée ? purge refusée, la vue ne serait pas restaurée", len(viewDDL))
+	if len(views) == 0 {
+		return fmt.Errorf("aucune vue ne référence match_skill_rank — base non migrée ? " +
+			"purge refusée : les lecteurs applicatifs ne seraient pas restaurés")
 	}
 	slog.InfoContext(ctx, "purge_foreign_lusr_chain: DDL capturée avant le swap",
-		"indexes", len(indexDDL), "views", len(viewDDL))
+		"indexes", len(indexDDL), "views", len(views), "view_names", viewNames(views))
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -141,21 +140,29 @@ func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before cha
 			"(rollback, zéro perte)", rebuilt, before.TotalRows, before.ForeignRaw, want)
 	}
 
-	stmts := []string{
-		`DROP VIEW IF EXISTS match_skill_rank_latest`,
+	stmts := make([]string, 0, 8+len(indexDDL)+len(views))
+	for _, v := range views {
+		stmts = append(stmts, `DROP VIEW IF EXISTS `+v.name)
+	}
+	stmts = append(stmts,
 		`DROP TABLE match_skill_rank`,
 		`ALTER TABLE match_skill_rank__purge RENAME TO match_skill_rank`,
 		`CREATE SEQUENCE IF NOT EXISTS msr_seq START 1`,
 		`ALTER TABLE match_skill_rank ADD PRIMARY KEY (id)`,
 		`ALTER TABLE match_skill_rank ALTER COLUMN id SET DEFAULT nextval('msr_seq')`,
 		`ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
-	}
+	)
 	stmts = append(stmts, indexDDL...)
-	stmts = append(stmts, viewDDL...)
 	for _, stmt := range stmts {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("étape du swap (%.60s): %w", stmt, err)
 		}
+	}
+	if err := recreateViews(ctx, tx, views); err != nil {
+		return err
+	}
+	if err := assertViewsRestored(ctx, tx, len(views)); err != nil {
+		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit du swap: %w", err)
@@ -168,7 +175,8 @@ func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before cha
 	}
 	slog.InfoContext(ctx, "purge_foreign_lusr_chain: reconstruction commitée",
 		"chain", chain, "rows_before", before.TotalRows, "rows_after", rebuilt,
-		"rows_removed", before.ForeignRaw, "indexes_restored", len(indexDDL))
+		"rows_removed", before.ForeignRaw, "indexes_restored", len(indexDDL),
+		"views_restored", len(views), "view_names", viewNames(views))
 	return nil
 }
 
@@ -190,4 +198,97 @@ func captureDDL(ctx context.Context, db *sql.DB, query string) ([]string, error)
 		}
 	}
 	return out, rows.Err()
+}
+
+// dependentView — une vue non interne dont le SQL référence match_skill_rank.
+type dependentView struct {
+	name string
+	ddl  string
+}
+
+func viewNames(views []dependentView) []string {
+	out := make([]string, 0, len(views))
+	for _, v := range views {
+		out = append(out, v.name)
+	}
+	return out
+}
+
+// captureDependentViews relève TOUTES les vues non internes dont le SQL référence
+// match_skill_rank — filtre sur le SQL, jamais sur un nom.
+//
+// Défaut corrigé le 2026-09-13 (C.9) : l'outil ne capturait que le nom
+// `match_skill_rank_latest`, et depuis C.3 bis la table en porte DEUX
+// (`match_skill_rank_latest_by_type` est née avec le graphe d'évolution). Filtrer
+// par nom, c'est perdre en silence toute vue ajoutée après l'écriture de l'outil —
+// et une vue perdue ne se voit qu'au premier lecteur qui tombe sur
+// « table does not exist ». Le filtre par SQL suit le schéma, il ne le devine pas.
+//
+// À SAVOIR sur DuckDB (mesuré) : `DROP TABLE` ne supprime PAS une vue dépendante —
+// elle survit au catalogue et se re-lie à la table recréée par le RENAME. Le swap
+// FONCTIONNERAIT donc même sans les DROP VIEW ; on les fait quand même, pour que la
+// vue rejouée soit celle qu'on a capturée et non une vue laissée liée par accident.
+func captureDependentViews(ctx context.Context, db *sql.DB) ([]dependentView, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT view_name, sql FROM duckdb_views()
+		WHERE internal = FALSE AND sql IS NOT NULL
+		  AND lower(sql) LIKE '%match_skill_rank%'
+		ORDER BY view_name`)
+	if err != nil {
+		return nil, fmt.Errorf("capture des vues dépendantes: %w", err)
+	}
+	defer rows.Close()
+	var out []dependentView
+	for rows.Next() {
+		var v dependentView
+		if err := rows.Scan(&v.name, &v.ddl); err != nil {
+			return nil, fmt.Errorf("capture des vues dépendantes (scan): %w", err)
+		}
+		if v.name == "" || v.ddl == "" {
+			continue
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+// recreateViews rejoue les DDL capturées. Une vue peut en référencer une autre :
+// on repasse tant que la passe précédente a fait progresser, et on échoue en nommant
+// les vues restantes plutôt que de laisser un lecteur découvrir le trou.
+func recreateViews(ctx context.Context, tx *sql.Tx, views []dependentView) error {
+	pending := make([]dependentView, len(views))
+	copy(pending, views)
+	for len(pending) > 0 {
+		var failed []dependentView
+		var lastErr error
+		for _, v := range pending {
+			if _, err := tx.ExecContext(ctx, v.ddl); err != nil {
+				failed = append(failed, v)
+				lastErr = err
+			}
+		}
+		if len(failed) == len(pending) {
+			return fmt.Errorf("recréation des vues bloquée sur %v (dépendances circulaires ?): %w",
+				viewNames(failed), lastErr)
+		}
+		pending = failed
+	}
+	return nil
+}
+
+// assertViewsRestored : garde de cardinalité sur les VUES, jumelle de celle sur les
+// lignes. Elle s'exécute DANS la transaction : un manque fait rollback du swap entier
+// plutôt que de laisser une base sans son lecteur.
+func assertViewsRestored(ctx context.Context, tx *sql.Tx, want int) error {
+	var got int
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM duckdb_views()
+		WHERE internal = FALSE AND sql IS NOT NULL AND lower(sql) LIKE '%match_skill_rank%'`).Scan(&got); err != nil {
+		return fmt.Errorf("recomptage des vues dépendantes: %w", err)
+	}
+	if got != want {
+		return fmt.Errorf("swap abandonné : %d vue(s) dépendante(s) restaurée(s) sur %d "+
+			"(rollback, aucune vue perdue)", got, want)
+	}
+	return nil
 }

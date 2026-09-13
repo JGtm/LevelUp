@@ -1,3 +1,41 @@
+## [2026-09-13] Lot C — C.9 : le swap de la purge ne restaurait qu'une vue sur deux — Complete (feat/finitions-lusr)
+
+**Decision technique principale.** Defaut trouve par le pilote APRES l'execution d'E.2 (purge
+commitee sur les 4 bases) : le recensement d'apres ne compte qu'UNE vue `match_skill_rank_latest%`.
+Cause : mon outil capturait la DDL de la vue par son NOM (`view_name = 'match_skill_rank_latest'`)
+alors que C.3 bis en a ajoute une seconde le meme jour. Une capture par nom est une liste en dur
+deguisee : elle ne suit pas les migrations, et l'objet oublie ne se manifeste qu'au premier lecteur
+qui tombe sur « table does not exist ». Corrige : capture de TOUTES les vues non internes dont le
+SQL reference `match_skill_rank` (filtre sur le SQL), DROP de chacune avant le swap, recreation de
+chacune apres, avec une passe de retry pour les vues qui en referencent d'autres, et une GARDE DE
+CARDINALITE sur les vues executee DANS la transaction — une vue manquante fait rollback du swap
+entier, comme la garde sur les lignes.
+
+**Resultats observes.** Deux mesures ont change la forme du correctif. (1) Sur DuckDB, `DROP TABLE`
+ne supprime PAS une vue dependante : elle survit au catalogue et se RE-LIE a la table recreee par le
+RENAME. Consequence directe : mon premier test (« les deux vues sont la apres la purge ») passait
+MEME avec le bug — la vue oubliee etait la par accident. Le garde utile porte donc sur la CAPTURE
+elle-meme (`TestCaptureDependentViews_SeesEveryViewOnTheTable`, qui compare ce que l'outil capture a
+ce que `duckdb_views()` liste) ; verifie par mutation : remettre le filtre par nom fait echouer ce
+test ET la garde de cardinalite (« 2 vue(s) restauree(s) sur 1, rollback »). (2) Cette meme mesure
+DONNE LE DIAGNOSTIC que le pilote cherchait : si `match_skill_rank_latest_by_type` avait existe sur
+les bases reelles, elle aurait survecu et le compte d'apres serait 2. Il est de 1 — la vue n'existait
+pas, la migration `player_msr_view_latest_by_type_v1` n'avait pas encore ete jouee sur ces bases.
+Rien n'a ete perdu. Cote `repair_msr_index` : test prouvant que DROP/CREATE INDEX ne touche aucune
+vue (verifie plutot que suppose — c'est exactement ce qu'on croyait du swap), et drapeau
+`-ensure-views` qui repose les vues avec la DDL des migrations via un helper exporte
+`halomigrations.EnsureMatchSkillRankViews` (meme mecanique que `migration.EnsureMatchKillEvents`) :
+c'est la seule voie sure quand le step est deja inscrit au ledger, puisque le runner ne rejoue
+jamais un step applique. Gates : build, vet, suite complete hors himap (172 paquets),
+`-tags=integration -p 1` sur duckdb/migration/games-migrations, lint 0 issue — tous exit 0.
+
+**Conclusion / prochaine etape.** C.9 `[x]`. Pour le pilote : verifier
+`SELECT name FROM schema_migrations WHERE name = 'player_msr_view_latest_by_type_v1'` sur une base
+purgee — absente confirme que rien n'a ete perdu et que le prochain boot posera la vue ; presente
+signifierait qu'elle a ete perdue, et `repair_msr_index -db <base> -ensure-views` la repose sans
+toucher au ledger ni aux donnees. Lecon transverse a retenir : ne jamais nommer un objet de schema
+dans un outil qui le reconstruit — le catalogue est la source, pas la memoire du redacteur.
+
 ## [2026-09-13] Lot C — C.8 (P0) : l'index ART de `match_skill_rank` ment aussi, outillage de diag/reparation — Complete (feat/finitions-lusr)
 
 **Decision technique principale.** P0 remonte par le pilote pendant le dry-run de la purge E.2,
