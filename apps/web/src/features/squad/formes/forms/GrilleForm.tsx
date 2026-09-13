@@ -33,6 +33,8 @@ export interface GrilleColumn {
   total?: string
   /** La colonne porte une durée (m:ss) plutôt qu'un compte. */
   duration?: boolean
+  /** La colonne porte un POURCENTAGE : le milieu de son axe ne s'arrondit pas. */
+  percent?: boolean
 }
 
 export interface GrilleFormProps {
@@ -48,6 +50,8 @@ export interface GrilleFormProps {
   tooltip: (row: GrilleRow, column: GrilleColumn, text: string) => string
   notMeasuredLabel: string
   axisTitle: string
+  /** Largeur de la colonne des noms (px) — à élargir pour un sous-libellé long. */
+  nameWidth?: number
 }
 
 export function GrilleForm({
@@ -59,6 +63,7 @@ export function GrilleForm({
   tooltip,
   notMeasuredLabel,
   axisTitle,
+  nameWidth,
 }: GrilleFormProps) {
   const model = buildValueGrid({
     rows: rows.map((r) => ({
@@ -75,6 +80,7 @@ export function GrilleForm({
       key: c.key,
       label: c.label,
       duration: c.duration,
+      fractionalAxis: c.percent,
       // Le total vient de l'appelant (il connaît l'unité) : la primitive ne sait
       // pas qu'un « taux de rafle » ne s'additionne pas.
       showTotal: false,
@@ -94,5 +100,7 @@ export function GrilleForm({
     ...model,
     columns: model.columns.map((c, i) => ({ ...c, totalText: columns[i].total ?? null })),
   }
-  return <ValueGrid model={withTotals} axisTitle={axisTitle} hatchNotMeasured />
+  return (
+    <ValueGrid model={withTotals} axisTitle={axisTitle} hatchNotMeasured nameWidth={nameWidth} />
+  )
 }

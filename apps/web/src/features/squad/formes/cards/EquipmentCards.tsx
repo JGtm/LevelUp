@@ -145,16 +145,17 @@ export function EquipmentSpreadCard({ vm }: { vm: FormesViewModel }) {
       title={ct.cards.equipmentSpread.title}
       note={ct.cards.equipmentSpread.note}
       legend={[
-        { label: t.common.spreadByMatch, ink: axisInk('camo') },
-        { label: t.common.parity, line: true },
+        { label: t.common.lowestToHighest, ink: axisInk('camo') },
+        { label: t.common.meanPerMatch, line: true },
       ]}
     >
       <BatonMinMaxForm
         series={series}
         formatValue={(v) => vm.fmtCount(v)}
+        meanPrefix={t.common.meanPrefix}
         rangeTipFmt={t.common.rangeTipFmt}
         meanTipFmt={t.common.meanTipFmt}
-        axisTitle={t.common.gesturesPerMatchAxis}
+        axisTitle={t.common.spreadAxis}
       />
     </FormesCard>
   )
@@ -276,7 +277,7 @@ export function EquipmentSquadTrackCard({ vm }: { vm: FormesViewModel }) {
     return {
       key: axis,
       label: t.axes[axis],
-      sublabel: vm.fmtCount(total),
+      sublabel: t.common.inSquadFmt(total),
       segments,
     }
   })

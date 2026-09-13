@@ -39,6 +39,8 @@ import { lobbyTrackRow, matchColumns } from './shared'
 const SOLO_WEAPON_ROWS = 12
 /** Le nombre d'armes de la grille par coéquipier (une colonne par joueur). */
 const SQUAD_WEAPON_ROWS = 8
+/** La colonne des noms d'arme : un nom et son dénominateur tiennent en 210 px. */
+const WEAPON_NAME_WIDTH = 210
 
 /** Carte 8 — « Écart à la parité, par famille d'arme » (contexte Solo). */
 export function PadsGapSoloCard({ vm }: { vm: FormesViewModel }) {
@@ -189,7 +191,7 @@ export function PadsWeaponGridCard({ vm }: { vm: FormesViewModel }) {
     accent: squadPlayerInk(0),
   }))
   const columns: GrilleColumn[] = [
-    { key: 'rate', label: t.padsColumns.rate },
+    { key: 'rate', label: t.padsColumns.rate, percent: true },
     { key: 'mine', label: t.padsColumns.mine },
     { key: 'occ', label: t.padsColumns.occupations },
   ]
@@ -213,6 +215,7 @@ export function PadsWeaponGridCard({ vm }: { vm: FormesViewModel }) {
         tooltip={(row, col, text) => t.common.valueTipFmt(row.label, col.label, text)}
         notMeasuredLabel={t.common.notMeasured}
         axisTitle={t.padsColumns.rateAxis}
+        nameWidth={WEAPON_NAME_WIDTH}
       />
     </FormesCard>
   )
@@ -391,7 +394,11 @@ export function PadsSquadWeaponGridCard({ vm }: { vm: FormesViewModel }) {
     label: vm.weaponLabel(w.key),
     sublabel: t.common.occupationsShortFmt(weaponOccupations(vm.block, w.key)),
   }))
-  const columns: GrilleColumn[] = vm.squad.map((s) => ({ key: s.xuid, label: s.label }))
+  const columns: GrilleColumn[] = vm.squad.map((s) => ({
+    key: s.xuid,
+    label: s.label,
+    percent: true,
+  }))
   const inkByXuid = new Map(vm.squad.map((s) => [s.xuid, s.ink]))
   return (
     <FormesCard
@@ -413,6 +420,7 @@ export function PadsSquadWeaponGridCard({ vm }: { vm: FormesViewModel }) {
         tooltip={(row, col, text) => t.common.valueTipFmt(row.label, col.label, text)}
         notMeasuredLabel={t.common.notMeasured}
         axisTitle={t.common.padShareAxis}
+        nameWidth={WEAPON_NAME_WIDTH}
       />
     </FormesCard>
   )

@@ -33,8 +33,13 @@ export const MINUS_INK = tokenCssVar('divergent-neg')
 /** Le fond d'une piste vide, et l'encre d'une étendue (non mesurée ≠ donnée). */
 export const TRACK_INK = 'var(--muted)'
 export const SPREAD_INK = 'var(--muted-foreground)'
-/** Mon camp sans identité de joueur (coéquipier hors escouade). */
-export const TEAM_REST_INK = tokenCssVar('team-ally')
+/**
+ * Mon camp SANS identité de joueur (coéquipier hors escouade) : l'encre de camp,
+ * à demi-opacité — le même traitement que la piste du bloc d'usage. À pleine
+ * opacité, elle se confondait avec celle du joueur de la page (mesuré sur la
+ * capture du lot : deux bleus voisins dans la même barre).
+ */
+export const TEAM_REST_INK = `color-mix(in oklab, ${tokenCssVar('team-ally')} 55%, var(--muted))`
 
 /**
  * L'encre d'un joueur de l'escouade par son RANG (0 = le joueur de la page).
@@ -71,8 +76,7 @@ export function axisInk(axis: EquipmentAxis): string {
  */
 export const ENEMY_HATCH: CSSProperties = {
   backgroundImage:
-    'repeating-linear-gradient(45deg, transparent 0px, transparent 4px, var(--muted-foreground) 4px, var(--muted-foreground) 6px)',
-  opacity: 0.45,
+    'repeating-linear-gradient(45deg, transparent 0px, transparent 4px, color-mix(in oklab, var(--muted-foreground) 45%, transparent) 4px, color-mix(in oklab, var(--muted-foreground) 45%, transparent) 6px)',
 }
 
 /**
@@ -82,8 +86,7 @@ export const ENEMY_HATCH: CSSProperties = {
  */
 export const UNMEASURED_HATCH: CSSProperties = {
   backgroundImage:
-    'repeating-linear-gradient(45deg, transparent 0px, transparent 3px, var(--muted-foreground) 3px, var(--muted-foreground) 4px)',
-  opacity: 0.3,
+    'repeating-linear-gradient(45deg, transparent 0px, transparent 3px, color-mix(in oklab, var(--muted-foreground) 30%, transparent) 3px, color-mix(in oklab, var(--muted-foreground) 30%, transparent) 4px)',
 }
 
 /**

@@ -92,9 +92,17 @@ export interface FormesText {
     aboveBelowByMatch: string
     unknownWeapon: string
     occupationsShortFmt: (n: number) => string
+    /** Le dénominateur d'une piste dont l'escouade est le tout. */
+    inSquadFmt: (n: number) => string
     matchesShortFmt: (n: number) => string
     gesturesAxis: string
     gesturesPerMatchAxis: string
+    /** L'axe du bâton d'étendue — une seule échelle, pas une par colonne. */
+    spreadAxis: string
+    /** Le préfixe de la moyenne écrite à droite du bâton. */
+    meanPrefix: string
+    lowestToHighest: string
+    meanPerMatch: string
     shareAxis: string
     lobbyShareAxis: string
     squadShareAxis: string
@@ -303,9 +311,14 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       aboveBelowByMatch: 'Au-dessus / en dessous par match',
       unknownWeapon: 'arme non cataloguée',
       occupationsShortFmt: (n) => `${n} occ.`,
+      inSquadFmt: (n) => `${n} dans l'escouade`,
       matchesShortFmt: (n) => (n > 1 ? `${n} matchs` : `${n} match`),
       gesturesAxis: 'gestes — une échelle par colonne',
       gesturesPerMatchAxis: 'gestes par match — une échelle par colonne',
+      spreadAxis: 'gestes par match',
+      meanPrefix: 'moy',
+      lowestToHighest: 'Du match le plus faible au plus fort',
+      meanPerMatch: 'Moyenne par match',
       shareAxis: 'part, en pourcentage du dénominateur de la ligne',
       lobbyShareAxis: 'part du lobby',
       squadShareAxis:
@@ -449,9 +462,14 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       aboveBelowByMatch: 'Above / below, match by match',
       unknownWeapon: 'uncatalogued weapon',
       occupationsShortFmt: (n) => `${n} occ.`,
+      inSquadFmt: (n) => `${n} in the squad`,
       matchesShortFmt: (n) => (n > 1 ? `${n} matches` : `${n} match`),
       gesturesAxis: 'actions — one scale per column',
       gesturesPerMatchAxis: 'actions per match — one scale per column',
+      spreadAxis: 'actions per match',
+      meanPrefix: 'avg',
+      lowestToHighest: 'From the weakest match to the strongest',
+      meanPerMatch: 'Average per match',
       shareAxis: 'share, in percent of the denominator of the row',
       lobbyShareAxis: 'share of the lobby',
       squadShareAxis:
