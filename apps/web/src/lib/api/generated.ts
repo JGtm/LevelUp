@@ -11181,6 +11181,8 @@ export interface components {
         SquadEchange: {
             cellules: components["schemas"]["SquadEchangeCell"][] | null;
             couverture: components["schemas"]["Couverture"];
+            /** Format: int64 */
+            delai_median_ms: number;
             delais: components["schemas"]["SquadEchangeBucket"][] | null;
             /** Format: int64 */
             fenetre_ms: number;
@@ -11193,6 +11195,7 @@ export interface components {
             /** Format: int64 */
             matchs_total: number;
             nuage_isolement?: components["schemas"]["SquadNuageIsolement"];
+            taux_par_session: components["schemas"]["SquadEchangeSessionPoint"][] | null;
         };
         SquadEchangeBucket: {
             /** Format: int64 */
@@ -11217,6 +11220,12 @@ export interface components {
         SquadEchangeJoueur: {
             gamertag: string;
             xuid: string;
+        };
+        SquadEchangeSessionPoint: {
+            couverture: components["schemas"]["Couverture"];
+            /** Format: int64 */
+            matchs_mesures: number;
+            session_label: string;
         };
         SquadEngagementSession: {
             durations_seconds: number[] | null;

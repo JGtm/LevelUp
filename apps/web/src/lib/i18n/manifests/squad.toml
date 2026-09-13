@@ -657,8 +657,8 @@ en = "Impact"
 # cartes de chaleur (garde anti-anglicismes, lot C.4).
 
 [squad.echange.section_title]
-fr = "Qui échange pour qui"
-en = "Who trades for whom"
+fr = "Qui couvre qui"
+en = "Who covers whom"
 
 [squad.echange.section_label]
 fr = "Échanges entre membres de l'escouade"
@@ -704,10 +704,6 @@ en = "Most covered: {player}"
 fr = "Le moins couvert : {player}"
 en = "Least covered: {player}"
 
-[squad.echange.badge_covered_detail]
-fr = "{n, plural, one {# vengeance} other {# vengeances}}"
-en = "{n, plural, one {# avenging kill} other {# avenging kills}}"
-
 [squad.echange.no_pairs]
 fr = "Aucune vengeance entre membres de l'escouade sur cette sélection."
 en = "No avenging kill between squad members in this selection."
@@ -723,8 +719,8 @@ en = "{avenger} avenged {avenged} {n, plural, one {# time} other {# times}} ({pe
 # ─── Distribution du délai (onglet Dynamique) ───────────────────────────────
 
 [squad.echange.delay_title]
-fr = "Délai d'échange"
-en = "Trade delay"
+fr = "Combien, et à quelle vitesse"
+en = "How many, and how fast"
 
 [squad.echange.delay_label]
 fr = "Distribution du délai d'échange"
@@ -763,10 +759,6 @@ en = "Trade window: {seconds, number} s — the last two bars are outside the wi
 [squad.echange.kpi_label]
 fr = "Taux d'échange"
 en = "Trade rate"
-
-[squad.echange.kpi_secondary]
-fr = "{brut, number} vengées sur {n, number}"
-en = "{brut, number} avenged out of {n, number}"
 
 [squad.echange.kpi_vs_usual]
 fr = "{delta} vs habituel"
@@ -873,3 +865,203 @@ en = "No point measured"
 [squad.isolement.empty_description]
 fr = "Aucune session de la sélection n'atteint le plancher de 5 morts examinées."
 en = "No session in the selection reaches the 5 examined-deaths floor."
+
+# ─── Maquette 4c520da6 : « L'échange », six cartes, fond ET forme ───────────
+#
+# Chaque carte porte son titre, son paragraphe « ce qu'elle a trouvé » (le « say »,
+# alimenté par les VRAIES données), sa figure, et sa note de pied. Les chiffres de
+# la maquette ne sont JAMAIS repris : ce sont des gabarits.
+
+[squad.echange.compte_title]
+fr = "Le compte"
+en = "The count"
+
+[squad.echange.compte_label]
+fr = "Le compte de l'échange"
+en = "The trade count"
+
+[squad.echange.compte_say]
+fr = "Un taux seul ne dit rien, et un taux seul est même trompeur : il se calcule sur les morts de votre camp. Il ne va donc jamais sans le compte brut et une quantité par match, qui elles ne dépendent pas de combien vous mourez."
+en = "A rate alone says nothing, and a rate alone is even misleading: it is computed on your side's deaths. It therefore never goes without the raw count and a per-match quantity, which do not depend on how much you die."
+
+[squad.echange.compte_foot]
+fr = "Même règle d'écart que le bandeau de briefing de l'Explorateur : quand le filtre couvre tout l'historique, l'écart vaut zéro par construction et n'est pas affiché."
+en = "Same deviation rule as the Explorer briefing banner: when the filter covers the whole history, the deviation is zero by construction and is not displayed."
+
+[squad.echange.kpi_rate_sub]
+fr = "des morts d'équipe, sous {seconds, number} s"
+en = "of team deaths, within {seconds, number} s"
+
+[squad.echange.kpi_delay_label]
+fr = "Délai médian"
+en = "Median delay"
+
+[squad.echange.kpi_delay_sub]
+fr = "quand l'échange a lieu"
+en = "when the trade happens"
+
+[squad.echange.kpi_delay_value]
+fr = "{seconds} s"
+en = "{seconds} s"
+
+[squad.echange.kpi_unanswered_label]
+fr = "Morts sans réponse"
+en = "Unanswered deaths"
+
+[squad.echange.kpi_unanswered_sub]
+fr = "sur {n, plural, one {# mort d'équipe} other {# morts d'équipe}}"
+en = "out of {n, plural, one {# team death} other {# team deaths}}"
+
+[squad.echange.kpi_unanswered_rate_label]
+fr = "Sans réponse par match"
+en = "Unanswered per match"
+
+[squad.echange.kpi_unanswered_rate_sub]
+fr = "indépendant du nombre de morts"
+en = "independent of how much you die"
+
+[squad.echange.kpi_no_value]
+fr = "—"
+en = "—"
+
+# ─── Carte 2 : « Combien, et à quelle vitesse » ─────────────────────────────
+
+[squad.echange.delay_say]
+fr = "Votre vengeance est rapide mais rare : sur {morts, number} morts d'équipe, {dedans, number} sont vengées dans la fenêtre et {dehors, number} arrivent trop tard. Le pic est à {pic} — rien à gagner en réactivité, tout à gagner en volume."
+en = "Your revenge is fast but rare: out of {morts, number} team deaths, {dedans, number} are avenged inside the window and {dehors, number} arrive too late. The peak sits at {pic} — nothing to gain in reactivity, everything to gain in volume."
+
+[squad.echange.delay_figure]
+fr = "Délai des {n, plural, one {# vengeance survenue} other {# vengeances survenues}} — sur {morts, number} morts d'équipe"
+en = "Delay of the {n, plural, one {# avenging kill} other {# avenging kills}} that happened — out of {morts, number} team deaths"
+
+[squad.echange.delay_window_mark]
+fr = "fenêtre {seconds, number} s"
+en = "{seconds, number} s window"
+
+[squad.echange.delay_foot]
+fr = "Au-delà de {seconds, number} s, la barre est montrée mais hachurée : ces vengeances ne comptent dans aucun taux. Montrer la fenêtre plutôt que la couper rend le seuil discutable."
+en = "Beyond {seconds, number} s the bar is shown but hatched: those avenging kills count in no rate. Showing the window rather than cutting it makes the threshold arguable."
+
+# ─── Carte 3 : « Qui couvre qui » ───────────────────────────────────────────
+
+[squad.echange.matrix_figure]
+fr = "Échanges réalisés sur {n, plural, one {# match d'escouade} other {# matchs d'escouade}}"
+en = "Trades performed over {n, plural, one {# squad match} other {# squad matches}}"
+
+[squad.echange.matrix_received]
+fr = "reçu {n, number}"
+en = "received {n, number}"
+
+[squad.echange.matrix_ramp_zero]
+fr = "0"
+en = "0"
+
+[squad.echange.matrix_ramp_max]
+fr = "{n, plural, one {# échange} other {# échanges}}"
+en = "{n, plural, one {# trade} other {# trades}}"
+
+[squad.echange.matrix_foot_orientation]
+fr = "Ligne : celui qui venge. Colonne : celui qui est vengé. Même orientation que « Assistant / Bénéficiaire » du graphe des assistances, juste au-dessus."
+en = "Row: the one who avenges. Column: the one avenged. Same orientation as « Assistant / Beneficiary » in the assists chart just above."
+
+# ─── Carte 5 : « Donné et reçu, par coéquipier » ────────────────────────────
+
+[squad.echange.donne_recu_title]
+fr = "Donné et reçu, par coéquipier"
+en = "Given and received, per teammate"
+
+[squad.echange.donne_recu_label]
+fr = "Échanges donnés et reçus par joueur"
+en = "Trades given and received per player"
+
+[squad.echange.donne_recu_say]
+fr = "Même donnée que la matrice, en plus grossier : {joueur} reçoit {recu, number} et n'en donne que {donne, number}."
+en = "Same data as the matrix, coarser: {joueur} receives {recu, number} and only gives {donne, number}."
+
+[squad.echange.donne_recu_say_equilibre]
+fr = "Même donnée que la matrice, en plus grossier : sur ce périmètre, chacun donne à peu près ce qu'il reçoit."
+en = "Same data as the matrix, coarser: over this scope, everyone gives roughly what they receive."
+
+[squad.echange.donne_recu_figure]
+fr = "Échanges donnés et reçus, par joueur"
+en = "Trades given and received, per player"
+
+[squad.echange.donne_recu_given]
+fr = "Donné"
+en = "Given"
+
+[squad.echange.donne_recu_received]
+fr = "Reçu"
+en = "Received"
+
+[squad.echange.donne_recu_foot]
+fr = "Doublonne en partie avec la matrice, qui porte la même information en plus fin."
+en = "Partly duplicates the matrix, which carries the same information in finer detail."
+
+# ─── Carte 6 : « Taux d'échange par session » ───────────────────────────────
+
+[squad.echange.session_rate_title]
+fr = "Taux d'échange par session"
+en = "Trade rate per session"
+
+[squad.echange.session_rate_label]
+fr = "Taux d'échange par soirée"
+en = "Trade rate per evening"
+
+[squad.echange.session_rate_say]
+fr = "La couverture va de {bas} à {haut} selon les soirées, pour {taux} sur l'ensemble — sur {n, plural, one {# soirée mesurée} other {# soirées mesurées}}."
+en = "Coverage ranges from {bas} to {haut} depending on the evening, for {taux} overall — over {n, plural, one {# measured evening} other {# measured evenings}}."
+
+[squad.echange.session_rate_figure]
+fr = "Part des morts d'équipe vengées sous {seconds, number} s, par soirée"
+en = "Share of team deaths avenged within {seconds, number} s, per evening"
+
+[squad.echange.session_rate_foot]
+fr = "Une seule série, donc pas de légende : le titre la nomme. Dernier point appuyé et étiqueté, les autres non."
+en = "A single series, hence no legend: the title names it. The last point is emphasised and labelled, the others are not."
+
+[squad.echange.session_rate_empty_title]
+fr = "Pas encore assez de soirées"
+en = "Not enough evenings yet"
+
+[squad.echange.session_rate_empty_description]
+fr = "Il faut au moins {floor, number} soirées mesurées pour qu'une évolution veuille dire quelque chose."
+en = "At least {floor, number} measured evenings are needed for a trend to mean anything."
+
+[squad.echange.session_rate_y_axis]
+fr = "Part des morts vengées"
+en = "Share of avenged deaths"
+
+# ─── Carte 4 : « Pourquoi la vengeance ne vient pas » (nuage) ───────────────
+
+[squad.isolement.card_title]
+fr = "Pourquoi la vengeance ne vient pas"
+en = "Why revenge does not come"
+
+[squad.isolement.say]
+fr = "Les deux vont ensemble, et c'est le résultat le plus exploitable de la page : {loin} meurt hors radar {loinIso} du temps et n'est vengé que {loinCouv} ; {proche}, à {procheIso} hors radar, est vengé {procheCouv}. On ne venge pas ce qu'on ne voit pas. Lisez la taille des points avant le taux : elle dit combien de morts chacun a réellement subies."
+en = "The two go together, and it is the most actionable result on this page: {loin} dies out of radar {loinIso} of the time and is only avenged {loinCouv}; {proche}, at {procheIso} out of radar, is avenged {procheCouv}. You do not avenge what you cannot see. Read point size before rate: it says how many deaths each player actually took."
+
+[squad.isolement.figure]
+fr = "Un petit point par session, un gros point par joueur — la taille dit le nombre de morts"
+en = "One small dot per session, one large dot per player — size says the number of deaths"
+
+[squad.isolement.legend_deaths]
+fr = "{n, plural, one {# mort} other {# morts}}"
+en = "{n, plural, one {# death} other {# deaths}}"
+
+[squad.isolement.legend_session]
+fr = "une session"
+en = "one session"
+
+[squad.isolement.legend_low_sample]
+fr = "moins de {floor, number} morts"
+en = "fewer than {floor, number} deaths"
+
+[squad.isolement.foot_radar]
+fr = "Portée du radar : lue par match dans le référentiel des variantes. Ce n'est pas un seuil choisi — au-delà, un coéquipier ne peut pas savoir que vous êtes en difficulté."
+en = "Radar range: read per match from the variant reference table. It is not a chosen threshold — beyond it, a teammate cannot know you are in trouble."
+
+[squad.isolement.foot_denominator]
+fr = "Les deux axes sont des parts de VOS morts : qui meurt peu est jugé sur peu d'événements. D'où : la position dit la NATURE des morts, la taille du point dit COMBIEN, et sous {floor, number} morts le point est cerclé de pointillés. Aucun classement de joueurs n'est tiré de ce nuage."
+en = "Both axes are shares of YOUR deaths: whoever dies little is judged on few events. Hence: position says the NATURE of deaths, point size says HOW MANY, and below {floor, number} deaths the dot is ringed with dashes. No player ranking is drawn from this cloud."

@@ -24413,6 +24413,9 @@ components:
             - "null"
         couverture:
           $ref: '#/components/schemas/Couverture'
+        delai_median_ms:
+          format: int64
+          type: integer
         delais:
           items:
             $ref: '#/components/schemas/SquadEchangeBucket'
@@ -24441,6 +24444,12 @@ components:
           type: integer
         nuage_isolement:
           $ref: '#/components/schemas/SquadNuageIsolement'
+        taux_par_session:
+          items:
+            $ref: '#/components/schemas/SquadEchangeSessionPoint'
+          type:
+            - array
+            - "null"
       required:
         - joueurs
         - cellules
@@ -24451,6 +24460,8 @@ components:
         - matchs_habituel
         - matchs_mesures
         - matchs_total
+        - delai_median_ms
+        - taux_par_session
       type: object
     SquadEchangeBucket:
       additionalProperties: false
@@ -24510,6 +24521,21 @@ components:
       required:
         - xuid
         - gamertag
+      type: object
+    SquadEchangeSessionPoint:
+      additionalProperties: false
+      properties:
+        couverture:
+          $ref: '#/components/schemas/Couverture'
+        matchs_mesures:
+          format: int64
+          type: integer
+        session_label:
+          type: string
+      required:
+        - session_label
+        - couverture
+        - matchs_mesures
       type: object
     SquadEngagementSession:
       additionalProperties: false

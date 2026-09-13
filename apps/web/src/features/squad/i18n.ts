@@ -169,20 +169,15 @@ export interface SquadText {
   assists: {
     title: string
     description: string
-    colAssistant: string
-    colKiller: string
-    colCount: string
-    colShare: string
-    colStolen: string
-    colCountTooltip: string
-    colShareTooltip: string
-    colStolenTooltip: string
     /** Bandeau de couverture : « mesuré sur N des M matchs ». */
     coverage: (measured: number, total: number) => string
     coverageHint: string
     /** Mesuré, mais aucune assistance interne à l'escouade. */
     noPairs: string
-    sortByAriaLabel: (col: string) => string
+    /** Infobulle d'un segment : la PART de la paire dans les assistances mesurées. */
+    tooltipShare: (share: string) => string
+    /** Infobulle d'un segment : les éliminations volées de la paire, quand il y en a. */
+    tooltipStolen: (n: number) => string
   }
   timeline: {
     title: string
@@ -194,6 +189,10 @@ export interface SquadText {
   }
   heatmap: {
     title: string
+    /** Nom de l'axe X de la heatmap joueur x carte. */
+    xAxis: string
+    /** Nom de l'axe Y de la heatmap joueur x carte. */
+    yAxis: string
     pieceTier1: string
     pieceTier2: string
     pieceTier3: string
@@ -517,21 +516,13 @@ const FR_TEXT: SquadText = {
   assists: {
     title: 'Assistances dans l\'escouade',
     description: 'Qui prépare les éliminations de qui, sur les matchs de la sélection.',
-    colAssistant: 'Assistant',
-    colKiller: 'Bénéficiaire',
-    colCount: 'Assistances',
-    colShare: 'Part',
-    colStolen: 'Éliminations volées',
-    colCountTooltip: 'Nombre d\'éliminations du bénéficiaire préparées par l\'assistant.',
-    colShareTooltip: 'Part de cette paire dans les assistances mesurées de l\'escouade.',
-    colStolenTooltip:
-      'Assistances où l\'assistant a infligé plus de dégâts que le joueur crédité de l\'élimination. Un décompte, pas une réattribution : le crédit du jeu n\'est jamais réécrit.',
     coverage: (measured, total) =>
       `Mesuré sur ${measured} des ${total} match${total > 1 ? 's' : ''} de la sélection`,
     coverageHint:
       'L\'assistance se lit dans le film du match. Les films expirent côté serveur : les matchs manquants ne pourront plus être mesurés.',
     noPairs: 'Aucune assistance entre membres de l\'escouade sur les matchs mesurés.',
-    sortByAriaLabel: (col) => `Trier par ${col}`,
+    tooltipShare: (share) => `part ${share}`,
+    tooltipStolen: (n) => `dont ${n} volée${n > 1 ? 's' : ''}`,
   },
   timeline: {
     title: 'Performance d\'escouade par session',
@@ -543,6 +534,8 @@ const FR_TEXT: SquadText = {
   },
   heatmap: {
     title: 'Performance par joueur × carte',
+    xAxis: 'Carte',
+    yAxis: 'Joueur',
     pieceTier1: 'Excellente',
     pieceTier2: 'Bonne',
     pieceTier3: 'Moyenne',
@@ -874,21 +867,13 @@ const EN_TEXT: SquadText = {
   assists: {
     title: 'Assists within the squad',
     description: 'Who sets up whose kills, across the selected matches.',
-    colAssistant: 'Assistant',
-    colKiller: 'Beneficiary',
-    colCount: 'Assists',
-    colShare: 'Share',
-    colStolen: 'Stolen kills',
-    colCountTooltip: 'Number of the beneficiary\'s kills set up by the assistant.',
-    colShareTooltip: 'Share of this pair among the squad\'s measured assists.',
-    colStolenTooltip:
-      'Assists where the assistant dealt more damage than the player credited with the kill. A count, not a reassignment: the game\'s credit is never rewritten.',
     coverage: (measured, total) =>
       `Measured on ${measured} of ${total} selected match${total > 1 ? 'es' : ''}`,
     coverageHint:
       'Assists are read from the match film. Films expire server-side: the missing matches can no longer be measured.',
     noPairs: 'No assists between squad members across the measured matches.',
-    sortByAriaLabel: (col) => `Sort by ${col}`,
+    tooltipShare: (share) => `share ${share}`,
+    tooltipStolen: (n) => `of which ${n} stolen`,
   },
   timeline: {
     title: 'Squad performance by session',
@@ -900,6 +885,8 @@ const EN_TEXT: SquadText = {
   },
   heatmap: {
     title: 'Performance per player × map',
+    xAxis: 'Map',
+    yAxis: 'Player',
     pieceTier1: 'Excellent',
     pieceTier2: 'Good',
     pieceTier3: 'Average',
