@@ -121,6 +121,20 @@ type Input struct {
 
 // Build assemble le bloc. Scope vide ⇒ bloc Available avec zéro match : « 0 sur
 // 0 » doit pouvoir s'afficher, le vide n'est pas une indisponibilité.
+//
+// # SEULS LES MATCHS QUI ONT QUELQUE CHOSE À DIRE SONT PUBLIÉS (2026-09-13)
+//
+// Un match du scope qui ne porte NI film décodé NI feuille d'objectif ne peut
+// alimenter aucune des dix-neuf cartes : les parts, les cadences et les socles
+// se lisent dans le film, les grandeurs d'objectif dans la feuille de match.
+// Publié quand même, il ne servait qu'à être compté — et sur une portée réelle
+// de 1 147 matchs, ces lignes vides pesaient les deux tiers du bloc.
+//
+// CE QUI EST COMPTÉ NE CHANGE PAS, ET C'EST TOUT L'ENJEU : [domain.SquadFormesBlock.MatchesTotal]
+// reste la portée ENTIÈRE et [domain.SquadFormesBlock.MatchesMeasured] le nombre
+// de matchs à film. Les écrans qui disent « N matchs sans film décodé sont hors
+// de cette forme » dérivent ce nombre des deux compteurs, jamais de la longueur
+// de la liste — sans quoi l'allègement se lirait comme une perte de portée.
 func Build(in Input) domain.SquadFormesBlock {
 	out := domain.SquadFormesBlock{
 		Available:    true,
@@ -169,6 +183,13 @@ func Build(in Input) domain.SquadFormesBlock {
 		m.Objective = buildObjective(objByMatch[meta.MatchID], columnsByFamily, teamOf)
 		if m.Measured {
 			out.MatchesMeasured++
+		}
+		// UN MATCH QUI NE PORTE NI FILM NI OBJECTIF N'A RIEN À PUBLIER — voir
+		// l'en-tête de fonction. Il reste compté (MatchesTotal, et donc le nombre
+		// de matchs sans film que les formes affichent en pied), il n'occupe
+		// simplement plus une ligne de contrat vide.
+		if !m.Measured && m.Objective == nil {
+			continue
 		}
 		out.Matches = append(out.Matches, m)
 	}
