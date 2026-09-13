@@ -345,3 +345,9 @@ lot H, pas avant. Effort L.
   `feat/weapon-sameclock` (juillet, dépassée par killsource) et `fix/ci-todo-expiry-season-pass`
   (août, jamais fusionnée) supprimées. Restent sur origin : main, feat/v75, 5 dependabot (PR
   ouvertes), `wt/ti11-cadre` (autre session).
+- 2026-09-13 (décision utilisateur, après explication du travail) : `wt/ti11-cadre` (recherche
+  ti=11 du 27 août, grammaire prouvée mais état vivant hors du film, jamais fusionnée) SUPPRIMÉE :
+  worktree, branche locale, branche origin. La conclusion reste dans le journal du 27-08 et le
+  registre. 11 dossiers orphelins de worktrees (dont 3 plus anciens) effacés après retrait des
+  jonctions. Restent sur disque : LevelUp, LevelUp-go-migration, film-residus, section3-chunk00
+  (autre session) et 3 dossiers de sauvegardes/archives non touchés.
