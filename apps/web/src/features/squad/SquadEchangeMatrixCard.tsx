@@ -1,37 +1,56 @@
 /**
- * SquadEchangeMatrixCard — « Qui échange pour qui » (onglet Synergies).
+ * SquadEchangeMatrixCard — « Qui couvre qui » (onglet Synergies, carte 3 de l'échange).
  *
  * Un ÉCHANGE est une mort vengée : un coéquipier abat le tueur dans les 5 s.
- * LIGNE = celui qui venge, COLONNE = celui qui est vengé — la même orientation que
- * `SquadAssistPairsTable` (Assistant / Bénéficiaire), son voisin immédiat.
+ * LIGNE = celui qui venge, COLONNE = celui qui est vengé — la même orientation que le
+ * graphe des assistances (Assistant / Bénéficiaire), son voisin immédiat.
  *
- * LE BANDEAU DE COUVERTURE VIT AU-DESSUS DU GRAPHE, pas en note de bas de page, et
- * pour la raison exacte du tableau d'assistance : le journal des morts vient du film
- * du match, et les films Theater EXPIRENT côté serveur. Le manque est DÉFINITIF, pas
- * un retard, et un chiffre calculé sur une fraction de la sélection sans dire
- * laquelle ne serait pas reproductible.
+ * LE BANDEAU DE COUVERTURE VIT AU-DESSUS DU GRAPHE, pas en note de bas de page, et pour la
+ * raison exacte du graphe des assistances : le journal des morts vient du film du match, et
+ * les films Theater EXPIRENT côté serveur. Le manque est DÉFINITIF, pas un retard.
  *
- * PALETTE : rampe de FRÉQUENCE, mono-teinte (`heatmapRampTokens('frequency')` via
- * `paletteMode="frequency"`). Un nombre de vengeances n'est ni chaud ni froid — la
- * rampe cold→hot lui collerait un jugement, et les couleurs PAR JOUEUR
- * (`squad-player-*`) feraient croire que la teinte désigne quelqu'un.
+ * RAMPE 0 → MAX, ET PAS « MIN OBSERVÉ » → MAX (correction 2026-09-13, maquette 4c520da6).
+ * Le wrapper ajuste par défaut le bas de l'échelle à la plus petite valeur : sur un roster
+ * homogène (133 … 190 échanges), les six cases sortaient toutes dans le dernier quart de la
+ * rampe — un aplat, dont on ne lisait plus aucune intensité. L'échelle part donc de ZÉRO :
+ * c'est le seul bas qui a un sens pour un COMPTE.
  *
- * La carte n'est pas montée quand la section est absente du contrat (cf.
- * SquadSynergiesPage) : une section omise n'est pas une section à zéro.
+ * PALETTE : rampe de FRÉQUENCE, mono-teinte (`paletteMode="frequency"`). Un nombre de
+ * vengeances n'est ni chaud ni froid — la rampe cold→hot lui collerait un jugement, et les
+ * couleurs PAR JOUEUR (`squad-player-*`) feraient croire que la teinte désigne quelqu'un.
+ *
+ * LA LIGNE « REÇU N » ET LES DEUX PUCES SONT EN DOM, SOUS LE GRAPHE, pas dans le canvas.
+ * ECharts ne sait pas poser un second rang d'étiquettes sous un axe de catégories ; les
+ * fabriquer en `graphic` aurait été une mise en page manuelle en pixels, illisible et
+ * fragile. La rangée reprend donc la géométrie de la grille du wrapper (`left: 96px`,
+ * `right: 24px`, colonnes égales) et se réaligne d'elle-même à tout redimensionnement.
  */
 import { useMemo } from 'react'
 
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import { heatmapRampTokens } from '@/components/charts/heatmapColors'
+import { getEChartsThemeColors, melangeHex } from '@/components/charts/_utils'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { tokenVar } from '@/lib/accessibility'
+import { resolveToken, tokenVar } from '@/lib/accessibility'
 import { intlLocale } from '@/lib/formatters'
 import type { SquadEchange } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
-import { extremesCouverture, matriceSeries, matriceVide, PLANCHER_MORTS } from './squadEchange.logic'
+import {
+  couvertureParJoueur,
+  extremesCouverture,
+  matriceSeries,
+  matriceVide,
+  PLANCHER_MORTS,
+} from './squadEchange.logic'
 import { getSquadEchangeText } from './squadEchangeStrings'
+
+/** Géométrie de la grille du wrapper `Heatmap2DChart` — la rangée « reçu N » s'y aligne. */
+const GRILLE_GAUCHE_PX = 96
+const GRILLE_DROITE_PX = 24
 
 export interface SquadEchangeMatrixCardProps {
   echange: SquadEchange
@@ -39,6 +58,7 @@ export interface SquadEchangeMatrixCardProps {
 
 export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps) {
   const locale = useAppShellStore((s) => s.locale)
+  const colorPalette = useSettingsDraftStore((s) => s.localUiPrefs.colorPalette)
   const t = getSquadEchangeText(locale)
   const numLoc = intlLocale(locale)
 
@@ -59,21 +79,48 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
   const secondes = echange.fenetre_ms / 1000
   const series = useMemo(() => matriceSeries(echange), [echange])
   const extremes = useMemo(() => extremesCouverture(echange), [echange])
+  const recus = useMemo(() => couvertureParJoueur(echange), [echange])
   const vide = matriceVide(echange)
 
-  // Tooltip PROPRE à cette lecture : le libellé par défaut du wrapper parle de taux
-  // de victoire et de matchs, ce qu'une case de cette matrice n'est pas.
-  // Le wrapper n'appelle ce formateur que sur une case REMPLIE (une case vide n'a pas
-  // d'infobulle) ; `value ?? 0` n'est là que pour satisfaire le type nullable.
+  const maxEchanges = useMemo(
+    () => (echange.cellules ?? []).reduce((m, c) => Math.max(m, c.nombre), 0),
+    [echange.cellules],
+  )
+
+  // Les deux bouts de la rampe : la légende DOM peint exactement le dégradé du graphe.
+  const [rampeBas, rampeHaut] = useMemo(() => {
+    const tokens = heatmapRampTokens('frequency', colorPalette)
+    return [resolveToken(tokens[0]), resolveToken(tokens[tokens.length - 1])]
+  }, [colorPalette])
+
+  // Tooltip PROPRE à cette lecture : le libellé par défaut du wrapper parle de taux de
+  // victoire et de matchs, ce qu'une case de cette matrice n'est pas.
   const formatTooltip = useMemo(
     () => (p: ChartPointHeatmap) =>
       t.matrixTooltip(p.y, p.x, p.value ?? 0, perMatchFmt.format(Number(p.detail?.perMatch ?? 0))),
     [t, perMatchFmt],
   )
 
-  // Le CONSTAT EN MOTS, au-dessus du graphe : « sur N matchs, X des Y morts de votre
-  // camp ont été vengées dans les 5 s ». Un lecteur doit pouvoir repartir avec la
-  // phrase sans lire la grille.
+  // LA RAMPE EST PEINTE ICI, CASE PAR CASE. Le `visualMap` d'ECharts peint sa réglette
+  // mais ne teinte pas une heatmap catégorie × catégorie : mesuré sur pièces le
+  // 2026-09-13 — quatre cases de valeurs différentes ressortaient au même rgb(232,236,244),
+  // et le « dégradé » qu'on croyait voir était le `splitArea` alterné des axes.
+  const cellColor = useMemo(
+    () => (_v: number, ratio: number) => melangeHex(rampeBas, rampeHaut, ratio),
+    [rampeBas, rampeHaut],
+  )
+
+  // Encre du nombre écrit dans la case : claire sur une case sombre (bas de rampe),
+  // sombre sur une case claire (haut de rampe). Les deux encres sont celles du THÈME du
+  // graphe (fond de carte / texte), pas des couleurs neuves.
+  // ENCRE UNIQUE, ET ELLE SE LIT SUR TOUTE LA RAMPE. Le bas de la rampe de fréquence est
+  // un bleu très sombre et le haut un bleu moyen : l'encre CLAIRE du thème est lisible sur
+  // les deux, là où l'encre par défaut d'ECharts (grise) disparaît sur le bas.
+  const cellLabelColor = getEChartsThemeColors().text
+
+  // Le CONSTAT EN MOTS, au-dessus du graphe : « sur N matchs, X des Y morts de votre camp
+  // ont été vengées dans les 5 s ». Un lecteur doit pouvoir repartir avec la phrase sans
+  // lire la grille.
   const narrative = t.narrative({
     matches: echange.matchs_total,
     brut: echange.couverture.brut,
@@ -84,6 +131,7 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
 
   const footer = (
     <div className="space-y-1 border-t border-border px-3 py-2">
+      <p className="text-xs text-muted-foreground">{t.matrixFootOrientation}</p>
       <p className="text-xs text-muted-foreground">{t.definition(secondes)}</p>
       {echange.couverture.echantillon_faible && (
         <p className="text-xs text-muted-foreground" data-testid="squad-echange-low-sample">
@@ -96,7 +144,7 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
   return (
     <SectionCard title={t.sectionTitle} label={t.sectionLabel} footer={footer}>
       <div className="space-y-2 px-3 py-2" data-testid="squad-echange-matrix">
-        {/* Bandeau de couverture AU-DESSUS du graphe (doctrine SquadAssistPairsTable). */}
+        {/* Bandeau de couverture AU-DESSUS du graphe (doctrine de la page). */}
         <p
           className="text-xs text-muted-foreground"
           data-testid="squad-echange-coverage"
@@ -104,39 +152,75 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
         >
           {t.coverage(echange.matchs_mesures, echange.matchs_total)}
         </p>
-        <p className="text-sm text-foreground" data-testid="squad-echange-narrative">
+        <p
+          className="border-l-2 border-info pl-3 text-sm text-foreground"
+          data-testid="squad-echange-narrative"
+        >
           {narrative}
         </p>
         {vide ? (
           <EmptyStateNotice title={t.emptyTitle} description={t.noPairs} />
         ) : (
           <>
+            <p className="text-xs text-muted-foreground">{t.matrixFigure(echange.matchs_total)}</p>
             <Heatmap2DChart
               series={series}
               paletteMode="frequency"
+              valueRange={[0, maxEchanges]}
+              showVisualMap={false}
+              cellColor={cellColor}
+              cellLabelColor={cellLabelColor}
               formatTooltip={formatTooltip}
+              height={260}
             />
-            {/* Axes nommés : sans eux, « ligne » et « colonne » sont deux gamertags
-                et rien ne dit lequel venge l'autre. */}
+            {/* « reçu N » sous chaque COLONNE, aligné sur la grille du wrapper. */}
+            <div
+              className="grid gap-1 text-center"
+              style={{
+                paddingLeft: GRILLE_GAUCHE_PX,
+                paddingRight: GRILLE_DROITE_PX,
+                gridTemplateColumns: `repeat(${recus.length}, minmax(0, 1fr))`,
+              }}
+              data-testid="squad-echange-recus"
+            >
+              {recus.map((j) => (
+                <div key={j.xuid} className="space-y-1">
+                  <p className="text-2xs text-muted-foreground">{t.matrixReceived(j.vengeances)}</p>
+                  {extremes?.plusCouvert.xuid === j.xuid && (
+                    <NarrativeBadge
+                      size="sm"
+                      colorVar={tokenVar('outcome-win')}
+                      label={t.badgeMostCovered(j.gamertag)}
+                    />
+                  )}
+                  {extremes?.moinsCouvert.xuid === j.xuid && (
+                    <NarrativeBadge
+                      size="sm"
+                      colorVar={tokenVar('warning')}
+                      label={t.badgeLeastCovered(j.gamertag)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Légende de rampe : le dégradé du graphe, avec les MOTS que la réglette
+                ECharts ne porte pas (« 0 … N échanges »). */}
+            <div
+              className="flex items-center gap-2 text-2xs text-muted-foreground"
+              data-testid="squad-echange-ramp"
+            >
+              <span>{t.matrixRampZero}</span>
+              <span
+                className="h-2 w-32 rounded-full"
+                style={{ background: `linear-gradient(90deg, ${rampeBas}, ${rampeHaut})` }}
+              />
+              <span>{t.matrixRampMax(maxEchanges)}</span>
+            </div>
+            {/* Axes nommés : sans eux, « ligne » et « colonne » sont deux gamertags et
+                rien ne dit lequel venge l'autre. */}
             <p className="text-2xs uppercase tracking-wide text-muted-foreground">
               {t.axisAvenger} × {t.axisAvenged}
             </p>
-            {extremes && (
-              <div className="flex flex-wrap gap-2" data-testid="squad-echange-badges">
-                <NarrativeBadge
-                  size="sm"
-                  colorVar={tokenVar('outcome-win')}
-                  label={t.badgeMostCovered(extremes.plusCouvert.gamertag)}
-                  detailSuffix={t.badgeCoveredDetail(extremes.plusCouvert.vengeances)}
-                />
-                <NarrativeBadge
-                  size="sm"
-                  colorVar={tokenVar('info')}
-                  label={t.badgeLeastCovered(extremes.moinsCouvert.gamertag)}
-                  detailSuffix={t.badgeCoveredDetail(extremes.moinsCouvert.vengeances)}
-                />
-              </div>
-            )}
           </>
         )}
       </div>
