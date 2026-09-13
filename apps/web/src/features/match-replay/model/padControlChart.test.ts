@@ -2,8 +2,8 @@
  * Tests — padControlChart (la projection du contrôle des armes spéciales).
  *
  * CE QU'ILS PROTÈGENT :
- *   1. L'ÉCHELLE EST COMMUNE À TOUTES LES LIGNES — toutes comptent des prises, une échelle par
- *      ligne ferait passer une prise pour cinq.
+ *   1. UNE ARME, UNE BARRE : le rail vaut 100 % des occupations NOMMÉES de ce socle, et le
+ *      total de la ligne est publié à côté du nom de l'arme.
  *   2. LA TEINTE D'UN JOUEUR EST STABLE D'UNE LIGNE À L'AUTRE : elle suit son rang DANS LE CAMP,
  *      pas son rang parmi les preneurs de CE socle.
  *   3. CE QUI N'A PAS DE RAMASSEUR NOMMÉ N'EST VERSÉ À AUCUN CAMP — il ressort en annotation.
@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildPadControlBars, padTicks, padTint } from './padControlChart'
+import { buildPadControlBars, padTint } from './padControlChart'
 import type { PadControl } from './padControlLogic'
 
 const SNIPER = 'sniper'
@@ -57,17 +57,6 @@ function barres() {
   })
 }
 
-describe('padTicks — les graduations entières de l’axe des prises', () => {
-  it('compte de un en un tant que l’axe reste lisible', () => {
-    expect(padTicks(3)).toEqual([0, 1, 2, 3])
-  })
-
-  it('élargit le pas au-delà de dix graduations, borne comprise', () => {
-    expect(padTicks(24)).toEqual([0, 3, 6, 9, 12, 15, 18, 21, 24])
-    expect(padTicks(7)).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
-  })
-})
-
 describe('padTint — l’éclaircissement d’un joueur dans son camp', () => {
   it('donne l’encre pure au premier et la plus claire au dernier', () => {
     expect(padTint(0, 4)).toBe(100)
@@ -84,53 +73,57 @@ describe('padTint — l’éclaircissement d’un joueur dans son camp', () => {
   })
 })
 
-describe('buildPadControlBars — une échelle commune, des teintes stables', () => {
-  it('borne toutes les lignes sur le plus gros total de camp du match', () => {
+describe('buildPadControlBars — une arme, une barre', () => {
+  it('publie le total NOMMÉ de chaque socle : c’est le dénominateur du rail', () => {
     const m = barres()
-    expect(m.bound).toBe(3)
-    expect(m.ticks).toEqual([0, 1, 2, 3])
+    expect(m.rows.map((r) => [r.label, r.total])).toEqual([
+      ['S7 Sniper', 4],
+      ['M41 SPNKr', 2],
+    ])
   })
 
-  it('rapporte chaque segment à cette borne commune, ligne après ligne', () => {
+  it('rapporte chaque segment au rail de SA ligne, pas à une borne commune', () => {
     const m = barres()
-    const sniperCobra = m.rows[0].sticks[1].segments[0]
-    expect(sniperCobra).toMatchObject({ name: 'Charlie', count: 3, fraction: 1 })
-    const rocketEagle = m.rows[1].sticks[0].segments[0]
-    // Une prise sur trois : le bâton du lance-roquettes ne se remplit PAS, alors qu'une échelle
-    // par ligne l'aurait rempli comme les trois prises du fusil.
-    expect(rocketEagle).toMatchObject({ name: 'Alpha', count: 1 })
-    expect(rocketEagle.fraction).toBeCloseTo(1 / 3)
+    const sniper = m.rows[0].segments
+    // Alpha ouvre la barre (camp du joueur de la page), Charlie suit : 1/4 puis 3/4.
+    expect(sniper.map((s) => s.name)).toEqual(['Alpha', 'Charlie'])
+    expect(sniper[0].fraction).toBeCloseTo(1 / 4)
+    expect(sniper[1].fraction).toBeCloseTo(3 / 4)
+  })
+
+  it('pose le filet sur le PREMIER segment du second camp, jamais au bord du rail', () => {
+    const m = barres()
+    expect(m.rows[0].segments.map((s) => s.startsSide)).toEqual([false, true])
   })
 
   it('garde à un joueur la MÊME teinte d’une arme à l’autre (rang dans le camp)', () => {
     const m = barres()
-    // Delta est 2e de son camp : sur le lance-roquettes, où il est le SEUL preneur, il garde
-    // sa teinte de 2e — jamais l'encre pure du premier.
-    const delta = m.rows[1].sticks[1].segments[0]
-    expect(delta.name).toBe('Delta')
+    // Delta est 2e de son camp : sur le lance-roquettes, où il est le SEUL preneur de son camp,
+    // il garde sa teinte de 2e — jamais l'encre pure du premier.
+    const delta = m.rows[1].segments.find((s) => s.name === 'Delta')!
     expect(delta.tint).toBe(40)
     expect(delta.color).toContain('color-mix(in oklab,')
     // Alpha est 1er du sien : encre pure, sans mélange.
-    expect(m.rows[0].sticks[0].segments[0].color).toBe('var(--ac-team-ally)')
+    expect(m.rows[0].segments[0].color).toBe('var(--ac-team-ally)')
   })
 
   it('écarte les joueurs sans aucune prise sur ce socle, sans décaler les teintes', () => {
-    const m = barres()
-    expect(m.rows[0].sticks[0].segments.map((s) => s.name)).toEqual(['Alpha'])
+    // Bravo (2e du camp t0, zéro prise) n'a de segment sur aucune ligne.
+    expect(barres().rows.flatMap((r) => r.segments.map((s) => s.name))).not.toContain('Bravo')
   })
 
   it('respecte l’ordre des armes du modèle amont et l’ordre de camps demandé', () => {
     const m = barres()
     expect(m.rows.map((r) => r.label)).toEqual(['S7 Sniper', 'M41 SPNKr'])
-    expect(m.rows[0].sticks.map((s) => s.side)).toEqual(['t0', 't1'])
+    expect(m.rows[0].segments.map((s) => s.side)).toEqual(['t0', 't1'])
+    expect(m.teams.map((t) => t.side)).toEqual(['t0', 't1'])
   })
 
-  it('sort les occupations sans ramasseur nommé des bâtons, en annotation de ligne', () => {
+  it('sort les occupations sans ramasseur nommé de la barre, en annotation de ligne', () => {
     const m = barres()
     expect(m.rows[0].unnamed).toBe(0)
     expect(m.rows[1].unnamed).toBe(2)
     // Et elles n'entrent dans le compte d'aucun camp.
-    const total = m.rows[1].sticks.flatMap((s) => s.segments).reduce((a, s) => a + s.count, 0)
-    expect(total).toBe(2)
+    expect(m.rows[1].segments.reduce((a, s) => a + s.count, 0)).toBe(2)
   })
 })
