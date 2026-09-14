@@ -1339,6 +1339,45 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       (`objectiveevents/extract.go:144`), mais `killsource/chunks.go:78` perd `Meta()`.
       RÉSERVE : le manifeste est un fichier EXTERNE — l'argmax reste en repli COMPTÉ. S.
 
+- [ ] 1.9.9 **Les tourelles automatiques bannies nommées, et plus dessinées.** Décision utilisateur
+      du 2026-09-14 : le châssis `0x038df01a` (banque
+      `sb_003_lvl_moments_ge_shared_autoturret_banished`, 9 vies immobiles sur `bfecd02b`) est un
+      objet de carte qui interdit la sortie de la zone de jeu, PAS un véhicule jouable ; le parc
+      d'assets véhicules est COMPLET, un châssis absent de la table est un mismatch à nommer, jamais
+      un véhicule manquant. L'entrée « valeur inconnue = famille vide, marqueur neutre » de
+      `vehicle_families.go` est un repli anonyme (D14) : le châssis entre en table comme
+      `non jouable, non dessiné`, refus par NOM et compté ; la publication le retire du calque
+      (schéma monté si le contenu cuit change). Témoin : `bfecd02b` publie 2 vies de véhicule au
+      lieu de 11. S.
+- [ ] 1.9.10 **La fin de vie d'un véhicule lue au dead-state écrit, plus inférée.** Décision
+      utilisateur du 2026-09-14 : un véhicule est vivant ou détruit et le film l'écrit (`ti=40`,
+      lisible depuis le 2026-09-05 sur `wt/vehicule-deadstate`, non fusionnée ; piège : le filtre
+      `DesyncAt == -1` jetait des morts lues) ; un respawn (sur socle ou aux coordonnées monde) est
+      une nouvelle vie. `VehicleTrack.End` ne prend qu'une valeur (`unknown`) et la fin est inférée
+      d'une borne de recensement (« 5 s après le dernier échantillon ») : c'est le repli qui a
+      effacé le `ghost` slot 777 de `bfecd02b` à 287,4 s alors que l'utilisateur le PILOTE pendant
+      de longues minutes. Conversion : `End` porte l'instant du dead-state ; l'inférence devient le
+      repli compté, puis retiré. TEST D'ACCEPTATION sur `bfecd02b` : le ghost reste dessiné tant que
+      le film ne l'écrit pas détruit ; si ses positions cessent à 282 s SANS dead-state, le défaut
+      est la LECTURE des échantillons d'un véhicule occupé, à instruire dans le même lot (sur
+      pièces : `replay/vehicle_*.go`). M.
+- [ ] 1.9.11 **Le désignateur de manche lu tel que le film l'écrit, la garde `contiguousRounds`
+      retirée.** Décision utilisateur du 2026-09-14 (« le film porte le compteur de manche ; oui,
+      tu peux le faire »). Sur `fb1a1a72` (CTF:Arena, 814 s > 720 s de temps réglementaire), 148
+      records statborg portent le désignateur `2` (0.D.1 bis) ; la garde `contiguousRounds` publie
+      1 manche parce que la manche 1 est absente : c'est le repli nommé qui jette ce que le film
+      écrit. Session bornée : lister au corpus les matchs dont la durée dépasse le temps
+      réglementaire de leur mode, lire leur désignateur record par record, établir ce que vaut `2`
+      (manche, prolongation) par mesure ou chez l'écrivain ; puis publier le désignateur lu et
+      retirer la garde (`coverage.score.rounds` repasse à la valeur écrite). M.
+- [ ] 1.9.12 **La vie d'un seul échantillon publiée.** Résidu de 0.D.4 et compteur de 1.0.4 :
+      `DefaultMinPoints = 2` refuse toute vie d'un seul échantillon (une position écrite par le
+      film pour un joueur à un instant) ; toutes les vies refusées en portent exactement un, 0 à 6
+      par film sur les 8 builds. Proposition du pilote du 2026-09-14, à confirmer par
+      l'utilisateur : le film a écrit que le joueur était là, le refus est un filtre (D14) ->
+      `DefaultMinPoints = 1`, le compteur de refus reste (il doit tomber à 0), schéma monté avec le
+      lot qui change le contenu cuit. S.
+
 Arbitrage du pilote (2026-09-13) : l'item 1.9.0 ci-dessus EST le registre des replis proposé par
 l'audit ; il entre les **62 replis anonymes** de la table (E) du registre 0.E, et ses 9 replis à
 défaut déjà mesuré sont listés dans son journal.
