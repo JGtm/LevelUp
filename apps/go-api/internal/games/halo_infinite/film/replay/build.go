@@ -13,23 +13,6 @@ import (
 // fluide (le client interpole) tout en divisant le volume de points par ~4.
 const DefaultFrameIntervalMS = 100
 
-// DefaultMinPoints est le nombre minimal de points pour qu'une vie soit publiée.
-//
-// IL VAUT 1 DEPUIS LE 2026-09-14 (lot 1.6.5), PAR DÉCISION UTILISATEUR : « si le film le dit, on
-// publie ». Il valait 2 depuis l'origine du calque, sous la phrase « une vie d'un seul échantillon
-// n'est pas une trajectoire » — qui décrivait un RENDU, pas une donnée : le film écrit une
-// position pour un joueur à un instant, et l'artefact la taisait. Le compteur
-// `coverage.tracks.refusedMinPoints`, posé au schéma 55 précisément pour poser la question avec un
-// chiffre, tombe donc à 0 sur les huit builds.
-//
-// CE QUE LA MESURE DIT DE CES VIES (2026-09-14, `vies_un_echantillon_test.go`, 20 vies sur les
-// huit builds) : UNE seule porte une mort ÉCRITE à son instant, CINQ sont la dernière image d'un
-// slot que la réplication n'a plus jamais repris, QUATORZE sont ORPHELINES — leur vie se ferme sur
-// un trou de réplication et la mort la plus proche du même joueur est à 0,95 s à 300 s. Ce n'est
-// pas une raison de les filtrer (décision utilisateur) : c'est un DÉFAUT DE LECTURE nommé, consigné
-// au plan §4, et le publier est ce qui le rend visible.
-const DefaultMinPoints = 1
-
 // coordScale arrondit les coordonnées au centimètre : le quantum du décodeur est de
 // ~1,4 cm, deux décimales ne perdent donc rien et allègent nettement le JSON.
 const coordScale = 100
@@ -128,10 +111,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	}
 	logUnnamedLives(matchID, doc.Tracks, unnamed)
 	// LE ROSTER VIENT DE LA TABLE EFFECTIVE DU REGISTRE, PAS DES OPTIONS (lot 1.6.2) : la table du
-	// film y a deja pose ses sieges, et ses gamertags nomment les joueurs que le fil des morts ne
-	// nomme pas — un joueur a ZERO MORT n'est dans aucun enregistrement du fil. Relire
-	// `opt.PlayerIndices` ici republierait la table d'AVANT la composition : deux tables du meme
-	// film, exactement ce que le registre existe pour empecher.
+	// film y a deja pose ses sieges, et ses gamertags nomment les joueurs a ZERO MORT, que le fil
+	// des morts ne peut pas nommer. Relire `opt.PlayerIndices` ici republierait la table d'AVANT la
+	// composition — deux tables du meme film, ce que le registre existe pour empecher.
 	doc.Roster = buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, opt.Deaths), opt.Bots)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, reg.DeathOffsetMS(), reg.DeathOffsetMatches())
