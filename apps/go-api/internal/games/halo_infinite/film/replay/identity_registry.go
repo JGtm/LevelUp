@@ -70,6 +70,13 @@ type IdentityInput struct {
 	// PlayerIndices : le lien DIRECT identite -> index de joueur, lu dans les chunks de
 	// replication (cf. player_index.go).
 	PlayerIndices PlayerIndexTable
+	// FilmTable : LA TABLE DES JOUEURS QUE LE FILM ECRIT (`chunk_00`, lot 1.5) — le lien DIRECT
+	// `index <-> xuid <-> gamertag`, et la source PREMIERE du registre depuis le lot 1.6.
+	//
+	// VIDE = le registre retombe entierement sur `PlayerIndices`, et il le PUBLIE
+	// (`coverage.identity.filmTable.refus`). Le collecteur de sync ne la fournit pas encore
+	// (lot 1.8) : sa voie est donc le repli, nomme et compte, pas un silence.
+	FilmTable FilmPlayerTable
 	// Bots : les bots declares par BOT_METADATA, avec leur `BotID` (le N de `bid(N.0)`).
 	Bots []BotIdentity
 	// Fire : les evenements de tir, pour la fermeture A (un joueur qui agit a un corps).
@@ -140,12 +147,20 @@ type IdentityRegistry struct {
 	// tableau porte ce que le TABLEAU DE L'API a nomme et refuse — la voie qui ferme les corps
 	// dont l'index est lu mais hors de la table publiee (cf. identity_registry_scoreboard.go).
 	tableau scoreboardReport
+	// filmTable porte la composition « table du film d'abord, lecture des chunks en complement »
+	// : la table d'index EFFECTIVE, la voie de chaque lien, les gamertags du film et la
+	// couverture (cf. identity_registry_film_table.go).
+	filmTable filmTableLinks
 }
 
 // BuildIdentityRegistry construit le registre d'identite du film. PURE : aucune I/O.
 //
 // L'ORDRE DES ETAPES EST LA DOCTRINE, ET IL N'EST PAS NEGOCIABLE :
 //
+//  0. LA TABLE DES JOUEURS DU FILM compose la table d'index EFFECTIVE (lot 1.6) : les sieges que
+//     `chunk_00` ECRIT d'abord, la lecture des chunks de replication en COMPLEMENT pour les seuls
+//     xuids dont la table est muette (`identity_registry_film_table.go`). Toutes les etapes qui
+//     suivent lisent cette table-la, et elle n'est jamais plus pauvre que la lecture seule ;
 //  1. les liens DIRECTS sont poses D'ABORD et a 100 % — index de joueur <-> xuid, `bid` <-> bot,
 //     et depuis le lot E2 le lien CORPS <-> JOUEUR que le record de creation du bipede ECRIT
 //     (`identity_registry_creation.go`), propage aux autres vies du meme corps ;
@@ -163,6 +178,11 @@ type IdentityRegistry struct {
 //  5. ce qui resiste est publie « non resolu » AVEC SA CAUSE et COMPTE, avec son alarme.
 func BuildIdentityRegistry(in IdentityInput) IdentityRegistry {
 	reg := IdentityRegistry{deducedLives: map[int]bool{}}
+	// LA TABLE EFFECTIVE SE COMPOSE AVANT TOUT LE RESTE, et `in` la porte ensuite : sans cela,
+	// deux etapes du meme registre liraient deux tables differentes du meme film.
+	reg.filmTable = composerTableDIndex(in)
+	reg.filmTable.alarmerSurLaTableDuFilm(in.MatchID)
+	in.PlayerIndices = reg.filmTable.table
 	reg.own, reg.creation, reg.bridge = buildOwners(in)
 	reg.resolveByScoreboard(in)
 	reg.resolveByRosterElimination(in)

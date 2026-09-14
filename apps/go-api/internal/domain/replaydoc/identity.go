@@ -82,6 +82,35 @@ type IdentityCoverage struct {
 	// `non_resolu`. Elles n'ont de sens que pour cette famille (lot E2, 2026-09-08).
 	BipedSlot    BipedLinkCounts `json:"bipedSlot"`
 	StatborgSlot LinkCounts      `json:"statborgSlot"`
+	// FilmTable dit ce que LA TABLE DES JOUEURS DU FILM a couvert (schema 56, lot 1.6), ce que le
+	// repli a du completer, et ce que le controle en pense.
+	FilmTable FilmTableCounts `json:"filmTable"`
+}
+
+// FilmTableCounts est l'etat de la TABLE DES JOUEURS que le film ecrit dans `chunk_00` : le lien
+// direct `index <-> xuid <-> gamertag`, source premiere du registre depuis le schema 56.
+//
+// Elle ne compte pas des liens par provenance (`filmIndex` le fait) mais l'etat d'UNE SOURCE :
+// combien de sieges elle porte, combien de liens elle a poses, combien le repli a du completer
+// parce qu'elle est muette (un joueur arrive en cours de partie n'a pas de siege), et ce que la
+// lecture des chunks de replication en dit.
+type FilmTableCounts struct {
+	// Read dit si la table a ete EMPLOYEE.
+	Read bool `json:"lu"`
+	// Refusal nomme la cause quand `Read` est faux : `sans_registre`, `sans_section`,
+	// `build_inconnu`, `tronque`, `table_introuvable`, `vacant_intercale`.
+	Refusal string `json:"refus,omitempty"`
+	// Seats est le nombre de sieges occupes — la taille reelle de l'escouade au debut du film,
+	// publiee comme DONNEE (aucune regle d'affichage ne s'en sert).
+	Seats int `json:"sieges"`
+	// Direct / Fallback : les liens poses par la table du film, et ceux que la lecture des
+	// chunks a du completer.
+	Direct   int `json:"direct"`
+	Fallback int `json:"repli"`
+	// Accord / Contradiction / Silence : ce que le controle dit des liens de la table du film.
+	Accord        int `json:"accord"`
+	Contradiction int `json:"contradiction"`
+	Silence       int `json:"silence"`
 }
 
 // LinkCounts est le decompte d'une famille de liens par provenance.

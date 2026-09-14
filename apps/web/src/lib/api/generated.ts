@@ -6719,6 +6719,22 @@ export interface components {
             file_name: string;
             file_token: string;
         };
+        FilmTableCounts: {
+            /** Format: int64 */
+            accord: number;
+            /** Format: int64 */
+            contradiction: number;
+            /** Format: int64 */
+            direct: number;
+            lu: boolean;
+            refus?: string;
+            /** Format: int64 */
+            repli: number;
+            /** Format: int64 */
+            sieges: number;
+            /** Format: int64 */
+            silence: number;
+        };
         FilterContextInput: {
             cascade: components["schemas"]["CascadeFilter"];
             filter_mode: string;
@@ -7225,6 +7241,7 @@ export interface components {
         IdentityCoverage: {
             bipedSlot: components["schemas"]["BipedLinkCounts"];
             filmIndex: components["schemas"]["LinkCounts"];
+            filmTable: components["schemas"]["FilmTableCounts"];
             statborgSlot: components["schemas"]["LinkCounts"];
         };
         IdentityPlayer: {

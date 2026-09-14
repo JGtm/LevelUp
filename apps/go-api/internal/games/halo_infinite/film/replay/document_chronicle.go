@@ -1303,3 +1303,37 @@ package replay
 //	VERSION MONTE   secondaire : un artefact 54 ne peut pas dire ce qu'il a refuse, et rien ne
 //	                permet de le deduire apres coup. La reprise du backfill se faisant par
 //	                SchemaVersion, sans montee aucune recuisson ne le rattraperait.
+
+// v56 (2026-09-14, lot 1.6 du PLAN_DECODEUR_FILM) : LE REGISTRE D'IDENTITE PREND LA TABLE DU
+// FILM COMME LIEN DIRECT, ET LA VIE D'UN SEUL ECHANTILLON EST PUBLIEE.
+//
+//	la doctrine     « l'index c'est l'index » (decision utilisateur du 2026-09-07) : quand le film
+//	                ECRIT le lien `index <-> xuid <-> gamertag`, c'est lui qu'on lit. La table des
+//	                32 slots du corps de `chunk_00` (lot 1.5) devient donc la source PREMIERE du
+//	                registre ; la lecture des 5 bits des chunks de replication reste, mais en
+//	                COMPLEMENT — pour les seuls joueurs dont la table est muette.
+//
+//	pourquoi un     la table du film est ecrite au DEBUT du film : un joueur qui rejoint en cours
+//	complement      de partie n'y a pas de siege. Mesure du 2026-09-14 sur les huit builds : 0 a 5
+//	                par film, 13 au total. Remplacer une lecture par l'autre PERDRAIT ces joueurs ;
+//	                les composer n'en perd aucun. La ou les deux parlent du meme joueur, elles
+//	                disent la meme chose : 125 accords, 0 contradiction.
+//
+//	les champs      `identity.players[].link.method` prend la valeur `film_table` pour un lien
+//	ajoutes         que la table du film pose (et garde `PlayerIndexTable` pour un lien de repli) ;
+//	                `identity.coverage.filmTable` publie l'etat de la source — `lu`, `refus`
+//	                (`sans_registre` / `sans_section` / `build_inconnu` / `tronque` /
+//	                `table_introuvable` / `vacant_intercale`), `sieges` (la taille reelle de
+//	                l'escouade, publiee comme DONNEE), `direct`, `repli`, et le controle
+//	                `accord` / `contradiction` / `silence`.
+//
+//	ce que le       le ROSTER gagne les joueurs que la table du film assoit et que la lecture des
+//	document gagne  chunks ne trouvait pas (+1 sur `a521164d` et `11de8353`), et les GAMERTAGS que
+//	                le film ecrit pour des joueurs a zero mort — le fil des morts ne nomme que ceux
+//	                qui meurent (`111fa685` idx=10 « FlukiestGolf », `e5adf7b2` idx=13
+//	                « MarshallG6443 » etaient publies sans nom).
+//
+//	POURQUOI LA     la provenance d'un lien devient une donnee du document, et le roster change de
+//	VERSION MONTE   contenu : un artefact 55 ne peut pas dire d'ou vient son index de joueur, et la
+//	                reprise du backfill se fait par SchemaVersion — sans montee aucune recuisson ne
+//	                le rattraperait.
