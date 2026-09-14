@@ -50,10 +50,11 @@ func toMapWeaponPads(v replay.MapWeaponPads) replaydoc.MapWeaponPads {
 
 func toMapWeaponPadDTO(v replay.MapWeaponPadDTO) replaydoc.MapWeaponPadDTO {
 	return replaydoc.MapWeaponPadDTO{
-		X:   v.X,
-		Y:   v.Y,
-		Z:   v.Z,
-		Pad: v.Pad,
+		X:      v.X,
+		Y:      v.Y,
+		Z:      v.Z,
+		Pad:    v.Pad,
+		Family: v.Family,
 	}
 }
 

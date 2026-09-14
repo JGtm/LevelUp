@@ -44,13 +44,18 @@ type MapWeaponPads struct {
 	CatalogN int               `json:"catalogN"`
 }
 
-// MapWeaponPadDTO est UN emplacement allumé : la position du fichier de carte, et le socle
-// du match qui l'a confirmé.
+// MapWeaponPadDTO est UN emplacement allumé : la position du fichier de carte, le socle du
+// match qui l'a confirmé, et LA NATURE DE L'EMPLACEMENT.
 type MapWeaponPadDTO struct {
 	X   float32 `json:"x"`
 	Y   float32 `json:"y"`
 	Z   float32 `json:"z,omitempty"`
 	Pad int     `json:"pad"`
+	// Family : `rack` (arme de terrain), `power` (arme de puissance) ou `powerup` (bonus).
+	// Elle vient du fichier de carte Forge, JAMAIS du nom de l'arme : la même Hydra est de
+	// terrain sur une carte et de puissance sur une autre. Un socle du match sans entrée ici
+	// n'est confirmé par aucun emplacement — son niveau est « non classé ».
+	Family string `json:"family"`
 }
 
 // MapObject est un prop Forge projeté en 2D : centre orienté + emprise de sa bounding box.

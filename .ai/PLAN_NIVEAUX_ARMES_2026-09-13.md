@@ -64,14 +64,14 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
 - Gate : rapport `.ai/V7.5/RAPPORT_NIVEAUX_ARMES_2026-09-14.md` (`24f3c813c`). VERDICT : couverture suffisante — 76 artefacts, 76 cartes toutes au catalogue, 669 socles confirmés (466 râteliers, 144 puissance, 48 bonus), 11 non confirmés (1,64 %), « Non classé » = 2,95 % des prises (85/2 881, dont 52 sur Flood Gulch ; 1,28 % hors cette carte). 17 matchs sans aucun socle publié (mode qui n'allume rien) = absence de mesure à dire. Croisé rôle × famille : 70 écarts nominaux (Hydra, Needler, Sentinel Beam, Shock Rifle sur râteliers → D1 confirmée), 3 inversions réelles (0,45 %). « Base » se lit du film : Assassin 94,4 % sur AR/Sidekick/BR75, BTB 92,6 %, Super Fiesta plat — lire la PREMIÈRE émission `loadouts` par slot (tout le canal dilue à 85,6 %).
 
 ### Étape 1 — Go : la famille voyage avec l'emplacement (requête)
-- [ ] 1.1 `film/replay/map_weapon_pads.go` : `MapWeaponPadDTO.Family` (`rack` | `power` |
+- [x] 1.1 `film/replay/map_weapon_pads.go` : `MapWeaponPadDTO.Family` (`rack` | `power` |
   `powerup`), posé depuis `MapWeaponPadsEntry.Pads[].Family` (déjà dérivée du `type_id`).
   Test unitaire `BuildMapWeaponPads`.
-- [ ] 1.2 `film/replay/…` : fonction pure `WeaponTierOf(pad WeaponPad, cross *MapWeaponPads,
+- [x] 1.2 `film/replay/…` : fonction pure `WeaponTierOf(pad WeaponPad, cross *MapWeaponPads,
   loadouts []Loadout) Tier` dans `internal/analysis/` (paquet pur, testé sur fixtures) :
   base > terrain > puissance > non classé, avec la règle d'exclusion Fiesta reçue en paramètre
   (jamais lue du slug).
-- [ ] 1.3 Contrat : `openapi.yaml` régénéré, `make generate-types`.
+- [x] 1.3 Contrat : `openapi.yaml` régénéré, `make generate-types`.
 - Gate : `go build`, `go vet`, `go test ./internal/games/halo_infinite/film/replay/...
   ./internal/analysis/...`.
 
@@ -100,6 +100,29 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
 
 ## 4. Découvertes
 
+- **D-a (étape 1)** — Le niveau est implémenté DEUX FOIS, et c'est assumé : en Go
+  (`internal/analysis/weapontier`) pour les agrégats, en TypeScript (`padControlLogic`)
+  pour la vue match. Une résolution serveur unique aurait demandé que le service de rejeu
+  connaisse la catégorie de mode, qu'il ne lit pas aujourd'hui (elle vit dans
+  `MatchViewHeader.mode_category`, côté vue match). Les deux copies partagent les mêmes
+  constantes écrites et les mêmes témoins de test.
+- **D-b (étape 1)** — Le ratchet de forme du document (`document_shape_test.go`) refusait
+  toute régénération sans montée de `SchemaVersion`, y compris pour un calque que la
+  CUISSON N'ÉCRIT JAMAIS (`mapObjectives`, `mapWeaponPads`, résolus à la requête). Monter
+  la version aurait fait lire « à re-cuire » les 77 artefacts du parc pour un champ qu'aucun
+  ne porte — contraire à D3. Le ratchet porte désormais une QUATRIÈME empreinte,
+  `empreinte-cuite`, et c'est elle qui gouverne le refus ; l'empreinte entière reste figée
+  (donc toute modification reste visible), et un nouveau test interdit que ces deux calques
+  entrent un jour dans la cuisson sans qu'on le voie.
+- **D-c (étape 0, hors périmètre)** — Une seule arme du parc (59 matchs, 2 881 prises) porte
+  deux niveaux dans le même match : 5 prises, 0,17 %, et c'est `terrain` + `non classé`,
+  jamais `terrain` + `puissance`. Les lignes du bloc restent donc keyées par arme.
+
 ## 5. Journal
 - 2026-09-13 — Plan écrit sur demande utilisateur.
 - 2026-09-14 — Décision utilisateur « c'est à faire » ; étape 0 exécutée et fusionnée ; étapes 1-4 lancées.
+- 2026-09-14 — Étape 1 CLOSE : `MapWeaponPadDTO.Family` (stocké + servi + openapi + types TS),
+  paquet pur `internal/analysis/weapontier` (niveaux + contrôle croisé, 10 tests), garde-rail
+  journalisé au service, ratchet de forme amendé (D-b). Gate : `go build`, `go vet ./internal/...`,
+  `go test ./internal/games/halo_infinite/film/replay/... ./internal/analysis/... ./internal/service/...
+  ./internal/domain/...` verts, `openapi-gen -check` à jour.
