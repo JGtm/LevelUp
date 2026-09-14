@@ -76,8 +76,8 @@ func TestParseRegistryChunkRefuseUnTamponCompresse(t *testing.T) {
 // TestParseRegistryChunkAccepteUnRegistreInflate : le chemin nominal reste ouvert — un bloc
 // d'archetype construit a la main se lit, et le refus ne l'attrape pas.
 func TestParseRegistryChunkAccepteUnRegistreInflate(t *testing.T) {
-	data := make([]byte, archetypeBlockSize)
-	copy(data[8:], "object-position-dynamic-precision-component")
+	data := make([]byte, registryEntryBase+archetypeBlockSize)
+	copy(data[registryEntryBase:], "object-position-dynamic-precision-component")
 	reg, err := ParseRegistryChunk(data)
 	if err != nil {
 		t.Fatalf("registre inflate refuse : %v", err)

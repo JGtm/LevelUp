@@ -973,7 +973,7 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 43	device (dispositif de carte)	38	device-position-transition-velocity-component	1	non_porte						aucun	inconnu		aucune	
 43	device (dispositif de carte)	39	device-machine-flags-component	1	non_porte						aucun	inconnu		aucune	
 43	device (dispositif de carte)	40	device-interaction-start-time-override-component	1	non_porte						aucun	inconnu		aucune	
-44	asset-transform	0	asset-transform-component	1	porte	FUN_142ed3c64	5 x (R(1) porte [+ R(1) index] + 3 x R(6+niveau))	~100	traverse.go:921		aucun	cinq positions/orientations d'un objet pose	Le mobilier Forge qui BOUGE pendant le match (plateformes mobiles). Le fond de carte est aujourd'hui fige.	haute	
+44	asset-transform	0	asset-transform-component	1	porte	FUN_142ed3c64	5 x (R(1) porte [+ R(1) index] + 3 x R(6+niveau))	~115	traverse.go:921		aucun	cinq positions/orientations d'un objet pose	Le mobilier Forge qui BOUGE pendant le match (plateformes mobiles). Le fond de carte est aujourd'hui fige.	haute	
 45	matchflow-*	0	matchflow-sequence-data-component	1	non_porte						aucun	inconnu		aucune	
 45	matchflow-*	1	matchflow-focus-data-component	1	non_porte						aucun	inconnu		aucune	
 46	state-broker-state-*	0	state-broker-state-changed-data-component	0	non_porte						aucun	inconnu		aucune	
