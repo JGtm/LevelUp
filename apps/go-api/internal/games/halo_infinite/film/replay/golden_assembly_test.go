@@ -127,8 +127,10 @@ func TestGoldenAssembly(t *testing.T) {
 		if err := os.WriteFile(path, []byte(got), 0o600); err != nil {
 			t.Fatalf("ecriture de %s : %v", path, err)
 		}
-		t.Logf("golden reecrit : %s", path)
-		return
+		// UNE PORTE DE REGENERATION NE REND JAMAIS `ok` (revue R1, constat R1-8) : `go test` jette
+		// la sortie d un paquet qui PASSE, donc un `t.Logf` est invisible avec la commande
+		// documentee. Meme motif que les trois autres portes du paquet.
+		t.Fatalf("golden d assemblage reecrit : %s ; relancer sans -update pour verifier", path)
 	}
 	want, err := os.ReadFile(path) //nolint:gosec // chemin fige dans le code
 	if err != nil {
