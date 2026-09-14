@@ -1,8 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 54
-empreinte-stockee 6581c32e42b003aa
-empreinte-servie 6581c32e42b003aa
+empreinte-stockee 3258dddf069b2999
+empreinte-servie 3258dddf069b2999
+empreinte-cuite 7d341ac72f306186
 
 AbilityCharge
   Charges json:"charges" int
@@ -475,6 +476,7 @@ MapObjectives
   Markers json:"markers,omitempty" []ObjectiveMarkerDTO
   Zones json:"zones,omitempty" []ObjectiveZoneDTO
 MapWeaponPadDTO
+  Family json:"family" string
   Pad json:"pad" int
   X json:"x" float32
   Y json:"y" float32

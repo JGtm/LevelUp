@@ -128,8 +128,11 @@ func TestDocumentShapeRegenerate(t *testing.T) {
 	case os.Getenv(contractFixturesEnv) == "":
 		t.Skip("regeneration du golden de forme : " + contractFixturesEnv + " non defini")
 	}
-	ancienSchema, ancienneEmpreinte := shapeGoldenTete()
-	nouvelle := empreinteDe(documentShapeRender(reflect.TypeOf(ReplayDocument{})))
+	ancienSchema, _ := shapeGoldenTete()
+	// LE REFUS SE LIT SUR LA FORME CUITE, jamais sur la forme entière : les calques résolus à
+	// la requête ne périment aucun artefact (cf. la section « CALQUES RÉSOLUS À LA REQUÊTE »).
+	ancienneEmpreinte := shapeGoldenEmpreinteCuite()
+	nouvelle := empreinteDe(documentShapeRenderCuite())
 	if ancienneEmpreinte != "" && ancienneEmpreinte != nouvelle && ancienSchema == SchemaVersion {
 		t.Fatalf("REGENERATION REFUSEE : la forme du document a change (empreinte %s -> %s) "+
 			"alors que SchemaVersion est reste a %d. Monter SchemaVersion et ecrire son entree "+
@@ -157,8 +160,9 @@ func documentShapeGolden() string {
 	b.WriteString("# Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.\n")
 	fmt.Fprintf(&b, "%s%d\n", shapeEnteteSchema, SchemaVersion)
 	fmt.Fprintf(&b, "%s%s\n", shapeEnteteEmpreinte, empreinteDe(render))
-	fmt.Fprintf(&b, "%s%s\n\n", shapeEnteteServie,
+	fmt.Fprintf(&b, "%s%s\n", shapeEnteteServie,
 		empreinteDe(documentShapeRender(reflect.TypeOf(replaydoc.ReplayDocument{}))))
+	fmt.Fprintf(&b, "%s%s\n\n", shapeEnteteCuite, empreinteDe(documentShapeRenderCuite()))
 	b.WriteString(render)
 	return b.String()
 }
@@ -297,4 +301,129 @@ func nomDeType(t reflect.Type) string {
 // types, donc sa forme doit voyager avec le champ qui la porte.
 func structAnonyme(t reflect.Type) string {
 	return "struct{" + strings.Join(champsDe(t), "; ") + "}"
+}
+
+// ---------------------------------------------------------------------------------------
+// LES CALQUES RÉSOLUS À LA REQUÊTE — pourquoi ils ont leur propre empreinte (2026-09-14).
+//
+// LE PROBLÈME, CONSTATÉ EN AJOUTANT `MapWeaponPadDTO.Family` (plan des niveaux d'armes,
+// étape 1.1). Deux calques du document ne sont JAMAIS ÉCRITS PAR LA CUISSON : `mapObjectives`
+// et `mapWeaponPads`. L'artefact du film ne nomme ni la carte ni le mode, donc ces deux-là se
+// remplissent AU SERVICE, à chaque requête, depuis une référence versionnée (cf. les en-têtes
+// de map_weapon_pads.go et map_objectives.go). Aucun `Set` de la chaîne de cuisson ne les
+// touche — vérifié par grep sur tout le paquet le 2026-09-14.
+//
+// CONSÉQUENCE : changer LEUR forme ne périme AUCUN artefact cuit. Or le ratchet refusait la
+// régénération sans montée de `SchemaVersion`, et une montée aurait fait lire « à re-cuire »
+// les 77 artefacts du parc pour un champ qu'aucun d'eux ne porte — exactement le dégât que ce
+// garde-fou existe pour éviter, retourné contre lui-même. C'est aussi la décision D3 du plan
+// des niveaux d'armes : « aucun champ nouveau dans l'artefact, SchemaVersion inchangé ».
+//
+// CE QUI EST GARDÉ, ET CE QUI EST ASSOUPLI. L'empreinte `empreinte-stockee` couvre TOUJOURS
+// la forme entière, ces deux calques compris : une modification reste visible et oblige
+// toujours à régénérer le golden, donc à passer en revue. Seul le REFUS DE RÉGÉNÉRATION se
+// lit désormais sur `empreinte-cuite`, qui ignore les types atteignables par ces seuls deux
+// champs. Un champ ajouté à un calque CUIT continue d'exiger la montée de version.
+// ---------------------------------------------------------------------------------------
+
+// shapeEnteteCuite : la quatrième ligne d'en-tête du golden.
+const shapeEnteteCuite = "empreinte-cuite "
+
+// calquesALaRequete — les balises JSON des champs du document que la CUISSON N'ÉCRIT JAMAIS.
+// Toute entrée ici se justifie par un grep : aucun chemin de `build*.go` ne pose le champ.
+// Dernière vérification : 2026-09-14.
+var calquesALaRequete = map[string]bool{
+	"mapObjectives": true, // objectives_catalog.go + service/replay_map_objectives.go
+	"mapWeaponPads": true, // map_weapon_pads_catalog.go + service/replay_map_weapon_pads.go
+}
+
+// documentShapeRenderCuite rend la forme du document PRIVÉE des types que seuls les calques
+// résolus à la requête atteignent. Un type partagé avec un calque cuit y reste.
+func documentShapeRenderCuite() string {
+	root := reflect.TypeOf(ReplayDocument{})
+	types := map[string]reflect.Type{root.Name(): root}
+	vus := map[reflect.Type]bool{root: true}
+	for i := 0; i < root.NumField(); i++ {
+		f := root.Field(i)
+		if f.PkgPath != "" || calquesALaRequete[baliseJSON(f)] {
+			continue
+		}
+		collecterTypes(f.Type, types, vus)
+	}
+	noms := make([]string, 0, len(types))
+	for nom := range types {
+		noms = append(noms, nom)
+	}
+	sort.Strings(noms)
+	var b strings.Builder
+	for _, nom := range noms {
+		b.WriteString(nom + "\n")
+		for _, ligne := range champsDe(types[nom]) {
+			b.WriteString("  " + ligne + "\n")
+		}
+	}
+	return b.String()
+}
+
+// baliseJSON rend le nom de clé JSON d'un champ (avant la virgule des options).
+func baliseJSON(f reflect.StructField) string {
+	tag := f.Tag.Get("json")
+	if i := strings.IndexByte(tag, ','); i >= 0 {
+		return tag[:i]
+	}
+	return tag
+}
+
+// shapeGoldenEmpreinteCuite relit l'empreinte cuite du golden en place ("" si absente).
+func shapeGoldenEmpreinteCuite() string {
+	raw, err := os.ReadFile(documentShapePath()) //nolint:gosec // chemin fige dans le code
+	if err != nil {
+		return ""
+	}
+	for _, ligne := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(ligne, shapeEnteteCuite) {
+			return strings.TrimSpace(strings.TrimPrefix(ligne, shapeEnteteCuite))
+		}
+	}
+	return ""
+}
+
+// TestDocumentShapeCalquesALaRequeteRestentHorsCuisson — LE GARDE-FOU DU GARDE-FOU.
+//
+// L'assouplissement ci-dessus ne tient que tant que ces deux calques restent absents de la
+// cuisson. Le jour où un chemin de `build*.go` en poserait un, l'artefact porterait un contenu
+// dont la forme ne serait plus ratchetée — et ce test rougit AVANT.
+func TestDocumentShapeCalquesALaRequeteRestentHorsCuisson(t *testing.T) {
+	root := reflect.TypeOf(ReplayDocument{})
+	for balise := range calquesALaRequete {
+		trouve := false
+		for i := 0; i < root.NumField(); i++ {
+			if baliseJSON(root.Field(i)) == balise {
+				trouve = true
+			}
+		}
+		if !trouve {
+			t.Errorf("le calque %q est declare a la requete mais n'existe plus au document — "+
+				"retirer son entree de calquesALaRequete", balise)
+		}
+	}
+	fichiers, err := filepath.Glob("build*.go")
+	if err != nil {
+		t.Fatalf("balayage des fichiers de cuisson : %v", err)
+	}
+	for _, f := range fichiers {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		src, err := os.ReadFile(f) //nolint:gosec // chemin du paquet courant
+		if err != nil {
+			t.Fatalf("lecture de %s : %v", f, err)
+		}
+		for _, champ := range []string{"MapObjectives", "MapWeaponPads"} {
+			if strings.Contains(string(src), "."+champ+" =") {
+				t.Errorf("%s ecrit %s a la CUISSON : ce calque n'est plus resolu a la requete, "+
+					"retirer son entree de calquesALaRequete et remonter SchemaVersion", f, champ)
+			}
+		}
+	}
 }

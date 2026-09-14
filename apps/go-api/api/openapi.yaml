@@ -16304,6 +16304,8 @@ components:
     MapWeaponPadDTO:
       additionalProperties: false
       properties:
+        family:
+          type: string
         pad:
           format: int64
           type: integer
@@ -16320,6 +16322,7 @@ components:
         - x
         - "y"
         - pad
+        - family
       type: object
     MapWeaponPads:
       additionalProperties: false

@@ -7852,6 +7852,7 @@ export interface components {
             zones?: components["schemas"]["ObjectiveZoneDTO"][] | null;
         };
         MapWeaponPadDTO: {
+            family: string;
             /** Format: int64 */
             pad: number;
             /** Format: float */

@@ -136,3 +136,37 @@ func TestBuildMapWeaponPads_CarteVide(t *testing.T) {
 		t.Fatalf("carte sans emplacement : %+v", got)
 	}
 }
+
+// TestBuildMapWeaponPads_FamilleVoyage — LA NATURE DE L'EMPLACEMENT PART AVEC LUI.
+//
+// C'est l'étape 1.1 du plan des niveaux d'armes : sans cette famille, le client sait OÙ est
+// l'emplacement mais pas CE QU'IL EST, et « arme de terrain » ne se distingue pas d'« arme de
+// puissance ». Elle vient du fichier de carte (type_id Forge), jamais du nom de l'arme —
+// décision D1, mesurée à l'étape 0 : 70 socles sur 669 portent une arme de rôle « lourd » sur
+// un râtelier, tous nominaux.
+func TestBuildMapWeaponPads_FamilleVoyage(t *testing.T) {
+	pads := []WeaponPad{filmPad(-9.74, 0, 22.40), filmPad(5.16, 0, 26.51)}
+	got := BuildMapWeaponPads(carteTemoin(), pads)
+	if got == nil || len(got.Pads) != 2 {
+		t.Fatalf("calque inattendu : %+v", got)
+	}
+	if got.Pads[0].Family != "power" {
+		t.Errorf("famille du premier emplacement = %q, attendu \"power\"", got.Pads[0].Family)
+	}
+	if got.Pads[1].Family != "rack" {
+		t.Errorf("famille du second emplacement = %q, attendu \"rack\"", got.Pads[1].Family)
+	}
+}
+
+// TestBuildMapWeaponPads_FamillePowerupAussi — un emplacement de BONUS confirmé publie sa
+// famille comme les autres : le bloc doit pouvoir le sortir du décompte des armes sans
+// deviner, et sans tester un préfixe de nom.
+func TestBuildMapWeaponPads_FamillePowerupAussi(t *testing.T) {
+	got := BuildMapWeaponPads(carteTemoin(), []WeaponPad{filmPad(0.26, 0, 21.36)})
+	if got == nil || len(got.Pads) != 1 {
+		t.Fatalf("calque inattendu : %+v", got)
+	}
+	if got.Pads[0].Family != "powerup" {
+		t.Errorf("famille = %q, attendu \"powerup\"", got.Pads[0].Family)
+	}
+}

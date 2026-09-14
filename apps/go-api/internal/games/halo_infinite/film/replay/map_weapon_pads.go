@@ -64,6 +64,17 @@ type MapWeaponPadDTO struct {
 	Z float32 `json:"z,omitempty"`
 	// Pad est l'index du socle confirmant dans `weaponPads`.
 	Pad int `json:"pad"`
+	// Family est la NATURE DE L'EMPLACEMENT telle que le fichier de carte la pose :
+	// `rack` (arme de terrain), `power` (arme de puissance) ou `powerup` (bonus). Elle vient
+	// de `MapWeaponPadSpot.Family`, dérivée du `type_id` Forge, et voyage jusqu'au client
+	// parce que LE NIVEAU D'UNE ARME EST UNE PROPRIÉTÉ DE LA CARTE, JAMAIS DE L'ARME : la
+	// même Hydra est de terrain sur une carte et de puissance sur une autre (décision D1 du
+	// plan des niveaux d'armes, vérifiée à l'étape 0 — 70 socles « rôle lourd sur râtelier »
+	// sur 669, tous nominaux).
+	//
+	// Un socle du match qu'AUCUN emplacement ne confirme n'a pas d'entrée ici du tout : son
+	// niveau est « non classé », et c'est l'absence qui le dit (2,95 % des prises du parc).
+	Family string `json:"family"`
 }
 
 // BuildMapWeaponPads croise les emplacements d'une carte avec les socles d'un match.
@@ -86,6 +97,7 @@ func BuildMapWeaponPads(e MapWeaponPadsEntry, pads []WeaponPad) *MapWeaponPads {
 		pris[i] = true
 		out.Pads = append(out.Pads, MapWeaponPadDTO{
 			X: float32(spot.Pos.X), Y: float32(spot.Pos.Y), Z: float32(spot.Pos.Z), Pad: i,
+			Family: spot.Family,
 		})
 	}
 	if len(out.Pads) == 0 {
