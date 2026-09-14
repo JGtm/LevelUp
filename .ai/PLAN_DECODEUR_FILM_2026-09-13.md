@@ -2679,6 +2679,7 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.6 (communs) | ce commit | `make go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **0 issues**, 1 min 26 — baseline non accrue. |
 | 2026-09-14 | 1.6 (communs, web) | ce commit | `make check-types` puis `make test-web` (après purge de `node_modules/.tmp`) | `tsc -b` **propre** ; vitest **711 fichiers, 7 629 tests verts**, 1 ignoré / 17 ignorés, 94 s. Rejoué APRÈS chaque régénération de fixtures (1.6.1, 1.6.2, 1.6.5). |
 | 2026-09-14 | 1.6 (clôture) | ce commit | `MIN_RENDERABLE_SCHEMA_VERSION` | **27, INCHANGÉ** (`features/match-replay/model/replaySchemaStatusLogic.ts:43`) : un artefact 56 se rend comme un 55, et la matrice de compatibilité ne bouge pas. |
+| 2026-09-14 | 1.6 (clôture, seuil de fichier) | ce commit | `wc -l build.go` avant / après le déplacement de `DefaultMinPoints` | `build.go` pesait **516 lignes au commit de base** — déjà au-delà des 500 du dépôt — et le lot l'avait porté à **534** : dette ACCRUE, ce que la règle 5 interdit. La constante et sa doctrine sont descendues dans `tracks_publication.go` (le fichier qui DÉCIDE quelles vies sont publiées, 181 → 202 lignes), déplacement pur ; `build.go` revient à **516**, exactement son poids de départ. `golangci-lint` rejoué : **0 issues**. |
 
 ## 6. Protocole de reprise de session
 
