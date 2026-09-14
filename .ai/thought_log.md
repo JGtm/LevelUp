@@ -1,3 +1,46 @@
+## [2026-09-14] Chantier decodeur — lot 1.1 (l'octet 37 du pied, l'empreinte de grammaire etendue au pied, references re-figees au schema 55) — Complete (feat/decfilm-11 fusionnee dans feat/recherche-decodeur-film, 191933992)
+
+**Decision technique principale.** L'equipe d'un evenement du pied de film se lit a l'octet 37
+du bloc (`footerByteTeam = 37`, constantes nommees `36 / 47 / 48 / 60`), plus jamais a l'octet 55
+(qui vaut 0 partout : 84/173 lisibles, une seule valeur) ; `FooterEvent` exporte (`TimeMS`,
+`Slot`, `Team`, `XUID`), `Team` TOUJOURS lu, sans sentinelle (D14 : un « absent » code en dur
+serait un repli anonyme) ; point d'entree unique `FooterEvents(film)` qui remplace les deux
+copies de `footerData` + `scanTh10Events` ; aucun consommateur de `Team` avant 1.7.3, rien ne
+traverse une frontiere serialisee (schema inchange). Fixture `pied_bloc_53ce4390.bin` (1 930 o,
+bloc t=133033 de `chunk_40` type 3, slot 2 / equipe 1 : discriminante contre 36, 55 ET 37 lu
+comme slot) avec provenance datee, porte `PIED_BLOC_UPDATE=1` qui verifie le type de chunk au
+MANIFESTE (grammaire, pas « le dernier chunk ») et sort en echec apres reecriture. Empreinte de
+`GrammarRev` : TROIS racines (`filmdec`, `killsource`, `analysis/objectiveevents`), 131 -> 150
+fichiers ; `grammar-2026-09-14`. References d'equivalence re-figees a `a752403da` apres le
+schema 55 du lot 1.0 (20 films : une seule ligne `artifact` par fichier, deltas +102..+106 = la
+longueur de `coverage.tracks`), attribution par graphe d'appels (la cuisson `replaybuild` n'appelle
+que `StatRecordsCtx` et `CaptureBurstTimes`, jamais le lecteur du pied) confirmee par mutation.
+
+**Resultats observes.** Oracle avant tout changement : 173/173 evenements lisibles a l'octet 37
+sur trois films, 4 lectures en accord parfait sur 180 ; l'octet 38 est egal a l'octet 37 sur 190
+blocs de 4 films et 2 builds (d'ou une mutation 37 -> 38 verte, mesuree, pas ignoree) ; le XUID
+est a 14 926 bits du bloc sur 190/190 (D5). Decouvertes D1..D5 (1.1) consignees au plan §4 :
+l'empreinte ne couvrait pas le pied (fermee par 1.1.5 ; premiere alerte reelle des la revue R1,
+sur le retrait de la sentinelle) ; la mini-bobine `000d5950` n'a aucun evenement th=10 ;
+`NamedEvent` / `IdentifiedEvent` viennent du statborg, pas du pied ; doc inversee residuelle
+`domain/objective_events.go:12-13` (hors perimetre, non traitee). Revue R1 : 1 P1 (la fixture ne
+discriminait que contre 55 : fausse preuve) + 5 P2, 6 corriges ; R2 (corrections seules) :
+0 P0/P1, 4 P2 (trois chiffres faux dans les textes ecrits par le lot — motif « chunks apres le
+pied » inexistant sur 1 351/1 351, comptes de mutations 2 -> 3 et 1 -> 2, « un appelant » -> six
+dont cinq en test — et une porte qui accusait le manifeste sur un separateur final), 1 jete,
+4 corriges, 37 conditions tiennent ; la boucle converge (1 P1 -> 0). Gates : gofmt vide, vet 0,
+13 paquets ok, suite complete 325 paquets exit 0, lint 0 issue, regime court 10/10 identiques
+hors `artifact` avant re-figeage puis 20/20 identiques apres ; baseline JSONL intacte (aucun test
+renomme). Pilote : verification par grep des 4 corrections, `objectiveevents` rejoue ok,
+fusion sans conflit, worktrees 1.1 retires apres deliaison PowerShell des jonctions (0 reste,
+cache principal 1 351 manifestes).
+
+**Prochaine etape.** Push + CI ; lot 1.2 (le registre commence a l'octet 8 — regime complet,
+corpus gate a `--base 191933992`), worktree `LevelUp-wt-decfilm-12` ; decisions utilisateur
+toujours ouvertes (tourelle fixe, dead-state vehicules, manches, vie d'un echantillon).
+
+---
+
 ## [2026-09-14] Chantier decodeur — lot 1.0 (l'etage de balayage partage production / fixture, schema 55) — Complete (feat/decfilm-10 fusionnee dans feat/recherche-decodeur-film)
 
 **Decision technique principale.** `BuildFromFilm` = verrou + largeurs + `scanFilmInputs`
