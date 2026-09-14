@@ -1339,16 +1339,20 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       (`objectiveevents/extract.go:144`), mais `killsource/chunks.go:78` perd `Meta()`.
       RÉSERVE : le manifeste est un fichier EXTERNE — l'argmax reste en repli COMPTÉ. S.
 
-- [ ] 1.9.9 **Les tourelles automatiques bannies nommées, et plus dessinées.** Décision utilisateur
-      du 2026-09-14 : le châssis `0x038df01a` (banque
-      `sb_003_lvl_moments_ge_shared_autoturret_banished`, 9 vies immobiles sur `bfecd02b`) est un
-      objet de carte qui interdit la sortie de la zone de jeu, PAS un véhicule jouable ; le parc
-      d'assets véhicules est COMPLET, un châssis absent de la table est un mismatch à nommer, jamais
-      un véhicule manquant. L'entrée « valeur inconnue = famille vide, marqueur neutre » de
-      `vehicle_families.go` est un repli anonyme (D14) : le châssis entre en table comme
-      `non jouable, non dessiné`, refus par NOM et compté ; la publication le retire du calque
-      (schéma monté si le contenu cuit change). Témoin : `bfecd02b` publie 2 vies de véhicule au
-      lieu de 11. S.
+- [ ] 1.9.9 **Les tourelles automatiques bannies nommées, et dessinées comme éléments de carte.**
+      Décision utilisateur du 2026-09-14 (amendée le même jour) : le châssis `0x038df01a` (banque
+      `sb_003_lvl_moments_ge_shared_autoturret_banished`, 9 vies immobiles sur `bfecd02b`, un
+      spawn, fenêtre = le match entier) est un objet de carte qui interdit la sortie de la zone de
+      jeu, PAS un véhicule jouable ; le parc d'assets véhicules est COMPLET, un châssis absent de la
+      table est un mismatch à nommer, jamais un véhicule manquant. L'utilisateur VEUT les voir
+      dessinées (« ce sont des éléments de la map ») mais ne possède aucun asset pour elles.
+      L'entrée « valeur inconnue = famille vide, marqueur neutre » de `vehicle_families.go` est un
+      repli anonyme (D14) : le châssis entre en table sous une famille NOMMÉE `tourelle_auto_bannie`
+      (élément de carte, non jouable, immobile), publiée avec son libellé FR/EN et dessinée par un
+      pictogramme de tourelle DÉDIÉ (pas le marqueur neutre) tant qu'aucun asset n'est fourni ;
+      le jour où l'utilisateur fournit l'asset, seule la table d'assets change. Le refus du
+      marqueur neutre reste compté pour tout AUTRE châssis inconnu. Témoin : `bfecd02b`, 9 tourelles
+      nommées visibles à leur position. S.
 - [ ] 1.9.10 **La fin de vie d'un véhicule lue au dead-state écrit, plus inférée.** Décision
       utilisateur du 2026-09-14 : un véhicule est vivant ou détruit et le film l'écrit (`ti=40`,
       lisible depuis le 2026-09-05 sur `wt/vehicule-deadstate`, non fusionnée ; piège : le filtre
@@ -1369,14 +1373,24 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       écrit. Session bornée : lister au corpus les matchs dont la durée dépasse le temps
       réglementaire de leur mode, lire leur désignateur record par record, établir ce que vaut `2`
       (manche, prolongation) par mesure ou chez l'écrivain ; puis publier le désignateur lu et
-      retirer la garde (`coverage.score.rounds` repasse à la valeur écrite). M.
+      retirer la garde (`coverage.score.rounds` repasse à la valeur écrite). Hypothèse de
+      l'utilisateur (2026-09-14) : « ça ressemble à une prolongation ; si le temps réglementaire se
+      finit sur une égalité ça peut arriver, mais je ne sais pas si c'est le seul critère ». À
+      confronter aux deux sens : tout match à désignateur `2` a-t-il un score à égalité à la fin
+      du temps réglementaire (piste de score du film, pas la feuille) ? tout match à égalité à cet
+      instant porte-t-il un désignateur `2` ? Les contre-exemples, s'il y en a, nomment l'autre
+      critère. M.
 - [ ] 1.9.12 **La vie d'un seul échantillon publiée.** Résidu de 0.D.4 et compteur de 1.0.4 :
       `DefaultMinPoints = 2` refuse toute vie d'un seul échantillon (une position écrite par le
       film pour un joueur à un instant) ; toutes les vies refusées en portent exactement un, 0 à 6
-      par film sur les 8 builds. Proposition du pilote du 2026-09-14, à confirmer par
-      l'utilisateur : le film a écrit que le joueur était là, le refus est un filtre (D14) ->
-      `DefaultMinPoints = 1`, le compteur de refus reste (il doit tomber à 0), schéma monté avec le
-      lot qui change le contenu cuit. S.
+      par film sur les 8 builds. DÉCISION utilisateur du 2026-09-14 : « si le film le dit, on
+      publie » -> `DefaultMinPoints = 1`, le compteur de refus reste (il doit tomber à 0), schéma
+      monté avec le lot qui change le contenu cuit. ORACLE donné par l'utilisateur : l'heuristique
+      ignorait les morts à l'apparition (spawn kill), or toutes les morts sont enregistrées ; pour
+      chaque vie d'un échantillon publiée, une mort écrite (kill feed / dead-state) à cet instant
+      pour ce joueur, OU la dernière image avant une fin de manche, doit exister — mesurer les deux
+      cas sur les 20 vies des 8 builds et consigner tout orphelin (une vie d'un échantillon sans
+      mort ni fin de manche est un défaut de lecture, pas un cas à filtrer). S.
 
 Arbitrage du pilote (2026-09-13) : l'item 1.9.0 ci-dessus EST le registre des replis proposé par
 l'audit ; il entre les **62 replis anonymes** de la table (E) du registre 0.E, et ses 9 replis à
