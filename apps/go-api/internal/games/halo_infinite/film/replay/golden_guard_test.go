@@ -124,10 +124,11 @@ func TestGoldenAssemblyPorteSesDenominateurs(t *testing.T) {
 func TestGoldenAssemblyFigeLesChiffresDuChantier(t *testing.T) {
 	g := lireGoldenAssembly(t)
 	for _, l := range []string{
-		// 483/519 = 93.1 % depuis la ronde de correction du 2026-08-09 (93.3 % avec les
+		// 504/519 = 97.1 % depuis le lot 1.0 (2026-09-14), qui fait entrer le lien direct
+		// corps -> joueur au fixture ; 483/519 = 93.1 % avant lui (93.3 % avec les
 		// fermetures non corrigees, 91.5 % avant elles).
-		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 93.1 %%", wantShotsAttached, wantShotsAvailable),
-		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 98.6 %%", wantGrenades, wantGrenadesAvailable),
+		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 97.1 %%", wantShotsAttached, wantShotsAvailable),
+		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 100.0 %%", wantGrenades, wantGrenadesAvailable),
 		fmt.Sprintf("%d vie(s) nommee(s) / %d", wantLivesNamed, wantLivesTotal),
 		fmt.Sprintf("%d trajectoire(s) ·", wantProjectiles),
 		fmt.Sprintf("%d piste(s) decodee(s) · %d publiee(s) · %d coupee(s) a un pas impossible",

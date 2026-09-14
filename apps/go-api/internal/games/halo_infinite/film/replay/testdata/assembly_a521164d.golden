@@ -13,8 +13,8 @@ coup d envoi date par le film : 45311 ms · 160/179 piste(s) en mouvement · raf
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
 179 trace(s) · 46407 point(s) de grille
-133 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
-occupation du slot dans le TEMPS) · 46 sans identite — un DEFAUT de nommage a instruire,
+178 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+occupation du slot dans le TEMPS) · 1 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
 27338 point(s) portent un cap de visee · 27338 une elevation de visee · 6196 un bouclier · 169 une fraction de vie
 
@@ -48,11 +48,11 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2533274866668915  idx=26  "U2 Sam Fisher"
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-874 rattache(s) / 1476 disponible(s) = 59.2 %
-rejets : slot introuvable=602 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1186 rattache(s) / 1476 disponible(s) = 80.4 %
+rejets : slot introuvable=290 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1476 = 1476 (equilibre : true)
-verdict : partiel : moins des deux tiers rattachés
-874 tir(s) publie(s) · 644 avec un cap de visee lisible · 874 avec une arme nommee
+verdict : nominal
+1186 tir(s) publie(s) · 837 avec un cap de visee lisible · 1186 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 0 rattache(s) / 0 disponible(s) = aucune donnee
@@ -71,7 +71,7 @@ couverture : 174 piste(s) decodee(s) · 169 publiee(s) · 8 coupee(s) a un pas i
 372 etat(s) publie(s) · 305 avec grenades lues · 305 avec munitions lues
 27 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-67 lecture(s) VIDE(S) : 37 corroboree(s) par le fil des morts (`dead`), 30 inexpliquee(s)
+67 lecture(s) VIDE(S) : 49 corroboree(s) par le fil des morts (`dead`), 18 inexpliquee(s)
 couverture : 380 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 8 ecartee(s) faute de piste publiee -> 372 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
@@ -583,18 +583,18 @@ POWER-UPS (voie ti=37) — balaye=true · 688 creation(s) acceptee(s) -> 14 rete
     presence t0=1375 prouvee jusqu a 1923, absente a 2124
     presence t0=2273 prouvee jusqu a 2524, absente a 2724
     presence t0=2576 prouvee jusqu a 3325, absente a 3396
-69 occupation(s) achevee(s) publiee(s) · 0 datee(s) a l instant exact par l evenement natif · 0 avec un ramasseur nomme
+69 occupation(s) achevee(s) publiee(s) · 40 datee(s) a l instant exact par l evenement natif · 38 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 311 loadout(s) publie(s) · 17 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
-93 entree(s) · 85 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
-fermetures : 0 par le corps disponible · 8 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
-refus des fermetures : 61 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 1 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
+128 entree(s) · 128 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
+fermetures : 0 par le corps disponible · 0 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
+refus des fermetures : 0 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 0 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
 86 vie(s) nommee(s) / 185 — un rapport publie sans son denominateur ne se juge pas
-19 chunk(s) de replication concordants · 0 desaccord(s) d identite · 1 collision(s) de slot
-verdict : non publiable : un slot change de porteur
+19 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
+verdict : nominal
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 17 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et
