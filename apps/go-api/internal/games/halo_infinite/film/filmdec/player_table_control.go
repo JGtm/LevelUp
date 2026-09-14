@@ -19,13 +19,19 @@ package filmdec
 // Pour chaque couple de candidats consecutifs, l'ecart mesure est compare a la longueur predite :
 // egal = accord ; surplus valant un nombre ENTIER de slots vacants, chacun verifie par le
 // predicat grammatical a sa position calculee = vacant ; intervalle qui contient un
-// enregistrement que la MARCHE a lu et que le balayage n'a pas vu = invisible ; couple dont l'un
-// des deux bouts n'a pas ete retenu par la marche = parasite ; tout le reste = CONTRADICTION,
-// comptee et lisible par un relecteur, jamais corrigee en silence (D-3, D-14).
+// enregistrement que la MARCHE a lu et que le balayage n'a pas vu = invisible ; tout le reste =
+// CONTRADICTION, comptee et lisible par un relecteur, jamais corrigee en silence (D-3, D-14).
+//
+// IL N'Y A PAS DE FAMILLE « PARASITE », ET C'EST UNE CONSEQUENCE DU CRITERE D'ACCEPTATION, pas un
+// oubli. Une position PARASITE du balayage (motif d'en-tete fortuit) se reconnait a son champ de
+// nom illisible, et elle est ecartee AVANT d'arriver ici, par le meme filtre que `candidatsReels`.
+// Ce qui reste est exactement l'ensemble que la marche doit VISITER EN ENTIER pour etre recevable
+// (`chercherDepart`) : les deux bouts de chaque couple sont donc toujours retenus. Une famille
+// « un bout non retenu » serait inatteignable — mesure sur les 1 351 films du cache : 0.
 //
 // La transposition MODALE est publiee comme calibrage du film, dans l'unite du profil. La MODE
 // est choisie plutot que la moyenne parce qu'elle est insensible aux quelques ecarts que les
-// vacants, les parasites et les invisibles deforment.
+// vacants et les enregistrements invisibles deforment.
 func controlerCalibrage(d []byte, candidats []int, finBit, persoBits int, slots []PlayerSlot,
 	rep *PlayerTableReport) {
 	ctl := controleEcarts{d: d, vide: slotVacantBits(persoBits), finBit: finBit,
@@ -58,7 +64,7 @@ type controleEcarts struct {
 	retenus      map[int]bool
 }
 
-// classer range l'ecart entre les candidats `a` et `b` dans l'une des cinq familles.
+// classer range l'ecart entre les candidats `a` et `b` dans l'une des quatre familles.
 func (ctl controleEcarts) classer(a, b, apres, surplus int, rep *PlayerTableReport) {
 	switch {
 	case surplus == 0:
@@ -67,8 +73,6 @@ func (ctl controleEcarts) classer(a, b, apres, surplus int, rep *PlayerTableRepo
 		rep.GapsVacant++
 	case ctl.retenuEntre(a, b):
 		rep.GapsHidden++
-	case !ctl.retenus[a] || !ctl.retenus[b]:
-		rep.GapsParasite++
 	default:
 		rep.GapsContradict++
 	}
