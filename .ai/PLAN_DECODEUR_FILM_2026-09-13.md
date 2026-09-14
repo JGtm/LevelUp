@@ -1364,7 +1364,16 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       repli compté, puis retiré. TEST D'ACCEPTATION sur `bfecd02b` : le ghost reste dessiné tant que
       le film ne l'écrit pas détruit ; si ses positions cessent à 282 s SANS dead-state, le défaut
       est la LECTURE des échantillons d'un véhicule occupé, à instruire dans le même lot (sur
-      pièces : `replay/vehicle_*.go`). M.
+      pièces : `replay/vehicle_*.go`). ORACLES donnés par l'utilisateur (2026-09-14) pour
+      vérifier les vies de véhicule lues : (i) les kills faits DEPUIS un véhicule (kill feed, arme
+      = le véhicule) bornent la vie par en bas : le véhicule est vivant et occupé à ces instants ;
+      (ii) la médaille « véhicule détruit » et ses variantes qui NOMMENT le véhicule, et les
+      personal score awards, datent une destruction ; (iii) inconsistances connues, à ne pas
+      lire comme des défauts : un véhicule peut vivre sans faire de kill, un joueur peut quitter
+      le véhicule avant qu'il explose. Méthode : choisir au corpus les matchs où ces trois sources
+      sont assez denses, et confronter chaque vie lue (début, fin par dead-state) aux instants
+      qu'elles donnent ; tout kill depuis un véhicule APRÈS sa fin lue, ou toute destruction
+      datée SANS dead-state lu, est un constat nommé. M.
 - [ ] 1.9.11 **Le désignateur de manche lu tel que le film l'écrit, la garde `contiguousRounds`
       retirée.** Décision utilisateur du 2026-09-14 (« le film porte le compteur de manche ; oui,
       tu peux le faire »). Sur `fb1a1a72` (CTF:Arena, 814 s > 720 s de temps réglementaire), 148
