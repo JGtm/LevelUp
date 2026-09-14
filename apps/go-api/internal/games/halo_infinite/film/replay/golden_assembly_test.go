@@ -129,7 +129,8 @@ func TestGoldenAssembly(t *testing.T) {
 		}
 		// UNE PORTE DE REGENERATION NE REND JAMAIS `ok` (revue R1, constat R1-8) : `go test` jette
 		// la sortie d un paquet qui PASSE, donc un `t.Logf` est invisible avec la commande
-		// documentee. Meme motif que les trois autres portes du paquet.
+		// documentee. Meme motif que les CINQ autres portes du paquet (fixture d entrees, goldens
+		// par build, fixtures de contrat, forme du document, et celle-ci).
 		t.Fatalf("golden d assemblage reecrit : %s ; relancer sans -update pour verifier", path)
 	}
 	want, err := os.ReadFile(path) //nolint:gosec // chemin fige dans le code
@@ -334,6 +335,14 @@ func renderAssembly(doc ReplayDocument) string {
 	p("## AXE DE TEMPS")
 	p("%d frames · intervalle %d ms · duree %d ms", doc.FrameCount, doc.FrameIntervalMS, doc.DurationMS)
 	p("schema %d · titre %s", doc.SchemaVersion, doc.TitleSlug)
+	// LA VERSION MAJEURE DU FILM EST UNE COUVERTURE PUBLIEE (`coverage.filmMajorVersion`), donc
+	// elle appartient au golden (revue R2, constat R2-1). Sans cette ligne, un fixture regenere
+	// SANS version recuisait les huit documents web sans le champ, toutes portes vertes.
+	if v := doc.Coverage.FilmMajorVersion; v != nil {
+		p("version majeure du film : %d", *v)
+	} else {
+		p("version majeure du film : NON LUE (le fil des morts retombe sur le decoupage historique)")
+	}
 	if doc.OriginMs != nil {
 		p("origine de la frame 0 sur l horloge du fil : %d ms", *doc.OriginMs)
 	} else {

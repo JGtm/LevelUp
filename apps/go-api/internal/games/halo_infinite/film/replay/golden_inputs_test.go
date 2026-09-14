@@ -79,7 +79,7 @@ func goldenInputsPath() string {
 // `coverage.filmMajorVersion`). Sans eux ces deux lignes etaient des CONSTANTES dans les huit
 // goldens et les huit fixtures, et la fidelite ne pouvait pas les contredire — meme piege que
 // le temoin `Scanned` de v13. Au meme geste, RETRAIT de deux champs que le codec portait sans
-// qu aucun assemblage ne les lise : `InventoryDelta.Ammo` (v16) et
+// qu aucun assemblage ne les lise : `InventoryDelta.Ammo` (entre en v15) et
 // `KeyframeInventory.GrenadesByPosition` — la doctrine de ce fichier est que le fixture porte
 // ce que l assemblage CONSOMME, ni plus ni moins.
 //
@@ -99,11 +99,13 @@ func goldenInputsPath() string {
 // FAUSSES et non approximatives. Le blob porte aussi les trois largeurs d axe employees. Prix :
 // les huit fixtures passent de 10,35 a 9,86 Mio — MOINS que les flottants ronds d avant.
 //
-// v15 (2026-09-14, lot 0.D.3) : le fixture porte enfin tout ce que l assemblage lit —
+// v15 (2026-09-14, lot 0.D.3) : le fixture a porte enfin ce que l assemblage lit —
 // `KeyframeInventory.SelectedGrenadeRank` (il vaut -1 quand rien n est selectionne ; relu 0, il
-// inventait une selection sur les huit builds), `InventoryDelta.Ammo`, et des coordonnees
-// EXACTES au lieu d un arrondi au centimetre (`equipmentOwner` choisit le poseur d une pose a la
-// plus courte distance : l arrondi faisait basculer trois poses de `fb1a1a72`).
+// inventait une selection sur les huit builds) et des coordonnees EXACTES au lieu d un arrondi
+// au centimetre (`equipmentOwner` choisit le poseur d une pose a la plus courte distance :
+// l arrondi faisait basculer trois poses de `fb1a1a72`). `InventoryDelta.Ammo` y est entre AU
+// MEME GESTE, mais A TORT : la revue de ronde 1 a montre le 2026-09-14 qu aucun assemblage ne
+// le lit, et il est RETIRE en v18.
 //
 // v14 (2026-09-04, lot P5) : le fixture porte les CHARGES D'EQUIPEMENT RESTANTES (les
 // emplacements ARMES du composant i56, quartet haut = charges entieres — rapport R11) et
