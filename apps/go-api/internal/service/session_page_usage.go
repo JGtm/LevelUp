@@ -127,7 +127,9 @@ func (s *SessionPageService) buildSessionUsage(
 	block := sessionusage.ComputeUsage(in)
 	block.SquadPlayers = squad
 	s.attachSessionObjectives(ctx, &block, ids, tc, in.SquadXUIDs)
+	s.attachPadTiers(ctx, &block, ids, tc)
 	s.resolvePadFamilyLabels(ctx, &block, locale)
+	s.resolvePadTierWeaponLabels(ctx, &block, locale)
 	return &block
 }
 
@@ -269,4 +271,35 @@ func buildSessionUsageInput(
 		m.PowerupPickups = film.PowerupPickups
 	}
 	return in
+}
+
+// attachPadTiers ajoute au bloc usage LES PRISES DE SOCLE PAR NIVEAU D'ARME.
+//
+// EN DEHORS DE ComputeUsage, et pas dedans : la grandeur vient d'une autre table
+// (`match_pad_pickups_by_tier`) et d'un autre producteur (une passe de lecture
+// d'artefact distincte du résumé d'usage). Elle n'est mesurée que sur les matchs
+// dont cette passe a eu lieu, et elle porte ses propres dénominateurs — les
+// verser dans les métriques du bloc ferait compter un match non projeté comme un
+// match sans prise.
+//
+// Best-effort et DIT : montage sans ce loader (titre qui ne produit pas la
+// grandeur) ⇒ silence ; lecture en échec ⇒ WARN, le reste du bloc est servi.
+func (s *SessionPageService) attachPadTiers(
+	ctx context.Context, block *domain.SessionUsageBlock,
+	matchIDs []string, tc sessionusage.TeamContext,
+) {
+	if s.sessionUsageRepo == nil {
+		return
+	}
+	rows, err := s.sessionUsageRepo.LoadPadTiers(ctx, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "session page: niveaux d'armes indisponibles", "err", err)
+		return
+	}
+	block.PadTiers = sessionusage.ComputePadTiers(sessionusage.PadTiersInput{
+		Rows:       rows,
+		PlayerXUID: s.usageXUID,
+		PlayerTeam: tc.PlayerTeam,
+		TeamOf:     tc.TeamOf,
+	})
 }

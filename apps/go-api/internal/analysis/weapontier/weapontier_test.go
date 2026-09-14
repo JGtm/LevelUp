@@ -2,8 +2,6 @@ package weapontier
 
 import (
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // Familles d'arme du témoin, écrites comme le film les écrit.
@@ -17,31 +15,31 @@ const (
 
 // temoin — quatre socles : un râtelier, un socle de puissance, un bonus, et un socle
 // qu'aucun emplacement ne confirme.
-func temoin() ([]replay.WeaponPad, *replay.MapWeaponPads) {
-	pads := []replay.WeaponPad{
+func temoin() ([]Pad, []Spot) {
+	pads := []Pad{
 		{Weapon: hydra},  // 0 — râtelier
 		{Weapon: sniper}, // 1 — puissance
 		{Weapon: bonus},  // 2 — bonus
 		{Weapon: ar},     // 3 — NON confirmé
 	}
-	cross := &replay.MapWeaponPads{CatalogN: 9, Pads: []replay.MapWeaponPadDTO{
+	cross := []Spot{
 		{Pad: 0, Family: "rack"},
 		{Pad: 1, Family: "power"},
 		{Pad: 2, Family: "powerup"},
-	}}
+	}
 	return pads, cross
 }
 
 // vies fabrique un canal `loadouts` : n vies portant `w`, chacune sur son propre slot, avec
 // une SECONDE émission par vie (le canal ré-émet après un changement d'arme) pour que les
 // tests prouvent que seule la première compte.
-func vies(depart int, w []string, apres []string) []replay.Loadout {
-	var out []replay.Loadout
+func vies(depart int, w []string, apres []string) []Spawn {
+	var out []Spawn
 	for i := 0; i < depart; i++ {
 		slot := uint32(512 + i)
-		out = append(out, replay.Loadout{T: 74, Slot: slot, W: w})
+		out = append(out, Spawn{Slot: slot, Weapons: w})
 		if apres != nil {
-			out = append(out, replay.Loadout{T: 600, Slot: slot, W: apres})
+			out = append(out, Spawn{Slot: slot, Weapons: apres})
 		}
 	}
 	return out
@@ -88,8 +86,8 @@ func TestTierOf_NonClasseQuandRienNeConfirme(t *testing.T) {
 
 // TestTierOf_BasePrimeSurLEmplacement — l'ordre du plan : base > terrain > puissance.
 func TestTierOf_BasePrimeSurLEmplacement(t *testing.T) {
-	pads := []replay.WeaponPad{{Weapon: ar}}
-	cross := &replay.MapWeaponPads{Pads: []replay.MapWeaponPadDTO{{Pad: 0, Family: "rack"}}}
+	pads := []Pad{{Weapon: ar}}
+	cross := []Spot{{Pad: 0, Family: "rack"}}
 	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, nil), false)
 	if got := m.TierOf(0, ar); got != TierBase {
 		t.Errorf("arme de départ sur râtelier : niveau = %q, attendu %q", got, TierBase)
@@ -98,8 +96,8 @@ func TestTierOf_BasePrimeSurLEmplacement(t *testing.T) {
 
 // TestBaseWeapons_SeulePremiereEmission — le piège mesuré à l'étape 0 : le canal ré-émet.
 func TestBaseWeapons_SeulePremiereEmission(t *testing.T) {
-	pads := []replay.WeaponPad{{Weapon: sniper}}
-	cross := &replay.MapWeaponPads{Pads: []replay.MapWeaponPadDTO{{Pad: 0, Family: "power"}}}
+	pads := []Pad{{Weapon: sniper}}
+	cross := []Spot{{Pad: 0, Family: "power"}}
 	// Les vingt vies démarrent AR+Sidekick puis ramassent toutes le sniper : s'il comptait,
 	// le sniper serait « base » et le niveau « puissance » disparaîtrait du match.
 	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, []string{sniper, pistol}), false)
@@ -110,18 +108,18 @@ func TestBaseWeapons_SeulePremiereEmission(t *testing.T) {
 
 // TestBaseWeapons_SeuilDeQueue — la queue de 5,6 % mesurée à l'étape 0 ne promeut rien.
 func TestBaseWeapons_SeuilDeQueue(t *testing.T) {
-	pads := []replay.WeaponPad{{Weapon: sniper}}
-	cross := &replay.MapWeaponPads{Pads: []replay.MapWeaponPadDTO{{Pad: 0, Family: "power"}}}
+	pads := []Pad{{Weapon: sniper}}
+	cross := []Spot{{Pad: 0, Family: "power"}}
 	l := vies(40, []string{ar, pistol}, nil)
 	// Une seule vie sur 41 démarre sniper en main : 2,4 %, sous BaseShareMin.
-	l = append(l, replay.Loadout{T: 74, Slot: 999, W: []string{sniper, pistol}})
+	l = append(l, Spawn{Slot: 999, Weapons: []string{sniper, pistol}})
 	m := NewMatch(pads, cross, l, false)
 	if got := m.TierOf(0, sniper); got != TierPower {
 		t.Errorf("arme de la queue : niveau = %q, attendu %q", got, TierPower)
 	}
 	// Douze vies sur 52 (23 %) suffisent en revanche.
 	for i := 0; i < 11; i++ {
-		l = append(l, replay.Loadout{T: 74, Slot: uint32(900 + i), W: []string{sniper, pistol}})
+		l = append(l, Spawn{Slot: uint32(900 + i), Weapons: []string{sniper, pistol}})
 	}
 	if got := NewMatch(pads, cross, l, false).TierOf(0, sniper); got != TierBase {
 		t.Errorf("arme de départ franche : niveau = %q, attendu %q", got, TierBase)
@@ -181,7 +179,7 @@ func TestCrossCheck_UnSeulSens(t *testing.T) {
 	}
 
 	// Un AR (rôle `automatic`) sur le socle de puissance : c'est le sens suspect.
-	pads[1] = replay.WeaponPad{Weapon: ar}
+	pads[1] = Pad{Weapon: ar}
 	c = m.RunCrossCheck(pads, roleOf)
 	if c.LightOnPower != 1 || c.Weapons[ar] != 1 {
 		t.Fatalf("inversion non comptée : %+v", c)
@@ -194,8 +192,8 @@ func TestCrossCheck_UnSeulSens(t *testing.T) {
 
 // TestCrossCheck_ShotgunNestPasLeger — le fusil à pompe EST une arme de socle de puissance.
 func TestCrossCheck_ShotgunNestPasLeger(t *testing.T) {
-	pads := []replay.WeaponPad{{Weapon: "0xSHOT"}}
-	cross := &replay.MapWeaponPads{Pads: []replay.MapWeaponPadDTO{{Pad: 0, Family: "power"}}}
+	pads := []Pad{{Weapon: "0xSHOT"}}
+	cross := []Spot{{Pad: 0, Family: "power"}}
 	m := NewMatch(pads, cross, nil, false)
 	c := m.RunCrossCheck(pads, func(string) string { return "shotgun" })
 	if c.LightOnPower != 0 || c.Alert() {

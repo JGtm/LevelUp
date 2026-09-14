@@ -39,6 +39,7 @@ import { UsageCountsGrid } from './UsageCountsGrid'
 import { UsageEquipmentDonutCard } from './UsageEquipmentDonutCard'
 import { usageAvailability } from './usageAvailability'
 import { buildCountsGrid, type UsageCountsRowInput } from './usageCountsModel'
+import { buildPadTierRows, padTiersNotes } from './usagePadTiersModel'
 import { buildPartiesDonutModel } from './usageEquipmentPartiesModel'
 import { equipmentFamilyLabel, type UsageText } from './usageI18n'
 
@@ -217,6 +218,44 @@ function PadControlCards({ usage, mode, t, locale }: CardContentProps) {
   )
 }
 
+/**
+ * La rangée « niveaux d'armes » : les MEMES prises, rangées par niveau — armes de base, de
+ * terrain, de puissance. Une ligne par niveau, le détail par arme au survol.
+ *
+ * RANGEE ABSENTE PLUTOT QUE VIDE : sans bloc `pad_tiers` (aucun match du scope n'a été projeté
+ * par la passe des niveaux), rien ne se rend. « Pas encore mesuré » ne se dessine pas comme
+ * « aucune prise ».
+ *
+ * PAS DE DONUT ICI, et ce n'est pas un oubli : la question « quelle part du lobby était pour
+ * moi » est DEJA celle de la rangée au-dessus, sur les mêmes prises. Un second donut ne dirait
+ * rien de plus.
+ */
+function PadTierCards({ usage, t, locale }: CardContentProps) {
+  const rows = buildPadTierRows(usage.pad_tiers, t)
+  if (rows.length === 0) return null
+  // `sort: false` : l'ordre des niveaux est ECRIT (base, terrain, puissance...), jamais le
+  // volume — un classement dont l'ordre bouge d'une session à l'autre ne se compare pas.
+  const grid = buildCountsGrid(rows, { t, locale, unit: 'weapon', sort: false })
+  const notes = padTiersNotes(usage.pad_tiers, t)
+  return (
+    <SectionCard
+      title={t.blockPadTiers}
+      label={t.blockPadTiers}
+      titleAdornment={cardTitleWithHint(t.cardHintPadTiers)}
+      footer={measuredFooter(usage, t)}
+    >
+      <div className="p-3">
+        <UsageCountsGrid grid={grid} />
+        {notes.map((note) => (
+          <p key={note} className="pt-2 text-3xs text-muted-foreground">
+            {note}
+          </p>
+        ))}
+      </div>
+    </SectionCard>
+  )
+}
+
 export function EquipmentUsageSection({ usage, mode, t, locale }: EquipmentUsageSectionProps) {
   const availability = usageAvailability(usage, t)
   if (availability.kind === 'hidden' || usage == null) return null
@@ -231,6 +270,7 @@ export function EquipmentUsageSection({ usage, mode, t, locale }: EquipmentUsage
     <>
       <EquipmentCards usage={usage} mode={mode} t={t} locale={locale} />
       <PadControlCards usage={usage} mode={mode} t={t} locale={locale} />
+      <PadTierCards usage={usage} mode={mode} t={t} locale={locale} />
     </>
   )
 }

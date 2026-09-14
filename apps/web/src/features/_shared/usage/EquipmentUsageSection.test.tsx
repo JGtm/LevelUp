@@ -117,3 +117,82 @@ describe('couverture de mesure — accord en nombre (finitions 2026-09-13)', () 
     expect(USAGE_TEXT.en.measuredFooterFmt(0, 12)).toBe('Measured on 0 matches out of 12')
   })
 })
+
+/**
+ * LA RANGÉE « CONTRÔLE DES ARMES PAR NIVEAU » (2026-09-14).
+ *
+ * Elle rend les MÊMES prises de socle rangées par niveau d'arme. Ce que ces tests verrouillent :
+ * la rangée est ABSENTE sans bloc (« pas encore mesuré » ne se dessine pas comme « aucune
+ * prise »), son ordre est celui, ÉCRIT, du contrat, et les notes de mesure ne s'écrivent que
+ * quand il y a quelque chose à signaler.
+ */
+describe('EquipmentUsageSection — les niveaux d’armes', () => {
+  /** Un bloc mesuré, avec ou sans niveaux. */
+  function blocAvecNiveaux(padTiers?: EquipmentUsageBlock['pad_tiers']): EquipmentUsageBlock {
+    return {
+      available: true,
+      matches_measured: 4,
+      matches_total: 5,
+      players: [{ xuid: 'moi', taken: 10, used: 5, kept: 3, dropped: 2, pad_pickups: 7 }],
+      tracked_players: [],
+      pad_tiers: padTiers,
+    } as unknown as EquipmentUsageBlock
+  }
+
+  const niveaux = {
+    matches_measured: 4,
+    matches_with_pads: 3,
+    matches_tiers_established: 3,
+    matches_random_starts: 1,
+    tiers: [
+      {
+        tier: 'puissance',
+        player_total: 5,
+        lobby_total: 20,
+        weapons: [
+          { family_key: '9d6aaed2', family_label: 'S7 Sniper', player_pickups: 5, lobby_pickups: 20 },
+        ],
+      },
+      { tier: 'terrain', player_total: 2, lobby_total: 12, weapons: [] },
+    ],
+  } as unknown as NonNullable<EquipmentUsageBlock['pad_tiers']>
+
+  it('n’affiche AUCUNE rangée quand le bloc des niveaux est absent', () => {
+    render(<EquipmentUsageSection usage={blocAvecNiveaux()} mode="solo" t={t} locale="fr" />)
+    expect(screen.queryByText(t.blockPadTiers)).not.toBeInTheDocument()
+  })
+
+  it('affiche une ligne par niveau, dans l’ordre écrit, et le total du niveau', () => {
+    render(<EquipmentUsageSection usage={blocAvecNiveaux(niveaux)} mode="solo" t={t} locale="fr" />)
+    expect(screen.getByText(t.blockPadTiers)).toBeInTheDocument()
+    const terrain = screen.getByText(t.padTierLabels.terrain)
+    const puissance = screen.getByText(t.padTierLabels.puissance)
+    // Le terrain PRÉCÈDE la puissance, bien qu'il pèse moins lourd (2 contre 5) : l'ordre des
+    // niveaux est écrit, jamais le volume.
+    expect(terrain.compareDocumentPosition(puissance)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    // Un niveau que le bloc ne publie pas n'a pas de ligne à zéro.
+    expect(screen.queryByText(t.padTierLabels.base)).not.toBeInTheDocument()
+  })
+
+  it('écrit les notes de mesure, et seulement celles qui ont quelque chose à dire', () => {
+    render(<EquipmentUsageSection usage={blocAvecNiveaux(niveaux)} mode="solo" t={t} locale="fr" />)
+    // 4 matchs mesurés, 3 avec socles : un match sans socle.
+    expect(screen.getByText(t.padTierNoPadsFmt(1))).toBeInTheDocument()
+    // 3 avec socles, 3 à niveaux établis : aucune carte hors référence, donc aucune note.
+    expect(screen.queryByText(t.padTierUnmeasuredFmt(1))).not.toBeInTheDocument()
+    expect(screen.getByText(t.padTierRandomStartsFmt(1))).toBeInTheDocument()
+  })
+
+  it('publie la rangée en anglais aussi', () => {
+    render(
+      <EquipmentUsageSection
+        usage={blocAvecNiveaux(niveaux)}
+        mode="squad"
+        t={USAGE_TEXT.en}
+        locale="en"
+      />,
+    )
+    expect(screen.getByText(USAGE_TEXT.en.blockPadTiers)).toBeInTheDocument()
+    expect(screen.getByText(USAGE_TEXT.en.padTierLabels.puissance)).toBeInTheDocument()
+  })
+})

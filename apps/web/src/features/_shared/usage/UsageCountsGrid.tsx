@@ -40,7 +40,10 @@ export function UsageCountsGrid({ grid }: { grid: UsageCountsGridModel }) {
       <div className="grid items-center gap-y-[6px]" style={gridStyle}>
         {grid.rows.map((row) => (
           <Fragment key={row.key}>
-            <div className="overflow-hidden whitespace-nowrap text-xs" title={row.label}>
+            <div
+              className="overflow-hidden whitespace-nowrap text-xs"
+              title={row.hint ?? row.label}
+            >
               <span className="truncate">{row.label}</span>
             </div>
             <UsageGauge gauge={row.gauge} />

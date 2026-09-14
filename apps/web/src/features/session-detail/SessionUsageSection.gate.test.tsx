@@ -147,3 +147,65 @@ describe('SessionUsageSection — E4.5/E4.3 : le bilan équipement remplace le g
     expect(container.querySelectorAll('[data-outcome-key]')).toHaveLength(3)
   })
 })
+
+/**
+ * LES NIVEAUX D'ARMES sur la page Sessions (2026-09-14) — une section DANS la carte
+ * « Contrôle des armes spéciales », dans la forme « trois jauges » de cette page.
+ *
+ * MÊME PORTE QUE PARTOUT : sans bloc `pad_tiers`, la section est ABSENTE. « Pas encore
+ * mesuré » ne se dessine pas comme « aucune prise ».
+ */
+describe('SessionUsageSection — les niveaux d’armes', () => {
+  const t = USAGE_TEXT.fr
+
+  function avecNiveaux(padTiers?: SessionUsageBlock['pad_tiers']): SessionUsageBlock {
+    return {
+      ...BASE,
+      pad_families: [
+        { family_key: '9d6aaed2', family_label: 'S7 Sniper', player_total: 5, lobby_total: 20 },
+      ],
+      pad_tiers: padTiers,
+    } as unknown as SessionUsageBlock
+  }
+
+  const niveaux = {
+    matches_measured: 4,
+    matches_with_pads: 4,
+    matches_tiers_established: 2,
+    matches_random_starts: 0,
+    tiers: [
+      {
+        tier: 'puissance',
+        player_total: 5,
+        lobby_total: 20,
+        weapons: [
+          { family_key: '9d6aaed2', family_label: 'S7 Sniper', player_pickups: 5, lobby_pickups: 20 },
+        ],
+      },
+      { tier: 'base', player_total: 3, lobby_total: 9, weapons: [] },
+    ],
+  } as unknown as NonNullable<SessionUsageBlock['pad_tiers']>
+
+  it('sans bloc de niveaux : aucune section', () => {
+    render(<SessionUsageSection usage={avecNiveaux()} meLabel="moi" />)
+    expect(screen.queryByText(t.blockPadTiers)).not.toBeInTheDocument()
+  })
+
+  it('avec des niveaux : une ligne par niveau, dans l’ordre écrit', () => {
+    render(<SessionUsageSection usage={avecNiveaux(niveaux)} meLabel="moi" />)
+    expect(screen.getByText(t.blockPadTiers)).toBeInTheDocument()
+    const base = screen.getByText(t.padTierLabels.base)
+    const puissance = screen.getByText(t.padTierLabels.puissance)
+    // La base PRÉCÈDE la puissance bien qu'elle pèse moins lourd : l'ordre est écrit.
+    expect(base.compareDocumentPosition(puissance)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  it('dit les cartes hors référence, et se tait sur ce qui va bien', () => {
+    render(<SessionUsageSection usage={avecNiveaux(niveaux)} meLabel="moi" />)
+    // 4 matchs à socles, 2 à niveaux établis : deux cartes hors référence.
+    expect(screen.getByText(t.padTierUnmeasuredFmt(2))).toBeInTheDocument()
+    // Aucun match sans socle, aucun départ aléatoire : pas de note.
+    expect(screen.queryByText(t.padTierNoPadsFmt(1))).not.toBeInTheDocument()
+    expect(screen.queryByText(t.padTierRandomStartsFmt(1))).not.toBeInTheDocument()
+  })
+})

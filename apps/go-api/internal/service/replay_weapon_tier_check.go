@@ -43,8 +43,16 @@ func (s *replayService) checkWeaponTierJoin(ctx context.Context, matchID string,
 		}
 		return roles[lbl.Key]
 	}
-	m := weapontier.NewMatch(doc.WeaponPads, doc.MapWeaponPads, nil, false)
-	c := m.RunCrossCheck(doc.WeaponPads, roleOf)
+	socles := make([]weapontier.Pad, len(doc.WeaponPads))
+	for i := range doc.WeaponPads {
+		socles[i] = weapontier.Pad{Weapon: doc.WeaponPads[i].Weapon}
+	}
+	emplacements := make([]weapontier.Spot, 0, len(doc.MapWeaponPads.Pads))
+	for _, s := range doc.MapWeaponPads.Pads {
+		emplacements = append(emplacements, weapontier.Spot{Pad: s.Pad, Family: s.Family})
+	}
+	m := weapontier.NewMatch(socles, emplacements, nil, false)
+	c := m.RunCrossCheck(socles, roleOf)
 	if !c.Alert() {
 		return
 	}

@@ -1,7 +1,5 @@
 package weapontier
 
-import "levelup/go-api/internal/games/halo_infinite/film/replay"
-
 // CrossCheck est le CONTRÔLE CROISÉ de la jointure : combien de socles portent une arme dont
 // le rôle canonique contredit la nature de leur emplacement.
 //
@@ -47,7 +45,7 @@ func (c CrossCheck) Alert() bool {
 // RunCrossCheck examine les socles d'un match. `roleOf` rend le rôle canonique d'une famille
 // d'arme ("" quand l'arme n'est pas au registre) — il est INJECTÉ pour que ce paquet reste
 // pur et sans référentiel d'armes à lui.
-func (m Match) RunCrossCheck(pads []replay.WeaponPad, roleOf func(weapon string) string) CrossCheck {
+func (m Match) RunCrossCheck(pads []Pad, roleOf func(weapon string) string) CrossCheck {
 	out := CrossCheck{Pads: len(pads), Weapons: map[string]int{}}
 	for i, p := range pads {
 		if m.FamilyOfPad(i) != familyPower {

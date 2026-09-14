@@ -33,9 +33,11 @@ package squadagg
 import (
 	"context"
 	"log/slog"
+	"strconv"
 
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/port"
 )
 
@@ -49,6 +51,12 @@ type EquipmentUsageQuery struct {
 	PlayerXUID      string
 	MatchIDs        []string
 	FriendGamertags []string
+	// RepoRoot / TitleSlug / Locale : de quoi NOMMER les armes du detail par niveau
+	// (catalogue du titre). Vides = les armes s'affichent sous leur cle, ce qui est la
+	// degradation ecrite partout ailleurs — jamais un nom approchant.
+	RepoRoot  string
+	TitleSlug string
+	Locale    string
 }
 
 // BuildEquipmentUsageBlock lit le résumé d'usage sur le scope et rend le bloc
@@ -86,6 +94,7 @@ func BuildEquipmentUsageBlock(ctx context.Context, q EquipmentUsageQuery) *domai
 	}
 	block := sessionusage.ComputeUsageOverview(in)
 	block.TrackedPlayers = friends
+	attacherNiveauxDArmes(ctx, &block, q, tc)
 	// La couverture des films n'est jamais totale : un scope entier sans match
 	// mesuré est un état légitime (le bloc dit « 0/N »), mais il ne doit pas
 	// passer en silence — c'est le premier symptôme d'une recuisson manquante.
@@ -94,4 +103,58 @@ func BuildEquipmentUsageBlock(ctx context.Context, q EquipmentUsageQuery) *domai
 			"match_count", len(q.MatchIDs), "player_xuid", q.PlayerXUID)
 	}
 	return &block
+}
+
+// attacherNiveauxDArmes ajoute au bloc les prises de socle rangees par niveau.
+//
+// Best-effort et DIT : repo sans ce loader ⇒ silence ; lecture en echec ⇒ WARN, le reste du
+// bloc est servi. Le calcul est CELUI DE LA PAGE SESSIONS (`sessionusage.ComputePadTiers`) :
+// deux projections de la meme regle divergeraient au premier changement.
+func attacherNiveauxDArmes(
+	ctx context.Context, block *domain.EquipmentUsageBlock,
+	q EquipmentUsageQuery, tc sessionusage.TeamContext,
+) {
+	rows, err := q.Repo.LoadPadTiers(ctx, q.MatchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "equipment usage: niveaux d'armes indisponibles", "err", err)
+		return
+	}
+	block.PadTiers = sessionusage.ComputePadTiers(sessionusage.PadTiersInput{
+		Rows:       rows,
+		PlayerXUID: q.PlayerXUID,
+		PlayerTeam: tc.PlayerTeam,
+		TeamOf:     tc.TeamOf,
+	})
+	nommerArmes(ctx, block.PadTiers, q)
+}
+
+// nommerArmes charge le catalogue d'armes du titre et nomme le detail par niveau.
+//
+// Best-effort et DIT : sans `RepoRoot`/`TitleSlug` (montage qui ne les passe pas) le bloc reste
+// servi, les armes sous leur cle. Catalogue illisible ⇒ WARN, meme degradation.
+func nommerArmes(ctx context.Context, block *domain.SessionUsagePadTiersBlock, q EquipmentUsageQuery) {
+	if block == nil || q.RepoRoot == "" || q.TitleSlug == "" {
+		return
+	}
+	cat, err := replaylabels.Load(q.RepoRoot, q.TitleSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "equipment usage: catalogue d'armes illisible — armes des niveaux non nommees",
+			"err", err, "titleSlug", q.TitleSlug)
+		return
+	}
+	NommerArmesDesNiveaux(block, cat.Weapons, q.Locale != "en", parseFamilleArme)
+}
+
+// parseFamilleArme rend l'identifiant 32 bits d'une cle de famille du contrat — huit
+// hexadecimaux minuscules, sans « 0x » (la forme de `replay.PadWeaponFamilyKey`).
+//
+// DEUXIEME ET DERNIERE COPIE de `service.parseWeaponFamilyKey` : les deux paquets sont
+// disjoints (squadagg ne peut pas importer service, qui l'importe). Une TROISIEME copie
+// devrait etre centralisee (regle CLAUDE.md n°6).
+func parseFamilleArme(key string) (uint32, bool) {
+	v, err := strconv.ParseUint(key, 16, 32)
+	if err != nil {
+		return 0, false
+	}
+	return uint32(v), true
 }

@@ -322,9 +322,72 @@ type SessionUsageBlock struct {
 	// SquadPlayers : les coéquipiers suivis du contexte escouade (ordre
 	// d'affichage ; vide en contexte solo ou sans coéquipier commun à toute la
 	// session). Les lignes Squad des métriques s'y alignent par XUID.
-	SquadPlayers   []SessionUsageSquadPlayer `json:"squad_players,omitempty"`
-	Metrics        []SessionUsageMetric      `json:"metrics,omitempty"`
-	PadFamilies    []SessionUsagePadFamily   `json:"pad_families,omitempty"`
-	PowerupPickups []SessionUsagePowerup     `json:"powerup_pickups,omitempty"`
-	Objectives     *SessionObjectivesBlock   `json:"objectives,omitempty"`
+	SquadPlayers []SessionUsageSquadPlayer `json:"squad_players,omitempty"`
+	Metrics      []SessionUsageMetric      `json:"metrics,omitempty"`
+	PadFamilies  []SessionUsagePadFamily   `json:"pad_families,omitempty"`
+	// PadTiers : les memes prises, rangees par NIVEAU d'arme (base / terrain / puissance /
+	// bonus / non classe). Autre table, autre perimetre mesure : cf. SessionUsagePadTiersBlock.
+	PadTiers       *SessionUsagePadTiersBlock `json:"pad_tiers,omitempty"`
+	PowerupPickups []SessionUsagePowerup      `json:"powerup_pickups,omitempty"`
+	Objectives     *SessionObjectivesBlock    `json:"objectives,omitempty"`
+}
+
+// PadTierOrder — L'ORDRE DE LECTURE DES NIVEAUX D'ARME, écrit une fois.
+//
+// Il n'est PAS trié par volume, et c'est délibéré : un classement dont l'ordre change d'une
+// session à l'autre ne se compare pas d'un écran au suivant. Les valeurs sont celles écrites
+// en base (`persist.PadTier*`) — un contrat de données, jamais un libellé : la traduction vit
+// dans l'i18n du web.
+//
+// `aucune_prise` n'y figure pas : c'est le ZÉRO MESURÉ d'un joueur, pas un niveau de contrôle.
+// Il compte le match comme mesuré et disparaît du classement.
+var PadTierOrder = []string{"base", "terrain", "puissance", "bonus", "non_classe"}
+
+// SessionUsagePadTierWeapon — le détail par ARME d'un niveau, servi au survol.
+//
+// PAS DE PART ICI, ET C'EST VOULU : une part par arme dans un niveau ajouterait trois
+// dénominateurs pour une lecture que personne n'a demandée. Deux comptes suffisent à dire
+// « sur les N prises de puissance du lobby, j'en ai fait n ».
+type SessionUsagePadTierWeapon struct {
+	FamilyKey string `json:"family_key"`
+	// FamilyLabel : le nom de l'arme dans la langue de la requête, résolu au service contre le
+	// catalogue du titre. ABSENT quand le catalogue ne connaît pas la famille — le client
+	// affiche alors la clé, jamais un nom approchant (même règle que SessionUsagePadFamily).
+	FamilyLabel   string  `json:"family_label,omitempty"`
+	PlayerPickups float64 `json:"player_pickups"`
+	LobbyPickups  float64 `json:"lobby_pickups"`
+}
+
+// SessionUsagePadTier — UN niveau d'arme et ses grandeurs.
+type SessionUsagePadTier struct {
+	// Tier : l'une des valeurs de PadTierOrder.
+	Tier string `json:"tier"`
+	SessionUsageShares
+	// PlayerPerMatch : cadence du joueur PAR MATCH MESURÉ (même dénominateur que les autres
+	// cadences du bloc — décision utilisateur du 2026-09-13).
+	PlayerPerMatch *float64 `json:"player_per_match,omitempty"`
+	// Weapons : le détail par arme, du plus pris au moins pris.
+	Weapons []SessionUsagePadTierWeapon `json:"weapons,omitempty"`
+}
+
+// SessionUsagePadTiersBlock — LES PRISES DE SOCLE PAR NIVEAU D'ARME sur la session.
+//
+// LE BLOC EST OMIS, JAMAIS SERVI A ZERO, quand aucun match de la session n'a été projeté : un
+// bloc vide se lirait « aucune prise » là où la vérité est « pas encore mesuré ».
+//
+// LES QUATRE COMPTEURS SONT DES DENOMINATEURS D'HONNETETE, et chacun dit une chose que les
+// autres ne disent pas — le détail est en tête de `analysis/sessionusage/pad_tiers.go`.
+type SessionUsagePadTiersBlock struct {
+	MatchesMeasured int `json:"matches_measured"`
+	// MatchesWithPads : parmi eux, ceux dont le film a publié au moins un socle. L'écart avec
+	// le précédent n'est pas une panne : un mode peut n'allumer aucun emplacement.
+	MatchesWithPads int `json:"matches_with_pads"`
+	// MatchesTiersEstablished : parmi eux, ceux dont la carte est dans la référence des
+	// emplacements. En dessous, tout tombe en « non classé » — un défaut de référence, pas un
+	// fait de jeu, et l'écran doit le dire.
+	MatchesTiersEstablished int `json:"matches_tiers_established"`
+	// MatchesRandomStarts : parmi eux, ceux dont le mode distribue des départs aléatoires. Le
+	// niveau « base » n'y est pas publié.
+	MatchesRandomStarts int                   `json:"matches_random_starts"`
+	Tiers               []SessionUsagePadTier `json:"tiers,omitempty"`
 }

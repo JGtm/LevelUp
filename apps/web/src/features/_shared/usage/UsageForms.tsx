@@ -322,7 +322,7 @@ export function UsageGaugeGrid({
             )}
             <div
               className={`overflow-hidden whitespace-nowrap text-xs${row.isTotal ? ' text-muted-foreground' : ''}`}
-              title={row.label}
+              title={row.hint ?? row.label}
             >
               <span className="truncate">{row.label}</span>
             </div>
