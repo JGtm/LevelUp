@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 4985 frames · intervalle 100 ms · duree 498500 ms
-schema 55 · titre halo_infinite
+schema 56 · titre halo_infinite
 version majeure du film : 41
 origine de la frame 0 sur l horloge du fil : 3604 ms
 coup d envoi date par le film : 26304 ms · 98/104 piste(s) en mouvement · rafale 4 · marge depuis la frame 0 : 22700 ms
@@ -562,6 +562,13 @@ refus des fermetures : 0 contestee(s) (l unicite manque : deux corps, deux joueu
 90 vie(s) nommee(s) / 105 — un rapport publie sans son denominateur ne se juge pas
 26 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
 verdict : nominal
+
+## REGISTRE D IDENTITE — la PROVENANCE de chaque lien, et ce que la table du film couvre
+index de joueur : 8 direct · 0 externe · 0 deduit · 0 non resolu
+slot de bipede : 105 direct (dont 6 propages) · 0 deduit · 0 non resolu (index hors table=0 · sans record=0 · lectures divergentes=0)
+table du film : lue=true refus="" · 8 siege(s) · 8 lien(s) direct(s) · 0 par repli
+controle (lecture des chunks) : 8 accord · 0 contradiction · 0 silence — la table du film fait foi, l ecart se compte
+voies des liens d index : film_table=8
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 39 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et

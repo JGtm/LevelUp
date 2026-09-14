@@ -13676,6 +13676,40 @@ components:
         - download_path
         - expires_at
       type: object
+    FilmTableCounts:
+      additionalProperties: false
+      properties:
+        accord:
+          format: int64
+          type: integer
+        contradiction:
+          format: int64
+          type: integer
+        direct:
+          format: int64
+          type: integer
+        lu:
+          type: boolean
+        refus:
+          type: string
+        repli:
+          format: int64
+          type: integer
+        sieges:
+          format: int64
+          type: integer
+        silence:
+          format: int64
+          type: integer
+      required:
+        - lu
+        - sieges
+        - direct
+        - repli
+        - accord
+        - contradiction
+        - silence
+      type: object
     FilterContextInput:
       additionalProperties: false
       properties:
@@ -14823,12 +14857,15 @@ components:
           $ref: '#/components/schemas/BipedLinkCounts'
         filmIndex:
           $ref: '#/components/schemas/LinkCounts'
+        filmTable:
+          $ref: '#/components/schemas/FilmTableCounts'
         statborgSlot:
           $ref: '#/components/schemas/LinkCounts'
       required:
         - filmIndex
         - bipedSlot
         - statborgSlot
+        - filmTable
       type: object
     IdentityPlayer:
       additionalProperties: false

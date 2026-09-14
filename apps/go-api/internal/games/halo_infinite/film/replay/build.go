@@ -79,7 +79,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// leurs gardes — aucun calque ne reconstruit son propre pont (garde-rail `archlint`).
 	reg := BuildIdentityRegistry(IdentityInput{
 		Positions: sorted, BipedCreations: opt.BipedCreations,
-		Deaths: opt.Deaths, PlayerIndices: opt.PlayerIndices,
+		Deaths: opt.Deaths, PlayerIndices: opt.PlayerIndices, FilmTable: opt.FilmTable,
 		Bots: opt.Bots, Fire: refs, RosterXUIDs: opt.RosterXUIDs,
 		Participants: opt.Participants,
 		Statborg: StatborgIdentityInput{

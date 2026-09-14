@@ -104,6 +104,12 @@ type IdentityCoverage struct {
 	// et ou l'echec est instruit (cf. canonical.BipedLinkCounts).
 	BipedSlot    canonical.BipedLinkCounts `json:"bipedSlot"`
 	StatborgSlot canonical.LinkCounts      `json:"statborgSlot"`
+	// FilmTable dit ce que LA TABLE DU FILM a couvert, ce que le repli a du completer, et ce que
+	// le controle en pense (lot 1.6). Elle ne compte pas des liens par provenance — `FilmIndex`
+	// le fait deja — mais l'etat d'UNE SOURCE : c'est la seule facon de voir, sur un artefact,
+	// qu'un film a ete cuit sans sa table (les 5 films sans section d'identification) ou avec un
+	// rang ambigu.
+	FilmTable canonical.FilmTableCounts `json:"filmTable"`
 }
 
 // Total agrege les trois familles — le chiffre unique du journal, jamais celui du gate (qui
@@ -125,10 +131,11 @@ func buildIdentitySection(r IdentityRegistry, in IdentityInput) IdentitySection 
 		return IdentitySection{}
 	}
 	s := IdentitySection{
-		Players:       identityPlayers(in),
+		Players:       identityPlayers(r, in),
 		BipedSlots:    identityBipedSlots(r, in.Clock),
 		StatborgSlots: identityStatborgSlots(in),
 	}
+	s.Coverage.FilmTable = r.CouvertureTableDuFilm()
 	for _, p := range s.Players {
 		s.Coverage.FilmIndex.Add(p.Link.Source)
 	}
@@ -153,18 +160,24 @@ func buildIdentitySection(r IdentityRegistry, in IdentityInput) IdentitySection 
 // identityPlayers publie les identites du film : les humains que la table d'index NOMME
 // (lien DIRECT), les bots que BOT_METADATA declare (lien DIRECT par `bid`), et les joueurs que
 // seule la feuille connait (lien EXTERNE, index -1).
-func identityPlayers(in IdentityInput) []IdentityPlayer {
-	noms := gamertagsOf(in.Deaths)
-	out := make([]IdentityPlayer, 0, len(in.PlayerIndices.ByXUID)+len(in.Bots))
+//
+// LA VOIE SE LIT PAR JOUEUR DEPUIS LE LOT 1.6, et elle ne se devine pas : la composition du
+// registre sait lequel des liens vient de la TABLE DU FILM (`film_table`) et lequel a du etre
+// complete par la lecture des chunks (`PlayerIndexTable`). Publier une voie unique pour tous
+// ferait passer un repli pour une lecture.
+func identityPlayers(r IdentityRegistry, in IdentityInput) []IdentityPlayer {
+	table := r.TableDIndex()
+	noms := nomsDesJoueurs(r, in.Deaths)
+	out := make([]IdentityPlayer, 0, len(table.ByXUID)+len(in.Bots))
 	humains := map[uint64]bool{}
-	for _, x := range triesParXUID(in.PlayerIndices.ByXUID) {
+	for _, x := range triesParXUID(table.ByXUID) {
 		humains[x] = true
 		out = append(out, IdentityPlayer{
-			FilmIndex: in.PlayerIndices.ByXUID[x],
+			FilmIndex: table.ByXUID[x],
 			XUID:      strconv.FormatUint(x, 10),
 			Name:      noms[x],
 			Link: canonical.Link{Source: canonical.LinkDirect,
-				Method: canonical.MethodPlayerIndexTable, Readings: in.PlayerIndices.Readings,
+				Method: r.filmTable.voieDuLienDIndex(x), Readings: table.Readings,
 				From: 0, To: in.Clock.lastFrame()},
 		})
 	}
@@ -189,6 +202,23 @@ func identityPlayers(in IdentityInput) []IdentityPlayer {
 		})
 	}
 	return out
+}
+
+// nomsDesJoueurs rend le gamertag de chaque xuid : celui que LA TABLE DU FILM ecrit d'abord,
+// celui du fil des morts ensuite.
+//
+// L'ORDRE EST CELUI DE LA DOCTRINE, et il repare un trou : le fil des morts ne nomme que les
+// joueurs qui MEURENT (`gamertagsOf`), donc un joueur a zero mort n'avait pas de nom dans
+// l'artefact — alors que le film ECRIT le sien dans son enregistrement de slot. Les deux sources
+// sont le meme film ; la table est simplement la seule des deux qui parle de tout le monde.
+func nomsDesJoueurs(r IdentityRegistry, deaths []Death) map[uint64]string {
+	noms := gamertagsOf(deaths)
+	for x, n := range r.NomsDuFilm() {
+		if n != "" {
+			noms[x] = n
+		}
+	}
+	return noms
 }
 
 // identityBipedSlots publie une ligne PAR VIE — jamais une par slot. C'est ce qui interdit de
