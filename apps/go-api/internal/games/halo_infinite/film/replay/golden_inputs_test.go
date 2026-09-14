@@ -73,6 +73,18 @@ func goldenInputsPath() string {
 // a un offset arbitraire : bruyant par chance, pas par construction, et le message ne dit pas
 // quoi faire. [TestGoldenInputsVersionGuard] verrouille le refus explicite.
 //
+// v19 (2026-09-14, lot 1.0) : LE FIXTURE PORTE LE TYPE DE LA PRODUCTION. `goldenInputs` embarque
+// desormais [FilmInputs] — ce que `scanFilmInputs` rend et ce que `BuildFromPositions` consomme —
+// au lieu de redeclarer la liste a la main. SIX CANAUX y entrent du meme geste, parce que le
+// chemin du fixture appelle enfin l etage de production au lieu de le recopier :
+// `BipedCreations`, `WeaponChanges`, `Pickups` (+ stats), `EquipmentChanges` (+ stats),
+// `ZoomEvents` (d ou sort `Options.Scoped`) et `Vehicles` (cf. golden_inputs_canaux_test.go).
+// Les huit goldens d assemblage cessent donc d affirmer des calques VIDES que la production
+// publie. La suite des sections change en deux points de plus : la table des slots descend de
+// l en-tete dans la section des positions (un SEUL codec de positions, partage avec le nuage des
+// vehicules — cf. encodePositionSection), et les six nouvelles sections s intercalent chacune
+// pres de sa famille.
+//
 // v18 (2026-09-14, lot 0.D revue R1) : le fixture porte les VERDICTS DE BALAYAGE que
 // l assemblage publie — `InventoryDeltaAmmoRefused` (« canal munitions refuse », publie en
 // `coverage.grenadeReads.ammoRefused`) et `FilmMajorVersion` (publie en
@@ -187,7 +199,7 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS18\n"
+const goldenInputsMagic = "REPLAYINPUTS19\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -228,6 +240,16 @@ func imposeAxisW(impose *filmdec.I0Layout) any {
 	return impose.AxisW
 }
 
+// goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
+//
+// IL EMBARQUE LE TYPE DE LA PRODUCTION (lot 1.0, 2026-09-14). Avant, il REDECLARAIT champ par
+// champ ce que l assemblage consomme, et la liste devait etre maintenue en parallele de celle
+// de `BuildFromFilm` — elle ne l a pas ete (decouverte D7 : cinq canaux absents). Le fixture
+// porte desormais un [FilmInputs], c est-a-dire EXACTEMENT le type que l etage de balayage rend
+// et que l assemblage consomme, plus les trois champs d en-tete qui n en font pas partie (le
+// film, sa carte, son decoupage d i0). Un canal ajoute a `FilmInputs` apparait ici tout seul —
+// et [TestCodecCouvreFilmInputs] exige qu il soit soit serialise, soit NOMME comme non
+// transporte.
 type goldenInputs struct {
 	Film string
 	// MapModule est le module de l entree de catalogue qui a dequantifie les positions
@@ -243,113 +265,17 @@ type goldenInputs struct {
 	// (`resolveI0Layout`) ; le drapeau existe pour que ce repli soit NOMME dans le fixture au
 	// lieu de se confondre avec une lecture du catalogue.
 	LayoutDetected bool
-	// InventoryDeltaAmmoRefused et FilmMajorVersion sont des VERDICTS du decodeur que
-	// l assemblage publie (`coverage.grenadeReads.ammoRefused`, `coverage.filmMajorVersion`).
-	// Ils entrent au fixture au meme titre que les donnees : sans eux le golden figeait une
-	// constante et la fidelite ne pouvait pas la contredire (revue R1, constat R1-1).
-	InventoryDeltaAmmoRefused bool
-	FilmMajorVersion          *int
-	Positions                 []filmdec.BipedPosition
-	Fire                      []filmdec.FireEvent
-	Loadouts                  []filmdec.KeyframeLoadout
-	Grenades                  []filmdec.GrenadeThrow
-	Projectiles               []filmdec.ProjectileTrack
-	Inventory                 []KeyframeInventory
-	// AbilityRanks : les identites de capacite lues dans les paquets delta (i48). Elles sont
-	// DANS le fixture parce que l assemblage les consomme — sans elles, le golden verrouillerait
-	// un document dont les capacites se limitent a la fenetre 16..23 des images-cles.
-	AbilityRanks []filmdec.AbilityRank
-	// CamoStates : les transmissions de la voie d etat du camouflage (i28 queue[1]). MEME
-	// raison : l assemblage en fait les episodes d equipement — sans elles le golden
-	// verrouillerait un document sans camo, donc pas celui que la production sert. Le film
-	// de reference (Fiesta) en porte 698, strictement binaires (0:617 · 4095:81) : le
-	// DASH du mode Fiesta allume le canal, PAS un power-up ramasse — ce mode ne pose
-	// aucun equipement au sol (enseignement utilisateur du 2026-08-16, cf. la
-	// distribution des durees verrouillee par camo_duration_distribution_test.go). i28
-	// est l etat de l unite, pas celui du seul equipement rang 8 (controle du
-	// 2026-08-16, cf. renderEquipment).
-	CamoStates []filmdec.CamoRead
-	// InventoryDeltas : les lectures d inventaire des paquets DELTA (grenades). Second canal de
-	// l axe `grenadeReads` — cf. grenade_reads.go.
-	InventoryDeltas []filmdec.InventoryDelta
-	// GrappleReads : les evenements de grappin (corps tag==3 d i59, tir et accroche avec
-	// leurs quanta d ancre). MEME raison : l assemblage en fait les tractions du schema 8 —
-	// sans elles le golden verrouillerait un document sans grappin, donc pas celui que la
-	// production sert.
-	GrappleReads []filmdec.GrappleRead
-	// Translocations : les teleportations du translocateur (evenements type 117). MEME
-	// raison : l assemblage en fait le calque du schema 38 — et la production les passe
-	// AUSSI au filtre de vitesse (exemption D2), ce que decodeFilmInputs rejoue.
-	Translocations []filmdec.TranslocatorTeleport
-	// AbilityImpulses / AbilityImpulseStats : les IMPULSIONS DE CAPACITE (corps tag==1 des
-	// MEMES composants i57/i59 que le grappin). MEME raison que les precedents : l assemblage
-	// en fait le calque `abilityImpulses` du schema 38 — et le film de reference (famille B,
-	// ou le propulseur est le rang 21) en porte, donc sans elles le golden verrouillerait un
-	// document que la production ne sert pas. Les stats voyagent avec parce qu elles portent
-	// le temoin `Absent` que la couverture publie.
-	AbilityImpulses     []filmdec.AbilityImpulse
-	AbilityImpulseStats filmdec.AbilityImpulseStats
-	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES (emplacements ARMES d i56,
-	// quartet haut — rapport R11). MEME raison que les impulsions : l assemblage en fait le
-	// calque `abilityCharges` du schema 38 enrichi, et le film de reference (famille B :
-	// grappin rang 20, propulseur rang 21) en porte — sans elles le golden verrouillerait un
-	// document que la production ne sert pas. Les stats voyagent avec parce qu elles portent
-	// les temoins `Absent` et `Scanned` que la couverture consulte.
-	AbilityCharges     []filmdec.AbilityCharge
-	AbilityChargeStats filmdec.AbilityChargeStats
-	// Placements / PlacementStats : les POSES d equipement et la CALIBRATION du bloc de
-	// replication. MEME raison que les deux precedents : l assemblage en fait le calque du
-	// schema 9. La calibration voyage avec la liste parce que la couverture la publie.
-	Placements     []filmdec.EquipmentPlacement
-	PlacementStats filmdec.EquipmentPlacementStats
-	// Pads : ce que le film rend sur les SOCLES — la voie des ARMES AU SOL (creations ti=42) et
-	// celle des POWER-UPS (creations ti=37), chacune avec le recensement des images-cles qui
-	// borne les presences et les pistes de position qui disent si l objet a bouge. MEME raison
-	// que les precedents : l assemblage en fait le calque des socles (schemas 11 puis 17).
-	//
-	// LES DEUX VOIES SONT DANS LE FIXTURE, et il le faut : c est la SECONDE qui decide si un
-	// power-up de socle est publie. Sans elle, le golden verrouillerait un document que la
-	// production ne sert plus.
-	Pads    PadScans
-	Deaths  []Death
-	Indices PlayerIndexTable
-	// ClockOriginUS est l horodatage moteur du premier paquet du film, c est-a-dire le zero de
-	// l horloge des highlight events (cf. origin.go). Il est DANS le fixture parce que
-	// l origine publiee est une entree de l assemblage comme une autre — sans lui, le golden
-	// verrouillerait un document sans origine, donc pas celui que la production sert.
-	ClockOriginUS uint64
+	// FilmInputs porte le reste : tout ce que l etage de balayage rend a l assemblage.
+	FilmInputs
 }
 
-// options rend les Options d assemblage portees par le fixture. La geometrie et la structure
-// sont volontairement absentes (cf. l en-tete).
+// options rend les Options d assemblage portees par le fixture, PAR LA FONCTION DE LA PRODUCTION
+// (`FilmInputs.applyTo`). La geometrie et la structure sont volontairement absentes (cf.
+// l en-tete) : elles ne viennent pas du film.
 func (g *goldenInputs) options() Options {
-	return Options{
-		Loadouts:        g.Loadouts,
-		Grenades:        g.Grenades,
-		Projectiles:     g.Projectiles,
-		Inventory:       g.Inventory,
-		AbilityRanks:    g.AbilityRanks,
-		CamoStates:      g.CamoStates,
-		InventoryDeltas: g.InventoryDeltas,
-		GrappleReads:    g.GrappleReads,
-		Translocations:  g.Translocations,
-
-		AbilityImpulses:     g.AbilityImpulses,
-		AbilityImpulseStats: g.AbilityImpulseStats,
-
-		AbilityCharges:     g.AbilityCharges,
-		AbilityChargeStats: g.AbilityChargeStats,
-
-		InventoryDeltaAmmoRefused: g.InventoryDeltaAmmoRefused,
-		FilmMajorVersion:          g.FilmMajorVersion,
-
-		Placements:        g.Placements,
-		PlacementStats:    g.PlacementStats,
-		Pads:              g.Pads,
-		Deaths:            g.Deaths,
-		PlayerIndices:     g.Indices,
-		FilmClockOriginUS: g.ClockOriginUS,
-	}
+	var opt Options
+	g.FilmInputs.applyTo(&opt)
+	return opt
 }
 
 // ---------------------------------------------------------------------------
@@ -426,7 +352,7 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 // d octets alors que le probleme est une version. Le test relit le corps COURANT precede de la
 // magie PRECEDENTE : la seule reponse acceptable est le refus de version.
 func TestGoldenInputsVersionGuard(t *testing.T) {
-	const previousMagic = "REPLAYINPUTS17\n"
+	const previousMagic = "REPLAYINPUTS18\n"
 	if previousMagic == goldenInputsMagic {
 		t.Fatal("la magie precedente et la courante sont identiques : le test ne prouve plus rien")
 	}
@@ -482,7 +408,7 @@ func TestGoldenInputsRegenerate(t *testing.T) {
 		"%d impulsions de capacite, %d lectures de charge, %d morts, %d index",
 		goldenInputsPath(), len(blob), buf.Len(), len(g.Positions), len(g.Fire), len(g.Loadouts),
 		len(g.Grenades), len(g.Projectiles), len(g.Inventory), len(g.GrappleReads),
-		len(g.AbilityImpulses), len(g.AbilityCharges), len(g.Deaths), len(g.Indices.ByXUID))
+		len(g.AbilityImpulses), len(g.AbilityCharges), len(g.Deaths), len(g.PlayerIndices.ByXUID))
 }
 
 // decodeFilmInputs rejoue EXACTEMENT la sequence de decodage de BuildFromFilm — c est ce qui

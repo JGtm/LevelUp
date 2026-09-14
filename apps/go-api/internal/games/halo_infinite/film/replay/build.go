@@ -48,7 +48,12 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	origin := sorted[0].TimestampUS
 	step := uint64(interval) * 1000
-	doc.Tracks = decimateTracks(sorted, origin, step, opt.minPoints(), opt.Scoped)
+	// LA COUVERTURE DES TRACES EST CONSTRUITE ICI mais POSEE plus bas, avec les autres :
+	// `doc.Coverage` n'existe qu'a partir de `buildCoverage`, et l'assemblage du document se
+	// fait dans l'ordre des DEPENDANCES, pas dans celui des champs.
+	tracks, trackCov := decimateTracks(sorted, origin, step, opt.minPoints(), opt.Scoped)
+	doc.Tracks = tracks
+	logTrackCoverage(matchID, trackCov)
 	doc.FrameCount = frameSpan(sorted, origin, step)
 	doc.DurationMS = doc.FrameCount * interval
 	var ecartes int
@@ -179,6 +184,10 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, reg, doc.OriginMs != nil, scoreCov)
 	doc.Coverage.Projectiles = projCov
+	// CE QUE LE SEUIL DE PUBLICATION A REFUSE (schema 55) : mesure faite en tete de fonction,
+	// posee ici. Sans elle, un artefact publiant 90 traces la ou le film en porte 95 etait
+	// indistinguable d'un film a 90 vies.
+	doc.Coverage.Tracks = &trackCov
 	// La version du film est une DIMENSION du décodage : elle voyage avec l'artefact plutôt que
 	// d'exiger une relecture du film pour la retrouver (cf. Coverage.FilmMajorVersion).
 	doc.Coverage.FilmMajorVersion = opt.FilmMajorVersion
@@ -485,106 +494,6 @@ func fireRefs(fire []filmdec.FireEvent) []FireEventRef {
 func keepShotsOfPublishedTracks(shots []Shot, tracks []Track) []Shot {
 	return keepOfPublishedTracks(shots, tracks,
 		func(s Shot, published map[uint32]bool) bool { return published[s.Slot] })
-}
-
-// decimateTracks projette les positions sur la grille de frames (un point par slot et par
-// frame, le premier observé gagne) et produit UNE TRACK PAR VIE — un slot qui disparaît plus
-// de `lifeGapUS` puis revient ouvre une nouvelle track, la MÊME règle de découpe que
-// `buildLifeSpans` (lot identité des vies, 2026-09-02).
-//
-// POURQUOI PAR VIE ET PLUS PAR SLOT. Une track unique par slot fusionnait les vies d'un slot
-// RECYCLÉ (partant remplacé par un arrivant ou un bot) : le premier porteur nommé gardait
-// tout l'intervalle, le second n'avait aucune vie — sa fiche restait « Éliminé /
-// Réapparition ? » pendant que son corps se déplaçait sous le nom du premier. Le contrat
-// client (buildSlotOwnership, résolveurs frame-aware par slot) attend des vies disjointes.
-// L'ordre reste celui de première apparition du slot, les vies d'un slot en ordre
-// chronologique — déterministe, artefact diffable.
-func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoints int,
-	scoped func(slot uint32, tsUS uint64) int) []Track {
-	type acc struct {
-		done      [][]Point // les vies CLOSES de ce slot, dans l'ordre
-		pts       []Point
-		lastFrame int
-		lastUS    uint64
-	}
-	accs := map[uint32]*acc{}
-	var order []uint32
-	for _, p := range sorted {
-		if !p.HasWorld { // quantum sans bornes de carte : pas une coordonnée, on ne publie pas
-			continue
-		}
-		frame := int((p.TimestampUS - origin) / step)
-		a := accs[p.Slot]
-		if a == nil {
-			a = &acc{lastFrame: -1}
-			accs[p.Slot] = a
-			order = append(order, p.Slot)
-		}
-		// Trou au-delà de lifeGapUS = NOUVELLE VIE : la track courante se clôt, la suivante
-		// s'ouvre. Même seuil que buildLifeSpans — deux découpes divergentes rendraient le
-		// nommage par vie inappariable.
-		if len(a.pts) > 0 && int64(p.TimestampUS)-int64(a.lastUS) > lifeGapUS {
-			a.done = append(a.done, a.pts)
-			a.pts = nil
-			a.lastFrame = -1
-		}
-		a.lastUS = p.TimestampUS
-		if frame == a.lastFrame {
-			continue
-		}
-		a.lastFrame = frame
-		pt := Point{T: frame, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z)}
-		if h, ok := p.AimHeadingDeg(); ok { // cap de visée du MÊME record (i21), si répliqué
-			pt.H = headingForJSON(h)
-		}
-		// ÉLÉVATION du MÊME record et du MÊME composant que le cap (le R(11) qui suit le
-		// R(12) d'i21) : les deux angles arrivent ensemble ou pas du tout, `AimPitchDeg`
-		// partageant la validité `HasYaw` avec `AimHeadingDeg`. Publier l'un sans l'autre
-		// n'a donc aucun sens — et l'absence de `p` sur un point qui porte `h` dit « à
-		// plat », pas « inconnu » (cf. Point.P).
-		if pitch, ok := p.AimPitchDeg(); ok {
-			pt.P = pitchForJSON(pitch)
-		}
-		// LUNETTE : etat a bascule, d'une AUTRE source que les deux angles ci-dessus — on le
-		// consulte a l'instant du point au lieu de le lire dedans (cf. Point.S, zoom_state.go).
-		if scoped != nil {
-			pt.S = scoped(p.Slot, p.TimestampUS)
-		}
-		// Vitalité du MÊME record que la position (i4 / i5). La décimation garde le PREMIER
-		// échantillon de chaque frame : si deux records du même slot tombent dans la même
-		// frame de 100 ms et que seul le second porte le bouclier, il est perdu. Cela
-		// n'invente rien — c'est une perte, pas une erreur — et le témoin publié est mesuré
-		// sur les positions NON décimées.
-		// Témoin : P(bouclier nul | 500 ms avant une mort connue) = 50,49 % contre 38,18 %
-		// chez un vivant à plus de 5 s d'une mort, soit un rapport de 1,32x — FAIBLE, et
-		// c'est normal : le film ne réplique le bouclier que lorsqu'il CHANGE, donc une
-		// mesure de bouclier est déjà une mesure de combat. Ce qui porte le rendu est le
-		// témoin de FORME (27 404/27 404 quanta dans [0,64]), pas ce rapport.
-		if sh, ok := p.ShieldAt(); ok {
-			pt.Sh = fractionForJSON(sh)
-		}
-		if hp, ok := p.HealthAt(); ok {
-			pt.Hp = fractionForJSON(hp)
-		}
-		a.pts = append(a.pts, pt)
-	}
-	tracks := make([]Track, 0, len(order))
-	for _, slot := range order {
-		a := accs[slot]
-		for _, pts := range append(a.done, a.pts) {
-			if len(pts) < minPoints {
-				continue
-			}
-			tracks = append(tracks, Track{
-				Slot:       slot,
-				Team:       -1,
-				Points:     pts,
-				StartFrame: pts[0].T,
-				EndFrame:   pts[len(pts)-1].T,
-			})
-		}
-	}
-	return tracks
 }
 
 // frameSpan renvoie le nombre de frames couvrant tout le film (dernier index + 1).

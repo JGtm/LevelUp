@@ -1,8 +1,8 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 54
-empreinte-stockee 6581c32e42b003aa
-empreinte-servie 6581c32e42b003aa
+schema 55
+empreinte-stockee 6a8f8714a6f45638
+empreinte-servie 6a8f8714a6f45638
 
 AbilityCharge
   Charges json:"charges" int
@@ -180,6 +180,7 @@ Coverage
   Shots json:"shots" LayerCoverage
   SkullCarries json:"skullCarries,omitempty" *SkullCarriesCoverage
   T0Film json:"t0Film,omitempty" *T0FilmCoverage
+  Tracks json:"tracks,omitempty" *TrackCoverage
   Translocations json:"translocations,omitempty" *TranslocationCoverage
   Vehicles json:"vehicles,omitempty" *VehicleCoverage
   Verdict json:"verdict,omitempty" map[string]string
@@ -741,6 +742,12 @@ Track
   StartFrame json:"startFrame,omitempty" int
   Team json:"team" int
   XUID json:"xuid,omitempty" string
+TrackCoverage
+  MinPoints json:"minPoints" int
+  Published json:"published" int
+  PublishedPoints json:"publishedPoints" int
+  RefusedMinPoints json:"refusedMinPoints" int
+  RefusedPoints json:"refusedPoints" int
 Translocation
   FX json:"fx,omitempty" *float32
   FY json:"fy,omitempty" *float32

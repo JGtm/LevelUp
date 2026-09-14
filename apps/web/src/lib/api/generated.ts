@@ -5750,6 +5750,7 @@ export interface components {
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
             t0Film?: components["schemas"]["T0FilmCoverage"];
+            tracks?: components["schemas"]["TrackCoverage"];
             translocations?: components["schemas"]["TranslocationCoverage"];
             vehicles?: components["schemas"]["VehicleCoverage"];
             verdict?: {
@@ -12679,6 +12680,18 @@ export interface components {
             /** Format: int64 */
             team: number;
             xuid?: string;
+        };
+        TrackCoverage: {
+            /** Format: int64 */
+            minPoints: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            publishedPoints: number;
+            /** Format: int64 */
+            refusedMinPoints: number;
+            /** Format: int64 */
+            refusedPoints: number;
         };
         Translocation: {
             /** Format: float */

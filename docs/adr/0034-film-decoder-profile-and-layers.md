@@ -260,12 +260,20 @@ Found on the tree during lot 0.B (2026-09-13), written here so the wrong sentenc
    refusal lives upstream, in `validateArtifact` (`replaybuild/artifact_store.go`), on the only
    writer that can carry another version (`StoreArtifact`) — the others serialize a document from
    the current producer. The behaviour is correct; only the sentence was wrong.
-2. **The chronicle has three header forms, and two numbers do not exist.** `document_chronicle.go`
+2. **The chronicle has three header forms, and one number does not exist.** `document_chronicle.go`
    carries three forms, born in different months (`// v<N> (`, `// SCHEMA <N> `,
-   `// CE QUE LA VERSION <N> `). Versions **32 and 51 were skipped** at the renumbering of two
-   parallel lots, and v1 predates the chronicle. Any guard rail deriving the list from a `1..N`
-   range would assert versions that were never cooked; the shared extractor
+   `// CE QUE LA VERSION <N> `). Version **32 was skipped** at the renumbering of two parallel
+   lots, and v1 predates the chronicle. Any guard rail deriving the list from a `1..N` range would
+   assert versions that were never cooked; the shared extractor
    (`testutil/replay_chronicle.go`) recognizes the three forms and fills no gaps.
+   **Corrected on 2026-09-14 (lot 1.0, review round 2).** This point, lot 0.B and
+   `testutil/replay_chronicle.go` all said "32 **and 51** were skipped". Git contradicts it for
+   51: `2fb53db4e` sets `SchemaVersion = 51` on 2026-09-10 and `b6b198baf` replaces it with 52
+   the next day, so artifacts *were* cooked under that number. What was actually missing was its
+   chronicle entry — never written, and therefore invisible to the extractor and to every guard
+   rail derived from it. The entry was restored on 2026-09-14. The lesson belongs here: a gap in
+   the chronicle reads exactly like a skipped number, and nothing distinguishes the two. A
+   chronicle entry is written **in the commit that raises the version**, never afterwards.
 3. **`internal/domain/replaydoc` has no tests of its own.** The served document package is a leaf
    with no `_test.go` file. Its shape is guarded from `film/replay` (the shape fingerprint, D-8.4)
    and its field-by-field parity from `service/replayview/parity_test.go`. That is enough while

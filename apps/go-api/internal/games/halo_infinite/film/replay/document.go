@@ -33,46 +33,19 @@ package replay
 // inconnu » indéfiniment faute de recuisson déclenchée) — cf.
 // `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
 //
-// v50 (2026-09-08, lot P2) : la section `identity` naît, `roster[].bid` est publié, et le
-// nommage des vies change (élimination sur le roster). Le CONTENU CUIT change, donc le bump est
-// exigé par la règle — pas seulement pour déclencher la recuisson.
+// LES NOTES PAR VERSION ONT ETE RETIREES D'ICI LE 2026-09-14 (lot 1.0, revue R1, constat R1-4).
+// Elles RECOPIAIENT, en plus court, les entrees de `document_chronicle.go` — deux resumes de la
+// meme montee, qui derivent l'un de l'autre au premier amendement (v50 y est deja « v50 AMENDE »,
+// ici non). LA CHRONIQUE FAIT FOI, ET ELLE EST LA SEULE : `document_chronicle.go`.
 //
-// v51 (2026-09-10, lot 4.3) : deux changements de CONTENU CUIT — `identity.bipedSlots[].bid`
-// (le tableau de l'API nomme les corps hors table) et `abilityLabels[].family` (le résumé
-// d'usage y joint, d'où `UsageSummaryRev` us4 -> us5). Raison détaillée : `structure_test.go`.
-//
-// v52 (2026-09-11, lot B décodeur) : TROIS changements de CONTENU CUIT, chacun mesuré.
-// `grenades[]` change de position ET porte désormais son `slot` sur les deux branches (le
-// lancer revient à son lanceur) ; `projectiles[]` est coupé au premier pas impossible, `rest`
-// tombant à false sur un vol coupé ; `geometry` devient les props de LA carte du match, donc
-// vide sur toute carte non extraite. Le bump est exigé par la règle — le contenu change, et un
-// artefact v51 doit se voir comme « à recuire », pas comme à jour. `coverage.projectiles`
-// s'ajoute au passage, mais un champ optionnel ne l'aurait pas exigé à lui seul. Chronique
-// détaillée et chiffres : `document_chronicle.go`.
-// v53 (2026-09-12, lot B-bis) : UNE SEULE CAUSE, et elle ne touche qu'une carte du catalogue —
-// mais plusieurs calques en dépendent. La porte du composant de position des objets du monde
-// était écrite en dur à 3 bits ; l'index de région qu'elle porte fait DEUX bits sur Live Fire.
-// Le décodeur y lisait les trois axes un bit trop tôt et rendait des positions fausses, que le
-// garde-fou de v52 coupait ensuite au deuxième ou troisième point. Mesuré sur les quatre films
-// Live Fire du parc : 614 vols de projectile tronqués -> 5, et 1 067 points publiés -> 8 378 ;
-// les poses d'équipement passent de 49 et 27 à 227 et 114 sur les deux films mesurés, et les
-// lancers de grenade retrouvent leur lien vers le projectile (2 -> 85, 0 -> 137). Aucune autre
-// carte ne bouge d'un point (Cliffhanger, Banished Narrows, The Pit, Isolation : identiques).
-// Chronique et chiffres : `document_chronicle.go`.
-//
-// v54 (2026-09-12, lot G.2bis) : UN SEUL changement, et il ne touche que les films de
-// FilmMajorVersion 39-40 (mars a novembre 2025, 211 des 1 351 du cache) — mais sur ceux-la il
-// change le ROSTER. `ScanDeaths` passait `filmMajorVersion = 0` au parseur d'events, donc le
-// decoupage « gamertag en tete » ; sur ces films le gamertag vit douze octets plus loin et la
-// lecture ramenait du rembourrage. La version est desormais LUE dans l'en-tete du registre du
-// film. Mesure sur pieces (`gamertagsOf`, la table qui nomme `roster[]`) : `e5adf7b2` passe de
-// 17 identites nommees / 2 noms distincts a 26 / 26, `111fa685` de 16 / 2 a 24 / 24. Temoins de
-// version 41 (`000d5950`, `5676a9ba`) : identiques, 8 / 8 et 26 / 26 des deux cotes. Le bump est
-// exige par la regle — le contenu cuit change — et il est ce qui rendra ces artefacts candidats
-// a `backfill-replay --only-existing`. `coverage.filmMajorVersion` s'ajoute au passage — la
-// version lue voyage desormais AVEC l'artefact ; champ optionnel, il ne l'aurait pas exige a
-// lui seul. Chronique : `document_chronicle.go`.
-const SchemaVersion = 54
+// CE QUE LE GARDE-RAIL TIENT, EXACTEMENT (revue R2, constat R2-1) : `document_shape_test.go`
+// exige une entree de chronique pour la version COURANTE, au moment ou la forme se refige. Il ne
+// balaie PAS les versions passees — c'est `replaybuild/artifact_schema_history_test.go` qui les
+// rejoue, sur la liste que la chronique DECLARE. Une version cuite dont l'entree manque echappe
+// donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
+// restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
+// monte la version, jamais apres.
+const SchemaVersion = 55
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

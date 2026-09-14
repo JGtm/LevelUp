@@ -6,20 +6,21 @@
 
 ## AXE DE TEMPS
 5399 frames · intervalle 100 ms · duree 539900 ms
-schema 54 · titre halo_infinite
+schema 55 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 15914 ms
-coup d envoi date par le film : 38514 ms · 240/254 piste(s) en mouvement · rafale 16 · marge depuis la frame 0 : 22600 ms
+coup d envoi date par le film : 38514 ms · 240/254 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 22600 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
 254 trace(s) · 85472 point(s) de grille
-219 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
-occupation du slot dans le TEMPS) · 35 sans identite — un DEFAUT de nommage a instruire,
+seuil de publication 2 point(s) : 2 vie(s) REFUSEE(S) portant 2 point(s) — une vie d un seul echantillon n est pas une trajectoire
+254 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
 45880 point(s) portent un cap de visee · 45880 une elevation de visee · 13634 un bouclier · 402 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
-26 joueur(s)
+28 joueur(s)
   2533274859425034  idx=0  "HardCandy79"
   2533274914059263  idx=1  "Trippi Arts"
   2533274874545839  idx=2  "PndTwnXpress"
@@ -33,6 +34,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2535461460033301  idx=10  "Goldenarrow5208"
   2535471749979592  idx=11  "MAREZ7781"
   2535407716978607  idx=12  "AGROZON"
+  2535462715436138  idx=13  ""
   2535439648658227  idx=14  "LogisticSnow520"
   2533275032306686  idx=15  "EvilIiJokevc"
   2535434053235319  idx=16  "Jol 7792"
@@ -45,14 +47,15 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2535411177047389  idx=23  "Lamuerte28976"
   2535441018620968  idx=24  "ART THECLOWN394"
   2535472435989349  idx=25  "DutyClock945"
+  2535428237539591  idx=26  ""
   2535422645680365  idx=27  "Sergio98666"
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-1201 rattache(s) / 1786 disponible(s) = 67.2 %
-rejets : slot introuvable=579 · slot ambigu=6 · hors fenetre=0 · sans trace publiee=0
+1492 rattache(s) / 1786 disponible(s) = 83.5 %
+rejets : slot introuvable=294 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1786 = 1786 (equilibre : true)
 verdict : nominal
-1201 tir(s) publie(s) · 893 avec un cap de visee lisible · 1201 avec une arme nommee
+1492 tir(s) publie(s) · 1121 avec un cap de visee lisible · 1492 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 0 rattache(s) / 0 disponible(s) = aucune donnee
@@ -71,7 +74,7 @@ couverture : 579 piste(s) decodee(s) · 551 publiee(s) · 20 coupee(s) a un pas 
 621 etat(s) publie(s) · 511 avec grenades lues · 507 avec munitions lues
 136 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-110 lecture(s) VIDE(S) : 71 corroboree(s) par le fil des morts (`dead`), 39 inexpliquee(s)
+110 lecture(s) VIDE(S) : 81 corroboree(s) par le fil des morts (`dead`), 29 inexpliquee(s)
 couverture : 635 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 14 ecartee(s) faute de piste publiee -> 621 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
@@ -922,9 +925,9 @@ POWER-UPS (voie ti=37) — balaye=true · 1112 creation(s) acceptee(s) -> 0 rete
 513 loadout(s) publie(s) · 27 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
-182 entree(s) · 175 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
-fermetures : 0 par le corps disponible · 7 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
-refus des fermetures : 67 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 5 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
+217 entree(s) · 217 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
+fermetures : 0 par le corps disponible · 0 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
+refus des fermetures : 0 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 0 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
 175 vie(s) nommee(s) / 256 — un rapport publie sans son denominateur ne se juge pas
 29 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
 verdict : nominal
