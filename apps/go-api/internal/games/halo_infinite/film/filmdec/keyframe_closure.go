@@ -13,11 +13,18 @@ package filmdec
 //
 // # POURQUOI C'EST LA MESURE QUI COMPTE
 //
-// La production ne ferme AUCUN record aujourd'hui (mesure du 2026-09-12 : 62 686 records, 6 films,
-// 3 builds) parce qu'elle lit l'image-cle avec le cadre du delta. Le cadre juste existe depuis
-// R7-d — `WalkKeyframeFullState` — et n'est branche nulle part : c'est le lot 1.4. Ce fichier ne
-// branche rien non plus ; il MESURE, pour que le port des composants manquants (lot 3.6) sache
-// par ou commencer et pour qu'un ratchet interdise a la couverture de redescendre.
+// La production ne fermait AUCUN record jusqu'au 2026-09-14 (mesure du 2026-09-12 : 0 sur
+// 62 686 records, 6 films, 3 builds) parce qu'elle lisait l'image-cle avec le cadre du delta.
+// LE LOT 1.4 A BRANCHE LE CADRE JUSTE : les deux balayages qui parsent le corps d'un record
+// d'image-cle (`navpoint_radial_scan.go`, `objective_scan.go`) appellent desormais
+// `WalkKeyframeFullState`, c'est-a-dire EXACTEMENT ce que ce fichier mesure.
+//
+// CONSEQUENCE POUR LE RATCHET : il ne bouge PAS au lot 1.4, et c'est le resultat attendu. Ce
+// golden a toujours mesure le cadre d'etat complet (lot 0.A.3) ; ce qui change au lot 1.4, c'est
+// que la PRODUCTION le rejoint. Le plan prevoyait « 0 -> 14 % » ici : c'etait une erreur de
+// citation — ce 0 etait celui des compteurs de production, pas celui de ce golden, qui vaut
+// 30,8 % depuis le lot 1.3. Le ratchet continue de servir a ce pour quoi il existe : interdire a
+// la couverture de redescendre quand le lot 3.6 portera les composants manquants.
 //
 // # LE BLOQUANT
 //
@@ -61,23 +68,40 @@ type keyframeBorne struct {
 	Voisin bool
 }
 
-// keyframeBornes rend les records BORNES d'un payload d'image-cle, tries par bit.
+// keyframeBornesToutes rend TOUS les records d'un payload d'image-cle, tries par bit, chacun
+// avec la frontiere visee — SAUF LE DERNIER, qui rend `Want = -1` : sans record suivant il n'a
+// pas de frontiere, donc la question « ferme-t-il ? » ne se pose pas pour lui. Il est rendu
+// quand meme parce qu'un balayage de production doit le LIRE : il porte des donnees comme les
+// autres, et l'ecarter serait perdre une lecture en silence.
 //
-// UNE SEULE COPIE, ET C'EST LA REGLE 6 DU DEPOT. Le meme appariement « record i, frontiere
-// i+1 » etait ecrit dans `accumulerFermeture` (mesure), dans l'instrument de recherche
-// (`imcBornes`) et il fallait l'ecrire une troisieme fois dans les deux balayages de
-// production au lot 1.4 : a la troisieme copie on centralise. La mesure, l'oracle et la
-// production comptent desormais sur la MEME population — sans quoi aucun des trois ne
-// prouve rien des deux autres.
-func keyframeBornes(pay []byte) []keyframeBorne {
+// UNE SEULE COPIE DE L'APPARIEMENT, ET C'EST LA REGLE 6 DU DEPOT. Le meme « record i,
+// frontiere i+1 » etait ecrit dans `accumulerFermeture` (mesure) et dans l'instrument de
+// recherche (`imcBornes`), et il en fallait deux de plus dans les balayages de production au
+// lot 1.4 : a la troisieme copie on centralise. La mesure, l'oracle et la production comptent
+// desormais sur la MEME population — sans quoi aucun des trois ne prouve rien des deux autres.
+func keyframeBornesToutes(pay []byte) []keyframeBorne {
 	recs := WalkKeyframeWorld(pay)
 	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
 	out := make([]keyframeBorne, 0, len(recs))
-	for i := 0; i+1 < len(recs); i++ {
-		out = append(out, keyframeBorne{
-			Bit: recs[i].Bit, Want: recs[i+1].Bit, Slot: recs[i].Slot, TI: recs[i].TI,
-			Voisin: recs[i+1].Slot == recs[i].Slot+1,
-		})
+	for i := range recs {
+		b := keyframeBorne{Bit: recs[i].Bit, Want: -1, Slot: recs[i].Slot, TI: recs[i].TI}
+		if i+1 < len(recs) {
+			b.Want = recs[i+1].Bit
+			b.Voisin = recs[i+1].Slot == recs[i].Slot+1
+		}
+		out = append(out, b)
+	}
+	return out
+}
+
+// keyframeBornes rend les seuls records BORNES : le denominateur de toute mesure de fermeture.
+func keyframeBornes(pay []byte) []keyframeBorne {
+	toutes := keyframeBornesToutes(pay)
+	out := make([]keyframeBorne, 0, len(toutes))
+	for _, b := range toutes {
+		if b.Want >= 0 {
+			out = append(out, b)
+		}
 	}
 	return out
 }
