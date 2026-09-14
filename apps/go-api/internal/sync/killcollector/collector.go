@@ -86,7 +86,25 @@ import (
 // commence dans `internal/analysis/` (parseur) et dans `filmdec` — il n aurait PAS fait sonner
 // le gate si `loadFilm`/`loadKillFeed` n avaient pas bouge aussi. Le gate couvre le decodeur,
 // pas son amont.
-const KillSourceDecoderRev = "killsource-2026-09-12"
+//
+// 2026-09-14 : `killsource-2026-09-12` -> `killsource-2026-09-14`. LA TABLE DES JOUEURS DU FILM
+// DEVIENT LA SOURCE DU LIEN `indice -> joueur`, l inference le REPLI (lot 1.8,
+// `killsource/film_table.go`). Les lignes produites bougent, et par deux canaux distincts :
+//
+//	L IDENTITE DES INDICES   la bijection etait INFEREE des votes du kill-feed (hongrois + montee
+//	                         locale) ; elle est desormais LUE dans `chunk_00` partout ou la
+//	                         section d identification existe. Mesure du 2026-09-14 sur 30 films et
+//	                         8 builds : 314 accords sur 322 sieges, et SIX des huit ecarts sont
+//	                         des joueurs que le kill-feed ne nomme pas (il ne nomme que ceux qui
+//	                         tuent ou qui meurent) — l inference leur donnait le nom d un autre.
+//	LA PORTE DE PUBLICATION  un film entierement lu n a plus rien d interchangeable : la marge de
+//	                         bijection y est SANS OBJET et non nulle
+//	                         (`Result.BijectionDetermined`). Des BTB dont les lignes etaient
+//	                         refusees ligne par ligne deviennent publiables.
+//
+// Les lignes en base doivent etre redecodees : d ou ce bump. Le backlog lui-meme est un geste de
+// PRODUCTION, reserve au pilote sur signal (decision D6 du plan du chantier).
+const KillSourceDecoderRev = "killsource-2026-09-14"
 
 // L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/killsource_decoder_rev.golden` porte le couple (revision, empreinte) et
@@ -136,6 +154,25 @@ const (
 	metricDeaths      = "killsource_morts_ecrites"
 	metricNotPublish  = "killsource_passes_non_publiables"
 	metricAssistExtra = "killsource_assist_extra_count"
+	// LES QUATRE COMPTEURS DE PROVENANCE DU LIEN `indice -> joueur` (lot 1.8). Ils disent, en
+	// exploitation et pas seulement dans le journal du jour, quelle part de chaque passe vient
+	// d une LECTURE et quelle part d un REPLI (D14 c du chantier, D-10 d ADR 0034) :
+	//
+	//	table_film     indices lus dans la table des joueurs de `chunk_00`
+	//	inference      indices laisses a la bijection inferee des votes du kill-feed
+	//	silence        indices lus que le kill-feed ne confirme ni n infirme (le joueur n a ni
+	//	               tue ni n est mort dans la fenetre d appariement) — un silence n est PAS
+	//	               un desaccord
+	//	contradiction  indices lus que les votes du kill-feed designent autrement. La valeur
+	//	               publiee NE BOUGE PAS : la lecture prime, la contradiction se compte.
+	//
+	// UN CINQUIEME COMPTEUR NOMME LE REFUS DE LA TABLE ENTIERE, par cause : sans lui un film
+	// tombe au repli complet sans que rien ne le dise en dehors d une ligne de WARN.
+	metricBijTableFilm    = "killsource_bijection_table_film"
+	metricBijInference    = "killsource_bijection_inference"
+	metricBijSilence      = "killsource_bijection_silence"
+	metricBijContradict   = "killsource_bijection_contradiction"
+	metricBijTableRefusee = "killsource_bijection_table_refusee_"
 )
 
 // KillSourceRoster : la resolution `gamertag -> xuid` pour UN match.
@@ -631,5 +668,34 @@ func publishKillSourceMetrics(res *killsource.Result, batch persist.KillSourceBa
 	}
 	for _, p := range res.Health.ExpvarPairs() {
 		observability.AddInt(p.Name, p.Value)
+	}
+	publishBijectionProvenance(res.Roster.FilmTable)
+}
+
+// publishBijectionProvenance : D OU VIENT LE LIEN `indice -> joueur`, en exploitation (lot 1.8).
+//
+// LE COMPTEUR QUI INFORME EST `killsource_bijection_inference` : tant qu il monte, des indices
+// sont encore DEVINES au lieu d etre lus, et c est ce qui dira quand le repli pourra etre retire
+// (D14 d : un repli dont le compte est a zero sur un jalon se supprime au suivant). Les cinq
+// films du cache sans section d identification (`03af54c3`, `13b00e35`, `47d20b5d`, `50247b26`,
+// `a349fea8`) le tiennent au-dessus de zero, et c est la raison ECRITE pour laquelle l inference
+// reste.
+func publishBijectionProvenance(t killsource.FilmTablePinning) {
+	observability.AddInt(metricBijTableFilm, int64(t.Pinned))
+	observability.AddInt(metricBijInference, int64(t.Inferred))
+	observability.AddInt(metricBijSilence, int64(t.Silent))
+	observability.AddInt(metricBijContradict, int64(t.Contradict))
+	if t.Refusal == killsource.FilmTableRead {
+		return
+	}
+	// La cause entre dans le NOM du compteur : « la table a ete refusee » sans dire pourquoi
+	// n oriente aucun diagnostic. Meme forme que `filmdec_unknown_build_<build>` (ADR 0009).
+	observability.AddInt(metricBijTableRefusee+string(t.Refusal), 1)
+	if t.Refusal == killsource.FilmTableUnknownBuild {
+		// D-4 d ADR 0034 : un build hors profil est mis de cote AVEC son compteur nomme, pour
+		// que le refus se voie en production et pas seulement au journal.
+		for _, p := range filmdec.UnknownBuildExpvarPairs(t.Build) {
+			observability.AddInt(p.Name, p.Value)
+		}
 	}
 }

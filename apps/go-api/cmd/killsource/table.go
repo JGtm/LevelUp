@@ -232,14 +232,21 @@ func blocCouverture(c killsource.Coverage) {
 // blocPublication : ce que le consommateur a le droit de faire de cette sortie.
 func blocPublication(res *killsource.Result) {
 	fmt.Println("\nCE QUE CETTE SORTIE AUTORISE")
+	t := res.Roster.FilmTable
+	fmt.Printf("  lien indice -> joueur : %d LU(S) dans la table du film, %d infere(s)"+
+		" · controle par le kill-feed : accord %d, contradiction %d, silence %d\n",
+		t.Pinned, t.Inferred, t.Agree, t.Contradict, t.Silent)
+	if t.Refusal != killsource.FilmTableRead {
+		fmt.Printf("     table du film NON LUE (%s) : tout vient de l inference\n", t.Refusal)
+	}
 	if res.LineByLinePublishable() {
-		fmt.Printf("  publication LIGNE PAR LIGNE : autorisee (marge de bijection %d, sante %s)\n",
-			res.BijectionMargin, res.Health.Verdict())
+		fmt.Printf("  publication LIGNE PAR LIGNE : autorisee (%s, sante %s)\n",
+			motifDeBijection(res), res.Health.Verdict())
 		return
 	}
-	fmt.Printf("  publication LIGNE PAR LIGNE : REFUSEE — agregat seulement (marge de bijection %d, sante %s)\n",
-		res.BijectionMargin, res.Health.Verdict())
-	if res.BijectionMargin <= 0 {
+	fmt.Printf("  publication LIGNE PAR LIGNE : REFUSEE — agregat seulement (%s, sante %s)\n",
+		motifDeBijection(res), res.Health.Verdict())
+	if res.BijectionMargin <= 0 && !res.BijectionDetermined {
 		fmt.Println("     marge nulle : au moins deux joueurs sont interchangeables, donc les attributions")
 		fmt.Println("     individuelles sont fausses meme si l agregat est juste. C est le cas du BTB.")
 	}
@@ -257,4 +264,16 @@ func compte(ks []killsource.Kill, ok func(killsource.Kill) bool) int {
 		}
 	}
 	return n
+}
+
+// motifDeBijection : pourquoi la bijection est (ou n est pas) ambigue.
+//
+// La marge n a de sens que sur la part INFEREE. Un film dont la table du film a tout lu n a rien
+// d interchangeable : sa marge vaut zero parce qu il n y a pas de seconde solution a mesurer, et
+// l afficher seule ferait lire « ambigu » la ou il n y a aucune ambiguite (lot 1.8).
+func motifDeBijection(res *killsource.Result) string {
+	if res.BijectionDetermined {
+		return "bijection DETERMINEE : rien n est laisse a l inference"
+	}
+	return fmt.Sprintf("marge de bijection %d", res.BijectionMargin)
 }
