@@ -14,18 +14,32 @@ package filmdec
 //
 // # CE QUE CE TEST FAIT
 //
-// Il hache toutes les sources `.go` hors `_test.go` de `filmdec/` ET de `killsource/`, et compare
-// au golden `testdata/grammar_rev.golden`, qui fige le couple (revision, empreinte) avec son
+// Il hache toutes les sources `.go` hors `_test.go` des TROIS paquets qui lisent les octets du
+// film — `filmdec/`, `killsource/` et `analysis/objectiveevents/` — et compare au golden
+// `testdata/grammar_rev.golden`, qui fige le couple (revision, empreinte) avec son
 // historique. Toucher l'une ou l'autre le fait rougir ; le remettre au vert oblige a rouvrir la
 // ligne de revision — donc a DECIDER si la grammaire a change, et si les deux autres etages
 // doivent monter aussi.
 //
-// # POURQUOI LES DEUX PAQUETS DANS UNE SEULE EMPREINTE
+// # POURQUOI CES TROIS PAQUETS DANS UNE SEULE EMPREINTE
 //
 // `killsource` lit les MEMES octets que `filmdec`, avec son propre lecteur de bits (le lot 4 de
-// la trajectoire les fusionne). Tant qu'ils sont deux, une largeur corrigee d'un cote et pas de
-// l'autre est exactement le genre de divergence silencieuse que ce chantier cherche a rendre
+// la trajectoire les fusionne). Tant qu ils sont deux, une largeur corrigee d un cote et pas de
+// l autre est exactement le genre de divergence silencieuse que ce chantier cherche a rendre
 // impossible. Une empreinte commune la fait sonner.
+//
+// `analysis/objectiveevents` est ENTRE LE 2026-09-14 (lot 1.1.5), et il a fallu un faux negatif
+// pour le voir : ce paquet porte le lecteur du PIED DE FILM (`scanTh10Events`,
+// `decodeTh10Block`) — des offsets d octets dans un bloc de 60, c est-a-dire de la grammaire au
+// sens exact de la ligne `GrammarRev` ci-dessus (« une largeur, un cadre, un ordre de
+// composants, un lecteur »). Le lot 1.1 a deplace l equipe d un evenement de l octet 55 a
+// l octet 37 et CE TEST EST RESTE VERT : la revision a du etre montee a la main. Un garde-rail
+// qui laisse passer le changement qu il existe pour attraper n en est pas un.
+//
+// Ce paquet DEMENAGERA sous `film/` au pas 5 de la revision (decision V5 du
+// PLAN_DECODEUR_FILM : `analysis/filmsource` et ses voisins passent sous `film/internal/`). Le
+// jour ou il bougera, `racinesGrammaire` echouera bruyamment sur un dossier vide — ce qui est
+// exactement le comportement voulu, et non une regression a contourner.
 //
 // # CE QU'IL NE FAIT PAS, ET C'EST ASSUME
 //
@@ -132,7 +146,7 @@ func empreinteGrammaire(t *testing.T) (string, int) {
 	return hex.EncodeToString(h.Sum(nil)), total
 }
 
-// racinesGrammaire rend les deux paquets haches, resolus par `runtime.Caller`.
+// racinesGrammaire rend les TROIS paquets haches, resolus par `runtime.Caller`.
 //
 // PAS un chemin relatif au repertoire courant : le jour ou un paquet demenage (ADR 0012), ce
 // test doit echouer bruyamment plutot que hacher un dossier vide.
@@ -142,10 +156,13 @@ func racinesGrammaire(t *testing.T) []string {
 	if !ok {
 		t.Fatal("runtime.Caller a echoue")
 	}
-	filmDir := filepath.Dir(filepath.Dir(ici)) // .../film/filmdec -> .../film
+	// .../internal/games/halo_infinite/film/filmdec -> .../internal
+	internalDir := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ici)))))
+	filmDir := filepath.Join(internalDir, "games", "halo_infinite", "film")
 	return []string{
 		filepath.Join(filmDir, "filmdec"),
 		filepath.Join(filmDir, "killsource"),
+		filepath.Join(internalDir, "analysis", "objectiveevents"),
 	}
 }
 

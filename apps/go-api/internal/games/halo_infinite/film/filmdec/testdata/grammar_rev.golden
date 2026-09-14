@@ -27,4 +27,11 @@
 #               L EMPREINTE BOUGE, et ce n est pas une anomalie : la grammaire corrigee vit
 #               dans `internal/analysis/objectiveevents`, qui n est PAS dans l ensemble hache
 #               (filmdec + killsource seulement) — decouverte D1 (1.1) du PLAN_DECODEUR_FILM, §4.
-grammar-2026-09-14	3c7757203d6fb6466aa9685bf8f71ded7676367fdcaba465d8fc1101d7f9063e
+#   2026-09-14  grammar-2026-09-14  lot 1.1.5 : `internal/analysis/objectiveevents` ENTRE dans
+#               l ensemble hache (131 -> 150 fichiers, +19). Il porte le lecteur du pied de
+#               film, donc de la grammaire — et l entree ci-dessus est la preuve par l absurde
+#               qu il y manquait : le changement d octet du lot 1.1 n avait fait rougir personne.
+#               REVISION INCHANGEE, empreinte NEUVE : aucune grammaire n a bouge dans ce commit,
+#               seul l ensemble hache s elargit — meme nature que la correction de la revue R1
+#               ci-dessus, en sens inverse. Decouverte D1 (1.1) FERMEE.
+grammar-2026-09-14	474c9faa308e2edb4010792022f09c525534c10d543fe4da60f71e8129801d3f
