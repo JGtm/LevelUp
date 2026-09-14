@@ -105,10 +105,14 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 	g.InventoryDeltaAmmoRefused = dStats.AmmoRefused
 	// LA VERSION DU FILM, MEME GESTE QUE LA PRODUCTION (`build_from_film.go:104`) : elle est
 	// publiee en `coverage.filmMajorVersion`, donc c est une entree de l assemblage.
-	if film, errFilm := filmsource.LoadDir(dir, nil); errFilm == nil {
-		if v, lue := filmdec.FilmMajorVersion(film); lue {
-			g.FilmMajorVersion = &v
-		}
+	// L ERREUR DE CHARGEMENT NE SE JETTE PAS (revue R2, constat R2-1) : un fixture ne se cuit
+	// pas sur un film illisible, et la production journalise ce cas plutot que de le taire.
+	charge, errFilm := filmsource.LoadDir(dir, nil)
+	if errFilm != nil {
+		return nil, fmt.Errorf("chargement du film %s pour sa version majeure : %w", dir, errFilm)
+	}
+	if v, lue := filmdec.FilmMajorVersion(charge); lue {
+		g.FilmMajorVersion = &v
 	}
 	if g.CamoStates, _, err = filmdec.ScanFilmCamoStates(dir); err != nil {
 		return nil, err
