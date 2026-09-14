@@ -476,8 +476,15 @@ func Steps() []migration.Migration {
 			// Médaille custom « Vengeur » (id 9000000001) : native Halo 5, ré-exposée
 			// pour Halo Infinite (LevelUp la calcule via citation_mappings). Sans cette
 			// ligne, elle n'apparaît pas dans le catalogue médailles (tab Asset Drawer)
-			// d'Infinite. INSERT idempotent (ON CONFLICT DO NOTHING) ; NE repeuple PAS
-			// le reste du catalogue Infinite (déjà complet via refresh-metadata).
+			// d'Infinite. INSERT idempotent ; NE repeuple PAS le reste du catalogue
+			// Infinite (déjà complet via refresh-metadata).
+			//
+			// INSERT … WHERE NOT EXISTS et NON `ON CONFLICT` (corrigé le 2026-09-14) :
+			// une metadata.duckdb héritée de l'ère Python porte un `medal_definitions`
+			// créé hors migrations, donc SANS clé primaire — `CREATE TABLE IF NOT
+			// EXISTS` n'en ajoute jamais une (piège documenté CLAUDE.md). `ON CONFLICT
+			// (medal_name_id)` y lève une Binder Error, et comme le runner s'arrête au
+			// premier échec, TOUTES les migrations metadata suivantes sont bloquées.
 			Name:        "seed_custom_vengeur_medal",
 			TargetDB:    migration.TargetMetadata,
 			Description: "medal_definitions : seed médaille custom Vengeur (9000000001) pour Halo Infinite (native H5)",
@@ -486,12 +493,13 @@ func Steps() []migration.Migration {
 					INSERT INTO medal_definitions
 						(medal_name_id, name_fr, name_en, description_fr, description_en,
 						 is_custom, difficulty_index, type_index, difficulty, medal_type, personal_score)
-					VALUES
-						(9000000001, 'Vengeur', 'Avenger',
-						 'Tuez l''ennemi responsable de votre mort précédente.',
-						 'Kill the enemy responsible for your previous death.',
-						 TRUE, 0, 4, 'Normal', 'skill', 0)
-					ON CONFLICT (medal_name_id) DO NOTHING;
+					SELECT 9000000001, 'Vengeur', 'Avenger',
+					       'Tuez l''ennemi responsable de votre mort précédente.',
+					       'Kill the enemy responsible for your previous death.',
+					       TRUE, 0, 4, 'Normal', 'skill', 0
+					WHERE NOT EXISTS (
+						SELECT 1 FROM medal_definitions WHERE medal_name_id = 9000000001
+					);
 				`)
 			},
 		},
@@ -529,9 +537,7 @@ func Steps() []migration.Migration {
 			// taxonomie (medal_category_table.go, catégorie vip) et dans les données
 			// de match, mais ABSENTE du catalogue officiel GameCMS
 			// (hi/Waypoint/file/medals/metadata.json, 151 médailles au 2026-09-14 —
-			// mesuré par `refresh-metadata medal-images`). La base locale ne portait
-			// qu'une ligne bouchon « Unknown / Inconnue », affichée telle quelle sur la
-			// page Médailles.
+			// mesuré par `refresh-metadata medal-images`).
 			//
 			// Nom et description ANGLAIS : SpartanRecord src/Objects/Helpers/AllMedals.tsx
 			// (source déjà utilisée pour medal_category_table.go), confirmés
@@ -542,6 +548,13 @@ func Steps() []migration.Migration {
 			// COALESCE locale-aware (platform/duckdb/medal_label_resolve.go) neutralise
 			// une chaîne vide par NULLIF et sert alors le nom anglais, ce qui est exact,
 			// au lieu d'un « Inconnue » faux.
+			//
+			// PAS d'`ON CONFLICT` ici, contrairement à seed_custom_vengeur_medal : une
+			// metadata.duckdb héritée de l'ère Python porte un `medal_definitions` créé
+			// hors migrations, donc SANS clé primaire — `CREATE TABLE IF NOT EXISTS`
+			// n'en ajoute jamais une (piège documenté CLAUDE.md). `ON CONFLICT
+			// (medal_name_id)` y lève une erreur, l'étape entière échoue et RIEN ne
+			// s'applique. Le pattern legacy du dépôt est INSERT … WHERE NOT EXISTS.
 			Name:        "seed_clash_of_kings_medal",
 			TargetDB:    migration.TargetMetadata,
 			Description: "medal_definitions : médaille VIP Clash of Kings (1053114074), absente du catalogue GameCMS",
@@ -550,12 +563,37 @@ func Steps() []migration.Migration {
 					INSERT INTO medal_definitions
 						(medal_name_id, name_fr, name_en, description_fr, description_en,
 						 is_custom, difficulty_index, type_index, difficulty, medal_type, personal_score)
-					VALUES
-						(1053114074, '', 'Clash of Kings',
-						 '', 'Kill a VIP while being a VIP yourself',
-						 FALSE, 0, 1, 'Normal', 'mode', 0)
-					ON CONFLICT (medal_name_id) DO NOTHING;
-
+					SELECT 1053114074, '', 'Clash of Kings',
+					       '', 'Kill a VIP while being a VIP yourself',
+					       FALSE, 0, 1, 'Normal', 'mode', 0
+					WHERE NOT EXISTS (
+						SELECT 1 FROM medal_definitions WHERE medal_name_id = 1053114074
+					);
+				`)
+			},
+		},
+		{
+			// Réparation de la ligne bouchon « Unknown / Inconnue » de la médaille
+			// 1053114074 sur les bases héritées. Étape SÉPARÉE de son seed, et non un
+			// correctif de celui-ci : sur le poste de développement, le seed a été joué
+			// AVANT ce diagnostic (donc potentiellement enregistré dans
+			// schema_migrations) et un step déjà enregistré ne rejoue jamais. Mesuré le
+			// 2026-09-14 après le redémarrage du serveur sur la version fusionnée : le
+			// catalogue servait toujours « Unknown / Inconnue ».
+			//
+			// Correction INCONDITIONNELLE sur l'identifiant : la valeur exacte du
+			// bouchon n'est pas connue (casse, variante de libellé), donc on ne
+			// conditionne pas dessus. Le garde-fou est `name_en <> 'Clash of Kings'`,
+			// qui rend l'étape idempotente sans dépendre du bouchon.
+			//
+			// medal_translations est purgée pour cet identifiant : la chaîne FR de
+			// lecture commence par `mt_loc.name` (medal_label_resolve.go), donc une
+			// traduction bouchon y masquerait medal_definitions.
+			Name:        "fix_clash_of_kings_placeholder",
+			TargetDB:    migration.TargetMetadata,
+			Description: "medal_definitions/medal_translations : remplace la ligne bouchon « Inconnue » de la médaille 1053114074",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
 					UPDATE medal_definitions
 					SET name_en        = 'Clash of Kings',
 					    description_en = 'Kill a VIP while being a VIP yourself',
@@ -565,7 +603,9 @@ func Steps() []migration.Migration {
 					    medal_type     = 'mode',
 					    type_index     = 1
 					WHERE medal_name_id = 1053114074
-					  AND name_en = 'Unknown';
+					  AND name_en <> 'Clash of Kings';
+
+					DELETE FROM medal_translations WHERE medal_name_id = 1053114074;
 				`)
 			},
 		},
