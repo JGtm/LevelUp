@@ -51,12 +51,14 @@ type KeyframeFullStateOpt struct {
 	SizeWords bool
 	// DefaultState : jouer le deserialiseur d'etat par defaut de l'archetype (vtable[0x60]).
 	DefaultState bool
-	// LevelShift : passer a chaque composant le niveau que le JEU lui passe
-	// (`u32 @ entree + 0x100`, soit le `Flags[i+1]` de `registry.go`) au lieu du
-	// `Flags[i]` que le decodeur sert aujourd'hui — les deux layouts de l'entree de
-	// `0x104` octets ne placent pas ce champ au meme endroit.
-	LevelShift bool
 }
+
+// IL N'Y A PLUS DE VARIABLE DE NIVEAU (lot 1.2, 2026-09-14). `LevelShift` passait a chaque
+// composant le `Flags[i+1]` de `registry.go` pour compenser un cadrage de registre faux ; le
+// cadrage est corrige a la source (entree de 0x104 octets a partir de l'octet 8), donc
+// `Archetype.Levels` EST le niveau du jeu et il n'y a rien a decaler. L'option et son
+// `shiftArchetypeLevels` sont supprimes plutot que laisses a `false` : une bascule qui ne peut
+// plus qu'introduire un decalage n'est pas une variable, c'est un piege.
 
 // WalkKeyframeFullState rejoue le corps d'un record d'image-cle par la boucle d'ETAT COMPLET
 // du jeu, en partant du premier bit du record (`recBit`). Il REUTILISE la boucle de
@@ -88,9 +90,6 @@ func WalkKeyframeFullState(pay []byte, recBit int, reg *Registry, o KeyframeFull
 	}
 	consumeFullStateDefaultBlock(br, t.TypeIndex, o)
 	t.Mask = ^uint64(0) // etat complet : aucun masque de presence, tous les composants presents
-	if o.LevelShift {
-		arch = shiftArchetypeLevels(arch)
-	}
 	traverseComponentLoop(br, arch, &t)
 	t.EndBit = br.BitPos()
 	return t
@@ -114,17 +113,4 @@ func consumeFullStateDefaultBlock(br *BitReader, ti uint32, o KeyframeFullStateO
 	if o.SizeWords {
 		br.ReadBits(keyframeFullStateSizeBits) // n2 : > 0 => vtable[0x88] puis la boucle
 	}
-}
-
-// shiftArchetypeLevels rend une COPIE de l'archetype dont le niveau du composant `i` est le
-// `Flags[i+1]` du registre — la lecture qu'impose le layout d'entree du jeu
-// (`[nom @ +0x00][u32 niveau @ +0x100]`) face a celui que `registry.go` suppose
-// (`[u32 kind][u32 flags][nom @ +8]`). Les noms, eux, tombent au MEME octet dans les deux
-// lectures : seul le niveau se decale.
-func shiftArchetypeLevels(a Archetype) Archetype {
-	out := Archetype{Index: a.Index, Components: a.Components, Levels: make([]uint32, len(a.Components))}
-	for i := range out.Levels {
-		out.Levels[i] = a.Level(i + 1)
-	}
-	return out
 }
