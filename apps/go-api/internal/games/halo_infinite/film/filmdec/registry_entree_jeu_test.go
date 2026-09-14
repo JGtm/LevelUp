@@ -146,3 +146,94 @@ func censusArchetype(t *testing.T, d []byte, reg *Registry, ti int) {
 		t.Logf("      %s", l)
 	}
 }
+
+// TestRegistreEntreeDuJeu (1.2.5) VERROUILLE la lecture : l'entree du jeu, et l'equivalence
+// exacte avec le decalage d'un cran de l'ancien cadrage.
+//
+// TROIS AFFIRMATIONS, chacune rouge si la lecture bouge :
+//
+//  1. le NOM du composant `i` est la chaine NUL-terminee au PREMIER octet de l'entree `i` ;
+//  2. le NIVEAU du composant `i` est le u32 que l'ancien cadrage rendait pour `i+1` — c'est la
+//     preuve d'equivalence que le lot demande, et elle est faite sur les octets, pas sur l'API ;
+//  3. apres la suite nommee, l'ENTREE DE TERMINAISON est entierement nulle — le fait structurel
+//     qui autorise `registryBlockTail` a n'exempter aucun octet.
+//
+// LE TEST NE PEUT PAS PASSER TRIVIALEMENT : il exige qu'au moins un composant de ti=35 ait un
+// niveau DIFFERENT de celui que l'ancien cadrage servait. Sans cette exigence, un registre dont
+// tous les niveaux seraient egaux rendrait les deux lectures indiscernables.
+func TestRegistreEntreeDuJeu(t *testing.T) {
+	for _, court := range niveauxBobines() {
+		d := lireRegistreBobine(t, court)
+		reg, err := ParseRegistryChunk(d)
+		if err != nil {
+			t.Fatalf("%s : %v", court, err)
+		}
+		verifierEquivalenceNiveaux(t, court, d, reg)
+		verifierTerminateurNul(t, court, d, reg)
+	}
+}
+
+// verifierEquivalenceNiveaux tient les affirmations 1 et 2, et l'exigence de non-trivialite.
+func verifierEquivalenceNiveaux(t *testing.T, court string, d []byte, reg *Registry) {
+	t.Helper()
+	distincts := 0
+	for _, a := range reg.Archetypes {
+		base := registryEntryBase + a.Index*archetypeBlockSize
+		for i, nom := range a.Components {
+			off := base + i*registrySlotSize
+			if got := entreeNomBrut(d, off); got != nom {
+				t.Errorf("%s ti=%d i%d : le parse rend %q, l'octet de tete porte %q",
+					court, a.Index, i, nom, got)
+			}
+			veut := niveauAncienneLecture(d, a.Index, i+1)
+			if a.Level(i) != veut {
+				t.Errorf("%s ti=%d i%d %s : niveau %d, l'ancien cadrage rendait %d pour i+1 — "+
+					"l'equivalence du decalage est rompue", court, a.Index, i, nom, a.Level(i), veut)
+			}
+			if a.Index == bipedDefaultStateTypeIndex && veut != niveauAncienneLecture(d, a.Index, i) {
+				distincts++
+			}
+		}
+	}
+	if distincts == 0 {
+		t.Errorf("%s : aucun composant de ti=%d ne change de niveau entre les deux cadrages — "+
+			"le test ne discrimine rien sur cette bobine", court, bipedDefaultStateTypeIndex)
+	}
+}
+
+// verifierTerminateurNul tient l'affirmation 3.
+func verifierTerminateurNul(t *testing.T, court string, d []byte, reg *Registry) {
+	t.Helper()
+	for _, a := range reg.Archetypes {
+		run := len(a.Components)
+		if run >= archetypeBlockSlots {
+			continue // bloc plein : pas d'entree de terminaison
+		}
+		term := registryEntryBase + a.Index*archetypeBlockSize + run*registrySlotSize
+		for off := term; off < term+registrySlotSize && off < len(d); off++ {
+			if d[off] != 0 {
+				t.Errorf("%s ti=%d : l'entree de terminaison porte 0x%02x a +%d (run=%d) — "+
+					"la regle de queue devrait exempter un octet", court, a.Index, d[off], off-term, run)
+				break
+			}
+		}
+	}
+}
+
+// entreeNomBrut relit le nom d'une entree DIRECTEMENT dans les octets, sans passer par
+// `entryName` : un test qui appellerait la fonction testee ne verrouillerait que lui-meme.
+func entreeNomBrut(d []byte, off int) string {
+	if off < 0 || off >= len(d) {
+		return ""
+	}
+	end := off + registryEntryNameBytes
+	if end > len(d) {
+		end = len(d)
+	}
+	for i := off; i < end; i++ {
+		if d[i] == 0 {
+			return string(d[off:i])
+		}
+	}
+	return string(d[off:end])
+}
