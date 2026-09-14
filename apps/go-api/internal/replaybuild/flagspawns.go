@@ -5,9 +5,10 @@ package replaybuild
 // # Ce que ce fichier apporte, et pourquoi le calque ne peut pas s'en passer
 //
 // Le rejeu sait QUI porte le drapeau et QUAND (evenements nommes du film + fil des morts) ; il
-// ne sait pas DE QUEL drapeau il s'agit. L'equipe n'est pas dans le film : elle se deduit du
-// SOCLE le plus proche du point de prise, et les socles vivent dans le catalogue versionne
-// d'objectifs de carte (`data/titles/{slug}/reference/map_objectives.json`).
+// ne sait pas DE QUEL drapeau il s'agit. L'equipe du PORTEUR est dans le film depuis le lot 1.7,
+// mais celle de l'OBJET ne l'est pas : elle se deduit du SOCLE le plus proche du point de prise,
+// et les socles vivent dans le catalogue versionne d'objectifs de carte
+// (`data/titles/{slug}/reference/map_objectives.json`).
 //
 // # La jointure se fait par map_id, JAMAIS par le module ni par le nom public
 //

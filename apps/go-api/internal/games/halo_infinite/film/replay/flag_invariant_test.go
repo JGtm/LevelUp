@@ -291,12 +291,12 @@ func TestFlagOverlapsComptesParDrapeau(t *testing.T) {
 
 // TestAttachFlagCarriesDescendLesEquipesJusquAuScan — LE MAILLON QUE PERSONNE NE GARDAIT (W1).
 //
-// L'invariant dur ne vaut que si la table des equipes lui parvient, et elle traverse DEUX
-// maillons : `replaybuild` -> `FlagInput` (garde chez l'appelant, `flagidentity_test.go`) puis
-// `FlagInput` -> `FlagCarryScan`, dans `attachFlagCarries`. Le second n'avait aucun garde-rail :
-// retirer la ligne `TeamOf: in.TeamOf` laissait les 166 paquets VERTS, et le premier essai du
-// lot avait justement livre `ownFlagRefused = 0` pour cette raison. Un chainon muet ne casse
-// aucun test unitaire — celui-ci le casse.
+// L'invariant dur ne vaut que si la table des equipes lui parvient. DEPUIS LE LOT 1.7 ELLE VIENT
+// DU FILM (decision utilisateur V4) : `filmdec.ScanPlayerTeams` -> `teamPublication` ->
+// `FlagCarryScan.TeamOf`, dans `attachFlagCarries`. Le maillon reste sans garde-rail naturel —
+// retirer la ligne `TeamOf: equipes.tableDesEquipesPourLesDrapeaux()` laisserait les paquets
+// VERTS, exactement comme le retrait de `TeamOf: in.TeamOf` le faisait avant. Un chainon muet ne
+// casse aucun test unitaire — celui-ci le casse.
 //
 // LA PREUVE EST UN EFFET, PAS UN CHAMP : on n'observe pas `scan.TeamOf` (il est interne), on
 // verifie que l'invariant A REFUSE. Il ne peut refuser que si la table est arrivee.
@@ -322,8 +322,10 @@ func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
 		Bursts:   []int{9000},
 		Spawns:   flagInvariantSpawns(),
 		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
-		TeamOf:   map[string]int{"1": 0, "2": 1, "3": 0},
 	}
+	// L'EQUIPE VIENT DU FILM : la table est celle que `ScanPlayerTeams` aurait rendue, projetee
+	// sur les xuids par le registre d'identite.
+	equipes := teamPublication{byXUID: map[uint64]int{1: 0, 2: 1, 3: 0}}
 	doc := &ReplayDocument{
 		FrameCount: 100,
 		Coverage:   &Coverage{},
@@ -335,7 +337,7 @@ func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
 	}
 
 	attachFlagCarries(doc, Options{Flag: in}, IdentityRegistry{},
-		replayClock{origin: 0, step: 100_000, frames: 100})
+		replayClock{origin: 0, step: 100_000, frames: 100}, equipes)
 
 	cov := doc.Coverage.FlagCarries
 	if cov == nil {

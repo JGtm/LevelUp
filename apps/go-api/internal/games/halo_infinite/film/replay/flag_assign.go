@@ -9,9 +9,11 @@ import "sort"
 // Un portage est un compteur de statistique du statborg (`flag_grabs` / `flag_steals`) sur un
 // SLOT, plus la trajectoire de son porteur. L'OBJET drapeau n'y figure jamais : il ne se lit que
 // LIBRE (`flag_objects.go`), et meme alors il ne porte que son type et sa vie, jamais l'equipe
-// qui le possede. L'EQUIPE DU PORTEUR n'est pas dans le film non plus (cf. `Track.Team`). Le
-// rattachement est donc GEOMETRIQUE, et l'etiquette d'equipe vient du catalogue de carte
-// (`flag_spawn.team_index`, `replaybuild/flagspawns.go`), par le socle retenu.
+// qui le possede. L'EQUIPE DU PORTEUR, elle, EST DANS LE FILM depuis le lot 1.7 (cf.
+// `Track.Team` et `filmdec.ScanPlayerTeams`) — ce fichier a longtemps dit le contraire, et
+// c'etait l'etat du savoir. Le rattachement reste GEOMETRIQUE faute d'objet identifie, et
+// l'etiquette d'equipe vient du catalogue de carte (`flag_spawn.team_index`,
+// `replaybuild/flagspawns.go`), par le socle retenu.
 //
 // # L'INVARIANT DUR, AVANT TOUTE GEOMETRIE : JAMAIS SON PROPRE DRAPEAU
 //
@@ -28,10 +30,11 @@ import "sort"
 // portage perdus) alors que la premiere regle — un drapeau adverse gisant au point de prise —
 // les resolvait. Sur une carte a deux socles, filtrer rend exactement l'ancien repli.
 //
-// L'EQUIPE DU PORTEUR NE VIENT PAS DU FILM : elle arrive par `FlagInput.TeamOf`, une table
-// xuid -> equipe DEJA RESOLUE par l'appelant, exactement comme le pont d'identite. Table vide
-// (CLI hors ligne, ouvrier sans faits) : l'invariant se tait, et le comportement est celui
-// d'avant, a l'octet pres.
+// L'EQUIPE DU PORTEUR VIENT DU FILM (lot 1.7) : `FlagCarryScan.TeamOf` est la projection de
+// `filmdec.ScanPlayerTeams` sur les xuids du registre d'identite, et plus une table fournie par
+// l'appelant. C'est ce qui fait tenir l'invariant sur une cuisson HORS LIGNE, ou il se taisait
+// faute de lignes de match. Table vide (film non lu, aucun xuid apparie) : l'invariant se tait,
+// comme avant.
 //
 // # LES TROIS REGLES, DANS CET ORDRE
 //
@@ -134,7 +137,7 @@ type flagGround struct {
 	// qui alimente la regle 2 — prioritaire — et pouvait donc la faire MENTIR, en rattachant
 	// une prise a une position de lacher devenue caduque. Un retour remet desormais les DEUX.
 	enJeu []bool
-	// teamOf est la table xuid -> equipe fournie par l'appelant (`FlagInput.TeamOf`). Vide :
+	// teamOf est la table xuid -> equipe LUE DANS LE FILM (`FlagCarryScan.TeamOf`). Vide :
 	// l'invariant « jamais son propre drapeau » se tait, faute d'equipe lue.
 	teamOf map[string]int
 }

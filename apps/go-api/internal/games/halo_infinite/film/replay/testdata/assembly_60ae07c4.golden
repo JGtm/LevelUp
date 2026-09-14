@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 8117 frames · intervalle 100 ms · duree 811700 ms
-schema 56 · titre halo_infinite
+schema 57 · titre halo_infinite
 version majeure du film : 37
 origine de la frame 0 sur l horloge du fil : 11847 ms
 coup d envoi date par le film : 33547 ms · 169/173 piste(s) en mouvement · rafale 7 · marge depuis la frame 0 : 21700 ms
@@ -21,14 +21,21 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 8 joueur(s)
-  2533274813765942  idx=0  "xToo Frosty"
-  2533274809233885  idx=1  "MarcooN1414"
-  2535428020470272  idx=2  "Mims5268"
-  2533274837723606  idx=3  "STCYYR"
-  2535406399121492  idx=4  "Noddy1314"
-  2533274858283686  idx=5  "Madina97294"
-  2533274969598328  idx=6  "DavidSuomi"
-  2535406887313903  idx=7  "Matyus89"
+  2533274813765942  idx=0  equipe=0  "xToo Frosty"
+  2533274809233885  idx=1  equipe=1  "MarcooN1414"
+  2535428020470272  idx=2  equipe=0  "Mims5268"
+  2533274837723606  idx=3  equipe=1  "STCYYR"
+  2535406399121492  idx=4  equipe=1  "Noddy1314"
+  2533274858283686  idx=5  equipe=1  "Madina97294"
+  2533274969598328  idx=6  equipe=0  "DavidSuomi"
+  2535406887313903  idx=7  equipe=0  "Matyus89"
+
+### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
+lue=true refus="" · 336 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+roster : 8 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
+controle (feuille de match) : accord=0 contradiction=0 silence=8
+vies : 177/177 portent une equipe du film
+repartition des vies par designateur : 0 x87 · 1 x90
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
 1632 rattache(s) / 1635 disponible(s) = 99.8 %

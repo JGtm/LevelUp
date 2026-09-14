@@ -113,6 +113,7 @@ func toRosterEntry(v replay.RosterEntry) replaydoc.RosterEntry {
 		XUID:      v.XUID,
 		FilmIndex: v.FilmIndex,
 		Name:      v.Name,
+		Team:      v.Team,
 		Bot:       v.Bot,
 		Bid:       v.Bid,
 	}

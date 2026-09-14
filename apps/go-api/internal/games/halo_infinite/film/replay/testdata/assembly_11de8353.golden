@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 5144 frames · intervalle 100 ms · duree 514400 ms
-schema 56 · titre halo_infinite
+schema 57 · titre halo_infinite
 version majeure du film : 38
 origine de la frame 0 sur l horloge du fil : 86805 ms
 coup d envoi date par le film : 108405 ms · 205/243 piste(s) en mouvement · rafale 15 · marge depuis la frame 0 : 21600 ms
@@ -21,34 +21,41 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 28 joueur(s)
-  2533274816482606  idx=0  "SharpByStriking"
-  2533274809930102  idx=1  "cejos"
-  2533274797194471  idx=2  "nusuns"
-  2535467071852793  idx=3  "BreadCrum69"
-  2535470685291844  idx=4  "LLoner554"
-  2533274895903325  idx=5  "CJOPS24"
-  2535466227915340  idx=6  "Splendrick"
-  2533274858283686  idx=7  "Madina97294"
-  2535425977016734  idx=8  "FeastyOwl"
-  2535452300013528  idx=9  "Jr Alan4358"
-  2535433411573413  idx=10  "Arsenat3"
-  2535462083828200  idx=11  "FolkPluto704956"
-  2535408427412937  idx=12  "Butt3rb0y8747"
-  2535413982833931  idx=13  "QuanDuhDon7276"
-  2535471151637047  idx=14  "D1bum8841"
-  2533274898781893  idx=15  "SonicBlast3359"
-  2535441987466199  idx=16  "Sacharmsss"
-  2535415759610104  idx=17  "NobleLuna19"
-  2535470914140775  idx=18  "SilentxSerenade"
-  2535452194938665  idx=19  "The Chuggly 773"
-  2535431682355467  idx=20  "Sneakierfour42"
-  2535422864408876  idx=21  "El Fafa117"
-  2533274967129439  idx=22  "SeAnFaWn17"
-  2535412445516154  idx=23  "Iskra 20252993"
-  2535431520192988  idx=24  "ElBicho0707"
-  2533274854846362  idx=25  "Javi9496"
-  2535422375593884  idx=26  "GenesisA1011"
-  2535451406659668  idx=27  ""
+  2533274816482606  idx=0  equipe=0  "SharpByStriking"
+  2533274809930102  idx=1  equipe=0  "cejos"
+  2533274797194471  idx=2  equipe=1  "nusuns"
+  2535467071852793  idx=3  equipe=0  "BreadCrum69"
+  2535470685291844  idx=4  equipe=0  "LLoner554"
+  2533274895903325  idx=5  equipe=1  "CJOPS24"
+  2535466227915340  idx=6  equipe=0  "Splendrick"
+  2533274858283686  idx=7  equipe=0  "Madina97294"
+  2535425977016734  idx=8  equipe=0  "FeastyOwl"
+  2535452300013528  idx=9  equipe=0  "Jr Alan4358"
+  2535433411573413  idx=10  equipe=1  "Arsenat3"
+  2535462083828200  idx=11  equipe=1  "FolkPluto704956"
+  2535408427412937  idx=12  equipe=0  "Butt3rb0y8747"
+  2535413982833931  idx=13  equipe=1  "QuanDuhDon7276"
+  2535471151637047  idx=14  equipe=1  "D1bum8841"
+  2533274898781893  idx=15  equipe=1  "SonicBlast3359"
+  2535441987466199  idx=16  equipe=1  "Sacharmsss"
+  2535415759610104  idx=17  equipe=1  "NobleLuna19"
+  2535470914140775  idx=18  equipe=1  "SilentxSerenade"
+  2535452194938665  idx=19  equipe=0  "The Chuggly 773"
+  2535431682355467  idx=20  equipe=1  "Sneakierfour42"
+  2535422864408876  idx=21  equipe=0  "El Fafa117"
+  2533274967129439  idx=22  equipe=0  "SeAnFaWn17"
+  2535412445516154  idx=23  equipe=1  "Iskra 20252993"
+  2535431520192988  idx=24  equipe=1  "ElBicho0707"
+  2533274854846362  idx=25  equipe=0  "Javi9496"
+  2535422375593884  idx=26  equipe=0  "GenesisA1011"
+  2535451406659668  idx=27  equipe=0  ""
+
+### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
+lue=true refus="" · 753 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+roster : 28 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
+controle (feuille de match) : accord=0 contradiction=0 silence=28
+vies : 246/246 portent une equipe du film
+repartition des vies par designateur : 0 x149 · 1 x97
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
 1688 rattache(s) / 1968 disponible(s) = 85.8 %

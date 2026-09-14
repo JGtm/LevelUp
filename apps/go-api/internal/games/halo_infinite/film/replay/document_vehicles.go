@@ -165,14 +165,11 @@ type VehicleRide struct {
 	// exactement comme pour une trajectoire de joueur.
 	//
 	// ET IL N Y A PAS DE CHAMP `team` A COTE, ce qui a ete demande et mesure le 2026-09-02.
-	// L EQUIPE N EST PAS DANS LE FILM — c est le meme fait que celui ecrit sur `Track.Team`, qui
-	// vaut -1 pour tout le monde : le film ne porte ni camp, ni couleur, ni score par camp. Elle
-	// vit dans la BASE, avec le gamertag, et le document est HORS LIGNE par construction (il se
-	// cuit depuis les seuls chunks, sans ouvrir la moindre DuckDB — c est ce qui le rend
-	// backfillable). Publier `team` ici obligerait soit a ouvrir la base dans le chemin de
-	// cuisson (ce que tout le calque refuse), soit a la remplir A LA REQUETE cote service, ou le
-	// CLIENT tient deja le scoreboard : ce serait une seconde source pour la meme jointure, et
-	// c est l anti-patron n°8 du depot. LA JOINTURE RESTE DONC CHEZ LE CLIENT — et pour qu elle
+	// LA RAISON A CHANGE AU SCHEMA 57 (lot 1.7) ET LA CONCLUSION NON. L equipe EST dans le film
+	// depuis ce lot — `Track.Team` et `roster[].team` la portent, lue au composant i0 de ti=9 —
+	// mais elle y est PAR JOUEUR, pas par vehicule : un vehicule n a pas de camp, il a des
+	// occupants. La poser ici dupliquerait une jointure que l occupant porte deja, et ce serait
+	// l anti-patron n°8 du depot. LA JOINTURE RESTE DONC CHEZ LE CLIENT — et pour qu elle
 	// tienne la promesse ci-dessus, elle passe par le XUID (`colorByXuidResolver`) et non plus par
 	// le pont slot -> joueur, qui est MUET pendant l episode puisque le bipede ne replique plus.
 	XUID string `json:"xuid,omitempty"`

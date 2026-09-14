@@ -114,7 +114,12 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// film y a deja pose ses sieges, et ses gamertags nomment les joueurs a ZERO MORT, que le fil
 	// des morts ne peut pas nommer. Relire `opt.PlayerIndices` ici republierait la table d'AVANT la
 	// composition — deux tables du meme film, ce que le registre existe pour empecher.
-	doc.Roster = buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, opt.Deaths), opt.Bots)
+	// L'EQUIPE VIENT DU FILM, ET DE LUI SEUL (lot 1.7, decision utilisateur V4). Elle se pose
+	// sur les vies ET sur le roster ; la base n'entre que dans `coverage.teams` comme CONTROLE.
+	// Posee APRES le nommage : le xuid d'une vie est ce qui la relie a son index de joueur.
+	equipes := newTeamPublication(reg, opt.PlayerTeams, opt.TeamScan, opt.ScoreboardTeams)
+	viesTotal, viesNommees := equipes.poserSurLesTraces(doc.Tracks)
+	doc.Roster = buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, opt.Deaths), opt.Bots, equipes)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, reg.DeathOffsetMS(), reg.DeathOffsetMatches())
 	reg.logRegistry(matchID)
@@ -157,6 +162,11 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	grenCov.Attached = len(doc.Grenades)
 	grenCov.warnIfLossy("grenades")
 
+	// LA COUVERTURE DES EQUIPES SE CONSTRUIT ICI mais SE POSE plus bas, avec les autres :
+	// `doc.Coverage` n'existe qu'a partir de `buildCoverage`. Elle a besoin du roster, qui est
+	// son denominateur.
+	teamCov := equipes.couverture(viesTotal, viesNommees, doc.Roster)
+	logTeamCoverage(matchID, teamCov)
 	clock := replayScoreClock(&doc, interval, matchID)
 	objCov := attachObjectiveActions(&doc, opt, reg, clock)
 	scoreCov := attachScoreTimeline(&doc, opt.Score, opt.Deaths, clock, matchID)
@@ -188,6 +198,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// posee ici. Sans elle, un artefact publiant 90 traces la ou le film en porte 95 etait
 	// indistinguable d'un film a 90 vies.
 	doc.Coverage.Tracks = &trackCov
+	// CE QUE LE FILM DIT DES EQUIPES, et ce que la base en pense (lot 1.7) : mesure faite
+	// ci-dessus, posee ici.
+	doc.Coverage.Teams = &teamCov
 	// La version du film est une DIMENSION du décodage : elle voyage avec l'artefact plutôt que
 	// d'exiger une relecture du film pour la retrouver (cf. Coverage.FilmMajorVersion).
 	doc.Coverage.FilmMajorVersion = opt.FilmMajorVersion
@@ -302,7 +315,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
-	attachFlagCarries(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachFlagCarries(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount},
+		equipes)
 	// LA COURONNE VIP, sur les pistes PUBLIEES (la couronne est a la position de son porteur) —
 	// gardee de mode par l'appelant (opt.Vip.Scanned), cf. vip_crown.go.
 	attachVipCrown(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount})

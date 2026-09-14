@@ -164,6 +164,24 @@ type Options struct {
 	// table du film est celle du DÉBUT du film. Vide = le registre retombe entièrement sur
 	// `PlayerIndices`, et le publie (`coverage.identity.filmTable.refus`).
 	FilmTable FilmPlayerTable
+	// PlayerTeams est l'ÉQUIPE DE CHAQUE JOUEUR telle que le film l'écrit : `index de joueur ->
+	// désignateur` (`-1` = aucune équipe), lue par [filmdec.ScanPlayerTeams] dans le composant
+	// i0 de ti=9.
+	//
+	// C'EST LA SEULE SOURCE D'ÉQUIPE DU DOCUMENT (décision utilisateur du 2026-09-13, V4 du
+	// PLAN_DECODEUR_FILM) : la base n'en pose aucune, elle CONTRÔLE (cf. `ScoreboardTeams`).
+	// Vide = le film n'a pas été lu, et `coverage.teams.refusal` dit pourquoi.
+	PlayerTeams map[int]int
+	// TeamScan est le rapport de cette lecture : records, rejets par domaine, divergences. Il
+	// voyage avec la table parce qu'une table vide et une lecture refusée ne disent pas la même
+	// chose, et que la couverture publie la différence.
+	TeamScan filmdec.TeamScanReport
+	// ScoreboardTeams est la table `xuid -> équipe` de la FEUILLE DE MATCH, et elle n'est qu'un
+	// CONTRÔLE : aucune équipe publiée n'en sort. Elle alimente
+	// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle ne
+	// se corrige pas en silence. Vide (CLI hors ligne, ouvrier sans faits) : le contrôle se tait
+	// et le document est le même, à l'octet près.
+	ScoreboardTeams map[string]int
 	// BipedCreations : les records de CRÉATION de bipède du film (`filmdec.ScanBipedCreations`).
 	// C'est le lien DIRECT corps -> joueur : le film écrit l'index de participant du
 	// propriétaire dans le default-state du record (lot E2, 2026-09-08).

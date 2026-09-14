@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 3397 frames · intervalle 100 ms · duree 339700 ms
-schema 56 · titre halo_infinite
+schema 57 · titre halo_infinite
 version majeure du film : 33
 origine de la frame 0 sur l horloge du fil : 27811 ms
 coup d envoi date par le film : 45311 ms · 160/179 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 17500 ms
@@ -21,34 +21,41 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 28 joueur(s)
-  2533274808061956  idx=0  "DaniyalBrolaigh"
-  2535439688275895  idx=1  "GET FREE NOW"
-  2535443465079408  idx=2  "Pabloluis20"
-  2535433346848485  idx=3  "UndatedLamb92"
-  2533274858283686  idx=4  "Madina97294"
-  2533274838421311  idx=5  "HALODAN12"
-  2535444385698662  idx=6  "Jaydeniscool338"
-  2535438935722042  idx=7  "OVERLORDsdlg"
-  2535422072474669  idx=8  "INDUS GAMER"
-  2535460944841591  idx=9  "Twinblade103610"
-  2535444357123310  idx=10  "CmdData123"
-  2533274814445315  idx=11  "Hernandocon"
-  2535432775980993  idx=12  "DenimDude6035"
-  2533274889663512  idx=13  "doc frosty1"
-  2535453770350361  idx=14  "DeviousVix"
-  2535411415528070  idx=15  "JisGaming8"
-  2533274939189952  idx=16  "Marrero1987"
-  2533274885125728  idx=17  "Commander Neko"
-  2533274806117335  idx=18  "manistoff"
-  2535448984006609  idx=19  "Holzkopf9"
-  2535461819321323  idx=20  "SpooneyBread998"
-  2535467391662381  idx=21  "Leepaton420"
-  2535444067363801  idx=22  "AndrewCA117"
-  2535439208563665  idx=23  "MS 82 gamer"
-  2535464945196103  idx=24  "Julianmz7124"
-  2535413578965816  idx=25  "ItsWindlol"
-  2533274866668915  idx=26  "U2 Sam Fisher"
-  2533274813083991  idx=27  ""
+  2533274808061956  idx=0  equipe=0  "DaniyalBrolaigh"
+  2535439688275895  idx=1  equipe=0  "GET FREE NOW"
+  2535443465079408  idx=2  equipe=0  "Pabloluis20"
+  2535433346848485  idx=3  equipe=1  "UndatedLamb92"
+  2533274858283686  idx=4  equipe=1  "Madina97294"
+  2533274838421311  idx=5  equipe=1  "HALODAN12"
+  2535444385698662  idx=6  equipe=0  "Jaydeniscool338"
+  2535438935722042  idx=7  equipe=0  "OVERLORDsdlg"
+  2535422072474669  idx=8  equipe=0  "INDUS GAMER"
+  2535460944841591  idx=9  equipe=1  "Twinblade103610"
+  2535444357123310  idx=10  equipe=1  "CmdData123"
+  2533274814445315  idx=11  equipe=1  "Hernandocon"
+  2535432775980993  idx=12  equipe=1  "DenimDude6035"
+  2533274889663512  idx=13  equipe=0  "doc frosty1"
+  2535453770350361  idx=14  equipe=0  "DeviousVix"
+  2535411415528070  idx=15  equipe=0  "JisGaming8"
+  2533274939189952  idx=16  equipe=1  "Marrero1987"
+  2533274885125728  idx=17  equipe=1  "Commander Neko"
+  2533274806117335  idx=18  equipe=1  "manistoff"
+  2535448984006609  idx=19  equipe=0  "Holzkopf9"
+  2535461819321323  idx=20  equipe=0  "SpooneyBread998"
+  2535467391662381  idx=21  equipe=0  "Leepaton420"
+  2535444067363801  idx=22  equipe=1  "AndrewCA117"
+  2535439208563665  idx=23  equipe=1  "MS 82 gamer"
+  2535464945196103  idx=24  equipe=1  "Julianmz7124"
+  2535413578965816  idx=25  equipe=0  "ItsWindlol"
+  2533274866668915  idx=26  equipe=1  "U2 Sam Fisher"
+  2533274813083991  idx=27  equipe=1  ""
+
+### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
+lue=true refus="" · 449 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+roster : 28 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
+controle (feuille de match) : accord=0 contradiction=0 silence=28
+vies : 185/185 portent une equipe du film
+repartition des vies par designateur : 0 x90 · 1 x95
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
 1186 rattache(s) / 1476 disponible(s) = 80.4 %
