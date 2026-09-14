@@ -1038,19 +1038,50 @@ deux artefacts du corpus gate. Corpus gate `d9781168` : **0 perte**, 7 gains, sc
 
 #### Lot 1.1 — Pied de film : l'équipe d'un événement est à l'octet 37 — S, high
 
-Sur pièces : `internal/analysis/objectiveevents/film.go:182,195,251` lit `b55` (« NON fiable ») ;
-le champ `teamRaw` n'a aujourd'hui aucun consommateur.
+Sur pièces AVANT le lot : `internal/analysis/objectiveevents/film.go:182,195,251` lisait `b55`
+(« NON fiable ») ; le champ `teamRaw` n'avait aucun consommateur. CLOS le 2026-09-14.
 
-- [ ] 1.1.1 `decodeTh10Block` lit l'équipe à `ebs+37*8` ; commentaires `:33`, `:182`, `:195`
+- [x] 1.1.1 `decodeTh10Block` lit l'équipe à `ebs+37*8` ; commentaires `:33`, `:182`, `:195`
       corrigés (doc inversée interdite) ; `b38` noté comme doublon observé, non lu.
-- [ ] 1.1.2 Le type exporté des événements d'objectif porte `Team int` (valeur du film, -1 si
+      FAIT : les offsets du bloc sont nommés (`footerByteTeam = 37`, `footerByteSlot`,
+      `footerByteType`, `footerByteTime`, `footerBlockBytes`) au lieu des littéraux `36*8`,
+      `47*8`, `55*8` (magic number, anti-patron 6). Le commentaire d'`extract.go:63` (« le champ
+      team du film étant non fiable ») est corrigé DANS LE MÊME GESTE : il est la phrase que ce
+      lot réfute, et le laisser aurait été la doc inversée que la ligne interdit.
+- [x] 1.1.2 Le type exporté des événements d'objectif porte `Team int` (valeur du film, -1 si
       absent) : lecture possible en 1.6 / 1.7, sans consommateur ici.
-- [ ] 1.1.3 Test par mutation sur un bloc de pied du mini-film (`chunk_03` de `000d5950`) :
+      FAIT AUTREMENT QUE PRÉVU, et la différence est une DÉCOUVERTE (D3 (1.1) en §4) : ni `NamedEvent`
+      ni `IdentifiedEvent` ne peuvent porter ce champ — ils viennent du STATBORG, pas du pied, et
+      aucun chemin ne relie `th10Event` à eux. Le seul type exporté que le chemin du pied
+      atteigne aujourd'hui est `domain.ObjectiveEvent`, c'est-à-dire une LIGNE DUCKDB : y ajouter
+      un champ aurait été un changement de schéma, hors lot. Le porteur est donc
+      `objectiveevents.FooterEvent` (ex-`th10Event`, exporté avec `TimeMS`, `Slot`, `Team`,
+      `XUID`), lisible par son point d'entrée `FooterEvents(film)` — en mémoire, dans ce paquet,
+      et nulle part ailleurs : aucun document cuit, aucune colonne.
+- [x] 1.1.3 Test par mutation sur un bloc de pied du mini-film (`chunk_03` de `000d5950`) :
       remettre `b55` rougit ; corpus : `TestResidusPiedOctetEquipe` reste l'oracle (665/665).
-- [ ] 1.1.4 `GrammarRev` montée ; empreinte verte.
+      FAIT SUR UN AUTRE FILM : le pied du mini-film ne porte AUCUN événement th=10 (D2 (1.1) en §4),
+      il ne pouvait rien verrouiller. Fixture = 1 930 octets du pied décompressé de `53ce4390`
+      (`testdata/pied_bloc_53ce4390.bin` + provenance écrite + porte de régénération
+      `-update-pied-bloc` qui recoupe la tranche sur le film). Bloc DISCRIMINANT choisi exprès
+      (octet 37 = 1, octet 55 = 0) : sur un événement d'équipe 0 les deux lectures coïncident et
+      le test ne prouverait rien. Mutation jouée dans les deux sens. Oracle corpus rejoué.
+- [x] 1.1.4 `GrammarRev` montée ; empreinte verte.
+      `grammar-2026-09-13` -> `grammar-2026-09-14`, golden régénéré par sa porte nommée,
+      historique du golden complété. L'empreinte NE BOUGE PAS et c'est une découverte (D1 (1.1) en
+      §4) : l'ensemble haché est `filmdec/` + `killsource/`, et la grammaire corrigée vit dans
+      `analysis/objectiveevents/`. La revision est donc montée À LA MAIN, comme le lot l'exige.
 
 Preuve : `replay-equiv` zéro différence (rien de publié ne change) ; corpus gate zéro perte,
 zéro gain.
+RÉSULTAT (2026-09-14) : le régime court rend `écart à la SEULE étape artifact` sur 10 films —
+c'est l'état LAISSÉ PAR LE LOT 1.0.4 (schéma 55 + `coverage.tracks`, références non re-figées),
+delta +104 / +103 (`bcb6d393`) / +102 (`51101d1d`), exactement la table de 1.0.4. ATTRIBUTION
+FAITE PAR MUTATION, pas par raisonnement : les deux fichiers de production du lot remis à `HEAD`,
+`replay-equiv` rend sur `51101d1d` et `bcb6d393` les MÊMES empreintes et les MÊMES comptes
+qu'avec le lot (`60d96001…`/628 310 et `fe6f4add…`/1 903 599). **Ce lot ne change pas un octet du
+document cuit** — donc corpus gate ciblé NON REQUIS (§2.3 : l'équivalence est à zéro différence
+imputable au lot).
 
 #### Lot 1.2 — Le registre commence à l'octet 8 — M, high (le plus risqué de M1)
 
@@ -1598,6 +1629,12 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.0 (revue R1) | **D5 (1.0) — `FilmInputs.applyTo` n'a pas de garde par réflexion.** `TestCodecCouvreFilmInputs` exige que tout champ de `FilmInputs` soit transporté par le CODEC ou nommé absent ; rien n'exige qu'il soit POSÉ par `applyTo` sur les `Options`. Un champ ajouté au type et au codec mais oublié dans `applyTo` n'atteindrait l'assemblage par aucun chemin. Aujourd'hui les huit goldens l'attrapent (le calque correspondant resterait vide) — mais ils l'attrapent APRÈS régénération, pas à la compilation. NON TRAITÉ : la garde demanderait de comparer deux structures de formes différentes (`FilmInputs` contre `Options`), champ par champ, avec une table de correspondance à tenir. | Lot 2.6 (types de contrat) ou la revue du prochain canal ajouté |
 | 2026-09-14 | 1.0.1 | **D3 (1.0) — `Options.observe` est une méthode SUR VALEUR : chaque étape copie l'intégralité d'`Options`.** La structure porte une soixantaine de champs (une trentaine de tranches, six sous-structures d'entrée) ; l'étage de balayage l'observe 36 fois par film. Aucun effet mesuré — le décodage pèse des dizaines de secondes — et le récepteur par valeur est ce qui rend `observe` sûr : l'observateur ne peut modifier aucune entrée. NON TRAITÉ : ce serait un changement du contrat d'`observe`, hors périmètre. | Lot 2.3 / 2.5 (globales et couches), qui rouvre `Options` |
 
+| 2026-09-14 | 1.1.4 | **D1 (1.1) — l'empreinte de `GrammarRev` ne couvre PAS la grammaire du pied.** L'ensemble haché par `grammar_rev_fingerprint_test.go` est `filmdec/` + `killsource/` (`racinesGrammaire`, résolu par `runtime.Caller`). Or le pied de film est lu par un TROISIÈME paquet, `internal/analysis/objectiveevents/` (`scanTh10Events`, `decodeTh10Block`) — c'est-à-dire de la grammaire de film, au sens exact du fichier `grammar_rev.go` (« une largeur, un cadre, un ordre de composants, un lecteur »). VÉRIFIÉ SUR PIÈCES : après le correctif de l'octet 37, `TestGrammarRevSuitLaGrammaire` est resté **VERT** sans qu'on touche à la revision ; c'est exactement le faux négatif que le lot 0.A.4 voulait fermer. La revision a donc été montée À LA MAIN. NON TRAITÉ (règle 7) : ajouter une racine à l'empreinte change ce que garde le ratchet et déplacerait l'empreinte de tous les lots à venir. | Lot 2.6 (« empreintes par couche »), qui redécoupe les empreintes — ou, si le pied part sous `film/` au pas 5 (V5), le déménagement suffit |
+| 2026-09-14 | 1.1.3 | **D2 (1.1) — le pied de la mini-bobine `000d5950` ne porte AUCUN événement th=10.** Le plan demandait la mutation « sur un bloc de pied du mini-film (`chunk_03`) » : mesuré, `scanTh10Events` rend **0** sur les trois chunks de la bobine (3 987 761 o, 25 140 o, 714 479 o décompressés). C'est cohérent avec ce qu'est ce film — `Slayer:Arena Super Fiesta`, un mode SANS objectif — et avec ce qu'est `chunk_03` d'après sa propre provenance (« le chunk highlight du film, fil des morts »). Une fixture de bloc de pied ne peut donc pas venir de la mini-bobine : il faut un film de mode à objectif. CONSÉQUENCE TRAITÉE DANS LE LOT (fixture prise sur `53ce4390`) ; ce qui reste NON TRAITÉ, c'est le manque d'une mini-bobine de mode à objectif pour les lots suivants. | Lot 1.7 / 3.x s'ils ont besoin d'un pied hors ligne ; V7 (mini-films par build) si le besoin se répète |
+| 2026-09-14 | 1.1.2 | **D3 (1.1) — `NamedEvent` et `IdentifiedEvent` ne viennent PAS du pied.** Le plan supposait que l'un des deux porterait l'équipe du film. Sur pièces, les deux naissent du STATBORG (`StatRecords` -> `NamedEventsFrom` -> `IdentifyNamedEvents*`) et leur `Slot` est un slot d'entité statborg (10..24 pairs) ; le pied, lui, donne un `b36` de 0..3 qui n'est pas un `player_index`. AUCUN chemin ne relie `th10Event` à ces types. Le seul type exporté que le chemin du pied atteigne est `domain.ObjectiveEvent`, c'est-à-dire une ligne de `shared.match_objective_events` : y poser un champ aurait été un changement de SCHÉMA DB, interdit dans ce lot. D'où `FooterEvent`, en mémoire dans `objectiveevents`. NON TRAITÉ : le lot 1.7.3 devra brancher `domain.ObjectiveEvent.TeamID` (colonne qui EXISTE déjà, pointeur nullable) sur `FooterEvent.Team` au lieu du roster — pas de champ neuf à créer. | Lot 1.7.3 |
+| 2026-09-14 | 1.1.1 | **D4 (1.1) — doc inversée résiduelle dans `internal/domain/objective_events.go:12-13`.** L'en-tête justifie encore la nullabilité de `TeamID` par « team unreliable sur certains matchs » : c'est la phrase que ce lot réfute (l'octet 55 vaut 0 partout, l'octet 37 donne 665/665). NON TRAITÉ ici : `domain/` est hors du périmètre du lot, et la phrase redeviendra juste-ou-fausse selon ce que 1.7.3 fera de la colonne — la corriger avant ce basculement, c'est écrire deux fois. | Lot 1.7.3, dans le commit qui bascule la source de `TeamID` |
+| 2026-09-14 | 1.1.3 | **D5 (1.1) — le XUID d'un événement du pied est à 1 866 octets DU BLOC, et cette distance est CONSTANTE.** Mesure du 2026-09-14 sur TOUS les blocs de quatre films et deux builds (`bcb6d393` HI_1_12_0 17 blocs, `53ce4390` 34, `7344d24f` 71, `64e8adfa` 68 — HI_1_13_0) : `ebs - xstart = 14 926 bits` (1 865,75 octets) sur **190 blocs sur 190**, une seule valeur distincte, sans une exception. Le bloc de 60 octets que la production décode ne CONTIENT donc pas le XUID qu'elle lui attribue — elle l'ancre sur un XUID situé loin devant, et la fenêtre de recherche de 20 000 bits (`decodeTh10Block`) est plus large que cette distance de seulement 5 074 bits. Une constante non expliquée dont la marge est de 34 % n'est pas un fait établi : c'est un appariement qui tient par chance jusqu'au build qui l'allongera. NON TRAITÉ. | Lot 1.7.3 (qui rouvre ce bloc pour l'équipe) ou la famille 1.9 (D13 : lire ce que le film écrit plutôt qu'une fenêtre) |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -1787,6 +1824,16 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | R2-1 (preuve) | ce commit | l'extracteur `testutil.ReplayChronicleVersions` et les trois tests de `replaybuild` qui en dérivent | **`schema_51` apparaît et PASSE** dans les trois : `TestChaqueSchemaAnterieurSeLitARecuire`, `TestLeDepotRefuseChaqueSchemaAnterieur`, `TestLePointDEcritureRefuseLAppauvrissementAChaqueSchema`. Une version RÉELLEMENT cuite que ces trois tests ne rejouaient pas entre enfin dans la mesure. `TestDocumentShape*` vert, `internal/testutil` vert |
 | 2026-09-14 | R2-2 (P2) | ce commit | trois chiffres pour une mesure (11 044 407 = total d'AVANT régénération, 11 044 446 mesuré, 11 044 440 au plan) et un « +12 % » sans base | Un SEUL chiffre partout, celui que le test lit sur le disque : **11 044 446 o**. Les pourcentages portent leur base : +7,0 % contre la clôture de 0.D (10 323 769 o), +1,8 % contre le jeu d'origine (10 849 119 o). L'historique du commentaire passe en OCTETS, plus en Mio arrondis |
 | 2026-09-14 | 1.0 revue R2 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` ; `go test ./internal/games/halo_infinite/film/replay/ ./internal/replaybuild/ ./internal/archlint/ ./internal/testutil/` ; `git status --short` | gofmt VIDE ; vet propre ; **4 paquets ok, exit 0** ; arbre propre. AUCUN décodage : la ronde 2 ne touche ni le décodeur, ni les fixtures, ni les goldens |
+
+| 2026-09-14 | 1.1 (oracle, AVANT tout changement) | `5a01ad9c2` | `CHUNK00_FILMS="…/53ce4390;…/64e8adfa;…/7344d24f" go test ./internal/games/halo_infinite/film/filmdec/ -run 'TestResidusPiedOctetEquipe\|TestResidusPiedDrapeaux' -v` | **173 événements sur 173** pour l'octet 37 (et pour l'octet 38) ; **84/173** pour l'octet 55, dont la seule valeur observée est `0` (x173) ; **4 lectures en accord parfait sur 180 essayées** — le plancher de bruit mesuré. 3 films retenus, 0 écarté. 2,6 s + 3,6 s |
+| 2026-09-14 | 1.1.1 | ce commit | `decodeTh10Block` lit `ebs+footerByteTeam*8` avec `footerByteTeam = 37` ; les quatre littéraux `36*8 / 47*8 / 48*8 / 55*8` deviennent des constantes nommées ; commentaires `film.go:31-35` et `:180-200` réécrits, `extract.go:63` (la phrase « le champ team du film étant non fiable ») réécrite | `gofmt` vide, `go vet` propre. `b38` est écrit comme DOUBLON OBSERVÉ et explicitement NON LU (deux lectures d'un même fait divergent un jour en silence) |
+| 2026-09-14 | 1.1.2 | ce commit | `th10Event` -> `FooterEvent` exporté (`TimeMS`, `Slot`, `Team`, `XUID`) + point d'entrée `FooterEvents(film)`, qui remplace les DEUX copies de `footerData` + `scanTh10Events` dans `extractCTF` et `extractFromTh10` | Aucun consommateur de `Team` (1.7.3 le prendra). **Rien ne traverse une frontière sérialisée** : ni `domain.ObjectiveEvent` (ligne DuckDB), ni le document cuit — vérifié par l'équivalence ci-dessous |
+| 2026-09-14 | 1.1.3 | ce commit | fixture `testdata/pied_bloc_53ce4390.bin` (1 930 o, tranche [34 977, 36 907) du pied décompressé de `53ce4390`, `chunk_40.bin` type 3) + provenance écrite + porte `-update-pied-bloc` ; `TestPiedEquipeOctet37`, `TestPiedBlocContreLecture55`, `TestPiedBlocProvenance` | Les trois **PASS**. `TestPiedBlocProvenance` recoupe la tranche SUR LE FILM : 1 930 octets identiques. Bloc discriminant : octet 37 = 1, octet 55 = 0, équipe prouvée 1 (`2533274823110022`, t=61 155) |
+| 2026-09-14 | 1.1.3 (mutation) | ce commit | `footerByteTeam` remis à 55, tests rejoués, puis remis à 37 | **DEUX tests ROUGES** : `TestPiedEquipeOctet37` (« ÉQUIPE LUE AU MAUVAIS OCTET : rendue 0, prouvée 1 ») et `TestPiedBlocContreLecture55` (« LA FIXTURE NE DISCRIMINE PLUS »). Remis à 37 : **verts**, `git diff` du fichier revenu à l'état du lot (md5 identique) |
+| 2026-09-14 | 1.1.4 | ce commit | `GrammarRev` `grammar-2026-09-13` -> `grammar-2026-09-14` ; `-run GrammarRevSuitLaGrammaire -update-grammar-rev` puis relance sans la porte | Avant la montée : le test est **VERT malgré le changement de grammaire** (découverte D1 (1.1)). Après la montée seule : **ROUGE**, « LA REVISION A CHANGE SANS QUE LA GRAMMAIRE BOUGE ». Golden régénéré (empreinte INCHANGÉE `3c775720…`, historique complété), relance **ok** |
+| 2026-09-14 | 1.1 (gates communs) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` (5 racines) ; `go test` (13 paquets : objectiveevents, film/…, archlint, replaybuild, killcollector, replaydoc) ; `make go-api-lint` | gofmt **vide** ; vet **0 diagnostic** ; **13 paquets ok, exit 0** (filmdec 8,9 s ; replay 14,7 s ; archlint 14,3 s) ; lint **0 issues, exit 0** (baseline non accrue) |
+| 2026-09-14 | 1.1 (régime court) | ce commit | `go run ./cmd/replay-equiv -repo-root <worktree> -films …` — les 10 films, DEUX sous-ensembles de 5 | **écart à la SEULE étape `artifact`** sur les 10 (les 49 étapes de balayage identiques), deltas **+104** (8 films), **+103** (`bcb6d393`), **+102** (`51101d1d`) : exactement la table du lot 1.0.4, dont les références n'ont pas été re-figées. 3 min 44 + 1 min 58 |
+| 2026-09-14 | 1.1 (attribution PAR MUTATION) | ce commit | les DEUX fichiers de production du lot remis à `HEAD` (`git checkout HEAD -- film.go extract.go`, test du lot mis de côté), `replay-equiv` sur `51101d1d,bcb6d393`, puis fichiers restaurés (md5 vérifiés) | **MÊMES empreintes, MÊMES comptes qu'avec le lot** : `51101d1d` 628 310 / `60d96001…`, `bcb6d393` 1 903 599 / `fe6f4add…`. **Le lot ne change pas un octet du document cuit** — l'écart `artifact` est 100 % imputable à 1.0.4. Corpus gate ciblé **NON REQUIS** (§2.3) |
 
 ## 6. Protocole de reprise de session
 
