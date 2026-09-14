@@ -64,6 +64,7 @@ import (
 
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 	"levelup/go-api/internal/observability"
 )
 
@@ -204,7 +205,7 @@ func attachBombArmings(doc *ReplayDocument, opt Options, c scoreClock) {
 	if !opt.Bomb.Scanned {
 		return
 	}
-	armings, cov, verdict := buildBombArmings(opt.Bomb.Reads, bombDetonationTimes(doc.Objectives), c)
+	armings, cov, verdict := buildBombArmings(opt.Bomb.Reads, bombDetonationTimes(doc.Objectives), c, opt.Fallbacks)
 	doc.BombArmings = armings
 	if doc.Coverage != nil {
 		doc.Coverage.BombArmings = cov
@@ -216,7 +217,7 @@ func attachBombArmings(doc *ReplayDocument, opt Options, c scoreClock) {
 // déduplication de paire -> confrontation locale (mèche MESURÉE) -> grille de frames. Pur,
 // testable sans film.
 func buildBombArmings(reads []filmdec.NavpointRadialRead, detonations []int,
-	c scoreClock) ([]BombArming, *BombArmingsCoverage, bombFuseVerdict) {
+	c scoreClock, fb *fallback.Compteur) ([]BombArming, *BombArmingsCoverage, bombFuseVerdict) {
 	cov := &BombArmingsCoverage{Scanned: true, Reads: len(reads), Detonations: len(detonations)}
 	segments := filmdec.NavpointSegments(reads)
 	cov.Rises = len(segments)
@@ -243,6 +244,8 @@ func buildBombArmings(reads []filmdec.NavpointRadialRead, detonations []int,
 		}
 		startT, ok := c.frameOf(int(r.StartMS))
 		if !ok {
+			// REPLI NOMME ET COMPTE (D14) : l'origine du rejeu ne couvre pas ce debut de hold.
+			fb.Declenche(fallback.NomArmementBombeDebutAZero)
 			startT = 0 // début de hold avant la frame 0 : le compte à rebours, lui, tient
 		}
 		out = append(out, BombArming{T: t, TimeMS: int(r.EndMS),

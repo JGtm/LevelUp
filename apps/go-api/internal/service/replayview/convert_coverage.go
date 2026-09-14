@@ -45,7 +45,21 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		T0Film:            ptrOf(v.T0Film, toT0FilmCoverage),
 		Verdict:           v.Verdict,
 		Bridge:            toBridgeHealth(v.Bridge),
+		Fallbacks:         toFallbackHits(v.Fallbacks),
 	}
+}
+
+// toFallbackHits projette les replis declenches. Nil reste nil : `omitempty` fait alors
+// disparaitre le champ, et un document sans repli ne porte pas de liste vide.
+func toFallbackHits(v []replay.FallbackHit) []replaydoc.FallbackHit {
+	if len(v) == 0 {
+		return nil
+	}
+	out := make([]replaydoc.FallbackHit, 0, len(v))
+	for _, h := range v {
+		out = append(out, replaydoc.FallbackHit{Name: h.Name, Hits: h.Hits})
+	}
+	return out
 }
 
 func toLayerCoverage(v replay.LayerCoverage) replaydoc.LayerCoverage {

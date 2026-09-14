@@ -32,6 +32,7 @@ import (
 
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // BuildFromFilm décode les positions bipeds des SEULS chunks du film DEJA CHARGE et en
@@ -56,9 +57,15 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// entrelacement entre deux sous-balayages du MEME film.
 	release := filmdec.LockProcessDecode()
 	defer release()
+	// LE COMPTEUR DE REPLIS NAIT ICI, AVANT LE PREMIER BALAYAGE (lot 1.9.0, D14) : les replis du
+	// BALAYAGE (largeurs par defaut, plafond de grenades) et ceux de l'ASSEMBLAGE tombent dans le
+	// meme compte, celui de cette cuisson, publie dans `coverage.fallbacks`.
+	if opt.Fallbacks == nil {
+		opt.Fallbacks = fallback.NouveauCompteur()
+	}
 	// Les largeurs d'axe du chemin WORLD-OBJECT sont un global de paquet : installées ici,
 	// sous le verrou, pour TOUT le decodage du film, et restaurees au retour.
-	defer installWorldObjectPrecision(*opt.MapQuant, matchID)()
+	defer installWorldObjectPrecision(*opt.MapQuant, matchID, opt.Fallbacks)()
 	in, err := scanFilmInputs(matchID, film, opt)
 	if err != nil {
 		return ReplayDocument{}, err

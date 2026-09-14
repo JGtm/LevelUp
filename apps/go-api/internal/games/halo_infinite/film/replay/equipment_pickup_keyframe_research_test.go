@@ -105,7 +105,7 @@ func TestEquipmentPickupKeyframeNaming(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
-	inv, st, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
+	inv, st, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
 	if err != nil {
 		t.Fatalf("inventaire d images-cles illisible : %v", err)
 	}

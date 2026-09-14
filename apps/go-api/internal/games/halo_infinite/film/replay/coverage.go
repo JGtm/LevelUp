@@ -390,6 +390,21 @@ type Coverage struct {
 	// Bridge décrit sur quoi repose le pont slot -> joueur. Un calque peut être complet et
 	// néanmoins reposer sur une résolution fragile : les deux se jugent séparément.
 	Bridge BridgeHealth `json:"bridge"`
+	// Fallbacks dit QUELLE PART DE CE DOCUMENT VIENT D'UN REPLI (schéma 58, décision D14 du plan
+	// du décodeur, ADR 0034). Un repli est une décision de secours prise quand la lecture du film
+	// ne tranche pas ; chacun porte un nom stable, une condition et un critère de retrait, tous
+	// déclarés dans `film/replay/fallback`.
+	//
+	// UNE LISTE PLATE, ET PAS UN BLOC PAR FAIT. Les replis ne se répartissent pas sur les calques
+	// existants — `repli_largeurs_axe_par_defaut_conservees` touche TOUT le décodage, et les
+	// trois quarts des faits repliés n'ont pas de bloc de couverture à eux. Une liste
+	// `{name, hits}` se lit sans connaître la carte des calques, se joint au registre par le seul
+	// nom, et n'oblige aucun des vingt blocs existants à changer de forme.
+	//
+	// SEULS LES REPLIS DÉCLENCHÉS Y FIGURENT, triés par nom : ce que le document porte est ce qui
+	// s'est PRODUIT. Ce qui PEUT se produire est au registre, qui est du code versionné. Absente
+	// quand aucun repli ne s'est déclenché, ou quand la cuisson ne portait pas de compteur.
+	Fallbacks []FallbackHit `json:"fallbacks,omitempty"`
 }
 
 // ProjectileCoverage est la couverture du calque des projectiles.

@@ -208,7 +208,7 @@ func invConfrontOneFilm(dir string) (invConfrontation, []float64, []float64, err
 	release := filmdec.LockProcessDecode()
 	defer release()
 
-	kf, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
+	kf, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
 	if err != nil {
 		return c, nil, nil, fmt.Errorf("images-clés : %w", err)
 	}

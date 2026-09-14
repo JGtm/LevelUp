@@ -75,7 +75,7 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 	// `MapQuantEntry.Layout()` porte toutes les trois.
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(entry, film)()
+	defer installWorldObjectPrecision(entry, film, nil)()
 	roster, err := rosterDeLaFeuille(film)
 	if err != nil {
 		return nil, err

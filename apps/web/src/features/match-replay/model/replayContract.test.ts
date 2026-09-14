@@ -372,6 +372,10 @@ const NULLABLE_ARRAY_PATHS = [
   'identity.players',
   'identity.bipedSlots',
   'identity.statborgSlots',
+  // LA PART DE REPLI (schéma 58) : la liste des replis du décodeur qui se sont déclenchés
+  // pendant la cuisson. Même régime qu'`identity` — la liste se comble, l'objet `coverage`
+  // garde le droit d'être absent.
+  'coverage.fallbacks',
 ] as const
 
 /**

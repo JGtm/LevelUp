@@ -58,7 +58,7 @@ func TestI22Confrontation(t *testing.T) {
 
 	// La telemetrie de couverture (KeyframeInventoryStats, lot 2 du 2026-08-25) ne concerne
 	// pas cette sonde : elle confronte les lectures, pas la sante du scan.
-	kf, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
+	kf, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
 	if err != nil {
 		t.Fatalf("keyframes : %v", err)
 	}

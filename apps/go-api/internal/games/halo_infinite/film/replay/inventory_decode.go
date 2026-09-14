@@ -3,6 +3,7 @@ package replay
 import (
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // inventory_decode.go — L'INVENTAIRE COMPLET d'un biped à une image-clé : grenades portées
@@ -168,7 +169,7 @@ type KeyframeInventory struct {
 // requête.
 // ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanKeyframeInventory].
 func ScanFilmKeyframeInventory(
-	dir string, known map[uint32]bool, grenMax uint32,
+	dir string, known map[uint32]bool, grenMax uint32, fb *fallback.Compteur,
 ) ([]KeyframeInventory, KeyframeInventoryStats, error) {
 	if len(known) == 0 {
 		return nil, KeyframeInventoryStats{}, nil // catalogue vide : rien a chercher
@@ -177,18 +178,21 @@ func ScanFilmKeyframeInventory(
 	if err != nil {
 		return nil, KeyframeInventoryStats{}, err
 	}
-	return ScanKeyframeInventory(film, known, grenMax)
+	return ScanKeyframeInventory(film, known, grenMax, fb)
 }
 
 // ScanKeyframeInventory décode l'inventaire des images-clés d'un film DEJA CHARGE.
 func ScanKeyframeInventory(
-	film *filmsource.Film, known map[uint32]bool, grenMax uint32,
+	film *filmsource.Film, known map[uint32]bool, grenMax uint32, fb *fallback.Compteur,
 ) ([]KeyframeInventory, KeyframeInventoryStats, error) {
 	var st KeyframeInventoryStats
 	if len(known) == 0 {
 		return nil, st, nil
 	}
 	if grenMax == 0 {
+		// REPLI NOMME ET COMPTE (D14) : le plafond est une donnee de MODE, pas une constante ;
+		// l'appelant qui n'en fournit pas se voit servir celui d'un mode par defaut.
+		fb.Declenche(fallback.NomPlafondGrenadeParDefaut)
 		grenMax = DefaultGrenadeMax
 	}
 	nums := filmdec.FilmChunkNumbers(film)

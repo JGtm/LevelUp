@@ -180,7 +180,7 @@ func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("armes portees : %v", err)
 	}
-	inventory, _, err := ScanKeyframeInventory(film, loadoutFamilies(), 0)
+	inventory, _, err := ScanKeyframeInventory(film, loadoutFamilies(), 0, nil)
 	if err != nil {
 		t.Fatalf("inventaire d'image-cle : %v", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // world_object_precision.go — LES LARGEURS D'AXE DU CHEMIN WORLD-OBJECT, POSÉES DEPUIS LA
@@ -44,8 +45,11 @@ import (
 //
 // `slog.Warn` et non `WarnContext` : `BuildFromFilm` — le seul appelant — ne prend pas de
 // `ctx`, et tout le fichier `build.go` journalise ainsi.
-func installWorldObjectPrecision(e filmdec.MapQuantEntry, matchID string) (restore func()) {
+func installWorldObjectPrecision(e filmdec.MapQuantEntry, matchID string, fb *fallback.Compteur) (restore func()) {
 	if e.AxisWidths[0] == 0 || e.AxisWidths[1] == 0 || e.AxisWidths[2] == 0 {
+		// REPLI NOMME ET COMPTE (D14) : le defaut conserve est celui d'UNE carte, applique a
+		// toutes. Le journal le disait deja ; le compte le fait voyager avec l'artefact.
+		fb.Declenche(fallback.NomLargeursAxeParDefautConservees)
 		slog.Warn("largeurs d'axe absentes de l'entrée de catalogue — objets du monde déquantifiés aux largeurs par défaut",
 			"module", e.Module, "match_id", matchID,
 			"defaut", filmdec.WorldObjectPrecision.AxisW)

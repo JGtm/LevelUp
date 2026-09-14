@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // equipment_placements.go — LES POSES d'équipement sur la carte : le mur de protection, le
@@ -315,11 +316,15 @@ func equipmentLives(positions []filmdec.BipedPosition) map[uint32][]equipLife {
 // LA VIE RETENUE EST CELLE QUI CONTIENT L'INSTANT DE LA POSE, à défaut la plus proche en
 // temps : écarter silencieusement une pose dont la vie ne couvre pas l'instant biaiserait la
 // mesure vers les cas faciles.
-func equipmentOrigin(lives []equipLife, p filmdec.EquipmentPlacement) string {
+func equipmentOrigin(lives []equipLife, p filmdec.EquipmentPlacement, fb *fallback.Compteur) string {
 	if len(lives) == 0 {
 		return OriginUnknown
 	}
 	best, bestGap := equipLife{}, ^uint64(0)
+	// REPLI NOMME ET COMPTE (D14) : quand AUCUNE vie ne contient l'instant de la pose, l'origine
+	// se decide sur la vie la plus proche en temps. Le drapeau est arme ici et desarme des qu'une
+	// vie couvrante est trouvee — le compte ne porte donc que les poses reellement arbitrees.
+	repli := true
 	for _, v := range lives {
 		gap := uint64(0)
 		switch {
@@ -329,12 +334,15 @@ func equipmentOrigin(lives []equipLife, p filmdec.EquipmentPlacement) string {
 			gap = p.T0US - v.to
 		}
 		if gap == 0 { // la vie CONTIENT l'instant : aucune autre ne fera mieux
-			best = v
+			best, repli = v, false
 			break
 		}
 		if gap < bestGap {
 			best, bestGap = v, gap
 		}
+	}
+	if repli {
+		fb.Declenche(fallback.NomOriginePoseVieLaPlusProche)
 	}
 	if equipTimeGap(p.T0US, best.to) > originDropWindowUS {
 		return OriginDeployed
@@ -436,7 +444,7 @@ func buildEquipmentPlacements(
 		}
 		if slot, h, ok := equipmentOwner(positions, p); ok {
 			pl.Owner, pl.H = int(slot), h
-			pl.Origin = equipmentOrigin(lives[slot], p)
+			pl.Origin = equipmentOrigin(lives[slot], p, clock.fb)
 		}
 		// UNE PIÈCE ENGENDRÉE EST DÉPLOYÉE PAR NATURE — cf. [equipmentIsSpawnedPiece]. Le
 		// verdict écrase celui de la fenêtre temporelle ET celui de l'absence de poseur : les
@@ -517,6 +525,11 @@ type replayClock struct {
 	origin, step uint64
 	frames       int
 	families     map[uint32]string
+	// fb compte les REPLIS de cette cuisson (D14, cf. le paquet `fallback`). Il voyage ici parce
+	// que `replayClock` est deja CE QUE L'ASSEMBLAGE PARTAGE — la grille, les frames et la table
+	// des familles —, et que les calques qui le recoivent sont exactement ceux qui se replient.
+	// Nil ne compte rien.
+	fb *fallback.Compteur
 }
 
 func clampFrame(t, frames int) int {

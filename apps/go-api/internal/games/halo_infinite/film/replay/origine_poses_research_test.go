@@ -90,7 +90,7 @@ func TestOriginePosesDistribution(t *testing.T) {
 	entry := origineMapEntry(t)
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(entry, dir)()
+	defer installWorldObjectPrecision(entry, dir, nil)()
 
 	worldRange := entry.Range()
 	scan := filmdec.DefaultScanFilmOptions()

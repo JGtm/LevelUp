@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // SEUILS DE L'APPARIEMENT — repris TELS QUELS de la mesure (lot C-bis phase 2a). Les faire
@@ -96,6 +97,8 @@ type zoneCtx struct {
 	// nommage a echoue ne se rattache a personne (cf. samplesByXUID).
 	slotXUID map[uint32]uint64
 	matchID  string
+	// fb compte les REPLIS de cette cuisson (D14). Nil ne compte rien.
+	fb *fallback.Compteur
 }
 
 // zoneSample est une emission scalaire posee sur la grille de frames.

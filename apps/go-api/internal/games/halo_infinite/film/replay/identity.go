@@ -20,6 +20,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // nameTracksByLives pose le xuid du porteur sur chaque trace PAR VIE : une trace est nommée
@@ -35,7 +37,7 @@ import (
 // UNE TRACE SANS VIE NOMMÉE RESTE SANS XUID : le champ est vide, pas rempli d'un « inconnu »
 // ni du porteur d'un slot voisin. C'est la même règle que celle qui a fait supprimer le vote
 // — mieux vaut ne rien afficher que quelque chose de faux.
-func nameTracksByLives(tracks []Track, lives []lifeSpan, origin, step uint64) {
+func nameTracksByLives(tracks []Track, lives []lifeSpan, origin, step uint64, fb *fallback.Compteur) {
 	if len(lives) == 0 {
 		return
 	}
@@ -49,6 +51,12 @@ func nameTracksByLives(tracks []Track, lives []lifeSpan, origin, step uint64) {
 				continue
 			}
 			if ov := minI64(to, l.to) - maxI64(from, l.from); ov > bestOverlap {
+				// REPLI NOMME ET COMPTE (D14) : quand une SECONDE vie du meme slot recouvre la
+				// piste, ce `>` arbitre sans aucun seuil minimal — un recouvrement d'une frame
+				// l'emporte. Compte a partir du deuxieme candidat, pas du premier.
+				if bestXUID != 0 {
+					fb.Declenche(fallback.NomIdentitePisteMeilleurRecouvrement)
+				}
 				bestOverlap, bestXUID = ov, l.xuid
 			}
 		}
