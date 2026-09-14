@@ -25,6 +25,11 @@ type SessionUsageRepository interface {
 	LoadUsageFilms(ctx context.Context, matchIDs []string) (map[string]sessionusage.FilmRow, error)
 	// LoadUsagePlayers : les lignes match_usage_players_latest du scope.
 	LoadUsagePlayers(ctx context.Context, matchIDs []string) ([]sessionusage.PlayerRow, error)
+	// LoadPadTiers : les PRISES DE SOCLE PAR NIVEAU D'ARME, une ligne par
+	// (match, joueur, niveau, arme), lues de `match_pad_pickups_by_tier_latest`.
+	// Un match ABSENT n'est pas un match a zero : sa passe n'a pas eu lieu, et
+	// les niveaux se lisent « non mesures ».
+	LoadPadTiers(ctx context.Context, matchIDs []string) ([]sessionusage.PadTierRow, error)
 	// LoadParticipants : les participants (match_participants) du scope —
 	// appartenance de camp (attribution) + présence à la fin (effectifs).
 	LoadParticipants(ctx context.Context, matchIDs []string) ([]sessionusage.ParticipantRow, error)

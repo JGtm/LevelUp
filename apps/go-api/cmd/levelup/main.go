@@ -131,6 +131,8 @@ func main() {
 		exitErr = runBackfillBombStats(cfg, args)
 	case "backfill-flag-grabs-net":
 		exitErr = runBackfillFlagGrabsNet(cfg, args)
+	case "backfill-pad-tiers":
+		exitErr = runBackfillPadTiers(cfg, args)
 	case "tactical-rasters":
 		exitErr = runTacticalRasters(cfg, args)
 	case "replay-facts-export":
@@ -205,6 +207,7 @@ Commandes:
                   append-only + faits datés dans match_objective_events) : AUCUN décodage de film. À lancer APRÈS backfill-replay,
                   qui est la passe qui les fait naître dans les artefacts (--dry-run, --force, --match, --limit, serveur arrêté)
   backfill-flag-grabs-net  Projette en base les prises de drapeau BRUTES et NETTES lues du calque de drapeau des artefacts de rejeu
+  backfill-pad-tiers       Projette en base les prises de socle VENTILEES PAR NIVEAU d arme (base / terrain / puissance) lues des artefacts de rejeu
                   déjà rangés (match_flag_grabs_net append-only) : AUCUN décodage, AUCUNE recuisson — tout artefact de schéma >= 14
                   est lisible tel quel. La fenêtre de jonglage vient de regulation.toml ; un changement de fenêtre EXIGE --force
                   (--dry-run, --force, --match, --limit, serveur arrêté)

@@ -31,6 +31,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/service/squadagg"
 )
 
 // resolvePadFamilyLabels nomme les familles d'arme d'un bloc usage, dans la langue de la
@@ -100,4 +101,28 @@ func parseWeaponFamilyKey(key string) (uint32, bool) {
 		return 0, false
 	}
 	return uint32(v), true
+}
+
+// resolvePadTierWeaponLabels nomme les armes du DETAIL PAR NIVEAU, exactement comme
+// `resolvePadFamilyLabels` nomme celles de la ventilation par arme.
+//
+// MEME CATALOGUE, MEME REGLE, MEME DEGRADATION : une famille hors catalogue garde sa clé à
+// l'écran, jamais un nom approchant. Le catalogue est chargé UNE FOIS pour toute la liste.
+func (s *SessionPageService) resolvePadTierWeaponLabels(
+	ctx context.Context, block *domain.SessionUsageBlock, locale string,
+) {
+	if s.repoRoot == "" || block == nil || block.PadTiers == nil || len(block.PadTiers.Tiers) == 0 {
+		return
+	}
+	cat, err := replaylabels.Load(s.repoRoot, s.titleSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "session page: catalogue d'armes illisible — armes des niveaux non nommées",
+			"err", err, "titleSlug", s.titleSlug)
+		return
+	}
+	if len(cat.Weapons) == 0 {
+		return
+	}
+	// LE NOMMAGE EST CELUI DES TROIS PAGES, en un seul exemplaire (squadagg).
+	squadagg.NommerArmesDesNiveaux(block.PadTiers, cat.Weapons, locale != "en", parseWeaponFamilyKey)
 }

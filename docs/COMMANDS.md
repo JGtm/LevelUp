@@ -113,6 +113,16 @@ go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--t
 go run ./cmd/levelup backfill-flag-grabs-net --dry-run
 go run ./cmd/levelup backfill-flag-grabs-net [--force] [--match ID] [--limit N] [--title S]
 
+# 4 bis. Weapon TIERS of pad pickups -> match_pad_pickups_by_tier (append-only). Same motif
+#    as (4): it reads the artifacts AS THEY ARE, no decoding, NO RE-COOK. The tier comes
+#    from the MAP (the Forge spot confirming the match pad, reference map_weapon_pads.json)
+#    and from the film spawn loadouts; never from the weapon name. ADDING A MAP TO THE
+#    REFERENCE REQUIRES --force: rows already written carry the previous join (pickups left
+#    as `non_classe` that would become `terrain` or `puissance`), and resume would never
+#    revisit them.
+go run ./cmd/levelup backfill-pad-tiers --dry-run
+go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--title S]
+
 # 5. Tactical occupation rasters -> sidecar JSON files under
 #    data/cache/replays/{slug}/rasters/. NO database is opened, not even read-only: the
 #    sidecar is per-match and anonymous, so nothing has to be asked of DuckDB.

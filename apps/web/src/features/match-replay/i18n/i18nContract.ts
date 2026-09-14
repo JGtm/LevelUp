@@ -11,6 +11,7 @@
  * `i18n.ts` refuse toute langue à laquelle il manque un champ.
  */
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
+import type { PadTier } from '../model/weaponTier'
 
 /**
  * Les munitions de l'ARME EN MAIN telles que la tuile compacte les dit en infobulle (I9 du plan
@@ -171,6 +172,20 @@ export interface PadControlText {
    * dire « ce socle a changé de mains plus souvent que la ligne ne le montre » sans inventer.
    */
   unnamedFmt: (count: number) => string
+  /**
+   * LES INTERTITRES DE NIVEAU (2026-09-14). Le bloc range ses armes en base / terrain /
+   * puissance / non classé — le niveau vient de la CARTE (l'emplacement Forge qui confirme le
+   * socle) et de l'équipement de départ du film, jamais du nom de l'arme. Le niveau `powerup`
+   * existe pour l'exhaustivité du type : un socle de bonus n'ayant jamais de ramasseur nommé,
+   * son groupe est toujours vide à l'écran.
+   */
+  tierLabels: Record<PadTier, string>
+  /** Le sous-total d'un niveau, écrit à côté de son intertitre. */
+  tierSubtotalFmt: (count: number) => string
+  /** Mode à équipements de départ aléatoires (Fiesta) : le niveau « base » n'est pas publié. */
+  randomStartsNote: string
+  /** Aucun emplacement de la carte n'a confirmé de socle : les niveaux ne sont pas établis. */
+  tiersUnmeasuredNote: string
 }
 
 export interface ReplayText {

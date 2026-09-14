@@ -53,6 +53,7 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		Roster:              sliceOf(v.Roster, toRosterEntry),
 		MapObjectives:       ptrOf(v.MapObjectives, toMapObjectives),
 		MapWeaponPads:       ptrOf(v.MapWeaponPads, toMapWeaponPads),
+		WeaponTiers:         ptrOf(v.WeaponTiers, toWeaponTiersInfo),
 		Objectives:          sliceOf(v.Objectives, toObjectiveAction),
 		ScoreTimeline:       ptrOf(v.ScoreTimeline, toScoreTimeline),
 		FlagCarries:         sliceOf(v.FlagCarries, toFlagCarry),
