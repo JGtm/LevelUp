@@ -19,6 +19,28 @@
 # compresses), a ne pas comparer colonne a colonne avec les lignes de 2026-09-02.
 #
 #
+#
+# REFERENCES RE-FIGEES AU COMMIT a752403da, SCHEMA 55, LE 2026-09-14 (lot 1.1.6). Les references
+# precedentes dataient du schema 54 : depuis le lot 1.0.4 — qui publie `coverage.tracks`
+# (`published`, `publishedPoints`, `refusedMinPoints`, `refusedPoints`, `minPoints`) et monte
+# `SchemaVersion` de 54 a 55 — CHAQUE lot voyait le meme ecart a l etape `artifact` sur les vingt
+# films, un rouge permanent qui masque le prochain vrai.
+#
+# UNE SEULE ETAPE BOUGE, `artifact`, sur les 20 films ; les 49 autres sont IDENTIQUES partout —
+# aucun balayage n a change. Delta d octets = la longueur exacte du champ neuf (94 o fixes plus
+# les chiffres) : +102 (x1), +103 (x2), +104 (x14), +105 (x2), +106 (x1). Le `git diff` des
+# vingt `.tsv` ne porte que vingt lignes, toutes `artifact`.
+#
+# POURQUOI ON PEUT RE-FIGER ICI, ET CE QUI L AUTORISE. Le lot 1.1 (equipe d un evenement du pied
+# lue a l octet 37 et non 55) ne change AUCUN octet du document cuit, et ce n est pas un
+# raisonnement : c est une mesure PAR MUTATION. Ses deux fichiers de production remis a `HEAD`,
+# `replay-equiv` rend sur `51101d1d` et `bcb6d393` les MEMES empreintes et les MEMES comptes
+# qu avec le lot (628 310 / `60d96001...` et 1 903 599 / `fe6f4add...`). Sans cette preuve,
+# re-figer aurait ete benir une regression.
+#
+# Les references de 2dad8d6df restent lisibles par `git show 2dad8d6df:<chemin du .tsv>`.
+#
+# HISTORIQUE — le bloc precedent (schema 54) :
 # REFERENCES RE-FIGEES AU COMMIT 2dad8d6df, SCHEMA 54, LE 2026-09-13 (lot 0.D.5, seconde fusion
 # de feat/v75 — c28f7da59, 55 commits de finitions et d'ajustements). DEUX ETAPES bougent sur les
 # 20 films, `flag` et `artifact` ; les 48 autres sont identiques partout. Attribution faite PAR
