@@ -1,3 +1,68 @@
+## [2026-09-14] Chantier decodeur — lot 1.2 (le registre commence a l'octet 8 : l'entree du jeu, niveau compris) — Complete (feat/decfilm-12 fusionnee dans feat/recherche-decodeur-film, 783ae680d)
+
+**Decision technique principale.** Le registre des archetypes (chunk_00) se lit comme le jeu le
+lit : des entrees de 0x104 octets a partir de l'octet 8, nom a +0, niveau u32 a +0x100 ;
+`Archetype.Levels[i]` est le niveau du composant `i` (l'ancien `Flags[i]` etait celui de `i-1`,
+et le faux « kind » la queue du nom voisin) ; `entryName` prend l'octet de l'ENTREE ; le decalage
+compensatoire (`shiftArchetypeLevels`, `KeyframeFullStateOpt.LevelShift`) est supprime, pas
+laisse a faux. La colonne `level` de `testdata/ecs_table.tsv` se regenere DEPUIS LE FILM par la
+porte nommee `-update-ecs-table-level` (les annotations a la main etaient incompletes : 178 pour
+189 reellement decalees, mesure G2 rouge sur 11 cles) ; empreinte du registre recalculee ;
+`GrammarRev` = `grammar-2026-09-14.2` (forme `.N` par lot : deux lots du meme jour partageant une
+revision auraient fait taire le ratchet dans le cas precis qui le justifie). Seul golden qui
+bouge : `killsource/testdata/minibobine.golden`, une ligne sur 76, le ratio de calibration
+`x1.002 -> x1.001` (`calibrate.go`, `RSPRatio`), classe divergence attendue avec pre-image.
+DECISION PILOTE : `KillSourceDecoderRev` NON montee (lignes de kill identiques sur 20 + 13 films ;
+un bump rouvre un backlog de redecodage en base, reserve a la cloture de M1 sur signal).
+
+**Resultats observes.** Mesure AVANT de coder (1.2.1) : 1 031 a 1 067 composants par bobine,
+173 a 189 niveaux changent (16,7 a 18,2 %), mais SEPT etiquettes seulement consomment le niveau
+(crew-order, tacmap-poiiconoffset, tacmap-poiicon, flock-destination,
+player-desired-respawn-location, flock-position, asset-transform) : 16 instances au registre,
+4 changent, identiquement sur les 7 builds (ti=14 i0 L0->L1, ti=21 i2 L1->L2, ti=30 i0 L0->L1,
+ti=44 i0 L0->L1), aucune en ti=9/11/12/35/40/42/43 — c'est cette mesure qui a predit le 20/20.
+Gates : gofmt vide, vet 0, 13 paquets ok, lint 0 issue, lot3 corpus 1 351 chunk_00 (C1/C2'/C3
+tenus), G1-G4 ECS sur 1 067 lignes ; equivalence 20/20 identiques (19 min 47, pic 0,77 Gio) ;
+corpus gate 13 temoins 0 perte 0 gain (23 min 10) ; schema 55 inchange, aucune recuisson due.
+Revue R1 : 2 P1 + 2 P2, 29 conditions tiennent. P1-1 : la nouvelle borne de boucle de
+`parseRegistry` entrait dans un bloc INCOMPLET et `zeroTail` PANIQUAIT sur un chunk_00 tronque
+(reproduit : 13 octets synthetiques `[268:13]`, registre reel coupe `[110768:110510]`), non
+rattrape, appelants de production `killcollector/hits.go:113` (sync VPS) et
+`film_context.go:254` — le recadrage a l'octet 8 n'exigeait pas ce changement de borne ;
+correction : blocs ENTIERS (`registryWholeBlocks`) + `Registry.TruncatedBytes` (compte SEULEMENT
+quand le parse epuise le tampon sans fin structurelle : nominal 0, sinon un chunk_00 sain aurait
+declare ses sections 2 et 3 « tronquees ») + test des deux reproductions sur la bobine VERSIONNEE
+`minibobine_000d5950` (sans dependance au cache), rouge sous la borne fautive. P1-2 : doc inversee
+sur l'une des quatre instances que le lot corrige (`traverse.go`, asset-transform ti44 i0 passe
+L1 = 7 bits/axe : budget ~100 -> ~115, commentaire et `ecs_table.tsv`) ; G4 ne controle que les
+`bits_typ` ENTIERS (D5 (1.2), consigne). P2 : 13 cellules du tableau 1.2.1 recopiees a la main
+(reecrit depuis la sortie brute de l'instrument, collee en §5) ; « 77 lignes » = 76.
+Revue R2 (corrections seules) : 0 P0/P1, 2 P2, 23 conditions tiennent, 1 non retenu — la
+boucle converge (2 P1 -> 0). P2-1 : `TruncatedBytes` rendait un FAUX ZERO sur une coupe alignee
+exactement sur une frontiere de bloc (mesure sur 53ce4390 a 99 848 octets, k=6 ; aussi 8, 16 648,
+416 008, 815 368) : la troncature est le fait d'EPUISER le tampon sans fin structurelle, pas la
+queue -> `Registry.Truncated bool` ajoute, sous-test (C) coupe alignee, `TruncatedBytes` garde la
+queue (peut valoir 0) ; le WARN d'empreinte inconnue devra dire « tronque » (1.9.0). P2-2 : « les
+DEUX appelants de production » = TROIS (`film_context.go:254`, `killcollector/hits.go:113`,
+`killsource/world.go:58`) — deuxieme denombrement d'appelants faux du chantier : tout compte
+d'appelants ecrit s'accompagne desormais du grep qui le produit. Les deux corriges dans le lot,
+verifies par le pilote (tests de troncature rejoues, grep des trois appelants).
+Decouvertes §4 : D1 forme `.N` de `GrammarRev` (traitee) ; D2 `KillSourceDecoderRev` (decision
+pilote) ; D3 annotations ECS incompletes (traitee par la porte) ; D4 le corpus ne porte AUCUN
+temoin de ti=14/21/30/44 (PvE ou Forge) : le gate prouve l'absence de regression, pas le gain ;
+D5 budgets approximatifs sans garde-rail ; D6 `TruncatedBytes` a compter au registre des replis
+(1.9.0). Lecon de pilotage (1.1 R2, 1.2 R1) : tout tableau de mesures ecrit par l'executeur se
+COLLE depuis la sortie brute de l'instrument ; toute borne de decoupage changee s'exerce sur une
+entree TRONQUEE — les deux sont dans les briefs a partir du lot 1.3.
+
+**Prochaine etape.** Push + CI ; lot 1.3 (les cinq etats par defaut manquants, regime court +
+corpus gate) ; les quatre decisions utilisateur du 14/09 sont ecrites en 1.9.9-1.9.12 (tourelles
+bannies dessinees comme elements de carte, fin de vie vehicule au dead-state avec oracles kills /
+medailles / PSA, designateur de manche avec l'hypothese egalite -> prolongation, vie d'un
+echantillon publiee avec les morts ecrites pour oracle).
+
+---
+
 ## [2026-09-14] Chantier decodeur — lot 1.1 (l'octet 37 du pied, l'empreinte de grammaire etendue au pied, references re-figees au schema 55) — Complete (feat/decfilm-11 fusionnee dans feat/recherche-decodeur-film, 191933992)
 
 **Decision technique principale.** L'equipe d'un evenement du pied de film se lit a l'octet 37
