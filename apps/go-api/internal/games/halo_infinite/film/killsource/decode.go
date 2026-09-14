@@ -118,7 +118,16 @@ func (c *decodeCtx) prepare(ctx context.Context, src *filmsource.Film) error {
 	if c.feed, err = loadKillFeed(c.film); err != nil {
 		return err
 	}
-	c.roster = buildRoster(c.feed, loadBotMeta(c.film), c.opts.Bots)
+	// LA TABLE DU FILM AVANT LE ROSTER : c est elle qui porte le lien direct
+	// `index de joueur <-> gamertag` (lot 1.8, film_table.go). Un refus est NOMME, journalise
+	// ici, et le decodeur retombe alors sur l inference entiere.
+	table := readFilmTable(c.film)
+	if table.Refusal != FilmTableRead {
+		slog.WarnContext(ctx, "killsource: table des joueurs du film NON LUE — la bijection "+
+			"retombe entierement sur l inference par les votes du kill-feed",
+			"film", c.name, "build", table.Build, "cause", string(table.Refusal))
+	}
+	c.roster = buildRoster(c.feed, loadBotMeta(c.film), c.opts.Bots, table)
 
 	tl, err := newTimeline(c.film)
 	if err != nil {
@@ -160,6 +169,9 @@ func (c *decodeCtx) finish() *Result {
 		Roster:          c.roster.public(),
 		Calibration:     c.calib.String(),
 		BijectionMargin: bijectionMargin(c.roster, c.feed.pairs, c.scanCands, c.bijScore),
+		// DETERMINEE quand il reste au plus un indice a inferer : une seule affectation est
+		// possible, donc rien n est interchangeable et la marge est sans objet.
+		BijectionDetermined: c.roster.table.Inferred <= 1,
 	}
 	res.Health = c.health(p, cov)
 	// La sonde a porte relachee ne tourne QUE si la couverture est incomplete : c est le seul
