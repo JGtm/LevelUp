@@ -108622,3 +108622,42 @@ l'autre session) — libellé de fixture remplacé par « Cliffside » pour déb
 
 **Conclusion** : chantier des finitions clos ; à la main de l'utilisateur : recuisson du parc
 (F.4, D.2, H.2), item Notion « retrait migration boot », P2 consignés.
+
+## [2026-09-14] Revue du fork ChaseWoodhams (commits du 11 au 13/09) et plan quantum des projectiles + bornes des cartes Forge — Complété (analyse et plan, aucun code touché)
+
+**Décisions** : sur les dix commits du fork postérieurs à la revue du 05/09, un seul est retenu —
+`a900c5ba3`, le repli du quantum sur les trajectoires de projectile — et il sera ré-écrit en
+français aux chemins v75, jamais cherry-piqué (sa pile est posée sur `chore/english-only`, qui
+supprime tout `docs/FR/`). Rejetés sur pièces : son `team_designators.go` (en-tête ti=9 deviné à
+47 bits, lien vers le joueur non établi — notre `NOTE_EQUIPE_FILM_2026-09-12.md` donne le champ à
+186 bits, la convention « designateur plus un », deux chaînes de preuve et l'oracle à 16 films sur
+18) ; ses deux commits `mapquant` (valeurs identiques aux nôtres au bit près, et son `mainBSP`
+heuristique est notre critère moteur `himap.BSPQuantification` depuis le 16/08) ; son
+`lives_start.go` (chantier décodeur en cours, autre session) ; tout `cmd/study-archiver` et
+`apps/study`. Plan écrit :
+`.ai/PLAN_QUANTUM_PROJECTILES_ET_BORNES_FORGE_2026-09-14.md`, deux lots indépendants, décisions
+D1 à D7 tranchées d'avance. La re-cuisson du parc reste une décision utilisateur (report).
+
+**Résultats observés** : le résidu de trajectoires coupées est RÉEL et postérieur à notre propre
+correctif — 338 pistes coupées sur 20 750, dans 64 films sur 76, mesurées sur des artefacts cuits
+le 12/09 à 22h, soit dix-neuf heures après `fb71e9b3c` (porte d'i0 suivant la carte, 03h04).
+La réserve « et si le repli venait d'un record d'une autre région ? » est fermée par le code :
+`decodeWorldObjectPos` rejette tout record dont l'index de région n'est pas celui de la carte —
+un tel record n'est jamais mal déquantifié, il est jeté. Côté précision par arme, le correctif ne
+lève aucun des deux verrous du 01/09 (V1 automatiques, V2 dégât projectile invisible au type 0) :
+un quantum ne se replie que si l'objet SORT de la boîte, et un projectile qui touche s'arrête
+dedans — d'où le sous-lot 1C, qui teste l'autre canal (fin de vol certifiée contre bipède ennemi,
+vérité terrain = les kills d'armes à projectile), avec ses deux témoins et son critère de succès
+fixés avant la mesure. Découverte incidente, plus large que le point de départ : en confrontant
+`himap.CartesForge` (87 cartes) au catalogue de bornes, **24 cartes Forge n'ont aucune entrée**
+(Argyle et Vacancy n'étaient que les deux que son commit nommait) — `Lookup` n'ayant aucun repli,
+ces cartes n'ont aucune coordonnée monde. Cause : `cmd/mapquant-build` porte sa propre table
+`mapModule` en dur, indépendante du registre, et le catalogue n'a pas été régénéré depuis le
+27/08 alors que le registre a grossi jusqu'au 03/09. Un seul module n'a jamais été lu :
+`fo10_deadland` (Ivory Tower).
+
+**Conclusion / prochaine étape** : plan committé sur `feat/v75`, exécution en attente du signal de
+l'utilisateur. Lot 1 (`feat/quantum-projectiles`) et lot 2 (`feat/mapquant-forge-registre`) sont
+indépendants et parallélisables en worktrees dédiés. Le sous-lot 1C décide du sort de la précision
+par arme pour les armes à projectile : succès vers un plan séparé, échec vers le registre des
+reports, la remise du 01/09 restant en l'état.
