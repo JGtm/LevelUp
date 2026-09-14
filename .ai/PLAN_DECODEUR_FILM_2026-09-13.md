@@ -1802,27 +1802,149 @@ que tu :
 
 #### Lot 1.7 — L'équipe réelle dans l'artefact, sans base — M, high
 
-Sur pièces : `replay/build.go:580` (`Team: -1`), `document.go:590` (« l'équipe n'est pas dans le
-film » : faux), `TeamOf` fourni par la base (`matchfacts.go:254`), `CarrierTeamUnknown`.
+Sur pièces, RE-VÉRIFIÉ au commit de base `943d8cf4b` : les trois citations du plan avaient BOUGÉ,
+et c'est la règle 4 qui l'a rattrapé — `Team: -1` vit dans `replay/tracks_publication.go:143`
+(sorti de `build.go` au lot 1.0), le commentaire « l'ÉQUIPE N'EST PAS DANS LE FILM » à
+`document.go:563` (et un second, sur la zone de retour de drapeau, à `:351`), `TeamOf` fourni par
+la base à `matchfacts.go:254` (exact), `CarrierTeamUnknown` à `flag_carries.go:256` et
+`document_objectives_live.go:318`.
+CLOS le 2026-09-14 (branche `feat/decfilm-17`, 4 commits, `3382acb88` → le commit de clôture).
 
-- [ ] 1.7.1 `filmdec.ScanPlayerTeams(fc) (map[filmIndex]designator, TeamScanReport)` : records
+##### Rapport 1.7.0 — la mesure AVANT de coder, et ce qu'elle a changé au lot
+
+**PREMIÈRE PASSE — LA NOTE SE REJOUE À L'IDENTIQUE.** `TestEquipeFilmOracleXuid` sur les 22 films
+de `NOTE_EQUIPE_FILM_2026-09-12.md`, oracle reconstruit depuis la sauvegarde
+`pre-chaine-2026-09-09` : **16 films sur 18 en accord TOTAL, 160 slots sur 176**, dont
+`03af54c3` et `213a87dc` à **24/24**, plancher de bruit **0 touche sur 576** décalages voisins,
+et les deux FFA (`1950c59b`, `610363ee`) à `[0 0 0 0 0 0 0 0]` — le film y dit « aucune équipe »
+et c'est la BASE qui fabrique un camp par joueur. 20,7 s. Tableau collé en §5.
+
+**SECONDE PASSE — ET ELLE A CHANGÉ L'APPARIEMENT DU LOT.** Sonde jetable (supprimée après la
+mesure) sur les 18 films de l'union « 8 builds ∪ 13 témoins ∪ échantillon court », confrontant la
+table des joueurs de `chunk_00` (lot 1.5), la table d'index des chunks de réplication, la feuille
+de match et les entités ti=9. Deux faits, le second décisif :
+
+1. **L'APPARIEMENT ORDINAL DE LA NOTE TIENT — et il n'est plus nécessaire.** Sur le premier
+   paquet d'image-clé, le k-ième record ti=9 porte bien le camp du k-ième siège : **8/8 sur dix
+   films, 24/24 sur `084a804d` et `111fa685`, 23/23 sur `e5adf7b2`**. Les deux « 23/24 »
+   (`a521164d`, `11de8353`) ne sont PAS des désaccords : le rang en écart est un siège dont le
+   xuid est ABSENT de la feuille de match (`manistoff` idx=18, `Iskra 20252993` idx=23), donc
+   l'oracle prédisait un camp qu'il n'avait pas.
+2. **LE FILM ÉCRIT L'INDEX DE JOUEUR DANS LE RECORD ti=9.** Le premier `R(6)` de son état par
+   défaut (`consumeDefaultStateTI9`, `FUN_1410d7540`) vaut exactement le rang du siège, entité
+   par entité, **CONSTANT sur toute la vie de l'entité**, sur les 18 films et les 7 builds — y
+   compris sur les deux films SANS section d'identification, où la table de `chunk_00` est
+   refusée et où il continue de rendre `0..23` / `0..24`. Le contrôle qui interdit d'y lire un
+   simple ordinal : sur `50247b26` la suite lue est **trouée** (`0 1 3 4 … 22 24`). Un ordinal
+   est contigu par construction ; celui-ci ne l'est pas.
+
+CONSÉQUENCE SUR LE LOT : 1.7.1 ne fait AUCUN appariement. Il lit l'index que le film écrit, et
+l'ordinal de la note devient le CONTRÔLE (test `TestScanPlayerTeamsIndexEstLeSiege`). C'est la
+doctrine D13 appliquée à la lettre — la grammaire prime sur l'inférence — et c'est ce qui rend
+les REMPLAÇANTS lisibles : ils n'ont pas de siège, mais ils ont un index et une équipe.
+
+- [x] 1.7.1 `filmdec.ScanPlayerTeams(fc) (map[filmIndex]designator, TeamScanReport)` : records
       d'image-clé ti=9 par la boucle d'état complet (1.4), composant i0 sur 4 bits à
       `108 + 32 + état(ti) + 32` (dérivé, jamais 186 en dur), valeur = désignateur + 1, 0 =
       aucune ; appariement entité ti=9 → joueur selon `NOTE_EQUIPE_FILM_2026-09-12.md` ; stabilité
       par entité sur le film (le rapport compte les divergences).
-- [ ] 1.7.2 Règle V4 : le film est la SEULE source. `Track.Team`, `roster[].team` (champ neuf)
+      FAIT, et la position est DOUBLEMENT dérivée : l'index sort de l'état par défaut rejoué à
+      `en-tête + n1`, le désignateur sort de la boucle de composants de PRODUCTION (qui nomme i0
+      depuis le registre DU FILM), et **la concordance des deux est VÉRIFIÉE à chaque record** —
+      si le composant ne tombe pas là où la grammaire le place, la lecture est REFUSÉE. `186`
+      n'apparaît nulle part dans le code du lot.
+      **L'APPARIEMENT N'EST PLUS ORDINAL** (rapport 1.7.0, fait 2) : `readManagedPlayerDefaultState`
+      rend le premier `R(6)` de ti=9, qui EST l'index de joueur. Écart au libellé, assumé et
+      mesuré ; l'ordinal de la note reste le contrôle, joué sur les sept bobines.
+      DOMAINES ET REFUS, tous comptés : index hors de la table de 32 (**UN sur le corpus** —
+      `111fa685`, index 59, un unique paquet), valeur brute hors de `0..9`, marche qui n'atteint
+      pas i0, i0 qui n'est pas le désignateur, ti=9 absent du registre. Un index dont deux
+      lectures ne s'accordent pas n'est PAS publié.
+      Tests sans garde d'environnement (donc en CI) sur les sept bobines par build : **0 record
+      inatteint, 0 divergence d'entité, 0 divergence d'index** ; témoin négatif mesuré — le même
+      champ relu à UN bit diffère sur **1 616 lectures sur 1 617** ; dix troncatures, aucune
+      panique, aucune lecture partielle.
+- [x] 1.7.2 Règle V4 : le film est la SEULE source. `Track.Team`, `roster[].team` (champ neuf)
       et `TeamOf` des drapeaux viennent du désignateur ; 0 = aucune équipe (FFA), muet =
       inconnue ; aucun repli sur la base. La base n'entre que dans
       `coverage.teams.{film, accord, contradiction, silence}` ; une contradiction ne se corrige
       pas en silence, elle se compte et le relecteur la lit.
-- [ ] 1.7.3 Les événements d'objectif (1.1.2) prennent l'équipe de l'octet 37 ; contrôle contre
+      FAIT. `FlagInput.TeamOf` **DISPARAÎT** (et `replaybuild.equipesParXUID` avec lui, qui
+      faisait doublon avec `teamByXUID`) ; la feuille de match arrive par `Options.ScoreboardTeams`
+      et n'alimente QUE les trois compteurs de contrôle. L'invariant « jamais son propre drapeau »
+      tient désormais sur une cuisson HORS LIGNE, où il se taisait faute de lignes de match.
+      **`roster[].team` EST UN POINTEUR, ET C'EST LA SEULE FORME JUSTE** : trois états existent,
+      pas deux — ABSENT (le film n'a pas nommé ce joueur, ou l'artefact précède le schéma 57),
+      `-1` (aucune équipe), `0..8` (le camp). Un entier nu ferait dire « camp 0 » à tout artefact
+      ancien, et `MIN_RENDERABLE_SCHEMA_VERSION` vaut 27. `Track.Team` reste un entier : il
+      existe depuis la v2 et vaut `-1` sur tous les artefacts antérieurs, donc il ne ment pas ;
+      `coverage.teams.noTeam` et `.unread` distinguent ce que le champ ne distingue pas.
+- [x] 1.7.3 Les événements d'objectif (1.1.2) prennent l'équipe de l'octet 37 ; contrôle contre
       l'équipe du porteur (compteur).
-- [ ] 1.7.4 Commentaires `document.go:590` et `flag_assign.go:31` corrigés.
-- [ ] 1.7.5 `SchemaVersion` 56, chronique, forme, fixtures, goldens par build (attendu :
+      FAIT. `objectiveevents.Extract` rend `([]domain.ObjectiveEvent, TeamControl)` et pose
+      `team_id` depuis `FooterEvent.Team` ; le roster n'en est plus que le contrôle
+      (`Film / Accord / Contradiction / Silence`). **LA VÉRITÉ TERRAIN TIENT APRÈS LE
+      BASCULEMENT** : `TestExtractCTFCaptureCount` rejoue `0f9550e5` (5-0) et `53ce4390` (1-2)
+      sur le cache, le partage par équipe reste EXACT, et le test exige désormais
+      `contradiction == 0`. Deux tests neufs sans film ni base tiennent les deux moitiés que le
+      corpus ne tient pas : roster VIDE → l'équipe du pied est publiée quand même ; roster qui
+      CONTREDIT → la valeur publiée ne bouge pas, le compteur monte.
+- [x] 1.7.4 Commentaires `document.go:590` et `flag_assign.go:31` corrigés.
+      FAIT, et le grep en a trouvé **huit autres** : `document.go` (`Track.Team` ET la zone de
+      retour de drapeau), `flag_assign.go`, `flag_carries.go`, `flag_assign_test.go`,
+      `document_vehicles.go`, `replaybuild/flagspawns.go`, `objectiveevents/extract.go` (doc de
+      `Roster`), `domain/objective_events.go` (**découverte D4 (1.1) FERMÉE** : « team unreliable
+      sur certains matchs » décrivait l'octet 55), `sync/replayartifacts/positions.go` et
+      `persist/player_positions_persister.go`. Sur ces deux derniers la RÈGLE ne change pas —
+      elle disait déjà « l'artefact prime quand il porte l'équipe » — mais sa JUSTIFICATION si :
+      ce n'est plus « le film ne la porte pas », c'est « un artefact antérieur au schéma 57 ne la
+      porte pas ».
+- [~] 1.7.5 `SchemaVersion` 56, chronique, forme, fixtures, goldens par build (attendu :
       `Track.Team != -1` hors ligne, S5).
+      COUVERT PAR 1.7.2, et pour la même raison qu'au lot 1.6.4 : l'empreinte de forme REFUSE de
+      se refiger quand la forme change sans montée de version, donc la montée tombe dans le
+      PREMIER commit qui change la forme. Chaîne vérifiée à la clôture : `SchemaVersion = 57`,
+      entrée de chronique v57, raison écrite dans `structure_test.go`, empreinte de forme
+      `1344869006f05f16`, jumeau `replaydoc` (`RosterEntry.Team`, `TeamCoverage`),
+      `replayview.toTeamCoverage` (parité verte), `openapi.yaml` + `generated.ts`, **8 fixtures
+      de contrat `replay_schema_57_<short8>.json.gz` (2 566 758 o, plafond 3 145 728 ; les 8
+      fixtures 56 supprimées)**, codec du fixture d'entrées v20 → **v21**,
+      `MIN_RENDERABLE_SCHEMA_VERSION = 27` **INCHANGÉ**, `make check-types` et `make test-web`
+      verts.
+      **S5 TENU SUR LES HUIT BUILDS, CUISSON HORS LIGNE** (aucune base ouverte) : 105/105,
+      177/177, 185/185, 246/246, 245/245, 256/256, 58/58 et 147/147 vies portent une équipe du
+      film ; **0 joueur non lu, 0 divergence** ; le contrôle est à `silence` partout, ce qui EST
+      la définition d'une cuisson sans feuille de match. Le golden d'assemblage porte désormais
+      une section `### EQUIPES` : sans elle, S5 n'aurait été vérifiable que hors du dépôt.
 
 Preuve : corpus gate zéro perte, gains nommés (`teams.accord` = 160/176 et 24/24 sur les BTB des
 notes, `CarrierTeamUnknown` inchangé ou en baisse) ; FFA : `teams.film = 0`, base conservée.
+
+RÉSULTAT (2026-09-14) : **LA LIGNE « PREUVE » EST TENUE, À UNE FORMULATION PRÈS QUI EST ÉCRITE
+ICI PLUTÔT QUE TUE.**
+
+1. **CORPUS GATE : ZÉRO PERTE SUR 13 TÉMOINS SUR 13, EXIT 0.** C'est le premier lot de M1 dont le
+   gate sort vert au sens littéral — 9 gains sur onze témoins, 10 sur `111fa685`, 5 sur
+   `a349fea8`, schéma 56 → 57 partout. **`CarrierTeamUnknown` : aucune perte sur l'axe `ports`
+   sur 13/13**, donc inchangé ou en baisse.
+2. **`teams.accord` NE SE MESURE PAS EN 160/176 : CE CHIFFRE EST CELUI DE LA NOTE, PAS DU
+   DOCUMENT.** Les 160/176 et les 24/24 se rejouent à l'identique (§5, passe 1 du rapport 1.7.0),
+   et c'est bien la preuve demandée — mais l'artefact, lui, compte PAR JOUEUR DU ROSTER et non
+   par slot d'un corpus de recherche. Sa mesure est : `accord` = `film` sur huit des dix films
+   d'équivalence, `28/27` sur `a521164d` et `11de8353` (un siège que la FEUILLE ne porte pas :
+   un silence, pas une contradiction), et **0 contradiction sur 36 cuissons** — preuve par
+   l'absence de l'avertissement que `logTeamCoverage` émet dès qu'il y en a une.
+3. **« FFA : `teams.film = 0` » DÉCRIT UN COMPTEUR QUE CE LOT A DÉFINI AUTREMENT, ET MIEUX.**
+   `film` compte les joueurs dont le film DONNE l'équipe, « aucune équipe » comprise — parce que
+   `-1` est une LECTURE, pas un silence. Sur un film FFA, `film` vaut donc le nombre de joueurs
+   et `noTeam` la même valeur ; l'attendu du plan (`film = 0`) aurait confondu « le film dit
+   qu'il n'y a pas de camps » avec « le film n'a rien dit ». Le corpus gate ne porte aucun témoin
+   FFA ; la mesure vient de l'instrument, sur les deux FFA du cache : `[0 0 0 0 0 0 0 0]` sur les
+   huit entités, sur les deux films.
+4. **UN FILM PEUT ÊTRE LU SANS QUE PERSONNE REÇOIVE L'ÉQUIPE.** `50247b26` : 680 records ti=9
+   lus, `film = 0` — sans section d'identification, la table d'index des chunks n'est pas
+   injective et se fait écarter, donc le roster est vide. Les deux nombres côte à côte le disent
+   exactement, et c'est ce que la couverture existe pour dire.
 
 #### Lot 1.8 — Le kill feed prend la table du film — M, high
 
@@ -2341,6 +2463,13 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.6.5 (corpus gate) | **D4 (1.6) — le seuil à 2 CACHAIT quatre vies SANS NOM, et les publier les rend visibles : `unnamedLives` monte sur DEUX témoins.** `084a804d` 0 → 1 (`unnamedLivesContested` 0 → 1, `flagCarries.ambiguousSlot` 0 → 1) et `a349fea8` 334 → 337. La cause est MÉCANIQUE et mesurée : ces deux films portaient 9 et 3 vies d'un seul échantillon refusées, et 1 + 3 d'entre elles ne sont nommées par aucune voie. Ce n'est PAS une régression du nommage — le registre ne nomme rien de moins qu'avant, et sur les mêmes vies il nomme mieux (lot 1.6.1/1.6.2) — c'est un défaut de nommage PRÉEXISTANT que le seuil masquait. Il heurte de front la décision utilisateur du 2026-09-06 (« les vies anonymes n'existent pas ; une vie est un humain ou un bot »). La ligne « Preuve » du lot 1.6 (« `unnamedLives` ne monte nulle part ») n'est donc PAS tenue à la lettre, et c'est écrit ici plutôt que tu. NON TRAITÉ : nommer ces quatre vies demande d'instruire la découpe des vies (D1 (1.6)) ou le pont sur un slot qui ne réplique qu'une image. | famille 1.9 / lot « découpe des vies » ; arbitrage utilisateur si les quatre vies doivent être nommées avant la recuisson du parc |
 | 2026-09-14 | 1.6.5 (corpus gate) | **D5 (1.6) — une vie d'un seul échantillon élargit les BORNES de la scène, et sur `084a804d` elle les élargit de 184 mètres.** `bounds.minX` −32,21 → −216,30 et `bounds.minY` −65,51 → −89,83 sur `084a804d` ; `bounds.minX` −2,30 → −5,95 et `bounds.minZ` −1,95 → −16,26 sur `e5adf7b2`. Les bornes suivent les traces PUBLIÉES, et le client s'en sert pour cadrer la scène : une vie d'un point à −216 m dézoome le rejeu de ce match. L'échantillon a passé le filtre d'aberration (`boundsRejectSpreads`), donc il est « plausible » au sens de ce filtre — mais un point isolé à 184 m du reste du nuage sur un film de véhicules mérite d'être instruit avant la recuisson du parc. NON TRAITÉ (hors périmètre 1.6 : le seuil est une décision utilisateur, et le cadrage est un sujet de rendu). | lot de rendu / cadrage, ou le lot « découpe des vies » : si la vie d'un point est un artefact de découpe (D1 (1.6)), la borne disparaît avec elle |
 
+| 2026-09-14 | 1.7.0 (mesure avant de coder) | **D1 (1.7) — TRAITÉE DANS LE LOT : le film ÉCRIT l'index de joueur dans le record ti=9, et l'appariement ordinal de la note n'est plus nécessaire.** Le premier `R(6)` de l'état par défaut de ti=9 (`consumeDefaultStateTI9`, `FUN_1410d7540`) vaut exactement le rang du siège de `chunk_00`, entité par entité, CONSTANT sur toute la vie de l'entité, sur 18 films et 7 builds — y compris sur les deux films SANS section d'identification (`a349fea8`, `50247b26`), où la table de `chunk_00` est refusée et où il continue de rendre `0..23` / `0..24`. LE CONTRÔLE QUI INTERDIT D'Y LIRE UN ORDINAL : sur `50247b26` la suite lue est TROUÉE (`0 1 3 4 … 22 24`) ; un rang de parcours est contigu par construction. Même forme que le `R(6)` de ti=5 (`player-waypoint`), que l'exécutable borne à `< 0x20`. Conséquence : `ScanPlayerTeams` n'apparie rien, il LIT ; l'ordinal de la note devient le contrôle (`TestScanPlayerTeamsIndexEstLeSiege`). | fermée ici ; la note `NOTE_EQUIPE_FILM_2026-09-12` garde sa question ouverte n°1 (« expliquer 186 ») — ce lot la ferme aussi, par la dérivation `108 + 32 + 14 + 32` |
+| 2026-09-14 | 1.7.1 | **D2 (1.7) — UN record ti=9 du corpus annonce un index HORS de la table de 32.** `111fa685`, entité de slot 5, un unique paquet d'image-clé (t = 6 830 484 ms), `R(6)` = **59**, désignateur brut 0. C'est le SEUL des 3 449 records ti=9 des sept bobines et des 18 films mesurés. Il est REFUSÉ et COMPTÉ (`TeamScanReport.OutOfDomainIndex`), jamais lu : un index de 6 bits accepte 0..63, la table du film n'en porte que 32. NON TRAITÉ : sa cause (record de bourrage, entité d'un autre type mal ancrée, ou slot réel hors table) n'est pas établie, et un seul cas ne suffit pas à la trancher. | lot 3.6 (ports de composants) ou le premier film qui en porte plusieurs |
+| 2026-09-14 | 1.7.0 (demande utilisateur du 2026-09-15) | **D-remplacants (1.7) — LE FILM DONNE L'INDEX D'UN REMPLAÇANT, ET IL RÉUTILISE PARFOIS CELUI D'UN PARTANT (2 fois sur 35).** Mesure sur les 18 films (tableau complet en §5). **(1) Index** : chaque arrivant en cours de partie porte son index de joueur dans son record ti=9, comme les autres — il n'y a rien à deviner. **(2) Réutilisation** : sur 35 arrivées, **33 prennent un index NEUF** au-delà du dernier siège, et **DEUX reprennent l'index d'un partant** — `11de8353` index 23 (l'entité de slot 1343 s'arrête au paquet 7, t = 2 328 475 ms ; celle de slot 1789 démarre au paquet 8, t = 2 348 503 ms, écart 20 s) et `51101d1d` index 6 (slot 1309 s'arrête au paquet 2, t = 2 684 409 ; slot 1603 démarre au paquet 5, t = 2 744 424, écart 60 s). **L'ENTITÉ, ELLE, N'EST JAMAIS RÉUTILISÉE** : le slot de réplication d'un arrivant est toujours neuf. **(3) Désignateur** : STABLE sur les 35, sans exception ; sur les deux index réutilisés le partant et l'arrivant portent le MÊME camp, donc aucune divergence d'index n'est levée sur ce corpus. **(4) Instants** : premier et dernier paquet d'image-clé de chaque entité, colonnes du tableau. **VERDICT POUR LE PRODUIT** : le film donne le SIÈGE directement (l'index), donc un remplacement peut être rendu comme tel au lieu d'un appariement ordinal ; ce que le film ne donne PAS ici, c'est le lien `index → xuid` d'un arrivant — la table de `chunk_00` est celle du début (D2 (1.6)) et la lecture des chunks de réplication ne résout pas toujours les arrivants (`11de8353` : 5 entités tardives pour 4 xuids résolus). NON TRAITÉ au-delà de l'équipe : l'affichage « le remplaçant prend la place du partant » est un lot de produit. | lot produit du rejeu (le web affiche tout le roster tout le temps) ; le décodeur, lui, a fini sa part |
+| 2026-09-14 | 1.7.2 | **D3 (1.7) — `ZoneInput.TeamByXUID` prend TOUJOURS l'équipe de la base, et ce lot ne l'a pas touché.** `replaybuild/options.go` passe `teamByXUID(facts)` au calque des zones, qui s'en sert pour attribuer une prise de zone à un camp. La règle V4 nomme `Track.Team`, `roster[].team` et `TeamOf` des drapeaux — pas les zones. NON TRAITÉ (règle 7) : le basculer demanderait de vérifier ce que `zone_states` publie et de rejouer ses témoins, ce qui est un lot à soi. | famille 1.9 (la grammaire à la place de l'heuristique) ou un lot de zones |
+| 2026-09-14 | 1.7.3 | **D4 (1.7) — `objectiveevents.Extract` n'a AUCUN appelant de production : `match_objective_events.team_id` n'est écrit par PERSONNE par cette voie.** Grep collé en §5 : ses deux seuls appelants hors tests sont `cmd/diag_weapons_v3` (un diagnostic) — le chemin de sync écrit les lignes d'objectif par `persist/bomb_stats_persister.go`, pas par là. Le basculement de source du lot 1.7.3 est donc JUSTE et SANS EFFET sur la base tant que ce point d'entrée n'a pas de producteur. Ce n'est pas une raison de ne pas le faire (il serait faux le jour où il en aura un), c'en est une de ne pas attendre un gain mesurable en base. NON TRAITÉ : rebrancher ou supprimer ce point d'entrée est un arbitrage produit. | lot 1.8 (kill feed) ou un lot de sync |
+| 2026-09-14 | 1.7.2 | **D5 (1.7) — CE QUE LE WEB DEVRA FAIRE, et il ne le fait pas encore.** L'artefact publie désormais `roster[].team` et `tracks[].team`, et le web continue de colorer par `team_side` de la feuille de match (`features/match-view/rosterLogic.ts`) : c'est CONFORME au §1.2 de ce plan (aucune règle d'affichage ne change dans ce lot), et c'est aussi ce qui laisse un rejeu SANS feuille de match sans camps à l'écran. Ce qu'il faudra : lire `roster[].team` quand il est PRÉSENT (absent = artefact < 57 ou joueur non nommé par le film), retomber sur `team_side` sinon, et ne JAMAIS confondre `-1` (aucune équipe, mode FFA) avec une absence. Le contrat le permet déjà — le champ est optionnel et `coverage.teams` dit quelle part de l'artefact vient du film. NON TRAITÉ (§1.2). | lot de produit web, hors de ce chantier |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -2680,6 +2809,27 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.6 (communs, web) | ce commit | `make check-types` puis `make test-web` (après purge de `node_modules/.tmp`) | `tsc -b` **propre** ; vitest **711 fichiers, 7 629 tests verts**, 1 ignoré / 17 ignorés, 94 s. Rejoué APRÈS chaque régénération de fixtures (1.6.1, 1.6.2, 1.6.5). |
 | 2026-09-14 | 1.6 (clôture) | ce commit | `MIN_RENDERABLE_SCHEMA_VERSION` | **27, INCHANGÉ** (`features/match-replay/model/replaySchemaStatusLogic.ts:43`) : un artefact 56 se rend comme un 55, et la matrice de compatibilité ne bouge pas. |
 | 2026-09-14 | 1.6 (clôture, seuil de fichier) | ce commit | `wc -l build.go` avant / après le déplacement de `DefaultMinPoints` | `build.go` pesait **516 lignes au commit de base** — déjà au-delà des 500 du dépôt — et le lot l'avait porté à **534** : dette ACCRUE, ce que la règle 5 interdit. La constante et sa doctrine sont descendues dans `tracks_publication.go` (le fichier qui DÉCIDE quelles vies sont publiées, 181 → 202 lignes), déplacement pur ; `build.go` revient à **516**, exactement son poids de départ. `golangci-lint` rejoué : **0 issues**. |
+| 2026-09-14 | 1.7.0 (mesure AVANT de coder, passe 1) | `943d8cf4b` (arbre propre) | `CHUNK00_FILMS=<22 films> CHUNK00_XUID_EQUIPES=<oracle> go test …/filmdec/ -run TestEquipeFilmOracleXuid -v -count=1` — oracle reconstruit par `cmd/diag_q` sur `data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb` | **LA NOTE SE REJOUE À L'IDENTIQUE, 20,7 s.** Dernière ligne : `ORACLE EXTERNE : 16/18 films en accord TOTAL, 160/176 slots ; CONTROLE NEGATIF : 0 touches sur 576 decalages voisins`. Les 14 films d'arène à `accord 8/8`, `03af54c3` et `213a87dc` à **`accord 24/24`**, les deux FFA (`1950c59b`, `610363ee`) à `predit [1 2 3 4 5 6 7 8] ; lu [0 0 0 0 0 0 0 0] ; accord 0/8` — le film dit « aucune équipe », la base fabrique un camp par joueur. Quatre BTB comptés à part (cardinaux différents, défaut connu du lecteur de `chunk_00` sur les gros rosters). |
+| 2026-09-14 | 1.7.0 (mesure AVANT de coder, passe 2) | `943d8cf4b` (arbre propre) | sonde jetable (supprimée après la mesure) sur les **18 films** de « 8 builds ∪ 13 témoins ∪ échantillon court », oracle = la même sauvegarde | **TABLEAU COLLÉ DEPUIS LA SORTIE BRUTE.** Colonnes : sièges de `chunk_00` · roster de la base · table des chunks de réplication · remplaçants · accord de l'appariement ORDINAL (1er vecteur ti=9 contre les sièges). `000d5950` 8 · 8 · 8 · 0 · **8/8** — `a521164d` 24 · 27 · 27 · 4 · 23/24 — `60ae07c4` 8 · 8 · 8 · 0 · **8/8** — `11de8353` 24 · 27 · 27 · 4 · 23/24 — `111fa685` 24 · 25 · 25 · 1 · **24/24** — `e5adf7b2` 23 · 28 · 28 · 5 · **23/23** — `bcb6d393` 8 · 11 · 11 · 3 · **8/8** — `fb1a1a72` 8 · 8 · 8 · 0 · **8/8** — `d9781168` 8 · 8 · 8 · 0 · **8/8** — `c75f33b8` 8 · 10 · 10 · 2 · **8/8** — `bf15f7ab` 8 · 8 · 8 · 0 · **8/8** — `51ebbc0f` 8 · 8 · 8 · 0 · **8/8** — `084a804d` 24 · 26 · 26 · 2 · **24/24** — `0797ce72` 8 · 8 · 8 · 0 · **8/8** — `a349fea8` **sans_section** · 25 · 25 · 25 · appariement impossible — `bfecd02b` 8 · 8 · 8 · 0 · **8/8** — `50247b26` **sans_section** · 30 · 29 · 29 · appariement impossible — `51101d1d` 8 · 10 · 10 · 2 · **8/8**. **LES DEUX « 23/24 » NE SONT PAS DES DÉSACCORDS** : le rang en écart est un siège dont le xuid est ABSENT de la feuille de match (`a521164d` idx=18 `manistoff`, `11de8353` idx=23 `Iskra 20252993`) — l'oracle prédisait un camp qu'il n'avait pas. Sur tout siège que la base connaît : **accord 100 %**. |
+| 2026-09-14 | 1.7.0 (mesure AVANT de coder, passe 2) | idem | la même sonde, colonne `champA` (premier `R(6)` de l'état par défaut de ti=9) | **L'INDEX DE JOUEUR EST ÉCRIT DANS LE RECORD.** `champA` du premier paquet, dans l'ordre des slots, vaut la suite des `FilmIndex` des sièges, terme à terme, sur **18 films et 7 builds** : `[0 1 … 7]` sur les films d'arène, `[0 1 … 23]` sur les BTB, `[0 1 … 22]` sur `e5adf7b2`. Il est CONSTANT sur toute la vie de l'entité (histogramme à une seule valeur, 3 449 records). **CONTRÔLE QUI INTERDIT D'Y LIRE UN ORDINAL** : sur `50247b26` la suite lue est `[0 1 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 24]` — TROUÉE. Sur les deux films sans section d'identification, où la table de `chunk_00` est refusée, `champA` rend quand même `0..23` / `0..24`. Découverte D1 (1.7). |
+| 2026-09-14 | 1.7.0 (demande utilisateur du 2026-09-15) | idem | la même sonde, rapport `REMPL-FILM` — une ligne par arrivée | **36 LIGNES, 35 ARRIVÉES RÉELLES + 1 RECORD HORS DOMAINE.** `film | index | entité (slot) | arrivée (paquet, t ms) | fin (paquet, t ms) | désignateur | réutilisation`. `a521164d` : 24/2029/pk4 t1 079 747→pk15 t1 299 944/des 2 ×12 · 25/2581/pk9 t1 179 835→pk19 t1 380 082/des 1 ×11 · 26/2951/pk13 t1 259 936→pk19/des 2 ×7 · 27/2981/pk13→pk19/des 2 ×7 — tous index NEUFS. `11de8353` : **23/1789/pk8 t2 348 503→pk31 t2 808 976/des 2 ×24/INDEX RÉUTILISÉ — partant slot 1343, dernier paquet 7, t2 328 475** · 24/1790/pk8→pk31/des 2 ×24 · 25/2386/pk14 t2 468 628→pk31/des 1 ×17 · 26/2719/pk18 t2 548 713→pk31/des 1 ×14 · 27/2851/pk20 t2 588 759→pk31/des 1 ×12. `111fa685` : 24/2529/pk14 t6 910 561→pk29 t7 210 865/des 1 ×16 ; **+ le record HORS DOMAINE index 59, slot 5, un seul paquet (D2 (1.7))**. `e5adf7b2` : 23/1787/pk4 t9 297 518→pk29 t9 798 013/des 1 ×26 · 24/1799/pk4→pk29/des 2 ×26 · 25/2897/pk14 t9 497 712→pk29/des 2 ×16 · 26/2935/pk14→pk15 t9 517 733/des 1 ×2 · 27/3155/pk16 t9 537 768→pk29/des 1 ×14. `bcb6d393` : 8/2175/pk15 t8 902 188→pk18 t8 962 199/des 2 ×4 · 9/1888/pk9 t8 782 165→pk11 t8 822 173/des 2 ×3 · 10/1972/pk10→pk18/des 2 ×9 · 11/2065/pk12 t8 842 179→pk18/des 2 ×7. `c75f33b8` : 8/2693/pk20 t10 164 808→pk21 t10 184 809/des 1 ×2 · 9/1873/pk5 t9 864 751→pk20/des 1 ×16 · 10/2417/pk18 t10 124 799→pk21/des 1 ×4 · 11/2726/pk21→pk21/des 1 ×1. `084a804d` : 24/2222/pk7 t12 391 831→pk55 t13 352 813/des 1 ×49 · 25/2982/pk14 t12 531 974→pk55/des 1 ×42. `a349fea8` : 24/4374/pk26 t9 475 366→pk49 t9 935 734/des 2 ×24. `50247b26` : 25/1997/pk3 t6 465 943→pk13 t6 666 160/des 2 ×11 · 26/2015/pk4→pk15 t6 706 210/des 2 ×12 · 27/2226/pk7 t6 546 048→pk16 t6 726 223/des 2 ×10 · 28/2971/pk15→pk29 t6 986 486/des 2 ×15 · 29/3186/pk16→pk24 t6 886 377/des 2 ×9 · 30/3329/pk18 t6 766 249→pk28 t6 966 484/des 2 ×11. `51101d1d` : **6/1603/pk5 t2 744 424→pk6 t2 764 427/des 1 ×2/INDEX RÉUTILISÉ — partant slot 1309, dernier paquet 2, t2 684 409** · 9/1533/pk3 t2 704 414→pk10 t2 844 440/des 1 ×8 · 10/1752/pk7 t2 784 429→pk10/des 1 ×4. **VERDICT : 33 index NEUFS, 2 RÉUTILISÉS, 35 désignateurs STABLES sur 35, 0 entité réutilisée.** Découverte D-remplacants (1.7). |
+| 2026-09-14 | 1.7.1 | `3382acb88` | `CGO_ENABLED=0 go test …/filmdec/ -run TestScanPlayerTeams -v -count=1` | **5 tests VERTS, 5,5 s.** E-LUE : les sept bobines rendent `0 inatteint, 0 divergence d'entité, 0 divergence d'index` — `a521164d` 262 records/26 index · `60ae07c4` 240/8 · `11de8353` 393/26 (27 entités : l'index 23 est servi par DEUX entités, et les deux disent le MÊME camp) · `111fa685` 337 records dont **1 hors domaine**/25 · `e5adf7b2` 261/25 · `bcb6d393` 144/12 · `fb1a1a72` 80/8. E-INDEX : l'index du film = le rang du siège, terme à terme, `24/24 · 8/8 · 24/24 · 24/24 · 23/23 · 8/8 · 8/8`. E-TEMOIN : le même champ relu à UN bit diffère sur **1 616 lectures sur 1 617** (le seul cas où il coïncide est sur `111fa685`). E-COUPE : dix troncatures (0, 1, 2, 8, 64, 512, 4 096, ¼, ½, n−1 octets), aucune panique, aucune lecture hors domaine. E-REFUS : film nil ET bobine sans `chunk_00` rendent `ArchetypeAbsent`. |
+| 2026-09-14 | 1.7.1 (grammaire) | `3382acb88` | `grep -n "186" …/filmdec/player_teams.go` | **3 occurrences, TOUTES dans l'en-tête de doctrine** (lignes 24, 29, 30) : « ce nombre N'APPARAIT NULLE PART ICI », la dérivation `108 + 32 + 14 + 32`, et pourquoi un `186` en dur ne suivrait pas un changement de build. **Zéro dans le code.** |
+| 2026-09-14 | 1.7.1 (grammaire) | `3382acb88` | `go test …/filmdec/ -run GrammarRevSuitLaGrammaire -update-grammar-rev` puis sans | `grammar-2026-09-14.5` → **`.6`**, empreinte `fdb77e17a94db7ea…`, historique complété dans le golden. Rejouée au lot 1.7.3 : **révision INCHANGÉE** (même lot, règle du suffixe), empreinte reprise une fois → `e5a873d8c52c1d5c…`. |
+| 2026-09-14 | 1.7.2 (S5, hors ligne) | `7bfb0c6e5` | `go test …/replay/ -run 'TestGoldenAssembly$|TestGoldenBuildsAssembly' -count=1` après régénération, puis `git diff` des huit goldens | **S5 TENU SUR 8/8, SANS AUCUNE BASE.** Section `### EQUIPES` neuve dans chaque golden : `000d5950` 200 records ti=9 / **105 vies sur 105** portent une équipe / répartition `0 ×55 · 1 ×50` — `a521164d` 449 / **185/185** / `0 ×90 · 1 ×95` — `60ae07c4` 336 / **177/177** / `0 ×87 · 1 ×90` — `11de8353` 753 / **246/246** / `0 ×149 · 1 ×97` — `111fa685` 697 (1 rejeté) / **245/245** / `0 ×128 · 1 ×117` — `e5adf7b2` 687 / **256/256** / `0 ×131 · 1 ×125` — `bcb6d393` 144 / **58/58** / `0 ×25 · 1 ×33` — `fb1a1a72` 312 / **147/147** / `0 ×72 · 1 ×75`. **0 joueur non lu, 0 divergence sur 8/8** ; le contrôle est à `silence` partout (8, 28, 8, 28, 25, 28, 11, 8), ce qui EST la définition d'une cuisson sans feuille de match. Le roster porte `equipe=N` par ligne. |
+| 2026-09-14 | 1.7.2 (chaîne du schéma) | `7bfb0c6e5` | `go test …/replay/ -count=1` (tout le paquet), puis `openapi-gen` + `generate-types` | `SchemaVersion` **56 → 57** ; chronique v57 ; empreinte de forme **`1344869006f05f16`** (re-figée UNE fois, après restauration PAR NOM du golden depuis git — la porte a d'abord REFUSÉ un second re-figeage au même schéma, et elle avait raison) ; `openapi.yaml` **+60 lignes** puis ajusté au pointeur (schéma `TeamCoverage`, `$ref` dans `Coverage`, champ `team` dans `RosterEntry`) ; `generated.ts` régénéré ; **8 fixtures de contrat `replay_schema_57_*` (2 566 758 o pour un plafond de 3 145 728, 81,6 %), les 8 fixtures 56 SUPPRIMÉES** ; codec du fixture d'entrées **v20 → v21** (`PlayerTeams` + `TeamScan`), 8 fixtures d'entrées régénérées (2 min 54) ; `MIN_RENDERABLE_SCHEMA_VERSION` **27, INCHANGÉ**. |
+| 2026-09-14 | 1.7.3 | `aa1dc5ac4` | `FILM_CACHE_ROOT=C:/…/LevelUp-go-migration/data/cache go test …/objectiveevents/ -run TestExtractCTFCaptureCount -count=1` | **VERT, 0,3 s — LA VÉRITÉ TERRAIN TIENT APRÈS LE BASCULEMENT DE SOURCE.** `0f9550e5` (5 captures, split 5-0) et `53ce4390` (3 captures, split 1-2) rendent le MÊME partage par équipe une fois `team_id` pris à l'octet 37 au lieu de `match_participants`, et le test exige désormais `contradiction == 0`. |
+| 2026-09-14 | 1.7.3 | `aa1dc5ac4` | `grep -rn "objectiveevents.Extract(" --include=*.go internal/ cmd/ \| grep -v _test.go` | **UNE seule ligne** : `cmd/diag_weapons_v3/process.go:37`. Aucun appelant de production — découverte D4 (1.7). |
+| 2026-09-14 | 1.7.4 | `aa1dc5ac4` | `grep -rniE "equipe[^.]{0,40}(n.est pas\|pas) dans le film\|film ne porte (ni\|pas).{0,20}(camp\|equipe)" --include=*.go internal/ cmd/` | **0 occurrence** hors de la chronique (qui CITE la phrase pour dire qu'elle était fausse) et hors d'un log de recherche sans rapport (`r11_charges_research_test.go`, « ce film ne porte pas cet equipement »). Dix fichiers corrigés. |
+| 2026-09-14 | 1.7 (communs) | `aa1dc5ac4` | `gofmt -l ./internal ./cmd` | sortie **vide** |
+| 2026-09-14 | 1.7 (communs) | `aa1dc5ac4` | `CGO_ENABLED=1 go vet` puis `go test -count=1` sur `film/…`, `archlint`, `replaybuild`, `killcollector`, `objectiveevents`, `replaydoc`, `replayview` (msys64/ucrt64 en tête du PATH) | vet **propre** ; **13 paquets ok**, dont `replay` 18,0 s, `filmdec` 19,8 s, `archlint` 14,2 s. `TestFilmdecPackageVarsNeCroitPas` VERT : le ratchet reste à **96** — `player_teams.go` n'ajoute aucune variable de paquet (tout est `const`). |
+| 2026-09-14 | 1.7 (communs) | `aa1dc5ac4` | `make go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **0 issues** — baseline non accrue. |
+| 2026-09-14 | 1.7 (communs, web) | `7bfb0c6e5` | `make check-types` puis `make test-web` (après purge de `node_modules/.tmp`) | `tsc -b` **propre** ; vitest **711 fichiers, 7 629 tests verts**, 1 ignoré / 17 ignorés, 108 s. **LE PREMIER `make check-types` A ROUGI SUR 19 LIGNES**, et c'est ce qui a imposé le POINTEUR : `roster[].team` en entier NU devenait REQUIS au contrat, donc toute fixture web construisant une entrée de roster cassait — et, plus grave, un artefact antérieur au schéma 57 se serait servi avec `team: 0`, c'est-à-dire « tout le monde dans le camp 0 ». |
+| 2026-09-14 | 1.7 (équivalence, régime COURT) | `aa1dc5ac4` | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-decfilm-17 -films …` — les 10 films de l'échantillon court, DEUX sous-ensembles séquentiels de 5 | **CLASSIFICATION AVANT TOUT RE-FIGEAGE, faite sur les digests des dix enfants rejoués à part et comparés ligne à ligne aux références.** Résultat IDENTIQUE sur les 10 films : **exactement TROIS lignes changent sur 52, et les 49 autres balayages sont identiques**. (a) `flag` — l'entrée `FlagInput` perd son champ `TeamOf` : DIVERGENCE DE FORME DE L'ENTRÉE, aucun octet décodé ; (b) `playerTeams` — l'étape NEUVE du lot ; (c) `artifact` — le document cuit, `+63` (`60ae07c4`) à `+237` (`a521164d`) octets : `fb1a1a72` +93 · `d9781168` +64 · `111fa685` +150 · `50247b26` +166 · `e5adf7b2` +166 · `11de8353` +176 · `bcb6d393` +209 · `51101d1d` +217. **DIVERGENCES, aucune RÉGRESSION.** Re-figeage accepté APRÈS cette classification (3 min 45 + 2 min 02), puis passe de comparaison : **10 IDENTIQUES sur 10** (3 min 36 + 2 min 04). `git diff --stat` des références : **10 fichiers, 30 insertions, 20 suppressions** — trois lignes par fichier, pas une de plus. |
+| 2026-09-14 | 1.7 (couverture des équipes, AVEC feuille de match) | `aa1dc5ac4` | lignes `rejeu : equipes lues dans le film` des dix cuissons de `replay-equiv` (qui cuit AVEC les faits, contrairement aux goldens) | **`film` / `accord` par film** : `60ae07c4` 8/8 · `fb1a1a72` 8/8 · `d9781168` 8/8 · `51101d1d` 10/10 · `bcb6d393` 11/11 · `111fa685` 25/25 · `e5adf7b2` 28/28 · **`a521164d` 28/27** · **`11de8353` 28/27** · `50247b26` **0** (film lu — 680 records — mais AUCUN roster : sans section d'identification la table d'index des chunks n'est pas injective et se fait écarter, donc il n'y a personne à qui donner l'équipe ; les deux nombres côte à côte disent exactement cela). Les deux « 28/27 » sont les sièges que la FEUILLE ne porte pas (`manistoff`, `Iskra 20252993`, nommés en 1.7.0) : un SILENCE du contrôle, pas une contradiction. `rejetes` 0 partout sauf `111fa685` (1, le record d'index 59) ; `divergences` **0 sur 10/10** ; `nonLus` **0 sur 10/10**. |
+| 2026-09-14 | 1.7 (contrôle, preuve par l'absence) | `aa1dc5ac4` | `grep -c "la base CONTREDIT le film"` sur les journaux des 10 cuissons d'équivalence ET des 26 cuissons du corpus gate | **0.** L'avertissement est émis dès que `contradiction > 0` (cf. `logTeamCoverage`) : son absence sur 36 cuissons est la preuve que **la feuille de match ne contredit le film sur AUCUN joueur**. Même compte pour `equipes NON LUES` : **0** — aucun refus de balayage sur le corpus. |
+| 2026-09-14 | 1.7 (corpus gate) | `aa1dc5ac4` | `go run ./cmd/replay-corpus-gate --base=943d8cf4b --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-17 --json …` | **ZÉRO PERTE SUR 13 TÉMOINS SUR 13, EXIT 0 — le premier lot de M1 dont le gate sort vert au sens littéral.** ~18 min, schéma **56 → 57 partout**. Gains : **9** sur onze témoins (`bcb6d393`, `fb1a1a72`, `d9781168`, `c75f33b8`, `bf15f7ab`, `51ebbc0f`, `084a804d`, `0797ce72`, `e5adf7b2`, `60ae07c4`, `bfecd02b`), **10** sur `111fa685`, **5** sur `a349fea8` (le film sans section d'identification : la moitié de ses compteurs d'équipe est à zéro, faute de roster). Durées : de 11,97 s (`bcb6d393`) à 2 min 10 (`a349fea8`), `084a804d` 1 min 51. **LE RAPPORT N'ÉNUMÈRE PAS LES GAINS** (il ne détaille que les pertes), et l'empreinte dit d'où ils ne peuvent PAS venir : `aplatir` ne pose de feuille que sous `coverage` et `bombStats` (`replaydiff/empreinte.go:193`), `mesurerTableau` ne mesure que les champs des éléments de `roster` et `tracks` (`empreinte_axes.go:80-85`). Les seuls champs neufs ou changés du document étant `coverage.teams.*`, `roster[].team` et `tracks[].team`, **les gains sont ceux-là et rien d'autre**. `CarrierTeamUnknown` : **aucune perte sur l'axe `ports` sur 13/13**, donc inchangé ou en baisse — la condition de la ligne « Preuve » est tenue. |
+| 2026-09-14 | 1.7 (clôture) | ce commit | `logTeamCoverage` sur un chemin sans balayage | Une TROISIÈME cause de refus est nommée APRÈS la mesure : `non_balaye`. Un appelant qui assemble depuis des positions déjà décodées (`BuildFromPositions`, le chemin du collecteur de kills) ne balaie aucun film, et sa couverture d'équipes se serait lue comme « un balayage qui n'a rien trouvé ». D14 : un refus se NOMME. Aucun golden ni aucune fixture ne bouge (tous passent par `BuildFromFilm`, où `Component` est toujours posé) — 13 paquets Go rejoués verts après le changement. |
 
 ## 6. Protocole de reprise de session
 
