@@ -34,7 +34,11 @@ package replay
 // CE QUE CE VOLET NE PUBLIE TOUJOURS PAS : un proprietaire sur le repli par les RAMPES. Sans
 // designateur il n'y a pas d'objet de mode, donc pas de slot voisin ou lire le camp.
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+)
 
 // hillDesignatorMinOwnerSamples : un slot de tag 5 n'est un designateur que si le slot SUIVANT
 // porte un canal de proprietaire qui parle (au moins deux emissions) — la structure de l'objet
@@ -134,6 +138,9 @@ func buildDesignatedHills(zones []Zone, ser zoneSeries, h hillCtx, c zoneCtx,
 	for _, p := range periods {
 		votes := hillVotesInRamps(zones, pts, ramps, &p)
 		if len(votes) == 0 {
+			// REPLI NOMME ET COMPTE (D14) : aucune rampe de capture dans la periode, les votes
+			// sont repris sur TOUTE la periode — donc sur des instants ou personne ne capture.
+			c.fb.Declenche(fallback.NomCollineVotesPeriodeEntiere)
 			votes = hillVotes(zones, pts, p.t0, p.t1)
 		}
 		p.ref, p.hasRef = clearModalZone(votes)
@@ -147,7 +154,7 @@ func buildDesignatedHills(zones []Zone, ser zoneSeries, h hillCtx, c zoneCtx,
 	}
 	// LE CANAL DE PROPRIETE EST LE SLOT VOISIN DU DESIGNATEUR — celui que l'election exige deja
 	// (`hillDesignatorMinOwnerSamples`). Niveau de preuve accepte et reserve : cf. hillStatesOf.
-	states := hillStatesOf(kept, ser.owner[h.d.slot+1], h.teams, cov)
+	states := hillStatesOf(kept, ser.owner[h.d.slot+1], h.teams, cov, c.fb)
 	cov.Paired = len(states)
 	tallyZoneStates(states, cov)
 	return states
@@ -251,7 +258,7 @@ func buildRampHills(zones []Zone, ser zoneSeries, c zoneCtx, cov *ZonesCoverage)
 	// AUCUN PROPRIETAIRE SUR CE REPLI : sans designateur, il n'y a pas d'objet de mode, donc pas
 	// de slot voisin ou lire le camp. Une colline localisee par la seule grappe des positions
 	// reste ACTIVE et sans camp — la deduire de la grappe serait une invention.
-	states := hillStatesOf(periods, nil, nil, cov)
+	states := hillStatesOf(periods, nil, nil, cov, c.fb)
 	cov.Paired = len(states)
 	tallyZoneStates(states, cov)
 	return states
@@ -396,9 +403,9 @@ func closeHillTail(out []hillPeriod, t0 int) []hillPeriod {
 // sous garde `ZONE_FILM`. Publier des compteurs a zero comme s'ils avaient ete verifies serait
 // pire que leur absence.
 func hillStatesOf(periods []hillPeriod, owner []zoneSample, teams map[uint64]bool,
-	cov *ZonesCoverage,
+	cov *ZonesCoverage, fb *fallback.Compteur,
 ) []ZoneState {
-	runs := hillOwnerRuns(owner, teams, cov)
+	runs := hillOwnerRuns(owner, teams, cov, fb)
 	byRef := map[int][]ZoneSpan{}
 	for _, p := range periods {
 		if p.t1 < p.t0 {
@@ -447,13 +454,19 @@ type hillOwnerRun struct {
 //
 // LA DERNIERE VALEUR COURT JUSQU'A LA FIN DE L'AXE, comme sur les zones simultanees : le canal
 // est un ETAT, pas un evenement — il ne re-emet pas tant que rien ne change.
-func hillOwnerRuns(owner []zoneSample, teams map[uint64]bool, cov *ZonesCoverage) []hillOwnerRun {
+func hillOwnerRuns(owner []zoneSample, teams map[uint64]bool, cov *ZonesCoverage,
+	fb *fallback.Compteur,
+) []hillOwnerRun {
 	groups := mergeZoneRuns(owner)
 	out := make([]hillOwnerRun, 0, len(groups))
 	for i, g := range groups {
 		t1 := int(^uint(0) >> 1) // le dernier groupe court jusqu'a la fin : borne ouverte a droite
 		if i+1 < len(groups) {
 			t1 = groups[i+1].t - 1
+		} else {
+			// REPLI NOMME ET COMPTE (D14) : le canal est un ETAT, pas un evenement — rien n'ecrit
+			// la FIN de la derniere propriete, et elle court jusqu'a la fin de l'axe.
+			fb.Declenche(fallback.NomCollineDernierIntervalleOuvert)
 		}
 		if t1 < g.t {
 			continue

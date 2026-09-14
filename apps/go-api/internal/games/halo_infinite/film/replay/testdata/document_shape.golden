@@ -1,8 +1,8 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 57
-empreinte-stockee 1344869006f05f16
-empreinte-servie 1344869006f05f16
+schema 58
+empreinte-stockee cd9d54d2ef218027
+empreinte-servie cd9d54d2ef218027
 
 AbilityCharge
   Charges json:"charges" int
@@ -161,6 +161,7 @@ Coverage
   Bridge json:"bridge" BridgeHealth
   Equipment json:"equipment,omitempty" *EquipmentCoverage
   EquipmentChanges json:"equipmentChanges,omitempty" *EquipmentChangeCoverage
+  Fallbacks json:"fallbacks,omitempty" []FallbackHit
   FilmMajorVersion json:"filmMajorVersion,omitempty" *int
   FlagCarries json:"flagCarries,omitempty" *FlagCarriesCoverage
   Grapple json:"grapple,omitempty" *GrappleCoverage
@@ -257,6 +258,9 @@ EquipmentPlacementCoverage
   Widths json:"widths,omitempty" string
   WithHeading json:"withHeading" int
   WithOwner json:"withOwner" int
+FallbackHit
+  Hits json:"hits" int
+  Name json:"name" string
 FilmTableCounts
   Accord json:"accord" int
   Contradiction json:"contradiction" int

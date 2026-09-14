@@ -1395,3 +1395,35 @@ package replay
 //	VERSION MONTE  apparait. Un artefact 56 porte `team: -1` partout : il ne se distingue d'un
 //	               artefact 57 de mode FFA que par `coverage.teams`, qui n'y est pas. La reprise
 //	               du backfill se fait par SchemaVersion.
+
+// v58 (2026-09-14, lot 1.9.0 du PLAN_DECODEUR_FILM) : L'ARTEFACT DIT QUELLE PART DE LUI VIENT
+// D'UN REPLI.
+//
+//	ce qui etait   un REPLI — une decision de secours prise quand la lecture du film ne tranche
+//	muet           pas — ne laissait aucune trace. L'audit du lot 0.E en a recense 62 dans le
+//	               decodeur, dont neuf portaient un defaut DEJA MESURE (jusqu'a 95 % des poses
+//	               d'un film creditees au mauvais joueur, 213 s d'attribution fausse sur une
+//	               manche, 27 faux enregistrements sur Live Fire). Aucun n'etait lisible d'un
+//	               artefact : deux documents, l'un lu et l'autre repli, etaient identiques.
+//
+//	le champ       `coverage.fallbacks` est NEUF : une liste `{name, hits}`, triee par nom, des
+//	ajoute         seuls replis DECLENCHES pendant cette cuisson. Absente quand aucun ne s'est
+//	               declenche. Le nom est stable et se joint au REGISTRE DES REPLIS
+//	               (`film/replay/fallback`), qui porte pour chacun sa condition typee, sa date de
+//	               pose, sa cible et son critere de retrait (decision D14, ADR 0034).
+//
+//	une liste      les replis ne se repartissent pas sur les calques existants — celui des
+//	plate, et      largeurs d'axe par defaut touche TOUT le decodage, et les trois quarts des
+//	pas un bloc    faits replies n'ont pas de bloc de couverture a eux. Une liste plate se lit
+//	par calque     sans connaitre la carte des calques et n'oblige aucun des vingt blocs
+//	               existants a changer de forme.
+//
+//	AUCUNE AUTRE   le lot 1.9.0 DECLARE et COMPTE ; il ne change aucune decision. Les conversions
+//	DIFFERENCE     (la lecture du film qui remplace l'heuristique) sont les lots 1.9.1 a 1.9.14.
+//	               L'equivalence est a zero difference hors la seule etape `artifact`, ou ce
+//	               champ apparait.
+//
+//	POURQUOI LA    un champ apparait dans le document, donc la FORME change (garde-rail
+//	VERSION MONTE  `document_shape_test.go`, qui refuse la regeneration sans montee). Un artefact
+//	               57 ne peut pas dire qu'il ne doit rien a un repli : il peut seulement ne rien
+//	               en dire. La reprise du backfill se fait par SchemaVersion.

@@ -1103,8 +1103,18 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   propre drapeau » tient donc sur une cuisson HORS LIGNE. Un artefact 56 porte `team: -1`
 	//   partout et ne se distingue pas d'un artefact 57 de mode FFA sans `coverage.teams`.
 	//   Détail : `document_chronicle.go`.
-	if SchemaVersion != 57 {
-		t.Fatalf("SchemaVersion = %d, attendu 57 : incrémenter exige une raison écrite ci-dessus "+
+	// - v58 (lot 1.9.0) : L'ARTEFACT DIT QUELLE PART DE LUI VIENT D'UN REPLI. `coverage.fallbacks`
+	//   est NEUF : la liste `{name, hits}` des replis DÉCLENCHÉS pendant la cuisson, triée par
+	//   nom, absente quand aucun ne s'est déclenché. Un repli est une décision de secours prise
+	//   quand la lecture du film ne tranche pas ; le REGISTRE (`film/replay/fallback`) porte pour
+	//   chacun sa condition typée, sa date de pose, sa cible et son critère de retrait (D14).
+	//   POURQUOI LA VERSION MONTE alors que le champ est optionnel : un artefact 57 ne peut pas
+	//   dire qu'il ne doit RIEN à un repli — il peut seulement ne rien en dire, et les deux se
+	//   lisent pareil. La reprise du backfill se fait par SchemaVersion.
+	//   AUCUNE AUTRE DIFFÉRENCE : le lot 1.9.0 déclare et compte, il ne change aucune décision.
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 58 {
+		t.Fatalf("SchemaVersion = %d, attendu 58 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -238,7 +238,7 @@ func invMortFilm(t *testing.T, dir string) (*invMortStat, *invMortStat, Identity
 			"denominateur du taux affaibli", dir, err)
 		fire = nil
 	}
-	inv, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
+	inv, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
 	if err != nil {
 		t.Logf("%s : inventaire illisible : %v", dir, err)
 		return nil, nil, IdentityRegistry{}

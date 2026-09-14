@@ -158,7 +158,7 @@ func TestPowerupSocleImagesCles(t *testing.T) {
 			}
 			release := filmdec.LockProcessDecode()
 			defer release()
-			defer installWorldObjectPrecision(entry, dir)()
+			defer installWorldObjectPrecision(entry, dir, nil)()
 			wr := entry.Range()
 
 			kfs := psRecenseKF(dir)

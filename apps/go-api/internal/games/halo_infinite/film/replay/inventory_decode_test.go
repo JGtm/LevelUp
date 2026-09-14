@@ -63,7 +63,7 @@ func chunkFileName(n int) string {
 func TestScanFilmKeyframeInventoryRefuseUnChunkIllisible(t *testing.T) {
 	dir := filmDirWithBadChunk(t, 2)
 	known := map[uint32]bool{1: true}
-	inv, st, err := ScanFilmKeyframeInventory(dir, known, 0)
+	inv, st, err := ScanFilmKeyframeInventory(dir, known, 0, nil)
 	if err == nil {
 		t.Fatal("chunk illisible : une erreur était attendue — un film amputé n'est pas un film")
 	}
@@ -81,7 +81,7 @@ func TestScanFilmKeyframeInventoryRefuseUnChunkIllisible(t *testing.T) {
 func TestScanFilmKeyframeInventoryAllChunksUnreadable(t *testing.T) {
 	dir := filmDirWithBadChunk(t, 0)
 	known := map[uint32]bool{1: true}
-	inv, _, err := ScanFilmKeyframeInventory(dir, known, 0)
+	inv, _, err := ScanFilmKeyframeInventory(dir, known, 0, nil)
 	if err == nil {
 		t.Fatal("aucun chunk lisible : une erreur était attendue")
 	}
@@ -100,7 +100,7 @@ func TestScanKeyframeInventoryCompteLesChunks(t *testing.T) {
 			t.Fatalf("écriture du chunk %d : %v", i, err)
 		}
 	}
-	inv, st, err := ScanFilmKeyframeInventory(dir, map[uint32]bool{1: true}, 0)
+	inv, st, err := ScanFilmKeyframeInventory(dir, map[uint32]bool{1: true}, 0, nil)
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
 	}

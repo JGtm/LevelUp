@@ -131,7 +131,7 @@ func TestNameTracksLeavesUnbridgedLivesAnonymous(t *testing.T) {
 		{Slot: 513, StartFrame: 0, EndFrame: 9},
 	}
 	lives := []lifeSpan{{slot: 512, from: 0, to: 1_000_000, xuid: 2533274800000001}}
-	nameTracksByLives(tracks, lives, 0, 100_000)
+	nameTracksByLives(tracks, lives, 0, 100_000, nil)
 	if tracks[0].XUID != "2533274800000001" {
 		t.Errorf("la trace pontee doit porter son xuid en decimal, obtenu %q", tracks[0].XUID)
 	}
@@ -152,7 +152,7 @@ func TestNameTracksByLivesNamesEachOccupantOfARecycledSlot(t *testing.T) {
 		{slot: 512, from: 0, to: 900_000, xuid: 111},
 		{slot: 512, from: 8_000_000, to: 9_900_000, xuid: 222},
 	}
-	nameTracksByLives(tracks, lives, 0, 100_000)
+	nameTracksByLives(tracks, lives, 0, 100_000, nil)
 	if tracks[0].XUID != "111" || tracks[1].XUID != "222" {
 		t.Errorf("chaque occupant doit garder SA vie : obtenu %q puis %q",
 			tracks[0].XUID, tracks[1].XUID)

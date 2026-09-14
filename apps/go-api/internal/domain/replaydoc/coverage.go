@@ -41,6 +41,17 @@ type Coverage struct {
 	T0Film            *T0FilmCoverage             `json:"t0Film,omitempty"`
 	Verdict           map[string]string           `json:"verdict,omitempty"`
 	Bridge            BridgeHealth                `json:"bridge"`
+	// Fallbacks dit QUELLE PART DE CE DOCUMENT VIENT D'UN REPLI (schéma 58) : les replis
+	// déclenchés pendant la cuisson, triés par nom. Absente quand aucun ne s'est déclenché.
+	// Le nom est stable et se joint au registre des replis du décodeur.
+	Fallbacks []FallbackHit `json:"fallbacks,omitempty"`
+}
+
+// FallbackHit est un repli du décodeur et son nombre de déclenchements sur la cuisson qui a
+// produit ce document.
+type FallbackHit struct {
+	Name string `json:"name"`
+	Hits int    `json:"hits"`
 }
 
 // LayerCoverage est la couverture d'un calque : combien il a rattaché, sur combien
