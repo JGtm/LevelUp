@@ -389,6 +389,7 @@ func renderAssembly(doc ReplayDocument) string {
 	renderGroundWeapons(p, doc)
 	renderLoadouts(p, doc)
 	renderBridge(p, doc)
+	renderIdentite(p, doc)
 	renderLabels(p, doc)
 	renderBounds(p, doc)
 	return b.String()
@@ -424,10 +425,12 @@ func renderTracks(p func(string, ...any), doc ReplayDocument) {
 	p("## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)")
 	p("%d trace(s) · %d point(s) de grille", len(doc.Tracks), points)
 	// LE REFUS DU SEUIL EST DANS LE GOLDEN (schema 55) : il etait MUET, et un compteur qu on
-	// publie sans le figer redevient muet au premier refacto.
+	// publie sans le figer redevient muet au premier refacto. Le seuil par defaut vaut 1 depuis
+	// le lot 1.6.5 : ce compte est donc a ZERO sur toute cuisson qui ne le regle pas, et c est
+	// precisement ce qu il doit montrer.
 	if tc := doc.Coverage.Tracks; tc != nil {
 		p("seuil de publication %d point(s) : %d vie(s) REFUSEE(S) portant %d point(s) — "+
-			"une vie d un seul echantillon n est pas une trajectoire",
+			"si le film ecrit une position, elle se publie",
 			tc.MinPoints, tc.RefusedMinPoints, tc.RefusedPoints)
 	} else {
 		p("seuil de publication : NON APPLIQUE (le film ne porte aucune position)")
@@ -923,6 +926,53 @@ func renderBridge(p func(string, ...any), doc ReplayDocument) {
 		b.IndexReadings, b.IndexDisagreements, b.SlotCollisions)
 	p("verdict : %s", doc.Coverage.Verdict["bridge"])
 	p("")
+}
+
+// renderIdentite montre D OU vient chaque lien d identite, et ce que la table du film a couvert.
+//
+// POURQUOI ELLE ENTRE AU GOLDEN (lot 1.6.1). Le golden montrait le PONT et le ROSTER, jamais la
+// PROVENANCE des liens : un lien qui passerait de `direct` a `deduit`, ou de la table du film au
+// repli par les chunks, ne se voyait nulle part dans les huit references. C est precisement ce
+// que ce lot deplace, et un deplacement qu on ne voit pas ne se juge pas.
+func renderIdentite(p func(string, ...any), doc ReplayDocument) {
+	if doc.Identity == nil {
+		return
+	}
+	c := doc.Identity.Coverage
+	p("## REGISTRE D IDENTITE — la PROVENANCE de chaque lien, et ce que la table du film couvre")
+	p("index de joueur : %d direct · %d externe · %d deduit · %d non resolu",
+		c.FilmIndex.Direct, c.FilmIndex.External, c.FilmIndex.Inferred, c.FilmIndex.Unresolved)
+	p("slot de bipede : %d direct (dont %d propages) · %d deduit · %d non resolu "+
+		"(index hors table=%d · sans record=%d · lectures divergentes=%d)",
+		c.BipedSlot.Direct, c.BipedSlot.DirectPropagated, c.BipedSlot.Inferred,
+		c.BipedSlot.Unresolved, c.BipedSlot.UnresolvedByCause.IndexOutOfTable,
+		c.BipedSlot.UnresolvedByCause.NoCreationRecord,
+		c.BipedSlot.UnresolvedByCause.DivergentReadings)
+	f := c.FilmTable
+	p("table du film : lue=%v refus=%q · %d siege(s) · %d lien(s) direct(s) · %d par repli",
+		f.Read, f.Refusal, f.Seats, f.Direct, f.Fallback)
+	p("controle (lecture des chunks) : %d accord · %d contradiction · %d silence — la table du "+
+		"film fait foi, l ecart se compte", f.Accord, f.Contradiction, f.Silence)
+	p("voies des liens d index : %s", voiesDIndex(doc))
+	p("")
+}
+
+// voiesDIndex resume la voie de chaque lien `identity.players`, triee, pour que le golden dise
+// COMBIEN de liens viennent de la table du film et combien du repli.
+func voiesDIndex(doc ReplayDocument) string {
+	parVoie := map[string]int{}
+	for _, pl := range doc.Identity.Players {
+		parVoie[string(pl.Link.Method)]++
+	}
+	voies := make([]string, 0, len(parVoie))
+	for _, k := range sortedKeys(parVoie) {
+		nom := k
+		if nom == "" {
+			nom = "(aucune)"
+		}
+		voies = append(voies, fmt.Sprintf("%s=%d", nom, parVoie[k]))
+	}
+	return strings.Join(voies, " · ")
 }
 
 func renderLabels(p func(string, ...any), doc ReplayDocument) {

@@ -59,6 +59,20 @@ func toIdentityCoverage(v replay.IdentityCoverage) replaydoc.IdentityCoverage {
 		FilmIndex:    toLinkCounts(v.FilmIndex),
 		BipedSlot:    toBipedLinkCounts(v.BipedSlot),
 		StatborgSlot: toLinkCounts(v.StatborgSlot),
+		FilmTable:    toFilmTableCounts(v.FilmTable),
+	}
+}
+
+func toFilmTableCounts(v canonical.FilmTableCounts) replaydoc.FilmTableCounts {
+	return replaydoc.FilmTableCounts{
+		Read:          v.Read,
+		Refusal:       v.Refusal,
+		Seats:         v.Seats,
+		Direct:        v.Direct,
+		Fallback:      v.Fallback,
+		Accord:        v.Accord,
+		Contradiction: v.Contradiction,
+		Silence:       v.Silence,
 	}
 }
 

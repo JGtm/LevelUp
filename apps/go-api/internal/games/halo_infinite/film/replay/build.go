@@ -13,10 +13,6 @@ import (
 // fluide (le client interpole) tout en divisant le volume de points par ~4.
 const DefaultFrameIntervalMS = 100
 
-// DefaultMinPoints est le nombre minimal de points pour qu'une vie soit publiée : une
-// track d'un seul échantillon n'est pas une trajectoire.
-const DefaultMinPoints = 2
-
 // coordScale arrondit les coordonnées au centimètre : le quantum du décodeur est de
 // ~1,4 cm, deux décimales ne perdent donc rien et allègent nettement le JSON.
 const coordScale = 100
@@ -79,7 +75,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// leurs gardes — aucun calque ne reconstruit son propre pont (garde-rail `archlint`).
 	reg := BuildIdentityRegistry(IdentityInput{
 		Positions: sorted, BipedCreations: opt.BipedCreations,
-		Deaths: opt.Deaths, PlayerIndices: opt.PlayerIndices,
+		Deaths: opt.Deaths, PlayerIndices: opt.PlayerIndices, FilmTable: opt.FilmTable,
 		Bots: opt.Bots, Fire: refs, RosterXUIDs: opt.RosterXUIDs,
 		Participants: opt.Participants,
 		Statborg: StatborgIdentityInput{
@@ -114,7 +110,11 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		unnamed.deduced[i] = true
 	}
 	logUnnamedLives(matchID, doc.Tracks, unnamed)
-	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths), opt.Bots)
+	// LE ROSTER VIENT DE LA TABLE EFFECTIVE DU REGISTRE, PAS DES OPTIONS (lot 1.6.2) : la table du
+	// film y a deja pose ses sieges, et ses gamertags nomment les joueurs a ZERO MORT, que le fil
+	// des morts ne peut pas nommer. Relire `opt.PlayerIndices` ici republierait la table d'AVANT la
+	// composition — deux tables du meme film, ce que le registre existe pour empecher.
+	doc.Roster = buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, opt.Deaths), opt.Bots)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, reg.DeathOffsetMS(), reg.DeathOffsetMatches())
 	reg.logRegistry(matchID)

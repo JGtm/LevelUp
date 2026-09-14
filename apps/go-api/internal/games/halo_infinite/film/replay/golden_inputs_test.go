@@ -73,6 +73,14 @@ func goldenInputsPath() string {
 // a un offset arbitraire : bruyant par chance, pas par construction, et le message ne dit pas
 // quoi faire. [TestGoldenInputsVersionGuard] verrouille le refus explicite.
 //
+// v20 (2026-09-14, lot 1.6) : le fixture porte LA TABLE DES JOUEURS DU FILM (`FilmInputs.FilmTable`,
+// lue par `ScanFilmPlayerTable` dans `chunk_00`) — le lien DIRECT `index <-> xuid <-> gamertag`
+// dont le registre d identite fait sa source premiere. Elle porte son REFUS comme elle porte ses
+// sieges : une table non lue n est pas une table vide, et le document publie la difference.
+// Les neuf champs courts et le jeton de session que `filmdec.PlayerSlot` expose N ENTRENT PAS —
+// aucun assemblage ne les lit, et la doctrine de ce fichier est que le fixture porte ce que
+// l assemblage CONSOMME.
+//
 // v19 (2026-09-14, lot 1.0) : LE FIXTURE PORTE LE TYPE DE LA PRODUCTION. `goldenInputs` embarque
 // desormais [FilmInputs] — ce que `scanFilmInputs` rend et ce que `BuildFromPositions` consomme —
 // au lieu de redeclarer la liste a la main. SIX CANAUX y entrent du meme geste, parce que le
@@ -199,7 +207,7 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS19\n"
+const goldenInputsMagic = "REPLAYINPUTS20\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -352,7 +360,7 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 // d octets alors que le probleme est une version. Le test relit le corps COURANT precede de la
 // magie PRECEDENTE : la seule reponse acceptable est le refus de version.
 func TestGoldenInputsVersionGuard(t *testing.T) {
-	const previousMagic = "REPLAYINPUTS18\n"
+	const previousMagic = "REPLAYINPUTS19\n"
 	if previousMagic == goldenInputsMagic {
 		t.Fatal("la magie precedente et la courante sont identiques : le test ne prouve plus rien")
 	}

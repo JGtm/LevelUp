@@ -57,7 +57,7 @@ var BuildFromFilmSteps = []string{
 	"zoomEvents",
 	"placements", "placements.stats",
 	"pads", "vehicles", "carrierMarks", "zoneReads", "bombReads",
-	"grenades", "projectiles", "deaths", "playerIndices", "clockOrigin",
+	"grenades", "projectiles", "deaths", "filmTable", "playerIndices", "clockOrigin",
 }
 
 // stepClock date la FIN du balayage precedent. C'est tout ce qu'il faut pour chronometrer les

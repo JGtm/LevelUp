@@ -6,15 +6,15 @@
 
 ## AXE DE TEMPS
 3465 frames · intervalle 100 ms · duree 346500 ms
-schema 55 · titre halo_infinite
+schema 56 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 12904 ms
 coup d envoi date par le film : 35704 ms · 56/56 piste(s) en mouvement · rafale 5 · marge depuis la frame 0 : 22800 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
-56 trace(s) · 18935 point(s) de grille
-seuil de publication 2 point(s) : 2 vie(s) REFUSEE(S) portant 2 point(s) — une vie d un seul echantillon n est pas une trajectoire
-54 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+58 trace(s) · 18937 point(s) de grille
+seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si le film ecrit une position, elle se publie
+56 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
 occupation du slot dans le TEMPS) · 2 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
 10277 point(s) portent un cap de visee · 10277 une elevation de visee · 4017 un bouclier · 108 une fraction de vie
@@ -75,7 +75,7 @@ couverture : 14 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) san
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 3 episode(s) publie(s) · par famille : camo=3 · 1 fin(s) MESUREE(s) (le reste ferme a la mort)
-couverture : 56 vie(s) publiee(s) · camo 2 vie(s) / 3 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
+couverture : 58 vie(s) publiee(s) · camo 2 vie(s) / 3 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
 
 ## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
@@ -300,6 +300,13 @@ refus des fermetures : 0 contestee(s) (l unicite manque : deux corps, deux joueu
 48 vie(s) nommee(s) / 58 — un rapport publie sans son denominateur ne se juge pas
 19 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
 verdict : nominal
+
+## REGISTRE D IDENTITE — la PROVENANCE de chaque lien, et ce que la table du film couvre
+index de joueur : 11 direct · 0 externe · 0 deduit · 0 non resolu
+slot de bipede : 56 direct (dont 1 propages) · 0 deduit · 2 non resolu (index hors table=2 · sans record=0 · lectures divergentes=0)
+table du film : lue=true refus="" · 8 siege(s) · 8 lien(s) direct(s) · 3 par repli
+controle (lecture des chunks) : 8 accord · 0 contradiction · 0 silence — la table du film fait foi, l ecart se compte
+voies des liens d index : PlayerIndexTable=3 · film_table=8
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 21 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et
