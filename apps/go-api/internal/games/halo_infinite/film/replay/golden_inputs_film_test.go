@@ -4,8 +4,20 @@ package replay
 //
 // Extrait de golden_inputs_test.go le 2026-09-14 (revue R1, constat R1-7). DEPLACEMENT PUR.
 //
-// CE CHEMIN EST UNE COPIE DE LA SEQUENCE DE BALAYAGES DE `BuildFromFilm` (decouverte D7 du
-// lot 0.D) : le lot 1.0 la remplacera par une fonction partagee.
+// # CE CHEMIN N EST PLUS UNE COPIE (lot 1.0, 2026-09-14)
+//
+// Il l a ete : la sequence de balayages de `BuildFromFilm` y etait recopiee a la main, et les
+// deux copies avaient diverge (decouverte D7 du lot 0.D) — cinq canaux entiers manquaient au
+// fixture (`WeaponChanges`, `Pickups`, `EquipmentChanges`, `Vehicles`, `BipedCreations`), la
+// lunette aussi, et les largeurs d axe du chemin world-object s installaient par un AUTRE geste
+// que celui de la production : `SetWorldObjectPrecisionFromLayout(I0Layout{AxisW: ...})` ne pose
+// NI la largeur d index de region NI la region cataloguee, la ou `installWorldObjectPrecision`
+// passe par `entry.Layout()` et pose les trois. Sur Live Fire (`60ae07c4`, region 1 sur 2 bits),
+// le fixture lisait donc ses objets du monde un bit trop tot — le defaut meme que le lot B-bis
+// avait corrige en production le 2026-09-12.
+//
+// Il APPELLE desormais `scanFilmInputs` — l etage de balayage de la production — sous les DEUX
+// memes gestes que `BuildFromFilm` : le verrou de decodage et les largeurs d axe de la carte.
 
 import (
 	"fmt"
@@ -28,137 +40,60 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 // fixture d entrees par build, donc une carte par build). `decodeFilmInputs` en est le cas
 // particulier de Cliffhanger, et le seul chemin qui change est la LECTURE DU CATALOGUE.
 func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*goldenInputs, error) {
-	var err error
-	// MEME GESTE QUE LA PRODUCTION (cf. installWorldObjectPrecision) : les largeurs d'axe du
-	// chemin world-object viennent de l'entree de catalogue, pas du defaut de paquet. Sur
-	// Cliffhanger les deux coincident — c'est precisement pourquoi l'oubli avait survecu des
-	// mois : le film de reference est le SEUL sur lequel il ne se voit pas.
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: entry.AxisWidths})
-	wr := entry.Range()
-	scan := filmdec.DefaultScanFilmOptions()
-	scan.WorldRange = &wr
-	// LE DECOUPAGE D i0 SUIT LA REGLE DE LA PRODUCTION, PAR LA MEME FONCTION (lot 0.D.7).
-	//
-	// CE QUE CELA CORRIGE. Ce chemin AUTO-DETECTAIT le decoupage (`ScanFilmOptions.Layout`
-	// laisse nul), alors que la cuisson le fait trancher par `resolveI0Layout` — le catalogue
-	// quand l entree est valide, l auto-detection en repli. Sur Live Fire les deux DIVERGENT :
-	// detection `gate=5 region=0 13/12/11`, catalogue `gate=6 region=1 12/12/11`. Meme longueur
-	// totale d i0, mais un bit de moins sur X au catalogue — donc un pas de quantification
-	// DOUBLE a la detection — et une porte de region qui ne testait qu un bit, laissant entrer
-	// des enregistrements d une AUTRE AABB. Le golden de `60ae07c4` affirmait donc des
-	// coordonnees que la production ne produit pas.
-	//
-	// ON N APPELLE PAS `entry.Layout()` ICI : ce serait une COPIE de la regle, qui divergerait
-	// le jour ou la production change d avis. On demande la regle elle-meme.
-	impose := filmdec.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
-	detecte := impose == nil
-	if impose != nil {
-		scan.Layout = impose
+	// LE FILM SE CHARGE UNE FOIS, comme en production (`replaybuild.BuildBytes`) : c est ce
+	// chargement-la que l etage de balayage consomme, et c est lui aussi qui porte la version
+	// majeure du film.
+	charge, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, fmt.Errorf("chargement du film %s : %w", dir, err)
 	}
-	// L AUTO-DETECTION NE SURVIT QUE LA OU LA PRODUCTION L EMPLOIE — entree de carte invalide
-	// (`axisWidths` absent, cf. resolveI0Layout). Elle est alors NOMMEE dans le fixture, pour
-	// qu un lecteur sache que ces quanta ne viennent pas du catalogue.
-	lay := filmdec.I0Layout{}
-	if impose != nil {
-		lay = *impose
-	} else {
-		var layErr error
-		if lay, _, layErr = filmdec.DetectI0Layout(dir); layErr != nil {
-			return nil, fmt.Errorf("decoupage i0 de %s : %w", dir, layErr)
-		}
-	}
-	scan.CaptureDirs = true
-	// MEME GESTE QUE LA PRODUCTION (BuildFromFilm) : les teleportations se lisent AVANT les
-	// positions, parce qu elles exemptent le filtre de vitesse (decision D2), et AVEC l entree
-	// de catalogue, parce que leur charge porte le va-et-vient quantifie aux bornes de la
-	// carte. Sans ce geste, le fixture porterait des positions que la production ne decode plus.
-	translocs := filmdec.ScanFilmTranslocatorTeleports(dir, &entry)
-	scan.TeleportExemptions = filmdec.TeleportExemptionsOf(translocs)
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	// LES DEUX GESTES DE LA PRODUCTION, PAR LES MEMES FONCTIONS (cf. `BuildFromFilm`) : le
+	// verrou de decodage, puis les largeurs d axe du chemin world-object installees DEPUIS
+	// L ENTREE DE CATALOGUE — largeurs, largeur d index de region ET region, que seule
+	// `MapQuantEntry.Layout()` porte toutes les trois.
+	release := filmdec.LockProcessDecode()
+	defer release()
+	defer installWorldObjectPrecision(entry, film)()
+	in, err := scanFilmInputs(film, charge, Options{MapQuant: &entry})
 	if err != nil {
 		return nil, err
 	}
-	g := &goldenInputs{
+	lay, detecte, err := decoupageDuFixture(charge, entry)
+	if err != nil {
+		return nil, err
+	}
+	return &goldenInputs{
 		Film: film, MapModule: entry.Module, AxisW: lay.AxisW, LayoutDetected: detecte,
-		Positions: pos, Translocations: translocs,
+		FilmInputs: in,
+	}, nil
+}
+
+// decoupageDuFixture rend le decoupage d i0 EMPLOYE par le balayage, et s il vient de
+// l auto-detection.
+//
+// LA REGLE EST CELLE DE LA PRODUCTION, PAR LA MEME FONCTION (lot 0.D.7). Ce chemin
+// AUTO-DETECTAIT le decoupage (`ScanFilmOptions.Layout` laisse nul), alors que la cuisson le fait
+// trancher par `resolveI0Layout` — le catalogue quand l entree est valide, l auto-detection en
+// repli. Sur Live Fire les deux DIVERGENT : detection `gate=5 region=0 13/12/11`, catalogue
+// `gate=6 region=1 12/12/11`. Meme longueur totale d i0, mais un bit de moins sur X au catalogue
+// — donc un pas de quantification DOUBLE a la detection — et une porte de region qui ne testait
+// qu un bit, laissant entrer des enregistrements d une AUTRE AABB.
+//
+// ON N APPELLE PAS `entry.Layout()` ICI : ce serait une COPIE de la regle, qui divergerait le
+// jour ou la production change d avis. On demande la regle elle-meme.
+//
+// L AUTO-DETECTION NE SURVIT QUE LA OU LA PRODUCTION L EMPLOIE — entree de carte invalide
+// (`axisWidths` absent, cf. resolveI0Layout). Elle est alors NOMMEE dans le fixture, pour qu un
+// lecteur sache que ces quanta ne viennent pas du catalogue.
+func decoupageDuFixture(charge *filmsource.Film, entry filmdec.MapQuantEntry) (filmdec.I0Layout, bool, error) {
+	if impose := filmdec.NewFilmContextForMap(nil, &entry, nil).ImposedLayout(); impose != nil {
+		return *impose, false, nil
 	}
-	if g.Fire, err = filmdec.ScanFilmFireEvents(dir); err != nil {
-		return nil, err
-	}
-	if g.Loadouts, err = filmdec.ScanFilmKeyframeLoadouts(dir, loadoutFamilies()); err != nil {
-		return nil, err
-	}
-	if g.Inventory, _, err = ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0); err != nil {
-		return nil, err
-	}
-	if g.AbilityRanks, _, err = filmdec.ScanFilmAbilityRanks(dir); err != nil {
-		return nil, err
-	}
-	var dStats filmdec.InventoryDeltaStats
-	if g.InventoryDeltas, dStats, err = filmdec.ScanFilmInventoryDeltas(dir); err != nil {
-		return nil, err
-	}
-	// MEME GESTE QUE LA PRODUCTION (`build_from_film.go` : `opt.InventoryDeltaAmmoRefused =
-	// dStats.AmmoRefused`) : le verdict du scanner voyage avec ses donnees.
-	g.InventoryDeltaAmmoRefused = dStats.AmmoRefused
-	// LA VERSION DU FILM, MEME GESTE QUE LA PRODUCTION (`build_from_film.go:104`) : elle est
-	// publiee en `coverage.filmMajorVersion`, donc c est une entree de l assemblage.
-	// L ERREUR DE CHARGEMENT NE SE JETTE PAS (revue R2, constat R2-1) : un fixture ne se cuit
-	// pas sur un film illisible, et la production journalise ce cas plutot que de le taire.
-	charge, errFilm := filmsource.LoadDir(dir, nil)
-	if errFilm != nil {
-		return nil, fmt.Errorf("chargement du film %s pour sa version majeure : %w", dir, errFilm)
-	}
-	if v, lue := filmdec.FilmMajorVersion(charge); lue {
-		g.FilmMajorVersion = &v
-	}
-	if g.CamoStates, _, err = filmdec.ScanFilmCamoStates(dir); err != nil {
-		return nil, err
-	}
-	if g.GrappleReads, _, err = filmdec.ScanFilmGrappleReads(dir); err != nil {
-		return nil, err
-	}
-	// MEME COMPOSANT, AUTRE TAG : les impulsions de capacite passent par LA MEME fonction que
-	// BuildFromFilm — le fixture porte ce que la production decode, pas une variante.
-	if g.AbilityImpulses, g.AbilityImpulseStats, err = filmdec.ScanFilmAbilityImpulses(dir); err != nil {
-		return nil, err
-	}
-	// LES CHARGES RESTANTES (v14) : la MEME fonction que BuildFromFilm, meme raison.
-	if g.AbilityCharges, g.AbilityChargeStats, err = filmdec.ScanFilmAbilityCharges(dir); err != nil {
-		return nil, err
-	}
-	if g.Placements, g.PlacementStats, err = filmdec.ScanFilmEquipmentPlacements(dir, &wr); err != nil {
-		return nil, err
-	}
-	// Les armes au sol passent par LA MEME fonction que BuildFromFilm : le fixture porte ce que
-	// la production decode, pas une variante de lecture — largeurs MPP calibrees comprises.
-	g.Pads = decodeFilmPadScansDir(dir, &wr, g.PlacementStats.Calibration.Widths)
-	if g.Grenades, err = filmdec.ScanFilmGrenadeThrows(dir); err != nil {
-		return nil, err
-	}
-	if g.Projectiles, err = filmdec.ScanFilmProjectiles(dir, &wr); err != nil {
-		return nil, err
-	}
-	if g.Deaths, err = ScanFilmDeaths(dir); err != nil {
-		return nil, err
-	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(g.Deaths))
+	lay, _, err := filmdec.DetectI0LayoutOf(charge)
 	if err != nil {
-		return nil, err
+		return filmdec.I0Layout{}, true, fmt.Errorf("decoupage i0 auto-detecte : %w", err)
 	}
-	table, collisions := injectiveOrEmpty(idx)
-	if collisions > 0 {
-		return nil, fmt.Errorf("index de joueur non injectif (%d collisions) — fixture refuse", collisions)
-	}
-	g.Indices = table
-	// L origine d horloge est lue par la MEME fonction que BuildFromFilm : le fixture porte
-	// l entree, pas une valeur recopiee a la main.
-	if g.ClockOriginUS, err = ScanFilmClockOrigin(dir); err != nil {
-		return nil, err
-	}
-	return g, nil
+	return lay, true, nil
 }
 
 // goldenMapQuant rend l'ENTREE DE CATALOGUE de Cliffhanger : bornes ET largeurs d'axe, comme

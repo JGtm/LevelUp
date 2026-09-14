@@ -19,19 +19,25 @@ const (
 
 func encodeGoldenInputs(g *goldenInputs) []byte {
 	w := &gwriter{b: []byte(goldenInputsMagic)}
-	slotIdx := encodeGoldenEntete(w, g)
-	encodeGoldenPositions(w, g, slotIdx)
+	encodeGoldenEntete(w, g)
+	encodePositionSection(w, g.Positions)
+	encodeBipedCreations(w, g.BipedCreations)
 	encodeGoldenEvenements(w, g)
+	encodeWeaponChanges(w, g.WeaponChanges)
+	encodePickups(w, g.Pickups, g.PickupStats)
 	encodeGoldenInventaire(w, g)
 	encodeGoldenCanauxDelta(w, g)
+	encodeEquipmentChanges(w, g.EquipmentChanges, g.EquipmentChangeStats)
 	encodeGoldenCapacites(w, g)
+	encodeZoomEvents(w, g.ZoomEvents)
 	encodeGoldenMonde(w, g)
+	encodeVehicleScan(w, g.Vehicles)
 	encodeGoldenQueue(w, g)
 	return w.b
 }
 
-// encodeGoldenEntete ecrit l en-tete du blob et rend la table des slots.
-func encodeGoldenEntete(w *gwriter, g *goldenInputs) map[uint32]int {
+// encodeGoldenEntete ecrit l en-tete du blob.
+func encodeGoldenEntete(w *gwriter, g *goldenInputs) {
 	w.str(g.Film)
 	// LE MODULE DE LA CARTE OUVRE LE BLOB (lot 0.D.3 bis). Les positions y sont des QUANTA :
 	// sans l entree de catalogue qui les a produites, elles ne se dequantifient pas — et avec
@@ -51,78 +57,7 @@ func encodeGoldenEntete(w *gwriter, g *goldenInputs) map[uint32]int {
 	if g.FilmMajorVersion != nil {
 		w.i(int64(*g.FilmMajorVersion))
 	}
-	w.u(g.ClockOriginUS)
-
-	// Table des slots : un slot tient sur 13 bits, mais un film n en emploie qu une centaine.
-	// L indirection ramene 2 octets a 1 sur chaque position.
-	slotIdx := map[uint32]int{}
-	var slots []uint32
-	for _, p := range g.Positions {
-		if _, ok := slotIdx[p.Slot]; !ok {
-			slotIdx[p.Slot] = len(slots)
-			slots = append(slots, p.Slot)
-		}
-	}
-	w.u(uint64(len(slots)))
-	for _, s := range slots {
-		w.u(uint64(s))
-	}
-	return slotIdx
-}
-
-// encodeGoldenPositions ecrit les positions de bipede.
-func encodeGoldenPositions(w *gwriter, g *goldenInputs, slotIdx map[uint32]int) {
-	w.u(uint64(len(g.Positions)))
-	var lastTS uint64
-	lastXYZ := map[uint32][3]int64{}
-	for _, p := range g.Positions {
-		w.u(p.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
-		lastTS = p.TimestampUS
-		w.u(uint64(slotIdx[p.Slot]))
-		var fl byte
-		if p.HasWorld {
-			fl |= gpHasWorld
-		}
-		if p.HasYaw {
-			fl |= gpHasYaw
-		}
-		if p.HasBody {
-			fl |= gpHasBody
-		}
-		if p.HasShield {
-			fl |= gpHasShield
-		}
-		w.byte8(fl)
-		if p.HasWorld {
-			// LES QUANTA DU FILM, PAS LES FLOTTANTS DERIVES (lot 0.D.3 bis). `X/Y/Z` sont
-			// le resultat de `DequantBipedAxis(Q[ax], ax, layout, bornes)` : porter `Q` et
-			// redequantifier a la relecture par LE MEME chemin rend la coordonnee a
-			// l identique, sans coder un flottant. Et un quantum est un ENTIER qui bouge
-			// peu d une position a la suivante : le delta signe tient sur un a deux octets,
-			// la ou les bits d un float32 n en tenaient aucun.
-			cur := [3]int64{int64(p.Q[0]), int64(p.Q[1]), int64(p.Q[2])}
-			prev := lastXYZ[p.Slot]
-			for a := 0; a < 3; a++ {
-				w.i(cur[a] - prev[a])
-			}
-			lastXYZ[p.Slot] = cur
-		}
-		if p.HasYaw {
-			// LES DEUX ANGLES D I21, ensemble : le cap et l elevation viennent du MEME
-			// composant et partagent leur validite. En serialiser un seul rendrait un
-			// fixture ou toutes les visees sont a plat.
-			w.u(uint64(p.YawRaw))
-			w.u(uint64(p.PitchRaw))
-		}
-		if p.HasBody {
-			w.f32(p.Body.Health)
-		}
-		if p.HasShield {
-			w.f32(p.Shield.Shield)
-			w.byte8(p.Shield.Q) // le QUANTUM : la regle du surbouclier (q > 64) le lit, pas la valeur clampee
-		}
-	}
-
+	w.u(g.FilmClockOriginUS)
 }
 
 // encodeGoldenEvenements ecrit tirs, equipements de depart, lancers et projectiles.
@@ -342,17 +277,17 @@ func encodeGoldenQueue(w *gwriter, g *goldenInputs) {
 		w.i(d.TimeMS)
 	}
 
-	w.u(uint64(g.Indices.Readings))
-	w.u(uint64(g.Indices.Disagreements))
-	xuids := make([]uint64, 0, len(g.Indices.ByXUID))
-	for x := range g.Indices.ByXUID {
+	w.u(uint64(g.PlayerIndices.Readings))
+	w.u(uint64(g.PlayerIndices.Disagreements))
+	xuids := make([]uint64, 0, len(g.PlayerIndices.ByXUID))
+	for x := range g.PlayerIndices.ByXUID {
 		xuids = append(xuids, x)
 	}
 	sort.Slice(xuids, func(i, j int) bool { return xuids[i] < xuids[j] })
 	w.u(uint64(len(xuids)))
 	for _, x := range xuids {
 		w.u(x)
-		w.i(int64(g.Indices.ByXUID[x]))
+		w.i(int64(g.PlayerIndices.ByXUID[x]))
 	}
 
 }
