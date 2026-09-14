@@ -1977,6 +1977,22 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       cas sur les 20 vies des 8 builds et consigner tout orphelin (une vie d'un échantillon sans
       mort ni fin de manche est un défaut de lecture, pas un cas à filtrer). S.
 
+- [ ] 1.9.13 **Une vie finit à une mort ÉCRITE, plus à un trou de réplication.** Né de l'oracle
+      utilisateur du 1.6.5 (D1 (1.6)) : sur les 20 vies d'un seul échantillon des 8 builds,
+      14 sont ORPHELINES — ni mort écrite, ni fin de manche, ni fin de film — et toutes sont
+      fermées par la règle de `build.go` qui ouvre une nouvelle vie dès qu'un trou de positions
+      dépasse `lifeGapUS` (5 s), le même seuil que `buildLifeSpans`. C'est une heuristique au
+      sens de D13 : la grammaire dit qu'une vie commence à une apparition et finit à une mort
+      écrite (kill feed / dead-state), à une fin de manche ou à la fin du film ; un trou de
+      réplication n'est pas une mort. Conversion : les tracks se découpent aux morts écrites du
+      joueur (registre d'identité 1.6 pour le lien), le trou devient une LACUNE de la même vie
+      (comptée : `coverage.tracks.gaps`), `lifeGapUS` reste le repli NOMMÉ et compté des seuls
+      joueurs sans mort écrite ; l'instrument `vies_un_echantillon_test.go` doit rendre 0 orpheline
+      sur les 8 builds. Tranche au passage D4 (1.6) (les 4 vies sans nom que le seuil cachait : des
+      fragments de vies nommées) et D5 (1.6) (les bornes de scène élargies par un point isolé, à
+      re-mesurer après conversion : si le point à −216 m de `084a804d` subsiste, c'est un fait du
+      film à instruire, pas à filtrer). M.
+
 Arbitrage du pilote (2026-09-13) : l'item 1.9.0 ci-dessus EST le registre des replis proposé par
 l'audit ; il entre les **62 replis anonymes** de la table (E) du registre 0.E, et ses 9 replis à
 défaut déjà mesuré sont listés dans son journal.
