@@ -41,7 +41,7 @@ SELECT mr.match_id, %s AS start_time_utc
 FROM match_registry mr
 WHERE mr.match_id IN (%s)
   AND EXISTS (SELECT 1 FROM match_participants mp WHERE mp.match_id = mr.match_id AND mp.xuid = ?)` +
-	campaignExclusionToken
+	clausePvEExclu + campaignExclusionToken
 
 // MatchsOuvrables verifie, pour `matchIDs`, lesquels `playerXUID` a REELLEMENT joues.
 //

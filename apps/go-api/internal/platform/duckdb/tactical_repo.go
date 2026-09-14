@@ -96,7 +96,7 @@ SELECT mr.map_id,
        COUNT(*) FILTER (WHERE mp.outcome = ?) AS defaites
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
-WHERE mp.xuid = ? AND mr.map_id IS NOT NULL AND mr.map_id <> ''` + campaignExclusionToken
+WHERE mp.xuid = ? AND mr.map_id IS NOT NULL AND mr.map_id <> ''` + clausePvEExclu + campaignExclusionToken
 
 // MapsPlayed liste les cartes jouees, matchs decroissants puis map_id.
 func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) ([]domain.TacticalMapRow, error) {

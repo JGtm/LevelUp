@@ -85,7 +85,7 @@ SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome, ` + colonneEligible + `,
                WHERE e.match_id = mr.match_id AND e.publishable) AS mesure
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
-WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + campaignExclusionToken
+WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + clausePvEExclu + campaignExclusionToken
 
 // colonneEligible : le jeton que `universSQL` remplace par le predicat d'eligibilite a la
 // cuisson (`analysis.SQLEligibleALaCuisson`).
@@ -95,6 +95,22 @@ WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + campaignExclusionToken
 // doit rester une constante entiere pour rester sous son radar (meme raison que le token
 // campagne juste au-dessus).
 const colonneEligible = "%ELIGIBLE_CUISSON%"
+
+// clausePvEExclu : LE FIREFIGHT N'EST PAS DE LA PORTEE TACTIQUE.
+//
+// L'application ne traite pas le PvE : ses cartes de Firefight n'ont ni fond de carte publie
+// (la vignette tombait en 404 sur « Cole Protocol »), ni adversaire humain dont mesurer les
+// positions. Une carte PvE dans la grille est donc une promesse vide, pas une donnee de plus.
+//
+// LE MEME PREDICAT QUE LES AUTRES LECTEURS PvP (Explorateur, Carriere, engagement) :
+// `COALESCE(mr.is_firefight, FALSE) = FALSE`, le drapeau du registre pose a la synchro depuis
+// `GameVariantCategory` — jamais un nom de carte ni un slug de titre, qui ne diraient rien
+// d'un autre titre.
+//
+// Se place AVANT campaignExclusionToken : le token doit rester le DERNIER fragment du WHERE
+// (garde-rail structurel campaign_exclusion_guard_test.go).
+const clausePvEExclu = `
+  AND COALESCE(mr.is_firefight, FALSE) = FALSE`
 
 // clauseAucunMatch : le predicat d'une liste blanche VIDE.
 //
