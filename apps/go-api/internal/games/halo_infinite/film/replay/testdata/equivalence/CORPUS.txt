@@ -19,6 +19,47 @@
 # compresses), a ne pas comparer colonne a colonne avec les lignes de 2026-09-02.
 #
 #
+#
+# REFERENCES RE-FIGEES AU COMMIT a752403da, SCHEMA 55, LE 2026-09-14 (lot 1.1.6). Les references
+# precedentes dataient du schema 54 : depuis le lot 1.0.4 — qui publie `coverage.tracks`
+# (`published`, `publishedPoints`, `refusedMinPoints`, `refusedPoints`, `minPoints`) et monte
+# `SchemaVersion` de 54 a 55 — CHAQUE lot voyait le meme ecart a l etape `artifact` sur les vingt
+# films, un rouge permanent qui masque le prochain vrai.
+#
+# UNE SEULE ETAPE BOUGE, `artifact`, sur les 20 films ; les 49 autres sont IDENTIQUES partout —
+# aucun balayage n a change. Delta d octets = la longueur exacte du champ neuf (94 o fixes plus
+# les chiffres) : +102 (x1), +103 (x2), +104 (x14), +105 (x2), +106 (x1). Le `git diff` des
+# vingt `.tsv` ne porte que vingt lignes, toutes `artifact`.
+#
+# POURQUOI ON PEUT RE-FIGER ICI, ET CE QUI L ETABLIT. Le lot 1.1 (equipe d un evenement du pied
+# lue a l octet 37 et non 55) ne peut pas changer le document cuit, et ce n est pas une opinion :
+# LA CHAINE DE CUISSON N APPELLE JAMAIS LE LECTEUR DU PIED. Ses points d entree dans
+# `objectiveevents` sont `StatRecordsCtx` (`replaybuild/matchfacts.go:98`) et `CaptureBurstTimes`
+# (`:253`) — plus les fonctions pures qui travaillent sur les enregistrements deja decodes
+# (`NamedEventsFrom`, `IdentifyNamedEventsByRound`, `ResolveRoundIdentity`, `ObjectiveTypeOf`).
+# `CaptureBurstTimes` ne lit que les chunks de type 2, jamais le pied.
+#
+# LE COMPTE EXACT DES APPELANTS (re-mesure de la ronde 2, constat C3 — la phrase precedente en
+# annoncait UN et il y en a SIX). `grep -rn "objectiveevents\.Extract(" --include=*.go apps/go-api/`
+# rend six lignes : UNE hors test, `cmd/diag_weapons_v3/process.go:37` (un diagnostic, pas la
+# cuisson), et CINQ dans des fichiers `_test.go` de `internal/games/halo_infinite/film/replay/`
+# (`bombe_b2_chronologie_test.go:402`, `colline_proprietaire_d2bis_test.go:170`,
+# `objectifs_phase0_nommage_test.go:229`, `oddball_crane_d4_test.go:174`,
+# `oddball_th10_d10_test.go:122`). Aucun binaire de production ne passe par la.
+# `FooterEvents`, lui, n a que DEUX appelants de production — `extract.go:168` (`extractCTF`) et
+# `extract.go:236` (`extractFromTh10`) — tous deux sous `Extract`. La conclusion tient donc,
+# mais elle repose sur six lignes, pas sur une.
+#
+# CE QUE LA MESURE AJOUTE A CE GRAPHE : une seule etape bouge (`artifact`), et son delta est
+# EXACTEMENT celui du champ publie par le lot 1.0.4 — pas un octet de plus, pas un de moins, sur
+# les vingt films. Deux faits independants, une seule conclusion. (Un controle complementaire a
+# ete joue le 2026-09-14 — les deux fichiers de production remis a HEAD, re-mesure sur
+# `51101d1d` et `bcb6d393`, memes empreintes et memes comptes — mais il ne pouvait pas rougir,
+# justement parce que la chaine n appelle pas ce code : il confirme, il ne prouve pas.)
+#
+# Les references de 2dad8d6df restent lisibles par `git show 2dad8d6df:<chemin du .tsv>`.
+#
+# HISTORIQUE — le bloc precedent (schema 54) :
 # REFERENCES RE-FIGEES AU COMMIT 2dad8d6df, SCHEMA 54, LE 2026-09-13 (lot 0.D.5, seconde fusion
 # de feat/v75 — c28f7da59, 55 commits de finitions et d'ajustements). DEUX ETAPES bougent sur les
 # 20 films, `flag` et `artifact` ; les 48 autres sont identiques partout. Attribution faite PAR
