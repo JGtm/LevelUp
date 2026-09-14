@@ -213,10 +213,38 @@ func sectionSante(b *strings.Builder, res *Result) {
 	fmt.Fprintf(b, "tags hors catalogue vus par la MARCHE : %d — compteur principal de table perimee\n",
 		h.TagOutOfCatalogueWalk)
 	fmt.Fprint(b, "   PORTEE : bruit MESURE nul sur 5 films, et AVEUGLE a un tag servi par le seul SCAN\n")
-	fmt.Fprintf(b, "publication ligne par ligne : %s (marge de bijection %d)\n",
-		autoriseeGolden(res.LineByLinePublishable()), res.BijectionMargin)
+	fmt.Fprintf(b, "publication ligne par ligne : %s (marge de bijection %d, bijection %s)\n",
+		autoriseeGolden(res.LineByLinePublishable()), res.BijectionMargin,
+		determineeGolden(res.BijectionDetermined))
 	fmt.Fprintf(b, "roster : %d nom(s) dont %d humain(s)%s\n",
 		len(res.Roster.Names), res.Roster.Humans, botsGolden(res.Roster))
+	sectionProvenance(b, res.Roster.FilmTable)
+}
+
+// sectionProvenance : D OU VIENT CHAQUE INDICE. Un artefact doit dire quelle part de lui vient
+// d une LECTURE et quelle part d un REPLI (D14 c du chantier, D-10 d ADR 0034).
+func sectionProvenance(b *strings.Builder, t FilmTablePinning) {
+	fmt.Fprint(b, "\n## PROVENANCE DES INDICES — la table du film est la SOURCE, l inference le REPLI\n")
+	if t.Refusal != FilmTableRead {
+		fmt.Fprintf(b, "table du film NON LUE (%s) : les %d indice(s) viennent tous de l inference\n",
+			t.Refusal, t.Inferred)
+		return
+	}
+	fmt.Fprintf(b, "table du film : build %s · %d siege(s) nomme(s) · %d indice(s) LU(S) · %d ajout(s) au roster\n",
+		t.Build, t.Seats, t.Pinned, t.AddedNames)
+	fmt.Fprintf(b, "repli : %d indice(s) laisse(s) a l inference par les votes du kill-feed\n", t.Inferred)
+	fmt.Fprintf(b, "refus de siege : bot deja epingle %d · nom deja epingle %d · indice hors 0..31 %d\n",
+		t.BotConflict, t.DuplicateName, t.OutOfRange)
+	fmt.Fprintf(b, "controle par le kill-feed (jamais une correction) : accord %d · contradiction %d · silence %d\n",
+		t.Agree, t.Contradict, t.Silent)
+}
+
+// determineeGolden : la bijection laisse-t-elle encore quelque chose d interchangeable ?
+func determineeGolden(d bool) string {
+	if d {
+		return "DETERMINEE (rien a inferer)"
+	}
+	return "inferee en partie"
 }
 
 func botsGolden(r Roster) string {
