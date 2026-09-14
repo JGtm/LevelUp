@@ -301,4 +301,23 @@ func decodeGoldenQueue(r *greader, g *goldenInputs) {
 		x := r.u()
 		g.PlayerIndices.ByXUID[x] = int(r.i())
 	}
+
+	g.FilmTable = decodeFilmTable(r)
+}
+
+// decodeFilmTable relit la TABLE DES JOUEURS DU FILM (v20, lot 1.6).
+func decodeFilmTable(r *greader) FilmPlayerTable {
+	t := FilmPlayerTable{Build: r.str(), Refusal: FilmTableRefusal(r.str())}
+	t.Occupied, t.Vacant = int(r.u()), int(r.u())
+	t.InterleavedVacant = r.bool8()
+	n := int(r.u())
+	if n == 0 {
+		return t
+	}
+	t.Seats = make([]FilmPlayerSeat, 0, n)
+	for k := 0; k < n && r.err == nil; k++ {
+		t.Seats = append(t.Seats, FilmPlayerSeat{
+			FilmIndex: int(r.i()), XUID: r.u(), Gamertag: r.str()})
+	}
+	return t
 }
