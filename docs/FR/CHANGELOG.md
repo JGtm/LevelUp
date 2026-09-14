@@ -6,6 +6,95 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [7.5.0] - Non publié
+
+> La version du film Theater. 2 791 commits et 453 fusions depuis `v7.3.0` (tag `a2719a68c`, 2026-08-04), 6 773 fichiers touchés — de loin la plus grosse version du projet. Halo écrit un film de chaque match et l'application ne l'avait jamais ouvert ; elle le décode désormais de bout en bout et en tire un **rejeu 2D vu du dessus**, un **onglet Tactique**, et une série de mesures qu'aucun champ d'API ne porte : l'arme de chaque frag, la portée des engagements, le niveau des armes de socle, les prises nettes de drapeau, les statistiques d'Assaut, et l'équipement lu comme utilisé / gardé / lâché. Tout ce qui vient du film est gardé par des capabilities fines `film.*` et n'existe que sur Halo Infinite. Trois ADR ont été écrits en chemin : **0032** (modes à manches), **0033** (population des sessions d'escouade), **0034** (décodeur de film — profil par build, cinq couches, une porte unique aux octets). **Des actions post-déploiement sont requises — voir *Ops*.**
+
+### Ajouté
+
+**Le décodeur de film et l'artefact de rejeu**
+
+- **Une grammaire ECS versionnée du film Theater** — la table des records du film est devenue une table versionnée de 1 081 lignes tenue par trois garde-rails, au lieu de constantes éparpillées dans les lecteurs. Le décodeur lit les bits en un seul endroit (`internal/games/halo_infinite/film/`, déplacé sous le paquet par titre selon l'ADR 0012, déplacement pur de 981 renommages), et tout l'aval lit des faits, jamais des octets. L'ADR 0034 fige les cinq couches — `source` → `profile` → `grammar` → `facts` → `replay` — et la règle selon laquelle un **build inconnu est une erreur typée et le film est mis de côté**, jamais décodé au jugé.
+- **La clé de déchiffrage est le build, pas la version majeure** — mesuré sur tous les calques : `HI_1_x_0`, lu dans `chunk_00`, est ce qui décide de la lecture d'un film. Une fixture de contrat par build (8 fixtures, 2,01 Mio, un seul jeu vivant par schéma) et un corpus d'équivalence par build (20 films) figent la sortie du décodeur en CI.
+- **`ReplayDocument`, schéma 54** — l'artefact de rejeu porte toute la trajectoire du match : positions, vies, inventaires, boucliers, épisodes de camouflage et de surbouclier, lignes de grappin, élévation de visée, tirs et frags, vols de grenade, véhicules et leur état inerte, poses d'équipement, ramassages et consommations, armes au sol avec leurs munitions exactes, socles d'armes et de bonus, les objectifs vivants (portages de drapeau, crâne, propriété de colline, bastions, bombe d'Assaut, couronne du VIP), l'état des zones, les scores par manche et la courbe de score. Le document **servi** est une projection pure du document **stocké** (`internal/domain/replaydoc`, 99 types, ratchet archlint) : un artefact sur disque et le contrat public peuvent bouger séparément.
+- **Huit capabilities fines** — `film.kill_source`, `film.weapon_shots`, `film.kill_positions`, `film.usage_summary`, `film.bomb_stats`, `film.flag_grabs_net`, `film.weapon_tiers` et `film.replay_artifact`, plus la clé de titre `replay` qui garde la page elle-même. Un titre qui n'en déclare pas une reçoit une réponse partielle propre ou un vrai 503 — jamais les données d'un autre titre, jamais de panique, jamais d'onglet mort (`registry_pages_film.go`, `replay_capability_gate_test.go`).
+- **Une chaîne de cuisson bornée** — un film = un processus enfant (`filmproc`, plafond mémoire souple, sentinelle +25 % et verrou solo), une file de construction durable, une étape post-synchronisation, un job d'administration `replay_build`, une purge récurrente, une CLI `backfill-replay` avec `--repair-impoverished`, et une notification Discord groupée quand les rejeux sont prêts. Le déploiement d'un ouvrier distant vers le VPS de calcul existe (job `deploy-worker`, `main` seulement) mais **rien n'est activé**.
+- **Le référentiel des cartes** — 109 fonds de carte rendus depuis les fichiers du jeu et convertis en WebP sans perte (−37,2 %), lus quel que soit le format ; un catalogue de socles d'armes de **1 549 emplacements sur 76 cartes**, mesurés au centimètre dans le `.mvar` ; un catalogue d'objectifs couvrant **128 cartes** (régénéré en entier, 73/73 cartes réseau, collines 133 → 273, Total Control et Firefight compris) ; les repères officiels, avec les zones Forge nommées à 100 %.
+- **177 sons du jeu** branchés sur le rejeu — armes, grenades, corps à corps, équipements, objectifs, annonceur et fanfare de fin — égalisés à −16 LUFS / −1 dBTP, coupés par défaut et filtrables par catégorie. Les banques de sons se nomment par hachage (les tags `hsc*` sont du Lua en clair), ce qui a débloqué les banques d'objectifs, de bobines et d'équipements.
+
+**Pages et blocs**
+
+- **La page de rejeu 2D** (`features/match-replay`) — toile avec zoom (paliers, molette, clavier, croix directionnelle) et glissement sans surcoût mémoire, barre de lecture à quatre pistes (Toi / Alliés / Dominance / Médias), pastilles de manche et message inter-manche, bandeau de score portant la cible de victoire, 25 calques composés en donnée, fiches joueur pilotées par la vie en cours de chaque emplacement, fil des éliminations calé sur le curseur avec médailles, icônes d'armes, assistances et parts de dégâts, tiroir de réglages, capture PNG, et un **export vidéo hors temps réel** (encodeur WebCodecs, surimpressions repeintes dans la toile, piste sonore mixée hors du temps réel, muxage MP4 par `mediabunny`).
+- **L'onglet Tactique** (`features/tactical`, 5e onglet d'Ascension, gardé par la capability `replay`) — une grille des cartes jouées avec leur bilan et un plancher d'échantillon, une vue d'analyse sur le plan de la carte répondant à six questions (temps passé, morts, frags, isolement, écart victoires/défaites, routes) avec un pas de grille adaptatif, quatre tuiles de KPI (matchs retenus, couverture, échange, morts en isolement), une carte de coordination d'équipe dont le rayon est lu par match dans le référentiel des variantes, des mini-plans sur les vignettes, et un clic de cellule qui **ouvre le rejeu à l'instant exact**.
+- **La portée des engagements** (`features/synthesis`, capability `weapon_range`) — portée basse (p10) / médiane / haute (p90) par arme plus le dénivelé signé, construits sur un proxy d'entame d'engagement validé (écart médian 1,24 m).
+- **Le niveau des armes** — les prises de socle ventilées en armes de base / de terrain / de puissance, socles de bonus et emplacement non identifié. La nature d'un emplacement vient de la **carte**, jamais du nom de l'arme (mesure du 2026-09-14 : juger au nom produirait 10 % de faux niveaux). `BaseShareMin = 0,05` des deux côtés — `internal/analysis/weapontier` (Go, les agrégats) et `model/weaponTier.ts` (web, la fiche de match) partagent les mêmes seuils écrits et les mêmes témoins : toute divergence est un bug, pas une variante. Stocké en table append-only par passe de décodage, avec une passe de rattrapage.
+- **Les prises nettes de drapeau** (capability `film.flag_grabs_net`) — jonglage replié sur une fenêtre de 1,5 s mesurée sur 13 films de Capture du drapeau ; table append-only par passe, rôle « prendre », publiées sur Escouade et Sessions.
+- **Les statistiques d'Assaut** — poses et désamorçages de bombe, porteurs tués et deux mesures de plus, calculées à la cuisson, persistées à la synchronisation et affichées dans la fiche de match ; `bomb_carriers_killed` passe de NULL à mesuré.
+- **L'équipement utilisé / gardé / gâché** — les trois issues par famille, avec les charges, publiées sur la Synthèse, l'Escouade et les Sessions depuis un bloc partagé unique (`features/_shared/usage`, garde-rail contre toute copie locale), en variantes comptes et parts, avec trait de parité, bande de régularité match par match et piste du lobby.
+- **« Les formes retenues »** (`features/squad/formes`) — six lectures d'une escouade sur 19 cartes et 3 blocs (équipement, armes spéciales, objectifs), solo contre escouade, avec un bloc Go `formes_retenues`.
+- **Les frags hors arme à feu** — répulseur, explosion, chute et sortie de carte ont leur source, leurs agrégats et leurs lignes dans la fiche de match ; le fil dit **de quoi** on est mort quand personne n'a tué.
+- **« Où ça se joue »** — les positions des frags et des morts sur la fiche de match, sous forme de plan quand la carte n'a pas d'image figée.
+- **Un pied de page projet** — source, licence, retours, soutien (Sponsors et PayPal) et mention de non-affiliation, tous issus d'une source de liens unique ; plus une page de confidentialité bilingue.
+
+### Modifié
+
+- **Les manches décident du score (ADR 0032)** — une table mesurée (`config/titles/{slug}/mappings/regulation.toml`, `[rounds_decide]`) plus `analysis.ReadTeamScore` : sur ces modes le score en points peut donner l'avantage au camp qui a perdu, donc ce sont les manches gagnées et perdues qui s'affichent, le score en points de l'API étant conservé à côté. Halo a des manches et des prolongations, jamais de mi-temps.
+- **Population d'escouade, un seul compte (ADR 0033)** — l'appartenance d'un match à la session d'une composition est indépendante de la présence à la fin : quitter un match n'est pas quitter la session. `composition_sessions[].match_count` devient la seule source d'un compte de session, `/filters/resolve` un repli de chargement seulement, avec deux ratchets.
+- **La cadence est par match, pas par minute** — chaque valeur d'usage est un nombre par **match mesuré**. Décision utilisateur du 2026-09-13, appliquée sur Sessions, Escouade, Synthèse et Séries temporelles.
+- **La fiche de match refondue** — un seul gabarit de carte pour la page, les trois tableaux difficiles à comparer deviennent des graphes, la courbe de score suit le mode, la distance par arme passe en sections, la répartition des frags passe à deux niveaux, le contrôle des armes spéciales est ventilé par niveau d'arme, et les équipements et armes qui n'ont rien changé se replient derrière les tournants.
+- **Séries temporelles et Synthèse** — objectifs ramenés à ce que le mode offrait, portée et usages migrés sur les Séries temporelles, carte de chaleur d'activité remise au format précédent avec un `visualMap` coloré et des cases vides invisibles, premier frag centré.
+- **Page Escouade** — l'échange en six cartes, assistances en barres empilées, joueur par carte avec axes partagés et légende unique, médailles en dernier, et « les formes retenues » portées intégralement.
+- **`filmdec` et `replay` déplacés sous `internal/games/halo_infinite/film/`** (ADR 0012) — déplacement pur de 981 renommages ; `internal/analysis/` ne porte plus de décodage propre à Halo.
+- **Légendes des graphes** — la palette d'ECharts s'était invitée dans 12 légendes ; jetons sémantiques uniquement, partout.
+- **Les bornes du rejeu ignorent les échantillons aberrants** — un échantillon aberrant ne définit plus le cadre ; 7 artefacts recuits.
+- **`X-Replay-Latest-Schema-Version`** exposé sous CORS, avec un badge d'administration qui dit si un artefact est à jour ou à recuire.
+- **`expected_win_prob` retiré de l'interface** — la mesure n'est pas assez fiable pour être montrée.
+- **Les mentions J'aime sont par spectateur**, avec un 401 imposé sur les 41 routes mutantes joueur.
+- **ADR 0023 phase 5** — les replis d'authentification hérités ont disparu : `MultiUserTokenStore` est l'unique source d'un refresh token. Plus d'environnement `SPNKR_*`, plus de `sync_meta.oauth_refresh_token`, plus de store mono-utilisateur. Les allowlists des sentinelles sont des ratchets vides.
+- **Dépendances** — js-yaml 4.3.1 (CVE-2026-59870, alerte haute), 20 montées mineures/correctives sur `apps/web`, kin-openapi 0.147.0, chi 5.3.2, x/crypto 0.55.0 ; la majeure de react-table et TypeScript 7 sont délibérément reportés, avec la raison écrite.
+- **`GET /admin/monitoring/errors` supprimée** — soak soldé, 0 appel dans les journaux conservés depuis le 2026-06-13 et route orpheline d'interface.
+
+### Corrigé
+
+- **LUSR — la corruption `h5_arena` fermée à la source** — l'index ART de `match_skill_rank` ment aussi ; la cause est corrigée, le lecteur remis sur la bonne vue `_latest`, un outil de diagnostic et de réparation ajouté, et le swap de la purge ne restaure plus une vue sur deux.
+- **Une vie n'est jamais anonyme** — chaque vie du film est nommée par l'occupation de son emplacement dans la trame ; les lecteurs qui tenaient « un emplacement = une piste nommée » pour acquis sont corrigés, et `match_lives` accepte les voies de nommage du registre d'identité. Une vie scindée ne perd plus ses portages de drapeau ni ses épisodes d'équipement.
+- **Le fil des éliminations ne casse plus sur les bots** — les lignes de bot sont nommées, les agrégats restent humains, et le suffixe `[bot]` ne se rend plus à l'écran.
+- **La fiche de match ne meurt plus pour tous les matchs** quand un instantané prend du retard sur sa requête, et l'absence et la panne ne sont plus le même 404.
+- **Le tableau des scores, le pont d'identité et les calques d'objectif** — l'affectation des drapeaux parcourt des événements datés et prend le drapeau là où l'objet est tombé (« jamais son propre drapeau » est un invariant), le crâne reçoit le même pont d'identité que le drapeau, la propriété de colline en Roi de la colline est désignée par le film, et la zone aveugle des bastions (un lâcher au pied d'un support n'est pas une rentrée) est fermée.
+- **Un film expiré du côté de Microsoft est classé absent** (`IsFilmGoneErr`) au lieu d'être réessayé sans fin ; le verrou de fichier Windows est reconnu en anglais aussi.
+- **La médaille VIP « Clash of Kings » retrouve son nom et son image** — seeds sans `ON CONFLICT` (table héritée sans clé primaire), réparation inconditionnelle du bouchon, et traduction bouchon purgée ; les images de médailles se rafraîchissent depuis le `metadata.json` et la planche de sprites du jeu.
+- **Le calque du plan tactique se pose sur le fond de carte** — indices signés, cadre du fond, Y inversé ; et le clic ne recharge plus la page.
+- **Les lancers de grenade sont rendus à leur lanceur**, le vol de projectile est coupé au pas impossible, et les props Forge sont attribués par carte.
+- **Mémoire** — quatre sinistres RAM distincts fermés : le trou était l'opérateur, pas le processus ; la cuisson d'artefacts en lot est désormais interdite sans accord explicite, et `filmproc.AcquireSolo` l'impose.
+
+### Ops
+
+- **Recuire les artefacts de rejeu** — `ReplayDocument.SchemaVersion` vaut 54 ; un artefact cuit à un schéma antérieur est servi avec un badge « à recuire » et certains calques restent vides. Lancer `backfill-replay` sur le parc après déploiement (un film = un processus enfant ; **jamais** de cuisson en lot sans accord explicite).
+- **Rafraîchir les catalogues de métadonnées** — `refresh-metadata medal-images` pour la planche de sprites des médailles ; les catalogues d'objectifs, de socles d'armes et de repères sont livrés avec la version sous `data/titles/halo_infinite/reference/`.
+- **L'ouvrier de rejeu distant est déployé mais non activé** — le job `deploy-worker` ne tourne que sur `main` et exige ses secrets ; rien ne change tant qu'il n'est pas allumé.
+- **Les tests `gamefiles` restent hors CI** — le corpus `internal/himap` exige une installation locale de Halo ; le tag est imposé sur tout le module par `internal/archlint/gamefiles_tag_test.go`. Le `go vet` de `himap` / `himodule` exige `CGO_ENABLED=1` (`ooz` est un paquet CGO).
+
+## [7.3.2] - 2026-09-05
+
+> Version corrective sur `main` : les collections de la page Classements ne peuvent plus sérialiser `null`.
+
+### Corrigé
+
+- **Classements — les collections ne sérialisent plus jamais `null`** — la garantie remonte des dépôts au service (`GetPage` + `GetCatalog`), avec le ratchet étendu aux 4 sorties de `GetPage` et aux 2 de `GetCatalog`. Un titre actif qui ne déclare pas `world.leaderboard` (`halo_5`) et une base sans instantané rendent tous deux `[]`. Revue adversariale : 0 constat.
+
+## [7.3.1] - 2026-09-03
+
+> Version corrective sur `main` : la page Classement mondial réparée, la démo publique débarrassée de tout identifiant, et une vague de montées de dépendances.
+
+### Corrigé
+
+- **Classement mondial — la page se répare et ne peut plus se dégrader en silence** — les pages qu'elle moissonne avaient déménagé, et la page servait un classement périmé au lieu de signaler l'échec. Un classement qui n'a pas pu être récupéré est désormais signalé comme tel ; un classement vide et une récupération en échec ne se rendent plus de la même façon.
+- **La démo publique n'embarque plus aucun identifiant** — `sync_meta` passe d'une liste d'exclusion à une entrée à une liste d'**inclusion** à défaut-refus : un champ ajouté en amont ne peut plus fuir dans le seed de démonstration par omission.
+
+### Modifié
+
+- **Dépendances** — js-yaml 4.3.1 (CVE-2026-59870, alerte haute), 20 montées mineures/correctives sur `apps/web` (PR #77), kin-openapi 0.147.0 / chi 5.3.2 / x/crypto 0.55.0 / modernc.org/sqlite 1.57.0 (PR #76). La majeure de react-table et TypeScript 7 sont reportés avec leurs raisons consignées (un `tsconfig` sans `baseUrl` est valide sous TS 6).
+
 ## [7.3.0] - 2026-07-26
 
 > Version d'ajustement bâtie sur le « backlog Notion v7.3 » (branche `feat/v7.3-notion-batch`) : un indicateur de prolongation mesuré sur une table réglementaire déclarative, un graphe premier frag / première mort qui remplace deux histogrammes qui se contredisaient, la rotation des journaux par taille, et une série de correctifs sur les objectifs Prestige, la démo, la page Réalisations de Halo 5, la bascule de langue et le chemin d'écriture DuckDB. Elle absorbe aussi le lot de corrections rapides **déployé par anticipation le 2026-07-26** (`1b18ae609` : assets `public/` dans l'image de production, vue objectifs dans le snapshot, mise en page de la vue de match, axe de participation Objectifs), qui n'a jamais porté de numéro de version propre. **Des actions post-déploiement sont requises — voir *Ops*.**
