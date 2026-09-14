@@ -1,3 +1,63 @@
+## [2026-09-14] Chantier decodeur — lot 1.4 (le cadre d'image-cle d'etat complet en production ; le temoin de marche delta attribue) — Complete (feat/decfilm-14 fusionnee dans feat/recherche-decodeur-film, 15bc6c82f)
+
+**Decision technique principale.** Les deux consommateurs de records d'image-cle
+(`navpoint_radial_scan.go`, `objective_scan.go`) lisent `WalkKeyframeFullState(pay, bit, reg)` —
+en-tete 108, mots de taille, etat par defaut — a la place de `TraverseEntity(br, reg, 0)` ;
+`KeyframeFullStateOpt` disparait (D8 : le cadre est CE QUE LE JEU LIT, pas une option), la boucle
+historique `WalkKeyframeBody` (en-tete 64 + masque) est supprimee (0 appelant de production,
+grep colle) ; `walkOneKeyframeRecord` reste `[~]` : 0 appelant de production, il porte la
+colonne « production » du comparateur archetype x modele qui mesure ce que le lot gagne.
+Compteur expvar `filmdec_keyframe_ti<N>_{closed,total}` (ADR 0009) par le mecanisme existant.
+`GrammarRev` `grammar-2026-09-14.4`, `SchemaVersion` 55 inchange (aucun octet cuit ne change).
+**Item 1.4.0 (ajoute par le pilote, D1 (1.3)) : le temoin fige de la marche delta est ATTRIBUE et
+re-fige.** Bisection sur la chaine premier-parent (690 points, worktrees detaches jetables,
+cache principal verifie intact) : M0, 0.D, 1.0, 1.1 ne bougent RIEN ; la derive est anterieure
+au chantier, en QUATRE marches : `62ba098b8` (01/09, bombe-visuel, +2/+2), `8f309ce86` (02/09,
+precision-arme, -5/-7), `736ccf3c3` (05/09, cuisson-perf + vehicules, 0/-8), `ffb27238c` (11/09,
+grammaire d'i9, +17/+10) ; puis 1.2 et 1.3 (lectures ajoutees). Le « sens que le contrat refuse »
+(records +16, aboutis -3) etait un artefact d'agregation : pris un a un, les six mouvements sont
+coherents. VERDICT DIVERGENCE sur les quatre : sur le point le plus suspect (`8f309ce86`), une
+seule ligne change de verdict, ti=49 7/7 -> 0/7, et la sonde du registre montre que
+`06dfe6d9` resolvait 64 archetypes dont ti=49..63 a ZERO composant (du bourrage : la traversee
+« aboutissait » sans rien lire) contre 49 apres — les 7 traversees perdues ne lisaient rien.
+Temoin re-fige avec l'attribution ecrite dans le fichier (edition datee), 3/3 conforme.
+
+**Resultats observes.** Mesure avant / apres : ti=11 sur 6 films de recherche 27 marches
+« abouties », 0 fermee -> 27 cassees (100 %) ; ti=11 sur 7 bobines 326 marches, 47 chainees,
+0 fermee -> 326 cassees ; ti=12 sur le temoin d'Assaut `c75f33b8` (569 records) 242 marches,
+7 chainees -> 0 marche, 569 cassees ; fermeture par archetype 19 337/62 686 = 30,8 % inchangee
+(ce golden mesure la MESURE, que 1.4 ne change pas : il fait rejoindre la production a la
+mesure). Correction d'une affirmation de la note 5a (D5 (1.4)) : le « 0 record ti=12 » de sa
+section C.2 venait de l'INSTRUMENT (horloge vide, `scanChunk` saute tout paquet sans
+`start_ms`), pas du corpus. Gates : gofmt vide, vet 0, 7 paquets ok (killcollector exige
+`CGO_ENABLED=1` + msys64/ucrt64 en tete du PATH), lint 0 issue ; regime court 9 identiques + 1
+different (`50247b26`, etape `killsource`) — controle decisif : la meme commande au commit de
+base rend la MEME empreinte, ecart HERITE du lot 1.3 (reference non re-figee, D4 (1.4)) : ce lot
+produit zero difference d'equivalence ; le pilote a re-fige `50247b26` sur la branche du lot
+(une ligne, empreinte identique a celle mesuree a la base, comparaison 1/1 identique). Corpus
+gate `--base 15309e89e` (17 min 16) : 12 temoins sur 13 a zero gain / zero perte ; `c75f33b8`
+(seul temoin d'Assaut, le seul ou le chemin de production s'engage) perd DEUX axes de
+COUVERTURE, `coverage.bombArmings.reads` 1 169 -> 1 148 et `.rises` 94 -> 73, le calque publie
+`bombArmings` (axe mesure du gate) ne bouge PAS ; -21 lectures pour -21 montees = une montee par
+lecture = des points isoles, signature du bruit que l'ancien cadre (en-tete 64 + masque)
+produisait sur des records mal cadres ; rejoue par le pilote sur ce seul temoin (manifeste
+reduit, 14,8 s) : exactement ces deux axes, exit 1. VERDICT PILOTE : divergence attendue,
+consignee au bloc « Cloture M1 » (le gate de jalon la remontrera contre une base anterieure a
+1.4). Verification du pilote (V8) : consommateurs, suppression, compteur, temoin, GrammarRev,
+baseline (aucun test renomme) lus sur pieces.
+Decouvertes §4 : D1 (1.4) le temoin de marche delta vit hors CI et rien n'oblige a le jouer
+(-> le porter sur les bobines versionnees, comme « n2 constant ») ; D2 (1.4) le « ratchet 0.A.3
+regenere 0 -> 14 % » du plan etait une erreur de citation (corrigee) ; D3 (1.4)
+`WalkKeyframeRecords` / `ChainKeyframeRecords` restent exportes et lisent le cadre delta sur une
+table d'image-cle ; D4 (1.4) reference `50247b26` (fermee par le pilote) ; D5 (1.4) l'artefact
+d'horloge vide de l'instrument de production.
+
+**Prochaine etape.** Push + CI ; lot 1.5 (identite et table des joueurs lues dans `chunk_00`,
+lecteurs purs) ; puis 1.6, 1.7, 1.8, famille 1.9 ; revue de jalon a la cloture de M1 sur
+`783ae680d..HEAD`, puis fusion feat/v75 + recuisson + backlog (go V9).
+
+---
+
 ## [2026-09-14] Chantier decodeur — lot 1.3 (les cinq etats par defaut manquants, relus chez l'ecrivain) — Complete (feat/decfilm-13 fusionnee dans feat/recherche-decodeur-film, 15309e89e ; premier lot sans revue par lot, V8)
 
 **Decision technique principale.** `defaultStateDeserByTI` recoit ti=14 `V ; R(5)`
