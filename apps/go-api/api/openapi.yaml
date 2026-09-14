@@ -11474,6 +11474,8 @@ components:
           $ref: '#/components/schemas/SkullCarriesCoverage'
         t0Film:
           $ref: '#/components/schemas/T0FilmCoverage'
+        tracks:
+          $ref: '#/components/schemas/TrackCoverage'
         translocations:
           $ref: '#/components/schemas/TranslocationCoverage'
         vehicles:
@@ -28219,6 +28221,31 @@ components:
         - slot
         - team
         - points
+      type: object
+    TrackCoverage:
+      additionalProperties: false
+      properties:
+        minPoints:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        publishedPoints:
+          format: int64
+          type: integer
+        refusedMinPoints:
+          format: int64
+          type: integer
+        refusedPoints:
+          format: int64
+          type: integer
+      required:
+        - published
+        - publishedPoints
+        - refusedMinPoints
+        - refusedPoints
+        - minPoints
       type: object
     Translocation:
       additionalProperties: false

@@ -6,15 +6,16 @@
 
 ## AXE DE TEMPS
 7568 frames · intervalle 100 ms · duree 756800 ms
-schema 54 · titre halo_infinite
+schema 55 · titre halo_infinite
 version majeure du film : 41
 origine de la frame 0 sur l horloge du fil : 51707 ms
 coup d envoi date par le film : 52107 ms · 147/147 piste(s) en mouvement · rafale 6 · marge depuis la frame 0 : 400 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
 147 trace(s) · 44697 point(s) de grille
-144 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
-occupation du slot dans le TEMPS) · 3 sans identite — un DEFAUT de nommage a instruire,
+seuil de publication 2 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — une vie d un seul echantillon n est pas une trajectoire
+147 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
 24734 point(s) portent un cap de visee · 24734 une elevation de visee · 10866 un bouclier · 229 une fraction de vie
 
@@ -30,19 +31,19 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2535450323793545  idx=7  "Fennec87607"
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-3037 rattache(s) / 3289 disponible(s) = 92.3 %
-rejets : slot introuvable=116 · slot ambigu=136 · hors fenetre=0 · sans trace publiee=0
+3275 rattache(s) / 3289 disponible(s) = 99.6 %
+rejets : slot introuvable=14 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 3289 = 3289 (equilibre : true)
 verdict : nominal
-3037 tir(s) publie(s) · 1645 avec un cap de visee lisible · 3037 avec une arme nommee
+3275 tir(s) publie(s) · 1780 avec un cap de visee lisible · 3275 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
-161 rattache(s) / 165 disponible(s) = 97.6 %
-rejets : slot introuvable=4 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+165 rattache(s) / 165 disponible(s) = 100.0 %
+rejets : slot introuvable=0 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 165 = 165 (equilibre : true)
 verdict : nominal
-par source : projectile=143 (aucun pont) · biped=18 (le pont a servi)
-par type : Frag=132 · Plasma=11 · Spike=18
+par source : projectile=148 (aucun pont) · biped=17 (le pont a servi)
+par type : Frag=134 · Plasma=11 · Spike=20
 
 ## PROJECTILES — le dernier point est la DERNIERE POSITION REPLIQUEE, jamais un impact
 258 trajectoire(s) · 2692 point(s) de grille
@@ -545,15 +546,15 @@ POWER-UPS (voie ti=37) — balaye=true · 769 creation(s) acceptee(s) -> 26 rete
     presence t0=6008 prouvee jusqu a 6084, absente a 6284
     presence t0=6906 prouvee jusqu a 7084, absente a 7284
     presence t0=7209 prouvee jusqu a 7484, absente a 7567
-70 occupation(s) achevee(s) publiee(s) · 0 datee(s) a l instant exact par l evenement natif · 0 avec un ramasseur nomme
+70 occupation(s) achevee(s) publiee(s) · 33 datee(s) a l instant exact par l evenement natif · 33 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 228 loadout(s) publie(s) · 8 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
-141 entree(s) · 140 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
-fermetures : 0 par le corps disponible · 1 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
-refus des fermetures : 7 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 0 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
+145 entree(s) · 145 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
+fermetures : 0 par le corps disponible · 0 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
+refus des fermetures : 0 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 0 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
 140 vie(s) nommee(s) / 147 — un rapport publie sans son denominateur ne se juge pas
 41 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
 verdict : nominal

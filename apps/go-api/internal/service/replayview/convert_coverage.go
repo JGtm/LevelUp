@@ -13,6 +13,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Shots:             toLayerCoverage(v.Shots),
 		Grenades:          toLayerCoverage(v.Grenades),
 		Objectives:        toLayerCoverage(v.Objectives),
+		Tracks:            ptrOf(v.Tracks, toTrackCoverage),
 		Projectiles:       ptrOf(v.Projectiles, toProjectileCoverage),
 		Equipment:         ptrOf(v.Equipment, toEquipmentCoverage),
 		Grapple:           ptrOf(v.Grapple, toGrappleCoverage),
@@ -55,6 +56,16 @@ func toLayerCoverage(v replay.LayerCoverage) replaydoc.LayerCoverage {
 		OutOfWindow:     v.OutOfWindow,
 		Unpublished:     v.Unpublished,
 		RefusedByRoster: v.RefusedByRoster,
+	}
+}
+
+func toTrackCoverage(v replay.TrackCoverage) replaydoc.TrackCoverage {
+	return replaydoc.TrackCoverage{
+		Published:        v.Published,
+		PublishedPoints:  v.PublishedPoints,
+		RefusedMinPoints: v.RefusedMinPoints,
+		RefusedPoints:    v.RefusedPoints,
+		MinPoints:        v.MinPoints,
 	}
 }
 

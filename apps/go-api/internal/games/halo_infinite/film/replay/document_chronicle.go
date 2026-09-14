@@ -1,5 +1,20 @@
 package replay
 
+// document_chronicle.go — LA CHRONIQUE DU SCHEMA : une entree par version, ce qu elle change
+// et pourquoi elle monte.
+//
+// EXEMPTION ECRITE AU SEUIL DES 500 LIGNES (CLAUDE.md regle 5, posee le 2026-09-14, lot 1.0
+// revue R1 constat R1-4). Ce fichier est APPEND-ONLY PAR CONSTRUCTION : une entree de chronique
+// decrit une montee de schema DEJA CUITE dans le parc, elle ne se reecrit pas et ne se supprime
+// pas — la relire est precisement ce qui permet de savoir ce qu un artefact ancien porte. Le
+// scinder par tranches de versions rendrait la lecture chronologique impossible et casserait
+// l extracteur unique (`testutil.ReplayChronicleVersions`, qui lit CE fichier et dont un
+// resultat vide rend inerte le garde-rail `document_shape_test.go`). Sa croissance est donc
+// attendue, bornee par le rythme des montees de schema, et n est pas de la dette.
+//
+// RETRAIT DE L EXEMPTION : le jour ou la chronique deviendrait une donnee (fichier versionne
+// hors source Go) lue par le meme extracteur — pas avant.
+
 //
 // v2 (2026-08-02, lot 3.1/3.2) : les trois tables de libellés deviennent BILINGUES
 // (`{en, fr}` au lieu d'une chaîne) et le type d'un lancer de grenade devient son RANG
@@ -1062,6 +1077,36 @@ package replay
 //	n'a pas fait    K/D/A 16 inchangé) NI l'équipe d'un joueur (elle vit dans la base). Détail,
 //	                mesures et instruction du résidu : `.ai/V7.5/v2/RESTES_E2_2026-09-08.md`.
 
+// v51 (2026-09-10, lot 4.3 — LE TABLEAU DE L'API NOMME LES CORPS HORS TABLE).
+//
+// ENTRÉE RESTAURÉE LE 2026-09-14 (lot 1.0, revue R2, constat R2-1). Elle n'avait JAMAIS été
+// écrite ici : la seule description de cette montée vivait dans les notes par version de
+// `document.go`, que le lot 1.0 a supprimées comme doublon — et le doublon était, pour v51, la
+// SOURCE UNIQUE. La chronique affirmait par ailleurs que 51 avait été SAUTÉE à une
+// renumérotation ; l'historique la contredit : `2fb53db4e` pose `SchemaVersion = 51` le
+// 2026-09-10 et `b6b198baf` la remplace par 52 le lendemain. Des artefacts ont donc été cuits
+// sous ce numéro, et un lecteur qui ne trouvait pas d'entrée ne pouvait pas dire ce qu'ils
+// portent. (32, elle, a bien été prise sur une branche puis renumérotée 33/34 au merge du
+// 2026-09-01 — cf. l'entrée v33 — donc aucun artefact intégré ne la porte.)
+//
+//	ce qui change   DEUX changements de CONTENU CUIT.
+//	                (1) `identity.bipedSlots[].bid` NAÎT : le tableau de l'API nomme les corps
+//	                dont l'index de participant est LU mais absent de `PlayerIndexTable`, et la
+//	                couverture bascule de `non_resolu/index_hors_table` vers `externe`. Mesuré
+//	                sur `4f77afc1` : 18 vies non résolues, dont 10 sur des index que
+//	                `BOT_METADATA` déclare. Au passage `roster[].bid` cesse d'être vide sur tout
+//	                le parc.
+//	                (2) `abilityLabels[].family` NAÎT : la table porte la FAMILLE du manifeste,
+//	                et le résumé d'usage joint dessus au lieu de reconstruire la famille par la
+//	                racine du libellé — d'où `UsageSummaryRev` us4 -> us5.
+//
+//	POURQUOI LA     Un artefact < 51 porte des vies de bot non résolues, un `bid` vide et aucune
+//	VERSION MONTE   famille d'équipement : le résumé d'usage ne peut pas être re-projeté sans
+//	                recuisson. La reprise du backfill se faisant par SchemaVersion, sans montée
+//	                rien ne le rattraperait.
+//
+//	détail          `structure_test.go` (paragraphe v51), qui porte les mêmes chiffres.
+//
 // v52 (2026-09-11, lot B — LES CORRECTIFS DU DÉCODEUR REPRIS DU FORK). Trois changements de
 // CONTENU CUIT, indépendants l'un de l'autre, et un compteur qui s'ajoute.
 //
@@ -1228,3 +1273,33 @@ package replay
 //	ce que le lot   le REDECODAGE lui-meme (`backfill-replay --only-existing` et le backlog
 //	n'a pas fait    killsource par `KillSourceDecoderRev`) : consigne du lot, il reste a lancer.
 //	                Detail : `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
+
+// v55 (2026-09-14, lot 1.0.4 du PLAN_DECODEUR_FILM) : LE REFUS DE PUBLICATION D'UNE VIE CESSE
+// D'ETRE MUET.
+//
+//	le defaut       `decimateTracks` ecarte toute vie dont la trajectoire decimee porte moins de
+//	                `MinPoints` echantillons (defaut 2 : une vie d'un seul point n'est pas une
+//	                trajectoire). Depuis l'origine du calque, ce refus ne se comptait NULLE PART
+//	                — ni dans l'artefact, ni au journal. Un document publiant 90 traces la ou le
+//	                film en porte 95 etait indistinguable d'un film a 90 vies, et tout lecteur
+//	                qui rapporte un compte de vies au film travaillait sur un denominateur
+//	                ampute sans le savoir.
+//
+//	le champ ajoute `coverage.tracks` : `published` / `publishedPoints` (le DENOMINATEUR, sans
+//	                lequel un compte de refus ne se juge pas), `refusedMinPoints` (les VIES
+//	                ecartees), `refusedPoints` (les points qu'elles portaient) et `minPoints`
+//	                (le seuil APPLIQUE — un compte de refus ne se relit pas sans savoir contre
+//	                quoi il a ete mesure). Les deux comptes de refus disent des choses
+//	                differentes : dix vies d'un point sont un pool de slots qui s'ouvre et se
+//	                referme ; une vie de dix points refusee serait un seuil mal regle.
+//
+//	ce qui NE       le seuil. `DefaultMinPoints` vaut 2 et le reste : ce lot PUBLIE le refus, il
+//	change PAS      ne le rediscute pas — la question appartient a l'utilisateur, et ces
+//	                compteurs sont exactement ce qui permet de la lui poser avec un chiffre.
+//	                Aucune trace publiee ne bouge, aucun autre calque ne bouge : le regime court
+//	                d'equivalence ne montre QUE ce champ.
+//
+//	POURQUOI LA     Le champ est optionnel, mais il decrit le document ENTIER, pas un calque
+//	VERSION MONTE   secondaire : un artefact 54 ne peut pas dire ce qu'il a refuse, et rien ne
+//	                permet de le deduire apres coup. La reprise du backfill se faisant par
+//	                SchemaVersion, sans montee aucune recuisson ne le rattraperait.

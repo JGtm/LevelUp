@@ -135,6 +135,10 @@ func (c LayerCoverage) warnIfLossy(layer string) {
 type Coverage struct {
 	Shots    LayerCoverage `json:"shots"`
 	Grenades LayerCoverage `json:"grenades"`
+	// Tracks est ce que le SEUIL DE PUBLICATION des traces a retenu et refusé (schéma 55, cf.
+	// TrackCoverage). Absente quand le film ne porte aucune position : il n'y a alors pas de
+	// seuil à appliquer, et publier des zéros laisserait croire à une mesure.
+	Tracks *TrackCoverage `json:"tracks,omitempty"`
 	// Projectiles est la couverture des TRAJECTOIRES DE PROJECTILE (cf. projectiles.go) :
 	// pistes décodées, trajectoires publiées, et celles qu'un PAS IMPOSSIBLE a coupées.
 	//

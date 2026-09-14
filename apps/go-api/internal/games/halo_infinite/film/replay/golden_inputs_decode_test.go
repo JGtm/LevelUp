@@ -11,18 +11,22 @@ import (
 )
 
 func decodeGoldenInputs(blob []byte, entry filmdec.MapQuantEntry) (*goldenInputs, error) {
-	g, r, slots, lay, world, err := decodeGoldenEntete(blob, entry)
+	g, r, lay, world, err := decodeGoldenEntete(blob, entry)
 	if err != nil {
 		return nil, err
 	}
-	if err := decodeGoldenPositions(r, g, slots, lay, world); err != nil {
-		return nil, err
-	}
+	g.Positions = decodePositionSection(r, lay, world)
+	g.BipedCreations = decodeBipedCreations(r)
 	decodeGoldenEvenements(r, g)
+	g.WeaponChanges = decodeWeaponChanges(r)
+	g.Pickups, g.PickupStats = decodePickups(r)
 	decodeGoldenInventaire(r, g)
 	decodeGoldenCanauxDelta(r, g)
+	g.EquipmentChanges, g.EquipmentChangeStats = decodeEquipmentChanges(r)
 	decodeGoldenCapacites(r, g)
+	g.ZoomEvents = decodeZoomEvents(r)
 	decodeGoldenMonde(r, g)
+	g.Vehicles = decodeVehicleScan(r, lay, world)
 	decodeGoldenQueue(r, g)
 	if r.err != nil {
 		return nil, r.err
@@ -36,16 +40,16 @@ func decodeGoldenInputs(blob []byte, entry filmdec.MapQuantEntry) (*goldenInputs
 
 // decodeGoldenEntete relit l en-tete, verifie carte et decoupage, et rend le lecteur arme.
 func decodeGoldenEntete(blob []byte, entry filmdec.MapQuantEntry) (
-	*goldenInputs, *greader, []uint32, filmdec.I0Layout, filmdec.Vec3Range, error,
+	*goldenInputs, *greader, filmdec.I0Layout, filmdec.Vec3Range, error,
 ) {
 	if len(blob) < len(goldenInputsMagic) || string(blob[:len(goldenInputsMagic)]) != goldenInputsMagic {
-		return nil, nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf("fixture d entrees : magie absente ou version inconnue — regenerer")
+		return nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf("fixture d entrees : magie absente ou version inconnue — regenerer")
 	}
 	r := &greader{b: blob, off: len(goldenInputsMagic)}
 	g := &goldenInputs{Film: r.str()}
 	g.MapModule = r.str()
 	if g.MapModule != entry.Module {
-		return nil, nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf("%w : fixture cuit pour %q, entree de catalogue fournie %q",
+		return nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf("%w : fixture cuit pour %q, entree de catalogue fournie %q",
 			errGoldenInputsCarte, g.MapModule, entry.Module)
 	}
 	for a := 0; a < 3; a++ {
@@ -68,10 +72,10 @@ func decodeGoldenEntete(blob []byte, entry filmdec.MapQuantEntry) (
 	impose := filmdec.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
 	switch {
 	case !g.LayoutDetected && (impose == nil || impose.AxisW != g.AxisW):
-		return nil, nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf("%w : fixture au decoupage %v (dit du CATALOGUE), catalogue %v",
+		return nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf("%w : fixture au decoupage %v (dit du CATALOGUE), catalogue %v",
 			errGoldenInputsDecoupage, g.AxisW, imposeAxisW(impose))
 	case g.LayoutDetected && impose != nil:
-		return nil, nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf(
+		return nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf(
 			"%w : fixture dit son decoupage %v AUTO-DETECTE, or le catalogue en impose un (%v)",
 			errGoldenInputsDecoupage, g.AxisW, impose.AxisW)
 	}
@@ -79,65 +83,8 @@ func decodeGoldenEntete(blob []byte, entry filmdec.MapQuantEntry) (
 	// quantifie, le second ou la carte commence et finit. Melanger les deux sources est ce qui
 	// rendait des coordonnees fausses sur Live Fire.
 	lay, world := filmdec.I0Layout{AxisW: g.AxisW}, entry.Range()
-	g.ClockOriginUS = r.u()
-
-	nSlots := int(r.u())
-	slots := make([]uint32, 0, nSlots)
-	for k := 0; k < nSlots && r.err == nil; k++ {
-		slots = append(slots, uint32(r.u()))
-	}
-
-	return g, r, slots, lay, world, nil
-}
-
-// decodeGoldenPositions relit les positions de bipede et redequantifie leurs coordonnees.
-func decodeGoldenPositions(r *greader, g *goldenInputs, slots []uint32,
-	lay filmdec.I0Layout, world filmdec.Vec3Range,
-) error {
-	n := int(r.u())
-	g.Positions = make([]filmdec.BipedPosition, 0, n)
-	var lastTS uint64
-	lastXYZ := map[uint32][3]int64{}
-	for k := 0; k < n && r.err == nil; k++ {
-		var p filmdec.BipedPosition
-		lastTS += r.u()
-		p.TimestampUS = lastTS
-		si := int(r.u())
-		if si >= len(slots) {
-			return fmt.Errorf("index de slot %d hors table (%d)", si, len(slots))
-		}
-		p.Slot = slots[si]
-		fl := r.byte8()
-		if fl&gpHasWorld != 0 {
-			p.HasWorld = true
-			prev := lastXYZ[p.Slot]
-			var cur [3]int64
-			for a := 0; a < 3; a++ {
-				cur[a] = prev[a] + r.i()
-			}
-			lastXYZ[p.Slot] = cur
-			p.Q = [3]uint32{uint32(cur[0]), uint32(cur[1]), uint32(cur[2])}
-			p.X = filmdec.DequantBipedAxis(p.Q[0], 0, lay, world)
-			p.Y = filmdec.DequantBipedAxis(p.Q[1], 1, lay, world)
-			p.Z = filmdec.DequantBipedAxis(p.Q[2], 2, lay, world)
-		}
-		if fl&gpHasYaw != 0 {
-			p.HasYaw = true
-			p.YawRaw = uint32(r.u())
-			p.PitchRaw = uint32(r.u())
-		}
-		if fl&gpHasBody != 0 {
-			p.HasBody = true
-			p.Body.Health = r.f32()
-		}
-		if fl&gpHasShield != 0 {
-			p.HasShield = true
-			p.Shield.Shield = r.f32()
-			p.Shield.Q = r.byte8()
-		}
-		g.Positions = append(g.Positions, p)
-	}
-	return nil
+	g.FilmClockOriginUS = r.u()
+	return g, r, lay, world, nil
 }
 
 // decodeGoldenEvenements relit tirs, equipements de depart, lancers et projectiles.
@@ -346,12 +293,12 @@ func decodeGoldenQueue(r *greader, g *goldenInputs) {
 		g.Deaths = append(g.Deaths, Death{XUID: r.u(), Gamertag: r.str(), TimeMS: r.i()})
 	}
 
-	g.Indices = PlayerIndexTable{ByXUID: map[uint64]int{}}
-	g.Indices.Readings = int(r.u())
-	g.Indices.Disagreements = int(r.u())
+	g.PlayerIndices = PlayerIndexTable{ByXUID: map[uint64]int{}}
+	g.PlayerIndices.Readings = int(r.u())
+	g.PlayerIndices.Disagreements = int(r.u())
 	n = int(r.u())
 	for k := 0; k < n && r.err == nil; k++ {
 		x := r.u()
-		g.Indices.ByXUID[x] = int(r.i())
+		g.PlayerIndices.ByXUID[x] = int(r.i())
 	}
 }

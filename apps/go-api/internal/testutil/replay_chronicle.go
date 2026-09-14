@@ -24,11 +24,22 @@ package testutil
 // L'extracteur les reconnait TOUTES LES TROIS, et rien d'autre : une version citee au fil d'une
 // phrase (« un artefact v7 doit se voir comme a re-cuire ») n'est pas une entree.
 //
-// DEUX NUMEROS N'EXISTENT PAS, ET C'EST ECRIT DANS LA CHRONIQUE ELLE-MEME : 32 et 51 ont ete
-// SAUTES a la renumerotation de deux lots paralleles (cf. l'entree v33, « renumerote 33/34 au
-// merge du 2026-09-01 »). La version 1, elle, est anterieure a la chronique. C'est pourquoi ce
-// helper rend CE QUE LA CHRONIQUE DECLARE et jamais un intervalle 1..N : un appelant qui
-// comblerait les trous affirmerait des versions qui n'ont jamais ete cuites.
+// UN SEUL NUMERO MANQUE, ET CE N'EST PAS CELUI QU'ON CROYAIT (corrige le 2026-09-14, lot 1.0
+// revue R2). Ce commentaire affirmait « 32 et 51 ont ete SAUTES a la renumerotation de deux lots
+// paralleles ». Sur pieces :
+//
+//	32   exact. Le lot l'a prise sur une branche (`a1f227424`) puis a ete renumerote 33/34 au
+//	     merge du 2026-09-01 (cf. l'entree v33 de la chronique) : aucun artefact integre ne la
+//	     porte, et aucune entree ne lui est due.
+//	51   FAUX. `2fb53db4e` pose `SchemaVersion = 51` le 2026-09-10, `b6b198baf` la remplace par
+//	     52 le lendemain : elle a ete LA constante de la ligne integree, et des artefacts ont
+//	     ete cuits sous ce numero. Son entree de chronique manquait depuis l'origine ; elle a
+//	     ete restauree le 2026-09-14.
+//
+// La version 1, elle, est anterieure a la chronique. C'est pourquoi ce helper rend CE QUE LA
+// CHRONIQUE DECLARE et jamais un intervalle 1..N : un appelant qui comblerait les trous
+// affirmerait des versions qui n'ont jamais ete cuites — mais une version CUITE dont l'entree
+// manque lui echappe aussi, en silence. C'est ce qui est arrive a la 51.
 
 import (
 	"fmt"

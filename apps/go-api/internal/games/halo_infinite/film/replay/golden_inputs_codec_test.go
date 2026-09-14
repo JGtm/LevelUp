@@ -113,7 +113,134 @@ func (r *greader) str() string {
 
 func (r *greader) bool8() bool { return r.byte8() == 1 }
 
-// Drapeaux de presence d une position, sur un octet.
+// encodePositionSection / decodePositionSection serialisent UNE suite de positions de bipede AVEC
+// sa table de slots.
+//
+// UN SEUL CODEC POUR LES DEUX SUITES (lot 1.0, 2026-09-14) : les positions de BIPEDE et celles
+// des VEHICULES (`VehicleScan.Positions`, lues a la meme grammaire sur la bande `ti=40`) ont la
+// meme forme. Un second codec aurait diverge du premier au premier champ ajoute — c est
+// exactement ce qui est arrive a la sequence de balayages elle-meme.
+//
+// LA TABLE DES SLOTS EST DANS LA SECTION, et non dans l en-tete du blob : un slot tient sur
+// 13 bits mais un film n en emploie qu une centaine, et l indirection ramene 2 octets a 1 sur
+// chaque position. Chaque suite a la sienne — celle des vehicules n est pas celle des bipedes.
+func encodePositionSection(w *gwriter, pos []filmdec.BipedPosition) {
+	slotIdx := map[uint32]int{}
+	var slots []uint32
+	for _, p := range pos {
+		if _, ok := slotIdx[p.Slot]; !ok {
+			slotIdx[p.Slot] = len(slots)
+			slots = append(slots, p.Slot)
+		}
+	}
+	w.u(uint64(len(slots)))
+	for _, s := range slots {
+		w.u(uint64(s))
+	}
+	w.u(uint64(len(pos)))
+	var lastTS uint64
+	lastXYZ := map[uint32][3]int64{}
+	for _, p := range pos {
+		w.u(p.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
+		lastTS = p.TimestampUS
+		w.u(uint64(slotIdx[p.Slot]))
+		var fl byte
+		if p.HasWorld {
+			fl |= gpHasWorld
+		}
+		if p.HasYaw {
+			fl |= gpHasYaw
+		}
+		if p.HasBody {
+			fl |= gpHasBody
+		}
+		if p.HasShield {
+			fl |= gpHasShield
+		}
+		w.byte8(fl)
+		if p.HasWorld {
+			// LES QUANTA DU FILM, PAS LES FLOTTANTS DERIVES (lot 0.D.3 bis). `X/Y/Z` sont
+			// le resultat de `DequantBipedAxis(Q[ax], ax, layout, bornes)` : porter `Q` et
+			// redequantifier a la relecture par LE MEME chemin rend la coordonnee a
+			// l identique, sans coder un flottant. Et un quantum est un ENTIER qui bouge
+			// peu d une position a la suivante : le delta signe tient sur un a deux octets,
+			// la ou les bits d un float32 n en tenaient aucun.
+			cur := [3]int64{int64(p.Q[0]), int64(p.Q[1]), int64(p.Q[2])}
+			prev := lastXYZ[p.Slot]
+			for a := 0; a < 3; a++ {
+				w.i(cur[a] - prev[a])
+			}
+			lastXYZ[p.Slot] = cur
+		}
+		if p.HasYaw {
+			// LES DEUX ANGLES D I21, ensemble : le cap et l elevation viennent du MEME
+			// composant et partagent leur validite. En serialiser un seul rendrait un
+			// fixture ou toutes les visees sont a plat.
+			w.u(uint64(p.YawRaw))
+			w.u(uint64(p.PitchRaw))
+		}
+		if p.HasBody {
+			w.f32(p.Body.Health)
+		}
+		if p.HasShield {
+			w.f32(p.Shield.Shield)
+			w.byte8(p.Shield.Q) // le QUANTUM : la regle du surbouclier (q > 64) le lit, pas la valeur clampee
+		}
+	}
+}
+
+func decodePositionSection(r *greader, lay filmdec.I0Layout, world filmdec.Vec3Range) []filmdec.BipedPosition {
+	nSlots := int(r.u())
+	slots := make([]uint32, 0, nSlots)
+	for k := 0; k < nSlots && r.err == nil; k++ {
+		slots = append(slots, uint32(r.u()))
+	}
+	n := int(r.u())
+	out := make([]filmdec.BipedPosition, 0, n)
+	var lastTS uint64
+	lastXYZ := map[uint32][3]int64{}
+	for k := 0; k < n && r.err == nil; k++ {
+		var p filmdec.BipedPosition
+		lastTS += r.u()
+		p.TimestampUS = lastTS
+		si := int(r.u())
+		if si >= len(slots) {
+			r.err = fmt.Errorf("index de slot %d hors table (%d)", si, len(slots))
+			return out
+		}
+		p.Slot = slots[si]
+		fl := r.byte8()
+		if fl&gpHasWorld != 0 {
+			p.HasWorld = true
+			prev := lastXYZ[p.Slot]
+			var cur [3]int64
+			for a := 0; a < 3; a++ {
+				cur[a] = prev[a] + r.i()
+			}
+			lastXYZ[p.Slot] = cur
+			p.Q = [3]uint32{uint32(cur[0]), uint32(cur[1]), uint32(cur[2])}
+			p.X = filmdec.DequantBipedAxis(p.Q[0], 0, lay, world)
+			p.Y = filmdec.DequantBipedAxis(p.Q[1], 1, lay, world)
+			p.Z = filmdec.DequantBipedAxis(p.Q[2], 2, lay, world)
+		}
+		if fl&gpHasYaw != 0 {
+			p.HasYaw = true
+			p.YawRaw = uint32(r.u())
+			p.PitchRaw = uint32(r.u())
+		}
+		if fl&gpHasBody != 0 {
+			p.HasBody = true
+			p.Body.Health = r.f32()
+		}
+		if fl&gpHasShield != 0 {
+			p.HasShield = true
+			p.Shield.Shield = r.f32()
+			p.Shield.Q = r.byte8()
+		}
+		out = append(out, p)
+	}
+	return out
+}
 
 func encodeTracks(w *gwriter, tracks []filmdec.ProjectileTrack) {
 	w.u(uint64(len(tracks)))
@@ -174,9 +301,36 @@ func decodeTracks(r *greader) []filmdec.ProjectileTrack {
 // pas ce que le decodage a traverse.
 func encodeWorldObjectScan(w *gwriter, s WorldObjectScan) {
 	w.bool8(s.Scanned)
-	w.u(uint64(len(s.Creations)))
+	encodeCreations(w, s.Creations)
+	w.u(uint64(s.Stats.Slots))
+	w.u(uint64(s.Stats.Anchors))
+	w.u(uint64(s.Stats.Accepted))
+	encodeKeyframes(w, s.Keyframes)
+	encodeTracks(w, s.Tracks)
+}
+
+func decodeWorldObjectScan(r *greader) WorldObjectScan {
+	s := WorldObjectScan{Scanned: r.bool8()}
+	s.Creations = decodeCreations(r)
+	s.Stats.Slots, s.Stats.Anchors, s.Stats.Accepted = int(r.u()), int(r.u()), int(r.u())
+	s.Keyframes = decodeKeyframes(r)
+	s.Tracks = decodeTracks(r)
+	return s
+}
+
+// encodeCreations / decodeCreations serialisent les records de CREATION d un archetype d objet du
+// monde : position i0, instant, identite MPP.
+//
+// SORTI DE `encodeWorldObjectScan` AU LOT 1.0 : les VEHICULES (`VehicleScan.Creations`) portent
+// exactement les memes records, et un second codec aurait diverge du premier.
+//
+// L IDENTITE TIENT DANS `MPPWord32`, ET ELLE SEULE : c est le mot inconditionnel du bloc MPP —
+// le GlobalID du tag `eqip` pour ti=37, l identite du chassis pour ti=40 (cf.
+// filmdec/vehicle_creation.go). Les trois autres champs du bloc ne sont lus par aucun assemblage.
+func encodeCreations(w *gwriter, creations []filmdec.EquipmentCreation) {
+	w.u(uint64(len(creations)))
 	var lastTS uint64
-	for _, c := range s.Creations {
+	for _, c := range creations {
 		w.u(c.TimestampUS - lastTS) // les creations sortent du balayage dans l ordre du film
 		lastTS = c.TimestampUS
 		w.u(uint64(c.Slot))
@@ -187,19 +341,41 @@ func encodeWorldObjectScan(w *gwriter, s WorldObjectScan) {
 		w.bool8(c.MPPPresent[filmdec.MPPWord32])
 		w.u(c.MPPVal[filmdec.MPPWord32])
 	}
-	w.u(uint64(s.Stats.Slots))
-	w.u(uint64(s.Stats.Anchors))
-	w.u(uint64(s.Stats.Accepted))
-	w.u(uint64(len(s.Keyframes.TimesUS)))
-	lastTS = 0
-	for _, t := range s.Keyframes.TimesUS {
+}
+
+func decodeCreations(r *greader) []filmdec.EquipmentCreation {
+	n := int(r.u())
+	out := make([]filmdec.EquipmentCreation, 0, n)
+	var lastTS uint64
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		c := filmdec.EquipmentCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Gen: uint32(r.u())}
+		c.X, c.Y, c.Z = r.f32(), r.f32(), r.f32()
+		c.MPPPresent[filmdec.MPPWord32] = r.bool8()
+		c.MPPVal[filmdec.MPPWord32] = r.u()
+		out = append(out, c)
+	}
+	return out
+}
+
+// encodeKeyframes / decodeKeyframes serialisent le RECENSEMENT d images-cles qui borne les
+// disparitions d un archetype : l axe des images-cles du film, et les instants ou chaque vie
+// d objet y est vue.
+//
+// LA BANDE DE SLOTS N EST PAS SERIALISEE, et c est delibere : l assemblage ne la lit pas (elle
+// sert au seul balayage, qui a deja eu lieu). Le fixture porte ce que l assemblage CONSOMME, pas
+// ce que le decodage a traverse.
+func encodeKeyframes(w *gwriter, kf filmdec.WorldObjectKeyframes) {
+	w.u(uint64(len(kf.TimesUS)))
+	var lastTS uint64
+	for _, t := range kf.TimesUS {
 		w.u(t - lastTS)
 		lastTS = t
 	}
 	// L ORDRE DES CLES EST RENDU TOTAL : une map Go s itere au hasard, et un fixture dont les
 	// octets changent a chaque regeneration n est plus un fixture.
-	keys := make([]filmdec.EquipmentLifeKey, 0, len(s.Keyframes.SeenUS))
-	for k := range s.Keyframes.SeenUS {
+	keys := make([]filmdec.EquipmentLifeKey, 0, len(kf.SeenUS))
+	for k := range kf.SeenUS {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
@@ -212,7 +388,7 @@ func encodeWorldObjectScan(w *gwriter, s WorldObjectScan) {
 	for _, k := range keys {
 		w.u(uint64(k.Slot))
 		w.u(uint64(k.Gen))
-		seen := s.Keyframes.SeenUS[k]
+		seen := kf.SeenUS[k]
 		w.u(uint64(len(seen)))
 		lastTS = 0
 		for _, t := range seen {
@@ -220,32 +396,19 @@ func encodeWorldObjectScan(w *gwriter, s WorldObjectScan) {
 			lastTS = t
 		}
 	}
-	encodeTracks(w, s.Tracks)
 }
 
-func decodeWorldObjectScan(r *greader) WorldObjectScan {
-	s := WorldObjectScan{Scanned: r.bool8()}
+func decodeKeyframes(r *greader) filmdec.WorldObjectKeyframes {
+	var kf filmdec.WorldObjectKeyframes
 	n := int(r.u())
-	s.Creations = make([]filmdec.EquipmentCreation, 0, n)
+	kf.TimesUS = make([]uint64, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		c := filmdec.EquipmentCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Gen: uint32(r.u())}
-		c.X, c.Y, c.Z = r.f32(), r.f32(), r.f32()
-		c.MPPPresent[filmdec.MPPWord32] = r.bool8()
-		c.MPPVal[filmdec.MPPWord32] = r.u()
-		s.Creations = append(s.Creations, c)
-	}
-	s.Stats.Slots, s.Stats.Anchors, s.Stats.Accepted = int(r.u()), int(r.u()), int(r.u())
-	n = int(r.u())
-	s.Keyframes.TimesUS = make([]uint64, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		s.Keyframes.TimesUS = append(s.Keyframes.TimesUS, lastTS)
+		kf.TimesUS = append(kf.TimesUS, lastTS)
 	}
 	n = int(r.u())
-	s.Keyframes.SeenUS = make(map[filmdec.EquipmentLifeKey][]uint64, n)
+	kf.SeenUS = make(map[filmdec.EquipmentLifeKey][]uint64, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		key := filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		np := int(r.u())
@@ -255,10 +418,9 @@ func decodeWorldObjectScan(r *greader) WorldObjectScan {
 			lastTS += r.u()
 			seen = append(seen, lastTS)
 		}
-		s.Keyframes.SeenUS[key] = seen
+		kf.SeenUS[key] = seen
 	}
-	s.Tracks = decodeTracks(r)
-	return s
+	return kf
 }
 
 // encodeAmmo serialise un emplacement de munitions. LES TROIS CAS SONT DISTINCTS (chargeur,

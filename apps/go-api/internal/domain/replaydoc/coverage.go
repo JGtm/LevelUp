@@ -9,6 +9,7 @@ type Coverage struct {
 	Shots             LayerCoverage               `json:"shots"`
 	Grenades          LayerCoverage               `json:"grenades"`
 	Objectives        LayerCoverage               `json:"objectives"`
+	Tracks            *TrackCoverage              `json:"tracks,omitempty"`
 	Projectiles       *ProjectileCoverage         `json:"projectiles,omitempty"`
 	Equipment         *EquipmentCoverage          `json:"equipment,omitempty"`
 	Grapple           *GrappleCoverage            `json:"grapple,omitempty"`
@@ -143,6 +144,18 @@ type InventoryCoverage struct {
 	DroppedBeforeOrigin int `json:"droppedBeforeOrigin"`
 	Unpublished         int `json:"unpublished"`
 	Published           int `json:"published"`
+}
+
+// TrackCoverage est ce que le SEUIL DE PUBLICATION des traces retient et refuse. Le refus était
+// MUET avant le schéma 55 : un document publiant 90 traces là où le film en porte 95 était
+// indistinguable d'un film à 90 vies. `minPoints` voyage avec ses conséquences — un compte de
+// refus ne se relit pas sans savoir contre quoi il a été mesuré.
+type TrackCoverage struct {
+	Published        int `json:"published"`
+	PublishedPoints  int `json:"publishedPoints"`
+	RefusedMinPoints int `json:"refusedMinPoints"`
+	RefusedPoints    int `json:"refusedPoints"`
+	MinPoints        int `json:"minPoints"`
 }
 
 // ProjectileCoverage est la couverture des TRAJECTOIRES DE PROJECTILE : pistes décodées,

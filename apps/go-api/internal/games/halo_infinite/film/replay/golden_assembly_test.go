@@ -44,32 +44,47 @@ const (
 	// CES CHIFFRES NE SE COMPARENT PAS COMME LES ETAPES D UN MEME PROGRES. 496 venait d un CHOIX
 	// (4 desaccords entre sources) ; 483 vient d une DEDUCTION qui s abstient des qu il reste
 	// deux candidats, et dont les refus sont comptes et publies.
-	wantShotsAttached  = 483
+	//
+	// 504/519 = 97,1 % DEPUIS LE 2026-09-14 (lot 1.0), ET CE N EST PAS UN ELARGISSEMENT. Le
+	// fixture d entrees ne portait PAS les records de creation de bipede — le lien DIRECT
+	// corps -> joueur que le film ECRIT (lot E2) — parce que son chemin recopiait la sequence de
+	// balayages de `BuildFromFilm` et que ce canal n y figurait pas (decouverte D7). Le golden
+	// decrivait donc un pont bati SANS sa source premiere. La production, elle, le lit depuis le
+	// 2026-09-08 : ce fixture rattrape le document servi, il ne change pas de regle. Mesure du
+	// meme geste : les rejets « slot introuvable » passent de 36 a 15.
+	wantShotsAttached  = 504
 	wantShotsAvailable = 519
 	// wantClosedByShot / wantClosedByRespawn : ce que les fermetures ajoutent sur ce film.
-	// La fermeture A n y ferme RIEN (ses candidates sont contestees) ; c est B qui porte les
-	// 3 entrees — 5 avant la ronde de correction du 2026-08-09, dont DEUX revendiquaient la meme
-	// mort qu une autre vie. Sur d autres films le partage s inverse : cf. §7.5 du verdict.
+	// La fermeture A n y ferme RIEN (ses candidates sont contestees) ; B en portait 3 — 5 avant
+	// la ronde de correction du 2026-08-09, dont DEUX revendiquaient la meme mort qu une autre
+	// vie. Sur d autres films le partage s inverse : cf. §7.5 du verdict.
+	//
+	// LES DEUX SONT A ZERO DEPUIS LE 2026-09-14 (lot 1.0), ET C EST LA BONNE NOUVELLE : les
+	// fermetures sont des DEDUCTIONS PAR ELIMINATION, employees quand la lecture ne dit rien.
+	// Le fixture porte desormais le lien direct corps -> joueur, donc les 99 entrees du pont
+	// viennent TOUTES de la lecture (99/99, contre 90/93) et il ne reste rien a deduire. Zero
+	// fermeture sur un pont complet n est pas une fermeture cassee : c est une fermeture inutile.
 	wantClosedByShot    = 0
-	wantClosedByRespawn = 3
+	wantClosedByRespawn = 0
 	// wantLivesNamed / wantLivesTotal : 90 vies nommees sur 105. Les 15 restantes sont 4 vies
 	// anterieures au debut reel du match et 6 survivants de fin de partie, que le film ne clot
 	// par aucun evenement.
 	wantLivesNamed = 90
 	wantLivesTotal = 105
-	// wantGrenades : 69 lancers situes sur 70 — 63 par la naissance de leur projectile, 6 par le
-	// biped de leur auteur (65 / 5 avant le 2026-09-11).
+	// wantGrenades : 70 lancers situes sur 70 — 65 par la naissance de leur projectile, 5 par le
+	// biped de leur auteur.
 	//
-	// C ETAIT 70 JUSQU AU 2026-09-11, ET LE LANCER PERDU EST UN GAIN. Le choix de la naissance
-	// revient desormais au biped de l auteur (cf. locateThrow) ; celui-la n a PAS d auteur ponte
-	// et sa fenetre de 200 ms porte DIX naissances, dont huit au meme instant a moins d un metre
-	// les unes des autres — une rafale de sous-projectiles. L ancien code en prenait une par
-	// proximite temporelle, soit un tirage au sort sur dix. On s abstient.
+	// CE FUT 69 DU 2026-09-11 AU 2026-09-14, ET LE LANCER RETROUVE EST LE MEME GAIN QUE LES
+	// TIRS. Le choix de la naissance revient au biped de l auteur (cf. locateThrow) ; ce
+	// lancer-la n avait PAS d auteur ponte dans le fixture, et sa fenetre de 200 ms portait DIX
+	// naissances — le calque s abstenait, a raison. Il a un auteur depuis que le fixture porte
+	// le lien direct corps -> joueur (lot 1.0) : la regle n a pas bouge, c est l entree qui est
+	// enfin celle de la production. L abstention reste armee et reste comptee.
 	//
-	// LES 64 RESTANTS SONT MESURES : distance mediane du lancer au biped de son lanceur 0,44 m,
-	// pire cas 0,56 m (contre 14,46 m avant), 0 lancer au-dela de 4 m (contre 2) — banc
-	// `grenade_ecart_research_test.go`, 2026-09-11.
-	wantGrenades = 69
+	// LA MESURE DE JUSTESSE TIENT : distance mediane du lancer au biped de son lanceur 0,44 m,
+	// pire cas 0,56 m (contre 14,46 m avant le 2026-09-11), 0 lancer au-dela de 4 m — banc
+	// `grenade_ecart_research_test.go`.
+	wantGrenades = 70
 	// wantGrenadesAvailable : 70 lancers decodes — le DENOMINATEUR, et il ne bouge pas. Un
 	// rattachement qui s abstient se compte ; il ne se retire pas du disponible.
 	wantGrenadesAvailable = 70
@@ -169,12 +184,13 @@ func ligneAssembly(ls []string, i int) string {
 // Les tests NOMMES : un chiffre du chantier, une phrase, un test.
 // ---------------------------------------------------------------------------
 
-// TestShotsCoverageIsFourEightyThreeOfFiveNineteen : LE CHIFFRE CENTRAL DU CHANTIER.
+// TestShotsCoverageIsFiveHundredFourOfFiveNineteen : LE CHIFFRE CENTRAL DU CHANTIER.
 //
-// 483 tirs rattaches sur 519 disponibles. Le denominateur compte autant que le numerateur :
-// publier 483 sans dire 519 laisserait croire a l exhaustivite. Le rapport et la ventilation
-// des rejets sont donc verifies ensemble.
-func TestShotsCoverageIsFourEightyThreeOfFiveNineteen(t *testing.T) {
+// 504 tirs rattaches sur 519 disponibles. Le denominateur compte autant que le numerateur :
+// publier 504 sans dire 519 laisserait croire a l exhaustivite. Le rapport et la ventilation
+// des rejets sont donc verifies ensemble. (483/519 jusqu au lot 1.0 du 2026-09-14, qui fait
+// entrer au fixture le lien direct corps -> joueur : cf. wantShotsAttached.)
+func TestShotsCoverageIsFiveHundredFourOfFiveNineteen(t *testing.T) {
 	doc := buildGolden(t)
 	c := doc.Coverage.Shots
 	if c.Attached != wantShotsAttached || c.Available != wantShotsAvailable {
@@ -242,9 +258,11 @@ func TestBridgeNamesNinetyLivesOfHundredFive(t *testing.T) {
 // source est verifie parce qu un basculement silencieux de l une vers l autre changerait la
 // signification du calque sans changer son total.
 //
-// LE DENOMINATEUR ET LE PUBLIE SE SONT SEPARES LE 2026-09-11 : 70 lancers decodes, 69 poses.
-// Le soixante-dixieme n a pas d auteur ponte et sa fenetre porte DIX naissances — l abstention
-// est le correctif, pas la perte (cf. wantGrenades).
+// LE DENOMINATEUR ET LE PUBLIE S ETAIENT SEPARES LE 2026-09-11 (70 decodes, 69 poses) : le
+// soixante-dixieme n avait pas d auteur ponte et sa fenetre portait DIX naissances —
+// l abstention etait le correctif, pas la perte. Ils coincident de nouveau depuis le lot 1.0 du
+// 2026-09-14, ou le fixture porte le lien direct corps -> joueur et rend son auteur a ce lancer
+// (cf. wantGrenades). L abstention, elle, reste armee.
 func TestSeventyGrenadeThrowsAreAllPlaced(t *testing.T) {
 	doc := buildGolden(t)
 	c := doc.Coverage.Grenades
@@ -405,6 +423,15 @@ func renderTracks(p func(string, ...any), doc ReplayDocument) {
 	}
 	p("## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)")
 	p("%d trace(s) · %d point(s) de grille", len(doc.Tracks), points)
+	// LE REFUS DU SEUIL EST DANS LE GOLDEN (schema 55) : il etait MUET, et un compteur qu on
+	// publie sans le figer redevient muet au premier refacto.
+	if tc := doc.Coverage.Tracks; tc != nil {
+		p("seuil de publication %d point(s) : %d vie(s) REFUSEE(S) portant %d point(s) — "+
+			"une vie d un seul echantillon n est pas une trajectoire",
+			tc.MinPoints, tc.RefusedMinPoints, tc.RefusedPoints)
+	} else {
+		p("seuil de publication : NON APPLIQUE (le film ne porte aucune position)")
+	}
 	p("%d trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis",
 		named)
 	p("occupation du slot dans le TEMPS) · %d sans identite — un DEFAUT de nommage a instruire,",
