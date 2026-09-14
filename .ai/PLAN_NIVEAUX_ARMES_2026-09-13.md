@@ -98,6 +98,10 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
 - [ ] 4.2 thought_log, référence équipement (`.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`)
   amendée d'une section « niveaux d'armes », plan statué, CI verte, fusion dans `feat/v75`.
 
+## 3 bis. Revue adversariale avant fusion (2026-09-14)
+
+Relecteur 1 (L1 écritures + L4 données) : invariants ART, jointure emplacement × socle, première émission par slot, Fiesta sans perte, dénominateurs, « non mesuré » TIENNENT. 10 constats renvoyés en correction — P1 : (1) `HasRandomStarts` compare un préfixe de `pair_name` et rate `Slayer:Arena Super Fiesta`, `BTB:Fiesta …` (417 matchs) → base tirée au sort écrite et servie ; (2) la carte des niveaux affiche la couverture et les parités du résumé d'usage (autre périmètre) ; (3) locale jamais renseignée sur Escouade/Timeseries → armes toujours en FR. P2 : (4) `SharedBatch.PadTiers`/`Persist` inatteignables ; (5) `tierTotals` mort ; (6) deux définitions non gardées des catégories aléatoires + algorithme divergent ; (7) ratchet « armes de base en dur » ne couvre pas `sync/replayartifacts` ni `service` ; (8) projection sous le lease writer ; (9) identité illisible → `PairName=""` → base sur Fiesta ; (10) commentaire du seuil auto-contradictoire. Relecteur 2 (L2+L3+L6) : title-agnostic, `porteCapability` réutilisé, libellés, contrat TIENNENT ; mutations M3-M7 rougissent ; M1 (porte fermée), M2 (lecture Escouade/Timeseries no-op), M8 (liste d'armes en dur dans `replayartifacts`), M10 (`PadTierGround` renommé) restent VERTES → P0-1 suite `-tags=integration` ROUGE (fixture sans `map_weapon_pads.json`, `echecLot`) ; P1-1 référence illisible = `echecLot` de tout le lot (les 4 autres familles jamais marquées) ; P1-2 = locale ; P2 : porte et lecture gardées par grep, ratchet trop étroit, `PadTierOrder` recopié sans garde (le niveau terrain disparaîtrait en silence), 3e copie web des catégories aléatoires, porte de la carte Sessions/Escouade qui avale les niveaux, API exportée morte. 19 constats renvoyés (recoupements inclus) ; fusion conditionnée.
+
 ## 4. Découvertes
 
 ## 5. Journal
