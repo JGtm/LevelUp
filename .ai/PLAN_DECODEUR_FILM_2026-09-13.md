@@ -546,7 +546,7 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       `regulation.toml` l. 198 « deux MI-TEMPS » est faux), il y a des MANCHES et des
       PROLONGATIONS ; le score n'est pas un oracle en CTF (0-0 possible pendant 12-13 min, points
       à la fin) ; si le film écrit l'information de manche, on lui fait confiance.
-- [ ] 0.D.1 bis **Ce que le désignateur 2 ÉCRIT sur `fb1a1a72` veut dire.** Instruction bornée
+- [!] 0.D.1 bis **Ce que le désignateur 2 ÉCRIT sur `fb1a1a72` veut dire.** Instruction bornée
       (une session) : (a) chez l'ÉCRIVAIN (Ghidra lecture seule) : le champ « manche » des
       enregistrements statborg (joueur ET équipe) : index de manche, phase, prolongation ? quelles
       valeurs le jeu y écrit, et quand ; (b) par mesure : `fb1a1a72` dure 814 s pour 720 s de temps
@@ -559,6 +559,57 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       retiré, remplacé par manches / prolongations, source = décision utilisateur du 2026-09-13) ;
       `SchemaVersion` 55 si le contenu cuit change. Le registre des reports est amendé dans le même
       geste (la ligne 0.D.1 « divergence voulue » devient « non établi, rouvert »).
+      **Fait, et STATUÉ `[!]`** (2026-09-14). **Le verdict de 0.D.1 est RETIRÉ ; le verdict de
+      remplacement n'est PAS établi.** Ce qui est livré : le retrait motivé sur mesure, la
+      correction de `regulation.toml`, l'amendement du registre, et la garde NOMMÉE au sens de
+      D14. Ce qui manque : le sens exact du désignateur. Aucun code de production touché, aucune
+      montée de schéma.
+      **(a) L'ÉCRIVAIN, par la RE déjà au dépôt** (pas de mesure Ghidra neuve : l'existant
+      répondait). `FUN_140C18794` est le désérialiseur de l'archétype 6 — décompilé ici : il
+      traite une PAIRE de slots de stat (`param_1+8`, `param_1+0xc`), lit pour chacun **un champ
+      de 5 bits** qu'il range à `base + 4 + idx*8`, puis une valeur à longueur variable à
+      `base + idx*8`, puis deux drapeaux vers le masque `base + 0x1c0`. Le registre ECS du film
+      NOMME les 58 composants de cet archétype (`ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS` §17.1) :
+      **0-27 `statborg-current-round-value-stat-component`, 28-55
+      `statborg-finalized-rounds-values-stat-component`, 56 `statborg-round-outcomes-component`,
+      57 `statborg-entry-index-and-type-component`**. Et le getter natif
+      `Team_GetCurrentRoundStatValue` @ `0x142C6B118` lit
+      `world + statSlot*0x88 + teamIdx*0x1DF0 + 0x38 + round*4` : **la manche EST une dimension
+      du moteur**. Ce qui reste NON PROUVÉ : que le champ de 5 bits soit CETTE dimension.
+      **(b) La mesure, et elle RÉFUTE une preuve de 0.D.1.** Répartition par tranches de 60 s :
+      la « manche 2 » de `fb1a1a72` est **BIMODALE**, pas saupoudrée —
+      `[0 50 44 0 0 0 0 0 0 0 0 0 13 41 0]`, soit 94 enregistrements entre 60 et 180 s et 54
+      entre **720 et 840 s**. La densité moyenne de 16 % diluait deux amas en un plateau : la
+      preuve (3) de 0.D.1 tombe. Forme de référence d'une vraie manche (`d9781168`, 3 manches) :
+      blocs CONTIGUS et DISJOINTS (`[248 1173 829 690 1 …]`, `[0 0 0 25 710 831 843 226 …]`,
+      `[… 528 732 518 1118 615]`). **Le film ÉCRIT bien de l'information de manche sur ces
+      enregistrements** : ils portent **55 lectures des composants 28-55 (manches FINALISÉES)**
+      quand la manche 0 du même film en porte ZÉRO. **Contrôles de la MÊME variante sans
+      dépassement** : `53ce4390` (CTF:Arena, ~780 s) et `51101d1d` (CTF:Arena Neutral Flag,
+      ~270 s) ne déclarent **aucune manche au-delà de 0**, avec 1 et 0 lecture finalisée.
+      `fb1a1a72` dure **814 s pour 720 s réglementaires** et son amas tardif tombe exactement
+      dans le dépassement : la piste PROLONGATION est SOUTENUE, pas prouvée.
+      **PIÈGE À DIRE, trouvé en fin de session : les deux horloges ne coïncident pas.** Le
+      `frameCount` du document donne `fb1a1a72` à **757 s** (7 568 frames de 100 ms) quand
+      l'horloge DU FILM porte des enregistrements jusqu'à **814 s** — un décalage d'origine que
+      je n'ai pas mesuré. Or `analysis.ComputeOvertime` (source unique `OvertimeMarginSeconds`
+      = 40 s, `overtime.go`) juge sur la durée du MATCH : à 757 s pour 720 s réglementaires,
+      `fb1a1a72` n'est **PAS** en prolongation au sens de la production, alors qu'à 814 s il le
+      serait. Et `64e8adfa` (CTF:Arena, **834 s** au document, donc au-delà de 720 + 40) déclare
+      des manches 0 et 1 en blocs contigus, pas un « 2 ». **La corrélation prolongation /
+      désignateur 2 n'est donc PAS établie** — c'est la première chose à trancher à la reprise,
+      et il faut le faire sur une durée de MATCH, jamais sur l'horloge du film.
+      **(c) Verdict : NON ÉTABLI.** Ce que le « 2 » désigne (manche jouée, marqueur de manches
+      finalisées, index de phase de prolongation) n'est pas tranché, et l'amas de 60-180 s n'est
+      pas expliqué. La garde `contiguousRounds` n'est donc NI supprimée NI convertie : elle est
+      **NOMMÉE au registre comme heuristique D13 avec son contrat D14** (déclenchement typé,
+      compteurs `coverage.score.rounds.{grammaire, repli, contradiction}` à publier, critère de
+      retrait « 0 manche refusée par la contiguïté sur le corpus gate », date de pose
+      2026-08-18, cible de retrait clôture de M1). `regulation.toml` corrigé (« deux MI-TEMPS »
+      -> manches / prolongations, source = décision utilisateur du 2026-09-13) ; la ligne du
+      registre passe de « divergence voulue » à « VERDICT RETIRÉ — non établi, rouvert », avec
+      ce qui reste vrai de 0.D.1 et ce qui manque. Corpus gate NON joué : sans changement de
+      production il ne peut rien mesurer (`git diff` des `.go` hors tests : vide).
 - [x] 0.D.2 **D7 — bloc monde/équipement de `60ae07c4` (Live Fire, v37).**
       Séparer l'effet du schéma 53 (porte de région sur 2 bits) de celui de la borne
       `maxUnrollPerStep = 16` : trouver les sha qui encadrent v53 (`document_chronicle.go`),
@@ -613,7 +664,7 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       ne bougent NI à la porte NI à la borne : ils sont **déjà à leur valeur de HEAD à la base
       `ebd012e3b` (schéma 51)**, donc leur cause est antérieure. Ligne au registre des reports,
       avec ce qui est établi et sa condition de reprise.
-- [ ] 0.D.3 **D9 — le codec des entrées de golden est incomplet.**
+- [x] 0.D.3 **D9 — le codec des entrées de golden est incomplet.**
       Compléter le codec `inputs_*.bin.gz` (`golden_inputs_test.go`) pour qu'il transporte les
       rangs de capacité et les origines de pose (tout ce que `decodeFilmInputs` rend et que
       l'assemblage lit), monter la version du fixture (`TestGoldenInputsVersionGuard`),
@@ -621,13 +672,146 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       `assembly_*.golden` et les fixtures de contrat. Preuve : sur les 7 builds, assemblage sur
       entrées FRAÎCHES == assemblage sur entrées RELUES, par un test permanent (plus jamais
       « 36 contre 136 »). Aucun code de production touché.
-- [ ] 0.D.4 **D8 — points de piste publiés en baisse (−2 / −9 / −4).**
+      **Fait** (2026-09-14). **Les 8 builds passent : assemblage sur entrées FRAÎCHES ==
+      assemblage sur entrées RELUES.** Aucun code de production touché (`git diff` des `.go`
+      hors tests : vide).
+      **L'inventaire a été fait AVANT de coder, par diff d'assemblage sur chaque build** (test
+      `TestGoldenInputsFidelite`, neuf, permanent) : **deux familles d'écart, pas une**.
+      (i) « N lecture(s) portent le rang SÉLECTIONNÉ » sur **les 8 builds**, relu > frais
+      (150/194, 75/379, 100/348, 76/565, 107/570, 109/605, 36/136, 130/346) ;
+      (ii) origines de pose sur **`fb1a1a72` seul** (20/319 frais contre 17/322 relu).
+      **Trois trous comblés dans le codec**, les deux premiers trouvés par lecture du couple
+      struct / encodeur, le troisième par mesure :
+      1. **`KeyframeInventory.SelectedGrenadeRank` n'était pas sérialisé.** Le champ vaut **-1**
+         quand aucune sélection n'est lue (« une sélection ne se devine pas ») ; relu, il
+         revenait à **0**, c'est-à-dire *Fragmentation sélectionnée*. D'où le gonflement de (i)
+         sur tous les builds. `GrenadesByPosition` manquait aussi (télémétrie de
+         `KeyframeInventoryStats`).
+      2. **`InventoryDelta.Ammo` n'était pas sérialisé** du tout : un fixture relu rendait des
+         deltas sans munitions. Nouveau couple `encodeDeltaAmmo` / `decodeDeltaAmmo`, les trois
+         valeurs derrière leur drapeau de présence (absent et zéro ne sont pas la même chose).
+      3. **Les coordonnées étaient ARRONDIES au centimètre**, et l'en-tête du codec affirmait
+         que ce n'était pas une perte parce que « toute coordonnée publiée passe par `round2` ».
+         **C'est faux pour ce que l'assemblage DÉCIDE** : `equipmentOwner` choisit le poseur
+         d'une pose par la plus courte distance, et l'arrondi faisait basculer le poseur de
+         trois poses de `fb1a1a72` (poseur 524 -> 514, donc d'autres vies, donc une autre
+         origine). Les coordonnées voyagent désormais **à l'identique**, en OU-EXCLUSIF des bits
+         du `float32` avec la position précédente du même slot : deux positions voisines
+         partagent signe, exposant et haut de mantisse, donc le varint reste court.
+      **Version du fixture montée** `REPLAYINPUTS14` -> `REPLAYINPUTS15`,
+      `TestGoldenInputsVersionGuard` recalé sur la précédente (le test éprouve toujours un
+      refus réel). 8 fixtures régénérées depuis le cache de films (un décodage à la fois), puis
+      les goldens d'assemblage par la porte nommée et les fixtures de contrat par la double
+      porte.
+      **CE QUE LES GOLDENS DISAIENT DE FAUX, et qu'ils ne disent plus** : `bcb6d393` publiait
+      **136** lectures à rang sélectionné, la production en produit **36** ; `fb1a1a72` **346**
+      contre **130** ; et ses trois poses reprennent `deployed` avec leur vrai poseur. Les 8
+      goldens changent, tous dans ce sens.
+      **PRIX, ET IL EST NÉGATIF** (arbitrage du pilote, sous-lot 0.D.3 bis) : la première version
+      codait les coordonnées en flottants exacts et pesait 17,79 Mio (+72 %) — REFUSÉE, ces
+      octets seraient entrés pour toujours dans l histoire partagée. Les positions portent donc
+      les QUANTA du film, et les fixtures pèsent **9,86 Mio, soit 511 594 octets de MOINS que
+      les 10,35 Mio d origine**. Les fixtures de CONTRAT ne bougent pas (2 108 186 o).
+      **Le test permanent SAUTE EN CI** (il exige `REPLAY_FILM_CACHE`, absent de la CI comme
+      tous les oracles adossés au cache) : c'est dit dans son en-tête. Ce qui reste gardé en CI :
+      le round-trip du codec (`TestGoldenBuildsInputsRoundTrip`) et les goldens d'assemblage.
+
+- [x] 0.D.3 bis **Les entrées de golden portent les QUANTA, pas les flottants dérivés.**
+      Arbitrage du pilote après 0.D.3 : la fidélité des coordonnées était acquise, son prix
+      (+7,8 Mio de binaires versionnés, pour toujours dans l'histoire partagée, et autant à
+      chaque régénération) ne l'était pas.
+      **Fait** (2026-09-14). Le codec porte `BipedPosition.Q` — trois entiers, delta-varint par
+      slot — et la relecture re-déquantifie par **le même chemin que la production**,
+      `filmdec.DequantBipedAxis(q, ax, layout, bornes)`. Le blob ouvre sur le **module de la
+      carte** (`MapQuantEntry.Module`) et le décodeur REFUSE une entrée de catalogue qui ne
+      correspond pas, par une erreur typée `errGoldenInputsCarte` : sans cette garde la
+      confusion serait silencieuse — les bornes d'une autre carte rendent des coordonnées
+      FAUSSES, pas approximatives (en-tête de `DequantBipedAxis`). L'entrée arrive en
+      PARAMÈTRE (`decodeGoldenInputs(blob, entry)`), elle n'est jamais devinée.
+      **UN CHAMP N'A PAS PU ÊTRE DÉDUIT DU CATALOGUE, et il voyage donc dans le blob** : le
+      DÉCOUPAGE D'AXE. Le chemin du fixture l'AUTO-DÉTECTAIT (`ScanFilmOptions.Layout` laissé
+      nul), et sur **Live Fire la détection rend [13 12 11] quand le catalogue dit [12 12 11]**
+      — un bit d'écart sur X double le pas de quantification, donc l'étendue : `60ae07c4`
+      rendait `x [-0,39 ; 90,80]` au lieu de `x [-8,56 ; 37,04]`. Déquantifier avec le
+      catalogue aurait donc changé le contenu cuit, ce que ce sous-lot s'interdit. Le blob
+      porte les trois largeurs employées (3 varints, **coût ~3 octets par fixture**) et
+      `decodeFilmInputsForEntry` pose désormais `scan.Layout` explicitement — même valeur, même
+      fonction, mais NOMMÉE donc inscriptible.
+      **Preuves** : `TestGoldenInputsFidelite` **8/8 vert** (dont les trois poses de `fb1a1a72`
+      et leur poseur 524) ; round-trip vert ; **goldens d'assemblage et fixtures de contrat
+      IDENTIQUES À L'OCTET** à la version en flottants (`git diff --stat 1b1111379 --` sur les
+      deux dossiers : vide) ; taille des 8 `inputs_*.bin.gz` **10 849 119 o -> 10 337 525 o**
+      (10,35 Mio -> **9,86 Mio**, −511 594 o), contre 18 656 453 o (17,79 Mio) en flottants.
+      Version du fixture `REPLAYINPUTS15` -> `REPLAYINPUTS16`, garde recalée sur la précédente.
+- [x] 0.D.4 **D8 — points de piste publiés en baisse (−2 / −9 / −4).**
       Instruction bornée à une session au plus : sur `d9781168`, localiser les points disparus
       (cuisson fraîche à `179bd7401` contre HEAD, diff des pistes), nommer l'étape et le commit
       responsables ; verdict DÉFAUT ou DIVERGENCE ; correctif seulement si défaut à cause
       identifiée (même protocole) ; sinon registre. Si la session ne suffit pas : registre avec
       ce qui a été établi.
-- [ ] 0.D.6 **Les véhicules qui disparaissent au schéma 54 (signalement utilisateur du
+      **Fait** (2026-09-14). **VERDICT : DIVERGENCE VOULUE.** Cause nommée, points identifiés à
+      l'unité, aucun correctif (règle 7) ; une ligne au registre pour le résidu réel.
+      **La cause est `48cf4905d` (schéma 36, « une track = une vie, les bots existent »), et
+      elle seule.** Bissection au corpus gate sur `d9781168`, **huit points de base** : la perte
+      est PRÉSENTE aux bases 34, 35 et `48cf4905d^`, ABSENTE à `48cf4905d` et à toutes les bases
+      suivantes (37, 38, 39, 40, 41, 43, 47). L'hypothèse du plan — « re-segmentation v41, v43,
+      v47 » — nommait les bonnes MÉCANIQUES mais les mauvaises versions : c'est **quinze schémas
+      plus tôt**.
+      **Les deux points perdus, à l'unité** : `slot 558 @ frame 2168` et `slot 573 @ frame 2730`,
+      tous deux du même xuid `2535435655459376`. Chacun est le PREMIER point de sa piste et il
+      est **ISOLÉ** — le point suivant du même slot arrive **88 frames plus tard (8,8 s)** pour
+      l'un, **176 frames (17,6 s)** pour l'autre, très au-delà de `lifeGapUS` (5 s). Rien n'est
+      décodé de travers : le nombre de pistes passe de **160 à 174**, les positions sont
+      REDISTRIBUÉES, et seuls ces deux échantillons isolés tombent.
+      **La chaîne est faite de DEUX règles écrites, qui se composent** : (1) `build.go` ouvre une
+      nouvelle vie dès qu'un trou dépasse `lifeGapUS` — même seuil que `buildLifeSpans`, « deux
+      découpes divergentes rendraient le nommage par vie inappariable » ; (2)
+      `DefaultMinPoints = 2` refuse la vie qui en résulte — « une track d'un seul échantillon
+      n'est pas une trajectoire ». Les deux précèdent le constat ; aucune n'est en défaut.
+      **CE QUI RESTE, et c'est le vrai résidu** : l'observation est VRAIE (le joueur était là à
+      cet instant), elle n'est plus publiée ni comme piste ni comme compteur, et `minPoints`
+      refuse **en silence** — aucun compteur de refus dans le paquet, aucune ligne de couverture.
+      Un lecteur ne peut pas savoir que le film portait deux positions de plus. C'est la règle
+      « jamais d'erreur avalée en silence » appliquée à un refus de publication : au registre,
+      avec la question produit attenante (une vie d'UN échantillon doit-elle paraître ?).
+      **Second témoin non mesuré, et la raison est dite** : `60ae07c4` ne se cuit PAS au code de
+      l'époque du schéma 36 — plafond mémoire dépassé, pic **4,15 Gio**. C'est précisément
+      l'ex-bombe que la borne de déroulage `f22474816` a domptée quinze schémas plus tard. Le
+      verdict repose donc sur `d9781168`, le témoin que le plan nomme.
+
+- [x] 0.D.7 **Le chemin du fixture impose le découpage d'i0 du catalogue, comme la production.**
+      Ferme la découverte D6 du lot 0.D.3 bis : le golden de `60ae07c4` affirmait des
+      coordonnées que la production ne produit pas.
+      **Fait** (2026-09-14). `decodeFilmInputsForEntry` demande désormais le découpage à
+      **`filmdec.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()`** — la fonction de la
+      production (`resolveI0Layout`), pas une copie. Appeler `entry.Layout()` aurait été la
+      copie que D13 interdit : elle divergerait le jour où la règle change.
+      **L'auto-détection ne survit que là où la production l'emploie** — entrée de carte
+      invalide (`axisWidths` absent, donc `Valid()` faux) — et elle est alors **NOMMÉE dans le
+      blob** (`LayoutDetected`), pour qu'un lecteur sache que ces quanta ne viennent pas du
+      catalogue. Sur les 8 builds du corpus, aucune n'y tombe : les 8 fixtures portent
+      `LayoutDetected = false`.
+      **Contradiction blob / catalogue = erreur typée** `errGoldenInputsDecoupage` : quand le
+      fixture dit tenir son découpage du catalogue, il doit être celui que la règle tranche
+      aujourd'hui — sinon le catalogue a bougé sous le fixture et les quanta se
+      déquantifieraient avec un autre pas, silencieusement.
+      **Preuve, et elle est exactement celle qui était demandée** : **UN SEUL golden change,
+      `assembly_60ae07c4.golden`** — les 7 autres identiques à l'octet ; **UNE SEULE fixture de
+      contrat change**, `replay_schema_54_60ae07c4.json.gz` (172 773 -> 174 897 o) plus sa ligne
+      de manifeste. Sur ce film : **`x [-8,56 ; 37,04]` -> `x [-12,90 ; 27,56]`**, pistes
+      **174 -> 173**, points de grille **45 137 -> 45 133**, vies publiées **174 -> 173**.
+      L'écart n'est pas un simple facteur d'échelle : la détection rendait
+      `gate=5 region=0 13/12/11` quand le catalogue rend `gate=6 region=1 12/12/11` — les
+      champs d'axe se lisent à d'autres décalages ET la porte de région teste désormais ses DEUX
+      bits, ce qui écarte les enregistrements d'une autre AABB.
+      **Fidélité 8/8 toujours verte**, version du fixture `REPLAYINPUTS16` -> `REPLAYINPUTS17`,
+      garde recalée. Aucun code de production touché (`git diff` des `.go` hors tests : vide).
+      **Observation, non instruite** : les points de grille de ce golden passent de 45 137 à
+      45 133, soit exactement le **−4** que le constat D8 relevait sur `60ae07c4`. Les deux
+      mesures ne portent pas sur le même objet (le golden part d'entrées figées, D8 comparait
+      deux cuissons), donc rien n'est conclu — mais la coïncidence mérite d'être dite à qui
+      reprendra D8 sur ce témoin.
+- [x] 0.D.6 **Les véhicules qui disparaissent au schéma 54 (signalement utilisateur du
       2026-09-13 : « les images des véhicules peuvent disparaître sur le schéma 54 ; les versions
       ont bumpé ces derniers temps sans garder toutes les données »).** Angle mort connu de la
       classification : le calque véhicules naît au schéma 39, donc la comparaison 34 -> 54 ne peut
@@ -651,6 +835,48 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       qui efface un véhicule que le film montre encore) -> correctif + test par mutation + corpus
       gate zéro perte + `SchemaVersion` 55 si le contenu cuit change, repli NOMMÉ (D14) ; sinon
       registre avec le bump et l'axe.
+      **Fait** (2026-09-14). **VERDICT : AUCUN bump n'a perdu de donnée de véhicule, et la
+      « disparition d'image » a une cause mesurée qui n'est pas un bump.** Aucun correctif
+      (règle 7) ; deux lignes au registre des reports.
+      **(a) Le gate, sur TOUS les axes, aux quatre bumps demandés** (`--base` à `b6b198baf^`
+      = schéma 51, `b6b198baf` = 52, `c5a71dcbd` = 53, `104b74e15` = 54) sur `bfecd02b` :
+      **les quatre rendent exactement les mêmes deux pertes**, et aucune n'est un axe véhicule —
+      `coverage.placements.deployed` 4 -> 1 et `byFamilyOrigin.grenade_frag/deployed` 3 -> —,
+      c'est-à-dire la règle d'origine des poses (F.1 / H.2), déjà instruite en 0.D.0 et 0.D.5.
+      **(b) Élargi jusqu'à la NAISSANCE du calque** (`--base=7c85acf58^`, schéma 39) sur les DEUX
+      témoins : 97 pertes au total (15 sur `bfecd02b`, 82 sur `084a804d`), **zéro sur un axe
+      `vehicles.*`** — la question « un bump a-t-il raccourci une piste ou une occupation de
+      véhicule » se répond NON sur toute la vie du calque. Les 97 se rangent toutes dans des
+      familles déjà classées : `geometry.*` (19 axes, chronique v52 props Forge, §7.A A1),
+      `objectives.*` + `coverage.objectives` (53 + 2, garde d'effectif `ebd012e3b` et D.2, §7.A
+      A3), `projectiles.*` (9, v52 pas impossible, §7.A A6), `placements.*` (règles d'origine),
+      `abilities/n` 166 -> 165 (le bloc de la TROISIÈME CAUSE déjà au registre depuis 0.D.2),
+      `flagCarries.markerConfirmed/markerObserved` (§7.B B8, déjà « ligne à ACCEPTER »). Une
+      seule ligne neuve et minuscule : `coverage.flagCarries.teamBirths` 12 -> 11 sur
+      `084a804d` (§4).
+      **(c) La cause réelle de la disparition d'image, sur le témoin de l'utilisateur** :
+      `bfecd02b` (Snowbound, Team Slayer:Arena) publie **11 vies de véhicule dont 9 de châssis
+      `0x038df01a`, absent de la table des familles** — donc sans sprite, dessinées en marqueur
+      neutre, comportement ÉCRIT dans `vehicle_families.go` (« VALEUR INCONNUE = FAMILLE VIDE
+      [...] le client dessine un marqueur neutre »). Le châssis **n'a jamais figuré au dépôt**
+      (`git log -S` sur toute l'histoire : rien) : ce n'est pas une régression. Les neuf sont
+      IMMOBILES (aucun échantillon, un `spawn`, fenêtre = le match entier) et `labels.tsv` — la
+      seconde source que la table cite elle-même — porte trois entrées `vehi 038df01a` avec la
+      banque `sb_003_lvl_moments_ge_shared_autoturret_banished` : **ce sont des tourelles
+      automatiques bannies**. Identification neuve, non posée en table (il faudrait décider vers
+      quelle famille, et `familleShade` est une tourelle COVENANT — l'y mapper serait l'emprunt
+      que l'en-tête interdit).
+      **(d) La règle d'effacement confrontée à D13** : elle n'efface JAMAIS avant la dernière
+      preuve, elle PROLONGE (`t1max = t1 + 20 s`). Sur le témoin, 10 vies sur 11 ont
+      `t1 == t1max` = la dernière frame ; la seule qui s'efface est le `ghost` slot 777, **à la
+      frame 2874 (287,4 s), soit 5,3 s APRÈS son dernier échantillon**. **Aucun véhicule que le
+      film montre encore n'est effacé.** Le défaut au sens de D13 est ailleurs, et il est réel :
+      `VehicleTrack.End` ne prend qu'une valeur (`unknown`), donc la fin de vie est INFÉRÉE d'une
+      borne de recensement alors que le film l'ÉCRIT (dead-state `ti=40`, lisible depuis le
+      2026-09-05 sur `wt/vehicule-deadstate`, non fusionnée). Registre, avec le repli à NOMMER
+      au sens de D14 le jour de la fusion.
+      `bfecd02b` est entré au manifeste `config/replay_corpus.toml` (famille
+      `vehicules_v41_utilisateur`, raison écrite) : le corpus gate passe de 12 à 13 témoins.
 
 - [x] 0.D.5 **Synchronisation bis : la seconde fusion de `feat/v75` dans l'intégration.**
       Même méthode qu'en 0.D.0, sur la fusion `c28f7da59` (55 commits de finitions et
@@ -781,6 +1007,29 @@ le second agent est le relecteur du lot précédent. Chaque lot monte `GrammarRe
 changent le contenu cuit montent `SchemaVersion` (une entrée de chronique chacun) ; UNE
 recuisson du parc à la clôture de M1 (D6). Ordre fondé sur le coût et sur les dépendances
 (1.4 avant 1.7 ; 1.5 avant 1.6 et 1.8).
+
+#### Lot 1.0 — Le fixture d'entrées rejoue la séquence de balayages de la production — M, high
+
+EN TÊTE DE M1, et avant tout lot qui juge un golden. Né de la découverte D7 (0.D, revue R1) :
+`decodeFilmInputsForEntry` est une COPIE de la séquence de `BuildFromFilm`, et les deux ont
+déjà divergé.
+
+- [ ] 1.0.1 **`BuildFromFilm` expose son étage de balayage** : une fonction, un type d'entrées
+      — celui que l'assemblage consomme. Le fixture l'APPELLE au lieu de la recopier. C'est un
+      changement de code de PRODUCTION, d'où son placement hors du lot 0.D.
+- [ ] 1.0.2 **Les cinq canaux absents entrent au codec** : `WeaponChanges`,
+      `Pickups`/`PickupStats`, `EquipmentChanges`/`EquipmentChangeStats`, `Vehicles`,
+      `BipedCreations`. Ils manquent aujourd'hui au fixture ET au chemin frais, d'où des calques
+      VIDES dans les huit goldens — « prises et lachers d arme decodes=0 publies=0 »,
+      « vehicules balaye=false » — que le golden ne peut ni garder ni contredire.
+- [ ] 1.0.3 **Gate** : `TestGoldenInputsFidelite` 8/8 ; équivalence à ZÉRO différence (c'est un
+      pas structurel au sens de D4 : le contenu cuit ne doit pas bouger du fait de la
+      refactorisation) ; goldens régénérés, et tout écart JUSTIFIÉ ligne à ligne — un calque qui
+      cesse d'être vide est un gain à nommer, pas un golden à re-bénir ; `SchemaVersion` monte
+      si le contenu cuit change.
+- [ ] 1.0.4 **Le refus de publication cesse d'être muet** (résidu du lot 0.D.4) : `minPoints`
+      refuse une vie d'un seul échantillon sans qu'aucun compteur ne le dise. Publier
+      `coverage.tracks` avec le compte de refus, au premier bump de schéma de M1.
 
 #### Lot 1.1 — Pied de film : l'équipe d'un événement est à l'octet 37 — S, high
 
@@ -1333,6 +1582,12 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-13 | 0.D.2 | **D4 — le constat D7 groupait DEUX causes séparées par ~17 montées de schéma.** Les treize axes que D7 citait ensemble sur `60ae07c4` se scindent : le bloc ARMES AU SOL / POSES / PROJECTILES / RAMASSAGES vient à 100 % de la porte de région (`fb71e9b3c`, v53) et n'est pas une perte ; le bloc ÉQUIPEMENT / CRÂNE / CAPACITÉS (`skullCarries.grabs` 39 -> 8, tout `equipmentChanges`, `abilities/n` 29 -> 27, `abilityLabels/n` 4 -> 3) est déjà à sa valeur de HEAD au schéma 51 et vient d'ailleurs. **Leçon de méthode** : un constat de gate qui énumère des axes « qui bougent ensemble » ne prouve pas une cause commune — ici la co-occurrence venait uniquement de la largeur du segment comparé (34 -> 54). Un constat de gate devrait porter le segment le plus étroit où il tient encore. NON TRAITÉ. | Le lot qui révisera le protocole du corpus gate (même famille que la ligne « pas de mécanisme d'acceptation datée d'une perte instruite » au registre) : exiger d'un constat qu'il nomme le segment minimal, pas le segment de la campagne |
 | 2026-09-13 | pilote (message inter-sessions des finitions) | **Quatre faits des lots F/H à absorber** (`HANDOFF_DECODEUR_FILM` §3 bis sur `origin/feat/v75` 95e5b2ed6) : (1) pièce engendrée = déployée par nature (règle H.2 en production, garde-rail Go à poser) -> 1.9.1 ; (2) le 103 ne désigne que la pièce engendrée, `ref0` = piste de l'équipement source -> 1.9.1 + table D ; (3) origine des appareils portés purement temporelle -> repli nommé 1.9.1 ; (4) Live Fire, index de région 2 bits imputé à X par `DetectI0Layout` ([13 12 11] au lieu de [12 12 11]) : imposer le catalogue, ne jamais détecter en production -> 1.9.2 (A1 de l'audit). `origin/feat/v75` porte ~55 commits de plus que la fusion 215649efd, dont H.1 (neutralité d'un socle), H.2 (pièce engendrée), H.3 (Aquarius = Live Fire) qui touchent `replay/` : une NOUVELLE fusion + re-figeage attribué sera nécessaire avant la poussée vers `feat/v75` (sous-lot 0.D.5) | plan : 1.9.1, 1.9.2 ; §5 |
 
+| 2026-09-14 | 0.D.6 | **D5 — `coverage.flagCarries.teamBirths` 12 -> 11 sur `084a804d`, sans entrée qui le nomme.** Seule des 97 pertes du segment schéma 39 -> 54 à ne se ranger dans aucune famille déjà classée (§7.A, §7.B, ou les lignes du registre écrites en 0.D.2). `teamBirths` n'est pas un compteur d'échec : c'est un compte de naissances de drapeau d'équipe, donc une baisse est une richesse en moins. Ampleur 1 sur 12. NON TRAITÉ (règle 7). | Le lot drapeau qui reprendra les reliquats de la vague 6, ou le lot qui inventoriera les compteurs de `flagCarries` (même famille que la ligne du lot E2-bis au registre) : nommer le bump qui fait tomber la douzième naissance et dire si elle existait |
+
+| 2026-09-14 | 0.D.3 bis | **D6 (FERMÉE au lot 0.D.7, 2026-09-14) — le chemin du fixture AUTO-DÉTECTAIT le découpage d'axe, la production l'IMPOSE depuis le catalogue, et les deux divergent sur Live Fire.** `decodeFilmInputsForEntry` laissait `ScanFilmOptions.Layout` nul, donc `DetectI0LayoutOf` décidait ; sur `60ae07c4` elle rend **[13 12 11]** quand `map_quant_bounds.json` dit **[12 12 11]**. Un bit d'écart sur X double le pas de quantification : les positions du fixture couvrent `x [-8,56 ; 37,04]` là où le catalogue donnerait `x [-0,39 ; 90,80]`. Le sous-lot a rendu le découpage EXPLICITE (`scan.Layout` posé à la valeur détectée, donc aucun changement de comportement) et l'a inscrit au blob, mais **il n'a PAS tranché laquelle des deux valeurs est juste** — le faire aurait changé le contenu cuit, hors périmètre (règle 7). Note : la mesure du lot 0.D.2 a établi que la CUISSON DE PRODUCTION, elle, impose bien le catalogue (`film_context.go`, entrée valide) ; l'écart est donc entre le fixture et la production, pas dans la production. | Le lot qui tranchera le découpage d'i0 de Live Fire (famille 1.9 ou lot de profil M2) : dire laquelle de la détection et du catalogue a raison sur cette carte, puis aligner le chemin du fixture sur la production. **FERMÉE** : le lot 0.D.7 a aligné le chemin du fixture sur la production — il demande le découpage à `NewFilmContextForMap(...).ImposedLayout()`, la fonction de la production et non une copie ; l auto-détection ne subsiste que là où la production l emploie et elle est alors NOMMÉE dans le blob (`LayoutDetected`), avec une erreur typée sur contradiction blob / catalogue. Seul `60ae07c4` a bougé (`x [-8,56 ; 37,04]` -> `x [-12,90 ; 27,56]`, 45 137 -> 45 133 points), les 7 autres goldens identiques à l octet. Ce qui reste HORS de ce lot et n est PAS tranché : laquelle de la détection et du catalogue dit vrai sur Live Fire — le lot a aligné le fixture sur la PRODUCTION, il n a pas jugé la production |
+
+| 2026-09-14 | 0.D (revue R1) | **D7 (0.D) — le chemin du fixture est une COPIE de la séquence de balayages de `BuildFromFilm`.** `decodeFilmInputsForEntry` rejoue à la main l'ordre des balayages de la production au lieu de l'appeler : les deux séquences ne peuvent que diverger, et elles divergent déjà. **Cinq canaux que `BuildFromFilm` câble n'existent ni au fixture ni au chemin frais** : `WeaponChanges` (`build_from_film.go:190`), `Pickups`/`PickupStats`, `EquipmentChanges`/`EquipmentChangeStats`, `Vehicles` (`:370`), `BipedCreations` (`:156`). Conséquence mesurable dans TOUS les goldens : des calques vides qui ne le sont pas en production — « prises et lachers d arme decodes=0 publies=0 », « vehicules balaye=false ». Le golden ne peut donc rien dire de ces calques, ni en régression ni en progrès. La revue R1 a par ailleurs montré ce que coûte cette copie : deux verdicts de balayage (`InventoryDeltaAmmoRefused`, `FilmMajorVersion`) manquaient au fixture, et « canal munitions refuse » était une CONSTANTE fausse sur 5 des 8 builds. NON TRAITÉ ici : combler les cinq canaux exige de toucher le code de PRODUCTION (exposer l'étage de balayage), donc hors 0.D (règle 7). | **Lot 1.0**, en tête de M1 (ajouté au plan le 2026-09-14) |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -1427,6 +1682,72 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 0.D.5 (incident) | — | `git checkout HEAD -- <paquet replay>` pour restaurer la production | **A aussi restauré `testdata/`** : 18 références fraîchement figées et 3 goldens effacés. Re-figeage rejoué EN ENTIER, diff **identique** (17 `flag` + 4 `artifact`, mêmes deltas) — déterminisme vérifié. Leçon : restaurer par fichiers NOMMÉS quand `testdata/` vit sous le paquet |
 | 2026-09-14 | 0.D.5 (gate de fin) | ce commit | `replay-equiv` sur les 20 films, 5 sous-ensembles | **20/20 IDENTIQUES**, exit 0 partout, dont les 10 films du régime court. Pics 0,08 à 0,73 Gio |
 | 2026-09-14 | 0.D.5 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **203 fichiers + 1 sauté, 3 126 tests + 3 sautés, 0 échec** |
+
+
+| 2026-09-14 | 0.D.6 | `fc5db87f7` (arbre) | `replay-corpus-gate --base=b6b198baf^` (51), `b6b198baf` (52), `c5a71dcbd` (53), `104b74e15` (54), manifeste réduit à `bfecd02b` | **Les quatre rendent exactement les MÊMES deux pertes**, aucune sur un axe véhicule : `coverage.placements.deployed` 4 -> 1 et `byFamilyOrigin.grenade_frag/deployed` 3 -> — (règle d'origine des poses, F.1 / H.2, déjà instruite). 5 gains, 2 pertes, ~19 s par run |
+| 2026-09-14 | 0.D.6 | `fc5db87f7` (arbre) | `replay-corpus-gate --base=7c85acf58^` (schéma **39**, naissance du calque véhicules) sur `bfecd02b` + `084a804d` | **97 pertes, ZÉRO sur un axe `vehicles.*`** — `bfecd02b` 15 (68 gains, 25,2 s), `084a804d` 82 (227 gains, 2 min 02). Répartition : `objectifs` 53, `carte` 19, `couverture` 11, `grenades` 9, `equipement` 5. Toutes rattachées à une famille déjà classée, sauf `coverage.flagCarries.teamBirths` 12 -> 11 (§4) |
+| 2026-09-14 | 0.D.6 | `fc5db87f7` | lecture de l'artefact du parc `bfecd02b` (schéma 54, cuit le 13/09 à 00:43) — **non oracle, lecture seule** | 11 vies publiées, **`familyUnknown 9`, `unknownChassis {038df01a: 9}`** ; les 9 sans famille sont IMMOBILES (aucun `samples`, un `spawn`, `t0=0 t1=t1max=5032` = le match entier) ; les 2 autres sont `ghost` (`5b80c406`) et portent leurs échantillons |
+| 2026-09-14 | 0.D.6 | `fc5db87f7` | `git log --oneline --all -S "038df01a"` ; `grep` dans `damagetag/data/labels.tsv` | Le châssis **n'a jamais figuré au dépôt** (aucun commit). `labels.tsv` porte **trois** entrées `vehi 038df01a` (l. 169, 343, 430), toutes `sb_003_lvl_moments_ge_shared_autoturret_banished` : **tourelle automatique bannie** — identification neuve, cohérente avec l'immobilité |
+| 2026-09-14 | 0.D.6 | `fc5db87f7` | confrontation D13 de la règle d'effacement (`vehicleCensusTolUS`, `vehicle_tracks.go:33`) au témoin | La règle **prolonge, elle n'efface jamais avant la dernière preuve** : 10 vies sur 11 ont `t1 == t1max` = dernière frame ; la seule effacée est le `ghost` slot 777 à la **frame 2874 (287,4 s), 5,3 s APRÈS son dernier échantillon** (`t1` 2821), son relais 778 reprenant à 3526. **Aucun véhicule que le film montre encore n'est effacé** |
+| 2026-09-14 | 0.D.6 | ce commit | `config/replay_corpus.toml` : entrée `bfecd02b` (famille `vehicules_v41_utilisateur`, Snowbound, Team Slayer:Arena) ; `go test ./internal/replaybuild/ ./cmd/replay-corpus-gate/` | corpus témoin de **12 à 13** ; les deux paquets **ok** |
+| 2026-09-14 | 0.D.6 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court NON APPLICABLE : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — aucun octet de production ne change (un manifeste de corpus, deux documents) |
+
+
+| 2026-09-14 | 0.D.1 bis | `7ffdc3f8b` (arbre) | Ghidra lecture seule : `decompile_function 140C18794` ; `get_xrefs_to` | Désérialiseur de l'archétype 6 : traite une PAIRE de slots de stat (`param_1+8`, `param_1+0xc`), lit **un champ de 5 bits par slot** rangé à `base + 4 + idx*8`, puis une valeur à longueur variable à `base + idx*8`, puis deux drapeaux vers le masque `base + 0x1c0`. Référencé **uniquement depuis des DONNÉES** (`145435cd8`, `143c96b38`) : c'est une entrée de vtable, pas un appel direct |
+| 2026-09-14 | 0.D.1 bis | `7ffdc3f8b` | RE déjà au dépôt, relue sur pièces (`ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS` §17.1) | Le registre ECS du film NOMME les 58 composants de l'archétype 6 : **0-27 `current-round-value`, 28-55 `finalized-rounds-values`, 56 `round-outcomes`, 57 `entry-index-and-type`**. Getter natif `Team_GetCurrentRoundStatValue` @ `0x142C6B118` : `world + statSlot*0x88 + teamIdx*0x1DF0 + 0x38 + round*4` — **la manche est une dimension du moteur**. NON prouvé : que le champ de 5 bits soit cette dimension |
+| 2026-09-14 | 0.D.1 bis | `7ffdc3f8b` | instrument étendu (répartition par tranches de 60 s + recensement des composants), `D6_FILMS=fb1a1a72,d9781168` | **`fb1a1a72` manche 2 est BIMODALE** : `[0 50 44 0 0 0 0 0 0 0 0 0 13 41 0]` — 94 enregistrements à 60-180 s, **54 à 720-840 s**. La preuve (3) de 0.D.1 (« saupoudré, densité 16 % ») est RÉFUTÉE. Forme d'une vraie manche (`d9781168`) : blocs contigus et DISJOINTS. **Composants** : la manche 2 porte **55 lectures de `finalized-rounds-values` (28-55)**, la manche 0 du même film en porte **ZÉRO** |
+| 2026-09-14 | 0.D.1 bis | `7ffdc3f8b` | contrôles de la MÊME variante, `D6_FILMS=53ce4390,51101d1d` | `53ce4390` (CTF:Arena, ~780 s) et `51101d1d` (CTF:Arena Neutral Flag, ~270 s) : **`RealRounds = [0]`, aucune manche déclarée au-delà de 0**, 1 et 0 lecture finalisée. `fb1a1a72` (814 s pour 720 s réglementaires) est le seul des trois à écrire un « 2 », et son amas tardif tombe dans le dépassement : **piste PROLONGATION soutenue, pas prouvée** |
+| 2026-09-14 | 0.D.1 bis | ce commit | `config/titles/halo_infinite/mappings/regulation.toml` l. 198 ; `.ai/V7.5/REGISTRE_REPORTS.md` | Commentaire corrigé (« deux MI-TEMPS » -> manches / prolongations, source = décision utilisateur du 2026-09-13), motif d'exclusion inchangé. Registre : la ligne 0.D.1 devient « **VERDICT RETIRÉ — non établi, rouvert** » ; ligne neuve qui NOMME `contiguousRounds` comme heuristique D13 avec son contrat D14 (déclenchement typé, compteurs à publier, critère de retrait, date de pose 2026-08-18, cible clôture M1) |
+| 2026-09-14 | 0.D.1 bis (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court et corpus gate NON APPLICABLES : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — aucun octet de production ne change (un instrument, un commentaire TOML, deux documents) |
+
+
+| 2026-09-14 | 0.D.3 (inventaire) | `2a44c9031` (arbre) | `TestGoldenInputsFidelite` (neuf) sur les 8 builds, `REPLAY_FILM_CACHE` posé — AVANT tout codage | **DEUX familles d'écart, pas une.** (i) « lecture(s) portent le rang SÉLECTIONNÉ », relu > frais sur **les 8 builds** : 150/194 · 75/379 · 100/348 · 76/565 · 107/570 · 109/605 · 36/136 · 130/346. (ii) origines de pose sur `fb1a1a72` seul : 20/319 frais contre 17/322 relu, 479 lignes sur 584 décalées |
+| 2026-09-14 | 0.D.3 | ce commit | lecture struct / encodeur, puis diff `reflect` fresh vs relu restreint à `Placements` / `PlacementStats` | **`Placements` est IDENTIQUE** : le défaut n'est pas dans la liste des poses. Trois trous : `KeyframeInventory.SelectedGrenadeRank` (vaut **-1** = pas de sélection, relu **0** = Fragmentation sélectionnée) et `GrenadesByPosition` non sérialisés ; `InventoryDelta.Ammo` non sérialisé ; coordonnées **arrondies au centimètre** alors qu'`equipmentOwner` choisit le poseur par la plus courte distance (poseur 524 -> 514 sur trois poses de `fb1a1a72`) |
+| 2026-09-14 | 0.D.3 | ce commit | codec : `SelectedGrenadeRank` + `GrenadesByPosition` ; `encodeDeltaAmmo` / `decodeDeltaAmmo` ; X/Y/Z en OU-EXCLUSIF des bits `float32` ; magie `REPLAYINPUTS14` -> `15`, garde recalée sur `14` | `gofmt` vide, `go vet` propre. La garde de version refuse toujours un fixture de la version précédente POUR CE QU'IL EST |
+| 2026-09-14 | 0.D.3 | ce commit | `TestGoldenInputsRegenerate -update` (000d5950) puis `TestGoldenBuildsRegenerate -update` (7 builds), un décodage à la fois | 8 fixtures réécrites. **Taille : 10,4 Mio -> 17,8 Mio (+7,8 Mio, +72 %)** — coût de la fidélité des coordonnées, seule des trois corrections qui pèse |
+| 2026-09-14 | 0.D.3 (preuve) | ce commit | `TestGoldenInputsFidelite` rejoué après régénération | **8/8 PASS, exit 0** (183,6 s). Étape intermédiaire mesurée : après les deux premiers trous comblés, 7 builds sur 8 verts et `fb1a1a72` seul rouge sur les origines — c'est ce reste qui a mené aux coordonnées |
+| 2026-09-14 | 0.D.3 | ce commit | `-update-golden-builds-assembly` + `TestGoldenAssembly -update` ; `ContractFixturesRegenerate` (double porte) | **Les 8 goldens changent, tous dans le sens de la production** : `bcb6d393` 136 -> **36** lectures à rang sélectionné, `fb1a1a72` 346 -> **130**, et ses trois poses reprennent `deployed` avec leur vrai poseur (524). Fixtures de contrat : 2 108 186 o, **sous le plafond de 3 Mio** |
+| 2026-09-14 | 0.D.3 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **203 fichiers + 1 sauté, 3 126 tests + 3 sautés, 0 échec**. `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** |
+
+
+| 2026-09-14 | 0.D.3 bis | ce commit | codec : positions en QUANTA `Q` (delta-varint par slot), module de carte en tête du blob + erreur typée `errGoldenInputsCarte`, `decodeGoldenInputs(blob, entry)` ; magie `REPLAYINPUTS15` -> `16` | `gofmt` vide, `go vet` propre. L'entrée de catalogue arrive en PARAMÈTRE, jamais devinée ; un fixture cuit pour une autre carte est refusé POUR CE QU'IL EST |
+| 2026-09-14 | 0.D.3 bis | ce commit | première tentative : déquantifier avec le découpage du CATALOGUE | **`60ae07c4` ROUGE, et lui seul** : `x [-8,56 ; 37,04]` frais contre `x [-0,39 ; 90,80]` relu — étendue exactement DOUBLE. Cause : le chemin du fixture AUTO-DÉTECTE le découpage (`ScanFilmOptions.Layout` nul) et la détection rend **[13 12 11]** sur Live Fire quand le catalogue dit **[12 12 11]** ; un bit sur X double le pas |
+| 2026-09-14 | 0.D.3 bis | ce commit | correctif : le blob porte les 3 largeurs EMPLOYÉES ; `scan.Layout` posé explicitement (même valeur, même fonction) | `TestGoldenInputsFidelite` **8/8 PASS, exit 0** (220 s). Coût du champ : **3 varints par fixture (~3 octets)** |
+| 2026-09-14 | 0.D.3 bis (preuve) | ce commit | `git diff --stat 1b1111379 -- testdata/assembly_ fixtures/go/` | **SORTIE VIDE** : goldens d'assemblage et fixtures de contrat **identiques à l'octet** à la version en flottants. Le contenu cuit est le même, seule sa représentation au fixture change |
+| 2026-09-14 | 0.D.3 bis (taille) | ce commit | `git cat-file -s` sur les 8 blobs aux trois états | origine `2a44c9031` **10 849 119 o (10,35 Mio)** · flottants `1b1111379` **18 656 453 o (17,79 Mio, +72 %)** · **QUANTA 10 337 525 o (9,86 Mio)** — soit **−511 594 o sous l'origine** et −8,0 Mio sous les flottants |
+| 2026-09-14 | 0.D.3 bis (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **3 126 tests, 0 échec** |
+
+
+| 2026-09-14 | 0.D.4 | `a35c9e678` (arbre) | `replay-corpus-gate` sur `d9781168` seul (manifeste réduit), **huit points de base** : 179bd7401 (34), 48cf4905d^ (35), 84a53c2cc (36 avant), 48cf4905d (36 après), fa09f4ee5^ (37), e6455cab6^ (38), 7c85acf58^ (39), 79bf2e6d2^ (40), 07236bf88^ (41), b07525b3f^ (43), ceb0f3d2a^ (47) | **Perte PRÉSENTE** aux bases 34, 35 et `48cf4905d^` (`tracks.points/n` 36 581 -> 36 579, 7 axes) ; **ABSENTE** à `48cf4905d` et à toutes les bases suivantes. **La cause est `48cf4905d` (schéma 36, « une track = une vie »), et elle seule.** L'hypothèse du plan (v41/v43/v47) nommait la bonne mécanique, quinze schémas trop tard. ~25 s par run |
+| 2026-09-14 | 0.D.4 | `a35c9e678` | `--keep-work` à la base `48cf4905d^`, puis comparaison des DEUX artefacts cuits, point par point sur la clé (slot, t) | **Deux points, identifiés à l'unité** : `slot 558 @ 2168` et `slot 573 @ 2730`, même xuid `2535435655459376`. **0 point neuf**, 0 doublon des deux côtés. Chacun est le PREMIER point de sa piste et il est ISOLÉ : point suivant du même slot à **+88 frames (8,8 s)** et **+176 frames (17,6 s)**, très au-delà de `lifeGapUS` (5 s). Pistes **160 -> 174** : les positions sont redistribuées, pas perdues |
+| 2026-09-14 | 0.D.4 | `a35c9e678` | lecture sur pièces des deux règles qui composent | `build.go:526` ouvre une nouvelle vie au-delà de `lifeGapUS` (`lives.go:46`, 5 s) ; `build.go:575` refuse la vie par `DefaultMinPoints = 2` (`build.go:16` : « une track d'un seul échantillon n'est pas une trajectoire »). Les deux précèdent le constat, aucune n'est en défaut. **`grep` du paquet : AUCUN compteur de refus `minPoints`** — la perte est muette |
+| 2026-09-14 | 0.D.4 | `a35c9e678` | second témoin `60ae07c4` aux bases `48cf4905d^` et `48cf4905d` | **NON MESURABLE** : `ERREUR : cuisson reference ... exit status 13`, `plafond memoire depasse pic_gio=4,15`. Le code de l'époque du schéma 36 ne cuit pas cet ex-bombe — c'est celui que la borne `f22474816` a dompté quinze schémas plus tard. Dit, pas contourné |
+| 2026-09-14 | 0.D.4 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court et corpus gate de clôture NON APPLICABLES : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — aucun octet de production ne change (deux documents) |
+
+
+| 2026-09-14 | 0.D.7 | ce commit | `decodeFilmInputsForEntry` : le découpage vient de `filmdec.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()` — la fonction de la production, pas `entry.Layout()` | `gofmt` vide, `go vet` propre. L'auto-détection ne subsiste que sur entrée de carte invalide (règle `resolveI0Layout`), et elle est alors NOMMÉE dans le blob (`LayoutDetected`). Sur les 8 builds : `LayoutDetected = false` partout |
+| 2026-09-14 | 0.D.7 | ce commit | erreur typée `errGoldenInputsDecoupage` : blob « catalogue » dont les largeurs ne sont plus celles que la règle tranche | Le fixture ne peut plus se déquantifier avec un pas devenu faux sans le dire. Magie `REPLAYINPUTS16` -> `17`, garde recalée sur la précédente |
+| 2026-09-14 | 0.D.7 | ce commit | régénération des 8 `inputs_*.bin.gz` (un décodage à la fois), puis goldens (porte nommée) et fixtures de contrat (double porte) | **UN SEUL golden change : `assembly_60ae07c4.golden`** (6 lignes) — les 7 autres identiques à l'octet. **UNE SEULE fixture de contrat change** : `replay_schema_54_60ae07c4.json.gz` (172 773 -> 174 897 o) + sa ligne de manifeste ; total 2 110 310 o, sous le plafond de 3 Mio |
+| 2026-09-14 | 0.D.7 (chiffres) | ce commit | diff du golden `60ae07c4` | **`x [-8,56 ; 37,04]` -> `x [-12,90 ; 27,56]`** · pistes **174 -> 173** · points de grille **45 137 -> 45 133** · vies publiées **174 -> 173** · `y [13,35 ; 47,79]` -> `[15,13 ; 47,79]`, `z [-5,30 ; 7,86]` -> `[-5,30 ; 5,05]`. Détection `gate=5 region=0 13/12/11` contre catalogue `gate=6 region=1 12/12/11` : les champs d'axe changent de décalage ET la porte de région teste ses deux bits |
+| 2026-09-14 | 0.D.7 (preuve) | ce commit | `TestGoldenInputsFidelite` | **8/8 PASS, exit 0** (179,7 s) : fraîches == relues sur les 8 builds, sous la règle du catalogue |
+| 2026-09-14 | 0.D.7 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **3 126 tests, 0 échec**. `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** |
+
+
+| 2026-09-14 | 0.D revue R1 | ce commit | **7 corrections dans le lot** (R1-1, R1-2, R1-4, R1-5, R1-6, R1-7, R1-8) + 1 découverte consignée (D7) et planifiée (lot 1.0) | 1 P1 + 7 P2 recevables, 0 jeté. 21 conditions du relecteur tiennent |
+| 2026-09-14 | R1-1 (P1) | ce commit | le blob porte les VERDICTS de balayage : `InventoryDeltaAmmoRefused` et `FilmMajorVersion` ; `options()` les câble ; la fidélité les compare | **LA CONSTANTE ÉTAIT FAUSSE** : après régénération, « canal munitions refuse » passe de `false` à **`true` sur 5 des 8 goldens** (`a521164d`, `11de8353`, `111fa685`, `bcb6d393`, `e5adf7b2`). **Mutation** (`!dStats.AmmoRefused`) : fidélité **ROUGE** sur `bcb6d393`, ligne nommée « canal munitions refuse : false / true » |
+| 2026-09-14 | R1-2 (P2) | ce commit | la contradiction blob / catalogue est vérifiée DANS LES DEUX SENS ; « détecté » sur une carte à entrée valide devient `errGoldenInputsDecoupage` | **Mutation** (encodeur forçant `LayoutDetected = true`) : round-trip **ROUGE** sur les 7 builds, message « fixture dit son decoupage [12 12 11] AUTO-DETECTE, or le catalogue en impose un » |
+| 2026-09-14 | R1-6 (P2) | ce commit | retrait de `InventoryDelta.Ammo` et `KeyframeInventory.GrenadesByPosition` — portés par le codec, lus par aucun assemblage | Fixtures **10 337 463 -> 10 323 769 o (−13 694 o)**. Fidélité 8/8 toujours verte : le retrait ne change aucun assemblage, ce qui EST la preuve qu'ils n'étaient pas lus |
+| 2026-09-14 | R1-8 (P2) | ce commit | `TestGoldenAssembly -update` et `TestGoldenInputsRegenerate` : `t.Logf` -> `t.Fatalf` nommé | Les quatre portes de régénération du paquet se comportent désormais pareil : aucune ne rend `ok` après avoir réécrit |
+| 2026-09-14 | R1-4, R1-5 (P2) | ce commit | en-têtes de `golden_builds_test.go` et `contract_fixtures_test.go` réécrits (D9 COMBLÉE, chiffres datés en note historique) ; journal des versions complété v15, v16, v17, v18 | Plus de doc inversée : le fichier ne décrit plus un défaut corrigé comme courant |
+| 2026-09-14 | R1-7 (P2) | ce commit | scission par responsabilité et découpage des deux fonctions de ~290 L | `golden_inputs_test.go` **1 560 L -> 493 L** ; 5 fichiers neufs, **tous < 500 L** (codec 311, encode 362, decode 308, film 190, fidélité 118) ; `encodeGoldenInputs` **294 L -> 12 L** + 8 sous-fonctions (38, 53, 36, 36, 53, 45, 27, 23) ; `decodeGoldenInputs` **290 L -> 16 L** + 8 sous-fonctions. **DÉPLACEMENT PUR** : round-trip et fidélité verts après scission |
+| 2026-09-14 | 0.D revue R1 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run` ; `TestGoldenInputsFidelite` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **203 fichiers, 3 126 tests, 0 échec** ; **fidélité 8/8 PASS**. `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **VIDE** — régime court non applicable, aucun octet de production ne bouge |
+
+
+| 2026-09-14 | 0.D revue R2 | ce commit | **revue ronde 2 (corrections seules) : 0 P1 + 3 P2, 0 jeté, 3 corrigés.** 14 conditions du relecteur tiennent ; la boucle converge (1 P1 -> 0), pas de ronde 3 | — |
+| 2026-09-14 | R2-1 (P2) | ce commit | la moitié `FilmMajorVersion` de R1-1 n'avait AUCUN gate : `renderAssembly` ne l'imprimait pas (0 occurrence dans les 8 goldens) et l'erreur de `filmsource.LoadDir` était jetée en silence | (i) `renderAssembly` publie la ligne « version majeure du film » ; les 8 goldens régénérés par la porte nommée, **diff = cette seule ligne, +1 par golden** — et les valeurs recoupent la table du corpus (33 · 37 · 38 · 39 · 40 ×2 · 41 ×2). (ii) le chemin frais rend une erreur nommée au lieu de se taire. **Mutation** (`_ = v`) : fidélité **ROUGE** sur `bcb6d393`, « NON LUE » contre « 40 » |
+| 2026-09-14 | R2-2 (P2) | ce commit | `TestDocumentShapeRegenerate` réécrivait et rendait `ok` ; le commentaire de R1-8 annonçait une parité qui n'existait pas | `t.Fatalf` nommé ; commentaire corrigé (« les CINQ autres portes », comptées). **Preuve par la commande documentée** sans `-v` : réécrit, **sort en échec nommé**, md5 du golden **identique avant/après** (`72d361fa…`), rien à restaurer |
+| 2026-09-14 | R2-3 (P2) | ce commit | le journal se contredisait : v15 disait faire entrer `InventoryDelta.Ammo` « parce que l'assemblage le lit », v18 disait l'inverse ; l. 82 l'attribuait à v16 | v15 réécrite au passé avec la mention datée « entré AU MÊME GESTE, mais À TORT […] RETIRÉ en v18 » ; attribution corrigée en « entré en v15 » |
+| 2026-09-14 | 0.D revue R2 (gates) | ce commit | `gofmt` ; `go vet` ; `go test ./internal/games/halo_infinite/film/replay/ ./internal/archlint/` ; `TestGoldenInputsFidelite` ; régénération de contrôle des fixtures de contrat | gofmt vide ; vet propre ; **2 paquets ok** (replay 13,1 s, archlint 11,0 s) ; **fidélité 8/8 PASS** ; **fixtures de contrat INCHANGÉES** (la version majeure y était déjà depuis R1 — seul le golden ne l'imprimait pas) |
 
 ## 6. Protocole de reprise de session
 

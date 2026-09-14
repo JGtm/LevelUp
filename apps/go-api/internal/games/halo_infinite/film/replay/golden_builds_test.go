@@ -24,30 +24,29 @@ package replay
 // catalogue versionne du titre, par `NormalizeMapName` comme en production. C est ce que
 // `decodeFilmInputsForEntry` rend possible sans dupliquer la sequence de decodage.
 //
-// # CE QUE CES GOLDENS DECRIVENT, ET CE QU ILS NE DECRIVENT PAS (decouverte D9, corrigee en R1)
+// # CE QUE CES GOLDENS DECRIVENT — LA SORTIE DE PRODUCTION (decouverte D9, COMBLEE au lot 0.D.3)
 //
-// SUR LES SEPT BUILDS, l assemblage bati sur les entrees FRAICHEMENT decodees differe de celui
-// bati sur les memes entrees RELUES depuis le fixture. Mesures :
+// Ils la decrivent depuis le 2026-09-14, et ils ne la decrivaient PAS avant : le fixture ne
+// portait pas tout ce que l assemblage lit, si bien que le golden figeait un document que la
+// production ne produit pas. `TestGoldenInputsFidelite` compare desormais, sur les HUIT builds,
+// l assemblage bati sur les entrees FRAICHEMENT decodees a celui bati sur les memes entrees
+// RELUES — et il est vert.
 //
-//	bcb6d393  « lecture(s) portent le rang SELECTIONNE » : 36 en frais, 136 en relu
-//	fb1a1a72  origine mesuree des poses : 20 deployee(s) / 319 lachee(s) en frais,
-//	          17 / 322 en relu — TROIS poses changent d ORIGINE, et 479 lignes sur 582 sont
-//	          decalees
+// NOTE HISTORIQUE, DATEE (mesures du 2026-09-13, avant correction) : `bcb6d393` publiait
+// « 136 lecture(s) portent le rang SELECTIONNE » quand la production en produit 36 ; `fb1a1a72`
+// publiait « 17 deployee(s) / 322 lachee(s) » quand la production rend 20 / 319, et 479 lignes
+// sur 582 etaient decalees. Trois causes, toutes comblees au lot 0.D.3 :
+// `KeyframeInventory.SelectedGrenadeRank` non serialise (-1 relu 0, donc une selection inventee),
+// `InventoryDelta.Ammo` non serialise, et des coordonnees ARRONDIES au centimetre alors
+// qu `equipmentOwner` choisit le poseur a la plus courte distance. Les positions portent depuis
+// les QUANTA du film (lot 0.D.3 bis) et le decoupage d i0 vient du CATALOGUE comme en production
+// (lot 0.D.7).
 //
-// Le codec est pourtant un POINT FIXE (`TestGoldenBuildsInputsRoundTrip` vert sur les sept) : il
-// ne PERD rien de ce qu il porte. Il ne porte simplement pas tout ce que le decodage rend — ni
-// les rangs de capacite, ni les origines de pose.
-//
-// CONCLUSION HONNETE : le golden par build decrit l assemblage sur le SOUS-ENSEMBLE d entrees que
-// le codec transporte, PAS la sortie de production. Sur `fb1a1a72` il publie des origines
-// d equipement que la production ne produit pas. Il verrouille donc la non-regression du
-// CONSTRUCTEUR a entrees constantes, ce qui est deja beaucoup, et rien de plus.
-//
-// Reprise : completer le codec (`inputs_*.bin.gz`) pour qu il porte rangs de capacite et origines
-// de pose, puis re-figer les sept goldens. Candidat au lot 0.D, decision utilisateur. NON corrige
-// ici (regle 7). `000d5950` ne montrait pas l ecart — encore un cas ou le film de reference est
-// le seul sur lequel un defaut ne se voit pas.
-//
+// CE QU ILS NE DECRIVENT TOUJOURS PAS, et c est ecrit au plan (lot 1.0) : le chemin du fixture
+// est une COPIE de la sequence de balayages de `BuildFromFilm`, et cinq canaux y manquent des
+// deux cotes — d ou des calques VIDES dans tous les goldens (« prises et lachers d arme
+// decodes=0 », « vehicules balaye=false »). Le golden verrouille donc la non-regression du
+// constructeur sur les canaux qu il porte, pas sur ceux qu il ignore.
 // REGENERATION — DEUX PORTES SEPAREES, jamais d edition a la main (revue R1, P2-7) :
 //
 //	# les fixtures d entrees : re-decode les films, EXIGE le cache
@@ -271,7 +270,7 @@ func TestGoldenBuildsInputsRoundTrip(t *testing.T) {
 		t.Run(b.Build+"/"+b.Short8, func(t *testing.T) {
 			g, entry := chargerGoldenBuild(t, b)
 			blob := encodeGoldenInputs(g)
-			again, err := decodeGoldenInputs(blob)
+			again, err := decodeGoldenInputs(blob, entry)
 			if err != nil {
 				t.Fatalf("second decodage : %v", err)
 			}
@@ -305,13 +304,13 @@ func chargerGoldenBuild(t *testing.T, b goldenBuild) (*goldenInputs, filmdec.Map
 	if _, err := buf.ReadFrom(zr); err != nil {
 		t.Fatalf("decompression %s : %v", b.inputsPath(), err)
 	}
-	g, err := decodeGoldenInputs(buf.Bytes())
-	if err != nil {
-		t.Fatalf("decodage %s : %v", b.inputsPath(), err)
-	}
 	entry, err := b.mapQuant()
 	if err != nil {
 		t.Fatalf("carte %q hors catalogue : %v", b.Map, err)
+	}
+	g, err := decodeGoldenInputs(buf.Bytes(), entry)
+	if err != nil {
+		t.Fatalf("decodage %s : %v", b.inputsPath(), err)
 	}
 	return g, entry
 }
