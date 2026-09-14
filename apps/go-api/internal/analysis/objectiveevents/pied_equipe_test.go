@@ -309,6 +309,12 @@ func TestPiedBlocProvenance(t *testing.T) {
 	if dir == "" {
 		t.Skip("PIED_FILM_DIR vide : la tranche ne peut pas être recoupée sur le film")
 	}
+	// NORMALISER UNE FOIS, A L'ENTREE, AVANT TOUTE DERIVATION (constat C4 de la revue R2). La
+	// complétion d'un shell rend `…/film_chunks/53ce4390/`, séparateur final compris :
+	// `filepath.Base` l'absorbe, `filepath.Dir` non — la remontée vers le cache s'arrêtait alors
+	// un cran trop bas et la porte échouait sur un manifeste introuvable, message trompeur pour
+	// une entrée parfaitement valide.
+	dir = filepath.Clean(dir)
 	if filepath.Base(dir) != piedFilm {
 		t.Fatalf("PIED_FILM_DIR désigne %s : la fixture vient de %s", filepath.Base(dir), piedFilm)
 	}
