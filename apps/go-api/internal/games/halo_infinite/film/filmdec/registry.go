@@ -115,17 +115,28 @@ type Registry struct {
 	// fingerprint est l'empreinte FNV-1a des entrees nommees, calculee pendant la passe de
 	// lecture (registry_fingerprint.go). Se lit par RegistryFingerprint.
 	fingerprint uint64
-	// TruncatedBytes : les octets de queue qu'aucun bloc ENTIER ne couvre, QUAND le parse a
-	// epuise le tampon sans rencontrer la fin structurelle du registre. Zero sur un chunk_00
-	// nominal — la lecture s'y arrete sur la section d'identification (bloc 49 ou 50), et tout
-	// ce qui suit appartient aux sections 2 et 3, pas a une troncature.
+	// Truncated : le parse a EPUISE le tampon sans rencontrer la fin structurelle du registre.
+	// C'est CELA, une troncature — pas la presence d'octets de queue.
 	//
-	// POURQUOI CE CHAMP EXISTE (revue R1 du lot 1.2). Le parse ne lit que des blocs ENTIERS : un
-	// tampon qui s'arrete au milieu d'un bloc verrait sa fin ignoree EN SILENCE, et « registre
-	// plus court que prevu » se lirait comme « ce build declare moins d'archetypes ». Une
-	// troncature est un fait du tampon, pas une propriete du jeu : elle se compte et se nomme
-	// (D14). Le champ est exporte pour qu'un appelant puisse le journaliser ; aucun ne le fait
-	// encore, et c'est consigne au registre des replis du lot 1.9.0.
+	// POURQUOI CE CHAMP EXISTE (revue R1 du lot 1.2, definition corrigee a la revue R2). Le parse
+	// ne lit que des blocs ENTIERS : un tampon qui s'arrete avant la fin du registre verrait sa
+	// fin ignoree EN SILENCE, et « registre plus court que prevu » se lirait comme « ce build
+	// declare moins d'archetypes ». La premiere version ne signalait la troncature que par
+	// [Registry.TruncatedBytes] : un tampon coupe EXACTEMENT sur une frontiere de bloc
+	// (`registryEntryBase + k*archetypeBlockSize` — mesure R2 sur `53ce4390` : 8, 16 648, 99 848,
+	// 416 008, 815 368 octets) rendait `k` archetypes et une queue NULLE, donc redevenait muet
+	// dans le mode de panne meme que le champ devait fermer.
+	//
+	// Sur un chunk_00 sain le parse sort par la fin structurelle (section d'identification, bloc
+	// 49 ou 50) et `Truncated` est faux : les 1 351 chunk_00 du cache portent tous des sections
+	// apres leur registre.
+	Truncated bool
+	// TruncatedBytes : les octets de queue qu'aucun bloc ENTIER ne couvre. N'a de sens que quand
+	// [Registry.Truncated] est vrai, et peut alors valoir ZERO (coupe alignee sur une frontiere
+	// de bloc). Ce n'est pas le drapeau de troncature, c'est sa mesure.
+	//
+	// Les deux champs sont exportes pour qu'un appelant puisse les journaliser ; aucun ne le fait
+	// encore, et c'est consigne au registre des replis du lot 1.9.0 (decouverte D6 (1.2)).
 	TruncatedBytes int
 }
 
@@ -232,11 +243,11 @@ func looksZlib(data []byte) bool {
 // 7/7 (registry_entree_jeu_test.go).
 func parseRegistry(data []byte) *Registry {
 	nBlocks, queue := registryWholeBlocks(len(data))
-	reg := &Registry{}
+	reg := &Registry{TruncatedBytes: queue}
 	fp := registryHasher()
 	// epuise : la boucle est allee au bout des blocs ENTIERS sans rencontrer la fin structurelle
-	// du registre. C'est la seule situation ou les octets de queue sont une TRONCATURE ; sur un
-	// chunk_00 complet la boucle sort par `break` et la queue est la section suivante.
+	// du registre. C'est CELA une troncature ; sur un chunk_00 complet la boucle sort par `break`
+	// et la queue qui reste est la section suivante, pas un tampon coupe.
 	epuise := true
 	for b := 0; b < nBlocks; b++ {
 		base := registryEntryBase + b*archetypeBlockSize
@@ -259,8 +270,9 @@ func parseRegistry(data []byte) *Registry {
 		}
 		reg.Archetypes = append(reg.Archetypes, arch)
 	}
-	if epuise {
-		reg.TruncatedBytes = queue
+	reg.Truncated = epuise
+	if !epuise {
+		reg.TruncatedBytes = 0 // la queue est la section suivante du chunk, pas une coupure
 	}
 	reg.fingerprint = fp.sum()
 	warnUnknownRegistry(reg.fingerprint, len(reg.Archetypes), fp.slots)
@@ -272,10 +284,19 @@ func parseRegistry(data []byte) *Registry {
 //
 // LA BOUCLE DE BLOCS NE DOIT PARCOURIR QUE DES BLOCS ENTIERS, et c'est une CONDITION DE SURETE,
 // pas une commodite : `registryBlockTail` compare la suite nommee a la fin du bloc, donc sur un
-// bloc incomplet il recevrait `from > to` et `zeroTail` PANIQUERAIT (`data[from:to]`). Les deux
-// appelants de production (`killcollector/hits.go`, `filmdec/film_context.go`) n'ont aucun
-// `recover` : un `chunk_00` tronque ferait tomber le processus. Reproductions et non-regression :
-// registry_tronque_test.go.
+// bloc incomplet il recevrait `from > to` et `zeroTail` PANIQUERAIT (`data[from:to]`). Les TROIS
+// appelants de production n'ont aucun `recover`, donc un `chunk_00` tronque ferait tomber le
+// processus — releve du 2026-09-14, `grep -rn "ParseRegistryChunk(" --include=*.go internal/ cmd/ |
+// grep -v _test.go` :
+//
+//	internal/games/halo_infinite/film/filmdec/film_context.go:254
+//	internal/games/halo_infinite/film/killsource/world.go:58   (via killsource/decode.go:123,
+//	                                                            paquet importe par killcollector
+//	                                                            et par replaybuild)
+//	internal/sync/killcollector/hits.go:113
+//
+// (`cmd/rdata_weapon_scan/main.go` l'appelle aussi trois fois : outil de recherche, hors
+// production.) Reproductions et non-regression : registry_tronque_test.go.
 //
 // Un tampon plus court que l'en-tete est entierement de la queue : il ne porte meme pas le
 // debut du tableau d'entrees.

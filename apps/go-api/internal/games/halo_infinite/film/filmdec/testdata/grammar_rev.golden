@@ -68,4 +68,12 @@
 #               disait « ti44 i0 = L0 -> 6 bits/axe » alors que ce lot met le composant a L1 :
 #               budget 100 -> 115 bits. La LECTURE NOMINALE ne change pas — `KnownRegistryFingerprint`
 #               est inchangee et l equivalence reste a 20/20.
-grammar-2026-09-14.2	ca9085991a90eb2558685e63df2f0ec080abf9207edb29e860a75e03a41de714
+#   2026-09-14  grammar-2026-09-14.2  lot 1.2 revue R2 (MEME LOT donc MEME REVISION) : deux P2.
+#               (P2-1) un chunk_00 coupe EXACTEMENT sur une frontiere de bloc ne laisse aucun
+#               octet de queue, donc `TruncatedBytes = 0` et la troncature redevenait muette ;
+#               `Registry.Truncated` porte desormais le FAIT (le parse a epuise le tampon) et
+#               `TruncatedBytes` n en est que la mesure. (P2-2) « les DEUX appelants de
+#               production » etait faux : ils sont TROIS (film_context.go:254, killsource/
+#               world.go:58, killcollector/hits.go:113), releve par grep colle au texte.
+#               Aucune largeur, aucun offset, aucune lecture nominale ne change.
+grammar-2026-09-14.2	8e118038d1243ac18d8f31bca07e47bcf40ab01be028ccdf1ae8187e1898684c
