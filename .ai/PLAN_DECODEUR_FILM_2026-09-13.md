@@ -1234,19 +1234,102 @@ cette mesure — faite avant d'écrire une ligne — qui prédit le 20/20 identi
 
 #### Lot 1.3 — Les cinq états par défaut manquants — S, high
 
-Sur pièces : `default_state_arch.go:54-77` ; ti=14 classé stub à tort (en-tête ligne 25).
+Sur pièces AVANT le lot, et trois citations du plan à corriger : la table `defaultStateDeserByTI`
+est aux lignes **44-66** (pas `:54-77`), le commentaire STUB de ti=14 à la ligne **24** (pas 25),
+et le relevé qui donne les cinq grammaires est la section **B.2** de
+`NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md` — il n'y a pas de « 8.5 » dans cette note.
+CLOS le 2026-09-14 (branche `feat/decfilm-13`, 5 commits `ca9b8116c` -> le commit de clôture).
 
-- [ ] 1.3.1 Entrées ti=14 `V ; R(5)`, ti=17 `V ; R(7)`, ti=21 `R(18)`, ti=29 `V`, ti=47 `V ; R(5)`,
-      chacune avec sa fonction Ghidra (relevé 8.5 de `NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md`)
+- [x] 1.3.1 Entrées ti=14 `V ; R(5)`, ti=17 `V ; R(7)`, ti=21 `R(18)`, ti=29 `V`, ti=47 `V ; R(5)`,
+      chacune avec sa fonction Ghidra (relevé B.2 de `NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md`)
       et sa date ; commentaire STUB de ti=14 corrigé.
-- [ ] 1.3.2 Test permanent « `n2` constant » sur les mini-films : pour tout archétype à état fixe,
+      FAIT, et les cinq fonctions ont été RELUES CHEZ L'ÉCRIVAIN le 2026-09-14 (Ghidra, base
+      `0x140000000`, lecture seule) au lieu d'être recopiées de la note : `FUN_140FED6F4` (ti=14)
+      et `FUN_1410F44F8` (ti=47) font `FUN_1406cf008` puis `+= 5` ; `FUN_14101A0A4` (ti=17)
+      `+= 7` ; `FUN_141133C24` (ti=21) un unique `+= 0x12` SANS appel de préfixe ; `FUN_14116F514`
+      (ti=29) le seul préfixe. `FUN_1406cf008` a lui aussi été relu : R(1) sec.
+      ti=47 partage le PORTEUR de ti=14 (même forme au bit près), comme ti=43 partage celui de
+      ti=36 — le commentaire de la ligne cite son adresse propre.
+      Le commentaire STUB est corrigé avec sa CAUSE : `FUN_140467a20` n'est pas un déserialiseur
+      mais un `return;` partagé par treize symboles exportés sans rapport
+      (`AK::MemoryMgr::GetCategoryStats`, `ManagedDebug_LogError`, ...) — une résolution qui
+      atterrit là ne trouve pas un stub, elle se trompe de table.
+      ÉCRIT EN PLUS, parce que D14 l'exige : le repli « absent = 0 bit » est NOMMÉ au-dessus de la
+      table, avec les quatre archétypes qui en vivent encore (ti=23, 40, 41, 44 — les seuls REAL
+      de la table de descripteurs sans grammaire relue, hors le bipède), sa date de pose, son
+      critère de retrait et l'endroit où il se compte (le golden de fermeture).
+- [x] 1.3.2 Test permanent « `n2` constant » sur les mini-films : pour tout archétype à état fixe,
       le second mot de taille est constant ; fausser une largeur (ti=21 → 17) rougit.
-- [ ] 1.3.3 Ratchet de couverture (0.A.3) régénéré avec justification : fermeture qui MONTE
+      FAIT (`default_state_n2_constant_test.go`, sans garde d'environnement, sur les sept bobines
+      par build). **77 groupes jugés** (bobine × archétype à largeur FIXE), 34 écartés pour largeur
+      VARIABLE, 6 faute de records ; plancher de non-trivialité à 60. La MUTATION demandée est
+      jouée : `R(18)` → `R(17)` rougit sur les CINQ bobines qui portent des records ti=21, `n2`
+      passant de `244` constant à `122 / 2147483770` ; remise à 18, diff contre `HEAD` vide.
+      Le test écrit aussi ce qu'il N'affirme PAS : `n2` constant ne prouve pas qu'une largeur est
+      juste (ti=29 était déjà constant à 0 bit) — c'est un détecteur, la fermeture est l'autre
+      chaîne.
+- [x] 1.3.3 Ratchet de couverture (0.A.3) régénéré avec justification : fermeture qui MONTE
       (attendu : + records sur ti=14/17/21/29/47, projection 30,8 % sur les 6 films de recherche).
-- [ ] 1.3.4 `GrammarRev` montée.
+      FAIT, et la justification est DANS le golden (l'en-tête que le générateur écrit, donc elle
+      survit à la prochaine régénération) : **21 lignes montent, 0 descend, aucune ne disparaît,
+      aucun total ne bouge** — ti=14 `0/3520 -> 3520/3520`, ti=17 `0/3729 -> 3729/3729`, ti=29
+      `0/110 -> 102/110`. Les archétypes touchés par le diff sont EXACTEMENT ti=14, 17 et 29
+      (`git diff -U0` sur le golden). **ti=21 (0/357) et ti=47 (0/1716) ne montent pas**, et la
+      note le prédisait : leur largeur est prouvée par deux chaînes, un composant reste faux
+      (ti=47 bute sur `i2 personal-ai-data-component`) — lot 3.6.
+      La projection est VÉRIFIÉE, pas recopiée : sur les 6 films de recherche,
+      **8 796/62 686 (14,0 %) -> 19 337/62 686 (30,8 %)**, delta = 5 024 + 5 379 + 138, et le
+      plancher de hasard (même lecture, en-tête décalé d'un bit) DESCEND de 529 à 391.
+- [x] 1.3.4 `GrammarRev` montée.
+      `grammar-2026-09-14.2` -> `grammar-2026-09-14.3` (troisième lot du même jour, forme de rang
+      née au lot 1.2). L'empreinte avait ROUGI D'ELLE-MÊME dès le commit de 1.3.1 (« LA GRAMMAIRE
+      A CHANGE SANS MONTEE DE REVISION ») : c'est la preuve par mutation naturelle, aucune
+      mutation artificielle n'était nécessaire. Golden régénéré par sa porte nommée (qui réécrit
+      PUIS échoue), historique complété.
+      `KillSourceDecoderRev` N'EST PAS montée : c'est un geste de PROD (backlog de redécodage),
+      réservé au pilote sur signal — même arbitrage qu'au lot 1.2, découverte D2 (1.2) toujours
+      ouverte. La mesure de ce lot la précise : sur `50247b26`, la sortie de `killsource` change
+      d'UN SEUL caractère, dans une chaîne de DIAGNOSTIC (`calibration`, « médiane 77 » -> « 76 »)
+      — les lignes de kill, le catalogue, la couverture et la santé sont identiques à l'octet, et
+      le golden de `killsource` sur la mini-bobine ne bouge pas.
 
 Preuve : `replay-equiv` (attendu : différences seulement sur les balayages delta des archétypes
 14, 17, 21, 29, 47 s'ils passent par `consumeKeyframeDefaultState`) ; corpus gate zéro perte.
+RÉSULTAT (2026-09-14) : régime court **9 identiques / 1 différent**, et l'unique différence est à
+la SEULE étape `killsource` sur `50247b26` — l'étape `artifact` est IDENTIQUE sur les dix films,
+donc **`SchemaVersion` NE MONTE PAS** (55 avant, 55 après) et aucune recuisson du parc n'est due.
+L'attribution n'est pas un raisonnement : les deux sorties `killsource json` de `50247b26` ont été
+produites de part et d'autre du correctif (fichier restauré par NOM au commit `783ae680d`) et
+diffèrent d'UNE valeur sur 228 800 octets.
+
+##### Rapport 1.3.0 — la population touchée, mesurée avant de coder
+
+`defaultStateDeserByTI` a **un seul lecteur de production**, `TraverseEntity`
+(`traverse.go:1107`, `useArchDefaultStateDeser` à `true`), et il ne le consulte que sur un record
+NEW ; `WalkKeyframeFullState` / `KeyframeClosure` n'ont AUCUN appelant hors de `filmdec`
+(`grep -rn "WalkKeyframeFullState(\|KeyframeClosure(" --include=*.go internal/ cmd/ | grep -v
+_test.go` rend 3 lignes, toutes dans `filmdec`). La population qu'une entrée neuve touche est donc
+celle des records NEW de la trame — et c'est elle qu'il fallait mesurer avant d'écrire.
+
+Histogramme publié par `TestDeltaWalkWitness` (12 premiers chunks de réplication, sortie brute
+collée en §5), records NEW par archétype AVANT le lot :
+
+| Film | ti=14 | ti=17 | ti=21 | ti=29 | ti=47 | total NEW |
+|---|---|---|---|---|---|---|
+| 000d5950 | 13 | 43 | 29 | 25 | 17 | 3 322 |
+| 06dfe6d9 | 6 | 8 | 5 | — | 2 | 811 |
+| 64e8adfa | 13 | 395 | 71 | 7 | 9 | 2 518 |
+
+PRÉDICTION TIRÉE DE CETTE MESURE, écrite avant le gate : la trame traverse bien des records des
+cinq archétypes, donc l'équivalence NE POUVAIT PAS rendre 20/20 comme au lot 1.2 ; elle devait
+montrer des écarts sur les balayages qui consomment la marche delta. Résultat : un seul en rend un
+(`killsource`), et d'un seul caractère. LIMITE HONNÊTE DE L'HISTOGRAMME : il compte aussi des
+`TypeIndex` de 50 à 63, qui n'existent pas (l'exe en déclare 50) — ce sont des records lus après
+une désynchronisation, donc les comptes ci-dessus sont un MAJORANT.
+
+Côté image-clé, la fermeture avant le lot est celle du golden 0.A.3 : ti=14 `0/3520`, ti=17
+`0/3729`, ti=21 `0/357`, ti=29 `0/110`, ti=47 `0/1716` sur les sept bobines ; `0/5024`, `0/5379`,
+`0/373`, `0/157`, `0/1679` sur les six films de recherche.
 
 #### Lot 1.4 — Le cadre d'image-clé d'état complet en production — M, high
 
@@ -1829,6 +1912,10 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.2 revue R2 (non retenu) | **D7 (1.2) — la cellule `code_source` de la ligne 976 d'`ecs_table.tsv` cite `traverse.go:921` alors que le `case` d'`asset-transform-component` est à `traverse.go:996`.** Décalage PRÉEXISTANT au lot 1.2 (la ligne n'a pas bougé de fichier, c'est le fichier qui a grandi au-dessus d'elle) ; le contrôle G1 confronte la table au code par le NOM du `case`, pas par le numéro de ligne, donc il reste vert. Remarque NON RETENUE par la ronde 2 comme hors périmètre du lot, et NON CORRIGÉE : une correction isolée de cette cellule laisserait les autres dériver de la même façon. | lot 2.6 (grammaire en instruments) : soit `code_source` cite un symbole plutôt qu'une ligne, soit un garde-rail vérifie le numéro |
 | 2026-09-14 | 1.2 revue R1 (C1), **complétée à la R2** | **D6 (1.2) — la troncature d'un `chunk_00` est NOMMÉE dans `Registry` mais n'a encore AUCUN LECTEUR, et le seul signal qui sort en exploitation attribue la mauvaise cause.** `Registry.Truncated` dit que le parse a épuisé le tampon sans rencontrer la fin structurelle, `Registry.TruncatedBytes` mesure la queue non couverte (elle peut valoir 0 sur une coupe alignée). Les TROIS appelants de production — relevé du 2026-09-14, `grep -rn "ParseRegistryChunk(" --include=*.go internal/ cmd/ | grep -v _test.go` : `filmdec/film_context.go:254`, `killsource/world.go:58` (via `killsource/decode.go:123`, paquet importé par `killcollector` ET par `replaybuild`), `killcollector/hits.go:113` — n'en journalisent aucun. Ce qui sort alors d'un `chunk_00` tronqué, c'est le WARN de `warnUnknownRegistry` (« grammaire des composants suspecte (mise a jour du jeu ?) ») : le bon signal, la mauvaise cause. NON TRAITÉ dans ce lot — brancher un journal touche trois appelants hors périmètre, et amender le message du WARN touche `registry_fingerprint.go` hors du constat. | **à compter au registre des replis du lot 1.9.0** (nom, fait, condition de déclenchement, date de pose, critère de retrait), ET y porter que `warnUnknownRegistry` doit dire « registre tronqué » quand `Truncated` est vrai |
 
+| 2026-09-14 | 1.3 (mesure avant de coder) | **D1 (1.3) — le témoin figé de la marche delta (`delta_walk_witness_test.go`) est PÉRIMÉ, et il l'était AVANT ce lot.** Mesuré au commit d'intégration `783ae680d`, arbre PROPRE (fichier restauré par nom, mêmes chiffres des deux côtés) : `000d5950` figé {14 350 paquets, 38 878 records, 30 080 aboutis} contre mesuré {14 350, **38 897**, **30 101**} ; `06dfe6d9` figé {6 606, 10 613, 8 502} contre {6 606, **10 629**, **8 499**} ; `64e8adfa` figé {14 357, 39 806, 31 973} contre {14 357, **39 820**, **31 988**}. Le contrat écrit dans le fichier (« si l'une bouge, c'est la GRAMMAIRE qui a bougé, et c'est ce qu'il faut expliquer avant de réécrire le chiffre ») n'a donc pas été tenu par au moins un lot depuis le 2026-08-18. Le test est sous garde `DELTA_WITNESS_FILM` : la CI ne le voit jamais, et c'est pour cela que la dérive a pu traverser 0.A à 1.2 sans être consignée. **Le cas de `06dfe6d9` est le plus parlant : les records MONTENT (+16) mais les traversées abouties DESCENDENT (-3)** — un sens que le contrat du fichier n'accepte pas. NON TRAITÉ : re-figer ici absorberait en silence la dérive d'un autre lot. | décision pilote : rejouer les trois films lot par lot depuis `cbfdc269d` pour attribuer la dérive, puis re-figer avec sa cause — ou retirer le témoin s'il ne garde plus rien |
+| 2026-09-14 | 1.3 (équivalence) | **D2 (1.3) — une chaîne de DIAGNOSTIC entre dans l'empreinte d'équivalence de l'étape `killsource`.** Sur `50247b26`, le seul écart des 10 films du régime court est le champ `Result.Calibration`, une phrase lisible : `axisW=14 indexW=1 [PROFIL PLAT (score 88, mediane 77) : valeurs par defaut conservees] | recordStateParam=2 [croissance x1.003]` -> la même avec `mediane 76`. **Un caractère sur 228 800 octets de sortie JSON** ; les paramètres RETENUS (`axisW`, `indexW`, `recordStateParam`, le facteur de croissance), les lignes de kill, le catalogue, la couverture et la santé sont identiques à l'octet. Conséquence : un gate d'équivalence peut rougir pour une phrase de journal, et un lot doit alors prouver que rien de publié ne bouge — ce que la comparaison champ à champ a fait ici, mais au prix d'une passe supplémentaire. NON TRAITÉ. | lot 2.6 (empreintes par couche) : sortir les chaînes de diagnostic de l'empreinte, ou les isoler dans une sous-empreinte nommée |
+| 2026-09-14 | 1.3 (équivalence) | **D3 (1.3) — la découverte D4 (1.2) est formulée trop largement, et la mesure la réfute sur ce point.** D4 (1.2) écrit « le corpus d'équivalence ne porte AUCUN témoin des archétypes ti=14, 21, 30 et 44 ». Or `000d5950` et `64e8adfa` SONT au corpus (`CORPUS.txt` l. 141 et 143) et leur marche delta traverse des records NEW de ces archétypes (13 et 13 pour ti=14, 29 et 71 pour ti=21 — histogramme du témoin, §5) ; surtout, le lot 1.3 ne change QUE les états par défaut de ti=14/17/21/29/47 et il fait bouger `50247b26` au balayage `killsource` : le corpus n'est donc pas aveugle à ces archétypes. Ce que D4 voulait dire — aucun film n'exerce les COMPOSANTS qui consomment le niveau (`crew-order`, `flock-destination`, `tacmap-poiicon`, `asset-transform`) — reste plausible et n'est PAS mesuré par ce lot. NON TRAITÉ (hors périmètre 1.3). | reformuler D4 (1.2) au lot 3.6, où le témoin par archétype se nomme |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -2079,6 +2166,27 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.2 revue R2 (P2-1) | ce commit | `Registry.Truncated bool` ajouté (= le parse a ÉPUISÉ le tampon), `TruncatedBytes` gardé comme MESURE (peut valoir 0) ; sous-test `(C)` : coupe alignée à `registryEntryBase + 6*archetypeBlockSize` sur la bobine versionnée | Une coupe SUR une frontière de bloc ne laisse aucun octet de queue : `TruncatedBytes = 0` et la troncature redevenait MUETTE, dans le mode de panne même que le champ devait fermer. **MUTATION JOUÉE** : `reg.Truncated = epuise && queue > 0` (exactement le défaut trouvé) -> seul le sous-test `(C)` ROUGIT (« Truncated = false sur un tampon coupé »), `(A)` et `(B)` restent verts ; arbre restauré. `TestParseRegistreCompletNEstPasTronque` assert désormais aussi `Truncated == false` |
 | 2026-09-14 | 1.2 revue R2 (P2-2) | ce commit | `grep -rn "ParseRegistryChunk(" --include=*.go internal/ cmd/ \| grep -v _test.go`, sortie collée à côté du compte dans les trois textes | **TROIS appelants de production, pas deux** : `filmdec/film_context.go:254`, `killsource/world.go:58` (via `killsource/decode.go:123`, paquet importé par `killcollector` ET par `replaybuild`), `killcollector/hits.go:113` ; plus `cmd/rdata_weapon_scan/main.go` (756, 765, 798), outil de recherche hors production. Corrigé dans `registry.go`, `registry_tronque_test.go` et la découverte D6. **Deuxième dénombrement d'appelants faux du chantier : désormais tout compte d'appelants écrit dans un texte est produit par un grep collé à côté du compte** |
 | 2026-09-14 | 1.2 revue R2 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` + `go test -count=1` sur `./internal/games/halo_infinite/film/filmdec/ ./internal/archlint/ ./internal/sync/killcollector/ ./internal/games/halo_infinite/film/killsource/` | gofmt **vide** ; vet **0 diagnostic** ; **4 paquets ok, exit 0**. `TestGrammarRevSuitLaGrammaire` a rougi (`registry.go`) : golden régénéré par `-update-grammar-rev`, **`GrammarRev` INCHANGÉE** (`grammar-2026-09-14.2`, même lot). `KnownRegistryFingerprint` **inchangée** (`TestRegistreReelDeLaMiniBobine` vert). Aucun test renommé : baseline JSONL intacte |
+
+
+| 2026-09-14 | 1.3 (Ghidra, AVANT de coder) | `0e830ab33` | `decompile_function` sur `0x140FED6F4`, `0x14101A0A4`, `0x141133C24`, `0x14116F514`, `0x1410F44F8` et `0x1406cf008` (instance partagée `HaloInfinite.exe`, base `0x140000000`, LECTURE SEULE) | Les cinq largeurs viennent du décompilé, pas de la note : ti=14 `FUN_1406cf008` puis `*(param_4+0x2c) += 5` · ti=17 `+= 7` · ti=21 un unique `+= 0x12`, AUCUN appel avant · ti=29 le préfixe SEUL, `return 1` · ti=47 `FUN_1406cf008` puis `+= 5`. `FUN_1406cf008` relu aussi : `+= 1` (R(1) sec). **`FUN_140467a20`, que le commentaire donnait pour le déserialiseur de ti=14, est un `return;` partagé par TREIZE symboles exportés** (`AK::MemoryMgr::GetCategoryStats`, `?GetDefaultSettings@StreamMgr@AK@@`, `ManagedDebug_LogError`, `Variant_InitializeStaticScriptComponents`, ...) |
+| 2026-09-14 | 1.3 (mesure avant de coder) | `ca9b8116c` | `grep -rn "WalkKeyframeFullState(\|KeyframeClosure(" --include=*.go internal/ cmd/ \| grep -v _test.go` | **TROIS lignes, toutes dans `filmdec`** (`keyframe_closure.go:76`, `keyframe_closure.go:120`, `keyframe_fullstate_loop.go:71`) : le cadre d'état complet n'a aucun appelant de production. Le seul consommateur de production de la table est `TraverseEntity` (`traverse.go:1107`), sur les records NEW — c'est LUI qui fixe la population touchée |
+| 2026-09-14 | 1.3 (mesure avant de coder) | `ca9b8116c` | `CGO_ENABLED=0 DELTA_WITNESS_FILM=<cache>/<film> go test ./...filmdec/ -run TestDeltaWalkWitness -v -count=1`, un film par process | **SORTIE BRUTE, records NEW par archétype** — `000d5950` : `ti=0:945 … ti=14:13 … ti=17:43 … ti=21:29 … ti=29:25 … ti=47:17 \| total NEW 3322` · `06dfe6d9` : `ti=14:6 ti=17:8 ti=21:5 ti=47:2 \| total NEW 811` (aucun ti=29) · `64e8adfa` : `ti=14:13 ti=17:395 ti=21:71 ti=29:7 ti=47:9 \| total NEW 2518`. MAJORANT : l'histogramme compte aussi des `TypeIndex` 50 à 63, qui n'existent pas (records lus après désync) |
+| 2026-09-14 | 1.3 (état du témoin AVANT le lot) | `783ae680d` (arbre restauré par nom) | même commande, les trois films | **LE TÉMOIN FIGÉ EST DÉJÀ ROUGE AU COMMIT D'INTÉGRATION** : `000d5950` {14 350, 38 897, 30 101} contre figé {14 350, 38 878, 30 080} · `06dfe6d9` {6 606, 10 629, 8 499} contre {6 606, 10 613, 8 502} · `64e8adfa` {14 357, 39 820, 31 988} contre {14 357, 39 806, 31 973}. Vérifié des DEUX côtés de mon ajout (mêmes chiffres) : l'histogramme n'y est pour rien. Découverte D1 (1.3), NON TRAITÉE |
+| 2026-09-14 | 1.3 (fermeture AVANT) | `783ae680d` | `CHUNK00_FILMS=<6 films de recherche> go test ./...filmdec/ -run TestImageCleFermetureParArchetype -v -timeout 30m` | `TOTAL \| 8796/62686 14.0% d15134 s8023 u30733 \| 529/62686 0.8% \| 0/62686 0.0%` ; `BILAN par archetype : etat complet GAGNE sur 8, PERD sur 0, EGALITE sur 25`. ti=14 `0/5024` (u5024), ti=17 `0/5379`, ti=21 `0/373`, ti=29 `0/157`, ti=47 `0/1679` |
+| 2026-09-14 | 1.3.1 | `0e830ab33` | cinq entrées ajoutées à `defaultStateDeserByTI` ; `consumeDefaultStateTI14/17/21` créés, ti=47 partage le porteur de ti=14 ; commentaire STUB corrigé ; repli « absent = 0 bit » NOMMÉ (D14) | `grep` de contrôle collé : REAL de la table de descripteurs = `5 6 8 9 10 11 12 13 14 17 20 21 23 24 28 29 35 36 37 38 39 40 41 42 43 44 47 48 49` ; clés de la map après le lot = `3 5 6 8 9 10 11 12 13 14 17 20 21 24 28 29 36 37 38 39 42 43 47 48 49`. Différence = **ti=23, 40, 41, 44** (plus ti=35, le bipède, traité à part) : ce sont EXACTEMENT les quatre archétypes que le repli nommé déclare |
+| 2026-09-14 | 1.3.1 (empreinte) | `0e830ab33` | `go test ./...filmdec/ -count=1` juste après l'ajout | `TestGrammarRevSuitLaGrammaire` **ROUGE de lui-même** : « LA GRAMMAIRE A CHANGE SANS MONTEE DE REVISION », `8e118038…` -> `29a60ed4…` (150 fichiers). C'est la preuve par mutation NATURELLE du gate — aucune mutation artificielle n'a été nécessaire. Les 40+ autres tests du paquet restent verts |
+| 2026-09-14 | 1.3.2 | `5f66051d0` | `go test ./...filmdec/ -run TestEtatParDefautN2Constant -v -count=1` | **77 groupes jugés (largeur FIXE), 34 écartés (largeur VARIABLE), 6 écartés (moins de 8 records retenus)**, PASS en 2,58 s. Valeurs de `n2` par archétype, constantes sur les sept bobines : ti=14 `28`, ti=17 `432`, ti=21 `244`, ti=29 `256`, ti=47 `252` — les mêmes que le relevé B.2 de la note (qui donne 28, 432, 244, 252 ; `256` est le `128` de la note décalé d'un bit, cf. B.4) |
+| 2026-09-14 | 1.3.2 (mutation) | `5f66051d0` | `consumeDefaultStateTI21` mis à `br.ReadBits(17)`, test rejoué, puis remis à 18 | **ROUGE sur les CINQ bobines qui portent des records ti=21** : `a521164d` (50 records), `60ae07c4` (87), `11de8353` (26), `e5adf7b2` (50), `bcb6d393` (144) — `n2` passe de `244` constant à `122:x30 2147483770:x20`. Remise à 18 : `git diff` du fichier VIDE, test vert |
+| 2026-09-14 | 1.3.3 | `58733810e` | `go test ./...filmdec/ -run KeyframeClosureRatchet -update-keyframe-closure` puis la même commande SANS la porte | La porte **réécrit PUIS échoue** (« 1 reference(s) reecrite(s) … 10943 octets »), la passe de vérification est **ok**. `git diff -U0` du golden : **21 lignes `+`, 21 lignes `-`, et RIEN d'autre** ; les archétypes touchés sont exactement `ti=14 ti=17 ti=29`. Totaux recalculés depuis le golden par `awk` : ti=14 `3520/3520`, ti=17 `3729/3729`, ti=29 `102/110`, ti=21 `0/357`, ti=47 `0/1716` |
+| 2026-09-14 | 1.3.3 (fermeture APRÈS) | `58733810e` | `CHUNK00_FILMS=<6 films de recherche> go test ./...filmdec/ -run TestImageCleFermetureParArchetype -v -timeout 30m` | `TOTAL \| 19337/62686 30.8% d15134 s7885 u20330 \| 391/62686 0.6% \| 0/62686 0.0%` ; `BILAN par archetype : etat complet GAGNE sur 11, PERD sur 0, EGALITE sur 22`. **30,8 % est la projection exacte du plan, MESURÉE.** Par archétype : ti=14 `5024/5024 100.0%`, ti=17 `5379/5379 100.0%`, ti=29 `138/157 87.9%`, ti=21 `0/373` (s373), ti=47 `0/1679` (d1679). Le plancher de hasard DESCEND (529 -> 391) : le gain n'est pas du bruit |
+| 2026-09-14 | 1.3.4 | ce commit | `GrammarRev` `grammar-2026-09-14.2` -> `.3` ; entrée d'historique écrite dans le golden ; `-run GrammarRevSuitLaGrammaire -update-grammar-rev` puis sans la porte | Porte sortie en ÉCHEC comme elle le doit ; passe de vérification **ok**. `go test ./...filmdec/ -count=1` : **ok, zéro échec**. Empreinte FINALE du lot : `89fd5e547ac49293cca945ce94266c27cfd4d8dfe9d2c846dcf40d57d0d68b55` — elle a été régénérée DEUX fois dans le lot, la seconde après une relecture de mon propre diff qui a corrigé deux commentaires de `default_state_arch.go` (une date de pose affirmée sans preuve, remplacée par le commit qui l'établit `3f0ec70b3` ; un renvoi « l. 45-47 » remplacé par une citation de texte). **Révision INCHANGÉE** : même lot, et aucune largeur ne bouge |
+| 2026-09-14 | 1.3.4 (killsource) | ce commit | `go test ./internal/games/halo_infinite/film/killsource/ -count=1` | **ok, 0,56 s** — le golden de la mini-bobine ne bouge pas. `KillSourceDecoderRev` NON montée : geste de prod réservé au pilote (D2 (1.2), toujours ouverte) |
+| 2026-09-14 | 1.3 (gates communs) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` (6 racines) ; `go test -count=1` (6 racines) ; `golangci-lint run --timeout 20m --new-from-merge-base=origin/main` | gofmt **vide** ; vet **0 diagnostic** (9,5 s) ; **12 paquets ok, exit 0** en 18,7 s (filmdec 12,4 s · replay 14,4 s · archlint 14,1 s · replaybuild 0,99 s · killcollector 0,15 s · objectiveevents 0,53 s) ; lint **`0 issues.`**, exit 0, 1 min 41 (baseline non accrue) |
+| 2026-09-14 | 1.3 (équivalence, régime COURT) | ce commit | `go run ./cmd/replay-equiv -repo-root C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-13 -films …`, DEUX sous-ensembles de 5, séquentiels | Sous-ensemble 1 : `BILAN : 4 identique(s), 1 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s)` en 5 min 18 · sous-ensemble 2 : `BILAN : 5 identique(s), 0 different(s)…` en 2 min 41. Durées par film : `50247b26` 1 m 33,8 · `a521164d` 1 m 02,3 · `60ae07c4` 55,5 · `11de8353` 40,6 · `111fa685` 1 m 04,7 · `e5adf7b2` 42,1 · `bcb6d393` 13,2 · `51101d1d` 5,5 · `d9781168` 54,3 · `fb1a1a72` 40,8 s. Pics 0,08 à 0,37 Gio |
+| 2026-09-14 | 1.3 (le SEUL écart, classé) | ce commit | `50247b26 : ECART a l'etape "killsource" : attendu compte=1 sha=3cade5d0…, obtenu compte=1 sha=2c4ebf20…` | **DIVERGENCE ATTENDUE**, famille « balayage delta d'un des cinq archétypes » : `killsource` traverse des records BRUTS, donc il voit les cinq états par défaut. Les 49 autres étapes, **`artifact` compris**, sont identiques sur les DIX films — donc aucun octet cuit ne change |
+| 2026-09-14 | 1.3 (attribution de l'écart, PAR MESURE) | ce commit | `go run ./cmd/killsource json 50247b26` des deux côtés du correctif (fichier `default_state_arch.go` restauré par NOM à `783ae680d`, puis remis ; md5 identique après remise) | **228 800 octets des deux côtés, UNE seule valeur change** : `calibration` = `axisW=14 indexW=1 [PROFIL PLAT (score 88, mediane 77) : valeurs par defaut conservees] \| recordStateParam=2 [croissance x1.003]` -> la même avec `mediane 76`. Paramètres retenus, lignes de kill, catalogue, couverture, santé : IDENTIQUES. Découverte D2 (1.3) |
+| 2026-09-14 | 1.3 (corpus gate) | ce commit | `go run ./cmd/replay-corpus-gate --base=783ae680d --parc-root …/LevelUp-go-migration --source-root …/LevelUp-wt-decfilm-13 --manifest …/config/replay_corpus.toml` | **13 témoins, 0 PERTE, 0 GAIN, exit 0**, schéma `55 -> 55` sur les treize, 19 min 33 s (26 cuissons, un seul décodage à la fois). Table collée depuis la sortie : `bcb6d393` ctf_mono_manche 11,59 s · `fb1a1a72` ctf_multi_manche 30,38 s · `d9781168` oddball 24,91 s · `c75f33b8` assaut_bombe 14,3 s · `bf15f7ab` slayer 14,02 s · `51ebbc0f` deux_manches 20,26 s · `084a804d` vehicules 1 m 54,05 s · `0797ce72` region_index_2_bits 15,59 s · `111fa685` version_39 49,28 s · `e5adf7b2` version_40_build_1_11 1 m 10,81 s · `60ae07c4` version_37 27,61 s · `a349fea8` version_33_sans_identification 2 m 11,62 s · `bfecd02b` vehicules_v41_utilisateur 22,11 s — tous `ok`. **ZÉRO GAIN est le résultat attendu** : le correctif ouvre la lecture d'image-clé, que rien en production ne consomme encore (le branchement est le lot 1.4) |
+| 2026-09-14 | 1.3 (portée du lot, dite sans détour) | ce commit | lecture croisée des trois gates | Ce lot ne change AUCUN octet publié : 0 gain au corpus gate, `artifact` identique aux dix films de l'équivalence, `SchemaVersion` inchangée. Ce qu'il change est la GRAMMAIRE et sa mesure : cinq états par défaut relus chez l'écrivain, la fermeture d'image-clé de 14,0 % à 30,8 %, et un oracle permanent de plus. La valeur produit arrive au lot 1.4, qui branche le cadre d'état complet sur `navpoint_radial_scan` et `objective_scan` |
 
 ## 6. Protocole de reprise de session
 
