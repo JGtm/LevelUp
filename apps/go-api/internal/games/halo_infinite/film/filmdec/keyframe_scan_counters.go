@@ -48,11 +48,11 @@ func keyframeClosureExpvarPairs(ti, closed, bounded int) []ExpvarPair {
 
 // KeyframeExpvarPairs rend les compteurs de fermeture d'image-cle de l'anneau ti=12, prets pour
 // `observability.AddInt`. C'est LE balayage de production de la table d'image-cle.
-func (sc *NavpointRadialScan) KeyframeExpvarPairs() []ExpvarPair {
-	if sc == nil {
+func (s *NavpointRadialScan) KeyframeExpvarPairs() []ExpvarPair {
+	if s == nil {
 		return nil
 	}
-	return keyframeClosureExpvarPairs(navpointRadialArchIndex, sc.KeyClosed, sc.KeyBounded)
+	return keyframeClosureExpvarPairs(navpointRadialArchIndex, s.KeyClosed, s.KeyBounded)
 }
 
 // IL N'Y A PAS D'EQUIVALENT POUR `ScanObjectives` (ti=11), ET C'EST VOULU. Ce balayage n'a
