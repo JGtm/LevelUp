@@ -1,3 +1,58 @@
+## [2026-09-15] Chantier decodeur — lot 1.7 (l'equipe reelle dans l'artefact, sans base ; le film ecrit aussi l'index de joueur) — Complete (feat/decfilm-17 fusionnee dans feat/recherche-decodeur-film, c6a3b751c)
+
+**Decision technique principale.** `filmdec.ScanPlayerTeams(fc)` lit, dans les records
+d'image-cle ti=9 par la boucle d'etat complet (1.4), le designateur d'equipe du composant i0
+(4 bits a une position DERIVEE de la grammaire, valeur = designateur + 1, 0 = aucune) ET l'index
+de joueur : la mesure avant de coder a etabli que le premier `R(6)` de l'etat par defaut de ti=9
+vaut le rang du siege, constant sur la vie de l'entite, sur 18 films et 7 builds, y compris sur
+les films sans section d'identification (controle decisif : sur `50247b26` la suite d'index est
+TROUEE `0 1 3 4 .. 22 24`, un ordinal serait contigu). `ScanPlayerTeams` n'apparie donc RIEN, il
+LIT ; l'appariement ordinal de la note devient un controle permanent. Regle V4 appliquee : le
+film est la SEULE source — `Track.Team`, `roster[].team` (pointeur a trois etats : absent /
+-1 aucune equipe / 0..8, impose par le contrat web : un entier nu aurait servi « tout le monde
+camp 0 » aux artefacts < 57), `TeamOf` des drapeaux ; la base n'entre que dans
+`coverage.teams.{film, accord, contradiction, silence}` ; les evenements d'objectif prennent
+l'equipe de l'octet 37 du pied (1.1) avec controle contre l'equipe du porteur ; les commentaires
+« l'equipe n'est pas dans le film » corriges (deux restes historiques assumes). `SchemaVersion`
+56 -> 57 (chronique, empreinte de forme `1344869006f05f16`, jumeau replaydoc `RosterEntry.Team` +
+`TeamCoverage`, replayview, openapi, generated.ts, 8 fixtures 57 = 2 566 758 o, jeu 56 retire,
+codec du fixture d'entrees v20 -> v21, `MIN_RENDERABLE_SCHEMA_VERSION = 27`), `GrammarRev`
+`grammar-2026-09-14.6`. Le web ne change pas (§1.2) : `rosterLogic.ts` colore toujours par
+`team_side` de la feuille ; D5 (1.7) dit ce qu'il devra faire (lire `roster[].team` quand present,
+ne jamais confondre -1 et absent).
+
+**Resultats observes.** La note se rejoue a l'identique (22 films, 16/18 en accord total,
+160/176 slots, 0 touche sur 576 decalages voisins ; `03af54c3` et `213a87dc` 24/24 ; les deux FFA
+lisent `[0 0 0 0 0 0 0 0]`). Equipes publiees contre la feuille : 8/8 x3, 10/10, 11/11, 25/25,
+28/28, 28/27 x2 (un siege dont le xuid est absent de la feuille), `50247b26` 680 records lus
+et aucun roster ; **0 contradiction sur 36 cuissons** ; S5 tenu sur les 8 builds hors ligne
+(105/105 .. 256/256 vies avec une equipe du film, 0 non lu, 0 divergence ; section `EQUIPES` neuve
+au golden). **D-remplacants (1.7), demande utilisateur du 15/09** : 35 arrivees reelles mesurees,
+chaque remplacant porte son index dans son record ti=9 ; 33 index NEUFS, 2 REUTILISES
+(`11de8353` index 23, `51101d1d` index 6 : partant et arrivant du meme camp) ; l'entite n'est
+jamais reutilisee ; designateur stable 35/35 -> le film DONNE le siege directement, ce qu'il ne
+donne pas c'est le lien `index -> xuid` d'un arrivant (1.9.14). Gates : gofmt vide, vet 0,
+13 paquets ok, ratchet vars 96, lint 0 issue, `tsc -b` propre, vitest 7 629 verts ; regime court :
+3 lignes sur 52 changent sur les 10 films (`flag` = forme d'entree sans `TeamOf`, `playerTeams`
+etape neuve, `artifact` +63 a +237 o), 49 identiques, classees AVANT re-figeage, puis 10/10 ;
+corpus gate `--base 943d8cf4b` : 13/13, 0 perte, gains nommes (`teams.*`), schema 56 -> 57
+partout, exit 0 — premier lot de M1 vert au sens litteral ; `CarrierTeamUnknown` sans perte.
+Decouvertes §4 : D1 (1.7) l'index dans ti=9 (traitee) ; D2 le record d'index 59 de `111fa685` ;
+D3 `ZoneInput.TeamByXUID` prend toujours la base (hors perimetre, a convertir) ; D4
+`objectiveevents.Extract` n'a AUCUN appelant de production (grep colle) : le basculement 1.7.3 est
+juste mais sans effet en base aujourd'hui ; D5 ce que le web devra faire ; D4 (1.1) fermee.
+Verification du pilote (V8) : schema 57 et chaine, 8 fixtures 57 / 0 x 56 sous le plafond,
+`ScanPlayerTeams`, `TeamOf` des drapeaux depuis le film, `roster[].team` pointeur, deux tests
+supprimes NES APRES la baseline (0 dans le JSONL), web = `generated.ts` + constantes de schema
+des tests.
+
+**Prochaine etape.** Push + CI ; lot 1.8 (le kill feed prend la table du film, `KillSourceDecoderRev`
+montee, backlog hors lot) ; puis famille 1.9 (1.9.0 registre des replis en premier ; 1.9.13 vies
+aux morts ecrites ; 1.9.14 roster a l'instant T, remplacant dans le siege du partant — le film
+donne le siege) ; revue de jalon a la cloture de M1, fusion feat/v75, recuisson, backlog (go V9).
+
+---
+
 ## [2026-09-14] Chantier decodeur — lot 1.6 (le registre d'identite prend la table du film comme lien direct ; la vie d'un seul echantillon publiee ; schema 56) — Complete (feat/decfilm-16 fusionnee dans feat/recherche-decodeur-film, 943d8cf4b)
 
 **Decision technique principale.** La table des joueurs de `chunk_00` (lot 1.5) est lue en
