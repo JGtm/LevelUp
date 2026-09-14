@@ -56,10 +56,12 @@ import (
 // # A quel DRAPEAU un portage appartient
 //
 // En CTF on ne porte jamais son propre drapeau : on le RENVOIE, et c'est `flag_returns`. Un
-// portage appartient donc toujours au drapeau adverse — mais « adverse » suppose de connaitre
-// l'equipe du porteur, et **l'equipe n'est pas dans le film** (cf. `Track.Team`). L'attribution
-// passe donc par la GEOMETRIE : la regle, ses trois cas et l'ordre dans lequel ils se lisent
-// vivent dans `flag_assign.go`, avec la mesure qui les fonde.
+// portage appartient donc toujours au drapeau adverse — et « adverse » suppose de connaitre
+// l'equipe du porteur, QUE LE FILM PORTE DEPUIS LE LOT 1.7 (cf. `Track.Team`). Ce qui manque
+// encore est l'identite de l'OBJET drapeau : l'attribution passe donc toujours par la GEOMETRIE,
+// mais l'invariant « jamais son propre drapeau » la FILTRE, et il tient desormais sur une
+// cuisson hors ligne. La regle, ses trois cas et leur ordre vivent dans `flag_assign.go`, avec
+// la mesure qui les fonde.
 //
 // LE RENVOI N'EST PAS INSTANTANE, ET LA PHRASE LE DISAIT A TORT jusqu'au 2026-08-31 (« le toucher
 // le RENVOIE »). Le renvoi demande de SE TENIR dans la zone du drapeau tombe pendant ~3,1 s seul,

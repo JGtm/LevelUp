@@ -399,7 +399,8 @@ func TestBombeB2TemoinOddball(t *testing.T) {
 	}
 	carries, couverts, accords := 0, 0, 0
 	tueurs, sansIdentite := 0, 0
-	for _, ev := range objectiveevents.Extract(b1Temoin, "Oddball:Arena", src, objectiveevents.MapRoster{}) {
+	evenements, _ := objectiveevents.Extract(b1Temoin, "Oddball:Arena", src, objectiveevents.MapRoster{})
+	for _, ev := range evenements {
 		if ev.EventType != objectiveevents.EventTypeSkullCarry || ev.TimeMS == nil || len(ev.Players) == 0 {
 			continue
 		}

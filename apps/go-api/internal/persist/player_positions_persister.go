@@ -65,9 +65,13 @@ type PlayerPositionRow struct {
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
 	Z float32 `json:"z"`
-	// Team : L IDENTIFIANT D EQUIPE DE LA BASE (`match_participants.team_id`), ou -1 quand
-	// l equipe n est pas etablie. -1 est une valeur PLEINE (« pas attribuee »), jamais un
-	// trou : le film ne porte pas l equipe, elle est JOINTE par le xuid du porteur.
+	// Team : L IDENTIFIANT D EQUIPE, ou -1 quand l equipe n est pas etablie. -1 est une valeur
+	// PLEINE (« pas attribuee »), jamais un trou.
+	//
+	// D OU IL VIENT, ET L ORDRE A CHANGE AU SCHEMA 57 (lot 1.7) : d abord ce que L ARTEFACT
+	// porte — le film ecrit l equipe de chaque joueur depuis ce schema —, et la base
+	// (`match_participants.team_id`, jointe par le xuid du porteur) seulement pour les artefacts
+	// anterieurs, qui portent -1 partout.
 	//
 	// PAS SEULEMENT 0 ET 1, et c est une mesure : 4 matchs sur 1 959 de la base locale portent
 	// plus de deux `team_id` distincts, avec des valeurs allant jusqu a 30 (modes a plus de

@@ -62,13 +62,14 @@ const captureClusterWindowMS = 2000
 
 // Roster résout xuid -> team_id (depuis match_participants).
 //
-// C'EST ENCORE LUI QUI DONNE `TeamID`, ET CE N'EST PLUS PARCE QUE LE FILM SERAIT MUET. Le pied
-// porte l'équipe d'un événement à l'octet 37 de son bloc (665/665, cf. [FooterEvent.Team]) : la
-// phrase d'origine de ce commentaire — « le champ team du film étant non fiable » — visait
-// l'octet 55, qui vaut 0 partout, et elle est RÉFUTÉE depuis le 2026-09-13. Le basculement de la
-// source appartient au lot 1.7.3 du `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, qui l'accompagne de
-// ses compteurs d'accord et de contradiction ; le lot 1.1 corrige la LECTURE, pas la source, de
-// sorte qu'aucun contenu cuit ni aucune colonne ne bouge sous lui.
+// IL N'EST PLUS LA SOURCE DE `TeamID`, IL EN EST LE CONTRÔLE (lot 1.7.3, 2026-09-14). L'équipe
+// d'un événement vient du PIED, à l'octet 37 de son bloc ([FooterEvent.Team], 665/665 sur
+// quatorze films) ; ce roster-ci dit ce que la feuille de match en aurait dit, et [TeamControl]
+// compte les accords, les contradictions et les silences. Une contradiction ne se corrige pas en
+// silence : le film fait foi, l'écart se compte.
+//
+// La phrase d'origine de ce commentaire — « le champ team du film étant non fiable » — visait
+// l'octet 55, qui vaut 0 partout. Elle est RÉFUTÉE depuis le 2026-09-13.
 type Roster interface {
 	// TeamOf renvoie (team_id, true) si le xuid est un participant connu.
 	TeamOf(xuid string) (int, bool)
@@ -83,24 +84,60 @@ func (m MapRoster) TeamOf(xuid string) (int, bool) {
 	return t, ok
 }
 
+// TeamControl est ce que la feuille de match dit de l'équipe que LE PIED écrit (lot 1.7.3).
+//
+// ELLE NE POSE AUCUNE VALEUR : `team_id` vient du film, et ces trois compteurs disent ce qu'une
+// source extérieure en pense. Sans eux, un basculement de source serait une affirmation ; avec
+// eux, c'est une mesure.
+type TeamControl struct {
+	// Film : les événements dont l'équipe vient du pied. C'est le dénominateur.
+	Film int
+	// Accord / Contradiction : la feuille dit la même équipe, ou une autre. Une contradiction ne
+	// corrige rien — le film fait foi et l'écart se compte.
+	Accord, Contradiction int
+	// Silence : la feuille ne porte pas ce xuid (match absent de la base, bot, arrivant).
+	Silence int
+}
+
+// note compte un événement contre ce que la feuille de match en dit.
+func (c *TeamControl) note(roster Roster, xuid string, lue int) {
+	c.Film++
+	switch base, connu := roster.TeamOf(xuid); {
+	case !connu:
+		c.Silence++
+	case base == lue:
+		c.Accord++
+	default:
+		c.Contradiction++
+	}
+}
+
 // Extract décode les events objectif d'un match. game_variant_name pilote le
 // mode (CTF -> bursts ; Strongholds/KOTH/Oddball -> events th=10 du footer). Les
-// modes non-objectif (Slayer, etc.) renvoient nil (no-op, pas d'erreur). team_id
-// canonique via roster ; objective_id toujours NULL (zone/colline non récupérable).
+// modes non-objectif (Slayer, etc.) renvoient nil (no-op, pas d'erreur).
+// objective_id toujours NULL (zone/colline non récupérable).
+//
+// `team_id` VIENT DU FILM (octet 37 du bloc de pied) depuis le lot 1.7.3 ; le roster passé en
+// paramètre n'en est que le CONTRÔLE, rendu dans [TeamControl].
 //
 // Renvoie les events ordonnés par time_ms avec un Seq dense 0..N-1.
-func Extract(matchID, gameVariantName string, film *filmsource.Film, roster Roster) []domain.ObjectiveEvent {
+func Extract(matchID, gameVariantName string, film *filmsource.Film,
+	roster Roster) ([]domain.ObjectiveEvent, TeamControl) {
+	var ctl TeamControl
 	switch classifyObjectiveMode(gameVariantName) {
 	case ObjectiveTypeFlag:
-		return finalize(matchID, extractCTF(matchID, film, roster))
+		return finalize(matchID, extractCTF(matchID, film, roster, &ctl)), ctl
 	case ObjectiveTypeZone:
-		return finalize(matchID, extractFromTh10(matchID, film, roster, ObjectiveTypeZone, EventTypeZoneCapture))
+		return finalize(matchID, extractFromTh10(matchID, film, roster, &ctl,
+			ObjectiveTypeZone, EventTypeZoneCapture)), ctl
 	case ObjectiveTypeHill:
-		return finalize(matchID, extractFromTh10(matchID, film, roster, ObjectiveTypeHill, EventTypeHillCapture))
+		return finalize(matchID, extractFromTh10(matchID, film, roster, &ctl,
+			ObjectiveTypeHill, EventTypeHillCapture)), ctl
 	case ObjectiveTypeSkull:
-		return finalize(matchID, extractFromTh10(matchID, film, roster, ObjectiveTypeSkull, EventTypeSkullCarry))
+		return finalize(matchID, extractFromTh10(matchID, film, roster, &ctl,
+			ObjectiveTypeSkull, EventTypeSkullCarry)), ctl
 	default:
-		return nil
+		return nil, ctl
 	}
 }
 
@@ -161,9 +198,11 @@ func footerData(film *filmsource.Film) ([]byte, bool) {
 }
 
 // extractCTF décode les captures CTF : pour chaque burst (tiers==6, ms via FRAME
-// sur les chunks gameplay), l'équipe = l'event th=10 de t MAX dans le cluster
-// coïncident du footer, mappé via roster. players=[{scorer xuid}].
-func extractCTF(matchID string, film *filmsource.Film, roster Roster) []domain.ObjectiveEvent {
+// sur les chunks gameplay), l'acteur est l'event th=10 de t MAX dans le cluster coïncident du
+// footer, et son ÉQUIPE est celle que ce même événement porte à l'octet 37.
+// players=[{scorer xuid}].
+func extractCTF(matchID string, film *filmsource.Film, roster Roster,
+	ctl *TeamControl) []domain.ObjectiveEvent {
 	bursts := collectCaptureBursts(film)
 	th10 := FooterEvents(film)
 	// Capacité EXACTE : un événement par burst, sans continue dans la boucle. Le nil
@@ -183,9 +222,8 @@ func extractCTF(matchID string, film *filmsource.Film, roster Roster) []domain.O
 		if scorer, ok := captureScorer(th10, b.matchMS); ok {
 			xuid := formatXUID(scorer.XUID)
 			ev.Players = []domain.ObjectiveEventPlayer{{XUID: xuid, Role: RoleScorer}}
-			if team, ok := roster.TeamOf(xuid); ok {
-				ev.TeamID = intPtr(team)
-			}
+			ev.TeamID = intPtr(scorer.Team)
+			ctl.note(roster, xuid, scorer.Team)
 		}
 		out = append(out, ev)
 	}
@@ -226,11 +264,12 @@ func captureScorer(th10 []FooterEvent, burstMS int) (FooterEvent, bool) {
 
 // extractFromTh10 décode Strongholds/KOTH/Oddball depuis les events th=10 du
 // footer : un objective-event par event th=10 (zone_capture/hill_capture/
-// skull_carry), team via roster (xuid de l'acteur), source=th10, confidence=
-// approx (~5-20s). objective_id NULL. value laissée nil (score per-event non
-// décodé ici ; le score-over-time est une couche séparée). Footer absent -> nil.
+// skull_carry), ÉQUIPE LUE À L'OCTET 37 DU MÊME BLOC (lot 1.7.3 — le roster n'en est plus que le
+// contrôle), source=th10, confidence=approx (~5-20s). objective_id NULL. value laissée nil
+// (score per-event non décodé ici ; le score-over-time est une couche séparée).
+// Footer absent -> nil.
 func extractFromTh10(
-	matchID string, film *filmsource.Film, roster Roster, objType, evType string,
+	matchID string, film *filmsource.Film, roster Roster, ctl *TeamControl, objType, evType string,
 ) []domain.ObjectiveEvent {
 	var out []domain.ObjectiveEvent
 	for _, e := range FooterEvents(film) {
@@ -244,10 +283,9 @@ func extractFromTh10(
 			Confidence:    ConfidenceApprox,
 			Details:       "{}",
 			Players:       []domain.ObjectiveEventPlayer{{XUID: xuid, Role: RoleScorer}},
+			TeamID:        intPtr(e.Team),
 		}
-		if team, ok := roster.TeamOf(xuid); ok {
-			ev.TeamID = intPtr(team)
-		}
+		ctl.note(roster, xuid, e.Team)
 		out = append(out, ev)
 	}
 	return out

@@ -29,15 +29,17 @@ package replayartifacts
 // grandeur de ce que la table portait. Ce n'est pas un reglage esthetique : c'est la seule
 // valeur qui rende la projection equivalente a ce qu'elle remplace.
 //
-// # L'EQUIPE VIENT DE LA BASE, PAR LE XUID (correction du constat C5, revue A-R1)
+// # L'EQUIPE VIENT DE L'ARTEFACT QUAND IL LA PORTE, DE LA BASE SINON (constat C5, revue A-R1 ;
+// amende au lot 1.7, 2026-09-14)
 //
-// LE FILM NE PORTE PAS L'EQUIPE : `Track.Team` vaut -1 sur tout artefact produit par le
-// decodeur d'aujourd'hui (`games/halo_infinite/film/replay/build.go` la pose sans condition, et le roster le
-// dit : « ce qu'il ne donne PAS, et que seule la base porte : l'equipe »). La projection ne
-// l'invente donc pas — elle la JOINT, par le xuid que le document nomme sur chaque vie, contre
-// `match_participants` : la meme jointure que celle que le client fait pour colorer un
-// tableau. Un xuid absent (bot, vie que le fil des morts n'a pas nommee, match hors registre)
-// reste a -1, valeur PLEINE que le lecteur sait lire.
+// LE FILM PORTE L'EQUIPE DEPUIS LE SCHEMA 57 : `Track.Team` y vaut le designateur que le
+// composant i0 de ti=9 ecrit, et plus -1 sur toutes les vies. La regle de ce fichier n'a pas
+// eu a changer — elle disait deja « l'artefact prime quand il porte l'equipe » — mais sa
+// JUSTIFICATION si : ce n'est plus « le film ne la porte pas », c'est « un artefact ANTERIEUR
+// au schema 57 ne la porte pas ». Pour ceux-la, la projection la JOINT par le xuid que le
+// document nomme sur chaque vie, contre `match_participants` : la meme jointure que celle que
+// le client fait pour colorer un tableau. Un xuid absent (bot, vie que le fil des morts n'a pas
+// nommee, match hors registre) reste a -1, valeur PLEINE que le lecteur sait lire.
 //
 // Ce que ce fichier a d'abord ecrit — « -1, la meme valeur non attribuee que l'ancien decodeur
 // produisait » — etait FAUX, et c'est ce que la revue a releve : l'ancien decodeur appelait
