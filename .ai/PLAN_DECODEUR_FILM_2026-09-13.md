@@ -161,6 +161,9 @@ make -C ../.. go-api-lint                      # baseline non accrue
 ```
 
 Lots qui touchent le web : `make check-types` puis `make test-web` (vitest hors sandbox).
+Tout test RENOMMÉ ou SUPPRIMÉ par un lot met à jour `.ai/baselines/tests_pre_migration.jsonl` dans le
+MÊME commit (le job CI « Coverage + Baseline » échoue sur tout nom de baseline absent du run ;
+leçon du lot 1.0, 2026-09-14 : un renommage de test oublié = CI rouge sur un lot vert partout ailleurs).
 
 Lots qui touchent le décodeur ou le constructeur (tout M1, M2, M3, 4.1), deux régimes (V2) :
 
