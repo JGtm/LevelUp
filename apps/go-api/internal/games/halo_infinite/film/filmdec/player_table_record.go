@@ -1,7 +1,5 @@
 package filmdec
 
-import "unicode/utf16"
-
 // player_table_record.go — UN ENREGISTREMENT DE SLOT, CHAMP PAR CHAMP (lot 1.5.2 et 1.5.3).
 //
 // La grammaire, ses fermetures et la provenance de chaque largeur vivent dans l'en-tete de
@@ -13,6 +11,8 @@ import "unicode/utf16"
 // Les largeurs constantes restent declarees dans `player_table.go`, a cote de la carte qui les
 // justifie : les separer de leur provenance serait exactement la dette que les commentaires de
 // ce chantier existent pour empecher.
+
+import "unicode/utf16"
 
 // slotVacantBits rend la longueur, en bits, d'un enregistrement de slot ENTIEREMENT A ZERO sur
 // un build dont le bloc de personnalisation mesure `persoBits`.

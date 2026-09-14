@@ -62,13 +62,13 @@ func TestReadPlayerTableSurLesBobines(t *testing.T) {
 		}
 		verifierTable(t, b, id, slots, rep)
 		t.Logf("%-10s %-10q perso %4d o (%+6d bits) | %2d occupes + %2d vacants = %d | "+
-			"calibrage film %+6d sur %2d ecarts, accord %v | ecarts %d/%d/%d/%d/%d "+
-			"(accord/vacant/invisible/parasite/contradiction) | candidats %d dont %d reels | "+
+			"calibrage film %+6d sur %2d ecarts, accord %v | ecarts %d/%d/%d/%d "+
+			"(accord/vacant/invisible/contradiction) | candidats %d dont %d reels | "+
 			"tete %d, intercale %v",
 			b.film, rep.Build, rep.PersoBytes, rep.ProfileDeltaBits, rep.Occupied, rep.Vacant,
 			rep.Occupied+rep.Vacant, rep.FilmDeltaBits, rep.FilmDeltaGaps,
 			rep.CalibrationAgrees, rep.GapsAgree, rep.GapsVacant, rep.GapsHidden,
-			rep.GapsParasite, rep.GapsContradict,
+			rep.GapsContradict,
 			rep.CandidatesScanned, rep.CandidatesReal, rep.HeadVacant, rep.InterleavedVacant)
 	}
 }

@@ -196,13 +196,11 @@ type PlayerTableReport struct {
 	// candidats du balayage. `Vacant` = l'ecart depasse la prediction d'un nombre ENTIER de
 	// slots vacants, chacun verifie par le predicat grammatical a sa position calculee.
 	// `Hidden` = l intervalle porte un enregistrement que la MARCHE a lu et que le balayage ne
-	// pouvait pas voir (jeton nul, XUID hors plage). `Parasite` = l un des deux bouts n a pas ete
-	// retenu par la marche (en-tete fortuit a l interieur d un vrai enregistrement).
-	// `Contradict` = rien de tout cela : la grammaire ne ferme pas la, et cela se compte.
+	// pouvait pas voir (jeton nul, XUID hors plage). `Contradict` = rien de tout cela : la
+	// grammaire ne ferme pas la, et cela se compte.
 	GapsAgree      int
 	GapsVacant     int
 	GapsHidden     int
-	GapsParasite   int
 	GapsContradict int
 	// Occupied / Vacant : la table lue. Leur somme vaut 32 des que l'erreur est nulle.
 	Occupied int

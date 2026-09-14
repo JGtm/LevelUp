@@ -57,7 +57,6 @@ type bilanCorpus struct {
 	occupes, vacants                       int
 	accordOracle, ecartOracle              int
 	contradictions, calibrageFaux          int
-	parasites, filmsParasites              int
 	invisibles, filmsInvisibles            int
 	intercales                             []string
 	divergents                             []divergence
@@ -160,13 +159,6 @@ func rangerFilmCorpus(t *testing.T, nom string, slots []PlayerSlot, rep PlayerTa
 			"(%d candidats reels pour %d enregistrements)", nom, rep.GapsHidden,
 			rep.CandidatesReal, rep.Occupied)
 	}
-	if rep.GapsParasite > 0 {
-		b.parasites += rep.GapsParasite
-		b.filmsParasites++
-		t.Logf("  %s : %d ecart(s) du balayage dus a un PARASITE IMPRIMABLE (%d candidats "+
-			"reels pour %d enregistrements lus)", nom, rep.GapsParasite, rep.CandidatesReal,
-			rep.Occupied)
-	}
 	if rep.InterleavedVacant {
 		b.intercales = append(b.intercales, nom)
 	}
@@ -240,10 +232,10 @@ func publierBilanCorpus(t *testing.T, b *bilanCorpus) {
 	sort.Strings(b.intercales)
 	t.Logf("=== BILAN === %d film(s) lus a 32 slots (%d occupes + %d vacants) ; "+
 		"%d/%d en accord avec l'ORACLE des instruments ; %d contradiction(s) de grammaire ; "+
-		"%d calibrage(s) en desaccord avec le profil ; %d ecart(s) parasite(s) sur %d film(s) ; "+
+		"%d calibrage(s) en desaccord avec le profil ; "+
 		"%d enregistrement(s) invisible(s) au balayage sur %d film(s)",
 		b.fermes, b.occupes, b.vacants, b.accordOracle, b.fermes, b.contradictions,
-		b.calibrageFaux, b.parasites, b.filmsParasites, b.invisibles, b.filmsInvisibles)
+		b.calibrageFaux, b.invisibles, b.filmsInvisibles)
 	t.Logf("=== MIS DE COTE === %d film(s) sans section d'identification (%s) ; "+
 		"%d film(s) a build inconnu", b.sansSection, strings.Join(b.sansSectionVus, " "),
 		b.buildInconnu)

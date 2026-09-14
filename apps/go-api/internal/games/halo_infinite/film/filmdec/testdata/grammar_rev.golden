@@ -114,4 +114,32 @@
 #               releve un `ST1016` sur le nouveau compteur — receveur `sc` alors que
 #               `NavpointRadialScan` porte deja `s`. Renommage SEUL, aucun octet lu ne change ;
 #               l'empreinte bouge parce qu'elle hache les octets, pas la grammaire.
-grammar-2026-09-14.4	e5e4291f0261ce65d0e762ba5845dfcd4e7f9c12d21787d07c350423dd2c296c
+#   2026-09-14  grammar-2026-09-14.5  lot 1.5 : L IDENTITE ET LA TABLE DES JOUEURS LUES DANS
+#               `chunk_00`. TROIS LECTEURS NEUFS, sans consommateur (les consommateurs sont les
+#               lots 1.6 a 1.8) : `ReadFilmIdentity` (section 2 — version, build, saveur,
+#               identifiant de build, changelist, table par type, horodatage du match a 32 bits),
+#               `ReadPlayerTable` (les 32 slots : XUID, gamertag, jeton de session, champs courts,
+#               rang absolu) et la table de profil `personnalisationOctets` (1 852 / 1 492 /
+#               1 312 / 2 052 octets par build, une provenance par ligne).
+#               AUCUN OFFSET ABSOLU : la fin du registre vient du parse (cadrage du jeu, lot 1.2),
+#               la section s ancre sur la chaine de build, et le cardinal de la table par type se
+#               DERIVE — 492 / 488 / 484 / 464 octets mesures sur les 1 351 chunk_00 du cache,
+#               soit 123 / 122 / 121 / 116 entrees sans un octet de reste. Le 123 du build courant
+#               est la valeur que l ecrivain ecrit (`MOV R9D,0xf60`), la ou l heuristique de
+#               `lireEntete` en comptait 124.
+#               EFFET MESURE : 1 346 films lus a 32 slots (12 080 occupes + 30 992 vacants),
+#               5 mis de cote sans section d identification (`ErrNoFilmIdentity`), 0 build inconnu,
+#               0 contradiction de grammaire, 0 calibrage en desaccord avec le profil. Sur NEUF
+#               films la production lit PLUS que l instrument `rsChaine` (7 ou 8 contre 1 a 6) :
+#               le regroupement terminal des instruments perd la tete de la table des qu un slot
+#               vacant intercale pousse un ecart au-dela de 40 000 bits, et ce lecteur n a pas de
+#               seuil. Sur `d4ddf054` la marche lit un enregistrement que le balayage ne peut pas
+#               voir, et la trame le confirme (8 entites ti=9).
+#               `SchemaVersion` NE MONTE PAS et `KillSourceDecoderRev` non plus : ces lecteurs
+#               n ont AUCUN consommateur, donc aucun octet cuit ne change.
+#               (MEME LOT donc MEME REVISION, empreinte reprise une fois) : la famille
+#               « parasite » du controle des ecarts est RETIREE — le critere d acceptation exige
+#               que la marche visite TOUS les enregistrements du balayage, donc les deux bouts de
+#               chaque couple sont toujours retenus et la branche etait INATTEIGNABLE (mesure sur
+#               les 1 351 films : 0). Aucune lecture ne change.
+grammar-2026-09-14.5	aad34f20870524793106a4dffeb41005581e4284d0006d0b5474c93c778126f4
