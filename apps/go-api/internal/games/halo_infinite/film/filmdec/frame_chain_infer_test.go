@@ -41,8 +41,8 @@ func (w *bitWriter) end() { w.bit(0); w.bits(0, 2) }
 // decoder machinery (mask + component loop) runs with zero component reads.
 func twoEmptyArchReg() *Registry {
 	return &Registry{Archetypes: []Archetype{
-		{Index: 0, Components: nil, Flags: nil},
-		{Index: 1, Components: nil, Flags: nil},
+		{Index: 0, Components: nil, Levels: nil},
+		{Index: 1, Components: nil, Levels: nil},
 	}}
 }
 

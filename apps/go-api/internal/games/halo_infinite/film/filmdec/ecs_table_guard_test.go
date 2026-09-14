@@ -334,8 +334,12 @@ func TestG2TableSuitLeRegistreDuFilm(t *testing.T) {
 				porteurs++
 			}
 			for i, c := range a.Components {
-				got[strconv.Itoa(a.Index)+"|"+strconv.Itoa(i)+"|"+c] = a.Flags[i]
+				got[strconv.Itoa(a.Index)+"|"+strconv.Itoa(i)+"|"+c] = a.Levels[i]
 			}
+		}
+		if *updateNiveauxECS {
+			reecrireNiveauxECS(t, got, filepath.Base(dir))
+			return
 		}
 		for k, lv := range got {
 			w, ok := want[k]

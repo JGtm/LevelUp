@@ -28,7 +28,16 @@ package filmdec
 
 // GrammarRev est la revision de la grammaire de lecture du film.
 //
-// FORME : `grammar-AAAA-MM-JJ`, la date du jour ou la grammaire a change. Deux changements le
-// meme jour partagent la meme revision — c'est voulu : ce qui compte est qu'un LOT de
-// changements soit separable du precedent, pas qu'on compte les commits.
-const GrammarRev = "grammar-2026-09-14"
+// FORME : `grammar-AAAA-MM-JJ`, la date du jour ou la grammaire a change, suivie d'un `.N`
+// quand un SECOND lot la change le MEME jour. Ce qui doit rester separable est le LOT, pas le
+// commit : deux changements d'un meme lot partagent la revision (lot 1.1.5, 2026-09-14), deux
+// LOTS ne la partagent pas.
+//
+// LE SUFFIXE EST NE AU LOT 1.2 (2026-09-14), et il corrige une regle qui se retournait contre
+// son objet. La regle disait « deux changements le meme jour partagent la meme revision » ; le
+// lot 1.2 (le registre lu a l'octet 8) tombait le meme jour que le lot 1.1 (l'equipe a l'octet
+// 37 du pied). La partager aurait voulu dire regenerer le golden sur la branche « revision
+// inchangee, empreinte differente » — c'est-a-dire faire taire le ratchet dans le cas precis
+// pour lequel il existe : une grammaire qui change. La forme admet donc un rang, et la revision
+// continue de nommer ce qu'elle nomme.
+const GrammarRev = "grammar-2026-09-14.2"

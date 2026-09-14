@@ -2,22 +2,32 @@ package filmdec
 
 import "testing"
 
-// buildBlock renders one 64-slot archetype block from ordered component names.
-func buildBlock(names []string) []byte {
-	blk := make([]byte, archetypeBlockSize)
-	for i, n := range names {
-		if i >= archetypeBlockSlots {
-			break
+// buildRegistry renders a synthetic inflated chunk_00 at the GAME's framing: an 8-byte header,
+// then one 64-entry archetype block per name list, each entry being
+// `[name @ +0][u32 level @ +0x100]`.
+//
+// IL FAUT LES OCTETS D'EN-TETE (lot 1.2, revue R1) : `parseRegistry` ne parcourt que des blocs
+// ENTIERS a partir de `registryEntryBase`. Un tampon de `n*archetypeBlockSize` octets, celui que
+// cette fonction rendait avant, porte donc `n-1` blocs entiers — et le dernier bloc, incomplet
+// de huit octets, est ignore.
+func buildRegistry(blocks ...[]string) []byte {
+	data := make([]byte, registryEntryBase+len(blocks)*archetypeBlockSize)
+	for b, names := range blocks {
+		base := registryEntryBase + b*archetypeBlockSize
+		for i, n := range names {
+			if i >= archetypeBlockSlots {
+				break
+			}
+			copy(data[base+i*registrySlotSize:], []byte(n))
 		}
-		copy(blk[i*registrySlotSize+8:], []byte(n))
 	}
-	return blk
+	return data
 }
 
 func TestParseRegistrySynthetic(t *testing.T) {
 	a := []string{"object-position-dynamic-precision-component", "object-body-vitality-component", "weapon-state-type-info"}
 	b := []string{"game-engine-team-mapping-component"}
-	data := append(buildBlock(a), buildBlock(b)...)
+	data := buildRegistry(a, b)
 
 	reg := parseRegistry(data)
 	if len(reg.Archetypes) != 2 {

@@ -506,7 +506,7 @@ func consumePositionHandleTail(br *BitReader, bHandle bool, pd PrecisionDescript
 // (crew-order, tacmap-poiicon/offset, flock-destination, desired-respawn-location) : leur
 // vec3 n'est jamais émis comme coordonnée, il n'est consommé que pour rester aligné sur le
 // bitstream. Deux réserves explicites :
-//   - la source de L (le champ flags du registre chunk_00) reste une PISTE pour ces
+//   - la source de L (le niveau de l'entrée du registre chunk_00) reste une PISTE pour ces
 //     composants : le registre est bit-à-bit identique d'un film à l'autre, il ne peut donc
 //     pas porter d'information par carte ; pour un vec3 borné par la boîte monde c'est
 //     cohérent, mais aucun de ces composants n'a été validé au bit près ;
@@ -524,11 +524,11 @@ func quantAxisWidth(level uint) uint {
 // consumeQuantVec3 lit un vecteur 3D quantifié (FUN_14076e524, le coeur quantifié de
 // FUN_14076e494) SANS capture : gate precHigh (1 -> vecteur défaut, 0 bit) ; sinon
 // index-gate (0 -> R(1)) + 3×R(axisW). Mêmes gates que consumeAbsoluteWithGate, mais
-// largeur d'axe PARAMÉTRÉE (PISTE 1) : axisW = 6+level, level = flags du registre. La
-// largeur d'index reste en dur à 1 (DAT_144632be0), comme partout ailleurs dans ce
-// paquet : aucun appelant n'en a jamais passé une autre. Décode pur (pas d'emitPos) pour
-// les composants non-position porteurs d'un vec3 quantifié (crew-order, tacmap-offset,
-// desired-respawn-location, ...).
+// largeur d'axe PARAMÉTRÉE (PISTE 1) : axisW = 6+level, level = le niveau de l'entrée du
+// registre (`Archetype.Levels`, lu en `entrée + 0x100`). La largeur d'index reste en dur à 1
+// (DAT_144632be0), comme partout ailleurs dans ce paquet : aucun appelant n'en a jamais passé
+// une autre. Décode pur (pas d'emitPos) pour les composants non-position porteurs d'un vec3
+// quantifié (crew-order, tacmap-offset, desired-respawn-location, ...).
 func consumeQuantVec3(br *BitReader, axisW uint) {
 	_, _, _, _ = consumeQuantVec3Values(br, axisW)
 }
