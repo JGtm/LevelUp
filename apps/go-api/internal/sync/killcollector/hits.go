@@ -18,9 +18,17 @@ package killcollector
 //
 // # LE PONT FilmIndex -> xuid, RESERVE LEVEE (mesuree 2026-09-01)
 //
-// Le film ne porte aucun xuid cote replication : l identite se resout par l indice. On REUTILISE le
-// resolveur des tirs (resolvePlayerIndices : indice de replication -> xuid, valide a 77 % contre
-// l oracle killsource). La RESERVE historique etait que filmdec.WeaponHitStats.FilmIndex venait d un
+// Les chunks de replication ne portent aucun xuid : l identite se resout par l indice. On REUTILISE
+// le resolveur des tirs (resolvePlayerIndices : indice de replication -> xuid, valide a 77 % contre
+// l oracle killsource).
+//
+// ⚠ CE RESOLVEUR EST UNE INFERENCE, ET LE FILM ECRIT LA REPONSE. `chunk_00` porte la table des
+// joueurs (`filmdec.ReadPlayerTable`, lot 1.5) : le lien `FilmIndex -> XUID` s y lit directement,
+// la ou `resolvePlayerIndices` le CHERCHE (motif du xuid dans le flux, 5 bits qui precedent).
+// Le lot 1.8 a bascule le decodeur de morts sur cette lecture ; les TIRS et les TOUCHES ne l ont
+// PAS ete — ils portent deux revisions distinctes (`WeaponShotsDecoderRev`,
+// `migration.WeaponHitDistanceDecoderRev`), donc deux backlogs de redecodage separes, hors du
+// perimetre de ce lot. Decouverte D4 (1.8) du PLAN_DECODEUR_FILM, §4. La RESERVE historique etait que filmdec.WeaponHitStats.FilmIndex venait d un
 // AUTRE champ du record de tir (decodeFireEvent, bits 36-40 >>1 = 4 bits) que l indice que
 // resolvePlayerIndices indexe (5 bits). VERDICT MESURE (TestWeaponIndexNumDenomEquivalence, package
 // analysis) : le 4 bits n etait que la MOITIE BASSE du champ. La cle est desormais
