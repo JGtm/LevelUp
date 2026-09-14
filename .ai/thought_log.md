@@ -1,3 +1,37 @@
+## [2026-09-14] Chantier decodeur — lot 1.0 (l'etage de balayage partage production / fixture, schema 55) — Complete (feat/decfilm-10 fusionnee dans feat/recherche-decodeur-film)
+
+**Decision technique principale.** `BuildFromFilm` = verrou + largeurs + `scanFilmInputs`
+(UNE fonction, UN type `FilmInputs` de 35 champs) + `BuildFromPositions` ; `build_from_film.go`
+442 -> 149 L, `film_scan.go` 421 L, `film_inputs.go` 176 L ; le fixture d'entrees APPELLE cet
+etage (la copie disparait) avec les MEMES options que la production (roster de la feuille par
+`replay.RosterXUIDsOf`, regle descendue de replaybuild ; largeurs installees par
+`installWorldObjectPrecision` : le fixture lisait Live Fire un bit trop tot) ; 6 canaux entrent au
+codec (`BipedCreations`, `WeaponChanges`, `Pickups`, `EquipmentChanges`, `Vehicles`,
+`ZoomEvents`), `TestCodecCouvreFilmInputs` (reflexion, 35 sous-tests, CI) tient la couverture ;
+schema 55 : `coverage.tracks` (refus `minPoints` comptes ; TOUTES les vies refusees ont
+exactement 1 point, 0 a 6 par film), chaine complete (chronique, empreinte de forme, jumeau
+replaydoc, replayview, openapi, generated.ts, fixtures de contrat) ; plafond 12 Mio sur les
+`inputs_*.bin.gz` (10,53 Mio mesure).
+
+**Resultats observes.** Pas structurel prouve : regime court 10/10 identiques avant le schema,
+puis ecart a la SEULE etape `artifact` (+104 o = les 5 champs + le schema), 49 etapes de balayage
+identiques a l'octet sur 4 films ; corpus gate d9781168 0 perte ; fidelite 8/8. Goldens : gains du
+fixture tous attribues (lien direct corps -> joueur : traces sans identite 46 -> 1, 6/35/24/20/3
+-> 0 ; Live Fire poses 57 -> 190, projectiles 236 -> 417 ; joueurs a 0 mort nommes : 24 -> 25,
+26 -> 27, 26 -> 27, 26 -> 28). Revue R1 : 0 P1 + 5 P2 (roster nul au fixture = 5e divergence ;
+marcheur d'ordre memoise ; garde d'ordre incomplete ; 3 fichiers > 500 L grossis ; commentaire),
+5 corriges + plafond ; R2 : 1 P1 INTRODUIT par R1-4 (la suppression des notes par version de
+`document.go` faisait disparaitre la seule description de la v51 : CORRECTION D'UN FAIT — la v51 A
+ETE CUITE (`2fb53db4e` -> `b6b198baf`), seule la 32 est sautee ; entree v51 restauree, ADR 0034 et
+testutil corriges, `schema_51` entre dans les 3 tests de replaybuild) + 1 P2 (chiffres du
+budget), 2 corriges ; pilote : grep (v51, ADR, budget unique), 6 paquets verts.
+
+**Prochaine etape.** Push + CI ; lot 1.1 (octet 37 du pied) ; recuisson du parc a la cloture de
+M1 sur signal ; decisions utilisateur toujours ouvertes (tourelle fixe, dead-state vehicules,
+manches, vie d'un echantillon).
+
+---
+
 ## [2026-09-14] Chantier decodeur — lot 0.D clos (0.D.1 bis, 0.D.3/0.D.3 bis, 0.D.4, 0.D.6, 0.D.7, revues R1/R2) — Complete (feat/decfilm-0D fusionnee dans feat/recherche-decodeur-film)
 
 **Decision technique principale.** Instructions bornees des constats de regression, zero code de
