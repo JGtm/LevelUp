@@ -1,3 +1,17 @@
+## [2026-09-14] Suites des ajustements pré-v7.5 — décisions utilisateur, médailles, niveaux d'armes — Complété (feat/v75, poussé, CI verte)
+
+**Décisions utilisateur du 14/09 appliquées** : badges « À vérifier » retirés (tournée du 25/07 close, mécanisme inerte) ; aucun pied sous « Usages d'équipement » ; « Répartition des frags » = armes ≥ 5 % + « Autres (N armes) » par classe ; Cole Protocol = Firefight → PvE exclu des 4 lectures tactiques ; ré-ancrage Escouade = fonction voulue ; prises nettes = « oui avec ta reco » (livré, rattrapé, vérifié) ; niveaux d'armes = « à faire ».
+
+**Médailles** : la VIP « Clash of Kings » manquait (nom + PNG) ; source officielle = gamecms `Waypoint/file/medals/metadata.json` + sprite sheet (article den.dev, indiqué par l'utilisateur). DÉCOUVERTE MAJEURE : sur une base héritée de Python, `medal_definitions` n'a pas de PK → `ON CONFLICT` d'une étape préexistante cassait TOUTES les migrations metadata suivantes (jamais appliquées sur ce poste, probablement en prod). Corrigé (seeds WHERE NOT EXISTS, réparation inconditionnelle, ratchet). Référentiel non reproductible (base neuve = 2 médailles / 164) : chantier à ouvrir.
+
+**Niveaux d'armes (base / terrain / puissance / bonus / non classé)** : étape 0 = couverture suffisante (97 %, 0 carte absente) ; livré : famille des emplacements à la requête, paquet pur `weapontier`, match view par niveau, table `match_pad_pickups_by_tier` append-only par passe (motif prises nettes), projection d'artefacts sous `film.weapon_tiers`, CLI `backfill-pad-tiers`, agrégats sur 3 pages. Deux revues adversariales, 19 constats corrigés — dont la détection des modes à départs aléatoires, fausse deux fois (préfixe, puis catégorie : `Slayer:Arena Super Fiesta` n'est reconnu par aucune), désormais un jeton déclaré par le titre avec la mesure du négatif figée. Rattrapage local exécuté (76 matchs, 1 495 prises).
+
+**Incidents** : un commit de docs d'une autre session (`482852646`) était posé sur le checkout principal et est parti dans mon push ; la fusion a d'abord échoué sur des plans modifiés non commités (commit préalable). Le serveur avait été reconstruit AVANT ma marque d'attente (horodatage), boucle d'attente tuée.
+
+**Prochaine étape** : verdict de la passe visuelle 6 (niveaux sur données réelles) ; à la release v7.5 : `backfill-flag-grabs-net` + `backfill-pad-tiers` en prod, vérifier `schema_migrations` metadata en prod, auditer les autres `ON CONFLICT` sur tables héritées.
+
+---
+
 ## [2026-09-14] Chantier decodeur — M0 fusionne dans feat/v75 — Complete (avance rapide de origin/feat/v75 vers l'integration)
 
 **Decision technique principale.** Sur signal utilisateur (V3), `feat/v75` avance rapidement vers

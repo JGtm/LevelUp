@@ -181,7 +181,7 @@ Relecteur 1 (L1 écritures + L4 données) : invariants ART, jointure emplacement
   fusion ; (2) le rattrapage PROD, à porter à la liste de release v7.5 à côté de
   `backfill-flag-grabs-net` ; (3) la passe visuelle sur données réelles des trois pages
   d'agrégat, impossible tant que (1) n'a pas tourné (la table est vide sur le poste).
-- 2026-09-14 — Fusionné dans feat/v75 par le superviseur après les deux revues ; rattrapage local et passe visuelle à suivre.
+- 2026-09-14 — Fusionné dans feat/v75 (`21f42544b`) après les deux revues. Rattrapage LOCAL exécuté serveur arrêté : `--dry-run` puis réel — 76 matchs écrits, 1 200 lignes, 1 495 prises, 0 match sans carte à la référence, 0 échec, 3 s. Serveur relancé ; passe visuelle (6) lancée sur les trois pages + match view. RESTE : rattrapage PROD à la release v7.5 (`backfill-pad-tiers` après `backfill-flag-grabs-net`).
 - 2026-09-14 — **REVUES ADVERSARIALES (deux relecteurs), 19 constats traités.** Les corrections
   qui changent une RÈGLE, et pas seulement du code :
   - **La détection des modes à départs aléatoires était fausse deux fois.** v1 comparait un
