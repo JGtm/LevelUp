@@ -88,4 +88,30 @@
 #               (3 729/3 729) sur les sept bobines, 0 -> 102/110 sur ti29 ; ti21 et ti47 restent
 #               a 0 (largeur prouvee, composant encore faux). Sur les six films de recherche,
 #               14,0 % -> 30,8 % de records fermes, plancher de hasard 529 -> 391.
-grammar-2026-09-14.3	89fd5e547ac49293cca945ce94266c27cfd4d8dfe9d2c846dcf40d57d0d68b55
+#   2026-09-14  grammar-2026-09-14.4  lot 1.4 : LE CADRE D IMAGE-CLE D ETAT COMPLET EN PRODUCTION.
+#               Les deux balayages qui parsent le corps d un record d image-cle
+#               (`navpoint_radial_scan.go` ti=12, `objective_scan.go` ti=11) lisaient
+#               `TraverseEntity` apres `SetBitPos(r.Bit + keyframeRecordTIBit)` : le cadre du
+#               record NEW du chemin DELTA, avec porte R(1) et MASQUE de presence. Une image-cle
+#               n a pas de masque. Ils appellent desormais `WalkKeyframeFullState` (en-tete 108,
+#               `n1`, etat par defaut, `n2`, tous les composants), qui PERD son option : le cadre
+#               n est plus un reglage (decision D8), `KeyframeFullStateOpt` disparait comme
+#               `shiftArchetypeLevels` au lot 1.2, et la boucle historique `walkKeyframeBody` est
+#               UNEXPORTEE (zero appelant de production, cinq instruments _test.go).
+#               EFFET MESURE, avant -> apres : ti=12 0 record d image-cle sur les 6 films de
+#               recherche ET les 7 bobines (aucun n est un Assaut, le balayage sort sur bande
+#               vide) ; ti=11 27 marches « abouties » / 0 chainee / 0 FERMEE -> 27 cassees sur
+#               les 6 films, 326 / 47 / 0 FERMEE -> 326 cassees sur les 7 bobines. La marche
+#               desynchronise a `i4 managed-objective-interaction-filter-component`, non porte
+#               (lot 3.6) : ce qui disparait n a jamais ferme un seul record.
+#               LE RATCHET DE FERMETURE NE BOUGE PAS, et c est le resultat attendu : il mesure le
+#               cadre d etat complet depuis le lot 0.A.3 (30,8 % depuis 1.3) — ce lot fait
+#               rejoindre la PRODUCTION, pas la mesure. `SchemaVersion` ne monte pas (aucun octet
+#               cuit ne change), `KillSourceDecoderRev` non plus (killsource ne lit pas ce cadre).
+#               NEUF : `filmdec_keyframe_ti12_{closed,total}` sur /debug/vars (ADR 0009) — il
+#               n existait AUCUN compteur de production « la table d image-cle a deraille ».
+#               (MEME LOT donc MEME REVISION, empreinte reprise une fois) : `golangci-lint` a
+#               releve un `ST1016` sur le nouveau compteur — receveur `sc` alors que
+#               `NavpointRadialScan` porte deja `s`. Renommage SEUL, aucun octet lu ne change ;
+#               l'empreinte bouge parce qu'elle hache les octets, pas la grammaire.
+grammar-2026-09-14.4	e5e4291f0261ce65d0e762ba5845dfcd4e7f9c12d21787d07c350423dd2c296c

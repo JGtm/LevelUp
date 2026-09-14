@@ -1333,24 +1333,176 @@ Côté image-clé, la fermeture avant le lot est celle du golden 0.A.3 : ti=14 `
 
 #### Lot 1.4 — Le cadre d'image-clé d'état complet en production — M, high
 
-Sur pièces : `navpoint_radial_scan.go:339`, `objective_scan.go:373` (les deux consommateurs),
-`keyframe_record_walk.go:181` (`walkOneKeyframeRecord`) lisent
-`TraverseEntity(br, reg, 0)` après `SetBitPos(r.Bit + keyframeRecordTIBit)` ; la bonne forme est
-`WalkKeyframeFullState` (`keyframe_fullstate_loop.go:69`).
+Sur pièces, RE-VÉRIFIÉ au commit de base `15309e89e` le 2026-09-14 : **les trois citations du plan
+étaient EXACTES** — `navpoint_radial_scan.go:339` (dans `scanKeyframe`, ouvert l. 325),
+`objective_scan.go:373` (dans `scanKeyframe`, ouvert l. 360) et `keyframe_record_walk.go:181`
+(dans `walkOneKeyframeRecord`, ouvert l. 176) appelaient bien `TraverseEntity(br, reg, 0)` après
+`SetBitPos(r.Bit + keyframeRecordTIBit)`. La bonne forme est `WalkKeyframeFullState`
+(`keyframe_fullstate_loop.go`).
+CLOS le 2026-09-14 (branche `feat/decfilm-14`, 5 commits, `44112034c` → le commit de clôture).
 
-- [ ] 1.4.1 `WalkKeyframeFullState(pay, recBit, reg)` sans option (D8) : en-tête 108, mots de
+- [x] 1.4.0 (item ajouté par le pilote) **Attribuer la dérive du témoin figé de la marche delta
+      AVANT de coder** (découverte D1 (1.3)). FAIT par bisection sur la chaîne premier-parent
+      `4ad72a4a1..8f35efb72` (690 points, worktrees détachés jetables, `DELTA_WITNESS_FILM` en
+      chemin absolu vers le cache du principal, un seul décodage à la fois).
+      **LES SIX POINTS D'INTÉGRATION NOMMÉS PAR LE PILOTE PORTENT TOUS LA DÉRIVE DÈS LE PREMIER**
+      (tableau collé en §5) : `8f35efb72`, `fc5db87f7`, `9e6a9e08d` (1.0) et `191933992` (1.1)
+      rendent EXACTEMENT les mêmes triplets — M0, 0.D, 1.0 et 1.1 ne bougent RIEN ; `783ae680d`
+      (1.2) et `15309e89e` (1.3) bougent de leur propre effet, déjà chiffré dans leur journal.
+      La dérive est donc ANTÉRIEURE au chantier, et l'instruction a été étendue à l'amont.
+      **QUATRE MARCHES, TOUTES NOMMÉES, TOUTES ANTÉRIEURES À M0** : `62ba098b8` (2026-09-01, merge
+      `wt/bombe-visuel` : désérialiseurs d'objectif/bombe portés, +2/+2) · `8f309ce86` (2026-09-02,
+      merge `feat/precision-arme` : le registre borné à sa fin structurelle, −5/−7) · `736ccf3c3`
+      (2026-09-05, merge cuisson-perf + véhicules, 0/−8) · `ffb27238c` (2026-09-11, merge
+      `wt/munitions-objet`, grammaire d'i9 relue au désassemblage, +17/+10).
+      **LE « SENS QUE LE CONTRAT REFUSE » EST UN ARTEFACT D'AGRÉGATION.** D1 (1.3) relevait que
+      sur `06dfe6d9` les records MONTAIENT (+16) pendant que les traversées abouties DESCENDAIENT
+      (−3). Aucune marche ne fait cela : pris un à un, les six mouvements sont cohérents
+      (+2/+2, −5/−7, 0/−8, +17/+10, +2/0, +7/+6). Ce n'est pas un lot qui a produit un sens
+      impossible, c'est un témoin figé laissé en place pendant quatre lots — et il est sous garde
+      d'environnement, donc la CI ne l'a jamais joué.
+      **VERDICT : DIVERGENCE sur les quatre, aucune RÉGRESSION**, et le point le plus suspect le
+      prouve. Sur `8f309ce86` (le seul qui perd des traversées sans en gagner), la sonde par
+      archétype ne fait changer de verdict QUE `ti=49` : `0/7` non portés → `7/7`. Cause MESURÉE,
+      pas déduite : avant ce merge, `parseRegistry` découpait le `chunk_00` par « taille du
+      fichier / taille d'un bloc » et résolvait **64 archétypes** sur `06dfe6d9`, dont ti=49 à 63
+      **à ZÉRO composant** — du bourrage. Une traversée sur un archétype vide se termine sans rien
+      lire, donc elle ABOUTISSAIT. Depuis, le registre s'arrête à sa fin structurelle : **49
+      archétypes, ti=49 ABSENT**. Les 7 traversées perdues ne lisaient rien.
+      Les deux autres pertes sont localisées : `736ccf3c3` perd 6 sur ti=0 (le puits de
+      désynchronisation), 1 sur ti=33 et 1 sur ti=38 — aucune ligne ne bascule en bloc.
+      **AUCUN DES QUATRE POINTS N'EST DANS LE PÉRIMÈTRE DU CADRE D'IMAGE-CLÉ** : ils vivent tous
+      dans la marche DELTA et dans le registre. Donc aucun correctif dans ce lot — report §4 et
+      ligne au bloc « Clôture M1 ».
+      TÉMOIN RE-FIGÉ, avec l'attribution ÉCRITE DANS LE FICHIER (édition datée : ce témoin n'a pas
+      de porte nommée, et le contrat du fichier exige la cause avant le chiffre) :
+      `000d5950` {14 350, **38 945**, **30 118**} · `06dfe6d9` {6 606, **10 636**, **8 505**} ·
+      `64e8adfa` {14 357, **39 936**, **31 933**}. Les trois rendent CONFORME après re-figeage, et
+      **ils sont restés conformes à la fin du lot** — preuve de plus que le cadre d'image-clé ne
+      touche pas la marche delta.
+- [x] 1.4.1 `WalkKeyframeFullState(pay, recBit, reg)` sans option (D8) : en-tête 108, mots de
       taille, état par défaut ; la boucle historique `WalkKeyframeBody` / en-tête 64 + masque
       supprimée si plus aucun appelant de production (inventaire sur pièces ; sinon consignée).
-- [ ] 1.4.2 Les deux consommateurs (et `walkOneKeyframeRecord` si en production) branchés ;
+      FAIT. `KeyframeFullStateOpt` disparaît, comme `shiftArchetypeLevels` au lot 1.2 ; les deux
+      mots de taille deviennent inconditionnels.
+      CE QUI SUBSISTE, ET IL EST NOMMÉ : `keyframeFullStateTemoin`, **non exporté**, est le bouton
+      des DEUX témoins négatifs que la méthode EXIGE (règle 4 de `METHODE_RETRO_INGENIERIE_FILM` :
+      un plancher de faux positifs se MESURE) — le témoin de hasard (+1 bit : 391/62 686 contre
+      19 337/62 686) et l'oracle `n2` (état par défaut remplacé par un décalage, la chaîne qui a
+      donné les cinq largeurs du lot 1.3). GARDE-RAIL NEUF `keyframe_fullstate_guard_test.go` :
+      un fichier NON-test de `filmdec` qui cite `keyframeFullStateTemoin` ou
+      `walkKeyframeFullState(` hors de son fichier déclarant rougit.
+      LA BOUCLE HISTORIQUE EST **CONSIGNÉE, PAS SUPPRIMÉE**, et l'inventaire dit pourquoi. Grep
+      collé en §5 : ZÉRO appelant de production, mais SIX fichiers la citent — cinq instruments
+      `_test.go` du paquet (bipède bit-exact, véhicules v5b, grammaire d'écrivain, matrice de
+      variantes) et sa déclaration. Supprimer, c'est perdre cinq comparateurs A/B d'autres
+      chantiers. Elle est donc **UNEXPORTÉE** (`walkKeyframeBody`, `keyframeBodyVariant(s)`) — le
+      compilateur garantit désormais qu'aucune production hors paquet ne peut l'atteindre — avec
+      date de pose (2026-09-14), cible de retrait (lot 3.6) et critère mesurable (zéro fichier la
+      citant hors de sa déclaration).
+      RÈGLE 6 appliquée : l'appariement « record i, frontière i+1 » était écrit deux fois et il en
+      fallait deux de plus → centralisé dans `keyframeBornesToutes` / `keyframeBornes`.
+- [x] 1.4.2 Les deux consommateurs (et `walkOneKeyframeRecord` si en production) branchés ;
       `Mask` d'un record d'image-clé = tous présents.
-- [ ] 1.4.3 Compteur expvar `filmdec.keyframe.<ti>.{closed,total}` (ADR 0009) publié par le
+      FAIT pour les deux consommateurs (`Mask = ^0` posé par `WalkKeyframeFullState`).
+      `walkOneKeyframeRecord` : **[~] NON branché, et c'est motivé** — il n'est PAS en production
+      (grep §5 : ses seuls appelants sont `WalkKeyframeRecords` / `ChainKeyframeRecords`, qui
+      n'ont eux-mêmes aucun appelant de production, et deux instruments de recherche). Il porte la
+      **colonne « production » du tableau archétype × modèle** : la brancher effacerait le
+      comparateur qui mesure ce que ce lot gagne. Son en-tête le dit désormais.
+      CE QUE LE CHANGEMENT COÛTE, MESURÉ AVANT ET APRÈS (tableaux collés en §5) :
+      **ti=11 (instrument)** passe de « 27 marches abouties / 0 chaînée / **0 FERMÉE** » à
+      « 27 cassées » sur les 6 films de recherche, et de « 326 / 47 / **0 FERMÉE** » à
+      « 326 cassées » sur les 7 bobines. La marche désynchronise à
+      `i4 managed-objective-interaction-filter-component`, non porté (lot 3.6). **Ce qui disparaît
+      n'a jamais fermé un seul record** : c'était du bruit qui ressemblait à une donnée.
+      **ti=12, LE SEUL CHEMIN DE PRODUCTION, SE MESURE AILLEURS — ET LA NOTE 5a SE TROMPE SUR CE
+      POINT** (découverte D5 (1.4)). `TestImageCleProductionBalayagesReels` appelle
+      `ScanFilmNavpointRadial(dir, map[int]int{})`, c'est-à-dire SANS horloge de manifeste ; or
+      `scanChunk` (`navpoint_radial_scan.go`) compte `PacketsNoClock++` et **saute TOUS les
+      paquets** quand le chunk n'a pas de `start_ms`. Cet instrument rend donc `KeyRecords 0`
+      pour ti=12 sur N'IMPORTE QUEL film, Assaut compris — le « 0 » de la section C.2 de la note
+      n'est pas « aucun de ces films n'est un Assaut », c'est « l'instrument ne branche pas
+      l'horloge ». Vérifié sur pièces sur le témoin d'Assaut du corpus gate (`c75f33b8`) : même
+      instrument, `KeyRecords 0`, alors que le film porte **569 records ti=12 en image-clé**.
+      LA VRAIE MESURE DE ti=12, sur ce témoin (`TestImageCleProductionCompteurs`, qui lit les
+      payloads sans passer par l'horloge) : ancien cadre **242 marches / 7 chaînées (1,2 %) /
+      0 FERMÉE sur 569** ; cadre d'état complet **0 marche / 569 cassées / 0 fermée** (butée
+      `i1 managed-navpoint-flags-component`, lot 3.6). Et le corpus gate le chiffre EN
+      PRODUCTION, horloge branchée : `coverage.bombArmings.reads` **1 169 → 1 148 (−21)** et
+      `.rises` **94 → 73 (−21)**, tandis que **le calque `bombArmings` publié ne bouge PAS**.
+      Vingt-et-une lectures, vingt-et-une montées : une montée chacune, c'est-à-dire des points
+      ISOLÉS — la signature du bruit, pas d'une jauge qui se remplit. Aucune n'a produit
+      d'armement.
+- [x] 1.4.3 Compteur expvar `filmdec.keyframe.<ti>.{closed,total}` (ADR 0009) publié par le
       balayage de production ; ratchet 0.A.3 régénéré (attendu : 0 → 14 % sur les 6 films de
       recherche, + 1.3 → 30,8 % ; ti=6/15/18/22 à 100 %).
-- [ ] 1.4.4 `GrammarRev` montée.
+      COMPTEUR FAIT : `filmdec_keyframe_ti12_{closed,total}` (forme physique snake_case d'ADR
+      0009, comme `killsource_*` et `replay_artifact_*`), publié par `replay.decodeFilmBombReads`
+      — SEUL appelant de production de `ScanNavpointRadial`. `filmdec` NOMME ses compteurs et ne
+      dépend PAS d'`observability` : même patron que `KillSourceHealth.ExpvarPairs`, câblé par
+      `killcollector`. **Définition FORTE** (`closed` = atterrissage exact sur la frontière),
+      jamais `KeyChained` (définition faible, où la production plafonnait à 1,9 % en fermant 0 sur
+      390). Aucun ratio publié. **Aucune variable de paquet ajoutée** : `filmdecVarsGeles` reste à
+      96, vérifié.
+      **LE RATCHET 0.A.3 N'EST PAS RÉGÉNÉRÉ, ET C'EST UNE CITATION DU PLAN À CORRIGER.** Vérifié
+      sur pièces : `keyframe_closure.go` mesure le cadre d'ÉTAT COMPLET **depuis le lot 0.A.3** —
+      il n'a jamais mesuré la production. Le « 0 → 14 % » attendu ici était le compteur de
+      PRODUCTION, pas ce golden, qui vaut 30,8 % depuis le lot 1.3. Ce lot fait rejoindre la
+      production à la mesure, donc le golden ne bouge pas : `TestKeyframeClosureRatchet` reste
+      VERT sans régénération, et l'en-tête du fichier porte désormais cette correction.
+      Un seul golden a dû être régénéré, et il est nommé : `golden_minibobine_familles.tsv`, UNE
+      ligne (`navpointRadial`), dont la population reste VIDE (0 lecture avant, 0 après) —
+      l'empreinte hache la structure du balayage, qui gagne deux compteurs à zéro.
+- [x] 1.4.4 `GrammarRev` montée.
+      `grammar-2026-09-14.3` → `grammar-2026-09-14.4` (quatrième lot du même jour). L'empreinte
+      avait ROUGI D'ELLE-MÊME dès le commit de 1.4.1 (« LA GRAMMAIRE A CHANGE SANS MONTEE DE
+      REVISION ») : preuve par mutation naturelle, aucune mutation artificielle nécessaire. Golden
+      régénéré par sa porte nommée (`-update-grammar-rev`, qui réécrit PUIS échoue), historique
+      complété dans le golden.
+      `SchemaVersion` NE MONTE PAS (55 → 55) et `KillSourceDecoderRev` non plus : aucun octet cuit
+      ne change (équivalence : l'étape `artifact` est identique sur les 10 films) et `killsource`
+      ne lit pas ce cadre.
 
 Preuve : `replay-equiv` (différences attendues : `bombArmings` si un témoin s'engage, sinon
 aucune) ; corpus gate zéro perte ; `TestImageCleFermetureParArchetype` rejoué par le pilote sur
 les 6 films de recherche = chiffres de la note 5a.
+RÉSULTAT (2026-09-14), ÉQUIVALENCE : régime court **9 identiques / 1 différent**, et la
+différence de `50247b26` (étape `killsource`) est **HÉRITÉE DU LOT 1.3, PAS PRODUITE PAR
+CELUI-CI** — contrôle décisif : la même commande jouée dans un worktree détaché au commit de base
+`15309e89e` rend la MÊME empreinte obtenue (`2c4ebf2071ca…`). Ce lot produit donc **ZÉRO
+différence d'équivalence**, et aucun témoin d'Assaut ne figure dans l'échantillon court (d'où
+l'absence de `bombArmings` — cf. le corpus gate, qui en porte un).
+
+RÉSULTAT (2026-09-14), CORPUS GATE : **12 témoins sur 13 à zéro gain / zéro perte ; UN témoin en
+PERTE**, et c'est celui que la ligne « Preuve » ci-dessus annonçait — `c75f33b8`, famille
+`assaut_bombe`, le seul du corpus où le chemin de production s'engage. **Les deux pertes sont sur
+l'axe COUVERTURE, aucune sur le calque publié** : `coverage.bombArmings.reads` 1 169 → 1 148 et
+`coverage.bombArmings.rises` 94 → 73 (−21 chacune) ; `bombArmings` est un axe mesuré du gate
+(`replaydiff/empreinte_axes.go:65`, famille `assaut`) et **il ne bouge pas** : aucun armement
+publié ne change. Les 21 lectures perdues sont celles de la voie image-clé, où l'ancien cadre
+marchait 242 records sur 569 en n'en fermant **AUCUN** (7 chaînés, 1,2 %) ; elles produisaient
+21 montées, soit UNE montée chacune — des points isolés, la signature du bruit, jamais une jauge
+qui se remplit. Schéma inchangé des deux côtés (55 → 55) sur les 13 témoins.
+**Le gate n'est donc PAS « zéro perte » au sens littéral, et il ne faut pas l'écrire ainsi** : il
+est « zéro perte sur 12 témoins, et sur le treizième une perte de BRUIT mesurée, nommée, sans
+effet sur la publication ». C'est le point que le pilote doit vérifier sur pièces avant la fusion.
+
+COMMANDE POUR LE PILOTE (rejeu de la fermeture par archétype, depuis `apps/go-api`) :
+
+```bash
+C="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
+F="000d5950 00162144 00502e52 0014603f 02784ce1 00ba2e1c"
+L=""; for f in $F; do L="$L;$C/$f"; done; L="${L#;}"
+CGO_ENABLED=0 CHUNK00_FILMS="$L" go test ./internal/games/halo_infinite/film/filmdec/ \
+  -run 'TestImageCleFermetureParArchetype' -v -count=1 -timeout 30m
+```
+
+Dernière ligne attendue (mesurée le 2026-09-14, identique avant et après le lot — ce golden
+mesure la MESURE, que le lot ne change pas) :
+`TOTAL | 19337/62686  30.8% d15134 s7885 u20330 |   391/62686   0.6% … |     0/62686   0.0% …`
+— état complet 30,8 %, témoin de hasard 0,6 %, colonne « production » (= l'ANCIEN cadre delta,
+rejoué par `walkOneKeyframeRecord`) 0,0 %.
 
 #### Lot 1.5 — L'identité et la table des joueurs lues dans `chunk_00` — M, high
 
@@ -1912,9 +2064,14 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.2 revue R2 (non retenu) | **D7 (1.2) — la cellule `code_source` de la ligne 976 d'`ecs_table.tsv` cite `traverse.go:921` alors que le `case` d'`asset-transform-component` est à `traverse.go:996`.** Décalage PRÉEXISTANT au lot 1.2 (la ligne n'a pas bougé de fichier, c'est le fichier qui a grandi au-dessus d'elle) ; le contrôle G1 confronte la table au code par le NOM du `case`, pas par le numéro de ligne, donc il reste vert. Remarque NON RETENUE par la ronde 2 comme hors périmètre du lot, et NON CORRIGÉE : une correction isolée de cette cellule laisserait les autres dériver de la même façon. | lot 2.6 (grammaire en instruments) : soit `code_source` cite un symbole plutôt qu'une ligne, soit un garde-rail vérifie le numéro |
 | 2026-09-14 | 1.2 revue R1 (C1), **complétée à la R2** | **D6 (1.2) — la troncature d'un `chunk_00` est NOMMÉE dans `Registry` mais n'a encore AUCUN LECTEUR, et le seul signal qui sort en exploitation attribue la mauvaise cause.** `Registry.Truncated` dit que le parse a épuisé le tampon sans rencontrer la fin structurelle, `Registry.TruncatedBytes` mesure la queue non couverte (elle peut valoir 0 sur une coupe alignée). Les TROIS appelants de production — relevé du 2026-09-14, `grep -rn "ParseRegistryChunk(" --include=*.go internal/ cmd/ | grep -v _test.go` : `filmdec/film_context.go:254`, `killsource/world.go:58` (via `killsource/decode.go:123`, paquet importé par `killcollector` ET par `replaybuild`), `killcollector/hits.go:113` — n'en journalisent aucun. Ce qui sort alors d'un `chunk_00` tronqué, c'est le WARN de `warnUnknownRegistry` (« grammaire des composants suspecte (mise a jour du jeu ?) ») : le bon signal, la mauvaise cause. NON TRAITÉ dans ce lot — brancher un journal touche trois appelants hors périmètre, et amender le message du WARN touche `registry_fingerprint.go` hors du constat. | **à compter au registre des replis du lot 1.9.0** (nom, fait, condition de déclenchement, date de pose, critère de retrait), ET y porter que `warnUnknownRegistry` doit dire « registre tronqué » quand `Truncated` est vrai |
 
-| 2026-09-14 | 1.3 (mesure avant de coder) | **D1 (1.3) — le témoin figé de la marche delta (`delta_walk_witness_test.go`) est PÉRIMÉ, et il l'était AVANT ce lot.** Mesuré au commit d'intégration `783ae680d`, arbre PROPRE (fichier restauré par nom, mêmes chiffres des deux côtés) : `000d5950` figé {14 350 paquets, 38 878 records, 30 080 aboutis} contre mesuré {14 350, **38 897**, **30 101**} ; `06dfe6d9` figé {6 606, 10 613, 8 502} contre {6 606, **10 629**, **8 499**} ; `64e8adfa` figé {14 357, 39 806, 31 973} contre {14 357, **39 820**, **31 988**}. Le contrat écrit dans le fichier (« si l'une bouge, c'est la GRAMMAIRE qui a bougé, et c'est ce qu'il faut expliquer avant de réécrire le chiffre ») n'a donc pas été tenu par au moins un lot depuis le 2026-08-18. Le test est sous garde `DELTA_WITNESS_FILM` : la CI ne le voit jamais, et c'est pour cela que la dérive a pu traverser 0.A à 1.2 sans être consignée. **Le cas de `06dfe6d9` est le plus parlant : les records MONTENT (+16) mais les traversées abouties DESCENDENT (-3)** — un sens que le contrat du fichier n'accepte pas. NON TRAITÉ : re-figer ici absorberait en silence la dérive d'un autre lot. | décision pilote : rejouer les trois films lot par lot depuis `cbfdc269d` pour attribuer la dérive, puis re-figer avec sa cause — ou retirer le témoin s'il ne garde plus rien |
+| 2026-09-14 | 1.3 (mesure avant de coder) | **D1 (1.3) — le témoin figé de la marche delta (`delta_walk_witness_test.go`) est PÉRIMÉ, et il l'était AVANT ce lot.** Mesuré au commit d'intégration `783ae680d`, arbre PROPRE (fichier restauré par nom, mêmes chiffres des deux côtés) : `000d5950` figé {14 350 paquets, 38 878 records, 30 080 aboutis} contre mesuré {14 350, **38 897**, **30 101**} ; `06dfe6d9` figé {6 606, 10 613, 8 502} contre {6 606, **10 629**, **8 499**} ; `64e8adfa` figé {14 357, 39 806, 31 973} contre {14 357, **39 820**, **31 988**}. Le contrat écrit dans le fichier (« si l'une bouge, c'est la GRAMMAIRE qui a bougé, et c'est ce qu'il faut expliquer avant de réécrire le chiffre ») n'a donc pas été tenu par au moins un lot depuis le 2026-08-18. Le test est sous garde `DELTA_WITNESS_FILM` : la CI ne le voit jamais, et c'est pour cela que la dérive a pu traverser 0.A à 1.2 sans être consignée. **Le cas de `06dfe6d9` est le plus parlant : les records MONTENT (+16) mais les traversées abouties DESCENDENT (-3)** — un sens que le contrat du fichier n'accepte pas. NON TRAITÉ : re-figer ici absorberait en silence la dérive d'un autre lot. | **TRAITÉE au lot 1.4.0 (2026-09-14)** : dérive attribuée par bisection (quatre marches, toutes ANTÉRIEURES au chantier), verdict DIVERGENCE, témoin re-figé avec sa cause écrite dans le fichier. Cf. D1 (1.4) pour ce qui reste ouvert (le témoin vit hors CI) |
 | 2026-09-14 | 1.3 (équivalence) | **D2 (1.3) — une chaîne de DIAGNOSTIC entre dans l'empreinte d'équivalence de l'étape `killsource`.** Sur `50247b26`, le seul écart des 10 films du régime court est le champ `Result.Calibration`, une phrase lisible : `axisW=14 indexW=1 [PROFIL PLAT (score 88, mediane 77) : valeurs par defaut conservees] | recordStateParam=2 [croissance x1.003]` -> la même avec `mediane 76`. **Un caractère sur 228 800 octets de sortie JSON** ; les paramètres RETENUS (`axisW`, `indexW`, `recordStateParam`, le facteur de croissance), les lignes de kill, le catalogue, la couverture et la santé sont identiques à l'octet. Conséquence : un gate d'équivalence peut rougir pour une phrase de journal, et un lot doit alors prouver que rien de publié ne bouge — ce que la comparaison champ à champ a fait ici, mais au prix d'une passe supplémentaire. NON TRAITÉ. | lot 2.6 (empreintes par couche) : sortir les chaînes de diagnostic de l'empreinte, ou les isoler dans une sous-empreinte nommée |
 | 2026-09-14 | 1.3 (équivalence) | **D3 (1.3) — la découverte D4 (1.2) est formulée trop largement, et la mesure la réfute sur ce point.** D4 (1.2) écrit « le corpus d'équivalence ne porte AUCUN témoin des archétypes ti=14, 21, 30 et 44 ». Or `000d5950` et `64e8adfa` SONT au corpus (`CORPUS.txt` l. 141 et 143) et leur marche delta traverse des records NEW de ces archétypes (13 et 13 pour ti=14, 29 et 71 pour ti=21 — histogramme du témoin, §5) ; surtout, le lot 1.3 ne change QUE les états par défaut de ti=14/17/21/29/47 et il fait bouger `50247b26` au balayage `killsource` : le corpus n'est donc pas aveugle à ces archétypes. Ce que D4 voulait dire — aucun film n'exerce les COMPOSANTS qui consomment le niveau (`crew-order`, `flock-destination`, `tacmap-poiicon`, `asset-transform`) — reste plausible et n'est PAS mesuré par ce lot. NON TRAITÉ (hors périmètre 1.3). | reformuler D4 (1.2) au lot 3.6, où le témoin par archétype se nomme |
+| 2026-09-14 | 1.4.0 | **D1 (1.4) — TRAITÉE DANS LE LOT : la dérive du témoin de marche delta est attribuée, et elle est ANTÉRIEURE au chantier.** La découverte D1 (1.3) refusait de re-figer sans cause ; la bisection (690 points, §5) nomme QUATRE marches, toutes dans `feat/v75` avant M0 : `62ba098b8` (composants d'objectif/bombe portés), `8f309ce86` (le registre borné à sa fin structurelle), `736ccf3c3` (cuisson-perf + véhicules), `ffb27238c` (grammaire d'i9 relue). Les quatre sont des DIVERGENCES — le point le plus suspect (`8f309ce86`, −7 traversées) ne fait changer de verdict que `ti=49`, qui n'existe PAS dans le registre de `06dfe6d9` (49 blocs) : avant, le parseur le fabriquait à partir du bourrage, avec ZÉRO composant, et une traversée sur un archétype vide « aboutissait » sans rien lire. **CE QUI RESTE OUVERT, ET N'EST PAS TRAITÉ ICI** : le témoin est sous garde `DELTA_WITNESS_FILM`, donc la CI ne le joue jamais et rien n'oblige un lot à le jouer. La leçon du lot 1.3 (le test « `n2` constant » posé SANS garde d'environnement, sur les bobines versionnées) s'applique mot pour mot : tant que ce témoin vit hors CI, il re-dérivera. | clôture M1 ou lot 2.6 : porter le témoin sur les sept bobines versionnées, sans garde d'environnement, comme `default_state_n2_constant_test.go` |
+| 2026-09-14 | 1.4.3 | **D2 (1.4) — TRAITÉE DANS LE LOT : le plan attendait « ratchet 0.A.3 régénéré, 0 → 14 % », et c'était une erreur de citation.** Vérifié sur pièces : `keyframe_closure.go` mesure le cadre d'ÉTAT COMPLET depuis sa création (lot 0.A.3) ; il n'a jamais mesuré la production. Le « 0 » attendu était celui des compteurs de PRODUCTION (`KeyRecords`/`KeyWalked` des deux balayages), pas celui de ce golden, qui vaut 30,8 % depuis le lot 1.3. Le lot 1.4 fait rejoindre la production à la mesure : le golden ne bouge pas, et `TestKeyframeClosureRatchet` reste vert SANS régénération. L'en-tête du fichier porte désormais la correction, pour qu'un lecteur futur ne re-déduise pas l'erreur. | corrigée ici ; à relire au lot 3.6, où le ratchet doit enfin MONTER |
+| 2026-09-14 | 1.4.2 | **D3 (1.4) — `WalkKeyframeRecords` et `ChainKeyframeRecords` lisent toujours le cadre DELTA sur une table d'image-clé, et ils sont EXPORTÉS.** Grep collé en §5 : zéro appelant de production, quatre appelants `_test.go` dont un HORS du paquet (`replay/visee_etiquettes_keyframe_test.go`), ce qui interdit de les unexporter comme `walkKeyframeBody`. Deux instruments mesurent donc encore des records d'image-clé sous un cadre que ce lot vient de prouver faux pour cette table (`zone_census_report_test.go:254`, `visee_etiquettes_keyframe_test.go:94`) : leurs chiffres ne sont pas des mesures de la grammaire, ce sont des mesures de l'ancien cadre. NON TRAITÉ — hors périmètre 1.4, qui nomme les deux consommateurs et `walkOneKeyframeRecord`. | lot 2.7 (scission / surface exportée) ou 3.6 : rebaser ces deux instruments sur `WalkKeyframeFullState`, puis unexporter |
+| 2026-09-14 | 1.4 (équivalence) | **D4 (1.4) — la référence d'équivalence de `50247b26` est PÉRIMÉE depuis le lot 1.3, et chaque lot suivant la paiera.** Le régime court rend 9/10 sur ce lot, et l'unique écart (étape `killsource`, chaîne de diagnostic `calibration`) est le MÊME que celui du lot 1.3 : contrôle décisif, la même commande jouée au commit de base `15309e89e` dans un worktree détaché rend la MÊME empreinte obtenue (`2c4ebf2071ca…`). Le lot 1.4 produit donc zéro différence. Mais tant que la décision pilote de D2 (1.3) n'est pas prise (bump `KillSourceDecoderRev` + backlog, OU re-figeage de la seule référence de `50247b26`), **tout lot de M1 lira un rouge permanent qui masque le prochain vrai** — exactement la situation que le lot 1.1.6 a dû défaire au schéma 55. NON TRAITÉ (geste de PROD, réservé au pilote, D6). | décision pilote, avant le prochain lot décodeur : re-figer `50247b26` ou trancher le backlog killsource |
+| 2026-09-14 | 1.4 (mesure) | **D5 (1.4) — la section C.2 de `NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md` attribue à tort un « 0 » qui vient de l'INSTRUMENT, pas du corpus.** Elle écrit « le chemin de production ne s'engage pas sur ce corpus : `ScanNavpointRadial` sort avant la boucle quand la bande de slots observés est vide, aucun des six films n'est un Assaut, donc 0 record d'image-clé n'est parsé ». Sur pièces : `TestImageCleProductionBalayagesReels` appelle `ScanFilmNavpointRadial(dir, map[int]int{})` — SANS horloge — et `scanChunk` (`navpoint_radial_scan.go`) fait `PacketsNoClock++` puis `continue` pour TOUT paquet dont le chunk n'a pas de `start_ms`. Cet instrument rend donc `KeyRecords 0` pour ti=12 sur n'importe quel film. **Contre-exemple mesuré** : `c75f33b8` (témoin `assaut_bombe` du corpus gate, où le chemin s'engage réellement — 1 169 lectures d'anneau) rend lui aussi `KeyRecords 0` sous cet instrument, alors qu'il porte **569 records ti=12 en image-clé**. Le « 0 » de la note n'est pas faux comme chiffre, il est faux comme CAUSE — et toute conclusion tirée de cet instrument sur la population ti=12 est à reprendre. NON TRAITÉ (hors périmètre 1.4 : corriger l'instrument, c'est le rebaser sur un manifeste). | lot 2.6 (empreintes / instruments) ou la prochaine reprise de la note 5a : passer une horloge réelle à l'instrument, ou publier `PacketsNoClock` à côté de `KeyRecords` pour qu'un 0 muet devienne un 0 expliqué |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -2187,6 +2344,30 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.3 (attribution de l'écart, PAR MESURE) | ce commit | `go run ./cmd/killsource json 50247b26` des deux côtés du correctif (fichier `default_state_arch.go` restauré par NOM à `783ae680d`, puis remis ; md5 identique après remise) | **228 800 octets des deux côtés, UNE seule valeur change** : `calibration` = `axisW=14 indexW=1 [PROFIL PLAT (score 88, mediane 77) : valeurs par defaut conservees] \| recordStateParam=2 [croissance x1.003]` -> la même avec `mediane 76`. Paramètres retenus, lignes de kill, catalogue, couverture, santé : IDENTIQUES. Découverte D2 (1.3) |
 | 2026-09-14 | 1.3 (corpus gate) | ce commit | `go run ./cmd/replay-corpus-gate --base=783ae680d --parc-root …/LevelUp-go-migration --source-root …/LevelUp-wt-decfilm-13 --manifest …/config/replay_corpus.toml` | **13 témoins, 0 PERTE, 0 GAIN, exit 0**, schéma `55 -> 55` sur les treize, 19 min 33 s (26 cuissons, un seul décodage à la fois). Table collée depuis la sortie : `bcb6d393` ctf_mono_manche 11,59 s · `fb1a1a72` ctf_multi_manche 30,38 s · `d9781168` oddball 24,91 s · `c75f33b8` assaut_bombe 14,3 s · `bf15f7ab` slayer 14,02 s · `51ebbc0f` deux_manches 20,26 s · `084a804d` vehicules 1 m 54,05 s · `0797ce72` region_index_2_bits 15,59 s · `111fa685` version_39 49,28 s · `e5adf7b2` version_40_build_1_11 1 m 10,81 s · `60ae07c4` version_37 27,61 s · `a349fea8` version_33_sans_identification 2 m 11,62 s · `bfecd02b` vehicules_v41_utilisateur 22,11 s — tous `ok`. **ZÉRO GAIN est le résultat attendu** : le correctif ouvre la lecture d'image-clé, que rien en production ne consomme encore (le branchement est le lot 1.4) |
 | 2026-09-14 | 1.3 (portée du lot, dite sans détour) | ce commit | lecture croisée des trois gates | Ce lot ne change AUCUN octet publié : 0 gain au corpus gate, `artifact` identique aux dix films de l'équivalence, `SchemaVersion` inchangée. Ce qu'il change est la GRAMMAIRE et sa mesure : cinq états par défaut relus chez l'écrivain, la fermeture d'image-clé de 14,0 % à 30,8 %, et un oracle permanent de plus. La valeur produit arrive au lot 1.4, qui branche le cadre d'état complet sur `navpoint_radial_scan` et `objective_scan` |
+| 2026-09-14 | 1.4.0 | `44112034c` | BISECTION du témoin de marche delta, chaîne premier-parent `4ad72a4a1..8f35efb72` (690 points), worktrees détachés jetables, `CGO_ENABLED=0 DELTA_WITNESS_FILM=C:/…/LevelUp-go-migration/data/cache/film_chunks/<film> go test ./internal/games/halo_infinite/film/filmdec/ -run TestDeltaWalkWitness -v` | **LES SIX POINTS NOMMÉS PAR LE PILOTE** (paquets / records / aboutis, sortie brute) :<br>`figé 2026-08-18` — 000d5950 {14350, 38878, 30080} · 06dfe6d9 {6606, 10613, 8502} · 64e8adfa {14357, 39806, 31973}<br>`8f35efb72` (M0→v75) — {14350, **38892**, **30095**} · {6606, **10627**, **8499**} · {14357, **39826**, **31993**}<br>`fc5db87f7` — IDENTIQUE à `8f35efb72` sur les trois films<br>`9e6a9e08d` (1.0) — IDENTIQUE<br>`191933992` (1.1) — IDENTIQUE<br>`783ae680d` (1.2) — {14350, 38897, 30101} · {6606, 10629, 8499} · {14357, 39820, 31988}<br>`15309e89e` (1.3) — {14350, 38945, 30118} · {6606, 10636, 8505} · {14357, 39936, 31933}<br>**PREMIER POINT QUI BOUGE : le premier de la liste.** M0, 0.D, 1.0 et 1.1 ne bougent RIEN ; la dérive est antérieure au chantier |
+| 2026-09-14 | 1.4.0 | `44112034c` | EXTENSION de la bisection en amont (témoin `06dfe6d9`, un seul worktree détaché réutilisé, 15 points) | `4ad72a4a1` 2026-08-18 **10 613 / 8 502 CONFORME** → `62ba098b8` 2026-09-01 **10 615 / 8 504** (merge `wt/bombe-visuel`) → `8f309ce86` 2026-09-02 **10 610 / 8 497** (merge `feat/precision-arme`) → `736ccf3c3` 2026-09-05 **10 610 / 8 489** (merge cuisson-perf + véhicules) → `ffb27238c` 2026-09-11 **10 627 / 8 499** (merge `wt/munitions-objet`, grammaire d'i9) → `8f35efb72` inchangé. Points intermédiaires vérifiés : 172, 258, 301, 323, 325 (conformes) ; 328, 334, 337, 338, 339 (après 62ba098b8) ; 383, 394, 399, 401 (après 8f309ce86) ; 405, 427, 515, 600, 606 (après 736ccf3c3) ; 607, 608, 609, 611, 622, 633, 645 (après ffb27238c) |
+| 2026-09-14 | 1.4.0 | `44112034c` | SONDE JETABLE par archétype (ko/total des traversées, 12 premiers chunks, `06dfe6d9`), jouée de part et d'autre des trois points qui PERDENT des traversées — fichier de sonde supprimé après mesure, jamais commité | `8f309ce86` : **UNE SEULE ligne change de verdict, `ti=49` : 0/7 → 7/7** (−7 aboutis, exactement le delta global) ; ti=0 et ti=10 perdent chacun 1 record au total sans perdre d'abouti. `736ccf3c3` : ti=0 −6, ti=33 −1, ti=38 −1 (= −8). `ffb27238c` : gains répartis (ti=1, 6, 8, 11, 22, 36, 40, 41, 44), +10 |
+| 2026-09-14 | 1.4.0 | `44112034c` | SONDE JETABLE du registre (`Archetype(i)` pour i de 0 à 63 sur `06dfe6d9`), de part et d'autre de `8f309ce86` | **AVANT : 64 archétypes résolus, ti=49 à 63 PRÉSENTS avec ZÉRO composant** (du bourrage — une traversée s'y termine sans rien lire, donc « aboutit »). **APRÈS : 49 archétypes, ti=49 ABSENT.** C'est la preuve que les 7 traversées perdues ne lisaient rien : DIVERGENCE, pas régression |
+| 2026-09-14 | 1.4.0 | `44112034c` | `go test … -run TestDeltaWalkWitness` sur les trois films après re-figeage | **3/3 CONFORME au compte figé** (0,19 s / 0,41 s / 0,21 s). Re-joués à la clôture du lot : **toujours 3/3 CONFORME** — le cadre d'image-clé ne touche pas la marche delta |
+| 2026-09-14 | 1.4 (mesure avant de coder) | `15309e89e` (base) | `CGO_ENABLED=0 CHUNK00_FILMS="<6 films de recherche>" go test … -run TestImageCleProductionBalayagesReels -v` | **AVANT** — ti=12 (production) : `KeyRecords 0` sur les SIX films — et ce 0 NE DIT RIEN du corpus : l instrument passe une horloge VIDE, et `scanChunk` saute tous les paquets sans `start_ms` (découverte D5 (1.4)). ti=11 (instrument) : `00162144` 1/1/0/0 · `00502e52` 1/1/0/0 · `00ba2e1c` 25/25/0/0 ; trois films sans slot ti=11. **CUMUL ti=11 : records 27 · marches 27 · CASSÉES 0 · chaînées 0** — et 0 fermée, cf. la ligne suivante. 9,57 s |
+| 2026-09-14 | 1.4 (mesure avant de coder) | `15309e89e` (base) | même commande, `CHUNK00_FILMS="<les 7 bobines>"` | **AVANT** — ti=12 : `KeyRecords 0` sur les SEPT bobines (même artefact d horloge vide, cf. D5 (1.4)). ti=11 : a521164d 18/18/0/**0** · 60ae07c4 135/135/0/**20** · 11de8353 14/14/0/0 · 111fa685 13/13/0/0 · e5adf7b2 11/11/0/0 · bcb6d393 85/85/0/**17** · fb1a1a72 50/50/0/**10**. **CUMUL : records 326 · marches 326 · CASSÉES 0 · chaînées 47** (14,4 % sur la définition FAIBLE ; 0 sur la forte). 8,00 s |
+| 2026-09-14 | 1.4 (mesure avant de coder) | `15309e89e` (base) | `CHUNK00_FILMS="<6 films>" go test … -run TestImageCleFermetureParArchetype -v` | **AVANT** — dernière ligne : `TOTAL | 19337/62686  30.8% d15134 s7885 u20330 | 391/62686 0.6% d15134 s13048 u34113 | 0/62686 0.0% d3589 s57737 u1360`. État complet 30,8 %, témoin de hasard 0,6 %, ancien cadre (colonne « production ») **0,0 %**. 3,53 s |
+| 2026-09-14 | 1.4.1 | `2316eeee3` | `grep -rn "walkKeyframeBody\|keyframeBodyVariant" --include=*.go internal/ cmd/ \| cut -d: -f1 \| sort \| uniq -c` | **ZÉRO appelant de production.** 6 fichiers : `keyframe_record_walk.go` (10, sa déclaration) et CINQ instruments `_test.go` du paquet — `keyframe_biped_bitexact_test.go` (5), `keyframe_biped_fullstate_test.go` (10), `keyframe_record_walk_test.go` (3), `keyframe_writer_grammar_test.go` (1), `vehicules_v5b_controle_test.go` (4). D'où : UNEXPORTÉE, pas supprimée (cf. item 1.4.1) |
+| 2026-09-14 | 1.4.2 | `e5b0d600f` | `grep -rn "walkOneKeyframeRecord(\|WalkKeyframeRecords(\|ChainKeyframeRecords(" --include=*.go internal/ cmd/` | 11 lignes, **aucune en production** : 4 dans `keyframe_record_walk.go` (déclarations + chaînage interne), 2 dans les instruments d'image-clé (`imagecle_fermeture_research_test.go:189`, `imagecle_production_research_test.go:124` — la colonne « ancien cadre »), 3 dans `keyframe_record_walk_test.go` / `zone_census_report_test.go`, 1 HORS paquet (`replay/visee_etiquettes_keyframe_test.go:94`). Justifie le `[~]` de `walkOneKeyframeRecord` et la découverte D3 (1.4) |
+| 2026-09-14 | 1.4.1 | `2316eeee3` | `go test … -run TestCadreImageCleSansOptionEnProduction` (garde-rail neuf) | vert ; il lit les 113 fichiers non-test de `filmdec` et échoue si l'un d'eux cite `keyframeFullStateTemoin` ou `walkKeyframeFullState(` hors de `keyframe_fullstate_loop.go` |
+| 2026-09-14 | 1.4.2 | `e5b0d600f` | `CHUNK00_FILMS="<6 films>"` puis `"<7 bobines>"`, `-run TestImageCleProductionBalayagesReels -v` | **APRÈS** — ti=12 : `KeyRecords 0` partout, avant comme après — artefact d horloge vide, la vraie mesure de ti=12 est celle du corpus gate et de `TestImageCleProductionCompteurs` (deux lignes plus bas). ti=11 : **6 films CUMUL records 27 · marches 0 · CASSÉES 27 (100,0 %) · chaînées 0** (10,71 s) ; **7 bobines CUMUL records 326 · marches 0 · CASSÉES 326 (100,0 %) · chaînées 0** (8,0 s). Désynchronisation à `i4 managed-objective-interaction-filter-component`, non porté — lot 3.6. Les 47 « chaînées » perdues ne fermaient AUCUN record |
+| 2026-09-14 | 1.4 (ti=12, la VRAIE mesure) | `3edc44b75` | `CHUNK00_FILMS="<…/c75f33b8>" go test … -run TestImageCleProduction -v` (le témoin d'Assaut du corpus gate, lu SANS passer par l'horloge) | **569 records ti=12 en image-clé.** ANCIEN CADRE : 242 marches · 327 cassées (57,5 %) · 7 chaînées (1,2 %) · **0 FERMÉE / 569**. CADRE D'ÉTAT COMPLET : 0 marche · 569 cassées (100 %) · 0 chaînée · 0 fermée (butée `i1 managed-navpoint-flags-component`, lot 3.6). Le même film sous `TestImageCleProductionBalayagesReels` rend `KeyRecords 0` : **preuve de l'artefact d'horloge vide** (D5 (1.4)) |
+| 2026-09-14 | 1.4 (corpus gate) | ce commit | `go run ./cmd/replay-corpus-gate --base=15309e89e --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-14` | **17 min 16 s, 13 témoins. 12 à ZÉRO gain / ZÉRO perte** (`bcb6d393`, `fb1a1a72`, `d9781168`, `bf15f7ab`, `51ebbc0f`, `084a804d`, `0797ce72`, `111fa685`, `e5adf7b2`, `60ae07c4`, `a349fea8`, `bfecd02b`), schéma 55 → 55 partout. **UN témoin en PERTE : `c75f33b8` (famille `assaut_bombe`), 0 gain / 2 pertes, toutes deux sur l'axe COUVERTURE** : `coverage.bombArmings.reads` **1169 → 1148**, `coverage.bombArmings.rises` **94 → 73**. **Le calque publié `bombArmings` est un axe mesuré du gate (`replaydiff/empreinte_axes.go:65`) et il NE BOUGE PAS** : aucun armement publié ne change. C'est la différence que la ligne « Preuve » du lot annonçait (« `bombArmings` si un témoin s'engage ») ; −21 lectures pour −21 montées = UNE montée par lecture, donc des points isolés, la signature du bruit |
+| 2026-09-14 | 1.4.2 | `e5b0d600f` | `go test … -run GoldenMiniBobineFamilles -update-golden-familles` puis sans le drapeau | **UNE ligne régénérée**, `navpointRadial` : `f4eaa343…` → `ebac4160…`, **population VIDE avant ET après** (0 lecture). La bobine `minifilm_000d5950` n'a pas de `chunk_00` : le balayage sort sur bande vide, donc les deux compteurs neufs valent 0 et l'empreinte ne bouge que parce qu'elle hache la structure. Vert après régénération |
+| 2026-09-14 | 1.4.3 | `3edc44b75` | `go test ./internal/archlint/ -run FilmdecPackageVars` | vert — `filmdecVarsGeles` reste à **96** : le compteur n'ajoute aucune variable de paquet (un type + une méthode + une fonction) |
+| 2026-09-14 | 1.4.3 | `3edc44b75` | `go test … -run TestKeyframeClosureRatchet` | **VERT SANS RÉGÉNÉRATION** — et c'est le résultat attendu : ce golden mesure le cadre d'état complet depuis le lot 0.A.3, ce lot fait rejoindre la PRODUCTION à la mesure. Le « 0 → 14 % » du plan était une erreur de citation (découverte D2 (1.4)) |
+| 2026-09-14 | 1.4.4 | ce commit | `go test … -run GrammarRevSuitLaGrammaire` AVANT la montée | **ROUGE de lui-même dès 1.4.1** : « LA GRAMMAIRE A CHANGE SANS MONTEE DE REVISION » — preuve par mutation naturelle, aucune mutation artificielle nécessaire |
+| 2026-09-14 | 1.4.4 | ce commit | `go test … -run GrammarRevSuitLaGrammaire -update-grammar-rev` puis sans le drapeau | porte nommée : « 1 reference(s) reecrite(s) … (revision grammar-2026-09-14.4, empreinte e5e4291f0261…) », **FAIL** comme prévu ; relancé sans le drapeau : **ok**, 0,06 s. Historique complété DANS le golden |
+| 2026-09-14 | 1.4 (communs) | ce commit | `gofmt -l ./internal ./cmd` | sortie **vide** |
+| 2026-09-14 | 1.4 (communs) | ce commit | `go vet` + `go test` sur film/…, archlint, replaybuild, killcollector, objectiveevents, replaydoc | vet propre ; **tous verts** — filmdec 11,98 s · replay 13,84 s · archlint 13,78 s · replaybuild 0,88 s · objectiveevents 0,51 s · killsource 0,58 s · killcollector 0,11 s (celui-ci joué avec `CGO_ENABLED=1` et `msys64/ucrt64/bin` en tête du PATH : il tire DuckDB, et sans CGO il sort en `[setup failed]`) ; `replaydoc` sans fichier de test |
+| 2026-09-14 | 1.4 (communs) | ce commit | `make go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **0 issues**, baseline non accrue. Une seule remontée en cours de route, corrigée : `ST1016` (nom de receveur `sc` contre `s` déjà utilisé sur `NavpointRadialScan`) |
+| 2026-09-14 | 1.4 (équivalence, régime court) | ce commit | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-decfilm-14 -films 50247b26,a521164d,60ae07c4,11de8353,111fa685` puis `-films e5adf7b2,bcb6d393,51101d1d,d9781168,fb1a1a72` | **9 identiques / 1 différent** en 3 min 48 s + 2 min 20 s. L'unique écart : `50247b26`, étape `killsource`, `3cade5d0…` attendu contre `2c4ebf20…` obtenu |
+| 2026-09-14 | 1.4 (équivalence, contrôle) | `15309e89e` (worktree détaché jetable, deux jonctions posées puis DÉLIÉES par PowerShell avant `worktree remove`) | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-bisect-base14 -films 50247b26` | **MÊME écart, MÊME empreinte obtenue `2c4ebf2071ca…`** au commit de BASE du lot. L'écart est donc **hérité du lot 1.3** (découverte D2 (1.3), jamais re-figée), pas produit par 1.4. **Le lot 1.4 produit ZÉRO différence d'équivalence.** Cache du principal vérifié intact après retrait (1 351 films) |
 
 ## 6. Protocole de reprise de session
 
