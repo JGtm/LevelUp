@@ -320,10 +320,12 @@ func imcoEprouverZones(zones []int, anc []imcoAncre, reg *Registry) (map[int]int
 		}
 		total++
 		for _, w := range zones {
-			o := KeyframeFullStateOpt{
-				HeaderBits: keyframeFullStateHeaderBits + w, SizeWords: true,
-			}
-			tr := WalkKeyframeFullState(a.Pay, a.Bit, reg, o)
+			// L'ORACLE `n2` : l'etat par defaut REMPLACE par un decalage de `w` bits, pour
+			// mesurer une largeur qu'aucun deserialiseur ne porte encore. C'est l'un des deux
+			// temoins nommes de `keyframeFullStateTemoin` — jamais une lecture de production.
+			tr := walkKeyframeFullState(a.Pay, a.Bit, reg, keyframeFullStateTemoin{
+				EnTeteBits: keyframeFullStateHeaderBits + w, SansEtatParDefaut: true,
+			})
 			if tr.DesyncAt < 0 && tr.EndBit == a.Want {
 				out[w]++
 			}

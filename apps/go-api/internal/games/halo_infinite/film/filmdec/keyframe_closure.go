@@ -49,30 +49,41 @@ type KeyframeClosureStat struct {
 	Blocking string
 }
 
-// keyframeClosureOpt : LA FORME JUSTE, celle de `FUN_142e2bfd0`, et rien d'autre.
+// keyframeBorne est un record d'image-cle BORNE : celui dont le balayeur d'ancres rend un
+// voisin suivant, donc le seul dont la question « ferme-t-il ? » ait un sens.
+type keyframeBorne struct {
+	// Bit est le premier bit du record ; Want la frontiere visee (premier bit du suivant).
+	Bit, Want int
+	// Slot et TI identifient le record.
+	Slot, TI int
+	// Voisin restreint aux paires de slots CONSECUTIFS (`slotSuivant == slot + 1`), ou le
+	// balayeur ne peut avoir saute aucun record entre les deux ancres.
+	Voisin bool
+}
+
+// keyframeBornes rend les records BORNES d'un payload d'image-cle, tries par bit.
 //
-// En-tete de 108 bits, les deux mots de taille autour de l'etat par defaut, et l'etat par defaut
-// joue par le deserialiseur de l'archetype. Il n'y a plus d'option de NIVEAU a regler depuis le
-// lot 1.2 (2026-09-14) : le registre se lit au cadrage du jeu, donc `Archetype.Levels` porte
-// deja le niveau que `FUN_142e2c690` passe au deserialiseur, et l'ancien `LevelShift` n'aurait
-// plus rien a decaler. Ce sont EXACTEMENT les options de l'instrument de recherche
-// (`imagecle_fermeture_research_test.go`, `imcOptEtatComplet`) : la mesure de production et
-// l'oracle de recherche doivent dire la meme chose du meme film, sinon aucun des deux ne prouve
-// rien.
-func keyframeClosureOpt() KeyframeFullStateOpt {
-	return KeyframeFullStateOpt{
-		HeaderBits:   keyframeFullStateHeaderBits,
-		SizeWords:    true,
-		DefaultState: true,
+// UNE SEULE COPIE, ET C'EST LA REGLE 6 DU DEPOT. Le meme appariement « record i, frontiere
+// i+1 » etait ecrit dans `accumulerFermeture` (mesure), dans l'instrument de recherche
+// (`imcBornes`) et il fallait l'ecrire une troisieme fois dans les deux balayages de
+// production au lot 1.4 : a la troisieme copie on centralise. La mesure, l'oracle et la
+// production comptent desormais sur la MEME population — sans quoi aucun des trois ne
+// prouve rien des deux autres.
+func keyframeBornes(pay []byte) []keyframeBorne {
+	recs := WalkKeyframeWorld(pay)
+	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
+	out := make([]keyframeBorne, 0, len(recs))
+	for i := 0; i+1 < len(recs); i++ {
+		out = append(out, keyframeBorne{
+			Bit: recs[i].Bit, Want: recs[i+1].Bit, Slot: recs[i].Slot, TI: recs[i].TI,
+			Voisin: recs[i+1].Slot == recs[i].Slot+1,
+		})
 	}
+	return out
 }
 
 // KeyframeClosure mesure, archetype par archetype, la fermeture des records d'image-cle d'un
-// film, sous le cadre d'etat complet.
-//
-// Elle ne change RIEN au chemin de production des images-cles (`navpoint_radial_scan.go` et
-// `objective_scan.go` restent sur `TraverseEntity`) : c'est une mesure, et son branchement est le
-// lot 1.4.
+// film, sous le cadre d'etat complet — celui que la production lit depuis le lot 1.4.
 func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	if fc == nil {
 		return nil, fmt.Errorf("filmdec: contexte de film nil — aucune fermeture a mesurer")
@@ -81,7 +92,6 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	if err != nil {
 		return nil, fmt.Errorf("filmdec: registre illisible, la fermeture n'a pas de grammaire: %w", err)
 	}
-	opt := keyframeClosureOpt()
 	stats := map[uint32]KeyframeClosureStat{}
 	// bloquants compte, par archetype, combien de records chaque composant non porte a arretes.
 	bloquants := map[uint32]map[string]int{}
@@ -94,7 +104,7 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
-			accumulerFermeture(pk.Payload(data), reg, opt, stats, bloquants)
+			accumulerFermeture(pk.Payload(data), reg, stats, bloquants)
 		}
 	}
 	for ti, parComposant := range bloquants {
@@ -110,24 +120,22 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 // Le dernier record d'un payload est ecarte : sans record suivant il n'a pas de frontiere visee,
 // donc la question « ferme-t-il ? » ne se pose pas. Le compter en echec gonflerait le
 // denominateur d'un record par payload sans qu'aucun port ne puisse jamais le fermer.
-func accumulerFermeture(pay []byte, reg *Registry, opt KeyframeFullStateOpt,
+func accumulerFermeture(pay []byte, reg *Registry,
 	stats map[uint32]KeyframeClosureStat, bloquants map[uint32]map[string]int,
 ) {
-	recs := WalkKeyframeWorld(pay)
-	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
-	for i := 0; i+1 < len(recs); i++ {
-		ti := uint32(recs[i].TI) //nolint:gosec // TI est un index d'archetype, jamais negatif
-		tr := WalkKeyframeFullState(pay, recs[i].Bit, reg, opt)
+	for _, b := range keyframeBornes(pay) {
+		ti := uint32(b.TI) //nolint:gosec // TI est un index d'archetype, jamais negatif
+		tr := WalkKeyframeFullState(pay, b.Bit, reg)
 		s := stats[ti]
 		s.Total++
 		switch {
 		case tr.DesyncAt >= 0:
-			nom := nomComposantBloquant(reg, recs[i].TI, tr.DesyncAt)
+			nom := nomComposantBloquant(reg, b.TI, tr.DesyncAt)
 			if bloquants[ti] == nil {
 				bloquants[ti] = map[string]int{}
 			}
 			bloquants[ti][nom]++
-		case tr.EndBit == recs[i+1].Bit:
+		case tr.EndBit == b.Want:
 			s.Closed++
 		}
 		stats[ti] = s
