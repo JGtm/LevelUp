@@ -32,10 +32,17 @@ type MatchIdentities struct {
 	ShotsFired map[string]int
 	// Equipes : `xuid -> numero d equipe` (`match_participants.team_id`).
 	//
-	// ELLE VIENT DE LA BASE, ET C EST LA SEULE SOURCE POSSIBLE : le film ne porte AUCUN camp
-	// (`Track.Team` vaut -1 partout). Sans elle, la lecture d isolement compterait un
-	// adversaire proche comme un accompagnement. Une entree ABSENTE veut dire « equipe non
-	// renseignee » — le joueur n entre alors dans aucun camp, jamais dans un camp par defaut.
+	// ELLE VIENT DE LA BASE, et cette passe-ci n a pas d autre source A SA DISPOSITION : elle
+	// travaille sur la sortie de `killsource`, qui ne lit pas la trame d etat. Sans elle, la
+	// lecture d isolement compterait un adversaire proche comme un accompagnement. Une entree
+	// ABSENTE veut dire « equipe non renseignee » — le joueur n entre alors dans aucun camp,
+	// jamais dans un camp par defaut.
+	//
+	// ⚠ LA JUSTIFICATION D ORIGINE — « le film ne porte AUCUN camp (`Track.Team` vaut -1
+	// partout) » — EST FAUSSE DEPUIS LE LOT 1.7 (2026-09-14) : le designateur d equipe est ecrit
+	// dans l etat par defaut de ti=9 et `filmdec.ScanPlayerTeams` le lit ; `Track.Team` et
+	// `roster[].team` de l artefact en viennent (ADR 0034, D-9). Ce qui reste vrai est la portee
+	// de CETTE passe, pas une propriete du film.
 	Equipes map[string]int
 	// Participants : le TABLEAU DE L API — les participants du match (bots COMPRIS, sous
 	// `bid(N.0)`) et leurs bornes de participation. C est la meme projection que la cuisson

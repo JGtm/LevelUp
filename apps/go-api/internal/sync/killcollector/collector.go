@@ -177,9 +177,15 @@ const (
 
 // KillSourceRoster : la resolution `gamertag -> xuid` pour UN match.
 //
-// Elle est ICI et pas dans le decodeur parce que le film ne porte AUCUN xuid cote replication :
-// il ne rend que des noms. Un nom non resolu n est pas une erreur — c est le cas normal d un BOT
-// (qui n a pas de xuid) et le cas honnete d un nom que le roster n a pas su rattacher.
+// Elle est ICI et pas dans le decodeur parce que les CHUNKS DE REPLICATION ne portent aucun
+// xuid : ils ne rendent que des noms. Un nom non resolu n est pas une erreur — c est le cas
+// normal d un BOT (qui n a pas de xuid) et le cas honnete d un nom que le roster n a pas su
+// rattacher.
+//
+// ⚠ « LE FILM NE PORTE AUCUN XUID » ETAIT ECRIT ICI, ET C EST FAUX DEPUIS LE LOT 1.5 : `chunk_00`
+// porte les trente-deux enregistrements de slot, XUID et gamertag compris, et le lot 1.8 les
+// emploie dans le decodeur (`killsource/film_table.go`). Ce qui reste vrai : la table est celle du
+// DEBUT du film et elle ignore les bots, donc la base garde la resolution de PUBLICATION.
 type KillSourceRoster interface {
 	// IdentitiesForMatch rend tout ce que la passe doit savoir des participants : leurs deux
 	// tables de noms et la reference `shots_fired` de l API.
