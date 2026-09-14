@@ -1,3 +1,63 @@
+## [2026-09-15] Chantier decodeur — lot 1.9.0 (le registre des replis et son ratchet ; schema 58) — Complete (feat/decfilm-190 fusionnee dans feat/recherche-decodeur-film, 3718228c9)
+
+**Decision technique principale.** Paquet feuille
+`internal/games/halo_infinite/film/replay/fallback` (aucun import du depot : deplacement pur vers
+`facts/` au pas 5 de M2) : `Repli{Nom, Fait, Mecanisme, Condition, Ordre, Sites[]{Fichier,
+Ancre}, DatePose, CibleRetrait, CritereRetrait, CompteurBranche, CibleComptage}`, **95 entrees**
+(replay 37, killsource 18, objectiveevents 12, filmdec 10, replaybuild 9, killcollector 9 ;
+conditions : non_resolu 53, section_absente 17, film_muet 11, inconditionnel 7, contradiction 4,
+lecture_non_portee 3 ; ordre : apres_lecture 77, sans_lecture 11, **devant_la_lecture 7** — la
+violation de D14 b, gelee par un ratchet qui ne peut que descendre : chaque conversion 1.9.x le
+baisse). Ratchet `archlint/no_unregistered_fallback_test.go` a DEUX directions : code -> registre
+(tout identifiant du decodeur portant `repli` / `fallback` a une frontiere camelCase doit etre
+declare ; 351 fichiers scannes, plancher 250) et registre -> code (chaque entree cite une ancre
+que le test RELIT : quand une conversion supprime un repli, l'ancre disparait, le test rougit,
+l'entree doit sortir — D14 d rendu mecanique) ; deux exemptions datees ; mutations jouees
+(`repliBidon` -> rouge A ; ancre faussee -> rouge B), restaurees par nom. Compteur par cuisson :
+10 replis cables sur 95 par les porteurs existants (`replayClock`, `flagCarryCtx`, `zoneCtx`,
+`Options`), les 85 autres portent leur `CibleComptage` (la limite de 5 parametres borne le
+cablage ; le porteur generique arrive au pas 2 de M2), `CompteurBranche` distingue « jamais
+declenche » de « jamais instrumente ». `coverage.fallbacks` publie ; `SchemaVersion` 57 -> 58
+(chronique, empreinte de forme `cd9d54d2ef218027`, jumeau replaydoc, replayview, openapi,
+generated.ts, 8 fixtures 58 = 2 567 380 o, jeu 57 retire, 8 goldens d'assemblage avec un bloc
+« REPLIS DECLENCHES » par build). `GrammarRev` inchangee (aucun lecteur ne bouge). ADR 0034 :
+section « registre des replis ».
+
+**Resultats observes.** Recensement sur pieces des 98 sites de la table (E) de l'audit 0.E :
+59 des 60 lignes existent encore, 1 convertie (`build.go:580` `Team: -1` par le lot 1.7), 1 site
+disparu (`ParseUint` de `matchfacts.go` demenage dans `replay.RosterXUIDsOf` au lot 1.0) ; l'ecart
+60 lignes / 98 sites / « 62 replis » vient du regroupement par fait (D1). Premiere mesure sur 10
+films : `origine_pose_vie_la_plus_proche` 41 a 506 sur 10/10 (la fenetre des poses, 1.9.1) ;
+`plafond_grenade_par_defaut` **1 sur 10/10** (la cuisson appelle toujours `ScanKeyframeInventory`
+sans plafond : defaut de 2 grenades quel que soit le mode — piste pour 3.3) ;
+`fin_de_vie_vehicule_par_recensement` 2 a 38 sur six films (1.9.10) ;
+`piste_drapeau_sans_pont_ecartee` 4 ; `position_lacher_prend_la_prise` 2 ; cinq a 0. Gates :
+gofmt vide, vet 0, tous paquets ok, `CGO_ENABLED=1 go test ./...` exit 0 sur 326 paquets, lint
+0 issue (2 goconst + 1 prealloc corriges), `tsc -b` propre, vitest 7 629 verts ; regime court
+10/10 : SEULE l'etape `artifact` bouge, les 51 autres identiques, et les 10 deltas valent
+EXACTEMENT le bloc `fallbacks` recalcule depuis les journaux (classification a l'octet), puis
+re-figeage et 10/10 identiques ; corpus gate `--base d473cbd79` : ZERO perte 13/13, exit 0,
+3 gains par temoin tous nommes (`schemaVersion` 57 -> 58, `coverage/n` 28 -> 29,
+`coverage.fallbacks/n`). Verification du pilote (V8) : paquet et ratchet presents, schema 58 et
+chaine, 8 fixtures 58 / 0 x 57 sous le plafond, GrammarRev et golden inchanges, aucun test
+renomme, baseline intacte.
+Decouvertes §4 : D1 regroupement 60/98/62 ; D2 la ligne convertie et le site disparu ; D3 la
+limite de 5 parametres borne le cablage ; D4 les sept replis `devant_la_lecture` ; **D5 les 38
+lignes nommees de la table (C) ne sont PAS au registre** (choix argumente de l'executeur : ce ne
+sont pas des replis au sens D14 — a trancher a la revue de jalon, lentille grammaire / replis) ;
+D6 trois garde-rails du depot ont mordu sur le registre lui-meme (litteraux FR accentues ->
+chaines sans accent, allowlist non agrandie ; `.SlotXUID` dans une ancre ; mention du global de
+precision) ; D7 le chemin du fixture ne declenche que 2 des 10 compteurs.
+
+**Prochaine etape.** Push + CI ; lot 1.9.1 (origine d'une pose d'equipement : mur par le 103,
+appareils portes par la mort ecrite ou le `taken` du porteur, fenetre 200 ms = controle + repli
+declare ; question de vocabulaire posee au user) ; puis 1.9.2 .. 1.9.14 ; revue de jalon
+`783ae680d..HEAD` (lentilles : grammaire / replis dont D5, entrees tronquees, textes et chiffres,
+tests) ; cloture M1 (fusion feat/v75, recuisson, backlog killsource 1 384 matchs, re-figeage
+unique) selon le go V9.
+
+---
+
 ## [2026-09-15] Chantier decodeur — lot 1.8 (le kill feed prend la table du film) — Complete (feat/decfilm-18 fusionnee dans feat/recherche-decodeur-film, d473cbd79)
 
 **Decision technique principale.** Dans `killsource`, la table des joueurs de `chunk_00`
