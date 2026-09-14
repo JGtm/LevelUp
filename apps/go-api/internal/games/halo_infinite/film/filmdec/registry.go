@@ -4,17 +4,29 @@ package filmdec
 // film's chunk_00 (zlib-compressed; inflates to ~1.97 MB). It is an array of
 // fixed-size archetype blocks; block #N holds the ORDERED component list of
 // archetype #N — exactly the order FUN_14076cb60 iterates (and the bit index the
-// presence-mask FUN_1406d7610 gates). Verified empirically: block 35 @0x08e300 =
-// the BIPED/player archetype (object-position-dynamic-precision at i0, … ,
+// presence-mask FUN_1406d7610 gates). Verified empirically: block 35 = the
+// BIPED/player archetype (object-position-dynamic-precision at i0, … ,
 // weapon-state-type-info ×4 = HELD WEAPON at i43..46, …).
 //
-// Slot layout (260 bytes): [u32 kind LE][u32 flags LE][name ASCII, NUL-padded].
-// Block layout: archetypeBlockSlots slots; the component list is the leading run
-// of non-empty-name slots, the rest is zero padding.
+// LE CADRAGE EST CELUI DU JEU DEPUIS LE LOT 1.2 (2026-09-14). Le registre inflate commence par
+// un EN-TETE de `registryEntryBase` octets ([u32 FilmMajorVersion][u32]), puis un tableau
+// d'ENTREES de `registrySlotSize` (0x104) octets chacune :
+// `[nom ASCII NUL-termine @ +0x00, 0x100 octets][u32 niveau LE @ +0x100]`. C'est la table que
+// `FUN_1428e2b68` remet a `FUN_142e2c690`, laquelle deserialise l'entree `k` avec le niveau lu
+// en `entree + 0x100` (chaine relue au lot R7-d, cf. keyframe_fullstate_loop.go).
+// Block layout: archetypeBlockSlots entrees ; la liste de composants est la suite d'entrees
+// NOMMEES en tete du bloc, le reste est du bourrage nul.
 //
-// CAVEAT on the FIRST slot of block 0: its leading u32 is not a slot kind at all, it is the
-// film's FilmMajorVersion (identified 2026-09-12 - see FilmMajorVersionFromHeader). The parser
-// never reads that field, so nothing here changes; the value is simply named elsewhere.
+// CE QUE CE CADRAGE CORRIGE. Jusqu'au 2026-09-14 le parse lisait des slots de 260 octets A
+// PARTIR DE L'OCTET 0, sur un layout suppose `[u32 kind][u32 flags][nom @ +8]`. Les NOMS
+// tombent au meme octet dans les deux cadrages (`slot+8` == `entree+0`) : tout le dispatch par
+// nom etait donc juste, et le reste ne l'etait pas. Le `flags` lu en `slot+4` etait le niveau
+// du composant PRECEDENT ; le « kind » lu en `slot+0` etait la queue de bourrage du nom voisin
+// — nul sur 1 066 des 1 067 slots du build de reference, le 1 067e n'etant pas un kind mais le
+// FilmMajorVersion en tete de fichier (cf. FilmMajorVersionFromHeader). Mesure du lot 1.2 sur
+// les sept bobines par build (registry_entree_jeu_test.go) : 173 a 189 niveaux changent, dont
+// QUATRE que le dispatch consomme reellement — ti=14 i0 crew-order, ti=21 i2 flock-destination,
+// ti=30 i0 tacmap-poiicon, ti=44 i0 asset-transform.
 
 import (
 	"bytes"
@@ -22,9 +34,19 @@ import (
 )
 
 const (
-	registrySlotSize    = 260
+	registrySlotSize    = 260 // 0x104 : une entree = [nom @ +0x00][u32 niveau @ +0x100]
 	archetypeBlockSlots = 64
 	archetypeBlockSize  = registrySlotSize * archetypeBlockSlots // 0x4100
+	// registryEntryBase : l'octet ou commence le tableau d'entrees. Les huit premiers octets du
+	// registre inflate sont un en-tete : [u32 FilmMajorVersion][u32] (25/24/27 selon la version
+	// du film, cf. film_major_version.go). L'entree `i` du bloc `b` commence donc a
+	// `registryEntryBase + b*archetypeBlockSize + i*registrySlotSize`.
+	registryEntryBase = 8
+	// registryEntryNameBytes : la zone de nom d'une entree, ASCII NUL-terminee.
+	registryEntryNameBytes = 0x100
+	// registryEntryLevelOffset : le u32 LE de niveau de precision, en queue d'entree. C'est la
+	// valeur que `FUN_142e2c690` passe au deserialiseur du composant.
+	registryEntryLevelOffset = 0x100
 )
 
 // Étiquettes de composant citées à plus de deux endroits du décodage. Les autres
@@ -43,24 +65,29 @@ const (
 type Archetype struct {
 	Index      int      // block number = archetype index in the registry
 	Components []string // ordered component names (mask bit i -> Components[i])
-	// Flags[i] = le champ flags (u32 @ slot+4) du composant i, utilisé comme niveau de
-	// précision L (largeur d'axe = quantAxisWidth(L)) par le traverseur générique.
+	// Levels[i] = le u32 de niveau de précision du composant i, lu en `entrée + 0x100` —
+	// exactement celui que `FUN_142e2c690` passe au désérialiseur. Il sert de niveau L
+	// (largeur d'axe = quantAxisWidth(L)) au traverseur générique.
+	//
+	// LE CHAMP S'APPELAIT `Flags` JUSQU'AU LOT 1.2 (2026-09-14), du nom du champ que
+	// l'ancien cadrage lisait en `slot+4` — lequel était en réalité le niveau du composant
+	// PRÉCÉDENT. Le nom est corrigé avec la lecture : il n'existe aucun champ « flags » dans
+	// une entrée de registre.
 	//
 	// CE N'EST PAS la source des largeurs de la position absolue d'un biped (i0) : le
-	// registre est BIT-À-BIT IDENTIQUE d'un film à l'autre (FNV des 1067 slots noms+flags
-	// = a413610cd08e4355 sur Cliffhanger comme sur Catalyst) alors que les largeurs d'i0
-	// changent de carte en carte (13/13/14 vs 15/15/15). Le niveau d'i0 est câblé au site
-	// d'appel (MOV R9D,0x10) et les largeurs dérivent des bornes du BSP de la carte.
-	// Découpage réel d'i0 : DetectI0Layout (i0_layout.go), lu dans le bitstream.
-	Flags []uint32
+	// registre est BIT-À-BIT IDENTIQUE d'un film à l'autre DANS UN BUILD alors que les
+	// largeurs d'i0 changent de carte en carte (13/13/14 vs 15/15/15). Le niveau d'i0 est
+	// câblé au site d'appel (MOV R9D,0x10) et les largeurs dérivent des bornes du BSP de la
+	// carte. Découpage réel d'i0 : DetectI0Layout (i0_layout.go), lu dans le bitstream.
+	Levels []uint32
 }
 
-// Level returns the precision level (flags) of component i, or 0 if out of range.
+// Level returns the precision level of component i, or 0 if out of range.
 func (a Archetype) Level(i int) uint32 {
-	if i < 0 || i >= len(a.Flags) {
+	if i < 0 || i >= len(a.Levels) {
 		return 0
 	}
-	return a.Flags[i]
+	return a.Levels[i]
 }
 
 // component returns the name at iterator index i, or "" if out of range.
@@ -85,9 +112,8 @@ func (a Archetype) indicesOf(name string) []int {
 // Registry is the parsed set of archetype blocks from chunk_00.
 type Registry struct {
 	Archetypes []Archetype
-	// fingerprint est l'empreinte FNV-1a des slots non vides, calculee pendant la passe de
-	// lecture (registry_fingerprint.go) — la seule qui voie le champ `kind`, que le parse ne
-	// retient pas. Se lit par RegistryFingerprint.
+	// fingerprint est l'empreinte FNV-1a des entrees nommees, calculee pendant la passe de
+	// lecture (registry_fingerprint.go). Se lit par RegistryFingerprint.
 	fingerprint uint64
 }
 
@@ -178,35 +204,40 @@ func looksZlib(data []byte) bool {
 }
 
 // parseRegistry lit les blocs d'archetype et S'ARRETE A LA FIN STRUCTURELLE du registre : un
-// bloc de registre est une suite de slots nommes en tete, puis un slot de terminaison dont
-// SEUL le champ flags peut etre non nul (0x01/0x02 mesures — le niveau lu « un cran plus
-// loin », meme decalage que R7-e), puis des zeros jusqu'au bout du bloc (bloc vide = zero
-// slot, ex. bloc 8). Le premier bloc qui viole cette regle appartient a la section suivante de
-// chunk_00 (table par type + identification du build, puis corps propre au match) — diviser le
-// FICHIER ENTIER par la taille d'un bloc donnait « 118 blocs » et ramassait des faux positifs
-// dans le corps (mesure lot 3 du plan « percer la trame », 2026-08-30 : registre = 50 blocs
-// sur le build de reference, verdict corpus dans lot3_registre_compte_research_test.go).
+// bloc de registre est une suite d'entrees nommees en tete, puis des zeros jusqu'au bout du
+// bloc (bloc vide = zero entree, ex. bloc 8). Le premier bloc qui viole cette regle appartient
+// a la section suivante de chunk_00 (table par type + identification du build, puis corps
+// propre au match) — diviser le FICHIER ENTIER par la taille d'un bloc donnait « 118 blocs » et
+// ramassait des faux positifs dans le corps (mesure lot 3 du plan « percer la trame »,
+// 2026-08-30 : registre = 50 blocs sur le build de reference, verdict corpus dans
+// lot3_registre_compte_research_test.go).
+//
+// LA REGLE DE QUEUE N'A PLUS D'EXEMPTION (lot 1.2, 2026-09-14). L'ancienne devait epargner
+// quatre octets du « slot de terminaison » (0x01/0x02 mesures sur la plupart des blocs) : sous
+// le cadrage a l'octet 8 ces quatre octets ne sont pas du bourrage, ce sont le NIVEAU de la
+// derniere entree nommee, et l'entree de terminaison est entierement nulle. Mesure sur les sept
+// bobines par build : meme compte de blocs qu'avant (49 ou 50 selon le build), queue nulle sur
+// 7/7 (registry_entree_jeu_test.go).
 func parseRegistry(data []byte) *Registry {
 	reg := &Registry{}
 	fp := registryHasher()
-	nBlocks := len(data) / archetypeBlockSize
-	for b := 0; b < nBlocks; b++ {
-		base := b * archetypeBlockSize
+	for b := 0; registryEntryBase+b*archetypeBlockSize < len(data); b++ {
+		base := registryEntryBase + b*archetypeBlockSize
 		arch := Archetype{Index: b}
 		for s := 0; s < archetypeBlockSlots; s++ {
 			off := base + s*registrySlotSize
-			name := slotName(data, off)
+			name := entryName(data, off)
 			if name == "" {
 				break // start of zero padding -> end of this archetype's list
 			}
 			arch.Components = append(arch.Components, name)
-			arch.Flags = append(arch.Flags, binary.LittleEndian.Uint32(data[off+4:])) // flags @ slot+4 = level
+			arch.Levels = append(arch.Levels, entryLevel(data, off))
 		}
 		if !registryBlockTail(data, base, len(arch.Components)) {
 			break // fin du registre : ce bloc est le debut de la section suivante
 		}
 		for i, name := range arch.Components {
-			fp.addSlot(data, base+i*registrySlotSize, name)
+			fp.addEntry(data, base+i*registrySlotSize, name)
 		}
 		reg.Archetypes = append(reg.Archetypes, arch)
 	}
@@ -215,16 +246,14 @@ func parseRegistry(data []byte) *Registry {
 	return reg
 }
 
-// registryBlockTail dit si, apres la suite nommee de `run` slots, le bloc n'est que du
-// bourrage de registre : kind nul et zone de nom nulle sur le slot de terminaison, zeros
-// jusqu'au bout du bloc. Le champ flags du slot de terminaison (4 octets a run*260+4) est
-// exempte : il porte 0x01/0x02 sur la plupart des blocs du registre de reference.
+// registryBlockTail dit si, apres la suite nommee de `run` entrees, le bloc n'est plus que du
+// bourrage : des zeros depuis l'entree de terminaison jusqu'au bout du bloc. `base` est
+// l'octet de la PREMIERE ENTREE du bloc, pas celui du bloc.
 func registryBlockTail(data []byte, base, run int) bool {
 	if run >= archetypeBlockSlots {
-		return true // bloc plein : pas de slot de terminaison
+		return true // bloc plein : pas d'entree de terminaison
 	}
-	term := base + run*registrySlotSize
-	return zeroTail(data, term, term+4) && zeroTail(data, term+8, base+archetypeBlockSize)
+	return zeroTail(data, base+run*registrySlotSize, base+archetypeBlockSize)
 }
 
 // zeroTail dit si data[from:to) ne contient que des octets nuls (bornes ecretees au buffer).
@@ -243,24 +272,37 @@ func zeroTail(data []byte, from, to int) bool {
 	return true
 }
 
-// slotName extracts the NUL-terminated ASCII name at slot offset off+8.
-func slotName(data []byte, off int) string {
-	start := off + 8
-	end := off + registrySlotSize
-	if start >= len(data) {
+// entryName extracts the NUL-terminated ASCII name at the START of the entry at `off`.
+//
+// LE PARAMETRE EST L'OCTET DE L'ENTREE, pas celui d'un slot : la fonction s'appelait `slotName`
+// et lisait le nom en `off+8` jusqu'au lot 1.2. Le renommage est deliberé — un appelant qui
+// passerait l'ancien offset lirait le nom du VOISIN, en silence, et le compilateur ne pouvait
+// pas le dire.
+func entryName(data []byte, off int) string {
+	if off < 0 || off >= len(data) {
 		return ""
 	}
+	end := off + registryEntryNameBytes
 	if end > len(data) {
 		end = len(data)
 	}
-	raw := data[start:end]
+	raw := data[off:end]
 	if z := bytes.IndexByte(raw, 0); z >= 0 {
 		raw = raw[:z]
 	}
-	for _, c := range raw { // reject non-printable (not a real name slot)
+	for _, c := range raw { // reject non-printable (not a real name entry)
 		if c < 0x20 || c > 0x7e {
 			return ""
 		}
 	}
 	return string(raw)
+}
+
+// entryLevel rend le u32 LE de niveau de precision de l'entree a `off`, ou 0 hors du tampon.
+func entryLevel(data []byte, off int) uint32 {
+	p := off + registryEntryLevelOffset
+	if p < 0 || p+4 > len(data) {
+		return 0
+	}
+	return binary.LittleEndian.Uint32(data[p:])
 }

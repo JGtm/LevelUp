@@ -40,8 +40,10 @@ func TestParseRegistryChunkRefuseUnTamponCompresse(t *testing.T) {
 		{"zlib 0x785e", []byte{0x78, 0x5e}, true},
 		{"zlib 0x789c", []byte{0x78, 0x9c}, true},
 		{"zlib 0x78da", []byte{0x78, 0xda}, true},
-		// Un registre INFLATE commence par le `kind` u32 LE de son premier slot : 0x29 sur le
-		// build de reference. Rien de tout cela ne doit etre pris pour un en-tete zlib.
+		// Un registre INFLATE commence par son en-tete : le u32 LE `FilmMajorVersion` — 0x29 sur
+		// le build de reference (cf. FilmMajorVersionFromHeader ; cette ligne le lisait comme « le
+		// kind du premier slot » jusqu au lot 1.2). Rien de tout cela ne doit etre pris pour un
+		// en-tete zlib.
 		{"registre inflate", []byte{0x29, 0x00}, false},
 		{"zeros", []byte{0x00, 0x00}, false},
 		// Piege : premier octet 0x78 mais somme de controle FAUSSE — ce n'est pas du zlib, et

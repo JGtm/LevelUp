@@ -122,9 +122,9 @@ func consumeFullStateDefaultBlock(br *BitReader, ti uint32, o KeyframeFullStateO
 // (`[u32 kind][u32 flags][nom @ +8]`). Les noms, eux, tombent au MEME octet dans les deux
 // lectures : seul le niveau se decale.
 func shiftArchetypeLevels(a Archetype) Archetype {
-	out := Archetype{Index: a.Index, Components: a.Components, Flags: make([]uint32, len(a.Components))}
-	for i := range out.Flags {
-		out.Flags[i] = a.Level(i + 1)
+	out := Archetype{Index: a.Index, Components: a.Components, Levels: make([]uint32, len(a.Components))}
+	for i := range out.Levels {
+		out.Levels[i] = a.Level(i + 1)
 	}
 	return out
 }
