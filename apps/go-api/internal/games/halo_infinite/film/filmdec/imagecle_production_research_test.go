@@ -87,7 +87,7 @@ func imcpEtatComplet(f imcFilm, ti int) imcpCompteurs {
 			}
 			c.Records++
 			c.Bornes++
-			tr := WalkKeyframeFullState(pay, b.Bit, f.Reg, imcOptEtatComplet())
+			tr := WalkKeyframeFullState(pay, b.Bit, f.Reg)
 			if tr.DesyncAt >= 0 || tr.EndBit > total {
 				c.Broken++
 				continue

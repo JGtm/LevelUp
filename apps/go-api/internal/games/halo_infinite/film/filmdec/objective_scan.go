@@ -151,8 +151,12 @@ type ObjectiveScan struct {
 	// cette voie.
 	Chained int
 	// KeyRecords / KeyWalked / KeyBroken / KeyChained : les memes comptes pour la voie
-	// IMAGE-CLE, ou l'ancrage est structurel (en-tete de 64 bits) et non par bande de slots.
+	// IMAGE-CLE, ou l'ancrage est structurel (en-tete de record) et non par bande de slots.
 	KeyRecords, KeyWalked, KeyBroken, KeyChained int
+	// KeyClosed / KeyBounded : la definition FORTE de la sante de la voie image-cle (lot 1.4),
+	// la meme que `NavpointRadialScan` — la marche atterrit-elle EXACTEMENT sur le premier bit
+	// du record suivant, sur les records qui ont un suivant.
+	KeyClosed, KeyBounded int
 }
 
 // ScanFilmObjectives balaye les paquets DELTA et les IMAGES-CLES du film de dir, et rend les
@@ -350,33 +354,41 @@ func (w *objectiveWalk) walk(pay []byte, rec WorldObjectRecord, ts uint64,
 	return at, true
 }
 
-// scanKeyframe balaie UN payload d'image-cle : les records de l'archetype y sont ancres par leur
-// EN-TETE DE 64 BITS, sans bande de slots ni fenetre de balayage — c'est la voie fiable.
+// scanKeyframe balaie UN payload d'image-cle SOUS LE CADRE D'ETAT COMPLET, celui que le jeu lit
+// (`WalkKeyframeFullState`, lot 1.4) : les records de l'archetype y sont ancres structurellement,
+// sans bande de slots ni fenetre de balayage.
 //
-// POURQUOI ELLE VAUT MIEUX QUE LA VOIE DELTA SUR CET ARCHETYPE (mesure du 2026-09-01) : le
-// recensement des masques a montre 2 211 records marches jusqu'au bout sur 2 248 dans le domaine
-// (98,4 %), avec des masques structures ; la voie delta, elle, chaine a 2,7-26 % et sort des
-// valeurs uniformement reparties sur 32 bits. L'ancrage delta de ti=11 est un chantier a part.
+// CE QUE LE CHANGEMENT DE CADRE COUTE ICI, DIT AVANT D'ETRE DECOUVERT. Sur ti=11 la marche
+// d'etat complet desynchronise a `i4 managed-objective-interaction-filter-component`, qui n'est
+// pas porte : la voie image-cle ne rend plus de lecture tant que ce composant ne l'est pas
+// (lot 3.6). Le chiffre d'avant ne prouvait rien — sous l'ancien cadre les 27 marches des six
+// films de recherche « aboutissaient » toutes et CHAINAIENT ZERO fois, aucune ne fermait (releve
+// du 2026-09-13). L'ancienne mesure du 2026-09-01 (2 211 marches sur 2 248, « masques
+// structures ») mesurait la meme illusion : un masque lu la ou le jeu n'en ecrit pas.
 func (w *objectiveWalk) scanKeyframe(pay []byte, ts uint64, sc *ObjectiveScan) {
 	total := len(pay) * 8
 	w.fromKeyframe = true
 	defer func() { w.fromKeyframe = false }()
-	for _, r := range WalkKeyframeWorld(pay) {
-		if r.TI != ObjectiveTypeIndex {
+	for _, b := range keyframeBornesToutes(pay) {
+		if b.TI != ObjectiveTypeIndex {
 			continue
 		}
 		sc.KeyRecords++
+		if b.Want >= 0 {
+			sc.KeyBounded++
+		}
 		first := len(sc.Reads)
-		br := NewBitReader(pay)
-		br.SetBitPos(r.Bit + keyframeRecordTIBit)
-		w.cur.Slot, w.cur.TimestampUS = uint32(r.Slot), ts
-		tr := TraverseEntity(br, w.reg, 0)
+		w.cur.Slot, w.cur.TimestampUS = uint32(b.Slot), ts //nolint:gosec // Slot : id de 30 bits
+		tr := WalkKeyframeFullState(pay, b.Bit, w.reg)
 		if tr.DesyncAt >= 0 || tr.EndBit > total {
 			sc.KeyBroken++
 			sc.Reads = sc.Reads[:first] // une marche cassee ne laisse aucune lecture
 			continue
 		}
 		sc.KeyWalked++
+		if tr.EndBit == b.Want {
+			sc.KeyClosed++
+		}
 		if _, ok := readKeyframeHeader(pay, tr.EndBit, total); ok {
 			sc.KeyChained++
 			for k := first; k < len(sc.Reads); k++ {
