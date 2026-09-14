@@ -2,14 +2,17 @@ package filmdec
 
 // residus_pied_research_test.go — PHASE 5b, RESIDU 6 : CE QUE VAUT L'OCTET 55 DU PIED.
 //
-// LA CONTRADICTION, DATEE ET JAMAIS TRANCHEE. Trois affirmations du depot se contredisent sur
+// LA CONTRADICTION, DATEE — TRANCHEE LE 2026-09-13 PAR CE BALAYAGE, CORRIGEE EN PRODUCTION LE
+// 2026-09-14 (lot 1.1, commit 25f327d52). Trois affirmations du depot se contredisaient sur
 // l'equipe d'un evenement d'objectif lu dans le pied de film (chunk de type 3, blocs de
 // 60 octets) :
 //
-//	`objectiveevents/film.go` lit l'octet 55 sous le nom `teamRaw` et le commente
-//	  « NON fiable sur certains matchs -> a confirmer via roster » ;
-//	`objectiveevents/extract.go` tranche : « le champ team du film etant non fiable, l'equipe
-//	  d'un event vient TOUJOURS du roster via le xuid de l'acteur » ;
+//	`objectiveevents/film.go` lisait l'octet 55 sous le nom `teamRaw` et le commentait
+//	  « NON fiable sur certains matchs -> a confirmer via roster » — IL LIT L'OCTET 37 DEPUIS
+//	  LE 2026-09-14, et le champ s'appelle `FooterEvent.Team` ;
+//	`objectiveevents/extract.go` tranchait : « le champ team du film etant non fiable, l'equipe
+//	  d'un event vient TOUJOURS du roster via le xuid de l'acteur » — le roster reste la source
+//	  de `TeamID` jusqu'au lot 1.7.3, mais plus pour cette raison-la : elle est REFUTEE ;
 //	`.ai/archive/V7/RESEARCH_THEATER_RE.md:534` identifie l'equipe a `b37`/`b38`
 //	  (« CONFIRME : le split 4/4 des events colle exactement au roster DB »), sa ligne 624 la
 //	  dit fiable en `b55`, et sa ligne 645 la dit FAUSSE.
@@ -31,7 +34,10 @@ package filmdec
 // `objectiveevents/film.go` (`scanTh10Events` / `decodeTh10Block`, 2026-09-13) : on localise un
 // XUID (prefixe 0x2d ou 0x25, suffixe 0xc0), on cherche le marqueur de fin `00 00 2e e0` de son
 // bloc, on recule de 60 octets, on exige `type_hint == 10` a l'octet 47. Aucun code de
-// production n'est appele ni modifie : le paquet `objectiveevents` n'exporte pas ces fonctions.
+// production n'est appele : `scanTh10Events` et `decodeTh10Block` restent non exportes (le
+// paquet exporte `FooterEvent` et `FooterEvents` depuis le 2026-09-14, pas le balayage brut),
+// et cet instrument doit de toute facon pouvoir relever les SOIXANTE octets, ce que le type
+// de production ne rend pas.
 //
 // Garde CHUNK00_FILMS. Lecture seule.
 
@@ -46,7 +52,7 @@ const (
 	rpBlocOctets = 60 // la taille du bloc d'evenement du pied
 	rpOctetType  = 47 // type_hint
 	rpOctetSlot  = 36
-	rpOctetTeam  = 55 // ce que la production lit sous le nom `teamRaw`
+	rpOctetTeam  = 55 // ce que la production LISAIT sous le nom `teamRaw` (jusqu a 25f327d52, 2026-09-14)
 	rpTypeHint10 = 10
 	// Bornes de plausibilite d'un XUID Xbox, identiques a celles du balayage de chunk_00.
 	rpXuidLo = uint64(0x0009000000000000)

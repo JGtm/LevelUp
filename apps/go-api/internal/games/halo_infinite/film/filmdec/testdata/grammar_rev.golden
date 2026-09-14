@@ -22,4 +22,24 @@
 #               aussi l empreinte, et la branche « revision changee sans que la grammaire bouge »
 #               etait du code mort. Revision INCHANGEE : aucune grammaire n a bouge, seul
 #               l ensemble hache s est corrige.
-grammar-2026-09-13	3c7757203d6fb6466aa9685bf8f71ded7676367fdcaba465d8fc1101d7f9063e
+#   2026-09-14  grammar-2026-09-14  lot 1.1 : l EQUIPE d un evenement du pied se lit a l octet 37,
+#               plus a l octet 55 (665/665 sur quatorze films). LA REVISION MONTE SANS QUE
+#               L EMPREINTE BOUGE, et ce n est pas une anomalie : la grammaire corrigee vit
+#               dans `internal/analysis/objectiveevents`, qui n est PAS dans l ensemble hache
+#               (filmdec + killsource seulement) — decouverte D1 (1.1) du PLAN_DECODEUR_FILM, §4.
+#   2026-09-14  grammar-2026-09-14  lot 1.1.5 : `internal/analysis/objectiveevents` ENTRE dans
+#               l ensemble hache (131 -> 150 fichiers, +19). Il porte le lecteur du pied de
+#               film, donc de la grammaire — et l entree ci-dessus est la preuve par l absurde
+#               qu il y manquait : le changement d octet du lot 1.1 n avait fait rougir personne.
+#               REVISION INCHANGEE, empreinte NEUVE : aucune grammaire n a bouge dans ce commit,
+#               seul l ensemble hache s elargit — meme nature que la correction de la revue R1
+#               ci-dessus, en sens inverse. Decouverte D1 (1.1) FERMEE.
+#   2026-09-14  grammar-2026-09-14  lot 1.1.R1 (revue ronde 1, constat R1-3) : le sentinelle
+#               `teamAbsent = -1` de `objectiveevents` est RETIRE — aucun producteur ne pouvait
+#               le rendre (tous apparies a `ok=false`, jetes), donc il annoncait un contrat
+#               « le film est parfois muet ici » que la grammaire ne porte pas. MEME REVISION :
+#               deux changements du meme jour la partagent, c est la regle ecrite dans
+#               `grammar_rev.go`, et aucun offset ne bouge. L empreinte, elle, BOUGE — et c est
+#               le premier effet visible de l elargissement du lot 1.1.5 : le meme geste, la
+#               veille, n aurait fait rougir personne.
+grammar-2026-09-14	7384ed415b9a6256f3e51438f770f11953574637f7a3241acad678414f99f3fe

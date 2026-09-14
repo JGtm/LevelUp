@@ -31,4 +31,4 @@ package filmdec
 // FORME : `grammar-AAAA-MM-JJ`, la date du jour ou la grammaire a change. Deux changements le
 // meme jour partagent la meme revision — c'est voulu : ce qui compte est qu'un LOT de
 // changements soit separable du precedent, pas qu'on compte les commits.
-const GrammarRev = "grammar-2026-09-13"
+const GrammarRev = "grammar-2026-09-14"

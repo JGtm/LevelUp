@@ -60,9 +60,15 @@ const (
 // 2s pour absorber le décalage horloge FRAME/footer entre deux ancres.
 const captureClusterWindowMS = 2000
 
-// Roster résout xuid -> team_id (depuis match_participants). team_id canonique :
-// le champ team du film étant non fiable (RESEARCH_THEATER_RE.md §M), l'équipe
-// d'un event vient TOUJOURS du roster via le xuid de l'acteur.
+// Roster résout xuid -> team_id (depuis match_participants).
+//
+// C'EST ENCORE LUI QUI DONNE `TeamID`, ET CE N'EST PLUS PARCE QUE LE FILM SERAIT MUET. Le pied
+// porte l'équipe d'un événement à l'octet 37 de son bloc (665/665, cf. [FooterEvent.Team]) : la
+// phrase d'origine de ce commentaire — « le champ team du film étant non fiable » — visait
+// l'octet 55, qui vaut 0 partout, et elle est RÉFUTÉE depuis le 2026-09-13. Le basculement de la
+// source appartient au lot 1.7.3 du `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, qui l'accompagne de
+// ses compteurs d'accord et de contradiction ; le lot 1.1 corrige la LECTURE, pas la source, de
+// sorte qu'aucun contenu cuit ni aucune colonne ne bouge sous lui.
 type Roster interface {
 	// TeamOf renvoie (team_id, true) si le xuid est un participant connu.
 	TeamOf(xuid string) (int, bool)
@@ -159,11 +165,7 @@ func footerData(film *filmsource.Film) ([]byte, bool) {
 // coïncident du footer, mappé via roster. players=[{scorer xuid}].
 func extractCTF(matchID string, film *filmsource.Film, roster Roster) []domain.ObjectiveEvent {
 	bursts := collectCaptureBursts(film)
-	footer, hasFooter := footerData(film)
-	var th10 []th10Event
-	if hasFooter {
-		th10 = scanTh10Events(footer)
-	}
+	th10 := FooterEvents(film)
 	// Capacité EXACTE : un événement par burst, sans continue dans la boucle. Le nil
 	// éventuel n'est pas perdu — finalize() ramène une tranche vide à nil.
 	out := make([]domain.ObjectiveEvent, 0, len(bursts))
@@ -179,7 +181,7 @@ func extractCTF(matchID string, film *filmsource.Film, roster Roster) []domain.O
 			Details:       "{}",
 		}
 		if scorer, ok := captureScorer(th10, b.matchMS); ok {
-			xuid := formatXUID(scorer.xuid)
+			xuid := formatXUID(scorer.XUID)
 			ev.Players = []domain.ObjectiveEventPlayer{{XUID: xuid, Role: RoleScorer}}
 			if team, ok := roster.TeamOf(xuid); ok {
 				ev.TeamID = intPtr(team)
@@ -207,14 +209,14 @@ func collectCaptureBursts(film *filmsource.Film) []captureBurst {
 // captureScorer renvoie l'event th=10 de t MAX dans la fenêtre de coïncidence du
 // burst (la capture reset les drapeaux -> cluster ; le dernier event = l'acteur
 // de la capture). ok=false si aucun event coïncident (footer absent/partiel).
-func captureScorer(th10 []th10Event, burstMS int) (th10Event, bool) {
-	best := th10Event{t: -1}
+func captureScorer(th10 []FooterEvent, burstMS int) (FooterEvent, bool) {
+	best := FooterEvent{TimeMS: -1}
 	found := false
 	for _, e := range th10 {
-		if abs(e.t-burstMS) > captureClusterWindowMS {
+		if abs(e.TimeMS-burstMS) > captureClusterWindowMS {
 			continue
 		}
-		if !found || e.t > best.t {
+		if !found || e.TimeMS > best.TimeMS {
 			best = e
 			found = true
 		}
@@ -230,16 +232,12 @@ func captureScorer(th10 []th10Event, burstMS int) (th10Event, bool) {
 func extractFromTh10(
 	matchID string, film *filmsource.Film, roster Roster, objType, evType string,
 ) []domain.ObjectiveEvent {
-	footer, ok := footerData(film)
-	if !ok {
-		return nil
-	}
 	var out []domain.ObjectiveEvent
-	for _, e := range scanTh10Events(footer) {
-		xuid := formatXUID(e.xuid)
+	for _, e := range FooterEvents(film) {
+		xuid := formatXUID(e.XUID)
 		ev := domain.ObjectiveEvent{
 			MatchID:       matchID,
-			TimeMS:        intPtr(e.t),
+			TimeMS:        intPtr(e.TimeMS),
 			ObjectiveType: objType,
 			EventType:     evType,
 			Source:        SourceTh10,
