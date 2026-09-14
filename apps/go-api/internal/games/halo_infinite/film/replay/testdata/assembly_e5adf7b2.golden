@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 5399 frames · intervalle 100 ms · duree 539900 ms
-schema 56 · titre halo_infinite
+schema 57 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 15914 ms
 coup d envoi date par le film : 38514 ms · 240/254 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 22600 ms
@@ -21,34 +21,41 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 28 joueur(s)
-  2533274859425034  idx=0  "HardCandy79"
-  2533274914059263  idx=1  "Trippi Arts"
-  2533274874545839  idx=2  "PndTwnXpress"
-  2535414727496395  idx=3  "Rancid v5or6"
-  2535441591216682  idx=4  "JunkGlobe569691"
-  2533274858283686  idx=5  "Madina97294"
-  2535451373914865  idx=6  "dgaither91"
-  2535417248443209  idx=7  "TeemingTag76799"
-  2533274957530518  idx=8  "YELDARB55"
-  2533274794008394  idx=9  "LOCUTU5"
-  2535461460033301  idx=10  "Goldenarrow5208"
-  2535471749979592  idx=11  "MAREZ7781"
-  2535407716978607  idx=12  "AGROZON"
-  2535462715436138  idx=13  "MarshallG6443"
-  2535439648658227  idx=14  "LogisticSnow520"
-  2533275032306686  idx=15  "EvilIiJokevc"
-  2535434053235319  idx=16  "Jol 7792"
-  2533274973312654  idx=17  "CruelWhale57"
-  2535446058221388  idx=18  "SAMURAY8929"
-  2535471572155471  idx=19  "Haritosdcbolla"
-  2535455040223094  idx=20  "angieTV8825"
-  2535423736414425  idx=21  "MasterSkeetr"
-  2535472886581997  idx=22  "HugoSykes117"
-  2535411177047389  idx=23  "Lamuerte28976"
-  2535441018620968  idx=24  "ART THECLOWN394"
-  2535472435989349  idx=25  "DutyClock945"
-  2535428237539591  idx=26  ""
-  2535422645680365  idx=27  "Sergio98666"
+  2533274859425034  idx=0  equipe=1  "HardCandy79"
+  2533274914059263  idx=1  equipe=1  "Trippi Arts"
+  2533274874545839  idx=2  equipe=1  "PndTwnXpress"
+  2535414727496395  idx=3  equipe=0  "Rancid v5or6"
+  2535441591216682  idx=4  equipe=1  "JunkGlobe569691"
+  2533274858283686  idx=5  equipe=0  "Madina97294"
+  2535451373914865  idx=6  equipe=0  "dgaither91"
+  2535417248443209  idx=7  equipe=0  "TeemingTag76799"
+  2533274957530518  idx=8  equipe=1  "YELDARB55"
+  2533274794008394  idx=9  equipe=0  "LOCUTU5"
+  2535461460033301  idx=10  equipe=0  "Goldenarrow5208"
+  2535471749979592  idx=11  equipe=1  "MAREZ7781"
+  2535407716978607  idx=12  equipe=1  "AGROZON"
+  2535462715436138  idx=13  equipe=1  "MarshallG6443"
+  2535439648658227  idx=14  equipe=0  "LogisticSnow520"
+  2533275032306686  idx=15  equipe=1  "EvilIiJokevc"
+  2535434053235319  idx=16  equipe=0  "Jol 7792"
+  2533274973312654  idx=17  equipe=1  "CruelWhale57"
+  2535446058221388  idx=18  equipe=0  "SAMURAY8929"
+  2535471572155471  idx=19  equipe=1  "Haritosdcbolla"
+  2535455040223094  idx=20  equipe=1  "angieTV8825"
+  2535423736414425  idx=21  equipe=0  "MasterSkeetr"
+  2535472886581997  idx=22  equipe=0  "HugoSykes117"
+  2535411177047389  idx=23  equipe=0  "Lamuerte28976"
+  2535441018620968  idx=24  equipe=1  "ART THECLOWN394"
+  2535472435989349  idx=25  equipe=1  "DutyClock945"
+  2535428237539591  idx=26  equipe=0  ""
+  2535422645680365  idx=27  equipe=0  "Sergio98666"
+
+### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
+lue=true refus="" · 687 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+roster : 28 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
+controle (feuille de match) : accord=0 contradiction=0 silence=28
+vies : 256/256 portent une equipe du film
+repartition des vies par designateur : 0 x131 · 1 x125
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
 1492 rattache(s) / 1786 disponible(s) = 83.5 %

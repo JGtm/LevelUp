@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 5265 frames · intervalle 100 ms · duree 526500 ms
-schema 56 · titre halo_infinite
+schema 57 · titre halo_infinite
 version majeure du film : 39
 origine de la frame 0 sur l horloge du fil : 47630 ms
 coup d envoi date par le film : 70230 ms · 217/243 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 22600 ms
@@ -21,31 +21,38 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 25 joueur(s)
-  2535436207316046  idx=0  "LuckierWolf2133"
-  2535427071065450  idx=1  "Clawed624"
-  2535405534770597  idx=2  "Malafama517"
-  2535415546200840  idx=3  "Klu6Paradise"
-  2533274858283686  idx=4  "Madina97294"
-  2535430175847892  idx=5  "NIKIVANMO1012"
-  2533274823469269  idx=6  "Ix Lutvi xI"
-  2533274951306536  idx=7  "kyle the miner7"
-  2535467948989560  idx=8  "EvilBunny6234"
-  2535436046698882  idx=9  "Wolfspirit4376"
-  2535424940321554  idx=10  "FlukiestGolf"
-  2533274967194991  idx=11  "F Bondurant"
-  2535463432319415  idx=12  "PepeLePewPew216"
-  2535429665867873  idx=13  "Fireleg29"
-  2535456138067203  idx=14  "AromaticSugar50"
-  2533274893312427  idx=15  "RullandeAska"
-  2535409765829266  idx=16  "Csicronos9116"
-  2533274983675127  idx=17  "LotusGrahamB"
-  2535432775998960  idx=18  "X44 YetiSav"
-  2535466865628224  idx=19  "DaintierCanoe61"
-  2535454874175468  idx=20  "Sree baby"
-  2533274877323217  idx=21  "JoooZzzeAavalos"
-  2535426355363577  idx=22  "FlexedJam542233"
-  2533274855825142  idx=23  "SparedRaptor"
-  2533274821358557  idx=24  "themaninblack42"
+  2535436207316046  idx=0  equipe=1  "LuckierWolf2133"
+  2535427071065450  idx=1  equipe=0  "Clawed624"
+  2535405534770597  idx=2  equipe=1  "Malafama517"
+  2535415546200840  idx=3  equipe=1  "Klu6Paradise"
+  2533274858283686  idx=4  equipe=0  "Madina97294"
+  2535430175847892  idx=5  equipe=1  "NIKIVANMO1012"
+  2533274823469269  idx=6  equipe=0  "Ix Lutvi xI"
+  2533274951306536  idx=7  equipe=1  "kyle the miner7"
+  2535467948989560  idx=8  equipe=0  "EvilBunny6234"
+  2535436046698882  idx=9  equipe=1  "Wolfspirit4376"
+  2535424940321554  idx=10  equipe=0  "FlukiestGolf"
+  2533274967194991  idx=11  equipe=1  "F Bondurant"
+  2535463432319415  idx=12  equipe=0  "PepeLePewPew216"
+  2535429665867873  idx=13  equipe=0  "Fireleg29"
+  2535456138067203  idx=14  equipe=0  "AromaticSugar50"
+  2533274893312427  idx=15  equipe=0  "RullandeAska"
+  2535409765829266  idx=16  equipe=1  "Csicronos9116"
+  2533274983675127  idx=17  equipe=0  "LotusGrahamB"
+  2535432775998960  idx=18  equipe=1  "X44 YetiSav"
+  2535466865628224  idx=19  equipe=1  "DaintierCanoe61"
+  2535454874175468  idx=20  equipe=1  "Sree baby"
+  2533274877323217  idx=21  equipe=1  "JoooZzzeAavalos"
+  2535426355363577  idx=22  equipe=0  "FlexedJam542233"
+  2533274855825142  idx=23  equipe=0  "SparedRaptor"
+  2533274821358557  idx=24  equipe=0  "themaninblack42"
+
+### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
+lue=true refus="" · 697 record(s) ti=9, 1 rejete(s), 0 divergence(s)
+roster : 25 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
+controle (feuille de match) : accord=0 contradiction=0 silence=25
+vies : 245/245 portent une equipe du film
+repartition des vies par designateur : 0 x128 · 1 x117
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
 1771 rattache(s) / 1996 disponible(s) = 88.7 %

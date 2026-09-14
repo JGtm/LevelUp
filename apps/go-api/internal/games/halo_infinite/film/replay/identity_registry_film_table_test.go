@@ -184,7 +184,7 @@ func TestRosterPrendLesSiegesEtLesNomsDuFilm(t *testing.T) {
 	in.Deaths = []Death{{XUID: quiMeurt, Gamertag: "Alpha", TimeMS: 1000}}
 	reg := BuildIdentityRegistry(in)
 
-	roster := buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, in.Deaths), nil)
+	roster := buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, in.Deaths), nil, teamPublication{})
 	parXUID := map[string]RosterEntry{}
 	for _, r := range roster {
 		parXUID[r.XUID] = r

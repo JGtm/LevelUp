@@ -303,6 +303,28 @@ func decodeGoldenQueue(r *greader, g *goldenInputs) {
 	}
 
 	g.FilmTable = decodeFilmTable(r)
+	g.PlayerTeams, g.TeamScan = decodePlayerTeams(r)
+}
+
+// decodePlayerTeams relit l EQUIPE DE CHAQUE JOUEUR et le rapport de sa lecture (v21, lot 1.7).
+func decodePlayerTeams(r *greader) (map[int]int, filmdec.TeamScanReport) {
+	var teams map[int]int
+	if n := int(r.u()); n > 0 {
+		teams = make(map[int]int, n)
+		for k := 0; k < n && r.err == nil; k++ {
+			i := int(r.i())
+			teams[i] = int(r.i())
+		}
+	}
+	rep := filmdec.TeamScanReport{
+		ArchetypeAbsent: r.bool8(), ComponentMismatch: r.bool8(), Component: r.str(),
+	}
+	for _, p := range []*int{&rep.Packets, &rep.Records, &rep.Read, &rep.Unreached,
+		&rep.OutOfDomainIndex, &rep.OutOfDomainValue, &rep.Entities, &rep.EntityDivergences,
+		&rep.IndexDivergences, &rep.Indices, &rep.NoTeam} {
+		*p = int(r.u())
+	}
+	return teams, rep
 }
 
 // decodeFilmTable relit la TABLE DES JOUEURS DU FILM (v20, lot 1.6).

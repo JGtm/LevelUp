@@ -1093,8 +1093,18 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   tombe à 0 et vingt vies entrent sur les huit builds. Leur oracle est mesuré
 	//   (`vies_un_echantillon_test.go`) : 1 mort écrite, 5 fins de film, 14 orphelines.
 	//   Détail : `document_chronicle.go`.
-	if SchemaVersion != 56 {
-		t.Fatalf("SchemaVersion = %d, attendu 56 : incrémenter exige une raison écrite ci-dessus "+
+	// - v57 (lot 1.7) : L'ÉQUIPE DE CHAQUE JOUEUR EST DANS LE FILM. `tracks[].team` cesse d'être
+	//   constant à -1 : il porte le désignateur que le composant i0 de ti=9 écrit sur quatre
+	//   bits, à une position DÉRIVÉE de la grammaire. `roster[].team` est NEUF (par `filmIndex`,
+	//   donc valable aussi pour un joueur sans vie publiée et pour un bot), et `coverage.teams`
+	//   publie ce que la lecture a couvert plus les trois compteurs du CONTRÔLE.
+	//   LA BASE NE POSE PLUS RIEN (décision utilisateur du 2026-09-13, V4) : `FlagInput.TeamOf`
+	//   disparaît, l'équipe du porteur de drapeau vient du film, et l'invariant « jamais son
+	//   propre drapeau » tient donc sur une cuisson HORS LIGNE. Un artefact 56 porte `team: -1`
+	//   partout et ne se distingue pas d'un artefact 57 de mode FFA sans `coverage.teams`.
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 57 {
+		t.Fatalf("SchemaVersion = %d, attendu 57 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

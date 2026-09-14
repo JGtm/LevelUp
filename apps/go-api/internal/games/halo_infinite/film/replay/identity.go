@@ -226,7 +226,12 @@ func (b BotIdentity) Bid() string {
 // « 343 Aloysius » puis « 343 PardonMy », les deux déclarant slot=8) — des remplaçants
 // SUCCESSIFS sur le même siège de réplication. Ils entrent tous les deux : le nom les
 // différencie, l'index dit le siège.
-func buildRoster(idx PlayerIndexTable, names map[uint64]string, bots []BotIdentity) []RosterEntry {
+//
+// L'ÉQUIPE VIENT DU FILM (lot 1.7) et se lit PAR INDEX — la même clé que le siège, donc la
+// même pour un humain et pour un bot. Un index que le film ne nomme pas garde `-1` ; combien
+// ils sont se lit dans `coverage.teams.unread`.
+func buildRoster(idx PlayerIndexTable, names map[uint64]string, bots []BotIdentity,
+	equipes teamPublication) []RosterEntry {
 	if len(idx.ByXUID) == 0 && len(bots) == 0 {
 		return nil
 	}
@@ -234,9 +239,9 @@ func buildRoster(idx PlayerIndexTable, names map[uint64]string, bots []BotIdenti
 	humanIdx := make(map[int]bool, len(idx.ByXUID))
 	for x, pi := range idx.ByXUID {
 		humanIdx[pi] = true
-		out = append(out, RosterEntry{
-			XUID: strconv.FormatUint(x, 10), FilmIndex: pi, Name: names[x],
-		})
+		e := RosterEntry{XUID: strconv.FormatUint(x, 10), FilmIndex: pi, Name: names[x]}
+		e.Team = equipes.equipeDuRoster(e)
+		out = append(out, e)
 	}
 	seen := map[string]bool{}
 	for _, b := range bots {
@@ -244,8 +249,9 @@ func buildRoster(idx PlayerIndexTable, names map[uint64]string, bots []BotIdenti
 			continue
 		}
 		seen[b.Name] = true
-		out = append(out, RosterEntry{FilmIndex: b.FilmIndex, Name: b.Name, Bot: true,
-			Bid: b.Bid()})
+		e := RosterEntry{FilmIndex: b.FilmIndex, Name: b.Name, Bot: true, Bid: b.Bid()}
+		e.Team = equipes.equipeDuRoster(e)
+		out = append(out, e)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].FilmIndex != out[j].FilmIndex {
