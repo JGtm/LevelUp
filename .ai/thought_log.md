@@ -1,3 +1,47 @@
+## [2026-09-14] Chantier decodeur — lot 1.3 (les cinq etats par defaut manquants, relus chez l'ecrivain) — Complete (feat/decfilm-13 fusionnee dans feat/recherche-decodeur-film, 15309e89e ; premier lot sans revue par lot, V8)
+
+**Decision technique principale.** `defaultStateDeserByTI` recoit ti=14 `V ; R(5)`
+(FUN_140fed6f4), ti=17 `V ; R(7)` (FUN_14101a0a4), ti=21 `R(18)` (FUN_141133c24), ti=29 `V` seul
+(FUN_14116f514), ti=47 `V ; R(5)` (FUN_1410f44f8), chacune datee ; les cinq largeurs viennent d'un
+`*(reader+0x2c) += N` du decompile (Ghidra lecture seule) ; le commentaire STUB de ti=14 est
+corrige avec sa cause (FUN_140467a20 est un `return` partage par treize symboles sans rapport).
+Test permanent `TestEtatParDefautN2Constant` sur les 7 bobines : pour tout archetype a etat
+fixe, le second mot de taille est constant ; ratchet de couverture regenere avec l'historique des
+regenerations ECRIT DANS le golden (21 lignes montent, 0 descend) ; `GrammarRev`
+`grammar-2026-09-14.3`. `SchemaVersion` 55 inchange (aucun octet cuit ne change, 0 gain au corpus
+gate : ce lot livre la grammaire et sa mesure, la valeur produit arrive au lot 1.4 qui branche le
+cadre d'etat complet en production). `KillSourceDecoderRev` toujours non montee (D2 (1.2)).
+
+**Resultats observes.** Mesure avant de coder : `defaultStateDeserByTI` n'a qu'un lecteur de
+production (`TraverseEntity`, records NEW), `WalkKeyframeFullState` / `KeyframeClosure` n'ont
+aucun appelant hors `filmdec` ; la mesure predisait, contrairement au lot 1.2, que l'equivalence
+ne rendrait pas 20/20. Fermeture : ti14 0/3 520 -> 3 520/3 520, ti17 0/3 729 -> 3 729/3 729, ti29
+0/110 -> 102/110 ; ti21 (0/357) et ti47 (0/1 716) ne bougent pas, largeur prouvee mais un
+composant reste faux ; 6 films de recherche 14,0 % -> 30,8 % (la projection du plan, mesuree).
+Gates : gofmt vide, vet 0, 12 paquets ok, lint 0 issue ; regime court 9 identiques + 1 different
+(`50247b26`, etape `killsource` seule : 228 800 octets identiques sauf UNE valeur de la chaine de
+diagnostic `calibration`, mediane 77 -> 76 ; lignes de kill identiques a l'octet ; divergence
+attendue) ; corpus gate 13 temoins 0 perte 0 gain (19 min 33). Verification du pilote (V8, pas de
+relecteur) : table et fonctions relues, mutation ti21 R(18) -> R(17) rejouee (vert, ROUGE, restaure
+par nom md5 identique, vert), golden du ratchet lu, aucun test renomme, baseline intacte.
+Decouvertes §4 : **D1 (1.3) — le temoin fige de la marche delta (`delta_walk_witness_test.go`,
+garde `DELTA_WITNESS_FILM`, invisible en CI) est PERIME AVANT ce lot** : a 783ae680d les trois
+films s'ecartent du fige, et sur `06dfe6d9` les records montent (+16) mais les traversees
+abouties DESCENDENT (-3), sens que le contrat du fichier refuse ; la derive a traverse 0.A a 1.3
+sans etre consignee -> attribution par bisection AVANT le lot 1.4 (item 1.4.0 ajoute par le
+pilote, le temoin est dans le perimetre du cadre d'image-cle) ; D2 (1.3) une chaine de diagnostic
+entre dans l'empreinte d'equivalence de `killsource` (un gate peut rougir pour une phrase de
+journal) ; D3 (1.3) D4 (1.2) etait formulee trop largement (le corpus porte des records de ces
+archetypes ; ce qui n'est pas mesure, c'est l'exercice des composants qui consomment le niveau).
+Trois citations perimees du plan corrigees (table lignes 44-66, STUB ligne 24, section B.2 de la
+note, pas de « 8.5 »).
+
+**Prochaine etape.** Push + CI ; lot 1.4 (cadre d'image-cle d'etat complet en production, avec
+1.4.0 = bisection du temoin) ; regime V8 : pas de revue par lot, revue de jalon a la cloture de
+M1 sur `783ae680d..HEAD`, puis fusion feat/v75 + recuisson + backlog (go V9).
+
+---
+
 ## [2026-09-14] Chantier decodeur — lot 1.2 (le registre commence a l'octet 8 : l'entree du jeu, niveau compris) — Complete (feat/decfilm-12 fusionnee dans feat/recherche-decodeur-film, 783ae680d)
 
 **Decision technique principale.** Le registre des archetypes (chunk_00) se lit comme le jeu le
