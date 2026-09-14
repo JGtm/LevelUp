@@ -376,7 +376,7 @@ func TestR5ContradictoryReadsRefuse(t *testing.T) {
 // une lecture partout ou ce bloc existe, et nulle part ailleurs. Les 34 records restants sont
 // ceux qui ne portent AUCUNE arme — les lectures vides deja etiquetees (cf. Inventory.Empty).
 func TestInventoryRulesOnRealBinary(t *testing.T) {
-	inv, st, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0)
+	inv, st, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0, nil)
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
 	}

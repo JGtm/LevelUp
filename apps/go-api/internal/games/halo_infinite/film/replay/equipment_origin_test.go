@@ -102,7 +102,7 @@ func TestEquipmentOriginSepareLacherDuDeploiement(t *testing.T) {
 		{"loin ET apres la fenetre", origPose(103, 15, 10, 0), OriginDeployed},
 	}
 	for _, c := range cas {
-		if got := equipmentOrigin(lives, c.pose); got != c.want {
+		if got := equipmentOrigin(lives, c.pose, nil); got != c.want {
 			t.Errorf("%s : origine %q, attendu %q", c.nom, got, c.want)
 		}
 	}
@@ -111,7 +111,7 @@ func TestEquipmentOriginSepareLacherDuDeploiement(t *testing.T) {
 // TestEquipmentOriginSansVieEstInconnue — pas de vie, pas d'origine. La deviner serait
 // exactement ce que ce lot a supprime.
 func TestEquipmentOriginSansVieEstInconnue(t *testing.T) {
-	if got := equipmentOrigin(nil, origPose(10, 0, 0, 0)); got != OriginUnknown {
+	if got := equipmentOrigin(nil, origPose(10, 0, 0, 0), nil); got != OriginUnknown {
 		t.Errorf("origine %q sans vie de poseur, attendu %q", got, OriginUnknown)
 	}
 }
@@ -131,7 +131,7 @@ func TestEquipmentOriginChoisitLaVieQuiContientLInstant(t *testing.T) {
 	}
 	// Lache a la fin de la PREMIERE vie : si la machine prenait la derniere vie, elle
 	// classerait `deployed` (90 frames d'ecart, tres au-dela de la fenetre).
-	if got := equipmentOrigin(lives, origPose(30, 3, 0, 0)); got != OriginDropped {
+	if got := equipmentOrigin(lives, origPose(30, 3, 0, 0), nil); got != OriginDropped {
 		t.Errorf("lacher de la 1re vie classe %q, attendu %q", got, OriginDropped)
 	}
 }

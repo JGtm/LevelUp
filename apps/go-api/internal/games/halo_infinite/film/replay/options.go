@@ -17,6 +17,7 @@ package replay
 import (
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // Options règle l'assemblage du document de rejeu.
@@ -345,6 +346,18 @@ type Options struct {
 	// mais EN PRODUCTION IL N'EST JAMAIS NIL : `replaybuild.BuildBytes` passe toujours sa
 	// methode `b.observe`, qui teste elle-meme si un observateur est branche (cf. observe.go).
 	Observe Observer
+	// Fallbacks compte les declenchements de REPLIS de CETTE cuisson (cf. le paquet `fallback`,
+	// decision D14 du plan du decodeur). Le rapport est publie dans `coverage.fallbacks`.
+	//
+	// NIL EST VALIDE ET NE COMPTE RIEN : toutes les methodes du compteur acceptent un recepteur
+	// nil. `BuildFromFilm` en pose un avant le premier balayage (pour que les replis du BALAYAGE
+	// et ceux de l'ASSEMBLAGE tombent dans le meme compte), et `BuildFromPositions` en cree un
+	// s'il n'en trouve pas — de sorte que tout document cuit dise ce qu'il doit a un repli, quel
+	// que soit le point d'entree.
+	//
+	// PAR CUISSON, JAMAIS PAR PAQUET : deux films decodes en parallele melangeraient leurs
+	// comptes, et le critere S1 du plan retire les variables de paquet du decodeur.
+	Fallbacks *fallback.Compteur
 	// clock date la fin du balayage precedent, pour la duree Debug par balayage (cf. observe.go).
 	// NON EXPORTE ET SANS REGLAGE : c'est BuildFromFilm qui l'arme, au moment ou le decodage
 	// commence — un appelant qui le fournirait daterait le premier balayage depuis sa propre
@@ -357,6 +370,16 @@ func (o Options) frameIntervalMS() int {
 		return o.FrameIntervalMS
 	}
 	return DefaultFrameIntervalMS
+}
+
+// compteurDeReplis rend le compteur de la cuisson, en creant le sien quand l'appelant n'en a pas
+// fourni. MEME PATRON QUE `frameIntervalMS` / `minPoints` : le defaut vit ici, une seule fois,
+// et l'assemblage n'a pas a le connaitre.
+func (o Options) compteurDeReplis() *fallback.Compteur {
+	if o.Fallbacks != nil {
+		return o.Fallbacks
+	}
+	return fallback.NouveauCompteur()
 }
 
 func (o Options) minPoints() int {

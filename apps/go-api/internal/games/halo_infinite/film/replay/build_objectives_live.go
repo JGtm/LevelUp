@@ -166,7 +166,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 	// moitie, et elle vaut par elle-meme : sur les neuf dixiemes des matchs — tout ce qui n'est
 	// pas du CTF — ce pont ne sert a RIEN, puisque le calque ne publie rien. On ne le paye plus.
 	if !in.Scanned || !signals.IsFlagFilm() {
-		vide, cov := buildFlagCarries(scan, flagCarryCtx{})
+		vide, cov := buildFlagCarries(scan, flagCarryCtx{fb: clock.fb})
 		attachFlagLayer(doc, vide, cov)
 		return
 	}
@@ -182,6 +182,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 			deathOffsetMS: reg.DeathOffsetMS()},
 		tracks: doc.Tracks, deaths: opt.Deaths,
 		slotXUID: reg.PontEpure(), slotAmbiguous: reg.SlotsAmbigus(),
+		fb: clock.fb,
 	})
 	if cov != nil {
 		cov.ObjectLives = len(scan.Free)

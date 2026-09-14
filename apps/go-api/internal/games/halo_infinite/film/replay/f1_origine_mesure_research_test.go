@@ -60,7 +60,7 @@ const (
 // f1OrigineAvant est la regle D'AVANT le lot F.1 — le TEMOIN, jamais la regle vivante : la
 // fenetre temporelle ET la clause de distance.
 func f1OrigineAvant(lives []equipLife, p filmdec.EquipmentPlacement) string {
-	apres := equipmentOrigin(lives, p)
+	apres := equipmentOrigin(lives, p, nil)
 	if apres != OriginDropped {
 		return apres
 	}
@@ -294,7 +294,7 @@ func f1Positions(t *testing.T, dir string, e filmdec.MapQuantEntry) ([]filmdec.B
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(e, dir)()
+	defer installWorldObjectPrecision(e, dir, nil)()
 	scan := filmdec.DefaultScanFilmOptions()
 	wr := e.Range()
 	scan.WorldRange = &wr

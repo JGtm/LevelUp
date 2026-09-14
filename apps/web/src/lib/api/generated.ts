@@ -5730,6 +5730,7 @@ export interface components {
             bridge: components["schemas"]["BridgeHealth"];
             equipment?: components["schemas"]["EquipmentCoverage"];
             equipmentChanges?: components["schemas"]["EquipmentChangeCoverage"];
+            fallbacks?: components["schemas"]["FallbackHit"][] | null;
             /** Format: int64 */
             filmMajorVersion?: number;
             flagCarries?: components["schemas"]["FlagCarriesCoverage"];
@@ -6688,6 +6689,11 @@ export interface components {
             estimated_rows: number;
             file_name: string;
             token: string | null;
+        };
+        FallbackHit: {
+            /** Format: int64 */
+            hits: number;
+            name: string;
         };
         FeatureFlags: {
             demo_mode: boolean;

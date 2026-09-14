@@ -527,7 +527,7 @@ func TestMiniFilmDecodesTheKeyframes(t *testing.T) {
 	if len(lo) != wantLoadouts {
 		t.Errorf("%d loadouts decodes des images-cles, attendu %d", len(lo), wantLoadouts)
 	}
-	inv, invStats, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0)
+	inv, invStats, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0, nil)
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
 	}

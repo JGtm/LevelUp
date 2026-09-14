@@ -40,6 +40,8 @@ export type ReplayStep = [number, number, number]
 type Filled<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> }
 
 export type ReplayTrackReady = Filled<ReplayTrack, 'points'>
+/** La couverture dont la liste des replis déclenchés (schéma 58) est comblée. */
+export type ReplayCoverageReady = Filled<NonNullable<ReplayDocument['coverage']>, 'fallbacks'>
 type ReplayLoadoutReady = Filled<ReplayLoadout, 'w'>
 export type ReplayInventoryReady = Filled<ReplayInventory, 'am' | 'g'>
 export type ReplayGrenadeReadReady = Filled<ReplayGrenadeRead, 'g'>
@@ -138,6 +140,7 @@ export type ReplayBombStatsReady = Filled<NonNullable<ReplayDocument['bombStats'
 export type ReplayDocumentReady = Omit<
   ReplayDocument,
   | 'abilities'
+  | 'coverage'
   | 'abilityCharges'
   | 'abilityImpulses'
   | 'bombArmings'
@@ -177,6 +180,16 @@ export type ReplayDocumentReady = Omit<
   | 'zoneStates'
 > & {
   abilities: NonNullable<ReplayDocument['abilities']>
+  /**
+   * LA COUVERTURE, dont la liste des REPLIS est comblée (schéma 58).
+   *
+   * L'OBJET GARDE LE DROIT D'ÊTRE ABSENT (même régime que `identity` et `scoreTimeline`) : un
+   * artefact sans couverture n'est pas un artefact dont la couverture serait vide. Son tableau
+   * `fallbacks`, lui, est comblé — un document qui ne doit RIEN à un repli et un document dont
+   * personne n'a compté les replis se lisent alors pareil côté rendu, ce qui est exact : la
+   * distinction vit dans la version de schéma, pas dans le calque.
+   */
+  coverage?: ReplayCoverageReady
   /**
    * LES IMPULSIONS DE CAPACITÉ (schéma 38) : une entrée PLATE par geste — (t, slot, family) —
    * l'usage MESURÉ du propulseur, daté par le corps `tag == 1` des composants i57/i59 du film

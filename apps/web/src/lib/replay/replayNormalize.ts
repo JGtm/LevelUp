@@ -157,6 +157,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // d'être absent. Un artefact antérieur au schéma 50 n'en porte aucun, et un objet vide se
     // lirait « le registre a été calculé, il n'a rien trouvé » — le contraire de « personne n'a
     // regardé ». Même régime que `scoreTimeline`.
+    // LA PART DE REPLI du document (schéma 58) : `coverage.fallbacks` liste les replis du
+    // décodeur qui se sont déclenchés pendant la cuisson. Comblée comme les autres tableaux ;
+    // l'OBJET `coverage`, lui, garde le droit d'être absent (même régime qu'`identity`).
+    coverage: raw.coverage ? { ...raw.coverage, fallbacks: raw.coverage.fallbacks ?? [] } : undefined,
     identity: raw.identity
       ? {
           ...raw.identity,

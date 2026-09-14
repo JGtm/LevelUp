@@ -23,6 +23,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // vehicleCensusTolUS est la TOLERANCE de la fenetre d une vie, de part et d autre de son
@@ -101,13 +102,14 @@ type vehicleLife struct {
 func buildVehicleTracks(
 	scan VehicleScan, bipeds []filmdec.BipedPosition, reg IdentityRegistry, clock replayClock,
 ) ([]VehicleTrack, VehicleCoverage, vehicleRideStats) {
+	// `clock.fb` porte le compteur de replis de la cuisson (cf. replayClock).
 	// `AimReads` compte ce que le FILM a rendu, pas ce que les episodes en retiennent : c est lui
 	// qui distingue « aucun occupant ne visait » de « le decodeur n a rien lu ».
 	cov := VehicleCoverage{Scanned: scan.Scanned, UnknownChassis: map[string]int{}, AimReads: len(scan.Aims)}
 	if !scan.Scanned || clock.step == 0 {
 		return nil, cov, vehicleRideStats{}
 	}
-	lives := vehicleLives(scan.Keyframes)
+	lives := vehicleLives(scan.Keyframes, clock.fb)
 	cov.Lives = len(lives)
 	spawns := vehicleSpawnsByLife(scan.Creations)
 	bySlot := vehiclePositionsBySlot(scan.Positions)
@@ -136,7 +138,7 @@ func buildVehicleTracks(
 // vehicleLives construit les vies bornees a partir du recensement, et DECOUPE les vies
 // successives d un meme slot : sans ce decoupage, la fenetre de tolerance de l une mordrait sur
 // l autre et le nuage de positions serait attribue deux fois.
-func vehicleLives(kf filmdec.WorldObjectKeyframes) []vehicleLife {
+func vehicleLives(kf filmdec.WorldObjectKeyframes, fb *fallback.Compteur) []vehicleLife {
 	out := make([]vehicleLife, 0, len(kf.SeenUS))
 	for key, seen := range kf.SeenUS {
 		if len(seen) == 0 {
@@ -152,19 +154,23 @@ func vehicleLives(kf filmdec.WorldObjectKeyframes) []vehicleLife {
 		}
 		return out[i].firstUS < out[j].firstUS
 	})
-	assignVehicleWindows(out)
+	assignVehicleWindows(out, fb)
 	return out
 }
 
 // assignVehicleWindows pose `loUS` / `hiUS` sur des vies DEJA triees par (slot, premier
 // recensement). Deux vies consecutives d un meme slot se partagent la frontiere : la fenetre de
 // l une s arrete ou celle de l autre commence.
-func assignVehicleWindows(lives []vehicleLife) {
+func assignVehicleWindows(lives []vehicleLife, fb *fallback.Compteur) {
 	for i := range lives {
 		l := &lives[i]
 		l.loUS = subUS(l.firstUS, vehicleCensusTolUS)
 		l.hiUS = l.goneByUS
 		if l.hiUS == 0 {
+			// REPLI NOMME ET COMPTE (D14) : aucune image-cle ne cesse de recenser ce vehicule, sa
+			// fin est INFEREE du dernier echantillon. Le film ECRIT la destruction (`ti=40`) : la
+			// lecture arrive au lot 1.9.10, et ce compte dit ce qu'elle doit remplacer.
+			fb.Declenche(fallback.NomFinDeVieVehiculeParRecensement)
 			l.hiUS = l.lastUS + vehicleCensusTolUS
 		}
 		if i > 0 && lives[i-1].key.Slot == l.key.Slot && lives[i-1].hiUS > l.loUS {
