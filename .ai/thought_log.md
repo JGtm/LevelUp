@@ -1,3 +1,50 @@
+## [2026-09-14] Chantier decodeur — lot 1.5 (l'identite du film et la table des 32 joueurs lues dans chunk_00, lecteurs purs) — Complete (feat/decfilm-15 fusionnee dans feat/recherche-decodeur-film, 06530e63d)
+
+**Decision technique principale.** `filmdec.ReadFilmIdentity(chunk0)` lit la section 2 (table
+par type, version en clair, build, saveur, identifiant de build, changelist, horodatage 32 bits)
+avec `ErrNoFilmIdentity` type pour les 5 films sans section (`03af54c3`, `13b00e35`, `47d20b5d`,
+`50247b26`, `a349fea8`) ; `filmdec.ReadPlayerTable(chunk0, ident)` lit les 32 slots (16 champs,
+decalage d'un bit `0x0CB45C`), la largeur du bloc de personnalisation est une DONNEE DE PROFIL PAR
+BUILD (`player_table_profile.go` : 1 852 o HI_1_13_0/HI_1_12_0 lu chez l'ecrivain
+`FUN_1407edea8`, 1 492 HI_1_11_0/HI_1_10_0 = -10 x 0x24, 1 312 HI_1_9_0/HI_1_8_0 = -15 x 0x24,
+2 052 HI_1_4_1 mesuree, cause non etablie), aucun offset absolu (le cardinal de la table par type
+se derive et ferme sans reste : 123/122/121/116 entrees, la ou l'heuristique `lireEntete` en
+comptait 124), `ErrUnknownBuild` type, compteur `filmdec_unknown_build_<build>` NOMME mais sans
+consommateur (a cabler au lot 1.6), le rapport porte le calibrage lu sur le film comme CONTROLE
+(0 contradiction sur 1 346). Champs publies : `FilmIndex` = rang ABSOLU (vacants compris ;
+`InterleavedVacant` au rapport ; 13 films ou cela diverge du rang parmi les occupes, aucun n'a de
+document de rejeu : non tranchable ici, D3 (1.5)), `XUID`, `Gamertag`, champs courts. Aucun
+consommateur (1.6, 1.7, 1.8) ; `GrammarRev` `grammar-2026-09-14.5` ; `SchemaVersion` 55 inchange.
+
+**Resultats observes.** Oracle des instruments sur 1 351 films (152 s) : delta unique par build,
+32 slots sur 1 351/1 351. Production : 1 346 films a 32 slots (12 080 occupes + 30 992 vacants),
+5 mis de cote, 0 build inconnu, 0 contradiction ; sur NEUF films (`19ef6b04`, `23ffd885`,
+`3104391d`, `3b1cfde3`, `59b8abb9`, `652907bb`, `92f7c713`, `a92bab93`, `d4ddf054`) la production
+lit 7 ou 8 enregistrements la ou l'instrument en lisait 1 a 6 : cause mesuree, deux ecarts de
+balayage > 40 000 bits (un vacant intercale ajoute 16 499 bits), le regroupement terminal de
+l'instrument perdait la tete de la table ; le lecteur n'a aucun seuil ; le test corpus exige cette
+explication film par film et refuse que la production lise moins que l'instrument (controle
+independant `TestProfilRosterEcarts` : 8 entites ti=9 sur 9/9). Mutation 1 852 -> 1 848 : ROUGE
+sur `bcb6d393` et `fb1a1a72` (« aucune table de 32 slots ») ; rejouee par le pilote (V8) : vert,
+rouge, restauree par nom md5 identique, vert. Entree tronquee : 8 coupes d'identite (dont une sur
+frontiere de bloc) + 2 de table, aucune panique, erreurs typees. Gates : gofmt vide, vet 0,
+13 paquets ok, lint 0 issue, `filmdecVarsGeles` a 96 ; corpus `CHUNK00_CORPUS` (une racine, pas
+la liste `CHUNK00_FILMS` : 1 351 chemins depassent la borne d'une variable d'environnement
+Windows) 1 346 films a 32 slots, 77 s ; regime court 10/10 identiques ; corpus gate 13/13 a zero
+gain zero perte, schema 55 -> 55, exit 0.
+Decouvertes §4 : D1 (1.5) l'oracle « 32 slots » est satisfait par le bourrage de queue et ne prouve
+pas la tete de table ; D2 `rsChaine` perd la tete sur 9 films ; D3 rang absolu non tranche ; D4 le
+balayage est aveugle a un enregistrement reel sur `d4ddf054` (XUID hors plage Xbox ou jeton nul,
+a savoir avant de faire confiance a cette borne ailleurs) ; D5 `lireEntete` compte une entree de
+trop (residu G.2 ferme).
+
+**Prochaine etape.** Push + CI ; lot 1.6 (le registre d'identite prend la table du film comme lien
+direct ; `DefaultMinPoints = 1` avec l'oracle des morts, schema 56 ; cabler
+`filmdec_unknown_build` ; traiter `InterleavedVacant` comme contradiction nommee) ; puis 1.7, 1.8,
+famille 1.9 ; revue de jalon a la cloture de M1.
+
+---
+
 ## [2026-09-14] Chantier decodeur — lot 1.4 (le cadre d'image-cle d'etat complet en production ; le temoin de marche delta attribue) — Complete (feat/decfilm-14 fusionnee dans feat/recherche-decodeur-film, 15bc6c82f)
 
 **Decision technique principale.** Les deux consommateurs de records d'image-cle
