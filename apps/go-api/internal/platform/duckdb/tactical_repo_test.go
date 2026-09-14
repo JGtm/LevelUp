@@ -47,6 +47,8 @@ const (
 
 	tacCarteA = "map_streets"
 	tacCarteB = "map_recharge"
+	// La carte PvE du corpus : elle ne doit JAMAIS entrer dans la portee tactique.
+	tacCartePvE = "map_cole_protocol"
 )
 
 // newTacticalTestPlayerDB : shared `:memory:` migre (vues `_latest` comprises) +
