@@ -5750,6 +5750,7 @@ export interface components {
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
             t0Film?: components["schemas"]["T0FilmCoverage"];
+            teams?: components["schemas"]["TeamCoverage"];
             tracks?: components["schemas"]["TrackCoverage"];
             translocations?: components["schemas"]["TranslocationCoverage"];
             vehicles?: components["schemas"]["VehicleCoverage"];
@@ -10338,6 +10339,8 @@ export interface components {
             /** Format: int64 */
             filmIndex: number;
             name?: string;
+            /** Format: int64 */
+            team?: number;
             xuid: string;
         };
         RunOnceResult: {
@@ -12246,6 +12249,32 @@ export interface components {
             qui?: string;
             /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
             spawn?: string;
+        };
+        TeamCoverage: {
+            /** Format: int64 */
+            accord: number;
+            /** Format: int64 */
+            contradiction: number;
+            /** Format: int64 */
+            divergences: number;
+            /** Format: int64 */
+            film: number;
+            /** Format: int64 */
+            noTeam: number;
+            read: boolean;
+            /** Format: int64 */
+            records: number;
+            refusal?: string;
+            /** Format: int64 */
+            rejected: number;
+            /** Format: int64 */
+            silence: number;
+            /** Format: int64 */
+            tracks: number;
+            /** Format: int64 */
+            tracksNamed: number;
+            /** Format: int64 */
+            unread: number;
         };
         TeamHold: {
             /** Format: int64 */

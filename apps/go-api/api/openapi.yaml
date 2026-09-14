@@ -11474,6 +11474,8 @@ components:
           $ref: '#/components/schemas/SkullCarriesCoverage'
         t0Film:
           $ref: '#/components/schemas/T0FilmCoverage'
+        teams:
+          $ref: '#/components/schemas/TeamCoverage'
         tracks:
           $ref: '#/components/schemas/TrackCoverage'
         translocations:
@@ -22355,6 +22357,9 @@ components:
           type: integer
         name:
           type: string
+        team:
+          format: int64
+          type: integer
         xuid:
           type: string
       required:
@@ -27025,6 +27030,60 @@ components:
         spawn:
           description: 'Identifiant d''une grappe de reapparition (champ grappes[].id) : restreint l''univers aux matchs dont MA premiere vie en part. Vide = aucune restriction.'
           type: string
+      type: object
+    TeamCoverage:
+      additionalProperties: false
+      properties:
+        accord:
+          format: int64
+          type: integer
+        contradiction:
+          format: int64
+          type: integer
+        divergences:
+          format: int64
+          type: integer
+        film:
+          format: int64
+          type: integer
+        noTeam:
+          format: int64
+          type: integer
+        read:
+          type: boolean
+        records:
+          format: int64
+          type: integer
+        refusal:
+          type: string
+        rejected:
+          format: int64
+          type: integer
+        silence:
+          format: int64
+          type: integer
+        tracks:
+          format: int64
+          type: integer
+        tracksNamed:
+          format: int64
+          type: integer
+        unread:
+          format: int64
+          type: integer
+      required:
+        - read
+        - records
+        - rejected
+        - divergences
+        - film
+        - noTeam
+        - unread
+        - accord
+        - contradiction
+        - silence
+        - tracks
+        - tracksNamed
       type: object
     TeamHold:
       additionalProperties: false

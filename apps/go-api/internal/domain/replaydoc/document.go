@@ -112,7 +112,15 @@ type RosterEntry struct {
 	XUID      string `json:"xuid"`
 	FilmIndex int    `json:"filmIndex"`
 	Name      string `json:"name,omitempty"`
-	Bot       bool   `json:"bot,omitempty"`
+	// Team est le DESIGNATEUR D'EQUIPE que le film ecrit, par index de joueur (schema 57) :
+	// `0..8` pour les huit camps de `mp_team_designator`, `-1` pour « aucune equipe ». Il vaut
+	// aussi pour un BOT, que le film assoit au meme index.
+	//
+	// POINTEUR, parce que TROIS etats existent : absent (le film n'a pas nomme ce joueur, ou
+	// l'artefact precede le schema 57), `-1` (aucune equipe), `0..8` (le camp). Un entier nu
+	// ferait dire `0` — le camp 0 — a tout artefact ancien.
+	Team *int `json:"team,omitempty"`
+	Bot  bool `json:"bot,omitempty"`
 	// Bid est l identifiant STABLE d un bot, forme `bid(N.0)` — la meme que la base emploie
 	// (schema 50). Vide pour un humain, et vide pour un bot dont la declaration ne portait pas
 	// d identifiant : un `bid(0.0)` invente joindrait deux bots distincts.

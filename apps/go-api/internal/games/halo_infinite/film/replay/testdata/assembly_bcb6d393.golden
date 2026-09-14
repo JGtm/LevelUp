@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 3465 frames · intervalle 100 ms · duree 346500 ms
-schema 56 · titre halo_infinite
+schema 57 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 12904 ms
 coup d envoi date par le film : 35704 ms · 56/56 piste(s) en mouvement · rafale 5 · marge depuis la frame 0 : 22800 ms
@@ -21,17 +21,24 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 11 joueur(s)
-  2533274895111035  idx=0  "FrankDaTank1313"
-  2535460750735339  idx=1  "KidLeo67"
-  2533274876732804  idx=2  "J 2025118"
-  2533274823110022  idx=3  "JGtm"
-  2535469190789936  idx=4  "Chocoboflor"
-  2533274858283686  idx=5  "Madina97294"
-  2791963697577117  idx=6  "RavenBL00D"
-  2535429985869093  idx=7  "Gsasph"
-  2535418713587213  idx=9  "Steedlan"
-  2535468064146356  idx=10  "brkn8174"
-  2533274811363842  idx=11  "xNeuromancer"
+  2533274895111035  idx=0  equipe=1  "FrankDaTank1313"
+  2535460750735339  idx=1  equipe=1  "KidLeo67"
+  2533274876732804  idx=2  equipe=1  "J 2025118"
+  2533274823110022  idx=3  equipe=0  "JGtm"
+  2535469190789936  idx=4  equipe=0  "Chocoboflor"
+  2533274858283686  idx=5  equipe=0  "Madina97294"
+  2791963697577117  idx=6  equipe=1  "RavenBL00D"
+  2535429985869093  idx=7  equipe=0  "Gsasph"
+  2535418713587213  idx=9  equipe=1  "Steedlan"
+  2535468064146356  idx=10  equipe=1  "brkn8174"
+  2533274811363842  idx=11  equipe=1  "xNeuromancer"
+
+### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
+lue=true refus="" · 144 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+roster : 11 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
+controle (feuille de match) : accord=0 contradiction=0 silence=11
+vies : 58/58 portent une equipe du film
+repartition des vies par designateur : 0 x25 · 1 x33
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
 924 rattache(s) / 1078 disponible(s) = 85.7 %

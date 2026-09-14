@@ -22,6 +22,11 @@ func (b *Builder) buildReplayOptions(
 		MatchKills:      cat.matchKills,
 		RosterXUIDs:     rosterXUIDs(facts),
 		Participants:    participantsDuTableau(facts),
+		// LA FEUILLE DE MATCH N'EST QU'UN CONTROLE DES EQUIPES (lot 1.7, decision utilisateur
+		// V4) : l'equipe publiee vient du FILM. Cette table n'alimente que
+		// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle
+		// ne se corrige pas en silence.
+		ScoreboardTeams: teamByXUID(facts),
 		Bots:            cat.bots,
 		Successions:     cat.successions,
 		Objectives:      stats.objectives,

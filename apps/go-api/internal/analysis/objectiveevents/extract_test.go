@@ -110,7 +110,15 @@ func TestExtractCTFCaptureCount(t *testing.T) {
 			if !ok {
 				t.Skipf("film %s absent du cache (%s=%q) — verite terrain non rejouee", tc.id, filmCacheEnv, cacheRoot())
 			}
-			events := Extract(tc.id, tc.variant, bobine, rosterFor(tc.id))
+			events, ctl := Extract(tc.id, tc.variant, bobine, rosterFor(tc.id))
+			// L'EQUIPE VIENT DU PIED (lot 1.7.3) ET LE ROSTER LA CONFIRME : sur ces deux films
+			// la feuille de match et l'octet 37 disent la même chose, événement par événement.
+			// Une contradiction ici serait la première mesure qui contredirait le 665/665.
+			if ctl.Contradiction != 0 {
+				t.Errorf("%s: %d contradiction(s) entre l'équipe du pied et la feuille de match "+
+					"(accord=%d silence=%d) — le 665/665 du lot 1.1 ne tient plus",
+					tc.id, ctl.Contradiction, ctl.Accord, ctl.Silence)
+			}
 
 			var captures int
 			for _, e := range events {

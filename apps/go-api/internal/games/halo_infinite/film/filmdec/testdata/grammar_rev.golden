@@ -142,4 +142,20 @@
 #               que la marche visite TOUS les enregistrements du balayage, donc les deux bouts de
 #               chaque couple sont toujours retenus et la branche etait INATTEIGNABLE (mesure sur
 #               les 1 351 films : 0). Aucune lecture ne change.
-grammar-2026-09-14.5	aad34f20870524793106a4dffeb41005581e4284d0006d0b5474c93c778126f4
+#   2026-09-14  grammar-2026-09-14.6  lot 1.7 : L EQUIPE DE CHAQUE JOUEUR SE LIT DANS LE FILM.
+#               Le composant i0 de ti=9 (`managed-player-team-designator-component`, 4 bits,
+#               valeur BRUTE = designateur + 1) est lu par `ScanPlayerTeams`, a une position
+#               DERIVEE (en-tete 108 + mot de taille 32 + etat par defaut de ti=9 + 32) et
+#               jamais cablee. Meme geste : l etat par defaut de ti=9 REND son premier `R(6)`,
+#               qui est l INDEX DE JOUEUR de l entite (mesure du 2026-09-14, 18 films et
+#               7 builds : il vaut le rang du siege de `chunk_00`, il est constant sur la vie
+#               de l entite, et il continue au-dela des sieges pour les arrivants). Deux
+#               largeurs lues la ou rien n etait lu : la revision monte, l empreinte avec.
+#   2026-09-14  grammar-2026-09-14.6  lot 1.7.3 (MEME LOT donc MEME REVISION, empreinte reprise
+#               une fois) : l EQUIPE d un evenement d objectif vient desormais du PIED, a
+#               l octet 37 de son bloc, et plus de `match_participants`. Le roster n en est plus
+#               que le CONTROLE, compte par `objectiveevents.TeamControl` (accord /
+#               contradiction / silence). La grammaire de LECTURE ne bouge pas — c est le lot 1.1
+#               qui l avait corrigee — mais la SOURCE publiee si, et l ensemble hache porte
+#               `objectiveevents` depuis le lot 1.1.5.
+grammar-2026-09-14.6	e5a873d8c52c1d5c27fa197963229e24f2e86e5d1f20864eeb900dd66903f78d

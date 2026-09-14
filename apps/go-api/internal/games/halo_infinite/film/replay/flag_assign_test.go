@@ -11,8 +11,9 @@ import (
 // Les quatre tests figent les trois regles de `flag_assign.go` ET leur ordre. La geometrie est
 // celle de `bcb6d393` (CTF:Arena, 3-0), reduite a l'echelle du banc : le socle du camp qui SUBIT
 // en (0,0), celui du camp qui MARQUE en (100,100), et des porteurs qui font le trajet de l'un a
-// l'autre. Le calque ne connait pas les equipes (`Track.Team` n'est pas dans le film) : c'est
-// l'ETIQUETTE du socle, donc `FlagCarry.Team`, qui porte le verdict.
+// l'autre. Ce que ces tests figent est l'ETIQUETTE du socle, donc `FlagCarry.Team` : c'est elle
+// qui porte le verdict d'attribution. L'equipe du PORTEUR, elle, est lue dans le film depuis le
+// lot 1.7 et sert a REFUSER un candidat, jamais a l'etiqueter.
 
 // flagAssignSpawns rend les deux socles du banc, etiquetes comme la carte Cliffhanger : le
 // drapeau PORTE est celui de l'equipe 1, et celui que ses porteurs ne doivent JAMAIS prendre est
