@@ -142,4 +142,13 @@
 #               que la marche visite TOUS les enregistrements du balayage, donc les deux bouts de
 #               chaque couple sont toujours retenus et la branche etait INATTEIGNABLE (mesure sur
 #               les 1 351 films : 0). Aucune lecture ne change.
-grammar-2026-09-14.5	aad34f20870524793106a4dffeb41005581e4284d0006d0b5474c93c778126f4
+#   2026-09-14  grammar-2026-09-14.6  lot 1.7 : L EQUIPE DE CHAQUE JOUEUR SE LIT DANS LE FILM.
+#               Le composant i0 de ti=9 (`managed-player-team-designator-component`, 4 bits,
+#               valeur BRUTE = designateur + 1) est lu par `ScanPlayerTeams`, a une position
+#               DERIVEE (en-tete 108 + mot de taille 32 + etat par defaut de ti=9 + 32) et
+#               jamais cablee. Meme geste : l etat par defaut de ti=9 REND son premier `R(6)`,
+#               qui est l INDEX DE JOUEUR de l entite (mesure du 2026-09-14, 18 films et
+#               7 builds : il vaut le rang du siege de `chunk_00`, il est constant sur la vie
+#               de l entite, et il continue au-dela des sieges pour les arrivants). Deux
+#               largeurs lues la ou rien n etait lu : la revision monte, l empreinte avec.
+grammar-2026-09-14.6	fdb77e17a94db7ea867ce3ce3505ca245533c24c559e37a8d6f91049653c19bd
