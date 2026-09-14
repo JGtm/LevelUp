@@ -1,3 +1,53 @@
+## [2026-09-14] Chantier decodeur — lot 1.6 (le registre d'identite prend la table du film comme lien direct ; la vie d'un seul echantillon publiee ; schema 56) — Complete (feat/decfilm-16 fusionnee dans feat/recherche-decodeur-film, 943d8cf4b)
+
+**Decision technique principale.** La table des joueurs de `chunk_00` (lot 1.5) est lue en
+production et devient le lien direct `index <-> xuid <-> gamertag` du registre d'identite
+(`link.method = film_table`), la base devient un CONTROLE (`identity.coverage.filmTable` : lu,
+refus, sieges, direct, repli, accord / contradiction / silence) ; le compteur
+`filmdec_unknown_build_<build>` est CABLE (0 sur les 13 temoins). CHANGEMENT DE CONCEPTION impose
+par la mesure avant de coder (D2 (1.6)) : la table du film est le roster du DEBUT du film, pas
+celui du match — 13 joueurs arrives en cours de partie sur les 8 builds n'y ont pas de siege
+(`e5adf7b2` 23 sieges contre 28 joueurs connus, `a521164d` / `11de8353` 24 contre 27, `bcb6d393`
+8 contre 11) ; la remplacer par la table aurait PERDU 13 joueurs : la table PRECEDE le repli par
+les morts, qui reste nomme et compte sur son diagnostic propre (D14). 125 accords, 0
+contradiction, 0 vacant intercale sur les 8 builds (D3 (1.5) ne se pose sur aucun). Roster : sieges
+et gamertags du film (`a521164d`, `11de8353` 27 -> 28 ; deux joueurs a 0 mort publies sans nom
+prennent le leur) ; cuisson HORS LIGNE complete (26 -> 27 x3, 24 -> 25, 0 siege absent sur 8/8).
+Decision utilisateur du 14/09 appliquee (1.9.12 -> 1.6.5) : `DefaultMinPoints` 2 -> 1
+(deplace dans `tracks_publication.go`), `refusedMinPoints` 0 sur 8/8, +20 traces. `SchemaVersion`
+55 -> 56, chaine complete (chronique, empreinte de forme `2c1ea5c7b555c95f`, jumeau replaydoc,
+replayview, openapi, generated.ts, 8 fixtures 56 = 2 565 193 o sous le plafond de 3 145 728,
+jeu 55 retire), `MIN_RENDERABLE_SCHEMA_VERSION = 27` inchange ; `GrammarRev` .5 et
+`KillSourceDecoderRev` inchangees (filmdec et killsource non touches).
+
+**Resultats observes.** Gates : gofmt vide, vet 0, 14 paquets ok, lint 0 issue, `tsc -b`
+propre, vitest 7 629 verts ; regime court 10/10 re-figes, DEUX lignes changent par film
+(`filmTable`, etape neuve, et `artifact` +49 a +987 o), les 49 autres balayages identiques ;
+comparateur positionnel (D3 (1.6)) : classification faite sur le `git diff` des references avant
+acceptation. Corpus gate `--base 06530e63d` (16 min 33) : 13 temoins, schema 55 -> 56, 267 gains,
+39 « pertes », exit 1 ; CONTROLE DECISIF `--base 444d0b7c6` (la table du film SANS le seuil) :
+le MEME ensemble de 39 pertes, metrique par metrique et valeur par valeur -> la table du film
+coute ZERO perte sur 13/13, les 39 viennent toutes du seuil a 1. ORACLE des 20 vies d'un
+echantillon (instrument permanent `vies_un_echantillon_test.go`) : 1 mort ecrite (`e5adf7b2`
+slot 689, 72 ms), 5 fins de film, **14 ORPHELINES**, toutes fermees sur un TROU DE REPLICATION
+(mort la plus proche du meme joueur a 0,95 s .. 300 s) — D1 (1.6), defaut de LECTURE : la regle
+qui ouvre une vie a chaque trou > `lifeGapUS` (5 s) est une heuristique au sens de D13, la
+grammaire dit qu'une vie finit a une mort ecrite (ou fin de manche / de film) -> conversion
+1.9.13 proposee. DEUX EFFETS A TRANCHER PAR L'UTILISATEUR AVANT LA RECUISSON (D4, D5 (1.6)) : le
+seuil a 2 CACHAIT quatre vies SANS NOM, desormais visibles (`unnamedLives` `084a804d` 0 -> 1,
+`a349fea8` 334 -> 337), ce qui heurte « les vies anonymes n'existent pas » (06/09) — c'est un
+defaut d'identite rendu visible, pas cree ; et une vie d'un point a -216 m sur `084a804d` elargit
+`bounds.minX` de 184 m (le rejeu dezoomera), idem `e5adf7b2` en Z. Verification du pilote (V8) :
+constantes, fixtures (8 x 56, 0 x 55, taille), GrammarRev, baseline (aucun test renomme),
+controle decisif lu en §5.
+
+**Prochaine etape.** Push + CI ; lot 1.7 (equipe reelle depuis le film, sans base) ; question a
+l'utilisateur : garder la publication des vies d'un echantillon avec les 4 vies sans nom visibles
+et les bornes elargies, ou revenir au seuil 2 jusqu'a la conversion 1.9.13 ; recuisson du parc
+seulement apres sa reponse (cloture M1).
+
+---
+
 ## [2026-09-14] Chantier decodeur — lot 1.5 (l'identite du film et la table des 32 joueurs lues dans chunk_00, lecteurs purs) — Complete (feat/decfilm-15 fusionnee dans feat/recherche-decodeur-film, 06530e63d)
 
 **Decision technique principale.** `filmdec.ReadFilmIdentity(chunk0)` lit la section 2 (table
