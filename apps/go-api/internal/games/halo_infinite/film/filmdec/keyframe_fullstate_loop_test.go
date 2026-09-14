@@ -5,13 +5,17 @@ package filmdec
 //
 // LA QUESTION : la boucle d'ETAT COMPLET du jeu (`FUN_142e2bfd0` -> `FUN_1428e2b68` ->
 // `FUN_142e2c690`, lue par R7-d) portee TELLE QUELLE sur le payload type-2 atterrit-elle
-// bit-exact ? Cinq variables, allumees UNE A LA FOIS :
+// bit-exact ? Les variables, allumees UNE A LA FOIS :
 //
-//	(a) l'ORDRE des composants   — table nommee de 64 entrees contre ordre `chunk_00`
 //	(b) l'EN-TETE par entite     — 108 bits + deux `R(32)` de taille, contre 64 bits
 //	(c) le CONTROLE par composant — `R(1) [+R(32)]` sous le drapeau film
 //	(d) `DAT_144e61ea0`          — vec3 brut 96 bits contre 3 x axisW quantifies
 //	(e) `i0`                     — la grammaire de l'ECRIVAIN (`FUN_14320678c`)
+//
+// LA VARIABLE (a) — « le niveau du composant `i` est celui de l'entree `i`, pas de la
+// precedente » — A ETE TRANCHEE ET LIVREE au lot 1.2 (2026-09-14) : ce n'est plus une option,
+// c'est la lecture du registre (`registry.go`). Elle a donc disparu de cette matrice, avec
+// `KeyframeFullStateOpt.LevelShift`.
 //
 // CE QU'IL NE FAIT PAS : il ne publie AUCUNE donnee, n'ecrit RIEN sur disque, ne touche a
 // aucun schema. LECTURE SEULE, garde par KF35_ROOT (meme garde que R7-a/R7-b/R7-d).
@@ -32,9 +36,10 @@ import (
 )
 
 // kf7eInflate rend le chunk_00 DEFLATE d'un film, tel que `ParseRegistryChunk` le lit — mais
-// en OCTETS BRUTS : c'est la seule facon de confronter le layout suppose par `registry.go`
-// (`[u32 kind][u32 flags][nom @ +8]`) a celui que `FUN_142e2c690` lit en memoire
-// (`[nom @ +0x00][u32 niveau @ +0x100]`, entree de 0x104, 64 par archetype).
+// en OCTETS BRUTS : c'est la seule facon d'avoir confronte l'ancien cadrage de `registry.go`
+// (`[u32 kind][u32 flags][nom @ +8]` depuis l'octet 0) a celui que `FUN_142e2c690` lit en
+// memoire (`[nom @ +0x00][u32 niveau @ +0x100]`, entree de 0x104 depuis l'octet 8, 64 par
+// archetype) — ce dernier etant la lecture de production depuis le lot 1.2.
 func kf7eInflate(t *testing.T, dir string) []byte {
 	t.Helper()
 	raw, err := ReadFilmChunk(dir, 0)
@@ -70,11 +75,12 @@ func kf7eCString(d []byte, off, max int) string {
 	return string(d[off:end])
 }
 
-// TestKF7ETableLayout tranche la variable (a) SANS supposer : il lit les octets bruts du bloc
-// d'archetype du bipede et confronte les DEUX layouts. Si le layout du jeu est le bon, le
-// `kind` que `registry.go` lit en `+0` est TOUJOURS nul (queue de bourrage du nom precedent)
-// et le `flags` qu'il lit en `+4` est le NIVEAU du composant PRECEDENT — un decalage d'un cran
-// sur toutes les largeurs quantifiees.
+// TestKF7ETableLayout a tranche la variable (a) SANS supposer : il lit les octets bruts du bloc
+// d'archetype du bipede et confronte les DEUX cadrages. Verdict, livre au lot 1.2 : le « kind »
+// que l'ancien cadrage lisait en `+0` est TOUJOURS nul — queue de bourrage du nom precedent — et
+// le « flags » qu'il lisait en `+4` etait le NIVEAU du composant PRECEDENT. Il reste ici comme
+// TEMOIN SUR LE CORPUS DE RECHERCHE (garde `KF35_ROOT`, films reels) ; le temoin qui tourne sans
+// cache de films, sur les bobines versionnees, est `TestRegistreNiveauxVoisinsCensus`.
 func TestKF7ETableLayout(t *testing.T) {
 	root := os.Getenv(kf35RootEnv)
 	if root == "" {
@@ -113,42 +119,6 @@ func TestKF7ETableLayout(t *testing.T) {
 		}
 	}
 	t.Logf("  -> %d slots nommes · %d slots avec kind != 0 (layout registry.go)", nonZeroTail, nonZeroKind)
-}
-
-// TestKF7ELevelShift publie, composant par composant, le niveau que `registry.go` sert
-// (`Flags[i]`) contre celui que le jeu passe au deser (`u32 @ entree_i + 0x100`, qui est le
-// `Flags[i+1]` de `registry.go` si le layout du jeu est le bon). C'est la mesure de l'ecart,
-// pas son postulat.
-func TestKF7ELevelShift(t *testing.T) {
-	root := os.Getenv(kf35RootEnv)
-	if root == "" {
-		t.Skipf("%s absent : instrument de mesure saute", kf35RootEnv)
-	}
-	for _, name := range kf35OracleFilms {
-		d := kf7eInflate(t, root+"/"+name)
-		reg, err := ParseRegistryChunk(d)
-		if err != nil {
-			t.Fatalf("registre %s : %v", name, err)
-		}
-		arch, ok := reg.Archetype(bipedDefaultStateTypeIndex)
-		if !ok {
-			t.Fatalf("archetype %d absent", bipedDefaultStateTypeIndex)
-		}
-		diff := 0
-		for i := range arch.Components {
-			if arch.Level(i) != arch.Level(i+1) {
-				diff++
-			}
-		}
-		t.Logf("[%s] %d composants · %d niveaux differents entre Flags[i] et Flags[i+1]",
-			name, len(arch.Components), diff)
-		for i, c := range arch.Components {
-			if arch.Level(i) == arch.Level(i+1) {
-				continue
-			}
-			t.Logf("    i%-2d %-58s registry.go L=%d | JEU L=%d", i, c, arch.Level(i), arch.Level(i+1))
-		}
-	}
 }
 
 // ---------------------------------------------------------------------------------------
@@ -255,26 +225,23 @@ func kf7ePass(f kf35Film, c kf7eCase) kf7eTally {
 
 // kf7eCases construit la matrice A/B : une REFERENCE (la lecture v4 de R7-a/R7-d portee par
 // la nouvelle marche, en-tete 64 bits, rien d'autre), puis chaque variable SEULE, puis les
-// cumuls dans l'ordre du plan.
+// cumuls dans l'ordre du plan. Toutes les configurations lisent le registre au cadrage du jeu
+// depuis le lot 1.2 : les lignes « niveaux decales » ont disparu parce que le DECALAGE a
+// disparu, pas parce qu'on aurait cesse de le mesurer.
 func kf7eCases() []kf7eCase {
 	ref := KeyframeFullStateOpt{HeaderBits: keyframeHeaderBits}
-	lvl := KeyframeFullStateOpt{HeaderBits: keyframeHeaderBits, LevelShift: true}
 	hdr := KeyframeFullStateOpt{HeaderBits: keyframeFullStateHeaderBits}
 	hdrSz := KeyframeFullStateOpt{HeaderBits: keyframeFullStateHeaderBits, SizeWords: true}
 	hdrSzDs := KeyframeFullStateOpt{HeaderBits: keyframeFullStateHeaderBits, SizeWords: true, DefaultState: true}
-	all := KeyframeFullStateOpt{HeaderBits: keyframeFullStateHeaderBits, SizeWords: true, LevelShift: true}
 	return []kf7eCase{
 		{Label: "REF    en-tete 64, sans rien (= v4 de R7-a/R7-d)", Opt: ref},
-		{Label: "(a)    REF + niveaux decales (layout du JEU)", Opt: lvl},
 		{Label: "(b1)   en-tete 108 bits SEUL", Opt: hdr},
 		{Label: "(b2)   en-tete 108 + deux R(32) de taille", Opt: hdrSz},
 		{Label: "(b3)   en-tete 108 + tailles + etat par defaut", Opt: hdrSzDs},
 		{Label: "(c)    REF + controle par composant", Opt: ref, Corr: true},
 		{Label: "(e)    REF + grammaire d'ECRIVAIN d'i0", Opt: ref, I0: true},
-		{Label: "(a+e)  REF + niveaux decales + i0 ecrivain", Opt: lvl, I0: true},
 		{Label: "(b2+e) en-tete 108 + tailles + i0 ecrivain", Opt: hdrSz, I0: true},
-		{Label: "(a+b2+e) niveaux + en-tete 108 + tailles + i0", Opt: all, I0: true},
-		{Label: "(a+b2+c+e) TOUT sauf l'etat par defaut", Opt: all, Corr: true, I0: true},
+		{Label: "(b2+c+e) TOUT sauf l'etat par defaut", Opt: hdrSz, Corr: true, I0: true},
 		{Label: "(d)    REF + portee DAT_144e61ea0 (brut 96)", Opt: ref, Scope: true},
 		{Label: "(d+e)  REF + portee + i0 ecrivain", Opt: ref, I0: true, Scope: true},
 		{Label: "(b2+d+e) en-tete 108 + tailles + portee + i0", Opt: hdrSz, I0: true, Scope: true},

@@ -1120,27 +1120,114 @@ jeu lit des entrées de `0x104` octets `[nom @ +0][u32 niveau @ +0x100]` depuis 
 « kind » = queue du nom voisin (0 sur 1 066 slots), et `traverse.go:1301` passe `arch.Level(i)`
 à chaque lecteur.
 
-- [ ] 1.2.1 Mesure AVANT de coder : liste des lecteurs de composants qui consomment le niveau
+CLOS le 2026-09-14 (branche `feat/decfilm-12`, 6 commits `32f795e2b` -> `845768285` + le commit
+de clôture).
+
+- [x] 1.2.1 Mesure AVANT de coder : liste des lecteurs de composants qui consomment le niveau
       (`consumeByNameCapturing` et en dessous) et, sur les mini-films, la distribution des
       niveaux `Level(i)` contre `Level(i+1)` par archétype consommé (ti=9, 11, 12, 35, 40, 42,
       43). Rapport court dans le journal du lot.
-- [ ] 1.2.2 `parseRegistry` lit à l'octet 8 avec l'entrée du jeu (nom à +0, niveau à +0x100) ;
+      FAIT — instrument permanent `registry_entree_jeu_test.go`
+      (`TestRegistreNiveauxVoisinsCensus`), qui lit les OCTETS BRUTS et non l'API : il se relit
+      donc des DEUX côtés du correctif sans être réécrit. **Rapport ci-dessous.**
+- [x] 1.2.2 `parseRegistry` lit à l'octet 8 avec l'entrée du jeu (nom à +0, niveau à +0x100) ;
       `Flags[i]` = niveau du composant `i` ; le faux « kind » disparaît ; `registryBlockTail` et
       son commentaire (« un cran plus loin ») corrigés ; `FilmMajorVersionFromHeader` inchangé.
-- [ ] 1.2.3 `shiftArchetypeLevels` et `KeyframeFullStateOpt.LevelShift` supprimés (le décalage
+      FAIT, avec DEUX écarts au libellé, tous deux dans le sens de la règle : (a) `Flags` est
+      RENOMMÉ `Levels` — il n'existe aucun champ « flags » dans une entrée, et garder le nom
+      aurait entretenu la lecture qu'on corrige ; (b) `slotName` devient `entryName` et prend
+      l'octet de l'ENTRÉE, parce qu'un appelant qui passerait l'ancien offset lirait le nom du
+      VOISIN en silence et que le compilateur ne pouvait pas le dire (5 sites de recherche
+      revisités un par un). `registryBlockTail` n'exempte plus AUCUN octet : mesuré avant de
+      coder sur les 7 bobines par build, même compte de blocs (49 ou 50) et queue nulle 7/7.
+- [x] 1.2.3 `shiftArchetypeLevels` et `KeyframeFullStateOpt.LevelShift` supprimés (le décalage
       n'existe plus) ; tests associés adaptés.
-- [ ] 1.2.4 Empreinte du registre (`registry_fingerprint.go`, `testdata/ecs_table.tsv`, table des
+      FAIT. `TestKF7ELevelShift` SUPPRIMÉ (il comparait `Level(i)` à `Level(i+1)` : sous le
+      cadrage du jeu il ne mesure plus rien) — vérifié absent de
+      `.ai/baselines/tests_pre_migration.jsonl`, aucune mise à jour de baseline due.
+      `kf7eCases` perd ses 4 lignes « niveaux décalés ». `keyframe_closure.go:55`
+      (« `LevelShift` reste FAUX : variable de recherche encore ouverte ») tombe avec l'option.
+- [x] 1.2.4 Empreinte du registre (`registry_fingerprint.go`, `testdata/ecs_table.tsv`, table des
       empreintes connues) recalculée sur la nouvelle lecture, provenance datée ; le test corpus
       `lot3_registre_compte_research_test.go` (50 blocs) reste vert.
-- [ ] 1.2.5 Test unitaire : sur le `chunk_00` d'un mini-film, le niveau du composant `i` de ti=35
+      FAIT. Le DOMAINE de l'empreinte change avec la lecture : `niveau | nom` au lieu de
+      `kind | flags | nom` (deux champs qui n'existent pas) — une empreinte qui hache un décalage
+      fige le décalage. `KnownRegistryFingerprint` `0x61e492dd4de7fd4e` ->
+      `0x36ca8c3d2a2f9b88`, provenance et domaine écrits au-dessus de la constante.
+      `ecs_table.tsv` : 189 lignes de `level` recalculées **depuis le film**, par une porte
+      NOMMÉE `-update-ecs-table-level` — voir la découverte D3 (1.2), qui est la raison pour
+      laquelle la correction n'a PAS été faite à la main.
+- [x] 1.2.5 Test unitaire : sur le `chunk_00` d'un mini-film, le niveau du composant `i` de ti=35
       est celui que `Level(i+1)` rendait avant (preuve de l'équivalence du décalage) et le
       terminateur d'un bloc est entièrement nul.
-- [ ] 1.2.6 `GrammarRev` montée. Si le corpus gate montre une PERTE : c'est un lecteur calibré sur
+      FAIT, ÉLARGI aux 7 bobines et à TOUS les archétypes (pas seulement ti=35), plus une
+      troisième affirmation : le nom du composant `i` est la chaîne NUL-terminée au PREMIER
+      octet de l'entrée `i`. Le test refuse de passer trivialement (il exige qu'au moins un
+      composant de ti=35 change de niveau entre les deux cadrages). Deux mutations jouées,
+      les deux ROUGES, arbre restauré.
+- [x] 1.2.6 `GrammarRev` montée. Si le corpus gate montre une PERTE : c'est un lecteur calibré sur
       le mauvais niveau ; sa correction est DANS le lot (elle bloque le gate), consignée nommément.
+      FAIT : `grammar-2026-09-14` -> `grammar-2026-09-14.2`. Le suffixe de rang est NÉ ICI, et
+      c'est la découverte D1 (1.2) : la forme datée ne séparait pas deux LOTS du même jour, si
+      bien que partager la révision du lot 1.1 aurait voulu dire régénérer le golden sur la
+      branche « révision inchangée, empreinte différente » — faire taire le ratchet dans le cas
+      précis qui le justifie. AUCUNE PERTE au corpus gate, donc AUCUN lecteur à corriger au
+      titre de cet item.
 
 Preuve : `replay-equiv` localise les balayages qui changent (attendu : ceux qui lisent un niveau
 qui diffère entre voisins) ; corpus gate zéro perte, gains nommés ; `SchemaVersion` montée si un
 octet cuit change.
+RÉSULTAT (2026-09-14) : **`replay-equiv` rend 20 IDENTIQUES sur 20**, les 50 étapes de balayage
+et l'artefact compris — AUCUN balayage ne change. Ce n'est pas une surprise mais une PRÉDICTION
+de la mesure 1.2.1 : les quatre instances dont le niveau change et qu'un déser consomme vivent
+en ti=14, 21, 30 et 44, et aucun record de ces archétypes n'est traversé par les balayages du
+corpus. Corollaire : **`SchemaVersion` NE MONTE PAS** (55 avant, 55 après) — aucun octet cuit ne
+change, donc aucune recuisson du parc n'est due par ce lot. Le corpus gate le confirme.
+LE CORRECTIF N'EST DONC PAS INERTE POUR AUTANT : la calibration de `recordStateParam` de
+`killsource` — qui, elle, traverse des records bruts — voit son ratio de discrimination bouger
+(1,002 -> 1,001 sur la mini-bobine, paramètre retenu et lignes publiées inchangés). C'est la
+seule sortie mesurable qui bouge, et elle est consignée comme divergence attendue en §5.
+
+##### Rapport 1.2.1 — les niveaux voisins, mesurés avant de coder
+
+Sur les sept bobines par build (`a521164d` HI_1_4_1, `60ae07c4` HI_1_8_0, `11de8353` HI_1_9_0,
+`111fa685` HI_1_10_0, `e5adf7b2` HI_1_11_0, `bcb6d393` HI_1_12_0, `fb1a1a72` HI_1_13_0) :
+
+Colonnes par archétype = « niveaux qui changent / composants ». Tableau REÉCRIT CELLULE PAR
+CELLULE depuis la sortie de l'instrument le 2026-09-14 (revue R1, constat C3 : treize cellules
+avaient été recopiées d'une ligne à l'autre) ; la sortie brute est collée en §5, ligne
+« 1.2 revue R1 (C3) », pour être rejouable.
+
+| Bobine | Composants | Niveaux qui changent | ti=9 | ti=11 | ti=12 | ti=35 | ti=40 | ti=42 | ti=43 |
+|---|---|---|---|---|---|---|---|---|---|
+| a521164d | 1 033 | 173 (16,7 %) | 1/9 | 3/34 | 6/28 | 19/64 | 18/48 | 10/21 | 10/40 |
+| 60ae07c4 | 1 031 | 178 (17,3 %) | 1/9 | 3/34 | 6/28 | 23/64 | 18/48 | 10/21 | 10/41 |
+| 11de8353 | 1 031 | 178 (17,3 %) | 1/9 | 3/34 | 6/28 | 23/64 | 18/48 | 10/21 | 10/41 |
+| 111fa685 | 1 031 | 186 (18,0 %) | 1/9 | 3/34 | 6/28 | 23/64 | 20/48 | 10/21 | 12/41 |
+| e5adf7b2 | 1 031 | 188 (18,2 %) | 1/9 | 3/34 | 6/28 | 25/64 | 20/48 | 10/21 | 12/41 |
+| bcb6d393 | 1 067 | 189 (17,7 %) | 1/10 | 3/34 | 6/28 | 25/64 | 20/48 | 10/21 | 12/41 |
+| fb1a1a72 | 1 067 | 189 (17,7 %) | 1/10 | 3/34 | 6/28 | 25/64 | 20/48 | 10/21 | 12/41 |
+
+LES LECTEURS QUI CONSOMMENT LE NIVEAU, relevés par `grep -n level traverse.go` — sept étiquettes,
+et rien d'autre dans tout le dispatch : `crew-order-component`, `tacmap-poiiconoffset`,
+`tacmap-poiicon`, `flock-destination-component`, `player-desired-respawn-location-component`,
+`flock-position-component`, `asset-transform-component`. Les 103 autres désérialiseurs ignorent
+l'argument `level` : un niveau qui bouge n'y change pas un bit.
+
+CE QUI FONDE LA PORTÉE DU LOT : ces sept étiquettes font **16 instances** dans le registre, et
+**4 seulement changent de niveau — identiquement sur les sept builds** :
+
+| Instance | ancien L | L du jeu | Lecteur |
+|---|---|---|---|
+| ti=14 i0 `crew-order-component` | 0 | 1 | `quantAxisWidth(level)` |
+| ti=21 i2 `flock-destination-component` | 1 | 2 | `quantAxisWidth(level)` |
+| ti=30 i0 `tacmap-poiicon` | 0 | 1 | `quantAxisWidth(level)` |
+| ti=44 i0 `asset-transform-component` | 0 | 1 | `quantAxisWidth(level)` × 5 |
+
+Les douze autres (ti=5 i12, ti=21 i3..i11 et i16, ti=30 i1) gardent le même niveau des deux
+côtés. **Aucun composant des archétypes que le lot demandait de mesurer (ti=9, 11, 12, 35, 40,
+42, 43) ne consomme le niveau** : leurs 1 à 23 niveaux qui bougent sont donc inertes, et c'est
+cette mesure — faite avant d'écrire une ligne — qui prédit le 20/20 identique de l'équivalence.
 
 #### Lot 1.3 — Les cinq états par défaut manquants — S, high
 
@@ -1725,6 +1812,13 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.1.2 | **D3 (1.1) — `NamedEvent` et `IdentifiedEvent` ne viennent PAS du pied.** Le plan supposait que l'un des deux porterait l'équipe du film. Sur pièces, les deux naissent du STATBORG (`StatRecords` -> `NamedEventsFrom` -> `IdentifyNamedEvents*`) et leur `Slot` est un slot d'entité statborg (10..24 pairs) ; le pied, lui, donne un `b36` de 0..3 qui n'est pas un `player_index`. AUCUN chemin ne relie `th10Event` à ces types. Le seul type exporté que le chemin du pied atteigne est `domain.ObjectiveEvent`, c'est-à-dire une ligne de `shared.match_objective_events` : y poser un champ aurait été un changement de SCHÉMA DB, interdit dans ce lot. D'où `FooterEvent`, en mémoire dans `objectiveevents`. NON TRAITÉ : le lot 1.7.3 devra brancher `domain.ObjectiveEvent.TeamID` (colonne qui EXISTE déjà, pointeur nullable) sur `FooterEvent.Team` au lieu du roster — pas de champ neuf à créer. | Lot 1.7.3 |
 | 2026-09-14 | 1.1.1 | **D4 (1.1) — doc inversée résiduelle dans `internal/domain/objective_events.go:12-13`.** L'en-tête justifie encore la nullabilité de `TeamID` par « team unreliable sur certains matchs » : c'est la phrase que ce lot réfute (l'octet 55 vaut 0 partout, l'octet 37 donne 665/665). NON TRAITÉ ici : `domain/` est hors du périmètre du lot, et la phrase redeviendra juste-ou-fausse selon ce que 1.7.3 fera de la colonne — la corriger avant ce basculement, c'est écrire deux fois. | Lot 1.7.3, dans le commit qui bascule la source de `TeamID` |
 | 2026-09-14 | 1.1.3 | **D5 (1.1) — le XUID d'un événement du pied est à 1 866 octets DU BLOC, et cette distance est CONSTANTE.** Mesure du 2026-09-14 sur TOUS les blocs de quatre films et deux builds (`bcb6d393` HI_1_12_0 17 blocs, `53ce4390` 34, `7344d24f` 71, `64e8adfa` 68 — HI_1_13_0) : `ebs - xstart = 14 926 bits` (1 865,75 octets) sur **190 blocs sur 190**, une seule valeur distincte, sans une exception. Le bloc de 60 octets que la production décode ne CONTIENT donc pas le XUID qu'elle lui attribue — elle l'ancre sur un XUID situé loin devant, et la fenêtre de recherche de 20 000 bits (`decodeTh10Block`) est plus large que cette distance de seulement 5 074 bits. Une constante non expliquée dont la marge est de 34 % n'est pas un fait établi : c'est un appariement qui tient par chance jusqu'au build qui l'allongera. NON TRAITÉ. | Lot 1.7.3 (qui rouvre ce bloc pour l'équipe) ou la famille 1.9 (D13 : lire ce que le film écrit plutôt qu'une fenêtre) |
+| 2026-09-14 | 1.2.6 | **D1 (1.2) — TRAITÉE DANS LE LOT (elle bloquait le gate). La forme de `GrammarRev` ne séparait pas deux LOTS du même jour.** `grammar_rev.go` disait « deux changements le même jour partagent la même révision — c'est voulu : ce qui compte est qu'un LOT de changements soit séparable du précédent ». Le lot 1.1 (2026-09-14) tenait déjà `grammar-2026-09-14` ; le lot 1.2 tombe le même jour et change VRAIMENT la grammaire. Partager la révision aurait obligé à régénérer le golden sur la branche « révision inchangée, empreinte différente » — c'est-à-dire à faire taire le ratchet dans le cas précis pour lequel il existe. La forme admet désormais un rang `.N` par LOT (`grammar-2026-09-14.2`), et `grammar_rev.go` porte la raison. `GrammarRev` n'a AUCUN consommateur hors de son garde-rail (vérifié par grep), donc le changement de forme ne casse rien. | traitée ici ; à relire au lot 2.6 si la révision acquiert un lecteur |
+| 2026-09-14 | 1.2.6 | **D2 (1.2) — la sortie de `killsource` PEUT changer, et `KillSourceDecoderRev` n'a PAS été montée : c'est une décision de production.** Mesure : sur `killsource/testdata/minibobine.golden`, UNE ligne sur 76 bouge, `recordStateParam=3 [croissance x1.002]` -> `x1.001` ; le paramètre retenu, les lignes de kill, la couverture, le contrôle négatif, les voies et la santé sont identiques à l'octet. La calibration RSP traverse des records BRUTS (`calibrate.go:157`), donc elle voit les quatre niveaux corrigés ; les lignes publiées, non — sur ce témoin. Monter `KillSourceDecoderRev` rouvre un backlog de redécodage des lignes en base : c'est un geste de PROD, réservé au pilote sur signal (D6). NON TRAITÉ. Le garde-rail `TestKillSourceDecoderRevSuitLeDecodeur` reste vert de lui-même (il ne hache que `film/killsource/`, que le lot ne touche pas) — ce silence est précisément ce qui rend la décision explicite nécessaire. | décision pilote : bump + backlog killsource, ou constat écrit que les lignes ne peuvent pas changer |
+| 2026-09-14 | 1.2.4 | **D3 (1.2) — TRAITÉE DANS LE LOT. Les annotations `niveau_jeu=N` d'`ecs_table.tsv` étaient INCOMPLÈTES : 178 lignes annotées pour 189 réellement décalées.** La table documentait l'écart depuis le lot R7-e ; corriger la colonne `level` À PARTIR DE CES ANNOTATIONS laissait 11 lignes fausses (mesuré : G2 rouge sur 11 clés, dont `35|63|biped-action-component` et `44|0|asset-transform-component`). La colonne est donc régénérée DEPUIS LE FILM par une porte nommée, et le README dit que c'est la seule colonne qui ne se corrige pas à la main. LEÇON GÉNÉRALE, non traitée : toute colonne de cette table qui est une donnée du film (et non un jugement humain) dérive silencieusement tant qu'elle se recopie à la main. | lot 2.6 (grammaire en instruments) : recenser les colonnes dérivées de la table ECS |
+| 2026-09-14 | 1.2 (équivalence) | **D4 (1.2) — le corpus d'équivalence ne porte AUCUN témoin des archétypes ti=14, 21, 30 et 44.** Les quatre instances dont le niveau change et qu'un déser consomme vivent dans ces archétypes ; sur les 20 films du corpus, les 50 étapes de balayage et l'artefact sont IDENTIQUES avant et après le correctif. Le corpus prouve donc l'absence de régression, mais il est AVEUGLE au gain : aucun film n'exerce le chemin corrigé. NON TRAITÉ — étendre le corpus exigerait un film portant des `crew`/`flock`/`tacmap`/`asset-transform`, c'est-à-dire probablement du PvE ou de la Forge, pas du matchmaking. | lot 3.6 (ports de composants) ou extension de corpus : nommer un témoin par archétype porté |
+| 2026-09-14 | 1.2 revue R1 (C2) | **D5 (1.2) — le contrôle G4 ne regarde que les `bits_typ` ENTIERS ; les approximatifs (`~100`, `~115`, `11-30`, « variable ») n'ont AUCUN garde-rail.** `ecs_table_guard_test.go` ne confronte au code que les cellules qui parsent en entier (`ecsRow.BitsTyp = -1` sinon) : la cellule `~100` d'`asset-transform-component` est restée fausse après le lot alors même que le lot changeait le niveau de ce composant, et c'est la revue qui l'a vue, pas le gate. NON TRAITÉ — contrôler un budget approximatif demande de distinguer largeur FIXE et largeur NOMINALE, ce que la table ne fait pas (même obstacle que la note de la ligne 935). | lot 2.6 (grammaire en instruments) : décider si `bits_typ` doit porter une forme contrôlable |
+| 2026-09-14 | 1.2 revue R2 (non retenu) | **D7 (1.2) — la cellule `code_source` de la ligne 976 d'`ecs_table.tsv` cite `traverse.go:921` alors que le `case` d'`asset-transform-component` est à `traverse.go:996`.** Décalage PRÉEXISTANT au lot 1.2 (la ligne n'a pas bougé de fichier, c'est le fichier qui a grandi au-dessus d'elle) ; le contrôle G1 confronte la table au code par le NOM du `case`, pas par le numéro de ligne, donc il reste vert. Remarque NON RETENUE par la ronde 2 comme hors périmètre du lot, et NON CORRIGÉE : une correction isolée de cette cellule laisserait les autres dériver de la même façon. | lot 2.6 (grammaire en instruments) : soit `code_source` cite un symbole plutôt qu'une ligne, soit un garde-rail vérifie le numéro |
+| 2026-09-14 | 1.2 revue R1 (C1), **complétée à la R2** | **D6 (1.2) — la troncature d'un `chunk_00` est NOMMÉE dans `Registry` mais n'a encore AUCUN LECTEUR, et le seul signal qui sort en exploitation attribue la mauvaise cause.** `Registry.Truncated` dit que le parse a épuisé le tampon sans rencontrer la fin structurelle, `Registry.TruncatedBytes` mesure la queue non couverte (elle peut valoir 0 sur une coupe alignée). Les TROIS appelants de production — relevé du 2026-09-14, `grep -rn "ParseRegistryChunk(" --include=*.go internal/ cmd/ | grep -v _test.go` : `filmdec/film_context.go:254`, `killsource/world.go:58` (via `killsource/decode.go:123`, paquet importé par `killcollector` ET par `replaybuild`), `killcollector/hits.go:113` — n'en journalisent aucun. Ce qui sort alors d'un `chunk_00` tronqué, c'est le WARN de `warnUnknownRegistry` (« grammaire des composants suspecte (mise a jour du jeu ?) ») : le bon signal, la mauvaise cause. NON TRAITÉ dans ce lot — brancher un journal touche trois appelants hors périmètre, et amender le message du WARN touche `registry_fingerprint.go` hors du constat. | **à compter au registre des replis du lot 1.9.0** (nom, fait, condition de déclenchement, date de pose, critère de retrait), ET y porter que `warnUnknownRegistry` doit dire « registre tronqué » quand `Truncated` est vrai |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -1951,6 +2045,31 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | C3 (P2) | ce commit | compte des appelants d'`Extract` RE-MESURÉ dans `CORPUS.txt` | `grep -rn "objectiveevents\.Extract(" --include=*.go apps/go-api/` rend **SIX** lignes, pas une : 1 hors test (`cmd/diag_weapons_v3/process.go:37`) et **5 dans des `_test.go` de `film/replay/`** (402, 170, 229, 174, 122). La CONCLUSION tient — aucun binaire de production ne passe par là, et `FooterEvents` n'a que DEUX appelants de production (`extract.go:168` et `:236`), tous deux sous `Extract` — mais elle repose sur six lignes |
 | 2026-09-14 | C4 (P2) | ce commit | `dir = filepath.Clean(dir)` UNE FOIS à l'entrée de la porte, avant toute dérivation | Avec un séparateur final (`…/53ce4390/`, ce que produit la complétion d'un shell), `filepath.Base` l'absorbait mais `filepath.Dir(filepath.Dir(dir))` remontait un cran trop bas : la porte échouait sur « `…/film_chunks/film_manifests/53ce4390.json` : chemin introuvable » pour une entrée valide. Rejouée **SANS et AVEC** le séparateur : **les deux PASS**, même log (`1930 octets identiques à la fixture`) |
 | 2026-09-14 | 1.1 revue R2 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet ./internal/analysis/objectiveevents/` ; `go test -count=1` (objectiveevents, filmdec, archlint) | gofmt **vide** ; vet **0 diagnostic** ; **3 paquets ok** (0,42 s / 8,04 s / 12,34 s). **Empreinte de grammaire INCHANGÉE et golden NON régénéré** : la ronde ne touche qu'un `_test.go` et deux fichiers de `testdata/`, tous deux hors de l'ensemble haché — `TestGrammarRevSuitLaGrammaire` est resté vert sans rien faire. Aucun test renommé ni supprimé : baseline JSONL intacte |
+| 2026-09-14 | 1.2.1 | `32f795e2b` | `go test ./...filmdec/ -run TestRegistreNiveauxVoisinsCensus -v` (mesure AVANT de coder, 7 bobines) | 1 031 à 1 067 composants par registre, **173 à 189 niveaux changent** (16,7 à 18,2 %) ; **16 instances consomment le niveau, 4 seulement changent**, identiques sur les 7 builds : ti=14 i0 crew-order (L0->L1), ti=21 i2 flock-destination (L1->L2), ti=30 i0 tacmap-poiicon (L0->L1), ti=44 i0 asset-transform (L0->L1). 0,04 s. Rapport complet dans le bloc du lot |
+| 2026-09-14 | 1.2.2 (mesure préalable) | `48ad2a4f4` | sonde jetable sur les 7 bobines : compte de blocs et nullité de la queue sous le cadrage à l'octet 8, AVANT de toucher `parseRegistry` | **même compte de blocs 7/7** (49 pour HI_1_4_1 à HI_1_11_0, 50 pour HI_1_12_0 et HI_1_13_0) et **queue entièrement nulle 7/7**. C'est ce qui autorise `registryBlockTail` à supprimer son exemption de 4 octets. Sonde retirée après mesure ; l'assertion permanente est `TestRegistreEntreeDuJeu` (1.2.5) |
+| 2026-09-14 | 1.2.4 | `1d824e632` | `ECS_TABLE_FILM=../killsource/testdata/minibobine_000d5950 go test ./...filmdec/ -run 'TestG1\|TestG2\|TestG3\|TestG4' -v` | **4 garde-rails VERTS** ; G2 confronte **1 067 lignes de registre à 1 067 lignes de table (+14 alias)**, 50 blocs, 49 porteurs, 0 écart. 0,15 s |
+| 2026-09-14 | 1.2.4 (tentative écartée) | — | correction de la colonne `level` À PARTIR des annotations `niveau_jeu=N` de la table (178 lignes) | **G2 ROUGE sur 11 clés** — les annotations étaient incomplètes (189 lignes réellement décalées). La colonne est donc régénérée DEPUIS LE FILM par la porte nommée `-update-ecs-table-level` : 189 lignes changées, 0 ligne absente du registre. Découverte D3 (1.2) |
+| 2026-09-14 | 1.2.4 | `1d824e632` | `LOT3_CORPUS=<cache> go test ./...filmdec/ -run TestLot3CompteRegistre -timeout 40m -v` (corpus ENTIER) | **1 351 chunk_00 lus, exit 0, 14,9 s.** C1 (fin structurelle = bloc d'identification) **TENU, 0 violation sur 1 346 films à section** ; C2' (fantômes au-delà) **TENU, 0** ; C3 (builds de référence : 50 blocs, 1 067 slots) **TENU, 0 sur 1 269 films**. La ré-implémentation indépendante de la règle et `parseRegistry` s'accordent sur les 1 351 films |
+| 2026-09-14 | 1.2.4 | `1d824e632` | `go test ./internal/api/wire/ -run TestFixtureFilmRegistreECSLisible -v` (tag cgo) | **PASS** — la nouvelle `KnownRegistryFingerprint` (`0x36ca8c3d2a2f9b88`) est bien celle du fixture de l'ouvrier |
+| 2026-09-14 | 1.2.5 | `0e99a81b1` | `go test ./...filmdec/ -run TestRegistreEntreeDuJeu` + DEUX mutations | vert sur les 7 bobines. Mutations, les deux **ROUGES** : `registryEntryLevelOffset` 0x100 -> 0xfc (« l'équivalence du décalage est rompue » dès ti=0 i0) ; `registryEntryBase` 8 -> 0 (« aucun composant de ti=35 ne change de niveau entre les deux cadrages »). Arbre restauré, `git diff` vide sur `registry.go` |
+| 2026-09-14 | 1.2.6 | `845768285` | `go test ./...filmdec/ -run GrammarRevSuitLaGrammaire -update-grammar-rev` puis sans le drapeau | porte **sortie en ÉCHEC** comme elle le doit (« 1 référence réécrite »), puis **vert**. `grammar-2026-09-14` -> `grammar-2026-09-14.2`, empreinte `7384ed41…` -> `7a9404b9…` (150 fichiers). Historique du golden complété |
+| 2026-09-14 | 1.2.6 | `845768285` | `go test ./...killsource/ -run TestGoldenMiniBobine` puis `-update`, pré-image conservée et `diff` complet | **UNE ligne sur 76** : `recordStateParam=3 [croissance x1.002]` -> `x1.001`. `axisW=14`, `indexW=1`, `recordStateParam=3` INCHANGÉS ; lignes de kill, couverture, contrôle négatif, voies et santé identiques à l'octet. **CLASSÉ DIVERGENCE ATTENDUE** : `RSPRatio` est le quotient best/worst du critère de croissance (`calibrate.go:157`), qui traverse des records bruts de tous les archétypes présents |
+| 2026-09-14 | 1.2 (communs) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` (5 racines) ; `go test` (13 paquets) ; `make go-api-lint` | gofmt **vide** ; vet **0 diagnostic** ; **13 paquets ok, exit 0** (filmdec 7,9 s · killsource 0,5 s · replay 14,8 s · archlint 15,5 s · objectiveevents 0,3 s) ; lint **0 issues** (`--new-from-merge-base=origin/main`), baseline non accrue |
+| 2026-09-14 | 1.2 (équivalence, régime COMPLET) | ce commit | `go run ./cmd/replay-equiv -repo-root <worktree>` sur les 20 films, 4 sous-ensembles séquentiels (jamais deux à la fois) | **20 IDENTIQUES sur 20, 0 différent, 0 écarté, 0 échec.** Sous-ensembles : 10 films 5 min 27 s · `084a804d`+`1c4c63c2` 5 min 12 s · `a349fea8`+`a521164d` 5 min 04 s · 6 films 4 min 04 s. **Total 19 min 47 s**, pic max 0,77 Gio (`a349fea8`). AUCUN des 50 balayages ne change, l'artefact compris — donc **aucun octet cuit ne bouge et `SchemaVersion` reste à 55**. Prédit par la mesure 1.2.1 : les 4 instances corrigées vivent en ti=14/21/30/44, qu'aucun balayage du corpus ne traverse (découverte D4 (1.2)) |
+| 2026-09-14 | 1.2 (corpus gate, régime COMPLET) | ce commit | `go run ./cmd/replay-corpus-gate --base=191933992 --parc-root <parc> --source-root <worktree> --manifest config/replay_corpus.toml` | **13 témoins, 0 PERTE, 0 GAIN, exit 0**, schéma 55 des deux côtés sur les 13. Durées : `bcb6d393` 15,2 s · `fb1a1a72` 31,5 s · `d9781168` 24,7 s · `c75f33b8` 15,4 s · `bf15f7ab` 14,2 s · `51ebbc0f` 19,2 s · `084a804d` 2 min 21,9 s · `0797ce72` 12,9 s · `111fa685` 34,5 s · `e5adf7b2` 49,6 s · `60ae07c4` 36,7 s · `a349fea8` 3 min 28,3 s · `bfecd02b` 36,8 s. **Total 23 min 10 s** (chaque témoin cuit DEUX fois, base et HEAD). Aucune perte, donc aucun lecteur à corriger au titre de 1.2.6 |
+| 2026-09-14 | 1.2 (clôture) | ce commit | doc inversée résiduelle corrigée dans `registry_fingerprint.go` (l'en-tête affirmait « le registre est bit-a-bit IDENTIQUE sur tous les films mesures a ce jour » deux écrans au-dessus du commentaire qui dit l'inverse) ; porte de régénération de la colonne `level` sortie dans `ecs_table_level_gate_test.go` (`ecs_table_guard_test.go` frôlait 500 lignes : 495 -> 442) | Correction de TEXTE seule : aucun octet lu ne change, mais l'empreinte de grammaire hache les octets — `TestGrammarRevSuitLaGrammaire` ROUGE (`7a9404b9…` -> `89d2ecac…`), golden régénéré par sa porte nommée, **révision INCHANGÉE** (`grammar-2026-09-14.2`) : c'est le MÊME lot, et la règle de `grammar_rev.go` est que deux changements d'un même lot la partagent. Puis gates rejoués : gofmt vide, vet 0, **13 paquets ok**, G1/G2/G3/G4 verts avec le film, lint **0 issues** |
+| 2026-09-14 | 1.2 revue R1 | ce commit | **revue adversariale ronde 1 : 2 P1 + 2 P2 recevables, 4 remarques non retenues, 29 conditions du relecteur tiennent** ; les 4 corrigées dans le lot | Le premier P1 (C1) est une PANIQUE de production introduite par le lot : borne de boucle relâchée -> `zeroTail` avec `from > to`. Le second (C2) est une doc inversée sur l'une des quatre instances que le lot désigne lui-même |
+| 2026-09-14 | 1.2 revue R1 (C1) | ce commit | REPRODUCTION des deux cas du relecteur, borne fautive REMISE : `go test ./...filmdec/ -run TestParseRegistreTronque` | **les deux PANIQUENT, aux offsets exacts du rapport** : `(A)` synthétique de 13 octets -> `slice bounds out of range [268:13]` ; `(B)` registre réel coupé à `registryEntryBase + 6*archetypeBlockSize + 41*registrySlotSize + 2` = 110 510 -> `[110768:110510]`. Pile : `zeroTail` <- `registryBlockTail` <- `parseRegistry`. Borne remise à des blocs ENTIERS : **les deux PASSENT** (0 et 6 blocs rendus, `TruncatedBytes` 5 et 10 662), et `TestParseRegistreCompletNEstPasTronque` tient le cas nominal (`TruncatedBytes = 0`, 50 archétypes) |
+| 2026-09-14 | 1.2 revue R1 (C1) | ce commit | fixtures synthétiques recadrées : `buildBlock` -> `buildRegistry` (en-tête + N blocs entiers) et `TestParseRegistryChunkAccepteUnRegistreInflate` | Elles construisaient `n*archetypeBlockSize` octets depuis l'octet 0 : sous une borne à blocs ENTIERS le dernier bloc est incomplet de huit octets et disparaît. `TestParseRegistrySynthetic` rend de nouveau **2 archétypes** et le test d'inflate **1 composant**. `KnownRegistryFingerprint` **INCHANGÉE** (`TestRegistreReelDeLaMiniBobine` vert) : la lecture nominale ne bouge pas |
+| 2026-09-14 | 1.2 revue R1 (C2) | ce commit | `traverse.go` (commentaire d'`asset-transform-component`) et `testdata/ecs_table.tsv` ligne 976 (`bits_typ`) | Le commentaire disait « ti44 i0 = L0 -> 6 bits/axe » alors que le lot met ce composant à **L1** et que `quantAxisWidth(1) = 7` : budget écrit 5 x (1+1+3x6) = 100, lu 5 x (1+1+3x7) = **115**. Les deux corrigés (`~100` -> `~115`). G4 ne contrôle que les `bits_typ` ENTIERS — consigné en découverte D5 (1.2) |
+| 2026-09-14 | 1.2 revue R1 (C3) | ce commit | `go test -count=1 ./...filmdec/ -run TestRegistreNiveauxVoisinsCensus -v` REJOUÉ, tableau du rapport 1.2.1 réécrit cellule par cellule. **Sortie brute, rejouable** : `a521164d` 1033 · 173 (16.7 %) / ti=9 1/9 · ti=11 3/34 · ti=12 6/28 · ti=35 19/64 · ti=40 18/48 · ti=42 10/21 · ti=43 10/40 — `60ae07c4` 1031 · 178 (17.3 %) / 1/9 · 3/34 · 6/28 · 23/64 · 18/48 · 10/21 · 10/41 — `11de8353` 1031 · 178 (17.3 %) / 1/9 · 3/34 · 6/28 · 23/64 · 18/48 · 10/21 · 10/41 — `111fa685` 1031 · 186 (18.0 %) / 1/9 · 3/34 · 6/28 · 23/64 · 20/48 · 10/21 · 12/41 — `e5adf7b2` 1031 · 188 (18.2 %) / 1/9 · 3/34 · 6/28 · 25/64 · 20/48 · 10/21 · 12/41 — `bcb6d393` 1067 · 189 (17.7 %) / 1/10 · 3/34 · 6/28 · 25/64 · 20/48 · 10/21 · 12/41 — `fb1a1a72` 1067 · 189 (17.7 %) / 1/10 · 3/34 · 6/28 · 25/64 · 20/48 · 10/21 · 12/41 | **13 cellules étaient fausses** (colonnes ti=35 / ti=40 / ti=43 des quatre dernières bobines recopiées des lignes 2-3 ; ti=9 de `bcb6d393` et `fb1a1a72` = 1/**10**). Les lignes GLOBAL et la table des quatre instances touchées étaient, elles, justes — c'est le tableau par archétype qui avait dérivé à la recopie |
+| 2026-09-14 | 1.2 revue R1 (C4) | ce commit | `awk 'END{print NR}' killsource/testdata/minibobine.golden` | **76 lignes** (5 592 octets), avant comme après. Les deux occurrences de « UNE ligne sur 77 » (§4 D2 et §5) corrigées en « UNE ligne sur 76 » |
+| 2026-09-14 | 1.2 revue R1 (vocabulaire) | ce commit | `grep -n 'flags(registre)\|flags du registre' *.go` | 4 occurrences (`components_movement.go:509,527`, `components_world.go:12`, `traverse.go:548`) : **0 après correction**. Le champ s'appelle `Archetype.Levels` depuis 1.2.2, il n'existe aucun « flags » dans une entrée de registre |
+| 2026-09-14 | 1.2 revue R1 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` + `go test -count=1` sur `./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/sync/killcollector/` ; `make go-api-lint` | gofmt **vide** ; vet **0 diagnostic** ; **10 paquets ok, exit 0** ; lint **0 issues**. `TestGrammarRevSuitLaGrammaire` a rougi (`registry.go`, `traverse.go`, `components_*.go` changent) : golden régénéré par `-update-grammar-rev`, **`GrammarRev` INCHANGÉE** (`grammar-2026-09-14.2`) — c'est le MÊME lot, et la règle de `grammar_rev.go` est que deux changements d'un même lot la partagent. Aucun test renommé ni supprimé : baseline JSONL intacte (le test de C1 porte un nom NEUF) |
+| 2026-09-14 | 1.2 revue R2 | ce commit | **revue adversariale ronde 2 (corrections de la R1 seulement) : 0 P0, 0 P1, 2 P2 recevables, 1 non retenu, 23 conditions tiennent** ; les 2 corrigés, les 4 corrections de la R1 font ce qu'elles prétendent | La boucle converge : 2 P1 (R1) -> **0** (R2). Le non retenu est consigné en découverte D7 (1.2) — cellule `code_source` décalée, préexistante, G1 la voit par le nom du `case` |
+| 2026-09-14 | 1.2 revue R2 (P2-1) | ce commit | `Registry.Truncated bool` ajouté (= le parse a ÉPUISÉ le tampon), `TruncatedBytes` gardé comme MESURE (peut valoir 0) ; sous-test `(C)` : coupe alignée à `registryEntryBase + 6*archetypeBlockSize` sur la bobine versionnée | Une coupe SUR une frontière de bloc ne laisse aucun octet de queue : `TruncatedBytes = 0` et la troncature redevenait MUETTE, dans le mode de panne même que le champ devait fermer. **MUTATION JOUÉE** : `reg.Truncated = epuise && queue > 0` (exactement le défaut trouvé) -> seul le sous-test `(C)` ROUGIT (« Truncated = false sur un tampon coupé »), `(A)` et `(B)` restent verts ; arbre restauré. `TestParseRegistreCompletNEstPasTronque` assert désormais aussi `Truncated == false` |
+| 2026-09-14 | 1.2 revue R2 (P2-2) | ce commit | `grep -rn "ParseRegistryChunk(" --include=*.go internal/ cmd/ \| grep -v _test.go`, sortie collée à côté du compte dans les trois textes | **TROIS appelants de production, pas deux** : `filmdec/film_context.go:254`, `killsource/world.go:58` (via `killsource/decode.go:123`, paquet importé par `killcollector` ET par `replaybuild`), `killcollector/hits.go:113` ; plus `cmd/rdata_weapon_scan/main.go` (756, 765, 798), outil de recherche hors production. Corrigé dans `registry.go`, `registry_tronque_test.go` et la découverte D6. **Deuxième dénombrement d'appelants faux du chantier : désormais tout compte d'appelants écrit dans un texte est produit par un grep collé à côté du compte** |
+| 2026-09-14 | 1.2 revue R2 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` + `go test -count=1` sur `./internal/games/halo_infinite/film/filmdec/ ./internal/archlint/ ./internal/sync/killcollector/ ./internal/games/halo_infinite/film/killsource/` | gofmt **vide** ; vet **0 diagnostic** ; **4 paquets ok, exit 0**. `TestGrammarRevSuitLaGrammaire` a rougi (`registry.go`) : golden régénéré par `-update-grammar-rev`, **`GrammarRev` INCHANGÉE** (`grammar-2026-09-14.2`, même lot). `KnownRegistryFingerprint` **inchangée** (`TestRegistreReelDeLaMiniBobine` vert). Aucun test renommé : baseline JSONL intacte |
 
 ## 6. Protocole de reprise de session
 
@@ -1961,4 +2080,3 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
    l'utilisateur, jamais tranchée en silence.
 4. Reprendre au lot courant : exécuteur relancé avec le brief du lot (état réel constaté sur
    pièces, pas le plan de mémoire).
-

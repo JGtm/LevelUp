@@ -13,11 +13,13 @@ package filmdec
 // CE QUE CET INSTRUMENT MESURE, SANS SEUIL A DECLARER (recensement, pas verdict) :
 //   1. taille inflatee, empreinte, nombre de blocs, RESTE en fin de buffer ;
 //   2. occupation slot par slot : combien de slots nommes par bloc, ou s'arrete le nom ;
-//   3. les octets NON NULS hors des zones lues par `parseRegistry` (kind, flags, nom) —
+//   3. les octets NON NULS hors des zones lues par `parseRegistry` (nom, NUL de fin, niveau) —
 //      c'est la seule facon de dire « il n'y a rien d'autre » ou « il y a autre chose » ;
 //   4. toutes les chaines ASCII imprimables de 4 caracteres ou plus, avec leur position, et
-//      la part d'entre elles qui ne commence PAS a `slot+8` (donc hors registre connu) ;
-//   5. le champ `kind` (u32 a slot+0), que `parseRegistry` jette ;
+//      la part d'entre elles qui ne commence PAS en tete d'entree (donc hors registre connu) ;
+//   5. le u32 a `slot+0`, longtemps pris pour un champ `kind` : le lot 1.2 (2026-09-14) a
+//      montre que c est la queue de bourrage du nom de l entree PRECEDENTE (le registre
+//      commence a l octet 8), d ou les 0 que ce recensement mesure ;
 //   6. la comparaison octet a octet des buffers inflates de plusieurs films.
 //
 // Garde CHUNK00_FILMS (liste separee par `;` de repertoires de film). Aucun code de
@@ -61,20 +63,21 @@ func readChunk00(t *testing.T, dir string) (raw, data []byte) {
 	return b, filmsource.Inflate(b)
 }
 
-// slotSpan decrit la zone REELLEMENT lue par parseRegistry dans un slot nomme :
-// [off, off+8) = kind|flags, [off+8, off+8+len(nom)) = le nom, puis le NUL terminateur.
+// slotSpan decrit la zone REELLEMENT lue par parseRegistry dans une entree nommee. `off` est
+// l'octet de l'ENTREE (cadrage du jeu, lot 1.2) : [off, off+len(nom)) = le nom, puis son NUL
+// terminateur, et [off+registryEntryLevelOffset, +4) = le u32 de niveau.
 type slotSpan struct {
 	off, nameLen int
 }
 
-// parsedSpans rejoue le decoupage de parseRegistry et rend les slots nommes.
+// parsedSpans rejoue le decoupage de parseRegistry et rend les entrees nommees.
 func parsedSpans(data []byte) []slotSpan {
 	var out []slotSpan
 	for b := 0; b < len(data)/archetypeBlockSize; b++ {
-		base := b * archetypeBlockSize
+		base := registryEntryBase + b*archetypeBlockSize
 		for s := 0; s < archetypeBlockSlots; s++ {
 			off := base + s*registrySlotSize
-			name := slotName(data, off)
+			name := entryName(data, off)
 			if name == "" {
 				break
 			}
@@ -84,12 +87,15 @@ func parsedSpans(data []byte) []slotSpan {
 	return out
 }
 
-// couvert construit le masque des octets que parseRegistry lit vraiment (kind, flags, nom,
-// NUL de fin de nom).
+// couvert construit le masque des octets que parseRegistry lit vraiment (le nom, son NUL de
+// fin, et le u32 de niveau en queue d'entree).
 func couvert(data []byte, spans []slotSpan) []bool {
 	m := make([]bool, len(data))
 	for _, s := range spans {
-		for i := s.off; i < s.off+8+s.nameLen+1 && i < len(m); i++ {
+		for i := s.off; i < s.off+s.nameLen+1 && i < len(m); i++ {
+			m[i] = true
+		}
+		for i := s.off + registryEntryLevelOffset; i < s.off+registrySlotSize && i < len(m); i++ {
 			m[i] = true
 		}
 	}
@@ -196,7 +202,7 @@ func occupationBlocs(t *testing.T, data []byte, nBlocks int) {
 	for b := 0; b < nBlocks; b++ {
 		n := 0
 		for s := 0; s < archetypeBlockSlots; s++ {
-			if slotName(data, b*archetypeBlockSize+s*registrySlotSize) == "" {
+			if entryName(data, registryEntryBase+b*archetypeBlockSize+s*registrySlotSize) == "" {
 				break
 			}
 			n++
@@ -232,7 +238,7 @@ func zonesNonNulles(t *testing.T, data []byte, lu []bool) {
 }
 
 // TestChunk00Chaines recense toutes les chaines ASCII et isole celles qui ne sont pas des
-// noms de composant a `slot+8` — c'est la ou se cacherait une SECONDE table de noms.
+// noms de composant en TETE D'ENTREE — c'est la ou se cacherait une SECONDE table de noms.
 func TestChunk00Chaines(t *testing.T) {
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
 	for _, dir := range dirs {
@@ -240,7 +246,7 @@ func TestChunk00Chaines(t *testing.T) {
 		chaines := chainesASCII(data, 4)
 		nomsSlots := map[int]bool{}
 		for _, s := range parsedSpans(data) {
-			nomsSlots[s.off+8] = true
+			nomsSlots[s.off] = true
 		}
 		var hors []run
 		for _, c := range chaines {
@@ -248,7 +254,7 @@ func TestChunk00Chaines(t *testing.T) {
 				hors = append(hors, c)
 			}
 		}
-		t.Logf("=== %s === %d chaines >=4 car. ; %d a slot+8 (noms de composant) ; %d HORS",
+		t.Logf("=== %s === %d chaines >=4 car. ; %d en tete d entree (noms de composant) ; %d HORS",
 			filepath.Base(dir), len(chaines), len(chaines)-len(hors), len(hors))
 		for i, c := range hors {
 			if i == 60 {
@@ -262,8 +268,10 @@ func TestChunk00Chaines(t *testing.T) {
 	}
 }
 
-// TestChunk00Kind publie le champ `kind` (u32 a slot+0) que parseRegistry jette : combien de
-// valeurs distinctes, et si un meme nom porte toujours le meme kind.
+// TestChunk00Kind publie le u32 a `slot+0`, longtemps tenu pour un champ `kind` : combien de
+// valeurs distinctes, et si un meme nom porte toujours la meme. C EST CE RECENSEMENT QUI A
+// TRANCHE (0 sur 1 066 des 1 067 slots nommes) : il n y a pas de champ la, seulement la queue
+// de bourrage du nom de l entree precedente — lot 1.2, 2026-09-14.
 func TestChunk00Kind(t *testing.T) {
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
 	for _, dir := range dirs {
@@ -271,8 +279,8 @@ func TestChunk00Kind(t *testing.T) {
 		parNom := map[string]map[uint32]int{}
 		parKind := map[uint32]int{}
 		for _, s := range parsedSpans(data) {
-			nom := slotName(data, s.off)
-			k := leU32(data, s.off)
+			nom := entryName(data, s.off)
+			k := leU32(data, s.off-registryEntryBase)
 			parKind[k]++
 			if parNom[nom] == nil {
 				parNom[nom] = map[uint32]int{}

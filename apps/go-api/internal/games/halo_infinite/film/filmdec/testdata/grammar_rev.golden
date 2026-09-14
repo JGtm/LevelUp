@@ -42,4 +42,38 @@
 #               `grammar_rev.go`, et aucun offset ne bouge. L empreinte, elle, BOUGE — et c est
 #               le premier effet visible de l elargissement du lot 1.1.5 : le meme geste, la
 #               veille, n aurait fait rougir personne.
-grammar-2026-09-14	7384ed415b9a6256f3e51438f770f11953574637f7a3241acad678414f99f3fe
+#   2026-09-14  grammar-2026-09-14.2  lot 1.2 : LE REGISTRE COMMENCE A L OCTET 8. `parseRegistry`
+#               lit l entree de 0x104 octets du jeu (`[nom @ +0x00][u32 niveau @ +0x100]`) au lieu
+#               d un slot suppose `[u32 kind][u32 flags][nom @ +8]` depuis l octet 0. Les NOMS ne
+#               bougent pas ; le NIVEAU de 173 a 189 composants par registre change, dont QUATRE
+#               que le dispatch consomme (ti=14 i0 crew-order, ti=21 i2 flock-destination,
+#               ti=30 i0 tacmap-poiicon, ti=44 i0 asset-transform). L empreinte du registre passe
+#               au domaine `niveau | nom` et sa valeur connue est recalculee.
+#               PREMIER SUFFIXE DE RANG : le lot 1.1 tenait deja `grammar-2026-09-14`. Partager
+#               sa revision aurait voulu dire regenerer ce golden sur la branche « revision
+#               inchangee, empreinte differente » — soit faire taire le ratchet dans le cas
+#               precis qui le justifie. La forme de `GrammarRev` admet donc un `.N` par LOT du
+#               meme jour, et `grammar_rev.go` le dit.
+#   2026-09-14  grammar-2026-09-14.2  lot 1.2 (suite, MEME LOT donc MEME REVISION) : l en-tete de
+#               `registry_fingerprint.go` affirmait encore « le registre est bit-a-bit IDENTIQUE
+#               sur tous les films mesures a ce jour » deux ecrans au-dessus du commentaire qui
+#               dit l inverse (49 blocs avant HI_1_12_0, 50 ensuite). Correction de texte SEULE :
+#               aucun octet lu ne change, l empreinte bouge parce qu elle hache les octets.
+#   2026-09-14  grammar-2026-09-14.2  lot 1.2 revue R1 (MEME LOT donc MEME REVISION) : deux
+#               corrections recevables du relecteur. (C1) la borne de la boucle de blocs revient
+#               a des blocs ENTIERS — la borne relachee par 1.2.2 entrait dans un bloc incomplet
+#               et faisait PANIQUER `zeroTail` (`from > to`) sur un chunk_00 tronque, sans aucun
+#               recover chez les deux appelants de production ; `Registry.TruncatedBytes` nomme
+#               desormais la queue non couverte. (C2) le commentaire d `asset-transform-component`
+#               disait « ti44 i0 = L0 -> 6 bits/axe » alors que ce lot met le composant a L1 :
+#               budget 100 -> 115 bits. La LECTURE NOMINALE ne change pas — `KnownRegistryFingerprint`
+#               est inchangee et l equivalence reste a 20/20.
+#   2026-09-14  grammar-2026-09-14.2  lot 1.2 revue R2 (MEME LOT donc MEME REVISION) : deux P2.
+#               (P2-1) un chunk_00 coupe EXACTEMENT sur une frontiere de bloc ne laisse aucun
+#               octet de queue, donc `TruncatedBytes = 0` et la troncature redevenait muette ;
+#               `Registry.Truncated` porte desormais le FAIT (le parse a epuise le tampon) et
+#               `TruncatedBytes` n en est que la mesure. (P2-2) « les DEUX appelants de
+#               production » etait faux : ils sont TROIS (film_context.go:254, killsource/
+#               world.go:58, killcollector/hits.go:113), releve par grep colle au texte.
+#               Aucune largeur, aucun offset, aucune lecture nominale ne change.
+grammar-2026-09-14.2	8e118038d1243ac18d8f31bca07e47bcf40ab01be028ccdf1ae8187e1898684c

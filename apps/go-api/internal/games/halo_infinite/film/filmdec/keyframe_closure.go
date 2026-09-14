@@ -52,9 +52,10 @@ type KeyframeClosureStat struct {
 // keyframeClosureOpt : LA FORME JUSTE, celle de `FUN_142e2bfd0`, et rien d'autre.
 //
 // En-tete de 108 bits, les deux mots de taille autour de l'etat par defaut, et l'etat par defaut
-// joue par le deserialiseur de l'archetype. `LevelShift` reste FAUX : c'est une variable de
-// recherche encore ouverte (plan R7-e), et une mesure de reference ne se prend pas sous une
-// option non tranchee. Ce sont EXACTEMENT les options de l'instrument de recherche
+// joue par le deserialiseur de l'archetype. Il n'y a plus d'option de NIVEAU a regler depuis le
+// lot 1.2 (2026-09-14) : le registre se lit au cadrage du jeu, donc `Archetype.Levels` porte
+// deja le niveau que `FUN_142e2c690` passe au deserialiseur, et l'ancien `LevelShift` n'aurait
+// plus rien a decaler. Ce sont EXACTEMENT les options de l'instrument de recherche
 // (`imagecle_fermeture_research_test.go`, `imcOptEtatComplet`) : la mesure de production et
 // l'oracle de recherche doivent dire la meme chose du meme film, sinon aucun des deux ne prouve
 // rien.

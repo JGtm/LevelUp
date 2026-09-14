@@ -12,9 +12,12 @@ package filmdec
 // La position d'objet utilise L = 16 câblé au site d'appel (MOV R9D,0x10 en 1406d008a), donc
 // 2*q = 1/60 et W = min(26, ceilLog2(ceil(60*extent))). Ni les largeurs ni les bornes ne
 // transitent par le bitstream, et le REGISTRE chunk_00 n'y contribue pas : il est
-// BIT-À-BIT IDENTIQUE d'un film à l'autre (vérifié Cliffhanger vs Catalyst, FNV des 1067
-// slots noms+flags = a413610cd08e4355 des deux côtés). Le flags=0 du composant i0 de
-// l'archétype biped n'est donc PAS un niveau de précision exploitable.
+// BIT-À-BIT IDENTIQUE d'un film à l'autre DANS UN BUILD (vérifié Cliffhanger vs Catalyst,
+// FNV des 1 067 entrées identique des deux côtés — la valeur citée ici jusqu'au lot 1.2,
+// a413610cd08e4355, portait sur un domaine de hachage qui n'existe plus ; l'empreinte vivante
+// est KnownRegistryFingerprint). Le niveau que le registre porte pour le composant i0 de
+// l'archétype biped — 0 sous l'ancien cadrage, 1 sous celui du jeu (lot 1.2) — n'est donc PAS
+// un niveau de précision exploitable, ni dans un cas ni dans l'autre.
 //
 // CE QUI EST DISPONIBLE HORS LIGNE : la LONGUEUR des champs se lit directement dans le
 // bitstream. Pour un champ quantifié de largeur W dont la valeur bouge peu d'une frame à la
