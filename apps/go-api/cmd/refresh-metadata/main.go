@@ -53,6 +53,8 @@ func main() {
 		err = runCSRSeasons(cfg, args, false)
 	case "medals":
 		err = runMedals(cfg, args)
+	case "medal-images":
+		err = runMedalImages(cfg, args)
 	case "assets":
 		err = runAssets(cfg, args)
 	case "staging":
@@ -413,6 +415,9 @@ Sous-commandes :
   seasons     [--title-id halo_infinite] [--force]   Saisons standards
   csr-seasons [--title-id halo_infinite] [--force]   Saisons CSR
   medals      [--title-id halo_infinite] [--force]   Médailles (staging + garde-fous)
+  medal-images [--title-id halo_infinite] [--player GT] [--download]
+              Audit du référentiel d'icônes static/medals/{slug}/ (rapport seul
+              sans --download ; aucune écriture DuckDB)
   assets      [--title-id halo_infinite] [--write]   Assets diff (rapport sans écriture par défaut)
   staging     Crée les tables staging medals/assets (schéma seulement)
   all         [--title-id halo_infinite] [--force]   Toutes les opérations ci-dessus

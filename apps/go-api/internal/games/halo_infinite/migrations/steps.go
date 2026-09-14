@@ -524,6 +524,51 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
+		{
+			// Médaille VIP « Clash of Kings » (id 1053114074) : présente dans la
+			// taxonomie (medal_category_table.go, catégorie vip) et dans les données
+			// de match, mais ABSENTE du catalogue officiel GameCMS
+			// (hi/Waypoint/file/medals/metadata.json, 151 médailles au 2026-09-14 —
+			// mesuré par `refresh-metadata medal-images`). La base locale ne portait
+			// qu'une ligne bouchon « Unknown / Inconnue », affichée telle quelle sur la
+			// page Médailles.
+			//
+			// Nom et description ANGLAIS : SpartanRecord src/Objects/Helpers/AllMedals.tsx
+			// (source déjà utilisée pour medal_category_table.go), confirmés
+			// indépendamment par la table de noms du film
+			// (games/halo_infinite/film/medalname/table.go, couple 50/157 mesuré sur
+			// 44 568 events). AUCUN libellé FR n'existe dans une source officielle :
+			// les colonnes FR restent VIDES (NOT NULL sur la table) — la chaîne
+			// COALESCE locale-aware (platform/duckdb/medal_label_resolve.go) neutralise
+			// une chaîne vide par NULLIF et sert alors le nom anglais, ce qui est exact,
+			// au lieu d'un « Inconnue » faux.
+			Name:        "seed_clash_of_kings_medal",
+			TargetDB:    migration.TargetMetadata,
+			Description: "medal_definitions : médaille VIP Clash of Kings (1053114074), absente du catalogue GameCMS",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					INSERT INTO medal_definitions
+						(medal_name_id, name_fr, name_en, description_fr, description_en,
+						 is_custom, difficulty_index, type_index, difficulty, medal_type, personal_score)
+					VALUES
+						(1053114074, '', 'Clash of Kings',
+						 '', 'Kill a VIP while being a VIP yourself',
+						 FALSE, 0, 1, 'Normal', 'mode', 0)
+					ON CONFLICT (medal_name_id) DO NOTHING;
+
+					UPDATE medal_definitions
+					SET name_en        = 'Clash of Kings',
+					    description_en = 'Kill a VIP while being a VIP yourself',
+					    name_fr        = '',
+					    description_fr = '',
+					    difficulty     = 'Normal',
+					    medal_type     = 'mode',
+					    type_index     = 1
+					WHERE medal_name_id = 1053114074
+					  AND name_en = 'Unknown';
+				`)
+			},
+		},
 		// Famille xbox_achievement_definitions (base + 4 ALTER/DELETE) → migrée ATOMIQUEMENT (b8).
 		{
 			Name:        "add_xbox_achievement_definitions",
