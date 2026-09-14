@@ -93,6 +93,8 @@ bloque le gate du lot courant.
 | V5 | `analysis/filmsource` passe sous `film/internal/source` au pas 5 | ok |
 | V6 | M4 (publication) fait partie du chantier, en dernier ; arrêt possible après M3 sans dette | ok |
 | V7 | Mini-films par build : au plus 1 Mio chacun, `chunk_00` obligatoire, un chunk d'image-clé, le pied ; 7 builds | ok |
+| V8 (2026-09-14) | Revue adversariale EN FIN DE JALON seulement, plus par lot (décision utilisateur après les lots 1.0-1.2 : trois lots, six rondes, 2 h à 3 h par lot). Par lot : vérification sur pièces par le pilote (grep, gates rejoués, mutations de l'exécuteur) ; en fin de jalon : fan-out de relecteurs aveugles, un par lentille, sur le diff des lots NON relus (M1 : `783ae680d..<HEAD M1>`), deux rondes au plus, puis fusion dans `feat/v75`. Coût accepté : un défaut introduit par un lot n'est vu qu'à la fin du jalon, après que d'autres lots ont bâti dessus | ok |
+| V9 (2026-09-14) | GO utilisateur pour la clôture de M1 : fusion dans `feat/v75`, recuisson du parc, backlog killsource — sans nouvelle demande, dès que le dernier lot de M1 est fusionné et la revue de jalon close | ok |
 
 ## 2. Organisation
 
@@ -180,7 +182,8 @@ avant toute analyse.
 
 1. gates du lot verts, sorties propres ; 2. tous les items statués `[x]` / `[~]` / `[!]` ;
 3. ce fichier mis à jour (cases + §4 + §5) dans le dernier commit de code du lot (pas un commit
-à part : `paths-ignore` de la CI) ; 4. revue adversariale, constats corrigés ; 5. fusion dans
+à part : `paths-ignore` de la CI) ; 4. vérification sur pièces par le pilote (V8 : la revue
+adversariale est en fin de jalon depuis le 2026-09-14 ; les lots 0.A à 1.2 ont eu la leur) ; 5. fusion dans
 l'intégration, push, CI verte au niveau job ; 6. entrée `.ai/thought_log.md` ; 7. point d'étape
 à l'utilisateur (fait / non fait et pourquoi / découvert).
 
@@ -1498,10 +1501,16 @@ de `filmdec` ; c'est une CAUSE à corriger (lot B-bis), pas une conversion.
 `replaybuild/zones.go:141` — porter `GameVariantCategory` dans `port.MatchFacts` (la plus petite
 correction du périmètre, aucun décodage).
 
-**Clôture M1** : fusion dans `feat/v75` (V3) ; recuisson du parc + backlog killsource sur signal
-(tag git du binaire précédent, artefacts précédents conservés jusqu'à validation du corpus gate,
-architecture §10) ; corpus d'équivalence re-figé UNE fois (`-update` sur tout le corpus,
-consigné) : c'est l'oracle de M2.
+**Clôture M1** (GO utilisateur donné le 2026-09-14, V9) : 1. revue adversariale de jalon (V8)
+sur `783ae680d..<HEAD M1>` — fan-out de relecteurs aveugles, un par lentille : grammaire et
+replis nommés (D10/D13/D14), entrées tronquées et paniques, textes et chiffres rejoués, ce que les
+tests ne couvrent pas (L6) ; deux rondes au plus, P0/P1 corrigés, P2 consignés ; 2. régime
+complet (équivalence 20 films + corpus gate 13 témoins à `--base 783ae680d`) ; 3. fusion dans
+`feat/v75` (V3 : fetch + merge + gates locaux, fenêtre de 5 min demandée aux sessions du
+checkout principal, push, signal de fin) ; 4. recuisson du parc + backlog killsource (tag git du
+binaire précédent, artefacts précédents conservés jusqu'à validation du corpus gate, architecture
+§10) ; 5. corpus d'équivalence re-figé UNE fois (`-update` sur tout le corpus, consigné) : c'est
+l'oracle de M2.
 
 ---
 
