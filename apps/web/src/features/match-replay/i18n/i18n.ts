@@ -382,18 +382,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       outcomeKeptFmt: (count) => `Gardé sans l'utiliser : ${count}`,
       outcomeDroppedFmt: (count) => `Lâché en mourant : ${count}`,
       outcomeTotalTakenFmt: (count) => `${count} objet${count > 1 ? 's' : ''} pris`,
-      coverageUnknownOriginFmt: (count) =>
-        `${count} pose${count > 1 ? 's' : ''} d'origine inconnue (ni déployée, ni lâchée avec certitude).`,
-      powerupPads: 'Socles de bonus de puissance vidés',
-      powerupPadsHint:
-        "Combien de fois un socle de bonus s'est vidé pendant le match. Ce compte ne descend sur AUCUN joueur, et ce n'est pas un oubli : un socle de bonus s'identifie par un nom, pas par un identifiant d'objet, donc aucun ramassage du film ne peut lui être rattaché. Un même socle peut se vider plusieurs fois — le bonus réapparaît.",
-      powerupPadsDenomFmt: (pads) =>
-        `sur ${pads} socle${pads > 1 ? 's' : ''} mesuré${pads > 1 ? 's' : ''}`,
-      coverageActiveFmt: (lives) => `États actifs mesurés sur ${lives} vies publiées.`,
-      coverageGrappleFmt: (pulls, lives) =>
-        `${pulls} traction${pulls > 1 ? 's' : ''} de grappin lue${pulls > 1 ? 's' : ''}, réparties sur ${lives} vie${lives > 1 ? 's' : ''}.`,
-      unattributedFmt: (count) =>
-        `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors des deux vues.`,
+      coverageReserveFmt: (count) =>
+        `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} ${count > 1 ? 'restent' : 'reste'} hors des deux vues : le film n'en nomme ni l'auteur ni l'origine.`,
       killBadgeFmt: {
         camo: (kills) => `${kills} frags sous camouflage`,
         overshield: (kills) => `${kills} frags sous surbouclier`,
@@ -811,17 +801,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       outcomeKeptFmt: (count) => `Kept without using it: ${count}`,
       outcomeDroppedFmt: (count) => `Dropped on death: ${count}`,
       outcomeTotalTakenFmt: (count) => `${count} object${count > 1 ? 's' : ''} taken`,
-      coverageUnknownOriginFmt: (count) =>
-        `${count} placement${count > 1 ? 's' : ''} of unknown origin (neither deployed nor dropped for certain).`,
-      powerupPads: 'Power-up pads emptied',
-      powerupPadsHint:
-        'How many times a power-up pad went empty during the match. This count is attached to NO player, and that is not an oversight: a power-up pad is identified by a name, not by an object id, so no pickup in the film can be tied to it. One pad can empty several times — the power-up respawns.',
-      powerupPadsDenomFmt: (pads) => `across ${pads} measured pad${pads > 1 ? 's' : ''}`,
-      coverageActiveFmt: (lives) => `Active states measured over ${lives} published lives.`,
-      coverageGrappleFmt: (pulls, lives) =>
-        `${pulls} grapple pull${pulls > 1 ? 's' : ''} read, spread over ${lives} ${lives > 1 ? 'lives' : 'life'}.`,
-      unattributedFmt: (count) =>
-        `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside both views.`,
+      coverageReserveFmt: (count) =>
+        `${count} measured gesture${count > 1 ? 's' : ''} ${count > 1 ? 'stay' : 'stays'} outside both views: the film names neither their author nor their origin.`,
       killBadgeFmt: {
         camo: (kills) => `${kills} kills under camo`,
         overshield: (kills) => `${kills} kills under overshield`,
