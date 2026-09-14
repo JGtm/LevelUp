@@ -141,12 +141,28 @@ func consumeDefaultStateTI8(br *BitReader) {
 }
 
 // consumeDefaultStateTI9 porte FUN_1410d7540 (archetype 9, « managed-player ») :
-// V ; R(6) ; R(6) ; R(1).
-func consumeDefaultStateTI9(br *BitReader) {
+// V ; R(6) ; R(6) ; R(1). Elle JETTE ce que [readManagedPlayerDefaultState] publie : la table
+// `defaultStateDeserByTI` n'a qu'une signature, et le seul lecteur qui ait besoin de la valeur
+// (l'equipe, lot 1.7) appelle l'autre.
+func consumeDefaultStateTI9(br *BitReader) { readManagedPlayerDefaultState(br) }
+
+// readManagedPlayerDefaultState porte la MEME grammaire et REND le premier `R(6)`.
+//
+// CE PREMIER CHAMP EST L'INDEX DE JOUEUR DE L'ENTITE, et c'est MESURE, pas suppose (lot 1.7,
+// 2026-09-14, 18 films et 7 builds) : il vaut exactement le rang du siege de la table de
+// `chunk_00` pour chaque entite presente au premier paquet d'image-cle (8/8, 23/23, 24/24 selon
+// le film), il est CONSTANT sur toute la vie de l'entite, et il continue au-dela des sieges pour
+// les joueurs arrives en cours de partie. Le controle qui interdit d'y lire un simple ORDINAL :
+// sur `50247b26` la suite lue est `0 1 3 4 ... 22 24` — trouee, donc pas un rang de parcours.
+// Meme forme que le `R(6)` de ti=5 (`player-waypoint`), que l'executable borne a `< 0x20`.
+//
+// La largeur du champ n'est pas devinee : elle vient de `FUN_1410d7540`, comme les deux autres.
+func readManagedPlayerDefaultState(br *BitReader) (playerIndex int) {
 	consumeVersionPrefix(br)
-	br.ReadBits(6)
+	playerIndex = int(br.ReadBits(6))
 	br.ReadBits(6)
 	br.ReadBit()
+	return playerIndex
 }
 
 // consumeDefaultStateTI10 porte FUN_141020244 (archetype 10, « managed-object ») :
