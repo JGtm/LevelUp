@@ -42,4 +42,16 @@
 #               `grammar_rev.go`, et aucun offset ne bouge. L empreinte, elle, BOUGE — et c est
 #               le premier effet visible de l elargissement du lot 1.1.5 : le meme geste, la
 #               veille, n aurait fait rougir personne.
-grammar-2026-09-14	7384ed415b9a6256f3e51438f770f11953574637f7a3241acad678414f99f3fe
+#   2026-09-14  grammar-2026-09-14.2  lot 1.2 : LE REGISTRE COMMENCE A L OCTET 8. `parseRegistry`
+#               lit l entree de 0x104 octets du jeu (`[nom @ +0x00][u32 niveau @ +0x100]`) au lieu
+#               d un slot suppose `[u32 kind][u32 flags][nom @ +8]` depuis l octet 0. Les NOMS ne
+#               bougent pas ; le NIVEAU de 173 a 189 composants par registre change, dont QUATRE
+#               que le dispatch consomme (ti=14 i0 crew-order, ti=21 i2 flock-destination,
+#               ti=30 i0 tacmap-poiicon, ti=44 i0 asset-transform). L empreinte du registre passe
+#               au domaine `niveau | nom` et sa valeur connue est recalculee.
+#               PREMIER SUFFIXE DE RANG : le lot 1.1 tenait deja `grammar-2026-09-14`. Partager
+#               sa revision aurait voulu dire regenerer ce golden sur la branche « revision
+#               inchangee, empreinte differente » — soit faire taire le ratchet dans le cas
+#               precis qui le justifie. La forme de `GrammarRev` admet donc un `.N` par LOT du
+#               meme jour, et `grammar_rev.go` le dit.
+grammar-2026-09-14.2	7a9404b971cf2d1389fef6ddd91adf85ece6eef8009ff37bd9349265a17be077
