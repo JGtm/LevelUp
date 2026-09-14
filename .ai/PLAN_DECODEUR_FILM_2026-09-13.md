@@ -904,6 +904,12 @@ film, morts en repli. Sur pièces : registre d'identité du constructeur (`ident
       régénéré avec justification).
 - [ ] 1.6.4 `SchemaVersion` 55, chronique, empreinte de forme (0.B.4) régénérée, fixtures de
       contrat régénérées, `openapi.yaml` + `generate-types` si un champ apparaît.
+- [ ] 1.6.5 **Refus de publication COMPTÉS** (issu de 0.D.4, 2026-09-14) : `build.go:575`
+      refuse en silence toute vie de moins de `DefaultMinPoints = 2` échantillons (deux positions
+      réelles de `d9781168` disparaissent sans compteur) : publier `coverage.tracks.refusedMinPoints`
+      (vies et points refusés) dans la même montée de schéma ; la question produit « une vie d'un
+      seul échantillon paraît-elle ? » est posée à l'utilisateur ; si oui, `DefaultMinPoints = 1`
+      dans ce même lot, sinon le compteur seul.
 
 Preuve : corpus gate zéro perte ; gains nommés (`identity.coverage.*.direct`, `unnamedLives` ne
 monte nulle part) ; `replay-equiv` différences localisées aux balayages d'identité.
