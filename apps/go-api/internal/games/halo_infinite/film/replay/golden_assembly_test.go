@@ -423,6 +423,15 @@ func renderTracks(p func(string, ...any), doc ReplayDocument) {
 	}
 	p("## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)")
 	p("%d trace(s) · %d point(s) de grille", len(doc.Tracks), points)
+	// LE REFUS DU SEUIL EST DANS LE GOLDEN (schema 55) : il etait MUET, et un compteur qu on
+	// publie sans le figer redevient muet au premier refacto.
+	if tc := doc.Coverage.Tracks; tc != nil {
+		p("seuil de publication %d point(s) : %d vie(s) REFUSEE(S) portant %d point(s) — "+
+			"une vie d un seul echantillon n est pas une trajectoire",
+			tc.MinPoints, tc.RefusedMinPoints, tc.RefusedPoints)
+	} else {
+		p("seuil de publication : NON APPLIQUE (le film ne porte aucune position)")
+	}
 	p("%d trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis",
 		named)
 	p("occupation du slot dans le TEMPS) · %d sans identite — un DEFAUT de nommage a instruire,",

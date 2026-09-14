@@ -72,7 +72,15 @@ package replay
 // a `backfill-replay --only-existing`. `coverage.filmMajorVersion` s'ajoute au passage — la
 // version lue voyage desormais AVEC l'artefact ; champ optionnel, il ne l'aurait pas exige a
 // lui seul. Chronique : `document_chronicle.go`.
-const SchemaVersion = 54
+//
+// v55 (2026-09-14, lot 1.0.4) : le REFUS de publication d'une vie cesse d'etre muet. Le seuil
+// `minPoints` ecartait des vies sans qu'aucun compteur ne le dise ; `coverage.tracks` publie
+// desormais ce qu'il retient et ce qu'il refuse (vies ET points, avec le seuil applique). Le
+// seuil ne bouge pas (`DefaultMinPoints` = 2) et aucune trace publiee ne change : le regime
+// court d'equivalence ne montre QUE ce champ. Le bump est exige parce que le champ decrit le
+// document entier et qu'un artefact 54 ne peut pas dire ce qu'il a refuse — la reprise du
+// backfill se faisant par SchemaVersion. Chronique : `document_chronicle.go`.
+const SchemaVersion = 55
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

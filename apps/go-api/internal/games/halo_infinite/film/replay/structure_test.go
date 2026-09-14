@@ -1058,8 +1058,24 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   l'artefact, au lieu d'exiger une relecture du film. Champ OPTIONNEL : il ne l'aurait pas
 	//   exigé à lui seul, et il sert la mesure par version du lot H.
 	//   Détail : `document_chronicle.go` et `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
-	if SchemaVersion != 54 {
-		t.Fatalf("SchemaVersion = %d, attendu 54 : incrémenter exige une raison écrite ci-dessus "+
+	// v55 (2026-09-14, lot 1.0.4 — LE REFUS DE PUBLICATION D'UNE VIE CESSE D'ÊTRE MUET).
+	//   `decimateTracks` écarte toute vie dont la trajectoire décimée porte moins de `minPoints`
+	//   échantillons (défaut 2 : une vie d'un seul point n'est pas une trajectoire). Depuis
+	//   l'origine du calque, ce refus ne se comptait NULLE PART — ni dans l'artefact, ni au
+	//   journal : un document publiant 90 traces là où le film en porte 95 était indistinguable
+	//   d'un film à 90 vies, et tout lecteur qui rapporte un compte de vies au film travaillait
+	//   sur un dénominateur amputé sans le savoir.
+	//   `coverage.tracks` publie désormais `published` / `publishedPoints` (le dénominateur),
+	//   `refusedMinPoints` (les VIES écartées), `refusedPoints` (les points qu'elles portaient)
+	//   et `minPoints` (le seuil appliqué, sans lequel un compte de refus ne se relit pas).
+	//   LE SEUIL NE BOUGE PAS : `DefaultMinPoints` vaut 2. Aucune trace publiée ne change,
+	//   aucun autre calque ne change — le régime court d'équivalence ne montre QUE ce champ.
+	//   POURQUOI LA VERSION MONTE alors que le champ est optionnel : il décrit le document
+	//   ENTIER et rien ne permet de le déduire après coup d'un artefact 54. La reprise du
+	//   backfill se fait par SchemaVersion : sans montée, aucune recuisson ne le rattraperait.
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 55 {
+		t.Fatalf("SchemaVersion = %d, attendu 55 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

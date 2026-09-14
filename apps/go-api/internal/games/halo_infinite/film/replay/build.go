@@ -48,7 +48,20 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	origin := sorted[0].TimestampUS
 	step := uint64(interval) * 1000
-	doc.Tracks = decimateTracks(sorted, origin, step, opt.minPoints(), opt.Scoped)
+	// LA COUVERTURE DES TRACES EST CONSTRUITE ICI mais POSEE plus bas, avec les autres :
+	// `doc.Coverage` n'existe qu'a partir de `buildCoverage`, et l'assemblage du document se
+	// fait dans l'ordre des DEPENDANCES, pas dans celui des champs.
+	tracks, trackCov := decimateTracks(sorted, origin, step, opt.minPoints(), opt.Scoped)
+	doc.Tracks = tracks
+	if trackCov.RefusedMinPoints > 0 {
+		// JOURNALISE, JAMAIS AVALE (regle n°3 du depot). Ce refus etait MUET depuis l'origine :
+		// ni compteur publie, ni ligne de journal. Le seuil ne bouge pas (DefaultMinPoints = 2),
+		// mais ce qu'il retire se voit desormais des deux cotes.
+		slog.Info("rejeu : vies refusees par le seuil de publication",
+			"match_id", doc.MatchID, "vies", trackCov.RefusedMinPoints,
+			"points", trackCov.RefusedPoints, "seuil", trackCov.MinPoints,
+			"viesPubliees", trackCov.Published)
+	}
 	doc.FrameCount = frameSpan(sorted, origin, step)
 	doc.DurationMS = doc.FrameCount * interval
 	var ecartes int
@@ -179,6 +192,10 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, reg, doc.OriginMs != nil, scoreCov)
 	doc.Coverage.Projectiles = projCov
+	// CE QUE LE SEUIL DE PUBLICATION A REFUSE (schema 55) : mesure faite en tete de fonction,
+	// posee ici. Sans elle, un artefact publiant 90 traces la ou le film en porte 95 etait
+	// indistinguable d'un film a 90 vies.
+	doc.Coverage.Tracks = &trackCov
 	// La version du film est une DIMENSION du décodage : elle voyage avec l'artefact plutôt que
 	// d'exiger une relecture du film pour la retrouver (cf. Coverage.FilmMajorVersion).
 	doc.Coverage.FilmMajorVersion = opt.FilmMajorVersion
@@ -499,8 +516,13 @@ func keepShotsOfPublishedTracks(shots []Shot, tracks []Track) []Shot {
 // client (buildSlotOwnership, résolveurs frame-aware par slot) attend des vies disjointes.
 // L'ordre reste celui de première apparition du slot, les vies d'un slot en ordre
 // chronologique — déterministe, artefact diffable.
+//
+// ELLE REND CE QU'ELLE REFUSE (schéma 55, lot 1.0.4). Le seuil `minPoints` écartait des vies
+// SANS AUCUN COMPTEUR : un artefact publiant 90 traces là où le film en portait 95 était
+// indistinguable d'un film à 90 vies. Les deux compteurs disent combien de VIES et combien de
+// POINTS le seuil a retirés — cf. TrackCoverage, publié en `coverage.tracks`.
 func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoints int,
-	scoped func(slot uint32, tsUS uint64) int) []Track {
+	scoped func(slot uint32, tsUS uint64) int) ([]Track, TrackCoverage) {
 	type acc struct {
 		done      [][]Point // les vies CLOSES de ce slot, dans l'ordre
 		pts       []Point
@@ -569,10 +591,16 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 		a.pts = append(a.pts, pt)
 	}
 	tracks := make([]Track, 0, len(order))
+	cov := TrackCoverage{MinPoints: minPoints}
 	for _, slot := range order {
 		a := accs[slot]
 		for _, pts := range append(a.done, a.pts) {
 			if len(pts) < minPoints {
+				// LE REFUS SE COMPTE, ET C'EST TOUT CE QU'IL FAIT DE PLUS QU'AVANT : la vie
+				// reste écartée (une trajectoire d'un seul échantillon n'est pas une
+				// trajectoire), mais l'artefact dit désormais combien il en a écarté.
+				cov.RefusedMinPoints++
+				cov.RefusedPoints += len(pts)
 				continue
 			}
 			tracks = append(tracks, Track{
@@ -582,9 +610,11 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 				StartFrame: pts[0].T,
 				EndFrame:   pts[len(pts)-1].T,
 			})
+			cov.Published++
+			cov.PublishedPoints += len(pts)
 		}
 	}
-	return tracks
+	return tracks, cov
 }
 
 // frameSpan renvoie le nombre de frames couvrant tout le film (dernier index + 1).
