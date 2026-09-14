@@ -7,9 +7,9 @@ package replay
 // Les huit `inputs_*.bin.gz` sont VERSIONNES : chaque montee de la magie du codec en depose un
 // jeu complet de plus dans l historique du depot. Une taille qu on se contente de mesurer derive
 // d un lot a l autre sans que personne ne la decide — le lot 1.0 vient d en faire la
-// demonstration, en passant de 10,35 a 10,53 Mio (+12 % sur le blob brut) sans qu aucune porte ne
-// sonne. Un plafond force la decision (porter moins de canaux, moins de builds) le jour ou il est
-// atteint, au lieu de la decouvrir dans un `git clone` de plus en plus long.
+// demonstration, en passant de 10 323 769 a 11 044 446 octets compresses (+7,0 %) sans qu aucune
+// porte ne sonne. Un plafond force la decision (porter moins de canaux, moins de builds) le jour
+// ou il est atteint, au lieu de la decouvrir dans un `git clone` de plus en plus long.
 //
 // LE PLAFOND NE SE RELEVE PAS PAR REFLEXE. Il se releve par DECISION ECRITE, datee, avec la
 // raison — exactement comme celui des fixtures de contrat (`contract_fixtures_budget_test.go`).
@@ -22,10 +22,17 @@ import (
 
 // goldenInputsBudget : LE PLAFOND DU JEU ENTIER, en octets compresses.
 //
-// POSE LE 2026-09-14 (lot 1.0) A 12 MIO. Mesure du jour : 10,53 Mio pour les huit fixtures
-// (11 044 407 o), soit ~14 % de marge. Historique : 10,35 Mio a l origine du jeu par build (lot 0.A.2), 17,79 Mio a
-// l etape flottants du lot 0.D.3 bis (revenue a 9,86 Mio en quanta), 10,32 Mio a la cloture de
-// 0.D, 10,53 Mio depuis que le fixture porte les six canaux qui manquaient (lot 1.0.2).
+// POSE LE 2026-09-14 (lot 1.0) A 12 MIO (12 582 912 octets). UNE SEULE MESURE FAIT FOI, celle
+// que ce test lit sur le disque : 11 044 446 octets compresses pour les huit fixtures, soit
+// 10,53 Mio. Il reste 1 538 466 octets libres, soit 12 % du plafond. (Le commentaire d origine
+// citait TROIS totaux differents pour une seule mesure — un d avant regeneration, un du plan, un
+// mesure : revue R2, constat R2-2.)
+//
+// HISTORIQUE, CHAQUE CHIFFRE AVEC SA BASE : 10 849 119 o a l origine du jeu par build
+// (lot 0.A.2) ; 18 656 453 o a l etape flottants du lot 0.D.3 bis, revenus a 10 337 463 o en
+// quanta ; 10 323 769 o a la cloture de 0.D ; 11 044 446 o depuis que le fixture porte les six
+// canaux qui manquaient et le roster de la feuille (lot 1.0). Soit +7,0 % contre la cloture de
+// 0.D, et +1,8 % contre le jeu d origine.
 //
 // LA MARGE EST VOULUE ETROITE : un canal de plus se voit. Elle n est PAS la pour absorber un
 // build supplementaire — un neuvieme build est precisement la decision que ce plafond existe

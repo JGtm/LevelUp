@@ -36,8 +36,15 @@ package replay
 // LES NOTES PAR VERSION ONT ETE RETIREES D'ICI LE 2026-09-14 (lot 1.0, revue R1, constat R1-4).
 // Elles RECOPIAIENT, en plus court, les entrees de `document_chronicle.go` — deux resumes de la
 // meme montee, qui derivent l'un de l'autre au premier amendement (v50 y est deja « v50 AMENDE »,
-// ici non). La chronique fait foi et elle est la seule : `document_chronicle.go`, une entree par
-// version, garde-rail `document_shape_test.go` (une montee sans entree = rouge).
+// ici non). LA CHRONIQUE FAIT FOI, ET ELLE EST LA SEULE : `document_chronicle.go`.
+//
+// CE QUE LE GARDE-RAIL TIENT, EXACTEMENT (revue R2, constat R2-1) : `document_shape_test.go`
+// exige une entree de chronique pour la version COURANTE, au moment ou la forme se refige. Il ne
+// balaie PAS les versions passees — c'est `replaybuild/artifact_schema_history_test.go` qui les
+// rejoue, sur la liste que la chronique DECLARE. Une version cuite dont l'entree manque echappe
+// donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
+// restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
+// monte la version, jamais apres.
 const SchemaVersion = 55
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
