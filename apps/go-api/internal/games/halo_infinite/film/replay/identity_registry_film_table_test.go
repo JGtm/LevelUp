@@ -166,3 +166,41 @@ func TestCompositionPublieLaCauseDuRefus(t *testing.T) {
 		})
 	}
 }
+
+// TestRosterPrendLesSiegesEtLesNomsDuFilm (lot 1.6.2) : le roster publie gagne les joueurs que la
+// table du film assoit et que la lecture des chunks ne trouve pas, ET les gamertags des joueurs a
+// ZERO MORT — que le fil des morts ne peut pas nommer, par construction.
+func TestRosterPrendLesSiegesEtLesNomsDuFilm(t *testing.T) {
+	const (
+		quiMeurt   = uint64(2533274800000001)
+		quiNeMeurt = uint64(2533274800000002)
+		quiRejoint = uint64(2533274800000003)
+	)
+	film := tableDuFilm(
+		FilmPlayerSeat{FilmIndex: 0, XUID: quiMeurt, Gamertag: "Alpha"},
+		FilmPlayerSeat{FilmIndex: 1, XUID: quiNeMeurt, Gamertag: "Bravo"},
+	)
+	in := entreeIdentite(film, map[uint64]int{quiMeurt: 0, quiRejoint: 5})
+	in.Deaths = []Death{{XUID: quiMeurt, Gamertag: "Alpha", TimeMS: 1000}}
+	reg := BuildIdentityRegistry(in)
+
+	roster := buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, in.Deaths), nil)
+	parXUID := map[string]RosterEntry{}
+	for _, r := range roster {
+		parXUID[r.XUID] = r
+	}
+	if len(roster) != 3 {
+		t.Fatalf("%d joueur(s) au roster, attendus 3 (deux sieges + un arrivant)", len(roster))
+	}
+	if got := parXUID["2533274800000002"]; got.Name != "Bravo" {
+		t.Errorf("le joueur a ZERO MORT est publie sans nom (%q) — le film ecrit le sien", got.Name)
+	}
+	if got := parXUID["2533274800000003"]; got.FilmIndex != 5 {
+		t.Errorf("l arrivant en cours de partie est perdu ou deplace : index %d", got.FilmIndex)
+	}
+	// LA TAILLE REELLE DE L ESCOUADE EST UNE DONNEE, et elle n est PAS le compte du roster : le
+	// roster porte aussi les arrivants, la table du film porte les sieges du debut.
+	if got := reg.CouvertureTableDuFilm().Seats; got != 2 {
+		t.Errorf("sieges publies %d, attendus 2", got)
+	}
+}

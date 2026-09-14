@@ -114,7 +114,12 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		unnamed.deduced[i] = true
 	}
 	logUnnamedLives(matchID, doc.Tracks, unnamed)
-	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths), opt.Bots)
+	// LE ROSTER VIENT DE LA TABLE EFFECTIVE DU REGISTRE, PAS DES OPTIONS (lot 1.6.2) : la table du
+	// film y a deja pose ses sieges, et ses gamertags nomment les joueurs que le fil des morts ne
+	// nomme pas — un joueur a ZERO MORT n'est dans aucun enregistrement du fil. Relire
+	// `opt.PlayerIndices` ici republierait la table d'AVANT la composition : deux tables du meme
+	// film, exactement ce que le registre existe pour empecher.
+	doc.Roster = buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, opt.Deaths), opt.Bots)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, reg.DeathOffsetMS(), reg.DeathOffsetMatches())
 	reg.logRegistry(matchID)
