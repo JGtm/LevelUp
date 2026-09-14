@@ -6,6 +6,95 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [7.5.0] - Unreleased
+
+> The release of the Theater film. 2 791 commits and 453 merges since `v7.3.0` (tag `a2719a68c`, 2026-08-04), 6 773 files touched — by far the largest release of the project. Halo writes a film of every match and the app had never opened it; it now decodes it end to end and turns it into a **2D top-down replay**, a **Tactics tab**, and a set of measurements no API field carries: the weapon behind every kill, engagement range, weapon levels on the pads, net flag grabs, Assault statistics, and equipment read as used / kept / dropped. Everything film-derived is gated behind fine-grained `film.*` capabilities and exists on Halo Infinite only. Three ADRs were written along the way: **0032** (round-decided modes), **0033** (squad session population), **0034** (film decoder — profile per build, five layers, a single gate to the bytes). **Post-deploy actions are required — see *Ops*.**
+
+### Added
+
+**The film decoder and the replay artifact**
+
+- **A versioned ECS grammar for the Theater film** — the film's record table became a versioned 1 081-line table held by three guard-rails, instead of constants scattered across readers. The decoder reads bits in one place (`internal/games/halo_infinite/film/`, moved under the title-scoped package per ADR 0012 in a 981-rename pure move), and everything downstream reads facts, never bytes. ADR 0034 fixes the five layers — `source` → `profile` → `grammar` → `facts` → `replay` — and the rule that an **unknown build is a typed error and the film is set aside**, never decoded on a guess.
+- **The build is the decryption key, not the major version** — measured across every layer: `HI_1_x_0`, read in `chunk_00`, is what decides how a film is read. A contract fixture per build (8 fixtures, 2.01 MiB, one live set per schema) and a per-build equivalence corpus (20 films) freeze the decoder's output in CI.
+- **`ReplayDocument`, schema 54** — the replay artifact carries the match's whole trajectory: positions, lives, inventories, shields, camo and overshield episodes, grapple lines, aim elevation, shots and kills, grenade flights, vehicles and their dead state, equipment placements, pickups and consumptions, ground weapons with their exact ammunition, weapon and power-up pads, the live objectives (flag carries, skull, hill ownership, strongholds, Assault bomb, VIP crown), zone states, per-round scores and the score curve. The **served** document is a pure projection of the **stored** one (`internal/domain/replaydoc`, 99 types, archlint ratchet), so an artifact on disk and the public contract can move independently.
+- **Eight fine-grained capabilities** — `film.kill_source`, `film.weapon_shots`, `film.kill_positions`, `film.usage_summary`, `film.bomb_stats`, `film.flag_grabs_net`, `film.weapon_tiers` and `film.replay_artifact`, plus the title-level `replay` that gates the page itself. A title that does not declare one gets a clean partial answer or a real 503 — never another title's data, never a panic, never a dead tab (`registry_pages_film.go`, `replay_capability_gate_test.go`).
+- **A bounded cooking pipeline** — one film = one child process (`filmproc`, soft memory ceiling plus a +25 % sentinel and a solo lock), a durable build queue, a post-sync step, an admin `replay_build` job, a recurrent purge, a `backfill-replay` CLI with `--repair-impoverished`, and a grouped Discord notification when replays are ready. A remote worker deployment to the compute VPS exists (`deploy-worker` job, `main` only) but **nothing is activated**.
+- **Map reference data** — 109 map backgrounds rendered from the game files and converted losslessly to WebP (−37.2 %), read whatever the format; a weapon-pad catalog of **1 549 spots across 76 maps** measured centimetre-accurate in the `.mvar`; an objective catalog covering **128 maps** (regenerated in full, 73/73 network maps, hills 133 → 273, Total Control and Firefight included); official callouts, with Forge zones named 100 %.
+- **177 game sounds** wired to the replay — weapons, grenades, melee, equipment, objectives, announcer and end-of-match fanfare — equalised to −16 LUFS / −1 dBTP, muted by default and filtered by category. Sound banks are named by hash (`hsc*` tags are plain Lua), which is what unlocked the objective, reel and equipment banks.
+
+**Pages and blocks**
+
+- **The 2D replay page** (`features/match-replay`) — canvas with zoom (steps, wheel, keyboard, directional pad) and drag panning at zero memory cost, a playback bar with four tracks (You / Allies / Dominance / Media), round pills and inter-round messages, a score band carrying the victory target, 25 composable layers declared as data, player cards driven by the current life of each slot, a kill feed synced to the cursor with medals, weapon icons, assists and their damage share, a settings drawer, PNG capture, and an **out-of-real-time video export** (WebCodecs encoder, overlays repainted into the canvas, audio track mixed offline, MP4 muxing via `mediabunny`).
+- **Tactics tab** (`features/tactical`, 5th Ascension tab, gated on the `replay` capability) — a grid of maps played with their record and a sample floor, an analysis view on the map plan answering six questions (time spent, deaths, kills, isolation, win/loss gap, routes) with an adaptive grid step, four KPI tiles (matches retained, coverage, exchange, isolated deaths), a team coordination card whose radius is read per match from the variant reference, tile mini-plans, and a cell click that **opens the replay at the exact instant**.
+- **Engagement range** (`features/synthesis`, capability `weapon_range`) — low (p10) / median / high (p90) range per weapon plus the signed height difference, built from a validated engagement-opening proxy (1.24 m median gap).
+- **Weapon levels** — pad pickups split into starting / map / power weapons, power-up pads and unclassified. The nature of a spot comes from the **map**, never from the weapon's name (measured 2026-09-14: judging by name would produce 10 % wrong levels). `BaseShareMin = 0.05` on both sides — `internal/analysis/weapontier` (Go, aggregates) and `model/weaponTier.ts` (web, match view) share the same written thresholds and the same witnesses, so any divergence is a bug and not a variant. Stored in an append-only table per decode pass, with a catch-up pass.
+- **Net flag grabs** (capability `film.flag_grabs_net`) — juggling folded into a 1.5-second window measured on 13 CTF films; append-only table per pass, "take" role, published on Squad and Sessions.
+- **Assault statistics** — bomb plants, defuses, carriers killed and two more measures, computed at cooking time, persisted at sync and shown in the match view; `bomb_carriers_killed` goes from NULL to measured.
+- **Equipment used / kept / wasted** — the three outcomes per family, with charges, published on the Synthesis, the Squad and the Sessions from one shared block (`features/_shared/usage`, guard-rail against a local copy), in counts and shares variants, with parity line, per-match regularity band and lobby track.
+- **"The shapes you keep"** (`features/squad/formes`) — six readings of a squad across 19 cards and 3 blocks (equipment, special weapons, objectives), solo against squad, with a `formes_retenues` Go block.
+- **Non-firearm kills** — repulsor, explosive, fall and out-of-map deaths get their own source, their own aggregates and their own match-view rows; the kill feed says **what** you died of when nobody killed you.
+- **"Where it plays out"** — kill and death positions on the match view, as a plan when the map has no frozen image.
+- **A project footer** — source, licence, feedback issues, Sponsors and PayPal support, and the non-affiliation notice, all from a single link source; plus a bilingual privacy page.
+
+### Changed
+
+- **Rounds decide the score (ADR 0032)** — a measured table (`config/titles/{slug}/mappings/regulation.toml`, `[rounds_decide]`) plus `analysis.ReadTeamScore`: on those modes the point score can hand the advantage to the side that lost, so the rounds won and lost are what is shown, with the API point score kept alongside. Halo has rounds and overtime, never halves.
+- **Squad session population, one account (ADR 0033)** — a match belongs to a composition's session independently of who was there at the end: leaving a match is not leaving the session. `composition_sessions[].match_count` becomes the single source of a session count, `/filters/resolve` a load fallback only, with two ratchets.
+- **Per-match cadence, not per-minute** — every usage number is a count per **measured match**. User decision of 2026-09-13, applied across Sessions, Squad, Synthesis and Timeseries.
+- **Match view rebuilt** — one card template for the page, the three hard-to-compare tables become charts, the score curve follows the mode, distance per weapon lands in sections, frag distribution goes to two levels, special weapon control is broken down by weapon level, and the equipment and weapons that changed nothing fold away behind the game changers.
+- **Timeseries and Synthesis** — objectives trimmed to what the mode actually offered, range and usages moved onto Timeseries, activity heatmap restored to its previous shape with a coloured `visualMap` and invisible empty cells, first blood centred.
+- **Squad page** — the exchange in six cards, assists as stacked bars, player-by-map with shared axes and a single legend, medals last, and "the shapes you keep" ported in full.
+- **`filmdec` and `replay` moved under `internal/games/halo_infinite/film/`** (ADR 0012) — a pure move of 981 renames; `internal/analysis/` no longer holds Halo-only decoding.
+- **Chart legends** — ECharts' own palette had crept into 12 legends; semantic tokens only, everywhere.
+- **The replay's bounds ignore outlier samples** — one aberrant sample no longer defines the frame; 7 artifacts re-cooked.
+- **`X-Replay-Latest-Schema-Version`** exposed under CORS, with an admin badge saying whether an artifact is up to date or needs re-cooking.
+- **`expected_win_prob` withdrawn from the UI** — the measure is not reliable enough to be shown.
+- **Media likes are per viewer**, with 401 enforced on the 41 mutating player routes.
+- **ADR 0023 Phase 5** — the legacy auth fallbacks are gone: `MultiUserTokenStore` is the only source of a refresh token. No `SPNKR_*` env, no `sync_meta.oauth_refresh_token`, no single-user store. Sentinel allowlists are empty ratchets.
+- **Dependencies** — js-yaml 4.3.1 (CVE-2026-59870, high), 20 npm minor/patch bumps, kin-openapi 0.147.0, chi 5.3.2, x/crypto 0.55.0; the react-table major and TypeScript 7 are deliberately deferred, with the reason written down.
+- **`GET /admin/monitoring/errors` removed** — soak settled, 0 hits in the retained logs since 2026-06-13 and UI-orphaned.
+
+### Fixed
+
+- **LUSR — the `h5_arena` corruption closed at the source** — the ART index of `match_skill_rank` lies too; the cause is fixed, the reader corrected to the right `_latest` view, a diagnosis and repair tool added, and the purge swap no longer restores only one view out of two.
+- **A life is never anonymous** — every life in the film is named by slot occupancy in the frame; the readers that treated "one slot = one named track" as an assumption are fixed, and `match_lives` accepts the identity registry's naming paths. A split life no longer loses flag carries or equipment episodes.
+- **The kill feed no longer breaks on bots** — bot rows are named, aggregates stay human-only, and the `[bot]` suffix is not rendered.
+- **The match view no longer dies for every match** when a snapshot lags behind its query, and an absent match and a broken one no longer share the same 404.
+- **The scoreboard, the identity bridge and the objective layers** — flag assignment walks dated events and takes the flag where the object fell ("never your own flag" is an invariant), the skull gets the same identity bridge as the flag, KOTH hill ownership is designated by the film, and the blind spot of strongholds (a drop at the foot of a support is not a return) is closed.
+- **A film that has expired on Microsoft's side is filed as missing** (`IsFilmGoneErr`) instead of being retried forever; the Windows file lock is recognised in English too.
+- **The "Clash of Kings" VIP medal has a name and an image again** — seeds without `ON CONFLICT` (inherited table with no primary key), unconditional repair of the stub, and the stub translation purged; medal images are refreshed from the game's `metadata.json` and sprite sheet.
+- **The tactical plan layer sits on the map background** — signed indices, background frame, inverted Y; and clicking no longer reloads the page.
+- **Grenade throws are credited to their thrower**, projectile flight is cut at the impossible step, and Forge props are attributed per map.
+- **Memory** — four separate RAM incidents closed: the leak was the operator, not the process; batch artifact cooking is now forbidden without an explicit go, and `filmproc.AcquireSolo` enforces it.
+
+### Ops
+
+- **Re-cook the replay artifacts** — `ReplayDocument.SchemaVersion` is 54; artifacts cooked at an older schema are served with a "needs re-cooking" badge and some layers stay empty. Run `backfill-replay` on the park after deployment (one film = one child process; **never** cook in batch without an explicit go).
+- **Refresh the metadata catalogs** — `refresh-metadata medal-images` for the medal sprite sheet, and the objective / weapon-pad / callout catalogs ship with the release under `data/titles/halo_infinite/reference/`.
+- **The remote replay worker is deployed but not activated** — the `deploy-worker` job runs on `main` only and requires its secrets; nothing changes until it is switched on.
+- **`gamefiles` tests stay out of CI** — the `internal/himap` corpus requires a local Halo install; the tag is enforced module-wide by `internal/archlint/gamefiles_tag_test.go`. `go vet` on `himap` / `himodule` needs `CGO_ENABLED=1` (`ooz` is a CGO package).
+
+## [7.3.2] - 2026-09-05
+
+> Patch release on `main`: the Rankings page's collections can no longer serialise as `null`.
+
+### Fixed
+
+- **Rankings — collections never serialise as `null` again** — the guarantee is raised from the repositories to the service (`GetPage` + `GetCatalog`), with the ratchet extended to the 4 outputs of `GetPage` and the 2 of `GetCatalog`. A title that is active but declares no `world.leaderboard` (`halo_5`) and a database with no snapshot both return `[]`. Adversarial review: 0 findings.
+
+## [7.3.1] - 2026-09-03
+
+> Patch release on `main`: the World ranking page repaired, the public demo stripped of every credential, and a wave of dependency bumps.
+
+### Fixed
+
+- **World ranking — the page repairs itself and can no longer degrade in silence** — the source pages it scrapes had moved, and the page was serving a stale ranking instead of reporting the failure. A ranking that could not be retrieved is now reported as such; an empty ranking and a failed fetch are no longer rendered the same way.
+- **The public demo carries no credential at all** — `sync_meta` moves from an exclusion list with a single entry to a deny-by-default **inclusion** list, so a field added upstream can never leak into the demo seed by omission.
+
+### Changed
+
+- **Dependencies** — js-yaml 4.3.1 (CVE-2026-59870, high alert), 20 minor/patch bumps on `apps/web` (PR #77), kin-openapi 0.147.0 / chi 5.3.2 / x/crypto 0.55.0 / modernc.org/sqlite 1.57.0 (PR #76). The react-table major and TypeScript 7 are deferred with their reasons recorded (a `tsconfig` without `baseUrl` is valid under TS 6).
+
 ## [7.3.0] - 2026-07-26
 
 > Point release built on the "v7.3 Notion backlog" (branch `feat/v7.3-notion-batch`): an overtime flag measured against a declarative regulation table, a first kill / first death chart replacing two histograms that disagreed with each other, size-based log rotation, and a sweep of fixes on Prestige objectives, the demo, the Halo 5 Achievements page, the language switch and the DuckDB write path. It also folds in the quick-win batch **deployed ahead of the release on 2026-07-26** (`1b18ae609`: `public/` assets in the prod image, objective view in the snapshot, match-view layout, Objectives participation axis), which never carried a version number of its own. **Post-deploy actions are required — see *Ops*.**
