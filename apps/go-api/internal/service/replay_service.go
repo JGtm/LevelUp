@@ -132,6 +132,9 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydo
 	keys := s.matchMapKeys(ctx, matchID)
 	doc.MapObjectives = s.mapObjectivesForKeys(ctx, matchID, keys)
 	doc.MapWeaponPads = s.mapWeaponPadsForKeys(ctx, matchID, keys, doc.WeaponPads)
+	// LES REGLAGES DE NIVEAU D ARME, meme regime et meme raison : ils dependent du MODE, que
+	// l artefact ne nomme pas (cf. replay_weapon_tiers.go).
+	doc.WeaponTiers = s.weaponTiersForKeys(ctx, matchID, keys)
 	// La CLÉ CANONIQUE et la TEINTE de chaque arme, même règle et même raison : elles se
 	// résolvent d'un catalogue du titre, donc ici et pas dans l'artefact (cf.
 	// replay_weapon_labels.go).

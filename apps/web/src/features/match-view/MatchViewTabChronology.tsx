@@ -57,13 +57,6 @@ interface Props {
    * −24 à +4,5 s (registre 2026-09-05, P0-7). La conversion vit dans `lib/replay/matchClock`.
    */
   t0Ms?: number
-  /**
-   * `header.mode_category` — la CATEGORIE de mode posee par le serveur (taxonomie du titre).
-   * Le bloc « Controle des armes » s'en sert pour une seule chose : un mode a departs
-   * ALEATOIRES (Fiesta et consorts) n'a pas d'arme de base a distinguer, et le niveau n'y est
-   * pas publie. Jamais le nom du mode, jamais le slug du titre.
-   */
-  modeCategory?: string
   locale: Locale
   t: MatchViewText
 }
@@ -82,7 +75,6 @@ export function MatchViewTabChronology({
   cadence,
   scoreTimelineKind,
   t0Ms,
-  modeCategory,
   locale,
   t,
 }: Props) {
@@ -164,7 +156,6 @@ export function MatchViewTabChronology({
         matchId={matchId}
         replayAvailable={replayAvailable}
         scoreboard={scoreboard}
-        modeCategory={modeCategory}
         locale={locale}
       />
 

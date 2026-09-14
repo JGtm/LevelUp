@@ -162,7 +162,7 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
   append-only `match_pad_pickups_by_tier` + vue `_latest` (enrôlée dans les TROIS garde-rails),
   `persist.PadTiersPersister` (INSERT-only), projection au fil de l'eau
   `sync/replayartifacts/padtiers.go` sous capability `film.weapon_tiers` + règle de titre
-  `[weapon_tiers].random_start_mode_prefixes`, CLI reprenable `levelup backfill-pad-tiers`
+  `[weapon_tiers].random_start_mode_tokens`, CLI reprenable `levelup backfill-pad-tiers`
   (`--dry-run` : une ligne par match), lecture `sessionusage.ComputePadTiers` branchée sur les
   DEUX chemins (page Sessions et bloc d'équipement Escouade/Timeseries), DTO, et la rangée web
   dans `features/_shared/usage/` + la section de la page Sessions. Tests de câblage qui
@@ -177,3 +177,28 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
   fusion ; (2) le rattrapage PROD, à porter à la liste de release v7.5 à côté de
   `backfill-flag-grabs-net` ; (3) la passe visuelle sur données réelles des trois pages
   d'agrégat, impossible tant que (1) n'a pas tourné (la table est vide sur le poste).
+- 2026-09-14 — **REVUES ADVERSARIALES (deux relecteurs), 19 constats traités.** Les corrections
+  qui changent une RÈGLE, et pas seulement du code :
+  - **La détection des modes à départs aléatoires était fausse deux fois.** v1 comparait un
+    préfixe de `pair_name` ; v2 (prescrite par la revue) la catégorie de mode. MESURE : sur
+    `Slayer:Arena Super Fiesta`, `Slayer:Arena Fiesta`, `BTB:Fiesta Slayer` et `BTB:Fiesta CTF`
+    — les formes les plus nombreuses du registre — le préfixe rend « Slayer »/« BTB » et
+    `InferModeCategoryFromPairName` rend « Other »/« BTB ». AUCUNE des deux ne les reconnaît. La
+    règle est désormais un JETON cherché comme un mot dans le `pair_name` entier
+    (`[weapon_tiers] random_start_mode_tokens`), et le garde-rail fige la mesure du négatif.
+  - **Le caractère aléatoire est SERVI** (`weaponTiers.randomStarts`, calque résolu à la
+    requête) : la copie web des catégories est supprimée, il n'y a plus qu'une vérité.
+  - **Le vocabulaire des niveaux a une seule source** (`domain.PadTier*`, réexporté par
+    `persist`), avec un garde-rail Go qui confronte la liste au module web.
+  - **Chaque bloc porte SES dénominateurs** : couverture et trois parités calculées sur le
+    périmètre des niveaux, plus ceux du résumé d'usage voisin.
+  - **La famille s'abstient seule** : une référence illisible ne prive plus les quatre autres
+    familles de leur marque de dérivation (c'était un rattrapage qui rejouait à l'infini).
+  - **Identité de match illisible = lot NON projeté** : un `pair_name` vide aurait écrit un
+    niveau « base » sur des Fiesta.
+  - Projection HORS du lease d'écriture ; `SetPadTiers` + persister de batch câblés ;
+    `tierTotals` et deux accesseurs morts supprimés ; locale câblée sur Escouade et Timeseries ;
+    ratchet élargi à `sync/replayartifacts` et `service` ; la rangée des niveaux a sa PROPRE
+    porte de disponibilité sur les deux pages.
+  - Mutations rejouées ROUGES : porte de capability fermée (M1), second chemin en no-op (M2),
+    liste d'armes en dur (M8), renommage d'un niveau (M10).

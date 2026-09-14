@@ -25,10 +25,21 @@ type CrossCheck struct {
 }
 
 // CrossCheckAlertShare est la part de socles d'un match au-delà de laquelle la jointure est
-// tenue pour suspecte. Mesurée à l'étape 0 : le parc entier est à 0,45 %, et le pire match
-// (Fortitude, 2 socles sur 29) à 6,9 %. À 2 %, un match sain ne déclenche jamais, et un
-// décalage de repère de carte — qui ferait basculer des dizaines de socles d'un coup — le fait
-// immédiatement.
+// tenue pour suspecte.
+//
+// CE QUE CE SEUIL FAIT RÉELLEMENT, ET C'EST VOULU — correctif de commentaire (revue du
+// 2026-09-14) : la phrase précédente disait « un match sain ne déclenche jamais » et citait
+// dans la même ligne un match à 6,9 %, donc bien au-dessus. Elle se contredisait.
+//
+// À 2 %, UNE SEULE inversion suffit dès que le match compte 50 socles ou moins : 1 sur 29 vaut
+// 3,4 %, 1 sur 50 vaut exactement 2 %. Or aucun match du parc ne publie 50 socles (maximum
+// relevé : 49, sur Insolence). Le seuil dit donc en pratique « toute inversion se journalise ».
+//
+// C'EST LE RÉGLAGE CHOISI, parce que l'inversion est RARE et INFORMATIVE : mesure du
+// 2026-09-14 sur 669 socles — 3 inversions au total (0,45 %), réparties sur 3 matchs. Ce sont
+// donc 3 WARN attendus sur le parc entier, pas un journal qui parle à chaque cycle. Et un
+// décalage de repère de carte, qui ferait basculer des dizaines de socles d'un coup, se verrait
+// immédiatement au compte porté par la ligne.
 const CrossCheckAlertShare = 0.02
 
 // lightRoles — les rôles du registre canonique qui n'ont rien à faire sur un socle de

@@ -127,10 +127,13 @@ export interface PadControl {
    * `non classé`, jamais `terrain` contre `puissance`. La ligne du bloc reste donc une ligne
    * par arme, et son niveau est celui qui porte le plus de prises ; à égalité, l'ordre écrit
    * `PAD_TIER_ORDER` départage, pour que deux relectures donnent le même bloc.
+   *
+   * IL N'Y A PAS DE SOUS-TOTAUX PAR NIVEAU ICI, ET C'EST VOULU (revue du 2026-09-14). Le bloc
+   * en publiait, personne ne les lisait, et l'écran additionnait ses propres lignes : deux
+   * vérités pour un même chiffre. C'est la SOMME DES LIGNES AFFICHÉES qui doit se recomposer
+   * sous les yeux du lecteur — elle seule est vérifiable à l'écran.
    */
   tierOfWeapon: Record<string, PadTier>
-  /** Prises attribuées par niveau — les sous-totaux des intertitres. */
-  tierTotals: Record<PadTier, number>
   /** Le mode distribue des départs aléatoires : le niveau « base » n'est pas publié. */
   randomStarts: boolean
   /**
@@ -160,12 +163,12 @@ function addPick(tally: PadControlTally, weapon: string): void {
 export function buildPadControl(
   doc: ReplayDocumentReady,
   scoreboard: MatchScoreboardRow[] | undefined,
-  modeCategory?: string | null,
 ): PadControl {
   // LE CLASSEMENT DU MATCH, une fois pour toutes : nature de chaque socle et armes de départ.
-  // `modeCategory` est la catégorie de mode de l'en-tête (`header.mode_category`), jamais un
-  // nom de mode lu à l'écran ni un slug de titre.
-  const tiers = buildPadTierMatch(doc, modeCategory)
+  // Le caractère ALÉATOIRE des départs vient du SERVEUR (`doc.weaponTiers`), pas d'une liste de
+  // catégories tenue ici — la règle vit dans le TOML du titre et gouverne aussi l'écriture en
+  // base (revue du 2026-09-14).
+  const tiers = buildPadTierMatch(doc)
   const tierPicks = new Map<string, Map<PadTier, number>>()
   // SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ont une ligne, même règle que le bilan
   // d'équipement : une entrée de roster sans aucune vie n'a pu prendre aucun socle, et une
@@ -219,7 +222,6 @@ export function buildPadControl(
     unnamedByWeapon,
     hasData: attributed > 0,
     tierOfWeapon: tierOfWeaponOf(tierPicks),
-    tierTotals: tierTotalsOf(tierPicks),
     randomStarts: tiers.randomStarts,
     tiersMeasured: tiers.tiersMeasured,
   }
@@ -243,18 +245,6 @@ function tierOfWeaponOf(picks: ReadonlyMap<string, Map<PadTier, number>>): Recor
   return out
 }
 
-/**
- * Les sous-totaux par niveau. Ils comptent les PRISES telles qu'elles ont eu lieu — donc une
- * arme dont deux prises sont de terrain et trois non classées pèse dans les deux, même si sa
- * LIGNE n'en porte qu'un. La somme des sous-totaux est toujours le total attribué du bloc.
- */
-function tierTotalsOf(picks: ReadonlyMap<string, Map<PadTier, number>>): Record<PadTier, number> {
-  const out = Object.fromEntries(PAD_TIER_ORDER.map((t) => [t, 0])) as Record<PadTier, number>
-  for (const parNiveau of picks.values()) {
-    for (const [tier, n] of parNiveau) out[tier] += n
-  }
-  return out
-}
 
 /**
  * teamsOf range les joueurs par camp, somme chaque camp, et TRIE PAR TOTAL DÉCROISSANT — à

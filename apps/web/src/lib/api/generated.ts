@@ -10280,6 +10280,7 @@ export interface components {
                 [key: string]: components["schemas"]["WeaponLabel"];
             };
             weaponPads?: components["schemas"]["WeaponPad"][] | null;
+            weaponTiers?: components["schemas"]["WeaponTiersInfo"];
             zoneStates?: components["schemas"]["ZoneState"][] | null;
         };
         ResolveResult: {
@@ -10955,6 +10956,8 @@ export interface components {
             player_pickups: number;
         };
         SessionUsagePadTiersBlock: {
+            /** Format: double */
+            lobby_parity_pct?: number;
             /** Format: int64 */
             matches_measured: number;
             /** Format: int64 */
@@ -10962,7 +10965,13 @@ export interface components {
             /** Format: int64 */
             matches_tiers_established: number;
             /** Format: int64 */
+            matches_total: number;
+            /** Format: int64 */
             matches_with_pads: number;
+            /** Format: double */
+            team_of_lobby_parity_pct?: number;
+            /** Format: double */
+            team_parity_pct?: number;
             tiers?: components["schemas"]["SessionUsagePadTier"][] | null;
         };
         SessionUsagePowerup: {
@@ -13048,6 +13057,9 @@ export interface components {
             p10: number;
             /** Format: double */
             p90: number;
+        };
+        WeaponTiersInfo: {
+            randomStarts: boolean;
         };
         WinLossPoint: {
             /** Format: int64 */

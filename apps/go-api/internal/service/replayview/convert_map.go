@@ -159,3 +159,7 @@ func toCalloutZone(v replay.CalloutZone) replaydoc.CalloutZone {
 		Holes:       v.Holes,
 	}
 }
+
+func toWeaponTiersInfo(v replay.WeaponTiersInfo) replaydoc.WeaponTiersInfo {
+	return replaydoc.WeaponTiersInfo{RandomStarts: v.RandomStarts}
+}

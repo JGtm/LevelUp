@@ -688,9 +688,18 @@ var replaySchemas = []struct {
 //	                      `roster[].bid` nait au meme moment SANS faire monter ce compte : il
 //	                      est un champ de `RosterEntry`, pas du document.
 //
-// Les vingt et une fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	58 (2026-09-14) : `weaponTiers` — LES REGLAGES DE NIVEAU D ARME DU MATCH, resolus A LA
+//	                      REQUETE comme `mapObjectives` et `mapWeaponPads`, et pour la meme
+//	                      raison : ils dependent du MODE, que l artefact ne nomme pas. UN SEUL
+//	                      champ dedans (`randomStarts`), et il est servi PLUTOT QUE DEDUIT par
+//	                      le client : la regle vit dans le TOML du titre et gouverne aussi
+//	                      l ecriture en base — une copie cote web a derive en une semaine
+//	                      (revue du 2026-09-14). `SchemaVersion` NE MONTE PAS : rien n a change
+//	                      dans l artefact (cf. `calquesALaRequete`, document_shape_test.go).
+//
+// Les vingt-deux fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 57
+const wantReplayDocumentFields = 58
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

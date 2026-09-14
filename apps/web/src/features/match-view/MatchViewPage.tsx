@@ -415,7 +415,6 @@ export function MatchViewPage() {
             cadence={combat_tab.cadence}
             scoreTimelineKind={header.score_timeline_kind}
             t0Ms={header.t0_ms}
-            modeCategory={header.mode_category}
             locale={locale}
             t={t}
           />

@@ -25,7 +25,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
-	"levelup/go-api/internal/games/mappings"
+
 	"levelup/go-api/internal/persist"
 )
 
@@ -231,32 +231,35 @@ func TestPorteCapabiliteNiveaux_EstCABLEE(t *testing.T) {
 	}
 }
 
-// TestRegleDepartsAleatoires_LueDuTitre — la seconde porte vient du TOML, jamais du Go.
+// TestRegleDepartsAleatoires_LueDuTitre — la seconde porte vient du TOML, jamais du Go, et la
+// CHAINE de production est celle que le backfill et le fil de l eau partagent.
+//
+// Les formes eprouvees ici sont celles du registre : « Slayer:Arena Super Fiesta » et
+// « BTB:Fiesta CTF » ne se reconnaissent NI a leur prefixe NI a leur categorie (mesure du
+// 2026-09-14, figee dans games/halo_infinite/weapon_tiers_categories_guard_test.go).
 func TestRegleDepartsAleatoires_LueDuTitre(t *testing.T) {
-	reg, err := mappings.LoadRegulationFromFile(
-		filepath.Join("..", "..", "..", "..", "..", "config", "titles", "halo_infinite",
-			"mappings", "regulation.toml"))
+	reg, err := ReglesDepartsAleatoires(filepath.Join("..", "..", "..", "..", ".."), "halo_infinite")
 	if err != nil {
-		t.Fatalf("regulation.toml illisible : %v", err)
+		t.Fatalf("regles du titre illisibles : %v", err)
 	}
-	if len(reg.RandomStartModePrefixes()) == 0 {
+	if len(reg.RandomStartModeTokens()) == 0 {
 		t.Fatal("le titre ne declare aucun mode a departs aleatoires")
 	}
 	for _, cas := range []struct {
 		pair string
 		want bool
 	}{
+		{"Slayer:Arena Super Fiesta", true},
+		{"BTB:Fiesta CTF", true},
 		{"Super Fiesta:Slayer", true},
-		{"Fiesta:CTF", true},
-		{"Husky Raid", true},
+		{"Husky Raid on Streets", true},
 		{"Arena:Slayer", false},
 		{"BTB:Total Control", false},
-		{"", false},
-		// Le prefixe se coupe sur `:` : « Fiestaval » n'est pas « Fiesta ».
 		{"Fiestaval:Slayer", false},
+		{"", false},
 	} {
-		if got := reg.HasRandomStarts(cas.pair); got != cas.want {
-			t.Errorf("HasRandomStarts(%q) = %v, attendu %v", cas.pair, got, cas.want)
+		if got := DepartsAleatoires(reg, cas.pair); got != cas.want {
+			t.Errorf("DepartsAleatoires(%q) = %v, attendu %v", cas.pair, got, cas.want)
 		}
 	}
 }

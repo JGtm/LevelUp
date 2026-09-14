@@ -184,19 +184,20 @@ function PadControlCard({ usage, meLabel, t, locale, compact }: CardProps) {
   // LES NIVEAUX D'ARME (2026-09-14) : les MÊMES prises, rangées par niveau — base, terrain,
   // puissance. Section à part DANS LA MÊME CARTE : c'est une seconde lecture des mêmes socles,
   // pas une seconde grandeur ; une carte de plus l'aurait fait passer pour un autre sujet.
-  const tierRows = useMemo(() => {
-    const teamOfLobby = teamOfLobbyParityPct(usage.team_size_avg, usage.lobby_size_avg)
-    return buildPadTierGaugeRows(usage.pad_tiers, {
-      teamParityPct: usage.team_parity_pct,
-      lobbyParityPct: usage.lobby_parity_pct,
-      teamOfLobbyParityPct: teamOfLobby,
-      t,
-      locale,
-    })
-  }, [usage, t, locale])
+  const tierRows = useMemo(
+    // LES PARITÉS DU BLOC viennent du bloc lui-même : celles de la carte portent sur le
+    // périmètre du résumé d'usage, qui n'est pas le sien (revue du 2026-09-14).
+    () => buildPadTierGaugeRows(usage.pad_tiers, { t, locale }),
+    [usage.pad_tiers, t, locale],
+  )
   const tierNotes = useMemo(() => padTiersNotes(usage.pad_tiers, t), [usage.pad_tiers, t])
   const powerups = usage.powerup_pickups ?? []
-  if (pad == null && gaugeRows.length === 0 && powerups.length === 0) return null
+  // LES NIVEAUX COMPTENT DANS LA PORTE (revue du 2026-09-14) : ils viennent d'une AUTRE passe,
+  // sur d'autres matchs. Sans eux dans cette condition, une session dont seuls les niveaux sont
+  // mesures ne rendait RIEN — une mesure existante avalee par la porte de sa voisine.
+  if (pad == null && gaugeRows.length === 0 && powerups.length === 0 && tierRows.length === 0) {
+    return null
+  }
 
   return (
     <SectionCard

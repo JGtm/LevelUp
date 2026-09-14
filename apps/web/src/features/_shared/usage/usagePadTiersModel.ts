@@ -12,6 +12,12 @@
  * rôle de l'arme produirait 10 % de faux niveaux (70 socles sur 669 portent une arme de rôle
  * « lourd » sur un râtelier).
  *
+ * TOUS LES DÉNOMINATEURS DU BLOC SONT LES SIENS — couverture ET parités (correctif de revue,
+ * 2026-09-14). Ils venaient du résumé d'usage voisin, qui porte sur un AUTRE périmètre : une
+ * passe distincte, sur d'autres matchs. La carte annonçait donc une couverture qu'elle n'avait
+ * pas, et posait son trait de parité au mauvais endroit dès que les deux divergeaient — ce
+ * qu'elles font par construction.
+ *
  * MÊME FORME QUE LES DEUX AUTRES RANGÉES : `buildCountsGrid` fait les barres, l'axe et les
  * textes. Rien de neuf à l'écran — une rangée de plus, dans le vocabulaire existant.
  *
@@ -20,8 +26,8 @@
 import type { SessionUsagePadTiersBlock } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
-import { buildGaugeRow, type UsageGaugeRowModel } from './usageGaugeModel'
 import type { UsageCountsRowInput } from './usageCountsModel'
+import { buildGaugeRow, type UsageGaugeRowModel } from './usageGaugeModel'
 import type { UsageText } from './usageI18n'
 
 /**
@@ -35,9 +41,24 @@ export const USAGE_PAD_TIER_ORDER = ['base', 'terrain', 'puissance', 'bonus', 'n
 
 export type UsagePadTier = (typeof USAGE_PAD_TIER_ORDER)[number]
 
+/** Une ligne de niveau du contrat, telle que le serveur la sert. */
+type PadTierLine = NonNullable<SessionUsagePadTiersBlock['tiers']>[number]
+
 /** Le libellé d'un niveau ; une valeur inconnue du contrat garde sa clé, jamais un nom voisin. */
 export function padTierLabel(tier: string, t: UsageText): string {
   return Object.hasOwn(t.padTierLabels, tier) ? t.padTierLabels[tier as UsagePadTier] : tier
+}
+
+/** Les lignes de niveau SERVIES, dans l'ordre écrit. */
+function lignesOrdonnees(block: SessionUsagePadTiersBlock | null | undefined): PadTierLine[] {
+  if (block == null || (block.tiers ?? []).length === 0) return []
+  const parNiveau = new Map((block.tiers ?? []).map((tier) => [tier.tier, tier]))
+  const out: PadTierLine[] = []
+  for (const tier of USAGE_PAD_TIER_ORDER) {
+    const ligne = parNiveau.get(tier)
+    if (ligne != null) out.push(ligne)
+  }
+  return out
 }
 
 /**
@@ -56,27 +77,16 @@ export function buildPadTierRows(
   block: SessionUsagePadTiersBlock | null | undefined,
   t: UsageText,
 ): UsageCountsRowInput[] {
-  if (block == null || (block.tiers ?? []).length === 0) return []
-  const parNiveau = new Map((block.tiers ?? []).map((tier) => [tier.tier, tier]))
-  const rows: UsageCountsRowInput[] = []
-  for (const tier of USAGE_PAD_TIER_ORDER) {
-    const ligne = parNiveau.get(tier)
-    if (ligne == null) continue
-    rows.push({
-      key: tier,
-      label: padTierLabel(tier, t),
-      taken: ligne.player_total,
-      hint: hintDesArmes(ligne, t),
-    })
-  }
-  return rows
+  return lignesOrdonnees(block).map((ligne) => ({
+    key: ligne.tier,
+    label: padTierLabel(ligne.tier, t),
+    taken: ligne.player_total,
+    hint: hintDesArmes(ligne, t),
+  }))
 }
 
 /** Le détail par arme d'un niveau, déjà composé : « Armes de puissance — S7 Sniper 4, SPNKr 2 ». */
-function hintDesArmes(
-  tier: NonNullable<SessionUsagePadTiersBlock['tiers']>[number],
-  t: UsageText,
-): string | undefined {
+function hintDesArmes(tier: PadTierLine, t: UsageText): string | undefined {
   const armes = (tier.weapons ?? []).filter((w) => w.player_pickups > 0)
   if (armes.length === 0) return undefined
   // La clé sert de repli quand le catalogue du titre ne connaît pas la famille : on n'affiche
@@ -91,9 +101,9 @@ function hintDesArmes(
  * LA NOTE DE MESURE de la rangée, en une phrase : ce que les quatre dénominateurs du bloc
  * disent, et que rien d'autre ne dit.
  *
- * Rend `null` quand il n'y a RIEN à signaler — tous les matchs mesurés ont des socles, une
- * carte connue, et aucun mode aléatoire. Une note permanente qui répète « tout va bien » ne se
- * lit plus.
+ * Rend une liste VIDE quand il n'y a RIEN à signaler — tous les matchs mesurés ont des socles,
+ * une carte connue, et aucun mode aléatoire. Une note permanente qui répète « tout va bien » ne
+ * se lit plus.
  */
 export function padTiersNotes(
   block: SessionUsagePadTiersBlock | null | undefined,
@@ -105,15 +115,38 @@ export function padTiersNotes(
   if (sansSocle > 0) notes.push(t.padTierNoPadsFmt(sansSocle))
   const horsReference = block.matches_with_pads - block.matches_tiers_established
   if (horsReference > 0) notes.push(t.padTierUnmeasuredFmt(horsReference))
-  if (block.matches_random_starts > 0) notes.push(t.padTierRandomStartsFmt(block.matches_random_starts))
+  if (block.matches_random_starts > 0) {
+    notes.push(t.padTierRandomStartsFmt(block.matches_random_starts))
+  }
   return notes
 }
 
-/** Ce dont les lignes de jauge ont besoin en plus du bloc (parités du scope, langue). */
+/**
+ * padTiersCoverage — LA COUVERTURE DU BLOC, et c'est LA SIENNE.
+ *
+ * La carte affichait celle du RÉSUMÉ D'USAGE (`usage.matches_measured`), qui porte sur un autre
+ * périmètre : une passe distincte, sur d'autres matchs. Les deux divergent par construction, et
+ * la carte annonçait alors une couverture qu'elle n'avait pas (revue du 2026-09-14).
+ *
+ * Rend `null` quand le bloc ne connaît pas son propre dénominateur : mieux vaut ne rien écrire
+ * que citer celui du voisin.
+ */
+export function padTiersCoverage(
+  block: SessionUsagePadTiersBlock | null | undefined,
+  t: UsageText,
+): string | null {
+  if (block == null || block.matches_total <= 0) return null
+  return t.measuredFooterFmt(block.matches_measured, block.matches_total)
+}
+
+/**
+ * Ce dont les lignes de jauge ont besoin EN PLUS du bloc : la langue, et rien d'autre.
+ *
+ * LES PARITÉS NE SONT PLUS PASSÉES PAR L'APPELANT (revue du 2026-09-14) : c'étaient celles du
+ * résumé d'usage voisin, donc d'un AUTRE périmètre. Le bloc porte désormais les siennes,
+ * calculées par le serveur sur ses propres matchs.
+ */
 export interface PadTierGaugeOptions {
-  teamParityPct: number | null | undefined
-  lobbyParityPct: number | null | undefined
-  teamOfLobbyParityPct: number | null | undefined
   t: UsageText
   locale: Locale
 }
@@ -122,33 +155,26 @@ export interface PadTierGaugeOptions {
  * buildPadTierGaugeRows — les MÊMES lignes, dans la forme « trois jauges » de la page Sessions.
  *
  * DEUX FORMES, UN SEUL ORDRE ET UN SEUL DÉTAIL : cette fonction et `buildPadTierRows`
- * partagent `USAGE_PAD_TIER_ORDER` et `hintDesArmes`. Deux pages qui rangeraient les niveaux
- * dans deux ordres, ou qui nommeraient les armes de deux façons, se liraient comme deux
- * mesures.
+ * partagent `lignesOrdonnees` et `hintDesArmes`. Deux pages qui rangeraient les niveaux dans
+ * deux ordres, ou qui nommeraient les armes de deux façons, se liraient comme deux mesures.
  */
 export function buildPadTierGaugeRows(
   block: SessionUsagePadTiersBlock | null | undefined,
   opts: PadTierGaugeOptions,
 ): UsageGaugeRowModel[] {
-  if (block == null || (block.tiers ?? []).length === 0) return []
-  const parNiveau = new Map((block.tiers ?? []).map((tier) => [tier.tier, tier]))
-  const rows: UsageGaugeRowModel[] = []
-  for (const tier of USAGE_PAD_TIER_ORDER) {
-    const ligne = parNiveau.get(tier)
-    if (ligne == null) continue
-    rows.push(
-      buildGaugeRow({
-        key: `tier-${tier}`,
-        label: padTierLabel(tier, opts.t),
-        shares: ligne,
-        teamParityPct: opts.teamParityPct,
-        lobbyParityPct: opts.lobbyParityPct,
-        teamOfLobbyParityPct: opts.teamOfLobbyParityPct,
-        hint: hintDesArmes(ligne, opts.t),
-        t: opts.t,
-        locale: opts.locale,
-      }),
-    )
-  }
-  return rows
+  if (block == null) return []
+  return lignesOrdonnees(block).map((ligne) =>
+    buildGaugeRow({
+      key: `tier-${ligne.tier}`,
+      label: padTierLabel(ligne.tier, opts.t),
+      shares: ligne,
+      // LES PARITÉS DU BLOC, calculées sur SON périmètre par le serveur.
+      teamParityPct: block.team_parity_pct,
+      lobbyParityPct: block.lobby_parity_pct,
+      teamOfLobbyParityPct: block.team_of_lobby_parity_pct,
+      hint: hintDesArmes(ligne, opts.t),
+      t: opts.t,
+      locale: opts.locale,
+    }),
+  )
 }

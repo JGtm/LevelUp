@@ -488,6 +488,24 @@ func racineAvecConfigDuTitre(t *testing.T, slug string) string {
 	if err := os.CopyFS(dst, os.DirFS(src)); err != nil {
 		t.Fatalf("copie de config/titles/%s: %v", slug, err)
 	}
+	// LA REFERENCE DES EMPLACEMENTS DE SOCLE, elle aussi (2026-09-14) : la famille des niveaux
+	// d armes la lit sous `data/titles/<slug>/reference/`, et c est la PREMIERE famille de
+	// cette etape a lire quelque chose sous `data/`. Sans elle, la fixture prouvait seulement
+	// qu une reference manquante ne casse rien — pas que la famille produit.
+	ref := filepath.Join(racineDepot(t), "data", "titles", slug, "reference", "map_weapon_pads.json")
+	if _, err := os.Stat(ref); err == nil {
+		dstRef := filepath.Join(racine, "data", "titles", slug, "reference")
+		if err := os.MkdirAll(dstRef, 0o755); err != nil {
+			t.Fatalf("mkdir reference: %v", err)
+		}
+		blob, err := os.ReadFile(ref) //nolint:gosec // chemin du depot, fixe par le test
+		if err != nil {
+			t.Fatalf("lecture de la reference des socles: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dstRef, "map_weapon_pads.json"), blob, 0o600); err != nil {
+			t.Fatalf("copie de la reference des socles: %v", err)
+		}
+	}
 	return racine
 }
 

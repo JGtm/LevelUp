@@ -120,10 +120,11 @@ func attacherNiveauxDArmes(
 		return
 	}
 	block.PadTiers = sessionusage.ComputePadTiers(sessionusage.PadTiersInput{
-		Rows:       rows,
-		PlayerXUID: q.PlayerXUID,
-		PlayerTeam: tc.PlayerTeam,
-		TeamOf:     tc.TeamOf,
+		Rows:         rows,
+		PlayerXUID:   q.PlayerXUID,
+		MatchesTotal: len(q.MatchIDs),
+		PlayerTeam:   tc.PlayerTeam,
+		TeamOf:       tc.TeamOf,
 	})
 	nommerArmes(ctx, block.PadTiers, q)
 }

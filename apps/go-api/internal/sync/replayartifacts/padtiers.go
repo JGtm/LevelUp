@@ -41,7 +41,7 @@ package replayartifacts
 //
 //	`film.weapon_tiers`                        « ce titre sait lire ces socles » — sans elle,
 //	                                           RIEN n'est produit ;
-//	`[weapon_tiers].random_start_mode_prefixes` « voici mes modes sans arme de base » — son
+//	`[weapon_tiers].random_start_mode_tokens` « voici mes modes sans arme de base » — son
 //	                                           absence n'eteint rien, elle fait seulement
 //	                                           qu'aucun mode n'est tenu pour aleatoire.
 //
@@ -61,6 +61,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -260,17 +261,44 @@ func capabiliteNiveauxArmee(ctx context.Context, d Deps) (armee, incident bool) 
 	return porteCapability(ctx, d, games.CapFilmWeaponTiers, "niveaux d'armes", nil)
 }
 
-// ReglesDepartsAleatoires lit les prefixes de mode a departs aleatoires declares par le titre.
-// Rend nil quand le titre n'en declare aucun — ce qui n'eteint rien.
+// ReglesDepartsAleatoires lit les CATEGORIES de mode a departs aleatoires declarees par le
+// titre. Liste vide = le titre n en declare aucune, ce qui n eteint rien.
 //
 // EXPORTEE pour le backfill, meme raison que les deux fonctions ci-dessus.
 func ReglesDepartsAleatoires(repoRoot, titleSlug string) (*mappings.RegulationSet, error) {
-	return mappings.LoadRegulationFromFile(
-		titlePkg.NewPathResolver(repoRoot).TitleMappingsDir(titleSlug) + "/regulation.toml")
+	return mappings.LoadRegulationFromFile(filepath.Join(
+		titlePkg.NewPathResolver(repoRoot).TitleMappingsDir(titleSlug), "regulation.toml"))
+}
+
+// DepartsAleatoires dit si le mode d un match distribue des equipements de debut de vie TIRES
+// AU SORT.
+//
+// LA REGLE VIENT DU TITRE, et elle est cherchee dans le `pair_name` ENTIER — jamais sur son
+// prefixe, jamais sur la categorie resolue. Mesure du 2026-09-14 : « Slayer:Arena Super
+// Fiesta » a pour prefixe « Slayer » et pour categorie « Other », « BTB:Fiesta CTF » a pour
+// categorie « BTB » ; aucune des deux lectures ne les reconnait, et ce sont les formes les plus
+// nombreuses du registre. Detail et mesure : `mappings.RegulationSet.HasRandomStarts`.
+//
+// EXPORTEE : le backfill, le fil de l eau et le service de rejeu doivent tous les trois lire la
+// MEME regle. Une seconde resolution ailleurs divergerait au premier format nouveau.
+func DepartsAleatoires(reg *mappings.RegulationSet, pairName string) bool {
+	return reg.HasRandomStarts(pairName)
 }
 
 // persisterNiveauxDArmes projette puis ecrit les niveaux d'armes des artefacts ranges du lot.
 // Best-effort de bout en bout : aucun echec ne remonte au cycle, aucun ne se tait.
+//
+// ─── CETTE FAMILLE S ABSTIENT SEULE, ELLE NE PRIVE JAMAIS LES AUTRES DE LEUR MARQUE ───────
+//
+// Correctif de revue du 2026-09-14. La version precedente appelait b.echecLot(lus) des que SA
+// reference de cartes ou SON regulation.toml etait illisible : le lot entier passait alors pour
+// non derive, et les QUATRE autres familles — deja ECRITES — n etaient jamais marquees. Le
+// rattrapage rejouait le meme lot indefiniment, et la fixture d integration
+// TestRun_SelectionDeCuissonVide_RattrapeQuandMeme le prouvait en rouge.
+//
+// La regle est desormais celle de toute famille a reference : elle se tait, elle compte son
+// echec, et elle laisse le lot suivre son cours. Une reference manquante est une installation
+// incomplete de CETTE famille, jamais un defaut des autres.
 func persisterNiveauxDArmes(ctx context.Context, d Deps, b *bilanDerivations, lus []artefactLu) {
 	if len(lus) == 0 {
 		return
@@ -280,73 +308,110 @@ func persisterNiveauxDArmes(ctx context.Context, d Deps, b *bilanDerivations, lu
 	if !armee {
 		if incident {
 			observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(len(lus)))
-			b.echecLot(lus)
 		}
 		return
 	}
-	ref, err := ChargerReferenceEmplacements(d.RepoRoot, d.TitleSlug)
-	if err != nil {
-		// La reference est VERSIONNEE : son absence n'est pas le cas nominal, c'est une
-		// installation incomplete. On le dit, et on ne produit rien — ecrire une passe entiere
-		// en `non_classe` ferait lire un fichier manquant comme un fait de jeu.
-		slog.WarnContext(ctx, "post-sync: niveaux d'armes — reference des emplacements illisible, rien n'est produit",
-			"titleSlug", d.TitleSlug, "err", err)
-		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(len(lus)))
-		b.echecLot(lus)
+	ref, reg, ok := referencesDuTitre(ctx, d, titre, len(lus))
+	if !ok {
 		return
 	}
-	reg, err := ReglesDepartsAleatoires(d.RepoRoot, d.TitleSlug)
-	if err != nil {
-		// Le TOML du titre est illisible : meme traitement que la reference — un INCIDENT.
-		slog.WarnContext(ctx, "post-sync: niveaux d'armes — regulation.toml illisible, rien n'est produit",
-			"titleSlug", d.TitleSlug, "err", err)
+	// L IDENTITE DES MATCHS SE LIT AVANT LE WRITER, par un segment de LECTURE (correctif de
+	// revue) : la projection doit se faire hors du lease d ecriture, comme l en-tete de ce
+	// fichier le promet et comme flaggrabsnet.go le fait.
+	identites, ok := identitesDuLot(ctx, d, lus)
+	if !ok {
+		// IDENTITE ILLISIBLE = LOT NON PROJETE. Projeter avec un pair_name vide ferait rendre
+		// "departs non aleatoires" a tous les matchs, donc ecrire un niveau "base" sur des
+		// Fiesta. Le cycle suivant reessaiera ; ces matchs gardent la marque des autres
+		// familles et n auront simplement pas encore de niveaux.
+		slog.WarnContext(ctx, "post-sync: niveaux d'armes — identites de match illisibles, "+
+			"lot NON projete (un pair_name vide ecrirait un niveau de base sur des Fiesta)",
+			"titleSlug", d.TitleSlug, "matchs", len(lus))
 		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(len(lus)))
-		b.echecLot(lus)
 		return
-	}
-	ecrireNiveauxDArmes(ctx, d, b, titre, lus, ref, reg)
-}
-
-// ecrireNiveauxDArmes acquiert le writer, lit les identites de match, projette et ecrit.
-//
-// LA LECTURE DES IDENTITES EST SOUS LE WRITER, et c'est la seule difference avec le motif des
-// prises nettes : la projection a besoin du `map_id` et du `pair_name`, qui vivent en base.
-// Une requete indexee sur quelques dizaines d'identifiants, puis du calcul pur — le segment
-// reste court, et aucun decodage n'a lieu dedans.
-func ecrireNiveauxDArmes(
-	ctx context.Context, d Deps, b *bilanDerivations, titre string, lus []artefactLu,
-	ref *ReferenceEmplacements, reg *mappings.RegulationSet,
-) {
-	if d.AcquireWriter == nil {
-		slog.WarnContext(ctx, "post-sync: niveaux d'armes NON persistes (aucun writer shared cable sur ce chemin)",
-			"gamertag", d.Gamertag, "matchs", len(lus))
-		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(len(lus)))
-		echecNiveauxDArmes(b, lus)
-		return
-	}
-	db, release, err := d.AcquireWriter(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: writer shared indisponible, niveaux d'armes non persistes",
-			"gamertag", d.Gamertag, "matchs", len(lus), "err", err)
-		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(len(lus)))
-		echecNiveauxDArmes(b, lus)
-		return
-	}
-	defer release()
-
-	identites, err := IdentitesDesMatchs(ctx, db, matchIDsDuLot(lus))
-	if err != nil {
-		// Registre illisible : on DEGRADE plutot que d'abandonner — sans `map_id` la passe
-		// s'ecrit avec `pads_confirmed = 0`, ce qui se lit « niveaux non etablis ». C'est
-		// exactement ce qui s'est passe, et c'est mieux que rien du tout.
-		slog.WarnContext(ctx, "post-sync: niveaux d'armes — identites de match illisibles, passes degradees",
-			"err", err, "matchs", len(lus))
-		identites = map[string]IdentiteMatchNiveaux{}
 	}
 	prets := projeterNiveauxDuLot(ctx, lus, ref, reg, identites)
 	if len(prets) == 0 {
 		return
 	}
+	ecrireNiveauxDArmes(ctx, d, b, titre, prets)
+}
+
+// referencesDuTitre charge la reference des emplacements et les regles du titre. Rend
+// (nil, nil, false) quand l une des deux manque — cette famille s abstient SEULE, sans toucher
+// au bilan des autres.
+func referencesDuTitre(ctx context.Context, d Deps, titre string, n int) (
+	*ReferenceEmplacements, *mappings.RegulationSet, bool,
+) {
+	ref, err := ChargerReferenceEmplacements(d.RepoRoot, d.TitleSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "post-sync: niveaux d'armes — reference des emplacements illisible, "+
+			"cette famille s'abstient (les autres gardent leur marque)",
+			"titleSlug", d.TitleSlug, "err", err)
+		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(n))
+		return nil, nil, false
+	}
+	reg, err := ReglesDepartsAleatoires(d.RepoRoot, d.TitleSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "post-sync: niveaux d'armes — regulation.toml illisible, "+
+			"cette famille s'abstient (les autres gardent leur marque)",
+			"titleSlug", d.TitleSlug, "err", err)
+		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(n))
+		return nil, nil, false
+	}
+	return ref, reg, true
+}
+
+// identitesDuLot lit map_id et pair_name du lot par un SEGMENT DE LECTURE court.
+//
+// Rend (nil, false) quand la lecture est impossible OU incomplete : un match dont le registre
+// ne rend pas la ligne n a pas d identite, et le projeter sans elle reviendrait a lui preter un
+// mode regulier. Sans segment de lecture cable, meme verdict — on ne devine pas.
+func identitesDuLot(ctx context.Context, d Deps, lus []artefactLu) (map[string]IdentiteMatchNiveaux, bool) {
+	if d.WithRead == nil {
+		return nil, false
+	}
+	ids := matchIDsDuLot(lus)
+	var out map[string]IdentiteMatchNiveaux
+	var lecture error
+	d.WithRead(ctx, "niveaux d'armes", func(sharedDB *sql.DB) {
+		out, lecture = IdentitesDesMatchs(ctx, sharedDB, ids)
+	})
+	if lecture != nil || out == nil {
+		return nil, false
+	}
+	for _, id := range ids {
+		if _, connu := out[id]; !connu {
+			return nil, false
+		}
+	}
+	return out, true
+}
+
+// ecrireNiveauxDArmes acquiert le writer et ecrit les passes DEJA projetees.
+//
+// LE SEGMENT NE CONTIENT QUE DES ECRITURES : la lecture des identites et la projection ont eu
+// lieu avant (cf. persisterNiveauxDArmes) — c est le motif de flaggrabsnet.go, et l en-tete de
+// ce fichier le promet.
+func ecrireNiveauxDArmes(
+	ctx context.Context, d Deps, b *bilanDerivations, titre string, prets []passeNiveauxPrete,
+) {
+	if d.AcquireWriter == nil {
+		slog.WarnContext(ctx, "post-sync: niveaux d'armes NON persistes (aucun writer shared cable sur ce chemin)",
+			"gamertag", d.Gamertag, "matchs", len(prets))
+		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(len(prets)))
+		echecNiveauxDArmes(b, prets)
+		return
+	}
+	db, release, err := d.AcquireWriter(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "post-sync: writer shared indisponible, niveaux d'armes non persistes",
+			"gamertag", d.Gamertag, "matchs", len(prets), "err", err)
+		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(len(prets)))
+		echecNiveauxDArmes(b, prets)
+		return
+	}
+	defer release()
 	p := persist.NewPadTiersPersister(db)
 	ecrits, echecs := 0, 0
 	for i := range prets {
@@ -373,7 +438,7 @@ func projeterNiveauxDuLot(
 	prets := make([]passeNiveauxPrete, 0, len(lus))
 	for _, a := range lus {
 		id := identites[a.matchID]
-		batch := ProjeterNiveauxDArmes(a.matchID, a.doc, ref, id, reg.HasRandomStarts(id.PairName))
+		batch := ProjeterNiveauxDArmes(a.matchID, a.doc, ref, id, DepartsAleatoires(reg, id.PairName))
 		if batch.MatchID == "" {
 			slog.DebugContext(ctx, "post-sync: niveaux d'armes — artefact sans prise nommable",
 				"match_id", a.matchID, "schema", a.doc.SchemaVersion)
@@ -384,12 +449,18 @@ func projeterNiveauxDuLot(
 	return prets
 }
 
-// echecNiveauxDArmes enregistre au bilan que ce lot n'a pas ete persiste faute de writer.
-func echecNiveauxDArmes(b *bilanDerivations, lus []artefactLu) {
-	echecFauteDeWriter(b, matchIDsDuLot(lus))
+// echecNiveauxDArmes enregistre au bilan que ces passes n ont pas ete persistees faute de
+// writer : sans cette trace, la marque de derivation se poserait sur un match dont RIEN n a ete
+// ecrit.
+func echecNiveauxDArmes(b *bilanDerivations, prets []passeNiveauxPrete) {
+	ids := make([]string, 0, len(prets))
+	for i := range prets {
+		ids = append(ids, prets[i].matchID)
+	}
+	echecFauteDeWriter(b, ids)
 }
 
-// matchIDsDuLot rend les identifiants d'un lot d'artefacts lus.
+// matchIDsDuLot rend les identifiants d un lot d artefacts lus.
 func matchIDsDuLot(lus []artefactLu) []string {
 	ids := make([]string, 0, len(lus))
 	for i := range lus {

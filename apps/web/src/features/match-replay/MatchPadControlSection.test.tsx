@@ -95,14 +95,13 @@ function poserArtefact(over: Partial<ReplayDocument> | null) {
   artefact.current = over ? testReplayDoc(over) : undefined
 }
 
-function afficher(locale: 'fr' | 'en' = 'fr', modeCategory?: string) {
+function afficher(locale: 'fr' | 'en' = 'fr') {
   return render(
     <MatchPadControlSection
       playerSlug="joueur"
       matchId="m1"
       replayAvailable
       scoreboard={SCOREBOARD}
-      modeCategory={modeCategory}
       locale={locale}
     />,
   )
@@ -296,7 +295,7 @@ describe('MatchPadControlSection — les niveaux d’armes', () => {
 
   it('écrit un intertitre par niveau, avec son sous-total', () => {
     poserArtefact(temoinNiveaux())
-    const vue = afficher('fr', 'Assassin')
+    const vue = afficher('fr')
     expect(vue.getByText(t.padControl.tierLabels.power)).toBeTruthy()
     expect(vue.getByText(t.padControl.tierLabels.ground)).toBeTruthy()
     // Une prise par niveau : deux sous-totaux « 1 prise ».
@@ -312,19 +311,22 @@ describe('MatchPadControlSection — les niveaux d’armes', () => {
         loadouts: Array.from({ length: 20 }, (_, i) => ({ t: 74, slot: 512 + i, w: [AR] })),
       } as unknown as Partial<ReplayDocument>),
     )
-    const vue = afficher('fr', 'Assassin')
+    const vue = afficher('fr')
     expect(vue.getByText(t.padControl.tierLabels.base)).toBeTruthy()
     // L'AR quitte le râtelier pour la base ; il n'y a plus de groupe « terrain ».
     expect(vue.queryByText(t.padControl.tierLabels.ground)).toBeNull()
   })
 
-  it('écrit la note « départs aléatoires » en Fiesta, et n’y publie aucun niveau de base', () => {
+  it('écrit la note « départs aléatoires » quand le SERVEUR le dit, et n’y publie aucun niveau de base', () => {
+    // Le caractère aléatoire vient de la RÉPONSE (`weaponTiers.randomStarts`), plus d'une liste
+    // de catégories tenue côté web — celle-ci a divergé en une semaine (revue 2026-09-14).
     poserArtefact(
       temoinNiveaux({
         loadouts: Array.from({ length: 20 }, (_, i) => ({ t: 74, slot: 512 + i, w: [AR] })),
+        weaponTiers: { randomStarts: true },
       } as unknown as Partial<ReplayDocument>),
     )
-    const vue = afficher('fr', 'Super Fiesta')
+    const vue = afficher('fr')
     expect(vue.getByText(t.padControl.randomStartsNote)).toBeTruthy()
     expect(vue.queryByText(t.padControl.tierLabels.base)).toBeNull()
     // Les deux autres niveaux restent lisibles.
@@ -334,7 +336,7 @@ describe('MatchPadControlSection — les niveaux d’armes', () => {
 
   it('dit « niveaux non établis » quand la carte n’est pas dans la référence, et n’écrit AUCUN intertitre', () => {
     poserArtefact(temoinNiveaux({ mapWeaponPads: undefined } as unknown as Partial<ReplayDocument>))
-    const vue = afficher('fr', 'Assassin')
+    const vue = afficher('fr')
     expect(vue.getByText(t.padControl.tiersUnmeasuredNote)).toBeTruthy()
     // Surtout pas un bandeau « Emplacement non identifié » au-dessus de tout le bloc : une
     // absence de mesure n'est pas un résultat de mesure.
@@ -346,14 +348,14 @@ describe('MatchPadControlSection — les niveaux d’armes', () => {
 
   it('n’écrit aucune de ces notes quand la carte est connue et le mode régulier', () => {
     poserArtefact(temoinNiveaux())
-    const vue = afficher('fr', 'Assassin')
+    const vue = afficher('fr')
     expect(vue.queryByText(t.padControl.tiersUnmeasuredNote)).toBeNull()
     expect(vue.queryByText(t.padControl.randomStartsNote)).toBeNull()
   })
 
   it('publie les intertitres en anglais aussi', () => {
     poserArtefact(temoinNiveaux())
-    const vue = afficher('en', 'Assassin')
+    const vue = afficher('en')
     expect(vue.getByText(REPLAY_TEXT.en.padControl.tierLabels.power)).toBeTruthy()
     expect(vue.getByText(REPLAY_TEXT.en.padControl.tierLabels.ground)).toBeTruthy()
   })

@@ -167,3 +167,11 @@ type CalloutZone struct {
 	Parts       [][][2]float64 `json:"parts,omitempty"`
 	Holes       [][][2]float64 `json:"holes,omitempty"`
 }
+
+// WeaponTiersInfo — ce que le match dit des NIVEAUX D'ARME, résolu à la requête.
+// Jumeau de `replay.WeaponTiersInfo`.
+type WeaponTiersInfo struct {
+	// RandomStarts : le mode distribue les équipements de début de vie AU HASARD. Le niveau
+	// « arme de base » n'y est pas publié.
+	RandomStarts bool `json:"randomStarts"`
+}

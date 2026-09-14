@@ -70,6 +70,9 @@ type PadTierRow struct {
 type PadTiersInput struct {
 	Rows       []PadTierRow
 	PlayerXUID string
+	// MatchesTotal : les matchs du SCOPE (denominateur d honnetete DU BLOC). Zero = inconnu :
+	// la couverture ne s affiche alors pas, plutot que de citer le denominateur d un autre bloc.
+	MatchesTotal int
 	// PlayerTeam : matchID -> camp du joueur suivi (clé absente = camp inconnu).
 	PlayerTeam map[string]int
 	// TeamOf : matchID -> (xuid -> camp).
@@ -92,7 +95,7 @@ func ComputePadTiers(in PadTiersInput) *domain.SessionUsagePadTiersBlock {
 	if len(in.Rows) == 0 {
 		return nil
 	}
-	out := &domain.SessionUsagePadTiersBlock{}
+	out := &domain.SessionUsagePadTiersBlock{MatchesTotal: in.MatchesTotal}
 	parNiveau := map[string]*tierSums{}
 	mesures := map[string]bool{}
 	avecSocles := map[string]bool{}
@@ -125,6 +128,7 @@ func ComputePadTiers(in PadTiersInput) *domain.SessionUsagePadTiersBlock {
 	out.MatchesTiersEstablished = len(niveauxEtablis)
 	out.MatchesRandomStarts = len(departsAleatoires)
 	out.Tiers = projeterNiveaux(parNiveau, out.MatchesMeasured)
+	poserParites(out, in, mesures)
 	return out
 }
 
@@ -213,4 +217,55 @@ func armesTriees(parArme map[string]*[2]float64) []domain.SessionUsagePadTierWea
 		return out[i].FamilyKey < out[j].FamilyKey
 	})
 	return out
+}
+
+// poserParites calcule les TROIS traits de parité SUR LE PÉRIMÈTRE DU BLOC — les matchs dont
+// les niveaux ont été projetés, et eux seuls.
+//
+// POURQUOI PAS CEUX DU BLOC VOISIN (constat de revue, 2026-09-14). Les parités du résumé
+// d'usage portent sur SON périmètre : une autre passe, d'autres matchs, donc un autre effectif
+// moyen. Les emprunter plaçait le trait « à la parité » au mauvais endroit dès que les deux
+// couvertures divergeaient — et elles divergent par construction, puisque les deux passes ne
+// lisent pas les mêmes artefacts.
+//
+// EFFECTIFS INCONNUS = PAS DE TRAIT. `TeamOf` est vide sur un scope entièrement FFA ou sur un
+// montage sans participants : un trait de parité inventé se lit comme une mesure.
+func poserParites(out *domain.SessionUsagePadTiersBlock, in PadTiersInput, mesures map[string]bool) {
+	var sommeEquipe, sommeLobby, n float64
+	for matchID := range mesures {
+		camps := in.TeamOf[matchID]
+		if len(camps) == 0 {
+			continue
+		}
+		campDuJoueur, connu := in.PlayerTeam[matchID]
+		if !connu {
+			continue
+		}
+		effectifEquipe := 0
+		for _, camp := range camps {
+			if camp == campDuJoueur {
+				effectifEquipe++
+			}
+		}
+		if effectifEquipe == 0 {
+			continue
+		}
+		sommeEquipe += float64(effectifEquipe)
+		sommeLobby += float64(len(camps))
+		n++
+	}
+	if n == 0 {
+		return
+	}
+	equipe, lobby := sommeEquipe/n, sommeLobby/n
+	if equipe > 0 {
+		p := 100 / equipe
+		out.TeamParityPct = &p
+	}
+	if lobby > 0 {
+		p := 100 / lobby
+		out.LobbyParityPct = &p
+		q := 100 * equipe / lobby
+		out.TeamOfLobbyParityPct = &q
+	}
 }

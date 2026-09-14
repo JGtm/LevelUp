@@ -45,7 +45,8 @@ func (s *TimeseriesService) WithEquipmentUsage(
 // attachMigratedSections pose les deux blocs sur la réponse, depuis le scope canonique déjà
 // filtré. Best-effort de bout en bout : chaque producteur rend nil plutôt que de casser la page.
 func (s *TimeseriesService) attachMigratedSections(
-	ctx context.Context, resp *domain.TimeseriesPageResponse, filteredCanon []canonical.PlayerMatchRow,
+	ctx context.Context, resp *domain.TimeseriesPageResponse,
+	filteredCanon []canonical.PlayerMatchRow, locale string,
 ) {
 	resp.WeaponRange = buildWeaponRangeSection(ctx, weaponRangeQuery{
 		Repo: s.weaponRangeRepo, TitleSlug: s.titleSlug, Gamertag: s.gamertag, Rows: filteredCanon,
@@ -55,9 +56,10 @@ func (s *TimeseriesService) attachMigratedSections(
 		PlayerXUID:      s.playerXUID,
 		MatchIDs:        synthesisMatchIDs(filteredCanon),
 		FriendGamertags: s.timeseriesFriendGamertags(ctx),
-		// De quoi NOMMER les armes du detail par niveau (catalogue du titre).
+		// De quoi NOMMER les armes du detail par niveau, DANS LA LANGUE DE LA REQUETE.
 		RepoRoot:  s.repoRoot,
 		TitleSlug: s.titleSlug,
+		Locale:    locale,
 	})
 }
 
