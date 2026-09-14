@@ -74,7 +74,7 @@ rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
 741 lecture(s) · 476 par image-cle (~20 s) · 265 par delta (transmis AU CHANGEMENT)
-570 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
+107 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
 couverture : 476 image-cle · 265 delta · 0 ecartee(s) sans piste · canal munitions refuse : false
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur

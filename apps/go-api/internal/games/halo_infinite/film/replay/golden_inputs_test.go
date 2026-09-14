@@ -41,6 +41,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"errors"
 	"flag"
 	"fmt"
 	"math"
@@ -156,7 +157,7 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS14\n"
+const goldenInputsMagic = "REPLAYINPUTS16\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -177,8 +178,24 @@ const goldenInputsMagic = "REPLAYINPUTS14\n"
 //	Death             XUID · Gamertag · TimeMS
 //	PlayerIndexTable  entier
 //	ClockOriginUS     l horodatage du premier paquet du film (l origine publiee en depend)
+//
+// errGoldenInputsCarte : le fixture a ete cuit pour UNE carte, et on le relit avec une autre.
+//
+// ERREUR TYPEE parce que la confusion est SILENCIEUSE autrement : les positions du fixture sont
+// des quanta, et `DequantBipedAxis` les rendrait avec les bornes de la mauvaise carte sans rien
+// signaler — des coordonnees FAUSSES, pas approximatives (cf. son en-tete).
+var errGoldenInputsCarte = errors.New("fixture d entrees : carte du catalogue differente")
+
 type goldenInputs struct {
-	Film        string
+	Film string
+	// MapModule est le module de l entree de catalogue qui a dequantifie les positions
+	// (`MapQuantEntry.Module`). Il ouvre le blob et se verifie a la relecture.
+	MapModule string
+	// AxisW est le decoupage d axe qui a produit les quanta — celui que le balayage a EMPLOYE,
+	// pas celui du catalogue. Les deux different sur Live Fire (detecte [13 12 11], catalogue
+	// [12 12 11]) : un bit d ecart sur X double le pas de quantification, donc l etendue des
+	// coordonnees. Le porter est la seule facon de redequantifier a l identique.
+	AxisW       [3]uint
 	Positions   []filmdec.BipedPosition
 	Fire        []filmdec.FireEvent
 	Loadouts    []filmdec.KeyframeLoadout
@@ -401,6 +418,14 @@ const (
 func encodeGoldenInputs(g *goldenInputs) []byte {
 	w := &gwriter{b: []byte(goldenInputsMagic)}
 	w.str(g.Film)
+	// LE MODULE DE LA CARTE OUVRE LE BLOB (lot 0.D.3 bis). Les positions y sont des QUANTA :
+	// sans l entree de catalogue qui les a produites, elles ne se dequantifient pas — et avec
+	// la MAUVAISE, elles se dequantifient en coordonnees FAUSSES, pas approximatives
+	// (cf. DequantBipedAxis). Le module est donc ecrit ici et VERIFIE a la relecture.
+	w.str(g.MapModule)
+	for a := 0; a < 3; a++ {
+		w.u(uint64(g.AxisW[a]))
+	}
 	w.u(g.ClockOriginUS)
 
 	// Table des slots : un slot tient sur 13 bits, mais un film n en emploie qu une centaine.
@@ -440,7 +465,13 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		}
 		w.byte8(fl)
 		if p.HasWorld {
-			cur := [3]int64{cmOf(p.X), cmOf(p.Y), cmOf(p.Z)}
+			// LES QUANTA DU FILM, PAS LES FLOTTANTS DERIVES (lot 0.D.3 bis). `X/Y/Z` sont
+			// le resultat de `DequantBipedAxis(Q[ax], ax, layout, bornes)` : porter `Q` et
+			// redequantifier a la relecture par LE MEME chemin rend la coordonnee a
+			// l identique, sans coder un flottant. Et un quantum est un ENTIER qui bouge
+			// peu d une position a la suivante : le delta signe tient sur un a deux octets,
+			// la ou les bits d un float32 n en tenaient aucun.
+			cur := [3]int64{int64(p.Q[0]), int64(p.Q[1]), int64(p.Q[2])}
 			prev := lastXYZ[p.Slot]
 			for a := 0; a < 3; a++ {
 				w.i(cur[a] - prev[a])
@@ -505,6 +536,8 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		for _, c := range inv.Grenades {
 			w.u(uint64(c))
 		}
+		w.bool8(inv.GrenadesByPosition)
+		w.i(int64(inv.SelectedGrenadeRank))
 		w.i(int64(inv.AbilityRank))
 		w.i(int64(inv.DrawnSlot))
 		w.u(uint64(inv.AmmoCandidates))
@@ -527,6 +560,10 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		w.bool8(d.SelRead)
 		w.i(int64(d.Sel))
 		w.u(uint64(d.Mask))
+		w.u(uint64(len(d.Ammo)))
+		for _, a := range d.Ammo {
+			encodeDeltaAmmo(w, a)
+		}
 	}
 
 	w.u(uint64(len(g.AbilityRanks)))
@@ -864,13 +901,54 @@ func decodeAmmo(r *greader) SlotAmmo {
 	return a
 }
 
+// encodeDeltaAmmo / decodeDeltaAmmo : l ETAT DE MUNITIONS d un emplacement, tel que les paquets
+// DELTA le transmettent (`filmdec.InventoryDeltaAmmo`).
+//
+// IL MANQUAIT AU CODEC (decouverte D9, comblee au lot 0.D.3). `InventoryDelta.Ammo` n etait pas
+// serialise : un fixture relu rendait des deltas SANS munitions, la ou le film en porte. Les
+// trois valeurs sont des POINTEURS — absent et zero ne sont pas la meme chose (un chargeur vide
+// est une lecture, un chargeur non transmis n en est pas une) —, donc chacune voyage derriere
+// son drapeau de presence, comme `encodeAmmo` le fait deja pour les images-cles.
+func encodeDeltaAmmo(w *gwriter, a filmdec.InventoryDeltaAmmo) {
+	w.i(int64(a.WeaponSlot))
+	for _, p := range []*uint32{a.Mag, a.FracQ, a.Res} {
+		w.bool8(p != nil)
+		if p != nil {
+			w.u(uint64(*p))
+		}
+	}
+}
+
+func decodeDeltaAmmo(r *greader) filmdec.InventoryDeltaAmmo {
+	a := filmdec.InventoryDeltaAmmo{WeaponSlot: int(r.i())}
+	for _, dst := range []**uint32{&a.Mag, &a.FracQ, &a.Res} {
+		if r.bool8() {
+			v := uint32(r.u())
+			*dst = &v
+		}
+	}
+	return a
+}
+
 // decodeGoldenInputs relit le fixture.
-func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
+func decodeGoldenInputs(blob []byte, entry filmdec.MapQuantEntry) (*goldenInputs, error) {
 	if len(blob) < len(goldenInputsMagic) || string(blob[:len(goldenInputsMagic)]) != goldenInputsMagic {
 		return nil, fmt.Errorf("fixture d entrees : magie absente ou version inconnue — regenerer")
 	}
 	r := &greader{b: blob, off: len(goldenInputsMagic)}
 	g := &goldenInputs{Film: r.str()}
+	g.MapModule = r.str()
+	if g.MapModule != entry.Module {
+		return nil, fmt.Errorf("%w : fixture cuit pour %q, entree de catalogue fournie %q",
+			errGoldenInputsCarte, g.MapModule, entry.Module)
+	}
+	for a := 0; a < 3; a++ {
+		g.AxisW[a] = uint(r.u())
+	}
+	// LE DECOUPAGE VIENT DU BLOB, LES BORNES DU CATALOGUE : le premier dit comment le film a
+	// quantifie, le second ou la carte commence et finit. Melanger les deux sources est ce qui
+	// rendait des coordonnees fausses sur Live Fire.
+	lay, world := filmdec.I0Layout{AxisW: g.AxisW}, entry.Range()
 	g.ClockOriginUS = r.u()
 
 	nSlots := int(r.u())
@@ -901,7 +979,10 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 				cur[a] = prev[a] + r.i()
 			}
 			lastXYZ[p.Slot] = cur
-			p.X, p.Y, p.Z = fromCM(cur[0]), fromCM(cur[1]), fromCM(cur[2])
+			p.Q = [3]uint32{uint32(cur[0]), uint32(cur[1]), uint32(cur[2])}
+			p.X = filmdec.DequantBipedAxis(p.Q[0], 0, lay, world)
+			p.Y = filmdec.DequantBipedAxis(p.Q[1], 1, lay, world)
+			p.Z = filmdec.DequantBipedAxis(p.Q[2], 2, lay, world)
 		}
 		if fl&gpHasYaw != 0 {
 			p.HasYaw = true
@@ -966,6 +1047,8 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 		for j := 0; j < invGrenadeSlots; j++ {
 			inv.Grenades[j] = uint32(r.u())
 		}
+		inv.GrenadesByPosition = r.bool8()
+		inv.SelectedGrenadeRank = int(r.i())
 		inv.AbilityRank = int(r.i())
 		inv.DrawnSlot = int(r.i())
 		inv.AmmoCandidates = int(r.u())
@@ -991,6 +1074,12 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 		d.SelRead = r.bool8()
 		d.Sel = int(r.i())
 		d.Mask = uint32(r.u())
+		if an := int(r.u()); an > 0 {
+			d.Ammo = make([]filmdec.InventoryDeltaAmmo, 0, an)
+			for j := 0; j < an && r.err == nil; j++ {
+				d.Ammo = append(d.Ammo, decodeDeltaAmmo(r))
+			}
+		}
 		g.InventoryDeltas = append(g.InventoryDeltas, d)
 	}
 
@@ -1137,7 +1226,11 @@ func loadGoldenInputs(t *testing.T) *goldenInputs {
 	if _, err := buf.ReadFrom(zr); err != nil {
 		t.Fatalf("fixture d entrees : decompression : %v", err)
 	}
-	g, err := decodeGoldenInputs(buf.Bytes())
+	entry, err := goldenMapQuant()
+	if err != nil {
+		t.Fatalf("entree de catalogue du film de reference : %v", err)
+	}
+	g, err := decodeGoldenInputs(buf.Bytes(), entry)
 	if err != nil {
 		t.Fatalf("fixture d entrees : %v", err)
 	}
@@ -1154,7 +1247,7 @@ func loadGoldenInputs(t *testing.T) *goldenInputs {
 func TestGoldenInputsRoundTrip(t *testing.T) {
 	g := loadGoldenInputs(t)
 	blob := encodeGoldenInputs(g)
-	again, err := decodeGoldenInputs(blob)
+	again, err := decodeGoldenInputs(blob, goldenEntryPourTest(t))
 	if err != nil {
 		t.Fatalf("second decodage : %v", err)
 	}
@@ -1179,13 +1272,13 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 // d octets alors que le probleme est une version. Le test relit le corps COURANT precede de la
 // magie PRECEDENTE : la seule reponse acceptable est le refus de version.
 func TestGoldenInputsVersionGuard(t *testing.T) {
-	const previousMagic = "REPLAYINPUTS13\n"
+	const previousMagic = "REPLAYINPUTS15\n"
 	if previousMagic == goldenInputsMagic {
 		t.Fatal("la magie precedente et la courante sont identiques : le test ne prouve plus rien")
 	}
 	body := encodeGoldenInputs(loadGoldenInputs(t))[len(goldenInputsMagic):]
 	stale := append([]byte(previousMagic), body...)
-	_, err := decodeGoldenInputs(stale)
+	_, err := decodeGoldenInputs(stale, goldenEntryPourTest(t))
 	if err == nil {
 		t.Fatal("un fixture d une autre version a ete accepte : la garde de version ne sert a rien")
 	}
@@ -1263,6 +1356,15 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 	wr := entry.Range()
 	scan := filmdec.DefaultScanFilmOptions()
 	scan.WorldRange = &wr
+	// LE DECOUPAGE D AXE DEVIENT EXPLICITE (lot 0.D.3 bis). Le balayage l auto-detectait quand
+	// l option restait nulle ; le poser ne change RIEN a ce qu il lit — c est la meme valeur,
+	// par la meme fonction — mais il devient NOMME, donc inscriptible au fixture. Sans lui, la
+	// relecture ne saurait pas avec quel pas les quanta ont ete produits.
+	lay, _, layErr := filmdec.DetectI0Layout(dir)
+	if layErr != nil {
+		return nil, fmt.Errorf("decoupage i0 de %s : %w", dir, layErr)
+	}
+	scan.Layout = &lay
 	scan.CaptureDirs = true
 	// MEME GESTE QUE LA PRODUCTION (BuildFromFilm) : les teleportations se lisent AVANT les
 	// positions, parce qu elles exemptent le filtre de vitesse (decision D2), et AVEC l entree
@@ -1274,7 +1376,10 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 	if err != nil {
 		return nil, err
 	}
-	g := &goldenInputs{Film: film, Positions: pos, Translocations: translocs}
+	g := &goldenInputs{
+		Film: film, MapModule: entry.Module, AxisW: lay.AxisW,
+		Positions: pos, Translocations: translocs,
+	}
 	if g.Fire, err = filmdec.ScanFilmFireEvents(dir); err != nil {
 		return nil, err
 	}
@@ -1354,4 +1459,17 @@ func goldenMapQuant() (filmdec.MapQuantEntry, error) {
 		return filmdec.MapQuantEntry{}, err
 	}
 	return entry, nil
+}
+
+// goldenEntryPourTest rend l entree de catalogue du film de reference, ou echoue le test.
+//
+// Elle existe parce que le decodeur de blob EXIGE desormais cette entree (lot 0.D.3 bis) : les
+// positions y sont des quanta, et sans les bornes de la carte elles ne sont pas des coordonnees.
+func goldenEntryPourTest(t *testing.T) filmdec.MapQuantEntry {
+	t.Helper()
+	entry, err := goldenMapQuant()
+	if err != nil {
+		t.Fatalf("entree de catalogue du film de reference : %v", err)
+	}
+	return entry
 }
