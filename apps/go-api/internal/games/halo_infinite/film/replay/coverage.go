@@ -417,6 +417,20 @@ type TrackCoverage struct {
 	MinPoints int `json:"minPoints"`
 }
 
+// logTrackCoverage journalise ce que le seuil a refusé, quand il a refusé quelque chose.
+//
+// JOURNALISE, JAMAIS AVALÉ (règle n° 3 du dépôt) : ce refus était muet des DEUX côtés — ni
+// compteur publié, ni ligne de journal. Le seuil ne bouge pas ; ce qu'il retire se voit
+// désormais dans l'artefact ET dans les logs de la cuisson.
+func logTrackCoverage(matchID string, c TrackCoverage) {
+	if c.RefusedMinPoints == 0 {
+		return
+	}
+	slog.Info("rejeu : vies refusees par le seuil de publication",
+		"match_id", matchID, "vies", c.RefusedMinPoints, "points", c.RefusedPoints,
+		"seuil", c.MinPoints, "viesPubliees", c.Published)
+}
+
 // ProjectileCoverage est la couverture du calque des projectiles.
 type ProjectileCoverage struct {
 	// Tracks est le nombre de pistes DÉCODÉES — le dénominateur.
