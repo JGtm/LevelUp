@@ -452,9 +452,59 @@ func renderTracks(p func(string, ...any), doc ReplayDocument) {
 	p("### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables")
 	p("%d joueur(s)", len(doc.Roster))
 	for _, r := range doc.Roster {
-		p("  %s  idx=%d  %q", r.XUID, r.FilmIndex, r.Name)
+		p("  %s  idx=%d  equipe=%s  %q", r.XUID, r.FilmIndex, equipeTexte(r.Team), r.Name)
 	}
 	p("")
+	renderTeams(p, doc)
+}
+
+// renderTeams rend L EQUIPE LUE DANS LE FILM (schema 57, lot 1.7) : c est ce qui rend le critere
+// S5 du PLAN_DECODEUR_FILM verifiable sur piece — « `Track.Team != -1` sur une cuisson HORS
+// LIGNE ». Les goldens ne lisent AUCUNE base : si une equipe y apparait, elle vient du film.
+func renderTeams(p func(string, ...any), doc ReplayDocument) {
+	p("### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)")
+	c := doc.Coverage.Teams
+	if c == nil {
+		p("aucune couverture d equipes publiee")
+		p("")
+		return
+	}
+	p("lue=%v refus=%q · %d record(s) ti=9, %d rejete(s), %d divergence(s)",
+		c.Read, c.Refusal, c.Records, c.Rejected, c.Divergences)
+	p("roster : %d joueur(s) dont le film donne l equipe (%d sans equipe) · %d non lu(s)",
+		c.Film, c.NoTeam, c.Unread)
+	p("controle (feuille de match) : accord=%d contradiction=%d silence=%d",
+		c.Accord, c.Contradiction, c.Silence)
+	p("vies : %d/%d portent une equipe du film", c.TracksNamed, c.Tracks)
+	p("repartition des vies par designateur : %s", repartitionEquipes(doc.Tracks))
+	p("")
+}
+
+// equipeTexte rend le designateur d une entree de roster, ou « absente » quand le film ne nomme
+// pas cet index. Les deux ne sont pas la meme chose, et le golden doit les distinguer.
+func equipeTexte(t *int) string {
+	if t == nil {
+		return "absente"
+	}
+	return strconv.Itoa(*t)
+}
+
+// repartitionEquipes rend l histogramme des designateurs portes par les vies publiees, trie.
+func repartitionEquipes(tracks []Track) string {
+	comptes := map[int]int{}
+	for _, t := range tracks {
+		comptes[t.Team]++
+	}
+	cles := make([]int, 0, len(comptes))
+	for k := range comptes {
+		cles = append(cles, k)
+	}
+	sort.Ints(cles)
+	parts := make([]string, 0, len(cles))
+	for _, k := range cles {
+		parts = append(parts, fmt.Sprintf("%d x%d", k, comptes[k]))
+	}
+	return strings.Join(parts, " · ")
 }
 
 func renderLayerCoverage(p func(string, ...any), titre string, c LayerCoverage, verdict string) {

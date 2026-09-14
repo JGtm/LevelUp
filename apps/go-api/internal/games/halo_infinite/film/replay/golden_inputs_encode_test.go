@@ -6,7 +6,11 @@ package replay
 // 1 560 lignes, deux fonctions de ~290). DEPLACEMENT PUR : aucune ligne de logique changee,
 // le decoupage suit les SECTIONS du blob, et chaque section a desormais sa fonction.
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+)
 
 const (
 	gpHasWorld  byte = 1 << 0
@@ -291,6 +295,31 @@ func encodeGoldenQueue(w *gwriter, g *goldenInputs) {
 	}
 
 	encodeFilmTable(w, g.FilmTable)
+	encodePlayerTeams(w, g.PlayerTeams, g.TeamScan)
+}
+
+// encodePlayerTeams ecrit l EQUIPE DE CHAQUE JOUEUR (v21, lot 1.7) : la table `index de joueur
+// -> designateur` et le RAPPORT de sa lecture. Les deux, parce qu une table vide et une lecture
+// refusee ne disent pas la meme chose, et que `coverage.teams` publie la difference.
+func encodePlayerTeams(w *gwriter, teams map[int]int, rep filmdec.TeamScanReport) {
+	idx := make([]int, 0, len(teams))
+	for i := range teams {
+		idx = append(idx, i)
+	}
+	sort.Ints(idx)
+	w.u(uint64(len(idx)))
+	for _, i := range idx {
+		w.i(int64(i))
+		w.i(int64(teams[i]))
+	}
+	w.bool8(rep.ArchetypeAbsent)
+	w.bool8(rep.ComponentMismatch)
+	w.str(rep.Component)
+	for _, n := range []int{rep.Packets, rep.Records, rep.Read, rep.Unreached,
+		rep.OutOfDomainIndex, rep.OutOfDomainValue, rep.Entities, rep.EntityDivergences,
+		rep.IndexDivergences, rep.Indices, rep.NoTeam} {
+		w.u(uint64(n))
+	}
 }
 
 // encodeFilmTable ecrit la TABLE DES JOUEURS DU FILM (v20, lot 1.6). Elle porte son REFUS comme

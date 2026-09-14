@@ -1354,3 +1354,44 @@ package replay
 //	                vient son index de joueur, ni porter les vies d'un echantillon. La reprise du
 //	                backfill se fait par SchemaVersion — sans montee aucune recuisson ne le
 //	                rattraperait.
+
+// v57 (2026-09-14, lot 1.7 du PLAN_DECODEUR_FILM) : L'EQUIPE DE CHAQUE JOUEUR EST DANS LE FILM,
+// ET C'EST DE LA QU'ELLE VIENT.
+//
+//	ce qui etait   `Track.Team` valait -1 sur TOUTES les vies de TOUS les artefacts, et le
+//	faux           document le documentait ainsi : « l'equipe n'est PAS dans le film, elle vit
+//	               dans la base et le client la joint par XUID ». C'est refute :
+//	               `.ai/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md` etablit par DEUX chaines
+//	               sans etape commune — le desassemblage du lecteur `0x140f581e8` et 160 slots
+//	               sur 176 en accord exact avec `match_participants.team_id`, dont deux Grandes
+//	               batailles a 24/24 — que la trame d'etat la porte, par joueur, sur 4 bits.
+//
+//	d'ou elle      du composant i0 de l'archetype ti=9 (`managed-player-team-designator-component`),
+//	se lit         a une position DERIVEE de la grammaire (en-tete par entite 108 + mot de taille
+//	               32 + etat par defaut de ti=9 + 32), jamais cablee. La valeur ecrite vaut le
+//	               designateur PLUS UN : le document publie le designateur du jeu, `0..8` pour
+//	               les huit camps de `mp_team_designator`, `-1` pour « aucune equipe » (FFA).
+//
+//	l'appariement  le premier `R(6)` de l'etat par defaut de ti=9 EST l'index de joueur de
+//	entite ->      l'entite (mesure du 2026-09-14, 18 films et 7 builds). Il n'y a donc aucun
+//	joueur         appariement ordinal a faire, et les joueurs ARRIVES EN COURS DE PARTIE — qui
+//	               n'ont pas de siege dans la table du DEBUT du film (lot 1.6) — portent leur
+//	               equipe comme les autres : 34 arrivees mesurees, toutes a designateur stable.
+//
+//	les champs     `tracks[].team` cesse d'etre constant a -1 ; `roster[].team` est NEUF (par
+//	ajoutes        `filmIndex`, donc valable aussi pour un joueur sans vie publiee et pour un
+//	               bot) ; `coverage.teams` publie ce que la lecture a couvert — `read`,
+//	               `refusal`, `records`, `rejected`, `divergences`, `film`, `noTeam`, `unread` —
+//	               et les trois compteurs du CONTROLE, `accord` / `contradiction` / `silence`.
+//
+//	la base ne     decision utilisateur du 2026-09-13 (V4) : « si le decodeur est fiable, pas
+//	pose plus      besoin du repli ». `FlagInput.TeamOf` DISPARAIT : l'equipe du porteur de
+//	rien           drapeau vient desormais du film, donc l'invariant « jamais son propre
+//	               drapeau » tient sur une cuisson HORS LIGNE, ou il se taisait faute de lignes
+//	               de match. La feuille de match arrive par `Options.ScoreboardTeams` et
+//	               n'alimente QUE les trois compteurs de controle.
+//
+//	POURQUOI LA    le contenu cuit change sur toutes les vies et tout le roster, et un champ
+//	VERSION MONTE  apparait. Un artefact 56 porte `team: -1` partout : il ne se distingue d'un
+//	               artefact 57 de mode FFA que par `coverage.teams`, qui n'y est pas. La reprise
+//	               du backfill se fait par SchemaVersion.

@@ -139,6 +139,14 @@ type Coverage struct {
 	// TrackCoverage). Absente quand le film ne porte aucune position : il n'y a alors pas de
 	// seuil à appliquer, et publier des zéros laisserait croire à une mesure.
 	Tracks *TrackCoverage `json:"tracks,omitempty"`
+	// Teams est CE QUE LE FILM DIT DES ÉQUIPES et ce que la base en pense (schéma 57, cf.
+	// TeamCoverage) : les joueurs dont le film donne l'équipe, ceux qu'il laisse sans, et les
+	// trois compteurs du CONTRÔLE (accord / contradiction / silence).
+	//
+	// ELLE EST LA SEULE FAÇON DE LIRE UN `team: -1`. Le champ ne dit pas si le mode n'a pas de
+	// camps ou si le film n'a pas nommé ce joueur ; `noTeam` et `unread` le disent. Absente
+	// quand le film ne porte aucune position : il n'y a alors ni roster ni vie à couvrir.
+	Teams *TeamCoverage `json:"teams,omitempty"`
 	// Projectiles est la couverture des TRAJECTOIRES DE PROJECTILE (cf. projectiles.go) :
 	// pistes décodées, trajectoires publiées, et celles qu'un PAS IMPOSSIBLE a coupées.
 	//

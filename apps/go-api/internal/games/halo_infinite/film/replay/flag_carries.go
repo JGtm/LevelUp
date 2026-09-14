@@ -133,8 +133,9 @@ type FlagCarryScan struct {
 	// manche a l'autre ; une prise est nommee par l'identite de sa manche, choisie sur son
 	// instant). Sur un film mono-manche c'est le pont plat, a l'octet pres.
 	Identity objectiveevents.RoundIdentity
-	// TeamOf est la table xuid -> equipe fournie par l'appelant (cf. [FlagInput.TeamOf]) : elle
-	// porte l'invariant « jamais son propre drapeau ». Vide : l'invariant se tait.
+	// TeamOf est la table xuid -> equipe LUE DANS LE FILM (lot 1.7) : elle porte l'invariant
+	// « jamais son propre drapeau ». Les joueurs a « aucune equipe » n'y entrent pas — l'invariant
+	// ne refuse que sur une equipe REELLE. Vide : l'invariant se tait.
 	TeamOf map[string]int
 	// Marks est le controle independant : les records de bipede d'image-cle portant le marqueur
 	// de portage, plus les instants de TOUTES les images-cles.

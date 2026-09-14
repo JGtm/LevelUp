@@ -73,6 +73,12 @@ func goldenInputsPath() string {
 // a un offset arbitraire : bruyant par chance, pas par construction, et le message ne dit pas
 // quoi faire. [TestGoldenInputsVersionGuard] verrouille le refus explicite.
 //
+// v21 (2026-09-14, lot 1.7) : le fixture porte L EQUIPE DE CHAQUE JOUEUR (`FilmInputs.PlayerTeams`,
+// `index de joueur -> designateur`, lue par `filmdec.ScanPlayerTeams` dans le composant i0 de
+// ti=9) ET le RAPPORT de cette lecture (`FilmInputs.TeamScan`). Les deux, parce qu une table vide
+// et une lecture REFUSEE ne disent pas la meme chose : `coverage.teams` publie la difference, et
+// un fixture qui ne porterait que la table figerait un refus comme un film sans equipes.
+//
 // v20 (2026-09-14, lot 1.6) : le fixture porte LA TABLE DES JOUEURS DU FILM (`FilmInputs.FilmTable`,
 // lue par `ScanFilmPlayerTable` dans `chunk_00`) — le lien DIRECT `index <-> xuid <-> gamertag`
 // dont le registre d identite fait sa source premiere. Elle porte son REFUS comme elle porte ses
@@ -207,7 +213,7 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS20\n"
+const goldenInputsMagic = "REPLAYINPUTS21\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -360,7 +366,7 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 // d octets alors que le probleme est une version. Le test relit le corps COURANT precede de la
 // magie PRECEDENTE : la seule reponse acceptable est le refus de version.
 func TestGoldenInputsVersionGuard(t *testing.T) {
-	const previousMagic = "REPLAYINPUTS19\n"
+	const previousMagic = "REPLAYINPUTS20\n"
 	if previousMagic == goldenInputsMagic {
 		t.Fatal("la magie precedente et la courante sont identiques : le test ne prouve plus rien")
 	}

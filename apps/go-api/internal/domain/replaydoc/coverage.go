@@ -10,6 +10,7 @@ type Coverage struct {
 	Grenades          LayerCoverage               `json:"grenades"`
 	Objectives        LayerCoverage               `json:"objectives"`
 	Tracks            *TrackCoverage              `json:"tracks,omitempty"`
+	Teams             *TeamCoverage               `json:"teams,omitempty"`
 	Projectiles       *ProjectileCoverage         `json:"projectiles,omitempty"`
 	Equipment         *EquipmentCoverage          `json:"equipment,omitempty"`
 	Grapple           *GrappleCoverage            `json:"grapple,omitempty"`
@@ -150,6 +151,29 @@ type InventoryCoverage struct {
 // MUET avant le schéma 55 : un document publiant 90 traces là où le film en porte 95 était
 // indistinguable d'un film à 90 vies. `minPoints` voyage avec ses conséquences — un compte de
 // refus ne se relit pas sans savoir contre quoi il a été mesuré.
+// TeamCoverage est ce que la lecture de l'EQUIPE a couvert, et ce que la feuille de match en
+// pense (schema 57). Elle publie les deux moities separement : `film` dit ce que l'artefact
+// tient du FILM, `accord` / `contradiction` / `silence` disent ce qu'une source EXTERIEURE en
+// pense — la base ne pose aucune equipe, elle controle.
+//
+// C'EST LA SEULE FACON DE LIRE UN `team: -1` : `noTeam` (le mode n'a pas de camps) et `unread`
+// (le film n'a pas nomme ce joueur) distinguent ce que le champ ne distingue pas.
+type TeamCoverage struct {
+	Read          bool   `json:"read"`
+	Refusal       string `json:"refusal,omitempty"`
+	Records       int    `json:"records"`
+	Rejected      int    `json:"rejected"`
+	Divergences   int    `json:"divergences"`
+	Film          int    `json:"film"`
+	NoTeam        int    `json:"noTeam"`
+	Unread        int    `json:"unread"`
+	Accord        int    `json:"accord"`
+	Contradiction int    `json:"contradiction"`
+	Silence       int    `json:"silence"`
+	Tracks        int    `json:"tracks"`
+	TracksNamed   int    `json:"tracksNamed"`
+}
+
 type TrackCoverage struct {
 	Published        int `json:"published"`
 	PublishedPoints  int `json:"publishedPoints"`

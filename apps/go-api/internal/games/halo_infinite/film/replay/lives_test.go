@@ -164,7 +164,7 @@ func TestBuildRosterIsSortedAndStable(t *testing.T) {
 	// d'octets a chaque build sans changer de contenu, et deviendrait indiffable.
 	idx := PlayerIndexTable{ByXUID: map[uint64]int{2533274800000003: 2, 2533274800000001: 0,
 		2533274800000002: 1}}
-	first := buildRoster(idx, nil, nil)
+	first := buildRoster(idx, nil, nil, teamPublication{})
 	if len(first) != 3 || first[0].FilmIndex != 0 || first[2].FilmIndex != 2 {
 		t.Fatalf("roster mal trie : %+v", first)
 	}
@@ -172,11 +172,11 @@ func TestBuildRosterIsSortedAndStable(t *testing.T) {
 		t.Errorf("xuid attendu en decimal, obtenu %q", first[0].XUID)
 	}
 	for i := 0; i < 20; i++ {
-		if got := buildRoster(idx, nil, nil); got[0].XUID != first[0].XUID || got[2].XUID != first[2].XUID {
+		if got := buildRoster(idx, nil, nil, teamPublication{}); got[0].XUID != first[0].XUID || got[2].XUID != first[2].XUID {
 			t.Fatalf("roster non reproductible entre deux appels : %+v puis %+v", first, got)
 		}
 	}
-	if buildRoster(PlayerIndexTable{}, nil, nil) != nil {
+	if buildRoster(PlayerIndexTable{}, nil, nil, teamPublication{}) != nil {
 		t.Errorf("sans table d'index, pas de roster invente")
 	}
 }
@@ -224,7 +224,7 @@ func TestBuildRosterPublishesDeclaredBots(t *testing.T) {
 		{FilmIndex: 0, Name: "343 Conflit [bot]"}, // index tenu par l'humain -> refusé
 		{FilmIndex: 9, Name: ""},                  // sans nom -> rien à publier
 	}
-	got := buildRoster(idx, nil, bots)
+	got := buildRoster(idx, nil, bots, teamPublication{})
 	if len(got) != 2 {
 		t.Fatalf("attendu humain + 1 bot, obtenu %+v", got)
 	}

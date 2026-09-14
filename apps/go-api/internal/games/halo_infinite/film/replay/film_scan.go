@@ -397,6 +397,11 @@ func (s *filmScan) balayerPont() {
 	// jamais l'inverse (cf. film_player_table.go). Un refus est NOMMÉ, journalisé et publié.
 	s.in.FilmTable = ScanFilmPlayerTable(s.film, s.matchID)
 	s.opt.observe("filmTable", s.in.FilmTable)
+	// L'EQUIPE DE CHAQUE JOUEUR (lot 1.7) : le composant i0 de ti=9 de la trame d'etat, a une
+	// position DERIVEE de la grammaire. C'est la SEULE source d'equipe du document (V4) ; la
+	// base ne fait que controler. Un refus est NOMME et publie (`coverage.teams.refusal`).
+	s.in.PlayerTeams, s.in.TeamScan = filmdec.ScanPlayerTeams(s.fc)
+	s.opt.observe("playerTeams", s.in.PlayerTeams)
 	// L'index de joueur SE LIT dans le film (cf. player_index.go) : le roster vient du fil des
 	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, aucun
 	// tir ni lancer n'est publié — comme sans le fil des morts.

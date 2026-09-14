@@ -130,6 +130,13 @@ type FilmInputs struct {
 	// 2026-09-14 : jusqu'a 5 sur un BTB). Le registre d'identite pose les sieges du film, puis
 	// COMPLETE par la lecture des chunks pour les xuids dont la table est muette.
 	FilmTable FilmPlayerTable
+	// PlayerTeams est l'EQUIPE DE CHAQUE JOUEUR, lue dans la trame d'etat par
+	// [filmdec.ScanPlayerTeams] : `index de joueur -> designateur` (`-1` = aucune equipe).
+	// C'est la SEULE source d'equipe du document (V4) ; la base ne fait que controler.
+	PlayerTeams map[int]int
+	// TeamScan est le rapport de cette lecture. Il voyage avec la table parce qu'une table vide
+	// et une lecture refusee ne disent pas la meme chose.
+	TeamScan filmdec.TeamScanReport
 	// FilmClockOriginUS est l'horodatage moteur du PREMIER paquet du film. Zero = origine
 	// incalculable : le document sort sans origine.
 	FilmClockOriginUS uint64
@@ -181,5 +188,6 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.Deaths = in.Deaths
 	opt.PlayerIndices = in.PlayerIndices
 	opt.FilmTable = in.FilmTable
+	opt.PlayerTeams, opt.TeamScan = in.PlayerTeams, in.TeamScan
 	opt.FilmClockOriginUS = in.FilmClockOriginUS
 }
