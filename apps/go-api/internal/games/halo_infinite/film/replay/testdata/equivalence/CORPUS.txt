@@ -31,12 +31,22 @@
 # les chiffres) : +102 (x1), +103 (x2), +104 (x14), +105 (x2), +106 (x1). Le `git diff` des
 # vingt `.tsv` ne porte que vingt lignes, toutes `artifact`.
 #
-# POURQUOI ON PEUT RE-FIGER ICI, ET CE QUI L AUTORISE. Le lot 1.1 (equipe d un evenement du pied
-# lue a l octet 37 et non 55) ne change AUCUN octet du document cuit, et ce n est pas un
-# raisonnement : c est une mesure PAR MUTATION. Ses deux fichiers de production remis a `HEAD`,
-# `replay-equiv` rend sur `51101d1d` et `bcb6d393` les MEMES empreintes et les MEMES comptes
-# qu avec le lot (628 310 / `60d96001...` et 1 903 599 / `fe6f4add...`). Sans cette preuve,
-# re-figer aurait ete benir une regression.
+# POURQUOI ON PEUT RE-FIGER ICI, ET CE QUI L ETABLIT. Le lot 1.1 (equipe d un evenement du pied
+# lue a l octet 37 et non 55) ne peut pas changer le document cuit, et ce n est pas une opinion :
+# LA CHAINE DE CUISSON N APPELLE JAMAIS LE LECTEUR DU PIED. Ses points d entree dans
+# `objectiveevents` sont `StatRecordsCtx` (`replaybuild/matchfacts.go:98`) et `CaptureBurstTimes`
+# (`:253`) — plus les fonctions pures qui travaillent sur les enregistrements deja decodes
+# (`NamedEventsFrom`, `IdentifyNamedEventsByRound`, `ResolveRoundIdentity`, `ObjectiveTypeOf`).
+# Ni `FooterEvents`, ni `Extract`, ni `extractCTF`, ni `extractFromTh10` n y figurent ; `Extract`
+# n a qu UN appelant dans tout le depot, `cmd/diag_weapons_v3/process.go:37`, un diagnostic hors
+# cuisson. `CaptureBurstTimes` ne lit que les chunks de type 2, jamais le pied.
+#
+# CE QUE LA MESURE AJOUTE A CE GRAPHE : une seule etape bouge (`artifact`), et son delta est
+# EXACTEMENT celui du champ publie par le lot 1.0.4 — pas un octet de plus, pas un de moins, sur
+# les vingt films. Deux faits independants, une seule conclusion. (Un controle complementaire a
+# ete joue le 2026-09-14 — les deux fichiers de production remis a HEAD, re-mesure sur
+# `51101d1d` et `bcb6d393`, memes empreintes et memes comptes — mais il ne pouvait pas rougir,
+# justement parce que la chaine n appelle pas ce code : il confirme, il ne prouve pas.)
 #
 # Les references de 2dad8d6df restent lisibles par `git show 2dad8d6df:<chemin du .tsv>`.
 #
