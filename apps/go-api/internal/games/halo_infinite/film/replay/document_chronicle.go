@@ -1077,6 +1077,36 @@ package replay
 //	n'a pas fait    K/D/A 16 inchangé) NI l'équipe d'un joueur (elle vit dans la base). Détail,
 //	                mesures et instruction du résidu : `.ai/V7.5/v2/RESTES_E2_2026-09-08.md`.
 
+// v51 (2026-09-10, lot 4.3 — LE TABLEAU DE L'API NOMME LES CORPS HORS TABLE).
+//
+// ENTRÉE RESTAURÉE LE 2026-09-14 (lot 1.0, revue R2, constat R2-1). Elle n'avait JAMAIS été
+// écrite ici : la seule description de cette montée vivait dans les notes par version de
+// `document.go`, que le lot 1.0 a supprimées comme doublon — et le doublon était, pour v51, la
+// SOURCE UNIQUE. La chronique affirmait par ailleurs que 51 avait été SAUTÉE à une
+// renumérotation ; l'historique la contredit : `2fb53db4e` pose `SchemaVersion = 51` le
+// 2026-09-10 et `b6b198baf` la remplace par 52 le lendemain. Des artefacts ont donc été cuits
+// sous ce numéro, et un lecteur qui ne trouvait pas d'entrée ne pouvait pas dire ce qu'ils
+// portent. (32, elle, a bien été prise sur une branche puis renumérotée 33/34 au merge du
+// 2026-09-01 — cf. l'entrée v33 — donc aucun artefact intégré ne la porte.)
+//
+//	ce qui change   DEUX changements de CONTENU CUIT.
+//	                (1) `identity.bipedSlots[].bid` NAÎT : le tableau de l'API nomme les corps
+//	                dont l'index de participant est LU mais absent de `PlayerIndexTable`, et la
+//	                couverture bascule de `non_resolu/index_hors_table` vers `externe`. Mesuré
+//	                sur `4f77afc1` : 18 vies non résolues, dont 10 sur des index que
+//	                `BOT_METADATA` déclare. Au passage `roster[].bid` cesse d'être vide sur tout
+//	                le parc.
+//	                (2) `abilityLabels[].family` NAÎT : la table porte la FAMILLE du manifeste,
+//	                et le résumé d'usage joint dessus au lieu de reconstruire la famille par la
+//	                racine du libellé — d'où `UsageSummaryRev` us4 -> us5.
+//
+//	POURQUOI LA     Un artefact < 51 porte des vies de bot non résolues, un `bid` vide et aucune
+//	VERSION MONTE   famille d'équipement : le résumé d'usage ne peut pas être re-projeté sans
+//	                recuisson. La reprise du backfill se faisant par SchemaVersion, sans montée
+//	                rien ne le rattraperait.
+//
+//	détail          `structure_test.go` (paragraphe v51), qui porte les mêmes chiffres.
+//
 // v52 (2026-09-11, lot B — LES CORRECTIFS DU DÉCODEUR REPRIS DU FORK). Trois changements de
 // CONTENU CUIT, indépendants l'un de l'autre, et un compteur qui s'ajoute.
 //
