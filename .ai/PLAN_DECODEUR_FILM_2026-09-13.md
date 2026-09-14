@@ -1058,14 +1058,20 @@ Sur pièces AVANT le lot : `internal/analysis/objectiveevents/film.go:182,195,25
       `objectiveevents.FooterEvent` (ex-`th10Event`, exporté avec `TimeMS`, `Slot`, `Team`,
       `XUID`), lisible par son point d'entrée `FooterEvents(film)` — en mémoire, dans ce paquet,
       et nulle part ailleurs : aucun document cuit, aucune colonne.
+      AMENDÉ à la revue R1 (R1-3) : le champ ne porte PLUS de sentinelle « -1 si absent ». Aucun
+      producteur ne pouvait la rendre (tous appariés à `ok=false`, jetés), donc elle annonçait un
+      contrat — « le film est parfois muet ici » — que la grammaire ne porte pas (D14).
 - [x] 1.1.3 Test par mutation sur un bloc de pied du mini-film (`chunk_03` de `000d5950`) :
       remettre `b55` rougit ; corpus : `TestResidusPiedOctetEquipe` reste l'oracle (665/665).
       FAIT SUR UN AUTRE FILM : le pied du mini-film ne porte AUCUN événement th=10 (D2 (1.1) en §4),
       il ne pouvait rien verrouiller. Fixture = 1 930 octets du pied décompressé de `53ce4390`
       (`testdata/pied_bloc_53ce4390.bin` + provenance écrite + porte de régénération
-      `-update-pied-bloc` qui recoupe la tranche sur le film). Bloc DISCRIMINANT choisi exprès
-      (octet 37 = 1, octet 55 = 0) : sur un événement d'équipe 0 les deux lectures coïncident et
-      le test ne prouverait rien. Mutation jouée dans les deux sens. Oracle corpus rejoué.
+      `PIED_BLOC_UPDATE=1` qui recoupe la tranche sur le film, manifeste à l appui).
+      BLOC RE-CHOISI À LA REVUE R1 (R1-1) : le premier portait 1 aux octets 36, 37 ET 38 et ne
+      discriminait donc que contre l octet 55 — `footerByteTeam = 36`, le SLOT déclaré la ligne
+      au-dessus, le laissait vert. Le bloc actuel (`t=133033`) a slot 2 et équipe 1 ; les tests
+      exigent le TRIPLET (slot, équipe, instant) et quatre mutations ont été jouées. Oracle
+      corpus rejoué.
 - [x] 1.1.4 `GrammarRev` montée ; empreinte verte.
       `grammar-2026-09-13` -> `grammar-2026-09-14`, golden régénéré par sa porte nommée,
       historique du golden complété. L'empreinte NE BOUGE PAS et c'est une découverte (D1 (1.1) en
@@ -1084,8 +1090,10 @@ Sur pièces AVANT le lot : `internal/analysis/objectiveevents/film.go:182,195,25
       Les 20 `.tsv` dataient d'AVANT le schéma 55 : chaque lot voyait depuis l'écart +104 o à
       l'étape `artifact`, un rouge permanent qui masque le prochain vrai. Re-figées SEULEMENT
       parce que l'attribution par mutation a montré que le lot 1.1 ne change pas un octet du
-      document (voir la preuve ci-dessous) — sans cette preuve, re-figer aurait été bénir une
-      régression. En-tête de `CORPUS.txt` daté.
+      document (voir la preuve ci-dessous). AMENDÉ à la revue R1 (R1-5) : la preuve est le GRAPHE
+      D APPELS — la chaîne de cuisson n appelle jamais `FooterEvents` ni `Extract` — et la
+      mesure par mutation le CONFIRME sans pouvoir le remplacer, puisqu elle ne pouvait pas
+      rougir. En-tête de `CORPUS.txt` daté.
 
 Preuve : `replay-equiv` zéro différence (rien de publié ne change) ; corpus gate zéro perte,
 zéro gain.
@@ -1851,7 +1859,7 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.1.4 | ce commit | `GrammarRev` `grammar-2026-09-13` -> `grammar-2026-09-14` ; `-run GrammarRevSuitLaGrammaire -update-grammar-rev` puis relance sans la porte | Avant la montée : le test est **VERT malgré le changement de grammaire** (découverte D1 (1.1)). Après la montée seule : **ROUGE**, « LA REVISION A CHANGE SANS QUE LA GRAMMAIRE BOUGE ». Golden régénéré (empreinte INCHANGÉE `3c775720…`, historique complété), relance **ok** |
 | 2026-09-14 | 1.1 (gates communs) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` (5 racines) ; `go test` (13 paquets : objectiveevents, film/…, archlint, replaybuild, killcollector, replaydoc) ; `make go-api-lint` | gofmt **vide** ; vet **0 diagnostic** ; **13 paquets ok, exit 0** (filmdec 8,9 s ; replay 14,7 s ; archlint 14,3 s) ; lint **0 issues, exit 0** (baseline non accrue) |
 | 2026-09-14 | 1.1 (régime court) | ce commit | `go run ./cmd/replay-equiv -repo-root <worktree> -films …` — les 10 films, DEUX sous-ensembles de 5 | **écart à la SEULE étape `artifact`** sur les 10 (les 49 étapes de balayage identiques), deltas **+104** (8 films), **+103** (`bcb6d393`), **+102** (`51101d1d`) : exactement la table du lot 1.0.4, dont les références n'ont pas été re-figées. 3 min 44 + 1 min 58 |
-| 2026-09-14 | 1.1 (attribution PAR MUTATION) | ce commit | les DEUX fichiers de production du lot remis à `HEAD` (`git checkout HEAD -- film.go extract.go`, test du lot mis de côté), `replay-equiv` sur `51101d1d,bcb6d393`, puis fichiers restaurés (md5 vérifiés) | **MÊMES empreintes, MÊMES comptes qu'avec le lot** : `51101d1d` 628 310 / `60d96001…`, `bcb6d393` 1 903 599 / `fe6f4add…`. **Le lot ne change pas un octet du document cuit** — l'écart `artifact` est 100 % imputable à 1.0.4. Corpus gate ciblé **NON REQUIS** (§2.3) |
+| 2026-09-14 | 1.1 (attribution PAR MUTATION — AMENDÉE à la revue R1, cf. R1-5 : ce contrôle CONFIRME, il ne prouve pas ; la preuve est le graphe d appels) | ce commit | les DEUX fichiers de production du lot remis à `HEAD` (`git checkout HEAD -- film.go extract.go`, test du lot mis de côté), `replay-equiv` sur `51101d1d,bcb6d393`, puis fichiers restaurés (md5 vérifiés) | **MÊMES empreintes, MÊMES comptes qu avec le lot** : `51101d1d` 628 310 / `60d96001…`, `bcb6d393` 1 903 599 / `fe6f4add…`. **Le lot ne change pas un octet du document cuit** — l écart `artifact` est 100 % imputable à 1.0.4. Corpus gate ciblé **NON REQUIS** (§2.3). RÉSERVE DE LA REVUE R1 : cette mutation NE POUVAIT PAS rougir, la chaîne de cuisson n appelant jamais `FooterEvents` ni `Extract` (`replaybuild/matchfacts.go:98` et `:253` sont ses seuls points d entrée dans le paquet) — elle confirme le graphe d appels, elle ne le remplace pas |
 
 | 2026-09-14 | 1.1.5 | `a752403da` | `racinesGrammaire` rend TROIS racines (`filmdec`, `killsource`, `analysis/objectiveevents`), résolues depuis `internal/` par `runtime.Caller` ; en-tête du test réécrit | **131 -> 150 fichiers hachés (+19)**. Empreinte `3c775720…` -> **`474c9faa…`**, `GrammarRev` INCHANGÉE (`grammar-2026-09-14`) : aucune grammaire ne bouge, seul l'ensemble haché s'élargit. Golden régénéré par `-update-grammar-rev`, historique complété |
 | 2026-09-14 | 1.1.5 (mutation) | `a752403da` | commentaire ajouté sur `const teamAbsent` dans `objectiveevents/film.go`, gate rejoué, puis `git checkout HEAD -- <le fichier>` | **ROUGE** : « LA GRAMMAIRE A CHANGE SANS MONTEE DE REVISION », empreinte `0feeec29…` sur 150 fichiers. Restauration par fichier NOMMÉ, **md5 identique** (`9f684c1d…`), gate **vert**. C'est exactement le mouvement que le lot 1.1 avait fait passer en silence |
@@ -1861,6 +1869,16 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.1.6 (passe de comparaison) | ce commit | `replay-equiv` SANS `-update`, les mêmes cinq sous-ensembles (1 min 27 + 3 min 10 + 2 min 59 + 4 min 31 + 2 min 05) | **20 identiques, 0 différent, 0 écarté, 0 échec, exit 0 partout.** Le corpus d'équivalence est de nouveau un gate qui peut rougir |
 | 2026-09-14 | 1.1.6 | ce commit | en-tête de `CORPUS.txt` : bloc « références re-figées au commit `a752403da`, schéma 55 », l'ancien bloc passe en historique | Le bloc porte la raison (schéma 55 du lot 1.0.4), la mesure (une étape, les cinq deltas) et CE QUI AUTORISE le re-figeage : l'attribution par mutation du lot 1.1. Les références de `2dad8d6df` restent lisibles par `git show` |
 | 2026-09-14 | 1.1.5-1.1.6 (gates communs) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` (5 racines) ; `go test` (13 paquets) ; `make go-api-lint` | gofmt **vide** ; vet **0 diagnostic** ; **13 paquets ok, exit 0** (filmdec 8,5 s, replay 14,7 s, archlint 14,7 s) ; lint **0 issues, exit 0** |
+
+| 2026-09-14 | 1.1 revue R1 | ce commit | **revue adversariale ronde 1 : 1 P1 + 5 P2 recevables, 0 jeté, 6 corrigés dans le lot** ; 27 conditions du relecteur tiennent | Le P1 (R1-1) était une FAUSSE PREUVE : la fixture du lot ne discriminait que contre l'octet 55 |
+| 2026-09-14 | R1-1 (P1) | ce commit | fixture re-choisie : bloc `t=133033` du même pied (`53ce4390`, tranche [165 000, 166 930)), dont l'**octet 36 vaut 2 et l'octet 37 vaut 1** ; les tests exigent le TRIPLET (slot, équipe, instant) et un contre-test vérifie que la fixture SÉPARE | L'ancienne fixture (`t=61155`) portait **1 aux octets 36, 37 ET 38** : `footerByteTeam = 36` (le SLOT, déclaré la ligne au-dessus) la laissait VERTE. **Quatre mutations jouées** : `Team=36` -> 3 tests ROUGES ; `Team=55` -> 3 ROUGES ; `Slot=37` -> 2 ROUGES ; `Time=47` -> 1 ROUGE. `Team=38` reste VERT, et c'est MESURÉ : `b37 == b38` sur **190 blocs sur 190** (4 films, 2 builds) — aucun bloc réel ne peut les séparer, ce qui est précisément pourquoi l'octet 38 n'est jamais lu |
+| 2026-09-14 | R1-2 (P2) | ce commit | en-tête et `rpOctetTeam` de `filmdec/residus_pied_research_test.go` réécrits (« lu à l'octet 37 depuis `25f327d52` ») | L'oracle affirmait encore que la production lit l'octet 55 — doc inversée dans le document même que le lot cite comme preuve. La phrase « le paquet n'exporte pas ces fonctions » est corrigée aussi : `FooterEvent`/`FooterEvents` sont exportés depuis ce lot |
+| 2026-09-14 | R1-3 (P2) | ce commit | `teamAbsent = -1` RETIRÉ de `objectiveevents`, contrat « -1 si absent » retiré du champ `Team` | Le sentinel était décoratif : tous ses producteurs sont appariés à `ok=false` et jetés, donc `FooterEvents` ne pouvait jamais le rendre. D14 : pas de repli qui ne peut pas tirer. `Team` est toujours lu quand l'événement existe, et le commentaire le dit maintenant |
+| 2026-09-14 | R1-4 (P2) | ce commit | la porte de régénération lit `film_manifests/53ce4390.json`, exige `chunk_type == 3` pour le chunk 40, passe les métadonnées à `filmsource` et sélectionne le pied par [footerData] | Elle prenait `film.Chunk(NumChunks()-1)` : juste sur `53ce4390`, faux sur tout film dont le cache porte des chunks APRÈS son pied. Le `flag.Bool` devient `PIED_BLOC_UPDATE=1` (pas de drapeau global au binaire de test pour un usage annuel) |
+| 2026-09-14 | R1-5 (P2) | ce commit | justification du re-figeage réécrite dans `CORPUS.txt` (et la ligne d'attribution de cette §5 amendée) : la preuve est le GRAPHE D'APPELS, la mesure le confirme | Vérifié sur pièces : les points d'entrée de la cuisson dans `objectiveevents` sont `StatRecordsCtx` (`replaybuild/matchfacts.go:98`) et `CaptureBurstTimes` (`:253`) — `CaptureBurstTimes` ne lit que les chunks de type 2 ; `Extract` n'a qu'UN appelant dans le dépôt, `cmd/diag_weapons_v3/process.go:37`. La re-mesure par mutation NE POUVAIT PAS rougir : elle confirme, elle ne prouve pas. La phrase « sans cette preuve, re-figer aurait été bénir une régression » est retirée |
+| 2026-09-14 | R1-6 (P2) | ce commit | `TestFooterEventsSurUnFilm` : `filmsource.Film` monté en mémoire depuis la fixture (répertoire temporaire, `chunk_40.bin`, meta de type 3), puis `FooterEvents` et `Extract` ; `TestCaptureScorerPrendLeDernierDuCluster` (fonction pure) | Couverture : `FooterEvents` **0 % -> 75 %**, `extractFromTh10` **0 % -> 87,5 %**, `captureScorer` **0 % -> 100 %**, `finalize` **0 % -> 75 %**, `Extract` **0 % -> 33,3 %**. Paquet à **85,9 %**. `extractCTF` reste à 0 % et c'est DIT dans le fichier : il apparie des bursts de capture lus dans les chunks de type 2, hors de portée d'une fixture de pied |
+| 2026-09-14 | 1.1 revue R1 (empreinte) | ce commit | R1-3 touche `objectiveevents/film.go` : `TestGrammarRevSuitLaGrammaire` **ROUGE** (`474c9faa…` -> `7384ed41…`), golden régénéré, `GrammarRev` INCHANGÉE | **Premier effet visible de l'élargissement du lot 1.1.5** : la veille, le même geste n'aurait fait rougir personne. Revision inchangée parce que deux changements du même jour la partagent (règle écrite dans `grammar_rev.go`) et qu'aucun offset ne bouge |
+| 2026-09-14 | 1.1 revue R1 (gates) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` (5 racines) ; `go test` (12 paquets) ; `go test ./...` complet ; `make go-api-lint` ; `replay-equiv` 4 films | gofmt **vide** ; vet propre ; 12 paquets **ok** ; suite complète **exit 0, 325 paquets, zéro `--- FAIL:`** ; lint **0 issues, exit 0** ; équivalence **4 identiques, 0 différent** (1 min 32) — les références re-figées au 1.1.6 tiennent, et le retrait du sentinel ne déplace aucun octet |
 
 ## 6. Protocole de reprise de session
 

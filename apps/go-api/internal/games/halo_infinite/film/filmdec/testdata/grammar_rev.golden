@@ -34,4 +34,12 @@
 #               REVISION INCHANGEE, empreinte NEUVE : aucune grammaire n a bouge dans ce commit,
 #               seul l ensemble hache s elargit — meme nature que la correction de la revue R1
 #               ci-dessus, en sens inverse. Decouverte D1 (1.1) FERMEE.
-grammar-2026-09-14	474c9faa308e2edb4010792022f09c525534c10d543fe4da60f71e8129801d3f
+#   2026-09-14  grammar-2026-09-14  lot 1.1.R1 (revue ronde 1, constat R1-3) : le sentinelle
+#               `teamAbsent = -1` de `objectiveevents` est RETIRE — aucun producteur ne pouvait
+#               le rendre (tous apparies a `ok=false`, jetes), donc il annoncait un contrat
+#               « le film est parfois muet ici » que la grammaire ne porte pas. MEME REVISION :
+#               deux changements du meme jour la partagent, c est la regle ecrite dans
+#               `grammar_rev.go`, et aucun offset ne bouge. L empreinte, elle, BOUGE — et c est
+#               le premier effet visible de l elargissement du lot 1.1.5 : le meme geste, la
+#               veille, n aurait fait rougir personne.
+grammar-2026-09-14	7384ed415b9a6256f3e51438f770f11953574637f7a3241acad678414f99f3fe

@@ -206,11 +206,6 @@ const (
 	footerByteTime   = 48 // b48..b51 : horloge du match (ms), gros-boutiste
 )
 
-// teamAbsent = ce que porte [FooterEvent.Team] quand aucune équipe n'a été lue. Le film est
-// alors MUET, ce qui n'est pas la même chose que l'équipe 0 — la confusion des deux est
-// exactement ce qui rendait l'octet 55 plausible.
-const teamAbsent = -1
-
 // FooterEvent = un événement highlight de type_hint==10 (interaction objectif) décodé depuis le
 // pied de film (chunk de type 3).
 //
@@ -226,7 +221,13 @@ type FooterEvent struct {
 	// (mesuré : valeurs 0..3 réparties sur des films à 8 comme à 24 joueurs).
 	Slot int
 	// Team est l'index d'équipe BRUT tel que le film l'écrit à l'octet 37 du bloc — jamais un
-	// libellé, jamais une valeur de la base. [teamAbsent] (-1) quand le bloc n'a pas été lu.
+	// libellé, jamais une valeur de la base.
+	//
+	// IL N'Y A PAS DE VALEUR « ABSENTE », et c'est voulu (D14 : pas de repli qui ne peut pas
+	// tirer). Un [FooterEvent] n'existe que si [decodeTh10Block] a trouvé le marqueur de fin de
+	// son bloc ; ses soixante octets sont alors dans les bornes par construction, et l'octet 37
+	// est toujours lu. Un sentinelle -1 que rien ne peut produire se lirait comme un contrat
+	// que la grammaire ne porte pas — « le film est parfois muet ici ».
 	Team int
 	// XUID de l'acteur, valeur brute du film.
 	XUID uint64
@@ -296,10 +297,10 @@ func decodeTh10Block(data []byte, xstart, total int) (FooterEvent, bool) {
 			readByteAtBit(data, b+16) == 0x2e && readByteAtBit(data, b+24) == 0xe0 {
 			ebs := b - footerBlockBytes*8
 			if ebs < xstart {
-				return FooterEvent{Team: teamAbsent}, false
+				return FooterEvent{}, false
 			}
 			if int(readByteAtBit(data, ebs+footerByteType*8)) != 10 {
-				return FooterEvent{Team: teamAbsent}, false
+				return FooterEvent{}, false
 			}
 			return FooterEvent{
 				TimeMS: footerTimeMS(data, ebs),
@@ -308,7 +309,7 @@ func decodeTh10Block(data []byte, xstart, total int) (FooterEvent, bool) {
 			}, true
 		}
 	}
-	return FooterEvent{Team: teamAbsent}, false
+	return FooterEvent{}, false
 }
 
 // footerTimeMS lit l'horloge du match (ms) aux octets 48 à 51 du bloc, gros-boutiste.

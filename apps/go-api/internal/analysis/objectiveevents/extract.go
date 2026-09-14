@@ -210,7 +210,7 @@ func collectCaptureBursts(film *filmsource.Film) []captureBurst {
 // burst (la capture reset les drapeaux -> cluster ; le dernier event = l'acteur
 // de la capture). ok=false si aucun event coïncident (footer absent/partiel).
 func captureScorer(th10 []FooterEvent, burstMS int) (FooterEvent, bool) {
-	best := FooterEvent{TimeMS: -1, Team: teamAbsent}
+	best := FooterEvent{TimeMS: -1}
 	found := false
 	for _, e := range th10 {
 		if abs(e.TimeMS-burstMS) > captureClusterWindowMS {
