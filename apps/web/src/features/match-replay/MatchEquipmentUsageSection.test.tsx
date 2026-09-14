@@ -8,11 +8,12 @@
  *   2. LES DEUX VUES, et les colonnes que LA DONNÉE justifie — jamais une liste en dur.
  *   3. LA PART D'UNE ÉQUIPE est la somme des gestes de ses joueurs, pas celle du match, et le
  *      COMPTE BRUT est écrit à côté du pourcentage.
- *   4. L'ANONYME RESTE ANONYME : les socles de bonus vidés sont une ligne au niveau du MATCH,
- *      jamais une colonne rattachée à quelqu'un.
- *   5. CE QUI N'EST PAS MESURÉ SE DIT. Aucune colonne pour le répulseur ni le propulseur, et
- *      une phrase à l'écran explique pourquoi — mais pas la même raison pour les deux depuis le
- *      2026-09-03 : le répulseur n'a AUCUN canal (une colonne de zéros se lirait « zéro usage »),
+ *   4. AUCUN TEXTE DE PIED (décision utilisateur 2026-09-14) : ce qui n'entre pas dans les deux
+ *      vues — gestes sans propriétaire, poses d'origine inconnue — se dit en UNE phrase au
+ *      survol du TITRE, et les socles de bonus vidés se lisent dans le bloc voisin.
+ *   5. CE QUI N'EST PAS MESURÉ SE DIT. Aucune colonne pour le répulseur ni le propulseur, et une
+ *      phrase le dit au survol du groupe « Équipement » — mais pas la même raison pour les deux
+ *      depuis le 2026-09-03 : le répulseur n'a AUCUN canal (une colonne de zéros se lirait « zéro usage »),
  *      le propulseur en a un (schéma 38) mais son geste se lit sur la CARTE, pas ici. Et une
  *      grandeur non mesurée écrit « — » là où un zéro se lirait comme une mesure.
  *
@@ -125,6 +126,14 @@ function afficher(locale: 'fr' | 'en' = 'fr') {
  */
 function deplier(vue: ReturnType<typeof afficher>, count = 2) {
   fireEvent.click(vue.getByRole('button', { name: t.collapsedColumnsShowFmt(count) }))
+}
+
+/**
+ * survolerTitre — ouvre (ou tente d'ouvrir) l'infobulle du TITRE de la carte, seul endroit où
+ * la réserve de couverture se dit depuis le 2026-09-14. Sans réserve, rien ne s'ouvre.
+ */
+function survolerTitre(vue: ReturnType<typeof afficher>, titre = t.equipmentUsage.title) {
+  fireEvent.mouseEnter(vue.getByText(titre).parentElement as Element)
 }
 
 describe('MatchEquipmentUsageSection — la double porte', () => {
@@ -286,30 +295,17 @@ describe('MatchEquipmentUsageSection — la part de chaque équipe', () => {
 })
 
 describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', () => {
-  it('pose les socles de bonus vidés HORS des vues, avec leur dénominateur', () => {
+  it('ne pose AUCUN texte de pied sous le bloc (décision utilisateur 2026-09-14)', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    const ligne = vue.getByText(t.equipmentUsage.powerupPads).closest('p')
-    expect(ligne?.textContent).toContain('2')
-    expect(ligne?.textContent).toContain(t.padEquipmentFamily.powerup_overshield)
-    expect(ligne?.textContent).toContain(t.equipmentUsage.powerupPadsDenomFmt(1))
-    // ET IL RESTE HORS DES GRAPHES : aucune barre ne le porte.
-    expect(ligne?.querySelector('[role="img"]')).toBeNull()
+    // Le pied de carte a porté successivement le paragraphe répulseur/propulseur, la ligne des
+    // socles de bonus vidés, les dénominateurs de couverture et les deux réserves. Il ne porte
+    // plus rien : aucune de ces phrases ne doit revenir sous les deux vues.
+    expect(vue.queryByText(/Socles de bonus|États actifs mesurés|traction.* de grappin lue/)).toBeNull()
+    expect(vue.queryByText(/hors des deux vues|origine inconnue/)).toBeNull()
   })
 
-  it('n’affiche aucune ligne de socles quand le film n’en a vidé aucun', () => {
-    poserArtefact({ ...TEMOIN, padPickups: [] } as Partial<ReplayDocument>)
-    expect(afficher().queryByText(t.equipmentUsage.powerupPads)).toBeNull()
-  })
-
-  it('reprend les dénominateurs de couverture du document', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
-    expect(vue.getByText(t.equipmentUsage.coverageActiveFmt(40))).toBeTruthy()
-    expect(vue.getByText(t.equipmentUsage.coverageGrappleFmt(3, 3))).toBeTruthy()
-  })
-
-  it('affiche la RÉSERVE de couverture sous le tableau (P13) : poses d’origine inconnue', () => {
+  it('dit la RÉSERVE au survol du TITRE, en une phrase', () => {
     poserArtefact({
       ...TEMOIN,
       coverage: {
@@ -318,7 +314,15 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
       },
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
-    expect(vue.getByText(t.equipmentUsage.coverageUnknownOriginFmt(3))).toBeTruthy()
+    survolerTitre(vue)
+    expect(screen.getByRole('tooltip').textContent).toBe(t.equipmentUsage.coverageReserveFmt(3))
+  })
+
+  it('ne dit AUCUNE réserve quand rien ne la justifie (titre nu)', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    survolerTitre(vue)
+    expect(screen.queryByRole('tooltip')).toBeNull()
   })
 
   it('ne rend JAMAIS les objets pris sans famille connue (décision utilisateur 2026-09-09)', () => {
@@ -330,12 +334,6 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
     expect(vue.queryByText(/sans famille connue|without a known family/i)).toBeNull()
-  })
-
-  it('ne montre AUCUNE réserve quand rien ne la justifie', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
-    expect(vue.queryByText(t.equipmentUsage.coverageUnknownOriginFmt(1))).toBeNull()
   })
 
   it('n’ouvre AUCUNE colonne pour le répulseur ni le propulseur', () => {
@@ -362,7 +360,11 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
         { family: 'sensor', origin: 'deployed', owner: -1, id: '0x1', t0: 5, t1: 9, x: 0, y: 0 },
       ],
     } as unknown as Partial<ReplayDocument>)
-    expect(afficher().getByText(REPLAY_TEXT.fr.equipmentUsage.unattributedFmt(1))).toBeTruthy()
+    const vue = afficher()
+    survolerTitre(vue)
+    expect(screen.getByRole('tooltip').textContent).toBe(
+      REPLAY_TEXT.fr.equipmentUsage.coverageReserveFmt(1),
+    )
   })
 })
 
@@ -408,13 +410,6 @@ describe('MatchEquipmentUsageSection — le repli « game changers » (plan 2026
     const vue = afficher()
     deplier(vue)
     expect(vue.queryByText('Fragmentation')).toBeNull()
-  })
-
-  it('les FOOTNOTES comptent les familles repliées : la note du grappin reste, repliée', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
-    // Trois tractions lues — la colonne est repliée, la note de couverture ne bouge pas.
-    expect(vue.getByText(t.equipmentUsage.coverageGrappleFmt(3, 3))).toBeTruthy()
   })
 })
 

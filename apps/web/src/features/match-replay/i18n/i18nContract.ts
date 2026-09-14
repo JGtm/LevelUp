@@ -38,10 +38,10 @@ export type AmmoHint =
  *     retransmission près, et le camo SEUL est sous le seuil de mesure en lecture large
  *     (26,2 % des épisodes avec ≥ 1 frag) — un même groupe, une seule infobulle, parce que les
  *     colonnes de frags sont des SOUS-COLONNES du même état mesuré, pas un calque à part.
- *  2. `powerupPadsHint` — les vidages de socle de bonus sont ANONYMES PAR MESURE
- *     (`padPickups[].xuid` est publié depuis le schéma 30 mais cet écran ne l'exploite pas) :
- *     la ligne reste au niveau du MATCH, et aucun
- *     libellé ne doit laisser croire qu'on connaît le ramasseur.
+ *  2. `coverageReserveFmt` — les gestes que le film mesure sans en nommer l'auteur ni l'origine
+ *     n'entrent dans aucune des deux vues. La réserve NE SE CACHE PAS (décision utilisateur
+ *     2026-09-09) : depuis le 2026-09-14 elle tient en UNE phrase, au survol du TITRE de la
+ *     carte, le pied de carte ayant été supprimé (aucun texte de pied sous ce bloc).
  *  3. `notMeasured` — le RÉPULSEUR n'a aucun canal d'activation dans le film (neuf canaux
  *     fouillés, négatif mesuré le 2026-09-03). Pas de colonne vide (elle se lirait « zéro
  *     utilisation ») : une phrase qui le dit. LE PROPULSEUR EN EST SORTI le même jour — son
@@ -124,21 +124,13 @@ export interface EquipmentUsageText {
   outcomeDroppedFmt: (count: number) => string
   outcomeTotalTakenFmt: (count: number) => string
   /**
-   * LA RÉSERVE DE COUVERTURE, sous le tableau (P13) : les poses d'origine INCONNUE (existant,
-   * ~5 % du parc) et les objets pris dont le rang n'a pas de famille connue (AMENDEMENT du
-   * 2026-09-09 à la sortie de E0 — décision utilisateur : on garde les trois issues, la
-   * réserve se montre au lieu de disqualifier la troisième).
+   * LA RÉSERVE DE COUVERTURE, EN UNE PHRASE ET DANS L'INFOBULLE DU TITRE (2026-09-14) : les
+   * gestes mesurés sans propriétaire et les poses d'origine inconnue, additionnés. Ils ont eu
+   * lieu, aucune des deux vues ne peut les compter — la réserve ne se cache pas (décision
+   * utilisateur 2026-09-09), elle ne s'écrit simplement plus en pied de carte (décision
+   * utilisateur 2026-09-14 : AUCUN texte de pied sous ce bloc).
    */
-  coverageUnknownOriginFmt: (count: number) => string
-  /** La ligne ANONYME, au niveau du match — jamais rattachée à un joueur. */
-  powerupPads: string
-  powerupPadsHint: string
-  powerupPadsDenomFmt: (pads: number) => string
-  /** Dénominateurs repris de `doc.coverage` : « N épisodes » ne se juge pas sans eux. */
-  coverageActiveFmt: (lives: number) => string
-  coverageGrappleFmt: (pulls: number, lives: number) => string
-  /** Gestes mesurés dont le film ne nomme pas l'auteur : comptés hors tableau, jamais versés. */
-  unattributedFmt: (count: number) => string
+  coverageReserveFmt: (count: number) => string
   /**
    * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`, LOT F.3) : « N frags
    * sous camouflage » / « N frags sous surbouclier », le nombre RÉEL du meilleur épisode du

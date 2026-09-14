@@ -10,12 +10,13 @@ describe('chartReview', () => {
     expect(chartReview('')).toBeUndefined()
   })
 
-  it('retourne l’entrée du manifeste pour une clé connue', () => {
-    const keys = Object.keys(CHART_REVIEW)
-    if (keys.length === 0) return // manifeste vidé en fin de tournée : rien à vérifier
-    const entry = chartReview(keys[0])
-    expect(entry).toBeDefined()
-    expect(entry).toBe(CHART_REVIEW[keys[0]])
+  it('retourne l’entrée du manifeste pour chaque clé inscrite', () => {
+    // Tournée close le 2026-09-14 : le manifeste est vide, la boucle ne tourne pas et
+    // aucune pastille ne s’affiche. Elle reprend tout son sens dès qu’une tournée
+    // réinscrit des graphes.
+    for (const key of Object.keys(CHART_REVIEW)) {
+      expect(chartReview(key)).toBe(CHART_REVIEW[key])
+    }
   })
 })
 
