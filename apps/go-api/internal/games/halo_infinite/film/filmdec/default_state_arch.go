@@ -66,13 +66,14 @@ func consumeVersionPrefix(br *BitReader) {
 //	    ti23 (`0x142EEA440`), ti40 (`0x1410A5A74`, cf. default_state_ti40.go), ti41
 //	    (`0x1408EFB58`), ti44 (`0x142EEA020`). Pour eux, 0 bit est un REPLI : il decale tout
 //	    ce qui suit dans le record, et il ne se defend que parce qu'un skip faux se mesure
-//	    mieux qu'un skip invente (l. 45-47).
+//	    mieux qu'un skip invente (cf. « on ne devine pas », en tete de ce fichier).
 //
-// POSE : 2026-08-17 (portage initial de la table). CRITERE DE RETRAIT : un archetype sort du
-// repli des que son `vtable[0x60]` est relu chez l'ecrivain — la table n'admet pas une largeur
-// devinee. COMPTAGE : la fermeture par archetype (`testdata/keyframe_closure.golden`, lot
-// 0.A.3) dit, bobine par bobine, ce que chaque repli coute ; le repli est retire quand la
-// grammaire est lue, pas quand le compte est bas.
+// POSE : 2026-07-31 (`3f0ec70b3`, premiere version du fichier — la phrase « absent = 0 bit »
+// y est deja). CRITERE DE RETRAIT : un archetype sort du repli des que son `vtable[0x60]` est
+// relu chez l'ecrivain — la table n'admet pas une largeur devinee. COMPTAGE : la fermeture par
+// archetype (`testdata/keyframe_closure.golden`, lot 0.A.3) dit, bobine par bobine, ce que
+// chaque repli coute ; le repli est retire quand la grammaire est lue, pas quand le compte est
+// bas.
 var defaultStateDeserByTI = map[uint32]func(*BitReader){
 	3:  consumeDefaultStateTI3,
 	5:  consumeDefaultStateTI5,

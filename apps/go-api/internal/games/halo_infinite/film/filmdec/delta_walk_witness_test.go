@@ -198,7 +198,7 @@ func deltaWitnessHisto(parTI map[uint32]int) string {
 	tis := make([]int, 0, len(parTI))
 	total := 0
 	for ti, n := range parTI {
-		tis = append(tis, int(ti)) //nolint:gosec // ti est un index d'archetype (< 50)
+		tis = append(tis, int(ti)) //nolint:gosec // TypeIndex tient sur 6 bits (0..63)
 		total += n
 	}
 	sort.Ints(tis)
