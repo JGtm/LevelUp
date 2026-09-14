@@ -59,4 +59,13 @@
 #               sur tous les films mesures a ce jour » deux ecrans au-dessus du commentaire qui
 #               dit l inverse (49 blocs avant HI_1_12_0, 50 ensuite). Correction de texte SEULE :
 #               aucun octet lu ne change, l empreinte bouge parce qu elle hache les octets.
-grammar-2026-09-14.2	89d2ecac348445c0148fd9926778cf28244d2acf776bceb2480dfb525e9d3160
+#   2026-09-14  grammar-2026-09-14.2  lot 1.2 revue R1 (MEME LOT donc MEME REVISION) : deux
+#               corrections recevables du relecteur. (C1) la borne de la boucle de blocs revient
+#               a des blocs ENTIERS — la borne relachee par 1.2.2 entrait dans un bloc incomplet
+#               et faisait PANIQUER `zeroTail` (`from > to`) sur un chunk_00 tronque, sans aucun
+#               recover chez les deux appelants de production ; `Registry.TruncatedBytes` nomme
+#               desormais la queue non couverte. (C2) le commentaire d `asset-transform-component`
+#               disait « ti44 i0 = L0 -> 6 bits/axe » alors que ce lot met le composant a L1 :
+#               budget 100 -> 115 bits. La LECTURE NOMINALE ne change pas — `KnownRegistryFingerprint`
+#               est inchangee et l equivalence reste a 20/20.
+grammar-2026-09-14.2	ca9085991a90eb2558685e63df2f0ec080abf9207edb29e860a75e03a41de714

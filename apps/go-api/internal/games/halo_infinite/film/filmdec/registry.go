@@ -115,6 +115,18 @@ type Registry struct {
 	// fingerprint est l'empreinte FNV-1a des entrees nommees, calculee pendant la passe de
 	// lecture (registry_fingerprint.go). Se lit par RegistryFingerprint.
 	fingerprint uint64
+	// TruncatedBytes : les octets de queue qu'aucun bloc ENTIER ne couvre, QUAND le parse a
+	// epuise le tampon sans rencontrer la fin structurelle du registre. Zero sur un chunk_00
+	// nominal — la lecture s'y arrete sur la section d'identification (bloc 49 ou 50), et tout
+	// ce qui suit appartient aux sections 2 et 3, pas a une troncature.
+	//
+	// POURQUOI CE CHAMP EXISTE (revue R1 du lot 1.2). Le parse ne lit que des blocs ENTIERS : un
+	// tampon qui s'arrete au milieu d'un bloc verrait sa fin ignoree EN SILENCE, et « registre
+	// plus court que prevu » se lirait comme « ce build declare moins d'archetypes ». Une
+	// troncature est un fait du tampon, pas une propriete du jeu : elle se compte et se nomme
+	// (D14). Le champ est exporte pour qu'un appelant puisse le journaliser ; aucun ne le fait
+	// encore, et c'est consigne au registre des replis du lot 1.9.0.
+	TruncatedBytes int
 }
 
 // Archetype returns archetype #idx, or (zero, false) if idx is out of range.
@@ -219,9 +231,14 @@ func looksZlib(data []byte) bool {
 // bobines par build : meme compte de blocs qu'avant (49 ou 50 selon le build), queue nulle sur
 // 7/7 (registry_entree_jeu_test.go).
 func parseRegistry(data []byte) *Registry {
+	nBlocks, queue := registryWholeBlocks(len(data))
 	reg := &Registry{}
 	fp := registryHasher()
-	for b := 0; registryEntryBase+b*archetypeBlockSize < len(data); b++ {
+	// epuise : la boucle est allee au bout des blocs ENTIERS sans rencontrer la fin structurelle
+	// du registre. C'est la seule situation ou les octets de queue sont une TRONCATURE ; sur un
+	// chunk_00 complet la boucle sort par `break` et la queue est la section suivante.
+	epuise := true
+	for b := 0; b < nBlocks; b++ {
 		base := registryEntryBase + b*archetypeBlockSize
 		arch := Archetype{Index: b}
 		for s := 0; s < archetypeBlockSlots; s++ {
@@ -234,6 +251,7 @@ func parseRegistry(data []byte) *Registry {
 			arch.Levels = append(arch.Levels, entryLevel(data, off))
 		}
 		if !registryBlockTail(data, base, len(arch.Components)) {
+			epuise = false
 			break // fin du registre : ce bloc est le debut de la section suivante
 		}
 		for i, name := range arch.Components {
@@ -241,9 +259,32 @@ func parseRegistry(data []byte) *Registry {
 		}
 		reg.Archetypes = append(reg.Archetypes, arch)
 	}
+	if epuise {
+		reg.TruncatedBytes = queue
+	}
 	reg.fingerprint = fp.sum()
 	warnUnknownRegistry(reg.fingerprint, len(reg.Archetypes), fp.slots)
 	return reg
+}
+
+// registryWholeBlocks rend le nombre de blocs ENTIERS que porte un tampon de `n` octets, et les
+// octets de queue qu'aucun d'eux ne couvre.
+//
+// LA BOUCLE DE BLOCS NE DOIT PARCOURIR QUE DES BLOCS ENTIERS, et c'est une CONDITION DE SURETE,
+// pas une commodite : `registryBlockTail` compare la suite nommee a la fin du bloc, donc sur un
+// bloc incomplet il recevrait `from > to` et `zeroTail` PANIQUERAIT (`data[from:to]`). Les deux
+// appelants de production (`killcollector/hits.go`, `filmdec/film_context.go`) n'ont aucun
+// `recover` : un `chunk_00` tronque ferait tomber le processus. Reproductions et non-regression :
+// registry_tronque_test.go.
+//
+// Un tampon plus court que l'en-tete est entierement de la queue : il ne porte meme pas le
+// debut du tableau d'entrees.
+func registryWholeBlocks(n int) (blocs, queue int) {
+	dispo := n - registryEntryBase
+	if dispo < 0 {
+		return 0, n
+	}
+	return dispo / archetypeBlockSize, dispo % archetypeBlockSize
 }
 
 // registryBlockTail dit si, apres la suite nommee de `run` entrees, le bloc n'est plus que du
