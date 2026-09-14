@@ -1008,6 +1008,29 @@ changent le contenu cuit montent `SchemaVersion` (une entrée de chronique chacu
 recuisson du parc à la clôture de M1 (D6). Ordre fondé sur le coût et sur les dépendances
 (1.4 avant 1.7 ; 1.5 avant 1.6 et 1.8).
 
+#### Lot 1.0 — Le fixture d'entrées rejoue la séquence de balayages de la production — M, high
+
+EN TÊTE DE M1, et avant tout lot qui juge un golden. Né de la découverte D7 (0.D, revue R1) :
+`decodeFilmInputsForEntry` est une COPIE de la séquence de `BuildFromFilm`, et les deux ont
+déjà divergé.
+
+- [ ] 1.0.1 **`BuildFromFilm` expose son étage de balayage** : une fonction, un type d'entrées
+      — celui que l'assemblage consomme. Le fixture l'APPELLE au lieu de la recopier. C'est un
+      changement de code de PRODUCTION, d'où son placement hors du lot 0.D.
+- [ ] 1.0.2 **Les cinq canaux absents entrent au codec** : `WeaponChanges`,
+      `Pickups`/`PickupStats`, `EquipmentChanges`/`EquipmentChangeStats`, `Vehicles`,
+      `BipedCreations`. Ils manquent aujourd'hui au fixture ET au chemin frais, d'où des calques
+      VIDES dans les huit goldens — « prises et lachers d arme decodes=0 publies=0 »,
+      « vehicules balaye=false » — que le golden ne peut ni garder ni contredire.
+- [ ] 1.0.3 **Gate** : `TestGoldenInputsFidelite` 8/8 ; équivalence à ZÉRO différence (c'est un
+      pas structurel au sens de D4 : le contenu cuit ne doit pas bouger du fait de la
+      refactorisation) ; goldens régénérés, et tout écart JUSTIFIÉ ligne à ligne — un calque qui
+      cesse d'être vide est un gain à nommer, pas un golden à re-bénir ; `SchemaVersion` monte
+      si le contenu cuit change.
+- [ ] 1.0.4 **Le refus de publication cesse d'être muet** (résidu du lot 0.D.4) : `minPoints`
+      refuse une vie d'un seul échantillon sans qu'aucun compteur ne le dise. Publier
+      `coverage.tracks` avec le compte de refus, au premier bump de schéma de M1.
+
 #### Lot 1.1 — Pied de film : l'équipe d'un événement est à l'octet 37 — S, high
 
 Sur pièces : `internal/analysis/objectiveevents/film.go:182,195,251` lit `b55` (« NON fiable ») ;
@@ -1557,6 +1580,8 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 | 2026-09-14 | 0.D.3 bis | **D6 (FERMÉE au lot 0.D.7, 2026-09-14) — le chemin du fixture AUTO-DÉTECTAIT le découpage d'axe, la production l'IMPOSE depuis le catalogue, et les deux divergent sur Live Fire.** `decodeFilmInputsForEntry` laissait `ScanFilmOptions.Layout` nul, donc `DetectI0LayoutOf` décidait ; sur `60ae07c4` elle rend **[13 12 11]** quand `map_quant_bounds.json` dit **[12 12 11]**. Un bit d'écart sur X double le pas de quantification : les positions du fixture couvrent `x [-8,56 ; 37,04]` là où le catalogue donnerait `x [-0,39 ; 90,80]`. Le sous-lot a rendu le découpage EXPLICITE (`scan.Layout` posé à la valeur détectée, donc aucun changement de comportement) et l'a inscrit au blob, mais **il n'a PAS tranché laquelle des deux valeurs est juste** — le faire aurait changé le contenu cuit, hors périmètre (règle 7). Note : la mesure du lot 0.D.2 a établi que la CUISSON DE PRODUCTION, elle, impose bien le catalogue (`film_context.go`, entrée valide) ; l'écart est donc entre le fixture et la production, pas dans la production. | Le lot qui tranchera le découpage d'i0 de Live Fire (famille 1.9 ou lot de profil M2) : dire laquelle de la détection et du catalogue a raison sur cette carte, puis aligner le chemin du fixture sur la production. **FERMÉE** : le lot 0.D.7 a aligné le chemin du fixture sur la production — il demande le découpage à `NewFilmContextForMap(...).ImposedLayout()`, la fonction de la production et non une copie ; l auto-détection ne subsiste que là où la production l emploie et elle est alors NOMMÉE dans le blob (`LayoutDetected`), avec une erreur typée sur contradiction blob / catalogue. Seul `60ae07c4` a bougé (`x [-8,56 ; 37,04]` -> `x [-12,90 ; 27,56]`, 45 137 -> 45 133 points), les 7 autres goldens identiques à l octet. Ce qui reste HORS de ce lot et n est PAS tranché : laquelle de la détection et du catalogue dit vrai sur Live Fire — le lot a aligné le fixture sur la PRODUCTION, il n a pas jugé la production |
 
+| 2026-09-14 | 0.D (revue R1) | **D7 (0.D) — le chemin du fixture est une COPIE de la séquence de balayages de `BuildFromFilm`.** `decodeFilmInputsForEntry` rejoue à la main l'ordre des balayages de la production au lieu de l'appeler : les deux séquences ne peuvent que diverger, et elles divergent déjà. **Cinq canaux que `BuildFromFilm` câble n'existent ni au fixture ni au chemin frais** : `WeaponChanges` (`build_from_film.go:190`), `Pickups`/`PickupStats`, `EquipmentChanges`/`EquipmentChangeStats`, `Vehicles` (`:370`), `BipedCreations` (`:156`). Conséquence mesurable dans TOUS les goldens : des calques vides qui ne le sont pas en production — « prises et lachers d arme decodes=0 publies=0 », « vehicules balaye=false ». Le golden ne peut donc rien dire de ces calques, ni en régression ni en progrès. La revue R1 a par ailleurs montré ce que coûte cette copie : deux verdicts de balayage (`InventoryDeltaAmmoRefused`, `FilmMajorVersion`) manquaient au fixture, et « canal munitions refuse » était une CONSTANTE fausse sur 5 des 8 builds. NON TRAITÉ ici : combler les cinq canaux exige de toucher le code de PRODUCTION (exposer l'étage de balayage), donc hors 0.D (règle 7). | **Lot 1.0**, en tête de M1 (ajouté au plan le 2026-09-14) |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -1700,6 +1725,16 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 0.D.7 (chiffres) | ce commit | diff du golden `60ae07c4` | **`x [-8,56 ; 37,04]` -> `x [-12,90 ; 27,56]`** · pistes **174 -> 173** · points de grille **45 137 -> 45 133** · vies publiées **174 -> 173** · `y [13,35 ; 47,79]` -> `[15,13 ; 47,79]`, `z [-5,30 ; 7,86]` -> `[-5,30 ; 5,05]`. Détection `gate=5 region=0 13/12/11` contre catalogue `gate=6 region=1 12/12/11` : les champs d'axe changent de décalage ET la porte de région teste ses deux bits |
 | 2026-09-14 | 0.D.7 (preuve) | ce commit | `TestGoldenInputsFidelite` | **8/8 PASS, exit 0** (179,7 s) : fraîches == relues sur les 8 builds, sous la règle du catalogue |
 | 2026-09-14 | 0.D.7 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **3 126 tests, 0 échec**. `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** |
+
+
+| 2026-09-14 | 0.D revue R1 | ce commit | **7 corrections dans le lot** (R1-1, R1-2, R1-4, R1-5, R1-6, R1-7, R1-8) + 1 découverte consignée (D7) et planifiée (lot 1.0) | 1 P1 + 7 P2 recevables, 0 jeté. 21 conditions du relecteur tiennent |
+| 2026-09-14 | R1-1 (P1) | ce commit | le blob porte les VERDICTS de balayage : `InventoryDeltaAmmoRefused` et `FilmMajorVersion` ; `options()` les câble ; la fidélité les compare | **LA CONSTANTE ÉTAIT FAUSSE** : après régénération, « canal munitions refuse » passe de `false` à **`true` sur 5 des 8 goldens** (`a521164d`, `11de8353`, `111fa685`, `bcb6d393`, `e5adf7b2`). **Mutation** (`!dStats.AmmoRefused`) : fidélité **ROUGE** sur `bcb6d393`, ligne nommée « canal munitions refuse : false / true » |
+| 2026-09-14 | R1-2 (P2) | ce commit | la contradiction blob / catalogue est vérifiée DANS LES DEUX SENS ; « détecté » sur une carte à entrée valide devient `errGoldenInputsDecoupage` | **Mutation** (encodeur forçant `LayoutDetected = true`) : round-trip **ROUGE** sur les 7 builds, message « fixture dit son decoupage [12 12 11] AUTO-DETECTE, or le catalogue en impose un » |
+| 2026-09-14 | R1-6 (P2) | ce commit | retrait de `InventoryDelta.Ammo` et `KeyframeInventory.GrenadesByPosition` — portés par le codec, lus par aucun assemblage | Fixtures **10 337 463 -> 10 323 769 o (−13 694 o)**. Fidélité 8/8 toujours verte : le retrait ne change aucun assemblage, ce qui EST la preuve qu'ils n'étaient pas lus |
+| 2026-09-14 | R1-8 (P2) | ce commit | `TestGoldenAssembly -update` et `TestGoldenInputsRegenerate` : `t.Logf` -> `t.Fatalf` nommé | Les quatre portes de régénération du paquet se comportent désormais pareil : aucune ne rend `ok` après avoir réécrit |
+| 2026-09-14 | R1-4, R1-5 (P2) | ce commit | en-têtes de `golden_builds_test.go` et `contract_fixtures_test.go` réécrits (D9 COMBLÉE, chiffres datés en note historique) ; journal des versions complété v15, v16, v17, v18 | Plus de doc inversée : le fichier ne décrit plus un défaut corrigé comme courant |
+| 2026-09-14 | R1-7 (P2) | ce commit | scission par responsabilité et découpage des deux fonctions de ~290 L | `golden_inputs_test.go` **1 560 L -> 493 L** ; 5 fichiers neufs, **tous < 500 L** (codec 311, encode 362, decode 308, film 190, fidélité 118) ; `encodeGoldenInputs` **294 L -> 12 L** + 8 sous-fonctions (38, 53, 36, 36, 53, 45, 27, 23) ; `decodeGoldenInputs` **290 L -> 16 L** + 8 sous-fonctions. **DÉPLACEMENT PUR** : round-trip et fidélité verts après scission |
+| 2026-09-14 | 0.D revue R1 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run` ; `TestGoldenInputsFidelite` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **203 fichiers, 3 126 tests, 0 échec** ; **fidélité 8/8 PASS**. `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **VIDE** — régime court non applicable, aucun octet de production ne bouge |
 
 ## 6. Protocole de reprise de session
 
