@@ -55,9 +55,11 @@ type TeamCoverage struct {
 	// Read dit si le balayage a produit une lecture. Faux = le film n'a pas ete lu, et
 	// `Refusal` dit pourquoi.
 	Read bool `json:"read"`
-	// Refusal nomme la cause d'un balayage sans lecture : `archetype_absent` (le registre ne
-	// porte pas ti=9 — bobine partielle) ou `composant_inattendu` (l'i0 de ti=9 porte un autre
-	// nom que le designateur : une grammaire a bouge, et on ne lit PAS le composant voisin).
+	// Refusal nomme la cause d'une couverture sans lecture : `archetype_absent` (le registre ne
+	// porte pas ti=9 — bobine partielle), `composant_inattendu` (l'i0 de ti=9 porte un autre nom
+	// que le designateur : une grammaire a bouge, et on ne lit PAS le composant voisin), ou
+	// `non_balaye` (l'appelant assemble depuis des positions deja decodees et n'a fourni aucune
+	// lecture d'equipe).
 	Refusal string `json:"refusal,omitempty"`
 	// Records est le denominateur : les records ti=9 rencontres dans la trame.
 	Records int `json:"records"`
@@ -88,10 +90,15 @@ type TeamCoverage struct {
 	TracksNamed int `json:"tracksNamed"`
 }
 
-// teamRefusalArchetype / teamRefusalComponent nomment les deux causes de refus du balayage.
+// teamRefusalArchetype / teamRefusalComponent / teamRefusalNotScanned nomment les trois causes
+// d'une couverture sans lecture. LA TROISIEME EXISTE PARCE QU'UN REFUS SE NOMME (D14) : un
+// appelant qui assemble depuis des positions deja decodees (`BuildFromPositions`, le chemin du
+// collecteur de kills) ne balaye AUCUN film, et sa couverture doit le dire au lieu de se lire
+// comme un balayage qui n'a rien trouve.
 const (
-	teamRefusalArchetype = "archetype_absent"
-	teamRefusalComponent = "composant_inattendu"
+	teamRefusalArchetype  = "archetype_absent"
+	teamRefusalComponent  = "composant_inattendu"
+	teamRefusalNotScanned = "non_balaye"
 )
 
 // teamPublication porte ce qu'il faut pour poser l'equipe partout : la table du film par index,
@@ -187,6 +194,10 @@ func (p teamPublication) couverture(vies, viesNommees int, entrees []RosterEntry
 		cov.Refusal = teamRefusalArchetype
 	case p.rep.ComponentMismatch:
 		cov.Refusal = teamRefusalComponent
+	case p.rep.Component == "":
+		// Aucun balayage n'a tourne : `ScanPlayerTeams` pose TOUJOURS `Component` des qu'il lit
+		// le registre, meme quand il ne trouve aucun record.
+		cov.Refusal = teamRefusalNotScanned
 	}
 	for _, e := range entrees {
 		t, lu := p.byIndex[e.FilmIndex]
