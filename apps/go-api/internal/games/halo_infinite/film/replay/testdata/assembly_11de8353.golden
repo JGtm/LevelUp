@@ -7,6 +7,7 @@
 ## AXE DE TEMPS
 5144 frames · intervalle 100 ms · duree 514400 ms
 schema 54 · titre halo_infinite
+version majeure du film : 38
 origine de la frame 0 sur l horloge du fil : 86805 ms
 coup d envoi date par le film : 108405 ms · 205/243 piste(s) en mouvement · rafale 15 · marge depuis la frame 0 : 21600 ms
 
@@ -76,8 +77,8 @@ rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
 698 lecture(s) · 500 par image-cle (~20 s) · 198 par delta (transmis AU CHANGEMENT)
-565 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 500 image-cle · 198 delta · 1 ecartee(s) sans piste · canal munitions refuse : false
+76 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
+couverture : 500 image-cle · 198 delta · 1 ecartee(s) sans piste · canal munitions refuse : true
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
 260 lecture(s) · 190 par i48 (rang complet, paquets delta) · 70 par image-cle (fenetre 16..23)
