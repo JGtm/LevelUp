@@ -27,8 +27,6 @@
 // l'appelant qui journalise (cf. [CrossCheck]) et l'écran qui nomme.
 package weapontier
 
-import "levelup/go-api/internal/games/halo_infinite/film/replay"
-
 // Tier est le niveau de lecture d'une arme de socle.
 type Tier string
 
@@ -72,6 +70,31 @@ const (
 // tableau, elle retombe simplement sur le niveau de son emplacement.
 const BaseShareMin = 0.05
 
+// Pad est UN socle du match, reduit a ce que le niveau demande : la famille d'arme qui s'y
+// trouve. Sa POSITION dans la tranche est son identite — c'est l'index que [Spot.Pad] cite et
+// que [Match.TierOf] recoit.
+type Pad struct {
+	Weapon string
+}
+
+// Spot est UN emplacement de la carte CONFIRME par un socle du match : la nature que le fichier
+// de carte lui donne, et l'index du socle qu'elle qualifie. Un socle qu'aucun Spot ne cite n'est
+// pas confirme — son niveau sera « non classe ».
+type Spot struct {
+	Pad int
+	// Family : `rack`, `power` ou `powerup`, tels que la reference des cartes les ecrit.
+	Family string
+}
+
+// Spawn est UNE emission d'equipement de depart : la vie concernee et les armes en main.
+//
+// L'ORDRE DE LA TRANCHE COMPTE : seule la PREMIERE emission de chaque Slot est retenue (cf.
+// [baseWeaponsOf]). L'appelant passe le canal dans l'ordre du film, il ne le trie pas.
+type Spawn struct {
+	Slot    uint32
+	Weapons []string
+}
+
 // Match porte ce qu'un match apprend une fois pour toutes : la nature de chaque socle et les
 // armes de départ. Le construire coûte une passe ; classer une prise coûte ensuite un accès.
 //
@@ -96,20 +119,17 @@ type Match struct {
 //
 // `randomStarts` est REÇU, jamais déduit : c'est la catégorie de mode qui le sait
 // (Fiesta / Super Fiesta / Husky Raid), et ce paquet ne lit ni slug ni nom de mode.
-func NewMatch(pads []replay.WeaponPad, cross *replay.MapWeaponPads,
-	loadouts []replay.Loadout, randomStarts bool) Match {
+func NewMatch(pads []Pad, spots []Spot, spawns []Spawn, randomStarts bool) Match {
 	m := Match{familyByPad: make([]string, len(pads)), randomStarts: randomStarts}
-	if cross != nil {
-		for _, spot := range cross.Pads {
-			if spot.Pad >= 0 && spot.Pad < len(m.familyByPad) {
-				m.familyByPad[spot.Pad] = spot.Family
-			}
+	for _, spot := range spots {
+		if spot.Pad >= 0 && spot.Pad < len(m.familyByPad) {
+			m.familyByPad[spot.Pad] = spot.Family
 		}
 	}
 	if !randomStarts {
-		m.baseWeapons, m.lives = baseWeaponsOf(loadouts)
+		m.baseWeapons, m.lives = baseWeaponsOf(spawns)
 	} else {
-		_, m.lives = baseWeaponsOf(loadouts)
+		_, m.lives = baseWeaponsOf(spawns)
 	}
 	return m
 }
@@ -164,9 +184,9 @@ func (m Match) TierOf(padIndex int, weapon string) Tier {
 // c'est-à-dire qu'il transforme une arme de puissance en arme de base.
 //
 // Rend les familles retenues et le nombre de vies lues.
-func baseWeaponsOf(loadouts []replay.Loadout) (map[string]bool, int) {
-	premiere := make(map[uint32]int, len(loadouts))
-	for i, l := range loadouts {
+func baseWeaponsOf(spawns []Spawn) (map[string]bool, int) {
+	premiere := make(map[uint32]int, len(spawns))
+	for i, l := range spawns {
 		if _, vu := premiere[l.Slot]; !vu {
 			premiere[l.Slot] = i
 		}
@@ -179,8 +199,8 @@ func baseWeaponsOf(loadouts []replay.Loadout) (map[string]bool, int) {
 	for _, i := range premiere {
 		// Une même arme deux fois dans le même équipement de départ ne vaut qu'une vie :
 		// le dénominateur est la VIE, pas l'emplacement d'inventaire.
-		vues := make(map[string]bool, len(loadouts[i].W))
-		for _, w := range loadouts[i].W {
+		vues := make(map[string]bool, len(spawns[i].Weapons))
+		for _, w := range spawns[i].Weapons {
 			if w == "" || vues[w] {
 				continue
 			}

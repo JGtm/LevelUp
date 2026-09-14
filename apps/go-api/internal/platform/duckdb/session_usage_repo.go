@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/analysis/sessionusage"
@@ -202,4 +203,59 @@ func countMapFromJSON(raw string) (map[string]int, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+// LoadPadTiers retourne, sur un scope fermé de matchs, LES PRISES DE SOCLE VENTILEES PAR
+// NIVEAU D'ARME — les deux camps, comme les colonnes ci-dessus.
+//
+// LECTURE SEPAREE, PAS UN JOIN, ET C'EST DELIBERE — même raison que LoadFlagGrabsNet : la
+// grandeur vit dans une autre table (`match_pad_pickups_by_tier`, alimentée par une passe de
+// lecture d'artefact) que le résumé d'usage. Un LEFT JOIN ferait tomber TOUT le bloc usage le
+// jour où la vue `_latest` manque — sur une base non migrée, ou sur un titre qui ne produit
+// pas la grandeur. Deux lectures indépendantes dégradent indépendamment.
+//
+// UN MATCH ABSENT DE LA LISTE N'EST PAS UN MATCH A ZERO : sa passe n'a pas eu lieu, et les
+// niveaux s'affichent « non mesurés ». C'est le sens de l'absence de ligne.
+//
+// LECTURE VIA LA VUE `_latest` UNIQUEMENT (ADR 0026) : la table brute servirait les lignes
+// d'une passe déjà supplantée — et donc, ici, des niveaux calculés sous une référence de
+// cartes périmée À COTE des niveaux recalculés.
+//
+// Best-effort : une erreur de requête (vue absente) dégrade en nil + warn.
+func (r *SessionUsageRepo) LoadPadTiers(
+	ctx context.Context, matchIDs []string,
+) ([]sessionusage.PadTierRow, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("SessionUsageRepo: shared reader: %w", err)
+	}
+	defer release()
+
+	q := `SELECT match_id, xuid, tier, weapon_family, pickups,
+	             pads_confirmed, pads_total, random_starts
+		FROM match_pad_pickups_by_tier_latest
+		WHERE match_id IN (` + Placeholders(len(matchIDs)) + `)`
+	rows, err := db.QueryContext(ctx, q, ToAnySlice(matchIDs)...)
+	if err != nil {
+		slog.WarnContext(ctx, "SessionUsageRepo: niveaux d'armes illisibles (best-effort)",
+			"match_count", len(matchIDs), "err", err)
+		return nil, nil
+	}
+	defer rows.Close()
+
+	var out []sessionusage.PadTierRow
+	for rows.Next() {
+		var row sessionusage.PadTierRow
+		if err := rows.Scan(&row.MatchID, &row.XUID, &row.Tier, &row.WeaponFamily, &row.Pickups,
+			&row.PadsConfirmed, &row.PadsTotal, &row.RandomStarts); err != nil {
+			return nil, fmt.Errorf("SessionUsageRepo: niveaux d'armes (scan): %w", err)
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
 }

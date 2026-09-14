@@ -111,7 +111,7 @@ func TestEquipmentUsageBlock_ErreurDeLectureDegradeSansEchouer(t *testing.T) {
 // n'ont changé.
 func TestTimeseriesPage_AttacheLeBlocEquipement(t *testing.T) {
 	svc := NewTimeseriesService(nil).
-		WithEquipmentUsage(overviewRepoMock(), func(context.Context) []string { return []string{"Alpha"} })
+		WithEquipmentUsage(overviewRepoMock(), func(context.Context) []string { return []string{"Alpha"} }, "")
 	svc.playerXUID = "P"
 
 	var resp domain.TimeseriesPageResponse

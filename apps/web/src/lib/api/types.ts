@@ -2182,6 +2182,9 @@ export type SessionPageResponse = components['schemas']['SessionPageResponse']
 // Un champ ABSENT (undefined) est « non mesuré », JAMAIS un zéro.
 
 export type SessionUsageBlock = components['schemas']['SessionUsageBlock']
+/** Les prises de socle rangées par NIVEAU d'arme (base / terrain / puissance / bonus / non
+ *  classé). Publié par les deux blocs d'usage — page Sessions et bloc d'équipement. */
+export type SessionUsagePadTiersBlock = components['schemas']['SessionUsagePadTiersBlock']
 export type SessionUsageMetric = components['schemas']['SessionUsageMetric']
 export type SessionUsageOutcomes = components['schemas']['SessionUsageOutcomes']
 export type SessionUsageMatchPoint = components['schemas']['SessionUsageMatchPoint']

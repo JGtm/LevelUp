@@ -67,6 +67,10 @@ type TimeseriesService struct {
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
+	// repoRoot : racine du depot, pour le SEUL catalogue d'armes du titre (nommage du
+	// detail par niveau du bloc usage, cf. squadagg.NommerArmesDesNiveaux). Vide = les armes
+	// s'affichent sous leur cle, jamais un nom approchant.
+	repoRoot string
 	// weaponKillsRepo (chart .04 Top weapons) : optionnel, degradation gracieuse.
 	// Si nil, TopWeapons reste vide.
 	weaponKillsRepo port.WeaponKillsRepository

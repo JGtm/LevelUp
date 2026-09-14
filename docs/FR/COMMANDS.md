@@ -116,6 +116,16 @@ go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--t
 go run ./cmd/levelup backfill-flag-grabs-net --dry-run
 go run ./cmd/levelup backfill-flag-grabs-net [--force] [--match ID] [--limit N] [--title S]
 
+# 4 bis. NIVEAUX D ARME des prises de socle -> match_pad_pickups_by_tier (append-only).
+#    Meme motif que (4) : elle LIT les artefacts TELS QU ILS SONT, sans decodage, SANS
+#    RECUISSON. Le niveau vient de la CARTE (l emplacement Forge que le socle du match
+#    confirme, reference map_weapon_pads.json) et des equipements de depart du film ; jamais
+#    du nom de l arme. AJOUTER UNE CARTE A LA REFERENCE EXIGE --force : les lignes deja
+#    ecrites portent l ANCIEN croisement (des prises restees en `non_classe` qui deviendraient
+#    `terrain` ou `puissance`), et la reprise ne les reverrait jamais.
+go run ./cmd/levelup backfill-pad-tiers --dry-run
+go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--title S]
+
 # 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
 #    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.

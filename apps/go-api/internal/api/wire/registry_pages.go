@@ -414,7 +414,7 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	// d'identifiants change d'une page à l'autre. Gated par film.usage_summary (absente
 	// pour Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver())
+		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver(), r.cfg.RepoRoot)
 	}
 	return svc, nil
 }

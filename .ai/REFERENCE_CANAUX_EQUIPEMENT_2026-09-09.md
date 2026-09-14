@@ -325,3 +325,66 @@ Trois affirmations fausses à ne pas répéter :
 - `features/match-replay/model/equipmentUsageLogic.ts` — les canaux lus par la fiche
 - `.ai/V7.5/HANDOFF_LECTURE_EQUIPEMENT_2026-09-04.md` — négatifs mesurés, pièges de mesure
 - `.ai/V7.5/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` — décisions D5, D6, D9 ; lots C5 et C6
+
+## 7. LES NIVEAUX D'ARME (ajouté le 2026-09-14)
+
+> **À LIRE AVANT toute affirmation sur « les armes de base », « les armes de terrain » ou
+> « les armes de puissance ».** Le niveau d'une arme n'est PAS une propriété de l'arme : c'est
+> une propriété de l'EMPLACEMENT où elle se trouve, sur CETTE carte, plus l'équipement de
+> départ de CE match. Répondre de mémoire produit ici exactement l'erreur que ce fichier
+> existe pour éviter.
+
+### Les trois sources, et aucune n'est un nom d'arme
+
+| Niveau | Ce qui le mesure | Où |
+|---|---|---|
+| **Base** | l'arme est dans l'équipement de DÉPART d'une vie du match — canal `loadouts`, **PREMIÈRE émission de chaque `slot`** (un slot = une vie) | film |
+| **Terrain** | l'emplacement de la carte qui confirme le socle est un RÂTELIER (`rack`) | `data/titles/{slug}/reference/map_weapon_pads.json`, croisé au socle du match à moins d'un mètre (`replay.BuildMapWeaponPads`) |
+| **Puissance** | ce même emplacement est un SOCLE DE PUISSANCE (`power`) | idem |
+| **Non classé** | aucun emplacement ne confirme le socle (carte hors référence, ou socle hors rayon) | reste VISIBLE avec son compte, jamais fondu ailleurs |
+
+### Le négatif qui compte : LE RÔLE DE L'ARME N'EST PAS LE NIVEAU
+
+Mesure du 2026-09-14 (76 artefacts, 669 socles confirmés) : **70 socles sur 669 (10,5 %)**
+portent une arme dont le rôle canonique est « lourd » — Hydra (`power`), Needler et Sentinel
+Beam (`special`), Shock Rifle (`sniper`) — **sur un RÂTELIER**, et c'est nominal : le jeu les y
+pose. Juger au rôle produirait donc 10 % de faux niveaux. Le sens inverse (arme de rôle léger
+sur un socle de puissance) est à **0,45 %**, et c'est lui, et lui seul, que le garde-rail
+journalise (`service/replay_weapon_tier_check.go`, seuil 2 % des socles d'un match).
+
+### Le piège du canal `loadouts`
+
+Le canal **RÉ-ÉMET en cours de vie** après un changement d'arme. Prendre tout le canal au lieu
+de la première émission de chaque slot dilue les trois armes de base de **94,4 % à 85,6 %** en
+classé et fait monter le S7 Sniper de 0,73 % à 3,15 % — autrement dit, il transforme une arme
+de puissance en arme de base. Un seuil de **5 % des vies du match** écarte en plus la queue
+d'artefacts dont la première émission publiée arrive après un ramassage.
+
+### Les trois états que les compteurs séparent, et que rien d'autre ne sépare
+
+| État | Ce qui le dit | Ce que ça veut dire |
+|---|---|---|
+| aucune ligne en base | absence de ligne dans `match_pad_pickups_by_tier_latest` | **non mesuré** — la passe n'a pas eu lieu. Jamais « aucune prise » |
+| `pads_total = 0` | colonne de match | le film n'a vu **aucun socle** : le mode n'en allume aucun. Mesuré sur le parc — **les 13 artefacts Super Fiesta sont à zéro socle**, et c'est pourquoi la ligne « Départs aléatoires » n'est visible sur aucune donnée réelle du poste |
+| `pads_confirmed = 0` | colonne de match | des socles, mais la carte n'est pas dans la référence : **niveaux non établis**, tout tombe en `non_classe` |
+
+### Modes à départs aléatoires
+
+Le niveau « base » n'y est **jamais** publié (l'équipement de début de vie est tiré au sort).
+La liste des modes concernés vit dans `config/titles/{slug}/mappings/regulation.toml`
+(`[weapon_tiers] random_start_mode_prefixes`), et un garde-rail
+(`games/halo_infinite/weapon_tiers_prefixes_guard_test.go`) exige qu'elle coïncide avec la
+taxonomie de modes du titre — une liste recopiée qui dérive rendrait une arme de base sur une
+Fiesta sans que rien ne rougisse.
+
+### Où ça vit
+
+| Couche | Fichier |
+|---|---|
+| Règle pure (title-agnostic) | `internal/analysis/weapontier/` |
+| Projection au fil de l'eau | `internal/sync/replayartifacts/padtiers.go` |
+| Écriture INSERT-only | `internal/persist/pad_tiers_persister.go` (table `match_pad_pickups_by_tier`, vue `_latest`) |
+| Rattrapage du parc | `levelup backfill-pad-tiers` (serveur ARRÊTÉ) |
+| Agrégats | `internal/analysis/sessionusage/pad_tiers.go` |
+| Vue match (résolution à la requête) | `features/match-replay/model/weaponTier.ts` |
+| Pages Sessions / Escouade / Timeseries | `features/_shared/usage/usagePadTiersModel.ts` |

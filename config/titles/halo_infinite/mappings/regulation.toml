@@ -30,7 +30,7 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 7
+schema_version = 8
 
 [regulation_seconds]
 "CTF:Arena"                   = 720
@@ -414,3 +414,31 @@ schema_version = 7
 # -> persist.FlagGrabsNetPersister (match_flag_grabs_net) -> cartes d'objectif.
 [flag_grabs_net]
 flag_juggle_window_s = 1.5
+
+# ---------------------------------------------------------------------------------------
+# MODES A DEPARTS ALEATOIRES (schema_version 8, mesure du 2026-09-14).
+#
+# CE QUE CETTE LISTE DECIDE, ET RIEN D'AUTRE : sur ces modes, le niveau « arme de base » du
+# bloc « controle des armes » N'EST PAS PUBLIE. L'equipement de debut de vie y est tire au
+# sort, donc « l'arme avec laquelle on spawn » n'existe pas comme fait du match. Les deux
+# autres niveaux (terrain, puissance) restent lisibles tels quels.
+#
+# VALEUR = PREFIXE de `match_registry.pair_name` (la partie avant `:`, ou le nom entier quand
+# il n'y a pas de separateur). C'est la meme cle que la taxonomie de modes du titre publie
+# (`halo_infinite.PairNamePrefixesForCategory`), et un garde-rail
+# (`weapon_tiers_prefixes_guard_test.go`) EXIGE que les deux listes coincident : une liste
+# recopiee qui derive rendrait le niveau « base » sur un mode Fiesta sans que rien ne rougisse.
+#
+# MESURE QUI JUSTIFIE LA LISTE (76 artefacts du parc, 2026-09-14) : en mode regulier les trois
+# armes de depart pesent 94,4 % des equipements de premiere emission (Assassin) et 92,6 %
+# (BTB) ; en Super Fiesta la distribution est PLATE sur 22 cles, entre 3,2 % et 7,3 %.
+#
+# ABSENCE = AUCUN MODE ALEATOIRE, et ce n'est pas une panne : le niveau « base » se mesure
+# alors partout et se verifie de lui-meme. C'est la difference avec [flag_grabs_net], dont la
+# fenetre est indispensable au calcul.
+#
+# Consommation : mappings.RegulationSet.RandomStartModePrefixes() ->
+# replayartifacts.ProjeterNiveauxDArmes -> persist.PadTiersPersister
+# (match_pad_pickups_by_tier).
+[weapon_tiers]
+random_start_mode_prefixes = ["Castle Wars", "Fiesta", "Husky Raid", "Super Fiesta", "Super Husky Raid"]

@@ -136,6 +136,11 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	// tables append-only distinctes et ne se croisent jamais — un film est du CTF ou de
 	// l'Assaut, pas les deux.
 	persisterPrisesNettes(ctx, d, b, lus)
+
+	// LES NIVEAUX D ARMES, meme motif et meme raison : une projection de LECTURE sur
+	// l artefact deja range, qui rend lisible aux pages d agregat ce que la vue match resout
+	// deja a la requete (cf. padtiers.go).
+	persisterNiveauxDArmes(ctx, d, b, lus)
 	// LES RASTERS TACTIQUES, QUATRIEME PROJECTION — memes artefacts lus, meme place (apres
 	// toute cuisson). La seule qui n'ecrit AUCUNE base : son resultat est un fichier pose a
 	// cote de son artefact (cf. raster.go), donc hors du segment d'ecriture shared partage

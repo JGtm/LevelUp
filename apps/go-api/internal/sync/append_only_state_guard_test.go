@@ -165,6 +165,18 @@ var appendOnlyStateTables = []string{
 	// INSERT OR REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT. Recette ADR 0026
 	// étape 5.
 	"match_flag_grabs_net",
+	// match_pad_pickups_by_tier (niveaux d'armes, 2026-09-14) : créée directement append-only
+	// (id PK seq + decode_pass + written_at + vue match_pad_pickups_by_tier_latest). L'unité
+	// de génération est LA PASSE DE LECTURE D'UN ARTEFACT, et la vue retient la DERNIÈRE
+	// PASSE ENTIÈRE par match — vital pour la même raison qu'ici au-dessus : le niveau d'un
+	// socle dépend de la RÉFÉRENCE DES CARTES au moment de la projection. Une carte ajoutée à
+	// la référence fait basculer des prises de « non classé » vers « terrain » ou
+	// « puissance » ; un arbitrage par clé laisserait les anciennes lignes « non classé »
+	// survivre à côté des nouvelles, et le total du niveau compterait deux fois la même prise.
+	// Écriture = INSERT pur (persist/pad_tiers_persister.go, un seul statement) ; aucun DELETE
+	// / ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT.
+	// Recette ADR 0026 étape 5.
+	"match_pad_pickups_by_tier",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors

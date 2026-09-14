@@ -50,6 +50,9 @@ func (s *TeammatesService) loadEquipmentUsage(
 		PlayerXUID:      playerXUID,
 		MatchIDs:        teammatesMatchIDs(filteredMatches),
 		FriendGamertags: selectedGamertags,
+		// De quoi NOMMER les armes du detail par niveau (catalogue du titre).
+		RepoRoot:  s.repoRoot,
+		TitleSlug: s.titleSlug,
 	})
 }
 

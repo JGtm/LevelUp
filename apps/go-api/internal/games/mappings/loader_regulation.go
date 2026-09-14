@@ -73,6 +73,14 @@ type RegulationSet struct {
 	// déclare pas ne publie pas les prises nettes — jamais une fenêtre par défaut, qui
 	// rendrait une mesure d'apparence normale sur une règle qu'on n'a pas établie.
 	flagJuggleWindowS float64
+	// randomStartModePrefixes : les PREFIXES de `pair_name` des modes dont l'equipement de
+	// debut de vie est TIRE AU SORT (Fiesta et consorts). Sur ces modes, le niveau « arme de
+	// base » du bloc « controle des armes » n'est pas publie : « l'arme avec laquelle on
+	// spawn » n'y est pas un fait du match.
+	//
+	// VIDE = aucun mode aleatoire, et ce n'est pas une panne : le niveau se mesure alors
+	// partout. C'est la difference avec la fenetre ci-dessus, indispensable au calcul.
+	randomStartModePrefixes []string
 }
 
 // Les trois lectures possibles du bloc « Score dans le temps » de la vue match. Ce sont
@@ -106,12 +114,19 @@ type regulationTOML struct {
 	RadarRange    map[string]int    `toml:"radar_range_m"`
 	ScoreTimeline map[string]string `toml:"score_timeline"`
 	FlagGrabsNet  flagGrabsNetTOML  `toml:"flag_grabs_net"`
+	WeaponTiers   weaponTiersTOML   `toml:"weapon_tiers"`
 }
 
 // flagGrabsNetTOML — la section `[flag_grabs_net]`, un seul réglage à ce jour.
 type flagGrabsNetTOML struct {
 	// FlagJuggleWindowS : secondes. Absente (0) = le titre ne déclare pas la règle.
 	FlagJuggleWindowS float64 `toml:"flag_juggle_window_s"`
+}
+
+// weaponTiersTOML — la section `[weapon_tiers]`, un seul reglage a ce jour.
+type weaponTiersTOML struct {
+	// RandomStartModePrefixes : prefixes de `pair_name`. Absente = aucun mode aleatoire.
+	RandomStartModePrefixes []string `toml:"random_start_mode_prefixes"`
 }
 
 // Seconds retourne le temps réglementaire de la variante et true s'il est connu.
@@ -351,16 +366,17 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 			path, doc.FlagGrabsNet.FlagJuggleWindowS)
 	}
 	return &RegulationSet{
-		titleSlug:           doc.Meta.TitleSlug,
-		schemaVersion:       doc.Meta.SchemaVersion,
-		seconds:             seconds,
-		targets:             targets,
-		roundsDecide:        rounds,
-		holdTicks:           holds,
-		radarRange:          radar,
-		scoreTimeline:       timeline,
-		scoreTimelineTokens: timelineTokens,
-		flagJuggleWindowS:   doc.FlagGrabsNet.FlagJuggleWindowS,
+		titleSlug:               doc.Meta.TitleSlug,
+		schemaVersion:           doc.Meta.SchemaVersion,
+		seconds:                 seconds,
+		targets:                 targets,
+		roundsDecide:            rounds,
+		holdTicks:               holds,
+		radarRange:              radar,
+		scoreTimeline:           timeline,
+		scoreTimelineTokens:     timelineTokens,
+		flagJuggleWindowS:       doc.FlagGrabsNet.FlagJuggleWindowS,
+		randomStartModePrefixes: prefixesNettoyes(doc.WeaponTiers.RandomStartModePrefixes),
 	}, nil
 }
 
@@ -426,4 +442,57 @@ func parseScoreTimeline(path string, raw map[string]string) (map[string]string, 
 	}
 	sort.Strings(tokens)
 	return kinds, tokens, nil
+}
+
+// RandomStartModePrefixes rend les PREFIXES de `pair_name` des modes a equipement de depart
+// ALEATOIRE, tries (ordre deterministe pour les journaux et les tests). nil-safe : liste vide.
+//
+// LISTE VIDE = AUCUN MODE ALEATOIRE, et c'est un etat NORMAL, pas une configuration manquante :
+// le niveau « arme de base » se mesure alors sur tous les modes du titre.
+func (s *RegulationSet) RandomStartModePrefixes() []string {
+	if s == nil || len(s.randomStartModePrefixes) == 0 {
+		return nil
+	}
+	out := make([]string, len(s.randomStartModePrefixes))
+	copy(out, s.randomStartModePrefixes)
+	return out
+}
+
+// HasRandomStarts dit si le `pair_name` d'un match designe un mode a departs aleatoires.
+//
+// LA COMPARAISON SE FAIT SUR LE PREFIXE AVANT `:`, jamais sur la chaine entiere : `pair_name`
+// s'ecrit « Super Fiesta:Slayer », « Fiesta:CTF », ou parfois sans separateur (« Husky Raid »).
+// Comparer la chaine entiere raterait tous les sous-modes, et comparer par `strings.HasPrefix`
+// nu ferait de « Fiesta » un prefixe de « Fiestaval » — d'ou la coupe explicite.
+func (s *RegulationSet) HasRandomStarts(pairName string) bool {
+	if s == nil || len(s.randomStartModePrefixes) == 0 {
+		return false
+	}
+	prefixe := strings.TrimSpace(pairName)
+	if i := strings.Index(prefixe, ":"); i >= 0 {
+		prefixe = strings.TrimSpace(prefixe[:i])
+	}
+	if prefixe == "" {
+		return false
+	}
+	for _, p := range s.randomStartModePrefixes {
+		if strings.EqualFold(p, prefixe) {
+			return true
+		}
+	}
+	return false
+}
+
+// prefixesNettoyes rogne, ecarte les entrees vides et TRIE. Aucune validation de contenu : un
+// prefixe est un nom de mode du titre, ce paquet n'a pas de vocabulaire pour en juger — le
+// garde-rail qui confronte cette liste a la taxonomie du titre vit cote `games/halo_infinite`.
+func prefixesNettoyes(brut []string) []string {
+	out := make([]string, 0, len(brut))
+	for _, p := range brut {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	sort.Strings(out)
+	return out
 }

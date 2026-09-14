@@ -85,17 +85,17 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
 - Gate : tsc, eslint, vitest `features/match-replay`, capture.
 
 ### Étape 3 — Agrégats : Sessions, Escouade, Timeseries
-- [ ] 3.1 `internal/analysis/sessionusage/` : les prises de socle (`pad`) se ventilent par
+- [x] 3.1 `internal/analysis/sessionusage/` : les prises de socle (`pad`) se ventilent par
   niveau (remplace ou complète la ventilation par famille d'arme `usage_families.go`) ; DTO
   `session_usage.go` + `equipment_usage.go` ; tests Go sur fixtures.
-- [ ] 3.2 Web : `features/_shared/usage/` — barres et parts par niveau (mêmes formes qu'aujourd'hui,
+- [x] 3.2 Web : `features/_shared/usage/` — barres et parts par niveau (mêmes formes qu'aujourd'hui,
   une ligne par niveau, détail par arme au survol), sur Sessions, Escouade, Timeseries.
 - Gate : suites Go et vitest complètes, captures lues des trois pages sur données réelles.
 
 ### Étape 4 — Clôture
-- [ ] 4.1 Garde-rail : test qui interdit toute liste d'armes « de base » en dur côté Go ou TS
+- [x] 4.1 Garde-rail : test qui interdit toute liste d'armes « de base » en dur côté Go ou TS
   (grep sur les clés `hinf_*` dans `features/` et `internal/analysis/`).
-- [ ] 4.2 thought_log, référence équipement (`.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`)
+- [x] 4.2 thought_log, référence équipement (`.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`)
   amendée d'une section « niveaux d'armes », plan statué, CI verte, fusion dans `feat/v75`.
 
 ## 4. Découvertes
@@ -157,3 +157,23 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
   Captures LUES (stub assumé, cf. D-d).
 - 2026-09-14 — **Étape 3 BLOQUÉE, décision utilisateur requise** (cf. D-e). Étapes 1 et 2
   livrées et vertes ; rien de poussé.
+- 2026-09-14 — **Étape 3 CLOSE** par le MOTIF DES PRISES NETTES (décision utilisateur : voie 1,
+  D1 ferme ; ni révision de projection du résumé d'usage, ni recuisson). Livré : table
+  append-only `match_pad_pickups_by_tier` + vue `_latest` (enrôlée dans les TROIS garde-rails),
+  `persist.PadTiersPersister` (INSERT-only), projection au fil de l'eau
+  `sync/replayartifacts/padtiers.go` sous capability `film.weapon_tiers` + règle de titre
+  `[weapon_tiers].random_start_mode_prefixes`, CLI reprenable `levelup backfill-pad-tiers`
+  (`--dry-run` : une ligne par match), lecture `sessionusage.ComputePadTiers` branchée sur les
+  DEUX chemins (page Sessions et bloc d'équipement Escouade/Timeseries), DTO, et la rangée web
+  dans `features/_shared/usage/` + la section de la page Sessions. Tests de câblage qui
+  rougissent si la porte de capability ou la lecture produit est débranchée
+  (`padtiers_test.go`, `service/pad_tiers_wiring_test.go`).
+- 2026-09-14 — **Étape 4 CLOSE** : garde-rail `archlint/no_hardcoded_base_weapons_test.go`
+  (aucune collection de clés `hinf_*`/`h5_*` dans `internal/analysis/` ni `apps/web/src/features/`),
+  section « niveaux d'armes » ajoutée à `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`,
+  `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` documentent le rattrapage.
+- 2026-09-14 — **RESTE À FAIRE, HORS DE CE LOT** : (1) le rattrapage LOCAL
+  `levelup backfill-pad-tiers` — il exige le SERVEUR ARRÊTÉ, il revient au superviseur après
+  fusion ; (2) le rattrapage PROD, à porter à la liste de release v7.5 à côté de
+  `backfill-flag-grabs-net` ; (3) la passe visuelle sur données réelles des trois pages
+  d'agrégat, impossible tant que (1) n'a pas tourné (la table est vide sur le poste).
