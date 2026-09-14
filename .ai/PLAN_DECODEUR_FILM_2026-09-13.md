@@ -1948,15 +1948,118 @@ ICI PLUTÔT QUE TUE.**
 
 #### Lot 1.8 — Le kill feed prend la table du film — M, high
 
-- [ ] 1.8.1 Sur pièces : la voie d'inférence des index de joueur de killsource / killcollector
+Sur pièces, RE-VÉRIFIÉ au commit de base `c6a3b751c` : les citations du brief avaient toutes bougé
+d'un cran ou changé de sens, et c'est la règle 4 qui l'a rattrapé. `resolvePlayerIndices`
+(`shots.go:122`) N'EST PAS la voie d'inférence des morts : c'est celle des **tirs** et des
+**touches** (`match_weapon_shots`, `match_weapon_accuracy`), sous deux révisions distinctes de
+celle des morts. La voie d'inférence que ce lot devait traiter est ailleurs et elle est plus
+lourde : `killsource/bijection.go` — une matrice de votes du kill-feed résolue par l'algorithme
+**hongrois** puis une montée locale par transpositions, ajustée à graine fixe.
+CLOS le 2026-09-14 (branche `feat/decfilm-18`, 5 commits, `9fa12968d` → le commit de clôture).
+
+##### Rapport 1.8.0 — la mesure AVANT de coder, sur 30 films et 8 builds
+
+Sonde jetable (supprimée après la mesure), `Result.Roster.IndexToName` de la bijection inférée
+confronté à la table de `chunk_00` (lot 1.5), index par index. Tableaux collés depuis la sortie
+brute en §5. **314 accords sur 322 sièges lus** ; les HUIT écarts tiennent en deux familles, et
+AUCUNE n'est une contradiction entre deux lectures fiables :
+
+| famille | films | ce que c'est |
+|---|---|---|
+| le gamertag du siège est ABSENT du kill-feed | **6** — `FlukiestGolf` (`111fa685` i10), `MarshallG6443` (`e5adf7b2` i13), `manistoff` (`a521164d` i18), `Iskra 20252993` (`11de8353` i23), `probablybxllets` (`1c5c10cc` i22), `Alpha122092` (`23ffd885` i4) | le feed ne nomme que les joueurs qui TUENT ou qui MEURENT ; l'inférence n'avait aucun moyen de placer ces six-là et a mis un AUTRE joueur sur leur indice. Ce sont les MÊMES joueurs que le lot 1.6.2 avait vus publiés sans nom |
+| le gamertag EST au feed | **2** — `CR951802` (`23ffd885` i2), `SerdarTsn` (`b1bcbe24` i13) | les deux tombent sur un film à **marge de bijection NULLE**, c'est-à-dire où l'inférence DIT elle-même que deux joueurs sont interchangeables et où les lignes ne sont pas publiables. **Zéro écart sur un film où l'inférence se déclare fiable.** |
+
+**LA SECONDE MESURE FERME À MOITIÉ UNE QUESTION LAISSÉE OUVERTE AU LOT 1.5.** Les treize films du
+cache à slot vacant INTERCALÉ — la seule population où « rang absolu » et « index parmi les
+occupés » divergent — rendent **119 accords sur 123**, et les quatre écarts appartiennent aux deux
+familles ci-dessus. C'est donc le **rang ABSOLU** que le dead-state emploie. Découverte D1 (1.8).
+
+- [x] 1.8.1 Sur pièces : la voie d'inférence des index de joueur de killsource / killcollector
       (`resolvePlayerIndices` ou équivalent, `roster.go`, `identities.go`) ; la table de 1.5
       devient la source, l'inférence le repli (5 films).
-- [ ] 1.8.2 `KillSourceDecoderRev` montée ; `TestKillSourceDecoderRevSuitLeDecodeur` vert ;
+      FAIT. `killsource/film_table.go` (neuf) lit la table par `filmdec.ReadFilmIdentity` /
+      `ReadPlayerTable` ; `buildRoster` ÉPINGLE les indices qu'elle nomme, dans un ordre qui est
+      le résultat : BOT_METADATA d'abord (lecture la plus ancienne et la plus éprouvée, et un bot
+      n'est jamais au kill-feed), la table du film ensuite, l'inférence en dernier sur ce qui
+      reste. Cinq causes de refus NOMMÉES, et le décodeur retombe alors sur l'inférence ENTIÈRE,
+      comptée. **ÉCART AU LIBELLÉ, ASSUMÉ ET MESURÉ** : le repli ne sert pas que les 5 films sans
+      section — il sert aussi les remplaçants, que la table du film (roster du DÉBUT, D2 (1.6))
+      n'assoit pas.
+      **UN SIÈGE QUE LE KILL-FEED IGNORE ENTRE AU ROSTER**, exactement comme un bot : sans cela,
+      les six joueurs de la première famille du rapport 1.8.0 seraient restés inépinglables.
+      DEUX EFFETS DE BORD, ET LE PREMIER A ÉTÉ TROUVÉ PAR LA MESURE, PAS PAR LA RELECTURE :
+      (a) `isBotIndex` lisait « présent dans `pin` », et la table remplit désormais `pin` aussi —
+      les huit joueurs d'un film entièrement lu passaient pour des BOTS et la mini-bobine tombait
+      de dix lignes publiées à **DEUX**, permutation IDENTIQUE. Un test qui n'aurait regardé que
+      la bijection n'aurait rien vu ; garde-rail posé (`TestUnSiegeDuFilmNEstPasUnBot`).
+      (b) le problème d'affectation n'est plus CARRÉ dès que la table ajoute un nom (`111fa685` :
+      25 joueurs pour 24 indices, un remplaçant partage l'indice d'un partant) ; le hongrois est
+      paddé à un carré, colonnes fictives au coût pire que tout coût réel — donc résultat
+      identique à celui d'avant le lot quand les deux listes ont la même longueur.
+      `LineByLinePublishable` distingue une marge NULLE d'une marge SANS OBJET : un film
+      entièrement lu n'a plus rien d'interchangeable. Le drapeau est POSÉ par le décodeur
+      (`BijectionDetermined`) et non dérivé du roster — un `Result` à zéro doit valoir le
+      comportement d'avant le lot, jamais le plus permissif (même leçon que `roster[].team` en
+      pointeur au lot 1.7).
+      QUATRE COMMENTAIRES FAUX CORRIGÉS dans le même geste qu'au lot 1.7.4 : « le film ne porte
+      AUCUN xuid côté réplication » (`collector.go`, `roster.go`, `hits.go`) est démenti par le
+      lot 1.5, « le film ne porte AUCUN camp (`Track.Team` vaut -1 partout) » (`identities.go`)
+      par le lot 1.7. Ce qui reste vrai — les CHUNKS DE RÉPLICATION ne portent pas de xuid, et la
+      table est celle du début du film — est écrit à la place.
+- [x] 1.8.2 `KillSourceDecoderRev` montée ; `TestKillSourceDecoderRevSuitLeDecodeur` vert ;
       compteurs de provenance dans les stats de collecte.
-- [ ] 1.8.3 Backlog killsource du parc : **signal utilisateur, hors lot** (D6).
+      FAIT. `killsource-2026-09-12` → **`killsource-2026-09-14`**. Le garde-rail avait ROUGI DE
+      LUI-MÊME au commit de 1.8.1 (« LE DECODEUR A CHANGE ») : preuve par mutation naturelle,
+      aucune mutation artificielle nécessaire. Golden re-figé avec son entrée d'historique datée,
+      qui nomme les DEUX canaux par lesquels les lignes bougent (l'identité des indices, et la
+      porte de publication ligne par ligne).
+      **CINQ COMPTEURS, PAS QUATRE** : les quatre du brief (`killsource_bijection_table_film` /
+      `_inference` / `_silence` / `_contradiction`) plus
+      `killsource_bijection_table_refusee_<cause>` — « la table a été refusée » sans dire pourquoi
+      n'oriente aucun diagnostic, et la cause entre donc dans le NOM, comme
+      `filmdec_unknown_build_<build>`. Ce dernier trouve ici son SECOND câbleur de production
+      (D-4) : aucun corpus ne peut déclencher ce refus (0 build hors profil sur 1 351 films), donc
+      seul un test peut prouver que le câblage existe, et il le fait.
+      `killsource_bijection_inference` est le compteur qui informe : tant qu'il monte, des indices
+      sont encore DEVINÉS, et c'est lui qui dira quand le repli pourra être retiré (D14 d).
+- [!] 1.8.3 Backlog killsource du parc : **signal utilisateur, hors lot** (D6).
+      NON TRAITÉ, et c'est la décision D6 du plan : une seule recuisson du parc par jalon, sur
+      signal de l'utilisateur, jamais par lot. Le lot BUMPE la révision, il ne rejoue rien.
+      CHIFFRE MESURÉ POUR LE PILOTE (oracle `data/backups/pre-chaine-2026-09-09/`, lecture seule,
+      §5) : **1 384 matchs** portent des lignes de kill, tous sous une révision ANTÉRIEURE à
+      `killsource-2026-09-14` — 792 en `killsource-2026-09-05`, 589 en `killsource-2026-07-31`,
+      3 en `highlight-credit-2026-08-01`. La shared du parc n'a PAS été lue : un `server.exe` la
+      tient (§2.2 — jamais de `read_only` forcé sur une DB tenue RW), et l'oracle suffit à donner
+      l'ordre de grandeur. Renvoi au bloc « Clôture M1 » : le pilote joue le backlog à la clôture
+      du jalon, go V9.
 
 Preuve : corpus gate zéro perte sur les axes kills / morts / sources ; `replay-equiv` différences
 localisées.
+
+RÉSULTAT (2026-09-14) : **LA LIGNE « PREUVE » EST TENUE SUR SES DEUX MOITIÉS, ET LA PREMIÈRE L'EST
+D'UNE FAÇON QU'IL FAUT DIRE PLUTÔT QUE TAIRE.**
+
+1. **CORPUS GATE : ZÉRO PERTE SUR 13 TÉMOINS SUR 13, EXIT 0 — ET ZÉRO GAIN.** Schéma 57 → 57
+   partout, ~17 min. Le lot change la SOURCE du lien `indice -> joueur` sans déplacer une seule
+   valeur publiée sur ce corpus, et la raison est exactement celle que le rapport 1.8.0 a mesurée :
+   là où l'inférence se trompait, les joueurs concernés n'ont AUCUNE ligne au kill-feed — ils n'ont
+   ni tué ni sont morts — donc aucune ligne de kill ne les porte. Le gain du lot est structurel
+   (une lecture remplace une inférence, et elle est comptée), pas métrique sur ces treize témoins.
+   Un lot qui n'aurait annoncé que « 0 perte » aurait laissé croire à un gain ; il n'y en a pas ici.
+2. **`replay-equiv` : LES DIFFÉRENCES SONT LOCALISÉES, ET À UNE SEULE ÉTAPE.** 10 films sur 10
+   changent, et le `git diff` des références après re-figeage rend `10 +killsource` / `10
+   -killsource` **et rien d'autre** : sur 520 lignes d'étapes, 510 sont identiques à l'octet,
+   `artifact`, `killRefs` et `neutralDeaths` comprises. Ces deux dernières sont des PROJECTIONS du
+   même `Result` : si elles ne bougent pas, aucune ligne de kill ne bouge. Ce qui fait bouger
+   `killsource` est la FORME de l'objet observé — trois champs neufs — et non son contenu, ce que
+   `50247b26` prouve à lui seul (table REFUSÉE, bijection identique au bit près, digest changé).
+   Découverte D4 (1.8). Passe de comparaison après re-figeage : **10 identiques sur 10**.
+3. **CE QUE LE LOT NE PROUVE PAS.** Le corpus gate ne porte aucun témoin où la bijection était
+   AMBIGUË et devient déterminée : sur les 13 témoins, aucun film ne change de statut de
+   publication ligne par ligne. Les deux films du cache qui l'auraient montré (`23ffd885`,
+   `b1bcbe24`, marge nulle, écart sur un nom présent au feed) ne sont ni au corpus gate ni au
+   corpus d'équivalence. Le bénéfice de `BijectionDetermined` est donc DÉMONTRÉ PAR CONSTRUCTION et
+   par test unitaire, pas par le corpus.
 
 #### Famille 1.9 — La grammaire à la place de l'heuristique, un fait par lot (D13) — S à M chacun, high
 
@@ -2502,6 +2605,11 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.7.3 | **D4 (1.7) — `objectiveevents.Extract` n'a AUCUN appelant de production : `match_objective_events.team_id` n'est écrit par PERSONNE par cette voie.** Grep collé en §5 : ses deux seuls appelants hors tests sont `cmd/diag_weapons_v3` (un diagnostic) — le chemin de sync écrit les lignes d'objectif par `persist/bomb_stats_persister.go`, pas par là. Le basculement de source du lot 1.7.3 est donc JUSTE et SANS EFFET sur la base tant que ce point d'entrée n'a pas de producteur. Ce n'est pas une raison de ne pas le faire (il serait faux le jour où il en aura un), c'en est une de ne pas attendre un gain mesurable en base. NON TRAITÉ : rebrancher ou supprimer ce point d'entrée est un arbitrage produit. | lot 1.8 (kill feed) ou un lot de sync |
 | 2026-09-14 | 1.7.2 | **D5 (1.7) — CE QUE LE WEB DEVRA FAIRE, et il ne le fait pas encore.** L'artefact publie désormais `roster[].team` et `tracks[].team`, et le web continue de colorer par `team_side` de la feuille de match (`features/match-view/rosterLogic.ts`) : c'est CONFORME au §1.2 de ce plan (aucune règle d'affichage ne change dans ce lot), et c'est aussi ce qui laisse un rejeu SANS feuille de match sans camps à l'écran. Ce qu'il faudra : lire `roster[].team` quand il est PRÉSENT (absent = artefact < 57 ou joueur non nommé par le film), retomber sur `team_side` sinon, et ne JAMAIS confondre `-1` (aucune équipe, mode FFA) avec une absence. Le contrat le permet déjà — le champ est optionnel et `coverage.teams` dit quelle part de l'artefact vient du film. NON TRAITÉ (§1.2). | lot de produit web, hors de ce chantier |
 
+| 2026-09-14 | 1.8.0 (mesure avant de coder) | **D1 (1.8) — TRAITÉE DANS LE LOT, et elle ferme à moitié D3 (1.5) : c'est le RANG ABSOLU que le dead-state emploie, vacants compris.** Les treize films du cache à slot vacant INTERCALÉ — la seule population où « rang absolu » et « index parmi les occupés » divergent, et que le lot 1.5 ne pouvait pas départager faute de document de rejeu — rendent **119 accords sur 123** entre la table de `chunk_00` et la bijection inférée par le kill-feed : `07f6af1b` 7/7, `0d1dddfb` 7/7, `19ef6b04` 7/7, `3104391d` 7/7, `3b1cfde3` 7/7, `59b8abb9` 7/7, `652907bb` 7/7, `92f7c713` 7/7, `a92bab93` 7/7, `c744aa29` 7/7, `1c5c10cc` 22/23, `b1bcbe24` 22/23, `23ffd885` 5/7. Les quatre écarts sont ceux des deux familles du rapport 1.8.0 (gamertag absent du feed ; film à marge nulle), pas un décalage d'index. **CE QUE LA MESURE NE DIT PAS** : elle ne prouve le rang absolu que sur la population que le kill-feed nomme — un siège vacant intercalé SUIVI d'un joueur qui ne tue ni ne meurt reste hors de portée de cet oracle. | fermée pour le décodeur des morts ; D3 (1.5) reste ouverte pour le `player_index` de l'artefact, où l'oracle manque toujours |
+| 2026-09-14 | 1.8.1 | **D2 (1.8) — la traduction « erreur typée de `filmdec` → cause NOMMÉE » existe maintenant en DEUX exemplaires, et c'est la dernière copie tolérable.** `replay/film_player_table.go` (lot 1.6.0) et `killsource/film_table.go` (ce lot) portent les mêmes six causes (`sans_registre`, `sans_section`, `build_inconnu`, `tronque`, `table_introuvable`, plus la valeur nominale) et les deux mêmes fonctions de traduction. Les deux paquets sont volontairement disjoints (`killsource` n'importe pas `replay`, et ne doit pas), donc la centralisation n'est pas un simple déplacement : elle irait chez `filmdec`, propriétaire des erreurs. NON TRAITÉ (CLAUDE.md règle 6 : ≤ 2 copies ; à la troisième, centraliser ET poser le garde-rail). | lot 2.7 (scission des fichiers) ou le premier lot qui aurait besoin d'un TROISIÈME lecteur de la table |
+| 2026-09-14 | 1.8.1 | **D3 (1.8) — `resolvePlayerIndices` reste une INFÉRENCE, et elle sert deux tables que ce lot ne touche pas.** La voie nommée par le brief (`killcollector/shots.go:122`) ne résout pas les morts : elle résout les **tirs** (`match_weapon_shots`) et les **touches** (`match_weapon_accuracy`, `match_weapon_hit_distance`), en CHERCHANT le motif du xuid dans le flux de réplication et en lisant les 5 bits qui le précèdent — 77,0 % d'accord contre l'oracle killsource (239 films, 16 411 kills). La table de `chunk_00` donne le même lien par LECTURE. **ET LA MESURE DE CE LOT DÉSAMORCE L'URGENCE** : confrontée directement à la table du film sur les 12 témoins lisibles, cette recherche rend **143 accords sur 143 sièges, 0 contradiction, 0 non résolu** (sonde jetable, §5). Le « 77 % » ne mesurait donc PAS sa lecture : il mesurait son accord avec l'oracle killsource, c'est-à-dire avec la bijection hongroise dont ce lot montre justement qu'elle se trompe sur les joueurs absents du kill-feed. Ce que le basculement apporterait n'est pas la justesse de l'indice mais la fiabilité du ROSTER D'ENTRÉE (les xuids du film au lieu de ceux de la base) et la disparition des non-résolus. Il monte `WeaponShotsDecoderRev` ET `migration.WeaponHitDistanceDecoderRev` — deux backlogs de redécodage de plus, et deux axes que la ligne « Preuve » de ce lot (kills / morts / sources) ne couvre pas. NON TRAITÉ ; le renvoi est écrit dans l'en-tête de `hits.go`. | un lot de la famille 1.9 (D13 : la grammaire à la place de l'heuristique, un fait par lot), après décision pilote sur les deux backlogs |
+| 2026-09-14 | 1.8 (équivalence) | **D4 (1.8) — l'observateur d'équivalence hache le `Result` ENTIER de `killsource`, donc un champ AJOUTÉ fait rougir les dix films sans qu'un seul octet publié ne bouge.** `replaybuild.go:357` fait `b.observe("killsource", ksRes)` : les trois champs neufs du lot (`Roster.IndexSource`, `Roster.FilmTable`, `BijectionDetermined`) changent le digest de l'étape sur **10 films sur 10**, y compris `50247b26` où la table est REFUSÉE et où la bijection est identique au bit près. La preuve que rien de publié ne bouge est indirecte mais nette : `neutralDeaths`, `killRefs` et `artifact` — trois PROJECTIONS du même `Result` — sont identiques à l'octet sur les dix films. Conséquence pratique : tout lot qui enrichit un type observé paie un re-figeage complet des références, et doit prouver par les étapes VOISINES ce que l'étape elle-même ne peut plus dire. Même famille que D2 (1.3) (une chaîne de diagnostic dans l'empreinte). NON TRAITÉ. | lot 2.6 (empreintes par couche) : observer la PROJECTION consommée plutôt que l'objet entier, ou séparer une sous-empreinte « diagnostic » d'une sous-empreinte « publié » |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -2862,6 +2970,27 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.7 (contrôle, preuve par l'absence) | `aa1dc5ac4` | `grep -c "la base CONTREDIT le film"` sur les journaux des 10 cuissons d'équivalence ET des 26 cuissons du corpus gate | **0.** L'avertissement est émis dès que `contradiction > 0` (cf. `logTeamCoverage`) : son absence sur 36 cuissons est la preuve que **la feuille de match ne contredit le film sur AUCUN joueur**. Même compte pour `equipes NON LUES` : **0** — aucun refus de balayage sur le corpus. |
 | 2026-09-14 | 1.7 (corpus gate) | `aa1dc5ac4` | `go run ./cmd/replay-corpus-gate --base=943d8cf4b --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-17 --json …` | **ZÉRO PERTE SUR 13 TÉMOINS SUR 13, EXIT 0 — le premier lot de M1 dont le gate sort vert au sens littéral.** ~18 min, schéma **56 → 57 partout**. Gains : **9** sur onze témoins (`bcb6d393`, `fb1a1a72`, `d9781168`, `c75f33b8`, `bf15f7ab`, `51ebbc0f`, `084a804d`, `0797ce72`, `e5adf7b2`, `60ae07c4`, `bfecd02b`), **10** sur `111fa685`, **5** sur `a349fea8` (le film sans section d'identification : la moitié de ses compteurs d'équipe est à zéro, faute de roster). Durées : de 11,97 s (`bcb6d393`) à 2 min 10 (`a349fea8`), `084a804d` 1 min 51. **LE RAPPORT N'ÉNUMÈRE PAS LES GAINS** (il ne détaille que les pertes), et l'empreinte dit d'où ils ne peuvent PAS venir : `aplatir` ne pose de feuille que sous `coverage` et `bombStats` (`replaydiff/empreinte.go:193`), `mesurerTableau` ne mesure que les champs des éléments de `roster` et `tracks` (`empreinte_axes.go:80-85`). Les seuls champs neufs ou changés du document étant `coverage.teams.*`, `roster[].team` et `tracks[].team`, **les gains sont ceux-là et rien d'autre**. `CarrierTeamUnknown` : **aucune perte sur l'axe `ports` sur 13/13**, donc inchangé ou en baisse — la condition de la ligne « Preuve » est tenue. |
 | 2026-09-14 | 1.7 (clôture) | ce commit | `logTeamCoverage` sur un chemin sans balayage | Une TROISIÈME cause de refus est nommée APRÈS la mesure : `non_balaye`. Un appelant qui assemble depuis des positions déjà décodées (`BuildFromPositions`, le chemin du collecteur de kills) ne balaie aucun film, et sa couverture d'équipes se serait lue comme « un balayage qui n'a rien trouvé ». D14 : un refus se NOMME. Aucun golden ni aucune fixture ne bouge (tous passent par `BuildFromFilm`, où `Component` est toujours posé) — 13 paquets Go rejoués verts après le changement. |
+
+| 2026-09-14 | 1.8.0 (mesure AVANT de coder, passe 1) | `c6a3b751c` (arbre propre) | sonde JETABLE (supprimée après la mesure) : `killsource.Decode` sur les **17 films** de « 13 témoins ∪ échantillon court », `Result.Roster.IndexToName` confronté à `filmdec.ReadPlayerTable` index par index | **132,7 s. TABLEAU COLLÉ DEPUIS LA SORTIE BRUTE.** Colonnes : `film · build · refus · npl · hum · bot · sièges · vacInt · marge · accord · contradiction · film seul · inférence seule`. `bcb6d393` HI_1_12_0 11/11/5/8/false/1/**8**/0/0/3 · `fb1a1a72` HI_1_13_0 8/8/0/8/false/49/**8**/0/0/0 · `d9781168` 8/8/0/8/false/47/**8**/0/0/0 · `c75f33b8` 12/10/4/8/false/1/**8**/0/0/3 · `bf15f7ab` 8/8/0/8/false/24/**8**/0/0/0 · `51ebbc0f` 8/8/0/8/false/23/**8**/0/0/0 · `084a804d` HI_1_10_0 26/26/0/24/false/5/**24**/0/0/2 · `0797ce72` 8/8/0/8/false/31/**8**/0/0/0 · `111fa685` 24/24/0/24/false/8/**23**/**1**/0/0 · `e5adf7b2` HI_1_11_0 26/26/0/23/false/5/**22**/**1**/0/3 · `60ae07c4` HI_1_8_0 8/8/0/8/false/53/**8**/0/0/0 · `a349fea8` **sans section** 25/25/0/0/false/15/0/0/0/25 · `bfecd02b` 8/8/0/8/false/29/**8**/0/0/0 · `50247b26` **sans section** 27/27/0/0/false/0/0/0/0/27 · `a521164d` HI_1_4_1 27/27/0/24/false/0/**23**/**1**/0/3 · `11de8353` HI_1_9_0 26/26/0/24/false/4/**23**/**1**/0/2 · `51101d1d` 9/9/3/8/false/1/**8**/0/0/1. **TOTAL : 195 accords, 4 écarts, 199 sièges lus, 2 films au repli complet.** |
+| 2026-09-14 | 1.8.0 (mesure AVANT de coder, passe 2) | `c6a3b751c` (arbre propre) | la même sonde, colonne `auFeed` (le gamertag du siège est-il au kill-feed ?), sur les 4 écarts de la passe 1 et sur les **13 films du cache à slot vacant INTERCALÉ** | **96,7 s. LES QUATRE ÉCARTS SONT DES JOUEURS QUE LE KILL-FEED NE NOMME PAS** : `111fa685` i10 `FlukiestGolf`(auFeed=**false**) contre `themaninblack42` · `e5adf7b2` i13 `MarshallG6443`(false) contre `Sergio98666` · `a521164d` i18 `manistoff`(false) contre `Brauhausmann` · `11de8353` i23 `Iskra 20252993`(false) contre `GenesisA1011`. Ce sont les MÊMES joueurs que le lot 1.6.2 avait vus publiés sans nom. **VACANTS INTERCALÉS, 119 accords sur 123** : `07f6af1b` 7/7 (marge 7) · `0d1dddfb` 7/7 (0) · `19ef6b04` 7/7 (23) · `3104391d` 7/7 (14) · `3b1cfde3` 7/7 (0) · `59b8abb9` 7/7 (0) · `652907bb` 7/7 (13) · `92f7c713` 7/7 (13) · `a92bab93` 7/7 (0) · `c744aa29` 7/7 (12) · `1c5c10cc` 22/23 (`probablybxllets` auFeed=false) · `b1bcbe24` 22/23 (`SerdarTsn` auFeed=**true**, marge **0**) · `23ffd885` 5/7 (`CR951802` auFeed=**true** et `Alpha122092` false, marge **0**). **LES DEUX SEULS ÉCARTS SUR UN NOM PRÉSENT AU FEED TOMBENT SUR UN FILM À MARGE NULLE**, c'est-à-dire où l'inférence se déclare elle-même ambiguë. **TOTAL DES DEUX PASSES : 314 accords sur 322 sièges, 30 films distincts, 8 builds.** |
+| 2026-09-14 | 1.8.1 (défaut trouvé par la mesure) | avant `9fa12968d` | `TestGoldenMiniBobine` après le premier épinglage, puis diagnostic à deux passes (`buildRoster` avec et sans table, sur la même bobine) | **DIX LIGNES PUBLIÉES TOMBÉES À DEUX, PERMUTATION IDENTIQUE.** Les deux passes rendent `perm=[7 2 3 4 1 0 6 5]` et le même `IndexToName`, mais `kills` vaut 10 sans la table et **2** avec : `isBotIndex` lisait « présent dans `pin` », que la table remplit désormais aussi, donc les huit joueurs passaient pour des bots et leurs morts tombaient dans la population « mort de bot », jamais publiée. Corrigé (`seatPin` exclu du prédicat), re-mesuré **10 et 10**. Un test qui n'aurait regardé que la bijection n'aurait rien vu — d'où `TestUnSiegeDuFilmNEstPasUnBot`. |
+| 2026-09-14 | 1.8.1 (golden mini-bobine) | `9fa12968d` | PRÉ-IMAGE relevée AVANT la porte : md5 `50329245245946faa0bd78bb4921d00d`, 77 lignes ; premier écart **ligne 75** ; puis `go test …/killsource/ -run TestGoldenMiniBobine -update` | **UNE ligne modifiée sur 77, six ajoutées.** `publication ligne par ligne : AUTORISEE (marge de bijection 3)` → `… (marge de bijection 0, bijection DETERMINEE (rien a inferer))`, plus la section `## PROVENANCE DES INDICES` (8 sièges, 8 indices LUS, 0 ajout, 0 repli, accord 8 / contradiction 0 / silence 0). **Les dix lignes publiées, la couverture, le contrôle négatif, les voies et la santé sont IDENTIQUES À L'OCTET.** |
+| 2026-09-14 | 1.8.1 (mutation) | `9fa12968d` | `readFilmTable` neutralisée (retour `FilmTableNoSection` inconditionnel), suite du paquet rejouée, puis restauration PAR NOM | **QUATRE tests + le golden ROUGES** (`TestTableDuFilmLueSurLesDeuxBobines` sur les deux bobines, `TestTableDuFilmEpingleTousLesIndicesDeLaBobine`, `TestRefusDeTableNommeEtRepliComplet` sur trois coupes, `TestGoldenMiniBobine`). Fichier restauré par nom, **md5 identique `3067bc89601f951697c65a48cd562b30`**, paquet vert. |
+| 2026-09-14 | 1.8.1 (entrée tronquée, obligatoire) | `9fa12968d` | `TestRefusDeTableNommeEtRepliComplet` : tampon vide, un octet, en-tête seul, registre amputé de moitié | **Aucune panique, aucune lecture partielle, quatre causes NOMMÉES.** Et la mesure a corrigé une attente écrite avant elle : couper à MOITIÉ rend `table_introuvable`, pas `tronque` — la section d'identification est encore lisible, c'est la TABLE qui ne ferme plus à 32 slots. Même observation qu'au lot 1.6.0 sur le chemin du rejeu. |
+| 2026-09-14 | 1.8.2 (mutation naturelle) | `a50c4008a` | `go test ./internal/sync/killcollector/ -run TestKillSourceDecoderRevSuitLeDecodeur` au commit de 1.8.1, sans rien toucher au gate | **ROUGE DE LUI-MÊME : « LE DECODEUR A CHANGE »** — empreinte `4e7cf973…` → `729624c1…`. Aucune mutation artificielle n'a été nécessaire : le garde-rail a mordu sur le changement qu'il existe pour attraper. Puis `-update` : `killsource-2026-09-12` → **`killsource-2026-09-14`**, entrée d'historique datée ajoutée au golden. |
+| 2026-09-14 | 1.8.2 (empreinte de grammaire) | `a50c4008a` | `go test …/filmdec/ -run GrammarRevSuitLaGrammaire` puis `-update-grammar-rev` | **ROUGE** (« LA GRAMMAIRE A CHANGE SANS MONTEE DE REVISION », 150 → **158** fichiers), puis **REVISION INCHANGÉE `grammar-2026-09-14.6`**, empreinte `e5a873d8…` → `8fcf0804…`. Décision explicite écrite dans l'historique du golden : aucune largeur, aucun cadre, aucun ordre de composants, aucun lecteur d'octets ne bouge — c'est le CONSOMMATEUR qui change, et `KillSourceDecoderRev` porte ce changement-là. Même nature que l'entrée `botSuffix -> BotSuffix`. |
+| 2026-09-14 | 1.8.3 (oracle base, LECTURE SEULE) | ce commit | `go run ./cmd/diag_q "…/data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb" "SELECT decoder_rev, COUNT(DISTINCT match_id), COUNT(*) FROM match_kill_events_latest GROUP BY 1 ORDER BY 2 DESC"` | **1 384 matchs, 138 807 lignes, TOUS sous une révision antérieure** : `killsource-2026-09-05` 792 matchs / 71 288 lignes · `killsource-2026-07-31` 589 / 67 085 · `highlight-credit-2026-08-01` 3 / 434. **LA SHARED DU PARC N'A PAS ÉTÉ LUE** : `Get-Process` montre un `server.exe` actif depuis `LevelUp-go-migration` (§2.2 — jamais de `read_only` forcé sur une DB tenue RW), et l'oracle suffit à l'ordre de grandeur du backlog. |
+| 2026-09-14 | 1.8 (communs) | ce commit | `gofmt -l ./internal ./cmd` | sortie **vide** |
+| 2026-09-14 | 1.8 (communs) | ce commit | `CGO_ENABLED=1 go vet` puis `go test -count=1` sur `film/…`, `archlint`, `replaybuild`, `killcollector`, `objectiveevents`, `replaydoc` (msys64/ucrt64 en tête du PATH) | vet **propre** ; **13 paquets ok**, dont `filmdec` 19,8 s, `replay` 18,4 s, `archlint` 14,2 s, `killsource` 1,03 s. `TestFilmdecPackageVarsNeCroitPas` VERT : le ratchet reste à **96**. |
+| 2026-09-14 | 1.8 (communs) | ce commit | `make go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **0 issues** — baseline non accrue. |
+| 2026-09-14 | 1.8 (communs, intégration) | ce commit | `CGO_ENABLED=1 go test -tags=integration -p 1 ./internal/sync/killcollector/ -count=1` (le diff touche `internal/sync/`, §2.3 ; code de sortie relevé hors tube) | **ok, 12,97 s, EXIT=0.** |
+| 2026-09-14 | 1.8 (communs, web) | ce commit | — | **AUCUN OCTET CUIT NE CHANGE** : `SchemaVersion` reste à **57**, aucun champ de `ReplayDocument` ne bouge, aucune fixture de contrat ni `openapi.yaml` ne sont touchés. `make check-types` et `make test-web` NON JOUÉS, et c'est dit plutôt que tu : le diff ne contient pas une ligne de `apps/web/`. |
+| 2026-09-14 | 1.8 (baseline des tests) | ce commit | `git diff c6a3b751c..HEAD -- '*_test.go' \| grep -E "^-func Test"` | **0 ligne** : aucun test renommé ni supprimé, donc `.ai/baselines/tests_pre_migration.jsonl` ne bouge pas (leçon du lot 1.0). Quatre fichiers de test touchés, **+384 lignes**, dont deux fichiers neufs. |
+| 2026-09-14 | 1.8 (équivalence, régime COURT — passe 1 : mesure) | `a50c4008a` | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-decfilm-18 -films …` — les 10 films de l'échantillon court, DEUX sous-ensembles séquentiels de 5 | **0 identique, 10 différents**, l'écart nommé étant à l'étape `killsource` sur **10 films sur 10**. Durées : `50247b26` 1 min 13 · `a521164d` 40,6 s · `60ae07c4` 28,6 s · `11de8353` 34,5 s · `111fa685` 37,4 s · `e5adf7b2` 48,4 s · `bcb6d393` 13,3 s · `51101d1d` 5,5 s · `d9781168` 27,1 s · `fb1a1a72` 33,6 s. Pics de 0,08 à 0,33 Gio. |
+| 2026-09-14 | 1.8 (équivalence — CLASSIFICATION AVANT LE RE-FIGEAGE) | `a50c4008a` | `-update` sur les mêmes 10 films, puis `git diff` des `.tsv` : `git diff … \| grep -E "^[+-][a-zA-Z]" \| cut -f1 \| sort \| uniq -c` | **`10 +killsource` / `10 -killsource`, ET RIEN D'AUTRE.** 10 fichiers, 10 insertions, 10 suppressions, sur **520 lignes d'étapes** (52 par film) : les **510 autres — `artifact`, `killRefs`, `neutralDeaths`, `filmTable`, `playerTeams` comprises — sont IDENTIQUES À L'OCTET.** C'est la classification, et elle est décisive : `killRefs` et `neutralDeaths` sont des PROJECTIONS du même `Result`, donc si elles ne bougent pas, aucune ligne de kill ne bouge. La cause de l'écart de `killsource` est la FORME de l'objet observé — trois champs neufs — et non son contenu : `50247b26`, dont la table est REFUSÉE et dont la bijection est identique au bit près, change lui aussi. Découverte D4 (1.8). |
+| 2026-09-14 | 1.8 (équivalence — passe de comparaison après re-figeage) | `a50c4008a` | la même commande SANS `-update`, deux sous-ensembles | **10 IDENTIQUES sur 10, exit 0 des deux côtés.** `BILAN : 5 identique(s), 0 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s)` ×2. Le re-figeage est déterministe et vérifié. |
+| 2026-09-14 | 1.8 (corpus gate) | `6dda937c1` | `go run ./cmd/replay-corpus-gate --base=c6a3b751c --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-18` | **ZÉRO PERTE SUR 13 TÉMOINS SUR 13, EXIT 0** — et **ZÉRO GAIN**, ce qui se dit plutôt que se tait. ~17 min, schéma **57 → 57 partout**. Tableau collé : `bcb6d393` 12,27 s · `fb1a1a72` 31,13 s · `d9781168` 25,19 s · `c75f33b8` 14,71 s · `bf15f7ab` 14,1 s · `51ebbc0f` 18,43 s · `084a804d` **1 min 51** · `0797ce72` 13,06 s · `111fa685` 34,75 s · `e5adf7b2` 39,48 s · `60ae07c4` 26,09 s · `a349fea8` **2 min 11** · `bfecd02b` 19,95 s, tous `ok` à 0/0. **CE QUE CE ZÉRO-ZÉRO VEUT DIRE, ET IL FAUT L'ÉCRIRE** : le lot change la SOURCE du lien `indice -> joueur` sans changer une seule valeur publiée sur ce corpus, parce que là où l'inférence se trompait, les joueurs concernés n'ont AUCUNE ligne au kill-feed (ils n'ont ni tué ni sont morts) — donc aucune ligne de kill ne les porte. Le gain du lot est d'ordre structurel (une lecture remplace une inférence, et elle est comptée), pas métrique sur ces treize témoins. La ligne « Preuve » du bloc est tenue sur les trois axes qu'elle nomme : kills, morts, sources — 0 perte. |
+| 2026-09-14 | 1.8 (D3, mesure qui désamorce le report) | ce commit | sonde JETABLE (supprimée après la mesure) : `resolvePlayerIndices` — la voie d'inférence des TIRS et des TOUCHES nommée par le brief — confrontée à `filmdec.ReadPlayerTable` sur les 12 témoins lisibles, roster d'entrée = les xuids de la table | **143 sièges, 143 ACCORDS, 0 contradiction, 0 non résolu, 0,33 s.** `bcb6d393` 8/8 · `fb1a1a72` 8/8 · `d9781168` 8/8 · `c75f33b8` 8/8 · `bf15f7ab` 8/8 · `51ebbc0f` 8/8 · `084a804d` **24/24** · `0797ce72` 8/8 · `111fa685` **24/24** · `e5adf7b2` **23/23** · `60ae07c4` 8/8 · `bfecd02b` 8/8 (`a349fea8`, sans section, écarté). Le « 77 % d'accord » de l'en-tête de `hits.go` ne mesurait donc pas sa LECTURE mais son accord avec l'oracle killsource — c'est-à-dire avec la bijection que ce lot vient de remplacer. Découverte D3 (1.8) amendée en conséquence. |
 
 ## 6. Protocole de reprise de session
 

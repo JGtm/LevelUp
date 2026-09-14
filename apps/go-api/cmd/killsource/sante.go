@@ -242,6 +242,8 @@ func publicationDeJSON(res *killsource.Result) publicationJSON {
 	if p.LigneParLigneAutorisee {
 		return p
 	}
+	// `BijectionDetermined` est faux ici (sinon la porte serait ouverte), donc une marge nulle
+	// veut bien dire « deux joueurs sont interchangeables » et non « il n y avait rien a inferer ».
 	if res.BijectionMargin <= 0 {
 		p.Motif = "marge de bijection nulle : au moins deux joueurs sont interchangeables, les " +
 			"attributions individuelles sont fausses meme si l agregat est juste"

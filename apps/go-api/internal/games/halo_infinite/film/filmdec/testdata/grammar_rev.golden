@@ -158,4 +158,15 @@
 #               contradiction / silence). La grammaire de LECTURE ne bouge pas — c est le lot 1.1
 #               qui l avait corrigee — mais la SOURCE publiee si, et l ensemble hache porte
 #               `objectiveevents` depuis le lot 1.1.5.
-grammar-2026-09-14.6	e5a873d8c52c1d5c27fa197963229e24f2e86e5d1f20864eeb900dd66903f78d
+#   2026-09-14  grammar-2026-09-14.6  lot 1.8 : REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE
+#               (150 -> 158 fichiers, +8 : `killsource/film_table.go` neuf, plus les fichiers du
+#               paquet que l epinglage touche). AUCUNE GRAMMAIRE NE BOUGE — pas une largeur, pas
+#               un cadre, pas un ordre de composants, pas un lecteur d octets. Ce qui change est
+#               le CONSOMMATEUR : `killsource` lit desormais la table des joueurs de `chunk_00`
+#               par `filmdec.ReadFilmIdentity` / `ReadPlayerTable`, deux lecteurs POSES AU LOT 1.5
+#               et inchanges ici, et en tire le lien `indice -> joueur` au lieu de l inferer.
+#               C est `KillSourceDecoderRev` qui porte ce changement (killsource-2026-09-12 ->
+#               killsource-2026-09-14, backlog de redecodage), pas `GrammarRev` — meme nature que
+#               l entree `botSuffix -> BotSuffix` du golden de killsource. `SchemaVersion` ne
+#               monte pas non plus : aucun champ ni aucune forme de l artefact ne change.
+grammar-2026-09-14.6	8fcf08048678750509361d87db225b487ca03dea0e8b7e0286843fc410b1a62e
