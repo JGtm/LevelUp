@@ -122,6 +122,20 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
   :8000 tourne sur `feat/v75` et ne le publie pas encore — la fixture est la VRAIE réponse du
   serveur, la famille ajoutée en appariant chaque emplacement à la référence versionnée
   (16 sur 16 à moins d'un centimètre).
+- **D-e (étape 3, BLOQUANT)** — L'hypothèse de l'étape 3 ne tient pas : les agrégats
+  (Sessions, Escouade, Timeseries) ne lisent PAS les artefacts, ils lisent la table cuite
+  `match_usage_players_latest`, dont `pad_pickups_json` ventile les prises par FAMILLE D'ARME
+  et a donc PERDU l'index du socle. Le niveau, lui, se lit sur le SOCLE (sa position, croisée à
+  la référence de la carte) : il ne peut pas se reconstituer côté lecture. Le rendre disponible
+  demande (1) une révision de la projection `UsageSummaryRev` us6 -> us7, (2) une colonne de
+  plus dans `match_usage_players` (migration), (3) de faire entrer la référence des cartes, le
+  `map_id` et la catégorie de mode dans `BuildUsageSummary(doc)` — qui ne reçoit aujourd'hui
+  QUE l'artefact — côté sync ET côté backfill, et (4) une passe `levelup backfill-usage-summary`
+  sur tout le parc, locale puis PROD. Or cette passe exige le SERVEUR ARRÊTÉ (écrit dit en tête
+  de `cmd_backfill_usage_summary.go` : « OpenReadWrite echoue si le lock est tenu »), ce que le
+  cadre de ce lot interdit. Deux décisions utilisateur : accepter la révision de projection + le
+  backfill prod, ou se contenter des axes déjà persistés (rôle/classe du registre) — ce dernier
+  contredit D1 et produirait 10 % de faux niveaux.
 - **D-c (étape 0, hors périmètre)** — Une seule arme du parc (59 matchs, 2 881 prises) porte
   deux niveaux dans le même match : 5 prises, 0,17 %, et c'est `terrain` + `non classé`,
   jamais `terrain` + `puissance`. Les lignes du bloc restent donc keyées par arme.
@@ -141,3 +155,5 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
   câblé depuis `header.mode_category`. Gate : `tsc -b --force` 0 erreur, eslint 0 erreur
   sur les fichiers touchés, `vitest run` complet 713 fichiers / 7 647 tests verts.
   Captures LUES (stub assumé, cf. D-d).
+- 2026-09-14 — **Étape 3 BLOQUÉE, décision utilisateur requise** (cf. D-e). Étapes 1 et 2
+  livrées et vertes ; rien de poussé.
