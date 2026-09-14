@@ -42,7 +42,7 @@ const kf7dI0 = "object-position-dynamic-precision-component"
 // forme du corps, deja tranchee par R7-b.
 var kf7dVariant = kf35Variant{
 	Label: "v4 ETAT COMPLET (64 leaf nus), composants non portes sautes (0 bit)",
-	Body:  KeyframeBodyVariant{},
+	Body:  keyframeBodyVariant{},
 	Stub:  true,
 }
 

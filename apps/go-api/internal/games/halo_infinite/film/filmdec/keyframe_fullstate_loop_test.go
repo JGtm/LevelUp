@@ -7,15 +7,19 @@ package filmdec
 // `FUN_142e2c690`, lue par R7-d) portee TELLE QUELLE sur le payload type-2 atterrit-elle
 // bit-exact ? Les variables, allumees UNE A LA FOIS :
 //
-//	(b) l'EN-TETE par entite     — 108 bits + deux `R(32)` de taille, contre 64 bits
 //	(c) le CONTROLE par composant — `R(1) [+R(32)]` sous le drapeau film
 //	(d) `DAT_144e61ea0`          — vec3 brut 96 bits contre 3 x axisW quantifies
 //	(e) `i0`                     — la grammaire de l'ECRIVAIN (`FUN_14320678c`)
 //
-// LA VARIABLE (a) — « le niveau du composant `i` est celui de l'entree `i`, pas de la
-// precedente » — A ETE TRANCHEE ET LIVREE au lot 1.2 (2026-09-14) : ce n'est plus une option,
-// c'est la lecture du registre (`registry.go`). Elle a donc disparu de cette matrice, avec
-// `KeyframeFullStateOpt.LevelShift`.
+// DEUX VARIABLES ONT ETE TRANCHEES ET LIVREES, ET ELLES ONT DISPARU DE LA MATRICE :
+//
+//	(a) « le niveau du composant `i` est celui de l entree `i` » — lot 1.2 (2026-09-14) : c est
+//	    la lecture du registre (`registry.go`), avec `KeyframeFullStateOpt.LevelShift`.
+//	(b) l EN-TETE par entite (108 bits + deux `R(32)` de taille, contre 64) — lot 1.4
+//	    (2026-09-14) : c est la lecture de production (`WalkKeyframeFullState`, sans argument de
+//	    cadre), avec `KeyframeFullStateOpt` tout entier.
+//
+// Elles ont disparu parce que le CHOIX a disparu, pas parce qu on aurait cesse de mesurer.
 //
 // CE QU'IL NE FAIT PAS : il ne publie AUCUNE donnee, n'ecrit RIEN sur disque, ne touche a
 // aucun schema. LECTURE SEULE, garde par KF35_ROOT (meme garde que R7-a/R7-b/R7-d).
@@ -129,7 +133,6 @@ func TestKF7ETableLayout(t *testing.T) {
 // bascules globales qu'elle installe.
 type kf7eCase struct {
 	Label string
-	Opt   KeyframeFullStateOpt
 	Corr  bool // (c) le controle par composant du mode film
 	I0    bool // (e) la grammaire d'ECRIVAIN d'`i0`
 	Scope bool // (d) la portee `DAT_144e61ea0` (vec3 brut 96 bits au lieu du quantifie)
@@ -154,7 +157,7 @@ func (k kf7eTally) rate() float64 {
 
 // kf7eWalkOne rejoue le corps d'UN record sous la configuration donnee, puis mesure.
 func kf7eWalkOne(f kf35Film, pay []byte, b kf35Bound, c kf7eCase, tal *kf7eTally) {
-	tr := WalkKeyframeFullState(pay, b.Rec.Bit, f.Reg, c.Opt)
+	tr := WalkKeyframeFullState(pay, b.Rec.Bit, f.Reg)
 	if tr.DesyncAt >= 0 {
 		tal.desync++
 		return
@@ -170,16 +173,18 @@ func kf7eWalkOne(f kf35Film, pay []byte, b kf35Bound, c kf7eCase, tal *kf7eTally
 	}
 	tal.absGaps = append(tal.absGaps, gap)
 	tal.breaks[kf35Break(tr, b.Want)]++
-	if kf7eChain(f, pay, tr.EndBit, b, c) {
+	if kf7eChain(f, pay, tr.EndBit, b) {
 		tal.chained++
 		return
 	}
 	tal.lost++
 }
 
-// kf7eChain enchaine la marche SOUS LA MEME CONFIGURATION jusqu'a la frontiere visee : c'est
+// kf7eChain enchaine la marche SOUS LA MEME CONFIGURATION jusqu a la frontiere visee : c est
 // le rattrapage des records que le filtre fort du balayeur ne voit pas (meme borne que R7-a).
-func kf7eChain(f kf35Film, pay []byte, from int, b kf35Bound, c kf7eCase) bool {
+// La configuration ne s y passe plus en argument depuis le lot 1.4 : le cadre est fixe, et les
+// trois bascules qui restent sont des globales de process, deja installees par `kf7ePass`.
+func kf7eChain(f kf35Film, pay []byte, from int, b kf35Bound) bool {
 	total := len(pay) * 8
 	pos, prev := from, b.Rec.Slot
 	for n := 0; n < kf35ChainMax; n++ {
@@ -193,7 +198,7 @@ func kf7eChain(f kf35Film, pay []byte, from int, b kf35Bound, c kf7eCase) bool {
 		if !ok || h.Slot <= prev {
 			return false
 		}
-		tr := WalkKeyframeFullState(pay, pos, f.Reg, c.Opt)
+		tr := WalkKeyframeFullState(pay, pos, f.Reg)
 		if tr.DesyncAt >= 0 {
 			return false
 		}
@@ -223,29 +228,24 @@ func kf7ePass(f kf35Film, c kf7eCase) kf7eTally {
 	return tal
 }
 
-// kf7eCases construit la matrice A/B : une REFERENCE (la lecture v4 de R7-a/R7-d portee par
-// la nouvelle marche, en-tete 64 bits, rien d'autre), puis chaque variable SEULE, puis les
-// cumuls dans l'ordre du plan. Toutes les configurations lisent le registre au cadrage du jeu
-// depuis le lot 1.2 : les lignes « niveaux decales » ont disparu parce que le DECALAGE a
-// disparu, pas parce qu'on aurait cesse de le mesurer.
+// kf7eCases construit la matrice A/B des variables QUI RESTENT.
+//
+// LA VARIABLE (b) — le CADRE (en-tete 108, mots de taille, etat par defaut) — A ETE TRANCHEE ET
+// LIVREE au lot 1.4 (2026-09-14), comme (a) l'avait ete au lot 1.2 : ce n'est plus une option,
+// c'est la lecture de production (`WalkKeyframeFullState`, sans argument de cadre). Les quatre
+// lignes qui la balayaient (REF en-tete 64, b1, b2, b3) ont donc disparu de cette matrice —
+// parce que le CHOIX a disparu, pas parce qu'on aurait cesse de mesurer. Toutes les lignes
+// ci-dessous lisent desormais le meme cadre, celui du jeu ; ce qui varie est ce qui reste
+// ouvert : le controle par composant (c), la portee (d) et la grammaire d'ecrivain d'i0 (e).
 func kf7eCases() []kf7eCase {
-	ref := KeyframeFullStateOpt{HeaderBits: keyframeHeaderBits}
-	hdr := KeyframeFullStateOpt{HeaderBits: keyframeFullStateHeaderBits}
-	hdrSz := KeyframeFullStateOpt{HeaderBits: keyframeFullStateHeaderBits, SizeWords: true}
-	hdrSzDs := KeyframeFullStateOpt{HeaderBits: keyframeFullStateHeaderBits, SizeWords: true, DefaultState: true}
 	return []kf7eCase{
-		{Label: "REF    en-tete 64, sans rien (= v4 de R7-a/R7-d)", Opt: ref},
-		{Label: "(b1)   en-tete 108 bits SEUL", Opt: hdr},
-		{Label: "(b2)   en-tete 108 + deux R(32) de taille", Opt: hdrSz},
-		{Label: "(b3)   en-tete 108 + tailles + etat par defaut", Opt: hdrSzDs},
-		{Label: "(c)    REF + controle par composant", Opt: ref, Corr: true},
-		{Label: "(e)    REF + grammaire d'ECRIVAIN d'i0", Opt: ref, I0: true},
-		{Label: "(b2+e) en-tete 108 + tailles + i0 ecrivain", Opt: hdrSz, I0: true},
-		{Label: "(b2+c+e) TOUT sauf l'etat par defaut", Opt: hdrSz, Corr: true, I0: true},
-		{Label: "(d)    REF + portee DAT_144e61ea0 (brut 96)", Opt: ref, Scope: true},
-		{Label: "(d+e)  REF + portee + i0 ecrivain", Opt: ref, I0: true, Scope: true},
-		{Label: "(b2+d+e) en-tete 108 + tailles + portee + i0", Opt: hdrSz, I0: true, Scope: true},
-		{Label: "(b3+c+e) TOUT (etat par defaut compris)", Opt: hdrSzDs, Corr: true, I0: true},
+		{Label: "REF    cadre d'etat complet, bascules par defaut"},
+		{Label: "(c)    + controle par composant", Corr: true},
+		{Label: "(e)    + grammaire d'ECRIVAIN d'i0", I0: true},
+		{Label: "(c+e)  + controle + i0 ecrivain", Corr: true, I0: true},
+		{Label: "(d)    + portee DAT_144e61ea0 (brut 96)", Scope: true},
+		{Label: "(d+e)  + portee + i0 ecrivain", I0: true, Scope: true},
+		{Label: "(c+d+e) TOUT", Corr: true, I0: true, Scope: true},
 	}
 }
 

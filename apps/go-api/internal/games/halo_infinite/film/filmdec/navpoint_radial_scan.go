@@ -93,6 +93,13 @@ type NavpointRadialScan struct {
 	Records, Walked, Broken, Chained int
 	// KeyRecords / KeyWalked / KeyBroken / KeyChained : voie IMAGE-CLE.
 	KeyRecords, KeyWalked, KeyBroken, KeyChained int
+	// KeyClosed / KeyBounded : la definition FORTE de la sante de la voie image-cle (lot 1.4).
+	// `KeyClosed` = la marche atterrit EXACTEMENT sur le premier bit du record suivant ;
+	// `KeyBounded` = les records qui ont un suivant, donc une frontiere a atteindre. Le dernier
+	// record d'un payload est lu (il porte des donnees) mais n'entre pas dans `KeyBounded` :
+	// sans frontiere, la question ne se pose pas pour lui. `KeyChained` reste la definition
+	// FAIBLE (un motif d'en-tete valide a l'arrivee) et ne se confond pas avec celle-ci.
+	KeyClosed, KeyBounded int
 	// Blocked[i] compte les marches arretees au composant i (premier non porte rencontre).
 	Blocked map[int]int
 	// PacketsNoClock compte les paquets d'un chunk absent du manifeste : sans horloge, la
@@ -319,24 +326,35 @@ func (w *navpointRadialWalk) walk(pay []byte, rec WorldObjectRecord, ms int32) (
 	return at, true
 }
 
-// scanKeyframe balaye UN payload d'image-cle : les records y sont ancres par leur en-tete de
-// 64 bits. Sur ti=12 la traversee desynchronise des le premier composant non porte — le chiffre
-// est publie pour que le negatif soit mesure et non suppose.
+// scanKeyframe balaye UN payload d'image-cle SOUS LE CADRE D'ETAT COMPLET, celui que le jeu
+// lit (`WalkKeyframeFullState`, lot 1.4) : en-tete de 108 bits, les deux mots de taille, l'etat
+// par defaut de l'archetype, puis TOUS les composants dans l'ordre du registre — il n'y a pas de
+// masque de presence dans une image-cle.
+//
+// CE QUE LE CHANGEMENT COUTE ICI, DIT AVANT D'ETRE DECOUVERT. Sur ti=12, la marche d'etat
+// complet desynchronise a `i1 managed-navpoint-flags-component`, qui n'est pas porte : la voie
+// image-cle ne rend donc AUCUNE lecture tant que ce composant n'est pas porte (lot 3.6). Elle
+// n'en rendait deja aucune de FIABLE : sous l'ancien cadre elle marchait « jusqu'au bout » en
+// lisant un masque qui dit « presque aucun composant », fermait 0 record sur 390 et ne chainait
+// que 1,9 % (releve du 2026-09-13). Une lecture qui ne ferme jamais n'est pas une lecture, c'est
+// un bruit qui ressemble a une donnee — et la voie DELTA, elle, est inchangee : c'est elle qui a
+// passe le plancher 0/1000 et qui porte la jauge d'armement.
 func (w *navpointRadialWalk) scanKeyframe(pay []byte, ms int32) {
 	sc := w.sc
 	total := len(pay) * 8
 	w.key = true
 	defer func() { w.key = false }()
-	for _, r := range WalkKeyframeWorld(pay) {
-		if r.TI != navpointRadialArchIndex {
+	for _, b := range keyframeBornesToutes(pay) {
+		if b.TI != navpointRadialArchIndex {
 			continue
 		}
 		sc.KeyRecords++
+		if b.Want >= 0 {
+			sc.KeyBounded++
+		}
 		first := len(sc.Reads)
-		br := NewBitReader(pay)
-		br.SetBitPos(r.Bit + keyframeRecordTIBit)
-		w.cur.Slot, w.cur.TMS = uint32(r.Slot), ms
-		tr := TraverseEntity(br, w.reg, 0)
+		w.cur.Slot, w.cur.TMS = uint32(b.Slot), ms //nolint:gosec // Slot vient d'un id de 30 bits
+		tr := WalkKeyframeFullState(pay, b.Bit, w.reg)
 		if tr.DesyncAt >= 0 || tr.EndBit > total {
 			sc.KeyBroken++
 			sc.Blocked[tr.DesyncAt]++
@@ -344,6 +362,9 @@ func (w *navpointRadialWalk) scanKeyframe(pay []byte, ms int32) {
 			continue
 		}
 		sc.KeyWalked++
+		if tr.EndBit == b.Want {
+			sc.KeyClosed++
+		}
 		if _, ok := readKeyframeHeader(pay, tr.EndBit, total); ok {
 			sc.KeyChained++
 			for k := first; k < len(sc.Reads); k++ {

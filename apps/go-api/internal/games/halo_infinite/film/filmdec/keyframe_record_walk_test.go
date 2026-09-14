@@ -424,7 +424,7 @@ func TestKFGramVariant(t *testing.T) {
 		for _, corr := range []bool{false, true} {
 			prev := filmComponentCorruptionCheck
 			SetFilmComponentCorruptionCheck(corr)
-			for k, v := range KeyframeBodyVariants {
+			for k, v := range keyframeBodyVariants {
 				ex, ds, bd, gaps := kfGramVariantPass(reg, pays, ti, v)
 				t.Logf("  corruption=%-5v [%d] %s | bornes %4d · exactes %4d · desync %4d",
 					corr, k, v, bd, ex, ds)
@@ -436,7 +436,7 @@ func TestKFGramVariant(t *testing.T) {
 }
 
 // kfGramVariantPass mesure UNE variante de corps sur tous les records bornes de l'archetype.
-func kfGramVariantPass(reg *Registry, pays [][]byte, ti int, v KeyframeBodyVariant) (
+func kfGramVariantPass(reg *Registry, pays [][]byte, ti int, v keyframeBodyVariant) (
 	exact, desync, bounded int, gaps map[int]int,
 ) {
 	gaps = map[int]int{}
@@ -448,7 +448,7 @@ func kfGramVariantPass(reg *Registry, pays [][]byte, ti int, v KeyframeBodyVaria
 				continue
 			}
 			bounded++
-			tr := WalkKeyframeBody(pay, r.Bit, reg, v)
+			tr := walkKeyframeBody(pay, r.Bit, reg, v)
 			switch {
 			case tr.DesyncAt >= 0:
 				desync++

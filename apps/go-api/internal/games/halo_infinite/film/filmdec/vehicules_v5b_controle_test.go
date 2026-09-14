@@ -15,7 +15,7 @@ package filmdec
 //   - Si le bloc est du MOUVEMENT : les records libres-EN-MOUVEMENT le portent aussi, et les
 //     records occupés-à-l'arrêt ne le portent pas.
 //
-// L'ANCRAGE : `TestV5BAncrage` rejoue la grammaire de production (`WalkKeyframeBody`, état
+// L'ANCRAGE : `TestV5BAncrage` rejoue la grammaire de production (`walkKeyframeBody`, état
 // complet) sur les records occupés et publie les frontières de composants autour de la position
 // d'insertion `p`. Si `p` tombe sur une frontière, le bloc EST un composant (ou son extension).
 //
@@ -378,9 +378,9 @@ func v5bAncrageUnFilm(t *testing.T, dir string) {
 // par le lot R3 pour la table d'image-clé).
 func v5bPublieAncrage(t *testing.T, veh uint32, o, f v5bRec, ins v5bInsert, reg *Registry) {
 	t.Helper()
-	v := KeyframeBodyVariant{DefaultState: true, Gate: false, Mask: false}
-	to := WalkKeyframeBody(o.Payload, o.BitStart, reg, v)
-	tf := WalkKeyframeBody(f.Payload, f.BitStart, reg, v)
+	v := keyframeBodyVariant{DefaultState: true, Gate: false, Mask: false}
+	to := walkKeyframeBody(o.Payload, o.BitStart, reg, v)
+	tf := walkKeyframeBody(f.Payload, f.BitStart, reg, v)
 	t.Logf("  véh=%-5d ts=%9.2f  p=%-5d d=%-4d | occupé : desync=%d fin=%+d bits du record ; "+
 		"libre : desync=%d fin=%+d",
 		veh, float64(o.TS)/1e6, ins.P, ins.D,
