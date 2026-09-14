@@ -271,7 +271,7 @@ func TestGoldenBuildsInputsRoundTrip(t *testing.T) {
 		t.Run(b.Build+"/"+b.Short8, func(t *testing.T) {
 			g, entry := chargerGoldenBuild(t, b)
 			blob := encodeGoldenInputs(g)
-			again, err := decodeGoldenInputs(blob)
+			again, err := decodeGoldenInputs(blob, entry)
 			if err != nil {
 				t.Fatalf("second decodage : %v", err)
 			}
@@ -305,13 +305,13 @@ func chargerGoldenBuild(t *testing.T, b goldenBuild) (*goldenInputs, filmdec.Map
 	if _, err := buf.ReadFrom(zr); err != nil {
 		t.Fatalf("decompression %s : %v", b.inputsPath(), err)
 	}
-	g, err := decodeGoldenInputs(buf.Bytes())
-	if err != nil {
-		t.Fatalf("decodage %s : %v", b.inputsPath(), err)
-	}
 	entry, err := b.mapQuant()
 	if err != nil {
 		t.Fatalf("carte %q hors catalogue : %v", b.Map, err)
+	}
+	g, err := decodeGoldenInputs(buf.Bytes(), entry)
+	if err != nil {
+		t.Fatalf("decodage %s : %v", b.inputsPath(), err)
 	}
 	return g, entry
 }

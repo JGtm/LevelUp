@@ -58,7 +58,7 @@ rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
 546 lecture(s) · 226 par image-cle (~20 s) · 320 par delta (transmis AU CHANGEMENT)
-346 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
+130 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
 couverture : 226 image-cle · 320 delta · 1 ecartee(s) sans piste · canal munitions refuse : false
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
@@ -87,16 +87,17 @@ couverture : 147 vie(s) publiee(s) · camo 12 vie(s) / 23 episode(s) · surboucl
 ## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine
 calibre=true decoupage="9/5" · 760 vie(s) d objet · 14149 ancre(s) -> 341 confirmee(s) par l oracle de position -> 341 pose(s)
 341 nommee(s) · 0 `other` (nature non etablie : le manifeste ne les revendique pas) · 339 avec poseur mesure · 303 avec cap de visee
-origine mesuree : 17 deployee(s) · 322 lachee(s) a la fin de la vie du poseur · 2 sans poseur
+origine mesuree : 20 deployee(s) · 319 lachee(s) a la fin de la vie du poseur · 2 sans poseur
   famille grenade_frag 177
   famille grenade_plasma 33
   famille grenade_spike 76
   famille repulsor 40
   famille wall     15
-  famille x origine grenade_frag/deployed        7
-  famille x origine grenade_frag/dropped         168
+  famille x origine grenade_frag/deployed        9
+  famille x origine grenade_frag/dropped         166
   famille x origine grenade_frag/unknown         2
-  famille x origine grenade_plasma/dropped       33
+  famille x origine grenade_plasma/deployed      1
+  famille x origine grenade_plasma/dropped       32
   famille x origine grenade_spike/deployed       2
   famille x origine grenade_spike/dropped        74
   famille x origine repulsor/deployed            6
@@ -121,9 +122,9 @@ origine mesuree : 17 deployee(s) · 322 lachee(s) a la fin de la vie du poseur �
   grenade_plasma dropped 0xcaaadcb0 t=[407, 441] pos=(-1.96, -0.39, 60.46) poseur=520 cap=183.2 deg
   grenade_plasma dropped 0xcaaadcb0 t=[407, 445] pos=(-1.96, -0.39, 60.46) poseur=520 cap=183.2 deg
   repulsor dropped 0x7ca85adc t=[456, 457] pos=(16.31, 1.04, 61.02) poseur=514 cap=26.3 deg
-  grenade_frag dropped 0xbcabbe43 t=[456, 507] pos=(16.43, 0.98, 60.95) poseur=514 cap=26.3 deg
-  grenade_frag dropped 0xbcabbe43 t=[456, 457] pos=(16.43, 0.98, 60.95) poseur=514 cap=26.3 deg
-  grenade_plasma dropped 0xcaaadcb0 t=[456, 457] pos=(16.43, 0.98, 60.95) poseur=514 cap=26.3 deg
+  grenade_frag deployed 0xbcabbe43 t=[456, 507] pos=(16.43, 0.98, 60.95) poseur=524 cap=182.5 deg
+  grenade_frag deployed 0xbcabbe43 t=[456, 457] pos=(16.43, 0.98, 60.95) poseur=524 cap=182.5 deg
+  grenade_plasma deployed 0xcaaadcb0 t=[456, 457] pos=(16.43, 0.98, 60.95) poseur=524 cap=182.5 deg
   wall dropped 0x2974c233 t=[519, 528] pos=(9.20, -3.11, 62.02) poseur=523 cap=355.4 deg
   grenade_frag dropped 0xbcabbe43 t=[519, 551] pos=(9.22, -3.22, 61.87) poseur=523 cap=355.4 deg
   grenade_frag dropped 0xbcabbe43 t=[519, 553] pos=(9.25, -3.21, 61.88) poseur=523 cap=355.4 deg
