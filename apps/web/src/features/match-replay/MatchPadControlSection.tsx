@@ -64,7 +64,8 @@ import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
 import { buildPadControlBars, type PadBarModel, type PadBarRow } from './model/padControlChart'
-import { buildPadControl } from './model/padControlLogic'
+import { buildPadControl, type PadControl } from './model/padControlLogic'
+import { PAD_TIER_ORDER, type PadTier } from './model/weaponTier'
 import { useMatchReplay } from '../../lib/replay/queries'
 import { padNameFor } from './layers/useReplayWeaponPads'
 
@@ -78,6 +79,14 @@ interface Props {
   /** `header.replay_available` — le même gate que le lien rejeu et que la courbe de score. */
   replayAvailable: boolean
   scoreboard: MatchScoreboardRow[] | null | undefined
+  /**
+   * `header.mode_category` — la CATÉGORIE de mode posée par le serveur (taxonomie du titre),
+   * jamais le nom du mode lu à l'écran. Elle sert une seule chose ici : savoir si les
+   * équipements de départ sont distribués au hasard (Fiesta et consorts), auquel cas le niveau
+   * « arme de base » n'a pas de sens et n'est pas publié. Absente = départs non aléatoires,
+   * c'est le repli sûr puisque le niveau se mesure alors et se vérifie de lui-même.
+   */
+  modeCategory?: string | null
   locale: ReplayLocale
 }
 
@@ -86,12 +95,16 @@ export function MatchPadControlSection({
   matchId,
   replayAvailable,
   scoreboard,
+  modeCategory,
   locale,
 }: Props) {
   const t = REPLAY_TEXT[locale]
   const { data } = useMatchReplay(playerSlug, matchId, replayAvailable)
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
-  const control = useMemo(() => (data ? buildPadControl(data, board) : null), [data, board])
+  const control = useMemo(
+    () => (data ? buildPadControl(data, board, modeCategory) : null),
+    [data, board, modeCategory],
+  )
   const meSide = useMemo(() => board.find((r) => r.is_me)?.team_side ?? null, [board])
 
   const teamLabel = useCallback(
@@ -133,7 +146,7 @@ export function MatchPadControlSection({
         </HeaderLabelTooltip>
       )}
     >
-      <PadControlBody bars={bars} allyOf={allyOf} t={t} />
+      <PadControlBody bars={bars} control={control} allyOf={allyOf} t={t} />
     </SectionCard>
   )
 }
@@ -145,10 +158,12 @@ export function MatchPadControlSection({
  */
 function PadControlBody({
   bars,
+  control,
   allyOf,
   t,
 }: {
   bars: PadBarModel
+  control: PadControl
   allyOf: (side: string | null) => boolean | null
   t: ReplayText
 }) {
@@ -156,7 +171,13 @@ function PadControlBody({
     <div className="px-3 pb-3 pt-3">
       {bars.rows.length > 0 && (
         <>
-          <PadControlBars model={bars} t={t} />
+          {!control.tiersMeasured && (
+            <p className="pb-3 text-3xs text-muted-foreground">{t.padControl.tiersUnmeasuredNote}</p>
+          )}
+          {control.randomStarts && (
+            <p className="pb-3 text-3xs text-muted-foreground">{t.padControl.randomStartsNote}</p>
+          )}
+          <PadControlBars model={bars} control={control} t={t} />
           <ChartLegend
             className="pt-3"
             items={bars.teams.map((team) => ({
@@ -181,16 +202,62 @@ const ROW_GRID = { gridTemplateColumns: `${NAME_WIDTH}px 1fr ${NOTE_WIDTH}px`, g
  * dénominateur de la ligne s'écrit à côté du nom de l'arme. Un axe partagé n'aurait plus rien
  * à graduer.
  */
-function PadControlBars({ model, t }: { model: PadBarModel; t: ReplayText }) {
+function PadControlBars({
+  model,
+  control,
+  t,
+}: {
+  model: PadBarModel
+  control: PadControl
+  t: ReplayText
+}) {
+  const groupes = groupRowsByTier(model.rows, control)
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[560px]">
-        {model.rows.map((row) => (
-          <PadWeaponRow key={row.weapon} row={row} t={t} />
+        {groupes.map((groupe) => (
+          <section key={groupe.tier} className="mb-1">
+            {/* L'INTERTITRE N'APPARAÎT QUE SI LES NIVEAUX SONT ÉTABLIS : sans référence de
+                carte, un unique bandeau « Emplacement non identifié » au-dessus de tout le
+                bloc ferait lire une absence de mesure comme un résultat de mesure. La note
+                au-dessus du graphe le dit déjà, en toutes lettres. */}
+            {control.tiersMeasured && (
+              <h4 className="mb-2 flex items-baseline gap-2 border-b pb-1 text-3xs uppercase tracking-wide text-muted-foreground">
+                <span>{t.padControl.tierLabels[groupe.tier]}</span>
+                <span className="tabular-nums normal-case tracking-normal">
+                  {t.padControl.tierSubtotalFmt(groupe.total)}
+                </span>
+              </h4>
+            )}
+            {groupe.rows.map((row) => (
+              <PadWeaponRow key={row.weapon} row={row} t={t} />
+            ))}
+          </section>
         ))}
       </div>
     </div>
   )
+}
+
+/**
+ * groupRowsByTier range les lignes par niveau, dans l'ORDRE ÉCRIT `PAD_TIER_ORDER` (base,
+ * terrain, puissance, bonus, non classé) et SANS toucher à l'ordre interne : celui-ci reste
+ * celui de `padControlLogic` — les socles décisifs d'abord, puis du plus disputé au moins
+ * disputé. Un niveau sans ligne n'a pas d'intertitre : une section vide ne dit rien.
+ *
+ * LE SOUS-TOTAL AFFICHÉ EST CELUI DES LIGNES DU GROUPE, pas `control.tierTotals` : les deux ne
+ * coïncident que si aucune arme ne s'est trouvée à deux niveaux dans le match (0,17 % des
+ * prises mesurées). C'est le total des lignes affichées qui doit s'additionner sous les yeux du
+ * lecteur, sinon les chiffres de l'écran ne se recomposent pas.
+ */
+function groupRowsByTier(
+  rows: readonly PadBarRow[],
+  control: PadControl,
+): { tier: PadTier; rows: PadBarRow[]; total: number }[] {
+  return PAD_TIER_ORDER.map((tier) => {
+    const lignes = rows.filter((row) => (control.tierOfWeapon[row.weapon] ?? 'unclassified') === tier)
+    return { tier, rows: lignes, total: lignes.reduce((sum, row) => sum + row.total, 0) }
+  }).filter((groupe) => groupe.rows.length > 0)
 }
 
 /** Hauteur de la barre : assez haute pour que le compte s'y lise en `text-xs` (retour 13/09). */

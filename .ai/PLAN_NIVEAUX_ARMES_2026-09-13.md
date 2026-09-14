@@ -76,10 +76,10 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
   ./internal/analysis/...`.
 
 ### Étape 2 — Match view : le bloc « Contrôle des armes » par niveau
-- [ ] 2.1 `features/match-replay/model/padControlLogic.ts` : chaque ligne d'arme porte son
+- [x] 2.1 `features/match-replay/model/padControlLogic.ts` : chaque ligne d'arme porte son
   niveau (depuis `mapWeaponPads[].family` + `loadouts`) ; regroupement Base / Terrain /
   Puissance / Non classé, sous-totaux par niveau, ordre fixe.
-- [ ] 2.2 `MatchPadControlSection.tsx` : intertitres de niveau, ligne « Départs aléatoires »
+- [x] 2.2 `MatchPadControlSection.tsx` : intertitres de niveau, ligne « Départs aléatoires »
   en mode Fiesta (catégorie de mode lue depuis la réponse de la match view, pas du nom).
   i18n FR/EN (`match-replay/i18n`), tests de rendu, capture lue sur le témoin `7fce3219`.
 - Gate : tsc, eslint, vitest `features/match-replay`, capture.
@@ -114,6 +114,14 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
   `empreinte-cuite`, et c'est elle qui gouverne le refus ; l'empreinte entière reste figée
   (donc toute modification reste visible), et un nouveau test interdit que ces deux calques
   entrent un jour dans la cuisson sans qu'on le voie.
+- **D-d (étape 2)** — AUCUN match Super Fiesta du parc local ne publie de socle : les 13
+  artefacts de cette catégorie sont à ZÉRO `weaponPads` (le mode n'allume aucun emplacement,
+  comportement déjà documenté en tête de `map_weapon_pads.go`). La ligne « Départs aléatoires »
+  n'est donc visible sur AUCUNE donnée réelle du poste : la capture la montre avec
+  `header.mode_category` forcé sur le match témoin. Même raison pour `family` : le serveur de
+  :8000 tourne sur `feat/v75` et ne le publie pas encore — la fixture est la VRAIE réponse du
+  serveur, la famille ajoutée en appariant chaque emplacement à la référence versionnée
+  (16 sur 16 à moins d'un centimètre).
 - **D-c (étape 0, hors périmètre)** — Une seule arme du parc (59 matchs, 2 881 prises) porte
   deux niveaux dans le même match : 5 prises, 0,17 %, et c'est `terrain` + `non classé`,
   jamais `terrain` + `puissance`. Les lignes du bloc restent donc keyées par arme.
@@ -126,3 +134,10 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
   journalisé au service, ratchet de forme amendé (D-b). Gate : `go build`, `go vet ./internal/...`,
   `go test ./internal/games/halo_infinite/film/replay/... ./internal/analysis/... ./internal/service/...
   ./internal/domain/...` verts, `openapi-gen -check` à jour.
+- 2026-09-14 — Étape 2 CLOSE : `model/weaponTier.ts` (jumeau TS du paquet Go, 9 tests),
+  `padControlLogic` porte le niveau de chaque arme + les sous-totaux + les deux drapeaux,
+  `MatchPadControlSection` écrit un intertitre par niveau avec son sous-total, la note
+  « Départs aléatoires » et la note « niveaux non établis », i18n FR/EN, `modeCategory`
+  câblé depuis `header.mode_category`. Gate : `tsc -b --force` 0 erreur, eslint 0 erreur
+  sur les fichiers touchés, `vitest run` complet 713 fichiers / 7 647 tests verts.
+  Captures LUES (stub assumé, cf. D-d).
