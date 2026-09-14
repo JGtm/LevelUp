@@ -53,15 +53,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// fait dans l'ordre des DEPENDANCES, pas dans celui des champs.
 	tracks, trackCov := decimateTracks(sorted, origin, step, opt.minPoints(), opt.Scoped)
 	doc.Tracks = tracks
-	if trackCov.RefusedMinPoints > 0 {
-		// JOURNALISE, JAMAIS AVALE (regle n°3 du depot). Ce refus etait MUET depuis l'origine :
-		// ni compteur publie, ni ligne de journal. Le seuil ne bouge pas (DefaultMinPoints = 2),
-		// mais ce qu'il retire se voit desormais des deux cotes.
-		slog.Info("rejeu : vies refusees par le seuil de publication",
-			"match_id", doc.MatchID, "vies", trackCov.RefusedMinPoints,
-			"points", trackCov.RefusedPoints, "seuil", trackCov.MinPoints,
-			"viesPubliees", trackCov.Published)
-	}
+	logTrackCoverage(matchID, trackCov)
 	doc.FrameCount = frameSpan(sorted, origin, step)
 	doc.DurationMS = doc.FrameCount * interval
 	var ecartes int
