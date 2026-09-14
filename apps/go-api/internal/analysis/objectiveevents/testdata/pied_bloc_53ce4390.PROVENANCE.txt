@@ -1,0 +1,44 @@
+BLOC DE PIED DE FILM — un evenement th=10 reel, pose le 2026-09-14 (lot 1.1.3 du
+.ai/PLAN_DECODEUR_FILM_2026-09-13.md).
+
+CE FICHIER DIT D OU VIENT CHAQUE OCTET. Une fixture binaire sans provenance ecrite est un fait
+sans source ; celle-ci se REGENERE, elle ne s edite pas :
+
+    PIED_FILM_DIR=<cache>/film_chunks/53ce4390 \
+      go test ./internal/analysis/objectiveevents/ -run PiedBlocProvenance -update-pied-bloc
+
+Sans `-update-pied-bloc`, la meme commande RECOUPE la tranche sur le film et la compare octet
+pour octet. Sans `PIED_FILM_DIR`, elle est sautee : le cache de films ne vit pas dans le depot.
+
+D OU
+  film        53ce4390 (Behemoth, CTF:Arena, version 41 / HI_1_13_0) — l ancre historique des
+              bursts de capture CTF du corpus d equivalence
+  chunk       chunk_40.bin, le dernier du film, chunk_type 3 au manifeste : le PIED
+  tranche     octets [34977, 36907) du pied DECOMPRESSE, soit 1930 octets — recopies sans
+              transformation. La tranche commence au premier octet du XUID de l acteur et finit
+              au dernier octet du marqueur de fin [00 00 2e e0] de son bloc.
+
+CE QU ELLE PORTE — UN SEUL evenement th=10, et il est DISCRIMINANT
+  t             61155 ms (horloge du match, octets 48 a 51 du bloc, gros-boutiste)
+  xuid          2533274823110022
+  octet 36      1   (« slot » : 0..3, stable par xuid, PAS le player_index)
+  octet 37      1   L EQUIPE — ce que la production lit depuis le 2026-09-14
+  octet 38      1   doublon observe de l octet 37, NON LU
+  octet 55      0   ce que la production lisait AVANT, sous le nom `teamRaw`
+
+EQUIPE PROUVEE : 1, etablie AILLEURS QUE DANS CE BLOC — par la trame d etat du film (rang de la
+table des slots de chunk_00 -> xuid, i-eme entite ti=9 -> designateur d equipe). Publie par
+l oracle corpus `filmdec.TestResidusPiedOctetEquipe`, rejoue le 2026-09-14 sur trois films
+(53ce4390, 64e8adfa, 7344d24f) : 173 evenements sur 173 pour l octet 37, 84 sur 173 pour l
+octet 55, quatre lectures en accord parfait sur cent quatre-vingts essayees. Mesure d origine
+du 2026-09-13 : 665/665 sur quatorze films
+(.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md §6).
+
+POURQUOI CE BLOC-LA ET PAS UN AUTRE. Sur un evenement d equipe 0, l octet 37 et l octet 55
+vaudraient tous les deux 0 : le test passerait avec la MAUVAISE lecture. C est le piege qui a
+laisse l octet 55 vivre dans la production — un champ constant a zero « coincide » avec l equipe
+0 sur la moitie des evenements. Il fallait donc un bloc d equipe 1, et le contre-test
+(`TestPiedBlocContreLecture55`) verifie que les deux lectures divergent bel et bien ici.
+
+CE QUE CETTE FIXTURE N EST PAS : un pied de film valide. C est une tranche, prise hors de sa
+continuite. Rien d autre que ce bloc ne s y decode.
