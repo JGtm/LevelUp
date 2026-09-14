@@ -149,6 +149,35 @@ go run ./cmd/levelup migrate              # migrate data into the multi-title na
 go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
 ```
 
+#### Medal icon reference (`static/medals/{slug}/{medal_id}.png`)
+
+The medals page serves one PNG per medal id. `refresh-metadata medal-images` compares the
+official GameCMS catalogue (`hi/Waypoint/file/medals/metadata.json`) with the versioned
+icons and cuts the missing ones out of the official sprite sheet
+(`hi/Waypoint/file/medals/images/medal_sheet_xl.png`, 4096×4096, 256 px tiles, 16 columns).
+Tokens come from the watcher store (ADR 0023 — never re-capture one); **no DuckDB file is
+opened**, so it is safe to run while the server holds the databases.
+
+```bash
+cd apps/go-api
+# report only (default): counts and both gap lists
+go run ./cmd/refresh-metadata medal-images --player JGtm
+# cut every catalogued medal whose icon is missing
+go run ./cmd/refresh-metadata medal-images --player JGtm --download
+# the sheet runs AHEAD of the catalogue: audit it tile by tile, then pin an id by hand
+go run ./cmd/refresh-metadata medal-images --player JGtm --audit-sheet
+go run ./cmd/refresh-metadata medal-images --player JGtm --extract-tiles 55,56 --extract-dir /tmp/tiles
+go run ./cmd/refresh-metadata medal-images --player JGtm --pin 1053114074:55
+# flags: --title-id  --out-dir  --dump-raw FILE  --metadata-path  --sprite-sheet-path  --tile PX
+```
+
+Reference for the endpoints and the sprite-index layout: den.dev, *Halo Infinite Medal API:
+Infection, VIP, Extraction* (2023-10-11) — <https://den.dev/blog/halo-infinite-medals-api/>.
+The sheet holds tiles that the JSON does not list: the JSON is the reference, `--pin` is the
+escape hatch, and the guard-rail
+`internal/games/halo_infinite/medal_icons_test.go` fails when a medal of the taxonomy has no
+icon.
+
 ### Asset production chains (versioned outputs)
 
 Eleven offline chains, all under `apps/go-api/cmd/`, produce files committed to the repo
