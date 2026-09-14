@@ -157,6 +157,13 @@ type Options struct {
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.
 	PlayerIndices PlayerIndexTable
+	// FilmTable est la TABLE DES JOUEURS que le film écrit lui-même (`chunk_00`), lue par
+	// [ScanFilmPlayerTable] : le lien DIRECT `index <-> xuid <-> gamertag`.
+	//
+	// ELLE PRÉCÈDE `PlayerIndices`, ELLE NE LA REMPLACE PAS (cf. film_player_table.go) : la
+	// table du film est celle du DÉBUT du film. Vide = le registre retombe entièrement sur
+	// `PlayerIndices`, et le publie (`coverage.identity.filmTable.refus`).
+	FilmTable FilmPlayerTable
 	// BipedCreations : les records de CRÉATION de bipède du film (`filmdec.ScanBipedCreations`).
 	// C'est le lien DIRECT corps -> joueur : le film écrit l'index de participant du
 	// propriétaire dans le default-state du record (lot E2, 2026-09-08).

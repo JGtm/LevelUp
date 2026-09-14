@@ -1074,8 +1074,27 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   ENTIER et rien ne permet de le déduire après coup d'un artefact 54. La reprise du
 	//   backfill se fait par SchemaVersion : sans montée, aucune recuisson ne le rattraperait.
 	//   Détail : `document_chronicle.go`.
-	if SchemaVersion != 55 {
-		t.Fatalf("SchemaVersion = %d, attendu 55 : incrémenter exige une raison écrite ci-dessus "+
+	// v56 (2026-09-14, lot 1.6 — LE REGISTRE D'IDENTITÉ PREND LA TABLE DU FILM COMME LIEN
+	//   DIRECT). « L'index c'est l'index » (décision utilisateur du 2026-09-07) : la table des
+	//   32 slots que `chunk_00` écrit (lot 1.5) devient la source PREMIÈRE du lien
+	//   `index <-> xuid <-> gamertag` ; la lecture des 5 bits des chunks de réplication reste,
+	//   mais en COMPLÉMENT — la table du film est celle du DÉBUT du film, et un joueur arrivé en
+	//   cours de partie n'y a pas de siège (0 à 5 par film, 13 sur les huit builds). Là où les
+	//   deux parlent du même joueur : 125 accords, 0 contradiction.
+	//   `identity.players[].link.method` vaut désormais `film_table` pour un lien que la table
+	//   pose, et `identity.coverage.filmTable` publie l'état de la source (`lu`, `refus`,
+	//   `sieges`, `direct`, `repli`, `accord` / `contradiction` / `silence`).
+	//   LE DOCUMENT CHANGE DE CONTENU, pas seulement de forme : le roster gagne les joueurs que
+	//   la table assoit et que les chunks ne trouvaient pas (+1 sur `a521164d` et `11de8353`),
+	//   et les GAMERTAGS des joueurs à zéro mort, que le fil des morts ne nommait pas.
+	//   AU MÊME GESTE (lot 1.6.5, décision utilisateur du 2026-09-14 : « si le film le dit, on
+	//   publie »), `DefaultMinPoints` passe de 2 à 1 : une vie d'un seul échantillon — une
+	//   position que le film ÉCRIT — cesse d'être refusée, `coverage.tracks.refusedMinPoints`
+	//   tombe à 0 et vingt vies entrent sur les huit builds. Leur oracle est mesuré
+	//   (`vies_un_echantillon_test.go`) : 1 mort écrite, 5 fins de film, 14 orphelines.
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 56 {
+		t.Fatalf("SchemaVersion = %d, attendu 56 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

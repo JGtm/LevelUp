@@ -16,6 +16,27 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
+// DefaultMinPoints est le nombre minimal de points pour qu'une vie soit publiée.
+//
+// IL VIT ICI ET PLUS DANS `build.go` (lot 1.6.5, déplacement pur) : ce fichier EST celui qui décide
+// quelles vies sont publiées et qui tient les comptes de ce qu'il refuse ; laisser le seuil chez
+// l'assembleur y aurait porté la doctrine et le fichier, déjà au-delà du seuil de 500 lignes du
+// dépôt, l'aurait payée.
+//
+// IL VAUT 1 DEPUIS LE 2026-09-14, PAR DÉCISION UTILISATEUR : « si le film le dit, on publie ». Il
+// valait 2 depuis l'origine du calque, sous la phrase « une vie d'un seul échantillon n'est pas une
+// trajectoire » — qui décrivait un RENDU, pas une donnée : le film écrit une position pour un
+// joueur à un instant, et l'artefact la taisait. Le compteur `coverage.tracks.refusedMinPoints`,
+// posé au schéma 55 précisément pour poser la question avec un chiffre, tombe donc à 0.
+//
+// CE QUE LA MESURE DIT DE CES VIES (2026-09-14, `vies_un_echantillon_test.go`, 20 vies sur les huit
+// builds) : UNE seule porte une mort ÉCRITE à son instant, CINQ sont la dernière image d'un slot que
+// la réplication n'a plus jamais repris, QUATORZE sont ORPHELINES — leur vie se ferme sur un trou de
+// réplication et la mort la plus proche du même joueur est à 0,95 s à 300 s. Ce n'est pas une raison
+// de les filtrer (décision utilisateur) : c'est un DÉFAUT DE LECTURE nommé, consigné au plan §4, et
+// le publier est ce qui le rend visible.
+const DefaultMinPoints = 1
+
 // decimateTracks projette les positions sur la grille de frames (un point par slot et par
 // frame, le premier observé gagne) et produit UNE TRACK PAR VIE — un slot qui disparaît plus
 // de `lifeGapUS` puis revient ouvre une nouvelle track, la MÊME règle de découpe que
@@ -108,9 +129,11 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 		a := accs[slot]
 		for _, pts := range append(a.done, a.pts) {
 			if len(pts) < minPoints {
-				// LE REFUS SE COMPTE, ET C'EST TOUT CE QU'IL FAIT DE PLUS QU'AVANT : la vie
-				// reste écartée (une trajectoire d'un seul échantillon n'est pas une
-				// trajectoire), mais l'artefact dit désormais combien il en a écarté.
+				// LE REFUS SE COMPTE, ET IL NE SE DÉCLENCHE PLUS AU SEUIL PAR DÉFAUT : celui-ci
+				// vaut 1 depuis le lot 1.6.5 (« si le film le dit, on publie »), donc ce compteur
+				// est à 0 sur toute cuisson qui ne règle pas `Options.MinPoints`. Il reste pour
+				// l'appelant qui le règle, et parce qu'un compteur à 0 qui pourrait monter est ce
+				// qui rend un retour en arrière visible.
 				cov.RefusedMinPoints++
 				cov.RefusedPoints += len(pts)
 				continue
@@ -140,11 +163,13 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 // rapporte un compte de vies au film (le registre d'identité, la couverture du pont, l'écran)
 // travaillait sur un dénominateur amputé sans le savoir.
 //
-// # CE QU'ELLE NE CHANGE PAS
+// # CE QUE LE CHIFFRE A PERMIS DE TRANCHER (lot 1.6.5, 2026-09-14)
 //
-// Le seuil lui-même. `DefaultMinPoints` vaut 2 et le reste : ce lot PUBLIE le refus, il ne le
-// rediscute pas. La question « faut-il publier les vies d'un seul échantillon ? » appartient à
-// l'utilisateur, et ces compteurs sont exactement ce qui permet de la lui poser avec un chiffre.
+// La question « faut-il publier les vies d'un seul échantillon ? » appartenait à l'utilisateur, et
+// ces compteurs existaient pour la lui poser avec un chiffre : 20 vies sur les huit builds, 0 à 6
+// par film. Il a tranché — « si le film le dit, on publie » — et `DefaultMinPoints` est passé de 2
+// à 1. Ces compteurs restent : à 0 sur toute cuisson au seuil par défaut, ils rendent visible un
+// appelant qui règle `Options.MinPoints` et tout retour en arrière.
 type TrackCoverage struct {
 	// Published / PublishedPoints : les traces publiées et leurs points, c'est-à-dire le
 	// DÉNOMINATEUR sans lequel un compte de refus ne se juge pas.

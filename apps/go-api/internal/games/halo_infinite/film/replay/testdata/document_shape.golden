@@ -1,8 +1,8 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 55
-empreinte-stockee 6a8f8714a6f45638
-empreinte-servie 6a8f8714a6f45638
+schema 56
+empreinte-stockee 2c1ea5c7b555c95f
+empreinte-servie 2c1ea5c7b555c95f
 
 AbilityCharge
   Charges json:"charges" int
@@ -256,6 +256,15 @@ EquipmentPlacementCoverage
   Widths json:"widths,omitempty" string
   WithHeading json:"withHeading" int
   WithOwner json:"withOwner" int
+FilmTableCounts
+  Accord json:"accord" int
+  Contradiction json:"contradiction" int
+  Direct json:"direct" int
+  Fallback json:"repli" int
+  Read json:"lu" bool
+  Refusal json:"refus,omitempty" string
+  Seats json:"sieges" int
+  Silence json:"silence" int
 FlagCarriesCoverage
   AmbiguousCarrierKills json:"ambiguousCarrierKills" int
   AmbiguousHomecomings json:"ambiguousHomecomings" int
@@ -402,6 +411,7 @@ IdentityBipedSlot
 IdentityCoverage
   BipedSlot json:"bipedSlot" BipedLinkCounts
   FilmIndex json:"filmIndex" LinkCounts
+  FilmTable json:"filmTable" FilmTableCounts
   StatborgSlot json:"statborgSlot" LinkCounts
 IdentityPlayer
   Bid json:"bid,omitempty" string

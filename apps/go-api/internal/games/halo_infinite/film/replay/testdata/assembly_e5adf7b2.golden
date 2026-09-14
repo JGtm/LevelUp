@@ -6,18 +6,18 @@
 
 ## AXE DE TEMPS
 5399 frames · intervalle 100 ms · duree 539900 ms
-schema 55 · titre halo_infinite
+schema 56 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 15914 ms
 coup d envoi date par le film : 38514 ms · 240/254 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 22600 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
-254 trace(s) · 85472 point(s) de grille
-seuil de publication 2 point(s) : 2 vie(s) REFUSEE(S) portant 2 point(s) — une vie d un seul echantillon n est pas une trajectoire
-254 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+256 trace(s) · 85474 point(s) de grille
+seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si le film ecrit une position, elle se publie
+256 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
 occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
-45880 point(s) portent un cap de visee · 45880 une elevation de visee · 13634 un bouclier · 402 une fraction de vie
+45881 point(s) portent un cap de visee · 45881 une elevation de visee · 13635 un bouclier · 402 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 28 joueur(s)
@@ -34,7 +34,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2535461460033301  idx=10  "Goldenarrow5208"
   2535471749979592  idx=11  "MAREZ7781"
   2535407716978607  idx=12  "AGROZON"
-  2535462715436138  idx=13  ""
+  2535462715436138  idx=13  "MarshallG6443"
   2535439648658227  idx=14  "LogisticSnow520"
   2533275032306686  idx=15  "EvilIiJokevc"
   2535434053235319  idx=16  "Jol 7792"
@@ -92,7 +92,7 @@ couverture : 268 lecture(s) -> 0 ecartee(s) bruit de balayage · 1 ecartee(s) sa
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 0 episode(s) publie(s) · par famille : aucun · 0 fin(s) MESUREE(s) (le reste ferme a la mort)
-couverture : 254 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
+couverture : 256 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
 
 ## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
@@ -932,6 +932,13 @@ refus des fermetures : 0 contestee(s) (l unicite manque : deux corps, deux joueu
 29 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
 verdict : nominal
 
+## REGISTRE D IDENTITE — la PROVENANCE de chaque lien, et ce que la table du film couvre
+index de joueur : 28 direct · 0 externe · 0 deduit · 0 non resolu
+slot de bipede : 256 direct (dont 40 propages) · 0 deduit · 0 non resolu (index hors table=0 · sans record=0 · lectures divergentes=0)
+table du film : lue=true refus="" · 23 siege(s) · 23 lien(s) direct(s) · 5 par repli
+controle (lecture des chunks) : 23 accord · 0 contradiction · 0 silence — la table du film fait foi, l ecart se compte
+voies des liens d index : PlayerIndexTable=5 · film_table=23
+
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 50 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et
 n emprunte pas le nom d une arme voisine
@@ -987,4 +994,4 @@ n emprunte pas le nom d une arme voisine
   0xFD98554C42C9679F  en="VK78 Commando" fr="VK78 Commando" fx="ballistic"
 
 ## BORNES — l etendue des points publies, dans le repere monde partage
-x [-2.30, 100.58] · y [-76.21, 62.47] · z [-1.95, 21.35]
+x [-5.95, 100.58] · y [-76.21, 62.47] · z [-16.26, 21.35]

@@ -1669,26 +1669,136 @@ _test.go` ne rend que les DEUX lignes de déclaration. `SchemaVersion` reste à 
 Décision utilisateur du 2026-09-07 : « l'index c'est l'index », table d'identité unique par
 film, morts en repli. Sur pièces : registre d'identité du constructeur (`identity_registry*.go`),
 `replaybuild/matchfacts.go` (`equipesParXUID`, `PlayerIndexTable`).
+CLOS le 2026-09-14 (branche `feat/decfilm-16`, 5 commits, `2f32f576e` → le commit de clôture).
 
-- [ ] 1.6.1 Provenance `film_table` dans `identity.players` : le lien `index ↔ xuid ↔ gamertag`
+##### Rapport 1.6.0 — la mesure AVANT de coder, qui a changé la conception du lot
+
+Sonde jetable sur les 8 builds du golden (supprimée après la mesure), table du film confrontée à
+la table d'index du fixture — collée depuis la sortie brute (§5) :
+
+| film | build | sièges au film | table d'index | accord | contradiction | le film SEUL | le contrôle SEUL |
+|---|---|---|---|---|---|---|---|
+| `000d5950` | `HI_1_13_0` | 8 | 8 | 8 | 0 | 0 | 0 |
+| `a521164d` | `HI_1_4_1` | 24 | 27 | 23 | 0 | **1** | **4** |
+| `60ae07c4` | `HI_1_8_0` | 8 | 8 | 8 | 0 | 0 | 0 |
+| `11de8353` | `HI_1_9_0` | 24 | 27 | 23 | 0 | **1** | **4** |
+| `111fa685` | `HI_1_10_0` | 24 | 25 | 24 | 0 | 0 | **1** |
+| `e5adf7b2` | `HI_1_11_0` | 23 | 28 | 23 | 0 | 0 | **5** |
+| `bcb6d393` | `HI_1_12_0` | 8 | 11 | 8 | 0 | 0 | **3** |
+| `fb1a1a72` | `HI_1_13_0` | 8 | 8 | 8 | 0 | 0 | 0 |
+
+**DEUX FAITS, ET LE SECOND A CHANGÉ LA CONCEPTION DU LOT.** (1) Là où les deux lectures parlent
+du même joueur, elles DISENT LA MÊME CHOSE : **125 accords, 0 contradiction**, sur huit builds et
+six générations de jeu. (2) **La table du film est celle du DÉBUT du film** : un joueur qui
+rejoint en cours de partie n'y a pas de siège (0 à 5 par film, **13 au total**), et inversement
+elle assoit un joueur que le balayage des chunks ne trouve pas (2 films sur 8). Le brief disait
+« la table du film devient le lien, l'inférence par le fil des morts reste le repli des 5 films
+sans section » : **REMPLACER l'une par l'autre aurait PERDU 13 joueurs sur 8 films** — une perte
+au corpus gate. La table du film PRÉCÈDE donc la lecture des chunks au lieu de la remplacer, et
+le repli est nommé et compté sur son diagnostic propre (« ce xuid n'a pas de siège »), D14 (b).
+0 vacant INTERCALÉ sur les 8 builds : la question D3 (1.5) ne se pose sur aucun d'eux.
+
+- [x] 1.6.0 (ajouté par le pilote, hérité du lot 1.5) Le compteur expvar
+      `filmdec_unknown_build_<build>` est CÂBLÉ chez le consommateur de production ; mesure à 0
+      sur les témoins ; un film au build inconnu est mis de côté avec son erreur typée (D-4).
+      FAIT. Le consommateur est `replay.ScanFilmPlayerTable` (`film_player_table.go`), appelé par
+      l'étage de balayage à l'étape `filmTable`, et il publie
+      `filmdec.UnknownBuildExpvarPairs` — le patron de `publierFermetureImageCle`. **LE CÂBLAGE
+      EST PROUVÉ PAR MUTATION, ET IL FALLAIT** : aucun des 1 351 films du cache n'a de build hors
+      profil (mesure 1.5.4), donc aucun corpus ne peut le déclencher. Le test patche la chaîne de
+      build d'une bobine saine en `HI_9_99_0` à l'offset que `ReadFilmIdentity` DÉSIGNE, et exige
+      `filmdec_unknown_build_hi_9_99_0` à +1. Mesuré à **0 sur les 13 témoins du corpus gate et
+      les 10 films d'équivalence** (aucune ligne de refus au journal). Cinq causes de refus
+      NOMMÉES, dont trois **mesurées et non supposées** (`tampon vide` → `tronque`, `corps amputé
+      de moitié` → `table_introuvable`, `coupe au début du corps` → `tronque`) ; couper la QUEUE
+      d'un tampon sain ne refuse RIEN — les slots vacants y sont des zéros.
+- [x] 1.6.1 Provenance `film_table` dans `identity.players` : le lien `index ↔ xuid ↔ gamertag`
       vient de 1.5 quand la section existe ; la table de la base devient un CONTRÔLE (compteurs
       `accord / contradiction / silence` publiés dans `coverage.identity`) ; l'inférence par le
       fil des morts reste le repli des 5 films sans section (D2).
-- [ ] 1.6.2 Roster : gamertag du film quand disponible ; taille réelle de l'escouade publiée
+      FAIT, avec **UN ÉCART AU LIBELLÉ, imposé par le rapport 1.6.0** : le repli ne sert pas
+      seulement les 5 films sans section, il sert aussi les **13 joueurs** que la table n'assoit
+      pas sur 5 des 8 builds. Il reste un repli au sens de D14 — déclenché sur le diagnostic
+      « ce xuid n'a pas de siège », jamais sur un désaccord — et il est compté
+      (`coverage.identity.filmTable.repli`). Le CONTRÔLE est la lecture des chunks de
+      réplication, et c'est bien « la table de la base » : son roster d'entrée vient de la feuille
+      de match (`rosterOf(deaths, opt.RosterXUIDs)`), sans laquelle elle ne voit que les joueurs
+      qui meurent. Un vacant INTERCALÉ est une ABSTENTION nommée (`vacant_intercale`) et non une
+      lecture : D3 (1.5) reste ouverte, et le compteur suffit — aucun des 8 builds ni des
+      13 témoins n'en porte.
+- [x] 1.6.2 Roster : gamertag du film quand disponible ; taille réelle de l'escouade publiée
       comme DONNÉE (aucune règle UI ne change, §1.2).
-- [ ] 1.6.3 Cuisson hors ligne (sans faits) : le roster est complet (golden par build de 0.A.2
+      FAIT. `buildRoster` prend la table EFFECTIVE du registre et les gamertags du film. Gains
+      mesurés : `a521164d` et `11de8353` passent de **27 à 28 joueurs** ; `111fa685` idx=10
+      (« FlukiestGolf ») et `e5adf7b2` idx=13 (« MarshallG6443 ») étaient publiés **SANS NOM** et
+      prennent le leur — le fil des morts ne nomme que les joueurs qui MEURENT, et ceux-là n'ont
+      aucune mort. Taille d'escouade : `coverage.identity.filmTable.sieges` (8/24/8/24/24/23/8/8),
+      et ce n'est PAS le compte du roster, qui porte en plus les arrivants.
+- [x] 1.6.3 Cuisson hors ligne (sans faits) : le roster est complet (golden par build de 0.A.2
       régénéré avec justification).
-- [ ] 1.6.4 `SchemaVersion` 55, chronique, empreinte de forme (0.B.4) régénérée, fixtures de
+      FAIT, et c'est le gain le plus fort du lot. `roster_hors_ligne_test.go` cuit les 8 builds
+      SANS feuille, sans tableau, sans bots, la table d'index restreinte aux xuids du fil des
+      morts (modèle EXACT de la lecture hors ligne : `ScanPlayerIndices` ne cherche que ceux-là,
+      et le corpus donne 0 désaccord d'index). Sans / avec la table du film :
+      8→8 · **26→27** · 8→8 · **26→27** · **24→25** · **26→27** · 11→11 · 8→8, et **0 siège de la
+      table absent du roster hors ligne sur 8/8**. Le trou structurel « un joueur qui ne meurt
+      jamais est invisible » (`3372e7eb`, 6 publiés pour 8) se comble SANS base.
+- [~] 1.6.4 `SchemaVersion` 55 → 56, chronique, empreinte de forme (0.B.4) régénérée, fixtures de
       contrat régénérées, `openapi.yaml` + `generate-types` si un champ apparaît.
-- [ ] 1.6.5 **Refus de publication COMPTÉS** (issu de 0.D.4, 2026-09-14) : `build.go:575`
-      refuse en silence toute vie de moins de `DefaultMinPoints = 2` échantillons (deux positions
-      réelles de `d9781168` disparaissent sans compteur) : publier `coverage.tracks.refusedMinPoints`
-      (vies et points refusés) dans la même montée de schéma ; la question produit « une vie d'un
-      seul échantillon paraît-elle ? » est posée à l'utilisateur ; si oui, `DefaultMinPoints = 1`
-      dans ce même lot, sinon le compteur seul.
+      COUVERT PAR 1.6.1 ET 1.6.5, et ce n'est pas un choix : l'empreinte de forme REFUSE de se
+      refiger quand la forme change sans montée de version, donc la montée tombe dans le PREMIER
+      commit qui change la forme (1.6.1), et la chronique avec elle (garde-rail
+      `document_shape_test.go`). Chaîne complète vérifiée à la clôture : `SchemaVersion = 56`,
+      entrée de chronique v56 (identité + seuil), raison écrite dans `structure_test.go`, empreinte
+      de forme `2c1ea5c7b555c95f`, jumeau `replaydoc.FilmTableCounts`, `replayview.toFilmTableCounts`
+      (parité verte), `openapi.yaml` + `generated.ts` régénérés (schéma `FilmTableCounts`), 8
+      fixtures de contrat `replay_schema_56_<short8>.json.gz` (**2 565 193 o**, plafond 3 145 728,
+      un seul jeu vivant — les 8 fixtures 55 supprimées), `MIN_RENDERABLE_SCHEMA_VERSION = 27`
+      **INCHANGÉ**, `make check-types` et `make test-web` verts.
+- [x] 1.6.5 **Refus de publication COMPTÉS** : `[~]` pour le compteur (fait au lot 1.0.4) ;
+      `DefaultMinPoints = 2` → **1** dans ce lot (décision utilisateur du 2026-09-14, item 1.9.12
+      : « si le film le dit, on publie »), le compteur reste et **tombe à 0 sur les 8 builds**.
+      FAIT. **20 vies entrent** (1+6+4+3+2+2+2+0), traces 104→105, 243→245, 243→246, 173→177,
+      179→185, 56→58, 254→256, 147→147. ORACLE MESURÉ, tableau collé en §5 : **1 mort ÉCRITE**
+      (`e5adf7b2` slot 689, écart 72 ms), **5 fins de film** (la réplication du slot ne reprend
+      jamais), **14 ORPHELINES** — toutes fermées sur un TROU DE RÉPLICATION (`cause = cut`), la
+      mort la plus proche du même joueur à 0,95 s à 300 s. Consigné en §4 comme DÉFAUT DE LECTURE
+      (D1 (1.6)), jamais filtré. Instrument permanent : `vies_un_echantillon_test.go`, qui gèle la
+      table par build. La source de mort est le fil des morts du film ; le dead-state de bipède
+      n'est pas lisible sur cette branche (`ti=40` vit sur `wt/vehicule-deadstate`, non fusionnée),
+      et c'est dit dans l'en-tête de l'instrument plutôt que tu.
 
 Preuve : corpus gate zéro perte ; gains nommés (`identity.coverage.*.direct`, `unnamedLives` ne
 monte nulle part) ; `replay-equiv` différences localisées aux balayages d'identité.
+
+RÉSULTAT (2026-09-14), ET IL NE TIENT PAS LA LIGNE « PREUVE » À LA LETTRE — c'est écrit ici plutôt
+que tu :
+
+1. **`replay-equiv` régime court : 10/10 films, DEUX lignes changent et deux seulement** —
+   `filmTable` (l'étape neuve du lot 1.6.0) et `artifact` (+49 à +987 o). **Les 49 autres
+   balayages sont IDENTIQUES sur les dix films.** Classification écrite AVANT acceptation du
+   re-figeage (§5). Aucune régression de décodage.
+2. **Corpus gate `--base=06530e63d` : 267 gains, 39 « pertes » sur 13/13 témoins, exit 1 — et les
+   39 tiennent en QUATRE classes, toutes imputables au seul `DefaultMinPoints = 2 → 1`
+   (décision utilisateur, item 1.9.12), AUCUNE à la table du film** :
+   (a) `coverage.tracks.minPoints 2 → 1` (13/13) — c'est le SEUIL lui-même, publié ; le gate lit
+   une baisse de nombre là où il y a un élargissement de publication ;
+   (b) `coverage.tracks.refusedMinPoints` et `refusedPoints` → 0 (11/13) — ce sont les REFUS qui
+   tombent, c'est-à-dire exactement le gain ;
+   (c) `bounds.min*` sur `084a804d` et `e5adf7b2` — les bornes s'ÉLARGISSENT (un minimum baisse) ;
+   conséquence de cadrage consignée D5 (1.6) ;
+   (d) `coverage.bridge.unnamedLives` 0 → 1 sur `084a804d` (avec `unnamedLivesContested` et
+   `flagCarries.ambiguousSlot`) et 334 → 337 sur `a349fea8` — **la ligne « `unnamedLives` ne
+   monte nulle part » n'est PAS tenue** : le seuil à 2 masquait quatre vies sans nom, les publier
+   les rend visibles. Défaut de nommage PRÉEXISTANT, consigné D4 (1.6), à arbitrer avec
+   l'utilisateur avant la recuisson du parc.
+3. **Contrôle décisif `--base=444d0b7c6`** (le commit de 1.6.3, soit la table du film SANS le
+   changement de seuil), joué pour SÉPARER les deux causes : **le même ensemble de pertes,
+   métrique par métrique et valeur par valeur** (39, schéma 56 → 56), et 250 gains contre 267.
+   Donc **la table du film coûte ZÉRO perte sur 13/13 témoins**, et ce qu'elle apporte est
+   l'écart des gains : +1 sur neuf témoins, **+3 sur `111fa685` et `e5adf7b2`**, +1 sur
+   `a349fea8` et `60ae07c4`. Les trois témoins dont le gain tombe à 0 (`fb1a1a72`, `bf15f7ab`,
+   `bfecd02b`) n'avaient de gain que par le seuil.
 
 #### Lot 1.7 — L'équipe réelle dans l'artefact, sans base — M, high
 
@@ -1851,7 +1961,11 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       du temps réglementaire (piste de score du film, pas la feuille) ? tout match à égalité à cet
       instant porte-t-il un désignateur `2` ? Les contre-exemples, s'il y en a, nomment l'autre
       critère. M.
-- [ ] 1.9.12 **La vie d'un seul échantillon publiée.** Résidu de 0.D.4 et compteur de 1.0.4 :
+- [~] 1.9.12 **La vie d'un seul échantillon publiée.** TRAITÉE AU LOT 1.6.5 (2026-09-14), dans la
+      même montée de schéma que la table du film : `DefaultMinPoints = 1`, compteur à 0 sur les
+      8 builds, 20 vies publiées, oracle mesuré (1 mort écrite, 5 fins de film, 14 orphelines
+      consignées en §4 comme défaut de lecture). Rien ne reste de cet item. Texte d'origine :
+      Résidu de 0.D.4 et compteur de 1.0.4 :
       `DefaultMinPoints = 2` refuse toute vie d'un seul échantillon (une position écrite par le
       film pour un joueur à un instant) ; toutes les vies refusées en portent exactement un, 0 à 6
       par film sur les 8 builds. DÉCISION utilisateur du 2026-09-14 : « si le film le dit, on
@@ -2221,6 +2335,12 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.5.4 | **D4 (1.5) — le balayage de la table est AVEUGLE à certains enregistrements bien réels, et la grammaire les lit.** Sur `d4ddf054` (HI_1_13_0), le balayage rend 7 enregistrements et la marche en lit 8 ; la trame du même film porte 8 entités `ti=9`, donc 8 joueurs. L'enregistrement manquant échoue l'un des critères d'en-tête (jeton de 48 bits nul, ou XUID hors de la plage Xbox `[0x0009…, 0x000A…)`) — lequel n'est pas établi, et le savoir dirait s'il existe des comptes joueur hors de cette plage. Le lecteur compte le cas (`GapsHidden`), il ne le diagnostique pas. NON TRAITÉ. | lot 1.6 ou 1.8 : si un compte hors plage existe, la borne de XUID de tous les balayages du dépôt est à revoir |
 | 2026-09-14 | 1.5.0 | **D5 (1.5) — `lireEntete` compte UNE entrée de trop dans la table par type, et la dérivation structurelle le prouve.** Le résidu G.2 de `NOTE_SECTION3_SLOTS` relevait « 124 entrées sur `HI_1_13_0` là où l'écrivain en écrit 123 » sans trancher. La mesure du 2026-09-14 tranche : `(offset de la chaîne de build − 0x20) − fin du registre` vaut 492 octets sur les 1 269 films des deux builds courants, soit exactement 123 u32, la valeur de l'écrivain (`MOV R9D,0xf60`) ; l'écart vient de l'heuristique de l'instrument (remonter tant que la valeur tient sur 16 bits), qui avale un u32 de plus. `ReadFilmIdentity` n'emploie pas cette heuristique. L'instrument n'est PAS corrigé (règle 7). | `registre_events_research_test.go` : `lireEntete` garde son heuristique ; le résidu G.2 de la note est FERMÉ par cette mesure |
 
+| 2026-09-14 | 1.6.5 | **D1 (1.6) — QUATORZE des vingt vies d'un seul échantillon désormais publiées sont ORPHELINES, et c'est un DÉFAUT DE LECTURE.** L'oracle imposé par l'utilisateur (« une mort écrite à cet instant, OU la dernière image avant une fin de manche ») est mesuré sur les 20 vies des 8 builds (`vies_un_echantillon_test.go`, tableau collé en §5) : **1 mort écrite** (`e5adf7b2` slot 689, écart 72 ms), **5 fins de film** (`cause = film_end` : la réplication du slot ne reprend jamais), **14 ORPHELINES**. Les quatorze se ferment TOUTES sur un trou de réplication (`cause = cut`), et la mort la plus proche du même joueur est à **0,95 s à 300 s** — il n'y a donc pas de mort à cet instant. Lecture la plus économique : un slot réplique une seule image puis se tait plus de `lifeGapUS` (5 s), ce qui DÉCOUPE en deux une vie que le film écrit d'un seul tenant — le défaut n'est pas dans le seuil de publication mais dans la découpe des vies. Sept de ces quatorze portent une mort à ~10,1-10,25 s, une régularité que ce lot ne sait pas expliquer. NON TRAITÉ (hors périmètre 1.6, et l'utilisateur a tranché qu'on publie). | famille 1.9 (conversion d'une heuristique en lecture) ou un lot dédié « découpe des vies » : la borne `lifeGapUS` est exactement le genre de seuil que D13 vise |
+| 2026-09-14 | 1.6.0 (mesure avant de coder) | **D2 (1.6) — la table des joueurs de `chunk_00` est le roster du DÉBUT du film, pas celui du match.** Mesuré sur les 8 builds : elle assoit 8 à 24 joueurs, et la lecture des chunks de réplication en connaît **jusqu'à 5 de plus** (`e5adf7b2` 23 contre 28, `a521164d`/`11de8353` 24 contre 27, `bcb6d393` 8 contre 11) — des joueurs arrivés en cours de partie, qui prennent des index AU-DELÀ du dernier siège (8..11 sur `bcb6d393`). La conséquence a été TRAITÉE dans le lot (la table précède la lecture des chunks au lieu de la remplacer, sans quoi 13 joueurs disparaissaient), mais la QUESTION reste ouverte : le film écrit-il ailleurs l'entrée en cours de partie ? Si oui, `link.method` de ces 13 liens cesserait d'être un repli. NON INSTRUIT. | recherche `.ai/V7.5/` : y a-t-il un enregistrement de JOIN dans le flux delta ? Condition de reprise : un témoin au corpus gate dont le repli coûte un fait |
+| 2026-09-14 | 1.6.1 | **D3 (1.6) — le comparateur de `replay-equiv` est POSITIONNEL, donc une étape de balayage AJOUTÉE rend toutes les suivantes « différentes ».** `comparer` (`cmd/replay-equiv/parent.go:250`) confronte les lignes TSV par INDICE et s'arrête à la première qui diffère : l'ajout de l'étape `filmTable` a fait rendre « ECART à l'étape "filmTable" : attendu sha=<celui de playerIndices> » sur les 10 films, un message qui NOMME la mauvaise cause. Contourné en classant sur le `git diff` des références après `-update` (10 fichiers, 2 lignes chacun : `+filmTable` et `artifact` modifié — les 49 autres identiques), ce qui donne la classification COMPLÈTE là où le harnais n'en donne qu'une ligne. NON TRAITÉ : le harnais reste juste (il refuse), il est seulement peu diagnostique. | M2 (lot 2.6, empreintes par couche) ou un correctif court : comparer par NOM d'étape et rendre TOUTES les différences, pas la première |
+| 2026-09-14 | 1.6.5 (corpus gate) | **D4 (1.6) — le seuil à 2 CACHAIT quatre vies SANS NOM, et les publier les rend visibles : `unnamedLives` monte sur DEUX témoins.** `084a804d` 0 → 1 (`unnamedLivesContested` 0 → 1, `flagCarries.ambiguousSlot` 0 → 1) et `a349fea8` 334 → 337. La cause est MÉCANIQUE et mesurée : ces deux films portaient 9 et 3 vies d'un seul échantillon refusées, et 1 + 3 d'entre elles ne sont nommées par aucune voie. Ce n'est PAS une régression du nommage — le registre ne nomme rien de moins qu'avant, et sur les mêmes vies il nomme mieux (lot 1.6.1/1.6.2) — c'est un défaut de nommage PRÉEXISTANT que le seuil masquait. Il heurte de front la décision utilisateur du 2026-09-06 (« les vies anonymes n'existent pas ; une vie est un humain ou un bot »). La ligne « Preuve » du lot 1.6 (« `unnamedLives` ne monte nulle part ») n'est donc PAS tenue à la lettre, et c'est écrit ici plutôt que tu. NON TRAITÉ : nommer ces quatre vies demande d'instruire la découpe des vies (D1 (1.6)) ou le pont sur un slot qui ne réplique qu'une image. | famille 1.9 / lot « découpe des vies » ; arbitrage utilisateur si les quatre vies doivent être nommées avant la recuisson du parc |
+| 2026-09-14 | 1.6.5 (corpus gate) | **D5 (1.6) — une vie d'un seul échantillon élargit les BORNES de la scène, et sur `084a804d` elle les élargit de 184 mètres.** `bounds.minX` −32,21 → −216,30 et `bounds.minY` −65,51 → −89,83 sur `084a804d` ; `bounds.minX` −2,30 → −5,95 et `bounds.minZ` −1,95 → −16,26 sur `e5adf7b2`. Les bornes suivent les traces PUBLIÉES, et le client s'en sert pour cadrer la scène : une vie d'un point à −216 m dézoome le rejeu de ce match. L'échantillon a passé le filtre d'aberration (`boundsRejectSpreads`), donc il est « plausible » au sens de ce filtre — mais un point isolé à 184 m du reste du nuage sur un film de véhicules mérite d'être instruit avant la recuisson du parc. NON TRAITÉ (hors périmètre 1.6 : le seuil est une décision utilisateur, et le cadrage est un sujet de rendu). | lot de rendu / cadrage, ou le lot « découpe des vies » : si la vie d'un point est un artefact de découpe (D1 (1.6)), la borne disparaît avec elle |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -2539,6 +2659,27 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.5 (portée, dite sans détour) | ce commit | `grep -rn "ReadFilmIdentity(\|ReadPlayerTable(" --include=*.go internal/ cmd/ \| grep -v _test.go` | **DEUX lignes, et ce sont les deux déclarations** (`film_identity.go:170`, `player_table.go:245`). Aucun appelant de production : le 10/10 de l'équivalence n'est pas une surprise, c'est ce que « lecteurs purs, sans consommateur » veut dire. |
 | 2026-09-14 | 1.5 (corpus gate) | ce commit | `go run ./cmd/replay-corpus-gate --base=15bc6c82f --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-15` (les deux racines sont OBLIGATOIRES sur ce poste, §2.2 ; `--manifest` PREND UN CHEMIN, ce n'est pas un drapeau booleen) | **13 temoins sur 13 : 0 gain, 0 perte, schema 55 → 55 partout**, `EXIT=0`, ~9 min. `bcb6d393` 11,96 s · `fb1a1a72` 30,39 s · `d9781168` 24,56 s · `c75f33b8` 14,47 s · `bf15f7ab` 13,65 s · `51ebbc0f` 17,82 s · `084a804d` 1 min 53 · `0797ce72` 15,55 s · `111fa685` 34,79 s · `e5adf7b2` 39,58 s · `60ae07c4` 25,45 s · `a349fea8` 2 min 07 · `bfecd02b` 19,3 s. **Zéro différence, au sens littéral** — c'est ce que « lecteurs sans consommateur » doit donner. |
 | 2026-09-14 | 1.5 (clôture) | ce commit | retrait d'une branche INATTEIGNABLE trouvée à la relecture : la famille « parasite » du contrôle des écarts | Le critère d'acceptation exige que la marche VISITE tous les enregistrements du balayage, donc les deux bouts de chaque couple du contrôle sont toujours retenus : `GapsParasite` ne pouvait plus incrémenter (mesure sur les 1 351 films : **0**). Retirée du rapport, du `switch` et des tests — règle 7, pas de branche morte. `GrammarRev` INCHANGÉE (même lot), empreinte reprise, corpus rejoué **VERT** (77,0 s, chiffres identiques). |
+
+| 2026-09-14 | 1.6.0 (oracle, AVANT tout changement) | `06530e63d` (base) | sonde JETABLE (supprimée après mesure) : `filmdec.ReadFilmIdentity` + `ReadPlayerTable` sur les 8 films du golden, confrontés à `PlayerIndices` du fixture figé | **8/8 lus, 0 build inconnu, 0 vacant intercalé.** Sièges 8 · 24 · 8 · 24 · 24 · 23 · 8 · 8 ; table d'index 8 · 27 · 8 · 27 · 25 · 28 · 11 · 8 ; **125 accords, 0 contradiction** ; le film SEUL 1 sur `a521164d` et `11de8353` ; le contrôle SEUL 4 · 4 · 1 · 5 · 3 (**13 au total**). C'est cette dernière colonne qui a changé la conception du lot : remplacer la lecture des chunks aurait PERDU 13 joueurs (rapport 1.6.0). |
+| 2026-09-14 | 1.6.0 | `2f32f576e` | `go test …/replay/ -run 'TestScanFilmPlayerTable\|TestCompteurAbsentVautZero' -count=1` | **VERT**, 0,29 s. Sept bobines à 32 slots avec gamertags imprimables et XUID non nul ; bobine historique sans `chunk_00` refusée par `sans_registre` ; trois coupes aux causes **MESURÉES** (`tampon vide` → `tronque`, `corps amputé de moitié` → `table_introuvable`, `coupe au début du corps` → `tronque` — les deux dernières avaient été écrites à l'envers avant la mesure) ; mutation `HI_9_99_0` : `filmdec_unknown_build_hi_9_99_0` passe de 0 à 1. |
+| 2026-09-14 | 1.6.0 (fixtures d'entrées) | `2f32f576e` | magie v19 → v20, régénération des 8 fixtures depuis les films (`REPLAY_FILM_DIR` puis `REPLAY_FILM_CACHE`) | **8 réécrites**, 13,8 s + 2 min 38. Poids **11 045 116 o** pour un plafond de 12 582 912 (87,8 %). Les huit portent désormais `FilmInputs.FilmTable` ; aucun assemblage ne la lit encore, donc aucun golden ne bouge à ce commit. |
+| 2026-09-14 | 1.6.1 | `c7b43802d` | `go test …/replay/ -run 'TestComposition' -count=1` | **VERT.** Six tests : le film prime sur le contrôle (index 3 gardé contre 9), le repli prend la voie `PlayerIndexTable`, accord/contradiction/silence comptés, la composition n'est JAMAIS plus pauvre que le contrôle (4 cas : table partielle, refusée, vide, vacant intercalé), le vacant intercalé s'abstient, les cinq causes de refus traversent jusqu'à la couverture. |
+| 2026-09-14 | 1.6.1 (empreinte de forme) | `c7b43802d` | `REPLAY_CONTRACT_UPDATE=1 go test … -run DocumentShape -update` puis sans les drapeaux | La porte a REFUSÉ de refiger tant que `SchemaVersion` valait 55 — c'est le garde-rail qui impose la montée au PREMIER commit qui change la forme. Après montée : golden réécrit, **schéma 56, empreinte `2c1ea5c7b555c95f`**, puis vert. |
+| 2026-09-14 | 1.6.1 (fixtures de contrat) | `c7b43802d` | `REPLAY_CONTRACT_UPDATE=1 go test … -run ContractFixtures -update` | **8 réécrites**, `replay_schema_55_*` supprimées (un seul jeu vivant). Poids final au lot : **2 565 193 o** pour un plafond de 3 145 728 (81,5 %). |
+| 2026-09-14 | 1.6.1 (contrat web) | `c7b43802d` | `go run ./cmd/openapi-gen` (CGO, msys64/ucrt64 en tête du PATH) puis `npm run generate-types` | `openapi.yaml` **+37 lignes** (schéma `FilmTableCounts` et son `$ref` dans `IdentityCoverage`), `generated.ts` **+17 lignes**. 15,3 s + 0,3 s. |
+| 2026-09-14 | 1.6.2 | `8346b6b0c` | `go test …/replay/ -run 'TestRosterPrendLesSieges' -count=1` puis les huit goldens | **VERT.** Gains lus dans le `git diff` des goldens : `a521164d` et `11de8353` « 27 joueur(s) » → « 28 joueur(s) » ; `111fa685` `idx=10 ""` → `idx=10 "FlukiestGolf"` ; `e5adf7b2` `idx=13 ""` → `idx=13 "MarshallG6443"`. Les quatre autres builds : identiques à l'octet. |
+| 2026-09-14 | 1.6.3 | `444d0b7c6` | `go test …/replay/ -run 'TestRosterHorsLigne' -count=1 -v` | **VERT, 1,8 s.** Cuisson hors ligne, sans / avec la table du film : `000d5950` 8→8 · `a521164d` **26→27** · `60ae07c4` 8→8 · `11de8353` **26→27** · `111fa685` **24→25** · `e5adf7b2` **26→27** · `bcb6d393` 11→11 · `fb1a1a72` 8→8. **0 siège de la table du film absent du roster hors ligne sur 8/8.** |
+| 2026-09-14 | 1.6.5 (oracle des 20 vies, IMPOSÉ par l'utilisateur) | ce commit | `go test …/replay/ -run 'TestViesDUnEchantillon' -count=1 -v` — tableau collé depuis la sortie brute | **20 vies · 1 mort écrite · 5 fins de film · 14 ORPHELINES.** `000d5950` slot 542 f1614 cut 8 125 ms ORPH · `a521164d` slot 517 f110 cut 41 226 ORPH, slot 525 f113 cut 88 556 ORPH, slot 524 f2447 **film_end** 8 506 FIN, slot 580 f1507 cut **954** ORPH, slot 579 f1600 cut 10 183 ORPH, slot 639 f3373 **film_end** 30 931 FIN · `60ae07c4` slots 512 f0 / 514 f0 / 519 f1 / 550 f1869, tous cut (30 184 / 35 071 / 56 928 / 10 105) ORPH · `11de8353` slot 525 f2 cut 126 473 ORPH, slot 529 f3 cut 299 737 ORPH, slot 563 f1329 **film_end** 10 233 FIN · `111fa685` slots 672 f3985 / 695 f4461 cut (10 153 / 10 213) ORPH · `e5adf7b2` slot 689 f4480 **death 72 ms MORT ÉCRITE**, slot 726 f5150 cut 10 211 ORPH · `bcb6d393` slots 539 f1568 / 544 f1762 **film_end** (10 118 / 10 134) FIN · `fb1a1a72` **aucune**. Découverte D1 (1.6). |
+| 2026-09-14 | 1.6.5 (seuil) | ce commit | `git diff` des huit goldens après `DefaultMinPoints = 2 → 1` | `refusedMinPoints` **0 sur 8/8** ; traces 104→105 · 243→245 · 243→246 · 173→177 · 179→185 · 56→58 · 254→256 · 147→147, soit **+20**, exactement les vies refusées mesurées au lot 1.0.4. `TestBuildFromPositions_Decimation` réécrit : il affirmait « 1 seul point -> exclu », et l'exclusion est désormais testée par le seuil que l'APPELANT règle (`Options.MinPoints = 2`), seule voie qui la déclenche. |
+| 2026-09-14 | 1.6 (communs) | ce commit | `gofmt -l ./internal ./cmd` | sortie **vide** |
+| 2026-09-14 | 1.6 (équivalence, régime COURT) | ce commit | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-decfilm-16 -films …` — les 10 films de l'échantillon court, DEUX sous-ensembles séquentiels de 5 | **Première passe : 0/5 identiques**, et le message NOMMAIT la mauvaise cause (« ECART à l'étape "filmTable" : attendu sha=<celui de playerIndices> ») — le comparateur est POSITIONNEL, découverte D3 (1.6). Classification faite sur le `git diff` des références après `-update` (2 min 53 + 2 min 45), **et elle est complète** : les 10 fichiers portent EXACTEMENT deux lignes changées, `+filmTable` (l'étape neuve) et `artifact` modifié. **Les 49 autres balayages sont identiques sur les 10 films.** Deltas d'`artifact` : `fb1a1a72` +49 · `51101d1d` +148 · `111fa685` +274 · `e5adf7b2` +305 · `bcb6d393` +316 · `d9781168` +319 · `60ae07c4` +495 · `50247b26` +542 · `11de8353` +841 · `a521164d` +987. DIVERGENCES, aucune RÉGRESSION : re-figeage accepté après cette classification. Les 10 autres films du corpus seront re-figés à la clôture de M1. |
+| 2026-09-14 | 1.6 (corpus gate) | ce commit | `go run ./cmd/replay-corpus-gate --base=06530e63d --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-16 --json …` | **16 min 33, 13 témoins, schéma 55 → 56 partout, 267 gains, 39 « pertes », exit 1.** Gains par témoin : `c75f33b8` 52 · `084a804d` 35 · `e5adf7b2` 27 · `60ae07c4` 26 · `111fa685` 24 · `bcb6d393` / `0797ce72` 22 · `d9781168` / `51ebbc0f` 20 · `a349fea8` 16 · `fb1a1a72` / `bf15f7ab` / `bfecd02b` 1. Le rapport N'ÉNUMÈRE PAS les gains (il ne détaille que les pertes) : leurs familles sont nommées par le `git diff` des goldens — `identity.coverage.filmTable.*` (bloc neuf), `identity.coverage.filmIndex.direct` (+1 sur deux builds), `coverage.tracks.published` / `publishedPoints`. Les 39 pertes en QUATRE classes : le seuil publié (`minPoints` 2 → 1, 13/13), les refus qui tombent (`refusedMinPoints` / `refusedPoints` → 0, 11/13), les bornes qui S'ÉLARGISSENT (`084a804d`, `e5adf7b2` — D5 (1.6)), et `unnamedLives` qui MONTE (`084a804d` 0 → 1, `a349fea8` 334 → 337 — D4 (1.6)). |
+| 2026-09-14 | 1.6 (corpus gate, CONTRÔLE DÉCISIF) | ce commit | le même, `--base=444d0b7c6` (le commit de 1.6.3 : la table du film SANS le changement de seuil) | **16 min 30, 13 témoins, schéma 56 → 56, 250 gains, 39 pertes — LE MÊME ENSEMBLE DE PERTES, métrique par métrique et valeur par valeur.** Conclusion : la table du film (1.6.0 à 1.6.3) coûte **ZÉRO perte sur 13/13 témoins**, et les 39 pertes viennent TOUTES de `DefaultMinPoints = 2 → 1`. Ce qu'elle apporte se lit dans l'écart des gains entre les deux passes : **+1 sur neuf témoins, +3 sur `111fa685` et `e5adf7b2`, +1 sur `a349fea8` et `60ae07c4`** — et `fb1a1a72`, `bf15f7ab`, `bfecd02b` passent de 1 à 0 gain (leur unique gain venait du seuil). |
+| 2026-09-14 | 1.6 (communs) | ce commit | `CGO_ENABLED=1 go vet` puis `go test -count=1` sur `film/…`, `archlint`, `replaybuild`, `killcollector`, `objectiveevents`, `replaydoc`, `replayview` (msys64/ucrt64 en tête du PATH) | vet **propre** (1,4 s) ; **13 paquets ok en 17,9 s**, dont `replay` 16,46 s et `archlint` 13,83 s. `TestFilmdecPackageVarsNeCroitPas` VERT : le ratchet reste à **96** — les deux fichiers neufs de `replay` n'ajoutent aucune variable de paquet (sentinelles en `const`, causes de refus en `const`). |
+| 2026-09-14 | 1.6 (communs) | ce commit | `make go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **0 issues**, 1 min 26 — baseline non accrue. |
+| 2026-09-14 | 1.6 (communs, web) | ce commit | `make check-types` puis `make test-web` (après purge de `node_modules/.tmp`) | `tsc -b` **propre** ; vitest **711 fichiers, 7 629 tests verts**, 1 ignoré / 17 ignorés, 94 s. Rejoué APRÈS chaque régénération de fixtures (1.6.1, 1.6.2, 1.6.5). |
+| 2026-09-14 | 1.6 (clôture) | ce commit | `MIN_RENDERABLE_SCHEMA_VERSION` | **27, INCHANGÉ** (`features/match-replay/model/replaySchemaStatusLogic.ts:43`) : un artefact 56 se rend comme un 55, et la matrice de compatibilité ne bouge pas. |
+| 2026-09-14 | 1.6 (clôture, seuil de fichier) | ce commit | `wc -l build.go` avant / après le déplacement de `DefaultMinPoints` | `build.go` pesait **516 lignes au commit de base** — déjà au-delà des 500 du dépôt — et le lot l'avait porté à **534** : dette ACCRUE, ce que la règle 5 interdit. La constante et sa doctrine sont descendues dans `tracks_publication.go` (le fichier qui DÉCIDE quelles vies sont publiées, 181 → 202 lignes), déplacement pur ; `build.go` revient à **516**, exactement son poids de départ. `golangci-lint` rejoué : **0 issues**. |
 
 ## 6. Protocole de reprise de session
 

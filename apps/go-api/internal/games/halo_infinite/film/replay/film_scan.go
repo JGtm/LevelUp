@@ -391,6 +391,12 @@ func (s *filmScan) balayerPont() {
 	}
 	s.in.Deaths = deaths
 	s.opt.observe("deaths", s.in.Deaths)
+	// LA TABLE DES JOUEURS QUE LE FILM ÉCRIT (lot 1.6) : `chunk_00` porte les 32 sièges du match
+	// avec leur XUID et leur gamertag. C'est le lien DIRECT, et il se lit AVANT la table des
+	// chunks de réplication parce que c'est lui qui la précède dans le registre d'identité —
+	// jamais l'inverse (cf. film_player_table.go). Un refus est NOMMÉ, journalisé et publié.
+	s.in.FilmTable = ScanFilmPlayerTable(s.film, s.matchID)
+	s.opt.observe("filmTable", s.in.FilmTable)
 	// L'index de joueur SE LIT dans le film (cf. player_index.go) : le roster vient du fil des
 	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, aucun
 	// tir ni lancer n'est publié — comme sans le fil des morts.
