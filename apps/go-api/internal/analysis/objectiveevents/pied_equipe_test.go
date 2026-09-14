@@ -170,10 +170,10 @@ func TestFooterEventsSurUnFilm(t *testing.T) {
 			e.TimeMS, e.Slot, e.Team, piedAttenduTime, piedAttenduSlot, piedAttenduTeam)
 	}
 	// Et le chemin qui CONSOMME ces événements voit le même bloc, par son point d'entrée public.
-	// `Extract` ne lit pas encore `Team` — son `TeamID` vient du roster, et c'est le lot 1.7.3
-	// qui basculera la source (décision V4). Ce que ce contrôle ferme, c'est que l'équipe lue
-	// arrive JUSQU'À ce point de branchement : le jour où 1.7.3 la prendra, elle y sera.
-	evs := Extract(piedFilm, "Strongholds:Arena", film, MapRoster{})
+	// DEPUIS LE LOT 1.7.3, `Extract` PREND L'ÉQUIPE DU PIED : le roster passé ici est VIDE, et
+	// `TeamID` vaut quand même celle du film. C'est exactement le basculement que ce test
+	// verrouillait « pour plus tard » — il le verrouille maintenant dans l'autre sens.
+	evs, ctl := Extract(piedFilm, "Strongholds:Arena", film, MapRoster{})
 	if len(evs) != 1 {
 		t.Fatalf("Extract rend %d événement(s), attendu 1", len(evs))
 	}
@@ -184,9 +184,42 @@ func TestFooterEventsSurUnFilm(t *testing.T) {
 		t.Fatalf("Extract : type=%q source=%q, attendu %q / %q",
 			evs[0].ObjectiveType, evs[0].Source, ObjectiveTypeZone, SourceTh10)
 	}
-	if evs[0].TeamID != nil {
-		t.Fatalf("Extract : TeamID=%d alors que le roster est VIDE — la source de l'équipe a "+
-			"basculé sans que ce test le dise (ce basculement est le lot 1.7.3)", *evs[0].TeamID)
+	if evs[0].TeamID == nil || *evs[0].TeamID != piedAttenduTeam {
+		t.Fatalf("Extract : TeamID=%v, attendu %d — l'équipe vient du PIED (octet 37), pas du "+
+			"roster, qui est vide ici", evs[0].TeamID, piedAttenduTeam)
+	}
+	// LE CONTRÔLE COMPTE, IL NE POSE RIEN : roster vide, donc un silence et rien d'autre.
+	if ctl.Film != 1 || ctl.Silence != 1 || ctl.Accord != 0 || ctl.Contradiction != 0 {
+		t.Fatalf("contrôle %+v : un roster VIDE doit rendre 1 lecture du film et 1 silence", ctl)
+	}
+}
+
+// TestExtractPrendLEquipeDuPiedEtCompteLeControle : le contrôle DISTINGUE l'accord de la
+// contradiction, et la contradiction ne change PAS la valeur publiée.
+//
+// C'est la moitié que le test ci-dessus ne couvre pas : avec un roster vide, `accord` et
+// `contradiction` restent structurellement à zéro et une implémentation qui les confondrait
+// passerait. Ici la feuille de match DIT quelque chose — d'abord la même équipe, puis une autre.
+func TestExtractPrendLEquipeDuPiedEtCompteLeControle(t *testing.T) {
+	film := piedFilmEnMemoire(t)
+	xuid := formatXUID(piedAttenduXUID)
+
+	evs, ctl := Extract(piedFilm, "Strongholds:Arena", film, MapRoster{xuid: piedAttenduTeam})
+	if ctl.Accord != 1 || ctl.Contradiction != 0 || ctl.Silence != 0 {
+		t.Fatalf("contrôle %+v : la feuille dit la MÊME équipe, c'est un accord", ctl)
+	}
+	if evs[0].TeamID == nil || *evs[0].TeamID != piedAttenduTeam {
+		t.Fatalf("Extract : TeamID=%v, attendu %d", evs[0].TeamID, piedAttenduTeam)
+	}
+
+	autre := piedAttenduTeam + 1
+	evs, ctl = Extract(piedFilm, "Strongholds:Arena", film, MapRoster{xuid: autre})
+	if ctl.Accord != 0 || ctl.Contradiction != 1 || ctl.Silence != 0 {
+		t.Fatalf("contrôle %+v : la feuille dit une AUTRE équipe, c'est une contradiction", ctl)
+	}
+	if evs[0].TeamID == nil || *evs[0].TeamID != piedAttenduTeam {
+		t.Fatalf("Extract : TeamID=%v alors que la feuille disait %d — une contradiction se "+
+			"COMPTE, elle ne corrige rien : le film fait foi", evs[0].TeamID, autre)
 	}
 }
 

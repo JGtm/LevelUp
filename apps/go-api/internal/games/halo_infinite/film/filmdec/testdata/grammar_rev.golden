@@ -151,4 +151,11 @@
 #               7 builds : il vaut le rang du siege de `chunk_00`, il est constant sur la vie
 #               de l entite, et il continue au-dela des sieges pour les arrivants). Deux
 #               largeurs lues la ou rien n etait lu : la revision monte, l empreinte avec.
-grammar-2026-09-14.6	fdb77e17a94db7ea867ce3ce3505ca245533c24c559e37a8d6f91049653c19bd
+#   2026-09-14  grammar-2026-09-14.6  lot 1.7.3 (MEME LOT donc MEME REVISION, empreinte reprise
+#               une fois) : l EQUIPE d un evenement d objectif vient desormais du PIED, a
+#               l octet 37 de son bloc, et plus de `match_participants`. Le roster n en est plus
+#               que le CONTROLE, compte par `objectiveevents.TeamControl` (accord /
+#               contradiction / silence). La grammaire de LECTURE ne bouge pas — c est le lot 1.1
+#               qui l avait corrigee — mais la SOURCE publiee si, et l ensemble hache porte
+#               `objectiveevents` depuis le lot 1.1.5.
+grammar-2026-09-14.6	e5a873d8c52c1d5c27fa197963229e24f2e86e5d1f20864eeb900dd66903f78d

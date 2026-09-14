@@ -226,7 +226,7 @@ func objControleGrossierCrane(t *testing.T, src *objDiskFilm, b objBridge, recs 
 	for _, p := range objCorpus[objBallFilm].Players {
 		roster[p.XUID] = p.Team
 	}
-	evs := objectiveevents.Extract(objBallFilm, "Ranked:Oddball", src, roster)
+	evs, _ := objectiveevents.Extract(objBallFilm, "Ranked:Oddball", src, roster)
 	acteurs := 0
 	for _, e := range evs {
 		acteurs += len(e.Players)
