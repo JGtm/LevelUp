@@ -135,6 +135,14 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 		// ne puisse pas être silencieusement jeté. Transaction distincte, même fenêtre de
 		// lease.
 		sharedErr = NewFlagGrabsNetPersister(sharedDB).Persist(ctx, batch)
+		if sharedErr != nil {
+			return
+		}
+		// Niveaux d armes des prises de socle (match_pad_pickups_by_tier append-only). Meme
+		// raisonnement que les quatre ci-dessus : NO-OP tant que batch.Shared.PadTiers est nil,
+		// cable quand meme pour qu un SetPadTiers() ne puisse pas etre silencieusement jete.
+		// Transaction distincte, meme fenetre de lease.
+		sharedErr = NewPadTiersPersister(sharedDB).Persist(ctx, batch)
 	}()
 	observePersistPhase("shared_write", writeStart, sharedErr == nil)
 

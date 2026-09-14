@@ -251,7 +251,7 @@ const (
 	// s'arme donc séparément.
 	//
 	// ⚠ LA CAPABILITY NE SUFFIT PAS : le titre doit AUSSI déclarer les modes à départs
-	// aléatoires (`regulation.toml`, `[weapon_tiers] random_start_mode_prefixes`). Les deux
+	// aléatoires (`regulation.toml`, `[weapon_tiers] random_start_mode_tokens`). Les deux
 	// disent deux choses différentes — « je sais lire ces socles » et « voici mes modes sans
 	// arme de base » —, mais ici l'absence de la seconde n'éteint RIEN : elle fait seulement
 	// que plus aucun mode n'est tenu pour aléatoire. C'est la différence avec

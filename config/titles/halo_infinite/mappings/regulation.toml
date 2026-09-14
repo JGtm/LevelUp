@@ -423,11 +423,25 @@ flag_juggle_window_s = 1.5
 # sort, donc « l'arme avec laquelle on spawn » n'existe pas comme fait du match. Les deux
 # autres niveaux (terrain, puissance) restent lisibles tels quels.
 #
-# VALEUR = PREFIXE de `match_registry.pair_name` (la partie avant `:`, ou le nom entier quand
-# il n'y a pas de separateur). C'est la meme cle que la taxonomie de modes du titre publie
-# (`halo_infinite.PairNamePrefixesForCategory`), et un garde-rail
-# (`weapon_tiers_prefixes_guard_test.go`) EXIGE que les deux listes coincident : une liste
-# recopiee qui derive rendrait le niveau « base » sur un mode Fiesta sans que rien ne rougisse.
+# VALEUR = JETON, cherche comme un MOT dans le `pair_name` ENTIER (insensible a la casse).
+#
+# SURTOUT PAS un prefixe, et pas davantage une categorie de mode — MESURE DU 2026-09-14, faite
+# apres une revue qui prescrivait la categorie :
+#
+#   "Slayer:Arena Super Fiesta" -> categorie "Other"          (417 matchs au plateau de score)
+#   "Slayer:Arena Fiesta"       -> categorie "Other"
+#   "BTB:Fiesta Slayer"         -> categorie "BTB"
+#   "BTB:Fiesta CTF"            -> categorie "BTB"
+#
+# La taxonomie du titre (`InferModeCategoryFromPairName`) prend le prefixe avant le « : » et
+# jette le sous-mode : elle ne reconnait PAS ces quatre formes, qui sont pourtant les plus
+# nombreuses. Ni le prefixe gauche, ni la categorie ne suffisent donc ; le jeton, cherche dans
+# la chaine entiere, les couvre toutes — « Super Fiesta » et « Super Husky Raid » contiennent
+# deja « Fiesta » et « Husky Raid ».
+#
+# Le garde-rail (`weapon_tiers_categories_guard_test.go`) verrouille les deux moities : ces
+# formes reelles, ET la coherence avec la taxonomie (tout mode dont la CATEGORIE est a departs
+# aleatoires doit aussi etre reconnu par un jeton).
 #
 # MESURE QUI JUSTIFIE LA LISTE (76 artefacts du parc, 2026-09-14) : en mode regulier les trois
 # armes de depart pesent 94,4 % des equipements de premiere emission (Assassin) et 92,6 %
@@ -437,8 +451,9 @@ flag_juggle_window_s = 1.5
 # alors partout et se verifie de lui-meme. C'est la difference avec [flag_grabs_net], dont la
 # fenetre est indispensable au calcul.
 #
-# Consommation : mappings.RegulationSet.RandomStartModePrefixes() ->
+# Consommation : mappings.RegulationSet.HasRandomStarts(pair_name) ->
 # replayartifacts.ProjeterNiveauxDArmes -> persist.PadTiersPersister
-# (match_pad_pickups_by_tier).
+# (match_pad_pickups_by_tier), et le champ `randomStarts` servi avec le document de rejeu
+# (vue match).
 [weapon_tiers]
-random_start_mode_prefixes = ["Castle Wars", "Fiesta", "Husky Raid", "Super Fiesta", "Super Husky Raid"]
+random_start_mode_tokens = ["Castle Wars", "Fiesta", "Husky Raid"]

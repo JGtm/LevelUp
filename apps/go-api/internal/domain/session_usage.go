@@ -332,16 +332,34 @@ type SessionUsageBlock struct {
 	Objectives     *SessionObjectivesBlock    `json:"objectives,omitempty"`
 }
 
+// Les NIVEAUX D'ARME, tels qu'ils sont écrits en base ET servis au contrat.
+//
+// UNE SEULE SOURCE, ET ELLE EST ICI (correctif de revue, 2026-09-14). Ces valeurs étaient
+// recopiées de `persist.PadTier*` sans rien pour les tenir ensemble : renommer une constante
+// côté écriture — `PadTierGround` de « terrain » à « sol » — laissait toute la suite verte et
+// faisait disparaître un niveau entier des trois pages, en silence. Le paquet `persist`
+// réexporte désormais CES constantes, et un garde-rail confronte les deux listes.
+//
+// Ce sont des valeurs de DONNÉE, jamais des libellés : la traduction vit dans l'i18n du web.
+const (
+	PadTierBase         = "base"
+	PadTierGround       = "terrain"
+	PadTierPower        = "puissance"
+	PadTierPowerup      = "bonus"
+	PadTierUnclassified = "non_classe"
+	// PadTierNoPickup — LE ZÉRO MESURÉ d'un joueur qui n'a pris aucun socle. Il ne figure pas
+	// dans PadTierOrder : ce n'est pas un niveau de contrôle, c'est ce qui sépare « ce joueur
+	// n'a rien pris » de « on n'a pas regardé ».
+	PadTierNoPickup = "aucune_prise"
+)
+
 // PadTierOrder — L'ORDRE DE LECTURE DES NIVEAUX D'ARME, écrit une fois.
 //
 // Il n'est PAS trié par volume, et c'est délibéré : un classement dont l'ordre change d'une
-// session à l'autre ne se compare pas d'un écran au suivant. Les valeurs sont celles écrites
-// en base (`persist.PadTier*`) — un contrat de données, jamais un libellé : la traduction vit
-// dans l'i18n du web.
-//
-// `aucune_prise` n'y figure pas : c'est le ZÉRO MESURÉ d'un joueur, pas un niveau de contrôle.
-// Il compte le match comme mesuré et disparaît du classement.
-var PadTierOrder = []string{"base", "terrain", "puissance", "bonus", "non_classe"}
+// session à l'autre ne se compare pas d'un écran au suivant.
+var PadTierOrder = []string{
+	PadTierBase, PadTierGround, PadTierPower, PadTierPowerup, PadTierUnclassified,
+}
 
 // SessionUsagePadTierWeapon — le détail par ARME d'un niveau, servi au survol.
 //
@@ -378,6 +396,10 @@ type SessionUsagePadTier struct {
 // LES QUATRE COMPTEURS SONT DES DENOMINATEURS D'HONNETETE, et chacun dit une chose que les
 // autres ne disent pas — le détail est en tête de `analysis/sessionusage/pad_tiers.go`.
 type SessionUsagePadTiersBlock struct {
+	// MatchesTotal : les matchs du SCOPE. Le denominateur d honnetete du bloc, et il est A LUI :
+	// la carte affichait la couverture du RESUME D USAGE, qui porte sur un autre perimetre (une
+	// passe distincte, sur d autres matchs). Constat de revue, 2026-09-14.
+	MatchesTotal    int `json:"matches_total"`
 	MatchesMeasured int `json:"matches_measured"`
 	// MatchesWithPads : parmi eux, ceux dont le film a publié au moins un socle. L'écart avec
 	// le précédent n'est pas une panne : un mode peut n'allumer aucun emplacement.
@@ -388,6 +410,13 @@ type SessionUsagePadTiersBlock struct {
 	MatchesTiersEstablished int `json:"matches_tiers_established"`
 	// MatchesRandomStarts : parmi eux, ceux dont le mode distribue des départs aléatoires. Le
 	// niveau « base » n'y est pas publié.
-	MatchesRandomStarts int                   `json:"matches_random_starts"`
-	Tiers               []SessionUsagePadTier `json:"tiers,omitempty"`
+	MatchesRandomStarts int `json:"matches_random_starts"`
+	// LES TROIS PARITES DU BLOC, calculees SUR SON PERIMETRE (les matchs dont les niveaux ont
+	// ete projetes) et non sur celui du resume d usage — meme raison que MatchesTotal : deux
+	// perimetres, deux effectifs moyens, donc deux traits de parite. Nil quand aucun effectif
+	// n est connu : un trait de parite invente est pire que pas de trait.
+	TeamParityPct        *float64              `json:"team_parity_pct,omitempty"`
+	LobbyParityPct       *float64              `json:"lobby_parity_pct,omitempty"`
+	TeamOfLobbyParityPct *float64              `json:"team_of_lobby_parity_pct,omitempty"`
+	Tiers                []SessionUsagePadTier `json:"tiers,omitempty"`
 }

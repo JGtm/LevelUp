@@ -1,9 +1,10 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 54
-empreinte-stockee 3258dddf069b2999
-empreinte-servie 3258dddf069b2999
-empreinte-cuite 7d341ac72f306186
+empreinte-stockee 8ed5a43f27c7b6e8
+empreinte-servie 8ed5a43f27c7b6e8
+empreinte-cuite 2750b484545468f8
+empreinte-cuite-regle 2
 
 AbilityCharge
   Charges json:"charges" int
@@ -660,6 +661,7 @@ ReplayDocument
   WeaponChanges json:"weaponChanges,omitempty" []WeaponChange
   WeaponLabels json:"weaponLabels,omitempty" map[string]WeaponLabel
   WeaponPads json:"weaponPads,omitempty" []WeaponPad
+  WeaponTiers json:"weaponTiers,omitempty" *WeaponTiersInfo
   ZoneStates json:"zoneStates,omitempty" []ZoneState
 RosterEntry
   Bid json:"bid,omitempty" string
@@ -876,6 +878,8 @@ WeaponPad
   X json:"x" float32
   Y json:"y" float32
   Z json:"z,omitempty" float32
+WeaponTiersInfo
+  RandomStarts json:"randomStarts" bool
 ZoneSpan
   Active json:"active" bool
   Owner json:"owner" *int

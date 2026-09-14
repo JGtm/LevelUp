@@ -21,7 +21,7 @@ package main
 //
 //	`film.weapon_tiers`                         le titre sait lire ces socles — sans elle,
 //	                                            RIEN n est produit ;
-//	`[weapon_tiers].random_start_mode_prefixes` ses modes a departs aleatoires — son absence
+//	`[weapon_tiers].random_start_mode_tokens` ses modes a departs aleatoires — son absence
 //	                                            n eteint rien, elle fait seulement qu aucun
 //	                                            mode n est tenu pour aleatoire.
 //
@@ -166,11 +166,11 @@ func portePadTiers(cfg *config.AppConfig, titleSlug string) (
 	if err != nil {
 		return nil, nil, fmt.Errorf("regulation.toml du titre %s: %w", titleSlug, err)
 	}
-	if len(reg.RandomStartModePrefixes()) == 0 {
+	if len(reg.RandomStartModeTokens()) == 0 {
 		// Ce n est PAS une panne — mais l operateur doit le savoir : aucun mode ne sera tenu
 		// pour aleatoire, donc le niveau « base » sera produit partout.
 		fmt.Printf("le titre %s ne declare aucun mode a departs aleatoires "+
-			"([weapon_tiers].random_start_mode_prefixes) : le niveau « base » sera produit sur tous les modes\n",
+			"([weapon_tiers].random_start_mode_tokens) : le niveau « base » sera produit sur tous les modes\n",
 			titleSlug)
 	}
 	return ref, reg, nil
@@ -239,7 +239,7 @@ func projeterCorpusPadTiers(
 		}
 		ident := identites[id]
 		batch, etat := lireUnArtefactPadTiers(
-			pr.ReplayArtifactPath(o.titleSlug, id), id, ref, ident, reg.HasRandomStarts(ident.PairName))
+			pr.ReplayArtifactPath(o.titleSlug, id), id, ref, ident, replayartifacts.DepartsAleatoires(reg, ident.PairName))
 		switch etat {
 		case niveauxSansArtefact:
 			b.sansArtefact++

@@ -22209,6 +22209,8 @@ components:
           type:
             - array
             - "null"
+        weaponTiers:
+          $ref: '#/components/schemas/WeaponTiersInfo'
         zoneStates:
           items:
             $ref: '#/components/schemas/ZoneState'
@@ -23820,6 +23822,9 @@ components:
     SessionUsagePadTiersBlock:
       additionalProperties: false
       properties:
+        lobby_parity_pct:
+          format: double
+          type: number
         matches_measured:
           format: int64
           type: integer
@@ -23829,9 +23834,18 @@ components:
         matches_tiers_established:
           format: int64
           type: integer
+        matches_total:
+          format: int64
+          type: integer
         matches_with_pads:
           format: int64
           type: integer
+        team_of_lobby_parity_pct:
+          format: double
+          type: number
+        team_parity_pct:
+          format: double
+          type: number
         tiers:
           items:
             $ref: '#/components/schemas/SessionUsagePadTier'
@@ -23839,6 +23853,7 @@ components:
             - array
             - "null"
       required:
+        - matches_total
         - matches_measured
         - matches_with_pads
         - matches_tiers_established
@@ -29043,6 +29058,14 @@ components:
         - above_pct
         - level_pct
         - below_pct
+      type: object
+    WeaponTiersInfo:
+      additionalProperties: false
+      properties:
+        randomStarts:
+          type: boolean
+      required:
+        - randomStarts
       type: object
     WinLossPoint:
       additionalProperties: false

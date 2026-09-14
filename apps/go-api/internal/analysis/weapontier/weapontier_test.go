@@ -65,8 +65,8 @@ func TestTierOf_LesQuatreNiveaux(t *testing.T) {
 			t.Errorf("%s : niveau = %q, attendu %q", c.nom, got, c.want)
 		}
 	}
-	if m.Lives() != 20 {
-		t.Errorf("vies lues = %d, attendu 20", m.Lives())
+	if m.lives != 20 {
+		t.Errorf("vies lues = %d, attendu 20", m.lives)
 	}
 }
 
@@ -131,7 +131,7 @@ func TestTierOf_DepartsAleatoires(t *testing.T) {
 	pads, cross := temoin()
 	// En Fiesta l'AR est bien distribué au départ, mais le niveau ne doit pas exister.
 	m := NewMatch(pads, cross, vies(20, []string{ar, pistol}, nil), true)
-	if !m.RandomStarts() {
+	if !m.randomStarts {
 		t.Fatal("RandomStarts devrait être vrai")
 	}
 	if got := m.TierOf(3, ar); got != TierUnclassified {
@@ -144,8 +144,8 @@ func TestTierOf_DepartsAleatoires(t *testing.T) {
 		t.Errorf("départs aléatoires, puissance : niveau = %q, attendu %q", got, TierPower)
 	}
 	// Les vies restent comptées : l'écran doit pouvoir dire sur quoi il s'appuie.
-	if m.Lives() != 20 {
-		t.Errorf("vies lues = %d, attendu 20", m.Lives())
+	if m.lives != 20 {
+		t.Errorf("vies lues = %d, attendu 20", m.lives)
 	}
 }
 
@@ -155,8 +155,8 @@ func TestMatchZero_Utilisable(t *testing.T) {
 	if got := m.TierOf(0, ar); got != TierUnclassified {
 		t.Errorf("Match zéro : niveau = %q, attendu %q", got, TierUnclassified)
 	}
-	if m.Lives() != 0 || m.RandomStarts() {
-		t.Errorf("Match zéro : vies=%d aléatoire=%v", m.Lives(), m.RandomStarts())
+	if m.lives != 0 || m.randomStarts {
+		t.Errorf("Match zéro : vies=%d aléatoire=%v", m.lives, m.randomStarts)
 	}
 }
 

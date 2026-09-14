@@ -53,6 +53,7 @@ type ReplayDocument struct {
 	Roster              []RosterEntry           `json:"roster,omitempty"`
 	MapObjectives       *MapObjectives          `json:"mapObjectives,omitempty"`
 	MapWeaponPads       *MapWeaponPads          `json:"mapWeaponPads,omitempty"`
+	WeaponTiers         *WeaponTiersInfo        `json:"weaponTiers,omitempty"`
 	Objectives          []ObjectiveAction       `json:"objectives,omitempty"`
 	ScoreTimeline       *ScoreTimeline          `json:"scoreTimeline,omitempty"`
 	FlagCarries         []FlagCarry             `json:"flagCarries,omitempty"`

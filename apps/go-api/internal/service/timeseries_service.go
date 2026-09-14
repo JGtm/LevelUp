@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/timeline"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -345,7 +346,7 @@ func (s *TimeseriesService) GetPage(
 	// Portée des engagements (onglet Résumé) + Usages d'équipement (onglet Progression) :
 	// sections migrées depuis la Synthèse, MÊME producteur, MÊME scope filtré.
 	filteredCanon := filterCanonicalByMatchIDs(canonicalRows, matches)
-	s.attachMigratedSections(ctx, &resp, filteredCanon)
+	s.attachMigratedSections(ctx, &resp, filteredCanon, ctxkeys.Locale(ctx))
 
 	// BriefingKPIs : KPIs sur les rows canoniques filtres (memes match_ids que
 	// matches). Alimente le composant <SessionBriefing> en mode solo. Reutilise

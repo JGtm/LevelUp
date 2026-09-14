@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument } from '@/lib/api/types'
 
-import { buildPadTierMatch, hasRandomStarts, padTierOf } from './weaponTier'
+import { buildPadTierMatch, padTierOf } from './weaponTier'
 import { testReplayDoc } from '../test/testDoc'
 
 const AR = '0x48C19D2D'
@@ -61,9 +61,14 @@ function temoin(over: Partial<ReplayDocument> = {}) {
   } as Partial<ReplayDocument>)
 }
 
+/** Le même témoin, mais sur un mode à DÉPARTS ALÉATOIRES — le serveur le dit. */
+function temoinAleatoire(over: Partial<ReplayDocument> = {}) {
+  return temoin({ weaponTiers: { randomStarts: true }, ...over } as Partial<ReplayDocument>)
+}
+
 describe('padTierOf — les quatre niveaux', () => {
   it('lit la nature de l’emplacement sur la CARTE, et l’arme de base sur le film', () => {
-    const m = buildPadTierMatch(temoin(), 'Assassin')
+    const m = buildPadTierMatch(temoin())
     expect(padTierOf(m, 0, HYDRA)).toBe('ground')
     expect(padTierOf(m, 1, SNIPER)).toBe('power')
     expect(padTierOf(m, 2, BONUS)).toBe('powerup')
@@ -75,12 +80,12 @@ describe('padTierOf — les quatre niveaux', () => {
   it('ne juge JAMAIS au rôle de l’arme : l’Hydra sur râtelier reste de terrain', () => {
     // L'Hydra a un rôle `power` au registre canonique, et 17 socles du parc la posent sur un
     // râtelier. Si le niveau se lisait sur l'arme, cette ligne rendrait 'power'.
-    const m = buildPadTierMatch(temoin(), 'Assassin')
+    const m = buildPadTierMatch(temoin())
     expect(padTierOf(m, 0, HYDRA)).toBe('ground')
   })
 
   it('laisse NON CLASSÉ ce qu’aucun emplacement ne confirme, et le dit', () => {
-    const m = buildPadTierMatch(temoin({ mapWeaponPads: undefined } as Partial<ReplayDocument>), 'Assassin')
+    const m = buildPadTierMatch(temoin({ mapWeaponPads: undefined } as Partial<ReplayDocument>))
     expect(m.tiersMeasured).toBe(false)
     expect(padTierOf(m, 1, SNIPER)).toBe('unclassified')
     // Un index hors bornes ne pioche pas le voisin.
@@ -94,7 +99,6 @@ describe('padTierOf — les quatre niveaux', () => {
         mapWeaponPads: { catalogN: 1, pads: [{ x: 0, y: 0, pad: 0, family: 'rack' }] },
         loadouts: vies(20, [AR, PISTOLET]),
       } as Partial<ReplayDocument>),
-      'Assassin',
     )
     expect(padTierOf(m, 0, AR)).toBe('base')
   })
@@ -104,7 +108,7 @@ describe('les armes de départ', () => {
   it('ne lit que la PREMIÈRE émission de chaque slot', () => {
     // Les vingt vies démarrent AR + Sidekick puis ramassent toutes le sniper. Si tout le canal
     // comptait, le sniper deviendrait « base » et le niveau « puissance » disparaîtrait.
-    const m = buildPadTierMatch(temoin(), 'Assassin')
+    const m = buildPadTierMatch(temoin())
     expect(padTierOf(m, 1, SNIPER)).toBe('power')
   })
 
@@ -112,7 +116,7 @@ describe('les armes de départ', () => {
     const doc = temoin({
       loadouts: [...vies(40, [AR, PISTOLET]), { t: 74, slot: 999, w: [SNIPER, PISTOLET] }],
     } as Partial<ReplayDocument>)
-    expect(padTierOf(buildPadTierMatch(doc, 'Assassin'), 1, SNIPER)).toBe('power')
+    expect(padTierOf(buildPadTierMatch(doc), 1, SNIPER)).toBe('power')
   })
 
   it('retient en revanche une arme de départ franche (12 vies sur 52)', () => {
@@ -124,23 +128,23 @@ describe('les armes de départ', () => {
     const doc = temoin({
       loadouts: [...vies(40, [AR, PISTOLET]), ...enPlus],
     } as Partial<ReplayDocument>)
-    expect(padTierOf(buildPadTierMatch(doc, 'Assassin'), 1, SNIPER)).toBe('base')
+    expect(padTierOf(buildPadTierMatch(doc), 1, SNIPER)).toBe('base')
   })
 })
 
 describe('les modes à départs aléatoires', () => {
-  it('reconnaît les catégories concernées, et elles seules', () => {
-    expect(hasRandomStarts('Fiesta')).toBe(true)
-    expect(hasRandomStarts('Super Fiesta')).toBe(true)
-    expect(hasRandomStarts('Husky Raid')).toBe(true)
-    expect(hasRandomStarts('Assassin')).toBe(false)
-    expect(hasRandomStarts('BTB')).toBe(false)
-    expect(hasRandomStarts(undefined)).toBe(false)
-    expect(hasRandomStarts(null)).toBe(false)
+  it('lit le caractère aléatoire SUR LA RÉPONSE, jamais sur une liste locale', () => {
+    // La règle vit dans le TOML du titre et gouverne aussi l'écriture en base : une copie ici
+    // a existé une semaine et a divergé (revue du 2026-09-14).
+    expect(buildPadTierMatch(temoinAleatoire()).randomStarts).toBe(true)
+    expect(buildPadTierMatch(temoin()).randomStarts).toBe(false)
+    // Champ ABSENT = le serveur ne sait pas : on ne publie pas la note, on ne l'invente pas.
+    const sansChamp = temoin({ weaponTiers: undefined } as Partial<ReplayDocument>)
+    expect(buildPadTierMatch(sansChamp).randomStarts).toBe(false)
   })
 
   it('ne publie AUCUN niveau « base », et garde les deux autres', () => {
-    const m = buildPadTierMatch(temoin(), 'Super Fiesta')
+    const m = buildPadTierMatch(temoinAleatoire())
     expect(m.randomStarts).toBe(true)
     // L'AR est bien distribué au départ en Fiesta, mais le niveau n'existe pas.
     expect(padTierOf(m, 3, AR)).toBe('unclassified')

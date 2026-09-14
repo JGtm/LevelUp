@@ -372,10 +372,24 @@ d'artefacts dont la première émission publiée arrive après un ramassage.
 
 Le niveau « base » n'y est **jamais** publié (l'équipement de début de vie est tiré au sort).
 La liste des modes concernés vit dans `config/titles/{slug}/mappings/regulation.toml`
-(`[weapon_tiers] random_start_mode_prefixes`), et un garde-rail
-(`games/halo_infinite/weapon_tiers_prefixes_guard_test.go`) exige qu'elle coïncide avec la
-taxonomie de modes du titre — une liste recopiée qui dérive rendrait une arme de base sur une
-Fiesta sans que rien ne rougisse.
+(`[weapon_tiers] random_start_mode_tokens`), et le jeton s'y cherche comme un **MOT dans le
+`pair_name` ENTIER**.
+
+> **NI UN PRÉFIXE, NI UNE CATÉGORIE — mesure du 2026-09-14, faite après deux versions fausses.**
+> Les formes que le registre porte réellement sont `Slayer:Arena Super Fiesta` (catégorie
+> « Other »), `Slayer:Arena Fiesta` (« Other »), `BTB:Fiesta Slayer` et `BTB:Fiesta CTF`
+> (« BTB ») — et ce sont les plus nombreuses (417 matchs Super Fiesta au seul plateau de score).
+> La taxonomie du titre prend le préfixe avant le `:` et jette le sous-mode : elle ne les
+> reconnaît pas. Sur elles, un niveau « arme de base » était écrit sur des équipements **tirés
+> au sort**, sans la note qui l'aurait avoué. Le garde-rail
+> `games/halo_infinite/weapon_tiers_categories_guard_test.go` rejoue ces formes, vérifie la
+> cohérence avec la taxonomie (tout ce qu'elle sait classer comme aléatoire doit l'être aussi)
+> et fige la mesure du négatif.
+
+> **CE QUE L'ÉCRAN EN LIT.** Le caractère aléatoire est **servi** par le serveur — champ
+> `weaponTiers.randomStarts` du document de rejeu (vue match) et compteur
+> `pad_tiers.matches_random_starts` (pages d'agrégat). Le web n'en tient aucune liste : celle
+> qu'il a tenue une semaine avait déjà divergé.
 
 ### Où ça vit
 

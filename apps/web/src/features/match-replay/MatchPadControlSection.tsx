@@ -79,14 +79,7 @@ interface Props {
   /** `header.replay_available` — le même gate que le lien rejeu et que la courbe de score. */
   replayAvailable: boolean
   scoreboard: MatchScoreboardRow[] | null | undefined
-  /**
-   * `header.mode_category` — la CATÉGORIE de mode posée par le serveur (taxonomie du titre),
-   * jamais le nom du mode lu à l'écran. Elle sert une seule chose ici : savoir si les
-   * équipements de départ sont distribués au hasard (Fiesta et consorts), auquel cas le niveau
-   * « arme de base » n'a pas de sens et n'est pas publié. Absente = départs non aléatoires,
-   * c'est le repli sûr puisque le niveau se mesure alors et se vérifie de lui-même.
-   */
-  modeCategory?: string | null
+| null
   locale: ReplayLocale
 }
 
@@ -95,15 +88,14 @@ export function MatchPadControlSection({
   matchId,
   replayAvailable,
   scoreboard,
-  modeCategory,
   locale,
 }: Props) {
   const t = REPLAY_TEXT[locale]
   const { data } = useMatchReplay(playerSlug, matchId, replayAvailable)
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const control = useMemo(
-    () => (data ? buildPadControl(data, board, modeCategory) : null),
-    [data, board, modeCategory],
+    () => (data ? buildPadControl(data, board) : null),
+    [data, board],
   )
   const meSide = useMemo(() => board.find((r) => r.is_me)?.team_side ?? null, [board])
 

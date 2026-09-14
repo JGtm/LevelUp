@@ -207,3 +207,28 @@ func TestPadTiersPersister_PasseVideNEcritRien(t *testing.T) {
 		t.Errorf("%d lignes servies apres une passe vide, attendu 3 (la precedente) : %v", len(got), got)
 	}
 }
+
+// TestPadTiersPersister_CheminBatchBuilder — LE SECOND CHEMIN N EST PAS MORT.
+//
+// Constat de revue (2026-09-14) : `SharedBatch.PadTiers` et `PadTiersPersister.Persist`
+// n avaient aucun appelant — un champ et une methode inatteignables, donc du code mort
+// d apparence utile. Ils sont desormais cables comme leurs soeurs (`SetPadTiers`,
+// `CombinedPersister`), et ce test le prouve : ce qu un `SetPadTiers()` depose, le persister du
+// batch l ecrit.
+func TestPadTiersPersister_CheminBatchBuilder(t *testing.T) {
+	db := openPadTiersTestDB(t)
+	passe := passeTemoin()
+	batch := NewBatchBuilder("halo_infinite", "Joueur", "1", "test").SetPadTiers(&passe).Build()
+
+	if err := NewPadTiersPersister(db).Persist(context.Background(), batch); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+	if got := lireNiveaux(t, db, "m1"); len(got) != 3 {
+		t.Errorf("%d lignes servies par le chemin du batch, attendu 3 : %v", len(got), got)
+	}
+	// Et un batch SANS niveaux reste un no-op — jamais une passe vide ecrite.
+	vide := NewBatchBuilder("halo_infinite", "Joueur", "1", "test").Build()
+	if err := NewPadTiersPersister(db).Persist(context.Background(), vide); err != nil {
+		t.Fatalf("Persist sur un batch sans niveaux: %v", err)
+	}
+}

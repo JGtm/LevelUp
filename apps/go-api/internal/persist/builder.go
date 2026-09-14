@@ -143,6 +143,18 @@ func (b *BatchBuilder) SetFlagGrabsNet(pass *FlagGrabsNetBatch) *BatchBuilder {
 	return b
 }
 
+// SetPadTiers fixe LES PRISES DE SOCLE VENTILEES PAR NIVEAU D ARME d une passe de lecture
+// d artefact pour ce match.
+//
+// Set… et non Add… pour la meme raison que ses soeurs : l unite de production est l ARTEFACT
+// ENTIER. Concatener deux passes produirait un doublon de (xuid, niveau, arme) que le persister
+// refuse — et, pire, melerait deux croisements de reference de cartes, donc deux verites du
+// meme socle.
+func (b *BatchBuilder) SetPadTiers(pass *PadTiersBatch) *BatchBuilder {
+	b.batch.Shared.PadTiers = pass
+	return b
+}
+
 // AddXUIDAliases ajoute les rows xuid_aliases.
 func (b *BatchBuilder) AddXUIDAliases(rows []XUIDAliasInsert) *BatchBuilder {
 	b.batch.Shared.XUIDAliases = append(b.batch.Shared.XUIDAliases, rows...)

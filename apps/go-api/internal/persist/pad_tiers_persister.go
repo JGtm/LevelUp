@@ -46,6 +46,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"levelup/go-api/internal/domain"
 )
 
 // Les NIVEAUX, tels qu ils sont ecrits en base. Ce sont des valeurs de DONNEE, jamais des
@@ -63,13 +65,18 @@ import (
 //	                    socle. Sans cette ligne il serait indistinguable d un joueur d un match
 //	                    sans film — les deux se liraient « non mesure ». Meme role que
 //	                    `completerRosterAZero` cote prises nettes de drapeau.
+//
+// LES VALEURS VIENNENT DU CONTRAT, ELLES NE SONT PAS REDECLAREES ICI (correctif de revue,
+// 2026-09-14). Elles etaient recopiees : renommer l une des deux copies laissait toute la
+// suite verte et faisait disparaitre un niveau entier des trois pages, en silence. Le paquet
+// `domain` porte le vocabulaire ; celui-ci s y aligne par construction.
 const (
-	PadTierBase         = "base"
-	PadTierGround       = "terrain"
-	PadTierPower        = "puissance"
-	PadTierUnclassified = "non_classe"
-	PadTierPowerup      = "bonus"
-	PadTierNoPickup     = "aucune_prise"
+	PadTierBase         = domain.PadTierBase
+	PadTierGround       = domain.PadTierGround
+	PadTierPower        = domain.PadTierPower
+	PadTierUnclassified = domain.PadTierUnclassified
+	PadTierPowerup      = domain.PadTierPowerup
+	PadTierNoPickup     = domain.PadTierNoPickup
 )
 
 // padTiersValides : les seules valeurs que la table accepte. Une valeur inconnue est un defaut

@@ -110,8 +110,9 @@ type Match struct {
 	// randomStarts — le mode distribue des équipements de départ ALÉATOIRES (Fiesta et
 	// consorts). Le niveau « base » n'y a aucun sens et n'est jamais attribué.
 	randomStarts bool
-	// lives est le nombre de vies dont un équipement de départ a été lu (dénominateur de
-	// BaseShareMin), publié pour que l'appelant puisse dire sur quoi il s'appuie.
+	// lives est le nombre de vies dont un équipement de départ a été lu — le DÉNOMINATEUR de
+	// BaseShareMin, et rien d'autre. Il n'est pas exposé : ce que l'écran affiche vient des
+	// compteurs du bloc servi, pas d'un accesseur de ce paquet (0 code mort, revue 2026-09-14).
 	lives int
 }
 
@@ -133,13 +134,6 @@ func NewMatch(pads []Pad, spots []Spot, spawns []Spawn, randomStarts bool) Match
 	}
 	return m
 }
-
-// Lives rend le nombre de vies dont l'équipement de départ a été lu.
-func (m Match) Lives() int { return m.lives }
-
-// RandomStarts dit si le mode distribue des départs aléatoires — l'écran doit alors écrire
-// que le niveau « base » n'est pas publié, plutôt que de le laisser vide sans explication.
-func (m Match) RandomStarts() bool { return m.randomStarts }
 
 // FamilyOfPad rend la famille d'emplacement d'un socle du match ("" si non confirmé).
 func (m Match) FamilyOfPad(padIndex int) string {

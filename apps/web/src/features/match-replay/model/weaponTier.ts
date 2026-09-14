@@ -55,20 +55,6 @@ export type PadTier = (typeof PAD_TIER_ORDER)[number]
  */
 export const BASE_SHARE_MIN = 0.05
 
-/**
- * Catégories de mode à DÉPARTS ALÉATOIRES : le niveau « base » n'y a aucun sens et n'est pas
- * publié. Les valeurs sont celles de la taxonomie du titre (`mode_category`, posée par le
- * serveur) — jamais un nom de mode lu à l'écran, jamais un slug de titre. Un titre sans
- * taxonomie laisse la catégorie vide, donc départs NON aléatoires : le repli sûr, puisque le
- * niveau se mesure alors et se vérifie tout seul.
- */
-const CATEGORIES_DEPARTS_ALEATOIRES = new Set(['Fiesta', 'Super Fiesta', 'Husky Raid'])
-
-/** Vrai quand la catégorie de mode distribue des équipements de départ aléatoires. */
-export function hasRandomStarts(modeCategory: string | null | undefined): boolean {
-  return !!modeCategory && CATEGORIES_DEPARTS_ALEATOIRES.has(modeCategory)
-}
-
 /** Ce qu'un match apprend une fois pour toutes sur ses niveaux. */
 export interface PadTierMatch {
   /** Famille d'emplacement par index de socle (`weaponPads`) ; `null` = non confirmé. */
@@ -88,16 +74,24 @@ export interface PadTierMatch {
   tiersMeasured: boolean
 }
 
-/** Assemble le classement d'un match. `modeCategory` vient de `header.mode_category`. */
-export function buildPadTierMatch(
-  doc: ReplayDocumentReady,
-  modeCategory: string | null | undefined,
-): PadTierMatch {
+/**
+ * Assemble le classement d'un match.
+ *
+ * LE CARACTÈRE ALÉATOIRE DES DÉPARTS VIENT DU SERVEUR (`doc.weaponTiers.randomStarts`), jamais
+ * d'une liste de catégories côté web. Cette liste a existé une semaine et a divergé : la règle
+ * vit dans le TOML du titre, elle gouverne aussi l'écriture en base, et deux copies auraient
+ * fini par ranger le même match dans deux niveaux différents selon la page (revue 2026-09-14).
+ *
+ * Champ absent = le serveur ne sait pas (mode inconnu, titre sans règle) : on ne publie alors
+ * PAS la note « départs aléatoires », et on ne l'invente pas non plus — le niveau « base » se
+ * mesure, et il se vérifie de lui-même.
+ */
+export function buildPadTierMatch(doc: ReplayDocumentReady): PadTierMatch {
   const familyByPad: (string | null)[] = doc.weaponPads.map(() => null)
   for (const spot of doc.mapWeaponPads?.pads ?? []) {
     if (spot.pad >= 0 && spot.pad < familyByPad.length) familyByPad[spot.pad] = spot.family
   }
-  const randomStarts = hasRandomStarts(modeCategory)
+  const randomStarts = doc.weaponTiers?.randomStarts === true
   const { weapons, lives } = baseWeaponsOf(doc)
   return {
     familyByPad,

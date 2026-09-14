@@ -133,6 +133,17 @@ func TestDocumentShapeRegenerate(t *testing.T) {
 	// la requête ne périment aucun artefact (cf. la section « CALQUES RÉSOLUS À LA REQUÊTE »).
 	ancienneEmpreinte := shapeGoldenEmpreinteCuite()
 	nouvelle := empreinteDe(documentShapeRenderCuite())
+	// DEUX EMPREINTES CALCULÉES PAR DEUX RÈGLES DIFFÉRENTES NE SE COMPARENT PAS. Quand la règle
+	// elle-même se corrige (cf. `cuiteRegleCourante`), le refus n'a aucun sens : il porterait
+	// sur un changement qui ne touche AUCUN artefact, et la seule sortie serait de monter
+	// `SchemaVersion` — donc de faire lire « à re-cuire » tout le parc, pour rien. Le numéro de
+	// règle rend ce cas EXPLICITE au lieu de le faire contourner à la main.
+	if shapeGoldenCuiteRegle() != cuiteRegleCourante {
+		t.Logf("regle de l'empreinte cuite %d -> %d : le refus ne s'applique pas (les deux "+
+			"empreintes ne sont pas comparables), le golden est re-fige tel quel",
+			shapeGoldenCuiteRegle(), cuiteRegleCourante)
+		ancienneEmpreinte = ""
+	}
 	if ancienneEmpreinte != "" && ancienneEmpreinte != nouvelle && ancienSchema == SchemaVersion {
 		t.Fatalf("REGENERATION REFUSEE : la forme du document a change (empreinte %s -> %s) "+
 			"alors que SchemaVersion est reste a %d. Monter SchemaVersion et ecrire son entree "+
@@ -162,7 +173,8 @@ func documentShapeGolden() string {
 	fmt.Fprintf(&b, "%s%s\n", shapeEnteteEmpreinte, empreinteDe(render))
 	fmt.Fprintf(&b, "%s%s\n", shapeEnteteServie,
 		empreinteDe(documentShapeRender(reflect.TypeOf(replaydoc.ReplayDocument{}))))
-	fmt.Fprintf(&b, "%s%s\n\n", shapeEnteteCuite, empreinteDe(documentShapeRenderCuite()))
+	fmt.Fprintf(&b, "%s%s\n", shapeEnteteCuite, empreinteDe(documentShapeRenderCuite()))
+	fmt.Fprintf(&b, "%s%d\n\n", shapeEnteteCuiteRegle, cuiteRegleCourante)
 	b.WriteString(render)
 	return b.String()
 }
@@ -329,12 +341,35 @@ func structAnonyme(t reflect.Type) string {
 // shapeEnteteCuite : la quatrième ligne d'en-tête du golden.
 const shapeEnteteCuite = "empreinte-cuite "
 
+// shapeEnteteCuiteRegle : la cinquième ligne — la VERSION DE LA RÈGLE qui a produit
+// l'empreinte cuite.
+const shapeEnteteCuiteRegle = "empreinte-cuite-regle "
+
+// cuiteRegleCourante — la version de la RÈGLE de calcul de l'empreinte cuite.
+//
+// # POURQUOI CE NUMÉRO EXISTE
+//
+// L'empreinte cuite gouverne le REFUS de régénération. Tant qu'elle est calculée de la même
+// façon, la comparer d'une version à l'autre a un sens. Mais le jour où la RÈGLE elle-même se
+// corrige, l'ancienne et la nouvelle empreinte ne sont plus comparables — et le refus se
+// déclenche sur un changement qui ne touche AUCUN artefact. Sans ce numéro, la seule sortie
+// serait de monter `SchemaVersion` (qui ferait lire « à re-cuire » tout le parc, pour rien) ou
+// de forcer le golden à la main (ce que l'en-tête de ce fichier interdit).
+//
+//	1 (2026-09-14) première version : les types atteignables par les seuls calques de requête
+//	  étaient exclus, mais PAS les lignes de champ de la racine.
+//	2 (2026-09-14) les lignes de champ de la racine le sont aussi. Sans ce correctif, l'AJOUT
+//	  d'un calque de requête (`weaponTiers`) faisait bouger l'empreinte cuite — exactement ce
+//	  qu'elle existe pour ne pas faire.
+const cuiteRegleCourante = 2
+
 // calquesALaRequete — les balises JSON des champs du document que la CUISSON N'ÉCRIT JAMAIS.
 // Toute entrée ici se justifie par un grep : aucun chemin de `build*.go` ne pose le champ.
 // Dernière vérification : 2026-09-14.
 var calquesALaRequete = map[string]bool{
 	"mapObjectives": true, // objectives_catalog.go + service/replay_map_objectives.go
 	"mapWeaponPads": true, // map_weapon_pads_catalog.go + service/replay_map_weapon_pads.go
+	"weaponTiers":   true, // map_weapon_pads.go (WeaponTiersInfo) + service/replay_weapon_tiers.go
 }
 
 // documentShapeRenderCuite rend la forme du document PRIVÉE des types que seuls les calques
@@ -358,11 +393,35 @@ func documentShapeRenderCuite() string {
 	var b strings.Builder
 	for _, nom := range noms {
 		b.WriteString(nom + "\n")
-		for _, ligne := range champsDe(types[nom]) {
+		// LA RACINE VOIT SES CHAMPS FILTRÉS, les autres types non. Sans ce filtre, l'empreinte
+		// cuite bougeait à l'AJOUT d'un calque de requête — la racine déclare toujours son
+		// champ — et exigeait donc une montée de `SchemaVersion` pour un champ qu'aucun
+		// artefact ne porte. C'est exactement ce que cette empreinte existe pour ne PAS faire
+		// (constat payé le 2026-09-14 en ajoutant `weaponTiers`). L'ORDRE reste celui du tri :
+		// sortir la racine de la boucle changerait l'empreinte sans rien changer au fond.
+		champs := champsDe(types[nom])
+		if types[nom] == root {
+			champs = champsCuitsDe(root)
+		}
+		for _, ligne := range champs {
 			b.WriteString("  " + ligne + "\n")
 		}
 	}
 	return b.String()
+}
+
+// champsCuitsDe : les champs exportés d'un type, PRIVÉS des calques résolus à la requête.
+func champsCuitsDe(t reflect.Type) []string {
+	out := make([]string, 0, t.NumField())
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if f.PkgPath != "" || calquesALaRequete[baliseJSON(f)] {
+			continue
+		}
+		out = append(out, fmt.Sprintf("%s json:%q %s", f.Name, f.Tag.Get("json"), nomDeType(f.Type)))
+	}
+	sort.Strings(out)
+	return out
 }
 
 // baliseJSON rend le nom de clé JSON d'un champ (avant la virgule des options).
@@ -381,11 +440,31 @@ func shapeGoldenEmpreinteCuite() string {
 		return ""
 	}
 	for _, ligne := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(ligne, shapeEnteteCuiteRegle) {
+			continue // la ligne de RÈGLE commence par le même préfixe : ne pas la confondre
+		}
 		if strings.HasPrefix(ligne, shapeEnteteCuite) {
 			return strings.TrimSpace(strings.TrimPrefix(ligne, shapeEnteteCuite))
 		}
 	}
 	return ""
+}
+
+// shapeGoldenCuiteRegle relit la version de RÈGLE sous laquelle l'empreinte cuite du golden a
+// été calculée. Rend 0 quand la ligne est absente — un golden d'avant l'introduction du numéro.
+func shapeGoldenCuiteRegle() int {
+	raw, err := os.ReadFile(documentShapePath()) //nolint:gosec // chemin fige dans le code
+	if err != nil {
+		return 0
+	}
+	for _, ligne := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(ligne, shapeEnteteCuiteRegle) {
+			var v int
+			_, _ = fmt.Sscanf(strings.TrimPrefix(ligne, shapeEnteteCuiteRegle), "%d", &v)
+			return v
+		}
+	}
+	return 0
 }
 
 // TestDocumentShapeCalquesALaRequeteRestentHorsCuisson — LE GARDE-FOU DU GARDE-FOU.
@@ -419,7 +498,7 @@ func TestDocumentShapeCalquesALaRequeteRestentHorsCuisson(t *testing.T) {
 		if err != nil {
 			t.Fatalf("lecture de %s : %v", f, err)
 		}
-		for _, champ := range []string{"MapObjectives", "MapWeaponPads"} {
+		for _, champ := range []string{"MapObjectives", "MapWeaponPads", "WeaponTiers"} {
 			if strings.Contains(string(src), "."+champ+" =") {
 				t.Errorf("%s ecrit %s a la CUISSON : ce calque n'est plus resolu a la requete, "+
 					"retirer son entree de calquesALaRequete et remonter SchemaVersion", f, champ)

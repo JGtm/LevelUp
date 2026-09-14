@@ -121,3 +121,15 @@ func confirmePar(pos mapvar.Vec3, pads []WeaponPad, pris []bool) int {
 	}
 	return best
 }
+
+// WeaponTiersInfo — ce que le match dit des NIVEAUX D'ARME, résolu à la requête.
+//
+// UN SEUL CHAMP À CE JOUR, et il ne se déduit pas du document : la nature aléatoire des
+// équipements de départ est une propriété du MODE, que l'artefact ne nomme pas. Elle vient du
+// registre (`pair_name`) croisé à la règle du titre (`regulation.toml`, `[weapon_tiers]`).
+type WeaponTiersInfo struct {
+	// RandomStarts : le mode distribue les équipements de début de vie AU HASARD (Fiesta et
+	// consorts). Le niveau « arme de base » n'y est pas publié, et l'écran doit dire POURQUOI
+	// plutôt que de laisser un groupe vide sans explication.
+	RandomStarts bool `json:"randomStarts"`
+}

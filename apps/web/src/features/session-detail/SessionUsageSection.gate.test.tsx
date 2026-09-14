@@ -209,3 +209,32 @@ describe('SessionUsageSection — les niveaux d’armes', () => {
     expect(screen.queryByText(t.padTierRandomStartsFmt(1))).not.toBeInTheDocument()
   })
 })
+
+// TestGate — LA PORTE DE LA CARTE NE DOIT PAS AVALER LES NIVEAUX.
+//
+// Constat de revue (2026-09-14) : la carte se fermait sur `pad == null && familles vides &&
+// bonus vides`, sans regarder les niveaux. Or ils viennent d'une AUTRE passe, sur d'autres
+// matchs : une session dont seuls les niveaux sont mesurés ne rendait rien du tout.
+describe('SessionUsageSection — la porte ne mange pas les niveaux', () => {
+  const t = USAGE_TEXT.fr
+
+  it('rend la section quand SEULS les niveaux sont mesurés', () => {
+    const usage = {
+      ...BASE,
+      pad_families: [],
+      powerup_pickups: [],
+      metrics: [],
+      pad_tiers: {
+        matches_total: 4,
+        matches_measured: 4,
+        matches_with_pads: 4,
+        matches_tiers_established: 4,
+        matches_random_starts: 0,
+        tiers: [{ tier: 'puissance', player_total: 5, lobby_total: 20, weapons: [] }],
+      },
+    } as unknown as SessionUsageBlock
+    render(<SessionUsageSection usage={usage} meLabel="moi" />)
+    expect(screen.getByText(t.blockPadTiers)).toBeInTheDocument()
+    expect(screen.getByText(t.padTierLabels.puissance)).toBeInTheDocument()
+  })
+})

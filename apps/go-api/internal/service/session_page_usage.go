@@ -297,9 +297,10 @@ func (s *SessionPageService) attachPadTiers(
 		return
 	}
 	block.PadTiers = sessionusage.ComputePadTiers(sessionusage.PadTiersInput{
-		Rows:       rows,
-		PlayerXUID: s.usageXUID,
-		PlayerTeam: tc.PlayerTeam,
-		TeamOf:     tc.TeamOf,
+		Rows:         rows,
+		PlayerXUID:   s.usageXUID,
+		MatchesTotal: len(matchIDs),
+		PlayerTeam:   tc.PlayerTeam,
+		TeamOf:       tc.TeamOf,
 	})
 }

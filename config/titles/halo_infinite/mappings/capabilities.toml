@@ -175,7 +175,7 @@ schema_version = 1
 # l'EXPOSITION de cette ventilation, rien d'autre des socles.
 #
 # ⚠ La capability ne suffit pas : les modes a departs aleatoires se declarent dans
-# regulation.toml ([weapon_tiers] random_start_mode_prefixes). Leur absence n'eteint rien —
+# regulation.toml ([weapon_tiers] random_start_mode_tokens). Leur absence n'eteint rien —
 # elle fait seulement qu'aucun mode n'est tenu pour aleatoire.
 "film.weapon_tiers"      = "supported"
 # L'ARTEFACT DE REJEU 2D lui-même (data/cache/replays/halo_infinite/{match}.json) : trame de

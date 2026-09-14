@@ -356,6 +356,16 @@ type ReplayDocument struct {
 	// map_id est vide, la carte hors catalogue, ou qu'aucun emplacement n'est confirmé — le
 	// client retombe alors sur les socles du film seuls.
 	MapWeaponPads *MapWeaponPads `json:"mapWeaponPads,omitempty"`
+
+	// WeaponTiers — LES REGLAGES DE NIVEAU D'ARME DU MATCH, resolus A LA REQUETE comme les
+	// deux calques de carte ci-dessus, et pour la meme raison : ils dependent du MODE, que
+	// l'artefact ne nomme pas. Le SchemaVersion ne bouge pas — rien n'a change dans l'artefact.
+	//
+	// POURQUOI LE SERVEUR LE SERT PLUTOT QUE LE CLIENT LE DEDUISE : la regle « ce mode
+	// distribue-t-il des equipements de depart au hasard » vit dans le TOML du titre, et une
+	// copie cote web a derive des sa premiere semaine (revue du 2026-09-14). Servi, il n'y a
+	// qu'une verite.
+	WeaponTiers *WeaponTiersInfo `json:"weaponTiers,omitempty"`
 	// Objectives est la liste des ACTIONS D'OBJECTIF nommées : ce que chaque joueur a
 	// accompli (capture de drapeau, retour, prise de zone, porteur stoppé), daté à la
 	// milliseconde et attribué à un xuid (cf. objectives.go).

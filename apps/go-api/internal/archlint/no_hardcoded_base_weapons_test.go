@@ -48,6 +48,12 @@ const seuilCollection = 3
 // exclu : c'est lui, la source.
 var racinesSurveillees = []string{
 	filepath.Join("..", "analysis"),
+	// LES DEUX COUCHES QUI PROJETTENT ET QUI SERVENT (ajoutees a la revue du 2026-09-14) : le
+	// ratchet ne gardait que la couche des algorithmes et le web. Or une liste d armes en dur
+	// aurait tout autant sa place — et tout autant tort — dans la projection au fil de l eau ou
+	// dans un service qui assemble une reponse.
+	filepath.Join("..", "sync", "replayartifacts"),
+	filepath.Join("..", "service"),
 	filepath.Join("..", "..", "..", "web", "src", "features"),
 }
 

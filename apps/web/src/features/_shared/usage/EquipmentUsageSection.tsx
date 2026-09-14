@@ -39,7 +39,7 @@ import { UsageCountsGrid } from './UsageCountsGrid'
 import { UsageEquipmentDonutCard } from './UsageEquipmentDonutCard'
 import { usageAvailability } from './usageAvailability'
 import { buildCountsGrid, type UsageCountsRowInput } from './usageCountsModel'
-import { buildPadTierRows, padTiersNotes } from './usagePadTiersModel'
+import { buildPadTierRows, padTiersCoverage, padTiersNotes } from './usagePadTiersModel'
 import { buildPartiesDonutModel } from './usageEquipmentPartiesModel'
 import { equipmentFamilyLabel, type UsageText } from './usageI18n'
 
@@ -242,7 +242,7 @@ function PadTierCards({ usage, t, locale }: CardContentProps) {
       title={t.blockPadTiers}
       label={t.blockPadTiers}
       titleAdornment={cardTitleWithHint(t.cardHintPadTiers)}
-      footer={measuredFooter(usage, t)}
+      footer={padTiersFooter(usage, t)}
     >
       <div className="p-3">
         <UsageCountsGrid grid={grid} />
@@ -261,9 +261,15 @@ export function EquipmentUsageSection({ usage, mode, t, locale }: EquipmentUsage
   if (availability.kind === 'hidden' || usage == null) return null
   if (availability.kind === 'empty') {
     return (
-      <SectionCard title={t.blockUnavailableTitle} label={t.blockUnavailableTitle}>
-        <p className="px-3 pb-3 pt-3 text-sm text-muted-foreground">{availability.message}</p>
-      </SectionCard>
+      <>
+        <SectionCard title={t.blockUnavailableTitle} label={t.blockUnavailableTitle}>
+          <p className="px-3 pb-3 pt-3 text-sm text-muted-foreground">{availability.message}</p>
+        </SectionCard>
+        {/* LA RANGÉE DES NIVEAUX A SA PROPRE DISPONIBILITÉ (revue du 2026-09-14). Elle vient
+            d'une AUTRE passe, sur d'autres matchs : un résumé d'usage vide ne prouve rien de
+            ses niveaux, et l'avaler ici masquerait une mesure qui existe. */}
+        <PadTierCards usage={usage} mode={mode} t={t} locale={locale} />
+      </>
     )
   }
   return (
@@ -272,5 +278,16 @@ export function EquipmentUsageSection({ usage, mode, t, locale }: EquipmentUsage
       <PadControlCards usage={usage} mode={mode} t={t} locale={locale} />
       <PadTierCards usage={usage} mode={mode} t={t} locale={locale} />
     </>
+  )
+}
+
+/** La couverture de la rangée des niveaux — LA SIENNE, jamais celle du résumé d'usage. */
+function padTiersFooter(usage: EquipmentUsageBlock, t: UsageText) {
+  const texte = padTiersCoverage(usage.pad_tiers, t)
+  if (texte == null) return undefined
+  return (
+    <div className="border-t border-border px-3 py-2">
+      <p className="text-xs text-muted-foreground">{texte}</p>
+    </div>
   )
 }
