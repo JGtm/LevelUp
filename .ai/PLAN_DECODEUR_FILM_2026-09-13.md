@@ -778,6 +778,39 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       l'époque du schéma 36 — plafond mémoire dépassé, pic **4,15 Gio**. C'est précisément
       l'ex-bombe que la borne de déroulage `f22474816` a domptée quinze schémas plus tard. Le
       verdict repose donc sur `d9781168`, le témoin que le plan nomme.
+
+- [x] 0.D.7 **Le chemin du fixture impose le découpage d'i0 du catalogue, comme la production.**
+      Ferme la découverte D6 du lot 0.D.3 bis : le golden de `60ae07c4` affirmait des
+      coordonnées que la production ne produit pas.
+      **Fait** (2026-09-14). `decodeFilmInputsForEntry` demande désormais le découpage à
+      **`filmdec.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()`** — la fonction de la
+      production (`resolveI0Layout`), pas une copie. Appeler `entry.Layout()` aurait été la
+      copie que D13 interdit : elle divergerait le jour où la règle change.
+      **L'auto-détection ne survit que là où la production l'emploie** — entrée de carte
+      invalide (`axisWidths` absent, donc `Valid()` faux) — et elle est alors **NOMMÉE dans le
+      blob** (`LayoutDetected`), pour qu'un lecteur sache que ces quanta ne viennent pas du
+      catalogue. Sur les 8 builds du corpus, aucune n'y tombe : les 8 fixtures portent
+      `LayoutDetected = false`.
+      **Contradiction blob / catalogue = erreur typée** `errGoldenInputsDecoupage` : quand le
+      fixture dit tenir son découpage du catalogue, il doit être celui que la règle tranche
+      aujourd'hui — sinon le catalogue a bougé sous le fixture et les quanta se
+      déquantifieraient avec un autre pas, silencieusement.
+      **Preuve, et elle est exactement celle qui était demandée** : **UN SEUL golden change,
+      `assembly_60ae07c4.golden`** — les 7 autres identiques à l'octet ; **UNE SEULE fixture de
+      contrat change**, `replay_schema_54_60ae07c4.json.gz` (172 773 -> 174 897 o) plus sa ligne
+      de manifeste. Sur ce film : **`x [-8,56 ; 37,04]` -> `x [-12,90 ; 27,56]`**, pistes
+      **174 -> 173**, points de grille **45 137 -> 45 133**, vies publiées **174 -> 173**.
+      L'écart n'est pas un simple facteur d'échelle : la détection rendait
+      `gate=5 region=0 13/12/11` quand le catalogue rend `gate=6 region=1 12/12/11` — les
+      champs d'axe se lisent à d'autres décalages ET la porte de région teste désormais ses DEUX
+      bits, ce qui écarte les enregistrements d'une autre AABB.
+      **Fidélité 8/8 toujours verte**, version du fixture `REPLAYINPUTS16` -> `REPLAYINPUTS17`,
+      garde recalée. Aucun code de production touché (`git diff` des `.go` hors tests : vide).
+      **Observation, non instruite** : les points de grille de ce golden passent de 45 137 à
+      45 133, soit exactement le **−4** que le constat D8 relevait sur `60ae07c4`. Les deux
+      mesures ne portent pas sur le même objet (le golden part d'entrées figées, D8 comparait
+      deux cuissons), donc rien n'est conclu — mais la coïncidence mérite d'être dite à qui
+      reprendra D8 sur ce témoin.
 - [x] 0.D.6 **Les véhicules qui disparaissent au schéma 54 (signalement utilisateur du
       2026-09-13 : « les images des véhicules peuvent disparaître sur le schéma 54 ; les versions
       ont bumpé ces derniers temps sans garder toutes les données »).** Angle mort connu de la
@@ -1522,7 +1555,7 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 | 2026-09-14 | 0.D.6 | **D5 — `coverage.flagCarries.teamBirths` 12 -> 11 sur `084a804d`, sans entrée qui le nomme.** Seule des 97 pertes du segment schéma 39 -> 54 à ne se ranger dans aucune famille déjà classée (§7.A, §7.B, ou les lignes du registre écrites en 0.D.2). `teamBirths` n'est pas un compteur d'échec : c'est un compte de naissances de drapeau d'équipe, donc une baisse est une richesse en moins. Ampleur 1 sur 12. NON TRAITÉ (règle 7). | Le lot drapeau qui reprendra les reliquats de la vague 6, ou le lot qui inventoriera les compteurs de `flagCarries` (même famille que la ligne du lot E2-bis au registre) : nommer le bump qui fait tomber la douzième naissance et dire si elle existait |
 
-| 2026-09-14 | 0.D.3 bis | **D6 — le chemin du fixture AUTO-DÉTECTE le découpage d'axe, la production l'IMPOSE depuis le catalogue, et les deux divergent sur Live Fire.** `decodeFilmInputsForEntry` laissait `ScanFilmOptions.Layout` nul, donc `DetectI0LayoutOf` décidait ; sur `60ae07c4` elle rend **[13 12 11]** quand `map_quant_bounds.json` dit **[12 12 11]**. Un bit d'écart sur X double le pas de quantification : les positions du fixture couvrent `x [-8,56 ; 37,04]` là où le catalogue donnerait `x [-0,39 ; 90,80]`. Le sous-lot a rendu le découpage EXPLICITE (`scan.Layout` posé à la valeur détectée, donc aucun changement de comportement) et l'a inscrit au blob, mais **il n'a PAS tranché laquelle des deux valeurs est juste** — le faire aurait changé le contenu cuit, hors périmètre (règle 7). Note : la mesure du lot 0.D.2 a établi que la CUISSON DE PRODUCTION, elle, impose bien le catalogue (`film_context.go`, entrée valide) ; l'écart est donc entre le fixture et la production, pas dans la production. | Le lot qui tranchera le découpage d'i0 de Live Fire (famille 1.9 ou lot de profil M2) : dire laquelle de la détection et du catalogue a raison sur cette carte, puis aligner le chemin du fixture sur la production. Tant que ce n'est pas fait, le fixture reproduit fidèlement ce que `decodeFilmInputs` rend — ce qui est exactement ce que D9 demandait |
+| 2026-09-14 | 0.D.3 bis | **D6 (FERMÉE au lot 0.D.7, 2026-09-14) — le chemin du fixture AUTO-DÉTECTAIT le découpage d'axe, la production l'IMPOSE depuis le catalogue, et les deux divergent sur Live Fire.** `decodeFilmInputsForEntry` laissait `ScanFilmOptions.Layout` nul, donc `DetectI0LayoutOf` décidait ; sur `60ae07c4` elle rend **[13 12 11]** quand `map_quant_bounds.json` dit **[12 12 11]**. Un bit d'écart sur X double le pas de quantification : les positions du fixture couvrent `x [-8,56 ; 37,04]` là où le catalogue donnerait `x [-0,39 ; 90,80]`. Le sous-lot a rendu le découpage EXPLICITE (`scan.Layout` posé à la valeur détectée, donc aucun changement de comportement) et l'a inscrit au blob, mais **il n'a PAS tranché laquelle des deux valeurs est juste** — le faire aurait changé le contenu cuit, hors périmètre (règle 7). Note : la mesure du lot 0.D.2 a établi que la CUISSON DE PRODUCTION, elle, impose bien le catalogue (`film_context.go`, entrée valide) ; l'écart est donc entre le fixture et la production, pas dans la production. | Le lot qui tranchera le découpage d'i0 de Live Fire (famille 1.9 ou lot de profil M2) : dire laquelle de la détection et du catalogue a raison sur cette carte, puis aligner le chemin du fixture sur la production. **FERMÉE** : le lot 0.D.7 a aligné le chemin du fixture sur la production — il demande le découpage à `NewFilmContextForMap(...).ImposedLayout()`, la fonction de la production et non une copie ; l auto-détection ne subsiste que là où la production l emploie et elle est alors NOMMÉE dans le blob (`LayoutDetected`), avec une erreur typée sur contradiction blob / catalogue. Seul `60ae07c4` a bougé (`x [-8,56 ; 37,04]` -> `x [-12,90 ; 27,56]`, 45 137 -> 45 133 points), les 7 autres goldens identiques à l octet. Ce qui reste HORS de ce lot et n est PAS tranché : laquelle de la détection et du catalogue dit vrai sur Live Fire — le lot a aligné le fixture sur la PRODUCTION, il n a pas jugé la production |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -1659,6 +1692,14 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 0.D.4 | `a35c9e678` | lecture sur pièces des deux règles qui composent | `build.go:526` ouvre une nouvelle vie au-delà de `lifeGapUS` (`lives.go:46`, 5 s) ; `build.go:575` refuse la vie par `DefaultMinPoints = 2` (`build.go:16` : « une track d'un seul échantillon n'est pas une trajectoire »). Les deux précèdent le constat, aucune n'est en défaut. **`grep` du paquet : AUCUN compteur de refus `minPoints`** — la perte est muette |
 | 2026-09-14 | 0.D.4 | `a35c9e678` | second témoin `60ae07c4` aux bases `48cf4905d^` et `48cf4905d` | **NON MESURABLE** : `ERREUR : cuisson reference ... exit status 13`, `plafond memoire depasse pic_gio=4,15`. Le code de l'époque du schéma 36 ne cuit pas cet ex-bombe — c'est celui que la borne `f22474816` a dompté quinze schémas plus tard. Dit, pas contourné |
 | 2026-09-14 | 0.D.4 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court et corpus gate de clôture NON APPLICABLES : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — aucun octet de production ne change (deux documents) |
+
+
+| 2026-09-14 | 0.D.7 | ce commit | `decodeFilmInputsForEntry` : le découpage vient de `filmdec.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()` — la fonction de la production, pas `entry.Layout()` | `gofmt` vide, `go vet` propre. L'auto-détection ne subsiste que sur entrée de carte invalide (règle `resolveI0Layout`), et elle est alors NOMMÉE dans le blob (`LayoutDetected`). Sur les 8 builds : `LayoutDetected = false` partout |
+| 2026-09-14 | 0.D.7 | ce commit | erreur typée `errGoldenInputsDecoupage` : blob « catalogue » dont les largeurs ne sont plus celles que la règle tranche | Le fixture ne peut plus se déquantifier avec un pas devenu faux sans le dire. Magie `REPLAYINPUTS16` -> `17`, garde recalée sur la précédente |
+| 2026-09-14 | 0.D.7 | ce commit | régénération des 8 `inputs_*.bin.gz` (un décodage à la fois), puis goldens (porte nommée) et fixtures de contrat (double porte) | **UN SEUL golden change : `assembly_60ae07c4.golden`** (6 lignes) — les 7 autres identiques à l'octet. **UNE SEULE fixture de contrat change** : `replay_schema_54_60ae07c4.json.gz` (172 773 -> 174 897 o) + sa ligne de manifeste ; total 2 110 310 o, sous le plafond de 3 Mio |
+| 2026-09-14 | 0.D.7 (chiffres) | ce commit | diff du golden `60ae07c4` | **`x [-8,56 ; 37,04]` -> `x [-12,90 ; 27,56]`** · pistes **174 -> 173** · points de grille **45 137 -> 45 133** · vies publiées **174 -> 173** · `y [13,35 ; 47,79]` -> `[15,13 ; 47,79]`, `z [-5,30 ; 7,86]` -> `[-5,30 ; 5,05]`. Détection `gate=5 region=0 13/12/11` contre catalogue `gate=6 region=1 12/12/11` : les champs d'axe changent de décalage ET la porte de région teste ses deux bits |
+| 2026-09-14 | 0.D.7 (preuve) | ce commit | `TestGoldenInputsFidelite` | **8/8 PASS, exit 0** (179,7 s) : fraîches == relues sur les 8 builds, sous la règle du catalogue |
+| 2026-09-14 | 0.D.7 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **3 126 tests, 0 échec**. `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** |
 
 ## 6. Protocole de reprise de session
 

@@ -157,7 +157,7 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS16\n"
+const goldenInputsMagic = "REPLAYINPUTS17\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -186,6 +186,18 @@ const goldenInputsMagic = "REPLAYINPUTS16\n"
 // signaler — des coordonnees FAUSSES, pas approximatives (cf. son en-tete).
 var errGoldenInputsCarte = errors.New("fixture d entrees : carte du catalogue differente")
 
+// errGoldenInputsDecoupage : le fixture dit tenir son decoupage du catalogue, et le catalogue
+// n en dit plus autant. Les quanta se dequantifieraient avec un AUTRE pas — silencieusement.
+var errGoldenInputsDecoupage = errors.New("fixture d entrees : decoupage d i0 en contradiction avec le catalogue")
+
+// imposeAxisW rend les largeurs d un decoupage impose, ou un marqueur quand il n y en a pas.
+func imposeAxisW(impose *filmdec.I0Layout) any {
+	if impose == nil {
+		return "aucun (entree de carte invalide)"
+	}
+	return impose.AxisW
+}
+
 type goldenInputs struct {
 	Film string
 	// MapModule est le module de l entree de catalogue qui a dequantifie les positions
@@ -195,13 +207,18 @@ type goldenInputs struct {
 	// pas celui du catalogue. Les deux different sur Live Fire (detecte [13 12 11], catalogue
 	// [12 12 11]) : un bit d ecart sur X double le pas de quantification, donc l etendue des
 	// coordonnees. Le porter est la seule facon de redequantifier a l identique.
-	AxisW       [3]uint
-	Positions   []filmdec.BipedPosition
-	Fire        []filmdec.FireEvent
-	Loadouts    []filmdec.KeyframeLoadout
-	Grenades    []filmdec.GrenadeThrow
-	Projectiles []filmdec.ProjectileTrack
-	Inventory   []KeyframeInventory
+	AxisW [3]uint
+	// LayoutDetected dit que le decoupage ci-dessus vient de l AUTO-DETECTION et non du
+	// catalogue. La production ne s y rabat que sur une entree de carte invalide
+	// (`resolveI0Layout`) ; le drapeau existe pour que ce repli soit NOMME dans le fixture au
+	// lieu de se confondre avec une lecture du catalogue.
+	LayoutDetected bool
+	Positions      []filmdec.BipedPosition
+	Fire           []filmdec.FireEvent
+	Loadouts       []filmdec.KeyframeLoadout
+	Grenades       []filmdec.GrenadeThrow
+	Projectiles    []filmdec.ProjectileTrack
+	Inventory      []KeyframeInventory
 	// AbilityRanks : les identites de capacite lues dans les paquets delta (i48). Elles sont
 	// DANS le fixture parce que l assemblage les consomme — sans elles, le golden verrouillerait
 	// un document dont les capacites se limitent a la fenetre 16..23 des images-cles.
@@ -426,6 +443,7 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 	for a := 0; a < 3; a++ {
 		w.u(uint64(g.AxisW[a]))
 	}
+	w.bool8(g.LayoutDetected)
 	w.u(g.ClockOriginUS)
 
 	// Table des slots : un slot tient sur 13 bits, mais un film n en emploie qu une centaine.
@@ -945,6 +963,17 @@ func decodeGoldenInputs(blob []byte, entry filmdec.MapQuantEntry) (*goldenInputs
 	for a := 0; a < 3; a++ {
 		g.AxisW[a] = uint(r.u())
 	}
+	g.LayoutDetected = r.bool8()
+	// CONTRADICTION BLOB / CATALOGUE = ERREUR TYPEE. Quand le fixture dit tenir son decoupage
+	// du CATALOGUE, il doit etre celui que la regle de production tranche aujourd hui : sinon le
+	// catalogue a bouge sous le fixture, et les quanta se dequantifieraient avec un autre pas.
+	if !g.LayoutDetected {
+		if impose := filmdec.NewFilmContextForMap(nil, &entry, nil).ImposedLayout(); impose == nil ||
+			impose.AxisW != g.AxisW {
+			return nil, fmt.Errorf("%w : fixture au decoupage %v, catalogue %v",
+				errGoldenInputsDecoupage, g.AxisW, imposeAxisW(impose))
+		}
+	}
 	// LE DECOUPAGE VIENT DU BLOB, LES BORNES DU CATALOGUE : le premier dit comment le film a
 	// quantifie, le second ou la carte commence et finit. Melanger les deux sources est ce qui
 	// rendait des coordonnees fausses sur Live Fire.
@@ -1272,7 +1301,7 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 // d octets alors que le probleme est une version. Le test relit le corps COURANT precede de la
 // magie PRECEDENTE : la seule reponse acceptable est le refus de version.
 func TestGoldenInputsVersionGuard(t *testing.T) {
-	const previousMagic = "REPLAYINPUTS15\n"
+	const previousMagic = "REPLAYINPUTS16\n"
 	if previousMagic == goldenInputsMagic {
 		t.Fatal("la magie precedente et la courante sont identiques : le test ne prouve plus rien")
 	}
@@ -1356,15 +1385,36 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 	wr := entry.Range()
 	scan := filmdec.DefaultScanFilmOptions()
 	scan.WorldRange = &wr
-	// LE DECOUPAGE D AXE DEVIENT EXPLICITE (lot 0.D.3 bis). Le balayage l auto-detectait quand
-	// l option restait nulle ; le poser ne change RIEN a ce qu il lit — c est la meme valeur,
-	// par la meme fonction — mais il devient NOMME, donc inscriptible au fixture. Sans lui, la
-	// relecture ne saurait pas avec quel pas les quanta ont ete produits.
-	lay, _, layErr := filmdec.DetectI0Layout(dir)
-	if layErr != nil {
-		return nil, fmt.Errorf("decoupage i0 de %s : %w", dir, layErr)
+	// LE DECOUPAGE D i0 SUIT LA REGLE DE LA PRODUCTION, PAR LA MEME FONCTION (lot 0.D.7).
+	//
+	// CE QUE CELA CORRIGE. Ce chemin AUTO-DETECTAIT le decoupage (`ScanFilmOptions.Layout`
+	// laisse nul), alors que la cuisson le fait trancher par `resolveI0Layout` — le catalogue
+	// quand l entree est valide, l auto-detection en repli. Sur Live Fire les deux DIVERGENT :
+	// detection `gate=5 region=0 13/12/11`, catalogue `gate=6 region=1 12/12/11`. Meme longueur
+	// totale d i0, mais un bit de moins sur X au catalogue — donc un pas de quantification
+	// DOUBLE a la detection — et une porte de region qui ne testait qu un bit, laissant entrer
+	// des enregistrements d une AUTRE AABB. Le golden de `60ae07c4` affirmait donc des
+	// coordonnees que la production ne produit pas.
+	//
+	// ON N APPELLE PAS `entry.Layout()` ICI : ce serait une COPIE de la regle, qui divergerait
+	// le jour ou la production change d avis. On demande la regle elle-meme.
+	impose := filmdec.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
+	detecte := impose == nil
+	if impose != nil {
+		scan.Layout = impose
 	}
-	scan.Layout = &lay
+	// L AUTO-DETECTION NE SURVIT QUE LA OU LA PRODUCTION L EMPLOIE — entree de carte invalide
+	// (`axisWidths` absent, cf. resolveI0Layout). Elle est alors NOMMEE dans le fixture, pour
+	// qu un lecteur sache que ces quanta ne viennent pas du catalogue.
+	lay := filmdec.I0Layout{}
+	if impose != nil {
+		lay = *impose
+	} else {
+		var layErr error
+		if lay, _, layErr = filmdec.DetectI0Layout(dir); layErr != nil {
+			return nil, fmt.Errorf("decoupage i0 de %s : %w", dir, layErr)
+		}
+	}
 	scan.CaptureDirs = true
 	// MEME GESTE QUE LA PRODUCTION (BuildFromFilm) : les teleportations se lisent AVANT les
 	// positions, parce qu elles exemptent le filtre de vitesse (decision D2), et AVEC l entree
@@ -1377,7 +1427,7 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 		return nil, err
 	}
 	g := &goldenInputs{
-		Film: film, MapModule: entry.Module, AxisW: lay.AxisW,
+		Film: film, MapModule: entry.Module, AxisW: lay.AxisW, LayoutDetected: detecte,
 		Positions: pos, Translocations: translocs,
 	}
 	if g.Fire, err = filmdec.ScanFilmFireEvents(dir); err != nil {
