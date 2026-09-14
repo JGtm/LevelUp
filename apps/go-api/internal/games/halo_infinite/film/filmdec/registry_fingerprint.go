@@ -4,12 +4,13 @@ package filmdec
 //
 // LE PROBLEME QU'ELLE RESOUT. Toute la grammaire de ce decodeur est indexee par le registre
 // du film (`chunk_00`) : les noms de composants routent le dispatch, leur ORDRE est l'index de
-// bit du masque de presence. Le registre est bit-a-bit IDENTIQUE sur tous les films mesures a
-// ce jour — trois films, trois cartes differentes (lot table ECS, 2026-08-18). Cette stabilite
-// est une propriete du BUILD DU JEU, pas du format : une mise a jour de Halo Infinite peut
-// reordonner, ajouter ou renommer des composants, et rien dans le decodeur ne le dirait. Les
-// symptomes seraient des desalignements silencieux, attribues a une mauvaise grammaire de
-// composant pendant des jours.
+// bit du masque de presence. Le registre est bit-a-bit IDENTIQUE d'un film a l'autre DANS UN
+// MEME BUILD — trois films, trois cartes differentes (lot table ECS, 2026-08-18) — et il CHANGE
+// d'un build a l'autre (49 blocs / 1 031 entrees avant HI_1_12_0, 50 / 1 067 ensuite ; mesure du
+// lot 1.2 sur les sept bobines par build). Cette stabilite est une propriete du BUILD DU JEU,
+// pas du format : une mise a jour de Halo Infinite peut reordonner, ajouter ou renommer des
+// composants, et rien dans le decodeur ne le dirait. Les symptomes seraient des desalignements
+// silencieux, attribues a une mauvaise grammaire de composant pendant des jours.
 //
 // CE QUE L'EMPREINTE EST. Un FNV-1a 64 bits sur la concatenation, DANS L'ORDRE DU CHUNK, des
 // ENTREES NOMMEES : les quatre octets du NIVEAU (u32 LE, entree+0x100) puis les octets du NOM.

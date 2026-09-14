@@ -54,4 +54,9 @@
 #               inchangee, empreinte differente » — soit faire taire le ratchet dans le cas
 #               precis qui le justifie. La forme de `GrammarRev` admet donc un `.N` par LOT du
 #               meme jour, et `grammar_rev.go` le dit.
-grammar-2026-09-14.2	7a9404b971cf2d1389fef6ddd91adf85ece6eef8009ff37bd9349265a17be077
+#   2026-09-14  grammar-2026-09-14.2  lot 1.2 (suite, MEME LOT donc MEME REVISION) : l en-tete de
+#               `registry_fingerprint.go` affirmait encore « le registre est bit-a-bit IDENTIQUE
+#               sur tous les films mesures a ce jour » deux ecrans au-dessus du commentaire qui
+#               dit l inverse (49 blocs avant HI_1_12_0, 50 ensuite). Correction de texte SEULE :
+#               aucun octet lu ne change, l empreinte bouge parce qu elle hache les octets.
+grammar-2026-09-14.2	89d2ecac348445c0148fd9926778cf28244d2acf776bceb2480dfb525e9d3160
