@@ -40,5 +40,14 @@
 #               reecriture des imports d aterrissage de G (analyse -> games/halo_infinite/film)
 #               change la mise en forme du fichier, pas le decodage. Revision INCHANGEE, empreinte
 #               seule recopiee.
+#   2026-09-14  killsource-2026-09-12 -> killsource-2026-09-14. Lot 1.8 : LA TABLE DES JOUEURS DU
+#               FILM devient la source du lien `indice -> joueur` (film_table.go), l inference par
+#               les votes du kill-feed devient le repli, compte. Les lignes produites bougent par
+#               deux canaux : l identite des indices (mesure du 2026-09-14 sur 30 films et 8
+#               builds : 314 accords sur 322 sieges ; SIX des huit ecarts sont des joueurs que le
+#               kill-feed ne nomme pas, l inference leur donnait le nom d un autre) et la porte de
+#               publication ligne par ligne (un film entierement lu n a plus rien
+#               d interchangeable : la marge est SANS OBJET, pas nulle). Backlog de redecodage du
+#               parc : geste de PRODUCTION, reserve au pilote sur signal (D6 du plan).
 #
-killsource-2026-09-12	4e7cf973ccafb384a8c8c03bdaabc21a722c8df5fbb73570db9c763aafcc8dfc
+killsource-2026-09-14	729624c1775f3eccd85bd81e1bd86a9b072e26f900feec3e62ec4574a2075181
