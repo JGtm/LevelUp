@@ -22,4 +22,9 @@
 #               aussi l empreinte, et la branche « revision changee sans que la grammaire bouge »
 #               etait du code mort. Revision INCHANGEE : aucune grammaire n a bouge, seul
 #               l ensemble hache s est corrige.
-grammar-2026-09-13	3c7757203d6fb6466aa9685bf8f71ded7676367fdcaba465d8fc1101d7f9063e
+#   2026-09-14  grammar-2026-09-14  lot 1.1 : l EQUIPE d un evenement du pied se lit a l octet 37,
+#               plus a l octet 55 (665/665 sur quatorze films). LA REVISION MONTE SANS QUE
+#               L EMPREINTE BOUGE, et ce n est pas une anomalie : la grammaire corrigee vit
+#               dans `internal/analysis/objectiveevents`, qui n est PAS dans l ensemble hache
+#               (filmdec + killsource seulement) — decouverte D1 (1.1) du PLAN_DECODEUR_FILM, §4.
+grammar-2026-09-14	3c7757203d6fb6466aa9685bf8f71ded7676367fdcaba465d8fc1101d7f9063e
