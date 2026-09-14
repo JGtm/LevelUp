@@ -270,10 +270,9 @@ describe('buildSunburstModel — regroupement des petites tranches', () => {
     expect(grenade).toHaveLength(2)
     expect(grenade[1].tipTitle).toBe('class:grenade · autres:1')
 
-    // Étiquettes à laisse : une par tranche RENDUE, plus aucune pour les fondues.
+    // Étiquettes à laisse : les tranches GARDÉES, et elles seules — ni les fondues, ni le
+    // regroupement qui les porte (il se lit au survol).
     expect(model.callouts.map((c) => c.label).sort()).toEqual([
-      'autres:1',
-      'autres:3',
       'role:automatic',
       'role:grenade_frag',
       'role:precision',

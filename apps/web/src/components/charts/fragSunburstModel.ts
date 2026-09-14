@@ -216,7 +216,13 @@ function buildArcs(
           tipSub: `${labels.formatValue(t.kills)} · ${labels.formatShare(t.kills)}`
             + (t.regroupees.length > 0 ? ` — ${t.regroupees.join(', ')}` : ''),
         })
-        roleSeeds.push({ label: t.label, value: t.kills, color: col, mid: (ra0 + ra1) / 2, classKey: c.class })
+        // ÉTIQUETTE À LAISSE POUR LES SEULES TRANCHES GARDÉES : le regroupement n'en porte
+        // pas. Une étiquette « Autres (N armes) » de 0,5 % reviendrait à remplacer un nom
+        // illisible par un mot vide, au même endroit encombré — le regroupement se lit au
+        // SURVOL, qui nomme ce qu'il contient.
+        if (t.regroupees.length === 0) {
+          roleSeeds.push({ label: t.label, value: t.kills, color: col, mid: (ra0 + ra1) / 2, classKey: c.class })
+        }
       })
     } else {
       arcs.push({
