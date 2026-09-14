@@ -20,6 +20,17 @@ const CALLOUT_Y_BOT = CY + 96
 const KNEE_DX = 58
 export const DIM_OPACITY = 0.22
 
+/**
+ * PART MINIMALE D'UNE TRANCHE DE L'ANNEAU EXTERNE (décision utilisateur 2026-09-14).
+ *
+ * Sous ce seuil, une tranche ne se voit plus : elle vaut quelques degrés d'arc et son
+ * étiquette à laisse vient s'empiler sur celles de ses voisines — l'anneau finissait par
+ * dire moins que sa légende. Les tranches sous le seuil ne DISPARAISSENT pas pour autant :
+ * elles sont regroupées, dans LEUR classe, en une seule tranche « Autres (N armes) » qui
+ * porte leur somme et les nomme au survol. L'anneau reste donc une partition exacte de 100 %.
+ */
+export const OUTER_RING_MIN_SHARE = 0.05
+
 function polar(r: number, angleDeg: number): [number, number] {
   const t = ((angleDeg - 90) * Math.PI) / 180
   return [CX + r * Math.cos(t), CY + r * Math.sin(t)]
@@ -48,6 +59,11 @@ export interface FragSunburstLabels {
   roleLabel: (role: string) => string
   formatValue: (n: number) => string
   formatShare: (n: number) => string
+  /**
+   * Libellé de la tranche de REGROUPEMENT de l'anneau externe : « Autres (N armes) ».
+   * Reçoit le NOMBRE de tranches regroupées (pluriel porté par le manifeste i18n).
+   */
+  othersLabel: (count: number) => string
   /** Locale d'affichage courante — choisit label/label_en pour les rôles OBJET (D2). */
   locale: Locale
 }
@@ -96,6 +112,60 @@ interface RoleArcSeed {
 }
 
 
+/** Une tranche de l'anneau externe : un rôle seul, ou le regroupement « Autres ». */
+interface TrancheExterne {
+  /** Fragment de clé SVG — le rôle, ou la sentinelle du regroupement. */
+  key: string
+  label: string
+  kills: number
+  /** Noms des tranches fondues ici (vide pour une tranche ordinaire) — cités au survol. */
+  regroupees: string[]
+}
+
+/**
+ * regrouperPetitesTranches — garde les rôles dont la part atteint {@link OUTER_RING_MIN_SHARE}
+ * et fond les autres, DANS LEUR CLASSE, en une tranche « Autres (N armes) » posée en fin de
+ * classe.
+ *
+ * POURQUOI DANS LA CLASSE et pas une tranche « Autres » unique pour tout l'anneau : l'anneau
+ * externe est la subdivision de l'anneau interne. Une tranche qui enjamberait deux classes
+ * romprait cette lecture — et la couleur, qui est celle de la classe parente, n'aurait plus
+ * de sens. Un regroupement par classe garde les deux anneaux alignés et la somme exacte.
+ *
+ * Une seule tranche sous le seuil est regroupée COMME LES AUTRES : la règle ne se négocie pas
+ * au cas par cas (son nom reste lisible au survol), sans quoi le seuil ne dirait plus rien.
+ */
+function regrouperPetitesTranches(
+  roles: FragClassEntry['roles'],
+  total: number,
+  labels: FragSunburstLabels,
+): TrancheExterne[] {
+  const gardees: TrancheExterne[] = []
+  const petites: TrancheExterne[] = []
+  for (const r of roles ?? []) {
+    // Libellé résolu UNE fois (rôle canonique traduit, ou nom d'engin servi par
+    // l'API pour les classes véhicule/tourelle) — cf. fragRoleDisplayLabel.
+    const tranche: TrancheExterne = {
+      key: r.role,
+      label: fragRoleDisplayLabel(r, labels.locale, labels.roleLabel),
+      kills: r.kills,
+      regroupees: [],
+    }
+    if (r.kills / total >= OUTER_RING_MIN_SHARE) gardees.push(tranche)
+    else petites.push(tranche)
+  }
+  if (petites.length === 0) return gardees
+  return [
+    ...gardees,
+    {
+      key: 'autres',
+      label: labels.othersLabel(petites.length),
+      kills: petites.reduce((a, t) => a + t.kills, 0),
+      regroupees: petites.map((t) => t.label),
+    },
+  ]
+}
+
 /** Construit les arcs (classe + rôle/feuille) et collecte les rôles à étiqueter. */
 function buildArcs(
   classes: FragClassEntry[],
@@ -125,27 +195,28 @@ function buildArcs(
     })
     const roles = c.roles ?? []
     if (roles.length > 0) {
+      // Les tranches sous le seuil sont FONDUES en une seule, à la fin de leur classe :
+      // l'anneau garde la même somme, et l'étiquette de chaque tranche gardée reste lisible.
+      const tranches = regrouperPetitesTranches(roles, total, labels)
       let rc = a0
-      roles.forEach((r, i) => {
-        const rs = (r.kills / total) * 360
+      tranches.forEach((t, i) => {
+        const rs = (t.kills / total) * 360
         const ra0 = rc
         const ra1 = rc + rs
         rc = ra1
-        const col = colors.roleColor(c.class, i, roles.length)
-        // Libellé résolu UNE fois (rôle canonique traduit, ou nom d'engin servi par
-        // l'API pour les classes véhicule/tourelle) — cf. fragRoleDisplayLabel.
-        const roleText = fragRoleDisplayLabel(r, labels.locale, labels.roleLabel)
+        const col = colors.roleColor(c.class, i, tranches.length)
         arcs.push({
-          key: `r-${c.class}-${r.role}`,
+          key: `r-${c.class}-${t.key}`,
           d: arcPath(R1, R2, ra0, ra1),
           fill: col,
           classKey: c.class,
           kind: 'role',
           tipColor: col,
-          tipTitle: `${labels.classLabel(c.class)} · ${roleText}`,
-          tipSub: `${labels.formatValue(r.kills)} · ${labels.formatShare(r.kills)}`,
+          tipTitle: `${labels.classLabel(c.class)} · ${t.label}`,
+          tipSub: `${labels.formatValue(t.kills)} · ${labels.formatShare(t.kills)}`
+            + (t.regroupees.length > 0 ? ` — ${t.regroupees.join(', ')}` : ''),
         })
-        roleSeeds.push({ label: roleText, value: r.kills, color: col, mid: (ra0 + ra1) / 2, classKey: c.class })
+        roleSeeds.push({ label: t.label, value: t.kills, color: col, mid: (ra0 + ra1) / 2, classKey: c.class })
       })
     } else {
       arcs.push({
