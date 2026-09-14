@@ -1,3 +1,53 @@
+## [2026-09-15] Chantier decodeur — lot 1.8 (le kill feed prend la table du film) — Complete (feat/decfilm-18 fusionnee dans feat/recherche-decodeur-film, d473cbd79)
+
+**Decision technique principale.** Dans `killsource`, la table des joueurs de `chunk_00`
+(`filmdec.ReadFilmIdentity` + `ReadPlayerTable`, lot 1.5) devient la SOURCE du lien
+indice -> joueur ; la voie d'inference — qui n'etait PAS `resolvePlayerIndices` (voie des tirs et
+des touches, sous deux revisions distinctes, D3 (1.8)) mais `killsource/bijection.go` (matrice de
+votes du kill feed resolue par l'algorithme hongrois puis une montee locale) — devient le REPLI
+nomme et compte (5 films sans section, films en contradiction), `BijectionDetermined` publie
+ligne par ligne un film entierement lu ; compteurs de provenance dans les stats de collecte.
+`KillSourceDecoderRev` `killsource-2026-09-12` -> `killsource-2026-09-14` (le garde-rail avait
+rougi de lui-meme) ; 1 384 matchs du parc portent une revision anterieure (oracle base en lecture
+seule) : backlog HORS LOT, `[!]` renvoye au bloc « Cloture M1 » (go V9). `GrammarRev` INCHANGEE
+(`.6`) avec justification ecrite dans le golden : aucune grammaire ne bouge (pas une largeur, pas
+un cadre, pas un lecteur d'octets), seul le CONSOMMATEUR change et `KillSourceDecoderRev` porte ce
+changement (150 -> 158 fichiers haches, `film_table.go` neuf) ; accepte par le pilote.
+`SchemaVersion` 57 inchange (aucun octet cuit ne change).
+
+**Resultats observes.** Mesure avant / apres (30 films, 8 builds) : 314 accords sur 322 sieges
+entre la table et la bijection inferee ; les 8 ecarts en deux familles, aucune contradiction
+entre deux lectures fiables : 6 gamertags ABSENTS du kill feed (le feed ne nomme que qui tue ou
+meurt ; l'inference mettait un autre joueur sur leur indice — `FlukiestGolf` 111fa685 i10,
+`MarshallG6443` e5adf7b2 i13, `manistoff` a521164d i18, `Iskra 20252993` 11de8353 i23,
+`probablybxllets` 1c5c10cc i22, `Alpha122092` 23ffd885 i4) et 2 sur des films a marge de
+bijection nulle (l'inference se declarait elle-meme ambigue). Les 13 films a vacant intercale
+rendent 119/123 : c'est le RANG ABSOLU que le dead-state emploie (D3 (1.5) fermee a moitie).
+Defaut trouve par la mesure : `isBotIndex` lisait « present dans `pin` », que la table remplit
+desormais aussi -> les 8 joueurs passaient pour des bots, la mini-bobine tombait de 10 lignes
+publiees a 2 ; garde-rail pose. Gates : gofmt vide, vet 0, 13 paquets ok, integration
+`-tags=integration -p 1 ./internal/sync/killcollector/` exit 0 (12,97 s), lint 0 issue ; regime
+court : 10/10 differents a la SEULE etape `killsource` (510 lignes sur 520 identiques a l'octet),
+classees puis re-figees, 10/10 identiques ; corpus gate `--base c6a3b751c` : 0 perte sur 13/13,
+exit 0, schema 57 -> 57 — et 0 gain, ecrit plutot que tu : la ou l'inference se trompait, les
+joueurs n'ont aucune ligne au kill feed ; le benefice de `BijectionDetermined` est demontre par
+construction et par test unitaire, pas par le corpus (les deux films qui l'auraient montre ne
+sont dans aucun des deux corpus). Verification du pilote (V8) : revision, table en source,
+`BijectionDetermined`, schema et GrammarRev, aucun test renomme, golden killsource +7 lignes,
+justification du golden de grammaire lue.
+Decouvertes §4 : D1 (1.8) rang absolu confirme ; D2 deuxieme copie de la traduction erreur ->
+cause (la troisieme impose la centralisation) ; D3 `resolvePlayerIndices` rend 143/143 face a la
+table (son « 77 % » mesurait son accord avec la bijection, pas sa lecture ; report des tirs /
+touches maintenu) ; D4 l'observateur d'equivalence hache le `Result` entier : un champ ajoute
+fait rougir 10 films sans qu'un octet publie ne bouge (a traiter avec D2 (1.3) dans M2).
+
+**Prochaine etape.** Push + CI ; famille 1.9 : 1.9.0 (registre des replis + ratchet, zero
+difference) puis les conversions dans l'ordre du plan (1.9.1 .. 1.9.14) ; revue de jalon a la
+cloture de M1 sur `783ae680d..HEAD`, fusion feat/v75, recuisson du parc, backlog killsource
+(1 384 matchs), re-figeage unique du corpus (go V9).
+
+---
+
 ## [2026-09-15] Chantier decodeur — lot 1.7 (l'equipe reelle dans l'artefact, sans base ; le film ecrit aussi l'index de joueur) — Complete (feat/decfilm-17 fusionnee dans feat/recherche-decodeur-film, c6a3b751c)
 
 **Decision technique principale.** `filmdec.ScanPlayerTeams(fc)` lit, dans les records
