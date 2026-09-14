@@ -54,15 +54,14 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
 ## 3. Étapes
 
 ### Étape 0 — Mesure de couverture (diagnostic, aucun code de production)
-- [ ] 0.1 Test de recherche jetable (`*_research_test.go`, précédent lot 6.3) sur les artefacts
+- [x] 0.1 Test de recherche jetable (`*_research_test.go`, précédent lot 6.3) sur les artefacts
   locaux `data/cache/replays/halo_infinite/*.json` : pour chaque socle du match, l'emplacement
   confirmé à < 1 m et sa famille ; compter par carte : confirmés `rack` / `power` / `powerup`,
   non confirmés. Sortie brute au rapport.
-- [ ] 0.2 Contrôle croisé rôle × famille (tableau arme × niveau) ; lister les incohérences.
-- [ ] 0.3 Cartes absentes de `map_weapon_pads.json` (Forge, cartes récentes) : les nommer avec
+- [x] 0.2 Contrôle croisé rôle × famille (tableau arme × niveau) ; lister les incohérences.
+- [x] 0.3 Cartes absentes de `map_weapon_pads.json` (Forge, cartes récentes) : les nommer avec
   leur nombre de matchs ; décider (utilisateur) si on complète la référence avant de livrer.
-- Gate : rapport `.ai/V7.5/RAPPORT_NIVEAUX_ARMES_<date>.md` ; verdict « couverture suffisante »
-  ou « référence à compléter d'abord ».
+- Gate : rapport `.ai/V7.5/RAPPORT_NIVEAUX_ARMES_2026-09-14.md` (`24f3c813c`). VERDICT : couverture suffisante — 76 artefacts, 76 cartes toutes au catalogue, 669 socles confirmés (466 râteliers, 144 puissance, 48 bonus), 11 non confirmés (1,64 %), « Non classé » = 2,95 % des prises (85/2 881, dont 52 sur Flood Gulch ; 1,28 % hors cette carte). 17 matchs sans aucun socle publié (mode qui n'allume rien) = absence de mesure à dire. Croisé rôle × famille : 70 écarts nominaux (Hydra, Needler, Sentinel Beam, Shock Rifle sur râteliers → D1 confirmée), 3 inversions réelles (0,45 %). « Base » se lit du film : Assassin 94,4 % sur AR/Sidekick/BR75, BTB 92,6 %, Super Fiesta plat — lire la PREMIÈRE émission `loadouts` par slot (tout le canal dilue à 85,6 %).
 
 ### Étape 1 — Go : la famille voyage avec l'emplacement (requête)
 - [ ] 1.1 `film/replay/map_weapon_pads.go` : `MapWeaponPadDTO.Family` (`rack` | `power` |
@@ -102,4 +101,5 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
 ## 4. Découvertes
 
 ## 5. Journal
-- 2026-09-13 — Plan écrit sur demande utilisateur ; non démarré.
+- 2026-09-13 — Plan écrit sur demande utilisateur.
+- 2026-09-14 — Décision utilisateur « c'est à faire » ; étape 0 exécutée et fusionnée ; étapes 1-4 lancées.
