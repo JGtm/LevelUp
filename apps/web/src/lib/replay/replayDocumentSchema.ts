@@ -159,6 +159,7 @@ export const replayDocumentSchema = z.strictObject({
   weaponChanges: calque<Elem<'weaponChanges'>>(),
   weaponLabels: table<Valeur<'weaponLabels'>>(),
   weaponPads: calque<Elem<'weaponPads'>>(),
+  weaponTiers: bloc<NonNullable<ReplayDocument['weaponTiers']>>(),
   zoneStates: calque<Elem<'zoneStates'>>(),
 })
 

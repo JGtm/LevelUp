@@ -31,6 +31,20 @@ export interface UsageText {
   /** Titres des trois cartes de section. */
   blockEquipment: string
   blockPadControl: string
+  /**
+   * LES NIVEAUX D'ARME (2026-09-14) : le titre de la rangée, les cinq libellés de niveau et
+   * les trois notes de mesure. Le niveau vient de la CARTE (emplacement Forge croisé au socle)
+   * et de l'équipement de départ du film — jamais du nom ni du rôle de l'arme.
+   */
+  blockPadTiers: string
+  cardHintPadTiers: string
+  padTierLabels: Record<'base' | 'terrain' | 'puissance' | 'bonus' | 'non_classe', string>
+  /** Matchs mesurés dont le film n'a publié AUCUN socle (le mode n'en allume aucun). */
+  padTierNoPadsFmt: (n: number) => string
+  /** Matchs à socles dont la carte n'est pas dans la référence : niveaux non établis. */
+  padTierUnmeasuredFmt: (n: number) => string
+  /** Matchs à départs aléatoires : pas d'arme de base à distinguer. */
+  padTierRandomStartsFmt: (n: number) => string
   blockObjectives: string
   /** Titre de la carte unique d'état vide (bloc indisponible ou sans film). */
   blockUnavailableTitle: string
@@ -195,6 +209,22 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
   fr: {
     blockEquipment: "Usages d'équipement",
     blockPadControl: 'Contrôle des armes spéciales',
+    blockPadTiers: 'Contrôle des armes par niveau',
+    cardHintPadTiers:
+      "Les mêmes prises de socle, rangées par niveau d'arme. Le niveau vient de la CARTE : l'emplacement que le fichier de la carte pose — râtelier ou socle de puissance — confirmé par le socle du match ; et du film pour les armes de début de vie. Jamais du nom de l'arme : la même Hydra est de terrain sur une carte et de puissance sur une autre. Survolez un niveau pour le détail par arme.",
+    padTierLabels: {
+      base: 'Armes de base',
+      terrain: 'Armes de terrain',
+      puissance: 'Armes de puissance',
+      bonus: 'Socles de bonus',
+      non_classe: 'Emplacement non identifié',
+    },
+    padTierNoPadsFmt: (n) =>
+      `Sur ${n} match${n > 1 ? 's' : ''}, le mode n'allume aucun socle : il n'y a rien à classer.`,
+    padTierUnmeasuredFmt: (n) =>
+      `Sur ${n} match${n > 1 ? 's' : ''}, les emplacements de la carte ne sont pas dans la référence : le niveau n'a pas pu être établi.`,
+    padTierRandomStartsFmt: (n) =>
+      `Sur ${n} match${n > 1 ? 's' : ''}, les équipements de début de vie sont tirés au sort : pas d'arme de base à distinguer.`,
     blockObjectives: 'Objectifs par rôle et par famille',
     blockUnavailableTitle: "Usages d'équipement, armes spéciales et objectifs",
     cardHintCadences:
@@ -312,6 +342,22 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
   en: {
     blockEquipment: 'Equipment usage',
     blockPadControl: 'Power weapon control',
+    blockPadTiers: 'Weapon control by level',
+    cardHintPadTiers:
+      'The same pad pickups, sorted by weapon level. The level comes from the MAP: the spot the map file places — rack or power pedestal — confirmed by the match pad; and from the film for spawn weapons. Never from the weapon name: the same Hydra is a map weapon on one map and a power weapon on another. Hover a level for the per-weapon detail.',
+    padTierLabels: {
+      base: 'Starting weapons',
+      terrain: 'Map weapons',
+      puissance: 'Power weapons',
+      bonus: 'Power-up pads',
+      non_classe: 'Unidentified spot',
+    },
+    padTierNoPadsFmt: (n) =>
+      `In ${n} match${n > 1 ? 'es' : ''}, the mode lights no pad at all: there is nothing to sort.`,
+    padTierUnmeasuredFmt: (n) =>
+      `In ${n} match${n > 1 ? 'es' : ''}, the map's weapon spots are not in the reference: the level could not be established.`,
+    padTierRandomStartsFmt: (n) =>
+      `In ${n} match${n > 1 ? 'es' : ''}, spawn loadouts are handed out at random: there is no starting weapon to single out.`,
     blockObjectives: 'Objectives by role and family',
     blockUnavailableTitle: 'Equipment, power weapons and objectives',
     cardHintCadences:

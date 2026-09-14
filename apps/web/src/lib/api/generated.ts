@@ -6192,6 +6192,7 @@ export interface components {
             matches_measured: number;
             /** Format: int64 */
             matches_total: number;
+            pad_tiers?: components["schemas"]["SessionUsagePadTiersBlock"];
             players?: components["schemas"]["EquipmentUsagePlayerLine"][] | null;
             tracked_players?: components["schemas"]["SessionUsageSquadPlayer"][] | null;
             unavailable_reason?: string;
@@ -7852,6 +7853,7 @@ export interface components {
             zones?: components["schemas"]["ObjectiveZoneDTO"][] | null;
         };
         MapWeaponPadDTO: {
+            family: string;
             /** Format: int64 */
             pad: number;
             /** Format: float */
@@ -10278,6 +10280,7 @@ export interface components {
                 [key: string]: components["schemas"]["WeaponLabel"];
             };
             weaponPads?: components["schemas"]["WeaponPad"][] | null;
+            weaponTiers?: components["schemas"]["WeaponTiersInfo"];
             zoneStates?: components["schemas"]["ZoneState"][] | null;
         };
         ResolveResult: {
@@ -10846,6 +10849,7 @@ export interface components {
             metrics?: components["schemas"]["SessionUsageMetric"][] | null;
             objectives?: components["schemas"]["SessionObjectivesBlock"];
             pad_families?: components["schemas"]["SessionUsagePadFamily"][] | null;
+            pad_tiers?: components["schemas"]["SessionUsagePadTiersBlock"];
             /** Format: int64 */
             pad_unnamed_total?: number;
             powerup_pickups?: components["schemas"]["SessionUsagePowerup"][] | null;
@@ -10924,6 +10928,51 @@ export interface components {
             team_share_of_lobby_pct?: number;
             /** Format: double */
             team_total?: number;
+        };
+        SessionUsagePadTier: {
+            /** Format: double */
+            lobby_total: number;
+            /** Format: double */
+            player_per_match?: number;
+            /** Format: double */
+            player_share_of_lobby_pct?: number;
+            /** Format: double */
+            player_share_of_team_pct?: number;
+            /** Format: double */
+            player_total: number;
+            /** Format: double */
+            team_share_of_lobby_pct?: number;
+            /** Format: double */
+            team_total?: number;
+            tier: string;
+            weapons?: components["schemas"]["SessionUsagePadTierWeapon"][] | null;
+        };
+        SessionUsagePadTierWeapon: {
+            family_key: string;
+            family_label?: string;
+            /** Format: double */
+            lobby_pickups: number;
+            /** Format: double */
+            player_pickups: number;
+        };
+        SessionUsagePadTiersBlock: {
+            /** Format: double */
+            lobby_parity_pct?: number;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_random_starts: number;
+            /** Format: int64 */
+            matches_tiers_established: number;
+            /** Format: int64 */
+            matches_total: number;
+            /** Format: int64 */
+            matches_with_pads: number;
+            /** Format: double */
+            team_of_lobby_parity_pct?: number;
+            /** Format: double */
+            team_parity_pct?: number;
+            tiers?: components["schemas"]["SessionUsagePadTier"][] | null;
         };
         SessionUsagePowerup: {
             family_key: string;
@@ -13008,6 +13057,9 @@ export interface components {
             p10: number;
             /** Format: double */
             p90: number;
+        };
+        WeaponTiersInfo: {
+            randomStarts: boolean;
         };
         WinLossPoint: {
             /** Format: int64 */

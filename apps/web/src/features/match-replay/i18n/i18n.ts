@@ -398,6 +398,18 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       barTipFmt: (player, team, weapon, count) =>
         `${player} (${team}) — ${weapon} : ${count} prise${count > 1 ? 's' : ''}`,
       unnamedFmt: (count) => `+ ${count} sans nom`,
+      tierLabels: {
+        base: 'Armes de base',
+        ground: 'Armes de terrain',
+        power: 'Armes de puissance',
+        powerup: 'Socles de bonus',
+        unclassified: 'Emplacement non identifié',
+      },
+      tierSubtotalFmt: (count) => `${count} prise${count > 1 ? 's' : ''}`,
+      randomStartsNote:
+        "Départs aléatoires : ce mode distribue les équipements de début de vie au hasard, il n'y a donc pas d'arme de base à distinguer.",
+      tiersUnmeasuredNote:
+        "Les emplacements de cette carte ne sont pas dans la référence : le niveau de chaque arme n'a pas pu être établi. Les prises restent comptées.",
     },
     collapsedColumnsShowFmt: (count) => `Voir plus (${count})`,
     collapsedColumnsHide: 'Replier',
@@ -817,6 +829,18 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       barTipFmt: (player, team, weapon, count) =>
         `${player} (${team}) — ${weapon}: ${count} pickup${count > 1 ? 's' : ''}`,
       unnamedFmt: (count) => `+ ${count} unnamed`,
+      tierLabels: {
+        base: 'Starting weapons',
+        ground: 'Map weapons',
+        power: 'Power weapons',
+        powerup: 'Power-up pads',
+        unclassified: 'Unidentified spot',
+      },
+      tierSubtotalFmt: (count) => `${count} pickup${count > 1 ? 's' : ''}`,
+      randomStartsNote:
+        'Random starts: this mode hands out spawn loadouts at random, so there is no starting weapon to single out.',
+      tiersUnmeasuredNote:
+        'This map’s weapon spots are not in the reference: each weapon’s level could not be established. The pickups are still counted.',
     },
     collapsedColumnsShowFmt: (count) => `Show more (${count})`,
     collapsedColumnsHide: 'Collapse',

@@ -248,10 +248,12 @@ function socle(over: Partial<ReplayWeaponPadReady> = {}): ReplayWeaponPadReady {
 
 /** Le calque croisé tel que la reponse le porte : positions du fichier de carte. */
 function croisement(
-  pads: { x: number; y: number; z?: number; pad: number }[],
+  pads: { x: number; y: number; z?: number; pad: number; family?: string }[],
   catalogN = pads.length,
 ): ReplayDocumentReady['mapWeaponPads'] {
-  return { pads, catalogN }
+  // La famille (nature de l'emplacement : rack / power / powerup) ne change rien au DESSIN du
+  // calque — ces tests-ci — mais le type de la reponse la porte depuis 2026-09-14.
+  return { pads: pads.map((p) => ({ ...p, family: p.family ?? 'rack' })), catalogN }
 }
 
 /** Le cadrage des tests de calque : 10 m de cote sur 100 px. */

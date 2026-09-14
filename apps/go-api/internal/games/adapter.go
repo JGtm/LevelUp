@@ -233,6 +233,37 @@ const (
 	// et l'EXPOSITION de cette grandeur, rien d'autre du mode CTF. Ne pas l'élargir.
 	CapFilmFlagGrabsNet CapabilityKey = "film.flag_grabs_net"
 
+	// CapFilmWeaponTiers — le titre produit, PAR MATCH et PAR JOUEUR, LES PRISES DE SOCLE
+	// VENTILEES PAR NIVEAU D'ARME (base / terrain / puissance / non classé / bonus), lues de
+	// l'artefact rangé et persistées dans `shared.match_pad_pickups_by_tier` (append-only +
+	// vue `_latest`).
+	//
+	// CE QUE « NIVEAU » VEUT DIRE, et d'où il vient : la nature de l'EMPLACEMENT que le
+	// fichier de carte pose (râtelier ou socle de puissance, référence `map_weapon_pads.json`
+	// croisée au socle du match à moins d'un mètre), plus l'équipement de DÉPART du film pour
+	// le niveau « base ». JAMAIS le nom ni le rôle de l'arme : mesure du 2026-09-14 — 70
+	// socles sur 669 portent une arme de rôle « lourd » sur un râtelier, toutes nominales.
+	//
+	// POURQUOI UNE CLÉ NEUVE PLUTÔT QUE `film.usage_summary`. Cette dernière gouverne le
+	// résumé d'usage, qui compte les prises PAR ARME et a donc perdu l'identité du socle. Le
+	// niveau ne s'en déduit pas : il lui faut la position du socle et la référence de la
+	// carte. La grandeur est produite par une passe DISTINCTE, sur le même artefact, et
+	// s'arme donc séparément.
+	//
+	// ⚠ LA CAPABILITY NE SUFFIT PAS : le titre doit AUSSI déclarer les modes à départs
+	// aléatoires (`regulation.toml`, `[weapon_tiers] random_start_mode_tokens`). Les deux
+	// disent deux choses différentes — « je sais lire ces socles » et « voici mes modes sans
+	// arme de base » —, mais ici l'absence de la seconde n'éteint RIEN : elle fait seulement
+	// que plus aucun mode n'est tenu pour aléatoire. C'est la différence avec
+	// `film.flag_grabs_net`, dont la fenêtre est indispensable au calcul.
+	//
+	// Halo Infinite : supported. Halo 5 : ABSENTE — pas de décodeur de film, donc aucun
+	// artefact, donc aucun socle à croiser.
+	//
+	// ⚠ Clé FINE, même doctrine que les six `film.*` ci-dessus : elle gouverne la PRODUCTION
+	// et l'EXPOSITION de cette ventilation, rien d'autre des socles. Ne pas l'élargir.
+	CapFilmWeaponTiers CapabilityKey = "film.weapon_tiers"
+
 	// CapFilmReplayArtifact — le titre produit L'ARTEFACT DE REJEU 2D lui-même
 	// (`data/cache/replays/{slug}/{match}.json`) : trame de positions, kill-feed recalé,
 	// score, roster, calques d'objectif. C'est la SOURCE dont les quatre dérivés du film

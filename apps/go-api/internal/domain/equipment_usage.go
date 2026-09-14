@@ -54,6 +54,13 @@ type EquipmentUsageBlock struct {
 	// équipe » et « eux » n'existent pas, et un donut à zéro serait une affirmation.
 	EquipmentParties *EquipmentUsageParties `json:"equipment_parties,omitempty"`
 	WeaponPadParties *EquipmentUsageParties `json:"weapon_pad_parties,omitempty"`
+	// PadTiers : LES MEMES PRISES DE SOCLE, rangees par NIVEAU d'arme (base / terrain /
+	// puissance / bonus / non classe). Meme bloc, meme forme et memes denominateurs que sur la
+	// page Sessions — un seul calcul (`sessionusage.ComputePadTiers`), deux contrats.
+	//
+	// NIL N'EST PAS ZERO : le bloc est OMIS quand aucun match du scope n'a ete projete par la
+	// passe des niveaux. « Pas encore mesure » et « aucune prise » ne se ressemblent pas.
+	PadTiers *SessionUsagePadTiersBlock `json:"pad_tiers,omitempty"`
 }
 
 // EquipmentUsageFamilyLine — UNE famille du bilan, vue du joueur de la route.

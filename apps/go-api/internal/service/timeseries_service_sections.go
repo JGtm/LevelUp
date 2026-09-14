@@ -30,18 +30,23 @@ func (s *TimeseriesService) WithWeaponRangeRepo(repo port.WeaponRangeRepository)
 // WithEquipmentUsage injecte la source du résumé d'usage (vues _latest) et le résolveur
 // d'amis configurés — la MÊME paire que la Synthèse et la page Sessions. Câblé gated par
 // film.usage_summary ; repo nil ⇒ bloc servi avec Available=false et raison machine.
+//
+// `repoRoot` ne sert qu'au CATALOGUE D'ARMES du titre (nommage du detail par niveau) : vide,
+// les armes s'affichent sous leur cle — la degradation ecrite partout ailleurs.
 func (s *TimeseriesService) WithEquipmentUsage(
-	repo port.SessionUsageRepository, friends teammates.FriendGamertagsResolver,
+	repo port.SessionUsageRepository, friends teammates.FriendGamertagsResolver, repoRoot string,
 ) *TimeseriesService {
 	s.sessionUsageRepo = repo
 	s.usageFriends = friends
+	s.repoRoot = repoRoot
 	return s
 }
 
 // attachMigratedSections pose les deux blocs sur la réponse, depuis le scope canonique déjà
 // filtré. Best-effort de bout en bout : chaque producteur rend nil plutôt que de casser la page.
 func (s *TimeseriesService) attachMigratedSections(
-	ctx context.Context, resp *domain.TimeseriesPageResponse, filteredCanon []canonical.PlayerMatchRow,
+	ctx context.Context, resp *domain.TimeseriesPageResponse,
+	filteredCanon []canonical.PlayerMatchRow, locale string,
 ) {
 	resp.WeaponRange = buildWeaponRangeSection(ctx, weaponRangeQuery{
 		Repo: s.weaponRangeRepo, TitleSlug: s.titleSlug, Gamertag: s.gamertag, Rows: filteredCanon,
@@ -51,6 +56,10 @@ func (s *TimeseriesService) attachMigratedSections(
 		PlayerXUID:      s.playerXUID,
 		MatchIDs:        synthesisMatchIDs(filteredCanon),
 		FriendGamertags: s.timeseriesFriendGamertags(ctx),
+		// De quoi NOMMER les armes du detail par niveau, DANS LA LANGUE DE LA REQUETE.
+		RepoRoot:  s.repoRoot,
+		TitleSlug: s.titleSlug,
+		Locale:    locale,
 	})
 }
 

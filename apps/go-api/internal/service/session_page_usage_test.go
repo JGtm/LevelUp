@@ -21,6 +21,8 @@ type mockSessionUsageRepo struct {
 	players      []sessionusage.PlayerRow
 	participants []sessionusage.ParticipantRow
 	filmsErr     error
+	padTiers     []sessionusage.PadTierRow
+	padTiersErr  error
 }
 
 func (m *mockSessionUsageRepo) LoadUsageFilms(_ context.Context, _ []string) (map[string]sessionusage.FilmRow, error) {
@@ -289,4 +291,10 @@ func grandeurEquipement(
 	}
 	t.Fatalf("aucune grandeur equipment_%s dans le bloc servi", family)
 	return nil
+}
+
+// LoadPadTiers — les PRISES DE SOCLE PAR NIVEAU D'ARME. `padTiers` nil = aucune ligne, donc
+// « non mesure » : c'est l'etat par defaut de tous les temoins qui n'en parlent pas.
+func (m *mockSessionUsageRepo) LoadPadTiers(_ context.Context, _ []string) ([]sessionusage.PadTierRow, error) {
+	return m.padTiers, m.padTiersErr
 }
