@@ -180,7 +180,7 @@ func TestRosterEpingleLesBotsAuDelaDesHumains(t *testing.T) {
 		{Slot: 8, BotID: 39, Name: "343 Aloysius"}, // au-dela des humains : EPINGLE
 		{Slot: 3, BotID: 7, Name: "343 Contredit"}, // dans l espace des humains : NON epingle
 	}}
-	r := buildRoster(kf, bm, true)
+	r := buildRoster(kf, bm, true, FilmTable{})
 	if r.nPlay != 9 {
 		t.Errorf("nPlay = %d, attendu 9 (la borne se DERIVE du slot declare)", r.nPlay)
 	}
@@ -199,7 +199,7 @@ func TestRosterEpingleLesBotsAuDelaDesHumains(t *testing.T) {
 func TestRosterSansBotsResteAlEtatDAvant(t *testing.T) {
 	kf := &killFeed{names: []string{"A", "B"}}
 	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 8, BotID: 39, Name: "343 Aloysius"}}}
-	if r := buildRoster(kf, bm, false); r.nPlay != 2 || len(r.pin) != 0 {
+	if r := buildRoster(kf, bm, false, FilmTable{}); r.nPlay != 2 || len(r.pin) != 0 {
 		t.Errorf("bascule Bots=false : nPlay=%d pin=%v, attendu 2 et vide", r.nPlay, r.pin)
 	}
 }

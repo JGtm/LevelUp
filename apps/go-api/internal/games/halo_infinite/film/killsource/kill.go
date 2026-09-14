@@ -323,6 +323,17 @@ type Result struct {
 	// BijectionMargin : ecart de score entre la meilleure bijection et la meilleure a UNE
 	// transposition pres. ZERO = au moins deux joueurs sont interchangeables.
 	BijectionMargin int
+	// BijectionDetermined : la bijection est-elle DETERMINEE, c est-a-dire sans aucune ambiguite
+	// restante ? Vrai quand la table du film a epingle tous les indices sauf au plus un : il n y
+	// a alors qu une affectation possible, donc rien d interchangeable, et la marge est SANS
+	// OBJET plutot que nulle (cf. [Result.LineByLinePublishable]).
+	//
+	// C EST UN BOOLEEN POSE PAR LE DECODEUR, ET PAS UNE DERIVATION DU ROSTER, pour une raison
+	// mesuree : deriver « Inferred <= 1 » rendrait VRAI sur un [Result] a zero — un resultat
+	// construit a la main, un test, un appelant qui n a pas decode. Le zero-value doit valoir le
+	// comportement d avant le lot, jamais le plus permissif (meme lecon que `roster[].team` en
+	// pointeur au lot 1.7).
+	BijectionDetermined bool
 	// Probe : la sonde a porte de catalogue RELACHEE. NIL quand la couverture est complete —
 	// c est le seul regime ou elle porterait de l information, et elle coute cher.
 	Probe *RelaxedProbe
@@ -330,10 +341,22 @@ type Result struct {
 
 // LineByLinePublishable : les attributions ligne par ligne sont-elles publiables ?
 //
-// DEUX CONDITIONS, et la seconde est celle qui a interdit le BTB : la bijection doit avoir une
-// MARGE STRICTEMENT POSITIVE (marge nulle = deux joueurs interchangeables, donc les lignes sont
-// exactes en AGREGAT et fausses individuellement, RE_LOG 7ter.53), et la sante ne doit pas etre
-// en ALERTE. Un `false` ne dit pas que le decodage est faux : il dit que seul l agregat l est.
+// DEUX CONDITIONS, et la seconde est celle qui a interdit le BTB : la bijection ne doit pas etre
+// AMBIGUE, et la sante ne doit pas etre en ALERTE. Un `false` ne dit pas que le decodage est faux :
+// il dit que seul l agregat l est.
+//
+// CE QUE « NON AMBIGUE » VEUT DIRE A CHANGE AU LOT 1.8, ET LA RAISON EST STRUCTURELLE.
+// La marge de bijection mesure l ecart entre la meilleure INFERENCE et la deuxieme meilleure : une
+// marge nulle dit que deux joueurs sont interchangeables AUX YEUX DE L INFERENCE (RE_LOG 7ter.53).
+// Depuis que la table du film epingle les indices qu elle LIT (film_table.go), cette question ne
+// se pose plus que sur les indices RESTES a l inference : quand il en reste au plus un, il n y a
+// qu une affectation possible et il n y a rien d interchangeable — la marge est alors SANS OBJET,
+// pas nulle. Confondre les deux ferait refuser toutes les lignes d un film entierement lu, ce qui
+// serait exactement l inverse de ce que la lecture apporte.
+//
+// [Roster.FilmTable] dit toujours laquelle des deux voies a decide, indice par indice
+// (`Pinned` / `Inferred`), et [Result.BijectionMargin] garde son sens d origine : le verdict de
+// l INFERENCE sur sa propre part.
 //
 // CETTE PORTE VAUT POUR TOUT CE QUE LA LIGNE PORTE — la source du degat, LE CREDIT, L ASSISTANT et
 // LES DEUX PARTS DE DEGATS. C est une DECISION, et elle refuse deliberement une porte separee par
@@ -341,7 +364,10 @@ type Result struct {
 // donc exactement au meme endroit. La mesure BTB le confirme sans ambiguite — 62 assistants nommes
 // pour 122 a l API (51 %), contre 17/17 et 29/29 en Arena.
 func (r *Result) LineByLinePublishable() bool {
-	return r.BijectionMargin > 0 && len(r.Health.Alerts()) == 0
+	if len(r.Health.Alerts()) != 0 {
+		return false
+	}
+	return r.BijectionMargin > 0 || r.BijectionDetermined
 }
 
 // Stats : les quantites qui permettent de PONDERER une sortie, et de verifier les proprietes sur
