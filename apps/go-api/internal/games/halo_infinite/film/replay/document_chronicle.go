@@ -1333,7 +1333,24 @@ package replay
 //	                qui meurent (`111fa685` idx=10 « FlukiestGolf », `e5adf7b2` idx=13
 //	                « MarshallG6443 » etaient publies sans nom).
 //
-//	POURQUOI LA     la provenance d'un lien devient une donnee du document, et le roster change de
-//	VERSION MONTE   contenu : un artefact 55 ne peut pas dire d'ou vient son index de joueur, et la
-//	                reprise du backfill se fait par SchemaVersion — sans montee aucune recuisson ne
-//	                le rattraperait.
+//	le seuil de     `DefaultMinPoints` passe de 2 a 1 (lot 1.6.5, decision utilisateur du
+//	publication     2026-09-14 : « si le film le dit, on publie »). Une vie d'un seul echantillon
+//	                — une position que le film ECRIT pour un joueur a un instant — etait refusee
+//	                depuis l'origine du calque sous la phrase « ce n'est pas une trajectoire »,
+//	                qui decrivait un RENDU et non une donnee. Le compteur
+//	                `coverage.tracks.refusedMinPoints`, pose au schema 55 pour poser la question
+//	                avec un chiffre, tombe a 0. VINGT vies entrent sur les huit builds.
+//
+//	l'oracle de     impose par l'utilisateur avec la decision, et MESURE
+//	ces vingt vies  (`vies_un_echantillon_test.go`) : UNE porte une mort ECRITE a son instant
+//	                (ecart 72 ms), CINQ sont la derniere image d'un slot que la replication n'a
+//	                plus jamais repris, QUATORZE sont ORPHELINES — leur vie se ferme sur un trou
+//	                de replication et la mort la plus proche du meme joueur est a 0,95 s a 300 s.
+//	                Un orphelin n'est pas un cas a filtrer : c'est un DEFAUT DE LECTURE nomme, et
+//	                le publier est ce qui le rend visible. Consigne au plan §4.
+//
+//	POURQUOI LA     la provenance d'un lien devient une donnee du document, le roster change de
+//	VERSION MONTE   contenu et les traces publiees aussi : un artefact 55 ne peut dire ni d'ou
+//	                vient son index de joueur, ni porter les vies d'un echantillon. La reprise du
+//	                backfill se fait par SchemaVersion — sans montee aucune recuisson ne le
+//	                rattraperait.

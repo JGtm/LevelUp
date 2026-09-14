@@ -1087,6 +1087,11 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   LE DOCUMENT CHANGE DE CONTENU, pas seulement de forme : le roster gagne les joueurs que
 	//   la table assoit et que les chunks ne trouvaient pas (+1 sur `a521164d` et `11de8353`),
 	//   et les GAMERTAGS des joueurs à zéro mort, que le fil des morts ne nommait pas.
+	//   AU MÊME GESTE (lot 1.6.5, décision utilisateur du 2026-09-14 : « si le film le dit, on
+	//   publie »), `DefaultMinPoints` passe de 2 à 1 : une vie d'un seul échantillon — une
+	//   position que le film ÉCRIT — cesse d'être refusée, `coverage.tracks.refusedMinPoints`
+	//   tombe à 0 et vingt vies entrent sur les huit builds. Leur oracle est mesuré
+	//   (`vies_un_echantillon_test.go`) : 1 mort écrite, 5 fins de film, 14 orphelines.
 	//   Détail : `document_chronicle.go`.
 	if SchemaVersion != 56 {
 		t.Fatalf("SchemaVersion = %d, attendu 56 : incrémenter exige une raison écrite ci-dessus "+

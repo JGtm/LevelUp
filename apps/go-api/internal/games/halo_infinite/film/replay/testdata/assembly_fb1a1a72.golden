@@ -13,7 +13,7 @@ coup d envoi date par le film : 52107 ms · 147/147 piste(s) en mouvement · raf
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
 147 trace(s) · 44697 point(s) de grille
-seuil de publication 2 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — une vie d un seul echantillon n est pas une trajectoire
+seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si le film ecrit une position, elle se publie
 147 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
 occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)

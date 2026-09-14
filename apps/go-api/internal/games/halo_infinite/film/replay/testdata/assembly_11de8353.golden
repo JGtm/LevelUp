@@ -12,9 +12,9 @@ origine de la frame 0 sur l horloge du fil : 86805 ms
 coup d envoi date par le film : 108405 ms · 205/243 piste(s) en mouvement · rafale 15 · marge depuis la frame 0 : 21600 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
-243 trace(s) · 81547 point(s) de grille
-seuil de publication 2 point(s) : 3 vie(s) REFUSEE(S) portant 3 point(s) — une vie d un seul echantillon n est pas une trajectoire
-243 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+246 trace(s) · 81550 point(s) de grille
+seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si le film ecrit une position, elle se publie
+246 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
 occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
 44776 point(s) portent un cap de visee · 44776 une elevation de visee · 11558 un bouclier · 313 une fraction de vie
@@ -71,28 +71,28 @@ par type : aucun
 couverture : 477 piste(s) decodee(s) · 464 publiee(s) · 10 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-581 etat(s) publie(s) · 500 avec grenades lues · 499 avec munitions lues
+583 etat(s) publie(s) · 501 avec grenades lues · 500 avec munitions lues
 129 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-81 lecture(s) VIDE(S) : 55 corroboree(s) par le fil des morts (`dead`), 26 inexpliquee(s)
-couverture : 583 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 2 ecartee(s) faute de piste publiee -> 581 publiee(s)
+82 lecture(s) VIDE(S) : 56 corroboree(s) par le fil des morts (`dead`), 26 inexpliquee(s)
+couverture : 583 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 0 ecartee(s) faute de piste publiee -> 583 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-698 lecture(s) · 500 par image-cle (~20 s) · 198 par delta (transmis AU CHANGEMENT)
+699 lecture(s) · 501 par image-cle (~20 s) · 198 par delta (transmis AU CHANGEMENT)
 76 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 500 image-cle · 198 delta · 1 ecartee(s) sans piste · canal munitions refuse : true
+couverture : 501 image-cle · 198 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
-260 lecture(s) · 190 par i48 (rang complet, paquets delta) · 70 par image-cle (fenetre 16..23)
-rangs observes : 1:28 2:29 4:29 5:26 6:24 10:27 23:97
-lectures NOMMEES 260/260 — un rang hors table garde son numero, et la table est propre a la palette du film
+261 lecture(s) · 191 par i48 (rang complet, paquets delta) · 70 par image-cle (fenetre 16..23)
+rangs observes : 1:28 2:29 4:29 5:26 6:24 10:28 23:97
+lectures NOMMEES 261/261 — un rang hors table garde son numero, et la table est propre a la palette du film
 capacites nommees : 1=en:"Threat Sensor"/fr:"detecteur de menaces"/fam:"sensor", 10=en:"Shroud Screen"/fr:"ecran occultant"/fam:"shroud_screen", 2=en:"Drop Wall"/fr:"mur de protection"/fam:"wall", 23=en:"Repair Field"/fr:"champ de reparation"/fam:"repair_field", 4=en:"Grappleshot"/fr:"grappin"/fam:"grapple", 5=en:"Thruster"/fr:"propulseur"/fam:"thruster", 6=en:"Repulsor"/fr:"repulseur"/fam:"repulsor"
-couverture : 261 lecture(s) -> 0 ecartee(s) bruit de balayage · 1 ecartee(s) sans trajectoire publiee -> 260 publiee(s)
+couverture : 261 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 261 publiee(s)
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 0 episode(s) publie(s) · par famille : aucun · 0 fin(s) MESUREE(s) (le reste ferme a la mort)
-couverture : 243 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
+couverture : 246 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
 
 ## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
@@ -712,7 +712,7 @@ POWER-UPS (voie ti=37) — balaye=true · 712 creation(s) acceptee(s) -> 0 reten
 0 occupation(s) achevee(s) publiee(s) · 0 datee(s) a l instant exact par l evenement natif · 0 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-507 loadout(s) publie(s) · 24 famille(s) distincte(s)
+508 loadout(s) publie(s) · 24 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 182 entree(s) · 182 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
