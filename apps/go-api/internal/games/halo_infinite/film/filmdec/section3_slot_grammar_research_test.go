@@ -403,17 +403,11 @@ func s3sPlancherNom(d []byte, e *s3sEnr) (touches, essais int) {
 }
 
 // s3sImprimable : trois caracteres ASCII imprimables au moins, rien d'autre.
-func s3sImprimable(s string) bool {
-	if len(s) < 3 {
-		return false
-	}
-	for _, r := range s {
-		if r < 0x20 || r > 0x7e {
-			return false
-		}
-	}
-	return true
-}
+//
+// DELEGUE DEPUIS LE LOT 1.5 : le meme filtre de parasite est devenu du code de PRODUCTION
+// (`gamertagImprimable`, player_table.go). L'instrument est l'ORACLE du lecteur : si les deux
+// divergeaient d'un caractere, l'oracle cesserait de mesurer ce que le lecteur fait.
+func s3sImprimable(s string) bool { return gamertagImprimable(s) }
 
 // s3sTexte16 relit un bloc BRUT comme une suite d'unites UTF-16 terminee par NUL. Le parametre
 // `pf` choisit l'ordre des octets DANS LE BLOC : petit-boutiste (l'image memoire d'une chaine

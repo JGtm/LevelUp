@@ -1509,23 +1509,160 @@ rejoué par `walkOneKeyframeRecord`) 0,0 %.
 Lecteurs purs, sans consommateur (les consommateurs sont 1.6, 1.7, 1.8). Sources : grammaire des
 notes `NOTE_SECTION3_CHUNK00`, `NOTE_SECTION3_SLOTS`, `NOTE_RESIDUS_CHUNK00` et des instruments
 `section3_*`, `residus_slots_*`, `profil_roster_*` (`s3sChaine`, `rsChaine`, `rsDelta`).
+CLOS le 2026-09-14 (branche `feat/decfilm-15`, 4 commits, `0475daa8b` → le commit de clôture).
 
-- [ ] 1.5.1 `filmdec.ReadFilmIdentity(chunk0) (FilmIdentity, error)` : section 2 (table par type,
+##### Rapport 1.5.0 — l'oracle des instruments, mesuré AVANT d'écrire une ligne
+
+Deux passes, collées depuis la sortie brute (§5).
+
+`TestResidusSlotChaineCorpus` sur les **1 351 films du cache** (152 s), une ligne par build :
+
+| build | films | delta(s) mesuré(s) | `s3sChaine` | `rsChaine` | balayage corrigé | films au compte | `s3sChaine` MORT | vacants | **lus + vacants == 32** |
+|---|---|---|---|---|---|---|---|---|---|
+| `HI_1_13_0` | 1 123 | `0` ×1 123 | 8 596 | 9 003 | 9 003 | 1 123/1 123 | 19 | 26 933 | **1 123/1 123** |
+| `HI_1_12_0` | 146 | `0` ×146 | 1 312 | 1 347 | 1 347 | 146/146 | 0 | 3 325 | **146/146** |
+| `HI_1_11_0` | 39 | `-2 880` ×39 | 39 | 913 | 913 | 39/39 | 39 | 335 | **39/39** |
+| `HI_1_10_0` | 26 | `-2 880` ×26 | 26 | 576 | 576 | 26/26 | 26 | 256 | **26/26** |
+| `HI_1_8_0` | 10 | `-4 320` ×10 | 10 | 160 | 160 | 10/10 | 10 | 160 | **10/10** |
+| (sans identification) | 5 | `+1 600` ×5 | 5 | 120 | 120 | 5/5 | 5 | 40 | **5/5** |
+| `HI_1_9_0` | 1 | `-4 320` ×1 | 1 | 24 | 24 | 1/1 | 1 | 8 | **1/1** |
+| `HI_1_4_1` | 1 | `+1 600` ×1 | 1 | 24 | 24 | 1/1 | 1 | 8 | **1/1** |
+
+Sonde jetable sur les mêmes 1 351 films (3,7 s), qui ajoute ce que l'oracle ne dit pas et dont la
+section 2 a besoin — le nombre de blocs de registre et la FERMETURE du cardinal de la table par
+type, dérivé par `(offset de la chaîne de build − 0x20) − fin du registre` :
+
+| build | films | blocs de registre | offset de la chaîne de build | octets de table par type | = entrées |
+|---|---|---|---|---|---|
+| `HI_1_13_0` | 1 123 | 50 | `0x0CB414` | 492 | **123** |
+| `HI_1_12_0` | 146 | 50 | `0x0CB414` | 492 | **123** |
+| `HI_1_11_0` | 39 | 49 | `0x0C7310` | 488 | **122** |
+| `HI_1_10_0` | 26 | 49 | `0x0C730C` | 484 | **121** |
+| `HI_1_8_0` | 10 | 49 | `0x0C730C` | 484 | **121** |
+| `HI_1_9_0` | 1 | 49 | `0x0C730C` | 484 | **121** |
+| `HI_1_4_1` | 1 | 49 | `0x0C72F8` | 464 | **116** |
+| (sans identification) | 5 | 49 | absente | — | — |
+
+**LA FERMETURE TOMBE SANS UN OCTET DE RESTE, et elle corrige un résidu de la recherche.** Le 123
+du build courant est la valeur que l'ÉCRIVAIN écrit (`MOV R9D,0xf60` = 3 936 bits = 492 octets) ;
+l'heuristique `lireEntete` des instruments — remonter tant que la valeur tient sur 16 bits — en
+comptait **124** (résidu G.2 de `NOTE_SECTION3_SLOTS`). La dérivation structurelle rend le compte
+de l'écrivain. Les trois écarts d'en-tête de la note ferment aussi : `16 640 + 4×1` (123−122),
+`16 640 + 4×2` (123−121), `16 640 + 4×7` (123−116).
+
+**LES 5 FILMS SANS SECTION D'IDENTIFICATION, NOMMÉS** : `03af54c3`, `13b00e35`, `47d20b5d`,
+`50247b26`, `a349fea8`. `50247b26` est dans l'échantillon court de `replay-equiv`.
+
+- [x] 1.5.1 `filmdec.ReadFilmIdentity(chunk0) (FilmIdentity, error)` : section 2 (table par type,
       version en clair, build, saveur, identifiant de build, changelist) ; `ErrNoFilmIdentity`
       typé pour les 5 films sans section ; horodatage du match (32 bits) porté.
-- [ ] 1.5.2 `filmdec.ReadPlayerTable(chunk0, ident) ([]PlayerSlot, PlayerTableReport, error)` :
+      FAIT, et **sans aucun offset absolu** : la carte de la note ne vaut que pour
+      `HI_1_12_0`/`HI_1_13_0` (rapport 1.5.0). Le lecteur dérive la fin du registre du parse
+      (cadrage du jeu, lot 1.2), ancre la section sur la chaîne de build — l'ancre que la
+      recherche a suivie — et déduit tout le reste relativement à elle. Trois erreurs typées, et
+      la mesure a corrigé une attente : couper dans la section 2 rend `ErrChunk00Truncated`, PAS
+      `ErrNoFilmIdentity`, parce que le registre s'arrête à sa fin STRUCTURELLE et qu'un tampon
+      coupé avant cette fin épuise la boucle de blocs. La cause première est la troncature.
+      CONTRÔLE GRATUIT PASSÉ : les sept bobines rendent des horodatages ORDONNÉS par build
+      (2023-09-02 → 2026-07-23). Une lecture fausse ne produirait pas sept dates plausibles NI
+      leur ordre correct par rapport à un champ indépendant.
+- [x] 1.5.2 `filmdec.ReadPlayerTable(chunk0, ident) ([]PlayerSlot, PlayerTableReport, error)` :
       32 slots, 16 champs, décalage d'un bit (`0x0CB45C`), largeur du bloc de personnalisation
       PAR BUILD (table `player_table_profile.go` : 1 852 / 1 492 / 1 312 / 2 052 o, un
       commentaire de provenance par ligne), slots vacants écartés ; `ErrUnknownBuild` typé +
       compteur expvar `filmdec.unknown_build.<build>` (principe 10) ; le rapport porte le
       calibrage lu sur le film comme CONTRÔLE (accord / contradiction).
-- [ ] 1.5.3 Champs publiés par slot : `FilmIndex` (= rang), `XUID`, `Gamertag`, champs courts.
-- [ ] 1.5.4 Tests : unitaires sur les mini-films (7 builds : 32 slots lus, gamertags imprimables,
+      FAIT. Compteur sous sa forme PHYSIQUE `filmdec_unknown_build_<build>` (snake_case d'ADR
+      0009, comme `killsource_*` et `filmdec_keyframe_ti12_*`) ; il est NOMMÉ, pas câblé — le lot
+      1.5 ne livre aucun consommateur, et son premier appelant de production est le registre
+      d'identité du lot 1.6, ce que l'en-tête de `UnknownBuildExpvarPairs` écrit avec sa date.
+      LE CONTRÔLE A CINQ FAMILLES, PAS DEUX, ET CHACUNE A ÉTÉ IMPOSÉE PAR UNE MESURE : accord /
+      vacant / **invisible** / **parasite** / contradiction. « Invisible » = l'intervalle porte un
+      enregistrement que la MARCHE a lu et que le balayage ne pouvait pas voir ; « parasite » = un
+      bout du couple n'a pas été retenu. Sans ces deux-là, un enregistrement bien réel se lisait
+      comme une contradiction de grammaire.
+      DEUX DÉFAUTS TROUVÉS PAR LA MESURE ET CORRIGÉS DANS LE LOT, tous deux écrits dans le code :
+      (a) les LECTURES vont jusqu'au bout du TAMPON, pas jusqu'au dernier octet écrit — un
+      enregistrement vacant est écrit entièrement à zéro, donc les 24 vacants de queue d'une
+      partie d'arène tombent APRÈS le dernier octet non nul, et borner là faisait échouer 24 des
+      32 slots ; (b) « la marche ferme à 32 slots » NE SUFFIT PAS comme critère d'acceptation,
+      parce que le bourrage de queue satisfait le prédicat de vacance indéfiniment : « 1 occupé +
+      31 vacants » ferme avec n'importe quelle largeur (mesuré : quatre largeurs fausses sur cinq
+      bobines). Le critère retenu est double — la marche ferme à 32 ET elle VISITE TOUS les
+      enregistrements du balayage ; entre deux lectures recevables, la plus complète gagne.
+      **AUCUN SEUIL N'EST PORTÉ EN PRODUCTION** : le `40 000` bits du regroupement terminal des
+      instruments n'existe pas dans ce lecteur, et c'est ce qui lui fait lire juste neuf films que
+      l'instrument lit faux (cf. 1.5.4).
+- [x] 1.5.3 Champs publiés par slot : `FilmIndex` (= rang), `XUID`, `Gamertag`, champs courts.
+      FAIT, plus le jeton de session (48 bits), la position et la longueur en bits. Les neuf
+      champs courts sont publiés dans `PlayerSlotShorts` — ils sont mesurés CONSTANTS sur le
+      corpus, et c'est justement pour cela qu'ils se publient : un champ constant qui se met à
+      varier est le premier signe qu'une grammaire a bougé.
+      **`FilmIndex` EST LE RANG ABSOLU DANS LA TABLE DE 32, VACANTS COMPRIS** — l'index du tableau
+      que l'écrivain parcourt (`enregistrement += 0x1450`). CE QUI EST MESURÉ, ET CE QUI NE L'EST
+      PAS : l'ordre des enregistrements EST le `player_index` de production (`filmIndex − rang`
+      constant sur 76/76 films, phase 2), mais aucun de ces 76 films ne porte de vacant INTERCALÉ,
+      donc l'oracle ne sépare pas « rang absolu » de « index parmi les occupés ». Les 13 films du
+      cache à vacant intercalé n'ont AUCUN document de rejeu (mesuré le 2026-09-14) : la question
+      n'est pas tranchable sur ce corpus. Le rapport porte donc `InterleavedVacant`, pour que le
+      consommateur du lot 1.6 sache quand les deux lectures divergent. Découverte D3 (1.5).
+- [x] 1.5.4 Tests : unitaires sur les mini-films (7 builds : 32 slots lus, gamertags imprimables,
       rang = index) ; corpus `CHUNK00_FILMS` : 32 slots sur 1 351 films (oracle des instruments) ;
       mutation : fausser une largeur de build rougit.
-- [ ] 1.5.5 `GrammarRev` montée.
+      FAIT. Unitaires SANS garde d'environnement (donc joués en CI) sur les sept bobines : 32
+      slots, gamertags imprimables, XUID de la plage Xbox, rang = index, calibrage du film égal à
+      celui du profil, **0 contradiction sur 7/7**. Les comptes attendus sont ceux que `rsChaine`
+      rendait AVANT que ce lecteur existe.
+      **LA GARDE DU CORPUS EST `CHUNK00_CORPUS` (UNE RACINE), PAS `CHUNK00_FILMS` (UNE LISTE), et
+      ce n'est pas une commodité** : 1 351 chemins absolus séparés par `;` pèsent une centaine de
+      kilo-octets, au-delà de la borne d'une variable d'environnement Windows (32 767 caractères).
+      La forme en liste reste acceptée pour un petit corpus. Écart au libellé du plan, assumé.
+      CORPUS (82 s) : **1 346 films lus à 32 slots** (12 080 occupés + 30 992 vacants), 5 mis de
+      côté sans section, **0 build inconnu, 0 contradiction de grammaire, 0 calibrage en
+      désaccord**.
+      **NEUF FILMS OÙ LA PRODUCTION ET L'INSTRUMENT DIVERGENT, ET C'EST L'INSTRUMENT QUI SE
+      TROMPE** — tableau collé en §5. Sur `19ef6b04`, `23ffd885`, `3104391d`, `3b1cfde3`,
+      `59b8abb9`, `652907bb`, `92f7c713`, `a92bab93`, `d4ddf054`, la production lit 7 ou 8
+      enregistrements là où `rsChaine` en lit 1 à 6. Chacun porte DEUX écarts de balayage au-delà
+      de 40 000 bits : un slot vacant intercalé ajoute 16 499 bits à l'écart entre deux
+      enregistrements et pousse le regroupement terminal de l'instrument à perdre la TÊTE de la
+      table — le défaut que la phase 2 nommait déjà (« le lecteur perd la tête sur 4 films sur
+      76 »). Le test EXIGE l'explication : une divergence sans coupure de grappe le fait échouer,
+      et la production ne doit JAMAIS lire moins que l'instrument.
+      **CE QUE LA MESURE DU CORPUS APPREND SUR L'ORACLE LUI-MÊME** : son critère
+      « lus + vacants == 32 sur 1 351/1 351 » est satisfait par le BOURRAGE de queue, donc il est
+      vrai ET il ne prouve pas la tête de la table. Découverte D1 (1.5).
+      MUTATION JOUÉE : `HI_1_13_0`/`HI_1_12_0` passés de 1 852 à **1 848** octets (quatre octets),
+      `TestReadPlayerTableSurLesBobines` **ROUGE** sur les deux bobines concernées (« aucune table
+      de 32 slots dans le corps de chunk_00 »), plus `TestPersonnalisationOctetsProfil` et
+      `TestReadPlayerTableTronquee`. Fichier restauré PAR NOM, md5 identique
+      (`1d58470a8b22f70d33a3a1f5e190ea9a`). Le test automatique de mutation dit ce qu'il n'affirme
+      PAS : une largeur trop GRANDE fait toujours fermer « 1 occupé + 31 vacants » dans le
+      bourrage — c'est pour cela que le critère retient la lecture la plus COMPLÈTE, et que le
+      test vérifie la DÉGRADATION plutôt que l'échec.
+      ENTRÉE TRONQUÉE (obligatoire, leçon du lot 1.2) : huit coupes d'identité — tampon vide,
+      en-tête seul, frontière de bloc, dernier bloc entier, avant / dans / après la chaîne de
+      build, juste avant le corps — et deux coupes de table. Aucune ne panique, toutes rendent une
+      erreur typée, aucune ne rend de lecture partielle.
+- [x] 1.5.5 `GrammarRev` montée.
+      `grammar-2026-09-14.4` → `grammar-2026-09-14.5` (cinquième lot du même jour). L'empreinte
+      avait ROUGI D'ELLE-MÊME dès le commit de 1.5.1 (« LA GRAMMAIRE A CHANGE SANS MONTEE DE
+      REVISION », 151 → 154 fichiers) : preuve par mutation naturelle, aucune mutation
+      artificielle nécessaire. Golden régénéré par sa porte nommée (`-update-grammar-rev`, qui
+      réécrit PUIS échoue), historique complété dans le golden.
+      `SchemaVersion` NE MONTE PAS (55 → 55) et `KillSourceDecoderRev` non plus : ces lecteurs
+      n'ont AUCUN consommateur, donc aucun octet cuit ne change — et l'équivalence le confirme
+      (10/10 identiques, les 50 étapes de balayage comprises).
 
 Preuve : `replay-equiv` zéro différence (aucun consommateur) ; corpus gate zéro différence.
+RÉSULTAT (2026-09-14) : **LES DEUX PREUVES SONT À ZÉRO DIFFÉRENCE, AU SENS LITTÉRAL.**
+`replay-equiv` rend **10 IDENTIQUES sur 10** au régime court (deux sous-ensembles séquentiels de
+5, 3 min 58 + 2 min 10), les 50 étapes de balayage et l'artefact compris ; le corpus gate rend
+**13 témoins sur 13 à 0 gain / 0 perte, schéma 55 → 55 partout** (9 min). Ce n'est pas une
+surprise, c'est ce que « lecteurs purs, sans consommateur » veut dire, et la mesure le dit sans
+détour : `grep -rn "ReadFilmIdentity(\|ReadPlayerTable(" --include=*.go internal/ cmd/ | grep -v
+_test.go` ne rend que les DEUX lignes de déclaration. `SchemaVersion` reste à 55,
+`KillSourceDecoderRev` à `killsource-2026-09-12` : aucune recuisson ni backlog dus par ce lot.
 
 #### Lot 1.6 — Le registre d'identité prend la table du film comme lien direct — M, high
 
@@ -2078,6 +2215,12 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.4 (équivalence) | **D4 (1.4) — la référence d'équivalence de `50247b26` est PÉRIMÉE depuis le lot 1.3, et chaque lot suivant la paiera.** Le régime court rend 9/10 sur ce lot, et l'unique écart (étape `killsource`, chaîne de diagnostic `calibration`) est le MÊME que celui du lot 1.3 : contrôle décisif, la même commande jouée au commit de base `15309e89e` dans un worktree détaché rend la MÊME empreinte obtenue (`2c4ebf2071ca…`). Le lot 1.4 produit donc zéro différence. Mais tant que la décision pilote de D2 (1.3) n'est pas prise (bump `KillSourceDecoderRev` + backlog, OU re-figeage de la seule référence de `50247b26`), **tout lot de M1 lira un rouge permanent qui masque le prochain vrai** — exactement la situation que le lot 1.1.6 a dû défaire au schéma 55. NON TRAITÉ (geste de PROD, réservé au pilote, D6). | décision pilote, avant le prochain lot décodeur : re-figer `50247b26` ou trancher le backlog killsource |
 | 2026-09-14 | 1.4 (mesure) | **D5 (1.4) — la section C.2 de `NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md` attribue à tort un « 0 » qui vient de l'INSTRUMENT, pas du corpus.** Elle écrit « le chemin de production ne s'engage pas sur ce corpus : `ScanNavpointRadial` sort avant la boucle quand la bande de slots observés est vide, aucun des six films n'est un Assaut, donc 0 record d'image-clé n'est parsé ». Sur pièces : `TestImageCleProductionBalayagesReels` appelle `ScanFilmNavpointRadial(dir, map[int]int{})` — SANS horloge — et `scanChunk` (`navpoint_radial_scan.go`) fait `PacketsNoClock++` puis `continue` pour TOUT paquet dont le chunk n'a pas de `start_ms`. Cet instrument rend donc `KeyRecords 0` pour ti=12 sur n'importe quel film. **Contre-exemple mesuré** : `c75f33b8` (témoin `assaut_bombe` du corpus gate, où le chemin s'engage réellement — 1 169 lectures d'anneau) rend lui aussi `KeyRecords 0` sous cet instrument, alors qu'il porte **569 records ti=12 en image-clé**. Le « 0 » de la note n'est pas faux comme chiffre, il est faux comme CAUSE — et toute conclusion tirée de cet instrument sur la population ti=12 est à reprendre. NON TRAITÉ (hors périmètre 1.4 : corriger l'instrument, c'est le rebaser sur un manifeste). | lot 2.6 (empreintes / instruments) ou la prochaine reprise de la note 5a : passer une horloge réelle à l'instrument, ou publier `PacketsNoClock` à côté de `KeyRecords` pour qu'un 0 muet devienne un 0 expliqué |
 
+| 2026-09-14 | 1.5.4 | **D1 (1.5) — le critère de fermeture de l'oracle (« lus + vacants == 32 ») est satisfait par le BOURRAGE de queue, donc il ne prouve pas la tête de la table.** La note `NOTE_RESIDUS_CHUNK00` publie « le lecteur lit exactement 32 enregistrements sur 1 351 films sur 1 351 » comme « la fermeture la plus forte du lot ». Elle est vraie, et elle prouve moins qu'elle n'en a l'air : la queue du tampon de `chunk_00` est faite de zéros, donc le prédicat de vacance y passe INDÉFINIMENT, et une marche qui démarre au DERNIER enregistrement rend « 1 occupé + 31 vacants = 32 » — avec n'importe quelle largeur de bloc de personnalisation. Mesuré à l'écriture de ce lot : quatre largeurs fausses sur cinq bobines ferment ainsi. C'est pourquoi le lecteur de production ajoute un second volet (visiter TOUS les enregistrements du balayage) et retient la lecture la plus complète. La note n'est PAS corrigée par ce lot (règle 7) : sa mesure reste juste, c'est sa portée qui est à préciser. | `.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md` section 2.3, à amender par qui la reprendra |
+| 2026-09-14 | 1.5.4 | **D2 (1.5) — `rsChaine` perd la tête de la table sur NEUF films du cache, et son seuil de regroupement en est la cause.** `19ef6b04`, `23ffd885`, `3104391d`, `3b1cfde3`, `59b8abb9`, `652907bb`, `92f7c713`, `a92bab93`, `d4ddf054` : l'instrument lit 1 à 6 enregistrements là où la grammaire en lit 7 ou 8. Chacun porte deux écarts de balayage au-delà de `s3rEcartMax = 40 000` bits, parce qu'un slot vacant intercalé ajoute 16 499 bits (build courant) à l'écart entre deux enregistrements — exactement le défaut que la phase 2 nommait sur 4 films sur 76 (« troncature de tête »), jamais chiffré à l'échelle du cache. Le lecteur de production n'a pas de seuil et ne perd rien ; l'instrument, lui, reste tel quel — c'est un oracle de recherche, et le corriger changerait les chiffres publiés par trois notes. NON TRAITÉ. | l'instrument garde son seuil ; la divergence est GARDÉE par `player_table_corpus_test.go`, qui exige l'explication film par film |
+| 2026-09-14 | 1.5.3 | **D3 (1.5) — « rang absolu » et « index parmi les occupés » ne sont pas départageables sur ce corpus, et la population qui les sépare n'a aucun oracle.** L'ordre des enregistrements EST le `player_index` de production (`filmIndex − rang` constant sur 76/76 films, phase 2), mais aucun de ces 76 films ne porte de slot vacant INTERCALÉ : les deux définitions y coïncident. Les 13 films du cache à vacant intercalé (`07f6af1b`, `0d1dddfb`, `19ef6b04`, `1c5c10cc`, `23ffd885`, `3104391d`, `3b1cfde3`, `59b8abb9`, `652907bb`, `92f7c713`, `a92bab93`, `b1bcbe24`, `c744aa29`) n'ont AUCUN document de rejeu — vérifié le 2026-09-14 sur le parc et la sauvegarde. Le lot publie le rang ABSOLU (l'index du tableau que l'écrivain parcourt) et porte `InterleavedVacant` dans le rapport pour que la divergence soit lisible. NON TRANCHÉ. | lot 1.6 : cuire un artefact pour l'un de ces 13 films, ou confronter à `match_participants` — la décision appartient au consommateur |
+| 2026-09-14 | 1.5.4 | **D4 (1.5) — le balayage de la table est AVEUGLE à certains enregistrements bien réels, et la grammaire les lit.** Sur `d4ddf054` (HI_1_13_0), le balayage rend 7 enregistrements et la marche en lit 8 ; la trame du même film porte 8 entités `ti=9`, donc 8 joueurs. L'enregistrement manquant échoue l'un des critères d'en-tête (jeton de 48 bits nul, ou XUID hors de la plage Xbox `[0x0009…, 0x000A…)`) — lequel n'est pas établi, et le savoir dirait s'il existe des comptes joueur hors de cette plage. Le lecteur compte le cas (`GapsHidden`), il ne le diagnostique pas. NON TRAITÉ. | lot 1.6 ou 1.8 : si un compte hors plage existe, la borne de XUID de tous les balayages du dépôt est à revoir |
+| 2026-09-14 | 1.5.0 | **D5 (1.5) — `lireEntete` compte UNE entrée de trop dans la table par type, et la dérivation structurelle le prouve.** Le résidu G.2 de `NOTE_SECTION3_SLOTS` relevait « 124 entrées sur `HI_1_13_0` là où l'écrivain en écrit 123 » sans trancher. La mesure du 2026-09-14 tranche : `(offset de la chaîne de build − 0x20) − fin du registre` vaut 492 octets sur les 1 269 films des deux builds courants, soit exactement 123 u32, la valeur de l'écrivain (`MOV R9D,0xf60`) ; l'écart vient de l'heuristique de l'instrument (remonter tant que la valeur tient sur 16 bits), qui avale un u32 de plus. `ReadFilmIdentity` n'emploie pas cette heuristique. L'instrument n'est PAS corrigé (règle 7). | `registre_events_research_test.go` : `lireEntete` garde son heuristique ; le résidu G.2 de la note est FERMÉ par cette mesure |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -2373,6 +2516,29 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.4 (communs) | ce commit | `make go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **0 issues**, baseline non accrue. Une seule remontée en cours de route, corrigée : `ST1016` (nom de receveur `sc` contre `s` déjà utilisé sur `NavpointRadialScan`) |
 | 2026-09-14 | 1.4 (équivalence, régime court) | ce commit | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-decfilm-14 -films 50247b26,a521164d,60ae07c4,11de8353,111fa685` puis `-films e5adf7b2,bcb6d393,51101d1d,d9781168,fb1a1a72` | **9 identiques / 1 différent** en 3 min 48 s + 2 min 20 s. L'unique écart : `50247b26`, étape `killsource`, `3cade5d0…` attendu contre `2c4ebf20…` obtenu |
 | 2026-09-14 | 1.4 (équivalence, contrôle) | `15309e89e` (worktree détaché jetable, deux jonctions posées puis DÉLIÉES par PowerShell avant `worktree remove`) | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-bisect-base14 -films 50247b26` | **MÊME écart, MÊME empreinte obtenue `2c4ebf2071ca…`** au commit de BASE du lot. L'écart est donc **hérité du lot 1.3** (découverte D2 (1.3), jamais re-figée), pas produit par 1.4. **Le lot 1.4 produit ZÉRO différence d'équivalence.** Cache du principal vérifié intact après retrait (1 351 films) |
+
+| 2026-09-14 | 1.5.0 (oracle, AVANT tout changement) | `15bc6c82f` (base) | `CGO_ENABLED=0 CHUNK00_FILMS=<les 7 bobines> go test ./...filmdec/ -run TestResidusSlotChaineParBuild -v -count=1` | **7/7 films où le lecteur par grammaire calibré rend exactement le compte du balayage corrigé** (0,73 s). `a521164d` +1600 24+8 · `60ae07c4` -4320 8+24 · `11de8353` -4320 24+8 · `111fa685` -2880 24+8 · `e5adf7b2` -2880 23+9 · `bcb6d393` +0 8+24 · `fb1a1a72` +0 8+24. `s3sChaine` est MORT (1 enregistrement) sur les cinq builds anciens. |
+| 2026-09-14 | 1.5.0 (oracle, AVANT tout changement) | `15bc6c82f` (base) | `CGO_ENABLED=0 CHUNK00_CORPUS=<cache> go test ./...filmdec/ -run TestResidusSlotChaineCorpus -v -count=1 -timeout 120m` | **152,0 s ; 1 351 chunk_00 lus** ; delta UNIQUE par build (`0` ×1 269, `-2 880` ×65, `-4 320` ×11, `+1 600` ×6) ; `rsChaine` = balayage corrigé sur **1 351/1 351** ; `s3sChaine` MORT sur **101** films ; **lus + vacants == 32 sur 1 351/1 351**. Tableau complet collé au rapport 1.5.0. |
+| 2026-09-14 | 1.5.0 (sonde JETABLE, supprimée après mesure) | `15bc6c82f` (base) | balayage des 1 351 `chunk_00` : blocs de registre par `parseRegistry`, offset de `HI_` par `s3bBuild`, dérivation `(offset − 0x20) − fin du registre` | **3,7 s.** 50 blocs / 492 o / **123 entrées** sur les 1 269 films `HI_1_12_0`+`HI_1_13_0` ; 49 / 488 / **122** sur `HI_1_11_0` ; 49 / 484 / **121** sur `HI_1_10_0`, `HI_1_9_0`, `HI_1_8_0` ; 49 / 464 / **116** sur `HI_1_4_1`. FERMETURE SANS RESTE, et le 123 est la valeur de l'ÉCRIVAIN (`MOV R9D,0xf60`) là où `lireEntete` en comptait 124 — découverte D5 (1.5). **Les 5 films sans section NOMMÉS** : `03af54c3 13b00e35 47d20b5d 50247b26 a349fea8`. |
+| 2026-09-14 | 1.5.0 (sonde JETABLE, supprimée après mesure) | `15bc6c82f` (base) | rang ABSOLU contre index parmi les OCCUPÉS, sur les films à vacant intercalé, oracle = `roster[].filmIndex` du parc de rejeu et de la sauvegarde du 2026-08-20 | **72,6 s ; 5 films à vacant intercalé trouvés par cette passe (`07f6af1b 0d1dddfb 1c5c10cc b1bcbe24 c744aa29`), ZÉRO avec document de rejeu** — la question n'est pas tranchable sur ce corpus (découverte D3 (1.5)). La passe du lecteur de production en trouvera 13 : elle part d'un balayage sans regroupement. |
+| 2026-09-14 | 1.5.1 | `0475daa8b` | `go test ./...filmdec/ -run TestReadFilmIdentit -v -count=1` | **VERT**, 0,10 s. Les sept bobines rendent build, version, saveur, identifiant de build, changelist, blocs et cardinal de table conformes ; horodatages **ORDONNÉS par build**, 2023-09-02T11:14:38Z → 2026-07-23T20:48:06Z. |
+| 2026-09-14 | 1.5.1 (entrée tronquée) | `0475daa8b` | `TestReadFilmIdentiteTronquee` : huit coupes, dont une sur une frontière de bloc | **VERT.** Deux attentes CORRIGÉES PAR LA MESURE : couper juste après le registre ou dans la chaîne de build rend `ErrChunk00Truncated`, pas `ErrNoFilmIdentity` — le registre s'arrête à sa fin STRUCTURELLE, donc un tampon coupé avant cette fin épuise la boucle de blocs, et la cause première est la troncature. Un film SANS section est donc testé autrement : `TestReadFilmIdentiteSansSection` efface les trois champs de chaîne d'un film sain. |
+| 2026-09-14 | 1.5.2 (mesure qui a changé le code) | `f43bf03de` | première version bornée sur le dernier octet ÉCRIT : `go test … -run TestReadPlayerTable` | **ROUGE sur 7/7 bobines** (« aucune table de 32 slots »). CAUSE : un enregistrement VACANT est écrit entièrement à zéro, donc les 24 vacants de queue d'une partie d'arène tombent APRÈS le dernier octet non nul. Les LECTURES vont désormais jusqu'au bout du TAMPON ; le BALAYAGE, lui, garde la borne du dernier octet écrit. |
+| 2026-09-14 | 1.5.2 (mesure qui a changé le code) | `f43bf03de` | critère « la marche ferme à 32 slots » seul, confronté à six largeurs fausses par bobine | **LE CRITÈRE NE MORD PAS** : `2052` ferme sur `60ae07c4` (profil 1312), `1852` sur `a521164d` (2052), `1492` et `2052` sur `11de8353`… La queue du tampon étant faite de zéros, le prédicat de vacance y passe indéfiniment et « 1 occupé + 31 vacants » ferme avec n'importe quelle largeur. Critère complété : la marche doit VISITER TOUS les enregistrements du balayage, et la lecture la plus complète gagne. Découverte D1 (1.5). |
+| 2026-09-14 | 1.5.2 (mesure qui a changé le code) | `f43bf03de` | sonde JETABLE sur `d4ddf054`, refusé par la première forme du second volet | **9 candidats, 7 réels ; la marche ancrée au premier en lit 8 et les visite tous.** L'écart `10 170` bits entre deux candidats est plus court que le plus court enregistrement mesuré (16 611) : le balayage rate un enregistrement bien réel entre deux autres. Exiger l'ÉGALITÉ des deux suites jetait le film ; l'INCLUSION (la marche visite tous les candidats, elle peut en lire plus) le lit juste — et la trame confirme, 8 entités `ti=9`. Découverte D4 (1.5). |
+| 2026-09-14 | 1.5.2 / 1.5.3 | `f43bf03de` | `go test ./...filmdec/ -run 'TestReadPlayerTable\|TestPersonnalisationOctetsProfil\|TestUnknownBuildCompteur' -v -count=1` | **VERT**, 0,39 s. Sept bobines : 32 slots (24+8, 8+24, 24+8, 24+8, 23+9, 8+24, 8+24), calibrage du film = celui du profil sur 7/7, **écarts 23/0/0/0/0 … 7/0/0/0/0 (accord / vacant / invisible / parasite / contradiction)**, 0 vacant de tête, 0 intercalé. Parasites du balayage : 1 sur cinq bobines, 0 sur deux. |
+| 2026-09-14 | 1.5.4 (corpus) | `a2fbc3f01` | `CGO_ENABLED=0 CHUNK00_CORPUS=<cache> go test ./...filmdec/ -run TestTableJoueursCorpus -v -count=1 -timeout 120m` | **VERT, 81,8 s.** `1 346 film(s) lus a 32 slots (12080 occupes + 30992 vacants) ; 1337/1346 en accord avec l'ORACLE des instruments ; 0 contradiction(s) de grammaire ; 0 calibrage(s) en desaccord avec le profil ; 1 enregistrement(s) invisible(s) au balayage sur 1 film(s)`. `5 film(s) sans section d'identification (03af54c3 13b00e35 47d20b5d 50247b26 a349fea8) ; 0 film(s) a build inconnu`. `13 film(s)` à vacant intercalé. |
+| 2026-09-14 | 1.5.4 (les NEUF divergences, classées) | `a2fbc3f01` | sortie du même test, colonne par colonne | `19ef6b04` 7+25 contre 4+28 · `23ffd885` 7+25 contre 1+31 · `3104391d` 7+25 contre 1+31 · `3b1cfde3` 7+25 contre 6+26 · `59b8abb9` 7+25 contre 4+28 · `652907bb` 7+25 contre 1+31 · `92f7c713` 7+25 contre 5+27 · `a92bab93` 7+25 contre 4+28 · `d4ddf054` 8+24 contre 5+27. **CHACUN porte 2 écarts de balayage au-delà de 40 000 bits**, et le test ÉCHOUE si une divergence n'a pas cette explication. Contrôle indépendant sur les mêmes films : `TestProfilRosterEcarts` rend « attendu (entités ti=9) 8 » sur 9/9, et « 2 écart(s) au-delà de 40000 ». |
+| 2026-09-14 | 1.5.4 (mutation MANUELLE) | `a2fbc3f01` | `HI_1_13_0`/`HI_1_12_0` mis à **1 848** octets au lieu de 1 852, tests rejoués, fichier restauré PAR NOM | **ROUGE** : `bcb6d393` et `fb1a1a72` rendent « aucune table de 32 slots dans le corps de chunk_00 » ; `TestPersonnalisationOctetsProfil` et `TestReadPlayerTableTronquee` rougissent aussi. Restauration vérifiée : md5 `1d58470a8b22f70d33a3a1f5e190ea9a` avant et après, `git diff --stat` VIDE, tests verts. |
+| 2026-09-14 | 1.5.5 | ce commit | `go test ./...filmdec/ -count=1` AVANT la montée | **ROUGE DE LUI-MÊME dès le commit de 1.5.1** : « LA GRAMMAIRE A CHANGE SANS MONTEE DE REVISION », empreinte figée `e5e4291f…` contre obtenue `f383983c…` (154 fichiers, +3). Preuve par mutation naturelle, aucune mutation artificielle nécessaire. |
+| 2026-09-14 | 1.5.5 | ce commit | `go test ./...filmdec/ -run GrammarRevSuitLaGrammaire -update-grammar-rev` puis sans le drapeau | porte nommée : « 1 reference(s) reecrite(s) … relancer sans -update-grammar-rev pour verifier » (sortie en ÉCHEC, comme elle doit), puis **ok**. `grammar-2026-09-14.4` → `grammar-2026-09-14.5`, empreinte `4c85322c54e53e5834ea38a34a1093cb44a051a6dd882eb488523e57f60a6b14` (156 fichiers). Entrée d'historique écrite dans le golden. |
+| 2026-09-14 | 1.5 (communs) | ce commit | `gofmt -l ./internal ./cmd` | sortie **vide** |
+| 2026-09-14 | 1.5 (communs) | ce commit | `CGO_ENABLED=1 go vet` puis `go test -count=1` sur `film/…`, `archlint`, `replaybuild`, `killcollector`, `objectiveevents`, `replaydoc` (msys64/ucrt64 en tête du PATH) | vet **propre** ; **13 paquets ok en 18,9 s**, dont `filmdec` 13,15 s et `archlint` 14,31 s (`TestFilmdecPackageVarsNeCroitPas` VERT : le ratchet reste à **96**, les trois fichiers neufs n'ajoutent aucune variable de paquet — sentinelles en `const`, table de profil en `switch`). |
+| 2026-09-14 | 1.5 (communs) | ce commit | `make go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **0 issues**, 1 min 40 — baseline non accrue. |
+| 2026-09-14 | 1.5 (équivalence, régime COURT) | ce commit | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-decfilm-15 -films …` — les 10 films, DEUX sous-ensembles séquentiels de 5 | **`BILAN : 5 identique(s), 0 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s)`** puis le même, soit **10/10 IDENTIQUES** (3 min 58 + 2 min 10). Les 50 étapes de balayage et l'artefact compris : aucun octet cuit ne change. |
+| 2026-09-14 | 1.5 (portée, dite sans détour) | ce commit | `grep -rn "ReadFilmIdentity(\|ReadPlayerTable(" --include=*.go internal/ cmd/ \| grep -v _test.go` | **DEUX lignes, et ce sont les deux déclarations** (`film_identity.go:170`, `player_table.go:245`). Aucun appelant de production : le 10/10 de l'équivalence n'est pas une surprise, c'est ce que « lecteurs purs, sans consommateur » veut dire. |
+| 2026-09-14 | 1.5 (corpus gate) | ce commit | `go run ./cmd/replay-corpus-gate --base=15bc6c82f --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-15` (les deux racines sont OBLIGATOIRES sur ce poste, §2.2 ; `--manifest` PREND UN CHEMIN, ce n'est pas un drapeau booleen) | **13 temoins sur 13 : 0 gain, 0 perte, schema 55 → 55 partout**, `EXIT=0`, ~9 min. `bcb6d393` 11,96 s · `fb1a1a72` 30,39 s · `d9781168` 24,56 s · `c75f33b8` 14,47 s · `bf15f7ab` 13,65 s · `51ebbc0f` 17,82 s · `084a804d` 1 min 53 · `0797ce72` 15,55 s · `111fa685` 34,79 s · `e5adf7b2` 39,58 s · `60ae07c4` 25,45 s · `a349fea8` 2 min 07 · `bfecd02b` 19,3 s. **Zéro différence, au sens littéral** — c'est ce que « lecteurs sans consommateur » doit donner. |
+| 2026-09-14 | 1.5 (clôture) | ce commit | retrait d'une branche INATTEIGNABLE trouvée à la relecture : la famille « parasite » du contrôle des écarts | Le critère d'acceptation exige que la marche VISITE tous les enregistrements du balayage, donc les deux bouts de chaque couple du contrôle sont toujours retenus : `GapsParasite` ne pouvait plus incrémenter (mesure sur les 1 351 films : **0**). Retirée du rapport, du `switch` et des tests — règle 7, pas de branche morte. `GrammarRev` INCHANGÉE (même lot), empreinte reprise, corpus rejoué **VERT** (77,0 s, chiffres identiques). |
 
 ## 6. Protocole de reprise de session
 
