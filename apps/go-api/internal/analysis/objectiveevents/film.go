@@ -30,9 +30,9 @@
 //
 // Faits de décode VALIDÉS (RESEARCH_THEATER_RE.md §M, §M-ter) :
 //   - footer = chunk de plus haut index, chunk_type 3 ; ses events th=10 = les
-//     interactions objectif (t=horloge BE @octets 48-51, slot b36, team b37/b55,
-//     xuid). Le champ team du film est NON FIABLE sur certains matchs -> l'équipe
-//     canonique vient du roster (xuid->team_id de match_participants).
+//     interactions objectif (t=horloge BE @octets 48-51, slot b36, ÉQUIPE À L'OCTET 37,
+//     xuid). L'équipe est donc DANS le film : mesure du 2026-09-13, 665 événements sur
+//     665, quatorze films de modes à objectif — cf. [FooterEvent.Team].
 //   - capture CTF = une FRAME re-transmettant la table objectif complète
 //     (tiers==6) ; team de la capture = l'event th=10 de t MAX dans le cluster
 //     coïncident. objective_id (zone/colline) non récupérable -> NULL.
@@ -177,25 +177,82 @@ func readU64LEAtBit(data []byte, bit int) uint64 {
 	return x
 }
 
-// th10Event = un event highlight de type_hint==10 (interaction objectif) décodé
-// depuis le footer. t = horloge match (ms) ; slot = b36 (0-3, stable par xuid) ;
-// teamRaw = b55 (NON fiable sur certains matchs -> à confirmer via roster) ; xuid
-// = acteur. Structure validée RESEARCH_THEATER_RE.md §M.
-type th10Event struct {
-	t       int
-	slot    int
-	teamRaw int
-	xuid    uint64
+// Offsets, EN OCTETS DEPUIS LE DÉBUT DU BLOC DE 60, des champs du bloc d'événement du pied.
+//
+// L'ÉQUIPE EST À L'OCTET 37, PAS À L'OCTET 55 (correctif du 2026-09-14, lot 1.1). Ce n'est pas
+// un choix de repli, c'est une lecture : le balayage AVEUGLE des soixante octets du bloc, trois
+// lectures chacun (valeur brute, valeur moins un, bit de poids faible) confrontées à l'équipe
+// PROUVÉE DANS LE FILM SEUL (rang de la table des slots de `chunk_00` -> xuid, i-ème entité
+// ti=9 -> désignateur d'équipe), donne QUATRE lectures en accord parfait sur cent quatre-vingts
+// essayées, et ce sont les deux lectures de l'octet 37 et les deux de l'octet 38 :
+// 665 événements sur 665, quatorze films de modes à objectif, sept builds.
+//
+// L'octet 55 — celui que ce paquet lisait sous le nom `teamRaw` — vaut 0 sur les 665. Son
+// « accord » de 318/665 était MÉCANIQUE : c'est le nombre d'événements dont l'acteur est
+// d'équipe 0. Le commentaire « NON fiable sur certains matchs » décrivait donc un champ
+// TOUJOURS faux pour l'équipe 1, pas un champ intermittent.
+//
+// L'octet 38 est un DOUBLON OBSERVÉ (même 665/665, mêmes valeurs terme à terme). Il n'est PAS
+// lu : deux lectures d'un même fait se contrediraient un jour sans que rien ne le dise, et
+// rien n'établit laquelle des deux est l'écriture et laquelle la copie.
+//
+// Mesure : `.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md` §6 ; instrument (oracle
+// corpus, rejouable) `filmdec.TestResidusPiedOctetEquipe`.
+const (
+	footerBlockBytes = 60 // taille du bloc d'événement qui précède le marqueur de fin
+	footerByteSlot   = 36 // b36 : 0..3, stable par xuid — PAS le player_index (mesuré)
+	footerByteTeam   = 37 // b37 : l'index d'équipe, 665/665
+	footerByteType   = 47 // b47 : type_hint, filtré sur 10
+	footerByteTime   = 48 // b48..b51 : horloge du match (ms), gros-boutiste
+)
+
+// teamAbsent = ce que porte [FooterEvent.Team] quand aucune équipe n'a été lue. Le film est
+// alors MUET, ce qui n'est pas la même chose que l'équipe 0 — la confusion des deux est
+// exactement ce qui rendait l'octet 55 plausible.
+const teamAbsent = -1
+
+// FooterEvent = un événement highlight de type_hint==10 (interaction objectif) décodé depuis le
+// pied de film (chunk de type 3).
+//
+// EXPORTÉ SANS CONSOMMATEUR HORS DE CE PAQUET, ET C'EST DÉLIBÉRÉ (lot 1.1.2 du
+// `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`) : [FooterEvent.Team] est l'équipe que le film écrit,
+// et le lot 1.7 la fera prendre par `domain.ObjectiveEvent.TeamID` à la place du roster de la
+// base (décision V4 : le film est la seule source). Le champ vit en mémoire dans ce paquet et
+// nulle part ailleurs — ni dans un document cuit, ni dans une colonne DuckDB.
+type FooterEvent struct {
+	// TimeMS est l'instant de l'interaction sur l'horloge du match (octets 48 à 51, BE).
+	TimeMS int
+	// Slot est l'octet 36 : 0..3, stable par xuid sur un match. Ce n'est PAS le player_index
+	// (mesuré : valeurs 0..3 réparties sur des films à 8 comme à 24 joueurs).
+	Slot int
+	// Team est l'index d'équipe BRUT tel que le film l'écrit à l'octet 37 du bloc — jamais un
+	// libellé, jamais une valeur de la base. [teamAbsent] (-1) quand le bloc n'a pas été lu.
+	Team int
+	// XUID de l'acteur, valeur brute du film.
+	XUID uint64
+}
+
+// FooterEvents rend les événements th=10 du PIED d'un film déjà chargé, triés par instant.
+//
+// C'est le point d'entrée unique du pied : il choisit le chunk (plus haut index de type 3, cf.
+// [footerData]) puis le balaye. Un film sans pied au manifeste rend nil — pas d'erreur, et pas
+// de chunk deviné.
+func FooterEvents(film *filmsource.Film) []FooterEvent {
+	footer, ok := footerData(film)
+	if !ok {
+		return nil
+	}
+	return scanTh10Events(footer)
 }
 
 // scanTh10Events extrait tous les events th=10 d'un chunk décompressé (typiquement
 // le footer chunk_type 3). Adapté de evDump/thTally (filmx) : on localise chaque
 // XUID (préfixe 0x2d/0x25, suffixe 0xc0, valeur LE plausible), on cherche le
 // end-marker [00 00 2e e0] de son bloc, on recule de 60 octets, on lit th@b47,
-// t=BE@b48-51, slot@b36, team@b55. Filtré sur th==10 et dédupliqué par bloc.
-func scanTh10Events(data []byte) []th10Event {
+// t=BE@b48-51, slot@b36, équipe@b37. Filtré sur th==10 et dédupliqué par bloc.
+func scanTh10Events(data []byte) []FooterEvent {
 	total := len(data) * 8
-	var out []th10Event
+	var out []FooterEvent
 	seen := map[int]bool{}
 	for ms := 8; ms <= total-8; ms++ {
 		if readByteAtBit(data, ms) != 0xc0 {
@@ -218,17 +275,18 @@ func scanTh10Events(data []byte) []th10Event {
 		}
 		seen[xstart] = true
 		if ev, ok := decodeTh10Block(data, xstart, total); ok {
-			out = append(out, th10Event{ev.t, ev.slot, ev.teamRaw, x})
+			ev.XUID = x
+			out = append(out, ev)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].t < out[j].t })
+	sort.Slice(out, func(i, j int) bool { return out[i].TimeMS < out[j].TimeMS })
 	return out
 }
 
 // decodeTh10Block, à partir du début d'XUID, cherche le end-marker du bloc
 // d'event puis décode le bloc de 60 octets le précédant. Renvoie ok=false si le
 // bloc n'est pas un th=10. (Le xuid est rempli par l'appelant.)
-func decodeTh10Block(data []byte, xstart, total int) (th10Event, bool) {
+func decodeTh10Block(data []byte, xstart, total int) (FooterEvent, bool) {
 	win := xstart + 20000
 	if win > total {
 		win = total
@@ -236,23 +294,29 @@ func decodeTh10Block(data []byte, xstart, total int) (th10Event, bool) {
 	for b := xstart; b <= win-32; b++ {
 		if readByteAtBit(data, b) == 0 && readByteAtBit(data, b+8) == 0 &&
 			readByteAtBit(data, b+16) == 0x2e && readByteAtBit(data, b+24) == 0xe0 {
-			ebs := b - 60*8
+			ebs := b - footerBlockBytes*8
 			if ebs < xstart {
-				return th10Event{}, false
+				return FooterEvent{Team: teamAbsent}, false
 			}
-			if int(readByteAtBit(data, ebs+47*8)) != 10 {
-				return th10Event{}, false
+			if int(readByteAtBit(data, ebs+footerByteType*8)) != 10 {
+				return FooterEvent{Team: teamAbsent}, false
 			}
-			t := int(readByteAtBit(data, ebs+48*8))<<24 | int(readByteAtBit(data, ebs+49*8))<<16 |
-				int(readByteAtBit(data, ebs+50*8))<<8 | int(readByteAtBit(data, ebs+51*8))
-			return th10Event{
-				t:       t,
-				slot:    int(readByteAtBit(data, ebs+36*8)),
-				teamRaw: int(readByteAtBit(data, ebs+55*8)),
+			return FooterEvent{
+				TimeMS: footerTimeMS(data, ebs),
+				Slot:   int(readByteAtBit(data, ebs+footerByteSlot*8)),
+				Team:   int(readByteAtBit(data, ebs+footerByteTeam*8)),
 			}, true
 		}
 	}
-	return th10Event{}, false
+	return FooterEvent{Team: teamAbsent}, false
+}
+
+// footerTimeMS lit l'horloge du match (ms) aux octets 48 à 51 du bloc, gros-boutiste.
+func footerTimeMS(data []byte, ebs int) int {
+	return int(readByteAtBit(data, ebs+footerByteTime*8))<<24 |
+		int(readByteAtBit(data, ebs+(footerByteTime+1)*8))<<16 |
+		int(readByteAtBit(data, ebs+(footerByteTime+2)*8))<<8 |
+		int(readByteAtBit(data, ebs+(footerByteTime+3)*8))
 }
 
 // ladderTiers = têtes des 6 records de l'échelle de score-contribution CTF (la
