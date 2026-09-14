@@ -1993,6 +1993,22 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       re-mesurer après conversion : si le point à −216 m de `084a804d` subsiste, c'est un fait du
       film à instruire, pas à filtrer). M.
 
+- [ ] 1.9.14 **Le roster à l'instant T, c'est les occupants ; le remplaçant prend le siège du
+      partant.** Constat utilisateur du 2026-09-15 sur le schéma 54 : le rejeu affiche tout le
+      roster du match tout le temps, les joueurs arrivés en cours de partie paraissent « sans
+      équipe » et ne remplacent pas réellement les partants dans leur siège ; « on n'a pas de
+      raison d'afficher les joueurs qui ne jouent pas à l'instant T ». Deux causes distinctes :
+      (a) l'équipe des remplaçants — réglée par le lot 1.7 (désignateur du film pour TOUTE entité
+      ti=9, remplaçants compris, V4) ; (b) le siège — la mesure ajoutée au 1.7 (« D-remplaçants
+      (1.7) ») dit si le film DONNE le siège directement (le remplaçant reprend l'index du
+      partant : « l'index c'est l'index », remplacement direct) ou non (alors l'appariement
+      ordinal par équipe du modèle des sièges du 02/09 reste le repli NOMMÉ et compté). Conversion :
+      le document publie, par joueur, ses intervalles de présence (déjà portés par les vies) et
+      son siège (index de film) ; la RÈGLE DE LECTURE (web, match-replay) affiche à l'instant T
+      les seuls occupants présents, un siège = une fiche, le remplaçant dans la fiche du partant ;
+      aucune fiche pour un joueur absent à T. Témoins : `e5adf7b2` (5 remplaçants), `bcb6d393`,
+      `a521164d`, `11de8353`. M (Go S + web S).
+
 Arbitrage du pilote (2026-09-13) : l'item 1.9.0 ci-dessus EST le registre des replis proposé par
 l'audit ; il entre les **62 replis anonymes** de la table (E) du registre 0.E, et ses 9 replis à
 défaut déjà mesuré sont listés dans son journal.
