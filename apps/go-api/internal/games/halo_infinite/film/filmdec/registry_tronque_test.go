@@ -8,9 +8,12 @@ package filmdec
 // acceptait d'entrer dans un bloc INCOMPLET. Sur un tampon qui s'arrete au milieu d'un nom, la
 // suite nommee du bloc se prolonge au-dela du tampon, et `registryBlockTail` demandait alors
 // `zeroTail(data, from, to)` avec `from > to` — c'est-a-dire `data[from:to]`, une PANIQUE
-// (`slice bounds out of range`). Aucun `recover` ne la rattrape ni dans `film/` ni dans
-// `killcollector/` : les deux appelants de production (`killcollector/hits.go`,
-// `filmdec/film_context.go`) auraient fait tomber le processus au lieu de rendre un registre.
+// (`slice bounds out of range`). Aucun `recover` ne la rattrape, et les appelants de production
+// sont TROIS — releve du 2026-09-14,
+// `grep -rn "ParseRegistryChunk(" --include=*.go internal/ cmd/ | grep -v _test.go` :
+// `filmdec/film_context.go:254`, `killsource/world.go:58` (via `killsource/decode.go:123`,
+// paquet importe par `killcollector` ET par `replaybuild`) et `killcollector/hits.go:113`.
+// Les trois auraient fait tomber le processus au lieu de rendre un registre.
 // L'ancienne borne (blocs ENTIERS seulement) n'avait pas ce defaut, et le recadrage ne
 // demandait pas de la changer.
 //
@@ -18,6 +21,11 @@ package filmdec
 //
 //	(A) SYNTHETIQUE, 13 octets : l'en-tete de 8 octets, puis un nom de 4 caracteres et son NUL.
 //	    La suite nommee vaut 1, la queue commence a 268 et le tampon s'arrete a 13 -> `[268:13]`.
+//	(C) COUPE ALIGNEE SUR UNE FRONTIERE DE BLOC : le meme `chunk_00` tronque a
+//	    `registryEntryBase + 6*archetypeBlockSize`. Aucun octet de queue — et c'est le piege que
+//	    la revue R2 a trouve : `TruncatedBytes` vaut ZERO, donc lui seul redevenait muet. C'est
+//	    `Truncated` qui porte le fait, parce que le parse a EPUISE le tampon sans rencontrer la
+//	    fin structurelle du registre.
 //	(B) REGISTRE REEL COUPE : `chunk_00` du build de reference tronque a
 //	    `registryEntryBase + 6*archetypeBlockSize + 41*registrySlotSize + 2`, soit 110 510 —
 //	    deux octets DANS le nom de l'entree 41 du bloc 6 (`statborg-finalized-rounds-values-…`,
@@ -28,8 +36,9 @@ package filmdec
 //
 // # CE QUE LE TEST EXIGE
 //
-// Pas de panique, le registre des blocs ENTIERS rendu, et `Registry.TruncatedBytes` egal aux
-// octets de queue qu'aucun bloc entier ne couvre. Une troncature n'est pas muette (D14).
+// Pas de panique, le registre des blocs ENTIERS rendu, `Registry.Truncated` vrai, et
+// `Registry.TruncatedBytes` egal aux octets de queue qu'aucun bloc entier ne couvre — ZERO
+// compris. Une troncature n'est pas muette (D14).
 
 import (
 	"path/filepath"
@@ -49,6 +58,9 @@ func registreDeReference(t *testing.T) []byte {
 
 // coupeAuMilieuDUnNom : l'offset de la reproduction (B), ecrit comme le relecteur l'a derive.
 const coupeAuMilieuDUnNom = registryEntryBase + 6*archetypeBlockSize + 41*registrySlotSize + 2
+
+// coupeSurFrontiereDeBloc : l'offset de la reproduction (C), une coupe SANS octet de queue.
+const coupeSurFrontiereDeBloc = registryEntryBase + 6*archetypeBlockSize
 
 // TestParseRegistreTronqueNePaniquePas tient les deux reproductions.
 func TestParseRegistreTronqueNePaniquePas(t *testing.T) {
@@ -71,11 +83,18 @@ func TestParseRegistreTronqueNePaniquePas(t *testing.T) {
 		{"(A) synthetique de 13 octets", synthetique, 0, 5, ""},
 		{"(B) registre reel coupe au milieu du nom de l'entree 41 du bloc 6",
 			reel[:coupeAuMilieuDUnNom], 6, 10662, "game-engine-team-mapping-component"},
+		{"(C) registre reel coupe SUR une frontiere de bloc (zero octet de queue)",
+			reel[:coupeSurFrontiereDeBloc], 6, 0, "game-engine-team-mapping-component"},
 	} {
 		t.Run(cas.nom, func(t *testing.T) {
 			reg := parseRegistry(cas.data)
 			if got := len(reg.Archetypes); got != cas.blocs {
 				t.Errorf("%d bloc(s) entier(s) rendu(s), %d attendu(s)", got, cas.blocs)
+			}
+			if !reg.Truncated {
+				t.Errorf("Truncated = false sur un tampon coupe — c'est le drapeau qui porte le "+
+					"fait, TruncatedBytes n'en est que la mesure (elle vaut %d ici)",
+					reg.TruncatedBytes)
 			}
 			if reg.TruncatedBytes != cas.queue {
 				t.Errorf("TruncatedBytes = %d, %d attendu — une troncature ne se tait pas",
@@ -97,6 +116,10 @@ func TestParseRegistreTronqueNePaniquePas(t *testing.T) {
 // `TruncatedBytes` pourrait valoir n'importe quoi sur un registre sain sans que rien ne le dise.
 func TestParseRegistreCompletNEstPasTronque(t *testing.T) {
 	reg := parseRegistry(registreDeReference(t))
+	if reg.Truncated {
+		t.Error("Truncated = true sur un registre complet : la lecture s'y arrete sur la fin " +
+			"structurelle, elle n'epuise pas le tampon")
+	}
 	if reg.TruncatedBytes != 0 {
 		t.Errorf("TruncatedBytes = %d sur un registre complet, 0 attendu", reg.TruncatedBytes)
 	}
