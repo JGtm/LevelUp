@@ -438,27 +438,19 @@ func playerLines(facts port.MatchFacts) []objectiveevents.PlayerLine {
 	return out
 }
 
-// rosterXUIDs rend les joueurs de la feuille de match, en decimal, pour COMPLETER le roster
-// que le fil des morts donne au rejeu (cf. replay.Options.RosterXUIDs).
+// rosterXUIDs projette la feuille de match vers le roster d'appoint du rejeu.
 //
-// UN JOUEUR QUI NE MEURT JAMAIS N'EST DANS AUCUNE MORT, donc dans aucun roster deduit du fil
-// — et il disparait de toute la chaine : pas d'index de joueur, pas de pont, pas d'entree au
-// roster publie. Mesure du 2026-09-07 sur `3372e7eb` : 6 joueurs publies pour 8 a la feuille,
-// les deux manquants a 0 mort.
-//
-// Un xuid que la feuille ne donne pas en decimal (un bot, `bid(N.0)`) est ignore : le pont des
-// bots passe par BOT_METADATA et les relais, pas par l'index de joueur.
+// LA REGLE N'EST PLUS ICI (lot 1.0, revue R1, constat R1-1) : elle vit dans
+// `replay.RosterXUIDsOf`, avec le champ qu'elle remplit, pour que le FIXTURE d'entrees puisse
+// l'appeler lui aussi — il passait `nil`, et un joueur a zero mort manquait alors a la table
+// d'index du golden sans que rien ne le dise. Cette fonction-ci n'est plus que l'adaptateur du
+// type de la base vers celui de la regle.
 func rosterXUIDs(facts port.MatchFacts) []uint64 {
-	out := make([]uint64, 0, len(facts.Players))
+	xuids := make([]string, 0, len(facts.Players))
 	for _, p := range facts.Players {
-		if x, err := strconv.ParseUint(p.XUID, 10, 64); err == nil && x != 0 {
-			out = append(out, x)
-		}
+		xuids = append(xuids, p.XUID)
 	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
+	return replay.RosterXUIDsOf(xuids)
 }
 
 // participantsDuTableau projette la feuille de match vers le TABLEAU que le registre d'identite

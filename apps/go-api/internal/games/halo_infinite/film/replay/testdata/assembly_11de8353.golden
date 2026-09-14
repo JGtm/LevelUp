@@ -20,7 +20,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 44776 point(s) portent un cap de visee · 44776 une elevation de visee · 11558 un bouclier · 313 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
-26 joueur(s)
+27 joueur(s)
   2533274816482606  idx=0  "SharpByStriking"
   2533274809930102  idx=1  "cejos"
   2533274797194471  idx=2  "nusuns"
@@ -47,6 +47,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2535431520192988  idx=24  "ElBicho0707"
   2533274854846362  idx=25  "Javi9496"
   2535422375593884  idx=26  "GenesisA1011"
+  2535451406659668  idx=27  ""
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
 1688 rattache(s) / 1968 disponible(s) = 85.8 %

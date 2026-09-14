@@ -1,5 +1,20 @@
 package replay
 
+// document_chronicle.go — LA CHRONIQUE DU SCHEMA : une entree par version, ce qu elle change
+// et pourquoi elle monte.
+//
+// EXEMPTION ECRITE AU SEUIL DES 500 LIGNES (CLAUDE.md regle 5, posee le 2026-09-14, lot 1.0
+// revue R1 constat R1-4). Ce fichier est APPEND-ONLY PAR CONSTRUCTION : une entree de chronique
+// decrit une montee de schema DEJA CUITE dans le parc, elle ne se reecrit pas et ne se supprime
+// pas — la relire est precisement ce qui permet de savoir ce qu un artefact ancien porte. Le
+// scinder par tranches de versions rendrait la lecture chronologique impossible et casserait
+// l extracteur unique (`testutil.ReplayChronicleVersions`, qui lit CE fichier et dont un
+// resultat vide rend inerte le garde-rail `document_shape_test.go`). Sa croissance est donc
+// attendue, bornee par le rythme des montees de schema, et n est pas de la dette.
+//
+// RETRAIT DE L EXEMPTION : le jour ou la chronique deviendrait une donnee (fichier versionne
+// hors source Go) lue par le meme extracteur — pas avant.
+
 //
 // v2 (2026-08-02, lot 3.1/3.2) : les trois tables de libellés deviennent BILINGUES
 // (`{en, fr}` au lieu d'une chaîne) et le type d'un lancer de grenade devient son RANG
