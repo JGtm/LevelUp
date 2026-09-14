@@ -290,4 +290,22 @@ func encodeGoldenQueue(w *gwriter, g *goldenInputs) {
 		w.i(int64(g.PlayerIndices.ByXUID[x]))
 	}
 
+	encodeFilmTable(w, g.FilmTable)
+}
+
+// encodeFilmTable ecrit la TABLE DES JOUEURS DU FILM (v20, lot 1.6). Elle porte son REFUS comme
+// elle porte ses sieges : une table non lue n'est pas une table vide, et le document publie la
+// difference (`coverage.identity.filmTable.refus`).
+func encodeFilmTable(w *gwriter, t FilmPlayerTable) {
+	w.str(t.Build)
+	w.str(string(t.Refusal))
+	w.u(uint64(t.Occupied))
+	w.u(uint64(t.Vacant))
+	w.bool8(t.InterleavedVacant)
+	w.u(uint64(len(t.Seats)))
+	for _, s := range t.Seats {
+		w.i(int64(s.FilmIndex))
+		w.u(s.XUID)
+		w.str(s.Gamertag)
+	}
 }

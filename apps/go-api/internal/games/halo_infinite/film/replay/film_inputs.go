@@ -122,6 +122,14 @@ type FilmInputs struct {
 	// ne la fournit (verifie le 2026-09-14 ; les seuls remplisseurs de ce champ passent par
 	// `BuildFromPositions`, cf. `killcollector/positions_identity_entree.go`).
 	PlayerIndices PlayerIndexTable
+	// FilmTable est la TABLE DES JOUEURS QUE LE FILM ECRIT (`chunk_00`, section 2 et corps) :
+	// le lien DIRECT `index <-> xuid <-> gamertag`, lu par [ScanFilmPlayerTable].
+	//
+	// ELLE NE REMPLACE PAS `PlayerIndices`, ELLE LA PRECEDE : la table du film est celle du
+	// DEBUT du film, et un joueur qui rejoint en cours de partie n'y a pas de siege (mesure du
+	// 2026-09-14 : jusqu'a 5 sur un BTB). Le registre d'identite pose les sieges du film, puis
+	// COMPLETE par la lecture des chunks pour les xuids dont la table est muette.
+	FilmTable FilmPlayerTable
 	// FilmClockOriginUS est l'horodatage moteur du PREMIER paquet du film. Zero = origine
 	// incalculable : le document sort sans origine.
 	FilmClockOriginUS uint64
@@ -172,5 +180,6 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.Projectiles = in.Projectiles
 	opt.Deaths = in.Deaths
 	opt.PlayerIndices = in.PlayerIndices
+	opt.FilmTable = in.FilmTable
 	opt.FilmClockOriginUS = in.FilmClockOriginUS
 }
