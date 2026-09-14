@@ -743,12 +743,41 @@ doivent être à jour), puis **0.D.1 bis**, puis 0.D.3 et 0.D.4.
       deux dossiers : vide) ; taille des 8 `inputs_*.bin.gz` **10 849 119 o -> 10 337 525 o**
       (10,35 Mio -> **9,86 Mio**, −511 594 o), contre 18 656 453 o (17,79 Mio) en flottants.
       Version du fixture `REPLAYINPUTS15` -> `REPLAYINPUTS16`, garde recalée sur la précédente.
-- [ ] 0.D.4 **D8 — points de piste publiés en baisse (−2 / −9 / −4).**
+- [x] 0.D.4 **D8 — points de piste publiés en baisse (−2 / −9 / −4).**
       Instruction bornée à une session au plus : sur `d9781168`, localiser les points disparus
       (cuisson fraîche à `179bd7401` contre HEAD, diff des pistes), nommer l'étape et le commit
       responsables ; verdict DÉFAUT ou DIVERGENCE ; correctif seulement si défaut à cause
       identifiée (même protocole) ; sinon registre. Si la session ne suffit pas : registre avec
       ce qui a été établi.
+      **Fait** (2026-09-14). **VERDICT : DIVERGENCE VOULUE.** Cause nommée, points identifiés à
+      l'unité, aucun correctif (règle 7) ; une ligne au registre pour le résidu réel.
+      **La cause est `48cf4905d` (schéma 36, « une track = une vie, les bots existent »), et
+      elle seule.** Bissection au corpus gate sur `d9781168`, **huit points de base** : la perte
+      est PRÉSENTE aux bases 34, 35 et `48cf4905d^`, ABSENTE à `48cf4905d` et à toutes les bases
+      suivantes (37, 38, 39, 40, 41, 43, 47). L'hypothèse du plan — « re-segmentation v41, v43,
+      v47 » — nommait les bonnes MÉCANIQUES mais les mauvaises versions : c'est **quinze schémas
+      plus tôt**.
+      **Les deux points perdus, à l'unité** : `slot 558 @ frame 2168` et `slot 573 @ frame 2730`,
+      tous deux du même xuid `2535435655459376`. Chacun est le PREMIER point de sa piste et il
+      est **ISOLÉ** — le point suivant du même slot arrive **88 frames plus tard (8,8 s)** pour
+      l'un, **176 frames (17,6 s)** pour l'autre, très au-delà de `lifeGapUS` (5 s). Rien n'est
+      décodé de travers : le nombre de pistes passe de **160 à 174**, les positions sont
+      REDISTRIBUÉES, et seuls ces deux échantillons isolés tombent.
+      **La chaîne est faite de DEUX règles écrites, qui se composent** : (1) `build.go` ouvre une
+      nouvelle vie dès qu'un trou dépasse `lifeGapUS` — même seuil que `buildLifeSpans`, « deux
+      découpes divergentes rendraient le nommage par vie inappariable » ; (2)
+      `DefaultMinPoints = 2` refuse la vie qui en résulte — « une track d'un seul échantillon
+      n'est pas une trajectoire ». Les deux précèdent le constat ; aucune n'est en défaut.
+      **CE QUI RESTE, et c'est le vrai résidu** : l'observation est VRAIE (le joueur était là à
+      cet instant), elle n'est plus publiée ni comme piste ni comme compteur, et `minPoints`
+      refuse **en silence** — aucun compteur de refus dans le paquet, aucune ligne de couverture.
+      Un lecteur ne peut pas savoir que le film portait deux positions de plus. C'est la règle
+      « jamais d'erreur avalée en silence » appliquée à un refus de publication : au registre,
+      avec la question produit attenante (une vie d'UN échantillon doit-elle paraître ?).
+      **Second témoin non mesuré, et la raison est dite** : `60ae07c4` ne se cuit PAS au code de
+      l'époque du schéma 36 — plafond mémoire dépassé, pic **4,15 Gio**. C'est précisément
+      l'ex-bombe que la borne de déroulage `f22474816` a domptée quinze schémas plus tard. Le
+      verdict repose donc sur `d9781168`, le témoin que le plan nomme.
 - [x] 0.D.6 **Les véhicules qui disparaissent au schéma 54 (signalement utilisateur du
       2026-09-13 : « les images des véhicules peuvent disparaître sur le schéma 54 ; les versions
       ont bumpé ces derniers temps sans garder toutes les données »).** Angle mort connu de la
@@ -1623,6 +1652,13 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 0.D.3 bis (preuve) | ce commit | `git diff --stat 1b1111379 -- testdata/assembly_ fixtures/go/` | **SORTIE VIDE** : goldens d'assemblage et fixtures de contrat **identiques à l'octet** à la version en flottants. Le contenu cuit est le même, seule sa représentation au fixture change |
 | 2026-09-14 | 0.D.3 bis (taille) | ce commit | `git cat-file -s` sur les 8 blobs aux trois états | origine `2a44c9031` **10 849 119 o (10,35 Mio)** · flottants `1b1111379` **18 656 453 o (17,79 Mio, +72 %)** · **QUANTA 10 337 525 o (9,86 Mio)** — soit **−511 594 o sous l'origine** et −8,0 Mio sous les flottants |
 | 2026-09-14 | 0.D.3 bis (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` ; `make check-types` ; `npx vitest run src/features/match-replay src/lib/replay` | gofmt vide ; vet propre ; **12 paquets ok** ; lint **0 issues, exit 0** ; tsc **exit 0** ; vitest **3 126 tests, 0 échec** |
+
+
+| 2026-09-14 | 0.D.4 | `a35c9e678` (arbre) | `replay-corpus-gate` sur `d9781168` seul (manifeste réduit), **huit points de base** : 179bd7401 (34), 48cf4905d^ (35), 84a53c2cc (36 avant), 48cf4905d (36 après), fa09f4ee5^ (37), e6455cab6^ (38), 7c85acf58^ (39), 79bf2e6d2^ (40), 07236bf88^ (41), b07525b3f^ (43), ceb0f3d2a^ (47) | **Perte PRÉSENTE** aux bases 34, 35 et `48cf4905d^` (`tracks.points/n` 36 581 -> 36 579, 7 axes) ; **ABSENTE** à `48cf4905d` et à toutes les bases suivantes. **La cause est `48cf4905d` (schéma 36, « une track = une vie »), et elle seule.** L'hypothèse du plan (v41/v43/v47) nommait la bonne mécanique, quinze schémas trop tard. ~25 s par run |
+| 2026-09-14 | 0.D.4 | `a35c9e678` | `--keep-work` à la base `48cf4905d^`, puis comparaison des DEUX artefacts cuits, point par point sur la clé (slot, t) | **Deux points, identifiés à l'unité** : `slot 558 @ 2168` et `slot 573 @ 2730`, même xuid `2535435655459376`. **0 point neuf**, 0 doublon des deux côtés. Chacun est le PREMIER point de sa piste et il est ISOLÉ : point suivant du même slot à **+88 frames (8,8 s)** et **+176 frames (17,6 s)**, très au-delà de `lifeGapUS` (5 s). Pistes **160 -> 174** : les positions sont redistribuées, pas perdues |
+| 2026-09-14 | 0.D.4 | `a35c9e678` | lecture sur pièces des deux règles qui composent | `build.go:526` ouvre une nouvelle vie au-delà de `lifeGapUS` (`lives.go:46`, 5 s) ; `build.go:575` refuse la vie par `DefaultMinPoints = 2` (`build.go:16` : « une track d'un seul échantillon n'est pas une trajectoire »). Les deux précèdent le constat, aucune n'est en défaut. **`grep` du paquet : AUCUN compteur de refus `minPoints`** — la perte est muette |
+| 2026-09-14 | 0.D.4 | `a35c9e678` | second témoin `60ae07c4` aux bases `48cf4905d^` et `48cf4905d` | **NON MESURABLE** : `ERREUR : cuisson reference ... exit status 13`, `plafond memoire depasse pic_gio=4,15`. Le code de l'époque du schéma 36 ne cuit pas cet ex-bombe — c'est celui que la borne `f22474816` a dompté quinze schémas plus tard. Dit, pas contourné |
+| 2026-09-14 | 0.D.4 (gates) | ce commit | `gofmt` ; `go vet` ; `go test` (12 paquets) ; `golangci-lint --timeout 20m` | gofmt vide ; vet propre ; 12 paquets ok ; lint **0 issues, exit 0**. Régime court et corpus gate de clôture NON APPLICABLES : `git diff HEAD -- 'apps/go-api/**/*.go' ':!*_test.go'` **vide** — aucun octet de production ne change (deux documents) |
 
 ## 6. Protocole de reprise de session
 
