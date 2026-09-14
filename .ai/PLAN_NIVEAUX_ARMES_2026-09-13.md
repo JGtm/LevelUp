@@ -102,4 +102,4 @@ un râtelier, ou `automatic`/`sidearm` sur un socle de puissance, est compté et
 
 ## 5. Journal
 - 2026-09-13 — Plan écrit sur demande utilisateur.
-- 2026-09-14 — Décision utilisateur « c'est à faire » ; étape 0 exécutée et fusionnée ; étapes 1-4 lancées.
+- 2026-09-14 — Décision utilisateur « c'est à faire » ; étape 0 exécutée et fusionnée ; étapes 1-2 livrées sur `feat/niveaux-armes` (`8d4cf495f`, `598cdf62f`) ; étape 3 : les pages agrégées lisent un résumé par arme où le socle est perdu → décision superviseur : motif des prises nettes (table `match_pad_pickups_by_tier` append-only par passe, projection des artefacts rangés sous `film.weapon_tiers`, CLI `backfill-pad-tiers` sans recuisson, rattrapage local par le superviseur, prod à la release v7.5) ; revue adversariale à 2 relecteurs avant fusion.
