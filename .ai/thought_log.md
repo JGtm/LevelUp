@@ -1,3 +1,34 @@
+## [2026-09-14] Chantier decodeur — lot 0.D clos (0.D.1 bis, 0.D.3/0.D.3 bis, 0.D.4, 0.D.6, 0.D.7, revues R1/R2) — Complete (feat/decfilm-0D fusionnee dans feat/recherche-decodeur-film)
+
+**Decision technique principale.** Instructions bornees des constats de regression, zero code de
+production touche : 0.D.1 bis `[!]` (le film ECRIT des manches finalisees sur les 148 records
+« 2 » de fb1a1a72, bimodal 60-180 s / 720-840 s ; correlation prolongation non etablie ; garde
+`contiguousRounds` NOMMEE au registre des replis ; regulation.toml « mi-temps » corrige) ;
+0.D.4 divergence voulue pinee par bissection a 8 points (`48cf4905d`, schema 36 ; residu = refus
+`minPoints` silencieux -> lot 1.0.4) ; 0.D.6 aucun bump ne perd de vehicule (chassis 0x038df01a
+= tourelles automatiques bannies hors table ; ghost slot 777 efface 5,3 s apres son dernier
+echantillon par une fin INFEREE alors que le film ecrit le dead-state ti=40) ; 0.D.3 + 0.D.3 bis
+codec des entrees COMPLET (rang de grenade -1, stats de balayage `AmmoRefused` + version majeure,
+coordonnees EXACTES en QUANTA + 3 largeurs, 9,845 Mio < 10,35, fidelite fraiches == relues 8/8,
+erreurs typees carte / decoupage dans les deux sens, blob lourd de 17,8 Mio jamais entre dans
+l'historique) ; 0.D.7 le fixture impose le decoupage d'i0 par la fonction de production (seul
+60ae07c4 change : gate=6 region=1 12/12/11, 174 -> 173 pistes). Revue R1 : 1 P1 (stat de
+balayage jetee : « canal munitions refuse » MENTAIT sur 5 goldens sur 8) + 6 P2, 7 corriges ;
+R2 : 0 P1 + 3 P2 (version majeure imprimee au golden et recoupee avec le corpus, sixieme porte
+en echec nomme, journal v15 corrige), 3 corriges. Pilote : verifie par grep (8/8 goldens, 5/5
+portes, tailles), tests replay + archlint verts, diff .go de production vide.
+
+**Decouvertes -> plan.** Lot 1.0 en tete de M1 : le chemin du fixture est une COPIE de la
+sequence de balayages de `BuildFromFilm` et cinq canaux manquent (WeaponChanges, Pickups,
+EquipmentChanges, Vehicles, BipedCreations) : la production expose son etage de balayage, le
+fixture l'appelle, + compteur de refus minPoints. Decisions utilisateur en attente : tourelle
+fixe au calque vehicules ; fin de vie des vehicules lue dans le dead-state (1.9.x) ; seconde
+session sur le designateur de manche ; vie d'un seul echantillon.
+
+**Prochaine etape.** Push + CI ; lot 1.0 ; puis 1.1 (octet 37).
+
+---
+
 ## [2026-09-14] Chantier decodeur — M0 fusionne dans feat/v75 — Complete (avance rapide de origin/feat/v75 vers l'integration)
 
 **Decision technique principale.** Sur signal utilisateur (V3), `feat/v75` avance rapidement vers
