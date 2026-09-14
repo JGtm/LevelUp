@@ -135,6 +135,10 @@ func (c LayerCoverage) warnIfLossy(layer string) {
 type Coverage struct {
 	Shots    LayerCoverage `json:"shots"`
 	Grenades LayerCoverage `json:"grenades"`
+	// Tracks est ce que le SEUIL DE PUBLICATION des traces a retenu et refusé (schéma 55, cf.
+	// TrackCoverage). Absente quand le film ne porte aucune position : il n'y a alors pas de
+	// seuil à appliquer, et publier des zéros laisserait croire à une mesure.
+	Tracks *TrackCoverage `json:"tracks,omitempty"`
 	// Projectiles est la couverture des TRAJECTOIRES DE PROJECTILE (cf. projectiles.go) :
 	// pistes décodées, trajectoires publiées, et celles qu'un PAS IMPOSSIBLE a coupées.
 	//
@@ -378,6 +382,39 @@ type Coverage struct {
 	// Bridge décrit sur quoi repose le pont slot -> joueur. Un calque peut être complet et
 	// néanmoins reposer sur une résolution fragile : les deux se jugent séparément.
 	Bridge BridgeHealth `json:"bridge"`
+}
+
+// TrackCoverage est ce que le SEUIL DE PUBLICATION des traces retient et refuse.
+//
+// # LE SILENCE QU'ELLE ROMPT (schéma 55, lot 1.0.4 du PLAN_DECODEUR_FILM)
+//
+// `decimateTracks` écarte toute vie dont la trajectoire décimée porte moins de `MinPoints`
+// échantillons — une vie d'un seul point n'est pas une trajectoire. Le refus était MUET depuis
+// l'origine du calque : ni compteur publié, ni ligne de journal. Un artefact publiant 90 traces
+// là où le film en porte 95 était donc indistinguable d'un film à 90 vies, et TOUT lecteur qui
+// rapporte un compte de vies au film (le registre d'identité, la couverture du pont, l'écran)
+// travaillait sur un dénominateur amputé sans le savoir.
+//
+// # CE QU'ELLE NE CHANGE PAS
+//
+// Le seuil lui-même. `DefaultMinPoints` vaut 2 et le reste : ce lot PUBLIE le refus, il ne le
+// rediscute pas. La question « faut-il publier les vies d'un seul échantillon ? » appartient à
+// l'utilisateur, et ces compteurs sont exactement ce qui permet de la lui poser avec un chiffre.
+type TrackCoverage struct {
+	// Published / PublishedPoints : les traces publiées et leurs points, c'est-à-dire le
+	// DÉNOMINATEUR sans lequel un compte de refus ne se juge pas.
+	Published       int `json:"published"`
+	PublishedPoints int `json:"publishedPoints"`
+	// RefusedMinPoints est le nombre de VIES que le seuil a écartées, et RefusedPoints le
+	// nombre de points qu'elles portaient. Les deux, parce qu'ils ne disent pas la même chose :
+	// dix vies d'un point sont un pool de slots qui s'ouvre et se referme, une vie de dix points
+	// refusée serait un seuil mal réglé.
+	RefusedMinPoints int `json:"refusedMinPoints"`
+	RefusedPoints    int `json:"refusedPoints"`
+	// MinPoints est le seuil APPLIQUÉ sur ce document. Il voyage avec ses conséquences : un
+	// compte de refus ne se relit pas sans savoir contre quoi il a été mesuré, et l'appelant
+	// peut le régler (`Options.MinPoints`).
+	MinPoints int `json:"minPoints"`
 }
 
 // ProjectileCoverage est la couverture du calque des projectiles.

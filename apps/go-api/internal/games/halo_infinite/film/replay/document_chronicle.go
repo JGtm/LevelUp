@@ -1228,3 +1228,33 @@ package replay
 //	ce que le lot   le REDECODAGE lui-meme (`backfill-replay --only-existing` et le backlog
 //	n'a pas fait    killsource par `KillSourceDecoderRev`) : consigne du lot, il reste a lancer.
 //	                Detail : `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
+
+// v55 (2026-09-14, lot 1.0.4 du PLAN_DECODEUR_FILM) : LE REFUS DE PUBLICATION D'UNE VIE CESSE
+// D'ETRE MUET.
+//
+//	le defaut       `decimateTracks` ecarte toute vie dont la trajectoire decimee porte moins de
+//	                `MinPoints` echantillons (defaut 2 : une vie d'un seul point n'est pas une
+//	                trajectoire). Depuis l'origine du calque, ce refus ne se comptait NULLE PART
+//	                — ni dans l'artefact, ni au journal. Un document publiant 90 traces la ou le
+//	                film en porte 95 etait indistinguable d'un film a 90 vies, et tout lecteur
+//	                qui rapporte un compte de vies au film travaillait sur un denominateur
+//	                ampute sans le savoir.
+//
+//	le champ ajoute `coverage.tracks` : `published` / `publishedPoints` (le DENOMINATEUR, sans
+//	                lequel un compte de refus ne se juge pas), `refusedMinPoints` (les VIES
+//	                ecartees), `refusedPoints` (les points qu'elles portaient) et `minPoints`
+//	                (le seuil APPLIQUE — un compte de refus ne se relit pas sans savoir contre
+//	                quoi il a ete mesure). Les deux comptes de refus disent des choses
+//	                differentes : dix vies d'un point sont un pool de slots qui s'ouvre et se
+//	                referme ; une vie de dix points refusee serait un seuil mal regle.
+//
+//	ce qui NE       le seuil. `DefaultMinPoints` vaut 2 et le reste : ce lot PUBLIE le refus, il
+//	change PAS      ne le rediscute pas — la question appartient a l'utilisateur, et ces
+//	                compteurs sont exactement ce qui permet de la lui poser avec un chiffre.
+//	                Aucune trace publiee ne bouge, aucun autre calque ne bouge : le regime court
+//	                d'equivalence ne montre QUE ce champ.
+//
+//	POURQUOI LA     Le champ est optionnel, mais il decrit le document ENTIER, pas un calque
+//	VERSION MONTE   secondaire : un artefact 54 ne peut pas dire ce qu'il a refuse, et rien ne
+//	                permet de le deduire apres coup. La reprise du backfill se faisant par
+//	                SchemaVersion, sans montee aucune recuisson ne le rattraperait.
