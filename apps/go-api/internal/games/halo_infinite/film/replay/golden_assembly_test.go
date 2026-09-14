@@ -390,9 +390,29 @@ func renderAssembly(doc ReplayDocument) string {
 	renderLoadouts(p, doc)
 	renderBridge(p, doc)
 	renderIdentite(p, doc)
+	renderReplis(p, doc)
 	renderLabels(p, doc)
 	renderBounds(p, doc)
 	return b.String()
+}
+
+// renderReplis fige CE QUE CET ASSEMBLAGE DOIT A UN REPLI (schema 58, decision D14).
+//
+// IL APPARTIENT AU GOLDEN, ET C EST LE POINT : les huit goldens de build deviennent la table
+// des declenchements par build, versionnee et relue a chaque lot. Un repli qui se met a mordre —
+// ou qui cesse de mordre parce qu une conversion a porte la lecture — fait bouger ce bloc, et la
+// revue le voit sans relancer d instrument.
+func renderReplis(p func(string, ...any), doc ReplayDocument) {
+	p("## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film")
+	if doc.Coverage == nil || len(doc.Coverage.Fallbacks) == 0 {
+		p("aucun : chaque fait publie vient d une lecture (ou d un repli dont le compteur n est pas encore cable)")
+		p("")
+		return
+	}
+	for _, h := range doc.Coverage.Fallbacks {
+		p("%-48s %d", h.Name, h.Hits)
+	}
+	p("")
 }
 
 // renderT0Film fige LE COUP D ENVOI et son verdict (cf. t0_film.go). Le refus est rendu AVEC

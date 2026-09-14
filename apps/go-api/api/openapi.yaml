@@ -11435,6 +11435,12 @@ components:
           $ref: '#/components/schemas/EquipmentCoverage'
         equipmentChanges:
           $ref: '#/components/schemas/EquipmentChangeCoverage'
+        fallbacks:
+          items:
+            $ref: '#/components/schemas/FallbackHit'
+          type:
+            - array
+            - "null"
         filmMajorVersion:
           format: int64
           type: integer
@@ -13602,6 +13608,18 @@ components:
         - file_name
         - estimated_rows
         - token
+      type: object
+    FallbackHit:
+      additionalProperties: false
+      properties:
+        hits:
+          format: int64
+          type: integer
+        name:
+          type: string
+      required:
+        - name
+        - hits
       type: object
     FeatureFlags:
       additionalProperties: false

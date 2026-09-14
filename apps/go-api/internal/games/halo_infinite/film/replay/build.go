@@ -26,6 +26,7 @@ const coordScale = 100
 func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	fire []filmdec.FireEvent, opt Options) ReplayDocument {
 	interval := opt.frameIntervalMS()
+	opt.Fallbacks = opt.compteurDeReplis() // cf. Options.Fallbacks (D14) : jamais nil a partir d'ici
 	doc := ReplayDocument{
 		SchemaVersion:   SchemaVersion,
 		MatchID:         matchID,
@@ -89,7 +90,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
 	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.
-	nameTracksByLives(doc.Tracks, reg.Vies(), origin, step)
+	nameTracksByLives(doc.Tracks, reg.Vies(), origin, step, opt.Fallbacks)
 	// LES BOTS ENTRENT APRÈS LES HUMAINS : une vie nommée par un xuid n'est jamais écrasée,
 	// et seuls les slots que le pont attribue à un index de bot prennent son nom.
 	nameBotTracks(doc.Tracks, reg.IndexParSlot(), opt.Bots)
@@ -190,7 +191,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// Les FRAGS SOUS EFFET ACTIF : jointure des episodes avec les kills resolus par
 	// l'appelant (cf. equipment_episode_kills.go). AVANT la couverture, qui publie
 	// killsRead a cote des compteurs.
-	killsRead := attachAllEquipmentKills(doc.EquipmentEpisodes, opt.Kills, occupantParFrame(reg, replayClock{origin: origin, step: step}), doc.OriginMs, interval)
+	killsRead := attachAllEquipmentKills(doc.EquipmentEpisodes, opt.Kills, occupantParFrame(reg, replayClock{origin: origin, step: step, fb: opt.Fallbacks}), doc.OriginMs, interval)
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, reg, doc.OriginMs != nil, scoreCov)
 	doc.Coverage.Projectiles = projCov
@@ -247,7 +248,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// vient du recensement ti=37 deja lu par la chaine des socles (opt.Pads.Powerups).
 	doc.EquipmentPlacements, doc.Coverage.Placements = buildEquipmentPlacements(
 		opt.Placements, opt.PlacementStats, sorted,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks,
 			families: opt.Labels.EquipmentFamilies},
 		opt.Pads.Powerups.Keyframes)
 	logPlacementCoverage(doc.Coverage.Placements)
@@ -266,7 +267,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	var pkCov PickupCoverage
 	judge := newPickupOriginJudge(opt, pos, doc.EquipmentPlacements)
 	doc.Pickups, pkCov = buildPickups(opt.Pickups,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks,
 			families: opt.Labels.EquipmentFamilies},
 		pickupInputs{occupant: reg.XUIDNumAt, st: opt.PickupStats,
 			weaponKeys: opt.Labels.Keys, judge: judge})
@@ -283,7 +284,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		"refuses", pkCov.Refused)
 	// Les SOCLES — armes au sol ET power-ups —, sur le meme nuage NON decime (build_ground_weapons.go).
 	gwObjs := attachWeaponPads(&doc, opt.Pads, sorted,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount}, opt.Labels)
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks}, opt.Labels)
 	// DATATION DES OCCUPATIONS DE SOCLE par l'evenement natif : l'intervalle de vingt secondes
 	// devient un instant, et `xuid` cesse d'etre `null`, QUAND un ramassage natif de la meme
 	// famille tombe dans la fenetre. Rien n'est efface : une occupation non couverte garde son
@@ -298,47 +299,47 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// jamais par une table de durees (document_ground_weapon_items.go).
 	var gwiCov GroundWeaponItemsCoverage
 	doc.GroundWeapons, gwiCov = buildGroundWeaponItems(gwObjs, opt.WeaponChanges, sorted,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	doc.Coverage.GroundWeaponItems = &gwiCov
 	logGroundWeaponItems(gwiCov)
 	// LES VEHICULES, sur le MEME nuage NON decime de bipedes (ce sont ses TROUS qui portent les
 	// episodes d'occupation) et le MEME pont slot -> xuid que les tirs — cf. build_vehicles.go.
 	// Pose APRES la couverture : il publie la sienne.
 	attachVehicles(&doc, opt.Vehicles, sorted, reg,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	// LES TIRS DES JOUEURS EMBARQUES : la SECONDE porte des tirs, celle que la premiere ne
 	// pouvait pas franchir (un occupant attache ne replique plus sa position de bipede, donc
 	// `slotFor` n'a rien a poser sur la carte). Elle exige les episodes d'occupation ET les
 	// trajectoires de vehicule : elle vient donc APRES `attachVehicles`, et elle met a jour la
 	// couverture des tirs deja publiee — cf. vehicle_shots.go.
 	attachVehicleShots(&doc, shotOrphans, reg,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
-	attachFlagCarries(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount},
+	attachFlagCarries(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks},
 		equipes)
 	// LA COURONNE VIP, sur les pistes PUBLIEES (la couronne est a la position de son porteur) —
 	// gardee de mode par l'appelant (opt.Vip.Scanned), cf. vip_crown.go.
-	attachVipCrown(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachVipCrown(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	// LE PORTEUR DU CRANE d'Oddball, sur les pistes PUBLIEES (le crane est a la position de son
 	// porteur) — garde de mode par l'appelant (opt.Skull.Scanned), cf. skull_carries.go. Le crane
 	// LIBRE (attachObjectiveObjects, ci-dessous) reste la couche POSITION ; ce calque-ci est la
 	// couche VIVANTE par-dessus.
-	attachSkullCarries(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount},
+	attachSkullCarries(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks},
 		unnamed.deduced)
 	// LE PORTEUR DE LA BOMBE d'Assaut, sur les pistes PUBLIEES (la bombe est a la position de
 	// son porteur) — garde de mode par l'appelant (opt.Bomb.CarryScanned, TOUTES les variantes
 	// de la famille bomb), source : le canal des armes tenues DEJA balaye (opt.WeaponChanges),
 	// cf. bomb_carries.go.
 	bombCarry := attachBombCarries(&doc, opt, reg,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount}, unnamed.deduced)
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks}, unnamed.deduced)
 	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
 	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
 	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.
-	attachObjectiveObjects(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachObjectiveObjects(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	// L'ETAT DES ZONES, sur la MEME horloge que les positions et sur les captures DEJA posees
 	// (`doc.Objectives`) — cf. build_zones.go.
-	attachZoneStates(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachZoneStates(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	// L'ARMEMENT DE LA BOMBE, sur la meme horloge que les actions d'objectif et confronte aux
 	// explosions DEJA posees (`doc.Objectives`) — garde de mode par l'appelant
 	// (opt.Bomb.Scanned), cf. bomb_armings.go.
@@ -383,7 +384,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// ICI, où les morts et leur decalage d'horloge existent — pas dans le projecteur
 	// (cf. inventory_dead_readings.go).
 	logInventoryEmptyCoverage(doc.Inventory, markInventoryDeadReadings(doc.Inventory, opt.Deaths, reg,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount}))
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks}))
 	// LES GRENADES ONT LEUR PROPRE AXE, alimente par les deux canaux (cf. grenade_reads.go) :
 	// ils n'ont pas la meme cadence, et les verser dans `Inventory` ferait masquer une lecture
 	// pleine par une lecture partielle — la cellule de munitions se viderait.
@@ -488,6 +489,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		"verdictTirs", doc.Coverage.Verdict["shots"],
 		"verdictGrenades", doc.Coverage.Verdict["grenades"],
 		"verdictPont", doc.Coverage.Verdict["bridge"])
+	attachFallbackCoverage(&doc, opt.Fallbacks) // EN DERNIER : cf. fallbacks_publication.go
 	return doc
 }
 

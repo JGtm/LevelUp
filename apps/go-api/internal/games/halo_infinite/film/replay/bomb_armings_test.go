@@ -49,7 +49,7 @@ func baClock() scoreClock { return scoreClock{intervalMS: 100, frames: 1 << 20} 
 func TestBuildBombArmingsDedupliqueLaPaire(t *testing.T) {
 	// Deux navpoints (paire +12) répliquent le MÊME armement, fins à 40 ms d'écart.
 	reads := append(baMontee(30, 10_000, 5), baMontee(42, 10_040, 5)...)
-	armings, cov, v := buildBombArmings(reads, nil, baClock())
+	armings, cov, v := buildBombArmings(reads, nil, baClock(), nil)
 	if cov.Rises != 2 || cov.Armed != 1 || cov.PairMerged != 1 {
 		t.Fatalf("paire non fondue : segments=%d armed=%d merged=%d", cov.Rises, cov.Armed, cov.PairMerged)
 	}
@@ -75,7 +75,7 @@ func TestBuildBombArmingsDedupliqueLaPaire(t *testing.T) {
 func TestBuildBombArmingsEcarteLesSegmentsSousLePlein(t *testing.T) {
 	// Une recharge de marqueur (plafond mesuré 253) et un hold relâché (198) : aucun n'arme.
 	reads := append(baMonteeVers(30, 10_000, 5, 253), baMonteeVers(30, 30_000, 4, 198)...)
-	armings, cov, _ := buildBombArmings(reads, nil, baClock())
+	armings, cov, _ := buildBombArmings(reads, nil, baClock(), nil)
 	if len(armings) != 0 || cov.Rises != 2 || cov.BelowFull != 2 || cov.Armed != 0 {
 		t.Fatalf("segments sous le plein publies : publies=%d segments=%d belowFull=%d armed=%d",
 			len(armings), cov.Rises, cov.BelowFull, cov.Armed)
@@ -94,7 +94,7 @@ func TestBuildBombArmingsEcarteLeCycleDeRecharge(t *testing.T) {
 			Slot: 30, TMS: 10_800 + int32(i)*100, Q: uint8(254 - 16*i),
 		})
 	}
-	armings, cov, _ := buildBombArmings(reads, nil, baClock())
+	armings, cov, _ := buildBombArmings(reads, nil, baClock(), nil)
 	if len(armings) != 0 || cov.Rises != 1 || cov.Armed != 0 || cov.BelowFull != 0 {
 		t.Fatalf("cycle de recharge pris pour un armement : publies=%d segments=%d armed=%d belowFull=%d",
 			len(armings), cov.Rises, cov.Armed, cov.BelowFull)
@@ -105,7 +105,7 @@ func TestBuildBombArmingsGardeDeuxArmementsDistincts(t *testing.T) {
 	// Deux armements séparés de 20 s : jamais fondus (le hold + la mèche les séparent d'au
 	// moins ~6 s dans le jeu réel).
 	reads := append(baMontee(30, 10_000, 5), baMontee(30, 30_000, 5)...)
-	_, cov, _ := buildBombArmings(reads, nil, baClock())
+	_, cov, _ := buildBombArmings(reads, nil, baClock(), nil)
 	if cov.Armed != 2 || cov.PairMerged != 0 {
 		t.Fatalf("armements distincts fondus a tort : armed=%d merged=%d", cov.Armed, cov.PairMerged)
 	}
@@ -115,13 +115,13 @@ func TestBuildBombArmingsConfrontationRetientToutOuRien(t *testing.T) {
 	// Un armement à 10 400 ; une explosion cohérente et une orpheline (hors fenêtre de sens).
 	reads := baMontee(30, 10_000, 5)
 	coherente, orpheline := 10_400+BombFuseMS, 10_400+BombFuseSenseWindowMS+1_000
-	armings, cov, _ := buildBombArmings(reads, []int{coherente, orpheline}, baClock())
+	armings, cov, _ := buildBombArmings(reads, []int{coherente, orpheline}, baClock(), nil)
 	if !cov.Suppressed || len(armings) != 0 {
 		t.Fatalf("explosion orpheline non retenue : suppressed=%v publies=%d (couvertes %d/%d)",
 			cov.Suppressed, len(armings), cov.DetonationsCovered, cov.Detonations)
 	}
 	// La même sans l'orpheline publie.
-	armings, cov, v := buildBombArmings(reads, []int{coherente}, baClock())
+	armings, cov, v := buildBombArmings(reads, []int{coherente}, baClock(), nil)
 	if cov.Suppressed || len(armings) != 1 || cov.DetonationsCovered != 1 {
 		t.Fatalf("armement coherent non publie : suppressed=%v publies=%d couvertes=%d",
 			cov.Suppressed, len(armings), cov.DetonationsCovered)
@@ -139,7 +139,7 @@ func TestBuildBombArmingsMecheMesureeEtPausable(t *testing.T) {
 	reads := baMontee(30, 10_000, 5) // armé à 10 400
 	reads = append(reads, baTenue(30, 20_000, 4_000, 251)...)
 	explosion := 10_400 + 20_200
-	armings, cov, v := buildBombArmings(reads, []int{explosion}, baClock())
+	armings, cov, v := buildBombArmings(reads, []int{explosion}, baClock(), nil)
 	if cov.Suppressed || len(armings) != 1 {
 		t.Fatalf("meche pausable non reconnue : suppressed=%v publies=%d couvertes=%d/%d",
 			cov.Suppressed, len(armings), cov.DetonationsCovered, cov.Detonations)
@@ -154,7 +154,7 @@ func TestBuildBombArmingsMecheMesureeEtPausable(t *testing.T) {
 	// CONTRE-ÉPREUVE : sans la tenue, le délai brut de 20 200 ms reste dans la fenêtre de
 	// sens — le calque tient, mais la mèche publiée est fausse de la durée de la pause. C'est
 	// exactement ce que la correction évite.
-	_, _, sansPause := buildBombArmings(baMontee(30, 10_000, 5), []int{explosion}, baClock())
+	_, _, sansPause := buildBombArmings(baMontee(30, 10_000, 5), []int{explosion}, baClock(), nil)
 	if sansPause.FuseMS != 20_200 {
 		t.Errorf("contre-epreuve : meche %d, attendu 20200 sans correction", sansPause.FuseMS)
 	}
@@ -165,7 +165,7 @@ func TestBuildBombArmingsMecheMesureeEtPausable(t *testing.T) {
 // tient pas sur ce film — tout-ou-rien, comme une explosion orpheline.
 func TestBuildBombArmingsMechesQuiSeContredisent(t *testing.T) {
 	reads := append(baMontee(30, 10_000, 5), baMontee(30, 60_000, 5)...)
-	armings, cov, v := buildBombArmings(reads, []int{10_400 + 5_000, 60_400 + 20_000}, baClock())
+	armings, cov, v := buildBombArmings(reads, []int{10_400 + 5_000, 60_400 + 20_000}, baClock(), nil)
 	if !cov.Suppressed || len(armings) != 0 || !v.Inconsistent {
 		t.Fatalf("meches contradictoires publiees : suppressed=%v publies=%d incoherente=%v cv=%.3f",
 			cov.Suppressed, len(armings), v.Inconsistent, v.CV)
@@ -179,14 +179,14 @@ func TestBuildBombArmingsMechesQuiSeContredisent(t *testing.T) {
 func TestBuildBombArmingsHorsFenetreCompte(t *testing.T) {
 	// Un axe de 5 frames (500 ms) : l'armement à 10,4 s tombe hors fenêtre, compté, non publié.
 	reads := baMontee(30, 10_000, 5)
-	armings, cov, _ := buildBombArmings(reads, nil, scoreClock{intervalMS: 100, frames: 5})
+	armings, cov, _ := buildBombArmings(reads, nil, scoreClock{intervalMS: 100, frames: 5}, nil)
 	if len(armings) != 0 || cov.OutOfWindow != 1 || cov.Published != 0 {
 		t.Fatalf("hors fenetre mal compte : publies=%d outOfWindow=%d", len(armings), cov.OutOfWindow)
 	}
 }
 
 func TestBuildBombArmingsSansLectureResteVide(t *testing.T) {
-	armings, cov, _ := buildBombArmings(nil, []int{10_000}, baClock())
+	armings, cov, _ := buildBombArmings(nil, []int{10_000}, baClock(), nil)
 	// Aucune lecture : rien à publier, et l'explosion non couverte retient le calque — le
 	// document dit POURQUOI (suppressed) au lieu d'un silence ambigu.
 	if len(armings) != 0 || !cov.Suppressed {

@@ -161,7 +161,7 @@ func (s *filmScan) balayerPortage() {
 // delta. MÊMES images-clés, MÊME horloge, même record de biped que les armes portées.
 func (s *filmScan) balayerInventaire() {
 	// Absence non fatale — un rejeu sans grenades reste un rejeu valide.
-	inventory, invStats, err := ScanKeyframeInventory(s.film, loadoutFamilies(), 0)
+	inventory, invStats, err := ScanKeyframeInventory(s.film, loadoutFamilies(), 0, s.opt.Fallbacks)
 	if err != nil {
 		slog.Warn("inventaire illisible — rejeu sans grenades ni munitions", "err", err, "match_id", s.matchID)
 		inventory = nil

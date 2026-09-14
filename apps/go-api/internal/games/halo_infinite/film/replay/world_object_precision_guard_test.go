@@ -39,7 +39,7 @@ func TestInstallWorldObjectPrecision(t *testing.T) {
 	if entry.AxisWidths == prev.AxisW {
 		t.Fatal("le cas de test doit différer du défaut de paquet, sinon il ne mesure rien")
 	}
-	restore := installWorldObjectPrecision(entry, "testdata")
+	restore := installWorldObjectPrecision(entry, "testdata", nil)
 	if got := filmdec.WorldObjectPrecision.AxisW; got != entry.AxisWidths {
 		t.Fatalf("largeurs NON INSTALLÉES : %v, attendu %v (celles de la carte du match)",
 			got, entry.AxisWidths)
@@ -59,7 +59,7 @@ func TestInstallWorldObjectPrecisionKeepsDefaultWithoutWidths(t *testing.T) {
 	prev := filmdec.WorldObjectPrecision
 	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
 
-	restore := installWorldObjectPrecision(filmdec.MapQuantEntry{Module: "sans_largeurs"}, "testdata")
+	restore := installWorldObjectPrecision(filmdec.MapQuantEntry{Module: "sans_largeurs"}, "testdata", nil)
 	if filmdec.WorldObjectPrecision != prev {
 		t.Fatalf("largeurs à zéro installées (%v) : le décodeur lirait des champs de 0 bit",
 			filmdec.WorldObjectPrecision.AxisW)
