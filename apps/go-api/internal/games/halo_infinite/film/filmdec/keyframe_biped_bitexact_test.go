@@ -82,13 +82,13 @@ func kf35bInstallPrecision(t *testing.T, name string) (I0Layout, func()) {
 // 400 bits, l'ordre de grandeur d'un etat par defaut de bipede.
 var kf35bVariants = []kf35Variant{
 	{Label: "v0b TEMOIN record NEW, composants non portes sautes (0 bit)",
-		Body: KeyframeBodyVariant{DefaultState: true, Gate: true, Mask: true}, Stub: true},
+		Body: keyframeBodyVariant{DefaultState: true, Gate: true, Mask: true}, Stub: true},
 	{Label: "v4 ETAT COMPLET (64 leaf nus), composants non portes sautes (0 bit)",
-		Body: KeyframeBodyVariant{}, Stub: true},
+		Body: keyframeBodyVariant{}, Stub: true},
 	{Label: "v2 ETAT PAR DEFAUT + 64 leaf, trous sautes (0 bit)",
-		Body: KeyframeBodyVariant{DefaultState: true}, Stub: true},
+		Body: keyframeBodyVariant{DefaultState: true}, Stub: true},
 	{Label: "v3 ETAT PAR DEFAUT + porte R(1) + 64 leaf, trous sautes (0 bit)",
-		Body: KeyframeBodyVariant{DefaultState: true, Gate: true}, Stub: true},
+		Body: keyframeBodyVariant{DefaultState: true, Gate: true}, Stub: true},
 }
 
 // TestKF35BInventory publie, par film, le decoupage d'i0 LU DANS LE FILM et le compte de
@@ -185,7 +185,7 @@ func kf35bProfile(f kf35Film, v kf35Variant) []kf35bCompStat {
 	}
 	for _, pay := range f.Pays {
 		for _, b := range kf35BoundedRecs(pay) {
-			tr := WalkKeyframeBody(pay, b.Rec.Bit, f.Reg, v.Body)
+			tr := walkKeyframeBody(pay, b.Rec.Bit, f.Reg, v.Body)
 			kf35bAccumulate(tr, b, stats)
 		}
 	}

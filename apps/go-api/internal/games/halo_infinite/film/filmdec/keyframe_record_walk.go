@@ -268,12 +268,12 @@ func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int) K
 // Reste la lecture (a) de la decouverte 3 du lot R3 : l'image-cle porterait un ETAT COMPLET
 // — tous les composants de l'archetype, sans masque epars. Les longueurs reelles mesurees
 // vont dans ce sens (ti=38 : 39 valeurs distinctes seulement sur 2 008 records, dominante
-// 827 bits ; la marche de record NEW n'en consomme qu'environ 40 %). `KeyframeBodyVariant`
+// 827 bits ; la marche de record NEW n'en consomme qu'environ 40 %). `keyframeBodyVariant`
 // expose les trois bascules qui separent ces lectures, et l'instrument les balaie toutes.
 // ---------------------------------------------------------------------------------------
 
-// KeyframeBodyVariant decrit UNE lecture possible du corps d'un record d'image-cle.
-type KeyframeBodyVariant struct {
+// keyframeBodyVariant decrit UNE lecture possible du corps d'un record d'image-cle.
+type keyframeBodyVariant struct {
 	// DefaultState : jouer le deserialiseur d'etat par defaut de l'archetype (vtable[0x60]).
 	DefaultState bool
 	// Gate : lire la porte `R(1)` qui precede le masque dans un record NEW.
@@ -283,7 +283,7 @@ type KeyframeBodyVariant struct {
 }
 
 // String rend une etiquette lisible de la variante.
-func (v KeyframeBodyVariant) String() string {
+func (v keyframeBodyVariant) String() string {
 	f := func(b bool) string {
 		if b {
 			return "oui"
@@ -293,9 +293,9 @@ func (v KeyframeBodyVariant) String() string {
 	return "etatParDefaut=" + f(v.DefaultState) + " porte=" + f(v.Gate) + " masque=" + f(v.Mask)
 }
 
-// KeyframeBodyVariants est la matrice des huit lectures probees. La premiere est celle du
+// keyframeBodyVariants est la matrice des huit lectures probees. La premiere est celle du
 // record NEW (celle que `TraverseEntity` joue), la derniere l'etat complet nu.
-var KeyframeBodyVariants = []KeyframeBodyVariant{
+var keyframeBodyVariants = []keyframeBodyVariant{
 	{DefaultState: true, Gate: true, Mask: true},
 	{DefaultState: true, Gate: true, Mask: false},
 	{DefaultState: true, Gate: false, Mask: true},
@@ -306,11 +306,24 @@ var KeyframeBodyVariants = []KeyframeBodyVariant{
 	{DefaultState: false, Gate: false, Mask: false},
 }
 
-// WalkKeyframeBody rejoue le corps d'un record d'image-cle sous la variante `v`, en partant
+// walkKeyframeBody rejoue le corps d'un record d'image-cle sous la variante `v`, en partant
 // du debut du record (`recBit`). Il REUTILISE la boucle de composants de production
 // (`traverseComponentLoop`) et les deserialiseurs d'etat par defaut de production : rien
-// n'est recopie, seule la faconde lire l'en-tete de corps change.
-func WalkKeyframeBody(pay []byte, recBit int, reg *Registry, v KeyframeBodyVariant) EntityTrace {
+// n'est recopie, seule la facon de lire l'en-tete de corps change.
+//
+// CE N'EST PLUS UNE LECTURE DE PRODUCTION (lot 1.4, 2026-09-14), ET IL EST DESORMAIS NON
+// EXPORTE. Inventaire sur pieces du 2026-09-14 (`grep -rn "walkKeyframeBody\|keyframeBodyVariant"
+// --include=*.go internal/ cmd/`) : les SIX fichiers qui le citent sont cinq instruments
+// `_test.go` du paquet et sa propre declaration — ZERO appelant de production. Il n'est pas
+// SUPPRIME parce que ces cinq instruments sont les comparateurs A/B d'autres chantiers
+// (bipede bit-exact, vehicules v5b, grammaire d'ecrivain) : un comparateur qui disparait
+// n'est pas une dette qu'on solde, c'est une mesure qu'on perd. L'unexporter le retire de la
+// surface que la production peut atteindre, ce que le compilateur garantit desormais.
+//
+// RETRAIT (regle 11) : pose le 2026-09-14 ; cible = lot 3.6 (ports de composants), quand ces
+// cinq instruments seront rebases sur le cadre d'etat complet ; critere mesurable = zero
+// fichier citant `walkKeyframeBody` en dehors de ce fichier.
+func walkKeyframeBody(pay []byte, recBit int, reg *Registry, v keyframeBodyVariant) EntityTrace {
 	br := NewBitReader(pay)
 	br.SetBitPos(recBit + keyframeRecordTIBit)
 	t := EntityTrace{DesyncAt: -1}

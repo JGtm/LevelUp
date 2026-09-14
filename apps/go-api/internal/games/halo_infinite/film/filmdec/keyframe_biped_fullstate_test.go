@@ -56,7 +56,7 @@ var kf35OracleFilms = []string{"000d5950", "00502e52", "07aa428d"}
 // kf35Variant est UNE lecture possible du corps, telle que le plan R7-a l'ordonne.
 type kf35Variant struct {
 	Label string
-	Body  KeyframeBodyVariant
+	Body  keyframeBodyVariant
 	// Stub : sauter (largeur 0) les composants dont le deser n'est pas porte, au lieu de
 	// s'arreter dessus — mesure l'ECART RESIDUEL une fois les trous neutralises.
 	Stub bool
@@ -67,17 +67,17 @@ type kf35Variant struct {
 // consommee par l'etat complet ne se compare a rien.
 var kf35Variants = []kf35Variant{
 	{Label: "v0 TEMOIN record NEW (etat par defaut + porte + masque)",
-		Body: KeyframeBodyVariant{DefaultState: true, Gate: true, Mask: true}},
+		Body: keyframeBodyVariant{DefaultState: true, Gate: true, Mask: true}},
 	{Label: "v0b TEMOIN record NEW, composants non portes sautes (0 bit)",
-		Body: KeyframeBodyVariant{DefaultState: true, Gate: true, Mask: true}, Stub: true},
+		Body: keyframeBodyVariant{DefaultState: true, Gate: true, Mask: true}, Stub: true},
 	{Label: "v1 64 leaf nus (ni etat par defaut, ni porte, ni masque)",
-		Body: KeyframeBodyVariant{}},
+		Body: keyframeBodyVariant{}},
 	{Label: "v2 etat par defaut + 64 leaf",
-		Body: KeyframeBodyVariant{DefaultState: true}},
+		Body: keyframeBodyVariant{DefaultState: true}},
 	{Label: "v3 etat par defaut + porte R(1) + 64 leaf",
-		Body: KeyframeBodyVariant{DefaultState: true, Gate: true}},
+		Body: keyframeBodyVariant{DefaultState: true, Gate: true}},
 	{Label: "v4 64 leaf nus, composants non portes sautes (0 bit)",
-		Body: KeyframeBodyVariant{}, Stub: true},
+		Body: keyframeBodyVariant{}, Stub: true},
 }
 
 // kf35Film porte les payloads d'image-cle d'un film et son registre.
@@ -218,7 +218,7 @@ func kf35Break(tr EntityTrace, want int) string {
 
 // kf35Walk rejoue le corps d'UN record sous la variante donnee, puis mesure.
 func kf35Walk(f kf35Film, pay []byte, b kf35Bound, v kf35Variant, tal *kf35Tally) {
-	tr := WalkKeyframeBody(pay, b.Rec.Bit, f.Reg, v.Body)
+	tr := walkKeyframeBody(pay, b.Rec.Bit, f.Reg, v.Body)
 	if tr.DesyncAt >= 0 {
 		tal.desync++
 		if tr.DesyncAt < len(f.Reg.Archetypes[bipedDefaultStateTypeIndex].Components) {
@@ -266,7 +266,7 @@ func kf35Chain(f kf35Film, pay []byte, from int, b kf35Bound, v kf35Variant) boo
 		if !ok || h.Slot <= prev {
 			return false
 		}
-		tr := WalkKeyframeBody(pay, pos, f.Reg, v.Body)
+		tr := walkKeyframeBody(pay, pos, f.Reg, v.Body)
 		if tr.DesyncAt >= 0 {
 			return false
 		}
@@ -299,7 +299,7 @@ func kf35ApplyStubs(f kf35Film, v kf35Variant) (stubbed []string, restore func()
 		added := false
 		for _, pay := range f.Pays {
 			for _, b := range kf35BoundedRecs(pay) {
-				tr := WalkKeyframeBody(pay, b.Rec.Bit, f.Reg, v.Body)
+				tr := walkKeyframeBody(pay, b.Rec.Bit, f.Reg, v.Body)
 				if tr.DesyncAt < 0 || tr.DesyncAt >= len(arch.Components) {
 					continue
 				}
