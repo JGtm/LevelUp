@@ -33,8 +33,11 @@ package filmdec
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestDeltaWalkWitness -v
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -104,13 +107,15 @@ func TestDeltaWalkWitness(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	got := deltaWitnessMeasure(t, dir)
+	got, parTI := deltaWitnessMeasure(t, dir)
 	id := filepath.Base(filepath.Clean(dir))
 	t.Logf("== FILM %s (%d premier(s) chunk(s) de replication) ==", id, deltaWitnessChunks)
 	t.Logf("  paquets delta lus : %d", got.packets)
 	t.Logf("  records rendus : %d · traversee ABOUTIE (DesyncAt == -1) : %d (%.3f %%) · "+
 		"ported=false : %d", got.records, got.walked,
 		deltaWitnessPct(got.walked, got.records), got.records-got.walked)
+	t.Logf("  records NEW par archetype (ceux qui jouent l'etat par defaut) : %s",
+		deltaWitnessHisto(parTI))
 
 	want, ok := deltaWitnessFrozen[id]
 	if !ok {
@@ -127,7 +132,14 @@ func TestDeltaWalkWitness(t *testing.T) {
 
 // deltaWitnessMeasure parcourt les chunks et agrege. Le monde est amorce par les images-cles
 // du chunk courant avant que ses paquets delta ne soient lus.
-func deltaWitnessMeasure(t *testing.T, dir string) deltaWitnessCounts {
+//
+// LE SECOND RENDU EST L'HISTOGRAMME DES RECORDS `recNew` PAR ARCHETYPE (lot 1.3, 2026-09-14).
+// C'est la POPULATION EXACTE qu'une entree de `defaultStateDeserByTI` change : `TraverseEntity`
+// est le seul lecteur de production qui consulte cette table, et il ne la consulte que sur un
+// record NEW. L'histogramme dit donc, film par film, combien de records un etat par defaut neuf
+// touche — avant d'ecrire la moindre ligne. Il n'est PAS fige (il depend du film) : ce sont les
+// trois comptes de `deltaWitnessFrozen` qui gardent la marche.
+func deltaWitnessMeasure(t *testing.T, dir string) (deltaWitnessCounts, map[uint32]int) {
 	t.Helper()
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
@@ -143,6 +155,7 @@ func deltaWitnessMeasure(t *testing.T, dir string) deltaWitnessCounts {
 	}
 	cfg := DefaultFrameConfig()
 	var out deltaWitnessCounts
+	parTI := map[uint32]int{}
 	for c := 1; c <= deltaWitnessChunks; c++ {
 		data, err := ReadFilmChunk(dir, c)
 		if err != nil {
@@ -167,13 +180,34 @@ func deltaWitnessMeasure(t *testing.T, dir string) deltaWitnessCounts {
 			recs, _ := DecodeFrameRecords(br, w, cfg)
 			for i := range recs {
 				out.records++
+				if recs[i].Type == recNew {
+					parTI[recs[i].TypeIndex]++
+				}
 				if recs[i].DesyncAt == -1 {
 					out.walked++
 				}
 			}
 		}
 	}
-	return out
+	return out, parTI
+}
+
+// deltaWitnessHisto rend l'histogramme par archetype, trie, avec son total — la forme est faite
+// pour etre COLLEE telle quelle dans un journal de lot.
+func deltaWitnessHisto(parTI map[uint32]int) string {
+	tis := make([]int, 0, len(parTI))
+	total := 0
+	for ti, n := range parTI {
+		tis = append(tis, int(ti)) //nolint:gosec // ti est un index d'archetype (< 50)
+		total += n
+	}
+	sort.Ints(tis)
+	var b strings.Builder
+	for _, ti := range tis {
+		fmt.Fprintf(&b, "ti=%d:%d ", ti, parTI[uint32(ti)]) //nolint:gosec // ti vient d'une cle uint32
+	}
+	fmt.Fprintf(&b, "| total NEW %d", total)
+	return b.String()
 }
 
 // deltaWitnessPct : pourcentage a denominateur jamais nul.
