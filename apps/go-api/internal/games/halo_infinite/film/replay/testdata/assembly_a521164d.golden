@@ -12,12 +12,12 @@ origine de la frame 0 sur l horloge du fil : 27811 ms
 coup d envoi date par le film : 45311 ms · 160/179 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 17500 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
-179 trace(s) · 46407 point(s) de grille
-seuil de publication 2 point(s) : 6 vie(s) REFUSEE(S) portant 6 point(s) — une vie d un seul echantillon n est pas une trajectoire
-179 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+185 trace(s) · 46413 point(s) de grille
+seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si le film ecrit une position, elle se publie
+185 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
 occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
-27338 point(s) portent un cap de visee · 27338 une elevation de visee · 6196 un bouclier · 169 une fraction de vie
+27338 point(s) portent un cap de visee · 27338 une elevation de visee · 6197 un bouclier · 169 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 28 joueur(s)
@@ -92,7 +92,7 @@ couverture : 56 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) san
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 10 episode(s) publie(s) · par famille : camo=7 · overshield=3 · 9 fin(s) MESUREE(s) (le reste ferme a la mort)
-couverture : 179 vie(s) publiee(s) · camo 3 vie(s) / 7 episode(s) · surbouclier 3 vie(s) / 3 episode(s)
+couverture : 185 vie(s) publiee(s) · camo 3 vie(s) / 7 episode(s) · surbouclier 3 vie(s) / 3 episode(s)
 
 ## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee

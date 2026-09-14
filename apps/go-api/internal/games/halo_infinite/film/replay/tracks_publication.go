@@ -108,9 +108,11 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 		a := accs[slot]
 		for _, pts := range append(a.done, a.pts) {
 			if len(pts) < minPoints {
-				// LE REFUS SE COMPTE, ET C'EST TOUT CE QU'IL FAIT DE PLUS QU'AVANT : la vie
-				// reste écartée (une trajectoire d'un seul échantillon n'est pas une
-				// trajectoire), mais l'artefact dit désormais combien il en a écarté.
+				// LE REFUS SE COMPTE, ET IL NE SE DÉCLENCHE PLUS AU SEUIL PAR DÉFAUT : celui-ci
+				// vaut 1 depuis le lot 1.6.5 (« si le film le dit, on publie »), donc ce compteur
+				// est à 0 sur toute cuisson qui ne règle pas `Options.MinPoints`. Il reste pour
+				// l'appelant qui le règle, et parce qu'un compteur à 0 qui pourrait monter est ce
+				// qui rend un retour en arrière visible.
 				cov.RefusedMinPoints++
 				cov.RefusedPoints += len(pts)
 				continue
@@ -140,11 +142,13 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 // rapporte un compte de vies au film (le registre d'identité, la couverture du pont, l'écran)
 // travaillait sur un dénominateur amputé sans le savoir.
 //
-// # CE QU'ELLE NE CHANGE PAS
+// # CE QUE LE CHIFFRE A PERMIS DE TRANCHER (lot 1.6.5, 2026-09-14)
 //
-// Le seuil lui-même. `DefaultMinPoints` vaut 2 et le reste : ce lot PUBLIE le refus, il ne le
-// rediscute pas. La question « faut-il publier les vies d'un seul échantillon ? » appartient à
-// l'utilisateur, et ces compteurs sont exactement ce qui permet de la lui poser avec un chiffre.
+// La question « faut-il publier les vies d'un seul échantillon ? » appartenait à l'utilisateur, et
+// ces compteurs existaient pour la lui poser avec un chiffre : 20 vies sur les huit builds, 0 à 6
+// par film. Il a tranché — « si le film le dit, on publie » — et `DefaultMinPoints` est passé de 2
+// à 1. Ces compteurs restent : à 0 sur toute cuisson au seuil par défaut, ils rendent visible un
+// appelant qui règle `Options.MinPoints` et tout retour en arrière.
 type TrackCoverage struct {
 	// Published / PublishedPoints : les traces publiées et leurs points, c'est-à-dire le
 	// DÉNOMINATEUR sans lequel un compte de refus ne se juge pas.

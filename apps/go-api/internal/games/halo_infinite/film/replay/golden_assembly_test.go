@@ -425,10 +425,12 @@ func renderTracks(p func(string, ...any), doc ReplayDocument) {
 	p("## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)")
 	p("%d trace(s) · %d point(s) de grille", len(doc.Tracks), points)
 	// LE REFUS DU SEUIL EST DANS LE GOLDEN (schema 55) : il etait MUET, et un compteur qu on
-	// publie sans le figer redevient muet au premier refacto.
+	// publie sans le figer redevient muet au premier refacto. Le seuil par defaut vaut 1 depuis
+	// le lot 1.6.5 : ce compte est donc a ZERO sur toute cuisson qui ne le regle pas, et c est
+	// precisement ce qu il doit montrer.
 	if tc := doc.Coverage.Tracks; tc != nil {
 		p("seuil de publication %d point(s) : %d vie(s) REFUSEE(S) portant %d point(s) — "+
-			"une vie d un seul echantillon n est pas une trajectoire",
+			"si le film ecrit une position, elle se publie",
 			tc.MinPoints, tc.RefusedMinPoints, tc.RefusedPoints)
 	} else {
 		p("seuil de publication : NON APPLIQUE (le film ne porte aucune position)")

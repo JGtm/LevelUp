@@ -62,18 +62,37 @@ func TestBuildFromPositions_Timeline(t *testing.T) {
 }
 
 // TestBuildFromPositions_Decimation : plusieurs échantillons dans la même frame ne
-// produisent qu'un point (le premier), et une track sous MinPoints n'est pas publiée.
+// produisent qu'un point (le premier), et une vie d'un SEUL échantillon est publiée.
+//
+// LE SEUIL PAR DÉFAUT VAUT 1 DEPUIS LE 2026-09-14 (lot 1.6.5, décision utilisateur : « si le film
+// le dit, on publie »). Ce test affirmait l'inverse — « 1 seul point -> exclu » — et c'est
+// exactement ce qui a changé. L'exclusion reste testée, mais par le seuil que l'APPELANT règle
+// (`Options.MinPoints`), seule voie qui la déclenche désormais.
 func TestBuildFromPositions_Decimation(t *testing.T) {
 	in := []filmdec.BipedPosition{
 		pos(512, 0, 10, 20, 1),
 		pos(512, 30, 11, 21, 1), // même frame (0..99 ms) -> écrasé
 		pos(512, 60, 12, 22, 1), // idem
 		pos(512, 100, 13, 23, 2),
-		pos(600, 50, -5, -5, 0), // 1 seul point -> exclu
+		pos(600, 50, -5, -5, 0), // 1 seul point -> PUBLIÉ depuis le seuil à 1
 	}
 	doc := BuildFromPositions("m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
-	if len(doc.Tracks) != 1 || doc.Tracks[0].Slot != 512 {
-		t.Fatalf("tracks = %+v, attendu la seule track 512", doc.Tracks)
+	if len(doc.Tracks) != 2 || doc.Tracks[0].Slot != 512 || doc.Tracks[1].Slot != 600 {
+		t.Fatalf("tracks = %+v, attendues les deux vies (512 puis 600)", doc.Tracks)
+	}
+	if doc.Coverage.Tracks.RefusedMinPoints != 0 || doc.Coverage.Tracks.Published != 2 {
+		t.Errorf("couverture = %d refusee(s) / %d publiee(s), attendu 0 / 2",
+			doc.Coverage.Tracks.RefusedMinPoints, doc.Coverage.Tracks.Published)
+	}
+	// LE SEUIL RÉGLÉ PAR L'APPELANT écarte toujours, et il le COMPTE.
+	serre := BuildFromPositions("m", "halo_infinite", in, nil,
+		Options{FrameIntervalMS: 100, MinPoints: 2})
+	if len(serre.Tracks) != 1 || serre.Tracks[0].Slot != 512 {
+		t.Fatalf("au seuil 2, tracks = %+v, attendue la seule 512", serre.Tracks)
+	}
+	if serre.Coverage.Tracks.RefusedMinPoints != 1 || serre.Coverage.Tracks.RefusedPoints != 1 {
+		t.Errorf("au seuil 2, refus = %d vie(s) / %d point(s), attendu 1 / 1",
+			serre.Coverage.Tracks.RefusedMinPoints, serre.Coverage.Tracks.RefusedPoints)
 	}
 	if n := len(doc.Tracks[0].Points); n != 2 {
 		t.Errorf("points après décimation = %d, attendu 2", n)
@@ -81,9 +100,16 @@ func TestBuildFromPositions_Decimation(t *testing.T) {
 	if doc.Tracks[0].Team != -1 {
 		t.Errorf("Team par défaut = %d, attendu -1 (attribution non faite)", doc.Tracks[0].Team)
 	}
-	want := Bounds{MinX: 10, MinY: 20, MaxX: 13, MaxY: 23, MinZ: 1, MaxZ: 2}
+	// LES BORNES SUIVENT LES TRACES PUBLIÉES, et la vie d'un échantillon en est une désormais :
+	// le point du slot 600 les élargit. Au seuil réglé à 2, elles redeviennent celles d'avant —
+	// c'est le contrôle qui prouve que l'écart vient du seuil et de rien d'autre.
+	want := Bounds{MinX: -5, MinY: -5, MaxX: 13, MaxY: 23, MinZ: 0, MaxZ: 2}
 	if doc.Bounds != want {
 		t.Errorf("Bounds = %+v, attendu %+v", doc.Bounds, want)
+	}
+	wantSerre := Bounds{MinX: 10, MinY: 20, MaxX: 13, MaxY: 23, MinZ: 1, MaxZ: 2}
+	if serre.Bounds != wantSerre {
+		t.Errorf("au seuil 2, Bounds = %+v, attendu %+v", serre.Bounds, wantSerre)
 	}
 }
 
