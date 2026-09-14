@@ -18,9 +18,31 @@ package replay
 //
 // Il APPELLE desormais `scanFilmInputs` — l etage de balayage de la production — sous les DEUX
 // memes gestes que `BuildFromFilm` : le verrou de decodage et les largeurs d axe de la carte.
+//
+// # LES OPTIONS DE BALAYAGE VIENNENT DE LA FEUILLE DE MATCH (revue R1, constat R1-1)
+//
+// Une CINQUIEME divergence restait : le fixture passait `RosterXUIDs` NUL. L etage lit
+// `rosterOf(deaths, opt.RosterXUIDs)` avant `ScanPlayerIndices` — avec `nil`, un joueur a ZERO
+// MORT n est dans aucune mort, donc dans aucun roster, donc dans aucune table d index, et il
+// manquait au golden (cas mesure sur `3372e7eb` : 6 joueurs publies pour 8). La fidelite etait
+// aveugle : elle compare deux assemblages batis sur les MEMES options. Le fixture lit desormais
+// le `<short8>.facts.json` du corpus d equivalence et applique LA REGLE DE LA PRODUCTION
+// (`RosterXUIDsOf`, cf. roster_xuids.go), celle-la meme que `replaybuild.rosterXUIDs` appelle.
+//
+// # CE QUE LE FIXTURE N A TOUJOURS PAS, ET C EST DECLARE
+//
+// Les entrees d `Options` que seule la BASE fournit — catalogue de zones, garde de mode du
+// drapeau / de la bombe, enregistrements du statborg, tableau des participants, bots declares,
+// relais, actions d objectif, libelles, geometrie, points d apparition, morts neutres et couples
+// de frags. Elles n entrent PAS dans l etage de balayage, a une exception pres : les trois
+// GARDES DE MODE (`Flag`, `Zone`, `Bomb`) commandent trois balayages, qui restent donc muets au
+// fixture. C est la seule divergence de DECODAGE qui subsiste, et elle est nommee ici comme dans
+// `champsNonTransportes`.
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -54,7 +76,11 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 	release := filmdec.LockProcessDecode()
 	defer release()
 	defer installWorldObjectPrecision(entry, film)()
-	in, err := scanFilmInputs(film, charge, Options{MapQuant: &entry})
+	roster, err := rosterDeLaFeuille(film)
+	if err != nil {
+		return nil, err
+	}
+	in, err := scanFilmInputs(film, charge, Options{MapQuant: &entry, RosterXUIDs: roster})
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +120,45 @@ func decoupageDuFixture(charge *filmsource.Film, entry filmdec.MapQuantEntry) (f
 		return filmdec.I0Layout{}, true, fmt.Errorf("decoupage i0 auto-detecte : %w", err)
 	}
 	return lay, true, nil
+}
+
+// rosterDeLaFeuille rend le roster d appoint du film, LU dans son `<short8>.facts.json` et
+// projete par la REGLE DE LA PRODUCTION ([RosterXUIDsOf]).
+//
+// ON NE RELIT QU UN CHAMP, et c est deliberé : `replaybuild.FactsFile` (la forme unique du
+// fichier) vit dans un paquet qui IMPORTE `replay`, donc hors de portee d un test de ce paquet.
+// Le risque que la doctrine du fichier unique combat — une copie du type qui perd un champ EN
+// SILENCE — n existe pas ici : un `players[].xuid` qui cesserait d etre lu rendrait un roster
+// VIDE, ce que la garde ci-dessous refuse, et les huit goldens perdraient des joueurs. L echec
+// est bruyant par construction.
+//
+// LE REFUS EST LA GARDE : les huit films du fixture ont tous une feuille peuplee. Un roster vide
+// ne peut donc etre qu une lecture cassee, jamais un fait.
+func rosterDeLaFeuille(film string) ([]uint64, error) {
+	path := filepath.Join(goldenDir, "equivalence", film+".facts.json")
+	raw, err := os.ReadFile(path) //nolint:gosec // chemin construit depuis la table des builds
+	if err != nil {
+		return nil, fmt.Errorf("feuille de match du film %s : %w", film, err)
+	}
+	var feuille struct {
+		Players []struct {
+			XUID string `json:"xuid"`
+		} `json:"players"`
+	}
+	if err := json.Unmarshal(raw, &feuille); err != nil {
+		return nil, fmt.Errorf("feuille de match du film %s invalide : %w", film, err)
+	}
+	xuids := make([]string, 0, len(feuille.Players))
+	for _, p := range feuille.Players {
+		xuids = append(xuids, p.XUID)
+	}
+	roster := RosterXUIDsOf(xuids)
+	if len(roster) == 0 {
+		return nil, fmt.Errorf("feuille de match du film %s : AUCUN xuid exploitable sur %d "+
+			"ligne(s) — la forme de %s a-t-elle change ? un roster vide ferait disparaitre du "+
+			"golden les joueurs a zero mort, en silence", film, len(feuille.Players), path)
+	}
+	return roster, nil
 }
 
 // goldenMapQuant rend l'ENTREE DE CATALOGUE de Cliffhanger : bornes ET largeurs d'axe, comme

@@ -22,7 +22,8 @@ package replay
 // # IL DESCEND DANS LES PHASES DEPUIS LE LOT 1.0 (2026-09-14)
 //
 // La sequence ne tient plus dans UNE fonction : `BuildFromFilm` appelle `scanFilmInputs`, qui
-// appelle cinq phases (`film_scan.go`), dont trois appellent une sous-phase. Un garde qui ne
+// appelle CINQ phases (`film_scan.go`) ; QUATRE d'entre elles appellent une sous-phase, et il y a
+// CINQ sous-phases en tout (`balayerPont` n'en appelle aucune). Un garde qui ne
 // lirait que le corps de `scanFilmInputs` ne verrait plus AUCUNE etape — il rougirait le jour du
 // decoupage puis ne garderait plus rien. Il descend donc, DANS L'ORDRE DES APPELS, dans les
 // fonctions declarees par les fichiers de l'etage ([fichiersDuBalayage]), et s'arrete aux
@@ -86,9 +87,18 @@ func estBalayage(nom string) bool {
 
 // marcheurDEtapes accumule les etapes observees et les balayages rencontres, dans l'ordre du
 // source, en descendant dans les fonctions de l'etage.
+//
+// IL DESCEND DANS CHAQUE APPEL, PAS DANS CHAQUE NOM (revue R1, constat R1-2). La premiere
+// version memorisait les phases DEJA marchees et sautait les suivantes : une phase appelee DEUX
+// fois n'etait comptee qu'une, donc la mutation « `s.balayerCalquesGardes()` appele deux fois »
+// — trois etapes de plus emises en production — laissait les deux tests VERTS. `pile` ne sert
+// plus qu'a refuser un CYCLE (une phase qui se rappellerait elle-meme, directement ou non) :
+// sans lui la marche ne terminerait pas, et un cycle est de toute facon un defaut a nommer.
 type marcheurDEtapes struct {
 	decls map[string]*ast.FuncDecl
-	vus   map[string]bool
+	// pile porte les phases EN COURS de marche, pas celles deja marchees.
+	pile  map[string]bool
+	cycle string
 	steps []string
 	scans int
 }
@@ -126,21 +136,37 @@ func (m *marcheurDEtapes) descendre(body *ast.BlockStmt) {
 			m.scans++
 			return false // un balayage est une feuille : on ne descend pas dedans
 		default:
-			if fn, connue := m.decls[nom]; connue && !m.vus[nom] {
-				m.vus[nom] = true
-				m.descendre(fn.Body)
+			fn, connue := m.decls[nom]
+			if !connue {
+				return true
 			}
+			if m.pile[nom] {
+				m.cycle = nom
+				return false
+			}
+			m.pile[nom] = true
+			m.descendre(fn.Body)
+			delete(m.pile, nom)
 		}
 		return true
 	})
 }
 
+// marcher lance la marche depuis `racine` et rend le marcheur, cycle compris.
+func marcher(decls map[string]*ast.FuncDecl, racine string) *marcheurDEtapes {
+	m := &marcheurDEtapes{decls: decls, pile: map[string]bool{racine: true}}
+	m.descendre(decls[racine].Body)
+	return m
+}
+
 // etapesDuBalayage rend les etapes observees et le nombre de balayages, dans l'ordre du source.
 func etapesDuBalayage(t *testing.T) (steps []string, scans int) {
 	t.Helper()
-	decls := declarationsDuBalayage(t)
-	m := &marcheurDEtapes{decls: decls, vus: map[string]bool{racineDuBalayage: true}}
-	m.descendre(decls[racineDuBalayage].Body)
+	m := marcher(declarationsDuBalayage(t), racineDuBalayage)
+	if m.cycle != "" {
+		t.Fatalf("cycle d'appel dans l'etage de balayage sur %q : une phase qui se rappelle "+
+			"elle-meme emettrait ses etapes sans fin", m.cycle)
+	}
 	return m.steps, m.scans
 }
 
@@ -169,7 +195,7 @@ func TestBuildFromFilmNeBalaiePlusLuiMeme(t *testing.T) {
 	if !ok {
 		t.Fatalf("BuildFromFilm introuvable dans %v", fichiersDuBalayage)
 	}
-	m := &marcheurDEtapes{decls: map[string]*ast.FuncDecl{}, vus: map[string]bool{}}
+	m := &marcheurDEtapes{decls: map[string]*ast.FuncDecl{}, pile: map[string]bool{}}
 	m.descendre(fn.Body)
 	if len(m.steps) > 0 || m.scans > 0 {
 		t.Fatalf("BuildFromFilm porte %d etape(s) observee(s) et %d balayage(s) : la sequence doit "+
@@ -183,5 +209,63 @@ func TestObserveNilNeCouteRien(t *testing.T) {
 	o.observe("positions", nil)
 	if slices.Contains(BuildFromFilmSteps, "") {
 		t.Fatal("BuildFromFilmSteps porte un nom vide")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// LE MARCHEUR LUI-MEME, EPROUVE SUR UNE SOURCE FABRIQUEE
+// ---------------------------------------------------------------------------
+
+// declarationsDeSource rend les declarations d'une source Go fabriquee, indexees par nom simple.
+// Elle existe pour eprouver [marcheurDEtapes] SANS muter le code de production : une garde de
+// source qui n'est jamais mise en echec ne prouve rien.
+func declarationsDeSource(t *testing.T, src string) map[string]*ast.FuncDecl {
+	t.Helper()
+	f, err := parser.ParseFile(token.NewFileSet(), "fabrique.go", src, 0)
+	if err != nil {
+		t.Fatalf("source fabriquee illisible : %v", err)
+	}
+	out := map[string]*ast.FuncDecl{}
+	for _, d := range f.Decls {
+		if fn, ok := d.(*ast.FuncDecl); ok && fn.Body != nil {
+			out[fn.Name.Name] = fn
+		}
+	}
+	return out
+}
+
+// TestMarcheurDescendDansChaqueAppel : LE CONTRE-TEST DU CONSTAT R1-2.
+//
+// Une phase appelee DEUX fois emet ses etapes DEUX fois en production. Le marcheur doit les
+// compter deux fois — la version qui memorisait les noms deja marches n'en voyait qu'une, et la
+// mutation « appeler une phase une seconde fois » passait alors les deux gardes au vert.
+func TestMarcheurDescendDansChaqueAppel(t *testing.T) {
+	const src = `package p
+func racine() { phase(); phase() }
+func phase() { opt.observe("a", nil); ScanTruc() }
+`
+	m := marcher(declarationsDeSource(t, src), "racine")
+	if m.cycle != "" {
+		t.Fatalf("cycle signale a tort : %q", m.cycle)
+	}
+	if want := []string{"a", "a"}; !slices.Equal(m.steps, want) {
+		t.Fatalf("etapes = %v, attendu %v — le marcheur ne descend pas dans CHAQUE appel", m.steps, want)
+	}
+	if m.scans != 2 {
+		t.Fatalf("%d balayage(s) comptes, attendu 2 — un balayage d'une phase rappelee est perdu", m.scans)
+	}
+}
+
+// TestMarcheurRefuseUnCycle : descendre dans chaque appel ne doit pas boucler. Une phase qui se
+// rappelle (directement ou par une autre) est NOMMEE, pas marchee sans fin.
+func TestMarcheurRefuseUnCycle(t *testing.T) {
+	const src = `package p
+func racine() { a() }
+func a() { opt.observe("x", nil); b() }
+func b() { a() }
+`
+	m := marcher(declarationsDeSource(t, src), "racine")
+	if m.cycle != "a" {
+		t.Fatalf("cycle detecte = %q, attendu \"a\" — la marche boucle ou ne nomme pas la phase", m.cycle)
 	}
 }

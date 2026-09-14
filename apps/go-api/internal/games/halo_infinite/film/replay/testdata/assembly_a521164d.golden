@@ -14,13 +14,13 @@ coup d envoi date par le film : 45311 ms · 160/179 piste(s) en mouvement · raf
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
 179 trace(s) · 46407 point(s) de grille
 seuil de publication 2 point(s) : 6 vie(s) REFUSEE(S) portant 6 point(s) — une vie d un seul echantillon n est pas une trajectoire
-178 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
-occupation du slot dans le TEMPS) · 1 sans identite — un DEFAUT de nommage a instruire,
+179 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
 27338 point(s) portent un cap de visee · 27338 une elevation de visee · 6196 un bouclier · 169 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
-26 joueur(s)
+27 joueur(s)
   2533274808061956  idx=0  "DaniyalBrolaigh"
   2535439688275895  idx=1  "GET FREE NOW"
   2535443465079408  idx=2  "Pabloluis20"
@@ -47,6 +47,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2535464945196103  idx=24  "Julianmz7124"
   2535413578965816  idx=25  "ItsWindlol"
   2533274866668915  idx=26  "U2 Sam Fisher"
+  2533274813083991  idx=27  ""
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
 1186 rattache(s) / 1476 disponible(s) = 80.4 %
@@ -584,7 +585,7 @@ POWER-UPS (voie ti=37) — balaye=true · 688 creation(s) acceptee(s) -> 14 rete
     presence t0=1375 prouvee jusqu a 1923, absente a 2124
     presence t0=2273 prouvee jusqu a 2524, absente a 2724
     presence t0=2576 prouvee jusqu a 3325, absente a 3396
-69 occupation(s) achevee(s) publiee(s) · 40 datee(s) a l instant exact par l evenement natif · 38 avec un ramasseur nomme
+69 occupation(s) achevee(s) publiee(s) · 40 datee(s) a l instant exact par l evenement natif · 40 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 311 loadout(s) publie(s) · 17 famille(s) distincte(s)
