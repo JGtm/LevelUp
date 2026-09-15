@@ -1,3 +1,27 @@
+## [2026-09-16] Chantier decodeur — V10 : la famille 1.9 resserree (decision utilisateur) — Complete (feat/recherche-decodeur-film)
+
+**Decision technique principale.** Question de l'utilisateur (« j'ai l'impression qu'on part
+loin ») ; constat du pilote : 1.9.1 bis / ter = retro-ingenierie longue (etat par defaut des films
+anciens), 1.9.4 = gain de production nul aujourd'hui. Decision « vas y continue » sur la
+recommandation : 1.9.1 ter borne a une seule passe (le reste va a M3) ; M1 garde 1.9.7 et 1.9.9 a
+1.9.14 ; 1.9.5, 1.9.6, 1.9.8 reportes a M2 en `[!]` (leurs replis ne sont pas cables au registre,
+la frequence sur le corpus n'est pas mesuree, elle le sera au cablage). Plan §1.4 V10, items statues.
+
+**Resultats observes.** Poids des builds anciens au cache, lu dans `chunk_00.bin` de chaque film
+(`grep -a -o -m1 "HI_1_[0-9]*_[0-9]*"`, 1 351 films) : HI_1_13_0 1 123, HI_1_12_0 146, HI_1_11_0 39,
+HI_1_10_0 26, HI_1_8_0 10, HI_1_9_0 1, HI_1_4_1 1, sans section 5 — les builds anciens (jusqu'a
+HI_1_11_0, plus les 5 sans section) pesent 82 films sur 1 351 (6 %). Le 1.9.1 ter a rendu son compte
+rendu dans l'heure : le chargeur de la section 2 est trouve (`FUN_14299ab50`, deux cartes de
+tailles indexees par le second u32 de `chunk_00` = la VERSION DE FORMAT), les trois bits ne sont PAS
+une branche de version (releve exhaustif), un bit du film (`DAT_144706104`, `FUN_142e2bfd0`
+@142e2c020, `si (7 < version)`) commande la table de plages — sa valeur reste a mesurer avant tout
+re-figeage du golden de fermeture (D2 (1.9.1 ter)) ; fusion apres son regime court d'equivalence.
+
+**Prochaine etape.** Fusion 1.9.4 (corpus gate en cours) puis 1.9.1 ter (equivalence courte des
+que la voie est libre) ; lots 1.9.7, 1.9.9 a 1.9.14 ; revue de jalon ; cloture M1 (V9).
+
+---
+
 ## [2026-09-16] Chantier decodeur — CI rouge apres la fusion du lot 1.9.1 bis : les instruments lourds passent sous le tag `research` — Complete (feat/recherche-decodeur-film)
 
 **Decision technique principale.** Les instruments de recherche qui rebalayent les 7 bobines

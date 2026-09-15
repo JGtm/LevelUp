@@ -95,6 +95,7 @@ bloque le gate du lot courant.
 | V7 | Mini-films par build : au plus 1 Mio chacun, `chunk_00` obligatoire, un chunk d'image-clé, le pied ; 7 builds | ok |
 | V8 (2026-09-14) | Revue adversariale EN FIN DE JALON seulement, plus par lot (décision utilisateur après les lots 1.0-1.2 : trois lots, six rondes, 2 h à 3 h par lot). Par lot : vérification sur pièces par le pilote (grep, gates rejoués, mutations de l'exécuteur) ; en fin de jalon : fan-out de relecteurs aveugles, un par lentille, sur le diff des lots NON relus (M1 : `783ae680d..<HEAD M1>`), deux rondes au plus, puis fusion dans `feat/v75`. Coût accepté : un défaut introduit par un lot n'est vu qu'à la fin du jalon, après que d'autres lots ont bâti dessus | ok |
 | V9 (2026-09-14) | GO utilisateur pour la clôture de M1 : fusion dans `feat/v75`, recuisson du parc, backlog killsource — sans nouvelle demande, dès que le dernier lot de M1 est fusionné et la revue de jalon close | ok |
+| V10 (2026-09-16) | **Famille 1.9 RESSERRÉE** (question utilisateur : « j'ai l'impression qu'on part loin »). Constat du pilote : 1.9.1 bis / ter sont devenus de la rétro-ingénierie longue (état par défaut des films anciens : 12 commits, 25 découvertes, clé bornée mais non trouvée au 1.9.1 bis) et 1.9.4 a rendu un gain de production nul (passe des touches éteinte). Mesure : les builds anciens (HI_1_4_1 à HI_1_11_0, plus 5 films sans section) pèsent **82 films sur 1 351** au cache (6 %) ; HI_1_13_0 en pèse 1 123. Décision : (a) 1.9.1 ter BORNÉ à une seule passe — chargeur, condition, mesure ; ce qui ne se ferme pas chez l'écrivain passe à M3 (divergences par build) ; (b) M1 garde de 1.9.5 à 1.9.14 les items à effet visible dans le rejeu, 1.9.7 et 1.9.9 à 1.9.14 ; (c) 1.9.5, 1.9.6, 1.9.8 REPORTÉS à M2 (`[!]`, replis non câblés donc fréquence non mesurée) ; (d) puis revue de jalon et clôture M1 (V9) | « vas y continue » |
 
 ## 2. Organisation
 
@@ -2931,13 +2932,19 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       que le même collecteur résout le nom de carte à `positions.go:210` et que le paramètre
       `mapNameOverride` existe. Gain : **6 cartes jumelles** (3 paires mesurées, F.0 §6 réserve 2)
       récupèrent leurs distances, aujourd'hui désactivées en silence. S.
-- [ ] 1.9.5 **Le porteur du crâne lu au canal des armes tenues.**
+- [!] 1.9.5 **Le porteur du crâne lu au canal des armes tenues.** REPORTÉ À M2 (décision
+      utilisateur du 2026-09-16, resserrement de la famille 1.9 : M1 garde les items à effet visible
+      dans le rejeu, 1.9.7 et 1.9.9 à 1.9.14). Ses deux replis (`repli_crane_porteur_sans_vie_nommee`,
+      `repli_porteur_anonyme_sans_fin_par_mort`) ne sont PAS câblés au registre : leur fréquence sur le
+      corpus n'est pas mesurée, elle le sera au câblage (M2) et décidera du rang du lot.
       `internal/games/halo_infinite/film/replay/skull_carries.go:390` infère le porteur des tics de
       score (trou > 3 s) alors que le crâne voyage dans le canal des armes tenues (famille
       `0x0017592c`, `replay/held_object_carry.go:15`) et que `BuildHeldObjectCarry` est PORTÉ mais
       n'a qu'UN appelant de production, `replay/bomb_carries.go:142`. Les tics deviennent le repli
       compté. Gain non chiffré. S.
-- [ ] 1.9.6 **Le drapeau qui rentre pris dans `ev.flag`, déjà nommé en amont.**
+- [!] 1.9.6 **Le drapeau qui rentre pris dans `ev.flag`, déjà nommé en amont.** REPORTÉ À M2 (décision
+      utilisateur du 2026-09-16, même resserrement que 1.9.5). Repli `repli_drapeau_seul_en_jeu` non
+      câblé : fréquence non mesurée ; `ambiguousReturns` est publié et vaut oracle le jour venu.
       `internal/games/halo_infinite/film/replay/flag_carries_lives.go:267` cherche « le seul drapeau
       au sol » alors que `ev.flag` est posé par `flag_carries_home.go:82-98` et ne sert qu'à un
       court-circuit (`:264`). Gain : les `ambiguousReturns` (compteur publié) que `ev.flag` tranche. S.
@@ -2946,7 +2953,11 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       comparabilité et non par une mesure) employée à `match.go:30`, `:45`, `:103`, `:143` ; les deux
       structures portent `(chunk, pidx)` (`killsource/scan.go:49`, `assist.go:169`) mais `Kill` ne le
       transporte pas (`match.go:186-193`). La fenêtre devient le repli compté. M.
-- [ ] 1.9.8 **Le chunk du pied pris au type du manifeste, plus par argmax de kills.**
+- [!] 1.9.8 **Le chunk du pied pris au type du manifeste, plus par argmax de kills.** REPORTÉ À M2
+      (décision utilisateur du 2026-09-16, même resserrement que 1.9.5). Ses deux replis
+      (`repli_chunk_du_pied_par_argmax`, `repli_type_de_chunk_perdu_du_manifeste`) sont
+      `devant_la_lecture` au ratchet des six : le ratchet reste à 6 tant que ce lot n'est pas joué,
+      et la clôture M1 le consigne tel quel.
       `internal/games/halo_infinite/film/killsource/feed.go:82` ; le type est porté par
       `filmsource.Film.Meta()` (`analysis/filmsource/film.go:41`) et déjà lu par ce patron
       (`objectiveevents/extract.go:144`), mais `killsource/chunks.go:78` perd `Meta()`.
