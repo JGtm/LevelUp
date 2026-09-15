@@ -1,3 +1,47 @@
+## [2026-09-16] Chantier decodeur — lot 1.9.1 bis (la grammaire de l'equipement comme fondation : prefixe objet relu, gardes n1/n2, profil par build, condition versionnee des films anciens bornee) — Complete (feat/decfilm-191c fusionnee dans feat/recherche-decodeur-film, 31421611f)
+
+**Decision technique principale.** Douze commits (`462480085..7b9aa67f6`, 57 fichiers, +4 044 / -482).
+Les deux mots de taille de `FUN_142e2bfd0` sont des GARDES (`n == 0` -> rien a lire, signees), portees
+dans `keyframe_fullstate_loop.go` / `default_state.go` : +68 records fermes, les cinq archetypes objet
+passent de 184 a 246 / 21 698 et ti=41 de 0 a 34 / 110. Quatre sites de ti=37 lisaient trop de bits
+(table de NEUF categories de largeur, `varwidth.go`, le decodeur en lisait une) — corriges chez
+l'ecrivain. Le prefixe objet (quinze composants) est relu en entier, chacun avec sa fonction,
+bit-exact. Le profil par build tient en UN lieu (`build_profile.go`, provenance par ligne RELU /
+MESURE, `player_table_profile.go` supprime) et passe DEVANT la calibration `CalibrateMPPWidths` pour
+les builds relus ; repli nomme au registre (condition neuve `build_sans_profil_relu`, 95 -> 96
+entrees) pour les autres. Le corpus gate JETAIT `BilanAxe.Changements` (`report.go:52-54`, D5
+(1.9.3) etait donc plus grave que decrit) : la categorie traverse maintenant tableau, JSON et statut,
+un changement classe le temoin en PERTE ; garde-rail `changements_guard_test.go` (mutation : somme
+retiree -> rouge, restauree par nom -> vert). `GrammarRev` : `.3` (integration) et `.6` (branche)
+reunis au rang `.7`, golden regenere par son port nomme. `SchemaVersion` 59 INCHANGE (schema 59 -> 59
+sur les 14 temoins ET zero changement de valeur publiee) : pas de chaine openapi.
+
+**Resultats observes.** Corpus gate (14 temoins, avec la colonne `chang.`) : schema 59 -> 59,
+changements 0, 31 gains (c75f33b8 +7, a349fea8 +12, 4f77afc1 +12), 3 « pertes » sur 2 temoins qui
+sont des compteurs de defauts en baisse (`coverage.equipmentChanges.missedEstimate` 17 -> 16 ;
+`coverage.teams.divergences` 4 -> 2 ; `coverage.teams.unread` 4 -> 3), classees divergences (les
+gardes suppriment des lectures de bruit). Equivalence sur la branche : classification avant tout
+`-update`, 7 differents sur 10, une seule etape (`killsource`), re-figes, 10/10. Equivalence A LA
+FUSION (les deux lots 1.9.3 et 1.9.1 bis touchent la meme etape sur les memes sept films) :
+classification avant tout `-update` : 3 identiques, 7 differents, sur les sept UNE SEULE etape des 53 (`killsource`) ; re-figeage des sept, puis 7/7 et 10/10 identiques, 0 ecarte, 0 echec (bloc consigne dans `CORPUS.txt`). Ouvert et borne : la condition versionnee de l'etat par defaut des films anciens (HI_1_4_1 ..
+HI_1_11_0) — elimines par la mesure : prefixe V (7/7), seuil de version majeure (v=40 des deux
+cotes), bloc MPP (invariant), offset constant (-6..+2), `lVar3 + 0x145008` (0 instruction) ; la cle
+est la table PAR TYPE de la section 2, alignee par la fin, douze positions -> lot 1.9.1 ter (chargeur
+de la section 2 par ses ecritures). Verification du pilote (V8) : commits, fichiers hors test relus,
+aucune `var` de paquet hors fichiers de recherche, fichiers > 500 L tous pre-existants (baseline
+lint, 0 issue), registre + ratchet coherents, gates rejoues sur l'arbre fusionne (build CGO, gofmt,
+filmdec 89,9 s, replay, fallback, killsource, archlint, replay-corpus-gate, replay-equiv : tous ok).
+Cout : `filmdec` passe de 26,1 s a 89,9 s en local, dont dix instruments `TestE191c*` pour 62 s
+(`TestE191cEtatParDefaut` seul 24,5 s) ; budget CI du pas unitaire porte a 600 s (D1 (CI) au §4) — la
+decision structurelle (balayage partage des bobines ou tag `research`) doit tomber AVANT le prochain
+lot qui ajoute des instruments. 25 decouvertes au §4 (D1 a D25 (1.9.1 bis)).
+
+**Prochaine etape.** Push + CI ; lots 1.9.1 ter (executeur frais, Ghidra HTTP, chargeur de la
+section 2) et 1.9.4 (carte par nom de match) en parallele sous le protocole « voie libre » ; puis
+1.9.5 a 1.9.14 ; revue de jalon ; cloture M1 (go V9).
+
+---
+
 ## [2026-09-16] Chantier decodeur — CI rouge apres le lot 1.9.3 : budget du job unitaire Windows — Complete (feat/recherche-decodeur-film)
 
 **Decision technique principale.** Le pas `go test (unit, no CGo DB)` du workflow passe de
