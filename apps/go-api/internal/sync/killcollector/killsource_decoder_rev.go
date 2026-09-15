@@ -107,7 +107,16 @@ package killcollector
 // et sa revision la plus recente est `killsource-2026-09-05` — donc ANTERIEURE a l apparition de
 // `BijectionDetermined` (2026-09-14). Le compte se mesurera a la recuisson, par
 // `killsource_bijection_noms_libres_en_trop`.
-const KillSourceDecoderRev = "killsource-2026-09-16"
+// 2026-09-16, SECOND MOUVEMENT DU JOUR (fusion du lot 1.9.7) : `killsource-2026-09-16` ->
+// `killsource-2026-09-16.2`. L APPARIEMENT `dead-state <-> kill-feed` SE FAIT PAR L IDENTITE DE
+// PAQUET `(chunk, pidx)`, plus par une fenetre de 2,5 s (`killsource/paquet_identite.go`). Mesure du
+// 2026-09-16 sur 21 films entiers : 2 899 appariements, 2 205 a identite EGALE des deux cotes, 2 a
+// identite DIFFERENTE, 692 sans identite du cote feed ; l appariement par identite seule rend 2 204
+// accords et ZERO desaccord — le gain est de NATURE, mais les lignes PEUVENT bouger la ou les deux
+// divergent, et le decodeur choisit desormais l instant que le film ECRIT. Le suffixe `.2` : deux
+// mouvements du decodeur le meme jour (la porte de publication de la revue M1, puis celui-ci),
+// chacun avec son empreinte. Les lignes en base sont candidates au backlog (D6).
+const KillSourceDecoderRev = "killsource-2026-09-16.2"
 
 // L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/killsource_decoder_rev.golden` porte le couple (revision, empreinte) et

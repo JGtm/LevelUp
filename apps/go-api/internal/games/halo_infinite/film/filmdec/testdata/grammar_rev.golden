@@ -319,4 +319,9 @@
 #               repli nomme et compte (`repli_cadre_de_marche_par_defaut_conserve`). Aucun octet
 #               existant n est lu autrement : le paquet sait lire une chose de plus.
 #               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 59 (montee de vague).
-grammar-2026-09-15.15	65ceedfaa6f66a16836f5335cebea4867a9e256772aa55b74cbfc99eae2adcbc
+#   2026-09-16  grammar-2026-09-15.16  lot 1.9.7 (fusion) : L APPARIEMENT dead-state <-> kill-feed DE
+#               `killsource` SE FAIT PAR L IDENTITE DE PAQUET (chunk, pidx) ecrite par le film, plus
+#               par une fenetre de 2,5 s (six sites, la fenetre = repli nomme et compte). Aucune
+#               grammaire d octets reecrite ; l empreinte couvre `killsource/`, donc elle monte.
+#               `KillSourceDecoderRev` monte au meme geste (killsource-2026-09-16.2) ; `SchemaVersion` 59.
+grammar-2026-09-15.16	3d681fd7d5399a4af6fe642b7ec7db7544484734c7e7617b2b7939f304ce672c

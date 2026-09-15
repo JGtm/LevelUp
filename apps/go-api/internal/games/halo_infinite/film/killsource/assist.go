@@ -271,9 +271,12 @@ func (c *decodeCtx) attachAssists(kills []Kill, s *assistScan) AssistStats {
 	for i := range kills {
 		k := &kills[i]
 		k.Assist.Index = -1
-		hits := c.killEventsFor(k, s, used)
+		hits, parLaFenetre := c.killEventsFor(k, s, used)
 		if len(hits) == 0 {
 			continue
+		}
+		if parLaFenetre {
+			st.ParLaFenetre++
 		}
 		// LE SURPLUS D ASSISTANTS SE PORTE SUR LA LIGNE, pas seulement dans l agregat : c est ce
 		// qui rend `assist_extra_count` alimentable en base. Il n est calculable que quand
@@ -352,16 +355,39 @@ func distinctAssists(recs []killEventRec, hits []int) int {
 }
 
 // killEventsFor : les indices des kill-events dont le couple correspond exactement a la mort.
-func (c *decodeCtx) killEventsFor(k *Kill, s *assistScan, used []bool) []int {
+//
+// L IDENTITE DE PAQUET D ABORD, LA FENETRE ENSUITE (lot 1.9.7, D14 b). Le dead-state qui a
+// produit cette ligne et le kill-event 85 qui la decrit sont ECRITS DANS LE MEME PAQUET, et la
+// ligne transporte cette identite ([Kill.paquet]).
+//
+// MESURE DU LOT (21 films entiers, 8 builds, 14 temoins du corpus gate) : sur 2 881 lignes
+// publiees, 2 342 ou les deux regimes retiennent LE MEME enregistrement, UN SEUL ou ils divergent
+// (`4f77afc1`), **ZERO ou l identite se tait alors que la fenetre trouvait**, zero ou l identite
+// trouve seule. Le repli de la fenetre est donc deja a ZERO ici, et c est son critere de retrait.
+//
+// Rend les indices retenus et si le REPLI a servi.
+func (c *decodeCtx) killEventsFor(k *Kill, s *assistScan, used []bool) ([]int, bool) {
+	if hits := c.killEventsOu(k, s, used, func(j int) bool {
+		return k.paquet.memeQue(s.recs[j].chunk, s.recs[j].pidx)
+	}); len(hits) > 0 {
+		return hits, false
+	}
+	hits := c.killEventsOu(k, s, used, func(j int) bool {
+		return dansLaFenetre(s.recs[j].ms, k.TimeMS)
+	})
+	return hits, len(hits) > 0
+}
+
+// killEventsOu : les kill-events non consommes que `ou` retient ET dont le couple correspond
+// exactement a la mort. La CONTRAINTE DE COUPLE est ecrite une seule fois : ce qui change d une
+// passe a l autre est la facon de designer les enregistrements, jamais le critere.
+func (c *decodeCtx) killEventsOu(k *Kill, s *assistScan, used []bool, ou func(int) bool) []int {
 	var hits []int
 	for j := range s.recs {
-		if used[j] {
+		if used[j] || !ou(j) {
 			continue
 		}
 		r := &s.recs[j]
-		if dt := k.TimeMS - r.ms; dt < -tolMS || dt > tolMS {
-			continue
-		}
 		if c.roster.nameOf(r.fields.victim) != k.Victim {
 			continue
 		}
@@ -495,6 +521,11 @@ type AssistStats struct {
 	// corpus large, valeurs jusqu a 228) reste VISIBLE par film au lieu d etre du folklore. Son
 	// interpretation — degat excedentaire — n est PAS etablie.
 	KillerPctOver100, AssistPctOver100 int
+	// ParLaFenetre : morts dont le kill-event a ete attache par la FENETRE de 2,5 s et non par
+	// l identite de paquet — le repli `repli_appariement_par_fenetre_temporelle` (lot 1.9.7).
+	// Mesure du lot : ZERO sur les 21 films entiers ; c est le compte qui permettra de le retirer
+	// d ici (D14 d).
+	ParLaFenetre int
 	// Gate15 : l etat runtime retenu pour ce film.
 	Gate15 bool
 }

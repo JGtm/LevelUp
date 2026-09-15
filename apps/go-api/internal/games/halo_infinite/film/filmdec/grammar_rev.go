@@ -175,4 +175,12 @@ package filmdec
 // un repli nomme et compte. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 59 en
 // attendant la montee unique de la vague (les champs `vehicles[].end/tEnd` et
 // `coverage.vehicles.*` arrivent avec elle).
-const GrammarRev = "grammar-2026-09-15.15"
+//
+// ENTREE `grammar-2026-09-15.16` (2026-09-16, lot 1.9.7, fusion) : L APPARIEMENT `dead-state <->
+// kill-feed` DE `killsource` SE FAIT PAR L IDENTITE DE PAQUET `(chunk, pidx)` que le film ecrit,
+// et non plus par une fenetre de 2,5 s (`killsource/paquet_identite.go`, six sites convertis, la
+// fenetre devient le repli nomme et compte `repli_appariement_par_fenetre_temporelle`). Aucune
+// grammaire d octets n est reecrite : ce qui change est QUEL enregistrement lu se rattache a quel
+// instant — et l empreinte de cette revision couvre `killsource/`, donc elle monte avec lui.
+// `KillSourceDecoderRev` monte au meme geste (`killsource-2026-09-16.2`) ; `SchemaVersion` reste 59.
+const GrammarRev = "grammar-2026-09-15.16"
