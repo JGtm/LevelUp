@@ -197,5 +197,8 @@ func toVehicleLabel(v replay.VehicleLabel) replaydoc.VehicleLabel {
 	return replaydoc.VehicleLabel{
 		Img:    v.Img,
 		Tinted: v.Tinted,
+		Kind:   v.Kind,
+		En:     v.En,
+		Fr:     v.Fr,
 	}
 }

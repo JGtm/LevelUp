@@ -28,7 +28,11 @@ package replay
 // adversariale 2026-09-02 : une seule valeur francaise aurait coute un changement de contrat
 // apres backfill.
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+)
 
 // VehicleEndUnknown est la SEULE valeur que `VehicleTrack.End` prend aujourd hui.
 //
@@ -327,7 +331,14 @@ type VehicleCoverage struct {
 
 // tallyVehicleCoverage compte, sur les vies PUBLIEES, ce que la couverture annonce. Un compteur
 // qui se remplirait ailleurs qu ici finirait par diverger du tableau qu il decrit.
-func tallyVehicleCoverage(tracks []VehicleTrack, cov *VehicleCoverage) {
+//
+// `fb` (nil-safe) EST LE COMPTEUR DE REPLIS DE LA CUISSON (lot 1.9.9, D14 (c)) : une vie dont le
+// chassis est LU mais absent de la table des familles declenche
+// `repli_chassis_vehicule_marqueur_neutre`. Il se compte ICI et pas au site de la lecture
+// (`vehicleTrackOf`) pour deux raisons : la limite de cinq parametres du depot y est deja
+// atteinte, et surtout la couverture decrit les vies PUBLIEES — une vie assemblee puis fondue
+// dans un relais (`mergeVehicleRelays`) ne doit pas compter un repli que l artefact ne porte pas.
+func tallyVehicleCoverage(tracks []VehicleTrack, cov *VehicleCoverage, fb *fallback.Compteur) {
 	cov.Published = len(tracks)
 	for _, tr := range tracks {
 		if tr.Spawn != nil {
@@ -340,6 +351,9 @@ func tallyVehicleCoverage(tracks []VehicleTrack, cov *VehicleCoverage) {
 			} else {
 				cov.FamilyUnknown++
 				cov.UnknownChassis[tr.Chassis]++
+				// D14 (b) : la LECTURE a eu lieu (`tr.Chassis` est le mot d identite lu dans le
+				// record de creation) et c est la TABLE qui se tait — le repli entre APRES elle.
+				fb.Declenche(fallback.NomChassisVehiculeMarqueurNeutre)
 			}
 		}
 		cov.Samples += len(tr.Samples)
@@ -420,9 +434,21 @@ func logVehicleCoverage(c *VehicleCoverage) {
 			" retombe partout sur le cap du chassis",
 			"episodes", c.Rides, "lecturesBrutes", c.AimReads)
 	}
+	// UN CHASSIS INCONNU EST UN AVERTISSEMENT DEPUIS LE LOT 1.9.9 (2026-09-16), une ligne par
+	// chassis et par cuisson. Decision utilisateur du 2026-09-14 : le parc d assets vehicules est
+	// COMPLET, donc un chassis absent de la table est un MISMATCH a nommer — pas une information
+	// de routine. Ce journal est le pendant lisible du repli
+	// `repli_chassis_vehicule_marqueur_neutre`, compte par `tallyVehicleCoverage`.
+	//
+	// `slog.Warn` ET NON `slog.WarnContext` : toute la chaine d assemblage du calque est PURE et
+	// ne porte aucun `context.Context` (meme convention que les douze autres journaux de ce
+	// fichier et de `build_vehicles.go`). Lui en faire traverser un pour cette seule ligne
+	// changerait la signature de six fonctions du lot voisin 1.9.10.
 	for id, n := range c.UnknownChassis {
-		slog.Info("rejeu : chassis de vehicule NON RESOLU — vies publiees sans sprite",
-			"chassis", id, "vies", n)
+		slog.Warn("rejeu : chassis de vehicule ABSENT DE LA TABLE DES FAMILLES — vies publiees"+
+			" sans sprite, dessinees en marqueur neutre ; le mot d identite est LU, c est la table"+
+			" qui ne le nomme pas",
+			"chassis", id, "vies", n, "repli", string(fallback.NomChassisVehiculeMarqueurNeutre))
 	}
 	if c.WithChassis > 0 && c.FamilyResolved == 0 {
 		slog.Warn("rejeu : AUCUN chassis de vehicule resolu alors que le mot d identite a ete lu"+

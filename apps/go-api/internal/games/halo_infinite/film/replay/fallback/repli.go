@@ -114,6 +114,16 @@ const (
 	// Confondre les deux ferait chercher la correction du mauvais côté de la frontière. Ajoutée
 	// au lot 1.9.2 (2026-09-15) avec la rétrogradation du découpage d'i0.
 	CondCarteAbsenteDuCatalogue Condition = "carte_absente_du_catalogue"
+	// CondChassisAbsentDeLaTable : le film ECRIT le mot d identite du chassis, parfaitement
+	// lisible, et c est NOTRE table (`replay/vehicle_families.go`) qui ne le nomme pas.
+	//
+	// ELLE EXISTE POUR LA MEME RAISON QUE [CondCarteAbsenteDuCatalogue], et il faut la meme
+	// rigueur : [CondFilmMuet] MENTIRAIT ici, et enverrait chercher la correction du mauvais
+	// cote de la frontiere (mieux lire le film) alors que le seul geste qui retire ce repli est
+	// de NOMMER le chassis en table. Decision utilisateur du 2026-09-14 : le parc d assets
+	// vehicules est complet, un chassis absent de la table est un MISMATCH, jamais un vehicule
+	// manquant. Ajoutee au lot 1.9.9 (2026-09-16).
+	CondChassisAbsentDeLaTable Condition = "chassis_absent_de_la_table"
 	// CondBuildSansProfilRelu : le PROFIL PAR BUILD existe et ce build-ci n a pas sa valeur
 	// RELUE chez l ecrivain. Pose le 2026-09-15 (lot 1.9.1 bis, pas 3) : la grammaire du bloc
 	// `object-multiplayer-properties` est versionnee par build, et l executable dont on dispose
@@ -266,6 +276,7 @@ var (
 		CondContradiction: true, CondNonResolu: true, CondInconditionnel: true,
 		CondCarteAbsenteDuCatalogue: true,
 		CondBuildSansProfilRelu:     true,
+		CondChassisAbsentDeLaTable:  true,
 	}
 	ordresConnus = map[Ordre]bool{
 		OrdreApresLecture: true, OrdreSansLecture: true, OrdreDevantLaLecture: true,
