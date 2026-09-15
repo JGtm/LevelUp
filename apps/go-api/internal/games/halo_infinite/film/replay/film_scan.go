@@ -327,6 +327,12 @@ func (s *filmScan) balayerMonde() {
 	s.in.Placements, s.in.PlacementStats = decodeFilmPlacements(s.fc, s.matchID, &s.world)
 	s.opt.observe("placements", s.in.Placements)
 	s.opt.observe("placements.stats", s.in.PlacementStats)
+	// « UNE PIECE A ETE ENGENDREE » : l'evenement de liste 103, qui DESIGNE la vie de l'objet
+	// cree (lot 1.9.1, cf. equipment_origin.go). Lecture de TETE de liste, sans verrou de
+	// decodage — elle ne touche aucun global de filmdec — et sans cout de chargement : le
+	// contexte du film est deja ouvert.
+	s.in.SpawnEvents, s.in.SpawnStats = decodeFilmSpawnEvents(s.fc, s.matchID)
+	s.opt.observe("spawnEvents", s.in.SpawnEvents)
 	// SOCLES : archetypes 42 (armes) et 37 (power-ups), sur la MEME horloge, AUX LARGEURS MPP que
 	// la calibration des POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
 	mpp := s.in.PlacementStats.Calibration.Widths

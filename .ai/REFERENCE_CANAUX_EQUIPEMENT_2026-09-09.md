@@ -17,8 +17,8 @@ MATCH. Ce qui remonte au grain session est une autre affaire — §3.
 | Canal | Ce qu'il mesure | Grain | Réserve mesurée |
 |---|---|---|---|
 | `equipmentEpisodes` | L'état ACTIF : **camouflage** et **surbouclier** seulement. Nombre d'épisodes, durée, frags pendant | Par VIE | Deux familles seulement, « parce que deux seulement sont mesurées — les autres restent sans état plutôt que devinés » (`document.go:147`) |
-| `equipmentPlacements` `origin: deployed` | Les DÉPLOIEMENTS d'objets sur la carte, par famille (`wall` / `sensor` / `other`) | Par pose, poseur mesuré | `t1` est une mise au repos, pas une disparition. ~5 % des poses sont `origin: unknown`. **ET SURTOUT (2026-09-10)** : sur un objet PORTÉ, `deployed` ne mesure PAS un déploiement mais un lâcher volontaire à mi-vie — seul le mur, qui engendre une pièce, y publie son geste (§1 bis) |
-| `equipmentPlacements` `origin: dropped` | Ce qui TOMBE à la mort : déployables **et bonus** | Par pose | Classé `dropped` à < 200 ms de la dernière position du porteur. **La clause de distance (< 1,5 m) a été RETIRÉE le 2026-09-13** (item F.1) : elle promouvait `deployed` des lâchers à la mort dont le corps avait glissé. Les deux populations sont séparées par trois ordres de grandeur sur le seul axe du TEMPS (lâchers 20-40 ms, déploiements 14-42 s) |
+| `equipmentPlacements` `origin: deployed` | Les DÉPLOIEMENTS, et eux seuls : une pose que le film DÉSIGNE par un événement 103 `EquipmentSpawnedObject` — les panneaux de mur | Par pose | **DÉCISION UTILISATEUR DU 2026-09-15 (lot 1.9.1)** : `deployed` est désormais RÉSERVÉ à ce qu'un 103 désigne. Un objet PORTÉ n'y entre plus jamais — son lâcher volontaire à mi-vie sortait `deployed` et faisait dessiner un geste qui n'a pas eu lieu ; il sort `dropped`. `t1` reste une mise au repos, pas une disparition |
+| `equipmentPlacements` `origin: dropped` | Ce qui TOMBE d'un porteur — déployables **et bonus** — quelle qu'en soit la cause | Par pose | **LU, PLUS MESURÉ, DEPUIS LE 2026-09-15 (lot 1.9.1)** : une pose est `dropped` quand le film ÉCRIT une MORT du poseur (tolérance 200 ms, mesurée : max 171,7 ms d'un côté, min 205,3 ms de l'autre, intervalle VIDE de 33,6 ms) OU une PRISE du poseur (`equipmentChanges.taken`, 50 ms — 103 des 108 prises retenues sont à moins d'une ms). **L'étiquette ne distingue pas les deux lâchers** (décision utilisateur) : la CAUSE se lit dans `coverage.placements.byCause`. La fenêtre temporelle de 200 ms qui classait ces poses A ÉTÉ RETIRÉE — elle ne décide plus rien |
 | `equipmentChanges` | Les RAMASSAGES (`taken`) et les CONSOMMATIONS (`spent`), datés à la ms | Par VIE (`Slot`) | Les annonces de RÉAPPARITION en sont écartées. Témoin de complétude : ~16 émissions manquées sur 319 sur trois films ; **71 sur 1 954 = 3,63 % sur les 64 artefacts du parc** (mesure E0 du 2026-09-09, §2) |
 | `grappleLines` | Les TRACTIONS de grappin — la seule activation de capacité mesurée et attribuée | Par VIE | — |
 | `abilityCharges` | Les CHARGES RESTANTES, lues au changement | Par VIE | **Grappin et propulseur SEULEMENT.** Rien n'est transmis au ramassage, donc le maximum n'est pas établissable. Le répulseur n'arme jamais ce canal (négatif mesuré, rapport R11) |
@@ -38,10 +38,15 @@ fermes :
 
 1. **Le 103 ne tire pas à la mort** — l'affirmation inverse, tirée d'un appariement en TEMPS
    SEUL du rapport R5 §3.2, est réfutée.
-2. **Le film ne porte aucun signal de déploiement pour le capteur, le traqueur, l'écran
-   occultant et le champ de réparation.** L'origine d'une pose ne peut donc pas se lire sur un
-   événement : elle reste une mesure temporelle (`equipmentOrigin`, fenêtre de 200 ms — la
-   clause de distance a été retirée le 2026-09-13, item F.1).
+2. **Le film ne porte aucun signal d'ÉVÉNEMENT de déploiement pour le capteur, le traqueur,
+   l'écran occultant et le champ de réparation.** Leur origine ne se lit donc pas sur le 103 —
+   et par conséquent **ils ne sortent JAMAIS `deployed`** (décision utilisateur du 2026-09-15).
+   Ce qu'on lit d'eux, ce sont leurs LÂCHERS, par deux signaux écrits : la MORT du porteur (fil
+   des morts, pont d'identité) et sa PRISE d'équipement (`equipmentChanges.taken`, qui dit qu'il
+   a échangé). Les deux publient `dropped` ; la CAUSE va dans `coverage.placements.byCause`.
+   **La fenêtre de 200 ms a été RETIRÉE du décodeur** : une pose qu'aucun des trois signaux ne
+   couvre sort `unknown` (`byCause.none`), et une pose sans poseur mesuré aussi
+   (`byCause.no_owner`).
 
 Détail, méthode, témoins et commandes rejouables :
 `.ai/V7.5/RAPPORT_F0_DEPLOIEMENT_103_2026-09-13.md`.
@@ -314,8 +319,15 @@ Trois affirmations fausses à ne pas répéter :
   `dropped`, dont 3 sont des panneaux de mur. L'affirmation venait d'un appariement en TEMPS
   SEUL (R5 §3.2) ; avec la référence résolue elle tombe.
 - ~~« Une pose est un lâcher parce qu'elle tombe aux pieds du mort. »~~ (2026-09-13) → la
-  question est purement TEMPORELLE depuis l'item F.1 ; la distance ne classe plus rien côté
-  équipement.
+  distance ne classe plus rien côté équipement depuis l'item F.1.
+- ~~« L'origine d'une pose est une mesure temporelle. »~~ (2026-09-15, lot 1.9.1) → elle se LIT,
+  et par trois signaux écrits : l'événement 103 qui désigne la pièce engendrée, la MORT écrite du
+  poseur, sa PRISE écrite. **La fenêtre de 200 ms a été retirée du décodeur**, et ses deux
+  entrées sont sorties du registre des replis le même jour : une pose dont le film ne dit rien
+  sort `unknown`. `coverage.placements.byCause` dit, film par film, ce qui a décidé.
+- ~~« Un déployable posé à mi-vie est déployé. »~~ (2026-09-15, décision utilisateur) → non : un
+  appareil PORTÉ qui tombe est **lâché** (`dropped`), que son porteur meure ou qu'il ramasse
+  autre chose. `deployed` ne désigne plus que ce qu'un événement 103 nomme — les panneaux de mur.
 
 ## 7. Références
 

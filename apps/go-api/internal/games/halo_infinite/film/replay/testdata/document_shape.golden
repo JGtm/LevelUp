@@ -1,8 +1,8 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 58
-empreinte-stockee cd9d54d2ef218027
-empreinte-servie cd9d54d2ef218027
+schema 59
+empreinte-stockee 0a583ed6f3e24c13
+empreinte-servie 0a583ed6f3e24c13
 
 AbilityCharge
   Charges json:"charges" int
@@ -241,6 +241,7 @@ EquipmentPlacement
   Z json:"z,omitempty" float32
 EquipmentPlacementCoverage
   Anchors json:"anchors" int
+  ByCause json:"byCause,omitempty" map[string]int
   ByFamily json:"byFamily,omitempty" map[string]int
   ByFamilyOrigin json:"byFamilyOrigin,omitempty" map[string]int
   Calibrated json:"calibrated" bool
@@ -254,6 +255,8 @@ EquipmentPlacementCoverage
   Other json:"other" int
   Placements json:"placements" int
   Scanned json:"scanned" bool
+  SpawnEvents json:"spawnEvents" int
+  SpawnLists json:"spawnLists" int
   Unknown json:"unknown" int
   Widths json:"widths,omitempty" string
   WithHeading json:"withHeading" int

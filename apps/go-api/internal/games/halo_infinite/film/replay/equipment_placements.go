@@ -38,22 +38,6 @@ import (
 // porte aucune. C'est là où le poseur REGARDAIT quand il a posé — une mesure, dont le rendu
 // peut se servir pour orienter un mur, en sachant ce qu'elle est.
 
-// equipOwnerWindowUS est la fenêtre dans laquelle un échantillon de bipède est jugé
-// contemporain de la pose : 250 ms, la même borne que celle qui sépare deux vies de projectile.
-const equipOwnerWindowUS = 250_000
-
-// equipOwnerMaxDist est la distance MAXIMALE, en mètres, entre une pose et son poseur. Le
-// seuil est énoncé avant la mesure (plan, décision 2) et la mesure le confirme largement :
-// médiane 0,56 m, p90 0,73 à 0,86 m sur les films d'arène. Au-delà de 3 m, la proximité ne
-// veut plus rien dire — c'est le cas des objets du monde (bonus, socles), qui n'ont pas de
-// poseur et ne doivent pas s'en voir attribuer un.
-const equipOwnerMaxDist = 3.0
-
-// equipHeadingWindowUS borne l'écart entre la pose et la lecture de visée qui lui donne son
-// cap. 200 ms : plus court que la fenêtre du poseur, parce qu'un cap vieilli est faux là où
-// une position vieillie reste juste (on tourne plus vite qu'on ne se déplace).
-const equipHeadingWindowUS = 200_000
-
 // EquipmentPlacement est UNE pose d'équipement, datée et située.
 type EquipmentPlacement struct {
 	// T0 est l'instant de CRÉATION de l'objet — le geste de pose — sur le même axe que
@@ -98,36 +82,56 @@ type EquipmentPlacement struct {
 	// quand la pose n'a pas de poseur. POINTEUR, PAS float32 : un cap de zéro est une
 	// valeur, et omitempty l'effacerait (même piège qu'OriginMs).
 	H *float32 `json:"h,omitempty"`
-	// Origin est l'ORIGINE MESURÉE de la pose. Identifiant STABLE du document (même règle
-	// que Family et NeutralDeath.Kind) :
+	// Origin est l'ORIGINE de la pose. Identifiant STABLE du document (même règle que Family
+	// et NeutralDeath.Kind).
 	//
-	//	deployed  l'objet a été créé EN COURS DE VIE du poseur : il l'a déployé. C'est la
-	//	          seule origine qui décrit un geste, donc la seule que le rendu dessine.
-	//	dropped   l'objet a été créé à l'instant ET à l'endroit où la vie du poseur
-	//	          S'ACHÈVE : ce sont les objets qu'il PORTAIT, relâchés. Une mort en Halo
-	//	          libère les grenades et l'équipement du joueur, et c'est ce que la mesure
-	//	          voit — pas une pose sur la carte.
-	//	unknown   aucun poseur mesuré (aucun bipède contemporain à moins de 3 m). L'origine
-	//	          n'est pas établie, et elle ne se devine pas.
+	// # LE VOCABULAIRE DU JEU, ET LE NÔTRE
 	//
-	// UNE EXCEPTION, ET ELLE N'EST PAS UNE DEVINETTE (item H.2, 2026-09-13) : une PIÈCE
-	// ENGENDRÉE (`kind = "deployed"` au manifeste — les panneaux du mur) sort TOUJOURS en
-	// `deployed`, sans passer par la mesure temporelle. Elle n'existe que déployée, donc ni
-	// `dropped` ni `unknown` ne peut être vrai d'elle. Cf. `equipmentIsSpawnedPiece`.
+	// Le jeu n'écrit AUCUN événement « equipment drop » — il n'en existe pas (seul
+	// `weapon_drop`, type 46, existe, et il est pour les armes). Ce qu'il écrit sur un objet
+	// d'équipement, ce sont des COMPOSANTS D'ÉTAT de l'archétype 37
+	// (`filmdec/testdata/ecs_table.tsv`) :
 	//
-	// CE CHAMP EXISTE PARCE QUE `equipmentPlacements` N'EST PAS CE QUE SON NOM DIT : sur les
-	// 11 films calibrés, 3 242 des 3 661 poses à poseur mesuré (88,6 %) naissent dans les
-	// 2 frames qui suivent le dernier point de leur poseur. Dessiner un arc de mur à ces
-	// positions dessinerait un mur là où personne n'en a déployé.
+	//	i20  equipment-deployed-component     l'objet est DÉPLOYÉ
+	//	i21  equipment-activated-component    l'objet est ACTIF
+	//	i18  item-at-rest-component           l'objet est POSÉ, immobile
+	//	i10  object-parent-state-component    son PORTEUR
+	//	i23  equipment-creator-component      qui l'a créé
+	//
+	// Plus un ÉVÉNEMENT, et un seul, pour l'apparition : `EquipmentSpawnedObject` (type 103),
+	// « une PIÈCE a été engendrée ». Les ramassages sont `biped_pickup` (9) et
+	// `biped_pickup_item_request` (57) ; les activations `biped_equipment_activation` (30) et
+	// `activate_spartan_ability` (93).
+	//
+	// NOTRE VOCABULAIRE SE CALQUE SUR CELUI-LÀ. La définition tranchée par l'utilisateur le
+	// 2026-09-15 : **« déployé »** = le mot du jeu, `deployed` ; **« lâché »** = l'objet QUITTE
+	// SON PORTEUR SANS ÊTRE DÉPLOYÉ — à la mort ou à mi-vie par échange, les deux sont « lâché »,
+	// et la cause va dans `coverage.placements.byCause`, jamais dans l'étiquette.
+	//
+	//	deployed  le film écrit que cette pose est un DÉPLOIEMENT. Aujourd'hui : l'événement 103
+	//	          qui désigne la pièce engendrée — les panneaux du mur. Le jour où un autre
+	//	          signal écrit de déploiement est lu, il entre ici par la même porte.
+	//	dropped   l'objet quitte son porteur sans avoir été déployé. UN APPAREIL PORTÉ N'A
+	//	          AUJOURD'HUI AUCUN DÉPLOIEMENT ÉCRIT, et c'est mesuré : le 103 en désigne 0 sur
+	//	          91 et 0 sur 4 853 (rapport F.0). Il sort donc toujours `dropped`.
+	//	unknown   le film ne dit RIEN de cette pose : ni 103, ni mort écrite du poseur, ni prise
+	//	          écrite — ou aucun poseur mesuré. Rien ne se devine.
+	//
+	// CE QUE LA DÉCISION DU 2026-09-15 A SUPPRIMÉ. Un lâcher à mi-vie sortait `deployed` et
+	// faisait dessiner un geste qui n'avait pas eu lieu ; et une pose dont le film ne disait rien
+	// recevait quand même une étiquette, par une fenêtre temporelle de 200 ms depuis la fin de la
+	// vie du poseur. Les deux ont cessé : la fenêtre ne classe plus AUCUNE pose d'équipement.
+	//
+	// LA CASCADE ET SON UNIQUE REPLI vivent dans `equipment_origin.go`. Ce qui reste
+	// d'heuristique — une pièce engendrée au manifeste qu'aucun 103 ne désigne — est un REPLI
+	// NOMMÉ au registre `fallback`, compté, et publié dans `byCause`.
 	//
 	// OPTIONNEL, ET CE N'EST PAS UNE FAIBLESSE DU CONTRAT — C'EST LA VÉRITÉ SUR LE PARC.
 	// Les artefacts antérieurs au schéma 10 portent des poses SANS origine (ils sont encore sur
 	// disque et en production jusqu'à la re-cuisson complète). Déclarer le champ REQUIS aurait
 	// fait promettre au contrat une clé que ces artefacts n'ont pas. Le builder, lui, le
-	// renseigne TOUJOURS — jamais la chaîne vide — donc un artefact de schéma 10 le porte
-	// systématiquement. **Absent = origine non mesurée : le client lit `unknown`, JAMAIS
-	// `deployed`.** Un repli sur `deployed` ferait dessiner, sur tout le parc non re-cuit,
-	// exactement le mur fantôme que ce champ existe pour supprimer.
+	// renseigne TOUJOURS — jamais la chaîne vide. **Absent = origine non mesurée : le client lit
+	// `unknown`, JAMAIS `deployed`.**
 	Origin string `json:"origin,omitempty"`
 	// Until / UntilMax / End (schéma 28) : la FIN D'AFFICHAGE OBSERVÉE — ce que T1 n'a jamais
 	// été (T1 est la fin du MOUVEMENT, cf. son contrat). Même sémantique que
@@ -185,9 +189,14 @@ type EquipmentPlacementCoverage struct {
 	WithHeading int `json:"withHeading"`
 	// ByFamily compte les poses par famille — le détail que `Named` résume.
 	ByFamily map[string]int `json:"byFamily,omitempty"`
-	// Deployed / Dropped / Unknown : les poses par ORIGINE MESURÉE (schéma 10, cf.
-	// EquipmentPlacement.Origin). Les trois sont publiés, et l'invariant qui les rend
-	// vérifiables est testé : `Deployed + Dropped + Unknown == Placements`, exactement.
+	// Deployed / Dropped / Unknown : les poses par ORIGINE (schéma 10, cf.
+	// EquipmentPlacement.Origin ; LUE et non plus mesurée depuis le schéma 59). Les trois sont
+	// publiés, et l'invariant qui les rend vérifiables est testé :
+	// `Deployed + Dropped + Unknown == Placements`, exactement.
+	//
+	// ILS DISENT LE VERDICT, JAMAIS SA PROVENANCE : deux documents aux mêmes trois comptes
+	// peuvent venir l'un d'une lecture du film et l'autre d'un repli. C'est [ByCause] qui les
+	// sépare, et c'est la raison d'être du schéma 59.
 	//
 	// POURQUOI LES TROIS ET PAS SEULEMENT `Deployed` : c'est le seul endroit qui dit ce que
 	// le rendu ÉCARTE. Publier « 120 poses déployées » sans les 91 lâchers et les 11 sans
@@ -204,151 +213,43 @@ type EquipmentPlacementCoverage struct {
 	// carte de cartes : le contrat reste `additionalProperties: integer`, et la lecture reste
 	// une seule indirection côté client.
 	ByFamilyOrigin map[string]int `json:"byFamilyOrigin,omitempty"`
+	// SpawnEvents est le nombre d'événements 103 `EquipmentSpawnedObject` LUS dans le film —
+	// « une PIÈCE a été engendrée ». C'est le DÉNOMINATEUR de la désignation : sans lui, un
+	// `byCause.spawn_event` à zéro ne se distingue pas d'un film que le lecteur ne sait pas lire
+	// (mesuré : 0 événement sur `a521164d` HI_1_4_1 et 2 sur `50247b26` v31, contre 30 à 86 sur
+	// les builds récents).
+	SpawnEvents int `json:"spawnEvents"`
+	// SpawnLists est le nombre de LISTES D'ÉVÉNEMENTS NON VIDES traversées par ce balayage.
+	//
+	// C'EST LUI QUI SÉPARE DEUX ZÉROS QUI NE SE RESSEMBLENT PAS. `spawnEvents: 0` sur un film
+	// qui porte 7 850 listes dit « aucune pièce n'a été engendrée » ; le même zéro sur un film
+	// qui n'en porte aucune dirait « le lecteur n'a rien pu lire ». Les deux se traitent
+	// autrement, et l'artefact ne pouvait pas les distinguer sans ce dénominateur — c'est la
+	// question ouverte D2 (1.9.1) du plan, posée en chiffres dans le document.
+	SpawnLists int `json:"spawnLists"`
+	// ByCause est la PROVENANCE de l'origine de chaque pose (schéma 59, lot 1.9.1) : ce que le
+	// document dit de LUI-MÊME. Clés fermées, cf. les constantes `CausePose*` :
+	//
+	//	spawn_event     un événement 103 désigne la pièce engendrée      LECTURE  -> deployed
+	//	death_written   une mort écrite du poseur couvre l'instant       LECTURE  -> dropped
+	//	taken_written   une prise écrite du poseur couvre l'instant      LECTURE  -> dropped
+	//	both            les deux à la fois : contradiction COMPTÉE       LECTURE  -> dropped
+	//	manifest_piece  pièce engendrée qu'aucun 103 ne désigne          REPLI    -> deployed
+	//	none            un poseur est mesuré, le film ne dit RIEN                 -> unknown
+	//	no_owner        aucun poseur mesuré : on ne sait pas de qui parler        -> unknown
+	//
+	// LES DEUX DERNIÈRES SONT DEUX SILENCES DIFFÉRENTS, et les confondre coûterait le
+	// diagnostic : `none` dit que le poseur est connu et que le film se tait sur lui,
+	// `no_owner` qu'aucun bipède contemporain n'était assez proche.
+	//
+	// SA SOMME VAUT `Placements`, EXACTEMENT, et l'invariant est testé. C'est ce qui rend la
+	// table lisible : « 3 255 poses décidées par une mort écrite » ne veut rien dire sans le
+	// total qu'elle partage avec les autres.
+	ByCause map[string]int `json:"byCause,omitempty"`
 }
 
 // equipmentFamilyOther est la famille par défaut : un objet dont la nature n'est pas établie.
 const equipmentFamilyOther = "other"
-
-// Les trois ORIGINES publiées. Liste fermée, vocabulaire du document (cf.
-// EquipmentPlacement.Origin) : un client qui lit une quatrième valeur doit la traiter comme
-// inconnue, jamais la rapprocher d'une voisine.
-const (
-	// OriginDeployed : créé en cours de vie du poseur — le geste.
-	OriginDeployed = "deployed"
-	// OriginDropped : créé à la fin de la vie du poseur — les objets qu'il portait.
-	OriginDropped = "dropped"
-	// OriginUnknown : aucun poseur mesuré.
-	OriginUnknown = "unknown"
-)
-
-// originDropWindowUS est l'écart MAXIMAL entre la création de l'objet et le dernier point de
-// position de son poseur pour que la pose soit un LÂCHER. 200 ms, c'est-à-dire deux frames de
-// la grille du document — le seuil du plan, écrit avant la mesure.
-//
-// LA MESURE LE VALIDE PAR SES DEUX CÔTÉS, et c'est ce qui le rend autre chose qu'un réglage.
-// Les lâchers tombent à 20-40 ms du dernier point (médiane par identifiant : 20,5 à 38,3 ms) ;
-// les déploiements, eux, sont à 14 à 42 SECONDES de la fin de vie. Trois ordres de grandeur
-// séparent les deux populations : n'importe quel seuil entre 1 s et 10 s rendrait le même
-// classement, donc celui-ci ne se règle pas, il se constate.
-const originDropWindowUS = 200_000
-
-// originDropMaxDist est la distance MAXIMALE, en mètres, entre un objet créé et la dernière
-// position de celui qui le portait. 1,5 m — le seuil du plan des poses, écrit avant la mesure,
-// validé des deux côtés à l'époque (lâchers à 0,63 m de médiane, déploiements à 5,6 à 21,3 m).
-//
-// ELLE NE SERT PLUS À CLASSER UNE POSE D'ÉQUIPEMENT (item F.1, 2026-09-13) : `equipmentOrigin`
-// ne pose plus qu'une question temporelle, parce que cette clause promouvait `deployed` des
-// lâchers à la mort dont le corps avait glissé (8 appareils de mur sur 295 poses, mesure E0 du
-// 2026-09-10 ; 15 poses sur 5 761 au corpus de F.0). La constante reste parce que TROIS AUTRES
-// chaînes du paquet posent leur propre question avec elle — les ARMES AU SOL
-// (`ground_weapon_rules.go`, le socle d'où l'arme vient), le DRAPEAU (`flag_objects.go`,
-// `flag_carries_lives.go`) et le CRÂNE. Aucune ne classe une pose d'équipement.
-const originDropMaxDist = 1.5
-
-// equipLife est une vie de bipède : les positions d'un même slot sans trou majeur, réduites à
-// quand elle finit et où.
-type equipLife struct {
-	from, to uint64
-	// x, y, z est la DERNIÈRE position répliquée de la vie : là où le poseur s'arrête.
-	//
-	// PLUS AUCUN LECTEUR CÔTÉ ÉQUIPEMENT depuis le 2026-09-13 (item F.1) : l'origine d'une pose
-	// d'équipement est une question purement TEMPORELLE. Ces trois champs servent la chaîne des
-	// ARMES AU SOL (`gwPadsClass`, `ground_weapon_objects.go`), qui pose une autre question — le
-	// socle d'où l'arme vient — et pour laquelle le lieu de la fin de vie est le fait même.
-	x, y, z float32
-}
-
-// equipmentLives découpe le nuage des bipèdes en vies par slot.
-//
-// LE SEUIL N'EST PAS INVENTÉ ICI : `lifeGapUS` (5 s) est celui de lives.go, très au-dessus du
-// pas de réplication (~16 ms) et bien en deçà du temps de réapparition mesuré (médiane 8,0 s).
-// Le découpage reproduit d'ailleurs le compte de lives.go sur le film de référence (105 vies
-// pour 99 slots) — un contrôle gratuit qu'un second découpage du même fait ne divergeait pas.
-//
-// `positions` doit être TRIÉ par instant (c'est le cas de `sorted` dans BuildFromFilm).
-func equipmentLives(positions []filmdec.BipedPosition) map[uint32][]equipLife {
-	out := make(map[uint32][]equipLife)
-	for _, p := range positions {
-		if !p.HasWorld {
-			continue // sans bornes de carte, ce n'est pas une position
-		}
-		v := out[p.Slot]
-		if n := len(v); n > 0 && p.TimestampUS-v[n-1].to <= lifeGapUS {
-			v[n-1].to = p.TimestampUS
-			v[n-1].x, v[n-1].y, v[n-1].z = p.X, p.Y, p.Z
-			out[p.Slot] = v
-			continue
-		}
-		out[p.Slot] = append(v, equipLife{
-			from: p.TimestampUS, to: p.TimestampUS, x: p.X, y: p.Y, z: p.Z,
-		})
-	}
-	return out
-}
-
-// equipmentOrigin classe une pose : lâchée à la fin de la vie du poseur, ou déployée.
-//
-// LA QUESTION EST TEMPORELLE, ET ELLE L'EST SEULE (item F.1 du 2026-09-13). La clause de
-// DISTANCE qui doublait la fenêtre — « et à moins d'`originDropMaxDist` de la dernière position
-// du poseur » — a été RETIRÉE : elle promouvait `deployed` des créations qui tombent à l'image
-// exacte de la fin d'une vie, c'est-à-dire des lâchers à la mort dont le corps a glissé de plus
-// d'un mètre et demi avant que sa dernière position ne soit répliquée. Le fait temporel, lui,
-// tient : les lâchers sont à 20-40 ms de la fin de vie et les déploiements à 14-42 SECONDES —
-// trois ordres de grandeur, mesurés des deux côtés, et n'importe quel seuil entre 1 s et 10 s
-// rendrait le même classement.
-//
-// CE QUI A ÉTÉ CHERCHÉ AVANT DE RETIRER LA CLAUSE, ET QUI N'EXISTE PAS. L'instruction F.0
-// (`.ai/V7.5/RAPPORT_F0_DEPLOIEMENT_103_2026-09-13.md`) a marché la LISTE COMPLÈTE d'événements
-// de 25 films et RÉSOLU les références du type 103 `EquipmentSpawnedObject` (index 13 bits,
-// base 512, plus la génération : 93,6 % de résolution contre 2,2 % au témoin de hasard). Le
-// verdict est net et il ferme la piste : le 103 est le fait « une PIÈCE a été engendrée » — il
-// désigne 216 des 216 poses de panneau de mur publiées, et **ZÉRO** pose d'un appareil PORTÉ,
-// ni déployé (0 sur 31) ni lâché (0 sur 145). Le film ne porte donc aucun signal d'événement
-// pour le déploiement d'un capteur, d'un traqueur, d'un écran ou d'un champ de réparation, et
-// l'origine d'une pose ne peut pas se lire dessus. La voie indirecte — « une pièce de la même
-// famille est-elle née à ±5 s ? » — a été mesurée aussi, et elle ne sépare pas davantage
-// (14,7 % sur les `deployed` contre 21,8 % sur les `dropped`).
-//
-// `originDropMaxDist` SURVIT au paquet : la chaîne des ARMES AU SOL, celle du DRAPEAU et celle
-// du crâne s'en servent pour leur propre question, qui n'est pas celle-ci. Ce retrait ne porte
-// que sur l'équipement.
-//
-// LA VIE RETENUE EST CELLE QUI CONTIENT L'INSTANT DE LA POSE, à défaut la plus proche en
-// temps : écarter silencieusement une pose dont la vie ne couvre pas l'instant biaiserait la
-// mesure vers les cas faciles.
-func equipmentOrigin(lives []equipLife, p filmdec.EquipmentPlacement, fb *fallback.Compteur) string {
-	if len(lives) == 0 {
-		return OriginUnknown
-	}
-	best, bestGap := equipLife{}, ^uint64(0)
-	// REPLI NOMME ET COMPTE (D14) : quand AUCUNE vie ne contient l'instant de la pose, l'origine
-	// se decide sur la vie la plus proche en temps. Le drapeau est arme ici et desarme des qu'une
-	// vie couvrante est trouvee — le compte ne porte donc que les poses reellement arbitrees.
-	repli := true
-	for _, v := range lives {
-		gap := uint64(0)
-		switch {
-		case p.T0US < v.from:
-			gap = v.from - p.T0US
-		case p.T0US > v.to:
-			gap = p.T0US - v.to
-		}
-		if gap == 0 { // la vie CONTIENT l'instant : aucune autre ne fera mieux
-			best, repli = v, false
-			break
-		}
-		if gap < bestGap {
-			best, bestGap = v, gap
-		}
-	}
-	if repli {
-		fb.Declenche(fallback.NomOriginePoseVieLaPlusProche)
-	}
-	if equipTimeGap(p.T0US, best.to) > originDropWindowUS {
-		return OriginDeployed
-	}
-	return OriginDropped
-}
 
 // decodeFilmPlacements décode les poses du film et JOURNALISE ce qu'il en est.
 //
@@ -382,6 +283,32 @@ func decodeFilmPlacements(
 	return pl, st
 }
 
+// decodeFilmSpawnEvents lit les evenements 103 « une PIECE a ete engendree » et JOURNALISE ce
+// que le balayage a vu.
+//
+// UN FILM SANS AUCUN EVENEMENT N'EST PAS UNE ERREUR, ET CE N'EST PAS NON PLUS UN SILENCE : les
+// builds les plus anciens du corpus n'en rendent aucun (`a521164d`, HI_1_4_1 : 0 sur 4 956
+// listes non vides) la ou les recents en rendent des dizaines. Le journal publie donc les DEUX
+// denominateurs — listes traversees et evenements lus —, et la couverture de l'artefact les
+// publie TOUS DEUX (`coverage.placements.spawnLists` et `.spawnEvents`).
+//
+// HORS LIGNE — appelee par le balayage, sous le meme verrou que le reste de la cuisson.
+func decodeFilmSpawnEvents(
+	fc *filmdec.FilmContext, matchID string,
+) ([]filmdec.EquipmentSpawnEvent, filmdec.EquipmentSpawnStats) {
+	ev, st, err := filmdec.ScanEquipmentSpawnEvents(fc)
+	if err != nil {
+		slog.Warn("evenements de piece engendree illisibles — l'origine des poses retombe sur ses replis",
+			"err", err, "match_id", matchID)
+		return nil, st
+	}
+	slog.Info("poses d'equipement : evenements 103 (piece engendree)",
+		"match_id", matchID, "chunks", st.Chunks, "paquetsDelta", st.Packets,
+		"listesNonVides", st.Lists, "evenements", st.Events,
+		"refSource", st.WithSource, "refEngendree", st.WithSpawned, "ref2", st.Ref2)
+	return ev, st
+}
+
 // logPlacementCoverage publie au journal ce que le calque a rendu — les mêmes dénominateurs
 // que l'artefact, pour qu'un build se juge sans ouvrir le JSON.
 func logPlacementCoverage(c *EquipmentPlacementCoverage) {
@@ -393,19 +320,47 @@ func logPlacementCoverage(c *EquipmentPlacementCoverage) {
 		"nommees", c.Named, "autres", c.Other,
 		"avecPoseur", c.WithOwner, "avecCap", c.WithHeading,
 		"deployees", c.Deployed, "lachees", c.Dropped, "origineInconnue", c.Unknown,
-		"finVue", c.EndSeen, "finOuverte", c.EndOpen)
+		"finVue", c.EndSeen, "finOuverte", c.EndOpen,
+		// LA PROVENANCE, AU JOURNAL COMME A L'ARTEFACT (lot 1.9.1) : sans elle, un operateur lit
+		// « 51 deployees » sans savoir si le film l'a dit ou si un repli l'a decide.
+		"evenements103", c.SpawnEvents, "listesEvenements", c.SpawnLists, "parCause", c.ByCause)
+}
+
+// equipmentInputs porte TOUT ce que l'assemblage des poses lit : le balayage, le nuage de
+// bipèdes, le recensement d'images-clés et les TROIS SIGNAUX ÉCRITS de l'origine (lot 1.9.1).
+//
+// UN STRUCT PARCE QUE LA LIMITE DU DÉPÔT EST DE CINQ PARAMÈTRES, et que la cascade d'origine en
+// demande trois de plus (événements 103, vies nommées, changements d'équipement). Il ne porte
+// AUCUN réglage : l'horloge et le compteur de replis restent dans `replayClock`.
+type equipmentInputs struct {
+	// Raw / Stats : le balayage des créations `ti=37` et sa calibration.
+	Raw   []filmdec.EquipmentPlacement
+	Stats filmdec.EquipmentPlacementStats
+	// Positions est le nuage NON décimé, TRIÉ par instant : la recherche du poseur est une
+	// fenêtre glissante, pas un balayage complet par pose.
+	Positions []filmdec.BipedPosition
+	// Census est le recensement `ti=37` des images-clés — la FIN OBSERVÉE (schéma 28).
+	Census filmdec.WorldObjectKeyframes
+	// Spawns sont les événements 103 `EquipmentSpawnedObject` : « une PIÈCE a été engendrée » ;
+	// SpawnStats porte les DÉNOMINATEURS de leur balayage, sans lesquels un zéro d'événement ne
+	// se distingue pas d'un film que le lecteur n'a pas su lire.
+	Spawns     []filmdec.EquipmentSpawnEvent
+	SpawnStats filmdec.EquipmentSpawnStats
+	// Lives sont les vies NOMMÉES du registre d'identité : leur `cause` porte la mort ÉCRITE.
+	Lives []lifeSpan
+	// Changes sont les ramassages et consommations d'équipement : leurs `taken` portent la prise
+	// ÉCRITE du poseur.
+	Changes []filmdec.EquipmentChange
 }
 
 // buildEquipmentPlacements assemble les poses : famille par le manifeste, poseur par
-// proximité mesurée, cap par la visée du poseur — et, depuis le schéma 28, la FIN OBSERVÉE
-// par le recensement des images-clés (`census`, la lecture `ti=37` de la chaîne des socles).
-//
-// `positions` doit être TRIÉ par instant (c'est le cas de `sorted` dans BuildFromFilm) : la
-// recherche du poseur est une fenêtre glissante, pas un balayage complet par pose.
+// proximité mesurée, cap par la visée du poseur, ORIGINE par ce que le film écrit
+// (cf. `equipment_origin.go`) — et, depuis le schéma 28, la FIN OBSERVÉE par le recensement
+// des images-clés.
 func buildEquipmentPlacements(
-	raw []filmdec.EquipmentPlacement, st filmdec.EquipmentPlacementStats,
-	positions []filmdec.BipedPosition, clock replayClock, census filmdec.WorldObjectKeyframes,
+	in equipmentInputs, clock replayClock,
 ) ([]EquipmentPlacement, *EquipmentPlacementCoverage) {
+	st := in.Stats
 	cov := &EquipmentPlacementCoverage{
 		Scanned:        st.Scanned,
 		Calibrated:     st.Calibration.Widths.Valid(),
@@ -414,17 +369,20 @@ func buildEquipmentPlacements(
 		Confirmed:      st.Confirmed,
 		ByFamily:       map[string]int{},
 		ByFamilyOrigin: map[string]int{},
+		ByCause:        map[string]int{},
 	}
 	if cov.Calibrated {
 		cov.Widths = st.Calibration.Widths.String()
 	}
-	if len(raw) == 0 || clock.step == 0 {
+	if len(in.Raw) == 0 || clock.step == 0 {
 		return nil, cov
 	}
-	lives := equipmentLives(positions)
-	ends := placementEnds(raw, census, clock)
-	out := make([]EquipmentPlacement, 0, len(raw))
-	for i, p := range raw {
+	src := nouvelleSourceOrigine(in.Spawns, in.Lives, in.Changes)
+	cov.SpawnEvents, cov.SpawnLists = src.evenements, in.SpawnStats.Lists
+	ends := placementEnds(in.Raw, in.Census, clock)
+	out := make([]EquipmentPlacement, 0, len(in.Raw))
+	causes := make([]string, 0, len(in.Raw))
+	for i, p := range in.Raw {
 		t0 := frameOf(p.T0US, clock.origin, clock.step)
 		t1 := frameOf(p.T1US, clock.origin, clock.step)
 		if t1 < 0 || t0 >= clock.frames {
@@ -436,87 +394,28 @@ func buildEquipmentPlacements(
 			Family: clock.families[p.GlobalID],
 			ID:     fmt.Sprintf("0x%08x", p.GlobalID),
 			Owner:  -1,
-			Origin: OriginUnknown,
 			Until:  ends[i].until, UntilMax: ends[i].untilMax, End: ends[i].end,
 		}
 		if pl.Family == "" {
 			pl.Family = equipmentFamilyOther
 		}
-		if slot, h, ok := equipmentOwner(positions, p); ok {
+		o := poseOwner{src: src}
+		if slot, h, ok := equipmentOwner(in.Positions, p); ok {
 			pl.Owner, pl.H = int(slot), h
-			pl.Origin = equipmentOrigin(lives[slot], p, clock.fb)
+			o.slot, o.avecPoseur = slot, true
 		}
-		// UNE PIÈCE ENGENDRÉE EST DÉPLOYÉE PAR NATURE — cf. [equipmentIsSpawnedPiece]. Le
-		// verdict écrase celui de la fenêtre temporelle ET celui de l'absence de poseur : les
-		// deux répondent à une question que cet objet ne pose pas.
-		if equipmentIsSpawnedPiece(pl.ID) {
-			pl.Origin = OriginDeployed
-		}
-		out = append(out, pl)
+		var cause string
+		pl.Origin, cause = origineDeLaPose(p, pl.ID, o, clock.fb)
+		out, causes = append(out, pl), append(causes, cause)
 	}
+	tallyEquipmentPlacements(out, causes, cov)
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].T0 != out[j].T0 {
 			return out[i].T0 < out[j].T0
 		}
 		return out[i].ID < out[j].ID
 	})
-	tallyEquipmentPlacements(out, cov)
 	return out, cov
-}
-
-// placEnd est la fin d'affichage observée d'UNE pose, sur l'axe du document.
-type placEnd struct {
-	until, untilMax int
-	end             string
-}
-
-// placementEnds borne la disparition de chaque pose par le recensement des images-clés —
-// mêmes règles que la chaîne des socles (`gwPickupBoundsFrom`, un seul exemplaire), la vie
-// d'une clé étant fermée par la pose SUIVANTE de la même clé (le pool de clés reboucle).
-//
-// Rendu INDEXÉ sur `raw` : l'appelant filtre les poses hors axe après coup, l'index doit
-// survivre au filtre.
-func placementEnds(
-	raw []filmdec.EquipmentPlacement, census filmdec.WorldObjectKeyframes, clock replayClock,
-) []placEnd {
-	byLife := map[filmdec.EquipmentLifeKey][]int{}
-	for i, p := range raw {
-		byLife[p.Life] = append(byLife[p.Life], i)
-	}
-	// +1 : la fenêtre de recensement (`gwPickupSeenWithin`) est EXCLUSIVE sur sa borne haute.
-	// À la fin de film exacte, la DERNIÈRE image-clé serait retranchée et une pose encore
-	// recensée à cette image-clé sortirait « disparue » au lieu d'« ouverte ».
-	filmEnd := census.LastTimeUS() + 1
-	out := make([]placEnd, len(raw))
-	for life, idxs := range byLife {
-		sort.Slice(idxs, func(a, b int) bool { return raw[idxs[a]].T0US < raw[idxs[b]].T0US })
-		for j, i := range idxs {
-			lifeEnd := filmEnd
-			if j+1 < len(idxs) {
-				lifeEnd = raw[idxs[j+1]].T0US
-			}
-			seen := gwPickupSeenWithin(census.SeenUS[life], raw[i].T0US, lifeEnd)
-			b := gwPickupBoundsFrom(raw[i].T0US, lifeEnd, filmEnd, census.TimesUS, seen)
-			switch {
-			case b.NeverPicked || b.NoLaterKF:
-				out[i] = placEnd{
-					until: clock.frames - 1, untilMax: clock.frames - 1,
-					end: GroundWeaponEndOpen,
-				}
-			default:
-				e := placEnd{
-					until:    clampFrame(frameOf(b.LowUS, clock.origin, clock.step), clock.frames),
-					untilMax: clampFrame(frameOf(b.HighUS, clock.origin, clock.step), clock.frames),
-					end:      GroundWeaponEndSeen,
-				}
-				if e.untilMax < e.until {
-					e.untilMax = e.until
-				}
-				out[i] = e
-			}
-		}
-	}
-	return out
 }
 
 // replayClock porte l'axe de temps et la table de familles du document (règle des
@@ -542,9 +441,16 @@ func clampFrame(t, frames int) int {
 	return t
 }
 
-func tallyEquipmentPlacements(out []EquipmentPlacement, cov *EquipmentPlacementCoverage) {
+// tallyEquipmentPlacements ventile les poses publiees dans la couverture.
+//
+// `causes` est PARALLELE a `out`, et c'est pourquoi l'appelant compte AVANT de trier : le tri
+// d'affichage reordonne les poses, jamais les causes.
+func tallyEquipmentPlacements(
+	out []EquipmentPlacement, causes []string, cov *EquipmentPlacementCoverage,
+) {
 	cov.Placements = len(out)
-	for _, p := range out {
+	for i, p := range out {
+		cov.ByCause[causes[i]]++
 		cov.ByFamily[p.Family]++
 		cov.ByFamilyOrigin[p.Family+"/"+p.Origin]++
 		if p.Family == equipmentFamilyOther {
@@ -573,80 +479,4 @@ func tallyEquipmentPlacements(out []EquipmentPlacement, cov *EquipmentPlacementC
 			cov.EndOpen++
 		}
 	}
-}
-
-// equipmentOwner rend le bipède le plus proche de la pose dans la fenêtre temporelle, à
-// condition qu'il soit à moins d'equipOwnerMaxDist mètres. Rend aussi, quand elle existe, la
-// lecture de VISÉE la plus proche en temps du même slot — c'est elle qui porte le cap.
-//
-// UN ÉCHANTILLON PAR SLOT, LE PLUS PROCHE EN TEMPS : plusieurs records d'un même bipède
-// tombent dans la fenêtre, et retenir le plus proche en ESPACE au lieu du plus proche en
-// TEMPS ferait gagner le joueur qui passe par là au bon moment plutôt que celui qui pose.
-func equipmentOwner(
-	positions []filmdec.BipedPosition, p filmdec.EquipmentPlacement,
-) (slot uint32, heading *float32, ok bool) {
-	lo := sort.Search(len(positions), func(k int) bool {
-		return positions[k].TimestampUS+equipOwnerWindowUS >= p.T0US
-	})
-	best := map[uint32]filmdec.BipedPosition{}
-	aim := map[uint32]filmdec.BipedPosition{}
-	for k := lo; k < len(positions) && positions[k].TimestampUS <= p.T0US+equipOwnerWindowUS; k++ {
-		s := positions[k]
-		if !s.HasWorld {
-			continue // sans bornes de carte, la distance n'est pas une distance
-		}
-		if b, seen := best[s.Slot]; !seen || equipCloser(s, b, p.T0US) {
-			best[s.Slot] = s
-		}
-		if !s.HasYaw || equipTimeGap(s.TimestampUS, p.T0US) > equipHeadingWindowUS {
-			continue
-		}
-		if b, seen := aim[s.Slot]; !seen || equipCloser(s, b, p.T0US) {
-			aim[s.Slot] = s
-		}
-	}
-	// LE PLUS PROCHE, ET À ÉGALITÉ LE PLUS PETIT SLOT (correction du 2026-09-02, item 0.4bis
-	// étendu de PLAN_CUISSON_PERF). `best` est une MAP : sans le second critère, deux bipèdes à
-	// la MÊME distance de la pose — des coordonnées quantifiées, donc des égalités exactes, et un
-	// film BTB à 26 joueurs en réveille — laissaient l'ordre d'itération, tiré au sort à chaque
-	// exécution, nommer le poseur publié. Le départage vient du slot, une donnée de l'élément.
-	var near filmdec.BipedPosition
-	for _, s := range best {
-		d := equipDist(p, s)
-		if d > equipOwnerMaxDist {
-			continue
-		}
-		if nd := equipDist(p, near); !ok || d < nd || (d == nd && s.Slot < near.Slot) {
-			near, ok = s, true
-		}
-	}
-	if !ok {
-		return 0, nil, false
-	}
-	// Le CAP vient de la lecture de visée du MÊME slot la plus proche en temps. Jamais d'un
-	// autre slot, et jamais d'une lecture trop vieille : on tourne plus vite qu'on ne marche.
-	if a, seen := aim[near.Slot]; seen {
-		if h, valid := a.AimHeadingDeg(); valid {
-			heading = &h
-		}
-	}
-	return near.Slot, heading, true
-}
-
-// equipCloser dit si a est plus proche de `at` en TEMPS que b.
-func equipCloser(a, b filmdec.BipedPosition, at uint64) bool {
-	return equipTimeGap(a.TimestampUS, at) < equipTimeGap(b.TimestampUS, at)
-}
-
-// equipDist n'est qu'un ADAPTATEUR de types vers la distance canonique du paquet (`dist3`) : la
-// formule ne se réécrit pas ici, elle n'est écrite qu'une fois.
-func equipDist(p filmdec.EquipmentPlacement, s filmdec.BipedPosition) float32 {
-	return float32(dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{s.X, s.Y, s.Z}))
-}
-
-func equipTimeGap(a, b uint64) uint64 {
-	if a > b {
-		return a - b
-	}
-	return b - a
 }

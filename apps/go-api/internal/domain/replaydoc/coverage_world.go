@@ -23,6 +23,9 @@ type EquipmentPlacementCoverage struct {
 	EndSeen        int            `json:"endSeen"`
 	EndOpen        int            `json:"endOpen"`
 	ByFamilyOrigin map[string]int `json:"byFamilyOrigin,omitempty"`
+	SpawnEvents    int            `json:"spawnEvents"`
+	SpawnLists     int            `json:"spawnLists"`
+	ByCause        map[string]int `json:"byCause,omitempty"`
 }
 
 // GroundWeaponCoverage dit ce que le calque a lu, ce qu'il a retenu, et ce qu'il a écarté.
