@@ -49,4 +49,11 @@ package filmdec
 // FUSION (2026-09-16) : l integration portait `.3` (lots 1.9.2 et 1.9.3) et la branche du lot
 // 1.9.1 bis `.6` (gardes n1/n2, quatre sites de ti=37, prefixe objet relu, profil par build) ;
 // les deux grammaires sont reunies ici, au rang suivant.
-const GrammarRev = "grammar-2026-09-15.7"
+// LOT 1.9.11 (2026-09-16) : `grammar-2026-09-15.7` -> `.8`. AUCUN BIT LU NE CHANGE, et la
+// mesure le dit : `RealRounds` passe par [objectiveevents.ResolveRounds] et rend le MEME
+// ensemble, la garde d ordre gardant son verdict a la manche pres sur les 1 351 films du cache.
+// Ce qui bouge dans l empreinte est le VERDICT RENDU LISIBLE — le designateur ecrit, la
+// contradiction et le repli sont desormais des donnees publiees, la ou ils se perdaient dans la
+// fonction. Le rang monte parce que le ratchet hache les octets des sources, pas parce que la
+// grammaire a change : le pilote renumerote a la fusion de la vague.
+const GrammarRev = "grammar-2026-09-15.8"

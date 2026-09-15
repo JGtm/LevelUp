@@ -17,8 +17,6 @@ const (
 	// comptageStatborg : la cible de cablage commune aux replis du lecteur statborg — un port
 	// defini cote `analysis/`, dont l'appelant fournit l'implementation (cf. note d'architecture).
 	comptageStatborg = "lot de conversion statborg (port cote analysis/)"
-	// comptageLot1911 : les replis que le lot 1.9.11 ouvre deja (desiignateur de manche).
-	comptageLot1911 = "lot 1.9.11"
 )
 
 var registreObjectifsEtConstruction = []Repli{
@@ -55,24 +53,34 @@ var registreObjectifsEtConstruction = []Repli{
 		CibleComptage:   comptageStatborg,
 	},
 	{
-		Nom:       "repli_manches_contigues_decretees",
+		Nom:       "repli_manche_zero_decretee",
 		Fait:      "quelles manches d'un match sont REELLES",
-		Mecanisme: "les manches admises doivent etre contigues depuis 0 ; si aucune ne l'est, la manche 0 est DECRETEE reelle",
-		Condition: CondNonResolu,
-		Ordre:     OrdreDevantLaLecture,
+		Mecanisme: "aucune manche n'est admise par les deux criteres : la manche 0 est DECRETEE reelle pour que le film reste lisible",
+		Condition: CondFilmMuet,
+		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgObjectiveEvents + "statborg.go",
 			Ancre:   "out[0] = true",
 		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.11 (le designateur de manche lu tel que le film l'ecrit)",
-		// ORDRE `devant_la_lecture` : sur `fb1a1a72` (CTF:Arena, 814 s pour 720 s de temps
-		// réglementaire), 148 records statborg portent le désignateur `2` et la garde publie
-		// 1 manche parce que la manche 1 est absente (0.D.1 bis). La garde JETTE ce que le film
-		// écrit.
-		CritereRetrait:  "coverage.score.rounds repasse a la valeur ECRITE ; la garde tombe avec ses tests une fois la semantique de `2` etablie",
-		CompteurBranche: false,
-		CibleComptage:   comptageLot1911,
+		DatePose: dateAudit0E,
+		// RESSERRE PAR LE LOT 1.9.11 (2026-09-16), ex-`repli_manches_contigues_decretees`.
+		// L'entree couvrait DEUX mecanismes : la regle d'ORDRE (« les manches admises doivent
+		// etre contigues depuis 0 ») et le PLANCHER (« si aucune ne l'est, la manche 0 est
+		// decretee »). Seul le second est un repli : il se declenche quand le film ne donne
+		// AUCUNE manche admissible, donc sur un silence. La regle d'ordre, elle, se declenche
+		// sur un DESACCORD avec une lecture disponible — D14 (b) interdit d'appeler cela un
+		// repli : c'est une CONTRADICTION, et le lot la publie comme telle
+		// (`coverage.score.roundsContradicted`).
+		//
+		// POURQUOI LA REGLE D'ORDRE N'EST PAS RETIREE, ALORS QUE L'ITEM 1.9.11 LE PREVOYAIT.
+		// Mesure sur les 1 351 films du cache (instrument `e1911_manches_*_research_test.go`,
+		// tableaux au §5 du plan) : la retirer ajoute une manche a 24 films, TOUS du motif
+		// « designateur 2, manche 1 absente », et 23 des 24 ont fini de 38 a 442 s DANS leur
+		// temps reglementaire sur un mode SANS manche. Les vraies prolongations, elles, sont
+		// ecrites en designateur 1 CONTIGU et la chaine les publie deja.
+		CibleRetrait:    "cloture de M2 (la revision a zero difference)",
+		CritereRetrait:  "0 film du corpus gate ou aucune manche n'est admise (le compteur publie en `coverage.fallbacks[]` le dit) ; retrait sec au jalon suivant si le compte reste nul",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_emission_hors_domaine_jetee",
@@ -167,12 +175,18 @@ var registreObjectifsEtConstruction = []Repli{
 			Fichier: pkgObjectiveEvents + "slotidentity_rounds.go",
 			Ancre:   "if cur, seen := min[r.Round]; !seen || r.TimeMS < cur {",
 		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.11 (le designateur de manche lu tel que le film l'ecrit)",
-		// DÉFAUT DÉJÀ MESURÉ (audit 0.E) : 213 s d'attribution fausse sur `24dbb67d`.
-		CritereRetrait:  "les bornes de manche viennent du designateur ecrit ; 0 recours au minimum sur les films multi-manches",
+		DatePose: dateAudit0E,
+		// DÉFAUT DÉJÀ MESURÉ (audit 0.E) : 213 s d.attribution fausse sur `24dbb67d`.
+		// RECIBLE PAR LE LOT 1.9.11 (2026-09-16), et la raison est mesuree : ce repli ne depend
+		// PAS de la regle d ordre des manches. Il se declenche quand le CONSENSUS DE SLOTS ne
+		// fixe pas le debut d une manche, et le lot a mesure que ce consensus ne separe rien du
+		// fait juge — les 41 designateurs materiels du corpus de verdict sont declares par les
+		// DIX slots. Il vit donc avec le fait « l instant de debut d une manche », pas avec
+		// « quelles manches sont reelles », et il suit la chaine des bornes.
+		CibleRetrait:    "cloture de M2 (la revision a zero difference), avec la chaine des bornes de manche",
+		CritereRetrait:  "0 manche du corpus gate dont le debut vienne du minimum au lieu du consensus",
 		CompteurBranche: false,
-		CibleComptage:   comptageLot1911,
+		CibleComptage:   "lot de conversion des BORNES de manche (port cote analysis/, cf. note d architecture)",
 	},
 	{
 		Nom:       "repli_slot_abandonne_au_premier_arrive",
@@ -200,11 +214,15 @@ var registreObjectifsEtConstruction = []Repli{
 			Fichier: pkgObjectiveEvents + "slotidentity_rounds.go",
 			Ancre:   "round := ri.starts[0].round",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.11",
-		CritereRetrait:  "0 instant anterieur a la premiere manche une fois les bornes lues au designateur",
+		DatePose: dateAudit0E,
+		// RECIBLE PAR LE LOT 1.9.11 (2026-09-16) : ce plancher est dans une LECTURE ponctuelle
+		// (`RoundIdentity.roundOfTime`), pas dans la resolution des manches. Le compter
+		// demanderait un compteur par APPEL, donc un parametre de plus a `buildPlayerScores`,
+		// qui en porte deja cinq — le plafond du depot. Il suit la chaine des bornes.
+		CibleRetrait:    "cloture de M2 (la revision a zero difference), avec la chaine des bornes de manche",
+		CritereRetrait:  "0 instant anterieur a la premiere manche une fois les bornes lues au consensus",
 		CompteurBranche: false,
-		CibleComptage:   comptageLot1911,
+		CibleComptage:   "lot de conversion des BORNES de manche (port cote analysis/, cf. note d architecture)",
 	},
 	{
 		Nom:       "repli_famille_objectif_vide",

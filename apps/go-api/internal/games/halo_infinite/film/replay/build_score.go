@@ -39,8 +39,9 @@ func replayScoreClock(doc *ReplayDocument, intervalMS int, matchID string) score
 // l'identite PAR MANCHE des joueurs en multi-manche (le slot d'entite est reattribue d'une manche
 // a l'autre), exactement comme la couronne VIP et le drapeau le consomment. En mono-manche il
 // n'est pas lu — le chemin plat par totaux est conserve a l'octet.
-func attachScoreTimeline(doc *ReplayDocument, in *ScoreInput, deaths []Death, c scoreClock, matchID string) *ScoreCoverage {
-	tl, cov := buildScoreTimeline(in, deaths, c)
+func attachScoreTimeline(doc *ReplayDocument, opt Options, c scoreClock, matchID string) *ScoreCoverage {
+	in := opt.Score
+	tl, cov := buildScoreTimeline(in, opt.Deaths, c, opt.Fallbacks)
 	doc.ScoreTimeline = tl
 	logScoreCoverage(matchID, cov, tl)
 	logRoundBounds(matchID, in, cov)
