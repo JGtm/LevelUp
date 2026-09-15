@@ -116,6 +116,15 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	if err != nil {
 		return nil, fmt.Errorf("filmdec: registre illisible, la fermeture n'a pas de grammaire: %w", err)
 	}
+	// LE PROFIL DU BUILD EST INSTALLE POUR LA DUREE DE LA MESURE (lot 1.9.1 bis, pas 3).
+	// Les largeurs du bloc MPP varient par build et vivent dans `build_profile.go` ; sans
+	// elles, la fermeture des archetypes qui portent ce bloc (ti=36, 37, 38, 39, 42, 43) est
+	// mesuree au decoupage d un AUTRE build. Un build inconnu ne change rien et n est pas une
+	// erreur ICI : la mesure continue au defaut de paquet, et c est la PRODUCTION qui doit
+	// mettre le film de cote (D-4). L appelant detient `LockProcessDecode`.
+	if restore, err := InstallBuildProfileMPP(fc.Film()); err == nil {
+		defer restore()
+	}
 	stats := map[uint32]KeyframeClosureStat{}
 	// bloquants compte, par archetype, combien de records chaque composant non porte a arretes.
 	bloquants := map[uint32]map[string]int{}
