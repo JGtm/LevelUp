@@ -655,7 +655,11 @@ func NewRouter(
 	attemptStore := auth_platform.NewAttemptStore()
 
 	// Sprint 16 : settings store + Sprint 17 : job store
-	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
+	// WithEnforcedDefaults (ADR 0035 D5) : sur une instance qui applique la
+	// propriété des joueurs, les DEUX clés de sécurité absentes du fichier
+	// prennent leur valeur sûre (verrouillé / sans auto-provisioning).
+	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath).
+		WithEnforcedDefaults(authz.Enforced(cfg.DemoMode, cfg.AuthMode))
 	jobsPath := titlePkg.NewPathResolver(cfg.RepoRoot).JobsCachePath()
 	jobStore := jobs_platform.NewStore(jobsPath)
 

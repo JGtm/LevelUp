@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/assetnames"
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -716,7 +717,10 @@ func main() {
 	}
 
 	// --- 6. Scheduler, watcher, puis routeur HTTP ---
-	settingsStore := settings.NewStore(cfg.AppSettingsPath)
+	// WithEnforcedDefaults (ADR 0035 D5) : cf. internal/api/server.go — mêmes
+	// défauts sûrs des deux côtés, sinon le boot et le routeur divergeraient.
+	settingsStore := settings.NewStore(cfg.AppSettingsPath).
+		WithEnforcedDefaults(authz.Enforced(cfg.DemoMode, cfg.AuthMode))
 	// Propage le réglage global "rendement sans assistances" au package analysis
 	// dès le boot (sinon le défaut false s'applique jusqu'au premier PATCH).
 	if s, lerr := settingsStore.Load(); lerr == nil {

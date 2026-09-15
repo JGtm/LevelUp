@@ -40,6 +40,11 @@ type BootstrapService struct {
 	// au composition root car la résolution per-titre vit dans config (import duckdb),
 	// que le package service ne doit pas importer directement (règle de couches).
 	matchCountForTitle func(ctx context.Context, titleSlug string) (int, error)
+	// instanceLocked résout le verrou « instance fermée » exposé au front. Injecté
+	// depuis le point de décision unique (authz.InstanceLocked, ADR 0035 D5) : ce
+	// service ne recalcule JAMAIS le verrou de son côté (garde-rail archlint).
+	// nil = jamais verrouillé (seam de test, cohérent avec les autres consommateurs).
+	instanceLocked func() bool
 }
 
 // setupCountBudget borne le temps d'attente du décompte des matchs servant à
@@ -84,6 +89,13 @@ func (s *BootstrapService) WithReauthChecker(fn func(xuid string) bool) *Bootstr
 // (ADR 0029). Sans lui, available_players n'est pas filtré (mono-utilisateur).
 func (s *BootstrapService) WithUserLookup(lookup authz.UserLookup) *BootstrapService {
 	s.userLookup = lookup
+	return s
+}
+
+// WithInstanceLock injecte le résolveur du verrou « instance fermée » (ADR 0035
+// D5). Sans lui, instance_locked est rendu false au front.
+func (s *BootstrapService) WithInstanceLock(fn func() bool) *BootstrapService {
+	s.instanceLocked = fn
 	return s
 }
 
@@ -227,7 +239,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		DemoMode:             s.cfg.DemoMode,
 		AuthMode:             s.cfg.AuthMode,
 		RegistrationMode:     s.cfg.RegistrationMode,
-		InstanceLocked:       s.cfg.InstanceLocked || getBoolSetting(appSettings, "instance_locked", false),
+		InstanceLocked:       s.instanceLocked != nil && s.instanceLocked(),
 		ReauthRequired:       s.resolveReauthRequired(ctx, sess),
 		HasPassword:          s.currentUserHasPassword(sess),
 		IsAdmin:              sess != nil && sess.Role != nil && *sess.Role == "admin",
@@ -407,13 +419,17 @@ func excludeAuthOnly(players []domain.PlayerSummary) []domain.PlayerSummary {
 func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) domain.CapabilityMap {
 	mediaEnabled := getBoolSetting(settings, "media_enabled", true)
 	return domain.CapabilityMap{
-		CanReadLocalData:    true,
-		CanRunSync:          !cfg.DemoMode,
-		CanUseLiveHalo:      !cfg.DemoMode,
-		CanManageSettings:   true,
-		CanResetMediaIndex:  true,
-		CanViewMedia:        mediaEnabled,
-		CanSelfProvision:    getBoolSetting(settings, "can_self_provision", true),
+		CanReadLocalData:   true,
+		CanRunSync:         !cfg.DemoMode,
+		CanUseLiveHalo:     !cfg.DemoMode,
+		CanManageSettings:  true,
+		CanResetMediaIndex: true,
+		CanViewMedia:       mediaEnabled,
+		// Défaut de can_self_provision : MÊME règle que settings.Store (ADR 0035 D5)
+		// — permissif hors mode appliqué, fermé quand l'instance applique la
+		// propriété des joueurs. Sans cet alignement, le front proposerait une
+		// création de profil que POST /setup/players refuse en 403.
+		CanSelfProvision:    getBoolSetting(settings, "can_self_provision", !authz.Enforced(cfg.DemoMode, cfg.AuthMode)),
 		CanStartInitialSync: getBoolSetting(settings, "can_start_initial_sync", !cfg.DemoMode),
 		CanManageInstance:   true,
 	}

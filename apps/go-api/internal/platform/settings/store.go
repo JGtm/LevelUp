@@ -104,13 +104,19 @@ type AppSettings struct {
 	ReplaySoundVariationPercent int `json:"replay_sound_variation_percent"`
 	ReplaySoundDistancePercent  int `json:"replay_sound_distance_percent"`
 
-	// Capabilities (défaut : true)
+	// Capabilities. CanStartInitialSync : défaut true (clé absente).
+	// CanSelfProvision : défaut true hors mode appliqué, FALSE quand l'instance
+	// applique la propriété des joueurs (Store.WithEnforcedDefaults, ADR 0035 D5).
 	CanSelfProvision    bool `json:"can_self_provision"`
 	CanStartInitialSync bool `json:"can_start_initial_sync"`
 
-	// InstanceLocked : verrou « instance fermée » activable à chaud (défaut false).
-	// Bloque la création de nouvelles identités/BDD (register, SSO xuid inconnu,
-	// setup/players). Cumulé en OU avec LEVELUP_INSTANCE_LOCKED (env, verrou forcé).
+	// InstanceLocked : verrou « instance fermée » activable à chaud. Défaut
+	// (clé absente) : false hors mode appliqué, TRUE quand l'instance applique la
+	// propriété des joueurs (Store.WithEnforcedDefaults, ADR 0035 D5 — bascule du
+	// 2026-09-15). Bloque la création de nouvelles identités/BDD (register, SSO
+	// xuid inconnu, setup/players hors admin). Cumulé en OU avec
+	// LEVELUP_INSTANCE_LOCKED (env, verrou forcé) — résolution unique :
+	// authz.InstanceLocked.
 	InstanceLocked bool `json:"instance_locked"`
 
 	// AuthProvider détermine le mécanisme d'authentification Microsoft/Halo.
@@ -125,6 +131,11 @@ type AppSettings struct {
 type Store struct {
 	mu   sync.RWMutex
 	path string
+	// enforcedDefaults bascule les défauts des DEUX clés de sécurité
+	// (`instance_locked`, `can_self_provision`) sur leur valeur sûre quand
+	// l'instance applique la propriété des joueurs (ADR 0035, D5). Cf.
+	// WithEnforcedDefaults.
+	enforcedDefaults bool
 }
 
 // NewStore crée un Store pour le fichier donné.
@@ -141,7 +152,11 @@ func (s *Store) Load() (*AppSettings, error) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return defaultSettings(), nil
+			// Fichier absent = TOUTES les clés absentes : mêmes défauts que pour un
+			// fichier présent mais muet (dont les défauts sûrs en mode appliqué).
+			cfg := defaultSettings()
+			applyAbsentDefaults(cfg, nil, s.enforcedDefaults)
+			return cfg, nil
 		}
 		return nil, fmt.Errorf("settings.Load: %w", err)
 	}
@@ -158,32 +173,8 @@ func (s *Store) Load() (*AppSettings, error) {
 		return nil, fmt.Errorf("settings.Load typed: %w", err)
 	}
 	cfg.raw = raw
-	applyAbsentDefaults(cfg, raw)
+	applyAbsentDefaults(cfg, raw, s.enforcedDefaults)
 	return cfg, nil
-}
-
-// applyAbsentDefaults réapplique les défauts « clé absente → true » sur un
-// AppSettings dérivé de la map raw donnée (rétrocompatibilité fichiers existants).
-// Partagé entre Load et ResolveForTitle pour garder une seule source de vérité.
-func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage) {
-	if _, ok := raw["can_self_provision"]; !ok {
-		cfg.CanSelfProvision = true
-	}
-	if _, ok := raw["can_start_initial_sync"]; !ok {
-		cfg.CanStartInitialSync = true
-	}
-	if _, ok := raw["show_progression"]; !ok {
-		cfg.ShowProgression = true
-	}
-	if _, ok := raw["coach_proactive_mode"]; !ok {
-		cfg.CoachProactiveMode = true // DEC-2 : défaut ON (bascule 2026-07-22)
-	}
-	if _, ok := raw["replay_sound_variation_percent"]; !ok {
-		// 100 = les fourchettes du jeu telles quelles. 0 est un réglage LÉGITIME
-		// (variation coupée) : sans ce ré-application, un fichier sans la clé serait
-		// indiscernable d'un opérateur ayant délibérément mis 0.
-		cfg.ReplaySoundVariationPercent = 100
-	}
 }
 
 // ResolveForTitle charge les settings GLOBAUX puis applique l'overlay du titre
@@ -234,7 +225,7 @@ func (s *Store) ResolveForTitle(overlayPath string) (*AppSettings, error) {
 		return nil, fmt.Errorf("settings.ResolveForTitle unmarshal merged: %w", err)
 	}
 	out.raw = merged
-	applyAbsentDefaults(out, merged)
+	applyAbsentDefaults(out, merged, s.enforcedDefaults)
 	return out, nil
 }
 
@@ -521,36 +512,5 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		InstanceLocked:                      cfg.InstanceLocked,
 		ReplaySoundVariationPercent:         cfg.ReplaySoundVariationPercent,
 		ReplaySoundDistancePercent:          cfg.ReplaySoundDistancePercent,
-	}
-}
-
-// Defaults retourne les valeurs par défaut de app_settings.json.
-func Defaults() *AppSettings {
-	return defaultSettings()
-}
-
-// defaultSettings retourne les valeurs par défaut de app_settings.json.
-func defaultSettings() *AppSettings {
-	return &AppSettings{
-		Lang:                "en",
-		DiscordLang:         "fr",
-		UserTimezone:        "Europe/Paris",
-		MediaBufferMinutes:  2,
-		CanSelfProvision:    true,
-		CanStartInitialSync: true,
-		// Règles de sessions
-		SessionGapMinutes:     120,       // 2 heures — historique Python
-		SessionTeamChangeMode: "friends", // amis seulement — moins sensible aux randoms
-		// Règles de badges narratifs
-		OutcomeExcludeBotMatchesFromBadges:  true,       // bots faussent les scores adverses
-		OutcomeExcludeBotMatchesFromRecords: false,      // pas de changement de comportement par défaut
-		OutcomeBadgeSensitivity:             "standard", // seuils historiques Python
-		// Affichage Objectifs/Prestige activé par défaut
-		ShowProgression: true,
-		// Coach proactif activé par défaut (DEC-2, bascule 2026-07-22).
-		CoachProactiveMode: true,
-		// Sons du rejeu 2D : variation du jeu telle quelle, aucune distance.
-		ReplaySoundVariationPercent: 100,
-		ReplaySoundDistancePercent:  0,
 	}
 }

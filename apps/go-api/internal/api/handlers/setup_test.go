@@ -77,7 +77,8 @@ func TestSetupHandler_CreatePlayer_InstanceLocked(t *testing.T) {
 	appCfg.CanSelfProvision = true // provisioning activé mais instance verrouillée
 	_ = settingsStore.Save(appCfg)
 
-	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, &mockProfileService{playerKey: "x"})
+	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, &mockProfileService{playerKey: "x"}).
+		WithInstanceLock(func() bool { return true }) // résolveur injecté (ADR 0035 D5)
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessionStore, middleware.SecureCookiePolicy{}))
 	h.Mount(r)
