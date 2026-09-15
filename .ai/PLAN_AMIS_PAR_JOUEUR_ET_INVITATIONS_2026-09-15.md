@@ -273,39 +273,39 @@ recolore, l'Escouade présélectionne.
 
 ## 7. Étape 5 — Backend : invitation sans groupe + droit de provisioning (moyen, à risque : auth)
 
-- [ ] 5.1 `internal/domain/user.go` : `User.ProvisionGrant string json:"provision_grant,omitempty"`
+- [x] 5.1 `internal/domain/user.go` : `User.ProvisionGrant string json:"provision_grant,omitempty"`
       (code d'invitation ayant créé le compte ; vidé après usage). `InviteCode.GroupID` reste
       optionnel (déjà le cas).
-- [ ] 5.2 `internal/platform/userstore/store.go` : `CreateFromXbox(gamertag, xuid)` inchangé +
+- [x] 5.2 `internal/platform/userstore/store.go` : `CreateFromXbox(gamertag, xuid)` inchangé +
       `SetProvisionGrant(username, code string) error` (vide = effacer). Test.
-- [ ] 5.3 `internal/service/xbox_auth_service.go` : `resolvePendingInvite` (`:207-227`) ne
+- [x] 5.3 `internal/service/xbox_auth_service.go` : `resolvePendingInvite` (`:207-227`) ne
       rejette plus `GroupID == ""` ; `redeemGroupInvite` (`:229+`) devient `redeemInvite` :
       **consomme toujours** le code (`invites.Consume(code, xuid)`), ajoute au groupe seulement
       si `GroupID != ""`, pose `ProvisionGrant = code` sur le compte **uniquement si le compte
       vient d'être créé** (cas `ErrUserNotFound`). Journal `slog.InfoContext` distinct pour les
       deux formes. Doc d'en-tête `:43-52`, `:71-75`, `:134-142` mise à jour (« rejoindre un
       groupe » → « invitation »).
-- [ ] 5.4 `internal/api/handlers/setup.go:119-126` : verrou effectif ET `user.ProvisionGrant
+- [x] 5.4 `internal/api/handlers/setup.go:119-126` : verrou effectif ET `user.ProvisionGrant
       != ""` ET aucun profil `db_profiles` ne porte `user.XUID` → laisser passer ; après création
       réussie, `SetProvisionGrant(username, "")` (échec → `slog.ErrorContext`, la création reste
       acquise). Le contrôle « xuid = identité liée » existant (`:107-108`) reste la vraie
       barrière. Résolution de l'utilisateur : `authz.CurrentUser(sess, users)` — injecter
       `authz.UserLookup` + setter dans `SetupHandler`.
-- [ ] 5.5 `internal/api/handlers/auth_xbox_oauth.go:131-143` : inchangé fonctionnellement ;
+- [x] 5.5 `internal/api/handlers/auth_xbox_oauth.go:131-143` : inchangé fonctionnellement ;
       corriger le commentaire (« rejoindre un groupe » → « invitation »). `domain/session.go:57-61`
       idem.
-- [ ] 5.6 `internal/api/handlers/admin.go:186-214` `handleGenerateInvite` : conservé, corps
+- [x] 5.6 `internal/api/handlers/admin.go:186-214` `handleGenerateInvite` : conservé, corps
       `{expires_in_days}` ; retourne aussi `join_url` relatif `/join?invite=CODE` pour que le
       front n'assemble pas le lien. Supprimer la mention « flow password legacy » de
       `apps/web/src/features/auth/queries.ts:86-88` à l'étape 6.
-- [ ] 5.7 Tests `xbox_auth_service_test.go` : (a) verrouillé + invitation sans groupe valide →
+- [x] 5.7 Tests `xbox_auth_service_test.go` : (a) verrouillé + invitation sans groupe valide →
       compte créé, aucun groupe, code consommé, `ProvisionGrant` posé ; (b) verrouillé + sans
       invitation → `ErrInstanceLocked` (ratchet existant conservé) ; (c) invitation de groupe →
       groupe rejoint + `ProvisionGrant` posé ; (d) compte EXISTANT + invitation → pas de grant.
       `setup_test.go` : verrouillé + grant + pas de profil → 201 puis grant vidé, second appel
       → 403 `instance_locked` ; verrouillé sans grant → 403 ; grant mais profil déjà présent →
       403.
-- [ ] 5.8 `docs/adr/0029-multi-user-player-ownership.md` : section « Extensions » complétée
+- [x] 5.8 `docs/adr/0029-multi-user-player-ownership.md` : section « Extensions » complétée
       (invitation sans groupe, droit de provisioning porté par le compte) — ADR EN-only, pas de
       traduction.
 
@@ -687,3 +687,44 @@ migration de groupe par défaut est conservée et re-sourcée depuis `friendstor
 - Recette navigateur : `[~]` **faite par le pilote après livraison** (consigne d'exécution) —
   aucun serveur n'est démarré depuis ce worktree (son `data/` pointe sur les bases du serveur
   principal : deux process = violation mono-process ADR 0013).
+
+### Étape 5 — Invitation sans groupe + droit de provisioning — 2026-09-15 ~23:50 — CLOSE
+
+- 5.1 `[x]` `domain.User.ProvisionGrant` (`provision_grant,omitempty`) documenté : porté par
+  le COMPTE, vidé après usage. `InviteCode.GroupID` reste optionnel, son commentaire corrigé
+  (« legacy password » → invitation sans groupe).
+- 5.2 `[x]` `userstore.SetProvisionGrant(username, code)` (pose ET efface) + 2 tests
+  (aller-retour pose/effacement, compte inconnu → `ErrUserNotFound`).
+- 5.3 `[x]` `resolvePendingInvite` ne rejette plus `GroupID == ""` ; `redeemGroupInvite`
+  devient `redeemInvite` : consomme TOUJOURS le code, n'ajoute au groupe que s'il y en a un,
+  pose `ProvisionGrant` **uniquement si le compte vient d'être créé** (drapeau `created` posé
+  dans la branche `ErrUserNotFound`). Journaux distincts pour les deux formes d'invitation.
+- 5.4 `[x]` `setup.go` : le verrou d'instance est levé pour un porteur de droit sans profil
+  (`provisionGrantHolder` : droit non vide + xuid + aucun profil de `db_profiles.json` ne
+  porte ce xuid) ; le droit est effacé après création réussie (échec → `ErrorContext`, la
+  création reste acquise). Une lecture ratée de `db_profiles.json` NE lève PAS le verrou (on
+  ne peut pas prouver que l'invité n'a pas déjà un profil). Résolution de l'utilisateur via
+  `authz.CurrentUser` + `authz.UserLookup` injecté (`WithProvisionGrant`).
+- 5.5 `[x]` commentaires « rejoindre un groupe » corrigés dans `auth_xbox_oauth.go` (×4),
+  `domain/session.go` et `xbox_auth_service.go`. Comportement inchangé.
+- 5.6 `[x]` `handleGenerateInvite` conservé ; la réponse porte désormais `join_url`
+  (`/join?invite=CODE`), rendu par `domain.InviteJoinURL` — source unique du chemin, le front
+  n'y préfixe que son origine. Commentaire « legacy » remplacé par la sémantique réelle.
+- 5.7 `[x]` tests. `xbox_auth_service_test.go` : (a) verrouillé + invitation SANS groupe →
+  compte créé, aucun groupe, code consommé, `ProvisionGrant` posé — **c'est l'ancien test
+  `LegacyInviteNoGroup_Locked_Rejected`, retourné avec le comportement, pas supprimé** ;
+  (b) le ratchet « verrouillé + sans invitation → `ErrInstanceLocked` » est conservé intact
+  (`InstanceLocked_UnknownXUIDRefused` + `InvalidInvite_Locked_Rejected`) ; (c) invitation de
+  groupe → groupe rejoint ET droit posé ; (d) compte EXISTANT + invitation → aucun droit, code
+  tout de même consommé. `setup_test.go` : verrouillé + droit + pas de profil → 201 puis droit
+  vidé, second appel → 403 `instance_locked` ; verrouillé sans droit → 403 ; droit mais profil
+  déjà présent → 403 ; droit mais gamertag d'autrui → 409 `identity_mismatch`.
+- 5.8 `[x]` `docs/adr/0029-multi-user-player-ownership.md` : section « Extensions » (EN-only)
+  documentant l'invitation sans groupe, le droit de provisioning porté par le compte, et les
+  droits de lecture/écriture de la liste d'amis par joueur.
+
+**Gate G5 : PASSÉ.**
+- `go test ./internal/service/... ./internal/api/handlers/... ./internal/platform/userstore/...` → **0**.
+- `go test ./internal/platform/auth/...` → **0** (sentinelles ADR 0023 vertes).
+- `git diff --stat -- '*sentinel*' '*no_legacy*'` → **vide** : aucune allowlist d'auth touchée.
+- `gofmt -l ./cmd ./internal` → vide.

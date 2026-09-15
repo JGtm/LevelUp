@@ -7399,6 +7399,7 @@ export interface components {
             created_by: string;
             expires_at: string;
             group_id?: string;
+            join_url?: string;
             used_at: string | null;
             used_by: string | null;
         };

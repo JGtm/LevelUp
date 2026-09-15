@@ -15271,6 +15271,8 @@ components:
           type: string
         group_id:
           type: string
+        join_url:
+          type: string
         used_at:
           type:
             - string
