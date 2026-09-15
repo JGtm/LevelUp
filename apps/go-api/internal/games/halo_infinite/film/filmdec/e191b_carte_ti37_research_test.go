@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191b_carte_ti37_research_test.go — LOT 1.9.1 bis, PAS 1 : LA CARTE DU TRAVAIL, MESUREE

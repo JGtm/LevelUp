@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191c_deficit_research_test.go — LOT 1.9.1 bis, PAS 3 QUATER, VOIE (B) : COMBIEN DE BITS

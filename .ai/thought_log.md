@@ -1,3 +1,34 @@
+## [2026-09-16] Chantier decodeur — CI rouge apres la fusion du lot 1.9.1 bis : les instruments lourds passent sous le tag `research` — Complete (feat/recherche-decodeur-film)
+
+**Decision technique principale.** Les instruments de recherche qui rebalayent les 7 bobines
+(`filmdec/e191b_carte_ti37_{research,carte,masque}_test.go`, `filmdec/e191c_*_research_test.go`,
+14 fichiers, 17 tests) portent `//go:build research` : joues a la demande (`go test -tags research
+./internal/games/halo_infinite/film/filmdec/ -run TestE191`), COMPILES en CI par un pas
+`go vet -tags=research` (job unitaire Linux, modele `gamefiles`), jamais executes en CI. Les quatre
+symboles que des tests du build par defaut employaient (`e191cAncre`, `e191cN2Part`,
+`e191cPayloads` pour `build_profile_test.go` ; `e191bCatalogue` pour `i0_catalogue_mutation_test.go`
+et `e192_i0_catalogue_mesure_research_test.go`) sont deplaces sans modification dans
+`filmdec/e191_helpers_test.go`, non tague. Regle ecrite au plan §2.3 : budget `filmdec` < 30 s en
+local, duree citee dans chaque compte rendu de lot, helper partage = fichier non tague.
+
+**Resultats observes.** Run 34978931976 sur d71282e09 : job « Coverage + Baseline » rouge,
+`FAIL filmdec 600.236s`, aucun test en echec (paquet sans verdict) ; le job dure 33 min sur 45, relever
+le budget ne tenait pas. Mesures locales (CGO_ENABLED=0, `-count=1`) : `filmdec` 26,1 s avant le lot,
+89,9 s apres (E191b + E191c = 72 s), **15,0 s** apres le tag ; les cinq tests restants au-dessus de
+2 s sont des gates (ratchet de fermeture, oracle n2, equipes sur bobines, golden). ECARTE : taguer
+TOUS les `*_research_test.go` du module (223 fichiers, 6 paquets) — essaye, le build par defaut
+cascade sur 97 satellites dont de vrais gates (`build_profile_test.go`, `i0_catalogue_mutation_test.go`,
+`delta_biped_walk_guard_test.go`, `assaut_*_gate_test.go`, `bombe_portage_gate_test.go`,
+`visee_zoom_gate_test.go`...) parce que les helpers vivent dans les instruments ; le demeler est un
+lot (M2, durcissement), pas une reparation de CI. Le ratchet par nom (modele
+`gamefiles_tag_test.go`) attend ce demelage. Vet sans tag et avec tag : 0 ; instrument tague
+execute avec le tag : ok.
+
+**Prochaine etape.** Push + CI ; les executeurs 1.9.1 ter et 1.9.4 taguent leurs instruments neufs
+avant cloture.
+
+---
+
 ## [2026-09-16] Chantier decodeur — lot 1.9.1 bis (la grammaire de l'equipement comme fondation : prefixe objet relu, gardes n1/n2, profil par build, condition versionnee des films anciens bornee) — Complete (feat/decfilm-191c fusionnee dans feat/recherche-decodeur-film, 31421611f)
 
 **Decision technique principale.** Douze commits (`462480085..7b9aa67f6`, 57 fichiers, +4 044 / -482).

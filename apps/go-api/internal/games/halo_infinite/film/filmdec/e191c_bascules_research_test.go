@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191c_bascules_research_test.go — LOT 1.9.1 bis, PAS 2 BIS : LES RECORDS QUI BASCULENT,

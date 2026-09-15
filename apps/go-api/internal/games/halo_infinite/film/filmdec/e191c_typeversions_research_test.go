@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191c_typeversions_research_test.go — LOT 1.9.1 bis, PAS 3 BIS : LA CLE EST DANS LE FILM.
