@@ -429,15 +429,28 @@ var registreKillsource = []Repli{
 			Fichier: pkgKillcollector + "hits.go",
 			Ancre:   "carte hors catalogue de bornes, distances desactivees",
 		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.4 (la carte du film vient du nom de match, plus d'une signature de largeurs)",
-		// LE LOT 1.9.2 A CABLE LE COMPTEUR EXPVAR DE LA BRANCHE « CARTE INCONNUE »
-		// (`killsource_hits_cartes_hors_catalogue`, D-4) : le repli se compte donc en production
-		// par ce canal-la, pas encore par `fallback.Compteur` — la passe de touches ne porte
-		// aucune cuisson, donc aucun compteur par cuisson ou publier son compte.
-		CritereRetrait:  "0 match a distances desactivees pour cause de carte inconnue ; les 6 cartes jumelles recuperent leurs distances",
+		DatePose: dateAudit0E,
+		// LE LOT 1.9.4 (2026-09-15) A TENU SA PART, ET L'ENTREE NE SORT PAS POUR AUTANT.
+		//
+		// Ce qu'il a ferme : la carte ne se DEVINE plus par une signature de largeurs d'axe, elle
+		// se lit au NOM DE MATCH (`killcollector/map_identity.go`). Le critere des « cartes
+		// jumelles » est donc satisfait — et la mesure a montre qu'elles etaient bien plus
+		// nombreuses qu'annonce : 68 des 79 cartes du catalogue partagent leur signature avec une
+		// autre, et sur les deux films Live Fire la signature designait `aquarius`, une AUTRE
+		// carte, avec un seul candidat.
+		//
+		// Ce qui reste, et qui est LEGITIME : la degradation elle-meme. Une carte reellement
+		// absente du catalogue de bornes, ou des positions de bipedes illisibles, n'ont pas de
+		// distance a offrir — les touches restent comptees, seule leur distance manque. Ce repli
+		// n'invente rien ; il NOMME un refus. Il se compte en production par TROIS compteurs
+		// expvar depuis 1.9.4, un par cause (`killsource_hits_carte_non_cablee`,
+		// `killsource_hits_matchs_sans_nom_de_carte`, `killsource_hits_cartes_hors_catalogue`) —
+		// pas encore par `fallback.Compteur` : la passe de touches ne porte aucune cuisson, donc
+		// aucun compteur par cuisson ou publier son compte.
+		CibleRetrait:    "le lot qui rallume la precision par arme (`match.weapon.accuracy` est `not_exposed` pour Infinite, D1 (1.9.2)) : tant que la passe ne tourne pas, ses trois compteurs restent a zero par construction et ne prouvent rien",
+		CritereRetrait:  "passe rallumee, puis 0 match a distances desactivees sur le parc pour les trois causes",
 		CompteurBranche: false,
-		CibleComptage:   lot194,
+		CibleComptage:   "compteurs expvar deja cables (trois causes) ; `fallback.Compteur` au pas 2 de M2 si la passe rejoint une cuisson",
 	},
 	{
 		Nom:       "repli_carte_premier_nom_resolu",
@@ -445,15 +458,33 @@ var registreKillsource = []Repli{
 		Mecanisme: "les identites candidates sont essayees dans l'ordre et la PREMIERE qui resout gagne, sans arbitrage",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
+		// SITE UNIQUE DEPUIS LE LOT 1.9.4 (2026-09-15), ET C'EST UN GAIN. La resolution vivait
+		// dans `positions.go` et la passe des TOUCHES en avait une seconde, par signature de
+		// largeurs d'axe. Les deux passes partagent desormais cette fonction : une seule regle
+		// pour une seule question, donc un seul site a convertir le jour ou l'arbitrage existera.
 		Sites: []Site{{
-			Fichier: pkgKillcollector + "positions.go",
+			Fichier: pkgKillcollector + "map_identity.go",
 			Ancre:   "if entry, err := c.mapBounds.Lookup(name); err == nil {",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    lot194,
-		CritereRetrait:  "le nom de carte est resolu une fois et passe en override ; 0 arbitrage par ordre sur le parc",
+		DatePose: dateAudit0E,
+		// POURQUOI LE LOT 1.9.4 NE LE RETIRE PAS, ALORS QU'IL EN ETAIT LA CIBLE.
+		//
+		// La cible ecrite au lot 1.9.0 disait « le nom de carte est resolu une fois et passe en
+		// override ». Il l'est desormais — et cela ne retire pas ce repli-ci, qui porte une AUTRE
+		// question : quand la base rend PLUSIEURS noms candidats, lequel decide ? Verifie sur
+		// pieces (`platform/duckdb/replay_map_repo.go`, `MapKeysForMatch`) : l'ordre n'est pas
+		// arbitraire, il est documente « du plus fiable au moins fiable » — le nom d'asset
+		// canonique d'abord (il survit a un `map_name` reduit a un UUID), le libelle brut du
+		// registre ensuite (le catalogue de modules est indexe en anglais, la cascade de langues
+		// de `asset_translations` peut rendre un libelle traduit). Retirer le repli demanderait
+		// d'ARBITRER entre ces deux sources, c'est-a-dire de trancher laquelle ment quand elles
+		// divergent — une question de qualite du REGISTRE DES MATCHS, pas du decodeur de film,
+		// et hors du perimetre d'un lot de la famille 1.9 (regle 7 : la decouverte se consigne,
+		// elle ne se traite pas).
+		CibleRetrait:    "un lot de qualite du registre des matchs (arbitrage entre `asset_translations` et `match_registry.map_name`), ou lot 3.x si le profil par carte rend l'identite sans la base",
+		CritereRetrait:  "0 match du parc ou deux noms candidats resolvent DES ENTREES DIFFERENTES du catalogue — mesure a faire avant tout arbitrage",
 		CompteurBranche: false,
-		CibleComptage:   lot194,
+		CibleComptage:   comptageFamille19,
 	},
 	{
 		Nom:       "repli_identite_pont_par_morts",
