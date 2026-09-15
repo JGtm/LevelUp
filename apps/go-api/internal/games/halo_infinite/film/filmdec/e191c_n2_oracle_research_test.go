@@ -29,6 +29,7 @@ package filmdec
 //	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191cOracleN2$' -v -count=1
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -165,3 +166,116 @@ func e191cBalayerMPP(t *testing.T, ancres []e191cAncre, ti int) {
 // Le defaut passe donc de « quelque part dans 31 composants » a « trois bits dans une fonction
 // nommee ». La part modale plafonne a 0,62-0,73 et non a 1 : le bloc porte encore un element
 // variable au-dela de ces trois bits. C est la prochaine relecture chez l ecrivain.
+
+// TestE191cOracleN2ParBuild rejoue le balayage BOBINE PAR BOBINE. Si la paire gagnante differe
+// d un build a l autre, la grammaire du bloc MPP est VERSIONNEE et le depot en lit une seule
+// pour les sept builds — c est le profil par build de l ADR (D-3). Si la meme paire gagne
+// partout, la grammaire est commune et les trois bits sont ailleurs.
+func TestE191cOracleN2ParBuild(t *testing.T) {
+	rel := LockProcessDecode()
+	defer rel()
+	prev := CurrentMPPWidths()
+	defer SetMPPWidths(prev)
+	t.Logf("######## PAS 2 QUINQUIES — LE BALAYAGE MPP, BOBINE PAR BOBINE ########")
+	t.Logf("  %-10s %-5s %7s   %-18s   %-18s", "bobine", "ti", "records", "meilleure paire", "l ecrivain 9/5")
+	for _, court := range closureMiniFilms() {
+		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
+		film, err := filmsource.LoadDir(dir, nil)
+		if err != nil {
+			t.Fatalf("LoadDir %s : %v", dir, err)
+		}
+		parTI := map[int][]e191cAncre{}
+		for _, p := range e191cPayloads(NewFilmContext(film)) {
+			for _, b := range keyframeBornes(p) {
+				parTI[b.TI] = append(parTI[b.TI], e191cAncre{Pay: p, Bit: b.Bit})
+			}
+		}
+		_, d0 := readChunk00(t, dir)
+		id, errID := ReadFilmIdentity(d0)
+		v, okv := FilmMajorVersion(film)
+		if errID != nil {
+			id.Build = "(sans identification)"
+		}
+		t.Logf("  %-10s build=%-22s v=%-3v types=%d", court, id.Build, e191cVer(v, okv), len(id.TypeVersions))
+		for _, ti := range []int{37, 38, 42} {
+			e191cLigneParBuild(t, court, ti, parTI[ti], v, okv)
+		}
+	}
+}
+
+// e191cLigneParBuild colle une ligne : la meilleure paire de cette bobine et le score de 9/5.
+func e191cLigneParBuild(t *testing.T, court string, ti int, ancres []e191cAncre, ver int, okv bool) {
+	t.Helper()
+	if len(ancres) == 0 {
+		return
+	}
+	meilleur := e191cResultatMPP{}
+	var ref e191cResultatMPP
+	for l := 1; l <= e191cN2Max; l++ {
+		for i := 1; i <= e191cN2Max; i++ {
+			SetMPPWidths(MPPWidths{Lead: l, Index: i})
+			part, modal, _ := e191cN2Part(ancres, ti)
+			r := e191cResultatMPP{Lead: l, Index: i, Part: part, Modal: modal}
+			if part > meilleur.Part {
+				meilleur = r
+			}
+			if l == 9 && i == 5 {
+				ref = r
+			}
+		}
+	}
+	t.Logf("  %-10s v=%-3v ti=%-2d %7d   lead=%-2d index=%-2d %.3f   %.3f (n2=%d)",
+		court, e191cVer(ver, okv), ti, len(ancres), meilleur.Lead, meilleur.Index, meilleur.Part,
+		ref.Part, ref.Modal)
+}
+
+// e191cVer formate la version majeure du film, ou "?" quand l en-tete ne la porte pas.
+func e191cVer(v int, ok bool) string {
+	if !ok {
+		return "?"
+	}
+	return fmt.Sprintf("%d", v)
+}
+
+// LE RESULTAT DU PAS 2 QUINQUIES : LA GRAMMAIRE DU BLOC MPP EST VERSIONNEE PAR BUILD, ET LE
+// PORTAGE EST JUSTE — POUR LES BUILDS RECENTS SEULEMENT (2026-09-15).
+//
+// Balayage 16 x 16 rejoue BOBINE PAR BOBINE, part des records dont `n2` prend la valeur modale :
+//
+//	bobine      build         types   meilleure paire        a 9/5 (l ecrivain)
+//	a521164d    HI_1_4_1      116     lead=8 index=3  0,995   0,304
+//	60ae07c4    HI_1_8_0      121     lead=8 index=3  0,988   0,522
+//	11de8353    HI_1_9_0      121     lead=8 index=3  0,990   0,492
+//	111fa685    HI_1_10_0     121     lead=8 index=3  0,993   0,432
+//	e5adf7b2    HI_1_11_0     122     lead=8 index=3  0,996   0,472
+//	bcb6d393    HI_1_12_0     123     lead=9 index=5  0,949   0,949
+//	fb1a1a72    HI_1_13_0     123     lead=9 index=5  1,000   1,000
+//
+// (ti=37 ; ti=38 et ti=42 donnent la MEME coupure, cf. la sortie du test.)
+//
+// LA BASCULE EST A `HI_1_12_0`, ET LA VERSION MAJEURE DU FILM NE LA DONNE PAS : `e5adf7b2` et
+// `bcb6d393` portent tous deux `v=40` et tombent de part et d autre. Ce qui les separe est le
+// BUILD — et, dans `chunk_00`, le CARDINAL DE LA TABLE PAR TYPE : 123 d un cote, 116 a 122 de
+// l autre. Ce cardinal est LISIBLE HORS LIGNE (`FilmIdentity.TypeVersions`).
+//
+// CONSEQUENCE, ET ELLE CORRIGE LA LECTURE DU PAS 2 QUATER : le bloc MPP ne consomme PAS trois
+// bits de trop « dans l absolu ». Le portage 9/5 est EXACT sur les builds >= HI_1_12_0 — il y
+// ferme 0,95 a 1,000, ce qui est le meilleur score du balayage entier. Ce qui manque est un
+// PROFIL PAR BUILD pour les builds <= HI_1_11_0, ou le bloc en lit trois de moins.
+//
+// ET C EST LA QUE D13 RENCONTRE SA LIMITE, QU IL FAUT NOMMER : l executable ouvert dans Ghidra
+// est UN SEUL BUILD, et c est un build recent — il dit `R(9)` (`141fd72de`) et `R(5)` inline,
+// sans aucune branche de version dans `FUN_14080cfe8` (le seul `if` runtime du bloc,
+// `DAT_145121140 == 1`, ne consomme AUCUN bit : c est une resolution d objet). La grammaire des
+// builds anciens n est donc PAS relisible chez cet ecrivain-la. La version sur laquelle le jeu
+// branche ailleurs (`FUN_1428e1c0c(&DAT_144c23178)`, qui gouverne le bit `DAT_144706104`) vient
+// d une structure RUNTIME attachee au film charge (`*(param_1 + 0x108)`, ou `*(param_1 + 0x120)
+// + 0x130` selon `FUN_1428e1e94`) : elle vient donc DU FILM, et le film la porte dans
+// `chunk_00`. Lire le profil dans le film n est pas deviner — c est lire le film.
+//
+// CE QUE CELA CHANGE POUR LA CONVERSION MPP DEMANDEE : retirer la calibration SANS profil par
+// build casserait les cinq builds anciens. `CalibrateMPPWidths` existe precisement parce que la
+// variabilite avait ete CONSTATEE sans que sa cause soit trouvee : c est le profil manquant,
+// ecrit en heuristique. La conversion juste n est donc pas « la grammaire remplace la
+// calibration » mais « le PROFIL PAR BUILD remplace la calibration, la calibration devient le
+// controle » — avec, conformement a l ADR 0034, un build inconnu qui rend une erreur typee.
