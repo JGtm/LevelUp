@@ -90,3 +90,24 @@ func varWidthBits(param3 int) uint {
 	}
 	return uint(w) //nolint:gosec // bitLen d un uint32 tient dans [0, 32]
 }
+
+// CE QUE LE PAS 2 QUATER A TROUVE, ET QUI QUALIFIE TOUT CE QUI PRECEDE (2026-09-15).
+//
+// `DAT_144706104` — la garde qui decide si la table s'applique — N'EST PAS UNE CONSTANTE.
+// `FUN_142e2bfd0`, le lecteur d'etat complet, l'ECRIT DEPUIS LE FLUX en tete de paquet :
+//
+//	142e2bfd0+:  uVar7 = FUN_1428e1c0c(&DAT_144c23178) ;   // la VERSION du format
+//	             si (7 < uVar7) DAT_144706104 = FUN_1406cf008(param_1) ;  // un R(1) DU FILM
+//
+// Donc : sur un format de version <= 7 la garde garde la valeur posee par `FUN_140d10bb0`
+// (1, table ACTIVE) ; au-dela, c'est UN BIT DU FILM qui tranche, une fois par paquet
+// d'image-cle. Ce bit ne se lit pas offline sans connaitre la version, qui vient d'un objet de
+// configuration du jeu et non du film.
+//
+// CE QUE LA MESURE DIT MALGRE TOUT, ET POURQUOI LA TABLE RESTE POSEE. Sur les sept bobines, le
+// record de `ti=37` qui se met a fermer ne ferme QUE si i21, i22 ET i28 sont corriges ENSEMBLE
+// (mesure d'attribution du pas 2 bis, chaque correction neutralisee a tour de role) : trois
+// largeurs independantes qui tombent juste ensemble sur la frontiere ne sont pas une
+// coincidence. La table est donc ACTIVE sur ce film. Ce n'est PAS une preuve qu'elle l'est sur
+// tous — et c'est pour cela que la descente de trois lignes du golden de fermeture a ete
+// remontee au pilote plutot que refigee en silence.

@@ -217,4 +217,20 @@
 #               quatre montent (`60ae07c4` ti=38 43 -> 30, `11de8353` ti=38 32 -> 48). Le
 #               golden 0.A.3 n est PAS regenere ici : D14 interdit de le faire descendre, et
 #               l arbitrage appartient au pilote.
-grammar-2026-09-15.3	2621e7f72c27bdb2120b9447418a177d7433d01500e1ac35db9df056a22374a9
+#   2026-09-15  grammar-2026-09-15.4  lot 1.9.1 bis, pas 2 quater : LES DEUX MOTS DE TAILLE
+#               SONT DES GARDES. `FUN_142e2bfd0` porte DEUX fois `if (0 < (int)uVar7)` — le
+#               premier garde `vtable[0x60]` (l etat par defaut), le second `vtable[0x88]` puis
+#               `FUN_1428e2b68`, qui mene a la boucle de composants `FUN_142e2c690`. Donc
+#               `n1 == 0` -> aucun etat par defaut n est ecrit, `n2 == 0` -> aucun composant,
+#               et la comparaison est SIGNEE. Le depot lisait les deux inconditionnellement.
+#               EFFET MESURE sur les sept bobines : +68 records fermes (26 lignes du golden
+#               0.A.3 montent de +89, 2 descendent de -21) ; les cinq archetypes objet passent
+#               de 184 a 246 sur 21 698, ti=41 de 0/110 a 34/110, et des archetypes HORS
+#               prefixe objet montent aussi (ti=35 bipede 0 -> 6, ti=10 0 -> 3, ti=12 0 -> 1).
+#               Attribution : la garde `n1` seule ne change rien sur les cinq (188), la garde
+#               `n2` seule vaut 220, les deux ensemble 246 — elles interagissent.
+#               `SchemaVersion` reste 59 : le `replay-corpus-gate` du meme jour rend
+#               **schema 59 -> 59 sur les 14 temoins, 26 gains, 1 seule « perte » qui est une
+#               amelioration** (`coverage.equipmentChanges.missedEstimate` 17 -> 16 : moins de
+#               manques estimes). Le contenu cuit ne change donc pas de forme.
+grammar-2026-09-15.4	5910967d3601f13b815260c5cfe5f10080468fa427e8ef5736b3658e3120c229
