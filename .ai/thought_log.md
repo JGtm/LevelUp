@@ -1,3 +1,49 @@
+## [2026-09-16] Chantier decodeur — lot 1.9.2 (le decoupage d'i0 vient du catalogue de carte, plus de l'auto-detection) — Complete (feat/decfilm-192 fusionnee dans feat/recherche-decodeur-film, 9848b7387)
+
+**Decision technique principale.** Les QUATRE sites de production de `DefaultScanFilmOptions()`
+(grep colle ; la citation `hits.go:157` du plan avait derive vers
+`filmdec/weapon_hit_distance_resolver.go`) posent `Layout` depuis `MapQuantEntry.Layout()`
+(catalogue `map_quant_bounds.json`) comme le chemin de cuisson le faisait deja ; `NewFilmContext`
+(contexte sans catalogue) n'a plus aucun appelant de production hors `filmdec` ;
+`DetectI0Layout` garde UN appelant, `DetectFilmMapEntry`, ou elle decide l'IDENTITE de la carte
+(lot 1.9.4), pas son decoupage. Registre des replis : `repli_i0_porte_et_region_par_defaut`
+RETROGRADE de `inconditionnel / devant_la_lecture` a `carte_absente_du_catalogue /
+apres_lecture` (condition neuve, domaine ferme ; l'ancre vit encore, donc pas retire) : le
+ratchet des sept `devant_la_lecture` DESCEND A SIX ; 94 entrees. `GrammarRev`
+`grammar-2026-09-15.1 -> .2`. `KillSourceDecoderRev` NE monte PAS (le journal des morts ne
+change pas d'un octet, `killsource/` n'a pas bouge, son ratchet d'empreinte l'interdirait) :
+c'est `IsolationDecoderRev` qui porte le redecodage (`isolement-2026-09-15-decoupage-du-catalogue`,
+comme le lot 6.1 pour ces memes tables `kill_positions` / `kill_openings`) : 70 matchs Live Fire
+au registre sur 1 967, dont 52 avec film en cache — backlog a la cloture de M1. `SchemaVersion`
+59 inchange.
+
+**Resultats observes.** Mesure avant de coder (17 films = 14 temoins + 3 pour couvrir les 8
+builds, instrument `e192_i0_catalogue_mesure_research_test.go`, 214 s) : catalogue et
+auto-detection identiques sur 15 films, divergents sur les DEUX Live Fire (`gate=6 region=1
+12/12/11` au catalogue contre `gate=5 region=0 13/12/11` detecte, meme longueur d'i0) ;
+`60ae07c4` positions 267 368 -> 267 365, pistes de touche 267 390 -> 267 374, bruts 267 400 ->
+267 374 (-26 ; le plan disait 27 : D4, aucune decision n'en depend) ; `0797ce72` -4 / -4 / -11 ;
+tirs et degats ne lisent pas i0. Mutations : catalogue fausse d'un bit -> ROUGE dans filmdec et
+killcollector (cette mutation a demasque une premiere redaction fausse du temoin, qui ecrivait
+les bits sous le catalogue mute : refait sur un decoupage fige) ; cablage retire -> rouge sur
+les 79 cartes. Gates : gofmt vide, vet 0, 14 paquets ok, integration `-p 1` killcollector exit
+0, lint 0 issue (un goconst corrige par `fallback.lot194`), equivalence 10/10 identiques,
+corpus gate `--base ec74685ed` 0 perte 0 gain sur 14 temoins, exit 0. Verification du pilote
+(V8) : sites, revisions, entree du registre, ratchet 6, baseline intacte, schema.
+`[~]` justifies : le controle « accord / contradiction » de la detection devient un ORACLE DE
+TEST (le compter en production couterait la seconde passe de detection, c'est-a-dire le gain
+du lot ; D2 du plan le prescrit) ; regle openapi sans objet.
+Decouvertes §4 : D1 le chemin des touches est ETEINT en production pour Infinite
+(`match.weapon.accuracy = not_exposed`, `ConfigureFilmAccuracy` sans appelant) ; D2 sur Live Fire
+la signature de largeurs ne retrouve aucune entree du catalogue, les distances de touche y sont
+DEJA desactivees (matiere du 1.9.4) ; D3 controle = oracle de test ; D4 26 et non 27.
+
+**Prochaine etape.** Push + CI ; lot 1.9.3 (le couple tueur / victime lu au kill-event 85) ;
+en parallele le lot 1.9.1 bis poursuit sur la table des largeurs de handles par carte (D3
+(1.9.1 bis pas 2)), voie libre donnee pour ses gates ; a sa fusion, `GrammarRev` monte a `.3`.
+
+---
+
 ## [2026-09-15] Chantier decodeur — lot 1.9.1 bis, pas 1 (la carte du travail : le defaut de fermeture de l'equipement est le PREFIXE OBJET) — En cours (pas 1 fusionne ec74685ed ; pas 2 a 5 BLOQUES : Ghidra indisponible)
 
 **Decision technique principale.** Mesure avant de coder, sans aucun code de production touche
