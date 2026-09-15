@@ -173,6 +173,12 @@ type ExplorerTargetProfile struct {
 	// décroissant, cap 20) issues du service record Waypoint + métadonnées
 	// locales (label/description/image). Le front affiche un top 5 + expander.
 	TopMedals []MedalDigestItem `json:"top_medals,omitempty"`
+	// TopMedalsLocal : MÊME forme que TopMedals, mais agrégé localement
+	// (shared.medals_earned) sur EXACTEMENT les matchs de CombatProfileLocal.
+	// Alimente le bloc « Top médailles » quand le toggle du profil de combat est
+	// sur « Local » — les deux listes ne sont donc pas comparables (lifetime vs
+	// échantillon local). Vide si CombatProfileLocal est vide.
+	TopMedalsLocal []MedalDigestItem `json:"top_medals_local,omitempty"`
 	// SeasonCSRs : classements CSR par playlist ranked de la saison courante du
 	// joueur cible (live, endpoint skill public — fonctionne pour tout xuid).
 	SeasonCSRs []CareerPlaylistCSR `json:"season_csrs,omitempty"`
