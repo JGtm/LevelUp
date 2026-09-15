@@ -169,4 +169,21 @@
 #               killsource-2026-09-14, backlog de redecodage), pas `GrammarRev` — meme nature que
 #               l entree `botSuffix -> BotSuffix` du golden de killsource. `SchemaVersion` ne
 #               monte pas non plus : aucun champ ni aucune forme de l artefact ne change.
-grammar-2026-09-15.1	e9231c748018fc40c9070370ffab27012bfbcbf6a31ac2a312e65fca24bd4337
+#   2026-09-15  grammar-2026-09-15.2  lot 1.9.1 bis, pas 2 : LE PREFIXE OBJET RELU CHEZ
+#               L ECRIVAIN, SANS QU AUCUNE LARGEUR NE CHANGE. Les six composants que le pas 1
+#               designait comme faisant franchir la frontiere de `ti=37` ont ete relus un par un,
+#               adresse resolue par le REGISTRE ECS DU BINAIRE (chaine `nom -> thunk de nom ->
+#               vtable+0x08 -> vtable_base+0x30`) et grammaire relue sur le desassemblage :
+#               i6 FUN_140e1bfa0, i7 FUN_142f03c80, i9 FUN_140f53308 -> FUN_1407d4c94,
+#               i14 FUN_140dd9f9c, i15 FUN_1407ef088, i17 FUN_1407f0534 -> FUN_1407f0550.
+#               LES SIX PORTAGES ETAIENT DEJA BIT-EXACTS : la revision monte pour les
+#               COMMENTAIRES et les garde-rails de largeur, pas pour un bit lu. La fermeture des
+#               cinq archetypes objet est donc INCHANGEE (184/21 698, 0,85 %) — resultat attendu
+#               et non un non-evenement : il elimine les six suspects nommes au pas 1.
+#               NEUF : `components_prefixe_objet_largeurs_test.go` (i6, i7, i15, i17 ; i14 avait
+#               deja le sien, i9 a la table du flux TLV), et la table ECS versionnee gagne
+#               TREIZE adresses de deserialiseur qui manquaient, plus la correction d i14
+#               (elle portait l adresse d i15).
+#               `SchemaVersion` NE MONTE PAS (59 -> 59) : aucun octet cuit ne change.
+#               `KillSourceDecoderRev` non plus (killsource n est pas touche).
+grammar-2026-09-15.2	c05826e4276611a98aa4d6d1f2a15b31cf88f331eece1f2ea764134e8ed61676
