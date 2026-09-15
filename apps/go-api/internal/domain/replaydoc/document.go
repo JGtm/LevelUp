@@ -96,10 +96,14 @@ type Track struct {
 // Point est une position echantillonnee au pas de temps T. X/Y = plan horizontal de la
 // carte ; Z (optionnel) = altitude, pour l'indication d'etage — non critique au rendu 2D.
 type Point struct {
-	T  int      `json:"t"`
-	X  float32  `json:"x"`
-	Y  float32  `json:"y"`
-	Z  float32  `json:"z,omitempty"`
+	T int     `json:"t"`
+	X float32 `json:"x"`
+	Y float32 `json:"y"`
+	Z float32 `json:"z,omitempty"`
+	// G (optionnel) est la DUREE DE LA LACUNE qui precede ce point, en millisecondes ; absent
+	// ou 0 = le point suit le precedent sans interruption. La piste ne s'interpole PAS au
+	// travers. Cf. `replay.Point.G` pour la decision complete (lot 1.9.13).
+	G  int      `json:"g,omitempty"`
 	H  float32  `json:"h,omitempty"`
 	P  float32  `json:"p,omitempty"`
 	Sh *float32 `json:"sh,omitempty"`

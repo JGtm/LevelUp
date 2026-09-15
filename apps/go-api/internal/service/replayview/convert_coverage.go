@@ -81,6 +81,8 @@ func toTrackCoverage(v replay.TrackCoverage) replaydoc.TrackCoverage {
 		RefusedMinPoints: v.RefusedMinPoints,
 		RefusedPoints:    v.RefusedPoints,
 		MinPoints:        v.MinPoints,
+		Gaps:             v.Gaps,
+		GapMS:            v.GapMS,
 	}
 }
 

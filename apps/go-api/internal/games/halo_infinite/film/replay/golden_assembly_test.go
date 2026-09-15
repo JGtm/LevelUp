@@ -66,11 +66,20 @@ const (
 	// fermeture sur un pont complet n est pas une fermeture cassee : c est une fermeture inutile.
 	wantClosedByShot    = 0
 	wantClosedByRespawn = 0
-	// wantLivesNamed / wantLivesTotal : 90 vies nommees sur 105. Les 15 restantes sont 4 vies
-	// anterieures au debut reel du match et 6 survivants de fin de partie, que le film ne clot
-	// par aucun evenement.
+	// wantLivesNamed / wantLivesTotal : 90 vies nommees sur 99.
+	//
+	// LE DENOMINATEUR EST PASSE DE 105 A 99 AU LOT 1.9.13 (2026-09-15), ET LE NUMERATEUR N'A PAS
+	// BOUGE. Les six vies disparues n'etaient pas des vies : c'etaient les deux moities de six
+	// sejours que le seuil de trou (`lifeGapUS`) coupait sans qu'AUCUN fait du film ne les ferme
+	// — ni mort ecrite, ni apparition de corps, ni fin de manche (mesure : 6 coupures sur
+	// `000d5950`, 6 « RIEN »). Elles sont redevenues des lacunes de leur vie. Que les 90 nommees
+	// restent 90 est le controle : la conversion n'a retire aucune vie NOMMEE, elle a recolle des
+	// morceaux.
+	//
+	// Les 9 restantes sont des vies que le film ne clot par aucun evenement — anterieures au
+	// debut reel du match, ou survivants de fin de partie.
 	wantLivesNamed = 90
-	wantLivesTotal = 105
+	wantLivesTotal = 99
 	// wantGrenades : 70 lancers situes sur 70 — 65 par la naissance de leur projectile, 5 par le
 	// biped de leur auteur.
 	//
@@ -213,7 +222,7 @@ func TestShotsCoverageIsFiveHundredFourOfFiveNineteen(t *testing.T) {
 
 // TestBridgeNamesNinetyLivesOfHundredFive : LE PONT, ET SON DENOMINATEUR.
 //
-// 90 vies nommees sur 105. Les 15 restantes ne sont pas un echec du decodage : ce sont des vies
+// 90 vies nommees sur 99. Les 9 restantes ne sont pas un echec du decodage : ce sont des vies
 // que le film ne clot par AUCUN evenement (debut de film, survivants de fin de partie). Un
 // rapport publie sans son denominateur ne se juge pas.
 func TestBridgeNamesNinetyLivesOfHundredFive(t *testing.T) {
@@ -452,6 +461,12 @@ func renderTracks(p func(string, ...any), doc ReplayDocument) {
 		p("seuil de publication %d point(s) : %d vie(s) REFUSEE(S) portant %d point(s) — "+
 			"si le film ecrit une position, elle se publie",
 			tc.MinPoints, tc.RefusedMinPoints, tc.RefusedPoints)
+		// LES LACUNES SONT DANS LE GOLDEN (lot 1.9.13) : elles DECOUPAIENT les vies avant ce lot
+		// et ne se comptaient nulle part — une vie coupee en quatre etait indistinguable de
+		// quatre vies. Un silence de replication n'est pas une mort : la vie continue, la piste
+		// ne s'y interpole pas (`Point.G`), et le compte dit combien de fois le film se tait.
+		p("%d lacune(s) de replication DANS une vie, %d ms au total — un trou n'est pas une fin "+
+			"de vie, la piste ne s'y interpole simplement pas", tc.Gaps, tc.GapMS)
 	} else {
 		p("seuil de publication : NON APPLIQUE (le film ne porte aucune position)")
 	}

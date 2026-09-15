@@ -59,22 +59,29 @@ var registreReplayIdentites = []Repli{
 	{
 		Nom:       "repli_vie_coupee_au_trou_de_replication",
 		Fait:      "ou finit une vie de joueur",
-		Mecanisme: "un trou de positions de plus de lifeGapUS (5 s) ferme la vie courante et en ouvre une neuve, sans qu'aucune mort soit ecrite",
+		Mecanisme: "pour un joueur dont le film n'ecrit AUCUNE mort, un trou de positions de plus de lifeGapUS (5 s) ferme la vie courante et en ouvre une neuve",
+		// CONVERTI AU LOT 1.9.13 (2026-09-15), `film_muet / devant_la_lecture` ->
+		// `film_muet / apres_lecture`. La decoupe LIT desormais ce que le film ecrit — mort
+		// appariee au fil, record de creation de bipede dans le trou, frontiere de manche — et le
+		// trou de replication devient une LACUNE de la MEME vie (`coverage.tracks.gaps`). Le seuil
+		// ne decide plus QUE la ou les trois lectures se taisent ensemble, c'est-a-dire pour un
+		// joueur que rien ne tue de tout le film : rien ne borne alors ses vies.
 		Condition: CondFilmMuet,
-		Ordre:     OrdreDevantLaLecture,
+		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgReplay + "tracks_publication.go",
-			Ancre:   "int64(p.TimestampUS)-int64(a.lastUS) > lifeGapUS",
+			Fichier: pkgReplay + "lives_decoupe.go",
+			Ancre:   "in.fb.Declenche(fallback.NomVieCoupeeAuTrouDeReplication)",
 		}},
 		DatePose:     "2026-09-14",
-		CibleRetrait: "lot 1.9.13 (une vie finit a une mort ECRITE)",
-		// DÉFAUT DÉJÀ MESURÉ (D1 (1.6), lot 1.6.5) : 14 des 20 vies d'un seul échantillon des
-		// 8 builds sont ORPHELINES — ni mort écrite, ni fin de manche, ni fin de film — et
-		// toutes sont fermées par cette règle. La grammaire dit qu'une vie finit à une mort ;
-		// un trou de réplication n'est pas une mort : d'où l'ordre `devant_la_lecture`.
-		CritereRetrait:  "vies_un_echantillon_test.go rend 0 orpheline sur les 8 builds ; le seuil ne survit que pour les joueurs SANS mort ecrite",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.13 (le compteur nait avec la conversion : coverage.tracks.gaps)",
+		CibleRetrait: "lot M2 (retrait sec si le compte reste nul au corpus gate — D14 d)",
+		// CE QUE LA CONVERSION A FERME, MESURE (`decoupe_des_vies_mesure_test.go`, 8 builds,
+		// 2026-09-15) : sur 212 coupures decidees par le seuil, 4 portaient une mort ecrite, 0 un
+		// record de creation, 0 une frontiere de manche — et 208 n'etaient justifiees PAR RIEN.
+		// Les 208 sont devenues des lacunes. Le repli, lui, ne se declenche sur AUCUN des 8 builds
+		// (aucune vie coupee n'appartient a un joueur sans mort ecrite) : son critere de retrait
+		// est donc DEJA tenu sur cet echantillon, et le corpus gate tranchera sur le parc.
+		CritereRetrait:  "0 declenchement au corpus gate ; `vies_un_echantillon_test.go` rend 0 orpheline sur les 8 builds",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_mort_ecartee_hors_equipe_de_base",

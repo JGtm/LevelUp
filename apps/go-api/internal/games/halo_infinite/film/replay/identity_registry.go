@@ -32,6 +32,7 @@ import (
 
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // IdentityClock est l'axe de frames du document, quand l'appelant en a un.
@@ -96,6 +97,10 @@ type IdentityInput struct {
 	Clock IdentityClock
 	// MatchID sert aux journaux — jamais a une decision.
 	MatchID string
+	// Fallbacks : le compteur de replis de la cuisson (D14), nil-safe. La DECOUPE DES VIES est
+	// le seul repli que le registre execute (`repli_vie_coupee_au_trou_de_replication`, lot
+	// 1.9.13) ; sans ce compteur, son declenchement serait muet.
+	Fallbacks *fallback.Compteur
 }
 
 // StatborgIdentityInput porte l'identite des slots d'entite statborg et les enregistrements qui
