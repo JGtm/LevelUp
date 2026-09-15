@@ -58,4 +58,13 @@ package filmdec
 // lisent). Sur les 1 351 films du cache les deux cles donnent le MEME decoupage — le
 // changement est verifiable et neutre — mais la nouvelle couvre les cinq films sans section
 // d'identification, que l'ancienne ne pouvait pas nommer.
-const GrammarRev = "grammar-2026-09-15.8"
+// LOT 1.9.1 ter (2026-09-15, second commit) : `.8` -> `.9`. AUCUN BIT LU NE CHANGE ICI NON
+// PLUS, et la revision monte pour la meme raison qu au `.8` : le CADRE. La condition du repli
+// `repli_largeurs_mpp_calibrees_sur_le_film` est renommee `build_sans_profil_relu` ->
+// `format_sans_profil_relu` (elle nommait une cle qui n existe plus), et le declenchement du
+// repli sur une version de format INCONNUE est desormais COMPTE
+// (`filmdec.UnknownFormatExpvarPairs` -> `filmdec_unknown_format_<n>`, cable dans
+// `replay/mpp_format_inconnu.go`) et signale par un avertissement par film. Un consommateur qui
+// decide de redecoder doit voir que la condition du repli a change de nom ; un exploitant doit
+// voir qu un patch du jeu a change le format. `SchemaVersion` reste 59.
+const GrammarRev = "grammar-2026-09-15.9"

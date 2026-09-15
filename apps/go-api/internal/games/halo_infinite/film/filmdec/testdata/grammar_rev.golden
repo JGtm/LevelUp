@@ -276,4 +276,17 @@
 #               meme decoupage. LA REVISION MONTE parce que le CADRE change, et parce que la
 #               nouvelle cle couvre les CINQ films sans section d identification (format 20),
 #               que l ancienne ne pouvait pas nommer. `SchemaVersion` reste 59.
-grammar-2026-09-15.8	7480168c0b6627d517629bb07b0b81150c4074db1d6d449f3975dd2bc96c0048
+#   2026-09-15  grammar-2026-09-15.9  lot 1.9.1 ter (second commit) : LES CONSEQUENCES DE LA
+#               CLE FORMAT. (a) La condition du repli `repli_largeurs_mpp_calibrees_sur_le_film`
+#               est RENOMMEE `build_sans_profil_relu` -> `format_sans_profil_relu` : elle
+#               nommait une cle qui n existe plus. Les traces DATEES gardent l ancien nom
+#               (l entree `.6` ci-dessus en particulier) — ce sont des releves du jour ou la
+#               condition a ete posee, pas la doc courante. (b) Le declenchement du repli sur un
+#               format INCONNU est desormais COMPTE (`filmdec_unknown_format_<n>`, nomme par
+#               `filmdec.UnknownFormatExpvarPairs`, cable aux deux sites du registre par
+#               `replay/mpp_format_inconnu.go`) et signale par UN avertissement par film. Un
+#               format inconnu tombe sur les largeurs CALIBREES — le repli tient le parc neuf au
+#               lieu de l eteindre — et la branche est gardee par `mpp_format_inconnu_test.go`,
+#               mutation verifiee dans les deux sens. AUCUN BIT LU NE CHANGE ; la revision monte
+#               pour le CADRE. `SchemaVersion` reste 59.
+grammar-2026-09-15.9	1f66848192eab105772fe10829fee196c5140268cbf8045d219b96bbf6a88a14

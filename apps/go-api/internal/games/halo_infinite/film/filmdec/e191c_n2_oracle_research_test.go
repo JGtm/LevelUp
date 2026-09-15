@@ -237,6 +237,13 @@ func e191cVer(v int, ok bool) string {
 	return fmt.Sprintf("%d", v)
 }
 
+// CORRIGE LE 2026-09-15 (lot 1.9.1 ter) : la grammaire n est PAS versionnee par build, elle
+// l est par la VERSION DE FORMAT de `chunk_00` (`+4`) — c est cette valeur que le chargeur du
+// jeu consulte (`FUN_14299ab50`, `FUN_1428e1c0c`), et elle separe les deux groupes aussi bien
+// que le build tout en couvrant les cinq films sans section d identification. Le titre et le
+// tableau ci-dessous restent le RELEVE du pas 2 quinquies, dont la mesure tient : c est son
+// interpretation de la cle qui a ete corrigee. Cf. `filmdec/film_format_version.go`.
+//
 // LE RESULTAT DU PAS 2 QUINQUIES : LA GRAMMAIRE DU BLOC MPP EST VERSIONNEE PAR BUILD, ET LE
 // PORTAGE EST JUSTE — POUR LES BUILDS RECENTS SEULEMENT (2026-09-15).
 //
