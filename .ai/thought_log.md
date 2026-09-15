@@ -1,3 +1,58 @@
+## [2026-09-16] Chantier decodeur — revue de jalon M1 (deux rondes) et fusion du lot 1.9.10 — Complete (integration locale 2e8e62596, NON POUSSEE : montee de schema de la vague en attente)
+
+**Decision technique principale.** Revue adversariale de fin de jalon lancee EN PARALLELE des
+gates de la vague 2 (decision utilisateur : ne pas laisser le gate humain ralentir, criteres
+inchanges) : cinq relecteurs aveugles, un par lentille (L3 anti-patterns, L4 donnees, L6 tests,
+D13 grammaire / registre, architecture + ecritures), sur `783ae680d..34fa53da5` (303 fichiers,
++26 169 / -2 574), contrat ecrit (`scratchpad/revue_m1_contrat.md`). Ronde 1 : 1 P0, 10 P1,
+~10 P2, 54 conditions tenues. Corrections en quatre lots paralleles (worktrees dedies, fichiers de
+production disjoints) fusionnes 944e7c691 (L6, tests seuls), 99644996e (L4), 1f478d5c3 (D13),
+29c5d6c85 (L3). Ronde 2 (relecteur aveugle sur les seules corrections) : 2 P1, 3 P2, 12 conditions
+tenues — le compte des bloquants decroit strictement (11 -> 2), corrections en un lot
+(6c9917c14, fusion 2e8e62596), pas de ronde 3 (borne du skill). Lot 1.9.10 fusionne (3b5e1b465)
+entre les deux : ratchet des replis `devant_la_lecture` 6 -> 4 (deux baisses reunies), deux
+ratchets neufs de la revue ont mordu au merge et ont ete servis (cible perimee reecrite vers 2.2,
+second site de declenchement inscrit). `GrammarRev` .11 -> .15 (chronique lineaire reecrite par
+la ronde 2, ratchet `TestChroniqueCouvreLaRevisionCourante` : une entree par rang, dans le godoc
+ET le golden), `KillSourceDecoderRev` -> `killsource-2026-09-16`.
+
+**Resultats observes.** Le P0 : `LineByLinePublishable` s'ouvrait sur `Inferred <= 1` alors qu'un
+indice libre peut faire face a >= 2 noms libres (excedent `len(names) - nPlay` cree par
+`pinUnSiege`) — affectation arbitraire publiee ; `AffectationUnique` compte les deux cotes, la porte
+ne fait que se fermer. Les P1 : `equipeDuSlot` sans garde d'ambiguite (`tracksSlotAmbiguous`),
+table d'index composee non injective (`collisionsIndex`, determinisme sur 50 recompositions), 8 + 1
+cibles du registre visant des lots deja coches (ratchet `no_stale_fallback_target_test.go` lit les
+cases du plan), 3 compteurs du resume d'usage jamais cables (cables, journalises par les deux
+producteurs de passes — le corpus gate ne peut pas les voir, dit tel quel), second site de
+`repli_vie_coupee_au_trou_de_replication` hors registre (site par fichier et par condition,
+`DeclencheN` par coupure), `gwWidthsForFilm` ET `equipment_placements.go` resolvaient le bloc MPP
+par le BUILD et non par la VERSION DE FORMAT (porte unique `MPPWidthsForFilm`, ratchet AST ; mesure
+au cache : 6 films a build hors table, 0 a largeur relue -> 0 octet cuit ne change), couverture
+du ratchet des replis par (fichier, identifiant) (temoin `locateFallback` dans `filmdec/varwidth.go`
+qui passait vert), quatre predicats de production sans test (couple victime, garde de divergence
+d'equipe, ordre des noms de carte, ordre xuid / pont), openapi non regenere depuis 1.9.1 (MA regle
+de vague etait trop large : `openapi-gen` ne depend pas de SchemaVersion ; regeneration a la
+montee). Ecartes : la tautologie des tranches (F1, ronde 2 : liste nommee des six familles),
+`UsageMatchSummary.Fallbacks` lu par personne (F2), compteur noms-libres qui surcomptait (F3),
+`collector.go` 773 -> 816 -> 718 (deplacement pur de `KillSourceDecoderRev`), chronique de grammaire
+arretee a `.12` pour une valeur `.14` (F5, mon omission de fusion). Code musee sorti du binaire
+(`DetectI0Layout`, `walkKeyframeBody`, `ScanFilmEquipmentSpawnEvents`), `filmdecVarsGeles` 96 -> 94.
+Deux goldens (`DocumentShape`, `ContractFixtures`) rouges par construction jusqu'a la montee 59 -> 60.
+INCIDENT du soir (18:51) : cache de films vide par un `git worktree remove --force` parti avant le
+retrait des jonctions (appels paralleles) ; restaure a 1 386 films (> 1 351) par la sauvegarde de
+l'autre PC (951, chunk_00 en zlib, le lecteur inflate) + l'API (375) ; regle absolue en memoire
+(retrait des jonctions = un tour seul, verification 0 lien + cache principal, puis remove sans
+--force). Harnais `replay-equiv` : une seule etape affichee par film et TSV supprimes en sortie
+(D2 (pilote) au §4, M2).
+
+**Prochaine etape.** Gates puis fusions 1.9.9 (en cours), 1.9.7, 1.9.11, 1.9.14 ; montee
+`SchemaVersion` 59 -> 60 avec entree de chronique (brouillon `scratchpad/chronique_v60.txt`),
+`REPLAY_CONTRACT_UPDATE=1`, `make openapi-gen`, `make generate-types` ; equivalence + corpus gate
+UNIQUES sur l'arbre fusionne (references provisoires re-figees apres classification) ; push, CI ;
+cloture M1 (V9).
+
+---
+
 ## [2026-09-16] Chantier decodeur — lot 1.9.1 ter (la condition versionnee des films anciens : la cle est la VERSION DE FORMAT ecrite dans le film) — Complete (feat/decfilm-191t fusionnee dans feat/recherche-decodeur-film, 8d7350dac)
 
 **Decision technique principale.** Le chargeur de la section 2 de `chunk_00` est trouve chez
