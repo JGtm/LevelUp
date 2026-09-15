@@ -63,8 +63,12 @@ const (
 	metricHitsDistanceRow = "killsource_hits_distance_lignes"
 	metricHitsNoIndex     = "killsource_hits_indices_non_resolus"
 	metricHitsNoFilmDir   = "killsource_hits_films_absents_disque"
-	metricHitsScanFail    = "killsource_hits_erreurs_scan"
-	metricHitsWriteFail   = "killsource_hits_erreurs_ecriture"
+	// metricHitsNoMapEntry : la carte du film n a pas d entree au catalogue de bornes — donc ni
+	// bornes monde ni decoupage d i0. D-4 d ADR 0034 : une carte inconnue se COMPTE, elle ne se
+	// devine pas. Les touches restent comptees, seule leur distance manque.
+	metricHitsNoMapEntry = "killsource_hits_cartes_hors_catalogue"
+	metricHitsScanFail   = "killsource_hits_erreurs_scan"
+	metricHitsWriteFail  = "killsource_hits_erreurs_ecriture"
 )
 
 // collectHits : la troisieme ecriture de la passe — weapon_accuracy + match_weapon_hit_distance.
@@ -147,22 +151,30 @@ func (c *KillSourceCollector) buildHitsBatches(
 	return accuracy, distance, true
 }
 
-// resolveHitDistanceFunc construit la WeaponHitDistanceFunc (distance tireur<->victime) si les
-// bornes de la carte se resolvent ; nil sinon (distances desactivees, touches comptees). Le
-// catalogue de bornes non configure (mapBoundsPath vide) est un cas NORMAL, pas une erreur.
+// resolveHitDistanceFunc construit la WeaponHitDistanceFunc (distance tireur<->victime) si
+// L ENTREE DE CATALOGUE de la carte se resout ; nil sinon (distances desactivees, touches
+// comptees). Le catalogue de bornes non configure (mapBoundsPath vide) est un cas NORMAL, pas une
+// erreur.
+//
+// L ENTREE ENTIERE, PAS SES SEULES BORNES (lot 1.9.2) : elle porte AUSSI le decoupage d i0 de la
+// carte, que le balayage des positions impose desormais au lieu de le laisser detecter
+// (`filmdec.BuildBipedTracks`). D-3 d ADR 0034. Une carte hors catalogue est comptee
+// (`metricHitsNoMapEntry`, D-4) : sans ce compteur, un titre entier pourrait perdre ses distances
+// en silence.
 func (c *KillSourceCollector) resolveHitDistanceFunc(
 	ctx context.Context, matchID, dir string, damages []filmdec.WeaponDamage, n int,
 ) filmdec.WeaponHitDistanceFunc {
 	if c.mapBoundsPath == "" {
 		return nil
 	}
-	wr, err := filmdec.DetectFilmWorldRange(dir, c.mapBoundsPath, "")
+	entry, err := filmdec.DetectFilmMapEntry(dir, c.mapBoundsPath, "")
 	if err != nil {
-		slog.DebugContext(ctx, "killsource: precision par arme — bornes de carte inconnues, distances desactivees",
+		observability.AddInt(metricHitsNoMapEntry, 1)
+		slog.DebugContext(ctx, "killsource: precision par arme — carte hors catalogue de bornes, distances desactivees",
 			"match_id", matchID, "err", err)
 		return nil
 	}
-	distFn, base, err := filmdec.FilmWeaponHitDistance(dir, wr, damages, n)
+	distFn, base, err := filmdec.FilmWeaponHitDistance(dir, entry, damages, n)
 	if err != nil {
 		slog.DebugContext(ctx, "killsource: precision par arme — positions bipedes indisponibles, distances desactivees",
 			"match_id", matchID, "err", err)

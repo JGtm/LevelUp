@@ -88,8 +88,10 @@ var calculsDuContexteFilm = map[string]bool{
 //
 //	weapon_hit_distance_resolver.go
 //	                      ARRIVE PAR L'AMONT (merge de `feat/v75` du 2026-09-03, chantier
-//	                      « precision par arme » remise le 2026-09-01). `DetectFilmWorldRange`
-//	                      resout les bornes monde d'une carte par la SIGNATURE de largeurs d'axe
+//	                      « precision par arme » remise le 2026-09-01). `DetectFilmMapEntry`
+//	                      (`DetectFilmWorldRange` jusqu'au lot 1.9.2, qui lui a fait rendre
+//	                      l'ENTREE de catalogue entiere et non ses seules bornes)
+//	                      resout l'IDENTITE d'une carte par la SIGNATURE de largeurs d'axe
 //	                      du decoupage i0 : il n'a ni film charge ni contexte, seulement un
 //	                      repertoire, et son unique appelant (`sync/killcollector/hits.go`) est
 //	                      une passe DESACTIVEE en production (capability `match.weapon.accuracy`
@@ -97,8 +99,12 @@ var calculsDuContexteFilm = map[string]bool{
 //	                      sans appelant de production). Entree posee par la RECONCILIATION, pas
 //	                      par un lot : la migrer vers la forme film demande des formes
 //	                      `Scan*(film)` pour trois balayages neufs de l'amont — hors perimetre du
-//	                      merge, consigne au registre des reports. RETRAIT CIBLE : le lot qui
-//	                      rallume la precision par arme, ou celui qui migre `hits.go`.
+//	                      merge, consigne au registre des reports. RETRAIT CIBLE : le LOT 1.9.4
+//	                      (la carte du film vient du nom de match, plus d'une signature de
+//	                      largeurs), qui supprime cet appel — et avec lui le DERNIER usage de
+//	                      production de `DetectI0Layout` comme DECISION. Le lot 1.9.2 a deja
+//	                      retire la seconde detection, celle du DECOUPAGE : il vient desormais de
+//	                      l'entree de catalogue que cette fonction rend.
 var appelsAutorisesDuContexte = map[string]string{
 	"film_context.go/(*FilmContext).BipedSlots -> bipedSlotBand":    "le releve unique de la bande du film",
 	"film_context.go/(*FilmContext).I0Layout -> DetectI0LayoutOf":   "la detection unique du decoupage d'i0",
@@ -107,8 +113,9 @@ var appelsAutorisesDuContexte = map[string]string{
 	"i0_layout.go/DetectI0Layout -> DetectI0LayoutOf":               "enveloppe D2, hors production",
 	"offline_biped.go/ScanBipedPositions -> bipedSlotBand":          "bande sur opt.Chunks : hors perimetre du lot 2",
 	"offline_biped_band.go/bipedI0Layout -> DetectI0LayoutOf":       "repli quand opt.Layout est nil : hors perimetre du lot 2 (le site a change de nom le 2026-09-05 quand `ScanBipedPositionsForBand` a extrait le helper partage par les deux entrees, puis de FICHIER le meme jour — offline_biped.go franchissait les 500 lignes, la plomberie de balayage a ete deplacee dans offline_biped_band.go, sans changement de logique)",
-	"weapon_hit_distance_resolver.go/DetectFilmWorldRange -> DetectI0Layout": "amont 2026-09-03 : " +
-		"signature de largeurs d'axe depuis un repertoire, passe de precision par arme desactivee",
+	"weapon_hit_distance_resolver.go/DetectFilmMapEntry -> DetectI0Layout": "amont 2026-09-03 : " +
+		"signature de largeurs d'axe depuis un repertoire, passe de precision par arme desactivee ; " +
+		"c'est l'IDENTITE de la carte qui se detecte ici, plus son decoupage (lot 1.9.2) — retrait au lot 1.9.4",
 }
 
 // TestContexteFilmCalculeUneFois — REGLE 1.

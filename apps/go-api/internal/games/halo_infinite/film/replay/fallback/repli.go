@@ -104,6 +104,16 @@ const (
 	// CondNonResolu : la lecture a tourné et n'a pas tranché (plusieurs candidats, aucun
 	// candidat, valeur hors domaine).
 	CondNonResolu Condition = "non_resolu"
+	// CondCarteAbsenteDuCatalogue : le fait est une DONNÉE DE PROFIL (D-3 d'ADR 0034 : bornes,
+	// découpage d'axe, géométrie), le catalogue de carte est la source, et CETTE carte n'y a pas
+	// d'entrée exploitable.
+	//
+	// ELLE EXISTE PARCE QUE [CondFilmMuet] MENTIRAIT : le film n'est pas muet, il écrit des
+	// quanta parfaitement lisibles — c'est le référentiel qui manque, et le seul geste qui
+	// retire un tel repli est d'ajouter la carte au catalogue, jamais de mieux lire le film.
+	// Confondre les deux ferait chercher la correction du mauvais côté de la frontière. Ajoutée
+	// au lot 1.9.2 (2026-09-15) avec la rétrogradation du découpage d'i0.
+	CondCarteAbsenteDuCatalogue Condition = "carte_absente_du_catalogue"
 	// CondInconditionnel : le repli s'applique TOUJOURS, sans diagnostic. C'est la forme la
 	// plus grave : rien ne dit si une lecture existait.
 	CondInconditionnel Condition = "inconditionnel"
@@ -248,6 +258,7 @@ var (
 	conditionsConnues = map[Condition]bool{
 		CondFilmMuet: true, CondSectionAbsente: true, CondLectureNonPortee: true,
 		CondContradiction: true, CondNonResolu: true, CondInconditionnel: true,
+		CondCarteAbsenteDuCatalogue: true,
 	}
 	ordresConnus = map[Ordre]bool{
 		OrdreApresLecture: true, OrdreSansLecture: true, OrdreDevantLaLecture: true,

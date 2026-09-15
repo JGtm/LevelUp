@@ -40,4 +40,10 @@ package filmdec
 // inchangee, empreinte differente » — c'est-a-dire faire taire le ratchet dans le cas precis
 // pour lequel il existe : une grammaire qui change. La forme admet donc un rang, et la revision
 // continue de nommer ce qu'elle nomme.
-const GrammarRev = "grammar-2026-09-15.1"
+// LOT 1.9.2 (2026-09-15) : `grammar-2026-09-15.1` -> `grammar-2026-09-15.2`. Le résolveur de
+// distance de touche (`weapon_hit_distance_resolver.go`) prend désormais l'ENTRÉE DE CATALOGUE de
+// la carte au lieu de ses seules bornes, et en impose le DÉCOUPAGE d'i0 au balayage des positions
+// — là où `ScanFilmOptions.Layout` restait nil, donc où `DetectI0LayoutOf` décidait. Aucune
+// grammaire d'octets n'est réécrite ; ce qui change est QUELLE grammaire s'applique, et c'est
+// exactement ce que cette révision doit nommer.
+const GrammarRev = "grammar-2026-09-15.2"
