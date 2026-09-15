@@ -407,6 +407,27 @@ Reprise de session : lire cette section puis `git log --oneline -10` dans le wor
 
 ---
 
+### Revue adversariale du 2026-09-16 — P2 consignés (réels, hors périmètre, non corrigés)
+
+- `internal/service/xbox_auth_service.go` (redeemInvite) : la consommation du code est
+  best-effort APRÈS la création du compte. Si `invites.Consume` échoue (E/S), le compte et son
+  droit existent et l invitation reste valide → un second xuid peut la présenter. L ordre
+  inverse serait pire (code consommé sans compte : invité bloqué). Un mécanisme de
+  réservation atomique du code relèverait d un chantier à part.
+- `internal/api/handlers/settings.go` (`handlePostRecalculateSessions`) :
+  `config.PlayerDBPath(h.cfg, "", p.Gamertag)` avec titre VIDE dans une boucle qui itère
+  tous les titres → un profil `halo_5` est recalculé dans le chemin `halo_infinite`.
+  Préexistant au lot, non introduit par lui.
+- Couverture : `resolvePendingInvite` n est testé qu avec un code introuvable, jamais avec
+  `IsValid()` faux (expiré / déjà consommé en store) ; aucun test de `GET /friends` anonyme
+  (le code répond 403, vérifié par lecture).
+- Couverture (ronde 2) : le retrait des deux retours anticipés sur liste vide dans
+  `friends_orchestrator_service.go` n a pas de test propre (pas de
+  `friends_orchestrator_service_test.go`) ; la démotion sur liste vide est prouvée un cran
+  plus bas (`sync.TestRecomputeIsWithFriends_EmptyFriendsList_DemotesGracefully`) et le
+  déclenchement un cran plus haut (test handler). Un test d orchestrateur exigerait une
+  fixture DuckDB player+shared.
+
 ## Annexe A — Procédure « Nuzzles » (à la main de l'utilisateur, hors plan de code)
 
 Ordre recommandé, indépendant des étapes 1-7 sauf mention :
@@ -790,3 +811,31 @@ migration de groupe par défaut est conservée et re-sourcée depuis `friendstor
 
 **Plan CLOS** : tous les items des étapes 0 à 7 sont statués (`[x]`, `[~]` avec référence,
 aucun `[!]`).
+
+### Revue adversariale (7.2) — 2026-09-16 ~00:30-01:00 — pilote
+
+Deux relecteurs aveugles en parallèle (contrôle d'accès + couverture ; migration/sync/front +
+anti-patterns), contrat écrit, filtre de recevabilité. 10 constats recevables, 0 jeté.
+
+- **P0 (2), corrigés** : `setup.go` — le droit de provisioning laissait passer `profile_mode`
+  ≠ xbox et un xuid vide, donc un profil pour un gamertag/xuid étrangers (`b749e6759`, 2
+  tests) ; `friends_orchestrator_service.go` — retour anticipé sur liste vide → aucune
+  démotion au retrait du dernier ami (`9b11e49ee`, test handler PUT non vide / vide /
+  inchangé).
+- **P1 (5), corrigés** (`9b11e49ee`) : doc inversée de l'orchestrateur ; invalidations
+  Carrière/Accueil manquantes après PUT (préfixes `careerAll`/`homeAll` + garde-rail) ;
+  rejeu 2D reconstruit à chaque tick (objet non mémoïsé, `?? []` neuf) ; 4 clés i18n mortes ;
+  `slog.Warn` nu.
+- **P2 (3), consignés** en §10, non corrigés.
+- Gates rejoués après corrections : handlers/service Go ciblés → 0 ; `go build` serveur, CLI,
+  `internal/...` → 0 ; typecheck (cache purgé) → 0 ; lint → 0 erreur ; vitest ciblé → 0.
+  Suites complètes Go et vitest : voir entrée suivante.
+- Ronde 2 (relecture des seules corrections, contexte frais) : voir entrée suivante.
+
+### Revue adversariale, ronde 2 — 2026-09-16 ~01:10 — pilote — CLOSE
+
+Relecture des seules corrections (`0c8460c66..9b11e49ee`) par un contexte frais : **0 P0, 0 P1**,
+2 P2 (test d'orchestrateur absent → consigné §10 ; godoc de `RecomputeIsWithFriends` disant
+« vide → no-op » → remis à l'endroit dans le commit de clôture, c'est la doc qui avait justifié
+le court-circuit). C1..C6 fermés, 19 conditions vérifiées qui tiennent. P0+P1 : 7 → 0, boucle
+close à la ronde 2 (borne du skill).
