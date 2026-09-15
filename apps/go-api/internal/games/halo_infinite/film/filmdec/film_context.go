@@ -172,10 +172,12 @@ func NewFilmContextForMap(film *filmsource.Film, entry *MapQuantEntry, forced *I
 // et l absence de chunk est deja dite par [ErrNoFilmChunk] la ou elle compte.
 //
 // `slog.Warn` et non `WarnContext` : ce constructeur ne prend pas de `ctx`, comme
-// `replay.installWorldObjectPrecision` et `replay.avertirFormatSansProfil`, qui journalisent de
-// la meme facon sur le meme chemin. RECOUVREMENT ASSUME avec `avertirFormatSansProfil` sur le
-// seul cas « format inconnu » : cette ligne-ci nomme le PROFIL et ses deux cles et couvre aussi
-// le chemin `killcollector`, ou aucun autre avertissement n existe.
+// l installateur des largeurs d axe de la carte (`replay/world_object_precision.go`) et
+// `replay.avertirFormatSansProfil`, qui journalisent de la meme facon sur le meme chemin.
+//
+// RECOUVREMENT ASSUME avec `avertirFormatSansProfil` sur le seul cas « format inconnu » : cette
+// ligne-ci nomme le PROFIL et ses deux cles, et elle couvre aussi le chemin `killcollector`, ou
+// aucun autre avertissement n existe.
 func journaliserProfilIncomplet(film *filmsource.Film, p Profile) {
 	if p.Err() == nil {
 		return

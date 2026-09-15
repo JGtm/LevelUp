@@ -217,8 +217,7 @@ func ResolveProfile(film *filmsource.Film, entry *MapQuantEntry) Profile {
 		p.err = errors.Join(erreurFormatInconnu(FilmFormatVersionUnknown), erreurBuildInconnu(""))
 		return p
 	}
-	majeure, majeureLue := FilmMajorVersionFromHeader(reg)
-	p.highlight = highlightDuProfil(majeure, majeureLue)
+	p.highlight = HighlightProfileFromHeader(reg)
 	format, formatLu := FilmFormatVersionFromHeader(reg)
 	if formatLu {
 		p.format = format
@@ -243,6 +242,33 @@ func ResolveProfile(film *filmsource.Film, entry *MapQuantEntry) Profile {
 	}
 	p.err = errors.Join(errs...)
 	return p
+}
+
+// HighlightProfileOfFilm rend l implantation du gamertag d un film DEJA CHARGE : la seule part
+// du profil dont les lecteurs de temps forts aient besoin.
+//
+// POURQUOI UNE PORTE ETROITE, ET PAS [ResolveProfile] : les trois sites qui decoupent un bloc
+// d evenement de temps fort n ont pas de carte, et deux d entre eux n ont pas de film complet.
+// Leur faire resoudre le profil ENTIER — donc lire la section d identification et la table par
+// type — couterait une analyse de registre de plus par appel pour une valeur qui tient dans les
+// quatre premiers octets. La VALEUR est la meme : c est la meme fonction qui la compose ici et
+// dans [ResolveProfile], et [Profile.Highlight] la rend a l identique.
+func HighlightProfileOfFilm(f *filmsource.Film) HighlightProfile {
+	reg, ok := FilmRegistryChunk(f)
+	if !ok {
+		return highlightDuProfil(FilmMajorVersionUnknown, false)
+	}
+	return HighlightProfileFromHeader(reg)
+}
+
+// HighlightProfileFromHeader rend l implantation du gamertag depuis un `chunk_00` DECOMPRESSE.
+//
+// C est la forme des appelants qui tiennent des octets bruts et pas un film (le backfill du flux
+// de medailles lit son registre au cache). Un chunk trop court rend l implantation historique
+// avec [HighlightProfile.Lue] a faux : la degradation se NOMME, elle ne se tait pas.
+func HighlightProfileFromHeader(chunk0 []byte) HighlightProfile {
+	majeure, lue := FilmMajorVersionFromHeader(chunk0)
+	return highlightDuProfil(majeure, lue)
 }
 
 // highlightDuProfil compose l implantation du gamertag depuis la version majeure.
