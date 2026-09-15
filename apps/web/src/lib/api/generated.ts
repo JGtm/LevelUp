@@ -1932,6 +1932,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/friends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste d'amis du joueur (lecture : propriétaire, co-membre de groupe ou admin) */
+        get: operations["getPlayerFriends"];
+        /** Remplace la liste d'amis du joueur (propriétaire direct ou admin) */
+        put: operations["putPlayerFriends"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/matches/{match_id}": {
         parameters: {
             query?: never;
@@ -9640,6 +9658,12 @@ export interface components {
             sync_age_seconds?: number;
             xuid: string;
         };
+        PlayerFriends: {
+            can_edit: boolean;
+            gamertags: string[];
+            updated_at?: string;
+            xuid: string;
+        };
         PlayerIdentity: {
             AvatarURL: string;
             EmblemURL: string;
@@ -17233,6 +17257,68 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPlayerFriends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFriends"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    putPlayerFriends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFriends"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {

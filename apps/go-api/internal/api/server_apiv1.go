@@ -476,6 +476,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	}
 
 	// Sprint 16 : Settings + Setup joueur
+	// Orchestrateur du recompute is_with_friends : déclenché par le PUT de la
+	// liste d'amis d'un joueur (handlers/friends.go), avec SA liste.
+	friendsOrchestrator := service.NewFriendsOrchestratorService(cfg, friendStore.Get).
+		WithNotifier(reg.NotificationsEmitter)
 	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
 		WithFriendStore(friendStore).
 		WithBackupScheduler(backupScheduler)
@@ -668,6 +672,16 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		filters := handlers.NewFiltersHandler(reg.Filters)
 		filters.Mount(r, playerOpt)
+
+		// Amis du joueur (liste par profil, D1/D4) : lecture pour qui accède au
+		// profil, écriture pour le propriétaire direct ou un admin. Le recompute
+		// is_with_friends du joueur suit chaque écriture.
+		friendsHandler := handlers.NewFriendsHandler(friendStore, users,
+			handlers.PlayerXUIDResolver(playerOwnershipXUIDResolver(cfg)),
+			playerGamertagResolver(cfg), cfg.DemoMode, cfg.AuthMode).
+			WithRecomputer(friendsOrchestrator).
+			WithNotifications(reg.NotificationsEmitter, cfg.AppSettingsPath)
+		friendsHandler.Mount(r, playerOpt)
 
 		mh := handlers.NewMatchHistoryHandler(reg.MatchHistoryCtx)
 		mh.Mount(r, playerOpt) // POST /pages/match-history/query (export CSV reste chi, plus bas)
