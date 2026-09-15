@@ -21,6 +21,59 @@
 #
 #
 #
+# REFERENCES RE-FIGEES AU COMMIT d8a0c50dd, SCHEMA 59, LE 2026-09-16 (lot 1.9.9). CINQ des dix films
+# du regime court ont bouge : `50247b26`, `a521164d`, `11de8353`, `111fa685`, `e5adf7b2`. Cinq
+# sont restes IDENTIQUES : `60ae07c4`, `bcb6d393`, `51101d1d`, `d9781168`, `fb1a1a72`.
+#
+# LA LIGNE DE PARTAGE EST CELLE DES VEHICULES, et elle est nette : les cinq films qui bougent
+# sont les cinq BTB / Heavies (Oasis, Fragmentation Heavies, Thunderhead, Command,
+# Fragmentation) ; les cinq identiques sont les cinq ARENES (Live Fire Ranked Oddball,
+# Cliffhanger CTF, Fortress CTF, Dredge Oddball, Banished Narrows CTF), ou aucun vehicule ne
+# naît. Un lot qui ne touche qu a la table des chassis ne peut pas produire une autre carte.
+#
+# UNE SEULE ETAPE BOUGE SUR LES 53, `artifact`, et c est la DERNIERE (le contrat le fige :
+# `cmd/replay-equiv/parent_test.go`, « derniere etape attendue artifact »). C est ce qui rend la
+# lecture COMPLETE : `comparer()` s arrete au PREMIER ecart, donc un ecart rapporte a l etape 53
+# prouve que les 52 precedentes sont identiques. Le `git diff` des cinq `.tsv` le confirme
+# mecaniquement — cinq lignes, toutes `artifact`, sur 530 lignes d etapes.
+#
+# AUCUNE ETAPE DE DECODAGE NE BOUGE, y compris `vehicles` (etape 42). C est exact et c est le
+# point : `s.opt.observe("vehicles", s.in.Vehicles)` (`film_scan.go`) digere le BALAYAGE du film
+# — images-cles, creations, positions, evenements, visees —, pas les vies publiees. La table des
+# chassis s applique plus tard, a l assemblage. Le decodeur lit donc les memes octets ; seul le
+# document publie change.
+#
+# LES CINQ DOCUMENTS GROSSISSENT, et le delta est proportionnel a ce que le lot rend :
+#   50247b26  5 600 811 -> 5 675 668  (+74 857)
+#   a521164d  3 406 910 -> 3 460 827  (+53 917)
+#   e5adf7b2  5 836 251 -> 5 868 332  (+32 081)
+#   11de8353  5 347 685 -> 5 356 149  ( +8 464)
+#   111fa685  5 935 757 -> 5 935 816  (    +59)
+# Le `+59` de `111fa685` est la taille d une entree `coverage.fallbacks[]` et RIEN d autre :
+# aucun de ses chassis n est parmi les sept nommes, son golden d assemblage n a pas bouge non
+# plus. Les quatre autres portent en plus des familles resolues, les occupants qui reviennent et
+# les tirs qui se rattachent.
+#
+# POURQUOI ON PEUT RE-FIGER ICI — TROIS CHAINES INDEPENDANTES, ET ELLES CONCORDENT.
+#   (1) LA PIECE ECRITE. Les sept chassis entres viennent tous de
+#       `.ai/V7.5/film_re/sons_v3_reconstruits/manifeste_v3.json` (section `par_vehicule`),
+#       celle que la table citait deja pour `fe32c0f4`. Un meme vehicule est declare dans
+#       PLUSIEURS modules du jeu sous un GlobalID par module — le manifeste l ecrit :
+#       « f6f54e56 (any/globals) = chassis 0000d3db (pc/globals), meme hlmt ».
+#   (2) LA MESURE. Sur 76 artefacts du parc, AUCUN identifiant de base d une famille
+#       Covenant/UNSC n est jamais observe ; seul le second l est. Le Wraith et le Scorpion, qui
+#       n avaient QUE leur base, ne se resolvaient donc jamais.
+#   (3) LA KILLSOURCE, seconde source independante de la chaine de destruction : 37 kills sur 40
+#       au tag `sb_010_veh_cv_wraith` tombent DANS une vie de `ae845375`, et 4 sur 4 au tag
+#       `sb_010_veh_un_scorpion` dans la vie de `f6f54e56`. Les 3 restants sont du MEME tueur,
+#       6,5 s et 22,8 s apres la fin publiee de la vie ou il tuait deja — le defaut de borne de
+#       recensement que le lot 1.9.10 corrige, pas une refutation.
+#
+# CE QUE LES CINQ FILMS IDENTIQUES ETABLISSENT : le lot ne touche rien hors du calque des
+# vehicules. Cinq arenes, cinq modes differents, 53 etapes chacune : zero difference.
+#
+# MESURE APRES RE-FIGEAGE : 10 films, 10 identiques, 0 different, 0 ecarte, 0 echec.
+#
 # REFERENCES RE-FIGEES AU COMMIT 76d36b911, SCHEMA 59, LE 2026-09-16 (lot 1.9.1 bis). Sept des
 # dix films du regime court ont bouge : `60ae07c4`, `111fa685`, `e5adf7b2`, `bcb6d393`,
 # `51101d1d`, `d9781168`, `fb1a1a72`. Trois sont restes IDENTIQUES : `50247b26`, `a521164d`,
