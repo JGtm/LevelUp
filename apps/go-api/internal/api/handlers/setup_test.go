@@ -343,3 +343,45 @@ func TestSetupHandler_LockedWithGrant_ForeignGamertagRefused(t *testing.T) {
 		t.Fatalf("= %d, want 409 identity_mismatch (corps = %s)", w.Code, w.Body.String())
 	}
 }
+
+// Constat P0 de revue (2026-09-16) : le droit de provisioning ne doit pas
+// permettre de contourner le bloc d'identité en changeant profile_mode. Un
+// invité qui envoie "azure_manual" avec un gamertag/xuid étrangers reçoit 409 et
+// AUCUN profil n'est créé.
+func TestSetupHandler_LockedWithGrant_NonXboxModeCannotSpoofIdentity(t *testing.T) {
+	svc := &mockProfileService{playerKey: "Other"}
+	r, users, sessions, _ := lockedSetupRig(t, svc)
+	cookie := guestSession(t, users, sessions, "Guest", "guest-x", "INVITE1")
+
+	w := postCreatePlayer(t, r, cookie, `{"gamertag": "Autrui", "profile_mode": "azure_manual", "xuid": "autrui-x"}`)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("= %d, want 409 identity_mismatch (corps = %s)", w.Code, w.Body.String())
+	}
+	if svc.lastReq.Gamertag != "" {
+		t.Fatalf("CreatePlayer appelé avec %+v : aucun profil ne doit être créé", svc.lastReq)
+	}
+	user, err := users.GetByXUID("guest-x")
+	if err != nil {
+		t.Fatalf("GetByXUID: %v", err)
+	}
+	if user.ProvisionGrant == "" {
+		t.Errorf("le droit a été consommé alors que la création a été refusée")
+	}
+}
+
+// Sur le chemin du droit, un xuid absent du corps est celui du porteur et le
+// mode est forcé à xbox : le profil créé porte le xuid du compte (sinon la garde
+// « déjà un profil » ne le retrouverait jamais et le droit serait rejouable).
+func TestSetupHandler_LockedWithGrant_PinsIdentityToHolder(t *testing.T) {
+	svc := &mockProfileService{playerKey: "Guest"}
+	r, users, sessions, _ := lockedSetupRig(t, svc)
+	cookie := guestSession(t, users, sessions, "Guest", "guest-x", "INVITE1")
+
+	w := postCreatePlayer(t, r, cookie, `{"gamertag": "guest", "profile_mode": "azure_manual"}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("= %d, want 201 (corps = %s)", w.Code, w.Body.String())
+	}
+	if svc.lastReq.XUID != "guest-x" || svc.lastReq.ProfileMode != "xbox" {
+		t.Fatalf("requête transmise = %+v, want xuid guest-x et profile_mode xbox", svc.lastReq)
+	}
+}

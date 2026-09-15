@@ -167,6 +167,24 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 		req.ProfileMode = authModeXbox
 	}
 
+	// Verrou levé par un droit de provisioning : la requête est ÉPINGLÉE à
+	// l identité du porteur, quel que soit profile_mode. Sans cela un invité
+	// pouvait envoyer profile_mode "azure_manual" (ou un xuid vide) et sauter le
+	// bloc d identité ci-dessous, donc écrire dans db_profiles.json un profil pour
+	// un gamertag et un xuid étrangers (constat P0 de revue, 2026-09-16). Le droit
+	// ne vaut que pour SON premier profil : gamertag et xuid du compte, mode xbox.
+	if grantHolder != nil {
+		if !strings.EqualFold(req.Gamertag, grantHolder.Gamertag) ||
+			(req.XUID != "" && req.XUID != grantHolder.XUID) {
+			slog.WarnContext(ctx, "setup: droit de provisioning refusé — identité étrangère",
+				"username", grantHolder.Username, "gamertag", req.Gamertag, "xuid", req.XUID)
+			return nil, humacore.NewError(http.StatusConflict, "identity_mismatch",
+				"Le droit de provisioning ne vaut que pour votre propre compte Xbox.")
+		}
+		req.XUID = grantHolder.XUID
+		req.ProfileMode = authModeXbox
+	}
+
 	// Titre cible : priorité au body (onboarding multi-titre — le front crée un
 	// profil par titre choisi, avec son initial_max_matches) sinon le titre du
 	// contexte (header/session), sinon le titre par défaut.
