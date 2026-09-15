@@ -142,7 +142,9 @@ var registreKillsource = []Repli{
 		// retrait soit lisible au même endroit que les autres.
 		CritereRetrait:  "RosterTable.Inferred a 0 sur le parc apres la recuisson de cloture M1",
 		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.3 ou cloture M1 (le compte existe deja sous RosterTable.Inferred ; il reste a le publier sous ce nom)",
+		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.3, fusionne
+		// le 2026-09-15 sans avoir publie ce compte sous son nom de registre.
+		CibleComptage: "cloture de M1, avec la recuisson (le compte existe deja sous RosterTable.Inferred ; il reste a le publier sous ce nom)",
 	},
 	{
 		Nom:       "repli_couple_recolle_sur_le_voisin",

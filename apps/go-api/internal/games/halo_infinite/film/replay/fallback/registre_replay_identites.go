@@ -49,11 +49,28 @@ var registreReplayIdentites = []Repli{
 			Fichier: pkgReplay + "identity.go",
 			Ancre:   "bestOverlap, bestXUID = ov, l.xuid",
 		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.13 (les vies se decoupent aux morts ecrites, donc ne se recouvrent plus)",
+		DatePose: dateAudit0E,
+		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1). Elle nommait le lot 1.9.13, fusionne
+		// le 2026-09-15 : le lot a bien FERMÉ le défaut (les vies se découpent aux morts écrites,
+		// donc ne se recouvrent plus) et le critère est TENU — 0 déclenchement sur les 8 goldens
+		// d'assemblage, bloc « REPLIS DECLENCHES », alors que `nameTracksByLives` y tourne sur
+		// 99 à 144 pistes par film. L'entrée ne SORT pourtant pas encore, pour deux raisons
+		// écrites :
+		//
+		//	(1) D14 (d) retire au JALON SUIVANT ce dont le compte est nul À LA CLÔTURE d'un jalon,
+		//	    et sur LE CORPUS : les 8 goldens sont 8 films, le corpus gate en porte 14 et le
+		//	    parc 1 351. Le gate de clôture de M1 tranche ;
+		//	(2) le « site » n'est pas du code mort séparable. L'ancre est la SÉLECTION par
+		//	    recouvrement maximal, qui nomme CHAQUE piste ; ce qui est un repli, c'est
+		//	    l'arbitrage à partir du deuxième candidat, et il n'a pas de branche à lui.
+		//	    Retirer l'entrée retirerait donc le COMPTEUR — le seul instrument qui prouve que
+		//	    le zéro dure — en laissant l'arbitrage anonyme dans le code, ce que D14 (a)
+		//	    interdit. Le retrait propre est une CONVERSION (abstention explicite dès deux
+		//	    candidats), et elle appartient à M2.
+		CibleRetrait: "M2 : abstention explicite des deux candidats, puis retrait de l'entree (le compte est nul depuis le 2026-09-15)",
 		// Sans seuil, un recouvrement d'une seule frame l'emporte sur l'absence : le compte dit
 		// combien de pistes sont nommées par un arbitrage plutôt que par une lecture.
-		CritereRetrait:  "0 piste arbitree par recouvrement sur les 8 builds",
+		CritereRetrait:  "0 piste arbitree par recouvrement sur les 8 builds : TENU le 2026-09-16 (0/8, goldens d'assemblage) ; reste a confirmer au corpus gate",
 		CompteurBranche: true,
 	},
 	{
@@ -263,11 +280,22 @@ var registreReplayIdentites = []Repli{
 			Fichier: pkgReplay + "flag_carries.go",
 			Ancre:   "r.x1, r.y1 = p0.X, p0.Y",
 		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.13 (les vies couvrent alors la fin du portage)",
+		DatePose: dateAudit0E,
+		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, fusionne
+		// le 2026-09-15.
+		//
+		// ET LE CRITERE N'EST PAS MESURE, CONTRAIREMENT A CE QUE LES GOLDENS LAISSENT CROIRE.
+		// Le compteur est câblé et les 8 goldens d'assemblage affichent 0 — mais ce 0 dit
+		// « NON EXERCÉ », pas « non déclenché » : `FilmInputs.applyTo` (`film_inputs.go`) pose
+		// `opt.Flag.Marks` et JAMAIS `opt.Flag.Scanned`, donc `attachFlagCarries` prend sa
+		// branche vide sur les huit fixtures, `buildFlagCarries` ne reçoit aucun portage et
+		// `attachFlagCarryPositions` n'est jamais atteint. Aucun des huit films n'apporte de
+		// calque drapeau. La mesure demande un film de CTF cuit en entier — corpus gate, ou un
+		// fixture d'entrées portant le canal drapeau.
+		CibleRetrait: "M2 : mesurer d'abord (le canal drapeau n'est exerce par AUCUN des 8 goldens), puis retrait sec si le compte est nul au corpus gate",
 		// Deux points identiques se lisent sur la carte comme un portage immobile : le repli
 		// FABRIQUE une donnée plausible, ce qui est la forme la plus difficile à repérer.
-		CritereRetrait:  "0 portage dont la fin n'a pas de point publie sur les 8 builds",
+		CritereRetrait:  "0 portage dont la fin n'a pas de point publie, mesure sur un corpus qui PORTE le calque drapeau (les 8 goldens ne l'exercent pas — verifie le 2026-09-16)",
 		CompteurBranche: true,
 	},
 	{

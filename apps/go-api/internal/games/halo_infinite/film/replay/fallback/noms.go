@@ -41,4 +41,11 @@ const (
 	NomVieCoupeeAuTrouDeReplication Nom = "repli_vie_coupee_au_trou_de_replication"
 	// NomArmementBombeDebutAZero : `replay/bomb_armings.go`, `buildBombArmings`.
 	NomArmementBombeDebutAZero Nom = "repli_armement_bombe_debut_a_zero"
+	// NomGesteDernierOccupantDuMatch : `replay/usage_summary_owners.go`, `usageOwners.at` et
+	// `usageOwners.atOrJustBefore`.
+	NomGesteDernierOccupantDuMatch Nom = "repli_geste_dernier_occupant_du_match"
+	// NomGestePremiereVieDuSlot : `replay/usage_summary_owners.go`, `usageOwners.atOrJustBefore`.
+	NomGestePremiereVieDuSlot Nom = "repli_geste_premiere_vie_du_slot"
+	// NomGardeEquipementNegatifAZero : `replay/usage_summary_outcomes.go`, `deriveUsageKept`.
+	NomGardeEquipementNegatifAZero Nom = "repli_garde_equipement_negatif_a_zero"
 )
