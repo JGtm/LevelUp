@@ -63,6 +63,10 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	if opt.Fallbacks == nil {
 		opt.Fallbacks = fallback.NouveauCompteur()
 	}
+	// L AVERTISSEMENT UNIQUE PAR FILM quand la version de format de `chunk_00` est inconnue de
+	// la table de profil (lot 1.9.1 ter) : ici, avant tout balayage, pour que la ligne PRECEDE
+	// les consequences qu elle explique. Les COMPTEURS, eux, tombent aux deux sites du repli.
+	avertirFormatSansProfil(film, matchID)
 	// Les largeurs d'axe du chemin WORLD-OBJECT sont un global de paquet : installées ici,
 	// sous le verrou, pour TOUT le decodage du film, et restaurees au retour.
 	defer installWorldObjectPrecision(*opt.MapQuant, matchID, opt.Fallbacks)()

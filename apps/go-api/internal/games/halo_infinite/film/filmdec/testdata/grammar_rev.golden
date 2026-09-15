@@ -264,20 +264,29 @@
 #               calibration tranchait autre chose que 9/5 lit desormais 9/5.
 #               `SchemaVersion` reste 59 EN ATTENTE du `replay-corpus-gate`, qui n a pas pu etre
 #               joue (voie de decodage transferee au lot 1.9.3).
-#   2026-09-15  grammar-2026-09-15.8  lot 1.9.4 : LA CARTE D UN FILM VIENT DE SON NOM DE MATCH.
-#               `DetectFilmMapEntry` est SUPPRIMEE de `weapon_hit_distance_resolver.go` — elle
-#               identifiait la carte par la SIGNATURE de ses largeurs d axe (`DetectI0Layout`),
-#               alors que son unique appelant (`sync/killcollector/hits.go`) tenait deja le nom
-#               de carte du match et lui passait `mapNameOverride` VIDE. Mesure du lot : 68 des
-#               79 cartes du catalogue partagent leur signature avec une autre (une classe en
-#               compte 59), et sur 17 films la signature rend 2 accords, 13 ambiguites et
-#               2 DESACCORDS (les deux Live Fire, ou elle designe `aquarius`). AUCUN BIT LU NE
-#               CHANGE : l empreinte monte parce qu elle hache des octets de source. Ce qui
-#               change est QUELLE carte — donc quelles bornes et quel decoupage — s applique.
-#               `DetectI0Layout` n a plus AUCUN appelant de production ; le ratchet est le
-#               retrait de son entree d allowlist dans `archlint/no_recomputed_film_context`.
-#               `KillSourceDecoderRev` ne bouge pas (`film/killsource/` inchange, son propre
-#               ratchet d empreinte fait foi) ; `SchemaVersion` reste 59 (le chemin de cuisson
-#               n appelait pas cette fonction). VERIFIE : equivalence 10/10 identiques, corpus gate 14 temoins a
-#               0 gain / 0 perte / 0 CHANGEMENT, schema 59 des deux cotes.
-grammar-2026-09-15.8	84442e2e75b10c3dee7bf9e625e7865b512e9e8bfb6b1c81a19a7f7afd2d380b
+#   2026-09-15  grammar-2026-09-15.8  lot 1.9.1 ter : LA CLE DU PROFIL N EST PLUS LE BUILD,
+#               C EST LA VERSION DE FORMAT DU FILM. Le second u32 de `chunk_00` (`+4`) est la
+#               version de format : le LECTEUR du jeu (`FUN_14299ab50`) en derive la largeur du
+#               registre (`FUN_141cfff30`) et celle de la table par type (`FUN_141cffe20`), et
+#               les six branches de version de l executable la lisent par `FUN_1428e1c0c`. Le
+#               decoupage du bloc MPP est donc keye par elle (`mppWidthsPourFormat`), la largeur
+#               de personnalisation restant keyee par le BUILD — le format 24 porte trois builds
+#               dont deux personnalisations differentes, ce qui INTERDIT de n en garder qu une.
+#               AUCUN BIT LU NE CHANGE : sur les 1 351 films du cache les deux cles rendent le
+#               meme decoupage. LA REVISION MONTE parce que le CADRE change, et parce que la
+#               nouvelle cle couvre les CINQ films sans section d identification (format 20),
+#               que l ancienne ne pouvait pas nommer. `SchemaVersion` reste 59.
+#   2026-09-15  grammar-2026-09-15.9  lot 1.9.1 ter (second commit) : LES CONSEQUENCES DE LA
+#               CLE FORMAT. (a) La condition du repli `repli_largeurs_mpp_calibrees_sur_le_film`
+#               est RENOMMEE `build_sans_profil_relu` -> `format_sans_profil_relu` : elle
+#               nommait une cle qui n existe plus. Les traces DATEES gardent l ancien nom
+#               (l entree `.6` ci-dessus en particulier) — ce sont des releves du jour ou la
+#               condition a ete posee, pas la doc courante. (b) Le declenchement du repli sur un
+#               format INCONNU est desormais COMPTE (`filmdec_unknown_format_<n>`, nomme par
+#               `filmdec.UnknownFormatExpvarPairs`, cable aux deux sites du registre par
+#               `replay/mpp_format_inconnu.go`) et signale par UN avertissement par film. Un
+#               format inconnu tombe sur les largeurs CALIBREES — le repli tient le parc neuf au
+#               lieu de l eteindre — et la branche est gardee par `mpp_format_inconnu_test.go`,
+#               mutation verifiee dans les deux sens. AUCUN BIT LU NE CHANGE ; la revision monte
+#               pour le CADRE. `SchemaVersion` reste 59.
+grammar-2026-09-15.10	c7ebec2188bbdfdac461a5a322a068ebec934f46e80da9aba2ea67514d157ea2

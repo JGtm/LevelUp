@@ -102,6 +102,17 @@ type EquipmentPlacementStats struct {
 	// ByID compte les poses par GlobalID `eqip` — la distribution qui se croise avec le
 	// manifeste et avec le rang de capacité du poseur.
 	ByID map[uint32]int
+	// FormatVersion est la version de format de `chunk_00` lue sur ce film (0 : illisible).
+	FormatVersion int
+	// FormatSansProfil dit que cette version de format est ABSENTE de la table de profil — donc
+	// que les largeurs MPP viennent du repli calibré et non d'un profil.
+	//
+	// IL REMONTE ICI PARCE QUE `filmdec` NE PUBLIE PAS : il NOMME son compteur
+	// ([UnknownFormatExpvarPairs]) et c'est `replay` qui le câble, même patron que
+	// [UnknownBuildExpvarPairs]. Sans ce drapeau, l'appelant devrait re-résoudre le format pour
+	// son propre compte — deux lectures de la même valeur, qui divergeraient au premier format
+	// ajouté.
+	FormatSansProfil bool
 }
 
 // ScanFilmEquipmentPlacements décode les POSES d'objets d'équipement du film de dir.
@@ -160,13 +171,21 @@ func ScanEquipmentPlacements(
 	st.Lives = len(spans)
 
 	defer SetMPPWidths(CurrentMPPWidths())
-	// LE PROFIL DU BUILD PASSE DEVANT LA CALIBRATION (lot 1.9.1 bis, pas 3, arbitrage du pilote).
-	// Quand le build porte sa largeur MPP RELUE chez l ecrivain (>= HI_1_12_0), elle EST la
-	// grammaire et la calibration ne decide plus rien : elle reste jouee, mais comme CONTROLE —
-	// `st.Calibration` publie ce que le film mesure, et l accord ou le desaccord avec le profil
-	// se lit dans les stats. Quand le build n a PAS de largeur relue, la calibration decide
-	// encore : c est le repli NOMME `repli_largeurs_mpp_calibrees_sur_le_film` du registre
-	// (condition `build_sans_profil_relu`, ordre `apres_lecture` — le build se lit d abord).
+	// LE PROFIL PASSE DEVANT LA CALIBRATION (lot 1.9.1 bis, pas 3, arbitrage du pilote).
+	// Quand la VERSION DE FORMAT du film porte sa largeur MPP RELUE chez l ecrivain (format 27),
+	// elle EST la grammaire et la calibration ne decide plus rien : elle reste jouee, mais comme
+	// CONTROLE — `st.Calibration` publie ce que le film mesure, et l accord ou le desaccord avec
+	// le profil se lit dans les stats. Sinon la calibration decide encore : c est le repli NOMME
+	// `repli_largeurs_mpp_calibrees_sur_le_film` du registre (condition
+	// `format_sans_profil_relu`, ordre `apres_lecture` — le profil se resout d abord).
+	//
+	// DEUX FACONS DE N AVOIR PAS DE PROFIL, ET UNE SEULE EST UN EVENEMENT. Format CONNU sans
+	// largeur relue (20, 21, 24, 25) : etat normal du parc ancien, rien a signaler. Format
+	// INCONNU (28 au prochain patch du jeu) : le repli tient le parc neuf — il ne l eteint pas —
+	// mais il doit se VOIR, d ou `st.FormatSansProfil`, que `replay` publie en compteur.
+	st.FormatVersion, _ = FilmFormatVersion(fc.Film())
+	_, errFormat := MPPWidthsForFormat(st.FormatVersion)
+	st.FormatSansProfil = errFormat != nil
 	profil, errProfil := BuildProfileFromFilm(fc.Film())
 	profilRelu := errProfil == nil && profil.MPP.Valid()
 	cal, ok := CalibrateMPPWidthsOf(fc, wr, band, spans)

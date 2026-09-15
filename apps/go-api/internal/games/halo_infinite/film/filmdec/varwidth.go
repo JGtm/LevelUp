@@ -101,8 +101,23 @@ func varWidthBits(param3 int) uint {
 //
 // Donc : sur un format de version <= 7 la garde garde la valeur posee par `FUN_140d10bb0`
 // (1, table ACTIVE) ; au-dela, c'est UN BIT DU FILM qui tranche, une fois par paquet
-// d'image-cle. Ce bit ne se lit pas offline sans connaitre la version, qui vient d'un objet de
-// configuration du jeu et non du film.
+// d'image-cle.
+//
+// CORRECTION DU 2026-09-15 (lot 1.9.1 ter) — LA VERSION VIENT DU FILM, ET SON OFFSET EST CONNU.
+// Ce commentaire disait « ce bit ne se lit pas offline sans connaitre la version, qui vient d'un
+// objet de configuration du jeu et non du film ». C'est FAUX, et la relecture du chargeur le
+// montre : `FUN_1428e1c0c` rend `*(structure_du_film + 4)`, et cette structure EST l'image de
+// `chunk_00` (`FUN_14299b198` ecrit `film+0` et `film+4` comme les deux premiers u32 du chunk).
+// La version est donc `chunk_00+4` — cf. `film_format_version.go`, [FilmFormatVersionFromHeader].
+//
+// CE QUE CELA DECIDE, ET CE QUE CELA NE DECIDE PAS. Les 1 351 films du cache portent un format
+// de 20 a 27 : TOUS sont > 7, donc sur TOUS le bit de garde est ecrit dans le flux, en tete du
+// paquet d'image-cle (`FUN_142e2bfd0` @142e2c020) — et sur le chemin DELTA (`FUN_142987460`) il
+// l'est sans meme de condition de version. La branche « garde statique a 1 » est donc MORTE pour
+// tout film reel, et ce qui reste ouvert n'est plus « peut-on savoir si le bit est lu » (oui,
+// toujours) mais « que VAUT-il », film par film. Sa position est le premier bit du paquet, la
+// meme que `PacketPreambleBits` porte deja sur le chemin delta (`frame_records.go`), ou il vaut
+// 1 dans 100,00 % des 30 418 payloads mesures de `000d5950`. La table reste donc posee.
 //
 // CE QUE LA MESURE DIT MALGRE TOUT, ET POURQUOI LA TABLE RESTE POSEE. Sur les sept bobines, le
 // record de `ti=37` qui se met a fermer ne ferme QUE si i21, i22 ET i28 sont corriges ENSEMBLE

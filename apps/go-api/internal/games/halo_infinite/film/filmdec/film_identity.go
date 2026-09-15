@@ -145,10 +145,25 @@ type FilmIdentity struct {
 	// trois films (seuil de 120 s ecrit avant la mesure), et un seul decalage de bit sur
 	// dix-sept rend une valeur plausible — celui que l'ecrivain predit.
 	MatchStartUnix uint32
+	// FormatVersion : la VERSION DE FORMAT de `chunk_00`, le u32 de `base+4`. C'est elle qui
+	// commande la largeur du registre et celle de la table par type chez le LECTEUR du jeu
+	// (`FUN_14299ab50`) — cf. `film_format_version.go`. Elle est renseignee ICI par commodite,
+	// mais elle ne DEPEND PAS de cette section : [FilmFormatVersionFromHeader] la rend aussi
+	// sur les cinq films du cache qui n'ont pas de section d'identification (format 20).
+	FormatVersion int
 	// TypeVersions : la table par type, les u32 qui precedent le champ de version. Le cardinal
-	// depend du build (123 / 122 / 121 / 116 mesures). Leur semantique (« version de
-	// serialisation par type », appel virtuel `vtable+0x30`) est APPUYEE, pas prouvee, et ce
-	// lecteur ne l'interprete pas : il rend les valeurs.
+	// suit la VERSION DE FORMAT (123 / 122 / 121 / 116 mesures pour les formats 27 / 25 / 24 /
+	// 21). Leur semantique est desormais ETABLIE et non plus « appuyee » : `FUN_1428e1c64` les
+	// lit indexees (`film+0xCB208 + i*4`, quatre sites d'instruction sur 13,6 M), son unique
+	// appelant `FUN_141102ed0(i)` rend la version du TYPE i — celle du film en mode Theater, la
+	// native `DAT_14474cd90` sinon — et QUINZE fonctions s'en servent pour brancher.
+	//
+	// CE LECTEUR NE LES INTERPRETE PAS, ET IL NE FAUT PAS LEUR DEMANDER LA GRAMMAIRE DU
+	// DECODEUR : mesure du 2026-09-15 sur les sept bobines, la table est alignee PAR LE DEBUT
+	// (l'index 18 vaut 2 sur les sept, comme la table native), 24 index varient d'une bobine a
+	// l'autre, et AUCUN des neuf index que l'ecrivain interroge en clair (0x23, 0x24, 0x30,
+	// 0x59, 0x5a, 0x5b, 0x5d, 0x61, 0x72) ne separe les films `8/3` des films `9/5`. Le
+	// discriminant est [FilmIdentity.FormatVersion], pas cette table.
 	TypeVersions []uint32
 	// RegistryBlocks : le nombre de blocs du registre (49 ou 50 selon le build). C'est lui qui
 	// ancre la fin du registre, donc le debut de la table par type.
@@ -184,7 +199,9 @@ func ReadFilmIdentity(chunk0 []byte) (FilmIdentity, error) {
 	if corpsOctet >= len(chunk0) {
 		return FilmIdentity{}, ErrChunk00Truncated
 	}
+	format, _ := FilmFormatVersionFromHeader(chunk0)
 	id := FilmIdentity{
+		FormatVersion:  format,
 		Version:        chaineDeChamp(chunk0, buildOff-identFieldBytes),
 		Build:          chaineDeChamp(chunk0, buildOff),
 		Flavor:         chaineDeChamp(chunk0, buildOff+identFieldBytes),

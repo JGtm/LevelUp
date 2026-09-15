@@ -59,4 +59,24 @@ package filmdec
 // et son propre ratchet d empreinte fait foi) ; `SchemaVersion` non plus (le chemin de cuisson
 // n appelait pas cette fonction — verifie le 2026-09-15 : equivalence 10/10 identiques,
 // corpus gate 14 temoins a 0 gain / 0 perte / 0 changement).
-const GrammarRev = "grammar-2026-09-15.8"
+// LOT 1.9.1 ter (2026-09-15) : `.7` -> `.8`. AUCUN BIT LU NE CHANGE, mais la CLE de la
+// grammaire, si — et c'est exactement ce que cette revision doit nommer. Le decoupage du bloc
+// `object-multiplayer-properties` etait keye par le NOM DE BUILD ; il l'est desormais par la
+// VERSION DE FORMAT de `chunk_00` (`chunk_00+4`), qui est la valeur que le LECTEUR du jeu
+// consulte (`FUN_14299ab50` : la largeur du registre et celle de la table par type en
+// derivent ; `FUN_1428e1c0c` : c'est elle que les six branches de version de l'executable
+// lisent). Sur les 1 351 films du cache les deux cles donnent le MEME decoupage — le
+// changement est verifiable et neutre — mais la nouvelle couvre les cinq films sans section
+// d'identification, que l'ancienne ne pouvait pas nommer.
+// LOT 1.9.1 ter (2026-09-15, second commit) : `.8` -> `.9`. AUCUN BIT LU NE CHANGE ICI NON
+// PLUS, et la revision monte pour la meme raison qu au `.8` : le CADRE. La condition du repli
+// `repli_largeurs_mpp_calibrees_sur_le_film` est renommee `build_sans_profil_relu` ->
+// `format_sans_profil_relu` (elle nommait une cle qui n existe plus), et le declenchement du
+// repli sur une version de format INCONNUE est desormais COMPTE
+// (`filmdec.UnknownFormatExpvarPairs` -> `filmdec_unknown_format_<n>`, cable dans
+// `replay/mpp_format_inconnu.go`) et signale par un avertissement par film. Un consommateur qui
+// decide de redecoder doit voir que la condition du repli a change de nom ; un exploitant doit
+// voir qu un patch du jeu a change le format. `SchemaVersion` reste 59.
+// FUSION (2026-09-16) : l integration portait `.8` (lot 1.9.4) et la branche du lot 1.9.1 ter
+// `.9` (cle = version de format, repli compte) ; les deux sont reunies ici, au rang suivant.
+const GrammarRev = "grammar-2026-09-15.10"
