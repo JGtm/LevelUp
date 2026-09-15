@@ -108813,3 +108813,39 @@ sur signal de l'utilisateur uniquement ; jamais dans `main`. Deux découvertes h
 sont consignées en §10 du plan : l'ADR 0029 décrit encore un 404 sur slug inconnu là où le
 middleware répond un 403 uniforme depuis le durcissement S7, et d'autres réglages lus par le
 front pour un utilisateur standard peuvent souffrir du même 403 que `GET /settings`.
+
+## [2026-09-16] Amis par joueur et invitations sans groupe — revue adversariale du lot, deux rondes — Complété
+
+**Statut** : Complété (revue + correctifs). Branche `wt/amis-invitations`, 12 commits au-dessus de
+`feat/v75`, ni poussée ni mergée. Recette navigateur NON faite (exige l'arrêt du serveur local et
+un second compte Xbox : la première connexion de Nuzzles la jouera).
+
+**Décision technique principale** : revue adversariale conforme au skill — deux relecteurs
+aveugles en parallèle (contrôle d'accès + couverture ; migration/sync/front + anti-patterns),
+contrat écrit, filtre de recevabilité, triage par le pilote, ronde 2 sur les seules corrections.
+Dix constats recevables, zéro jeté. Deux P0 : (1) le droit de provisioning à usage unique
+(`setup.go`) laissait passer `profile_mode` différent de xbox et un xuid vide, donc un invité
+pouvait écrire dans `db_profiles.json` un profil pour un gamertag/xuid étrangers — trou
+PRÉEXISTANT que le nouveau droit rendait atteignable ; la requête est désormais épinglée à
+l'identité du porteur quel que soit le mode ; (2) `RecomputeForPlayer`/`RecomputeAll`
+retournaient tôt sur liste vide, donc le retrait du dernier ami ne démotait jamais
+`is_with_friends` — le recalcul est convergent depuis le 19/06, c'était la doc (« additive »,
+« vide → no-op ») qui mentait et qui a justifié le court-circuit ; les deux docs sont remises à
+l'endroit. Cinq P1 corrigés (invalidations Carrière/Accueil après PUT via préfixes
+`careerAll`/`homeAll` + garde-rail ; rejeu 2D reconstruit à chaque tick par un objet non
+mémoïsé et un `?? []` neuf ; quatre clés i18n mortes ; `slog.Warn` nu). Quatre P2 consignés
+au plan §10, non corrigés (consommation du code best-effort après création ; titre vide dans le
+recalcul des sessions, préexistant ; branches non testées ; pas de test propre d'orchestrateur).
+
+**Résultats observés** : ronde 2 → 0 P0, 0 P1, C1..C6 fermés, 19 conditions tenues ; P0+P1 de
+7 à 0, boucle close. Gates finaux : `go test ./...` → 0 ; `go build` serveur/CLI/`internal` →
+0 ; typecheck cache purgé → 0 ; lint → 0 erreur (25 avertissements préexistants) ; vitest
+716 fichiers / 7 681 tests → 0. Côté prod (lecture seule VPS) : `data/auth/groups.json`
+ABSENT du volume persistant (les deux trouvés étaient les couches du conteneur démo),
+`friend_gamertags` = 4 gamertags, `instance_locked: false` — la variante D6 (migration de
+groupe conservée, re-sourcée depuis le friendstore) était la bonne.
+
+**Conclusion / prochaine étape** : lot prêt pour décision de fusion dans `feat/v75` par
+l'utilisateur. Restent à lui : recette navigateur (admin : lien d'invitation, page Rejoindre,
+Amis et groupes, recoloration vue match ; invité : première connexion de Nuzzles), bascule
+`instance_locked` en prod si l'early access doit être fermé, procédure Nuzzles (annexe A).

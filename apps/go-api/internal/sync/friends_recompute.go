@@ -41,7 +41,8 @@ type FriendsRecomputeResult struct {
 // un match où au moins un xuid d'ami (résolu via xuid_aliases) a participé
 // dans la même équipe que le joueur.
 //
-// friendGamertags : liste des amis du joueur. Vide → no-op.
+// friendGamertags : liste des amis du joueur. Vide → démotion complète (plus aucun
+// ami : tous les matchs TRUE repassent FALSE) — ce n est PAS un no-op, cf. en-tête.
 // Les gamertags non résolus dans xuid_aliases sont logués Warn et ignorés.
 //
 // provider : si non-nil, passe par Provider.AcquireWriter pour coordonner avec
