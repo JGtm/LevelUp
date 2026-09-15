@@ -183,4 +183,7 @@ package filmdec
 // grammaire d octets n est reecrite : ce qui change est QUEL enregistrement lu se rattache a quel
 // instant — et l empreinte de cette revision couvre `killsource/`, donc elle monte avec lui.
 // `KillSourceDecoderRev` monte au meme geste (`killsource-2026-09-16.2`) ; `SchemaVersion` reste 59.
-const GrammarRev = "grammar-2026-09-15.16"
+//
+// ENTREE `grammar-2026-09-15.17` (2026-09-16, lot 1.9.11, fusion) : LE DESIGNATEUR DE MANCHE EST PUBLIE TEL QU ECRIT ET LA GARDE D ORDRE
+// devient une CONTRADICTION publiee (coverage.score.roundsWritten / roundsContradicted / roundsDecreed) ; le decret de la manche 0 est un repli nomme et compte ; ResolveRounds rend le verdict complet (objectiveevents, hache par l empreinte). Aucun octet lu autrement ; SchemaVersion 59 (montee de vague).
+const GrammarRev = "grammar-2026-09-15.17"

@@ -69,7 +69,7 @@ func TestSegmentEntierDUnSlotNEstJamaisJete(t *testing.T) {
 // joueur reste la somme des deux manches (3 + 3 = 6), pas la seule manche 0.
 func TestSegmentEntierExemptePubliePourLeJoueur(t *testing.T) {
 	tl, cov := buildScoreTimeline(&ScoreInput{Records: manchesFixtureRelecteur()},
-		manchesMortsRelecteur(), manchesClocheRelecteur())
+		manchesMortsRelecteur(), manchesClocheRelecteur(), nil)
 	if tl == nil || cov == nil || cov.Rounds != 2 {
 		t.Fatalf("calque absent ou %v manche(s), attendu 2", cov)
 	}

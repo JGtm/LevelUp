@@ -324,4 +324,6 @@
 #               par une fenetre de 2,5 s (six sites, la fenetre = repli nomme et compte). Aucune
 #               grammaire d octets reecrite ; l empreinte couvre `killsource/`, donc elle monte.
 #               `KillSourceDecoderRev` monte au meme geste (killsource-2026-09-16.2) ; `SchemaVersion` 59.
-grammar-2026-09-15.16	3d681fd7d5399a4af6fe642b7ec7db7544484734c7e7617b2b7939f304ce672c
+#   2026-09-16  grammar-2026-09-15.17  (2026-09-16, lot 1.9.11, fusion) : LE DESIGNATEUR DE MANCHE EST PUBLIE TEL QU ECRIT ET LA GARDE D ORDRE
+#               devient une CONTRADICTION publiee (coverage.score.roundsWritten / roundsContradicted / roundsDecreed) ; le decret de la manche 0 est un repli nomme et compte ; ResolveRounds rend le verdict complet (objectiveevents, hache par l empreinte). Aucun octet lu autrement ; SchemaVersion 59 (montee de vague).
+grammar-2026-09-15.17	e58db57a8ec5203ffec9b574ceb327c620cb849e3dde77fd3fa7a3959e3777ff

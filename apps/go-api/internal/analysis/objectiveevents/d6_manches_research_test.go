@@ -187,8 +187,9 @@ func d6ImprimeDecision(t *testing.T, recs []StatRecord) {
 	}
 	t.Logf("  RealRounds = %v (%d manche(s))", d6Triees(real), len(real))
 	t.Logf("  enregistrements de slot JOUEUR par manche : %v", d6JoueursParManche(recs))
+	sansGarde, _ := contiguousRounds(runs, material, d6ToutPresent(recs))
 	t.Logf("  SANS la garde de manche fantome (`vue && !present`, commit bb06cce5a) : %v",
-		d6Triees(contiguousRounds(runs, material, d6ToutPresent(recs))))
+		d6Triees(sansGarde))
 	d6ImprimeRecouvrement(t, recs)
 	d6ImprimeRepartition(t, recs)
 	d6ImprimeComposants(t, recs)

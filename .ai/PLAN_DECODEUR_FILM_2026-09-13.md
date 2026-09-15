@@ -3416,6 +3416,7 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       `4f77afc1`, les kills tardifs n'y sont pas couverts (D9), et 20 morts restent orphelines
       (D6). M.
 - [ ] 1.9.11 **Le désignateur de manche lu tel que le film l'écrit, la garde `contiguousRounds`
+- [x] 1.9.11 **Le désignateur de manche lu tel que le film l'écrit, la garde `contiguousRounds`
       retirée.** Décision utilisateur du 2026-09-14 (« le film porte le compteur de manche ; oui,
       tu peux le faire »). Sur `fb1a1a72` (CTF:Arena, 814 s > 720 s de temps réglementaire), 148
       records statborg portent le désignateur `2` (0.D.1 bis) ; la garde `contiguousRounds` publie
@@ -3430,6 +3431,52 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       du temps réglementaire (piste de score du film, pas la feuille) ? tout match à égalité à cet
       instant porte-t-il un désignateur `2` ? Les contre-exemples, s'il y en a, nomment l'autre
       critère. M.
+      **FAIT le 2026-09-16, ET L'HYPOTHÈSE EST RÉFUTÉE PAR LA MESURE.** Le film porte bien un
+      compteur de manche, et la chaîne le publie déjà : les PROLONGATIONS sont écrites en
+      désignateur **1 CONTIGU** après le 0. Ce que la garde jetait sur `fb1a1a72` n'en est pas
+      une. Mesure au corpus (base d'oracle en lecture seule + instrument
+      `objectiveevents/e1911_manches_{mesure,rapport}_research_test.go`, tableaux collés au §5) :
+      **59 matchs du cache dépassent leur temps réglementaire, 33 le seuil de production**
+      (720 + 40 s, `analysis.OvertimeMarginSeconds`) ; **14 d'entre eux, tous `CTF:Arena`, portent
+      une seconde manche MATÉRIELLE**, et **13 sur 14 ont le score À ÉGALITÉ** au début de son
+      dernier amas — lu sur la piste de score DU FILM, manche par manche, sans alignement
+      d'horloge. Ces 14 manches portent **100 % de `current-round-value` et ZÉRO
+      `finalized-rounds-values`**, et 100 % de leurs enregistrements tombent APRÈS la fin du
+      temps réglementaire. **L'hypothèse de l'utilisateur est donc VRAIE — pour le désignateur 1.**
+      **CE QUE `fb1a1a72` PORTE EST AUTRE CHOSE, et 23 autres films le portent aussi.** Retirer la
+      garde ajoute une manche à **24 films sur 1 351**, TOUS du motif « désignateur **2**, manche 1
+      absente » — et **23 des 24 ont fini de 38 à 442 s DANS leur temps réglementaire**, sur
+      `Team Slayer:Arena`, `Slayer:Arena`, `Strongholds:Arena`, `Husky Raid:Super CTF`,
+      `CTF:Arena Neutral Flag`, au plafond de score (50-43, 200-82...). Une prolongation y est
+      IMPOSSIBLE. `fb1a1a72` est le seul des 24 au-delà du réglementaire (+82 s) ; son « 2 » est
+      bimodal (94 enregistrements entre 66 et 161 s, 54 entre 763 et 814 s), porte **55 lectures
+      de `finalized-rounds-values` quand une vraie manche en porte ZÉRO**, et le score n'est PAS à
+      égalité (1-0) au début de son dernier amas. C'est le même artefact, pas une manche.
+      `round_bounds.go` le nommait déjà (« les trois films dont l'étiquetage de manche est
+      faux »), et `e60aaf06` en chiffre le coût : 130 de ses 154 actions en `noSlot`, 10 captures
+      publiées pour 38 à l'oracle.
+      **DEUX CRITÈRES DE REMPLACEMENT MESURÉS ET ÉCARTÉS** : le CONSENSUS DE SLOTS (celui de
+      `chainedRounds`) ne sépare rien — les 41 désignateurs matériels du corpus de verdict sont
+      déclarés par les DIX slots, part 100 % ; la part de `finalized-rounds-values` n'attrape que
+      19 des 24 fantômes. La règle d'ORDRE reste **le seul critère qui sépare les deux
+      populations** (24 fantômes refusés, 20 manches réelles admises).
+      **CE QUE LE LOT LIVRE DONC, sous D14 :** la garde n'est PAS retirée, et elle N'EST PLUS UN
+      REPLI. L'entrée du registre couvrait deux mécanismes ; seul le PLANCHER (« aucune manche
+      admise, la manche 0 est décrétée ») se déclenche sur un silence —
+      `repli_manches_contigues_decretees` devient **`repli_manche_zero_decretee`**
+      (`film_muet` / `apres_lecture`, **compteur CÂBLÉ**, ratchet `devant_la_lecture` **6 -> 5**).
+      La règle d'ordre, elle, se déclenche sur un DÉSACCORD avec une lecture : D14 (b) en fait une
+      **CONTRADICTION**, que l'artefact PUBLIE au lieu de la taire — `coverage.score.roundsWritten`
+      (la grammaire), `roundsContradicted` + `roundsContradictedRecords` (la contradiction),
+      `roundsDecreed` (le repli), tous OPTIONNELS. `objectiveevents.ResolveRounds` rend le verdict
+      complet, `RealRounds` en délègue l'ensemble — **aucune manche retenue ne change**, tenu par
+      `TestRealRoundsRendLeMemeEnsembleQueResolveRounds`. `GrammarRev` `.7` -> `.8` ;
+      `SchemaVersion` NON touché (règle de la vague) ; `KillSourceDecoderRev` inchangé
+      (`killsource/` intact, ratchet vert).
+      **LES DEUX AUTRES REPLIS QUI VISAIENT CE LOT SONT RECIBLÉS, sur mesure** :
+      `repli_debut_de_manche_au_minimum` et `repli_instant_sur_la_premiere_manche` ne dépendent
+      PAS de la règle d'ordre (ils vivent dans les BORNES et l'identité par manche, un autre fait)
+      — cible de retrait portée à la clôture de M2, critères réécrits, `CibleComptage` reciblée.
 - [~] 1.9.12 **La vie d'un seul échantillon publiée.** TRAITÉE AU LOT 1.6.5 (2026-09-14), dans la
       même montée de schéma que la table du film : `DefaultMinPoints = 1`, compteur à 0 sur les
       8 builds, 20 vies publiées, oracle mesuré (1 mort écrite, 5 fins de film, 14 orphelines
@@ -4024,6 +4071,11 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-16 | 1.9.7 | **D6 (1.9.7) — UN AMBIGU RÉSIDUEL QUE L'IDENTITÉ NE TRANCHE PAS, ET QUE LA FENÊTRE NE TRANCHAIT PAS DAVANTAGE.** Sur `fccc61cd` (temps 3, ms=85711), DEUX dead-states du MÊME paquet (5, 692) satisfont la même contrainte de couple (bits 523 et 7376). L'identité ne les départage pas ; c'est l'ordre de priorité de l'hybride (marche puis scan, `p.all`) qui tranche, exactement comme avant le lot — la conversion ne crée ni ne résout cette ambiguïté. Un seul cas sur 2 899. **NON TRAITÉ.** | sans objet ; écrit pour qu'un futur lot ne lise pas ce 1 comme une régression du lot 1.9.7 |
 | 2026-09-16 | 1.9.7 | **D7 (1.9.7) — LE CÂBLAGE DU COMPTEUR DES REPLIS KILLSOURCE DANS LE DOCUMENT : TROIS ANCRES.** Les trois replis de ce lot (`repli_appariement_par_fenetre_temporelle` L343, `repli_mort_de_bot_premier_candidat` L308, `repli_mort_non_revendiquee_la_plus_proche` L277 de `replay/fallback/registre_killsource.go`) portent `CompteurBranche: false` (leurs `CibleComptage` aux L387-391, L337-340, L301-306) : leur compte EXISTE (`ApparStats.{Fenetre,BotFenetre,NonRevendiqueeFenetre}`, `AssistStats.ParLaFenetre`) et sort en expvar, mais n'atteint pas `coverage.fallbacks[]`. **Trois ancres, dans l'ordre où le lot de câblage devra les ouvrir.** (1) `killsource/decode.go:78` — `func Decode(ctx, name, film, opts *Options) (*Result, error)` n'a AUCUN paramètre de compteur, et `killsource` **n'importe pas encore** `replay/fallback` (grep : 0 occurrence) ; l'arête est libre (`replay/` n'importe pas `killsource/`, et `fallback` est une FEUILLE), reste à choisir entre un 5e paramètre et un champ sur `killsource.Options` — dont l'en-tête (`options.go:5-11`) écrit qu'elle « n'est PAS un espace de réglage », à amender dans le même commit. (2) `replaybuild/kills.go:34` — `killsource.Decode(context.Background(), matchID, film, nil)`, dans `decodeKillSource` (`kills.go:33`), l'unique décodage killsource de la cuisson. (3) `replaybuild/replaybuild.go:283-286` — LE PIÈGE D'ORDRE : `replaybuild` ne tient AUCUN compteur (grep `Fallbacks` hors tests : 0 occurrence), et celui de la cuisson naît **trop tard**, dans `replay/build_from_film.go:64` (`if opt.Fallbacks == nil { opt.Fallbacks = fallback.NouveauCompteur() }`). Or `collecterEntreesCatalogue` (L283) appelle `decodeKillSource` (L355) AVANT `buildReplayOptions` (L284, littéral `replay.Options{` de `replaybuild/options.go:15`, qui ne renseigne pas `Fallbacks`) et AVANT `replay.BuildFromFilm` (L286). Le câblage doit donc REMONTER la création du compteur au-dessus de L283 et le poser sur `replay.Options.Fallbacks` (champ déclaré `replay/options.go:365`), faute de quoi `build_from_film.go:64` en fabriquerait un SECOND et les replis de killsource seraient comptés dans un compteur que personne ne publie. La sortie, elle, est prête : `attachFallbackCoverage` (`replay/fallbacks_publication.go:39`). Au câblage, les trois entrées passent `CompteurBranche: true`, leurs noms entrent dans `fallback/noms.go` (tenu par `TestChaqueNomConstantEstAuRegistre`) et leur `CibleComptage` se VIDE — `VerifierRegistre` (`repli.go:314`) rougit sinon. **NON TRAITÉ** (règle 7). | lot de câblage M2, pas 2 (les lecteurs reçoivent le profil : c'est le pas qui rouvre déjà ces signatures) |
 
+| 2026-09-16 | 1.9.11 | **D1 (1.9.11) — LE DÉSIGNATEUR `2` AVEC MANCHE 1 ABSENTE EST UN ARTEFACT DU LECTEUR, SUR 24 FILMS DU CACHE.** Mesure : 24 films portent un désignateur 2 MATÉRIEL (29 à 148 enregistrements) que seule la règle d'ordre écarte ; **23 ont fini de 38 à 442 s DANS leur temps réglementaire**, sur des modes SANS manche, au plafond de score. Les deux populations se distinguent aussi par les composants : une VRAIE manche porte 100 % de `current-round-value` et ZÉRO `finalized-rounds-values` (20 cas sur 20), la population fantôme en porte jusqu'à 72 sur 138 — mais 5 des 24 n'en portent aucune, donc ce n'est PAS un discriminant complet. La CAUSE du mauvais alignement (pourquoi la valeur `2`, et pourquoi ~95 enregistrements si souvent) n'est pas établie. **NON TRAITÉ** : le lot publie la contradiction (`coverage.score.roundsContradicted`) au lieu de la taire, et le compteur est le critère de reprise. **RELEVÉ COMPLÉMENTAIRE DU 2026-09-16 (précision demandée par le pilote), instrument `e1911_champ_manche_research_test.go`, sur `fb1a1a72` (d=2, 148 enr.), `72b0a25e` (d=2, 95 enr., un des 23) et `64e8adfa` (d=1, 128 enr., VRAIE prolongation), chacun avec sa manche 0 en témoin.** **(a) LE CHAMP EST LU AU MÊME DÉPLACEMENT, PAR LA MÊME RÈGLE — il n'y a AUCUN dérapage.** Les seuls déplacements `at - bit` observés dans les six populations sont `26, 32, 38, 44, 50, 56, 62, 81`, c'est-à-dire exactement `14+2+4+6n` (liste creuse, n = 1..7) et `14+2+1+64` (liste dense) : la grammaire, et rien d'autre. Le défaut du lot 1.9.1 bis — une largeur dépendante des données qui décale la lecture — **n'est pas ce qu'on voit ici**. `h1 == h2` sur 100 % des enregistrements (la production l'exige, donc non informatif). **(b) MAIS LA POPULATION `2` EST DÉGÉNÉRÉE SUR TROIS AXES OÙ UNE VRAIE MANCHE NE L'EST SUR AUCUN.** Forme de liste : **`creuse n=1` à 148/148 et 95/95** — la forme la MOINS contrainte (4 bits de compte + 6 bits d'index) — quand la manche 1 de `64e8adfa` et les trois manches 0 présentent les HUIT formes dans les proportions de leur propre manche 0 (`26:430 32:291 38:46 44:44 50:86 56:82 62:11 81:2` pour `64e8adfa` manche 0, `26:56 32:29 38:3 44:5 50:6 56:11 62:3 81:15` pour sa manche 1). Motifs de bits : **20 et 13 motifs distincts** (8 avant + champ + 8 après) contre 63 à 66 pour les manches 0, et le champ y vaut `0001000010` suivi de `00001000` dans TOUS les cas. Position dans le paquet : **bit 23 sur 121 des 148 et 77 des 95**, contre **637 et 380 positions distinctes** pour les manches 0 des mêmes films. **(c) LE CONTRÔLE QUI TRANCHE : une vraie manche occupe LES MÊMES POSITIONS QUE LA MANCHE 0 DU MÊME FILM.** Sur `64e8adfa`, les trois positions les plus fréquentes de la manche 1 (`1916` x10, `1983` x10, `2325` x7) sont **exactement** les trois plus fréquentes de sa manche 0 (`1916` x91, `1983` x91, `2325` x37) : c'est la même émission, au même endroit, dont seul le numéro passe de 0 à 1. La population `2`, elle, vit au bit 23, que les manches 0 ne fréquentent pas (leurs têtes sont `1918`/`1985`). **(d) LE MÊME MOTIF BINAIRE EXACT APPARAÎT SUR DEUX FILMS DE MODES DIFFÉRENTS** (`fb1a1a72` CTF:Arena, `72b0a25e` Slayer:Arena) : `01001000 0001000010 00001000` au bit 23. **CE QUE LE RELEVÉ NE DIT PAS, ET QUI RESTE OUVERT** : ce QU'EST la structure lue au bit 23 (en-tête de paquet, autre archétype, bourrage ?) et pourquoi elle porte `2`. Zéro chevauchement avec un autre enregistrement retenu dans les deux populations `2` : ce ne sont pas des lectures faites à l'intérieur d'un enregistrement voisin. | M3 (divergences par build) ou volet statborg du registre des reports ; critère déjà publié dans l'artefact. La reprise a désormais une ancre précise : le bit 23 du paquet, forme `creuse n=1`, motif `0001000010 00001000` |
+| 2026-09-16 | 1.9.11 | **D2 (1.9.11) — LES DEUX HORLOGES SONT À 45 s L'UNE DE L'AUTRE, ET AUCUNE N'EST LA DURÉE DU MATCH.** Sur `fb1a1a72` : `frameCount` donne 757 s, l'horloge du film 811 s (premier à dernier enregistrement statborg), `match_registry.duration_seconds` 802 s, et `film_match_start_ms` est **NULL**. L'instrument a dû ancrer la fin du temps réglementaire sur la FIN (film_t1 − dépassement) faute d'origine fiable ; les deux ancres divergent de 8,7 s sur ce film, assez pour renverser un verdict d'égalité. **NON TRAITÉ.** | lot qui posera l'origine du match sur l'horloge du film (M2/M3) ; `film_match_start_ms` à renseigner ou à retirer |
+| 2026-09-16 | 1.9.11 | **D3 (1.9.11) — LE CONSENSUS DE SLOTS NE SÉPARE RIEN AU NIVEAU DU FAIT « quelles manches sont réelles ».** `chainedRounds` (`round_bounds.go`) retire de la chaîne des bornes toute manche dont moins de la moitié des slots parlent, et sa mesure de 2026-09-06 opposait « dix slots » à « un seul ». Mesuré sur le corpus de verdict (44 films) : **les 41 désignateurs matériels, fantômes compris, sont déclarés par les DIX slots, part 100 %**. Le critère est donc juste pour les BORNES et inopérant pour l'ADMISSION. **NON TRAITÉ** (aucune ligne de production ne change de ce fait). | lot de conversion des bornes de manche (M2) : y écrire que les deux faits ne partagent pas leur critère |
+| 2026-09-16 | 1.9.11 | **D4 (1.9.11) — LA RÈGLE DE LA VAGUE LAISSE DEUX ROUGES SUR LA BRANCHE, PAR CONSTRUCTION.** Un lot qui ajoute un champ publié sans monter `SchemaVersion` laisse `TestDocumentShapeMatchesGolden` rouge (sa régénération est REFUSÉE tant que le schéma ne monte pas — c'est le ratchet même) et `TestOpenAPIYAMLIsUpToDate` rouge (openapi non régénéré). Les deux se ferment d'un geste à la fusion de la vague. **NON TRAITÉ par le lot, PAR CONSIGNE.** | pilote, à la fusion de la vague 2 : monter `SchemaVersion` + entrée de chronique, puis `REPLAY_CONTRACT_UPDATE=1 go test ./internal/games/halo_infinite/film/replay/ -run DocumentShape -update`, `make openapi-gen`, `make generate-types`, régénération de la fixture web |
+| 2026-09-16 | 1.9.11 | **D5 (1.9.11) — LE WEB AFFICHERAIT « Manche 2 » POUR UNE PROLONGATION, ET LE DOCUMENT NE PEUT PAS L'EN EMPÊCHER.** Vérifié sur pièces : `roundsLogic.ts:189` numérote par POSITION (`index: idx + 1`), pas par le désignateur écrit — un film à manches `[0, 2]` afficherait donc « Manche 1 / Manche 2 », jamais « Manche 3 ». Mais une PROLONGATION (14 films `CTF:Arena` mesurés) s'affiche aujourd'hui « Manche 2 », et le film ne porte AUCUN signal qui la distingue : la distinction se fait sur le temps RÉGLEMENTAIRE de la variante, que l'artefact ne porte pas et que `analysis.ComputeOvertime` détient déjà côté match. Publier « prolongation » dans le document dupliquerait cette règle (règle 6). **NON TRAITÉ** : aucun libellé web n'est touché. | lot web / d'interface : lire la prolongation là où elle est déjà calculée (Match View) et l'afficher sur la pastille de manche, libellés `Prolongation` / `Overtime` dans `match-replay/i18n/i18n.ts` |
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -4714,6 +4766,8 @@ cable) » dit que le compteur n'existe pas encore, ce qui n'est PAS un zero (cf.
 | `repli_manche_du_slot_sautee` | `analysis/objectiveevents/named_series.go` | non_resolu / apres_lecture | n/i | — (non câblé) | question NE17 de la table (D) de l'audit instruite (`longestRun` ecarte-t-il des points reels ?) |
 | `repli_manches_contigues_decretees` | `analysis/objectiveevents/statborg.go` | non_resolu / devant_la_lecture | n/i | — (non câblé) | lot 1.9.11 (le designateur de manche lu tel que le film l'ecrit) |
 | `repli_mort_de_bot_premier_candidat` | `games/halo_infinite/film/killsource/match.go` (3 sites) | non_resolu / apres_lecture | **câblé** (lot 1.9.7) | **9 sur 10 appariements de bot, 21 films entiers** — 6 morts DU bot et 4 morts PAR un bot, dont UNE SEULE décidée par l'identité de paquet : le kill-feed est humain-seul (D3 (1.9.7)) | lot 3.6 (la chaîne d'événements doit atteindre le kill-event des morts de bot) ; critère : `ApparStats.BotFenetre` à 0 |
+| `repli_manche_zero_decretee` (ex-`repli_manches_contigues_decretees`, resserré au lot 1.9.11 le 2026-09-16) | `analysis/objectiveevents/statborg.go`, compté en `replay/score_timeline.go` | film_muet / apres_lecture | **câblé** | — (0 sur le corpus mesuré) | clôture de M2. La règle d'ORDRE est SORTIE de cette entrée : elle ne se déclenche pas sur un silence mais sur un désaccord avec une lecture, donc D14 (b) en fait une CONTRADICTION publiée (`coverage.score.roundsContradicted`), pas un repli |
+| `repli_mort_de_bot_premier_candidat` | `games/halo_infinite/film/killsource/match.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 1.9.7 |
 | `repli_mort_ecartee_hors_equipe_de_base` | `games/halo_infinite/film/replay/death_context.go` | section_absente / apres_lecture | n/i | — (non câblé) | lot 1.7 (l'equipe vient du film, V4) porte jusqu'a ce calque |
 | `repli_mort_neutre_sans_xuid_abandonnee` | `replaybuild/replaybuild.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 1.8 porte jusqu'au constructeur |
 | `repli_mort_non_revendiquee_la_plus_proche` | `games/halo_infinite/film/killsource/hybrid.go` (2 sites) | non_resolu / apres_lecture | **câblé** (lot 1.9.7) | **17 sur 17, 21 films entiers** — une mort que personne ne revendique ne porte aucun kill au feed, donc aucun kill-event 85 à associer (D3 (1.9.7)) | lot 3.6 ; critère : `ApparStats.NonRevendiqueeFenetre` à 0 |
@@ -4772,6 +4826,114 @@ la vague rend mecaniques (D4 (1.9.13) en §4) : `TestDocumentShapeMatchesGolden`
 | 2026-09-16 | Revue M1 — L4 | oracle (lecture seule) | `go run ./cmd/diag_q data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb "SELECT table_name, column_name FROM information_schema.columns WHERE lower(column_name) LIKE '%bijection%' OR '%inferred%' OR '%roster%' OR '%determin%' OR '%margin%' OR '%health%'"` | **(0 rows)** — aucune colonne ne porte la mesure du constat 1 |
 | 2026-09-16 | Revue M1 — L4 | oracle (lecture seule) | `… "SELECT decoder_rev, publishable, count(DISTINCT match_id), count(*) FROM match_kill_events_latest GROUP BY 1,2"` | `highlight-credit-2026-08-01/true` 3 films · `killsource-2026-07-31` 252 false / 337 true · `killsource-2026-09-05` 244 false / 548 true. **La révision la plus récente de l'oracle précède l'apparition de `BijectionDetermined` (2026-09-14)** : la population du constat 1 s'y mesurera à la recuisson, pas ici |
 
+### Lot 1.9.11 — le désignateur de manche (2026-09-16)
+
+**LA MESURE AVANT DE CODER — 1. LES MATCHS AU-DELÀ DU TEMPS RÉGLEMENTAIRE.** Source : base
+d'oracle `data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb` en lecture seule
+(`go run ./cmd/diag_q`), croisée avec les 1 351 films du cache. **1 128 films** du cache portent
+une variante déclarée dans `regulation.toml [regulation_seconds]` (720 s partout) ; **59**
+dépassent ce temps, **33** dépassent le seuil de production (720 + 40 s,
+`analysis.OvertimeMarginSeconds`).
+
+**2. LES 14 FILMS QUI ÉCRIVENT UNE SECONDE MANCHE MATÉRIELLE, ET LE SCORE À SON DÉBUT.** Collé
+de `go test -tags research ./internal/analysis/objectiveevents/ -run E1911 -v` (instrument
+`e1911_manches_{mesure,rapport}_research_test.go`, `E1911_CORPUS` = les 59 matchs) — l'instant est
+le début du DERNIER amas du désignateur (amas = suite d'instants espacés de moins de 30 s), et le
+score est lu MANCHE PAR MANCHE sur la piste du film, puis cumulé :
+
+```
+  film      variante                    depass desig. premier ms score avant  egalite    final
+  19ef6b04  CTF:Arena                     +191      1     802156 [1 1]        true       [2 1]
+  44e14331  CTF:Arena                     +141      1     803844 [2 2]        true       [2 3]
+  4a93f0e2  CTF:Arena                     +287      1     794666 [2 2]        true       [2 3]
+  521c5c38  CTF:Arena                     +273      1     786632 [1 1]        true       [2 1]
+  64e8adfa  CTF:Arena                     +119      1     760501 [2 2]        true       [2 3]
+  7fce3219  CTF:Arena                     +199      1     762365 [2 2]        true       [2 3]
+  8b512df2  CTF:Arena                     +255      1     781979 [2 2]        true       [2 2]
+  bc918a5a  CTF:Arena                     +300      1     780305 [1 1]        true       [1 2]
+  cde26226  CTF:Arena                     +222      1     760413 [2 2]        true       [2 3]
+  d131f870  CTF:Arena                     +212      1     756294 [2 2]        true       [2 3]
+  dc7bbf5b  CTF:Arena                     +108      1     755563 [1 1]        true       [1 2]
+  eb665a8f  CTF:Arena                     +289      1     774833 [2 2]        true       [2 3]
+  eba1e63f  CTF:Arena                     +214      1     767032 [2 2]        true       [3 2]
+  fb1a1a72  CTF:Arena                      +82      2     762929 [1 0]        false      [0 1]
+  EGALITE au debut de la seconde manche : 13 sur 14
+```
+
+**VERDICT SUR L'HYPOTHÈSE DE L'UTILISATEUR.** *Sens 1* — une seconde manche matérielle naît-elle
+d'une égalité ? **OUI, 13 fois sur 14**, et les 14 sont des `CTF:Arena` au-delà du temps
+réglementaire. Le seul contre-exemple est `fb1a1a72`, celui qui a ouvert la question.
+*Sens 2* — tout match à égalité à la fin du réglementaire porte-t-il une seconde manche ? **NON**,
+et les contre-exemples sont nommés : `59b8abb9` (+43 s), `78919882` (+4 s), `7ff4271a` (+88 s),
+`a224dc60` (+100 s), `ad824bcc` (+6 s), `e6e4ba0b` (+65 s), `e99e9ee1` (+83 s) — sept matchs
+mesurés à égalité à l'ancre de fin qui n'écrivent aucune seconde manche. **L'AUTRE CRITÈRE QUE CES
+CONTRE-EXEMPLES NOMMENT** : le dépassement à lui seul ne décide pas (un drapeau en jeu au buzzer
+prolonge le temps SANS ouvrir une manche), et l'ancre de fin porte 8,7 s d'incertitude sur
+`fb1a1a72` (§4, D2). Les deux populations de dépassement se recouvrent : AVEC seconde manche
+`[82 108 119 141 191 199 212 214 222 255 273 287 289 300]`, SANS (20 plus grands)
+`[... 39 42 43 45 46 48 48 51 52 53 54 56 57 60 65 68 83 88 100 165]`.
+
+**3. CE QUE LE RETRAIT DE LA GARDE CHANGERAIT, SUR LES 1 351 FILMS DU CACHE** (durée mesurée :
+1 060 s) — la ligne est collée de l'instrument, la durée et le temps réglementaire viennent du
+registre :
+
+```
+=== ECART DU RETRAIT DE LA GARDE : 24 film(s) sur 1351 changent ===
+  059b721f  CTF:Arena Neutral Flag  0 -> 0,2   duree  341s / regl 720s   51 enr. ajoutes
+  0674b220  Team Slayer:Arena       0 -> 0,2   duree  495s / regl 720s   95
+  11258ba1  Slayer:Arena            0 -> 0,2   duree  532s / regl 720s   98
+  1d4ee251  Slayer:Arena Tactical   0 -> 0,2   duree  422s / regl 720s   82
+  1ff0bc89  Strongholds:Arena       0 -> 0,2   duree  487s / regl 720s   49
+  2b8aa0b9  Team Slayer:Arena       0 -> 0,2   duree  551s / regl 720s   78
+  3046f99e  Team Slayer:Arena       0 -> 0,2   duree  479s / regl 720s   55
+  3e06a064  Husky Raid:Super CTF    0 -> 0,2   duree  327s / regl   n/a  66
+  3f3a48f0  Team Slayer:Arena       0 -> 0,2   duree  472s / regl 720s   41
+  58646783  Team Slayer:Arena       0 -> 0,2   duree  573s / regl 720s   95
+  5a5cf973  Team Slayer:Arena       0 -> 0,2   duree  573s / regl 720s   97
+  6bc544a1  Strongholds:Arena       0 -> 0,2   duree  278s / regl 720s   74
+  70726b0e  Team Slayer:Arena       0 -> 0,2   duree  645s / regl 720s   98
+  72b0a25e  Slayer:Arena            0 -> 0,2   duree  448s / regl 720s   95
+  838e4624  Strongholds:Arena       0 -> 0,2   duree  330s / regl 720s   42
+  9d19c7af  Slayer:Arena            0 -> 0,2   duree  534s / regl 720s   95
+  a1e89156  Team Slayer:Arena       0 -> 0,2   duree  563s / regl 720s  118
+  a7c4b804  Arena:Team Slayer       0 -> 0,2   duree  682s / regl 720s   94
+  c660b4fa  Team Slayer:Arena       0 -> 0,2   duree  412s / regl 720s   97
+  c6db0991  Slayer:Arena            0 -> 0,2   duree  539s / regl 720s   73
+  c6ed4c12  Slayer:Arena            0 -> 0,2   duree  631s / regl 720s  138
+  e60aaf06  Strongholds:Arena       0 -> 0,2   duree  415s / regl 720s   54
+  f031fe5e  Team Slayer:Arena       0 -> 0,2   duree  525s / regl 720s   93
+  fb1a1a72  CTF:Arena               0 -> 0,2   duree  802s / regl 720s  148
+```
+
+**23 des 24 ont fini DANS leur temps réglementaire** (38 à 442 s avant le buzzer), au plafond de
+score, sur des modes SANS manche. La population des désignateurs JETÉS du cache entier compte
+1 535 entrées : **950 à UN enregistrement**, 1 506 à cinq ou moins, puis
+`[23 29 31 37 41 42 49 51 54 55 66 72 73 74 74 78 82 93 94 95 95 95 95 97 97 98 98 118 138 148]`.
+Le seuil de matérialité de la production (`statMinRoundRecords` = 25) coupe entre 23 et 29.
+
+**4. LE DISCRIMINANT PAR FAMILLE DE COMPOSANT, MESURÉ ET NON RETENU** (registre ECS de
+l'archétype 6 : 0-27 `current-round-value`, 28-55 `finalized-rounds-values`). Toutes les manches
+RÉELLES du corpus — les manches de `df8fcbef`, `9f57c612`, `58d09c44`, `1c4c63c2`, `443426df`,
+`c75f33b8`, les manches 1 de `24dbb67d`, `43716616`, `51ebbc0f`, `60ae07c4`, et les 13
+prolongations — portent **0 `finalized-rounds-values`** (au plus 3 sur des centaines). Les
+fantômes en portent 8 à 72 sur 138 — sauf cinq (`1ff0bc89`, `838e4624`, `65fb51f3`, `ade271ff`,
+`007d53a4`) qui n'en portent aucune : le critère n'est donc PAS complet, et il n'a pas été posé
+en production. Le CONSENSUS DE SLOTS ne sépare rien non plus (§4, D3) : les 41 désignateurs
+matériels du corpus de verdict sont déclarés par les DIX slots, part 100 %.
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-16 | 1.9.11 | ce commit | `gofmt -l ./internal ./cmd` | sortie vide |
+| 2026-09-16 | 1.9.11 | ce commit | `go vet` sur les 7 paquets du gate commun, puis `go vet -tags research ./internal/analysis/objectiveevents/` | 0 diagnostic dans les deux modes |
+| 2026-09-16 | 1.9.11 | ce commit | `go test` sur les 7 paquets du gate commun | **un seul rouge : `TestDocumentShapeMatchesGolden`** (empreinte `0a583ed6f3e24c13` -> `7c14f72689dbd490`, 949 -> 953 lignes). C'est la RÈGLE DE LA VAGUE : quatre champs publiés s'ajoutent, `SchemaVersion` n'a pas le droit de monter, et la régénération du golden est REFUSÉE tant qu'il n'est pas monté — le ratchet fait exactement ce pour quoi il existe. Tout le reste vert : filmdec 16,66 s, replay (hors ce test) vert, archlint 12,89 s, replaybuild 1,02 s, objectiveevents 0,54 s, replayview 0,36 s |
+| 2026-09-16 | 1.9.11 | ce commit | budget `filmdec` du §2.3 (`CGO_ENABLED=0`, `-count=1`) | **`filmdec` sans tag : 16,66 s**, sous les 30 s ; `objectiveevents` 0,54 s |
+| 2026-09-16 | 1.9.11 | ce commit | `go test .../filmdec/ -run GrammarRev` puis `go test ./internal/sync/killcollector/ -run DecoderRev` (CGO) | `GrammarRev` `grammar-2026-09-15.7` -> **`.8`** (golden régénéré par `-update-grammar-rev`, entrée d'historique écrite), vert ; `KillSourceDecoderRev` **inchangé et vert** — `killsource/` n'est pas touché |
+| 2026-09-16 | 1.9.11 | ce commit | `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate` (CGO) | **ROUGE, par consigne** : 725 581 o générés contre 725 148 commités, première divergence ligne 22470 (`roundsContradicted`). `openapi.yaml` n'est PAS régénéré — règle de la vague 2, le pilote le fait une fois à la fusion |
+| 2026-09-16 | 1.9.11 | ce commit | `golangci-lint run --timeout 20m --new-from-merge-base=origin/main` (cache isolé) | **0 issues** |
+| 2026-09-16 | 1.9.11 | ce commit | MUTATION — `TestResolveRoundsMutationDeLaRegleDOrdre` | sur la fixture `fb1a1a72` (manche 1 absente, 148 enregistrements en `2`), la règle d'ordre NEUTRALISÉE rend `[0 2]` et zéro contradiction ; la règle en place rend `[0]`, `roundsContradicted = [2]`, 148 enregistrements. Les deux verdicts diffèrent : le test rougit le jour où la règle cesse de mordre. Restauré PAR NOM (la mutation est jouée sur une copie de la règle, le verdict de production reste `ResolveRounds`) |
+| 2026-09-16 | 1.9.11 | ce commit | `go test .../replay/fallback/ ./internal/archlint/` | verts. Registre : **96 entrées**, `repli_manches_contigues_decretees` -> **`repli_manche_zero_decretee`** (`film_muet` / `apres_lecture`, compteur **CÂBLÉ**), ratchet `devant_la_lecture` **6 -> 5** |
+| 2026-09-16 | 1.9.11 | ce commit | `.ai/baselines/tests_pre_migration.jsonl` | **non touché, et c'est vérifié** : le lot n'a RENOMMÉ ni SUPPRIMÉ aucun test — il en ajoute neuf (`rounds_decision_test.go`, `score_rounds_coverage_test.go`) |
+| 2026-09-16 | 1.9.11 | — | `replay-equiv` (régime court) et `replay-corpus-gate` | **NON JOUÉS À CE COMMIT** : un seul décodage à la fois sur la machine, six exécuteurs en parallèle. En attente de la voie libre du pilote ; consignés ici à leur passage |
 ## 6. Protocole de reprise de session
 
 1. Relire le skill `plan-execution`, puis la §5 et la première case non statuée de la §3.

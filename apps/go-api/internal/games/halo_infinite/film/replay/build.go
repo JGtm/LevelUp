@@ -162,7 +162,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	logTeamCoverage(matchID, teamCov)
 	clock := replayScoreClock(&doc, interval, matchID)
 	objCov := attachObjectiveActions(&doc, opt, reg, clock)
-	scoreCov := attachScoreTimeline(&doc, opt.Score, opt.Deaths, clock, matchID)
+	scoreCov := attachScoreTimeline(&doc, opt, clock, matchID)
 
 	// L'ETAT ACTIF des deux familles mesurees (camo, surbouclier) : episodes dates par
 	// vie, fermes a la mort quand rien n'a mesure la fin (cf. equipment_episodes.go).

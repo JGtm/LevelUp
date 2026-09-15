@@ -259,6 +259,16 @@ type GrappleCoverage struct {
 }
 
 // ScoreCoverage dit ce que vaut le calque du score — et ce qu'il ne vaut pas.
+//
+// LES QUATRE CHAMPS DE MANCHE (lot 1.9.11, 2026-09-16) DISENT LE FAIT « quelles manches sont
+// RÉELLES » sous les trois formes que la décision D14 (c) du PLAN_DECODEUR_FILM exige :
+// la GRAMMAIRE (`roundsWritten`, ce que le film écrit), la CONTRADICTION
+// (`roundsContradicted` / `roundsContradictedRecords`, un désignateur matériel que l'ordre des
+// manches refuse) et le REPLI (`roundsDecreed`, la manche 0 décrétée quand le film est muet).
+// `rounds` reste le COMPTE des manches retenues — la grandeur que le rejeu consomme.
+//
+// TOUS OPTIONNELS : un film mono-manche sans contradiction ni repli ne les porte pas, et le
+// document garde la forme qu'il avait.
 type ScoreCoverage struct {
 	TeamIdentity  string `json:"teamIdentity"`
 	Rounds        int    `json:"rounds"`
@@ -266,6 +276,20 @@ type ScoreCoverage struct {
 	Truncated     bool   `json:"truncated"`
 	Oracle        string `json:"oracle"`
 	Points        int    `json:"points"`
+	// RoundsWritten : les désignateurs de manche que le film ÉCRIT, triés — le dénominateur
+	// sans lequel « N manches » ne se juge pas. Publié dès qu'il y en a plus d'un (un film
+	// mono-manche n'apprendrait rien).
+	RoundsWritten []int `json:"roundsWritten,omitempty"`
+	// RoundsContradicted : les désignateurs MATÉRIELS que l'ordre des manches refuse, triés.
+	// Un désignateur y figure parce que le film ne déclare aucune des manches qui le précèdent
+	// — mesuré sur 24 films du cache, dont 23 ont fini dans leur temps réglementaire sur un
+	// mode sans manche (lot 1.9.11).
+	RoundsContradicted []int `json:"roundsContradicted,omitempty"`
+	// RoundsContradictedRecords : les enregistrements que ces désignateurs portent.
+	RoundsContradictedRecords int `json:"roundsContradictedRecords,omitempty"`
+	// RoundsDecreed : aucune manche n'a été admise et la manche 0 a été DÉCRÉTÉE pour que le
+	// film reste lisible (repli `repli_manche_zero_decretee`).
+	RoundsDecreed bool `json:"roundsDecreed,omitempty"`
 }
 
 // WeaponChangeCoverage dit ce que le calque a vu et ce qu'il a écarté, pour qu'un lecteur
