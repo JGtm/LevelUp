@@ -73,6 +73,25 @@ func playerOwnershipXUIDResolver(cfg *config.AppConfig) middleware.PlayerXUIDRes
 	}
 }
 
+// playerGamertagResolver mappe un slug joueur vers le gamertag de son profil
+// pour le titre courant, via db_profiles.json sans ouvrir de DuckDB. Jumeau de
+// playerOwnershipXUIDResolver : le handler des amis a besoin du gamertag du
+// profil pour l'exclure de sa propre liste.
+func playerGamertagResolver(cfg *config.AppConfig) func(ctx context.Context, slug string) (string, bool) {
+	return func(ctx context.Context, slug string) (string, bool) {
+		players, err := cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))
+		if err != nil {
+			return "", false
+		}
+		for i := range players {
+			if players[i].PlayerSlug == slug {
+				return players[i].Gamertag, true
+			}
+		}
+		return "", false
+	}
+}
+
 // familyXUIDResolver résout l'ensemble des xuids co-membres de groupe DU USER
 // courant (groups.json) pour autoriser le switch de BDD entre membres d'un même
 // groupe/famille (ADR 0029). Lit la session depuis le contexte → user → groupes.

@@ -203,25 +203,25 @@ node_modules.tmp; npm run typecheck` → 0 (la branche reste verte côté web à
 
 ## 5. Étape 3 — Backend : API amis par joueur (moyen)
 
-- [ ] 3.1 `internal/api/handlers/friends.go` (nouveau, Huma) monté **sous le groupe
+- [x] 3.1 `internal/api/handlers/friends.go` (nouveau, Huma) monté **sous le groupe
       `/players/{player_slug}`** gardé par `RequirePlayerOwnership`
       (`server_apiv1.go:~949`) : `GET /players/{slug}/friends` → `PlayerFriends` (+ `can_edit: bool`, vrai pour le
       propriétaire direct ou un admin — c est la seule source du mode lecture seule côté front) ;
       `PUT /players/{slug}/friends` → `PlayerFriends` (remplacement complet, normalisation 1.1).
-- [ ] 3.2 Droit d'écriture (D4) : `PUT` exige propriétaire direct OU admin — réutiliser
+- [x] 3.2 Droit d'écriture (D4) : `PUT` exige propriétaire direct OU admin — réutiliser
       `BootstrapService.DirectOwnerFor(sess)` (`internal/service/bootstrap_ownership.go`) ;
       sinon **403 `friends_forbidden`**. Enforcement désactivé (demo / `auth_mode=none`) →
       écriture libre (cohérent avec `authz.Enforced`).
-- [ ] 3.3 Effet de bord du `PUT` : `FriendsOrchestrator.RecomputeForPlayer` (2.3) en
+- [x] 3.3 Effet de bord du `PUT` : `FriendsOrchestrator.RecomputeForPlayer` (2.3) en
       goroutine, journalisé `slog.InfoContext(ctx, "friends: recompute is_with_friends",
       "player", ..., "added", n)` ; erreur → `slog.ErrorContext` (jamais avalée). Émettre la
       notification `friend_sync_completed` existante si promotion > 0 (parité avec l'ancien
       hook `settings.go:312-330`).
-- [ ] 3.4 Tests `friends_test.go` (httptest, mode `xbox` enforced) : étranger → 403
+- [x] 3.4 Tests `friends_test.go` (httptest, mode `xbox` enforced) : étranger → 403
       `player_forbidden` (middleware) ; co-membre → 200 en GET, 403 `friends_forbidden` en PUT ;
       propriétaire → 200/200 ; admin → 200/200 ; PUT invalide (51 entrées, gamertag vide) →
       400 ; mode `none` → PUT libre.
-- [ ] 3.5 Contrat : `openapi.yaml` régénéré (harness `internal/api/openapigen`), opérations
+- [x] 3.5 Contrat : `openapi.yaml` régénéré (harness `internal/api/openapigen`), opérations
       `getPlayerFriends` / `putPlayerFriends`, tag `friends`.
 
 **Gate G3** : `go test ./internal/api/... ./internal/service/...` → 0 ; `make generate-types`
@@ -399,6 +399,11 @@ Reprise de session : lire cette section puis `git log --oneline -10` dans le wor
 - **`port.FriendsOrchestrator` était une interface à un seul implémenteur et un seul
   appelant**, tous deux supprimés par 2.4 : elle n'ajoutait aucun découplage. (Supprimée en
   2.10 au titre du « 0 code mort ».)
+- **ADR 0029 décrit un comportement que le code ne tient plus** : « un slug *inconnu* reste
+  404 `player_not_found` (le middleware laisse passer, le handler répond) ». Depuis le
+  durcissement S7 / audit A1-m1, `RequirePlayerOwnership` refuse un slug inconnu par un 403
+  uniforme et ne laisse passer que l'admin. Doc inversée à corriger dans l'ADR (hors périmètre ;
+  constaté par un test de l'étape 3, d'abord rouge pour cette raison).
 
 ---
 
@@ -584,3 +589,49 @@ migration de groupe par défaut est conservée et re-sourcée depuis `friendstor
 - `grep -rn "FriendGamertags|friend_gamertags" apps/go-api --include=*.go | grep -v friendstore | grep -v archlint` → seules restent les
   occurrences d'identifiants légitimes (`FriendGamertagsResolver`, `squadagg.FriendGamertags`) ;
   **0 occurrence** du littéral `friend_gamertags`, ce que le garde-rail 2.8 prouve en CI.
+
+### Étape 3 — API amis par joueur — 2026-09-15 ~23:00 — CLOSE
+
+- 3.1 `[x]` `internal/api/handlers/friends.go` monté sous `/players/{player_slug}` (donc
+  derrière `RequirePlayerOwnership`) : `GET /friends` → `PlayerFriends` (+ `can_edit`),
+  `PUT /friends` → remplacement complet normalisé. Corps lu en `RawBody` (400 `invalid_body`
+  plutôt que le 422 de validation Huma, comme `groups.go`). Slug sans xuid → 409
+  `player_without_xuid` (ajout au plan : un profil sans identité n'a rien à quoi rattacher
+  une liste).
+- 3.2 `[x]` D4 : `canEdit` = propriétaire direct (xuid lié) OU `role=admin` ; sinon 403
+  `friends_forbidden`. Enforcement désactivé (`authz.Enforced` faux) → écriture libre.
+  **Écart assumé** : le plan proposait `BootstrapService.DirectOwnerFor` ; le handler passe
+  directement par `authz.Enforced` + `authz.CurrentUser`, ce qui évite d'injecter un service
+  d'une autre couche dans un handler (skill `arch-rules`) et couvre le cas admin, que
+  `DirectOwnerFor` exclut par construction.
+- 3.3 `[x]` effet de bord du PUT : `RecomputeForPlayer` en goroutine, journalisé
+  `slog.InfoContext(... "added", n)` / `ErrorContext` en cas d'échec — jamais avalé. Parité
+  de notification tenue : `friend_added` est émise par nouveau gamertag (helpers repris de
+  l'ancien PATCH), et `friend_sync_completed` reste émise par l'orchestrateur quand il promeut
+  au moins un match. Le recompute n'est déclenché que si la liste a réellement changé.
+- 3.4 `[x]` `friends_test.go`, 12 tests en `httptest` avec le MÊME montage qu'en production
+  (middleware d'ownership + handler) : propriétaire GET/PUT, normalisation + exclusion de soi,
+  remplacement complet, isolation entre joueurs, étranger → 403 `player_forbidden` (GET et
+  PUT), co-membre de groupe → 200 en lecture avec `can_edit=false` et 403 `friends_forbidden`
+  en écriture (liste inchangée après refus), admin → 200/200, 51 entrées → 400, gamertag de
+  51 caractères → 400, entrées vides ignorées, JSON invalide → 400, slug inconnu, `auth_mode=none`
+  → écriture libre.
+  **Découverte (test d'abord rouge)** : sur un slug INCONNU, le middleware répond 403
+  `player_forbidden` à un utilisateur standard et ne laisse passer que l'admin vers le 404
+  `player_not_found`. C'est un fail-closed délibéré (S7 / audit A1-m1 : un 404 distinct serait
+  un oracle d'existence) mais l'ADR 0029 décrit encore « un slug inconnu reste 404
+  player_not_found ». Le test consigne le comportement RÉEL ; la correction de l'ADR est notée
+  en §10, non traitée.
+- 3.5 `[x]` `go run ./cmd/openapi-gen` : opérations `getPlayerFriends` / `putPlayerFriends`,
+  tag `friends`, schéma `PlayerFriends` (`xuid`, `gamertags` non nullable, `can_edit` requis,
+  `updated_at` optionnel). `npm run generate-types` → `PlayerFriends` présent dans
+  `generated.ts`.
+
+**Gate G3 : PASSÉ.**
+- `go test ./internal/api/... ./internal/service/...` → **0** (aucun `--- FAIL`).
+- `gofmt -l ./cmd ./internal` → vide ; `go vet ./internal/api/...` → **0**.
+- `make generate-types` (via `npm run generate-types`) → `PlayerFriends` dans
+  `apps/web/src/lib/api/generated.ts` (7 occurrences).
+- `git diff --stat` : 4 fichiers, tous dans le périmètre 3.x (`openapi.yaml`, `server.go`,
+  `server_apiv1.go`, `generated.ts`) + les 2 fichiers créés (`handlers/friends.go`,
+  `handlers/friends_test.go`).

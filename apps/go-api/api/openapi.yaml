@@ -3318,6 +3318,55 @@ paths:
       summary: Résoudre le contexte de filtres
       tags:
         - filters
+  /players/{player_slug}/friends:
+    get:
+      operationId: getPlayerFriends
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerFriends'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: 'Liste d''amis du joueur (lecture : propriétaire, co-membre de groupe ou admin)'
+      tags:
+        - friends
+    put:
+      operationId: putPlayerFriends
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerFriends'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Remplace la liste d'amis du joueur (propriétaire direct ou admin)
+      tags:
+        - friends
   /players/{player_slug}/matches/{match_id}:
     get:
       description: |
@@ -20466,6 +20515,24 @@ components:
         - gamertag
         - xuid
         - status
+      type: object
+    PlayerFriends:
+      additionalProperties: false
+      properties:
+        can_edit:
+          type: boolean
+        gamertags:
+          items:
+            type: string
+          type: array
+        updated_at:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertags
+        - can_edit
       type: object
     PlayerIdentity:
       additionalProperties: false
