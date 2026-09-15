@@ -84,11 +84,19 @@ var registreKillsource = []Repli{
 		Sites: []Site{{
 			Fichier: pkgKillsource + "walk.go",
 			Ancre:   "func locateFallback(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {",
+		}, {
+			// SECOND SITE, POSE LE 2026-09-16 (lot 1.9.10) : la marche des morts d'objet porte
+			// le MEME localisateur, donc le MEME repli — une seule entrée pour un seul fait.
+			// Les deux marches se rejoignent au pas 4 de M2 (« une seule porte aux octets ») ;
+			// ce jour-là ce site redeviendra unique.
+			Fichier: pkgFilmdec + "object_deaths_march.go",
+			Ancre:   "func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 3.4 (largeurs calibrees par la carte et le build)",
-		// Ce repli-ci porte DÉJÀ son nom dans le code (`locateFallback`) : c'est ce que la
-		// convention du garde-rail exige, et il entre au registre pour cette raison.
+		// Ce repli-ci porte DÉJÀ son nom dans le code (`locateFallback`, `marchLocateFallback`) :
+		// c'est ce que la convention du garde-rail exige, et il entre au registre pour cette
+		// raison.
 		CritereRetrait:  "0 recours a la largeur libre sur les 8 builds une fois les largeurs prises au profil",
 		CompteurBranche: false,
 		CibleComptage:   comptageFamille19,

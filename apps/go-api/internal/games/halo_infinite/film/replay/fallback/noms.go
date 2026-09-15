@@ -27,8 +27,6 @@ const (
 	NomLargeursAxeParDefautConservees Nom = "repli_largeurs_axe_par_defaut_conservees"
 	// NomIdentitePisteMeilleurRecouvrement : `replay/identity.go`, `nameTracksByLives`.
 	NomIdentitePisteMeilleurRecouvrement Nom = "repli_identite_piste_meilleur_recouvrement"
-	// NomFinDeVieVehiculeParRecensement : `replay/vehicle_tracks.go`, `assignVehicleWindows`.
-	NomFinDeVieVehiculeParRecensement Nom = "repli_fin_de_vie_vehicule_par_recensement"
 	// NomPositionLacherPrendLaPrise : `replay/flag_carries.go`, `attachFlagCarryPositions`.
 	NomPositionLacherPrendLaPrise Nom = "repli_position_lacher_prend_la_prise"
 	// NomPisteDrapeauSansPontEcartee : `replay/flag_carrier_tracks.go`, `tracksByXUID`.

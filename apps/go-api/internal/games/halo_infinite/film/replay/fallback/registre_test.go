@@ -64,7 +64,12 @@ func TestRegistrePorteToutesSesFamilles(t *testing.T) {
 // `repli_i0_porte_et_region_par_defaut` passe en `apres_lecture` — les deux chemins de
 // `sync/killcollector` imposent désormais le découpage d'i0 du CATALOGUE de carte, comme le
 // chemin de cuisson, et l'auto-détection n'entre plus que là où le catalogue se tait.
-const ratchetDevantLaLecture = 6
+//
+// BAISSÉ À 5 AU LOT 1.9.10 (2026-09-16) : `repli_fin_de_vie_vehicule_par_recensement` est
+// SUPPRIMÉ, pas rétrogradé — la fin de vie d'un véhicule se lit au composant
+// `object-dead-state` de `ti=40`, et la borne « dernier recensement + 20 s » a disparu du code
+// avec son entrée du registre.
+const ratchetDevantLaLecture = 5
 
 func TestReplisDevantLaLectureNeMontentPas(t *testing.T) {
 	n := NbDevantLaLecture()
