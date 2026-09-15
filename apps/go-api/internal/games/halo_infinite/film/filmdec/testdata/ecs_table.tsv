@@ -688,22 +688,22 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 34	tacmap (la carte tactique)	16	tacmap-missioncount	1	porte	FUN_142ed5e68	R(9)	9	traverse.go:414		aucun	le nombre de missions	campagne	haute	
 35	biped-spartan	0	object-position-dynamic-precision-component	1	porte		3 encodages : keep-baseline (position inchangee, 101 b) / absolu quantifie / delta predit. Porte R(5) puis 3 axes puis R(2) de queue	47 en delta (mesure live, 134 767 relevees) ; 117 en image-cle (chemin brut, vec3 IEEE 96 b)	traverse.go:198	Track.Points;Point.X;Point.Y;Point.Z	rejeu : tracks[].points[].x/y/z (marqueur, trainee), bounds ; carte de chaleur ; killpos ; containment de zones	la POSITION 3D du joueur	En image-cle la position est stockee en PLEINE PRECISION (117 b, chemin brut) et personne ne la lit : ce serait une ancre exacte toutes les ~20 s, sans dependre des bornes de carte.	haute	
 35	biped-spartan	1	object-translational-velocity-dynamic-precision-component	1	porte		R(1) outer ; si 1 -> R(96) copie brute ; si 0 -> R(1) absent ; si present -> R(19) direction cubemap + R(10) magnitude log/exp	31	traverse.go:201		aucun — la valeur est capturee mais sert seulement d'oracle interne pour valider le cap	la VITESSE de deplacement (direction + intensite)	La VITESSE de chaque joueur a chaque image est deja decodee puis jetee : sprint / marche / immobile, metres parcourus par vie, zones ou l'on court contre zones ou l'on campe, detection du rush.	haute	
-35	biped-spartan	2	object-forward-and-up-component	1	porte		R(1) porte ; si 0 -> R(19) direction cubemap ; puis R(8)	9	traverse.go:780		aucun — le cap publie (Point.H) vient d'i21, la visee, pas d'i2	l'orientation du CORPS (vers ou le joueur est tourne)	L'ecart entre le corps (i2) et le regard (i21) dit le strafe, le recul en tirant, et le dos tourne (assassinat). Decode, jamais publie.	haute	
+35	biped-spartan	2	object-forward-and-up-component	1	porte	FUN_14076e278	R(1) porte ; si 0 -> R(19) direction cubemap ; puis R(8)	9	traverse.go:780		aucun — le cap publie (Point.H) vient d'i21, la visee, pas d'i2	l'orientation du CORPS (vers ou le joueur est tourne)	L'ecart entre le corps (i2) et le regard (i21) dit le strafe, le recul en tirant, et le dos tourne (assassinat). Decode, jamais publie.	haute	
 35	biped-spartan	3	object-angular-velocity-component	1	porte	FUN_140d70998	R(1) porte ; si 0 -> R(19) direction + R(8) magnitude (le double-gate historique etait FAUX et sur-lisait 96 bits)	9-28	traverse.go:204		aucun	la vitesse de ROTATION du joueur	Vivacite de visee : reperer un demi-tour brusque juste avant un tir, indicateur de reflexe croisable avec shots[].	haute	
-35	biped-spartan	4	object-body-vitality-component	1	porte		R(8) valeur + 3 x R(1)	11	traverse.go:783	Point.Hp	rejeu : Point.Hp — publie mais avec 0,6 % de couverture, donc jamais affiche en barre	la SANTE (la barre rouge sous le bouclier)	Rien de plus : le film ne retransmet la sante que tres rarement. Le decodage est credible (mediane 0,79 en vie contre 0,55 avant la mort) mais la couverture interdit toute barre.	haute	
-35	biped-spartan	5	object-shield-vitality-component	1	porte		largeurs litterales 8/16/12 dans FUN_140d50cbc, aucune dependance runtime	29	traverse.go:786	Point.Sh	rejeu : Point.Sh (16 % des points, barre de fiche) ; equipmentEpisodes famille overshield ; effet plein-fiche du surbouclier	le BOUCLIER (la barre bleue) — et, non clampe, le SURBOUCLIER	La RECHARGE n'est pas lisible (temoin de remontee monotone en echec) : l'echantillonnage est trop laache. Rien de plus a en tirer.	haute	
-35	biped-spartan	6	object-region-state-component	1	porte		boucle de regions	358	traverse.go:217		aucun	l'etat des REGIONS du corps (quelle partie a ete abimee)	C'est le plus gros composant du bipede (358 bits) et il est integralement jete : la localisation des degats sur le corps n'a jamais ete mesuree une seule fois.	moyenne	
-35	biped-spartan	7	object-damage-sections-component	1	porte		boucle de sections	inconnu	traverse.go:220		aucun	les SECTIONS de degats de l'objet	Meme veine qu'i6 : ou le joueur encaisse. Non mesure.	moyenne	
-35	biped-spartan	8	object-constraint-component	1	porte		inconnue en detail	inconnu	traverse.go:223		aucun	les CONTRAINTES physiques (objet attache ou lie a un autre)	inconnu	basse	
-35	biped-spartan	9	object-multiplayer-properties-component	1	porte	FUN_1407d4c94	R(1) porte + R(5) type + flux TLV octet par octet jusqu'au terminateur. LE CORPS EST SAUTE, JAMAIS INTERPRETE (78 % du temps CPU du decodage y passait avant optimisation)	334	traverse.go:774		aucun	le bloc d'IDENTITE multijoueur de l'entite (le fameux 'obje')	DEUX choses. (1) Le corps TLV porte l'identite et la variante de l'entite ; il est saute sans etre lu. (2) ALERTE PRODUCTION : le lot R7-b a etabli sur decompile que le jeu lit ce bloc quand le bit vaut ZERO ; ce worktree fait l'INVERSE (components_batch7.go:27). Corrige seulement dans LevelUp-wt-kfloop.	haute	
-35	biped-spartan	10	object-parent-state-component	3	porte		branche sur param_4 (largeur runtime)	variable	traverse.go:226		aucun	le PARENT de l'entite (porte par un vehicule, attache a un autre objet)	Dire qu'un joueur est DANS un vehicule ou porte un objet, sans passer par les evenements. Non mesure.	moyenne	
+35	biped-spartan	4	object-body-vitality-component	1	porte	FUN_140fb8978	R(8) valeur + 3 x R(1)	11	traverse.go:783	Point.Hp	rejeu : Point.Hp — publie mais avec 0,6 % de couverture, donc jamais affiche en barre	la SANTE (la barre rouge sous le bouclier)	Rien de plus : le film ne retransmet la sante que tres rarement. Le decodage est credible (mediane 0,79 en vie contre 0,55 avant la mort) mais la couverture interdit toute barre.	haute	
+35	biped-spartan	5	object-shield-vitality-component	1	porte	FUN_140d50cbc	largeurs litterales 8/16/12 dans FUN_140d50cbc, aucune dependance runtime	29	traverse.go:786	Point.Sh	rejeu : Point.Sh (16 % des points, barre de fiche) ; equipmentEpisodes famille overshield ; effet plein-fiche du surbouclier	le BOUCLIER (la barre bleue) — et, non clampe, le SURBOUCLIER	La RECHARGE n'est pas lisible (temoin de remontee monotone en echec) : l'echantillonnage est trop laache. Rien de plus a en tirer.	haute	
+35	biped-spartan	6	object-region-state-component	1	porte	FUN_140e1bfa0	boucle de regions	358	traverse.go:217		aucun	l'etat des REGIONS du corps (quelle partie a ete abimee)	C'est le plus gros composant du bipede (358 bits) et il est integralement jete : la localisation des degats sur le corps n'a jamais ete mesuree une seule fois.	moyenne	
+35	biped-spartan	7	object-damage-sections-component	1	porte	FUN_142f03c80	boucle de sections	inconnu	traverse.go:220		aucun	les SECTIONS de degats de l'objet	Meme veine qu'i6 : ou le joueur encaisse. Non mesure.	moyenne	
+35	biped-spartan	8	object-constraint-component	1	porte	FUN_142f039cc	inconnue en detail	inconnu	traverse.go:223		aucun	les CONTRAINTES physiques (objet attache ou lie a un autre)	inconnu	basse	
+35	biped-spartan	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94	R(1) porte + R(5) type + flux TLV octet par octet jusqu'au terminateur. LE CORPS EST SAUTE, JAMAIS INTERPRETE (78 % du temps CPU du decodage y passait avant optimisation)	334	traverse.go:774		aucun	le bloc d'IDENTITE multijoueur de l'entite (le fameux 'obje')	DEUX choses. (1) Le corps TLV porte l'identite et la variante de l'entite ; il est saute sans etre lu. (2) ALERTE PRODUCTION : le lot R7-b a etabli sur decompile que le jeu lit ce bloc quand le bit vaut ZERO ; ce worktree fait l'INVERSE (components_batch7.go:27). Corrige seulement dans LevelUp-wt-kfloop.	haute	
+35	biped-spartan	10	object-parent-state-component	3	porte	FUN_140c1e4d0	branche sur param_4 (largeur runtime)	variable	traverse.go:226		aucun	le PARENT de l'entite (porte par un vehicule, attache a un autre objet)	Dire qu'un joueur est DANS un vehicule ou porte un objet, sans passer par les evenements. Non mesure.	moyenne	
 35	biped-spartan	11	object-dead-state-component	1	porte	FUN_140c1dce0	forme LOURDE reservee aux ti 0x23 (bipede) et 0x28 ; ailleurs UN seul bit. Corps : drapeau + sous-bloc d'anim + global-id R(32) + 2 handles readOpt(1+32)	191	traverse.go:789	ReplayDocument.NeutralDeaths;ReplayDocument.WeaponLabels;ReplayDocument.KillEffects	arme du kill (paquet killsource du titre, 97,6 % de couverture) -> kill feed + icone d'arme ; neutralDeaths (morts que personne ne revendique) ; killpos (positions de mort)	LA MORT : le drapeau de deces et la reference vers la SOURCE du degat fatal	SrcTag0 et SrcTag4c sont deux handles runtime capturees et non resolues (0 sur 786 tombent sur une famille d'arme). Elles ne redeviendront exploitables qu'avec un liage d'entites.	haute	
-35	biped-spartan	12	object-scale-component	2	porte		champ court	inconnu	traverse.go:229		aucun	l'ECHELLE de l'objet	rien de plus (les joueurs sont a l'echelle 1)	moyenne	
-35	biped-spartan	13	object-maximum-vitalities-component	3	porte		champ court, param_4 = 3	8 (3 valeurs distinctes seulement)	traverse.go:232		aucun	les MAXIMA de sante et de bouclier	Enumerable a 3 valeurs : normaliserait Hp/Sh et donnerait un second temoin du surbouclier, independant de la regle q > 64 employee aujourd'hui.	moyenne	
-35	biped-spartan	14	object-dissolver-component	1	porte	FUN_1407ef088	champ court	4 (3 valeurs)	traverse.go:235		aucun	la DISSOLUTION du corps (l'effet de disparition du cadavre)	Daterait la disparition du corps. Faible valeur produit.	moyenne	
+35	biped-spartan	12	object-scale-component	2	porte	FUN_1407dc6e4	champ court	inconnu	traverse.go:229		aucun	l'ECHELLE de l'objet	rien de plus (les joueurs sont a l'echelle 1)	moyenne	
+35	biped-spartan	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054	champ court, param_4 = 3	8 (3 valeurs distinctes seulement)	traverse.go:232		aucun	les MAXIMA de sante et de bouclier	Enumerable a 3 valeurs : normaliserait Hp/Sh et donnerait un second temoin du surbouclier, independant de la regle q > 64 employee aujourd'hui.	moyenne	
+35	biped-spartan	14	object-dissolver-component	1	porte	FUN_140dd9f9c	champ court	4 (3 valeurs)	traverse.go:235		aucun	la DISSOLUTION du corps (l'effet de disparition du cadavre)	Daterait la disparition du corps. Faible valeur produit.	moyenne	
 35	biped-spartan	15	object-low-frequency-component	2	porte	FUN_1407ef088	FUN_1407ef088, valide contre la table ECS live ; param_4 = 2	72	traverse.go:238		aucun	le bloc d'etat BASSE FREQUENCE de l'objet	72 bits jamais lus, contenu non identifie.	moyenne	
-35	biped-spartan	16	object-physics-flags-component	1	porte		champ de drapeaux	inconnu	traverse.go:241		aucun	les DRAPEAUX physiques (au sol, en chute, sans gravite...)	Distinguer AU SOL de EN L'AIR nettoierait la carte de chaleur (un joueur en vol n'occupe pas le sol) et daterait les sauts.	moyenne	
-35	biped-spartan	17	object-frame-configuration-component	0	porte		param_4 = 0 (le seul composant pour lequel l'ancien global valait juste)	52 (5 valeurs)	traverse.go:244		aucun	la configuration du repere de l'objet	Enumerable mais semantique inconnue.	basse	
+35	biped-spartan	16	object-physics-flags-component	1	porte	FUN_1407ee070	champ de drapeaux	inconnu	traverse.go:241		aucun	les DRAPEAUX physiques (au sol, en chute, sans gravite...)	Distinguer AU SOL de EN L'AIR nettoierait la carte de chaleur (un joueur en vol n'occupe pas le sol) et daterait les sauts.	moyenne	
+35	biped-spartan	17	object-frame-configuration-component	0	porte	FUN_1407f0534	param_4 = 0 (le seul composant pour lequel l'ancien global valait juste)	52 (5 valeurs)	traverse.go:244		aucun	la configuration du repere de l'objet	Enumerable mais semantique inconnue.	basse	
 35	biped-spartan	18	unit-control-component	2	porte		param_4 = 2	2	traverse.go:894		aucun	les ENTREES DE COMMANDE de l'unite (ce que le joueur appuie)	Les intentions du joueur, image par image. Non mesure.	moyenne	
 35	biped-spartan	19	unit-actor-control-component	2	porte		param_4 > 1 ouvre un 2e identifiant d'emplacement	variable	traverse.go:247		aucun	le contrale d'acteur (references vers l'entite qui pilote)	REFUTE comme pont vers le joueur : porte des handles resolus en RAM, pas un index 0..7.	haute	
 35	biped-spartan	20	unit-actor-state-component	4	porte		largeur selon param_4 (1->8, 2->10, 3->11, >=4->12)	8-12	traverse.go:250		aucun	l'etat d'acteur	inconnu	basse	
@@ -752,46 +752,46 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 35	biped-spartan	63	biped-action-component	0	partiel	FUN_142f027f4	boucle 1 sur etiquettes connues, puis une boucle 2 dont le compteur est un POPCOUNT d'un masque RAM de 73 bits absent du flux -> ported=false quand elle s'ouvre	196-210	traverse.go:875		aucun	l'ACTION en cours du bipede (le plus large des composants de queue)	LIMITE DURE hors ligne : le compteur vit en RAM. Mesure R7-b : i63 ne desynchronise jamais sur le corpus d'image-cle mais franchit la frontiere du record dans 19-23 % des cas — dernier et plus large composant, il ABSORBE la derive amont plutat qu'il ne la cree.	haute	
 36	inconnu	0	object-position-component	1	porte	FUN_14076e29c			traverse.go:259		aucun	inconnu		aucune	
 36	inconnu	1	object-translational-velocity-component	1	porte	FUN_14076e228			traverse.go:289		aucun	inconnu		aucune	
-36	inconnu	2	object-forward-and-up-component	1	porte				traverse.go:780		aucun	inconnu		aucune	
+36	inconnu	2	object-forward-and-up-component	1	porte	FUN_14076e278			traverse.go:780		aucun	inconnu		aucune	
 36	inconnu	3	object-angular-velocity-component	1	porte	FUN_140d70998			traverse.go:204		aucun	inconnu		aucune	
-36	inconnu	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
-36	inconnu	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	
-36	inconnu	6	object-region-state-component	1	porte				traverse.go:217		aucun	inconnu		aucune	
-36	inconnu	7	object-damage-sections-component	1	porte				traverse.go:220		aucun	inconnu		aucune	
-36	inconnu	8	object-constraint-component	1	porte				traverse.go:223		aucun	inconnu		aucune	
-36	inconnu	9	object-multiplayer-properties-component	1	porte	FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
-36	inconnu	10	object-parent-state-component	3	porte				traverse.go:226		aucun	inconnu		aucune	
+36	inconnu	4	object-body-vitality-component	1	porte	FUN_140fb8978			traverse.go:783		aucun	inconnu		aucune	
+36	inconnu	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			traverse.go:786		aucun	inconnu		aucune	
+36	inconnu	6	object-region-state-component	1	porte	FUN_140e1bfa0			traverse.go:217		aucun	inconnu		aucune	
+36	inconnu	7	object-damage-sections-component	1	porte	FUN_142f03c80			traverse.go:220		aucun	inconnu		aucune	
+36	inconnu	8	object-constraint-component	1	porte	FUN_142f039cc			traverse.go:223		aucun	inconnu		aucune	
+36	inconnu	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
+36	inconnu	10	object-parent-state-component	3	porte	FUN_140c1e4d0			traverse.go:226		aucun	inconnu		aucune	
 36	inconnu	11	object-dead-state-component	1	porte	FUN_140c1dce0			traverse.go:789		aucun	inconnu		aucune	
-36	inconnu	12	object-scale-component	2	porte				traverse.go:229		aucun	inconnu		aucune	
-36	inconnu	13	object-maximum-vitalities-component	3	porte				traverse.go:232		aucun	inconnu		aucune	
-36	inconnu	14	object-dissolver-component	1	porte	FUN_1407ef088			traverse.go:235		aucun	inconnu		aucune	
+36	inconnu	12	object-scale-component	2	porte	FUN_1407dc6e4			traverse.go:229		aucun	inconnu		aucune	
+36	inconnu	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			traverse.go:232		aucun	inconnu		aucune	
+36	inconnu	14	object-dissolver-component	1	porte	FUN_140dd9f9c			traverse.go:235		aucun	inconnu		aucune	
 36	inconnu	15	object-low-frequency-component	2	porte	FUN_1407ef088			traverse.go:238		aucun	inconnu		aucune	
-36	inconnu	16	object-physics-flags-component	1	porte				traverse.go:241		aucun	inconnu		aucune	
-36	inconnu	17	object-frame-configuration-component	0	porte				traverse.go:244		aucun	inconnu		aucune	
+36	inconnu	16	object-physics-flags-component	1	porte	FUN_1407ee070			traverse.go:241		aucun	inconnu		aucune	
+36	inconnu	17	object-frame-configuration-component	0	porte	FUN_1407f0534			traverse.go:244		aucun	inconnu		aucune	
 36	inconnu	18	item-at-rest-component	1	porte	FUN_140ff91e4			traverse.go:327		aucun	inconnu		aucune	
 36	inconnu	19	item-ignore-player-component	1	porte	FUN_141101120			traverse.go:307		aucun	inconnu		aucune	
 37	equipment / item (objet du monde)	0	object-position-component	1	porte	FUN_14076e29c	R(1) precHigh ; si 0 -> R(1) index-sel [+ R(1) index de region] + 3 axes aux largeurs de la CARTE + R(2) de queue ; si 1 -> 59 bits (AABB + queue)	45 (porte 3 bits + 13/13/14 sur Cliffhanger + 2)	traverse.go:259		rejeu : equipmentPlacements[].x/y/z (schema 9) — les poses de mur, de capteur et des objets du monde	la POSITION de l'objet dans le monde (chemin world-object : position ABSOLUE a chaque image, pas de delta)	Controle passe : 97,2 % de 628 368 echantillons dans l'emprise des joueurs du meme film, 12 films sur 12. C'est l'acquis solide de l'archetype.	haute	
 37	equipment / item (objet du monde)	1	object-translational-velocity-component	1	porte	FUN_14076e228	R(1) [+ R(19) direction + R(10) magnitude]	1-30	traverse.go:289		aucun	la vitesse de l'objet (un objet pose ne bouge pas ; un objet lance, si)	Distinguer un objet EN VOL d'un objet POSE : daterait l'instant exact ou une pose se fige, sans passer par equipment-deployed.	moyenne	
-37	equipment / item (objet du monde)	2	object-forward-and-up-component	1	porte		meme deser que le bipede i2	9	traverse.go:780		aucun	l'orientation de l'objet	Le lot des poses a mesure que le record de CREATION ne porte AUCUNE orientation d'objet (le cap dessine vient du POSEUR). Si ce composant en porte une en delta, l'arc du mur serait oriente par l'objet et non par le geste. NON VERIFIE.	basse	
+37	equipment / item (objet du monde)	2	object-forward-and-up-component	1	porte	FUN_14076e278	R(1) porte ; si 0 : R(19) direction ; puis R(8) INCONDITIONNEL (FUN_14076e278 -> FUN_140c5f938 -> FUN_140c5fa84)	9	traverse.go:780		aucun	l'orientation de l'objet	Le lot des poses a mesure que le record de CREATION ne porte AUCUNE orientation d'objet (le cap dessine vient du POSEUR). Si ce composant en porte une en delta, l'arc du mur serait oriente par l'objet et non par le geste. NON VERIFIE.	basse	
 37	equipment / item (objet du monde)	3	object-angular-velocity-component	1	porte	FUN_140d70998	meme deser que le bipede i3	9-28	traverse.go:204		aucun	vitesse de rotation de l'objet	inconnu	basse	
-37	equipment / item (objet du monde)	4	object-body-vitality-component	1	porte		R(8) + 3 x R(1)	11	traverse.go:783		aucun	les points de vie de l'objet (un mur se detruit)	La SANTE d'un mur de protection : combien de degats il a absorbe avant de tomber. Une metrique produit directe, jamais mesuree.	basse	
-37	equipment / item (objet du monde)	5	object-shield-vitality-component	1	porte		8/16/12	29	traverse.go:786		aucun	bouclier de l'objet	idem i4	basse	
-37	equipment / item (objet du monde)	6	object-region-state-component	1	porte		boucle de regions	inconnu	traverse.go:217		aucun	etat des regions de l'objet	inconnu	basse	
-37	equipment / item (objet du monde)	7	object-damage-sections-component	1	porte		boucle de sections	inconnu	traverse.go:220		aucun	sections de degats de l'objet	inconnu	basse	
-37	equipment / item (objet du monde)	8	object-constraint-component	1	porte		inconnue	inconnu	traverse.go:223		aucun	contraintes physiques	inconnu	basse	
-37	equipment / item (objet du monde)	9	object-multiplayer-properties-component	1	porte	FUN_1407d4c94	R(1) + R(5) + TLV saute	variable	traverse.go:774		aucun	identite multijoueur de l'objet (bloc TLV)	Meme alerte de polarite qu'au bipede. Le variant-name de ce bloc a ete probe par le lot R3 (voie H1) et REFUTE : 0 record bit-exact sur 1 226 en image-cle.	basse	
-37	equipment / item (objet du monde)	10	object-parent-state-component	3	porte		branche sur param_4	variable	traverse.go:226		aucun	l'objet est-il attache a une autre entite	Un lien objet -> porteur serait exactement le pont manquant entre une pose et son poseur (aujourd'hui devine par proximite a moins de 3 m). NON VERIFIE.	basse	
+37	equipment / item (objet du monde)	4	object-body-vitality-component	1	porte	FUN_140fb8978	R(8) dequantifie + 3 x R(1) (FUN_140fb8978, largeur 8 en argument litteral)	11	traverse.go:783		aucun	les points de vie de l'objet (un mur se detruit)	La SANTE d'un mur de protection : combien de degats il a absorbe avant de tomber. Une metrique produit directe, jamais mesuree.	basse	
+37	equipment / item (objet du monde)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc	R(8) dequantifie + R(1)[si 1 : 2 x (R(1)[si 1 : R(12)])] + R(16) + 4 x R(1) (FUN_140d50cbc)	29	traverse.go:786		aucun	bouclier de l'objet	idem i4	basse	
+37	equipment / item (objet du monde)	6	object-region-state-component	1	porte	FUN_140e1bfa0	R(1) present + R(6) compte + compte x R(3) [si present : compte x R(10)] (FUN_140e1bfa0)	7 a 826 (relu 2026-09-15)	traverse.go:217		aucun	etat des regions de l'objet	inconnu	basse	
+37	equipment / item (objet du monde)	7	object-damage-sections-component	1	porte	FUN_142f03c80	R(6) compte + compte x (R(1) [si 1 : R(7) dequant + R(16)]) (FUN_142f03c80)	6 a 1518 (relu 2026-09-15)	traverse.go:220		aucun	sections de degats de l'objet	inconnu	basse	
+37	equipment / item (objet du monde)	8	object-constraint-component	1	porte	FUN_142f039cc	R(5) n [si n != 0 : 2 x R(n)] (FUN_142f039cc ; le jeu marque n > 16 comme invalide)	5 a 67 (relu 2026-09-15)	traverse.go:223		aucun	contraintes physiques	inconnu	basse	
+37	equipment / item (objet du monde)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94	R(1) [si 0 : R(5) etiquette + sous-message TLV mode 2] (FUN_140f53308 -> FUN_1407d4c94)	variable	traverse.go:774		aucun	identite multijoueur de l'objet (bloc TLV)	Meme alerte de polarite qu'au bipede. Le variant-name de ce bloc a ete probe par le lot R3 (voie H1) et REFUTE : 0 record bit-exact sur 1 226 en image-cle.	basse	
+37	equipment / item (objet du monde)	10	object-parent-state-component	3	porte	FUN_140c1e4d0	R(1) attache ; si 1 : FUN_1406d3140(param_3=1, SONDE lue) + R(16) + R(1)[si 1 : R(16)] + 2 x R(1) + 3 x R(16) + R(1)[si 0 : R(19)] + R(8) + R(1) ; si 0 et param_4 < 2 : FUN_1408f0ac4(param_3=0) + R(1)[si 1 : R(11)] ; queue commune (FUN_140c1e4d0)	variable	traverse.go:226		aucun	l'objet est-il attache a une autre entite	Un lien objet -> porteur serait exactement le pont manquant entre une pose et son poseur (aujourd'hui devine par proximite a moins de 3 m). NON VERIFIE.	basse	
 37	equipment / item (objet du monde)	11	object-dead-state-component	1	porte	FUN_140c1dce0	forme LEGERE (UN seul bit) : la forme lourde est reservee aux ti 0x23 et 0x28	1	traverse.go:789		aucun	la DESTRUCTION de l'objet	Daterait la destruction d'un mur ou d'un capteur au bit pres, la ou les poses se ferment aujourd'hui a la fin de la vie d'objet.	moyenne	
-37	equipment / item (objet du monde)	12	object-scale-component	2	porte		champ court	inconnu	traverse.go:229		aucun	echelle de l'objet	La TAILLE de la pose (rayon de l'arc dessine aujourd'hui en dur). Non verifie.	basse	
-37	equipment / item (objet du monde)	13	object-maximum-vitalities-component	3	porte		champ court	8	traverse.go:232		aucun	maxima de vie de l'objet	Normaliserait i4/i5 de l'objet. Non verifie.	basse	
-37	equipment / item (objet du monde)	14	object-dissolver-component	1	porte	FUN_1407ef088	champ court	4	traverse.go:235		aucun	dissolution de l'objet	inconnu	basse	PAS UNE LARGEUR UNIQUE : consumeObjectDissolver (components_object_state.go) lit R(4), puis SI cette valeur n'est pas 13 il lit R(96)+R(12)+R(1) — soit 4 bits (cas v==13, celui que bits_typ fige) ou 113 bits sinon. La largeur est gardee par la VALEUR lue, pas par un bit de porte. Mesure tenue par le controle G5 : 113/113/113 sur les motifs 0x00/0xFF/0xAA, qui manquent tous la valeur 13 (note du 2026-09-06, item E.9)
-37	equipment / item (objet du monde)	15	object-low-frequency-component	2	porte	FUN_1407ef088	FUN_1407ef088	72	traverse.go:238		aucun	bloc basse frequence de l'objet	inconnu	basse	
-37	equipment / item (objet du monde)	16	object-physics-flags-component	1	porte		champ de drapeaux	inconnu	traverse.go:241		aucun	drapeaux physiques de l'objet	Au sol / en vol : redondant avec i1 et i18.	basse	
-37	equipment / item (objet du monde)	17	object-frame-configuration-component	0	porte		param_4 = 0	52	traverse.go:244		aucun	configuration du repere de l'objet	inconnu	basse	
+37	equipment / item (objet du monde)	12	object-scale-component	2	porte	FUN_1407dc6e4	R(1)[si 0 : R(15) + R(1)[si 1 : R(15) + R(12) + R(5)]] (FUN_1407dc6e4)	1 a 48 (relu 2026-09-15)	traverse.go:229		aucun	echelle de l'objet	La TAILLE de la pose (rayon de l'arc dessine aujourd'hui en dur). Non verifie.	basse	
+37	equipment / item (objet du monde)	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054	R(5) drapeaux + blocs 1411b1ac0 gardes + 3 x R(1) (FUN_1407ee054 -> FUN_1407eef08)	8	traverse.go:232		aucun	maxima de vie de l'objet	Normaliserait i4/i5 de l'objet. Non verifie.	basse	
+37	equipment / item (objet du monde)	14	object-dissolver-component	1	porte	FUN_140dd9f9c	R(4) etat [si etat != 13 : R(96) + R(12) dequant + R(1)] (FUN_140dd9f9c)	4	traverse.go:235		aucun	dissolution de l'objet	inconnu	basse	PAS UNE LARGEUR UNIQUE : consumeObjectDissolver (components_object_state.go) lit R(4), puis SI cette valeur n'est pas 13 il lit R(96)+R(12)+R(1) — soit 4 bits (cas v==13, celui que bits_typ fige) ou 113 bits sinon. La largeur est gardee par la VALEUR lue, pas par un bit de porte. Mesure tenue par le controle G5 : 113/113/113 sur les motifs 0x00/0xFF/0xAA, qui manquent tous la valeur 13 (note du 2026-09-06, item E.9)
+37	equipment / item (objet du monde)	15	object-low-frequency-component	2	porte	FUN_1407ef088	R(2)f [si f<2 : R(7)+R(8)] + R(4) + R(6) + R(6) n + n x (R(1)[si 1 : R(1) ; si 0 : 2 x R(12)]) + 7 x R(1) + R(1)[si 0 : R(4)] + R(1)[si 1 : R(1)+b1ac0+R(1)] + R(3)m [si m&3==3 : R(2)+R(5) [si m&4 : 3 x R(8)]] + R(1)[si 1 : R(3)+R(32)+R(1)[si 1 : R(32)]+R(14)] (FUN_1407ef088)	72	traverse.go:238		aucun	bloc basse frequence de l'objet	inconnu	basse	
+37	equipment / item (objet du monde)	16	object-physics-flags-component	1	porte	FUN_1407ee070	5 x R(1), sans porte (FUN_1407ee070)	5 (relu 2026-09-15)	traverse.go:241		aucun	drapeaux physiques de l'objet	Au sol / en vol : redondant avec i1 et i18.	basse	
+37	equipment / item (objet du monde)	17	object-frame-configuration-component	0	porte	FUN_1407f0534	R(1)[si 1 : R(32) + R(6)v + (v+1) x R(1)] + 3 x (R(1)[si 0 : R(6)] + R(1)[si 1 : R(12)] + R(1)[si 1 : R(12)]) (FUN_1407f0534 -> FUN_1407f0550)	52	traverse.go:244		aucun	configuration du repere de l'objet	inconnu	basse	
 37	equipment / item (objet du monde)	18	item-at-rest-component	1	porte	FUN_140ff91e4	R(1) drapeau (FUN_140ff91e4)	1	traverse.go:327		aucun	l'objet est AU REPOS (il a fini de rouler et s'est fige)	Le drapeau exact qui dit qu'une pose est stabilisee : meilleur que la proximite temporelle employee aujourd'hui pour figer une pose. Un bit, deja lu, jamais publie.	haute	
 37	equipment / item (objet du monde)	19	item-ignore-player-component	1	porte	FUN_141101120	FUN_141101120	inconnu	traverse.go:307		aucun	l'objet ignore un joueur donne (periode d'immunite au ramassage)	S'il porte l'identifiant du joueur ignore, c'est un candidat au pont pose -> poseur. Jamais sonde.	moyenne	
 37	equipment / item (objet du monde)	20	equipment-deployed-component	0	porte	FUN_142ed4618	R(1) drapeau (FUN_142ed4618)	1	traverse.go:330	ReplayDocument.EquipmentPlacements	publie par hook (SetEquipmentStateHook) et consomme par l'assemblage des poses	l'equipement est DEPLOYE	Mesure : 3 839 annonces au masque sur 1 097 619 records, 3 820 lues, 0 porte fermee. Ne porte AUCUNE identite.	haute	
-37	equipment / item (objet du monde)	21	equipment-activated-component	0	porte		R(3) (8 valeurs, aucune nommee)	3	traverse.go:344	ReplayDocument.EquipmentPlacements	publie par hook	l'equipement est ACTIVE (le geste d'usage)	VERDICT ECRIT : ne permet PAS de dater l'activation. 2 121 transmissions sur 1 097 619 records (0,19 %), 949 vies sur 6 904 en recoivent une valeur dont 227 seulement APRES le premier record de la vie ; 81 transitions sur 12 matchs. Piste close, sauf a nommer les 8 valeurs de R(3).	haute	
+37	equipment / item (objet du monde)	21	equipment-activated-component	0	porte	FUN_140c1dc80	R(1) porte INVERSEE ; si 0 : R(3) ; si 1 : FUN_1408f0ac4(param_3=4) (FUN_140c1dc80)	3	traverse.go:344	ReplayDocument.EquipmentPlacements	publie par hook	l'equipement est ACTIVE (le geste d'usage)	VERDICT ECRIT : ne permet PAS de dater l'activation. 2 121 transmissions sur 1 097 619 records (0,19 %), 949 vies sur 6 904 en recoivent une valeur dont 227 seulement APRES le premier record de la vie ; 81 transitions sur 12 matchs. Piste close, sauf a nommer les 8 valeurs de R(3).	haute	
 37	equipment / item (objet du monde)	22	equipment-control-signal-component	0	porte	FUN_14101cd94	R(4) + R(1) [+ lecture quantifiee]	5+	traverse.go:359		aucun	le signal de contrale de l'equipement	Jamais mesure. 4 bits enumerables : candidat a un etat d'equipement (allume / eteint / en charge).	moyenne	
 37	equipment / item (objet du monde)	23	equipment-creator-component	0	porte	FUN_142ed45f4	R(1) [si 0 : R(5)]	1-6	traverse.go:365	ReplayDocument.EquipmentPlacements	publie par hook	QUI a cree l'equipement	VERDICT ECRIT : ce n'est NI un emplacement de bipede (0 valeur sur 1 328 dans la bande des emplacements) NI un index de joueur (28 valeurs distinctes sur un film a 8 joueurs). La piste du createur est close par cette voie.	haute	
 37	equipment / item (objet du monde)	24	equipment-energy-component	0	porte	FUN_141087bec	R(14)	14	traverse.go:368	ReplayDocument.EquipmentPlacements	publie par hook	l'ENERGIE restante de l'equipement	5 268 annonces, 5 217 lues, 0 porte fermee. Une jauge de 14 bits jamais portee a l'ecran : la duree de vie restante d'un mur ou d'un capteur.	haute	
@@ -805,60 +805,60 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 38	generic-rigid-body (corps rigide)	1	object-translational-velocity-component	1	porte	FUN_14076e228	R(1) [+ R(19) + R(10)]	1-30	traverse.go:289		aucun	vitesse du corps rigide	inconnu	moyenne	
 38	generic-rigid-body (corps rigide)	2	object-forward-and-up-dynamic-precision-component	2	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	traverse.go:310		aucun	orientation du corps rigide	inconnu	haute	deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 38	generic-rigid-body (corps rigide)	3	object-angular-velocity-component	1	porte	FUN_140d70998			traverse.go:204		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	6	object-region-state-component	1	porte				traverse.go:217		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	7	object-damage-sections-component	1	porte				traverse.go:220		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	8	object-constraint-component	1	porte				traverse.go:223		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	9	object-multiplayer-properties-component	1	porte	FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	10	object-parent-state-component	3	porte				traverse.go:226		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	4	object-body-vitality-component	1	porte	FUN_140fb8978			traverse.go:783		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			traverse.go:786		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	6	object-region-state-component	1	porte	FUN_140e1bfa0			traverse.go:217		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	7	object-damage-sections-component	1	porte	FUN_142f03c80			traverse.go:220		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	8	object-constraint-component	1	porte	FUN_142f039cc			traverse.go:223		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	10	object-parent-state-component	3	porte	FUN_140c1e4d0			traverse.go:226		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	11	object-dead-state-component	1	porte	FUN_140c1dce0			traverse.go:789		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	12	object-scale-component	2	porte				traverse.go:229		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	13	object-maximum-vitalities-component	3	porte				traverse.go:232		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	14	object-dissolver-component	1	porte	FUN_1407ef088			traverse.go:235		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	12	object-scale-component	2	porte	FUN_1407dc6e4			traverse.go:229		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			traverse.go:232		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	14	object-dissolver-component	1	porte	FUN_140dd9f9c			traverse.go:235		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	15	object-low-frequency-component	2	porte	FUN_1407ef088			traverse.go:238		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	16	object-physics-flags-component	1	porte				traverse.go:241		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	17	object-frame-configuration-component	0	porte				traverse.go:244		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	16	object-physics-flags-component	1	porte	FUN_1407ee070			traverse.go:241		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	17	object-frame-configuration-component	0	porte	FUN_1407f0534			traverse.go:244		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	18	generic-rigid-body-transforms-component	1	porte	FUN_142f036f0	FUN_142f036f0	inconnu	traverse.go:356		aucun	les transformations du corps rigide (pose complete)	inconnu	haute	
 38	generic-rigid-body (corps rigide)	19	animated-mesh-dynamic-state-component	1	porte	FUN_142f0258c	R(8) + R(1) + R(16)	25	traverse.go:405		aucun	l'etat d'une piece animee (porte qui s'ouvre, ascenseur)	L'etat des PORTES et des ascenseurs de la carte : un fond de carte qui bouge avec le match. Decode, jete.	haute	
 39	inconnu	0	object-position-component	1	porte	FUN_14076e29c			traverse.go:259		aucun	inconnu		aucune	
 39	inconnu	1	object-translational-velocity-component	1	porte	FUN_14076e228			traverse.go:289		aucun	inconnu		aucune	
 39	inconnu	2	object-forward-and-up-dynamic-precision-component	2	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	traverse.go:310		aucun	inconnu		haute	deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 39	inconnu	3	object-angular-velocity-component	1	porte	FUN_140d70998			traverse.go:204		aucun	inconnu		aucune	
-39	inconnu	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
-39	inconnu	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	
-39	inconnu	6	object-region-state-component	1	porte				traverse.go:217		aucun	inconnu		aucune	
-39	inconnu	7	object-damage-sections-component	1	porte				traverse.go:220		aucun	inconnu		aucune	
-39	inconnu	8	object-constraint-component	1	porte				traverse.go:223		aucun	inconnu		aucune	
-39	inconnu	9	object-multiplayer-properties-component	1	porte	FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
-39	inconnu	10	object-parent-state-component	3	porte				traverse.go:226		aucun	inconnu		aucune	
+39	inconnu	4	object-body-vitality-component	1	porte	FUN_140fb8978			traverse.go:783		aucun	inconnu		aucune	
+39	inconnu	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			traverse.go:786		aucun	inconnu		aucune	
+39	inconnu	6	object-region-state-component	1	porte	FUN_140e1bfa0			traverse.go:217		aucun	inconnu		aucune	
+39	inconnu	7	object-damage-sections-component	1	porte	FUN_142f03c80			traverse.go:220		aucun	inconnu		aucune	
+39	inconnu	8	object-constraint-component	1	porte	FUN_142f039cc			traverse.go:223		aucun	inconnu		aucune	
+39	inconnu	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
+39	inconnu	10	object-parent-state-component	3	porte	FUN_140c1e4d0			traverse.go:226		aucun	inconnu		aucune	
 39	inconnu	11	object-dead-state-component	1	porte	FUN_140c1dce0			traverse.go:789		aucun	inconnu		aucune	
-39	inconnu	12	object-scale-component	2	porte				traverse.go:229		aucun	inconnu		aucune	
-39	inconnu	13	object-maximum-vitalities-component	3	porte				traverse.go:232		aucun	inconnu		aucune	
-39	inconnu	14	object-dissolver-component	1	porte	FUN_1407ef088			traverse.go:235		aucun	inconnu		aucune	
+39	inconnu	12	object-scale-component	2	porte	FUN_1407dc6e4			traverse.go:229		aucun	inconnu		aucune	
+39	inconnu	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			traverse.go:232		aucun	inconnu		aucune	
+39	inconnu	14	object-dissolver-component	1	porte	FUN_140dd9f9c			traverse.go:235		aucun	inconnu		aucune	
 39	inconnu	15	object-low-frequency-component	2	porte	FUN_1407ef088			traverse.go:238		aucun	inconnu		aucune	
-39	inconnu	16	object-physics-flags-component	1	porte				traverse.go:241		aucun	inconnu		aucune	
-39	inconnu	17	object-frame-configuration-component	0	porte				traverse.go:244		aucun	inconnu		aucune	
+39	inconnu	16	object-physics-flags-component	1	porte	FUN_1407ee070			traverse.go:241		aucun	inconnu		aucune	
+39	inconnu	17	object-frame-configuration-component	0	porte	FUN_1407f0534			traverse.go:244		aucun	inconnu		aucune	
 39	inconnu	18	generic-rigid-body-transforms-component	1	porte	FUN_142f036f0			traverse.go:356		aucun	inconnu		aucune	
 39	inconnu	19	animated-mesh-dynamic-state-component	1	porte	FUN_142f0258c			traverse.go:405		aucun	inconnu		aucune	
 40	vehicule (presume)	0	object-position-dynamic-precision-component	1	porte				traverse.go:198		aucun	inconnu		aucune	
 40	vehicule (presume)	1	object-translational-velocity-dynamic-precision-component	1	porte				traverse.go:201		aucun	inconnu		aucune	
 40	vehicule (presume)	2	object-forward-and-up-dynamic-precision-component	2	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	traverse.go:310		aucun	inconnu		haute	deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 40	vehicule (presume)	3	object-angular-velocity-dynamic-precision-component	1	porte	FUN_140d87740	R(1) outer ; si 1 -> R(96) ; sinon R(1) present [+R(19)+R(8)]	2-97	traverse.go:214		aucun	inconnu		haute	deser resolu statiquement 2026-09-03 : FUN_140d87740, distinct du FUN_140d70998 du composant sans dyn.-prec.
-40	vehicule (presume)	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
-40	vehicule (presume)	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	
-40	vehicule (presume)	6	object-region-state-component	1	porte				traverse.go:217		aucun	inconnu		aucune	
-40	vehicule (presume)	7	object-damage-sections-component	1	porte				traverse.go:220		aucun	inconnu		aucune	
-40	vehicule (presume)	8	object-constraint-component	1	porte				traverse.go:223		aucun	inconnu		aucune	
-40	vehicule (presume)	9	object-multiplayer-properties-component	1	porte	FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
-40	vehicule (presume)	10	object-parent-state-component	3	porte				traverse.go:226		aucun	inconnu		aucune	
+40	vehicule (presume)	4	object-body-vitality-component	1	porte	FUN_140fb8978			traverse.go:783		aucun	inconnu		aucune	
+40	vehicule (presume)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			traverse.go:786		aucun	inconnu		aucune	
+40	vehicule (presume)	6	object-region-state-component	1	porte	FUN_140e1bfa0			traverse.go:217		aucun	inconnu		aucune	
+40	vehicule (presume)	7	object-damage-sections-component	1	porte	FUN_142f03c80			traverse.go:220		aucun	inconnu		aucune	
+40	vehicule (presume)	8	object-constraint-component	1	porte	FUN_142f039cc			traverse.go:223		aucun	inconnu		aucune	
+40	vehicule (presume)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
+40	vehicule (presume)	10	object-parent-state-component	3	porte	FUN_140c1e4d0			traverse.go:226		aucun	inconnu		aucune	
 40	vehicule (presume)	11	object-dead-state-component	1	porte	FUN_140c1dce0	forme LOURDE, la meme que le bipede	191	traverse.go:789		aucun	la destruction du vehicule + la source du degat fatal	L'arme qui a detruit un vehicule, avec la meme grammaire qui a resolu l'arme du kill a 97,6 %. Jamais exploite (les vehicules sont rares dans le corpus d'arene).	moyenne	
-40	vehicule (presume)	12	object-scale-component	2	porte				traverse.go:229		aucun	inconnu		aucune	
-40	vehicule (presume)	13	object-maximum-vitalities-component	3	porte				traverse.go:232		aucun	inconnu		aucune	
-40	vehicule (presume)	14	object-dissolver-component	1	porte	FUN_1407ef088			traverse.go:235		aucun	inconnu		aucune	
+40	vehicule (presume)	12	object-scale-component	2	porte	FUN_1407dc6e4			traverse.go:229		aucun	inconnu		aucune	
+40	vehicule (presume)	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			traverse.go:232		aucun	inconnu		aucune	
+40	vehicule (presume)	14	object-dissolver-component	1	porte	FUN_140dd9f9c			traverse.go:235		aucun	inconnu		aucune	
 40	vehicule (presume)	15	object-low-frequency-component	2	porte	FUN_1407ef088			traverse.go:238		aucun	inconnu		aucune	
-40	vehicule (presume)	16	object-physics-flags-component	1	porte				traverse.go:241		aucun	inconnu		aucune	
-40	vehicule (presume)	17	object-frame-configuration-component	0	porte				traverse.go:244		aucun	inconnu		aucune	
+40	vehicule (presume)	16	object-physics-flags-component	1	porte	FUN_1407ee070			traverse.go:241		aucun	inconnu		aucune	
+40	vehicule (presume)	17	object-frame-configuration-component	0	porte	FUN_1407f0534			traverse.go:244		aucun	inconnu		aucune	
 40	vehicule (presume)	18	unit-control-component	2	porte				traverse.go:894		aucun	inconnu		aucune	
 40	vehicule (presume)	19	unit-actor-control-component	2	porte				traverse.go:247		aucun	inconnu		aucune	
 40	vehicule (presume)	20	unit-actor-state-component	4	porte				traverse.go:250		aucun	inconnu		aucune	
@@ -891,44 +891,44 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 40	vehicule (presume)	47	vehicle-low-frequency-component	1	non_porte						aucun	inconnu		aucune	
 41	projectile	0	object-position-component	1	porte	FUN_14076e29c	chemin world-object : position ABSOLUE quantifiee aux largeurs de la carte	45	traverse.go:259		rejeu : projectiles[].p (trajectoires, schema) et grenades[].proj (le point de repos du vol d'une grenade)	la position du projectile a chaque image	Correctif de 2026-08-15 : avant, TOUTES les cartes dequantifiaient aux largeurs de Cliffhanger (part des projectiles dans l'emprise des joueurs : 0,09 a 65 %). Avec les largeurs du catalogue : 98,96 a 99,79 %.	haute	
 41	projectile	1	object-translational-velocity-component	1	porte	FUN_14076e228	R(1) [+ R(19) + R(10)]	1-30	traverse.go:289		aucun	la vitesse du projectile	Vitesse initiale d'un projectile : distinguerait une roquette d'une balle sans lire l'arme.	moyenne	
-41	projectile	2	object-forward-and-up-component	1	porte				traverse.go:780		aucun	inconnu		aucune	
+41	projectile	2	object-forward-and-up-component	1	porte	FUN_14076e278			traverse.go:780		aucun	inconnu		aucune	
 41	projectile	3	object-angular-velocity-component	1	porte	FUN_140d70998			traverse.go:204		aucun	inconnu		aucune	
-41	projectile	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
-41	projectile	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	
-41	projectile	6	object-region-state-component	1	porte				traverse.go:217		aucun	inconnu		aucune	
-41	projectile	7	object-damage-sections-component	1	porte				traverse.go:220		aucun	inconnu		aucune	
-41	projectile	8	object-constraint-component	1	porte				traverse.go:223		aucun	inconnu		aucune	
-41	projectile	9	object-multiplayer-properties-component	1	porte	FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
-41	projectile	10	object-parent-state-component	3	porte				traverse.go:226		aucun	inconnu		aucune	
+41	projectile	4	object-body-vitality-component	1	porte	FUN_140fb8978			traverse.go:783		aucun	inconnu		aucune	
+41	projectile	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			traverse.go:786		aucun	inconnu		aucune	
+41	projectile	6	object-region-state-component	1	porte	FUN_140e1bfa0			traverse.go:217		aucun	inconnu		aucune	
+41	projectile	7	object-damage-sections-component	1	porte	FUN_142f03c80			traverse.go:220		aucun	inconnu		aucune	
+41	projectile	8	object-constraint-component	1	porte	FUN_142f039cc			traverse.go:223		aucun	inconnu		aucune	
+41	projectile	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
+41	projectile	10	object-parent-state-component	3	porte	FUN_140c1e4d0			traverse.go:226		aucun	inconnu		aucune	
 41	projectile	11	object-dead-state-component	1	porte	FUN_140c1dce0			traverse.go:789		aucun	inconnu		aucune	
-41	projectile	12	object-scale-component	2	porte				traverse.go:229		aucun	inconnu		aucune	
-41	projectile	13	object-maximum-vitalities-component	3	porte				traverse.go:232		aucun	inconnu		aucune	
-41	projectile	14	object-dissolver-component	1	porte	FUN_1407ef088			traverse.go:235		aucun	inconnu		aucune	
+41	projectile	12	object-scale-component	2	porte	FUN_1407dc6e4			traverse.go:229		aucun	inconnu		aucune	
+41	projectile	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			traverse.go:232		aucun	inconnu		aucune	
+41	projectile	14	object-dissolver-component	1	porte	FUN_140dd9f9c			traverse.go:235		aucun	inconnu		aucune	
 41	projectile	15	object-low-frequency-component	2	porte	FUN_1407ef088			traverse.go:238		aucun	inconnu		aucune	
-41	projectile	16	object-physics-flags-component	1	porte				traverse.go:241		aucun	inconnu		aucune	
-41	projectile	17	object-frame-configuration-component	0	porte				traverse.go:244		aucun	inconnu		aucune	
+41	projectile	16	object-physics-flags-component	1	porte	FUN_1407ee070			traverse.go:241		aucun	inconnu		aucune	
+41	projectile	17	object-frame-configuration-component	0	porte	FUN_1407f0534			traverse.go:244		aucun	inconnu		aucune	
 41	projectile	18	projectile-at-rest-state	1	porte	FUN_141076264	R(1) + R(1) [si 1 : R(19)]	2-21	traverse.go:310		rejeu : Projectile.rest (une grenade collee, un projectile plante)	le projectile s'est ARRETE (il a touche quelque chose et colle)	Le R(19) associe est une direction (la normale de la surface touchee ?) — lue, jetee. Elle donnerait l'orientation d'un impact.	haute	
 41	projectile	19	projectile-tether-state	1	porte	FUN_142f04850	R(1) drapeau	1	traverse.go:321		aucun	le projectile est RELIE a quelque chose (cable, grappin, filin)	inconnu	moyenne	
 41	projectile	20	projectile-command_tick	0	porte	FUN_140cec080	R(1) [si 1 : R(8)]	1-9	traverse.go:316		aucun	le tick de commande du projectile	inconnu	moyenne	
 41	projectile	21	projectile-deceleration-disabled-state	0	porte	FUN_142f04630	R(1) drapeau	1	traverse.go:324		aucun	le projectile ne ralentit pas	inconnu	moyenne	
 42	ground-weapon (arme au sol)	0	object-position-component	1	porte	FUN_14076e29c	chemin world-object	45	traverse.go:259		aucun — refuse a la publication (55 % de positions fantomes)	la position de l'arme au sol	Debloquerait le calque « armes au sol » du rejeu : ou est le fusil de sniper, qui le ramasse et quand. Conditionne par la grammaire du corps d'image-cle.	haute	
 42	ground-weapon (arme au sol)	1	object-translational-velocity-component	1	porte	FUN_14076e228			traverse.go:289		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	2	object-forward-and-up-component	1	porte				traverse.go:780		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	2	object-forward-and-up-component	1	porte	FUN_14076e278			traverse.go:780		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	3	object-angular-velocity-component	1	porte	FUN_140d70998			traverse.go:204		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	6	object-region-state-component	1	porte				traverse.go:217		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	7	object-damage-sections-component	1	porte				traverse.go:220		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	8	object-constraint-component	1	porte				traverse.go:223		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	9	object-multiplayer-properties-component	1	porte	FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	10	object-parent-state-component	3	porte				traverse.go:226		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	4	object-body-vitality-component	1	porte	FUN_140fb8978			traverse.go:783		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			traverse.go:786		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	6	object-region-state-component	1	porte	FUN_140e1bfa0			traverse.go:217		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	7	object-damage-sections-component	1	porte	FUN_142f03c80			traverse.go:220		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	8	object-constraint-component	1	porte	FUN_142f039cc			traverse.go:223		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	10	object-parent-state-component	3	porte	FUN_140c1e4d0			traverse.go:226		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	11	object-dead-state-component	1	porte	FUN_140c1dce0			traverse.go:789		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	12	object-scale-component	2	porte				traverse.go:229		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	13	object-maximum-vitalities-component	3	porte				traverse.go:232		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	14	object-dissolver-component	1	porte	FUN_1407ef088			traverse.go:235		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	12	object-scale-component	2	porte	FUN_1407dc6e4			traverse.go:229		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			traverse.go:232		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	14	object-dissolver-component	1	porte	FUN_140dd9f9c			traverse.go:235		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	15	object-low-frequency-component	2	porte	FUN_1407ef088			traverse.go:238		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	16	object-physics-flags-component	1	porte				traverse.go:241		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	17	object-frame-configuration-component	0	porte				traverse.go:244		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	16	object-physics-flags-component	1	porte	FUN_1407ee070			traverse.go:241		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	17	object-frame-configuration-component	0	porte	FUN_1407f0534			traverse.go:244		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	18	item-at-rest-component	1	porte	FUN_140ff91e4	R(1)	1	traverse.go:327		aucun	l'arme est posee et stable	idem ti=37 i18	haute	
 42	ground-weapon (arme au sol)	19	item-ignore-player-component	1	porte	FUN_141101120			traverse.go:307		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	20	weapon-ammo-component	1	porte	FUN_140fc3028	R(8) + R(11) + R(12)	31	traverse.go:393		aucun	les munitions restantes dans l'arme au sol	Un lance-roquettes au sol a-t-il encore ses roquettes ? Decode, jete.	haute	
@@ -936,22 +936,22 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 43	device (dispositif de carte)	1	object-translational-velocity-component	1	porte	FUN_14076e228			traverse.go:289		aucun	inconnu		aucune	
 43	device (dispositif de carte)	2	object-forward-and-up-dynamic-precision-component	2	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	traverse.go:310		aucun	inconnu		haute	deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 43	device (dispositif de carte)	3	object-angular-velocity-component	1	porte	FUN_140d70998			traverse.go:204		aucun	inconnu		aucune	
-43	device (dispositif de carte)	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
-43	device (dispositif de carte)	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	
-43	device (dispositif de carte)	6	object-region-state-component	1	porte				traverse.go:217		aucun	inconnu		aucune	
-43	device (dispositif de carte)	7	object-damage-sections-component	1	porte				traverse.go:220		aucun	inconnu		aucune	
-43	device (dispositif de carte)	8	object-constraint-component	1	porte				traverse.go:223		aucun	inconnu		aucune	
-43	device (dispositif de carte)	9	object-multiplayer-properties-component	1	porte	FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
-43	device (dispositif de carte)	10	object-parent-state-component	3	porte				traverse.go:226		aucun	inconnu		aucune	
+43	device (dispositif de carte)	4	object-body-vitality-component	1	porte	FUN_140fb8978			traverse.go:783		aucun	inconnu		aucune	
+43	device (dispositif de carte)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			traverse.go:786		aucun	inconnu		aucune	
+43	device (dispositif de carte)	6	object-region-state-component	1	porte	FUN_140e1bfa0			traverse.go:217		aucun	inconnu		aucune	
+43	device (dispositif de carte)	7	object-damage-sections-component	1	porte	FUN_142f03c80			traverse.go:220		aucun	inconnu		aucune	
+43	device (dispositif de carte)	8	object-constraint-component	1	porte	FUN_142f039cc			traverse.go:223		aucun	inconnu		aucune	
+43	device (dispositif de carte)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			traverse.go:774		aucun	inconnu		aucune	
+43	device (dispositif de carte)	10	object-parent-state-component	3	porte	FUN_140c1e4d0			traverse.go:226		aucun	inconnu		aucune	
 43	device (dispositif de carte)	11	object-dead-state-component	1	porte	FUN_140c1dce0			traverse.go:789		aucun	inconnu		aucune	
-43	device (dispositif de carte)	12	object-scale-component	2	porte				traverse.go:229		aucun	inconnu		aucune	
-43	device (dispositif de carte)	13	object-maximum-vitalities-component	3	porte				traverse.go:232		aucun	inconnu		aucune	
-43	device (dispositif de carte)	14	object-dissolver-component	1	porte	FUN_1407ef088			traverse.go:235		aucun	inconnu		aucune	
+43	device (dispositif de carte)	12	object-scale-component	2	porte	FUN_1407dc6e4			traverse.go:229		aucun	inconnu		aucune	
+43	device (dispositif de carte)	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			traverse.go:232		aucun	inconnu		aucune	
+43	device (dispositif de carte)	14	object-dissolver-component	1	porte	FUN_140dd9f9c			traverse.go:235		aucun	inconnu		aucune	
 43	device (dispositif de carte)	15	object-low-frequency-component	2	porte	FUN_1407ef088			traverse.go:238		aucun	inconnu		aucune	
-43	device (dispositif de carte)	16	object-physics-flags-component	1	porte				traverse.go:241		aucun	inconnu		aucune	
-43	device (dispositif de carte)	17	object-frame-configuration-component	0	porte				traverse.go:244		aucun	inconnu		aucune	
+43	device (dispositif de carte)	16	object-physics-flags-component	1	porte	FUN_1407ee070			traverse.go:241		aucun	inconnu		aucune	
+43	device (dispositif de carte)	17	object-frame-configuration-component	0	porte	FUN_1407f0534			traverse.go:244		aucun	inconnu		aucune	
 43	device (dispositif de carte)	18	device-position-component	1	porte	FUN_140bef320			traverse.go:882		aucun	inconnu		aucune	
-43	device (dispositif de carte)	19	device-position-animation-name-component	1	non_porte						aucun	inconnu		aucune	
+43	device (dispositif de carte)	19	device-position-animation-name-component	1	non_porte	FUN_1410156e4	R(32) identifiant (FUN_141015740) + R(10) dequantifie dans [0, 10] (14101571c) (FUN_1410156e4)	42 (relu 2026-09-15, NON porte)			aucun	inconnu		aucune	
 43	device (dispositif de carte)	20	device-position-animation-control-component	1	non_porte						aucun	inconnu		aucune	
 43	device (dispositif de carte)	21	device-position-group-component	1	non_porte						aucun	inconnu		aucune	
 43	device (dispositif de carte)	22	device-power-component	1	non_porte						aucun	inconnu		aucune	

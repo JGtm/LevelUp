@@ -361,10 +361,10 @@ func consumeMultiplayerPropertiesBlock(br *BitReader) {
 // donne à 9, et 9 est bit-exact sur les films d'arène — mais elle VARIE d'un film à l'autre :
 // mesuré le 2026-08-17, le default-state de ti=37 fait 60 bits sur `000d5950` et `00162144`
 // (largeur 9) contre 57 sur `06dfe6d9` et `00ba2e1c`. C'est le même genre de largeur de
-// configuration de réplication que les largeurs d'axe du chemin world-object ou que
-// `defaultReplRange` : posée au chargement de la carte, absente de l'exécutable, et donc
-// DÉTECTÉE dans le film (cf. CalibrateMPPWidths, qui la mesure avec mppIndexBits par un
-// oracle de position) plutôt que devinée.
+// configuration de réplication que les largeurs d axe du chemin world-object (mais PAS que
+// la plage de `FUN_1406d3140` : celle-la est une CONSTANTE du binaire, cf. `varwidth.go`,
+// releve du 2026-09-15) : posée au chargement de la carte, absente de l exécutable, et donc
+// DÉTECTÉE dans le film (cf. CalibrateMPPWidths) plutôt que devinée.
 //
 // Le défaut 9 est celui du chemin bipède, validé en live (rep = 166 ou 198 bits) : il ne bouge
 // pas tant qu'un appelant ne l'a pas mesuré. L'appelant doit détenir LockProcessDecode et

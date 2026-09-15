@@ -398,11 +398,14 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "generic-rigid-body-transforms-component": // ti=38 i18 (FUN_142f036f0)
 		consumeGenericRigidBodyTransforms(br)
 		return variant, nil, true
-	case "equipment-control-signal-component": // ti=37 i22 (FUN_14101cd94) — R(4)+R(1)[+readQuantStat]
+	case "equipment-control-signal-component": // ti=37 i22 (FUN_14101cd94)
+		// GRAMMAIRE RELUE le 2026-09-15 (lot 1.9.1 bis, pas 2 bis) : le deser est
+		// `FUN_14101d200` (R(4), 14101d21d) puis `FUN_1408f0ac4(dst+0x58c, br, 4)`
+		// (14101cdc3). La CATEGORIE est 4 : pas de bit de sonde, et 9 bits de valeur —
+		// le portage precedent lisait `readQuantStat(1, 13)`, soit une sonde de trop ET
+		// quatre bits de valeur de trop, cinq bits sur chaque record qui ouvre la porte.
 		br.ReadBits(4)
-		if br.ReadBit() {
-			br.readQuantStat(1, quantStatDefaultWidth)
-		}
+		consume1408f0ac4(br, 4)
 		return variant, nil, true
 	case compEquipmentCreator: // ti=37 i23 (FUN_142ed45f4) — R(1)[si0:R(5)]
 		consumeEquipmentCreator(br)

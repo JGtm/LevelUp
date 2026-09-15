@@ -35,6 +35,12 @@ package filmdec
 // decalage zero. Sept lectures candidates avaient ete reflechies par la mesure seule ; seul le
 // desassemblage rendait la grammaire.
 //
+// ADRESSE RE-CONFIRMEE PAR LE REGISTRE ECS DU BINAIRE le 2026-09-15 (lot 1.9.1 bis, pas 2) :
+// chaine de nom 143c99238 -> thunk 14064c6f0 -> vtable 143d0b9a0, slot +0x30 = FUN_140f53308,
+// qui est un MINCE ENVELOPPEUR — son corps entier est `FUN_1407d4c94(param_2, *(param_3+0x10)
+// + 0x2b4)`. La citation du depot vise donc la bonne fonction ; la table ECS versionnee porte
+// desormais les deux, l enveloppeur et le corps.
+//
 // UN SEUL LECTEUR POUR TOUS LES ARCHETYPES. i9 est un composant d'objet GENERIQUE : la meme
 // fonction sert le bipede, l'equipement, l'arme au sol et le vehicule. Il n'existe donc qu'un
 // lecteur, et aucune variante par archetype.
@@ -81,7 +87,7 @@ func consumeEquipmentTrackedStack2(br *BitReader) {
 	count := br.ReadBits(4)
 	for i := uint64(0); i <= count; i++ {
 		if br.ReadBit() {
-			br.readQuantStat(1, quantStatDefaultWidth)
+			br.readQuantStat(0) // FUN_1408f0ac4(...,0) @140f72e41 : PAS de sonde, 13 + 2
 		}
 	}
 }

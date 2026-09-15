@@ -160,12 +160,25 @@ func ScanEquipmentPlacements(
 	st.Lives = len(spans)
 
 	defer SetMPPWidths(CurrentMPPWidths())
+	// LE PROFIL DU BUILD PASSE DEVANT LA CALIBRATION (lot 1.9.1 bis, pas 3, arbitrage du pilote).
+	// Quand le build porte sa largeur MPP RELUE chez l ecrivain (>= HI_1_12_0), elle EST la
+	// grammaire et la calibration ne decide plus rien : elle reste jouee, mais comme CONTROLE —
+	// `st.Calibration` publie ce que le film mesure, et l accord ou le desaccord avec le profil
+	// se lit dans les stats. Quand le build n a PAS de largeur relue, la calibration decide
+	// encore : c est le repli NOMME `repli_largeurs_mpp_calibrees_sur_le_film` du registre
+	// (condition `build_sans_profil_relu`, ordre `apres_lecture` — le build se lit d abord).
+	profil, errProfil := BuildProfileFromFilm(fc.Film())
+	profilRelu := errProfil == nil && profil.MPP.Valid()
 	cal, ok := CalibrateMPPWidthsOf(fc, wr, band, spans)
-	st.Calibration, st.Scanned = cal, true // le film a été lu ; reste à savoir s'il a tranché
-	if !ok {
-		return nil, st, nil // le film n'a pas tranché : aucune pose, et les stats le disent
+	st.Calibration, st.Scanned = cal, true // le film a été lu ; reste à savoir s il a tranché
+	switch {
+	case profilRelu:
+		SetMPPWidths(profil.MPP)
+	case !ok:
+		return nil, st, nil // ni profil relu ni calibration : aucune pose, et les stats le disent
+	default:
+		SetMPPWidths(cal.Widths)
 	}
-	SetMPPWidths(cal.Widths)
 
 	cre, cst, err := ScanEquipmentCreationsForBand(fc, wr, band)
 	if err != nil {

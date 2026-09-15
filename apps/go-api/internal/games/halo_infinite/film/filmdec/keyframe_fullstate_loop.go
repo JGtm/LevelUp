@@ -107,20 +107,37 @@ func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, tem keyframeFu
 		t.DesyncAt, t.EndBit = 0, br.BitPos()
 		return t
 	}
-	consumeFullStateDefaultBlock(br, t.TypeIndex, tem.SansEtatParDefaut)
+	if !consumeFullStateDefaultBlock(br, t.TypeIndex, tem.SansEtatParDefaut) {
+		// `n2 == 0` : le jeu NE LANCE PAS la boucle de composants (FUN_142e2bfd0, le
+		// `if (0 < (int)uVar7)` qui garde `vtable[0x88]` et `FUN_1428e2b68`). Le record
+		// s'arrete donc sur son second mot de taille.
+		t.EndBit = br.BitPos()
+		return t
+	}
 	t.Mask = ^uint64(0) // etat complet : aucun masque de presence, tous les composants presents
 	traverseComponentLoop(br, arch, &t)
 	t.EndBit = br.BitPos()
 	return t
 }
 
-// consumeFullStateDefaultBlock joue ce que `FUN_142e2bfd0` lit ENTRE l'en-tete par entite et
-// la boucle de composants : `R(32) n1`, l'etat par defaut, le mot de controle du mode film,
-// puis `R(32) n2`. Les deux mots de taille sont INCONDITIONNELS — ils sont dans la grammaire,
-// pas dans un reglage ; seul l'etat par defaut se saute, et seulement pour l'oracle `n2`.
-func consumeFullStateDefaultBlock(br *BitReader, ti uint32, sansEtatParDefaut bool) {
-	br.ReadBits(keyframeFullStateSizeBits) // n1 : > 0 => l'etat par defaut suit
-	if !sansEtatParDefaut {
+// consumeFullStateDefaultBlock joue ce que `FUN_142e2bfd0` lit ENTRE l'en-tete par entite et la
+// boucle de composants : `R(32) n1`, l'etat par defaut, le mot de controle du mode film, puis
+// `R(32) n2`. Il rend VRAI quand la boucle de composants doit suivre.
+//
+// LES DEUX MOTS DE TAILLE SONT DES GARDES, PAS DE SIMPLES COMPTES — RELU LE 2026-09-15
+// (lot 1.9.1 bis, pas 2 quater). Le decompile de `FUN_142e2bfd0` porte DEUX fois le meme motif
+// `if (0 < (int)uVar7)` : le premier garde l'appel a `vtable[0x60]` (l'etat par defaut), le
+// second garde `vtable[0x88]` PUIS `FUN_1428e2b68`, qui mene a la boucle de composants
+// (`FUN_142e2c690`). Autrement dit : `n1 == 0` -> AUCUN etat par defaut n'est ecrit, et
+// `n2 == 0` -> AUCUN composant ne l'est.
+//
+// LE DEPOT LISAIT LES DEUX INCONDITIONNELLEMENT, et cela se voyait ailleurs sans etre compris :
+// `default_state_n2_constant_test.go` ecarte « trois a quinze records par groupe dont le `n1`
+// s'ecarte du modal (en pratique 0) » en les appelant des ANCRES FORTUITES. L'ecrivain dit
+// qu'un `n1` nul est un record LEGITIME sans etat par defaut.
+func consumeFullStateDefaultBlock(br *BitReader, ti uint32, sansEtatParDefaut bool) bool {
+	n1 := int32(br.ReadBits(keyframeFullStateSizeBits)) //nolint:gosec // 32 bits lus, compares SIGNES
+	if !sansEtatParDefaut && n1 > 0 {                   // FUN_142e2bfd0 : `if (0 < (int)uVar7)`, comparaison SIGNEE
 		consumeKeyframeDefaultState(br, ti)
 		if filmComponentCorruptionCheck {
 			// FUN_142e2bfd0 : mot de controle INCONDITIONNEL (pas de R(1) de garde ici,
@@ -128,5 +145,6 @@ func consumeFullStateDefaultBlock(br *BitReader, ti uint32, sansEtatParDefaut bo
 			br.ReadBits(keyframeFullStateSizeBits)
 		}
 	}
-	br.ReadBits(keyframeFullStateSizeBits) // n2 : > 0 => vtable[0x88] puis la boucle
+	// n2 : meme comparaison SIGNEE ; > 0 => vtable[0x88] puis la boucle de composants.
+	return int32(br.ReadBits(keyframeFullStateSizeBits)) > 0 //nolint:gosec // idem
 }

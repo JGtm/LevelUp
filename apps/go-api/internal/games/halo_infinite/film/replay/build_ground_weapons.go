@@ -94,7 +94,7 @@ func decodeFilmPadScan(
 	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
 	arch padArchetype,
 ) WorldObjectScan {
-	defer gwInstallMPPWidths(mpp)()
+	defer gwInstallMPPWidths(gwWidthsForFilm(fc, mpp))()
 	kf := filmdec.ScanWorldObjectKeyframes(fc.Film(), arch.ti)
 	if len(kf.Band) == 0 {
 		slog.Warn("socles : aucun slot de l archetype aux images-cles — rejeu sans ce calque",
@@ -126,6 +126,23 @@ func decodeFilmPadScan(
 //
 // L'APPELANT DOIT DÉTENIR LockProcessDecode : ce sont des globaux de paquet (même contrat que
 // `installWorldObjectPrecision`).
+// gwWidthsForFilm rend les largeurs MPP a INSTALLER pour ce film : le PROFIL DU BUILD quand il
+// porte une largeur RELUE chez l ecrivain (>= HI_1_12_0), sinon les largeurs CALIBREES sur le
+// film.
+//
+// C EST L ARBITRAGE DU 2026-09-15 (lot 1.9.1 bis, pas 3), et il a un nom des deux cotes : quand
+// le profil decide, la calibration n est plus qu un CONTROLE (le rapport publie ce qu elle
+// mesure) ; quand il n y a pas de largeur relue, la calibration decide encore, et c est le repli
+// `repli_largeurs_mpp_calibrees_sur_le_film` du registre (condition `build_sans_profil_relu`,
+// ordre `apres_lecture` — le build se lit avant). La grammaire du bloc MPP est versionnee par
+// build et l executable dont on dispose est un seul build : c est la limite, elle est ecrite.
+func gwWidthsForFilm(fc *filmdec.FilmContext, calibrees filmdec.MPPWidths) filmdec.MPPWidths {
+	if p, err := filmdec.BuildProfileFromFilm(fc.Film()); err == nil && p.MPP.Valid() {
+		return p.MPP
+	}
+	return calibrees
+}
+
 func gwInstallMPPWidths(w filmdec.MPPWidths) func() {
 	if !w.Valid() {
 		return func() {}

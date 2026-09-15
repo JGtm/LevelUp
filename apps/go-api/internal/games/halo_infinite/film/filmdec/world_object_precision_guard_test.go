@@ -25,6 +25,11 @@ import (
 
 // worldObjectPrecisionReaders — ALLOWLIST DATÉE (2026-08-15). Chemin relatif à apps/go-api.
 var worldObjectPrecisionReaders = map[string]string{
+	"internal/games/halo_infinite/film/filmdec/build_profile.go": "CITATION en commentaire " +
+		"(2026-09-15, lot 1.9.1 bis pas 3) : `InstallBuildProfileMPP` renvoie au contrat de " +
+		"`replay.installWorldObjectPrecision` pour dire que son appelant doit detenir " +
+		"LockProcessDecode — le profil par build installe les largeurs MPP, jamais celles " +
+		"des axes ; aucune lecture de la valeur ici",
 	"internal/games/halo_infinite/film/filmdec/traverse.go": "déclaration du global, son setter, et les deux " +
 		"lectures du chemin de traversée (`object-position-component`)",
 	"internal/games/halo_infinite/film/filmdec/projectiles.go": "longueur du champ (`projPosBits`) et " +

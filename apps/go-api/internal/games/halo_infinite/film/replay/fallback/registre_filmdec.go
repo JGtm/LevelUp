@@ -21,6 +21,39 @@ const comptageParFilmContext = "pas 2 de M2 (les lecteurs recoivent le profil vi
 
 var registreFilmdec = []Repli{
 	{
+		Nom:       "repli_largeurs_mpp_calibrees_sur_le_film",
+		Fait:      "les deux largeurs du bloc object-multiplayer-properties (FUN_14080cfe8), qui precede TOUS les composants dans l etat par defaut de ti=36, 37, 38, 39, 42 et 43",
+		Mecanisme: "CalibrateMPPWidthsOf MESURE le decoupage sur le film et l INSTALLE, au lieu de le lire au profil du build",
+		Condition: CondBuildSansProfilRelu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "equipment_placements.go",
+			Ancre:   "cal, ok := CalibrateMPPWidthsOf(fc, wr, band, spans)",
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/build_ground_weapons.go",
+			Ancre:   "return calibrees",
+		}},
+		DatePose:     "2026-09-15",
+		CibleRetrait: "l executable d un build <= HI_1_11_0, relu comme FUN_141fd72c0 l a ete pour HI_1_13_0 — ou un profil mesure par un oracle valide au-dessus du seuil de coincidence",
+		// POURQUOI CE REPLI EXISTE, ET POURQUOI CE N'EST PAS UNE DETTE ORDINAIRE.
+		// La grammaire du bloc MPP est VERSIONNEE PAR BUILD (mesure du 2026-09-15) : la coupure
+		// est a `HI_1_12_0`, et la version MAJEURE du film ne la donne pas (`e5adf7b2` et
+		// `bcb6d393` sont tous deux `v=40` et tombent de part et d'autre). Les deux builds dont
+		// l'executable est ouvert portent leur largeur AU PROFIL, RELUE (9/5, `FUN_141fd72c0`
+		// litteral `141fd72de`) : sur eux la calibration ne s'applique plus. Les cinq autres
+		// n'ont pas de valeur relue, et les deux oracles internes au film SE CONTREDISENT :
+		// `n2` designe 8/3 (part modale 0,988 a 0,996) mais la FERMETURE descend de 246 a 182
+		// records si on le pose. Poser l'un ou l'autre serait une decision deguisee en mesure ;
+		// la calibration reste donc, NOMMEE, comptee et datee.
+		//
+		// ORDRE `apres_lecture` : le build se lit D'ABORD (section 2 de `chunk_00`), et la
+		// calibration n'entre que si ce build n'a pas de largeur relue — un film sans section
+		// d'identification tombe dans le meme cas, faute de build.
+		CritereRetrait:  "les sept builds portent leur largeur MPP au profil ; 0 recours a la calibration sur le parc",
+		CompteurBranche: false,
+		CibleComptage:   comptageParFilmContext,
+	},
+	{
 		Nom:       "repli_i0_porte_et_region_par_defaut",
 		Fait:      "la largeur de la porte d'i0 et l'index de region attendu, quand AUCUNE entree de catalogue ne les impose",
 		Mecanisme: "GateBits est force a DefaultI0GateBits (5) et Region a 0 : l'auto-detection ne sait pas voir un index de region de plus d'un bit",

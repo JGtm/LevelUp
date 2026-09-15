@@ -46,4 +46,7 @@ package filmdec
 // — là où `ScanFilmOptions.Layout` restait nil, donc où `DetectI0LayoutOf` décidait. Aucune
 // grammaire d'octets n'est réécrite ; ce qui change est QUELLE grammaire s'applique, et c'est
 // exactement ce que cette révision doit nommer.
-const GrammarRev = "grammar-2026-09-15.3"
+// FUSION (2026-09-16) : l integration portait `.3` (lots 1.9.2 et 1.9.3) et la branche du lot
+// 1.9.1 bis `.6` (gardes n1/n2, quatre sites de ti=37, prefixe objet relu, profil par build) ;
+// les deux grammaires sont reunies ici, au rang suivant.
+const GrammarRev = "grammar-2026-09-15.7"

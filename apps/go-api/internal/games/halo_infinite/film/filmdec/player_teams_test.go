@@ -33,13 +33,18 @@ import (
 // ne sont pas des seuils : une bobine qui en rendrait d'autres a change de grammaire ou de
 // contenu, et les deux doivent rougir.
 type bobineEquipes struct {
-	film     string
-	entites  int // entites ti=9 distinctes (par slot de replication)
-	indices  int // index de joueur publies
-	horsIdx  int // records dont l'index sort de la table de 32
-	equipes  []int
-	sieges   int // sieges occupes de la table de `chunk_00` (lot 1.5)
-	premiers int // entites du PREMIER paquet d'image-cle porteur
+	film    string
+	entites int // entites ti=9 distinctes (par slot de replication)
+	indices int // index de joueur publies
+	horsIdx int // records dont l'index sort de la table de 32
+	// nonAtteint : records dont la marche n'atteint PAS i0 parce que leur mot de taille `n2`
+	// vaut 0 — le jeu n'y ecrit aucun composant (FUN_142e2bfd0, la garde `if (0 < (int)uVar7)`
+	// devant `vtable[0x88]`, relue le 2026-09-15). Ce ne sont pas des lectures manquees : ce sont
+	// des records sans composants, et les lire etait lire du bruit.
+	nonAtteint int
+	equipes    []int
+	sieges     int // sieges occupes de la table de `chunk_00` (lot 1.5)
+	premiers   int // entites du PREMIER paquet d'image-cle porteur
 }
 
 // bobinesEquipes rend les sept bobines par build et la lecture attendue.
@@ -55,7 +60,7 @@ func bobinesEquipes() []bobineEquipes {
 			equipes: []int{0, 1, 0, 1, 1, 1, 0, 0}},
 		{film: "11de8353", entites: 27, indices: 26, sieges: 24, premiers: 24,
 			equipes: []int{0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0}},
-		{film: "111fa685", entites: 25, indices: 25, horsIdx: 1, sieges: 24, premiers: 24,
+		{film: "111fa685", entites: 25, indices: 25, horsIdx: 0, nonAtteint: 1, sieges: 24, premiers: 24,
 			equipes: []int{1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0}},
 		{film: "e5adf7b2", entites: 25, indices: 25, sieges: 23, premiers: 23,
 			equipes: []int{1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1}},
@@ -97,8 +102,9 @@ func TestScanPlayerTeamsSurLesBobines(t *testing.T) {
 // verifierRapportEquipes gele les compteurs du rapport (E-LUE).
 func verifierRapportEquipes(t *testing.T, b bobineEquipes, rep TeamScanReport) {
 	t.Helper()
-	if rep.Unreached != 0 {
-		t.Errorf("%s : %d record(s) dont la marche n'atteint pas i0", b.film, rep.Unreached)
+	if rep.Unreached != b.nonAtteint {
+		t.Errorf("%s : %d record(s) dont la marche n atteint pas i0, attendu %d",
+			b.film, rep.Unreached, b.nonAtteint)
 	}
 	if rep.EntityDivergences != 0 || rep.IndexDivergences != 0 {
 		t.Errorf("%s : %d entite(s) et %d index divergent — un joueur ne change pas d'equipe",
