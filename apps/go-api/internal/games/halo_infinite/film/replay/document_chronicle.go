@@ -1474,3 +1474,68 @@ package replay
 //	VERSION MONTE  Un artefact 58 ne peut ni dire d'ou vient l'origine de ses poses, ni distinguer
 //	               un `deployed` lu d'un `deployed` devine. La reprise du backfill se fait par
 //	               SchemaVersion.
+
+// v60 (2026-09-17, vague 2 de la famille 1.9 du PLAN_DECODEUR_FILM — lots 1.9.13, 1.9.10, 1.9.9,
+// 1.9.11, 1.9.7, 1.9.14 et les corrections de la revue de jalon M1, fusionnes ensemble, UNE montee
+// pour la vague) : CE QUE LE FILM ECRIT DECIDE, ET
+// CE QU'IL NE DIT PAS EST COMPTE.
+//
+//	ce qui etait   quatre faits publies se decidaient par une heuristique (D13) : la FIN D'UNE VIE
+//	decide par     de joueur au trou de replication de 5 s (`lifeGapUS`) ; la FIN D'UNE VIE DE
+//	une heuristique VEHICULE a une borne de recensement (« 5 s apres le dernier echantillon »,
+//	               `VehicleTrack.End` toujours `unknown`) ; la FAMILLE D'UN VEHICULE au marqueur
+//	               neutre des qu'un chassis manquait a la table (les occupants JETES avec) ; la
+//	               MANCHE a une garde d'ordre muette (`contiguousRounds`) qui jetait un designateur
+//	               ecrit sans le dire.
+//
+//	les lectures   (1) une vie de joueur finit a une MORT ECRITE du joueur (kill-feed / dead-state,
+//	               liees par le registre d'identite), a une APPARITION ecrite (slot recycle), a une
+//	               fin de manche ou a la fin du film ; un trou de replication est une LACUNE de la
+//	               meme vie (lot 1.9.13 : 212 coupures par trou -> 4, 208 lacunes, 14 vies
+//	               orphelines -> 0 sur les 8 builds) ; (2) une vie de vehicule finit au DEAD-STATE
+//	               ecrit (`ti=40`, marche de `filmdec.ScanObjectDeaths`), a la fin du film sinon
+//	               (lot 1.9.10 : sur `084a804d`, 19 fins lues sur 97, dead-states a 87 ms et 406 ms
+//	               des medailles datees) ; (3) un chassis est NOMME par sa piece ecrite (manifeste
+//	               de la chaine de destruction : un meme vehicule porte un identifiant PAR MODULE du
+//	               jeu — `0xae845375` = wraith, `0xf6f54e56` = scorpion, confirme par la killsource :
+//	               37 kills de Wraith sur 40 dans les vies du chassis ; `0x038df01a` = tourelle
+//	               automatique bannie, element de carte, non jouable) (lot 1.9.9) ; (4) le
+//	               designateur de manche est publie tel qu'ecrit, et la garde d'ordre devient une
+//	               CONTRADICTION publiee (lot 1.9.11 : 14 vraies prolongations en designateur 1
+//	               contigu, 13/14 a egalite ; 24 films a designateur 2 sans manche 1 = artefact de
+//	               lecture, bit 23 du paquet, non tranche).
+//
+//	les champs     `coverage.tracks.gaps`, `coverage.tracks.gapMs` (lacunes) ; `Point.G` = duree en
+//	ajoutes        ms de la lacune qui PRECEDE le point, portee par le point qui rouvre la piste
+//	               (le web ne trace pas de segment a travers) ;
+//	               `vehicles[].end` ∈ {`destroyed`, `film_end`, `unknown`} (etait `unknown` seul),
+//	               `vehicles[].tEnd` (optionnel, `destroyed` seulement) ;
+//	               `coverage.vehicles.{deathsRead, deathsMatched, deathsUnmatched, deathsTailDesync,
+//	               endDestroyed, endFilmEnd, endUnknown, samplesAfterEnd}` ;
+//	               `vehicles[].family` prend les valeurs `wraith`, `scorpion`, `tourelle_auto_bannie`
+//	               (et les chassis secondaires de ghost, banshee, warthog resolvent) ;
+//	               `VehicleLabel.{kind, en, fr}` (servi a la requete : `kind = "map_element"` pour
+//	               la tourelle) ;
+//	               `coverage.score.{roundsWritten, roundsContradicted, roundsContradictedRecords,
+//	               roundsDecreed}` (lot 1.9.11) ;
+//	               `roster[].seat` (toujours emis : l INDEX DE FILM est le siege), `roster[].seatSource`
+//	               (`lu` / `apparie`, optionnel), `coverage.seats.*` (dix compteurs) (lot 1.9.14) ;
+//	               `coverage.teams.tracksSlotAmbiguous`, `coverage.identity.filmTable.collisionsIndex`
+//	               (revue de jalon M1, lentille L4 : une vie sur un siege recycle ne prend plus l equipe
+//	               du premier occupant, un index porte par deux xuids n est pose pour personne) ;
+//	               `coverage.fallbacks[]` gagne `repli_chassis_vehicule_marqueur_neutre`,
+//	               `repli_cadre_de_marche_par_defaut_conserve`, `repli_manche_zero_decretee`,
+//	               `repli_appariement_par_fenetre_temporelle` (killsource : compte en expvar, pas
+//	               encore dans le document — D7 (1.9.7)), `repli_siege_du_remplacant_par_appariement_ordinal`
+//	               (lot 1.9.14) ; `repli_fin_de_vie_vehicule_par_recensement`
+//	               SORT du registre.
+//
+//	CE QUI BOUGE   le contenu cuit change, et c'est le but : moins de vies de joueur, plus longues
+//	DANS LE PARC   (335 vies fusionnees sur les 14 temoins, aucune perte de point, de borne, de tir,
+//	               de kill ni d'objectif) ; les fins de vehicule lues ; les occupants des Wraith
+//	               publies (ils etaient jetes) et leurs tirs rattaches ; le ratchet des replis
+//	               `devant_la_lecture` passe de 6 a 3.
+//
+//	POURQUOI LA    la FORME change (champs neufs, `end` a trois valeurs) et le CONTENU change sur
+//	VERSION MONTE  tout le parc. Un artefact 59 ne peut ni porter une lacune, ni une fin de vehicule
+//	               lue, ni nommer un Wraith. La reprise du backfill se fait par SchemaVersion.

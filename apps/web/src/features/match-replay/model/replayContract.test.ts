@@ -312,6 +312,13 @@ const NULLABLE_ARRAY_PATHS = [
   // (`ReplayVehicleRideReady`) : un épisode sans lecture arrive à vide, et le cône retombe alors
   // sur le cap du châssis au lieu de tomber à l'exécution.
   'vehicles[].rides[].aim',
+  // Schéma 60 (lot 1.9.11) : les DÉSIGNATEURS DE MANCHE écrits (`roundsWritten`) et contredits
+  // (`roundsContradicted`) sont deux tableaux de nombres du bloc `coverage.score`, publiés seulement
+  // à partir de deux désignateurs (`omitempty`). Le bloc `coverage` reste OPAQUE pour la frontière
+  // (aucun calque ne le lit encore : D5 (1.9.11), libellé « Prolongation » au lot web) — ils
+  // figurent donc dans l'allowlist hors frontière ci-dessous, pas dans la normalisation.
+  'coverage.score.roundsWritten',
+  'coverage.score.roundsContradicted',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la
   // frontiere, comme `flagCarries[].spans` — une vie qui arriverait avec `pts: null` ferait
   // tomber le calque a l'execution, pas a la compilation.
@@ -388,6 +395,10 @@ const PATHS_HORS_FRONTIERE = [
   'mapObjectives.markers',
   'mapObjectives.zones',
   'mapWeaponPads.pads',
+  // `coverage` est opaque pour la frontière (bloc de compteurs, jamais dessiné) : ses deux tableaux
+  // nullables du schéma 60 restent tels quels — les combler ici en ferait une seconde vérité.
+  'coverage.score.roundsWritten',
+  'coverage.score.roundsContradicted',
 ] as const
 
 /** (3) La carte couvre EXACTEMENT les tableaux nullables du contrat, à toute profondeur. */
