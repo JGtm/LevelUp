@@ -186,4 +186,13 @@
 #               (elle portait l adresse d i15).
 #               `SchemaVersion` NE MONTE PAS (59 -> 59) : aucun octet cuit ne change.
 #               `KillSourceDecoderRev` non plus (killsource n est pas touche).
-grammar-2026-09-15.2	c05826e4276611a98aa4d6d1f2a15b31cf88f331eece1f2ea764134e8ed61676
+#   2026-09-15  grammar-2026-09-15.2  lot 1.9.1 bis, pas 2 (MEME LOT donc MEME REVISION,
+#               empreinte reprise une fois) : l en-tete de `defaultReplRange`
+#               (`unit_weaponstate.go`) porte desormais la decouverte D3 (1.9.1 bis, pas 2) —
+#               `FUN_1406d3140` prend sa plage dans une TABLE indexee par `param_3`
+#               (`DAT_1451f98d0`) des que `DAT_144706104` est non nul, et cette garde vaut 0x01
+#               dans l image ; la table y est nulle car elle est remplie AU CHARGEMENT DE LA
+#               CARTE. Les appelants passent 0, 1 (i10 attache) et 4 (i21) la ou le decodeur lit
+#               UNE largeur. TEXTE SEUL : aucun bit lu ne change, l empreinte bouge parce qu elle
+#               hache les octets.
+grammar-2026-09-15.2	923f9d8bbfea7f4ec2d32b770bf8c82f63924f7ee73f8eb9ee61ee5042341adf
