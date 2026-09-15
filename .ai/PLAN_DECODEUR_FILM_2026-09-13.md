@@ -2661,6 +2661,123 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       **POINT DE REPRISE (lot 1.9.1 ter, exécuteur frais)** : remonter le CHARGEUR de la
       section 2 par ses ÉCRITURES sur la structure du film, et y trouver la condition. Le plan
       seul suffit — §4 D1 à D25 et §5 portent tout.
+      **CADUC LE 2026-09-15 (lot 1.9.1 ter)** : la piste « douze positions alignées PAR LA
+      FIN » est réfutée par la mesure (D4, 1.9.1 ter) — la table est alignée PAR LE DÉBUT. Le
+      chargeur a bien été remonté, et la clé est `chunk_00+4` : voir l'item 1.9.1 ter ci-dessous.
+- [x] 1.9.1 ter **LA CONDITION VERSIONNÉE : LE CHARGEUR EST TROUVÉ, LA CLÉ EST `chunk_00+4`, ET
+      LES TROIS BITS NE SONT PAS UNE BRANCHE DE VERSION.** Fait le 2026-09-15 (branche
+      `feat/decfilm-191t`, Ghidra HTTP direct, LECTURE SEULE).
+
+      **(1) LE CHARGEUR DE LA SECTION 2, ET CE QU'IL EN FAIT.** Le sérialiseur de `chunk_00` a
+      deux faces, et elles ne sont PAS symétriques — c'est tout le sujet :
+
+      | face | fonction | largeur du registre | largeur de la table par type |
+      |---|---|---|---|
+      | écriture | `FUN_14299b198(film, écrivain)` | `W(0x659000)` **littéral** | `W(0xF60)` **littéral** (`MOV R9D,0xf60` @14299b1e4) |
+      | lecture | `FUN_14299ab50(film, lecteur)` | `R(FUN_141cfff30(film+4))` | `R(FUN_141cffe20(film+4))` |
+
+      **Le second u32 de `chunk_00` est LA VERSION DE FORMAT**, et c'est le seul paramètre dont
+      la lecture de l'en-tête dépende. Les deux fonctions de taille sont des recherches dans
+      deux `std::map<uint,int>` construites au démarrage, littéraux relus sur le désassemblage
+      de `FUN_140268ec0` et `FUN_140268f40` : blocs de registre `{13:47, 17:48, 18:49, 25:25}`
+      défaut 50 ; entrées de table `{13:110, 16:113, 17:114, 21:117, 22:118, 24:121, 25:122}`
+      défaut 123. **C'est la forme mécanique du fait utilisateur du 2026-09-16** : la grammaire
+      des formats anciens EST dans l'exécutable courant, indexée par ce u32 — aucun exécutable
+      ancien n'est nécessaire. En queue, `FUN_14299bcb0(film, film+4)` REMPLIT les entrées de
+      table au-delà du cardinal du film depuis les descripteurs construits au runtime
+      (`DAT_144e61d88 + 0x210 + i*8`, appel virtuel `vtable+0x30`) : la piste « descripteur
+      runtime » du brief est donc VRAIE, mais elle ne sert qu'au COMBLEMENT, pas à brancher.
+
+      **CE QUE LA TABLE PAR TYPE DEVIENT, ET QUI LA CONSULTE.** Elle vit à `film+0xCB208` et n'a
+      qu'**UN** lecteur indexé — `FUN_1428e1c64` (quatre sites d'instruction `0xcb208` sur
+      13,6 M balayées), sous verrou, qui choisit entre le tampon d'enregistrement
+      (`*(film+0x108)`) et celui de lecture (`*(film+0x120)+0x130`). Son **unique** appelant est
+      `FUN_141102ed0(i)` : en mode Theater il rend la version du type `i` DU FILM, hors film
+      celle de la table native `DAT_14474cd90` (123 entrées `{version, taille}` dans l'image).
+      **Quinze fonctions** s'en servent pour brancher, sur neuf index littéraux — 0x23, 0x24,
+      0x30, 0x59, 0x5a, 0x5b, 0x5d, 0x61, 0x72.
+
+      **(2) LA CONDITION — ET ELLE N'EST PAS OÙ LE BRIEF LA CHERCHAIT.** La version de format
+      SÉPARE exactement les deux groupes mesurés : `21 / 24 / 24 / 24 / 25` pour les cinq
+      bobines `8/3`, `27 / 27` pour les deux bobines `9/5` — seuil dans **]25, 27]**
+      (`TestE191tVersionDeFormat`). Mais **aucune branche de l'exécutable n'y répond** :
+
+      - la version de format n'a que **SIX** sites d'appel (`FUN_1428e1c0c`), de seuils **4, 7,
+        12, 13/14, 16** — aucun entre 25 et 27 ;
+      - la table par type ne discrimine PAS : **24 index varient** entre bobines, **0** sépare
+        les deux groupes, et aucun des neuf index interrogés n'en fait partie
+        (`TestE191tIndexQuiVarient`) ;
+      - la chaîne `FUN_1407f105c` (ti=37) → `FUN_1407f2224` (ti=36) → `FUN_14080cfe8` (MPP) →
+        sous-lecteurs ne contient **ni** `FUN_1428e1c0c` **ni** `FUN_141102ed0`, et toutes ses
+        largeurs sont des littéraux (`FUN_141fd72c0` : `ADD dword ptr [RCX+0x2c],0x9`
+        @141fd72de, un seul appelant).
+
+      **L'exécutable lit donc l'état par défaut de ti=37 à l'identique pour un film de format 21
+      et un film de format 27.** Les trois bits ne sont pas une branche de version : D3 (1.9.1
+      ter). **La seule condition de version sur le chemin du record est ailleurs, et elle est
+      nommée** : `FUN_142e2bfd0` @142e2c020 fait `si (7 < version_de_format)
+      DAT_144706104 = R(1)` — un bit DU FILM en tête du paquet d'image-clé, qui commande la
+      table de plages de `FUN_1406d3140` (i10, i21, i22, i28, états par défaut de ti=3 et
+      ti=38). Le lot 1.9.1 bis avait pris cette garde pour une constante statique ; elle ne
+      l'est pas, et la version dont elle dépend est désormais LISIBLE HORS LIGNE. D2 (1.9.1
+      ter).
+
+      **(3) CE QUI EST PORTÉ.** (a) `film_format_version.go` : `FilmFormatVersionFromHeader` /
+      `FilmFormatVersion`, avec la carte du chargeur et les deux tables de l'écrivain écrites.
+      (b) `FilmIdentity.FormatVersion`. (c) `build_profile.go` : le découpage MPP est keyé par
+      la **VERSION DE FORMAT** (`mppWidthsPourFormat`), plus par le nom de build — ce que la
+      directive utilisateur demande. **La largeur de personnalisation reste keyée par le BUILD,
+      et la mesure l'IMPOSE** : le format 24 porte `HI_1_10_0` (1 492 octets) ET `HI_1_9_0` /
+      `HI_1_8_0` (1 312) — une version de format, deux largeurs. Deux clés donc, et elles ne
+      disent pas la même chose : le FORMAT dit la grammaire des bits, le BUILD la taille des
+      structures de contenu. (d) `InstallBuildProfileMPP` devient `InstallFilmFormatMPP` et ne
+      lit plus la section d'identification. (e) `varwidth.go` : le commentaire qui affirmait que
+      la garde « ne se lit pas offline, la version venant d'un objet de configuration du jeu et
+      non du film » est CORRIGÉ. (f) `ErrUnknownFormat` + son test de refus (formats 0, 19, 22,
+      23, 26, 28, 40 — dont le **26**, entre deux formats connus, là où l'interpolation serait
+      tentante). **AUCUN BIT LU NE CHANGE** : sur les 1 351 films du cache les deux clés rendent
+      le même découpage. `GrammarRev` `.7` -> `.8` (le CADRE change), `SchemaVersion` reste
+      **59**.
+
+      **(4) LES CINQ FILMS SANS SECTION 2 — RÉSOLU, MESURÉ.** `03af54c3`, `13b00e35`,
+      `47d20b5d`, `50247b26`, `a349fea8` portent tous **format 20**, lisible à `chunk_00+4` sans
+      aucune chaîne de build, et ce sont les **cinq seuls** du cache à le porter. La section
+      d'identification apparaît donc au **format 21** : leur absence de chaîne de build n'est
+      pas une anomalie de fichier, c'est un format antérieur. Ils entrent désormais dans
+      `InstallFilmFormatMPP` par la porte principale ; leur largeur MPP reste indéterminée comme
+      les quatre autres formats anciens, donc rien n'est installé et aucun bit ne change.
+      Distribution complète sur les 1 351 `chunk_00`, couple (version majeure, version de
+      format) : `(41,27)x1123 · (40,27)x146 · (40,25)x39 · (39,24)x26 · (37,24)x10 · (31,20)x3 ·
+      (33,20)x2 · (38,24)x1 · (33,21)x1` — **elle reproduit à l'unité la partition par build que
+      `film_identity.go` dérivait par arithmétique** (1 269 / 39 / 37 / 1) et la couvre là où la
+      dérivation s'arrêtait.
+
+      **(5) CE QUI RESTE OUVERT, ET C'EST BORNÉ.** La case MPP des formats 20/21/24/25 reste
+      VIDE : l'oracle `n2` mesure bien trois bits de moins sur ces films, mais leur ENDROIT
+      n'est pas établi et l'exécutable vient d'exclure l'état par défaut. La piste suivante
+      n'est plus « quelle version branche » — la question est close — mais « quel bit du paquet
+      n'est pas consommé », et D2 (1.9.1 ter) la nomme : mesurer la valeur de `DAT_144706104`
+      film par film. **STATUT DES ITEMS DU BRIEF** : 1 (le chargeur) `[x]` · 2 (la condition)
+      `[x]` pour la recherche et la mesure, `[!]` pour la fermeture n2/archétypes — il n'y a pas
+      de branche à porter, donc pas de montée de fermeture à mesurer · 3 (portage) `[x]` pour la
+      grammaire versionnée lue depuis le film et `GrammarRev`, `[!]` pour la sortie de
+      `CalibrateMPPWidths` du chemin cuit — elle reste, nommée, tant que la case des formats
+      anciens est vide (même dépendance qu'au 1.9.1 bis) · 4 (les cinq films) `[x]` · 5 (gates)
+      `[~]` régime court joué, corpus gate et équivalence NON JOUÉS faute de « voie libre » —
+      et sans objet ici, aucun octet cuit ne changeant.
+
+      **BUDGET DE TEST (règle du 2026-09-15 : instrument neuf = tag `research`).**
+      `e191t_version_format_research_test.go` porte `//go:build research` ; les quatre
+      instruments y vivent (0,12 s avec `-tags research`, le balayage du cache resté derrière
+      `CHUNK00_FILMS`). Le BUILD PAR DÉFAUT ne reçoit que `film_format_version_test.go`, trois
+      tests à **0,05 s** (plancher du paquet 0,052 s, avec eux 0,106 s, `CGO_ENABLED=0`) : ils
+      lisent les sept `chunk_00` et rien d'autre, et ils ne dépendent d'AUCUN helper tagué — la
+      table des largeurs MPP mesurées y est recopiée, avec sa provenance. `go vet` passe SANS
+      tag et AVEC `-tags=research`. Mesure du paquet complet sur cette branche : **92,4 s**,
+      dont **77,3 s** pour les `TestE191` de 1.9.1 bis, qui ne portent pas encore le tag ici
+      (le commit de l'intégration est postérieur à la base de la branche, résolu à la fusion) —
+      soit **~15 s** une fois le tag appliqué, budget 30 s tenu.
+
 - [x] 1.9.2 **Le découpage d'i0 vient du catalogue de carte, plus de l'auto-détection.**
       `internal/sync/killcollector/positions.go:253` (et `hits.go:157`) construisent
       `DefaultScanFilmOptions()` avec `Layout` nil alors que `entry` est le paramètre de la fonction
@@ -3468,6 +3585,10 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-16 | 1.9.1 bis (pas 3 ter) | **D22 (1.9.1 bis, pas 3 ter) — OU CHERCHER LE CHARGEUR DE LA TABLE PAR TYPE, ET POURQUOI LA TRACE STATIQUE S'ARRETE LA.** Les deux consommateurs du resolveur (`FUN_1406cf548`, `FUN_142f28e94`) ne sont references QUE depuis des DONNEES, a deux adresses ADJACENTES (`1436a87b0`, `1436a87d0`) : ce sont deux slots d'une meme vtable, appeles virtuellement — la trace statique s'arrete. **CE QUE LA MESURE DONNE QUAND MEME COMME CIBLE** : dans `chunk_00`, la table par type SUIT le registre (c'est `RegistryBlocks` qui l'ancre, lot 1.5) ; dans la structure chargee, le registre occupe `lVar3 + 8` sur `50 × 0x4100 = 0x145000` octets, donc la table par type, si elle y est recopiee, commence en **`lVar3 + 0x145008`**. C'est l'adresse a sonder (`search_instructions` sur ce deplacement, ou xrefs en ecriture sur la structure du film). | reprise : sonder `lVar3 + 0x145008` et, a defaut, remonter le chargeur de la section 2 par les ecritures sur la structure du film |
 | 2026-09-16 | 1.9.1 bis (pas 3 quater) | **D23 (1.9.1 bis, pas 3 quater, voie B) — LA DIFFERENCE DES FILMS ANCIENS EST STRUCTURELLE, PAS UN OFFSET : AUCUN DECALAGE PUR NE MARCHE, ET LE `8/3` N'ETAIT PAS UN DECALAGE.** `n2` relu a la fin PORTEE de l'etat par defaut PLUS un decalage de -6 a +2 (`TestE191cDeficit`), part modale sur `ti=37` : `fb1a1a72` **+0 -> 1,000** (les autres decalages 0,58 a 0,72) · `bcb6d393` **+0 -> 0,949** · `a521164d` **PLAT de 0,27 a 0,32** · `60ae07c4` **PLAT a 0,52** · `11de8353` 0,49 partout (+2 -> 0,578) · `111fa685` 0,43 partout (+2 -> 0,545) · `e5adf7b2` 0,47 partout (+2 -> 0,581). **DEUX CONSEQUENCES.** (1) **Le portage est EXACT sur les films recents** : `+0` rend 1,000 sur `ti=37` ET `ti=42` de `fb1a1a72` — la lecture n'a pas a etre touchee la. (2) **Le decoupage `8/3` du pas 3, qui atteignait 0,988 a 0,996, N'EST PAS UN DECALAGE** : il deplace la fin de l'etat de exactement trois bits, or `-3` ne rend ici que 0,27 a 0,49. C'est donc une autre ANALYSE — le bloc MPP porte des champs a longueur dependante des DONNEES (`R(3)` de compte puis boucle, portes sur valeurs lues), si bien que changer une largeur de tete change les valeurs lues ensuite, donc les branches prises, donc la longueur totale. **Chercher « les trois bits » comme une constante est une impasse : c'est la CONDITION qu'il faut trouver.** PIEGE A NE PAS REFAIRE : `ti=38` rend 1,000 a TOUS les decalages sur les films recents — son `n2` y est constant quoi qu'on lise, il ne discrimine rien. | la suite ne peut pas etre un balayage : il faut la branche, chez l'ecrivain |
 | 2026-09-16 | 1.9.1 bis (pas 3 quater) | **D24 (1.9.1 bis, pas 3 quater, voie A) — LA TABLE PAR TYPE N'EST PAS RECOPIEE DERRIERE LE REGISTRE : LA CIBLE `lVar3 + 0x145008` EST REFUTEE.** `search_instructions` sur le motif d'operande, **13 607 556 instructions balayees** : `0x145008` **0 occurrence**, `0x14500c` **0 occurrence**, `0x145000` deux occurrences seulement et ce sont des immediats 64 bits sans rapport (`MOV R8, 0x145000000000000` dans `FUN_141d9ef70`). Aucune instruction n'adresse ce deplacement : la table par type de la section 2 n'est donc PAS rangee juste apres le registre du film dans la structure chargee. Elle vit ailleurs, ou n'est pas chargee du tout. | la piste « offset calcule » est fermee ; reprendre par le CHARGEUR de la section 2 (ecritures sur la structure du film) plutot que par une adresse devinee |
+| 2026-09-15 | 1.9.1 ter | **D1 (1.9.1 ter) — LA TABLE DE L'ÉCRIVAIN CONTREDIT LA MESURE SUR DEUX LIGNES, ET C'EST LA MESURE QUI EST PORTÉE.** L'exécutable dérive la largeur du registre et celle de la table par type de la version de format (`FUN_141cfff30` / `FUN_141cffe20`, deux `std::map` construites par `FUN_140268ec0` / `FUN_140268f40`, littéraux relus). Deux de leurs lignes sont fausses au regard des octets : **format 21** — la table annonce 117 entrées, `a521164d` en porte 116 (chaîne de build à 815 864, fin de registre à 815 368) ; **format 25** — la table annonce 25 blocs, les 39 films mesurés en portent 49 (`e5adf7b2` : chaîne de build à 815 888 = 49 blocs + 122 entrées, exactement). La dérivation structurelle de `ReadFilmIdentity` (ancrage sur la chaîne de build) ferme à l'unité sur les 1 351 `chunk_00` du cache : c'est elle qui reste le lecteur, et les deux tables ne sont PAS portées. NON TRAITÉ — instrument `TestE191tContradictionsDeLEcrivain`. | soit la règle de recherche dans la map est lue de travers (le désassemblage de `141cffe20` donne « plus grande clé <= B, et si B dépasse la dernière clé, le défaut »), soit le jeu porte un défaut latent sur ces deux formats ; départageable par un film de format 13 à 18 |
+| 2026-09-15 | 1.9.1 ter | **D2 (1.9.1 ter) — LA GARDE `DAT_144706104` EST UN BIT DU FILM, ET SA VALEUR N'EST TOUJOURS PAS MESURÉE.** `FUN_142e2bfd0` @142e2c020 fait `si (7 < version_de_format) DAT_144706104 = R(1)` en tête du paquet d'image-clé, et `FUN_142987460` (chemin delta) le fait SANS condition. Les 1 351 films du cache portent un format de 20 à 27, donc **tous > 7** : la branche « garde statique à 1 » est morte pour tout film réel, et ce qui reste ouvert n'est plus « peut-on savoir si le bit est lu » (oui, toujours — `varwidth.go` corrigé dans ce lot) mais « que VAUT-il, film par film ». Cette garde commande la table de plages de `FUN_1406d3140` (i10, i21, i22, i28, les états par défaut de ti=3 et ti=38) : garde à 0, toutes les catégories lisent 13 bits ; garde à 1, elles lisent 13/8/8/9/8/9/13/13. Le portage du lot 1.9.1 bis suppose 1 PARTOUT. NON TRAITÉ — le bit se lit au premier bit du paquet, là où `frame_records.go` porte déjà `PacketPreambleBits`, et il vaut 1 sur 100,00 % des 30 418 payloads mesurés de `000d5950`. | mesurer le bit par film et le rendre à `varWidthRange` ; à traiter AVANT tout re-figeage du golden de fermeture, car il peut déplacer i10/i21/i22/i28 |
+| 2026-09-15 | 1.9.1 ter | **D3 (1.9.1 ter) — LES TROIS BITS DE L'ÉTAT PAR DÉFAUT DE ti=37 NE SONT PAS UNE BRANCHE DE VERSION, ET L'EXÉCUTABLE LE PROUVE.** Relevé exhaustif : la version de format n'a que **six sites d'appel** dans tout l'exécutable (`FUN_1428e1c0c` : `FUN_142e2bfd0`, `FUN_140ce620c`, `FUN_140ee5b04` ×2, `FUN_142923bdc`, `FUN_142982868`), et leurs seuils sont **4, 7, 12, 13/14, 16** — aucun entre 25 et 27, la frontière mesurée. La table par type n'a qu'**un** lecteur indexé (`FUN_1428e1c64`, quatre sites d'instruction sur 13,6 M), un seul appelant (`FUN_141102ed0`) et **quinze** consommateurs, dont les neuf index littéraux (0x23, 0x24, 0x30, 0x59, 0x5a, 0x5b, 0x5d, 0x61, 0x72) ne séparent PAS les deux groupes (mesure : 24 index varient entre bobines, 0 discrimine). Et la chaîne `FUN_1407f105c` → `FUN_1407f2224` → `FUN_14080cfe8` → sous-lecteurs ne contient aucune de ces deux lectures. **L'exécutable lit donc l'état par défaut de ti=37 à l'identique pour un film de format 21 et un film de format 27.** Les trois bits sont ailleurs — le plus probablement en amont du record (D2), pas dans l'état par défaut. NON TRAITÉ. | la piste suivante n'est plus « quelle version branche » mais « quel bit du paquet n'est pas consommé » : D2 d'abord |
+| 2026-09-15 | 1.9.1 ter | **D4 (1.9.1 ter) — LA TABLE PAR TYPE EST ALIGNÉE PAR LE DÉBUT, ET LA CLÔTURE DU LOT 1.9.1 bis DIT L'INVERSE.** La clôture désignait « douze positions alignées PAR LA FIN » comme point de reprise, en affirmant que « par le début elle n'en porte aucune : les types s'ajoutent en tête ». **Réfuté par la mesure** : les trente premières valeurs sont IDENTIQUES sur les sept bobines et l'index 18 y vaut 2 partout, exactement comme la table NATIVE de l'exécutable (`DAT_14474cd90`, 123 entrées `{version, taille}`, index 18 = version 2). Les types s'ajoutent donc EN QUEUE, et les « douze positions » n'étaient qu'un artefact de l'alignement par la fin. `FUN_14299bcb0` le confirme mécaniquement : au chargement, les entrées au-delà du cardinal du film sont REMPLIES depuis les descripteurs runtime (`DAT_144e61d88 + 0x210 + i*8`, `vtable+0x30`). CORRIGÉ dans la doc de `film_identity.go` ; le point de reprise du 1.9.1 bis est caduc. | rien à traiter ; la correction est portée |
 | 2026-09-16 | 1.9.1 bis (clôture) | **D25 (1.9.1 bis, clôture) — LE CORPUS GATE JETAIT UNE CATEGORIE ENTIERE : `BilanAxe.Changements`. CORRIGE, ET C'EST LA D5 DU LOT 1.9.3 QUI SE FERME ICI.** `replaydiff.BilanAxe` compte TROIS categories — gains, pertes, et **changements** (une valeur publiee qui BOUGE sans etre ni l'un ni l'autre). `cmd/replay-corpus-gate/report.go:52-54` (`bilanDepuisRapport`) sommait `b.Gains` et `b.Pertes` et s'arretait la : la troisieme n'etait pas seulement ABSENTE DE L'AFFICHAGE, elle etait **JETEE** — elle n'atteignait ni le tableau, ni le JSON, ni le statut. **Un temoin dont une valeur publiee bougeait sortait `ok`**, et le lot suivant heritait d'un changement que personne n'avait classe. CORRIGE dans ce lot au titre de la regle 7 (un fix hors perimetre est admis quand il bloque le gate de l'etape courante — ici il rendait le verdict inverifiable) : `Changements` traverse desormais `ligneRapport` -> colonne `chang.` du tableau -> champ `"changements"` du JSON -> `aUnePerte()`, donc **un changement classe le temoin en `PERTE`** et force sa classification. Garde-rail : `cmd/replay-corpus-gate/changements_guard_test.go`, trois tests qui tiennent les trois maillons ; **mutation verifiee** — retirer `changements += b.Changements` fait rougir `TestBilanPorteLesChangements`, restaurer par nom le rend vert. **VERDICT DU GATE UNE FOIS L'ORACLE REPARE : `chang.` = 0 sur les 14 temoins.** | l'oracle est desormais complet ; tout lot ulterieur voit les trois categories |
 | 2026-09-15 | 1.9.2 | **D1 (1.9.2) — LE CHEMIN DES TOUCHES EST ÉTEINT EN PRODUCTION POUR INFINITE, ET CE LOT LE CONVERTIT QUAND MÊME.** Sur pièces : `games.CapWeaponAccuracy` vaut `CapNotExposed` (`games/halo_infinite/adapter_data.go:200`) et `config/titles/halo_infinite/mappings/capabilities.toml:80` dit `"match.weapon.accuracy" = "not_exposed"`, donc `collectHits` sort à sa première ligne ; `ConfigureFilmAccuracy` n'a AUCUN appelant de production (grep : un seul site, `hits_capability_test.go:56`). La conversion de `BuildBipedTracks` / `FilmWeaponHitDistance` / `DetectFilmMapEntry` n'a donc **aucun effet mesurable en production aujourd'hui** — elle est faite parce que le code existe, qu'il décidait un fait à la place du catalogue, et que D13 ne connaît pas d'exception « chemin éteint ». **NON TRAITÉ** : rallumer la passe est hors lot. | le lot qui rallume la précision par arme (déjà nommé comme cible de retrait dans deux allowlists d'`archlint`) |
 | 2026-09-15 | 1.9.2 | **D2 (1.9.2) — SUR LIVE FIRE, LA SIGNATURE DE LARGEURS NE RETROUVE AUCUNE ENTRÉE DU CATALOGUE : LES DISTANCES DE TOUCHE Y SONT DÉJÀ DÉSACTIVÉES.** `DetectFilmMapEntry` identifie la carte en comparant `e.AxisWidths == lay.AxisW` ; la mesure de ce lot établit que l'auto-détection rend `[13 12 11]` sur les deux films Live Fire quand le catalogue dit `[12 12 11]` — donc `0 carte` trouvée, `ErrUnknownMapBounds`, distance nulle. Ce n'est pas une régression de ce lot (le comportement est antérieur) et il ne l'aggrave pas ; c'est un CAS D'ESPÈCE de ce que le lot 1.9.4 ferme, puisque le collecteur résout déjà le nom de carte du match par la base (`resolveMapBounds`). **NON TRAITÉ.** | lot 1.9.4 (la carte du film vient du nom de match) |

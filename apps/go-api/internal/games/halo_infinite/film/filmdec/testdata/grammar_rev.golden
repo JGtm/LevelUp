@@ -264,4 +264,16 @@
 #               calibration tranchait autre chose que 9/5 lit desormais 9/5.
 #               `SchemaVersion` reste 59 EN ATTENTE du `replay-corpus-gate`, qui n a pas pu etre
 #               joue (voie de decodage transferee au lot 1.9.3).
-grammar-2026-09-15.7	8463b183c2fb92269761fa61f9aecd0e7ba6bfe129acfc43429fb576624b5769
+#   2026-09-15  grammar-2026-09-15.8  lot 1.9.1 ter : LA CLE DU PROFIL N EST PLUS LE BUILD,
+#               C EST LA VERSION DE FORMAT DU FILM. Le second u32 de `chunk_00` (`+4`) est la
+#               version de format : le LECTEUR du jeu (`FUN_14299ab50`) en derive la largeur du
+#               registre (`FUN_141cfff30`) et celle de la table par type (`FUN_141cffe20`), et
+#               les six branches de version de l executable la lisent par `FUN_1428e1c0c`. Le
+#               decoupage du bloc MPP est donc keye par elle (`mppWidthsPourFormat`), la largeur
+#               de personnalisation restant keyee par le BUILD — le format 24 porte trois builds
+#               dont deux personnalisations differentes, ce qui INTERDIT de n en garder qu une.
+#               AUCUN BIT LU NE CHANGE : sur les 1 351 films du cache les deux cles rendent le
+#               meme decoupage. LA REVISION MONTE parce que le CADRE change, et parce que la
+#               nouvelle cle couvre les CINQ films sans section d identification (format 20),
+#               que l ancienne ne pouvait pas nommer. `SchemaVersion` reste 59.
+grammar-2026-09-15.8	7480168c0b6627d517629bb07b0b81150c4074db1d6d449f3975dd2bc96c0048
