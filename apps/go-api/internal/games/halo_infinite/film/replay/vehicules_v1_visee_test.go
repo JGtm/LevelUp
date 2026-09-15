@@ -83,7 +83,7 @@ func v1vUnFilm(t *testing.T, root string, f v0Film) {
 		t.Logf("V1v %s (%s) — bande ti=%d vide : rien a mesurer", f.ID, f.Carte, attVehiculeTI)
 		return
 	}
-	lay, _, err := filmdec.DetectI0Layout(dir)
+	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
 		t.Logf("V1v %s : decoupage i0 illisible : %v", f.ID, err)
 		return

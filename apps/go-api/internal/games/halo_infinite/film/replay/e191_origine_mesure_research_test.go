@@ -51,6 +51,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -222,10 +223,21 @@ func e191MesureUnFilm(t *testing.T, root string, f e191Film) ([]e191Pose, bool) 
 }
 
 // e191Spawns balaie les evenements 103 d un film, sous le verrou de decodage.
+//
+// LE CHARGEMENT EST ICI, ET C EST VOULU (revue de jalon M1, constat C4, 2026-09-16). Il vivait
+// dans `filmdec.ScanFilmEquipmentSpawnEvents`, une enveloppe `dir` de PRODUCTION dont cet appel
+// etait le SEUL au depot — instrument par instrument, tests compris. Regle 7 du depot (« 0 code
+// mort ») : l enveloppe est supprimee, ses deux lignes vivent chez son unique appelant, et la
+// production garde la seule forme qu elle emploie (`ScanEquipmentSpawnEvents(fc)`, sur un
+// contexte deja ouvert, qui ne recharge rien).
 func e191Spawns(dir string) ([]filmdec.EquipmentSpawnEvent, filmdec.EquipmentSpawnStats, error) {
 	release := filmdec.LockProcessDecode()
 	defer release()
-	return filmdec.ScanFilmEquipmentSpawnEvents(dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, filmdec.EquipmentSpawnStats{}, err
+	}
+	return filmdec.ScanEquipmentSpawnEvents(filmdec.NewFilmContext(film))
 }
 
 // e191Ctx porte ce qu un film donne a la mesure : le nuage trie, les vies de poseur, et les deux

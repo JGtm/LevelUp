@@ -59,7 +59,7 @@ func TestI22DeltaResearch(t *testing.T) {
 	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped dans les keyframes de %s", dir)
 	}
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible : %v", err)
 	}
@@ -176,7 +176,7 @@ func TestInventoryComponentsDeltaCensus(t *testing.T) {
 		chunks = append(chunks, i)
 	}
 	slots := bipedSlotBandDir(dir, chunks)
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("i0 : %v", err)
 	}
@@ -274,7 +274,7 @@ func TestInventoryValuesDeltaProbe(t *testing.T) {
 		chunks = append(chunks, i)
 	}
 	slots := bipedSlotBandDir(dir, chunks)
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("i0 : %v", err)
 	}

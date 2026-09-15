@@ -343,7 +343,7 @@ func TestF0CalibreCarte(t *testing.T) {
 		// film (DetectI0Layout, profil de bascule par position de bit). Ne restent candidates
 		// que les cartes dont les largeurs d axe du catalogue s y accordent — c est le
 		// controle que reclame le commentaire d `AxisWidths` (R7 : 7 films sur 7).
-		lay, _, lerr := DetectI0Layout(dir)
+		lay, _, lerr := detectI0Layout(dir)
 		cands := profils
 		if lerr == nil && lay.Valid() {
 			cands = nil
