@@ -26,8 +26,9 @@ package fallback
 //
 // # L'ORDRE DE CE FICHIER NE COMPTE PAS
 //
-// [Table] trie par nom. Le découpage en cinq fichiers ne suit que la limite de 500 lignes du
-// dépôt et le paquet des sites.
+// [Table] trie par nom. Le découpage en SIX fichiers (cinq jusqu au lot 1.9.4, qui a
+// scindé `registre_killsource.go` à 523 lignes) ne suit que la limite de 500 lignes du dépôt et
+// le paquet des sites.
 
 // registre est LA table. Elle ne se modifie jamais à l'exécution : c'est une donnée de code,
 // au même titre qu'un catalogue versionné (D12).
@@ -35,6 +36,7 @@ var registre = concat(
 	registreReplayEquipement,
 	registreReplayIdentites,
 	registreKillsource,
+	registreKillsourceCarte,
 	registreObjectifsEtConstruction,
 	registreFilmdec,
 )
