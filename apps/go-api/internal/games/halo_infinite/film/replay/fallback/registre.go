@@ -69,3 +69,12 @@ const dateAudit0E = "2026-09-13"
 // coûte une ligne. Le registre le dit entrée par entrée ([Repli.CibleComptage]) pour qu'un
 // compte absent ne se lise jamais comme un compte nul.
 const comptageFamille19 = "lot de conversion 1.9.x du fait, ou pas 2 de M2 (porteur du profil)"
+
+// lot194 : le lot qui supprimera le DERNIER appel de production de `filmdec.DetectI0Layout` — la
+// carte d'un film s'y reconnaît encore à une signature de largeurs d'axe, alors que le collecteur
+// résout déjà son nom par la base.
+//
+// CONSTANTE PARCE QUE QUATRE ENTRÉES LE NOMMENT (seuil du dépôt : à la troisième copie, on
+// centralise), et parce qu'un lot cité par son numéro dans deux fichiers doit se renommer d'un
+// seul geste le jour où le plan le renumérote.
+const lot194 = "lot 1.9.4"

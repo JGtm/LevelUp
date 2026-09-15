@@ -175,7 +175,35 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // vaut UNE frame (100 ms, la dernière du film). Le bump rend éligible TOUT le corpus au
 // redécodage. Il ne déclenche rien par lui-même : seule la commande `levelup backfill-killsource`
 // re-décode, et `match_lives`/`match_death_context` y réécriront une passe au contenu inchangé.
-const IsolationDecoderRev = "isolement-2026-09-10-pont-a-l-instant"
+// # POURQUOI ELLE BOUGE LE 2026-09-15 (lot 1.9.2, le découpage d'i0 vient du catalogue)
+//
+// CE N'EST PAS `match_lives` NI `match_death_context` QUI CHANGENT — comme au lot 6.1, ce sont
+// `kill_positions` et `kill_openings` : `buildPositionRows` IMPOSE désormais au balayage des
+// bipèdes le découpage d'i0 que le CATALOGUE de carte porte (`optionsDeBalayageDesPositions`), là
+// où `ScanFilmOptions.Layout` restait nil et où `filmdec.DetectI0LayoutOf` décidait en mesurant le
+// film. Sur une carte à plus de deux régions de compression l'auto-détection ne sait pas voir
+// l'index de région : sa porte d'un seul bit acceptait des enregistrements d'une AUTRE région,
+// exprimés dans une autre AABB, donc des coordonnées fausses sans le moindre signal.
+//
+// CE QUE ÇA CHANGE, MESURÉ AVANT DE CODER (17 films : les 14 témoins du corpus gate et les
+// 8 builds ; instrument `filmdec/e192_i0_catalogue_mesure_research_test.go`, tableau collé au §5
+// du plan du chantier). Catalogue et auto-détection donnent le MÊME découpage sur QUINZE films,
+// et les positions y sont identiques au record près. Les DEUX films Live Fire divergent — seule
+// carte du catalogue dont la région jouée n'est pas la première du bloc structure-BSP :
+// `60ae07c4` perd 3 positions sur 267 368, `0797ce72` 4 sur 146 811 (26 et 11 enregistrements
+// bruts écartés sur 267 400 et 146 860).
+//
+// LA POPULATION CONCERNÉE EST NOMMÉE : 70 matchs Live Fire au registre du parc (sur 1 967), dont
+// 52 ont un film en cache — les seuls dont les lignes peuvent changer. Le bump rend éligible au
+// redécodage TOUT match qui a des positions, comme au lot 6.1 ; les 1 299 autres films
+// réécriront une passe au contenu identique.
+//
+// POURQUOI PAS [KillSourceDecoderRev]. Le journal des morts ne change pas d'un octet, et
+// `internal/games/halo_infinite/film/killsource/` n'a pas bougé : la faire monter rouvrirait un
+// backlog de redécodage complet pour rien, et `decoder_rev_fingerprint_test.go` rougirait à juste
+// titre (« la revision a change sans le decodeur »). `kill_positions` ne porte pas de
+// `decoder_rev` : cette révision-ci est la seule que `matchsAJour` consulte pour ces tables.
+const IsolationDecoderRev = "isolement-2026-09-15-decoupage-du-catalogue"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //
