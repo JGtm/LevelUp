@@ -350,4 +350,10 @@ type FilmTableCounts struct {
 	Accord        int `json:"accord"`
 	Contradiction int `json:"contradiction"`
 	Silence       int `json:"silence"`
+	// IndexCollisions : les INDEX que deux xuids se disputaient dans la table composee, et que
+	// la composition a donc retires POUR LES DEUX (revue de jalon M1, lentille L4). Un index
+	// partage placerait deux joueurs sur la meme trace, et le choix se ferait a l'ordre
+	// d'iteration d'une map — non deterministe d'une cuisson a l'autre. Absent du document
+	// quand il vaut zero ; `Direct` et `Fallback` ne comptent que ce qui RESTE publie.
+	IndexCollisions int `json:"collisionsIndex,omitempty"`
 }
