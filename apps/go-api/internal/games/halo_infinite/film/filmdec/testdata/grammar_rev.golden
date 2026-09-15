@@ -169,4 +169,4 @@
 #               killsource-2026-09-14, backlog de redecodage), pas `GrammarRev` — meme nature que
 #               l entree `botSuffix -> BotSuffix` du golden de killsource. `SchemaVersion` ne
 #               monte pas non plus : aucun champ ni aucune forme de l artefact ne change.
-grammar-2026-09-14.6	8fcf08048678750509361d87db225b487ca03dea0e8b7e0286843fc410b1a62e
+grammar-2026-09-15.1	e9231c748018fc40c9070370ffab27012bfbcbf6a31ac2a312e65fca24bd4337

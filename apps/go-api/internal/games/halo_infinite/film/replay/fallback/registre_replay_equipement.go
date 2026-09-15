@@ -7,37 +7,23 @@ const pkgReplay = "internal/games/halo_infinite/film/replay/"
 
 var registreReplayEquipement = []Repli{
 	{
-		Nom:       "repli_origine_pose_vie_la_plus_proche",
-		Fait:      "l'origine d'une pose d'equipement (deployed / dropped) quand aucune vie du poseur ne couvre l'instant de la pose",
-		Mecanisme: "la vie du poseur dont l'ecart temporel a la pose est le plus faible est choisie, puis l'ecart est confronte a originDropWindowUS (200 ms)",
-		Condition: CondNonResolu,
+		Nom:       "repli_piece_engendree_sans_evenement",
+		Fait:      "l'origine d'une PIECE ENGENDREE (panneau de mur) qu'aucun evenement 103 ne designe",
+		Mecanisme: "le manifeste du titre dit `kind = \"deployed\"` : l'objet n'existe QUE deploye, donc la pose sort `deployed` sans mesure",
+		Condition: CondFilmMuet,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgReplay + "equipment_placements.go",
-			Ancre:   "best, bestGap := equipLife{}, ^uint64(0)",
+			Fichier: pkgReplay + "equipment_origin.go",
+			Ancre:   "fb.Declenche(fallback.NomPieceEngendreeSansEvenement)",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.1 (origine d'une pose d'equipement)",
-		CritereRetrait:  "0 declenchement sur l'echantillon court une fois la pose designee par le type 103 lue ; les 216 panneaux de mur sont deja couverts par equipmentIsSpawnedPiece",
+		DatePose:     "2026-09-15",
+		CibleRetrait: "lot 3.x (profil par build) : la lecture des evenements de liste sur les builds anciens",
+		// MESURE DU 2026-09-15 : 9 poses de panneau sur 124, et TOUTES sur les deux films de
+		// build les plus anciens du corpus — `a521164d` (HI_1_4_1, 0 evenement 103 lu sur
+		// 4 956 listes) et `50247b26` (v31 sans section, 2 evenements). C'est une limite de
+		// BUILD, pas une incertitude : sur les builds recents la designation est de 115/115.
+		CritereRetrait:  "0 declenchement sur les 8 builds, c'est-a-dire un evenement 103 lu pour chaque panneau publie",
 		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_origine_pose_fenetre_temporelle",
-		Fait:      "l'origine d'une pose d'un appareil PORTE (capteur, traqueur, ecran, champ)",
-		Mecanisme: "ecart entre la creation de l'objet et le dernier point du poseur : <= originDropWindowUS (200 ms) = lacher, au-dela = deploiement",
-		Condition: CondFilmMuet,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "equipment_placements.go",
-			Ancre:   "const originDropWindowUS = 200_000",
-		}},
-		DatePose:       dateAudit0E,
-		CibleRetrait:   "lot 1.9.1, puis la piste ref0 de la table (D) du registre 0.E",
-		CritereRetrait: "un signal ECRIT qui separe porte-deploye de porte-lache ; a ce jour le negatif est mesure (103 sur 0/31 deployed et 0/145 dropped, porte de creation ti=37 fermee sur 503/503) — le repli reste jusqu'a ce qu'une lecture existe",
-		// Le compteur ne se branche pas ici : c'est le lot 1.9.1 qui ouvre ce fichier pour y
-		// poser la lecture du 103 en contrôle, et qui comptera accord / repli / contradiction.
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.1",
 	},
 	{
 		Nom:       "repli_geste_dernier_occupant_du_match",

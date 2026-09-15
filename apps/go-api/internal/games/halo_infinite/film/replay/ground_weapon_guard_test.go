@@ -33,8 +33,8 @@ var gwThresholdOwners = map[string]string{
 	"gwPadCycleMinGaps":  "ground_weapon_rules.go",
 	"gwPadCycleMaxCV":    "ground_weapon_rules.go",
 	"gwPickupTrackTolUS": "ground_weapon_rules.go",
-	"originDropMaxDist":  "equipment_placements.go",
-	"originDropWindowUS": "equipment_placements.go",
+	"originDropMaxDist":  "equipment_origin.go",
+	"originDropWindowUS": "equipment_origin.go",
 }
 
 // gwRuleOwners : chaque fonction de REGLE, et le seul fichier qui a le droit de la definir.
@@ -52,7 +52,7 @@ var gwRuleOwners = map[string]string{
 	"gwPickupLifeTrack":   "ground_weapon_bounds.go",
 	"padObjects":          "ground_weapon_objects.go",
 	"gwPickupPadGaps":     "ground_weapon_objects.go",
-	"equipmentLives":      "equipment_placements.go",
+	"equipmentLives":      "equipment_origin.go",
 	"decodeFilmPadScan":   "build_ground_weapons.go",
 	"gwInstallMPPWidths":  "build_ground_weapons.go",
 }

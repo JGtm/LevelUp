@@ -127,6 +127,11 @@ type Options struct {
 	Translocations []filmdec.TranslocatorTeleport
 	Placements     []filmdec.EquipmentPlacement
 	PlacementStats filmdec.EquipmentPlacementStats
+	// SpawnEvents / SpawnStats : les evenements type 103 `EquipmentSpawnedObject` lus dans la
+	// liste de tete des paquets delta — « une PIECE a ete engendree ». Entree de DONNEES, comme
+	// Placements : absente, l'origine d'une pose retombe sur ses replis nommes (lot 1.9.1).
+	SpawnEvents []filmdec.EquipmentSpawnEvent
+	SpawnStats  filmdec.EquipmentSpawnStats
 	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.

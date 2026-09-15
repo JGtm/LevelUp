@@ -189,3 +189,21 @@ famille = "vehicules_v41_utilisateur"
 mode    = "Team Slayer:Arena"
 carte   = "Snowbound"
 raison  = "temoin NOMME PAR L'UTILISATEUR le 2026-09-13 (« les images des vehicules peuvent disparaitre sur le schema 54 »). Il porte ONZE vies de vehicule dont NEUF de chassis 0x038df01a, absent de la table statique des familles (vehicle_families.go) : elles sont publiees sans famille, donc dessinees en marqueur neutre — c'est la disparition d'image constatee. Les neuf sont immobiles (aucun echantillon, fenetre = le match entier), signature d'une tourelle fixe, et labels.tsv les nomme `sb_003_lvl_moments_ge_shared_autoturret_banished`. Seul temoin du corpus dont la MAJORITE du calque vehicules est sans sprite : toute resolution future de ce chassis, et toute regression de la table des familles, se voit ici en premier"
+
+# --- Origine d'une pose d'equipement (lot 1.9.1, 2026-09-15) --------------------------------
+# POURQUOI CE TEMOIN ENTRE ICI. Le lot 1.9.1 fait decider l'origine d'une pose par ce que le
+# film ECRIT — l'evenement de liste type 103 `EquipmentSpawnedObject`, la mort ECRITE du poseur,
+# sa prise ECRITE — au lieu d'une fenetre temporelle de 200 ms. Le corpus ne portait AUCUN film
+# BTB moderne dense en equipement : `4f77afc1` (Flood Gulch, BTB:CTF, 36 joueurs) est le plus
+# fourni du cache sur ce calque — 658 poses, 30 evenements 103, 13 panneaux de mur designes,
+# 192 morts appariees et 98 prises `taken` — soit les trois signaux du lot a la fois et en
+# nombre. `0797ce72` (deja au manifeste, famille region_index_2_bits) en est le pendant en
+# arene : 227 poses, 51 evenements, 19 panneaux designes.
+# Une regression de l'une des trois lectures (le decodage du 103, le pont morts -> siege, le
+# canal `equipmentChanges`) se voit d'abord ici, sur `coverage.placements.byCause`.
+[[temoin]]
+id      = "4f77afc1"
+famille = "equipement_origine_utilisateur"
+mode    = "BTB:CTF"
+carte   = "Flood Gulch"
+raison  = "le film le plus dense du cache sur le calque des poses d'equipement (658 poses, 30 evenements 103, 13 panneaux de mur designes, 192 morts appariees, 98 prises) : seul temoin ou les TROIS signaux ecrits de l'origine d'une pose (evenement 103, mort du poseur, prise du poseur) sont simultanement en nombre. Ajoute au lot 1.9.1 avec la conversion de `equipmentOrigin`"

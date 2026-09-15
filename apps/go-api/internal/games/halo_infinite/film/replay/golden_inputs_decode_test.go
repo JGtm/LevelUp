@@ -280,9 +280,33 @@ func decodeGoldenMonde(r *greader, g *goldenInputs) {
 	g.PlacementStats.Confirmed = int(r.u())
 	g.PlacementStats.Placements = len(g.Placements)
 
+	decodeGoldenSpawnEvents(r, g)
+
 	g.Pads.Weapons = decodeWorldObjectScan(r)
 	g.Pads.Powerups = decodeWorldObjectScan(r)
 
+}
+
+// decodeGoldenSpawnEvents relit les evenements 103 et leurs denominateurs.
+func decodeGoldenSpawnEvents(r *greader, g *goldenInputs) {
+	n := int(r.u())
+	g.SpawnEvents = make([]filmdec.EquipmentSpawnEvent, 0, n)
+	var lastTS uint64
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		e := filmdec.EquipmentSpawnEvent{TimestampUS: lastTS}
+		e.Chunk, e.PacketIndex = int(r.i()), int(r.i())
+		e.Spawned = filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		e.SpawnedValid = r.bool8()
+		e.Source = filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		e.SourceValid = r.bool8()
+		e.Ref2Present = r.bool8()
+		g.SpawnEvents = append(g.SpawnEvents, e)
+	}
+	g.SpawnStats = filmdec.EquipmentSpawnStats{
+		Chunks: int(r.u()), Packets: int(r.u()), Lists: int(r.u()), Events: int(r.u()),
+		WithSpawned: int(r.u()), WithSource: int(r.u()), Ref2: int(r.u()),
+	}
 }
 
 // decodeGoldenQueue relit les morts et la table des index de joueur.

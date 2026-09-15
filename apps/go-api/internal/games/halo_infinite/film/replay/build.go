@@ -247,10 +247,18 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// perdrait le record contemporain qui designe le poseur). La FIN OBSERVEE (schema 28)
 	// vient du recensement ti=37 deja lu par la chaine des socles (opt.Pads.Powerups).
 	doc.EquipmentPlacements, doc.Coverage.Placements = buildEquipmentPlacements(
-		opt.Placements, opt.PlacementStats, sorted,
+		equipmentInputs{
+			Raw: opt.Placements, Stats: opt.PlacementStats, Positions: sorted,
+			Census: opt.Pads.Powerups.Keyframes,
+			Spawns: opt.SpawnEvents, SpawnStats: opt.SpawnStats,
+			// LES DEUX SIGNAUX ECRITS DE L'ORIGINE (lot 1.9.1, D13) : la MORT du poseur, que le
+			// registre d'identite apparie aux vies (lots 1.6 / 1.8, seul producteur de liens),
+			// et sa PRISE d'equipement (`equipmentChanges.taken`). Ni l'une ni l'autre ne se
+			// reconstruit ici : on passe la lecture deja faite.
+			Lives: reg.Vies(), Changes: opt.EquipmentChanges,
+		},
 		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks,
-			families: opt.Labels.EquipmentFamilies},
-		opt.Pads.Powerups.Keyframes)
+			families: opt.Labels.EquipmentFamilies})
 	logPlacementCoverage(doc.Coverage.Placements)
 	// LES PRISES ET LES LACHERS d'arme, sur l'axe de frames du document. Les re-annonces d'une
 	// arme deja portee au spawn sont ECARTEES ici : ce ne sont pas des ramassages.

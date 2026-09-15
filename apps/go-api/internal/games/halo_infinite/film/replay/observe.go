@@ -55,7 +55,7 @@ var BuildFromFilmSteps = []string{
 	"grappleReads", "grappleReads.stats",
 	"abilityImpulses", "abilityCharges",
 	"zoomEvents",
-	"placements", "placements.stats",
+	"placements", "placements.stats", "spawnEvents",
 	"pads", "vehicles", "carrierMarks", "zoneReads", "bombReads",
 	"grenades", "projectiles", "deaths", "filmTable", "playerTeams", "playerIndices", "clockOrigin",
 }
