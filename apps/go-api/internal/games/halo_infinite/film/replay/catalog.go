@@ -160,6 +160,20 @@ type LabelCatalog struct {
 	// telle quelle. Zéro quand le titre ne la déclare pas — le rejeu ne publie alors rien, et le
 	// client ne dessine ni cercle ni jauge.
 	FlagReturnZone FlagReturnZone
+	// VehicleFamilies QUALIFIE les familles de châssis que le titre déclare : leur libellé
+	// bilingue, leur NATURE, et si un asset est servi pour elles. Posée par la COUCHE TITRE
+	// après NewLabelCatalog, comme les icônes et les teintes.
+	//
+	// TABLE PARTIELLE PAR NATURE, et c'est une décision : le nom d'un véhicule est un NOM PROPRE
+	// du jeu (Warthog, Banshee), la clé de la table des sprites EST ce nom, et rien ne s'en
+	// traduit (cf. `VehicleLabel`). N'y entre QUE ce qui n'est PAS un véhicule — aujourd'hui la
+	// seule tourelle automatique bannie, un ÉLÉMENT DE CARTE dont le nom est une DESCRIPTION,
+	// donc se traduit, et dont la nature doit traverser jusqu'au client pour qu'il la dessine
+	// autrement qu'un véhicule.
+	//
+	// VIDE = le titre ne qualifie aucune famille : le document ne publie ni libellé ni nature de
+	// famille, et le client garde exactement le rendu d'avant. Dégradation, jamais erreur.
+	VehicleFamilies map[string]VehicleFamilyInfo
 }
 
 // Empty dit si le catalogue ne nomme rien. Utile aux appelants qui veulent journaliser

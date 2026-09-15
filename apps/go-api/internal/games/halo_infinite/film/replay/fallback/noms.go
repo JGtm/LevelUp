@@ -39,4 +39,6 @@ const (
 	NomCollineDernierIntervalleOuvert Nom = "repli_colline_dernier_intervalle_ouvert"
 	// NomArmementBombeDebutAZero : `replay/bomb_armings.go`, `buildBombArmings`.
 	NomArmementBombeDebutAZero Nom = "repli_armement_bombe_debut_a_zero"
+	// NomChassisVehiculeMarqueurNeutre : `replay/document_vehicles.go`, `tallyVehicleCoverage`.
+	NomChassisVehiculeMarqueurNeutre Nom = "repli_chassis_vehicule_marqueur_neutre"
 )

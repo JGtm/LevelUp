@@ -101,13 +101,30 @@ type WeaponLabel struct {
 	Tinted bool   `json:"tinted,omitempty"`
 }
 
-// VehicleLabel est ce qu il faut pour DESSINER une famille de chassis : sa vignette, et le fait
-// qu elle se teigne.
+// VehicleFamilyInfo est ce que le TITRE dit d une famille de chassis qui n est PAS un vehicule
+// (lot 1.9.9, 2026-09-16). Lue du manifeste du titre, jamais ecrite en Go : les libelles
+// viennent de `config/titles/{slug}/mappings/replay_labels.toml`, section `[[vehicle_families]]`.
+type VehicleFamilyInfo struct {
+	// En / Fr : le libelle affichable de la famille.
+	En, Fr string
+	// Kind est la NATURE publiee (`map_element` : un objet de la carte, pas un vehicule de la
+	// partie). Liste fermee, tenue par le loader du manifeste.
+	Kind string
+	// Sprite dit qu un asset est servi pour cette famille. A faux, le service ne compose AUCUNE
+	// URL : une URL morte ferait un 404 par match, et le client ne pourrait pas distinguer
+	// « pas encore charge » de « aucun asset a ce jour ».
+	Sprite bool
+}
+
+// VehicleLabel est ce qu il faut pour DESSINER une famille de chassis : sa vignette, le fait
+// qu elle se teigne, et — depuis le lot 1.9.9 — ce qu elle EST quand ce n est pas un vehicule.
 //
-// IL N A PAS DE `En`/`Fr`, ET C EST DELIBERE. Le nom d un vehicule est un NOM PROPRE du jeu
-// (Warthog, Banshee, Mongoose) : il ne se traduit pas, et la CLE de la table EST deja ce nom.
-// Cabler ici un libelle bilingue reviendrait a ecrire du FR/EN en dur cote Go — ce que la regle
-// du depot interdit et ce que la decision de cadrage du plan a tranche.
+// SES `En`/`Fr` SONT PRESQUE TOUJOURS VIDES, ET C EST LA REGLE. Le nom d un vehicule est un NOM
+// PROPRE du jeu (Warthog, Banshee, Mongoose) : il ne se traduit pas, et la CLE de la table EST
+// deja ce nom. Les deux champs ne se remplissent que pour les familles que le TITRE qualifie dans
+// son manifeste, c est-a-dire celles dont le nom est une DESCRIPTION et non un nom propre — la
+// tourelle automatique bannie, aujourd hui la seule. Aucun libelle n est ecrit en Go (regle 1 du
+// depot) : ils viennent de `replay_labels.toml`.
 //
 // IL N EST PAS ECRIT DANS L ARTEFACT : il est rempli A LA REQUETE par le service
 // (`replay_vehicle_labels.go`), comme `WeaponLabel.Key` et `mapObjectives`. Meme raison, et elle
@@ -115,12 +132,23 @@ type WeaponLabel struct {
 // jusqu a une re-cuisson complete, et une resolution qui peut s ameliorer ne se stocke pas.
 type VehicleLabel struct {
 	// Img est l URL du sprite vu de dessus, EXTRAIT DU JEU (cf. `static/vehicles-assets`). Vide =
-	// aucun sprite servi pour cette famille : le client dessine un marqueur neutre, jamais le
-	// sprite d un vehicule voisin.
+	// aucun sprite servi pour cette famille : le client dessine le pictogramme de sa NATURE
+	// (`Kind`) si elle en a une, sinon un marqueur neutre — jamais le sprite d un voisin.
 	Img string `json:"img,omitempty"`
 	// Tinted dit que le visuel se teint a la couleur de l equipe qui l occupe. Les sprites de
 	// vehicule sont des silhouettes claires a traits noirs : ils se teignent en `multiply`, la ou
 	// les icones de HUD sont des masques — meme contrat de champ que `WeaponLabel.Tinted`, autre
 	// mode de composition (decision de cadrage du plan, cote client).
 	Tinted bool `json:"tinted,omitempty"`
+	// Kind est la NATURE de la famille quand elle n est PAS un vehicule de la partie —
+	// `map_element` pour un objet de la carte. VIDE = un vehicule, le regime de toutes les
+	// familles sauf une.
+	//
+	// C EST CE CHAMP, ET LUI SEUL, QUI DIT AU CLIENT DE NE PAS LA TRAITER COMME UN VEHICULE :
+	// aucun occupant ne lui est attribue cote serveur (cf. `vehicleFamillesNonPilotables`), et
+	// le calque lui reserve un pictogramme dedie plutot que le marqueur neutre.
+	Kind string `json:"kind,omitempty"`
+	// En / Fr : le libelle de la famille, vide pour un nom propre du jeu (cf. l en-tete).
+	En string `json:"en,omitempty"`
+	Fr string `json:"fr,omitempty"`
 }

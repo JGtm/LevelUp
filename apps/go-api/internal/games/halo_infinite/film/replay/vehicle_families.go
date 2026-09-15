@@ -33,10 +33,18 @@ package replay
 // vers l une d elles : les entrees `rockethog` / `razorback` / `warthog_gauss` / `gungoose` de
 // l index de sprites restent donc SANS cle ici, plutot que devinees.
 //
-// VALEUR INCONNUE = FAMILLE VIDE. Le vehicule reste publie (sa trajectoire est vraie), sans
-// sprite : le client dessine un marqueur neutre. Emprunter la famille d un voisin donnerait un
-// Warthog dessine en Banshee, ce qui est pire qu un marqueur. Le compteur
-// `Coverage.Vehicles.UnknownChassis` et le journal du calque rompent le silence.
+// VALEUR INCONNUE = FAMILLE VIDE, ET C EST UN REPLI NOMME (D14 du plan decodeur). Le vehicule
+// reste publie (sa trajectoire est vraie), sans sprite : le client dessine un marqueur neutre.
+// Emprunter la famille d un voisin donnerait un Warthog dessine en Banshee, ce qui est pire
+// qu un marqueur. Depuis le lot 1.9.9 (2026-09-16) ce refus porte son nom au registre des
+// replis — `repli_chassis_vehicule_marqueur_neutre`, condition `chassis_absent_de_la_table`
+// (le film N EST PAS muet : il ecrit le mot d identite, c est NOTRE table qui ne le nomme pas),
+// ordre `apres_lecture` — et son compteur est CABLE par cuisson (`tallyVehicleCoverage`), en
+// plus du compteur publie `Coverage.Vehicles.UnknownChassis` et du journal du calque.
+//
+// DECISION UTILISATEUR DU 2026-09-14 : le parc d assets vehicules est COMPLET. Un chassis
+// absent de cette table n est donc PAS un vehicule dont l image manquerait — c est un MISMATCH
+// a nommer, et le nommer est le seul geste qui retire le repli.
 
 import (
 	"fmt"
@@ -66,6 +74,10 @@ const (
 	familleSkiff    = "skiff"
 	familleShade    = "shade"
 	familleFalcon   = "falcon"
+	// familleTourelleAutoBannie n est PAS un vehicule : c est un ELEMENT DE CARTE (lot 1.9.9,
+	// decision utilisateur du 2026-09-14). Voir la table ci-dessous pour la preuve, et
+	// `config/titles/{slug}/mappings/replay_labels.toml` pour son libelle et sa nature publies.
+	familleTourelleAutoBannie = "tourelle_auto_bannie"
 )
 
 // vehicleFamilyByChassis associe le `MPPWord32` d un record de creation `ti=40` a la FAMILLE de
@@ -123,6 +135,25 @@ var vehicleFamilyByChassis = map[uint32]string{
 	0xfe32c0f4: familleWarthog,
 	// Meme preuve, meme hlmt daf7f543 (V3D, meme table) ; non observe en film a ce jour.
 	0xcb96ca07: familleWarthog,
+
+	// --- ELEMENT DE CARTE, pas un vehicule (lot 1.9.9, 2026-09-16) ---
+	//
+	// LA TOURELLE AUTOMATIQUE BANNIE. `labels.tsv` la nomme sur TROIS tags de degat a porteur
+	// `vehi 038df01a` (3b3b3d40, aed08680, e1ea6e65) et deux d entre eux ne citent qu UNE banque,
+	// `sb_003_lvl_moments_ge_shared_autoturret_banished` (+ son `_fire`) : le prefixe `sb_003_lvl`
+	// dit deja la NATURE — banque de NIVEAU (`lvl`), pas banque de vehicule (`sb_010_veh`), et
+	// « moments_ge_shared » est le vocabulaire des mises en scene de carte.
+	//
+	// LA MESURE LE CONFIRME (instrument `TestInventaireChassisDesArtefacts`, 76 artefacts du
+	// parc) : 18 vies sur deux films (`bfecd02b` 9, `2cf24f30` 9), 17 des 18 SANS AUCUN
+	// echantillon de trajectoire, et les 18 avec une fenetre qui couvre LE MATCH ENTIER. Un
+	// vehicule pilotable n a ni l une ni l autre de ces signatures.
+	//
+	// DECISION UTILISATEUR DU 2026-09-14 : « ce sont des elements de la map » — un objet qui
+	// interdit la sortie de la zone de jeu, PAS un vehicule jouable. Il entre donc en table sous
+	// une famille NOMMEE, il est publie, il est dessine par un pictogramme dedie cote client, et
+	// il ne porte JAMAIS d occupant (cf. `vehicleFamillesNonPilotables`).
+	0x038df01a: familleTourelleAutoBannie,
 }
 
 // vehicleFamilyOf rend la famille de chassis d un `MPPWord32`, ou la chaine VIDE quand la table

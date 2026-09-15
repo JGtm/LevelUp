@@ -202,9 +202,21 @@ type WeaponLabel struct {
 	Tinted bool   `json:"tinted,omitempty"`
 }
 
-// VehicleLabel est ce qu il faut pour DESSINER une famille de chassis : sa vignette, et le fait
-// qu elle se teigne.
+// VehicleLabel est ce qu il faut pour DESSINER une famille de chassis : sa vignette, le fait
+// qu elle se teigne, et — depuis le lot 1.9.9 — ce qu elle EST quand ce n est pas un vehicule.
+//
+// `Kind`, `En` et `Fr` sont OPTIONNELS et presque toujours vides : le nom d une famille de
+// vehicule est un nom propre du jeu, qui ne se traduit pas, et la cle de la table EST ce nom. Ils
+// ne se remplissent que pour les familles que le titre QUALIFIE dans son manifeste — la tourelle
+// automatique bannie (`kind = "map_element"`), aujourd hui la seule.
 type VehicleLabel struct {
 	Img    string `json:"img,omitempty"`
 	Tinted bool   `json:"tinted,omitempty"`
+	// Kind : la NATURE de la famille quand elle n est pas un vehicule de la partie. Vide = un
+	// vehicule. Le client s en sert pour lui reserver un pictogramme dedie plutot que le
+	// marqueur neutre des chassis non resolus.
+	Kind string `json:"kind,omitempty"`
+	// En / Fr : le libelle de la famille, vide pour un nom propre du jeu.
+	En string `json:"en,omitempty"`
+	Fr string `json:"fr,omitempty"`
 }
