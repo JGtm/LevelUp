@@ -39,4 +39,12 @@ const (
 	NomCollineDernierIntervalleOuvert Nom = "repli_colline_dernier_intervalle_ouvert"
 	// NomArmementBombeDebutAZero : `replay/bomb_armings.go`, `buildBombArmings`.
 	NomArmementBombeDebutAZero Nom = "repli_armement_bombe_debut_a_zero"
+	// NomReplayMancheZeroDecretee : `replay/score_timeline.go`, `attachRoundsCoverage`.
+	//
+	// LE SITE EST DANS `replay` ALORS QUE LE REPLI SE DECLENCHE DANS `analysis` : c'est
+	// l'inversion de dependance annoncee par la note d'architecture de `registre_objectifs.go`
+	// (D9 — `internal/analysis/` n'importe JAMAIS `internal/games/{slug}/`). `objectiveevents`
+	// rend son verdict en donnee pure ([objectiveevents.RoundsDecision]) et l'appelant, qui
+	// porte le compteur de la cuisson, le compte.
+	NomReplayMancheZeroDecretee Nom = "repli_manche_zero_decretee"
 )

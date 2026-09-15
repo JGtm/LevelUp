@@ -225,4 +225,25 @@ type ScoreCoverage struct {
 	// Points est le nombre total de points publies, equipes et joueurs confondus — le
 	// denominateur de volume du calque.
 	Points int `json:"points"`
+	// RoundsWritten sont les designateurs de manche que le FILM ECRIT, tries : la GRAMMAIRE du
+	// fait « quelles manches sont reelles », avant tout jugement. Publie seulement quand le
+	// film en ecrit plus d'un — sur un film mono-manche il redirait `Rounds`.
+	RoundsWritten []int `json:"roundsWritten,omitempty"`
+	// RoundsContradicted sont les designateurs MATERIELS que l'ordre des manches refuse : le
+	// film les ecrit avec assez d'emissions pour une manche, mais il ne declare AUCUNE des
+	// manches qui les precedent. C'est une CONTRADICTION au sens de D14 (c) — pas un repli :
+	// elle se declenche sur un desaccord avec une lecture, pas sur un silence du film.
+	//
+	// MESURE DU LOT 1.9.11 (1 351 films du cache, 2026-09-16) : 24 films portent ce motif,
+	// TOUS en designateur 2 avec la manche 1 absente, et 23 des 24 ont fini de 38 a 442 s DANS
+	// leur temps reglementaire sur un mode SANS manche. Les publier comme des manches ferait
+	// resoudre l'identite PAR MANCHE sur une manche qui n'existe pas — `e60aaf06` y perdait
+	// 130 de ses 154 actions en `noSlot`.
+	RoundsContradicted []int `json:"roundsContradicted,omitempty"`
+	// RoundsContradictedRecords est le nombre d'enregistrements que ces designateurs portent.
+	RoundsContradictedRecords int `json:"roundsContradictedRecords,omitempty"`
+	// RoundsDecreed dit qu'AUCUNE manche n'a ete admise et que la manche 0 a ete DECRETEE pour
+	// que le film reste lisible — le seul REPLI de cette chaine
+	// (`repli_manche_zero_decretee`), et il est aussi compte en `coverage.fallbacks[]`.
+	RoundsDecreed bool `json:"roundsDecreed,omitempty"`
 }

@@ -214,12 +214,16 @@ func toGrappleCoverage(v replay.GrappleCoverage) replaydoc.GrappleCoverage {
 
 func toScoreCoverage(v replay.ScoreCoverage) replaydoc.ScoreCoverage {
 	return replaydoc.ScoreCoverage{
-		TeamIdentity:  v.TeamIdentity,
-		Rounds:        v.Rounds,
-		ModeSupported: v.ModeSupported,
-		Truncated:     v.Truncated,
-		Oracle:        v.Oracle,
-		Points:        v.Points,
+		TeamIdentity:              v.TeamIdentity,
+		Rounds:                    v.Rounds,
+		ModeSupported:             v.ModeSupported,
+		Truncated:                 v.Truncated,
+		Oracle:                    v.Oracle,
+		Points:                    v.Points,
+		RoundsWritten:             v.RoundsWritten,
+		RoundsContradicted:        v.RoundsContradicted,
+		RoundsContradictedRecords: v.RoundsContradictedRecords,
+		RoundsDecreed:             v.RoundsDecreed,
 	}
 }
 

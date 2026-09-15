@@ -264,4 +264,16 @@
 #               calibration tranchait autre chose que 9/5 lit desormais 9/5.
 #               `SchemaVersion` reste 59 EN ATTENTE du `replay-corpus-gate`, qui n a pas pu etre
 #               joue (voie de decodage transferee au lot 1.9.3).
-grammar-2026-09-15.7	8463b183c2fb92269761fa61f9aecd0e7ba6bfe129acfc43429fb576624b5769
+#   2026-09-16  grammar-2026-09-15.7  FUSION (pilote) : l integration portait `.3` (lots 1.9.2 et
+#               1.9.3) et la branche du lot 1.9.1 bis `.6` ; les deux grammaires reunies.
+#   2026-09-16  grammar-2026-09-15.8  lot 1.9.11 (le designateur de manche). AUCUN BIT LU NE
+#               CHANGE et la mesure le dit : `RealRounds` delegue a `ResolveRounds` et rend le
+#               MEME ensemble, la regle d ordre gardant son verdict a la manche pres sur les
+#               1 351 films du cache. Ce qui bouge dans l empreinte est le VERDICT RENDU
+#               LISIBLE — le designateur ECRIT, la CONTRADICTION (un designateur materiel que
+#               l ordre refuse) et le REPLI (manche 0 decretee) deviennent des donnees
+#               publiees (`coverage.score.roundsWritten`, `roundsContradicted`,
+#               `roundsContradictedRecords`, `roundsDecreed`), la ou ils se perdaient dans la
+#               fonction. `SchemaVersion` NON TOUCHE : regle de la vague 2 (six lots touchent
+#               le document, le pilote monte le schema une fois a la fusion).
+grammar-2026-09-15.8	1ee4b9d22c23f66acad0ef334eabaa8036922082cb3f5efdae60ce21f5d07702

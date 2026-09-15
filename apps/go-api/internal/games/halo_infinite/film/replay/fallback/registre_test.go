@@ -64,7 +64,14 @@ func TestRegistrePorteToutesSesFamilles(t *testing.T) {
 // `repli_i0_porte_et_region_par_defaut` passe en `apres_lecture` — les deux chemins de
 // `sync/killcollector` imposent désormais le découpage d'i0 du CATALOGUE de carte, comme le
 // chemin de cuisson, et l'auto-détection n'entre plus que là où le catalogue se tait.
-const ratchetDevantLaLecture = 6
+//
+// BAISSÉ À 5 AU LOT 1.9.11 (2026-09-16) : `repli_manches_contigues_decretees` est devenu
+// `repli_manche_zero_decretee` et passe en `film_muet` / `apres_lecture`. L'entrée couvrait
+// DEUX mécanismes ; seul le plancher (« aucune manche admise, la manche 0 est décrétée ») est un
+// repli, et il se déclenche bien sur un silence. La règle d'ORDRE, elle, se déclenche sur un
+// DÉSACCORD avec une lecture : elle N'EST PAS un repli au sens de D14 (b) et le lot la publie
+// comme une CONTRADICTION comptée (`coverage.score.roundsContradicted`).
+const ratchetDevantLaLecture = 5
 
 func TestReplisDevantLaLectureNeMontentPas(t *testing.T) {
 	n := NbDevantLaLecture()

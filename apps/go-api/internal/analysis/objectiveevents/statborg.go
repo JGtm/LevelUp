@@ -461,7 +461,17 @@ const statMinRoundRun = 3
 // mesure : 4 films Oddball sur 4 exacts, et aucun faux positif sur les 9 films a une manche.
 // Compter les enregistrements bruts ne suffisait pas — sur le CTF `53ce4390`, une manche
 // fantome franchissait ce comptage et portait le score d'equipe de 1 a 2 104.
+//
+// ELLE DELEGUE A [ResolveRounds] DEPUIS LE LOT 1.9.11 et n'en garde que l'ensemble : le verdict
+// COMPLET — ce que le film a ecrit, ce que l'ordre a CONTREDIT, et le decret de la manche 0 —
+// se lit la, et c'est lui que l'artefact publie.
 func RealRounds(recs []StatRecord) map[int]bool {
+	return ResolveRounds(recs).RealSet()
+}
+
+// modeScoreRunsByRound rend, par manche, la plus longue suite STRICTEMENT croissante du score de
+// mode, tous slots confondus — le premier des deux criteres d'admission.
+func modeScoreRunsByRound(recs []StatRecord) map[int]int {
 	type key struct{ slot, round int }
 	series := map[key][]ScorePoint{}
 	for _, r := range recs {
@@ -479,7 +489,7 @@ func RealRounds(recs []StatRecord) map[int]bool {
 			runs[k.round] = n
 		}
 	}
-	return contiguousRounds(runs, materialRounds(recs), presentRounds(recs))
+	return runs
 }
 
 // presentRounds rend les manches qui EXISTENT dans le film : au moins UN enregistrement, de
@@ -616,7 +626,31 @@ const statMaxEmptyRoundRun = 1
 // manches a partir de 1 ne declare rien en manche 0, et ce n'est pas un trou mais un DECALAGE
 // de numerotation. La distinction se fait sur `vue` : tant qu'aucune manche n'a ete ADMISE par
 // l'un des deux criteres, l'absence ne prouve rien.
-func contiguousRounds(runs map[int]int, material, present map[int]bool) map[int]bool {
+//
+// # CE QUE LE LOT 1.9.11 A MESURE, ET POURQUOI CETTE REGLE RESTE (2026-09-16)
+//
+// L'item 1.9.11 du PLAN_DECODEUR_FILM devait la RETIRER : « le film porte le compteur de
+// manche » (decision utilisateur du 2026-09-14). La mesure sur les 1 351 films du cache
+// (instrument `e1911_manches_*_research_test.go`) a REFUTE l'hypothese, et le detail est au
+// §5 du plan. En resume : retirer cette regle ajoute une manche a 24 films, TOUS du motif
+// « designateur 2, manche 1 absente », et 23 des 24 ont fini de 38 a 442 s DANS leur temps
+// reglementaire sur des modes SANS manche (Team Slayer, Slayer, Strongholds, Husky Raid) —
+// une seconde manche y est impossible. Les VRAIES prolongations, elles, le film les ecrit en
+// designateur 1 CONTIGU et cette chaine les publie deja (14 films CTF:Arena au-dela du temps
+// reglementaire, 13 a egalite au debut de la manche, ZERO lecture `finalized-rounds-values`
+// quand la population fantome en porte jusqu'a la moitie).
+//
+// LA REGLE N'EST DONC PLUS UN DECRET, C'EST LE SEUL CRITERE QUI SEPARE LES DEUX POPULATIONS
+// SUR LE CORPUS MESURE (24 fantomes refuses, 20 manches reelles admises). Les deux autres
+// candidats ont ete mesures et ECARTES : le CONSENSUS DE SLOTS ne separe rien (les 41
+// designateurs materiels du corpus de verdict sont declares par les DIX slots, part 100 %), et
+// la part de `finalized-rounds-values` n'attrape que 19 des 24 fantomes.
+//
+// CE QU'ELLE DOIT EN REVANCHE, ET QUE LE LOT AJOUTE : un designateur ECRIT, MATERIEL et refuse
+// par l'ordre est une CONTRADICTION au sens de D14 (c) — elle se COMPTE et se PUBLIE
+// (`coverage.score.roundsContradicted`), elle ne se tait pas. Le seul REPLI de cette chaine est
+// le decret de la manche 0 quand aucune n'est admise (`repli_manche_zero_decretee`).
+func contiguousRounds(runs map[int]int, material, present map[int]bool) (map[int]bool, bool) {
 	out := map[int]bool{}
 	gap, vue := 0, false
 	for round := 0; round <= statMaxRound; round++ {
@@ -633,11 +667,12 @@ func contiguousRounds(runs map[int]int, material, present map[int]bool) map[int]
 		out[round] = true // manche courte, mais une manche coherente la suit encore
 	}
 	// La premiere manche existe toujours : un film tres court, ou tronque par le plafond,
-	// reste lisible.
+	// reste lisible. C'est le REPLI `repli_manche_zero_decretee`, et il se compte.
 	if len(out) == 0 {
 		out[0] = true
+		return out, true
 	}
-	return out
+	return out, false
 }
 
 // hasRoundAfter dit s'il reste une manche ADMISE STRICTEMENT apres celle-ci — par l'un ou
