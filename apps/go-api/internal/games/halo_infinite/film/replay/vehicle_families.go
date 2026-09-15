@@ -191,6 +191,26 @@ var vehicleFamilyByChassis = map[uint32]string{
 	// identifiants entre parentheses de sa colonne `vehi` sont les declarations du MEME
 	// vehicule dans un autre module. Aucun n est devine.
 	//
+	// CONFIRME PAR LA KILLSOURCE LE 2026-09-16, par une SECONDE SOURCE INDEPENDANTE de la chaine
+	// de destruction. Le kill-feed date chaque mort et porte le tag de degat de l arme
+	// (`match_kill_events_latest.source_tag`, oracle `pre-chaine-2026-09-09` en lecture seule).
+	// Les deux tags dont `labels.tsv` ne cite QU UNE banque, `sb_010_veh_cv_wraith` — `7c4f8a28`
+	// et `deffdc6b` — rendent 40 kills sur trois films, et **37 tombent DANS une vie de
+	// `ae845375`** publiee par le constructeur (horloge : `time_ms` est l instant depuis le debut
+	// du FILM, cf. `killsource/kill.go`, donc frame = (time_ms - originMs) / frameIntervalMs) :
+	// `4f77afc1` 17/20, `5676a9ba` 12/12, `0a44c6cc` 8/8. Un char qui tue depuis les vies d un
+	// chassis EST ce chassis.
+	//
+	// LES TROIS KILLS HORS VIE NE REFUTENT RIEN, ET ILS MESURENT AUTRE CHOSE : les trois sont du
+	// MEME tueur (`Shiloh0209`) qui tuait deja a 14:45.7 DANS la vie du slot 986, et ils tombent
+	// 6,5 s et 22,8 s APRES la fin publiee de cette vie (frame 8943). C est le defaut que le lot
+	// 1.9.10 est charge de corriger — `VehicleTrack.End` est une BORNE DE RECENSEMENT qui coupe
+	// un vehicule encore pilote —, mesure ici sur un second film et avec un conducteur nomme.
+	//
+	// SCORPION : memes tags a banque unique (`0bece71e`, `19bd6810`, « canon principal »,
+	// `sb_010_veh_un_scorpion`), 4 kills sur `0a44c6cc`, **4 sur 4 dans la vie de `f6f54e56`**.
+	// Les quatre autres tags qui citent cette banque la PARTAGENT avec
+	// `sb_020_prototype_weapon_lightrifle` : ecartes, ils ne prouveraient rien.
 	// RESERVE ECRITE : la BANQUE seule ne separe pas Wraith, Banshee et Phantom (ils partagent
 	// `2eaae6d7 large_covenant` et l evenement `1bf6fdde`, dit par le manifeste lui-meme). Ce
 	// qui les separe est le `hlmt`, et c est sur lui que chaque entree ci-dessous est rangee —
