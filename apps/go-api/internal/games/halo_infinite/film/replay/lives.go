@@ -125,48 +125,6 @@ const (
 	NomParFermeture = "closure"
 )
 
-// buildLifeSpans découpe les trajectoires en SÉJOURS DE RÉPLICATION : un slot qui disparaît plus
-// de lifeGapUS puis revient ouvre un nouveau séjour.
-//
-// CE N'EST PLUS LA DÉCOUPE DES VIES DEPUIS LE LOT 1.9.13 (2026-09-15), C'EST SON ÉCHAFAUDAGE.
-// Un trou de réplication n'est pas une mort (D13) : la découpe publiée vient de ce que le film
-// ÉCRIT, et `decouperAuxFaitsEcrits` referme ici toute coupure qu'aucun fait ne justifie. Ce
-// découpage-ci garde deux rôles, et deux seulement : il est la grille sur laquelle
-// [bestDeathOffset] mesure le calage du fil des morts (elle n'a pas d'autre grille avant que le
-// calage existe), et il est le repli compté quand le registre ne rend aucune vie.
-//
-// Mesure du 2026-09-15 sur les 8 builds : 212 coupures décidées ici, dont 208 qu'AUCUN fait du
-// film ne justifiait.
-func buildLifeSpans(tracks map[uint32]slotTrack) []lifeSpan {
-	slots := make([]uint32, 0, len(tracks))
-	for s := range tracks {
-		slots = append(slots, s)
-	}
-	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
-	var out []lifeSpan
-	for _, s := range slots {
-		pts := tracks[s].pts
-		if len(pts) == 0 {
-			continue
-		}
-		start, last := int64(pts[0].TimestampUS), int64(pts[0].TimestampUS)
-		for _, p := range pts[1:] {
-			t := int64(p.TimestampUS)
-			if t-last > lifeGapUS {
-				// TROU AU-DELÀ DU SEUIL : la vie se ferme ici. C'est la cause STRUCTURELLE,
-				// que le nommage écrasera s'il sait mieux (une mort, une fermeture).
-				out = append(out, lifeSpan{slot: s, from: start, to: last, cause: CauseVieCoupure})
-				start = t
-			}
-			last = t
-		}
-		// LA DERNIÈRE VIE DU SLOT N'EST FERMÉE PAR AUCUN TROU : ses points sont simplement
-		// épuisés. C'est la fin de ce que le film montre de ce slot — pas une coupure.
-		out = append(out, lifeSpan{slot: s, from: start, to: last, cause: CauseVieFinFilm})
-	}
-	return out
-}
-
 // deathOffsetStepMS est le pas du balayage fin du calage, et la grille reste ancrée sur la
 // PREMIÈRE FIN DE VIE — celle sur laquelle le balayage linéaire d'avant 2026-09-07 était déjà
 // ancré (il partait de `min(fins) − 60 000`, et 60 000 est multiple de 10). Un film déjà bien

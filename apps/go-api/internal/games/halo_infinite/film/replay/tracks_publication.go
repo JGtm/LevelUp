@@ -227,6 +227,39 @@ func vieDuPoint(spans []lifeSpan, courant int, tsUS uint64) int {
 	return courant
 }
 
+// poserLesTraces décime les positions, pose les traces et les bornes sur le document, journalise
+// ce que chacun a retenu, et REND la couverture des traces — que l'appelant pose sur
+// `doc.Coverage`, lequel n'existe qu'à partir de `buildCoverage`.
+//
+// SORTI DE `build.go` AU LOT 1.9.13 — DÉPLACEMENT PUR, aucune ligne de logique ne change.
+// `build.go` pesait 540 lignes AVANT ce lot, déjà au-delà du seuil du dépôt (le lot 2.7 le
+// scindera) : y faire grossir la pose des traces aurait accru une dette gelée. La coupure suit
+// la même responsabilité que le reste de ce fichier — ce qui décide QUELLES vies sont publiées,
+// et ce qu'on en compte.
+//
+// LES TRACES SE DÉCOUPENT SUR LES VIES DU REGISTRE, ET PLUS SUR UN SEUIL DE TROU : le registre
+// est le SEUL à décider où une vie finit (cf. l'en-tête de `decimateTracks`). La couverture est
+// construite ici mais POSÉE plus tard, avec les autres — `doc.Coverage` n'existe qu'à partir de
+// `buildCoverage`, et l'assemblage se fait dans l'ordre des DÉPENDANCES, pas dans celui des
+// champs.
+func poserLesTraces(doc *ReplayDocument, sorted []filmdec.BipedPosition,
+	in decoupeDesTraces) TrackCoverage {
+	tracks, trackCov := decimateTracks(sorted, in)
+	doc.Tracks = tracks
+	logTrackCoverage(doc.MatchID, trackCov)
+	bounds, ecartes := boundsOf(doc.Tracks)
+	doc.Bounds = bounds
+	if ecartes == 0 {
+		return trackCov
+	}
+	// JOURNALISE, JAMAIS AVALE (regle n°3 du depot). Un artefact de decodage qui passe la
+	// porte des bornes n est pas un detail : il decadre la scene et fait disparaitre le fond
+	// de carte. Le compte doit se voir en production, meme quand le correctif marche.
+	slog.Info("rejeu : echantillons aberrants ecartes des bornes",
+		"match_id", doc.MatchID, "ecartes", ecartes, "seuil_etendues", boundsRejectSpreads)
+	return trackCov
+}
+
 // TrackCoverage est ce que le SEUIL DE PUBLICATION des traces retient et refuse.
 //
 // # LE SILENCE QU'ELLE ROMPT (schéma 55, lot 1.0.4 du PLAN_DECODEUR_FILM)
