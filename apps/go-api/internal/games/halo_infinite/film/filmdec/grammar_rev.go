@@ -57,5 +57,6 @@ package filmdec
 // et quel decoupage, s appliquent a un film — le meme genre de changement que la revision `.2`
 // nommait au lot 1.9.2. `KillSourceDecoderRev` ne bouge PAS (`film/killsource/` n a pas bouge,
 // et son propre ratchet d empreinte fait foi) ; `SchemaVersion` non plus (le chemin de cuisson
-// n appelait pas cette fonction — l equivalence le verifie).
+// n appelait pas cette fonction — verifie le 2026-09-15 : equivalence 10/10 identiques,
+// corpus gate 14 temoins a 0 gain / 0 perte / 0 changement).
 const GrammarRev = "grammar-2026-09-15.8"
