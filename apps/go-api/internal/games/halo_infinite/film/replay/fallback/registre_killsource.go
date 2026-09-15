@@ -286,34 +286,119 @@ var registreKillsource = []Repli{
 	{
 		Nom:       "repli_mort_non_revendiquee_la_plus_proche",
 		Fait:      "a quel couple du kill feed rattacher une mort que personne ne revendique",
-		Mecanisme: "plusieurs candidats dans la fenetre : le plus proche EN TEMPS gagne, l'arbitrage est silencieux",
+		Mecanisme: "aucune identite de paquet en face : le candidat le plus proche EN TEMPS dans la fenetre de 2,5 s gagne",
+		// LE FILM ECRIT L IDENTITE DE PAQUET quand un kill-event 85 nomme l instant, et le lot
+		// 1.9.7 la LIT d'abord ([pass.choisirNonRevendiquee]). Une mort que PERSONNE ne
+		// revendique ne porte, par definition, aucun kill au feed — donc aucun kill-event 85 a
+		// associer : le repli y est la voie normale, et c'est un negatif MESURE.
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgKillsource + "hybrid.go",
-			Ancre:   "if d := absMS(dt); d < bestDT {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.7 (dead-state et kill-feed apparies par l'identite de paquet)",
-		CritereRetrait:  "0 arbitrage temporel une fois le couple (chunk, pidx) transporte par Kill",
+		Sites: []Site{
+			{
+				Fichier: pkgKillsource + "hybrid.go",
+				Ancre:   "func (p *pass) choisirNonRevendiquee(e feedEvent) (sourcedCandidate, bool, bool) {",
+			},
+			{
+				Fichier: pkgKillsource + "hybrid.go",
+				Ancre:   "if d := absMS(dt); d < bestDT {",
+			},
+		},
+		DatePose:     dateAudit0E,
+		CibleRetrait: "lot 3.6 (composants manquants) : une mort non revendiquee n'aura de lecture que si le film nomme son instant autrement que par le kill feed",
+		// MESURE DU LOT 1.9.7 (21 films entiers, 8 builds) : 17 morts non revendiquees, dont
+		// 17 SANS aucune identite en face. Le repli les sert toutes, et le compte le dit.
+		CritereRetrait:  "ApparStats.NonRevendiqueeFenetre a 0 sur les 8 builds et sur le corpus gate",
 		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.7",
+		CibleComptage: "cloture M1 ou pas 2 de M2 : le compte EXISTE sous `ApparStats." +
+			"NonRevendiqueeFenetre` et sort en `killsource_appariement_non_revendiquee_fenetre` ; " +
+			"il reste a le publier sous ce nom dans `coverage.fallbacks[]`, ce qui demande au " +
+			"compteur de traverser `replaybuild/kills.go`",
 	},
 	{
 		Nom:       "repli_mort_de_bot_premier_candidat",
 		Fait:      "quel dead-state correspond a la mort d'un bot, ou a une mort causee par un bot",
-		Mecanisme: "le PREMIER candidat de la fenetre gagne (`break`), l'unicite n'est pas verifiee",
+		Mecanisme: "aucune identite de paquet en face : le PREMIER candidat de la fenetre de 2,5 s gagne, l'unicite n'est pas verifiee",
+		// LE KILL-EVENT 85 QUI NOMME UN BOT EN VICTIME PORTE SON PAQUET, et le lot 1.9.7 le LIT
+		// d'abord ([decodeCtx.apparierMortDeBot], [decodeCtx.resolveBotKillerDeaths]). Mais le
+		// kill feed est HUMAIN-SEUL : un instant qui ne porte pas de kill humain n'a aucun
+		// kill-event a associer, et le repli reste la voie normale de ces deux populations.
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgKillsource + "match.go",
-			Ancre:   "func (c *decodeCtx) resolveBotDeaths() []botMatch {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.7",
-		CritereRetrait:  "l'appariement se fait par (chunk, pidx) ; 0 recours au premier candidat sur les 8 builds",
+		Sites: []Site{
+			{
+				Fichier: pkgKillsource + "match.go",
+				Ancre:   "func (c *decodeCtx) resolveBotDeaths() []botMatch {",
+			},
+			{
+				Fichier: pkgKillsource + "match.go",
+				Ancre:   "func (c *decodeCtx) apparierMortDeBot(m *botMatch) {",
+			},
+			{
+				Fichier: pkgKillsource + "match.go",
+				Ancre:   "func (c *decodeCtx) resolveBotKillerDeaths(all []sourcedCandidate) []botKillerMatch {",
+			},
+		},
+		DatePose:     dateAudit0E,
+		CibleRetrait: "lot 3.6 (composants manquants) : la chaine d'evenements doit atteindre le kill-event 85 des morts de bot",
+		// MESURE DU LOT 1.9.7 (21 films entiers, 8 builds) : 6 morts DE bot et 4 morts PAR un
+		// bot apparieees, dont UNE SEULE par l'identite de paquet — les 9 autres n'ont aucune
+		// identite en face.
+		CritereRetrait:  "ApparStats.BotFenetre a 0 sur les 8 builds et sur le corpus gate",
 		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.7",
+		CibleComptage: "cloture M1 ou pas 2 de M2 : le compte EXISTE sous `ApparStats.BotFenetre` " +
+			"et sort en `killsource_appariement_bot_fenetre` ; il reste a le publier sous ce nom " +
+			"dans `coverage.fallbacks[]`, ce qui demande au compteur de traverser `replaybuild/kills.go`",
+	},
+	{
+		Nom:       "repli_appariement_par_fenetre_temporelle",
+		Fait:      "quel instant du kill feed un dead-state lu decrit",
+		Mecanisme: "demi-fenetre de 2,5 s (`tolMS`) : le premier instant du feed portant le meme couple gagne, sans aucun lien ecrit",
+		// LE FILM ECRIT LE LIEN, ET LE LOT 1.9.7 LE LIT : le dead-state et le kill-event 85 de la
+		// meme mort vivent dans le MEME paquet de replication, et l'instant du feed porte
+		// desormais cette identite ([feedEvent.paquet], posee par [killFeed.resoudreCouples]).
+		// L'ordre est fixe dans [choisirParIdentitePuisFenetre] : lecture d'abord, fenetre
+		// ensuite. Le repli n'entre que sur le silence — aucun kill-event associe a cet instant,
+		// ou paquet designe qui ne porte aucun dead-state satisfaisant la contrainte de couple.
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{
+			{
+				Fichier: pkgKillsource + "paquet_identite.go",
+				Ancre:   "func choisirParIdentitePuisFenetre(n int, identite, fenetre, couple func(int) bool) (int, bool) {",
+			},
+			{
+				Fichier: pkgKillsource + "match.go",
+				Ancre:   "func (c *decodeCtx) matchExact(cd candidate) (*feedEvent, bool) {",
+			},
+			{
+				Fichier: pkgKillsource + "match.go",
+				Ancre:   "func (c *decodeCtx) matchVictim(cd candidate) (*feedEvent, bool) {",
+			},
+			{
+				// L ASSISTANT ET LES DEUX PARTS DE DEGATS : quel kill-event 85 decrit la ligne
+				// publiee. Le repli y vaut DEJA ZERO sur les 21 films entiers (2 342 memes
+				// enregistrements, 1 divergence, 0 fois ou l identite se tait alors que la
+				// fenetre trouvait) : c'est le site que D14 (d) rend eligible au retrait sec.
+				Fichier: pkgKillsource + "assist.go",
+				Ancre:   "func (c *decodeCtx) killEventsFor(k *Kill, s *assistScan, used []bool) ([]int, bool) {",
+			},
+		},
+		DatePose:     "2026-09-16",
+		CibleRetrait: "cloture de M1 puis lot 3.6 : tout instant du kill feed doit porter un kill-event 85 aux deux indices EPINGLES",
+		// MESURE DU LOT 1.9.7 (21 films entiers, 8 builds, 14 temoins du corpus gate) : 2 899
+		// appariements, 2 205 a identite EGALE des deux cotes, 2 a identite DIFFERENTE, 692 SANS
+		// identite du cote feed. L'appariement par identite seule rend 2 204 accords et ZERO
+		// desaccord : la lecture ne contredit jamais la fenetre, elle la remplace. Les 692 sans
+		// identite sont le compte a faire tomber, et ils ont la meme cause que les 81 muets du
+		// lot 1.9.3 (chaine d'evenements qui s'arrete avant le kill-event, table de joueurs
+		// refusee sur les films sans section d'identification).
+		CritereRetrait: "ApparStats.Fenetre et AssistStats.ParLaFenetre a 0 sur les 8 builds et " +
+			"sur le corpus gate — le site de l'assistant y est DEJA a zero",
+		CompteurBranche: false,
+		CibleComptage: "cloture M1 ou pas 2 de M2 : le compte EXISTE sous `ApparStats.Fenetre` et " +
+			"`AssistStats.ParLaFenetre`, et sort en `killsource_appariement_fenetre` et " +
+			"`killsource_assistant_fenetre` ; il reste a le publier sous ces noms dans " +
+			"`coverage.fallbacks[]`, ce qui demande au compteur de traverser `replaybuild/kills.go`",
 	},
 	{
 		Nom:       "repli_sonde_non_lancee_porte_relachee",

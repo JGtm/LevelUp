@@ -77,4 +77,10 @@
 #               pre-chaine-2026-09-09 (aucune colonne ne porte `Inferred`/`AddedNames`, et sa
 #               revision la plus recente, killsource-2026-09-05, precede l apparition du champ) :
 #               elle se mesurera a la recuisson par killsource_bijection_noms_libres_en_trop.
-killsource-2026-09-16	1701d5fa95820c73626ef5c754451cf3a48e115b9c7143d889ddfd69e9f893ad
+#
+#   2026-09-16  killsource-2026-09-16 -> killsource-2026-09-16.2 (fusion du lot 1.9.7, second mouvement
+#               du jour) : l appariement dead-state <-> kill-feed par l IDENTITE DE PAQUET (chunk, pidx),
+#               plus par la fenetre de 2,5 s (2 899 appariements sur 21 films : 2 205 egaux, 2 differents,
+#               692 sans identite -> repli nomme et compte). Zero desaccord avec la fenetre, mais les
+#               lignes peuvent bouger la ou les deux divergent : lignes en base candidates au backlog.
+killsource-2026-09-16.2	92f7755651da39e2f2a6a53be6a544fe284020aff416ff02b9f2cce5b9e3268b

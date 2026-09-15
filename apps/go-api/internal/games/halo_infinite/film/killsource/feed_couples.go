@@ -122,6 +122,10 @@ type resolveurDeCouples struct {
 
 // consommerLesCouplesDuMemeInstant : temps 1. Chaque couple que le FEED ecrit prend le
 // kill-event dont les deux indices epingles nomment exactement ce couple.
+//
+// LE KILL-EVENT CONSOMME N EST PLUS JETE (lot 1.9.7) : son IDENTITE DE PAQUET reste sur
+// l instant, et c est elle qui appariera le dead-state. `resoudre` recopie l instant tel quel
+// dans `pairs` et `real`, donc l identite voyage sans autre geste.
 func (res *resolveurDeCouples) consommerLesCouplesDuMemeInstant() {
 	for i := range res.kf.events {
 		e := res.kf.events[i]
@@ -130,8 +134,14 @@ func (res *resolveurDeCouples) consommerLesCouplesDuMemeInstant() {
 		}
 		if j := res.chercherCoupleEcrit(e.timeMS, e.killer, e.victim); j >= 0 {
 			res.pris[j] = true
+			res.kf.events[i].paquet = res.paquetDe(j)
 		}
 	}
+}
+
+// paquetDe : l identite de paquet d un kill-event, par son indice.
+func (res *resolveurDeCouples) paquetDe(rec int) paquetID {
+	return paquetID{chunk: res.recs[rec].chunk, pidx: res.recs[rec].pidx, ok: true}
 }
 
 // chercherCoupleEcrit : le premier kill-event NON CONSOMME de la fenetre dont les deux indices
@@ -180,7 +190,7 @@ func (res *resolveurDeCouples) resoudreUnKillSansMort(i int) {
 		res.repliRecollageSurLeVoisin(i)
 	default:
 		res.pris[rec] = true
-		res.publierLeCoupleLu(i, idx)
+		res.publierLeCoupleLu(i, idx, rec)
 	}
 }
 
@@ -214,17 +224,19 @@ func (res *resolveurDeCouples) lireVictime(ms int, tueur string) (victime, rec i
 // UNE VICTIME BOT N EST PAS UN COUPLE DU FEED : elle part vers la population des morts de bot,
 // avec son indice, et AUCUNE mort de voisin n est consommee — celle-ci reste disponible pour le
 // temps qui cherche un TUEUR bot ou une mort que personne ne revendique.
-func (res *resolveurDeCouples) publierLeCoupleLu(i, victime int) {
+func (res *resolveurDeCouples) publierLeCoupleLu(i, victime, rec int) {
 	e := res.kf.events[i]
 	nom, _ := res.r.nomEpingle(victime)
+	paq := res.paquetDe(rec)
 	if res.r.isBotIndex(victime) {
 		res.stats.VictimesBotLues++
 		res.kf.botLus = append(res.kf.botLus,
-			killDeBot{ev: feedEvent{timeMS: e.timeMS, killer: e.killer, victim: nom}, victime: victime})
+			killDeBot{ev: feedEvent{timeMS: e.timeMS, killer: e.killer, victim: nom, paquet: paq},
+				victime: victime})
 		return
 	}
 	res.stats.Lus++
-	couple := feedEvent{timeMS: e.timeMS, killer: e.killer, victim: nom}
+	couple := feedEvent{timeMS: e.timeMS, killer: e.killer, victim: nom, paquet: paq}
 	if v := res.voisinPortantLaMort(i, nom); v >= 0 {
 		res.prisMort[v] = true
 		couple.victimXUID = res.kf.events[v].victimXUID

@@ -155,6 +155,19 @@ const (
 	metricCoupleAmbigu      = "killsource_couple_ambigu"
 	metricCoupleContradict  = "killsource_couple_contradiction"
 	metricVictimeBotLue     = "killsource_victime_bot_lue"
+
+	// D OU VIENT L APPARIEMENT `dead-state <-> kill-feed` de chaque ligne publiee (lot 1.9.7).
+	// L IDENTITE DE PAQUET decide ; la fenetre de 2,5 s n entre que sur son silence, et elle est
+	// alors un REPLI NOMME au registre. Les trois compteurs de repli sont SEPARES parce que leurs
+	// criteres de retrait le sont : `_fenetre` doit tomber a zero (le film ecrit le lien), les
+	// deux autres mesurent un negatif (le kill feed est humain-seul, il ne nomme ni la mort d un
+	// bot ni une mort que personne ne revendique).
+	metricApparIdentite    = "killsource_appariement_identite"
+	metricApparFenetre     = "killsource_appariement_fenetre"
+	metricApparBotFenetre  = "killsource_appariement_bot_fenetre"
+	metricApparNonRevFen   = "killsource_appariement_non_revendiquee_fenetre"
+	metricCoupleSansPaquet = "killsource_couple_sans_identite_de_paquet"
+	metricAssistFenetre    = "killsource_assistant_fenetre"
 )
 
 // KillSourceRoster : la resolution `gamertag -> xuid` pour UN match.
@@ -659,6 +672,34 @@ func publishKillSourceMetrics(res *killsource.Result, batch persist.KillSourceBa
 	}
 	publishBijectionProvenance(res.Roster.FilmTable)
 	publishCoupleProvenance(res.Stats.Couples)
+	publishApparProvenance(res.Stats.Appariement)
+	if n := res.Stats.Assist.ParLaFenetre; n > 0 {
+		observability.AddInt(metricAssistFenetre, int64(n))
+	}
+}
+
+// publishApparProvenance : D OU VIENT L APPARIEMENT `dead-state <-> kill-feed`, en exploitation
+// (lot 1.9.7).
+//
+// LE COMPTEUR QUI INFORME EST `killsource_appariement_fenetre` : c est le REPLI
+// `repli_appariement_par_fenetre_temporelle`, et son critere de retrait est ecrit au registre.
+// `killsource_couple_sans_identite_de_paquet` dit POURQUOI il a fallu se replier — sans lui, un
+// compte de replis ne designe aucune correction.
+func publishApparProvenance(a killsource.ApparStats) {
+	for _, p := range []struct {
+		nom string
+		val int
+	}{
+		{metricApparIdentite, a.Identite},
+		{metricApparFenetre, a.Fenetre},
+		{metricApparBotFenetre, a.BotFenetre},
+		{metricApparNonRevFen, a.NonRevendiqueeFenetre},
+		{metricCoupleSansPaquet, a.CouplesSansIdentite},
+	} {
+		if p.val > 0 {
+			observability.AddInt(p.nom, int64(p.val))
+		}
+	}
 }
 
 // publishCoupleProvenance : D OU VIENT LE COUPLE `(tueur, victime)`, en exploitation (lot 1.9.3).
