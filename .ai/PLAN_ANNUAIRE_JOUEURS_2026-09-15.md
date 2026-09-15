@@ -236,44 +236,94 @@ gate complet machine au repos.
 
 ## 5. Étape 3 — Domaine + service `PlayerDirectory` + `GET /admin/identities` (moyen) — agent B
 
-- [ ] 3.1 `internal/domain/identity.go` : `IdentityRecord`, `ProfileRef{TitleSlug, Key, SyncEnabled, AuthOnly, DirExists, DBExists}`,
-      `AccountRef{Username, Role, CreatedAt, LastLoginAt}`, `TokenRef{HasRefreshToken, ReauthRequired, LastAuthError, UpdatedAt}`,
-      `IdentityAnomaly{Code, Severity, Detail}` avec constantes `AnomalyAccountWithoutProfile`,
-      `AnomalyTokenOrphan`, `AnomalyPlayerDirOrphan`, `AnomalyWatchedWithoutProfile`
-      (severity `warning`), `AnomalyProfileWithoutAccount`, `AnomalyProfileWithoutToken`
-      (severity `info`). `AdminIdentitiesResponse{GeneratedAt, Identities []IdentityRecord, Counts map[string]int}`.
-- [ ] 3.2 `internal/port/player_directory.go` : interface `PlayerDirectory{ List(ctx) ; Get(ctx, xuid) ;
-      HasTrackedProfile(ctx, titleSlug, xuid) ; Onboard(ctx, OnboardRequest) (OnboardResult, error) ; Purge(ctx, xuid, PurgeOptions) (PurgeReport, error) }`
-      + `noopPlayerDirectory` si le pattern du package l'exige (vérifier `repository.go`).
-      `Onboard`/`Purge` sont déclarés ici mais implémentés aux étapes 5/6 (implémentation
-      `ErrNotImplemented` interdite : livrer l'interface avec les deux méthodes à l'étape 5,
-      donc à l'étape 3 l'interface ne porte que `List/Get/HasTrackedProfile` — l'étendre à 5 et 6).
-- [ ] 3.3 `internal/service/playerdirectory/directory.go` (nouveau package) : readers injectés
-      par petites interfaces locales (`ProfilesReader{LoadPlayers(titleFilter ...string)}`,
-      `AccountsReader{List() ; GetByXUID(xuid)}` — attention `List()` renvoie `AdminUserSummary`
-      SANS xuid : ajouter `XUID string json:"xuid,omitempty"` à `AdminUserSummary` et le
-      renseigner dans `userstore.Store.List`, `TokensReader{LoadAll()}`, `WatchedReader{WatchedKeys() []string}`
-      — nouvelle méthode sur `watcher.Daemon` renvoyant les `playerKey` (gamertag×titre) sous
-      lock ; nil-safe), `FS{PlayerDirExists(title, key) ; PlayerDBExists(title, key)}` via
-      `PathResolver`. `List` : union des xuids des 4 sources ; gamertag résolu par priorité
-      profil > compte > token ; anomalies calculées dans une fonction pure
-      `computeAnomalies(rec) []IdentityAnomaly` (testée seule). Dossiers orphelins : lister
-      `PathResolver.PlayersDir(title)` pour chaque titre du registre et confronter aux clés
-      de profil (insensible à la casse comme `FindKey`).
-- [ ] 3.4 `internal/api/handlers/admin_identities.go` : `GET /admin/identities` monté sous le
-      groupe admin existant (même middleware `RequireAdmin` que `/admin/monitoring/*` — vérifier
-      `admin.go` Mount), handler sans logique : appelle `port.PlayerDirectory.List`. Câblage
-      `server_apiv1.go` / `wire`.
-- [ ] 3.5 OpenAPI : `make openapi-gen` puis `make generate-types` ; `make openapi-check` vert.
-- [ ] 3.6 Tests : `directory_test.go` (fakes des 5 readers ; cas : identité complète → 0
-      anomalie ; compte sans profil → `account_without_profile` ; token seul → `token_orphan` ;
-      dossier sans profil → `player_dir_orphan` ; profil ami sans compte → info) ;
-      `admin_identities_test.go` httptest (200 + forme ; 403 non admin — réutiliser le harnais
-      des tests admin existants).
+- [x] 3.1 `internal/domain/identity.go` (`:36-159`) : les six types du plan, aux champs et
+      sévérités prévus. **Deux ajouts assumés, tous deux exigés par la suite du plan** :
+      `OrphanDirRef{TitleSlug, Name}` + le champ `IdentityRecord.OrphanDirs` — sans lui
+      `computeAnomalies(rec)` ne pourrait pas rester la fonction PURE que demande 3.3
+      (l'information « dossier sans profil » ne serait pas dans la ligne) ; et
+      `WatchedPlayerRef{XUID, Gamertag, TitleSlug}`, type de lecture du watcher (cf. 3.3).
+      `Detail` porte un CONTEXTE machine (slug, nom de dossier), jamais une phrase : les
+      libellés FR/EN sont posés à l'étape 4 (et le ratchet `no_french_label_literal` interdit
+      de toute façon un littéral accentué dans un fichier neuf de `internal/service` ou
+      `internal/api/handlers` — cf. §10).
+- [x] 3.2 `internal/port/player_directory.go` (nouveau) : `PlayerDirectory{List, Get,
+      HasTrackedProfile}` + `ErrIdentityNotFound`. `Onboard`/`Purge` NON déclarées, comme le
+      plan l'impose (elles arrivent avec leur implémentation aux étapes 5 et 6 ; un
+      commentaire sur l'interface le dit, pour que l'agent C n'ait pas à le redécouvrir).
+      **Pas de `noopPlayerDirectory`** : vérifié sur pièces, le pattern noop de
+      `internal/port` n'existe QUE dans `repository.go` (`:76-95`, `:377-378`) pour les
+      repositories ; `services.go` n'en porte aucun, et une impl nulle non utilisée serait du
+      code mort (CLAUDE.md règle 7). Le contrôle de compilation est tenu à sa vraie place :
+      `var _ port.PlayerDirectory = (*Directory)(nil)` dans le service (`directory.go:100`).
+- [x] 3.3 `internal/service/playerdirectory/` (nouveau paquet, 4 fichiers) : `directory.go`
+      (types, `New`, `List`/`Get`/`HasTrackedProfile`, tri, compteurs), `collect.go`
+      (l'agrégateur), `anomalies.go` (`computeAnomalies`, PURE), `fs.go` (témoin disque via
+      `PathResolver`). Aucun import DuckDB, aucune écriture.
+      `XUID string json:"xuid,omitempty"` ajouté à `AdminUserSummary` (`domain/user.go:90-100`)
+      et renseigné dans `userstore.Store.List` (`store.go:226`), avec son test (3.6).
+      **Trois écarts de forme, tranchés sur pièces** :
+      (a) `AccountsReader` ne porte QUE `List()` — `GetByXUID` n'est appelée par aucun chemin
+      de l'annuaire (la jointure se fait sur la liste déjà chargée) ; l'ajouter aurait forcé
+      chaque double de test à l'implémenter pour rien.
+      (b) `ProfilesReader` porte AUSSI `HasTrackedProfile(titleSlug, xuid)` : le port doit
+      répondre à cette question (3.2) et `*config.AppConfig` sait déjà y répondre depuis
+      l'étape 2 — la redéclarer dans le service aurait fait une 2e définition de « suivi »,
+      exactement ce que l'ADR 0035 D3 interdit.
+      (c) le watcher rend `WatchedPlayers() []domain.WatchedPlayerRef` et non
+      `WatchedKeys() []string` : `PlayerWatcher` porte déjà `xuid`, `gamertag` ET `titleSlug`
+      (`player_watcher.go:48-56`), donc l'annuaire rattache le suivi live par XUID au lieu de
+      re-découper la chaîne `gamertag|titre` de `playerKey` — un format interne qui aurait
+      silencieusement cassé l'annuaire s'il changeait. Méthode nil-safe, sous `playersMu`
+      (`watcher/daemon_watched.go`, fichier séparé : `daemon.go` est à 633 L).
+      Dossiers orphelins : `PathResolver.PlayersRootDir(slug)` (et non `PlayersDir`, qui
+      n'existe pas) pour chaque titre de `title.DefaultRegistry().All()`, comparaison de clé
+      insensible à la casse comme `dbprofiles.File.FindKey` (`store.go:291`). Un dossier
+      qu'AUCUN registre ne réclame produit une ligne à xuid vide plutôt que d'être perdu
+      (cf. §10).
+- [x] 3.4 `internal/api/handlers/admin_identities.go` (nouveau) : handler Huma sans logique
+      (`h.directory.List`), monté dans le bloc `r.Route("/admin", …)` de `server_apiv1.go`
+      (`:430-435`) — donc sous les MÊMES `RequireAuth` + `RequireAdmin` que les autres routes
+      admin (`:413-414`), avec `middleware.NoStore` comme `/admin/token-health` et
+      `/admin/monitoring/*` : une anomalie corrigée doit disparaître au rafraîchissement, pas
+      au bout d'un cache. Annuaire non câblé ⇒ 503 typé (jamais un corps vide qui se lirait
+      « aucune identité »). Câblage extrait dans `internal/api/server_player_directory.go`
+      (modèle `server_presence.go`) : `server_apiv1.go` est un assembleur déjà exempté du
+      seuil, on n'y ajoute pas d'adaptateurs. Le daemon n'y est atteignable que par
+      `watcher.DaemonController` : il est lu par assertion sur la petite interface
+      `WatchedReader` plutôt qu'en élargissant `DaemonController`, ce qui aurait forcé tous
+      ses doubles de test à implémenter une méthode dont ils n'ont pas l'usage.
+- [x] 3.5 OpenAPI : `make openapi-gen` → +162 lignes (`/admin/identities` +
+      `AdminIdentitiesResponse`, `IdentityRecord`, `ProfileRef`, `AccountRef`, `TokenRef`,
+      `OrphanDirRef`, `IdentityAnomaly`) ; `make generate-types` → +94 lignes dans
+      `generated.ts` ; `make openapi-check` → **0** (contrat à jour ET `generated.ts` dérivé).
+- [x] 3.6 Tests : `directory_test.go` (14 tests, fakes des 5 lecteurs) — identité complète → 0
+      anomalie ; compte sans profil (l'état exact du 2026-07-23 : compte + token + dossier,
+      pas de profil) ; token seul → `token_orphan` ; dossier orphelin sans AUCUN registre ;
+      dossier de casse différente → PAS orphelin ; profil d'ami → 2 `info` ; suivi live sur un
+      titre sans profil ; tri warning d'abord + compteurs ; erreur de registre remontée (3
+      sous-cas) ; balayage disque en échec → dégradation sans conclure d'orphelin ; sans
+      watcher ; `Get` ; `HasTrackedProfile` délégué (4 sous-cas).
+      `anomalies_test.go` : la fonction pure seule, 8 cas + l'ordre warning-avant-info.
+      `admin_identities_test.go` : 200 + forme, 500, 503 sans annuaire, et 401/403/200 sur la
+      MÊME chaîne de middlewares que `server.go` (harnais repris de `admin_titles_test.go:160`).
+      `watcher/daemon_watched_test.go` : couples rendus, titre vide normalisé, récepteur nil,
+      aucun joueur. `userstore/store_test.go:TestList_PorteLeXUID` : xuid présent après
+      `LinkIdentity`, vide sinon.
 
-**Gate G3** : `go test ./internal/domain/... ./internal/service/playerdirectory/...
-./internal/api/handlers/... ./internal/platform/userstore/... ./internal/watcher/...` → 0 ;
-`make openapi-check` → 0 ; `make check-types` → 0.
+**Gate G3** ✅ (2026-09-15, 23:09 → 23:11) :
+- `go test -count=1 ./internal/domain/... ./internal/service/playerdirectory/...
+  ./internal/api/handlers/... ./internal/platform/userstore/... ./internal/watcher/...` →
+  **9 paquets `ok` (8 testés + 1 sans test), 0 échec**, exit 0, 14 s (domain 0,3 s ·
+  domain/title 8,7 s · playerdirectory 0,3 s · api/handlers 10,0 s · userstore 4,4 s ·
+  watcher 1,2 s).
+- `make openapi-check` → **0** (openapi-gen -check « à jour » + `generated.ts` dérivé).
+- `make check-types` → **0** (19 s).
+- Hors gate, parce que le câblage touche `internal/api` et que deux ratchets balaient les
+  fichiers neufs : `go test -count=1 ./internal/api/... ./internal/archlint/...` → **0 échec**
+  (36 s) ; `golangci-lint run ./internal/service/playerdirectory/... ./internal/port/...` →
+  **0 issue**, et aucun constat portant sur `admin_identities.go`,
+  `server_player_directory.go`, `daemon_watched.go` ni `identity.go` dans les paquets déjà
+  endettés (les 19 + 3 constats restants sont la baseline, fichiers non touchés).
 
 ## 6. Étape 4 — Web : section « Identités » sur `/admin/management` (moyen) — agent B
 
@@ -295,9 +345,23 @@ gate complet machine au repos.
 - [ ] 4.6 Tests vitest : `IdentitiesSection.test.tsx` (rend 2 identités, badges d'anomalies,
       état vide) ; `identitiesDisplay.ts` + test si une fonction de formatage est extraite
       (sévérité → token, code → clé i18n) — logique hors composant (règle 7).
+- [ ] 4.7 Toggle admin « Instance fermée » (ajouté le 2026-09-15 après constat : le backend
+      accepte `PATCH /settings {instance_locked}` sous rôle admin — `handlers/settings.go:~228` —
+      mais AUCUNE page ne l'expose ; la prod a dû être verrouillée à la main dans le fichier).
+      Sur `/admin/management`, en tête de la section « Identités » : interrupteur « Instance
+      fermée » (état lu depuis `useAppShellStore.instanceLocked` / bootstrap ; écriture via le
+      hook existant `useUpdateSettings` de `features/settings/queries.ts` avec
+      `{ instance_locked }` — vérifier sur pièces qu'il accepte ce champ, sinon l'ajouter au
+      type de requête) + texte d'aide FR/EN (« Un compte Xbox inconnu ne peut plus créer de
+      compte ni de profil ; les comptes existants ne sont pas affectés. »). Après succès :
+      invalider `bootstrap` (le verrou est servi par `/bootstrap`) pour que l'état affiché suive.
+      Aucune logique dans le composant : `identitiesDisplay.ts` ou un hook `useInstanceLock()`
+      pour l'état + mutation. Test vitest : rendu de l'état, clic → mutation appelée avec la
+      bonne valeur, désactivé pendant l'envoi.
 
-**Gate G4** : `make check-types` → 0 ; `cd apps/web && npx vitest run src/features/admin` → 0 échec ;
-`npm run lint:colors` → 0 ; `npm run lint` → 0 nouvelle erreur.
+**Gate G4** : `make check-types` → 0 ; `cd apps/web && npx vitest run src/features/admin src/features/settings` → 0 échec ;
+`npm run lint:colors` → 0 ; `npm run lint` → 0 nouvelle erreur ; `grep -rn "instance_locked" apps/web/src/features/admin`
+→ ≥ 1 ligne de production (le toggle existe).
 
 ## 7. Étape 5 — Chemin d'onboarding unique (moyen, risque auth) — agent C
 
@@ -423,7 +487,32 @@ tableau des 4 joueurs locaux sans panique.
   `// LoadAppSettings charge app_settings.json…` traîne seul en fin de fichier (la fonction
   vit ailleurs). Laissé en place, simplement repoussé après le nouveau code pour qu'il ne
   soit pas lu comme la doc de `HasTrackedProfile`. À supprimer un jour.
-- (à compléter par les agents)
+- **[agent B, étape 3] le ratchet `no_duckdb_import` de l'étape 6.2 N'EXISTE PAS.**
+  `internal/archlint/` n'a aucun test de ce nom (63 fichiers, vérifiés un à un) : l'item 6.2
+  dit « existant à vérifier/étendre », il faudra le CRÉER. Rien à corriger pour l'étape 3 —
+  `internal/service/playerdirectory/` n'importe aucun paquet DuckDB (le témoin disque
+  `fs.go` ne fait que `os.Stat`/`os.ReadDir` via `PathResolver`, il n'OUVRE jamais une player
+  DB) — mais l'agent C doit prévoir l'écriture du garde-rail, pas son extension.
+- **[agent B, étape 3] le ratchet `no_french_label_literal` contraint tout fichier NEUF de
+  `internal/{service,analysis,api/handlers,notify,games}`** : un littéral accentué hors
+  argument direct de `slog.*`/`fmt.Errorf` y est interdit (allowlist par fichier avec compte
+  du jour, jamais de nouvelle entrée). Conséquence tenue ici : les `Detail` d'anomalie et les
+  messages d'erreur HTTP de l'annuaire sont des codes/contextes machine, les libellés vivent
+  côté web (item 4.5). À savoir pour les étapes 5 et 6 (`onboard.go`, `purge.go`,
+  `cmd_identity.go` — ce dernier hors périmètre du ratchet, qui ne balaie pas `cmd/`).
+- **[agent B, étape 3] un dossier joueur orphelin peut n'appartenir à AUCUN xuid.** L'annuaire
+  est keyé par xuid (D1), mais un dossier n'a qu'un nom. Choix retenu : rattachement par
+  gamertag insensible à la casse quand un registre le connaît, SINON une ligne à xuid vide
+  portant le nom du dossier. Le masquer aurait reproduit le trou que l'annuaire ferme (un
+  dossier que personne ne réclame est précisément ce qu'on cherche). Même traitement pour un
+  profil ou un compte sans xuid. Côté web (étape 4), ces lignes doivent rester lisibles : la
+  colonne xuid y est vide, jamais la ligne absente.
+- **[agent B, étape 3] `GET /admin/users` expose désormais `xuid`** (ajout additif à
+  `AdminUserSummary`, exigé par 3.3). Contrat OpenAPI régénéré ; aucun consommateur web ne
+  lit ce champ aujourd'hui (le panel Users ne l'affiche toujours pas — déjà noté plus haut).
+- **[agent B, étape 3] `internal/service` compte 6 sous-paquets** (`demo_fixtures`,
+  `fragdist`, `replayview`, `squadagg`, `teammates`, `testdata`) : `playerdirectory` en est le
+  7e, la forme « sous-paquet de service » est bien la convention du dépôt.
 
 ## Avancement
 
@@ -432,7 +521,7 @@ tableau des 4 joueurs locaux sans panique.
 | 0 | **terminée** | pilote/A | G0 ✅ | jonction node_modules OK ; baseline 0 échec (`internal/sync` exige `-timeout 30m`) |
 | 1 | **terminée** | A | G1 ✅ | 6/6 items `[x]` ; verrou = `authz.InstanceLocked` + ratchet module-wide ; 4e copie trouvée et traitée (§10) ; réserve : un flake `internal/service` sous contention, non reproduit |
 | 2 | **terminée** | A | G2 ✅ | 8/8 items `[x]` ; portes posées sur le coordinateur, le daemon et le SSO ; compteur `sync_refused_no_profile` ; garde web ajoutée (la redirection n'existait pas) ; 1 écart de forme assumé en 2.5 |
-| 3 | à faire | B | G3 | |
+| 3 | **terminée** | B | G3 ✅ | 6/6 items `[x]` ; port + paquet `playerdirectory` (4 fichiers, 0 import DuckDB) + `GET /admin/identities` ; 3 écarts de forme assumés en 3.3 (dont le suivi live rendu par xuid) ; xuid ajouté à `AdminUserSummary` ; 4 découvertes en §10 |
 | 4 | à faire | B | G4 | |
 | 5 | à faire | C | G5 | |
 | 6 | à faire | C | G6 | |

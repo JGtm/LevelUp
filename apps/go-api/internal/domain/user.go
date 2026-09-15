@@ -88,11 +88,16 @@ func (ic *InviteCode) IsValid() bool {
 
 // AdminUserSummary est le résumé d'un utilisateur pour le panel admin.
 type AdminUserSummary struct {
-	Username    string   `json:"username"`
-	Role        UserRole `json:"role"`
-	Gamertag    string   `json:"gamertag,omitempty"`
-	CreatedAt   string   `json:"created_at"`
-	LastLoginAt string   `json:"last_login_at,omitempty"`
+	Username string   `json:"username"`
+	Role     UserRole `json:"role"`
+	Gamertag string   `json:"gamertag,omitempty"`
+	// XUID : identité Xbox liée au compte, vide tant qu'aucun SSO ni
+	// LinkIdentity ne l'a posée. C'est la SEULE clé qui relie ce compte aux
+	// autres registres (profil, credentials, suivi live) — ADR 0035 D1 ; sans
+	// elle, l'annuaire ne peut pas rattacher un compte à son profil.
+	XUID        string `json:"xuid,omitempty"`
+	CreatedAt   string `json:"created_at"`
+	LastLoginAt string `json:"last_login_at,omitempty"`
 }
 
 // AdminInviteSummary est le résumé d'une invitation pour le panel admin.

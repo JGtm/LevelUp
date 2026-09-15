@@ -108825,3 +108825,41 @@ non poussées. La suite appartient aux agents B (annuaire `PlayerDirectory` + `G
 puis la section « Identités » de la page de gestion) et C (chemin d'onboarding unique, purge
 d'identité + CLI). Réserve à lever au gate complet de l'étape 7 : le flake `internal/service`
 observé une fois sous contention au premier passage de G1.
+
+## [2026-09-15] Annuaire des joueurs — étape 3 : un seul modèle de lecture des identités — Complété
+
+**Décision technique principale** : l'annuaire ne fusionne pas les registres, il les LIT
+ensemble. Un port (`port.PlayerDirectory`) et un paquet de service
+(`internal/service/playerdirectory/`) composent les cinq sources par petites interfaces de
+lecture — profils (`config.AppConfig`), comptes (`userstore.Store`), credentials
+(`MultiUserTokenStore`), suivi live (le daemon watcher) et le disque (`PathResolver`) — et
+rendent une ligne par identité, keyée par le xuid (ADR 0035 D1). Aucun import DuckDB, aucune
+écriture, aucun accès à l'entrepôt partagé : le témoin disque CONSTATE l'existence d'un dossier
+et d'une player DB, il n'en ouvre jamais aucune.
+
+Trois choix pris sur pièces, contre la lettre du plan et pour son intention. (1) Le lecteur de
+profils porte aussi `HasTrackedProfile` : le port doit répondre à cette question, et
+`AppConfig` sait déjà y répondre depuis l'étape 2 — la réimplémenter dans le service aurait créé
+une deuxième définition de « suivi », ce que l'ADR 0035 D3 interdit expressément. (2) Le watcher
+rend `WatchedPlayers() []domain.WatchedPlayerRef` plutôt que les clés `gamertag|titre` : le
+`PlayerWatcher` porte déjà le xuid, donc le suivi live se rattache par xuid au lieu de dépendre
+d'un format de clé interne qui aurait cassé l'annuaire en silence le jour où il change.
+(3) `IdentityRecord` porte les dossiers orphelins, sans quoi `computeAnomalies` n'aurait pas pu
+rester une fonction pure de la ligne — et c'est sa pureté qui la rend testable seule.
+
+Un dossier joueur que plus aucun registre ne réclame produit une ligne à xuid vide plutôt que
+d'être écarté : c'est précisément ce qu'on cherche à voir. Les anomalies sont des CODES machine
+avec un contexte machine (slug, nom de dossier) ; les libellés FR/EN sont posés côté web à
+l'étape 4 — le ratchet `no_french_label_literal` interdit de toute façon un littéral accentué
+dans un fichier neuf de `internal/service` ou `internal/api/handlers`.
+
+**Résultats observés** : gate G3 vert — 9 paquets `ok`, 0 échec (14 s) ; `make openapi-check`
+→ 0 (contrat régénéré : +162 lignes, `generated.ts` +94) ; `make check-types` → 0. Hors gate :
+`./internal/api/...` et `./internal/archlint/...` verts (36 s), `golangci-lint` 0 issue sur les
+paquets neufs et aucun constat sur les fichiers ajoutés ailleurs. 26 tests neufs (annuaire,
+fonction pure d'anomalies, handler, watcher, userstore). Découverte consignée en §10 du plan :
+le ratchet `no_duckdb_import` que l'étape 6 dit « existant » n'existe pas — il sera à écrire.
+
+**Conclusion / prochaine étape** : étape 4 — section « Identités » sur `/admin/management`
+(TanStack Table, tokens sémantiques, i18n FR+EN) et interrupteur « Instance fermée », que le
+backend accepte depuis longtemps mais qu'aucune page n'exposait.

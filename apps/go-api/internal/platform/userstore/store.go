@@ -223,6 +223,7 @@ func (s *Store) List() ([]domain.AdminUserSummary, error) {
 			Username:    u.Username,
 			Role:        u.Role,
 			Gamertag:    u.Gamertag,
+			XUID:        u.XUID,
 			CreatedAt:   u.CreatedAt,
 			LastLoginAt: u.LastLoginAt,
 		})
