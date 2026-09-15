@@ -5093,6 +5093,9 @@ matériels du corpus de verdict sont déclarés par les DIX slots, part 100 %.
 | 2026-09-16 | 1.9.11 | ce commit | `go test .../replay/fallback/ ./internal/archlint/` | verts. Registre : **96 entrées**, `repli_manches_contigues_decretees` -> **`repli_manche_zero_decretee`** (`film_muet` / `apres_lecture`, compteur **CÂBLÉ**), ratchet `devant_la_lecture` **6 -> 5** |
 | 2026-09-16 | 1.9.11 | ce commit | `.ai/baselines/tests_pre_migration.jsonl` | **non touché, et c'est vérifié** : le lot n'a RENOMMÉ ni SUPPRIMÉ aucun test — il en ajoute neuf (`rounds_decision_test.go`, `score_rounds_coverage_test.go`) |
 | 2026-09-16 | 1.9.11 | — | `replay-equiv` (régime court) et `replay-corpus-gate` | **NON JOUÉS À CE COMMIT** : un seul décodage à la fois sur la machine, six exécuteurs en parallèle. En attente de la voie libre du pilote ; consignés ici à leur passage |
+| 2026-09-17 | pilote (gate unique vague 2) | integration d8d63461e | `replay-equiv -films <10>` puis `-update` puis passe | classification AVANT re-figeage : 4 etapes sur 53 (killsource 10/10, placements.stats 10/10 forme, vehicles 6/10 forme, artifact 10/10 contenu), aucune autre ; passe finale 10 identiques | ~20 min |
+| 2026-09-17 | pilote (gate unique vague 2) | integration d8d63461e | `replay-corpus-gate --base=6db15a9bc --json --keep-work` | 14/14 cuits, schema 59 -> 60, 456 gains, 515 pertes classees (vies recollees, compteurs de defaut en baisse, 7 disparu = chassis nommes), 0 perte sur points / bornes / tirs / kills / objectifs / drapeaux / score / projectiles ; 3 changements (compteur de methode ou reattribution, non nommes par le JSON) | 14 min |
+
 ## 6. Protocole de reprise de session
 
 1. Relire le skill `plan-execution`, puis la §5 et la première case non statuée de la §3.
