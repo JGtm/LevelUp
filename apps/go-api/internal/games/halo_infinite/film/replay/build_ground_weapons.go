@@ -133,12 +133,23 @@ func decodeFilmPadScan(
 // C EST L ARBITRAGE DU 2026-09-15 (lot 1.9.1 bis, pas 3), et il a un nom des deux cotes : quand
 // le profil decide, la calibration n est plus qu un CONTROLE (le rapport publie ce qu elle
 // mesure) ; quand il n y a pas de largeur relue, la calibration decide encore, et c est le repli
-// `repli_largeurs_mpp_calibrees_sur_le_film` du registre (condition `build_sans_profil_relu`,
+// `repli_largeurs_mpp_calibrees_sur_le_film` du registre (condition `format_sans_profil_relu`,
 // ordre `apres_lecture` — le build se lit avant). La grammaire du bloc MPP est versionnee par
 // build et l executable dont on dispose est un seul build : c est la limite, elle est ecrite.
 func gwWidthsForFilm(fc *filmdec.FilmContext, calibrees filmdec.MPPWidths) filmdec.MPPWidths {
 	if p, err := filmdec.BuildProfileFromFilm(fc.Film()); err == nil && p.MPP.Valid() {
 		return p.MPP
+	}
+	// SITE 2 DU REPLI `repli_largeurs_mpp_calibrees_sur_le_film`, et il sert DEUX chemins de
+	// cuisson (armes au sol et vehicules). Le compteur seul : l avertissement est emis une fois
+	// par film par `avertirFormatSansProfil`.
+	//
+	// LA DECISION N EST PAS CHANGEE PAR CE COMPTAGE, et c est volontaire : elle reste celle du
+	// PROFIL COMPLET (`BuildProfileFromFilm`, qui refuse aussi sur build inconnu). La re-poser
+	// sur le seul format ferait basculer un film au build inconnu mais au format connu vers le
+	// profil, ce qui changerait des octets cuits — hors perimetre du lot.
+	if format, sansProfil := formatSansProfil(fc.Film()); sansProfil {
+		publierFormatSansProfil(format)
 	}
 	return calibrees
 }

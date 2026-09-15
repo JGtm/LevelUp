@@ -71,6 +71,7 @@ package filmdec
 
 import (
 	"encoding/binary"
+	"strconv"
 
 	"levelup/go-api/internal/analysis/filmsource"
 )
@@ -108,4 +109,50 @@ func FilmFormatVersion(f *filmsource.Film) (int, bool) {
 		return FilmFormatVersionUnknown, false
 	}
 	return FilmFormatVersionFromHeader(reg)
+}
+
+// MPPWidthsForFormat rend le decoupage du bloc `object-multiplayer-properties` d une version de
+// format, ou [ErrUnknownFormat] enveloppe avec la version refusee.
+//
+// ELLE EXISTE POUR QUE LE CONSOMMATEUR PUISSE DISTINGUER LES DEUX « PAS DE PROFIL ». Un format
+// CONNU dont la largeur est indeterminee (20, 21, 24, 25) rend `MPPWidths{}` et une erreur NULLE
+// — c est l etat normal du parc ancien, et le repli calibre s y applique depuis le 1.9.1 bis. Un
+// format INCONNU rend l erreur — c est l evenement « patch du jeu », et il se compte
+// ([UnknownFormatExpvarPairs]). Sans cette frontiere, les deux se liraient pareil et un format
+// neuf basculerait tout le parc sur la calibration sans que rien ne le dise.
+func MPPWidthsForFormat(format int) (MPPWidths, error) {
+	w, ok := mppWidthsPourFormat(format)
+	if !ok {
+		return MPPWidths{}, erreurFormatInconnu(format)
+	}
+	return w, nil
+}
+
+// unknownFormatCounterName rend le nom expvar du compteur de version de format inconnue.
+//
+// NOMMAGE (ADR 0009), ET C EST LE MEME PATRON QUE [unknownBuildCounterName] : `<categorie>_
+// <sous_cle>` en snake_case, la cause DANS le nom. La sous-cle est ici un ENTIER, donc elle n a
+// pas besoin du nettoyage que le nom de build exige — un nom de build vient du film et peut
+// porter n importe quoi, une version de format est deja un nombre.
+func unknownFormatCounterName(format int) string {
+	return "filmdec_unknown_format_" + strconv.Itoa(format)
+}
+
+// UnknownFormatExpvarPairs rend le compteur a publier quand la version de format d un film est
+// absente de la table de profil ([ErrUnknownFormat]).
+//
+// # POURQUOI CE COMPTEUR EXISTE, ET POURQUOI IL N ATTEND PAS LE COMPTAGE DU REGISTRE
+//
+// Le repli `repli_largeurs_mpp_calibrees_sur_le_film` est le BON defaut : un format que ce depot
+// ne connait pas encore bascule sur les largeurs CALIBREES sur le film, il n eteint pas le
+// decodeur. Mais un repli silencieux sur tout le parc neuf est un incident invisible — au
+// prochain patch du jeu, la seule trace serait une derive de qualite sans cause. Le comptage des
+// REPLIS du registre est differe au pas 2 de M2 (il attend le porteur par `FilmContext`) ;
+// CELUI-CI ne l attend pas, parce qu il ne compte pas un repli ordinaire mais l evenement
+// « le jeu a change de format ».
+//
+// `filmdec` NOMME ses compteurs et ne depend PAS d `internal/observability` — meme patron que
+// [UnknownBuildExpvarPairs], dont le cableur vit dans `replay`.
+func UnknownFormatExpvarPairs(format int) []ExpvarPair {
+	return []ExpvarPair{{Name: unknownFormatCounterName(format), Value: 1}}
 }

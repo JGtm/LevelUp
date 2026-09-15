@@ -264,6 +264,11 @@ func decodeFilmPlacements(
 	fc *filmdec.FilmContext, matchID string, worldRange *filmdec.Vec3Range,
 ) ([]filmdec.EquipmentPlacement, filmdec.EquipmentPlacementStats) {
 	pl, st, err := filmdec.ScanEquipmentPlacements(fc, worldRange)
+	if st.FormatSansProfil {
+		// SITE 1 DU REPLI `repli_largeurs_mpp_calibrees_sur_le_film` : le compteur, pas le
+		// journal — l avertissement est emis UNE FOIS PAR FILM par `avertirFormatSansProfil`.
+		publierFormatSansProfil(st.FormatVersion)
+	}
 	switch {
 	case err != nil:
 		slog.Warn("poses d'equipement illisibles — rejeu sans equipement pose",
