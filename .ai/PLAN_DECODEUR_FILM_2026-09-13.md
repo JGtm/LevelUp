@@ -2238,6 +2238,106 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       1.9.1, AVANT 1.9.2 ; le même traitement pour les autres archétypes qui alimentent une
       publication (ti=9 joueur, ti=35 bipède, ti=40 véhicule, ti=42/43) est le lot 3.6, à
       remonter dans M1 si l'utilisateur le demande. L.
+
+      **PAS 1 FAIT le 2026-09-15 (branche `feat/decfilm-191b`) — ET IL RETOURNE LE LOT.**
+      La règle du chantier (mesurer avant de coder) a rendu un verdict que le brief n'anticipait
+      pas : **le défaut qui empêche l'archétype 37 de fermer n'est PAS dans l'équipement.**
+      Trois instruments versionnés, lecture seule, sans garde d'environnement pour deux d'entre
+      eux (les 7 bobines par build sont versionnées) : `filmdec/e191b_carte_ti37_research_test.go`
+      (`TestE191bCarteTI37`), `filmdec/e191b_carte_ti37_carte_test.go`
+      (`TestE191bFermetureAvecCarte`), `filmdec/e191b_carte_ti37_masque_test.go`
+      (`TestE191bMasqueTI37`, sous `CHUNK00_FILMS`). Tableaux collés en §5.
+
+      **(1) LES 31 COMPOSANTS SONT TOUS CONSOMMÉS, ET LA CITATION DU BRIEF EST À CORRIGER.**
+      Vérifié sur pièces par grep : les 31 composants de ti=37 ont TOUS un `case` dans le
+      dispatch de `traverse.go`. Huit d'entre eux y entrent par une CONSTANTE et non par le
+      littéral — `compObjectBodyVitality` (i4, `registry.go:58`),
+      `compObjectMultiplayerProperties` (i9, `ground_weapon_ammo.go:82`), `compEquipmentDeployed`
+      (i20), `compEquipmentActivated` (i21), `compEquipmentCreator` (i23), `compEquipmentEnergy`
+      (i24), `compEquipmentEnergyDelay` (i26), `compEquipmentCharges` (i27)
+      (`equipment_state.go:35-40`) — et c'est **exactement pourquoi un grep du nom de composant
+      dans `traverse.go` n'en trouvait que 7** : il cherchait une chaîne que ces huit `case`
+      n'écrivent pas. La mesure le confirme indépendamment : **0 désynchronisation sur 3 331
+      records bornés** — la colonne « bloquant » du golden 0.A.3 est vide pour ti=37 parce
+      qu'aucun composant n'est sans lecteur. Le « 7 lus par nom » du brief est donc un artefact
+      de grep, pas un état du décodeur.
+
+      **(2) LA FERMETURE ÉCHOUE SUR TOUTE LA FAMILLE « OBJET DU MONDE », PAS SUR L'ÉQUIPEMENT.**
+      Contrôle [3], 7 bobines, tous archétypes : les archétypes qui portent
+      `object-position-component` ferment **184 / 21 698 (0,85 %)** ; ceux qui ne le portent pas
+      **12 654 / 28 573 (44,29 %)** — 52 fois plus. Détail de la première population :
+      ti=37 **3/3 331**, ti=38 **180/12 064**, ti=41 **0/110**, ti=42 **1/2 087**, ti=43 **0/4 106**.
+      ti=42 (`ground-weapon`) est l'archétype dont le dépôt dit la grammaire « réputée complète » :
+      il ferme 1 record sur 2 087. **Fermer ti=37 à 100 % sans toucher au préfixe objet est donc
+      impossible**, et c'est pourquoi l'item (a) ne peut pas être exécuté tel qu'il est écrit.
+
+      **(3) LES LARGEURS D'AXE DE LA CARTE NE SONT PAS LA CAUSE — MESURÉ, PAS SUPPOSÉ.**
+      Premier suspect nommé par le code : `object-position-component` lit ses trois axes aux
+      largeurs de la CARTE (`WorldObjectPrecision`, `traverse.go:154`), que `replay.BuildFromFilm`
+      installe et que `KeyframeClosure` n'installe PAS. Contrôle joué (`TestE191bFermetureAvecCarte`,
+      catalogue versionné `map_quant_bounds.json`, la même entrée que la production) :
+      **3/3 331 au défaut Cliffhanger, 3/3 331 aux largeurs de la carte jouée.** Deux bobines
+      échangent leur record fermé (`11de8353` 1 -> 0, `e5adf7b2` 0 -> 1), le total ne bouge pas.
+      i0 est HORS DE CAUSE pour la fermeture (il reste une dette de mesure : cf. D2 (1.9.1 bis)).
+
+      **(4) LE COMPOSANT QUI FAIT FRANCHIR LA FRONTIÈRE EST NOMMÉ, ET IL EST STABLE SUR LES
+      7 BOBINES.** Mesure : pour chaque record, le composant qui précède immédiatement le premier
+      composant dont le bit de départ dépasse déjà la frontière du record suivant. C'est une
+      PREUVE bornante (un composant qui commence après la fin du record n'appartient pas à ce
+      record), pas une corrélation. Cumul des 3 331 records, largeur moyenne consommée entre
+      parenthèses : **i15 `object-low-frequency` 655 (w~570)** · **i6 `object-region-state` 341
+      (w~664)** · **i14 `object-dissolver` 305 (w~113)** · **i9 `object-multiplayer-properties`
+      296 (w~1 508 300)** · **i17 `object-frame-configuration` 266 (w~87)** · **i7
+      `object-damage-sections` 188 (w~317)** · i10 74 · i28 71. **Les six premiers sont TOUS du
+      préfixe objet ; aucun composant d'équipement (i18-i30) n'est au-dessus de 71.** i9 consomme
+      en moyenne 1,5 MILLION de bits : un TLV dont la longueur se lit dans le flux, sans borne.
+      i14 consomme 113 bits dans **3 306 records sur 3 331** alors que la table ECS donne 4 bits
+      au cas nominal (`v == 13`) — sa garde est lue à l'envers, ou sa grammaire est fausse.
+
+      **(5) LA DISTRIBUTION DES RÉSIDUS INTERDIT L'EXPLICATION SIMPLE.** `EndBit - Want` prend
+      **1 109 valeurs distinctes sur 3 331 records** (la plus fréquente, `+50`, 37 fois) : ce
+      n'est pas une largeur fixe fausse de N bits, c'est une marche qui dérive tôt et lit ensuite
+      des longueurs variables sur des bits de bruit.
+
+      **(6) LES 31 COMPOSANTS SONT LES MÊMES SUR LES 8 BUILDS, À UN PRÈS.** Registre relu bobine
+      par bobine : 31 composants dans le même ordre partout, SAUF `a521164d` (HI_1_4_1) qui en
+      porte **30** — `i30 equipment-has-infinite-uses` n'existe pas sur ce build. C'est un fait de
+      profil par build (M3), pas une variabilité à absorber par une heuristique.
+
+      **(7) LA PRÉSENCE AU MASQUE NE SE MESURE PAS ENCORE.** Les bobines par build ne portent
+      **AUCUN paquet delta** (mesuré : 0 sur les 7) — elles sont `chunk_00` + un chunk d'image-clé
+      + le pied (V7). Sur 7 films ENTIERS du cache (12 chunks chacun), la marche générique rend
+      92 records NEW et 70 records DELTA de ti=37, et la présence au masque est **plate entre
+      10,9 % et 34,3 % sur les 31 index** — la signature de bits aléatoires, pas d'un masque. La
+      question « où et quand le jeu écrit i10/i11/i18/i20/i21/i23 » NE PEUT PAS être répondue tant
+      que la marche ti=37 ne ferme pas : toute réponse tirée de ces comptes serait du bruit.
+
+      **STATUT DES ITEMS DU BLOC.**
+      (a) `[!]` **NON TRAITÉ, et le blocage est double** : (i) l'outil Ghidra n'est pas disponible
+      dans la session (`list_instances` : aucune instance ; `connect_instance` : connexion refusée
+      sur 127.0.0.1:8089) — or D3 et D13 interdisent de poser une grammaire autrement que chez
+      l'écrivain, et le brief le dit explicitement ; (ii) la mesure (2) montre que la cible
+      « fermeture ti=37 à 100 % » passe par le préfixe objet partagé (ti=38/41/42/43), c'est-à-dire
+      par un périmètre que cet item n'énonce pas. Les deux se lèvent ensemble au prochain passage.
+      (b) `[!]` NON TRAITÉ — publier `créateur / porteur / déployé / activé / au repos / énergie /
+      charges` comme FAITS exige que la marche ti=37 ferme ; mesure (7) : elle ne ferme pas, et
+      les valeurs lues aujourd'hui sont du bruit. Publier maintenant serait exactement le
+      « ça passe » que D13 interdit.
+      (c) `[!]` NON TRAITÉ — dépend de (b).
+      (d) `[~]` COUVERT PAR LA NATURE DU PAS : aucun octet cuit ne change (les trois fichiers sont
+      des `_test.go`), donc ni `SchemaVersion` (59 -> 59) ni `GrammarRev`
+      (`grammar-2026-09-15.1`, inchangée) ne montent, et rien ne change à l'affichage web.
+      Gates joués et consignés en §5.
+
+      **DÉCOUPAGE : pas 1 `[x]` · pas 2 à 5 `[!]` (non entamés, arrêt propre en fin de pas 1,
+      conformément au brief).** Ce que le prochain passage doit faire, dans cet ordre, est
+      désormais MESURÉ et non plus supposé : relire chez l'écrivain **i15, i6, i14, i9, i17, i7**
+      — les six composants du préfixe « objet du monde » qui font franchir la frontière — puis
+      re-mesurer la fermeture des CINQ archétypes objet ensemble (ti=37, 38, 41, 42, 43), et
+      seulement ensuite publier les états d'équipement. Les quatre premiers n'ont d'ailleurs
+      aucune adresse d'écrivain dans `testdata/ecs_table.tsv` (colonne `deser_addr` vide pour i6,
+      i7, i8, i12, i13, i16, i17 ; `grammar` = « boucle de regions », « boucle de sections »,
+      « inconnue ») : c'est là que la relecture manque, et la mesure vient de le chiffrer.
 - [ ] 1.9.2 **Le découpage d'i0 vient du catalogue de carte, plus de l'auto-détection.**
       `internal/sync/killcollector/positions.go:253` (et `hits.go:157`) construisent
       `DefaultScanFilmOptions()` avec `Layout` nil alors que `entry` est le paramètre de la fonction
@@ -2766,6 +2866,11 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-15 | 1.9.1 | **D3 (1.9.1) — 649 POSES A POSEUR MESURE SORTENT `unknown` PARCE QUE LE FILM NE DIT RIEN D'ELLES, ET 461 D'ENTRE ELLES ONT UN SIEGE SANS AUCUNE MORT ECRITE DU MATCH.** Mesure [3] du 2026-09-15 : sur les 3 717 poses qu'on publiait `dropped`, 3 256 ont une mort ecrite (toutes a 171,7 ms au plus) et **461 n'ont aucune mort ecrite sur ce siege, a aucun instant du film** — ce n'est donc pas une question de fenetre, c'est le PONT siege -> mort qui ne couvre pas ces sieges (bots, sieges non nommes, vies fermees autrement). Avec la decision du 2026-09-15 elles ne recoivent plus d'etiquette : `byCause.none` en compte **649** au total (461 ex-`dropped` + 188 ex-`deployed`). **NON TRAITE** : c'est la matiere du lot 1.9.13 (« une vie finit a une mort ECRITE »), qui borne les vies sur les morts du film ; `byCause.none` est exactement le compteur qui doit tomber. | lot 1.9.13 ; critere mesurable deja publie dans l'artefact |
 | 2026-09-15 | 1.9.1 | **D4 (1.9.1) — `ref0` du type 103 est LUE ET PUBLIÉE BRUTE, jamais interprétée.** Le lecteur neuf rend `EquipmentSpawnEvent.Source` (index + base 512, génération) parce que la jeter aurait obligé un futur lot à rouvrir la porte aux octets. Ce que le rapport F.0 en dit tient : elle désigne un `ti=37` que les images-clés voient (737 sur 739) et qu'AUCUNE création delta ne porte (2,8 %) — une entité de longue durée, PISTE pour l'équipement SOURCE d'un déploiement. **NON INSTRUITE** (hors lot, table D du registre 0.E) : aucune décision ne repose dessus, et `Ref2Present` est compté sans être lu pour la même raison. | table (D) du registre 0.E ; condition de reprise du repli `repli_origine_pose_fenetre_temporelle` |
 | 2026-09-15 | 1.9.1 | **D5 (1.9.1) — LE 103 DÉSIGNE MAJORITAIREMENT DES PROJECTILES, ET C'EST POURQUOI SON COMPTE NE SE LIT PAS COMME UN COMPTE DE MURS.** Sur les 13 films mesurés, 341 événements 103 sont lus et 115 seulement désignent une pose publiée (toutes des panneaux de mur). Les autres désignent des vies `ti=41` — le rapport F.0 §1.2 le mesurait déjà (68,6 % de projectiles) et la mesure de ce lot le confirme sans l'instrumenter : `d9781168` lit 3 événements et ne publie AUCUN panneau, `bcb6d393` en lit 1 pour 0 panneau. Le type dit « un OBJET a été engendré », pas « un équipement a été déployé » — `coverage.placements.spawnEvents` est donc un dénominateur de LECTURE, jamais un compte de murs. | sans objet — écrit pour qu'un futur lot ne lise pas `spawnEvents` comme un compte de déploiements |
+| 2026-09-15 | 1.9.1 bis | **D1 (1.9.1 bis) — LA FERMETURE D'IMAGE-CLÉ ÉCHOUE SUR TOUTE LA FAMILLE « OBJET DU MONDE », ET ti=37 N'EN EST QU'UNE VICTIME.** Mesure du 2026-09-15 (`TestE191bCarteTI37`, 7 bobines par build, tous archétypes) : les archétypes qui portent `object-position-component` ferment **184 / 21 698 records bornés (0,85 %)**, ceux qui ne le portent pas **12 654 / 28 573 (44,29 %)**. Détail : ti=37 **3/3 331**, ti=38 **180/12 064**, ti=41 **0/110**, ti=42 **1/2 087** (l'archétype `ground-weapon`, celui dont le dépôt dit la grammaire « réputée complète »), ti=43 **0/4 106**. Le composant qui FAIT franchir la frontière (preuve bornante : le composant qui précède le premier dont le bit de départ dépasse déjà la frontière) est, sur les 3 331 records et de façon stable sur les 7 bobines : **i15 `object-low-frequency` 655 (largeur moyenne 570 bits)**, **i6 `object-region-state` 341 (664)**, **i14 `object-dissolver` 305 (113)**, **i9 `object-multiplayer-properties` 296 (1 508 300 !)**, **i17 `object-frame-configuration` 266 (87)**, **i7 `object-damage-sections` 188 (317)** — six composants du PRÉFIXE OBJET ; aucun composant d'équipement (i18-i30) ne dépasse 71. Quatre d'entre eux (i6, i7, i17 et le voisin i8) n'ont AUCUNE adresse d'écrivain dans `testdata/ecs_table.tsv` et leur colonne `grammar` dit « boucle de regions » / « boucle de sections » / « inconnue ». **NON TRAITÉ** (D3 : une grammaire se relit chez l'écrivain, et l'outil n'était pas disponible — D5 ci-dessous). | lot 1.9.1 bis pas 2, périmètre ÉLARGI au préfixe objet (ou lot 3.6 si le pilote préfère l'y router) : relire i15, i6, i14, i9, i17, i7 chez l'écrivain, re-mesurer la fermeture des cinq archétypes objet ensemble |
+| 2026-09-15 | 1.9.1 bis | **D2 (1.9.1 bis) — `KeyframeClosure` MESURE LES ARCHÉTYPES OBJET AUX LARGEURS D'AXE D'UNE AUTRE CARTE, ET PERSONNE NE LE DISAIT.** `object-position-component` lit ses trois axes dans `WorldObjectPrecision` (`traverse.go:154`), un descripteur de paquet dont le défaut est celui de Cliffhanger (13/13/14, index de région 1 bit) et que seul `replay.BuildFromFilm` installe depuis le catalogue pour la durée d'une cuisson. Le ratchet 0.A.3 et son golden ne l'installent pas : les lignes ti=37/38/41/42/43 du golden sont donc mesurées, pour six bobines sur sept, aux largeurs d'une carte qui n'est pas la leur. **CE N'EST PAS LA CAUSE DE L'ÉCHEC DE FERMETURE, ET C'EST MESURÉ** (`TestE191bFermetureAvecCarte`, catalogue versionné) : **3/3 331 au défaut, 3/3 331 aux largeurs de la carte jouée** ; deux bobines échangent leur record fermé (`11de8353` 1 -> 0, `e5adf7b2` 0 -> 1), le total est identique. **NON TRAITÉ** : corriger l'instrument ferait DESCENDRE une ligne du golden (`11de8353` ti=37 1 -> 0) et rougir le ratchet pour un gain net nul ; le geste n'a de sens qu'une fois le préfixe objet relu, quand la fermeture aura une vraie valeur à défendre. | lot 1.9.1 bis pas 2 (ou 3.6) : installer le découpage du catalogue dans `KeyframeClosure` DANS le même commit que la montée de fermeture qu'il rend visible |
+| 2026-09-15 | 1.9.1 bis | **D3 (1.9.1 bis) — LES 31 COMPOSANTS DE ti=37 SONT TOUS DISPATCHÉS ; LE « 7 LUS PAR NOM » DU BRIEF EST UN ARTEFACT DE GREP.** Huit composants entrent dans `consumeByName` par une CONSTANTE et non par le littéral : `compObjectBodyVitality` (i4, `registry.go:58`), `compObjectMultiplayerProperties` (i9, `ground_weapon_ammo.go:82`), `compEquipmentDeployed` / `Activated` / `Creator` / `Energy` / `EnergyDelay` / `Charges` (i20, i21, i23, i24, i26, i27, `equipment_state.go:35-40`). Un grep du nom de composant dans `traverse.go` en manque donc huit — et le décodeur, lui, les consomme : **0 désynchronisation sur 3 331 records bornés de ti=37**, colonne « bloquant » vide dans le golden 0.A.3. La vraie question n'est pas « le composant est-il lu ? » mais « sa largeur est-elle juste ? », et seule la fermeture y répond. | sans objet — écrit pour qu'un futur brief ne reparte pas de ce compte ; la règle de mesure est : compter les `case`, pas les littéraux |
+| 2026-09-15 | 1.9.1 bis | **D4 (1.9.1 bis) — LES BOBINES PAR BUILD NE PORTENT AUCUN PAQUET DELTA, ET LES MASQUES ti=37 LUS SUR FILMS ENTIERS SONT DU BRUIT.** Mesuré : **0 paquet delta sur les 7 bobines** (elles sont `chunk_00` + un chunk d'image-clé + le pied, V7) — toute mesure de masque y rendrait 0 par construction du fixture, pas par un fait du jeu. Sur 7 films ENTIERS du cache (12 chunks chacun, `TestE191bMasqueTI37`) : 7 142 à 14 358 paquets delta, 10 718 à 40 672 records tous archétypes, mais seulement **92 records NEW et 70 records DELTA de ti=37**, et la présence au masque est **PLATE entre 10,9 % et 34,3 % sur les 31 index** — la signature de bits aléatoires. Conséquence directe pour D1 bis (1.9.1) : la question « où et quand le jeu écrit i10/i11/i18/i20/i21/i23 » NE PEUT PAS être répondue par cette voie tant que la marche ti=37 ne ferme pas. Le chemin de production spécialisé (`ScanFilmEquipmentCreations`) reste, lui, la seule lecture dont on ait mesuré l'appariement (4 583/4 583 au lot 1.9.1). | lot 1.9.1 bis pas 3, APRÈS la fermeture : la mesure de masque se rejoue alors, et elle vaut |
+| 2026-09-15 | 1.9.1 bis | **D5 (1.9.1 bis) — GHIDRA N'ÉTAIT PAS DISPONIBLE DANS LA SESSION, ET AUCUNE GRAMMAIRE N'A DONC ÉTÉ POSÉE.** `list_instances` rend « No running Ghidra instances found » ; `connect_instance` rend « connexion refusée » sur `127.0.0.1:8089` (UDS : 0 trouvé). D3 et D13 sont sans ambiguïté : une grammaire se relit chez l'écrivain, jamais sur un motif de bits, et un composant non résolu reste non résolu et compte. Le pas 2 du lot (porter la grammaire des composants) est donc **NON ENTAMÉ**, et l'arrêt est propre en fin de pas 1 (mesure), comme le brief l'autorise. Ce qui MANQUE est chiffré, pas vague : six composants nommés, 2 051 des 3 331 records de ti=37 expliqués par eux. | reprise du lot : ouvrir l'instance `HaloInfinite.exe` (base `0x140000000`, lecture seule) AVANT de relancer l'exécuteur |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -3170,6 +3275,18 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-15 | 1.9.0 (corpus gate) | ce commit | `go run ./cmd/replay-corpus-gate --base=d473cbd79 --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-190 --json …` | **ZERO PERTE SUR 13 TEMOINS SUR 13, exit 0**, 16 min 30. Schema 57 -> 58 partout. **TROIS gains par temoin, les memes sur les treize, tous nommes** (verifies en rejouant `replaydiff.Comparer` sur la paire de fixtures de contrat 57/58 de `bcb6d393`, outil jetable supprime apres la mesure) : `entete / schemaVersion` 57 -> 58 · `couverture / coverage/n` **28 -> 29** (la couverture porte une cle de plus) · `couverture / coverage.fallbacks/n` **apparu** (le nombre de replis declenches par la cuisson). Rien d'autre ne bouge. |
 | 2026-09-15 | 1.9.0 (corpus gate — pertes attendues) | ce commit | comparaison avec le bloc « Cloture M1 » du plan | Les deux pertes deja classees (`c75f33b8` `coverage.bombArmings.reads` 1 169 -> 1 148 et `.rises` 94 -> 73) **n'apparaissent PAS ici, et c'est correct** : elles sont relatives a `783ae680d` (avant le lot 1.4), alors que la base de ce lot est `d473cbd79` (apres) — elles sont donc DEJA dans la base. Le regime complet de la cloture de M1 les retrouvera. |
 | 2026-09-15 | 1.9.0 (seuils de fichier) | ce commit | `wc -l` sur les fichiers touches, confronte a leur taille au commit de base | `build.go` **530 -> 532** et `coverage.go` **445 -> 460** : les deux plafonds du depot etaient DEJA depasses avant ce lot (530 et 445 pour un seuil de 500 / 500), donc la publication a ete extraite dans un fichier neuf, `fallbacks_publication.go` (**63 lignes**), et l'initialisation du compteur dans un accesseur d'`Options` — l'assemblage n'appelle plus que deux lignes. Le registre lui-meme tient en six fichiers, **461 lignes au plus** (`registre_killsource.go`). |
+| 2026-09-15 | 1.9.1 bis (pas 1, commun) | ce commit | `gofmt -l ./internal ./cmd` | sortie vide |
+| 2026-09-15 | 1.9.1 bis (pas 1, commun) | ce commit | `CGO_ENABLED=0 go vet ./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/replaybuild/ ./internal/analysis/objectiveevents/ ./internal/domain/replaydoc/ ./internal/service/replayview/` puis `CGO_ENABLED=1 go vet ./internal/sync/killcollector/` (msys64/ucrt64 en tête du PATH) | 0 diagnostic dans les deux cas |
+| 2026-09-15 | 1.9.1 bis (pas 1, commun) | ce commit | `go test` sur les mêmes paquets + `./internal/sync/killcollector/` (CGO) | ok — filmdec 33,3 s · replay 18,6 s · archlint 35,1 s · replaybuild 1,0 s · objectiveevents 0,5 s · replayview 0,3 s · killcollector 0,1 s ; `replaydoc` « no test files ». **Aucun test renommé ni supprimé** : `.ai/baselines/tests_pre_migration.jsonl` intouché, et c'est correct (trois tests NEUFS seulement) |
+| 2026-09-15 | 1.9.1 bis (pas 1, commun) | ce commit | `make go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **0 issue**, baseline non accrue. Les trois fichiers neufs font 469 / 191 / 136 lignes — sous le seuil de 500 |
+| 2026-09-15 | 1.9.1 bis (pas 1, gate ajouté par le pilote) | ce commit | `CGO_ENABLED=1 go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate -count=1` | **ROUGE À LA PRISE EN MAIN, ET LE ROUGE EST HÉRITÉ** : `byFamily` / `byCause` écrits à la main au lot 1.9.1 dans un ordre que le générateur ne produit pas (`deba3261f`). Réparé par la porte prévue — `make openapi-gen` (725 148 octets réécrits, 2 lignes) puis `make generate-types` (`generated.ts`, 2 lignes) —, JAMAIS à la main. Test **VERT** après. `make check-types` vert ; `npx vitest run src/lib/api/generated-types-fresh.guard.test.ts` **1 passed** |
+| 2026-09-15 | 1.9.1 bis (pas 1, régime COURT) | ce commit | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-decfilm-191b -films …` en DEUX sous-ensembles (échantillon court de `CORPUS.txt:128`) | `50247b26,a521164d,60ae07c4,11de8353,111fa685` : **BILAN 5 identique(s), 0 différent(s)** (4 min 10 s) ; `e5adf7b2,bcb6d393,51101d1d,d9781168,fb1a1a72` : **BILAN 5 identique(s), 0 différent(s)** (1 min 59 s). **10/10 identiques** — attendu : le pas ne touche que des `_test.go` |
+| 2026-09-15 | 1.9.1 bis (pas 1, MESURE [1]+[2] — la carte) | ce commit | `CGO_ENABLED=0 go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191bCarteTI37$' -v -count=1` (13,1 s, 7 bobines versionnées, aucune garde d'environnement) | **ti=37 : 3 fermés / 3 331 bornés, 0 désynchronisation.** Par bobine : `a521164d` 1/762 · `60ae07c4` 0/425 · `11de8353` 1/514 · `111fa685` 1/569 · `e5adf7b2` 0/489 · `bcb6d393` 0/352 · `fb1a1a72` 0/220. Résidu `EndBit-Want` : **1 109 valeurs distinctes** (la plus fréquente `+50`, 37 fois). Composant qui FAIT franchir la frontière, cumul : **i15 655 (w~570) · i6 341 (w~664) · i14 305 (w~113) · i9 296 (w~1 508 300) · i17 266 (w~87) · i7 188 (w~317) · i10 74 · i28 71** (+14 autres). Largeurs consommées : i0 {45:2380, 60:481, 44:470} · i4 {11:3331} · i11 {1:3331} · i14 **{113:3306, 4:25}** · i16 {5:3331} · i18 {1:3331} · i20 {1:3331} · i24 {14:3331} · i25 {8:3331} · i26 {10:3331} · i27 {8:3331} · i30 {1:2569} — contre i15 **531 largeurs distinctes (max 1 347)**, i7 169 (max 713), i9 128 (**max 16 777 294**), i6 96 (max 826), i17 96 (max 190), i28 101 (max 276) |
+| 2026-09-15 | 1.9.1 bis (pas 1, CONTRÔLE [3] — la population) | ce commit | même commande, table [3] | **AVEC `object-position-component` : 184 fermés / 21 698 (0,85 %)** — ti=37 3/3 331, ti=38 180/12 064, ti=41 0/110, ti=42 1/2 087, ti=43 0/4 106. **SANS : 12 654 / 28 573 (44,29 %).** Le défaut n'est pas propre à l'équipement : il est dans le préfixe « objet du monde » |
+| 2026-09-15 | 1.9.1 bis (pas 1, CONTRÔLE [4] — le registre) | ce commit | même commande, table [4] | Les 31 composants, dans le MÊME ordre, sur les 7 bobines — **sauf `a521164d` (HI_1_4_1) qui en porte 30** : `i30 equipment-has-infinite-uses` n'existe pas sur ce build (et la table [2] le confirme : i30 vu 2 569 fois, soit 3 331 − 762) |
+| 2026-09-15 | 1.9.1 bis (pas 1, CONTRÔLE — les largeurs de la carte) | ce commit | `CGO_ENABLED=0 go test …/filmdec/ -run '^TestE191bFermetureAvecCarte$' -v -count=1` (12,8 s, catalogue versionné `map_quant_bounds.json`) | **3/3 331 au défaut Cliffhanger, 3/3 331 aux largeurs de la carte jouée** : `a521164d` Fragmentation Heavies 17/17/15 r1@0 1/762 -> 1/762 · `60ae07c4` Live Fire 12/12/11 **r2@1** 0/425 -> 1/425 · `11de8353` Thunderhead 15/15/17 1/514 -> **0/514** · `111fa685` Command 15/15/17 1/569 -> **0/569** · `e5adf7b2` Fragmentation 17/17/15 0/489 -> 1/489 · `bcb6d393` Cliffhanger 13/13/14 0/352 -> 0/352 · `fb1a1a72` Banished Narrows 15/15/17 0/220 -> 0/220. **i0 est hors de cause pour la fermeture** ; la dette de mesure reste (D2 (1.9.1 bis)) |
+| 2026-09-15 | 1.9.1 bis (pas 1, MESURE — les masques) | ce commit | `CGO_ENABLED=0 CHUNK00_FILMS='…/a521164d;…/60ae07c4;…/11de8353;…/111fa685;…/e5adf7b2;…/bcb6d393;…/fb1a1a72' go test …/filmdec/ -run '^TestE191bMasqueTI37$' -v -count=1` (7,6 s, films ENTIERS du cache par les jonctions du worktree) | **Les 7 bobines versionnées rendent 0 paquet delta** (mesuré avant, même instrument) : aucune mesure de masque n'y est possible. Sur les films entiers (12 chunks) : 7 142 à 14 358 paquets delta, 10 718 à 40 672 records tous archétypes, **92 records NEW et 70 records DELTA de ti=37**, présence au masque **plate de 10,9 % à 34,3 % sur les 31 index** (NEW min i11/i13/i20/i28 10,9 %, max i26 27,2 % ; DELTA min i11 8,6 %, max i22 34,3 %) — signature de bits aléatoires, pas d'un masque. La question « où le jeu écrit i10/i11/i18/i20/i21/i23 » reste SANS RÉPONSE tant que ti=37 ne ferme pas (D4 (1.9.1 bis)) |
+| 2026-09-15 | 1.9.1 bis (pas 1, corpus gate) | ce commit | `go run ./cmd/replay-corpus-gate --base=deba3261f --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-191b` — **le `--manifest` du brief est à corriger : le drapeau EXIGE une valeur** (`flag needs an argument: -manifest`, sortie 2) et son défaut `<source-root>/config/replay_corpus.toml` est exactement ce qu'on veut ; première tentative perdue là-dessus, rejouée en entier | **14 témoins, 0 gain, 0 perte, schéma 59 -> 59 partout, statut `ok` sur les 14** (18 min 46 s) : `bcb6d393` 11,5 s · `fb1a1a72` 30,0 s · `d9781168` 23,8 s · `c75f33b8` 14,2 s · `bf15f7ab` 13,5 s · `51ebbc0f` 17,7 s · `084a804d` 1 min 45,8 s · `0797ce72` 12,4 s · `111fa685` 33,1 s · `e5adf7b2` 37,6 s · `60ae07c4` 24,6 s · `a349fea8` 2 min 4,7 s · `bfecd02b` 18,9 s · `4f77afc1` 1 min 32,9 s. Résultat ATTENDU et non un non-événement : il PROUVE que le pas n'a touché aucun octet cuit, donc que la mesure est bien une mesure |
 
 LA TABLE DU REGISTRE DES REPLIS (lot 1.9.0, 95 entrees, collee depuis le registre : un
 `go run` jetable sur `fallback.Table()`, supprime apres la mesure). Les declenchements sont
