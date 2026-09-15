@@ -179,6 +179,11 @@ const agnosticKeys = new Set<string>([
   'adminInvariants',
   'adminDbContention',
   'adminTokenHealth',
+  // Annuaire des joueurs (ADR 0035) : CROSS-TITRE PAR NATURE — une identité
+  // porte ses profils de TOUS les titres, et c'est précisément la question
+  // posée (« ce xuid est-il suivi, et où ? »). La scoper par titre masquerait
+  // le profil d'un autre jeu, donc l'anomalie qu'on cherche.
+  'adminIdentities',
   'adminMonitoringOverview',
   'adminMonitoringScheduler',
   'adminMonitoringJobs',
