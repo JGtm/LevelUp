@@ -109,25 +109,14 @@ var registreReplayIdentites = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   comptageFamille19,
 	},
-	{
-		Nom:       "repli_fin_de_vie_vehicule_par_recensement",
-		Fait:      "quand finit la vie d'un vehicule",
-		Mecanisme: "aucune image-cle ne cesse de le recenser : la fin est posee a lastUS + vehicleCensusTolUS (20 s apres le dernier echantillon)",
-		Condition: CondFilmMuet,
-		Ordre:     OrdreDevantLaLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "vehicle_tracks.go",
-			Ancre:   "l.hiUS = l.lastUS + vehicleCensusTolUS",
-		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.10 (la fin de vie d'un vehicule lue au dead-state ecrit)",
-		// ORDRE `devant_la_lecture` : le film ÉCRIT la destruction (`ti=40`, lisible depuis le
-		// 2026-09-05 sur `wt/vehicule-deadstate`) et l'inférence décide sans elle. Défaut
-		// mesuré : le ghost slot 777 de `bfecd02b` effacé à 287,4 s alors que l'utilisateur le
-		// pilote encore.
-		CritereRetrait:  "VehicleTrack.End porte l'instant du dead-state ; 0 fin inferee sur `bfecd02b` et sur l'echantillon court",
-		CompteurBranche: true,
-	},
+	// RETIRE LE 2026-09-16 (lot 1.9.10) : `repli_fin_de_vie_vehicule_par_recensement`. La fin de
+	// vie d'un véhicule se LIT au composant `object-dead-state` de `ti=40`
+	// (`filmdec.ScanObjectDeaths`), et la borne « dernier recensement + 20 s » a disparu du
+	// code avec son ancre (`vehicle_tracks.go`, `assignVehicleWindows`). Ce que la mesure a
+	// établi avant le retrait : le repli se déclenchait EXACTEMENT sur les vies que la dernière
+	// image-clé recense encore, c'est-à-dire celles qui finissent AVEC le film — 88 vies sur
+	// 295, 20 artefacts du parc. Elles sont désormais publiées `end = "film_end"`, qui est une
+	// lecture et non une inférence. D14 (d) appliqué : le repli sort du registre avec son code.
 	{
 		Nom:       "repli_cap_vehicule_vitesse_insuffisante",
 		Fait:      "le cap publie d'un vehicule",

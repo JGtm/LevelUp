@@ -18,6 +18,7 @@ func toVehicleTrack(v replay.VehicleTrack) replaydoc.VehicleTrack {
 		T1:      v.T1,
 		T1Max:   v.T1Max,
 		End:     v.End,
+		TEnd:    v.TEnd,
 		Spawn:   ptrOf(v.Spawn, toVehicleSpawn),
 		Samples: sliceOf(v.Samples, toVehicleSample),
 		Rides:   sliceOf(v.Rides, toVehicleRide),

@@ -735,7 +735,7 @@ controle (lecture des chunks) : 23 accord · 0 contradiction · 1 silence — la
 voies des liens d index : PlayerIndexTable=4 · film_table=24
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
-repli_fin_de_vie_vehicule_par_recensement        11
+aucun : chaque fait publie vient d une lecture (ou d un repli dont le compteur n est pas encore cable)
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 45 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et

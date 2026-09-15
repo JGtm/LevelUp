@@ -49,4 +49,10 @@ package filmdec
 // FUSION (2026-09-16) : l integration portait `.3` (lots 1.9.2 et 1.9.3) et la branche du lot
 // 1.9.1 bis `.6` (gardes n1/n2, quatre sites de ti=37, prefixe objet relu, profil par build) ;
 // les deux grammaires sont reunies ici, au rang suivant.
-const GrammarRev = "grammar-2026-09-15.7"
+// LOT 1.9.10 (2026-09-16) : `.7` -> `.8`. Un lecteur NEUF entre dans le paquet — la MARCHE des
+// morts d'objet (`object_deaths*.go`) : elle deroule la boucle de records des paquets delta et
+// lit le composant `object-dead-state` la ou aucun balayage ancre ne l'atteint. Aucune grammaire
+// d'octets existante n'est reecrite ; ce qui change est CE QUE LE PAQUET SAIT LIRE, et la
+// revision doit le nommer. Le rang est celui de la base du lot ; le pilote renumerote a la
+// fusion de la vague.
+const GrammarRev = "grammar-2026-09-15.8"
