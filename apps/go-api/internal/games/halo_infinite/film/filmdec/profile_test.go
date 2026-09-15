@@ -224,3 +224,36 @@ func TestProfilPresumes(t *testing.T) {
 			strings.Join(vus, "\n  "), strings.Join(presumesGeles, "\n  "))
 	}
 }
+
+// TestFilmContextResoutLeProfilALaConstruction : le constructeur de la CUISSON
+// ([NewFilmContextForMap]) pose le profil, carte comprise, et son erreur remonte TYPEE par
+// [FilmContext.ProfileErr] — le film n est pas mis de cote (item 2.1.2, D1).
+func TestFilmContextResoutLeProfilALaConstruction(t *testing.T) {
+	entry := MapQuantEntry{Module: "temoin", Min: [3]float32{-1, -1, -1}, Max: [3]float32{1, 1, 1}}
+	film := bobineFilm(t, "fb1a1a72")
+	fc := NewFilmContextForMap(film, &entry, nil)
+	if err := fc.ProfileErr(); err != nil {
+		t.Fatalf("bobine HI_1_13_0 : le contexte refuse une cle que le film ecrit : %v", err)
+	}
+	if fc.Profile().Map().Module != entry.Module {
+		t.Errorf("la carte du match n est pas au profil : %q", fc.Profile().Map().Module)
+	}
+	// MEME VALEUR QUE LA RESOLUTION DIRECTE : c est ce qui autorise le lot 2.1 a resoudre le
+	// profil a DEUX endroits (ici et `replay.BuildFromFilm`) sans que les deux divergent.
+	direct := ResolveProfile(film, &entry)
+	if fc.Profile().Build() != direct.Build() || fc.Profile().MPP() != direct.MPP() ||
+		fc.Profile().Slots() != direct.Slots() || fc.Profile().Movement() != direct.Movement() {
+		t.Errorf("le profil du contexte differe de la resolution directe :\n  contexte %+v\n  direct %+v",
+			fc.Profile(), direct)
+	}
+	// LE CONSTRUCTEUR SANS CARTE le resout au premier acces, et rend la MEME chose moins la carte.
+	sansCarte := NewFilmContext(film).Profile()
+	if sansCarte.Build() != direct.Build() || sansCarte.Map().Module != "" {
+		t.Errorf("profil sans carte : build %q, module %q", sansCarte.Build(), sansCarte.Map().Module)
+	}
+	// CONTEXTE NIL : les invariants, jamais une largeur inventee.
+	var nul *FilmContext
+	if nul.Profile().Keyframe().CadreBits() != 172 || nul.Profile().Slots().Connu {
+		t.Errorf("contexte nil : %+v", nul.Profile())
+	}
+}
