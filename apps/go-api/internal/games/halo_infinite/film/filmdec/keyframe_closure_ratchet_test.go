@@ -75,6 +75,9 @@ func closureMiniFilms() []string {
 
 // TestKeyframeClosureRatchet : la couverture par archetype ne descend jamais.
 func TestKeyframeClosureRatchet(t *testing.T) {
+	// `KeyframeClosure` installe le profil MPP du build : globaux de paquet, donc verrou.
+	relVerrou := LockProcessDecode()
+	defer relVerrou()
 	got := mesurerFermetureBobines(t)
 	if *updateFermeture {
 		if err := os.MkdirAll(filepath.Dir(closureGoldenPath), 0o750); err != nil {

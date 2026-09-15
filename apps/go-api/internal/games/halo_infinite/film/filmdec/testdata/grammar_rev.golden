@@ -233,4 +233,21 @@
 #               **schema 59 -> 59 sur les 14 temoins, 26 gains, 1 seule « perte » qui est une
 #               amelioration** (`coverage.equipmentChanges.missedEstimate` 17 -> 16 : moins de
 #               manques estimes). Le contenu cuit ne change donc pas de forme.
-grammar-2026-09-15.4	5910967d3601f13b815260c5cfe5f10080468fa427e8ef5736b3658e3120c229
+#   2026-09-15  grammar-2026-09-15.5  lot 1.9.1 bis, pas 3 : LE PROFIL PAR BUILD, UN SEUL LIEU.
+#               `player_table_profile.go` devient `build_profile.go` et porte DEUX donnees par
+#               build : la largeur du bloc de personnalisation (lot 1.5.2) et les largeurs du
+#               bloc MPP (`FUN_14080cfe8`). `BuildProfileFor` rend les deux ou `ErrUnknownBuild`
+#               (D-4) ; `InstallBuildProfileMPP` les installe pour la duree d une mesure et
+#               `KeyframeClosure` l appelle. LES BITS LUS NE CHANGENT PAS sur les sept bobines :
+#               les deux builds dont la largeur MPP est POSEE (HI_1_12_0, HI_1_13_0) la portent
+#               a 9/5, qui est deja le defaut de paquet ; les cinq autres la laissent
+#               INDETERMINEE et rien n est installe. Fermeture inchangee a 246/21 698.
+#               LA REVISION MONTE QUAND MEME parce que le CADRE de la lecture change : une
+#               grammaire peut desormais dependre du build, et un consommateur qui decide de
+#               redecoder doit le voir.
+#   2026-09-15  grammar-2026-09-15.5  lot 1.9.1 bis, pas 3 (MEME LOT donc MEME REVISION,
+#               empreinte reprise une fois) : `goconst` a demande sept constantes pour les noms
+#               de build, et la case MPP des cinq builds anciens est passee de `8/3` a VIDE
+#               apres la mesure de fermeture qui refute `8/3` (D15). Aucun bit lu ne change :
+#               les deux builds dont la largeur est posee la portent a 9/5, deja le defaut.
+grammar-2026-09-15.5	c148b236848ab1f89dfa8f68a6c3c22381d16ef608ccf502edd8040a473d3248
