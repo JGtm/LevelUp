@@ -103,20 +103,20 @@ vertes notées dans le journal de phase (§8).
 
 Périmètre fermé :
 
-- [ ] 1.1 `internal/domain/friends.go` (nouveau) : type `PlayerFriends{XUID string;
+- [x] 1.1 `internal/domain/friends.go` (nouveau) : type `PlayerFriends{XUID string;
       Gamertags []string (nullable:"false"); UpdatedAt string}` + requête
       `PutFriendsRequest{Gamertags []string}`. Normalisation : trim, dédoublonnage
       insensible à la casse, exclusion du propre gamertag du profil, `≤ 50` entrées,
       `≤ 50` caractères chacune (mêmes bornes que `setup.go:134`).
-- [ ] 1.2 `internal/domain/title/registry.go` : `PathResolver.PlayerFriendsPath()` →
+- [x] 1.2 `internal/domain/title/registry.go` : `PathResolver.PlayerFriendsPath()` →
       `data/global/player_friends.json` (voisin de `xbox_aliases.duckdb`). Aucun
       `filepath.Join(..., "data", ...)` hors PathResolver.
-- [ ] 1.3 `internal/platform/friendstore/friend_store.go` (nouveau, miroir de
+- [x] 1.3 `internal/platform/friendstore/friend_store.go` (nouveau, miroir de
       `platform/groupstore/group_store.go` : mutex, `load/save` atomique, nil → slice vide) :
       `NewFriendStore(path)`, `Get(xuid) ([]string, error)` (absent → vide, pas d'erreur),
       `Set(xuid, gamertags []string) error`, `All() (map[string][]string, error)`.
       Fichier ≤ 300 L, fonctions ≤ 80 L.
-- [ ] 1.4 `internal/platform/friendstore/migrate.go` : `MigrateFromAppSettings(appSettingsPath
+- [x] 1.4 `internal/platform/friendstore/migrate.go` : `MigrateFromAppSettings(appSettingsPath
       string, players []domain.PlayerSummary) (created int, err error)` — lit LUI-MÊME
       `app_settings.json` (`PathResolver.AppSettingsPath()`) en `map[string]json.RawMessage`
       et n en extrait que la clé `friend_gamertags` : **zéro dépendance au champ typé**
@@ -125,10 +125,10 @@ Périmètre fermé :
       `groupstore.MigrateDefault`). Pour chaque profil
       avec xuid non vide et `!AuthOnly` : liste = globale moins le gamertag du profil
       (insensible à la casse).
-- [ ] 1.5 Câblage au boot dans `cmd/server/main.go` (à côté de la construction de
+- [x] 1.5 Câblage au boot dans `cmd/server/main.go` (à côté de la construction de
       `groupStore`) : construire `friendStore`, appeler `MigrateFromAppSettings` UNE fois.
       Câblé une fois, jamais retouché ensuite. `slog.InfoContext` avec `created`.
-- [ ] 1.6 Tests `friend_store_test.go` (Get absent → vide ; Set/Get ; normalisation ;
+- [x] 1.6 Tests `friend_store_test.go` (Get absent → vide ; Set/Get ; normalisation ;
       fichier corrompu → erreur explicite) et `migrate_test.go` (idempotence, exclusion de
       soi, AuthOnly ignoré).
 
@@ -431,6 +431,44 @@ Ordre recommandé, indépendant des étapes 1-7 sauf mention :
   - `cd apps/web && rm -rf node_modules/.tmp && npm run typecheck` → **code de sortie 0**.
 
 **Gate G0 : PASSÉ** (branche correcte, baselines notées).
+
+### Étape 1 — Store d'amis par joueur + migration — 2026-09-15 ~21:30 — CLOSE
+
+- 1.1 `[x]` `internal/domain/friends.go` : `PlayerFriends` (+ `can_edit`, posé ici plutôt qu'en
+  3.1 puisque c'est le type de réponse), `PutFriendsRequest`, `NormalizeFriendGamertags`
+  (trim / dédoublonnage insensible à la casse / exclusion de soi) et `ValidateFriendGamertags`
+  (bornes 50 entrées, 50 caractères). Normalisation et bornes séparées : la première est
+  toujours appliquée à l'écriture, la seconde produit un 400.
+- 1.2 `[x]` `PathResolver.PlayerFriendsPath()` → `data/global/player_friends.json`, posé juste
+  après `GlobalXuidAliasesDBPath()`.
+- 1.3 `[x]` `internal/platform/friendstore/friend_store.go` (190 L) : miroir de `groupstore`
+  (RWMutex, load/save atomique write-to-temp + rename, `gamertags: null` normalisé à la
+  lecture). API réelle : `Get`, `Set(xuid, ownGamertag, gamertags) ([]string, error)`,
+  `UpdatedAt`, `All`, `Path`. **Écart assumé** au plan : `Set` prend `ownGamertag` et retourne
+  la liste normalisée — la normalisation vit ainsi dans le store, donc TOUS les écrivains (API,
+  migration, CLI) partagent les mêmes règles ; `UpdatedAt` et `Path` sont nécessaires
+  respectivement à la réponse API (3.1) et à la garde d'idempotence de la migration.
+- 1.4 `[x]` `friendstore/migrate.go` : `MigrateFromAppSettings(store, appSettingsPath, players)`
+  lit `app_settings.json` en `map[string]json.RawMessage` et n'en extrait que
+  `friend_gamertags` (zéro dépendance au champ typé). Idempotent (no-op si
+  `player_friends.json` existe). **Écart assumé** : le store est passé en paramètre (le plan le
+  laissait implicite) ; `cfg.AppSettingsPath` est la source du chemin — `PathResolver` n'expose
+  pas `AppSettingsPath()`, vérifié sur pièces.
+- 1.5 `[x]` `cmd/server/main.go` : `friendStore` construit à côté de `groupStore` ;
+  `migratePlayerFriendsAtBoot` appelée AVANT `migrateDefaultGroupAtBoot` (ordre exigé par la
+  variante D6), best-effort, `slog.InfoContext(... "created", n)`.
+- 1.6 `[x]` 11 tests `friend_store_test.go` (absent → vide, xuid vide, aller-retour,
+  normalisation, remplacement complet, isolation entre joueurs, `All`, `gamertags: null`,
+  fichier corrompu → erreur explicite), 8 tests `migrate_test.go` (héritage moins soi,
+  casse, idempotence face à une édition utilisateur, `auth_only` / sans xuid ignorés, même xuid
+  sur deux titres écrit une fois, clé absente / vide / null, settings absent, settings
+  corrompu) et 5 tests `domain/friends_test.go` (normalisation, bornes).
+
+**Gate G1 : PASSÉ.**
+- `go build ./cmd/server/` → **0**.
+- `go test ./internal/platform/friendstore/... ./internal/domain/...` → **0**
+  (`friendstore` ok 1,8 s ; `domain` ok 0,9 s ; `domain/title` ok 65 s).
+- `go vet ./internal/platform/friendstore/... ./internal/domain/` → **0**.
 
 **Écart consigné (pilote, 2026-09-15)** : G2.0 NON validée — l'existence de
 `data/auth/groups.json` en prod n'est pas confirmée. La **variante D6** s'applique : la
