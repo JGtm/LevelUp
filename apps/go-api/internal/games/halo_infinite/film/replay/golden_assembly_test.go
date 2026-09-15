@@ -399,10 +399,32 @@ func renderAssembly(doc ReplayDocument) string {
 	renderLoadouts(p, doc)
 	renderBridge(p, doc)
 	renderIdentite(p, doc)
+	renderSieges(p, doc)
 	renderReplis(p, doc)
 	renderLabels(p, doc)
 	renderBounds(p, doc)
 	return b.String()
+}
+
+// renderSieges fige LA POSE DES SIEGES (lot 1.9.14) : combien de fiches ce document porte, et
+// combien d occupants le film y met AU PLUS en meme temps.
+//
+// IL APPARTIENT AU GOLDEN POUR LA MEME RAISON QUE LE BLOC DES REPLIS : l ecart entre `entrees`
+// et `occupantsMax` est le defaut que le lot corrige, et le figer par build est ce qui rend une
+// regression de la pose visible sans relancer d instrument.
+func renderSieges(p func(string, ...any), doc ReplayDocument) {
+	p("## SIEGES — la fiche d un occupant, et la part qui vient d un appariement")
+	if doc.Coverage == nil || doc.Coverage.Seats == nil {
+		p("aucun : ce document ne publie pas de roster")
+		p("")
+		return
+	}
+	s := *doc.Coverage.Seats
+	p("entrees %d · sieges %d · lus %d · apparies %d · reprises ecrites %d",
+		s.Entrees, s.Sieges, s.Lus, s.Apparies, s.ReprisesEcrites)
+	p("arrivants %d · presences closes %d · sans presence %d · occupants au plus %d · sans table %v",
+		s.Arrivants, s.PresencesCloses, s.SansPresence, s.OccupantsMax, s.SansTableDuFilm)
+	p("")
 }
 
 // renderReplis fige CE QUE CET ASSEMBLAGE DOIT A UN REPLI (schema 58, decision D14).

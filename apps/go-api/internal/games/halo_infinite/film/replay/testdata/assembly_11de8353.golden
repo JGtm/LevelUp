@@ -741,8 +741,13 @@ table du film : lue=true refus="" · 24 siege(s) · 24 lien(s) direct(s) · 4 pa
 controle (lecture des chunks) : 23 accord · 0 contradiction · 1 silence — la table du film fait foi, l ecart se compte
 voies des liens d index : PlayerIndexTable=4 · film_table=24
 
+## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
+entrees 28 · sieges 26 · lus 26 · apparies 2 · reprises ecrites 0
+arrivants 4 · presences closes 18 · sans presence 2 · occupants au plus 24 · sans table false
+
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_fin_de_vie_vehicule_par_recensement        11
+repli_siege_du_remplacant_par_appariement_ordinal 2
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 45 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et

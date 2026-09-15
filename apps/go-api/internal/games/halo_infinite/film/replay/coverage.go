@@ -147,6 +147,12 @@ type Coverage struct {
 	// camps ou si le film n'a pas nommé ce joueur ; `noTeam` et `unread` le disent. Absente
 	// quand le film ne porte aucune position : il n'y a alors ni roster ni vie à couvrir.
 	Teams *TeamCoverage `json:"teams,omitempty"`
+	// Seats est CE QUE LA POSE DES SIÈGES A LU ET CE QU'ELLE A APPARIÉ (lot 1.9.14, cf.
+	// SeatCoverage) : combien d'entrées tiennent leur siège du film, combien le tiennent du
+	// repli ordinal, et — le chiffre qui a ouvert le lot — combien d'occupants le film porte
+	// AU PLUS EN MÊME TEMPS face au nombre d'entrées du roster. Absente quand le roster est
+	// vide : il n'y a alors aucun siège à couvrir.
+	Seats *SeatCoverage `json:"seats,omitempty"`
 	// Projectiles est la couverture des TRAJECTOIRES DE PROJECTILE (cf. projectiles.go) :
 	// pistes décodées, trajectoires publiées, et celles qu'un PAS IMPOSSIBLE a coupées.
 	//

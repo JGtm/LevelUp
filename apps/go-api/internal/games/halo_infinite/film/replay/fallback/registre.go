@@ -59,6 +59,14 @@ func concat(parts ...[]Repli) []Repli {
 // sert de DatePose à tous les replis hérités (cf. [Repli.DatePose] : pose = inscription).
 const dateAudit0E = "2026-09-13"
 
+// dateVague2 : le jour de la vague 2 de la famille 1.9. Quatre replis y sont posés — un par lot
+// de conversion — et `goconst` refuse à juste titre une quatrième occurrence du littéral.
+//
+// C'EST UNE DATE, PAS UN LOT : elle ne dit RIEN de la cible de retrait ni du critère, que chaque
+// entrée porte à part. La constante partagée `lot194`, supprimée le 2026-09-15, avait justement
+// le défaut inverse — elle nommait un LOT, et ses quatre citations ont divergé.
+const dateVague2 = "2026-09-15"
+
 // comptageFamille19 : la raison, écrite une fois, pour laquelle le compteur d'un repli hérité
 // n'est pas câblé au lot 1.9.0.
 //

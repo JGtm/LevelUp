@@ -1,124 +1,195 @@
 /**
- * seatLogic.test.ts — le siège suit l'occupant.
+ * seatLogic.test.ts — le siège suit l'OCCUPANT, et l'occupant vient du DOCUMENT.
  *
- * Le scénario de référence est LE MATCH TÉMOIN 1b2d9e08 (retour user 2026-09-02) :
- * Winterhawk quitte à T, Razzle arrive à T, même équipe — une seule fiche, deux occupants.
- * S'y ajoutent : la CHAÎNE (A → bot → B sur le même siège), le repli sans participation
- * (chacun son siège), et le rejoignant sans partant (nouveau siège, pas de rattachement
- * inventé).
+ * LES TESTS D'AVANT LE LOT 1.9.14 ONT ÉTÉ REMPLACÉS AVEC LA RÈGLE QU'ILS VERROUILLAIENT.
+ * Ils fixaient l'appariement ordinal sur la PARTICIPATION API (`left_in_progress` /
+ * `joined_in_progress`, fenêtre de 120 s, départage par indice de film) : ce calcul n'est plus
+ * ici — il est fait à la cuisson, sur le film, nommé et compté au registre des replis
+ * (`repli_siege_du_remplacant_par_appariement_ordinal`), et le web lit `roster[].seat`. Les
+ * garder verts aurait entretenu l'illusion qu'une règle supprimée tient encore.
+ *
+ * Ce que ces tests-ci tiennent, un par règle :
+ *
+ *	le siège vient du document (deux entrées de même `seat` = une fiche, deux occupants) ;
+ *	entre le départ et l'arrivée, la fiche reste MARQUÉE « a quitté » ;
+ *	après l'arrivée, elle porte l'arrivant ;
+ *	quand plus aucun successeur ne vient, elle DISPARAÎT ;
+ *	un joueur sans aucune vie n'a de fiche à aucune image ;
+ *	jamais deux fiches pour un siège.
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
-import { buildSeats, seatOccupantAt } from './seatLogic'
+import { buildSeats, groupSeatsByTeam, seatOccupantAt } from './seatLogic'
 
-const DOC = { frameIntervalMs: 100, frameCount: 6_000, originMs: 0 } as ReplayDocumentReady
-const HEADER = { start_time: '2026-09-01T22:26:39Z' }
+/** t1 = le partant sort ; t2 = l'arrivant entre. Entre les deux, le siège est en transition. */
+const T1 = 400
+const T2 = 600
+const FIN = 999
 
-function joueur(xuid: string, side: string, board: Record<string, unknown> = {}): ReplayPlayer {
+/** vie fabrique une piste sur l'intervalle d'images donné. */
+function vie(debut: number, fin: number): ReplayTrackReady {
+  return {
+    slot: 1,
+    team: 0,
+    startFrame: debut,
+    endFrame: fin,
+    points: [{ t: debut, x: 0, y: 0 }, { t: fin, x: 0, y: 0 }],
+  } as unknown as ReplayTrackReady
+}
+
+function joueur(xuid: string, side: string | null, lives: ReplayTrackReady[]): ReplayPlayer {
   return {
     xuid,
     filmName: xuid,
-    lives: [],
-    board: { xuid, gamertag: xuid, team_side: side, ...board } as ReplayPlayer['board'],
+    lives,
+    board:
+      side === null
+        ? undefined
+        : ({ xuid, gamertag: xuid, team_side: side } as ReplayPlayer['board']),
   }
 }
 
-describe('buildSeats — le scénario témoin', () => {
-  it('le partant cède sa fiche au remplaçant de la même équipe, à l’image du relais', () => {
-    // Winterhawk quitte à +275 s (22:31:14) ; Razzle arrive à la même seconde, équipe t1.
-    const winterhawk = joueur('W', 't1', {
-      left_in_progress: true,
-      last_leave_time: '2026-09-01T22:31:14Z',
-    })
-    const razzle = joueur('bot:343 Razzle [bot]', 't1', {
-      joined_in_progress: true,
-      first_joined_time: '2026-09-01T22:31:14Z',
-    })
-    const autre = joueur('A', 't0')
-    const seats = buildSeats([winterhawk, razzle, autre], HEADER, DOC)
-    expect(seats).toHaveLength(2) // le remplaçant vit dans le siège du partant
-    const siege = seats.find((s) => s.key === 'W')!
-    expect(siege.occupants.map((o) => o.player.xuid)).toEqual(['W', 'bot:343 Razzle [bot]'])
-    // 275 s à 100 ms la frame = image 2750.
-    expect(siege.occupants[1].fromFrame).toBe(2750)
-    expect(seatOccupantAt(siege, 2749).xuid).toBe('W')
-    expect(seatOccupantAt(siege, 2750).xuid).toBe('bot:343 Razzle [bot]')
-  })
+/** doc fabrique le document minimal : seul le roster compte pour ces tests. */
+function doc(roster: Array<Record<string, unknown>>): ReplayDocumentReady {
+  return { frameIntervalMs: 100, frameCount: FIN + 1, originMs: 0, roster } as ReplayDocumentReady
+}
 
-  it('la CHAÎNE tient : A part, bot le remplace, bot part, B le remplace — un seul siège', () => {
-    const a = joueur('A', 't0', { left_in_progress: true, last_leave_time: '2026-09-01T22:28:00Z' })
-    const bot = joueur('bot:X [bot]', 't0', {
-      joined_in_progress: true,
-      first_joined_time: '2026-09-01T22:28:00Z',
-      left_in_progress: true,
-      last_leave_time: '2026-09-01T22:30:00Z',
-    })
-    const b = joueur('B', 't0', {
-      joined_in_progress: true,
-      first_joined_time: '2026-09-01T22:30:05Z',
-    })
-    const seats = buildSeats([a, bot, b], HEADER, DOC)
+describe('buildSeats — le siège vient du document', () => {
+  it('deux entrées de MÊME siège font UNE fiche à deux occupants, dans l’ordre du temps', () => {
+    const partant = joueur('P', 't0', [vie(0, T1)])
+    const arrivant = joueur('A', 't0', [vie(T2, FIN)])
+    const seats = buildSeats(
+      [arrivant, partant], // ordre d'entrée volontairement inversé
+      doc([
+        { xuid: 'P', filmIndex: 3, seat: 3, seatSource: 'lu', team: 0 },
+        { xuid: 'A', filmIndex: 9, seat: 3, seatSource: 'apparie', team: 0 },
+      ]),
+    )
     expect(seats).toHaveLength(1)
-    expect(seats[0].occupants.map((o) => o.player.xuid)).toEqual(['A', 'bot:X [bot]', 'B'])
+    expect(seats[0].seat).toBe(3)
+    expect(seats[0].occupants.map((o) => o.player.xuid)).toEqual(['P', 'A'])
+    expect(seats[0].occupants[1].apparie).toBe(true)
+    expect(seats[0].occupants[0].apparie).toBe(false)
   })
 
-  it('équipes différentes = jamais appariés ; rejoignant sans partant = son propre siège', () => {
-    const partantT0 = joueur('A', 't0', {
-      left_in_progress: true,
-      last_leave_time: '2026-09-01T22:28:00Z',
-    })
-    const arrivantT1 = joueur('J', 't1', {
-      joined_in_progress: true,
-      first_joined_time: '2026-09-01T22:28:00Z',
-    })
-    const seats = buildSeats([partantT0, arrivantT1], HEADER, DOC)
-    expect(seats).toHaveLength(2)
-    expect(seats.map((s) => s.occupants.length)).toEqual([1, 1])
+  it('l’ordre des fiches est celui des SIÈGES, pas celui d’arrivée des joueurs', () => {
+    const seats = buildSeats(
+      [joueur('C', 't0', [vie(0, FIN)]), joueur('A', 't0', [vie(0, FIN)])],
+      doc([
+        { xuid: 'C', filmIndex: 7, seat: 7, seatSource: 'lu', team: 0 },
+        { xuid: 'A', filmIndex: 2, seat: 2, seatSource: 'lu', team: 0 },
+      ]),
+    )
+    expect(seats.map((s) => s.seat)).toEqual([2, 7])
   })
 
-  it("DEUX relais sur la même équipe : l'appariement est ORDINAL (k-ième partant ↔ k-ième arrivant), jamais « au plus proche »", () => {
-    // L1 part à 22:28:20, L2 à 22:30:00 ; J1 arrive à 22:30:05, J2 à 22:30:10. Un
-    // appariement « au plus proche » donnerait J1→L2 (5 s) et J2→L1 (110 s) — CROISÉ.
-    // Le jeu comble dans l'ordre des départs : J1→L1, J2→L2.
-    const l1 = joueur('L1', 't0', { left_in_progress: true, last_leave_time: '2026-09-01T22:28:20Z' })
-    const l2 = joueur('L2', 't0', { left_in_progress: true, last_leave_time: '2026-09-01T22:30:00Z' })
-    const j1 = joueur('J1', 't0', { joined_in_progress: true, first_joined_time: '2026-09-01T22:30:05Z' })
-    const j2 = joueur('J2', 't0', { joined_in_progress: true, first_joined_time: '2026-09-01T22:30:10Z' })
-    const seats = buildSeats([l1, l2, j1, j2], HEADER, DOC)
-    expect(seats).toHaveLength(2)
-    expect(seats.find((s) => s.key === 'L1')!.occupants.map((o) => o.player.xuid)).toEqual(['L1', 'J1'])
-    expect(seats.find((s) => s.key === 'L2')!.occupants.map((o) => o.player.xuid)).toEqual(['L2', 'J2'])
+  it('un joueur SANS AUCUNE VIE n’a de fiche à aucune image', () => {
+    const seats = buildSeats(
+      [joueur('P', 't0', [vie(0, FIN)]), joueur('Z', 't0', [])],
+      doc([
+        { xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0 },
+        { xuid: 'Z', filmIndex: 1, seat: 1, seatSource: 'lu', team: 0 },
+      ]),
+    )
+    expect(seats).toHaveLength(1)
+    expect(seats[0].occupants[0].player.xuid).toBe('P')
   })
 
-  it("deux arrivées à la MÊME seconde se départagent par l'indice de film (alloué à l'arrivée)", () => {
-    const doc = {
-      ...DOC,
-      roster: [
-        { xuid: '', filmIndex: 9, name: 'B2 [bot]', bot: true },
-        { xuid: '', filmIndex: 8, name: 'B1 [bot]', bot: true },
-      ],
-    } as ReplayDocumentReady
-    const l1 = joueur('L1', 't0', { left_in_progress: true, last_leave_time: '2026-09-01T22:28:00Z' })
-    const l2 = joueur('L2', 't0', { left_in_progress: true, last_leave_time: '2026-09-01T22:29:00Z' })
-    const b2 = joueur('bot:B2 [bot]', 't0', { joined_in_progress: true, first_joined_time: '2026-09-01T22:29:00Z' })
-    const b1 = joueur('bot:B1 [bot]', 't0', { joined_in_progress: true, first_joined_time: '2026-09-01T22:29:00Z' })
-    const seats = buildSeats([l1, l2, b2, b1], HEADER, doc)
-    // B1 (indice 8) est l'arrivant le plus ancien : il remplace le premier parti.
-    expect(seats.find((s) => s.key === 'L1')!.occupants[1].player.xuid).toBe('bot:B1 [bot]')
-    expect(seats.find((s) => s.key === 'L2')!.occupants[1].player.xuid).toBe('bot:B2 [bot]')
+  it('le camp vient du FILM quand le document le porte, la feuille reste le repli', () => {
+    // `Z` n'a AUCUNE ligne de feuille — le remplaçant « sans équipe » du constat utilisateur —
+    // mais le film lui donne le camp 1 : il rejoint la colonne du camp 1.
+    const seats = buildSeats(
+      [joueur('P', 't0', [vie(0, FIN)]), joueur('Z', null, [vie(0, FIN)])],
+      doc([
+        { xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu', team: 1 },
+        { xuid: 'Z', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1 },
+      ]),
+    )
+    expect(new Set(seats.map((s) => s.teamKey))).toEqual(new Set(['f1']))
+    const groupes = groupSeatsByTeam(seats)
+    expect(groupes).toHaveLength(1)
+    expect(groupes[0].side).toBe('t0') // le libellé affiché reste celui de la feuille
+    expect(groupes[0].seats).toHaveLength(2)
   })
 
-  it('sans en-tête (pas de repère absolu), chacun garde son siège — l’affichage d’avant', () => {
-    const partant = joueur('A', 't0', {
-      left_in_progress: true,
-      last_leave_time: '2026-09-01T22:28:00Z',
-    })
-    const arrivant = joueur('J', 't0', {
-      joined_in_progress: true,
-      first_joined_time: '2026-09-01T22:28:00Z',
-    })
-    expect(buildSeats([partant, arrivant], null, DOC)).toHaveLength(2)
+  it('sans camp du film, le regroupement retombe sur la feuille de match', () => {
+    const seats = buildSeats(
+      [joueur('P', 't0', [vie(0, FIN)]), joueur('Q', 't1', [vie(0, FIN)])],
+      doc([
+        { xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu' },
+        { xuid: 'Q', filmIndex: 1, seat: 1, seatSource: 'lu' },
+      ]),
+    )
+    expect(seats.map((s) => s.teamKey)).toEqual(['s:t0', 's:t1'])
+    expect(groupSeatsByTeam(seats)).toHaveLength(2)
+  })
+})
+
+describe('seatOccupantAt — ce que la fiche montre à l’instant lu', () => {
+  const seats = buildSeats(
+    [joueur('P', 't0', [vie(0, T1)]), joueur('A', 't0', [vie(T2, FIN)])],
+    doc([
+      { xuid: 'P', filmIndex: 3, seat: 3, seatSource: 'lu', team: 0 },
+      { xuid: 'A', filmIndex: 9, seat: 3, seatSource: 'apparie', team: 0 },
+    ]),
+  )
+  const siege = seats[0]
+
+  it('avant t1 : le partant tient la fiche', () => {
+    expect(seatOccupantAt(siege, 0)).toEqual({ player: expect.anything(), kind: 'present' })
+    expect(seatOccupantAt(siege, T1).player?.xuid).toBe('P')
+  })
+
+  it('entre t1 et t2 : la fiche est MARQUÉE « a quitté », elle ne disparaît pas', () => {
+    const lu = seatOccupantAt(siege, T1 + 1)
+    expect(lu.kind).toBe('parti')
+    expect(lu.player?.xuid).toBe('P')
+    expect(seatOccupantAt(siege, T2 - 1).kind).toBe('parti')
+  })
+
+  it('à partir de t2 : la fiche porte l’ARRIVANT', () => {
+    expect(seatOccupantAt(siege, T2)).toMatchObject({ kind: 'present' })
+    expect(seatOccupantAt(siege, T2).player?.xuid).toBe('A')
+    expect(seatOccupantAt(siege, FIN).player?.xuid).toBe('A')
+  })
+
+  it('mourir n’est pas partir : sans successeur, la fiche RESTE après la dernière vie', () => {
+    // Le joueur meurt a T1 et ne reapparait pas. Le film ne dit pas s’il a quitte ; la fiche
+    // le dit deja par « hors film » (retour user du 2026-09-02) et ne disparait pas.
+    const solo = buildSeats(
+      [joueur('P', 't0', [vie(0, T1)])],
+      doc([{ xuid: 'P', filmIndex: 3, seat: 3, seatSource: 'lu', team: 0 }]),
+    )[0]
+    expect(seatOccupantAt(solo, T1).kind).toBe('present')
+    expect(seatOccupantAt(solo, T1 + 1)).toEqual({ player: expect.anything(), kind: 'present' })
+    expect(seatOccupantAt(solo, FIN).player?.xuid).toBe('P')
+  })
+
+  it('avant l’arrivée du PREMIER occupant, le siège n’a aucune fiche', () => {
+    const tardif = buildSeats(
+      [joueur('A', 't0', [vie(T2, FIN)])],
+      doc([{ xuid: 'A', filmIndex: 9, seat: 9, seatSource: 'lu', team: 0 }]),
+    )[0]
+    expect(seatOccupantAt(tardif, T2 - 1)).toEqual({ player: null, kind: 'absent' })
+    expect(seatOccupantAt(tardif, T2).kind).toBe('present')
+  })
+
+  it('JAMAIS deux fiches pour un siège : la lecture rend UN occupant, ou aucun', () => {
+    for (let f = 0; f <= FIN; f += 7) {
+      const lu = seatOccupantAt(siege, f)
+      expect(['present', 'parti', 'absent']).toContain(lu.kind)
+      expect(lu.kind === 'absent' ? lu.player === null : lu.player !== null).toBe(true)
+    }
+  })
+
+  it('un trou de RÉAPPARITION est DANS la présence : la fiche reste', () => {
+    // Deux vies du même joueur, séparées de 80 images : il est mort, pas parti.
+    const vivant = buildSeats(
+      [joueur('P', 't0', [vie(0, 200), vie(280, FIN)])],
+      doc([{ xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0 }]),
+    )[0]
+    expect(seatOccupantAt(vivant, 240).kind).toBe('present')
   })
 })

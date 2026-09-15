@@ -166,7 +166,7 @@ function mesurerModele(doc: ReplayDocumentReady, base: number): Stats {
   const text = REPLAY_TEXT.fr
   const scoreboard = tableauDepuisRoster(doc)
   const players = buildPlayers(doc, scoreboard)
-  const seats = buildSeats(players, null, doc)
+  const seats = buildSeats(players, doc)
   const groups = groupSeatsByTeam(seats)
   const presence = vitalityPresence(doc)
   const flashFrames = Math.max(1, msToFrames(1_400, doc))
@@ -182,8 +182,12 @@ function mesurerModele(doc: ReplayDocumentReady, base: number): Stats {
     let n = 0
     for (const g of groups) {
       for (const seat of g.seats) {
+        // LA FICHE N EXISTE QUE SI QUELQU UN L OCCUPE (lot 1.9.14) : un siege sans occupant
+        // present ne produit aucune lecture, donc aucun cout — la mesure suit le rendu.
+        const occupant = seatOccupantAt(seat, frame)
+        if (occupant.kind !== 'present' || occupant.player === null) continue
         const r = playerCardReadings({
-          player: seatOccupantAt(seat, frame), doc, frame, presence, flashFrames, scoreTimeline, fxScene, text,
+          player: occupant.player, doc, frame, presence, flashFrames, scoreTimeline, fxScene, text,
         })
         if (r.fx.title !== undefined) n++
       }

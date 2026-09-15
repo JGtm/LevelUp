@@ -384,6 +384,10 @@ table du film : lue=true refus="" · 8 siege(s) · 8 lien(s) direct(s) · 0 par 
 controle (lecture des chunks) : 8 accord · 0 contradiction · 0 silence — la table du film fait foi, l ecart se compte
 voies des liens d index : film_table=8
 
+## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
+entrees 8 · sieges 8 · lus 8 · apparies 0 · reprises ecrites 0
+arrivants 0 · presences closes 6 · sans presence 0 · occupants au plus 8 · sans table false
+
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_fin_de_vie_vehicule_par_recensement        2
 
