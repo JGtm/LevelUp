@@ -68,6 +68,34 @@ const (
 	buildHI141  = "HI_1_4_1"
 )
 
+// LES CINQ VERSIONS DE FORMAT DE `chunk_00` MESUREES SUR LE CACHE (1 351 films, 2026-09-15),
+// nommees une fois. Elles se lisent a `chunk_00+4` ([FilmFormatVersionFromHeader]) et NE
+// DEPENDENT PAS de la section d identification.
+const (
+	// formatHI1120Et1130 : le format des builds `HI_1_12_0` (146 films) et `HI_1_13_0`
+	// (1 123 films) — 50 blocs de registre, 123 entrees de table par type.
+	formatHI1120Et1130 = 27
+	// formatAnciens25 : `HI_1_11_0` (39 films) — 49 blocs, 122 entrees.
+	formatAnciens25 = 25
+	// formatAnciens24 : `HI_1_10_0` (26), `HI_1_9_0` (1) et `HI_1_8_0` (10) — 49 blocs,
+	// 121 entrees. TROIS builds pour UNE version de format : c est pourquoi la largeur de
+	// personnalisation, qui differe entre eux (1 492 contre 1 312), reste keyee par le build.
+	formatAnciens24 = 24
+	// formatAnciens21 : `HI_1_4_1` (1 film, `a521164d`) — 49 blocs, 116 entrees.
+	formatAnciens21 = 21
+	// formatAnciens20 : les CINQ films sans section d identification (`03af54c3`, `13b00e35`,
+	// `47d20b5d`, `50247b26`, `a349fea8`). La section apparait au format 21 : leur absence de
+	// chaine de build n est pas une anomalie de fichier, c est un format anterieur.
+	formatAnciens20 = 20
+)
+
+// ErrUnknownFormat : la version de format de `chunk_00` n est pas dans la table ci-dessous.
+//
+// MEME DOCTRINE QUE [ErrUnknownBuild] (D-4 d ADR 0034) : un format absent n est JAMAIS lu au
+// decoupage du format le plus proche. Un format 28 que ce depot ne connait pas est mis de cote,
+// il n herite pas du 27.
+const ErrUnknownFormat = chunk00Error("filmdec: version de format de chunk_00 absente de la table de profil")
+
 // ErrUnknownBuild : le build du film n'est pas dans la table de profil ci-dessous.
 //
 // L'erreur rendue par [ReadPlayerTable] enveloppe cette sentinelle avec le nom du build, pour
@@ -181,8 +209,37 @@ func erreurBuildInconnu(build string) error {
 	return fmt.Errorf("%w : %q", ErrUnknownBuild, build)
 }
 
-// mppWidthsPourBuild rend le decoupage du bloc `object-multiplayer-properties` (FUN_14080cfe8)
-// pour un build donne. UN COMMENTAIRE DE PROVENANCE PAR LIGNE, comme pour la personnalisation.
+// erreurFormatInconnu enveloppe [ErrUnknownFormat] avec la version refusee.
+func erreurFormatInconnu(format int) error {
+	return fmt.Errorf("%w : %d", ErrUnknownFormat, format)
+}
+
+// mppWidthsPourFormat rend le decoupage du bloc `object-multiplayer-properties`
+// (FUN_14080cfe8) pour une VERSION DE FORMAT de `chunk_00`. UN COMMENTAIRE DE PROVENANCE PAR
+// LIGNE, comme pour la personnalisation.
+//
+// # LA CLE A CHANGE LE 2026-09-15 (lot 1.9.1 ter) — ET C EST LE FILM QUI LA PORTE
+//
+// La cle etait le nom de BUILD. Elle est desormais la VERSION DE FORMAT, `chunk_00+4`
+// (`film_format_version.go`), pour trois raisons mesurees :
+//
+//  1. C est la seule des deux qui soit une donnee du FORMAT. Le nom de build dit quel jeu a
+//     ecrit le film ; la version de format dit comment le lire, et c est elle que le LECTEUR
+//     du jeu consulte (`FUN_14299ab50`, `FUN_1428e1c0c`).
+//  2. Elle separe exactement les deux groupes mesures : `21 / 24 / 24 / 24 / 25` pour les cinq
+//     bobines `8/3`, `27 / 27` pour les deux bobines `9/5` (instrument
+//     `e191t_version_format_research_test.go`). Le seuil tombe dans `]25, 27]`.
+//  3. Elle existe SANS section d identification. Les cinq films du cache qui n en portent pas
+//     (`03af54c3`, `13b00e35`, `47d20b5d`, `50247b26`, `a349fea8`) portent `format = 20` : ils
+//     ont desormais une cle, la ou ils n avaient qu un build vide.
+//
+// # CE QUI N A PAS CHANGE DE CLE, ET POURQUOI — LA MESURE L INTERDIT
+//
+// La largeur du bloc de PERSONNALISATION reste keyee par le BUILD, et ce n est pas un reste :
+// le format 24 couvre `HI_1_10_0` (1 492 octets) ET `HI_1_9_0` / `HI_1_8_0` (1 312). Une seule
+// version de format, deux largeurs — la re-keyer serait une regression mesurable. Les deux
+// cles cohabitent donc, et elles ne disent pas la meme chose : le FORMAT dit la grammaire des
+// bits, le BUILD dit la taille des structures de contenu du jeu.
 //
 // # POURQUOI CETTE TABLE EXISTE, ET CE QU ELLE REMPLACE
 //
@@ -211,38 +268,44 @@ func erreurBuildInconnu(build string) error {
 // (HI_1_12_0) portent tous deux `v=40` et tombent de part et d autre. Le cardinal de la table
 // par type, lui, suit la coupure (116/121/121/121/122 contre 123/123) — mais c est un PROXY,
 // garde comme controle, jamais comme cle : la cle est le BUILD.
-func mppWidthsPourBuild(build string) (MPPWidths, bool) {
-	switch build {
-	case buildHI1131:
-		// RELU — c est le build de l executable desassemble. `FUN_141fd72c0` lit le champ de
+func mppWidthsPourFormat(format int) (MPPWidths, bool) {
+	switch format {
+	case formatHI1120Et1130:
+		// RELU — c est le format de l executable desassemble (`HI_1_13_0`, format 27, et
+		// `HI_1_12_0` porte le MEME format : le nom de build changeait, la grammaire des bits
+		// non — c est precisement ce que la cle par format rend visible). `FUN_141fd72c0` lit le champ de
 		// tete par un litteral (`141fd72de : ADD dword ptr [RCX + 0x2c],0x9`) et le champ
 		// d index est un `R(5)` inline de `FUN_14080cfe8`. Aucune branche de version dans le
 		// bloc : son seul `if` runtime (`DAT_145121140 == 1`) ne consomme aucun bit.
 		// L oracle `n2` le confirme independamment : part modale 1,000 sur les trois archetypes.
 		return MPPWidths{Lead: 9, Index: 5}, true
-	case buildHI1120:
-		// RELU pour la grammaire (meme executable que `HI_1_13_0` : la bascule est SOUS ce
-		// build, pas au-dessus), MESURE pour la confirmation : part modale 0,949 (ti=37),
-		// 0,998 (ti=38), 0,961 (ti=42) sur `bcb6d393`.
-		return MPPWidths{Lead: 9, Index: 5}, true
-	case buildHI1110, buildHI1100, buildHI190, buildHI180, buildHI141:
+	case formatAnciens20, formatAnciens21, formatAnciens24, formatAnciens25:
 		// INDETERMINE, ET LES DEUX ORACLES SE CONTREDISENT — voir l en-tete de section
 		// ci-dessous. La largeur N EST PAS POSEE : `MPPWidths{}` n est pas valide, donc
-		// `InstallBuildProfileMPP` n installe RIEN et le decodeur garde son defaut. Le build
-		// est CONNU (ce n est pas `ErrUnknownBuild`), c est sa largeur MPP qui ne l est pas.
+		// [InstallFilmFormatMPP] n installe RIEN et le decodeur garde son defaut. Le FORMAT
+		// est CONNU (ce n est pas [ErrUnknownFormat]), c est sa largeur MPP qui ne l est pas.
+		//
+		// LE FORMAT 20 EST DANS CETTE LIGNE DEPUIS LE LOT 1.9.1 ter, ET C EST UN GAIN : les
+		// cinq films sans section d identification y entrent par la porte principale au lieu
+		// d etre refuses pour build vide. Leur largeur reste indeterminee — comme les quatre
+		// autres formats anciens — donc aucun bit lu ne change.
 		return MPPWidths{}, true
 	}
 	return MPPWidths{}, false
 }
 
-// BuildProfile porte TOUT ce que le profil d un build donne. Il se resout UNE FOIS, a partir du
-// nom de build lu en clair dans la section 2 de `chunk_00`, et il est IMMUABLE (D-3 d ADR 0034).
+// BuildProfile porte TOUT ce qui varie d un film a l autre sans etre dans le flux. Il se resout
+// UNE FOIS, a partir de DEUX cles lues dans `chunk_00` — la version de format (`+4`) et le nom
+// de build (section 2) — et il est IMMUABLE (D-3 d ADR 0034).
 type BuildProfile struct {
-	// Build est la cle : le nom en clair, tel que `FilmIdentity.Build` le rend.
+	// Build est la cle de CONTENU : le nom en clair, tel que `FilmIdentity.Build` le rend.
 	Build string
-	// PersoBytes est la largeur du bloc de personnalisation (lot 1.5.2).
+	// FormatVersion est la cle de FORMAT : le u32 de `chunk_00+4`. Les deux cles ne disent pas
+	// la meme chose et ne se deduisent pas l une de l autre (le format 24 porte trois builds).
+	FormatVersion int
+	// PersoBytes est la largeur du bloc de personnalisation (lot 1.5.2) — cle BUILD.
 	PersoBytes int
-	// MPP est le decoupage du bloc `object-multiplayer-properties` (lot 1.9.1 bis).
+	// MPP est le decoupage du bloc `object-multiplayer-properties` — cle FORMAT (1.9.1 ter).
 	MPP MPPWidths
 }
 
@@ -251,13 +314,16 @@ type BuildProfile struct {
 // D-4 : un build absent de la table n est JAMAIS lu au profil du build le plus proche, et jamais
 // calibre en silence. L appelant publie le compteur ([UnknownBuildExpvarPairs]) et met le film
 // de cote.
-func BuildProfileFor(build string) (BuildProfile, error) {
+func BuildProfileFor(build string, format int) (BuildProfile, error) {
 	perso, okP := personnalisationOctets(build)
-	mpp, okM := mppWidthsPourBuild(build)
-	if !okP || !okM {
+	if !okP {
 		return BuildProfile{}, erreurBuildInconnu(build)
 	}
-	return BuildProfile{Build: build, PersoBytes: perso, MPP: mpp}, nil
+	mpp, okM := mppWidthsPourFormat(format)
+	if !okM {
+		return BuildProfile{}, erreurFormatInconnu(format)
+	}
+	return BuildProfile{Build: build, FormatVersion: format, PersoBytes: perso, MPP: mpp}, nil
 }
 
 // BuildProfileFromFilm resout le profil d un film DEJA CHARGE : il lit la section 2 de
@@ -272,30 +338,42 @@ func BuildProfileFromFilm(f *filmsource.Film) (BuildProfile, error) {
 	if !ok {
 		return BuildProfile{}, erreurBuildInconnu("")
 	}
+	format, _ := FilmFormatVersionFromHeader(reg)
 	id, err := ReadFilmIdentity(reg)
 	if err != nil {
 		return BuildProfile{}, erreurBuildInconnu("")
 	}
-	return BuildProfileFor(id.Build)
+	return BuildProfileFor(id.Build, format)
 }
 
-// InstallBuildProfileMPP installe les largeurs MPP du profil et rend leur restauration.
+// InstallFilmFormatMPP installe les largeurs MPP de la VERSION DE FORMAT du film et rend leur
+// restauration.
+//
+// ELLE NE LIT PLUS LA SECTION D IDENTIFICATION (lot 1.9.1 ter) : le decoupage du bloc MPP est
+// une donnee de FORMAT, et le format se lit a `chunk_00+4`. Les cinq films du cache sans
+// section d identification (format 20) traversent donc desormais cette fonction au lieu d y
+// buter sur un build vide — leur largeur reste INDETERMINEE, donc rien n est installe et aucun
+// bit lu ne change : c est exactement le comportement qu ils avaient, avec une cause nommee.
 //
 // L APPELANT DOIT DETENIR [LockProcessDecode] : `SetMPPWidths` ecrit des globaux de paquet, le
-// meme contrat que `replay.installWorldObjectPrecision`. Un film dont le build est inconnu ne
+// meme contrat que `replay.installWorldObjectPrecision`. Un film dont le FORMAT est inconnu ne
 // change RIEN — le defaut de paquet reste en place et l erreur est rendue a l appelant, qui
 // decide (mettre le film de cote, ou compter un repli nomme).
-func InstallBuildProfileMPP(f *filmsource.Film) (func(), error) {
-	p, err := BuildProfileFromFilm(f)
-	if err != nil {
-		return func() {}, err
+func InstallFilmFormatMPP(f *filmsource.Film) (func(), error) {
+	format, ok := FilmFormatVersion(f)
+	if !ok {
+		return func() {}, erreurFormatInconnu(FilmFormatVersionUnknown)
 	}
-	if !p.MPP.Valid() {
-		// Build CONNU dont la largeur MPP est INDETERMINEE (les cinq builds <= HI_1_11_0) :
-		// on n installe rien plutot qu un decoupage nul, qui ne lirait aucune identite du tout.
+	w, ok := mppWidthsPourFormat(format)
+	if !ok {
+		return func() {}, erreurFormatInconnu(format)
+	}
+	if !w.Valid() {
+		// Format CONNU dont la largeur MPP est INDETERMINEE (les formats <= 25) : on n installe
+		// rien plutot qu un decoupage nul, qui ne lirait aucune identite du tout.
 		return func() {}, nil
 	}
-	prev := SetMPPWidths(p.MPP)
+	prev := SetMPPWidths(w)
 	return func() { SetMPPWidths(prev) }, nil
 }
 
@@ -350,8 +428,18 @@ func InstallBuildProfileMPP(f *filmsource.Film) (func(), error) {
 // inconnue (elle ne l est pas : 9/5, relue), mais parce que l ENDROIT des trois bits ne l est
 // pas. Poser 9/5 pour ces builds retirerait la calibration sans avoir explique l ecart.
 //
-// CE QUE LA PROCHAINE SESSION DOIT CHERCHER, ET OU : la cle est dans le film, et la mesure la
-// designe — la table par type de la section 2, ALIGNEE PAR LA FIN, porte DOUZE positions dont la
-// version vaut 1 sur les cinq films courts et 2 a 5 sur les deux autres (alignee par le DEBUT
-// elle n en porte aucune : les types s ajoutent en tete). Le discriminant est l une de ces douze
-// ; la fonction qui la consulte est dans l executable ouvert, et elle reste a trouver.
+// OU LA CLE A ETE TROUVEE (lot 1.9.1 ter, 2026-09-15) — ET LA PISTE CI-DESSUS ETAIT FAUSSE.
+// Le 1.9.1 bis designait « douze positions de la table par type, ALIGNEES PAR LA FIN ». La mesure
+// la refute : les trente premieres valeurs sont IDENTIQUES sur les sept bobines et l index 18 y
+// vaut 2 partout, comme la table NATIVE de l executable (`DAT_14474cd90`) — la table est alignee
+// PAR LE DEBUT, les types s ajoutent EN QUEUE, et les douze positions n etaient qu un artefact.
+// La vraie cle est `chunk_00+4`, la VERSION DE FORMAT (`film_format_version.go`), et c est elle
+// qui key desormais `mppWidthsPourFormat`.
+//
+// CE QUI RESTE OUVERT, ET C EST PLUS ETROIT QU AVANT. L exécutable n a que SIX sites de branche
+// sur cette version (`FUN_1428e1c0c`), de seuils 4, 7, 12, 13/14 et 16 — aucun entre 25 et 27,
+// la frontiere mesuree — et la chaine de l etat par defaut de ti=37 n en contient aucun. Les
+// trois bits ne sont donc PAS une branche de version : ils sont ailleurs, et D2 (1.9.1 ter)
+// nomme la piste — le bit `DAT_144706104`, ecrit par le film en tete du paquet d image-cle des
+// que la version de format depasse 7 (donc sur les 1 351 films du cache), et dont la VALEUR
+// n est pas encore mesuree.

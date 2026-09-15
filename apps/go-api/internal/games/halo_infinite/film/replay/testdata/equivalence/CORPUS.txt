@@ -203,3 +203,26 @@ fb1a1a72 | 41 / HI_1_13_0 | Banished Narrows | CTF:Arena multi-manche | 43 | 38.
 # Classification AVANT tout `-update`, sur l arbre fusionne : 3 identiques (`50247b26`, `a521164d`,
 # `11de8353`), 7 differents, et sur les sept UNE SEULE etape des 53, `killsource` — aucune autre.
 # Re-figeage des sept, puis passe de comparaison : 7/7 puis 10/10 identiques, 0 ecarte, 0 echec.
+#
+# REFERENCES RE-FIGEES AU LOT 1.9.1 ter, SCHEMA 59, LE 2026-09-15 (feu vert du pilote apres
+# classification). CAUSE : DIVERGENCE DE FORME DE L OBJET OBSERVE, PAS DU CONTENU DECODE.
+# Le lot 1.9.1 ter a ajoute deux champs a `filmdec.EquipmentPlacementStats` — `FormatVersion` et
+# `FormatSansProfil` — pour que `replay` puisse cabler le compteur `filmdec_unknown_format_<n>`
+# (un format de `chunk_00` inconnu bascule sur le repli calibre, et ce repli doit se VOIR).
+# `replay/film_scan.go:329` fait `observe("placements.stats", s.in.PlacementStats)` : il hache la
+# STRUCT ENTIERE, donc son sha bouge sur les dix films alors qu aucun bit decode ne change.
+#
+# CE QUI ETABLIT QUE C EST UNE DIVERGENCE ET NON UNE REGRESSION, DANS CET ORDRE :
+#   1. STRUCTUREL — `buildEquipmentPlacements` (`replay/equipment_placements.go`) construit
+#      `EquipmentPlacementCoverage` a partir de champs NOMMES (`Scanned`, `Calibration`, `Lives`,
+#      `Anchors`, `Confirmed`, `ByFamily`, ...), jamais par recopie de la struct : les deux champs
+#      neufs n atteignent PAS le document cuit. Ce n est pas une mesure, c est une lecture du code.
+#   2. MESURE — classification AVANT tout `-update`, sortie complete capturee : 10 films,
+#      10 ecarts, et `ECART a l etape "placements.stats"` sur les DIX, aucune autre etape des 53.
+#      Ni `placements`, ni `artifact`, ni `killsource`, ni aucune etape d image-cle ne diverge.
+#   3. CONTROLE — `fb1a1a72` : `poses=341` et `bytes=3016354` au journal du run, identiques a la
+#      reference (`placements 341`, `artifact 3016354`).
+#   4. GIT — apres `-update` : 10 fichiers, 10 insertions, 10 suppressions, TOUTES sur la ligne
+#      `placements.stats`. Une seule ligne par fichier, et c est exactement celle attendue.
+# Motif identique a D4 (1.8) et au lot 1.9.3 (`killsource`) : la FORME de l objet observe change,
+# ses projections ne bougent pas d un bit. `SchemaVersion` reste 59.

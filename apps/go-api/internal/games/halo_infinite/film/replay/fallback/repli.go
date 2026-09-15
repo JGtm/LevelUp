@@ -114,12 +114,20 @@ const (
 	// Confondre les deux ferait chercher la correction du mauvais côté de la frontière. Ajoutée
 	// au lot 1.9.2 (2026-09-15) avec la rétrogradation du découpage d'i0.
 	CondCarteAbsenteDuCatalogue Condition = "carte_absente_du_catalogue"
-	// CondBuildSansProfilRelu : le PROFIL PAR BUILD existe et ce build-ci n a pas sa valeur
-	// RELUE chez l ecrivain. Pose le 2026-09-15 (lot 1.9.1 bis, pas 3) : la grammaire du bloc
-	// `object-multiplayer-properties` est versionnee par build, et l executable dont on dispose
-	// est UN SEUL build. Un film sans section d identification tombe ici aussi — sans build, pas
-	// de profil relu — ce qui evite de dedoubler la meme condition sous deux noms.
-	CondBuildSansProfilRelu Condition = "build_sans_profil_relu"
+	// CondFormatSansProfilRelu : le PROFIL existe et la VERSION DE FORMAT de ce film-ci n a pas
+	// sa valeur RELUE chez l ecrivain. Pose le 2026-09-15 (lot 1.9.1 bis, pas 3) sous le nom
+	// `build_sans_profil_relu`, RENOMME au lot 1.9.1 ter le meme jour : la grammaire du bloc
+	// `object-multiplayer-properties` n est pas versionnee par BUILD mais par la version de
+	// format de `chunk_00` (`+4`), et c est elle que le lecteur du jeu consulte
+	// (`filmdec/film_format_version.go`). L ancien nom decrivait une cle qui n existe plus.
+	//
+	// Un film SANS section d identification tombe ici aussi — il porte le format 20, qui n a pas
+	// de valeur relue — ce qui evite de dedoubler la meme condition sous deux noms. Un format
+	// FUTUR et inconnu (28 au prochain patch du jeu) y tombe egalement, et c est le point : le
+	// repli tient le parc neuf au lieu de l eteindre. Son evenement est compte a part, par
+	// `filmdec.UnknownFormatExpvarPairs` (`filmdec_unknown_format_<n>`), parce qu un patch du
+	// jeu doit se voir tout de suite et non au comptage differe du registre.
+	CondFormatSansProfilRelu Condition = "format_sans_profil_relu"
 	// CondInconditionnel : le repli s applique TOUJOURS, sans diagnostic. C'est la forme la
 	// plus grave : rien ne dit si une lecture existait.
 	CondInconditionnel Condition = "inconditionnel"
@@ -265,7 +273,7 @@ var (
 		CondFilmMuet: true, CondSectionAbsente: true, CondLectureNonPortee: true,
 		CondContradiction: true, CondNonResolu: true, CondInconditionnel: true,
 		CondCarteAbsenteDuCatalogue: true,
-		CondBuildSansProfilRelu:     true,
+		CondFormatSansProfilRelu:    true,
 	}
 	ordresConnus = map[Ordre]bool{
 		OrdreApresLecture: true, OrdreSansLecture: true, OrdreDevantLaLecture: true,

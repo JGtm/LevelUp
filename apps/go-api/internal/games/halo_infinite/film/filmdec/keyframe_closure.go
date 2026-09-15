@@ -122,7 +122,7 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	// mesuree au decoupage d un AUTRE build. Un build inconnu ne change rien et n est pas une
 	// erreur ICI : la mesure continue au defaut de paquet, et c est la PRODUCTION qui doit
 	// mettre le film de cote (D-4). L appelant detient `LockProcessDecode`.
-	if restore, err := InstallBuildProfileMPP(fc.Film()); err == nil {
+	if restore, err := InstallFilmFormatMPP(fc.Film()); err == nil {
 		defer restore()
 	}
 	stats := map[uint32]KeyframeClosureStat{}
