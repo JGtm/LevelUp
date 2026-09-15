@@ -432,6 +432,7 @@ func (s *ExplorerService) buildTargetProfile(
 		identityRaw        *domain.HomeSpartanIdentityRow
 		careerStats        *domain.NormalizedPlayerStats
 		topMedals          []domain.MedalDigestItem
+		topMedalsLocal     []domain.MedalDigestItem
 		seasonCSRs         []domain.CareerPlaylistCSR
 		matchsPerSea       []domain.SeasonMatchCount
 		sampleStats        *domain.ExplorerTargetSampleStats
@@ -480,6 +481,10 @@ func (s *ExplorerService) buildTargetProfile(
 	})
 	g.Go(func() error {
 		combatProfileLocal = s.computeTargetCombatProfileLocal(gctx, targetXUID)
+		// Top médailles de la MÊME liste de matchs (séquentiel car dépendant) :
+		// le toggle "Local" de la section doit servir des médailles calculées sur
+		// l'échantillon local, pas les médailles lifetime du service record.
+		topMedalsLocal = s.computeTargetTopMedalsLocal(gctx, targetXUID, combatProfileLocal)
 		return nil
 	})
 
@@ -500,6 +505,7 @@ func (s *ExplorerService) buildTargetProfile(
 		Identity:           identity,
 		CareerStats:        careerStats,
 		TopMedals:          topMedals,
+		TopMedalsLocal:     topMedalsLocal,
 		SeasonCSRs:         seasonCSRs,
 		MatchesPerSeason:   matchsPerSea,
 		SampleStats:        sampleStats,

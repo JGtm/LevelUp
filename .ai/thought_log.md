@@ -108742,3 +108742,46 @@ l'utilisateur. Lot 1 (`feat/quantum-projectiles`) et lot 2 (`feat/mapquant-forge
 indépendants et parallélisables en worktrees dédiés. Le sous-lot 1C décide du sort de la précision
 par arme pour les armes à projectile : succès vers un plan séparé, échec vers le registre des
 reports, la remise du 01/09 restant en l'état.
+
+## [2026-09-15] Explorer — le top medailles du profil de combat suit le toggle En direct / Local — Complete
+
+**Decision technique** : la section « Profil de combat » (mode Joueur) servait deux sources de
+matchs derriere un toggle, mais le bloc « Top medailles » restait cable en dur sur
+`target_profile.top_medals`, c'est-a-dire les medailles a vie du service record live — un
+echantillon de vingt matchs locaux affichait donc les compteurs d'une carriere entiere. Nouveau
+champ `ExplorerTargetProfile.TopMedalsLocal` (`top_medals_local`), agrege sur EXACTEMENT les
+`match_id` de `combat_profile_local` : nouvelle methode de lecture `GetTopMedalsForMatches`
+(SUM(count) par `medal_name_id` sur `shared.medals_earned`, tri decroissant, departage par
+identifiant croissant, borne `explorerTopMedalsCap`), calquee sur `GetTopWeaponsForMatches`.
+Le mapping identifiant → medaille affichable N'EST PAS duplique : le service reutilise
+`buildTargetTopMedals`, donc libelles, difficultes, images et cap sont ceux du chemin a vie.
+Ecrite dans un fichier neuf (`explorer_repo_medals.go`) plutot qu'ajoutee a `explorer_repo.go`,
+deja a 650 lignes : la dette gelee ne s'accroit pas. Le calcul est enchaine dans la goroutine qui
+produit deja le profil local (dependance sequentielle reelle), best-effort : erreur loguee en
+`slog.WarnContext` puis degradation en liste vide, jamais fatale pour l'encart. Cote web,
+`ExplorerCombatProfile` choisit `source === 'live' ? topMedals : topMedalsLocal` et le bloc
+disparait quand la source retenue n'a aucune medaille — pas de cadre vide. Titre du bloc inchange.
+
+**Resultats observes** : Go — `go test ./internal/service/... ./internal/platform/duckdb/...
+./internal/domain/... ./internal/port/...` vert (17 paquets, dont `service` 74 s et
+`platform/duckdb` 257 s) ; le test de requete est sous `//go:build integration` comme ses voisins
+(`newTestPlayerDB` y vit) et passe en 4 s, quatre sous-cas : agregat trie avec exclusion du match
+hors liste ET de l'autre joueur, borne `limit`, entrees vides (trois formes) → nil, xuid sans
+medaille → vide. Le test service passe par `buildTargetProfile` (et non par la sous-fonction) pour
+verifier le champ reellement porte par la reponse : vide quand le profil local est vide, enrichi
+sinon (libelle + image identiques au chemin a vie), et vide sans casser le profil local quand la
+lecture echoue. `go vet` propre sur les paquets touches, avec et sans le tag `integration`.
+Contrat : `openapi-gen` ajoute les six lignes de `top_medals_local`, `generate-types` une ligne
+dans `generated.ts` (`types.ts` re-exporte, rien a y toucher). Web — `make check-types` propre ;
+la suite complete passe a 713 fichiers / 7668 tests, 1 fichier et 17 tests ignores, zero echec.
+
+**Piege rencontre** : au delai par defaut de vitest (5 s), treize fichiers de garde-rails qui
+balaient `src/` tombent en timeout dans ce worktree frais — pas une regression : les sept
+identifies passent tous en 8,6 s des que le delai est releve, et la suite entiere est verte a
+`--testTimeout=60000`. C'est le cout du premier balayage a froid d'un arbre neuf, a garder en tete
+avant de conclure au rouge sur un worktree qui vient d'etre cree.
+
+**Conclusion / prochaine etape** : livre sur `wt/explorer-medals-local`, non pousse, non fusionne.
+Reserve unique : les deux listes ne sont pas comparables (carriere vs echantillon local) et l'UI
+ne le dit pas — le titre du bloc reste « Top medailles » dans les deux cas, conformement a la
+demande. Si l'ambiguite gene a l'usage, la suite naturelle est un sous-titre porte par le toggle.
