@@ -2457,18 +2457,14 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       mutation par catalogue faussé, jouée des deux côtés. (4) `[x]` révisions, population chiffrée.
       (5) `[~]` sans objet : aucun contrat publié ne change, `openapi.yaml` n'est pas touché (`git
       status` collé en §5).
-- [ ] 1.9.3 **Le couple (tueur, victime) lu au kill-event 85, plus recollé sur le voisin.**
+- [x] 1.9.3 **Le couple (tueur, victime) lu au kill-event 85, plus recollé sur le voisin.**
       `internal/games/halo_infinite/film/killsource/feed.go:162` (`reconstructPairs`, fenêtre de
       2 instants) contre `killsource/eventchain.go:242` (`readKillEvent`, victime ET tueur dans le
       même enregistrement, déjà PORTÉ mais lu pour le seul assistant). Gain : **64 couples sur 372**
       cessent d'être une reconstruction ; supprime la fabrication d'un couple quand la vraie victime
       est un bot (`feed.go:149-151`). M.
 
-      **CODE LIVRÉ ET GATES SANS DÉCODAGE VERTS le 2026-09-15 (branche `feat/decfilm-193`). Case
-      laissée OUVERTE : les deux gates de décodage (`replay-equiv` régime court,
-      `replay-corpus-gate`) n'ont PAS été joués — la machine était réservée à l'exécuteur du lot
-      1.9.1 bis (consigne du pilote). Ils sont le seul reste, et c'est eux qui statuent
-      `SchemaVersion`.**
+      **FAIT le 2026-09-15 (branche `feat/decfilm-193`), GATES DE DÉCODAGE COMPRIS.**
 
       **LA MESURE AVANT DE CODER — 21 FILMS ENTIERS PLUS LA BOBINE VERSIONNÉE.** Instrument
       versionné `killsource/e193_couple_evenement_mesure_research_test.go` (garde `CHUNK00_FILMS`
@@ -2550,11 +2546,49 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       MOUVEMENT, et il a lieu le 15)*. Le ratchet d'empreinte a **rougi de lui-même** au commit du
       décodeur (« LE DECODEUR A CHANGE », `729624c1…` -> `ed7e45ca…`) : preuve par mutation
       naturelle, aucune mutation artificielle nécessaire. **`GrammarRev` grammar-2026-09-15.2 ->
-      `grammar-2026-09-15.3`** (l'ensemble haché porte `killsource/`). **`SchemaVersion` : NON
-      STATUÉE** — aucun champ ni aucune forme de l'artefact ne change (`CoupleStats` vit dans
-      `killsource.Stats`, pas dans le document), mais une ligne de kill bouge sur `4f77afc1` :
-      c'est l'équivalence (étapes `killsource` et `artifact`) qui tranche, et elle attend la voie
-      libre.
+      `grammar-2026-09-15.3`** (l'ensemble haché porte `killsource/`). **`SchemaVersion` : **59, INCHANGÉE**, et
+      c'est MESURÉ et non raisonné — voir le bloc « les deux gates de décodage » ci-dessous.
+
+      **LES DEUX GATES DE DÉCODAGE, JOUÉS LE 2026-09-15 SUR SIGNAL DU PILOTE (voie libre).**
+
+      **ÉQUIVALENCE, régime court (10 films).** La classification a été faite AVANT tout `-update`,
+      en mode ENFANT (un film par processus, `-child -film <short8> -out <fichier>`), en comparant
+      chaque `.tsv` produit à sa référence : **10 films sur 10, UNE SEULE étape bouge, `killsource`**
+      — les 52 autres sont identiques à l'octet, **`artifact` compris (longueur ET sha)**, ainsi que
+      `killRefs`, `neutralDeaths` et `deaths`. Puis `-update` en DEUX sous-ensembles séquentiels :
+      `git diff` des références rend **10 `+killsource` / 10 `-killsource` et rien d'autre**, une
+      ligne par fichier. Passe de comparaison : **10/10 identiques**. **CE QUI BOUGE EST LA FORME DE
+      L'OBJET OBSERVÉ, PAS SON CONTENU** — `replaybuild.observe("killsource", ksRes)` hache le
+      `Result` ENTIER et `Stats.Couples` est un champ neuf ; `killRefs`, `neutralDeaths` et `deaths`
+      sont des PROJECTIONS du même `Result`, et elles ne bougent pas d'un bit. C'est mot pour mot le
+      motif du lot 1.8 (découverte D4 (1.8)).
+
+      **CORPUS GATE, `--base=9848b7387` sans `--manifest`, 28 cuissons, 14 témoins : SORTIE 0, ZÉRO
+      PERTE, ZÉRO GAIN, schéma 59 des deux côtés.** `bcb6d393` 16,2 s · `fb1a1a72` 33,0 s ·
+      `d9781168` 24,6 s · `c75f33b8` 14,6 s · `bf15f7ab` 14,0 s · `51ebbc0f` 18,2 s · `084a804d`
+      1 min 51 · `0797ce72` 13,1 s · `111fa685` 47,3 s · `e5adf7b2` 39,6 s · `60ae07c4` 25,3 s ·
+      `a349fea8` 2 min 36 · `bfecd02b` 19,5 s · `4f77afc1` 1 min 39.
+
+      **ET ZÉRO PERTE NE SUFFISAIT PAS À STATUER `SchemaVersion` : LE BILAN IMPRIMÉ NE PORTE QUE
+      `gains` ET `pertes`, JAMAIS `changements`.** `replaydiff.BilanAxe` compte quatre catégories et
+      le tableau n'en montre que deux ; `pertesDetail` du rapport JSON ne retient que PERTE et
+      DISPARU (D5 (1.9.3) en §4). Sur le seul film dont un couple change — `4f77afc1` — un
+      `changement` serait donc resté invisible. **TRANCHÉ PAR COMPARAISON OCTET POUR OCTET DES DEUX
+      ARTEFACTS CUITS** (gate rejoué sur manifeste réduit avec `--work-root` et `--keep-work`, puis
+      `cmp`) : **10 526 185 octets de chaque côté, sha256
+      `62979da9924702d3a826c585ea7bf6a38752ad089164978ff142b7f79660a476` IDENTIQUE, `cmp` muet.**
+      `SchemaVersion` reste donc à **59**, aucune chaîne complète, aucun `openapi.yaml` à régénérer
+      (`git status` le confirme : ni `api/openapi.yaml` ni `apps/web/` ne sont touchés).
+
+      **POURQUOI LA LIGNE NE BOUGE PAS ALORS QUE LE COUPLE CHANGE, ET C'EST VÉRIFIÉ PAR GREP.**
+      L'instant que le recollage fabriquait sortait DÉJÀ en [`OriginBot`] avec le nom du bot : le
+      couple fabriqué entrait dans `pairs`, puis `resolveBotDeaths` le reclassait en mort de bot et
+      `ghostPairs` le RETIRAIT du dénominateur. Ce que le lot change est donc la CLASSIFICATION
+      interne et les dénominateurs `Coverage.ReconstructedPairs` / `GhostPairs` — et ceux-là ne sont
+      consommés QUE par la CLI de diagnostic `cmd/killsource` (grep : aucun autre appelant hors du
+      paquet), jamais par le document ni par la base. Le gain du lot reste ce qu'il est : la victime
+      est désormais NOMMÉE PAR LE FILM au lieu d'être devinée, et la mort du voisin cesse d'être
+      consommée à tort.
 
       **POPULATION DU PARC.** Oracle `data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb`
       (lecture seule, `cmd/diag_q`) : **1 384 matchs** portent des lignes de kill, **tous** sous une
@@ -2567,9 +2601,10 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       rejoués. (2) `[x]` le kill-event décide, le recollage devient un repli nommé et compté, la
       fabrication sur victime bot est supprimée. (3) `[x]` deux mutations jouées et restaurées.
       (4) `[x]` révision montée, ratchet rouge de lui-même, golden `minibobine.golden` régénéré par
-      sa porte nommée — **UNE seule ligne change**, attribuée. (5) `[!]` **NON STATUÉ, en attente de
-      voie libre** : `SchemaVersion` ne se décide que par l'équivalence, et les deux gates de
-      décodage sont réservés par le pilote.
+      sa porte nommée — **UNE seule ligne change**, attribuée. (5) `[x]` **`SchemaVersion` STATUÉE À 59** par
+      les deux gates de décodage joués le même jour, et par la comparaison octet pour octet des
+      deux artefacts de `4f77afc1` — le seul film dont un couple change. Aucune chaîne complète,
+      aucun `openapi.yaml` régénéré : rien du contrat publié ne bouge.
 - [ ] 1.9.4 **La carte du film vient du nom de match, plus d'une signature de largeurs.**
       `internal/sync/killcollector/hits.go:151` appelle `DetectFilmWorldRange(dir, path, "")` alors
       que le même collecteur résout le nom de carte à `positions.go:210` et que le paramètre
@@ -3098,6 +3133,7 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-15 | 1.9.3 | **D2 (1.9.3) — LA FENÊTRE DE 2,5 s SURVIT, ET ELLE EST MAINTENANT DU CÔTÉ DE LA LECTURE.** `tolMS` ne décide plus le COUPLE, mais il reste le seul moyen de rapprocher un kill-event d'un instant du kill-feed : la lecture le franchit pour trouver son enregistrement. Le lot le rend inoffensif en consommant d'abord les couples écrits au même instant (mesure : 13 ambigus -> 1), il ne le supprime pas. C'est exactement l'objet du lot 1.9.7, qui remplacera la fenêtre par l'identité de paquet `(chunk, pidx)` — que `killEventRec` porte DÉJÀ (`assist.go`) et que `Kill` ne transporte pas. **NON TRAITÉ.** | lot 1.9.7 (dead-state et kill-feed appariés par l'identité de paquet) |
 | 2026-09-15 | 1.9.3 | **D3 (1.9.3) — `CoupleStats.Contradiction` VAUT ZÉRO SUR LES 21 FILMS, ET SA BRANCHE N'EST EXERCÉE QUE PAR UN TEST.** Le cas « le film nomme une victime HUMAINE dont aucun instant voisin ne porte la mort » est prévu (la lecture prime, le xuid vient de la table du feed, l'écart se compte) mais ne se produit sur aucun film du corpus — cohérent avec « le kill-feed est humain-seul et porte TOUTES les morts humaines ». Le compteur existe pour que ce zéro soit MESURÉ et non construit. **NON TRAITÉ** (rien à corriger ; écrit pour qu'un futur lot ne prenne pas ce zéro pour une absence de code). | sans objet ; le compteur alerte si un build le fait bouger |
 | 2026-09-15 | 1.9.3 | **D4 (1.9.3) — LE BACKLOG DE REDÉCODAGE N'EST PAS ÉLARGI, IL EST LE MÊME QU'AU LOT 1.8.** L'oracle (`pre-chaine-2026-09-09`, lecture seule) montre 1 384 matchs porteurs de lignes de kill, **aucun** sous `killsource-2026-09-14` : la recuisson que 1.8 a inscrite n'a pas été jouée (D6). La montée `-> killsource-2026-09-15` ne recrute donc aucun match supplémentaire. **NON TRAITÉ** — geste de production, réservé au pilote. | bloc « Clôture M1 », point 4 |
+| 2026-09-15 | 1.9.3 | **D5 (1.9.3) — LE BILAN DU CORPUS GATE N'IMPRIME QUE `gains` ET `pertes` ; LA CATÉGORIE `changements` N'APPARAÎT NULLE PART.** `replaydiff.BilanAxe` compte QUATRE catégories (`Pertes`, `Gains`, `Changements`, `Identiques`) et `bilanDepuisRapport` (`report.go:51`) n'en remonte que deux ; `PertesDetail` (`report.go:41`) ne retient que les sens PERTE et DISPARU. Conséquence : une valeur publiée qui CHANGE sans perdre ni gagner — exactement ce qu'un lot de conversion produit — sort « 0 / 0 » et se lit comme « rien n'a bougé ». Le lot l'a contourné par une comparaison octet pour octet des deux artefacts cuits (`--work-root` + `--keep-work` puis `cmp`), mais le gate lui-même ne le dit pas. **NON TRAITÉ** (règle 7). | lot de durcissement des gates (candidat au jalon M2) : imprimer `changements` dans le tableau, ou faire porter au rapport JSON le détail des trois sens |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -3570,7 +3606,10 @@ cable) » dit que le compteur n'existe pas encore, ce qui n'est PAS un zero (cf.
 | 2026-09-15 | 1.9.3 (gates communs §2.3) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` et `go test -count=1` sur `./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/replaybuild/ ./internal/sync/killcollector/ ./internal/analysis/objectiveevents/ ./internal/domain/replaydoc/` (CGO_ENABLED=1, msys64/ucrt64 en tête du PATH) | **gofmt vide ; vet 0 diagnostic ; 13 paquets `ok`** — `filmdec` 31,9 s, `replay` 17,8 s, `archlint` 14,4 s, `killsource` 1,1 s, `replaybuild` 0,9 s, `killcollector` 0,1 s, `objectiveevents` 0,5 s, `fallback` 0,2 s ; `domain/replaydoc` sans test |
 | 2026-09-15 | 1.9.3 (gate intégration, le diff touche `internal/sync/`) | ce commit | `CGO_ENABLED=1 go test -tags=integration -p 1 ./internal/sync/killcollector/ -count=1` | **`ok  levelup/go-api/internal/sync/killcollector  14.255s`, code de sortie 0** |
 | 2026-09-15 | 1.9.3 (lint baseline) | ce commit | `make -C ../.. go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **`0 issues.`** — aucune dette ajoutée, aucune allowlist élargie |
-| 2026-09-15 | 1.9.3 (gates de décodage) | — | `replay-equiv` régime court et `replay-corpus-gate` | **NON JOUÉS — EN ATTENTE DE VOIE LIBRE.** Consigne du pilote : la machine était réservée à l'exécuteur du lot 1.9.1 bis. Attendu à consigner quand ils tourneront : l'étape `killsource` DIFFÉRENTE sur les 10 films du régime court (la FORME de l'objet observé change — `Stats.Couples` est neuf —, comme au lot 1.8 où 10/10 bougeaient sans qu'aucune ligne ne bouge), classification par film et par ligne AVANT tout `-update`, puis passe de comparaison ; corpus gate `--base=9848b7387` sans `--manifest` : zéro perte sur kills / morts / sources, le seul mouvement attendu étant sur `4f77afc1` (la victime bot nommée). C'est l'équivalence qui STATUE `SchemaVersion` |
+| 2026-09-15 | 1.9.3 (équivalence — CLASSIFICATION AVANT TOUT `-update`) | ce commit | `replay-equiv -child -film <short8> -out <fichier> -repo-root C:/…/LevelUp-wt-decfilm-193` pour chacun des 10 films de l'échantillon court, UN PAR PROCESSUS, puis `diff` de chaque `.tsv` contre sa référence | **10 films sur 10 : UNE SEULE étape différente, `killsource`** (`50247b26`, `a521164d`, `60ae07c4`, `11de8353`, `111fa685`, `e5adf7b2`, `bcb6d393`, `fb1a1a72`, `51101d1d`, `d9781168` — 1 étape sur 53 chacun). **Les 52 autres sont identiques à l'octet**, vérifié nommément sur `artifact` (`111fa685` 5 935 757 o sha `8f123555…` des deux côtés ; `d9781168` 2 641 712 o sha `1ca74549…`), `killRefs`, `neutralDeaths` et `deaths`. Cause : la FORME de l'objet observé change (`observe("killsource", ksRes)` hache le `Result` entier, `Stats.Couples` est neuf), pas son contenu — les trois projections du même `Result` ne bougent pas d'un bit. Motif identique au lot 1.8 (D4 (1.8)) |
+| 2026-09-15 | 1.9.3 (équivalence — re-figeage puis comparaison) | ce commit | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-decfilm-193 -films <5 films> -update` en DEUX sous-ensembles séquentiels, puis les deux mêmes SANS `-update` | `-update` : **5 + 5 identiques, 0 différent, 0 écarté, 0 échec**. `git diff` des références : **10 fichiers, 10 `+killsource` / 10 `-killsource` ET RIEN D'AUTRE** (1 insertion, 1 suppression par fichier). Passe de comparaison : **5 + 5 identiques, 0 différent** |
+| 2026-09-15 | 1.9.3 (corpus gate, 14 témoins) | ce commit | `replay-corpus-gate --base=9848b7387 --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-193` (SANS `--manifest`), 28 cuissons | **SORTIE 0 — ZÉRO PERTE, ZÉRO GAIN sur les 14 témoins, schéma 59 des deux côtés.** `bcb6d393` ctf_mono_manche 0/0 16,2 s · `fb1a1a72` ctf_multi_manche 0/0 33,0 s · `d9781168` oddball 0/0 24,6 s · `c75f33b8` assaut_bombe 0/0 14,6 s · `bf15f7ab` slayer 0/0 14,0 s · `51ebbc0f` deux_manches 0/0 18,2 s · `084a804d` vehicules 0/0 1 min 51 · `0797ce72` region_index_2_bits 0/0 13,1 s · `111fa685` version_39 0/0 47,3 s · `e5adf7b2` version_40_build_1_11 0/0 39,6 s · `60ae07c4` version_37 0/0 25,3 s · `a349fea8` version_33_sans_identification 0/0 2 min 36 · `bfecd02b` vehicules_v41_utilisateur 0/0 19,5 s · **`4f77afc1` equipement_origine_utilisateur 0/0 1 min 39** — le seul film dont un couple change |
+| 2026-09-15 | 1.9.3 (SchemaVersion — ZÉRO PERTE NE SUFFISAIT PAS) | ce commit | gate rejoué sur manifeste RÉDUIT (`4f77afc1` seul, hors dépôt) avec `--work-root` et `--keep-work`, puis `cmp` et `sha256sum` des DEUX artefacts cuits | **LE BILAN IMPRIMÉ NE PORTE QUE `gains` ET `pertes`** : `replaydiff.BilanAxe` compte aussi `Changements`, que ni le tableau ni `pertesDetail` ne remontent (D5 (1.9.3) en §4) — sur le seul film dont un couple change, un `changement` serait resté invisible. **VERDICT PAR LES OCTETS : base et HEAD rendent 10 526 185 octets, sha256 `62979da9924702d3a826c585ea7bf6a38752ad089164978ff142b7f79660a476` des DEUX côtés, `cmp` muet — IDENTIQUES À L'OCTET.** Donc **`SchemaVersion` = 59, INCHANGÉE** ; aucune chaîne complète, aucun `openapi.yaml` régénéré (`git status` : ni `api/openapi.yaml` ni `apps/web/` touchés). Racine de travail supprimée après mesure (529 Mio), verrou de décodage rendu, 0 processus de décodage restant |
 
 | `repli_ancre_sans_vie_delta_ecartee` | `games/halo_infinite/film/filmdec/equipment_creation_width.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 3.x (largeurs de creation par build, la calibration disparait) |
 | `repli_armement_bombe_debut_a_zero` | `games/halo_infinite/film/replay/bomb_armings.go` | non_resolu / apres_lecture | **câblé** | **0 sur 10** | lot de conversion de l'origine du rejeu (coverage.originResolved) |
