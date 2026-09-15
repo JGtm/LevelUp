@@ -1939,9 +1939,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Liste d'amis du joueur (lecture : propriétaire, co-membre de groupe ou admin) */
+        /** Friends list of the player (readable by the owner, a group co-member or an admin) */
         get: operations["getPlayerFriends"];
-        /** Remplace la liste d'amis du joueur (propriétaire direct ou admin) */
+        /** Replaces the player friends list (direct owner or admin only) */
         put: operations["putPlayerFriends"];
         post?: never;
         delete?: never;

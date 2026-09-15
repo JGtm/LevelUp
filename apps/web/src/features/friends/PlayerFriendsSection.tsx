@@ -18,6 +18,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { AddFriendModal } from './AddFriendFlow'
 import { usePlayerFriends, useUpdatePlayerFriends } from './queries'
+import { friendsErrorMessage } from './errors'
 
 type FriendsT = (key: CommonManifestKey, vars?: Record<string, unknown>) => string
 
@@ -43,7 +44,7 @@ export function PlayerFriendsSection() {
       friends.filter((f) => f.toLowerCase() !== gt.toLowerCase()),
       {
         onSuccess: () => toast.success(t('common.friends.removed', { gamertag: gt })),
-        onError: () => toast.error(t('common.friends.save_error')),
+        onError: (err) => toast.error(friendsErrorMessage(err, locale)),
       },
     )
   }

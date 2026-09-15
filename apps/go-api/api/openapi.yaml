@@ -3340,7 +3340,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
           description: Error
-      summary: 'Liste d''amis du joueur (lecture : propriétaire, co-membre de groupe ou admin)'
+      summary: Friends list of the player (readable by the owner, a group co-member or an admin)
       tags:
         - friends
     put:
@@ -3364,7 +3364,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
           description: Error
-      summary: Remplace la liste d'amis du joueur (propriétaire direct ou admin)
+      summary: Replaces the player friends list (direct owner or admin only)
       tags:
         - friends
   /players/{player_slug}/matches/{match_id}:
