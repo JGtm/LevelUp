@@ -1,3 +1,50 @@
+## [2026-09-16] Chantier decodeur — lot 1.9.1 ter (la condition versionnee des films anciens : la cle est la VERSION DE FORMAT ecrite dans le film) — Complete (feat/decfilm-191t fusionnee dans feat/recherche-decodeur-film, 8d7350dac)
+
+**Decision technique principale.** Le chargeur de la section 2 de `chunk_00` est trouve chez
+l'ecrivain : `FUN_14299ab50` (lecture) lit le registre et la table par type a des largeurs derivees
+du SECOND u32 de `chunk_00` (`film+4`), par deux `std::map` relues (`FUN_141cfff30`,
+`FUN_141cffe20` : blocs {13:47, 17:48, 18:49, 25:25} defaut 50 ; entrees {13:110, 16:113, 17:114,
+21:117, 22:118, 24:121, 25:122} defaut 123) — la forme mecanique du fait utilisateur : la grammaire
+des formats anciens EST dans l'executable courant, indexee par cette version de format. Porte :
+`filmdec/film_format_version.go`, `FilmIdentity.FormatVersion`, `mppWidthsPourFormat` remplace
+`mppWidthsPourBuild` (format 20 = les 5 films sans section ; 21..25 anciens 8/3 ; 27 recents 9/5,
+seuil ]25, 27]), `ErrUnknownFormat` ; le repli sur format inconnu est NOMME par sa vraie cle
+(`format_sans_profil_relu`, ex-`build_sans_profil_relu`), COMPTE (`filmdec.UnknownFormatExpvarPairs`
+-> `filmdec_unknown_format_<n>`, cable dans `replay/mpp_format_inconnu.go` aux deux sites du registre)
+et signale par un `slog.Warn` par film — un patch du jeu n'eteint pas le decodeur (largeurs
+calibrees) et se voit en prod. La personnalisation de la table des joueurs reste keyee par le
+BUILD (format 24 = HI_1_10_0 1492 o ET HI_1_9_0 / HI_1_8_0 1312 o : la mesure l'impose).
+`GrammarRev` .8 (1.9.4) + .9 (191t) -> .10 a la fusion ; `SchemaVersion` 59.
+
+**Resultats observes.** Les TROIS BITS des films anciens ne sont PAS une branche de version : les
+six sites de branche de `FUN_1428e1c0c` ont pour seuils 4 / 7 / 12 / 13-14 / 16, aucun dans la
+chaine de ti=37 ; la table par type ne discrimine pas (24 index varient, 0 separe) ; l'executable lit
+l'etat par defaut de ti=37 a l'identique pour un format 21 et un format 27. La seule condition de
+version sur le chemin du record : `FUN_142e2bfd0` @142e2c020, `si (7 < version) DAT_144706104 = R(1)`
+— un BIT DU FILM qui commande la table de plages de `FUN_1406d3140` (i10/i21/i22/i28), valeur non
+mesuree (D2 (1.9.1 ter), A TRAITER avant tout re-figeage du golden de fermeture). Distribution sur
+1 351 chunks : (41,27)x1123, (40,27)x146, (40,25)x39, (39,24)x26, (37,24)x10, (31,20)x3, (33,20)x2,
+(38,24)x1, (33,21)x1 — reproduit a l'unite la partition 1269/39/37/1 de `film_identity.go`. La table
+par type est alignee PAR LE DEBUT : le point de reprise du 1.9.1 bis (« douze positions par la fin »)
+est caduc (D4). Aucun bit lu ne change (les deux cles rendent le meme decoupage sur les 1 351
+films). Equivalence : classification avant tout `-update` : 0 identique, 10 differents, UNE seule
+etape sur 53 (`placements.stats` : `film_scan.go:329` hache la struct entiere, deux champs ajoutes,
+projections cuites inchangees — motif D4 (1.8)) ; `-update` sur les 10, `git diff` = 10 fichiers,
+10 lignes `placements.stats` et rien d'autre ; passe finale 10/10. Mutations : refus de format
+inconnu ; frontiere 8/3 - 9/5 deplacee -> rouge ; branche de production (bobine au format 28 ->
+largeurs calibrees + compteur +1 ; format 21 -> rien compte), refus sec force -> rouge, compteur
+retire -> rouge ; restaurees par nom. Gates : gofmt vide, vet 0 sans et avec `-tags research`, lint
+0 alerte ; arbre fusionne : build CGO, 14 paquets verts, vet research 0 ; `filmdec` sans tag 18,2 s.
+Verification du pilote (V8) : 3 commits, 32 fichiers, aucun > 500 L, aucune `var` de paquet dans
+`filmdec`, le comportement production sur format inconnu relu sur pieces
+(`filmdec/equipment_placements.go`, `replay/build_ground_weapons.go`). Six decouvertes au §4.
+
+**Prochaine etape.** Push + CI ; vague 2 (1.9.13 en gates de decodage ; 1.9.7, 1.9.9, 1.9.10,
+1.9.11 en cours) ; montee de schema 59 -> 60 UNE fois a la fusion de la vague ; 1.9.14 ; revue de
+jalon ; cloture M1.
+
+---
+
 ## [2026-09-16] Chantier decodeur — lot 1.9.4 (la carte du film vient du nom de match, plus d'une signature de largeurs) — Complete (feat/decfilm-194 fusionnee dans feat/recherche-decodeur-film, 83e6d9a29)
 
 **Decision technique principale.** Le NOM DE MATCH decide, en un seul site pour les deux passes :
