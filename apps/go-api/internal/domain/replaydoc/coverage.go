@@ -11,6 +11,7 @@ type Coverage struct {
 	Objectives        LayerCoverage               `json:"objectives"`
 	Tracks            *TrackCoverage              `json:"tracks,omitempty"`
 	Teams             *TeamCoverage               `json:"teams,omitempty"`
+	Seats             *SeatCoverage               `json:"seats,omitempty"`
 	Projectiles       *ProjectileCoverage         `json:"projectiles,omitempty"`
 	Equipment         *EquipmentCoverage          `json:"equipment,omitempty"`
 	Grapple           *GrappleCoverage            `json:"grapple,omitempty"`
@@ -184,6 +185,24 @@ type TeamCoverage struct {
 	// L4) plutot que de publier l'equipe du PREMIER occupant sur la vie du SECOND. Absent du
 	// document quand il vaut zero.
 	TracksSlotAmbiguous int `json:"tracksSlotAmbiguous,omitempty"`
+}
+
+// SeatCoverage est ce que la pose des SIEGES a lu et ce qu elle a APPARIE (lot 1.9.14).
+//
+// SON COUPLE CENTRAL EST `entrees` / `occupantsMax` : leur ECART est le nombre de fiches qu un
+// client retire de l ecran en n affichant que les occupants PRESENTS a l instant lu. `lus` et
+// `apparies` disent, eux, quelle part des sieges vient du film et quelle part d un repli.
+type SeatCoverage struct {
+	Entrees         int  `json:"entrees"`
+	Sieges          int  `json:"sieges"`
+	Lus             int  `json:"lus"`
+	Apparies        int  `json:"apparies"`
+	ReprisesEcrites int  `json:"reprisesEcrites"`
+	Arrivants       int  `json:"arrivants"`
+	PresencesCloses int  `json:"presencesCloses"`
+	SansPresence    int  `json:"sansPresence"`
+	OccupantsMax    int  `json:"occupantsMax"`
+	SansTableDuFilm bool `json:"sansTableDuFilm,omitempty"`
 }
 
 // TrackCoverage est ce que le SEUIL DE PUBLICATION des traces retient et refuse. Le refus était

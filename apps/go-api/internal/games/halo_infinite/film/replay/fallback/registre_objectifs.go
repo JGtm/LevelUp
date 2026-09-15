@@ -320,11 +320,17 @@ var registreObjectifsEtConstruction = []Repli{
 			Fichier: pkgReplaybuild + "replaybuild.go",
 			Ancre:   "if _, err := fmt.Sscanf(p.XUID, \"bid(%d.0)\", &id); err != nil {",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.14 (le remplacant prend le siege du partant)",
-		CritereRetrait:  "0 remplacant humain sans siege sur les temoins `e5adf7b2`, `bcb6d393`, `a521164d`, `11de8353`",
+		DatePose: dateAudit0E,
+		// CIBLE CORRIGEE AU LOT 1.9.14 (2026-09-15) : ce lot a mesure le critere et il est TENU —
+		// sur les quatre temoins, les 95 entrees de roster ont TOUTES un siege publie, donc zero
+		// remplacant humain sans siege. Mais ce repli ne porte PAS sur le siege : il porte sur le
+		// NOMMAGE des vies anonymes d'un relais de bot (`replaybuild.botSuccessions`), que le lot
+		// 1.9.14 ne touche pas. L'ancienne cible confondait les deux faits ; elle est remplacee
+		// par celle qui correspond au mecanisme.
+		CibleRetrait:    "le lot qui fera nommer les vies d'un relais par le registre d'identite plutot que par la participation de la base",
+		CritereRetrait:  "0 vie anonyme restante sur un siege de bot relaye, sur les 8 builds, sans passer par `Succession`",
 		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.14",
+		CibleComptage:   "le meme lot : le compteur n'a de sens qu'au site qui subsistera",
 	},
 	{
 		Nom:       "repli_participant_sans_xuid_retire",

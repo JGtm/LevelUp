@@ -168,7 +168,7 @@ var registreKillsource = []Repli{
 			Fichier: pkgKillsource + "feed_couples.go",
 			Ancre:   "func (res *resolveurDeCouples) repliRecollageSurLeVoisin(i int) {",
 		}},
-		DatePose:     "2026-09-15",
+		DatePose:     dateVague2,
 		CibleRetrait: "cloture de M1 puis lot 3.6 : la table du film doit couvrir 100 % des indices, et la chaine d'evenements ne doit plus s'arreter",
 		// MESURE DU LOT 1.9.3 (21 films entiers, 8 builds, 14 temoins) : 281 kills sans mort en
 		// face, 198 decides par la lecture (198 accords, 0 contradiction), 1 victime BOT nommee,

@@ -129,6 +129,17 @@ type RosterEntry struct {
 	// (schema 50). Vide pour un humain, et vide pour un bot dont la declaration ne portait pas
 	// d identifiant : un `bid(0.0)` invente joindrait deux bots distincts.
 	Bid string `json:"bid,omitempty"`
+	// Seat est LE SIEGE : la fiche que cette entree occupe a l ecran (lot 1.9.14). Il vaut
+	// `filmIndex` sauf quand l entree CONTINUE le siege d un partant ; `seatSource` dit alors si
+	// le film a ECRIT la reprise (`lu`) ou si un appariement ordinal l a deduite (`apparie`).
+	// Deux entrees de meme `seat` sont deux occupants SUCCESSIFS d une meme fiche, et leurs
+	// presences — les vies de `tracks[]` — ne se recouvrent pas.
+	//
+	// TOUJOURS EMIS : le siege 0 est un siege comme un autre, et `omitempty` l effacerait.
+	Seat int `json:"seat"`
+	// SeatSource : `lu` (l index que le film ecrit) ou `apparie` (l appariement ordinal par
+	// camp, un repli nomme et compte). Vide sur un artefact anterieur au lot 1.9.14.
+	SeatSource string `json:"seatSource,omitempty"`
 }
 
 // Shot est un tir décodé, placé à la position de son tireur.

@@ -61,7 +61,7 @@ var registreFilmdec = []Repli{
 			Fichier: "internal/games/halo_infinite/film/replay/build_ground_weapons.go",
 			Ancre:   "return calibrees",
 		}},
-		DatePose:     "2026-09-15",
+		DatePose:     dateVague2,
 		CibleRetrait: "l executable d un build <= HI_1_11_0, relu comme FUN_141fd72c0 l a ete pour HI_1_13_0 — ou un profil mesure par un oracle valide au-dessus du seuil de coincidence",
 		// POURQUOI CE REPLI EXISTE, ET POURQUOI CE N'EST PAS UNE DETTE ORDINAIRE.
 		// La grammaire du bloc MPP est VERSIONNEE PAR LA VERSION DE FORMAT de `chunk_00`

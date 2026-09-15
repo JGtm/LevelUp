@@ -58,4 +58,6 @@ const (
 	// rend son verdict en donnee pure ([objectiveevents.RoundsDecision]) et l'appelant, qui
 	// porte le compteur de la cuisson, le compte.
 	NomReplayMancheZeroDecretee Nom = "repli_manche_zero_decretee"
+	// NomSiegeDuRemplacantParAppariementOrdinal : `replay/sieges.go`, `poserLesSieges`.
+	NomSiegeDuRemplacantParAppariementOrdinal Nom = "repli_siege_du_remplacant_par_appariement_ordinal"
 )
