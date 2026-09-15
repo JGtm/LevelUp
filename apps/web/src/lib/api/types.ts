@@ -404,7 +404,6 @@ export interface SettingsResponse {
   spnkr_auto_sync_interval_minutes: number
   watcher_presence_enabled: boolean
   watcher_subscribed_players: string[]
-  friend_gamertags: string[]
   // --- Règles de sessions ---
   session_gap_minutes: number
   session_split_on_ranked_change: boolean
@@ -1378,7 +1377,7 @@ export interface TeammatesPageResponse {
   teammates: TeammateRow[]
   total_matches: number
   session_labels: SessionLabelsList
-  /** Nombre total d'amis configurés (settings.friend_gamertags). Sert au label UI "parmi N amis". */
+  /** Nombre total d'amis configurés du joueur. Sert au label UI "parmi N amis". */
   friends_count: number
   timeseries?: SquadTimeseriesPoint[]
   map_breakdown?: MapBreakdownRow[]

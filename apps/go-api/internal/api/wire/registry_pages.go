@@ -341,7 +341,7 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 	// session-usage S2) : gated par film.usage_summary (Infinite ; absente pour
 	// Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithSessionUsage(duckdb.NewSessionUsageRepo(pdb), pdb.XUID, r.friendGamertagsResolver(), r.cfg.RepoRoot)
+		svc = svc.WithSessionUsage(duckdb.NewSessionUsageRepo(pdb), pdb.XUID, r.friendGamertagsResolver(pdb.XUID), r.cfg.RepoRoot)
 	}
 	if pdb.Metadata != nil {
 		// Placement X/Y dans la colonne Rang : résolveur season_id → seuil CSR (5/10),
@@ -414,7 +414,7 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	// d'identifiants change d'une page à l'autre. Gated par film.usage_summary (absente
 	// pour Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver(), r.cfg.RepoRoot)
+		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver(pdb.XUID), r.cfg.RepoRoot)
 	}
 	return svc, nil
 }

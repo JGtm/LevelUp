@@ -1,6 +1,6 @@
 // friends.go — liste d'amis PAR PROFIL JOUEUR (clé : xuid).
 //
-// Remplace l'ancien réglage global `app_settings.friend_gamertags`, qui était UNE
+// Remplace l'ancien réglage global des amis dans app_settings, qui était UNE
 // liste pour toute l'instance : elle pilotait `is_with_friends` dans toutes les
 // player DBs et n'était lisible que par un admin (GET /settings). Les amis sont
 // désormais attachés au joueur consulté, pas à l'instance.

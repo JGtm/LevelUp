@@ -42,6 +42,7 @@ import (
 
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
@@ -658,6 +659,11 @@ func NewRouter(
 	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
 	jobsPath := titlePkg.NewPathResolver(cfg.RepoRoot).JobsCachePath()
 	jobStore := jobs_platform.NewStore(jobsPath)
+	// Amis PAR JOUEUR (data/global/player_friends.json) : remplace l'ancien réglage
+	// global des amis dans app_settings. Même pattern que settingsStore ci-dessus
+	// (le boot en construit une seconde instance pour sa migration : fichier commun,
+	// écritures sérialisées par le rename atomique du store).
+	friendStore := friendstore.NewFriendStore(titlePkg.NewPathResolver(cfg.RepoRoot).PlayerFriendsPath())
 
 	// Auth locale : user store + invite store (mode password).
 	usersPath := filepath.Join(cfg.AuthDir, "users.json")
@@ -684,7 +690,8 @@ func NewRouter(
 		serverCtx: serverCtx, cfg: cfg, bootRepo: bootRepo, bootSvc: bootSvc, daemon: daemon,
 		tokenProvider: tokenProvider, autoSyncScheduler: autoSyncScheduler, backupScheduler: backupScheduler,
 		groupStore: groupStore, sessionStore: sessionStore, attemptStore: attemptStore,
-		settingsStore: settingsStore, jobStore: jobStore, users: users, invites: invites,
+		friendStore: friendStore, settingsStore: settingsStore, jobStore: jobStore,
+		users: users, invites: invites,
 		titleRegistry: titleRegistry, humaSharedConfig: humaSharedConfig,
 	})
 	reg := deps.reg

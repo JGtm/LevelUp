@@ -24,7 +24,7 @@ import { useTitleSlug } from '@/lib/title-routing'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useTeammates } from './queries'
-import { useSettings } from '@/features/settings/queries'
+import { useFriendGamertags } from '@/features/friends/queries'
 import { useFiltersPreview, useFiltersResolve } from '@/features/filters/queries'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
@@ -185,7 +185,7 @@ export function SquadLayout() {
   }
 
   const matchRoute = useMatchRoute()
-  const { data: settings } = useSettings()
+  const friendGamertags = useFriendGamertags(playerSlug)
 
   // ── Filtre multi-sessions escouade (persisté, appliqué immédiatement) ────
   const sessionStorageKey = `squad-sessions-${playerSlug}`
@@ -333,15 +333,15 @@ export function SquadLayout() {
 
   // ── Init coéquipiers depuis settings ────────────────────────────────────
   // Neutralisée en arrivée par deep-link (card session escouade) : la composition
-  // est alors imposée par la session, pas par les amis configurés par défaut.
+  // est alors imposée par la session, pas par les amis du joueur.
   useEffect(() => {
     if (deepLinkRef.current) return
-    if (settings?.friend_gamertags?.length && selectedGts.length === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- init de la composition à l'arrivée async des settings (garde deep-link + sélection vide) (2026-07-22)
-      setSelectedGts(settings.friend_gamertags.slice(0, MAX_SELECTION))
+    if (friendGamertags.length && selectedGts.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- init de la composition à l'arrivée async de la liste d'amis (garde deep-link + sélection vide) (2026-07-22)
+      setSelectedGts(friendGamertags.slice(0, MAX_SELECTION))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.friend_gamertags])
+  }, [friendGamertags])
 
   // ── Requête TeammatesService ─────────────────────────────────────────────
   // match_context="squad" : le backend ne considère que les matchs is_with_friends=true.
@@ -890,6 +890,7 @@ export function SquadLayout() {
 
       {addFriendGamertag && (
         <AddFriendModal
+          playerSlug={playerSlug}
           gamertag={addFriendGamertag}
           open={!!addFriendGamertag}
           onClose={() => setAddFriendGamertag(null)}

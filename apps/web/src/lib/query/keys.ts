@@ -43,6 +43,8 @@ export const queryKeys = {
   settings: ['settings'] as const,
   // Groupes/familles (accès mutuel) — gestion end-user
   groups: ['groups'] as const,
+  // Amis d'un joueur (liste par profil, pas un réglage d'instance).
+  playerFriends: (playerSlug: string) => ['player-friends', playerSlug] as const,
 
   // Par joueur (titleSlug en 2e segment — invariant structurel, cf. en-tête).
   // Le titre courant scope la clé (même motif que `home` ci-dessous) : la

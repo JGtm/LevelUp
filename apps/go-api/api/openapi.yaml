@@ -24031,10 +24031,6 @@ components:
           type: boolean
         discord_webhook_url_present:
           type: boolean
-        friend_gamertags:
-          items:
-            type: string
-          type: array
         lang:
           enum:
             - fr

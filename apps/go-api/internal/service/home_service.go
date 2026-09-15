@@ -76,7 +76,7 @@ type HomeService struct {
 	// Cf. home_squad_session_teammates.go.
 	sessionTeammatesLoader mainTeamParticipantsLoader
 	// sessionFriendsResolver (optionnel) : restreint les coéquipiers de session aux
-	// amis configurés (settings.friend_gamertags). nil → tous les coéquipiers alliés.
+	// amis configurés du joueur consulté. nil → tous les coéquipiers alliés.
 	sessionFriendsResolver teammates.FriendGamertagsResolver
 	// replaySvc (optionnel) : service de rejeu 2D — MÊME service que l'endpoint /replay
 	// et l'Explorer. Seul AvailableSet est appelé : un listing de dossier par requête,

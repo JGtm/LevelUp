@@ -345,7 +345,7 @@ func TestRecomputeIsWithFriendsCore_PlayerInFriendList(t *testing.T) {
 		squadMatchID = "m_squad_002"
 	)
 
-	// Seed shared : joueur dans xuid_aliases (il est aussi dans friend_gamertags)
+	// Seed shared : joueur dans xuid_aliases (il est aussi dans sa liste d'amis)
 	if _, err := sharedDB.Exec(`INSERT INTO xuid_aliases VALUES (?, ?), (?, ?)`,
 		playerXUID, playerGT, friendXUID, friendGT,
 	); err != nil {
@@ -372,7 +372,7 @@ func TestRecomputeIsWithFriendsCore_PlayerInFriendList(t *testing.T) {
 		t.Fatalf("seed player_match_enrichment: %v", err)
 	}
 
-	// friend_gamertags inclut le joueur lui-même (setup multi-joueurs complet).
+	// La liste d'amis inclut le joueur lui-même (setup multi-joueurs complet).
 	res, err := RecomputeIsWithFriendsCore(
 		context.Background(), playerDB, sharedDB, playerXUID,
 		[]string{playerGT, friendGT}, false,
