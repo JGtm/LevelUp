@@ -40,4 +40,4 @@ package filmdec
 // inchangee, empreinte differente » — c'est-a-dire faire taire le ratchet dans le cas precis
 // pour lequel il existe : une grammaire qui change. La forme admet donc un rang, et la revision
 // continue de nommer ce qu'elle nomme.
-const GrammarRev = "grammar-2026-09-15.3"
+const GrammarRev = "grammar-2026-09-15.4"
