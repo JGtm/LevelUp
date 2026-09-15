@@ -28,29 +28,49 @@ package fallback
 //
 // [Table] trie par nom. Le découpage en SIX fichiers (cinq jusqu au lot 1.9.4, qui a
 // scindé `registre_killsource.go` à 523 lignes) ne suit que la limite de 500 lignes du dépôt et
-// le paquet des sites.
+// le paquet des sites. Un septième fichier s'ajoute à [Tranches], et à rien d'autre.
+
+// Tranche est une famille du registre : son nom de lecture et les entrées qu'elle porte.
+//
+// ELLE EST EXPORTÉE PARCE QUE LE TEST QUI LA VÉRIFIE DOIT LIRE LA MÊME LISTE QUE L'ASSEMBLAGE.
+// Constat de la revue de jalon M1 (2026-09-15) : le test des familles en énumérait CINQ à la
+// main quand l'assemblage en concaténait SIX — `registreKillsourceCarte`, ajoutée au lot 1.9.4,
+// n'était vérifiée par rien, et la septième ne l'aurait pas été davantage. Une liste recopiée à
+// côté de celle qui décide finit toujours par diverger ; il n'y en a donc plus qu'une.
+type Tranche struct {
+	// Nom : le nom de lecture de la famille, tel que le rapport l'affiche.
+	Nom string
+	// Replis : les entrées déclarées par son fichier.
+	Replis []Repli
+}
+
+// Tranches rend les familles du registre, dans l'ordre des fichiers. C'est LA source : [registre]
+// en découle, et le test des familles la parcourt.
+func Tranches() []Tranche {
+	return []Tranche{
+		{"replay/equipement", registreReplayEquipement},
+		{"replay/identites", registreReplayIdentites},
+		{"killsource", registreKillsource},
+		{"killsource/carte", registreKillsourceCarte},
+		{"objectifs et construction", registreObjectifsEtConstruction},
+		{"filmdec", registreFilmdec},
+	}
+}
 
 // registre est LA table. Elle ne se modifie jamais à l'exécution : c'est une donnée de code,
 // au même titre qu'un catalogue versionné (D12).
-var registre = concat(
-	registreReplayEquipement,
-	registreReplayIdentites,
-	registreKillsource,
-	registreKillsourceCarte,
-	registreObjectifsEtConstruction,
-	registreFilmdec,
-)
+var registre = concat(Tranches())
 
 // concat aplatit les tranches déclarées par fichier. Écrite à la main plutôt qu'avec `append`
 // en chaîne : une entrée perdue dans un `append` mal parenthésé ne se verrait pas.
-func concat(parts ...[]Repli) []Repli {
+func concat(parts []Tranche) []Repli {
 	n := 0
 	for _, p := range parts {
-		n += len(p)
+		n += len(p.Replis)
 	}
 	out := make([]Repli, 0, n)
 	for _, p := range parts {
-		out = append(out, p...)
+		out = append(out, p.Replis...)
 	}
 	return out
 }
