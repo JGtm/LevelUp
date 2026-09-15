@@ -1,3 +1,44 @@
+## [2026-09-17] Chantier decodeur — vague 2 de la famille 1.9 fusionnee (1.9.10, 1.9.7, 1.9.11, 1.9.14, 1.9.9), schema 59 -> 60, gate unique de l integration — Complete (feat/recherche-decodeur-film d8d63461e)
+
+**Decision technique principale.** Regime de fusion groupe (feedback utilisateur : ne pas serialiser
+les gates, des items attendent derriere) : apres les gates individuels de 1.9.10 et 1.9.9 (corpus
+gate 14 temoins a 0 changement chacun, equivalence classee puis 10/10), les lots 1.9.7, 1.9.11 et
+1.9.14 ont ete fusionnes SANS gate individuel, et UN gate unique (equivalence 10 films + corpus
+gate 14 temoins, `--json`, `--keep-work`) a ete joue sur l arbre fusionne apres la montee de schema,
+classe lot par lot a partir des effets attendus ecrits par chaque executeur : equivalence : 0 identique, 10 differents, QUATRE etapes sur 53 — `killsource` 10/10 (1.9.7 + porte L4), `placements.stats` 10/10 (FORME, `placements` identique), `vehicles` 6/10 (FORME, 1.9.10), `artifact` 10/10 (contenu, schema 60) ; aucune autre etape ; re-figeage puis 10/10.
+Montee UNIQUE `SchemaVersion` 59 -> 60 (entree de chronique v60 : lacunes de piste, fin de vie de
+vehicule lue, familles nommees dont wraith / scorpion / tourelle, designateur de manche ecrit et
+contradiction publiee, siege = index de film, champs de la revue L4), golden de forme et 8 fixtures
+web regeneres par leurs ports nommes, `openapi.yaml` + `generated.ts` regeneres (regle corrigee :
+openapi se regenere PAR LOT, il ne depend pas de SchemaVersion). Revisions a la tete :
+`GrammarRev` .17 (chronique lineaire .11 -> .17, une entree par rang, ratchet
+`TestChroniqueCouvreLaRevisionCourante`), `KillSourceDecoderRev` `killsource-2026-09-16.2` (deux
+mouvements le meme jour : porte de publication de la revue, appariement par identite de paquet),
+ratchet des replis `devant_la_lecture` 6 -> 3, registre 96 -> 99 entrees.
+
+**Resultats observes.** A chaque fusion, les deux ratchets neufs de la revue M1 ont mordu et ont ete
+servis : `TestToutDeclenchementEstAUnSiteDuRegistre` (1.9.10, 1.9.11 : le compte est emis dans
+`replay/` alors que l entree ne citait que le site de decision -> second site inscrit avec sa
+condition), `TestAucuneCibleDeRepliNeNommeUnLotClos` (1.9.10, 1.9.9 : cibles visant un lot qui
+vient de se cocher -> reecrites vers 2.2 avec date et raison), `TestToutReplinNommeEstAuRegistre`
+(1.9.7 : variable locale `repli` -> `parLaFenetre`, couverture par fichier). Conflits resolus par
+script (plan : les deux cotes ; grammar_rev : chronique + rang suivant ; goldens d assemblage :
+regeneres par leur port ; references d equivalence : PROVISOIRES jusqu au gate unique). Gate
+unique : corpus gate 14 temoins `--base=6db15a9bc`, schema 59 -> 60 partout, 456 gains, 515 pertes classees (toutes : moins de vies et plus longues — `tracks/*`, `coverage.*tracks*`, `bridge.livesTotal` sur 13 temoins ; compteurs de defaut en baisse — `vehicles/par-end/unknown` 97 -> 92, `familyUnknown`, `placements.unknown`, `grapple.pullLives`, `ability*.noIdentity` ; 7 `disparu` = les chassis nommes `unknownChassis.{038df01a, ae845375, f6f54e56, 0001530a}` et `par-end/unknown` 11 -> 0 sur bfecd02b), AUCUNE perte sur points, bornes, tirs, grenades, kills, objectifs, drapeaux, score ni projectiles ; 3 changements (d9781168, 60ae07c4, 4f77afc1 : un chacun) de la categorie « compteur de methode ou reattribution » de `polarite.go` (ni gain ni perte par definition), NON nommes par le JSON du gate (D5 (1.9.9) : pas de detail des changements — durcissement M2), artefacts gardes sous `scratchpad/work_integ_v60`. Faits produits par la vague : le ghost 777 de `bfecd02b` est ECRIT detruit a
+274,0 s (8 s d epave repliquee) ; 20 morts de vehicule orphelines et 683 echantillons apres une
+fin ecrite comptes, non masques ; 92 vies sur 97 restent `unknown` sur `4f77afc1` (le film ne
+l ecrit pas) ; un vehicule porte un identifiant par module du jeu (wraith `0xae845375`, scorpion
+`0xf6f54e56`, confirmes par la killsource 37/40 et 4/4) ; 12 index ecrits pour 8 occupants sur
+`bcb6d393` = le defaut de roster constate par l utilisateur ; 14 prolongations reelles en
+designateur 1 contigu (13/14 a egalite) et 24 films a designateur 2 sans manche 1 (artefact de
+lecture, bit 23, M3) ; 2 205 appariements a identite egale, 0 desaccord, 692 sans identite (repli).
+
+**Prochaine etape.** Push + CI ; cloture M1 (V9) : regime complet (equivalence 20 films + corpus
+gate), fusion dans `feat/v75` (prevenir les sessions voisines), recuisson du parc, backlog
+killsource (1 384 matchs) ; puis fusion des lots M2 (2.1, 2.7g) en cours.
+
+---
+
 ## [2026-09-16] Chantier decodeur — revue de jalon M1 (deux rondes) et fusion du lot 1.9.10 — Complete (integration locale 2e8e62596, NON POUSSEE : montee de schema de la vague en attente)
 
 **Decision technique principale.** Revue adversariale de fin de jalon lancee EN PARALLELE des
