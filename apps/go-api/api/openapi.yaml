@@ -724,6 +724,25 @@ paths:
       summary: Diagnostic apparence Spartan ID — verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur suivi, à la demande (auth admin requis)
       tags:
         - admin
+  /admin/identities:
+    get:
+      operationId: getAdminIdentities
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminIdentitiesResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: 'Annuaire des joueurs : comptes, profils, credentials, suivi live et anomalies (auth admin requis)'
+      tags:
+        - admin
   /admin/invariants:
     get:
       operationId: getAdminInvariants
@@ -7366,6 +7385,21 @@ components:
       required:
         - status
       type: object
+    AccountRef:
+      additionalProperties: false
+      properties:
+        created_at:
+          type: string
+        last_login_at:
+          type: string
+        role:
+          type: string
+        username:
+          type: string
+      required:
+        - username
+        - role
+      type: object
     AccuracyPoint:
       additionalProperties: false
       properties:
@@ -7810,6 +7844,27 @@ components:
         - generated_at
         - titles
         - critical_total
+      type: object
+    AdminIdentitiesResponse:
+      additionalProperties: false
+      properties:
+        counts:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        generated_at:
+          type: string
+        identities:
+          items:
+            $ref: '#/components/schemas/IdentityRecord'
+          type:
+            - array
+            - "null"
+      required:
+        - generated_at
+        - identities
+        - counts
       type: object
     AdminInvariantsResponse:
       additionalProperties: false
@@ -8351,6 +8406,8 @@ components:
         role:
           type: string
         username:
+          type: string
+        xuid:
           type: string
       required:
         - username
@@ -14799,6 +14856,22 @@ components:
         spartan_id:
           type: string
       type: object
+    IdentityAnomaly:
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+        severity:
+          enum:
+            - warning
+            - info
+          type: string
+      required:
+        - code
+        - severity
+      type: object
     IdentityBipedSlot:
       additionalProperties: false
       properties:
@@ -14847,6 +14920,46 @@ components:
       required:
         - filmIndex
         - link
+      type: object
+    IdentityRecord:
+      additionalProperties: false
+      properties:
+        account:
+          $ref: '#/components/schemas/AccountRef'
+        anomalies:
+          items:
+            $ref: '#/components/schemas/IdentityAnomaly'
+          type:
+            - array
+            - "null"
+        gamertag:
+          type: string
+        orphan_dirs:
+          items:
+            $ref: '#/components/schemas/OrphanDirRef'
+          type:
+            - array
+            - "null"
+        profiles:
+          items:
+            $ref: '#/components/schemas/ProfileRef'
+          type:
+            - array
+            - "null"
+        token:
+          $ref: '#/components/schemas/TokenRef'
+        watched:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        xuid:
+          type: string
+      required:
+        - profiles
+        - watched
+        - anomalies
       type: object
     IdentitySection:
       additionalProperties: false
@@ -19909,6 +20022,17 @@ components:
         - fwdX
         - fwdY
       type: object
+    OrphanDirRef:
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - name
+      type: object
     OutcomesPeriodPoint:
       additionalProperties: false
       properties:
@@ -21257,6 +21381,29 @@ components:
         - acceptance_rate
         - completion_rate
         - abandon_rate
+      type: object
+    ProfileRef:
+      additionalProperties: false
+      properties:
+        auth_only:
+          type: boolean
+        db_exists:
+          type: boolean
+        dir_exists:
+          type: boolean
+        key:
+          type: string
+        sync_enabled:
+          type: boolean
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - key
+        - sync_enabled
+        - auth_only
+        - dir_exists
+        - db_exists
       type: object
     ProgressionDiag:
       additionalProperties: false
@@ -28172,6 +28319,21 @@ components:
         - has_refresh_token
         - resolve_ok
         - refresh_token_was_rotated
+      type: object
+    TokenRef:
+      additionalProperties: false
+      properties:
+        has_refresh_token:
+          type: boolean
+        last_auth_error:
+          type: string
+        reauth_required:
+          type: boolean
+        updated_at:
+          type: string
+      required:
+        - has_refresh_token
+        - reauth_required
       type: object
     TopMatchDTO:
       additionalProperties: false

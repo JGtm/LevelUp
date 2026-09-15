@@ -409,6 +409,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Annuaire des joueurs : comptes, profils, credentials, suivi live et anomalies (auth admin requis) */
+        get: operations["getAdminIdentities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/invariants": {
         parameters: {
             query?: never;
@@ -4126,6 +4143,12 @@ export interface components {
             challenge_ids?: string[] | null;
             status: string;
         };
+        AccountRef: {
+            created_at?: string;
+            last_login_at?: string;
+            role: string;
+            username: string;
+        };
         AccuracyPoint: {
             /** Format: double */
             accuracy: number;
@@ -4285,6 +4308,13 @@ export interface components {
             critical_total: number;
             generated_at: string;
             titles: components["schemas"]["TitleFreshnessReport"][] | null;
+        };
+        AdminIdentitiesResponse: {
+            counts: {
+                [key: string]: number;
+            };
+            generated_at: string;
+            identities: components["schemas"]["IdentityRecord"][] | null;
         };
         AdminInvariantsResponse: {
             generated_at: string;
@@ -4481,6 +4511,7 @@ export interface components {
             last_login_at?: string;
             role: string;
             username: string;
+            xuid?: string;
         };
         AdminWeaponCoverage: {
             /** Format: double */
@@ -7215,6 +7246,12 @@ export interface components {
             highest_lusr?: components["schemas"]["HomeSkillPeakSummary"];
             spartan_id?: string;
         };
+        IdentityAnomaly: {
+            code: string;
+            detail?: string;
+            /** @enum {string} */
+            severity: "warning" | "info";
+        };
         IdentityBipedSlot: {
             bid?: string;
             link: components["schemas"]["Link"];
@@ -7233,6 +7270,16 @@ export interface components {
             filmIndex: number;
             link: components["schemas"]["Link"];
             name?: string;
+            xuid?: string;
+        };
+        IdentityRecord: {
+            account?: components["schemas"]["AccountRef"];
+            anomalies: components["schemas"]["IdentityAnomaly"][] | null;
+            gamertag?: string;
+            orphan_dirs?: components["schemas"]["OrphanDirRef"][] | null;
+            profiles: components["schemas"]["ProfileRef"][] | null;
+            token?: components["schemas"]["TokenRef"];
+            watched: string[] | null;
             xuid?: string;
         };
         IdentitySection: {
@@ -9392,6 +9439,10 @@ export interface components {
             /** Format: float */
             z: number;
         };
+        OrphanDirRef: {
+            name: string;
+            title_slug: string;
+        };
         OutcomesPeriodPoint: {
             /** Format: int64 */
             dnf: number;
@@ -9959,6 +10010,14 @@ export interface components {
             /** Format: int64 */
             rejected: number;
             source: string;
+        };
+        ProfileRef: {
+            auth_only: boolean;
+            db_exists: boolean;
+            dir_exists: boolean;
+            key: string;
+            sync_enabled: boolean;
+            title_slug: string;
         };
         ProgressionDiag: {
             /** Format: int64 */
@@ -12667,6 +12726,12 @@ export interface components {
             /** Format: int64 */
             spartan_token_len?: number;
         };
+        TokenRef: {
+            has_refresh_token: boolean;
+            last_auth_error?: string;
+            reauth_required: boolean;
+            updated_at?: string;
+        };
         TopMatchDTO: {
             /** Format: int64 */
             deaths: number;
@@ -14076,6 +14141,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAdminIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminIdentitiesResponse"];
+                };
             };
             /** @description Error */
             default: {

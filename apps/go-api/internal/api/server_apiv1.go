@@ -427,6 +427,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// seule du MultiUserTokenStore (ADR 0023), sans refresh réseau.
 		tokenHealthHandler := handlers.NewAdminTokenHealthHandler(reg.TokenHealth)
 		tokenHealthHandler.Mount(r.With(middleware.NoStore), adminOpt)
+		// Annuaire des joueurs (ADR 0035 D7) : les quatre registres d'identité
+		// (compte, profil, credentials, suivi live) lus ENSEMBLE par xuid, plus le
+		// témoin disque. NoStore : l'anomalie qu'on vient de corriger doit
+		// disparaître au rafraîchissement suivant, pas au bout d'un cache.
+		identitiesHandler := handlers.NewAdminIdentitiesHandler(buildPlayerDirectory(cfg, users, authStore, daemon))
+		identitiesHandler.Mount(r.With(middleware.NoStore), adminOpt)
 		// Dashboard monitoring admin : overview/scheduler/convergence/jobs
 		// + actions correctives (data-health run, cycle auto-sync forcé).
 		// Cf. server_admin_monitoring.go.

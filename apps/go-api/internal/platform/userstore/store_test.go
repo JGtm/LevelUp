@@ -152,6 +152,49 @@ func TestList(t *testing.T) {
 	}
 }
 
+// TestList_PorteLeXUID : le résumé admin porte le xuid lié au compte — c'est la
+// SEULE clé qui relie ce compte aux autres registres (ADR 0035 D1). Sans lui,
+// l'annuaire ne peut pas rattacher un compte à son profil, et un compte sans
+// profil redevient invisible.
+func TestList_PorteLeXUID(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+	if _, err := s.Create(testUser, testPass, domain.RoleAdmin); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := s.Create("Bob", testPass2, domain.RoleUser); err != nil {
+		t.Fatalf("Create Bob: %v", err)
+	}
+	if err := s.LinkIdentity(testUser, "AliceGT", "2533274796795729"); err != nil {
+		t.Fatalf("LinkIdentity: %v", err)
+	}
+
+	list, err := s.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	var linked, unlinked *domain.AdminUserSummary
+	for i := range list {
+		switch list[i].Username {
+		case testUser:
+			linked = &list[i]
+		case "Bob":
+			unlinked = &list[i]
+		}
+	}
+	if linked == nil || unlinked == nil {
+		t.Fatalf("liste incomplète : %+v", list)
+	}
+	if linked.XUID != "2533274796795729" {
+		t.Errorf("xuid = %q, want 2533274796795729", linked.XUID)
+	}
+	if linked.Gamertag != "AliceGT" {
+		t.Errorf("gamertag = %q, want AliceGT", linked.Gamertag)
+	}
+	if unlinked.XUID != "" {
+		t.Errorf("compte sans identité Xbox : xuid = %q, want vide", unlinked.XUID)
+	}
+}
+
 func TestDelete(t *testing.T) {
 	s := NewStore(tempStorePath(t))
 	_, _ = s.Create(testUser, testPass, domain.RoleUser)

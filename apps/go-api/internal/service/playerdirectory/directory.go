@@ -1,0 +1,224 @@
+// Package playerdirectory — l'annuaire des joueurs (ADR 0035 D2/D7).
+//
+// Quatre registres décrivent un joueur, chacun avec son cycle de vie : le compte
+// (`data/auth/users.json`), les credentials (`data/auth/watcher_tokens/{xuid}.json`),
+// le profil de suivi (`db_profiles.json`) et le suivi live (le daemon watcher).
+// Un cinquième témoin, le disque, dit ce qui a déjà été écrit pour un joueur.
+// Chaque consommateur du code lisait jusqu'ici SON registre : un compte sans
+// profil n'apparaissait donc nulle part — c'est ce qui a laissé passer
+// l'incident du 2026-07-23 (ADR 0035 §Context).
+//
+// Ce paquet les lit ENSEMBLE, par xuid, et rend une ligne par identité avec ses
+// anomalies typées. Il n'écrit rien, ne touche JAMAIS à l'entrepôt partagé et
+// n'importe aucun paquet DuckDB : les cinq sources entrent par de petites
+// interfaces de lecture, ce qui rend la composition testable sans fichier ni
+// base (`directory_test.go`).
+package playerdirectory
+
+import (
+	"context"
+	"log/slog"
+	"sort"
+	"strings"
+	"time"
+
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/port"
+)
+
+// Compteurs d'en-tête de AdminIdentitiesResponse.Counts, à côté d'un compteur
+// par code d'anomalie.
+const (
+	countIdentities = "identities"
+	countWarnings   = "warnings"
+	countInfos      = "infos"
+)
+
+// ProfilesReader lit les profils de suivi (`db_profiles.json`). Implémenté par
+// *config.AppConfig. HasTrackedProfile en fait partie pour qu'il n'existe qu'UNE
+// définition de « suivi » dans le dépôt (ADR 0035 D3) : l'annuaire délègue, il
+// ne re-filtre pas.
+type ProfilesReader interface {
+	LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, error)
+	HasTrackedProfile(titleSlug, xuid string) (bool, error)
+}
+
+// AccountsReader lit les comptes de connexion. Implémenté par *userstore.Store.
+type AccountsReader interface {
+	List() ([]domain.AdminUserSummary, error)
+}
+
+// TokensReader lit les credentials persistés (ADR 0023). Implémenté par
+// *auth.MultiUserTokenStore. L'annuaire n'en extrait jamais un secret.
+type TokensReader interface {
+	LoadAll() (map[string]*auth.UserTokens, error)
+}
+
+// WatchedReader lit le suivi live. Implémenté par *watcher.Daemon
+// (WatchedPlayers). nil = pas de watcher dans ce process (CLI, serveur sans
+// watcher) : l'annuaire se lit alors sur les trois registres fichiers.
+type WatchedReader interface {
+	WatchedPlayers() []domain.WatchedPlayerRef
+}
+
+// FS est le témoin disque : ce qui a été écrit pour un joueur, profil ou pas.
+// Tous les chemins passent par PathResolver (cf. fs.go).
+type FS interface {
+	PlayerDirExists(titleSlug, key string) bool
+	PlayerDBExists(titleSlug, key string) bool
+	ListPlayerDirs(titleSlug string) ([]string, error)
+}
+
+// Deps porte les cinq sources de l'annuaire. Profiles est la seule obligatoire :
+// sans elle il n'y a pas de notion de profil suivi, donc pas d'anomalie qui ait
+// un sens. Les autres nil ⇒ leur registre est simplement absent de la lecture.
+type Deps struct {
+	Profiles ProfilesReader
+	Accounts AccountsReader
+	Tokens   TokensReader
+	Watched  WatchedReader
+	FS       FS
+	// Titles : slugs balayés pour le témoin disque. Vide ⇒ tous les titres du
+	// registre par défaut (jamais une comparaison de slug, cf. CLAUDE.md
+	// « Multi-titre »).
+	Titles []string
+	// Now : seam d'horloge pour les tests. nil ⇒ time.Now.
+	Now func() time.Time
+}
+
+// Directory implémente port.PlayerDirectory en LECTURE (étape 3 du plan).
+type Directory struct {
+	profiles ProfilesReader
+	accounts AccountsReader
+	tokens   TokensReader
+	watched  WatchedReader
+	fs       FS
+	titles   []string
+	now      func() time.Time
+}
+
+var _ port.PlayerDirectory = (*Directory)(nil)
+
+// New construit l'annuaire. Les dépendances absentes sont tolérées (cf. Deps).
+func New(d Deps) *Directory {
+	titles := d.Titles
+	if len(titles) == 0 {
+		for _, desc := range title.DefaultRegistry().All() {
+			titles = append(titles, desc.Slug)
+		}
+	}
+	now := d.Now
+	if now == nil {
+		now = time.Now
+	}
+	return &Directory{
+		profiles: d.Profiles,
+		accounts: d.Accounts,
+		tokens:   d.Tokens,
+		watched:  d.Watched,
+		fs:       d.FS,
+		titles:   titles,
+		now:      now,
+	}
+}
+
+// List rend une ligne par identité connue d'au moins un registre, ses anomalies
+// et les compteurs d'en-tête.
+//
+// Ordre rendu : les identités porteuses d'au moins une anomalie `warning`
+// d'abord (c'est ce qu'un administrateur ouvre la page pour voir), puis par
+// gamertag, puis par xuid — un ordre TOTAL et stable, sans quoi l'itération de
+// map ferait danser le tableau à chaque rafraîchissement.
+func (d *Directory) List(ctx context.Context) (domain.AdminIdentitiesResponse, error) {
+	records, err := d.collect(ctx)
+	if err != nil {
+		return domain.AdminIdentitiesResponse{}, err
+	}
+	for i := range records {
+		records[i].Anomalies = computeAnomalies(records[i])
+	}
+	sortRecords(records)
+	return domain.AdminIdentitiesResponse{
+		GeneratedAt: d.now().UTC().Format(time.RFC3339),
+		Identities:  records,
+		Counts:      countAnomalies(records),
+	}, nil
+}
+
+// Get rend l'identité d'un xuid, ou port.ErrIdentityNotFound. La recomposition
+// complète est assumée : les registres se comptent en dizaines d'entrées, et
+// c'est le prix d'une seule définition de « ce que l'on sait d'un joueur ».
+func (d *Directory) Get(ctx context.Context, xuid string) (domain.IdentityRecord, error) {
+	if xuid == "" {
+		return domain.IdentityRecord{}, port.ErrIdentityNotFound
+	}
+	resp, err := d.List(ctx)
+	if err != nil {
+		return domain.IdentityRecord{}, err
+	}
+	for _, rec := range resp.Identities {
+		if rec.XUID == xuid {
+			return rec, nil
+		}
+	}
+	return domain.IdentityRecord{}, port.ErrIdentityNotFound
+}
+
+// HasTrackedProfile délègue au lecteur de profils : une seule définition de
+// « suivi » (ADR 0035 D3), celle de domain.SyncablePlayers.
+func (d *Directory) HasTrackedProfile(ctx context.Context, titleSlug, xuid string) (bool, error) {
+	if d.profiles == nil {
+		slog.ErrorContext(ctx, "player_directory: lecteur de profils absent — profil suivi refusé",
+			"title_slug", titleSlug, "xuid", xuid)
+		return false, nil
+	}
+	return d.profiles.HasTrackedProfile(titleSlug, xuid)
+}
+
+// sortRecords impose l'ordre total documenté sur List.
+func sortRecords(records []domain.IdentityRecord) {
+	sort.SliceStable(records, func(i, j int) bool {
+		wi, wj := hasWarning(records[i]), hasWarning(records[j])
+		if wi != wj {
+			return wi
+		}
+		gi, gj := strings.ToLower(records[i].Gamertag), strings.ToLower(records[j].Gamertag)
+		if gi != gj {
+			return gi < gj
+		}
+		return records[i].XUID < records[j].XUID
+	})
+}
+
+func hasWarning(rec domain.IdentityRecord) bool {
+	for _, a := range rec.Anomalies {
+		if a.Severity == domain.AnomalySeverityWarning {
+			return true
+		}
+	}
+	return false
+}
+
+// countAnomalies construit les compteurs d'en-tête : le total d'identités, les
+// deux totaux par sévérité, et un compteur par code d'anomalie PRÉSENT (un code
+// absent vaut zéro, il n'encombre pas la réponse).
+func countAnomalies(records []domain.IdentityRecord) map[string]int {
+	counts := map[string]int{
+		countIdentities: len(records),
+		countWarnings:   0,
+		countInfos:      0,
+	}
+	for _, rec := range records {
+		for _, a := range rec.Anomalies {
+			counts[a.Code]++
+			if a.Severity == domain.AnomalySeverityWarning {
+				counts[countWarnings]++
+				continue
+			}
+			counts[countInfos]++
+		}
+	}
+	return counts
+}
