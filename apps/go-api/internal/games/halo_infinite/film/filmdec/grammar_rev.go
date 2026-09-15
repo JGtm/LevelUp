@@ -88,40 +88,57 @@ package filmdec
 // `killsource/` n est pas touche.
 // FUSION (2026-09-16) : l integration portait `.10` et la branche du lot 1.9.13 `.8` (accesseur
 // neuf dans objectiveevents, faux positif d empreinte) ; reunies ici, au rang suivant.
-// REVUE DE JALON M1, LENTILLE L4 (2026-09-16) : `.11` -> `.12`. AUCUNE grammaire d octets ne
-// change. Ce qui change est la PORTE qui decide si les attributions ligne par ligne de
-// `killsource` sont publiables : `BijectionDetermined` valait « au plus un indice a inferer »,
-// il vaut desormais « une seule affectation possible » (`FilmTablePinning.AffectationUnique`,
-// indices libres ET noms libres). L empreinte hache les octets des trois paquets, dont
-// `killsource/` : elle monte donc, et la revision avec elle. `KillSourceDecoderRev` MONTE aussi
-// (`killsource-2026-09-16`) parce que la sortie persistee change — la porte ne fait que se
-// fermer, aucun film ne gagne la publication ligne par ligne. `SchemaVersion` reste 59 : le
-// document du rejeu ne porte pas cette porte.
+//
+// # LA CHRONIQUE, A PARTIR DU `.11` : UNE ENTREE PAR RANG, ET RIEN QU UNE
+//
+// LES TROIS DERNIERES ENTREES ONT ETE REECRITES LE 2026-09-16 (revue de jalon M1, RONDE 2,
+// constat F5). Elles etaient EMPILEES et toutes trois annoncaient « `.11` -> `.12` », suivies de
+// deux lignes « FUSION ... au rang suivant » qui racontaient une renumerotation que l integration
+// n a jamais faite : la chronique s arretait donc a `.12` pendant que la constante valait `.14`,
+// et les changements de COMPORTEMENT portes par `.13` et `.14` n avaient AUCUNE entree. Relevee
+// commit par commit sur l integration (`git log --first-parent`), la suite reelle est celle-ci —
+// un lot, un rang, dans l ordre ou les merges sont tombes.
+//
+// ENTREE `grammar-2026-09-15.12` (2026-09-16, revue de jalon M1 lentille L4, merge `99644996e`) :
+// `.11` -> `.12`. AUCUNE grammaire d octets ne change. Ce qui change est la PORTE qui decide si
+// les attributions ligne par ligne de `killsource` sont publiables : `BijectionDetermined` valait
+// « au plus un indice a inferer », il vaut desormais « une seule affectation possible »
+// (`FilmTablePinning.AffectationUnique`, indices libres ET noms libres). L empreinte hache les
+// octets des trois paquets, dont `killsource/` : elle monte donc, et la revision avec elle.
+// `KillSourceDecoderRev` MONTE aussi (`killsource-2026-09-16`) parce que la sortie persistee
+// change — la porte ne fait que se fermer, aucun film ne gagne la publication ligne par ligne.
+// `SchemaVersion` reste 59 : le document du rejeu ne porte pas cette porte.
 //
 // LE MEME RANG PORTE AUSSI LA CORRECTION DE DOC de `mppWidthsPourFormat` (son bloc finissait par
 // « la cle est le BUILD » alors que la fonction commute sur le FORMAT depuis le lot 1.9.1 ter) :
 // l empreinte hache les OCTETS des trois paquets, commentaires compris, donc une reformulation la
 // fait bouger. Un LOT partage sa revision (regle de la forme `.N` ci-dessus) — ces deux
 // changements sont le meme lot de revue, ils partagent donc `.12`.
-// REVUE DE JALON M1 (2026-09-15, lentille D13, constat 2) : `.11` -> `.12`. AUCUNE grammaire
-// d octets n est reecrite ; ce qui change est QUELLE grammaire s applique, et c est exactement ce
-// que cette revision doit nommer (meme genre de changement que `.2` et `.8`). Les DEUX sites qui
-// installent le decoupage du bloc `object-multiplayer-properties` — `ScanEquipmentPlacements` et
-// `replay.gwWidthsForFilm` — le resolvaient par `BuildProfileFromFilm`, donc par la table des
-// SEPT builds en dur, alors que le registre des replis declare la cle VERSION DE FORMAT
-// (`format_sans_profil_relu`, lot 1.9.1 ter). Un film au format 27 dont le build est hors table
-// prenait les largeurs CALIBREES devant une largeur RELUE, sans compteur ni avertissement. Les
-// deux sites passent desormais par `MPPWidthsForFilm`, porte unique.
+//
+// ENTREE `grammar-2026-09-15.13` (2026-09-16, revue de jalon M1 lentille D13 constat 2, merge
+// `1f478d5c3`) : `.12` -> `.13`. AUCUNE grammaire d octets n est reecrite ; ce qui change est
+// QUELLE grammaire s applique, et c est exactement ce que cette revision doit nommer (meme genre
+// de changement que `.2` et `.8`). Les DEUX sites qui installent le decoupage du bloc
+// `object-multiplayer-properties` — `ScanEquipmentPlacements` et `replay.gwWidthsForFilm` — le
+// resolvaient par `BuildProfileFromFilm`, donc par la table des SEPT builds en dur, alors que le
+// registre des replis declare la cle VERSION DE FORMAT (`format_sans_profil_relu`, lot 1.9.1
+// ter). Un film au format 27 dont le build est hors table prenait les largeurs CALIBREES devant
+// une largeur RELUE, sans compteur ni avertissement. Les deux sites passent desormais par
+// `MPPWidthsForFilm`, PORTE UNIQUE — c est le changement de comportement de ce rang.
 //
 // MESURE QUI BORNE L EFFET (cache, 657 films au 2026-09-15, `TestMPPResolutionCorpus`) : 6 films
 // portent un build hors table — 5 sans section d identification (format 20) et 1 `HI_1_5_1`
 // (format 23) —, AUCUN a un format dont la largeur est relue. Zero octet cuit ne change sur ce
-// cache ; le gain porte sur le parc NEUF. `KillSourceDecoderRev` ne bouge PAS (`killsource/` n a
-// pas bouge) ; `SchemaVersion` reste 59.
-// FUSION (2026-09-16) : les lots de corrections de la revue M1 L4 (porte killsource, `.12`) et D13
-// (porte unique MPPWidthsForFilm, `.12`) partaient de la meme base `.11` ; reunis ici, au rang suivant.
-// REVUE DE JALON M1, LENTILLE L3 (2026-09-16) : `.11` -> `.12`. AUCUNE grammaire d octets ne
-// change, et aucun bit n est lu autrement. Trois gestes, tous de SURFACE :
+// cache ; le gain porte sur le parc NEUF. `SchemaVersion` reste 59.
+//
+// `KillSourceDecoderRev` NE BOUGE PAS A CE RANG, et la confusion vaut d etre nommee : la porte de
+// publication de `killsource` (`AffectationUnique`) releve de CETTE constante-la, et elle a ete
+// traitee au rang PRECEDENT (`.12`). `.13` ne touche que la porte MPP de `filmdec`/`replay` ;
+// `killsource/` n y est pas modifie, et son propre ratchet d empreinte fait foi.
+//
+// ENTREE `grammar-2026-09-15.14` (2026-09-16, revue de jalon M1 lentille L3, merge `29c5d6c85`) :
+// `.13` -> `.14`. AUCUNE grammaire d octets ne change, et aucun bit n est lu autrement. Trois
+// gestes, tous de SURFACE :
 //
 //	(1) `DetectI0Layout(dir)` et `ScanFilmEquipmentSpawnEvents(dir)`, deux enveloppes `dir` de
 //	    PRODUCTION sans aucun appelant de production (48 appels de test pour la premiere, 1 pour
@@ -137,16 +154,25 @@ package filmdec
 // LES TROIS FORMES LUES EN PRODUCTION SONT INCHANGEES, A L OCTET : `DetectI0LayoutOf`,
 // `ScanEquipmentSpawnEvents`, `WalkKeyframeFullState`. L empreinte hache les OCTETS des trois
 // paquets (cf. `grammar_rev_fingerprint_test.go`, « il ne distingue pas un changement de
-// grammaire d une reformulation de commentaire ») : ce faux positif coute cette ligne.
-// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` non plus.
-// FUSION (2026-09-16) : l integration portait `.13` (corrections L4 + D13) et le lot de corrections L3
-// `.12` (code musee sorti en tests, faux positif d empreinte) ; reunis ici, au rang suivant.
-// LOT 1.9.10 (2026-09-16) : `.7` -> `.8`. Un lecteur NEUF entre dans le paquet — la MARCHE des
-// morts d'objet (`object_deaths*.go`) : elle deroule la boucle de records des paquets delta et
-// lit le composant `object-dead-state` la ou aucun balayage ancre ne l'atteint. Aucune grammaire
-// d'octets existante n'est reecrite ; ce qui change est CE QUE LE PAQUET SAIT LIRE, et la
-// revision doit le nommer. Le rang est celui de la base du lot ; le pilote renumerote a la
-// fusion de la vague.
-// FUSION (2026-09-16) : l integration portait `.14` (corrections de la revue M1) et le lot 1.9.10
-// `.8` (la marche des dead-states de vehicule en production) ; reunis ici, au rang suivant.
+// grammaire d une reformulation de commentaire ») : ce faux positif COUTE ce rang, et c est la
+// seule raison pour laquelle `.14` existe. `KillSourceDecoderRev` ne bouge PAS (`killsource/`
+// intact) ; `SchemaVersion` non plus.
+//
+// TOUTE ENTREE NEUVE OUVRE SUR LE MOT `ENTREE` SUIVI DE LA REVISION entre accents graves, et le
+// golden `testdata/grammar_rev.golden` porte la sienne en regard :
+// `TestChroniqueCouvreLaRevisionCourante` exige les DEUX pour la valeur ci-dessous, et c est ce
+// qui empeche la chronique de s arreter a un rang que la constante a depasse (constat F5). Les
+// entrees anterieures au 2026-09-16 n ont pas cette forme — elles ne sont pas relues par le
+// ratchet, qui ne mord que sur la valeur COURANTE.
+//
+// ENTREE `grammar-2026-09-15.15` (2026-09-16, lot 1.9.10, merge `3b5e1b465`) : UN LECTEUR NEUF
+// ENTRE DANS LE PAQUET — la MARCHE des morts d objet (`object_deaths*.go`) deroule la boucle de
+// records des paquets delta et lit le composant `object-dead-state` (ti=40) la ou aucun
+// balayage ancre ne l atteint ; le verrou `DesyncAt == -1` qui jetait des morts lues est leve
+// (accepter si `DesyncAt == -1` ou `DesyncAt > index(dead-state)`). Aucune grammaire d octets
+// existante n est reecrite ; ce qui change est CE QUE LE PAQUET SAIT LIRE. La calibration du
+// cadre (IDLowBits) ne balaye plus l amorce (propriete du format) et son cadre par defaut est
+// un repli nomme et compte. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 59 en
+// attendant la montee unique de la vague (les champs `vehicles[].end/tEnd` et
+// `coverage.vehicles.*` arrivent avec elle).
 const GrammarRev = "grammar-2026-09-15.15"

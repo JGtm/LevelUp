@@ -63,6 +63,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -125,6 +126,83 @@ func TestGrammarRevSuitLaGrammaire(t *testing.T) {
 			revFigee, GrammarRev)
 		t.Errorf("golden perime : revision %s, empreinte %s (%d fichiers)", GrammarRev, empreinte, n)
 	}
+}
+
+// entreeChroniqueGodoc / entreeChroniqueGolden : les deux formes d'une ENTREE de chronique.
+//
+// Le godoc de `grammar_rev.go` ouvre chaque entree neuve sur le mot `ENTREE` suivi de la
+// revision entre accents graves ; le golden porte la sienne dans sa colonne « revision » de
+// l'HISTORIQUE (`#   <date>  <revision>  <texte>`). Les deux formes sont DIFFERENTES parce que
+// les deux fichiers le sont — l'un est du Go, l'autre une table lisible — et il n'y a rien a
+// unifier : ce qui compte est qu'aucun des deux ne puisse s'arreter a un rang depasse.
+var (
+	entreeChroniqueGodoc  = regexp.MustCompile("(?m)^// ENTREE `(grammar-[0-9]{4}-[0-9]{2}-[0-9]{2}(?:\\.[0-9]+)?)`")
+	entreeChroniqueGolden = regexp.MustCompile(`(?m)^#\s+[0-9]{4}-[0-9]{2}-[0-9]{2}\s+(grammar-[0-9]{4}-[0-9]{2}-[0-9]{2}(?:\.[0-9]+)?)\s`)
+)
+
+// TestChroniqueCouvreLaRevisionCourante : [GrammarRev] a-t-elle son entree, des DEUX cotes ?
+//
+// # LE DEFAUT QUE CE TEST FERME (revue de jalon M1, ronde 2, constat F5)
+//
+// Trois lots de corrections partis de la meme base `.11` ont empile trois blocs annoncant
+// chacun « `.11` -> `.12` », suivis de lignes « FUSION ... au rang suivant » qui racontaient une
+// renumerotation que l'integration n'a jamais faite. Resultat : la chronique s'arretait a `.12`
+// pendant que la constante valait `.14`, et les changements de COMPORTEMENT portes par `.13`
+// (porte unique `MPPWidthsForFilm`) et `.14` n'avaient AUCUNE entree. Rien ne rougissait — le
+// ratchet d'empreinte ne tient que le couple (revision, empreinte), jamais ce que la revision
+// RACONTE.
+//
+// Modele : `replay/document_shape_test.go`, `TestDocumentShapeSchemaHasChronicleEntry`, qui
+// pose la meme exigence sur `SchemaVersion`.
+//
+// # CE QU'IL NE FAIT PAS
+//
+// Il ne relit pas les entrees ANTERIEURES au 2026-09-16 : elles ont trois formes de prose nees
+// a des jours differents, et normaliser le passe n'ajouterait rien. Il ne mord que sur la
+// valeur COURANTE — la seule qu'une montee puisse laisser sans entree.
+func TestChroniqueCouvreLaRevisionCourante(t *testing.T) {
+	for _, src := range []struct {
+		quoi    string
+		chemin  string
+		forme   *regexp.Regexp
+		exemple string
+	}{
+		{"le godoc de grammar_rev.go", cheminGodocGrammarRev(t), entreeChroniqueGodoc,
+			"// ENTREE `" + GrammarRev + "` (AAAA-MM-JJ, lot) : ..."},
+		{"l'HISTORIQUE du golden", cheminGoldenGrammarRev, entreeChroniqueGolden,
+			"#   AAAA-MM-JJ  " + GrammarRev + "  lot : ..."},
+	} {
+		blob, err := os.ReadFile(src.chemin) //nolint:gosec // chemins deduits du paquet
+		if err != nil {
+			t.Fatalf("%s illisible (%s) : %v", src.quoi, src.chemin, err)
+		}
+		var vues []string
+		trouvee := false
+		for _, m := range src.forme.FindAllStringSubmatch(string(blob), -1) {
+			vues = append(vues, m[1])
+			if m[1] == GrammarRev {
+				trouvee = true
+			}
+		}
+		if !trouvee {
+			t.Errorf("GrammarRev = %s n'a AUCUNE entree dans %s (entrees declarees : %v).\n"+
+				"Une montee sans entree ne dit pas ce qu'elle change, et la chronique s'arrete "+
+				"a un rang que la constante a depasse (constat F5).\nForme attendue :\n  %s",
+				GrammarRev, src.quoi, vues, src.exemple)
+		}
+	}
+}
+
+// cheminGodocGrammarRev : le fichier qui porte la constante et sa chronique, resolu par
+// `runtime.Caller` — jamais un chemin relatif au repertoire courant (meme raison que
+// [racinesGrammaire]).
+func cheminGodocGrammarRev(t *testing.T) string {
+	t.Helper()
+	_, ici, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a echoue")
+	}
+	return filepath.Join(filepath.Dir(ici), fichierHorsGrammaire)
 }
 
 // empreinteGrammaire hache les sources non-test de `filmdec` ET de `killsource`.
