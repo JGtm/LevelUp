@@ -62,11 +62,13 @@ joueur. Deux défauts demeurent :
 - **D5** — Génération d'une invitation sans groupe : **admin uniquement**, depuis
   `/admin/management`. L'invitation de groupe reste à la main de tout propriétaire de groupe
   (inchangé).
-- **D6** — La migration de boot `groups: migration groupe par défaut depuis friend_gamertags`
-  (`apps/go-api/cmd/server/main.go:~2340-2385`) est **supprimée** : `data/auth/groups.json`
-  existe en local ; l'utilisateur vérifie qu'il existe aussi sur le VPS AVANT l'étape 2
-  (gate G2.0). S'il manque en prod : on garde la migration mais re-sourcée depuis le nouveau
-  store (variante consignée en §9, à trancher à ce moment-là).
+- **D6** — **Variante retenue le 2026-09-15** (pilote) : gate G2.0 NON validée, l'existence de
+  `data/auth/groups.json` en prod n'est pas confirmée. La migration de boot
+  `groups: migration groupe par défaut` (`apps/go-api/cmd/server/main.go`) est **conservée**,
+  ainsi que `groupstore.MigrateDefault` et son test. Elle est **re-sourcée** : au boot,
+  `friendstore.MigrateFromAppSettings` s'exécute d'abord, puis la migration de groupe lit
+  `friendStore.Get(xuid de l'admin)` au lieu de `settings.FriendGamertags`. Les deux migrations
+  restent idempotentes.
 
 ### Critères de succès
 
@@ -82,13 +84,13 @@ joueur. Deux défauts demeurent :
 
 ## 2. Étape 0 — Préparation (rapide)
 
-- [ ] 0.1 Créer le worktree + la branche : depuis `LevelUp-go-migration`,
+- [~] 0.1 Créer le worktree + la branche : depuis `LevelUp-go-migration`,
       `git worktree add ../LevelUp-wt-amis-invitations -b wt/amis-invitations feat/v75`.
       Basculer TOUTES les commandes suivantes dans ce worktree (chemin absolu, règle mémoire
       « fusion en chemin absolu »).
-- [ ] 0.2 Lire `.ai/thought_log.md` (10 dernières entrées), `docs/adr/0029-*.md`, skills
+- [x] 0.2 Lire `.ai/thought_log.md` (10 dernières entrées), `docs/adr/0029-*.md`, skills
       `arch-rules`, `plan-execution`, `frontend-patterns`.
-- [ ] 0.3 Baseline : `cd apps/go-api && go test ./internal/authz/... ./internal/service/...
+- [x] 0.3 Baseline : `cd apps/go-api && go test ./internal/authz/... ./internal/service/...
       ./internal/api/... ./internal/platform/... ./internal/sync/...` → vert, noter la durée.
       `cd apps/web && Remove-Item -Recurse -Force node_modules\.tmp; npm run typecheck` → vert.
 
@@ -143,9 +145,9 @@ Tous les sites ci-dessous ont été listés par `grep -rn FriendGamertags apps/g
 2026-09-15. Les resolvers deviennent **par xuid** ; les signatures `func(ctx) []string` sont
 conservées quand une fermeture par joueur suffit (le service connaît déjà son xuid).
 
-- [ ] 2.0 **Pré-requis D6 (utilisateur)** : confirmer que `data/auth/groups.json` existe et est
-      non vide sur le VPS. Consigner la réponse dans le journal de phase. Si NON → §9, variante
-      D6, arrêter l'étape et demander.
+- [ ] 2.0 **Pré-requis D6 (utilisateur)** : tranché par le pilote le 2026-09-15 — G2.0 NON
+      validée (existence de `data/auth/groups.json` en prod non confirmée) → variante D6 :
+      migration de groupe conservée et re-sourcée depuis le friendstore. Consigné dans Avancement.
 - [ ] 2.1 `internal/api/wire/registry_pages_home.go:258-270` `friendGamertagsResolver()` →
       prend le xuid du joueur résolu (`pdb.XUID`) et lit `friendStore.Get(xuid)` ; tous les
       appelants du registre passent le xuid (Home squad, Career encounters, SessionPage usage,
@@ -166,9 +168,11 @@ conservées quand une fermeture par joueur suffit (le service connaît déjà so
       joueur dans la boucle). La migration 1.4 n est pas concernée (elle lit le fichier).
 - [ ] 2.5 `cmd/levelup/cmd_recompute_friends.go` : loader par xuid ; `--dry-run` affiche la
       liste par joueur ; doc d'en-tête mise à jour.
-- [ ] 2.6 `cmd/server/main.go:~2340-2385` : supprimer la migration de groupe par défaut (D6)
-      **et** `groupstore.MigrateDefault` + son test si plus aucun appelant (règle « 0 code
-      mort »).
+- [ ] 2.6 `cmd/server/main.go` : migration de groupe par défaut **conservée** (variante D6),
+      re-sourcée depuis `friendStore.Get(xuid de l'admin)` au lieu de `settings.FriendGamertags`,
+      et ordonnée APRÈS `friendstore.MigrateFromAppSettings`. `groupstore.MigrateDefault` et son
+      test restent en place. Le garde-rail 2.8 tolère cette lecture (elle passe par friendstore,
+      sans le littéral `FriendGamertags`).
 - [ ] 2.7 Commentaires devenus faux : `internal/api/middleware/require_player_ownership.go:28-31`
       (« FriendGamertags résolus » → co-membres de groupe), `internal/platform/duckdb/queries_career.go:321`,
       `internal/port/services.go:33`, `internal/service/career_service.go:64,130-133`,
@@ -409,4 +413,26 @@ Ordre recommandé, indépendant des étapes 1-7 sauf mention :
 
 ## Avancement
 
-(vide — plan non exécuté au 2026-09-15)
+### Étape 0 — Préparation — 2026-09-15 ~20:50-21:20 — CLOSE
+
+- 0.1 `[~]` : worktree `LevelUp-wt-amis-invitations` et branche `wt/amis-invitations`
+  (base `feat/v75` @ 2ddef392c) déjà créés par le pilote ; vérifié
+  `git branch --show-current` = `wt/amis-invitations`.
+- 0.2 `[x]` : `CLAUDE.md`, plan, ADR 0029, 8 dernières entrées `.ai/thought_log.md`, skills
+  `plan-execution` et `arch-rules` lus (skills `frontend-patterns` / `color-tokens` invoqués
+  à l'entrée de l'étape 4, leur domaine).
+- 0.3 `[x]` : baselines.
+  - `go test ./internal/authz/... ./internal/service/... ./internal/api/... ./internal/platform/... ./internal/sync/...`
+    → **code de sortie 1**, durée 22 min 29 s. UN SEUL échec :
+    `--- FAIL: TestGetMatchFilm_ParallelDownloadFasterThanSequential` (`internal/sync/haloclient`,
+    wall-time 515 ms > seuil 500 ms). Test de PERFORMANCE sensible à la charge (quatre binaires
+    de test en parallèle) : rejoué isolément → `ok levelup/go-api/internal/sync/haloclient 1.713s`,
+    **code de sortie 0**. Baseline retenue : verte hors ce flake, hors périmètre.
+  - `cd apps/web && rm -rf node_modules/.tmp && npm run typecheck` → **code de sortie 0**.
+
+**Gate G0 : PASSÉ** (branche correcte, baselines notées).
+
+**Écart consigné (pilote, 2026-09-15)** : G2.0 NON validée — l'existence de
+`data/auth/groups.json` en prod n'est pas confirmée. La **variante D6** s'applique : la
+migration de groupe par défaut est conservée et re-sourcée depuis `friendstore`. D6, 2.0 et
+2.6 réécrits en conséquence dans ce plan.
