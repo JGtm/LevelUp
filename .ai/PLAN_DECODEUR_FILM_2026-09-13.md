@@ -163,6 +163,11 @@ make -C ../.. go-api-lint                      # baseline non accrue
 ```
 
 Lots qui touchent le web : `make check-types` puis `make test-web` (vitest hors sandbox).
+Lots qui touchent le contrat publié (`replaydoc`, `replayview`, `openapi`) : `apps/go-api/api/openapi.yaml`
+ne s'édite JAMAIS à la main, il se RÉGÉNÈRE en dernier par `make openapi-gen` puis
+`make generate-types` ; gate `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate -count=1`
+(CGO) avant le dernier commit (leçon du lot 1.9.1, 2026-09-15 : `byFamily` / `byCause` écrits à la
+main dans un ordre que le générateur ne produit pas, CI « Coverage + Baseline » rouge sur ce seul test).
 Tout test RENOMMÉ ou SUPPRIMÉ par un lot met à jour `.ai/baselines/tests_pre_migration.jsonl` dans le
 MÊME commit (le job CI « Coverage + Baseline » échoue sur tout nom de baseline absent du run ;
 leçon du lot 1.0, 2026-09-14 : un renommage de test oublié = CI rouge sur un lot vert partout ailleurs).
