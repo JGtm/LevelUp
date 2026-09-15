@@ -116,9 +116,26 @@ func acceptation1910VerifierUneVie(t *testing.T, v replaydoc.VehicleTrack, frame
 				" sa date n est pas une lecture", v.Slot, v.Gen)
 			return
 		}
-		if v.T1Max > *v.TEnd {
-			t.Errorf("slot %d gen %d : t1max=%d depasse la fin ecrite tEnd=%d — la borne"+
-				" d affichage ignore ce que le film ecrit", v.Slot, v.Gen, v.T1Max, *v.TEnd)
+		if *v.TEnd < v.T0 {
+			t.Errorf("slot %d gen %d : tEnd=%d precede la naissance t0=%d — la mort attribuee"+
+				" n appartient pas a cette vie", v.Slot, v.Gen, *v.TEnd, v.T0)
+		}
+		// LA BORNE D AFFICHAGE PEUT DEPASSER LA MORT ECRITE, ET LA MESURE L IMPOSE.
+		//
+		// CETTE ASSERTION A ETE ECRITE AVANT LA MESURE, ET LA MESURE L A REFUTEE. Elle exigeait
+		// `t1max <= tEnd`. Sur `bfecd02b` le ghost 777 est ecrit DETRUIT a 274,0 s et le film
+		// REPLIQUE ENCORE SA POSITION jusqu a 282,1 s — 8,1 s d epave, exactement le profil de
+		// mise au repos mesure au lot V3 (13 a 36 s apres l abandon). Affirmer l absence a 274,0 s
+		// contredirait des positions que le film ecrit ; le depot publie la contradiction et la
+		// compte (`coverage.vehicles.samplesAfterEnd`), il ne l arbitre pas en silence.
+		//
+		// CE QUI RESTE INTERDIT, et c est le vrai defaut que ce lot retire : une borne d affichage
+		// qui depasse A LA FOIS la mort ecrite ET la derniere position repliquee — c est-a-dire
+		// une fin INFEREE. Quand `t1max` passe `tEnd`, il doit s arreter EXACTEMENT sur `t1`.
+		if v.T1Max > *v.TEnd && v.T1Max != v.T1 {
+			t.Errorf("slot %d gen %d : t1max=%d depasse la fin ecrite tEnd=%d SANS s arreter sur la"+
+				" derniere position t1=%d — la borne d affichage est inferee, pas lue",
+				v.Slot, v.Gen, v.T1Max, *v.TEnd, v.T1)
 		}
 	case VehicleEndFilmEnd:
 		if v.T1Max != frames-1 {

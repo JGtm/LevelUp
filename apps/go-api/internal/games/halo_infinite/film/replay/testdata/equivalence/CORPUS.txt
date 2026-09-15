@@ -21,6 +21,41 @@
 #
 #
 #
+#
+# REFERENCES RE-FIGEES AU LOT 1.9.10, SCHEMA 59, LE 2026-09-16 (la fin de vie d un vehicule lue
+# au dead-state ecrit). DEUX ETAPES bougent sur les 10 films du regime court, `vehicles` et
+# `artifact` ; les 51 autres sont IDENTIQUES A L OCTET sur les dix — aucun balayage d image-cle,
+# de positions, de killsource, de drapeau, de zone ni d objectif ne diverge.
+#
+# CLASSIFICATION FAITE AVANT TOUT `-update`, film par film, par un enfant PAR PROCESSUS
+# (`replay-equiv -child -film <short8> -out <fichier>`) puis `diff` du `.tsv` produit contre sa
+# reference. Le harnais parent ne nomme que la PREMIERE ligne differente (`comparer`,
+# `parent.go:250`) : conclure « une seule etape » de sa sortie aurait ete faux.
+#
+# POURQUOI LES DEUX ETAPES BOUGENT, ET POURQUOI C EST VOULU.
+#   (1) `vehicles` est l objet `VehicleScan` OBSERVE. Il gagne DEUX CHAMPS — `Deaths` (les morts
+#       ecrites que la marche lit dans `object-dead-state` de `ti=40`) et `DeathStats` (leurs
+#       denominateurs). C est la FORME de l objet observe qui change, comme au lot 1.9.3 ou
+#       `Stats.Couples` avait fait bouger l etape `killsource` sur les dix films.
+#   (2) `artifact` est le document cuit. `VehicleTrack.End` cesse de valoir `unknown` pour tout
+#       le monde et prend `destroyed` (date par `TEnd`) ou `film_end` ; `coverage.vehicles`
+#       gagne huit compteurs, et l entree du repli RETIRE disparait de `coverage.fallbacks`.
+#       Le delta d octets est petit et entierement explique : +141 EXACTEMENT sur les quatre
+#       films qui ne portaient PAS l entree de repli (`bcb6d393`, `51101d1d`, `d9781168`,
+#       `fb1a1a72`) — les huit compteurs, et rien d autre ; +79 a +113 sur les six autres, ou
+#       les octets de l entree retiree et des episodes d occupation raccourcis se soustraient
+#       de ces memes +141. Detail par film : 60ae07c4 +79, 11de8353 +88, 50247b26 +91,
+#       111fa685 +101, a521164d +112, e5adf7b2 +113.
+#
+# CE QUI N EST PAS UNE REGRESSION, ET LE CORPUS GATE LE DIT : 14 temoins, schema 59 -> 59
+# partout, colonne `changements` A ZERO sur les quatorze. Les seules « pertes » rapportees sont
+# des compteurs qui BAISSENT — `coverage.fallbacks/n` (le repli retire) et
+# `vehicles/par-end/unknown` (les vies qui quittent l ignorance pour une cause LUE : 97 -> 78 sur
+# `084a804d`, 15 -> 7 sur `111fa685`, 53 -> 46 sur `e5adf7b2`, 109 -> 103 sur `a349fea8`, et
+# 11 -> ZERO sur `bfecd02b`) — plus un episode d occupation qui cessait de survivre a son
+# vehicule (`084a804d` slot 793, -184 frames ; `4f77afc1`, -157).
+#
+# HISTORIQUE — le bloc precedent :
 # REFERENCES RE-FIGEES AU COMMIT 76d36b911, SCHEMA 59, LE 2026-09-16 (lot 1.9.1 bis). Sept des
 # dix films du regime court ont bouge : `60ae07c4`, `111fa685`, `e5adf7b2`, `bcb6d393`,
 # `51101d1d`, `d9781168`, `fb1a1a72`. Trois sont restes IDENTIQUES : `50247b26`, `a521164d`,
