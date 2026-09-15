@@ -1,3 +1,39 @@
+## [2026-09-16] Chantier decodeur — lot 1.9.4 (la carte du film vient du nom de match, plus d'une signature de largeurs) — Complete (feat/decfilm-194 fusionnee dans feat/recherche-decodeur-film, 83e6d9a29)
+
+**Decision technique principale.** Le NOM DE MATCH decide, en un seul site pour les deux passes :
+`killcollector/map_identity.go` (neuf), qui separe `ErrSansNomDeCarte` de `ErrUnknownMapBounds` (D-4),
+trois sorties, trois compteurs ; `positions.go` 508 -> 494 L. La signature de largeurs n'est PAS
+retrogradee en repli (ecart au brief, accepte par le pilote, D3 (1.9.4)) : elle est SUPPRIMEE, parce
+que la mesure la montre juste 2 fois sur 17 et FAUSSE sur Live Fire — le repli bancal que D14 (d)
+interdit. `DetectFilmMapEntry` supprimee, `DetectI0Layout` sans appelant de production (gardee
+pour ~45 appelants d'instruments, allowlist de `no_recomputed_film_context_test.go` retiree). Le
+ratchet des six ne descend pas (les six sont les cibles de 1.9.8, 1.9.10, 1.9.11, 1.9.13). Registre
+96 entrees, 3 mises a jour ; `registre_killsource.go` scinde (492 -> 456 + `registre_killsource_carte.go`
+92) apres que la verification du pilote l'a trouve a 523 L ; `collector.go` 773 -> 773 (7 lignes de
+prose rendues). `GrammarRev` .7 -> .8 ; `KillSourceDecoderRev`, `IsolationDecoderRev` (0 match :
+passe des touches eteinte) et `SchemaVersion` 59 inchanges ; openapi intact.
+
+**Resultats observes.** Mesure avant de coder : `DetectFilmMapEntry` 1 appelant (`hits.go`, nom de
+carte deja connu a cote), `DetectI0LayoutOf` 2 appelants (repli « aucune entree de catalogue »,
+hors lot) ; cartes jumelles : 68 sur 79 partagent une signature (classe `15/15/17` = 59 cartes),
+11 seulement sont uniques — cause : `W = min(26, ceilLog2(ceil(60·etendue)))` quantifie au
+facteur 2 ; sur 17 films : 2 accords, 13 ambigues, 2 DESACCORDS — sur Live Fire la signature
+`13/12/11` retrouvait exactement UNE entree, `aquarius` : les distances y etaient calculees dans
+l'AABB d'une autre carte, D2 (1.9.2) est fausse et corrigee (D1 (1.9.4)). Gain de production nul
+aujourd'hui (D5 (1.9.4) : la passe est eteinte, `match.weapon.accuracy = not_exposed`) ; ce que le
+lot apporte : une auto-detection de moins, un site de resolution au lieu de deux, une erreur
+typee comptee. Mutation : `Behemoth` donne pour `Fragmentation` -> rouge sur les bornes. Gates :
+gofmt vide, vet 0 (sans et avec `-tags research`), 7 paquets verts, integration killcollector
+`-p 1` ok, lint 0 issue ; equivalence regime court 10/10 identiques sans `-update` (la cuisson
+imposait deja le catalogue) ; corpus gate `--base=d71282e09 --json` : 14 temoins, 0 perte, 0 gain,
+0 changement, schema 59 -> 59. Verification du pilote sur l'arbre fusionne : build CGO, gofmt,
+13 paquets verts, integration killcollector ok, vet research 0. Cinq decouvertes au §4.
+
+**Prochaine etape.** Push + CI ; fusion 1.9.1 ter (re-figeage `placements.stats`, forme pas
+contenu) ; vague 2 (1.9.7, 1.9.9, 1.9.10, 1.9.11, 1.9.13) puis 1.9.14 ; revue de jalon ; cloture M1.
+
+---
+
 ## [2026-09-16] Chantier decodeur — V10 : la famille 1.9 resserree (decision utilisateur) — Complete (feat/recherche-decodeur-film)
 
 **Decision technique principale.** Question de l'utilisateur (« j'ai l'impression qu'on part
