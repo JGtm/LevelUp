@@ -250,4 +250,18 @@
 #               de build, et la case MPP des cinq builds anciens est passee de `8/3` a VIDE
 #               apres la mesure de fermeture qui refute `8/3` (D15). Aucun bit lu ne change :
 #               les deux builds dont la largeur est posee la portent a 9/5, deja le defaut.
-grammar-2026-09-15.5	c148b236848ab1f89dfa8f68a6c3c22381d16ef608ccf502edd8040a473d3248
+#   2026-09-15  grammar-2026-09-15.6  lot 1.9.1 bis, pas 3 (arbitrage du pilote) : LE PROFIL DU
+#               BUILD PASSE DEVANT LA CALIBRATION SUR LE CHEMIN CUIT. Pour les builds dont la
+#               largeur MPP est RELUE (`HI_1_12_0`, `HI_1_13_0`), c est elle qui est installee,
+#               et `CalibrateMPPWidths` n est plus qu un CONTROLE (le rapport publie ce qu elle
+#               mesure). Pour les cinq builds sans valeur relue, et pour les films sans section
+#               d identification, la calibration DECIDE encore — c est desormais un repli NOMME,
+#               `repli_largeurs_mpp_calibrees_sur_le_film` (condition `build_sans_profil_relu`,
+#               ordre `apres_lecture`, cible de retrait : l executable d un build <= HI_1_11_0).
+#               LA REVISION MONTE D UN RANG MALGRE LE MEME LOT, pour la meme raison qu au pas
+#               2 bis : `.5` a ete publiee comme « aucun bit lu ne change », et ce commit-ci
+#               PEUT en changer sur le chemin cuit — un film `HI_1_12_0` ou `HI_1_13_0` dont la
+#               calibration tranchait autre chose que 9/5 lit desormais 9/5.
+#               `SchemaVersion` reste 59 EN ATTENTE du `replay-corpus-gate`, qui n a pas pu etre
+#               joue (voie de decodage transferee au lot 1.9.3).
+grammar-2026-09-15.6	cbfb39b1735b7ebeab0b30c7fd6833a14e71ffbeb0606a6b09e03086dfc86129

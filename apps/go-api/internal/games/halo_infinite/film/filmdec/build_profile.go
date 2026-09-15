@@ -325,3 +325,33 @@ func InstallBuildProfileMPP(f *filmsource.Film) (func(), error) {
 // (alors la ligne devient RELU) ; ou une fermeture qui vaille quelque chose sur ces archetypes,
 // c est-a-dire la suite du chantier — l oracle fermeture redeviendra utilisable quand la marche
 // fermera, et il tranchera alors sans ambiguite.
+
+// CORRECTION DU 2026-09-16 — LES TROIS BITS NE SONT PAS DANS LES LARGEURS MPP.
+//
+// Fait tranche par l utilisateur (mecanique de jeu, il fait autorite) : « les films sont
+// independants des builds ; ils sont enregistres a l instant T et jamais touches ensuite ; le
+// film ne depend que de lui-meme pour expliquer au mode Theater comment le lire ». L executable
+// OUVERT lit donc les films anciens, et tout ce qui varie est ECRIT DANS LE FILM.
+//
+// CE QUE LA RELECTURE A ALORS ETABLI, ET QUI CORRIGE LE PAS 3 :
+//
+//	`FUN_14080cfe8` N A AUCUNE BRANCHE DE VERSION. Toutes ses largeurs sont des litteraux
+//	(9, 32, 1[+32], 1[+18], 2, 5, 3, la boucle, la queue) et son seul `if` runtime
+//	(`DAT_145121140 == 1`) ne consomme AUCUN bit. `FUN_141fd72c0` (le champ de tete, R(9))
+//	n a qu UN SEUL appelant, ce bloc. Et `FUN_1428e1c0c`, l accesseur de version du film, n a
+//	que six sites d appel, AUCUN dans la chaine des etats par defaut.
+//
+// Le bloc MPP lit donc les MEMES bits pour tous les films. Les trois bits d ecart que l oracle
+// `n2` mesure sur les films anciens sont AILLEURS dans l etat par defaut — le balayage les avait
+// attribues a `lead`/`index` parce que c etaient les deux seules molettes qu il avait.
+//
+// CE QUI RESTE VRAI : `n2` mesure bien que l etat par defaut des films anciens est plus court de
+// trois bits, et la case de ces builds reste donc VIDE — non parce que la largeur MPP serait
+// inconnue (elle ne l est pas : 9/5, relue), mais parce que l ENDROIT des trois bits ne l est
+// pas. Poser 9/5 pour ces builds retirerait la calibration sans avoir explique l ecart.
+//
+// CE QUE LA PROCHAINE SESSION DOIT CHERCHER, ET OU : la cle est dans le film, et la mesure la
+// designe — la table par type de la section 2, ALIGNEE PAR LA FIN, porte DOUZE positions dont la
+// version vaut 1 sur les cinq films courts et 2 a 5 sur les deux autres (alignee par le DEBUT
+// elle n en porte aucune : les types s ajoutent en tete). Le discriminant est l une de ces douze
+// ; la fonction qui la consulte est dans l executable ouvert, et elle reste a trouver.

@@ -104,7 +104,13 @@ const (
 	// CondNonResolu : la lecture a tourné et n'a pas tranché (plusieurs candidats, aucun
 	// candidat, valeur hors domaine).
 	CondNonResolu Condition = "non_resolu"
-	// CondInconditionnel : le repli s'applique TOUJOURS, sans diagnostic. C'est la forme la
+	// CondBuildSansProfilRelu : le PROFIL PAR BUILD existe et ce build-ci n a pas sa valeur
+	// RELUE chez l ecrivain. Pose le 2026-09-15 (lot 1.9.1 bis, pas 3) : la grammaire du bloc
+	// `object-multiplayer-properties` est versionnee par build, et l executable dont on dispose
+	// est UN SEUL build. Un film sans section d identification tombe ici aussi — sans build, pas
+	// de profil relu — ce qui evite de dedoubler la meme condition sous deux noms.
+	CondBuildSansProfilRelu Condition = "build_sans_profil_relu"
+	// CondInconditionnel : le repli s applique TOUJOURS, sans diagnostic. C'est la forme la
 	// plus grave : rien ne dit si une lecture existait.
 	CondInconditionnel Condition = "inconditionnel"
 )
@@ -248,6 +254,7 @@ var (
 	conditionsConnues = map[Condition]bool{
 		CondFilmMuet: true, CondSectionAbsente: true, CondLectureNonPortee: true,
 		CondContradiction: true, CondNonResolu: true, CondInconditionnel: true,
+		CondBuildSansProfilRelu: true,
 	}
 	ordresConnus = map[Ordre]bool{
 		OrdreApresLecture: true, OrdreSansLecture: true, OrdreDevantLaLecture: true,
