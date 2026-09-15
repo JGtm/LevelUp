@@ -60,8 +60,11 @@ func TestRegistrePorteToutesSesFamilles(t *testing.T) {
 // film ÉCRIT et qu'une heuristique tranche sans le consulter. Il descend au fil des lots 1.9.x ;
 // le baisser est le geste qui clôt une conversion.
 //
-// Mesuré au lot 1.9.0 (2026-09-14) : 7.
-const ratchetDevantLaLecture = 7
+// Mesuré au lot 1.9.0 (2026-09-14) : 7. BAISSÉ À 6 au lot 1.9.2 (2026-09-15) :
+// `repli_i0_porte_et_region_par_defaut` passe en `apres_lecture` — les deux chemins de
+// `sync/killcollector` imposent désormais le découpage d'i0 du CATALOGUE de carte, comme le
+// chemin de cuisson, et l'auto-détection n'entre plus que là où le catalogue se tait.
+const ratchetDevantLaLecture = 6
 
 func TestReplisDevantLaLectureNeMontentPas(t *testing.T) {
 	n := NbDevantLaLecture()

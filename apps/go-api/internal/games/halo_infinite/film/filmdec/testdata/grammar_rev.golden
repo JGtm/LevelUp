@@ -169,4 +169,21 @@
 #               killsource-2026-09-14, backlog de redecodage), pas `GrammarRev` — meme nature que
 #               l entree `botSuffix -> BotSuffix` du golden de killsource. `SchemaVersion` ne
 #               monte pas non plus : aucun champ ni aucune forme de l artefact ne change.
-grammar-2026-09-15.1	e9231c748018fc40c9070370ffab27012bfbcbf6a31ac2a312e65fca24bd4337
+#   2026-09-15  grammar-2026-09-15.2  lot 1.9.2 : LE DECOUPAGE D i0 VIENT DU CATALOGUE DE CARTE
+#               SUR TOUS LES CHEMINS. `weapon_hit_distance_resolver.go` prend l ENTREE DE
+#               CATALOGUE (`MapQuantEntry`) la ou il ne prenait que ses bornes : `BuildBipedTracks`
+#               et `FilmWeaponHitDistance` imposent desormais `entry.Layout()` au balayage, et
+#               `DetectFilmWorldRange` devient `DetectFilmMapEntry` (elle rend l entree entiere).
+#               AUCUNE LARGEUR, AUCUN OFFSET, AUCUN LECTEUR D OCTETS NE CHANGE : ce qui change est
+#               QUELLE grammaire s applique — le catalogue au lieu de `DetectI0LayoutOf`. L autre
+#               chemin converti, `sync/killcollector/positions.go`, est hors de l ensemble hache.
+#               MESURE (17 films : les 14 temoins du corpus gate et les 8 builds) : catalogue et
+#               auto-detection donnent le MEME decoupage sur 15 films ; les DEUX films Live Fire
+#               divergent (`gate=6 region=1 12/12/11` contre `gate=5 region=0 13/12/11`), et la
+#               porte de region du catalogue ecarte 26 enregistrements sur 267 400 (`60ae07c4`)
+#               et 11 sur 146 860 (`0797ce72`) qui appartiennent a une AUTRE region.
+#               `KillSourceDecoderRev` NE MONTE PAS (le journal des morts ne change pas, et
+#               `killsource/` n a pas bouge) ; c est `IsolationDecoderRev` qui porte le
+#               redecodage des positions, comme au lot 6.1. `SchemaVersion` ne monte pas : le
+#               chemin de cuisson imposait deja le catalogue, aucun octet de l artefact ne change.
+grammar-2026-09-15.2	02a22f5e8e5a550ec6e8f7aa50878341b3a00c8bdd8072f84e6f391297eeb2b6

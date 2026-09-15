@@ -22,23 +22,41 @@ const comptageParFilmContext = "pas 2 de M2 (les lecteurs recoivent le profil vi
 var registreFilmdec = []Repli{
 	{
 		Nom:       "repli_i0_porte_et_region_par_defaut",
-		Fait:      "la largeur de la porte d'i0 et l'index de region attendu, pour tout le decodage delta",
-		Mecanisme: "GateBits est force a DefaultI0GateBits (5) et Region a 0, quoi que dise le film",
-		Condition: CondInconditionnel,
-		Ordre:     OrdreDevantLaLecture,
+		Fait:      "la largeur de la porte d'i0 et l'index de region attendu, quand AUCUNE entree de catalogue ne les impose",
+		Mecanisme: "GateBits est force a DefaultI0GateBits (5) et Region a 0 : l'auto-detection ne sait pas voir un index de region de plus d'un bit",
+		Condition: CondCarteAbsenteDuCatalogue,
+		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "i0_layout.go",
 			Ancre:   "GateBits: DefaultI0GateBits,",
 		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.2 (le decoupage d'i0 vient du catalogue de carte) puis lot 3.x (profil par carte)",
-		// ORDRE `devant_la_lecture` ET DÉFAUT DÉJÀ MESURÉ : `I0LayoutReport.IndexBitOnes` MESURE
-		// le cas, et le rapport est JETÉ aux trois sites d'appel. Sur Live Fire (4 régions,
-		// arène en région 1), l'auto-détection accepte les enregistrements de la région 00,
-		// exprimés dans une AUTRE AABB : 27 faux enregistrements sur 267 400.
-		CritereRetrait:  "le decoupage vient du catalogue partout (le chemin `replay` l'impose deja) ; 0 recours a l'auto-detection sur les 8 builds",
+		DatePose: dateAudit0E,
+		// RETROGRADE AU LOT 1.9.2 (2026-09-15), `inconditionnel / devant_la_lecture` ->
+		// `carte_absente_du_catalogue / apres_lecture`, ET LE RATCHET DES SEPT DESCEND A SIX.
+		//
+		// CE QUI A CHANGE, SUR PIECES. Les deux chemins de `sync/killcollector` construisaient
+		// leurs reglages de balayage avec `ScanFilmOptions.Layout` nil, donc `DetectI0LayoutOf`
+		// DECIDAIT du decoupage — devant un catalogue qui, lui, savait
+		// (`positions.go` tenait deja l'entree de carte ; `hits.go` la retrouvait par signature
+		// et n'en gardait que les bornes). Ils imposent desormais `MapQuantEntry.Layout()`,
+		// comme le chemin de cuisson le fait depuis le 2026-09-03. La lecture du CATALOGUE
+		// precede donc partout, et ce repli n'entre plus que la ou le catalogue se tait.
+		//
+		// CE QUI SUBSISTE, ET POURQUOI L'ENTREE NE SORT PAS. `DetectI0Layout` a un dernier
+		// appelant de production : `filmdec/weapon_hit_distance_resolver.go`, ou la signature de
+		// largeurs sert a IDENTIFIER la carte (le fait decide y est la carte, pas le decoupage —
+		// `repli_distances_de_touche_desactivees` en porte la consequence). Le lot 1.9.4 le
+		// supprime ; c'est lui qui pourra retirer cette entree.
+		//
+		// MESURE DU LOT 1.9.2 (17 films, 14 temoins du corpus gate + les 8 builds) : catalogue et
+		// auto-detection donnent le MEME decoupage sur 15 films ; les deux films Live Fire
+		// divergent (`gate=6 region=1 12/12/11` contre `gate=5 region=0 13/12/11`), et la porte
+		// de region du catalogue ecarte 26 enregistrements sur 267 400 (`60ae07c4`) et 11 sur
+		// 146 860 (`0797ce72`) qui appartiennent a une AUTRE region de compression.
+		CibleRetrait:    "lot 1.9.4 (la carte du film vient du nom de match : dernier appel de production de DetectI0Layout) puis lot 3.x (profil par carte)",
+		CritereRetrait:  "aucun chemin de production n'appelle DetectI0LayoutOf ni DetectI0Layout ; le decoupage vient du catalogue sur les 8 builds",
 		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.2",
+		CibleComptage:   lot194,
 	},
 	{
 		Nom:       "repli_bande_bipede_comblee",

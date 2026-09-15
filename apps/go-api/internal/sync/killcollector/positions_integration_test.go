@@ -18,11 +18,8 @@ package killcollector
 
 import (
 	"context"
-	"path/filepath"
-	"runtime"
 	"testing"
 
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/port"
@@ -32,20 +29,13 @@ import (
 // realMapQuantCatalog charge le catalogue de bornes REEL du depot — DONNEE DE REFERENCE
 // VERSIONNEE (data/titles/halo_infinite/reference/map_quant_bounds.json, ~22 Ko, commitee), pas
 // une sortie de sync/backfill : elle est disponible meme dans un worktree sans data/ de travail.
-// Chemin resolu par PathResolver (CLAUDE.md : jamais de filepath.Join(..., "data", ...) a la main).
+//
+// DELEGUE DEPUIS LE LOT 1.9.2 : `catalogueDeBornesVersionne`
+// (positions_decoupage_catalogue_test.go, SANS tag de build) fait exactement cela, et deux
+// chargeurs du meme fichier auraient ete deux chemins a tenir d accord.
 func realMapQuantCatalog(t *testing.T) *filmdec.MapQuantCatalog {
 	t.Helper()
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "..")
-	pr := titlePkg.NewPathResolver(repoRoot)
-	cat, err := filmdec.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titlePkg.DefaultSlug))
-	if err != nil {
-		t.Skipf("catalogue de bornes indisponible (%v) — positions non testables sans lui", err)
-	}
-	return cat
+	return catalogueDeBornesVersionne(t)
 }
 
 // allCatalogNames : TOUS les noms du catalogue REEL, comme candidats (cf. en-tete du fichier).
