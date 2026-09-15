@@ -77,4 +77,4 @@
 #               pre-chaine-2026-09-09 (aucune colonne ne porte `Inferred`/`AddedNames`, et sa
 #               revision la plus recente, killsource-2026-09-05, precede l apparition du champ) :
 #               elle se mesurera a la recuisson par killsource_bijection_noms_libres_en_trop.
-killsource-2026-09-16	1701d5fa95820c73626ef5c754451cf3a48e115b9c7143d889ddfd69e9f893ad
+killsource-2026-09-16	76c1495618d62518880d1338ca327141fee015160a11c5a353949c148d9ca031

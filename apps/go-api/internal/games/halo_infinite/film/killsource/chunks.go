@@ -81,7 +81,12 @@ func loadFilm(src *filmsource.Film) (*film, error) {
 	}
 	n := src.NumChunks()
 	f := &film{chunks: make([][]byte, n), packets: packetsOf(src)}
-	f.majorVersion, f.versionLue = filmdec.FilmMajorVersion(src)
+	// LA VERSION VIENT DU PROFIL DU FILM DEPUIS LE LOT 2.1.4 : `filmdec.HighlightProfileOfFilm`
+	// porte la MEME valeur que `FilmMajorVersion` — c est la meme lecture — mais elle la rend
+	// avec le NOM de l implantation qu elle selectionne, et c est le profil qui en est
+	// desormais la source unique (item 2.1.4 du PLAN_DECODEUR_FILM).
+	hl := filmdec.HighlightProfileOfFilm(src)
+	f.majorVersion, f.versionLue = hl.MajorVersion, hl.Lue
 	for ch := 0; ch < n; ch++ {
 		f.chunks[ch] = src.Chunk(ch)
 	}

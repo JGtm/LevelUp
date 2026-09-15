@@ -169,7 +169,9 @@ func (c chunksHighlightDuCache) ChunkHighlight(_ context.Context, matchID string
 	return ops.FilmHighlight{}, false, nil
 }
 
-// versionDuFilm lit le FilmMajorVersion en tete du registre du film. Registre absent du cache :
+// versionDuFilm lit la version majeure du film au PROFIL (lot 2.1.4) : `HighlightProfileFromHeader`
+// lit le MEME u32 en tete du registre et NOMME l implantation du gamertag qu il selectionne.
+// Registre absent du cache :
 // [filmdec.FilmMajorVersionUnknown], sans erreur — c est le cas d une bobine partielle, et
 // l appelant le consigne. `filmsource.Inflate` rend le tampon inchange quand il n est pas zlib.
 func (c chunksHighlightDuCache) versionDuFilm(matchID string) (int, error) {
@@ -180,6 +182,5 @@ func (c chunksHighlightDuCache) versionDuFilm(matchID string) (int, error) {
 	if len(registre) == 0 {
 		return filmdec.FilmMajorVersionUnknown, nil
 	}
-	version, _ := filmdec.FilmMajorVersionFromHeader(filmsource.Inflate(registre))
-	return version, nil
+	return filmdec.HighlightProfileFromHeader(filmsource.Inflate(registre)).MajorVersion, nil
 }

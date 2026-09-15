@@ -175,4 +175,34 @@ package filmdec
 // un repli nomme et compte. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 59 en
 // attendant la montee unique de la vague (les champs `vehicles[].end/tEnd` et
 // `coverage.vehicles.*` arrivent avec elle).
-const GrammarRev = "grammar-2026-09-15.15"
+// ENTREE `grammar-2026-09-15.16` (2026-09-17, lot 2.1, « le profil, resolu une fois, encore
+// recopie ») : `.15` -> `.16`. AUCUNE grammaire d octets n est reecrite, et AUCUN bit n est lu
+// autrement — c est la promesse meme du jalon M2 (D4 : un pas structurel est clos a ZERO
+// difference d equivalence). L empreinte hache les OCTETS des trois paquets, commentaires
+// compris : elle monte parce que la SOURCE change, et la revision avec elle.
+//
+// CE QUI CHANGE, ET C EST DE LA STRUCTURE :
+//
+//	`filmdec.Profile` NAIT (`profile.go`, `profile_table.go`). Il porte ce qui ne se lit pas
+//	    dans le flux — identite, carte, implantation du gamertag, cadre d image-cle, mouvement,
+//	    slots, MPP — resolu UNE fois a partir des TROIS cles que le film ECRIT (version de
+//	    format, build, version majeure) et de l entree de catalogue de la carte. Champs prives,
+//	    accesseurs par valeur, table par type clonee : immuable, et prouve tel.
+//	LE CONTEXTE LE RESOUT A LA CONSTRUCTION (D1) sur le chemin de la cuisson, et il s ouvre
+//	    desormais dans `replay.BuildFromFilm` au lieu de `scanFilmInputs` — pour qu il n y ait
+//	    qu UNE resolution par cuisson. Les trois derivations memorisees restent paresseuses,
+//	    donc calculees a la meme date qu avant, et l horloge des etapes demarre au meme endroit.
+//	L INSTALLATEUR DES LARGEURS D AXE DE LA CARTE (`replay/world_object_precision.go`) LIT LE
+//	    PROFIL et ecrit ENCORE la globale de paquet : double ecriture
+//	    datee (`doubleEcritureGlobales`, bascule 2026-09-17, retrait cible lot 2.3, critere
+//	    « 0 variable de paquet mutable dans filmdec »).
+//	LES TROIS SITES DE `ParseHighlightEvents` QUI LISENT LEUR VERSION DANS LE FILM
+//	    (`killsource/chunks.go`, `replay/deaths_source.go`, `cmd/levelup` par `ops`) la prennent
+//	    a `HighlightProfileOfFilm` / `HighlightProfileFromHeader` : MEME u32, MEME valeur, source
+//	    unique et implantation NOMMEE.
+//
+// `KillSourceDecoderRev` NE BOUGE PAS, et le choix est EXPLICITE comme son ratchet l exige :
+// `killsource/` change de deux lignes — la source de la version majeure et le commentaire qui la
+// nomme — et les lignes PRODUITES sont identiques a l octet, donc aucun match deja decode n est
+// candidat au backlog. `SchemaVersion` reste 59 : le document publie ne gagne ni ne perd un champ.
+const GrammarRev = "grammar-2026-09-15.16"

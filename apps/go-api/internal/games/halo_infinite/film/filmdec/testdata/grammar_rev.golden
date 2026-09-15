@@ -319,4 +319,15 @@
 #               repli nomme et compte (`repli_cadre_de_marche_par_defaut_conserve`). Aucun octet
 #               existant n est lu autrement : le paquet sait lire une chose de plus.
 #               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 59 (montee de vague).
-grammar-2026-09-15.15	65ceedfaa6f66a16836f5335cebea4867a9e256772aa55b74cbfc99eae2adcbc
+#   2026-09-17  grammar-2026-09-15.16  lot 2.1 (M2, pas 1) : LE PROFIL DU FILM NAIT
+#               (`profile.go`, `profile_table.go`) — resolu UNE fois a partir des trois cles que le
+#               film ECRIT (version de format, build, version majeure) et de l entree de catalogue
+#               de la carte, immuable, avec une table a provenance par ligne. Le contexte le resout
+#               a la construction (D1) et s ouvre desormais dans `replay.BuildFromFilm` pour qu il
+#               n y ait qu UNE resolution par cuisson ; `installWorldObjectPrecision` le LIT et
+#               ecrit ENCORE la globale (double ecriture datee, retrait cible lot 2.3) ; les trois
+#               sites de `ParseHighlightEvents` qui lisent leur version dans le film la prennent au
+#               profil. AUCUN bit n est lu autrement (D4 : M2 = revision a zero difference).
+#               `KillSourceDecoderRev` ne bouge PAS (choix explicite : lignes produites identiques,
+#               deux lignes de source changees) ; `SchemaVersion` reste 59.
+grammar-2026-09-15.16	202f30f49c6d91565fd3b112677ba3ebea0d6cd5b59d2270623601f2cc4c568f

@@ -3499,18 +3499,62 @@ différence, aucune montée de `SchemaVersion` ; `GrammarRev` montée par lot (l
 
 #### Lot 2.1 (pas 1) — Le profil, résolu une fois, encore recopié — M, high
 
-- [ ] 2.1.1 `filmdec.Profile` immuable : `Identity` (1.5.1), `Map MapQuantEntry`, `Highlight`
+CLOS le 2026-09-17 (branche `feat/decfilm-21`, base `f950b7179`, 4 commits de code `164ca73b1` →
+le commit de clôture). **La table est keyée par les TROIS clés que le film ÉCRIT** — version de
+format (`chunk_00+4`), build (section 2), version majeure (`chunk_00+0`) — et non « une ligne par
+build » comme l'écrivait l'item : le 1.9.1 ter avait déjà établi que le format et le build ne
+disent pas la même chose (le format 24 porte trois builds, dont deux largeurs de personnalisation
+différentes), et l'implantation du gamertag est keyée par une troisième clé encore.
+
+- [x] 2.1.1 `filmdec.Profile` immuable : `Identity` (1.5.1), `Map MapQuantEntry`, `Highlight`
       (implantation du gamertag par version : jusqu'à 38, 39-40, dès 41), `Keyframe` (règle
       `172 + état(ti)`, jamais un nombre), `Movement` (quantums, largeur d'axe absolue, drapeaux de
       queue), `Slots` (1.5.2). Table `profile_table.go` : une ligne par build (B.1 de
       `NOTE_PROFIL_PAR_BUILD` + 5b : 7 builds), chaque valeur avec fonction Ghidra ou film témoin
       et date (D3) ; entrées « présumées » listées par `TestProfilPresumes`.
-- [ ] 2.1.2 `NewFilmContextForMap` résout le profil à la construction (D1) ; `ErrUnknownBuild`
+      FAIT. `profile.go` (`Profile` à champs PRIVÉS, accesseurs par VALEUR, `FilmIdentity.TypeVersions`
+      CLONÉE — `TestProfilEstImmuable` sabote la copie reçue et vérifie que le profil ne bouge pas)
+      et `profile_table.go` (24 lignes, colonnes `Cle / Champ / Valeur / Source / Preuve / Date`).
+      `TestProfilPresumes` liste et **GÈLE** les SIX présumées, toutes du mouvement
+      (`Traversal`, `AbsoluteAxisW`, `DeltaAxisWidth`, `Range`, `CalibratedSkip`,
+      `MobilityActionExtraBits`) : le ratchet ne monte pas, en retirer une exige la ligne de table
+      qui passe RELUE ou MESURÉE. `Keyframe` porte la RÈGLE (`EnTeteBits` 108, `MotDeTailleBits` 32,
+      `CadreBits() = 172`, `EtatParDefautPorte(ti)` confronté à `defaultStateDeserByTI`), jamais un
+      nombre. Fichiers : 278 L et 344 L, sous le seuil.
+- [x] 2.1.2 `NewFilmContextForMap` résout le profil à la construction (D1) ; `ErrUnknownBuild`
       remonte à l'appelant (le constructeur le journalise, principe 12).
-- [ ] 2.1.3 Double écriture : `installWorldObjectPrecision` lit le profil et écrit encore les
+      FAIT. L'exception à la paresse est BORNÉE au constructeur de la CUISSON et documentée en tête
+      de `film_context.go` : les trois dérivations mémorisées restent calculées au premier balayage
+      qui les demande, et la résolution tombe AVANT le démarrage de l'horloge des étapes, donc
+      aucune étape observée ne change de date. `NewFilmContext` (instruments, des dizaines de
+      contextes par test) résout au premier accès — même valeur, `ResolveProfile` étant pure.
+      `FilmContext.ProfileErr` remonte l'erreur TYPÉE (`errors.Is` sur `ErrUnknownFormat` /
+      `ErrUnknownBuild`, jointes) ; `journaliserProfilIncomplet` ne journalise QUE si le film porte
+      son registre — une bobine partielle n'a pas de clé à chercher. AUCUN film mis de côté.
+- [x] 2.1.3 Double écriture : `installWorldObjectPrecision` lit le profil et écrit encore les
       globales ; kill-switch daté dans le code (bascule = date du lot, retrait cible = lot 2.3,
       critère = 0 globale) ; `TestProfilEgaleGlobales`.
-- [ ] 2.1.4 Les trois appels `ParseHighlightEvents(data, version)` lisent `Profile.Highlight`.
+      FAIT. `doubleEcritureGlobales` (bascule 2026-09-17, retrait cible lot 2.3, critère « 0
+      variable de paquet mutable dans `filmdec` », mesuré par `filmdecVarsGeles`). **Le contexte
+      s'ouvre désormais dans `BuildFromFilm`** et non dans `scanFilmInputs` : sans cela le profil
+      aurait été résolu DEUX fois par cuisson, une recopie de plus dans le lot qui s'appelle
+      « résolu une fois ». Le découpage forcé par l'appelant passe par `decoupageForce(opt)`, et
+      `TestDecoupageForceSuitLesOptions` interdit aux deux compositions de diverger.
+      `TestProfilEgaleGlobales` (filmdec : MPP installée par `InstallFilmFormatMPP`, rapport de
+      `ReadPlayerTable`, constantes du cadre, neuf globales de mouvement) et
+      `TestProfilEgaleGlobalesWorldObject` (replay : Bazaar, Live Fire à deux bits de région,
+      Cliffhanger témoin).
+- [x] 2.1.4 Les trois appels `ParseHighlightEvents(data, version)` lisent `Profile.Highlight`.
+      FAIT par une PORTE ÉTROITE (`HighlightProfileOfFilm` / `HighlightProfileFromHeader`) et non
+      par `ResolveProfile` : les trois sites n'ont pas de carte et deux n'ont pas de film complet —
+      leur faire résoudre le profil entier coûterait une analyse de registre par appel pour une
+      valeur qui tient dans les quatre premiers octets. MÊME u32, MÊME valeur, composée par la MÊME
+      fonction que `Profile.Highlight`. Les trois : `killsource/chunks.go` (pose `f.majorVersion`
+      pour `loadKillFeed`), `replay/deaths_source.go`, `cmd/levelup/cmd_backfill_medailles_feed.go`
+      (chemin `ops`). Les trois AUTRES appels (`sync/collect.go`,
+      `sync/convergence_backfill_events.go`, `sync/engine_highlight_events.go`) prennent leur
+      version du MANIFESTE de l'API, pas du film : hors périmètre, et c'est écrit ici pour que le
+      lot 2.2 ne les cherche pas.
 
 Preuve : `replay-equiv` zéro différence ; corpus gate zéro différence.
 
@@ -3958,6 +4002,12 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-16 | revue M1 — ronde 2 | **F3 — TENU, CORRIGÉ. `killsource_bijection_noms_libres_en_trop` SURCOMPTAIT la population qu'il prétend mesurer.** `collector.go:788` posait `t.Inferred > 0 && t.FreeNames > t.Inferred`, donc il s'incrémentait aussi sur `Inferred >= 2` — un régime où l'ancienne porte (`Inferred <= 1`) refusait DÉJÀ, où rien ne bascule et où aucune publication n'est perdue. **CORRIGÉ** : `t.Inferred == 1 && t.FreeNames >= 2`, la seule population que `AffectationUnique` fait passer de vrai à faux ; doc du compteur alignée (`Inferred >= 2` relève de `killsource_bijection_inference`). Test des TROIS régimes avec contrôle croisé sur les deux portes (`TestAmbiguiteNeCompteQueLesFilmsQuiBascule`). Mutation (ancienne condition remise) -> **ROUGE sur le seul régime concerné** (`2 indices libres / 3 noms libres : delta 1, attendu 0`), restaurée par nom. | sans objet — corrigé dans ce lot |
 | 2026-09-16 | revue M1 — ronde 2 | **F4 — TENU, CORRIGÉ. `collector.go` portait 97 lignes d'historique d'une constante qui ne le concerne pas.** Le fichier déclare en en-tête « enchaîner les trois — CE FICHIER » et pesait 816 lignes (804 avant la correction F3). **CORRIGÉ par DÉPLACEMENT PUR** : `KillSourceDecoderRev` et son historique sortent dans `killcollector/killsource_decoder_rev.go` (121 L) ; `wc -l collector.go` **816 -> 718**. Contrôle ligne à ligne : les 98 lignes retirées de `collector.go` (hors les 7 lignes F3) sont EXACTEMENT les 98 lignes ajoutées au fichier neuf (`diff` des deux extraits : vide). `metricBijAmbigue` RESTE dans `collector.go` — ce n'est pas un bloc autonome mais une ligne du groupe `const` des compteurs de santé ; l'en sortir aurait scindé un groupe et ne serait plus un déplacement pur. **Le ratchet d'empreinte reste VERT SANS régénération** (`TestKillSourceDecoderRevSuitLeDecodeur` `ok 0.01s`, `testdata/` non modifié) : il hache `internal/games/halo_infinite/film/killsource/`, jamais `killcollector/`. | sans objet — corrigé dans ce lot |
 | 2026-09-16 | revue M1 — ronde 2 | **F5 — TENU, CORRIGÉ, ET LA CHRONOLOGIE DU BRIEF ÉTAIT FAUSSE SUR PIÈCES.** La chronique de `grammar_rev.go` empilait TROIS blocs annonçant chacun « `.11` -> `.12` » suivis de deux lignes « FUSION … au rang suivant » : elle s'arrêtait à `.12` quand la constante valait `.14`, et `.13`/`.14` n'avaient aucune entrée — ni dans le godoc, ni dans le golden (dont la dernière entrée était de surcroît ÉTIQUETÉE `.12` pour le lot L3). Relevé commit par commit (`git log --first-parent` + `git show <sha>:…/grammar_rev.go`), l'intégration a fait **`.11` (944e7c691, L6) -> `.12` (99644996e, L4 : porte killsource `AffectationUnique`) -> `.13` (1f478d5c3, D13 : porte unique `MPPWidthsForFilm`) -> `.14` (29c5d6c85, L3 : code musée)** : le brief attribuait `.13` à une « fusion L4 + D13 » qui n'a jamais eu lieu. **CORRIGÉ** : chronique LINÉAIRE, une entrée par rang, forme uniforme « ENTREE + révision entre accents graves » dans le godoc et ligne d'HISTORIQUE dans le golden ; l'entrée `.13` dit explicitement que la porte killsource relève de `KillSourceDecoderRev` et a été traitée au rang `.12`. Ratchet neuf `TestChroniqueCouvreLaRevisionCourante` (modèle `TestDocumentShapeSchemaHasChronicleEntry`), qui exige l'entrée des DEUX côtés. **`GrammarRev` NE BOUGE PAS** : `grammar_rev.go` est hors du hachage (`fichierHorsGrammaire`) et le golden ne fige que sa ligne de données — porte `-update-grammar-rev` rejouée, golden **byte-identique** (md5 `aa1c189a…` avant et après) et refus après réécriture. | sans objet — corrigé dans ce lot |
+
+| 2026-09-17 | 2.1 | **D1 (2.1) — L'ITEM DU PLAN DISAIT « une ligne par BUILD » ; LA TABLE EN A TROIS CLÉS.** Sur pièces, le dépôt keye déjà par la VERSION DE FORMAT (`mppWidthsPourFormat`, lot 1.9.1 ter) ce que l'item attribuait au build, et l'implantation du gamertag est keyée par la VERSION MAJEURE (`chunk_00+0`), une troisième clé encore. Une table « par build » aurait donc RÉGRESSÉ : le format 24 porte trois builds dont deux largeurs de personnalisation différentes, et les cinq films sans section d'identification n'ont pas de build mais ont un format. TRAITÉ DANS LE LOT (la table porte les trois clés, l'en-tête de `profile_table.go` les distingue), consigné ici parce que l'item du plan reste à corriger pour 2.2/2.3. | Lot 2.2 : l'item « les lecteurs reçoivent le profil » doit dire PAR QUELLE CLÉ chaque famille est keyée |
+| 2026-09-17 | 2.1 | **D2 (2.1) — `killsource/calibrate.go` ET `killsource/decode.go` ÉCRIVENT DIRECTEMENT `filmdec.TraversalPrecision` ET `SetAbsoluteAxisW`, HORS DE TOUT INSTALLATEUR.** `calibrate.go:76-98` sauve, balaie seize largeurs et repose ; `decode.go:101-103` pose `14` et `{1, 6/6/6}` en dur à chaque décodage. Ce sont DEUX valeurs de profil (`Movement.AbsoluteAxisW`, `Movement.Traversal`) écrites par une CALIBRATION et par un littéral, dans un paquet que le lot 2.1 ne touche pas. NON TRAITÉ (règle 7). | Lot 2.2.a (positions) : ces deux sites sont les derniers écrivains hors `replay` ; le lot 2.3 ne pourra retirer les globales qu'après eux |
+| 2026-09-17 | 2.1 | **D3 (2.1) — `replay/film_scan.go:36` RELIT LA VERSION MAJEURE ALORS QUE LE CONTEXTE LA PORTE.** Depuis le lot 2.1.3 la cuisson tient `fc.Profile().Highlight().MajorVersion` ; `film_scan.go` appelle pourtant `filmdec.FilmMajorVersion(s.film)` pour remplir `FilmInputs.FilmMajorVersion` (publication de couverture). Même valeur, une lecture de `chunk_00` de plus par cuisson. NON TRAITÉ : ce n'est pas un appel de `ParseHighlightEvents`, donc hors item 2.1.4, et le brief borne les retouches de `replay/` à l'appelant strictement nécessaire. | Lot 2.2.d (temps forts et pied) : le site lit le profil du contexte |
+| 2026-09-17 | 2.1 | **D4 (2.1) — `ResolveProfile` COÛTE UNE ANALYSE DE REGISTRE DE PLUS PAR CONTEXTE, ET ELLE FAIT SONNER `warnUnknownRegistry`.** `ReadFilmIdentity` appelle `parseRegistry`, qui journalise « empreinte du registre ECS INCONNUE » sur tout build hors référence (`registry.go:278`) ; résoudre le profil à la construction ajoute donc une ligne de journal par cuisson sur le parc ANCIEN (82 films sur 1 351, soit 6 %), en plus de celle que le contexte émet pour une clé absente. Sur le parc courant (`HI_1_13_0`, 1 123 films) l'empreinte est connue et rien ne sonne. NON TRAITÉ. | Lot 2.4 (« une seule porte aux octets ») : le registre analysé une fois par film sert aussi à l'identité |
+| 2026-09-17 | 2.1 | **D5 (2.1) — LE BUDGET DE 30 s DE `filmdec` ÉTAIT DÉJÀ DÉPASSÉ SUR LA BASE `f950b7179`.** Mesure avant tout changement, cache froid : **31,697 s** (`go test ./internal/games/halo_infinite/film/filmdec/ -count=1`, CGO_ENABLED=0). Le lot le laisse à 21,8-28,7 s selon la passe — donc sous le budget, sans qu'aucun instrument ait été tagué : l'écart entre les deux mesures est du bruit de cache, pas un gain. Le budget se mesure donc sur une passe CHAUDE, ce que la règle du §2.3 ne dit pas. NON TRAITÉ. | §2.3 : préciser que la mesure du budget se prend cache chaud |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -4694,6 +4744,27 @@ la vague rend mecaniques (D4 (1.9.13) en §4) : `TestDocumentShapeMatchesGolden`
 | 2026-09-16 | Revue M1 — L4 | oracle (lecture seule) | `go run ./cmd/diag_q data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb "SELECT table_name, column_name FROM information_schema.columns WHERE lower(column_name) LIKE '%bijection%' OR '%inferred%' OR '%roster%' OR '%determin%' OR '%margin%' OR '%health%'"` | **(0 rows)** — aucune colonne ne porte la mesure du constat 1 |
 | 2026-09-16 | Revue M1 — L4 | oracle (lecture seule) | `… "SELECT decoder_rev, publishable, count(DISTINCT match_id), count(*) FROM match_kill_events_latest GROUP BY 1,2"` | `highlight-credit-2026-08-01/true` 3 films · `killsource-2026-07-31` 252 false / 337 true · `killsource-2026-09-05` 244 false / 548 true. **La révision la plus récente de l'oracle précède l'apparition de `BijectionDetermined` (2026-09-14)** : la population du constat 1 s'y mesurera à la recuisson, pas ici |
 
+
+### Lot 2.1 (M2, pas 1) — gates SANS décodage, 2026-09-17
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-17 | 2.1 (mesure AVANT) | base `f950b7179` | `go test ./internal/games/halo_infinite/film/filmdec/ -count=1` (CGO_ENABLED=0, cache froid) | ok — **31,697 s** : le budget de 30 s du §2.3 était déjà dépassé AVANT le lot (découverte D5) |
+| 2026-09-17 | 2.1 (mesure AVANT) | base `f950b7179` | inventaire par grep des sites où une valeur de profil est lue dans une globale, écrite ou recalculée (4 familles, greps collés au compte rendu) | **139 lignes** : A lecture d'une globale dans un lecteur de bits (62), B écriture / install (23), C résolution d'une clé (34), D calibration (17) |
+| 2026-09-17 | 2.1 | `164ca73b1` | `go test …/filmdec/ -run TestProfil… -count=1` (les huit tests du profil) | ok — 1,72 s |
+| 2026-09-17 | 2.1 | `164ca73b1` | `golangci-lint run --timeout 20m --new-from-merge-base=origin/main` | **0 issue** (5 `goconst` corrigés avant de reverdir : libellés et dates de la table extraits en constantes nommées) |
+| 2026-09-17 | 2.1 | `e750857ee` | `go test …/filmdec/ -run TestFilmContextResoutLeProfilALaConstruction -count=1 -v` | PASS — profil du contexte identique à `ResolveProfile` (build, MPP, slots, mouvement), carte portée, contexte nil = invariants seuls |
+| 2026-09-17 | 2.1 | `537e5a350` | `go test ./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/replaybuild/ ./internal/analysis/objectiveevents/ ./internal/service/replayview/ ./internal/sync/killcollector/ ./internal/ops/ -count=1` (CGO) | ok partout SAUF les deux rouges ADMIS par construction sur cette base : `TestDocumentShapeMatchesGolden` (949 lignes figées / 963 obtenues) et `TestContractFixturesMatchCommitted` (8 fixtures) — montée de schéma différée à la fusion de la vague |
+| 2026-09-17 | 2.1 | `(ce commit)` | `go test …/filmdec/ -run GrammarRevSuitLaGrammaire -update-grammar-rev` puis sans le drapeau | `grammar-2026-09-15.15` → **`.16`**, empreinte `202f30f4…c568f` ; entrée de chronique écrite dans le golden (`TestChroniqueCouvreLaRevisionCourante` vert) |
+| 2026-09-17 | 2.1 | `(ce commit)` | `go test ./internal/sync/killcollector/ -run TestKillSourceDecoderRevSuitLeDecodeur -update` puis sans | **`KillSourceDecoderRev` INCHANGÉE** (`killsource-2026-09-16`), golden d'empreinte régénéré : `killsource/` change de deux lignes (source de la version majeure, commentaire), les lignes PRODUITES sont identiques — le ratchet exige que ce choix soit explicite, il l'est ici et au message de commit |
+| 2026-09-17 | 2.1 | `(ce commit)` | `go test -tags=integration -p 1 ./internal/sync/killcollector/ -count=1` | ok — 18,140 s |
+| 2026-09-17 | 2.1 | `(ce commit)` | `gofmt -l ./internal ./cmd` | sortie vide |
+| 2026-09-17 | 2.1 | `(ce commit)` | `go vet ./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/sync/killcollector/ ./internal/replaybuild/ ./internal/analysis/objectiveevents/ ./internal/domain/replaydoc/ ./internal/service/replayview/` (CGO) | 0 diagnostic |
+| 2026-09-17 | 2.1 | `(ce commit)` | `golangci-lint run --timeout 20m --new-from-merge-base=origin/main` | **0 issue** |
+| 2026-09-17 | 2.1 | `(ce commit)` | `go test ./internal/games/halo_infinite/film/filmdec/ -count=1` (CGO_ENABLED=0) | ok — **28,656 s** puis **21,760 s** : sous le budget de 30 s, aucun instrument neuf tagué `research` (le lot n'ajoute aucun balayage de bobine) |
+| 2026-09-17 | 2.1 (mutation) | `(ce commit)` | `DeltaQuantum: 0.01383` → `0.02` dans `mouvementDuProfil` | **ROUGE** : `TestProfilEgaleGlobales` — « Movement.DeltaQuantum : profil 0.02, globale de paquet 0.01383 ». Restauré, test revert |
+| 2026-09-17 | 2.1 (mutation) | `(ce commit)` | `majeureDecalageFin = 40` → `39` dans `profile_table.go` | **ROUGE** : `TestProfilHighlightEgaleLeParseur` — « majeure 40 : le profil annonce `gamertag_en_tete` à l'octet 0, le parseur rend "DuProfil" au lieu de "TemoinDuProfil" ». Restauré, test vert |
+| 2026-09-17 | 2.1 | `(ce commit)` | ratchets : `TestFilmdecPackageVarsNeCroitPas`, `TestWorldObjectPrecisionReadersAreAllowlisted`, `TestToutSiteDuRegistreExiste`, `TestBuildFromFilmWiresWorldObjectPrecision` | verts — **`filmdecVarsGeles` reste à 94** (le lot n'ajoute AUCUNE variable de paquet : la table est une FONCTION) ; allowlist des lecteurs de `WorldObjectPrecision` NON agrandie (deux commentaires reformulés pour ne pas citer le nom) ; ancre du repli `repli_type_de_chunk_perdu_du_manifeste` recentrée sur LA ligne qu'il décrit |
 ## 6. Protocole de reprise de session
 
 1. Relire le skill `plan-execution`, puis la §5 et la première case non statuée de la §3.
