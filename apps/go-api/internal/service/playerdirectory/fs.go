@@ -2,14 +2,18 @@
 //
 // Seule implémentation « réelle » de l'interface FS. Tous les chemins passent
 // par PathResolver (CLAUDE.md « Architecture des Données » : jamais de
-// `filepath.Join(..., "data", ...)` à la main), et rien n'est ouvert : on ne
-// fait que constater l'existence d'un dossier ou d'un fichier. Aucun paquet
-// DuckDB n'est importé ici — une player DB se CONSTATE, elle ne s'ouvre pas
-// (modèle mono-writer, ADR 0013).
+// `filepath.Join(..., "data", ...)` à la main), et rien n'est jamais OUVERT :
+// on constate l'existence d'un dossier ou d'un fichier, et — à la purge d'une
+// identité seulement — on retire un dossier joueur. Aucun paquet DuckDB n'est
+// importé ici (ratchet `no_duckdb_import_playerdirectory_test.go`) : une player
+// DB se CONSTATE et se SUPPRIME, elle ne s'ouvre pas (modèle mono-writer,
+// ADR 0013).
 package playerdirectory
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"levelup/go-api/internal/domain/title"
 )
@@ -71,4 +75,24 @@ func (f *pathFS) ListPlayerDirs(titleSlug string) ([]string, error) {
 		names = append(names, e.Name())
 	}
 	return names, nil
+}
+
+// RemovePlayerDir supprime le dossier joueur `name` du titre donné, avec tout ce
+// qu'il contient. Utilisé par la purge d'identité pour les dossiers ORPHELINS —
+// ceux qu'aucun profil ne déclare (les dossiers de profils, eux, partent avec
+// leur entrée, via ProfileService.PurgeIdentityData).
+//
+// Le chemin vient de PathResolver et `name` doit en être la dernière composante
+// et rien d'autre : un nom vide, `.`/`..` ou porteur d'un séparateur est REFUSÉ.
+// `PathResolver.PlayerDir` ne fait qu'un `filepath.Join`, qui nettoie un `..` en
+// remontant d'un cran — c'est-à-dire hors de la racine des joueurs. Les noms
+// traités viennent tous d'un `os.ReadDir`, donc aucun ne devrait l'être ; la
+// garde existe pour que cela reste vrai si un appelant change. Dossier déjà
+// absent = succès (la purge est idempotente).
+func (f *pathFS) RemovePlayerDir(titleSlug, name string) error {
+	if name == "" || name == "." || name == ".." ||
+		strings.ContainsAny(name, `/\`) {
+		return fmt.Errorf("playerdirectory: nom de dossier joueur invalide: %q", name)
+	}
+	return os.RemoveAll(f.paths.PlayerDir(titleSlug, name))
 }

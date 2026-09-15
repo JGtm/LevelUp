@@ -116,6 +116,54 @@ func (s *ProfileService) PurgeTitleData(titleSlug, gamertag string) (dataRemoved
 	return true, nil
 }
 
+// PurgeIdentityData retire, en UNE mutation atomique, les entrées du gamertag
+// pour tous les titres donnés, puis supprime leurs dossiers joueur (handles
+// DuckDB évincés d'abord). Rend, par slug de titre, si le dossier a bien disparu.
+//
+// POURQUOI PAS PurgeTitleData EN BOUCLE (vérifié sur pièces, ADR 0035 D6) :
+// `Store.RemoveEntry` refuse de retirer le DERNIER titre actif d'un gamertag
+// (`ErrLastActiveTitle`). Cet invariant protège un joueur QUI RESTE — on ne le
+// laisse pas sans aucun titre actif. Une purge d'identité, elle, fait disparaître
+// le joueur : appliquée titre par titre, elle échouerait systématiquement sur le
+// dernier et laisserait le profil en place, donc la purge incomplète.
+//
+// La suppression disque est best-effort, comme dans PurgeTitleData : un verrou
+// Windows résiduel laisse des fichiers inertes, pas une entrée de profil vivante.
+func (s *ProfileService) PurgeIdentityData(gamertag string, titleSlugs []string) (map[string]bool, error) {
+	removed := make(map[string]bool, len(titleSlugs))
+	if gamertag == "" || len(titleSlugs) == 0 {
+		return removed, nil
+	}
+	keys := make(map[string]string, len(titleSlugs))
+	mutErr := s.store.Mutate(func(f *dbprofiles.File) error {
+		for _, slug := range titleSlugs {
+			if key, ok := f.FindKey(slug, gamertag); ok {
+				keys[slug] = key
+			}
+			f.Remove(slug, gamertag)
+		}
+		return nil
+	})
+	if mutErr != nil {
+		return nil, mutErr
+	}
+
+	pr := title.NewPathResolver(s.repoRoot)
+	for _, slug := range titleSlugs {
+		key, ok := keys[slug]
+		if !ok {
+			// Entrée déjà absente du fichier : le dossier, lui, peut encore
+			// exister (c'est précisément ce que l'incident du 2026-07-23 a laissé).
+			key = gamertag
+		}
+		if s.evictDB != nil {
+			s.evictDB(pr.PlayerDBPath(slug, key))
+		}
+		removed[slug] = os.RemoveAll(pr.PlayerDir(slug, key)) == nil
+	}
+	return removed, nil
+}
+
 // relPlayerDBPath calcule le chemin de la player DB relatif au repo root (comme
 // stocké dans db_profiles.json). Retombe sur le chemin absolu si la relativisation
 // échoue (volumes distincts sous Windows, etc.).

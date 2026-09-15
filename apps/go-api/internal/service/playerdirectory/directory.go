@@ -63,13 +63,16 @@ type WatchedReader interface {
 	WatchedPlayers() []domain.WatchedPlayerRef
 }
 
-// FS est le témoin disque : ce qui a été écrit pour un joueur, profil ou pas.
-// Tous les chemins passent par PathResolver (cf. fs.go).
+// FS est l'adaptateur disque de l'annuaire : il CONSTATE ce qui a été écrit pour
+// un joueur (profil ou pas) et, à la purge seulement, retire un dossier que
+// l'annuaire vient de trouver orphelin. Tous les chemins passent par
+// PathResolver, et aucune base n'est jamais ouverte (cf. fs.go).
 type FS interface {
 	PlayerDirExists(titleSlug, key string) bool
 	PlayerDBExists(titleSlug, key string) bool
 	PlayerDBPath(titleSlug, key string) string
 	ListPlayerDirs(titleSlug string) ([]string, error)
+	RemovePlayerDir(titleSlug, name string) error
 }
 
 // Deps porte les sources de l'annuaire. Profiles est la seule obligatoire pour
@@ -89,6 +92,10 @@ type Deps struct {
 	// nil ⇒ pas de watcher dans ce process (CLI, serveur sans watcher) : le
 	// profil suffit, `initPlayers` reprendra le joueur au prochain démarrage.
 	Watcher WatcherNotifier
+	// Purge porte les écritures DESTRUCTRICES (cf. purge.go). Regroupées : ce
+	// sont les seules de l'annuaire, et une purge incomplète est pire qu'une
+	// purge refusée — les voir ensemble rend l'oubli visible au câblage.
+	Purge PurgeDeps
 	// Titles : slugs balayés pour le témoin disque. Vide ⇒ tous les titres du
 	// registre par défaut (jamais une comparaison de slug, cf. CLAUDE.md
 	// « Multi-titre »).
@@ -107,6 +114,7 @@ type Directory struct {
 	fs       FS
 	creator  ProfileCreator
 	watcher  WatcherNotifier
+	purge    PurgeDeps
 	titles   []string
 	now      func() time.Time
 }
@@ -133,6 +141,7 @@ func New(d Deps) *Directory {
 		fs:       d.FS,
 		creator:  d.Creator,
 		watcher:  d.Watcher,
+		purge:    d.Purge,
 		titles:   titles,
 		now:      now,
 	}

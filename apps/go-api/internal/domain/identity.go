@@ -189,3 +189,60 @@ type OnboardResult struct {
 	WatcherNotified bool
 	Warnings        []string
 }
+
+// PurgeOptions règle l'exécution d'une purge d'identité.
+//
+// ATTENTION : la valeur ZÉRO EXÉCUTE. Le défaut « simulation » est porté par
+// l'unique appelant — `levelup identity purge` exige `--yes` pour poser
+// DryRun=false — parce que c'est là que la décision d'un humain se prend.
+type PurgeOptions struct {
+	// DryRun : construire le rapport COMPLET sans rien supprimer, pour que la
+	// simulation montre exactement ce que l'exécution ferait.
+	DryRun bool
+}
+
+// Familles d'étapes d'une purge, dans l'ordre où elles s'exécutent (ADR 0035 D6).
+// Ce sont des codes MACHINE : le libellé affiché se construit côté appelant.
+const (
+	// PurgeStepWatcher : retrait du suivi live (d'abord — sans quoi le daemon
+	// pourrait re-déclencher un sync pendant qu'on retire ce qu'il lit).
+	PurgeStepWatcher = "watcher"
+	// PurgeStepProfile : entrée de `db_profiles.json` et dossier joueur du titre.
+	PurgeStepProfile = "profile"
+	// PurgeStepOrphanDir : dossier joueur qu'aucun profil ne déclarait — la trace
+	// que laisse un sync ayant tourné pour un joueur inconnu de l'app.
+	PurgeStepOrphanDir = "orphan_dir"
+	// PurgeStepToken : credentials du xuid (ADR 0023).
+	PurgeStepToken = "token"
+	// PurgeStepGroup : appartenance à un groupe/famille.
+	PurgeStepGroup = "group"
+	// PurgeStepAccount : compte de connexion (en dernier : c'est lui qui donne
+	// son nom à l'identité dans les journaux).
+	PurgeStepAccount = "account"
+)
+
+// PurgeStep est une étape de purge et son issue. Target porte la cible MACHINE
+// (un slug de titre, un nom de dossier, un identifiant de groupe, un nom de
+// compte) ; Err le message d'erreur quand l'étape a échoué.
+//
+// Une étape en échec n'arrête JAMAIS les suivantes : un token qu'on n'a pas pu
+// retirer ne doit pas laisser en place le compte, les profils et les dossiers.
+type PurgeStep struct {
+	Kind   string
+	Target string
+	Done   bool
+	Err    string
+}
+
+// PurgeReport est le compte rendu d'une purge d'identité — la MÊME forme en
+// simulation et en exécution.
+//
+// La base partagée (`shared_matches_v2.duckdb`) n'y figure jamais : une purge n'y
+// touche pas (ADR 0035 D6). Ses matchs portent aussi les données des adversaires
+// et des coéquipiers, et l'entrepôt est append-only par construction (ADR 0026).
+type PurgeReport struct {
+	XUID     string
+	Gamertag string
+	DryRun   bool
+	Steps    []PurgeStep
+}

@@ -458,38 +458,76 @@ gate complet machine au repos.
 
 ## 8. Étape 6 — Purge d'identité + CLI (moyen) — agent C
 
-- [ ] 6.1 `port.PlayerDirectory` étendu : `Purge(ctx, xuid string, opts domain.PurgeOptions) (domain.PurgeReport, error)` ;
-      `PurgeOptions{DryRun bool}` ; `PurgeReport{XUID, Gamertag, Steps []PurgeStep{Kind, Target, Done bool, Err string}}`.
-- [ ] 6.2 `service/playerdirectory/purge.go` : ordre — (1) watcher `RemovePlayer` (vérifier
-      l'existence d'une méthode de retrait sur le daemon — `playerCancels` suggère un W2 ;
-      sinon l'ajouter : cancel du poller + retrait de la map, sous lock) ; (2) pour chaque
-      profil du xuid : `ProfileService.PurgeTitleData(title, key)` (retire l'entrée + dossier,
-      handles évincés) ; (3) dossiers orphelins portant ce gamertag (insensible à la casse) ;
-      (4) `tokenStore.Remove(xuid)` ; (5) `groups.RemoveMember(id, xuid)` pour chaque groupe
-      de `ListForXUID` ; (6) `users.Delete(username)` si compte. Refus : compte `admin`
-      (`ErrPurgeAdminRefused`), xuid vide. `DryRun` : construit le rapport sans exécuter.
-      Chaque étape journalisée (`slog.InfoContext` done / `slog.ErrorContext` err) ; une étape
-      en échec n'arrête pas les suivantes (rapport complet), l'erreur globale agrège.
-      **Jamais** d'accès à `shared_*.duckdb` (ni import de `platform/duckdb` dans ce package —
-      ratchet `no_duckdb_import` existant à vérifier/étendre).
-- [ ] 6.3 CLI `apps/go-api/cmd/levelup/cmd_identity.go` : `levelup identity list` (table
-      xuid / gamertag / compte / profils / token / anomalies) et
-      `levelup identity purge <xuid> [--yes]` (sans `--yes` = dry-run, imprime le rapport et
-      sort 0 ; `--yes` exécute). Construction du directory en mode CLI : readers fichiers, pas
-      de daemon (nil-safe). Refuse si le serveur tient les player DB ? — non : `PurgeTitleData`
-      évince les handles du process courant seulement ; documenter « arrêter le serveur ou
-      utiliser la purge alors que le joueur n'est pas suivi » dans l'aide de la commande.
-- [ ] 6.4 Tests : `purge_test.go` sur un `t.TempDir()` avec les 4 fichiers + un dossier joueur +
-      un fichier `shared_matches_v2.duckdb` factice : après purge, compte/token/profil/dossier
-      absents, groupes sans le membre, **sha256 du fichier shared inchangé** ; dry-run → rien
-      supprimé ; admin → refus. `cmd_identity_test.go` : dry-run sans `--yes`, sortie contient
-      le rapport.
-- [ ] 6.5 `docs/COMMANDS.md` (EN) + `docs/COMMANDS.fr.md` (ou la variante FR existante — vérifier
-      le nom) : section `identity list` / `identity purge`, même PR (règle 15).
+- [x] 6.1 `port.PlayerDirectory` étendu : `Purge(ctx, xuid, domain.PurgeOptions) (domain.PurgeReport, error)`.
+      Types dans `internal/domain/identity.go` (`:198-248`), aux champs prévus + `DryRun` sur le
+      rapport (la simulation et l'exécution ont la MÊME forme, donc le rapport doit dire
+      laquelle il est) et six constantes de `Kind` (codes machine). `PurgeOptions.DryRun`
+      porte un avertissement explicite : la valeur ZÉRO exécute, le défaut « simulation » est
+      tenu par l'unique appelant (`--yes`), là où la décision d'un humain se prend.
+- [x] 6.2 `service/playerdirectory/purge.go` (nouveau) : l'ordre du plan, tenu et testé.
+      (1) `watcher.Daemon.RemovePlayer` — **la méthode n'existait pas** : ajoutée dans
+      `internal/watcher/daemon_remove.go`, PAR XUID (`UpdateSubscriptions` travaille par
+      gamertag, ce qui convient à une liste d'abonnement mais pas à une identité — un gamertag
+      se renomme). Cancel du REST poller + `stopPoller` + retrait des deux maps sous
+      `playersMu`, exactement comme le retrait existant : sans le cancel, la goroutine du
+      poller survivrait (fuite W2). (2) profils : **`PurgeTitleData` NE CONVIENT PAS** —
+      `Store.RemoveEntry` refuse le DERNIER titre actif d'un gamertag (`ErrLastActiveTitle`),
+      invariant qui protège un joueur QUI RESTE ; appliqué titre par titre il échouerait
+      systématiquement sur le dernier et laisserait le profil en place. `ProfileService
+      .PurgeIdentityData(gamertag, titleSlugs)` ajouté : UNE mutation atomique pour tous les
+      titres, puis suppression des dossiers (handles évincés d'abord). Un test dédié le prouve.
+      (3) dossiers orphelins par `FS.RemovePlayerDir` (nouvelle méthode, chemin par
+      `PathResolver`, nom refusé s'il porte un séparateur ou `..`) ; (4) `tokens.Remove` ;
+      (5) `groups.RemoveMember` pour chaque groupe de `ListForXUID` ; (6) `users.Delete`.
+      Refus : compte admin (`ErrPurgeAdminRefused`), xuid vide (`ErrPurgeInvalidXUID`), xuid
+      inconnu (`port.ErrIdentityNotFound`). Chaque étape journalisée, une étape en échec
+      n'arrête pas les suivantes, `errors.Join` agrège. Aucun accès à `shared_*.duckdb`.
+- [x] 6.2bis Ratchet `internal/archlint/no_duckdb_import_playerdirectory_test.go` — **ÉCRIT**
+      (il n'existait pas, cf. §10) : en-tête POURQUOI / PORTÉE, `internal/service/playerdirectory/`
+      récursif, interdit `internal/platform/duckdb` ET `github.com/duckdb/duckdb-go`, `_test.go`
+      exclus, commentaires ignorés. Vérifié EN ÉCHEC sur un import ajouté volontairement, puis
+      remis vert — un garde-rail qu'on n'a pas vu rougir ne garde rien.
+- [x] 6.3 CLI `cmd/levelup/cmd_identity.go` (nouveau) + dispatch `case "identity"` et aide
+      dans `main.go`. `identity list` (xuid / gamertag / compte / profils / jeton / anomalies)
+      et `identity purge <xuid> [--yes]`. Annuaire CLI = lecteurs fichiers, daemon nil.
+      L'aide documente la précondition « le serveur ne doit pas tenir la player DB » (la purge
+      n'évince que les handles du processus courant ; un fichier tenu ailleurs fait échouer
+      l'étape, et le rapport le dit). **Piège corrigé sur pièces** : `flag` s'arrête au premier
+      argument non-flag, donc `purge <xuid> --yes` — l'ordre documenté, celui qu'un humain
+      écrit — aurait laissé `--yes` non lu, c'est-à-dire une SIMULATION là où l'on croyait
+      exécuter ; le positionnel est extrait avant `Parse` et un test joue cet ordre exact.
+      Sortie utilisateur par `io.Writer` (testable) avec la première erreur d'écriture retenue
+      et remontée : un rapport tronqué ne passe pas pour un rapport complet.
+- [x] 6.4 Tests. `purge_test.go` (7 tests) sur un `t.TempDir()` avec les VRAIS stores
+      (db_profiles.json, users.json, groups.json, watcher_tokens/{xuid}.json, dossier joueur +
+      player DB, dossier orphelin sur un second titre, `shared_matches_v2.duckdb` factice) :
+      purge complète → **sha256 du shared inchangé**, dossiers/credentials/compte absents,
+      groupe sans le membre, profil de l'admin intact ; dernier titre actif retiré quand même ;
+      dry-run → rapport complet et RIEN supprimé (les six vérifications disque) ; admin →
+      `ErrPurgeAdminRefused` sans aucune suppression ; étape en échec → les suivantes
+      s'exécutent et l'erreur agrège ; xuid vide et inconnu ; ordre watcher-avant-profils tenu
+      par un double qui note ses appels. `daemon_remove_test.go` (4 tests) : retrait par xuid
+      tous titres sans toucher l'homonyme, cancel du poller consommé, idempotence + nil-safe,
+      titre vide normalisé. `cmd_identity_test.go` (5 tests) : `list`, simulation sans `--yes`
+      (rien supprimé), exécution avec `--yes`, xuid inconnu, routage.
+- [x] 6.5 `docs/COMMANDS.md` (EN) + `docs/FR/COMMANDS.md` (**c'est le nom réel de la variante
+      FR** — `docs/COMMANDS.fr.md` n'existe pas) : section « Player identities / Identités
+      joueur » avant « Metadata / seed / migration », avec les cinq points qui comptent
+      (entrepôt partagé jamais touché, simulation par défaut, ordre, refus de l'admin,
+      précondition serveur arrêté).
 
-**Gate G6** : `go test ./internal/service/playerdirectory/... ./cmd/levelup/...` → 0 ;
-`go build ./cmd/levelup` → 0 ; `go run ./cmd/levelup identity list` sur le worktree local →
-tableau des 4 joueurs locaux sans panique.
+**Gate G6** ✅ (2026-09-16, 00:38) :
+- `go test -count=1 -timeout 30m ./internal/service/playerdirectory/... ./cmd/levelup/...` →
+  **2 paquets `ok`, 0 échec**, exit 0 (playerdirectory 0,2 s · cmd/levelup 0,9 s).
+- `go build ./cmd/levelup` → **0**.
+- `go run ./cmd/levelup identity list` sur les registres locaux (LEVELUP_REPO_ROOT du dépôt
+  principal, commande STRICTEMENT en lecture) → **12 identités, aucune panique** : les 4
+  joueurs à profils multi-titres (JGtm admin, Chocoboflor, Madina97294, XxDaemonGamerxX), les
+  6 amis `auth_only`, et 3 lignes `token_orphan` (fixtures `000000000000000{0,1,2}.json`,
+  cf. §10). Exit 0.
+- Hors gate : `go vet ./...` → 0 ; `./internal/archlint/... ./internal/watcher/...
+  ./internal/domain/... ./internal/port/... ./internal/service/...` → **14 paquets `ok`,
+  0 échec** ; `golangci-lint run --new-from-merge-base=origin/main ./...` → **0 issue**.
 
 ## 9. Étape 7 — Clôture (rapide) — pilote
 
@@ -605,6 +643,32 @@ tableau des 4 joueurs locaux sans panique.
 - **[agent C, étape 5] `fileExists` (handlers) n'était plus utilisé QUE par ses propres
   tests** une fois le chemin de la player DB passé dans l'annuaire : c'est le « dead code
   museum » à tests verts du diagnostic de revue. Helper et tests supprimés.
+- **[agent C, étape 6] `ProfileService.PurgeTitleData` ne peut pas purger une identité.**
+  `Store.RemoveEntry` refuse le DERNIER titre actif d'un gamertag (`ErrLastActiveTitle`) —
+  l'invariant « au moins un titre actif » protège un joueur QUI RESTE. Appliquée titre par
+  titre, une purge échouerait donc systématiquement sur le dernier et laisserait le profil en
+  place : purge incomplète, silencieuse côté fichier. TRAITÉE dans le périmètre de 6.2 :
+  `PurgeIdentityData(gamertag, titleSlugs)` retire tout en UNE mutation atomique.
+  `PurgeTitleData` est inchangée — elle sert le réglage par titre (`TitleSyncHandler`), où
+  l'invariant a tout son sens.
+- **[agent C, étape 6] `watcher.Daemon` n'avait AUCUNE méthode de retrait par joueur.**
+  `UpdateSubscriptions` retire par GAMERTAG, ce qui convient à une liste d'abonnement mais pas
+  à une identité (un gamertag se renomme, un xuid non). `RemovePlayer(ctx, xuid)` ajoutée
+  (`daemon_remove.go`), pas sur l'interface `DaemonController` : l'y mettre forcerait tous ses
+  doubles de test à l'implémenter sans usage — même raisonnement que `WatchedReader` à
+  l'étape 3, et le câblage la prend par assertion.
+- **[agent C, étape 6] un groupe DONT l'identité purgée est PROPRIÉTAIRE ne se quitte pas.**
+  `groupstore.RemoveMember` rend `ErrCannotRemoveOwner`. L'étape est rendue EN ÉCHEC avec
+  l'identifiant du groupe plutôt que de supprimer le groupe : celui-ci porte les accès
+  d'autres joueurs, et le supprimer est une décision d'administrateur, pas d'une purge. Non
+  traité au-delà (aucun groupe de ce type en local).
+- **[agent C, étape 6] 3 `token_orphan` sur l'instance locale** :
+  `data/auth/watcher_tokens/000000000000000{0,1,2}.json` (datés du 2026-08-20) — des fixtures
+  à xuid factice qu'aucun compte ni profil ne réclame. C'est exactement ce que l'annuaire est
+  fait pour montrer. NON TRAITÉ (hors périmètre) : à supprimer par
+  `levelup identity purge 0000000000000000 --yes` quand l'utilisateur le décidera.
+- **[agent C, étape 6] la variante FR de `COMMANDS.md` est `docs/FR/COMMANDS.md`**, pas
+  `docs/COMMANDS.fr.md` comme l'item 6.5 le supposait. Tout `docs/FR/` suit cette forme.
 - **[agent B, étape 3] `internal/service` compte 6 sous-paquets** (`demo_fixtures`,
   `fragdist`, `replayview`, `squadagg`, `teammates`, `testdata`) : `playerdirectory` en est le
   7e, la forme « sous-paquet de service » est bien la convention du dépôt.
@@ -619,5 +683,5 @@ tableau des 4 joueurs locaux sans panique.
 | 3 | **terminée** | B | G3 ✅ | 6/6 items `[x]` ; port + paquet `playerdirectory` (4 fichiers, 0 import DuckDB) + `GET /admin/identities` ; 3 écarts de forme assumés en 3.3 (dont le suivi live rendu par xuid) ; xuid ajouté à `AdminUserSummary` ; 4 découvertes en §10 |
 | 4 | **terminée** | B | G4 ✅ | 7/7 items `[x]` ; section « Identités » en tête de la page Gestion (TanStack Table, 7 colonnes, tokens sémantiques, 35 clés FR+EN) + interrupteur « Instance fermée », que le backend acceptait mais qu'aucune page n'exposait ; 21 tests vitest neufs ; suite web complète verte (7704 tests) ; 3 découvertes en §10 |
 | 5 | **terminée** | C | G5 ✅ | 6/6 items `[x]` ; `Onboard` seul chemin de création (profil PUIS watcher, ordre tenu par un test) ; ratchet `no_direct_profile_create` (allowlist à 1 entrée) ; `port.ProfileService` + `fileExists` supprimés (code mort) ; contrat OpenAPI inchangé ; 3 découvertes en §10 |
-| 6 | à faire | C | G6 | |
+| 6 | **terminée** | C | G6 ✅ | 6/6 items `[x]` (+ 6.2bis) ; purge ordonnée, dry-run par défaut, refus admin, sha256 du shared inchangé ; `Daemon.RemovePlayer` et `ProfileService.PurgeIdentityData` ajoutés (les deux manquaient) ; ratchet `no_duckdb_import_playerdirectory` ÉCRIT et vu rougir ; CLI `levelup identity list/purge` + COMMANDS EN & FR ; 5 découvertes en §10 |
 | 7 | à faire | pilote | — | |

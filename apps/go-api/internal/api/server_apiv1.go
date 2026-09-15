@@ -417,7 +417,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// D4). Construite ici parce que les deux points de montage en dépendent et
 	// que le créateur de profil qu'elle porte est le writer unique ci-dessus.
 	playerDirectory := buildPlayerDirectory(playerDirectoryDeps{
-		cfg: cfg, users: users, tokens: authStore, daemon: daemon, creator: profileService,
+		cfg: cfg, users: users, tokens: authStore, groups: groupStore, daemon: daemon,
+		profiles: profileService,
 	})
 
 	// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).

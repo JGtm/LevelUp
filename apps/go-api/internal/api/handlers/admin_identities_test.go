@@ -34,9 +34,14 @@ func (f *fakeDirectory) HasTrackedProfile(context.Context, string, string) (bool
 	return false, nil
 }
 
-// Onboard n'est pas servi par ce handler : présent pour satisfaire le port.
+// Onboard et Purge ne sont pas servis par ce handler : présents pour satisfaire
+// le port.
 func (f *fakeDirectory) Onboard(context.Context, domain.OnboardRequest) (domain.OnboardResult, error) {
 	return domain.OnboardResult{}, nil
+}
+
+func (f *fakeDirectory) Purge(context.Context, string, domain.PurgeOptions) (domain.PurgeReport, error) {
+	return domain.PurgeReport{}, nil
 }
 
 func identitiesFixture() domain.AdminIdentitiesResponse {

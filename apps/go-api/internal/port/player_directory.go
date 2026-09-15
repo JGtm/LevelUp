@@ -23,11 +23,7 @@ import (
 var ErrIdentityNotFound = errors.New("player_directory: identité inconnue")
 
 // PlayerDirectory est la lecture unifiée des registres d'identité, et le SEUL
-// chemin par lequel une identité entre (`Onboard`).
-//
-// La dernière écriture prévue par l'ADR 0035 — `Purge` (D6) — rejoindra cette
-// interface avec son implémentation, jamais avant : un port qui déclare une
-// méthode que personne n'implémente vraiment est un mensonge de compilation.
+// chemin par lequel une identité entre (`Onboard`) et sort (`Purge`).
 type PlayerDirectory interface {
 	// List rend toutes les identités connues d'au moins un registre, avec leurs
 	// anomalies et les compteurs d'en-tête.
@@ -43,4 +39,9 @@ type PlayerDirectory interface {
 	// un garde-rail interdit tout autre appelant de `CreatePlayer(`
 	// (`internal/archlint/no_direct_profile_create_test.go`).
 	Onboard(ctx context.Context, req domain.OnboardRequest) (domain.OnboardResult, error)
+	// Purge retire une identité de TOUS les registres — suivi live, profils et
+	// dossiers, credentials, groupes, compte — et JAMAIS de l'entrepôt partagé
+	// (ADR 0035 D6). Refuse un compte administrateur. Rend un rapport complet
+	// même en cas d'échec partiel : une étape ratée n'arrête pas les suivantes.
+	Purge(ctx context.Context, xuid string, opts domain.PurgeOptions) (domain.PurgeReport, error)
 }
