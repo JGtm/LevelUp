@@ -100,9 +100,6 @@ func (s *FriendsOrchestratorService) RecomputeAll(ctx context.Context) (FriendsO
 				"player_slug", p.PlayerSlug, "err", ferr)
 			continue
 		}
-		if len(friends) == 0 {
-			continue // aucun ami déclaré pour ce joueur : rien à promouvoir
-		}
 		playerDBPath := config.PlayerDBPath(s.cfg, p.TitleSlug, p.Gamertag)
 		sharedDBPath := config.SharedDBPath(s.cfg, p.TitleSlug)
 
@@ -172,9 +169,12 @@ func (s *FriendsOrchestratorService) emitFriendSyncCompleted(ctx context.Context
 }
 
 // RecomputeForPlayer relance le recompute is_with_friends sur les DBs DU SEUL
-// joueur donné (tous ses titres), après une écriture de SA liste d'amis. La
-// garde FALSE rend l'opération idempotente ; la sémantique reste additive (un
-// ami retiré ne démote pas les anciens matchs, cf. friends_recompute.go).
+// joueur donné (tous ses titres), après une écriture de SA liste d amis. Le
+// recalcul est CONVERGENT (friends_recompute.go) : promotion des matchs joués
+// avec un ami ET démotion de ceux dont l ami a été retiré. Une liste VIDE est
+// donc un cas plein, pas un court-circuit : « plus aucun ami » démote tout
+// (constat P0 de revue, 2026-09-16 — l ancien retour anticipé sur liste vide
+// laissait is_with_friends=TRUE à jamais après le retrait du dernier ami).
 //
 // Retourne le nombre de matchs promus, pour que l'appelant décide d'émettre ou
 // non la notification friend_sync_completed.
@@ -185,9 +185,6 @@ func (s *FriendsOrchestratorService) RecomputeForPlayer(ctx context.Context, xui
 	friends, err := s.loadFriends(xuid)
 	if err != nil {
 		return 0, fmt.Errorf("RecomputeForPlayer loadFriends: %w", err)
-	}
-	if len(friends) == 0 {
-		return 0, nil
 	}
 	players, err := s.cfg.LoadPlayers()
 	if err != nil {

@@ -547,7 +547,7 @@ func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *
 			if h.friendStore != nil {
 				fs, ferr := h.friendStore.Get(p.XUID)
 				if ferr != nil {
-					slog.Warn("sessions recalculate: lecture des amis échouée",
+					slog.WarnContext(context.Background(), "sessions recalculate: lecture des amis échouée",
 						"gamertag", p.Gamertag, "err", ferr)
 				}
 				friendGamertags = fs

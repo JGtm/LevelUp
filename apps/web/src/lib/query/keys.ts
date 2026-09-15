@@ -60,6 +60,9 @@ export const queryKeys = {
     ['filters-preview', playerSlug, titleSlug, filterHash] as const,
 
   // Carrière (Slice 2)
+  // Prefixe large : tout le domaine Carriere d un joueur (invalidation apres une
+  // ecriture de sa liste d amis : les rencontres « hors amis » sont filtrees serveur).
+  careerAll: (playerSlug: string) => ['career', playerSlug] as const,
   career: (playerSlug: string, titleSlug: string) => ['career', playerSlug, titleSlug] as const,
   careerEncounters: (playerSlug: string, titleSlug: string) =>
     ['career', playerSlug, titleSlug, 'encounters'] as const,
@@ -147,6 +150,9 @@ export const queryKeys = {
   // X-LevelUp-Locale à l'instant du fetch. Sans la locale dans la clé, un switch
   // de langue laissait le cache (y compris le fetch background prefetch/poll)
   // baké dans l'ancienne langue — invalidation naturelle à la bascule.
+  // Prefixe large : toutes les locales et tous les titres de l accueil d un joueur
+  // (tuiles escouade filtrees serveur sur la liste d amis).
+  homeAll: (playerSlug: string) => ['home', playerSlug] as const,
   home: (playerSlug: string, titleSlug: string, locale: string) =>
     ['home', playerSlug, titleSlug, locale] as const,
 

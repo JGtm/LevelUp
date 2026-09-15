@@ -172,6 +172,8 @@ const agnosticKeys = new Set<string>([
   'gamertagSearch', // recherche Xbox globale
   // Préfixes larges (invalidation « tout le joueur »).
   'matchHistoryAll',
+  'careerAll',
+  'homeAll',
   'mediaBase',
   'feedVersion',
   'notificationsAll',

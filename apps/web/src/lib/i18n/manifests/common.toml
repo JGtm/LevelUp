@@ -1632,18 +1632,6 @@ en = "America/Chicago"
 fr = "Onglets paramètres"
 en = "Settings tabs"
 
-[common.settings.my_squad_default]
-fr = "Coéquipiers par défaut (page Escouade)"
-en = "Default teammates (Squad page)"
-
-[common.settings.squad_intro]
-fr = "Gamertags des coéquipiers présélectionnés à l'ouverture de la page Escouade. Les joueurs déjà configurés dans l'app apparaissent en priorité."
-en = "Gamertags of teammates preselected when opening the Squad page. Already configured players appear first."
-
-[common.settings.gamertag_search_placeholder]
-fr = "Rechercher ou saisir un gamertag…"
-en = "Search or enter a gamertag…"
-
 # ─── Changelog ──────────────────────────────────────────────────────────
 
 [common.changelog.load_failed]
@@ -2387,10 +2375,6 @@ en = "No player selected."
 [common.friends.error]
 fr = "Impossible de charger la liste d'amis."
 en = "Unable to load the friends list."
-
-[common.friends.save_error]
-fr = "Impossible d'enregistrer la liste d'amis."
-en = "Unable to save the friends list."
 
 [common.friends.removed]
 fr = "{gamertag} retiré des amis."

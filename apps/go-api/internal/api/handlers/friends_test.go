@@ -46,7 +46,10 @@ type friendsFixture struct {
 
 // newFriendsFixture monte le handler sous le MÊME chokepoint qu'en production.
 // `authMode` vaut "xbox" (propriété appliquée) ou "none" (désactivée).
-func newFriendsFixture(t *testing.T, authMode string) *friendsFixture {
+// friendsOption ajuste le handler de la fixture (ex. brancher un recomputer).
+type friendsOption func(*handlers.FriendsHandler)
+
+func newFriendsFixture(t *testing.T, authMode string, opts ...friendsOption) *friendsFixture {
 	t.Helper()
 	dir := t.TempDir()
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
@@ -77,6 +80,9 @@ func newFriendsFixture(t *testing.T, authMode string) *friendsFixture {
 
 	h := handlers.NewFriendsHandler(friends, users,
 		handlers.PlayerXUIDResolver(resolveXUID), resolveGT, false, authMode)
+	for _, o := range opts {
+		o(h)
+	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
@@ -392,5 +398,59 @@ func TestFriends_AuthModeNone_WriteIsFree(t *testing.T) {
 	w = f.do(t, http.MethodPut, "/players/Alice/friends", `{"gamertags":["Charlie"]}`, nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("PUT sans session en auth_mode=none = %d, corps = %s", w.Code, w.Body.String())
+	}
+}
+
+// recorderRecomputer capture chaque appel de RecomputeForPlayer (xuid) sur un
+// canal, pour synchroniser le test avec la goroutine du handler.
+type recorderRecomputer struct{ calls chan string }
+
+func (r *recorderRecomputer) RecomputeForPlayer(_ context.Context, xuid string) (int64, error) {
+	r.calls <- xuid
+	return 0, nil
+}
+
+func awaitRecompute(t *testing.T, rec *recorderRecomputer) string {
+	t.Helper()
+	select {
+	case x := <-rec.calls:
+		return x
+	case <-time.After(2 * time.Second):
+		t.Fatal("RecomputeForPlayer non appelé dans les 2 s")
+		return ""
+	}
+}
+
+// Constat P0 de revue (2026-09-16) : retirer le DERNIER ami doit déclencher le
+// recalcul is_with_friends (démotion convergente) exactement comme un ajout. Le
+// handler doit appeler le recomputer avec le xuid du profil pour un PUT non vide
+// PUIS pour un PUT vide ; une liste inchangée ne déclenche rien.
+func TestFriends_Put_TriggersRecomputeIncludingEmptyList(t *testing.T) {
+	rec := &recorderRecomputer{calls: make(chan string, 4)}
+	f := newFriendsFixture(t, "xbox", func(h *handlers.FriendsHandler) { h.WithRecomputer(rec) })
+	cookie := f.linkedUser(t, "alice", ownerGT, ownerXUID, domain.RoleUser)
+
+	if w := f.do(t, http.MethodPut, "/players/"+ownerSlug+"/friends", `{"gamertags":["Bob"]}`, cookie); w.Code != http.StatusOK {
+		t.Fatalf("PUT [Bob] = %d (corps = %s)", w.Code, w.Body.String())
+	}
+	if got := awaitRecompute(t, rec); got != ownerXUID {
+		t.Fatalf("recompute xuid = %q, want %q", got, ownerXUID)
+	}
+
+	if w := f.do(t, http.MethodPut, "/players/"+ownerSlug+"/friends", `{"gamertags":[]}`, cookie); w.Code != http.StatusOK {
+		t.Fatalf("PUT [] = %d (corps = %s)", w.Code, w.Body.String())
+	}
+	if got := awaitRecompute(t, rec); got != ownerXUID {
+		t.Fatalf("recompute (liste vide) xuid = %q, want %q", got, ownerXUID)
+	}
+
+	// Liste inchangée : aucun recalcul.
+	if w := f.do(t, http.MethodPut, "/players/"+ownerSlug+"/friends", `{"gamertags":[]}`, cookie); w.Code != http.StatusOK {
+		t.Fatalf("PUT [] bis = %d", w.Code)
+	}
+	select {
+	case x := <-rec.calls:
+		t.Fatalf("recalcul inattendu (xuid %q) pour une liste inchangée", x)
+	case <-time.After(300 * time.Millisecond):
 	}
 }
