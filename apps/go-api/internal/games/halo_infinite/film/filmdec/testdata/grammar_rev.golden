@@ -186,4 +186,16 @@
 #               `killsource/` n a pas bouge) ; c est `IsolationDecoderRev` qui porte le
 #               redecodage des positions, comme au lot 6.1. `SchemaVersion` ne monte pas : le
 #               chemin de cuisson imposait deja le catalogue, aucun octet de l artefact ne change.
-grammar-2026-09-15.2	02a22f5e8e5a550ec6e8f7aa50878341b3a00c8bdd8072f84e6f391297eeb2b6
+#   2026-09-15  grammar-2026-09-15.3  lot 1.9.3 : LE COUPLE (TUEUR, VICTIME) D UN KILL SANS MORT
+#               EN FACE EST LU AU KILL-EVENT 85 (`killsource/feed_couples.go`), plus recolle sur
+#               la mort d un instant voisin. AUCUNE LARGEUR, AUCUN OFFSET, AUCUN LECTEUR D OCTETS
+#               NE CHANGE : `readKillEvent` etait DEJA porte et deja lu — pour le seul ASSISTANT.
+#               Ce qui change est QUI DECIDE le couple, et l ensemble hache porte `killsource/`.
+#               MESURE (21 films entiers, 8 builds, 14 temoins) : 281 kills sans mort en face,
+#               198 decides par la lecture, 198 accords avec le recollage, 0 contradiction,
+#               1 victime BOT nommee (la seule fabrication supprimee), 1 ambigu, 81 muets servis
+#               par le repli `repli_couple_recolle_sur_le_voisin`. `KillSourceDecoderRev` MONTE
+#               (killsource-2026-09-14 -> killsource-2026-09-15 : les lignes de kill bougent,
+#               backlog de redecodage). `SchemaVersion` reste a verifier par l equivalence
+#               (etapes `killsource` et `artifact`).
+grammar-2026-09-15.3	be7d58fcb7abde479867dabbf6d2e6914b1cc8549a42974fcca2c86d2e6f2618

@@ -46,4 +46,4 @@ package filmdec
 // — là où `ScanFilmOptions.Layout` restait nil, donc où `DetectI0LayoutOf` décidait. Aucune
 // grammaire d'octets n'est réécrite ; ce qui change est QUELLE grammaire s'applique, et c'est
 // exactement ce que cette révision doit nommer.
-const GrammarRev = "grammar-2026-09-15.2"
+const GrammarRev = "grammar-2026-09-15.3"
