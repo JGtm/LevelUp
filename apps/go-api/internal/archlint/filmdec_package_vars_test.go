@@ -122,9 +122,14 @@ import (
 	"testing"
 )
 
-// filmdecVarsGeles : le compte GELE des variables de paquet de `filmdec` (cf. l'en-tete pour la
+// filmdecVarsGeles : le compte GELE des variables de paquet de `filmdec` (cf. l en-tete pour la
 // convention de comptage et la date de mesure).
-const filmdecVarsGeles = 96
+//
+// RESSERRE A 94 LE 2026-09-16 (revue de jalon M1, constat C4) : `keyframeBodyVariants` et la
+// table de variantes qui l accompagne quittent la production avec `walkKeyframeBody` — zero
+// appelant de production depuis le lot 1.4 — pour un fichier `_test.go` du paquet. Le ratchet ne
+// DESCEND que, et son en-tete le demande explicitement des qu une baisse est mesuree.
+const filmdecVarsGeles = 94
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {
