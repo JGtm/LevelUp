@@ -351,6 +351,7 @@ func ecrireRapportJSON(path string, lignes []ligneRapport) error {
 		SchemaHEAD      int          `json:"schemaHead,omitempty"`
 		Gains           int          `json:"gains"`
 		Pertes          int          `json:"pertes"`
+		Changements     int          `json:"changements"`
 		DureeMS         int64        `json:"dureeMs"`
 		Detail          []detailJSON `json:"pertesDetail,omitempty"`
 	}
@@ -359,7 +360,8 @@ func ecrireRapportJSON(path string, lignes []ligneRapport) error {
 		lj := ligneJSON{
 			ID: l.Temoin.ID, Famille: l.Temoin.Famille, Absent: l.Absent,
 			SchemaReference: l.SchemaReference, SchemaHEAD: l.SchemaHEAD,
-			Gains: l.Gains, Pertes: l.Pertes, DureeMS: l.Duree.Milliseconds(),
+			Gains: l.Gains, Pertes: l.Pertes, Changements: l.Changements,
+			DureeMS: l.Duree.Milliseconds(),
 		}
 		if l.Erreur != nil {
 			lj.Erreur = l.Erreur.Error()

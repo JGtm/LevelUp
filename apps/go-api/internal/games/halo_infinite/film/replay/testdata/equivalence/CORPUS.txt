@@ -20,6 +20,42 @@
 #
 #
 #
+#
+# REFERENCES RE-FIGEES AU COMMIT 76d36b911, SCHEMA 59, LE 2026-09-16 (lot 1.9.1 bis). Sept des
+# dix films du regime court ont bouge : `60ae07c4`, `111fa685`, `e5adf7b2`, `bcb6d393`,
+# `51101d1d`, `d9781168`, `fb1a1a72`. Trois sont restes IDENTIQUES : `50247b26`, `a521164d`,
+# `11de8353`.
+#
+# UNE SEULE ETAPE BOUGE SUR LES 53, `killsource`, sur les sept films — aucune etape d image-cle,
+# de positions ni d `artifact` ne diverge. Le `git diff` des sept `.tsv` ne porte que sept
+# lignes, toutes `killsource`.
+#
+# POURQUOI ON PEUT RE-FIGER ICI. Le lot porte deux corrections relues CHEZ L ECRIVAIN.
+#   (1) LES DEUX MOTS DE TAILLE SONT DES GARDES. `FUN_142e2bfd0` porte deux fois
+#       `if (0 < (int)uVar7)` : le premier garde `vtable[0x60]` (l etat par defaut), le second
+#       `vtable[0x88]` puis `FUN_1428e2b68`, qui mene a la boucle de composants. Donc `n1 == 0`
+#       -> aucun etat par defaut n est ecrit, `n2 == 0` -> aucun composant, et la comparaison
+#       est SIGNEE. Le depot lisait les deux inconditionnellement : un record a `n2 == 0` se
+#       voyait deroule, et ce qu on y lisait etait du bruit. `killsource` lit ces records : son
+#       digest change, et c est la correction qui le fait changer.
+#   (2) LE PROFIL DU BUILD PASSE DEVANT LA CALIBRATION pour les builds dont la largeur du bloc
+#       MPP est RELUE (`HI_1_12_0`, `HI_1_13_0` : 9/5, `FUN_141fd72c0` litteral `141fd72de`).
+#       Ailleurs la calibration decide encore, et c est desormais un repli NOMME au registre
+#       (`repli_largeurs_mpp_calibrees_sur_le_film`, condition `build_sans_profil_relu`).
+#
+# CE QUE LES TROIS FILMS IDENTIQUES ETABLISSENT : ils ne portent aucun record a `n2 == 0` sur le
+# chemin de `killsource`. La correction ne touche donc que ce qu elle doit toucher.
+#
+# LE CORPUS GATE DU MEME JOUR, QUI EST L AUTRE CHAINE : 14 temoins, **schema 59 -> 59 partout**,
+# **0 changement** (la colonne `chang.` a ete ajoutee au gate ce jour-la : `bilanDepuisRapport`
+# JETAIT `BilanAxe.Changements`, donc un temoin dont une valeur publiee bougeait sortait `ok`),
+# 31 gains, et 3 « pertes » qui sont TOUTES des compteurs de defauts en baisse :
+# `coverage.equipmentChanges.missedEstimate` 17 -> 16 sur `a349fea8`, `coverage.teams.divergences`
+# 4 -> 2 et `coverage.teams.unread` 4 -> 3 sur `4f77afc1`. Aucune regression, et `SchemaVersion`
+# reste 59 : aucun octet cuit ne change de forme.
+#
+# MESURE APRES RE-FIGEAGE : 10 films, 10 identiques, 0 different.
+#
 # REFERENCES RE-FIGEES AU COMMIT a752403da, SCHEMA 55, LE 2026-09-14 (lot 1.1.6). Les references
 # precedentes dataient du schema 54 : depuis le lot 1.0.4 — qui publie `coverage.tracks`
 # (`published`, `publishedPoints`, `refusedMinPoints`, `refusedPoints`, `minPoints`) et monte
