@@ -19,37 +19,39 @@ package killsource
 // Le controle de hasard de la fenetre a ete mesure pour chacun (horloge des candidats decalee de
 // +-20 s et +-60 s) : c est la baseline triviale du 3e temps, sans laquelle un taux
 // d appariement ne prouve rien.
+//
+// DEPUIS LE LOT 1.9.7, CE N EST PLUS LA FENETRE QUI APPARIE : l IDENTITE DE PAQUET des deux cotes
+// decide, et la fenetre de 2,5 s n entre que sur son silence (`paquet_identite.go`). Les quatre
+// criteres ci-dessus sont INCHANGES — l identite remplace la fenetre, jamais la contrainte de
+// couple. Chaque appariement rend donc un second resultat : le repli a-t-il servi.
 
 import "levelup/go-api/internal/games/halo_infinite/film/damagetag"
 
-// matchExact : le critere FORT.
-func (c *decodeCtx) matchExact(cd candidate) *feedEvent {
-	for i := range c.feed.pairs {
-		e := &c.feed.pairs[i]
-		dt := e.timeMS - cd.ms
-		if dt < -tolMS || dt > tolMS {
-			continue
-		}
-		if e.victim == c.roster.nameOf(cd.victim) && e.killer == c.roster.nameOf(cd.killer) {
-			return e
-		}
+// matchExact : le critere FORT. Rend l instant apparie et si le REPLI (la fenetre) a servi.
+func (c *decodeCtx) matchExact(cd candidate) (*feedEvent, bool) {
+	vic, kil := c.roster.nameOf(cd.victim), c.roster.nameOf(cd.killer)
+	i, repli := choisirParIdentitePuisFenetre(len(c.feed.pairs),
+		func(i int) bool { return c.feed.pairs[i].paquet.memeQue(cd.chunk, cd.pidx) },
+		func(i int) bool { return dansLaFenetre(c.feed.pairs[i].timeMS, cd.ms) },
+		func(i int) bool { return c.feed.pairs[i].victim == vic && c.feed.pairs[i].killer == kil })
+	if i < 0 {
+		return nil, false
 	}
-	return nil
+	return &c.feed.pairs[i], repli
 }
 
-// matchVictim : la victime du candidat est-elle celle d une mort du feed dans la fenetre ?
-func (c *decodeCtx) matchVictim(cd candidate) *feedEvent {
-	for i := range c.feed.pairs {
-		e := &c.feed.pairs[i]
-		dt := e.timeMS - cd.ms
-		if dt < -tolMS || dt > tolMS {
-			continue
-		}
-		if e.victim == c.roster.nameOf(cd.victim) {
-			return e
-		}
+// matchVictim : la victime du candidat est-elle celle d une mort du feed ? Meme ordre : le paquet
+// que le film ECRIT d abord, la fenetre ensuite.
+func (c *decodeCtx) matchVictim(cd candidate) (*feedEvent, bool) {
+	vic := c.roster.nameOf(cd.victim)
+	i, repli := choisirParIdentitePuisFenetre(len(c.feed.pairs),
+		func(i int) bool { return c.feed.pairs[i].paquet.memeQue(cd.chunk, cd.pidx) },
+		func(i int) bool { return dansLaFenetre(c.feed.pairs[i].timeMS, cd.ms) },
+		func(i int) bool { return c.feed.pairs[i].victim == vic })
+	if i < 0 {
+		return nil, false
 	}
-	return nil
+	return &c.feed.pairs[i], repli
 }
 
 // selfSourceOK : LES DEUX DISCRIMINANTS. Ils portent sur la STRUCTURE du candidat — ou il tombe,
@@ -86,6 +88,11 @@ type botMatch struct {
 	victimeLue int
 	found      bool
 	cand       candidate
+	// parLaFenetre : l appariement a ete servi par la FENETRE de 2,5 s et non par l identite de
+	// paquet — c est `repli_mort_de_bot_premier_candidat` (registre des replis, D14). Le
+	// kill-feed etant humain-seul, un instant qui ne porte pas de kill humain ne porte aucun
+	// kill-event 85 a associer : le repli est ici la voie NORMALE, et son compte le dit.
+	parLaFenetre bool
 }
 
 // resolveBotDeaths : confronte au scan chaque kill dont la victime n est pas au feed.
@@ -116,26 +123,32 @@ func (c *decodeCtx) resolveBotDeaths() []botMatch {
 	return ms
 }
 
-// apparierMortDeBot : le premier candidat de la fenetre dont la victime est LE bot nomme (ou, a
-// defaut de nom lu, un bot epingle quelconque) et dont le tueur est celui du feed.
+// apparierMortDeBot : le candidat dont la victime est LE bot nomme (ou, a defaut de nom lu, un
+// bot epingle quelconque) et dont le tueur est celui du feed — pris au PAQUET que le film ecrit
+// quand il en ecrit un, a la fenetre sinon.
 func (c *decodeCtx) apparierMortDeBot(m *botMatch) {
-	for _, cd := range c.scanCands {
-		dt := m.event.timeMS - cd.ms
-		if dt < -tolMS || dt > tolMS {
-			continue
-		}
-		if m.victimeLue >= 0 {
-			if cd.victim != m.victimeLue {
-				continue
-			}
-		} else if !c.roster.isBotIndex(cd.victim) {
-			continue
-		}
-		if c.roster.nameOf(cd.killer) == m.event.killer {
-			m.found, m.cand = true, cd
-			return
-		}
+	i, repli := choisirParIdentitePuisFenetre(len(c.scanCands),
+		func(i int) bool { return m.event.paquet.memeQue(c.scanCands[i].chunk, c.scanCands[i].pidx) },
+		func(i int) bool { return dansLaFenetre(c.scanCands[i].ms, m.event.timeMS) },
+		func(i int) bool { return c.coupleDeMortDeBot(m, c.scanCands[i]) })
+	if i < 0 {
+		return
 	}
+	m.found, m.cand, m.parLaFenetre = true, c.scanCands[i], repli
+}
+
+// coupleDeMortDeBot : LA CONTRAINTE DE COUPLE d une mort de bot, inchangee depuis l origine. La
+// victime doit etre L INDICE NOMME par le kill-event 85 quand le film le nomme ; sinon, un indice
+// epingle sur un bot. Le tueur est celui du feed dans les deux cas.
+func (c *decodeCtx) coupleDeMortDeBot(m *botMatch, cd candidate) bool {
+	if m.victimeLue >= 0 {
+		if cd.victim != m.victimeLue {
+			return false
+		}
+	} else if !c.roster.isBotIndex(cd.victim) {
+		return false
+	}
+	return c.roster.nameOf(cd.killer) == m.event.killer
 }
 
 // botKillerMatch : une mort du feed que personne n a consommee, et le candidat qui la decode.
@@ -143,6 +156,9 @@ type botKillerMatch struct {
 	event feedEvent
 	found bool
 	cand  sourcedCandidate
+	// parLaFenetre : comme [botMatch.parLaFenetre] — la fenetre a servi a la place de l identite de
+	// paquet (`repli_mort_de_bot_premier_candidat`).
+	parLaFenetre bool
 }
 
 // resolveBotKillerDeaths : confronte aux candidats chaque mort du feed dont le TUEUR n est pas au
@@ -164,16 +180,17 @@ func (c *decodeCtx) resolveBotKillerDeaths(all []sourcedCandidate) []botKillerMa
 		ms = append(ms, botKillerMatch{event: e})
 	}
 	for i := range ms {
-		for _, cd := range all {
-			dt := ms[i].event.timeMS - cd.ms
-			if dt < -tolMS || dt > tolMS {
-				continue
-			}
-			if c.roster.isBotIndex(cd.killer) && c.roster.nameOf(cd.victim) == ms[i].event.victim {
-				ms[i].found, ms[i].cand = true, cd
-				break
-			}
+		e := ms[i].event
+		j, repli := choisirParIdentitePuisFenetre(len(all),
+			func(j int) bool { return e.paquet.memeQue(all[j].chunk, all[j].pidx) },
+			func(j int) bool { return dansLaFenetre(all[j].ms, e.timeMS) },
+			func(j int) bool {
+				return c.roster.isBotIndex(all[j].killer) && c.roster.nameOf(all[j].victim) == e.victim
+			})
+		if j < 0 {
+			continue
 		}
+		ms[i].found, ms[i].cand, ms[i].parLaFenetre = true, all[j], repli
 	}
 	return ms
 }
@@ -216,5 +233,8 @@ func (c *decodeCtx) buildKill(d killDraft, cd sourcedCandidate) Kill {
 		Source:   sourceTruthOf(cd.tag, cd.cat),
 		Diverges: d.diverges,
 		Read:     Provenance{Path: cd.path, Origin: d.origin, Multiplicity: multOf(c.mult, cd.candidate)},
+		// L IDENTITE DE PAQUET DU DEAD-STATE voyage avec la ligne : c est elle qui appariera le
+		// kill-event 85 porteur de l assistant (lot 1.9.7).
+		paquet: paquetID{chunk: cd.chunk, pidx: cd.pidx, ok: true},
 	}
 }

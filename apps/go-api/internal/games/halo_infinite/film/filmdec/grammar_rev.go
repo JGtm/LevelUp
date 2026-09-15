@@ -49,4 +49,9 @@ package filmdec
 // FUSION (2026-09-16) : l integration portait `.3` (lots 1.9.2 et 1.9.3) et la branche du lot
 // 1.9.1 bis `.6` (gardes n1/n2, quatre sites de ti=37, prefixe objet relu, profil par build) ;
 // les deux grammaires sont reunies ici, au rang suivant.
-const GrammarRev = "grammar-2026-09-15.7"
+// LOT 1.9.7 (2026-09-16) : `grammar-2026-09-15.7` -> `grammar-2026-09-15.8`. L appariement
+// `dead-state <-> kill-feed` de `killsource` se fait par l IDENTITE DE PAQUET `(chunk, pidx)` que
+// le film ecrit, et non plus par une fenetre de 2,5 s. Aucune grammaire d'octets n'est reecrite :
+// ce qui change est QUEL enregistrement lu se rattache a quel instant — et l'empreinte de cette
+// revision couvre `killsource/`, donc elle monte avec lui.
+const GrammarRev = "grammar-2026-09-15.8"
