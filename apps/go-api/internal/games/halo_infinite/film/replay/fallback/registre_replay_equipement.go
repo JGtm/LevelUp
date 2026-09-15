@@ -39,13 +39,28 @@ var registreReplayEquipement = []Repli{
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, FUSIONNE
 		// depuis le 2026-09-15. Le lot a bien fait son travail — il est ce qui rend le critere
 		// MESURABLE et il le tient — mais le repli n'a pas ete retire avec lui.
-		CibleRetrait: "retrait sec a M2 (D14 d) : le compte est DEJA nul, le corpus gate de cloture de M1 le confirme ou l'infirme sur le parc",
+		// CIBLE REECRITE UNE SECONDE FOIS LE 2026-09-16 (revue de jalon M1, RONDE 2, constat
+		// F2) : elle nommait le `replay-corpus-gate` comme confirmation sur le parc. CE GATE NE
+		// PEUT PAS LA PRODUIRE — il lit les ARTEFACTS, et ce repli se declenche APRES la
+		// cuisson, dans `BuildUsageSummary` ; son compte n'entre donc jamais dans
+		// `coverage.fallbacks[]`. Les deux instruments qui le mesurent VRAIMENT sont nommes
+		// ci-dessous.
+		CibleRetrait: "retrait sec a M2 (D14 d) : le compte est DEJA nul sur les 8 builds, et le journal des passes le confirme ou l'infirme sur le parc",
 		// DÉFAUT MESURÉ PUIS REFERMÉ. Audit 0.E, constat N-3 de REG-R2 : 32 à 95 % des poses d'un
 		// film tombaient hors de toute fenêtre publiée (153/351, 443/466, 34/105 sur trois films).
 		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
 		// (`replay/usage_summary_replis_test.go`, fixtures d'assemblage, aucun octet de film) :
 		// **0 déclenchement sur 8/8** — le recollage des vies du lot 1.9.13 a fermé le défaut.
-		CritereRetrait:  "poses hors fenetre publiee a 0 sur les 8 builds apres le decoupage des vies aux morts ecrites : TENU le 2026-09-16 (0/8)",
+		//
+		// LES DEUX INSTRUMENTS QUI MESURENT CE REPLI, nommes le 2026-09-16 (ronde 2, F2) :
+		// `replay/usage_summary_replis_test.go` (fixtures d'assemblage, 8 builds, chiffre
+		// reproductible) et LE JOURNAL DES PASSES sur le parc — `journaliserReplisUsage`
+		// (post-sync) et `journaliserReplisUsageCorpus` (backfill CLI), qui ecrivent la ligne
+		// de passe MEME A ZERO (« aucun »), sans quoi un retrait sec reposerait sur une
+		// absence de trace. Le `replay-corpus-gate` n'en est PAS un : il lit les artefacts.
+		CritereRetrait: "poses hors fenetre publiee a 0 : sur les 8 builds " +
+			"(`replay/usage_summary_replis_test.go`) TENU le 2026-09-16 (0/8) ; sur le parc, " +
+			"ligne `replis de la passe` des deux producteurs a `aucun`",
 		CompteurBranche: true,
 	},
 	{
@@ -64,7 +79,12 @@ var registreReplayEquipement = []Repli{
 		CibleRetrait: "retrait sec a M2 (D14 d) : meme canal et meme mesure que repli_geste_dernier_occupant_du_match",
 		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
 		// (`replay/usage_summary_replis_test.go`) : **0 déclenchement sur 8/8**.
-		CritereRetrait:  "0 geste anterieur a la premiere vie du slot une fois les vies bornees aux apparitions ecrites : TENU le 2026-09-16 (0/8)",
+		// MEMES DEUX INSTRUMENTS que `repli_geste_dernier_occupant_du_match` (ronde 2, F2) :
+		// les 8 builds de `replay/usage_summary_replis_test.go`, et la ligne `replis de la
+		// passe` que les deux producteurs ecrivent sur le parc, « aucun » compris.
+		CritereRetrait: "0 geste anterieur a la premiere vie du slot une fois les vies bornees " +
+			"aux apparitions ecrites : sur les 8 builds TENU le 2026-09-16 (0/8) ; sur le parc, " +
+			"ligne `replis de la passe` a `aucun`",
 		CompteurBranche: true,
 	},
 	{
@@ -88,7 +108,12 @@ var registreReplayEquipement = []Repli{
 		// (`replay/usage_summary_replis_test.go`) : **30 écrasements**, sur 7 des 8 builds
 		// (seul `bcb6d393` en est exempt). C'est le PREMIER chiffre de cette contradiction :
 		// jusqu'ici le clamp la faisait disparaître sans trace.
-		CritereRetrait:  "0 ecrasement sur les 8 builds : la somme des trois canaux est alors coherente et la garde peut tomber — NON TENU le 2026-09-16 (30 sur 8 builds)",
+		// MEMES DEUX INSTRUMENTS (ronde 2, F2), et pour celui-ci le second compte double : le
+		// chiffre des 8 builds est NON NUL, donc c'est la ligne `replis de la passe` du parc
+		// qui dira si la reconciliation de M3 l'a referme.
+		CritereRetrait: "0 ecrasement : la somme des trois canaux est alors coherente et la garde " +
+			"peut tomber — NON TENU le 2026-09-16 (30 sur les 8 builds de " +
+			"`replay/usage_summary_replis_test.go`) ; sur le parc, ligne `replis de la passe`",
 		CompteurBranche: true,
 	},
 	{

@@ -160,7 +160,7 @@ type UsageMatchSummary struct {
 	// EquipmentChanges : ce que le canal des ramassages n'a PAS su rattacher.
 	// NON PERSISTÉ et hors de toute métrique (décision utilisateur 2026-09-09) —
 	// c'est un témoin d'outillage, journalisé par les deux producteurs de passes
-	// (post-sync et backfill CLI).
+	// (post-sync `sync/replayartifacts/usage.go`, backfill `cmd/levelup`).
 	EquipmentChanges UsageChangeCoverage
 	// Fallbacks : LES REPLIS QUE CETTE PROJECTION A DÉCLENCHÉS, par nom du registre
 	// (`film/replay/fallback`), triés, les zéros absents. NON PERSISTÉ, hors de toute
@@ -175,6 +175,23 @@ type UsageMatchSummary struct {
 	// resteraient à compte INCONNU — et D14 (d) fait supprimer un repli dont le compte
 	// est à zéro : confondre « jamais déclenché » et « jamais instrumenté » ferait
 	// supprimer un repli actif.
+	//
+	// QUI LE LIT, ET C'EST LA RÉPONSE COMPLÈTE (revue de jalon M1, ronde 2, constat F2 —
+	// ce champ a été écrit un jour sans lecteur, et trois cibles de retrait nommaient
+	// alors un instrument, le `replay-corpus-gate`, qui NE PEUT PAS le produire
+	// puisqu'il lit les artefacts) :
+	//
+	//	LE JOURNAL DES PASSES   les deux producteurs — post-sync
+	//	                        (`sync/replayartifacts/usage.go`,
+	//	                        `journaliserReplisUsage`) et backfill CLI
+	//	                        (`cmd/levelup/cmd_backfill_usage_summary.go`,
+	//	                        `journaliserReplisUsageCorpus`) — écrivent une ligne
+	//	                        `slog.Info` par match déclenchant ET une par passe, celle-ci
+	//	                        TOUJOURS, « aucun » compris. C'est l'instrument du parc.
+	//	LA MESURE SUR 8 BUILDS  `usage_summary_replis_test.go`, sur les fixtures
+	//	                        d'assemblage : le chiffre reproductible, hors production.
+	//
+	// Il reste NON PERSISTÉ : rien de tout cela n'entre en base ni dans l'artefact.
 	Fallbacks []fallback.Declenchement
 }
 

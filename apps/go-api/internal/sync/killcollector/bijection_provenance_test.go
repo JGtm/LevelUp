@@ -66,6 +66,70 @@ func TestBuildInconnuPublieSonCompteurNomme(t *testing.T) {
 	}
 }
 
+// TestAmbiguiteNeCompteQueLesFilmsQuiBASCULENT — LES TROIS REGIMES DE L AFFECTATION.
+//
+// `killsource_bijection_noms_libres_en_trop` pretend mesurer « la population qui perd la
+// publication ligne par ligne avec le critere corrige ». Cette population est exactement celle
+// que `FilmTablePinning.AffectationUnique` fait passer de VRAI a FAUX face a l ancien
+// `Inferred <= 1` : UN indice libre pour AU MOINS DEUX noms libres.
+//
+// IL SURCOMPTAIT JUSQU AU 2026-09-16 (revue de jalon M1, ronde 2, constat F3) : la condition
+// `Inferred > 0 && FreeNames > Inferred` mordait aussi sur `Inferred >= 2`, ou l ancienne porte
+// refusait DEJA — donc ou rien ne bascule.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : remettre `t.Inferred > 0 && t.FreeNames > t.Inferred`
+// dans `publishBijectionProvenance` — le regime « 2 indices libres / 3 noms » compte alors 1
+// au lieu de 0. Jouee et restauree par NOM le 2026-09-16.
+func TestAmbiguiteNeCompteQueLesFilmsQuiBascule(t *testing.T) {
+	for _, cas := range []struct {
+		nom     string
+		pinning killsource.FilmTablePinning
+		attendu int64
+	}{
+		{
+			// AUCUN NOM LIBRE EN TROP : un indice a inferer, un seul nom pour lui.
+			// L affectation est FORCEE — les deux portes publient, rien ne bascule.
+			nom:     "1 indice libre / 1 nom libre",
+			pinning: killsource.FilmTablePinning{Seats: 8, Pinned: 7, Inferred: 1, FreeNames: 1},
+			attendu: 0,
+		},
+		{
+			// LA POPULATION QUI BASCULE : un indice pour deux noms. L ancienne porte
+			// (`Inferred <= 1`) publiait un occupant tire au sort ; la corrigee refuse.
+			nom:     "1 indice libre / 2 noms libres",
+			pinning: killsource.FilmTablePinning{Seats: 8, Pinned: 7, Inferred: 1, FreeNames: 2},
+			attendu: 1,
+		},
+		{
+			// LE REGIME QUI SURCOMPTAIT : deux indices libres. `Inferred <= 1` etait DEJA
+			// faux, donc l ancienne porte refusait deja — aucune publication n est perdue,
+			// et ce compteur-ci ne doit pas bouger. C est `killsource_bijection_inference`
+			// qui porte ces indices devines.
+			nom:     "2 indices libres / 3 noms libres",
+			pinning: killsource.FilmTablePinning{Seats: 8, Pinned: 6, Inferred: 2, FreeNames: 3},
+			attendu: 0,
+		},
+	} {
+		t.Run(cas.nom, func(t *testing.T) {
+			// CONTROLE CROISE : « basculer » se definit par les DEUX portes — l ancienne
+			// publiait (`Inferred <= 1`) et la corrigee refuse (`!AffectationUnique()`).
+			// Sans lui, le tableau des cas pourrait deriver de ce qu il pretend couvrir.
+			bascule := cas.pinning.Inferred <= 1 && !cas.pinning.AffectationUnique()
+			if bascule != (cas.attendu == 1) {
+				t.Fatalf("le cas est mal pose : ancienne porte %v, AffectationUnique %v, "+
+					"compteur attendu %d", cas.pinning.Inferred <= 1,
+					cas.pinning.AffectationUnique(), cas.attendu)
+			}
+			avant := observability.LoadCounter(metricBijAmbigue)
+			publishBijectionProvenance(cas.pinning)
+			if got := observability.LoadCounter(metricBijAmbigue) - avant; got != cas.attendu {
+				t.Errorf("%s : delta %d, attendu %d — le compteur ne mesure pas la population "+
+					"qui perd la publication ligne par ligne", metricBijAmbigue, got, cas.attendu)
+			}
+		})
+	}
+}
+
 func lireProvenance() map[string]int64 {
 	out := map[string]int64{}
 	for _, n := range []string{metricBijTableFilm, metricBijInference, metricBijSilence, metricBijContradict} {
