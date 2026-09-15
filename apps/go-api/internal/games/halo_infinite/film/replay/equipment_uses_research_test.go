@@ -97,7 +97,7 @@ func TestEquipmentUsesPhase0(t *testing.T) {
 	defer release()
 
 	entry, metres := eqUsesEntry(t, dir)
-	defer installWorldObjectPrecision(entry, dir, nil)()
+	defer installWorldObjectPrecisionDeCarte(entry, dir, nil)()
 	wr := entry.Range()
 	t.Logf("FILM %s · largeurs d'axe %v · bornes %s", short, entry.AxisWidths,
 		map[bool]string{true: "MONDE (metres)", false: "NORMALISEES [0,1]"}[metres])

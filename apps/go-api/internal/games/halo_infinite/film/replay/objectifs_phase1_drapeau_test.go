@@ -428,7 +428,7 @@ func objGroundWeapons(t *testing.T, root, id string, quant *filmdec.MapQuantEntr
 	dir := objChunkDir(root, id)
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(*quant, id, nil)()
+	defer installWorldObjectPrecisionDeCarte(*quant, id, nil)()
 	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks du film %s illisibles : %v", id, err)

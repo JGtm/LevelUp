@@ -34,8 +34,31 @@ import (
 // d'`AxisWidths` réclame — accord 7 films sur 7 le 2026-08-15 — jamais l'entrée : s'il
 // contredisait le catalogue, ce seraient les BORNES qui seraient fausses.
 
+// doubleEcritureGlobales — KILL-SWITCH DATE DE LA DOUBLE ECRITURE (D7 du PLAN_DECODEUR_FILM,
+// regle 11 du depot).
+//
+//	BASCULE DU DEFAUT : 2026-09-17 (lot 2.1). Ce site LIT desormais le profil du film
+//	                    ([filmdec.Profile]) et ECRIT ENCORE la globale de paquet, parce
+//	                    qu aucun lecteur de bits ne lit le profil avant le lot 2.2.
+//	RETRAIT CIBLE     : lot 2.3 (« plus de globale, plus de verrou »). Ce jour-la cette
+//	                    constante et la branche qu elle garde disparaissent avec
+//	                    `filmdec.WorldObjectPrecision`.
+//	CRITERE MESURABLE : ZERO variable de paquet mutable dans `filmdec`, mesure par
+//	                    `archlint/TestFilmdecPackageVarsNeCroitPas` (`filmdecVarsGeles` a 0).
+//
+// CE QU ELLE N EST PAS : une bascule A/B. La mettre a `false` aujourd hui ne « choisit » rien —
+// elle laisserait les lecteurs de bits sur le defaut de paquet, donc sur les largeurs d une
+// carte qui n est pas celle du match. Elle existe pour que le retrait du lot 2.3 soit un geste
+// NOMME et DATE, et pour que `TestProfilEgaleGlobalesWorldObject` sache ce qu il doit exiger.
+const doubleEcritureGlobales = true
+
 // installWorldObjectPrecision installe, pour la durée du décodage, les largeurs d'axe de la
 // CARTE DU MATCH sur le chemin world-object, et rend la fonction de restauration.
+//
+// IL LIT LE PROFIL DU FILM DEPUIS LE LOT 2.1 (item 2.1.3) : la carte du match n arrive plus par
+// un parametre a part, elle est un CHAMP du profil resolu une fois par `BuildFromFilm`. Ce qu il
+// ECRIT n a pas change — la globale de paquet — et c est la double ecriture que
+// [doubleEcritureGlobales] date.
 //
 // PRÉ-REQUIS : l'appelant détient `filmdec.LockProcessDecode` — le descripteur est un global
 // de paquet, et deux films décodés en parallèle se voleraient leurs largeurs.
@@ -45,7 +68,8 @@ import (
 //
 // `slog.Warn` et non `WarnContext` : `BuildFromFilm` — le seul appelant — ne prend pas de
 // `ctx`, et tout le fichier `build.go` journalise ainsi.
-func installWorldObjectPrecision(e filmdec.MapQuantEntry, matchID string, fb *fallback.Compteur) (restore func()) {
+func installWorldObjectPrecision(prof filmdec.Profile, matchID string, fb *fallback.Compteur) (restore func()) {
+	e := prof.Map()
 	if e.AxisWidths[0] == 0 || e.AxisWidths[1] == 0 || e.AxisWidths[2] == 0 {
 		// REPLI NOMME ET COMPTE (D14) : le defaut conserve est celui d'UNE carte, applique a
 		// toutes. Le journal le disait deja ; le compte le fait voyager avec l'artefact.
@@ -53,6 +77,10 @@ func installWorldObjectPrecision(e filmdec.MapQuantEntry, matchID string, fb *fa
 		slog.Warn("largeurs d'axe absentes de l'entrée de catalogue — objets du monde déquantifiés aux largeurs par défaut",
 			"module", e.Module, "match_id", matchID,
 			"defaut", filmdec.WorldObjectPrecision.AxisW)
+		return func() {}
+	}
+	if !doubleEcritureGlobales {
+		// Lot 2.3 : les lecteurs prennent le profil, il n y a plus rien a installer.
 		return func() {}
 	}
 	prev := filmdec.WorldObjectPrecision

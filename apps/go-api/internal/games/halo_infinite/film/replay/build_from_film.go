@@ -67,10 +67,18 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// la table de profil (lot 1.9.1 ter) : ici, avant tout balayage, pour que la ligne PRECEDE
 	// les consequences qu elle explique. Les COMPTEURS, eux, tombent aux deux sites du repli.
 	avertirFormatSansProfil(film, matchID)
+	// LE CONTEXTE DU FILM EST OUVERT ICI DEPUIS LE LOT 2.1, ET PAS DANS `scanFilmInputs` : c est
+	// lui qui porte le PROFIL, resolu a la construction (D1), et c est le profil que
+	// `installWorldObjectPrecision` lit juste apres. L ouvrir plus bas obligerait a resoudre le
+	// profil DEUX fois par cuisson — une recopie de plus, alors que le lot s appelle « resolu une
+	// fois ». Rien d autre ne bouge : les trois derivations memorisees (bande de slots, decoupage
+	// d i0, registre) restent PARESSEUSES, donc calculees au premier balayage qui les demande,
+	// donc apres l installation ci-dessous et apres le demarrage de l horloge des etapes.
+	fc := filmdec.NewFilmContextForMap(film, opt.MapQuant, decoupageForce(opt))
 	// Les largeurs d'axe du chemin WORLD-OBJECT sont un global de paquet : installées ici,
 	// sous le verrou, pour TOUT le decodage du film, et restaurees au retour.
-	defer installWorldObjectPrecision(*opt.MapQuant, matchID, opt.Fallbacks)()
-	in, err := scanFilmInputs(matchID, film, opt)
+	defer installWorldObjectPrecision(fc.Profile(), matchID, opt.Fallbacks)()
+	in, err := scanFilmInputs(matchID, film, fc, opt)
 	if err != nil {
 		return ReplayDocument{}, err
 	}
@@ -98,6 +106,22 @@ type filmScan struct {
 	in  FilmInputs
 }
 
+// decoupageForce rend le decoupage d'i0 que l'APPELANT impose, ou nil.
+//
+// C'est la seule partie de `filmdec.DefaultScanFilmOptions()` / `*opt.Scan` dont le CONSTRUCTEUR
+// du contexte a besoin (`NewFilmContextForMap` la prend en troisieme parametre). Le defaut du
+// paquet ne force aucun decoupage — c'est le sens de la regle du catalogue —, donc l'absence
+// d'`opt.Scan` rend nil, exactement comme `DefaultScanFilmOptions().Layout`.
+//
+// GARDE-RAIL : `TestDecoupageForceSuitLesOptions` compare cette fonction au champ que
+// `scanFilmInputs` calcule pour son propre compte ; les deux ne peuvent pas diverger en silence.
+func decoupageForce(opt Options) *filmdec.I0Layout {
+	if opt.Scan == nil {
+		return filmdec.DefaultScanFilmOptions().Layout
+	}
+	return opt.Scan.Layout
+}
+
 // scanFilmInputs EST L'ETAGE DE BALAYAGE : il lit le film et rend ce que l'assemblage consomme.
 //
 // PRE-REQUIS : l'appelant detient `filmdec.LockProcessDecode` et a installe les largeurs d'axe
@@ -109,8 +133,9 @@ type filmScan struct {
 // filtre de vitesse aux teleportations, les changements d'arme se qualifient sur les loadouts
 // deja lus, les changements d'equipement sur les naissances lues dans les positions, et les
 // socles comme les vehicules heritent des largeurs MPP calibrees par les poses.
-func scanFilmInputs(matchID string, film *filmsource.Film, opt Options) (FilmInputs, error) {
-	s := &filmScan{matchID: matchID, film: film, opt: opt, world: opt.MapQuant.Range()}
+func scanFilmInputs(matchID string, film *filmsource.Film, fc *filmdec.FilmContext,
+	opt Options) (FilmInputs, error) {
+	s := &filmScan{matchID: matchID, film: film, fc: fc, opt: opt, world: opt.MapQuant.Range()}
 	s.scan = filmdec.DefaultScanFilmOptions()
 	if opt.Scan != nil {
 		s.scan = *opt.Scan
@@ -142,7 +167,10 @@ func scanFilmInputs(matchID string, film *filmsource.Film, opt Options) (FilmInp
 	// positions la lisent au MEME endroit que les six canaux delta. Avant, les positions seules
 	// l'appliquaient et les canaux delta re-detectaient — sur Live Fire, 27 enregistrements
 	// d'une AUTRE region de compression passaient leur porte (mesure du 2026-09-03, item 3.2).
-	s.fc = filmdec.NewFilmContextForMap(film, opt.MapQuant, s.scan.Layout)
+	// LE CONTEXTE VIENT DE `BuildFromFilm` DEPUIS LE LOT 2.1 (cf. son commentaire) : il y est
+	// ouvert avec le MEME decoupage force (`decoupageForce`, qui lit `opt.Scan.Layout` comme les
+	// deux lignes ci-dessus) et la meme entree de carte. Ce qui suit est inchange : la regle du
+	// catalogue est tranchee dans le constructeur, et les balayages la lisent ici.
 	s.scan.Layout = s.fc.ImposedLayout()
 	// L'HORLOGE DES BALAYAGES PART ICI, et pas a l'entree de la fonction : ce qui precede est
 	// l'attente du verrou process et la lecture du catalogue, qui ne sont le temps d'aucun
