@@ -145,6 +145,33 @@ var registreKillsource = []Repli{
 		CibleComptage:   "lot 1.9.3 ou cloture M1 (le compte existe deja sous RosterTable.Inferred ; il reste a le publier sous ce nom)",
 	},
 	{
+		Nom:       "repli_couple_recolle_sur_le_voisin",
+		Fait:      "la VICTIME d'un kill que le kill feed porte sans mort en face",
+		Mecanisme: "la mort d'un instant VOISIN (deux instants au plus) est prise pour victime de ce kill",
+		// LE FILM ECRIT CE COUPLE (kill-event 85, `victime(E5) tueur(E5)`) et le lot 1.9.3 le LIT.
+		// Le repli ne reprend la main que sur un silence de cette lecture : aucun kill-event de la
+		// fenetre ne nomme ce tueur par deux indices EPINGLES (table des joueurs du film ou
+		// BOT_METADATA), ou deux enregistrements en nomment des victimes differentes.
+		Condition: CondSectionAbsente,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgKillsource + "feed_couples.go",
+			Ancre:   "func (res *resolveurDeCouples) repliRecollageSurLeVoisin(i int) {",
+		}},
+		DatePose:     "2026-09-15",
+		CibleRetrait: "cloture de M1 puis lot 3.6 : la table du film doit couvrir 100 % des indices, et la chaine d'evenements ne doit plus s'arreter",
+		// MESURE DU LOT 1.9.3 (21 films entiers, 8 builds, 14 temoins) : 281 kills sans mort en
+		// face, 198 decides par la lecture (198 accords, 0 contradiction), 1 victime BOT nommee,
+		// 1 ambigu, 81 muets. Les 81 muets sont le compte a faire tomber ; 46 d'entre eux
+		// viennent des trois films sans table de joueurs exploitable (`a349fea8`, `a521164d`,
+		// `50247b26`), les autres d'une chaine d'evenements qui s'arrete avant le kill-event.
+		CritereRetrait:  "CoupleStats.Recolles a 0 sur les 8 builds et sur le corpus gate",
+		CompteurBranche: false,
+		CibleComptage: "cloture M1 ou pas 2 de M2 : le compte EXISTE deja sous `CoupleStats.Recolles` " +
+			"et sort en `killsource_couple_recolle` ; il reste a le publier sous ce nom dans " +
+			"`coverage.fallbacks[]`, ce qui demande au compteur de traverser `replaybuild/kills.go`",
+	},
+	{
 		Nom:       "repli_gamertag_par_xuid_brut",
 		Fait:      "le nom affiche d'un joueur du kill feed dont le gamertag manque",
 		Mecanisme: "la forme xuid:<N> remplace le nom",
