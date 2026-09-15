@@ -103,4 +103,21 @@ package filmdec
 // l empreinte hache les OCTETS des trois paquets, commentaires compris, donc une reformulation la
 // fait bouger. Un LOT partage sa revision (regle de la forme `.N` ci-dessus) — ces deux
 // changements sont le meme lot de revue, ils partagent donc `.12`.
-const GrammarRev = "grammar-2026-09-15.12"
+// REVUE DE JALON M1 (2026-09-15, lentille D13, constat 2) : `.11` -> `.12`. AUCUNE grammaire
+// d octets n est reecrite ; ce qui change est QUELLE grammaire s applique, et c est exactement ce
+// que cette revision doit nommer (meme genre de changement que `.2` et `.8`). Les DEUX sites qui
+// installent le decoupage du bloc `object-multiplayer-properties` — `ScanEquipmentPlacements` et
+// `replay.gwWidthsForFilm` — le resolvaient par `BuildProfileFromFilm`, donc par la table des
+// SEPT builds en dur, alors que le registre des replis declare la cle VERSION DE FORMAT
+// (`format_sans_profil_relu`, lot 1.9.1 ter). Un film au format 27 dont le build est hors table
+// prenait les largeurs CALIBREES devant une largeur RELUE, sans compteur ni avertissement. Les
+// deux sites passent desormais par `MPPWidthsForFilm`, porte unique.
+//
+// MESURE QUI BORNE L EFFET (cache, 657 films au 2026-09-15, `TestMPPResolutionCorpus`) : 6 films
+// portent un build hors table — 5 sans section d identification (format 20) et 1 `HI_1_5_1`
+// (format 23) —, AUCUN a un format dont la largeur est relue. Zero octet cuit ne change sur ce
+// cache ; le gain porte sur le parc NEUF. `KillSourceDecoderRev` ne bouge PAS (`killsource/` n a
+// pas bouge) ; `SchemaVersion` reste 59.
+// FUSION (2026-09-16) : les lots de corrections de la revue M1 L4 (porte killsource, `.12`) et D13
+// (porte unique MPPWidthsForFilm, `.12`) partaient de la meme base `.11` ; reunis ici, au rang suivant.
+const GrammarRev = "grammar-2026-09-15.13"
