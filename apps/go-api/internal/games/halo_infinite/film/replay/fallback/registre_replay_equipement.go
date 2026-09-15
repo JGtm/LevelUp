@@ -32,16 +32,21 @@ var registreReplayEquipement = []Repli{
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgReplay + "usage_summary.go",
-			Ancre:   "return o.dernier[slot]",
+			Fichier: pkgReplay + "usage_summary_owners.go",
+			Ancre:   "func (o usageOwners) repliDernierOccupant(slot uint32) string {",
 		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.13 (une vie finit a une mort ECRITE), qui borne les vies sur les morts du film",
-		// DÉFAUT DÉJÀ MESURÉ (audit 0.E, constat N-3 de REG-R2) : 32 à 95 % des poses d'un film
-		// tombent hors de toute fenêtre publiée (153/351, 443/466, 34/105 sur trois films).
-		CritereRetrait:  "poses hors fenetre publiee a 0 sur les 8 builds apres le decoupage des vies aux morts ecrites",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.13 (BuildUsageSummary lit un document DEJA cuit : son compteur sort de la couverture de cuisson et demande son propre canal)",
+		DatePose: dateAudit0E,
+		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, FUSIONNE
+		// depuis le 2026-09-15. Le lot a bien fait son travail — il est ce qui rend le critere
+		// MESURABLE et il le tient — mais le repli n'a pas ete retire avec lui.
+		CibleRetrait: "retrait sec a M2 (D14 d) : le compte est DEJA nul, le corpus gate de cloture de M1 le confirme ou l'infirme sur le parc",
+		// DÉFAUT MESURÉ PUIS REFERMÉ. Audit 0.E, constat N-3 de REG-R2 : 32 à 95 % des poses d'un
+		// film tombaient hors de toute fenêtre publiée (153/351, 443/466, 34/105 sur trois films).
+		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
+		// (`replay/usage_summary_replis_test.go`, fixtures d'assemblage, aucun octet de film) :
+		// **0 déclenchement sur 8/8** — le recollage des vies du lot 1.9.13 a fermé le défaut.
+		CritereRetrait:  "poses hors fenetre publiee a 0 sur les 8 builds apres le decoupage des vies aux morts ecrites : TENU le 2026-09-16 (0/8)",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_geste_premiere_vie_du_slot",
@@ -50,14 +55,17 @@ var registreReplayEquipement = []Repli{
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgReplay + "usage_summary.go",
-			Ancre:   "return vies[0].xuid",
+			Fichier: pkgReplay + "usage_summary_owners.go",
+			Ancre:   "func (o usageOwners) repliPremiereVieDuSlot(vies []usageVie) string {",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.13",
-		CritereRetrait:  "0 geste anterieur a la premiere vie du slot une fois les vies bornees aux apparitions ecrites",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.13 (meme canal que repli_geste_dernier_occupant_du_match)",
+		DatePose: dateAudit0E,
+		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le seul lot 1.9.13,
+		// fusionne le 2026-09-15.
+		CibleRetrait: "retrait sec a M2 (D14 d) : meme canal et meme mesure que repli_geste_dernier_occupant_du_match",
+		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
+		// (`replay/usage_summary_replis_test.go`) : **0 déclenchement sur 8/8**.
+		CritereRetrait:  "0 geste anterieur a la premiere vie du slot une fois les vies bornees aux apparitions ecrites : TENU le 2026-09-16 (0/8)",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_garde_equipement_negatif_a_zero",
@@ -69,13 +77,19 @@ var registreReplayEquipement = []Repli{
 			Fichier: pkgReplay + "usage_summary_outcomes.go",
 			Ancre:   "kept := taken - usageUsedOf(t, family) - t.DroppedByFamily[family]",
 		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.13, puis retrait sec si le compte reste nul",
+		DatePose: dateAudit0E,
+		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, fusionne
+		// le 2026-09-15 — et ce lot ne pouvait PAS la fermer : il recolle des vies, il ne
+		// reconcilie pas trois canaux d'equipement entre eux.
+		CibleRetrait: "M2 puis M3 (reconciliation des trois canaux prises / utilises / laches) ; PAS de retrait sec : le compte est MESURE NON NUL",
 		// D14 (b) : un désaccord entre deux lectures est une CONTRADICTION, pas un repli. Elle
 		// doit se compter, jamais disparaître dans un `max(0, x)`.
-		CritereRetrait:  "0 ecrasement sur les 8 builds : la somme des trois canaux est alors coherente et la garde peut tomber",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.13 (meme canal : hors cuisson)",
+		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
+		// (`replay/usage_summary_replis_test.go`) : **30 écrasements**, sur 7 des 8 builds
+		// (seul `bcb6d393` en est exempt). C'est le PREMIER chiffre de cette contradiction :
+		// jusqu'ici le clamp la faisait disparaître sans trace.
+		CritereRetrait:  "0 ecrasement sur les 8 builds : la somme des trois canaux est alors coherente et la garde peut tomber — NON TENU le 2026-09-16 (30 sur 8 builds)",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_traction_vie_du_tir",
@@ -87,9 +101,12 @@ var registreReplayEquipement = []Repli{
 			Fichier: pkgReplay + "grapple_lines.go",
 			Ancre:   "track = lifeCovering(vies, t0)",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.13 (les trous de replication cessent de couper les vies)",
-		CritereRetrait:  "0 traction dont l'accroche tombe hors de toute vie sur les 8 builds",
+		DatePose: dateAudit0E,
+		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, fusionne
+		// le 2026-09-15 sans avoir cable ce compteur — sa frequence reste donc INCONNUE, et un
+		// zero n'y serait pas lisible (cf. [Repli.CompteurBranche]).
+		CibleRetrait:    "M2, pas 2 (les lecteurs recoivent le profil) : cabler le compteur au meme geste, puis retrait sec si le compte est nul",
+		CritereRetrait:  "0 traction dont l'accroche tombe hors de toute vie sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
 		CompteurBranche: false,
 		CibleComptage:   comptageFamille19,
 	},
@@ -103,9 +120,11 @@ var registreReplayEquipement = []Repli{
 			Fichier: pkgReplay + "grapple_lines.go",
 			Ancre:   "track = lifeNearest(vies, tAttach)",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.13",
-		CritereRetrait:  "0 traction sans vie couvrante sur les 8 builds",
+		DatePose: dateAudit0E,
+		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : meme raison que
+		// repli_traction_vie_du_tir, meme geste de cablage.
+		CibleRetrait:    "M2, pas 2 : cabler le compteur puis retrait sec si le compte est nul",
+		CritereRetrait:  "0 traction sans vie couvrante sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
 		CompteurBranche: false,
 		CibleComptage:   comptageFamille19,
 	},
@@ -169,9 +188,14 @@ var registreReplayEquipement = []Repli{
 			Fichier: pkgReplay + "document_ability_impulses.go",
 			Ancre:   "if int64(at)+lifeGapUS >= l.from && int64(at) <= l.to+lifeGapUS {",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.13 (les vies cessent d'etre coupees par un trou de replication, donc les bords disparaissent)",
-		CritereRetrait:  "0 elargissement necessaire sur les 8 builds",
+		DatePose: dateAudit0E,
+		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1). Le lot 1.9.13, fusionne le
+		// 2026-09-15, a REDUIT le besoin sans le fermer — gain collateral MESURE aux goldens :
+		// impulsions `sans identite` 4 -> 3 sur `000d5950` et 2 -> 0 sur `11de8353`, charges
+		// 20 -> 13 et 8 -> 1. Le compteur n'a pas ete cable au passage, donc le RESIDU n'a pas
+		// de chiffre a lui.
+		CibleRetrait:    "M2, pas 2 : cabler le compteur, mesurer le residu, puis retrait sec s'il est nul",
+		CritereRetrait:  "0 elargissement necessaire sur les 8 builds — RESIDU NON MESURE (compteur non cable au 2026-09-16 ; le 1.9.13 a fait tomber les grandeurs voisines sans les annuler)",
 		CompteurBranche: false,
 		CibleComptage:   comptageFamille19,
 	},

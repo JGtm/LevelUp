@@ -196,7 +196,7 @@ func TestVitesseFiltre(t *testing.T) {
 // détection sinon (l'identification de carte n'acceptera que des entrées au même découpage).
 func vitfChoisirLayout(t *testing.T, ctx *vitfCtx) {
 	t.Helper()
-	detecte, _, errDet := DetectI0Layout(ctx.dir)
+	detecte, _, errDet := detectI0Layout(ctx.dir)
 	if ctx.entree != nil {
 		ctx.lay = ctx.entree.Layout()
 		if errDet == nil && detecte != ctx.lay {

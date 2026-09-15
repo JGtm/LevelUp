@@ -71,7 +71,11 @@ package replay
 // pont ni dictionnaire ; le seul endroit qui traduit est ici, au moment de lire le
 // côté « utilisé » des deux bonus (leur compte d'épisodes).
 
-import "strconv"
+import (
+	"strconv"
+
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+)
 
 // equipmentOutcomeFamilies — LES FAMILLES QUI PORTENT UNE LIGNE D'ISSUE, dans
 // l'ordre où le bilan les cite. Une LISTE et non une map : l'ordre d'itération
@@ -218,7 +222,7 @@ func tallyUsageEquipmentChanges(
 // deriveUsageKept pose le troisième segment sur chaque ligne, APRÈS que les prises,
 // les poses, les lâchers et les épisodes y soient : `max(0, taken - utilisé -
 // lâché)`, famille par famille du bilan.
-func deriveUsageKept(players *usageTallies) {
+func deriveUsageKept(players *usageTallies, fb *fallback.Compteur) {
 	for _, t := range players.byXUID {
 		for _, family := range equipmentOutcomeFamilies {
 			taken := t.TakenByFamily[family]
@@ -227,7 +231,12 @@ func deriveUsageKept(players *usageTallies) {
 			}
 			kept := taken - usageUsedOf(t, family) - t.DroppedByFamily[family]
 			if kept < 0 {
-				kept = 0 // une pose est une CHARGE, pas un objet : jamais de gardé négatif
+				// REPLI NOMMÉ ET COMPTÉ (D14) : une pose est une CHARGE, pas un objet, donc
+				// jamais de gardé négatif. C'est une CONTRADICTION entre trois canaux, et
+				// l'écraser en silence la faisait disparaître ; le compte dit combien de
+				// lignes d'issue tiennent debout grâce à ce clamp.
+				fb.Declenche(fallback.NomGardeEquipementNegatifAZero)
+				kept = 0
 			}
 			if t.KeptByFamily == nil {
 				t.KeptByFamily = map[string]int{}

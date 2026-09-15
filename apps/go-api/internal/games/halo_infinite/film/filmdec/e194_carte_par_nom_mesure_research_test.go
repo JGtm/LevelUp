@@ -199,7 +199,7 @@ func e194Mesure(t *testing.T, cat *MapQuantCatalog, dir string) (e194Ligne, bool
 	}
 	l.Carte = carte
 	l.ParNom, l.ErrNom = cat.Lookup(carte)
-	lay, _, derr := DetectI0Layout(dir)
+	lay, _, derr := detectI0Layout(dir)
 	l.Detecte, l.ErrDetect = lay, derr
 	if derr != nil {
 		return l, true

@@ -451,7 +451,7 @@ func TestUsageNAttribuePasUnGesteDuneVieSansNomAuDernierOccupant(t *testing.T) {
 			{Slot: 7, StartFrame: 200, EndFrame: 300, XUID: "B"}, // dernier occupant du slot
 		},
 	}
-	o := usageSlotOwners(doc)
+	o := usageSlotOwners(doc, nil)
 	if got := o.at(7, 50); got != "A" {
 		t.Errorf("proprietaire a la frame 50 = %q, attendu A", got)
 	}
