@@ -3557,6 +3557,13 @@ différentes), et l'implantation du gamertag est keyée par une troisième clé 
       lot 2.2 ne les cherche pas.
 
 Preuve : `replay-equiv` zéro différence ; corpus gate zéro différence.
+FAITE, et par DEUX chemins indépendants (§5, bloc « gates AVEC décodage ») : le corpus gate rend
+**0 gain / 0 perte / 0 changement sur les 14 témoins**, schéma 59 des deux côtés ; l'équivalence
+signale dix écarts à la seule étape `killsource`, et le CONTRÔLE joué sur un worktree détaché à
+`f950b7179` rend les MÊMES shas obtenus — la branche et la base sont identiques à l'octet sur les
+53 étapes des 10 films. La différence appartient à une RÉFÉRENCE laissée provisoire par le merge
+du lot 1.9.10 (`3b5e1b465`, « re-figeage unique au gate de fin de vague ») ; `-update` n'a donc
+PAS été joué, le re-figeage restant au pilote.
 
 #### Lot 2.2 (pas 2) — Les lecteurs reçoivent le profil, famille par famille — L, high
 
@@ -4765,6 +4772,26 @@ la vague rend mecaniques (D4 (1.9.13) en §4) : `TestDocumentShapeMatchesGolden`
 | 2026-09-17 | 2.1 (mutation) | `(ce commit)` | `DeltaQuantum: 0.01383` → `0.02` dans `mouvementDuProfil` | **ROUGE** : `TestProfilEgaleGlobales` — « Movement.DeltaQuantum : profil 0.02, globale de paquet 0.01383 ». Restauré, test revert |
 | 2026-09-17 | 2.1 (mutation) | `(ce commit)` | `majeureDecalageFin = 40` → `39` dans `profile_table.go` | **ROUGE** : `TestProfilHighlightEgaleLeParseur` — « majeure 40 : le profil annonce `gamertag_en_tete` à l'octet 0, le parseur rend "DuProfil" au lieu de "TemoinDuProfil" ». Restauré, test vert |
 | 2026-09-17 | 2.1 | `(ce commit)` | ratchets : `TestFilmdecPackageVarsNeCroitPas`, `TestWorldObjectPrecisionReadersAreAllowlisted`, `TestToutSiteDuRegistreExiste`, `TestBuildFromFilmWiresWorldObjectPrecision` | verts — **`filmdecVarsGeles` reste à 94** (le lot n'ajoute AUCUNE variable de paquet : la table est une FONCTION) ; allowlist des lecteurs de `WorldObjectPrecision` NON agrandie (deux commentaires reformulés pour ne pas citer le nom) ; ancre du repli `repli_type_de_chunk_perdu_du_manifeste` recentrée sur LA ligne qu'il décrit |
+### Lot 2.1 (M2, pas 1) — gates AVEC décodage, 2026-09-17 (« voie libre » du pilote)
+
+**VERDICT : le lot a ZÉRO différence propre.** Les dix écarts signalés par l'équivalence sont une
+RÉFÉRENCE PÉRIMÉE HÉRITÉE DE LA BASE, à une seule étape des 53, et la mesure de contrôle
+l'établit sans interprétation : la base `f950b7179`, **sans une ligne de mon diff**, produit les
+MÊMES shas obtenus contre les MÊMES références. Le corpus gate, qui ne dépend d'AUCUNE référence
+versionnée (il cuit les deux côtés et les compare entre eux), rend **zéro gain, zéro perte, zéro
+changement sur les 14 témoins** : les deux gates disent la même chose par deux chemins
+indépendants.
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-17 | 2.1 (régime court) | `512305a54` | `go run ./cmd/replay-equiv -repo-root …-decfilm-21 -films 50247b26,a521164d,60ae07c4,11de8353,111fa685,e5adf7b2,bcb6d393,51101d1d,d9781168,fb1a1a72` | **0 identique, 10 différents**, 0 écarté, 0 échec ; **7 min 42 s**. Sortie complète capturée AVANT toute analyse : **10 écarts, TOUS à l'étape `killsource`**, aucune des 52 autres étapes (`etapes=53` par film) |
+| 2026-09-17 | 2.1 (CONTRÔLE) | worktree détaché `f950b7179` | même commande, `-repo-root …-wt-base21` (jonctions posées, 1 386 films) | **0 identique, 10 différents**, mêmes 10 films, même étape `killsource`, **mêmes références attendues ET mêmes shas obtenus** que la branche |
+| 2026-09-17 | 2.1 (CONTRÔLE) | — | `diff` des lignes `ECART`+`BILAN` des deux sorties | **IDENTIQUE, 11 lignes** : la branche et la base rendent la même chose à l'octet. 52 étapes sur 53 égalent leur référence dans les DEUX runs ; la 53e rend le MÊME sha dans les deux. Le lot ne lit aucun octet autrement — c'est la preuve de D4 pour M2 |
+| 2026-09-17 | 2.1 (cause) | — | `git log -- …/testdata/equivalence/fb1a1a72.tsv` et la ligne `killsource` commit par commit | La ligne `killsource 3ce185b5…` date de `31421611f` (merge 1.9.1 bis), conservée par `9a531afd3` (clôture 1.9.10). Le merge `3b5e1b465` a réécrit `placements.stats`, `vehicles` et `artifact` — **pas** `killsource` — et son propre message déclare les références **« PROVISOIRES (re-figeage unique au gate de fin de vague) »**. La marche des morts d'objet du lot 1.9.10, entrée en production à ce merge, change ce que `killsource.Result` porte ; la référence, elle, est restée au pré-merge |
+| 2026-09-17 | 2.1 | — | **`-update` NON JOUÉ**, délibérément | Trois raisons : (1) la divergence n'est pas produite par ce lot — la re-figer absorberait le changement d'un AUTRE lot dans mon commit ; (2) le pilote a écrit noir sur blanc que le re-figeage est **unique, au gate de fin de vague** ; (3) l'intégration a bougé (vague 2 + schéma 60), une référence re-figée sur ma base serait périmée à la fusion. D4 dit « jamais re-figer une différence » : ici il n'y en a aucune à moi |
+| 2026-09-17 | 2.1 (régime complet) | `512305a54` | `go run ./cmd/replay-corpus-gate --base=f950b7179 --parc-root …LevelUp-go-migration --source-root …-decfilm-21 --json <fichier>` (SANS `--manifest`) | **code 0. 14 témoins sur 14 `ok` : 0 gain, 0 perte, 0 changement**, schéma 59 des deux côtés partout. Vérifié au JSON, pas seulement au tableau : 14 entrées, `gains`/`pertes`/`changements` toutes vides, aucun témoin hors `ok`. Les 14 familles : `ctf_mono_manche` 11,62 s · `ctf_multi_manche` 29,81 s · `oddball` 23,99 s · `assaut_bombe` 14,24 s · `slayer` 15,86 s · `deux_manches` 18,11 s · `vehicules` 2 min 27,77 s · `region_index_2_bits` 13,54 s · `version_39` 37,28 s · `version_40_build_1_11` 41,85 s · `version_37` 27,60 s · `version_33_sans_identification` 2 min 18,77 s · `vehicules_v41_utilisateur` 1 min 0,74 s · `equipement_origine_utilisateur` 2 min 32,68 s |
+| 2026-09-17 | 2.1 | — | contrôle de cohérence des deux gates | Le corpus gate CUIT les deux côtés (base `f950b7179` et HEAD) et les compare entre eux : il ne dépend d'aucune référence versionnée. Son zéro absolu et l'égalité base/branche de l'équivalence disent la MÊME chose par deux chemins indépendants — **le lot ne change aucun octet cuit**. C'est ce qui rend l'écart de l'étape `killsource` imputable à la référence, et à elle seule |
+
 ## 6. Protocole de reprise de session
 
 1. Relire le skill `plan-execution`, puis la §5 et la première case non statuée de la §3.
