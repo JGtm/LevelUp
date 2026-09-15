@@ -2436,6 +2436,96 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       pilote n'a pas donné « voie libre » — le pas ne touche de toute façon aucun octet cuit
       (`SchemaVersion` 59 -> 59, seuls des commentaires, des `_test.go` et une table `testdata`
       changent côté production).
+
+      **PAS 2 BIS FAIT le 2026-09-15 — LA PISTE D3 EST RESOLUE CHEZ L'ECRIVAIN, ET ELLE N'EST
+      PAS UNE DONNEE DE PROFIL : C'EST UNE TABLE DE CONSTANTES DU BINAIRE.**
+      D3 (1.9.1 bis, pas 2) supposait que la table de plages de `FUN_1406d3140` etait remplie au
+      chargement de la carte, comme les largeurs d'axe d'i0. **C'EST REFUTE PAR L'ECRIVAIN** :
+      `FUN_140d10bb0` (appelee par `FUN_140d10a78`) la remplit avec des LITTERAUX et pose
+      `DAT_144706104 = 1`, et les deux autres ecrivains (`FUN_1408f1618` @1423503d3,
+      `FUN_142f2f0cc` @142f2f2b1) ne touchent que les entrees 0, 1, 7, 8 et `DAT_144706100`.
+
+      **(1) LA TABLE, RELUE LIGNE A LIGNE** — plage, puis `W = FUN_1406d310c(plage)`
+      (rang du bit de poids fort, plus un si des bits plus bas sont mis) :
+
+      | `param_3` | base | plage | W | le depot lisait |
+      |---|---|---|---|---|
+      | 0, 1 | 0x200 | `DAT_144706100` − 0x200 = 0x1DFF | **13** | 13 (juste) |
+      | 2 | 0x200 | 0x100 | **8** | 13 |
+      | 3 | 0x300 | 0x100 | **8** | 13 |
+      | 4 | 0x200 | 0x200 | **9** | 13 |
+      | 5 | 0x400 | 0x100 | **8** | 13 |
+      | 6 | 0 | 0x200 | **9** | 13 |
+      | 7, 8 | 0 | `DAT_144706100` = 0x1FFF | **13** | 13 (juste) |
+
+      **ET LA CATEGORIE 1 BASCULE** : `si (param_3 == 1 && R(1) != 0)` le jeu prend
+      `DAT_1451f98f0` / `DAT_1451f98f4`, c'est-a-dire **l'entree 4** (verifie :
+      1451f98d0 + 4×8 = 1451f98f0) — 9 bits, pas 13. Le bit de sonde n'est lu QUE pour
+      `param_3 == 1` (la condition le teste en premier). La base (0x200 / 0x300 / 0x400) est un
+      DECALAGE ajoute a la valeur : elle ne change aucun bit lu.
+
+      **(2) LES APPELANTS, `param_3` RELEVE SUR LE DESASSEMBLAGE** (`MOV R8D, imm` avant le
+      `CALL` ; `FUN_1408f0ac4` transmet son `param_3` tel quel — `MOV R14D,R8D` puis
+      `MOV R8D,R14D` avant `CALL 0x1406d3140`). Les sites qui changent quelque chose :
+
+      | site | fonction du jeu (adresse du CALL) | `param_3` | lecture juste | le depot lisait | ecart |
+      |---|---|---|---|---|---|
+      | i10 `object-parent-state`, branche attachee | `FUN_140c1e4d0` @140c1e51d | **1** | sonde ; si 1 → 9+2, si 0 → 13+2 | sonde + 13+2 | **−4 quand la sonde rend 1** |
+      | i21 `equipment-activated` | `FUN_140c1dc80` @140c1dcbb | **4** | porte ; si 1 → 9+2 | porte + 13+2 | **−4** |
+      | i22 `equipment-control-signal` | `FUN_14101cd94` @14101cdc3 | **4** | R(4) + porte ; si 1 → 9+2 | R(4) + porte + sonde + 13+2 | **−5** |
+      | i28 `equipment-tracked-object-handles-stack` | `FUN_140f72dec` @140f72e41 | **0** | porte ; si 1 → 13+2 | porte + sonde + 13+2 | **−1** |
+
+      Sites RELUS et INCHANGES (`param_3 = 0` ou `1`, donc W = 13 comme avant) : i10 branche
+      libre @1423ce7d8, i0 queue de handle `FUN_14076e3e4` @14230d055, etats par defaut ti=3
+      @142eea359 et ti=38 @1408f0bae, les deux slots d'`unit-actor-control` `FUN_1408f0778`
+      @1408f0948 / @1408f0962 (`param_3 = 1`). Sites NON RELUS, laisses a `param_3 = 0` (donc au
+      comportement d'avant) parce que leur `R8D` est VARIABLE au site d'appel :
+      `FUN_140c9e990` @140c9e9cd (`MOV R8D,EBP`), `FUN_1406cd128` @1422f4546 (`[RCX+0x7]`),
+      `FUN_142ef45e8` @142ef461b, `FUN_142ef8138`/`8334` (`[RBP-0x3a]`), `FUN_1408eff64`
+      @14234fe20 (`[RSI-0x3f]`). Consigne : aucun n'est sur le chemin de ti=37.
+
+      **(3) LE PREFIXE OBJET EST DESORMAIS RELU EN ENTIER.** i1 `object-translational-velocity`
+      (`FUN_14076e228` → `FUN_14076d528(..., 10, 0x13)`) et i3 `object-angular-velocity`
+      (`FUN_140d70998` → `FUN_14076d528(..., 8, 0x13)`) sont les deux derniers composants
+      variables du prefixe : leurs largeurs (19 de direction + 10, resp. 8, de magnitude) sont
+      **conformes** au portage. Avec le pas 2, i0 a i17 sont tous relus ou valides.
+
+      **(4) L'EFFET EST REEL, MESURE, ET PETIT.** Fermeture des cinq archetypes objet
+      **184 → 188 (0,85 % → 0,87 %)** : ti=37 3 → 4, ti=38 180 → 183, ti=41/42/43 inchanges.
+      Attribution site par site (chaque correction neutralisee a tour de role) : **i10 porte tout
+      le gain de ti=38** (173 → 183 quand elle seule est retiree), et le record supplementaire de
+      ti=37 **n'existe que si i21, i22 ET i28 sont corriges ensemble** — retirer n'importe
+      laquelle des trois le fait disparaitre. C'est la signature d'un record qui ferme parce que
+      TOUS ses composants sont justes, et c'est la meilleure preuve disponible que les quatre
+      lectures sont bonnes. **LA FONDATION N'EST PAS LA POUR AUTANT** : 0,87 % reste 0,87 %.
+
+      **(5) LA CARTE DU DEFAUT SE PRECISE, ET ELLE RETIRE LA DERNIERE AMBIGUITE.** La colonne
+      « bloquant » du golden 0.A.3 separe les archetypes qui ne ferment pas en DEUX classes :
+      **(A) DESYNCHRONISATION**, un composant sans lecteur est nomme — ti=0, 2, 3, 5, 9, 10, 11,
+      12, 19, 25, 26, 27, 34, 35, 43, 45, 47 : leur correction est un PORTAGE (lot 3.6), pas une
+      largeur ; **(B) AUCUNE DESYNCHRONISATION et pourtant aucune fermeture — ti=13, 21, 37, 38,
+      41, 42**, SIX archetypes, dont DEUX (13 et 21) ne portent meme pas `object-position-component`.
+      C'est la population a expliquer, et elle est bien plus petite que « la famille objet ».
+      **AUCUN composant n'est commun aux six** (`TestE191cListeCourte` : 51 composants distincts,
+      **0 blanchi** par un archetype qui ferme ; ti=13 porte des `managed-object-*`, ti=21 des
+      `flock-*`, les quatre autres le prefixe objet). Il n'y a donc PAS de cause unique partagee :
+      la suite se traite archetype par archetype. Les couples de meme taille ne discriminent pas
+      non plus (`TestE191cPairesDiscriminantes` : ti=19 est 32 fois `sound-placement-state-data`,
+      ti=25 un seul `powerframe-player-selection-data` — des classes (A), pas des largeurs).
+
+      **CE QUI EST EN ATTENTE D'ARBITRAGE DU PILOTE, ET C'EST LE SEUL POINT ROUGE.** Le golden
+      0.A.3 n'est PAS regenere : la correction fait MONTER quatre lignes (`11de8353` ti=38
+      32 → 48, `a521164d` ti=37 1 → 2, `60ae07c4` ti=37 0 → 1, `fb1a1a72` ti=37 0 → 1) et
+      DESCENDRE trois (`60ae07c4` ti=38 43 → 30, `11de8353` ti=37 1 → 0, `111fa685` ti=37 1 → 0),
+      pour un net de +4. D14 dit que le ratchet des sept ne descend que, et la regle 9 du contrat
+      d'execution dit qu'un blocage qui appelle une decision se STATUE et se remonte, il ne se
+      contourne pas. L'analyse est ecrite : un record dont le compte de bits ne change pas ne peut
+      pas basculer, donc chaque record qui cesse de fermer fermait sur un total que l'ecrivain
+      contredit — c'est une DIVERGENCE de bord sur une marche a 0,1 %, pas une REGRESSION de
+      grammaire. Le geste, si le pilote le ratifie, tient en une commande :
+      `go test ./internal/games/halo_infinite/film/filmdec/ -run KeyframeClosureRatchet -update-keyframe-closure`.
+      **`SchemaVersion` n'est PAS montee non plus** : des bits changent, donc le contenu cuit PEUT
+      changer, et seul `replay-corpus-gate` le dit — il exige « voie libre ».
 - [ ] 1.9.2 **Le découpage d'i0 vient du catalogue de carte, plus de l'auto-détection.**
       `internal/sync/killcollector/positions.go:253` (et `hits.go:157`) construisent
       `DefaultScanFilmOptions()` avec `Layout` nil alors que `entry` est le paramètre de la fonction
@@ -2974,6 +3064,9 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-15 | 1.9.1 bis (pas 2) | **D3 (1.9.1 bis, pas 2) — LA LARGEUR DE `FUN_1406d3140` VIENT D'UNE TABLE CHARGÉE AVEC LA CARTE, INDEXÉE PAR `param_3`, ET LE DÉCODEUR EN LIT UNE SEULE. C'EST LA SEULE PISTE NEUVE DU PAS.** Relu le 2026-09-15 : le prologue de `FUN_1406d3140` fait `uVar7 = DAT_144706100` (= `0x1FFF` dans l'image) **puis**, `si (DAT_144706104 != 0)`, `uVar7 = (&DAT_1451f98d4)[param_3 * 2]` — et la garde `DAT_144706104` **vaut 0x01 dans l'image statique** (lue à l'octet). La table `DAT_1451f98d0` y est NULLE : elle est remplie AU CHARGEMENT DE LA CARTE, exactement comme les largeurs d'axe d'i0 (`WorldObjectPrecision`). Or les appelants passent des `param_3` DIFFÉRENTS : **0** (les boucles de slots, via `FUN_1408f0ac4`), **1** (la branche attachée d'i10 `object-parent-state`, où la sonde R(1) est lue — `param_3 == 1` est justement sa condition), **4** (i21 `equipment-activated`). Le décodeur lit `bitLen(0x1FFF) = 13` + 2 bits de queue pour TOUS. **NON CORRIGÉ, ET C'EST DÉLIBÉRÉ** : la table est vide dans le binaire, aucune lecture statique ne donne les trois largeurs, et D13 interdit de les deviner. Consigné à son point d'usage (`filmdec/unit_weaponstate.go`, en-tête de `defaultReplRange`). | reprise : soit une capture runtime de `DAT_1451f98d0` (Cheat Engine, comme le calibrage d'i0), soit un balayage de largeur par `param_3` jugé par la FERMETURE — c'est la première hypothèse depuis le pas 1 qui n'ait pas été réfutée |
 | 2026-09-15 | 1.9.1 bis (pas 2) | **D4 (1.9.1 bis, pas 2) — DEUX EXPLICATIONS CONCURRENTES SONT ÉLIMINÉES, MESURÉES, ET LEURS INSTRUMENTS SONT VERSIONNÉS.** (a) LES ANCRES FORTUITES NE SONT PAS LA CAUSE : `TestE191cAncresFortuites` retire les records dont le `n1` (la taille de tampon que `FUN_142e2bfd0` lit à position FIXE, donc constante par archétype et par build) s'écarte du modal de leur archétype, PUIS ré-apparie les survivants entre eux — **138 retirées sur 50 384 (0,27 %)**, fermeture des cinq **184/21 594**, inchangée. (b) LA LARGEUR D'ÉTAT PAR DÉFAUT DE ti=37 N'EST PAS FAUSSE : `TestE191cEtatParDefaut` substitue un décalage de `w` bits au désérialiseur d'état par défaut pour `w` de 0 à 512 (le bouton `keyframeFullStateTemoin.SansEtatParDefaut`, qui existe pour cela) — **aucun `w` ne ferme plus de 32 records sur 3 331** (la largeur portée en ferme 3, et consomme 115 bits dans 952 records, 92 dans 348, 60 dans 319). Sur ti=38 en revanche un `w` fixe de **173** ferme 901/12 064 contre 180 pour le désérialiseur porté : à consigner, hors périmètre de ce lot. | le lot suivant sur ti=38 a une piste chiffrée ; pour ti=37 les deux hypothèses sont closes |
 | 2026-09-15 | 1.9.1 bis (pas 2) | **D5 (1.9.1 bis, pas 2) — LES PETITS ARCHÉTYPES QUI NE FERMENT PAS BUTENT SUR UN COMPOSANT NON PORTÉ, PAS SUR UNE LARGEUR FAUSSE — ET ti=43 EST DANS CE CAS.** Sonde fine (`TestE191cPrefixeObjet`, tableau [D], archétypes de moins de cinq composants) : ti=25 (1 composant, `powerframe-player-selection-data`), ti=45 (2), ti=3 (2), ti=20 (3), ti=47 (3) **désynchronisent sur 100 % de leurs records** ; ti=22 (1 composant, `physics-state`) ferme 113/113 et ti=14 (3) 3 520/3 520. Les résidus énormes de ti=4 (33 records sur 105 à -42 552, -69 552 bits) et de ti=8 (0 composant, 2 records à -3 727) sont des ANCRES FORTUITES, et c'est ce qui a motivé le contrôle (a) de D4. **ti=43 est bloqué à 100 % par `i19 device-position-animation-name-component`**, dont la grammaire est relue ici — `FUN_1410156e4` (vtable `143d0cea8`) : `FUN_141015740` = R(32) identifiant puis `FUN_1406d84b4` largeur `0xa` déquantifié dans [0, 10] (`14101571c`), **42 bits inconditionnels** — mais NON PORTÉE : les 22 composants `device-*` (i19 à i40) sont le lot 3.6, et porter i19 seul ne fermerait aucun record. L'adresse et la grammaire sont posées dans `ecs_table.tsv` pour ce lot-là. | lot 3.6 : la grammaire d'i19 de ti=43 est écrite, il reste i20 à i40 |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis) | **D6 (1.9.1 bis, pas 2 bis) — D3 EST RESOLUE, ET SA PREMISSE ETAIT FAUSSE : LA TABLE DE PLAGES EST UNE CONSTANTE DU BINAIRE, PAS UNE DONNEE DE PROFIL PAR CARTE.** D3 supposait `DAT_1451f98d0` remplie au chargement de la carte (classe D-3, comme les largeurs d'axe d'i0). L'ECRIVAIN DIT LE CONTRAIRE : `FUN_140d10bb0` (appelee par `FUN_140d10a78`) pose `DAT_144706104 = 1` et remplit les NEUF entrees avec des LITTERAUX — base/plage `0x200`/`iVar1−0x200` pour 0 et 1, `0x200`/`0x100` pour 2, `0x300`/`0x100` pour 3, `0x200`/`0x200` pour 4, `0x400`/`0x100` pour 5, `0`/`0x200` pour 6, `0`/`iVar1` pour 7 et 8, ou `iVar1 = DAT_144706100 = 0x1FFF`. Les deux autres ecrivains (`FUN_1408f1618` @1423503d3, `FUN_142f2f0cc` @142f2f2b1) ne touchent QUE les entrees 0, 1, 7, 8 et `DAT_144706100`, si bien que les entrees 2 a 6 sont INVARIANTES. `W = FUN_1406d310c(plage)` donne donc **13** pour 0/1/7/8, **8** pour 2/3/5, **9** pour 4/6 — et la categorie 1 BASCULE sur l'entree 4 (9 bits) quand son bit de sonde vaut 1 (`DAT_1451f98f0`/`f4` = 1451f98d0 + 4×8, verifie). **CONSEQUENCE POUR LE POINT 2 DU BRIEF** : il n'y a RIEN a deriver du film ni des fichiers du jeu, donc ni section de `chunk_00`, ni `himap`, ni catalogue par carte facon `map_quant_bounds.json`. Porte dans `filmdec/varwidth.go`. | ferme D3 ; la question « derivation par carte » est SANS OBJET pour ce champ |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis) | **D7 (1.9.1 bis, pas 2 bis) — QUATRE SITES DE ti=37 LISAIENT TROP DE BITS, ET LE GAIN EST REEL MAIS PETIT.** `param_3` releve sur le desassemblage a chaque site (`MOV R8D, imm` avant le `CALL` ; `FUN_1408f0ac4` le transmet tel quel, `MOV R14D,R8D` -> `MOV R8D,R14D`) : **i10 `object-parent-state` branche attachee** (`FUN_140c1e4d0` @140c1e51d, categorie **1**) lisait 13 bits meme quand la sonde bascule sur l'entree 4 — **−4** ; **i21 `equipment-activated`** (`FUN_140c1dc80` @140c1dcbb, categorie **4**) — **−4** ; **i22 `equipment-control-signal`** (`FUN_14101cd94` @14101cdc3, categorie **4**) lisait en plus une sonde que le jeu ne lit pas — **−5** ; **i28 `equipment-tracked-object-handles-stack`** (`FUN_140f72dec` @140f72e41, categorie **0**) — **−1**, la sonde de trop. MESURE sur les sept bobines : fermeture des cinq archetypes objet **184 -> 188 (0,85 % -> 0,87 %)**, ti=38 180 -> 183, ti=37 3 -> 4. ATTRIBUTION par neutralisation site par site : **i10 porte tout le gain de ti=38** (173 sans elle, 183 avec), et le record supplementaire de ti=37 **n'existe que si i21, i22 ET i28 sont corriges ensemble** — la signature d'un record qui ferme parce que TOUS ses composants sont justes. **LA FONDATION N'EST PAS LA** : 0,87 % reste 0,87 %. | la correction est acquise ; la cause de la non-fermeture est ailleurs |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis) | **D8 (1.9.1 bis, pas 2 bis) — IL N'Y A PAS DE CAUSE UNIQUE PARTAGEE : LA POPULATION A EXPLIQUER EST DE SIX ARCHETYPES, ET AUCUN COMPOSANT NE LEUR EST COMMUN.** La colonne « bloquant » du golden 0.A.3 separe proprement : **(A)** un composant SANS LECTEUR est nomme — ti=0 et 2 (`game-engine-soft-ceilings`), 3 (`low-frequency`), 5 (`player-aim-assist`), 9 (`managed-player-forge-weather-effect-overrides`), 10 (`managed-object-navpoint`), 11 (`managed-objective-interaction-filter`), 12 (`managed-navpoint-flags`), 19 (`sound-placement-state-data`), 25 (`powerframe-player-selection-data`), 26/27 (`supply-lines-*`), 34 (`tacmap-mapdismissallock`), 35 (`simulation-state`), 43 (`device-position-animation-name`), 45 (`matchflow-sequence-data`), 47 (`personal-ai-data`) : dix-sept archetypes dont la correction est un PORTAGE (lot 3.6), pas une largeur ; **(B)** aucune desynchronisation et aucune fermeture : **ti=13, 21, 37, 38, 41, 42** — SIX, dont ti=13 (`managed-object-property-*`) et ti=21 (`flock-*`) qui ne portent PAS `object-position-component`. `TestE191cListeCourte` : ces six portent **51 composants distincts, 0 blanchi** par un archetype qui ferme, et **aucun composant n'est commun aux six**. Les couples de meme taille ne discriminent pas non plus (`TestE191cPairesDiscriminantes` : ti=19 = 32 x `sound-placement-state-data`, ti=25 = un seul composant — classe (A)). **La suite se traite archetype par archetype, pas par une cause commune.** | piste suivante : ti=42 (`ground-weapon`, 21 composants, etat par defaut VALIDE PAR ORACLE, 2 087 records) est le plus petit de la classe (B) dont tout le cadre est deja prouve — c'est la ou un residu se lit le plus proprement |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -3401,6 +3494,16 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-15 | 1.9.1 bis (pas 2, CONTRÔLE — l'état par défaut) | ce commit | `CGO_ENABLED=0 go test ./…/filmdec/ -run '^TestE191cEtatParDefaut$' -v -count=1` (21,7 s, balayage 0..512 bits) | **ti=37 : le désérialiseur porté ferme 3/3 331 et consomme 115 bits dans 952 records, 92 dans 348, 60 dans 319, 110 dans 270, 147 dans 205 ; la MEILLEURE largeur substituée ferme 32 records (w=1), puis 31 (w=0), 23 (w=27)** — aucune largeur d'état par défaut ne ferme ti=37. ti=38 : porté 180, substitué **w=173 -> 901**, w=157 -> 565, w=144 -> 564 (hors périmètre, consigné D4). ti=41 : porté 0/110, aucun état par défaut dans la table. ti=43 : **« (aucune) »** — les 4 106 records désynchronisent tous (D5) |
 | 2026-09-15 | 1.9.1 bis (pas 2, GrammarRev) | ce commit | `go test ./…/filmdec/ -run GrammarRevSuitLaGrammaire -update-grammar-rev` puis sans le drapeau | `grammar-2026-09-15.1` -> **`grammar-2026-09-15.2`**, empreinte `c05826e4…` ; vert après. Historique du golden complété (le pourquoi : commentaires et garde-rails, **aucun bit lu ne change**) |
 | 2026-09-15 | 1.9.1 bis (pas 2, GATES DE DÉCODAGE) | — | `replay-equiv` et `replay-corpus-gate` | **NON JOUÉS — machine partagée avec le lot 1.9.2, « voie libre » non donnée par le pilote.** Le pas ne touche AUCUN octet cuit : `SchemaVersion` 59 -> 59, et côté production seuls des commentaires changent (`components_object_state.go`, `components_batch7.go`, `unit_weaponstate.go`) plus `grammar_rev.go` et deux fichiers de `testdata/`. Le reste est en `_test.go` |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis) | ce commit | `gofmt -l ./internal ./cmd` | sortie vide |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis) | ce commit | `CGO_ENABLED=0 go vet ./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/replaybuild/ ./internal/analysis/objectiveevents/` | 0 diagnostic |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis) | ce commit | `make -C . go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **0 issue, sortie 0**, baseline non accrue. `varwidth.go` 92 lignes, `e191c_suspects_research_test.go` 126 — sous le seuil. **PIÈGE RENCONTRÉ** : `make … \| tail -3` affichait « 0 issues. » PUIS « Erreur 7 » — c'est le masquage d'exit par le tube (mémoire du dépôt) ; relancé sans tube, `exit=0` |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis) | ce commit | `CGO_ENABLED=0 go test ./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/replaybuild/ ./internal/analysis/objectiveevents/ -count=1` | **vert PARTOUT SAUF `TestKeyframeClosureRatchet`**, qui est le point d'arbitrage décrit ci-dessous. Aucun test renommé ni supprimé : `.ai/baselines/tests_pre_migration.jsonl` intouché (deux tests NEUFS) |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis, MESURE — la fermeture) | ce commit | `CGO_ENABLED=0 go test …/filmdec/ -run '^TestE191cPrefixeObjet$' -v -count=1` | **184 -> 188 fermés / 21 698 bornés (0,85 % -> 0,87 %)** : ti=37 **3 -> 4**, ti=38 **180 -> 183**, ti=41 0/110, ti=42 1/2 087, ti=43 0/4 106 inchangés. Par bobine, ti=37 : `a521164d` 1 -> **2** · `60ae07c4` 0 -> **1** · `11de8353` 1 -> **0** · `111fa685` 1 -> **0** · `fb1a1a72` 0 -> **1** ; ti=38 : `60ae07c4` 43 -> **30** · `11de8353` 32 -> **48** |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis, ATTRIBUTION) | ce commit | chaque correction NEUTRALISÉE à tour de rôle, même instrument | **i10 porte tout le gain de ti=38** : 173 sans elle, 183 avec. Le record supplémentaire de ti=37 **disparaît dès qu'on retire i21, OU i22, OU i28** (3/3 331 dans les trois cas, 4/3 331 avec les trois) — un record ne ferme que si TOUS ses composants sont justes, et c'est la meilleure preuve disponible que les quatre lectures sont bonnes |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis, la carte du défaut) | ce commit | colonne « bloquant » du golden 0.A.3 relue, + `TestE191cListeCourte` et `TestE191cPairesDiscriminantes` | **17 archétypes de classe (A)** (un composant sans lecteur, nommé) contre **6 de classe (B)** (aucune désynchronisation, aucune fermeture) : ti=13, 21, 37, 38, 41, 42. Les six portent **51 composants distincts, 0 blanchi**, et **aucun composant commun** |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis, GrammarRev) | ce commit | `go test …/filmdec/ -run GrammarRevSuitLaGrammaire -update-grammar-rev` puis sans le drapeau | `grammar-2026-09-15.2` -> **`.3`**, empreinte `2621e7f7…`. **LE RANG MONTE MALGRÉ LE MÊME LOT**, et c'est écrit dans l'historique du golden : `.2` a été publiée comme « aucun bit lu ne change », lui accrocher une correction de largeur en ferait une doc inversée |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis, POINT D'ARBITRAGE) | — | `TestKeyframeClosureRatchet` | **ROUGE, ET DÉLIBÉRÉMENT LAISSÉ ROUGE.** 4 lignes MONTENT, 3 DESCENDENT, net +4. D14 dit que le ratchet des sept ne descend que ; la règle 9 du contrat d'exécution dit qu'un blocage qui appelle une décision se STATUE et se remonte, il ne se contourne pas. Analyse écrite : un record dont le compte de bits ne change pas ne peut pas basculer, donc chaque record qui cesse de fermer fermait sur un total que l'écrivain contredit — **DIVERGENCE de bord sur une marche à 0,1 %, pas RÉGRESSION de grammaire**. Le geste, si le pilote ratifie : `go test ./internal/games/halo_infinite/film/filmdec/ -run KeyframeClosureRatchet -update-keyframe-closure` |
+| 2026-09-15 | 1.9.1 bis (pas 2 bis, GATES DE DÉCODAGE) | — | `replay-equiv`, `replay-corpus-gate` | **NON JOUÉS — « voie libre » non donnée (1.9.2 tourne).** Cette fois ce n'est PAS neutre : des BITS changent, donc le contenu cuit PEUT changer et **`SchemaVersion` reste à 59 en attendant que le corpus gate le dise**. C'est la première chose à jouer à la reprise |
 
 LA TABLE DU REGISTRE DES REPLIS (lot 1.9.0, 95 entrees, collee depuis le registre : un
 `go run` jetable sur `fallback.Table()`, supprime apres la mesure). Les declenchements sont

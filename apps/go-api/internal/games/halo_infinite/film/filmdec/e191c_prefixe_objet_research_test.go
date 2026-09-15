@@ -404,3 +404,54 @@ func e191cTopResidus(m map[int]int) string {
 	}
 	return out
 }
+
+// e191cPaires sont les COUPLES D ARCHETYPES DE MEME TAILLE dont l un ferme et l autre pas.
+// C est la sonde la plus discriminante du lot : `ti=18` et `ti=19` portent 32 composants
+// chacun et 113 records chacun sur les sept bobines, et le premier ferme 113/113 quand le
+// second ferme 0. Le cadre (en-tete, `n1`, etat par defaut, `n2`) est le meme ; ce qui les
+// separe est donc la LISTE DES COMPOSANTS, et le diff la nomme.
+var e191cPaires = [][2]int{{18, 19}, {22, 25}, {14, 20}, {17, 3}}
+
+// TestE191cPairesDiscriminantes colle, pour chaque couple, les composants propres a chacun.
+// Les composants de l archetype QUI FERME sont prouves justes ; ceux de l autre, non.
+func TestE191cPairesDiscriminantes(t *testing.T) {
+	t.Logf("######## PAS 2 BIS — LES COUPLES DE MEME TAILLE, L UN FERME, L AUTRE PAS ########")
+	dir := filepath.Join("..", "replay", "testdata", "minifilm_"+closureMiniFilms()[0])
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		t.Fatalf("LoadDir %s : %v", dir, err)
+	}
+	reg, err := NewFilmContext(film).Registry()
+	if err != nil {
+		t.Fatalf("registre : %v", err)
+	}
+	for _, p := range e191cPaires {
+		e191cLogPaire(t, reg, p[0], p[1])
+	}
+}
+
+// e191cLogPaire colle le diff des composants de deux archetypes.
+func e191cLogPaire(t *testing.T, reg *Registry, ferme, casse int) {
+	t.Helper()
+	a, okA := reg.Archetype(ferme)
+	b, okB := reg.Archetype(casse)
+	if !okA || !okB {
+		t.Logf("  ti=%d / ti=%d : archetype absent du registre", ferme, casse)
+		return
+	}
+	dansA := map[string]bool{}
+	for _, n := range a.Components {
+		dansA[n] = true
+	}
+	t.Logf("  ---- ti=%d (FERME, %d comp) contre ti=%d (NE FERME PAS, %d comp) ----",
+		ferme, len(a.Components), casse, len(b.Components))
+	communs := 0
+	for i, n := range b.Components {
+		if dansA[n] {
+			communs++
+			continue
+		}
+		t.Logf("     PROPRE a ti=%d : i%-2d %s", casse, i, n)
+	}
+	t.Logf("     %d composants communs sur %d", communs, len(b.Components))
+}

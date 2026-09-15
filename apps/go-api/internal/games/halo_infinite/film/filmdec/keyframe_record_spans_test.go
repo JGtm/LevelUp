@@ -77,7 +77,7 @@ func TestUnitRefProbePublieSansChangerLesBits(t *testing.T) {
 	kfSpanEcrire(buf, 14, 2, 0b10)
 
 	sans := NewBitReader(buf)
-	consume1408f0ac4Probe(sans, false)
+	consume1408f0ac4Probe(sans, 0)
 	posSans := sans.BitPos()
 
 	var vues []UnitRefRead
@@ -86,7 +86,7 @@ func TestUnitRefProbePublieSansChangerLesBits(t *testing.T) {
 	defer SetUnitRefHook(prev)
 
 	avec := NewBitReader(buf)
-	val, tail, present := consume1408f0ac4Probe(avec, false)
+	val, tail, present := consume1408f0ac4Probe(avec, 0)
 
 	if avec.BitPos() != posSans {
 		t.Fatalf("la sonde a changé le curseur : %d avec, %d sans", avec.BitPos(), posSans)
@@ -107,7 +107,7 @@ func TestUnitRefProbePublieSansChangerLesBits(t *testing.T) {
 	// indiscernable d'un canal jamais lu — et la mesure V5 compte les deux séparément.
 	vues = nil
 	ferme := make([]byte, 8)
-	if _, _, present := consume1408f0ac4Probe(NewBitReader(ferme), false); present {
+	if _, _, present := consume1408f0ac4Probe(NewBitReader(ferme), 0); present {
 		t.Fatal("porte fermée lue comme ouverte")
 	}
 	if len(vues) != 1 || vues[0].Present {

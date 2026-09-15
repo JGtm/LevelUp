@@ -87,7 +87,7 @@ func consumeEquipmentTrackedStack2(br *BitReader) {
 	count := br.ReadBits(4)
 	for i := uint64(0); i <= count; i++ {
 		if br.ReadBit() {
-			br.readQuantStat(1, quantStatDefaultWidth)
+			br.readQuantStat(0) // FUN_1408f0ac4(...,0) @140f72e41 : PAS de sonde, 13 + 2
 		}
 	}
 }
