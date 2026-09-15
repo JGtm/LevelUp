@@ -1,7 +1,13 @@
 // Package handlers — setup.go : création de profil joueur + smoke test (Sprint 16).
 //
-// POST /setup/players    → crée un profil joueur dans db_profiles.json (201)
+// POST /setup/players    → crée un profil joueur via PlayerDirectory.Onboard (201)
 // POST /setup/smoke-test → lance une vérification basique de l'environnement (202)
+//
+// ADR 0035 D4 : la création du profil ne se fait plus ici. Le handler garde ce
+// qui est HTTP (gardes d'ouverture, validation, identité Xbox de la session,
+// réponse) et délègue la mise en place — profil de suivi PUIS suivi live — à
+// l'annuaire des joueurs. Un garde-rail interdit tout autre appelant de
+// `CreatePlayer(` (internal/archlint/no_direct_profile_create_test.go).
 //
 // MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le routeur chi
 // (mêmes points de montage /setup/players et /setup/smoke-test) et enregistre les
@@ -43,7 +49,12 @@ type SetupHandler struct {
 	sessionStore  *session_platform.Store
 	settingsStore *settings_platform.Store
 	jobStore      *jobs.Store
-	profileSvc    port.ProfileService
+	// directory est le SEUL chemin de création de profil (ADR 0035 D4) : il crée
+	// le profil de suivi puis, si le watcher tourne, l'y ajoute — dans cet ordre.
+	// Le handler ne connaît plus ProfileService : un garde-rail interdit tout
+	// appel direct à CreatePlayer hors de l'annuaire
+	// (internal/archlint/no_direct_profile_create_test.go). nil ⇒ 503 typé.
+	directory port.PlayerDirectory
 	// instanceLocked résout le verrou « instance fermée ». Injecté depuis le
 	// point de décision unique (authz.InstanceLocked, ADR 0035 D5) — ce handler
 	// ne lit JAMAIS la clé lui-même (garde-rail archlint). nil = jamais
@@ -62,15 +73,20 @@ func NewSetupHandler(
 	sessionStore *session_platform.Store,
 	settingsStore *settings_platform.Store,
 	jobStore *jobs.Store,
-	profileSvc port.ProfileService,
 ) *SetupHandler {
 	return &SetupHandler{
 		cfg:           cfg,
 		sessionStore:  sessionStore,
 		settingsStore: settingsStore,
 		jobStore:      jobStore,
-		profileSvc:    profileSvc,
 	}
+}
+
+// WithDirectory injecte l'annuaire des joueurs, seul chemin de création de
+// profil (ADR 0035 D4). Sans lui, POST /setup/players répond 503.
+func (h *SetupHandler) WithDirectory(directory port.PlayerDirectory) *SetupHandler {
+	h.directory = directory
+	return h
 }
 
 // WithInstanceLock injecte le résolveur du verrou « instance fermée », construit
@@ -170,48 +186,40 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 	}
 	req.TitleSlug = titleSlug
 
-	// Guard : identité Xbox liée (mode xbox uniquement)
-	if req.ProfileMode == "xbox" {
-		sess := middleware.GetSession(ctx)
-		if sess != nil && sess.LinkedHaloIdentity != nil {
-			linkedGT := strings.ToLower(sess.LinkedHaloIdentity.Gamertag)
-			reqGT := strings.ToLower(req.Gamertag)
-			if reqGT != linkedGT {
-				return nil, humacore.NewError(http.StatusConflict, "identity_mismatch",
-					"Le gamertag ne correspond pas à votre compte Xbox connecté.")
-			}
-			if req.XUID != "" && sess.LinkedHaloIdentity.XUID != "" && req.XUID != sess.LinkedHaloIdentity.XUID {
-				return nil, humacore.NewError(http.StatusConflict, "identity_mismatch",
-					"Le XUID ne correspond pas à votre compte Xbox connecté.")
-			}
-		} else if sess == nil || sess.LinkedHaloIdentity == nil {
-			return nil, humacore.NewError(http.StatusConflict, "no_halo_identity",
-				"Vous devez d'abord vous connecter à Xbox via le Device Code Flow.")
-		}
+	if err := guardLinkedXboxIdentity(ctx, req); err != nil {
+		return nil, err
 	}
 
-	// Créer le profil dans db_profiles.json
-	playerKey, warnings, err := h.profileSvc.CreatePlayer(req)
+	// Mise en place du joueur : profil de suivi PUIS suivi live, par l'annuaire.
+	// C'est le seul chemin de création de profil du dépôt (ADR 0035 D4) — le
+	// handler ne décide plus de l'ordre, qui est ce que le 2026-07-23 a cassé.
+	if h.directory == nil {
+		slog.ErrorContext(ctx, "setup: annuaire des joueurs non câblé — création impossible")
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "directory_unavailable",
+			"Annuaire des joueurs indisponible.")
+	}
+	res, err := h.directory.Onboard(ctx, domain.OnboardRequest{
+		TitleSlug:         titleSlug,
+		Gamertag:          req.Gamertag,
+		XUID:              req.XUID,
+		InitialMaxMatches: req.InitialMaxMatches,
+		ActorUsername:     actorUsername(ctx),
+	})
 	if err != nil {
-		slog.ErrorContext(ctx, "setup.CreatePlayer: failed", "gamertag", req.Gamertag, "err", err)
+		slog.ErrorContext(ctx, "setup.Onboard: failed", "gamertag", req.Gamertag, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "profile_create_error",
 			"Impossible de créer le profil joueur.")
 	}
 
 	// Mettre à jour la session avec le joueur courant
 	if sess := middleware.GetSession(ctx); sess != nil {
-		slug := playerKey
+		slug := res.PlayerKey
 		sess.CurrentPlayerSlug = &slug
 		_ = h.sessionStore.Touch(sess)
 	}
 
-	// Sprint 44 : chemin DB title-aware via PathResolver.
-	pr := title.NewPathResolver(h.cfg.RepoRoot)
-	dbPath := pr.PlayerDBPath(titleSlug, playerKey)
-	dbCreated := fileExists(dbPath)
-
 	player := domain.PlayerSummary{
-		PlayerSlug:        playerKey,
+		PlayerSlug:        res.PlayerKey,
 		Gamertag:          req.Gamertag,
 		XUID:              req.XUID,
 		WaypointPlayer:    req.Gamertag,
@@ -223,10 +231,44 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 	return &setupCreatePlayerOutput{
 		Body: domain.CreatePlayerProfileResponse{
 			Player:    player,
-			DBCreated: dbCreated,
-			Warnings:  warnings,
+			DBCreated: res.DBCreated,
+			Warnings:  res.Warnings,
 		},
 	}, nil
+}
+
+// guardLinkedXboxIdentity vérifie qu'un profil en mode "xbox" porte bien
+// l'identité Halo liée à la session : on ne déclare pas le profil d'un AUTRE
+// joueur sous couvert de son propre compte Xbox. Sans effet dans les autres
+// modes (profil manuel). Rend nil quand la création peut continuer.
+func guardLinkedXboxIdentity(ctx context.Context, req domain.CreatePlayerProfileRequest) error {
+	if req.ProfileMode != "xbox" {
+		return nil
+	}
+	sess := middleware.GetSession(ctx)
+	if sess == nil || sess.LinkedHaloIdentity == nil {
+		return humacore.NewError(http.StatusConflict, "no_halo_identity",
+			"Vous devez d'abord vous connecter à Xbox via le Device Code Flow.")
+	}
+	if !strings.EqualFold(req.Gamertag, sess.LinkedHaloIdentity.Gamertag) {
+		return humacore.NewError(http.StatusConflict, "identity_mismatch",
+			"Le gamertag ne correspond pas à votre compte Xbox connecté.")
+	}
+	if req.XUID != "" && sess.LinkedHaloIdentity.XUID != "" && req.XUID != sess.LinkedHaloIdentity.XUID {
+		return humacore.NewError(http.StatusConflict, "identity_mismatch",
+			"Le XUID ne correspond pas à votre compte Xbox connecté.")
+	}
+	return nil
+}
+
+// actorUsername rend le nom du compte à l'origine de la demande, pour le journal
+// de l'annuaire. Vide si la requête n'a pas de session (démo / auth non activée).
+func actorUsername(ctx context.Context) string {
+	sess := middleware.GetSession(ctx)
+	if sess == nil || sess.Username == nil {
+		return ""
+	}
+	return *sess.Username
 }
 
 // actorIsAdmin dit si l'appelant est administrateur de l'instance. Priorité au
@@ -313,14 +355,4 @@ func (h *SetupHandler) handleSmokeTest(_ context.Context, _ *struct{}) (*setupSm
 	}()
 
 	return &setupSmokeTestOutput{Body: jobSnapshot}, nil
-}
-
-// ---------------------------------------------------------------------------
-// Helpers internes
-// ---------------------------------------------------------------------------
-
-// fileExists retourne vrai si le chemin existe.
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }

@@ -3,6 +3,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -20,20 +21,37 @@ import (
 	settings_platform "levelup/go-api/internal/platform/settings"
 )
 
-// mockProfileService implémente port.ProfileService pour les tests.
-type mockProfileService struct {
+// mockDirectory implémente port.PlayerDirectory pour les tests du SetupHandler.
+// Seul Onboard porte un comportement : le handler ne consomme que lui (ADR 0035
+// D4) — les trois méthodes de lecture sont là pour satisfaire le port.
+type mockDirectory struct {
 	playerKey string
 	warnings  []string
 	err       error
-	lastReq   domain.CreatePlayerProfileRequest // capture la dernière requête reçue
+	lastReq   domain.OnboardRequest // capture la dernière demande reçue
 }
 
-func (m *mockProfileService) CreatePlayer(req domain.CreatePlayerProfileRequest) (string, []string, error) {
+func (m *mockDirectory) Onboard(_ context.Context, req domain.OnboardRequest) (domain.OnboardResult, error) {
 	m.lastReq = req
-	return m.playerKey, m.warnings, m.err
+	if m.err != nil {
+		return domain.OnboardResult{}, m.err
+	}
+	return domain.OnboardResult{PlayerKey: m.playerKey, Warnings: m.warnings}, nil
 }
 
-func newSetupRouter(t *testing.T, provisionEnabled bool, profileSvc *mockProfileService) *chi.Mux {
+func (m *mockDirectory) List(context.Context) (domain.AdminIdentitiesResponse, error) {
+	return domain.AdminIdentitiesResponse{}, nil
+}
+
+func (m *mockDirectory) Get(context.Context, string) (domain.IdentityRecord, error) {
+	return domain.IdentityRecord{}, nil
+}
+
+func (m *mockDirectory) HasTrackedProfile(context.Context, string, string) (bool, error) {
+	return false, nil
+}
+
+func newSetupRouter(t *testing.T, provisionEnabled bool, directory *mockDirectory) *chi.Mux {
 	t.Helper()
 	dir := t.TempDir()
 	cfg := &config.AppConfig{
@@ -51,7 +69,7 @@ func newSetupRouter(t *testing.T, provisionEnabled bool, profileSvc *mockProfile
 	appCfg.CanSelfProvision = provisionEnabled
 	_ = settingsStore.Save(appCfg)
 
-	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileSvc)
+	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore).WithDirectory(directory)
 
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessionStore, middleware.SecureCookiePolicy{}))
@@ -77,7 +95,8 @@ func TestSetupHandler_CreatePlayer_InstanceLocked(t *testing.T) {
 	appCfg.CanSelfProvision = true // provisioning activé mais instance verrouillée
 	_ = settingsStore.Save(appCfg)
 
-	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, &mockProfileService{playerKey: "x"}).
+	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore).
+		WithDirectory(&mockDirectory{playerKey: "x"}).
 		WithInstanceLock(func() bool { return true }) // résolveur injecté (ADR 0035 D5)
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessionStore, middleware.SecureCookiePolicy{}))
@@ -98,7 +117,7 @@ func TestSetupHandler_CreatePlayer_InstanceLocked(t *testing.T) {
 }
 
 func TestSetupHandler_CreatePlayer_ProvisionDisabled(t *testing.T) {
-	svc := &mockProfileService{playerKey: "test-player"}
+	svc := &mockDirectory{playerKey: "test-player"}
 	r := newSetupRouter(t, false, svc)
 
 	body := `{"gamertag": "TestPlayer", "profile_mode": "manual"}`
@@ -113,7 +132,7 @@ func TestSetupHandler_CreatePlayer_ProvisionDisabled(t *testing.T) {
 }
 
 func TestSetupHandler_CreatePlayer_InvalidBody(t *testing.T) {
-	svc := &mockProfileService{playerKey: "test-player"}
+	svc := &mockDirectory{playerKey: "test-player"}
 	r := newSetupRouter(t, true, svc)
 
 	req := httptest.NewRequest(http.MethodPost, "/setup/players", bytes.NewReader([]byte("{bad")))
@@ -127,7 +146,7 @@ func TestSetupHandler_CreatePlayer_InvalidBody(t *testing.T) {
 }
 
 func TestSetupHandler_CreatePlayer_EmptyGamertag(t *testing.T) {
-	svc := &mockProfileService{playerKey: "test-player"}
+	svc := &mockDirectory{playerKey: "test-player"}
 	r := newSetupRouter(t, true, svc)
 
 	body := `{"gamertag": "", "profile_mode": "manual"}`
@@ -142,9 +161,9 @@ func TestSetupHandler_CreatePlayer_EmptyGamertag(t *testing.T) {
 }
 
 // Onboarding multi-titre : le title_slug du body prime sur le titre du contexte
-// et initial_max_matches est propagé au ProfileService.
+// et initial_max_matches est propagé à l'annuaire.
 func TestSetupHandler_CreatePlayer_PrefersBodyTitleSlug(t *testing.T) {
-	svc := &mockProfileService{playerKey: "TestPlayer"}
+	svc := &mockDirectory{playerKey: "TestPlayer"}
 	r := newSetupRouter(t, true, svc)
 
 	body := `{"gamertag":"TestPlayer","profile_mode":"manual","title_slug":"halo_5","initial_max_matches":42}`
@@ -164,8 +183,69 @@ func TestSetupHandler_CreatePlayer_PrefersBodyTitleSlug(t *testing.T) {
 	}
 }
 
+// POST /setup/players passe par l'annuaire (ADR 0035 D4) : le contrat de réponse
+// est inchangé — la clé de profil et les warnings viennent d'Onboard.
+func TestSetupHandler_CreatePlayer_ViaAnnuaire(t *testing.T) {
+	svc := &mockDirectory{playerKey: "TestPlayer", warnings: []string{"Dossier joueur non cree"}}
+	r := newSetupRouter(t, true, svc)
+
+	body := `{"gamertag":"TestPlayer","profile_mode":"manual","xuid":"123"}`
+	req := httptest.NewRequest(http.MethodPost, "/setup/players", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("201 attendu, reçu %d : %s", w.Code, w.Body.String())
+	}
+	if svc.lastReq.Gamertag != "TestPlayer" || svc.lastReq.XUID != "123" {
+		t.Errorf("la demande transmise à l'annuaire est incomplète : %+v", svc.lastReq)
+	}
+	if !bytes.Contains(w.Body.Bytes(), []byte("Dossier joueur non cree")) {
+		t.Errorf("les warnings d'Onboard doivent être rendus : %s", w.Body.String())
+	}
+	if !bytes.Contains(w.Body.Bytes(), []byte(`"player_slug":"TestPlayer"`)) {
+		t.Errorf("la clé de profil rendue par Onboard doit être dans la réponse : %s", w.Body.String())
+	}
+}
+
+// Annuaire non câblé : 503 typé, jamais un 201 qui ferait croire à un profil créé.
+func TestSetupHandler_CreatePlayer_SansAnnuaire(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &config.AppConfig{
+		RepoRoot:        dir,
+		DBProfilesPath:  filepath.Join(dir, "db_profiles.json"),
+		SessionDir:      filepath.Join(dir, "sessions"),
+		AppSettingsPath: filepath.Join(dir, "app_settings.json"),
+	}
+	sessionStore := session_platform.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32-bytesXXXXXXXXXX")
+	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
+	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
+	appCfg, _ := settingsStore.Load()
+	appCfg.CanSelfProvision = true
+	_ = settingsStore.Save(appCfg)
+
+	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore)
+	r := chi.NewRouter()
+	r.Use(middleware.WithSession(sessionStore, middleware.SecureCookiePolicy{}))
+	h.Mount(r)
+
+	body := `{"gamertag":"TestPlayer","profile_mode":"manual"}`
+	req := httptest.NewRequest(http.MethodPost, "/setup/players", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("503 attendu sans annuaire, reçu %d : %s", w.Code, w.Body.String())
+	}
+	if !bytes.Contains(w.Body.Bytes(), []byte("directory_unavailable")) {
+		t.Errorf("code directory_unavailable attendu : %s", w.Body.String())
+	}
+}
+
 func TestSetupHandler_CreatePlayer_XboxModeNoIdentity(t *testing.T) {
-	svc := &mockProfileService{playerKey: "test-player"}
+	svc := &mockDirectory{playerKey: "test-player"}
 	r := newSetupRouter(t, true, svc)
 
 	body := `{"gamertag": "TestPlayer", "profile_mode": "xbox"}`
@@ -181,7 +261,7 @@ func TestSetupHandler_CreatePlayer_XboxModeNoIdentity(t *testing.T) {
 }
 
 func TestSetupHandler_SmokeTest_Accepted(t *testing.T) {
-	svc := &mockProfileService{}
+	svc := &mockDirectory{}
 	r := newSetupRouter(t, true, svc)
 
 	req := httptest.NewRequest(http.MethodPost, "/setup/smoke-test", nil)

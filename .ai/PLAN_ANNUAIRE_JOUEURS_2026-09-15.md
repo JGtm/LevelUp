@@ -390,31 +390,71 @@ gate complet machine au repos.
 
 ## 7. Étape 5 — Chemin d'onboarding unique (moyen, risque auth) — agent C
 
-- [ ] 5.1 `port.PlayerDirectory` étendu : `Onboard(ctx, domain.OnboardRequest) (domain.OnboardResult, error)` ;
-      `OnboardRequest{TitleSlug, Gamertag, XUID, InitialMaxMatches, ActorUsername}` ;
-      `OnboardResult{PlayerKey, DBPath, DBCreated, WatcherNotified bool, Warnings []string}`.
-- [ ] 5.2 `service/playerdirectory/onboard.go` : `Onboard` = `ProfileService.CreatePlayer`
-      (injecté par interface `ProfileCreator{CreatePlayer(req) (key, warnings, err)}`) → si
-      daemon injecté et `IsRunning()` → `AddPlayer(PlayerSummary{...})` ; échec AddPlayer →
-      `slog.ErrorContext` + `WatcherNotified=false` (pas d'erreur : le profil est la vérité,
-      `initPlayers` le reprend au boot). Journal `slog.InfoContext(ctx, "directory: profil créé", "xuid", "gamertag", "title_slug", "actor")`.
-- [ ] 5.3 `handlers/setup.go:173-200` : remplacer `h.profileSvc.CreatePlayer(req)` par
-      `h.directory.Onboard(...)` (setter `WithDirectory` ; `profileSvc` retiré du handler si
-      plus utilisé — vérifier `SetTitleSyncEnabled`/`PurgeTitleData` : s'ils passent par ce
-      handler, garder l'injection pour eux uniquement). Réponse inchangée (contrat OpenAPI).
-- [ ] 5.4 Ratchet `internal/archlint/no_direct_profile_create_test.go` : `\.CreatePlayer\(`
-      interdit hors `service/playerdirectory/` ; allowlist datée : tests.
-- [ ] 5.5 Vérifier sur pièces les autres créateurs de profil : `cmd/token-capture`,
-      `cmd/token-import`, `cmd/levelup seed*`, `AddFriendFlow` (web → `/setup/players`, donc
-      couvert). Un CLI qui écrit `db_profiles.json` directement → le faire passer par
-      `dbprofiles.Store` (pas par `Onboard` : pas de daemon en CLI) et le noter `[~]`.
-- [ ] 5.6 Tests : `onboard_test.go` (profil créé + daemon notifié ; daemon arrêté → non
-      notifié, pas d'erreur ; `CreatePlayer` échoue → erreur propagée, daemon non appelé) ;
-      `setup_test.go` : 201 via directory (fake), warnings propagées.
+- [x] 5.1 `port.PlayerDirectory` étendu : `Onboard(ctx, domain.OnboardRequest) (domain.OnboardResult, error)`.
+      Les deux types sont posés dans `internal/domain/identity.go` (`:161-196`), fichier
+      d'ancrage de l'annuaire, aux champs prévus par le plan. `ActorUsername` est
+      explicitement documenté comme JOURNAL SEUL : aucune décision d'autorisation ne s'y
+      prend, les gardes restent dans le handler (ADR 0035 D5).
+- [x] 5.2 `service/playerdirectory/onboard.go` (nouveau) : `ProfileCreator` +
+      `WatcherNotifier` (deux petites interfaces locales, comme les cinq lecteurs de
+      l'étape 3), `Onboard` et `notifyWatcher` ; `Deps.Creator` / `Deps.Watcher` ajoutés.
+      Journal `slog.InfoContext(ctx, "directory: profil créé", …)` avec xuid, gamertag,
+      player_key, title_slug et acteur. Échec `AddPlayer` → `slog.ErrorContext` +
+      `WatcherNotified=false`, jamais d'erreur. **Un cas de plus que le plan, tranché sur
+      pièces** : `AddPlayer` REFUSE un xuid vide (`daemon.go:336`), donc un profil manuel
+      (mode `azure_manual`, sans identité Xbox) aurait produit un ERROR à chaque création.
+      Il est court-circuité en amont avec un journal INFO — le watcher suit PAR xuid, sans
+      xuid il n'y a rien à suivre, et c'est un cas NORMAL, pas une panne.
+      `FS` gagne `PlayerDBPath(titleSlug, key)` : `OnboardResult.DBPath` est le chemin que
+      la sync utilisera, et il se lit par `PathResolver` comme tous les autres.
+- [x] 5.3 `handlers/setup.go` : `h.directory.Onboard(...)` (setter `WithDirectory`).
+      **Vérifié sur pièces : `profileSvc` ne servait QU'À `CreatePlayer`** — ni
+      `SetTitleSyncEnabled` ni `PurgeTitleData` ne passent par ce handler (ils vivent dans
+      `TitleSyncHandler`, câblé sur le même `*service.ProfileService` partagé). Le champ, le
+      paramètre de `NewSetupHandler` et l'interface `port.ProfileService` (plus aucun
+      consommateur) sont donc SUPPRIMÉS (CLAUDE.md règle 7), ainsi que le helper
+      `fileExists` et ses deux tests, devenus du code mort à tests verts dès que le chemin
+      de la player DB est passé dans l'annuaire. Annuaire non câblé ⇒ 503
+      `directory_unavailable` typé (jamais un 201 qui ferait croire à un profil créé).
+      Réponse et contrat OpenAPI inchangés (`make openapi-check` → 0). Le câblage construit
+      UNE instance d'annuaire (`server_apiv1.go:409-421`, `playerDirectoryDeps`) servant la
+      lecture admin ET l'écriture setup : le créateur qu'elle porte est le writer unique de
+      `db_profiles.json`. `guardLinkedXboxIdentity` extrait au passage —
+      `handleCreatePlayer` passait à 94 L (> 80, dette gelée à ~85 L), il redescend à 71 L :
+      la dette de seuil baisse au lieu de monter.
+- [x] 5.4 Ratchet `internal/archlint/no_direct_profile_create_test.go` : en-tête
+      POURQUOI / PORTÉE, balayage du MODULE entier, `_test.go` exclus, commentaires ignorés,
+      allowlist datée du 2026-09-16 à UNE entrée (`internal/service/playerdirectory/`). Le
+      motif exige un sélecteur (`\.CreatePlayer\(`) : la DÉFINITION de la méthode n'est
+      jamais une violation. Vert.
+- [x] 5.5 Autres créateurs de profil — inventaire VÉRIFIÉ SUR PIÈCES, aucun n'en crée :
+      `cmd/token-capture` et `cmd/token-import` LISENT `db_profiles.json` et exigent que le
+      joueur y soit déjà déclaré (en-têtes de leurs `main.go`) ; `levelup seed-demo` ne fait
+      que lire (`cmd_data.go:240-258`, `ops.TitlesForGamertag`) ; `levelup add-title` écrit
+      une SECTION DE TITRE vide, pas une entrée joueur, et le fait déjà par
+      `dbprofiles.Store` (writer atomique) — `[~]` couvert par 5.4, que le ratchet laisse
+      passer à juste titre ; `AddFriendFlow` (web) passe par `POST /setup/players`
+      (`features/setup/queries.ts:46`), donc par `Onboard`. Aucun CLI à faire migrer.
+- [x] 5.6 Tests : `onboard_test.go` (10 tests) — profil créé + watcher notifié (charge utile
+      vérifiée) ; **l'ORDRE tenu par un test** (`TestOnboard_ProfilAvantWatcher` : le double
+      du watcher rejoue la porte profil de `AddPlayer`, il refuse tant que le profil n'est
+      pas là) ; daemon arrêté ; échec `AddPlayer` non propagé ; échec `CreatePlayer` propagé
+      avec watcher jamais appelé ; sans watcher (CLI) ; sans xuid ; titre vide normalisé ;
+      sans créateur ; gamertag vide. `setup_test.go` : 201 via l'annuaire (clé de profil et
+      warnings rendus, demande transmise) et 503 sans annuaire ; les 3 fichiers de tests du
+      handler passent du double `mockProfileService` au double `mockDirectory`.
 
-**Gate G5** : `go test ./internal/service/playerdirectory/... ./internal/api/handlers/...
-./internal/archlint/...` → 0 ; `grep -rn "\.CreatePlayer(" apps/go-api --include=*.go | grep -v _test | grep -v playerdirectory`
-→ 0 ligne (hors la méthode elle-même dans `profile_service.go`).
+**Gate G5** ✅ (2026-09-16, 00:07 → 00:08) :
+- `go test -count=1 -timeout 30m ./internal/service/playerdirectory/... ./internal/api/handlers/...
+  ./internal/archlint/...` → **3 paquets `ok`, 0 échec**, exit 0 (playerdirectory 0,3 s ·
+  api/handlers 9,5 s · archlint 24,9 s).
+- `grep -rn "\.CreatePlayer(" apps/go-api --include=*.go | grep -v _test | grep -v playerdirectory`
+  → **0 ligne** (la définition dans `profile_service.go` ne matche pas : pas de sélecteur).
+- Hors gate, parce que le câblage touche `internal/api` et que le contrat est en jeu :
+  `go vet ./...` → 0 ; `go test -count=1 ./internal/api/... ./internal/domain/... ./internal/port/...`
+  → **11 paquets `ok`, 0 échec** (26 s) ; `make openapi-check` → **0** ;
+  `golangci-lint run --new-from-merge-base=origin/main ./internal/...` → **0 issue**, et
+  `setup.go` ne porte plus AUCUN constat (il en portait un de funlen avant ce lot).
 
 ## 8. Étape 6 — Purge d'identité + CLI (moyen) — agent C
 
@@ -552,6 +592,19 @@ tableau des 4 joueurs locaux sans panique.
   depuis que le verrou existe (2026-06-08), ce qui rendait le champ inatteignable par
   `UpdateSettingsRequest`. Ajouté ici (4.7). D'autres champs peuvent manquer — non audité,
   hors périmètre.
+- **[agent C, étape 5] `watcher.Daemon.AddPlayer` refuse un xuid vide** (`daemon.go:336`,
+  antérieur à ce chantier). Un profil créé en mode `azure_manual` n'a pas de xuid : notifier
+  le watcher aurait produit un `slog.Error` à CHAQUE création manuelle, c'est-à-dire du bruit
+  sur un cas parfaitement normal. TRAITÉE dans le périmètre de 5.2 : `notifyWatcher`
+  court-circuite en amont avec un journal INFO. La sentinelle du daemon n'est pas touchée.
+- **[agent C, étape 5] `port.ProfileService` n'avait plus qu'un consommateur**, le
+  `SetupHandler`. Une fois celui-ci passé par `Onboard`, l'interface devenait du code mort
+  (CLAUDE.md règle 7) : supprimée. `service.ProfileService` (le TYPE) reste, consommé par
+  `TitleSyncHandler` (pause/purge par titre) et par l'annuaire via l'interface locale
+  `ProfileCreator` — la convention du paquet, comme ses cinq lecteurs.
+- **[agent C, étape 5] `fileExists` (handlers) n'était plus utilisé QUE par ses propres
+  tests** une fois le chemin de la player DB passé dans l'annuaire : c'est le « dead code
+  museum » à tests verts du diagnostic de revue. Helper et tests supprimés.
 - **[agent B, étape 3] `internal/service` compte 6 sous-paquets** (`demo_fixtures`,
   `fragdist`, `replayview`, `squadagg`, `teammates`, `testdata`) : `playerdirectory` en est le
   7e, la forme « sous-paquet de service » est bien la convention du dépôt.
@@ -565,6 +618,6 @@ tableau des 4 joueurs locaux sans panique.
 | 2 | **terminée** | A | G2 ✅ | 8/8 items `[x]` ; portes posées sur le coordinateur, le daemon et le SSO ; compteur `sync_refused_no_profile` ; garde web ajoutée (la redirection n'existait pas) ; 1 écart de forme assumé en 2.5 |
 | 3 | **terminée** | B | G3 ✅ | 6/6 items `[x]` ; port + paquet `playerdirectory` (4 fichiers, 0 import DuckDB) + `GET /admin/identities` ; 3 écarts de forme assumés en 3.3 (dont le suivi live rendu par xuid) ; xuid ajouté à `AdminUserSummary` ; 4 découvertes en §10 |
 | 4 | **terminée** | B | G4 ✅ | 7/7 items `[x]` ; section « Identités » en tête de la page Gestion (TanStack Table, 7 colonnes, tokens sémantiques, 35 clés FR+EN) + interrupteur « Instance fermée », que le backend acceptait mais qu'aucune page n'exposait ; 21 tests vitest neufs ; suite web complète verte (7704 tests) ; 3 découvertes en §10 |
-| 5 | à faire | C | G5 | |
+| 5 | **terminée** | C | G5 ✅ | 6/6 items `[x]` ; `Onboard` seul chemin de création (profil PUIS watcher, ordre tenu par un test) ; ratchet `no_direct_profile_create` (allowlist à 1 entrée) ; `port.ProfileService` + `fileExists` supprimés (code mort) ; contrat OpenAPI inchangé ; 3 découvertes en §10 |
 | 6 | à faire | C | G6 | |
 | 7 | à faire | pilote | — | |

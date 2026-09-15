@@ -406,6 +406,20 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		groupsHandler.Mount(r, apiOpt) // 7 routes /groups migrées vers Huma (V72-01 / H5)
 	})
 
+	// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
+	// porte un verrou process par-instance → toutes les écritures (onboarding
+	// setup ET réglages titre B.5) DOIVENT passer par la MÊME instance, sinon
+	// deux read-modify-write concurrents pourraient s'écraser (lost update).
+	profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
+		WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
+	// Annuaire des joueurs (ADR 0035) : UNE instance pour la lecture admin
+	// (GET /admin/identities) ET l'écriture (POST /setup/players → Onboard,
+	// D4). Construite ici parce que les deux points de montage en dépendent et
+	// que le créateur de profil qu'elle porte est le writer unique ci-dessus.
+	playerDirectory := buildPlayerDirectory(playerDirectoryDeps{
+		cfg: cfg, users: users, tokens: authStore, daemon: daemon, creator: profileService,
+	})
+
 	// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
 	adminHandler := handlers.NewAdminHandler(users, invites)
 	r.Route("/admin", func(r chi.Router) {
@@ -431,7 +445,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// (compte, profil, credentials, suivi live) lus ENSEMBLE par xuid, plus le
 		// témoin disque. NoStore : l'anomalie qu'on vient de corriger doit
 		// disparaître au rafraîchissement suivant, pas au bout d'un cache.
-		identitiesHandler := handlers.NewAdminIdentitiesHandler(buildPlayerDirectory(cfg, users, authStore, daemon))
+		identitiesHandler := handlers.NewAdminIdentitiesHandler(playerDirectory)
 		identitiesHandler.Mount(r.With(middleware.NoStore), adminOpt)
 		// Dashboard monitoring admin : overview/scheduler/convergence/jobs
 		// + actions correctives (data-health run, cycle auto-sync forcé).
@@ -521,13 +535,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		settingsHandler.Mount(r, apiOpt) // /settings + /settings/{media,sessions,backup}/...
 	})
 
-	// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
-	// porte un verrou process par-instance → toutes les écritures (onboarding
-	// setup ET réglages titre B.5) DOIVENT passer par la MÊME instance, sinon
-	// deux read-modify-write concurrents pourraient s'écraser (lost update).
-	profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
-		WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
-	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileService).
+	// Le SetupHandler n'écrit plus db_profiles.json lui-même : il passe par
+	// l'annuaire (Onboard), seul chemin de création de profil (ADR 0035 D4).
+	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore).
+		WithDirectory(playerDirectory).
 		WithInstanceLock(instanceLockedFn).
 		WithUserLookup(users)
 	// S8 (sécurité, lot S) : /setup/players (écrit db_profiles.json) et

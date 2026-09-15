@@ -157,3 +157,35 @@ type AdminIdentitiesResponse struct {
 	Identities  []IdentityRecord `json:"identities"`
 	Counts      map[string]int   `json:"counts"`
 }
+
+// OnboardRequest décrit la mise en place d'un joueur : le couple (titre,
+// gamertag) à suivre, son identité Xbox si elle est connue, et qui le demande.
+//
+// C'est l'entrée du SEUL chemin de création de profil (ADR 0035 D4). Le 2026-07-23,
+// trois registres avaient été écrits sans le quatrième parce qu'aucun chemin unique
+// n'existait : la création du profil et la prise en charge par le watcher se
+// décidaient à deux endroits différents.
+//
+// ActorUsername n'est QUE journalisé (qui a déclaré ce joueur) : aucune décision
+// d'autorisation ne s'y prend — les gardes vivent dans le handler HTTP (ADR 0035 D5).
+type OnboardRequest struct {
+	TitleSlug         string
+	Gamertag          string
+	XUID              string
+	InitialMaxMatches int
+	ActorUsername     string
+}
+
+// OnboardResult dit ce que la mise en place a produit.
+//
+// WatcherNotified=false n'est JAMAIS une erreur : le profil est la vérité, et le
+// daemon recharge la liste des profils suivis à son démarrage (`initPlayers`). Un
+// joueur non notifié est donc simplement pris en charge au prochain boot — l'échec
+// est journalisé en ERROR, pas propagé.
+type OnboardResult struct {
+	PlayerKey       string
+	DBPath          string
+	DBCreated       bool
+	WatcherNotified bool
+	Warnings        []string
+}

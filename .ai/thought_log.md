@@ -108905,3 +108905,42 @@ non poussées. La suite appartient à l'agent C (étape 5 : chemin d'onboarding 
 `PlayerDirectory.Onboard` ; étape 6 : purge d'identité + CLI). Point d'attention pour lui,
 consigné en §10 : le ratchet `no_duckdb_import` que l'étape 6 dit « existant » n'existe pas —
 il sera à écrire, pas à étendre.
+
+## [2026-09-16] Annuaire des joueurs — étape 5 : un seul chemin pour qu'un joueur existe — Complété
+
+**Décision technique principale** : `PlayerDirectory.Onboard` devient le SEUL créateur de
+profil, et l'ordre qu'il impose — profil de suivi d'abord, suivi live ensuite — n'est plus
+une convention mais une contrainte mécanique. Depuis l'étape 2, `watcher.Daemon.AddPlayer`
+porte une porte qui LIT `db_profiles.json` : notifier le watcher avant d'avoir écrit le profil
+se solderait par un refus. Le test `TestOnboard_ProfilAvantWatcher` tient ce lien — son double
+de watcher rejoue la porte et refuse tant que le profil n'est pas là, donc une inversion de
+l'ordre fait rougir la suite au lieu de repasser en prod.
+
+Le handler `POST /setup/players` ne connaît plus `ProfileService` : il garde ce qui est HTTP
+(gardes d'ouverture, validation, identité Xbox de la session, réponse) et délègue la mise en
+place. Conséquences assumées, toutes dans le sens de la règle « 0 code mort » : l'interface
+`port.ProfileService` n'avait plus de consommateur et a été supprimée ; le helper `fileExists`
+n'était plus utilisé que par ses deux propres tests — le « dead code museum » à tests verts du
+diagnostic de revue — supprimé avec eux. Le ratchet `no_direct_profile_create_test.go` (module
+entier, allowlist d'UNE entrée datée) interdit qu'un second appelant de `CreatePlayer(`
+réapparaisse : c'est exactement ce qui a rouvert le trou du 2026-07-23, deux endroits décidant
+qu'un joueur existe.
+
+Un cas que le plan n'avait pas prévu, trouvé sur pièces : `AddPlayer` refuse un xuid vide.
+Un profil créé en mode manuel n'en a pas — notifier quand même aurait produit un `slog.Error`
+à chaque création manuelle, du bruit sur un cas parfaitement normal. `notifyWatcher`
+court-circuite en amont avec un INFO : le watcher suit PAR xuid, sans xuid il n'y a rien à
+suivre.
+
+**Résultats observés** : gate G5 vert — `go test -timeout 30m ./internal/service/playerdirectory/...
+./internal/api/handlers/... ./internal/archlint/...` → 3 paquets `ok`, 0 échec, exit 0 (35 s) ;
+`grep -rn "\.CreatePlayer(" hors tests et hors annuaire` → 0 ligne. Hors gate : `go vet ./...`
+→ 0 ; `./internal/api/... ./internal/domain/... ./internal/port/...` → 11 paquets `ok` (26 s) ;
+`make openapi-check` → 0 (contrat inchangé, la réponse de `/setup/players` n'a pas bougé) ;
+`golangci-lint --new-from-merge-base=origin/main` → 0 issue. `handleCreatePlayer` avait
+grossi à 94 lignes : `guardLinkedXboxIdentity` extrait, il redescend à 71 — la dette de seuil
+baisse au lieu de monter, et `setup.go` ne porte plus aucun constat de lint.
+
+**Conclusion / prochaine étape** : étape 6 — purge d'identité (`Purge`, jamais la base
+partagée) et CLI `levelup identity list` / `identity purge`, avec le ratchet
+`no_duckdb_import_playerdirectory` à écrire (il n'existe pas, cf. §10 du plan).

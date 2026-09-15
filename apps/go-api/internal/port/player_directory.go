@@ -22,12 +22,11 @@ import (
 // ErrIdentityNotFound : aucun des registres ne connaît ce xuid.
 var ErrIdentityNotFound = errors.New("player_directory: identité inconnue")
 
-// PlayerDirectory est la lecture unifiée des registres d'identité.
+// PlayerDirectory est la lecture unifiée des registres d'identité, et le SEUL
+// chemin par lequel une identité entre (`Onboard`).
 //
-// Périmètre de l'étape 3 du plan `.ai/PLAN_ANNUAIRE_JOUEURS_2026-09-15.md` :
-// LECTURE seule. Les deux écritures prévues par l'ADR 0035 — `Onboard` (D4,
-// chemin unique de création de profil) et `Purge` (D6) — rejoindront cette
-// interface avec leur implémentation, jamais avant : un port qui déclare une
+// La dernière écriture prévue par l'ADR 0035 — `Purge` (D6) — rejoindra cette
+// interface avec son implémentation, jamais avant : un port qui déclare une
 // méthode que personne n'implémente vraiment est un mensonge de compilation.
 type PlayerDirectory interface {
 	// List rend toutes les identités connues d'au moins un registre, avec leurs
@@ -38,4 +37,10 @@ type PlayerDirectory interface {
 	// HasTrackedProfile dit si le couple (titre, xuid) est un profil SUIVI —
 	// la question que posent les portes de l'ADR 0035 D3.
 	HasTrackedProfile(ctx context.Context, titleSlug, xuid string) (bool, error)
+	// Onboard crée le profil de suivi d'un joueur puis, si le watcher tourne,
+	// l'y ajoute — dans CET ordre, que la porte « profil suivi » du daemon rend
+	// obligatoire (ADR 0035 D3/D4). C'est le seul créateur de profil du dépôt :
+	// un garde-rail interdit tout autre appelant de `CreatePlayer(`
+	// (`internal/archlint/no_direct_profile_create_test.go`).
+	Onboard(ctx context.Context, req domain.OnboardRequest) (domain.OnboardResult, error)
 }
