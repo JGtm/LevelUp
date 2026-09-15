@@ -25,12 +25,47 @@ func TestRegistreEstStructurellementValide(t *testing.T) {
 //
 // POURQUOI UN PLANCHER ET PAS UN COMPTE EXACT. Un compte exact ferait rougir tout lot de
 // conversion — or la CONVERSION est le but : le registre doit MAIGRIR. Le plancher n'attrape
-// donc qu'une chose, et c'est la seule qui soit toujours une faute : une tranche entière
-// disparue d'un `concat` mal relu. Il se baisse à la main, dans le commit qui retire les
-// entrées, avec la raison.
+// donc qu'une chose, et c'est la seule qui soit toujours une faute : une hémorragie d'entrées.
+// Il se baisse à la main, dans le commit qui retire les entrées, avec la raison.
 //
-// Mesuré au lot 1.9.0 (2026-09-14) : 94 entrées. Plancher à 60.
+// Mesuré au lot 1.9.0 (2026-09-14) : 94 entrées. Plancher à 60. Mesuré de nouveau le
+// 2026-09-16 (revue de jalon M1, ronde 2) : 96 entrées ; le plancher NE MONTE PAS avec elles —
+// c'est un plancher de sécurité, pas un compte.
 const plancherEntrees = 60
+
+// plancherTranches : le nombre de FAMILLES du registre. Il ne descend que délibérément.
+//
+// IL ÉTAIT À 2 ET NE MORDAIT SUR RIEN (revue de jalon M1, ronde 2, constat F1) : la garde
+// `len(tranches) < 2` laissait passer 6 -> 5, donc le retrait d'un fichier de tranche entier.
+// Mesuré le 2026-09-16 : SIX familles (`replay/equipement` 14, `replay/identites` 22,
+// `killsource` 26, `killsource/carte` 2, `objectifs et construction` 21, `filmdec` 11 — 96
+// entrées). Le plancher vaut donc la valeur réelle : une famille en moins se voit.
+const plancherTranches = 6
+
+// famillesAttendues : LES SIX FAMILLES, NOMMÉES, DANS L'ORDRE DE L'ASSEMBLAGE.
+//
+// POURQUOI UNE LISTE DE NOMS, ET PAS UN CHAÎNON ARITHMÉTIQUE (revue de jalon M1, ronde 2,
+// constat F1). Le test refermait sa boucle sur `somme(tranches) == len(Table())` — une
+// TAUTOLOGIE : [registre] VAUT `concat(Tranches())`, l'égalité est vraie par construction et
+// aucune mutation ne peut la casser. Mutation jouée par le relecteur, la tranche
+// `killsource/carte` retirée de [Tranches] : `fallback` ET `archlint` restaient VERTS pendant
+// que deux entrées quittaient le registre en silence.
+//
+// Ce que `concat` ne peut PAS déduire de lui-même, c'est la liste de ce qu'il DOIT porter. Elle
+// vient donc du dehors, elle est nommée, et elle se met à jour À LA MAIN dans le commit qui
+// ajoute ou retire un fichier de tranche — c'est ce geste manuel qui rend le retrait délibéré.
+//
+// ELLE NE COMPTE AUCUNE ENTRÉE : une entrée de plus (ou de moins) dans une famille ne la fait
+// pas rougir. Ce qu'elle tient est la FAMILLE, parce qu'une famille perdue est toujours une
+// faute, là où une entrée retirée est le but du chantier.
+var famillesAttendues = []string{
+	"replay/equipement",
+	"replay/identites",
+	"killsource",
+	"killsource/carte",
+	"objectifs et construction",
+	"filmdec",
+}
 
 func TestRegistrePorteToutesSesFamilles(t *testing.T) {
 	if n := len(Table()); n < plancherEntrees {
@@ -38,32 +73,34 @@ func TestRegistrePorteToutesSesFamilles(t *testing.T) {
 			"quitte `concat` ? Si le retrait est voulu, baisser le plancher DANS le commit qui retire",
 			n, plancherEntrees)
 	}
-	// LA LISTE DES FAMILLES VIENT DE L'ASSEMBLAGE LUI-MEME, ET NON D'UNE RECOPIE (revue de jalon
-	// M1, 2026-09-15). La boucle en enumerait CINQ a la main quand `concat` en assemblait SIX :
-	// `registreKillsourceCarte` (lot 1.9.4, 2 entrees) n'etait verifiee par rien, et une septieme
-	// tranche aurait manque de la meme facon. Depuis, [Tranches] est la seule liste.
 	tranches := Tranches()
-	if len(tranches) < 2 {
-		t.Fatalf("Tranches() n'en rend que %d : la source des familles est cassee", len(tranches))
+	if len(tranches) < plancherTranches {
+		t.Fatalf("Tranches() ne rend que %d familles (plancher %d) — un fichier de tranche a quitte "+
+			"l assemblage. Si le retrait est voulu, baisser `plancherTranches` ET retirer le nom de "+
+			"`famillesAttendues`, DANS le commit qui retire", len(tranches), plancherTranches)
 	}
-	total := 0
-	vus := map[string]bool{}
-	for _, fam := range tranches {
+	rangs := map[string]int{}
+	for i, fam := range tranches {
+		if _, deja := rangs[fam.Nom]; deja {
+			t.Errorf("la famille %q est declaree deux fois dans Tranches()", fam.Nom)
+		}
+		rangs[fam.Nom] = i
 		if len(fam.Replis) == 0 {
 			t.Errorf("la famille %q est vide — elle a ete videe sans que le plancher bouge", fam.Nom)
 		}
-		if vus[fam.Nom] {
-			t.Errorf("la famille %q est declaree deux fois dans Tranches()", fam.Nom)
+		if i < len(famillesAttendues) && fam.Nom != famillesAttendues[i] {
+			t.Errorf("famille de rang %d : %q, attendue %q — l ordre de Tranches() a change",
+				i, fam.Nom, famillesAttendues[i])
 		}
-		vus[fam.Nom] = true
-		total += len(fam.Replis)
 	}
-	// LE CHAINON QUI FERME LA BOUCLE : la somme des tranches est le registre. Sans lui, une
-	// tranche pourrait sortir de `concat` sans sortir de [Tranches] — le test lirait alors une
-	// liste que l'assemblage n'emploie plus.
-	if total != len(Table()) {
-		t.Errorf("les tranches portent %d entrees, le registre en rend %d — `concat` et "+
-			"`Tranches()` ont diverge", total, len(Table()))
+	// LE CONTROLE QUI MORD : chaque famille ATTENDUE est encore la. C est la direction que le
+	// chainon arithmetique ne tenait pas — lui partait de `Tranches()` pour y revenir.
+	for _, nom := range famillesAttendues {
+		if _, ok := rangs[nom]; !ok {
+			t.Errorf("la famille %q a QUITTE Tranches() : ses entrees ne sont plus au registre, et "+
+				"rien d autre ne le dirait. Retrait volontaire ? le retirer AUSSI de "+
+				"`famillesAttendues` et baisser `plancherTranches`, dans le meme commit", nom)
+		}
 	}
 }
 

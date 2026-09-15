@@ -30,6 +30,8 @@ package fallback
 import (
 	"log/slog"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -109,4 +111,36 @@ func (c *Compteur) Rapport() []Declenchement {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Nom < out[j].Nom })
 	return out
+}
+
+// Cumuler absorbe le rapport d'UNE AUTRE cuisson (ou d'une autre projection) dans ce compteur.
+//
+// IL EXISTE POUR LES PASSES, ET POUR ELLES SEULES. Un producteur qui résume N matchs tient N
+// rapports et doit en publier UN pour la passe ; écrire la boucle d'addition chez chaque
+// producteur, c'est la voir diverger au troisième (règle 6 du dépôt). Le compteur SAIT déjà
+// additionner et trier : il lui manquait seulement d'accepter une somme déjà faite.
+//
+// Ce n'est PAS un canal de cuisson : rien dans le décodeur ne doit s'en servir pour fusionner
+// deux films — un compteur voyage avec SA cuisson (cf. l'en-tête de ce fichier).
+func (c *Compteur) Cumuler(rapport []Declenchement) {
+	for _, d := range rapport {
+		c.DeclencheN(d.Nom, d.Declenchements)
+	}
+}
+
+// Texte rend un rapport sur une ligne, `nom=compte` séparés par une espace — la forme d'un
+// attribut de journal. Rapport vide : `aucun`, JAMAIS la chaîne vide.
+//
+// « AUCUN » SE DIT, ET C'EST LE POINT. Un producteur qui n'écrirait rien quand rien ne s'est
+// déclenché rendrait « jamais déclenché » indiscernable de « jamais instrumenté » — la confusion
+// exacte que D14 (d) transforme en suppression d'un repli actif.
+func Texte(rapport []Declenchement) string {
+	if len(rapport) == 0 {
+		return "aucun"
+	}
+	parts := make([]string, 0, len(rapport))
+	for _, d := range rapport {
+		parts = append(parts, string(d.Nom)+"="+strconv.Itoa(d.Declenchements))
+	}
+	return strings.Join(parts, " ")
 }
