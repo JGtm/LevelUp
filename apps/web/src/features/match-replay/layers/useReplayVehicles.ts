@@ -26,6 +26,7 @@ import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import type { FxInk } from './fxInk'
+import type { ReplayLocale } from '../i18n/i18n'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
 import { frameToMs } from '../../../lib/replay/replayLogic'
@@ -44,6 +45,12 @@ export interface VehiclesInput {
   view: PlacementView
   /** Faux quand le calque est éteint : rien n'est dessiné (le prédicat embarqué, lui, reste actif). */
   enabled: boolean
+  /**
+   * LA LANGUE DU LECTEUR — elle ne sert QU'au libellé d'une famille qui n'est pas un véhicule
+   * (lot 1.9.9, cf. `VehicleStyle.labelOfFamily`). Le calque lui-même ne connaît aucune langue :
+   * le texte vient du DOCUMENT, ce hook ne fait que choisir la colonne.
+   */
+  locale: ReplayLocale
   /** Calque des NOMS (bouton partagé avec les pions) : les noms empilés le suivent. */
   showNames: boolean
   /** Calque de la VISÉE (le MÊME bouton que les pions) : le cône du conducteur le suit. */
@@ -121,6 +128,7 @@ export function useReplayVehicles({
   doc,
   view,
   enabled,
+  locale,
   showNames,
   showAim,
   colorOfSlot,
@@ -143,13 +151,35 @@ export function useReplayVehicles({
   // des artefacts sans échelle temporelle). Ne dépend que du document, jamais de l'image.
   const frameMs = useMemo(() => frameToMs(1, doc), [doc])
 
+  // LA NATURE D'UNE FAMILLE, telle que le DOCUMENT la publie (lot 1.9.9) : `undefined` pour un
+  // véhicule, le cas général. Résolue ici UNE fois pour les deux consommateurs — le prédicat
+  // embarqué (un élément de carte ne porte personne) et le tracé (il a son pictogramme dédié).
+  // Le calque ne décide jamais seul qu'une famille n'est pas un véhicule : c'est le serveur qui
+  // le dit, depuis le manifeste du titre.
+  const kindOf = useCallback(
+    (family: string): string | undefined => labels?.[family]?.kind,
+    [labels],
+  )
+
+  // LE LIBELLÉ D'UNE FAMILLE dans la langue du lecteur, tel que le DOCUMENT le publie (lot
+  // 1.9.9). Vide pour dix-huit familles sur dix-neuf : un nom de véhicule est un nom propre du
+  // jeu et la clé EST le nom. Aucune chaîne n'est écrite ici — elles viennent du manifeste du
+  // titre, comme tous les libellés du rejeu.
+  const labelOfFamily = useCallback(
+    (family: string): string | null => {
+      const lbl = labels?.[family]
+      return (locale === 'fr' ? lbl?.fr : lbl?.en) ?? null
+    },
+    [labels, locale],
+  )
+
   // LE PRÉDICAT EMBARQUÉ SUIT LE TOGGLE DU CALQUE (revue adversariale 2026-09-02, point 7) :
   // calque ÉTEINT, on rend les pions — supprimer un occupant sans dessiner son véhicule ferait
   // disparaître des joueurs sans aucun réglage pour les récupérer.
   const isEmbarkedAt = useMemo(() => {
     if (!enabled) return () => false
-    return buildEmbarkedPredicate(tracks)
-  }, [enabled, tracks])
+    return buildEmbarkedPredicate(tracks, kindOf)
+  }, [enabled, tracks, kindOf])
 
   // LES SPRITES SOURCES, une par FAMILLE employée par `doc.vehicleLabels` — chargés UNE FOIS,
   // jamais reteints ici (la teinture par équipe se fait à la demande, cf. `spriteOf`).
@@ -161,6 +191,9 @@ export function useReplayVehicles({
     const map = rawImagesRef.current
     for (const family of Object.keys(labels ?? {})) {
       if (map.has(family) || vehicleIsDecor(family)) continue
+      // PAS D'URL = AUCUNE REQUÊTE (lot 1.9.9). Le serveur ne compose plus d'`img` pour une
+      // famille qu'il sait sans asset (un élément de carte, aujourd'hui) : la sauter ici est ce
+      // qui évite un 404 par match — et le calque a déjà son pictogramme pour elle.
       const url = labels?.[family]?.img
       if (!url) continue
       const im = new Image()
@@ -239,14 +272,15 @@ export function useReplayVehicles({
         view,
         { frame, k, frameMs },
         {
-          neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, colorOfXuid,
-          nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf, explosionInk, reducedMotion,
+          neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf, labelOfFamily,
+          colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
+          explosionInk, reducedMotion,
         },
       )
     },
     [
-      enabled, tracks, view, neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf,
-      colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
+      enabled, tracks, view, neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf,
+      labelOfFamily, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
       frameMs, explosionInk, reducedMotion,
     ],
   )
