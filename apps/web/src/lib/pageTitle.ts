@@ -123,7 +123,7 @@ const STATIC_ROUTE_TITLES: RouteTitleRule[] = [
   },
   { pattern: '/admin', title: { fr: 'Administration', en: 'Administration' } },
   { pattern: '/changelog', title: { fr: 'Changelog', en: 'Changelog' } },
-  { pattern: '/groups', title: { fr: 'Mes groupes', en: 'My groups' } },
+  { pattern: '/groups', title: { fr: 'Amis et groupes', en: 'Friends and groups' } },
   { pattern: '/help', title: { fr: 'Aide', en: 'Help' } },
   { pattern: '/join', title: { fr: 'Rejoindre un groupe', en: 'Join a group' } },
   // Sandbox dev interne, jamais lié depuis la nav prod (cf. ChartsShowcasePage) —

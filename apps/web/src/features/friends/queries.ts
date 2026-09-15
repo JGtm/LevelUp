@@ -46,12 +46,12 @@ export function useUpdatePlayerFriends(slug: string) {
       api.put<PlayerFriends>(`/players/${encodeURIComponent(slug)}/friends`, { gamertags }),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.playerFriends(slug), data)
-      // Tout ce qui dépend de la liste : dropdown Escouade, coloration vue match,
-      // barres Prestige d'escouade.
+      // La coloration de la vue match et les barres Prestige d'escouade DÉRIVENT
+      // de cette liste côté client (usePlayerFriends) : les invalider en plus
+      // serait redondant. Seules les données que le SERVEUR filtre sur les amis
+      // doivent être rechargées — l'Escouade.
       queryClient.invalidateQueries({ queryKey: queryKeys.playerFriends(slug) })
       queryClient.invalidateQueries({ queryKey: queryKeys.teammatesAll })
-      queryClient.invalidateQueries({ queryKey: ['prestige'] })
-      queryClient.invalidateQueries({ queryKey: ['match-view'] })
     },
   })
 }

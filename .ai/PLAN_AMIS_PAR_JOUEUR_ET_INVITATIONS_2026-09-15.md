@@ -235,32 +235,32 @@ que le périmètre 3.x.
 Consommateurs listés par `grep -rn "friend_gamertags\|friendGamertags" apps/web/src` le
 2026-09-15.
 
-- [ ] 4.1 `lib/query/keys.ts` : `queryKeys.playerFriends(slug)`. `features/friends/queries.ts`
+- [x] 4.1 `lib/query/keys.ts` : `queryKeys.playerFriends(slug)`. `features/friends/queries.ts`
       (créé en 2.11) : activer `usePlayerFriends(slug)`, ajouter `useUpdatePlayerFriends(slug)` (invalide
       `playerFriends`, squad, prestige, match-view).
-- [ ] 4.2 Lecteurs déjà sur `usePlayerFriends` depuis 2.11 — vérifier le slug passé (joueur actif) et nettoyer les commentaires :
+- [x] 4.2 Lecteurs déjà sur `usePlayerFriends` depuis 2.11 — vérifier le slug passé (joueur actif) et nettoyer les commentaires :
       `features/squad/SquadLayout.tsx:339-344`, `features/match-view/MatchViewPage.tsx:105`,
       `features/ascension/PrestigeSquadProgress.tsx:74` (+ commentaires `:2,:8`),
       `features/friends/AddFriendFlow.tsx:60-90` (PUT au lieu de PATCH /settings ; doc
       d'en-tête `:5,:8`). Les props `friendGamertags` des composants match-view
       (`MatchViewTabPlayers`, `MatchFragDiffChart`, `MatchKillDistanceSection`) ne changent pas.
-- [ ] 4.3 Retirer le champ de Réglages : `features/settings/SyncTab.tsx:162-163` (+ le
+- [x] 4.3 Retirer le champ de Réglages : `features/settings/SyncTab.tsx:162-163` (+ le
       composant de sélection s'il n'a plus d'autre usage — vérifier par grep avant de
       supprimer), `lib/api/types.ts:407` et le commentaire `:1381`, `test/handlers.ts:169`,
       `lib/players/displayName.ts:85` (commentaire).
-- [ ] 4.4 Page `/groups` → « Amis et groupes » : `features/groups/GroupsPage.tsx` gagne une
+- [x] 4.4 Page `/groups` → « Amis et groupes » : `features/groups/GroupsPage.tsx` gagne une
       section « Amis de {gamertag} » en tête, pour le **joueur actif du shell**
       (`activePlayerSlug` de `appShellStore`, le même que MatchView et Escouade — la page
       n est pas scopée joueur dans l URL, c est LA source du slug, tranché) : liste + ajout par
       gamertag via le flux existant `AddFriendFlow` + retrait ; lecture seule si l utilisateur
       n est pas propriétaire direct du profil actif (`can_edit` de la réponse GET, posé en 3.1 — le front n interprète jamais
       un 403 pour décider de l affichage).
-- [ ] 4.5 Libellés FR + EN (`Record<Locale, T>`, manifeste `lib/i18n/manifests/common.toml`
+- [x] 4.5 Libellés FR + EN (`Record<Locale, T>`, manifeste `lib/i18n/manifests/common.toml`
       → `common.groups.*` et nouvelles clés `common.friends.*`) ; `lib/pageTitle.ts:126`
       (« Amis et groupes » / « Friends and groups ») ; lien `features/settings/SettingsPage.tsx:176`
       ; entrée de navigation existante vers `/groups` (`grep -rn "/groups" components/shell`).
       Pas d'anglicisme, pas de couleur hex/Tailwind (`color-tokens`).
-- [ ] 4.6 Tests : `AddFriendFlow.test.tsx` adapté (PUT) ; test du hook `usePlayerFriends`
+- [x] 4.6 Tests : `AddFriendFlow.test.tsx` adapté (PUT) ; test du hook `usePlayerFriends`
       (msw dans `test/handlers.ts`) ; test de rendu lecture seule / édition de la section amis.
 
 **Gate G4** : `cd apps/web && Remove-Item -Recurse -Force node_modules\.tmp; npm run typecheck
@@ -635,3 +635,55 @@ migration de groupe par défaut est conservée et re-sourcée depuis `friendstor
 - `git diff --stat` : 4 fichiers, tous dans le périmètre 3.x (`openapi.yaml`, `server.go`,
   `server_apiv1.go`, `generated.ts`) + les 2 fichiers créés (`handlers/friends.go`,
   `handlers/friends_test.go`).
+
+### Étape 4 — Frontend : amis par joueur, page « Amis et groupes » — 2026-09-15 ~23:30 — CLOSE
+
+- 4.1 `[x]` `queryKeys.playerFriends(slug)` posée ; `features/friends/queries.ts` complété
+  (`useUpdatePlayerFriends`, livré en 2.11 par nécessité de compilation, cf. écart).
+  **Écart assumé** : l'invalidation est réduite à `playerFriends` + `teammatesAll`. Le plan
+  prévoyait d'invalider aussi `prestige` et `match-view` — c'est inutile ET interdit : ces
+  deux surfaces DÉRIVENT de `usePlayerFriends` côté client (elles se recalculent quand la
+  liste change), et le garde-rail `keys.guard.test.ts` refuse tout `queryKey: ['littéral']`.
+- 4.2 `[x]` slugs vérifiés sur pièces : `SquadLayout` et `MatchViewPage` passent leur
+  `playerSlug` de route, `PrestigeSquadProgress` le `player_slug` du joueur courant du shell,
+  la route de rejeu son `playerSlug`. Commentaires nettoyés (2.7/2.11). Les props
+  `friendGamertags` des composants match-view sont inchangées, comme prévu.
+- 4.3 `[x]` carte « Escouade — amis par défaut » retirée de `SyncTab.tsx` (+ imports et
+  helper `tc` devenus morts) ; `GamertagCombobox` CONSERVÉ (vérifié par grep : encore utilisé
+  par Compare, Escouade, Tactique, sync initiale admin) ; `lib/api/types.ts` (champ +
+  commentaire `:1381`), `test/handlers.ts`, `lib/players/displayName.ts`,
+  `lib/replay/playerMarks.ts`, `match-view/colors.ts`, `MatchKillDistanceSection.tsx` :
+  commentaires corrigés. En plus : les trois mocks `useSettings → friend_gamertags` des tests
+  match-view, devenus morts, sont remplacés par un mock de `useFriendGamertags`.
+- 4.4 `[x]` `features/friends/PlayerFriendsSection.tsx` (nouveau) en tête de
+  `GroupsPage`, titre « Amis et groupes », section « Amis de {gamertag} » : liste, ajout par
+  gamertag via le flux de confirmation existant (`AddFriendModal`), retrait, lecture seule
+  pilotée par `can_edit` de la réponse GET. La saisie et la confirmation sont deux états
+  distincts — taper n'ouvre pas la modale, seul le bouton le fait.
+  **Écart assumé** : le plan citait `activePlayerSlug` de `appShellStore` ; le champ réel est
+  `currentPlayer` (`PlayerSummary`), la même source que `PrestigeSquadProgress`. Vérifié sur
+  pièces.
+- 4.5 `[x]` 14 clés `common.friends.*` FR **et** EN dans `lib/i18n/manifests/common.toml`
+  (manifestes régénérés par `node scripts/build_i18n_manifests.mjs`) ; `lib/pageTitle.ts`
+  (« Amis et groupes » / « Friends and groups ») ; carte de `SettingsPage` re-libellée
+  (FR + EN dans `features/settings/i18n.ts`). Aucun anglicisme, aucune couleur hex ni classe
+  Tailwind de couleur (tokens sémantiques du composant `Card`/`Button` uniquement).
+  **Item sans objet** : aucune entrée de navigation vers `/groups` dans `components/shell`
+  (vérifié par grep) — le seul lien vient de la page Réglages, re-libellé ici.
+- 4.6 `[x]` tests : `AddFriendFlow.test.tsx` réécrit sur le PUT par joueur (7 tests),
+  `queries.test.tsx` (4 tests : lecture par joueur, deux slugs = deux entrées de cache, slug
+  vide = aucune requête, liste vide avant réponse), `PlayerFriendsSection.test.tsx` (7 tests :
+  affichage, liste vide, lecture seule vs édition, retrait envoyant la liste complète
+  restante, confirmation d'ajout, absence de joueur actif) ; handlers msw GET/PUT ajoutés.
+
+**Gate G4 : PASSÉ.**
+- `cd apps/web && rm -rf node_modules/.tmp && npm run typecheck` → **0**.
+- `npm run lint` → **0 erreur** (25 avertissements, tous préexistants : `react-hooks/incompatible-library` sur TanStack Table, directives eslint-disable inutiles).
+- `npm run test:run` → **715 fichiers passés, 1 ignoré ; 7677 tests passés, 17 ignorés**.
+  Un passage intermédiaire a montré des garde-rails « scan de fichiers » rouges par
+  intermittence (5 à 16 s chacun sous charge parallèle) ; verts isolément et au passage
+  suivant — flakes de charge, pas des régressions.
+- `grep -rn "friend_gamertags" apps/web/src` → **vide** (`generated.ts` compris).
+- Recette navigateur : `[~]` **faite par le pilote après livraison** (consigne d'exécution) —
+  aucun serveur n'est démarré depuis ce worktree (son `data/` pointe sur les bases du serveur
+  principal : deux process = violation mono-process ADR 0013).
