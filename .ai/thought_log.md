@@ -108742,3 +108742,45 @@ l'utilisateur. Lot 1 (`feat/quantum-projectiles`) et lot 2 (`feat/mapquant-forge
 indépendants et parallélisables en worktrees dédiés. Le sous-lot 1C décide du sort de la précision
 par arme pour les armes à projectile : succès vers un plan séparé, échec vers le registre des
 reports, la remise du 01/09 restant en l'état.
+
+## [2026-09-15] Annuaire des joueurs — étape 1 : le verrou d'instance se décide en un seul point — Complété
+
+**Décision technique principale** : le verrou « instance fermée » avait TROIS copies de son
+calcul d'après le plan (`api/handlers/setup.go`, `api/server_apiv1.go`, la closure injectée dans
+`XboxSSOLinkStrategy`) — la vérification sur pièces en a trouvé une QUATRIÈME,
+`service/bootstrap_service.go`, celle qui rend `instance_locked` au front, et une seule des
+quatre journalisait son repli sur un `app_settings.json` illisible. Le point de décision unique
+est `authz.InstanceLocked(envLocked bool, load func() (bool, error)) bool` : le package `authz`
+reste PUR (il ne peut importer ni `platform/settings` ni `config`), d'où le callback plutôt
+qu'une interface `SettingsLoader`. `api/server_apiv1.go` construit UNE closure et l'injecte en
+`func() bool` aux quatre consommateurs — type inchangé, donc les tests existants de
+`user_auth`/`xbox_auth_service` ne bougent pas. Ratchet `no_bare_instance_lock_read_test.go` :
+balayage du module entier, allowlist datée de six chemins, commentaires et `_test.go` ignorés.
+
+Deuxième décision : les défauts SÛRS deviennent les défauts appliqués. `settings.Store` reçoit
+`WithEnforcedDefaults(authz.Enforced(demoMode, authMode))` ; en mode appliqué, une clé ABSENTE
+donne `instance_locked=true` et `can_self_provision=false`, une valeur EXPLICITE gagne toujours,
+et le fichier n'est jamais réécrit au boot. La branche « fichier absent » de `Load` passait à
+côté (elle retournait `defaultSettings()` sans réappliquer les défauts) : même trou, autre porte,
+corrigé. `buildCapabilities` portait un second défaut indépendant pour `can_self_provision`
+(`true` en dur) — aligné sur la même règle, sinon le front proposait une création de profil que
+`POST /setup/players` refuse en 403. Enfin l'admin est exempté des DEUX gardes sur
+`/setup/players` : déclarer le profil d'un ami est un acte d'administration, et le rôle est lu
+dans le STORE quand le lookup est câblé (un admin rétrogradé depuis l'ouverture de sa session
+perd l'exemption).
+
+**Résultats observés** : gate G1 vert avec `-count=1` — 9 paquets `ok`, 0 échec (authz 7,8 s,
+api/handlers 51,5 s, platform/settings 5,1 s, archlint 65,7 s, service 52,8 s) ; `go vet ./...`
+→ 0 ; plus aucune ligne `InstanceLocked ||` en code de production. Baseline de l'étape 0 :
+tous les paquets verts, mais `internal/sync` DÉPASSE le timeout par défaut de `go test` sur ce
+poste (601 s au premier passage, build CGO DuckDB à froid inclus ; `ok 501 s` avec
+`-timeout 30m`) — tout gate qui l'inclut doit porter ce drapeau. `store.go` est repassé de
+556 L à 516 L par extraction de `settings/defaults.go` : la dette de seuil baisse.
+Réserve consignée : au premier passage de G1, `internal/service` a échoué pendant que le
+rattrapage `internal/sync` tournait en parallèle ; vert deux fois ensuite, le nom du test perdu
+dans une sortie tronquée. Aucun test désactivé ni skippé ; à re-vérifier au gate complet de
+l'étape 7.
+
+**Conclusion / prochaine étape** : étape 2 du plan — portes « profil suivi » sur le coordinateur
+de sync, le daemon watcher et le SSO Xbox, pour qu'un compte sans profil ne déclenche ni poller,
+ni sync, ni écriture disque.

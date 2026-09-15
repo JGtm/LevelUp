@@ -26,6 +26,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -43,6 +44,16 @@ type SetupHandler struct {
 	settingsStore *settings_platform.Store
 	jobStore      *jobs.Store
 	profileSvc    port.ProfileService
+	// instanceLocked résout le verrou « instance fermée ». Injecté depuis le
+	// point de décision unique (authz.InstanceLocked, ADR 0035 D5) — ce handler
+	// ne lit JAMAIS la clé lui-même (garde-rail archlint). nil = jamais
+	// verrouillé : même convention que XboxSSOLinkStrategy/UserAuthHandler, et
+	// seam des tests unitaires.
+	instanceLocked func() bool
+	// userLookup résout l'utilisateur courant derrière la session pour l'exemption
+	// admin (ajouter le profil d'un ami est un acte d'administration). nil ⇒ repli
+	// sur le rôle porté par la session, comme middleware.RequireAdmin.
+	userLookup authz.UserLookup
 }
 
 // NewSetupHandler crée un SetupHandler.
@@ -60,6 +71,20 @@ func NewSetupHandler(
 		jobStore:      jobStore,
 		profileSvc:    profileSvc,
 	}
+}
+
+// WithInstanceLock injecte le résolveur du verrou « instance fermée », construit
+// une seule fois au câblage depuis authz.InstanceLocked (ADR 0035 D5).
+func (h *SetupHandler) WithInstanceLock(fn func() bool) *SetupHandler {
+	h.instanceLocked = fn
+	return h
+}
+
+// WithUserLookup injecte la résolution de l'utilisateur courant (exemption admin
+// sur POST /setup/players).
+func (h *SetupHandler) WithUserLookup(lookup authz.UserLookup) *SetupHandler {
+	h.userLookup = lookup
+	return h
 }
 
 // Mount enregistre les 2 routes via Huma sur le routeur chi (mêmes points de
@@ -100,29 +125,21 @@ type setupSmokeTestOutput struct {
 // handleCreatePlayer crée un profil joueur dans db_profiles.json.
 // POST /setup/players → 201 CreatePlayerProfileResponse.
 //
-// Guards :
+// Guards (les deux premières sont levées pour un ADMIN, cf. guardProvisioning) :
 //   - 403 si can_self_provision=false dans app_settings.json
 //   - 403 si instance verrouillée (env LEVELUP_INSTANCE_LOCKED ou app_settings)
 //   - 409 si profile_mode="xbox" mais aucune identité Halo liée en session
 //   - 409 si gamertag/XUID ne correspond pas à l'identité Halo liée
 func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePlayerInput) (*setupCreatePlayerOutput, error) {
-	// Guard : can_self_provision
 	appCfg, err := h.settingsStore.Load()
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
-	if !appCfg.CanSelfProvision {
-		return nil, humacore.NewError(http.StatusForbidden, "provisioning_disabled",
-			"L'auto-provisioning est désactivé sur cette instance.")
-	}
-
-	// Guard : instance fermée (lockdown) — pas de nouvelle BDD joueur.
-	// Verrou effectif = env (LEVELUP_INSTANCE_LOCKED) OU app_settings.instance_locked.
-	if h.cfg.InstanceLocked || appCfg.InstanceLocked {
-		slog.WarnContext(ctx, "setup: création profil refusée — instance verrouillée",
-			"env_locked", h.cfg.InstanceLocked, "settings_locked", appCfg.InstanceLocked)
-		return nil, humacore.NewError(http.StatusForbidden, "instance_locked",
-			"Cette instance est fermée : la création de nouveaux profils est désactivée.")
+	// Gardes d'ouverture. Un ADMIN en est exempté des DEUX : ajouter le profil
+	// d'un ami est un acte d'administration, pas de l'auto-provisioning (ADR 0035 D5).
+	actorIsAdmin := h.actorIsAdmin(ctx)
+	if err := h.guardProvisioning(ctx, appCfg.CanSelfProvision, actorIsAdmin); err != nil {
+		return nil, err
 	}
 
 	var req domain.CreatePlayerProfileRequest
@@ -136,6 +153,9 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 	}
 	if req.ProfileMode == "" {
 		req.ProfileMode = authModeXbox
+	}
+	if actorIsAdmin {
+		slog.InfoContext(ctx, "setup: création profil par admin", "gamertag", req.Gamertag)
 	}
 
 	// Titre cible : priorité au body (onboarding multi-titre — le front crée un
@@ -207,6 +227,46 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 			Warnings:  warnings,
 		},
 	}, nil
+}
+
+// actorIsAdmin dit si l'appelant est administrateur de l'instance. Priorité au
+// store (authz.CurrentUser : un rôle rétrogradé après l'ouverture de session y
+// est visible) ; sans lookup câblé, repli sur le rôle porté par la session, même
+// source que middleware.RequireAdmin.
+func (h *SetupHandler) actorIsAdmin(ctx context.Context) bool {
+	sess := middleware.GetSession(ctx)
+	if sess == nil {
+		return false
+	}
+	if h.userLookup != nil {
+		if u := authz.CurrentUser(sess, h.userLookup); u != nil {
+			return u.Role == domain.RoleAdmin
+		}
+		return false
+	}
+	return sess.Role != nil && *sess.Role == string(domain.RoleAdmin)
+}
+
+// guardProvisioning applique les deux gardes d'ouverture de l'instance :
+// auto-provisioning autorisé, puis verrou « instance fermée ». Un admin en est
+// exempté (ADR 0035 D5). Retourne nil quand la création peut continuer.
+func (h *SetupHandler) guardProvisioning(ctx context.Context, canSelfProvision, actorIsAdmin bool) error {
+	if actorIsAdmin {
+		return nil
+	}
+	if !canSelfProvision {
+		slog.WarnContext(ctx, "setup: création profil refusée — auto-provisioning désactivé")
+		return humacore.NewError(http.StatusForbidden, "provisioning_disabled",
+			"L'auto-provisioning est désactivé sur cette instance.")
+	}
+	// Verrou effectif = env (LEVELUP_INSTANCE_LOCKED) OU app_settings.instance_locked,
+	// résolu par le point de décision unique injecté au câblage.
+	if h.instanceLocked != nil && h.instanceLocked() {
+		slog.WarnContext(ctx, "setup: création profil refusée — instance verrouillée")
+		return humacore.NewError(http.StatusForbidden, "instance_locked",
+			"Cette instance est fermée : la création de nouveaux profils est désactivée.")
+	}
+	return nil
 }
 
 // handleSmokeTest lance un job de vérification basique de l'environnement.

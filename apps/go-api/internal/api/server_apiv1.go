@@ -155,7 +155,29 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	humaAPI := newHumaAPI(r, apiOpt)
 	registerChangelogHuma(humaAPI, handlers.NewChangelogHandler(cfg.RepoRoot))
 
+	// Verrou « instance fermée » (lockdown) : RÉSOLVEUR UNIQUE de l'instance
+	// (ADR 0035 D5). Effectif = env (LEVELUP_INSTANCE_LOCKED, verrou forcé au boot)
+	// OU app_settings.instance_locked (mutable à chaud via PATCH /settings admin).
+	// Résolu live à chaque appel pour refléter une bascule runtime. Construit ICI et
+	// injecté partout — aucun consommateur ne relit la clé (garde-rail
+	// internal/archlint/no_bare_instance_lock_read_test.go). Le repli sur erreur de
+	// lecture (WARN + non verrouillé) vit dans authz.InstanceLocked.
+	instanceLockedFn := func() bool {
+		return authz.InstanceLocked(cfg.InstanceLocked, func() (bool, error) {
+			s, err := settingsStore.Load()
+			if err != nil {
+				return false, err
+			}
+			return s.InstanceLocked, nil
+		})
+	}
+
 	// Endpoints P0 : bootstrap + liste joueurs
+	// Le bootstrap expose le verrou au front (bandeau « instance fermée ») : il le
+	// prend au résolveur, jamais en relisant cfg/settings de son côté.
+	if bootSvc != nil {
+		bootSvc.WithInstanceLock(instanceLockedFn)
+	}
 	handlers.NewBootstrapHandler(bootSvc).Mount(r, apiOpt)
 	handlers.NewPlayersHandler(bootSvc).Mount(r, apiOpt)
 
@@ -303,24 +325,6 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// Sprint 14 : contexte de session
 	sessionHandler := handlers.NewSessionHandler(sessionStore)
 	sessionHandler.Mount(r, apiOpt)
-
-	// Verrou « instance fermée » (lockdown) : effectif = env (LEVELUP_INSTANCE_LOCKED,
-	// verrou forcé au boot) OU app_settings.instance_locked (mutable à chaud via
-	// PATCH /settings admin). Résolu live pour refléter une bascule runtime.
-	instanceLockedFn := func() bool {
-		if cfg.InstanceLocked {
-			return true
-		}
-		s, err := settingsStore.Load()
-		if err != nil {
-			// LOGUE AVANT DE DÉGRADER (règle n°3) : sans cette ligne, un app_settings.json
-			// illisible faisait retomber le verrou sur "non verrouillé" en silence (Q8,
-			// .ai/DECOUVERTES_TACTIQUE_2026-09-07.md).
-			slog.Warn("instance_locked: settings illisibles, repli sur non verrouillé", "err", err)
-			return false
-		}
-		return s.InstanceLocked
-	}
 
 	// Sprint 15 : Device Code Flow + authentification Halo
 	// D3 cohabitation (cf. SPRINT_XBOX_SSO §0bis) : en mode "xbox", la LinkStrategy
@@ -504,7 +508,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// deux read-modify-write concurrents pourraient s'écraser (lost update).
 	profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
 		WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
-	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileService)
+	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileService).
+		WithInstanceLock(instanceLockedFn).
+		WithUserLookup(users)
 	// S8 (sécurité, lot S) : /setup/players (écrit db_profiles.json) et
 	// /setup/smoke-test → RequireAuth par cohérence (gardes internes conservées).
 	// No-op en démo / auth non activée.
