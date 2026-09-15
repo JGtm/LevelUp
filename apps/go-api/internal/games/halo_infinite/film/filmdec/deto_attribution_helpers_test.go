@@ -89,7 +89,7 @@ func detoScanProjectiles(t *testing.T, dir string, wr *Vec3Range, n int) []detoD
 	// Les largeurs d'axe des objets du monde (ti=41) sont celles de la CARTE, pas le defaut
 	// 13/13/14 (arene Cliffhanger). Sans cette installation, un projectile de carte a signature
 	// differente (Forge [15,15,17]) se decode a la mauvaise echelle. Verrou tenu par l'appelant.
-	if lay, _, err := DetectI0Layout(dir); err == nil {
+	if lay, _, err := detectI0Layout(dir); err == nil {
 		saved := WorldObjectPrecision
 		SetWorldObjectPrecisionFromLayout(lay)
 		defer func() { WorldObjectPrecision = saved }()

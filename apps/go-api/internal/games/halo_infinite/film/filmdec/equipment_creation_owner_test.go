@@ -49,7 +49,7 @@ func TestEquipmentCreationOwner(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
 	}

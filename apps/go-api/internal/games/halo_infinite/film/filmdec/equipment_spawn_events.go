@@ -50,8 +50,6 @@ package filmdec
 // non lues sont un manque MESURÉ, compté par [EquipmentSpawnStats] au travers du dénominateur
 // de listes, et la lecture ne dérive jamais — le cadrage de tête est certain.
 
-import "levelup/go-api/internal/analysis/filmsource"
-
 // EventEquipmentSpawnedObject est le type de liste « une pièce a été engendrée ».
 //
 // NUMÉROTATION TRAME (établie le 2026-08-30) : toute numérotation antérieure à cette date est
@@ -103,18 +101,6 @@ type EquipmentSpawnStats struct {
 	// WithSpawned / WithSource comptent les références présentes ; Ref2 compte les troisièmes
 	// références posées (attendu : ~3 sur 931, cf. l'en-tête).
 	WithSpawned, WithSource, Ref2 int
-}
-
-// ScanFilmEquipmentSpawnEvents charge un film depuis son répertoire de chunks et lit ses
-// événements 103. ENVELOPPE HORS PRODUCTION (même forme que [ScanFilmVehicleEvents]) : la
-// cuisson passe par [ScanEquipmentSpawnEvents] sur le contexte déjà ouvert, qui ne recharge
-// rien.
-func ScanFilmEquipmentSpawnEvents(dir string) ([]EquipmentSpawnEvent, EquipmentSpawnStats, error) {
-	film, err := filmsource.LoadDir(dir, nil)
-	if err != nil {
-		return nil, EquipmentSpawnStats{}, err
-	}
-	return ScanEquipmentSpawnEvents(NewFilmContext(film))
 }
 
 // ScanEquipmentSpawnEvents lit les événements 103 de tête de liste d'un film DÉJÀ CHARGÉ.

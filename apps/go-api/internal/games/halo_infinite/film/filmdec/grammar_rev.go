@@ -120,4 +120,25 @@ package filmdec
 // pas bouge) ; `SchemaVersion` reste 59.
 // FUSION (2026-09-16) : les lots de corrections de la revue M1 L4 (porte killsource, `.12`) et D13
 // (porte unique MPPWidthsForFilm, `.12`) partaient de la meme base `.11` ; reunis ici, au rang suivant.
-const GrammarRev = "grammar-2026-09-15.13"
+// REVUE DE JALON M1, LENTILLE L3 (2026-09-16) : `.11` -> `.12`. AUCUNE grammaire d octets ne
+// change, et aucun bit n est lu autrement. Trois gestes, tous de SURFACE :
+//
+//	(1) `DetectI0Layout(dir)` et `ScanFilmEquipmentSpawnEvents(dir)`, deux enveloppes `dir` de
+//	    PRODUCTION sans aucun appelant de production (48 appels de test pour la premiere, 1 pour
+//	    la seconde — greps colles au compte rendu du lot), sortent du binaire : la premiere
+//	    devient `detectI0Layout` dans un fichier de test du paquet, la seconde disparait au
+//	    profit de sa forme film chez son unique appelant. Regle 7 du depot (« 0 code mort ») ;
+//	(2) `walkKeyframeBody`, la boucle de corps d image-cle que le lot 1.4 avait deja unexportee
+//	    faute d appelant de production, et sa table `keyframeBodyVariants`, passent dans un
+//	    fichier `_test.go` du meme paquet — leurs cinq appelants sont des instruments ;
+//	(3) deux en-tetes corriges (`film_major_version.go` nomme le second u32 — la VERSION DE
+//	    FORMAT — et renvoie a `film_format_version.go`, dont l imparfait fautif tombe).
+//
+// LES TROIS FORMES LUES EN PRODUCTION SONT INCHANGEES, A L OCTET : `DetectI0LayoutOf`,
+// `ScanEquipmentSpawnEvents`, `WalkKeyframeFullState`. L empreinte hache les OCTETS des trois
+// paquets (cf. `grammar_rev_fingerprint_test.go`, « il ne distingue pas un changement de
+// grammaire d une reformulation de commentaire ») : ce faux positif coute cette ligne.
+// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` non plus.
+// FUSION (2026-09-16) : l integration portait `.13` (corrections L4 + D13) et le lot de corrections L3
+// `.12` (code musee sorti en tests, faux positif d empreinte) ; reunis ici, au rang suivant.
+const GrammarRev = "grammar-2026-09-15.14"

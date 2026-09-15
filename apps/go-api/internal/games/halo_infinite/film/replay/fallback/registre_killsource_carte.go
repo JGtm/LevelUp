@@ -50,7 +50,12 @@ var registreKillsourceCarte = []Repli{
 		// `killsource_hits_matchs_sans_nom_de_carte`, `killsource_hits_cartes_hors_catalogue`) —
 		// pas encore par `fallback.Compteur` : la passe de touches ne porte aucune cuisson, donc
 		// aucun compteur par cuisson ou publier son compte.
-		CibleRetrait:    "le lot qui rallume la precision par arme (`match.weapon.accuracy` est `not_exposed` pour Infinite, D1 (1.9.2)) : tant que la passe ne tourne pas, ses trois compteurs restent a zero par construction et ne prouvent rien",
+		// LA CIBLE NE NOMME AUCUN LOT, ET C'EST EXACT : le lot qui rallumera la passe n'est pas
+		// ecrit au plan. La decouverte qui l'etablit est « D1 (1.9.2) » en §4 du plan
+		// (`match.weapon.accuracy` est `not_exposed` pour Infinite) — reference deplacee ici le
+		// 2026-09-16, hors du champ : une cible se lit comme une echeance, pas comme une note de
+		// bas de page, et un numero de decouverte s'y confond avec un numero de lot.
+		CibleRetrait:    "le lot qui rallume la precision par arme : tant que la passe ne tourne pas, ses trois compteurs restent a zero par construction et ne prouvent rien",
 		CritereRetrait:  "passe rallumee, puis 0 match a distances desactivees sur le parc pour les trois causes",
 		CompteurBranche: false,
 		CibleComptage:   "compteurs expvar deja cables (trois causes) ; `fallback.Compteur` au pas 2 de M2 si la passe rejoint une cuisson",

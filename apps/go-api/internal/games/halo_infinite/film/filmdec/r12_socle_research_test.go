@@ -10,7 +10,7 @@ package filmdec
 //
 // CE QUE L'ABSENCE DE BORNES NE COUTE PAS, ET C'EST LE POINT.
 // `SetWorldObjectPrecisionFromLayout` (traverse.go:183) ne lit que `AxisW` et `GateBits` de
-// l'`I0Layout`, et `DetectI0Layout(dir)` les rend DEPUIS LE FILM. Les bornes metriques ne
+// l'`I0Layout`, et `detectI0Layout(dir)` les rend DEPUIS LE FILM. Les bornes metriques ne
 // servent qu'a DEQUANTIFIER une position en metres. Aucun canal vise par R12 (i48, i56,
 // i57/i59, masque, evenements, ti=37) n'a besoin de metres : seules les POSITIONS en
 // auraient besoin, et R12 n'en publie aucune.
@@ -82,7 +82,7 @@ func r12Prepare(t *testing.T, dir string) r12Setup {
 	if slots.Count() == 0 {
 		t.Fatalf("%s : aucun slot biped dans les keyframes", id)
 	}
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("%s : decoupage i0 illisible : %v", id, err)
 	}

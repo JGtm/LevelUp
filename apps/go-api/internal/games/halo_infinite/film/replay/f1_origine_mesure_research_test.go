@@ -230,7 +230,7 @@ func f1Catalogue(t *testing.T) *filmdec.MapQuantCatalog {
 func f1Carte(t *testing.T, dir, id string, cat *filmdec.MapQuantCatalog) (
 	filmdec.MapQuantEntry, string, float64, bool) {
 	t.Helper()
-	lay, _, err := filmdec.DetectI0Layout(dir)
+	lay, _, err := detecterI0Layout(dir)
 	if err != nil || !lay.Valid() {
 		t.Logf("film %s : decoupage i0 illisible (%v) — hors mesure", id, err)
 		return filmdec.MapQuantEntry{}, "", 0, false

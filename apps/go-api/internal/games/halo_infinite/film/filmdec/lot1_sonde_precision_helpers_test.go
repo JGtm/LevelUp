@@ -152,7 +152,7 @@ func sondeLookup(track []sondeSample, T, tol uint64) (sondeSample, bool) {
 // (les distances sont alors desactivees et l'instrument le signale).
 func sondeWorldRange(t *testing.T, dir string) *Vec3Range {
 	t.Helper()
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Logf("decoupage i0 illisible (%v) : distances desactivees", err)
 		return nil

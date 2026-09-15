@@ -312,9 +312,14 @@ var registreObjectifsEtConstruction = []Repli{
 			Fichier: pkgReplaybuild + "matchfacts.go",
 			Ancre:   "func participantsDuTableau(facts port.MatchFacts) []replay.Participant {",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.6.3 (la cuisson HORS LIGNE publie un roster complet, sans base) porte au tableau",
-		CritereRetrait:  "0 joueur retire du tableau sur les 8 builds",
+		DatePose: dateAudit0E,
+		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.6.3, fusionne.
+		// Ce lot a bien rendu le roster HORS LIGNE complet (8 builds, 0 siege de la table absent
+		// du roster), mais il n'a PAS porte cette completude au TABLEAU DES PARTICIPANTS, qui
+		// vient encore de la feuille de match : le `continue` de `participantsDuTableau` est
+		// intact. La cible est donc le lot qui bascule le tableau sur le roster du film.
+		CibleRetrait:    "M2 : le tableau des participants se derive du roster HORS LIGNE, deja complet, au lieu de la feuille de match",
+		CritereRetrait:  "0 joueur retire du tableau sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
 		CompteurBranche: false,
 		CibleComptage:   comptageFamille19,
 	},

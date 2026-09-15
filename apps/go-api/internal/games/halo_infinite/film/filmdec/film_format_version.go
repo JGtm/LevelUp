@@ -26,9 +26,12 @@ package filmdec
 //	            R(FUN_141cffe20(film+4)) film+0xCB208    <- largeur de la TABLE, par la version
 //	            puis les memes champs fixes, et `FUN_14299bcb0(film, film+4)` en queue.
 //
-// LE SECOND u32 N EST DONC PAS « un second entier » (c est ainsi que `film_major_version.go` le
-// decrivait) : c est LA VERSION DE FORMAT DE `chunk_00`, et c est le seul parametre dont la
-// lecture de l en-tete depende. Les deux fonctions de taille sont des recherches dans deux
+// LE SECOND u32 N EST DONC PAS « un second entier » : c est LA VERSION DE FORMAT DE
+// `chunk_00`, et c est le seul parametre dont la lecture de l en-tete depende.
+// `film_major_version.go` le NOMME desormais et renvoie ici (corrige le 2026-09-16, revue de
+// jalon M1 : son en-tete se contentait de dire que le second u32 « suit », ce qui laissait
+// croire a un entier sans role).
+// Les deux fonctions de taille sont des recherches dans deux
 // `std::map<uint, int>` construites au demarrage, litteraux relus sur le desassemblage de
 // `FUN_140268ec0` et `FUN_140268f40` :
 //
