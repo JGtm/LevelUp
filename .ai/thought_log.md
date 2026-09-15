@@ -1,3 +1,51 @@
+## [2026-09-15] Chantier decodeur — lot 1.9.1 bis, pas 1 (la carte du travail : le defaut de fermeture de l'equipement est le PREFIXE OBJET) — En cours (pas 1 fusionne ec74685ed ; pas 2 a 5 BLOQUES : Ghidra indisponible)
+
+**Decision technique principale.** Mesure avant de coder, sans aucun code de production touche
+(3 instruments versionnes `e191b_carte_ti37_*`, rejouables en 13 s sans film externe). Le brief
+disait « 7 composants lus sur 31 » : c'etait un ARTEFACT DE GREP — huit composants entrent dans le
+dispatch par une constante (i4, i9, i20, i21, i23, i24, i26, i27) ; **les 31 composants de
+ti=37 sont tous dispatches, 0 desynchronisation sur 3 331 records**. Le defaut qui empeche
+l'archetype 37 de fermer n'est PAS dans l'equipement : sur les 7 bobines, les archetypes qui
+portent `object-position-component` ferment a **0,85 %** (184/21 698 : ti=37 3/3 331, ti=38
+180/12 064, ti=41 0/110, ti=42 1/2 087 — l'archetype « repute complet » —, ti=43 0/4 106) contre
+44,29 % pour les autres ; le composant qui fait franchir la frontiere est, par ordre : **i15
+`object-low-frequency` (655 cas, 570 bits en moyenne), i6 `object-region-state` (341, 664), i14
+`object-dissolver` (305, 113), i9 `object-multiplayer-properties` (296, 1,5 M bits), i17
+`object-frame-configuration` (266, 87), i7 `object-damage-sections` (188, 317)** — six composants
+du PREFIXE OBJET partage par tous les objets du monde, aucun composant d'equipement (i18-i30) ne
+depasse 71 ; 12 composants de la table ECS n'ont AUCUNE adresse d'ecrivain (i2, i4, i5, i6, i7,
+i8, i10, i12, i13, i16, i17, i21 : grammaire « boucle de regions / de sections / inconnue »), quatre
+des six coupables en font partie. Les largeurs d'axe de la carte ne sont pas la cause (3/3 331
+au defaut comme au catalogue). Registre par build : 31 composants dans le meme ordre sur 6 builds,
+30 sur HI_1_4_1 (`i30 equipment-has-infinite-uses` absent).
+
+**Resultats observes.** (a) `[!]` double blocage : Ghidra INDISPONIBLE dans la session (aucune
+instance, connexion refusee sur 127.0.0.1:8089) et D13 interdit de poser une grammaire ailleurs
+que chez l'ecrivain ; la cible « ti=37 a 100 % » passe par le prefixe objet partage par cinq
+archetypes (37/38/41/42/43), perimetre que l'item n'enoncait pas. (b) `[!]` publier createur /
+porteur / deploye / active / energie / charges exige que la marche ferme ; le tableau « famille x
+ce que le jeu ecrit » N'EST PAS PRODUIT : sur films entiers la marche generique rend 92 records
+NEW / 70 DELTA de ti=37 avec une presence au masque plate (10,9 a 34,3 % sur 31 index) = du bruit ;
+les bobines ne portent AUCUN paquet delta (D4). (c) `[!]` : l'oracle des 1 095 `unknown` n'a pas
+bouge, registre 94, ratchet des sept a 7. (d) `[~]` : aucun octet cuit ne change, schema 59 et
+GrammarRev inchanges. Gates : gofmt vide, vet 0, paquets ok, lint 0 issue, `TestOpenAPIYAMLIsUpToDate`
+repare par regeneration (identique a la correction du pilote sur l'integration), equivalence
+10/10, corpus gate 14 temoins 0 gain 0 perte (18 min 46). Correction de commande : `--manifest`
+exige une valeur, son defaut est le bon (brief corrige). Fermeture ti=37 avant = apres.
+Decouvertes §4 : D1 le defaut est le prefixe objet ; D2 `KeyframeClosure` mesure les archetypes
+objet aux largeurs d'axe d'une autre carte (a corriger avec la montee de fermeture) ; D3 les 31
+composants sont dispatches ; D4 bobines sans delta, masques bruites sur films entiers ; D5 Ghidra
+indisponible.
+
+**Prochaine etape.** OUVRIR L'INSTANCE GHIDRA (`HaloInfinite.exe`, base 0x140000000, MCP sur
+127.0.0.1:8089) — demande a l'utilisateur ; puis reprise du lot 1.9.1 bis re-cadre : relire chez
+l'ecrivain i15, i6, i14, i9, i17, i7 (et les 12 sans adresse), re-mesurer la fermeture des CINQ
+archetypes objet ensemble, puis seulement publier les etats d'equipement. En attendant : lots de
+conversion sans Ghidra (1.9.2 catalogue d'axe, 1.9.3 kill-event 85, 1.9.4 carte par nom, 1.9.6,
+1.9.7, 1.9.8, 1.9.10, 1.9.11, 1.9.13, 1.9.14).
+
+---
+
 ## [2026-09-15] Chantier decodeur — lot 1.9.1 (l'origine d'une pose d'equipement se lit dans le film ; schema 59) — Complete (feat/decfilm-191 fusionnee dans feat/recherche-decodeur-film, deba3261f)
 
 **Decision technique principale.** Decisions utilisateur du 15/09 appliquees : « deploye » =

@@ -2238,6 +2238,18 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       1.9.1, AVANT 1.9.2 ; le même traitement pour les autres archétypes qui alimentent une
       publication (ti=9 joueur, ti=35 bipède, ti=40 véhicule, ti=42/43) est le lot 3.6, à
       remonter dans M1 si l'utilisateur le demande. L.
+      **RE-CADRÉ PAR LA MESURE DU PAS 1 (2026-09-15, `ec74685ed`)** : les 31 composants de ti=37
+      sont TOUS dispatchés (le « 7 lus » était un artefact de grep ; 0 désynchronisation sur
+      3 331 records) ; ce qui empêche la fermeture est le PRÉFIXE OBJET partagé par les cinq
+      archétypes du monde (ti=37/38/41/42/43, fermés à 0,85 %) : i15 `object-low-frequency`, i6
+      `object-region-state`, i14 `object-dissolver`, i9 `object-multiplayer-properties`, i17
+      `object-frame-configuration`, i7 `object-damage-sections` — et 12 composants de la table ECS
+      sans adresse d'écrivain. Le périmètre devient : **le préfixe objet relu chez l'écrivain, la
+      fermeture mesurée sur les CINQ archétypes ensemble, puis les états d'équipement publiés**.
+      BLOQUÉ tant que l'instance Ghidra n'est pas ouverte (D13 : pas de grammaire posée ailleurs
+      que chez l'écrivain) ; les bobines ne portent aucun paquet delta, la mesure des états se fait
+      sur films entiers une fois la marche fermée. Les lots de conversion sans Ghidra (1.9.2,
+      1.9.3, 1.9.4, 1.9.6, 1.9.7, 1.9.8, 1.9.10, 1.9.11, 1.9.13, 1.9.14) avancent en attendant.
 
       **PAS 1 FAIT le 2026-09-15 (branche `feat/decfilm-191b`) — ET IL RETOURNE LE LOT.**
       La règle du chantier (mesurer avant de coder) a rendu un verdict que le brief n'anticipait
