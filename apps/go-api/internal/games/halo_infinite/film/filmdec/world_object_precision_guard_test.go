@@ -30,8 +30,19 @@ var worldObjectPrecisionReaders = map[string]string{
 		"`replay.installWorldObjectPrecision` pour dire que son appelant doit detenir " +
 		"LockProcessDecode — le profil par build installe les largeurs MPP, jamais celles " +
 		"des axes ; aucune lecture de la valeur ici",
-	"internal/games/halo_infinite/film/filmdec/traverse.go": "déclaration du global, son setter, et les deux " +
-		"lectures du chemin de traversée (`object-position-component`)",
+	"internal/games/halo_infinite/film/filmdec/traverse.go": "la LARGEUR D'INDEX DE RÉGION lue par " +
+		"la queue d'i60 (`consumeSimStateHandleTail`) — même contrat que le reste : les " +
+		"largeurs viennent de l'appelant (BuildFromFilm / installWorldObjectPrecision). " +
+		"Depuis le lot 2.7 (2026-09-16) c'est la SEULE mention restée dans ce fichier : la " +
+		"déclaration, le setter et les deux lectures du chemin de traversée en sont sortis " +
+		"par déplacement pur, vers `traverse_precision.go` et `dispatch_object.go`",
+	"internal/games/halo_infinite/film/filmdec/traverse_precision.go": "déclaration du global et son setter. " +
+		"Vivait dans `traverse.go` jusqu'au lot 2.7 (2026-09-16), qui l'en a sorti par " +
+		"déplacement pur — la scission des fichiers de plus de 500 lignes",
+	"internal/games/halo_infinite/film/filmdec/dispatch_object.go": "les deux lectures du chemin de " +
+		"traversée (`object-position-component`). Vivaient dans le `switch` de `consumeByName`, " +
+		"dans `traverse.go`, jusqu'au lot 2.7 (2026-09-16) qui a coupé ce switch en chaîne de " +
+		"maillons par déplacement pur — même contrat d'installation qu'avant",
 	"internal/games/halo_infinite/film/filmdec/projectiles.go": "longueur du champ (`projPosBits`) et " +
 		"déquantification (`decodeWorldObjectPos`) — le balayage des objets du monde",
 	"internal/games/halo_infinite/film/filmdec/components_movement.go": "CITATION en commentaire (2026-09-12, " +

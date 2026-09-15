@@ -217,7 +217,7 @@ func (w i48Walk) checkHook(s i48Sample, st *i48Stats) {
 
 // arch48Name est l'étiquette de registre d'i48 — celle par laquelle consumeByName route vers
 // consumeBipedDesiredAbilitySet (cf. components_biped_ability.go).
-const arch48Name = "biped-desired-ability-set-component"
+const arch48Name = compBipedAbilitySet
 
 // record marche les composants du masque avec les désers de PRODUCTION et lit i48 en clair :
 // R(3) compteur, R(1) porte, puis R(6) rang si la porte vaut 0. Rend got=false dès qu'un

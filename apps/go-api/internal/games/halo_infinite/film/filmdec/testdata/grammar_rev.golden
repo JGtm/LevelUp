@@ -319,4 +319,14 @@
 #               repli nomme et compte (`repli_cadre_de_marche_par_defaut_conserve`). Aucun octet
 #               existant n est lu autrement : le paquet sait lire une chose de plus.
 #               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 59 (montee de vague).
-grammar-2026-09-15.15	65ceedfaa6f66a16836f5335cebea4867a9e256772aa55b74cbfc99eae2adcbc
+#   2026-09-16  grammar-2026-09-15.16  lot 2.7 volet grammaire : SCISSION PAR DEPLACEMENT PUR des
+#               cinq fichiers de `filmdec` de plus de 500 lignes. Le switch de 815 lignes de
+#               `consumeByName` devient une CHAINE de sept maillons relies par leur `default`
+#               (cf. `dispatch_object.go`) ; deux blocs sortent en fonction du moteur qu ils
+#               sont deja (`consumePredictedAbsolute` = FUN_140f7ea14, `skipCalibratedPosition`
+#               = le banc de calibration). AUCUN OCTET N EST LU AUTREMENT : le controle colle au
+#               compte rendu montre zero ligne perdue, les seules lignes neuves etant les
+#               en-tetes, les signatures et les six `return` de chainage. Faux positif
+#               d empreinte, meme nature que `.13` et `.14`. `KillSourceDecoderRev` ne bouge
+#               PAS ; `SchemaVersion` non plus.
+grammar-2026-09-15.16	cebb84a4f78d8a48ab06ab7c1a86fc47e47dcf421e451ebc7d875ab1ed73d224
