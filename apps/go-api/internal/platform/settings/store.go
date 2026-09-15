@@ -54,9 +54,6 @@ type AppSettings struct {
 	SpnkrRefreshBackfillPerfScores     bool     `json:"spnkr_refresh_backfill_performance_scores"`
 	SpnkrRefreshBackfillLUSR           bool     `json:"spnkr_refresh_backfill_lusr"`
 	SpnkrRefreshBackfillEvents         bool     `json:"spnkr_refresh_backfill_events"`
-	// Escouade — gamertags des amis par défaut
-	FriendGamertags []string `json:"friend_gamertags"`
-
 	// --- Règles de sessions ---
 	SessionGapMinutes          int    `json:"session_gap_minutes"`
 	SessionSplitOnRankedChange bool   `json:"session_split_on_ranked_change"`
@@ -413,9 +410,6 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.SpnkrRefreshBackfillEvents != nil {
 		cfg.SpnkrRefreshBackfillEvents = *req.SpnkrRefreshBackfillEvents
 	}
-	if req.FriendGamertags != nil {
-		cfg.FriendGamertags = req.FriendGamertags
-	}
 	if req.SessionGapMinutes != nil {
 		cfg.SessionGapMinutes = *req.SessionGapMinutes
 	}
@@ -505,7 +499,6 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		SpnkrRefreshBackfillPerfScores:      cfg.SpnkrRefreshBackfillPerfScores,
 		SpnkrRefreshBackfillLUSR:            cfg.SpnkrRefreshBackfillLUSR,
 		SpnkrRefreshBackfillEvents:          cfg.SpnkrRefreshBackfillEvents,
-		FriendGamertags:                     cfg.FriendGamertags,
 		SessionGapMinutes:                   cfg.SessionGapMinutes,
 		SessionSplitOnRankedChange:          cfg.SessionSplitOnRankedChange,
 		SessionTeamChangeMode:               cfg.SessionTeamChangeMode,

@@ -11042,7 +11042,6 @@ export interface components {
             discord_notify_new_version?: boolean;
             discord_notify_sync?: boolean;
             discord_webhook_url_present?: boolean;
-            friend_gamertags?: string[];
             /** @enum {string} */
             lang: "fr" | "en";
             media_captures_base_dir?: string;

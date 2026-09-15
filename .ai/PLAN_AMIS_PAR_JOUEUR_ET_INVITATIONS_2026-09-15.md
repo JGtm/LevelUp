@@ -145,47 +145,47 @@ Tous les sites ci-dessous ont été listés par `grep -rn FriendGamertags apps/g
 2026-09-15. Les resolvers deviennent **par xuid** ; les signatures `func(ctx) []string` sont
 conservées quand une fermeture par joueur suffit (le service connaît déjà son xuid).
 
-- [ ] 2.0 **Pré-requis D6 (utilisateur)** : tranché par le pilote le 2026-09-15 — G2.0 NON
+- [x] 2.0 **Pré-requis D6 (utilisateur)** : tranché par le pilote le 2026-09-15 — G2.0 NON
       validée (existence de `data/auth/groups.json` en prod non confirmée) → variante D6 :
       migration de groupe conservée et re-sourcée depuis le friendstore. Consigné dans Avancement.
-- [ ] 2.1 `internal/api/wire/registry_pages_home.go:258-270` `friendGamertagsResolver()` →
+- [x] 2.1 `internal/api/wire/registry_pages_home.go:258-270` `friendGamertagsResolver()` →
       prend le xuid du joueur résolu (`pdb.XUID`) et lit `friendStore.Get(xuid)` ; tous les
       appelants du registre passent le xuid (Home squad, Career encounters, SessionPage usage,
       squadagg — `grep -n friendGamertagsResolver internal/api/wire/`).
-- [ ] 2.2 `internal/sync/engine.go:70` `FriendsLoader func() ([]string, error)` : signature
+- [x] 2.2 `internal/sync/engine.go:70` `FriendsLoader func() ([]string, error)` : signature
       inchangée ; les trois câblages deviennent des fermetures sur le xuid de l'engine :
       `internal/scheduler/auto_sync_engine.go:57-63`, `cmd/server/sync_v2_wiring.go:317-324`,
       `internal/api/handlers/sync_handler.go:182-190`.
-- [ ] 2.3 `internal/service/friends_orchestrator_service.go` : `FriendsGamertagsLoader` devient
+- [x] 2.3 `internal/service/friends_orchestrator_service.go` : `FriendsGamertagsLoader` devient
       `func(xuid string) ([]string, error)` ; `RecomputeAll` résout par joueur ; ajouter
       `RecomputeForPlayer(ctx, titleSlug, gamertag, xuid)` (utilisé à l'étape 3). Câblage
       `internal/api/server_apiv1.go:478-484`.
-- [ ] 2.4 Suppression du champ global : `internal/domain/settings.go:44` et `:135` ;
+- [x] 2.4 Suppression du champ global : `internal/domain/settings.go:44` et `:135` ;
       `internal/platform/settings/store.go:58`, `:416-417`, `:508` ; handler
       `internal/api/handlers/settings.go:78-82` (commentaire), `:294-335` (snapshot + diff +
       déclenchement orchestrator sur PATCH → **supprimé**, remplacé par le déclenchement par
       joueur de l'étape 3), `:623-632` (`handlePostRecalculateSessions` lit le store par
       joueur dans la boucle). La migration 1.4 n est pas concernée (elle lit le fichier).
-- [ ] 2.5 `cmd/levelup/cmd_recompute_friends.go` : loader par xuid ; `--dry-run` affiche la
+- [x] 2.5 `cmd/levelup/cmd_recompute_friends.go` : loader par xuid ; `--dry-run` affiche la
       liste par joueur ; doc d'en-tête mise à jour.
-- [ ] 2.6 `cmd/server/main.go` : migration de groupe par défaut **conservée** (variante D6),
+- [x] 2.6 `cmd/server/main.go` : migration de groupe par défaut **conservée** (variante D6),
       re-sourcée depuis `friendStore.Get(xuid de l'admin)` au lieu de `settings.FriendGamertags`,
       et ordonnée APRÈS `friendstore.MigrateFromAppSettings`. `groupstore.MigrateDefault` et son
       test restent en place. Le garde-rail 2.8 tolère cette lecture (elle passe par friendstore,
       sans le littéral `FriendGamertags`).
-- [ ] 2.7 Commentaires devenus faux : `internal/api/middleware/require_player_ownership.go:28-31`
+- [x] 2.7 Commentaires devenus faux : `internal/api/middleware/require_player_ownership.go:28-31`
       (« FriendGamertags résolus » → co-membres de groupe), `internal/platform/duckdb/queries_career.go:321`,
       `internal/port/services.go:33`, `internal/service/career_service.go:64,130-133`,
       `internal/service/career_service_encounters.go:139`, `internal/service/squadagg/equipment_usage.go:15`.
-- [ ] 2.8 Garde-rail : `internal/archlint/no_global_friend_gamertags_test.go` — interdit les
+- [x] 2.8 Garde-rail : `internal/archlint/no_global_friend_gamertags_test.go` — interdit les
       littéraux `FriendGamertags` et `friend_gamertags` dans `apps/go-api/` hors
       `platform/friendstore/` (migration) et le test lui-même ; allowlist VIDE sinon.
-- [ ] 2.9 `openapi.yaml` régénéré puis `make generate-types` : le champ `friend_gamertags`
+- [x] 2.9 `openapi.yaml` régénéré puis `make generate-types` : le champ `friend_gamertags`
       disparaît de `AppSettings` / `PatchSettingsRequest` côté Go ET dans `generated.ts`.
-- [ ] 2.10 Tests touchés à corriger (pas à supprimer) : `settings_test.go`,
+- [x] 2.10 Tests touchés à corriger (pas à supprimer) : `settings_test.go`,
       `friends_orchestrator_service_test.go`, `auto_sync_engine_test.go`, tout test citant le
       champ (`grep -rln friend_gamertags apps/go-api --include=*_test.go`).
-- [ ] 2.11 Côté web, le minimum pour que la branche reste compilable après 2.9 (le reste du
+- [x] 2.11 Côté web, le minimum pour que la branche reste compilable après 2.9 (le reste du
       front est l étape 4) : retirer `lib/api/types.ts:407`, `features/settings/SyncTab.tsx:162-163`,
       `test/handlers.ts:169` ; livrer `features/friends/queries.ts` avec `usePlayerFriends(slug)`
       branché sur `GET /players/{slug}/friends` (l endpoint n existe qu en étape 3 : la requête
@@ -378,6 +378,27 @@ Reprise de session : lire cette section puis `git log --oneline -10` dans le wor
   emprunter au pool comme le serveur — hors périmètre ici, à noter au BACKLOG.
 - Variante D6 si `groups.json` absent en prod : garder `MigrateDefault` mais sourcer les
   membres depuis `friendstore.All()` du propriétaire admin ; à trancher à G2.0.
+  **Tranché le 2026-09-15 : variante retenue, appliquée en 2.6.**
+
+### Découvertes de l'exécution (2026-09-15, non traitées hors mention contraire)
+
+- **Réécritures scriptées et fins de ligne (Windows)** : écrire un fichier du dépôt via un
+  script Python en mode texte le convertit en CRLF, ce que `git diff` masque (normalisation
+  à l'index). Trois garde-rails du dépôt lisent la SOURCE et découpent sur `"\n}\n"` —
+  `wire/home_factories_parity_test.go` a viré au rouge pour cette seule raison. Réflexe :
+  `gofmt -l ./cmd ./internal` après toute réécriture scriptée. (Traité dans l'étape 2 : le
+  gate l'exigeait.)
+- **Cinquième lecteur des amis non listé au plan** : la route de rejeu 2D
+  (`routes/.../$matchId/replay.tsx` → `ReplayModelSettings`). Son champ était OPTIONNEL, donc
+  la suppression du réglage global aurait typé vert en perdant les marques « ami » du rejeu.
+  (Traité en 2.11 : c'était un lecteur du champ supprimé, donc dans le périmètre.)
+- **`friend_gamertags` était écrit DEUX FOIS dans le contrat** : champ Go + entrée à la main
+  dans `api/openapi_manual_fragment.yaml`. Régénérer sans toucher au fragment laissait le
+  champ dans `openapi.yaml`. Les autres champs de `PatchSettingsRequest` du fragment méritent
+  un audit de doublon (hors périmètre).
+- **`port.FriendsOrchestrator` était une interface à un seul implémenteur et un seul
+  appelant**, tous deux supprimés par 2.4 : elle n'ajoutait aucun découplage. (Supprimée en
+  2.10 au titre du « 0 code mort ».)
 
 ---
 
@@ -474,3 +495,92 @@ Ordre recommandé, indépendant des étapes 1-7 sauf mention :
 `data/auth/groups.json` en prod n'est pas confirmée. La **variante D6** s'applique : la
 migration de groupe par défaut est conservée et re-sourcée depuis `friendstore`. D6, 2.0 et
 2.6 réécrits en conséquence dans ce plan.
+
+
+### Étape 2 — Rebranchement des lecteurs, suppression du champ global — 2026-09-15 ~21:40-23:00 — CLOSE
+
+- 2.0 `[x]` variante D6 appliquée (cf. écart consigné à l'étape 0).
+- 2.1 `[x]` `friendGamertagsResolver(xuid string)` lit `r.friendStore.Get(xuid)` ; les 6
+  appelants passent `pdb.XUID` (registry_auth, registry_career, registry_pages ×2,
+  registry_pages_home ×2). Nouveau champ `ServiceRegistry.friendStore` + `WithFriendStore`.
+- 2.2 `[x]` signature `sync.FriendsLoader` inchangée ; les 3 câblages ferment sur le xuid :
+  `scheduler.AutoSyncScheduler` (nouveau champ `friends` + `WithFriendStore`, câblé dans
+  `main.go`), `SyncHandler` (`WithFriendStore`, câblé dans `server_apiv1.go`),
+  `SyncV2WiringDeps.Friends` (câblé dans `main.go`). Chacun exige un xuid non vide.
+- 2.3 `[x]` `FriendsGamertagsLoader` devient `func(xuid string) ([]string, error)` ;
+  `RecomputeAll` résout la liste DANS la boucle joueur (une erreur de lecture compte en
+  `Failed`, jamais avalée) ; `RecomputeForPlayer(ctx, xuid)` ajouté, retourne le nombre de
+  matchs promus. **Écart assumé** : la signature du plan (`titleSlug, gamertag, xuid`) est
+  réduite à `xuid` — l'orchestrateur énumère déjà les titres du joueur via `LoadPlayers`,
+  passer le titre en plus créerait deux sources.
+- 2.4 `[x]` champ supprimé de `domain/settings.go` (AppSettings + PatchSettingsRequest) et de
+  `platform/settings/store.go` (struct, `Apply`, projection). Dans `settings.go` : snapshot
+  `prevFriends`, déclenchement orchestrator et notif `friend_added` du PATCH retirés ;
+  `handlePostRecalculateSessions` lit `friendStore.Get(p.XUID)` DANS la boucle joueur.
+  Les helpers `newFriendsAdded` / `friendGamertagsChanged` / `emitFriendsAdded` sont
+  **déplacés** dans `internal/api/handlers/friends_diff.go` (avec leurs deux fichiers de
+  tests renommés) : ils servent au PUT de l'étape 3, qui conserve la parité `friend_added`.
+- 2.5 `[x]` CLI `recompute-friends` : store d'amis via `PathResolver.PlayerFriendsPath()` ;
+  `--dry-run` liste désormais les amis PAR joueur.
+- 2.6 `[x]` variante D6 : `migrateDefaultGroupAtBoot` prend le `*friendstore.FriendStore`, lit
+  `fs.Get(ownerXUID)` et journalise l'échec de lecture avant de dégrader.
+  `groupstore.MigrateDefault` et son test sont conservés intacts. Ordre au boot :
+  `migratePlayerFriendsAtBoot` PUIS `migrateDefaultGroupAtBoot`.
+- 2.7 `[x]` commentaires corrigés sur les 6 sites listés **et** sur tous les autres (le
+  garde-rail 2.8 interdit le littéral, y compris en commentaire) : middleware ownership,
+  queries_career, port/services, career_service ×2, career_service_encounters,
+  squadagg, group.go, teammates.go, notifiers.go, presence_service, home_service,
+  teammates_service ×2, teammates_service_intersect, timeseries_service_sections,
+  sync/engine ×3, engine_options, engine_postsync_scoring, friends_recompute,
+  groupstore/migrate.
+- 2.8 `[x]` `internal/archlint/no_global_friend_gamertags_test.go`, 2 tests, **allowlist
+  vide** : (a) littéral `friend_gamertags` interdit dans TOUT le module Go (tests compris)
+  hors `internal/platform/friendstore/` et le fichier de garde-rail lui-même ; (b) champ
+  `FriendGamertags` interdit dans `domain/settings.go` et `platform/settings/store.go`.
+  **Écart assumé et documenté dans le test** : le plan demandait d'interdire AUSSI l'identifiant
+  `FriendGamertags` partout ; ce serait faux — `teammates.FriendGamertagsResolver` et
+  `squadagg.FriendGamertags` sont des listes résolues par joueur / des paramètres de requête,
+  pas un réglage d'instance. Le ratchet vise la SOURCE (clé JSON + champ de réglages).
+- 2.9 `[x]` `friend_gamertags` retiré du fragment manuel `api/openapi_manual_fragment.yaml`
+  (il y était écrit à la main, en plus du champ Go) ; `go run ./cmd/openapi-gen` puis
+  `npm run generate-types` → 0 occurrence dans `openapi.yaml` et dans `generated.ts`.
+- 2.10 `[x]` tests corrigés : `platform/settings/overlay_test.go` et `save_overlay_test.go`
+  (fixture bascule sur `watcher_subscribed_players`, même forme `[]string`),
+  `scheduler/auto_sync_build_engine_test.go` (le golden câble un `FriendStore` et non plus
+  un settings ; le cas dégradé teste l'absence de store), `sync/friends_recompute_integration_test.go`
+  (commentaires), `handlers/friends_{diff,added}_test.go` (renommés).
+  Supprimé en plus : `port.FriendsOrchestrator` (plus aucun implémenteur ni appelant après
+  2.4 — règle « 0 code mort »).
+- 2.11 `[x]` front : `lib/query/keys.ts` (`playerFriends`), `features/friends/queries.ts`
+  (`usePlayerFriends`, `useUpdatePlayerFriends`, `useFriendGamertags`), quatre lecteurs
+  basculés (`SquadLayout`, `MatchViewPage`, `PrestigeSquadProgress`, `AddFriendFlow` qui
+  passe du PATCH /settings au PUT par joueur et reçoit un `playerSlug`), carte « Escouade »
+  retirée de `SyncTab`, champ retiré de `lib/api/types.ts` et `test/handlers.ts`,
+  commentaires corrigés. **Écart assumé** : `usePlayerFriends` est livré `enabled: !!slug`
+  (et non `enabled: false`) — l'endpoint arrive à l'étape 3 dans la même livraison, et un
+  hook désactivé qu'on oublie de réactiver est le défaut que la règle « pas de feature OFF
+  pour plus tard » interdit. `useUpdatePlayerFriends` est livré ici (au lieu de 4.1) parce
+  qu'`AddFriendFlow` ne compile pas sans lui.
+  **Découverte traitée** : un CINQUIÈME lecteur non listé par le plan, la route de rejeu 2D
+  (`routes/.../matches/$matchId/replay.tsx` → `ReplayModelSettings.friend_gamertags`), lisait
+  le champ supprimé. Structurellement optionnel, il aurait typé vert en perdant
+  silencieusement les marques « ami » du rejeu. Champ renommé `friendGamertags` et alimenté
+  par `useFriendGamertags(playerSlug)`.
+
+**Gate G2 : PASSÉ.**
+- `go build ./...` → **0** ; `go vet ./...` → **0**.
+- `go test ./...` → **0** (aucun `--- FAIL`). Premier passage rouge sur
+  `TestFactoriesHome_MemeCablageDeContenu` : **artefact de fins de ligne**, pas une régression
+  de câblage. Ce garde-rail LIT LA SOURCE et découpe les fonctions sur `"\n}\n"` ; les
+  réécritures de fichiers passées par un script Python en mode texte sous Windows avaient
+  converti une partie du module en CRLF, donc `"\n}\n"` ne matchait plus et le bloc de
+  `HomeCtxWithAuth` remontait vide. Corrigé par `gofmt -w ./cmd ./internal` (retour en LF) +
+  normalisation LF des fichiers non-Go touchés ; le test repasse sans toucher au câblage.
+  **Leçon à retenir** (déjà notée en §10) : sous Windows, écrire les fichiers du dépôt en
+  mode binaire ou vérifier `gofmt -l` après toute réécriture scriptée.
+- `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` → **0**
+  (11 paquets ok, `internal/sync` 181 s, `internal/persist` 50 s).
+- `cd apps/web && rm -rf node_modules/.tmp && npm run typecheck` → **0**.
+- `grep -rn "FriendGamertags|friend_gamertags" apps/go-api --include=*.go | grep -v friendstore | grep -v archlint` → seules restent les
+  occurrences d'identifiants légitimes (`FriendGamertagsResolver`, `squadagg.FriendGamertags`) ;
+  **0 occurrence** du littéral `friend_gamertags`, ce que le garde-rail 2.8 prouve en CI.

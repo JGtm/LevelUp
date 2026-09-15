@@ -65,8 +65,8 @@ const (
 )
 
 // SyncEngine orchestre la synchronisation des données Halo d'un joueur.
-// FriendsLoader retourne la liste courante des amis configurés (typiquement
-// settings.FriendGamertags). Nil → feature désactivée (legacy / pas de wiring).
+// FriendsLoader retourne la liste courante des amis DU JOUEUR synchronisé
+// (data/global/player_friends.json). Nil → feature désactivée (pas de wiring).
 type FriendsLoader func() ([]string, error)
 
 type SyncEngine struct {
@@ -102,10 +102,10 @@ type SyncEngine struct {
 	// Reçoit (ctx, gamertag, titleSlug) — le hook se charge lui-même de
 	// la résolution Prestige et du feature flag.
 	prestigeHook func(ctx context.Context, gamertag, titleSlug string)
-	// friendsLoader résout settings.FriendGamertags à la demande pour le
+	// friendsLoader résout les amis du joueur à la demande pour le
 	// hook auto-recompute is_with_friends post-sync delta. Nil → feature off
 	// (les nouveaux matchs resteront is_with_friends=FALSE jusqu'au prochain
-	// recompute manuel via PATCH /settings ou CLI levelup recompute-friends).
+	// recompute manuel via PUT des amis du joueur ou CLI levelup recompute-friends).
 	friendsLoader FriendsLoader
 	// replayArtifacts (lot 6 v7.5) — fil de l'eau des artefacts de rejeu 2D : après
 	// l étape 1.57, les matchs insérés (fenêtre replay_retention_months) voient leur

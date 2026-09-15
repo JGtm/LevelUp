@@ -41,7 +41,6 @@ type SettingsResponse struct {
 	SpnkrRefreshBackfillPerfScores     bool     `json:"spnkr_refresh_backfill_performance_scores"`
 	SpnkrRefreshBackfillLUSR           bool     `json:"spnkr_refresh_backfill_lusr"`
 	SpnkrRefreshBackfillEvents         bool     `json:"spnkr_refresh_backfill_events"`
-	FriendGamertags                    []string `json:"friend_gamertags"`
 
 	// --- Règles de sessions ---
 	SessionGapMinutes          int    `json:"session_gap_minutes"`
@@ -132,7 +131,6 @@ type UpdateSettingsRequest struct {
 	SpnkrRefreshBackfillPerfScores     *bool    `json:"spnkr_refresh_backfill_performance_scores,omitempty"`
 	SpnkrRefreshBackfillLUSR           *bool    `json:"spnkr_refresh_backfill_lusr,omitempty"`
 	SpnkrRefreshBackfillEvents         *bool    `json:"spnkr_refresh_backfill_events,omitempty"`
-	FriendGamertags                    []string `json:"friend_gamertags,omitempty"`
 
 	// --- Règles de sessions ---
 	SessionGapMinutes          *int    `json:"session_gap_minutes,omitempty"`

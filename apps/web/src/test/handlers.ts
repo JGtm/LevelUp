@@ -166,7 +166,6 @@ const settingsFixture = {
   spnkr_auto_sync_interval_minutes: 360,
   watcher_presence_enabled: false,
   watcher_subscribed_players: [],
-  friend_gamertags: [],
 }
 
 const emptyKPIs = {

@@ -318,7 +318,7 @@ WHERE mp.xuid = ?
 //  côté Go en P7-3.)
 
 // Q26CareerTopEncountersTpl : Career — joueurs les plus croisés au niveau global,
-// hors amis configurés (FriendGamertags).
+// hors amis configurés du joueur.
 //
 // Format string : %s à remplacer par la clause d'exclusion friends (vide si
 // aucun ami) — ex. "AND es.xuid NOT IN (?, ?, ?)".
