@@ -132,6 +132,16 @@ const (
 	// `filmdec.UnknownFormatExpvarPairs` (`filmdec_unknown_format_<n>`), parce qu un patch du
 	// jeu doit se voir tout de suite et non au comptage differe du registre.
 	CondFormatSansProfilRelu Condition = "format_sans_profil_relu"
+	// CondChassisAbsentDeLaTable : le film ECRIT le mot d identite du chassis, parfaitement
+	// lisible, et c est NOTRE table (`replay/vehicle_families.go`) qui ne le nomme pas.
+	//
+	// ELLE EXISTE POUR LA MEME RAISON QUE [CondCarteAbsenteDuCatalogue], et il faut la meme
+	// rigueur : [CondFilmMuet] MENTIRAIT ici, et enverrait chercher la correction du mauvais
+	// cote de la frontiere (mieux lire le film) alors que le seul geste qui retire ce repli est
+	// de NOMMER le chassis en table. Decision utilisateur du 2026-09-14 : le parc d assets
+	// vehicules est complet, un chassis absent de la table est un MISMATCH, jamais un vehicule
+	// manquant. Ajoutee au lot 1.9.9 (2026-09-16).
+	CondChassisAbsentDeLaTable Condition = "chassis_absent_de_la_table"
 	// CondInconditionnel : le repli s applique TOUJOURS, sans diagnostic. C'est la forme la
 	// plus grave : rien ne dit si une lecture existait.
 	CondInconditionnel Condition = "inconditionnel"
@@ -302,6 +312,7 @@ var (
 		CondContradiction: true, CondNonResolu: true, CondInconditionnel: true,
 		CondCarteAbsenteDuCatalogue: true,
 		CondFormatSansProfilRelu:    true,
+		CondChassisAbsentDeLaTable:  true,
 	}
 	ordresConnus = map[Ordre]bool{
 		OrdreApresLecture: true, OrdreSansLecture: true, OrdreDevantLaLecture: true,

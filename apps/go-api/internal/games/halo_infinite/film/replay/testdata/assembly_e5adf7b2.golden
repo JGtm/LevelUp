@@ -959,6 +959,7 @@ entrees 28 · sieges 26 · lus 26 · apparies 2 · reprises ecrites 0
 arrivants 5 · presences closes 22 · sans presence 1 · occupants au plus 24 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
+repli_chassis_vehicule_marqueur_neutre           2
 repli_siege_du_remplacant_par_appariement_ordinal 2
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place

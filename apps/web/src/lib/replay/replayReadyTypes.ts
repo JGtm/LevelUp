@@ -23,6 +23,7 @@ import type {
   ReplayProjectile,
   ReplaySurface,
   ReplayTrack,
+  ReplayVehicleLabel,
   ReplayVehicleRide,
   ReplayVehicleTrack,
   ReplayWeaponPad,
@@ -173,6 +174,7 @@ export type ReplayDocumentReady = Omit<
   | 'tracks'
   | 'translocations'
   | 'vehicles'
+  | 'vehicleLabels'
   | 'vipCrown'
   | 'pickups'
   | 'weaponChanges'
@@ -344,6 +346,19 @@ export type ReplayDocumentReady = Omit<
    * table, pas un tableau) nomme les familles employées et pointe leur sprite.
    */
   vehicles: ReplayVehicleTrackReady[]
+  /**
+   * LA TABLE DES FAMILLES DE CHÂSSIS employées par le document : sprite, teinte, et — depuis le
+   * lot 1.9.9 — la NATURE d'une famille qui n'est PAS un véhicule (`kind`) avec son libellé
+   * bilingue. Non comblée (c'est une table, pas un tableau) : absente quand aucune vie ne résout
+   * de famille.
+   *
+   * ELLE EST RÉ-DÉCLARÉE ICI, et c'est le même procédé que `ReplayVehicleTrack.tEnd` : le type
+   * généré (`generated.ts`) ne porte pas encore `kind`/`en`/`fr`, le numéro de schéma ne montant
+   * qu'une fois, à la fusion de la vague de lots qui touchent le document. `ReplayVehicleLabel`
+   * les ajoute à la main, en tolérant ; sans cette ligne, le calque lirait la forme générée et
+   * ne verrait jamais la nature.
+   */
+  vehicleLabels?: Record<string, ReplayVehicleLabel>
   weaponPads: ReplayWeaponPadReady[]
   zoneStates: ReplayZoneStateReady[]
   /**

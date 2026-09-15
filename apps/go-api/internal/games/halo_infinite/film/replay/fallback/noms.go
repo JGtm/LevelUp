@@ -60,4 +60,6 @@ const (
 	NomReplayMancheZeroDecretee Nom = "repli_manche_zero_decretee"
 	// NomSiegeDuRemplacantParAppariementOrdinal : `replay/sieges.go`, `poserLesSieges`.
 	NomSiegeDuRemplacantParAppariementOrdinal Nom = "repli_siege_du_remplacant_par_appariement_ordinal"
+	// NomChassisVehiculeMarqueurNeutre : `replay/document_vehicles.go`, `tallyVehicleCoverage`.
+	NomChassisVehiculeMarqueurNeutre Nom = "repli_chassis_vehicule_marqueur_neutre"
 )

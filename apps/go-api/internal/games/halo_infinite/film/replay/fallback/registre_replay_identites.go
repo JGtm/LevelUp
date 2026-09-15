@@ -204,19 +204,32 @@ var registreReplayIdentites = []Repli{
 		Nom:       "repli_chassis_vehicule_marqueur_neutre",
 		Fait:      "la famille de sprite d'un vehicule dont le chassis n'est pas dans la table",
 		Mecanisme: "famille VIDE : le vehicule reste publie et le client dessine un marqueur neutre",
-		Condition: CondFilmMuet,
+		// LOT 1.9.9 (2026-09-16) : la condition passe de `film_muet` a
+		// `chassis_absent_de_la_table`. Le film N EST PAS muet — il ecrit le mot d identite du
+		// chassis dans le default-state du record de creation `ti=40`, et le decodeur le LIT
+		// (c'est `Coverage.Vehicles.WithChassis`). Ce qui manque est NOTRE table. Classer ce
+		// repli en `film_muet` envoyait chercher la correction du mauvais cote de la frontiere.
+		Condition: CondChassisAbsentDeLaTable,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "vehicle_families.go",
-			Ancre:   "VALEUR INCONNUE = FAMILLE VIDE",
-		}},
+		Sites: []Site{
+			{
+				Fichier: pkgReplay + "vehicle_families.go",
+				Ancre:   "VALEUR INCONNUE = FAMILLE VIDE",
+			},
+			{
+				Fichier: pkgReplay + "document_vehicles.go",
+				Ancre:   "fb.Declenche(fallback.NomChassisVehiculeMarqueurNeutre)",
+			},
+		},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.9 (les tourelles automatiques bannies nommees, et dessinees comme elements de carte)",
+		CibleRetrait: "lot 2.2 (M2) puis le chantier vehicules — 22 chassis restes sans piece ecrite au lot 1.9.9 (2026-09-16) : chaque chassis prouve entre en table sous sa famille, ce repli tombe quand il n en reste aucun (cible reecrite a la fusion, le lot 1.9.10 n en nommait aucun)",
 		// Décision utilisateur du 2026-09-14 : le parc d'assets véhicules est COMPLET ; un
 		// châssis absent de la table est un MISMATCH à nommer, jamais un véhicule manquant.
+		// Le lot 1.9.9 a NOMME le premier d'entre eux (`0x038df01a`, la tourelle automatique
+		// bannie) ; la mesure du meme lot en a releve d'autres, consignes en §4 du plan et NON
+		// traites (regle 7) — d'ou une cible de retrait qui n'est plus 1.9.9.
 		CritereRetrait:  "coverage.vehicles.unknownChassis a 0 sur le parc ; tout chassis restant est nomme en table avec sa famille",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.9 (Coverage.Vehicles.UnknownChassis compte deja les chassis ; le repli entre au registre pour que le compte se lise comme un repli)",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_chunk_de_replication_saute",

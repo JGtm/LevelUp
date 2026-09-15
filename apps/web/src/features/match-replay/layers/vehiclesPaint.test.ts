@@ -89,6 +89,12 @@ function style(over: Partial<VehicleStyle> = {}): VehicleStyle {
     showAim: true,
     spriteOf: () => SPRITE,
     sizeOf: () => ({ naturalWidthPx: 128, naturalHeightPx: 128, mmPerPx: 10 }),
+    // NATURE d'une famille (lot 1.9.9) : par defaut AUCUNE — toutes les familles du style de
+    // reference sont des vehicules, et les cas qui testent un element de carte la posent.
+    kindOf: () => undefined,
+    // LIBELLE d'une famille (lot 1.9.9) : par defaut AUCUN — un nom propre du jeu ne se traduit
+    // pas, c'est le regime de dix-huit familles sur dix-neuf.
+    labelOfFamily: () => null,
     colorOfSlot: () => '#equipe',
     colorOfXuid: () => null,
     nameOfSlot: () => 'PION-BRIDGE',
@@ -520,5 +526,104 @@ describe('drawVehiclesLayer — bornage hors cadre du véhicule (lot 4.4)', () =
     expect(count(ops, 'rotate')).toBe(0)
     expect(count(ops, 'fill')).toBe(0)
     expect(count(ops, 'fillText')).toBe(0)
+  })
+})
+
+describe('drawVehiclesLayer — ÉLÉMENTS DE CARTE (lot 1.9.9, décision utilisateur du 2026-09-14)', () => {
+  /** Le style d'un témoin `bfecd02b` : la famille est un élément de carte, et AUCUN asset ne l'a. */
+  const styleTourelle = (over: Partial<VehicleStyle> = {}): VehicleStyle =>
+    style({ sizeOf: () => null, spriteOf: () => null, kindOf: () => 'map_element', ...over })
+
+  /** Une tourelle du témoin : immobile (aucun échantillon), vivante tout le match, à sa naissance. */
+  const tourelle = (): ReplayVehicleTrackReady =>
+    track({
+      slot: 768,
+      family: 'tourelle_auto_bannie',
+      samples: [],
+      spawn: { x: 40, y: 60 },
+    })
+
+  it('dessine son PICTOGRAMME DÉDIÉ, et JAMAIS le losange neutre', () => {
+    const ops = paint([tourelle()], styleTourelle())
+    // Le pictogramme est un tracé : deux `arc` (anneau + embase) et un `lineTo` (le canon). Le
+    // losange neutre, lui, n'émet AUCUN `arc` — c'est ce qui les sépare sans lire un pixel.
+    expect(count(ops, 'arc')).toBe(2)
+    expect(count(ops, 'lineTo')).toBe(1)
+    expect(count(ops, 'drawImage')).toBe(0)
+  })
+
+  it('le pictogramme est posé À LA POSITION de la tourelle (sa naissance, faute de trajectoire)', () => {
+    const ops = paint([tourelle()], styleTourelle())
+    const attendu = project({ x: 40, y: 60 }, VIEW)
+    const translate = ops.find((o) => o.op === 'translate')
+    expect(translate?.args).toEqual([attendu.x, attendu.y])
+  })
+
+  it('il est dessiné PENDANT TOUTE LA VIE : à la première image comme à la dernière', () => {
+    for (const frame of [0, 500, 1000]) {
+      const ops = paint([tourelle()], styleTourelle(), { frame })
+      expect(count(ops, 'arc'), `image ${frame}`).toBe(2)
+    }
+  })
+
+  it('une famille qualifiée ÉLÉMENT DE CARTE dont un asset EXISTE reprend son sprite', () => {
+    // LE POINT D'EXTENSION : le jour où l'utilisateur fournit l'image, la table d'assets la sert,
+    // `sizeOf`/`spriteOf` répondent, et la branche du sprite l'emporte — sans une ligne de calque.
+    const ops = paint([tourelle()], style({ kindOf: () => 'map_element' }))
+    expect(count(ops, 'drawImage')).toBe(1)
+    expect(count(ops, 'arc')).toBe(0)
+  })
+
+  it('une famille SANS nature reste au régime d’avant : ni pictogramme, ni losange', () => {
+    // Un véhicule dont la vignette n'est pas encore chargée n'a rien à la place (contrat des
+    // socles) : le pictogramme ne doit PAS devenir le repli universel du calque.
+    const ops = paint([tourelle()], style({ sizeOf: () => null, spriteOf: () => null }))
+    expect(count(ops, 'arc')).toBe(0)
+    expect(count(ops, 'drawImage')).toBe(0)
+    expect(count(ops, 'fill')).toBe(0)
+  })
+
+  it('une nature CONNUE du document mais SANS forme dans la table garde le marqueur neutre', () => {
+    // Honnêteté : une famille qu'un futur manifeste qualifierait sans que ce calque sache la
+    // dessiner ne reçoit pas le pictogramme de la tourelle — elle n'en est pas une.
+    const ops = paint(
+      [track({ family: 'autre_element_de_carte', samples: [], spawn: { x: 40, y: 60 } })],
+      styleTourelle(),
+    )
+    expect(count(ops, 'arc')).toBe(0)
+  })
+})
+
+describe('drawVehiclesLayer — le LIBELLÉ d’un élément de carte (lot 1.9.9)', () => {
+  const styleNomme = (over: Partial<VehicleStyle> = {}): VehicleStyle =>
+    style({
+      sizeOf: () => null,
+      spriteOf: () => null,
+      kindOf: () => 'map_element',
+      labelOfFamily: () => 'Tourelle automatique bannie',
+      ...over,
+    })
+
+  const tourelle = (): ReplayVehicleTrackReady =>
+    track({ slot: 768, family: 'tourelle_auto_bannie', samples: [], spawn: { x: 40, y: 60 } })
+
+  it('le libellé du DOCUMENT est écrit sous le pictogramme quand le calque des noms est allumé', () => {
+    expect(texts(paint([tourelle()], styleNomme()))).toEqual(['Tourelle automatique bannie'])
+  })
+
+  it('calque des noms ÉTEINT : le pictogramme reste, le libellé disparaît', () => {
+    const ops = paint([tourelle()], styleNomme({ showNames: false }))
+    expect(texts(ops)).toEqual([])
+    expect(count(ops, 'arc')).toBe(2)
+  })
+
+  it('aucun libellé publié : rien n’est écrit — jamais un littéral du calque', () => {
+    expect(texts(paint([tourelle()], styleNomme({ labelOfFamily: () => null })))).toEqual([])
+  })
+
+  it('un VÉHICULE garde ses noms d’occupants, jamais le nom de sa famille', () => {
+    const ops = paint([track({ rides: [ride({ slot: 7, seat: 0 })] })],
+      style({ labelOfFamily: () => 'NE DOIT PAS APPARAITRE' }))
+    expect(texts(ops)).toEqual(['PION-BRIDGE'])
   })
 })

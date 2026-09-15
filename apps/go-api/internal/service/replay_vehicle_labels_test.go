@@ -140,3 +140,62 @@ func TestVehicleFamiliesUsed_TrieEtCompte(t *testing.T) {
 		t.Errorf("vies sans famille = %d, attendu 2", unnamed)
 	}
 }
+
+// --- FAMILLES QUALIFIEES PAR LE TITRE (lot 1.9.9) ---------------------------------------------
+
+// TestVehicleLabelOf_FamilleNonQualifiee : le regime de dix-huit familles sur dix-neuf — un nom
+// propre du jeu, un sprite servi, aucun libelle et aucune nature. C est le comportement d AVANT
+// le lot, et il ne doit pas avoir bouge.
+func TestVehicleLabelOf_FamilleNonQualifiee(t *testing.T) {
+	lbl, ok := vehicleLabelOf("ghost", replay.VehicleFamilyInfo{}, title.DefaultSlug)
+	if !ok {
+		t.Fatal("famille non qualifiee ecartee : elle doit garder son sprite")
+	}
+	if !strings.HasSuffix(lbl.Img, "/replay/ghost.png") || !lbl.Tinted {
+		t.Errorf("libelle = %+v : une famille non qualifiee garde son URL de sprite teintable", lbl)
+	}
+	if lbl.Kind != "" || lbl.En != "" || lbl.Fr != "" {
+		t.Errorf("libelle = %+v : rien ne qualifie cette famille, aucun champ ne doit se remplir", lbl)
+	}
+}
+
+// TestVehicleLabelOf_ElementDeCarteSansAsset : LA DECISION DU LOT. Une famille qualifiee SANS
+// asset est publiee avec sa nature et son libelle, et SANS URL — c est ce qui permet au client
+// de lui dessiner un pictogramme dedie au lieu du marqueur neutre des chassis non resolus.
+func TestVehicleLabelOf_ElementDeCarteSansAsset(t *testing.T) {
+	info := replay.VehicleFamilyInfo{
+		En: "Banished auto-turret", Fr: "Tourelle automatique bannie",
+		Kind: "map_element", Sprite: false,
+	}
+	lbl, ok := vehicleLabelOf("tourelle_auto_bannie", info, title.DefaultSlug)
+	if !ok {
+		t.Fatal("famille qualifiee ecartee : sans son entree, le client ne saurait pas que c est " +
+			"un element de carte et retomberait sur le marqueur neutre")
+	}
+	if lbl.Img != "" || lbl.Tinted {
+		t.Errorf("libelle = %+v : aucun asset n est servi, composer une URL ferait un 404 par match", lbl)
+	}
+	if lbl.Kind != "map_element" || lbl.En != info.En || lbl.Fr != info.Fr {
+		t.Errorf("libelle = %+v : la nature et les deux langues doivent traverser telles quelles", lbl)
+	}
+}
+
+// TestVehicleLabelOf_ElementDeCarteAvecAsset : LE POINT D EXTENSION. Le jour ou l utilisateur
+// fournit l image, `sprite = true` dans le manifeste du titre suffit — l URL se compose comme
+// pour n importe quelle famille, et la nature reste publiee.
+func TestVehicleLabelOf_ElementDeCarteAvecAsset(t *testing.T) {
+	info := replay.VehicleFamilyInfo{
+		En: "Banished auto-turret", Fr: "Tourelle automatique bannie",
+		Kind: "map_element", Sprite: true,
+	}
+	lbl, ok := vehicleLabelOf("tourelle_auto_bannie", info, title.DefaultSlug)
+	if !ok {
+		t.Fatal("famille qualifiee avec asset ecartee")
+	}
+	if !strings.HasSuffix(lbl.Img, "/replay/tourelle_auto_bannie.png") || !lbl.Tinted {
+		t.Errorf("libelle = %+v : `sprite = true` doit composer l URL du PNG de la famille", lbl)
+	}
+	if lbl.Kind != "map_element" {
+		t.Errorf("libelle = %+v : un asset ne fait pas d un element de carte un vehicule", lbl)
+	}
+}

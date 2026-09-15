@@ -766,3 +766,46 @@ fr     = "Crane"
 radius_m      = 1.3
 reset_seconds = 30
 solo_seconds  = 3.1
+
+# ------------------------------------------------------------------------------------------
+# FAMILLES DE CHASSIS DE VEHICULE QUALIFIEES (lot 1.9.9 du plan decodeur, 2026-09-16).
+#
+# TABLE PARTIELLE, ET ELLE DOIT LE RESTER. Le nom d'une famille de vehicule est un NOM PROPRE
+# du jeu (Warthog, Banshee, Mongoose) : il ne se traduit pas, et la cle de la table des sprites
+# EST deja ce nom. Dix-huit familles sur dix-neuf n'ont donc aucune ligne ici, et c'est le
+# regime normal — n'y entre QUE ce qui n'est pas un vehicule.
+#
+# `kind` (liste fermee) : `map_element` = un objet de la CARTE, pas un vehicule de la partie.
+# Le document le publie sur la famille, et le client le lit pour dessiner un pictogramme dedie
+# au lieu du marqueur neutre des chassis non resolus.
+#
+# `sprite` : un asset est-il servi pour cette famille sous
+# `static/vehicles-assets/{slug}/replay/{family}.png` ? C'est LE POINT D'EXTENSION du jour ou
+# l'utilisateur fournira l'image : passer `sprite` a `true`, deposer le PNG et sa ligne
+# d'`index.json`. Aucune ligne de Go ni de TypeScript ne change.
+# ------------------------------------------------------------------------------------------
+
+# LA TOURELLE AUTOMATIQUE BANNIE — chassis `0x038df01a`.
+#
+# DECISION UTILISATEUR DU 2026-09-14 : « ce sont des elements de la map ». Un objet qui interdit
+# la sortie de la zone de jeu, PAS un vehicule jouable. Le parc d'assets vehicules est COMPLET :
+# un chassis absent de la table des familles est un mismatch a nommer, jamais un vehicule
+# manquant.
+#
+# LES PREUVES, deux sources independantes qui se recoupent.
+#   1. LE NOMMAGE. `damagetag/data/labels.tsv` porte TROIS tags de degat dont le porteur est
+#      `vehi 038df01a`, et deux d'entre eux ne citent qu'UNE banque :
+#      `sb_003_lvl_moments_ge_shared_autoturret_banished` (+ son `_fire`). Le prefixe `sb_003_lvl`
+#      dit la nature : banque de NIVEAU, pas banque de vehicule (`sb_010_veh`).
+#   2. LA FORME DE SES VIES. Instrument `TestInventaireChassisDesArtefacts` sur les 76 artefacts
+#      du parc : 18 vies (films `bfecd02b` et `2cf24f30`, 9 chacun), 17 des 18 SANS aucun
+#      echantillon de trajectoire, et les 18 avec une fenetre qui couvre le match entier.
+#
+# Aucun asset n'existe a ce jour (`sprite = false`) : le client dessine un pictogramme de
+# tourelle dedie, jamais le marqueur neutre.
+[[vehicle_families]]
+family = "tourelle_auto_bannie"
+en     = "Banished auto-turret"
+fr     = "Tourelle automatique bannie"
+kind   = "map_element"
+sprite = false

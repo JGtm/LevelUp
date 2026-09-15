@@ -2962,9 +2962,27 @@ export type ReplayVehicleRide = components['schemas']['VehicleRide']
 // témoin au lot V11). `p` absent se lit « À PLAT », jamais « inconnu ».
 export type ReplayVehicleAim = components['schemas']['VehicleAim']
 // Le sprite d'une FAMILLE de châssis, posé À LA REQUÊTE par le service (jamais dans l'artefact) :
-// pas de FR/EN (nom propre du jeu), `tinted` dit que le visuel se teint en `multiply` (traits
-// noirs, cf. `tintedIconCanvas`).
-export type ReplayVehicleLabel = components['schemas']['VehicleLabel']
+// `tinted` dit que le visuel se teint en `multiply` (traits noirs, cf. `tintedIconCanvas`).
+//
+// `kind`, `en` et `fr` SONT UNE DÉCLARATION EN AVANCE DE PHASE (2026-09-16, lot 1.9.9), même
+// procédé et même raison que `tEnd` ci-dessus : le contrat GÉNÉRÉ (`generated.ts`) ne les porte
+// pas encore — le numéro de schéma monte une seule fois, à la fusion de la vague de lots qui
+// touchent le document. Ils sont donc ajoutés ici À LA MAIN et en TOLÉRANT (optionnels) : un
+// artefact actuel les ignore sans aucun changement de comportement.
+//
+// CE QU'ILS DISENT. Presque toutes les familles sont des NOMS PROPRES du jeu (Warthog, Banshee) :
+// rien ne s'en traduit, la clé de la table EST le nom, et les trois champs restent vides. Ils ne
+// se remplissent que pour une famille que le titre QUALIFIE dans son manifeste — aujourd'hui la
+// seule tourelle automatique bannie, qui n'est PAS un véhicule mais un ÉLÉMENT DE CARTE
+// (`kind: "map_element"`, décision utilisateur du 2026-09-14). Le calque lit
+// `VEHICLE_KIND_MAP_ELEMENT` (vehiclesLayer.ts) plutôt qu'un littéral semé à chaque appelant.
+export type ReplayVehicleLabel = components['schemas']['VehicleLabel'] & {
+  /** NATURE de la famille quand ce n'est pas un véhicule de la partie. Absent = un véhicule. */
+  kind?: string
+  /** Libellé EN/FR de la famille. Absents pour un nom propre du jeu (le cas général). */
+  en?: string
+  fr?: string
+}
 // Ce que le calque véhicules a vu, résolu, et refusé de dire — publiée même sans véhicule (même
 // raison que `placements`/`groundWeapons` : distinguer une carte sans véhicule d'un film non lu).
 export type ReplayVehicleCoverage = components['schemas']['VehicleCoverage']
