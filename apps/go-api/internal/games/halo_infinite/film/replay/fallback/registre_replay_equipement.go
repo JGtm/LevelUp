@@ -16,7 +16,7 @@ var registreReplayEquipement = []Repli{
 			Fichier: pkgReplay + "equipment_origin.go",
 			Ancre:   "fb.Declenche(fallback.NomPieceEngendreeSansEvenement)",
 		}},
-		DatePose:     "2026-09-15",
+		DatePose:     dateVague2,
 		CibleRetrait: "lot 3.x (profil par build) : la lecture des evenements de liste sur les builds anciens",
 		// MESURE DU 2026-09-15 : 9 poses de panneau sur 124, et TOUTES sur les deux films de
 		// build les plus anciens du corpus — `a521164d` (HI_1_4_1, 0 evenement 103 lu sur
