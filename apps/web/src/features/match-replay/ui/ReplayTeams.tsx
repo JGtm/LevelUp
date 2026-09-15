@@ -42,11 +42,13 @@ import type { CardFxScene } from '../model/playerCardReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
 import type { PresenceHeader } from '../model/presenceFeed'
-import { buildSeats, groupSeatsByTeam, seatOccupantAt } from '../model/seatLogic'
+import { buildSeats, groupSeatsByTeam, seatOccupantAt, type ReplaySeat } from '../model/seatLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   buildPlayers,
   buildSlotOwnership,
+  playerName,
+  type ReplayPlayer,
   sideResolver,
   vitalityPresence,
 } from '../../../lib/replay/rosterLogic'
@@ -104,10 +106,10 @@ export function ReplayTeams({
   const t = REPLAY_TEXT[locale]
   const players = useMemo(() => buildPlayers(doc, scoreboard), [doc, scoreboard])
   // LA FICHE EST UN SIÈGE, PAS UN JOUEUR (retour user 2026-09-02) : un remplacé cède sa
-  // fiche à son remplaçant à l'image du relais — un 4v4 garde huit fiches, quel que soit le
-  // nombre de relais. L'appariement vient de la participation API (cf. seatLogic.ts) ; sans
-  // elle, chaque joueur garde son siège — l'affichage d'avant.
-  const seats = useMemo(() => buildSeats(players, header, doc), [players, header, doc])
+  // fiche à son remplaçant — un 4v4 garde huit fiches, quel que soit le nombre de relais.
+  // LE SIÈGE VIENT DU DOCUMENT depuis le lot 1.9.14 (`roster[].seat`, lu au film) : le web ne
+  // l'apparie plus lui-même sur la participation API.
+  const seats = useMemo(() => buildSeats(players, doc), [players, doc])
   const groups = useMemo(() => groupSeatsByTeam(seats), [seats])
   // LE GABARIT DU MATCH, un seul pour toute la colonne (D1) : il ne dépend que de l'en-tête.
   const gabarit = cardDensity(header)
@@ -198,31 +200,83 @@ export function ReplayTeams({
           className="flex h-full min-h-0 flex-col gap-1.5"
         >
           <ReplayTeamHeader
-            players={group.seats.map((s) => seatOccupantAt(s, frame))}
+            players={occupantsPresents(group.seats, frame)}
             side={group.side}
             xuidMeta={xuidMeta}
             locale={locale}
           />
           <div className={gabarit.seatGrid ? SEATS_GRID_CLASS : SEATS_COLUMN_CLASS}>
-            {group.seats.map((seat) => (
-              <ReplayPlayerCard
-                key={seat.key}
-                player={seatOccupantAt(seat, frame)}
-                doc={doc}
-                frame={frame}
-                presence={presence}
-                vitalityFade={vitalityFade}
-                readingFull={readingFull}
-                flashFrames={flashFrames}
-                locale={locale}
-                scoreTimeline={scoreTimeline}
-                fxScene={fxScene}
-                gabarit={gabarit}
-              />
-            ))}
+            {/* À L'INSTANT LU, LES SEULS OCCUPANTS PRÉSENTS (constat user du 2026-09-15).
+                Un siège `absent` ne rend AUCUNE fiche ; un siège `parti` garde la sienne,
+                marquée, le temps que son successeur arrive — sans quoi la grille sauterait
+                d'un cran puis reviendrait. */}
+            {group.seats.map((seat) => {
+              const lu = seatOccupantAt(seat, frame)
+              if (lu.kind === 'absent' || lu.player === null) return null
+              if (lu.kind === 'parti') {
+                return <ReplaySeatLeft key={seat.key} player={lu.player} locale={locale} />
+              }
+              return (
+                <ReplayPlayerCard
+                  key={seat.key}
+                  player={lu.player}
+                  doc={doc}
+                  frame={frame}
+                  presence={presence}
+                  vitalityFade={vitalityFade}
+                  readingFull={readingFull}
+                  flashFrames={flashFrames}
+                  locale={locale}
+                  scoreTimeline={scoreTimeline}
+                  fxScene={fxScene}
+                  gabarit={gabarit}
+                />
+              )
+            })}
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+/**
+ * occupantsPresents — les joueurs qui TIENNENT une fiche de ce camp à cette image.
+ *
+ * L'en-tête de colonne s'en sert pour son libellé et pour la couleur allié / adverse : lui
+ * passer les occupants d'un siège vide ferait nommer un camp par quelqu'un qui n'y joue plus.
+ */
+function occupantsPresents(seats: readonly ReplaySeat[], frame: number): ReplayPlayer[] {
+  const out: ReplayPlayer[] = []
+  for (const s of seats) {
+    const lu = seatOccupantAt(s, frame)
+    if (lu.kind === 'present' && lu.player !== null) out.push(lu.player)
+  }
+  return out
+}
+
+/**
+ * ReplaySeatLeft — LA TUILE D'UN SIÈGE ENTRE DEUX OCCUPANTS : son titulaire est sorti, son
+ * remplaçant n'est pas encore arrivé.
+ *
+ * ELLE EXISTE POUR QUE LA GRILLE NE SAUTE PAS. Retirer la fiche à la seconde du départ puis la
+ * remettre à celle de l'arrivée décalerait toute la colonne deux fois pour un relais de vingt
+ * secondes. Elle ne montre AUCUNE lecture — ni vitalité, ni armes, ni compteurs : le joueur
+ * n'est plus là, et lui prêter un état serait inventer.
+ *
+ * Aucun littéral de couleur : `border` / `card` / `muted-foreground`, les tokens sémantiques.
+ */
+function ReplaySeatLeft({ player, locale }: { player: ReplayPlayer; locale: ReplayLocale }) {
+  const t = REPLAY_TEXT[locale]
+  return (
+    <div
+      className="flex min-w-0 flex-col justify-center rounded border border-dashed border-border bg-card px-2 py-1"
+      title={t.seatSubstitute}
+    >
+      <span className="truncate text-2xs text-muted-foreground">{playerName(player) ?? ''}</span>
+      <span className="truncate text-3xs uppercase tracking-wider text-muted-foreground">
+        {t.seatLeft}
+      </span>
     </div>
   )
 }

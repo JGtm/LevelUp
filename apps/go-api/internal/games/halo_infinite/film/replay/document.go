@@ -433,58 +433,6 @@ type ReplayDocument struct {
 	Identity *IdentitySection `json:"identity,omitempty"`
 }
 
-// RosterEntry est un joueur du film : son identité, et l'index sous lequel le film le désigne.
-//
-// LES DEUX NE SONT PAS INTERCHANGEABLES. Le xuid IDENTIFIE ; l'index ORDONNE, et il n'a de
-// sens qu'à l'intérieur de ce film. Les garder côte à côte est ce qui permet de traduire un
-// événement (qui porte l'index) sans jamais confondre l'un avec l'autre.
-type RosterEntry struct {
-	// XUID en décimal, même forme que Track.XUID et que la base.
-	XUID string `json:"xuid"`
-	// FilmIndex est l'index du joueur DANS CE FILM, lu dans les cinq bits qui précèdent son
-	// xuid (cf. player_index.go, 26 chunks concordants sur le film de référence).
-	FilmIndex int `json:"filmIndex"`
-	// Name est le gamertag TEL QUE LE FILM L'ÉCRIT, dans le même enregistrement que le xuid.
-	//
-	// CE N'EST PAS UNE RÉSOLUTION : rien n'est allé le chercher ailleurs, donc rien ne peut
-	// l'avoir mal apparié. Il rend le rejeu lisible sans base de données. Ce qu'il ne donne
-	// PAS, et que seule la base porte : les compteurs du match. Vide si l'enregistrement ne le
-	// portait pas.
-	Name string `json:"name,omitempty"`
-	// Team est le DÉSIGNATEUR D'ÉQUIPE QUE LE FILM ÉCRIT (schéma 57, lot 1.7), par index de
-	// joueur : `0..8` pour les huit camps de `mp_team_designator`, `-1` pour « AUCUNE ÉQUIPE »
-	// (ce que le moteur écrit sur un mode sans camps).
-	//
-	// IL EST UN POINTEUR, ET C'EST LA SEULE FORME JUSTE. Trois états existent, pas deux :
-	// ABSENT = le film n'a pas nommé ce joueur (ou l'artefact est antérieur au schéma 57) ;
-	// `-1` = le film dit « aucune équipe » ; `0..8` = le camp. Un entier nu les confondrait —
-	// un artefact 56 relu vaudrait `0` partout, c'est-à-dire « tout le monde dans le camp 0 »,
-	// et `MIN_RENDERABLE_SCHEMA_VERSION` vaut 27 : le client lit encore des artefacts anciens.
-	//
-	// MÊME SOURCE QUE `Track.Team`, à la clé près : celui-ci est indexé par `filmIndex`, donc il
-	// vaut aussi pour un joueur dont aucune vie n'est publiée et pour un BOT — que le film
-	// assoit au même index.
-	//
-	// AUCUNE RÈGLE D'AFFICHAGE N'EN DÉPEND AUJOURD'HUI : le web colore par `team_side` de la
-	// feuille de match. Ce champ est une DONNÉE, publiée pour que le rejeu d'un film absent de
-	// la base porte ses camps.
-	Team *int `json:"team,omitempty"`
-	// Bot est vrai pour une entrée déclarée par BOT_METADATA (schéma 36) : son XUID est VIDE
-	// — un bot n'en a pas, et le normaliser en pseudo-identifiant fusionnerait des bots — et
-	// son Name porte le suffixe « [bot] », comme la base l'écrit. FilmIndex est le slot du
-	// roster de réplication que le paquet type 12 déclare.
-	Bot bool `json:"bot,omitempty"`
-	// Bid est l'identifiant STABLE d'un bot, forme `bid(N.0)` — la même que `match_participants`
-	// écrit (schéma 50).
-	//
-	// IL ÉTAIT LU DEPUIS TOUJOURS ET N'ÉTAIT PAS PUBLIÉ (inventaire P1, E9). Faute de l'avoir,
-	// la jointure web d'un bot se faisait sur le NOM NU — égalité de chaîne des deux côtés —,
-	// et le commentaire de `rosterLogic.ts` le disait lui-même : deux bots homonymes fusionnent.
-	// Vide pour un humain, et vide pour un bot dont la déclaration ne portait pas d'identifiant :
-	// un `bid(0.0)` inventé joindrait deux bots distincts.
-	Bid string `json:"bid,omitempty"`
-}
-
 // Loadout est l'ensemble des armes PORTÉES par un slot à un instant de référence.
 //
 // CE QUE LE CHAMP GARANTIT : à l'instant T, ce slot AVAIT ces armes dans son inventaire.

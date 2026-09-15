@@ -15,6 +15,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Objectives:        toLayerCoverage(v.Objectives),
 		Tracks:            ptrOf(v.Tracks, toTrackCoverage),
 		Teams:             ptrOf(v.Teams, toTeamCoverage),
+		Seats:             ptrOf(v.Seats, toSeatCoverage),
 		Projectiles:       ptrOf(v.Projectiles, toProjectileCoverage),
 		Equipment:         ptrOf(v.Equipment, toEquipmentCoverage),
 		Grapple:           ptrOf(v.Grapple, toGrappleCoverage),
@@ -101,6 +102,22 @@ func toTeamCoverage(v replay.TeamCoverage) replaydoc.TeamCoverage {
 		Silence:       v.Silence,
 		Tracks:        v.Tracks,
 		TracksNamed:   v.TracksNamed,
+	}
+}
+
+// toSeatCoverage : la couverture des sieges (lot 1.9.14).
+func toSeatCoverage(v replay.SeatCoverage) replaydoc.SeatCoverage {
+	return replaydoc.SeatCoverage{
+		Entrees:         v.Entrees,
+		Sieges:          v.Sieges,
+		Lus:             v.Lus,
+		Apparies:        v.Apparies,
+		ReprisesEcrites: v.ReprisesEcrites,
+		Arrivants:       v.Arrivants,
+		PresencesCloses: v.PresencesCloses,
+		SansPresence:    v.SansPresence,
+		OccupantsMax:    v.OccupantsMax,
+		SansTableDuFilm: v.SansTableDuFilm,
 	}
 }
 

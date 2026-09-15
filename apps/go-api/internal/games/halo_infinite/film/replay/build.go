@@ -2,7 +2,6 @@ package replay
 
 import (
 	"log/slog"
-	"math"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
@@ -113,6 +112,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	equipes := newTeamPublication(reg, opt.PlayerTeams, opt.TeamScan, opt.ScoreboardTeams)
 	viesTotal, viesNommees := equipes.poserSurLesTraces(doc.Tracks)
 	doc.Roster = buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, opt.Deaths), opt.Bots, equipes)
+	// LE SIEGE APRES LE ROSTER ET APRES LES TRACES, parce qu'il a besoin des deux : l'index lu
+	// pour le siege, les vies publiees pour savoir qui libere et qui arrive (cf. sieges.go).
+	siegeCov := poserLesSieges(doc.Roster, doc.Tracks, opt.FilmTable, doc.FrameCount, opt.Fallbacks)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, reg.DeathOffsetMS(), reg.DeathOffsetMatches())
 	reg.logRegistry(matchID)
@@ -194,6 +196,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// CE QUE LE FILM DIT DES EQUIPES, et ce que la base en pense (lot 1.7) : mesure faite
 	// ci-dessus, posee ici.
 	doc.Coverage.Teams = &teamCov
+	// CE QUE LA POSE DES SIEGES A LU ET APPARIE (lot 1.9.14) : mesure faite ci-dessus, posee ici.
+	doc.Coverage.Seats = &siegeCov
 	// La version du film est une DIMENSION du décodage : elle voyage avec l'artefact plutôt que
 	// d'exiger une relecture du film pour la retrouver (cf. Coverage.FilmMajorVersion).
 	doc.Coverage.FilmMajorVersion = opt.FilmMajorVersion
@@ -516,17 +520,4 @@ func keepShotsOfPublishedTracks(shots []Shot, tracks []Track) []Shot {
 func frameSpan(sorted []filmdec.BipedPosition, origin, step uint64) int {
 	last := sorted[len(sorted)-1].TimestampUS
 	return int((last-origin)/step) + 1
-}
-
-// round2 arrondit au centième (cf. coordScale).
-func round2(v float32) float32 {
-	return float32(math.Round(float64(v)*coordScale) / coordScale)
-}
-
-// fractionForJSON arrondit une fraction [0,1] au millième et la rend par POINTEUR : c'est
-// ce pointeur qui permet de publier un ZÉRO (bouclier brisé) sans qu'omitempty le confonde
-// avec une absence de mesure. Cf. Point.Sh.
-func fractionForJSON(v float32) *float32 {
-	r := float32(math.Round(float64(v)*1000) / 1000)
-	return &r
 }

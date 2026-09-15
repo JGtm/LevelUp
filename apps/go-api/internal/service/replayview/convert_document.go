@@ -111,12 +111,14 @@ func toPoint(v replay.Point) replaydoc.Point {
 
 func toRosterEntry(v replay.RosterEntry) replaydoc.RosterEntry {
 	return replaydoc.RosterEntry{
-		XUID:      v.XUID,
-		FilmIndex: v.FilmIndex,
-		Name:      v.Name,
-		Team:      v.Team,
-		Bot:       v.Bot,
-		Bid:       v.Bid,
+		XUID:       v.XUID,
+		FilmIndex:  v.FilmIndex,
+		Name:       v.Name,
+		Team:       v.Team,
+		Bot:        v.Bot,
+		Bid:        v.Bid,
+		Seat:       v.Seat,
+		SeatSource: v.SeatSource,
 	}
 }
 

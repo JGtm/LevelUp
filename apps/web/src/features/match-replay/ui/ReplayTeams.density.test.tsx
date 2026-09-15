@@ -43,9 +43,9 @@ const SUD = noms('Sud', 12)
 type Track = NonNullable<ReplayDocument['tracks']>[number]
 
 /** Une vie du siège `i` : avec ou sans mesure de vitalité, sur [start, 300]. */
-function vie(nom: string, i: number, vitalite: boolean, start = 0): Track {
+function vie(nom: string, i: number, vitalite: boolean, start = 0, end = 300): Track {
   const point = vitalite ? { t: start, x: 1, y: 1, sh: 0.7, hp: 1 } : { t: start, x: 1, y: 1 }
-  return { slot: 512 + i, team: -1, xuid: nom, startFrame: start, endFrame: 300, points: [point] }
+  return { slot: 512 + i, team: -1, xuid: nom, startFrame: start, endFrame: end, points: [point] }
 }
 
 /**
@@ -100,15 +100,23 @@ describe('ReplayTeams — la densité de la colonne : cas limites (étape 4)', (
   })
 
   it('4.2 sièges relayés en BTB : le compte de sièges ne bouge pas (24), la fiche suit l’occupant', () => {
-    // Nord12 quitte à +10 s (image 100) ; Zulu le remplace à la même seconde, même camp t0.
-    // Sa vie reste ouverte jusqu'à 300 : sans appariement, la colonne compterait 25 sièges.
-    const doc = documentDe([...NORD, ...SUD], true, [vie('Zulu', 24, true, 100)])
-    const board = [
-      ...tableau(NORD, SUD, {
-        Nord12: { left_in_progress: true, last_leave_time: '2026-07-24T20:00:10Z' },
-      }),
-      scoreboardRow('Zulu', 'Zulu', 't0', { joined_in_progress: true, first_joined_time: '2026-07-24T20:00:10Z' }),
-    ]
+    // LE RELAIS VIENT DU DOCUMENT (lot 1.9.14) : Nord12 et Zulu portent le MÊME `seat`, et
+    // c'est le film qui le dit — le web ne l'apparie plus sur la participation API. Les deux
+    // présences sont disjointes : Nord12 sort à l'image 100, Zulu entre à l'image 100.
+    const brut = documentDe([...NORD, ...SUD], true, [vie('Zulu', 24, true, 100)])
+    const doc = {
+      ...brut,
+      roster: (brut.roster ?? []).map((e) =>
+        e.xuid === 'Zulu'
+          ? { ...e, seat: 11, seatSource: 'apparie' }
+          : { ...e, seat: e.filmIndex, seatSource: 'lu' },
+      ),
+      // Nord12 (siège 11) cesse d'apparaître à l'image 100 : sa présence s'achève là.
+      tracks: (brut.tracks ?? []).map((t) =>
+        t.xuid === 'Nord12' ? { ...t, endFrame: 99 } : t,
+      ),
+    } as typeof brut
+    const board = tableau(NORD, SUD)
     const arbre = (frame: number) => (
       <ReplayTeams doc={doc} scoreboard={board} frame={frame} locale="fr" header={EN_TETE_BTB} />
     )

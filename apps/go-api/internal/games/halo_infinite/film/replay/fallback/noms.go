@@ -41,4 +41,6 @@ const (
 	NomVieCoupeeAuTrouDeReplication Nom = "repli_vie_coupee_au_trou_de_replication"
 	// NomArmementBombeDebutAZero : `replay/bomb_armings.go`, `buildBombArmings`.
 	NomArmementBombeDebutAZero Nom = "repli_armement_bombe_debut_a_zero"
+	// NomSiegeDuRemplacantParAppariementOrdinal : `replay/sieges.go`, `poserLesSieges`.
+	NomSiegeDuRemplacantParAppariementOrdinal Nom = "repli_siege_du_remplacant_par_appariement_ordinal"
 )
