@@ -270,9 +270,37 @@
 #               ou une vie finit. L empreinte hachant les OCTETS des trois paquets, ce faux
 #               positif coute cette ligne — le marche assume du garde-rail.
 #               `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact).
-#   2026-09-16  grammar-2026-09-15.12  revue de jalon M1, lentille L3 : DEUX ENVELOPPES `dir` SANS
-#               APPELANT DE PRODUCTION SORTENT DU BINAIRE, plus une boucle d instrument et deux
-#               en-tetes. `DetectI0Layout(dir)` (48 appels, tous des tests) devient
+#   2026-09-16  grammar-2026-09-15.12  revue de jalon M1, lentille L4 (merge 99644996e) : LA
+#               PORTE DE PUBLICATION LIGNE PAR LIGNE DE `killsource` NE COMPTE PLUS QU UN SEUL
+#               COTE DU PROBLEME D AFFECTATION. `BijectionDetermined` valait « au plus un indice
+#               a inferer » (`Inferred <= 1`) ; il vaut desormais « une seule affectation
+#               possible » (`FilmTablePinning.AffectationUnique`, indices libres ET noms libres).
+#               La porte ne fait que se FERMER : aucun film ne gagne la publication, certains la
+#               perdent. `KillSourceDecoderRev` MONTE aussi (`killsource-2026-09-16`) : la sortie
+#               persistee change. `SchemaVersion` reste 59.
+#               MEME RANG : la doc de `mppWidthsPourFormat` corrigee (elle disait « la cle est le
+#               BUILD » alors que la fonction commute sur le FORMAT depuis le lot 1.9.1 ter) —
+#               un LOT partage sa revision, et ces deux gestes sont le meme lot de revue.
+#   2026-09-16  grammar-2026-09-15.13  revue de jalon M1, lentille D13 constat 2 (merge
+#               1f478d5c3) : PORTE UNIQUE POUR LES LARGEURS MPP, PAR VERSION DE FORMAT, AUX DEUX
+#               SITES. `ScanEquipmentPlacements` et `replay.gwWidthsForFilm` resolvaient le
+#               decoupage du bloc `object-multiplayer-properties` par `BuildProfileFromFilm` —
+#               donc par la table des SEPT builds en dur — alors que le registre des replis
+#               declare la cle VERSION DE FORMAT (`format_sans_profil_relu`, lot 1.9.1 ter). Un
+#               film au format 27 dont le build est hors table prenait les largeurs CALIBREES
+#               devant une largeur RELUE, sans compteur ni avertissement. Les deux sites passent
+#               par `MPPWidthsForFilm`. AUCUNE grammaire d octets n est reecrite : ce qui change
+#               est QUELLE grammaire s applique (meme genre de changement que `.2` et `.8`).
+#               MESURE QUI BORNE L EFFET (cache, 657 films, `TestMPPResolutionCorpus`) : 6 films
+#               portent un build hors table, AUCUN a un format dont la largeur est relue — zero
+#               octet cuit ne change sur ce cache, le gain porte sur le parc NEUF.
+#               `KillSourceDecoderRev` NE BOUGE PAS a ce rang : la porte de `killsource` releve
+#               de cette constante-la et a ete traitee au rang `.12` ; `killsource/` est intact
+#               ici, et son propre ratchet d empreinte fait foi. `SchemaVersion` reste 59.
+#   2026-09-16  grammar-2026-09-15.14  revue de jalon M1, lentille L3 (merge 29c5d6c85) : DEUX
+#               ENVELOPPES `dir` SANS APPELANT DE PRODUCTION SORTENT DU BINAIRE, plus une boucle
+#               d instrument et deux en-tetes.
+#               `DetectI0Layout(dir)` (48 appels, tous des tests) devient
 #               `detectI0Layout` dans `i0_layout_instrument_helpers_test.go` ;
 #               `ScanFilmEquipmentSpawnEvents(dir)` (1 appel, `replay/e191_...`) disparait, son
 #               unique appelant chargeant le film lui-meme et passant par `ScanEquipmentSpawnEvents` ;
