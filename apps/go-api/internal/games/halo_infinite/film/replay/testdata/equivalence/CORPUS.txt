@@ -203,3 +203,25 @@ fb1a1a72 | 41 / HI_1_13_0 | Banished Narrows | CTF:Arena multi-manche | 43 | 38.
 # Classification AVANT tout `-update`, sur l arbre fusionne : 3 identiques (`50247b26`, `a521164d`,
 # `11de8353`), 7 differents, et sur les sept UNE SEULE etape des 53, `killsource` — aucune autre.
 # Re-figeage des sept, puis passe de comparaison : 7/7 puis 10/10 identiques, 0 ecarte, 0 echec.
+#
+# REFERENCES RE-FIGEES AU LOT 1.9.13, SCHEMA 59, LE 2026-09-15 (une vie finit a une mort ECRITE).
+# Classification AVANT tout `-update`, echantillon court, 10 films : 0 identique, 10 differents —
+# et sur les dix UNE SEULE etape des 53, `artifact`. Les 52 etapes de DECODAGE sont identiques a
+# l octet sur les dix films : le lot ne lit aucun octet autrement, il change l ASSEMBLAGE (la
+# decoupe des vies passe du seuil de trou a ce que le film ECRIT). Le `git diff` des dix
+# references le confirme : 1 insertion + 1 suppression par fichier, toutes `artifact`.
+#
+# LE DELTA D OCTETS S EXPLIQUE FILM PAR FILM PAR LE NOMBRE DE LACUNES (une lacune = une vie qui
+# ne se coupe plus, soit ~195 octets d en-tete de piste en moins) :
+#   50247b26    0 lacune   +79 o    le registre ne rend AUCUNE vie (`viesTotal=0`, film sans
+#                                   section d identification) : le REPLI reproduit l ancienne
+#                                   decoupe a l identique, et les +79 o sont les deux champs neufs
+#                                   (`gaps`, `gapMs`) plus l entree neuve de `coverage.fallbacks[]`
+#   bcb6d393    1 lacune     -186 o        51101d1d    5 lacunes    -970 o
+#   60ae07c4    8 lacunes  -1 557 o        fb1a1a72    3 lacunes    -600 o
+#   d9781168   16 lacunes  -3 251 o        111fa685   33 lacunes  -6 174 o
+#   e5adf7b2   38 lacunes  -7 353 o        a521164d   55 lacunes -11 227 o
+#   11de8353   64 lacunes -12 769 o
+# Re-figeage des dix, puis passe de comparaison : 5/5 + 5/5 puis 10/10 identiques, 0 ecarte,
+# 0 echec. `repli_vie_coupee_au_trou_de_replication` : 1 declenchement sur `50247b26`, 0 sur les
+# neuf autres.
