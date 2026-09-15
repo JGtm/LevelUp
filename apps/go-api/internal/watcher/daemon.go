@@ -134,6 +134,11 @@ type Daemon struct {
 	// toucher metaDB après que main.go a fait duckdb.CloseAll() → handles
 	// DuckDB orphelins lors d'un SIGKILL d'air.
 	wg sync.WaitGroup
+
+	// profileGate : porte « profil suivi » d'AddPlayer (ADR 0035 D3). Lue sans
+	// verrou : posée une fois au câblage, avant Start. nil = porte ouverte (seam
+	// de test) ; le serveur la pose toujours.
+	profileGate domain.ProfileGate
 }
 
 // NewDaemon crée un watcher daemon (non démarré).
@@ -330,6 +335,12 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 	}
 
 	ctx, evID := logging.WithEvent(ctx, "watcher.add_player:"+p.Gamertag)
+
+	// Porte « profil suivi » (ADR 0035 D3) — cf. daemon_profile_gate.go.
+	if err := d.checkProfileGate(ctx, p, evID); err != nil {
+		return err
+	}
+
 	slog.InfoContext(ctx, "watcher_daemon: AddPlayer démarré",
 		"gamertag", p.Gamertag, "xuid", p.XUID, "event", evID)
 

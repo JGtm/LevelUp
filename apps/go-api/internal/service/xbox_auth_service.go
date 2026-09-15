@@ -6,6 +6,14 @@
 //  2. Sinon CreateFromXbox : créer un user à partir du gamertag/XUID
 //  3. Wire la session (login automatique)
 //
+// Ce que la stratégie NE fait PAS (ADR 0035 D3, 2026-09-15) : créer un profil de
+// suivi, ni mettre le joueur sous surveillance du watcher tant qu'aucun profil
+// n'existe. Le compte et les credentials sont bien créés — le refresh token est
+// ce qui rendra le profil utilisable plus tard — mais un compte sans profil est
+// un état VALIDE et INERTE : aucun poller, aucun sync, aucune écriture disque.
+// Sa seule sortie est le wizard de mise en place (ou une invitation, cf. le plan
+// frère). C'est le maillon manquant de l'incident du 2026-07-23.
+//
 // La récupération de BDD orpheline (§11 du plan) est différée à une future PR
 // (nécessite pool.Invalidate + scan filesystem multi-titre).
 package service
@@ -18,6 +26,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/userstore"
 )
@@ -57,9 +66,11 @@ type GroupJoiner interface {
 //
 // PR 2.5a : si `tokenStore` est non-nil, persiste les tokens RTA dans
 // data/auth/watcher_tokens/{xuid}.json.
-// PR 2.5b : si `daemonGetter` retourne un daemon non-nil et tournant, ajoute
-// le joueur au watcher pour subscribe RTA immédiat (sous réserve que le tracker
-// actuel soit ami Xbox de ce joueur — sinon status=3 silencieux).
+// PR 2.5b : si `daemonGetter` retourne un daemon non-nil et tournant, ET que
+// `profileGate` s'ouvre pour ce xuid (ADR 0035 D3, 2026-09-15), ajoute le joueur
+// au watcher pour subscribe RTA immédiat (sous réserve que le tracker actuel
+// soit ami Xbox de ce joueur — sinon status=3 silencieux). Sans profil suivi, le
+// login aboutit et les tokens sont persistés, mais rien n'est mis en marche.
 type XboxSSOLinkStrategy struct {
 	users        *userstore.Store
 	tokenStore   *auth.MultiUserTokenStore // optionnel
@@ -68,6 +79,10 @@ type XboxSSOLinkStrategy struct {
 	// INCONNU est refusé (pas de CreateFromXbox) ; un XUID connu se connecte
 	// normalement. nil → jamais verrouillé. Cf. WithInstanceLock.
 	instanceLocked func() bool
+	// profileGate : porte « profil suivi » (ADR 0035 D3). Le watcher n'est notifié
+	// que si elle s'ouvre pour (titre par défaut, xuid). nil = porte ouverte —
+	// seam de test ; le serveur la pose toujours.
+	profileGate domain.ProfileGate
 	// invites + groups : flow "rejoindre un groupe". Si la session porte un
 	// PendingInviteCode valide, le login bypass le verrou d'instance et ajoute le
 	// joueur au groupe ciblé (puis consomme le code). nil → flow désactivé.
@@ -100,6 +115,14 @@ func (s *XboxSSOLinkStrategy) WithDaemonGetter(getter WatcherDaemonGetter) *Xbox
 // les utilisateurs existants se connectent normalement.
 func (s *XboxSSOLinkStrategy) WithInstanceLock(fn func() bool) *XboxSSOLinkStrategy {
 	s.instanceLocked = fn
+	return s
+}
+
+// WithProfileGate pose la porte « profil suivi » : sans profil déclaré pour le
+// xuid, le login SSO réussit et les tokens sont persistés, mais le watcher n'est
+// PAS notifié (ADR 0035 D3).
+func (s *XboxSSOLinkStrategy) WithProfileGate(g domain.ProfileGate) *XboxSSOLinkStrategy {
+	s.profileGate = g
 	return s
 }
 
@@ -195,12 +218,30 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 	// PR 2.5b — Notifier le watcher daemon pour subscribe RTA immédiat.
 	// Le getter résout le daemon lazy (créé après cette strategy dans main.go).
 	// No-op si daemon nil ou pas démarré. Best-effort : erreur loggée, login OK.
-	if s.daemonGetter != nil {
+	// ADR 0035 D3 : uniquement si le xuid a un profil SUIVI — sinon on s'arrête
+	// ici, compte et tokens en place, rien d'actif.
+	if s.daemonGetter != nil && s.watcherAllowedFor(ctx, attempt) {
 		if d := s.daemonGetter(); d != nil && d.IsRunning() {
 			s.notifyWatcher(ctx, attempt, user, d)
 		}
 	}
 	return nil
+}
+
+// watcherAllowedFor dit si le watcher peut prendre en charge ce compte : il lui
+// faut un profil suivi sur le titre par défaut (ADR 0035 D3). Le refus est
+// journalisé — un compte qui se connecte sans profil est une information, pas un
+// silence.
+func (s *XboxSSOLinkStrategy) watcherAllowedFor(ctx context.Context, attempt *auth.Attempt) bool {
+	if s.profileGate == nil {
+		return true
+	}
+	if s.profileGate(ctx, title.DefaultSlug, attempt.XUID) {
+		return true
+	}
+	slog.InfoContext(ctx, "xbox_sso: compte sans profil suivi — watcher non notifié, provisioning requis",
+		"xuid", attempt.XUID, "gamertag", attempt.Gamertag)
+	return false
 }
 
 // resolvePendingInvite retourne l'invitation valide portée par la session (flow

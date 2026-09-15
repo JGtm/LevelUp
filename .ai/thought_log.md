@@ -108784,3 +108784,44 @@ l'étape 7.
 **Conclusion / prochaine étape** : étape 2 du plan — portes « profil suivi » sur le coordinateur
 de sync, le daemon watcher et le SSO Xbox, pour qu'un compte sans profil ne déclenche ni poller,
 ni sync, ni écriture disque.
+
+## [2026-09-15] Annuaire des joueurs — étape 2 : rien ne tourne pour un compte sans profil — Complété
+
+**Décision technique principale** : une seule porte, `domain.ProfileGate`
+(`func(ctx, titleSlug, xuid) bool`), posée aux trois endroits par lesquels un compte pouvait
+mettre la machine en marche — `sync.Coordinator.Submit`, `watcher.Daemon.AddPlayer` et la
+notification du watcher par le SSO Xbox. Elle s'appuie sur `AppConfig.HasTrackedProfile`, qui
+réutilise `domain.SyncablePlayers` telle quelle pour qu'il n'existe qu'UNE définition de
+« suivi » (présent dans db_profiles pour ce titre, ni `auth_only`, ni en pause) et qui cherche
+par XUID, jamais par gamertag. Refus = WARN structuré + compteur expvar `sync_refused_no_profile`
+(déclaré avec les compteurs de gate existants, registre `internal/observability` de l'ADR 0009,
+aucun second mécanisme). Le SSO continue de créer le compte et de persister les tokens — le
+refresh token est ce qui rendra le profil utilisable le jour où on le déclare ; ce qu'il ne fait
+plus, c'est mettre le joueur sous surveillance.
+
+Deux écarts au plan, tous deux tranchés sur pièces. (1) Le plan prévoyait deux poses de la porte
+dans `main.go`, l'une sur le coordinateur, l'autre sur le daemon : le `Coordinator` est construit
+DANS `watcher.NewDaemon` et n'est exposé que derrière l'interface `SyncGate` — il n'est pas
+atteignable depuis `main.go`. `Daemon.WithProfileGate` pose donc les deux (elle délègue), et un
+test garde ce lien. Exposer le coordinateur juste pour satisfaire la forme du gate aurait été le
+contraire d'un progrès. (2) Le titre est normalisé sur `DefaultSlug` AVANT d'interroger la porte,
+des deux côtés : `notifyWatcher` ne renseigne pas `TitleSlug`, et un titre vide est lu « TOUS les
+titres » par `LoadPlayers` — sans cette normalisation, le profil Halo 5 d'un joueur aurait ouvert
+son suivi Halo Infinite.
+
+**Résultats observés** : gate G2 vert — 23 paquets `ok` (dont `domain` et `archlint`, ajoutés au gate pour couvrir `domain/identity.go` et les ratchets), puis 10 paquets `ok` avec `-tags=integration`, 0 échec de part et d'autre ; `make check-types` → 0 ; 27 tests vitest verts ; eslint 0 sur les quatre fichiers web touchés. Côté web, la vérification de l'item 2.8
+a montré que la redirection attendue n'existait PAS pour le cas réel : `setup_state` et
+`setup_required` décrivent l'INSTANCE, alors qu'`available_players` est filtré par propriété.
+Sur une instance déjà peuplée, un compte SSO sans profil recevait `setup_state: 'ready'` et
+atterrissait sur la page « on synchronise tes derniers matchs » — qui ne synchronise plus rien
+pour lui depuis cette étape — et `SetupPage` l'aurait renvoyé à l'accueil, donc une simple garde
+de route aurait bouclé. Quatre fonctions pures dans `setupRouting.ts` (aucune logique dans les
+composants), une garde dans `__root.tsx`, et le wizard qui choisit son étape et ne rend la main
+qu'à bon escient. 17 cas vitest, aucune chaîne d'interface nouvelle donc aucun manifeste i18n à
+régénérer.
+
+**Conclusion / prochaine étape** : étapes 1 et 2 closes et commitées sur `wt/player-directory`,
+non poussées. La suite appartient aux agents B (annuaire `PlayerDirectory` + `GET /admin/identities`,
+puis la section « Identités » de la page de gestion) et C (chemin d'onboarding unique, purge
+d'identité + CLI). Réserve à lever au gate complet de l'étape 7 : le flake `internal/service`
+observé une fois sous contention au premier passage de G1.
