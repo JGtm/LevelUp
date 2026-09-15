@@ -420,42 +420,6 @@ var registreKillsource = []Repli{
 		CibleComptage:   comptageFamille19,
 	},
 	{
-		Nom:       "repli_distances_de_touche_desactivees",
-		Fait:      "la distance tireur -> victime de chaque touche",
-		Mecanisme: "carte hors catalogue, ou positions de bipedes indisponibles : les distances sont desactivees, les touches restent comptees",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgKillcollector + "hits.go",
-			Ancre:   "carte hors catalogue de bornes, distances desactivees",
-		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.4 (la carte du film vient du nom de match, plus d'une signature de largeurs)",
-		// LE LOT 1.9.2 A CABLE LE COMPTEUR EXPVAR DE LA BRANCHE « CARTE INCONNUE »
-		// (`killsource_hits_cartes_hors_catalogue`, D-4) : le repli se compte donc en production
-		// par ce canal-la, pas encore par `fallback.Compteur` — la passe de touches ne porte
-		// aucune cuisson, donc aucun compteur par cuisson ou publier son compte.
-		CritereRetrait:  "0 match a distances desactivees pour cause de carte inconnue ; les 6 cartes jumelles recuperent leurs distances",
-		CompteurBranche: false,
-		CibleComptage:   lot194,
-	},
-	{
-		Nom:       "repli_carte_premier_nom_resolu",
-		Fait:      "quelle carte du catalogue decrit CE match",
-		Mecanisme: "les identites candidates sont essayees dans l'ordre et la PREMIERE qui resout gagne, sans arbitrage",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgKillcollector + "positions.go",
-			Ancre:   "if entry, err := c.mapBounds.Lookup(name); err == nil {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    lot194,
-		CritereRetrait:  "le nom de carte est resolu une fois et passe en override ; 0 arbitrage par ordre sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   lot194,
-	},
-	{
 		Nom:       "repli_identite_pont_par_morts",
 		Fait:      "le nom d'un corps de bipede, quand le lien direct n'a pas pu etre lu",
 		Mecanisme: "les creations de bipede sont illisibles (TOUTE erreur, y compris transitoire) : le registre retombe sur le pont par le fil des morts",

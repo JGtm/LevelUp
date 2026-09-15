@@ -242,18 +242,16 @@ type KillSourceCollector struct {
 	// Verifie ENTRE deux matchs, jamais au milieu d une ecriture.
 	budget  time.Duration
 	timeout time.Duration
-	// mapNames / mapBounds : cablage OPTIONNEL de la capture des positions
-	// (`shared.kill_positions`, G.2bis). Les deux sont necessaires ensemble — cf.
-	// WithPositionCapture. nil = positions desactivees, degradation journalisee
-	// PAR MATCH en Debug (jamais une erreur : c est une configuration, pas une panne).
+	// mapNames / mapBounds : cablage OPTIONNEL de la RESOLUTION DE CARTE du collecteur — cf.
+	// WithPositionCapture. Les deux sont necessaires ensemble ; nil = positions desactivees,
+	// degradation journalisee PAR MATCH (configuration, pas panne). DEUX passes les partagent
+	// depuis le lot 1.9.4 : les positions (G.2bis) ET les distances de touche (`map_identity.go`).
 	mapNames  port.ReplayMapNameRepo
 	mapBounds *filmdec.MapQuantCatalog
-	// filmDir / mapBoundsPath : la CONFIGURATION du numerateur film (precision par arme +
-	// distance, collectHits — acquis du chantier precision remis le 2026-09-01, exposition
-	// API retiree). filmDir nil = passe non configuree (chemin live sans cache disque)
-	// -> la precision par arme est ignoree, best-effort. Voir ConfigureFilmAccuracy.
-	filmDir       FilmDirResolver
-	mapBoundsPath string
+	// filmDir : la CONFIGURATION du numerateur film (precision par arme + distance, collectHits
+	// — acquis du chantier precision remis le 2026-09-01, exposition API retiree). nil = passe
+	// non configuree (chemin live sans cache) -> precision ignoree. Voir ConfigureFilmAccuracy.
+	filmDir FilmDirResolver
 }
 
 // FilmDirResolver rend le repertoire disque des chunks d un film (chunk_NN.bin, format
@@ -265,12 +263,14 @@ type KillSourceCollector struct {
 type FilmDirResolver func(matchID string) string
 
 // ConfigureFilmAccuracy branche le numerateur film (collectHits). `dir` resout le repertoire de
-// chunks d un match ; `mapBoundsPath` est le catalogue de bornes de carte (map_quant_bounds.json)
-// pour la distance — vide desactive la distance (les touches restent comptees). Sans cet appel, la
-// passe de precision par arme ne tourne pas (dégradation gracieuse).
-func (c *KillSourceCollector) ConfigureFilmAccuracy(dir FilmDirResolver, mapBoundsPath string) {
+// chunks d un match. Sans cet appel, la passe de precision par arme ne tourne pas (degradation
+// gracieuse).
+//
+// ELLE NE PREND PLUS DE CHEMIN DE CATALOGUE DEPUIS LE LOT 1.9.4 : le collecteur n en a qu UN,
+// celui de [KillSourceCollector.WithPositionCapture]. Deux configurations du meme catalogue, ce
+// seraient deux verites possibles pour la meme carte (`map_identity.go`).
+func (c *KillSourceCollector) ConfigureFilmAccuracy(dir FilmDirResolver) {
 	c.filmDir = dir
-	c.mapBoundsPath = mapBoundsPath
 }
 
 // NewKillSourceCollector construit le collecteur.

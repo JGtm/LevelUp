@@ -264,4 +264,20 @@
 #               calibration tranchait autre chose que 9/5 lit desormais 9/5.
 #               `SchemaVersion` reste 59 EN ATTENTE du `replay-corpus-gate`, qui n a pas pu etre
 #               joue (voie de decodage transferee au lot 1.9.3).
-grammar-2026-09-15.7	8463b183c2fb92269761fa61f9aecd0e7ba6bfe129acfc43429fb576624b5769
+#   2026-09-15  grammar-2026-09-15.8  lot 1.9.4 : LA CARTE D UN FILM VIENT DE SON NOM DE MATCH.
+#               `DetectFilmMapEntry` est SUPPRIMEE de `weapon_hit_distance_resolver.go` — elle
+#               identifiait la carte par la SIGNATURE de ses largeurs d axe (`DetectI0Layout`),
+#               alors que son unique appelant (`sync/killcollector/hits.go`) tenait deja le nom
+#               de carte du match et lui passait `mapNameOverride` VIDE. Mesure du lot : 68 des
+#               79 cartes du catalogue partagent leur signature avec une autre (une classe en
+#               compte 59), et sur 17 films la signature rend 2 accords, 13 ambiguites et
+#               2 DESACCORDS (les deux Live Fire, ou elle designe `aquarius`). AUCUN BIT LU NE
+#               CHANGE : l empreinte monte parce qu elle hache des octets de source. Ce qui
+#               change est QUELLE carte — donc quelles bornes et quel decoupage — s applique.
+#               `DetectI0Layout` n a plus AUCUN appelant de production ; le ratchet est le
+#               retrait de son entree d allowlist dans `archlint/no_recomputed_film_context`.
+#               `KillSourceDecoderRev` ne bouge pas (`film/killsource/` inchange, son propre
+#               ratchet d empreinte fait foi) ; `SchemaVersion` reste 59 (le chemin de cuisson
+#               n appelait pas cette fonction). VERIFIE : equivalence 10/10 identiques, corpus gate 14 temoins a
+#               0 gain / 0 perte / 0 CHANGEMENT, schema 59 des deux cotes.
+grammar-2026-09-15.8	84442e2e75b10c3dee7bf9e625e7865b512e9e8bfb6b1c81a19a7f7afd2d380b
