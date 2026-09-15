@@ -93,6 +93,26 @@ func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) (val uint64, ta
 // defaultReplRange : DAT_144706100, la plage de config du header film. Le réglage public
 // `SetDefaultReplRange` a été supprimé le 2026-09-05 (lot E, item E.2) : aucun appelant.
 // La valeur reste 0x1FFF, celle qui donne W = bitLen(0x1FFF) = 13 sur tous les films mesurés.
+//
+// CE QUE LA RELECTURE DU 2026-09-15 A TROUVE, ET QUI N EST PAS RESOLU (lot 1.9.1 bis, pas 2).
+// `FUN_1406d3140` ne lit PAS toujours 0x1FFF : son prologue est
+//
+//	uVar7 = DAT_144706100 ;                       // 0x1FFF dans l image
+//	si (DAT_144706104 != 0) uVar7 = (&DAT_1451f98d4)[param_3 * 2] ;
+//	W = FUN_1406d310c(uVar7) ;                    // bitLen de la plage
+//
+// La plage vient donc d une TABLE INDEXEE PAR param_3 des que la garde est levée — et la
+// garde VAUT 1 dans l image statique (`DAT_144706104 = 0x01`, lu le 2026-09-15). La table
+// `DAT_1451f98d0` y est NULLE : elle est remplie au CHARGEMENT DE LA CARTE, comme les
+// largeurs d axe d i0. Les appelants passent des param_3 DIFFERENTS — 0 (les boucles de
+// slots, `FUN_1408f0ac4`), 1 (la branche attachée d i10 `object-parent-state`), 4 (i21
+// `equipment-activated`) — et lisent donc, chez le jeu, TROIS largeurs potentiellement
+// distinctes là où ce décodeur en lit UNE.
+//
+// CE N EST PAS CORRIGE ICI, et c est délibéré : la table est vide dans le binaire, donc
+// aucune lecture statique ne donne les trois largeurs, et D13 interdit de les deviner. La
+// découverte est consignée au §4 du PLAN_DECODEUR_FILM (D3 (1.9.1 bis, pas 2)) ; elle se
+// lève par une capture runtime ou par un balayage de largeur qui ferme, pas par ce fichier.
 var defaultReplRange uint32 = 0x1FFF
 
 // consume1408f0ac4 mirrors FUN_1408f0ac4 (a gated variable-width id field used by
