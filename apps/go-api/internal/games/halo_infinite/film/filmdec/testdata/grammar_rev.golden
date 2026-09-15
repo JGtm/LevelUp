@@ -264,24 +264,4 @@
 #               calibration tranchait autre chose que 9/5 lit desormais 9/5.
 #               `SchemaVersion` reste 59 EN ATTENTE du `replay-corpus-gate`, qui n a pas pu etre
 #               joue (voie de decodage transferee au lot 1.9.3).
-#   2026-09-15  grammar-2026-09-15.8  lot 1.9.13 : AUCUN OCTET N EST LU AUTREMENT. Un accesseur
-#               de lecture est ajoute a `objectiveevents` (`RoundBounds.Starts`, les frontieres
-#               de manche deja mesurees), que la decoupe des vies du rejeu consomme pour savoir
-#               ou une vie finit. L empreinte hachant les OCTETS des trois paquets, ce faux
-#               positif coute cette ligne — le marche assume du garde-rail.
-#               `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact).
-#   2026-09-16  grammar-2026-09-15.12  revue de jalon M1, lentille L3 : DEUX ENVELOPPES `dir` SANS
-#               APPELANT DE PRODUCTION SORTENT DU BINAIRE, plus une boucle d instrument et deux
-#               en-tetes. `DetectI0Layout(dir)` (48 appels, tous des tests) devient
-#               `detectI0Layout` dans `i0_layout_instrument_helpers_test.go` ;
-#               `ScanFilmEquipmentSpawnEvents(dir)` (1 appel, `replay/e191_...`) disparait, son
-#               unique appelant chargeant le film lui-meme et passant par `ScanEquipmentSpawnEvents` ;
-#               `walkKeyframeBody` et `keyframeBodyVariants` (unexportes au lot 1.4, zero appelant
-#               de production, cinq instruments) passent dans un `_test.go` du paquet.
-#               `film_major_version.go` NOMME le second u32 (version de format) et renvoie a
-#               `film_format_version.go`, dont l imparfait fautif tombe.
-#               AUCUN BIT N EST LU AUTREMENT : `DetectI0LayoutOf`, `ScanEquipmentSpawnEvents` et
-#               `WalkKeyframeFullState` — les trois formes de production — sont inchangees a
-#               l octet. Faux positif d empreinte, meme nature que la ligne du lot 1.9.13.
-#               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` non plus.
-grammar-2026-09-15.14	a9623c7e4a05bb180c3f6ef3c33a6e4ea6932695a0826f8884d979394b3affee
+grammar-2026-09-15.15	65ceedfaa6f66a16836f5335cebea4867a9e256772aa55b74cbfc99eae2adcbc

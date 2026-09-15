@@ -141,4 +141,12 @@ package filmdec
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` non plus.
 // FUSION (2026-09-16) : l integration portait `.13` (corrections L4 + D13) et le lot de corrections L3
 // `.12` (code musee sorti en tests, faux positif d empreinte) ; reunis ici, au rang suivant.
-const GrammarRev = "grammar-2026-09-15.14"
+// LOT 1.9.10 (2026-09-16) : `.7` -> `.8`. Un lecteur NEUF entre dans le paquet — la MARCHE des
+// morts d'objet (`object_deaths*.go`) : elle deroule la boucle de records des paquets delta et
+// lit le composant `object-dead-state` la ou aucun balayage ancre ne l'atteint. Aucune grammaire
+// d'octets existante n'est reecrite ; ce qui change est CE QUE LE PAQUET SAIT LIRE, et la
+// revision doit le nommer. Le rang est celui de la base du lot ; le pilote renumerote a la
+// fusion de la vague.
+// FUSION (2026-09-16) : l integration portait `.14` (corrections de la revue M1) et le lot 1.9.10
+// `.8` (la marche des dead-states de vehicule en production) ; reunis ici, au rang suivant.
+const GrammarRev = "grammar-2026-09-15.15"

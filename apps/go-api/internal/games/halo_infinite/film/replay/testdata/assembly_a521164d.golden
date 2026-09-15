@@ -619,7 +619,6 @@ controle (lecture des chunks) : 23 accord · 0 contradiction · 1 silence — la
 voies des liens d index : PlayerIndexTable=4 · film_table=24
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
-repli_fin_de_vie_vehicule_par_recensement        38
 repli_piece_engendree_sans_evenement             2
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place

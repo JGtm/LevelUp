@@ -77,7 +77,9 @@ func isVehicleRelay(a, b VehicleTrack) bool {
 func mergeVehicleRelay(a, b VehicleTrack) VehicleTrack {
 	out := a
 	out.Samples = appendVehicleSamples(a.Samples, b.Samples)
-	out.T1, out.T1Max, out.End = b.T1, b.T1Max, b.End
+	// LA FIN EST CELLE DE `b`, CAUSE ET INSTANT ENSEMBLE : `End` sans `TEnd` publierait
+	// `destroyed` sans sa date, ou pire, garderait la date de `a` sous la cause de `b`.
+	out.T1, out.T1Max, out.End, out.TEnd = b.T1, b.T1Max, b.End, b.TEnd
 	if out.T1Max < out.T1 {
 		out.T1Max = out.T1
 	}
