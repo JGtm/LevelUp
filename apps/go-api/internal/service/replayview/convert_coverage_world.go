@@ -28,6 +28,9 @@ func toEquipmentPlacementCoverage(v replay.EquipmentPlacementCoverage) replaydoc
 		EndSeen:        v.EndSeen,
 		EndOpen:        v.EndOpen,
 		ByFamilyOrigin: v.ByFamilyOrigin,
+		SpawnEvents:    v.SpawnEvents,
+		SpawnLists:     v.SpawnLists,
+		ByCause:        v.ByCause,
 	}
 }
 

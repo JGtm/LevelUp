@@ -135,7 +135,7 @@ func f1Compare(id string, raw []filmdec.EquipmentPlacement, positions []filmdec.
 			slot, vies = s, lives[s]
 		}
 		a := f1OrigineAvant(vies, p)
-		b := equipmentOrigin(vies, p, nil)
+		b := f1OrigineParFenetre(vies, p)
 		avant[a]++
 		apres[b]++
 		if a == b {

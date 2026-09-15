@@ -2094,25 +2094,114 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       les 85 autres le seront par leur lot de conversion (`CibleComptage` le dit entrée par
       entrée) — D3 (1.9.0) en §4.
 
-- [ ] 1.9.1 **Origine d'une pose d'équipement.** Sur pièces : `replay/equipment_placements.go`
-      (`equipmentOrigin`, fenêtre de 200 ms depuis F.1 `c45c411eb`), `REFERENCE_CANAUX_EQUIPEMENT`
-      §1 (le type 103 `EquipmentSpawnedObject` désigne 216 panneaux de mur sur 216 et aucun
-      appareil porté). Mur : `deployed` = pose désignée par un 103 (panneaux), sinon `dropped` ;
-      **règle déjà en production depuis le lot H.2 des finitions (`267fa1c5a`,
-      `equipment_placements.go`, `equipmentIsSpawnedPiece`) : tout objet dont le manifeste
-      `replay_labels.toml` dit `kind = "deployed"` reçoit `origin = deployed` AVANT toute mesure
-      temporelle ; ce lot y ajoute le garde-rail Go qui apparie les identifiants au manifeste
-      (P2 D-H2 de la revue finitions G/H, seul le garde web rougit aujourd'hui) et la lecture du
-      103 comme contrôle (216/216 panneaux désignés)** ; la première référence du 103 (`ref0`,
-      entité ti=37 de longue durée vue aux images-clés 737/739, jamais créée en delta) est une
-      PISTE pour l'équipement SOURCE d'un déploiement, non instruite (table D du registre 0.E) ;
-      appareils portés (capteur, traqueur, écran, champ) : AUCUN signal écrit connu (la référence
-      de créateur et `ability-enabled-id` du record de création ti=37 ont leur porte FERMÉE sur
-      503 records sur 503, `filmdec/equipment_creation.go:29` ; corrigé par l'audit 0.E, B3) ; la
-      fenêtre temporelle reste, comme REPLI NOMMÉ et compté (D14), avec la question ouverte de la
-      table (D) du registre 0.E comme condition de retrait. Les 22 poses requalifiées par F.1 sont
-      rejugées une à une (instruments `f1_origine_*`). Corpus gate sur `0797ce72`, `4f77afc1` et
-      l'échantillon court.
+- [x] 1.9.1 **Origine d'une pose d'équipement.**
+      **FAIT le 2026-09-15.** L'origine d'une pose (`deployed` / `dropped` / `unknown`) se
+      décidait par deux règles de SECOURS — le manifeste (`kind = "deployed"` -> `deployed` sans
+      mesure, item H.2 des finitions) puis une FENÊTRE TEMPORELLE de 200 ms entre la création de
+      l'objet et la fin de la vie de son poseur (`equipmentOrigin`, depuis F.1 `c45c411eb`).
+      **Elle se LIT désormais** (`replay/equipment_origin.go`, `origineDeLaPose`), par trois
+      signaux que le film écrit :
+      (1) l'événement de liste type 103 `EquipmentSpawnedObject` — « une PIÈCE a été engendrée » —
+      dont la deuxième référence DÉSIGNE la vie de l'objet créé (lecteur de production NEUF,
+      `filmdec/equipment_spawn_events.go`, lecture de TÊTE de liste : 927 des 931 occurrences du
+      parc y sont, rapport F.0 §1.1) ;
+      (2) la MORT ÉCRITE du poseur — une vie du siège que le fil des morts ferme, le registre
+      d'identité des lots 1.6 / 1.8 étant le seul producteur du lien ;
+      (3) sa PRISE ÉCRITE (`equipmentChanges.taken`) — le porteur ramasse autre chose, donc il
+      lâche ce qu'il tenait (lâcher volontaire à mi-vie, rapport E0 question 5).
+
+      **DÉCISION UTILISATEUR DU 2026-09-15 — « LÂCHÉ », ET LE MOT DU JEU.** Question de
+      l'utilisateur : « comment c'est appelé dans le code du jeu ? ». Réponse sur pièces
+      (`filmdec/testdata/ecs_table.tsv`, archétype 37) : **le jeu n'écrit AUCUN événement
+      « equipment drop »** — il n'en existe pas (seul `weapon_drop`, type 46, existe, pour les
+      armes). Ce qu'il écrit sur un objet d'équipement, ce sont des **COMPOSANTS D'ÉTAT** :
+      `i20 equipment-deployed`, `i21 equipment-activated`, `i18 item-at-rest`,
+      `i10 object-parent-state` (le porteur), `i23 equipment-creator` ; plus UN événement
+      d'apparition, `EquipmentSpawnedObject` (103). Les ramassages sont `biped_pickup` (9) et
+      `biped_pickup_item_request` (57), les activations `biped_equipment_activation` (30) et
+      `activate_spartan_ability` (93).
+      **NOTRE VOCABULAIRE SE CALQUE SUR CELUI-LÀ** : « déployé » est le mot du jeu (`deployed`) ;
+      **« lâché » = l'objet quitte le porteur SANS être déployé** — à la mort ou à mi-vie par
+      échange, les deux sont « lâché », et la cause va dans `byCause`, jamais dans l'étiquette.
+      (L'utilisateur a retiré la notion de « volontaire » : un échange l'est aussi.)
+      Un appareil porté n'a aujourd'hui **aucun déploiement écrit** — le 103 en désigne 0 sur 91
+      et 0 sur 4 853 (rapport F.0) — il sort donc toujours `dropped`. Le vocabulaire est tranché :
+      `deployed` est **réservé à une pose DÉSIGNÉE par un record 103** (les panneaux de mur, et
+      eux seuls) ; un appareil PORTÉ qui tombe sort **`dropped`**, que la cause soit la mort
+      écrite de son porteur ou son `taken` écrit — l'étiquette ne distingue pas les deux lâchers,
+      **la CAUSE se publie dans `coverage.placements.byCause`** ; une pose dont le film ne dit
+      RIEN sort **`unknown`**. Conséquence directe : **la fenêtre de 200 ms n'a plus AUCUNE
+      décision à prendre et elle est RETIRÉE du décodeur** — elle ne survit que comme TÉMOIN de
+      mesure dans un fichier de recherche (`f1OrigineParFenetre`). Ses DEUX entrées sortent du
+      registre des replis le même jour (D14 d) : `repli_origine_pose_fenetre_temporelle` et
+      `repli_origine_pose_vie_la_plus_proche`. **Le ratchet des sept `devant_la_lecture` reste à
+      7, et ce n'est pas un oubli : vérifié sur pièces, aucune des deux n'était de cet ordre**
+      (`non_resolu / apres_lecture` et `film_muet / sans_lecture`). Registre : 95 -> 94 entrées,
+      10 compteurs câblés.
+
+      **LES TOLÉRANCES SONT MESURÉES, PAS CHOISIES** (13 films — 8 builds, échantillon court,
+      `0797ce72`, `4f77afc1` —, 4 583 poses ; instrument versionné
+      `e191_origine_{mesure,rapport}_research_test.go` ; tableaux collés en §5) : mort **200 ms**
+      (max 171,7 ms d'un côté, min 205,3 ms de l'autre — un intervalle VIDE de 33,6 ms) ; prise
+      **50 ms** (103 des 108 prises retenues sont à MOINS D'UNE ms, contre 1 pose `dropped`) ;
+      désignation 103 dans **[0, +200] ms** après la création (les 115 poses de panneau désignées
+      le sont entre +32,2 et +70,2 ms, toutes POSITIVES ; aucun autre objet désigné, 0 sur 4 459).
+      La clé (slot, génération) NE SUFFIT PAS — la génération fait 2 bits et reboucle : par clé
+      seule, 3 événements « désignaient » 83 poses de `d9781168`.
+
+      **CE QUE LE LOT CHANGE, MESURÉ POSE PAR POSE — 757 sur 4 583 (16,5 %)** :
+      `deployed -> dropped` par un `taken` écrit **108** (le lâcher à mi-vie cessait de dessiner
+      un geste qui n'a pas eu lieu) ; `deployed -> unknown` **188** et `dropped -> unknown` **461**
+      (les 649 poses que la fenêtre étiquetait par corrélation). **3 826 poses ne bougent pas** :
+      3 255 `death_written`, 115 `spawn_event`, 9 `manifest_piece`, 1 `both`, 446 `no_owner`.
+      Totaux publiés : `deployed` **420 -> 124**, `dropped` **3 717 -> 3 364**, `unknown`
+      **446 -> 1 095**. `byCause` somme exactement à 4 583.
+
+      **`unknown` NE SUBSISTE QUE SUR DEUX SILENCES, comptés et nommés** : `none` **649** (un
+      poseur EST mesuré, le film ne dit rien de cette pose) et `no_owner` **446** (aucun bipède
+      contemporain à moins de 3 m). Les confondre coûterait le diagnostic ; ils sont publiés
+      séparément.
+
+      **LE SEUL REPLI QUI RESTE** : `repli_piece_engendree_sans_evenement` (NEUF) — une pièce
+      engendrée au manifeste qu'aucun 103 ne désigne sort `deployed`, parce que le manifeste du
+      titre est une donnée ÉCRITE et qu'un panneau n'existe que déployé. **9 poses sur 124,
+      toutes sur les deux films de build les plus anciens** (`a521164d` HI_1_4_1 lit 0 événement
+      sur 4 956 listes, `50247b26` v31 en lit 2) : une limite de BUILD, pas une incertitude.
+      C'est le SEUL endroit où `deployed` se publie sans un 103 — dit ici pour qu'il puisse être
+      retiré en une ligne si l'utilisateur le veut.
+
+      **GARDE-RAIL P2 D-H2 POSÉ** : `TestPanneauxDuMurMatchManifest` recolle `usageWallPanelIDs`
+      aux identifiants `kind = "deployed"` du manifeste, dans les deux sens et sur la famille —
+      seul le garde WEB le faisait. Lecteur de manifeste écrit UNE fois
+      (`manifesteObjetsEquipement`), partagé avec le garde des familles.
+
+      **MUTATIONS JOUÉES** (`equipment_origin_lecture_test.go`, chaque lecture deux fois) :
+      103 retiré -> la pose passe au repli du manifeste, compté ; mort retirée -> `unknown` par
+      `none` ; prise retirée -> `unknown` par `none` ; fenêtre faussée (pose à mi-vie PUIS à la
+      fin) -> RIEN ne change pour un panneau désigné ; contradiction -> comptée sous `both` et
+      aucun repli déclenché ; la clé seule ne désigne pas (±1 image, ±10 s, génération voisine).
+
+      **TESTS RETIRÉS AVEC LA RÈGLE QU'ILS VERROUILLAIENT** :
+      `TestEquipmentOriginSepareLacherDuDeploiement`, `TestEquipmentOriginSansVieEstInconnue`,
+      `TestEquipmentOriginChoisitLaVieQuiContientLInstant` —
+      `.ai/baselines/tests_pre_migration.jsonl` mis à jour dans le MÊME commit (3 lignes).
+
+      **SCHÉMA 58 -> 59** (chaîne complète, §5) : `coverage.placements.byCause` et
+      `coverage.placements.{spawnEvents, spawnLists}`. **`GrammarRev` grammar-2026-09-14.6 ->
+      grammar-2026-09-15.1** (un lecteur d'octets neuf). `equipment_placements.go` (652 L) SCINDÉ
+      en trois. `4f77afc1` ajouté au manifeste du corpus gate, famille
+      `equipement_origine_utilisateur`. `REFERENCE_CANAUX_EQUIPEMENT` corrigée dans le même
+      commit (§1 deux lignes, canal des événements, §6 deux entrées).
+
+      **LES POSES REQUALIFIÉES PAR F.1, REJUGÉES UNE À UNE** : sur les 13 films de ce corpus,
+      **18** poses portent un verdict différent entre la règle d'AVANT F.1 (fenêtre + distance)
+      et ce qui était publié — **18 accords, 0 désaccord** avec la grammaire. 17 sont tranchées
+      par une MORT ÉCRITE (F.1 confirmée pose par pose), 1 par un ÉVÉNEMENT 103 (`111fa685`,
+      panneau `0x686b40c9` : H.2 confirmée par le film). Le brief en annonçait 22 : c'est le
+      compte de F.1 sur SON corpus (21 films, 5 363 poses), pas sur celui-ci — tableau collé en §5.
+
+      **CE QUI N'EST PAS FAIT, ET POURQUOI** : la piste `ref0` (table D du registre 0.E) reste
+      NON INSTRUITE — hors lot ; le lecteur la publie brute sans l'interpréter.
 - [ ] 1.9.2 **Le découpage d'i0 vient du catalogue de carte, plus de l'auto-détection.**
       `internal/sync/killcollector/positions.go:253` (et `hits.go:157`) construisent
       `DefaultScanFilmOptions()` avec `Layout` nil alors que `entry` est le paramètre de la fonction
@@ -2634,6 +2723,14 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-14 | 1.9.0 | **D6 (1.9.0) — TROIS garde-rails existants ont mordu sur le REGISTRE, parce qu'un registre documentaire est du code comme un autre.** (1) `no_french_label_literal_test.go` compte les littéraux ACCENTUÉS de `internal/games/` : les 339 phrases du registre en portaient. Résolution : les CHAÎNES du paquet s'écrivent sans accent (les commentaires les gardent), convention déjà appliquée par `killsource/` — l'allowlist, dont l'objectif est de se vider, n'a pas grandi d'un fichier. (2) `no_identity_bridge_outside_registry_test.go` interdit `.SlotXUID` hors du registre d'identité, commentaires exclus mais CHAÎNES comprises : une ancre qui citait la ligne de code l'a fait rougir, l'ancre cite désormais la garde voisine. (3) `filmdec/world_object_precision_guard_test.go` exige que tout fichier mentionnant le global de précision dise d'où il tient ses largeurs : un commentaire du registre le nommait. Leçon générale : **une ancre doit être choisie contre les garde-rails du dépôt autant que contre la dérive du code.** | sans objet (traité) |
 | 2026-09-14 | 1.9.0 | **D7 (1.9.0) — le chemin du FIXTURE ne déclenche que 2 des 10 compteurs câblés, et cela confirme D7 (0.D) plutôt que de l'infirmer.** Les huit goldens d'assemblage portent `repli_origine_pose_vie_la_plus_proche` (92 à 506 par film) et `repli_fin_de_vie_vehicule_par_recensement` (0 à 38) ; les huit autres restent à zéro parce que leurs canaux ne sont pas au fixture (inventaire, largeurs d'axe : étage de BALAYAGE) ou parce que leur mode n'est pas au banc (drapeau, colline, bombe). Le régime court d'équivalence, lui, cuit la production entière : c'est là que leur compte se lit. | sans objet — écrit pour qu'un zéro de golden ne se lise pas comme un repli mort |
 
+| 2026-09-15 | 1.9.1 | **D1 (1.9.1) — LE VOCABULAIRE A ETE TRANCHE PAR L'UTILISATEUR LE 2026-09-15, ET LE LOT L'APPLIQUE.** **LA DEFINITION, ET LE MOT DU JEU** : le jeu n'ecrit AUCUN evenement « equipment drop » (seul `weapon_drop`, type 46, existe, pour les armes) ; il ecrit des COMPOSANTS D'ETAT sur l'objet — `i20 equipment-deployed`, `i21 equipment-activated`, `i18 item-at-rest`, `i10 object-parent-state`, `i23 equipment-creator` — plus l'evenement `EquipmentSpawnedObject` (103). Notre vocabulaire s'y calque : « deploye » est le mot du jeu ; « lache » = l'objet quitte le porteur SANS etre deploye, mort ou echange confondus, la cause allant dans `byCause`. Un appareil porte n'a AUCUN deploiement ecrit (0/91, 0/4 853, F.0), donc toujours `dropped`. La question etait : une pose d'appareil PORTE que le film explique par un `taken` du poseur a moins d'une milliseconde n'est pas un deploiement, c'est un lacher VOLONTAIRE a mi-vie (rapport E0, question 5) — fallait-il une quatrieme origine ? **REPONSE : non — « lache ».** `deployed` est reserve a une pose DESIGNEE par un record 103 ; un appareil porte qui tombe est `dropped`, mort ou echange ; la CAUSE va dans `coverage.placements.byCause`, pas dans l'etiquette. **Ce que cela a change, mesure : 108 poses `deployed -> dropped`** (le lacher a mi-vie), **plus 649 poses `-> unknown`** (la fenetre de 200 ms ne les etiquette plus). **CE QUI RESTE OUVERT, ET C'EST LE SEUL POINT** : `repli_piece_engendree_sans_evenement` publie `deployed` sur **9 poses de panneau sur 124** SANS qu'un 103 les designe, au nom du manifeste du titre (`kind = "deployed"`, donnee ECRITE, decision H.2 du 2026-09-13). C'est la seule entorse a la regle « `deployed` = designe par un 103 », elle est nommee, comptee et datee, et elle se retire en une ligne. | a signaler a l'utilisateur : garder le repli du manifeste (9 poses, les 2 builds les plus anciens) ou faire sortir ces poses en `unknown` ? |
+| 2026-09-15 | 1.9.1 | **D1 bis (1.9.1) — LE VOCABULAIRE DU JEU EST UN ETAT ECRIT SUR L'OBJET, ET AUCUN DE SES COMPOSANTS N'EST AU RECORD DE CREATION : 0 SUR 4 583.** Question de l'utilisateur (« comment c'est appele dans le code du jeu ? ») : le jeu n'ecrit AUCUN evenement « equipment drop » — il n'en existe pas, seul `weapon_drop` (type 46) existe et il est pour les armes. Ce qu'il ecrit sur un objet d'equipement, ce sont des COMPOSANTS D'ETAT de l'archetype 37 (`filmdec/testdata/ecs_table.tsv`) : `i10 object-parent-state` (le porteur), `i11 object-dead-state`, `i18 item-at-rest`, `i20 equipment-deployed`, `i21 equipment-activated`, `i23 equipment-creator`. **MESURE DU 2026-09-15** (`e191_composants_research_test.go`, 13 films, 334,5 s, PRESENCE AU MASQUE seulement — aucune grammaire de composant portee) : les poses publiees s'apparient a leur record de creation **4 583 sur 4 583, 0 orpheline**, et **AUCUN des six composants n'y figure — zero, sur toutes les familles et toutes les origines**. `i20` n'est donc PAS discriminant a l'instant de la pose : il est ABSENT partout. **CONSEQUENCE, CONFORME AU CADRAGE DU PILOTE** : la regle du lot reste 103 / mort ecrite / `taken` du porteur, et la grammaire complete de `ti=37` (31 composants, dont 7 seulement sont lus par nom aujourd'hui : i18, i19, i22, i25, i28, i29, i30) est le lot 1.9.1 bis. **CE QUE LA MESURE NE DIT PAS, ET IL FAUT L'ENTENDRE** : elle porte sur le record de CREATION. Un composant ECRIT PLUS TARD dans la vie de l'objet — un capteur qu'on deploie une seconde apres l'avoir lache — n'y figure pas par construction. Les records DELTA de la meme vie n'ont PAS ete mesures ici (hors perimetre). | lot 1.9.1 bis : relire les 31 composants chez l'ecrivain, fermer l'image-cle a 100 %, mesurer i20/i21/i18/i10 sur les records DELTA de la vie de l'objet — c'est la qu'ils se trouvent, s'ils s'y trouvent |
+| 2026-09-15 | 1.9.1 | **D1 ter (1.9.1) — LE CALQUE DES RAMASSAGES BOUGE AVEC LES POSES, ET CE N'ETAIT PAS PREVU AU BRIEF.** `pickup_origin.go` classe un ramassage `ground` quand il tombe a moins d'un metre d'une pose dont l'origine MESUREE est `dropped` — il REUTILISE la mesure des poses, il ne la refait pas (c'est ecrit dans son en-tete). En changeant l'ensemble des poses `dropped` (3 717 -> 3 364 : +108 lachers a mi-vie, -461 poses muettes), le lot change donc la classification des ramassages. Le corpus gate le montre sur 9 temoins : `coverage.pickups.originUnknown` **BAISSE** partout ou il bouge (236->222, 150->138, 69->59, 57->41, 55->49, 49->45, 43->40, 39->38, 32->28) — c'est-a-dire que MOINS de ramassages restent non classes —, et `originGround` baisse sur un seul temoin (21->18, `pickups.origin/presents` 75->72). **CE N'EST PAS UNE REGRESSION, ET LA DIRECTION EST FAVORABLE** : les 108 poses qui entrent dans `dropped` sont des lachers A MI-VIE, donc des objets reellement au sol pendant qu'un joueur vit et peut les ramasser ; celles qui en sortent sont les poses dont le film ne dit rien. `originSpawner` ne peut pas avoir bouge : il ne depend que du catalogue de points de la carte et des positions, que ce lot ne touche pas. | sans objet — ecrit pour qu'un futur lot ne cherche pas une cause dans le calque des ramassages |
+| 2026-09-15 | 1.9.1 | **D2 (1.9.1) — LE TYPE 103 NE SE LIT PAS SUR LES BUILDS LES PLUS ANCIENS, ET LE COMPTE LE DIT.** Événements 103 lus par film (lecture de tête, mesure du 2026-09-15) : `a521164d` HI_1_4_1 **0 sur 4 956 listes non vides**, `50247b26` v31 sans section **2 sur 7 779**, `60ae07c4` HI_1_8_0 **0 sur 6 056**, `51101d1d` HI_1_13_0 **0 sur 1 599**, `fb1a1a72` HI_1_13_0 **0 sur 7 850**, `d9781168` **3**, `bcb6d393` HI_1_12_0 **1** — contre 30 à 86 sur `000d5950`, `11de8353`, `111fa685`, `e5adf7b2`, `0797ce72`, `4f77afc1`. **DEUX CAUSES NE SONT PAS DÉPARTAGÉES** et il faut les distinguer avant de conclure : (a) le film ne porte pas l'événement parce qu'aucune pièce n'a été engendrée — c'est le cas de `51101d1d` et `fb1a1a72`, qui ne publient AUCUN panneau ; (b) la grammaire de la liste ou les largeurs de référence diffèrent par build — seul candidat restant : `a521164d` (2 panneaux publiés, 0 événement) et `50247b26` (7 panneaux, 2 événements dont aucun ne les désigne). Ces 9 poses sont exactement le compte de `repli_piece_engendree_sans_evenement`. **NON TRAITÉ** : instruire (b) demande le profil par build (M3, lot 3.x) ; le repli les couvre, nommé, compté et daté. | lot 3.x (profil par build) ; critère de retrait du repli : 0 déclenchement sur les 8 builds |
+| 2026-09-15 | 1.9.1 | **D3 (1.9.1) — 649 POSES A POSEUR MESURE SORTENT `unknown` PARCE QUE LE FILM NE DIT RIEN D'ELLES, ET 461 D'ENTRE ELLES ONT UN SIEGE SANS AUCUNE MORT ECRITE DU MATCH.** Mesure [3] du 2026-09-15 : sur les 3 717 poses qu'on publiait `dropped`, 3 256 ont une mort ecrite (toutes a 171,7 ms au plus) et **461 n'ont aucune mort ecrite sur ce siege, a aucun instant du film** — ce n'est donc pas une question de fenetre, c'est le PONT siege -> mort qui ne couvre pas ces sieges (bots, sieges non nommes, vies fermees autrement). Avec la decision du 2026-09-15 elles ne recoivent plus d'etiquette : `byCause.none` en compte **649** au total (461 ex-`dropped` + 188 ex-`deployed`). **NON TRAITE** : c'est la matiere du lot 1.9.13 (« une vie finit a une mort ECRITE »), qui borne les vies sur les morts du film ; `byCause.none` est exactement le compteur qui doit tomber. | lot 1.9.13 ; critere mesurable deja publie dans l'artefact |
+| 2026-09-15 | 1.9.1 | **D4 (1.9.1) — `ref0` du type 103 est LUE ET PUBLIÉE BRUTE, jamais interprétée.** Le lecteur neuf rend `EquipmentSpawnEvent.Source` (index + base 512, génération) parce que la jeter aurait obligé un futur lot à rouvrir la porte aux octets. Ce que le rapport F.0 en dit tient : elle désigne un `ti=37` que les images-clés voient (737 sur 739) et qu'AUCUNE création delta ne porte (2,8 %) — une entité de longue durée, PISTE pour l'équipement SOURCE d'un déploiement. **NON INSTRUITE** (hors lot, table D du registre 0.E) : aucune décision ne repose dessus, et `Ref2Present` est compté sans être lu pour la même raison. | table (D) du registre 0.E ; condition de reprise du repli `repli_origine_pose_fenetre_temporelle` |
+| 2026-09-15 | 1.9.1 | **D5 (1.9.1) — LE 103 DÉSIGNE MAJORITAIREMENT DES PROJECTILES, ET C'EST POURQUOI SON COMPTE NE SE LIT PAS COMME UN COMPTE DE MURS.** Sur les 13 films mesurés, 341 événements 103 sont lus et 115 seulement désignent une pose publiée (toutes des panneaux de mur). Les autres désignent des vies `ti=41` — le rapport F.0 §1.2 le mesurait déjà (68,6 % de projectiles) et la mesure de ce lot le confirme sans l'instrumenter : `d9781168` lit 3 événements et ne publie AUCUN panneau, `bcb6d393` en lit 1 pour 0 panneau. Le type dit « un OBJET a été engendré », pas « un équipement a été déployé » — `coverage.placements.spawnEvents` est donc un dénominateur de LECTURE, jamais un compte de murs. | sans objet — écrit pour qu'un futur lot ne lise pas `spawnEvents` comme un compte de déploiements |
+
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -3046,6 +3143,27 @@ cable) » dit que le compteur n'existe pas encore, ce qui n'est PAS un zero (cf.
 
 | repli | site(s) | condition / ordre | compteur | déclenchements (régime court, 10 films) | cible de retrait |
 |---|---|---|---|---|---|
+| 2026-09-15 | 1.9.1 (mesure AVANT de coder) | `3718228c9` + le lecteur 103 seul (aucune décision changée) | `CGO_ENABLED=0 E191_ROOT=<parc>/data/cache/film_chunks go test …/replay/ -run '^TestE191OrigineMesure$' -v` — instrument VERSIONNÉ `e191_origine_{mesure,rapport}_research_test.go`, 13 films (8 builds + échantillon court + `0797ce72` + `4f77afc1`), lecture seule | **345,9 s. 4 583 poses.** Balayage 103 par film, COLLÉ : `000d5950` 46 év. / 3 508 listes · `a521164d` **0 / 4 956** · `60ae07c4` **0 / 6 056** · `11de8353` 62 / 7 325 · `111fa685` 86 / 7 951 · `e5adf7b2` 60 / 7 751 · `bcb6d393` 1 / 2 730 · `fb1a1a72` **0 / 7 850** · `50247b26` **2 / 7 779** · `51101d1d` **0 / 1 599** · `d9781168` 3 / 8 737 · `0797ce72` 51 / 3 949 · `4f77afc1` 30 / 17 441. **`ref2` posée 0 fois sur 341 événements.** DÉSIGNATION par objet : `wall/0x528fce46` **47 poses, 47 désignées**, écart +32,2 à +70,2 ms, **TOUS POSITIFS** ; `wall/0x686b40c9` **77 poses, 68 désignées** (+32,6 à +69,6 ms), **9 sans aucun événement** ; **tous les autres objets : 0 désigné sur 4 459** (grappin 242, grenades 3 290, répulseur 253, capteur 128, écran 110, propulseur 183, champ 78, balise 3, bonus 8, appareils de mur 164) |
+| 2026-09-15 | 1.9.1 (mesure, distribution des écarts — c'est elle qui FIXE les tolérances) | idem | table [3] de l'instrument, collée depuis la sortie brute | `origine deployed : 296 poses` — `mort ECRITE du poseur n=296 sans signal=63 min=205.3 p50=19084.7 p90=85392.2 max=249834.3 \| cumul : <=1ms:0 <=10ms:0 <=50ms:0 <=100ms:0 <=200ms:0 <=500ms:9 …` · `prise ECRITE du poseur n=296 sans signal=141 min=0.0 p50=0.0 … \| cumul : <=1ms:103 <=10ms:103 <=50ms:108 <=100ms:111 …`. `origine dropped : 3717 poses` — `mort ECRITE du poseur n=3717 sans signal=461 min=5.6 p50=37.1 p90=40.1 max=171.7 \| cumul : <=1ms:0 <=10ms:7 <=50ms:3161 <=100ms:3238 <=200ms:3256 <=500ms:3256 … <=60000ms:3256` · `prise ECRITE du poseur n=3717 sans signal=2775 min=0.0 … \| cumul : <=1ms:1 <=10ms:1 <=50ms:1 <=100ms:8 …`. **LECTURE** : la mort SÉPARE sans recouvrement (max 171,7 d'un côté, min 205,3 de l'autre — 33,6 ms de vide) ; la prise sépare à 50 ms (108 contre 1), au-delà de 100 ms elle mord les lâchers (8). D'où **mort 200 ms, prise 50 ms, désignation [0, +200] ms** |
+| 2026-09-15 | 1.9.1 (verdict, APRÈS la décision utilisateur « lâché » du 2026-09-15) | ce commit | table [5] de l'instrument, 320,5 s, 13 films | **757 poses sur 4 583 BASCULENT (16,5 %)**, et c'est le but : `deployed -> dropped` par un `taken` écrit **108** ; `deployed -> unknown` **188** ; `dropped -> unknown` **461**. **3 826 ne bougent pas** : `death_written` 3 255, `spawn_event` 115, `manifest_piece` 9, `both` 1, `no_owner` 446. Totaux publiés : `deployed` **420 -> 124**, `dropped` **3 717 -> 3 364**, `unknown` **446 -> 1 095**. `byCause` somme à 4 583 exactement — invariant testé (`TestByCauseSommeAuxPlacements`) |
+| 2026-09-15 | 1.9.1 (les poses requalifiées par F.1, rejugées une à une) | ce commit | table [6] de l'instrument : les poses dont la règle d'AVANT F.1 (fenêtre + distance) diffère de ce qui était publié | **18 poses, 18 ACCORDS, 0 désaccord.** 17 tranchées par une MORT ÉCRITE (F.1 confirmée pose par pose : `a521164d` ×2 à 98,4 ms / 1,76-1,77 m, `d9781168` ×2 à 62,7 ms, `0797ce72` ×1 à 20,8 ms / 2,69 m, `4f77afc1` ×12 de 44,0 à 171,7 ms / 1,51-2,65 m) ; **1 tranchée par un ÉVÉNEMENT 103** — `111fa685`, panneau `0x686b40c9`, écart 164,3 ms, F.1-avant `dropped` -> publié `deployed` -> **grammaire `deployed` par `spawn_event`** : H.2 confirmée par le film. Le brief en annonçait 22 : c'est le compte de F.1 sur SON corpus (21 films, 5 363 poses), pas sur celui-ci |
+| 2026-09-15 | 1.9.1 (communs §2.3) | ce commit | `gofmt -l ./internal ./cmd` | sortie vide |
+| 2026-09-15 | 1.9.1 (communs §2.3) | ce commit | `go vet` sur `film/... archlint/ replaybuild/ analysis/objectiveevents/ domain/replaydoc/ service/replayview/` | 0 diagnostic |
+| 2026-09-15 | 1.9.1 (communs §2.3) | ce commit | `go test` sur les mêmes paquets | **ok** — filmdec 18,5 s · replay 17,3 s · fallback 0,21 s · archlint 13,7 s · replaybuild 1,10 s · objectiveevents 0,55 s · replayview 0,34 s |
+| 2026-09-15 | 1.9.1 (communs §2.3) | ce commit | `CGO_ENABLED=1` + msys64/ucrt64 en tête du PATH : `go vet` puis `go test ./internal/sync/killcollector/` | **ok** 0,11 s |
+| 2026-09-15 | 1.9.1 (communs §2.3) | ce commit | `make -C ../.. go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **0 issue**, baseline non accrue |
+| 2026-09-15 | 1.9.1 (web, le schéma monte) | ce commit | `make generate-types` puis `make check-types` | `openapi.yaml -> generated.ts` (3 champs neufs) ; `tsc -b` **0 erreur** |
+| 2026-09-15 | 1.9.1 (web) | ce commit | `make test-web` | **711 fichiers passés + 1 sauté ; 7 629 tests + 17 sautés ; 103,0 s** — aucune retouche de rendu (D11) : le web lit déjà `deployed` / `dropped` / `unknown` |
+| 2026-09-15 | 1.9.1 (mutations) | ce commit | `go test …/replay/ -run 'TestOriginePose\|TestFenetreFaussee\|TestByCause\|TestDesignationExige\|TestPieceEngendree'` — `equipment_origin_lecture_test.go`, chaque lecture jouée DEUX FOIS | **VERT.** (a) 103 retiré -> la pose passe de `byCause.spawn_event` à `manifest_piece`, repli compté 1 ; (b) mort retirée -> `death_written` -> **`unknown` par `none`** ; (c) prise retirée -> `taken_written` -> **`unknown` par `none`** ; (d) **fenêtre faussée (pose à mi-vie PUIS à la fin de vie) : RIEN ne change pour un panneau désigné** ; (e) contradiction -> comptée sous `both`, AUCUN repli déclenché (D14 b) ; (f) la clé (slot, gen) seule ne désigne pas : +200 ms passe, +300 ms non, l'événement qui PRÉCÈDE non, une génération voisine non |
+| 2026-09-15 | 1.9.1 (registre des replis) | ce commit | recensement du paquet `fallback` après retrait | **95 -> 94 entrées** (deux sorties, une neuve), **10 compteurs câblés**, ordres `apres_lecture` 77 / `sans_lecture` 10 / **`devant_la_lecture` 7 — INCHANGÉ**. Vérifié sur pièces : ni `repli_origine_pose_fenetre_temporelle` (`film_muet / sans_lecture`) ni `repli_origine_pose_vie_la_plus_proche` (`non_resolu / apres_lecture`) n'était de cet ordre, donc le ratchet des sept ne pouvait pas baisser ici |
+| 2026-09-15 | 1.9.1 (tests retirés) | ce commit | `TestEquipmentOriginSepareLacherDuDeploiement`, `TestEquipmentOriginSansVieEstInconnue`, `TestEquipmentOriginChoisitLaVieQuiContientLInstant` supprimés avec la règle qu'ils verrouillaient | `.ai/baselines/tests_pre_migration.jsonl` : **3 lignes retirées dans le MÊME commit** (leçon du lot 1.0 : un test de baseline absent du run = CI rouge) |
+| 2026-09-15 | 1.9.1 (équivalence, régime court — CLASSIFICATION AVANT tout `-update`) | ce commit | les 10 enfants produits à part (`replay-equiv -child -out <scratch>`), puis comparaison ÉTAPE PAR ÉTAPE **contre les références de la base `3718228c9`** (le comparateur du parent est POSITIONNEL : une étape neuve décale tout, il ne sait pas classer) | **1 étape NEUVE (`spawnEvents`), 0 étape PERDUE, et seul `artifact` change — sur 10 films sur 10.** Les 52 autres étapes sont IDENTIQUES partout : aucun balayage n'a changé. Delta d'octets d'`artifact` : 50247b26 5 601 211 -> 5 600 811 · a521164d 3 406 793 -> 3 406 910 · 60ae07c4 3 068 240 -> 3 068 264 · 11de8353 5 347 717 -> 5 347 685 · 111fa685 5 935 635 -> 5 935 757 · e5adf7b2 5 836 274 -> 5 836 251 · bcb6d393 1 904 308 -> 1 904 306 · 51101d1d 628 801 -> 628 798 · d9781168 2 641 716 -> 2 641 712 · fb1a1a72 3 016 287 -> 3 016 354. **DIVERGENCE VOULUE, pas régression** : deux champs de couverture apparaissent et les origines changent comme la décision du 2026-09-15 l'exige |
+| 2026-09-15 | 1.9.1 (équivalence, re-figeage puis passe de comparaison) | ce commit | références re-figées depuis les 10 sorties classées, puis `go run ./cmd/replay-equiv -repo-root <worktree> -films <échantillon court>` en DEUX sous-ensembles | **BILAN : 5 identique(s), 0 différent(s) … puis 5 identique(s), 0 différent(s)** — 10/10 |
+| 2026-09-15 | 1.9.1 (mesure des COMPOSANTS ECS, demandée par l'utilisateur) | ce commit | `CGO_ENABLED=0 E191_ROOT=… go test …/replay/ -run '^TestE191Composants$' -v` — `e191_composants_research_test.go`, PRÉSENCE AU MASQUE du record de création seulement, aucune grammaire de composant portée | **334,5 s, 13 films, 4 583 poses appariées à leur record de création, 0 orpheline.** Table [7] collée : sur **toutes** les familles et **toutes** les origines, la signature est `i10- i11- i18- i20- i21- i23-`. **AUCUN des six composants d'état n'est présent au record de création — 0 sur 4 583.** `i20 equipment-deployed` n'est donc PAS discriminant à l'instant de la pose : il est ABSENT partout. La règle du lot (103 / mort écrite / `taken`) tient ; D1 bis (1.9.1) en §4 |
+| 2026-09-15 | 1.9.1 (corpus gate, régime complet) | ce commit | `go run ./cmd/replay-corpus-gate --base=3718228c9 --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-191` — 14 témoins (dont `4f77afc1`, ajouté par ce lot), 28 cuissons | **Sortie 1, et c'est ATTENDU : les 14 témoins sont en « PERTE », et toutes les pertes sont le DÉPLACEMENT VOULU par la décision utilisateur du 2026-09-15.** `bcb6d393` 15 gains / 8 pertes · `fb1a1a72` 16/8 · `d9781168` 12/13 · `c75f33b8` 12/9 · `bf15f7ab` 7/4 · `51ebbc0f` 14/5 · `084a804d` 26/18 · `0797ce72` 18/7 · `111fa685` 29/13 · `e5adf7b2` 28/20 · `60ae07c4` 8/6 · `a349fea8` 21/20 · `bfecd02b` 11/5 · `4f77afc1` 21/13. Schéma 58 -> 59 partout |
+| 2026-09-15 | 1.9.1 (corpus gate — CLASSIFICATION DES PERTES, clé par clé) | ce commit | dépouillement exhaustif des lignes `perte` / `disparu` des 14 témoins | **TROIS familles de clés, et rien d'autre.** (1) `coverage.placements.deployed` / `.dropped` / `.byFamilyOrigin.<famille>/<origine>` — **le déplacement lui-même** : `deployed` s'effondre partout (81->…, 78->…, 70->…, 52->…, 33->…, 31->13 sur `4f77afc1`…) parce que le mot est désormais réservé aux pièces engendrées, et `dropped` baisse (504->…, 483->…, 458->…, 437->427…) parce que les poses muettes sortent en `unknown`. Les `byFamilyOrigin.<famille>/deployed` de toutes les familles PORTÉES DISPARAISSENT — c'est l'énoncé même de la décision. (2) `coverage.fallbacks/n` **3 -> 2** : le registre perd deux entrées (`repli_origine_pose_fenetre_temporelle`, `repli_origine_pose_vie_la_plus_proche`) et en gagne une. (3) `coverage.pickups.originUnknown` / `.originGround` / `pickups.origin/presents` — **effet DOWNSTREAM, nommé en D1 ter (1.9.1)** : `pickup_origin.go` réutilise `Origin == dropped` pour classer un ramassage `ground`. `originUnknown` **BAISSE** sur les 9 témoins où il bouge (moins de ramassages non classés) ; `originGround` ne baisse que sur un témoin (21->18). **ZÉRO perte hors ces trois familles** : identité, calques, faits, score, véhicules, drapeau — rien ne bouge |
+| 2026-09-15 | 1.9.1 (gate rejoué après interruption) | ce commit | le corpus gate lancé avant l'interruption de session avait été TUÉ au démarrage (exit 4, `verification des modifications locales` interrompue) — un gate non consigné n'a pas eu lieu | **rejoué en entier**, résultat ci-dessus. Une première passe informative (code antérieur à `spawnLists`) avait rendu 0 perte / 3 à 9 gains sur 14 témoins : elle ne vaut PAS pour le code livré et n'est citée que pour mémoire |
+
 | `repli_ancre_sans_vie_delta_ecartee` | `games/halo_infinite/film/filmdec/equipment_creation_width.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 3.x (largeurs de creation par build, la calibration disparait) |
 | `repli_armement_bombe_debut_a_zero` | `games/halo_infinite/film/replay/bomb_armings.go` | non_resolu / apres_lecture | **câblé** | **0 sur 10** | lot de conversion de l'origine du rejeu (coverage.originResolved) |
 | `repli_assistant_non_resolu_abandonne` | `replaybuild/kills.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 1.8 porte (la table du film nomme les indices) |
@@ -3114,8 +3232,9 @@ cable) » dit que le compteur n'existe pas encore, ce qui n'est PAS un zero (cf.
 | `repli_mort_non_revendiquee_la_plus_proche` | `games/halo_infinite/film/killsource/hybrid.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 1.9.7 (dead-state et kill-feed apparies par l'identite de paquet) |
 | `repli_mort_sans_xuid_ignoree` | `analysis/objectiveevents/slotidentity_deaths.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 1.8 porte jusqu'a ce calque |
 | `repli_nom_piste_par_le_pont` | `games/halo_infinite/film/replay/published_tracks.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 1.6 (le registre d'identite prend la table du film comme lien direct) : le compte doit tomber avec la couverture du lien direct |
-| `repli_origine_pose_fenetre_temporelle` | `games/halo_infinite/film/replay/equipment_placements.go` | film_muet / sans_lecture | n/i | — (non câblé) | lot 1.9.1, puis la piste ref0 de la table (D) du registre 0.E |
-| `repli_origine_pose_vie_la_plus_proche` | `games/halo_infinite/film/replay/equipment_placements.go` | non_resolu / apres_lecture | **câblé** | 111fa685 493, 11de8353 379, 50247b26 307, 51101d1d 41, 60ae07c4 184, a521164d 212, bcb6d393 92, d9781168 275, e5adf7b2 506, fb1a1a72 319 | lot 1.9.1 (origine d'une pose d'equipement) |
+| ~~`repli_origine_pose_fenetre_temporelle`~~ | **SORTIE DU REGISTRE le 2026-09-15 (lot 1.9.1)** : la fenetre de 200 ms ne decide plus aucune origine de pose (decision utilisateur « lache »). Son code a disparu, son entree avec lui (D14 d). Elle survit comme TEMOIN de mesure (`f1OrigineParFenetre`, fichier de recherche). | — | — | — | sans objet |
+| ~~`repli_origine_pose_vie_la_plus_proche`~~ | **SORTIE DU REGISTRE le 2026-09-15 (lot 1.9.1)** : elle n'existait que pour choisir la vie que la fenetre confrontait. Avant le lot : 111fa685 493, 11de8353 379, 50247b26 307, 51101d1d 41, 60ae07c4 184, a521164d 212, bcb6d393 92, d9781168 275, e5adf7b2 506, fb1a1a72 319. | — | — | — | sans objet |
+| `repli_piece_engendree_sans_evenement` | `games/halo_infinite/film/replay/equipment_origin.go` | film_muet / apres_lecture | **cable** | **a521164d 2, 50247b26 7** — et ZERO partout ailleurs sur les 13 films mesures (pose au lot 1.9.1, 2026-09-15) | lot 3.x (profil par build) : la liste d'evenements des builds anciens ; critere : 0 declenchement sur les 8 builds |
 | `repli_participant_sans_xuid_retire` | `replaybuild/matchfacts.go` | section_absente / apres_lecture | n/i | — (non câblé) | lot 1.6.3 (la cuisson HORS LIGNE publie un roster complet, sans base) porte au tableau |
 | `repli_piste_drapeau_sans_pont_ecartee` | `games/halo_infinite/film/replay/flag_carrier_tracks.go` | non_resolu / apres_lecture | **câblé** | bcb6d393 4 | lot 1.6 (lien direct par la table du film) |
 | `repli_plafond_grenade_par_defaut` | `games/halo_infinite/film/replay/inventory_decode.go` | inconditionnel / sans_lecture | **câblé** | 111fa685 1, 11de8353 1, 50247b26 1, 51101d1d 1, 60ae07c4 1, a521164d 1, bcb6d393 1, d9781168 1, e5adf7b2 1, fb1a1a72 1 | lot 3.x (profil par build et par carte) : un plafond est une donnee de mode, pas une constante |

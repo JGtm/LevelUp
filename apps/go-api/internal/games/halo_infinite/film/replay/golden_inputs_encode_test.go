@@ -267,8 +267,41 @@ func encodeGoldenMonde(w *gwriter, g *goldenInputs) {
 	w.u(uint64(g.PlacementStats.Accepted))
 	w.u(uint64(g.PlacementStats.Confirmed))
 
+	encodeGoldenSpawnEvents(w, g)
+
 	encodeWorldObjectScan(w, g.Pads.Weapons)
 	encodeWorldObjectScan(w, g.Pads.Powerups)
+}
+
+// encodeGoldenSpawnEvents ecrit les evenements 103 « une PIECE a ete engendree » et les
+// denominateurs de leur balayage (lot 1.9.1, magie REPLAYINPUTS22).
+//
+// LES DENOMINATEURS SONT ECRITS AUTANT QUE LES EVENEMENTS, et ce n est pas du remplissage : un
+// fixture a ZERO evenement doit pouvoir dire s il vient d un film muet ou d un film que le
+// lecteur ne sait pas lire — c est exactement l ecart entre `a521164d` (0 sur 4 956 listes) et
+// un film sans mur.
+func encodeGoldenSpawnEvents(w *gwriter, g *goldenInputs) {
+	w.u(uint64(len(g.SpawnEvents)))
+	var lastTS uint64
+	for _, e := range g.SpawnEvents {
+		w.u(e.TimestampUS - lastTS) // le balayage rend les evenements tries par instant
+		lastTS = e.TimestampUS
+		w.i(int64(e.Chunk))
+		w.i(int64(e.PacketIndex))
+		w.u(uint64(e.Spawned.Slot))
+		w.u(uint64(e.Spawned.Gen))
+		w.bool8(e.SpawnedValid)
+		w.u(uint64(e.Source.Slot))
+		w.u(uint64(e.Source.Gen))
+		w.bool8(e.SourceValid)
+		w.bool8(e.Ref2Present)
+	}
+	for _, v := range []int{
+		g.SpawnStats.Chunks, g.SpawnStats.Packets, g.SpawnStats.Lists, g.SpawnStats.Events,
+		g.SpawnStats.WithSpawned, g.SpawnStats.WithSource, g.SpawnStats.Ref2,
+	} {
+		w.u(uint64(v))
+	}
 }
 
 // encodeGoldenQueue ecrit les morts et la table des index de joueur.

@@ -1427,3 +1427,50 @@ package replay
 //	VERSION MONTE  `document_shape_test.go`, qui refuse la regeneration sans montee). Un artefact
 //	               57 ne peut pas dire qu'il ne doit rien a un repli : il peut seulement ne rien
 //	               en dire. La reprise du backfill se fait par SchemaVersion.
+
+// v59 (2026-09-15, lot 1.9.1 du PLAN_DECODEUR_FILM) : L'ORIGINE D'UNE POSE SE LIT DANS LE FILM,
+// ET CE QUE LE FILM NE DIT PAS RESTE INCONNU.
+//
+//	ce qui etait   l'origine d'une pose d'equipement (`deployed` / `dropped` / `unknown`) se
+//	decide par     decidait par deux regles de SECOURS : le manifeste du titre
+//	une heuristique (`kind = "deployed"` -> `deployed` sans mesure, item H.2 des finitions) puis
+//	               une FENETRE TEMPORELLE de 200 ms entre la creation de l'objet et la fin de la
+//	               vie de son poseur. Aucune des deux ne lisait ce que le film ECRIT (D13).
+//
+//	les trois      (1) l'evenement de liste type 103 `EquipmentSpawnedObject` — « une PIECE a ete
+//	lectures       engendree » — dont la deuxieme reference DESIGNE la vie de l'objet cree ;
+//	               (2) la MORT ECRITE du poseur, que le registre d'identite apparie au siege ;
+//	               (3) sa PRISE ECRITE (`equipmentChanges.taken`), qui dit qu'il a ECHANGE.
+//
+//	LE VOCABULAIRE `deployed` est desormais RESERVE a ce qu'un 103 designe — les panneaux de mur,
+//	TRANCHE PAR    et eux seuls : c'est le seul geste de deploiement que le film ecrive.
+//	L'UTILISATEUR  Un appareil PORTE qui tombe sort `dropped`, que la cause soit la mort de son
+//	(2026-09-15)   porteur ou un echange : les deux sont des lachers, et l'etiquette ne les
+//	               distingue pas. Une pose dont le film ne dit RIEN sort `unknown`.
+//
+//	le champ       `coverage.placements.byCause` est NEUF : la PROVENANCE de l'origine de chaque
+//	ajoute         pose — `spawn_event`, `death_written`, `taken_written`, `both` (lectures),
+//	               `manifest_piece` (le seul repli restant, registre `fallback`), `none` et
+//	               `no_owner` (les deux silences). Sa somme vaut `placements`, exactement.
+//	               `coverage.placements.spawnEvents` et `.spawnLists` publient les DENOMINATEURS
+//	               de la premiere lecture : les evenements 103 lus, et les listes d'evenements
+//	               non vides traversees. Les deux, parce qu'un `spawnEvents: 0` sur 7 850 listes
+//	               dit « aucune piece engendree » quand le meme zero sur zero liste dirait « le
+//	               lecteur n'a rien pu lire ».
+//
+//	les tolerances MESUREES, jamais choisies (13 films, 4 583 poses, 2026-09-15) : mort 200 ms
+//	               (max 171,7 ms cote lachers, min 205,3 ms cote deploiements — un intervalle
+//	               VIDE de 33,6 ms) ; prise 50 ms (103 des 108 prises retenues sont a moins
+//	               d'UNE ms) ; designation 103 dans [0, +200] ms apres la creation (les 115 poses
+//	               de panneau designees le sont entre +32,2 et +70,2 ms, toutes positives).
+//
+//	CE QUI BOUGE   le contenu cuit change, et c'est le but. Deux populations perdent une
+//	DANS LE PARC   etiquette qu'elles n'avaient pas gagnee : les lachers a mi-vie, qui sortaient
+//	               `deployed` et faisaient dessiner un geste qui n'a pas eu lieu ; et les poses
+//	               dont le film ne dit rien, que la fenetre classait par correlation. Les comptes
+//	               exacts sont au journal du lot (§5 du plan).
+//
+//	POURQUOI LA    deux champs apparaissent dans le document ET les origines publiees changent.
+//	VERSION MONTE  Un artefact 58 ne peut ni dire d'ou vient l'origine de ses poses, ni distinguer
+//	               un `deployed` lu d'un `deployed` devine. La reprise du backfill se fait par
+//	               SchemaVersion.

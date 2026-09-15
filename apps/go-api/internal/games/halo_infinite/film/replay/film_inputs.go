@@ -93,6 +93,11 @@ type FilmInputs struct {
 	// heritent leurs largeurs MPP.
 	Placements     []filmdec.EquipmentPlacement
 	PlacementStats filmdec.EquipmentPlacementStats
+	// SpawnEvents / SpawnStats sont les evenements de liste type 103 `EquipmentSpawnedObject`
+	// — « une PIECE a ete engendree » — et les denominateurs de leur balayage. C'est LE SIGNAL
+	// ECRIT de l'origine d'une pose de panneau (lot 1.9.1, D13).
+	SpawnEvents []filmdec.EquipmentSpawnEvent
+	SpawnStats  filmdec.EquipmentSpawnStats
 	// Pads sont les deux voies des SOCLES (armes au sol ti=42, power-ups ti=37).
 	Pads PadScans
 	// Vehicles est le calque des VEHICULES (ti=40) : recensement, creations, nuage de positions,
@@ -178,6 +183,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.Scoped = buildScopedLookup(in.ZoomEvents,
 		buildLifeSpans(indexBySlot(in.Positions)), zoomHoldUS)
 	opt.Placements, opt.PlacementStats = in.Placements, in.PlacementStats
+	opt.SpawnEvents, opt.SpawnStats = in.SpawnEvents, in.SpawnStats
 	opt.Pads = in.Pads
 	opt.Vehicles = in.Vehicles
 	opt.Flag.Marks = in.FlagMarks

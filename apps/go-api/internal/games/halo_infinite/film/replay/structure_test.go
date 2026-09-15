@@ -1113,8 +1113,23 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   lisent pareil. La reprise du backfill se fait par SchemaVersion.
 	//   AUCUNE AUTRE DIFFÉRENCE : le lot 1.9.0 déclare et compte, il ne change aucune décision.
 	//   Détail : `document_chronicle.go`.
-	if SchemaVersion != 58 {
-		t.Fatalf("SchemaVersion = %d, attendu 58 : incrémenter exige une raison écrite ci-dessus "+
+	// - v59 (lot 1.9.1) : L'ORIGINE D'UNE POSE SE LIT DANS LE FILM. Elle se décidait par deux
+	//   règles de SECOURS — le manifeste (`kind = "deployed"`) puis une fenêtre temporelle de
+	//   200 ms ; elle se décide désormais par ce que le film ÉCRIT : l'événement de liste
+	//   type 103 `EquipmentSpawnedObject` qui DÉSIGNE la vie de l'objet engendré, la MORT écrite
+	//   du poseur, sa PRISE écrite (`equipmentChanges.taken`).
+	//   LE VOCABULAIRE EST TRANCHÉ (décision utilisateur du 2026-09-15) : `deployed` est réservé
+	//   à ce qu'un 103 désigne ; un appareil PORTÉ qui tombe est `dropped`, que la cause soit la
+	//   mort de son porteur ou un échange ; une pose dont le film ne dit rien est `unknown`.
+	//   `coverage.placements.byCause` est NEUF — la provenance de chaque origine, dont la somme
+	//   vaut `placements` — et `coverage.placements.spawnEvents` / `.spawnLists` publient les
+	//   dénominateurs de la première lecture.
+	//   POURQUOI LA VERSION MONTE : deux champs apparaissent, donc la forme change ; ET les
+	//   origines publiées changent — deux populations perdent une étiquette qu'elles n'avaient
+	//   pas gagnée (les lâchers à mi-vie sortaient `deployed`, les poses muettes étaient classées
+	//   par corrélation). Détail : `document_chronicle.go`.
+	if SchemaVersion != 59 {
+		t.Fatalf("SchemaVersion = %d, attendu 59 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

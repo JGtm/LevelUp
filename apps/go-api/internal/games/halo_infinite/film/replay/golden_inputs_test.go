@@ -213,7 +213,11 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS21\n"
+// v22 (2026-09-15, lot 1.9.1) : le fixture porte les EVENEMENTS 103 `EquipmentSpawnedObject` et
+// les denominateurs de leur balayage. Ils sont LE SIGNAL ECRIT de l origine d une pose de
+// panneau (D13) : sans eux, un golden d assemblage figerait des poses dont l origine vient d un
+// repli alors que la production la LIT.
+const goldenInputsMagic = "REPLAYINPUTS22\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -366,7 +370,7 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 // d octets alors que le probleme est une version. Le test relit le corps COURANT precede de la
 // magie PRECEDENTE : la seule reponse acceptable est le refus de version.
 func TestGoldenInputsVersionGuard(t *testing.T) {
-	const previousMagic = "REPLAYINPUTS20\n"
+	const previousMagic = "REPLAYINPUTS21\n"
 	if previousMagic == goldenInputsMagic {
 		t.Fatal("la magie precedente et la courante sont identiques : le test ne prouve plus rien")
 	}

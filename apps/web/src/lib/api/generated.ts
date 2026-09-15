@@ -6156,6 +6156,9 @@ export interface components {
             byFamily?: {
                 [key: string]: number;
             };
+            byCause?: {
+                [key: string]: number;
+            };
             byFamilyOrigin?: {
                 [key: string]: number;
             };
@@ -6179,6 +6182,10 @@ export interface components {
             /** Format: int64 */
             placements: number;
             scanned: boolean;
+            /** Format: int64 */
+            spawnEvents: number;
+            /** Format: int64 */
+            spawnLists: number;
             /** Format: int64 */
             unknown: number;
             widths?: string;
