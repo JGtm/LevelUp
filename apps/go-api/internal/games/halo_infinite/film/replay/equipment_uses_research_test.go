@@ -244,7 +244,7 @@ func eqUsesRawTransitions(t *testing.T, samples []filmdec.EquipmentStateSample) 
 // tout ce qui exige des metres est alors declare non mesurable.
 func eqUsesEntry(t *testing.T, dir string) (filmdec.MapQuantEntry, bool) {
 	t.Helper()
-	lay, _, err := filmdec.DetectI0Layout(dir)
+	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)
 	}

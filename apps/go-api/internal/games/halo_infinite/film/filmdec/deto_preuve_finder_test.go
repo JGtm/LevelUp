@@ -104,7 +104,7 @@ func TestDetoPreuveFindRockets(t *testing.T) {
 			continue
 		}
 		st := rockFilmStat{name: nm, rockets: rockets, films: distinct, chunks: CountFilmChunks(dir)}
-		if lay, _, err := DetectI0Layout(dir); err == nil {
+		if lay, _, err := detectI0Layout(dir); err == nil {
 			st.axis = lay.AxisW
 		}
 		stats = append(stats, st)

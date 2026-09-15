@@ -60,7 +60,7 @@ func r8MapEntry(t *testing.T, dir string) MapQuantEntry {
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)
 	}

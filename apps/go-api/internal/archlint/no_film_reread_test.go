@@ -262,6 +262,11 @@ var enveloppesInterditesEnProduction = []string{
 	"ScanFilmVehicleCreations", "ScanFilmVehicleEvents",
 	"ScanFilmWorldObjectKeyframes", "ScanFilmWorldObjects", "ScanFilmWorldObjectsForBand",
 	"ScanFilmZoomEvents",
+	// `DetectI0Layout` N'EXISTE PLUS EN PRODUCTION depuis le 2026-09-16 (revue de jalon M1,
+	// constat C4 : plus aucun appelant de production depuis le lot 1.9.4, l'enveloppe est
+	// devenue `detectI0Layout` dans un fichier de test de `filmdec`). LE NOM RESTE ICI : cette
+	// liste est une liste de NOMS INTERDITS, pas un inventaire de symboles, et l'y garder fait
+	// rougir toute reintroduction en production.
 	"DetectI0Layout", "EquipmentArchetypeDir", "CalibrateMPPWidths",
 	"GroundWeaponSlotBand", "GroundWeaponPositions", "WorldObjectPositionsForBand",
 	"ReadFilmChunk", "CountFilmChunks",

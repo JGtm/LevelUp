@@ -116,7 +116,7 @@ func equipLogArchetype(t *testing.T, dir string) Archetype {
 // donc partout, y compris sur les cartes dont DetectI0Layout mesure d'autres largeurs.
 func equipSetPrecision(t *testing.T, dir string) I0Layout {
 	t.Helper()
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
 	}

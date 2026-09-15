@@ -62,7 +62,7 @@ func kf35bInstallPrecision(t *testing.T, name string) (I0Layout, func()) {
 	t.Helper()
 	prevW, prevAbs := WorldObjectPrecision, absoluteAxisW
 	restore := func() { WorldObjectPrecision = prevW; SetAbsoluteAxisW(prevAbs) }
-	lay, rep, err := DetectI0Layout(kf35bDir(name))
+	lay, rep, err := detectI0Layout(kf35bDir(name))
 	if err != nil {
 		t.Logf("      [%s] decoupage i0 NON detecte (%v) — largeurs par defaut conservees", name, err)
 		return I0Layout{}, restore

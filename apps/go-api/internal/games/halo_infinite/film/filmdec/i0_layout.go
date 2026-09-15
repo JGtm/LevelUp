@@ -23,7 +23,7 @@ package filmdec
 // bitstream. Pour un champ quantifié de largeur W dont la valeur bouge peu d'une frame à la
 // suivante, le TAUX DE BASCULE par position de bit vaut ~50 % sur le LSB et DOUBLE du MSB
 // vers le LSB. Le profil sur trois champs contigus est une DENT DE SCIE : montée
-// géométrique puis effondrement au MSB du champ suivant. DetectI0Layout lit les trois
+// géométrique puis effondrement au MSB du champ suivant. DetectI0LayoutOf lit les trois
 // frontières sur ce profil, sans aucun a priori de largeur.
 //
 // Preuve de chaînage (le critère qui départage les lectures rivales — une statistique de pas
@@ -143,20 +143,11 @@ type i0Sample struct {
 
 func (s i0Sample) bit(k int) uint64 { return (s.bits[k>>6] >> (63 - uint(k&63))) & 1 }
 
-// DetectI0Layout lit le découpage d'i0 DANS le film de dir. Retourne le découpage, le
-// rapport de mesure, et une erreur si le profil ne fait pas apparaître trois frontières
-// nettes (film trop court, ou grammaire de record différente).
-// DetectI0Layout est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle
-// [DetectI0LayoutOf]. La cuisson passe un film deja charge.
-func DetectI0Layout(dir string) (I0Layout, I0LayoutReport, error) {
-	film, err := filmsource.LoadDir(dir, nil)
-	if err != nil {
-		return I0Layout{}, I0LayoutReport{}, err
-	}
-	return DetectI0LayoutOf(film)
-}
-
-// DetectI0LayoutOf lit le découpage d'i0 DANS un film DEJA CHARGE. Cf. [DetectI0Layout].
+// DetectI0LayoutOf lit le découpage d'i0 DANS un film DEJA CHARGE.
+//
+// L'ENVELOPPE `dir` A ETE DEPLACEE EN TEST LE 2026-09-16 (revue de jalon M1, constat C4) : elle
+// n'avait plus aucun appelant de production depuis le lot 1.9.4. Cf.
+// `i0_layout_instrument_helpers_test.go`.
 func DetectI0LayoutOf(film *filmsource.Film) (I0Layout, I0LayoutReport, error) {
 	nums := FilmChunkNumbers(film)
 	if len(nums) == 0 {

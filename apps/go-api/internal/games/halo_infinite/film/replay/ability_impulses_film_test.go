@@ -238,7 +238,7 @@ func mapEntryFromCatalog(t *testing.T, dir, path string) filmdec.MapQuantEntry {
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}
-	lay, _, err := filmdec.DetectI0Layout(dir)
+	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)
 	}

@@ -79,7 +79,7 @@ func hwResolve(t *testing.T, dir string) hwSetup {
 	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped dans les keyframes de %s", dir)
 	}
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible : %v", err)
 	}

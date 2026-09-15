@@ -270,4 +270,18 @@
 #               ou une vie finit. L empreinte hachant les OCTETS des trois paquets, ce faux
 #               positif coute cette ligne — le marche assume du garde-rail.
 #               `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact).
-grammar-2026-09-15.11	f856b325eb11c4a7b85e17498e737c95b2cb684174ddd9ca5921fb1c0cda61c5
+#   2026-09-16  grammar-2026-09-15.12  revue de jalon M1, lentille L3 : DEUX ENVELOPPES `dir` SANS
+#               APPELANT DE PRODUCTION SORTENT DU BINAIRE, plus une boucle d instrument et deux
+#               en-tetes. `DetectI0Layout(dir)` (48 appels, tous des tests) devient
+#               `detectI0Layout` dans `i0_layout_instrument_helpers_test.go` ;
+#               `ScanFilmEquipmentSpawnEvents(dir)` (1 appel, `replay/e191_...`) disparait, son
+#               unique appelant chargeant le film lui-meme et passant par `ScanEquipmentSpawnEvents` ;
+#               `walkKeyframeBody` et `keyframeBodyVariants` (unexportes au lot 1.4, zero appelant
+#               de production, cinq instruments) passent dans un `_test.go` du paquet.
+#               `film_major_version.go` NOMME le second u32 (version de format) et renvoie a
+#               `film_format_version.go`, dont l imparfait fautif tombe.
+#               AUCUN BIT N EST LU AUTREMENT : `DetectI0LayoutOf`, `ScanEquipmentSpawnEvents` et
+#               `WalkKeyframeFullState` — les trois formes de production — sont inchangees a
+#               l octet. Faux positif d empreinte, meme nature que la ligne du lot 1.9.13.
+#               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` non plus.
+grammar-2026-09-15.12	e7bbe9707b0db327f32120359280b170650802b74e26095b1de85f46500e97d1

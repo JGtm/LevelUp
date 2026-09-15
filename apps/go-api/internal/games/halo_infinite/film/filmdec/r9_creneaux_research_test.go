@@ -268,7 +268,7 @@ func r9LogCarte(t *testing.T, dir string) {
 		t.Logf("  catalogue de bornes illisible : %v", err)
 		return
 	}
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Logf("  decoupage i0 illisible : %v", err)
 		return
