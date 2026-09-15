@@ -2336,3 +2336,60 @@ en = "CSinsight — CS2 stats"
 [common.footer.privacy]
 fr = "Confidentialité"
 en = "Privacy"
+
+# ── Amis d'un joueur (liste par profil, remplace l'ancien réglage d'instance) ──
+[common.friends.page_title]
+fr = "Amis et groupes"
+en = "Friends and groups"
+
+[common.friends.section_title]
+fr = "Amis de {gamertag}"
+en = "{gamertag}'s friends"
+
+[common.friends.section_intro]
+fr = "Les amis servent à repérer tes parties en escouade : les matchs joués avec eux sont classés « en escouade », et leurs noms sont mis en avant dans la vue d'un match."
+en = "Friends mark your squad games: matches played with them are flagged as squad games, and their names stand out in the match view."
+
+[common.friends.empty]
+fr = "Aucun ami pour l'instant."
+en = "No friends yet."
+
+[common.friends.loading]
+fr = "Chargement des amis…"
+en = "Loading friends…"
+
+[common.friends.add_placeholder]
+fr = "Gamertag à ajouter"
+en = "Gamertag to add"
+
+[common.friends.add]
+fr = "Ajouter"
+en = "Add"
+
+[common.friends.remove]
+fr = "Retirer"
+en = "Remove"
+
+[common.friends.remove_label]
+fr = "Retirer {gamertag} des amis"
+en = "Remove {gamertag} from friends"
+
+[common.friends.read_only]
+fr = "Liste en lecture seule : seul le propriétaire de ce profil peut la modifier."
+en = "Read-only list: only this profile's owner can change it."
+
+[common.friends.no_player]
+fr = "Aucun joueur sélectionné."
+en = "No player selected."
+
+[common.friends.error]
+fr = "Impossible de charger la liste d'amis."
+en = "Unable to load the friends list."
+
+[common.friends.save_error]
+fr = "Impossible d'enregistrer la liste d'amis."
+en = "Unable to save the friends list."
+
+[common.friends.removed]
+fr = "{gamertag} retiré des amis."
+en = "{gamertag} removed from friends."
