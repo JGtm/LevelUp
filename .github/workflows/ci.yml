@@ -230,8 +230,16 @@ jobs:
         env:
           CGO_ENABLED: "1"
 
+      # BUDGET 300 s (2026-09-16, run 34968331540 sur 4abf6f466) : le paquet `filmdec` a
+      # depasse les 60 s sur le runner Windows (`panic: test timed out after 1m0s` dans
+      # `kfScanNext`, ubuntu vert). Mesure locale, CGO_ENABLED=0, -count=1 : 26,1 s pour le
+      # paquet, dont sept tests de 2,5 a 5,3 s qui rebalayent chacun les images-cle des
+      # 7 bobines versionnees ; le runner Windows est deux a trois fois plus lent. 300 s est
+      # le budget que tenait l'ancien job baseline (cf. plus bas). La reduction du cout
+      # (balayage partage des bobines, ou tag `research`) est consignee au plan du decodeur
+      # (§4, D1 (CI, apres 1.9.3)) pour la revue du jalon M1.
       - name: go test (unit, no CGo DB)
-        run: go test ./internal/domain/... ./internal/analysis/... ./internal/games/halo_infinite/film/filmdec/... ./internal/games/halo_infinite/film/replay/... ./contracttest/... -timeout 60s -count=1
+        run: go test ./internal/domain/... ./internal/analysis/... ./internal/games/halo_infinite/film/filmdec/... ./internal/games/halo_infinite/film/replay/... ./contracttest/... -timeout 300s -count=1
         env:
           CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"

@@ -1,3 +1,24 @@
+## [2026-09-16] Chantier decodeur — CI rouge apres le lot 1.9.3 : budget du job unitaire Windows — Complete (feat/recherche-decodeur-film)
+
+**Decision technique principale.** Le pas `go test (unit, no CGo DB)` du workflow passe de
+`-timeout 60s` a `-timeout 300s` (budget que tenait l'ancien job baseline), avec commentaire
+date ; aucun test touche, aucun test desactive.
+
+**Resultats observes.** Run 34968331540 sur 4abf6f466 : `Go Build + Test (windows-latest)` rouge
+sur `panic: test timed out after 1m0s` dans `filmdec` (`kfScanNext`, `keyframe_world.go:170`),
+les huit autres jobs verts (ubuntu compris). Mesure locale, CGO_ENABLED=0, `-count=1` : le
+paquet `filmdec` vaut 26,1 s, dont sept tests de 2,5 a 5,3 s qui rebalayent chacun les
+images-cle des 7 bobines (`TestE191bCarteTI37` 5,25 s, `TestE191bFermetureAvecCarte` 5,17 s,
+`TestEtatParDefautN2Constant` 2,65 s, `TestKeyframeClosureRatchet` 2,63 s,
+`TestScanPlayerTeamsSurLesBobines` 2,55 s, `TestScanPlayerTeamsTemoinDUnBit` 2,54 s,
+`TestGoldenMiniBobineFamilles` 2,52 s) ; 137 fichiers `*_research_test.go` dans le paquet.
+Consigne au plan (§4, D1 (CI, apres 1.9.3)) : balayage partage des bobines ou tag `research`
+avec `go vet -tags research`, a trancher a la revue du jalon M1.
+
+**Prochaine etape.** Push + CI ; fusion du lot 1.9.1 bis des ses gates rendus.
+
+---
+
 ## [2026-09-16] Chantier decodeur — lot 1.9.3 (le couple tueur / victime lu au kill-event 85, plus recolle sur le voisin) — Complete (feat/decfilm-193 fusionnee dans feat/recherche-decodeur-film, 79657ef1e)
 
 **Decision technique principale.** `killFeed.resoudreCouples` (`killsource/feed_couples.go`)
