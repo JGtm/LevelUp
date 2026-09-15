@@ -108944,3 +108944,48 @@ baisse au lieu de monter, et `setup.go` ne porte plus aucun constat de lint.
 **Conclusion / prochaine étape** : étape 6 — purge d'identité (`Purge`, jamais la base
 partagée) et CLI `levelup identity list` / `identity purge`, avec le ratchet
 `no_duckdb_import_playerdirectory` à écrire (il n'existe pas, cf. §10 du plan).
+
+## [2026-09-16] Annuaire des joueurs — étape 6 : une identité sort, les matchs restent — Complété
+
+**Décision technique principale** : la purge d'une identité retire le suivi live, les profils
+et leurs dossiers, les dossiers orphelins, les identifiants, les appartenances aux groupes et
+le compte — et ne touche JAMAIS la base partagée. Ce n'est pas une promesse de commentaire :
+`purge_test.go` compare le sha256 de `shared_matches_v2.duckdb` avant et après, et le ratchet
+`no_duckdb_import_playerdirectory` interdit au paquet d'importer le moindre paquet DuckDB, ce
+qui rend l'écart impossible plutôt que seulement mesuré. Le garde-rail a été vu ROUGIR sur un
+import ajouté volontairement avant d'être remis vert : un ratchet qu'on n'a jamais vu échouer
+ne garde rien.
+
+Deux méthodes manquaient, et les découvrir a été le vrai travail. `watcher.Daemon` n'avait
+aucun retrait par joueur : `UpdateSubscriptions` travaille par GAMERTAG, ce qui convient à une
+liste d'abonnement écrite par un humain mais pas à une identité — un gamertag se renomme, un
+xuid non. `RemovePlayer(ctx, xuid)` retire donc tous les titres du xuid, cancel du REST poller
+compris (sans quoi sa goroutine survivrait, la fuite W2 que le retrait existant avait déjà
+corrigée). Et `ProfileService.PurgeTitleData` ne pouvait PAS servir : `RemoveEntry` refuse le
+dernier titre actif d'un gamertag, invariant qui protège un joueur qui RESTE ; appliqué titre
+par titre il aurait échoué sur le dernier et laissé le profil en place — purge incomplète, et
+silencieuse côté fichier. `PurgeIdentityData` retire tout en une mutation atomique, et un test
+dédié tient ce cas.
+
+La commande est une simulation tant qu'on n'a pas dit `--yes`. Piège corrigé sur pièces : le
+paquet `flag` s'arrête au premier argument non-flag, donc `identity purge <xuid> --yes` —
+l'ordre documenté, celui qu'un humain écrit — aurait laissé `--yes` non lu, c'est-à-dire une
+simulation là où l'on croyait exécuter. Le positionnel est extrait avant `Parse`, et un test
+joue cet ordre exact.
+
+**Résultats observés** : gate G6 vert — 2 paquets `ok` exit 0 ; `go build ./cmd/levelup` 0 ;
+`levelup identity list` sur les registres locaux rend 12 identités sans panique (les 4 joueurs
+à profils multi-titres, 6 amis `auth_only`, et 3 lignes `token_orphan` — des fixtures à xuid
+factice que personne ne réclame, c'est-à-dire exactement ce que l'annuaire est fait pour
+montrer). Hors gate : `go vet ./...` 0, 14 paquets verts (archlint, watcher, domain, port,
+service), `golangci-lint --new-from-merge-base` 0 issue. `docs/COMMANDS.md` et
+`docs/FR/COMMANDS.md` documentent la commande, sa précondition (le serveur ne doit pas tenir
+la player DB) et ce qu'elle ne touche jamais.
+
+**Conclusion / prochaine étape** : étapes 5 et 6 closes et commitées sur `wt/player-directory`,
+non poussées. Reste l'étape 7 (pilote) : revue adversariale du diff complet, gates complets,
+docs (CLAUDE.md, ARCHITECTURE_V6 EN+FR, ADR 0035 amendée), puis la purge en production du
+compte du 2026-07-23. Cinq découvertes consignées en §10 du plan, dont deux à arbitrer : un
+groupe dont l'identité purgée est PROPRIÉTAIRE ne se quitte pas (l'étape est rendue en échec
+plutôt que de supprimer le groupe d'autrui), et les 3 fixtures `token_orphan` locales qui
+attendent une décision.

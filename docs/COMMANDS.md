@@ -150,6 +150,36 @@ go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run]
 go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite]
 ```
 
+### Player identities (directory and purge — ADR 0035)
+
+Four registries describe a player: the account (`data/auth/users.json`), the credentials
+(`data/auth/watcher_tokens/{xuid}.json`), the tracking profile (`db_profiles.json`) and the
+watcher daemon's live tracking. The only key that joins them is the **xuid**. `identity list`
+reads them together and flags what does not line up; `identity purge` removes an identity from
+all of them.
+
+```bash
+go run ./cmd/levelup identity list                          # directory, anomalies included
+go run ./cmd/levelup identity purge <xuid>                  # DRY RUN: prints the report, deletes nothing
+go run ./cmd/levelup identity purge <xuid> --yes            # executes
+```
+
+- **The shared match warehouse is never touched.** Matches already persisted in
+  `shared_matches_v2.duckdb` also carry the data of the purged player's opponents and
+  teammates, and the warehouse is append-only by design (ADR 0026). The purge never even
+  opens it.
+- **Dry run is the default.** Without `--yes`, the command prints the complete report of what
+  it would do and exits 0.
+- **Order** (ADR 0035 D6): live tracking, then profile entries and their player directories,
+  orphan directories, credentials, group memberships, and finally the account. A failing step
+  never stops the following ones — the report is always complete and names each failure.
+- **An administrator account is refused.** Removing the last admin would lock administration
+  out of the instance; do it deliberately, by hand.
+- **Precondition: the server must not be holding the player DB.** The purge deletes the
+  player's directory along with its DuckDB file. It evicts the cached handles of the *current
+  process* only: if the server holds the file, the deletion fails (Windows lock) and the step
+  is reported as failed. Stop the server, or purge a player who is not being tracked.
+
 ### Metadata / seed / migration
 
 ```bash

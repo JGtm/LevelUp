@@ -153,6 +153,35 @@ go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run]
 go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite]
 ```
 
+### Identités joueur (annuaire et purge — ADR 0035)
+
+Quatre registres décrivent un joueur : le compte (`data/auth/users.json`), les identifiants
+(`data/auth/watcher_tokens/{xuid}.json`), le profil de suivi (`db_profiles.json`) et le suivi
+live du daemon watcher. La seule clé qui les relie est le **xuid**. `identity list` les lit
+ensemble et signale ce qui ne colle pas ; `identity purge` retire une identité de tous.
+
+```bash
+go run ./cmd/levelup identity list                          # l'annuaire, anomalies comprises
+go run ./cmd/levelup identity purge <xuid>                  # SIMULATION : imprime le rapport, ne supprime rien
+go run ./cmd/levelup identity purge <xuid> --yes            # exécute
+```
+
+- **La base partagée des matchs n'est jamais touchée.** Les matchs déjà persistés dans
+  `shared_matches_v2.duckdb` portent aussi les données des adversaires et des coéquipiers du
+  joueur purgé, et l'entrepôt est append-only par construction (ADR 0026). La purge ne
+  l'ouvre même pas.
+- **La simulation est le défaut.** Sans `--yes`, la commande imprime le rapport complet de ce
+  qu'elle ferait et sort 0.
+- **Ordre** (ADR 0035 D6) : suivi live, puis entrées de profil et dossiers joueur, dossiers
+  orphelins, identifiants, appartenances aux groupes, et enfin le compte. Une étape en échec
+  n'arrête jamais les suivantes — le rapport est toujours complet et nomme chaque échec.
+- **Un compte administrateur est refusé.** Retirer le dernier administrateur fermerait
+  l'administration à clef ; cela se fait délibérément, à la main.
+- **Pré-requis : le serveur ne doit pas tenir la player DB.** La purge supprime le dossier du
+  joueur avec son fichier DuckDB. Elle n'évince que les handles du *processus courant* : si le
+  serveur tient le fichier, la suppression échoue (verrou Windows) et l'étape est rendue en
+  échec dans le rapport. Arrêter le serveur, ou purger un joueur qui n'est pas suivi.
+
 ### Référentiels / seed / migration
 
 ```bash

@@ -19,6 +19,7 @@
 //	levelup sync-achievements (--gamertag X | --all) [--dry-run]
 //	levelup add-title      --name "Nom du jeu" [--slug s] [--capabilities c1,c2] [--xbox-id X] [--steam-id S]
 //	levelup populate-assets [--types map,playlist] [--langs fr-FR] [--dry-run] [--force] [--title-id slug]
+//	levelup identity       list | purge <xuid> [--yes]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
 //
@@ -29,6 +30,7 @@
 //   - cmd_notify.go  - notify-version, notify-sync
 //   - cmd_title.go   - add-title
 //   - cmd_populate_assets.go - populate-assets (traductions d'assets Discovery UGC)
+//   - cmd_identity.go - identity list / identity purge (annuaire des identites, ADR 0035)
 package main
 
 import (
@@ -145,6 +147,8 @@ func main() {
 		exitErr = runAddTitle(cfg, args)
 	case "populate-assets":
 		exitErr = runPopulateAssets(cfg, args)
+	case "identity":
+		exitErr = runIdentity(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -228,6 +232,11 @@ Commandes:
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
   populate-assets Peupler asset_translations (noms localises des assets via Discovery UGC)
+  identity        Annuaire des identites : identity list (compte / profils / jeton / anomalies par xuid) et
+                  identity purge <xuid> [--yes] (retire compte, jeton, profils, dossiers et groupes ; SANS --yes
+                  c est une simulation qui imprime le rapport). La base partagee des matchs n est JAMAIS touchee.
+                  Le serveur ne doit pas tenir la player DB du joueur : la purge n evince que les handles du
+                  processus courant, un fichier tenu ailleurs fait echouer l etape (et le rapport le dit)
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)

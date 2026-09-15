@@ -78,6 +78,9 @@ type fakeFS struct {
 	dirs map[string][]string
 	dbs  map[string]bool
 	err  map[string]error
+	// removed : dossiers retires par RemovePlayerDir, cle "titre/nom" (purge).
+	removed   map[string]bool
+	removeErr error
 }
 
 func (f *fakeFS) PlayerDirExists(titleSlug, key string) bool {
@@ -96,6 +99,26 @@ func (f *fakeFS) PlayerDBPath(titleSlug, key string) string {
 		return ""
 	}
 	return titleSlug + "/" + key + "/stats.duckdb"
+}
+
+// RemovePlayerDir note le retrait ET le reflete dans dirs : un second balayage
+// ne doit plus voir le dossier, comme sur un vrai disque.
+func (f *fakeFS) RemovePlayerDir(titleSlug, name string) error {
+	if f.removeErr != nil {
+		return f.removeErr
+	}
+	if f.removed == nil {
+		f.removed = map[string]bool{}
+	}
+	f.removed[titleSlug+"/"+name] = true
+	kept := f.dirs[titleSlug][:0]
+	for _, n := range f.dirs[titleSlug] {
+		if !strings.EqualFold(n, name) {
+			kept = append(kept, n)
+		}
+	}
+	f.dirs[titleSlug] = kept
+	return nil
 }
 
 func (f *fakeFS) ListPlayerDirs(titleSlug string) ([]string, error) {

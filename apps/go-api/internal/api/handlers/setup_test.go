@@ -51,6 +51,10 @@ func (m *mockDirectory) HasTrackedProfile(context.Context, string, string) (bool
 	return false, nil
 }
 
+func (m *mockDirectory) Purge(context.Context, string, domain.PurgeOptions) (domain.PurgeReport, error) {
+	return domain.PurgeReport{}, nil
+}
+
 func newSetupRouter(t *testing.T, provisionEnabled bool, directory *mockDirectory) *chi.Mux {
 	t.Helper()
 	dir := t.TempDir()
