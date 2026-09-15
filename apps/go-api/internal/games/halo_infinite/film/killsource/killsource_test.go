@@ -26,59 +26,72 @@ import (
 // (1) TESTS PURS
 // ───────────────────────────────────────────────────────────────────────────────
 
-func TestReconstructPairsRecollageEtOrphelins(t *testing.T) {
-	feed := []feedEvent{
-		{timeMS: 1000, killer: "A", victim: "B"}, // couple au meme instant
-		{timeMS: 2000, killer: "C"},              // kill orphelin...
-		{timeMS: 2100, victim: "D"},              // ... recolle sur ce death
-		{timeMS: 9000, killer: "E"},              // kill sans voisin : victime non humaine
+// rosterSansEpinglage : un roster ou AUCUN indice n est epingle. La lecture du kill-event 85 s y
+// tait partout, donc le repli sert chaque kill orphelin : c est le regime d avant le lot 1.9.3,
+// et c est celui que ces deux temoins historiques exercent.
+func rosterSansEpinglage() *roster {
+	return &roster{pin: map[int]int{}, seatPin: map[int]bool{}}
+}
+
+// TestRecollageSurLeVoisinEtOrphelins : LE REPLI, tel qu il se comporte quand le film se tait.
+// Temoin historique du chantier, porte au lot 1.9.3 sur [killFeed.resoudreCouples] — le
+// mecanisme du recollage n a pas change, seule sa PLACE a change (il ne decide plus, il supplee).
+func TestRecollageSurLeVoisinEtOrphelins(t *testing.T) {
+	kf := &killFeed{
+		events: []feedEvent{
+			{timeMS: 1000, killer: "A", victim: "B"}, // couple au meme instant
+			{timeMS: 2000, killer: "C"},              // kill orphelin...
+			{timeMS: 2100, victim: "D"},              // ... recolle sur ce death
+			{timeMS: 9000, killer: "E"},              // kill sans voisin : victime non humaine
+		},
+		xuidDe: map[string]uint64{},
 	}
-	got := reconstructPairs(feed)
-	if len(got) != 2 {
-		t.Fatalf("couples reconstruits = %d, attendu 2 (%v)", len(got), got)
+	st := kf.resoudreCouples(nil, rosterSansEpinglage())
+	if len(kf.pairs) != 2 {
+		t.Fatalf("couples = %d, attendu 2 (%v)", len(kf.pairs), kf.pairs)
 	}
-	if got[1].killer != "C" || got[1].victim != "D" || got[1].timeMS != 2000 {
-		t.Errorf("recollage = %+v, attendu {2000 C D}", got[1])
+	if kf.pairs[1].killer != "C" || kf.pairs[1].victim != "D" || kf.pairs[1].timeMS != 2000 {
+		t.Errorf("recollage = %+v, attendu {2000 C D}", kf.pairs[1])
 	}
-	kf := &killFeed{events: feed}
-	kf.split()
 	if len(kf.real) != 1 || len(kf.fab) != 1 || len(kf.orphK) != 1 {
-		t.Errorf("split = reels %d / recolles %d / kills perdus %d, attendu 1/1/1",
+		t.Errorf("decomposition = reels %d / recolles %d / kills perdus %d, attendu 1/1/1",
 			len(kf.real), len(kf.fab), len(kf.orphK))
+	}
+	if st.MemeInstant != 1 || st.Recolles != 1 || st.Perdus != 1 || st.Lus != 0 {
+		t.Errorf("compteurs = %+v, attendu 1 meme-instant / 1 recolle / 1 perdu / 0 lu", st)
 	}
 }
 
-// TestSplitIsoleLesMortsSansTueur : LA POPULATION DES MORTS INFLIGEES PAR UN BOT, AU NIVEAU DE LA
-// STRUCTURE (RE_LOG 7ter.79).
+// TestLaDecompositionIsoleLesMortsSansTueur : LA POPULATION DES MORTS INFLIGEES PAR UN BOT, AU
+// NIVEAU DE LA STRUCTURE (RE_LOG 7ter.79).
 //
 // Le kill-feed est humain-seul dans LES DEUX SENS, et c est la symetrie qui avait ete manquee :
 // un KILL que rien ne consomme designe une mort DE bot (deja exploite), une MORT que rien ne
 // consomme designe une mort PAR un bot (population neuve). Ce test fige la seconde moitie.
-//
-// IL VERIFIE AUSSI CE QUI NE DOIT PAS BOUGER : la marque de consommation est posee APRES coup et
-// [reconstructPairs] rend exactement les memes couples qu avant.
-func TestSplitIsoleLesMortsSansTueur(t *testing.T) {
-	feed := []feedEvent{
-		{timeMS: 1000, killer: "A", victim: "B"}, // couple au meme instant
-		{timeMS: 2000, killer: "C"},              // kill orphelin...
-		{timeMS: 2100, victim: "D"},              // ... recolle sur ce death
-		{timeMS: 5000, victim: "E"},              // MORT que rien ne consomme : le tueur n est pas humain
-		{timeMS: 9000, killer: "F"},              // kill sans voisin : la victime n est pas humaine
+func TestLaDecompositionIsoleLesMortsSansTueur(t *testing.T) {
+	kf := &killFeed{
+		events: []feedEvent{
+			{timeMS: 1000, killer: "A", victim: "B"}, // couple au meme instant
+			{timeMS: 2000, killer: "C"},              // kill orphelin...
+			{timeMS: 2100, victim: "D"},              // ... recolle sur ce death
+			{timeMS: 5000, victim: "E"},              // MORT que rien ne consomme : le tueur n est pas humain
+			{timeMS: 9000, killer: "F"},              // kill sans voisin : la victime n est pas humaine
+		},
+		xuidDe: map[string]uint64{},
 	}
-	kf := &killFeed{events: feed}
-	kf.split()
+	kf.resoudreCouples(nil, rosterSansEpinglage())
 	if len(kf.orphD) != 1 || kf.orphD[0].victim != "E" {
 		t.Fatalf("morts sans tueur = %v, attendu la seule mort de E", kf.orphD)
 	}
 	if len(kf.real) != 1 || len(kf.fab) != 1 || len(kf.orphK) != 1 {
-		t.Errorf("split = reels %d / recolles %d / kills perdus %d, attendu 1/1/1",
+		t.Errorf("decomposition = reels %d / recolles %d / kills perdus %d, attendu 1/1/1",
 			len(kf.real), len(kf.fab), len(kf.orphK))
 	}
-	// LA MARQUE DE CONSOMMATION NE DOIT RIEN CHANGER AUX COUPLES : c est l invariant qui protege
-	// les trois denominateurs deja publies.
-	if got := reconstructPairs(feed); len(got) != 2 {
-		t.Errorf("couples reconstruits = %d, attendu 2 — le suivi de consommation a change le "+
-			"resultat de reconstructPairs, donc les denominateurs publies", len(got))
+	// LES COUPLES PUBLIES NE BOUGENT PAS : c est l invariant qui protege les trois denominateurs
+	// deja publies (`ReconstructedPairs`, `SameInstantPairs`, `GhostPairs`).
+	if len(kf.pairs) != 2 {
+		t.Errorf("couples = %d, attendu 2 — le suivi de consommation a change le resultat de la "+
+			"decomposition, donc les denominateurs publies", len(kf.pairs))
 	}
 }
 

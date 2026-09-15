@@ -2457,12 +2457,154 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       mutation par catalogue faussé, jouée des deux côtés. (4) `[x]` révisions, population chiffrée.
       (5) `[~]` sans objet : aucun contrat publié ne change, `openapi.yaml` n'est pas touché (`git
       status` collé en §5).
-- [ ] 1.9.3 **Le couple (tueur, victime) lu au kill-event 85, plus recollé sur le voisin.**
+- [x] 1.9.3 **Le couple (tueur, victime) lu au kill-event 85, plus recollé sur le voisin.**
       `internal/games/halo_infinite/film/killsource/feed.go:162` (`reconstructPairs`, fenêtre de
       2 instants) contre `killsource/eventchain.go:242` (`readKillEvent`, victime ET tueur dans le
       même enregistrement, déjà PORTÉ mais lu pour le seul assistant). Gain : **64 couples sur 372**
       cessent d'être une reconstruction ; supprime la fabrication d'un couple quand la vraie victime
       est un bot (`feed.go:149-151`). M.
+
+      **FAIT le 2026-09-15 (branche `feat/decfilm-193`), GATES DE DÉCODAGE COMPRIS.**
+
+      **LA MESURE AVANT DE CODER — 21 FILMS ENTIERS PLUS LA BOBINE VERSIONNÉE.** Instrument
+      versionné `killsource/e193_couple_evenement_mesure_research_test.go` (garde `CHUNK00_FILMS`
+      pour les films entiers ; la bobine `testdata/minibobine_000d5950` est mesurée SANS garde, en
+      CI). Tableaux intégraux collés en §5. **LES 64 SUR 372 SE REJOUENT À L'UNITÉ** sur la série de
+      référence du chantier : couples recollés `000d5950` 17, `9b191a7f` 11, `fccc61cd` 23,
+      `78919882` 13 = **64** ; couples reconstruits 93 + 85 + 95 + 99 = **372**.
+
+      **CE QUE LE FILM ÉCRIT, MESURÉ CONTRE CE QUE LA RECONSTRUCTION REND.** Le kill-event 85 porte
+      des INDICES, pas des noms ; les traduire par la bijection serait CIRCULAIRE (elle s'ajuste sur
+      `killFeed.pairs`, donc sur le recollage à juger). La mesure — et la conversion — n'emploient
+      donc que les indices ÉPINGLÉS : la table des joueurs de `chunk_00` (lots 1.5 / 1.8) et
+      BOT_METADATA, posés AVANT toute inférence. Sur les **21 films entiers** (8 builds, les
+      14 témoins du corpus gate, les 4 films de la série de référence) :
+
+      | population | total | accord | désaccord | victime BOT | ambigu | muet |
+      |---|---|---|---|---|---|---|
+      | kills sans mort en face, régime NAÏF (tueur seul) | 271 | 186 | 3 | 1 | 13 | 68 |
+      | kills sans mort en face, régime **d'ASSIGNATION** (celui du lot) | **281** | **198** | **0** | **1** | **1** | **81** |
+
+      **LE PREMIER TEMPS EST LE RÉSULTAT, ET IL EST MESURÉ.** La fenêtre d'appariement vaut 2,5 s de
+      part et d'autre : un joueur qui tue deux fois en 2,5 s produit DEUX kill-events au même nom de
+      tueur. On donne donc d'abord à chaque couple que le FEED écrit au même instant le kill-event
+      dont LE COUPLE ENTIER correspond — une CONSOMMATION, pas une décision —, puis on lit les kills
+      orphelins dans ce qui reste. Sans ce temps : 13 ambigus et **3 désaccords apparents** ; avec
+      lui : **1 ambigu et ZÉRO désaccord**. Les 3 « désaccords » étaient des enregistrements qui
+      appartenaient à une autre mort.
+
+      **CE QUE LE LOT CHANGE, MESURÉ LIGNE PAR LIGNE — UNE SEULE SUR 21 FILMS.** Là où la lecture se
+      prononce, elle écrit **exactement** le couple que le recollage rendait : **198 accords sur
+      198**. Le gain n'est donc PAS métrique, il est de NATURE — 198 couples cessent d'être une
+      reconstruction et deviennent une lecture, comptée. La seule ligne qui bouge est celle qui
+      compte : sur `4f77afc1`, le recollage FABRIQUAIT un couple dont le film dit que la victime est
+      un **BOT** ; la victime est désormais nommée à la source (« les vies anonymes n'existent pas »,
+      décision utilisateur du 2026-09-06), l'instant part vers la population des morts de bot et la
+      mort du voisin retourne aux morts que personne ne revendique. Effet de bord mesuré sur la
+      mini-bobine : les morts de BOT **proposées** passent de 17 à 16 (un couple que la lecture
+      décide n'en est plus un candidat).
+
+      **CE QUI DÉCIDE DÉSORMAIS, ET OÙ.** `killFeed.resoudreCouples` (`killsource/feed_couples.go`,
+      NEUF) remplace `reconstructPairs` + `killFeed.split`, tous deux SUPPRIMÉS (grep collé en §5 :
+      zéro site de production). `decodeCtx.prepare` localise les kill-events UNE fois
+      (`c.killEvents = scanKillEvents(c.film)`) et les partage entre le couple et l'assistant — la
+      passe n'est donc pas payée deux fois. `roster.nomEpingle` (NEUF) expose la part LUE du lien
+      `indice -> joueur`, celle qui ne dépend d'aucune bijection ; `nameOf`, qui lit `perm`, reste
+      réservé à l'aval. `resolveBotDeaths` accepte une TROISIÈME population, celle des victimes de
+      bot NOMMÉES, et contraint alors l'appariement à CET indice au lieu de « un bot quelconque ».
+
+      **LE REGISTRE DES REPLIS : UNE ENTRÉE NEUVE, ET LE RATCHET DES SIX NE BOUGE PAS.**
+      `repli_couple_recolle_sur_le_voisin` (`section_absente` / **`apres_lecture`**), date de pose
+      2026-09-15, cible de retrait « clôture de M1 puis lot 3.6 », critère « `CoupleStats.Recolles`
+      à 0 sur les 8 builds et sur le corpus gate ». Registre **94 -> 95 entrées**, 10 compteurs
+      câblés. **LE RATCHET DES `devant_la_lecture` RESTE À 6, ET CE N'EST PAS UN OUBLI** : vérifié
+      sur pièces, le recollage des couples n'avait **aucune entrée au registre** — il vient de la
+      table (A) de l'audit 0.E (ligne A3), et le lot 1.9.0 n'y a entré que les 62 replis ANONYMES de
+      la table (E) plus ceux que les lots 0.D à 1.8 avaient nommés. L'entrée est donc CRÉÉE, et elle
+      naît `apres_lecture` : le repli ne se déclenche que sur un silence (`Muet`) ou une indécision
+      (`Ambigu`) de la lecture, jamais sur un désaccord avec elle (D14 b).
+
+      **LES COMPTEURS, DANS LES STATS DE COLLECTE.** `killsource.CoupleStats` (`MemeInstant`, `Lus`,
+      `Recolles`, `Perdus`, `VictimesBotLues`, `Muet`, `Ambigu`, `Accord`, `Contradiction`) porté par
+      `Result.Stats.Couples`, publié en expvar par `killcollector.publishCoupleProvenance` sous
+      `killsource_couple_{meme_instant,lu,recolle,muet,ambigu,contradiction}` et
+      `killsource_victime_bot_lue`. Les trois compteurs de diagnostic disent POURQUOI il a fallu se
+      replier — sans eux, un compte de replis ne désigne aucune correction.
+
+      **LES MUTATIONS, JOUÉES ET RESTAURÉES PAR NOM.** (A) **tueur et victime échangés dans la
+      fixture** (`coupleRec(2000, 1, 3)` -> `coupleRec(2000, 3, 1)`) :
+      `TestLeCoupleVientDuKillEvent85` ROUGE — « couples = [{2000 C D}], attendu le seul (C, E) ».
+      C'est la preuve demandée, et elle n'est possible que parce que le témoin est bâti pour que
+      lecture et repli DIVERGENT : sur 198 des 281 kills du corpus ils s'accordent, donc un témoin
+      ordinaire resterait vert. (B) **la lecture débranchée en production** (`lireVictime` remplacée
+      par `-1, -1, false` dans `resoudreUnKillSansMort`) : QUATRE tests ROUGES, dont le golden
+      `TestGoldenMiniBobine`. Les deux arbres restaurés depuis une copie hors dépôt ; suite verte
+      après restauration.
+
+      **RÉVISIONS.** **`KillSourceDecoderRev` killsource-2026-09-14 -> `killsource-2026-09-15`**
+      *(le brief proposait `killsource-2026-09-16` ; la convention du golden est la DATE DU
+      MOUVEMENT, et il a lieu le 15)*. Le ratchet d'empreinte a **rougi de lui-même** au commit du
+      décodeur (« LE DECODEUR A CHANGE », `729624c1…` -> `ed7e45ca…`) : preuve par mutation
+      naturelle, aucune mutation artificielle nécessaire. **`GrammarRev` grammar-2026-09-15.2 ->
+      `grammar-2026-09-15.3`** (l'ensemble haché porte `killsource/`). **`SchemaVersion` : **59, INCHANGÉE**, et
+      c'est MESURÉ et non raisonné — voir le bloc « les deux gates de décodage » ci-dessous.
+
+      **LES DEUX GATES DE DÉCODAGE, JOUÉS LE 2026-09-15 SUR SIGNAL DU PILOTE (voie libre).**
+
+      **ÉQUIVALENCE, régime court (10 films).** La classification a été faite AVANT tout `-update`,
+      en mode ENFANT (un film par processus, `-child -film <short8> -out <fichier>`), en comparant
+      chaque `.tsv` produit à sa référence : **10 films sur 10, UNE SEULE étape bouge, `killsource`**
+      — les 52 autres sont identiques à l'octet, **`artifact` compris (longueur ET sha)**, ainsi que
+      `killRefs`, `neutralDeaths` et `deaths`. Puis `-update` en DEUX sous-ensembles séquentiels :
+      `git diff` des références rend **10 `+killsource` / 10 `-killsource` et rien d'autre**, une
+      ligne par fichier. Passe de comparaison : **10/10 identiques**. **CE QUI BOUGE EST LA FORME DE
+      L'OBJET OBSERVÉ, PAS SON CONTENU** — `replaybuild.observe("killsource", ksRes)` hache le
+      `Result` ENTIER et `Stats.Couples` est un champ neuf ; `killRefs`, `neutralDeaths` et `deaths`
+      sont des PROJECTIONS du même `Result`, et elles ne bougent pas d'un bit. C'est mot pour mot le
+      motif du lot 1.8 (découverte D4 (1.8)).
+
+      **CORPUS GATE, `--base=9848b7387` sans `--manifest`, 28 cuissons, 14 témoins : SORTIE 0, ZÉRO
+      PERTE, ZÉRO GAIN, schéma 59 des deux côtés.** `bcb6d393` 16,2 s · `fb1a1a72` 33,0 s ·
+      `d9781168` 24,6 s · `c75f33b8` 14,6 s · `bf15f7ab` 14,0 s · `51ebbc0f` 18,2 s · `084a804d`
+      1 min 51 · `0797ce72` 13,1 s · `111fa685` 47,3 s · `e5adf7b2` 39,6 s · `60ae07c4` 25,3 s ·
+      `a349fea8` 2 min 36 · `bfecd02b` 19,5 s · `4f77afc1` 1 min 39.
+
+      **ET ZÉRO PERTE NE SUFFISAIT PAS À STATUER `SchemaVersion` : LE BILAN IMPRIMÉ NE PORTE QUE
+      `gains` ET `pertes`, JAMAIS `changements`.** `replaydiff.BilanAxe` compte quatre catégories et
+      le tableau n'en montre que deux ; `pertesDetail` du rapport JSON ne retient que PERTE et
+      DISPARU (D5 (1.9.3) en §4). Sur le seul film dont un couple change — `4f77afc1` — un
+      `changement` serait donc resté invisible. **TRANCHÉ PAR COMPARAISON OCTET POUR OCTET DES DEUX
+      ARTEFACTS CUITS** (gate rejoué sur manifeste réduit avec `--work-root` et `--keep-work`, puis
+      `cmp`) : **10 526 185 octets de chaque côté, sha256
+      `62979da9924702d3a826c585ea7bf6a38752ad089164978ff142b7f79660a476` IDENTIQUE, `cmp` muet.**
+      `SchemaVersion` reste donc à **59**, aucune chaîne complète, aucun `openapi.yaml` à régénérer
+      (`git status` le confirme : ni `api/openapi.yaml` ni `apps/web/` ne sont touchés).
+
+      **POURQUOI LA LIGNE NE BOUGE PAS ALORS QUE LE COUPLE CHANGE, ET C'EST VÉRIFIÉ PAR GREP.**
+      L'instant que le recollage fabriquait sortait DÉJÀ en [`OriginBot`] avec le nom du bot : le
+      couple fabriqué entrait dans `pairs`, puis `resolveBotDeaths` le reclassait en mort de bot et
+      `ghostPairs` le RETIRAIT du dénominateur. Ce que le lot change est donc la CLASSIFICATION
+      interne et les dénominateurs `Coverage.ReconstructedPairs` / `GhostPairs` — et ceux-là ne sont
+      consommés QUE par la CLI de diagnostic `cmd/killsource` (grep : aucun autre appelant hors du
+      paquet), jamais par le document ni par la base. Le gain du lot reste ce qu'il est : la victime
+      est désormais NOMMÉE PAR LE FILM au lieu d'être devinée, et la mort du voisin cesse d'être
+      consommée à tort.
+
+      **POPULATION DU PARC.** Oracle `data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb`
+      (lecture seule, `cmd/diag_q`) : **1 384 matchs** portent des lignes de kill, **tous** sous une
+      révision antérieure — 751 `killsource-2026-09-05`, 589 `killsource-2026-07-31`, 41
+      `sync-kill-feed-2026-08-02`, 3 `highlight-credit-2026-08-01`. **Le backlog n'est donc PAS
+      élargi par ce lot** : c'est la MÊME population que celle que le lot 1.8 a inscrite et que la
+      clôture M1 doit rejouer (D6 : aucune recuisson depuis). Hors lot.
+
+      **STATUT DES ITEMS DU BRIEF.** (1) `[x]` mesure avant de coder, tableaux collés, 64/372
+      rejoués. (2) `[x]` le kill-event décide, le recollage devient un repli nommé et compté, la
+      fabrication sur victime bot est supprimée. (3) `[x]` deux mutations jouées et restaurées.
+      (4) `[x]` révision montée, ratchet rouge de lui-même, golden `minibobine.golden` régénéré par
+      sa porte nommée — **UNE seule ligne change**, attribuée. (5) `[x]` **`SchemaVersion` STATUÉE À 59** par
+      les deux gates de décodage joués le même jour, et par la comparaison octet pour octet des
+      deux artefacts de `4f77afc1` — le seul film dont un couple change. Aucune chaîne complète,
+      aucun `openapi.yaml` régénéré : rien du contrat publié ne bouge.
 - [ ] 1.9.4 **La carte du film vient du nom de match, plus d'une signature de largeurs.**
       `internal/sync/killcollector/hits.go:151` appelle `DetectFilmWorldRange(dir, path, "")` alors
       que le même collecteur résout le nom de carte à `positions.go:210` et que le paramètre
@@ -2987,6 +3129,11 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-15 | 1.9.2 | **D2 (1.9.2) — SUR LIVE FIRE, LA SIGNATURE DE LARGEURS NE RETROUVE AUCUNE ENTRÉE DU CATALOGUE : LES DISTANCES DE TOUCHE Y SONT DÉJÀ DÉSACTIVÉES.** `DetectFilmMapEntry` identifie la carte en comparant `e.AxisWidths == lay.AxisW` ; la mesure de ce lot établit que l'auto-détection rend `[13 12 11]` sur les deux films Live Fire quand le catalogue dit `[12 12 11]` — donc `0 carte` trouvée, `ErrUnknownMapBounds`, distance nulle. Ce n'est pas une régression de ce lot (le comportement est antérieur) et il ne l'aggrave pas ; c'est un CAS D'ESPÈCE de ce que le lot 1.9.4 ferme, puisque le collecteur résout déjà le nom de carte du match par la base (`resolveMapBounds`). **NON TRAITÉ.** | lot 1.9.4 (la carte du film vient du nom de match) |
 | 2026-09-15 | 1.9.2 | **D3 (1.9.2) — LE CONTRÔLE « ACCORD / CONTRADICTION » DE L'AUTO-DÉTECTION EST UN ORACLE DE TEST, PAS UN COMPTEUR DE PRODUCTION, ET C'EST D2 DU PLAN QUI LE DIT.** Le brief demandait de compter l'accord et la contradiction « dans les stats de collecte ». Les poser exigerait de FAIRE TOURNER `DetectI0LayoutOf` à chaque cuisson en plus du catalogue — six chunks marchés bit à bit, plus sa propre bande de slots — c'est-à-dire précisément les « deux passes de détection supprimées par film » que ce lot compte comme gain, et une dette posée à l'endroit où le chantier en retire (S1 : zéro variable de paquet dans le décodeur, donc un porteur de compteur à inventer). D2 (§1.3) tranche sans ambiguïté : « là où le profil sait, l'inférence est un ORACLE DE TEST ; là où il ne sait pas, erreur typée » — et `map_bounds.go` écrivait déjà cette doctrine (« le découpage lu dans le film reste le CONTRÔLE, jamais l'entrée »). Le contrôle vit donc dans `filmdec/e192_i0_catalogue_mesure_research_test.go` (17 films, garde `CHUNK00_FILMS`) et dans les deux tests permanents de mutation. Item 2 du brief statué `[~]`. **NON TRAITÉ** en tant que compteur. | sans objet, sauf si un lot de profil (M3) fait passer la détection en contrôle GRATUIT — elle le devient si un jour le profil du build la porte déjà |
 | 2026-09-15 | 1.9.2 | **D4 (1.9.2) — LA MESURE DU 2026-09-03 SE REJOUE À 26, PAS 27, SUR LE MÊME FILM ET LE MÊME DÉNOMINATEUR.** `60ae07c4` : la population d'enregistrements bruts (tag exigé, aucun filtre de saturation, de vitesse ni d'isolement) vaut **267 400** sous l'auto-détection et **267 374** sous le catalogue. Le dénominateur est retrouvé À L'UNITÉ, ce qui identifie le jeu de réglages du 2026-09-03 ; l'écart d'UN enregistrement n'est pas expliqué — la mesure d'origine (`film_context.go:33-42`) ne consigne pas ses options. Sous les réglages de PRODUCTION des positions l'écart vaut 3, sous ceux des pistes de touche 16 : les trois chiffres mesurent trois populations, et les confondre est le piège que cette entrée existe pour nommer. Aucune décision ne repose sur l'unité manquante. **NON TRAITÉ.** | sans objet — écrit pour qu'un futur lot ne cherche pas à retrouver « 27 » |
+| 2026-09-15 | 1.9.3 | **D1 (1.9.3) — LA LECTURE SE TAIT SUR 81 DES 281 KILLS SANS MORT EN FACE, ET LA MOITIÉ DE CE SILENCE A UNE CAUSE NOMMÉE.** 46 des 81 muets viennent de trois films dont la table des joueurs n'épingle rien ou presque : `a349fea8` (31, v33 sans section), `a521164d` (12, HI_1_4_1) et `50247b26` (3, v31 sans section). Sur `a521164d` les 24 indices SONT épinglés et le film ne rend pourtant que **30 kill-events pour 101 kills** : ce n'est pas l'identité qui manque, c'est la CHAÎNE D'ÉVÉNEMENTS qui s'arrête tôt sur ce build (déjà nommé D11 (0.A.2) : HI_1_4_1 ferme dix fois moins que les autres). Les 35 muets restants sont répartis sur les films récents et suivent le même mécanisme : `evChainLen` n'atteint pas le kill-event. **NON TRAITÉ.** | lot 3.1 (build inconnu / profil) et 3.6 (composants manquants) ; le compteur `killsource_couple_muet` est la mesure de progrès |
+| 2026-09-15 | 1.9.3 | **D2 (1.9.3) — LA FENÊTRE DE 2,5 s SURVIT, ET ELLE EST MAINTENANT DU CÔTÉ DE LA LECTURE.** `tolMS` ne décide plus le COUPLE, mais il reste le seul moyen de rapprocher un kill-event d'un instant du kill-feed : la lecture le franchit pour trouver son enregistrement. Le lot le rend inoffensif en consommant d'abord les couples écrits au même instant (mesure : 13 ambigus -> 1), il ne le supprime pas. C'est exactement l'objet du lot 1.9.7, qui remplacera la fenêtre par l'identité de paquet `(chunk, pidx)` — que `killEventRec` porte DÉJÀ (`assist.go`) et que `Kill` ne transporte pas. **NON TRAITÉ.** | lot 1.9.7 (dead-state et kill-feed appariés par l'identité de paquet) |
+| 2026-09-15 | 1.9.3 | **D3 (1.9.3) — `CoupleStats.Contradiction` VAUT ZÉRO SUR LES 21 FILMS, ET SA BRANCHE N'EST EXERCÉE QUE PAR UN TEST.** Le cas « le film nomme une victime HUMAINE dont aucun instant voisin ne porte la mort » est prévu (la lecture prime, le xuid vient de la table du feed, l'écart se compte) mais ne se produit sur aucun film du corpus — cohérent avec « le kill-feed est humain-seul et porte TOUTES les morts humaines ». Le compteur existe pour que ce zéro soit MESURÉ et non construit. **NON TRAITÉ** (rien à corriger ; écrit pour qu'un futur lot ne prenne pas ce zéro pour une absence de code). | sans objet ; le compteur alerte si un build le fait bouger |
+| 2026-09-15 | 1.9.3 | **D4 (1.9.3) — LE BACKLOG DE REDÉCODAGE N'EST PAS ÉLARGI, IL EST LE MÊME QU'AU LOT 1.8.** L'oracle (`pre-chaine-2026-09-09`, lecture seule) montre 1 384 matchs porteurs de lignes de kill, **aucun** sous `killsource-2026-09-14` : la recuisson que 1.8 a inscrite n'a pas été jouée (D6). La montée `-> killsource-2026-09-15` ne recrute donc aucun match supplémentaire. **NON TRAITÉ** — geste de production, réservé au pilote. | bloc « Clôture M1 », point 4 |
+| 2026-09-15 | 1.9.3 | **D5 (1.9.3) — LE BILAN DU CORPUS GATE N'IMPRIME QUE `gains` ET `pertes` ; LA CATÉGORIE `changements` N'APPARAÎT NULLE PART.** `replaydiff.BilanAxe` compte QUATRE catégories (`Pertes`, `Gains`, `Changements`, `Identiques`) et `bilanDepuisRapport` (`report.go:51`) n'en remonte que deux ; `PertesDetail` (`report.go:41`) ne retient que les sens PERTE et DISPARU. Conséquence : une valeur publiée qui CHANGE sans perdre ni gagner — exactement ce qu'un lot de conversion produit — sort « 0 / 0 » et se lit comme « rien n'a bougé ». Le lot l'a contourné par une comparaison octet pour octet des deux artefacts cuits (`--work-root` + `--keep-work` puis `cmp`), mais le gate lui-même ne le dit pas. **NON TRAITÉ** (règle 7). | lot de durcissement des gates (candidat au jalon M2) : imprimer `changements` dans le tableau, ou faire porter au rapport JSON le détail des trois sens |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
@@ -3447,6 +3594,22 @@ cable) » dit que le compteur n'existe pas encore, ce qui n'est PAS un zero (cf.
 | 2026-09-15 | 1.9.2 (population du parc concernée) | ce commit | `go run ./cmd/diag_q <backup pre-chaine-2026-09-09>/shared_matches_v2.duckdb "SELECT COUNT(*) total_matchs, COUNT(*) FILTER (WHERE lower(map_name) LIKE 'live fire%') live_fire FROM match_registry"` (read_only), croisé au cache de films | **1 967 matchs au registre, dont 70 Live Fire** (`live fire` 68 + `live fire - ranked` 2) ; **52 d'entre eux ont un film en cache** sur les 1 351 du cache. Ce sont les SEULS matchs dont les lignes changent ; `IsolationDecoderRev` rend éligible au redécodage tout match à positions, comme au lot 6.1 |
 | 2026-09-15 | 1.9.2 (équivalence, régime court) | ce commit | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-decfilm-192 -films <échantillon court>` en DEUX sous-ensembles (jamais `LEVELUP_REPO_ROOT`) | `50247b26,a521164d,60ae07c4,11de8353,111fa685` : **BILAN : 5 identique(s), 0 different(s), 0 ecarte(s), 0 echec(s)** ; `e5adf7b2,bcb6d393,fb1a1a72,51101d1d,d9781168` : **BILAN : 5 identique(s), 0 different(s), 0 ecarte(s), 0 echec(s)**. **10/10 identiques, y compris `60ae07c4`** — et c'était l'attendu : le chemin de CUISSON imposait déjà le catalogue, ce lot ne touche que `killcollector` et le résolveur de distance. C'est aussi ce qui établit que `SchemaVersion` reste à 59 |
 | 2026-09-15 | 1.9.2 (corpus gate, 14 témoins) | ce commit | `go run ./cmd/replay-corpus-gate --base=ec74685ed --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-192` (SANS `--manifest` : son défaut est le bon), 28 cuissons, 8 min 18 s | **SORTIE 0 — ZÉRO PERTE, ZÉRO GAIN sur les 14 témoins, schéma 59 des deux côtés.** `bcb6d393` ctf_mono_manche 59/59 0/0 · `fb1a1a72` ctf_multi_manche 0/0 · `d9781168` oddball 0/0 · `c75f33b8` assaut_bombe 0/0 · `bf15f7ab` slayer 0/0 · `51ebbc0f` deux_manches 0/0 · `084a804d` vehicules 0/0 (1 min 46) · **`0797ce72` region_index_2_bits 0/0** · `111fa685` version_39 0/0 · `e5adf7b2` version_40_build_1_11 0/0 · **`60ae07c4` version_37 0/0** · `a349fea8` version_33_sans_identification 0/0 (2 min 07) · `bfecd02b` vehicules_v41_utilisateur 0/0 · `4f77afc1` equipement_origine_utilisateur 0/0 (1 min 55). **ET C EST L ATTENDU, PAS UNE MESURE VIDE** : le corpus gate juge l ARTEFACT DE REJEU, que `replay.BuildFromFilm` cuit — or ce chemin imposait déjà le catalogue depuis le 2026-09-03. Ce lot convertit `sync/killcollector` (tables `kill_positions` / `kill_openings` / `match_lives`, hors artefact) et le résolveur de distance de touche (passe éteinte) : aucun octet du document ne pouvait bouger, et les deux témoins Live Fire — dont un que le manifeste nomme littéralement `region_index_2_bits` — le confirment |
+| 2026-09-15 | 1.9.3 (MESURE AVANT DE CODER — le couple écrit contre le couple recollé) | ce commit | `CHUNK00_FILMS='<21 répertoires>' CGO_ENABLED=0 go test ./internal/games/halo_infinite/film/killsource/ -run TestE193CoupleEcritContreRecollage -v -count=1 -timeout 3600s` (21,3 s ; 21 films entiers = les 14 témoins du corpus gate + `50247b26`, `a521164d`, `11de8353` pour compléter les 8 builds + les 4 films de la série de référence `9b191a7f`, `000d5950`, `fccc61cd`, `78919882` ; plus la bobine versionnée, mesurée sans garde) | **[1] LE KILL-FEED, film par film — `film · build · épinglés · bots · kills · morts · couples · même-instant · recollés · orphK · orphD · kill-events 85` :** `000d5950` HI_1_13_0 8/0 93 93 93 76 **17** 0 0 100 · `000d5950(bob)` 8/0 93 93 93 76 **17** 0 0 11 · `0797ce72` HI_1_13_0 8/0 92 93 92 81 **11** 0 1 101 · `084a804d` HI_1_10_0 24/0 354 356 354 330 **24** 0 2 444 · `111fa685` HI_1_10_0 24/0 191 193 191 177 **14** 0 2 226 · `11de8353` HI_1_9_0 24/0 165 166 165 150 **15** 0 1 198 · `4f77afc1` HI_1_13_0 26/2 298 300 294 276 **18** 4 6 411 · `50247b26` sans section 0/0 150 154 150 147 **3** 0 4 48 · `51ebbc0f` HI_1_13_0 8/0 70 71 70 61 **9** 0 1 82 · `60ae07c4` HI_1_8_0 8/0 162 163 162 155 **7** 0 1 170 · `78919882` HI_1_13_0 8/0 99 99 99 86 **13** 0 0 106 · `9b191a7f` HI_1_13_0 9/1 87 87 85 74 **11** 2 3 101 · `a349fea8` sans section 0/0 290 293 290 259 **31** 0 3 69 · `a521164d` HI_1_4_1 24/0 101 106 101 89 **12** 0 5 30 · `bcb6d393` HI_1_12_0 8/0 49 49 48 47 **1** 1 1 56 · `bf15f7ab` HI_1_13_0 8/0 75 76 75 70 **5** 0 1 84 · `bfecd02b` HI_1_13_0 8/0 84 84 84 74 **10** 0 0 96 · `c75f33b8` HI_1_13_0 9/1 62 61 61 49 **12** 1 0 70 · `d9781168` HI_1_13_0 8/0 142 144 142 132 **10** 0 2 150 · `e5adf7b2` HI_1_11_0 23/0 197 199 197 186 **11** 0 2 236 · `fb1a1a72` HI_1_13_0 8/0 140 141 140 126 **14** 0 1 159 · `fccc61cd` HI_1_13_0 9/1 97 96 95 72 **23** 2 1 105. **TOTAL bobine comprise : 3 081 couples reconstruits, 2 793 au même instant, 288 recollés, 10 kills orphelins, 37 morts orphelines.** **LES 64 SUR 372 DE L'AUDIT SE REJOUENT À L'UNITÉ** sur la série de référence : 17 + 11 + 23 + 13 = **64** recollés pour 93 + 85 + 95 + 99 = **372** couples |
+| 2026-09-15 | 1.9.3 (MESURE — ce que le kill-event 85 écrit en face) | ce commit | même instrument, tableaux [2] à [5] | **[2] RÉGIME NAÏF (le tueur seul, 21 films entiers) : 271 kills sans mort en face — accord 186 · désaccord 3 · victime BOT 1 · ambigu 13 · muet 68.** **[5] RÉGIME D'ASSIGNATION (celui du lot : les couples du même instant consomment d'abord leur kill-event) : 281 — accord 198 · désaccord **0** · victime BOT **1** (`4f77afc1`) · sans-mort-au-feed 0 · ambigu **1** (`bf15f7ab`) · muet 81.** Détail des muets : `a349fea8` 31, `a521164d` 12, `4f77afc1` 10, `084a804d` 6, `c75f33b8` 5, `50247b26` 3, `11de8353` 3, `9b191a7f` 3, `e5adf7b2` 3, `111fa685` 2, `fccc61cd` 2, `bcb6d393` 1 (D1 (1.9.3) en §4). **[3] CONTRÔLE sur les 2 793 couples du MÊME INSTANT, régime naïf : 1 898 accords, 10 désaccords, 3 victimes bot, 120 ambigus, 762 muets** — ces désaccords et ces ambigus sont des enregistrements qui appartiennent à une AUTRE mort du même joueur dans la fenêtre de 2,5 s, et c'est précisément ce que le premier temps d'assignation élimine. **[4] les 10 kills orphelins sont TOUS muets** : aucune victime humaine n'est ajoutée par la lecture, donc aucun couple neuf n'apparaît |
+| 2026-09-15 | 1.9.3 (carte des sites, par grep) | ce commit | `grep -rn "reconstructPairs\|kf.split()" --include=*.go . \| grep -v _test.go` puis `grep -rn "resoudreCouples" --include=*.go .` | **`reconstructPairs` et `killFeed.split` : ZÉRO site de production** (une seule occurrence restante, dans un commentaire d'historique de `feed_couples.go`). **`resoudreCouples` : UN appelant de production, `killsource/decode.go:142`**, dans `prepare`, après `buildRoster` et avant `solveBijection` — l'ordre est forcé et il est le résultat |
+| 2026-09-15 | 1.9.3 (MUTATION A — tueur et victime échangés dans la fixture) | ce commit | `coupleRec(2000, 1, 3)` -> `coupleRec(2000, 3, 1)` dans `feed_couples_test.go`, puis le paquet | **ROUGE** : `TestLeCoupleVientDuKillEvent85` — « couples = [{timeMS:2000 killer:C victim:D victimXUID:44}], attendu le seul (C, E) — le film ECRIT E, le voisin porte D ». Le témoin est bâti pour que lecture et repli DIVERGENT, sans quoi la mutation resterait verte (198 accords sur 281 dans la vraie vie). **Fichier restauré depuis une copie hors dépôt ; paquet revert au VERT** |
+| 2026-09-15 | 1.9.3 (MUTATION B — la lecture débranchée en production) | ce commit | `lireVictime(...)` remplacée par `-1, -1, false` dans `resoudreUnKillSansMort` | **ROUGE sur QUATRE tests** : `TestLeCoupleVientDuKillEvent85`, `TestUneVictimeBotNeFabriquePlusDeCouple`, `TestLeRepliNeSertPasUneLectureAMBIGUE` et le golden `TestGoldenMiniBobine`. **Fichier restauré depuis une copie hors dépôt ; `go test` du paquet VERT après restauration** |
+| 2026-09-15 | 1.9.3 (golden `minibobine.golden`) | ce commit | `CGO_ENABLED=0 go test ./…/killsource/ -run TestGoldenMiniBobine -update -count=1` puis sans le drapeau | **UNE SEULE LIGNE CHANGE sur les 83 figées, et elle est attribuée** : `morts de BOT : 17 propose(s)` -> `16 propose(s)`. Cause : le seul couple de la bobine que le kill-event 85 décide cesse d'être un couple RECOLLÉ, donc un candidat à la mort de bot. **Les 10 lignes publiées, les trois dénominateurs de couverture (93/93/93), le roster, la provenance des indices et le contrôle négatif sont IDENTIQUES.** `git diff --stat` : 1 insertion, 1 suppression |
+| 2026-09-15 | 1.9.3 (registre des replis) | ce commit | `CGO_ENABLED=0 go test ./…/replay/fallback/ -run 'RegistrePorteToutesSesFamilles|ReplisDevantLaLectureNeMontentPas|CompteurBranche' -v -count=1` | **95 entrées** (94 -> 95 : `repli_couple_recolle_sur_le_voisin` CRÉÉE), **10 compteurs câblés**, **`NbDevantLaLecture` = 6, ratchet INCHANGÉ** — vérifié sur pièces : le recollage des couples venait de la table (A) de l'audit 0.E (ligne A3), il n'avait aucune entrée à rétrograder |
+| 2026-09-15 | 1.9.3 (révisions) | ce commit | `go test ./…/filmdec/ -run GrammarRevSuitLaGrammaire -update-grammar-rev` ; `CGO_ENABLED=1 go test ./internal/sync/killcollector/ -run TestKillSourceDecoderRevSuitLeDecodeur -update` | **`GrammarRev` grammar-2026-09-15.2 -> grammar-2026-09-15.3**, empreinte `be7d58fcb7abde479867dabbf6d2e6914b1cc8549a42974fcca2c86d2e6f2618`. **`KillSourceDecoderRev` killsource-2026-09-14 -> killsource-2026-09-15** — le ratchet d'empreinte a **ROUGI DE LUI-MÊME** au commit du décodeur (« LE DECODEUR A CHANGE », `729624c1…` -> `ed7e45ca…`, 22 fichiers non-test) : preuve par mutation naturelle. Entrées d'historique écrites dans les DEUX goldens |
+| 2026-09-15 | 1.9.3 (population du parc, oracle en lecture seule) | ce commit | `go run ./cmd/diag_q <backup pre-chaine-2026-09-09>/shared_matches_v2.duckdb "SELECT rev, COUNT(*) FROM (SELECT match_id, MAX(decoder_rev) rev FROM match_kill_events GROUP BY 1) GROUP BY 1"` | **1 384 matchs portent des lignes de kill** (751 `killsource-2026-09-05`, 589 `killsource-2026-07-31`, 41 `sync-kill-feed-2026-08-02`, 3 `highlight-credit-2026-08-01`) — **aucun sous `killsource-2026-09-14`** : le backlog inscrit par le lot 1.8 n'a pas été joué, donc cette montée ne recrute AUCUN match supplémentaire (D4 (1.9.3) en §4). La shared de production n'a PAS été lue |
+| 2026-09-15 | 1.9.3 (gates communs §2.3) | ce commit | `gofmt -l ./internal ./cmd` ; `go vet` et `go test -count=1` sur `./internal/games/halo_infinite/film/... ./internal/archlint/ ./internal/replaybuild/ ./internal/sync/killcollector/ ./internal/analysis/objectiveevents/ ./internal/domain/replaydoc/` (CGO_ENABLED=1, msys64/ucrt64 en tête du PATH) | **gofmt vide ; vet 0 diagnostic ; 13 paquets `ok`** — `filmdec` 31,9 s, `replay` 17,8 s, `archlint` 14,4 s, `killsource` 1,1 s, `replaybuild` 0,9 s, `killcollector` 0,1 s, `objectiveevents` 0,5 s, `fallback` 0,2 s ; `domain/replaydoc` sans test |
+| 2026-09-15 | 1.9.3 (gate intégration, le diff touche `internal/sync/`) | ce commit | `CGO_ENABLED=1 go test -tags=integration -p 1 ./internal/sync/killcollector/ -count=1` | **`ok  levelup/go-api/internal/sync/killcollector  14.255s`, code de sortie 0** |
+| 2026-09-15 | 1.9.3 (lint baseline) | ce commit | `make -C ../.. go-api-lint` (`GOLANGCI_LINT_CACHE` isolé) | **`0 issues.`** — aucune dette ajoutée, aucune allowlist élargie |
+| 2026-09-15 | 1.9.3 (équivalence — CLASSIFICATION AVANT TOUT `-update`) | ce commit | `replay-equiv -child -film <short8> -out <fichier> -repo-root C:/…/LevelUp-wt-decfilm-193` pour chacun des 10 films de l'échantillon court, UN PAR PROCESSUS, puis `diff` de chaque `.tsv` contre sa référence | **10 films sur 10 : UNE SEULE étape différente, `killsource`** (`50247b26`, `a521164d`, `60ae07c4`, `11de8353`, `111fa685`, `e5adf7b2`, `bcb6d393`, `fb1a1a72`, `51101d1d`, `d9781168` — 1 étape sur 53 chacun). **Les 52 autres sont identiques à l'octet**, vérifié nommément sur `artifact` (`111fa685` 5 935 757 o sha `8f123555…` des deux côtés ; `d9781168` 2 641 712 o sha `1ca74549…`), `killRefs`, `neutralDeaths` et `deaths`. Cause : la FORME de l'objet observé change (`observe("killsource", ksRes)` hache le `Result` entier, `Stats.Couples` est neuf), pas son contenu — les trois projections du même `Result` ne bougent pas d'un bit. Motif identique au lot 1.8 (D4 (1.8)) |
+| 2026-09-15 | 1.9.3 (équivalence — re-figeage puis comparaison) | ce commit | `go run ./cmd/replay-equiv -repo-root C:/…/LevelUp-wt-decfilm-193 -films <5 films> -update` en DEUX sous-ensembles séquentiels, puis les deux mêmes SANS `-update` | `-update` : **5 + 5 identiques, 0 différent, 0 écarté, 0 échec**. `git diff` des références : **10 fichiers, 10 `+killsource` / 10 `-killsource` ET RIEN D'AUTRE** (1 insertion, 1 suppression par fichier). Passe de comparaison : **5 + 5 identiques, 0 différent** |
+| 2026-09-15 | 1.9.3 (corpus gate, 14 témoins) | ce commit | `replay-corpus-gate --base=9848b7387 --parc-root C:/…/LevelUp-go-migration --source-root C:/…/LevelUp-wt-decfilm-193` (SANS `--manifest`), 28 cuissons | **SORTIE 0 — ZÉRO PERTE, ZÉRO GAIN sur les 14 témoins, schéma 59 des deux côtés.** `bcb6d393` ctf_mono_manche 0/0 16,2 s · `fb1a1a72` ctf_multi_manche 0/0 33,0 s · `d9781168` oddball 0/0 24,6 s · `c75f33b8` assaut_bombe 0/0 14,6 s · `bf15f7ab` slayer 0/0 14,0 s · `51ebbc0f` deux_manches 0/0 18,2 s · `084a804d` vehicules 0/0 1 min 51 · `0797ce72` region_index_2_bits 0/0 13,1 s · `111fa685` version_39 0/0 47,3 s · `e5adf7b2` version_40_build_1_11 0/0 39,6 s · `60ae07c4` version_37 0/0 25,3 s · `a349fea8` version_33_sans_identification 0/0 2 min 36 · `bfecd02b` vehicules_v41_utilisateur 0/0 19,5 s · **`4f77afc1` equipement_origine_utilisateur 0/0 1 min 39** — le seul film dont un couple change |
+| 2026-09-15 | 1.9.3 (SchemaVersion — ZÉRO PERTE NE SUFFISAIT PAS) | ce commit | gate rejoué sur manifeste RÉDUIT (`4f77afc1` seul, hors dépôt) avec `--work-root` et `--keep-work`, puis `cmp` et `sha256sum` des DEUX artefacts cuits | **LE BILAN IMPRIMÉ NE PORTE QUE `gains` ET `pertes`** : `replaydiff.BilanAxe` compte aussi `Changements`, que ni le tableau ni `pertesDetail` ne remontent (D5 (1.9.3) en §4) — sur le seul film dont un couple change, un `changement` serait resté invisible. **VERDICT PAR LES OCTETS : base et HEAD rendent 10 526 185 octets, sha256 `62979da9924702d3a826c585ea7bf6a38752ad089164978ff142b7f79660a476` des DEUX côtés, `cmp` muet — IDENTIQUES À L'OCTET.** Donc **`SchemaVersion` = 59, INCHANGÉE** ; aucune chaîne complète, aucun `openapi.yaml` régénéré (`git status` : ni `api/openapi.yaml` ni `apps/web/` touchés). Racine de travail supprimée après mesure (529 Mio), verrou de décodage rendu, 0 processus de décodage restant |
 
 | `repli_ancre_sans_vie_delta_ecartee` | `games/halo_infinite/film/filmdec/equipment_creation_width.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 3.x (largeurs de creation par build, la calibration disparait) |
 | `repli_armement_bombe_debut_a_zero` | `games/halo_infinite/film/replay/bomb_armings.go` | non_resolu / apres_lecture | **câblé** | **0 sur 10** | lot de conversion de l'origine du rejeu (coverage.originResolved) |
@@ -3471,6 +3634,7 @@ cable) » dit que le compteur n'existe pas encore, ce qui n'est PAS un zero (cf.
 | `repli_composant_hors_table_parametre_un` | `games/halo_infinite/film/filmdec/traverse.go` | lecture_non_portee / apres_lecture | n/i | — (non câblé) | lot 3.6 (les composants manquants, archetype par archetype) |
 | `repli_composants_statborg_arretes` | `analysis/objectiveevents/statborg.go` | lecture_non_portee / apres_lecture | n/i | — (non câblé) | lot 3.6 (les composants manquants, archetype par archetype) |
 | `repli_crane_porteur_sans_vie_nommee` | `games/halo_infinite/film/replay/skull_carries.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 1.9.5 (le porteur du crane lu au canal des armes tenues) |
+| `repli_couple_recolle_sur_le_voisin` | `games/halo_infinite/film/killsource/feed_couples.go` | section_absente / apres_lecture (POSÉ au lot 1.9.3 le 2026-09-15) | n/i — le compte EXISTE sous `CoupleStats.Recolles` et sort en `killsource_couple_recolle` | **81 sur 281 kills sans mort en face, 21 films entiers** : `a349fea8` 31, `a521164d` 12, `4f77afc1` 10, `084a804d` 6, `c75f33b8` 5, `50247b26` 3, `11de8353` 3, `9b191a7f` 3, `e5adf7b2` 3, `111fa685` 2, `fccc61cd` 2, `bcb6d393` 1 | clôture M1 puis lot 3.6 ; critère : `CoupleStats.Recolles` à 0 sur les 8 builds et sur le corpus gate |
 | `repli_deadstate_categorie_hors_enum` | `games/halo_infinite/film/killsource/walk.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 3.x (enumeration par build) |
 | `repli_deadstate_hors_bande_bipede` | `games/halo_infinite/film/killsource/walk.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 3.5 (la bande de slots bipede par build) |
 | `repli_deadstate_indice_hors_roster` | `games/halo_infinite/film/killsource/walk.go` | non_resolu / apres_lecture | n/i | — (non câblé) | lot 1.8 (le kill feed prend la table du film) porte jusqu'au rejet |

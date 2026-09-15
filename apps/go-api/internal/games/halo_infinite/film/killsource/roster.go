@@ -276,6 +276,21 @@ func (r *roster) nameOf(i int) string {
 	return r.names[r.perm[i]]
 }
 
+// nomEpingle : le nom que la LECTURE donne a un indice — la table des joueurs du film (lots 1.5
+// et 1.8) ou BOT_METADATA. Il NE DEPEND D AUCUNE BIJECTION, et c est ce qui le rend utilisable
+// pour decider un couple que la bijection consommera ensuite (lot 1.9.3, `feed_couples.go`) :
+// [nameOf], lui, lit `perm`, donc le resultat de l inference.
+//
+// Faux = cet indice n est pas epingle. Ce n est pas une erreur : c est le diagnostic « la lecture
+// se tait ici », le seul qui ouvre un repli (D14 b).
+func (r *roster) nomEpingle(i int) (string, bool) {
+	pos, ok := r.pin[i]
+	if !ok || pos < 0 || pos >= len(r.names) {
+		return "", false
+	}
+	return r.names[pos], true
+}
+
 // isBotIndex : l indice est-il epingle sur un BOT ?
 //
 // `pin` PORTE DEUX EPINGLAGES DEPUIS LE LOT 1.8 — BOT_METADATA et la table du film — et ce
