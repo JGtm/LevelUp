@@ -193,3 +193,54 @@ func TestDedupObjectDeaths(t *testing.T) {
 		}
 	}
 }
+
+// TestProfilDuCadreEstDomineOuDeclare — LE GARDE-FOU DE LA CALIBRATION, sur les deux bobines
+// versionnees qui portent des paquets delta.
+//
+// CE QU IL TIENT : la largeur retenue est soit DOMINANTE (elle bat son dauphin d un facteur
+// `calibDominationMin` sur les paquets a evenements LOCALISES), soit DECLAREE par defaut. Le
+// silence — retenir une largeur au departage par records propres, critere REFUTE par le lot V13 —
+// n est plus une issue possible.
+//
+// LA TABLE EST LA MESURE, et elle est collee au journal du test : le verdict n en est que la
+// conclusion.
+func TestProfilDuCadreEstDomineOuDeclare(t *testing.T) {
+	for _, cas := range []struct {
+		dir        string
+		veutDefaut bool
+		pourquoi   string
+	}{
+		{bobineMarcheDir(), false,
+			"profil franc mesure le 2026-09-16 : idLow=13 localise 142/147, le dauphin 23/147 (facteur 6,2)"},
+		{filepath.Join("..", "killsource", "testdata", "minibobine_e5adf7b2"), true,
+			"profil PLAT mesure le 2026-09-16 : les six largeurs localisent 0 paquet sur 54"},
+	} {
+		film, err := filmsource.LoadDir(cas.dir, nil)
+		if err != nil {
+			t.Fatalf("%s : bobine illisible : %v", filepath.Base(cas.dir), err)
+		}
+		fc := NewFilmContext(film)
+		reg, err := fc.Registry()
+		if err != nil {
+			t.Fatalf("%s : registre illisible : %v", filepath.Base(cas.dir), err)
+		}
+		kfs, deltas := marchPacketsOf(fc)
+		cfg, parDefaut, meilleur, dauphin := calibrateFrameConfig(reg, kfs, deltas)
+		t.Logf("%s : %d paquets delta · retenu idLow=%d amorce=%d · localises %d/%d · dauphin %d"+
+			" · cadre par defaut : %v", filepath.Base(cas.dir), len(deltas), cfg.IDLowBits,
+			cfg.PacketPreambleBits, meilleur.located, meilleur.events, dauphin.located, parDefaut)
+		if parDefaut != cas.veutDefaut {
+			t.Errorf("%s : cadreParDefaut=%v, attendu %v — %s",
+				filepath.Base(cas.dir), parDefaut, cas.veutDefaut, cas.pourquoi)
+		}
+		if cfg.PacketPreambleBits != DefaultPacketPreambleBits {
+			t.Errorf("%s : amorce=%d — l amorce est une propriete PROUVEE du format"+
+				" (DefaultPacketPreambleBits = %d), elle ne se balaye pas (D13)",
+				filepath.Base(cas.dir), cfg.PacketPreambleBits, DefaultPacketPreambleBits)
+		}
+		if parDefaut && cfg.IDLowBits != DefaultFrameConfig().IDLowBits {
+			t.Errorf("%s : profil plat mais largeur %d retenue au lieu du defaut %d — on ne devine pas",
+				filepath.Base(cas.dir), cfg.IDLowBits, DefaultFrameConfig().IDLowBits)
+		}
+	}
+}
