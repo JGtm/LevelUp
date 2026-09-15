@@ -2235,6 +2235,24 @@ func startWatcherDaemon(
 		},
 	}, titleReg, syncTrigger)
 
+	// Porte « profil suivi » (ADR 0035 D3) : un couple (titre, xuid) qui n'est pas
+	// déclaré dans db_profiles.json — ou qui y est en pause / auth_only — n'entre
+	// ni dans le tracking live (Daemon.AddPlayer) ni dans le sync
+	// (Coordinator.Submit ; le daemon possède le coordinateur, WithProfileGate
+	// pose les deux). Erreur de lecture de db_profiles.json ⇒ on REFUSE, après
+	// l'avoir journalisée : on ne synchronise pas « dans le doute » (c'est
+	// exactement comme ça qu'un compte inconnu a écrit 25 matchs le 2026-07-23).
+	profileGate := func(ctx context.Context, titleSlug, xuid string) bool {
+		ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
+		if err != nil {
+			slog.ErrorContext(ctx, "profil suivi : lecture de db_profiles.json échouée — requête refusée",
+				"err", err, "title_slug", titleSlug, "xuid", xuid)
+			return false
+		}
+		return ok
+	}
+	daemon.WithProfileGate(profileGate)
+
 	// Le refresh XSTS proactif a déjà été fait plus haut dans la fonction (avant
 	// le check IsXSTSValid). `tokens` reflète ici le state à jour : si un refresh
 	// a réussi, tokens.XSTSToken / XSTSUserHash sont déjà les valeurs fraîches

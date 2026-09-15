@@ -347,10 +347,23 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			}
 			return daemon
 		}
+		// Porte « profil suivi » (ADR 0035 D3) : le login SSO crée le compte et
+		// persiste les tokens, mais ne met le joueur sous surveillance que s'il a
+		// un profil déclaré. Erreur de lecture ⇒ refus journalisé.
+		ssoProfileGate := func(gctx context.Context, titleSlug, xuid string) bool {
+			ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
+			if err != nil {
+				slog.ErrorContext(gctx, "xbox_sso: lecture de db_profiles.json échouée — watcher non notifié",
+					"err", err, "title_slug", titleSlug, "xuid", xuid)
+				return false
+			}
+			return ok
+		}
 		xboxLinkStrategy = service.NewXboxSSOLinkStrategy(users).
 			WithTokenStore(multiUserTokens).
 			WithDaemonGetter(daemonGetter).
 			WithInstanceLock(instanceLockedFn).
+			WithProfileGate(ssoProfileGate).
 			WithInviteStore(invites).
 			WithGroupStore(groupStore)
 		authHandler.WithLinkStrategy(xboxLinkStrategy)
