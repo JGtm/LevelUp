@@ -1,0 +1,167 @@
+package filmdec
+
+// e191c_n2_oracle_research_test.go — LOT 1.9.1 bis, PAS 2 QUATER : `n2` COMME ORACLE DES
+// LARGEURS DE L ETAT PAR DEFAUT, APPLIQUE AUX ARCHETYPES QUI ECHOUENT.
+//
+// # CE QUE LE PAS 2 QUATER A ETABLI
+//
+// `n1` se lit a 108 bits du debut du record, `n2` APRES l etat par defaut. Les deux sont des
+// tailles de tampon, donc CONSTANTES par archetype et par build. Mesure : les archetypes qui
+// FERMENT ont `n1` ET `n2` constants (ti=14 4/28, ti=17 4/432, ti=22 12/12, ti=29 1/256,
+// ti=6 4/7896) ; ceux qui echouent ont `n1` constant et `n2` du BRUIT (ti=13 136/bruit,
+// ti=37 100/bruit, ti=38 100/bruit). Le premier bit faux est donc DANS L ETAT PAR DEFAUT.
+//
+// # CE QUE CET INSTRUMENT CHERCHE
+//
+// L etat par defaut de ti=36, 37, 38, 39, 42 et 43 contient le BLOC MPP (`FUN_14080cfe8`), dont
+// le portage garde DEUX largeurs en globales — `mppLeadBits` et `mppIndexBits`. Chez l ecrivain
+// elles sont LITTERALES : R(9) (`141fd72de : ADD [RCX+0x2c],0x9`) et R(5) (inline). Si une
+// autre paire rendait `n2` CONSTANT, ce serait la preuve que le bloc porte autre chose ; si
+// AUCUNE ne le rend constant, le defaut n est pas dans ces deux largeurs et il faut chercher
+// ailleurs dans le bloc.
+//
+// LE CRITERE : la part des records dont le `n2` prend la valeur MODALE. A 9/5 elle est basse
+// (bruit) ; une paire juste la mettrait proche de 1.
+//
+// LECTURE SEULE, sans garde d environnement (bobines versionnees). Aucun composant n est
+// deroule : seul l etat par defaut est joue, donc le balayage est bon marche.
+//
+//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191cOracleN2$' -v -count=1
+
+import (
+	"path/filepath"
+	"sort"
+	"testing"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
+
+// e191cN2Max borne le balayage de chaque largeur MPP.
+const e191cN2Max = 16
+
+// e191cAncre est un record deja localise : son payload et son premier bit. Les ancres sont
+// calculees UNE FOIS — le balayage rejoue seulement l etat par defaut, pas le scan d ancres.
+type e191cAncre struct {
+	Pay []byte
+	Bit int
+}
+
+// e191cN2Part rend la part des records dont `n2` prend la valeur modale, et cette valeur.
+func e191cN2Part(ancres []e191cAncre, ti int) (float64, uint64, int) {
+	hist := map[uint64]int{}
+	total := 0
+	{
+		for _, a := range ancres {
+			p, b := a.Pay, keyframeBorne{Bit: a.Bit, TI: ti}
+			total++
+			br := NewBitReader(p)
+			br.SetBitPos(b.Bit + keyframeFullStateHeaderBits)
+			n1 := int32(br.ReadBits(keyframeFullStateSizeBits)) //nolint:gosec // 32 bits
+			if n1 > 0 {
+				consumeKeyframeDefaultState(br, uint32(ti)) //nolint:gosec // index d archetype
+			}
+			hist[br.ReadBits(keyframeFullStateSizeBits)]++
+		}
+	}
+	meilleure, n := uint64(0), 0
+	for v, c := range hist {
+		if c > n || (c == n && v < meilleure) {
+			meilleure, n = v, c
+		}
+	}
+	if total == 0 {
+		return 0, 0, 0
+	}
+	return float64(n) / float64(total), meilleure, total
+}
+
+// TestE191cOracleN2 balaye les deux largeurs MPP et publie la part modale de `n2`.
+func TestE191cOracleN2(t *testing.T) {
+	rel := LockProcessDecode()
+	defer rel()
+	prev := CurrentMPPWidths()
+	defer SetMPPWidths(prev)
+	t.Logf("######## PAS 2 QUATER — `n2` CONTRE LES LARGEURS DU BLOC MPP ########")
+	t.Logf("  largeurs de l ecrivain : lead=9 (141fd72de), index=5 (inline FUN_14080cfe8)")
+	parTI := map[int][]e191cAncre{}
+	for _, court := range closureMiniFilms()[:2] {
+		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)
+		film, err := filmsource.LoadDir(dir, nil)
+		if err != nil {
+			t.Fatalf("LoadDir %s : %v", dir, err)
+		}
+		for _, p := range e191cPayloads(NewFilmContext(film)) {
+			for _, b := range keyframeBornes(p) {
+				parTI[b.TI] = append(parTI[b.TI], e191cAncre{Pay: p, Bit: b.Bit})
+			}
+		}
+	}
+	for _, ti := range []int{37, 38, 42} {
+		e191cBalayerMPP(t, parTI[ti], ti)
+	}
+}
+
+// e191cResultatMPP est une paire de largeurs et la part modale qu elle obtient.
+type e191cResultatMPP struct {
+	Lead, Index int
+	Part        float64
+	Modal       uint64
+}
+
+// e191cBalayerMPP balaye les deux largeurs et colle les dix meilleures paires.
+func e191cBalayerMPP(t *testing.T, ancres []e191cAncre, ti int) {
+	t.Helper()
+	var res []e191cResultatMPP
+	total := 0
+	for l := 1; l <= e191cN2Max; l++ {
+		for i := 1; i <= e191cN2Max; i++ {
+			SetMPPWidths(MPPWidths{Lead: l, Index: i})
+			part, modal, n := e191cN2Part(ancres, ti)
+			total = n
+			res = append(res, e191cResultatMPP{Lead: l, Index: i, Part: part, Modal: modal})
+		}
+	}
+	sort.Slice(res, func(a, b int) bool { return res[a].Part > res[b].Part })
+	t.Logf("")
+	t.Logf("  ==== ti=%d (%d records) — dix meilleures paires ====", ti, total)
+	for k, r := range res {
+		if k >= 10 {
+			break
+		}
+		marque := ""
+		if r.Lead == 9 && r.Index == 5 {
+			marque = "  <- les largeurs de l ecrivain"
+		}
+		t.Logf("     lead=%-3d index=%-3d part modale=%.3f (n2=%d)%s", r.Lead, r.Index, r.Part, r.Modal, marque)
+	}
+	for _, r := range res {
+		if r.Lead == 9 && r.Index == 5 {
+			t.Logf("     RAPPEL lead=9 index=5 : part modale=%.3f (n2=%d)", r.Part, r.Modal)
+		}
+	}
+}
+
+// LE RESULTAT, ET IL BORNE LE DEFAUT A TROIS BITS DANS UNE FONCTION NOMMEE (2026-09-15).
+//
+// Balayage 16 x 16 sur deux bobines, part des records dont `n2` prend la valeur modale :
+//
+//	            lead=9 index=5 (l ecrivain)     meilleure paire
+//	ti=37  1 187 records    0,204 (n2=0)        lead=8 index=3 -> 0,639 (n2=1396)
+//	ti=38  3 402 records    0,053 (n2=0)        lead=8 index=3 -> 0,617 (n2=1764)
+//	ti=42    951 records    0,059               lead=8 index=3 -> 0,732 (n2=1300)
+//
+// LA MEME PAIRE GAGNE SUR LES TROIS ARCHETYPES, et les `n2` modaux y deviennent des tailles de
+// tampon plausibles (1 396, 1 764, 1 300) au lieu de 0. Ce n est pas du bruit : trois
+// populations independantes ne designent pas la meme paire par hasard.
+//
+// CE QUE CELA NE VEUT PAS DIRE, ET C EST LA REGLE D13. `lead = 8` CONTREDIT l ecrivain, qui
+// donne `R(9)` par un litteral (`141fd72de : ADD [RCX+0x2c],0x9`), et `index = 3` contredit le
+// `R(5)` inline. La bonne lecture du resultat n est donc PAS « poser 8 et 3 » — ce serait
+// accorder un decodeur a une mesure, exactement ce que le chantier interdit — mais :
+//
+//	LE BLOC MPP (`FUN_14080cfe8`) CONSOMME TROIS BITS DE TROP, et les deux largeurs du
+//	balayage ne sont que les seules molettes disponibles pour les absorber.
+//
+// Le defaut passe donc de « quelque part dans 31 composants » a « trois bits dans une fonction
+// nommee ». La part modale plafonne a 0,62-0,73 et non a 1 : le bloc porte encore un element
+// variable au-dela de ces trois bits. C est la prochaine relecture chez l ecrivain.
