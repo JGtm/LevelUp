@@ -243,19 +243,14 @@ type KillSourceCollector struct {
 	budget  time.Duration
 	timeout time.Duration
 	// mapNames / mapBounds : cablage OPTIONNEL de la RESOLUTION DE CARTE du collecteur — cf.
-	// WithPositionCapture. Les deux sont necessaires ensemble. nil = positions desactivees,
-	// degradation journalisee PAR MATCH (jamais une erreur : c est une configuration, pas une
-	// panne).
-	//
-	// DEUX PASSES LES PARTAGENT DEPUIS LE LOT 1.9.4 : les positions (`shared.kill_positions`,
-	// G.2bis) ET les distances de touche, qui devinaient jusque-la la carte par une signature de
-	// largeurs d axe au lieu de la lire au nom du match (`map_identity.go`).
+	// WithPositionCapture. Les deux sont necessaires ensemble ; nil = positions desactivees,
+	// degradation journalisee PAR MATCH (configuration, pas panne). DEUX passes les partagent
+	// depuis le lot 1.9.4 : les positions (G.2bis) ET les distances de touche (`map_identity.go`).
 	mapNames  port.ReplayMapNameRepo
 	mapBounds *filmdec.MapQuantCatalog
 	// filmDir : la CONFIGURATION du numerateur film (precision par arme + distance, collectHits
 	// — acquis du chantier precision remis le 2026-09-01, exposition API retiree). nil = passe
-	// non configuree (chemin live sans cache disque) -> la precision par arme est ignoree,
-	// best-effort. Voir ConfigureFilmAccuracy.
+	// non configuree (chemin live sans cache) -> precision ignoree. Voir ConfigureFilmAccuracy.
 	filmDir FilmDirResolver
 }
 
@@ -271,11 +266,9 @@ type FilmDirResolver func(matchID string) string
 // chunks d un match. Sans cet appel, la passe de precision par arme ne tourne pas (degradation
 // gracieuse).
 //
-// ELLE NE PREND PLUS DE CHEMIN DE CATALOGUE DEPUIS LE LOT 1.9.4. Le catalogue de bornes du
-// collecteur est celui de [KillSourceCollector.WithPositionCapture] — un seul, charge une fois,
-// pour les positions comme pour les distances de touche. Le second chemin servait a une detection
-// de carte PAR SIGNATURE que ce lot a supprimee (`map_identity.go`) ; le garder aurait laisse deux
-// configurations du meme catalogue, donc deux verites possibles pour la meme carte.
+// ELLE NE PREND PLUS DE CHEMIN DE CATALOGUE DEPUIS LE LOT 1.9.4 : le collecteur n en a qu UN,
+// celui de [KillSourceCollector.WithPositionCapture]. Deux configurations du meme catalogue, ce
+// seraient deux verites possibles pour la meme carte (`map_identity.go`).
 func (c *KillSourceCollector) ConfigureFilmAccuracy(dir FilmDirResolver) {
 	c.filmDir = dir
 }
