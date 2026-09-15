@@ -111,7 +111,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// sur les vies ET sur le roster ; la base n'entre que dans `coverage.teams` comme CONTROLE.
 	// Posee APRES le nommage : le xuid d'une vie est ce qui la relie a son index de joueur.
 	equipes := newTeamPublication(reg, opt.PlayerTeams, opt.TeamScan, opt.ScoreboardTeams)
-	viesTotal, viesNommees := equipes.poserSurLesTraces(doc.Tracks)
+	viesTotal, viesNommees, viesSlotAmbigu := equipes.poserSurLesTraces(doc.Tracks)
 	doc.Roster = buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, opt.Deaths), opt.Bots, equipes)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, reg.DeathOffsetMS(), reg.DeathOffsetMatches())
@@ -158,7 +158,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// LA COUVERTURE DES EQUIPES SE CONSTRUIT ICI mais SE POSE plus bas, avec les autres :
 	// `doc.Coverage` n'existe qu'a partir de `buildCoverage`. Elle a besoin du roster, qui est
 	// son denominateur.
-	teamCov := equipes.couverture(viesTotal, viesNommees, doc.Roster)
+	teamCov := equipes.couverture(viesTotal, viesNommees, viesSlotAmbigu, doc.Roster)
 	logTeamCoverage(matchID, teamCov)
 	clock := replayScoreClock(&doc, interval, matchID)
 	objCov := attachObjectiveActions(&doc, opt, reg, clock)

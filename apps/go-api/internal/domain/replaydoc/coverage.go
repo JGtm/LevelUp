@@ -183,6 +183,11 @@ type TeamCoverage struct {
 	Silence       int    `json:"silence"`
 	Tracks        int    `json:"tracks"`
 	TracksNamed   int    `json:"tracksNamed"`
+	// TracksSlotAmbiguous : les vies sans xuid dont le SLOT a porte deux joueurs nommes
+	// d'equipes differentes. Le pont slot -> index s'y ABSTIENT (revue de jalon M1, lentille
+	// L4) plutot que de publier l'equipe du PREMIER occupant sur la vie du SECOND. Absent du
+	// document quand il vaut zero.
+	TracksSlotAmbiguous int `json:"tracksSlotAmbiguous,omitempty"`
 }
 
 type TrackCoverage struct {
