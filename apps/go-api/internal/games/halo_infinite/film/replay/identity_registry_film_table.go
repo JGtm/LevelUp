@@ -86,7 +86,53 @@ func composerTableDIndex(in IdentityInput) filmTableLinks {
 		poserSiegesDuFilm(&out, in)
 	}
 	completerParLesChunks(&out, in)
+	retirerLesIndexEnCollision(&out)
 	return out
+}
+
+// retirerLesIndexEnCollision RETIRE de la table composee tout index que DEUX xuids se disputent.
+//
+// # POURQUOI CETTE PASSE EXISTE (revue de jalon M1, lentille L4)
+//
+// La lecture des chunks seule etait gardee : `injectiveOrEmpty` (`player_index.go`) VIDE la table
+// des qu'un index y porte deux joueurs, parce qu'un index partage poserait les tirs de deux
+// joueurs sur la meme trace. La composition, elle, REMPLACAIT cette table gardee
+// (`BuildIdentityRegistry` : `in.PlayerIndices = reg.filmTable.table`) sans jamais refaire ce
+// test : [completerParLesChunks] ne verifiait que la duplication de XUID. Un xuid assis a
+// l'index i par le film, absent de `PlayerIndices`, pendant qu'un REMPLACANT est lu a ce meme
+// index i dans les chunks, suffisait — et la reprise de l'index d'un partant est MESUREE
+// (`filmdec/player_teams.go` : `11de8353` index 23, `51101d1d` index 6). Les trois lecteurs qui
+// renversent la table (`indexToXUIDOf`) ecrasaient alors sans garde, et l'identite publiee sur
+// une vie dependait de l'ORDRE D'ITERATION D'UNE MAP : non deterministe d'une cuisson a l'autre,
+// donc une menace directe sur l'equivalence octet a octet.
+//
+// # L'INDEX N'EST POSE POUR PERSONNE, ET C'EST LA MEME DOCTRINE QU'AILLEURS
+//
+// Entre deux joueurs pour un meme index, il n'y a rien a choisir — pas plus qu'entre deux equipes
+// pour un meme joueur (`IndexDivergences`) ou entre deux occupants d'un slot recycle
+// (`SlotAmbiguous`). Les DEUX liens partent, la voie avec eux, le compteur le dit et un WARN le
+// signale. Le gamertag que le film ecrit (`noms`) RESTE : il est porte par le xuid, pas par
+// l'index, et rien dans cette collision ne le met en doute.
+func retirerLesIndexEnCollision(out *filmTableLinks) {
+	parIndex := map[int][]uint64{}
+	for x, i := range out.table.ByXUID {
+		parIndex[i] = append(parIndex[i], x)
+	}
+	for _, xuids := range parIndex {
+		if len(xuids) < 2 {
+			continue
+		}
+		out.couverture.IndexCollisions++
+		for _, x := range xuids {
+			if out.voie[x] == canonical.MethodFilmPlayerTable {
+				out.couverture.Direct--
+			} else {
+				out.couverture.Fallback--
+			}
+			delete(out.table.ByXUID, x)
+			delete(out.voie, x)
+		}
+	}
 }
 
 // poserSiegesDuFilm pose les liens que la table du film porte, et les confronte au controle.
@@ -132,7 +178,13 @@ func (l filmTableLinks) alarmerSurLaTableDuFilm(matchID string) {
 	slog.Info("rejeu : table du film composee au registre d'identite", "match_id", matchID,
 		"lue", c.Read, "refus", c.Refusal, "sieges", c.Seats, "direct", c.Direct,
 		"repli", c.Fallback, "accord", c.Accord, "contradiction", c.Contradiction,
-		"silence", c.Silence)
+		"silence", c.Silence, "collisionsIndex", c.IndexCollisions)
+	if c.IndexCollisions > 0 {
+		slog.Warn("rejeu : des INDEX de joueur etaient revendiques par deux xuids dans la table "+
+			"composee — l'index est retire POUR LES DEUX, aucune identite n'est tiree au sort",
+			"match_id", matchID, "collisions", c.IndexCollisions, "liens_restants",
+			c.Direct+c.Fallback)
+	}
 	if c.Contradiction > 0 {
 		slog.Warn("rejeu : la lecture des chunks CONTREDIT la table du film sur des index — la "+
 			"table du film fait foi, l'ecart est compte",
