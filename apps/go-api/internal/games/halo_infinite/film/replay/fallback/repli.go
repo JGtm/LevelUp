@@ -93,6 +93,10 @@ const (
 	CondFilmMuet Condition = "film_muet"
 	// CondSectionAbsente : le film écrit ce fait ailleurs, mais CE film-ci ne porte pas la
 	// section (bobine partielle, chunk_00 absent, build sans section d'identification).
+	//
+	// LA TABLE D'INDEX DES JOUEURS VIDE EN EST LE CAS TYPE (revue M1, 2026-09-15) : sans elle,
+	// le registre d'identité sort avant toute découpe et ne rend AUCUNE vie — le film n'est pas
+	// muet sur les morts, c'est la section qui les rattacherait à un joueur qui manque.
 	CondSectionAbsente Condition = "section_absente"
 	// CondLectureNonPortee : le film ÉCRIT le fait et le lecteur n'existe pas encore. C'est une
 	// dette nommée : la cible de retrait est le lot qui porte le lecteur.
@@ -162,6 +166,30 @@ type Site struct {
 	// Ancre : sous-chaîne EXACTE présente dans le fichier, choisie pour être distinctive
 	// (signature de fonction, littéral de la décision, commentaire de la branche).
 	Ancre string
+	// Condition : le diagnostic typé de CE SITE quand il diffère de celui de l'entrée. Vide =
+	// le site partage la [Repli.Condition] de son entrée, ce qui est le cas courant.
+	//
+	// IL EXISTE PARCE QU'UN MÊME REPLI PEUT S'OUVRIR SUR DEUX SILENCES DIFFÉRENTS, et que D14 (b)
+	// fait reposer la légitimité d'un repli sur sa condition : une condition déclarée une seule
+	// fois pour deux sites en décrit forcément un de travers. Constaté à la revue de jalon M1
+	// (2026-09-15, lentille D13) sur `repli_vie_coupee_au_trou_de_replication` : le site de
+	// `lives_decoupe.go` s'ouvre sur un film qui n'écrit AUCUNE mort du joueur ([CondFilmMuet]),
+	// celui de `tracks_publication.go` sur un film dont la TABLE D'INDEX des joueurs est absente
+	// ([CondSectionAbsente]) — deux diagnostics, deux gestes de retrait.
+	//
+	// UN SITE NE DEVIENT PAS UN REPLI À PART POUR AUTANT : c'est le même fait décidé par le même
+	// mécanisme, donc le même nom, le même compteur et le même critère de retrait. Ce qui varie
+	// est la raison pour laquelle la lecture s'est tue.
+	Condition Condition
+}
+
+// ConditionEffective rend le diagnostic de ce site : le sien s'il en porte un, sinon celui de
+// l'entrée. C'est la valeur que lit tout rapport de couverture.
+func (r Repli) ConditionEffective(s Site) Condition {
+	if strings.TrimSpace(string(s.Condition)) != "" {
+		return s.Condition
+	}
+	return r.Condition
 }
 
 // Repli est une entrée du registre : tout ce qu'il faut savoir d'un repli sans ouvrir le code.
@@ -314,6 +342,12 @@ func verifierUneEntree(r Repli, vus map[Nom]bool) []string {
 	for i, s := range r.Sites {
 		if strings.TrimSpace(s.Fichier) == "" || strings.TrimSpace(s.Ancre) == "" {
 			add("site #%d incomplet (fichier %q, ancre %q)", i, s.Fichier, s.Ancre)
+		}
+		if !conditionsConnues[r.ConditionEffective(s)] {
+			add("site #%d : condition inconnue %q", i, s.Condition)
+		}
+		if s.Condition == r.Condition && strings.TrimSpace(string(s.Condition)) != "" {
+			add("site #%d : condition recopiee de l entree — la laisser vide", i)
 		}
 	}
 	if !r.CompteurBranche && strings.TrimSpace(r.CibleComptage) == "" {

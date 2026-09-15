@@ -192,14 +192,26 @@ func decimateTracks(sorted []filmdec.BipedPosition, in decoupeDesTraces) ([]Trac
 // bornesDesVies groupe par slot la DÉCOUPE que le registre a établie, triée chronologiquement.
 //
 // LE REPLI EST ICI, ET IL EST COMPTÉ (D14) : quand le registre ne rend AUCUNE vie — un film dont
-// la table des joueurs est vide, donc aucun lien à poser — la publication n'a rien à suivre et se
-// rabat sur le seuil de trou. Ce n'est pas un silence : `repli_vie_coupee_au_trou_de_replication`
-// se déclenche, une fois par cuisson.
+// la table d'index des joueurs est vide, donc aucun lien à poser — la publication n'a rien à
+// suivre et se rabat sur le seuil de trou. Ce n'est pas un silence :
+// `repli_vie_coupee_au_trou_de_replication` se déclenche, site 2 de son entrée au registre.
+//
+// SA CONDITION N'EST PAS CELLE DU SITE DE `lives_decoupe.go`, et le registre le dit site par site
+// (revue de jalon M1, 2026-09-15). Là-bas le film n'écrit AUCUNE mort du joueur concerné
+// ([fallback.CondFilmMuet]) ; ici `IdentityInput.PlayerIndices.ByXUID` est VIDE, donc
+// `buildOwnersFromTracks` sort avant toute découpe et AUCUNE vie n'est lue
+// ([fallback.CondSectionAbsente]). Le film, lui, peut très bien écrire ses morts.
+//
+// LE COMPTE EST CELUI DES COUPURES, PAS DES PASSAGES. Un déclenchement par cuisson disait
+// « hits: 1 » là où le seuil découpait 212 vies : un compte qui ne suit pas la population qu'il
+// décrit ne peut pas servir le critère de retrait de D14 (d). `DeclencheN` existe pour cela, et
+// un film sans aucune position rend 0 — donc ne compte rien, au lieu de compter un repli qui n'a
+// rien décidé.
 func bornesDesVies(sorted []filmdec.BipedPosition, in decoupeDesTraces) map[uint32][]lifeSpan {
 	vies := in.vies
 	if len(vies) == 0 {
-		in.fb.Declenche(fallback.NomVieCoupeeAuTrouDeReplication)
 		vies = buildLifeSpans(indexBySlot(sorted))
+		in.fb.DeclencheN(fallback.NomVieCoupeeAuTrouDeReplication, coupuresDuSeuil(vies))
 	}
 	out := map[uint32][]lifeSpan{}
 	for _, l := range vies {
@@ -209,6 +221,22 @@ func bornesDesVies(sorted []filmdec.BipedPosition, in decoupeDesTraces) map[uint
 		sort.SliceStable(out[s], func(i, j int) bool { return out[s][i].from < out[s][j].from })
 	}
 	return out
+}
+
+// coupuresDuSeuil compte les COUPURES qu'un découpage par le seuil de trou a décidées : chaque
+// vie au-delà de la première d'un slot est une coupure, et c'est exactement la population que le
+// repli a tranchée.
+//
+// ELLE REND 0 SUR UN FILM SANS POSITION, et c'est le point : `DeclencheN` ignore un `k <= 0`,
+// donc un film muet de bout en bout ne compte plus un repli qui n'a rien eu à décider. Le compte
+// publié dit alors ce qu'il dit — combien de fins de vie viennent d'un seuil, et non d'une
+// lecture.
+func coupuresDuSeuil(vies []lifeSpan) int {
+	slots := make(map[uint32]bool, len(vies))
+	for _, l := range vies {
+		slots[l.slot] = true
+	}
+	return len(vies) - len(slots)
 }
 
 // vieDuPoint rend l'indice de la vie du slot qui couvre cet instant.

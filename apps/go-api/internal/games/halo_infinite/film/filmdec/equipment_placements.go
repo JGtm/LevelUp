@@ -183,16 +183,20 @@ func ScanEquipmentPlacements(
 	// largeur relue (20, 21, 24, 25) : etat normal du parc ancien, rien a signaler. Format
 	// INCONNU (28 au prochain patch du jeu) : le repli tient le parc neuf — il ne l eteint pas —
 	// mais il doit se VOIR, d ou `st.FormatSansProfil`, que `replay` publie en compteur.
-	st.FormatVersion, _ = FilmFormatVersion(fc.Film())
-	_, errFormat := MPPWidthsForFormat(st.FormatVersion)
-	st.FormatSansProfil = errFormat != nil
-	profil, errProfil := BuildProfileFromFilm(fc.Film())
-	profilRelu := errProfil == nil && profil.MPP.Valid()
+	//
+	// UNE SEULE PORTE DEPUIS LA REVUE M1 (2026-09-15) : [MPPWidthsForFilm]. Ce site resolvait
+	// le profil COMPLET ([BuildProfileFromFilm]), qui refuse tout build hors de la table des
+	// sept — un film au format 27 dont le build n est pas de la table se repliait donc sur la
+	// calibration DEVANT une largeur relue, sans rien compter. La cle est la version de format,
+	// et elle l est ici comme dans `gwWidthsForFilm`.
+	res := MPPWidthsForFilm(fc.Film())
+	st.FormatVersion = res.FormatVersion
+	st.FormatSansProfil = res.FormatInconnu
 	cal, ok := CalibrateMPPWidthsOf(fc, wr, band, spans)
 	st.Calibration, st.Scanned = cal, true // le film a été lu ; reste à savoir s il a tranché
 	switch {
-	case profilRelu:
-		SetMPPWidths(profil.MPP)
+	case res.Relue():
+		SetMPPWidths(res.Widths)
 	case !ok:
 		return nil, st, nil // ni profil relu ni calibration : aucune pose, et les stats le disent
 	default:

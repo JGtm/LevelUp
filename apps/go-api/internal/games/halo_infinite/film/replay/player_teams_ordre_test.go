@@ -52,7 +52,10 @@ func publicationDeuxVoiesDivergentes() teamPublication {
 func TestLEquipeDuXUIDPrimeSurLePontDuSlot(t *testing.T) {
 	tracks := []Track{{Slot: 200, XUID: "111", Team: -1}}
 
-	total, nommees := publicationDeuxVoiesDivergentes().poserSurLesTraces(tracks)
+	total, nommees, slotAmbigu := publicationDeuxVoiesDivergentes().poserSurLesTraces(tracks)
+	if slotAmbigu != 0 {
+		t.Errorf("slotAmbigu = %d, attendu 0 : le siege 200 n a qu un occupant (fusion des lots rev1-L4 et rev1-L6, 2026-09-16)", slotAmbigu)
+	}
 
 	if tracks[0].Team != 0 {
 		t.Errorf("equipe posee = %d, attendue 0 (celle du XUID 111) : le pont du siege 200 dit 1, "+
@@ -70,7 +73,10 @@ func TestLEquipeDuXUIDPrimeSurLePontDuSlot(t *testing.T) {
 func TestLePontDuSlotNommeLaVieSansXUID(t *testing.T) {
 	tracks := []Track{{Slot: 200, Team: -1}}
 
-	total, nommees := publicationDeuxVoiesDivergentes().poserSurLesTraces(tracks)
+	total, nommees, slotAmbigu := publicationDeuxVoiesDivergentes().poserSurLesTraces(tracks)
+	if slotAmbigu != 0 {
+		t.Errorf("slotAmbigu = %d, attendu 0 : le siege 200 n a qu un occupant (fusion des lots rev1-L4 et rev1-L6, 2026-09-16)", slotAmbigu)
+	}
 
 	if tracks[0].Team != 1 {
 		t.Errorf("equipe posee = %d, attendue 1 (celle du pont slot 200 -> index 1) : une vie sans "+
@@ -86,7 +92,10 @@ func TestLePontDuSlotNommeLaVieSansXUID(t *testing.T) {
 func TestUneVieQueNiLUneNiLAutreVoieNeNommeGardeMoinsUn(t *testing.T) {
 	tracks := []Track{{Slot: 999, XUID: "222", Team: -1}}
 
-	total, nommees := publicationDeuxVoiesDivergentes().poserSurLesTraces(tracks)
+	total, nommees, slotAmbigu := publicationDeuxVoiesDivergentes().poserSurLesTraces(tracks)
+	if slotAmbigu != 0 {
+		t.Errorf("slotAmbigu = %d, attendu 0 : le siege 200 n a qu un occupant (fusion des lots rev1-L4 et rev1-L6, 2026-09-16)", slotAmbigu)
+	}
 
 	if tracks[0].Team != -1 {
 		t.Errorf("equipe posee = %d, attendue -1 : ni le xuid 222 ni le siege 999 ne sont nommes",

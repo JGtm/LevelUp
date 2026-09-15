@@ -37,7 +37,9 @@ const (
 	NomCollineVotesPeriodeEntiere Nom = "repli_colline_votes_periode_entiere"
 	// NomCollineDernierIntervalleOuvert : `replay/zone_states_hill.go`, `hillOwnerRuns`.
 	NomCollineDernierIntervalleOuvert Nom = "repli_colline_dernier_intervalle_ouvert"
-	// NomVieCoupeeAuTrouDeReplication : `replay/lives_decoupe.go`, `coupureEcrite`.
+	// NomVieCoupeeAuTrouDeReplication : DEUX sites — `replay/lives_decoupe.go`,
+	// `causeDeLaCoupure` (film muet sur les morts du joueur) et `replay/tracks_publication.go`,
+	// `bornesDesVies` (table d'index des joueurs vide). Le registre porte la condition de chacun.
 	NomVieCoupeeAuTrouDeReplication Nom = "repli_vie_coupee_au_trou_de_replication"
 	// NomArmementBombeDebutAZero : `replay/bomb_armings.go`, `buildBombArmings`.
 	NomArmementBombeDebutAZero Nom = "repli_armement_bombe_debut_a_zero"
