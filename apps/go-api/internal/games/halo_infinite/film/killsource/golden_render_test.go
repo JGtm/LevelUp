@@ -232,7 +232,9 @@ func sectionProvenance(b *strings.Builder, t FilmTablePinning) {
 	}
 	fmt.Fprintf(b, "table du film : build %s · %d siege(s) nomme(s) · %d indice(s) LU(S) · %d ajout(s) au roster\n",
 		t.Build, t.Seats, t.Pinned, t.AddedNames)
-	fmt.Fprintf(b, "repli : %d indice(s) laisse(s) a l inference par les votes du kill-feed\n", t.Inferred)
+	fmt.Fprintf(b, "repli : %d indice(s) laisse(s) a l inference par les votes du kill-feed, "+
+		"pour %d nom(s) libre(s) — affectation unique : %v\n",
+		t.Inferred, t.FreeNames, t.AffectationUnique())
 	fmt.Fprintf(b, "refus de siege : bot deja epingle %d · nom deja epingle %d · indice hors 0..31 %d\n",
 		t.BotConflict, t.DuplicateName, t.OutOfRange)
 	fmt.Fprintf(b, "controle par le kill-feed (jamais une correction) : accord %d · contradiction %d · silence %d\n",
@@ -242,7 +244,7 @@ func sectionProvenance(b *strings.Builder, t FilmTablePinning) {
 // determineeGolden : la bijection laisse-t-elle encore quelque chose d interchangeable ?
 func determineeGolden(d bool) string {
 	if d {
-		return "DETERMINEE (rien a inferer)"
+		return "DETERMINEE (une seule affectation possible)"
 	}
 	return "inferee en partie"
 }

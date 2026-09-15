@@ -324,12 +324,18 @@ type Result struct {
 	// transposition pres. ZERO = au moins deux joueurs sont interchangeables.
 	BijectionMargin int
 	// BijectionDetermined : la bijection est-elle DETERMINEE, c est-a-dire sans aucune ambiguite
-	// restante ? Vrai quand la table du film a epingle tous les indices sauf au plus un : il n y
-	// a alors qu une affectation possible, donc rien d interchangeable, et la marge est SANS
-	// OBJET plutot que nulle (cf. [Result.LineByLinePublishable]).
+	// restante ? Vrai quand l inference n avait qu UNE SEULE affectation possible a rendre :
+	// rien n est alors interchangeable, et la marge est SANS OBJET plutot que nulle
+	// (cf. [Result.LineByLinePublishable]).
+	//
+	// « AU PLUS UN INDICE LIBRE » NE SUFFIT PAS A DIRE CELA, et c est le correctif de la revue
+	// de jalon M1 (lentille L4) : depuis le lot 1.8 il peut rester PLUS de noms libres que
+	// d indices libres, donc un indice libre pour deux noms libres — que le hongrois tranche
+	// alors par les votes, tous nuls pour un joueur qui n a ni tue ni ete tue. Le critere est
+	// donc [FilmTablePinning.AffectationUnique], qui compte les DEUX cotes.
 	//
 	// C EST UN BOOLEEN POSE PAR LE DECODEUR, ET PAS UNE DERIVATION DU ROSTER, pour une raison
-	// mesuree : deriver « Inferred <= 1 » rendrait VRAI sur un [Result] a zero — un resultat
+	// mesuree : deriver le critere sur place rendrait VRAI sur un [Result] a zero — un resultat
 	// construit a la main, un test, un appelant qui n a pas decode. Le zero-value doit valoir le
 	// comportement d avant le lot, jamais le plus permissif (meme lecon que `roster[].team` en
 	// pointeur au lot 1.7).
@@ -349,10 +355,17 @@ type Result struct {
 // La marge de bijection mesure l ecart entre la meilleure INFERENCE et la deuxieme meilleure : une
 // marge nulle dit que deux joueurs sont interchangeables AUX YEUX DE L INFERENCE (RE_LOG 7ter.53).
 // Depuis que la table du film epingle les indices qu elle LIT (film_table.go), cette question ne
-// se pose plus que sur les indices RESTES a l inference : quand il en reste au plus un, il n y a
-// qu une affectation possible et il n y a rien d interchangeable — la marge est alors SANS OBJET,
-// pas nulle. Confondre les deux ferait refuser toutes les lignes d un film entierement lu, ce qui
-// serait exactement l inverse de ce que la lecture apporte.
+// se pose plus que sur ce qui RESTE a l inference : quand il ne lui reste qu une seule affectation
+// a rendre, il n y a rien d interchangeable — la marge est alors SANS OBJET, pas nulle. Confondre
+// les deux ferait refuser toutes les lignes d un film entierement lu, ce qui serait exactement
+// l inverse de ce que la lecture apporte.
+//
+// « CE QUI RESTE » A DEUX COTES, ET LE LOT 1.8 N EN COMPTAIT QU UN (revue de jalon M1, lentille
+// L4). Le critere etait « au plus un INDICE libre » ; il lui manquait « au plus un NOM libre ».
+// Un indice libre pour deux noms libres n a rien de determine : le hongrois le tranche par les
+// votes du kill-feed, nuls pour un joueur qui n a ni tue ni ete tue, donc arbitrairement — et
+// c est TOUT ce que la ligne porte qui partait alors sur un occupant tire au sort. Le critere est
+// desormais [FilmTablePinning.AffectationUnique].
 //
 // [Roster.FilmTable] dit toujours laquelle des deux voies a decide, indice par indice
 // (`Pinned` / `Inferred`), et [Result.BijectionMargin] garde son sens d origine : le verdict de

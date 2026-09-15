@@ -88,4 +88,13 @@ package filmdec
 // `killsource/` n est pas touche.
 // FUSION (2026-09-16) : l integration portait `.10` et la branche du lot 1.9.13 `.8` (accesseur
 // neuf dans objectiveevents, faux positif d empreinte) ; reunies ici, au rang suivant.
-const GrammarRev = "grammar-2026-09-15.11"
+// REVUE DE JALON M1, LENTILLE L4 (2026-09-16) : `.11` -> `.12`. AUCUNE grammaire d octets ne
+// change. Ce qui change est la PORTE qui decide si les attributions ligne par ligne de
+// `killsource` sont publiables : `BijectionDetermined` valait « au plus un indice a inferer »,
+// il vaut desormais « une seule affectation possible » (`FilmTablePinning.AffectationUnique`,
+// indices libres ET noms libres). L empreinte hache les octets des trois paquets, dont
+// `killsource/` : elle monte donc, et la revision avec elle. `KillSourceDecoderRev` MONTE aussi
+// (`killsource-2026-09-16`) parce que la sortie persistee change — la porte ne fait que se
+// fermer, aucun film ne gagne la publication ligne par ligne. `SchemaVersion` reste 59 : le
+// document du rejeu ne porte pas cette porte.
+const GrammarRev = "grammar-2026-09-15.12"
