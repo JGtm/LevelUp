@@ -6153,10 +6153,10 @@ export interface components {
         EquipmentPlacementCoverage: {
             /** Format: int64 */
             anchors: number;
-            byFamily?: {
+            byCause?: {
                 [key: string]: number;
             };
-            byCause?: {
+            byFamily?: {
                 [key: string]: number;
             };
             byFamilyOrigin?: {
