@@ -1,3 +1,55 @@
+## [2026-09-15] Chantier decodeur — lot 1.9.1 (l'origine d'une pose d'equipement se lit dans le film ; schema 59) — Complete (feat/decfilm-191 fusionnee dans feat/recherche-decodeur-film, deba3261f)
+
+**Decision technique principale.** Decisions utilisateur du 15/09 appliquees : « deploye » =
+une pose qu'un record 103 `EquipmentSpawnedObject` DESIGNE ; « lache » = l'objet quitte son
+porteur, a la mort ecrite (kill feed / dead-state) ou a l'echange ecrit (`taken`), les deux
+confondus dans l'etiquette, la cause dans `coverage.placements.byCause` ; « inconnu » = le film
+se tait ; la notion de « volontaire » est retiree (un echange est volontaire aussi) au profit du
+vocabulaire du JEU (composants de ti=37 : deployed / activated / at rest). Les tolerances sont
+LUES sur la mesure, pas choisies : mort ecrite a 200 ms (dropped max 171,7 ms, deployed min
+205,3 ms, intervalle vide de 33,6 ms), prise ecrite a 50 ms (103 poses sur 108 a moins d'une ms),
+designation 103 dans [0, +200] ms (dt +32 a +70 ms, tous positifs). La fenetre de 200 ms est
+RETIREE du decodeur ; deux replis sortent du registre (`repli_origine_pose_fenetre_temporelle`,
+`repli_origine_pose_vie_la_plus_proche`), un entre : `repli_piece_engendree_sans_evenement`
+(9 panneaux sur 124 publies `deployed` par le manifeste `kind = deployed` sans 103, tous sur les
+deux builds les plus anciens ou le type 103 n'existe pas : 0 evenement sur `a521164d` et
+`60ae07c4`) ; registre 95 -> 94 ; le ratchet des sept `devant_la_lecture` reste a 7 (aucune des
+deux entrees retirees n'en etait, verifie sur pieces). `equipment_placements.go` (652 L) scinde
+en trois ; `4f77afc1` entre au manifeste du corpus gate (14 temoins). `SchemaVersion` 58 -> 59
+(chaine complete, 8 fixtures 59 = 2 567 505 o), `GrammarRev` `grammar-2026-09-15.1`.
+
+**Resultats observes.** Mesure avant de coder (13 films, 4 583 poses, 345,9 s, instrument
+versionne `e191_origine_*`) : le 103 designe 47/47 (`0x528fce46`) et 68/77 (`0x686b40c9`) panneaux
+et 0 sur 4 459 autres objets ; la cle (slot, gen) seule ne suffit pas (3 evenements «
+designaient » 83 poses de `d9781168`). Le vocabulaire du jeu MESURE : sur 4 583 poses appariees a
+leur record de creation (0 orpheline), AUCUN des six composants d'etat (i10, i11, i18, i20
+`equipment-deployed`, i21, i23) n'est au masque a l'instant de la pose — ils ne tranchent pas la
+pose, ils vivent ailleurs (grammaire entiere de ti=37 = lot 1.9.1 bis). Bascule : 757 poses sur
+4 583 (16,5 %) — 108 deployed -> dropped, 188 deployed -> unknown, 461 dropped -> unknown ;
+totaux deployed 420 -> 124, dropped 3 717 -> 3 364, unknown 446 -> 1 095 (le film se tait sur
+24 % des poses : les 461 anciens « laches » n'ont pas de mort ecrite du porteur a moins de
+200 ms — vies coupees sur un trou, identite, fin de manche : matiere pour 1.9.1 bis et 1.9.13).
+Les poses de F.1 rejugees : 18 accords sur 18 (17 par mort ecrite, 1 par le 103 : H.2 confirmee
+par le film ; le brief en annoncait 22, compte de F.1 sur 21 films). Gates : gofmt vide, vet 0,
+7 paquets ok, killcollector CGO ok, lint 0 issue, `tsc -b` 0, vitest 7 629 verts ; equivalence
+classee contre 3718228c9 (1 etape neuve `spawnEvents`, 0 perdue, seul `artifact` bouge), re-figee
+et rejouee 10/10 ; corpus gate 14 temoins, exit 1, toutes les pertes classees en trois familles
+(le deplacement voulu deployed / dropped -> unknown, `coverage.fallbacks/n` 3 -> 2, un effet
+aval nomme : `pickup_origin.go` reutilise `Origin == dropped`, `coverage.pickups.originUnknown`
+BAISSE sur 9 temoins, `originGround` baisse sur un seul, 21 -> 18). Verification du pilote (V8) :
+schema 59 et chaine, fixtures, GrammarRev, fenetre retiree, registre, fichiers scindes <= 500 L,
+3 tests supprimes ET baseline JSONL mise a jour dans le meme commit, manifeste.
+DEUX ARBITRAGES UTILISATEUR ouverts : (1) `repli_piece_engendree_sans_evenement` — garder
+`deployed` par le manifeste sur les builds sans type 103 (un panneau n'existe que deploye ;
+recommandation du pilote : garder, condition `type_103_absent_du_build`) ou passer `unknown` ;
+(2) l'effet aval sur l'origine des ramassages (direction favorable, calque non annonce).
+
+**Prochaine etape.** Push + CI ; lot 1.9.1 bis (la grammaire de l'equipement entiere : ti=37
+ferme a 100 %, 31 composants relus chez l'ecrivain, etats par famille publies, canaux
+re-derives) ; puis 1.9.2 .. 1.9.14 ; revue de jalon `783ae680d..HEAD` ; cloture M1 (go V9).
+
+---
+
 ## [2026-09-15] Chantier decodeur — lot 1.9.0 (le registre des replis et son ratchet ; schema 58) — Complete (feat/decfilm-190 fusionnee dans feat/recherche-decodeur-film, 3718228c9)
 
 **Decision technique principale.** Paquet feuille
