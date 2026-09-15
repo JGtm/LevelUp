@@ -128,6 +128,58 @@ func MPPWidthsForFormat(format int) (MPPWidths, error) {
 	return w, nil
 }
 
+// ResolutionMPP est CE QUE LA GRAMMAIRE DIT du découpage MPP d'un film : la version de format
+// lue, les largeurs qu'elle porte, et LEQUEL des deux silences on a rencontré.
+//
+// # POURQUOI UN TYPE, ET PAS TROIS RETOURS RECOPIÉS À CHAQUE SITE
+//
+// Deux sites de production installent ce découpage — les poses d'équipement
+// (`ScanEquipmentPlacements`) et les socles d'armes / véhicules (`replay.gwWidthsForFilm`) — et
+// ils l'ont longtemps résolu CHACUN DE LEUR CÔTÉ, tous deux par [BuildProfileFromFilm], donc par
+// la clé BUILD. Le registre des replis, lui, déclare la condition `format_sans_profil_relu` : la
+// clé est la VERSION DE FORMAT. Les deux clés ne coïncident pas — un film au format 27 (largeurs
+// RELUES 9/5) dont le build est absent de la table des sept se repliait sur la calibration
+// DEVANT une lecture disponible, et `formatSansProfil` rendait faux, donc ni compteur ni
+// avertissement (constat 2 de la revue de jalon M1, 2026-09-15, lentille D13).
+//
+// Les deux sites passent désormais par CETTE porte, et par elle seule.
+type ResolutionMPP struct {
+	// FormatVersion : le u32 de `chunk_00+4`, ou [FilmFormatVersionUnknown].
+	FormatVersion int
+	// Widths : le découpage que porte cette version de format. Non valide quand la version est
+	// connue mais sa largeur INDÉTERMINÉE (formats 20, 21, 24, 25), ou quand elle est inconnue.
+	Widths MPPWidths
+	// FormatInconnu : la version de format n'est PAS dans la table. C'est l'événement « patch du
+	// jeu », et lui seul se compte ([UnknownFormatExpvarPairs]) — un format connu sans largeur
+	// relue est l'état normal du parc ancien.
+	FormatInconnu bool
+}
+
+// Relue dit si la grammaire porte le découpage de ce film : c'est la condition qui fait DÉCIDER
+// la lecture plutôt que la calibration.
+func (r ResolutionMPP) Relue() bool { return r.Widths.Valid() }
+
+// MPPWidthsForFilm résout le découpage du bloc `object-multiplayer-properties` d'un film DÉJÀ
+// CHARGÉ, par sa VERSION DE FORMAT et par elle seule.
+//
+// ELLE NE LIT PAS LA SECTION D'IDENTIFICATION, et c'est le point : le nom de build ne key pas
+// cette grammaire (lot 1.9.1 ter), donc le faire passer par [BuildProfileFromFilm] — qui refuse
+// tout build hors de la table des sept — éteignait la lecture sur des films dont le format la
+// portait. Un `chunk_00` absent rend `(FilmFormatVersionUnknown, FormatInconnu)` : l'absence de
+// version est, elle aussi, une absence de grammaire, et elle se compte sous
+// `filmdec_unknown_format_0`.
+// ELLE PASSE PAR [MPPWidthsForFormat] et non par la table brute : c'est cette fonction qui porte
+// la frontière entre les deux « pas de profil », et la dédoubler ici les ferait diverger au
+// premier format ajouté — le défaut même que ce type existe pour fermer.
+func MPPWidthsForFilm(f *filmsource.Film) ResolutionMPP {
+	format, ok := FilmFormatVersion(f)
+	if !ok {
+		return ResolutionMPP{FormatVersion: FilmFormatVersionUnknown, FormatInconnu: true}
+	}
+	w, err := MPPWidthsForFormat(format)
+	return ResolutionMPP{FormatVersion: format, Widths: w, FormatInconnu: err != nil}
+}
+
 // unknownFormatCounterName rend le nom expvar du compteur de version de format inconnue.
 //
 // NOMMAGE (ADR 0009), ET C EST LE MEME PATRON QUE [unknownBuildCounterName] : `<categorie>_

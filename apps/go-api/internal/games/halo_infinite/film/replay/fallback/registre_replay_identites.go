@@ -59,7 +59,7 @@ var registreReplayIdentites = []Repli{
 	{
 		Nom:       "repli_vie_coupee_au_trou_de_replication",
 		Fait:      "ou finit une vie de joueur",
-		Mecanisme: "pour un joueur dont le film n'ecrit AUCUNE mort, un trou de positions de plus de lifeGapUS (5 s) ferme la vie courante et en ouvre une neuve",
+		Mecanisme: "un trou de positions de plus de lifeGapUS (5 s) ferme la vie courante et en ouvre une neuve — pour le seul joueur dont le film n'ecrit AUCUNE mort (site 1), ou pour TOUTES les vies quand la table d'index des joueurs est vide (site 2)",
 		// CONVERTI AU LOT 1.9.13 (2026-09-15), `film_muet / devant_la_lecture` ->
 		// `film_muet / apres_lecture`. La decoupe LIT desormais ce que le film ecrit — mort
 		// appariee au fil, record de creation de bipede dans le trou, frontiere de manche — et le
@@ -71,6 +71,21 @@ var registreReplayIdentites = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "lives_decoupe.go",
 			Ancre:   "in.fb.Declenche(fallback.NomVieCoupeeAuTrouDeReplication)",
+		}, {
+			// SECOND SITE, INSCRIT A LA REVUE DE JALON M1 (2026-09-15, lentille D13). Il
+			// existait depuis le lot 1.9.13 et le registre ne le citait pas : la publication
+			// des traces se rabat sur l ECHAFAUDAGE (`buildLifeSpans`) quand le registre
+			// d identite ne rend AUCUNE vie — c est-a-dire pour TOUTES les vies du film, et
+			// non pour celles d un joueur que rien ne tue.
+			//
+			// SA CONDITION N EST PAS CELLE DE L ENTREE, et c est le fait qui a manque : le
+			// film n est pas muet sur les morts, c est `IdentityInput.PlayerIndices.ByXUID`
+			// qui est VIDE — `buildOwnersFromTracks` sort alors avant toute decoupe. Le geste
+			// de retrait n est donc pas le meme : lire la table d index, pas mieux lire le
+			// fil des morts.
+			Fichier:   pkgReplay + "tracks_publication.go",
+			Ancre:     "in.fb.DeclencheN(fallback.NomVieCoupeeAuTrouDeReplication, coupuresDuSeuil(vies))",
+			Condition: CondSectionAbsente,
 		}},
 		DatePose:     "2026-09-14",
 		CibleRetrait: "lot M2 (retrait sec si le compte reste nul au corpus gate — D14 d)",
@@ -80,7 +95,11 @@ var registreReplayIdentites = []Repli{
 		// Les 208 sont devenues des lacunes. Le repli, lui, ne se declenche sur AUCUN des 8 builds
 		// (aucune vie coupee n'appartient a un joueur sans mort ecrite) : son critere de retrait
 		// est donc DEJA tenu sur cet echantillon, et le corpus gate tranchera sur le parc.
-		CritereRetrait:  "0 declenchement au corpus gate ; `vies_un_echantillon_test.go` rend 0 orpheline sur les 8 builds",
+		// LE COMPTE EST UN NOMBRE DE COUPURES, PAS DE PASSAGES (revue M1, 2026-09-15) : le site 2
+		// appelle `DeclencheN` avec le nombre de vies que le seuil a coupees. Un `hits: 1` pour
+		// 212 coupures sous-decrivait le fait au point de rendre D14 (d) inoperant — un compte
+		// qui ne bouge pas avec la population qu il decrit ne mesure rien.
+		CritereRetrait:  "0 coupure decidee par le seuil au corpus gate ; `vies_un_echantillon_test.go` rend 0 orpheline sur les 8 builds",
 		CompteurBranche: true,
 	},
 	{

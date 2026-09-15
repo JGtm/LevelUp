@@ -38,19 +38,32 @@ func TestRegistrePorteToutesSesFamilles(t *testing.T) {
 			"quitte `concat` ? Si le retrait est voulu, baisser le plancher DANS le commit qui retire",
 			n, plancherEntrees)
 	}
-	for _, fam := range []struct {
-		nom  string
-		part []Repli
-	}{
-		{"replay/equipement", registreReplayEquipement},
-		{"replay/identites", registreReplayIdentites},
-		{"killsource", registreKillsource},
-		{"objectifs et construction", registreObjectifsEtConstruction},
-		{"filmdec", registreFilmdec},
-	} {
-		if len(fam.part) == 0 {
-			t.Errorf("la famille %q est vide — elle a ete videe sans que le plancher bouge", fam.nom)
+	// LA LISTE DES FAMILLES VIENT DE L'ASSEMBLAGE LUI-MEME, ET NON D'UNE RECOPIE (revue de jalon
+	// M1, 2026-09-15). La boucle en enumerait CINQ a la main quand `concat` en assemblait SIX :
+	// `registreKillsourceCarte` (lot 1.9.4, 2 entrees) n'etait verifiee par rien, et une septieme
+	// tranche aurait manque de la meme facon. Depuis, [Tranches] est la seule liste.
+	tranches := Tranches()
+	if len(tranches) < 2 {
+		t.Fatalf("Tranches() n'en rend que %d : la source des familles est cassee", len(tranches))
+	}
+	total := 0
+	vus := map[string]bool{}
+	for _, fam := range tranches {
+		if len(fam.Replis) == 0 {
+			t.Errorf("la famille %q est vide — elle a ete videe sans que le plancher bouge", fam.Nom)
 		}
+		if vus[fam.Nom] {
+			t.Errorf("la famille %q est declaree deux fois dans Tranches()", fam.Nom)
+		}
+		vus[fam.Nom] = true
+		total += len(fam.Replis)
+	}
+	// LE CHAINON QUI FERME LA BOUCLE : la somme des tranches est le registre. Sans lui, une
+	// tranche pourrait sortir de `concat` sans sortir de [Tranches] — le test lirait alors une
+	// liste que l'assemblage n'emploie plus.
+	if total != len(Table()) {
+		t.Errorf("les tranches portent %d entrees, le registre en rend %d — `concat` et "+
+			"`Tranches()` ont diverge", total, len(Table()))
 	}
 }
 

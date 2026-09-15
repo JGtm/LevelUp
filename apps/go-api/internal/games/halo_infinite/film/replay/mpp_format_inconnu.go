@@ -41,7 +41,6 @@ package replay
 // format » — il ne l attend pas.
 
 import (
-	"errors"
 	"log/slog"
 
 	"levelup/go-api/internal/analysis/filmsource"
@@ -64,13 +63,14 @@ func publierFormatSansProfil(format int) {
 // IL PREND LE FILM, PAS UN `FilmContext` : il n a besoin que des huit premiers octets de
 // `chunk_00`, et construire un contexte pour ca en creerait un SECOND pour le meme film — ce
 // que `archlint/no_recomputed_film_context_test.go` interdit depuis le lot 1.9.2.
+//
+// IL DELEGUE A [filmdec.MPPWidthsForFilm] DEPUIS LA REVUE M1 (2026-09-15) : la resolution du
+// decoupage MPP se fait a UN SEUL endroit, celui que les deux sites de cuisson employent. Une
+// seconde lecture de la meme valeur ici aurait diverge au premier format ajoute — c est
+// exactement ce qui etait arrive entre ce fichier et `gwWidthsForFilm`.
 func formatSansProfil(film *filmsource.Film) (int, bool) {
-	format, ok := filmdec.FilmFormatVersion(film)
-	if !ok {
-		return filmdec.FilmFormatVersionUnknown, true
-	}
-	_, err := filmdec.MPPWidthsForFormat(format)
-	return format, errors.Is(err, filmdec.ErrUnknownFormat)
+	res := filmdec.MPPWidthsForFilm(film)
+	return res.FormatVersion, res.FormatInconnu
 }
 
 // avertirFormatSansProfil emet L UNIQUE avertissement par film. Appele par [BuildFromFilm],

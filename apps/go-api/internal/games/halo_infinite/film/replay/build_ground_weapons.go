@@ -126,30 +126,40 @@ func decodeFilmPadScan(
 //
 // L'APPELANT DOIT DÉTENIR LockProcessDecode : ce sont des globaux de paquet (même contrat que
 // `installWorldObjectPrecision`).
-// gwWidthsForFilm rend les largeurs MPP a INSTALLER pour ce film : le PROFIL DU BUILD quand il
-// porte une largeur RELUE chez l ecrivain (>= HI_1_12_0), sinon les largeurs CALIBREES sur le
-// film.
+// gwWidthsForFilm rend les largeurs MPP a INSTALLER pour ce film : celles que porte sa VERSION
+// DE FORMAT quand la grammaire les a relues chez l ecrivain (format 27), sinon les largeurs
+// CALIBREES sur le film.
 //
 // C EST L ARBITRAGE DU 2026-09-15 (lot 1.9.1 bis, pas 3), et il a un nom des deux cotes : quand
-// le profil decide, la calibration n est plus qu un CONTROLE (le rapport publie ce qu elle
+// la lecture decide, la calibration n est plus qu un CONTROLE (le rapport publie ce qu elle
 // mesure) ; quand il n y a pas de largeur relue, la calibration decide encore, et c est le repli
 // `repli_largeurs_mpp_calibrees_sur_le_film` du registre (condition `format_sans_profil_relu`,
-// ordre `apres_lecture` — le build se lit avant). La grammaire du bloc MPP est versionnee par
-// build et l executable dont on dispose est un seul build : c est la limite, elle est ecrite.
+// ordre `apres_lecture` — le format se lit avant).
+//
+// LA CLE EST LA VERSION DE FORMAT, ET PLUS LE BUILD (revue de jalon M1, 2026-09-15, constat 2).
+// Ce site resolvait `BuildProfileFromFilm`, donc la table des SEPT builds en dur : un film au
+// format 27 dont le build en est absent — un patch du jeu qui ne change pas le format — tombait
+// sur les largeurs calibrees alors que la grammaire etait disponible, et `formatSansProfil`
+// rendait faux, donc ni compteur ni avertissement. Le repli tournait DEVANT une lecture (D14 b),
+// et dans la meme cuisson les socles se decoupaient aux largeurs calibrees pendant que les poses
+// d equipement se decoupaient aux largeurs relues. Les deux sites partagent desormais
+// [filmdec.MPPWidthsForFilm].
+//
+// MESURE AVANT LA BASCULE (cache, 657 films au 2026-09-15, `TestMPPResolutionCorpus`) : 6 films
+// portent un build hors table (5 sans section d identification au format 20, 1 `HI_1_5_1` au
+// format 23) et AUCUN d eux n est a un format dont la largeur est relue — zero octet cuit ne
+// change sur ce cache. Le gain est de tenir le parc NEUF : au prochain build hors table au
+// format 27, la lecture decide au lieu de la calibration.
 func gwWidthsForFilm(fc *filmdec.FilmContext, calibrees filmdec.MPPWidths) filmdec.MPPWidths {
-	if p, err := filmdec.BuildProfileFromFilm(fc.Film()); err == nil && p.MPP.Valid() {
-		return p.MPP
+	res := filmdec.MPPWidthsForFilm(fc.Film())
+	if res.Relue() {
+		return res.Widths
 	}
 	// SITE 2 DU REPLI `repli_largeurs_mpp_calibrees_sur_le_film`, et il sert DEUX chemins de
 	// cuisson (armes au sol et vehicules). Le compteur seul : l avertissement est emis une fois
 	// par film par `avertirFormatSansProfil`.
-	//
-	// LA DECISION N EST PAS CHANGEE PAR CE COMPTAGE, et c est volontaire : elle reste celle du
-	// PROFIL COMPLET (`BuildProfileFromFilm`, qui refuse aussi sur build inconnu). La re-poser
-	// sur le seul format ferait basculer un film au build inconnu mais au format connu vers le
-	// profil, ce qui changerait des octets cuits — hors perimetre du lot.
-	if format, sansProfil := formatSansProfil(fc.Film()); sansProfil {
-		publierFormatSansProfil(format)
+	if res.FormatInconnu {
+		publierFormatSansProfil(res.FormatVersion)
 	}
 	return calibrees
 }
