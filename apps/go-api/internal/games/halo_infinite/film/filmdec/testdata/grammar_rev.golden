@@ -278,5 +278,6 @@
 #               retrait de son entree d allowlist dans `archlint/no_recomputed_film_context`.
 #               `KillSourceDecoderRev` ne bouge pas (`film/killsource/` inchange, son propre
 #               ratchet d empreinte fait foi) ; `SchemaVersion` reste 59 (le chemin de cuisson
-#               n appelait pas cette fonction — a confirmer par l equivalence).
+#               n appelait pas cette fonction). VERIFIE : equivalence 10/10 identiques, corpus gate 14 temoins a
+#               0 gain / 0 perte / 0 CHANGEMENT, schema 59 des deux cotes.
 grammar-2026-09-15.8	84442e2e75b10c3dee7bf9e625e7865b512e9e8bfb6b1c81a19a7f7afd2d380b

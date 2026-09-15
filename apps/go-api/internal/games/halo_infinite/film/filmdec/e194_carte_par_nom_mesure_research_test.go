@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e194_carte_par_nom_mesure_research_test.go — LOT 1.9.4, LA MESURE AVANT DE CODER.
@@ -26,8 +28,8 @@ package filmdec
 //
 // # CE QUE CET INSTRUMENT MESURE, ET CE QU'IL NE MESURE PAS
 //
-// [TestE194CartesJumellesDuCatalogue] ne lit QUE le catalogue versionné : il tourne en CI, sans
-// film, et rend la liste des classes d'équivalence de signature. C'est la mesure (c) du lot.
+// [TestE194CartesJumellesDuCatalogue] ne lit QUE le catalogue versionné, sans film, et rend la
+// liste des classes d'équivalence de signature. C'est la mesure (c) du lot.
 //
 // [TestE194SignatureContreNomDeMatch] croise, film par film, la carte que la SIGNATURE rend et
 // celle que le NOM DE MATCH donne : accord, désaccord, signature ambiguë, signature hors
@@ -35,11 +37,24 @@ package filmdec
 // la table des cartes est celle, versionnée, de l'instrument du lot 1.9.2 (`e192CarteDuFilm`) —
 // une seule table pour les deux lots, jamais une seconde copie.
 //
+// # TAG `research` (2026-09-15) : POURQUOI LA MESURE (c) NE TOURNE PAS EN CI NON PLUS
+//
+// Ce fichier porte `//go:build research` comme tout instrument du dépôt : le job de couverture
+// CI a dépassé ses 600 s sur `filmdec` à cause des instruments, qui tournent désormais sous
+// `go test -tags research`. La mesure (c) n'a pourtant besoin d'aucun film et coûte 0,06 s — la
+// règle s'applique quand même, parce qu'un tag posé « sauf exceptions » ne se tient pas.
+//
+// CE QUI GARDE LE PRÉSUPPOSÉ EN CI, LUI, C'EST UN AUTRE TEST : dans
+// `sync/killcollector/hits_carte_par_nom_test.go`, `TestJumellesDuCatalogueSontIndistinguablesParSignature`
+// vérifie sur le catalogue versionné que les deux cartes du témoin de mutation partagent bien
+// leur signature et non leurs bornes. Sans lui, le tag ferait disparaître du run par défaut la
+// seule vérification que la mutation du lot a un sens.
+//
 // Aucune écriture, aucune base, aucun artefact, aucune cuisson : la détection ne balaye que les
 // six premiers chunks (`detectMaxChunks`), le reste du film n'est pas parcouru.
 //
 //	CHUNK00_FILMS='C:/.../film_chunks/bcb6d393;C:/.../film_chunks/60ae07c4' \
-//	  CGO_ENABLED=0 go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  CGO_ENABLED=0 go test -tags research ./internal/games/halo_infinite/film/filmdec/ \
 //	  -run '^TestE194SignatureContreNomDeMatch$' -v -count=1 -timeout 3600s
 
 import (
