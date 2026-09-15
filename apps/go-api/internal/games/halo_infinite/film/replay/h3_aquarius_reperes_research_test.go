@@ -329,7 +329,7 @@ func h3PositionsImposees(t *testing.T, dir string, e filmdec.MapQuantEntry) (
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(e, dir, nil)()
+	defer installWorldObjectPrecisionDeCarte(e, dir, nil)()
 	scan := filmdec.DefaultScanFilmOptions()
 	wr := e.Range()
 	scan.WorldRange = &wr

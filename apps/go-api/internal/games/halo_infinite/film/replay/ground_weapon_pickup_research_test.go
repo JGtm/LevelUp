@@ -84,7 +84,7 @@ func TestGroundWeaponPickups(t *testing.T) {
 	entry := mapQuantEntryFromEnv(t, gwPickupMapEnv, gwPickupBoundsEnv)
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(entry, dir, nil)()
+	defer installWorldObjectPrecisionDeCarte(entry, dir, nil)()
 
 	wr := entry.Range()
 	f := gwPickupRead(t, dir, &wr)

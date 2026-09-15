@@ -66,7 +66,7 @@ func glResolve(t *testing.T) glSetup {
 	// mesure tournait aux largeurs par defaut (13/13/14) : toutes les positions ti=42 etaient
 	// dequantifiees faux — mediane 42 m, temoin egal, zero verdict.
 	t.Cleanup(filmdec.LockProcessDecode())
-	t.Cleanup(installWorldObjectPrecision(entry, dir, nil))
+	t.Cleanup(installWorldObjectPrecisionDeCarte(entry, dir, nil))
 	wr := entry.Range()
 	raw, err := filmdec.ScanFilmBipedPositions(dir, filmdec.ScanFilmOptions{WorldRange: &wr})
 	if err != nil {

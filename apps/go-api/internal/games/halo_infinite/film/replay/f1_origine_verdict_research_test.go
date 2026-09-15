@@ -106,7 +106,7 @@ func f1PosesEtPositions(t *testing.T, dir string, e *filmdec.MapQuantEntry) (
 	}
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(*e, dir, nil)()
+	defer installWorldObjectPrecisionDeCarte(*e, dir, nil)()
 	wr := e.Range()
 	raw, st, err := filmdec.ScanFilmEquipmentPlacements(dir, &wr)
 	if err != nil || !st.Calibration.Widths.Valid() {
