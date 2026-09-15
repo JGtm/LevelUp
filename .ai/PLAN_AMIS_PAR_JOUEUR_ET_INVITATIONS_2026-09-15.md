@@ -318,20 +318,20 @@ allowlist de `auth/sentinel_test.go` ni `no_legacy_source_used_test.go` modifié
 
 ## 8. Étape 6 — Frontend : invitation admin + page Rejoindre générique (rapide)
 
-- [ ] 6.1 `features/admin/management/AdminManagementPage.tsx` : section « Inviter un joueur »
+- [x] 6.1 `features/admin/management/AdminManagementPage.tsx` : section « Inviter un joueur »
       (sans groupe) : bouton « Générer un lien », affichage du lien `origin + join_url`,
       copie presse-papiers, liste des invitations actives (`GET /admin/invites`, révocation).
       Mutations dans `features/auth/queries.ts` (déjà `useAdmin*`) ; retirer le commentaire
       `:86-88`.
-- [ ] 6.2 `features/auth/JoinPage.tsx` : libellés génériques (« Rejoindre LevelUp » ; le texte
+- [x] 6.2 `features/auth/JoinPage.tsx` : libellés génériques (« Rejoindre LevelUp » ; le texte
       de groupe n'apparaît que si le code porte un groupe — le front ne le sait pas : garder un
       texte neutre : « Connectez-vous avec Xbox pour accepter l'invitation »). Doc d'en-tête
       `:2-5`.
-- [ ] 6.3 Après login d'un invité sans profil sur instance verrouillée, le Setup
+- [x] 6.3 Après login d'un invité sans profil sur instance verrouillée, le Setup
       (`features/setup/SetupPage.tsx`, état `halo_linked_no_profile`) doit désormais réussir le
       `POST /setup/players` : vérifier qu'aucun garde front ne masque l'étape quand
       `instance_locked` est vrai (`grep -rn instance_locked apps/web/src/features/setup`).
-- [ ] 6.4 i18n FR + EN pour toutes les nouvelles chaînes (`manifests/admin.toml`, `common.toml`).
+- [x] 6.4 i18n FR + EN pour toutes les nouvelles chaînes (`manifests/admin.toml`, `common.toml`).
 
 **Gate G6** : typecheck (cache purgé) + lint + vitest → 0. Recette navigateur : **arrêter
 d abord le serveur principal** (`taskkill //IM air.exe //F //T`, vérifier que le port 8000 est
@@ -728,3 +728,34 @@ migration de groupe par défaut est conservée et re-sourcée depuis `friendstor
 - `go test ./internal/platform/auth/...` → **0** (sentinelles ADR 0023 vertes).
 - `git diff --stat -- '*sentinel*' '*no_legacy*'` → **vide** : aucune allowlist d'auth touchée.
 - `gofmt -l ./cmd ./internal` → vide.
+
+### Étape 6 — Frontend : invitation admin + page Rejoindre — 2026-09-16 ~00:10 — CLOSE
+
+- 6.1 `[x]` `features/admin/sections/InvitesSection.tsx` (nouveau) montée dans
+  `AdminManagementPage` sous « Inviter un joueur » : bouton de génération, lien affiché et
+  copié dans le presse-papiers (`origin + join_url`, le chemin vient du serveur), liste des
+  invitations (`GET /admin/invites`) avec expiration, utilisateur ayant consommé le code, et
+  révocation. Hooks `useAdminInvites` / `useGenerateAdminInvite` / `useRevokeAdminInvite`
+  posés dans `features/auth/queries.ts` — le commentaire « flow password legacy » qui y
+  tenait lieu d'explication est remplacé par la distinction réelle entre les deux
+  invitations. Clé `queryKeys.adminInvites` + classement dans le garde-rail titleSlug.
+  Nettoyage lié : `lib/api/types.ts` ne rajoute plus `group_id` à la main sur `InviteCode`
+  (le contrat généré porte `group_id` ET `join_url` depuis l'étape 5).
+- 6.2 `[x]` `JoinPage` : libellés neutres (« Rejoindre LevelUp », « accepter l'invitation »)
+  — le front ne lit jamais le code et ne PEUT pas savoir s'il porte un groupe. Doc d'en-tête
+  réécrite, titre de page `/join` aligné (FR + EN).
+- 6.3 `[x]` vérifié sur pièces : `grep -rn "instance_locked" apps/web/src/features/setup` →
+  **vide**. Aucun garde front ne masque l'étape de création de profil quand l'instance est
+  verrouillée ; `SetupPage` rend `StepPlayer` sur le seul état `halo_linked_no_profile`. Le
+  `POST /setup/players` d'un invité muni de son droit aboutit donc sans changement côté web.
+- 6.4 `[x]` 14 clés `admin.invites.*` / `admin.management.section_invites` FR **et** EN dans
+  `manifests/admin.toml` ; 2 clés `common.groups.join_*` réécrites dans `common.toml`.
+  Manifestes régénérés.
+
+**Gate G6 : PASSÉ** (volet automatisable).
+- `cd apps/web && rm -rf node_modules/.tmp && npm run typecheck` → **0**.
+- `npm run lint` → **0 erreur** (25 avertissements préexistants).
+- `npm run test:run` → **715 fichiers passés, 7677 tests passés**.
+- Recette navigateur : `[~]` **au pilote** (consigne d'exécution). Elle exige un second compte
+  Xbox de test et le basculement de `instance_locked`, et surtout l'arrêt du serveur principal
+  — hors de ce qu'un worktree peut faire sans violer le mono-process (ADR 0013).

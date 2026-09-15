@@ -2328,12 +2328,10 @@ export type AdminUserSummary = components['schemas']['AdminUserSummary']
 
 export type AdminInviteSummary = components['schemas']['AdminInviteSummary']
 
-// Base = schéma OpenAPI généré (source unique : code/created_by/created_at/
-// expires_at/used_at/used_by). On ajoute group_id (rattachement à un groupe,
-// live-fetch) tant que l'OpenAPI ne l'a pas régénéré.
-export type InviteCode = components['schemas']['InviteCode'] & {
-  group_id?: string
-}
+// Contrat GÉNÉRÉ depuis Huma : `group_id` (rattachement à un groupe) et
+// `join_url` (lien relatif /join?invite=, rendu par le serveur) y figurent
+// depuis 2026-09-15 — plus aucun champ à rajouter à la main.
+export type InviteCode = components['schemas']['InviteCode']
 
 // ---------------------------------------------------------------------------
 // Groupes / familles (accès mutuel aux données)
