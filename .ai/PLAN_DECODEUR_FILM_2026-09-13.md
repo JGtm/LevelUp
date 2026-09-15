@@ -2113,6 +2113,37 @@ replis et son ratchet (1.9.0). Premier lot de conversion fixé par l'utilisateur
       table (D) du registre 0.E comme condition de retrait. Les 22 poses requalifiées par F.1 sont
       rejugées une à une (instruments `f1_origine_*`). Corpus gate sur `0797ce72`, `4f77afc1` et
       l'échantillon court.
+- [ ] 1.9.1 bis **La grammaire de l'ÉQUIPEMENT, entière : l'archétype 37 fermé à 100 %, famille
+      par famille.** Directive utilisateur du 2026-09-15 : « on ne se limite pas au mur ; on a
+      tout plein d'équipements dont il faut gérer la grammaire parfaitement ; c'est le point de
+      départ pour tout le décodeur, si on ne la connaît pas bien rien n'est fiable ensuite ».
+      Sur pièces le 15/09 : l'archétype 37 (« equipment / item, objet du monde ») compte 31
+      composants (`testdata/ecs_table.tsv`) ; le décodeur n'en lit que 7 par nom (`traverse.go` :
+      i18 `item-at-rest`, i19 `item-ignore-player`, i22 `equipment-control-signal`, i25
+      `equipment-being-hacked`, i28 `equipment-tracked-object-handles-stack`, i29
+      `equipment-command-tick`, i30 `equipment-has-infinite-uses`) et sa FERMETURE d'image-clé est
+      de 0 ou 1 record sur 220 à 762 par bobine (golden 1.4, `ti=37`) ; les composants qui portent
+      l'ÉTAT écrit par le jeu ne sont pas lus : i10 `object-parent-state` (le porteur), i20
+      `equipment-deployed`, i21 `equipment-activated`, i23 `equipment-creator`, i24
+      `equipment-energy`, i26 `equipment-energy-delay-ticks-left`, i27
+      `equipment-charges-remaining`. (a) Chaque composant de ti=37 relu chez l'écrivain (Ghidra,
+      fonction par composant, comme 1.3 pour les états par défaut), lecteur porté, fermeture
+      ti=37 100 % sur les 7 bobines (ratchet 0.A.3 qui MONTE, test « n2 constant »), `GrammarRev`
+      montée ; (b) le vocabulaire du jeu devient le nôtre : par objet d'équipement, créateur,
+      porteur, déployé, activé, au repos, énergie, charges restantes, usages infinis — publiés
+      comme FAITS par famille (mur, capteur, traqueur, écran, champ, balise, camouflage,
+      surbouclier, grappin, translocateur, propulseur, répulseur, bonus), avec un tableau
+      « famille × ce que le jeu écrit » mesuré sur les 8 builds et les 13 témoins, et la
+      référence `REFERENCE_CANAUX_EQUIPEMENT` mise à jour depuis cette mesure (ses négatifs
+      mesurés se re-jugent contre les composants, pas contre les seuls événements) ; (c) les
+      canaux publiés dérivés de l'équipement (`equipmentPlacements`, `equipmentChanges`,
+      `equipmentEpisodes`, `abilityCharges`, `grappleLines`, `translocations`,
+      `abilityImpulses`, porteurs de crâne et de balle) se re-dérivent de ces états, les anciennes
+      lectures devenant des CONTRÔLES comptés puis des replis au registre (1.9.0) ; corpus gate
+      zéro perte, gains nommés ; `SchemaVersion` si le contenu cuit change. Ordre : juste après
+      1.9.1, AVANT 1.9.2 ; le même traitement pour les autres archétypes qui alimentent une
+      publication (ti=9 joueur, ti=35 bipède, ti=40 véhicule, ti=42/43) est le lot 3.6, à
+      remonter dans M1 si l'utilisateur le demande. L.
 - [ ] 1.9.2 **Le découpage d'i0 vient du catalogue de carte, plus de l'auto-détection.**
       `internal/sync/killcollector/positions.go:253` (et `hits.go:157`) construisent
       `DefaultScanFilmOptions()` avec `Layout` nil alors que `entry` est le paramètre de la fonction
