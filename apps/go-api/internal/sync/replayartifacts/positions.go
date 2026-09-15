@@ -106,10 +106,15 @@ type passePositionsPrete struct {
 // Rend une passe VIDE (matchID vide) quand le document ne porte aucune trajectoire — un
 // artefact d'un mode non filme, ou une cuisson qui n'a rien trouve. Ce n'est pas un defaut.
 //
-// L'EQUIPE N'EST PAS RESOLUE ICI : le document ne la porte pas, et la resoudre demanderait la
-// base — or cette fonction est PURE, et c'est ce qui permet de projeter tout le lot AVANT
-// d'acquerir le moindre segment d'ecriture. Elle emporte le xuid de chaque ligne ;
-// [appliquerEquipes] fait la jointure dans le segment court.
+// L'EQUIPE VIENT DU DOCUMENT QUAND IL LA PORTE (corrige le 2026-09-16, revue de jalon M1 —
+// ce commentaire decrivait encore l'etat d'avant le lot 1.7). `positionsDeLaTrajectoire` ecrit
+// `Team: t.Team`, c'est-a-dire le designateur que le film replique depuis le schema 57 ; ce qui
+// n'est PAS resolu ici, ce sont les seules lignes restees a [EquipeInconnue] — un artefact
+// anterieur au schema 57, un bot, une vie que le fil des morts n'a pas nommee. Les combler
+// demanderait la base, or cette fonction est PURE, et c'est ce qui permet de projeter tout le
+// lot AVANT d'acquerir le moindre segment d'ecriture. Elle emporte donc le xuid de chaque
+// ligne ; [appliquerEquipes] puis [poserEquipes] font la jointure dans le segment court, et ne
+// retouchent jamais une ligne que le document a deja situee.
 func projeterPositions(matchID string, doc *replay.ReplayDocument) passePositionsPrete {
 	cadence := doc.FrameIntervalMS
 	if cadence <= 0 {

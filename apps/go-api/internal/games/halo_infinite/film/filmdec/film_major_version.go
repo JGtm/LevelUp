@@ -10,6 +10,17 @@ package filmdec
 // suit (25 / 24 / 27 sur les films de version 40 / 37 / 41), puis la chaine
 // `game-engine-team-mapping-component` ouvre le premier bloc d'archetype.
 //
+// # LE SECOND u32 EST LA VERSION DE FORMAT, ET CE FICHIER NE LA LIT PAS (corrige le 2026-09-16)
+//
+// Ce n'est pas « un second entier » : c'est LA VERSION DE FORMAT DE `chunk_00`, le seul
+// parametre dont la lecture de l'en-tete du registre depende chez l'ecrivain du jeu — elle
+// choisit la largeur du bloc de registre et celle de la table par type
+// (`FUN_14299ab50`, releve du 2026-09-15, lot 1.9.1 ter). Sa lecture, ses tables et sa mesure
+// sur les 1 351 `chunk_00` du cache vivent dans [FilmFormatVersionFromHeader]
+// (`film_format_version.go`) ; CE fichier-ci ne porte que la version MAJEURE, celle des quatre
+// premiers octets. Les deux ne sont pas interchangeables : la majeure decoupe le gamertag d'un
+// bloc d'evenement, le format decoupe l'en-tete du registre.
+//
 // Verifie sur pieces le 2026-09-12, en-tete brut de trois films du cache :
 //
 //	e5adf7b2 (2025-07)  28 00 00 00 | 19 00 00 00 | "game-engine-team-mapping..."  -> v40
