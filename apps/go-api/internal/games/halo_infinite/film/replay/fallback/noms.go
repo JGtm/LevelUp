@@ -37,6 +37,8 @@ const (
 	NomCollineVotesPeriodeEntiere Nom = "repli_colline_votes_periode_entiere"
 	// NomCollineDernierIntervalleOuvert : `replay/zone_states_hill.go`, `hillOwnerRuns`.
 	NomCollineDernierIntervalleOuvert Nom = "repli_colline_dernier_intervalle_ouvert"
+	// NomVieCoupeeAuTrouDeReplication : `replay/lives_decoupe.go`, `coupureEcrite`.
+	NomVieCoupeeAuTrouDeReplication Nom = "repli_vie_coupee_au_trou_de_replication"
 	// NomArmementBombeDebutAZero : `replay/bomb_armings.go`, `buildBombArmings`.
 	NomArmementBombeDebutAZero Nom = "repli_armement_bombe_debut_a_zero"
 )

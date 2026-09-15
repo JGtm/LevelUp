@@ -264,29 +264,10 @@
 #               calibration tranchait autre chose que 9/5 lit desormais 9/5.
 #               `SchemaVersion` reste 59 EN ATTENTE du `replay-corpus-gate`, qui n a pas pu etre
 #               joue (voie de decodage transferee au lot 1.9.3).
-#   2026-09-15  grammar-2026-09-15.8  lot 1.9.1 ter : LA CLE DU PROFIL N EST PLUS LE BUILD,
-#               C EST LA VERSION DE FORMAT DU FILM. Le second u32 de `chunk_00` (`+4`) est la
-#               version de format : le LECTEUR du jeu (`FUN_14299ab50`) en derive la largeur du
-#               registre (`FUN_141cfff30`) et celle de la table par type (`FUN_141cffe20`), et
-#               les six branches de version de l executable la lisent par `FUN_1428e1c0c`. Le
-#               decoupage du bloc MPP est donc keye par elle (`mppWidthsPourFormat`), la largeur
-#               de personnalisation restant keyee par le BUILD — le format 24 porte trois builds
-#               dont deux personnalisations differentes, ce qui INTERDIT de n en garder qu une.
-#               AUCUN BIT LU NE CHANGE : sur les 1 351 films du cache les deux cles rendent le
-#               meme decoupage. LA REVISION MONTE parce que le CADRE change, et parce que la
-#               nouvelle cle couvre les CINQ films sans section d identification (format 20),
-#               que l ancienne ne pouvait pas nommer. `SchemaVersion` reste 59.
-#   2026-09-15  grammar-2026-09-15.9  lot 1.9.1 ter (second commit) : LES CONSEQUENCES DE LA
-#               CLE FORMAT. (a) La condition du repli `repli_largeurs_mpp_calibrees_sur_le_film`
-#               est RENOMMEE `build_sans_profil_relu` -> `format_sans_profil_relu` : elle
-#               nommait une cle qui n existe plus. Les traces DATEES gardent l ancien nom
-#               (l entree `.6` ci-dessus en particulier) — ce sont des releves du jour ou la
-#               condition a ete posee, pas la doc courante. (b) Le declenchement du repli sur un
-#               format INCONNU est desormais COMPTE (`filmdec_unknown_format_<n>`, nomme par
-#               `filmdec.UnknownFormatExpvarPairs`, cable aux deux sites du registre par
-#               `replay/mpp_format_inconnu.go`) et signale par UN avertissement par film. Un
-#               format inconnu tombe sur les largeurs CALIBREES — le repli tient le parc neuf au
-#               lieu de l eteindre — et la branche est gardee par `mpp_format_inconnu_test.go`,
-#               mutation verifiee dans les deux sens. AUCUN BIT LU NE CHANGE ; la revision monte
-#               pour le CADRE. `SchemaVersion` reste 59.
-grammar-2026-09-15.10	c7ebec2188bbdfdac461a5a322a068ebec934f46e80da9aba2ea67514d157ea2
+#   2026-09-15  grammar-2026-09-15.8  lot 1.9.13 : AUCUN OCTET N EST LU AUTREMENT. Un accesseur
+#               de lecture est ajoute a `objectiveevents` (`RoundBounds.Starts`, les frontieres
+#               de manche deja mesurees), que la decoupe des vies du rejeu consomme pour savoir
+#               ou une vie finit. L empreinte hachant les OCTETS des trois paquets, ce faux
+#               positif coute cette ligne — le marche assume du garde-rail.
+#               `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact).
+grammar-2026-09-15.11	f856b325eb11c4a7b85e17498e737c95b2cb684174ddd9ca5921fb1c0cda61c5

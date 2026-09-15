@@ -38,16 +38,36 @@ func buildOwnersFromTracks(tracks map[uint32]slotTrack,
 	if len(tracks) == 0 || len(idx.ByXUID) == 0 {
 		return rep, creationReport{}, bridgeVerification{}
 	}
+	// L'ECHAFAUDAGE D'ABORD : les sejours de replication, bornes par le seuil de trou. Ce n'est
+	// PAS la decoupe publiee — c'est la grille sur laquelle le calage du fil des morts se mesure
+	// (cf. lives_decoupe.go).
 	lives := buildLifeSpans(tracks)
-	rep.LivesTotal = len(lives)
-	rep.lives = lives
 	// LE LIEN DIRECT EN PREMIER, ET SANS CONDITION : c'est la doctrine « l'index est l'index ».
-	crea := nommerViesParCreations(lives, in.BipedCreations, idx, in.Bots)
+	// Il tourne sur l'echafaudage parce que la decoupe qui suit a besoin de savoir SI le joueur
+	// d'un sejour meurt dans le film.
+	nommerViesParCreations(lives, in.BipedCreations, idx, in.Bots)
 	// LE PONT PAR MORTS ENSUITE, EN TEMOIN. Son appariement pose la CAUSE de fin — la seule qui
 	// dise « ce joueur est mort » — puis confronte la victime au joueur que le film ecrit.
 	off, matched, second := bestDeathOffset(lives, deaths)
 	rep.DeathOffsetMS, rep.DeathOffsetMatches = off, matched
 	rep.DeathOffsetRunnerUp = second
+	marquerCauseDeMort(lives, apparierMortsEtVies(lives, deaths, off))
+	// LA DECOUPE PUBLIEE VIENT DE CE QUE LE FILM ECRIT (lot 1.9.13) : une vie finit a une mort
+	// ecrite, a une apparition de corps, a une fin de manche ou a la fin du film ; un trou de
+	// replication devient une LACUNE de la meme vie. Le seuil ne survit qu'en repli compte.
+	lives = decouperAuxFaitsEcrits(lives, faitsQuiBornentUneVie{
+		creations:      in.BipedCreations,
+		manches:        manchesEnFilmUS(in.Statborg.Records, off),
+		mortsParJoueur: mortsParJoueur(deaths, off),
+		fb:             in.Fallbacks,
+	})
+	rep.LivesTotal = len(lives)
+	rep.lives = lives
+	// LES DEUX LECTURES REPASSENT SUR LA DECOUPE FINALE : le record de creation ouvre desormais
+	// LA vie du corps (et non le premier de ses sejours), et l'appariement des morts se refait sur
+	// les fins de vie publiees. Le CALAGE, lui, ne se remesure pas — il est mesure une seule fois,
+	// sur l'echafaudage, et reste l'octet d'avant.
+	crea := nommerViesParCreations(lives, in.BipedCreations, idx, in.Bots)
 	paires := apparierMortsEtVies(lives, deaths, off)
 	marquerCauseDeMort(lives, paires)
 	verif := verifierParLesMorts(lives, deaths, paires, in.MatchID)

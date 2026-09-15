@@ -9,12 +9,13 @@
 schema 59 · titre halo_infinite
 version majeure du film : 37
 origine de la frame 0 sur l horloge du fil : 11847 ms
-coup d envoi date par le film : 33547 ms · 169/173 piste(s) en mouvement · rafale 7 · marge depuis la frame 0 : 21700 ms
+coup d envoi date par le film : 33547 ms · 169/169 piste(s) en mouvement · rafale 7 · marge depuis la frame 0 : 21700 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
-177 trace(s) · 45137 point(s) de grille
+169 trace(s) · 45137 point(s) de grille
 seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si le film ecrit une position, elle se publie
-177 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+8 lacune(s) de replication DANS une vie, 147865 ms au total — un trou n'est pas une fin de vie, la piste ne s'y interpole simplement pas
+169 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
 occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
 31827 point(s) portent un cap de visee · 31827 une elevation de visee · 14682 un bouclier · 177 une fraction de vie
@@ -34,8 +35,8 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 lue=true refus="" · 336 record(s) ti=9, 0 rejete(s), 0 divergence(s)
 roster : 8 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
 controle (feuille de match) : accord=0 contradiction=0 silence=8
-vies : 177/177 portent une equipe du film
-repartition des vies par designateur : 0 x87 · 1 x90
+vies : 169/169 portent une equipe du film
+repartition des vies par designateur : 0 x83 · 1 x86
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
 1632 rattache(s) / 1635 disponible(s) = 99.8 %
@@ -79,7 +80,7 @@ couverture : 27 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) san
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 11 episode(s) publie(s) · par famille : camo=11 · 6 fin(s) MESUREE(s) (le reste ferme a la mort)
-couverture : 177 vie(s) publiee(s) · camo 6 vie(s) / 11 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
+couverture : 169 vie(s) publiee(s) · camo 6 vie(s) / 11 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
 
 ## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
 2 evenement(s) -> 2 publie(s) (2 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
@@ -372,13 +373,13 @@ POWER-UPS (voie ti=37) — balaye=true · 399 creation(s) acceptee(s) -> 13 rete
 171 entree(s) · 171 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
 fermetures : 0 par le corps disponible · 0 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
 refus des fermetures : 0 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 0 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
-161 vie(s) nommee(s) / 177 — un rapport publie sans son denominateur ne se juge pas
+161 vie(s) nommee(s) / 169 — un rapport publie sans son denominateur ne se juge pas
 42 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
 verdict : nominal
 
 ## REGISTRE D IDENTITE — la PROVENANCE de chaque lien, et ce que la table du film couvre
 index de joueur : 8 direct · 0 externe · 0 deduit · 0 non resolu
-slot de bipede : 177 direct (dont 8 propages) · 0 deduit · 0 non resolu (index hors table=0 · sans record=0 · lectures divergentes=0)
+slot de bipede : 169 direct (dont 0 propages) · 0 deduit · 0 non resolu (index hors table=0 · sans record=0 · lectures divergentes=0)
 table du film : lue=true refus="" · 8 siege(s) · 8 lien(s) direct(s) · 0 par repli
 controle (lecture des chunks) : 8 accord · 0 contradiction · 0 silence — la table du film fait foi, l ecart se compte
 voies des liens d index : film_table=8
