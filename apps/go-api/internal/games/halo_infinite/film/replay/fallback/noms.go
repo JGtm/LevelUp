@@ -19,8 +19,8 @@ package fallback
 // autres n'ont pas de site qui les cite : leur nom vit dans le registre, et il y suffit.
 
 const (
-	// NomOriginePoseVieLaPlusProche : `replay/equipment_placements.go`, `equipmentOrigin`.
-	NomOriginePoseVieLaPlusProche Nom = "repli_origine_pose_vie_la_plus_proche"
+	// NomPieceEngendreeSansEvenement : `replay/equipment_origin.go`, `origineDeLaPose`.
+	NomPieceEngendreeSansEvenement Nom = "repli_piece_engendree_sans_evenement"
 	// NomPlafondGrenadeParDefaut : `replay/inventory_decode.go`, `ScanKeyframeInventory`.
 	NomPlafondGrenadeParDefaut Nom = "repli_plafond_grenade_par_defaut"
 	// NomLargeursAxeParDefautConservees : `replay/world_object_precision.go`.

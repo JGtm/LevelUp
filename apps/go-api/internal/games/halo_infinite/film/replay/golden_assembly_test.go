@@ -865,8 +865,21 @@ func renderPlacements(p func(string, ...any), doc ReplayDocument) {
 		c.WithHeading)
 	// L ORIGINE EST LA LIGNE QUI DECIDE DU RENDU : seuls les DEPLOYES decrivent un geste. Les
 	// trois comptes sont figes ensemble, et leur somme doit valoir le total (invariant teste).
-	p("origine mesuree : %d deployee(s) · %d lachee(s) a la fin de la vie du poseur · "+
-		"%d sans poseur", c.Deployed, c.Dropped, c.Unknown)
+	//
+	// LE LIBELLE SUIT LE VOCABULAIRE TRANCHE LE 2026-09-15 : un `dropped` est un LACHER, sans
+	// dire lequel (mort du porteur ou echange) — c'est `byCause` qui le dit —, et un `unknown`
+	// couvre DEUX silences (aucun poseur mesure, ou un poseur connu dont le film ne dit rien).
+	p("origine lue : %d deployee(s) (piece engendree) · %d lachee(s) · %d inconnue(s)",
+		c.Deployed, c.Dropped, c.Unknown)
+	// LA PROVENANCE DE CHAQUE ORIGINE (schema 59, lot 1.9.1) : ce que le film a DIT contre ce
+	// qu'un repli a decide. Elle est figee ici parce que c'est la seule grandeur du calque qui
+	// puisse se degrader SANS QUE RIEN D'AUTRE NE BOUGE — une lecture qui cesse de trancher rend
+	// exactement les memes origines, par le repli, et l'ancien golden ne le voyait pas.
+	p("provenance : %d evenement(s) 103 lu(s) sur %d liste(s) d evenements non vides",
+		c.SpawnEvents, c.SpawnLists)
+	for _, k := range clesTrieesDeCarte(c.ByCause) {
+		p("  par cause %-16s %d", k, c.ByCause[k])
+	}
 	for _, f := range clesTrieesDeCarte(c.ByFamily) {
 		p("  famille %-8s %d", f, c.ByFamily[f])
 	}

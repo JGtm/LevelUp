@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 3465 frames · intervalle 100 ms · duree 346500 ms
-schema 58 · titre halo_infinite
+schema 59 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 12904 ms
 coup d envoi date par le film : 35704 ms · 56/56 piste(s) en mouvement · rafale 5 · marge depuis la frame 0 : 22800 ms
@@ -122,7 +122,12 @@ couverture : 58 vie(s) publiee(s) · camo 2 vie(s) / 3 episode(s) · surbouclier
 ## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine
 calibre=true decoupage="9/5" · 184 vie(s) d objet · 2986 ancre(s) -> 115 confirmee(s) par l oracle de position -> 101 pose(s)
 101 nommee(s) · 0 `other` (nature non etablie : le manifeste ne les revendique pas) · 97 avec poseur mesure · 90 avec cap de visee
-origine mesuree : 5 deployee(s) · 92 lachee(s) a la fin de la vie du poseur · 4 sans poseur
+origine lue : 0 deployee(s) (piece engendree) · 94 lachee(s) · 7 inconnue(s)
+provenance : 1 evenement(s) 103 lu(s) sur 2730 liste(s) d evenements non vides
+  par cause death_written    91
+  par cause no_owner         4
+  par cause none             3
+  par cause taken_written    3
   famille grapple  1
   famille grenade_frag 76
   famille grenade_plasma 10
@@ -131,20 +136,16 @@ origine mesuree : 5 deployee(s) · 92 lachee(s) a la fin de la vie du poseur · 
   famille shroud_screen 2
   famille thruster 3
   famille x origine grapple/dropped              1
-  famille x origine grenade_frag/deployed        2
-  famille x origine grenade_frag/dropped         70
-  famille x origine grenade_frag/unknown         4
+  famille x origine grenade_frag/dropped         69
+  famille x origine grenade_frag/unknown         7
   famille x origine grenade_plasma/dropped       10
   famille x origine grenade_spike/dropped        4
-  famille x origine repulsor/deployed            1
-  famille x origine repulsor/dropped             4
-  famille x origine shroud_screen/deployed       1
-  famille x origine shroud_screen/dropped        1
-  famille x origine thruster/deployed            1
-  famille x origine thruster/dropped             2
+  famille x origine repulsor/dropped             5
+  famille x origine shroud_screen/dropped        2
+  famille x origine thruster/dropped             3
   grenade_frag dropped 0xbcabbe43 t=[357, 419] pos=(15.94, -2.26, 0.75) poseur=514 cap=347.1 deg
   grenade_frag dropped 0xbcabbe43 t=[357, 417] pos=(15.94, -2.26, 0.75) poseur=514 cap=347.1 deg
-  shroud_screen deployed 0x4396db42 t=[446, 471] pos=(28.54, 26.72, -1.05) poseur=513 cap=331.4 deg
+  shroud_screen dropped 0x4396db42 t=[446, 471] pos=(28.54, 26.72, -1.05) poseur=513 cap=331.4 deg
   grenade_frag dropped 0xbcabbe43 t=[529, 586] pos=(20.02, -0.79, -1.18) poseur=519 cap=181.8 deg
   grenade_spike dropped 0x0f5716ff t=[578, 591] pos=(40.23, 21.55, 0.94) poseur=517 cap=246.4 deg
   grenade_spike dropped 0x0f5716ff t=[578, 589] pos=(40.23, 21.55, 0.94) poseur=517 cap=246.4 deg
@@ -199,8 +200,8 @@ origine mesuree : 5 deployee(s) · 92 lachee(s) a la fin de la vie du poseur · 
   grenade_frag dropped 0xbcabbe43 t=[1634, 1752] pos=(33.02, 3.63, -1.30) poseur=518 cap=269.1 deg
   grenade_plasma dropped 0xcaaadcb0 t=[1634, 1649] pos=(33.02, 3.63, -1.30) poseur=518 cap=269.1 deg
   grenade_plasma dropped 0xcaaadcb0 t=[1634, 1671] pos=(33.02, 3.63, -1.30) poseur=518 cap=269.1 deg
-  grenade_frag deployed 0xbcabbe43 t=[1758, 1805] pos=(23.50, 8.03, -1.60) poseur=536 cap=136.9 deg
-  grenade_frag deployed 0xbcabbe43 t=[1758, 1811] pos=(23.50, 8.03, -1.60) poseur=536 cap=136.9 deg
+  grenade_frag unknown 0xbcabbe43 t=[1758, 1805] pos=(23.50, 8.03, -1.60) poseur=536 cap=136.9 deg
+  grenade_frag unknown 0xbcabbe43 t=[1758, 1811] pos=(23.50, 8.03, -1.60) poseur=536 cap=136.9 deg
   grenade_frag unknown 0xbcabbe43 t=[1790, 1817] pos=(3.67, 7.33, -1.42) poseur=-1 cap=aucun
   grenade_frag unknown 0xbcabbe43 t=[1790, 1823] pos=(3.71, 7.35, -1.42) poseur=-1 cap=aucun
   grenade_frag dropped 0xbcabbe43 t=[1875, 1921] pos=(16.71, -1.57, -1.37) poseur=541 cap=158.9 deg
@@ -222,14 +223,14 @@ origine mesuree : 5 deployee(s) · 92 lachee(s) a la fin de la vie du poseur · 
   grenade_frag dropped 0xbcabbe43 t=[2235, 2306] pos=(21.58, 13.48, -1.28) poseur=548 cap=2.8 deg
   grenade_frag dropped 0xbcabbe43 t=[2305, 2336] pos=(20.36, 19.39, -1.31) poseur=550 cap=317.5 deg
   grenade_frag dropped 0xbcabbe43 t=[2305, 2341] pos=(20.36, 19.39, -1.31) poseur=550 cap=317.5 deg
-  repulsor deployed 0x7ca85adc t=[2508, 2515] pos=(18.95, 10.38, 2.01) poseur=536 cap=68.7 deg
+  repulsor dropped 0x7ca85adc t=[2508, 2515] pos=(18.95, 10.38, 2.01) poseur=536 cap=68.7 deg
   grenade_frag dropped 0xbcabbe43 t=[2512, 2546] pos=(19.63, 14.04, -1.30) poseur=553 cap=336.2 deg
   grenade_frag dropped 0xbcabbe43 t=[2512, 2547] pos=(19.63, 14.04, -1.30) poseur=553 cap=336.2 deg
   thruster dropped 0x430dda48 t=[2564, 2578] pos=(19.49, 6.17, -2.07) poseur=530 cap=297.8 deg
   grenade_frag dropped 0xbcabbe43 t=[2564, 2619] pos=(19.50, 6.08, -2.13) poseur=530 cap=297.8 deg
   grenade_frag dropped 0xbcabbe43 t=[2564, 2628] pos=(19.50, 6.08, -2.13) poseur=530 cap=297.8 deg
   grenade_plasma dropped 0xcaaadcb0 t=[2564, 2594] pos=(19.50, 6.08, -2.13) poseur=530 cap=297.8 deg
-  thruster deployed 0x430dda48 t=[2631, 2642] pos=(20.22, -1.90, -1.76) poseur=554 cap=aucun
+  thruster dropped 0x430dda48 t=[2631, 2642] pos=(20.22, -1.90, -1.76) poseur=554 cap=aucun
   grenade_frag dropped 0xbcabbe43 t=[2747, 2780] pos=(28.53, 10.79, -0.60) poseur=554 cap=117.4 deg
   grenade_frag dropped 0xbcabbe43 t=[2747, 2782] pos=(28.53, 10.79, -0.60) poseur=554 cap=117.4 deg
   grenade_frag dropped 0xbcabbe43 t=[2786, 2810] pos=(31.96, 20.94, -0.61) poseur=559 cap=177.3 deg
@@ -238,7 +239,7 @@ origine mesuree : 5 deployee(s) · 92 lachee(s) a la fin de la vie du poseur · 
   grenade_frag dropped 0xbcabbe43 t=[3089, 3155] pos=(7.05, 16.27, -1.81) poseur=564 cap=122.8 deg
   grenade_frag dropped 0xbcabbe43 t=[3110, 3149] pos=(17.02, 13.54, -0.83) poseur=563 cap=306.0 deg
   grenade_frag dropped 0xbcabbe43 t=[3110, 3149] pos=(17.02, 13.54, -0.83) poseur=563 cap=306.0 deg
-  grenade_frag dropped 0xbcabbe43 t=[3135, 3138] pos=(14.87, 19.40, -2.41) poseur=562 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[3135, 3138] pos=(14.87, 19.40, -2.41) poseur=562 cap=aucun
   grenade_frag dropped 0xbcabbe43 t=[3298, 3322] pos=(16.08, -21.14, -2.60) poseur=566 cap=1.5 deg
   grenade_frag dropped 0xbcabbe43 t=[3298, 3323] pos=(16.05, -21.11, -2.60) poseur=566 cap=1.5 deg
   grenade_frag dropped 0xbcabbe43 t=[3383, 3443] pos=(17.40, 4.53, 1.16) poseur=567 cap=277.5 deg
@@ -316,7 +317,7 @@ controle (lecture des chunks) : 8 accord · 0 contradiction · 0 silence — la 
 voies des liens d index : PlayerIndexTable=3 · film_table=8
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
-repli_origine_pose_vie_la_plus_proche            92
+aucun : chaque fait publie vient d une lecture (ou d un repli dont le compteur n est pas encore cable)
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 21 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et

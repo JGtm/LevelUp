@@ -12383,6 +12383,11 @@ components:
             format: int64
             type: integer
           type: object
+        byCause:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
         byFamilyOrigin:
           additionalProperties:
             format: int64
@@ -12419,6 +12424,12 @@ components:
           type: integer
         scanned:
           type: boolean
+        spawnEvents:
+          format: int64
+          type: integer
+        spawnLists:
+          format: int64
+          type: integer
         unknown:
           format: int64
           type: integer
@@ -12446,6 +12457,8 @@ components:
         - unknown
         - endSeen
         - endOpen
+        - spawnEvents
+        - spawnLists
       type: object
     EquipmentUsageBlock:
       additionalProperties: false

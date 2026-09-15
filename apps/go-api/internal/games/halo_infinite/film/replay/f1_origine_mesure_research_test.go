@@ -57,10 +57,45 @@ const (
 	f1BornesToleranceM = 1.0
 )
 
+// f1OrigineParFenetre est LA REGLE DE LA FENETRE TEMPORELLE, retiree de la PRODUCTION le
+// 2026-09-15 (decision utilisateur du lot 1.9.1 : une pose dont le film ne dit rien sort
+// `unknown`, elle ne se classe plus par correlation). Elle survit ICI, et ici seulement, comme
+// TEMOIN : c'est elle qui permet de mesurer ce que la conversion a change, pose par pose.
+//
+// ELLE N'EST PLUS APPELEE PAR AUCUN CODE DE PRODUCTION. Si un jour elle l'etait de nouveau, le
+// registre des replis devrait reprendre ses deux entrees — sorties le 2026-09-15 avec elle.
+func f1OrigineParFenetre(lives []equipLife, p filmdec.EquipmentPlacement) string {
+	if len(lives) == 0 {
+		return OriginUnknown
+	}
+	best, bestGap := equipLife{}, ^uint64(0)
+	for _, v := range lives {
+		gap := uint64(0)
+		switch {
+		case p.T0US < v.from:
+			gap = v.from - p.T0US
+		case p.T0US > v.to:
+			gap = p.T0US - v.to
+		}
+		if gap == 0 {
+			best = v
+			bestGap = 0
+			break
+		}
+		if gap < bestGap {
+			best, bestGap = v, gap
+		}
+	}
+	if equipTimeGap(p.T0US, best.to) > originDropWindowUS {
+		return OriginDeployed
+	}
+	return OriginDropped
+}
+
 // f1OrigineAvant est la regle D'AVANT le lot F.1 — le TEMOIN, jamais la regle vivante : la
 // fenetre temporelle ET la clause de distance.
 func f1OrigineAvant(lives []equipLife, p filmdec.EquipmentPlacement) string {
-	apres := equipmentOrigin(lives, p, nil)
+	apres := f1OrigineParFenetre(lives, p)
 	if apres != OriginDropped {
 		return apres
 	}

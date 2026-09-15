@@ -60858,9 +60858,6 @@
 {"Time":"2026-09-05T23:46:26.288211+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestOriginBirthRecurrenceClusters","Elapsed":0}
 {"Time":"2026-09-05T23:46:26.288211+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentLivesDecoupeSurLeTrouDeCinqSecondes","Elapsed":0}
 {"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentLivesIgnoreLesQuantaSansBornes","Elapsed":0}
-{"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentOriginSepareLacherDuDeploiement","Elapsed":0}
-{"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentOriginSansVieEstInconnue","Elapsed":0}
-{"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentOriginChoisitLaVieQuiContientLInstant","Elapsed":0}
 {"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPlacementCoverageEquilibreLesOrigines","Elapsed":0}
 {"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildEquipmentPlacementsPublieUneOrigineToujours","Elapsed":0}
 {"Time":"2026-09-05T23:46:26.2902243+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestEquipmentOwnerDepartageDeuxBipedesEquidistants","Elapsed":0}
