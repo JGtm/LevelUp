@@ -251,7 +251,7 @@ func consumeBipedMobilityAction(br *BitReader) {
 		mobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
 	}
 	if flag1 {
-		consume1408f0ac4(br) // FUN_1408f0ac4(...,0)
+		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		if MobilityActionBodyPorted {
 			consumeMobilityActionBody(br) // FUN_1408f02c8, corps
 		} else if MobilityActionExtraBits > 0 {
@@ -561,7 +561,7 @@ func consume1431a3a50(br *BitReader) { br.ReadBits(15) }
 func consumeBipedActionTag(br *BitReader, tag uint64) (ported bool) {
 	switch tag {
 	case 0: // FUN_1408f0ac4(...,0) + FUN_1407f08bc
-		consume1408f0ac4(br)
+		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		gate8(br)
 	case 1: // FUN_143193fe0
 		gate8(br)            // FUN_1407f08bc

@@ -108,10 +108,10 @@ var defaultStateDeserByTI = map[uint32]func(*BitReader){
 //	FUN_142af28d8 [R(1)] ; R(8)
 func consumeDefaultStateTI3(br *BitReader) {
 	consumeVersionPrefix(br)
-	consume1408f0ac4(br) // FUN_1408f0ac4(param_3, param_4, 0)
-	consumeGateR(br, 8)  // FUN_1407f08bc -> FUN_1407f08f8 = R(8)
-	br.ReadBit()         // FUN_142af28d8 = R(1)
-	br.ReadBits(8)       // R(8) terminal -> dst+0xb
+	consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0) @142eea359
+	consumeGateR(br, 8)     // FUN_1407f08bc -> FUN_1407f08f8 = R(8)
+	br.ReadBit()            // FUN_142af28d8 = R(1)
+	br.ReadBits(8)          // R(8) terminal -> dst+0xb
 }
 
 // consumeDefaultStateTI5 porte FUN_140fed600 (archetype 5, « player-waypoint ») :
@@ -169,7 +169,7 @@ func readManagedPlayerDefaultState(br *BitReader) (playerIndex int) {
 // V ; FUN_1408f0ac4(dst, br, 0).
 func consumeDefaultStateTI10(br *BitReader) {
 	consumeVersionPrefix(br)
-	consume1408f0ac4(br)
+	consume1408f0ac4(br, 0)
 }
 
 // consumeDefaultStateTI13 porte FUN_140ce55e8 (archetype 13, « managed-object-property-name ») :
@@ -262,7 +262,7 @@ func consumeDefaultStateTI37(br *BitReader) {
 func consumeDefaultStateTI38(br *BitReader) {
 	consumeVersionPrefix(br)
 	consumeMultiplayerPropertiesBlock(br)
-	consume1408f0ac4(br)
+	consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0) @1408f0bae
 }
 
 // consumeDefaultStateTI48 porte FUN_142f14668 (archetype 48, « forge-player-data ») :

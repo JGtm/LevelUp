@@ -40,7 +40,7 @@ func consumeSpawnFilterType(br *BitReader) {
 			br.ReadBits(5)
 		}
 	case 2:
-		br.readQuantStat(1, 13)
+		br.readQuantStat(1)
 		br.ReadBits(6)
 	default:
 		br.ReadBits(32)

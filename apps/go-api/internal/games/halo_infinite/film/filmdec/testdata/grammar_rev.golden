@@ -195,4 +195,26 @@
 #               CARTE. Les appelants passent 0, 1 (i10 attache) et 4 (i21) la ou le decodeur lit
 #               UNE largeur. TEXTE SEUL : aucun bit lu ne change, l empreinte bouge parce qu elle
 #               hache les octets.
-grammar-2026-09-15.2	923f9d8bbfea7f4ec2d32b770bf8c82f63924f7ee73f8eb9ee61ee5042341adf
+#   2026-09-15  grammar-2026-09-15.3  lot 1.9.1 bis, pas 2 bis : LA LARGEUR DE
+#               `FUN_1406d3140` VIENT D UNE TABLE DE NEUF CATEGORIES, ET LE DEPOT EN LISAIT
+#               UNE SEULE. Des BITS changent — c est pourquoi la revision monte d un rang alors
+#               que le pas 2 du MEME lot tenait deja `.2` : `.2` a ete publiee comme « aucun bit
+#               lu ne change », et lui accrocher une correction de largeur en ferait une
+#               doc inversee. `varwidth.go` porte la table de `FUN_140d10bb0` (constantes du
+#               binaire : plages 0x1DFF / 0x100 / 0x200 / 0x1FFF selon la categorie, et
+#               `DAT_144706104 = 1` qui leve la garde), et `FUN_1406d3140` bascule la
+#               categorie 1 sur l entree 4 quand son bit de sonde vaut 1. Quatre sites de
+#               ti=37 changent, chacun avec son `param_3` RELU sur le desassemblage :
+#               i10 `object-parent-state` (categorie 1 : 9 bits au lieu de 13 quand la sonde
+#               rend 1), i21 `equipment-activated` (categorie 4 : 9 au lieu de 13),
+#               i22 `equipment-control-signal` (categorie 4 : plus de sonde et 9 au lieu de 13,
+#               soit cinq bits), i28 `equipment-tracked-object-handles-stack` (categorie 0 :
+#               plus de sonde, un bit). AUCUNE DEPENDANCE A LA CARTE — c est le point qui
+#               distingue ce champ des largeurs d axe d i0.
+#               EFFET MESURE sur les sept bobines : fermeture des cinq archetypes objet
+#               184 -> 188 (0,85 % -> 0,87 %), ti=38 180 -> 183, ti=37 3 -> 4. LE GAIN EST
+#               REEL MAIS PETIT, et TROIS lignes du golden de fermeture DESCENDENT pendant que
+#               quatre montent (`60ae07c4` ti=38 43 -> 30, `11de8353` ti=38 32 -> 48). Le
+#               golden 0.A.3 n est PAS regenere ici : D14 interdit de le faire descendre, et
+#               l arbitrage appartient au pilote.
+grammar-2026-09-15.3	2621e7f72c27bdb2120b9447418a177d7433d01500e1ac35db9df056a22374a9

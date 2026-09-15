@@ -131,7 +131,7 @@ func r8ReadMobility(pay []byte, at, total int) (r8MobEvent, bool) {
 	if !ev.Flag1 {
 		return ev, true
 	}
-	consume1408f0ac4(br)
+	consume1408f0ac4(br, 0)
 	start := br.BitPos()
 	r8MirrorBody(br, &ev)
 	if br.BitPos() > total {

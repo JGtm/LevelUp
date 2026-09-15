@@ -75,7 +75,7 @@ type ObjectParentState struct {
 	StartBit, EndBit int
 
 	// --- branche Attached == true -------------------------------------------------
-	// Quant16 est le champ à largeur variable lu par readQuantStat(1, 13) : 1 bit de
+	// Quant16 est le champ à largeur variable lu par readQuantStat(1) : 1 bit de
 	// sonde + R(13) + R(2) de poids fort, rendus assemblés comme partout ailleurs.
 	Quant16 uint32
 	// Word16 est le R(16) inconditionnel qui le suit ; Opt16 le R(16) derrière une porte.
@@ -152,14 +152,14 @@ func consumeObjectParentState(br *BitReader, recordStateParam uint32, typeIndex 
 		if recordStateParam < 2 {
 			st.FreeRead = true
 			at := br.BitPos()
-			st.HasFreeID, st.FreeID = consume1408f0ac4(br)
+			st.HasFreeID, st.FreeID = consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0) @1423ce7d8
 			st.FreeBits = br.BitPos() - at
 			if br.ReadBit() {
 				st.HasAlt11, st.Alt11 = true, uint32(br.ReadBits(11))
 			}
 		}
 	} else {
-		st.Quant16 = br.readQuantStat(1, quantStatDefaultWidth) // probe1+13+2 = 16b
+		st.Quant16 = br.readQuantStat(1) // FUN_1406d3140(...,1,...) @140c1e51d : sonde + 13 ou 9 + 2
 		st.Word16 = uint32(br.ReadBits(16))
 		if br.ReadBit() {
 			st.HasOpt16, st.Opt16 = true, uint32(br.ReadBits(16))
