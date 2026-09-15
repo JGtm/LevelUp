@@ -182,9 +182,10 @@ func (c *decodeCtx) finish() *Result {
 		Roster:          c.roster.public(),
 		Calibration:     c.calib.String(),
 		BijectionMargin: bijectionMargin(c.roster, c.feed.pairs, c.scanCands, c.bijScore),
-		// DETERMINEE quand il reste au plus un indice a inferer : une seule affectation est
-		// possible, donc rien n est interchangeable et la marge est sans objet.
-		BijectionDetermined: c.roster.table.Inferred <= 1,
+		// DETERMINEE quand l inference n avait qu UNE SEULE affectation a rendre — ce que
+		// `Inferred <= 1` ne suffisait pas a dire des lors qu il peut rester plus de noms libres
+		// que d indices libres (cf. [FilmTablePinning.AffectationUnique]).
+		BijectionDetermined: c.roster.table.AffectationUnique(),
 	}
 	res.Health = c.health(p, cov)
 	// La sonde a porte relachee ne tourne QUE si la couverture est incomplete : c est le seul

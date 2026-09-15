@@ -90,11 +90,46 @@ type FilmTablePinning struct {
 	OutOfRange int
 	// Inferred : les indices laisses a l inference — LE REPLI, compte.
 	Inferred int
+	// FreeNames : les NOMS que l inference a encore a placer sur ces indices. Il n est PAS la
+	// meme quantite que `Inferred` et il ne l a plus jamais ete depuis le lot 1.8 : la table du
+	// film ajoute au roster les joueurs que le kill-feed ne nomme pas, donc il peut rester plus
+	// de noms libres que d indices libres (cf. [roster.freeSlots]). Sans ce compte, « un seul
+	// indice a inferer » se lisait a tort « une seule affectation possible » — alors que deux
+	// noms pour un indice se tranchent par les votes, et qu un nom sans kill ni mort n en porte
+	// aucun : le choix etait ARBITRAIRE (revue de jalon M1, lentille L4).
+	FreeNames int
 	// Agree / Contradict / Silent : le CONTROLE des indices epingles par les votes du kill-feed.
 	// `Agree` = les votes designent le meme joueur ; `Contradict` = ils en designent un autre,
 	// strictement plus vote ; `Silent` = aucun vote sur cet indice (le joueur n a ni tue ni est
 	// mort dans la fenetre d appariement).
 	Agree, Contradict, Silent int
+}
+
+// AffectationUnique dit si l inference n avait QU UNE SEULE affectation possible a rendre.
+//
+// C EST LA QUESTION QUE `Inferred <= 1` CROYAIT POSER, ET QU IL NE POSAIT PAS. Un indice libre
+// pour DEUX noms libres se tranche par les votes du kill-feed, et le cout d un nom qui n a ni
+// tue ni ete tue vaut zero contre tous les indices : le hongrois rend alors un nom pris au
+// hasard du departage ([permLess]), [refine] ne peut rien echanger (il lui faudrait deux indices
+// libres) et [bijectionMargin] rend structurellement zero (sa double boucle ne tourne pas sur
+// une seule case libre). La porte de publication ligne par ligne reposait donc sur ce seul
+// booleen, et publiait la source du degat, le credit, l assistant et les deux parts de degats
+// sur un occupant TIRE AU SORT.
+//
+// LES TROIS REGIMES, ET POURQUOI LE PREMIER RESTE VRAI. Aucun indice libre : la bijection est
+// entierement LUE, il n y a rien a choisir — les noms libres qui restent ne portent aucun
+// indice, ce qui est exact (cf. [hungarianStart]). Un indice libre pour au plus un nom libre :
+// l affectation est forcee. Au-dela : au moins un choix, donc la marge de bijection reprend son
+// office.
+func (t FilmTablePinning) AffectationUnique() bool {
+	switch t.Inferred {
+	case 0:
+		return true
+	case 1:
+		return t.FreeNames <= 1
+	default:
+		return false
+	}
 }
 
 // BotEntry : un bot tel que le film le declare.
@@ -248,8 +283,16 @@ func (r *roster) originOf(i int) IndexOrigin {
 	}
 }
 
-// freeSlots : indices NON epingles, et positions de noms NON epinglees. Les deux listes ont la
-// meme longueur par construction.
+// freeSlots : indices NON epingles, et positions de noms NON epinglees.
+//
+// LES DEUX LISTES N ONT PAS LA MEME LONGUEUR, ET C EST LE LOT 1.8 QUI LES A DESACCORDEES. La
+// table du film AJOUTE au roster les joueurs que le kill-feed ne nomme pas ([roster.pinUnSiege],
+// `AddedNames`) : quand le siege ajoute porte un indice DEJA dans l espace des indices, `names`
+// grandit sans que `nPlay` bouge. L ecart vaut exactement `len(names) - nPlay`, et il est
+// POSITIF sur le parc (`111fa685` : 25 noms pour 24 indices ; cf. [hungarianStart], qui PADDE la
+// matrice pour cette raison). Le godoc d avant affirmait l egalite « par construction » — c est
+// cette affirmation qui avait fait passer [FilmTablePinning.Inferred] pour une mesure d unicite
+// (revue de jalon M1, lentille L4).
 func (r *roster) freeSlots() (free, freeNames []int) {
 	used := map[int]bool{}
 	for _, p := range r.pin {
