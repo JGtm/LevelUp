@@ -64,7 +64,15 @@ func TestRegistrePorteToutesSesFamilles(t *testing.T) {
 // `repli_i0_porte_et_region_par_defaut` passe en `apres_lecture` — les deux chemins de
 // `sync/killcollector` imposent désormais le découpage d'i0 du CATALOGUE de carte, comme le
 // chemin de cuisson, et l'auto-détection n'entre plus que là où le catalogue se tait.
-const ratchetDevantLaLecture = 6
+//
+// BAISSÉ À 5 AU LOT 1.9.13 (2026-09-15) : `repli_vie_coupee_au_trou_de_replication` passe en
+// `apres_lecture`. Où finit une vie SE LIT désormais — une mort écrite du joueur, un record de
+// création de bipède, une frontière de manche —, et le seuil de trou (`lifeGapUS`) n'entre plus
+// que pour un joueur dont le film n'écrit AUCUNE mort. Mesure qui l'autorise : sur les 212
+// coupures que le seuil décidait sur les 8 builds, 208 n'étaient justifiées PAR RIEN ; elles sont
+// devenues des lacunes, les 4 restantes portent toutes une mort écrite, et le repli ne se
+// déclenche sur aucun des 8 builds.
+const ratchetDevantLaLecture = 5
 
 func TestReplisDevantLaLectureNeMontentPas(t *testing.T) {
 	n := NbDevantLaLecture()

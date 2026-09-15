@@ -191,6 +191,11 @@ type TrackCoverage struct {
 	RefusedMinPoints int `json:"refusedMinPoints"`
 	RefusedPoints    int `json:"refusedPoints"`
 	MinPoints        int `json:"minPoints"`
+	// Gaps est le nombre de LACUNES des traces publiees, GapMS leur duree totale en
+	// millisecondes : un silence de replication de plus de 5 s A L INTERIEUR d une vie, que le
+	// film ne ferme pas. Cf. `replay.TrackCoverage` (lot 1.9.13).
+	Gaps  int `json:"gaps"`
+	GapMS int `json:"gapMs"`
 }
 
 // ProjectileCoverage est la couverture des TRAJECTOIRES DE PROJECTILE : pistes décodées,

@@ -49,4 +49,11 @@ package filmdec
 // FUSION (2026-09-16) : l integration portait `.3` (lots 1.9.2 et 1.9.3) et la branche du lot
 // 1.9.1 bis `.6` (gardes n1/n2, quatre sites de ti=37, prefixe objet relu, profil par build) ;
 // les deux grammaires sont reunies ici, au rang suivant.
-const GrammarRev = "grammar-2026-09-15.7"
+// LOT 1.9.13 (2026-09-15) : `.7` -> `.8`. AUCUNE grammaire d octets ne change, et aucun bit lu
+// n est lu autrement : `objectiveevents.RoundBounds.Starts` est un ACCESSEUR de lecture sur des
+// bornes de manche deja mesurees, que la decoupe des vies du rejeu consomme. L empreinte hache
+// les OCTETS des trois paquets (cf. grammar_rev_fingerprint_test.go, « il ne distingue pas un
+// changement de grammaire d une reformulation de commentaire ») : le faux positif coute cette
+// ligne, et c est le marche assume du garde-rail. `KillSourceDecoderRev` ne bouge PAS —
+// `killsource/` n est pas touche.
+const GrammarRev = "grammar-2026-09-15.8"

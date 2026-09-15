@@ -45,23 +45,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	origin := sorted[0].TimestampUS
 	step := uint64(interval) * 1000
-	// LA COUVERTURE DES TRACES EST CONSTRUITE ICI mais POSEE plus bas, avec les autres :
-	// `doc.Coverage` n'existe qu'a partir de `buildCoverage`, et l'assemblage du document se
-	// fait dans l'ordre des DEPENDANCES, pas dans celui des champs.
-	tracks, trackCov := decimateTracks(sorted, origin, step, opt.minPoints(), opt.Scoped)
-	doc.Tracks = tracks
-	logTrackCoverage(matchID, trackCov)
 	doc.FrameCount = frameSpan(sorted, origin, step)
 	doc.DurationMS = doc.FrameCount * interval
-	var ecartes int
-	doc.Bounds, ecartes = boundsOf(doc.Tracks)
-	if ecartes > 0 {
-		// JOURNALISE, JAMAIS AVALE (regle n°3 du depot). Un artefact de decodage qui passe la
-		// porte des bornes n est pas un detail : il decadre la scene et fait disparaitre le fond
-		// de carte. Le compte doit se voir en production, meme quand le correctif marche.
-		slog.Info("rejeu : echantillons aberrants ecartes des bornes",
-			"match_id", doc.MatchID, "ecartes", ecartes, "seuil_etendues", boundsRejectSpreads)
-	}
 	// Les tirs sont rattachés sur les positions NON décimées (le rattachement se joue à
 	// ~120 ms, la grille du rejeu est à 100 ms : décimer d'abord perdrait des tireurs).
 	// LE PONT slot -> joueur vient du seul fil des morts (cf. owners.go). Il conditionne les
@@ -81,11 +66,31 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		Participants: opt.Participants,
 		Statborg: StatborgIdentityInput{
 			Identity: opt.StatborgIdentity, Records: scoreRecordsOf(opt.Score)},
-		Clock:   IdentityClock{OriginUS: origin, StepUS: step, FrameCount: doc.FrameCount},
-		MatchID: matchID,
+		Clock:     IdentityClock{OriginUS: origin, StepUS: step, FrameCount: doc.FrameCount},
+		MatchID:   matchID,
+		Fallbacks: opt.Fallbacks,
 	})
 	if !reg.Section.Empty() {
 		doc.Identity = &reg.Section
+	}
+	// LES TRACES SE DECOUPENT SUR LES VIES DU REGISTRE (lot 1.9.13), ET PLUS SUR UN SEUIL DE
+	// TROU : le registre est le SEUL a decider ou une vie finit (cf. tracks_publication.go). La
+	// couverture est construite ici mais POSEE plus bas, avec les autres — `doc.Coverage`
+	// n'existe qu'a partir de `buildCoverage`.
+	tracks, trackCov := decimateTracks(sorted, decoupeDesTraces{
+		origin: origin, step: step, minPoints: opt.minPoints(), scoped: opt.Scoped,
+		vies: reg.Vies(), fb: opt.Fallbacks,
+	})
+	doc.Tracks = tracks
+	logTrackCoverage(matchID, trackCov)
+	var ecartes int
+	doc.Bounds, ecartes = boundsOf(doc.Tracks)
+	if ecartes > 0 {
+		// JOURNALISE, JAMAIS AVALE (regle n°3 du depot). Un artefact de decodage qui passe la
+		// porte des bornes n est pas un detail : il decadre la scene et fait disparaitre le fond
+		// de carte. Le compte doit se voir en production, meme quand le correctif marche.
+		slog.Info("rejeu : echantillons aberrants ecartes des bornes",
+			"match_id", doc.MatchID, "ecartes", ecartes, "seuil_etendues", boundsRejectSpreads)
 	}
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
