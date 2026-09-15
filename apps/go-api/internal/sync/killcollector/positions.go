@@ -203,24 +203,10 @@ type passePositions struct {
 	openRows []persist.KillOpeningInsert
 }
 
-// resolveMapBounds : les identites de carte candidates du match (base), puis leurs bornes de
-// dequantification (catalogue). Deux echecs distincts, une seule cause utile a l appelant :
-// « pas de bornes », qu il vienne de la base ou du catalogue.
-func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID string) (filmdec.MapQuantEntry, error) {
-	keys, err := c.mapNames.MapKeysForMatch(ctx, matchID)
-	if err != nil {
-		return filmdec.MapQuantEntry{}, fmt.Errorf("identite de carte: %w", err)
-	}
-	for _, name := range keys.Names {
-		if name == "" {
-			continue
-		}
-		if entry, err := c.mapBounds.Lookup(name); err == nil {
-			return entry, nil
-		}
-	}
-	return filmdec.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", filmdec.ErrUnknownMapBounds, keys.Names)
-}
+// La résolution de la carte du match — son NOM par la base, puis son entrée au catalogue de
+// bornes — vit dans `map_identity.go` depuis le lot 1.9.4 : les DEUX passes du collecteur (les
+// positions et les touches) la partagent désormais, là où la passe des touches devinait la carte
+// par une signature de largeurs d'axe. Voir [KillSourceCollector.resolveMapBounds].
 
 // optionsDeBalayageDesPositions : les réglages du balayage des positions pour UNE carte — ses
 // bornes monde ET son découpage d'i0, tous deux pris au CATALOGUE.
