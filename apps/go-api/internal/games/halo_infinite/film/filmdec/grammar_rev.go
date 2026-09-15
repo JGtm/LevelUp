@@ -49,4 +49,13 @@ package filmdec
 // FUSION (2026-09-16) : l integration portait `.3` (lots 1.9.2 et 1.9.3) et la branche du lot
 // 1.9.1 bis `.6` (gardes n1/n2, quatre sites de ti=37, prefixe objet relu, profil par build) ;
 // les deux grammaires sont reunies ici, au rang suivant.
-const GrammarRev = "grammar-2026-09-15.7"
+// LOT 1.9.1 ter (2026-09-15) : `.7` -> `.8`. AUCUN BIT LU NE CHANGE, mais la CLE de la
+// grammaire, si — et c'est exactement ce que cette revision doit nommer. Le decoupage du bloc
+// `object-multiplayer-properties` etait keye par le NOM DE BUILD ; il l'est desormais par la
+// VERSION DE FORMAT de `chunk_00` (`chunk_00+4`), qui est la valeur que le LECTEUR du jeu
+// consulte (`FUN_14299ab50` : la largeur du registre et celle de la table par type en
+// derivent ; `FUN_1428e1c0c` : c'est elle que les six branches de version de l'executable
+// lisent). Sur les 1 351 films du cache les deux cles donnent le MEME decoupage — le
+// changement est verifiable et neutre — mais la nouvelle couvre les cinq films sans section
+// d'identification, que l'ancienne ne pouvait pas nommer.
+const GrammarRev = "grammar-2026-09-15.8"
