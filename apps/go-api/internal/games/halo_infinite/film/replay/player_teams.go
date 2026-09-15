@@ -88,6 +88,16 @@ type TeamCoverage struct {
 	// comprise, parce que c'est une lecture. Le rapport des deux est ce qu'un lecteur voit.
 	Tracks      int `json:"tracks"`
 	TracksNamed int `json:"tracksNamed"`
+	// TracksSlotAmbiguous : les vies sans xuid dont le SLOT a porte deux joueurs nommes
+	// d'equipes differentes, et sur lesquelles le pont s'est ABSTENU.
+	//
+	// IL DIT POURQUOI UNE VIE N'EST PAS NOMMEE, ET C'EST LE CORRECTIF DE LA REVUE DE JALON M1
+	// (lentille L4). `equipeDuSlot` lisait `IndexParSlot()`, qui garde le PREMIER occupant nomme
+	// d'un slot recycle (`ownersFromLives`) : sur un slot que deux joueurs d'equipes differentes
+	// se partagent, la vie du SECOND recevait l'equipe du PREMIER, et `tracksNamed` l'affirmait
+	// nommee. C'est la meme abstention que [IdentityRegistry.PontDeSlot], et pour la meme raison
+	// — le pont aplati a d'ailleurs ete retire au lot 6.1 exactement pour ce defaut.
+	TracksSlotAmbiguous int `json:"tracksSlotAmbiguous,omitempty"`
 }
 
 // teamRefusalArchetype / teamRefusalComponent / teamRefusalNotScanned nomment les trois causes
@@ -104,11 +114,14 @@ const (
 // teamPublication porte ce qu'il faut pour poser l'equipe partout : la table du film par index,
 // sa projection par xuid, le pont slot -> index (les bots n'ont pas de xuid), et le CONTROLE.
 type teamPublication struct {
-	byIndex  map[int]int
-	byXUID   map[uint64]int
-	bySlot   map[uint32]int
-	rep      filmdec.TeamScanReport
-	controle map[string]int
+	byIndex map[int]int
+	byXUID  map[uint64]int
+	bySlot  map[uint32]int
+	// slotsAmbigus : les slots que deux joueurs nommes se sont partages. `bySlot` y garde le
+	// PREMIER occupant, donc le pont s'y tait (cf. [TeamCoverage.TracksSlotAmbiguous]).
+	slotsAmbigus map[uint32]bool
+	rep          filmdec.TeamScanReport
+	controle     map[string]int
 }
 
 // newTeamPublication projette la table du film sur les xuids que le registre d'identite connait.
@@ -117,8 +130,8 @@ type teamPublication struct {
 // table du film, et deux tables du meme film divergeraient.
 func newTeamPublication(reg IdentityRegistry, byIndex map[int]int, rep filmdec.TeamScanReport,
 	controle map[string]int) teamPublication {
-	p := teamPublication{byIndex: byIndex, bySlot: reg.IndexParSlot(), rep: rep,
-		controle: controle}
+	p := teamPublication{byIndex: byIndex, bySlot: reg.IndexParSlot(),
+		slotsAmbigus: reg.SlotsAmbigus(), rep: rep, controle: controle}
 	if len(byIndex) == 0 {
 		return p
 	}
@@ -140,21 +153,33 @@ func (p teamPublication) equipeDuXUID(x uint64) (int, bool) {
 
 // equipeDuSlot rend l'equipe de l'occupant d'un slot de bipede, par le pont slot -> index. C'est
 // la seule voie pour un BOT : il n'a pas de xuid.
-func (p teamPublication) equipeDuSlot(slot uint32) (int, bool) {
+//
+// ELLE SE TAIT SUR UN SLOT AMBIGU, et c'est la meme abstention que [IdentityRegistry.PontDeSlot].
+// `IndexParSlot` garde le PREMIER occupant nomme d'un slot recycle (`ownersFromLives` compte les
+// suivants en collision et ne tranche pas) : servir ce pont sur un slot que deux joueurs
+// d'equipes differentes se partagent publie l'equipe du premier sur la vie du second. Le second
+// retour distingue les deux silences — `false, false` = le pont ne connait pas ce slot,
+// `false, true` = il le connait mais deux joueurs s'en disputent l'identite.
+func (p teamPublication) equipeDuSlot(slot uint32) (equipe int, lue, ambigu bool) {
+	if p.slotsAmbigus[slot] {
+		return 0, false, true
+	}
 	idx, ok := p.bySlot[slot]
 	if !ok {
-		return 0, false
+		return 0, false, false
 	}
 	t, ok := p.byIndex[idx]
-	return t, ok
+	return t, ok, false
 }
 
 // poserSurLesTraces pose l'equipe du film sur chaque vie publiee et rend les deux comptes.
 //
 // L'ORDRE EST FIXE ET IL N'EST PAS ARBITRAIRE : le xuid d'abord (le lien direct du lot 1.6),
 // le pont slot -> index ensuite (la seule voie d'un bot). Une vie que ni l'un ni l'autre ne
-// nomme garde `-1`, et le compte le dit.
-func (p teamPublication) poserSurLesTraces(tracks []Track) (total, nommees int) {
+// nomme garde `-1`, et le compte le dit. Le troisieme retour isole les vies que le pont REFUSE
+// de nommer parce que leur slot a porte deux joueurs (cf. [teamPublication.equipeDuSlot]) : sans
+// lui, une abstention se lirait comme un film muet.
+func (p teamPublication) poserSurLesTraces(tracks []Track) (total, nommees, slotAmbigu int) {
 	for i := range tracks {
 		total++
 		if x, err := strconv.ParseUint(tracks[i].XUID, 10, 64); err == nil {
@@ -163,11 +188,14 @@ func (p teamPublication) poserSurLesTraces(tracks []Track) (total, nommees int) 
 				continue
 			}
 		}
-		if t, ok := p.equipeDuSlot(tracks[i].Slot); ok {
+		switch t, lue, ambigu := p.equipeDuSlot(tracks[i].Slot); {
+		case lue:
 			tracks[i].Team, nommees = t, nommees+1
+		case ambigu:
+			slotAmbigu++
 		}
 	}
-	return total, nommees
+	return total, nommees, slotAmbigu
 }
 
 // equipeDuRoster rend l'equipe d'une entree de roster, par son index de joueur. NIL quand le
@@ -182,7 +210,8 @@ func (p teamPublication) equipeDuRoster(e RosterEntry) *int {
 }
 
 // couverture rend ce que la lecture a couvert, controle compris.
-func (p teamPublication) couverture(vies, viesNommees int, entrees []RosterEntry) TeamCoverage {
+func (p teamPublication) couverture(vies, viesNommees, viesSlotAmbigu int,
+	entrees []RosterEntry) TeamCoverage {
 	cov := TeamCoverage{
 		Read:        p.rep.Lu(),
 		Records:     p.rep.Records,
@@ -211,7 +240,7 @@ func (p teamPublication) couverture(vies, viesNommees int, entrees []RosterEntry
 		}
 		p.controler(&cov, e, t)
 	}
-	cov.Tracks, cov.TracksNamed = vies, viesNommees
+	cov.Tracks, cov.TracksNamed, cov.TracksSlotAmbiguous = vies, viesNommees, viesSlotAmbigu
 	return cov
 }
 
@@ -258,7 +287,13 @@ func logTeamCoverage(matchID string, cov TeamCoverage) {
 		"refus", cov.Refusal, "records", cov.Records, "rejetes", cov.Rejected,
 		"divergences", cov.Divergences, "film", cov.Film, "sansEquipe", cov.NoTeam,
 		"nonLus", cov.Unread, "accord", cov.Accord, "contradiction", cov.Contradiction,
-		"silence", cov.Silence, "vies", cov.Tracks, "viesAvecEquipe", cov.TracksNamed)
+		"silence", cov.Silence, "vies", cov.Tracks, "viesAvecEquipe", cov.TracksNamed,
+		"viesSlotAmbigu", cov.TracksSlotAmbiguous)
+	if cov.TracksSlotAmbiguous > 0 {
+		slog.Warn("rejeu : le pont slot -> index s'ABSTIENT sur des vies dont le slot a porte "+
+			"deux joueurs nommes — leur equipe reste inconnue plutot qu'empruntee au premier "+
+			"occupant", "match_id", matchID, "vies", cov.TracksSlotAmbiguous)
+	}
 	if cov.Contradiction > 0 {
 		slog.Warn("rejeu : la base CONTREDIT le film sur l'equipe de joueurs — le film fait foi, "+
 			"l'ecart est compte", "match_id", matchID, "contradictions", cov.Contradiction,

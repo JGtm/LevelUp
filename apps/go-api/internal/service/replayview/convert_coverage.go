@@ -101,6 +101,8 @@ func toTeamCoverage(v replay.TeamCoverage) replaydoc.TeamCoverage {
 		Silence:       v.Silence,
 		Tracks:        v.Tracks,
 		TracksNamed:   v.TracksNamed,
+
+		TracksSlotAmbiguous: v.TracksSlotAmbiguous,
 	}
 }
 
