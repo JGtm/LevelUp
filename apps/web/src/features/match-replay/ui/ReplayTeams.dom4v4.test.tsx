@@ -68,7 +68,7 @@ const XUIDS_6V6 = ['I', 'J', 'K', 'L'] as const
 /** Le document de transport du 4v4 — la forme que `testReplayDoc` complète. */
 function richeOver(): Partial<ReplayDocument> {
   return {
-    roster: XUIDS.map((xuid, i) => ({ xuid, filmIndex: i, name: NOMS[i] })),
+    roster: XUIDS.map((xuid, i) => ({ xuid, filmIndex: i, seat: i, name: NOMS[i] })),
     tracks: [
       // Alpha : bouclier entamé lu à l'image 80 (âge 20 à l'image lue).
       vie(512, 'A', [{ t: 0, x: 1, y: 1, sh: 1, hp: 1 }, { t: 80, x: 2, y: 2, sh: 0.6, hp: 1 }]),

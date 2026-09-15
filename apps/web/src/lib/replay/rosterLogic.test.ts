@@ -88,8 +88,8 @@ describe('buildPlayers', () => {
   it('regroupe les vies par joueur et joint le scoreboard par xuid', () => {
     const d = doc({
       roster: [
-        { xuid: 'A', filmIndex: 0 },
-        { xuid: 'B', filmIndex: 1 },
+        { xuid: 'A', filmIndex: 0, seat: 0 },
+        { xuid: 'B', filmIndex: 1, seat: 1 },
       ],
       tracks: [track(512, 'A', 0, 50), track(513, 'B', 0, 60), track(514, 'A', 70, 120)],
     })
@@ -113,7 +113,7 @@ describe('buildPlayers', () => {
   it('un BOT a une fiche : clé synthétique, vies groupées, scoreboard joint par gamertag (schéma 36)', () => {
     const d = doc({
       roster: [
-        { xuid: 'A', filmIndex: 0 },
+        { xuid: 'A', filmIndex: 0, seat: 0 },
         { xuid: '', filmIndex: 8, name: '343 Aloysius [bot]', bot: true },
       ],
       tracks: [
@@ -142,13 +142,13 @@ describe('buildPlayers', () => {
   })
 
   it('garde un joueur du film introuvable au scoreboard, sans ligne', () => {
-    const d = doc({ roster: [{ xuid: 'Z', filmIndex: 0 }], tracks: [track(512, 'Z', 0, 50)] })
+    const d = doc({ roster: [{ xuid: 'Z', filmIndex: 0, seat: 0 }], tracks: [track(512, 'Z', 0, 50)] })
     const players = buildPlayers(d, [row('A', 'Alpha', 'Eagle')])
     expect(players[0].board).toBeUndefined()
   })
 
   it('retient le gamertag écrit par le FILM', () => {
-    const d = doc({ roster: [{ xuid: 'Z', filmIndex: 0, name: 'Zulu' }] })
+    const d = doc({ roster: [{ xuid: 'Z', filmIndex: 0, seat: 0, name: 'Zulu' }] })
     expect(buildPlayers(d, [])[0].filmName).toBe('Zulu')
   })
 
@@ -161,18 +161,18 @@ describe('buildPlayers', () => {
 
 describe('playerName', () => {
   it('préfère la base, qui suit un changement de pseudo', () => {
-    const d = doc({ roster: [{ xuid: 'A', filmIndex: 0, name: 'AncienNom' }] })
+    const d = doc({ roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'AncienNom' }] })
     const [p] = buildPlayers(d, [row('A', 'NomActuel', 'Eagle')])
     expect(playerName(p)).toBe('NomActuel')
   })
 
   it('retombe sur le film plutôt que sur « inconnu »', () => {
-    const d = doc({ roster: [{ xuid: 'A', filmIndex: 0, name: 'NomDuFilm' }] })
+    const d = doc({ roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'NomDuFilm' }] })
     expect(playerName(buildPlayers(d, [])[0])).toBe('NomDuFilm')
   })
 
   it('rend null quand aucune source ne nomme le joueur', () => {
-    const d = doc({ roster: [{ xuid: 'A', filmIndex: 0 }] })
+    const d = doc({ roster: [{ xuid: 'A', filmIndex: 0, seat: 0 }] })
     expect(playerName(buildPlayers(d, [])[0])).toBeNull()
   })
 })
@@ -265,8 +265,8 @@ describe('buildSlotOwnership — le propriétaire d’un slot À UNE IMAGE (mult
     // gagnant) attribuait 512 à DinoR00 pour TOUT le match → deux DinoR00, SHROOM jamais montré.
     const d = doc({
       roster: [
-        { xuid: 'S', filmIndex: 0 },
-        { xuid: 'D', filmIndex: 1 },
+        { xuid: 'S', filmIndex: 0, seat: 0 },
+        { xuid: 'D', filmIndex: 1, seat: 1 },
       ],
       tracks: [
         track(512, 'S', 0, 50), // manche 0 : SHROOM
@@ -296,7 +296,7 @@ describe('buildSlotOwnership — le propriétaire d’un slot À UNE IMAGE (mult
   it('vies triées : l’ordre d’insertion ne change pas la résolution', () => {
     // Les tracks arrivent dans le désordre ; l’index les trie par début.
     const d = doc({
-      roster: [{ xuid: 'S', filmIndex: 0 }, { xuid: 'D', filmIndex: 1 }],
+      roster: [{ xuid: 'S', filmIndex: 0, seat: 0 }, { xuid: 'D', filmIndex: 1, seat: 1 }],
       tracks: [track(512, 'D', 200, 250), track(512, 'S', 0, 50)],
     })
     const own = buildSlotOwnership(buildPlayers(d, []))
@@ -326,7 +326,7 @@ describe('ownerAtFrameOrLast — la FRONTIÈRE : vie couvrante, sinon la vie jus
     // la frontière rend A (le lâcheur d’alors), PAS B (la vie à venir) — donc PAS le
     // dernier-gagnant du match : « deux DinoR00 » n’est pas réintroduit.
     const d = doc({
-      roster: [{ xuid: 'A', filmIndex: 0 }, { xuid: 'B', filmIndex: 1 }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0 }, { xuid: 'B', filmIndex: 1, seat: 1 }],
       tracks: [track(512, 'A', 0, 50), track(512, 'B', 200, 250)],
     })
     const own = buildSlotOwnership(buildPlayers(d, []))

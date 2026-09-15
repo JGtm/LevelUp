@@ -5748,6 +5748,7 @@ export interface components {
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
             projectiles?: components["schemas"]["ProjectileCoverage"];
             score?: components["schemas"]["ScoreCoverage"];
+            seats?: components["schemas"]["SeatCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
             t0Film?: components["schemas"]["T0FilmCoverage"];
@@ -6736,6 +6737,8 @@ export interface components {
         FilmTableCounts: {
             /** Format: int64 */
             accord: number;
+            /** Format: int64 */
+            collisionsIndex?: number;
             /** Format: int64 */
             contradiction: number;
             /** Format: int64 */
@@ -9894,6 +9897,8 @@ export interface components {
             revision_key?: string | null;
         };
         Point: {
+            /** Format: int64 */
+            g?: number;
             /** Format: float */
             h?: number;
             /** Format: float */
@@ -10353,6 +10358,9 @@ export interface components {
             filmIndex: number;
             name?: string;
             /** Format: int64 */
+            seat: number;
+            seatSource?: string;
+            /** Format: int64 */
             team?: number;
             xuid: string;
         };
@@ -10387,6 +10395,11 @@ export interface components {
             points: number;
             /** Format: int64 */
             rounds: number;
+            roundsContradicted?: number[] | null;
+            /** Format: int64 */
+            roundsContradictedRecords?: number;
+            roundsDecreed?: boolean;
+            roundsWritten?: number[] | null;
             teamIdentity: string;
             truncated: boolean;
         };
@@ -10529,6 +10542,27 @@ export interface components {
             season_id: string;
             /** Format: date-time */
             start_date: string;
+        };
+        SeatCoverage: {
+            /** Format: int64 */
+            apparies: number;
+            /** Format: int64 */
+            arrivants: number;
+            /** Format: int64 */
+            entrees: number;
+            /** Format: int64 */
+            lus: number;
+            /** Format: int64 */
+            occupantsMax: number;
+            /** Format: int64 */
+            presencesCloses: number;
+            /** Format: int64 */
+            reprisesEcrites: number;
+            /** Format: int64 */
+            sansPresence: number;
+            sansTableDuFilm?: boolean;
+            /** Format: int64 */
+            sieges: number;
         };
         SelectedTeammateData: {
             gamertag: string;
@@ -12287,6 +12321,8 @@ export interface components {
             /** Format: int64 */
             tracksNamed: number;
             /** Format: int64 */
+            tracksSlotAmbiguous?: number;
+            /** Format: int64 */
             unread: number;
         };
         TeamHold: {
@@ -12742,6 +12778,10 @@ export interface components {
         };
         TrackCoverage: {
             /** Format: int64 */
+            gapMs: number;
+            /** Format: int64 */
+            gaps: number;
+            /** Format: int64 */
             minPoints: number;
             /** Format: int64 */
             published: number;
@@ -12836,6 +12876,20 @@ export interface components {
             /** Format: int64 */
             ambiguous: number;
             /** Format: int64 */
+            deathsMatched: number;
+            /** Format: int64 */
+            deathsRead: number;
+            /** Format: int64 */
+            deathsTailDesync: number;
+            /** Format: int64 */
+            deathsUnmatched: number;
+            /** Format: int64 */
+            endDestroyed: number;
+            /** Format: int64 */
+            endFilmEnd: number;
+            /** Format: int64 */
+            endUnknown: number;
+            /** Format: int64 */
             familyResolved: number;
             /** Format: int64 */
             familyUnknown: number;
@@ -12863,6 +12917,8 @@ export interface components {
             ridesWithSeat: number;
             /** Format: int64 */
             samples: number;
+            /** Format: int64 */
+            samplesAfterEnd: number;
             scanned: boolean;
             /** Format: int64 */
             shots: number;
@@ -12887,7 +12943,10 @@ export interface components {
             withSpawn: number;
         };
         VehicleLabel: {
+            en?: string;
+            fr?: string;
             img?: string;
+            kind?: string;
             tinted?: boolean;
         };
         VehicleRide: {
@@ -12942,6 +13001,8 @@ export interface components {
             t1: number;
             /** Format: int64 */
             t1max: number;
+            /** Format: int64 */
+            tEnd?: number;
         };
         VipCrownCoverage: {
             /** Format: int64 */

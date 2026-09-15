@@ -1,8 +1,8 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 59
-empreinte-stockee 0a583ed6f3e24c13
-empreinte-servie 0a583ed6f3e24c13
+schema 60
+empreinte-stockee 73ea52427784cb75
+empreinte-servie 73ea52427784cb75
 
 AbilityCharge
   Charges json:"charges" int
@@ -178,6 +178,7 @@ Coverage
   Placements json:"placements,omitempty" *EquipmentPlacementCoverage
   Projectiles json:"projectiles,omitempty" *ProjectileCoverage
   Score json:"score,omitempty" *ScoreCoverage
+  Seats json:"seats,omitempty" *SeatCoverage
   Shots json:"shots" LayerCoverage
   SkullCarries json:"skullCarries,omitempty" *SkullCarriesCoverage
   T0Film json:"t0Film,omitempty" *T0FilmCoverage
@@ -269,6 +270,7 @@ FilmTableCounts
   Contradiction json:"contradiction" int
   Direct json:"direct" int
   Fallback json:"repli" int
+  IndexCollisions json:"collisionsIndex,omitempty" int
   Read json:"lu" bool
   Refusal json:"refus,omitempty" string
   Seats json:"sieges" int
@@ -603,6 +605,7 @@ PlayerScore
   Score json:"score" ScoreSeries
   XUID json:"xuid" string
 Point
+  G json:"g,omitempty" int
   H json:"h,omitempty" float32
   Hp json:"hp,omitempty" *float32
   P json:"p,omitempty" float32
@@ -683,6 +686,8 @@ RosterEntry
   Bot json:"bot,omitempty" bool
   FilmIndex json:"filmIndex" int
   Name json:"name,omitempty" string
+  Seat json:"seat" int
+  SeatSource json:"seatSource,omitempty" string
   Team json:"team,omitempty" *int
   XUID json:"xuid" string
 ScoreCoverage
@@ -690,6 +695,10 @@ ScoreCoverage
   Oracle json:"oracle" string
   Points json:"points" int
   Rounds json:"rounds" int
+  RoundsContradicted json:"roundsContradicted,omitempty" []int
+  RoundsContradictedRecords json:"roundsContradictedRecords,omitempty" int
+  RoundsDecreed json:"roundsDecreed,omitempty" bool
+  RoundsWritten json:"roundsWritten,omitempty" []int
   TeamIdentity json:"teamIdentity" string
   Truncated json:"truncated" bool
 ScoreRound
@@ -707,6 +716,17 @@ ScoreTimeline
   Players json:"players,omitempty" []PlayerScore
   TargetScore json:"targetScore,omitempty" *int
   Teams json:"teams,omitempty" []TeamScore
+SeatCoverage
+  Apparies json:"apparies" int
+  Arrivants json:"arrivants" int
+  Entrees json:"entrees" int
+  Lus json:"lus" int
+  OccupantsMax json:"occupantsMax" int
+  PresencesCloses json:"presencesCloses" int
+  ReprisesEcrites json:"reprisesEcrites" int
+  SansPresence json:"sansPresence" int
+  SansTableDuFilm json:"sansTableDuFilm,omitempty" bool
+  Sieges json:"sieges" int
 Shot
   H json:"h,omitempty" float32
   Slot json:"slot" uint32
@@ -758,6 +778,7 @@ TeamCoverage
   Silence json:"silence" int
   Tracks json:"tracks" int
   TracksNamed json:"tracksNamed" int
+  TracksSlotAmbiguous json:"tracksSlotAmbiguous,omitempty" int
   Unread json:"unread" int
 TeamHold
   TeamID json:"teamId,omitempty" *int
@@ -776,6 +797,8 @@ Track
   Team json:"team" int
   XUID json:"xuid,omitempty" string
 TrackCoverage
+  GapMS json:"gapMs" int
+  Gaps json:"gaps" int
   MinPoints json:"minPoints" int
   Published json:"published" int
   PublishedPoints json:"publishedPoints" int
@@ -809,6 +832,13 @@ VehicleCoverage
   AimRideFrames json:"aimRideFrames" int
   AimSamples json:"aimSamples" int
   Ambiguous json:"ambiguous" int
+  DeathsMatched json:"deathsMatched" int
+  DeathsRead json:"deathsRead" int
+  DeathsTailDesync json:"deathsTailDesync" int
+  DeathsUnmatched json:"deathsUnmatched" int
+  EndDestroyed json:"endDestroyed" int
+  EndFilmEnd json:"endFilmEnd" int
+  EndUnknown json:"endUnknown" int
   FamilyResolved json:"familyResolved" int
   FamilyUnknown json:"familyUnknown" int
   Lives json:"lives" int
@@ -823,6 +853,7 @@ VehicleCoverage
   RidesWithAim json:"ridesWithAim" int
   RidesWithSeat json:"ridesWithSeat" int
   Samples json:"samples" int
+  SamplesAfterEnd json:"samplesAfterEnd" int
   Scanned json:"scanned" bool
   Shots json:"shots" int
   ShotsAmbiguous json:"shotsAmbiguous" int
@@ -835,7 +866,10 @@ VehicleCoverage
   WithHeading json:"withHeading" int
   WithSpawn json:"withSpawn" int
 VehicleLabel
+  En json:"en,omitempty" string
+  Fr json:"fr,omitempty" string
   Img json:"img,omitempty" string
+  Kind json:"kind,omitempty" string
   Tinted json:"tinted,omitempty" bool
 VehicleRide
   Aim json:"aim,omitempty" []VehicleAim
@@ -868,6 +902,7 @@ VehicleTrack
   T0 json:"t0" int
   T1 json:"t1" int
   T1Max json:"t1max" int
+  TEnd json:"tEnd,omitempty" *int
 VipCrownCoverage
   Closed json:"closed" int
   ClosedByDeath json:"closedByDeath" int

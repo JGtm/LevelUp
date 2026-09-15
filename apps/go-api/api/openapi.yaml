@@ -11474,6 +11474,8 @@ components:
           $ref: '#/components/schemas/ProjectileCoverage'
         score:
           $ref: '#/components/schemas/ScoreCoverage'
+        seats:
+          $ref: '#/components/schemas/SeatCoverage'
         shots:
           $ref: '#/components/schemas/LayerCoverage'
         skullCarries:
@@ -13713,6 +13715,9 @@ components:
       additionalProperties: false
       properties:
         accord:
+          format: int64
+          type: integer
+        collisionsIndex:
           format: int64
           type: integer
         contradiction:
@@ -21112,6 +21117,9 @@ components:
     Point:
       additionalProperties: false
       properties:
+        g:
+          format: int64
+          type: integer
         h:
           format: float
           type: number
@@ -22388,6 +22396,11 @@ components:
           type: integer
         name:
           type: string
+        seat:
+          format: int64
+          type: integer
+        seatSource:
+          type: string
         team:
           format: int64
           type: integer
@@ -22396,6 +22409,7 @@ components:
       required:
         - xuid
         - filmIndex
+        - seat
       type: object
     RunOnceResult:
       additionalProperties: false
@@ -22467,6 +22481,25 @@ components:
         rounds:
           format: int64
           type: integer
+        roundsContradicted:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
+        roundsContradictedRecords:
+          format: int64
+          type: integer
+        roundsDecreed:
+          type: boolean
+        roundsWritten:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
         teamIdentity:
           type: string
         truncated:
@@ -22817,6 +22850,49 @@ components:
         - name
         - start_date
         - is_fallback
+      type: object
+    SeatCoverage:
+      additionalProperties: false
+      properties:
+        apparies:
+          format: int64
+          type: integer
+        arrivants:
+          format: int64
+          type: integer
+        entrees:
+          format: int64
+          type: integer
+        lus:
+          format: int64
+          type: integer
+        occupantsMax:
+          format: int64
+          type: integer
+        presencesCloses:
+          format: int64
+          type: integer
+        reprisesEcrites:
+          format: int64
+          type: integer
+        sansPresence:
+          format: int64
+          type: integer
+        sansTableDuFilm:
+          type: boolean
+        sieges:
+          format: int64
+          type: integer
+      required:
+        - entrees
+        - sieges
+        - lus
+        - apparies
+        - reprisesEcrites
+        - arrivants
+        - presencesCloses
+        - sansPresence
+        - occupantsMax
       type: object
     SelectedTeammateData:
       additionalProperties: false
@@ -27099,6 +27175,9 @@ components:
         tracksNamed:
           format: int64
           type: integer
+        tracksSlotAmbiguous:
+          format: int64
+          type: integer
         unread:
           format: int64
           type: integer
@@ -28352,6 +28431,12 @@ components:
     TrackCoverage:
       additionalProperties: false
       properties:
+        gapMs:
+          format: int64
+          type: integer
+        gaps:
+          format: int64
+          type: integer
         minPoints:
           format: int64
           type: integer
@@ -28373,6 +28458,8 @@ components:
         - refusedMinPoints
         - refusedPoints
         - minPoints
+        - gaps
+        - gapMs
       type: object
     Translocation:
       additionalProperties: false
@@ -28539,6 +28626,27 @@ components:
         ambiguous:
           format: int64
           type: integer
+        deathsMatched:
+          format: int64
+          type: integer
+        deathsRead:
+          format: int64
+          type: integer
+        deathsTailDesync:
+          format: int64
+          type: integer
+        deathsUnmatched:
+          format: int64
+          type: integer
+        endDestroyed:
+          format: int64
+          type: integer
+        endFilmEnd:
+          format: int64
+          type: integer
+        endUnknown:
+          format: int64
+          type: integer
         familyResolved:
           format: int64
           type: integer
@@ -28579,6 +28687,9 @@ components:
           format: int64
           type: integer
         samples:
+          format: int64
+          type: integer
+        samplesAfterEnd:
           format: int64
           type: integer
         scanned:
@@ -28627,6 +28738,14 @@ components:
         - familyUnknown
         - samples
         - withHeading
+        - deathsRead
+        - deathsMatched
+        - deathsUnmatched
+        - deathsTailDesync
+        - endDestroyed
+        - endFilmEnd
+        - endUnknown
+        - samplesAfterEnd
         - rides
         - vehiclesRidden
         - ridesNamed
@@ -28648,7 +28767,13 @@ components:
     VehicleLabel:
       additionalProperties: false
       properties:
+        en:
+          type: string
+        fr:
+          type: string
         img:
+          type: string
+        kind:
           type: string
         tinted:
           type: boolean
@@ -28765,6 +28890,9 @@ components:
           format: int64
           type: integer
         t1max:
+          format: int64
+          type: integer
+        tEnd:
           format: int64
           type: integer
       required:
