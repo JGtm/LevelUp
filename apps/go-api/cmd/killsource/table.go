@@ -234,8 +234,9 @@ func blocPublication(res *killsource.Result) {
 	fmt.Println("\nCE QUE CETTE SORTIE AUTORISE")
 	t := res.Roster.FilmTable
 	fmt.Printf("  lien indice -> joueur : %d LU(S) dans la table du film, %d infere(s)"+
-		" · controle par le kill-feed : accord %d, contradiction %d, silence %d\n",
-		t.Pinned, t.Inferred, t.Agree, t.Contradict, t.Silent)
+		" pour %d nom(s) libre(s)\n", t.Pinned, t.Inferred, t.FreeNames)
+	fmt.Printf("     controle par le kill-feed : accord %d, contradiction %d, silence %d\n",
+		t.Agree, t.Contradict, t.Silent)
 	if t.Refusal != killsource.FilmTableRead {
 		fmt.Printf("     table du film NON LUE (%s) : tout vient de l inference\n", t.Refusal)
 	}
@@ -249,6 +250,11 @@ func blocPublication(res *killsource.Result) {
 	if res.BijectionMargin <= 0 && !res.BijectionDetermined {
 		fmt.Println("     marge nulle : au moins deux joueurs sont interchangeables, donc les attributions")
 		fmt.Println("     individuelles sont fausses meme si l agregat est juste. C est le cas du BTB.")
+		if t.Inferred == 1 && t.FreeNames > 1 {
+			fmt.Printf("     un seul indice a inferer, mais %d noms libres : l affectation est"+
+				" un CHOIX,\n", t.FreeNames)
+			fmt.Println("     pas une deduction — la porte reste fermee (revue de jalon M1, lentille L4).")
+		}
 	}
 	for _, a := range res.Health.Alerts() {
 		fmt.Printf("     ALERTE : %s\n", a)
@@ -273,7 +279,7 @@ func compte(ks []killsource.Kill, ok func(killsource.Kill) bool) int {
 // l afficher seule ferait lire « ambigu » la ou il n y a aucune ambiguite (lot 1.8).
 func motifDeBijection(res *killsource.Result) string {
 	if res.BijectionDetermined {
-		return "bijection DETERMINEE : rien n est laisse a l inference"
+		return "bijection DETERMINEE : une seule affectation possible"
 	}
 	return fmt.Sprintf("marge de bijection %d", res.BijectionMargin)
 }

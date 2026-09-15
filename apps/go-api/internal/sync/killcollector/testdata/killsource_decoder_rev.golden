@@ -63,4 +63,18 @@
 #               un couple que la lecture decide n en est plus un candidat (mini-bobine : 17 -> 16
 #               proposes). Backlog de redecodage du parc : geste de PRODUCTION, reserve au pilote
 #               sur signal (D6 du plan).
-killsource-2026-09-15	ed7e45ca60ded5906dda9b5da5c27dbdec268cb109aaaf31ca8a9472b90ace44
+#
+#   2026-09-16  killsource-2026-09-15 -> killsource-2026-09-16. Revue de jalon M1, lentille L4 :
+#               la porte de publication ligne par ligne ne comptait QU UN COTE du probleme
+#               d affectation. `BijectionDetermined` valait `Inferred <= 1` ; depuis le lot 1.8 il
+#               peut rester PLUS de noms libres que d indices libres (la table du film ajoute au
+#               roster les joueurs que le kill-feed ne nomme pas — `111fa685`, 25 joueurs pour
+#               24 indices), donc un indice pour deux noms, tranche par des votes tous nuls, et
+#               la source du degat / le credit / l assistant / les parts de degats publies sur un
+#               occupant TIRE AU SORT. Critere corrige : `FilmTablePinning.AffectationUnique`
+#               (indices libres ET noms libres). La porte ne fait que se FERMER : aucun film ne
+#               gagne la publication, certains la perdent. Population NON mesurable a l oracle
+#               pre-chaine-2026-09-09 (aucune colonne ne porte `Inferred`/`AddedNames`, et sa
+#               revision la plus recente, killsource-2026-09-05, precede l apparition du champ) :
+#               elle se mesurera a la recuisson par killsource_bijection_noms_libres_en_trop.
+killsource-2026-09-16	1701d5fa95820c73626ef5c754451cf3a48e115b9c7143d889ddfd69e9f893ad
