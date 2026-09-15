@@ -208,6 +208,8 @@ const agnosticKeys = new Set<string>([
   'adminTitleDetail',
   'adminTitleDiagnostic',
   'adminUsers',
+  'adminInvites', // invitations d'instance : un compte, pas un titre
+
   'adminAppearanceDiagMutation',
   // Namespaces imbriqués agnostiques.
   'prestige.meAll', // préfixe large (userId)

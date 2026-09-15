@@ -1817,12 +1817,14 @@ fr = "Impossible de générer l'invitation."
 en = "Could not generate the invitation."
 
 [common.groups.join_title]
-fr = "Rejoindre un groupe"
-en = "Join a group"
+fr = "Rejoindre LevelUp"
+en = "Join LevelUp"
 
+# Texte NEUTRE : le front ne sait pas si le code porte un groupe (il ne lit pas
+# l'invitation), et une invitation sans groupe ne fait rejoindre personne.
 [common.groups.join_intro]
-fr = "Tu as été invité à rejoindre un groupe. Connecte-toi avec Xbox pour rejoindre — ton compte est créé automatiquement."
-en = "You have been invited to join a group. Sign in with Xbox to join — your account is created automatically."
+fr = "Tu as été invité. Connecte-toi avec Xbox pour accepter l'invitation — ton compte est créé automatiquement."
+en = "You have been invited. Sign in with Xbox to accept the invitation — your account is created automatically."
 
 [common.groups.invite_code_label]
 fr = "Code d'invitation"
