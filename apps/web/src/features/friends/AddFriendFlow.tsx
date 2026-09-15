@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import { queryKeys } from '@/lib/query/keys'
 import { Card, CardContent } from '@/components/ui/card'
 import { usePlayerFriends, useUpdatePlayerFriends } from './queries'
+import { friendsErrorMessage } from './errors'
 
 // ─── Texte i18n ──────────────────────────────────────────────────────────────
 
@@ -87,7 +88,8 @@ export function useAddFriend(playerSlug: string, locale: string = 'fr') {
         qc.invalidateQueries({ queryKey: queryKeys.teammatesAll })
         return { ok: true }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
+        // L'API ne renvoie qu'un code machine : le texte lisible vient d'ici.
+        const msg = friendsErrorMessage(err, locale)
         toast.error(t.errorToast(trimmed, msg))
         return { ok: false, reason: 'error', error: msg }
       }

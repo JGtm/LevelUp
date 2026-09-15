@@ -108742,3 +108742,74 @@ l'utilisateur. Lot 1 (`feat/quantum-projectiles`) et lot 2 (`feat/mapquant-forge
 indépendants et parallélisables en worktrees dédiés. Le sous-lot 1C décide du sort de la précision
 par arme pour les armes à projectile : succès vers un plan séparé, échec vers le registre des
 reports, la remise du 01/09 restant en l'état.
+
+## [2026-09-15] Amis par joueur + invitation sans groupe sur instance verrouillée — Complété (étapes 0 à 7, recette navigateur au pilote)
+
+**Statut** : Complété — branche `wt/amis-invitations` (worktree dédié
+`LevelUp-wt-amis-invitations`, base `feat/v75` @ 2ddef392c), 8 commits, non poussée,
+non mergée. Plan exécuté : `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`
+(section « Avancement » : items statués + sorties de gates).
+
+**Décision technique principale** — deux défauts, une même cause : une donnée de PERSONNE
+traitée comme un réglage d'INSTANCE.
+
+1. *La liste d'amis était globale.* `app_settings.friend_gamertags` était UNE liste pour
+   toute l'instance : elle pilotait `is_with_friends` dans toutes les player DBs, et n'était
+   lisible que par un admin (`GET /settings` sous `RequireAdmin`) — un utilisateur standard
+   n'avait donc AUCUNE fonctionnalité « amis ». Elle devient une liste PAR PROFIL (clé xuid,
+   `data/global/player_friends.json`, `platform/friendstore` calqué sur `groupstore`),
+   servie par `GET|PUT /players/{slug}/friends` sous le chokepoint d'ownership (ADR 0029).
+   Deux portes distinctes et assumées : le middleware décide de l'ACCÈS (un co-membre de
+   groupe lit), `can_edit` décide de l'ÉCRITURE (propriétaire direct ou admin, D4) — et
+   `can_edit` est porté par la réponse, de sorte que le front n'interprète jamais un 403
+   pour décider de son affichage. Le champ global est SUPPRIMÉ (domaine, store, contrat
+   OpenAPI, types web) derrière une migration de boot idempotente et un ratchet archlint à
+   allowlist vide.
+2. *L'invitation sans groupe ne passait pas le verrou.* Sur instance verrouillée, seule une
+   invitation DE GROUPE créait un compte : `POST /admin/invites` était inopérant en SSO Xbox.
+   Désormais toute invitation valide lève le verrou ; le groupe n'est rejoint que s'il y en a
+   un ; et le compte AINSI CRÉÉ porte un droit à usage unique (`User.ProvisionGrant`) de créer
+   SON profil joueur, sans quoi l'invité atterrissait sur le Setup et prenait un 403
+   `instance_locked`. Le droit vit sur le COMPTE (il survit à une déconnexion entre le login
+   et le Setup), il est refusé si un profil porte déjà son xuid, et il est effacé après usage.
+   Le contrôle « xuid = identité liée » reste la vraie barrière : le droit ne dispense pas
+   d'être soi.
+
+**Écart consigné** : la gate G2.0 (existence de `data/auth/groups.json` en prod) n'a PAS été
+validée. Variante D6 appliquée : la migration de groupe par défaut est conservée, simplement
+re-sourcée depuis le store d'amis (`friendStore.Get(xuid de l'admin)`), et ordonnée après la
+migration des amis. Les deux restent idempotentes.
+
+**Résultats observés**
+- Go : `go build ./...`, `go vet ./...`, `go test ./...` → 0. Intégration
+  `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` → 0.
+- Web : typecheck (cache `node_modules/.tmp` purgé) → 0 ; `npm run lint` → 0 erreur
+  (25 avertissements préexistants) ; `npm run test:run` → 716 fichiers, 7681 tests verts.
+- Ajouts : 37 tests Go (friendstore, domaine, handler amis, setup, userstore, service SSO) et
+  22 tests web (hooks, section, flux d'ajout, table d'erreurs).
+
+**Trois pièges rencontrés, à retenir**
+- *Fins de ligne.* Réécrire un fichier du dépôt via un script Python en mode texte sous
+  Windows le convertit en CRLF — invisible dans `git diff` (normalisation à l'index), mais
+  trois garde-rails du dépôt LISENT LA SOURCE et découpent sur `"\n}\n"` :
+  `wire/home_factories_parity_test.go` a viré au rouge pour cette seule raison, en accusant
+  un câblage parfaitement correct. Réflexe : `gofmt -l ./cmd ./internal` après toute
+  réécriture scriptée.
+- *Le champ écrit deux fois dans le contrat.* `friend_gamertags` figurait dans le struct Go ET
+  à la main dans `api/openapi_manual_fragment.yaml` : régénérer sans toucher au fragment
+  laissait le champ dans `openapi.yaml`. Les autres champs du fragment méritent un audit.
+- *Le ratchet des libellés FR.* `no_french_label_literal_test.go` interdit tout littéral
+  accentué dans un fichier NEUF de `api/handlers`. Plutôt que d'agrandir son allowlist (ce
+  que le ratchet interdit précisément), le nouveau handler applique la décision D6 du plan
+  « libellés en dur » : il ne renvoie qu'un CODE machine, et la table FR/EN vit côté web
+  (`features/friends/errors.ts`). Le motif de refus d'une liste est porté par le code
+  (`invalid_friends_too_many`, `invalid_friends_gamertag_too_long`), pas par une phrase.
+
+**Conclusion / prochaine étape** : la branche est prête pour la revue adversariale et la CI,
+toutes deux à la main du pilote, ainsi que la recette navigateur (elle exige un second compte
+Xbox de test, le basculement d'`instance_locked` et l'arrêt du serveur principal — un worktree
+ne peut pas démarrer de serveur sans violer le mono-process, ADR 0013). Merge dans `feat/v75`
+sur signal de l'utilisateur uniquement ; jamais dans `main`. Deux découvertes hors périmètre
+sont consignées en §10 du plan : l'ADR 0029 décrit encore un 404 sur slug inconnu là où le
+middleware répond un 403 uniforme depuis le durcissement S7, et d'autres réglages lus par le
+front pour un utilisateur standard peuvent souffrir du même 403 que `GET /settings`.

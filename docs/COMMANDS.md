@@ -421,7 +421,7 @@ metric absent from the grammar is flagged as an orphan (naming drift / legacy ch
 ```bash
 go run ./cmd/levelup rebuild-pme-art --all | --gamertag X   # rebuild player_match_enrichment ART index
 go run ./cmd/levelup consolidate-aliases                    # merge xbox_aliases into shared.xuid_aliases
-go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends across player DBs
+go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends, each player with THEIR own friends list
 go run ./cmd/levelup replay-events --gamertag X             # re-parse highlight events
 go run ./cmd/levelup reset-bitmasks                         # reset skill/participants/PVE backfill bits
 go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute engagement coefficients

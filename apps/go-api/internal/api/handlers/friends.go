@@ -15,6 +15,14 @@
 // `can_edit` est porté par la RÉPONSE du GET : c'est la seule source du mode
 // lecture seule côté front, qui n'a jamais à interpréter un 403 pour décider de
 // son affichage.
+//
+// LES ERREURS NE PORTENT QU'UN CODE MACHINE, PAS DE PHRASE. C'est la décision D6
+// du plan « libellés en dur » (.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md), que le
+// ratchet internal/archlint/no_french_label_literal_test.go fait respecter aux
+// fichiers neufs : un libellé lisible se traduit, donc il vit côté web
+// (features/friends/errors.ts, FR + EN), jamais en dur ici. Pour la même raison,
+// les descriptions d'opérations OpenAPI de ce fichier sont en anglais : c'est de
+// la documentation de CONTRAT, lue par un développeur, pas un libellé d'écran.
 package handlers
 
 import (
@@ -95,9 +103,11 @@ func (h *FriendsHandler) WithNotifications(f NotificationsEmitterFactory, appSet
 func (h *FriendsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/friends", h.handleGetFriends,
-		humacore.Op("getPlayerFriends", "Liste d'amis du joueur (lecture : propriétaire, co-membre de groupe ou admin)", "friends"))
+		humacore.Op("getPlayerFriends",
+			"Friends list of the player (readable by the owner, a group co-member or an admin)", "friends"))
 	huma.Put(api, "/friends", h.handlePutFriends,
-		humacore.Op("putPlayerFriends", "Remplace la liste d'amis du joueur (propriétaire direct ou admin)", "friends"))
+		humacore.Op("putPlayerFriends",
+			"Replaces the player friends list (direct owner or admin only)", "friends"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -130,8 +140,7 @@ func (h *FriendsHandler) handleGetFriends(ctx context.Context, in *friendsInput)
 	gamertags, err := h.friends.Get(xuid)
 	if err != nil {
 		slog.ErrorContext(ctx, "friends: lecture de la liste échouée", "player_slug", in.PlayerSlug, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "friends_load_error",
-			"Impossible de charger la liste d'amis.")
+		return nil, humacore.NewError(http.StatusInternalServerError, "friends_load_error", "")
 	}
 	updatedAt, err := h.friends.UpdatedAt(xuid)
 	if err != nil {
@@ -155,31 +164,28 @@ func (h *FriendsHandler) handlePutFriends(ctx context.Context, in *friendsBodyIn
 		return nil, err
 	}
 	if !h.canEdit(ctx, xuid) {
-		return nil, humacore.NewError(http.StatusForbidden, "friends_forbidden",
-			"Seul le propriétaire du profil (ou un administrateur) peut modifier sa liste d'amis.")
+		return nil, humacore.NewError(http.StatusForbidden, "friends_forbidden", "")
 	}
 
 	var req domain.PutFriendsRequest
 	if err := json.Unmarshal(in.RawBody, &req); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "")
 	}
 	ownGamertag, _ := h.resolveGT(ctx, in.PlayerSlug)
 	normalized := domain.NormalizeFriendGamertags(req.Gamertags, ownGamertag)
 	if reason := domain.ValidateFriendGamertags(normalized); reason != "" {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_friends", friendsRejectMessage(reason))
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_friends_"+reason, "")
 	}
 
 	previous, err := h.friends.Get(xuid)
 	if err != nil {
 		slog.ErrorContext(ctx, "friends: lecture avant écriture échouée", "player_slug", in.PlayerSlug, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "friends_load_error",
-			"Impossible de charger la liste d'amis.")
+		return nil, humacore.NewError(http.StatusInternalServerError, "friends_load_error", "")
 	}
 	saved, err := h.friends.Set(xuid, ownGamertag, normalized)
 	if err != nil {
 		slog.ErrorContext(ctx, "friends: écriture de la liste échouée", "player_slug", in.PlayerSlug, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "friends_save_error",
-			"Impossible d'enregistrer la liste d'amis.")
+		return nil, humacore.NewError(http.StatusInternalServerError, "friends_save_error", "")
 	}
 	slog.InfoContext(ctx, "friends: liste mise à jour", "player_slug", in.PlayerSlug, "count", len(saved))
 
@@ -206,11 +212,10 @@ func (h *FriendsHandler) handlePutFriends(ctx context.Context, in *friendsBodyIn
 func (h *FriendsHandler) playerXUID(ctx context.Context, slug string) (string, error) {
 	xuid, found := h.resolveXUID(ctx, slug)
 	if !found {
-		return "", humacore.NewError(http.StatusNotFound, "player_not_found", "Joueur introuvable.")
+		return "", humacore.NewError(http.StatusNotFound, "player_not_found", "")
 	}
 	if xuid == "" {
-		return "", humacore.NewError(http.StatusConflict, "player_without_xuid",
-			"Ce profil n'a pas de XUID : impossible de lui attacher une liste d'amis.")
+		return "", humacore.NewError(http.StatusConflict, "player_without_xuid", "")
 	}
 	return xuid, nil
 }
@@ -257,16 +262,4 @@ func (h *FriendsHandler) updatedAtBestEffort(ctx context.Context, xuid string) s
 		return ""
 	}
 	return ts
-}
-
-// friendsRejectMessage traduit un motif de refus en message utilisateur.
-func friendsRejectMessage(reason string) string {
-	switch reason {
-	case "too_many":
-		return "Trop d'amis dans la liste (50 au maximum)."
-	case "gamertag_too_long":
-		return "Un gamertag dépasse 50 caractères."
-	default:
-		return "Liste d'amis invalide."
-	}
 }

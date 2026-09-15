@@ -346,16 +346,16 @@ Setup → création du profil → 201 ; (4) le sélecteur de joueur ne montre qu
 
 ## 9. Étape 7 — Clôture
 
-- [ ] 7.1 Gate complet : `cd apps/go-api && go test ./... && go vet ./...` ;
+- [x] 7.1 Gate complet : `cd apps/go-api && go test ./... && go vet ./...` ;
       `go test -tags=integration -p 1 ./...` (sync/persist touchés) ; front : typecheck cache
       purgé + lint + test. Codes de sortie vérifiés, pas la sortie filtrée.
-- [ ] 7.2 Revue adversariale (skill `adversarial-review`) sur le diff complet — auth et sync
+- [~] 7.2 Revue adversariale (skill `adversarial-review`) sur le diff complet — auth et sync
       sont touchés. Constats corrigés ou consignés.
-- [ ] 7.3 `.ai/thought_log.md` : entrée `[YYYY-MM-DD]` Complété (décision D1-D6, résultats des
+- [x] 7.3 `.ai/thought_log.md` : entrée `[YYYY-MM-DD]` Complété (décision D1-D6, résultats des
       gates, recette).
-- [ ] 7.4 Docs bilingues touchées si une commande change (`docs/COMMANDS.md` pour
+- [x] 7.4 Docs bilingues touchées si une commande change (`docs/COMMANDS.md` pour
       `recompute-friends`) — FR et EN dans le même commit.
-- [ ] 7.5 CI de la branche verte (`gh run list --branch wt/amis-invitations`). Merge dans
+- [~] 7.5 CI de la branche verte (`gh run list --branch wt/amis-invitations`). Merge dans
       `feat/v75` **uniquement sur signal de l'utilisateur** ; jamais dans `main`.
 
 Journal de phase : section « Avancement » en fin de ce fichier (date, étape, gate, constats).
@@ -759,3 +759,34 @@ migration de groupe par défaut est conservée et re-sourcée depuis `friendstor
 - Recette navigateur : `[~]` **au pilote** (consigne d'exécution). Elle exige un second compte
   Xbox de test et le basculement de `instance_locked`, et surtout l'arrêt du serveur principal
   — hors de ce qu'un worktree peut faire sans violer le mono-process (ADR 0013).
+
+### Étape 7 — Clôture — 2026-09-16 ~00:20 — CLOSE
+
+- 7.1 `[x]` gates complets, codes de sortie vérifiés (pas une sortie filtrée) :
+  - `cd apps/go-api && gofmt -l ./cmd ./internal` → vide ; `go vet ./...` → **0** ;
+    `go test ./...` → **0**.
+  - `go test -tags=integration -p 1 ./...` → **0** (suite complète, `-p 1` non négociable).
+  - `cd apps/web && rm -rf node_modules/.tmp && npm run typecheck` → **0** ;
+    `npm run lint` → **0 erreur** ; `npm run test:run` → **716 fichiers, 7681 tests passés**.
+  - **Un gate a mordu, et il avait raison** : `archlint/no_french_label_literal_test.go`
+    refusait `api/handlers/friends.go` (5 littéraux FR dans des messages d'erreur). Ce ratchet
+    interdit d'agrandir son allowlist — c'est tout son intérêt. Corrigé en appliquant la
+    décision D6 du plan « libellés en dur » : le handler ne renvoie qu'un CODE machine
+    (le motif de refus passe dans le code : `invalid_friends_too_many` /
+    `invalid_friends_gamertag_too_long`), et la table FR + EN vit côté web
+    (`features/friends/errors.ts`, 4 tests, repli générique sur code inconnu — jamais de
+    message vide). Les descriptions d'opérations OpenAPI de ce fichier sont en anglais :
+    documentation de contrat lue par un développeur, pas un libellé d'écran.
+- 7.2 `[~]` revue adversariale — **au pilote** (consigne d'exécution).
+- 7.3 `[x]` entrée `.ai/thought_log.md` du 2026-09-15 : statut, décision technique (les deux
+  défauts et leur cause commune), écart D6, résultats des gates, et les trois pièges
+  rencontrés (fins de ligne CRLF vs garde-rails lisant la source, champ écrit deux fois dans
+  le contrat, ratchet des libellés FR).
+- 7.4 `[x]` `docs/COMMANDS.md` **et** `docs/fr/COMMANDS.md` dans le même commit : la ligne
+  `recompute-friends` dit désormais que chaque joueur est recalculé avec SES amis. Aucune
+  autre commande ne change (ni nom, ni option).
+- 7.5 `[~]` CI de branche et merge dans `feat/v75` — **au pilote**. La branche n'est ni
+  poussée ni mergée ; jamais vers `main`.
+
+**Plan CLOS** : tous les items des étapes 0 à 7 sont statués (`[x]`, `[~]` avec référence,
+aucun `[!]`).

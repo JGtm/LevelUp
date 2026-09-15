@@ -306,8 +306,8 @@ func TestFriends_Put_RejectsOversizedList(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("PUT 51 entrées = %d, want 400 (corps = %s)", w.Code, w.Body.String())
 	}
-	if code := errorCode(t, w); code != "invalid_friends" {
-		t.Errorf("code = %q, want invalid_friends", code)
+	if code := errorCode(t, w); code != "invalid_friends_too_many" {
+		t.Errorf("code = %q, want invalid_friends_too_many", code)
 	}
 }
 
@@ -319,6 +319,11 @@ func TestFriends_Put_RejectsTooLongGamertag(t *testing.T) {
 	w := f.do(t, http.MethodPut, "/players/Alice/friends", `{"gamertags":["`+long+`"]}`, cookie)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("PUT gamertag trop long = %d, want 400 (corps = %s)", w.Code, w.Body.String())
+	}
+	// Le motif de refus est PORTÉ PAR LE CODE : l'API n'envoie aucune phrase, le
+	// texte lisible vit côté web (features/friends/errors.ts).
+	if code := errorCode(t, w); code != "invalid_friends_gamertag_too_long" {
+		t.Errorf("code = %q, want invalid_friends_gamertag_too_long", code)
 	}
 }
 
