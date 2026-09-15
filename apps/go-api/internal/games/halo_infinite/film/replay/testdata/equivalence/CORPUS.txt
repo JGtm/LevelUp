@@ -335,3 +335,20 @@ fb1a1a72 | 41 / HI_1_13_0 | Banished Narrows | CTF:Arena multi-manche | 43 | 38.
 # Re-figeage des dix, puis passe de comparaison : 5/5 + 5/5 puis 10/10 identiques, 0 ecarte,
 # 0 echec. `repli_vie_coupee_au_trou_de_replication` : 1 declenchement sur `50247b26`, 0 sur les
 # neuf autres.
+#
+# REFERENCES RE-FIGEES AU GATE UNIQUE DE LA VAGUE 2 (integration, schema 60, 2026-09-17, pilote).
+# Les references portees par les branches 1.9.10 / 1.9.13 / 1.9.9 etaient PROVISOIRES (chacune
+# figee contre son propre code) ; sur l arbre fusionne (vague 2 + corrections de la revue M1 +
+# montee 59 -> 60), classification AVANT tout `-update` : 0 identique, 10 differents ; etapes
+# divergentes par film (diff des 10 tsv apres re-figeage, 35 lignes sur 530) :
+#   killsource       10/10 — lot 1.9.7 (appariement par identite de paquet) + revue M1 L4 (porte
+#                    de publication AffectationUnique) ; `KillSourceDecoderRev` killsource-2026-09-16.2
+#   placements.stats 10/10 — FORME de l objet observe (`EquipmentPlacementStats`, porte unique
+#                    MPPWidthsForFilm de la revue D13) ; l etape `placements` (la projection) est
+#                    IDENTIQUE sur les 10 : motif D4 (1.8), aucun octet de pose ne bouge
+#   vehicles          6/10 — FORME de `VehicleScan` (lot 1.9.10 : Deaths, DeathStats), sur les six
+#                    films a vehicules ; les quatre arenes n y touchent pas
+#   artifact         10/10 — le CONTENU cuit : schema 60, fins de vie de vehicule lues, familles
+#                    nommees, lacunes de piste, sieges, designateurs de manche, champs de la revue
+# AUCUNE autre etape des 53 ne diverge (positions, images-cle, drapeaux, zones, objectifs, tirs :
+# identiques a l octet). Passe de comparaison apres re-figeage : 10 identiques, 0 different.
