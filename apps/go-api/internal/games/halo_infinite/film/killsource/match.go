@@ -79,37 +79,63 @@ func (c *decodeCtx) isBotSide(cd candidate) bool {
 // botMatch : un kill du feed sans victime humaine, et le candidat du scan qui le decode.
 type botMatch struct {
 	event feedEvent
-	fab   bool // le kill avait ete RECOLLE en un couple fabrique
-	found bool
-	cand  candidate
+	fab   bool // le kill avait ete RECOLLE en un couple fabrique (REPLI)
+	// victimeLue : l indice de replication que le KILL-EVENT 85 nomme en victime, -1 quand le
+	// film s est tu. Quand il vaut >= 0, l appariement exige CET indice et non « un bot
+	// quelconque » : la victime est nommee a la source (lot 1.9.3).
+	victimeLue int
+	found      bool
+	cand       candidate
 }
 
 // resolveBotDeaths : confronte au scan chaque kill dont la victime n est pas au feed.
 //
-// Deux sorts possibles chez la reconstruction de couples, donc deux populations candidates : le
-// kill PERDU (aucun voisin a consommer) et le couple FABRIQUE (un voisin a ete consomme a tort).
+// TROIS POPULATIONS CANDIDATES, ET LA PREMIERE EST NEUVE AU LOT 1.9.3 :
+//
+//	LUE       le kill-event 85 NOMME un bot en victime. Le couple est contraint des deux cotes
+//	          par la LECTURE, pas par la structure du feed.
+//	PERDUE    le kill n avait aucun voisin a consommer (`orphK`).
+//	FABRIQUEE le REPLI a recolle un voisin, peut-etre a tort (`fab`) — le cas que la lecture
+//	          fait disparaitre partout ou elle se prononce.
+//
 // C est le DEAD-STATE qui tranche, jamais la structure du feed.
 func (c *decodeCtx) resolveBotDeaths() []botMatch {
-	ms := make([]botMatch, 0, len(c.feed.orphK)+len(c.feed.fab))
+	ms := make([]botMatch, 0, len(c.feed.orphK)+len(c.feed.fab)+len(c.feed.botLus))
+	for _, b := range c.feed.botLus {
+		ms = append(ms, botMatch{event: b.ev, victimeLue: b.victime})
+	}
 	for _, e := range c.feed.orphK {
-		ms = append(ms, botMatch{event: e})
+		ms = append(ms, botMatch{event: e, victimeLue: -1})
 	}
 	for _, e := range c.feed.fab {
-		ms = append(ms, botMatch{event: e, fab: true})
+		ms = append(ms, botMatch{event: e, fab: true, victimeLue: -1})
 	}
 	for i := range ms {
-		for _, cd := range c.scanCands {
-			dt := ms[i].event.timeMS - cd.ms
-			if dt < -tolMS || dt > tolMS {
-				continue
-			}
-			if c.roster.isBotIndex(cd.victim) && c.roster.nameOf(cd.killer) == ms[i].event.killer {
-				ms[i].found, ms[i].cand = true, cd
-				break
-			}
-		}
+		c.apparierMortDeBot(&ms[i])
 	}
 	return ms
+}
+
+// apparierMortDeBot : le premier candidat de la fenetre dont la victime est LE bot nomme (ou, a
+// defaut de nom lu, un bot epingle quelconque) et dont le tueur est celui du feed.
+func (c *decodeCtx) apparierMortDeBot(m *botMatch) {
+	for _, cd := range c.scanCands {
+		dt := m.event.timeMS - cd.ms
+		if dt < -tolMS || dt > tolMS {
+			continue
+		}
+		if m.victimeLue >= 0 {
+			if cd.victim != m.victimeLue {
+				continue
+			}
+		} else if !c.roster.isBotIndex(cd.victim) {
+			continue
+		}
+		if c.roster.nameOf(cd.killer) == m.event.killer {
+			m.found, m.cand = true, cd
+			return
+		}
+	}
 }
 
 // botKillerMatch : une mort du feed que personne n a consommee, et le candidat qui la decode.

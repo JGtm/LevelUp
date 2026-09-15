@@ -50,4 +50,17 @@
 #               d interchangeable : la marge est SANS OBJET, pas nulle). Backlog de redecodage du
 #               parc : geste de PRODUCTION, reserve au pilote sur signal (D6 du plan).
 #
-killsource-2026-09-14	729624c1775f3eccd85bd81e1bd86a9b072e26f900feec3e62ec4574a2075181
+#   2026-09-15  killsource-2026-09-14 -> killsource-2026-09-15. Lot 1.9.3 : LE COUPLE (TUEUR,
+#               VICTIME) D UN KILL SANS MORT EN FACE EST LU AU KILL-EVENT 85 (feed_couples.go),
+#               plus recolle sur la mort d un instant voisin. `readKillEvent` etait DEJA porte —
+#               il n etait lu que pour l ASSISTANT. Mesure du 2026-09-15 sur 21 films entiers
+#               (8 builds, 14 temoins du corpus gate) : 281 kills sans mort en face, 198 decides
+#               par la lecture, 198 accords avec le recollage, 0 contradiction, 1 victime BOT
+#               nommee, 1 ambigu, 81 muets. Les lignes bougent par deux canaux : (1) la victime
+#               NOMMEE A LA SOURCE — quand le film nomme un bot, aucun couple n est plus FABRIQUE
+#               sur la mort d un humain voisin, et cette mort retourne aux morts que personne ne
+#               revendique (1 cas sur 21 films, `4f77afc1`) ; (2) la POPULATION DES MORTS DE BOT —
+#               un couple que la lecture decide n en est plus un candidat (mini-bobine : 17 -> 16
+#               proposes). Backlog de redecodage du parc : geste de PRODUCTION, reserve au pilote
+#               sur signal (D6 du plan).
+killsource-2026-09-15	ed7e45ca60ded5906dda9b5da5c27dbdec268cb109aaaf31ca8a9472b90ace44

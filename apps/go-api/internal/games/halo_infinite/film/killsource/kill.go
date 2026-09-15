@@ -409,6 +409,9 @@ type Stats struct {
 	// Assist : les denominateurs de la passe d assistants. Elle est INDEPENDANTE de la source du
 	// degat : elle lit la liste d evenements, pas la boucle de records.
 	Assist AssistStats
+	// Couples : D OU VIENT LE COUPLE (tueur, victime) de chaque instant du kill-feed — ecrit au
+	// meme instant, LU au kill-event 85, ou RECOLLE sur le voisin (le repli). Lot 1.9.3.
+	Couples CoupleStats
 }
 
 // PathStats : le gate (b) d une voie. `Population` est ce qu elle a propose, `Matched` ce dont

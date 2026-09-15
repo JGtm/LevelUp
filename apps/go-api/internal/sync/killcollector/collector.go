@@ -104,7 +104,24 @@ import (
 //
 // Les lignes en base doivent etre redecodees : d ou ce bump. Le backlog lui-meme est un geste de
 // PRODUCTION, reserve au pilote sur signal (decision D6 du plan du chantier).
-const KillSourceDecoderRev = "killsource-2026-09-14"
+//
+// 2026-09-15 : `killsource-2026-09-14` -> `killsource-2026-09-15`. LE COUPLE (TUEUR, VICTIME)
+// D UN KILL SANS MORT EN FACE EST LU AU KILL-EVENT 85, plus recolle sur le voisin (lot 1.9.3,
+// `killsource/feed_couples.go`). Mesure du 2026-09-15 sur 21 films entiers (8 builds, 14 temoins
+// du corpus gate) : 281 kills sans mort en face, dont 198 dont le film ECRIT le couple — et il
+// ecrit EXACTEMENT celui que le recollage rendait, 198 fois sur 198, 0 contradiction. Les lignes
+// bougent par deux canaux, tous deux etroits sur ce corpus :
+//
+//	LA VICTIME NOMMEE A LA SOURCE  quand le film nomme un BOT en victime, aucun couple n est plus
+//	                               FABRIQUE sur la mort d un humain voisin (1 cas sur 21 films,
+//	                               `4f77afc1`) ; la mort du voisin retourne a la population des
+//	                               morts que personne ne revendique.
+//	LA POPULATION DES MORTS DE BOT les couples que la lecture decide cessent d etre des candidats
+//	                               a la mort de bot (mini-bobine : 17 -> 16 proposes).
+//
+// Les lignes en base doivent etre redecodees : d ou ce bump. Backlog = geste de PRODUCTION,
+// reserve au pilote sur signal (D6).
+const KillSourceDecoderRev = "killsource-2026-09-15"
 
 // L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/killsource_decoder_rev.golden` porte le couple (revision, empreinte) et
@@ -173,6 +190,29 @@ const (
 	metricBijSilence      = "killsource_bijection_silence"
 	metricBijContradict   = "killsource_bijection_contradiction"
 	metricBijTableRefusee = "killsource_bijection_table_refusee_"
+	// LES SIX COMPTEURS DE PROVENANCE DU COUPLE `(tueur, victime)` (lot 1.9.3). Le kill-feed
+	// ecrit le couple lui-meme la plupart du temps ; quand il ne porte que le kill, c est le
+	// KILL-EVENT 85 qui le decide, et le recollage sur un instant voisin n est plus qu un repli :
+	//
+	//	meme_instant   le feed porte le kill ET la mort : aucun arbitrage
+	//	lu             le film ECRIT le couple (kill-event 85) et c est lui qui decide
+	//	recolle        LE REPLI (`repli_couple_recolle_sur_le_voisin`) — tant qu il monte, des
+	//	               couples sont encore DEVINES, et c est lui qui dira quand le retirer (D14 d)
+	//	muet           la lecture s est tue : le diagnostic typé qui OUVRE le repli
+	//	ambigu         deux enregistrements nomment le meme tueur et des victimes differentes
+	//	contradiction  le film nomme une victime dont aucun instant voisin ne porte la mort. La
+	//	               valeur publiee ne bouge pas — la lecture prime —, l ecart se compte.
+	//
+	// Une SEPTIEME quantite se compte a part parce qu elle n est pas un couple : les kills dont
+	// le film NOMME un bot en victime. Avant ce lot, ils etaient RECOLLES sur la mort d un
+	// humain et fabriquaient un couple qui n a jamais eu lieu.
+	metricCoupleMemeInstant = "killsource_couple_meme_instant"
+	metricCoupleLu          = "killsource_couple_lu"
+	metricCoupleRecolle     = "killsource_couple_recolle"
+	metricCoupleMuet        = "killsource_couple_muet"
+	metricCoupleAmbigu      = "killsource_couple_ambigu"
+	metricCoupleContradict  = "killsource_couple_contradiction"
+	metricVictimeBotLue     = "killsource_victime_bot_lue"
 )
 
 // KillSourceRoster : la resolution `gamertag -> xuid` pour UN match.
@@ -676,6 +716,32 @@ func publishKillSourceMetrics(res *killsource.Result, batch persist.KillSourceBa
 		observability.AddInt(p.Name, p.Value)
 	}
 	publishBijectionProvenance(res.Roster.FilmTable)
+	publishCoupleProvenance(res.Stats.Couples)
+}
+
+// publishCoupleProvenance : D OU VIENT LE COUPLE `(tueur, victime)`, en exploitation (lot 1.9.3).
+//
+// LE COMPTEUR QUI INFORME EST `killsource_couple_recolle` : c est le REPLI, et son critere de
+// retrait est ecrit au registre (`repli_couple_recolle_sur_le_voisin`). Les trois compteurs de
+// diagnostic (`_muet`, `_ambigu`, `_contradiction`) disent POURQUOI il a fallu se replier — sans
+// eux, un compte de replis ne designe aucune correction.
+func publishCoupleProvenance(c killsource.CoupleStats) {
+	for _, p := range []struct {
+		nom string
+		val int
+	}{
+		{metricCoupleMemeInstant, c.MemeInstant},
+		{metricCoupleLu, c.Lus},
+		{metricCoupleRecolle, c.Recolles},
+		{metricCoupleMuet, c.Muet},
+		{metricCoupleAmbigu, c.Ambigu},
+		{metricCoupleContradict, c.Contradiction},
+		{metricVictimeBotLue, c.VictimesBotLues},
+	} {
+		if p.val > 0 {
+			observability.AddInt(p.nom, int64(p.val))
+		}
+	}
 }
 
 // publishBijectionProvenance : D OU VIENT LE LIEN `indice -> joueur`, en exploitation (lot 1.8).
