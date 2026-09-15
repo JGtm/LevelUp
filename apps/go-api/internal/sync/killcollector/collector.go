@@ -121,7 +121,28 @@ import (
 //
 // Les lignes en base doivent etre redecodees : d ou ce bump. Backlog = geste de PRODUCTION,
 // reserve au pilote sur signal (D6).
-const KillSourceDecoderRev = "killsource-2026-09-15"
+//
+// 2026-09-16 : `killsource-2026-09-15` -> `killsource-2026-09-16`. LA PORTE DE PUBLICATION LIGNE
+// PAR LIGNE NE COMPTE PLUS QU UN SEUL COTE DU PROBLEME D AFFECTATION (revue de jalon M1, lentille
+// L4). `BijectionDetermined` valait `Inferred <= 1` — « au plus un indice a inferer, donc une
+// seule affectation possible ». La premisse est fausse DEPUIS LE LOT 1.8 lui-meme : la table du
+// film ajoute au roster les joueurs que le kill-feed ne nomme pas, donc il peut rester plus de
+// NOMS libres que d indices libres (`111fa685` : 25 joueurs pour 24 indices, cf. `hungarianStart`).
+// Un indice pour deux noms se tranche alors par les votes du kill-feed — nuls des deux cotes pour
+// un joueur qui n a ni tue ni ete tue — et rien ne le disait : `refine` n a pas deux indices a
+// echanger, `bijectionMargin` rend structurellement zero, donc `BijectionDetermined` decidait
+// seul et TOUT ce que la ligne porte (source du degat, credit, assistant, deux parts de degats)
+// partait sur un occupant tire au sort. Le critere est desormais
+// `FilmTablePinning.AffectationUnique`, qui compte les indices libres ET les noms libres.
+//
+// LE CHANGEMENT NE VA QUE DANS UN SENS : la porte est strictement plus fermee qu avant, donc
+// aucun film ne GAGNE la publication ligne par ligne ; certains la perdent. Population non
+// mesuree a l oracle `data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb` : aucune de
+// ses colonnes ne porte `Inferred` ni `AddedNames` (`match_kill_events` s arrete a `publishable`),
+// et sa revision la plus recente est `killsource-2026-09-05` — donc ANTERIEURE a l apparition de
+// `BijectionDetermined` (2026-09-14). Le compte se mesurera a la recuisson, par
+// `killsource_bijection_noms_libres_en_trop`.
+const KillSourceDecoderRev = "killsource-2026-09-16"
 
 // L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/killsource_decoder_rev.golden` porte le couple (revision, empreinte) et
@@ -190,6 +211,13 @@ const (
 	metricBijSilence      = "killsource_bijection_silence"
 	metricBijContradict   = "killsource_bijection_contradiction"
 	metricBijTableRefusee = "killsource_bijection_table_refusee_"
+	// metricBijAmbigue : LES FILMS OU L INFERENCE AVAIT LE CHOIX SANS QUE RIEN NE LE DISE.
+	// Incremente d UN PAR FILM quand il reste plus de noms libres que d indices libres — le
+	// regime que `Inferred <= 1` prenait pour une bijection determinee jusqu a la revue de
+	// jalon M1 (lentille L4). Il mesure la population qui perd la publication ligne par ligne
+	// avec le critere corrige : tant qu il est au-dessus de zero, des films sont refuses parce
+	// que le film ne nomme pas assez d indices, pas parce que le decodage a echoue.
+	metricBijAmbigue = "killsource_bijection_noms_libres_en_trop"
 	// LES SIX COMPTEURS DE PROVENANCE DU COUPLE `(tueur, victime)` (lot 1.9.3). Le kill-feed
 	// ecrit le couple lui-meme la plupart du temps ; quand il ne porte que le kill, c est le
 	// KILL-EVENT 85 qui le decide, et le recollage sur un instant voisin n est plus qu un repli :
@@ -757,6 +785,9 @@ func publishBijectionProvenance(t killsource.FilmTablePinning) {
 	observability.AddInt(metricBijInference, int64(t.Inferred))
 	observability.AddInt(metricBijSilence, int64(t.Silent))
 	observability.AddInt(metricBijContradict, int64(t.Contradict))
+	if t.Inferred > 0 && t.FreeNames > t.Inferred {
+		observability.AddInt(metricBijAmbigue, 1)
+	}
 	if t.Refusal == killsource.FilmTableRead {
 		return
 	}

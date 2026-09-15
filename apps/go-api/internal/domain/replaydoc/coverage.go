@@ -158,10 +158,6 @@ type InventoryCoverage struct {
 	Published           int `json:"published"`
 }
 
-// TrackCoverage est ce que le SEUIL DE PUBLICATION des traces retient et refuse. Le refus était
-// MUET avant le schéma 55 : un document publiant 90 traces là où le film en porte 95 était
-// indistinguable d'un film à 90 vies. `minPoints` voyage avec ses conséquences — un compte de
-// refus ne se relit pas sans savoir contre quoi il a été mesuré.
 // TeamCoverage est ce que la lecture de l'EQUIPE a couvert, et ce que la feuille de match en
 // pense (schema 57). Elle publie les deux moities separement : `film` dit ce que l'artefact
 // tient du FILM, `accord` / `contradiction` / `silence` disent ce qu'une source EXTERIEURE en
@@ -183,8 +179,17 @@ type TeamCoverage struct {
 	Silence       int    `json:"silence"`
 	Tracks        int    `json:"tracks"`
 	TracksNamed   int    `json:"tracksNamed"`
+	// TracksSlotAmbiguous : les vies sans xuid dont le SLOT a porte deux joueurs nommes
+	// d'equipes differentes. Le pont slot -> index s'y ABSTIENT (revue de jalon M1, lentille
+	// L4) plutot que de publier l'equipe du PREMIER occupant sur la vie du SECOND. Absent du
+	// document quand il vaut zero.
+	TracksSlotAmbiguous int `json:"tracksSlotAmbiguous,omitempty"`
 }
 
+// TrackCoverage est ce que le SEUIL DE PUBLICATION des traces retient et refuse. Le refus était
+// MUET avant le schéma 55 : un document publiant 90 traces là où le film en porte 95 était
+// indistinguable d'un film à 90 vies. `minPoints` voyage avec ses conséquences — un compte de
+// refus ne se relit pas sans savoir contre quoi il a été mesuré.
 type TrackCoverage struct {
 	Published        int `json:"published"`
 	PublishedPoints  int `json:"publishedPoints"`

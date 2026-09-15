@@ -204,3 +204,97 @@ func TestRosterPrendLesSiegesEtLesNomsDuFilm(t *testing.T) {
 		t.Errorf("sieges publies %d, attendus 2", got)
 	}
 }
+
+// TestCompositionRetireUnIndexQueDeuxXUIDSeDisputent — LE CORRECTIF DE LA REVUE DE JALON M1
+// (lentille L4) : la table COMPOSEE est injective par INDEX, comme l'est la lecture des chunks
+// seule (`injectiveOrEmpty`).
+//
+// # LE DEFAUT QUE CE TEST GARDE
+//
+// `composerTableDIndex` ne testait que la duplication de XUID (`completerParLesChunks` :
+// « ce xuid est-il deja pose ? »), jamais celle d'INDEX — et sa sortie REMPLACE la table gardee
+// (`BuildIdentityRegistry` : `in.PlayerIndices = reg.filmTable.table`). Il suffisait qu'un xuid
+// soit assis a l'index i par le film sans figurer dans `PlayerIndices`, pendant qu'un REMPLACANT
+// est lu a ce meme index i dans les chunks — et la reprise d'index d'un partant est mesuree
+// (`11de8353` index 23, `51101d1d` index 6). `indexToXUIDOf` ecrasait alors sans garde, a l'ordre
+// d'iteration d'une map : l'identite d'une vie changeait d'une cuisson a l'autre.
+//
+// # MUTATION
+//
+// Retirer l'appel a `retirerLesIndexEnCollision` dans `composerTableDIndex` : les deux xuids
+// reviennent dans la table, le compteur retombe a zero, et le sous-test « determinisme » rougit
+// une execution sur deux — c'est pour cela qu'il boucle.
+func TestCompositionRetireUnIndexQueDeuxXUIDSeDisputent(t *testing.T) {
+	const (
+		partant     = uint64(2533274800000011)
+		remplacant  = uint64(2533274800000022)
+		indifferent = uint64(2533274800000033)
+	)
+	// Le partant tient l'index 7 dans la table du film et ne figure PAS dans les chunks ; le
+	// remplacant y est lu au MEME index 7. Le troisieme joueur est le temoin : il doit survivre.
+	in := entreeIdentite(
+		tableDuFilm(
+			FilmPlayerSeat{FilmIndex: 7, XUID: partant, Gamertag: "Partant"},
+			FilmPlayerSeat{FilmIndex: 2, XUID: indifferent, Gamertag: "Temoin"},
+		),
+		map[uint64]int{remplacant: 7, indifferent: 2},
+	)
+	got := composerTableDIndex(in)
+
+	if _, y := got.table.ByXUID[partant]; y {
+		t.Errorf("le partant garde l index 7 alors que deux xuids le revendiquent")
+	}
+	if _, y := got.table.ByXUID[remplacant]; y {
+		t.Errorf("le remplacant prend l index 7 alors que deux xuids le revendiquent")
+	}
+	if got.table.ByXUID[indifferent] != 2 {
+		t.Errorf("le temoin a perdu son index (%d) : la collision ne doit toucher que l index 7",
+			got.table.ByXUID[indifferent])
+	}
+	if got.couverture.IndexCollisions != 1 {
+		t.Errorf("collisionsIndex = %d, attendu 1 : une collision se COMPTE, elle ne se tait pas",
+			got.couverture.IndexCollisions)
+	}
+	// Les compteurs ne decrivent que ce qui RESTE publie : un seul lien direct (le temoin), zero
+	// repli (le remplacant est parti avec la collision).
+	if got.couverture.Direct != 1 || got.couverture.Fallback != 0 {
+		t.Errorf("direct=%d repli=%d, attendus 1 et 0 — ils doivent compter la table PUBLIEE",
+			got.couverture.Direct, got.couverture.Fallback)
+	}
+	if got.noms[partant] != "Partant" {
+		t.Errorf("le gamertag du film est perdu (%q) : il est porte par le XUID, pas par l index",
+			got.noms[partant])
+	}
+	// LE DETERMINISME EST LA PROPRIETE MENACEE, et c'est l'ordre d'iteration d'une map qui la
+	// menacait : on recompose, et l'identite publiee ne doit jamais bouger.
+	t.Run("determinisme", func(t *testing.T) {
+		for i := 0; i < 50; i++ {
+			c := composerTableDIndex(in)
+			if len(c.table.ByXUID) != 1 || c.table.ByXUID[indifferent] != 2 {
+				t.Fatalf("passe %d : table = %v, attendue {temoin: 2} a chaque composition",
+					i, c.table.ByXUID)
+			}
+		}
+	})
+}
+
+// TestCompositionSansCollisionNeRetireRien — LA BORNE BASSE du correctif : deux index distincts
+// n en sont pas une, et rien ne doit partir.
+func TestCompositionSansCollisionNeRetireRien(t *testing.T) {
+	in := entreeIdentite(
+		tableDuFilm(FilmPlayerSeat{FilmIndex: 0, XUID: 11, Gamertag: "Alpha"}),
+		map[uint64]int{22: 1},
+	)
+	got := composerTableDIndex(in)
+
+	if got.couverture.IndexCollisions != 0 {
+		t.Errorf("collisionsIndex = %d sur deux index distincts", got.couverture.IndexCollisions)
+	}
+	if got.table.ByXUID[11] != 0 || got.table.ByXUID[22] != 1 {
+		t.Errorf("table = %v, attendue {11:0, 22:1}", got.table.ByXUID)
+	}
+	if got.couverture.Direct != 1 || got.couverture.Fallback != 1 {
+		t.Errorf("direct=%d repli=%d, attendus 1 et 1",
+			got.couverture.Direct, got.couverture.Fallback)
+	}
+}

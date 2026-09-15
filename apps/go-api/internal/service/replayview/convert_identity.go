@@ -73,6 +73,8 @@ func toFilmTableCounts(v canonical.FilmTableCounts) replaydoc.FilmTableCounts {
 		Accord:        v.Accord,
 		Contradiction: v.Contradiction,
 		Silence:       v.Silence,
+
+		IndexCollisions: v.IndexCollisions,
 	}
 }
 

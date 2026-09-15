@@ -7,6 +7,7 @@ package killsource
 // mini-bobines versionnees portent leur `chunk_00`, donc leur table de joueurs.
 
 import (
+	"fmt"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
@@ -240,6 +241,81 @@ func TestRefusFaitTomberLaBijectionSurLInferenceEntiere(t *testing.T) {
 	}
 	if r.table.Refusal != FilmTableNoSection {
 		t.Errorf("la cause du refus n est pas portee : %q", r.table.Refusal)
+	}
+}
+
+// TestUnIndiceLibrePourDeuxNomsLibresNEstPasDETERMINE — LE CORRECTIF DE LA REVUE DE JALON M1
+// (lentille L4), sur les DEUX cotes du probleme d affectation.
+//
+// LE DEFAUT QU IL GARDE. Le critere du lot 1.8 etait `Inferred <= 1` : « au plus un indice a
+// inferer, donc une seule affectation possible ». La premisse est fausse depuis ce meme lot —
+// la table du film AJOUTE au roster les joueurs que le kill-feed ne nomme pas, donc il peut
+// rester plus de NOMS libres que d indices libres. Un indice pour deux noms se tranche par les
+// votes ; un nom qui n a ni tue ni ete tue ne pese aucun vote, [refine] n a pas deux indices a
+// echanger et [bijectionMargin] rend zero. `BijectionDetermined` decidait donc seul, et la
+// source du degat, le credit, l assistant et les deux parts de degats partaient sur un occupant
+// tire au sort.
+//
+// LES DEUX CAS SONT DANS LE MEME TEST PARCE QUE LEUR SEULE DIFFERENCE EST LE NOM DU SIEGE 1 :
+// « B » est deja au kill-feed (un nom libre, porte forcee et donc OUVERTE — le gain du lot 1.8
+// est preserve), « D » ne l est pas (il ENTRE au roster, laisse deux noms libres pour un indice,
+// porte FERMEE).
+func TestUnIndiceLibrePourDeuxNomsLibresNEstPasDETERMINE(t *testing.T) {
+	for _, cas := range []struct {
+		nom          string
+		siege1       string
+		nomsLibres   int
+		determinee   bool
+		ajoutsRoster int
+	}{
+		{"un nom libre pour un indice libre", "B", 1, true, 0},
+		{"deux noms libres pour un indice libre", "D", 2, false, 1},
+	} {
+		t.Run(cas.nom, func(t *testing.T) {
+			kf := &killFeed{names: []string{"A", "B", "C"}}
+			r := buildRoster(kf, botMeta{}, true,
+				FilmTable{Build: "b", Seats: map[int]string{0: "A", 1: cas.siege1}})
+			r.perm, _ = solveBijection(r, nil, nil, 1)
+			if r.table.Pinned != 2 || r.table.Inferred != 1 {
+				t.Fatalf("provenance = %+v, attendu 2 indices LUS et 1 infere", r.table)
+			}
+			if r.table.AddedNames != cas.ajoutsRoster {
+				t.Fatalf("ajouts au roster = %d, attendu %d", r.table.AddedNames, cas.ajoutsRoster)
+			}
+			if r.table.FreeNames != cas.nomsLibres {
+				t.Fatalf("noms libres = %d, attendu %d (names=%v nPlay=%d pin=%v)",
+					r.table.FreeNames, cas.nomsLibres, r.names, r.nPlay, r.pin)
+			}
+			if got := r.table.AffectationUnique(); got != cas.determinee {
+				t.Errorf("affectation unique = %v, attendu %v : %d indice(s) libre(s) pour %d"+
+					" nom(s) libre(s)", got, cas.determinee, r.table.Inferred, r.table.FreeNames)
+			}
+			res := &Result{BijectionDetermined: r.table.AffectationUnique()}
+			if got := res.LineByLinePublishable(); got != cas.determinee {
+				t.Errorf("publication ligne par ligne = %v, attendu %v", got, cas.determinee)
+			}
+		})
+	}
+}
+
+// TestAffectationUniqueNeRegardePasQueLesIndices — la table de verite du predicat, bornes
+// comprises. Zero indice libre reste DETERMINE quels que soient les noms qui restent : ils ne
+// portent aucun indice (cf. [hungarianStart]), donc rien n est choisi.
+func TestAffectationUniqueNeRegardePasQueLesIndices(t *testing.T) {
+	for _, cas := range []struct {
+		inferes, nomsLibres int
+		veut                bool
+	}{
+		{0, 0, true}, {0, 1, true}, {0, 7, true},
+		{1, 0, true}, {1, 1, true}, {1, 2, false}, {1, 9, false},
+		{2, 2, false}, {2, 0, false},
+	} {
+		t.Run(fmt.Sprintf("%d_indices_%d_noms", cas.inferes, cas.nomsLibres), func(t *testing.T) {
+			p := FilmTablePinning{Inferred: cas.inferes, FreeNames: cas.nomsLibres}
+			if got := p.AffectationUnique(); got != cas.veut {
+				t.Errorf("AffectationUnique() = %v, attendu %v", got, cas.veut)
+			}
+		})
 	}
 }
 

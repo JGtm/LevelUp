@@ -88,4 +88,19 @@ package filmdec
 // `killsource/` n est pas touche.
 // FUSION (2026-09-16) : l integration portait `.10` et la branche du lot 1.9.13 `.8` (accesseur
 // neuf dans objectiveevents, faux positif d empreinte) ; reunies ici, au rang suivant.
-const GrammarRev = "grammar-2026-09-15.11"
+// REVUE DE JALON M1, LENTILLE L4 (2026-09-16) : `.11` -> `.12`. AUCUNE grammaire d octets ne
+// change. Ce qui change est la PORTE qui decide si les attributions ligne par ligne de
+// `killsource` sont publiables : `BijectionDetermined` valait « au plus un indice a inferer »,
+// il vaut desormais « une seule affectation possible » (`FilmTablePinning.AffectationUnique`,
+// indices libres ET noms libres). L empreinte hache les octets des trois paquets, dont
+// `killsource/` : elle monte donc, et la revision avec elle. `KillSourceDecoderRev` MONTE aussi
+// (`killsource-2026-09-16`) parce que la sortie persistee change — la porte ne fait que se
+// fermer, aucun film ne gagne la publication ligne par ligne. `SchemaVersion` reste 59 : le
+// document du rejeu ne porte pas cette porte.
+//
+// LE MEME RANG PORTE AUSSI LA CORRECTION DE DOC de `mppWidthsPourFormat` (son bloc finissait par
+// « la cle est le BUILD » alors que la fonction commute sur le FORMAT depuis le lot 1.9.1 ter) :
+// l empreinte hache les OCTETS des trois paquets, commentaires compris, donc une reformulation la
+// fait bouger. Un LOT partage sa revision (regle de la forme `.N` ci-dessus) — ces deux
+// changements sont le meme lot de revue, ils partagent donc `.12`.
+const GrammarRev = "grammar-2026-09-15.12"

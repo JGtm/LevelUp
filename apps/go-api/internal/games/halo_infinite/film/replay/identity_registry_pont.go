@@ -161,6 +161,13 @@ func extendSlotXUID(byXUID map[uint32]uint64, owner map[uint32]int,
 
 // indexToXUIDOf renverse la table identite -> index. Un helper plutot que deux boucles
 // identiques a vingt lignes d'ecart : la troisieme copie derive.
+//
+// IL N'A PAS DE GARDE, ET IL N'EN A PAS BESOIN : la table qu'il renverse est INJECTIVE PAR INDEX
+// par construction (`retirerLesIndexEnCollision`, pose a la revue de jalon M1 lentille L4 — un
+// index que deux xuids se disputent est retire pour les deux). Sans cet invariant, l'ecrasement
+// ci-dessous choisirait a l'ordre d'iteration d'une map, donc differemment d'une cuisson a
+// l'autre. Si un appelant lui passe un jour une autre table, c'est cet invariant qu'il doit
+// tenir, pas cette fonction qui doit deviner.
 func indexToXUIDOf(xuidToIndex map[uint64]int) map[int]uint64 {
 	out := make(map[int]uint64, len(xuidToIndex))
 	for x, i := range xuidToIndex {

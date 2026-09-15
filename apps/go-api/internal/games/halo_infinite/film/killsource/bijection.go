@@ -216,6 +216,7 @@ func solveBijection(r *roster, pairs []feedEvent, cs []candidate, restarts int) 
 	votes := voteMatrix(nr, pairs, r.names, r.nPlay)
 	r.controlerEpinglage(votes)
 	r.table.Inferred = len(free)
+	r.table.FreeNames = len(freeNames)
 	if len(free) == 0 {
 		// TOUT EST LU : rien a inferer. Le score quadratique n a pas de sens ici — il mesure
 		// l accord d une INFERENCE avec le kill-feed, et il n y a pas d inference.

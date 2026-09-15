@@ -111,6 +111,10 @@ type FilmTableCounts struct {
 	Accord        int `json:"accord"`
 	Contradiction int `json:"contradiction"`
 	Silence       int `json:"silence"`
+	// IndexCollisions : les INDEX que deux xuids se disputaient dans la table composee, et que
+	// la composition a retires POUR LES DEUX (revue de jalon M1, lentille L4). `Direct` et
+	// `Fallback` ne comptent que ce qui RESTE publie. Absent du document quand il vaut zero.
+	IndexCollisions int `json:"collisionsIndex,omitempty"`
 }
 
 // LinkCounts est le decompte d'une famille de liens par provenance.

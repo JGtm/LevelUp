@@ -267,7 +267,11 @@ func erreurFormatInconnu(format int) error {
 // LA VERSION MAJEURE DU FILM NE DISCRIMINE PAS : `e5adf7b2` (HI_1_11_0) et `bcb6d393`
 // (HI_1_12_0) portent tous deux `v=40` et tombent de part et d autre. Le cardinal de la table
 // par type, lui, suit la coupure (116/121/121/121/122 contre 123/123) — mais c est un PROXY,
-// garde comme controle, jamais comme cle : la cle est le BUILD.
+// garde comme controle, jamais comme cle : la cle de CETTE table est la VERSION DE FORMAT, comme
+// la signature de la fonction le dit et comme le premier bloc de ce commentaire l explique. (La
+// phrase d avant disait « la cle est le BUILD » : c etait le reste du regime d avant le lot
+// 1.9.1 ter, et elle contredisait tout ce qui la precede — revue de jalon M1, lentille L4. Ce
+// qui reste keye par le BUILD est la largeur du bloc de PERSONNALISATION, pas celle-ci.)
 func mppWidthsPourFormat(format int) (MPPWidths, bool) {
 	switch format {
 	case formatHI1120Et1130:
