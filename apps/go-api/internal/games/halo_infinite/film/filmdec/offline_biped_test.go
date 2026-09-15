@@ -41,13 +41,17 @@ func writeBipedHeaderEtMasque(w *bitWriter, slot uint32, tag, maskCount uint64) 
 }
 
 // writeBipedRecord écrit un record biped conforme à la grammaire décodée (bitWriter est
-// l'écrivain MSB-first partagé des tests du package, cf. frame_chain_infer_test.go).
+// l'écrivain MSB-first partagé des tests du package, cf. frame_chain_infer_test.go), au
+// découpage de Cliffhanger et en région 0.
+//
+// DÉLÈGUE DEPUIS LE LOT 1.9.2 : `recordBipedSynthetique` (i0_catalogue_mutation_test.go) écrit le
+// même record sous un découpage et une région QUELCONQUES, ce dont la mutation du catalogue a
+// besoin. Deux écritures du même format auraient été deux grammaires à tenir d'accord.
 func writeBipedRecord(w *bitWriter, slot uint32, tag, maskCount uint64, qx, qy, qz uint64) {
-	writeBipedHeaderEtMasque(w, slot, tag, maskCount)
-	w.bits(0, cliffLayout.GateBits) // i0 absolu
-	w.bits(qx, int(cliffLayout.AxisW[0]))
-	w.bits(qy, int(cliffLayout.AxisW[1]))
-	w.bits(qz, int(cliffLayout.AxisW[2]))
+	recordBipedSynthetique{
+		Lay: cliffLayout, Region: 0, Slot: slot, Tag: tag, MaskCount: maskCount,
+		Q: [3]uint64{qx, qy, qz},
+	}.ecrire(w)
 }
 
 // TestScanBipedRecords_RoundTrip : un record synthétique conforme est retrouvé et

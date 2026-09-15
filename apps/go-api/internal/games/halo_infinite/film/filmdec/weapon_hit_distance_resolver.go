@@ -46,16 +46,32 @@ type hitPosSample struct {
 
 // BuildBipedTracks decode les positions monde des bipeds du film de dir et les indexe par slot,
 // triees par ts. Filtres teleport/isolation DESACTIVES : on maximise la couverture (savoir combien
-// de degats sont resolubles), on ne lisse pas une trajectoire. wr porte les bornes de la carte
-// (obligatoire pour des coordonnees monde) ; n borne le nombre de chunks balayes.
-func BuildBipedTracks(dir string, wr *Vec3Range, n int) (map[uint32][]hitPosSample, error) {
-	if wr == nil {
-		return nil, fmt.Errorf("%w (film %s) : bornes de carte requises pour la distance", ErrUnknownMapBounds, dir)
+// de degats sont resolubles), on ne lisse pas une trajectoire. n borne le nombre de chunks balayes.
+//
+// L ENTREE DE CATALOGUE EST LE PARAMETRE, ET C EST LE LOT 1.9.2. Elle porte les DEUX donnees de
+// profil de la carte, indissociables : les bornes monde (`Range`) et le DECOUPAGE d i0
+// (`Layout` — porte, index de region attendu, largeurs d axe). Ce balayage ne passait que les
+// bornes ; `ScanFilmOptions.Layout` restait nil, donc `DetectI0LayoutOf` DECIDAIT du decoupage
+// sur le film. Sur une carte a plus de deux regions de compression l auto-detection ne sait pas
+// voir l index de region (i0_layout.go) : sur Live Fire elle rend `gate=5 region=0 13/12/11` la
+// ou le catalogue dit `gate=6 region=1 12/12/11`, et sa porte laissait passer des
+// enregistrements d une AUTRE region — 26 sur 267 400 (`60ae07c4`, mesure du lot 1.9.2).
+// D-3 d ADR 0034 : le decoupage d axe est une DONNEE DE PROFIL, jamais une detection.
+//
+// UNE ENTREE SANS DECOUPAGE EXPLOITABLE EST UNE ERREUR TYPEE (D-4), pas un repli silencieux sur
+// la detection : sans largeurs d axe, aucune coordonnee monde ne peut etre produite juste.
+func BuildBipedTracks(dir string, entry MapQuantEntry, n int) (map[uint32][]hitPosSample, error) {
+	lay := entry.Layout()
+	if !lay.Valid() {
+		return nil, fmt.Errorf("%w (film %s) : l entree de catalogue ne porte pas de decoupage d axe exploitable",
+			ErrUnknownMapBounds, dir)
 	}
+	wr := entry.Range()
 	opt := DefaultScanFilmOptions()
 	opt.MaxSpeedMPS = 0
 	opt.IsolationGapMS = 0
-	opt.WorldRange = wr
+	opt.WorldRange = &wr
+	opt.Layout = &lay
 	opt.Chunks = make([]int, 0, n)
 	for c := 1; c <= n; c++ {
 		opt.Chunks = append(opt.Chunks, c)
@@ -123,11 +139,11 @@ func NewWeaponHitDistanceFunc(tracks map[uint32][]hitPosSample, base int) Weapon
 }
 
 // FilmWeaponHitDistance est le raccourci de production : decode les tracks, calibre la base et rend
-// la WeaponHitDistanceFunc prete a injecter, plus la base retenue. wr nil (bornes inconnues) rend
-// (nil, 0, err) : l appelant traite l absence de distance comme un cas normal (hits comptes sans
-// distance), il ne fait pas echouer la passe.
-func FilmWeaponHitDistance(dir string, wr *Vec3Range, damages []WeaponDamage, n int) (WeaponHitDistanceFunc, int, error) {
-	tracks, err := BuildBipedTracks(dir, wr, n)
+// la WeaponHitDistanceFunc prete a injecter, plus la base retenue. Une entree de catalogue sans
+// decoupage exploitable rend (nil, 0, err) : l appelant traite l absence de distance comme un cas
+// normal (hits comptes sans distance), il ne fait pas echouer la passe.
+func FilmWeaponHitDistance(dir string, entry MapQuantEntry, damages []WeaponDamage, n int) (WeaponHitDistanceFunc, int, error) {
+	tracks, err := BuildBipedTracks(dir, entry, n)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -135,28 +151,36 @@ func FilmWeaponHitDistance(dir string, wr *Vec3Range, damages []WeaponDamage, n 
 	return NewWeaponHitDistanceFunc(tracks, base), base, nil
 }
 
-// DetectFilmWorldRange resout les bornes monde de la carte d un film par la SIGNATURE de largeurs
-// d axe (le decoupage i0 lu dans le film, DetectI0Layout, croise au catalogue de bornes). Si un nom
-// de carte est fourni (override), il court-circuite l auto-detection. Rend (nil, err) quand la carte
-// est absente, le catalogue illisible ou la signature ambigue : l appelant desactive alors la
-// distance (les touches restent comptees). MEME logique que l instrument de recherche
-// (sondeWorldRange), en production et sans dependance de test.
-func DetectFilmWorldRange(dir, catalogPath, mapNameOverride string) (*Vec3Range, error) {
+// DetectFilmMapEntry resout L ENTREE DE CATALOGUE de la carte d un film par la SIGNATURE de
+// largeurs d axe (le decoupage i0 lu dans le film, DetectI0Layout, croise au catalogue de bornes).
+// Si un nom de carte est fourni (override), il court-circuite l auto-detection. Rend une erreur
+// quand la carte est absente, le catalogue illisible ou la signature ambigue : l appelant
+// desactive alors la distance (les touches restent comptees).
+//
+// ELLE REND L ENTREE ENTIERE, PLUS SEULEMENT SES BORNES (lot 1.9.2). Ce qui suit — le balayage
+// des positions — a besoin du DECOUPAGE de la carte autant que de ses bornes, et le prendre au
+// catalogue est la regle (D-3). Rendre un `*Vec3Range` obligeait l appelant a laisser le
+// decoupage a l auto-detection, c est-a-dire a une SECONDE passe de detection, contradictoire
+// avec la premiere sur toute carte a plus de deux regions.
+//
+// CE QUI RESTE UNE DETECTION ICI, ET CE QUI LA RETIRERA : l IDENTITE de la carte. Elle se
+// reconnait a la signature de largeurs, alors que le collecteur resout deja le nom de carte du
+// match par la base (`killcollector/positions.go`, `resolveMapBounds`) — c est l objet du lot
+// 1.9.4, qui supprimera cet appel et avec lui le dernier usage de production de
+// [DetectI0Layout]. Consequence MESUREE aujourd hui : sur Live Fire la signature detectee
+// (`13/12/11`) ne correspond a AUCUNE entree du catalogue (`12/12/11`), donc les distances y
+// sont deja desactivees — un defaut que 1.9.4 ferme, pas celui-ci.
+func DetectFilmMapEntry(dir, catalogPath, mapNameOverride string) (MapQuantEntry, error) {
 	cat, err := LoadMapQuantCatalog(catalogPath)
 	if err != nil {
-		return nil, err
+		return MapQuantEntry{}, err
 	}
 	if mapNameOverride != "" {
-		e, err := cat.Lookup(mapNameOverride)
-		if err != nil {
-			return nil, err
-		}
-		r := e.Range()
-		return &r, nil
+		return cat.Lookup(mapNameOverride)
 	}
 	lay, _, err := DetectI0Layout(dir)
 	if err != nil {
-		return nil, fmt.Errorf("decoupage i0 illisible (%s) : %w", dir, err)
+		return MapQuantEntry{}, fmt.Errorf("decoupage i0 illisible (%s) : %w", dir, err)
 	}
 	var hits []string
 	var found MapQuantEntry
@@ -168,10 +192,9 @@ func DetectFilmWorldRange(dir, catalogPath, mapNameOverride string) (*Vec3Range,
 	}
 	if len(hits) != 1 {
 		sort.Strings(hits)
-		return nil, fmt.Errorf("%w : signature %v ambigue (%d cartes %v)", ErrUnknownMapBounds, lay.AxisW, len(hits), hits)
+		return MapQuantEntry{}, fmt.Errorf("%w : signature %v ambigue (%d cartes %v)", ErrUnknownMapBounds, lay.AxisW, len(hits), hits)
 	}
-	r := found.Range()
-	return &r, nil
+	return found, nil
 }
 
 // nearestSample rend la position du slot la plus proche de T dans la fenetre
