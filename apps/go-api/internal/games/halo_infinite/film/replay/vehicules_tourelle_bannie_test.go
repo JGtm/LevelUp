@@ -182,3 +182,93 @@ func TestChassisInconnuCompteLeRepli(t *testing.T) {
 			" pas se taire", fallback.NomChassisVehiculeMarqueurNeutre, n)
 	}
 }
+
+// --- LES SECONDS `vehi` DU MANIFESTE (lot 1.9.9, elargissement du 2026-09-16) -----------------
+
+// TestSecondsChassisDuManifesteSontEnTable : les sept identifiants que le manifeste de la chaine
+// de destruction rattache a une famille DEJA en table y sont, et sous la bonne famille.
+//
+// POURQUOI CE TEST EXISTE, ET CE QU IL A COUTE DE NE PAS L AVOIR. Un meme vehicule est declare
+// dans PLUSIEURS modules du jeu, sous un GlobalID par module (cf. l en-tete de
+// `vehicle_families.go`). La table avait ete peuplee depuis `pc/globals` ; les films ecrivent
+// l identifiant du module charge. Resultat mesure sur 76 artefacts : le Wraith et le Scorpion,
+// qui n avaient QUE leur identifiant de base, ne se resolvaient JAMAIS — 21 vies publiees sans
+// sprite ET sans occupant. Ce test fige la correspondance, piece par piece.
+func TestSecondsChassisDuManifesteSontEnTable(t *testing.T) {
+	cas := []struct {
+		chassis uint32
+		famille string
+		piece   string
+	}{
+		{0xae845375, familleWraith, `manifeste « Wraith » : vehi "00002706 (+ ae845375)", hlmt 5b5c960d`},
+		{0xf6f54e56, familleScorpion, `manifeste « Scorpion » : "f6f54e56 (any/globals) = chassis 0000d3db (pc/globals), meme hlmt"`},
+		{0x9af9e693, familleGhost, `manifeste « Ghost » : vehi "0000d3dc (+ 5b80c406, 9af9e693)"`},
+		{0x0001530a, familleBanshee, `manifeste « Banshee » : vehi "000026ed (+ 0001530a, c6e79dcc)"`},
+		{0x5159c8ef, familleWarthog, `manifeste « Warthog » : "(+ 5159c8ef, 75312e51, 7617ff6e dans any/globals/common)"`},
+		{0x75312e51, familleWarthog, `idem`},
+		{0x7617ff6e, familleWarthog, `idem`},
+	}
+	for _, c := range cas {
+		if got := vehicleFamilyOf(c.chassis); got != c.famille {
+			t.Errorf("vehicleFamilyOf(%#08x) = %q, attendu %q — %s",
+				c.chassis, got, c.famille, c.piece)
+		}
+	}
+}
+
+// TestChassisWraithPublieSesOccupants — L ACCEPTATION DE L ELARGISSEMENT.
+//
+// CE QU ELLE PROUVE. Une vie de chassis `0xae845375` publie desormais ses EPISODES D OCCUPATION,
+// avec le xuid de leur occupant. Avant l entree en table, `vehicleTrackOf` les JETAIT tous :
+// `vehicleFamilyIsRideable("")` est faux, donc `tr.Rides = nil` sur toute famille vide. Ce n est
+// PAS une subtilite theorique — c est ce que le parc montre, film par film : sur `4f77afc1`,
+// les familles resolues portent 36/36, 15/15, 9/9 et 1/1 occupants nommes, et les 11 vies de
+// `ae845375` en portent ZERO malgre 376 a 2 352 echantillons de trajectoire chacune.
+func TestChassisWraithPublieSesOccupants(t *testing.T) {
+	const wraithDuFilm = uint32(0xae845375)
+	key := filmdec.EquipmentLifeKey{Slot: 700, Gen: 1}
+	const bipedSlot = uint32(42)
+	scan := VehicleScan{
+		Scanned:   true,
+		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000, 22_000_000}),
+		Creations: []filmdec.EquipmentCreation{vehCreation(key, 1_500_000, 0, 0, wraithDuFilm)},
+		Positions: []filmdec.BipedPosition{
+			vehPos(700, 5_000_000, 0, 0),
+			vehPos(700, 12_000_000, 0, 0),
+			vehPos(700, 20_000_000, 0, 0),
+		},
+		Events: []filmdec.VehicleEvent{
+			{Kind: filmdec.EventBipedBoardVehicle, TimestampUS: 5_200_000, OccupantPresent: true,
+				OccupantInBand: true, OccupantSlot: bipedSlot, Seat: 0, SeatValid: true},
+			{Kind: filmdec.EventUnitExitVehicle, TimestampUS: 16_800_000, OccupantPresent: true,
+				OccupantInBand: true, OccupantSlot: bipedSlot, Seat: 0, SeatValid: true},
+		},
+	}
+	bipeds := []filmdec.BipedPosition{
+		vehPos(bipedSlot, 4_500_000, 0.4, 0),
+		vehPos(bipedSlot, 5_000_000, 0.4, 0),
+		vehPos(bipedSlot, 17_000_000, 3, 3),
+	}
+	own := regDe(OwnerReport{SlotXUID: map[uint32]uint64{bipedSlot: 2533274800000001}})
+	got, cov, _ := buildVehicleTracks(scan, bipeds, own, vehClock())
+	if len(got) != 1 {
+		t.Fatalf("vies publiees = %d, attendu 1", len(got))
+	}
+	tr := got[0]
+	if tr.Family != familleWraith {
+		t.Fatalf("famille = %q, attendu %q : sans elle, tout ce qui suit est jete",
+			tr.Family, familleWraith)
+	}
+	if len(tr.Rides) != 1 {
+		t.Fatalf("episodes d occupation = %d, attendu 1 — une famille vide les jetait TOUS "+
+			"(vehicleFamilyIsRideable)", len(tr.Rides))
+	}
+	if tr.Rides[0].XUID == "" {
+		t.Errorf("occupant ANONYME : le pont slot -> xuid doit le nommer, comme sur toute autre " +
+			"famille pilotable")
+	}
+	if cov.RidesNamed != 1 || cov.FamilyResolved != 1 || cov.FamilyUnknown != 0 {
+		t.Errorf("couverture = {famillesResolues:%d famillesInconnues:%d occupantsNommes:%d}, "+
+			"attendu 1 / 0 / 1", cov.FamilyResolved, cov.FamilyUnknown, cov.RidesNamed)
+	}
+}
