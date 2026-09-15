@@ -40,6 +40,11 @@ type feedEvent struct {
 	// PUBLICATION : un consommateur qui joint des pistes de film joint par xuid, jamais par
 	// pseudo (le pseudo change, le xuid non). Zero quand l instant ne porte pas de mort.
 	victimXUID uint64
+	// paquet : L IDENTITE DE PAQUET DE CET INSTANT (lot 1.9.7), prise au KILL-EVENT 85 que
+	// [killFeed.resoudreCouples] lui a associe. C est elle qui apparie le dead-state, la fenetre
+	// de 2,5 s n etant plus qu un repli. Absente quand aucun kill-event ne s est attache : le
+	// kill-feed ne localise rien par lui-meme, il n horodate.
+	paquet paquetID
 }
 
 // killFeed : la decomposition HONNETE du kill-feed. Chaque champ est un denominateur potentiel,

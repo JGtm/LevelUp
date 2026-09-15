@@ -70,7 +70,9 @@ func (c *decodeCtx) walkOutOfCatalogue() (int, []uint32) {
 	seen := map[uint32]bool{}
 	n := 0
 	for _, cd := range cands {
-		if isCatalogued(cd.tag) || c.matchExact(cd) == nil {
+		// La SANTE ne compte pas les replis : elle mesure ce qui s apparie, peu importe la voie.
+		e, _ := c.matchExact(cd)
+		if isCatalogued(cd.tag) || e == nil {
 			continue
 		}
 		n++
@@ -146,7 +148,7 @@ func (c *decodeCtx) relaxedProbe(covered map[int]bool) RelaxedProbe {
 			}
 			st.OutOfCatalogue++
 			cd.chunk, cd.pidx, cd.ms = p.chunk, p.idx, ms
-			e := c.matchExact(cd)
+			e, _ := c.matchExact(cd)
 			if e == nil {
 				continue
 			}

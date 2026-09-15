@@ -66,7 +66,9 @@ type pass struct {
 	unclaimed []UnclaimedDeath
 	// botUsed : les positions de candidat consommees par les DEUX temps de bot. Elle sert au
 	// seul comptage des inexpliques : un candidat a indice de bot qui a servi n en est pas un.
-	botUsed   map[[3]int]bool
+	botUsed map[[3]int]bool
+	// appar : D OU VIENT L APPARIEMENT de chaque ligne PUBLIEE (lot 1.9.7).
+	appar     ApparStats
 	redundant int
 	noBit     int
 	agree     int
@@ -129,7 +131,7 @@ func (p *pass) runStrong() {
 			st = &p.scan
 		}
 		st.Population++
-		e := p.ctx.matchExact(cd.candidate)
+		e, repli := p.ctx.matchExact(cd.candidate)
 		if e == nil {
 			p.unexpPair++
 			continue
@@ -139,9 +141,25 @@ func (p *pass) runStrong() {
 			continue
 		}
 		st.Published++
+		p.noterAppariement(repli, &p.appar.Fenetre)
 		p.byTime[e.timeMS] = p.ctx.buildKill(killDraft{timeMS: e.timeMS, victim: e.victim,
 			killer: e.killer, inFeed: true, origin: OriginCredit}, cd)
 	}
+}
+
+// noterAppariement : une ligne PUBLIEE de plus, rangee sous la voie qui l a appariee (D14 c :
+// l artefact doit dire quelle part de lui vient d un repli).
+//
+// AU NIVEAU PUBLIE, ET PAS AU NIVEAU APPARIE : c est la provenance d une LIGNE qui interesse un
+// lecteur de document. La mesure du lot, elle, compte au niveau apparie (un candidat peut
+// s apparier a un instant deja publie par la voie prioritaire) — les deux denominateurs sont
+// differents, et les confondre est le piege que cette phrase existe pour nommer.
+func (p *pass) noterAppariement(repli bool, compteurDeLaFenetre *int) {
+	if repli {
+		*compteurDeLaFenetre++
+		return
+	}
+	p.appar.Identite++
 }
 
 // runSelfSource : temps 3 — les morts dont la SOURCE APPARTIENT A LA VICTIME.
@@ -168,7 +186,7 @@ func (p *pass) runSelfSource() {
 			st = &p.selfScan
 		}
 		st.Population++
-		e := p.ctx.matchVictim(cd.candidate)
+		e, repli := p.ctx.matchVictim(cd.candidate)
 		if e == nil || !p.ctx.selfSourceOK(cd.candidate, p.mult) {
 			p.unexpSelf++
 			continue
@@ -179,6 +197,7 @@ func (p *pass) runSelfSource() {
 			continue
 		}
 		st.Published++
+		p.noterAppariement(repli, &p.appar.Fenetre)
 		// Le feed credite un AUTRE joueur : on publie SON credit tel quel, et on leve le
 		// drapeau de divergence. Masquer l un ou l autre detruirait l information.
 		p.byTime[e.timeMS] = p.ctx.buildKill(killDraft{timeMS: e.timeMS, victim: e.victim,
@@ -200,6 +219,7 @@ func (p *pass) runBots() {
 		}
 		p.botUsed[k] = true
 		p.botStats.Published++
+		p.noterAppariement(m.parLaFenetre, &p.appar.BotFenetre)
 		// `inFeed = false` : le kill est au feed, la MORT n y est pas. La victime vient du
 		// roster de replication, pas du kill-feed — et le consommateur doit pouvoir le savoir.
 		p.byTime[m.event.timeMS] = p.ctx.buildKill(killDraft{timeMS: m.event.timeMS,
@@ -237,6 +257,7 @@ func (p *pass) runBotKillers() {
 		}
 		p.botUsed[k] = true
 		p.botKillerStats.Published++
+		p.noterAppariement(m.parLaFenetre, &p.appar.BotFenetre)
 		p.byTime[m.event.timeMS] = p.ctx.buildKill(killDraft{timeMS: m.event.timeMS,
 			victim: m.event.victim, killer: p.ctx.roster.nameOf(m.cand.killer),
 			inFeed: true, origin: OriginBotKiller}, m.cand)
@@ -256,8 +277,13 @@ func (p *pass) runBotKillers() {
 // serait affirmatif et faux. Le couple reste donc contraint des deux cotes, exactement comme
 // aux temps 1 a 5 — ici les deux cotes sont le meme joueur.
 //
-// LE CANDIDAT RETENU EST LE PLUS PROCHE EN TEMPS. Zero arbitrage : sur la mesure du 2026-08-14
-// (cinq morts sur quatre films) chaque mort n en a qu UN, a 0 et 4 ms.
+// LE CANDIDAT RETENU EST CELUI DU PAQUET QUE LE FILM ECRIT, ET A DEFAUT LE PLUS PROCHE EN TEMPS
+// (`repli_mort_non_revendiquee_la_plus_proche`, lot 1.9.7). MESURE DU LOT : sur les 21 films
+// entiers, les 17 morts non revendiquees n ont AUCUNE identite en face — le kill-feed est
+// humain-seul, une mort que personne ne revendique ne porte aucun kill, donc aucun kill-event 85
+// a associer. Le repli est ici la voie NORMALE, et c est un negatif MESURE, pas une lecture qui
+// manque. Zero arbitrage : sur la mesure du 2026-08-14 (cinq morts sur quatre films) chaque mort
+// n en a qu UN, a 0 et 4 ms.
 //
 // ET IL N EST SERVI QU UNE FOIS — c est la meme garde que les temps 4 et 5, et pour la leçon
 // qui les a produits : deux morts orphelines voisines convoiteraient le MEME dead-state et
@@ -271,21 +297,8 @@ func (p *pass) runUnclaimed() {
 		if _, deja := p.byTime[e.timeMS]; deja {
 			continue // le temps 5 lui a trouve un tueur bot : elle a un tueur, elle n est pas orpheline
 		}
-		var best sourcedCandidate
-		bestDT := tolMS + 1
-		for _, cd := range p.all {
-			dt := e.timeMS - cd.ms
-			if dt < -tolMS || dt > tolMS {
-				continue
-			}
-			if cd.victim != cd.killer || p.ctx.roster.nameOf(cd.victim) != e.victim {
-				continue
-			}
-			if d := absMS(dt); d < bestDT {
-				bestDT, best = d, cd
-			}
-		}
-		if bestDT > tolMS {
+		best, repli, ok := p.choisirNonRevendiquee(e)
+		if !ok {
 			continue
 		}
 		p.unclaimedStats.Matched++
@@ -295,6 +308,7 @@ func (p *pass) runUnclaimed() {
 		}
 		used[k] = true
 		p.unclaimedStats.Published++
+		p.noterAppariement(repli, &p.appar.NonRevendiqueeFenetre)
 		p.unclaimed = append(p.unclaimed, UnclaimedDeath{
 			TimeMS:     e.timeMS,
 			Victim:     e.victim,
@@ -305,6 +319,32 @@ func (p *pass) runUnclaimed() {
 		})
 	}
 	sort.Slice(p.unclaimed, func(i, j int) bool { return p.unclaimed[i].TimeMS < p.unclaimed[j].TimeMS })
+}
+
+// choisirNonRevendiquee : LA LECTURE D ABORD (D14 b) — le candidat auto-inflige du PAQUET que le
+// film ecrit pour cet instant ; a defaut, le REPLI `repli_mort_non_revendiquee_la_plus_proche`,
+// qui prend le plus proche EN TEMPS. Rend le candidat, si le repli a servi, et s il y en a un.
+func (p *pass) choisirNonRevendiquee(e feedEvent) (sourcedCandidate, bool, bool) {
+	couple := func(cd sourcedCandidate) bool {
+		return cd.victim == cd.killer && p.ctx.roster.nameOf(cd.victim) == e.victim
+	}
+	for _, cd := range p.all {
+		if e.paquet.memeQue(cd.chunk, cd.pidx) && couple(cd) {
+			return cd, false, true
+		}
+	}
+	var best sourcedCandidate
+	bestDT, trouve := tolMS+1, false
+	for _, cd := range p.all {
+		dt := e.timeMS - cd.ms
+		if dt < -tolMS || dt > tolMS || !couple(cd) {
+			continue
+		}
+		if d := absMS(dt); d < bestDT {
+			bestDT, best, trouve = d, cd, true
+		}
+	}
+	return best, true, trouve
 }
 
 func absMS(v int) int {
@@ -373,7 +413,7 @@ func (p *pass) noteInstant(byT map[int]*atInstant, cd candidate, path Path) {
 	if cd.victim == cd.killer {
 		return
 	}
-	e := p.ctx.matchExact(cd)
+	e, _ := p.ctx.matchExact(cd)
 	if e == nil {
 		return
 	}
@@ -398,6 +438,7 @@ func (p *pass) stats(w *walkResult) Stats {
 		Bot:               p.botStats,
 		BotKiller:         p.botKillerStats,
 		Unclaimed:         p.unclaimedStats,
+		Appariement:       p.appar,
 		Redundant:         p.redundant,
 		NoBit:             p.noBit,
 		Agree:             p.agree,
@@ -431,5 +472,17 @@ func (c *decodeCtx) run() *pass {
 	p.runUnclaimed()
 	p.countUnexplainedBot()
 	p.concordance(walkCands)
+	p.compterCouplesSansIdentite()
 	return p
+}
+
+// compterCouplesSansIdentite : les couples publies du kill-feed auxquels AUCUN kill-event 85 ne
+// s est attache. C est LE DIAGNOSTIC qui ouvre le repli de la fenetre (D14 b) : sans lui, un
+// compte de replis ne designerait aucune correction.
+func (p *pass) compterCouplesSansIdentite() {
+	for i := range p.ctx.feed.pairs {
+		if !p.ctx.feed.pairs[i].paquet.ok {
+			p.appar.CouplesSansIdentite++
+		}
+	}
 }

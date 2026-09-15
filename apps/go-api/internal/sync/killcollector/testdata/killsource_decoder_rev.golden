@@ -63,4 +63,4 @@
 #               un couple que la lecture decide n en est plus un candidat (mini-bobine : 17 -> 16
 #               proposes). Backlog de redecodage du parc : geste de PRODUCTION, reserve au pilote
 #               sur signal (D6 du plan).
-killsource-2026-09-15	ed7e45ca60ded5906dda9b5da5c27dbdec268cb109aaaf31ca8a9472b90ace44
+killsource-2026-09-16	2a58dd681f925d6332e90930f370d8b117f512e89436c412f4929eaf85bbcba3
