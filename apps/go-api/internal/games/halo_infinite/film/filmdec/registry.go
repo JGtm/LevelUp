@@ -58,6 +58,17 @@ const (
 	compObjectBodyVitality  = "object-body-vitality-component"
 	compWeaponStateTypeInfo = "weapon-state-type-info"
 	compForwardUpDynPrec    = "object-forward-and-up-dynamic-precision-component"
+	// SIX ETIQUETTES DE PLUS AU LOT 2.7 (2026-09-16). Elles etaient en litteral dans le
+	// `switch` de 815 lignes de `consumeByName` ; la scission du switch en chaine de maillons
+	// (`dispatch_*.go`) a rendu ces lignes NEUVES pour le ratchet de lint, qui a alors
+	// signale ce que la regle 6 du depot dit depuis toujours : a la troisieme copie, on
+	// centralise. Elles sont donc nommees ici, et leurs copies du paquet migrees.
+	compObjectShieldVitality  = "object-shield-vitality-component"
+	compObjectDissolver       = "object-dissolver-component"
+	compObjectPosition        = "object-position-component"
+	compBipedAbilitySet       = "biped-desired-ability-set-component"
+	compBipedAbilitySetAlt    = "biped-desired-ability-set"
+	compGameEngineTeamMapping = "game-engine-team-mapping-component"
 )
 
 // Archetype is one ECS archetype: an ordered list of component names. The slice

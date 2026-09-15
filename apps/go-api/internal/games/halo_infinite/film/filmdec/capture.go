@@ -19,7 +19,7 @@ package filmdec
 // garde-rail : le test balaie cette liste, il ne peut donc pas oublier un nom ajouté ici.
 var captureNames = []string{
 	compObjectBodyVitality,
-	"object-shield-vitality-component",
+	compObjectShieldVitality,
 	"player-respawn-timer-component",
 	"game-engine-round-timer-component",
 }
@@ -32,7 +32,7 @@ func consumeByNameCapturing(br *BitReader, name string, typeIndex, level uint32)
 	switch name {
 	case compObjectBodyVitality: // i4
 		return noVariant, nil, decodeObjectBodyVitality(br), true
-	case "object-shield-vitality-component": // i5
+	case compObjectShieldVitality: // i5
 		return noVariant, nil, decodeObjectShieldVitality(br), true
 	case "player-respawn-timer-component": // ti=5 i1
 		return noVariant, nil, decodePlayerRespawnTimer(br), true

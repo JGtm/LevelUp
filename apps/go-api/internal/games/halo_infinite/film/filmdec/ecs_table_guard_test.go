@@ -3,8 +3,10 @@ package filmdec
 // Garde-rails de la table ECS (`testdata/ecs_table.tsv`), la reference versionnee de la
 // grammaire archetype x composant du film. Trois controles independants :
 //
-//	G1 code <-> table   : toute etiquette `case` de consumeByName est dans la table avec le
-//	                      statut que l AST lui donne, et reciproquement. Toujours joue.
+//	G1 code <-> table   : toute etiquette `case` de la CHAINE de dispatch (consumeByName et
+//	                      les maillons que sa branche `default` enchaine, cf.
+//	                      dispatch_object.go) est dans la table avec le statut que l AST lui
+//	                      donne, et reciproquement. Toujours joue.
 //	G2 film <-> table   : archetypes, composants ET niveaux de la table = ceux du registre
 //	                      (chunk_00) des films temoins. Garde ECS_TABLE_FILM, SKIP sans film.
 //	G3 table <-> doc    : chaque champ cite en `doc_field` existe dans replay/document.go.
@@ -97,13 +99,16 @@ func loadECSTable(t *testing.T) []ecsRow {
 	return out
 }
 
-// ecsCase decrit le cas de consumeByName qui traite un composant.
+// ecsCase decrit le cas de la chaine de dispatch qui traite un composant.
 type ecsCase struct {
 	Kind string // porte | partiel
+	File string // maillon de la chaine (dispatch_*.go depuis le lot 2.7)
 	Line int
 }
 
-// scanConsumeByNameCases rend, par nom de composant, le cas du switch qui le traite.
+// scanConsumeByNameCases rend, par nom de composant, le cas de la CHAINE de dispatch qui le
+// traite : `consumeByName` puis, de proche en proche, le maillon que sa branche `default`
+// appelle (lot 2.7 — le switch de 815 lignes est devenu sept maillons chaines).
 // `porte` = tous les retours du cas rendent le litteral `true` ; `partiel` sinon (retour
 // data-dependant ou garde par un drapeau : le traverseur peut desynchroniser proprement).
 func scanConsumeByNameCases(t *testing.T) map[string]ecsCase {
@@ -126,7 +131,7 @@ func scanConsumeByNameCases(t *testing.T) map[string]ecsCase {
 		}
 		files = append(files, f)
 	}
-	var fn *ast.FuncDecl
+	funcs := map[string]*ast.FuncDecl{}
 	for _, f := range files {
 		for _, d := range f.Decls {
 			switch v := d.(type) {
@@ -135,16 +140,89 @@ func scanConsumeByNameCases(t *testing.T) map[string]ecsCase {
 					collectStringConsts(v, consts)
 				}
 			case *ast.FuncDecl:
-				if v.Name.Name == "consumeByName" {
-					fn = v
+				if v.Recv == nil {
+					funcs[v.Name.Name] = v
 				}
 			}
 		}
 	}
-	if fn == nil {
+	if funcs["consumeByName"] == nil {
 		t.Fatal("consumeByName introuvable dans le paquet")
 	}
-	return caseKinds(fn, fset, consts)
+	out := map[string]ecsCase{}
+	seen := map[string]bool{}
+	links := 0
+	for name := "consumeByName"; name != ""; name = defaultChainTarget(funcs[name], funcs) {
+		if seen[name] {
+			t.Fatalf("chaine de dispatch cyclique sur %s", name)
+		}
+		seen[name] = true
+		links++
+		for k, v := range caseKinds(funcs[name], fset, consts) {
+			if prev, dup := out[k]; dup {
+				t.Errorf("composant %q traite DEUX fois dans la chaine (lignes %d et %d) : "+
+					"le premier maillon gagne et le second est mort — un nom de composant "+
+					"n appartient qu a un seul maillon", k, prev.Line, v.Line)
+			}
+			out[k] = v
+		}
+	}
+	if links < 2 {
+		t.Fatalf("chaine de dispatch reduite a %d maillon(s) : le suiveur de `default` ne "+
+			"trouve plus rien, il ne garde donc plus qu une partie du switch", links)
+	}
+	return out
+}
+
+// defaultChainTarget rend le nom du maillon suivant de la chaine de dispatch : la fonction
+// appelee par la branche `default` du switch de `fn`, quand cette branche est un simple
+// `return consumeXxx(...)` vers une fonction du paquet. Rend "" au dernier maillon (dont le
+// `default` rend `ported=false`).
+//
+// POURQUOI SUIVRE LA CHAINE PLUTOT QUE LISTER LES MAILLONS. Le lot 2.7 a coupe le switch de
+// 815 lignes de `consumeByName` en sept maillons chaines par leur `default`. Une LISTE de noms
+// dans ce test se serait perimee au premier maillon ajoute, et le garde-rail aurait alors
+// couvert moins de composants sans rien dire. Le suiveur, lui, voit tout ce que la production
+// voit, par construction.
+func defaultChainTarget(fn *ast.FuncDecl, funcs map[string]*ast.FuncDecl) string {
+	if fn == nil {
+		return ""
+	}
+	if fn.Body == nil {
+		return ""
+	}
+	// Le switch de TETE du maillon, et lui seul : un `default` imbrique dans le corps d un arm
+	// ne chaine rien.
+	var sw *ast.SwitchStmt
+	for _, s := range fn.Body.List {
+		if v, ok := s.(*ast.SwitchStmt); ok {
+			sw = v
+			break
+		}
+	}
+	if sw == nil {
+		return ""
+	}
+	for _, s := range sw.Body.List {
+		cc, ok := s.(*ast.CaseClause)
+		if !ok || cc.List != nil { // seule la branche `default` a une List nil
+			continue
+		}
+		for _, st := range cc.Body {
+			rs, ok := st.(*ast.ReturnStmt)
+			if !ok || len(rs.Results) != 1 {
+				continue
+			}
+			call, ok := rs.Results[0].(*ast.CallExpr)
+			if !ok {
+				continue
+			}
+			if id, ok := call.Fun.(*ast.Ident); ok && funcs[id.Name] != nil {
+				return id.Name
+			}
+		}
+	}
+	return ""
 }
 
 func collectStringConsts(gd *ast.GenDecl, out map[string]string) {
@@ -184,7 +262,8 @@ func caseKinds(fn *ast.FuncDecl, fset *token.FileSet, consts map[string]string) 
 			}
 			return true
 		})
-		line := fset.Position(cc.Pos()).Line
+		pos := fset.Position(cc.Pos())
+		line, file := pos.Line, filepath.Base(pos.Filename)
 		for _, e := range cc.List {
 			var name string
 			switch v := e.(type) {
@@ -194,7 +273,7 @@ func caseKinds(fn *ast.FuncDecl, fset *token.FileSet, consts map[string]string) 
 				name = consts[v.Name]
 			}
 			if name != "" {
-				out[name] = ecsCase{Kind: kind, Line: line}
+				out[name] = ecsCase{Kind: kind, File: file, Line: line}
 			}
 		}
 		return true
@@ -215,7 +294,7 @@ func TestG1TableSuitLeCode(t *testing.T) {
 	for name, c := range cases {
 		list, ok := byName[name]
 		if !ok {
-			t.Errorf("G1 : `case %q` (traverse.go:%d) n a AUCUNE ligne dans la table — porter un composant sans mettre la table a jour est interdit", name, c.Line)
+			t.Errorf("G1 : `case %q` (%s:%d) n a AUCUNE ligne dans la table — porter un composant sans mettre la table a jour est interdit", name, c.File, c.Line)
 			continue
 		}
 		for _, r := range list {
@@ -224,7 +303,7 @@ func TestG1TableSuitLeCode(t *testing.T) {
 				want = "alias"
 			}
 			if r.Status != want {
-				t.Errorf("G1 : ligne %d (ti=%d i=%d %s) statut %q, le code dit %q (traverse.go:%d)", r.LineNo, r.TI, r.I, name, r.Status, want, c.Line)
+				t.Errorf("G1 : ligne %d (ti=%d i=%d %s) statut %q, le code dit %q (%s:%d)", r.LineNo, r.TI, r.I, name, r.Status, want, c.File, c.Line)
 			}
 		}
 	}
@@ -238,7 +317,7 @@ func TestG1TableSuitLeCode(t *testing.T) {
 			}
 		case "non_porte", "deser_non_cable":
 			if isCase {
-				t.Errorf("G1 : ligne %d (%s) est declaree %q mais consumeByName la traite (traverse.go:%d)", r.LineNo, r.Component, r.Status, cases[r.Component].Line)
+				t.Errorf("G1 : ligne %d (%s) est declaree %q mais la chaine de dispatch la traite (%s:%d)", r.LineNo, r.Component, r.Status, cases[r.Component].File, cases[r.Component].Line)
 			}
 		default:
 			t.Errorf("G1 : ligne %d : statut inconnu %q", r.LineNo, r.Status)

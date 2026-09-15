@@ -175,4 +175,24 @@ package filmdec
 // un repli nomme et compte. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 59 en
 // attendant la montee unique de la vague (les champs `vehicles[].end/tEnd` et
 // `coverage.vehicles.*` arrivent avec elle).
-const GrammarRev = "grammar-2026-09-15.15"
+// ENTREE `grammar-2026-09-15.16` (2026-09-16, lot 2.7 volet grammaire) : AUCUN OCTET N EST LU
+// AUTREMENT. Scission par DEPLACEMENT PUR des cinq fichiers de `filmdec` qui depassaient
+// 500 lignes — `traverse.go` (1 388), `unit_weaponstate.go` (956), `frame_records.go` (793),
+// `components_biped_ability.go` (699), `components_movement.go` (554). Le `switch` de 815
+// lignes et 194 arms de `consumeByName` devient une CHAINE de sept maillons relies par leur
+// branche `default` (`dispatch_object.go` porte l explication et l exemption de longueur) :
+// un arm qui rend `ported=false` rend depuis son propre maillon, le dernier maillon rend le
+// `default` d origine mot pour mot, et l ordre des arms — celui des lots de portage — est
+// conserve. Deux extractions seulement, toutes deux un bloc recopie desindente d une
+// tabulation : `consumePredictedAbsolute` (FUN_140f7ea14, la branche `predFlag == 1` d i0,
+// qui est une fonction du moteur a part entiere) et `skipCalibratedPosition` (le banc de
+// calibration, garde par un drapeau).
+// CONTROLE DE DEPLACEMENT PUR, colle au compte rendu du lot : le multi-ensemble des lignes de
+// chaque fichier d origine est INCLUS dans celui de ses fichiers d arrivee — zero ligne perdue,
+// les seules lignes neuves sont les en-tetes de fichier, les signatures des maillons et les six
+// `return` de chainage. L empreinte hache les OCTETS des trois paquets : ce faux positif coute
+// ce rang, meme nature que `.14` et `.13` de la revue M1.
+// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` non plus (aucun
+// octet cuit ne change, et `replay-equiv` doit rendre ZERO difference — une difference serait
+// une regression, pas une divergence).
+const GrammarRev = "grammar-2026-09-15.16"
