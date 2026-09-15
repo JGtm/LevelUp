@@ -108863,3 +108863,45 @@ le ratchet `no_duckdb_import` que l'étape 6 dit « existant » n'existe pas —
 **Conclusion / prochaine étape** : étape 4 — section « Identités » sur `/admin/management`
 (TanStack Table, tokens sémantiques, i18n FR+EN) et interrupteur « Instance fermée », que le
 backend accepte depuis longtemps mais qu'aucune page n'exposait.
+
+## [2026-09-15] Annuaire des joueurs — étape 4 : la page qui aurait montré le compte, et l'interrupteur qui manquait — Complété
+
+**Décision technique principale** : la section « Identités » passe AVANT les comptes sur
+`/admin/management`, parce qu'elle est la vue d'ensemble dont les comptes ne sont qu'un
+sous-ensemble — et parce que c'est là que se voit ce qui MANQUE. Table TanStack, sept colonnes,
+tri par défaut sur les anomalies `warning` : ce qu'un administrateur ouvre cette page pour voir
+est en haut. Aucune logique dans le composant : `identitiesDisplay.ts` (fonctions pures :
+sévérité → token, code → clé i18n, compte de warnings, états de profil et d'identifiants) et
+`useInstanceLock.ts` (état + mutation + invalidation).
+
+Deux choix de lisibilité qui sont en fait des choix de fiabilité. Un code d'anomalie inconnu du
+web est affiché BRUT plutôt que de laisser une cellule muette : le serveur peut livrer un
+nouveau code avant le front, et une ligne vide serait un mensonge. Et l'état « aucun jeton »
+n'a AUCUNE couleur, alors que les trois autres en ont une : c'est le cas normal d'un ami dont
+le pool d'auth prête les identifiants, et peindre le normal en rouge apprend à ignorer la
+couleur.
+
+L'interrupteur « Instance fermée » a demandé une vérification sur pièces qui a payé : le
+backend expose et accepte `instance_locked` depuis le 2026-06-08, mais le type TypeScript
+`SettingsResponse` — écrit à la main, pas dérivé du contrat — ne le portait pas, donc
+`UpdateSettingsRequest` le refusait. C'est la raison mécanique pour laquelle aucune page ne
+proposait le verrou et pour laquelle la production a dû être verrouillée à la main dans le
+fichier de réglages. Champ ajouté, hook dédié, invalidation de `bootstrap` au succès (la seule
+source de l'état affiché).
+
+**Résultats observés** : gate G4 vert — `make check-types` 0 ; 38 fichiers / 233 tests vitest
+sur `admin` + `settings`, 0 échec ; `lint:colors` 0 violation ; `npm run lint` 0 erreur (le
+seul warning d'un fichier neuf est celui que TanStack Table pose sur CHAQUE tableau du dépôt,
+vérifié en comparant avec `DetectionsPanel`). La suite web COMPLÈTE a été lancée en plus du
+gate, et elle a payé : elle a révélé un vrai échec que le gate ne couvre pas — le garde-rail
+qui exige qu'une nouvelle query key soit classée title-scopée ou agnostique. Classée agnostique
+avec justification (une identité porte ses profils de TOUS les titres ; la scoper masquerait
+l'anomalie cherchée). Second passage complet : 718 fichiers, 7704 tests, 0 échec. Consigné
+aussi : 7 garde-rails web expirent par contention au premier passage d'une suite complète sur
+machine chargée — verts isolément, ne pas s'y fier sans relancer.
+
+**Conclusion / prochaine étape** : étapes 3 et 4 closes et commitées sur `wt/player-directory`,
+non poussées. La suite appartient à l'agent C (étape 5 : chemin d'onboarding unique via
+`PlayerDirectory.Onboard` ; étape 6 : purge d'identité + CLI). Point d'attention pour lui,
+consigné en §10 : le ratchet `no_duckdb_import` que l'étape 6 dit « existant » n'existe pas —
+il sera à écrire, pas à étendre.

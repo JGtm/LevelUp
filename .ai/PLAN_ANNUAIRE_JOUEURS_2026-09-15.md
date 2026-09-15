@@ -327,41 +327,66 @@ gate complet machine au repos.
 
 ## 6. Étape 4 — Web : section « Identités » sur `/admin/management` (moyen) — agent B
 
-- [ ] 4.1 `apps/web/src/lib/query/keys.ts` : `adminIdentities: ['admin', 'identities'] as const`.
-- [ ] 4.2 `apps/web/src/features/admin/management/identitiesQueries.ts` : `useAdminIdentities()`
-      (`api.get<AdminIdentitiesResponse>('/admin/identities')`, types depuis `generated.ts`).
-- [ ] 4.3 `apps/web/src/features/admin/sections/IdentitiesSection.tsx` : TanStack Table
-      (règle 13) — colonnes gamertag, xuid (monospace, copiable), compte (username · rôle),
-      profils (badges titre + « pause » / « auth seule »), token (ok / ré-auth requise / erreur),
-      suivi live (titres), anomalies (badges par sévérité via tokens sémantiques, tooltip =
-      détail). Tri par défaut : anomalies warning d'abord. Ligne d'en-tête avec compteurs.
-      Aucune couleur hex ni classe Tailwind couleur (skill `color-tokens`).
-- [ ] 4.4 `AdminManagementPage.tsx` : section « Identités » AU-DESSUS de `UsersSection` (c'est la
-      vue d'ensemble ; les comptes en sont un sous-ensemble).
-- [ ] 4.5 i18n : clés `admin.identities.*` (titre, colonnes, sévérités, libellés d'anomalies
-      FR + EN) dans `apps/web/src/lib/i18n/manifests/admin.toml` puis
-      `node apps/web/scripts/build_i18n_manifests.mjs` (vérifier l'invocation dans le script) ;
-      `generated/admin.ts` régénéré et versionné.
-- [ ] 4.6 Tests vitest : `IdentitiesSection.test.tsx` (rend 2 identités, badges d'anomalies,
-      état vide) ; `identitiesDisplay.ts` + test si une fonction de formatage est extraite
-      (sévérité → token, code → clé i18n) — logique hors composant (règle 7).
-- [ ] 4.7 Toggle admin « Instance fermée » (ajouté le 2026-09-15 après constat : le backend
-      accepte `PATCH /settings {instance_locked}` sous rôle admin — `handlers/settings.go:~228` —
-      mais AUCUNE page ne l'expose ; la prod a dû être verrouillée à la main dans le fichier).
-      Sur `/admin/management`, en tête de la section « Identités » : interrupteur « Instance
-      fermée » (état lu depuis `useAppShellStore.instanceLocked` / bootstrap ; écriture via le
-      hook existant `useUpdateSettings` de `features/settings/queries.ts` avec
-      `{ instance_locked }` — vérifier sur pièces qu'il accepte ce champ, sinon l'ajouter au
-      type de requête) + texte d'aide FR/EN (« Un compte Xbox inconnu ne peut plus créer de
-      compte ni de profil ; les comptes existants ne sont pas affectés. »). Après succès :
-      invalider `bootstrap` (le verrou est servi par `/bootstrap`) pour que l'état affiché suive.
-      Aucune logique dans le composant : `identitiesDisplay.ts` ou un hook `useInstanceLock()`
-      pour l'état + mutation. Test vitest : rendu de l'état, clic → mutation appelée avec la
-      bonne valeur, désactivé pendant l'envoi.
-
-**Gate G4** : `make check-types` → 0 ; `cd apps/web && npx vitest run src/features/admin src/features/settings` → 0 échec ;
-`npm run lint:colors` → 0 ; `npm run lint` → 0 nouvelle erreur ; `grep -rn "instance_locked" apps/web/src/features/admin`
-→ ≥ 1 ligne de production (le toggle existe).
+- [x] 4.1 `apps/web/src/lib/query/keys.ts:332-335` : `adminIdentities: ['admin', 'identities']`.
+      **Le garde-rail `keys.title-slug.guard.test.ts` exige un classement explicite** de toute
+      nouvelle clé (constat au gate, cf. §10) : classée AGNOSTIQUE avec justification écrite —
+      une identité porte ses profils de TOUS les titres, et c'est la question posée ; la scoper
+      par titre masquerait le profil d'un autre jeu, donc l'anomalie cherchée.
+- [x] 4.2 `features/admin/management/identitiesQueries.ts` : `useAdminIdentities()`,
+      `staleTime` 30 s, `retry: false` (même forme que `useAdminTokenHealth`).
+- [x] 4.3 `features/admin/sections/IdentitiesSection.tsx` : TanStack Table, 7 colonnes
+      (joueur, xuid copiable d'un clic, compte `username · rôle`, profils en badges de titre +
+      états « en pause » / « auth seule » / « sans dossier », identifiants en un badge d'état,
+      suivi live, anomalies en badges colorés par sévérité, `title` = le détail machine).
+      Tri par défaut sur la colonne Anomalies, `desc` (les `warning` devant) ; ligne de
+      compteurs au-dessus du tableau. **Zéro couleur en dur** : `tokenCssVar('warning'|'info'|
+      'success'|'destructive')`, `npm run lint:colors` vert. Un code d'anomalie inconnu du web
+      est affiché BRUT plutôt que rendre une ligne muette (le serveur peut en livrer un
+      nouveau avant le front).
+- [x] 4.4 `AdminManagementPage.tsx` : section « Identités » en PREMIER, au-dessus des comptes,
+      avec le commentaire qui dit pourquoi. Le titre de section reste porté par la page (un
+      `h2` par section, comme les deux autres) — la section ne le répète pas.
+- [x] 4.5 i18n : 35 clés `admin.identities.*` FR + EN dans `manifests/admin.toml`, régénérées
+      par `node scripts/build_i18n_manifests.mjs` (depuis `apps/web`, cf. §10) →
+      `generated/admin.ts` versionné. Les six libellés d'anomalie vivent LÀ et nulle part
+      ailleurs : le serveur ne rend que des codes.
+- [x] 4.6 Tests vitest : `identitiesDisplay.test.ts` (10 tests — tokens de sévérité, les 6
+      codes + un code inconnu, compte de warnings, clé de ligne quand le xuid est vide, états
+      de profil, états d'identifiants et le fait que « absent » n'a PAS de couleur : c'est le
+      cas NORMAL d'un ami servi par le pool) ; `IdentitiesSection.test.tsx` (8 tests — deux
+      identités rendues dans l'ordre warning-d'abord, libellés FR, compteurs, état vide sans
+      tableau, code inconnu affiché brut, et les 4 cas de l'interrupteur).
+- [x] 4.7 Interrupteur « Instance fermée » livré en tête de la section, dans un hook dédié
+      `features/admin/management/useInstanceLock.ts` (état + mutation + invalidation — aucune
+      logique dans le composant). **Vérifié sur pièces, et ce n'était PAS le cas** : le type TS
+      `SettingsResponse` (écrit à la main, `lib/api/types.ts:382`) ne portait pas
+      `instance_locked`, donc `UpdateSettingsRequest = Partial<Omit<SettingsResponse, …>>` le
+      refusait — alors que le Go l'expose ET l'accepte (`domain/settings.go:87` et `:166`).
+      Champ ajouté au type TS (tous les usages sont des `Partial<>`, aucun littéral complet à
+      mettre à jour). Après succès : `invalidateQueries({ queryKey: queryKeys.bootstrap })`,
+      la seule source de l'état affiché. Texte d'aide FR/EN au mot près du plan. Tests :
+      `useInstanceLock.test.tsx` (3 cas : lecture depuis le store, charge utile
+      `{ instance_locked: true }` + invalidation de `bootstrap` via le rappel de succès, envoi
+      en cours / échec remontés) et les 4 cas d'interface dans `IdentitiesSection.test.tsx`
+      (état rendu, clic → bascule avec la bonne valeur, désactivé pendant l'envoi, échec
+      affiché — jamais un silence).
+**Gate G4** ✅ (2026-09-15, 23:28 → 23:45) :
+- `make check-types` → **0** (deux passages : après la section, puis après le classement de la
+  query key).
+- `cd apps/web && npx vitest run src/features/admin src/features/settings` → **38 fichiers,
+  233 tests, 0 échec** (10 s).
+- `npm run lint:colors` → **0 violation**.
+- `npm run lint` → **0 erreur**, 26 warnings. Le seul warning porté par un fichier neuf est
+  `react-hooks/incompatible-library` sur `useReactTable` : il est INHÉRENT à TanStack Table et
+  identique sur chaque tableau existant (vérifié en lançant eslint sur
+  `monitoring/DetectionsPanel.tsx` seul → le même, à la ligne près). Aucune nouvelle famille.
+- `grep -rn "instance_locked" apps/web/src/features/admin` → **2 lignes de production**
+  (`useInstanceLock.ts:4` la doc, `:41` la charge utile) + 3 lignes de test.
+- Hors gate, et il a payé : `npx vitest run` (suite COMPLÈTE) → **718 fichiers, 7704 tests,
+  0 échec** (3 min 35). Le premier passage avait révélé un vrai échec — le garde-rail de
+  classement des query keys (cf. 4.1 et §10) — noyé parmi 7 garde-rails qui expirent par
+  contention (5 s de timeout par défaut pour un balayage de l'arbre des sources) ; tous verts
+  relancés isolément, et verts aussi au second passage complet.
 
 ## 7. Étape 5 — Chemin d'onboarding unique (moyen, risque auth) — agent C
 
@@ -510,6 +535,23 @@ tableau des 4 joueurs locaux sans panique.
 - **[agent B, étape 3] `GET /admin/users` expose désormais `xuid`** (ajout additif à
   `AdminUserSummary`, exigé par 3.3). Contrat OpenAPI régénéré ; aucun consommateur web ne
   lit ce champ aujourd'hui (le panel Users ne l'affiche toujours pas — déjà noté plus haut).
+- **[agent B, étape 4] toute nouvelle query key doit être CLASSÉE** dans
+  `apps/web/src/lib/query/keys.title-slug.guard.test.ts` (title-scopée ou agnostique, avec
+  justification) : le garde-rail échoue sur une clé non classée. Il n'est pas joué par le gate
+  G4 (`src/features/admin src/features/settings`) — il ne s'est manifesté qu'à la suite
+  complète. À savoir pour les étapes suivantes qui ajouteraient une clé.
+- **[agent B, étape 4] 7 garde-rails web expirent sous contention** (`Test timed out in
+  5000ms`) quand la suite complète tourne en parallèle sur ce poste : ce sont ceux qui
+  balaient l'arbre des sources (`noLocalUsageCopies`, `keys.guard`, `typeEquality`,
+  `lab-removal`, `xuidMeta`, `fragClass.colorSource`, `heatmapColors`). Verts isolément et au
+  second passage complet. Ce n'est PAS une régression, mais un premier passage de
+  `make test-web` sur machine chargée peut afficher jusqu'à 30 fichiers en échec — ne pas s'y
+  fier sans relancer (même piège que le flake `internal/service` de G1).
+- **[agent B, étape 4] le type TS `SettingsResponse` est écrit À LA MAIN** (`lib/api/types.ts`)
+  et dérive AU FIL DE L'EAU du `domain.SettingsResponse` Go : `instance_locked` y manquait
+  depuis que le verrou existe (2026-06-08), ce qui rendait le champ inatteignable par
+  `UpdateSettingsRequest`. Ajouté ici (4.7). D'autres champs peuvent manquer — non audité,
+  hors périmètre.
 - **[agent B, étape 3] `internal/service` compte 6 sous-paquets** (`demo_fixtures`,
   `fragdist`, `replayview`, `squadagg`, `teammates`, `testdata`) : `playerdirectory` en est le
   7e, la forme « sous-paquet de service » est bien la convention du dépôt.
@@ -522,7 +564,7 @@ tableau des 4 joueurs locaux sans panique.
 | 1 | **terminée** | A | G1 ✅ | 6/6 items `[x]` ; verrou = `authz.InstanceLocked` + ratchet module-wide ; 4e copie trouvée et traitée (§10) ; réserve : un flake `internal/service` sous contention, non reproduit |
 | 2 | **terminée** | A | G2 ✅ | 8/8 items `[x]` ; portes posées sur le coordinateur, le daemon et le SSO ; compteur `sync_refused_no_profile` ; garde web ajoutée (la redirection n'existait pas) ; 1 écart de forme assumé en 2.5 |
 | 3 | **terminée** | B | G3 ✅ | 6/6 items `[x]` ; port + paquet `playerdirectory` (4 fichiers, 0 import DuckDB) + `GET /admin/identities` ; 3 écarts de forme assumés en 3.3 (dont le suivi live rendu par xuid) ; xuid ajouté à `AdminUserSummary` ; 4 découvertes en §10 |
-| 4 | à faire | B | G4 | |
+| 4 | **terminée** | B | G4 ✅ | 7/7 items `[x]` ; section « Identités » en tête de la page Gestion (TanStack Table, 7 colonnes, tokens sémantiques, 35 clés FR+EN) + interrupteur « Instance fermée », que le backend acceptait mais qu'aucune page n'exposait ; 21 tests vitest neufs ; suite web complète verte (7704 tests) ; 3 découvertes en §10 |
 | 5 | à faire | C | G5 | |
 | 6 | à faire | C | G6 | |
 | 7 | à faire | pilote | — | |

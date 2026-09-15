@@ -330,6 +330,9 @@ export const queryKeys = {
   // Admin — Contention DB (B-swap shared) + santé des tokens auth
   adminDbContention: ['admin', 'db-contention'] as const,
   adminTokenHealth: ['admin', 'token-health'] as const,
+  // Admin — Annuaire des joueurs (ADR 0035) : les 4 registres d'identité lus
+  // ensemble par xuid (compte, profils, identifiants, suivi live).
+  adminIdentities: ['admin', 'identities'] as const,
   // Admin — Dashboard monitoring (overview agrégé, scheduler + historique,
   // jobs récents du JobStore, convergence, qualité données)
   adminMonitoringOverview: ['admin', 'monitoring', 'overview'] as const,
