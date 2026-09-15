@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191c_premierbit_research_test.go — LOT 1.9.1 bis, PAS 2 QUATER : LOCALISER LE PREMIER BIT

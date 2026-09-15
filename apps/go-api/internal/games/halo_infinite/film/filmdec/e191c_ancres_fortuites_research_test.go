@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191c_ancres_fortuites_research_test.go — LOT 1.9.1 bis, PAS 2 : LA FERMETURE UNE FOIS LES
@@ -150,23 +152,6 @@ func e191cUneBobine(t *testing.T, court string, brut, filtre map[int]*e191cFerme
 		e191cCompter(pay, reg, gardes, filtre)
 	}
 	return retires, total
-}
-
-// e191cPayloads rend tous les payloads d image-cle d une bobine.
-func e191cPayloads(fc *FilmContext) [][]byte {
-	var out [][]byte
-	for _, num := range fc.ChunkNumbers() {
-		data, packets, ok := fc.ChunkAt(num)
-		if !ok {
-			continue
-		}
-		for _, pk := range packets {
-			if pk.Type == PacketTypeKeyframe {
-				out = append(out, pk.Payload(data))
-			}
-		}
-	}
-	return out
 }
 
 // e191cCompter apparie les records RETENUS entre eux et compte la fermeture par archetype.

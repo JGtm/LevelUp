@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191c_prefixe_v_research_test.go — LOT 1.9.1 bis, PAS 3 TER : LE PREFIXE `V` EST-IL LA CLE ?

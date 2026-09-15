@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191c_etat_par_defaut_research_test.go — LOT 1.9.1 bis, PAS 2 : LA LARGEUR D ETAT PAR DEFAUT

@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191b_carte_ti37_carte_test.go — LOT 1.9.1 bis, PAS 1 : LE CONTROLE QUI TRANCHE LA CAUSE.
@@ -50,12 +52,6 @@ var e191bCarteDeBobine = map[string]string{
 	"e5adf7b2": "Fragmentation",
 	"bcb6d393": "Cliffhanger",
 	"fb1a1a72": "Banished Narrows",
-}
-
-// e191bCatalogue est le chemin du catalogue de bornes versionne, depuis ce paquet.
-func e191bCatalogue() string {
-	return filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles",
-		"halo_infinite", "reference", "map_quant_bounds.json")
 }
 
 func TestE191bFermetureAvecCarte(t *testing.T) {

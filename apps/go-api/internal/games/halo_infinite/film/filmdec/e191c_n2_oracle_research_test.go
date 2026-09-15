@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191c_n2_oracle_research_test.go — LOT 1.9.1 bis, PAS 2 QUATER : `n2` COMME ORACLE DES
@@ -39,42 +41,6 @@ import (
 
 // e191cN2Max borne le balayage de chaque largeur MPP.
 const e191cN2Max = 16
-
-// e191cAncre est un record deja localise : son payload et son premier bit. Les ancres sont
-// calculees UNE FOIS — le balayage rejoue seulement l etat par defaut, pas le scan d ancres.
-type e191cAncre struct {
-	Pay []byte
-	Bit int
-}
-
-// e191cN2Part rend la part des records dont `n2` prend la valeur modale, et cette valeur.
-func e191cN2Part(ancres []e191cAncre, ti int) (float64, uint64, int) {
-	hist := map[uint64]int{}
-	total := 0
-	{
-		for _, a := range ancres {
-			p, b := a.Pay, keyframeBorne{Bit: a.Bit, TI: ti}
-			total++
-			br := NewBitReader(p)
-			br.SetBitPos(b.Bit + keyframeFullStateHeaderBits)
-			n1 := int32(br.ReadBits(keyframeFullStateSizeBits)) //nolint:gosec // 32 bits
-			if n1 > 0 {
-				consumeKeyframeDefaultState(br, uint32(ti)) //nolint:gosec // index d archetype
-			}
-			hist[br.ReadBits(keyframeFullStateSizeBits)]++
-		}
-	}
-	meilleure, n := uint64(0), 0
-	for v, c := range hist {
-		if c > n || (c == n && v < meilleure) {
-			meilleure, n = v, c
-		}
-	}
-	if total == 0 {
-		return 0, 0, 0
-	}
-	return float64(n) / float64(total), meilleure, total
-}
 
 // TestE191cOracleN2 balaye les deux largeurs MPP et publie la part modale de `n2`.
 func TestE191cOracleN2(t *testing.T) {

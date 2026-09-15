@@ -1,3 +1,5 @@
+//go:build research
+
 package filmdec
 
 // e191c_suspects_research_test.go — LOT 1.9.1 bis, PAS 2 BIS : LA LISTE COURTE DES COMPOSANTS
