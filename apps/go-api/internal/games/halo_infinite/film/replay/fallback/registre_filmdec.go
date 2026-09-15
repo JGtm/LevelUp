@@ -75,21 +75,28 @@ var registreFilmdec = []Repli{
 		// comme le chemin de cuisson le fait depuis le 2026-09-03. La lecture du CATALOGUE
 		// precede donc partout, et ce repli n'entre plus que la ou le catalogue se tait.
 		//
-		// CE QUI SUBSISTE, ET POURQUOI L'ENTREE NE SORT PAS. `DetectI0Layout` a un dernier
-		// appelant de production : `filmdec/weapon_hit_distance_resolver.go`, ou la signature de
-		// largeurs sert a IDENTIFIER la carte (le fait decide y est la carte, pas le decoupage —
-		// `repli_distances_de_touche_desactivees` en porte la consequence). Le lot 1.9.4 le
-		// supprime ; c'est lui qui pourra retirer cette entree.
+		// CE QUE LE LOT 1.9.4 A FERME (2026-09-15), ET CE QUI SUBSISTE.
+		//
+		// FERME : `DetectI0Layout` n'a plus AUCUN appelant de production. Son dernier,
+		// `filmdec.DetectFilmMapEntry`, identifiait la CARTE par la signature de ses largeurs
+		// d'axe ; il est supprime, la carte vient du nom de match, et le ratchet est le retrait de
+		// l'entree d'allowlist dans `archlint/no_recomputed_film_context_test.go`.
+		//
+		// SUBSISTE, ET C'EST POURQUOI L'ENTREE RESTE : `DetectI0LayoutOf` — la forme FILM — garde
+		// deux appelants de production, `FilmContext.I0Layout` et `offline_biped_band.bipedI0Layout`,
+		// tous deux atteints quand AUCUNE entree de catalogue n'est imposee. C'est exactement la
+		// condition de ce repli, et le geste qui le retire reste le meme : donner sa carte au
+		// catalogue (lot 3.x, profil par carte). L'ancre, elle, ne bouge pas.
 		//
 		// MESURE DU LOT 1.9.2 (17 films, 14 temoins du corpus gate + les 8 builds) : catalogue et
 		// auto-detection donnent le MEME decoupage sur 15 films ; les deux films Live Fire
 		// divergent (`gate=6 region=1 12/12/11` contre `gate=5 region=0 13/12/11`), et la porte
 		// de region du catalogue ecarte 26 enregistrements sur 267 400 (`60ae07c4`) et 11 sur
 		// 146 860 (`0797ce72`) qui appartiennent a une AUTRE region de compression.
-		CibleRetrait:    "lot 1.9.4 (la carte du film vient du nom de match : dernier appel de production de DetectI0Layout) puis lot 3.x (profil par carte)",
-		CritereRetrait:  "aucun chemin de production n'appelle DetectI0LayoutOf ni DetectI0Layout ; le decoupage vient du catalogue sur les 8 builds",
+		CibleRetrait:    "lot 3.x (profil par carte) — la moitie `DetectI0Layout` est faite au lot 1.9.4, restent les deux appelants de `DetectI0LayoutOf`",
+		CritereRetrait:  "aucun chemin de production n'appelle DetectI0LayoutOf ; le decoupage vient du catalogue sur les 8 builds",
 		CompteurBranche: false,
-		CibleComptage:   lot194,
+		CibleComptage:   comptageParFilmContext,
 	},
 	{
 		Nom:       "repli_bande_bipede_comblee",

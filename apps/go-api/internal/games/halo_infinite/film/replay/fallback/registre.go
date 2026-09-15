@@ -26,8 +26,9 @@ package fallback
 //
 // # L'ORDRE DE CE FICHIER NE COMPTE PAS
 //
-// [Table] trie par nom. Le découpage en cinq fichiers ne suit que la limite de 500 lignes du
-// dépôt et le paquet des sites.
+// [Table] trie par nom. Le découpage en SIX fichiers (cinq jusqu au lot 1.9.4, qui a
+// scindé `registre_killsource.go` à 523 lignes) ne suit que la limite de 500 lignes du dépôt et
+// le paquet des sites.
 
 // registre est LA table. Elle ne se modifie jamais à l'exécution : c'est une donnée de code,
 // au même titre qu'un catalogue versionné (D12).
@@ -35,6 +36,7 @@ var registre = concat(
 	registreReplayEquipement,
 	registreReplayIdentites,
 	registreKillsource,
+	registreKillsourceCarte,
 	registreObjectifsEtConstruction,
 	registreFilmdec,
 )
@@ -70,11 +72,8 @@ const dateAudit0E = "2026-09-13"
 // compte absent ne se lise jamais comme un compte nul.
 const comptageFamille19 = "lot de conversion 1.9.x du fait, ou pas 2 de M2 (porteur du profil)"
 
-// lot194 : le lot qui supprimera le DERNIER appel de production de `filmdec.DetectI0Layout` — la
-// carte d'un film s'y reconnaît encore à une signature de largeurs d'axe, alors que le collecteur
-// résout déjà son nom par la base.
-//
-// CONSTANTE PARCE QUE QUATRE ENTRÉES LE NOMMENT (seuil du dépôt : à la troisième copie, on
-// centralise), et parce qu'un lot cité par son numéro dans deux fichiers doit se renommer d'un
-// seul geste le jour où le plan le renumérote.
-const lot194 = "lot 1.9.4"
+// LA CONSTANTE `lot194` A ÉTÉ SUPPRIMÉE LE 2026-09-15, AVEC LE LOT QU'ELLE NOMMAIT. Quatre
+// entrées la citaient comme cible de retrait ou de comptage ; le lot 1.9.4 est fait — la carte
+// d'un film vient de son nom de match et non plus d'une signature de largeurs d'axe — et chacune
+// des quatre porte désormais SA propre cible, distincte des trois autres. Une constante partagée
+// par des entrées dont les cibles ont divergé mentirait sur ce qui reste à faire.

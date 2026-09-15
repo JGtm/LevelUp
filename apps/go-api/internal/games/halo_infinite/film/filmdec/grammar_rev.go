@@ -49,4 +49,14 @@ package filmdec
 // FUSION (2026-09-16) : l integration portait `.3` (lots 1.9.2 et 1.9.3) et la branche du lot
 // 1.9.1 bis `.6` (gardes n1/n2, quatre sites de ti=37, prefixe objet relu, profil par build) ;
 // les deux grammaires sont reunies ici, au rang suivant.
-const GrammarRev = "grammar-2026-09-15.7"
+// LOT 1.9.4 (2026-09-15) : `grammar-2026-09-15.7` -> `.8`. `DetectFilmMapEntry` est SUPPRIMEE de
+// `weapon_hit_distance_resolver.go` — elle identifiait la CARTE d un film par la signature de ses
+// largeurs d axe (`DetectI0Layout`), alors que son unique appelant tenait deja le nom de carte du
+// match. AUCUN BIT LU NE CHANGE, et l empreinte monte quand meme parce qu elle hache des octets
+// de source (c est ecrit dans son en-tete) : ce qui change est QUELLE carte, donc quelles bornes
+// et quel decoupage, s appliquent a un film — le meme genre de changement que la revision `.2`
+// nommait au lot 1.9.2. `KillSourceDecoderRev` ne bouge PAS (`film/killsource/` n a pas bouge,
+// et son propre ratchet d empreinte fait foi) ; `SchemaVersion` non plus (le chemin de cuisson
+// n appelait pas cette fonction — verifie le 2026-09-15 : equivalence 10/10 identiques,
+// corpus gate 14 temoins a 0 gain / 0 perte / 0 changement).
+const GrammarRev = "grammar-2026-09-15.8"

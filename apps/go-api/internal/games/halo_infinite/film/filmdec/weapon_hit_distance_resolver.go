@@ -151,51 +151,26 @@ func FilmWeaponHitDistance(dir string, entry MapQuantEntry, damages []WeaponDama
 	return NewWeaponHitDistanceFunc(tracks, base), base, nil
 }
 
-// DetectFilmMapEntry resout L ENTREE DE CATALOGUE de la carte d un film par la SIGNATURE de
-// largeurs d axe (le decoupage i0 lu dans le film, DetectI0Layout, croise au catalogue de bornes).
-// Si un nom de carte est fourni (override), il court-circuite l auto-detection. Rend une erreur
-// quand la carte est absente, le catalogue illisible ou la signature ambigue : l appelant
-// desactive alors la distance (les touches restent comptees).
+// LA CARTE NE SE DEVINE PLUS ICI — `DetectFilmMapEntry` A ETE SUPPRIMEE AU LOT 1.9.4 (2026-09-15).
 //
-// ELLE REND L ENTREE ENTIERE, PLUS SEULEMENT SES BORNES (lot 1.9.2). Ce qui suit — le balayage
-// des positions — a besoin du DECOUPAGE de la carte autant que de ses bornes, et le prendre au
-// catalogue est la regle (D-3). Rendre un `*Vec3Range` obligeait l appelant a laisser le
-// decoupage a l auto-detection, c est-a-dire a une SECONDE passe de detection, contradictoire
-// avec la premiere sur toute carte a plus de deux regions.
+// Elle resolvait l ENTREE DE CATALOGUE d un film par la SIGNATURE de ses largeurs d axe : lire le
+// decoupage d i0 dans le film ([DetectI0Layout]) puis retenir l entree du catalogue dont les
+// `axisWidths` coincident, a condition qu il n y en ait qu UNE. Son unique appelant,
+// `sync/killcollector/hits.go`, lui passait un `mapNameOverride` VIDE alors que le meme
+// collecteur resolvait deja le nom de carte du match par la base.
 //
-// CE QUI RESTE UNE DETECTION ICI, ET CE QUI LA RETIRERA : l IDENTITE de la carte. Elle se
-// reconnait a la signature de largeurs, alors que le collecteur resout deja le nom de carte du
-// match par la base (`killcollector/positions.go`, `resolveMapBounds`) — c est l objet du lot
-// 1.9.4, qui supprimera cet appel et avec lui le dernier usage de production de
-// [DetectI0Layout]. Consequence MESUREE aujourd hui : sur Live Fire la signature detectee
-// (`13/12/11`) ne correspond a AUCUNE entree du catalogue (`12/12/11`), donc les distances y
-// sont deja desactivees — un defaut que 1.9.4 ferme, pas celui-ci.
-func DetectFilmMapEntry(dir, catalogPath, mapNameOverride string) (MapQuantEntry, error) {
-	cat, err := LoadMapQuantCatalog(catalogPath)
-	if err != nil {
-		return MapQuantEntry{}, err
-	}
-	if mapNameOverride != "" {
-		return cat.Lookup(mapNameOverride)
-	}
-	lay, _, err := DetectI0Layout(dir)
-	if err != nil {
-		return MapQuantEntry{}, fmt.Errorf("decoupage i0 illisible (%s) : %w", dir, err)
-	}
-	var hits []string
-	var found MapQuantEntry
-	for name, e := range cat.Maps {
-		if e.AxisWidths == lay.AxisW {
-			hits = append(hits, name)
-			found = e
-		}
-	}
-	if len(hits) != 1 {
-		sort.Strings(hits)
-		return MapQuantEntry{}, fmt.Errorf("%w : signature %v ambigue (%d cartes %v)", ErrUnknownMapBounds, lay.AxisW, len(hits), hits)
-	}
-	return found, nil
-}
+// LA MESURE DU LOT (§5 du plan) : les largeurs valent `min(26, ceilLog2(ceil(60*etendue)))` par
+// axe, une grandeur si grossiere que 68 des 79 cartes du catalogue tombent dans 5 classes de meme
+// signature — dont une de 59 cartes. Sur les 17 films mesures : 2 accords, 13 ambiguites, et
+// 2 DESACCORDS (les deux films Live Fire, ou la signature designe `aquarius` avec un seul
+// candidat). Elle n a donc pas ete rendue optionnelle ni retrogradee en repli : une mecanique
+// juste 2 fois sur 17 ne protege de rien et fabrique des distances fausses.
+//
+// La carte vient desormais du NOM DE MATCH (`killcollector/map_identity.go`) ; une carte sans nom
+// ou hors catalogue est une erreur typee COMPTEE (D-4 d ADR 0034). [DetectI0Layout] n a plus
+// aucun appelant de PRODUCTION : elle reste l enveloppe D2 des instruments de recherche, sous la
+// garde de `archlint/no_recomputed_film_context_test.go` (allowlist) et de
+// `archlint/no_film_reread_test.go` (enveloppes interdites en production).
 
 // nearestSample rend la position du slot la plus proche de T dans la fenetre
 // [T-WeaponHitPosToleranceUS, T+WeaponHitPosToleranceUS], et sa validite. La tolerance est la

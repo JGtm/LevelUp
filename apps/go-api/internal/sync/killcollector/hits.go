@@ -67,8 +67,17 @@ const (
 	// bornes monde ni decoupage d i0. D-4 d ADR 0034 : une carte inconnue se COMPTE, elle ne se
 	// devine pas. Les touches restent comptees, seule leur distance manque.
 	metricHitsNoMapEntry = "killsource_hits_cartes_hors_catalogue"
-	metricHitsScanFail   = "killsource_hits_erreurs_scan"
-	metricHitsWriteFail  = "killsource_hits_erreurs_ecriture"
+	// metricHitsNoMapName : le match n a AUCUN nom de carte (base muette sur ce match) — donc
+	// aucune identite de carte, donc aucune borne. DISTINCT du precedent (lot 1.9.4) : « je ne
+	// sais pas quelle carte » et « je sais quelle carte, elle n est pas au catalogue » appellent
+	// deux gestes differents, et un seul compteur pour les deux les rendrait indiscernables.
+	metricHitsNoMapName = "killsource_hits_matchs_sans_nom_de_carte"
+	// metricHitsNoMapWiring : la capability est la, mais le collecteur n a pas recu
+	// `WithPositionCapture` — il n a donc ni resolveur de nom ni catalogue. Regression de
+	// CABLAGE, pas etat des donnees : meme motif que `metricPositionsNotWired`.
+	metricHitsNoMapWiring = "killsource_hits_carte_non_cablee"
+	metricHitsScanFail    = "killsource_hits_erreurs_scan"
+	metricHitsWriteFail   = "killsource_hits_erreurs_ecriture"
 )
 
 // collectHits : la troisieme ecriture de la passe — weapon_accuracy + match_weapon_hit_distance.
@@ -153,25 +162,16 @@ func (c *KillSourceCollector) buildHitsBatches(
 
 // resolveHitDistanceFunc construit la WeaponHitDistanceFunc (distance tireur<->victime) si
 // L ENTREE DE CATALOGUE de la carte se resout ; nil sinon (distances desactivees, touches
-// comptees). Le catalogue de bornes non configure (mapBoundsPath vide) est un cas NORMAL, pas une
-// erreur.
+// comptees — `repli_distances_de_touche_desactivees` au registre).
 //
 // L ENTREE ENTIERE, PAS SES SEULES BORNES (lot 1.9.2) : elle porte AUSSI le decoupage d i0 de la
-// carte, que le balayage des positions impose desormais au lieu de le laisser detecter
-// (`filmdec.BuildBipedTracks`). D-3 d ADR 0034. Une carte hors catalogue est comptee
-// (`metricHitsNoMapEntry`, D-4) : sans ce compteur, un titre entier pourrait perdre ses distances
-// en silence.
+// carte, que le balayage impose desormais au lieu de le laisser detecter
+// (`filmdec.BuildBipedTracks`). D-3 d ADR 0034.
 func (c *KillSourceCollector) resolveHitDistanceFunc(
 	ctx context.Context, matchID, dir string, damages []filmdec.WeaponDamage, n int,
 ) filmdec.WeaponHitDistanceFunc {
-	if c.mapBoundsPath == "" {
-		return nil
-	}
-	entry, err := filmdec.DetectFilmMapEntry(dir, c.mapBoundsPath, "")
-	if err != nil {
-		observability.AddInt(metricHitsNoMapEntry, 1)
-		slog.DebugContext(ctx, "killsource: precision par arme — carte hors catalogue de bornes, distances desactivees",
-			"match_id", matchID, "err", err)
+	entry, ok := c.entreeDeCarteDesTouches(ctx, matchID)
+	if !ok {
 		return nil
 	}
 	distFn, base, err := filmdec.FilmWeaponHitDistance(dir, entry, damages, n)
@@ -183,6 +183,56 @@ func (c *KillSourceCollector) resolveHitDistanceFunc(
 	slog.DebugContext(ctx, "killsource: precision par arme — distances actives",
 		"match_id", matchID, "base_positions", base)
 	return distFn
+}
+
+// entreeDeCarteDesTouches rend l entree de catalogue de la carte du match — LUE A SON NOM, JAMAIS
+// DEVINEE (lot 1.9.4, D13). ok=false desactive les distances ; les touches restent comptees.
+//
+// # CE QUE CE LOT A RETIRE, ET CE QUE LA MESURE EN DIT
+//
+// Ce site appelait `filmdec.DetectFilmMapEntry(dir, c.mapBoundsPath, "")` : la carte s y
+// reconnaissait a la SIGNATURE des largeurs d axe du decoupage d i0, lu dans le film, croisee au
+// catalogue — alors que le MEME collecteur resolvait deja le nom de carte du match par la base
+// pour la passe des positions, et que le parametre `mapNameOverride` existait et etait passe VIDE.
+//
+// La signature n est pas seulement ambigue, elle est FAUSSE (mesure du lot, §5 du plan) : sur les
+// 79 cartes du catalogue, 68 tombent dans 5 classes de meme signature dont une de 59 cartes, et
+// sur les 17 films mesures la signature rend 2 accords, 13 ambiguites et 2 DESACCORDS — les deux
+// films Live Fire, ou elle designe `aquarius` avec un seul candidat. Les distances y auraient ete
+// calculees dans l AABB d une autre carte, sans un mot. Elle n a donc pas ete retrogradee en
+// repli : un repli qui se declenche a tort corrompt un fait que la lecture aurait donne juste
+// (D14 d).
+//
+// # TROIS SORTIES, TROIS COMPTEURS, ET C EST VOULU
+//
+// Le CABLAGE absent (pas de resolveur de nom), le NOM absent (base muette sur ce match) et la
+// carte HORS CATALOGUE sont trois causes distinctes qui appellent trois gestes distincts. Un
+// compteur unique les rendrait indiscernables — et un titre entier pourrait perdre ses distances
+// en silence, ce que D-4 d ADR 0034 interdit.
+func (c *KillSourceCollector) entreeDeCarteDesTouches(
+	ctx context.Context, matchID string,
+) (filmdec.MapQuantEntry, bool) {
+	if c.mapNames == nil || c.mapBounds == nil {
+		observability.AddInt(metricHitsNoMapWiring, 1)
+		slog.WarnContext(ctx, "killsource: precision par arme — collecteur sans resolution de carte "+
+			"(WithPositionCapture absent), distances desactivees", "match_id", matchID)
+		return filmdec.MapQuantEntry{}, false
+	}
+	noms, err := c.nomsDeCarteDuMatch(ctx, matchID)
+	if err != nil {
+		observability.AddInt(metricHitsNoMapName, 1)
+		slog.InfoContext(ctx, "killsource: precision par arme — match sans nom de carte, distances desactivees",
+			"match_id", matchID, "err", err)
+		return filmdec.MapQuantEntry{}, false
+	}
+	entry, err := c.entreeDeCatalogueParNom(noms)
+	if err != nil {
+		observability.AddInt(metricHitsNoMapEntry, 1)
+		slog.InfoContext(ctx, "killsource: precision par arme — carte hors catalogue de bornes, distances desactivees",
+			"match_id", matchID, "err", err)
+		return filmdec.MapQuantEntry{}, false
+	}
+	return entry, true
 }
 
 // hitsScanFailed compte et journalise un echec de scan, et rend le triplet d abandon (best-effort).
