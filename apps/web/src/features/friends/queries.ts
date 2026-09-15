@@ -46,12 +46,15 @@ export function useUpdatePlayerFriends(slug: string) {
       api.put<PlayerFriends>(`/players/${encodeURIComponent(slug)}/friends`, { gamertags }),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.playerFriends(slug), data)
-      // La coloration de la vue match et les barres Prestige d'escouade DÉRIVENT
-      // de cette liste côté client (usePlayerFriends) : les invalider en plus
-      // serait redondant. Seules les données que le SERVEUR filtre sur les amis
-      // doivent être rechargées — l'Escouade.
+      // La coloration de la vue match, les barres Prestige d escouade et le rejeu
+      // DERIVENT de cette liste cote client (usePlayerFriends). Ce que le SERVEUR
+      // filtre sur les amis doit etre recharge : l Escouade, les rencontres de
+      // Carriere (« hors amis »), les tuiles escouade de l Accueil (revue 2026-09-16 :
+      // un ami tout juste ajoute restait « adversaire croise » 30 min en Carriere).
       queryClient.invalidateQueries({ queryKey: queryKeys.playerFriends(slug) })
       queryClient.invalidateQueries({ queryKey: queryKeys.teammatesAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.careerAll(slug) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.homeAll(slug) })
     },
   })
 }
@@ -61,7 +64,11 @@ export function useUpdatePlayerFriends(slug: string) {
  * la vue match, présélection Escouade, escouade Prestige) : liste vide tant que
  * la requête n'a pas abouti.
  */
-export function useFriendGamertags(slug: string | undefined): string[] {
+// Reference STABLE : un `?? []` neuf a chaque rendu casserait les useMemo aval
+// (le rejeu 2D se re-rend toutes les 150 ms en lecture).
+const NO_FRIENDS: readonly string[] = []
+
+export function useFriendGamertags(slug: string | undefined): readonly string[] {
   const { data } = usePlayerFriends(slug)
-  return data?.gamertags ?? []
+  return data?.gamertags ?? NO_FRIENDS
 }

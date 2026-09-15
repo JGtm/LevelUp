@@ -44,7 +44,7 @@ interface RowData {
  */
 function resolveSquadSlugs(
   meSlug: string,
-  friendGts: string[],
+  friendGts: readonly string[],
   players: PlayerSummary[],
 ): string[] {
   const seen = new Set<string>()

@@ -57,7 +57,7 @@ import { replayClock, type ReplayClock } from './replayClock'
  * la feature des amis.
  */
 export interface ReplayModelSettings {
-  friendGamertags?: string[] | null
+  friendGamertags?: readonly string[] | null
 }
 
 /** La page de rejeu, jointe. Tous les champs sont dérivés — rien n'est mutable ici. */
