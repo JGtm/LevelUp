@@ -113,7 +113,7 @@ func consumeEquipmentActivated(br *BitReader) {
 		publishEquipment(EquipActivated, br.ReadBits(3), true)
 		return
 	}
-	consume1408f0ac4(br)
+	consume1408f0ac4(br, 4) // FUN_1408f0ac4(...,4) @140c1dcbb : PAS de sonde, 9 + 2
 	publishEquipment(EquipActivated, 0, false)
 }
 

@@ -304,7 +304,7 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 	}
 	if PositionDeltaHasHandleTail { // runtime bVar16 = (precIndex != -1)
 		if br.ReadBit() { // FUN_1406cf008 -> FUN_1408f0ac4 handle resolve
-			consume1408f0ac4(br)
+			consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		}
 		if br.ReadBit() { // FUN_1406cf008 region present
 			if br.ReadBit() { // FUN_1406cf008 region ext

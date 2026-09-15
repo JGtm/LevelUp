@@ -169,33 +169,99 @@
 #               killsource-2026-09-14, backlog de redecodage), pas `GrammarRev` — meme nature que
 #               l entree `botSuffix -> BotSuffix` du golden de killsource. `SchemaVersion` ne
 #               monte pas non plus : aucun champ ni aucune forme de l artefact ne change.
-#   2026-09-15  grammar-2026-09-15.2  lot 1.9.2 : LE DECOUPAGE D i0 VIENT DU CATALOGUE DE CARTE
-#               SUR TOUS LES CHEMINS. `weapon_hit_distance_resolver.go` prend l ENTREE DE
-#               CATALOGUE (`MapQuantEntry`) la ou il ne prenait que ses bornes : `BuildBipedTracks`
-#               et `FilmWeaponHitDistance` imposent desormais `entry.Layout()` au balayage, et
-#               `DetectFilmWorldRange` devient `DetectFilmMapEntry` (elle rend l entree entiere).
-#               AUCUNE LARGEUR, AUCUN OFFSET, AUCUN LECTEUR D OCTETS NE CHANGE : ce qui change est
-#               QUELLE grammaire s applique — le catalogue au lieu de `DetectI0LayoutOf`. L autre
-#               chemin converti, `sync/killcollector/positions.go`, est hors de l ensemble hache.
-#               MESURE (17 films : les 14 temoins du corpus gate et les 8 builds) : catalogue et
-#               auto-detection donnent le MEME decoupage sur 15 films ; les DEUX films Live Fire
-#               divergent (`gate=6 region=1 12/12/11` contre `gate=5 region=0 13/12/11`), et la
-#               porte de region du catalogue ecarte 26 enregistrements sur 267 400 (`60ae07c4`)
-#               et 11 sur 146 860 (`0797ce72`) qui appartiennent a une AUTRE region.
-#               `KillSourceDecoderRev` NE MONTE PAS (le journal des morts ne change pas, et
-#               `killsource/` n a pas bouge) ; c est `IsolationDecoderRev` qui porte le
-#               redecodage des positions, comme au lot 6.1. `SchemaVersion` ne monte pas : le
-#               chemin de cuisson imposait deja le catalogue, aucun octet de l artefact ne change.
-#   2026-09-15  grammar-2026-09-15.3  lot 1.9.3 : LE COUPLE (TUEUR, VICTIME) D UN KILL SANS MORT
-#               EN FACE EST LU AU KILL-EVENT 85 (`killsource/feed_couples.go`), plus recolle sur
-#               la mort d un instant voisin. AUCUNE LARGEUR, AUCUN OFFSET, AUCUN LECTEUR D OCTETS
-#               NE CHANGE : `readKillEvent` etait DEJA porte et deja lu — pour le seul ASSISTANT.
-#               Ce qui change est QUI DECIDE le couple, et l ensemble hache porte `killsource/`.
-#               MESURE (21 films entiers, 8 builds, 14 temoins) : 281 kills sans mort en face,
-#               198 decides par la lecture, 198 accords avec le recollage, 0 contradiction,
-#               1 victime BOT nommee (la seule fabrication supprimee), 1 ambigu, 81 muets servis
-#               par le repli `repli_couple_recolle_sur_le_voisin`. `KillSourceDecoderRev` MONTE
-#               (killsource-2026-09-14 -> killsource-2026-09-15 : les lignes de kill bougent,
-#               backlog de redecodage). `SchemaVersion` reste a verifier par l equivalence
-#               (etapes `killsource` et `artifact`).
-grammar-2026-09-15.3	be7d58fcb7abde479867dabbf6d2e6914b1cc8549a42974fcca2c86d2e6f2618
+#   2026-09-15  grammar-2026-09-15.2  lot 1.9.1 bis, pas 2 : LE PREFIXE OBJET RELU CHEZ
+#               L ECRIVAIN, SANS QU AUCUNE LARGEUR NE CHANGE. Les six composants que le pas 1
+#               designait comme faisant franchir la frontiere de `ti=37` ont ete relus un par un,
+#               adresse resolue par le REGISTRE ECS DU BINAIRE (chaine `nom -> thunk de nom ->
+#               vtable+0x08 -> vtable_base+0x30`) et grammaire relue sur le desassemblage :
+#               i6 FUN_140e1bfa0, i7 FUN_142f03c80, i9 FUN_140f53308 -> FUN_1407d4c94,
+#               i14 FUN_140dd9f9c, i15 FUN_1407ef088, i17 FUN_1407f0534 -> FUN_1407f0550.
+#               LES SIX PORTAGES ETAIENT DEJA BIT-EXACTS : la revision monte pour les
+#               COMMENTAIRES et les garde-rails de largeur, pas pour un bit lu. La fermeture des
+#               cinq archetypes objet est donc INCHANGEE (184/21 698, 0,85 %) — resultat attendu
+#               et non un non-evenement : il elimine les six suspects nommes au pas 1.
+#               NEUF : `components_prefixe_objet_largeurs_test.go` (i6, i7, i15, i17 ; i14 avait
+#               deja le sien, i9 a la table du flux TLV), et la table ECS versionnee gagne
+#               TREIZE adresses de deserialiseur qui manquaient, plus la correction d i14
+#               (elle portait l adresse d i15).
+#               `SchemaVersion` NE MONTE PAS (59 -> 59) : aucun octet cuit ne change.
+#               `KillSourceDecoderRev` non plus (killsource n est pas touche).
+#   2026-09-15  grammar-2026-09-15.2  lot 1.9.1 bis, pas 2 (MEME LOT donc MEME REVISION,
+#               empreinte reprise une fois) : l en-tete de `defaultReplRange`
+#               (`unit_weaponstate.go`) porte desormais la decouverte D3 (1.9.1 bis, pas 2) —
+#               `FUN_1406d3140` prend sa plage dans une TABLE indexee par `param_3`
+#               (`DAT_1451f98d0`) des que `DAT_144706104` est non nul, et cette garde vaut 0x01
+#               dans l image ; la table y est nulle car elle est remplie AU CHARGEMENT DE LA
+#               CARTE. Les appelants passent 0, 1 (i10 attache) et 4 (i21) la ou le decodeur lit
+#               UNE largeur. TEXTE SEUL : aucun bit lu ne change, l empreinte bouge parce qu elle
+#               hache les octets.
+#   2026-09-15  grammar-2026-09-15.3  lot 1.9.1 bis, pas 2 bis : LA LARGEUR DE
+#               `FUN_1406d3140` VIENT D UNE TABLE DE NEUF CATEGORIES, ET LE DEPOT EN LISAIT
+#               UNE SEULE. Des BITS changent — c est pourquoi la revision monte d un rang alors
+#               que le pas 2 du MEME lot tenait deja `.2` : `.2` a ete publiee comme « aucun bit
+#               lu ne change », et lui accrocher une correction de largeur en ferait une
+#               doc inversee. `varwidth.go` porte la table de `FUN_140d10bb0` (constantes du
+#               binaire : plages 0x1DFF / 0x100 / 0x200 / 0x1FFF selon la categorie, et
+#               `DAT_144706104 = 1` qui leve la garde), et `FUN_1406d3140` bascule la
+#               categorie 1 sur l entree 4 quand son bit de sonde vaut 1. Quatre sites de
+#               ti=37 changent, chacun avec son `param_3` RELU sur le desassemblage :
+#               i10 `object-parent-state` (categorie 1 : 9 bits au lieu de 13 quand la sonde
+#               rend 1), i21 `equipment-activated` (categorie 4 : 9 au lieu de 13),
+#               i22 `equipment-control-signal` (categorie 4 : plus de sonde et 9 au lieu de 13,
+#               soit cinq bits), i28 `equipment-tracked-object-handles-stack` (categorie 0 :
+#               plus de sonde, un bit). AUCUNE DEPENDANCE A LA CARTE — c est le point qui
+#               distingue ce champ des largeurs d axe d i0.
+#               EFFET MESURE sur les sept bobines : fermeture des cinq archetypes objet
+#               184 -> 188 (0,85 % -> 0,87 %), ti=38 180 -> 183, ti=37 3 -> 4. LE GAIN EST
+#               REEL MAIS PETIT, et TROIS lignes du golden de fermeture DESCENDENT pendant que
+#               quatre montent (`60ae07c4` ti=38 43 -> 30, `11de8353` ti=38 32 -> 48). Le
+#               golden 0.A.3 n est PAS regenere ici : D14 interdit de le faire descendre, et
+#               l arbitrage appartient au pilote.
+#   2026-09-15  grammar-2026-09-15.4  lot 1.9.1 bis, pas 2 quater : LES DEUX MOTS DE TAILLE
+#               SONT DES GARDES. `FUN_142e2bfd0` porte DEUX fois `if (0 < (int)uVar7)` — le
+#               premier garde `vtable[0x60]` (l etat par defaut), le second `vtable[0x88]` puis
+#               `FUN_1428e2b68`, qui mene a la boucle de composants `FUN_142e2c690`. Donc
+#               `n1 == 0` -> aucun etat par defaut n est ecrit, `n2 == 0` -> aucun composant,
+#               et la comparaison est SIGNEE. Le depot lisait les deux inconditionnellement.
+#               EFFET MESURE sur les sept bobines : +68 records fermes (26 lignes du golden
+#               0.A.3 montent de +89, 2 descendent de -21) ; les cinq archetypes objet passent
+#               de 184 a 246 sur 21 698, ti=41 de 0/110 a 34/110, et des archetypes HORS
+#               prefixe objet montent aussi (ti=35 bipede 0 -> 6, ti=10 0 -> 3, ti=12 0 -> 1).
+#               Attribution : la garde `n1` seule ne change rien sur les cinq (188), la garde
+#               `n2` seule vaut 220, les deux ensemble 246 — elles interagissent.
+#               `SchemaVersion` reste 59 : le `replay-corpus-gate` du meme jour rend
+#               **schema 59 -> 59 sur les 14 temoins, 26 gains, 1 seule « perte » qui est une
+#               amelioration** (`coverage.equipmentChanges.missedEstimate` 17 -> 16 : moins de
+#               manques estimes). Le contenu cuit ne change donc pas de forme.
+#   2026-09-15  grammar-2026-09-15.5  lot 1.9.1 bis, pas 3 : LE PROFIL PAR BUILD, UN SEUL LIEU.
+#               `player_table_profile.go` devient `build_profile.go` et porte DEUX donnees par
+#               build : la largeur du bloc de personnalisation (lot 1.5.2) et les largeurs du
+#               bloc MPP (`FUN_14080cfe8`). `BuildProfileFor` rend les deux ou `ErrUnknownBuild`
+#               (D-4) ; `InstallBuildProfileMPP` les installe pour la duree d une mesure et
+#               `KeyframeClosure` l appelle. LES BITS LUS NE CHANGENT PAS sur les sept bobines :
+#               les deux builds dont la largeur MPP est POSEE (HI_1_12_0, HI_1_13_0) la portent
+#               a 9/5, qui est deja le defaut de paquet ; les cinq autres la laissent
+#               INDETERMINEE et rien n est installe. Fermeture inchangee a 246/21 698.
+#               LA REVISION MONTE QUAND MEME parce que le CADRE de la lecture change : une
+#               grammaire peut desormais dependre du build, et un consommateur qui decide de
+#               redecoder doit le voir.
+#   2026-09-15  grammar-2026-09-15.5  lot 1.9.1 bis, pas 3 (MEME LOT donc MEME REVISION,
+#               empreinte reprise une fois) : `goconst` a demande sept constantes pour les noms
+#               de build, et la case MPP des cinq builds anciens est passee de `8/3` a VIDE
+#               apres la mesure de fermeture qui refute `8/3` (D15). Aucun bit lu ne change :
+#               les deux builds dont la largeur est posee la portent a 9/5, deja le defaut.
+#   2026-09-15  grammar-2026-09-15.6  lot 1.9.1 bis, pas 3 (arbitrage du pilote) : LE PROFIL DU
+#               BUILD PASSE DEVANT LA CALIBRATION SUR LE CHEMIN CUIT. Pour les builds dont la
+#               largeur MPP est RELUE (`HI_1_12_0`, `HI_1_13_0`), c est elle qui est installee,
+#               et `CalibrateMPPWidths` n est plus qu un CONTROLE (le rapport publie ce qu elle
+#               mesure). Pour les cinq builds sans valeur relue, et pour les films sans section
+#               d identification, la calibration DECIDE encore — c est desormais un repli NOMME,
+#               `repli_largeurs_mpp_calibrees_sur_le_film` (condition `build_sans_profil_relu`,
+#               ordre `apres_lecture`, cible de retrait : l executable d un build <= HI_1_11_0).
+#               LA REVISION MONTE D UN RANG MALGRE LE MEME LOT, pour la meme raison qu au pas
+#               2 bis : `.5` a ete publiee comme « aucun bit lu ne change », et ce commit-ci
+#               PEUT en changer sur le chemin cuit — un film `HI_1_12_0` ou `HI_1_13_0` dont la
+#               calibration tranchait autre chose que 9/5 lit desormais 9/5.
+#               `SchemaVersion` reste 59 EN ATTENTE du `replay-corpus-gate`, qui n a pas pu etre
+#               joue (voie de decodage transferee au lot 1.9.3).
+grammar-2026-09-15.7	8463b183c2fb92269761fa61f9aecd0e7ba6bfe129acfc43429fb576624b5769

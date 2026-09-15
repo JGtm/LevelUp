@@ -83,7 +83,7 @@ type VehicleScan struct {
 func decodeFilmVehicleScan(
 	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
 ) VehicleScan {
-	defer gwInstallMPPWidths(mpp)()
+	defer gwInstallMPPWidths(gwWidthsForFilm(fc, mpp))()
 	kf := filmdec.ScanWorldObjectKeyframes(fc.Film(), filmdec.VehicleTypeIndex)
 	if len(kf.Band) == 0 {
 		slog.Info("vehicules : aucun slot ti=40 aux images-cles — rejeu sans ce calque",

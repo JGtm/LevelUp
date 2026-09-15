@@ -62,7 +62,7 @@ func TestBilanDepuisRapportSommeLesAxes(t *testing.T) {
 			"equipement": {Gains: 0, Pertes: 2},
 		},
 	}
-	schemaParc, schemaHEAD, gains, pertes, _ := bilanDepuisRapport(rap)
+	schemaParc, schemaHEAD, gains, pertes, _, _ := bilanDepuisRapport(rap)
 	if schemaParc != 20 || schemaHEAD != 41 {
 		t.Fatalf("schemas = %d -> %d, attendu 20 -> 41", schemaParc, schemaHEAD)
 	}
@@ -110,7 +110,7 @@ func TestBilanDepuisRapportExtraitLeDetailDesPertesSeulement(t *testing.T) {
 			{Axe: "carte", Metrique: "bounds.maxX", Sens: replaydiff.SensChangement, Ancien: "1", Nouveau: "2"},
 		},
 	}
-	_, _, _, _, detail := bilanDepuisRapport(rap)
+	_, _, _, _, _, detail := bilanDepuisRapport(rap)
 	if len(detail) != 2 {
 		t.Fatalf("%d entrees de detail, attendu 2 (perte + disparu seulement) : %+v", len(detail), detail)
 	}
