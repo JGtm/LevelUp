@@ -59,11 +59,11 @@ vies : 130/130 portent une equipe du film
 repartition des vies par designateur : 0 x55 · 1 x75
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-1186 rattache(s) / 1476 disponible(s) = 80.4 %
-rejets : slot introuvable=290 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1202 rattache(s) / 1476 disponible(s) = 81.4 %
+rejets : slot introuvable=274 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1476 = 1476 (equilibre : true)
 verdict : nominal
-1186 tir(s) publie(s) · 837 avec un cap de visee lisible · 1186 avec une arme nommee
+1202 tir(s) publie(s) · 848 avec un cap de visee lisible · 1202 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 0 rattache(s) / 0 disponible(s) = aucune donnee
@@ -623,6 +623,7 @@ entrees 28 · sieges 25 · lus 25 · apparies 3 · reprises ecrites 0
 arrivants 4 · presences closes 22 · sans presence 1 · occupants au plus 24 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
+repli_chassis_vehicule_marqueur_neutre           5
 repli_piece_engendree_sans_evenement             2
 repli_siege_du_remplacant_par_appariement_ordinal 3
 

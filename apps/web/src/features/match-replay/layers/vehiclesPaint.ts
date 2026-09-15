@@ -33,6 +33,7 @@ import {
   vehicleExplosionKindOf,
   vehicleHeadingAt,
   vehicleIsDecor,
+  vehicleMapElementGlyph,
   vehiclePositionAt,
   vehicleRideColor,
   vehicleScreenAngle,
@@ -96,6 +97,26 @@ export interface VehicleStyle {
   spriteOf: (family: string, color: string) => CanvasImageSource | null
   /** Dimensions natives + mm/px du manifeste pour une famille, ou `null` si pas encore chargées. */
   sizeOf: (family: string) => VehicleSpriteSize | null
+  /**
+   * NATURE d'une famille telle que le document la publie (`vehicleLabels[famille].kind`) —
+   * `undefined` pour un véhicule, le cas général. C'est ce qui permet au calque de dessiner un
+   * ÉLÉMENT DE CARTE avec son pictogramme dédié plutôt qu'avec le losange neutre d'un châssis
+   * non résolu (lot 1.9.9). Le calque ne décide JAMAIS seul qu'une famille n'est pas un
+   * véhicule : c'est le serveur qui le dit, depuis le manifeste du titre.
+   */
+  kindOf: (family: string) => string | undefined
+  /**
+   * LIBELLÉ d'une famille dans la langue du lecteur, ou `null` (le cas général : un nom propre
+   * du jeu ne se traduit pas, et la clé EST le nom). RÉSOLU PAR L'APPELANT depuis ce que le
+   * DOCUMENT publie (`vehicleLabels[famille].en`/`.fr`) — ce calque ne connaît aucune langue,
+   * même règle que `offscreenLabelOf`.
+   *
+   * IL NE SERT QU'AUX ÉLÉMENTS DE CARTE, et seulement quand le calque des NOMS est allumé : un
+   * objet de la carte n'a pas d'occupant à nommer, donc sa ligne de nom est libre, et l'écrire
+   * est ce qui répond à « c'est quoi, ce pictogramme ». Un véhicule, lui, garde ses noms
+   * d'occupants — on ne lui écrit jamais « Warthog » à la place de qui le conduit.
+   */
+  labelOfFamily: (family: string) => string | null
   colorOfSlot: (slot: number, frame: number) => string | null
   /**
    * Couleur d'équipe d'un joueur PAR XUID — la SOURCE PRIORITAIRE de la teinte d'un occupant,
@@ -159,6 +180,61 @@ function drawUnknownVehicleMarker(ctx: CanvasRenderingContext2D, c: XY, color: s
   ctx.fillStyle = color
   traceDiamond(ctx, c, VEHICLE_UNKNOWN_HALF_PX * k)
   ctx.fill()
+}
+
+/**
+ * VEHICLE_TURRET_HALF_PX — le demi-côté du pictogramme de tourelle, en pixels d'écran avant
+ * densité. Calé sur `VEHICLE_FLOOR_PX` (le plancher de lisibilité d'un véhicule) : une tourelle
+ * de la carte doit se lire comme un objet du terrain, pas comme un pion de joueur — elle est
+ * donc SENSIBLEMENT plus grande que le losange neutre (`VEHICLE_UNKNOWN_HALF_PX`, le noyau d'un
+ * pion), sans atteindre la taille d'un châssis conduit.
+ */
+const VEHICLE_TURRET_HALF_PX = VEHICLE_FLOOR_PX * 0.75
+
+/**
+ * drawMapElementTurret — LE PICTOGRAMME DE LA TOURELLE AUTOMATIQUE (lot 1.9.9, décision
+ * utilisateur du 2026-09-14 : « ce sont des éléments de la map »).
+ *
+ * POURQUOI UN TRACÉ CANVAS ET PAS UN SVG. Le rejeu est un canvas : aucun SVG ne le traverse, et
+ * tous ses glyphes sont des chemins (`traceDiamond`, `drawAimSector`, `placementShapes`). Un SVG
+ * rasterisé pour l'occasion serait un second mécanisme d'icône dans un calque qui n'en a qu'un.
+ *
+ * CE QUE LA FORME DIT, et c'est le but : une EMBASE (disque) surmontée d'un CANON (barre) et
+ * cerclée d'un anneau de portée. Elle ne ressemble à aucun autre glyphe du rejeu — ni au losange
+ * neutre d'un châssis non résolu, ni au sprite d'un véhicule, ni au pion d'un joueur. Le canon
+ * pointe NEZ EN HAUT par défaut (`VEHICLE_DEFAULT_HEADING_DEG`, qui donne un angle écran nul) :
+ * ces objets sont immobiles et le film ne publie aucun cap pour eux.
+ *
+ * L'ENCRE VIENT DE L'APPELANT (token sémantique résolu par `ReplayCanvas`) : ce fichier ne
+ * connaît aucune couleur, même règle que tout le calque.
+ */
+function drawMapElementTurret(
+  ctx: CanvasRenderingContext2D, c: XY, color: string, k: number, angle: number,
+): void {
+  const half = VEHICLE_TURRET_HALF_PX * k
+  ctx.save()
+  ctx.translate(c.x, c.y)
+  ctx.rotate(angle)
+  ctx.globalAlpha = 1
+  ctx.strokeStyle = color
+  ctx.fillStyle = color
+  // L'ANNEAU : la zone que la tourelle tient. Tracé d'abord (donc sous le reste), en trait fin.
+  ctx.lineWidth = Math.max(1, k)
+  ctx.beginPath()
+  ctx.arc(0, 0, half, 0, Math.PI * 2)
+  ctx.stroke()
+  // LE CANON, du centre vers le haut, débordant légèrement de l'anneau — c'est lui qui donne au
+  // glyphe sa direction et le distingue d'un simple rond.
+  ctx.lineWidth = Math.max(1.5, k * 1.5)
+  ctx.beginPath()
+  ctx.moveTo(0, 0)
+  ctx.lineTo(0, -half * 1.35)
+  ctx.stroke()
+  // L'EMBASE : un disque plein au centre, la masse de l'objet.
+  ctx.beginPath()
+  ctx.arc(0, 0, half * 0.45, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
 }
 
 /**
@@ -445,6 +521,9 @@ export function drawVehiclesLayer(
         // MULTIPLIÉ PAR `time.k`, comme la branche sprite juste en dessous — un pixel d'écran
         // déclaré ici n'a de sens qu'à la densité du périphérique (même règle que `replayMarkers`).
         let edgePx = (VEHICLE_FLOOR_PX / 2) * time.k
+        const glyph = track.family
+          ? vehicleMapElementGlyph(track.family, style.kindOf(track.family))
+          : null
         if (!track.family) {
           drawUnknownVehicleMarker(ctx, c, color, time.k)
           edgePx = VEHICLE_UNKNOWN_HALF_PX * time.k
@@ -457,6 +536,14 @@ export function drawVehiclesLayer(
             ctx.globalAlpha = 1
             drawRotatedSprite(ctx, sprite, c.x, c.y, angle, scaleRatio * time.k)
             edgePx = (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx) / 2) * time.k
+          } else if (glyph === 'turret') {
+            // ÉLÉMENT DE CARTE SANS ASSET (lot 1.9.9) : son pictogramme dédié, JAMAIS le losange
+            // neutre — la décision utilisateur du 2026-09-14 veut ces objets visibles ET
+            // reconnaissables. Le jour où un asset est servi, la branche du sprite ci-dessus
+            // l'emporte d'elle-même : seule la table d'assets aura changé.
+            drawMapElementTurret(ctx, c, color, time.k,
+              vehicleScreenAngle(vehicleHeadingAt(track, time.frame)))
+            edgePx = VEHICLE_TURRET_HALF_PX * time.k
           }
           // Sinon : image ou manifeste pas encore chargés — rien ne remplace le sprite (même
           // contrat que les vignettes de socle), le nom garde le repli de plancher ci-dessus.
@@ -471,6 +558,16 @@ export function drawVehiclesLayer(
           drawVehicleOffscreenSignal(ctx, rides, time, style, mark, color)
         } else if (style.showNames && rides.length > 0) {
           drawVehicleOccupantNames(ctx, rides, time.frame, c, edgePx, style, time.k)
+        } else if (style.showNames && glyph !== null && track.family) {
+          // UN ÉLÉMENT DE CARTE SE NOMME (lot 1.9.9), sur la ligne qu'aucun occupant n'occupe :
+          // le pictogramme dit qu'il y a quelque chose, le libellé dit QUOI. Le texte vient du
+          // DOCUMENT (`vehicleLabels[famille].en`/`.fr`, posés depuis le manifeste du titre),
+          // jamais d'un littéral de ce calque. Sans libellé publié, rien n'est écrit.
+          const nom = style.labelOfFamily(track.family)
+          if (nom) {
+            drawNameLabel(ctx, c, nom, { k: time.k, labelStroke: style.labelStroke },
+              style.neutralInk, edgePx)
+          }
         }
       }
     }

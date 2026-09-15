@@ -86,7 +86,26 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 	// La RÈGLE DE RETOUR DU DRAPEAU voyage telle quelle, comme les icônes et les teintes : le
 	// paquet `replay` ne sait pas ce qu'est le CTF d'Halo, il reçoit un rayon et deux durées.
 	cat.FlagReturnZone = flagReturnZone(labels.FlagReturnZone())
+	// Les FAMILLES DE CHASSIS QUALIFIÉES par le titre — libellé bilingue, nature, asset servi ou
+	// non — voyagent telles quelles, pour la même raison que la règle de retour du drapeau : le
+	// paquet `replay` ne sait pas qu'une tourelle automatique bannie est un élément de carte, et
+	// il ne doit pas l'apprendre. Il reçoit ce que le manifeste du titre déclare.
+	cat.VehicleFamilies = vehicleFamilies(labels.VehicleFamilies())
 	return cat, nil
+}
+
+// vehicleFamilies projette les familles de châssis qualifiées vers la forme du rejeu. Table
+// PARTIELLE par nature (cf. `LabelCatalog.VehicleFamilies`) : nil quand le titre n'en qualifie
+// aucune, ce qui est le régime normal.
+func vehicleFamilies(in map[string]mappings.VehicleFamily) map[string]replay.VehicleFamilyInfo {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]replay.VehicleFamilyInfo, len(in))
+	for fam, v := range in {
+		out[fam] = replay.VehicleFamilyInfo{En: v.En, Fr: v.Fr, Kind: v.Kind, Sprite: v.Sprite}
+	}
+	return out
 }
 
 // objectiveFamilies rend la NATURE de chaque objet d'objectif porté, keyée comme son libellé.

@@ -22,6 +22,7 @@ import {
   vehicleDriverAt,
   vehicleExplosionKindOf,
   vehicleIsDecor,
+  vehicleMapElementGlyph,
   vehicleColorAt,
   vehicleHeadingAt,
   vehiclePositionAt,
@@ -32,6 +33,8 @@ import {
   VEHICLE_DEFAULT_HEADING_DEG,
   VEHICLE_FLOOR_PX,
   VEHICLE_HUMAN_FAMILIES,
+  VEHICLE_KIND_MAP_ELEMENT,
+  VEHICLE_MAP_ELEMENT_RENDER,
   VEHICLE_PLASMA_FAMILIES,
   VEHICLE_SOFT_CEIL_PX,
 } from './vehiclesLayer'
@@ -443,5 +446,44 @@ describe('vehicleScreenLengthPx / vehicleSpriteScale — taille (manifeste facti
     expect(vehicleScreenLengthPx(0, 10)).toBe(0)
     expect(vehicleScreenLengthPx(128, 0)).toBe(0)
     expect(vehicleSpriteScale(0, 10)).toBe(0)
+  })
+})
+
+describe('éléments de carte (lot 1.9.9, décision utilisateur du 2026-09-14)', () => {
+  it('la tourelle automatique bannie a un pictogramme DÉDIÉ dans la table', () => {
+    expect(VEHICLE_MAP_ELEMENT_RENDER.tourelle_auto_bannie).toBe('turret')
+  })
+
+  it('les DEUX conditions sont nécessaires : la nature du document ET la forme de la table', () => {
+    // La nature seule (famille inconnue de la table) ne donne pas de forme…
+    expect(vehicleMapElementGlyph('famille_future', VEHICLE_KIND_MAP_ELEMENT)).toBeNull()
+    // …et la table seule ne suffit pas : c'est le SERVEUR qui dit qu'une famille est un élément
+    // de carte, jamais le calque. Un document muet (artefact antérieur au lot) ne déclenche rien.
+    expect(vehicleMapElementGlyph('tourelle_auto_bannie', undefined)).toBeNull()
+    expect(vehicleMapElementGlyph('tourelle_auto_bannie', VEHICLE_KIND_MAP_ELEMENT)).toBe('turret')
+  })
+
+  it('un élément de carte N’EMBARQUE PERSONNE — un pion effacé à tort est le pire défaut', () => {
+    const t = track({ family: 'tourelle_auto_bannie' })
+    expect(vehicleCanEmbark(t, VEHICLE_KIND_MAP_ELEMENT)).toBe(false)
+    // CONTRÔLE : sans la nature, la même vie reste embarquable — la garde tient sur `kind`, pas
+    // sur le nom de la famille (le calque ne connaît aucun châssis).
+    expect(vehicleCanEmbark(t)).toBe(true)
+  })
+
+  it('le prédicat embarqué écarte les épisodes d’un élément de carte', () => {
+    const tracks = [
+      track({ family: 'tourelle_auto_bannie', rides: [ride({ slot: 7, t0: 0, t1: 100 })] }),
+      track({ family: 'warthog', rides: [ride({ slot: 8, t0: 0, t1: 100 })] }),
+    ]
+    const embarque = buildEmbarkedPredicate(tracks, (f) =>
+      f === 'tourelle_auto_bannie' ? VEHICLE_KIND_MAP_ELEMENT : undefined,
+    )
+    expect(embarque(7, 50)).toBe(false)
+    expect(embarque(8, 50)).toBe(true)
+  })
+
+  it('un élément de carte N’EST PAS du décor : le décor ne se dessine pas, lui SI', () => {
+    expect(vehicleIsDecor('tourelle_auto_bannie')).toBe(false)
   })
 })

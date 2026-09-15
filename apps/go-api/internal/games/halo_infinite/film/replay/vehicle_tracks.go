@@ -147,7 +147,7 @@ func buildVehicleTracks(
 	// LES RELAIS SE FUSIONNENT AVANT LE COMPTAGE : la couverture doit decrire ce qui est PUBLIE,
 	// pas ce qui a ete assemble. `Published` baisse donc exactement de `Merged`.
 	out, cov.Merged = mergeVehicleRelays(out)
-	tallyVehicleCoverage(out, &cov)
+	tallyVehicleCoverage(out, &cov, clock.fb)
 	tallyVehicleEnds(out, &cov)
 	return out, cov, st
 }
@@ -289,6 +289,12 @@ var vehicleFamillesNonPilotables = map[string]bool{
 	famillePelican: true,
 	famillePhantom: true,
 	familleSkiff:   true,
+	// LA TOURELLE AUTOMATIQUE BANNIE (lot 1.9.9, decision utilisateur du 2026-09-14) : un
+	// ELEMENT DE CARTE, immobile, que personne ne conduit. Elle est ici pour la meme raison que
+	// les transports ci-dessus — refuser l OCCUPANT, qui serait une affirmation fausse — mais
+	// PAS pour la meme consequence cote client : le decor n est pas dessine, elle SI (pictogramme
+	// dedie, cf. `replay_labels.toml` et `vehiclesLayer.VEHICLE_MAP_ELEMENT_RENDER`).
+	familleTourelleAutoBannie: true,
 }
 
 // vehicleFamilyIsRideable dit si une famille peut porter un episode d occupation. Une famille
