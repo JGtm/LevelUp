@@ -128,7 +128,15 @@ func TestRegistrePorteToutesSesFamilles(t *testing.T) {
 // avec son entrée du registre.
 // FUSION (2026-09-16) : les deux baisses (1.9.13 et 1.9.10) partaient toutes deux de 6 ; réunies,
 // le registre ne porte plus que QUATRE entrées `devant_la_lecture` — le ratchet suit.
-const ratchetDevantLaLecture = 4
+// BAISSÉ À 5 AU LOT 1.9.11 (2026-09-16) : `repli_manches_contigues_decretees` est devenu
+// `repli_manche_zero_decretee` et passe en `film_muet` / `apres_lecture`. L'entrée couvrait
+// DEUX mécanismes ; seul le plancher (« aucune manche admise, la manche 0 est décrétée ») est un
+// repli, et il se déclenche bien sur un silence. La règle d'ORDRE, elle, se déclenche sur un
+// DÉSACCORD avec une lecture : elle N'EST PAS un repli au sens de D14 (b) et le lot la publie
+// comme une CONTRADICTION comptée (`coverage.score.roundsContradicted`).
+// FUSION (2026-09-17) : trois baisses partant de 6 (1.9.13, 1.9.10, 1.9.11) ; le registre ne porte
+// plus que TROIS entrées `devant_la_lecture` — le ratchet suit.
+const ratchetDevantLaLecture = 3
 
 func TestReplisDevantLaLectureNeMontentPas(t *testing.T) {
 	n := NbDevantLaLecture()
