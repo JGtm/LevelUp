@@ -100,9 +100,12 @@ type lifeSpan struct {
 //	                   médiane mesurée 34 ms). LA SEULE QUI DISE « CE JOUEUR EST MORT ».
 //	CauseVieFinFilm    la réplication du slot s'arrête et ne reprend jamais : la vie court
 //	                   jusqu'au bout de ce que le film montre. C'est le cas du SURVIVANT.
-//	CauseVieCoupure    un trou de plus de lifeGapUS (5 s) a fermé la vie et aucune mort ne
-//	                   l'apparie. Le cas typique est l'embarquement en véhicule : le biped
-//	                   cesse d'être répliqué, le joueur est bien vivant.
+//	CauseVieCoupure    la vie se ferme sans qu'aucune MORT ne la borne. DEPUIS LE LOT 1.9.13
+//	                   (2026-09-15) ce n'est PLUS « un trou de plus de lifeGapUS » : un trou de
+//	                   réplication est devenu une LACUNE de la même vie (cf. lives_decoupe.go),
+//	                   et cette cause ne subsiste que sur ce que le film ÉCRIT d'autre — une
+//	                   apparition de corps (slot recyclé) ou une fin de manche — ou sur le repli
+//	                   compté des joueurs dont le film n'écrit aucune mort.
 const (
 	CauseVieMort    = "death"
 	CauseVieFinFilm = "film_end"
@@ -122,8 +125,18 @@ const (
 	NomParFermeture = "closure"
 )
 
-// buildLifeSpans découpe les trajectoires en vies. Un slot qui disparaît plus de lifeGapUS
-// puis revient est une NOUVELLE vie : le slot migre aux réapparitions.
+// buildLifeSpans découpe les trajectoires en SÉJOURS DE RÉPLICATION : un slot qui disparaît plus
+// de lifeGapUS puis revient ouvre un nouveau séjour.
+//
+// CE N'EST PLUS LA DÉCOUPE DES VIES DEPUIS LE LOT 1.9.13 (2026-09-15), C'EST SON ÉCHAFAUDAGE.
+// Un trou de réplication n'est pas une mort (D13) : la découpe publiée vient de ce que le film
+// ÉCRIT, et `decouperAuxFaitsEcrits` referme ici toute coupure qu'aucun fait ne justifie. Ce
+// découpage-ci garde deux rôles, et deux seulement : il est la grille sur laquelle
+// [bestDeathOffset] mesure le calage du fil des morts (elle n'a pas d'autre grille avant que le
+// calage existe), et il est le repli compté quand le registre ne rend aucune vie.
+//
+// Mesure du 2026-09-15 sur les 8 builds : 212 coupures décidées ici, dont 208 qu'AUCUN fait du
+// film ne justifiait.
 func buildLifeSpans(tracks map[uint32]slotTrack) []lifeSpan {
 	slots := make([]uint32, 0, len(tracks))
 	for s := range tracks {

@@ -44,16 +44,36 @@ const (
 	classeOrpheline  = "ORPHELINE"
 )
 
-// viesDUnEchantillonAttendues : la mesure du 2026-09-14, build par build
-// (total, mort ecrite, fin de film, orphelines).
+// viesDUnEchantillonAttendues : la mesure d'APRES LA CONVERSION DE LA DECOUPE (lot 1.9.13,
+// 2026-09-15), build par build (total, mort ecrite, fin de film, orphelines).
+//
+// LA MESURE D'AVANT EST GARDEE EN REGARD, parce qu'un « 0 orpheline » ne se lit pas sans les
+// quatorze qu'il remplace :
+//
+//	film        avant {total, mort, finFilm, ORPH}   apres
+//	000d5950    {1, 0, 0, 1}                         {0, 0, 0, 0}
+//	a521164d    {6, 0, 2, 4}                         {2, 1, 1, 0}
+//	60ae07c4    {4, 0, 0, 4}                         {0, 0, 0, 0}
+//	11de8353    {3, 0, 1, 2}                         {1, 0, 1, 0}
+//	111fa685    {2, 0, 0, 2}                         {0, 0, 0, 0}
+//	e5adf7b2    {2, 1, 0, 1}                         {1, 1, 0, 0}
+//	bcb6d393    {2, 0, 2, 0}                         {2, 0, 2, 0}
+//	fb1a1a72    {0, 0, 0, 0}                         {0, 0, 0, 0}
+//	TOTAL       20 vies, 1 mort, 5 fins, 14 ORPH     6 vies, 2 morts, 4 fins, 0 ORPH
+//
+// LES QUATORZE ORPHELINES ONT DISPARU PAR LEUR CAUSE, PAS PAR UN FILTRE : leur vie ne se ferme
+// plus sur un trou de replication (le trou est devenu une LACUNE de la meme vie), si bien que
+// l'echantillon isole n'est plus une vie a lui seul — il est le premier point de la vie qui
+// continue. Les six qui restent sont celles que le film ferme vraiment : deux a une mort ecrite,
+// quatre a la fin du film.
 func viesDUnEchantillonAttendues() map[string][4]int {
 	return map[string][4]int{
-		"000d5950": {1, 0, 0, 1},
-		"a521164d": {6, 0, 2, 4},
-		"60ae07c4": {4, 0, 0, 4},
-		"11de8353": {3, 0, 1, 2},
-		"111fa685": {2, 0, 0, 2},
-		"e5adf7b2": {2, 1, 0, 1},
+		"000d5950": {0, 0, 0, 0},
+		"a521164d": {2, 1, 1, 0},
+		"60ae07c4": {0, 0, 0, 0},
+		"11de8353": {1, 0, 1, 0},
+		"111fa685": {0, 0, 0, 0},
+		"e5adf7b2": {1, 1, 0, 0},
 		"bcb6d393": {2, 0, 2, 0},
 		"fb1a1a72": {0, 0, 0, 0},
 	}
@@ -86,8 +106,13 @@ func TestViesDUnEchantillonOntLeurOracle(t *testing.T) {
 	}
 	t.Logf("TOTAL sur les huit builds : %d vie(s) d'un echantillon · %d mort ecrite · %d fin de "+
 		"film · %d ORPHELINE(S)", total[0], total[1], total[2], total[3])
-	if total != [4]int{20, 1, 5, 14} {
-		t.Errorf("total {20, 1, 5, 14} attendu, mesure %v", total)
+	if total != [4]int{6, 2, 4, 0} {
+		t.Errorf("total {6, 2, 4, 0} attendu, mesure %v", total)
+	}
+	if total[3] != 0 {
+		t.Errorf("%d vie(s) ORPHELINE(S) : ni mort ecrite, ni fin de manche, ni fin de film. "+
+			"Chacune est un DEFAUT DE LECTURE a nommer au plan §4, jamais un cas a filtrer "+
+			"(oracle utilisateur du lot 1.6.5, converti au lot 1.9.13)", total[3])
 	}
 }
 

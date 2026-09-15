@@ -9,12 +9,13 @@
 schema 59 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 15914 ms
-coup d envoi date par le film : 38514 ms · 240/254 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 22600 ms
+coup d envoi date par le film : 38514 ms · 212/217 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 22600 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
-256 trace(s) · 85474 point(s) de grille
+218 trace(s) · 85474 point(s) de grille
 seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si le film ecrit une position, elle se publie
-256 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+38 lacune(s) de replication DANS une vie, 720810 ms au total — un trou n'est pas une fin de vie, la piste ne s'y interpole simplement pas
+218 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
 occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
 45881 point(s) portent un cap de visee · 45881 une elevation de visee · 13635 un bouclier · 402 une fraction de vie
@@ -54,8 +55,8 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 lue=true refus="" · 687 record(s) ti=9, 0 rejete(s), 0 divergence(s)
 roster : 28 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
 controle (feuille de match) : accord=0 contradiction=0 silence=28
-vies : 256/256 portent une equipe du film
-repartition des vies par designateur : 0 x131 · 1 x125
+vies : 218/218 portent une equipe du film
+repartition des vies par designateur : 0 x111 · 1 x107
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
 1492 rattache(s) / 1786 disponible(s) = 83.5 %
@@ -99,18 +100,19 @@ couverture : 268 lecture(s) -> 0 ecartee(s) bruit de balayage · 1 ecartee(s) sa
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 0 episode(s) publie(s) · par famille : aucun · 0 fin(s) MESUREE(s) (le reste ferme a la mort)
-couverture : 256 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
+couverture : 218 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
 
 ## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
 
 ## IMPULSIONS DE CAPACITE — l usage MESURE du propulseur, attribue par le rang de la vie
-23 lecture(s) -> 12 geste(s) -> 2 publiee(s) · 8 sans identite · 2 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+23 lecture(s) -> 12 geste(s) -> 3 publiee(s) · 7 sans identite · 2 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
   slot=555 t=1200 thruster
+  slot=662 t=3991 thruster
   slot=730 t=5276 thruster
 
 ## CHARGES D EQUIPEMENT — les lectures du film, jamais un compte d usages derive
-119 lecture(s) -> 83 publiee(s) · 35 sans identite · 1 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+119 lecture(s) -> 91 publiee(s) · 27 sans identite · 1 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
   slot=526 t=253 grapple charges=4
   slot=534 t=267 grapple charges=4
   slot=534 t=280 grapple charges=4
@@ -122,6 +124,8 @@ couverture : 256 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclie
   slot=550 t=926 grapple charges=4
   slot=550 t=937 grapple charges=4
   slot=550 t=971 grapple charges=3
+  slot=526 t=987 grapple charges=4
+  slot=526 t=994 grapple charges=3
   slot=550 t=1187 grapple charges=2
   slot=550 t=1200 grapple charges=2
   slot=555 t=1200 thruster charges=4
@@ -131,6 +135,8 @@ couverture : 256 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclie
   slot=534 t=1374 grapple charges=1
   slot=564 t=1445 thruster charges=3
   slot=564 t=1590 thruster charges=3
+  slot=573 t=1734 grapple charges=4
+  slot=573 t=1831 grapple charges=3
   slot=574 t=1844 grapple charges=4
   slot=574 t=1850 grapple charges=4
   slot=574 t=1908 grapple charges=3
@@ -178,6 +184,7 @@ couverture : 256 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclie
   slot=623 t=3766 grapple charges=3
   slot=603 t=3873 grapple charges=3
   slot=603 t=3895 grapple charges=2
+  slot=662 t=3991 thruster charges=4
   slot=673 t=4052 grapple charges=4
   slot=673 t=4065 grapple charges=4
   slot=673 t=4086 grapple charges=4
@@ -185,18 +192,21 @@ couverture : 256 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclie
   slot=657 t=4234 grapple charges=4
   slot=661 t=4282 grapple charges=4
   slot=667 t=4329 grapple charges=4
+  slot=678 t=4389 grapple charges=4
   slot=691 t=4447 grapple charges=4
   slot=691 t=4451 grapple charges=4
   slot=691 t=4474 grapple charges=3
   slot=691 t=4482 grapple charges=3
   slot=691 t=4502 grapple charges=2
+  slot=678 t=4542 grapple charges=3
+  slot=678 t=4556 grapple charges=3
   slot=700 t=4771 thruster charges=4
   slot=708 t=4962 grapple charges=4
   slot=708 t=5057 grapple charges=3
   slot=730 t=5276 thruster charges=3
 
 ## GRAPPIN — tractions datees par vie, l ancre en coordonnees monde (fenetre MESUREE)
-54 traction(s) sur 23 vie(s) · lectures : 80 tir(s) + 54 accroche(s) · 26 rate(s) · 0 corps non decodable(s)
+54 traction(s) sur 22 vie(s) · lectures : 80 tir(s) + 54 accroche(s) · 26 rate(s) · 0 corps non decodable(s)
   slot=526 t=[252, 262] ancre=(87.58, -56.65, 2.39)
   slot=534 t=[265, 280] ancre=(77.55, -48.95, 6.03)
   slot=520 t=[311, 322] ancre=(25.08, 33.76, 6.02)
@@ -933,13 +943,13 @@ POWER-UPS (voie ti=37) — balaye=true · 1112 creation(s) acceptee(s) -> 0 rete
 217 entree(s) · 217 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
 fermetures : 0 par le corps disponible · 0 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
 refus des fermetures : 0 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 0 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
-175 vie(s) nommee(s) / 256 — un rapport publie sans son denominateur ne se juge pas
+175 vie(s) nommee(s) / 218 — un rapport publie sans son denominateur ne se juge pas
 29 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
 verdict : nominal
 
 ## REGISTRE D IDENTITE — la PROVENANCE de chaque lien, et ce que la table du film couvre
 index de joueur : 28 direct · 0 externe · 0 deduit · 0 non resolu
-slot de bipede : 256 direct (dont 40 propages) · 0 deduit · 0 non resolu (index hors table=0 · sans record=0 · lectures divergentes=0)
+slot de bipede : 218 direct (dont 2 propages) · 0 deduit · 0 non resolu (index hors table=0 · sans record=0 · lectures divergentes=0)
 table du film : lue=true refus="" · 23 siege(s) · 23 lien(s) direct(s) · 5 par repli
 controle (lecture des chunks) : 23 accord · 0 contradiction · 0 silence — la table du film fait foi, l ecart se compte
 voies des liens d index : PlayerIndexTable=5 · film_table=23

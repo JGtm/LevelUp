@@ -264,4 +264,10 @@
 #               calibration tranchait autre chose que 9/5 lit desormais 9/5.
 #               `SchemaVersion` reste 59 EN ATTENTE du `replay-corpus-gate`, qui n a pas pu etre
 #               joue (voie de decodage transferee au lot 1.9.3).
-grammar-2026-09-15.7	8463b183c2fb92269761fa61f9aecd0e7ba6bfe129acfc43429fb576624b5769
+#   2026-09-15  grammar-2026-09-15.8  lot 1.9.13 : AUCUN OCTET N EST LU AUTREMENT. Un accesseur
+#               de lecture est ajoute a `objectiveevents` (`RoundBounds.Starts`, les frontieres
+#               de manche deja mesurees), que la decoupe des vies du rejeu consomme pour savoir
+#               ou une vie finit. L empreinte hachant les OCTETS des trois paquets, ce faux
+#               positif coute cette ligne — le marche assume du garde-rail.
+#               `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact).
+grammar-2026-09-15.8	06d7247408468122a30ac7cb50f46bf131015e9468e681cb2caacd8af70196f2

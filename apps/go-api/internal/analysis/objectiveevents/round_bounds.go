@@ -409,3 +409,26 @@ func RoundStartsMS(recs []StatRecord) map[int]int {
 // par la garde par slot. Confondre les deux faisait affirmer « aucune borne posee, les compteurs
 // restent ceux d'avant » juste apres avoir journalise trois blocs gardes PAR une borne.
 func (w RoundBounds) Posed() bool { return len(w.byRound) > 0 }
+
+// Starts rend les DEBUTS DE MANCHE credibles, en millisecondes de l'horloge du MATCH, tries
+// croissants — c'est-a-dire les FRONTIERES ENTRE MANCHES, et elles seules.
+//
+// LE DEBUT DE LA PREMIERE MANCHE N'EN EST PAS UNE : son bord gauche est OUVERT
+// ([roundSpanOpenFrom]), comme celui de toute manche dont la borne n'a pas ete jugee credible
+// (cf. [ResolveRoundBounds], BORNE CREDIBLE). Les bords ouverts sont donc ecartes : ce que cette
+// methode rend est exactement la liste des instants ou une manche succede a une autre.
+//
+// POURQUOI ELLE EXISTE (lot 1.9.13, 2026-09-15) : la decoupe des vies du rejeu a besoin des fins
+// de manche — une fin de manche fait REAPPARAITRE tout le monde SANS aucune mort ecrite, donc
+// elle ferme legitimement une vie la ou le fil des morts se tait. Sans cet accesseur, le calque
+// du rejeu re-mesurerait les bornes a sa facon, et deux mesures de la meme grandeur divergent.
+func (w RoundBounds) Starts() []int {
+	out := make([]int, 0, len(w.byRound))
+	for _, s := range w.byRound {
+		if s.fromMS != roundSpanOpenFrom {
+			out = append(out, s.fromMS)
+		}
+	}
+	sort.Ints(out)
+	return out
+}

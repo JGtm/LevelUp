@@ -100,6 +100,7 @@ func toPoint(v replay.Point) replaydoc.Point {
 		X:  v.X,
 		Y:  v.Y,
 		Z:  v.Z,
+		G:  v.G,
 		H:  v.H,
 		P:  v.P,
 		Sh: v.Sh,
