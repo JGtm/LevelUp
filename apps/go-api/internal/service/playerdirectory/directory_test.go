@@ -91,6 +91,13 @@ func (f *fakeFS) PlayerDirExists(titleSlug, key string) bool {
 
 func (f *fakeFS) PlayerDBExists(titleSlug, key string) bool { return f.dbs[titleSlug+"/"+key] }
 
+func (f *fakeFS) PlayerDBPath(titleSlug, key string) string {
+	if key == "" {
+		return ""
+	}
+	return titleSlug + "/" + key + "/stats.duckdb"
+}
+
 func (f *fakeFS) ListPlayerDirs(titleSlug string) ([]string, error) {
 	if err, ok := f.err[titleSlug]; ok {
 		return nil, err

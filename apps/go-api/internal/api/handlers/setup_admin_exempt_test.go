@@ -39,7 +39,7 @@ type setupGuardCase struct {
 // newGuardRouter monte le SetupHandler avec un résolveur de verrou injecté et
 // SANS middleware de session : la session (donc le rôle) est posée par requête
 // via middleware.InjectSession.
-func newGuardRouter(t *testing.T, locked, canSelfProvision bool, svc *mockProfileService) *chi.Mux {
+func newGuardRouter(t *testing.T, locked, canSelfProvision bool, svc *mockDirectory) *chi.Mux {
 	t.Helper()
 	dir := t.TempDir()
 	cfg := &config.AppConfig{
@@ -61,7 +61,8 @@ func newGuardRouter(t *testing.T, locked, canSelfProvision bool, svc *mockProfil
 		t.Fatalf("settings.Save: %v", err)
 	}
 
-	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, svc).
+	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore).
+		WithDirectory(svc).
 		WithInstanceLock(func() bool { return locked })
 
 	r := chi.NewRouter()
@@ -118,7 +119,7 @@ func TestSetupHandler_CreatePlayer_GuardMatrix(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := &mockProfileService{playerKey: "AmiDuFoyer"}
+			svc := &mockDirectory{playerKey: "AmiDuFoyer"}
 			r := newGuardRouter(t, tc.locked, tc.canSelfProvision, svc)
 
 			w := postCreatePlayer(r, tc.role)
@@ -131,7 +132,7 @@ func TestSetupHandler_CreatePlayer_GuardMatrix(t *testing.T) {
 			}
 			created := svc.lastReq.Gamertag != ""
 			if created != (tc.wantStatus == http.StatusCreated) {
-				t.Errorf("CreatePlayer appelé=%v alors que le statut attendu est %d", created, tc.wantStatus)
+				t.Errorf("Onboard appelé=%v alors que le statut attendu est %d", created, tc.wantStatus)
 			}
 		})
 	}
@@ -141,7 +142,7 @@ func TestSetupHandler_CreatePlayer_GuardMatrix(t *testing.T) {
 // vient de la session ; avec un lookup câblé, c'est le STORE qui tranche (un
 // rôle rétrogradé après l'ouverture de session ne donne plus l'exemption).
 func TestSetupHandler_CreatePlayer_AdminFromUserStore(t *testing.T) {
-	svc := &mockProfileService{playerKey: "AmiDuFoyer"}
+	svc := &mockDirectory{playerKey: "AmiDuFoyer"}
 	dir := t.TempDir()
 	cfg := &config.AppConfig{
 		RepoRoot:        dir,
@@ -153,7 +154,8 @@ func TestSetupHandler_CreatePlayer_AdminFromUserStore(t *testing.T) {
 	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
 	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
 
-	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, svc).
+	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore).
+		WithDirectory(svc).
 		WithInstanceLock(func() bool { return true }).
 		WithUserLookup(demotedLookup{})
 
@@ -167,7 +169,7 @@ func TestSetupHandler_CreatePlayer_AdminFromUserStore(t *testing.T) {
 		t.Fatalf("403 attendu (rôle du store = user), reçu %d : %s", w.Code, w.Body.String())
 	}
 	if svc.lastReq.Gamertag != "" {
-		t.Error("CreatePlayer ne doit pas être appelé pour un compte rétrogradé")
+		t.Error("Onboard ne doit pas être appelé pour un compte rétrogradé")
 	}
 }
 

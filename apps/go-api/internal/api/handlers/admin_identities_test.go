@@ -34,6 +34,11 @@ func (f *fakeDirectory) HasTrackedProfile(context.Context, string, string) (bool
 	return false, nil
 }
 
+// Onboard n'est pas servi par ce handler : présent pour satisfaire le port.
+func (f *fakeDirectory) Onboard(context.Context, domain.OnboardRequest) (domain.OnboardResult, error) {
+	return domain.OnboardResult{}, nil
+}
+
 func identitiesFixture() domain.AdminIdentitiesResponse {
 	return domain.AdminIdentitiesResponse{
 		GeneratedAt: "2026-09-15T12:00:00Z",

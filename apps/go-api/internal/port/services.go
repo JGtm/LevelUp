@@ -416,11 +416,6 @@ type GamertagSearchService interface {
 	Search(ctx context.Context, query string) ([]domain.GamertagSearchResult, error)
 }
 
-// ProfileService gère la création de profils joueur (extrait de setup.go).
-type ProfileService interface {
-	CreatePlayer(req domain.CreatePlayerProfileRequest) (playerKey string, warnings []string, err error)
-}
-
 // FriendsOrchestrator déclenche le recompute is_with_friends sur toutes les
 // player DBs configurées (multi-titres). §4 du plan Squad/Sessions overhaul.
 //

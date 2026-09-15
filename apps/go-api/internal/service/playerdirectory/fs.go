@@ -33,6 +33,16 @@ func (f *pathFS) PlayerDirExists(titleSlug, key string) bool {
 	return err == nil && info.IsDir()
 }
 
+// PlayerDBPath rend le chemin de la player DB du joueur pour ce titre, qu'elle
+// existe ou non : c'est le chemin QUE LA SYNC utilisera. Rendu par Onboard pour
+// que l'appelant sache où le joueur écrira, sans jamais ouvrir le fichier.
+func (f *pathFS) PlayerDBPath(titleSlug, key string) string {
+	if key == "" {
+		return ""
+	}
+	return f.paths.PlayerDBPath(titleSlug, key)
+}
+
 // PlayerDBExists : la player DB du joueur existe-t-elle pour ce titre ?
 func (f *pathFS) PlayerDBExists(titleSlug, key string) bool {
 	if key == "" {

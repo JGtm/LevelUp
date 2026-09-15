@@ -68,18 +68,27 @@ type WatchedReader interface {
 type FS interface {
 	PlayerDirExists(titleSlug, key string) bool
 	PlayerDBExists(titleSlug, key string) bool
+	PlayerDBPath(titleSlug, key string) string
 	ListPlayerDirs(titleSlug string) ([]string, error)
 }
 
-// Deps porte les cinq sources de l'annuaire. Profiles est la seule obligatoire :
-// sans elle il n'y a pas de notion de profil suivi, donc pas d'anomalie qui ait
-// un sens. Les autres nil ⇒ leur registre est simplement absent de la lecture.
+// Deps porte les sources de l'annuaire. Profiles est la seule obligatoire pour
+// la LECTURE : sans elle il n'y a pas de notion de profil suivi, donc pas
+// d'anomalie qui ait un sens. Les autres nil ⇒ leur registre est simplement
+// absent de la lecture.
 type Deps struct {
 	Profiles ProfilesReader
 	Accounts AccountsReader
 	Tokens   TokensReader
 	Watched  WatchedReader
 	FS       FS
+	// Creator écrit le profil de suivi (ADR 0035 D4). nil ⇒ Onboard refuse :
+	// mieux vaut une erreur franche qu'un profil silencieusement non créé.
+	Creator ProfileCreator
+	// Watcher prend le joueur en charge en live après la création du profil.
+	// nil ⇒ pas de watcher dans ce process (CLI, serveur sans watcher) : le
+	// profil suffit, `initPlayers` reprendra le joueur au prochain démarrage.
+	Watcher WatcherNotifier
 	// Titles : slugs balayés pour le témoin disque. Vide ⇒ tous les titres du
 	// registre par défaut (jamais une comparaison de slug, cf. CLAUDE.md
 	// « Multi-titre »).
@@ -88,13 +97,16 @@ type Deps struct {
 	Now func() time.Time
 }
 
-// Directory implémente port.PlayerDirectory en LECTURE (étape 3 du plan).
+// Directory implémente port.PlayerDirectory : la lecture unifiée des registres
+// et le chemin unique d'entrée d'une identité (`Onboard`, cf. onboard.go).
 type Directory struct {
 	profiles ProfilesReader
 	accounts AccountsReader
 	tokens   TokensReader
 	watched  WatchedReader
 	fs       FS
+	creator  ProfileCreator
+	watcher  WatcherNotifier
 	titles   []string
 	now      func() time.Time
 }
@@ -119,6 +131,8 @@ func New(d Deps) *Directory {
 		tokens:   d.Tokens,
 		watched:  d.Watched,
 		fs:       d.FS,
+		creator:  d.Creator,
+		watcher:  d.Watcher,
 		titles:   titles,
 		now:      now,
 	}
