@@ -21,14 +21,14 @@ package fallback
 const (
 	// NomPieceEngendreeSansEvenement : `replay/equipment_origin.go`, `origineDeLaPose`.
 	NomPieceEngendreeSansEvenement Nom = "repli_piece_engendree_sans_evenement"
+	// NomCadreDeMarcheParDefautConserve : `filmdec/object_deaths_calibrate.go`, `calibrateFrameConfig`.
+	NomCadreDeMarcheParDefautConserve Nom = "repli_cadre_de_marche_par_defaut_conserve"
 	// NomPlafondGrenadeParDefaut : `replay/inventory_decode.go`, `ScanKeyframeInventory`.
 	NomPlafondGrenadeParDefaut Nom = "repli_plafond_grenade_par_defaut"
 	// NomLargeursAxeParDefautConservees : `replay/world_object_precision.go`.
 	NomLargeursAxeParDefautConservees Nom = "repli_largeurs_axe_par_defaut_conservees"
 	// NomIdentitePisteMeilleurRecouvrement : `replay/identity.go`, `nameTracksByLives`.
 	NomIdentitePisteMeilleurRecouvrement Nom = "repli_identite_piste_meilleur_recouvrement"
-	// NomFinDeVieVehiculeParRecensement : `replay/vehicle_tracks.go`, `assignVehicleWindows`.
-	NomFinDeVieVehiculeParRecensement Nom = "repli_fin_de_vie_vehicule_par_recensement"
 	// NomPositionLacherPrendLaPrise : `replay/flag_carries.go`, `attachFlagCarryPositions`.
 	NomPositionLacherPrendLaPrise Nom = "repli_position_lacher_prend_la_prise"
 	// NomPisteDrapeauSansPontEcartee : `replay/flag_carrier_tracks.go`, `tracksByXUID`.

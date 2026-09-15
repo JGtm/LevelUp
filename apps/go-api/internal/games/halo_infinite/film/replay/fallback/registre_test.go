@@ -85,7 +85,13 @@ func TestRegistrePorteToutesSesFamilles(t *testing.T) {
 // coupures que le seuil décidait sur les 8 builds, 208 n'étaient justifiées PAR RIEN ; elles sont
 // devenues des lacunes, les 4 restantes portent toutes une mort écrite, et le repli ne se
 // déclenche sur aucun des 8 builds.
-const ratchetDevantLaLecture = 5
+// BAISSÉ À 5 AU LOT 1.9.10 (2026-09-16) : `repli_fin_de_vie_vehicule_par_recensement` est
+// SUPPRIMÉ, pas rétrogradé — la fin de vie d'un véhicule se lit au composant
+// `object-dead-state` de `ti=40`, et la borne « dernier recensement + 20 s » a disparu du code
+// avec son entrée du registre.
+// FUSION (2026-09-16) : les deux baisses (1.9.13 et 1.9.10) partaient toutes deux de 6 ; réunies,
+// le registre ne porte plus que QUATRE entrées `devant_la_lecture` — le ratchet suit.
+const ratchetDevantLaLecture = 4
 
 func TestReplisDevantLaLectureNeMontentPas(t *testing.T) {
 	n := NbDevantLaLecture()
