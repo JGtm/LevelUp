@@ -1128,8 +1128,24 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   origines publiées changent — deux populations perdent une étiquette qu'elles n'avaient
 	//   pas gagnée (les lâchers à mi-vie sortaient `deployed`, les poses muettes étaient classées
 	//   par corrélation). Détail : `document_chronicle.go`.
-	if SchemaVersion != 59 {
-		t.Fatalf("SchemaVersion = %d, attendu 59 : incrémenter exige une raison écrite ci-dessus "+
+	// - v60 (vague 2 de la famille 1.9 + corrections de la revue de jalon M1, UNE montée pour
+	//   six lots, 2026-09-17) : CE QUE LE FILM ÉCRIT DÉCIDE, ET CE QU'IL NE DIT PAS EST COMPTÉ.
+	//   Une vie de joueur finit à une MORT ÉCRITE, plus au trou de réplication de 5 s (le trou
+	//   devient une LACUNE de la même vie : `coverage.tracks.gaps`, `.gapMs`, `Point.G`) ; une vie
+	//   de véhicule finit au DEAD-STATE écrit (`vehicles[].end` ∈ destroyed / film_end / unknown,
+	//   `tEnd`, huit compteurs `coverage.vehicles.*`) ; un châssis est NOMMÉ par sa pièce écrite
+	//   (wraith, scorpion, tourelle automatique bannie = élément de carte, `VehicleLabel.kind`) ;
+	//   le désignateur de manche est publié tel qu'écrit et la garde d'ordre devient une
+	//   CONTRADICTION publiée (`coverage.score.rounds{Written,Contradicted,ContradictedRecords,
+	//   Decreed}`) ; le siège d'un joueur EST l'index de film (`roster[].seat`, TOUJOURS émis,
+	//   `seatSource`, `coverage.seats`) ; la revue L4 ajoute `coverage.teams.tracksSlotAmbiguous`
+	//   et `coverage.identity.filmTable.collisionsIndex`.
+	//   POURQUOI LA VERSION MONTE : la FORME change (`seat` obligatoire, `end` à trois valeurs,
+	//   champs neufs) ET le CONTENU change sur tout le parc (335 vies fusionnées sur les 14
+	//   témoins, fins de véhicule lues, occupants des Wraith revenus). Un artefact 59 ne peut ni
+	//   porter une lacune, ni une fin lue, ni nommer un Wraith. Détail : `document_chronicle.go`.
+	if SchemaVersion != 60 {
+		t.Fatalf("SchemaVersion = %d, attendu 60 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
