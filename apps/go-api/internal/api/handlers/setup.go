@@ -26,6 +26,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -43,6 +44,17 @@ type SetupHandler struct {
 	settingsStore *settings_platform.Store
 	jobStore      *jobs.Store
 	profileSvc    port.ProfileService
+	// users + grantClearer : droit à usage unique de créer SON profil sur
+	// instance verrouillée (D3). nil → aucun invité ne passe le verrou
+	// (comportement d'origine).
+	users        authz.UserLookup
+	grantClearer ProvisionGrantClearer
+}
+
+// ProvisionGrantClearer efface le droit de provisioning d'un compte après usage.
+// Satisfait par *userstore.Store.SetProvisionGrant(username, "").
+type ProvisionGrantClearer interface {
+	SetProvisionGrant(username, code string) error
 }
 
 // NewSetupHandler crée un SetupHandler.
@@ -60,6 +72,14 @@ func NewSetupHandler(
 		jobStore:      jobStore,
 		profileSvc:    profileSvc,
 	}
+}
+
+// WithProvisionGrant branche la résolution du compte courant et l'effacement du
+// droit de provisioning. Sans ce câblage, le verrou d'instance reste absolu.
+func (h *SetupHandler) WithProvisionGrant(users authz.UserLookup, clearer ProvisionGrantClearer) *SetupHandler {
+	h.users = users
+	h.grantClearer = clearer
+	return h
 }
 
 // Mount enregistre les 2 routes via Huma sur le routeur chi (mêmes points de
@@ -116,13 +136,22 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 			"L'auto-provisioning est désactivé sur cette instance.")
 	}
 
-	// Guard : instance fermée (lockdown) — pas de nouvelle BDD joueur.
+	// Guard : instance fermée (lockdown) — pas de nouvelle BDD joueur, SAUF pour
+	// un invité qui porte un droit de provisioning non consommé et n'a pas encore
+	// de profil (D3). La vraie barrière reste le contrôle « xuid = identité liée »
+	// plus bas : le droit ne dispense pas d'être soi.
 	// Verrou effectif = env (LEVELUP_INSTANCE_LOCKED) OU app_settings.instance_locked.
+	grantHolder := (*domain.User)(nil)
 	if h.cfg.InstanceLocked || appCfg.InstanceLocked {
-		slog.WarnContext(ctx, "setup: création profil refusée — instance verrouillée",
-			"env_locked", h.cfg.InstanceLocked, "settings_locked", appCfg.InstanceLocked)
-		return nil, humacore.NewError(http.StatusForbidden, "instance_locked",
-			"Cette instance est fermée : la création de nouveaux profils est désactivée.")
+		grantHolder = h.provisionGrantHolder(ctx)
+		if grantHolder == nil {
+			slog.WarnContext(ctx, "setup: création profil refusée — instance verrouillée",
+				"env_locked", h.cfg.InstanceLocked, "settings_locked", appCfg.InstanceLocked)
+			return nil, humacore.NewError(http.StatusForbidden, "instance_locked",
+				"Cette instance est fermée : la création de nouveaux profils est désactivée.")
+		}
+		slog.InfoContext(ctx, "setup: verrou levé par un droit de provisioning",
+			"username", grantHolder.Username)
 	}
 
 	var req domain.CreatePlayerProfileRequest
@@ -178,6 +207,15 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 			"Impossible de créer le profil joueur.")
 	}
 
+	// Le droit de provisioning a servi : l'effacer pour qu'il ne soit pas
+	// rejouable. Échec journalisé — la création, elle, reste acquise.
+	if grantHolder != nil && h.grantClearer != nil {
+		if err := h.grantClearer.SetProvisionGrant(grantHolder.Username, ""); err != nil {
+			slog.ErrorContext(ctx, "setup: effacement du droit de provisioning échoué",
+				"username", grantHolder.Username, "err", err)
+		}
+	}
+
 	// Mettre à jour la session avec le joueur courant
 	if sess := middleware.GetSession(ctx); sess != nil {
 		slug := playerKey
@@ -207,6 +245,38 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 			Warnings:  warnings,
 		},
 	}, nil
+}
+
+// provisionGrantHolder retourne l'utilisateur de la session S'IL porte un droit
+// de provisioning non consommé ET qu'aucun profil de db_profiles.json ne porte
+// déjà son xuid. Sinon nil : le verrou d'instance s'applique.
+//
+// La double condition est le point : le droit sert UNE fois, pour SON premier
+// profil. Un invité qui a déjà un profil n'a plus rien à provisionner.
+func (h *SetupHandler) provisionGrantHolder(ctx context.Context) *domain.User {
+	if h.users == nil {
+		return nil
+	}
+	user := authz.CurrentUser(middleware.GetSession(ctx), h.users)
+	if user == nil || user.ProvisionGrant == "" || user.XUID == "" {
+		return nil
+	}
+	players, err := h.cfg.LoadPlayers()
+	if err != nil {
+		// Ne pas lever le verrou sur une lecture ratée : on ne peut pas prouver
+		// que l'invité n'a pas déjà un profil.
+		slog.ErrorContext(ctx, "setup: lecture des profils impossible — droit de provisioning ignoré",
+			"username", user.Username, "err", err)
+		return nil
+	}
+	for i := range players {
+		if players[i].XUID == user.XUID {
+			slog.WarnContext(ctx, "setup: droit de provisioning ignoré — le compte a déjà un profil",
+				"username", user.Username, "player_slug", players[i].PlayerSlug)
+			return nil
+		}
+	}
+	return user
 }
 
 // handleSmokeTest lance un job de vérification basique de l'environnement.

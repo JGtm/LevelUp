@@ -501,7 +501,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// deux read-modify-write concurrents pourraient s'écraser (lost update).
 	profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
 		WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
-	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileService)
+	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileService).
+		WithProvisionGrant(users, users)
 	// S8 (sécurité, lot S) : /setup/players (écrit db_profiles.json) et
 	// /setup/smoke-test → RequireAuth par cohérence (gardes internes conservées).
 	// No-op en démo / auth non activée.
