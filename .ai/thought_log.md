@@ -1,3 +1,51 @@
+## [2026-09-16] Chantier decodeur — lot 1.9.3 (le couple tueur / victime lu au kill-event 85, plus recolle sur le voisin) — Complete (feat/decfilm-193 fusionnee dans feat/recherche-decodeur-film, 79657ef1e)
+
+**Decision technique principale.** `killFeed.resoudreCouples` (`killsource/feed_couples.go`)
+lit tueur et victime dans l'enregistrement de type 85 (`readKillEvent`, deja porte pour le seul
+assistant) et remplace `reconstructPairs` (fenetre de 2 instants) + `killFeed.split`, tous deux
+SUPPRIMES ; regime d'assignation : les couples que le feed ecrit au meme instant consomment
+d'abord leur kill-event (sans ce premier temps, 13 ambigus et 3 desaccords apparents, qui etaient
+des enregistrements d'une autre mort) ; le lien indice -> joueur employe est la part EPINGLEE
+(`roster.nomEpingle`, table du film 1.5 / 1.8 + BOT_METADATA), jamais la bijection (circulaire) ;
+la fabrication d'un couple sur une victime bot est supprimee (`resolveBotDeaths` accepte les
+victimes de bot NOMMEES) ; repli `repli_couple_recolle_sur_le_voisin` (`section_absente`,
+`apres_lecture`) CREE au registre (94 -> 95 ; il venait de la table A de l'audit, pas de la table
+E : le ratchet des `devant_la_lecture` reste a 6, verifie) ; compteurs de provenance
+`CoupleStats` en expvar. `KillSourceDecoderRev` `killsource-2026-09-14 -> killsource-2026-09-15`
+(convention : date du mouvement), ratchet d'empreinte rougi de lui-meme ; `GrammarRev` `.2 -> .3` ;
+`SchemaVersion` 59 INCHANGE — tranche par comparaison octet a octet des deux artefacts cuits de
+`4f77afc1` (10 526 185 octets, meme sha256), parce que le bilan du corpus gate ne montre pas la
+categorie `changements` (D5).
+
+**Resultats observes.** Mesure avant de coder (21 films entiers, instrument versionne
+`e193_couple_evenement_mesure_research_test.go`) : les 64 sur 372 du plan se rejouent a l'unite ;
+281 kills sans mort en face : 198 decides par la lecture, 198 accords sur 198 avec l'ancien
+recollage, 0 desaccord, 1 victime bot fabriquee (`4f77afc1`, la seule ligne qui bouge), 1 ambigu,
+81 muets (dont 46 sur trois films sans table exploitable ; `a521164d` a ses 24 indices epingles
+mais ne rend que 30 kill-events pour 101 kills : la chaine d'evenements s'arrete, pas l'identite —
+3.1 / 3.6). Le gain est de nature (la victime est nommee par le film au lieu d'etre devinee, la
+mort du voisin n'est plus consommee a tort), pas de couverture — ecrit tel quel. Mutations :
+tueur / victime echanges dans la fixture -> rouge ; lecture debranchee -> 4 tests rouges dont le
+golden ; restaurees par nom. Golden `minibobine.golden` : une ligne (morts de bot proposees
+17 -> 16), attribuee. Gates : gofmt vide, vet 0, 13 paquets ok, integration killcollector `-p 1`
+ok, lint 0 issue ; equivalence : classification avant tout `-update` en mode enfant, 10/10 une
+seule etape `killsource` (forme du `Result`, `Stats.Couples` neuf ; `artifact`, `killRefs`,
+`neutralDeaths`, `deaths` identiques a l'octet), re-figee, 10/10 identiques ; corpus gate
+`--base 9848b7387` : 14/14, 0 perte, 0 gain, schema 59, exit 0. Parc : 1 384 matchs a redecoder
+(backlog du 1.8, non elargi). Verification du pilote (V8) : fonctions, revisions, registre, aucun
+test de la baseline touche (killsource n'y figure pas), openapi et web intacts.
+Decouvertes §4 : D1 les 81 muets ; D2 la fenetre de 2,5 s survit cote lecture (1.9.7) ; D3
+`Contradiction` = 0, branche exercee par un test seul ; D4 backlog non elargi ; **D5 le bilan du
+corpus gate MASQUE la categorie `changements` de `replaydiff.BilanAxe`** (un lot qui deplace une
+valeur publiee sortirait « 0 / 0 ») : verification ajoutee au bloc « Cloture M1 » (gate `--json`,
+`changements` classes) et candidat au durcissement des oracles en M2.
+
+**Prochaine etape.** Push + CI ; fusion du lot 1.9.1 bis (gardes n1/n2, profil relu, registre)
+des ses gates rendus, puis lot 1.9.1 ter (executeur frais : la condition versionnee de l'etat par
+defaut, chargeur de la section 2) et 1.9.4 ; revue de jalon ; cloture M1 (go V9).
+
+---
+
 ## [2026-09-16] Chantier decodeur — lot 1.9.2 (le decoupage d'i0 vient du catalogue de carte, plus de l'auto-detection) — Complete (feat/decfilm-192 fusionnee dans feat/recherche-decodeur-film, 9848b7387)
 
 **Decision technique principale.** Les QUATRE sites de production de `DefaultScanFilmOptions()`
