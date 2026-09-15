@@ -97,4 +97,10 @@ package filmdec
 // (`killsource-2026-09-16`) parce que la sortie persistee change — la porte ne fait que se
 // fermer, aucun film ne gagne la publication ligne par ligne. `SchemaVersion` reste 59 : le
 // document du rejeu ne porte pas cette porte.
+//
+// LE MEME RANG PORTE AUSSI LA CORRECTION DE DOC de `mppWidthsPourFormat` (son bloc finissait par
+// « la cle est le BUILD » alors que la fonction commute sur le FORMAT depuis le lot 1.9.1 ter) :
+// l empreinte hache les OCTETS des trois paquets, commentaires compris, donc une reformulation la
+// fait bouger. Un LOT partage sa revision (regle de la forme `.N` ci-dessus) — ces deux
+// changements sont le meme lot de revue, ils partagent donc `.12`.
 const GrammarRev = "grammar-2026-09-15.12"

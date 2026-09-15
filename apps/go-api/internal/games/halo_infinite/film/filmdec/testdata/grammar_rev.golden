@@ -270,4 +270,4 @@
 #               ou une vie finit. L empreinte hachant les OCTETS des trois paquets, ce faux
 #               positif coute cette ligne — le marche assume du garde-rail.
 #               `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact).
-grammar-2026-09-15.12	9d0d4cd137044840fe828fc9d101e865aa974a4f14186cbc02d3524a70a376b6
+grammar-2026-09-15.12	4a41ab873b187ac3083156b6bbc28ce7e63f94af36c8970741a8577aeccca0d0
