@@ -66,9 +66,18 @@ type ObjectDeath struct {
 // ObjectDeathStats porte les DÉNOMINATEURS sans lesquels aucun compte ne se publie : un compte
 // faible sous une couverture faible ne conclut pas à l'absence, il conclut « sous-instrumenté ».
 type ObjectDeathStats struct {
-	// Config est le cadre RETENU par la calibration (idLow, amorce) : il se publie, il ne se
-	// suppose pas.
+	// Config est le cadre RETENU par la calibration : il se publie, il ne se suppose pas.
 	Config FrameConfig
+	// CadreParDefaut dit que le profil de calibration etait PLAT — aucune largeur candidate n a
+	// domine son dauphin — et que le cadre rendu est celui par defaut. La marche a tourne, mais
+	// sur une largeur que RIEN n a confirmee : c est un repli
+	// (`repli_cadre_de_marche_par_defaut_conserve`), et il se compte.
+	CadreParDefaut bool
+	// CadreLocalises / CadreDauphin / CadreEvenements sont les DENOMINATEURS de cette decision :
+	// paquets a evenements localises par le candidat retenu, par son dauphin, et leur total sur
+	// l echantillon de calibrage. Sans eux, « cadre idLow=13 » ne dit pas s il a ete choisi par
+	// une marge de six ou par une marge de rien.
+	CadreLocalises, CadreDauphin, CadreEvenements int
 	// Keyframes / Deltas : ce que le film a offert à la marche.
 	Keyframes, Deltas int
 	// Packets / EventPackets / LocatedPackets : paquets marchés, dont porteurs d'une liste
@@ -121,8 +130,9 @@ func ScanObjectDeaths(fc *FilmContext) ([]ObjectDeath, ObjectDeathStats, error) 
 	if len(deltas) == 0 {
 		return nil, st, nil
 	}
-	cfg, _ := calibrateFrameConfig(reg, kfs, deltas)
-	st.Config = cfg
+	cfg, parDefaut, meilleur, dauphin := calibrateFrameConfig(reg, kfs, deltas)
+	st.Config, st.CadreParDefaut = cfg, parDefaut
+	st.CadreLocalises, st.CadreDauphin, st.CadreEvenements = meilleur.located, dauphin.located, meilleur.events
 	h := &objectDeathHarvest{reg: reg, idx: map[uint32]int{}, st: &st}
 	tl := newMarchTimeline(reg, kfs)
 	for _, d := range deltas {

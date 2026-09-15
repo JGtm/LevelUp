@@ -21,6 +21,28 @@ const comptageParFilmContext = "pas 2 de M2 (les lecteurs recoivent le profil vi
 
 var registreFilmdec = []Repli{
 	{
+		Nom:       "repli_cadre_de_marche_par_defaut_conserve",
+		Fait:      "la largeur du champ bas d identifiant de record (IDLowBits) sous laquelle la marche des morts d objet deroule CE film",
+		Mecanisme: "profil de calibration PLAT (aucune largeur candidate ne domine son dauphin d un facteur 2 sur les paquets a evenements localises) : le cadre par defaut est conserve",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "object_deaths_calibrate.go",
+			Ancre:   "return DefaultFrameConfig(), true, meilleur, dauphin",
+		}},
+		DatePose:     "2026-09-16",
+		CibleRetrait: "M3 (le cadre de la boucle de records devient une donnee de PROFIL par build, comme les largeurs du bloc MPP)",
+		// ORDRE `apres_lecture` : le balayage des six largeurs candidates tourne D ABORD, sur
+		// l oracle de la signature du slot 123 ; ce repli n entre que si AUCUNE ne se detache.
+		// CE QU IL EMPECHE, ET C EST MESURE (2026-09-16) : sur `minibobine_e5adf7b2` les six
+		// cadres localisent 0 paquet sur 54. Sans ce repli, le code retenait quand meme un cadre
+		// — au departage par records propres, c est-a-dire par le critere que le lot V13 a
+		// REFUTE (`idLow=10` rend 492 records dits propres et localise 0 paquet sur 12). Un cadre
+		// faux consomme des bits sans rien decoder de vrai : il fabrique des morts.
+		CritereRetrait:  "0 film cuit au cadre par defaut ; les sept builds portent leur IDLowBits au profil",
+		CompteurBranche: true,
+	},
+	{
 		Nom:       "repli_largeurs_mpp_calibrees_sur_le_film",
 		Fait:      "les deux largeurs du bloc object-multiplayer-properties (FUN_14080cfe8), qui precede TOUS les composants dans l etat par defaut de ti=36, 37, 38, 39, 42 et 43",
 		Mecanisme: "CalibrateMPPWidthsOf MESURE le decoupage sur le film et l INSTALLE, au lieu de le lire au profil du build",
