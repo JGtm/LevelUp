@@ -2748,7 +2748,11 @@ DÉJÀ CLASSÉES, à retrouver telles quelles et pas d'autres : `c75f33b8` `cove
 1 169 -> 1 148 et `.rises` 94 -> 73 (lot 1.4, cadre d'état complet : l'ancien cadre produisait
 des lectures isolées sur des records mal cadrés ; calque publié `bombArmings` inchangé ; rejoué
 par le pilote sur manifeste réduit le 2026-09-14) ; référence d'équivalence `50247b26` re-figée
-au lot 1.4 (étape `killsource`, chaîne de diagnostic du lot 1.3, D2 (1.3) / D4 (1.4)) ; 3. fusion dans
+au lot 1.4 (étape `killsource`, chaîne de diagnostic du lot 1.3, D2 (1.3) / D4 (1.4)) ; le gate de
+jalon se joue avec `--json <fichier>` et la catégorie `changements` de `replaydiff.BilanAxe` est
+LUE et classée témoin par témoin comme les pertes (D5 (1.9.3), 2026-09-16 : le bilan imprimé ne
+montre que gains / pertes, une valeur publiée qui bouge sans gain ni perte sortirait « 0 / 0 ») ;
+durcissement du gate (changements dans le bilan et dans le code de sortie) au jalon M2 ; 3. fusion dans
 `feat/v75` (V3 : fetch + merge + gates locaux, fenêtre de 5 min demandée aux sessions du
 checkout principal, push, signal de fin) ; 4. recuisson du parc + backlog killsource (tag git du
 binaire précédent, artefacts précédents conservés jusqu'à validation du corpus gate, architecture
