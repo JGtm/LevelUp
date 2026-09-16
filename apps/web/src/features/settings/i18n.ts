@@ -332,10 +332,10 @@ const FR_TEXT: SettingsText = {
   tabAccount: 'Compte',
   tabNotifications: 'Notifications',
 
-  groupsCardTitle: 'Groupes et partage',
+  groupsCardTitle: 'Amis et groupes',
   groupsCardDescription:
-    "Gère tes groupes (famille, amis) : les membres d'un même groupe ont un accès mutuel à leurs profils et statistiques. Crée un groupe puis partage son lien d'invitation.",
-  groupsCardOpen: 'Gérer mes groupes',
+    "Gère la liste d'amis de ton profil (elle marque tes parties en escouade) et tes groupes : les membres d'un même groupe ont un accès mutuel à leurs profils et statistiques.",
+  groupsCardOpen: 'Gérer mes amis et groupes',
 
   manualSyncTitle: 'Synchronisation manuelle',
   manualSyncButton: '↻ Synchroniser tous les joueurs',
@@ -662,10 +662,10 @@ const EN_TEXT: SettingsText = {
   tabAccount: 'Account',
   tabNotifications: 'Notifications',
 
-  groupsCardTitle: 'Groups and sharing',
+  groupsCardTitle: 'Friends and groups',
   groupsCardDescription:
-    'Manage your groups (family, friends): members of the same group share mutual access to their profiles and stats. Create a group then share its invite link.',
-  groupsCardOpen: 'Manage my groups',
+    "Manage your profile's friends list (it marks your squad games) and your groups: members of the same group share mutual access to their profiles and stats.",
+  groupsCardOpen: 'Manage my friends and groups',
 
   manualSyncTitle: 'Manual synchronisation',
   manualSyncButton: '↻ Synchronise all players',

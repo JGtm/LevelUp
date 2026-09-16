@@ -60,10 +60,10 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 		svc = svc.WithRankImageURLs(imgs)
 	}
 	// Wiring des amis — utilisé par GetTopEncounters pour le tableau "joueurs
-	// les plus croisés (hors amis)". Si le settingsStore n'est pas attaché ou
-	// que la liste est vide, GetTopEncounters n'exclut personne (dégradation
-	// gracieuse).
-	if resolver := r.friendGamertagsResolver(); resolver != nil {
+	// les plus croisés (hors amis)". Amis DU joueur consulté. Si le store d'amis
+	// n'est pas attaché ou que la liste est vide, GetTopEncounters n'exclut
+	// personne (dégradation gracieuse).
+	if resolver := r.friendGamertagsResolver(pdb.XUID); resolver != nil {
 		svc = svc.WithFriendGamertagsResolver(resolver)
 	}
 	// Résolveur gamertag → xuid : ExplorerRepo.ResolveXUIDByGamertag interroge

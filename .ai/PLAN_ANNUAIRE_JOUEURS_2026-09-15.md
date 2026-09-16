@@ -6,10 +6,13 @@
 > fois, gate passé avant l'étape suivante, aucun report d'item exécutable, statuts `[x]` /
 > `[~]` réf / `[!]` justifié, zéro fix hors périmètre — les découvertes vont en §10).
 >
-> Plan frère (non exécuté, autre session) : `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`.
-> Il touche `setup.go:119-126` et `xbox_auth_service.go` (invitations, `ProvisionGrant`). Ce
-> plan-ci ne traite PAS les invitations ; il pose le helper de verrou et le chemin `Onboard`
-> que l'étape 5 du plan frère devra utiliser (noté dans son §10 à la clôture).
+> Plan frère (autre session) : `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`,
+> exécuté en parallèle et fusionné dans `feat/v75` le 2026-09-16 (`13c4b6c61`). Ce plan-ci ne
+> traite PAS les invitations. **Jonction faite à la fusion de `feat/v75` dans cette branche
+> (2026-09-16)** : le droit de provisioning (`ProvisionGrant`) passe désormais par
+> `guardProvisioning` (il ne lève que le verrou, jamais `can_self_provision`), la résolution
+> du compte courant est unique (`userLookup`, admin ET porteur du droit), et la création
+> passe par `Onboard` ; les tests des deux plans tournent ensemble dans `setup_test.go`.
 
 ## 1. Objectif et critères de succès
 

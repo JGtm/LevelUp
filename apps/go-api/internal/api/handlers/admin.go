@@ -204,12 +204,15 @@ func (h *AdminHandler) handleGenerateInvite(ctx context.Context, in *adminGenera
 		createdBy = *sess.Username
 	}
 
-	// Invitation admin legacy (inscription mot de passe) : pas de groupe associé.
+	// Invitation SANS groupe : elle crée le compte de l'invité sur instance
+	// verrouillée et lui donne le droit de créer SON profil joueur (D3). L'invité
+	// ne rejoint aucun groupe et ne voit que lui-même.
 	invite, err := h.invites.Generate(createdBy, body.ExpiresInDays, "")
 	if err != nil {
 		slog.ErrorContext(ctx, "admin: erreur generate invite", "by", createdBy, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "generate_error", "erreur de génération")
 	}
+	invite.JoinURL = domain.InviteJoinURL(invite.Code)
 	slog.Info("admin: invitation générée", "code", invite.Code, "by", createdBy, "expires_in_days", body.ExpiresInDays)
 	return &adminGenerateInviteOutput{Body: invite}, nil
 }

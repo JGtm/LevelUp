@@ -58,7 +58,7 @@ interface Props {
   roster?: MatchRosterRow[] | null
   /** xuid du joueur de la page — son bâton prend l'encre du joueur principal. */
   meXUID?: string | null
-  /** Amis d'escouade (`settings.friend_gamertags`) : encres coéquipier côté allié. */
+  /** Amis d'escouade (liste du joueur) : encres coéquipier côté allié. */
   friendGamertags?: readonly string[]
   t: MatchViewText
 }

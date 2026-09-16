@@ -6,8 +6,8 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// MigrateDefault crée un groupe par défaut (typiquement "Mon foyer") depuis l'ancienne
-// liste globale `friend_gamertags`, pour préserver la continuité d'accès lors du passage
+// MigrateDefault crée un groupe par défaut (typiquement "Mon foyer") depuis la liste
+// d'amis du propriétaire, pour préserver la continuité d'accès lors du passage
 // au modèle multi-groupes. Idempotent : no-op si des groupes existent déjà (retourne
 // created=false). Le caller résout les gamertags → xuid (profils connus) et passe les
 // membres résolus via `extraMembers` (le propriétaire est ajouté automatiquement).

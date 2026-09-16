@@ -2,7 +2,7 @@
 import { useParams, useSearch, useNavigate, useRouter } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useSettings } from '@/features/settings/queries'
+import { useFriendGamertags } from '@/features/friends/queries'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useMatchView, useMatchObjectiveEvents, useMatchPositions } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
@@ -101,8 +101,7 @@ export function MatchViewPage() {
   const isChronology = activeTab === 'chronology'
   const { data: objectiveEvents } = useMatchObjectiveEvents(playerSlug, matchId, isChronology)
   const { data: matchPositions } = useMatchPositions(playerSlug, matchId, isChronology)
-  const { data: settings } = useSettings()
-  const friendGamertags = settings?.friend_gamertags ?? []
+  const friendGamertags = useFriendGamertags(playerSlug)
   const locale = useAppShellStore((s) => s.locale)
   const t = MATCH_VIEW_TEXT[locale === 'en' ? 'en' : 'fr']
 

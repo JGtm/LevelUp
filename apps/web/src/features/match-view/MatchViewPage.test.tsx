@@ -47,8 +47,8 @@ vi.mock('./queries', () => ({
   useMatchPositions: () => ({ data: undefined }),
 }))
 
-vi.mock('@/features/settings/queries', () => ({
-  useSettings: () => ({ data: { friend_gamertags: [] } }),
+vi.mock('@/features/friends/queries', () => ({
+  useFriendGamertags: () => [],
 }))
 
 // availableTitles vide → useCapability (FeatureGate) fail-open : le bloc Médias est rendu.

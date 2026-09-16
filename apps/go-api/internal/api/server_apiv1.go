@@ -43,6 +43,7 @@ import (
 	"levelup/go-api/internal/ops"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
@@ -93,6 +94,7 @@ type apiV1Deps struct {
 	sessionStore          *session_platform.Store
 	tokenProvider         auth_platform.TokenProvider
 	groupStore            *groupstore.GroupStore
+	friendStore           *friendstore.FriendStore
 	settingsStore         *settings_platform.Store
 	assetHandler          *handlers.AssetHandler
 	assetMetaHandler      *handlers.AssetMetadataHandler
@@ -124,6 +126,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	sessionStore := d.sessionStore
 	tokenProvider := d.tokenProvider
 	groupStore := d.groupStore
+	friendStore := d.friendStore
 	settingsStore := d.settingsStore
 	assetHandler := d.assetHandler
 	assetMetaHandler := d.assetMetaHandler
@@ -511,18 +514,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	}
 
 	// Sprint 16 : Settings + Setup joueur
-	// §4 plan Squad/Sessions : orchestrator recompute is_with_friends, déclenché
-	// async sur diff friend_gamertags lors d'un PATCH /settings.
-	friendsOrchestrator := service.NewFriendsOrchestratorService(cfg, func() ([]string, error) {
-		s, err := settingsStore.Load()
-		if err != nil {
-			return nil, err
-		}
-		return s.FriendGamertags, nil
-	}).WithNotifier(reg.NotificationsEmitter)
+	// Orchestrateur du recompute is_with_friends : déclenché par le PUT de la
+	// liste d'amis d'un joueur (handlers/friends.go), avec SA liste.
+	friendsOrchestrator := service.NewFriendsOrchestratorService(cfg, friendStore.Get).
+		WithNotifier(reg.NotificationsEmitter)
 	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
-		WithFriendsOrchestrator(friendsOrchestrator).
-		WithNotificationsEmitter(reg.NotificationsEmitter).
+		WithFriendStore(friendStore).
 		WithBackupScheduler(backupScheduler)
 	// Fraîcheur A4.2 : le runner monitoring lit l'âge du dernier backup depuis
 	// le même scheduler (manifest duckdbbackup) — nil toléré (section absente).
@@ -537,11 +534,16 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	})
 
 	// Le SetupHandler n'écrit plus db_profiles.json lui-même : il passe par
-	// l'annuaire (Onboard), seul chemin de création de profil (ADR 0035 D4).
+	// l'annuaire (Onboard), seul chemin de création de profil (ADR 0035 D4). Le
+	// ProfileService PARTAGÉ (writer unique du fichier, construit plus haut) est
+	// derrière l'annuaire. WithProvisionGrant : un invité porteur d'un droit de
+	// provisioning passe le verrou pour SON premier profil (plan amis/invitations
+	// D3) — même lookup que l'exemption admin.
 	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore).
 		WithDirectory(playerDirectory).
 		WithInstanceLock(instanceLockedFn).
-		WithUserLookup(users)
+		WithUserLookup(users).
+		WithProvisionGrant(users, users)
 	// S8 (sécurité, lot S) : /setup/players (écrit db_profiles.json) et
 	// /setup/smoke-test → RequireAuth par cohérence (gardes internes conservées).
 	// No-op en démo / auth non activée.
@@ -560,7 +562,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	registerJobsHuma(
 		newHumaAPI(r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt),
 		handlers.NewJobsHandler(jobStore))
-	syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider)
+	syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider).
+		WithFriendStore(friendStore)
 	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
 	if prestigeBundle != nil {
 		syncH = syncH.WithPrestigeHook(prestigeBundle.RunPostSync)
@@ -735,6 +738,16 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		filters := handlers.NewFiltersHandler(reg.Filters)
 		filters.Mount(r, playerOpt)
+
+		// Amis du joueur (liste par profil, D1/D4) : lecture pour qui accède au
+		// profil, écriture pour le propriétaire direct ou un admin. Le recompute
+		// is_with_friends du joueur suit chaque écriture.
+		friendsHandler := handlers.NewFriendsHandler(friendStore, users,
+			handlers.PlayerXUIDResolver(playerOwnershipXUIDResolver(cfg)),
+			playerGamertagResolver(cfg), cfg.DemoMode, cfg.AuthMode).
+			WithRecomputer(friendsOrchestrator).
+			WithNotifications(reg.NotificationsEmitter, cfg.AppSettingsPath)
+		friendsHandler.Mount(r, playerOpt)
 
 		mh := handlers.NewMatchHistoryHandler(reg.MatchHistoryCtx)
 		mh.Mount(r, playerOpt) // POST /pages/match-history/query (export CSV reste chi, plus bas)
@@ -1089,6 +1102,7 @@ type apiV1Inputs struct {
 	autoSyncScheduler *scheduler.AutoSyncScheduler
 	backupScheduler   *duckdbbackup.Scheduler
 	groupStore        *groupstore.GroupStore
+	friendStore       *friendstore.FriendStore
 	sessionStore      *session_platform.Store
 	attemptStore      *auth_platform.AttemptStore
 	settingsStore     *settings_platform.Store
@@ -1110,6 +1124,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	autoSyncScheduler := in.autoSyncScheduler
 	backupScheduler := in.backupScheduler
 	groupStore := in.groupStore
+	friendStore := in.friendStore
 	sessionStore := in.sessionStore
 	attemptStore := in.attemptStore
 	settingsStore := in.settingsStore
@@ -1241,6 +1256,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithTitleResolver(titleResolver).
 		WithCapabilities(hiCaps).
 		WithSettingsStore(settingsStore).
+		WithFriendStore(friendStore).
 		WithRankCatalog(hiRanks).
 		WithRankImageURLsByTitle(rankImageURLsByTitle).
 		WithPlaylistLabelOverrides(playlistLabelOverrides).
@@ -1532,6 +1548,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		sessionStore:          sessionStore,
 		tokenProvider:         tokenProvider,
 		groupStore:            groupStore,
+		friendStore:           friendStore,
 		settingsStore:         settingsStore,
 		assetHandler:          assetHandler,
 		assetMetaHandler:      assetMetaHandler,

@@ -1,10 +1,16 @@
 /**
- * JoinPage — page de jonction à un groupe via lien d'invitation.
+ * JoinPage — acceptation d'une invitation.
  *
- * Atteinte via /join?invite=CODE (lien partagé par un membre). L'invité se connecte
- * avec Xbox ; le code voyage dans la session et la LinkStrategy l'ajoute au groupe
- * après le login (cf. XboxSSOLinkStrategy). Pas de compte mot de passe : le login
- * Xbox SSO fait tout. Un champ manuel sert de repli si l'invité n'a que le code.
+ * Atteinte via /join?invite=CODE. Deux invitations arrivent ici et le front ne
+ * sait PAS les distinguer (il ne lit jamais le code) : celle d'un propriétaire
+ * de groupe fait rejoindre ce groupe, celle d'un admin crée un compte qui ne
+ * voit que lui-même. D'où un texte neutre : « accepter l'invitation », jamais
+ * « rejoindre le groupe ».
+ *
+ * L'invité se connecte avec Xbox ; le code voyage dans la session et la
+ * LinkStrategy le consomme après le login (cf. XboxSSOLinkStrategy). Pas de
+ * compte mot de passe : le login Xbox SSO fait tout. Un champ manuel sert de
+ * repli si l'invité n'a que le code.
  */
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -25,7 +31,7 @@ export function JoinPage() {
   function handleJoin() {
     if (!trimmed) return
     // Redirect plein écran : le backend pose le code en session puis redirige vers
-    // Microsoft. Le callback finalise le login + l'ajout au groupe.
+    // Microsoft. Le callback finalise le login et consomme l'invitation.
     window.location.assign(`${API_BASE_URL}/auth/xbox/login?invite=${encodeURIComponent(trimmed)}`)
   }
 

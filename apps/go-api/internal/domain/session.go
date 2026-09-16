@@ -54,9 +54,10 @@ type SessionData struct {
 	// Posé en parallèle de DeviceFlowAttemptID (les deux pris en compte par
 	// IsMeaningful) — cf. handlers/auth.go.
 	PendingDeviceFlowAttempt string `json:"pending_device_flow_attempt,omitempty"`
-	// PendingInviteCode : code d'invitation "rejoindre un groupe" capté par
-	// LoginRedirect (query ?invite=) et consommé par la LinkStrategy après login
-	// Xbox SSO réussi (bypass instance lock + AddMember au groupe + Consume).
+	// PendingInviteCode : code d'invitation capté par LoginRedirect (query
+	// ?invite=) et consommé par la LinkStrategy après login Xbox SSO réussi
+	// (levée du verrou d'instance + Consume + AddMember si l'invitation porte un
+	// groupe + droit de provisioning si le compte vient d'être créé).
 	// Voyage avec la session à travers l'aller-retour OAuth.
 	PendingInviteCode string `json:"pending_invite_code,omitempty"`
 }

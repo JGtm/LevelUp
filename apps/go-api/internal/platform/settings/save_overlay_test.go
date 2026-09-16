@@ -17,7 +17,7 @@ func TestSaveTitleOverlay_SparseWriteResolveGlobalUntouched(t *testing.T) {
 	if err := os.WriteFile(globalPath, []byte(`{
 		"show_progression": false,
 		"outcome_exclude_bot_matches_from_badges": false,
-		"friend_gamertags": ["GlobalFriend"],
+		"watcher_subscribed_players": ["GlobalWatched"],
 		"lang": "fr"
 	}`), 0o644); err != nil {
 		t.Fatal(err)
@@ -47,8 +47,8 @@ func TestSaveTitleOverlay_SparseWriteResolveGlobalUntouched(t *testing.T) {
 	if !resolved.ShowProgression {
 		t.Error("show_progression devrait venir de l'overlay (true)")
 	}
-	if len(resolved.FriendGamertags) != 1 || resolved.FriendGamertags[0] != "GlobalFriend" {
-		t.Errorf("friend_gamertags global devrait être préservé, got %v", resolved.FriendGamertags)
+	if len(resolved.WatcherSubscribedPlayers) != 1 || resolved.WatcherSubscribedPlayers[0] != "GlobalWatched" {
+		t.Errorf("watcher_subscribed_players global devrait être préservé, got %v", resolved.WatcherSubscribedPlayers)
 	}
 	if resolved.Lang != "fr" {
 		t.Errorf("lang global préservé, got %q", resolved.Lang)
