@@ -91,6 +91,14 @@ func TestBuildFromFilmRefusesWithoutMapQuant(t *testing.T) {
 // disparu avec l'état de processus : le profil meurt avec le contexte, il n'y a plus rien à
 // rendre — et c'est ce qui autorise deux films à se décoder en parallèle. L'ORDRE, lui, reste
 // l'invariant : poser APRÈS avoir ouvert le contexte, AVANT le premier balayage.
+//
+// DEPUIS LA REVUE DU LOT (2.3.5), LA POSE EST UNE FONCTION NOMMÉE. `BuildFromFilm` appelle
+// `poserProfilPuisCarte(fc, …)`, qui pose le profil calibré PUIS les largeurs de la carte — le
+// second ordre, celui des deux poses ENTRE ELLES, est épinglé par
+// `TestRouteDuProfilCalibreJusquAuContexte` (`route_profil_calibre_test.go`), qui le MESURE au
+// lieu de le lire. Ce garde-ci reste sur le texte, et il garde les DEUX corps : la pose doit
+// être appelée depuis `BuildFromFilm` entre l'ouverture du contexte et le balayage, et poser
+// les largeurs sur `fc`.
 func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
 	src, err := os.ReadFile("build_from_film.go")
 	if err != nil {
@@ -105,15 +113,28 @@ func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
 	// recue deux lignes plus haut. Ce que le garde exige n'a pas change de nature — que les
 	// largeurs viennent de la CARTE DU MATCH et pas de l'invariant du profil —, seulement de
 	// chemin : l'installateur recoit desormais le CONTEXTE, sur lequel il pose.
-	install := regexp.MustCompile(`
-\s*installWorldObjectPrecision\(fc, `)
-	if !install.MatchString(body) {
-		t.Fatal("BuildFromFilm ne pose plus les largeurs d'axe sur le contexte du film : les " +
-			"objets du monde de TOUTES les cartes repassent en silence aux largeurs de " +
-			"Cliffhanger (invariant du profil). Mesuré le 2026-08-15 : la part d'échantillons de " +
-			"projectile dans l'emprise des bipèdes tombe de ~99 % à 0,09-65 % hors Cliffhanger")
+	pose := regexp.MustCompile(`
+\s*poserProfilPuisCarte\(fc, `)
+	if !pose.MatchString(body) {
+		t.Fatal("BuildFromFilm n'appelle plus poserProfilPuisCarte(fc, …) : les largeurs d'axe " +
+			"ne sont plus posées sur le contexte du film, et les objets du monde de TOUTES les " +
+			"cartes repassent en silence aux largeurs de Cliffhanger (invariant du profil). " +
+			"Mesuré le 2026-08-15 : la part d'échantillons de projectile dans l'emprise des " +
+			"bipèdes tombe de ~99 % à 0,09-65 % hors Cliffhanger")
 	}
-	poseInstall := install.FindStringIndex(body)[0]
+	// LA POSE ELLE-MÊME doit toujours atteindre `installWorldObjectPrecision` sur le contexte :
+	// une `poserProfilPuisCarte` vidée de son second geste passerait le contrôle ci-dessus.
+	corpsPose, ok := funcBody(string(src), "func poserProfilPuisCarte(")
+	if !ok {
+		t.Fatal("poserProfilPuisCarte introuvable dans build_from_film.go : ce garde-rail ne " +
+			"garde plus rien")
+	}
+	if !regexp.MustCompile(`
+\s*installWorldObjectPrecision\(fc, `).MatchString(corpsPose) {
+		t.Fatal("poserProfilPuisCarte ne pose plus les largeurs d'axe sur le contexte du film " +
+			"(mêmes conséquences mesurées que ci-dessus)")
+	}
+	poseInstall := pose.FindStringIndex(body)[0]
 	ouverture := strings.Index(body, "filmdec.NewFilmContextForMap(")
 	if ouverture < 0 || ouverture > poseInstall {
 		t.Fatal("les largeurs sont posées avant que le contexte du film n'existe : le profil de " +

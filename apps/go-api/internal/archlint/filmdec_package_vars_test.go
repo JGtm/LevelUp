@@ -166,7 +166,7 @@ import (
 // RESSERRE A 43 LE 2026-09-17 (lot 2.2.f, famille « crochets d observation ») : TRENTE-SIX de
 // moins, la plus grosse baisse de la serie. Les VINGT-NEUF crochets de deserialiseur et les
 // HUIT compteurs de l inference de chaine — dont `compWidthObs`, « la table sans verrou » que
-// l en-tete de `decode_gate.go` nomme comme l une des deux raisons du verrou de processus —
+// l en-tete du verrou de decodage nommait comme l une des deux raisons de son existence —
 // deviennent les CHAMPS d un seul objet, `filmdec.Observation`. Un observateur ne change aucune
 // consommation de bits : c est la propriete qui le distingue du profil, et elle est ecrite en
 // tete de `observateur.go`. Bilan net : -36 = 43.
@@ -205,13 +205,20 @@ import (
 // balayage construit desormais SON observateur ([filmdec.NouvelleObservation]) et le pose sur
 // ses lecteurs avec son profil ([filmdec.ContexteDeLecture]).
 //
-// LES VINGT-DEUX QUI RESTENT NE SONT ECRITES PAR PERSONNE : quatre erreurs sentinelles (Go n a
+// RESSERRE A 21 LE 2026-09-17 (revue adversariale du lot 2.3, constat P1-1). Le lot avait
+// laisse 22 apres la famille « observateur » et n a pas re-mesure apres le retrait du verrou :
+// le compte REEL est 21, et l ecart etait une PLACE LIBRE — une table de grammaire neuve serait
+// entree sans rougir, ce qui est exactement ce que ce ratchet existe pour empecher. L en-tete le
+// prescrivait (« un nouveau compte a inscrire dans `filmdecVarsGeles`, pour que le resserrage
+// soit un geste ») ; c est fait ici.
+//
+// LES VINGT ET UNE QUI RESTENT NE SONT ECRITES PAR PERSONNE : quatre erreurs sentinelles (Go n a
 // pas de `const` d erreur), seize tables de grammaire deguisees en `var` (Go n a pas de `const`
-// composite) et le dedoublonneur
-// d avertissement de registre (`sync.Map`, qu aucun decodage ne lit). C est ce que le ratchet
-// mesure desormais, et c est le critere que `profil_herite.go` et `observateur.go` avaient
-// ecrit : « `filmdecVarsGeles` tombe a 0 variable mutable ».
-const filmdecVarsGeles = 22
+// composite) et le dedoublonneur d avertissement de registre (`registryWarned`, un `sync.Map`
+// qu aucun decodage ne lit). C est ce que le ratchet mesure desormais, et c est le critere que
+// `profil_herite.go` et `observateur.go` avaient ecrit : « `filmdecVarsGeles` tombe a 0 variable
+// mutable ».
+const filmdecVarsGeles = 21
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

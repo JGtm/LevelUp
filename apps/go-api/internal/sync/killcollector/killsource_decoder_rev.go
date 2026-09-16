@@ -140,6 +140,12 @@ package killcollector
 // `filmdec.LockProcessDecode` de tous ses sites d appel dans `killsource/` : un verrou ne lit
 // aucun bit, et son retrait ne change pas davantage les lignes produites. Aucun match deja
 // decode n est candidat au backlog.
+// 2026-09-17, LOT 2.3.5 (revue adversariale) — REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE.
+// `killsource/decode.go` perd DEUX LIGNES DE COMMENTAIRE : la doc du verrou disparu disait
+// encore « le rejeu 2D decode les memes globaux dans le meme process », ce qui contredisait
+// la ligne au-dessus (doc inversee, constat P1-2 de la revue). Aucun octet n est lu
+// autrement ; le choix est explicite, comme le garde-rail l exige quand l empreinte bouge
+// sans la revision.
 const KillSourceDecoderRev = "killsource-2026-09-16.2"
 
 // L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :

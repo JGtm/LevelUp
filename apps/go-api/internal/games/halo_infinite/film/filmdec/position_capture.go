@@ -265,11 +265,6 @@ func absAxisWFor(br *BitReader, idx, i int) uint {
 	return absAxisW(br, i)
 }
 
-// AbsIndexHistogram rend (et remet a zero) l'histogramme des index de plage absolus.
-//
-// C ETAIT UNE VARIABLE DE PAQUET (`absIdxHist`) JUSQU AU LOT 2.3 : un histogramme est un
-// COMPTEUR D OBSERVATION, il vit donc dans [Observation] avec les autres.
-
 // dequantWorldAxis dequantizes one absolute quantized axis word (width bits). Deux formes :
 //   - AbsDequantRange (défaut) : min + step*(q+0.5) via WorldPositionRange (FUN_140c1e978).
 //   - AbsDequantCenteredQuantum : (q - 2^(bits-1)) * DeltaQuantum — grille fine centrée sur 0.

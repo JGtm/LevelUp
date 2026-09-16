@@ -62,19 +62,11 @@ func (b *BitReader) PoserObservation(o *Observation) *Observation {
 	return prev
 }
 
-// Observation rend l observateur que ce lecteur porte, ou nil.
-func (b *BitReader) Observation() *Observation { return b.obs }
-
 // PoserContexte installe SUR CE LECTEUR le profil et l observateur d un balayage, d un seul
 // geste — aucune des deux moities ne peut etre oubliee.
 func (b *BitReader) PoserContexte(c ContexteDeLecture) {
 	b.p = c.Profil
 	b.obs = c.Obs
-}
-
-// Contexte rend ce que ce lecteur porte.
-func (b *BitReader) Contexte() ContexteDeLecture {
-	return ContexteDeLecture{Profil: b.p, Obs: b.obs}
 }
 
 // poserCadre installe SUR CE LECTEUR tout ce que le cadre d un balayage porte : le profil (qui
