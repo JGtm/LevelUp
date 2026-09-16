@@ -348,4 +348,7 @@
 #               chainage. Faux positif d empreinte, meme nature que `.13` et `.14`.
 #               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` non plus : le corpus gate
 #               rend schema 59 -> 59 et 0 gain / 0 perte / 0 changement sur les 14 temoins.
-grammar-2026-09-15.19	caa007f928cec9bcce58bda4dfe084869a12c351365b35436a4305fde92c670e
+#   2026-09-17  grammar-2026-09-15.20  fusion 2.7g + 2.7p + correctif lint : AUCUN octet lu autrement ; deux
+#               commentaires nolint:unparam dates dans filmdec (largeurs de grammaire au site d appel, le
+#               lot 2.2 les porte au profil) — l empreinte hache les octets, commentaires compris.
+grammar-2026-09-15.20	1e6e6a2620562f3f15850541281b7434316ba1c11ae01aff2812b6507a5ea154

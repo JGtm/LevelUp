@@ -113,56 +113,7 @@ func BuildMapObjectives(e MapObjectivesEntry, specs []ObjectiveRoleSpec) *MapObj
 				campsPonctuels[displayTeam(p.TeamIndex, spec.Neutral)] = true
 			}
 		}
-		for _, z := range e.ZonesOfRole(spec.Role).Zones {
-			// PONCTUEL PAR DÉCISION DU TITRE : l'objet a bien une forme dans le fichier de
-			// carte — on ne la nie pas, on refuse de la PRÉSENTER comme une zone à tenir.
-			// Il sort au même endroit (son centre) et par la même porte que les objets qui
-			// n'ont jamais eu de forme, donc le client n'a aucune règle à apprendre.
-			if spec.PointsOnly {
-				team := displayTeam(z.TeamIndex, spec.Neutral)
-				// Le camp a son ponctuel : cette forme est son aire, pas un second objectif.
-				if campsPonctuels[team] {
-					continue
-				}
-				out.Markers = append(out.Markers, ObjectiveMarkerDTO{
-					Role: string(z.Role),
-					Team: team,
-					X:    float32(z.Center.X),
-					Y:    float32(z.Center.Y),
-					Z:    float32(z.Center.Z),
-				})
-				continue
-			}
-			dto := ObjectiveZoneDTO{
-				Role: string(z.Role),
-				Team: displayTeam(z.TeamIndex, spec.Neutral),
-				X:    float32(z.Center.X),
-				Y:    float32(z.Center.Y),
-				Z:    float32(z.Center.Z),
-			}
-			// Shape est présent PAR CONSTRUCTION (ZonesOfRole écarte les sans-forme sous
-			// Pointless) ; le garde évite un déréférencement aveugle si l'invariant bouge.
-			if z.Shape == nil {
-				continue
-			}
-			dto.Family = string(z.Shape.Family)
-			switch z.Shape.Family {
-			case mapvar.ShapeBox:
-				if z.Shape.HalfX != nil {
-					dto.HalfX = float32(*z.Shape.HalfX)
-				}
-				if z.Shape.HalfY != nil {
-					dto.HalfY = float32(*z.Shape.HalfY)
-				}
-			case mapvar.ShapeCylinder:
-				if z.Shape.Radius != nil {
-					dto.Radius = float32(*z.Shape.Radius)
-				}
-			}
-			dto.FwdX = float32(z.Shape.Forward.X)
-			dto.FwdY = float32(z.Shape.Forward.Y)
-			out.Zones = append(out.Zones, dto)
-		}
+		poserLesZonesDuRole(out, e, spec, campsPonctuels)
 		for _, p := range e.PointsOfRole(spec.Role) {
 			out.Markers = append(out.Markers, ObjectiveMarkerDTO{
 				Role: string(p.Role),
@@ -189,4 +140,66 @@ func displayTeam(teamIndex int, neutral bool) int {
 		return TeamNeutral
 	}
 	return teamIndex
+}
+
+// poserLesZonesDuRole sert les objets A FORME d'un role : en zone dessinee, ou en MARQUEUR a
+// leur centre quand le role est `PointsOnly` et que le camp n'a pas deja son ponctuel.
+//
+// EXTRAIT DE `BuildMapObjectives` (lot 2.7 volet publication, 2026-09-16), qui passait 80
+// lignes. Aucune condition n'a change : c'est la boucle sur `ZonesOfRole`, mot pour mot.
+// `campsPonctuels` entre en parametre parce qu'il se calcule AVANT, sur les ponctuels du meme
+// role — l'ordre que le correctif du 2026-08-26 impose.
+func poserLesZonesDuRole(out *MapObjectives, e MapObjectivesEntry, spec ObjectiveRoleSpec,
+	campsPonctuels map[int]bool,
+) {
+	for _, z := range e.ZonesOfRole(spec.Role).Zones {
+		// PONCTUEL PAR DÉCISION DU TITRE : l'objet a bien une forme dans le fichier de
+		// carte — on ne la nie pas, on refuse de la PRÉSENTER comme une zone à tenir.
+		// Il sort au même endroit (son centre) et par la même porte que les objets qui
+		// n'ont jamais eu de forme, donc le client n'a aucune règle à apprendre.
+		if spec.PointsOnly {
+			team := displayTeam(z.TeamIndex, spec.Neutral)
+			// Le camp a son ponctuel : cette forme est son aire, pas un second objectif.
+			if campsPonctuels[team] {
+				continue
+			}
+			out.Markers = append(out.Markers, ObjectiveMarkerDTO{
+				Role: string(z.Role),
+				Team: team,
+				X:    float32(z.Center.X),
+				Y:    float32(z.Center.Y),
+				Z:    float32(z.Center.Z),
+			})
+			continue
+		}
+		dto := ObjectiveZoneDTO{
+			Role: string(z.Role),
+			Team: displayTeam(z.TeamIndex, spec.Neutral),
+			X:    float32(z.Center.X),
+			Y:    float32(z.Center.Y),
+			Z:    float32(z.Center.Z),
+		}
+		// Shape est présent PAR CONSTRUCTION (ZonesOfRole écarte les sans-forme sous
+		// Pointless) ; le garde évite un déréférencement aveugle si l'invariant bouge.
+		if z.Shape == nil {
+			continue
+		}
+		dto.Family = string(z.Shape.Family)
+		switch z.Shape.Family {
+		case mapvar.ShapeBox:
+			if z.Shape.HalfX != nil {
+				dto.HalfX = float32(*z.Shape.HalfX)
+			}
+			if z.Shape.HalfY != nil {
+				dto.HalfY = float32(*z.Shape.HalfY)
+			}
+		case mapvar.ShapeCylinder:
+			if z.Shape.Radius != nil {
+				dto.Radius = float32(*z.Shape.Radius)
+			}
+		}
+		dto.FwdX = float32(z.Shape.Forward.X)
+		dto.FwdY = float32(z.Shape.Forward.Y)
+		out.Zones = append(out.Zones, dto)
+	}
 }

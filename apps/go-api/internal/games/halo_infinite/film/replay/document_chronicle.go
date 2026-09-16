@@ -14,6 +14,34 @@ package replay
 //
 // RETRAIT DE L EXEMPTION : le jour ou la chronique deviendrait une donnee (fichier versionne
 // hors source Go) lue par le meme extracteur — pas avant.
+//
+// # RE-JUSTIFICATION A CE VOLUME (2026-09-16, lot 2.7 volet publication, constat C1 de la revue
+// # de jalon M1)
+//
+// L exemption ci-dessus fut posee a 1 230 lignes ; le fichier en porte 1 541. La revue de jalon
+// a demande de la RE-JUSTIFIER a ce volume plutot que de la reconduire en silence. Mesure du
+// jour, collee :
+//
+//	lignes du fichier                            1 541
+//	lignes de CODE (hors commentaire et vide)         1   (`package replay`)
+//	entrees de chronique (`// v<N> (`)               45   (v2 a v60)
+//	moyenne par entree                            ~34 lignes
+//
+// CE QUE LA MESURE ETABLIT. Le seuil des 500 lignes de CLAUDE.md borne une UNITE DE LECTURE DE
+// CODE : au-dela, un fichier melange des responsabilites et sa relecture ne tient plus en tete.
+// Ici il n y a qu une ligne de code et aucune responsabilite d execution : le volume est celui
+// d un REGISTRE, et sa croissance est exactement le nombre de montees de schema du depot, pas
+// une derive de conception. Scinder par tranches (v2-v30 / v31-v60) couperait la seule lecture
+// que ce fichier existe pour rendre possible — « qu est-ce qu un artefact de version N porte » —
+// et obligerait `testutil.ReplayChronicleVersions` a balayer plusieurs fichiers, c est-a-dire a
+// pouvoir en OUBLIER un : un extracteur qui rend une liste incomplete laisse
+// `document_shape_test.go` valider une version sans entree, le defaut precis que le garde-rail
+// ferme (constat R2-1 de la revue du lot 1.0).
+//
+// CRITERE DE RETRAIT, INCHANGE ET MESURABLE : la chronique quitte la source Go pour une donnee
+// versionnee (`config/` ou `testdata/`) lue par le MEME extracteur unique. Tant qu elle est du
+// Go, l exemption tient quel que soit le volume — c est le nombre de responsabilites, pas le
+// nombre de lignes, qui la fonde.
 
 //
 // v2 (2026-08-02, lot 3.1/3.2) : les trois tables de libellés deviennent BILINGUES

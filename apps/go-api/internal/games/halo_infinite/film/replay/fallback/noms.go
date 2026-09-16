@@ -35,7 +35,7 @@ const (
 	NomPisteDrapeauSansPontEcartee Nom = "repli_piste_drapeau_sans_pont_ecartee"
 	// NomCollineVotesPeriodeEntiere : `replay/zone_states_hill.go`, `buildDesignatedHills`.
 	NomCollineVotesPeriodeEntiere Nom = "repli_colline_votes_periode_entiere"
-	// NomCollineDernierIntervalleOuvert : `replay/zone_states_hill.go`, `hillOwnerRuns`.
+	// NomCollineDernierIntervalleOuvert : `replay/zone_states_hill_owners.go`, `hillOwnerRuns`.
 	NomCollineDernierIntervalleOuvert Nom = "repli_colline_dernier_intervalle_ouvert"
 	// NomVieCoupeeAuTrouDeReplication : DEUX sites — `replay/lives_decoupe.go`,
 	// `causeDeLaCoupure` (film muet sur les morts du joueur) et `replay/tracks_publication.go`,
@@ -60,6 +60,6 @@ const (
 	NomReplayMancheZeroDecretee Nom = "repli_manche_zero_decretee"
 	// NomSiegeDuRemplacantParAppariementOrdinal : `replay/sieges.go`, `poserLesSieges`.
 	NomSiegeDuRemplacantParAppariementOrdinal Nom = "repli_siege_du_remplacant_par_appariement_ordinal"
-	// NomChassisVehiculeMarqueurNeutre : `replay/document_vehicles.go`, `tallyVehicleCoverage`.
+	// NomChassisVehiculeMarqueurNeutre : `replay/document_vehicles_coverage.go`, `tallyVehicleCoverage`.
 	NomChassisVehiculeMarqueurNeutre Nom = "repli_chassis_vehicule_marqueur_neutre"
 )
