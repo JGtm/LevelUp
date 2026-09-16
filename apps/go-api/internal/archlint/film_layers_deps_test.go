@@ -160,6 +160,13 @@ var (
 // classe fait rougir `TestCouchesDuDecodeurSontPeupleesEtALeurPlace`, ce qui est le bon sens de
 // la faute (classer un paquet coute une ligne, l oublier ouvrirait un trou).
 var couchesDuDecodeur = map[string]coucheFilm{
+	// --- LA FACADE, a la RACINE de l arborescence (lot 2.5.e-b, 2026-09-16). Elle RE-EXPORTE
+	// la surface que les paquets hors du decodeur citaient, et elle ne decode pas une ligne :
+	// elle se classe donc HORS COUCHE, comme les catalogues de libelles et l outillage
+	// d empreinte. Elle importe les CINQ couches — c est son travail — et R1 ne la contraint
+	// pas (rang -1) ; R2 si, et elle la tient : aucun import d `internal/analysis`.
+	"internal/games/halo_infinite/film": horsCoucheFilm,
+
 	// --- source : charger, decompresser, decouper, lire l en-tete, tenir le lecteur de bits.
 	// `source` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)
 	// et passe sous `film/internal/source` au lot 2.5.a (decision V5 du plan).
