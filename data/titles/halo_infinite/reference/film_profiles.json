@@ -83,11 +83,11 @@
       "date": "2026-09-13"
     },
     {
-      "key": "majeure\u003c=38",
+      "key": "majeure<=38",
       "field": "Highlight.Implantation",
       "value": "gamertag_en_tete (b[0:32])",
       "provenance": "mesuree",
-      "proof": "port de spnkr/film/highlight_events.py, confirme sur le cache : le roster humain se ferme sur les films de majeure \u003c= 38",
+      "proof": "port de spnkr/film/highlight_events.py, confirme sur le cache : le roster humain se ferme sur les films de majeure <= 38",
       "date": "2026-09-12"
     },
     {
@@ -99,7 +99,7 @@
       "date": "2026-09-12"
     },
     {
-      "key": "majeure\u003e=41",
+      "key": "majeure>=41",
       "field": "Highlight.Implantation",
       "value": "gamertag_en_tete (b[0:32])",
       "provenance": "mesuree",
@@ -119,7 +119,7 @@
       "field": "Keyframe.MotDeTailleBits",
       "value": "32 (deux mots : n1, n2)",
       "provenance": "relue",
-      "proof": "FUN_142e2bfd0 : deux `if (0 \u003c (int)uVar7)` gardant vtable[0x60] puis vtable[0x88] — comparaison SIGNEE",
+      "proof": "FUN_142e2bfd0 : deux `if (0 < (int)uVar7)` gardant vtable[0x60] puis vtable[0x88] — comparaison SIGNEE",
       "date": "2026-09-15"
     },
     {
@@ -135,7 +135,7 @@
       "field": "Movement.AbsoluteAxisW",
       "value": "14",
       "provenance": "presumee",
-      "proof": "uniforme applique a defaut de table par index de plage ; `absAxisWFor` retombe dessus (repli inscrit au registre, ancre `if absoluteAxisW \u003e 0 {`)",
+      "proof": "uniforme applique a defaut de table par index de plage ; `absAxisWFor` retombe dessus (repli inscrit au registre, ancre `if absoluteAxisW > 0 {`)",
       "date": "2026-09-17"
     },
     {
