@@ -15,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -242,7 +243,7 @@ func InsertPersonalScoreAwards(ctx context.Context, db *sql.DB, matchID, xuid st
 
 // InsertHighlightEvents insère les événements highlight en lot (INSERT OR IGNORE).
 // Retourne le nombre de lignes effectivement insérées.
-func InsertHighlightEvents(ctx context.Context, db *sql.DB, matchID string, events []analysis.HighlightEvent) (int, error) {
+func InsertHighlightEvents(ctx context.Context, db *sql.DB, matchID string, events []highlightevent.HighlightEvent) (int, error) {
 	if len(events) == 0 {
 		return 0, nil
 	}

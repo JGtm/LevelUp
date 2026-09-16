@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"io"
 	"unicode/utf16"
+
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // Constantes du parseur binaire film Halo.
@@ -61,25 +63,6 @@ var medalSortingWeights = map[int]bool{
 // endMarker est le marqueur de fin d'un bloc event dans le flux binaire.
 var endMarker = []byte{0x00, 0x00, 0x2e, 0xe0}
 
-// EventType* sont les valeurs possibles du champ HighlightEvent.EventType.
-const (
-	EventTypeKill  = "kill"
-	EventTypeDeath = "death"
-	EventTypeMedal = "medal"
-	EventTypeMode  = "mode"
-)
-
-// HighlightEvent représente un événement parsé depuis le chunk highlight events.
-type HighlightEvent struct {
-	XUID      uint64
-	Gamertag  string
-	EventType string // EventTypeKill | EventTypeDeath | EventTypeMedal | EventTypeMode
-	TypeHint  int
-	IsMedal   bool
-	TimeMS    int
-	MedalType int
-}
-
 // ParseHighlightEvents parse le chunk highlight events binaire Halo.
 //
 // Le chunk peut arriver dans 2 états selon la source :
@@ -106,7 +89,7 @@ type HighlightEvent struct {
 // version 39-40 les gamertags rendus seraient du rembourrage.
 //
 // Retourne les événements parsés ; les events non reconnus sont silencieusement ignorés.
-func ParseHighlightEvents(data []byte, filmMajorVersion int) ([]HighlightEvent, error) {
+func ParseHighlightEvents(data []byte, filmMajorVersion int) ([]highlightevent.HighlightEvent, error) {
 	if len(data) == 0 {
 		return nil, nil
 	}
@@ -139,13 +122,13 @@ func ParseHighlightEvents(data []byte, filmMajorVersion int) ([]HighlightEvent, 
 //
 // `version` = 0 signifie « le film ne porte pas son registre » : le découpage historique
 // « gamertag en tête » s'applique, et l'appelant a consigné la dégradation.
-func scanEvents(data []byte, version int) []HighlightEvent {
+func scanEvents(data []byte, version int) []highlightevent.HighlightEvent {
 	totalBits := len(data) * 8
 	if totalBits < 80 {
 		return nil
 	}
 
-	var events []HighlightEvent
+	var events []highlightevent.HighlightEvent
 	// Indices déjà traités (en bits) pour éviter les doublons.
 	seenPositions := make(map[int]bool)
 
@@ -196,7 +179,7 @@ func scanEvents(data []byte, version int) []HighlightEvent {
 // (type_hint reconnu). Le Python upstream prend le premier match aveuglément
 // — équivalent en pratique sur de la vraie data, mais cette version est plus
 // robuste sur des flux synthétiques ou bruités.
-func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (HighlightEvent, error) {
+func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (highlightevent.HighlightEvent, error) {
 	totalBits := len(data) * 8
 	windowEndBit := xuidStartBit + eventWindowBits
 	if windowEndBit > totalBits {
@@ -209,9 +192,9 @@ func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (H
 		endPosBit := findBitMarker(data, searchFrom, windowEndBit, endMarker)
 		if endPosBit < 0 {
 			if lastErr != nil {
-				return HighlightEvent{}, lastErr
+				return highlightevent.HighlightEvent{}, lastErr
 			}
-			return HighlightEvent{}, fmt.Errorf("end-marker absent dans la fenêtre")
+			return highlightevent.HighlightEvent{}, fmt.Errorf("end-marker absent dans la fenêtre")
 		}
 
 		eventBitsStart := endPosBit - eventDataBytes*8
@@ -243,9 +226,9 @@ func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (H
 // Deux layouts possibles selon la version :
 //   - version <= 38 ou >= 41 : gamertag[0:32] | pad[32:47] | type_hint[47] | time_ms[48:52] | pad | is_medal[55] | pad | medal_type[59]
 //   - version 39–40          : pad[0:12] | gamertag[12:44] | pad[44:47] | type_hint[47] | time_ms[48:52] | pad | is_medal[55] | pad | medal_type[59]
-func decodeEventBytes(b []byte, xuid uint64, version int) (HighlightEvent, error) {
+func decodeEventBytes(b []byte, xuid uint64, version int) (highlightevent.HighlightEvent, error) {
 	if len(b) < eventDataBytes {
-		return HighlightEvent{}, fmt.Errorf("bloc event trop court: %d < 60", len(b))
+		return highlightevent.HighlightEvent{}, fmt.Errorf("bloc event trop court: %d < 60", len(b))
 	}
 
 	var gamertag string
@@ -263,10 +246,10 @@ func decodeEventBytes(b []byte, xuid uint64, version int) (HighlightEvent, error
 
 	eventType, err := inferEventType(typeHint, isMedal)
 	if err != nil {
-		return HighlightEvent{}, err
+		return highlightevent.HighlightEvent{}, err
 	}
 
-	return HighlightEvent{
+	return highlightevent.HighlightEvent{
 		XUID:      xuid,
 		Gamertag:  gamertag,
 		EventType: eventType,
@@ -282,15 +265,15 @@ func decodeEventBytes(b []byte, xuid uint64, version int) (HighlightEvent, error
 // Retourne une erreur si la combinaison est inconnue.
 func inferEventType(typeHint int, isMedal bool) (string, error) {
 	if isMedal && medalSortingWeights[typeHint] {
-		return EventTypeMedal, nil
+		return highlightevent.EventTypeMedal, nil
 	}
 	switch typeHint {
 	case typeHintMode:
-		return EventTypeMode, nil
+		return highlightevent.EventTypeMode, nil
 	case typeHintDeath:
-		return EventTypeDeath, nil
+		return highlightevent.EventTypeDeath, nil
 	case typeHintKill:
-		return EventTypeKill, nil
+		return highlightevent.EventTypeKill, nil
 	}
 	return "", fmt.Errorf("type_hint=%d isMedal=%v non reconnu", typeHint, isMedal)
 }

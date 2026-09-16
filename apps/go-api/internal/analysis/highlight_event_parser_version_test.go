@@ -16,6 +16,8 @@ package analysis
 import (
 	"encoding/binary"
 	"testing"
+
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // Les trois versions de reference de ces tests. Elles NOMMENT les deux decoupages plutot que de
@@ -61,7 +63,7 @@ func fluxDecale(noms []string) []byte {
 }
 
 // gamertagsDistincts rend l'ensemble des gamertags lus.
-func gamertagsDistincts(events []HighlightEvent) map[string]bool {
+func gamertagsDistincts(events []highlightevent.HighlightEvent) map[string]bool {
 	vus := map[string]bool{}
 	for _, ev := range events {
 		vus[ev.Gamertag] = true

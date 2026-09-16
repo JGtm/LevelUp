@@ -39,6 +39,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
@@ -223,7 +224,7 @@ func (p passeMedailles) traiterMatch(
 // 2026-09-12, constat P1-3). Isoler le geste lui donne un point d observation :
 // `TestEventsDuFilmSuitLaVersionDeclaree` lit le gamertag d un bloc de version 40 et rougit des
 // que la version cesse d etre transmise.
-func eventsDuFilm(film FilmHighlight) ([]analysis.HighlightEvent, error) {
+func eventsDuFilm(film FilmHighlight) ([]highlightevent.HighlightEvent, error) {
 	return analysis.ParseHighlightEvents(film.Chunk, film.MajorVersion)
 }
 
@@ -244,12 +245,12 @@ type correction struct {
 // deux cotes n ont pas le meme cardinal n est PAS devine — ses lignes comptent
 // « sans paire ».
 func apparier(
-	ctx context.Context, enBase []evenementBase, events []analysis.HighlightEvent,
+	ctx context.Context, enBase []evenementBase, events []highlightevent.HighlightEvent,
 	resoudre ResolveurNomMedaille, bilan *BilanBackfillMedailles,
 ) []correction {
-	duFilm := map[coupleAppariement][]analysis.HighlightEvent{}
+	duFilm := map[coupleAppariement][]highlightevent.HighlightEvent{}
 	for _, ev := range events {
-		if ev.EventType != analysis.EventTypeMedal {
+		if ev.EventType != highlightevent.EventTypeMedal {
 			continue
 		}
 		c := coupleAppariement{xuid: strconv.FormatUint(ev.XUID, 10), timeMS: ev.TimeMS}
@@ -318,7 +319,7 @@ func matchsMedaillesSansIdentite(ctx context.Context, db *sql.DB) ([]string, err
 	const q = `SELECT DISTINCT match_id FROM highlight_events
 	           WHERE event_type = ? AND raw_json IS NULL
 	           ORDER BY match_id`
-	rows, err := db.QueryContext(ctx, q, analysis.EventTypeMedal)
+	rows, err := db.QueryContext(ctx, q, highlightevent.EventTypeMedal)
 	if err != nil {
 		return nil, fmt.Errorf("backfill medailles: selection des matchs: %w", err)
 	}
@@ -341,7 +342,7 @@ func medaillesDuMatch(ctx context.Context, db *sql.DB, matchID string) ([]evenem
 		SELECT id, COALESCE(xuid, ''), COALESCE(time_ms, 0), raw_json IS NOT NULL
 		FROM highlight_events
 		WHERE match_id = ? AND event_type = ?
-		ORDER BY id`, matchID, analysis.EventTypeMedal)
+		ORDER BY id`, matchID, highlightevent.EventTypeMedal)
 	if err != nil {
 		return nil, fmt.Errorf("backfill medailles: events de %s: %w", matchID, err)
 	}
