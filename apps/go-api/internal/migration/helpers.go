@@ -137,28 +137,49 @@ func alterColumnTypeIfNeeded(db *sql.DB, table, column, wanted string) (bool, er
 	// DuckDB 1.5.5 refuse l'ALTER COLUMN des qu'un index SECONDAIRE existe sur la table,
 	// meme sur une autre colonne (« Cannot alter entry ... there are entries that depend
 	// on it »). On depose les index de la table (DDL relevee dans duckdb_indexes()), on
-	// elargit, on les recree. Un index sans DDL relisible fait echouer la migration plutot
-	// que d'etre depose a l'aveugle (revue adversariale du 2026-09-16, P0).
+	// elargit, on les recree — dans UNE transaction : un arret entre la depose et la
+	// recreation laisserait la colonne elargie et les index perdus pour toujours (leurs
+	// etapes de creation sont deja enregistrees et ne rejouent jamais). Un index sans DDL
+	// relisible fait echouer la migration plutot que d'etre depose a l'aveugle (revue
+	// adversariale du 2026-09-16, P0 puis P2).
 	indexes, err := tableSecondaryIndexes(db, table)
 	if err != nil {
 		return false, fmt.Errorf("alterColumnTypeIfNeeded index de %s: %w", table, err)
 	}
-	for _, idx := range indexes {
-		if _, err := db.ExecContext(bootCtx(), "DROP INDEX IF EXISTS "+idx.name); err != nil {
-			return false, fmt.Errorf("alterColumnTypeIfNeeded DROP INDEX %s: %w", idx.name, err)
-		}
-	}
-	_, err = db.ExecContext(bootCtx(),
-		fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DATA TYPE %s", table, column, wanted))
+	tx, err := db.BeginTx(bootCtx(), nil)
 	if err != nil {
-		return false, fmt.Errorf("alterColumnTypeIfNeeded ALTER %s.%s -> %s: %w", table, column, wanted, err)
+		return false, fmt.Errorf("alterColumnTypeIfNeeded begin: %w", err)
 	}
-	for _, idx := range indexes {
-		if _, err := db.ExecContext(bootCtx(), idx.ddl); err != nil {
-			return true, fmt.Errorf("alterColumnTypeIfNeeded recreation index %s: %w", idx.name, err)
+	if err := alterColumnTypeInTx(tx, table, column, wanted, indexes); err != nil {
+		if rbErr := tx.Rollback(); rbErr != nil {
+			return false, fmt.Errorf("%w (rollback: %v)", err, rbErr)
 		}
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("alterColumnTypeIfNeeded commit %s.%s: %w", table, column, err)
 	}
 	return true, nil
+}
+
+// alterColumnTypeInTx : depose des index secondaires, ALTER, recreation — le tout dans la
+// transaction fournie (l'appelant commit ou rollback).
+func alterColumnTypeInTx(tx *sql.Tx, table, column, wanted string, indexes []tableIndex) error {
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(bootCtx(), "DROP INDEX IF EXISTS "+idx.name); err != nil {
+			return fmt.Errorf("alterColumnTypeIfNeeded DROP INDEX %s: %w", idx.name, err)
+		}
+	}
+	if _, err := tx.ExecContext(bootCtx(),
+		fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DATA TYPE %s", table, column, wanted)); err != nil {
+		return fmt.Errorf("alterColumnTypeIfNeeded ALTER %s.%s -> %s: %w", table, column, wanted, err)
+	}
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(bootCtx(), idx.ddl); err != nil {
+			return fmt.Errorf("alterColumnTypeIfNeeded recreation index %s: %w", idx.name, err)
+		}
+	}
+	return nil
 }
 
 // tableIndex : un index secondaire et la DDL qui le recree (duckdb_indexes().sql).
