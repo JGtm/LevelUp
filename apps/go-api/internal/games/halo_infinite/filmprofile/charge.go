@@ -103,6 +103,7 @@ func (c *Catalogue) Valide() error {
 		}
 		vues[paire] = i
 	}
+	anomalies = append(anomalies, c.valideEmpreintesRegistre()...)
 	return errors.Join(anomalies...)
 }
 

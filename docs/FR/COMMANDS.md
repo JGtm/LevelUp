@@ -243,7 +243,9 @@ go run ./cmd/film-profiles-build [--title slug] [--check] [--out FILE] [--bounds
   (ce que le dépôt sait de la grammaire d'un film, indexé par les trois clefs que le film
   *écrit*). L'outil produit le bloc `derived` **seulement** — l'empreinte de
   `map_quant_bounds.json`, pour que le profil dise de quelle dérivation des fichiers du jeu il
-  est solidaire. Le bloc `entries` est saisi à la main, avec provenance, et recopié tel quel.
+  est solidaire. Les blocs saisis — `entries` et `registryFingerprints` (une empreinte de
+  registre ECS par clef écrite : le build, ou la version majeure pour les films sans section
+  d'identification) — sont écrits à la main, avec provenance, et recopiés tels quels.
 - Prérequis : ni jeu installé, ni réseau, ni cgo. `--check` n'écrit rien et sort en 1 si le
   fichier commis n'est pas celui que l'outil produirait. Depuis un worktree, exporter
   `LEVELUP_REPO_ROOT=<le worktree>` ou passer `--out`/`--bounds` (`db_profiles.json` est

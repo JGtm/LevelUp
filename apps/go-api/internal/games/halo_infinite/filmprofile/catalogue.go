@@ -267,6 +267,12 @@ type Catalogue struct {
 	Derive Derive `json:"derived"`
 	// Entrees est la part saisie, dans l ordre de la table du lot 2.1.
 	Entrees []Entree `json:"entries"`
+	// EmpreintesRegistre est la table des empreintes de registre ECS par clef ecrite du film
+	// (cf. [EmpreinteRegistre]). Elle est SAISIE elle aussi — mesuree sur des films temoins —
+	// mais porte des GRANDEURS et non des phrases, d ou une section a part : un test de
+	// conformite y mord valeur contre valeur. Facultative : un catalogue sans empreinte reste
+	// valide, il dit seulement que le depot ne connait le registre d aucun build.
+	EmpreintesRegistre []EmpreinteRegistre `json:"registryFingerprints,omitempty"`
 }
 
 // EntreesPour rend, dans l ordre du fichier, les entrees que les clefs lues selectionnent.
