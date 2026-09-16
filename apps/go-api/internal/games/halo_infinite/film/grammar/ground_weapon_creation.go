@@ -25,6 +25,7 @@ package grammar
 import (
 	"fmt"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -37,7 +38,7 @@ import (
 // ScanFilmGroundWeaponCreations est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanGroundWeaponCreations].
 func ScanFilmGroundWeaponCreations(
-	dir string, wr *Vec3Range,
+	dir string, wr *profile.Vec3Range,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -48,7 +49,7 @@ func ScanFilmGroundWeaponCreations(
 
 // ScanGroundWeaponCreations décode les records de création des armes au sol d'un film DEJA CHARGE.
 func ScanGroundWeaponCreations(
-	fc *FilmContext, wr *Vec3Range,
+	fc *FilmContext, wr *profile.Vec3Range,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if len(fc.ChunkNumbers()) == 0 {
@@ -70,7 +71,7 @@ func ScanGroundWeaponCreations(
 // ScanFilmGroundWeaponCreationsForBand est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanGroundWeaponCreationsForBand].
 func ScanFilmGroundWeaponCreationsForBand(
-	dir string, wr *Vec3Range, band map[uint32]bool,
+	dir string, wr *profile.Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -81,7 +82,7 @@ func ScanFilmGroundWeaponCreationsForBand(
 
 // ScanGroundWeaponCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
 func ScanGroundWeaponCreationsForBand(
-	fc *FilmContext, wr *Vec3Range, band map[uint32]bool,
+	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if wr == nil {

@@ -36,6 +36,7 @@ import (
 	"sort"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -79,7 +80,7 @@ func e191cBalayerMPP(t *testing.T, ancres []e191cAncre, ti int) {
 	for l := 1; l <= e191cN2Max; l++ {
 		for i := 1; i <= e191cN2Max; i++ {
 			bal := contexteDInstrument()
-			bal.Profil.MPP = MPPWidths{Lead: l, Index: i}
+			bal.Profil.MPP = profile.MPPWidths{Lead: l, Index: i}
 			part, modal, n := e191cN2Part(ancres, ti, bal)
 			total = n
 			res = append(res, e191cResultatMPP{Lead: l, Index: i, Part: part, Modal: modal})
@@ -173,7 +174,7 @@ func e191cLigneParBuild(t *testing.T, court string, ti int, ancres []e191cAncre,
 	for l := 1; l <= e191cN2Max; l++ {
 		for i := 1; i <= e191cN2Max; i++ {
 			bal := contexteDInstrument()
-			bal.Profil.MPP = MPPWidths{Lead: l, Index: i}
+			bal.Profil.MPP = profile.MPPWidths{Lead: l, Index: i}
 			part, modal, _ := e191cN2Part(ancres, ti, bal)
 			r := e191cResultatMPP{Lead: l, Index: i, Part: part, Modal: modal}
 			if part > meilleur.Part {
@@ -223,7 +224,7 @@ func e191cVer(v int, ok bool) string {
 // LA BASCULE EST A `HI_1_12_0`, ET LA VERSION MAJEURE DU FILM NE LA DONNE PAS : `e5adf7b2` et
 // `bcb6d393` portent tous deux `v=40` et tombent de part et d autre. Ce qui les separe est le
 // BUILD — et, dans `chunk_00`, le CARDINAL DE LA TABLE PAR TYPE : 123 d un cote, 116 a 122 de
-// l autre. Ce cardinal est LISIBLE HORS LIGNE (`FilmIdentity.TypeVersions`).
+// l autre. Ce cardinal est LISIBLE HORS LIGNE (`profile.FilmIdentity.TypeVersions`).
 //
 // CONSEQUENCE, ET ELLE CORRIGE LA LECTURE DU PAS 2 QUATER : le bloc MPP ne consomme PAS trois
 // bits de trop « dans l absolu ». Le portage 9/5 est EXACT sur les builds >= HI_1_12_0 — il y

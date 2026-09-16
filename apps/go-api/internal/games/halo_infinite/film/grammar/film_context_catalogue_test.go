@@ -16,7 +16,7 @@ package grammar
 // La correction porte sur UNE propriete de donnee : Live Fire est la premiere carte dont l'arene
 // n'est pas la region 0 et dont l'index de region tient sur DEUX bits (`regionIndexBits: 2`,
 // `region: 1`), la ou toutes les autres cartes tiennent sur un bit a zero. Une entree ecrite a la
-// main dans ce fichier prouverait que `MapQuantEntry.Layout()` sait additionner 4 + 2 ; elle ne
+// main dans ce fichier prouverait que `profile.MapQuantEntry.Layout()` sait additionner 4 + 2 ; elle ne
 // prouverait pas que le catalogue VERSIONNE porte encore cette carte sous cette forme. Le jour ou
 // `map_quant_bounds.json` est regenere sans le champ, c'est ici que ca doit tomber — pas dans une
 // cuisson silencieuse.
@@ -25,6 +25,7 @@ package grammar
 // le meme chemin relatif que `replay/golden_inputs_test.go` : ce test tourne donc en CI.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"path/filepath"
 	"testing"
 )
@@ -36,10 +37,10 @@ func cheminCatalogueBornes() string {
 }
 
 // entreeCatalogue rend l'entree VERSIONNEE d'une carte.
-func entreeCatalogue(t *testing.T, carte string) MapQuantEntry {
+func entreeCatalogue(t *testing.T, carte string) profile.MapQuantEntry {
 	t.Helper()
 	chemin := cheminCatalogueBornes()
-	cat, err := LoadMapQuantCatalog(chemin)
+	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s illisible : %v", chemin, err)
 	}
@@ -75,7 +76,7 @@ func TestRegleDuCatalogueSurLeVraiCatalogue(t *testing.T) {
 	} {
 		t.Run(c.carte, func(t *testing.T) {
 			entry := entreeCatalogue(t, c.carte)
-			attendu := I0Layout{GateBits: c.gate, AxisW: c.axes, Region: c.region}
+			attendu := profile.I0Layout{GateBits: c.gate, AxisW: c.axes, Region: c.region}
 			if lay := entry.Layout(); lay != attendu {
 				t.Fatalf("catalogue %s : %s, attendu %s (%s)", c.carte, lay, attendu, c.note)
 			}
@@ -106,14 +107,14 @@ func TestRegleDuCatalogueRepliAutoDetection(t *testing.T) {
 	// Une entree de catalogue ANTERIEURE au champ des largeurs : bornes presentes, axisWidths
 	// absentes -> Layout() invalide. C'est le cas que le repli protege ; imposer ce decoupage
 	// armerait des largeurs NULLES sur tout le film.
-	sansLargeurs := MapQuantEntry{Module: "catalogue_anterieur_au_champ"}
+	sansLargeurs := profile.MapQuantEntry{Module: "catalogue_anterieur_au_champ"}
 	if sansLargeurs.Layout().Valid() {
 		t.Fatal("une entree sans axisWidths rend un decoupage VALIDE : le cas de repli a disparu")
 	}
 
 	for _, c := range []struct {
 		nom   string
-		entry *MapQuantEntry
+		entry *profile.MapQuantEntry
 	}{
 		{"entree nil (enveloppes D2, usages hors production)", nil},
 		{"entree sans largeurs", &sansLargeurs},
@@ -141,7 +142,7 @@ func TestRegleDuCatalogueRepliAutoDetection(t *testing.T) {
 func TestRegleDuCatalogueDecoupageForceMaitre(t *testing.T) {
 	film := chargerMiniBobine(t)
 	entry := entreeCatalogue(t, "Live Fire")
-	force := I0Layout{GateBits: 7, AxisW: [3]uint{9, 10, 11}, Region: 3}
+	force := profile.I0Layout{GateBits: 7, AxisW: [3]uint{9, 10, 11}, Region: 3}
 	if force == entry.Layout() {
 		t.Fatal("le decoupage force EGALE celui du catalogue : la precedence ne serait pas mesuree")
 	}

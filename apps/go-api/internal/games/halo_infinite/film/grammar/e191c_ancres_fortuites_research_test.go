@@ -42,11 +42,12 @@ import (
 	"sort"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191cN1Bit est la position de `n1` depuis le debut du record : la fin de l en-tete par entite.
-const e191cN1Bit = keyframeFullStateHeaderBits
+const e191cN1Bit = profile.KeyframeEnTeteBits
 
 // e191cRec est un record d image-cle avec son `n1`, avant tout appariement.
 type e191cRec struct {

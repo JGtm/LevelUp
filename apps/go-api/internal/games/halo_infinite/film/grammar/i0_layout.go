@@ -39,77 +39,9 @@ import (
 	"fmt"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
-
-// Découpage de l'en-tête d'i0, seule partie NON dérivée du film (source : Ghidra).
-//
-//	i0SpineBits      : les 3 bits de contrôle lus par FUN_1406cfe44 avant l'aiguillage.
-//	i0UseDefaultBits : le bit useDefault de FUN_14076e524 (1 => table par défaut, boîte monde).
-//	i0RegionIndexBits: DAT_144632be0 = ceilLog2(nb de BSP valides), 1 quand la carte en a 2.
-//
-// La valeur 1 de l'index est CONFIRMÉE DANS LE FILM sur les deux cartes de référence : le bit
-// 4 d'i0 ne bascule JAMAIS (0 bascule sur 170 518 / 291 288 paires consécutives) mais prend la
-// valeur 1 sur une poignée d'enregistrements (3 sur Cliffhanger, 2 sur Catalyst) — signature
-// d'un champ d'index d'un bit, et non d'un bit de données.
-const (
-	i0SpineBits       = 3
-	i0UseDefaultBits  = 1
-	i0RegionIndexBits = 1
-)
-
-// I0Layout est le découpage binaire du vec3 absolu d'i0 pour UNE carte.
-type I0Layout struct {
-	// GateBits est le nombre de bits qui précèdent l'axe X (spine + useDefault + index).
-	GateBits int
-	// AxisW sont les largeurs de quantification de X, Y, Z, en bits.
-	AxisW [3]uint
-	// Region est la VALEUR d'index de région attendue sur les records décodés (l'index
-	// occupe GateBits-4 bits). Zéro partout sauf sur les cartes dont la région jouée n'est
-	// pas la première du bloc structure-BSP (Live Fire : région 1 sur 2 bits — lot C
-	// catalogues, 2026-08-27). Un record d'une AUTRE région est écarté : ses quanta sont
-	// exprimés dans une autre AABB, les déquantifier avec ces bornes produirait une
-	// coordonnée fausse silencieuse.
-	Region uint32
-}
-
-// DefaultI0GateBits est la longueur d'en-tête d'i0 sur le chemin dominant (région explicite).
-const DefaultI0GateBits = i0SpineBits + i0UseDefaultBits + i0RegionIndexBits
-
-// TotalBits est la longueur du composant i0 jusqu'à la fin du vec3 (queue exclue).
-func (l I0Layout) TotalBits() int {
-	return l.GateBits + int(l.AxisW[0]+l.AxisW[1]+l.AxisW[2])
-}
-
-// AxisOffset est l'offset bit de l'axe ax depuis le début d'i0.
-func (l I0Layout) AxisOffset(ax int) int {
-	off := l.GateBits
-	for i := 0; i < ax; i++ {
-		off += int(l.AxisW[i])
-	}
-	return off
-}
-
-// Valid signale un découpage exploitable (largeurs dans la plage physique du moteur).
-func (l I0Layout) Valid() bool {
-	if l.GateBits < i0SpineBits+i0UseDefaultBits {
-		return false
-	}
-	for _, w := range l.AxisW {
-		if w < 8 || w > 26 { // cap moteur = 26 ; sous 8 bits aucune carte ne descend
-			return false
-		}
-	}
-	return true
-}
-
-func (l I0Layout) String() string {
-	if l.Region != 0 {
-		return fmt.Sprintf("gate=%d region=%d %d/%d/%d (i0=%d bits)",
-			l.GateBits, l.Region, l.AxisW[0], l.AxisW[1], l.AxisW[2], l.TotalBits())
-	}
-	return fmt.Sprintf("gate=%d %d/%d/%d (i0=%d bits)", l.GateBits, l.AxisW[0], l.AxisW[1], l.AxisW[2], l.TotalBits())
-}
 
 // I0LayoutReport porte les mesures qui ONT servi à établir le découpage : c'est la pièce
 // justificative, pas un log. FlipRate[k] est la fraction de paires d'enregistrements
@@ -148,10 +80,10 @@ func (s i0Sample) bit(k int) uint64 { return (s.bits[k>>6] >> (63 - uint(k&63)))
 // L'ENVELOPPE `dir` A ETE DEPLACEE EN TEST LE 2026-09-16 (revue de jalon M1, constat C4) : elle
 // n'avait plus aucun appelant de production depuis le lot 1.9.4. Cf.
 // `i0_layout_instrument_helpers_test.go`.
-func DetectI0LayoutOf(film *source.Film) (I0Layout, I0LayoutReport, error) {
+func DetectI0LayoutOf(film *source.Film) (profile.I0Layout, I0LayoutReport, error) {
 	nums := FilmChunkNumbers(film)
 	if len(nums) == 0 {
-		return I0Layout{}, I0LayoutReport{}, ErrNoFilmChunk
+		return profile.I0Layout{}, I0LayoutReport{}, ErrNoFilmChunk
 	}
 	scanned := nums
 	if len(scanned) > detectMaxChunks {
@@ -159,7 +91,7 @@ func DetectI0LayoutOf(film *source.Film) (I0Layout, I0LayoutReport, error) {
 	}
 	slots := bipedSlotBand(film, scanned)
 	if slots.Count() == 0 {
-		return I0Layout{}, I0LayoutReport{}, fmt.Errorf("aucun slot biped (ti=%d) dans le film", BipedTypeIndex)
+		return profile.I0Layout{}, I0LayoutReport{}, fmt.Errorf("aucun slot biped (ti=%d) dans le film", BipedTypeIndex)
 	}
 	var samples []i0Sample
 	for _, c := range scanned {
@@ -177,13 +109,13 @@ func DetectI0LayoutOf(film *source.Film) (I0Layout, I0LayoutReport, error) {
 	rep := profileI0(samples)
 	rep.Boundaries = i0Boundaries(rep.FlipRate)
 	if len(rep.Boundaries) < 3 {
-		return I0Layout{}, rep, fmt.Errorf("profil i0 non concluant : %d frontière(s) détectée(s) sur %d paires",
+		return profile.I0Layout{}, rep, fmt.Errorf("profil i0 non concluant : %d frontière(s) détectée(s) sur %d paires",
 			len(rep.Boundaries), rep.Pairs)
 	}
 	b := rep.Boundaries
-	lay := I0Layout{
-		GateBits: DefaultI0GateBits,
-		AxisW:    [3]uint{uint(b[0] - DefaultI0GateBits), uint(b[1] - b[0]), uint(b[2] - b[1])},
+	lay := profile.I0Layout{
+		GateBits: profile.DefaultI0GateBits,
+		AxisW:    [3]uint{uint(b[0] - profile.DefaultI0GateBits), uint(b[1] - b[0]), uint(b[2] - b[1])},
 	}
 	if !lay.Valid() {
 		return lay, rep, fmt.Errorf("découpage i0 implausible : %s", lay)
@@ -197,7 +129,7 @@ func DetectI0LayoutOf(film *source.Film) (I0Layout, I0LayoutReport, error) {
 // le chemin absolu à région explicite.
 func collectI0Samples(pay []byte, slots SlotBand, chunk, pkt int, out []i0Sample) []i0Sample {
 	total := len(pay) * 8
-	const preGate = i0SpineBits + i0UseDefaultBits
+	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
 	for p := 0; p+bipedHeaderBits+bipedIndexBits*bipedMinMaskCnt+detectWindow <= total; {
 		i0, slot, _, ok := matchBipedHeaderRaw(pay, p, total, slots, true, detectWindow)
 		if !ok || readBitsAt(pay, i0, preGate) != 0 {

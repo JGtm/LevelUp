@@ -58,13 +58,14 @@ var worldObjectPrecisionReaders = map[string]string{
 		"Depuis le lot 2.7 (2026-09-16) c'est la SEULE mention restée dans ce fichier : la " +
 		"déclaration, le setter et les deux lectures du chemin de traversée en sont sortis " +
 		"par déplacement pur, vers `traverse_precision.go` et `dispatch_object.go`",
-	"internal/games/halo_infinite/film/grammar/profile.go": "le CHAMP `Movement.WorldObject` et " +
+	"internal/games/halo_infinite/film/profile/profil.go": "le CHAMP `Movement.WorldObject` et " +
 		"son invariant (2026-09-17, lot 2.2.b) : l'entrée `cliffhanger` du catalogue, que " +
-		"l'installateur de `replay` remplace par la carte du match. Aucune lecture de décodage ici",
-	"internal/games/halo_infinite/film/grammar/profile_table.go": "la LIGNE DE TABLE de " +
+		"l'installateur de `replay` remplace par la carte du match. Aucune lecture de décodage ici. " +
+		"DESCENDU EN `profile` AU LOT 2.5.b (2026-09-16) : c'est une valeur, pas un lecteur",
+	"internal/games/halo_infinite/film/profile/profile_table.go": "la LIGNE DE TABLE de " +
 		"`Movement.WorldObject` (2026-09-17, lot 2.2.b) : sa provenance, sa preuve et sa date, " +
 		"comme toute valeur de profil. Elle DIT d'où viennent les largeurs — l'entrée de " +
-		"catalogue de la carte — au lieu d'en lire une",
+		"catalogue de la carte — au lieu d'en lire une. DESCENDUE EN `profile` AU LOT 2.5.b",
 	"internal/games/halo_infinite/film/grammar/traverse_precision.go": "déclaration du global et son setter. " +
 		"Vivait dans `traverse.go` jusqu'au lot 2.7 (2026-09-16), qui l'en a sorti par " +
 		"déplacement pur — la scission des fichiers de plus de 500 lignes",
@@ -74,10 +75,12 @@ var worldObjectPrecisionReaders = map[string]string{
 		"maillons par déplacement pur — même contrat d'installation qu'avant",
 	"internal/games/halo_infinite/film/grammar/projectiles.go": "longueur du champ (`projPosBits`) et " +
 		"déquantification (`decodeWorldObjectPos`) — le balayage des objets du monde",
-	"internal/games/halo_infinite/film/grammar/components_movement.go": "CITATION en commentaire (2026-09-12, " +
+	"internal/games/halo_infinite/film/profile/precision.go": "CITATION en commentaire (2026-09-12, " +
 		"lot B-bis) : le champ `Region` de `PrecisionDescriptor` documente qu'il ne vaut que " +
 		"pour le descripteur world-object et pourquoi il vit DANS la structure (restauration " +
-		"par valeur par l'installateur) — aucune lecture de la valeur ici",
+		"par valeur par l'installateur) — aucune lecture de la valeur ici. LE TYPE A CHANGE DE " +
+		"COUCHE AU LOT 2.5.b (2026-09-16) : il descend de `grammar/components_movement.go` dans " +
+		"`profile/`, ou il est de la DONNEE ; le commentaire l'a suivi, pas la lecture",
 	"internal/games/halo_infinite/film/grammar/position_capture.go": "repli d'`absAxisW`, INATTEIGNABLE en " +
 		"l'état : il est gardé par `br.absoluteAxisW() > 0`, dont le défaut vaut 14 et dont le " +
 		"seul écrivain (killsource/calibrate.go) balaie 6..26 — depuis le lot 2.2.a il le fait " +

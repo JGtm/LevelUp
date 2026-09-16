@@ -5,7 +5,7 @@ package grammar
 // # CE QUE CE FICHIER TIENT
 //
 // Le découpage d'i0 est une DONNÉE DE PROFIL (D-3 d'ADR 0034) : il vient du catalogue de carte
-// (`MapQuantEntry.Layout`), jamais d'une mesure sur le film. Un test de non-régression qui se
+// (`profile.MapQuantEntry.Layout`), jamais d'une mesure sur le film. Un test de non-régression qui se
 // contenterait de compter des positions ne dirait PAS d'où vient le découpage : tant que
 // l'auto-détection décide, fausser le catalogue ne change rien et le vert ne prouve rien.
 //
@@ -40,6 +40,7 @@ package grammar
 //	go test ./internal/games/halo_infinite/film/filmdec/ -run I0Catalogue -v -count=1
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"testing"
 )
 
@@ -50,7 +51,7 @@ import (
 // les relit sous un découpage qui peut être le bon ou le muté.
 type recordBipedSynthetique struct {
 	// Lay est le découpage sous lequel les bits sont ÉCRITS.
-	Lay I0Layout
+	Lay profile.I0Layout
 	// Region est la valeur écrite dans le champ d'index de région (largeur `GateBits - 4`).
 	Region uint64
 	Slot   uint32
@@ -64,7 +65,7 @@ type recordBipedSynthetique struct {
 // ecrire pose l'en-tête, le masque et le composant i0 de cet enregistrement.
 func (r recordBipedSynthetique) ecrire(w *bitWriter) {
 	writeBipedHeaderEtMasque(w, r.Slot, r.Tag, r.MaskCount)
-	const preGate = i0SpineBits + i0UseDefaultBits
+	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
 	w.bits(0, preGate) // i0 absolu : spine + useDefault nuls
 	w.bits(r.Region, r.Lay.GateBits-preGate)
 	for ax := 0; ax < 3; ax++ {
@@ -80,12 +81,12 @@ func (r recordBipedSynthetique) ecrire(w *bitWriter) {
 // catalogue venait à dire autre chose pour cette carte, `TestI0CatalogueEstLaSourceDuDecoupage`
 // rougit — et c'est le comportement voulu : un changement de découpage de carte est une décision,
 // pas un effet de bord.
-var decoupageDeReferenceLiveFire = I0Layout{GateBits: 6, AxisW: [3]uint{12, 12, 11}, Region: 1}
+var decoupageDeReferenceLiveFire = profile.I0Layout{GateBits: 6, AxisW: [3]uint{12, 12, 11}, Region: 1}
 
 // liveFireEntry rend l'entrée de catalogue de Live Fire, LUE DANS LE CATALOGUE VERSIONNÉ.
-func liveFireEntry(t *testing.T) MapQuantEntry {
+func liveFireEntry(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
-	cat, err := LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -121,7 +122,7 @@ func payloadTemoin() []byte {
 
 // lireSousDecoupage rejoue le balayage PUR du dépôt (`ScanBipedRecords`) sur le témoin de bits,
 // sous le découpage `lu`.
-func lireSousDecoupage(lu I0Layout, rng Vec3Range) []BipedPosition {
+func lireSousDecoupage(lu profile.I0Layout, rng profile.Vec3Range) []BipedPosition {
 	opt := DefaultScanFilmOptions()
 	opt.WorldRange = &rng
 	return ScanBipedRecords(payloadTemoin(), NewSlotBand(map[uint32]bool{slotTemoin: true}), lu, opt,
@@ -168,7 +169,7 @@ func TestI0CatalogueEcarteLesAutresRegions(t *testing.T) {
 	// LE DÉCOUPAGE QUE L'AUTO-DÉTECTION REND SUR CETTE CARTE : même longueur totale d'i0, porte
 	// d'un seul bit, région attendue 0 (cf. i0_layout.go). Écrit ici comme TÉMOIN DE MESURE, pas
 	// comme une valeur de production.
-	detecte := I0Layout{GateBits: DefaultI0GateBits, AxisW: [3]uint{
+	detecte := profile.I0Layout{GateBits: profile.DefaultI0GateBits, AxisW: [3]uint{
 		decoupageDeReferenceLiveFire.AxisW[0] + 1,
 		decoupageDeReferenceLiveFire.AxisW[1],
 		decoupageDeReferenceLiveFire.AxisW[2]}}
@@ -197,16 +198,16 @@ func TestI0CatalogueMutationDUnBitFaitRougir(t *testing.T) {
 
 	for _, cas := range []struct {
 		nom    string
-		muter  func(*MapQuantEntry)
+		muter  func(*profile.MapQuantEntry)
 		raison string
 	}{
-		{"axisWidths X decale d'un bit", func(m *MapQuantEntry) { m.AxisWidths[0]++ },
+		{"axisWidths X decale d'un bit", func(m *profile.MapQuantEntry) { m.AxisWidths[0]++ },
 			"un bit de plus sur X double le pas de quantification et decale les deux autres axes"},
-		{"axisWidths Z decale d'un bit", func(m *MapQuantEntry) { m.AxisWidths[2]-- },
+		{"axisWidths Z decale d'un bit", func(m *profile.MapQuantEntry) { m.AxisWidths[2]-- },
 			"la longueur totale d'i0 change : la marche n'avance plus au meme endroit"},
-		{"regionIndexBits rabaissee a 1", func(m *MapQuantEntry) { m.RegionIndexBits = 1 },
+		{"regionIndexBits rabaissee a 1", func(m *profile.MapQuantEntry) { m.RegionIndexBits = 1 },
 			"la porte de region ne teste plus qu'un bit : elle laisse passer une autre region"},
-		{"region attendue remise a 0", func(m *MapQuantEntry) { m.Region = 0 },
+		{"region attendue remise a 0", func(m *profile.MapQuantEntry) { m.Region = 0 },
 			"la porte attend la region 0 : elle ecarte l'arene et garde ce qui n'en est pas"},
 	} {
 		mute := e

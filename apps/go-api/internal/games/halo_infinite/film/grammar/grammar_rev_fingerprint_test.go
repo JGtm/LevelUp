@@ -14,8 +14,8 @@ package grammar
 //
 // # CE QUE CE TEST FAIT
 //
-// Il hache toutes les sources `.go` hors `_test.go` des QUATRE paquets qui lisent les octets du
-// film — `film/source/`, `filmdec/`, `killsource/` et `film/facts/objectives/` — et
+// Il hache toutes les sources `.go` hors `_test.go` des CINQ paquets du decodeur — `film/source/`,
+// `film/profile/`, `film/grammar/`, `film/facts/killsource/` et `film/facts/objectives/` — et
 // compare au golden
 // `testdata/grammar_rev.golden`, qui fige le couple (revision, empreinte) avec son
 // historique. Toucher l'une ou l'autre le fait rougir ; le remettre au vert oblige a rouvrir la
@@ -29,6 +29,14 @@ package grammar
 // couche `source` (`source.Bits`, `source.BitsAt`, `source.BitAt`, avec le marcheur
 // de paquets et l inflate qui y vivaient deja). Sans cette racine, la lecture de bits aurait pu
 // changer sans que `GrammarRev` bouge — le lot aurait ouvert le trou qu il pretend fermer.
+//
+// `film/profile` est ENTRE LE 2026-09-16 (lot 2.5.b), DANS LE COMMIT QUI L A CREE. Il ne lit
+// aucun octet — c est meme sa definition (ADR 0034 D-1) — mais il porte desormais les LARGEURS
+// et les PLAGES que les lecteurs appliquent : le decoupage d i0, le decoupage du bloc MPP, les
+// bornes de dequantification par carte, la transposition par build. Une largeur corrigee la-bas
+// change ce que `grammar` lit, exactement comme si elle avait ete corrigee ici. Hors de
+// l empreinte, la donnee du decodeur aurait pu bouger sans que `GrammarRev` monte — le lot
+// aurait ouvert le trou qu il pretend fermer, pour la meme raison que `film/source` au 2.4.1.
 //
 // `killsource` lit les MEMES octets que `filmdec`, avec son propre lecteur de bits (le lot 4 de
 // la trajectoire les fusionne). Tant qu ils sont deux, une largeur corrigee d un cote et pas de
@@ -254,6 +262,7 @@ func racinesGrammaire(t *testing.T) []string {
 	filmDir := filepath.Join(internalDir, "games", "halo_infinite", "film")
 	return []string{
 		filepath.Join(filmDir, "source"),
+		filepath.Join(filmDir, "profile"),
 		filepath.Join(filmDir, "grammar"),
 		filepath.Join(filmDir, "facts", "killsource"),
 		filepath.Join(filmDir, "facts", "objectives"),

@@ -519,17 +519,23 @@
 #               changent pas, seuls les chemins. L empreinte monte parce qu elle hache le chemin
 #               relatif a cote du contenu. `KillSourceDecoderRev` ne bouge PAS (sortie identique a
 #               l octet, ancre de racine suivie, golden refige) ; `SchemaVersion` 60.
-#   2026-09-16  grammar-2026-09-15.34  lot 2.6 volet facts + source (`.33` -> `.34`) : REVISIONS
-#               PAR COUCHE ET TYPES DE CONTRAT, SORTIE IDENTIQUE. `source.Rev` et `facts.Rev`
-#               naissent sur le mecanisme central `film/revision` (la seconde REPREND la valeur de
-#               `KillSourceDecoderRev`, qui quitte `sync/killcollector` : V15 (16), aucun backlog
-#               ouvert) ; `film/types` nait, feuille sans import du depot, et recoit les types de
-#               DONNEES purs qui traversent une frontiere de couche depuis `source` et `facts`,
-#               les paquets d origine gardant un ALIAS DATE. L empreinte monte parce que les
-#               racines hachees portent des fichiers neufs et des alias a la place des
-#               declarations. AUCUN OCTET N EST LU AUTREMENT ; `SchemaVersion` reste 60.
-#   2026-09-16  grammar-2026-09-15.34 (2e mouvement du meme lot, EMPREINTE SEULE RECOPIEE) : les
-#               types de contrat de `source` et de `facts` ont descendu dans `film/types` ; les
-#               couches n en gardent que des alias dates. Un alias de type est LE MEME type pour
-#               le compilateur : la sortie est identique a l octet, aucun backlog.
-grammar-2026-09-15.34	70ae87e07a0ab61c43a2268894d3f056491e769123f36c1b0b77c070cc969ff1
+#               `profile`, SORTIE IDENTIQUE. Ce n est PAS un deplacement pur : la DONNEE (types de
+#               valeur, table de profil, table par build et par format, catalogue de bornes par
+#               carte) descend dans `film/profile` ; la LECTURE reste en `grammar` et rend un type
+#               de `profile`. `ResolveProfile` lit les trois cles du film ici et appelle
+#               `profile.Resoudre` avec elles. Aucune largeur, aucun cadre, aucune valeur de table
+#               ne change. L empreinte monte deux fois : les octets de source de `grammar` bougent,
+#               et la racine `film/profile` ENTRE dans l empreinte — la donnee du decodeur est
+#               desormais hachee. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` 60.
+#   2026-09-16  grammar-2026-09-15.35  lot 2.6 volet facts + source (`.34` -> `.35`, RANG DE
+#               FUSION) : REVISIONS PAR COUCHE ET TYPES DE CONTRAT, SORTIE IDENTIQUE. `source.Rev`
+#               et `facts.Rev` naissent sur le mecanisme central `film/revision` (la seconde
+#               REPREND la valeur de `KillSourceDecoderRev`, qui quitte `sync/killcollector` :
+#               V15 (16), aucun backlog ouvert) ; `film/types` nait, feuille sans import du depot,
+#               et recoit les types de DONNEES purs qui traversent une frontiere de couche depuis
+#               `source` et `facts`, les paquets d origine gardant un ALIAS DATE. L empreinte monte
+#               parce que les racines hachees portent des fichiers neufs et des alias a la place
+#               des declarations, et parce que la racine `film/profile` du rang precedent y est
+#               desormais. AUCUN OCTET N EST LU AUTREMENT ; `SchemaVersion` reste 60, aucun match
+#               deja decode n est candidat au backlog.
+grammar-2026-09-15.35	4732afb0c45bbbdf4ea8855777c03aa5f27c2e58052dab0da65f34788f6e9d5e

@@ -28,6 +28,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -68,7 +69,7 @@ func TestMarcheurDeltaBipedeEstUnique(t *testing.T) {
 // record, donc l'instruction `p = i0 + i0Bits` n'y est jamais executee. L'avance est couverte
 // par `TestMarcheurDeltaBipedeNeRebalaiePasUnRecordPublie`, ci-dessous.
 func TestMarcheurDeltaBipedeSArreteSurLaBorne(t *testing.T) {
-	lay := I0Layout{GateBits: DefaultI0GateBits, AxisW: [3]uint{14, 14, 14}}
+	lay := profile.I0Layout{GateBits: profile.DefaultI0GateBits, AxisW: [3]uint{14, 14, 14}}
 	slots := NewSlotBand(map[uint32]bool{7: true})
 	pay := make([]byte, 64)
 

@@ -36,6 +36,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // padPowerupPrefix — le prefixe de famille du manifeste qui designe un power-up
@@ -129,7 +130,7 @@ func TestPowerupSocleCreations(t *testing.T) {
 // psMesureCreations enchaine les trois lectures d'un film : la chaine de PRODUCTION (pour le
 // rappel du negatif et la calibration), le balayage BRUT des creations, et le temoin fantome.
 func psMesureCreations(
-	t *testing.T, dir string, wr *grammar.Vec3Range, familles map[uint32]string, c psCible,
+	t *testing.T, dir string, wr *profile.Vec3Range, familles map[uint32]string, c psCible,
 ) {
 	t.Helper()
 	_, pst, err := grammar.ScanFilmEquipmentPlacements(dir, wr)

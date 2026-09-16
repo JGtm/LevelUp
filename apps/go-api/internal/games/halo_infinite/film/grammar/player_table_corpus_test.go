@@ -15,7 +15,7 @@ package grammar
 // LA DIFFERENCE ATTENDUE, ET ELLE EST UNE DECISION, PAS UN DEFAUT : l'instrument calibre la
 // transposition SUR LE FILM (`rsDelta`), donc il lit aussi les 5 films sans section
 // d'identification. Le lecteur de production les REFUSE (`ErrNoFilmIdentity` puis
-// [ErrUnknownBuild]), parce qu'un build inconnu ne se lit jamais au profil du build voisin
+// [profile.ErrUnknownBuild]), parce qu'un build inconnu ne se lit jamais au profil du build voisin
 // (D-4, ADR 0034). Ces 5 films sont nommes ci-dessous et comptes a part.
 //
 // # LA GARDE
@@ -36,6 +36,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -118,7 +119,7 @@ func mesurerFilmCorpus(t *testing.T, dir string, b *bilanCorpus) {
 	}
 	b.parBuild[id.Build]++
 	slots, rep, err := ReadPlayerTable(d, id)
-	if errors.Is(err, ErrUnknownBuild) {
+	if errors.Is(err, profile.ErrUnknownBuild) {
 		b.buildInconnu++
 		t.Errorf("%s : build %q absent du profil — le profil doit couvrir les sept builds du "+
 			"cache (D-4 : ajouter la ligne avec sa provenance, ne jamais lire au plus proche)",
@@ -224,9 +225,9 @@ func publierBilanCorpus(t *testing.T, b *bilanCorpus) {
 	sort.Slice(builds, func(i, j int) bool { return b.parBuild[builds[i]] > b.parBuild[builds[j]] })
 	t.Logf("%d chunk_00 lus", b.lus)
 	for _, k := range builds {
-		octets, _ := personnalisationOctets(k)
+		octets, _ := profile.PersonnalisationOctets(k)
 		t.Logf("  %-12s %4d film(s) ; bloc de personnalisation %d o (%+d bits)", k,
-			b.parBuild[k], octets, persoDeltaBits(octets))
+			b.parBuild[k], octets, profile.PersoDeltaBits(octets))
 	}
 	sort.Strings(b.sansSectionVus)
 	sort.Strings(b.intercales)

@@ -31,7 +31,7 @@ package grammar
 //
 // CE QUE CELA CORRIGE, ET OU. Sur une carte a plus de deux regions de compression, l'index de
 // region occupe PLUS d'un bit dans i0, et l'auto-detection ne sait pas le voir : elle rend
-// toujours `GateBits = DefaultI0GateBits` (5) et `Region = 0` (cf. i0_layout.go). Sur Live Fire
+// toujours `GateBits = profile.DefaultI0GateBits` (5) et `Region = 0` (cf. i0_layout.go). Sur Live Fire
 // — 4 regions declarees, arene en region 1, catalogue `gate=6 region=1 12/12/11` — elle rend
 // `gate=5 region=0 13/12/11` : MEME longueur totale d'i0 (41 bits), donc les balayages delta
 // marchaient bel et bien, mais la porte de region ne testait qu'UN bit contre zero. Elle
@@ -43,7 +43,7 @@ package grammar
 //
 // # LE PROFIL, LUI, EST RESOLU AU CONSTRUCTEUR (lot 2.1, D1 du PLAN_DECODEUR_FILM)
 //
-// [FilmContext.Profile] fait EXCEPTION a la paresse decrite ci-dessous, et l exception est
+// [FilmContext.profile.Profile] fait EXCEPTION a la paresse decrite ci-dessous, et l exception est
 // bornee a `NewFilmContextForMap` — le constructeur de la CUISSON. Trois raisons, mesurees :
 //
 //	D1 L EXIGE. « Un seul objet par film, le profil resolu a la construction, les memos
@@ -95,6 +95,7 @@ package grammar
 import (
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -117,9 +118,9 @@ type FilmContext struct {
 	// impose est le decoupage d'i0 que la REGLE DU CATALOGUE tranche a la construction (cf.
 	// resolveI0Layout). Non nil = les trois champs `lay*` ci-dessous ne servent pas : aucune
 	// auto-detection n'a lieu, et c'est aussi ce qui la retire du chemin de cuisson.
-	impose *I0Layout
+	impose *profile.I0Layout
 
-	lay    I0Layout
+	lay    profile.I0Layout
 	layErr error
 	layLu  bool
 
@@ -130,7 +131,7 @@ type FilmContext struct {
 	// prof est le PROFIL du film, resolu UNE fois (cf. l en-tete) et immuable. `profLu` dit
 	// s il l a ete : `NewFilmContextForMap` le pose a la construction, `NewFilmContext` au
 	// premier acces.
-	prof   Profile
+	prof   profile.Profile
 	profLu bool
 
 	// bal est le PROFIL DE BALAYAGE de ce decodage (lot 2.3) : ce que les lecteurs de bits
@@ -174,25 +175,25 @@ func (c *FilmContext) PoserProfilDeBalayage(p ProfilDeBalayage) ProfilDeBalayage
 }
 
 // PoserMPP installe le decoupage MPP du contexte et rend le precedent.
-func (c *FilmContext) PoserMPP(w MPPWidths) MPPWidths {
+func (c *FilmContext) PoserMPP(w profile.MPPWidths) profile.MPPWidths {
 	prev := c.bal.MPP
 	c.bal.MPP = w
 	return prev
 }
 
 // LargeursObjetDuMonde rend les largeurs d axe du chemin world-object de ce contexte.
-func (c *FilmContext) LargeursObjetDuMonde() PrecisionDescriptor {
+func (c *FilmContext) LargeursObjetDuMonde() profile.PrecisionDescriptor {
 	return c.ProfilDeBalayage().LargeursObjetDuMonde()
 }
 
 // PoserLargeursObjetDuMonde installe des largeurs world-object brutes sur ce contexte.
-func (c *FilmContext) PoserLargeursObjetDuMonde(d PrecisionDescriptor) {
+func (c *FilmContext) PoserLargeursObjetDuMonde(d profile.PrecisionDescriptor) {
 	c.bal.PoserLargeursObjetDuMonde(d)
 }
 
 // PoserLargeursObjetDuMondeDepuisDecoupage installe les largeurs d axe de la CARTE sur ce
 // contexte. C est la porte de `replay.installWorldObjectPrecision` et des instruments.
-func (c *FilmContext) PoserLargeursObjetDuMondeDepuisDecoupage(l I0Layout) {
+func (c *FilmContext) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0Layout) {
 	c.bal.PoserLargeursObjetDuMondeDepuisDecoupage(l)
 }
 
@@ -252,7 +253,7 @@ func NewFilmContext(film *source.Film) *FilmContext {
 // C'est le constructeur de la CUISSON : `replay.BuildFromFilm` le construit une fois, lit le
 // decoupage tranche par [FilmContext.ImposedLayout] pour en armer les positions, et passe le
 // contexte aux six canaux delta et aux ramassages natifs — un seul decoupage pour tout le film.
-func NewFilmContextForMap(film *source.Film, entry *MapQuantEntry, forced *I0Layout) *FilmContext {
+func NewFilmContextForMap(film *source.Film, entry *profile.MapQuantEntry, forced *profile.I0Layout) *FilmContext {
 	c := &FilmContext{film: film, impose: resolveI0Layout(forced, entry),
 		bal: ProfilDeBalayageParDefaut()}
 	c.prof, c.profLu = ResolveProfile(film, entry), true
@@ -274,7 +275,7 @@ func NewFilmContextForMap(film *source.Film, entry *MapQuantEntry, forced *I0Lay
 // RECOUVREMENT ASSUME avec `avertirFormatSansProfil` sur le seul cas « format inconnu » : cette
 // ligne-ci nomme le PROFIL et ses deux cles, et elle couvre aussi le chemin `killcollector`, ou
 // aucun autre avertissement n existe.
-func journaliserProfilIncomplet(film *source.Film, p Profile) {
+func journaliserProfilIncomplet(film *source.Film, p profile.Profile) {
 	if p.Err() == nil {
 		return
 	}
@@ -292,7 +293,7 @@ func journaliserProfilIncomplet(film *source.Film, p Profile) {
 // Le repli sur nil n'est pas une tolerance : une entree de catalogue anterieure au champ des
 // largeurs (`axisWidths` absent, donc `Valid()` faux) doit laisser lire le film plutot
 // qu'imposer des largeurs nulles, exactement comme le chemin world-object garde son defaut.
-func resolveI0Layout(forced *I0Layout, entry *MapQuantEntry) *I0Layout {
+func resolveI0Layout(forced *profile.I0Layout, entry *profile.MapQuantEntry) *profile.I0Layout {
 	if forced != nil {
 		lay := *forced
 		return &lay
@@ -308,7 +309,7 @@ func resolveI0Layout(forced *I0Layout, entry *MapQuantEntry) *I0Layout {
 // ImposedLayout rend le decoupage d'i0 que la regle du catalogue a tranche a la construction, ou
 // nil quand rien ne s'impose (auto-detection). La valeur est COPIEE : un appelant qui la range
 // dans ses propres options ne peut pas modifier celle du contexte.
-func (c *FilmContext) ImposedLayout() *I0Layout {
+func (c *FilmContext) ImposedLayout() *profile.I0Layout {
 	if c == nil || c.impose == nil {
 		return nil
 	}
@@ -322,7 +323,7 @@ func (c *FilmContext) ImposedLayout() *I0Layout {
 // Contexte nil = le profil des INVARIANTS, sans cle et sans carte : c est ce que rend
 // [ResolveProfile] sur un film nul, et un appelant qui le lit sans verifier [FilmContext.ProfileErr]
 // obtient donc le cadre d image-cle et les quantums, jamais une largeur inventee.
-func (c *FilmContext) Profile() Profile {
+func (c *FilmContext) Profile() profile.Profile {
 	if c == nil {
 		return ResolveProfile(nil, nil)
 	}
@@ -332,8 +333,8 @@ func (c *FilmContext) Profile() Profile {
 	return c.prof
 }
 
-// ProfileErr rend l erreur TYPEE des cles absentes de la table de profil ([ErrUnknownFormat],
-// [ErrUnknownBuild]), ou nil. C est par elle que l erreur REMONTE A L APPELANT : le constructeur
+// ProfileErr rend l erreur TYPEE des cles absentes de la table de profil ([profile.ErrUnknownFormat],
+// [profile.ErrUnknownBuild]), ou nil. C est par elle que l erreur REMONTE A L APPELANT : le constructeur
 // n en rend pas (cf. l en-tete), il la journalise.
 func (c *FilmContext) ProfileErr() error { return c.Profile().Err() }
 
@@ -394,9 +395,9 @@ func (c *FilmContext) BipedSlots() SlotBand {
 // sinon l'AUTO-DETECTE ([DetectI0LayoutOf]), detecte une fois. L'erreur rendue est alors celle
 // de la detection, BRUTE : c'est l'appelant qui l'habille (« decoupage i0 illisible : %w »),
 // comme il le faisait de l'appel direct.
-func (c *FilmContext) I0Layout() (I0Layout, error) {
+func (c *FilmContext) I0Layout() (profile.I0Layout, error) {
 	if c == nil {
-		return I0Layout{}, ErrNoFilmChunk
+		return profile.I0Layout{}, ErrNoFilmChunk
 	}
 	if c.impose != nil {
 		return *c.impose, nil
@@ -478,14 +479,14 @@ func contexteDeBobine(film *source.Film) *FilmContext {
 // dans une variable de paquet que tout le processus prenait. La cuisson, elle, prend les
 // largeurs du CATALOGUE de la carte (`replay.installWorldObjectPrecision`), jamais de
 // l auto-detection : cf. la regle du catalogue en tete de ce fichier.
-func ContexteDeFilm(dir string) (*FilmContext, I0Layout, error) {
+func ContexteDeFilm(dir string) (*FilmContext, profile.I0Layout, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, I0Layout{}, err
+		return nil, profile.I0Layout{}, err
 	}
 	lay, _, err := DetectI0LayoutOf(film)
 	if err != nil {
-		return NewFilmContext(film), I0Layout{}, err
+		return NewFilmContext(film), profile.I0Layout{}, err
 	}
 	return contexteDeBobine(film), lay, nil
 }

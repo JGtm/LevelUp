@@ -75,6 +75,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
@@ -232,7 +233,7 @@ type passePositions struct {
 // est écrite UNE fois, dans `grammar.NewFilmContextForMap`, et ce site la lit par
 // `ImposedLayout()` — le même endroit que la cuisson.
 func optionsDeBalayageDesPositions(
-	fc *grammar.FilmContext, entry grammar.MapQuantEntry,
+	fc *grammar.FilmContext, entry profile.MapQuantEntry,
 ) grammar.ScanFilmOptions {
 	opt := grammar.DefaultScanFilmOptions()
 	rng := entry.Range()
@@ -259,7 +260,7 @@ func optionsDeBalayageDesPositions(
 // dans `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06,
 // constat B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
 func buildPositionRows(
-	film *source.Film, res *killsource.Result, entry grammar.MapQuantEntry, ids MatchIdentities,
+	film *source.Film, res *killsource.Result, entry profile.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (passePositions, materiauDIsolement, error) {
 

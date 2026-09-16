@@ -41,6 +41,7 @@ import (
 	"strconv"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -64,7 +65,7 @@ type vehCand struct {
 type vehProbe struct {
 	dir   string
 	fc    *FilmContext
-	lay   I0Layout
+	lay   profile.I0Layout
 	cloud map[[3]int32]bool
 	comps int
 }
@@ -144,7 +145,7 @@ func (pr vehProbe) scan(band map[uint32]bool, deser func(*Lecteur)) (
 // vehicleBuildCloud decode toutes les positions reelles de la bande `ti=40` (grammaire biped, flux
 // brut : filtres teleport/isolation desarmes) et rend le SET DE CELLULES qu'elles occupent. C'est
 // le nuage de reference du gate : un i0 de creation doit y coincider.
-func vehicleBuildCloud(t *testing.T, dir string, band map[uint32]bool, lay I0Layout) map[[3]int32]bool {
+func vehicleBuildCloud(t *testing.T, dir string, band map[uint32]bool, lay profile.I0Layout) map[[3]int32]bool {
 	t.Helper()
 	opt := ScanFilmOptions{WorldRange: &equipCreationUnitRange, RequireTag1: false, Layout: &lay, DropSaturated: true}
 	pos, err := ScanFilmBipedPositionsForBand(dir, NewSlotBand(band), opt)
@@ -177,14 +178,14 @@ func vehicleCloudNear(cloud map[[3]int32]bool, v [3]float32) bool {
 
 // vehicleCalibrateMPP calibre le decoupage du bloc MPP (film-wide) sur `ti=37` et l'applique ; en
 // cas d'echec, le defaut (9/5) est conserve. VEHICLE_MPP_LEAD force le champ de tete a la main.
-func vehicleCalibrateMPP(t *testing.T, fc *FilmContext, dir string, lay I0Layout) {
+func vehicleCalibrateMPP(t *testing.T, fc *FilmContext, dir string, lay profile.I0Layout) {
 	t.Helper()
 	if forced := os.Getenv("VEHICLE_MPP_LEAD"); forced != "" {
 		w, err := strconv.Atoi(forced)
 		if err != nil {
 			t.Fatalf("VEHICLE_MPP_LEAD=%q illisible : %v", forced, err)
 		}
-		fc.PoserMPP(MPPWidths{Lead: w, Index: fc.ProfilDeBalayage().MPP.Index})
+		fc.PoserMPP(profile.MPPWidths{Lead: w, Index: fc.ProfilDeBalayage().MPP.Index})
 		t.Logf("champ de tete MPP FORCE : %d bits", w)
 		return
 	}

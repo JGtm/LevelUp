@@ -17,7 +17,7 @@ package grammar
 //
 // # LA CLE CANDIDATE
 //
-// La section 2 de `chunk_00` porte une TABLE PAR TYPE (`FilmIdentity.TypeVersions`, lot 1.5) :
+// La section 2 de `chunk_00` porte une TABLE PAR TYPE (`profile.FilmIdentity.TypeVersions`, lot 1.5) :
 // une version de serialisation par type, en clair, de cardinal 116 a 123 selon le film. Si la
 // largeur MPP bascule avec la version d UN type, ce type est le discriminant.
 //

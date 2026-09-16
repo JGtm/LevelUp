@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/profile"
+
 // delta_biped_walk.go — LE MARCHEUR DE RECORDS DELTA BIPEDE, ET IL EST UNIQUE.
 //
 // # CE QU'IL REMPLACE, ET POURQUOI
@@ -68,7 +70,7 @@ func deltaBipedMinRecord(i0Bits int) int {
 // `needTag1` est passe tel quel a `matchBipedHeader` : les huit balayages de canal exigent le
 // tag (true), `ScanBipedRecords` le tient de ses options.
 func walkDeltaBipedPayload(
-	pay []byte, slots SlotBand, lay I0Layout, needTag1 bool, visit func(deltaBipedRecord),
+	pay []byte, slots SlotBand, lay profile.I0Layout, needTag1 bool, visit func(deltaBipedRecord),
 ) {
 	total := len(pay) * 8
 	i0Bits := lay.TotalBits()
@@ -92,7 +94,7 @@ func walkDeltaBipedPayload(
 // erreur, et `film_chunks.go:96-100` documente que la bande de slots demande deliberement le
 // chunk d'apres le dernier.
 func walkDeltaBipedRecords(
-	fc *FilmContext, chunks []int, slots SlotBand, lay I0Layout, visit func(deltaBipedRecord),
+	fc *FilmContext, chunks []int, slots SlotBand, lay profile.I0Layout, visit func(deltaBipedRecord),
 ) {
 	for _, c := range chunks {
 		data, pks, ok := fc.ChunkAt(c)

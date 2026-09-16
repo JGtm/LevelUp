@@ -1,4 +1,4 @@
-package grammar
+package profile
 
 // BORNES DE DÉQUANTIFICATION PAR CARTE.
 //
@@ -11,6 +11,12 @@ package grammar
 // qu'une erreur : jusqu'ici toutes les cartes étaient déquantifiées avec les bornes de
 // Cliffhanger, ce qui multipliait l'échelle par un facteur arbitraire (0,38 sur Catalyst)
 // et décalibrait d'autant le filtre de téléportation en m/s.
+//
+// DESCENDU DE `grammar` AU LOT 2.5.b : un catalogue versionne produit hors ligne et charge en
+// lecture seule EST la definition de la couche `profile` (ADR 0034 D-1 et D-3, « what is derived
+// from the game is a versioned catalog under `data/titles/halo_infinite/reference/`, never
+// written at run time »). Aucune ligne de logique ne change ; ce qui change est le paquet, donc
+// la couche.
 
 import (
 	"encoding/json"
@@ -68,7 +74,7 @@ func (e MapQuantEntry) EffectiveRegionIndexBits() uint {
 // celle du descripteur world-object, traverse.go).
 func (e MapQuantEntry) Layout() I0Layout {
 	return I0Layout{
-		GateBits: i0SpineBits + i0UseDefaultBits + int(e.EffectiveRegionIndexBits()),
+		GateBits: I0SpineBits + I0UseDefaultBits + int(e.EffectiveRegionIndexBits()),
 		AxisW:    e.AxisWidths,
 		Region:   e.Region,
 	}

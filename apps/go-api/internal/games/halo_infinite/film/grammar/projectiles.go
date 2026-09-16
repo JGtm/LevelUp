@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -73,11 +74,11 @@ const projectileRestComponent = 18
 // `0797ce72`, contre 7 après correctif. Le jumeau bipède (`decodeBipedI0Pos`) lisait déjà
 // cette largeur dans le découpage de la carte : les deux écritures du même champ avaient
 // divergé.
-func projGateBits(lg PrecisionDescriptor) int { return 2 + int(lg.IndexW) }
+func projGateBits(lg profile.PrecisionDescriptor) int { return 2 + int(lg.IndexW) }
 
 // projPosBits est la longueur d'`object-position-component` sur le chemin dominant :
 // la porte + les trois axes + 2 de queue. Voir WorldObjectPrecision.
-func projPosBits(lg PrecisionDescriptor) int {
+func projPosBits(lg profile.PrecisionDescriptor) int {
 	return projGateBits(lg) + int(lg.AxisW[0]+lg.AxisW[1]+lg.AxisW[2]) + 2
 }
 
@@ -111,7 +112,7 @@ const EquipmentTypeIndex = 37
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // ScanFilmProjectiles est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanProjectiles].
-func ScanFilmProjectiles(dir string, wr *Vec3Range) ([]ProjectileTrack, error) {
+func ScanFilmProjectiles(dir string, wr *profile.Vec3Range) ([]ProjectileTrack, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
@@ -120,7 +121,7 @@ func ScanFilmProjectiles(dir string, wr *Vec3Range) ([]ProjectileTrack, error) {
 }
 
 // ScanProjectiles décode les trajectoires de projectile d'un film DEJA CHARGE.
-func ScanProjectiles(fc *FilmContext, wr *Vec3Range) ([]ProjectileTrack, error) {
+func ScanProjectiles(fc *FilmContext, wr *profile.Vec3Range) ([]ProjectileTrack, error) {
 	return ScanWorldObjects(fc, wr, ProjectileTypeIndex)
 }
 
@@ -134,7 +135,7 @@ func ScanProjectiles(fc *FilmContext, wr *Vec3Range) ([]ProjectileTrack, error) 
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // ScanFilmWorldObjects est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanWorldObjects].
-func ScanFilmWorldObjects(dir string, wr *Vec3Range, typeIndex int) ([]ProjectileTrack, error) {
+func ScanFilmWorldObjects(dir string, wr *profile.Vec3Range, typeIndex int) ([]ProjectileTrack, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, err
@@ -143,7 +144,7 @@ func ScanFilmWorldObjects(dir string, wr *Vec3Range, typeIndex int) ([]Projectil
 }
 
 // ScanWorldObjects décode les trajectoires d'un archétype d'objet du monde d'un film DEJA CHARGE.
-func ScanWorldObjects(fc *FilmContext, wr *Vec3Range, typeIndex int) ([]ProjectileTrack, error) {
+func ScanWorldObjects(fc *FilmContext, wr *profile.Vec3Range, typeIndex int) ([]ProjectileTrack, error) {
 	film := fc.Film()
 	if len(FilmChunkNumbers(film)) == 0 {
 		return nil, ErrNoFilmChunk
@@ -165,7 +166,7 @@ func ScanWorldObjects(fc *FilmContext, wr *Vec3Range, typeIndex int) ([]Projecti
 // ScanFilmWorldObjectsForBand est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanWorldObjectsForBand].
 func ScanFilmWorldObjectsForBand(
-	dir string, wr *Vec3Range, band map[uint32]bool,
+	dir string, wr *profile.Vec3Range, band map[uint32]bool,
 ) ([]ProjectileTrack, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -176,7 +177,7 @@ func ScanFilmWorldObjectsForBand(
 
 // ScanWorldObjectsForBand décode les trajectoires d'une bande de slots dans un film DEJA CHARGE.
 func ScanWorldObjectsForBand(
-	fc *FilmContext, wr *Vec3Range, band map[uint32]bool,
+	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
 ) ([]ProjectileTrack, error) {
 	if wr == nil {
 		return nil, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
@@ -364,7 +365,7 @@ type projSample struct {
 //     historique ; le projectile utilise les quatre, et 16 des 70 trajectoires de grenade sont
 //     INTÉGRALEMENT en tag=0. Filtrer les perdrait toutes.
 //   - maskCount minimal à 1 (et non 2) : les records de projectile sont courts.
-func scanProjectileRecords(pay []byte, band map[uint32]bool, wr *Vec3Range, lg PrecisionDescriptor) []projSample {
+func scanProjectileRecords(pay []byte, band map[uint32]bool, wr *profile.Vec3Range, lg profile.PrecisionDescriptor) []projSample {
 	var out []projSample
 	posBits := projPosBits(lg)
 	limit := len(pay)*8 - (worldObjectHeaderBits + worldObjectIndexBits + posBits)
@@ -472,7 +473,7 @@ func ascendingComponents(pay []byte, at, mc int) ([]int, bool) {
 // exprime ses quanta dans une AUTRE AABB : le déquantifier avec ces bornes rendrait une
 // position fausse SILENCIEUSE, ce qui est pire qu'un refus. Même règle que le jumeau bipède
 // `decodeBipedI0Pos`.
-func decodeWorldObjectPos(pay []byte, at int, wr *Vec3Range, lg PrecisionDescriptor) ([3]float32, bool) {
+func decodeWorldObjectPos(pay []byte, at int, wr *profile.Vec3Range, lg profile.PrecisionDescriptor) ([3]float32, bool) {
 	var v [3]float32
 	if PeekBits(pay, at, 2) != 0 { // precHigh et index-sel nuls = chemin dominant
 		return v, false

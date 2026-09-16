@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -39,7 +40,7 @@ import (
 func TestInstallWorldObjectPrecision(t *testing.T) {
 	prev := grammar.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 
-	entry := grammar.MapQuantEntry{Module: "ctf_bazaar", AxisWidths: [3]uint{17, 17, 16}}
+	entry := profile.MapQuantEntry{Module: "ctf_bazaar", AxisWidths: [3]uint{17, 17, 16}}
 	if entry.AxisWidths == prev.AxisW {
 		t.Fatal("le cas de test doit différer de l'invariant du profil, sinon il ne mesure rien")
 	}
@@ -61,7 +62,7 @@ func TestInstallWorldObjectPrecision(t *testing.T) {
 func TestInstallWorldObjectPrecisionKeepsDefaultWithoutWidths(t *testing.T) {
 	prev := grammar.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 
-	sansLargeurs := grammar.MapQuantEntry{Module: "sans_largeurs"}
+	sansLargeurs := profile.MapQuantEntry{Module: "sans_largeurs"}
 	fc := grammar.NewFilmContextForMap(nil, &sansLargeurs, nil)
 	installWorldObjectPrecision(fc, "testdata", fallback.NouveauCompteur())
 	if got := fc.LargeursObjetDuMonde(); got != prev {
@@ -179,11 +180,11 @@ func funcBody(src, head string) (string, bool) {
 // donc avant que `scanFilmInputs` n'ait composé ses `ScanFilmOptions`. Une divergence entre les
 // deux ferait décoder le film sous un découpage que l'appelant croyait avoir forcé, en silence.
 func TestDecoupageForceSuitLesOptions(t *testing.T) {
-	force := grammar.I0Layout{GateBits: 7, AxisW: [3]uint{12, 12, 11}, Region: 1}
+	force := profile.I0Layout{GateBits: 7, AxisW: [3]uint{12, 12, 11}, Region: 1}
 	cas := []struct {
 		nom     string
 		opt     Options
-		attendu *grammar.I0Layout
+		attendu *profile.I0Layout
 	}{
 		{"sans options de balayage", Options{}, grammar.DefaultScanFilmOptions().Layout},
 		{"options sans découpage", Options{Scan: &grammar.ScanFilmOptions{}}, nil},
@@ -213,7 +214,7 @@ func TestDecoupageForceSuitLesOptions(t *testing.T) {
 // PAQUET (double écriture datée). Celle-ci a disparu ; il confronte désormais le profil du film
 // au profil de balayage du contexte, qui est ce que les lecteurs portent.
 func TestProfilEgaleGlobalesWorldObject(t *testing.T) {
-	cartes := []grammar.MapQuantEntry{
+	cartes := []profile.MapQuantEntry{
 		{Module: "ctf_bazaar", AxisWidths: [3]uint{17, 17, 16}},
 		{Module: "live_fire", AxisWidths: [3]uint{12, 12, 11}, Region: 1, RegionIndexBits: 2},
 		{Module: "cliffhanger", AxisWidths: [3]uint{13, 13, 14}},

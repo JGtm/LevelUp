@@ -37,6 +37,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // calibration : ce que le balayage a retenu.
@@ -95,7 +96,7 @@ func calibrate(f *film, tl *timeline, views int) calibration {
 	for iw := indexWMin; iw <= indexWMax; iw++ {
 		for aw := axisWMin; aw <= axisWMax; aw++ {
 			cfg.Profil.Mouvement.AbsoluteAxisW = aw
-			cfg.Profil.Mouvement.Traversal = grammar.PrecisionDescriptor{IndexW: iw, AxisW: saved.AxisW}
+			cfg.Profil.Mouvement.Traversal = profile.PrecisionDescriptor{IndexW: iw, AxisW: saved.AxisW}
 			out = append(out, cand{aw, iw, countBipedRecords(sample, tl, cfg, views)})
 		}
 	}
@@ -107,7 +108,7 @@ func calibrate(f *film, tl *timeline, views int) calibration {
 		res.AxisW, res.IndexW = 14, 1
 	}
 	cfg.Profil.Mouvement.AbsoluteAxisW = res.AxisW
-	cfg.Profil.Mouvement.Traversal = grammar.PrecisionDescriptor{IndexW: res.IndexW, AxisW: saved.AxisW}
+	cfg.Profil.Mouvement.Traversal = profile.PrecisionDescriptor{IndexW: res.IndexW, AxisW: saved.AxisW}
 	res.Profil = cfg.Profil
 	// PLUS AUCUNE ECRITURE D ETAT DE PROCESSUS ICI (lot 2.3). Ce site posait l heritage
 	// (`grammar.PoserMouvementHerite`), et avant lui deux variables de paquet : la cuisson du

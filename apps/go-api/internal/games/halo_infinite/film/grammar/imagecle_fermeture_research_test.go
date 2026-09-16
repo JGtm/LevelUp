@@ -69,6 +69,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -190,7 +191,7 @@ func imcMarcher(modele string, pay []byte, reg *Registry, bit int) (end, desync 
 		return rec.BitEnd, rec.DesyncAt
 	case imcEtatDecale:
 		tr := walkKeyframeFullState(pay, bit, reg, contexteDInstrument(),
-			keyframeFullStateTemoin{EnTeteBits: keyframeFullStateHeaderBits + 1})
+			keyframeFullStateTemoin{EnTeteBits: profile.KeyframeEnTeteBits + 1})
 		return tr.EndBit, tr.DesyncAt
 	}
 	tr := WalkKeyframeFullState(pay, bit, reg, contexteDInstrument())

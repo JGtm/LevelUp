@@ -79,6 +79,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -397,7 +398,7 @@ func recAmas(poses []grammar.EquipmentPlacement) []recAmasPoint {
 
 // recAmasTemoin rend le nombre d'amas qu'on obtient en tirant le MÊME nombre de points
 // uniformément dans les bornes de la carte — le plancher du hasard pour R2.
-func recAmasTemoin(poses []grammar.EquipmentPlacement, wr grammar.Vec3Range, graine int64) int {
+func recAmasTemoin(poses []grammar.EquipmentPlacement, wr profile.Vec3Range, graine int64) int {
 	if len(poses) == 0 {
 		return 0
 	}
@@ -414,6 +415,6 @@ func recAmasTemoin(poses []grammar.EquipmentPlacement, wr grammar.Vec3Range, gra
 }
 
 // recEntre tire une coordonnée uniformément dans les bornes d'un axe de la carte.
-func recEntre(a grammar.AxisRange, rng *rand.Rand) float32 {
+func recEntre(a profile.AxisRange, rng *rand.Rand) float32 {
 	return a.Min + float32(rng.Float64())*(a.Max-a.Min)
 }

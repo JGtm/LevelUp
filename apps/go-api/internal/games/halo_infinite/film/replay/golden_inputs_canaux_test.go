@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // ---------------------------------------------------------------------------
@@ -284,7 +285,7 @@ func encodeVehicleScan(w *gwriter, s VehicleScan) {
 	encodeVehicleAims(w, s.Aims)
 }
 
-func decodeVehicleScan(r *greader, lay grammar.I0Layout, world grammar.Vec3Range) VehicleScan {
+func decodeVehicleScan(r *greader, lay profile.I0Layout, world profile.Vec3Range) VehicleScan {
 	s := VehicleScan{Scanned: r.bool8()}
 	s.Keyframes = decodeKeyframes(r)
 	s.Creations = decodeCreations(r)

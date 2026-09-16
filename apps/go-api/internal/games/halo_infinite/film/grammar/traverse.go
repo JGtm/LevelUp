@@ -66,7 +66,7 @@ const objectArchetypeCount = 50
 // The remaining 260 bits are read by FUN_140F44C38 leaf paths whose widths are
 // populated at map-load from the film's replication/precision config (DAT_1445cc9e0
 // per-axis widths, DAT_144632be0 index width, DAT_145121140) and read 0 statically —
-// the same limitation already affecting the traversal PrecisionDescriptor. On
+// the same limitation already affecting the traversal profile.PrecisionDescriptor. On
 // the calibration record those config-gated paths form a regular 96-bit block (a
 // quantized vec3/quat, "0x3FC,0" x4 @bit194256) plus dense words: NOT a free loop,
 // but driven by runtime widths not recoverable from the .exe. vtable[0x88] gets no

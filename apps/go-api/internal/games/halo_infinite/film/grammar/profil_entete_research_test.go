@@ -5,7 +5,7 @@ package grammar
 // CE QUE LA PHASE 3 A LAISSE OUVERT. Le champ d'equipe est a 186 bits du debut du record
 // d'image-cle (`equipeDecalageMesure`), et ce decalage est MESURE par balayage, pas derive.
 // Le dossier porte trois largeurs concurrentes pour l'en-tete par entite (47 du fork
-// chasewoodhams, 64 de `keyframeHeaderBits`, 108 de `keyframeFullStateHeaderBits`), et la
+// chasewoodhams, 64 de `keyframeHeaderBits`, 108 de `profile.KeyframeEnTeteBits`), et la
 // largeur du bloc d'etat par defaut de ti=9 n'avait jamais ete sommee.
 //
 // CE QUE CE FICHIER FAIT. Il SOMME, terme a terme, les largeurs LUES DANS L'EXECUTABLE le
@@ -42,6 +42,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -169,7 +170,7 @@ func TestProfilEnteteTI9Derivation(t *testing.T) {
 	t.Logf("  en-tete IMPLIQUEE par 186 (186 - etat par defaut - masque)       : %s",
 		equipeHistoTexte(entetes))
 	t.Logf("  candidats du dossier : 47 (fork) / %d (keyframeHeaderBits) / %d (FUN_142e2bfd0)",
-		keyframeHeaderBits, keyframeFullStateHeaderBits)
+		keyframeHeaderBits, profile.KeyframeEnTeteBits)
 }
 
 // profilJournalFilm publie la decoupe d'un film : une ligne de synthese, puis les records.

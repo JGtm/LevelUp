@@ -37,6 +37,7 @@ package grammar
 import (
 	"encoding/json"
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -263,7 +264,7 @@ func r9LogCarte(t *testing.T, dir string) {
 	if path == "" {
 		return
 	}
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Logf("  catalogue de bornes illisible : %v", err)
 		return

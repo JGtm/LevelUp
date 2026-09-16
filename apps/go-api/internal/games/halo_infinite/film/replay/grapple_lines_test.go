@@ -10,12 +10,13 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // grappleEntry : une carte de test aux largeurs 10/10/10 et bornes [0, 102.4] — le pas de
 // déquantification vaut exactement 0,1 u, les quanta se lisent donc en décimètres.
-func grappleEntry() grammar.MapQuantEntry {
-	return grammar.MapQuantEntry{
+func grappleEntry() profile.MapQuantEntry {
+	return profile.MapQuantEntry{
 		Min:        [3]float32{0, 0, 0},
 		Max:        [3]float32{102.4, 102.4, 102.4},
 		AxisWidths: [3]uint{10, 10, 10},

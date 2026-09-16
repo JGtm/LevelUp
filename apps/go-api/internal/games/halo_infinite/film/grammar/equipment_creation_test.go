@@ -41,6 +41,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"os"
 	"sort"
@@ -53,7 +54,7 @@ const equipCreationFilmEnv = "EQUIP_CREATION_FILM"
 // equipCreationUnitRange : coordonnées NORMALISÉES [0,1] de l'AABB de la carte. Les bornes
 // MONDE exigeraient le nom de la carte, donc une base ; la normalisation suffit à tout ce que
 // cet instrument juge (les deux nuages sont quantifiés sur le MÊME repère, lu dans le film).
-var equipCreationUnitRange = Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
+var equipCreationUnitRange = profile.Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
 
 func TestEquipmentCreationRecord(t *testing.T) {
 	dir := os.Getenv(equipCreationFilmEnv)
@@ -71,7 +72,7 @@ func TestEquipmentCreationRecord(t *testing.T) {
 		if err != nil {
 			t.Fatalf("EQUIP_MPP_LEAD=%q illisible : %v", forced, err)
 		}
-		fc.PoserMPP(MPPWidths{Lead: w, Index: prevW.Index})
+		fc.PoserMPP(profile.MPPWidths{Lead: w, Index: prevW.Index})
 		t.Logf("largeur du premier champ MPP FORCÉE par l'environnement : %d bits", w)
 	} else {
 		tracks, err := ScanWorldObjects(fc, &equipCreationUnitRange, EquipmentTypeIndex)

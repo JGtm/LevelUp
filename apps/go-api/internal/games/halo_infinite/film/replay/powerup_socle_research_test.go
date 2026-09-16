@@ -28,13 +28,12 @@ package replay
 
 import (
 	"encoding/json"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // LA GARDE DU FILM EST CELLE DE TOUT LE PAQUET : `OBJ_FILM` porte la RACINE du cache film
@@ -236,7 +235,7 @@ const (
 // psEntreeCarte rend les bornes de dequantification de la carte du lot. Elle passe par le
 // MEME helper que l'instrument des socles d'arme (`mapQuantEntryFromEnv`) : une seconde
 // lecture du catalogue divergerait au premier correctif.
-func psEntreeCarte(t *testing.T) grammar.MapQuantEntry {
+func psEntreeCarte(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
 	if os.Getenv(psMapEnv) == "" {
 		t.Setenv(psMapEnv, psCarte)

@@ -38,7 +38,7 @@ import type { Equals, Expect } from '@/lib/types/typeEquality'
 
 const REPO = racineDuDepot()
 const GO = resolve(REPO, 'apps/go-api/internal/games/halo_infinite/film/replay')
-const FILMDEC = resolve(REPO, 'apps/go-api/internal/games/halo_infinite/film/filmdec')
+const GRAMMAR = resolve(REPO, 'apps/go-api/internal/games/halo_infinite/film/grammar')
 
 /** Les balises `json:` d'une structure Go nommée, dans l'ordre de déclaration. */
 function goJSONTags(file: string, struct: string): string[] {
@@ -170,15 +170,15 @@ describe('garde-rail : les types manuels des schémas 25-27 <-> les structures G
   })
 
   it('REPLAY_NO_ABILITY_RANK vaut la sentinelle du décodeur', () => {
-    // `replay.NoAbilityRank` n'est qu'un alias de `filmdec.AbilitySetNoRank` : c'est la valeur
+    // `replay.NoAbilityRank` n'est qu'un alias de `grammar.AbilitySetNoRank` : c'est la valeur
     // de ce dernier qu'il faut vérifier, sans quoi le garde-rail comparerait un nom à un nom.
-    const src = readFileSync(resolve(FILMDEC, 'components_biped_ability.go'), 'utf8')
+    const src = readFileSync(resolve(GRAMMAR, 'components_biped_ability.go'), 'utf8')
     const m = src.match(/^const AbilitySetNoRank = (-?\d+)$/m)
     expect(m, 'const AbilitySetNoRank introuvable').not.toBeNull()
     expect(REPLAY_NO_ABILITY_RANK).toBe(Number(m![1]))
     expect(
       readFileSync(resolve(GO, 'document_equipment_changes.go'), 'utf8'),
-    ).toContain('const NoAbilityRank = filmdec.AbilitySetNoRank')
+    ).toContain('const NoAbilityRank = grammar.AbilitySetNoRank')
   })
 
   it('le document publie bien les trois calques, sous ces noms-là', () => {

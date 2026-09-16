@@ -7,7 +7,7 @@ package grammar
 //
 // Les deux sites de cuisson qui installent le decoupage du bloc `object-multiplayer-properties`
 // resolvaient le PROFIL COMPLET (`BuildProfileFromFilm`), lequel refuse tout build absent de la
-// table des SEPT (`personnalisationOctets`). Le registre des replis, lui, declare la condition
+// table des SEPT (`profile.PersonnalisationOctets`). Le registre des replis, lui, declare la condition
 // `format_sans_profil_relu` et l ordre `apres_lecture` : la cle est la VERSION DE FORMAT
 // (`chunk_00+4`, lot 1.9.1 ter).
 //
@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -41,8 +42,12 @@ func filmAuFormat27SansBuildConnu(t *testing.T) *source.Film {
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_bcb6d393")
 	_, d0 := readChunk00(t, dir)
 	patche := append([]byte(nil), d0...)
-	if !remplacerBuild(patche, buildHI1120, buildInconnuTemoin) {
-		t.Fatalf("le nom de build %q est introuvable dans le chunk_00 du temoin", buildHI1120)
+	// LE LITTERAL, PAS LA CONSTANTE DE LA TABLE (elle est privee a `profile` depuis le lot
+	// 2.5.b, et la doctrine de son bloc le dit : « un test qui relit la constante qu il verifie
+	// ne verifie rien »). C est le build du temoin `bcb6d393`.
+	const buildDuTemoin = "HI_1_12_0"
+	if !remplacerBuild(patche, buildDuTemoin, buildInconnuTemoin) {
+		t.Fatalf("le nom de build %q est introuvable dans le chunk_00 du temoin", buildDuTemoin)
 	}
 	f, err := source.Load(source.MemoryChunks{patche}, nil)
 	if err != nil {
@@ -81,7 +86,7 @@ func TestMPPWidthsForFilmNeConsultePasLeBuild(t *testing.T) {
 	if id.Build != buildInconnuTemoin {
 		t.Fatalf("le temoin porte le build %q, %q attendu", id.Build, buildInconnuTemoin)
 	}
-	if _, errProfil := BuildProfileFromFilm(f); !errors.Is(errProfil, ErrUnknownBuild) {
+	if _, errProfil := BuildProfileFromFilm(f); !errors.Is(errProfil, profile.ErrUnknownBuild) {
 		t.Fatalf("le profil complet devrait refuser ce build (%v) — sans ce refus le temoin ne "+
 			"mesure rien", errProfil)
 	}
@@ -123,7 +128,7 @@ func TestMPPWidthsForFilmSurEntreeTronquee(t *testing.T) {
 // TestMPPWidthsForFilmSurLesBobines — les sept bobines, par la porte unique.
 //
 // Il FIGE la frontiere que la correction deplace : seules les bobines au format 27 sont relues,
-// les autres restent au repli calibre. Sans lui, un elargissement de `mppWidthsPourFormat`
+// les autres restent au repli calibre. Sans lui, un elargissement de `profile.MPPPourFormat`
 // basculerait le parc ancien sans que rien ne le dise.
 func TestMPPWidthsForFilmSurLesBobines(t *testing.T) {
 	relues := map[string]bool{"bcb6d393": true, "fb1a1a72": true}

@@ -122,6 +122,17 @@
 #               filmdec.LecteurSur (l ancien NewBitReader, renomme : le type decore, il ne lit plus).
 #               Aucune largeur ni borne ne change ; lignes identiques a l octet, aucun backlog.
 
+#   2026-09-16  killsource-2026-09-16.2  lot 2.5.b : REVISION INCHANGEE, GOLDEN REGENERE. La
+#               couche `film/profile` nait par extraction ; `calibrate.go` et `film_table.go`
+#               qualifient desormais `profile.PrecisionDescriptor` et `profile.MPPWidths` au lieu
+#               de `grammar.*`, et gagnent une ligne d import. AUCUNE largeur, aucune borne,
+#               aucun ordre de lecture ne change : les lignes de kill sont identiques a l octet,
+#               donc AUCUN backlog de redecodage. Le gate hache les OCTETS de source du
+#               decodeur, pas sa sortie : c est exactement le cas que sa doctrine nomme
+#               (« si le changement ne touche PAS les lignes produites, laisser la revision et
+#               l ecrire dans le commit »).
+
+
 #   2026-09-16  REVISION INCHANGEE, PERIMETRE ET LIEU CHANGES (lot 2.6.1) : la constante DESCEND
 #               dans la couche (`film/facts/rev.go`, `facts.Rev`) et quitte `sync/killcollector`,
 #               qui la LIT ; l empreinte couvre desormais TOUT l arbre des faits plus les VALEURS
@@ -138,4 +149,14 @@
 #               largeur, aucune borne ne change : la sortie est identique a l octet et aucun
 #               match deja decode n est candidat au backlog. La FORME de ces types est desormais
 #               figee par `film/types/testdata/shapes.golden`, a cote de cette revision.
-killsource-2026-09-16.2	88896267214e3c78dd51fea246f823c746f519f42bfb411713ed7a527b1342b3
+
+#   2026-09-16  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (fusion du lot 2.5.b dans le volet
+#               facts + source du lot 2.6). DEUX causes, toutes deux de FORME : trois fichiers de
+#               production des faits (`killsource/calibrate.go`, `killsource/film_table.go`,
+#               `fallback/registre_filmdec.go`) qualifient `profile.*` la ou ils qualifiaient
+#               `grammar.*` ; et la VALEUR amont de `GrammarRev`, que cette empreinte hache depuis
+#               le lot 2.6.1, passe a `grammar-2026-09-15.35`. La seconde cause est le mecanisme
+#               VOULU — une couche du dessous qui bouge fait bouger les faits — et ici elle ne
+#               commande rien : la sortie est identique a l octet des DEUX cotes, aucun match deja
+#               decode n est candidat au backlog.
+killsource-2026-09-16.2	d09f5d19636bbb5eff1c4d38b54489868bafa127c01ce91b6cb028e9dd7bc131

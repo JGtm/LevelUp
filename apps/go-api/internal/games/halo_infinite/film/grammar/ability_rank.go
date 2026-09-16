@@ -26,6 +26,7 @@ package grammar
 import (
 	"fmt"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -258,7 +259,7 @@ func (g grammaireRecord) contexte() ContexteDeLecture {
 }
 
 type grammaireRecord struct {
-	lay  I0Layout
+	lay  profile.I0Layout
 	arch Archetype
 	prof ProfilDeBalayage
 	// obs est l OBSERVATEUR du balayage (lot 2.3), ou nil. C est par lui que les crochets

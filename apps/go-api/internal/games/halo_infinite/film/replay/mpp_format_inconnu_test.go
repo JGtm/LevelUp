@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 )
@@ -42,7 +43,7 @@ func TestFormatInconnuTombeSurLesLargeursCalibrees(t *testing.T) {
 
 	// Un decoupage volontairement DISTINCT du profil relu (9/5) : si la branche prenait le
 	// profil au lieu du repli, la comparaison le verrait.
-	calibrees := grammar.MPPWidths{Lead: 7, Index: 4}
+	calibrees := profile.MPPWidths{Lead: 7, Index: 4}
 	const compteur = "filmdec_unknown_format_28"
 	avant := observability.LoadCounter(compteur)
 

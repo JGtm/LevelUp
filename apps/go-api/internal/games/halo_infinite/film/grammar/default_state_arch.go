@@ -268,3 +268,18 @@ func consumeDefaultStateTI38(br *Lecteur) {
 // consumeDefaultStateTI48 porte FUN_142f14668 (archetype 48, « forge-player-data ») :
 // ECS_ReadEntityRefIndex5 seul (FUN_1407f2058 = R(1) ; si 0 -> R(5)).
 func consumeDefaultStateTI48(br *Lecteur) { consumeGate0R(br, 5) }
+
+// EtatParDefautPorte dit si la grammaire du depot porte le deserialiseur d etat par defaut de
+// l archetype `ti`. Faux = 0 bit consomme, et c est soit un STUB du jeu, soit un REPLI
+// (cf. l en-tete de ce fichier, qui les distingue population par population).
+//
+// C ETAIT UNE METHODE DE `profile.KeyframeProfile` JUSQU AU LOT 2.5.b, et elle ne lisait jamais son
+// recepteur : elle interroge la table ci-dessus, qui dit ce que CE DEPOT sait decoder — de la
+// grammaire, pas une valeur de profil. Le type est descendu en `profile`, la question est restee.
+func EtatParDefautPorte(ti uint32) bool {
+	if ti == BipedTypeIndex {
+		return true // traite a part par TraverseEntity (consumeBipedDefaultState)
+	}
+	_, ok := defaultStateDeserByTI[ti]
+	return ok
+}

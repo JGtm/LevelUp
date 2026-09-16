@@ -32,6 +32,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -48,7 +49,7 @@ import (
 func BuildFromFilm(matchID, titleSlug string, film *source.Film, opt Options) (ReplayDocument, error) {
 	if opt.MapQuant == nil {
 		return ReplayDocument{}, fmt.Errorf("%w (match %s) : le document de rejeu exige l'entrée de catalogue de la carte",
-			grammar.ErrUnknownMapBounds, matchID)
+			profile.ErrUnknownMapBounds, matchID)
 	}
 	// PLUS DE VERROU DE PAQUET ICI (lot 2.3) : `grammar` n'a plus aucune variable de paquet
 	// ecrite, et cette cuisson porte son propre etat de decodage — le profil de balayage et
@@ -122,7 +123,7 @@ type filmScan struct {
 	film    *source.Film
 	fc      *grammar.FilmContext
 	scan    grammar.ScanFilmOptions
-	world   grammar.Vec3Range
+	world   profile.Vec3Range
 	// opt porte ce que l'APPELANT a fourni : l'observateur, son horloge, et les gardes de mode
 	// des trois calques qui ne se balaient que sur demande (drapeau, zones, bombe). Les
 	// balayages n'y ECRIVENT jamais — leurs sorties vont dans `in`.
@@ -139,7 +140,7 @@ type filmScan struct {
 //
 // GARDE-RAIL : `TestDecoupageForceSuitLesOptions` compare cette fonction au champ que
 // `scanFilmInputs` calcule pour son propre compte ; les deux ne peuvent pas diverger en silence.
-func decoupageForce(opt Options) *grammar.I0Layout {
+func decoupageForce(opt Options) *profile.I0Layout {
 	if opt.Scan == nil {
 		return grammar.DefaultScanFilmOptions().Layout
 	}

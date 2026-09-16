@@ -53,6 +53,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"testing"
 )
@@ -130,21 +131,21 @@ func TestWorldObjectPrecisionImpact(t *testing.T) {
 // worldPrecCatalogEntry résout l'entrée de catalogue de la carte du match. C'est la MÊME
 // entrée qui fournit `opt.WorldRange` à `BuildFromFilm` : les bornes et les largeurs ne se
 // dissocient pas.
-func worldPrecCatalogEntry(t *testing.T) (MapQuantEntry, bool) {
+func worldPrecCatalogEntry(t *testing.T) (profile.MapQuantEntry, bool) {
 	t.Helper()
 	boundsPath, mapName := os.Getenv(worldPrecBoundsEnv), os.Getenv(worldPrecMapEnv)
 	if boundsPath == "" || mapName == "" {
 		t.Skipf("%s / %s absents : la source des largeurs est le CATALOGUE, pas le film",
 			worldPrecBoundsEnv, worldPrecMapEnv)
 	}
-	cat, err := LoadMapQuantCatalog(boundsPath)
+	cat, err := profile.LoadMapQuantCatalog(boundsPath)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", boundsPath, err)
 	}
 	entry, err := cat.Lookup(mapName)
 	if err != nil {
 		t.Logf("  carte %q ABSENTE du catalogue : %v", mapName, err)
-		return MapQuantEntry{}, false
+		return profile.MapQuantEntry{}, false
 	}
 	t.Logf("  carte %q -> module %s · bornes X[%.2f %.2f] Y[%.2f %.2f] Z[%.2f %.2f]",
 		mapName, entry.Module, entry.Min[0], entry.Max[0], entry.Min[1], entry.Max[1],
@@ -156,7 +157,7 @@ func worldPrecCatalogEntry(t *testing.T) (MapQuantEntry, bool) {
 // largeurs déduites des bornes. Un désaccord dit que les BORNES sont fausses — il se logge,
 // il ne se contourne pas. Rend le découpage lu, qui sert à normaliser le nuage de bipèdes
 // (c'est celui sous lequel `ScanFilmBipedPositions` produit ses quanta).
-func worldPrecCoherence(t *testing.T, dir string, entry MapQuantEntry, ok bool) I0Layout {
+func worldPrecCoherence(t *testing.T, dir string, entry profile.MapQuantEntry, ok bool) profile.I0Layout {
 	t.Helper()
 	lay, _, err := detectI0Layout(dir)
 	if err != nil {
@@ -232,7 +233,7 @@ func worldPrecRun(t *testing.T, dir string, ti int, axisW [3]uint, bip equipBox)
 	m := worldPrecMeasure{axisW: axisW, posBits: projPosBits(lg), sigs: map[worldPrecKey]worldPrecSig{}}
 	m.walk = worldPrecWalkStats(dir, ti, lg)
 
-	unit := Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
+	unit := profile.Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
 	tracks, err := ScanWorldObjects(fc, &unit, ti)
 	if err != nil {
 		t.Logf("  balayage ti=%d aux largeurs %v impossible : %v", ti, axisW, err)
@@ -265,7 +266,7 @@ func worldPrecRun(t *testing.T, dir string, ti int, axisW [3]uint, bip equipBox)
 }
 
 // worldPrecWalkStats compte les issues de la marche sur tout le film.
-func worldPrecWalkStats(dir string, typeIndex int, lg PrecisionDescriptor) worldPrecWalk {
+func worldPrecWalkStats(dir string, typeIndex int, lg profile.PrecisionDescriptor) worldPrecWalk {
 	var w worldPrecWalk
 	n := CountFilmChunks(dir)
 	if n == 0 {
@@ -293,8 +294,8 @@ func worldPrecWalkStats(dir string, typeIndex int, lg PrecisionDescriptor) world
 // worldPrecWalkPayload reproduit le parcours de `scanProjectileRecords` sur un payload, en
 // séparant les deux causes d'échec de la marche.
 func worldPrecWalkPayload(pay []byte, band map[uint32]bool, w *worldPrecWalk,
-	lg PrecisionDescriptor) {
-	unit := Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
+	lg profile.PrecisionDescriptor) {
+	unit := profile.Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
 	posBits := projPosBits(lg)
 	limit := len(pay)*8 - (worldObjectHeaderBits + worldObjectIndexBits + posBits)
 	for p := 0; p <= limit; p++ {

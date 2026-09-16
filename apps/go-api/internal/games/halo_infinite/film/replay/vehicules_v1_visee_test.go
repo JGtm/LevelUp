@@ -42,6 +42,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // Seuils de l'item 2, ecrits avant mesure.
@@ -97,7 +98,7 @@ func v1vUnFilm(t *testing.T, root string, f v0Film) {
 // balayage qui declenche le hook soit celui-ci (DetectI0Layout ne le rejoue pas). Flux brut :
 // hook 1:1 positions. Rendre l'histogramme entier (pas seulement i21) prouve que le hook lit de
 // VRAIS masques : i21 absent au milieu de i1/i2/i3/i25 presents n'est alors pas un bug de hook.
-func v1vScanAvecMasque(dir string, band map[uint32]bool, wr *grammar.Vec3Range, lay grammar.I0Layout) (
+func v1vScanAvecMasque(dir string, band map[uint32]bool, wr *profile.Vec3Range, lay profile.I0Layout) (
 	[]grammar.BipedPosition, int, map[int]int) {
 	total := 0
 	hist := map[int]int{}
@@ -123,7 +124,7 @@ func v1vScanAvecMasque(dir string, band map[uint32]bool, wr *grammar.Vec3Range, 
 }
 
 // v1vScanBiped balaie le bipede (reference validee) avec capture des directions.
-func v1vScanBiped(dir string, wr *grammar.Vec3Range, lay grammar.I0Layout) []grammar.BipedPosition {
+func v1vScanBiped(dir string, wr *profile.Vec3Range, lay profile.I0Layout) []grammar.BipedPosition {
 	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange, opt.CaptureDirs, opt.Layout = wr, true, &lay
 	pos, err := grammar.ScanFilmBipedPositions(dir, opt)

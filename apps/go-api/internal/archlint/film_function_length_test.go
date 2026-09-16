@@ -151,7 +151,7 @@ var plafondsParFonction = map[string]int{
 	"internal/games/halo_infinite/film/grammar/dispatch_object.go:consumeByName":                           118,
 	"internal/games/halo_infinite/film/grammar/frame_infer.go:decodeInferLoop":                             114,
 	"internal/games/halo_infinite/film/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          112,
-	"internal/games/halo_infinite/film/grammar/profile_table.go:tableProfilInvariants":                     89,
+	"internal/games/halo_infinite/film/profile/profile_table.go:tableProfilInvariants":                     89,
 }
 
 // TestLongueurDesFonctionsDuFilmNeCroitPas : aucune fonction des racines surveillees ne depasse

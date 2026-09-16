@@ -38,7 +38,7 @@ package grammar
 //     de CETTE région » s'exécute quand le bit vaut ZÉRO ; le bit à UN sélectionne les bornes
 //     par défaut du moteur (±20000, 22 bits par axe, DAT_143b8c6b8). C'est l'inverse de la
 //     lecture naïve, et la validation film confirme ce sens.
-//  2. LES BORNES SONT CELLES DU CATALOGUE (`map_quant_bounds.json`, MapQuantEntry), JAMAIS le
+//  2. LES BORNES SONT CELLES DU CATALOGUE (`map_quant_bounds.json`, profile.MapQuantEntry), JAMAIS le
 //     champ `bounds` d'un artefact de rejeu, qui n'est qu'un cadrage d'affichage. Déquantifier
 //     avec ce dernier fut l'erreur qui a fait manquer les positions à la sonde de R1.
 //
@@ -55,6 +55,7 @@ package grammar
 import (
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -89,7 +90,7 @@ const (
 	translocDefaultBound    = 20000
 	translocDefaultAxisBits = 22
 	// translocMaxAxisBits : plafond de la loi du moteur sur une largeur d'axe
-	// (min(26, ...), cf. MapQuantEntry.AxisWidths). translocMaxRegionBits borne de même la
+	// (min(26, ...), cf. profile.MapQuantEntry.AxisWidths). translocMaxRegionBits borne de même la
 	// largeur de l'index de région. Au-delà, l'entrée de catalogue est refusée plutôt que
 	// lue : une largeur aberrante ferait lire n'importe quoi.
 	translocMaxAxisBits   = 26
@@ -130,7 +131,7 @@ type TranslocatorTeleport struct {
 //
 // ScanFilmTranslocatorTeleports est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis
 // appelle [ScanTranslocatorTeleports]. La cuisson, elle, passe le film qu'elle a déjà chargé.
-func ScanFilmTranslocatorTeleports(dir string, entry *MapQuantEntry) []TranslocatorTeleport {
+func ScanFilmTranslocatorTeleports(dir string, entry *profile.MapQuantEntry) []TranslocatorTeleport {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil // meme degradation silencieuse qu'un chunk illisible : couverture moindre
@@ -140,7 +141,7 @@ func ScanFilmTranslocatorTeleports(dir string, entry *MapQuantEntry) []Transloca
 
 // ScanTranslocatorTeleports lit les téléportations du translocateur d'un film DEJA CHARGE,
 // triées par instant. Cf. [ScanFilmTranslocatorTeleports] pour la doctrine du balayage.
-func ScanTranslocatorTeleports(film *source.Film, entry *MapQuantEntry) []TranslocatorTeleport {
+func ScanTranslocatorTeleports(film *source.Film, entry *profile.MapQuantEntry) []TranslocatorTeleport {
 	var out []TranslocatorTeleport
 	for _, c := range FilmChunkNumbers(film) {
 		chunk, pks, ok := FilmChunkAt(film, c)
@@ -169,7 +170,7 @@ func ScanTranslocatorTeleports(film *source.Film, entry *MapQuantEntry) []Transl
 // (porte de ref0 à 0 — jamais observé, mais un slot non transmis ne se devine pas). La
 // CHARGE, elle, ne conditionne rien : elle échoue en positions absentes, pas en événement
 // perdu (l'instant et le slot sont déjà lus).
-func decodeTranslocHead(pay []byte, tsUS uint64, entry *MapQuantEntry) (TranslocatorTeleport, bool) {
+func decodeTranslocHead(pay []byte, tsUS uint64, entry *profile.MapQuantEntry) (TranslocatorTeleport, bool) {
 	br := LecteurSur(pay)
 	h := readPacketHead(br) // [config][continuation][R(7) type] — event_list.go
 	if !h.More {
@@ -190,7 +191,7 @@ func decodeTranslocHead(pay []byte, tsUS uint64, entry *MapQuantEntry) (Transloc
 
 // decodeTranslocJump lit la CHARGE de l'événement après ref0 : les portes des refs 1-2, le
 // mot d'effet gardé, puis les DEUX positions quantifiées. Rend (départ, arrivée, lues).
-func decodeTranslocJump(br *Lecteur, entry *MapQuantEntry) ([3]float32, [3]float32, bool) {
+func decodeTranslocJump(br *Lecteur, entry *profile.MapQuantEntry) ([3]float32, [3]float32, bool) {
 	var none [3]float32
 	// LES DEUX PORTES SE LISENT, PAS UNE. Un `||` court-circuitait la seconde (SA4000) : sans
 	// conséquence ici — le chemin sort aussitôt et le lecteur de bits est abandonné — mais
@@ -224,10 +225,10 @@ func decodeTranslocJump(br *Lecteur, entry *MapQuantEntry) ([3]float32, [3]float
 // readTranslocVec lit UNE position quantifiée de la charge et la déquantifie en coordonnées
 // monde. PORTE INVERSÉE (cf. l'en-tête, piège n°1) : bit à 0 -> index de région puis bornes
 // de la carte ; bit à 1 -> bornes par défaut du moteur.
-func readTranslocVec(br *Lecteur, entry *MapQuantEntry) ([3]float32, bool) {
+func readTranslocVec(br *Lecteur, entry *profile.MapQuantEntry) ([3]float32, bool) {
 	var out [3]float32
 	widths := [3]uint{translocDefaultAxisBits, translocDefaultAxisBits, translocDefaultAxisBits}
-	rng := Vec3Range{
+	rng := profile.Vec3Range{
 		{Min: -translocDefaultBound, Max: translocDefaultBound},
 		{Min: -translocDefaultBound, Max: translocDefaultBound},
 		{Min: -translocDefaultBound, Max: translocDefaultBound},
@@ -239,12 +240,12 @@ func readTranslocVec(br *Lecteur, entry *MapQuantEntry) ([3]float32, bool) {
 		if uint32(br.ReadBits(entry.EffectiveRegionIndexBits())) != entry.Region {
 			// Une AUTRE région : ses quanta sont exprimés dans une autre AABB, et les
 			// déquantifier avec ces bornes produirait une position fausse silencieuse —
-			// exactement le refus que porte I0Layout.Region sur le chemin du bipède.
+			// exactement le refus que porte profile.I0Layout.Region sur le chemin du bipède.
 			return out, false
 		}
 		widths, rng = entry.AxisWidths, entry.Range()
 	}
-	lay := I0Layout{AxisW: widths}
+	lay := profile.I0Layout{AxisW: widths}
 	for ax := 0; ax < 3; ax++ {
 		out[ax] = DequantBipedAxis(uint32(br.ReadBits(widths[ax])), ax, lay, rng)
 	}
@@ -255,7 +256,7 @@ func readTranslocVec(br *Lecteur, entry *MapQuantEntry) ([3]float32, bool) {
 // ordonnées et largeurs dans l'enveloppe de la loi du moteur. Une entrée hors enveloppe est
 // REFUSÉE plutôt que lue — la largeur commande le nombre de bits consommés, une valeur
 // aberrante ferait lire les bits du voisin.
-func translocEntryUsable(e *MapQuantEntry) bool {
+func translocEntryUsable(e *profile.MapQuantEntry) bool {
 	if e == nil || e.EffectiveRegionIndexBits() > translocMaxRegionBits {
 		return false
 	}

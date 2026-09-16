@@ -36,6 +36,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"strconv"
@@ -55,7 +56,7 @@ type i48mSetup struct {
 	dir    string
 	chunks []int
 	slots  SlotBand
-	lay    I0Layout
+	lay    profile.I0Layout
 	arch   Archetype
 	idx48  int
 	minRec int
@@ -272,7 +273,7 @@ func i48mMatchAt(s i48mSetup, pay []byte, p, total int) (i48mCand, int, bool) {
 	if i0+s.lay.TotalBits() > total {
 		return i48mCand{}, 0, false
 	}
-	const preGate = i0SpineBits + i0UseDefaultBits
+	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
 	if cand.Idx[0] == 0 {
 		if v := readBitsAt(pay, i0, preGate); v != 0 {
 			guards += fmt.Sprintf("pregate=%d ", v)

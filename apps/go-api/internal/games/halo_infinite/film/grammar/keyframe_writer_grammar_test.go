@@ -31,6 +31,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"testing"
 )
 
@@ -80,7 +81,7 @@ func kf7dPass(f kf35Film, w int) kf7dResult {
 // kf7dPredicted rend la largeur que l'ECRIVAIN pose pour `i0` sur un decoupage donne, dans
 // son cas dominant (pas d'index de plage, pas de queue de handle) :
 // 2 bits d'en-tete + 1 porte de queue + 1 selecteur d'index + les trois axes + 2 de queue.
-func kf7dPredicted(lay I0Layout) int {
+func kf7dPredicted(lay profile.I0Layout) int {
 	return 6 + int(lay.AxisW[0]) + int(lay.AxisW[1]) + int(lay.AxisW[2])
 }
 
