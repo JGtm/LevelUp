@@ -57,6 +57,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -287,14 +288,14 @@ func ksPrecWalkHistogram(f *film, tl *timeline, views int,
 
 // ksPrecEntry : l entree de catalogue de la carte du match. C est la MEME entree qui porte les
 // bornes — bornes et largeurs ne se dissocient pas.
-func ksPrecEntry(t *testing.T) grammar.MapQuantEntry {
+func ksPrecEntry(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
 	boundsPath, mapName := os.Getenv(ksPrecBoundsEnv), os.Getenv(ksPrecMapEnv)
 	if boundsPath == "" || mapName == "" {
 		t.Skipf("%s / %s absents : la source des largeurs est le CATALOGUE, pas le film",
 			ksPrecBoundsEnv, ksPrecMapEnv)
 	}
-	cat, err := grammar.LoadMapQuantCatalog(boundsPath)
+	cat, err := profile.LoadMapQuantCatalog(boundsPath)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", boundsPath, err)
 	}

@@ -40,6 +40,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -122,7 +123,7 @@ func TestOriginePosesDistribution(t *testing.T) {
 // LE CHARGEMENT EST PARTAGE (`mapQuantEntryFromEnv`, ground_weapon_pads_research_test.go) : la
 // phase 1 des socles avait besoin du meme, et deux copies du meme chargement de catalogue
 // re-divergent (regle du depot).
-func origineMapEntry(t *testing.T) grammar.MapQuantEntry {
+func origineMapEntry(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
 	return mapQuantEntryFromEnv(t, origineMapEnv, origineBoundsEnv)
 }

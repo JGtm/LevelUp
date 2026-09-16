@@ -55,6 +55,7 @@ import (
 	"errors"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // FilmTableRefusal nomme la cause pour laquelle la table du film n a PAS ete lue. Liste FERMEE :
@@ -141,7 +142,7 @@ func causeIdentite(err error) FilmTableRefusal {
 // causeTable traduit l erreur de [grammar.ReadPlayerTable] en cause nommee.
 func causeTable(err error) FilmTableRefusal {
 	switch {
-	case errors.Is(err, grammar.ErrUnknownBuild):
+	case errors.Is(err, profile.ErrUnknownBuild):
 		return FilmTableUnknownBuild
 	case errors.Is(err, grammar.ErrPlayerTableNotFound):
 		return FilmTableNotFound

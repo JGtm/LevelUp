@@ -9,7 +9,7 @@ package service
 // DEUX ESSAIS, DANS CET ORDRE, PARCE QU'IL Y A DEUX FAMILLES DE CARTES :
 //
 //	match -> map_id + nom(s) de carte (registre partagé)   ReplayMapNameRepo
-//	1. nom de carte -> module (map_quant_bounds.json)      grammar.LoadMapQuantCatalog
+//	1. nom de carte -> module (map_quant_bounds.json)      profile.LoadMapQuantCatalog
 //	   module -> zones (map_callouts.json, `maps`)         MapCalloutsCatalog.Lookup
 //	2. map_id -> zones (map_callouts.json, `maps_by_id`)   MapCalloutsCatalog.LookupByID
 //
@@ -32,7 +32,7 @@ import (
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/replayview"
@@ -104,7 +104,7 @@ func calloutsParModule(ctx context.Context, repoRoot, titleSlug string,
 		return nil, false
 	}
 	res := title.NewPathResolver(repoRoot)
-	quant, err := grammar.LoadMapQuantCatalog(res.MapQuantBoundsPath(titleSlug))
+	quant, err := profile.LoadMapQuantCatalog(res.MapQuantBoundsPath(titleSlug))
 	if err != nil {
 		slog.WarnContext(ctx, "callouts : catalogue de bornes illisible — essai par module abandonné",
 			"err", err, "titleSlug", titleSlug)

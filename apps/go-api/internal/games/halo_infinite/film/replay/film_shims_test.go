@@ -18,6 +18,7 @@ package replay
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -50,24 +51,24 @@ func buildFromFilmDir(matchID, titleSlug, dir string, opt Options) (ReplayDocume
 
 // decodeFilmPlacementsDir : [decodeFilmPlacements] depuis un repertoire.
 func decodeFilmPlacementsDir(
-	dir string, wr *grammar.Vec3Range,
+	dir string, wr *profile.Vec3Range,
 ) ([]grammar.EquipmentPlacement, grammar.EquipmentPlacementStats) {
 	return decodeFilmPlacements(grammar.NewFilmContext(filmDeDir(dir)), dir, wr)
 }
 
 // decodeFilmPadScansDir : [decodeFilmPadScans] depuis un repertoire.
-func decodeFilmPadScansDir(dir string, wr *grammar.Vec3Range, mpp grammar.MPPWidths) PadScans {
+func decodeFilmPadScansDir(dir string, wr *profile.Vec3Range, mpp profile.MPPWidths) PadScans {
 	return decodeFilmPadScans(grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
 }
 
 // decodeFilmPadScanDir : [decodeFilmPadScan] depuis un repertoire.
 func decodeFilmPadScanDir(
-	dir string, wr *grammar.Vec3Range, mpp grammar.MPPWidths, arch padArchetype,
+	dir string, wr *profile.Vec3Range, mpp profile.MPPWidths, arch padArchetype,
 ) WorldObjectScan {
 	return decodeFilmPadScan(grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp, arch)
 }
 
 // decodeFilmVehicleScanDir : [decodeFilmVehicleScan] depuis un repertoire.
-func decodeFilmVehicleScanDir(dir string, wr *grammar.Vec3Range, mpp grammar.MPPWidths) VehicleScan {
+func decodeFilmVehicleScanDir(dir string, wr *profile.Vec3Range, mpp profile.MPPWidths) VehicleScan {
 	return decodeFilmVehicleScan(grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
 }

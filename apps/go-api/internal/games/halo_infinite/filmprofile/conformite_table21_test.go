@@ -4,7 +4,7 @@ package filmprofile_test
 //
 // # CE QUE CE TEST GARDE
 //
-// Le lot 3.1 sort le profil du code : la table `grammar.TableProfil()` (lot 2.1) devient un
+// Le lot 3.1 sort le profil du code : la table `profile.TableProfil()` (lot 2.1) devient un
 // fichier de reference, `data/titles/halo_infinite/reference/film_profiles.json`. Tant que les
 // deux coexistent — le lot 3.1.1 supprime la copie en faisant LIRE le fichier a `grammar` —
 // une divergence entre elles serait un profil a deux verites, dont personne ne saurait laquelle
@@ -52,7 +52,7 @@ import (
 
 // cheminTableProfil : le fichier de la table du lot 2.1, relatif a la racine du depot.
 var cheminTableProfil = filepath.Join("apps", "go-api", "internal", "games", "halo_infinite",
-	"film", "grammar", "profile_table.go")
+	"film", "profile", "profile_table.go")
 
 // tablesDuProfil : les sous-tables de la table, DANS L ORDRE ou `TableProfil()` les concatene,
 // avec le nombre de lignes mesure le 2026-09-16. Le compte est ecrit pour que l ajout d une

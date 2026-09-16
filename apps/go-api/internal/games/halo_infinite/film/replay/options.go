@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // Options règle l'assemblage du document de rejeu.
@@ -348,18 +349,18 @@ type Options struct {
 	// Absent = document sans table de libellés : le client affiche les identifiants
 	// bruts, ce qui reste vrai — contrairement à un nom approché.
 	Labels LabelCatalog
-	// MapQuant : l'ENTRÉE DE CATALOGUE de la carte du match (cf. grammar.MapQuantCatalog).
+	// MapQuant : l'ENTRÉE DE CATALOGUE de la carte du match (cf. profile.MapQuantCatalog).
 	// OBLIGATOIRE : sans elle le décodeur ne produit que des quanta, et BuildFromFilm refuse
 	// d'émettre un document plutôt que des coordonnées fausses (elles l'étaient jusqu'ici :
 	// les bornes de Cliffhanger étaient appliquées à toutes les cartes, et le filtre de
 	// téléportation en m/s décalibré d'autant).
 	//
-	// POURQUOI L'ENTRÉE ENTIÈRE ET NON `*grammar.Vec3Range` (correctif du 2026-08-15) : les
+	// POURQUOI L'ENTRÉE ENTIÈRE ET NON `*profile.Vec3Range` (correctif du 2026-08-15) : les
 	// BORNES et les LARGEURS D'AXE sont deux faces de la même entrée de catalogue, et jusqu'ici
 	// seules les bornes descendaient. Les largeurs restaient au défaut de paquet — celles de
 	// Cliffhanger — sur toutes les autres cartes. Les porter dans un second champ aurait laissé
 	// armer l'une sans l'autre : un seul champ, donc, et l'oubli devient impossible.
-	MapQuant *grammar.MapQuantEntry
+	MapQuant *profile.MapQuantEntry
 	// Observe recoit chaque etape de BuildFromFilm et sa sortie (cf. observe.go). Nil = rien —
 	// mais EN PRODUCTION IL N'EST JAMAIS NIL : `replaybuild.BuildBytes` passe toujours sa
 	// methode `b.observe`, qui teste elle-meme si un observateur est branche (cf. observe.go).

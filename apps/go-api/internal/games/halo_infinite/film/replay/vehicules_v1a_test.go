@@ -34,6 +34,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // v1aSeuilContinuite est le gate de fonction de V1.2, ecrit avant mesure : le cadrage a releve
@@ -59,7 +60,7 @@ const (
 // zero, aucun post-filtre ne peut etre soupconne d'avoir SELECTIONNE les echantillons qui
 // donnent raison a l'oracle — un filtre en m/s, en particulier, ecarterait par construction une
 // partie des pas que la mesure de continuite compte.
-func v1aOptions(wr *grammar.Vec3Range, filtres bool) grammar.ScanFilmOptions {
+func v1aOptions(wr *profile.Vec3Range, filtres bool) grammar.ScanFilmOptions {
 	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange, opt.RequireTag1 = wr, false
 	if !filtres {

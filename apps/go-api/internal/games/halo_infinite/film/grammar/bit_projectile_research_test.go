@@ -39,6 +39,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -71,7 +72,7 @@ func TestBancBitProjectile(t *testing.T) {
 	if parc == "" || len(films) == 0 {
 		t.Skipf("banc désactivé : %s et %s requis", bitProjParcEnv, bitProjFilmsEnv)
 	}
-	cat, err := LoadMapQuantCatalog(filepath.Join(
+	cat, err := profile.LoadMapQuantCatalog(filepath.Join(
 		parc, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
@@ -101,7 +102,7 @@ func bitProjDetail() int {
 }
 
 // bitProjMesureFilm cuit un film sous DEUX portes et publie le verdict chiffré.
-func bitProjMesureFilm(t *testing.T, parc string, cat *MapQuantCatalog, f bitProjFilm) {
+func bitProjMesureFilm(t *testing.T, parc string, cat *profile.MapQuantCatalog, f bitProjFilm) {
 	t.Helper()
 	entry, err := cat.Lookup(f.carte)
 	if err != nil {
@@ -148,7 +149,7 @@ func bitProjMesureFilm(t *testing.T, parc string, cat *MapQuantCatalog, f bitPro
 // bitProjBalaye rejoue `scanProjectileRecords` avec une porte de largeur LIBRE, et garde les
 // bits. Aucune I/O : le film est déjà chargé.
 func bitProjBalaye(
-	film *source.Film, band map[uint32]bool, w [3]uint, rng Vec3Range,
+	film *source.Film, band map[uint32]bool, w [3]uint, rng profile.Vec3Range,
 	porte int, attendue uint64,
 ) []bpEchantillon {
 	posBits := porte + int(w[0]+w[1]+w[2]) + 2
@@ -185,7 +186,7 @@ func bitProjBalaye(
 // bitProjLis lit un i0 d'objet du monde à une porte donnée et rend l'échantillon AVEC ses bits.
 // Mêmes règles de rejet que la production : porte nulle, quanta saturés écartés.
 func bitProjLis(
-	pay []byte, rec WorldObjectRecord, w [3]uint, rng Vec3Range, porte int, attendue uint64,
+	pay []byte, rec WorldObjectRecord, w [3]uint, rng profile.Vec3Range, porte int, attendue uint64,
 ) (bpEchantillon, bool) {
 	var e bpEchantillon
 	e.porte = PeekBits(pay, rec.After, porte)
@@ -261,7 +262,7 @@ func bitProjPart(ps []bpPas) float64 {
 
 // bitProjDetaille publie, pour les premiers pas impossibles de la lecture de PRODUCTION, les
 // quanta bruts des deux points et le bit qui les sépare. C'est la pièce de la preuve.
-func bitProjDetaille(t *testing.T, e MapQuantEntry, prod []bpEchantillon, porteAncienne, porteCat int) {
+func bitProjDetaille(t *testing.T, e profile.MapQuantEntry, prod []bpEchantillon, porteAncienne, porteCat int) {
 	t.Helper()
 	ps := bitProjPas(prod)
 	sort.Slice(ps, func(i, j int) bool {

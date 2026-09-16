@@ -42,12 +42,11 @@ import (
 	"compress/gzip"
 	"errors"
 	"flag"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 var updateGolden = flag.Bool("update", false, "reecrire les fichiers figes de testdata/")
@@ -251,7 +250,7 @@ var errGoldenInputsCarte = errors.New("fixture d entrees : carte du catalogue di
 var errGoldenInputsDecoupage = errors.New("fixture d entrees : decoupage d i0 en contradiction avec le catalogue")
 
 // imposeAxisW rend les largeurs d un decoupage impose, ou un marqueur quand il n y en a pas.
-func imposeAxisW(impose *grammar.I0Layout) any {
+func imposeAxisW(impose *profile.I0Layout) any {
 	if impose == nil {
 		return "aucun (entree de carte invalide)"
 	}

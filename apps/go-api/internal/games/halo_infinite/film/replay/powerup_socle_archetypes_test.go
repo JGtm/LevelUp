@@ -34,6 +34,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // psTIBalayes — les archetypes d'objet du monde du balayage, temoin compris.
@@ -127,7 +128,7 @@ type psStatTI struct {
 }
 
 // psBalayeTI balaye un archetype et rend les vies retenues, plus les compteurs.
-func psBalayeTI(dir string, wr *grammar.Vec3Range, ti int, c psCible) ([]psVieBoite, psStatTI) {
+func psBalayeTI(dir string, wr *profile.Vec3Range, ti int, c psCible) ([]psVieBoite, psStatTI) {
 	st := psStatTI{D3Min: math.Inf(1)}
 	tracks, err := grammar.ScanFilmWorldObjects(dir, wr, ti)
 	if err != nil {

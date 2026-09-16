@@ -38,6 +38,7 @@ import (
 	"sort"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -109,7 +110,7 @@ func e191cUnRecord(pay []byte, reg *Registry, b keyframeBorne, m *e191cEtatMesur
 		}
 	}
 	for w := 0; w <= e191cBalayageMax; w++ {
-		tem := keyframeFullStateTemoin{EnTeteBits: keyframeFullStateHeaderBits + w, SansEtatParDefaut: true}
+		tem := keyframeFullStateTemoin{EnTeteBits: profile.KeyframeEnTeteBits + w, SansEtatParDefaut: true}
 		st := walkKeyframeFullState(pay, b.Bit, reg, contexteDInstrument(), tem)
 		if st.DesyncAt < 0 && st.EndBit == b.Want {
 			m.ParW[w]++
@@ -122,10 +123,10 @@ func e191cUnRecord(pay []byte, reg *Registry, b keyframeBorne, m *e191cEtatMesur
 // l autre avec un decalage nul a sa place.
 func e191cLargeurPortee(pay []byte, reg *Registry, bit int) int {
 	br := LecteurSur(pay)
-	br.SetBitPos(bit + keyframeFullStateHeaderBits)
+	br.SetBitPos(bit + profile.KeyframeEnTeteBits)
 	ti := uint32(kfReadBits(pay, bit+keyframeRecordTIBit, 6)) //nolint:gosec // 6 bits
 	avant := br.BitPos()
-	br.ReadBits(keyframeFullStateSizeBits)
+	br.ReadBits(profile.KeyframeMotDeTailleBits)
 	debut := br.BitPos()
 	consumeKeyframeDefaultState(br, ti)
 	_ = avant

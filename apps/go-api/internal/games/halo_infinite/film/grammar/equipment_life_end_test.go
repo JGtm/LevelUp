@@ -24,6 +24,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestEquipmentLifeEnd$' -timeout 60m -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"testing"
@@ -93,7 +94,7 @@ func lifeEndRegistry(t *testing.T, dir string) {
 // lifeEndRawSamples rejoue le balayage de ScanFilmWorldObjects SANS découper en vies : c'est la
 // matière commune aux deux règles comparées.
 func lifeEndRawSamples(
-	dir string, n int, band map[uint32]bool, lg PrecisionDescriptor,
+	dir string, n int, band map[uint32]bool, lg profile.PrecisionDescriptor,
 ) map[EquipmentLifeKey][]ProjectileSample {
 	out := map[EquipmentLifeKey][]ProjectileSample{}
 	for c := 1; c <= n; c++ {
@@ -316,7 +317,7 @@ func lifeEndKeyframeCensus(t *testing.T, dir string, n int, confirmed []lifeEndC
 func lifeEndTailProbe(
 	t *testing.T, dir string, n int, band map[uint32]bool,
 	raw map[EquipmentLifeKey][]ProjectileSample, confirmed []lifeEndConfirmed,
-	lg PrecisionDescriptor,
+	lg profile.PrecisionDescriptor,
 ) {
 	t.Helper()
 	if len(confirmed) == 0 {
@@ -369,7 +370,7 @@ func lifeEndTailProbe(
 
 // lifeEndAllRecords collecte les instants de TOUS les records d'objet du monde de la bande,
 // SANS exiger la position (i0) : c'est le balayage le plus large possible sur cet archétype.
-func lifeEndAllRecords(dir string, n int, band map[uint32]bool, lg PrecisionDescriptor) map[EquipmentLifeKey][]uint64 {
+func lifeEndAllRecords(dir string, n int, band map[uint32]bool, lg profile.PrecisionDescriptor) map[EquipmentLifeKey][]uint64 {
 	out := map[EquipmentLifeKey][]uint64{}
 	posBits := projPosBits(lg)
 	for c := 1; c <= n; c++ {
@@ -412,7 +413,7 @@ func lifeEndQuantile(v []float64, q float64) float64 {
 // mais « combien de faux ? » — si la densité de candidats dépasse de plusieurs ordres le nombre
 // de vies, aucune fin explicite n'en sort.
 func lifeEndDelSelectivity(t *testing.T, dir string, n int, band map[uint32]bool, lives int,
-	lg PrecisionDescriptor) {
+	lg profile.PrecisionDescriptor) {
 	t.Helper()
 	cands, payloads := 0, 0
 	limit := n

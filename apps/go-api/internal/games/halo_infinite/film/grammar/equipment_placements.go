@@ -52,6 +52,7 @@ import (
 	"fmt"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -128,7 +129,7 @@ type EquipmentPlacementStats struct {
 // ScanFilmEquipmentPlacements est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanEquipmentPlacements].
 func ScanFilmEquipmentPlacements(
-	dir string, wr *Vec3Range,
+	dir string, wr *profile.Vec3Range,
 ) ([]EquipmentPlacement, EquipmentPlacementStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -147,7 +148,7 @@ func ScanFilmEquipmentPlacements(
 // existe précisément pour ça ; les deux gardes que `ScanWorldObjects` posait avant de déléguer
 // (aucun chunk de données, bande vide) sont déjà passées trois lignes plus haut.
 func ScanEquipmentPlacements(
-	fc *FilmContext, wr *Vec3Range,
+	fc *FilmContext, wr *profile.Vec3Range,
 ) ([]EquipmentPlacement, EquipmentPlacementStats, error) {
 	st := EquipmentPlacementStats{ByID: map[uint32]int{}}
 	if wr == nil {

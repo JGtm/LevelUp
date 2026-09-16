@@ -1,0 +1,58 @@
+package profile
+
+// identite.go — LA SECTION 2 DE `chunk_00`, COMME VALEUR.
+//
+// EXTRAITE DE `grammar/film_identity.go` AU LOT 2.5.b : le TYPE descend, le LECTEUR
+// (`ReadFilmIdentity`, ses ancres, ses erreurs sentinelles de chunk tronque) reste en
+// `grammar` et rend desormais un [FilmIdentity] de ce paquet.
+//
+// POURQUOI ELLE EST UNE VALEUR DE PROFIL : elle porte les DEUX cles que le film ecrit en clair
+// — le nom de build et la version de format — et c est sur elles que la table par build et la
+// table par format se lisent ([Resoudre]). Le champ [Profile.Identity] est de ce type ; le
+// laisser en `grammar` aurait fait remonter `profile` vers `grammar`.
+
+// FilmIdentity : la section 2 de `chunk_00`, lue champ par champ.
+type FilmIdentity struct {
+	// Version, Build, Flavor : les trois champs de 32 octets, en clair.
+	Version string
+	Build   string
+	Flavor  string
+	// BuildID, Changelist : les deux u32 de `0x0CB454` / `0x0CB458`, recopies par
+	// `FUN_14299b674` depuis la structure d'infos de build de l'executable.
+	BuildID    uint32
+	Changelist uint32
+	// MatchStartUnix : l'horodatage du match, `_time64()` au moment ou `chunk_00` est ecrit.
+	// Mesure du 2026-09-12 contre `match_registry.start_time_utc` : +19 s, +29 s, +43 s sur
+	// trois films (seuil de 120 s ecrit avant la mesure), et un seul decalage de bit sur
+	// dix-sept rend une valeur plausible — celui que l'ecrivain predit.
+	MatchStartUnix uint32
+	// FormatVersion : la VERSION DE FORMAT de `chunk_00`, le u32 de `base+4`. C'est elle qui
+	// commande la largeur du registre et celle de la table par type chez le LECTEUR du jeu
+	// (`FUN_14299ab50`) — cf. `film_format_version.go`. Elle est renseignee ICI par commodite,
+	// mais elle ne DEPEND PAS de cette section : [FilmFormatVersionFromHeader] la rend aussi
+	// sur les cinq films du cache qui n'ont pas de section d'identification (format 20).
+	FormatVersion int
+	// TypeVersions : la table par type, les u32 qui precedent le champ de version. Le cardinal
+	// suit la VERSION DE FORMAT (123 / 122 / 121 / 116 mesures pour les formats 27 / 25 / 24 /
+	// 21). Leur semantique est desormais ETABLIE et non plus « appuyee » : `FUN_1428e1c64` les
+	// lit indexees (`film+0xCB208 + i*4`, quatre sites d'instruction sur 13,6 M), son unique
+	// appelant `FUN_141102ed0(i)` rend la version du TYPE i — celle du film en mode Theater, la
+	// native `DAT_14474cd90` sinon — et QUINZE fonctions s'en servent pour brancher.
+	//
+	// CE LECTEUR NE LES INTERPRETE PAS, ET IL NE FAUT PAS LEUR DEMANDER LA GRAMMAIRE DU
+	// DECODEUR : mesure du 2026-09-15 sur les sept bobines, la table est alignee PAR LE DEBUT
+	// (l'index 18 vaut 2 sur les sept, comme la table native), 24 index varient d'une bobine a
+	// l'autre, et AUCUN des neuf index que l'ecrivain interroge en clair (0x23, 0x24, 0x30,
+	// 0x59, 0x5a, 0x5b, 0x5d, 0x61, 0x72) ne separe les films `8/3` des films `9/5`. Le
+	// discriminant est [FilmIdentity.FormatVersion], pas cette table.
+	TypeVersions []uint32
+	// RegistryBlocks : le nombre de blocs du registre (49 ou 50 selon le build). C'est lui qui
+	// ancre la fin du registre, donc le debut de la table par type.
+	RegistryBlocks int
+	// BuildOffset : l'octet de la chaine de build dans le tampon inflate. Publie parce que
+	// c'est l'ancre de toute la derivation, et qu'un rapport qui le porte se relit.
+	BuildOffset int
+	// BodyBit : le PREMIER BIT du corps (`FUN_1407ec560`), decalage d'un bit compris. C'est la
+	// borne basse de tout balayage du corps — la table des joueurs en particulier.
+	BodyBit int
+}

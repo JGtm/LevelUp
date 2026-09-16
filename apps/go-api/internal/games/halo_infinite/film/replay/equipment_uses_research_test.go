@@ -56,6 +56,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -178,7 +179,7 @@ func eqUsesOracles(t *testing.T, dir string, lives []eqLife, sig [2][]eqSignal) 
 // eqUsesPositions rend le nuage des bipedes TRIE, ou nil quand les bornes ne sont pas en
 // metres — la distance du poseur n'a alors aucun sens (cf. eqUsesOwners).
 func eqUsesPositions(
-	t *testing.T, dir string, wr grammar.Vec3Range, metres bool,
+	t *testing.T, dir string, wr profile.Vec3Range, metres bool,
 ) []grammar.BipedPosition {
 	t.Helper()
 	if !metres {
@@ -239,13 +240,13 @@ func eqUsesRawTransitions(t *testing.T, samples []grammar.EquipmentStateSample) 
 // AUTO-DETECTEE par la signature des largeurs lues dans le film, meme methode qu'i59_anchor),
 // sinon les largeurs du film avec des bornes normalisees. Le second rend `metres` faux, et
 // tout ce qui exige des metres est alors declare non mesurable.
-func eqUsesEntry(t *testing.T, dir string) (grammar.MapQuantEntry, bool) {
+func eqUsesEntry(t *testing.T, dir string) (profile.MapQuantEntry, bool) {
 	t.Helper()
 	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible dans %s : %v", dir, err)
 	}
-	fallback := grammar.MapQuantEntry{
+	fallback := profile.MapQuantEntry{
 		Module: "(bornes normalisees)", AxisWidths: lay.AxisW,
 		Min: [3]float32{0, 0, 0}, Max: [3]float32{1, 1, 1},
 	}
@@ -253,7 +254,7 @@ func eqUsesEntry(t *testing.T, dir string) (grammar.MapQuantEntry, bool) {
 	if path == "" {
 		return fallback, false
 	}
-	cat, err := grammar.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible (%s) : %v", path, err)
 	}
@@ -265,7 +266,7 @@ func eqUsesEntry(t *testing.T, dir string) (grammar.MapQuantEntry, bool) {
 		return e, true
 	}
 	var hits []string
-	var found grammar.MapQuantEntry
+	var found profile.MapQuantEntry
 	for name, e := range cat.Maps {
 		if e.AxisWidths == lay.AxisW {
 			hits, found = append(hits, name), e

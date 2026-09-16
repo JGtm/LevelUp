@@ -49,6 +49,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -88,7 +89,7 @@ type f0Film struct {
 	ID    string
 	Dir   string
 	Carte string
-	Entry MapQuantEntry
+	Entry profile.MapQuantEntry
 	// BaseUS est l horodatage du PREMIER paquet du chunk 1 : le zero de l horloge FILM, celui
 	// auquel `originMs` de l artefact se rapporte (conversion etablie par R1 §0, reprise par
 	// R5). `ms_film = (ts_paquet - BaseUS)/1000`.
@@ -129,13 +130,13 @@ func f0Films(t *testing.T) (string, []string) {
 }
 
 // f0Catalogue charge le catalogue de bornes de production.
-func f0Catalogue(t *testing.T) *MapQuantCatalog {
+func f0Catalogue(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
 	path := os.Getenv(f0CatEnv)
 	if path == "" {
 		t.Skipf("instrument F.0 : definir %s (map_quant_bounds.json)", f0CatEnv)
 	}
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}
@@ -143,13 +144,13 @@ func f0Catalogue(t *testing.T) *MapQuantCatalog {
 }
 
 // f0Cartes lit `F0_MAPS` ("id8=NomDeCarte,...") et resout chaque nom dans le catalogue.
-func f0Cartes(t *testing.T, cat *MapQuantCatalog) map[string]MapQuantEntry {
+func f0Cartes(t *testing.T, cat *profile.MapQuantCatalog) map[string]profile.MapQuantEntry {
 	t.Helper()
 	spec := os.Getenv(f0MapsEnv)
 	if spec == "" {
 		t.Skipf("instrument F.0 : definir %s — le lancer d abord par TestF0CalibreCarte", f0MapsEnv)
 	}
-	out := map[string]MapQuantEntry{}
+	out := map[string]profile.MapQuantEntry{}
 	for _, kv := range strings.Split(spec, ",") {
 		i := strings.IndexByte(kv, '=')
 		if i <= 0 {
@@ -167,7 +168,7 @@ func f0Cartes(t *testing.T, cat *MapQuantCatalog) map[string]MapQuantEntry {
 
 // f0Ctx construit le contexte de marche (etendues et largeur d index de region) depuis une
 // entree de catalogue. Meme forme que `r7CtxDeCarte`, sur le type de PRODUCTION.
-func f0Ctx(e MapQuantEntry) r7Ctx {
+func f0Ctx(e profile.MapQuantEntry) r7Ctx {
 	return r7Ctx{
 		etendues: [3]float64{
 			float64(e.Max[0] - e.Min[0]),
@@ -241,7 +242,7 @@ func f0Marche103(t *testing.T, id, dir string, ctx r7Ctx) ([]f0Ev103, int, int) 
 // carte) et les largeurs du bloc MPP (mesurees sur CE film par la chaine de production, que
 // `ScanFilmEquipmentPlacements` restaure en sortant — il faut les REPOSER avant le balayage
 // brut, sans quoi aucune identite ne se resout et rien ne le dit).
-func f0Charge(t *testing.T, root, id string, e MapQuantEntry) f0Film {
+func f0Charge(t *testing.T, root, id string, e profile.MapQuantEntry) f0Film {
 	t.Helper()
 	dir := filepath.Join(root, id)
 	if CountFilmChunks(dir) == 0 {
@@ -370,13 +371,13 @@ func TestF0CalibreCarte(t *testing.T) {
 // f0Profil est un candidat de carte pour la calibration.
 type f0Profil struct {
 	Nom   string
-	Entry MapQuantEntry
+	Entry profile.MapQuantEntry
 }
 
 // f0Profils rend UN representant par profil d etendue distinct du catalogue. Deux cartes de
 // memes largeurs d axe ET de memes etendues sont indiscernables par l oracle : en garder deux
 // ferait croire a une ambiguite la ou il n y en a pas.
-func f0Profils(cat *MapQuantCatalog) []f0Profil {
+func f0Profils(cat *profile.MapQuantCatalog) []f0Profil {
 	vus := map[string]bool{}
 	noms := make([]string, 0, len(cat.Maps))
 	for nom := range cat.Maps {
@@ -442,7 +443,7 @@ func TestF0InvarianceEchelle(t *testing.T) {
 
 // f0Jumelle cherche une entree de MEMES largeurs d axe et de MEMES bits de region que `e`,
 // mais de bornes DIFFERENTES : le temoin de l invariance d echelle.
-func f0Jumelle(cat *MapQuantCatalog, e MapQuantEntry) (MapQuantEntry, string, bool) {
+func f0Jumelle(cat *profile.MapQuantCatalog, e profile.MapQuantEntry) (profile.MapQuantEntry, string, bool) {
 	noms := make([]string, 0, len(cat.Maps))
 	for nom := range cat.Maps {
 		noms = append(noms, nom)
@@ -458,12 +459,12 @@ func f0Jumelle(cat *MapQuantCatalog, e MapQuantEntry) (MapQuantEntry, string, bo
 			return c, nom, true
 		}
 	}
-	return MapQuantEntry{}, "", false
+	return profile.MapQuantEntry{}, "", false
 }
 
 // f0Signatures rend les signatures (slot, gen, GlobalID, instant) des creations `ti=37` lues
 // avec les bornes donnees — tout ce que ce lot juge, coordonnees exclues.
-func f0Signatures(t *testing.T, root, id string, e MapQuantEntry) map[string]bool {
+func f0Signatures(t *testing.T, root, id string, e profile.MapQuantEntry) map[string]bool {
 	t.Helper()
 	f := f0Charge(t, root, id, e)
 	out := make(map[string]bool, len(f.Creations))

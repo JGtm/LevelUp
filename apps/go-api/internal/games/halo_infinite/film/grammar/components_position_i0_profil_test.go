@@ -1,6 +1,9 @@
 package grammar
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"testing"
+)
 
 // components_position_i0_profil_test.go — LE DESERIALISEUR D i0 CONSULTE BIEN LE PROFIL QUE SON
 // LECTEUR PORTE (lots 2.2.a et 2.2.b du PLAN_DECODEUR_FILM).
@@ -46,7 +49,7 @@ func bitsDe(bits string, octets int) []byte {
 
 // consommationI0 rend le nombre de bits que le deserialiseur d i0 consomme sur `buf`, sous le
 // profil `mv`.
-func consommationI0(mv MovementProfile, buf []byte) int {
+func consommationI0(mv profile.MovementProfile, buf []byte) int {
 	br := lecteurDInstrument(buf)
 	br.poserMouvement(mv)
 	consumeObjectPositionDynamicPrecisionD(br, br.traversal())
@@ -75,29 +78,29 @@ func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
 		nom              string
 		flux             []byte
 		attendu, mutante int
-		fausser          func(m MovementProfile) MovementProfile
+		fausser          func(m profile.MovementProfile) profile.MovementProfile
 	}{
-		{"Traversal.IndexW", absolu, 49, 51, func(m MovementProfile) MovementProfile {
+		{"Traversal.IndexW", absolu, 49, 51, func(m profile.MovementProfile) profile.MovementProfile {
 			m.Traversal.IndexW = 3
 			return m
 		}},
-		{"AbsoluteAxisW", absolu, 49, 67, func(m MovementProfile) MovementProfile {
+		{"AbsoluteAxisW", absolu, 49, 67, func(m profile.MovementProfile) profile.MovementProfile {
 			m.AbsoluteAxisW = 20 // 3x20 au lieu de 3x14 : +18 bits
 			return m
 		}},
-		{"FullPrecision", absolu, 49, 99, func(m MovementProfile) MovementProfile {
+		{"FullPrecision", absolu, 49, 99, func(m profile.MovementProfile) profile.MovementProfile {
 			m.FullPrecision = true // 2 + 1 + 96 bits bruts, la charge quantifiee n est pas lue
 			return m
 		}},
-		{"CalibratedSkip", absolu, 49, 47, func(m MovementProfile) MovementProfile {
+		{"CalibratedSkip", absolu, 49, 47, func(m profile.MovementProfile) profile.MovementProfile {
 			m.CalibratedSkip = true // le banc saute au total mesure : 47 sur bUsePred=0
 			return m
 		}},
-		{"DeltaHasHandleTail", delta, 29, 31, func(m MovementProfile) MovementProfile {
+		{"DeltaHasHandleTail", delta, 29, 31, func(m profile.MovementProfile) profile.MovementProfile {
 			m.DeltaHasHandleTail = true
 			return m
 		}},
-		{"WorldObject.AxisW", absolu, 49, 49, func(m MovementProfile) MovementProfile {
+		{"WorldObject.AxisW", absolu, 49, 49, func(m profile.MovementProfile) profile.MovementProfile {
 			// LE CHEMIN ABSOLU NE LIT LES LARGEURS DE CARTE QUE PAR LE REPLI d `absAxisW`,
 			// eteint tant que la largeur uniforme est posee. Le compte ne bouge donc PAS
 			// ici — et c est la mesure, pas une lacune : le temoin du descripteur
@@ -107,7 +110,7 @@ func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
 			m.WorldObject.AxisW = [3]uint{17, 17, 16}
 			return m
 		}},
-		{"DeltaAxisWidth", deltaAxe, 47, 41, func(m MovementProfile) MovementProfile {
+		{"DeltaAxisWidth", deltaAxe, 47, 41, func(m profile.MovementProfile) profile.MovementProfile {
 			m.DeltaAxisWidth = 12 // 3x12 au lieu de 3x14 : -6 bits
 			return m
 		}},
@@ -147,7 +150,7 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 	absolu := bitsDe("", 32)
 	delta8 := bitsDe("01001"+"00000001"+"00000001"+"00000001", 32)
 
-	lire := func(mv MovementProfile, buf []byte) [3]float32 {
+	lire := func(mv profile.MovementProfile, buf []byte) [3]float32 {
 		var vu [3]float32
 		precedent := observateur.PosCaptureHook
 		observateur.PosCaptureHook = func(s PositionSample) { vu = s.Vec }
@@ -159,7 +162,7 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 	}
 
 	faussee := profil
-	faussee.Range = QuantRangeWorld100
+	faussee.Range = profile.QuantRangeWorld100
 	if avant, apres := lire(profil, absolu), lire(faussee, absolu); avant == apres {
 		t.Errorf("la range faussee dans le profil rend la MEME coordonnee absolue %v — le "+
 			"deserialiseur ne lit donc pas la range au profil", avant)
@@ -169,7 +172,7 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 	avant, apres := lire(profil, delta8), lire(faussee, delta8)
 	// LA VALEUR ATTENDUE EST EPINGLEE, PAS RELATIVE, et c est ce qui fait de ce test un temoin
 	// de MUTATION : un delta d un cran vaut EXACTEMENT le quantum, et le quantum du profil est
-	// `0.01383` (ligne `Movement.DeltaQuantum` de [TableProfil], provenance MESUREE). Une
+	// `0.01383` (ligne `Movement.DeltaQuantum` de [profile.TableProfil], provenance MESUREE). Une
 	// comparaison « apres = 2 x avant » ne dirait rien si quelqu un faussait la table : les deux
 	// cotes bougeraient ensemble.
 	const quantumDeLaTable = float32(0.01383)
@@ -215,7 +218,7 @@ func TestProfilDeMobiliteChangeLaConsommationDeBits(t *testing.T) {
 	}
 	// LA VALEUR DU PROFIL EST EPINGLEE, comme au temoin du quantum de delta : sans cela, fausser
 	// la table ferait bouger les deux cotes de la comparaison et le temoin ne mordrait pas.
-	// `0` est la ligne `Movement.MobilityActionExtraBits` de [TableProfil], provenance PRESUMEE.
+	// `0` est la ligne `Movement.MobilityActionExtraBits` de [profile.TableProfil], provenance PRESUMEE.
 	const extraDeLaTable = 0
 	if got := ResolveProfile(nil, nil).Movement().MobilityActionExtraBits; got != extraDeLaTable {
 		t.Errorf("le profil annonce %d bits supplementaires, la table %d", got, extraDeLaTable)

@@ -30,21 +30,6 @@ package grammar
 //
 // HORS LIGNE — jamais depuis un chemin de requete. Aucune ecriture, aucun schema.
 
-// keyframeFullStateHeaderBits est l'en-tete PAR ENTITE d'un etat complet tel que
-// `FUN_142e2bfd0` le lit : `R(32)` id, `R(32)` typeIndex, `R(32)`, `R(4)`, `R(8)`.
-//
-// Il ne CONTREDIT pas l'en-tete de 64 bits `[id:32][field:26][ti:6]` valide par R3/R5 : le
-// balayeur oracle (`kfValidAnchor`) n'accepte une ancre que si le mot de 32 bits a `q+32`
-// vaut moins de 50, ce qui veut dire `field26 == 0` sous une lecture et `typeIndex < 50`
-// sous l'autre. Les deux sont INDISCERNABLES sur les ancres acceptees, et les 6 bits de
-// `typeIndex` lus en `+58` valent la meme chose dans les deux cas.
-const keyframeFullStateHeaderBits = 108
-
-// keyframeFullStateSizeBits est la largeur des deux mots de taille que `FUN_142e2bfd0` lit
-// autour de l'etat par defaut (`n1` avant, `n2` apres) : ce sont des comptes testes `> 0`,
-// pas des longueurs de saut.
-const keyframeFullStateSizeBits = 32
-
 // keyframeFullStateTemoin est LE BOUTON DES DEUX TEMOINS NEGATIFS, ET RIEN D'AUTRE.
 //
 // Il n'est PAS une option de la lecture : il est NON EXPORTE, il n'a aucun appelant hors des
@@ -99,7 +84,7 @@ func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDe
 	}
 	t := EntityTrace{DesyncAt: -1}
 	// Le typeIndex se lit aux 6 bits de queue du deuxieme mot de 32 bits, position
-	// commune aux deux lectures d'en-tete (cf. `keyframeFullStateHeaderBits`).
+	// commune aux deux lectures d'en-tete (cf. `profile.KeyframeEnTeteBits`).
 	t.TypeIndex = uint32(kfReadBits(pay, recBit+keyframeRecordTIBit, 6))
 	br.SetBitPos(recBit + hdr)
 	if t.TypeIndex >= objectArchetypeCount {

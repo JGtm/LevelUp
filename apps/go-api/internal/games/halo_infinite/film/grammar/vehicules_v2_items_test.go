@@ -1,10 +1,10 @@
 package grammar
 
-// vehicules_v2_items_test.go — les quatre items du lot V2, le regroupement en amas, et les
-// chargeurs (corpus, bornes, pads). Complement de vehicules_v2_test.go. LECTURE SEULE.
+// vehicules_v2_items_test.go — les quatre items du lot V2, le regroupement en amas, et les chargeurs (corpus, bornes, pads). Complement de vehicules_v2_test.go. LECTURE SEULE.
 
 import (
 	"encoding/json"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"os"
 	"sort"
@@ -370,7 +370,7 @@ type v2PadCatalog struct {
 
 // byMapKey retrouve l'entree pads dont le module correspond a la carte (module = "<carte>_<module>").
 func (c *v2PadCatalog) byMapKey(mapKey string) (v2PadMap, bool) {
-	want := strings.ReplaceAll(NormalizeMapName(mapKey), " ", "_") // "launch site" -> "launch_site"
+	want := strings.ReplaceAll(profile.NormalizeMapName(mapKey), " ", "_") // "launch site" -> "launch_site"
 	for _, m := range c.Maps {
 		if strings.HasPrefix(strings.ToLower(m.Module), want) {
 			return m, true
@@ -442,13 +442,13 @@ func v2Root() string {
 	return `C:\Users\Guillaume\Projects\LevelUp\data\cache`
 }
 
-func v2LoadBounds(t *testing.T) *MapQuantCatalog {
+func v2LoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
 	path := os.Getenv("V2_BOUNDS")
 	if path == "" {
 		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
 	}
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}

@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -38,8 +39,8 @@ func e191cN2AvecDelta(ancres []e191cAncre, ti int, delta int) (float64, uint64) 
 	hist := map[uint64]int{}
 	for _, a := range ancres {
 		br := LecteurSur(a.Pay)
-		br.SetBitPos(a.Bit + keyframeFullStateHeaderBits)
-		n1 := int32(br.ReadBits(keyframeFullStateSizeBits)) //nolint:gosec // 32 bits
+		br.SetBitPos(a.Bit + profile.KeyframeEnTeteBits)
+		n1 := int32(br.ReadBits(profile.KeyframeMotDeTailleBits)) //nolint:gosec // 32 bits
 		if n1 > 0 {
 			consumeKeyframeDefaultState(br, uint32(ti)) //nolint:gosec // index d archetype
 		}

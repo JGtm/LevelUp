@@ -33,6 +33,7 @@ package grammar
 // deltaWitnessChunks. Lancer une fois par film (000d5950, 01e1f945, 00502e52).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"os"
 	"path/filepath"
@@ -193,7 +194,7 @@ func sonde3Join(t *testing.T, srcCount, armes map[uint64]int, fires []FireEvent)
 }
 
 // sonde456 publie resolvabilite (M4), distance par arme (M5) et le test de biais (M6).
-func sonde456(t *testing.T, dir string, dmg []sondeDmgEvt, srcCount map[uint64]int, base int, wr *Vec3Range, n int) {
+func sonde456(t *testing.T, dir string, dmg []sondeDmgEvt, srcCount map[uint64]int, base int, wr *profile.Vec3Range, n int) {
 	t.Helper()
 	if wr == nil {
 		t.Logf("M4/M5/M6 : bornes monde absentes — distances non calculables, mesures sautees")

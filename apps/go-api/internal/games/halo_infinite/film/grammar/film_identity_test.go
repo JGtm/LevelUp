@@ -21,6 +21,7 @@ package grammar
 
 import (
 	"errors"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"path/filepath"
 	"testing"
 	"time"
@@ -90,7 +91,7 @@ func TestReadFilmIdentitySurLesBobines(t *testing.T) {
 }
 
 // verifierIdentite confronte une identite lue a ce que la provenance annonce.
-func verifierIdentite(t *testing.T, b bobineIdentite, id FilmIdentity) {
+func verifierIdentite(t *testing.T, b bobineIdentite, id profile.FilmIdentity) {
 	t.Helper()
 	if id.Build != b.build {
 		t.Errorf("%s : build lu %q, attendu %q", b.film, id.Build, b.build)

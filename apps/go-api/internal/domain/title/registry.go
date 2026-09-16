@@ -800,7 +800,7 @@ func (p *PathResolver) ReplayArtifactsDir(titleSlug string) string {
 }
 
 // MapQuantBoundsPath retourne le chemin du catalogue des bornes de quantification par
-// carte (AABB des BSP extraites des modules du jeu, cf. grammar.MapQuantCatalog). Donnée
+// carte (AABB des BSP extraites des modules du jeu, cf. profile.MapQuantCatalog). Donnée
 // de RÉFÉRENCE versionnée — pas un cache : elle ne se régénère qu'avec les fichiers du
 // jeu installé (cmd/mapquant-build).
 // Ex: data/titles/halo_infinite/reference/map_quant_bounds.json

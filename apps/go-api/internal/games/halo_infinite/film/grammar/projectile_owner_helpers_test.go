@@ -5,6 +5,7 @@ package grammar
 // ce fichier-la pour le raisonnement, la verite terrain et les mesures.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"sort"
 	"testing"
 )
@@ -292,7 +293,7 @@ func projOwnerMaskCensus(t *testing.T, dir string, n int) (int, map[int]int) {
 
 // projOwnerCensusRange : bornes arbitraires pour decodeWorldObjectPos (on ne se sert que du
 // booleen de validite du quantum, pas de la position en clair). Toute plage non degeneree suffit.
-var projOwnerCensusRange = Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
+var projOwnerCensusRange = profile.Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
 
 // projOwnerMaskLine formate l'histogramme des index de composant, tries.
 func projOwnerMaskLine(hist map[int]int, total int) string {

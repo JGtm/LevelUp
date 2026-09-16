@@ -20,6 +20,7 @@ package grammar
 import (
 	"encoding/json"
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"testing"
@@ -234,7 +235,7 @@ func TestInventoryComponentsDeltaCensus(t *testing.T) {
 // walkCursorTo — variante JETABLE de walkRecordTo qui rend la POSITION BIT a laquelle le
 // composant cible commence. Les desers de production ne publient rien pour i30/i33/i42/i47 ;
 // cette sonde relit donc les bits a la position que la marche etablit, sans toucher au deser.
-func walkCursorTo(pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype, target int) (int, bool) {
+func walkCursorTo(pay []byte, i0, total int, idx []int, lay profile.I0Layout, arch Archetype, target int) (int, bool) {
 	at := i0 + lay.TotalBits() + i0TailBits
 	for _, id := range idx[1:] {
 		name := arch.component(id)

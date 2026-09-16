@@ -37,11 +37,11 @@ package grammar
 import (
 	"fmt"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
-// EquipmentCreationField désigne l'un des deux champs que le default-state de ti=37 lisait et
-// jetait. L'ordre est celui du flux.
+// EquipmentCreationField désigne l'un des deux champs que le default-state de ti=37 lisait et jetait ; l'ordre est celui du flux.
 type EquipmentCreationField int
 
 // Les deux champs, et EquipmentCreationFieldCount qui les compte.
@@ -171,7 +171,7 @@ type EquipmentCreationStats struct {
 //
 // ScanFilmEquipmentCreations est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanEquipmentCreations].
-func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
+func ScanFilmEquipmentCreations(dir string, wr *profile.Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
@@ -180,7 +180,7 @@ func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation,
 }
 
 // ScanEquipmentCreations décode les records de création d'équipement d'un film DEJA CHARGE.
-func ScanEquipmentCreations(fc *FilmContext, wr *Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
+func ScanEquipmentCreations(fc *FilmContext, wr *profile.Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if len(fc.ChunkNumbers()) == 0 {
 		return nil, st, ErrNoFilmChunk
@@ -202,7 +202,7 @@ func ScanEquipmentCreations(fc *FilmContext, wr *Vec3Range) ([]EquipmentCreation
 // ScanFilmEquipmentCreationsForBand est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanEquipmentCreationsForBand].
 func ScanFilmEquipmentCreationsForBand(
-	dir string, wr *Vec3Range, band map[uint32]bool,
+	dir string, wr *profile.Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -213,7 +213,7 @@ func ScanFilmEquipmentCreationsForBand(
 
 // ScanEquipmentCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
 func ScanEquipmentCreationsForBand(
-	fc *FilmContext, wr *Vec3Range, band map[uint32]bool,
+	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if wr == nil {
@@ -276,7 +276,7 @@ type equipCreationWalk struct {
 	obs   *Observation
 	prof  ProfilDeBalayage
 	comps int
-	wr    *Vec3Range
+	wr    *profile.Vec3Range
 	band  map[uint32]bool
 	cur   *equipCreationRead
 	// ti est le typeIndex exigé de l'en-tête NEW ; zéro vaut `EquipmentTypeIndex`.

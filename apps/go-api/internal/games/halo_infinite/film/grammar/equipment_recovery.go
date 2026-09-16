@@ -29,7 +29,10 @@ package grammar
 // AUCUNE GARDE DU BALAYAGE STRICT N'EST AFFAIBLIE : la récupération est une POST-PASSE, qui
 // ne touche ni matchBipedHeader ni ascendingFromZero, et ne lit que des fenêtres bornées.
 
-import "sort"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"sort"
+)
 
 // equipRecoveryMaxDense borne le nombre de composants d'un masque dense candidat — enveloppe
 // mesurée (R2/P1.0 : 8 à 32 composants observés sur les vrais manques ; au-delà de 40, le
@@ -297,7 +300,7 @@ func walkEquipRecoveryAt(
 			idx[0] != 0 || !maskHas(idx, i48Index) {
 			return 0, 0, false
 		}
-		const preGate = i0SpineBits + i0UseDefaultBits
+		const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
 		if readBitsAt(pay, i0, preGate) != 0 ||
 			readBitsAt(pay, i0+preGate, s.gram.lay.GateBits-preGate) != s.gram.lay.Region {
 			return 0, 0, false

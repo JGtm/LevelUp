@@ -47,6 +47,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -61,7 +62,7 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 // decodeFilmInputsForEntry est le MEME decodage, pour une carte quelconque (lot 0.A.2 : un
 // fixture d entrees par build, donc une carte par build). `decodeFilmInputs` en est le cas
 // particulier de Cliffhanger, et le seul chemin qui change est la LECTURE DU CATALOGUE.
-func decodeFilmInputsForEntry(film, dir string, entry grammar.MapQuantEntry) (*goldenInputs, error) {
+func decodeFilmInputsForEntry(film, dir string, entry profile.MapQuantEntry) (*goldenInputs, error) {
 	// LE FILM SE CHARGE UNE FOIS, comme en production (`replaybuild.BuildBytes`) : c est ce
 	// chargement-la que l etage de balayage consomme, et c est lui aussi qui porte la version
 	// majeure du film.
@@ -115,13 +116,13 @@ func decodeFilmInputsForEntry(film, dir string, entry grammar.MapQuantEntry) (*g
 // L AUTO-DETECTION NE SURVIT QUE LA OU LA PRODUCTION L EMPLOIE — entree de carte invalide
 // (`axisWidths` absent, cf. resolveI0Layout). Elle est alors NOMMEE dans le fixture, pour qu un
 // lecteur sache que ces quanta ne viennent pas du catalogue.
-func decoupageDuFixture(charge *source.Film, entry grammar.MapQuantEntry) (grammar.I0Layout, bool, error) {
+func decoupageDuFixture(charge *source.Film, entry profile.MapQuantEntry) (profile.I0Layout, bool, error) {
 	if impose := grammar.NewFilmContextForMap(nil, &entry, nil).ImposedLayout(); impose != nil {
 		return *impose, false, nil
 	}
 	lay, _, err := grammar.DetectI0LayoutOf(charge)
 	if err != nil {
-		return grammar.I0Layout{}, true, fmt.Errorf("decoupage i0 auto-detecte : %w", err)
+		return profile.I0Layout{}, true, fmt.Errorf("decoupage i0 auto-detecte : %w", err)
 	}
 	return lay, true, nil
 }
@@ -170,16 +171,16 @@ func rosterDeLaFeuille(film string) ([]uint64, error) {
 // armer les bornes en oubliant les largeurs — l'erreur meme que le lot du 2026-08-15 corrige.
 //
 // Si le catalogue change, [TestGoldenAssembly] tombe et le diff dit exactement ce qui a bouge.
-func goldenMapQuant() (grammar.MapQuantEntry, error) {
+func goldenMapQuant() (profile.MapQuantEntry, error) {
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
-	cat, err := grammar.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
-		return grammar.MapQuantEntry{}, fmt.Errorf("catalogue de bornes %s : %w", path, err)
+		return profile.MapQuantEntry{}, fmt.Errorf("catalogue de bornes %s : %w", path, err)
 	}
 	entry, err := cat.Lookup("Cliffhanger")
 	if err != nil {
-		return grammar.MapQuantEntry{}, err
+		return profile.MapQuantEntry{}, err
 	}
 	return entry, nil
 }
@@ -188,7 +189,7 @@ func goldenMapQuant() (grammar.MapQuantEntry, error) {
 //
 // Elle existe parce que le decodeur de blob EXIGE desormais cette entree (lot 0.D.3 bis) : les
 // positions y sont des quanta, et sans les bornes de la carte elles ne sont pas des coordonnees.
-func goldenEntryPourTest(t *testing.T) grammar.MapQuantEntry {
+func goldenEntryPourTest(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
 	entry, err := goldenMapQuant()
 	if err != nil {

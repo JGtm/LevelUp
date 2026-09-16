@@ -29,6 +29,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestEquipmentCreationOffset$' -timeout 60m -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"testing"
 )
@@ -129,7 +130,7 @@ func equipLogBitProfile(t *testing.T, pr equipOffsetProbe) {
 type equipOffsetProbe struct {
 	// lg : les largeurs d axe du chemin world-object de CE film (lot 2.3 : elles ne vivent
 	// plus dans une variable de paquet).
-	lg    PrecisionDescriptor
+	lg    profile.PrecisionDescriptor
 	comps int
 	band  map[uint32]bool
 	// want37 est l'ARCHÉTYPE cherché en amont du corps. Il est un CHAMP et non la constante
