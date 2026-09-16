@@ -30,6 +30,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
+	auth_platform "levelup/go-api/internal/platform/auth"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
 )
@@ -625,6 +626,15 @@ func runBackfillAllCSR(ctx context.Context, cfg *config.AppConfig, force bool) e
 		return fmt.Errorf("aucun joueur configure")
 	}
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	// Un seul pool pour toute la passe : le CSR est un endpoint public, servi par
+	// n'importe quel token du parc (D1, plan 2026-09-16). Un joueur sans token propre
+	// n'est plus saute.
+	provider := auth_platform.NewSISUProvider()
+	pool, poolErr := buildCLITokenPool(ctx, cfg, provider, players, 0, 0)
+	if poolErr != nil {
+		return poolErr
+	}
+	defer pool.Close()
 	total, processed, skipped, failed, totalInserted := len(players), 0, 0, 0, 0
 	for _, player := range players {
 		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
@@ -639,14 +649,9 @@ func runBackfillAllCSR(ctx context.Context, cfg *config.AppConfig, force bool) e
 			continue
 		}
 
-		tokens, tokErr := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
-		if tokErr != nil {
-			skipped++
-			fmt.Printf("backfill csr SKIP: gamertag=%s reason=%v\n", player.Gamertag, tokErr)
-			continue
-		}
-
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
+		// Le joueur n'a pas besoin de son propre token : le CSR est un endpoint public,
+		// servi par n'importe quel token du pool (D1, plan 2026-09-16).
+		engine := newPooledEngine(cfg, provider, pool, player)
 		res, runErr := engine.RunBackfillCSR(ctx, force)
 		if runErr != nil {
 			failed++
@@ -667,11 +672,12 @@ func runBackfillAllCSR(ctx context.Context, cfg *config.AppConfig, force bool) e
 }
 
 func runBackfillCSRForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, force bool) error {
-	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
+	// CSR = endpoint public : le pool sert le joueur meme sans token propre (D1).
+	engine, closePool, err := newPooledEngineForPlayer(ctx, cfg, *player, 0, 0)
 	if err != nil {
-		return fmt.Errorf("backfill csr: tokens Halo indisponibles pour %s: %w", player.Gamertag, err)
+		return fmt.Errorf("backfill csr: pool de tokens indisponible pour %s: %w", player.Gamertag, err)
 	}
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
+	defer closePool()
 	res, err := engine.RunBackfillCSR(ctx, force)
 	if err != nil {
 		return err
@@ -697,6 +703,15 @@ func runBackfillAllSharedCSR(ctx context.Context, cfg *config.AppConfig, force, 
 		return fmt.Errorf("aucun joueur configure")
 	}
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	// Un seul pool pour toute la passe : le CSR est un endpoint public, servi par
+	// n'importe quel token du parc (D1, plan 2026-09-16). Un joueur sans token propre
+	// n'est plus saute.
+	provider := auth_platform.NewSISUProvider()
+	pool, poolErr := buildCLITokenPool(ctx, cfg, provider, players, 0, 0)
+	if poolErr != nil {
+		return poolErr
+	}
+	defer pool.Close()
 	total, processed, skipped, failed, totalInserted := len(players), 0, 0, 0, 0
 	for _, player := range players {
 		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
@@ -712,18 +727,9 @@ func runBackfillAllSharedCSR(ctx context.Context, cfg *config.AppConfig, force, 
 			continue
 		}
 
-		var tokens *domain.HaloTokens
-		if !dryRun {
-			t, tokErr := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
-			if tokErr != nil {
-				skipped++
-				fmt.Printf("backfill shared-csr SKIP: gamertag=%s reason=%v (try --dry-run)\n", player.Gamertag, tokErr)
-				continue
-			}
-			tokens = t
-		}
-
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
+		// CSR partage = endpoint public : le pool sert tout joueur suivi (D1). En dry-run,
+		// aucun appel API n'est fait — le moteur poole ne coute rien de plus.
+		engine := newPooledEngine(cfg, provider, pool, player)
 		res, runErr := engine.RunBackfillSharedCSR(ctx, go_sync.SharedCSRBackfillOpts{Force: force, DryRun: dryRun})
 		if runErr != nil {
 			failed++
@@ -751,16 +757,12 @@ func runBackfillSharedCSRForPlayer(ctx context.Context, cfg *config.AppConfig, p
 		return fmt.Errorf("backfill shared-csr: migrations shared: %w", err)
 	}
 
-	var tokens *domain.HaloTokens
-	if !dryRun {
-		t, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
-		if err != nil {
-			return fmt.Errorf("backfill shared-csr: tokens Halo indisponibles pour %s: %w (utiliser --dry-run pour compter sans appel API)", player.Gamertag, err)
-		}
-		tokens = t
+	// CSR partage = endpoint public : le pool sert le joueur meme sans token propre (D1).
+	engine, closePool, err := newPooledEngineForPlayer(ctx, cfg, *player, 0, 0)
+	if err != nil {
+		return fmt.Errorf("backfill shared-csr: pool de tokens indisponible pour %s: %w (utiliser --dry-run pour compter sans appel API)", player.Gamertag, err)
 	}
-
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
+	defer closePool()
 	res, err := engine.RunBackfillSharedCSR(ctx, go_sync.SharedCSRBackfillOpts{Force: force, DryRun: dryRun})
 	if err != nil {
 		return err

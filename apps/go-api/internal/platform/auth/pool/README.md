@@ -95,6 +95,27 @@ rank, err := client.GetCareerRank(ctx, xuid)
 
 ---
 
+## Callers — who takes a token, and under which policy
+
+Updated 2026-09-16 (decision D1: *a followed profile without its own token is synced through
+the pool*).
+
+| Caller | Policy | Requires the player's own token? |
+|---|---|---|
+| `cmd/levelup sync-delta` / `sync-full`, `--gamertag` **and** `--all` | `PolicyAnyPublic` | **No** |
+| `cmd/levelup backfill --csr` / `--shared-csr` | `PolicyAnyPublic` | **No** |
+| `cmd/levelup archive-films`, `backfill-killsource --online`, `replay-events` | `PolicyAnyPublic` | **No** |
+| `internal/scheduler` auto-sync cycle (`checkSyncPreconditions` → `BuildEngine`) | `PolicyAnyPublic` | **No** |
+| `PooledHaloClient.GetCareerRank` | `PolicyPinnedPlayer` | **Yes** — returns `sync.ErrNoPinnedToken` otherwise; the career step logs one WARN and leaves `career_synced=false` |
+| `internal/scheduler` Spartan customization cron | `PolicyPinnedPlayer` | **Yes** — the only legitimate `HasPlayer(` guard left outside this package (ratchet: `internal/archlint/no_pool_hasplayer_gate_test.go`) |
+
+Before 2026-09-16 three call sites short-circuited the doctrine with `if !pool.HasPlayer(gt) {
+skip }` — the two `--all` CLI loops and the auto-sync cycle — and the single-player CLI resolved
+the player's own refresh token directly. A followed profile that had never signed in was
+therefore never synced at all, although only its career rank was out of reach.
+
+---
+
 ## HTTP Error Backoff
 
 ### Global Cooldown (429 / 503)
