@@ -4581,12 +4581,39 @@ défont par `git revert` ; avant la recuisson, tag git du binaire précédent et
 
 #### Lot 3.2 (P1) — Le registre par build — M, high
 
-- [ ] 3.2.1 Table des empreintes de registre connues PAR BUILD (8 empreintes mesurées sur 1 351
+- [~] 3.2.1 Table des empreintes de registre connues PAR BUILD (8 empreintes mesurées sur 1 351
       films) dans le profil ; `warnUnknownRegistry` devient une classification typée (connue /
       présumée / inconnue) publiée dans `coverage.decoder`.
+      **VOLET DONNÉES FAIT (2026-09-16, `66b63772e`).** La parenthèse de cet item est FAUSSE et
+      reste écrite pour mémoire : les « 8 empreintes » du lot H portaient sur 16 cuissons dans un
+      domaine de hachage MORT (F1/F2 de la note M3) ; les 1 351 sont l'inventaire du parc. Ce qui
+      est au catalogue est MESURÉ dans le domaine courant : **9 clefs, 5 empreintes distinctes**,
+      section `registryFingerprints` de `data/titles/halo_infinite/reference/film_profiles.json`
+      — les 7 builds, lus sur les 7 mini-bobines commises, plus les DEUX familles de films sans
+      section d'identification (`majeure=31`, `majeure=33`), lues sur `50247b26` et `a349fea8`.
+      Aucun film décodé : `chunk_00` seul. Lecture hors du film :
+      `filmprofile.EmpreinteRegistre` + `EmpreinteRegistrePour` (clef la plus spécifique),
+      validation (empreinte `0x`+16 hex minuscules, sorte de clef, build présent dans la table
+      des builds, unicité de la CLEF, témoin obligatoire) et 22 cas de refus, 2 mutations
+      vérifiées. Section à part et non lignes d'`entries` : Q3 (des grandeurs, pas une phrase) et
+      `TestCatalogueConformeALaTableDuLot21`, qui exigerait de toucher
+      `film/profile/profile_table.go` — hors périmètre de ce lot.
+      **VOLET CODE NON FAIT, et c'est le `[~]`** : la classification typée
+      (connue / présumée / inconnue) vit dans le décodeur et attend **2.6.3**, qui crée
+      `coverage.decoder` (il n'existe pas : mesure §1.5 de la note M3). La table de données que
+      ce volet-là consommera est en place.
 - [ ] 3.2.2 Audit des 17 sites qui adressent un composant par index littéral (`indicesOf`,
       `component(i)`) : par NOM, jamais par rang ; ratchet grep.
-- [ ] 3.2.3 Témoin par build au corpus gate (déjà fait pour 4 ; compléter à 7).
+- [x] 3.2.3 Témoin par build au corpus gate (déjà fait pour 4 ; compléter à 7).
+      **FAIT (2026-09-16, `a7a1d8c95`) — et l'énoncé était faux.** Mesure à l'entrée : CINQ des
+      sept builds avaient déjà un témoin, deux manquaient (`HI_1_4_1`, `HI_1_9_0`), et une
+      NEUVIÈME famille existait que personne n'avait nommée — la majeure 31 sans section
+      d'identification. La règle écrite au manifeste est désormais **un témoin par clef de
+      registre** (les 9 clefs de 3.2.1) : `a521164d` (`version_33_build_1_4_1`), `11de8353`
+      (`version_38_build_1_9_0`), `50247b26` (`version_31_sans_identification`) — corpus gate
+      **14 → 17**. Les trois conditions du gate vérifiées sur pièces avant l'ajout : chunks au
+      cache, manifeste de chunks, faits exportables par `levelup replay-facts-export` (27 / 27 /
+      30 joueurs). La cuisson des 17 témoins attend le signal du pilote (régime avec décodage).
 
 #### Lot 3.3 (P2) — La liste blanche des grenades par build — M, high
 
@@ -5030,8 +5057,70 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-16 | 2.6.2 | **D2 (2.6) — SORTIR UN TYPE DE SON PAQUET TRANSFORME UN LITTÉRAL NON NOMMÉ EN ERREUR `go vet`.** `PlayerLine{"z16", 16, 13, 4}` compile tant que le type est déclaré dans le paquet ; dès qu'il vient d'ailleurs, l'analyse `composites` de `go vet` le refuse. Mesure sur ce volet : **16 littéraux**, tous dans `film/facts/objectives/named_test.go`, corrigés en champs nommés (le lot ne pouvait pas les laisser : `go vet ./...` est un gate). Aucun autre paquet n'en portait pour les 13 types déplacés. | **À prévoir au volet grammaire / rejeu**, qui déplace 49 types consommés par `replay` (246 citations) et `replaybuild` (74) : le coût n'est pas le déplacement, ce sont les littéraux positionnels des tests. À mesurer AVANT d'ouvrir le lot (`go vet ./...` après un déplacement d'essai) |
 | 2026-09-16 | 2.6.2 | **D3 (2.6) — LES TROIS ALIAS DATÉS ONT 79 FICHIERS DERRIÈRE EUX, ET C'EST LA LISTE DE TRAVAIL DU VOLET SUIVANT.** Mesure du 2026-09-16 (`grep` des 13 types qualifiés, hors `facts/` et `source/`) : **79 fichiers** hors des couches d'origine citent un type déplacé par son ancien nom de paquet — `film/replay` 246 citations, `internal/replaybuild` 74, `internal/sync/killcollector` 5, `film/filmcache` 4, `film/grammar` 3, `cmd/` 21. Tous compilent par les alias de `types_alias.go`, et chacun de ces fichiers appartient à un paquet que le brief interdisait à ce lot. | **Volet grammaire / rejeu du lot 2.6** : re-pointer, puis SUPPRIMER les trois `types_alias.go`. Le critère de retrait est écrit dans chacun d'eux, et il est mesurable au `grep` |
 | 2026-09-16 | 2.6 (docs) | **D4 (2.6) — LES DEUX `SYNC_GUIDE` CITENT UN CHEMIN DE REPLI QUI N'EXISTE PLUS.** La ligne « Renvois / References » de la sous-section des révisions nomme `internal/games/halo_infinite/film/replay/fallback` ; le registre des replis a descendu en `film/facts/fallback` au lot 2.5.d.1. La phrase reste vraie sur le fond, le chemin est faux, dans les DEUX fichiers. NON TRAITÉ : le brief borne la mise à jour documentaire à la sous-section des révisions, et cette ligne parle du registre des replis. | Même famille que D7 (2.5) : au premier lot qui rouvre ces deux guides — ou au volet grammaire du 2.6, qui y reviendra pour `grammar.Rev` |
+| 2026-09-16 | 3.2.1 | **D1 (3.2) — LA MAJEURE 31 SANS SECTION A UN REGISTRE QUE PERSONNE N'AVAIT JAMAIS MESURÉ.** `50247b26` (majeure 31, format 20, 3 films au cache) rend `0xba34fa35f781d1a7`, **49 blocs, 1 029 slots nommés** — le plus petit registre connu, et une neuvième grammaire qui n'apparaît dans aucune note. Les cinq empreintes distinctes du dépôt sont donc : `0xba34fa35f781d1a7` (majeure 31), `0x40531a0d86ce90ce` (HI_1_4_1 et majeure 33, 1 033 slots), `0x33c7e724716d8cc5` (HI_1_8_0 et HI_1_9_0), `0x9b6397b3ad58e258` (HI_1_10_0), `0x8879e2b6746ba047` (HI_1_11_0), `0x36ca8c3d2a2f9b88` (HI_1_12_0 et HI_1_13_0). CONSIGNÉE et TRAITÉE dans ce lot (elle EST la donnée de 3.2.1) | — |
+| 2026-09-16 | 3.2.1 | **D2 (3.2) — L'EMPREINTE DE REGISTRE NE SÉPARE PAS LES BUILDS : TROIS PAIRES PARTAGENT LA LEUR.** `HI_1_8_0` = `HI_1_9_0` ; `HI_1_12_0` = `HI_1_13_0` (déjà vu par la note M3, confirmé sur la mini-bobine) ; et **`HI_1_4_1` = la majeure 33 sans section** — ce qui NOMME enfin la grammaire de composants des films sans identification de cette version. Conséquence directe : l'unicité validée au catalogue porte sur la CLEF, jamais sur l'empreinte ; et une empreinte égale n'autorise AUCUNE conclusion sur les tailles de structures, qui diffèrent entre ces mêmes builds (`Slots.PersoBytes` 1 312 pour 8_0 et 9_0, mais 2 052 pour 4_1 contre 1 033 slots partagés avec la majeure 33) | lots 3.3 et 3.4 : le registre ne peut pas servir de clef de substitution au build |
+| 2026-09-16 | 3.2.3 | **D3 (3.2) — « UN TÉMOIN SANS ARTEFACT DANS LE PARC NE PEUT PAS ÊTRE GATÉ » EST FAUX.** Mesure du 2026-09-16 : `data/cache/replays/halo_infinite/` porte l'artefact d'UN SEUL des 14 témoins en place (`fb1a1a72`). Le gate en régime `--reference base` cuit les DEUX côtés lui-même ; ce qu'il exige d'un témoin est (1) les chunks au cache, (2) le manifeste de chunks — sans lui `replaybuild` rend un score NUL sans erreur — et (3) des faits exportables par `levelup replay-facts-export`. Écrit dans `docs/RUNBOOK_FILM_PROFILES.md` §4.1 | — (correction de doctrine, faite dans ce lot) |
+| 2026-09-16 | 3.2.1 | **D4 (3.2) — `ReadFilmIdentity` CALCULE L'EMPREINTE DU REGISTRE PUIS LA JETTE.** `grammar/film_identity.go` re-parse le registre entier pour trouver l'ancre de la chaîne de build : `reg.fingerprint` est sous la main et n'est pas rendu. Lui ajouter un champ `RegistryFingerprint` ne coûte pas un cycle et donne au volet code sa valeur sans seconde passe. NON TRAITÉ : `film/` est hors du périmètre de ce lot (un autre exécuteur y travaille) | volet CODE de 3.2.1 (après 2.6.3) |
+| 2026-09-16 | 3.2 (docs) | **D5 (3.2) — LE RUNBOOK DES PROFILS CITAIT `filmdec/profile_table.go`, CHEMIN MORT DEPUIS 2.5.b.** La table du lot 2.1 vit en `film/profile/profile_table.go` depuis l'extraction de la couche `profile`. Corrigé DANS ce lot (le runbook est dans son périmètre), avec la précision que `TestCatalogueConformeALaTableDuLot21` ne couvre PAS la section neuve `registryFingerprints` — elle n'a aucune copie dans le décodeur | — |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 3.2 (M3) — volet DONNÉES (3.2.1 données et 3.2.3), SANS AUCUN DÉCODAGE, 2026-09-16
+
+Worktree `LevelUp-wt-decfilm-32d`, branche `feat/decfilm-32d`, base `e7b9bd48e`. Aucune
+jonction, aucun film décodé, aucune écriture dans `data/cache/`. Frontière tenue :
+`data/titles/halo_infinite/reference/film_profiles.json`,
+`internal/games/halo_infinite/filmprofile/` (+ tests), `cmd/film-profiles-build/main.go`
+(godoc et `about` seulement), `config/replay_corpus.toml`, `docs/RUNBOOK_FILM_PROFILES.md`,
+`docs/COMMANDS.md` FR/EN. **`film/`, `replaybuild/`, `sync/`, `persist/`, `cmd/levelup/` :
+non touchés** (2.5.e mute `film/`).
+
+MESURE, et comment elle a été prise sans décoder : `chunk_00` seul, par un instrument NON
+SUIVI (supprimé à la clôture) qui appelle `grammar.ReadFilmChunk(dir, 0)` →
+`ParseRegistryChunk` → `RegistryFingerprint` + `ReadFilmIdentity` +
+`FilmMajorVersionFromHeader` / `FilmFormatVersionFromHeader`. Sept mini-bobines COMMISES
+(`film/replay/testdata/minifilm_<id8>/chunk_00.bin`) et quatre `chunk_00` du cache lus en
+place (`a521164d`, `11de8353`, `50247b26`, `a349fea8`) — les deux premiers pour vérifier que
+la mini-bobine rend bien le registre de son film complet, les deux derniers parce qu'aucune
+mini-bobine ne couvre les films sans section d'identification.
+
+```
+minifilm_a521164d  majeure=33 format=21 build=HI_1_4_1   empreinte=0x40531a0d86ce90ce blocs=49 slots=1033
+minifilm_60ae07c4  majeure=37 format=24 build=HI_1_8_0   empreinte=0x33c7e724716d8cc5 blocs=49 slots=1031
+minifilm_11de8353  majeure=38 format=24 build=HI_1_9_0   empreinte=0x33c7e724716d8cc5 blocs=49 slots=1031
+minifilm_111fa685  majeure=39 format=24 build=HI_1_10_0  empreinte=0x9b6397b3ad58e258 blocs=49 slots=1031
+minifilm_e5adf7b2  majeure=40 format=25 build=HI_1_11_0  empreinte=0x8879e2b6746ba047 blocs=49 slots=1031
+minifilm_bcb6d393  majeure=40 format=27 build=HI_1_12_0  empreinte=0x36ca8c3d2a2f9b88 blocs=50 slots=1067
+minifilm_fb1a1a72  majeure=41 format=27 build=HI_1_13_0  empreinte=0x36ca8c3d2a2f9b88 blocs=50 slots=1067
+cache/a521164d     majeure=33 format=21 build=HI_1_4_1   empreinte=0x40531a0d86ce90ce blocs=49 slots=1033
+cache/11de8353     majeure=38 format=24 build=HI_1_9_0   empreinte=0x33c7e724716d8cc5 blocs=49 slots=1031
+cache/50247b26     majeure=31 format=20 SANS SECTION     empreinte=0xba34fa35f781d1a7 blocs=49 slots=1029
+cache/a349fea8     majeure=33 format=20 SANS SECTION     empreinte=0x40531a0d86ce90ce blocs=49 slots=1033
+```
+
+Corroboration par le journal de cuisson du corpus gate des 14 témoins du 2026-09-16
+(`work_m1_cloture/logs/general.log`, conservé hors dépôt) : quatre valeurs d'alerte, toutes
+égales aux mesures ci-dessus (`0x33c7e724716d8cc5` sur `60ae07c4`, `0x9b6397b3ad58e258`
+DEUX fois — un processus par témoin, donc `111fa685` et `084a804d` —, `0x8879e2b6746ba047`
+sur `e5adf7b2`, `0x40531a0d86ce90ce` sur `a349fea8`), et SILENCE sur les neuf autres
+témoins, dont les huit `HI_1_13_0` et `bcb6d393` : leur registre est celui de la référence.
+
+| Date | Lot | Commit | Commande | Résultat |
+|---|---|---|---|---|
+| 2026-09-16 | 3.2.1 | `66b63772e` | `gofmt -l ./internal ./cmd` | **vide** |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `CGO_ENABLED=1 go build ./... && go vet ./...` | **0 diagnostic** |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `go test -count=1 ./internal/games/halo_infinite/filmprofile/ ./internal/archlint/ ./cmd/replay-corpus-gate/ ./cmd/film-profiles-build/` | **ok 0,25 s / ok 25,4 s / ok 1,3 s / no test files** |
+| 2026-09-16 | 3.2.1 (MUTATION 1 — `fingerprint` de `HI_1_11_0` tronquée à `0x8879e2b6`) | `66b63772e` | `go test -count=1 ./…/filmprofile/` | **ROUGE** : `fingerprint "0x8879e2b6" : 8 chiffre(s) après "0x", 16 attendus` sur les quatre tests qui chargent le catalogue commis |
+| 2026-09-16 | 3.2.1 (MUTATION 2 — la clef `build=HI_1_9_0` retirée de `registryFingerprints`) | `66b63772e` | `go test -count=1 -run TestEmpreintesCommises ./…/filmprofile/` | **ROUGE** : `le catalogue connait le build "HI_1_9_0" (entree "Slots.PersoBytes") mais pas son registre` |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `LEVELUP_REPO_ROOT=<worktree> go run ./cmd/film-profiles-build --check` | **conforme** (79 cartes, empreinte de bornes `e77e4ffc…` inchangée) |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `golangci-lint run ./…/filmprofile/... ./cmd/film-profiles-build/... ./cmd/replay-corpus-gate/...` | **0 issues** |
+| 2026-09-16 | 3.2.3 | `a7a1d8c95` | `CGO_ENABLED=1 LEVELUP_REPO_ROOT=<parc> go run ./cmd/levelup replay-facts-export --out <tmp> --title halo_infinite <id>` (×3) | **3 `.facts.json` écrits** : `a521164d` 27 joueurs / BTB Heavies:Total Control / Fragmentation Heavies ; `11de8353` 27 / BTB:Fiesta Slayer / Thunderhead ; `50247b26` 30 / BTB:Slayer / Oasis |
+| 2026-09-16 | 3.2.3 | `a7a1d8c95` | `go test -count=1 ./cmd/replay-corpus-gate/` | **ok** — `TestLoadManifestValide` relit le manifeste réel : 17 témoins, ids uniques, chaque entrée justifiée |
+| 2026-09-16 | 3.2 | `a7a1d8c95` | `go test -count=1 -run 'TestGrammarRevSuitLaGrammaire\|TestChronique' ./…/film/grammar/ -v` | **2 PASS** — `GrammarRev` n'a pas bougé (aucun octet de `film/` touché) |
+
+**Gate AVEC décodage NON JOUÉ** : la cuisson des 17 témoins (`replay-corpus-gate --base=… --parc-root … --source-root …`,
+attendu `ok` à 0/0/0 sur les trois nouveaux — même code des deux côtés, c'est un test du
+MANIFESTE, pas du décodeur) attend le « voie libre » du pilote.
 
 ### Lot 2.6 (M2, pas 6) — volet FACTS + SOURCE, SANS AUCUN DÉCODAGE, 2026-09-16
 
