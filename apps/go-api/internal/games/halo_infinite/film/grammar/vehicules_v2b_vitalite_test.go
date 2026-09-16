@@ -15,7 +15,7 @@ package grammar
 //   - la CAPTURE de la vitalite i4/i5 : ScanFilmBipedPositionsForBand(dir, NewSlotBand(band), {CaptureDirs}) —
 //     ti=40 porte la meme grammaire dyn.-prec. que le bipede (i0), et i4/i5 la suivent dans le
 //     masque ; HealthAt()/ShieldAt() rendent les fractions [0,1] deja portees (vitality.go) ;
-//   - les bornes de carte : LoadMapQuantCatalog (pour un balayage monde ; ici QuantaOnly suffit).
+//   - les bornes de carte : profile.LoadMapQuantCatalog (pour un balayage monde ; ici QuantaOnly suffit).
 //
 // LES SEUILS, ECRITS AVANT LA MESURE.
 //   - i4 "a zero" : HealthFraction(i4) <= v2bZeroFrac (0), c.-a-d. Body.Health <= 0. On releve aussi
@@ -43,6 +43,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestV2bVitalite$' -v -timeout 180m
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -117,7 +118,7 @@ func TestV2bVitalite(t *testing.T) {
 	}
 }
 
-func v2bProcessFilm(t *testing.T, dir, short8 string, entry MapQuantEntry, ag *v2bMapAgg) {
+func v2bProcessFilm(t *testing.T, dir, short8 string, entry profile.MapQuantEntry, ag *v2bMapAgg) {
 	kf := ScanFilmWorldObjectKeyframes(dir, VehicleTypeIndex)
 	if len(kf.Band) == 0 {
 		t.Fatalf("%s : aucun slot ti=%d aux images-cles", short8, VehicleTypeIndex)
@@ -223,7 +224,7 @@ func v2bProcessFilm(t *testing.T, dir, short8 string, entry MapQuantEntry, ag *v
 // v2bControlBiped scanne la bande BIPEDE avec la MEME lecture i4 et journalise histogramme des
 // quanta + part de pas DECROISSANTS (une vraie sante ne remonte pas). Temoin de non-regression :
 // sur le meme film, la sante du JOUEUR (validee) doit etre concentree et monotone.
-func v2bControlBiped(t *testing.T, dir, short8 string, entry MapQuantEntry) {
+func v2bControlBiped(t *testing.T, dir, short8 string, entry profile.MapQuantEntry) {
 	opt := ScanFilmOptions{RequireTag1: true, DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
 	lay := entry.Layout()
 	if lay.Valid() {
@@ -468,12 +469,12 @@ func v2bRoot() string {
 	return `C:\Users\Guillaume\Projects\LevelUp\data\cache`
 }
 
-func v2bLoadBounds(t *testing.T) *MapQuantCatalog {
+func v2bLoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	path := os.Getenv("V2B_BOUNDS")
 	if path == "" {
 		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
 	}
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}

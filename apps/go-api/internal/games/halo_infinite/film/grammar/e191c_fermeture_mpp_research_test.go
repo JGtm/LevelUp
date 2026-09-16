@@ -31,6 +31,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -87,7 +88,7 @@ func e191cFermetureBobine(t *testing.T, court string) {
 	for _, l := range e191cLeads {
 		for _, i := range e191cIndexes {
 			p := contexteDInstrument()
-			p.Profil.MPP = MPPWidths{Lead: l, Index: i}
+			p.Profil.MPP = profile.MPPWidths{Lead: l, Index: i}
 			n := 0
 			for _, b := range bornes {
 				tr := WalkKeyframeFullState(b.Pay, b.Bit, reg, p)

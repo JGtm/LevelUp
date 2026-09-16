@@ -8,9 +8,10 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
-func decodeGoldenInputs(blob []byte, entry grammar.MapQuantEntry) (*goldenInputs, error) {
+func decodeGoldenInputs(blob []byte, entry profile.MapQuantEntry) (*goldenInputs, error) {
 	g, r, lay, world, err := decodeGoldenEntete(blob, entry)
 	if err != nil {
 		return nil, err
@@ -39,17 +40,17 @@ func decodeGoldenInputs(blob []byte, entry grammar.MapQuantEntry) (*goldenInputs
 }
 
 // decodeGoldenEntete relit l en-tete, verifie carte et decoupage, et rend le lecteur arme.
-func decodeGoldenEntete(blob []byte, entry grammar.MapQuantEntry) (
-	*goldenInputs, *greader, grammar.I0Layout, grammar.Vec3Range, error,
+func decodeGoldenEntete(blob []byte, entry profile.MapQuantEntry) (
+	*goldenInputs, *greader, profile.I0Layout, profile.Vec3Range, error,
 ) {
 	if len(blob) < len(goldenInputsMagic) || string(blob[:len(goldenInputsMagic)]) != goldenInputsMagic {
-		return nil, nil, grammar.I0Layout{}, grammar.Vec3Range{}, fmt.Errorf("fixture d entrees : magie absente ou version inconnue — regenerer")
+		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf("fixture d entrees : magie absente ou version inconnue — regenerer")
 	}
 	r := &greader{b: blob, off: len(goldenInputsMagic)}
 	g := &goldenInputs{Film: r.str()}
 	g.MapModule = r.str()
 	if g.MapModule != entry.Module {
-		return nil, nil, grammar.I0Layout{}, grammar.Vec3Range{}, fmt.Errorf("%w : fixture cuit pour %q, entree de catalogue fournie %q",
+		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf("%w : fixture cuit pour %q, entree de catalogue fournie %q",
 			errGoldenInputsCarte, g.MapModule, entry.Module)
 	}
 	for a := 0; a < 3; a++ {
@@ -72,17 +73,17 @@ func decodeGoldenEntete(blob []byte, entry grammar.MapQuantEntry) (
 	impose := grammar.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
 	switch {
 	case !g.LayoutDetected && (impose == nil || impose.AxisW != g.AxisW):
-		return nil, nil, grammar.I0Layout{}, grammar.Vec3Range{}, fmt.Errorf("%w : fixture au decoupage %v (dit du CATALOGUE), catalogue %v",
+		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf("%w : fixture au decoupage %v (dit du CATALOGUE), catalogue %v",
 			errGoldenInputsDecoupage, g.AxisW, imposeAxisW(impose))
 	case g.LayoutDetected && impose != nil:
-		return nil, nil, grammar.I0Layout{}, grammar.Vec3Range{}, fmt.Errorf(
+		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, fmt.Errorf(
 			"%w : fixture dit son decoupage %v AUTO-DETECTE, or le catalogue en impose un (%v)",
 			errGoldenInputsDecoupage, g.AxisW, impose.AxisW)
 	}
 	// LE DECOUPAGE VIENT DU BLOB, LES BORNES DU CATALOGUE : le premier dit comment le film a
 	// quantifie, le second ou la carte commence et finit. Melanger les deux sources est ce qui
 	// rendait des coordonnees fausses sur Live Fire.
-	lay, world := grammar.I0Layout{AxisW: g.AxisW}, entry.Range()
+	lay, world := profile.I0Layout{AxisW: g.AxisW}, entry.Range()
 	g.FilmClockOriginUS = r.u()
 	return g, r, lay, world, nil
 }
@@ -272,7 +273,7 @@ func decodeGoldenMonde(r *greader, g *goldenInputs) {
 		g.Placements = append(g.Placements, p)
 	}
 	g.PlacementStats = grammar.EquipmentPlacementStats{ByID: map[uint32]int{}}
-	g.PlacementStats.Calibration.Widths = grammar.MPPWidths{Lead: int(r.i()), Index: int(r.i())}
+	g.PlacementStats.Calibration.Widths = profile.MPPWidths{Lead: int(r.i()), Index: int(r.i())}
 	g.PlacementStats.Calibration.Agree = int(r.i())
 	g.PlacementStats.Lives = int(r.u())
 	g.PlacementStats.Anchors = int(r.u())

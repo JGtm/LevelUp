@@ -9,7 +9,7 @@ package grammar
 //	LA TRONCATURE   un `chunk_00` coupe avant l'octet 8 ne rend pas une version partielle et
 //	                ne panique pas : il rend `ok=false`.
 //	LA SEPARATION   la version de format SEPARE les deux groupes de largeur MPP mesures au lot
-//	                1.9.1 bis. C'est elle qui justifie que `mppWidthsPourFormat` soit keyee par
+//	                1.9.1 bis. C'est elle qui justifie que `profile.MPPPourFormat` soit keyee par
 //	                cette valeur ; si elle cesse d'etre vraie, la cle est fausse et ce test doit
 //	                le dire AVANT que le decoupage ne soit pose sur le mauvais film.
 
@@ -63,7 +63,7 @@ func TestFilmFormatVersionDesBobines(t *testing.T) {
 			continue
 		}
 		if id.FormatVersion != got {
-			t.Errorf("%s : FilmIdentity.FormatVersion = %d, %d attendu — les deux lectures de la "+
+			t.Errorf("%s : profile.FilmIdentity.FormatVersion = %d, %d attendu — les deux lectures de la "+
 				"MEME valeur ont diverge", c.court, id.FormatVersion, got)
 		}
 	}
@@ -85,7 +85,7 @@ func TestFilmFormatVersionTronquee(t *testing.T) {
 // TestFilmFormatVersionSepareLesLargeursMPP — LA JUSTIFICATION DE LA CLE.
 //
 // Les cinq bobines dont l'oracle `n2` designe `8/3` portent un format STRICTEMENT INFERIEUR a
-// celui des deux bobines `9/5`. Tant que c'est vrai, keyer `mppWidthsPourFormat` par cette
+// celui des deux bobines `9/5`. Tant que c'est vrai, keyer `profile.MPPPourFormat` par cette
 // valeur est fonde ; le jour ou une bobine casse l'ordre, la cle est fausse.
 func TestFilmFormatVersionSepareLesLargeursMPP(t *testing.T) {
 	maxPetit, minGrand := -1, 1<<30
@@ -109,7 +109,7 @@ func TestFilmFormatVersionSepareLesLargeursMPP(t *testing.T) {
 	if maxPetit >= minGrand {
 		t.Fatalf("la version de format NE SEPARE PLUS les deux groupes de largeur MPP "+
 			"(plus grand format `8/3` = %d, plus petit format `9/5` = %d) : la cle de "+
-			"`mppWidthsPourFormat` n'est plus fondee", maxPetit, minGrand)
+			"`profile.MPPPourFormat` n'est plus fondee", maxPetit, minGrand)
 	}
 	if maxPetit != 25 || minGrand != 27 {
 		t.Errorf("la frontiere a bouge : ]%d, %d] au lieu de ]25, 27] — mesure du 2026-09-15",

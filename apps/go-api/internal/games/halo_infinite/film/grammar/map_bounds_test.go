@@ -2,6 +2,7 @@ package grammar
 
 import (
 	"errors"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,8 +25,8 @@ func TestNormalizeMapName(t *testing.T) {
 		"Heavies Bay": "heavies bay",
 	}
 	for in, want := range cases {
-		if got := NormalizeMapName(in); got != want {
-			t.Errorf("NormalizeMapName(%q) = %q, attendu %q", in, got, want)
+		if got := profile.NormalizeMapName(in); got != want {
+			t.Errorf("profile.NormalizeMapName(%q) = %q, attendu %q", in, got, want)
 		}
 	}
 }
@@ -38,7 +39,7 @@ func TestMapQuantCatalogLookup(t *testing.T) {
 	if err := os.WriteFile(path, []byte(blob), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,13 +54,13 @@ func TestMapQuantCatalogLookup(t *testing.T) {
 		t.Errorf("Range() incohérent: %+v", rng)
 	}
 	// Carte absente : erreur explicite, jamais une valeur de repli.
-	if _, err := cat.Lookup("Prism"); !errors.Is(err, ErrUnknownMapBounds) {
-		t.Errorf("carte inconnue: err = %v, attendu ErrUnknownMapBounds", err)
+	if _, err := cat.Lookup("Prism"); !errors.Is(err, profile.ErrUnknownMapBounds) {
+		t.Errorf("carte inconnue: err = %v, attendu profile.ErrUnknownMapBounds", err)
 	}
 	// Catalogue nil : même refus.
-	var nilCat *MapQuantCatalog
-	if _, err := nilCat.Lookup("Cliffhanger"); !errors.Is(err, ErrUnknownMapBounds) {
-		t.Errorf("catalogue nil: err = %v, attendu ErrUnknownMapBounds", err)
+	var nilCat *profile.MapQuantCatalog
+	if _, err := nilCat.Lookup("Cliffhanger"); !errors.Is(err, profile.ErrUnknownMapBounds) {
+		t.Errorf("catalogue nil: err = %v, attendu profile.ErrUnknownMapBounds", err)
 	}
 }
 
@@ -68,8 +69,8 @@ func TestMapQuantCatalogLookup(t *testing.T) {
 // bornes de Cliffhanger à toutes les cartes).
 func TestScanFilmBipedPositionsRefusesWithoutBounds(t *testing.T) {
 	opt := DefaultScanFilmOptions()
-	if _, err := ScanFilmBipedPositions(t.TempDir(), opt); !errors.Is(err, ErrUnknownMapBounds) {
-		t.Errorf("err = %v, attendu ErrUnknownMapBounds", err)
+	if _, err := ScanFilmBipedPositions(t.TempDir(), opt); !errors.Is(err, profile.ErrUnknownMapBounds) {
+		t.Errorf("err = %v, attendu profile.ErrUnknownMapBounds", err)
 	}
 }
 
@@ -88,7 +89,7 @@ func TestMapQuantCatalogShipped(t *testing.T) {
 	if path == "" {
 		t.Skip("catalogue de bornes absent de cet arbre")
 	}
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatal(err)
 	}

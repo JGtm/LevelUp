@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // TestGwInstallMPPWidthsInstalleEtRestaure : les largeurs mesurees valent pour le balayage, et
@@ -28,7 +29,7 @@ func TestGwInstallMPPWidthsInstalleEtRestaure(t *testing.T) {
 	fc := grammar.NewFilmContext(nil)
 	avant := fc.ProfilDeBalayage().MPP
 	// Le decoupage d'un film BTB mesure (8/3), qui n'est PAS l'invariant du profil (9/5).
-	btb := grammar.MPPWidths{Lead: 8, Index: 3}
+	btb := profile.MPPWidths{Lead: 8, Index: 3}
 	if btb == avant {
 		t.Fatalf("le decoupage temoin %s est deja l'invariant : le test ne verifie plus rien", btb)
 	}
@@ -48,7 +49,7 @@ func TestGwInstallMPPWidthsInstalleEtRestaure(t *testing.T) {
 func TestGwInstallMPPWidthsIgnoreUnDecoupageNonMesure(t *testing.T) {
 	fc := grammar.NewFilmContext(nil)
 	avant := fc.ProfilDeBalayage().MPP
-	restore := gwInstallMPPWidths(fc, grammar.MPPWidths{})
+	restore := gwInstallMPPWidths(fc, profile.MPPWidths{})
 	if got := fc.ProfilDeBalayage().MPP; got != avant {
 		t.Fatalf("un decoupage non mesure a ete installe : %s", got)
 	}

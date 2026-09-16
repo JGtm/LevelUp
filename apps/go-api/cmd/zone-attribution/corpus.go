@@ -15,7 +15,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -110,7 +110,7 @@ type eligible struct {
 	candidate
 	// quant porte l'entree de catalogue ENTIERE : bornes ET largeurs d'axe. Les dissocier
 	// laisserait armer les unes sans les autres (cf. replay.Options.MapQuant).
-	quant *grammar.MapQuantEntry
+	quant *profile.MapQuantEntry
 	zones replay.ZoneSet
 }
 

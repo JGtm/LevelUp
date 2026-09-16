@@ -81,6 +81,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
@@ -233,7 +234,7 @@ func lettresEstZonesSimultanees(variant string) bool {
 // nommees (le pont xuid des trajectoires) et origine d'horloge. Rend aussi l'origine de l'axe des
 // frames, LA SEULE chose que la slice brute de positions laisse derriere elle.
 func lettresDoc(t *testing.T, dir string, film lettresFilm,
-	quant grammar.MapQuantEntry,
+	quant profile.MapQuantEntry,
 ) (ReplayDocument, uint64) {
 	t.Helper()
 	world := quant.Range()
@@ -460,9 +461,9 @@ func lettresZones(t *testing.T, mapID string) []Zone {
 }
 
 // lettresQuant rend les bornes de quantification de la carte.
-func lettresQuant(t *testing.T, carte string) grammar.MapQuantEntry {
+func lettresQuant(t *testing.T, carte string) profile.MapQuantEntry {
 	t.Helper()
-	cat, err := grammar.LoadMapQuantCatalog(filepath.Join(p2aRefDir(t), "map_quant_bounds.json"))
+	cat, err := profile.LoadMapQuantCatalog(filepath.Join(p2aRefDir(t), "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}

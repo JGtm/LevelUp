@@ -29,11 +29,12 @@ import (
 	"sort"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // e191cDebutEtat est la position du premier bit de l etat par defaut, depuis le debut du record.
-const e191cDebutEtat = keyframeFullStateHeaderBits + keyframeFullStateSizeBits
+const e191cDebutEtat = profile.KeyframeEnTeteBits + profile.KeyframeMotDeTailleBits
 
 // e191cLireV lit un prefixe `V` a la position `pos` et rend sa valeur lisible et sa largeur.
 func e191cLireV(pay []byte, pos int) (string, int) {

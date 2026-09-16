@@ -31,15 +31,18 @@ package grammar
 // sont les instruments APPELANTS qui ouvrent des films et qui portent leur propre garde (helper
 // partage dans un fichier NON tague, regle du 2026-09-16, §2.3 du plan).
 
-import "levelup/go-api/internal/games/halo_infinite/film/source"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
+)
 
 // detectI0Layout lit le decoupage d i0 DANS le film de `dir`. Rend le decoupage, le rapport de
 // mesure, et une erreur si le profil ne fait pas apparaitre trois frontieres nettes (film trop
 // court, ou grammaire de record differente).
-func detectI0Layout(dir string) (I0Layout, I0LayoutReport, error) {
+func detectI0Layout(dir string) (profile.I0Layout, I0LayoutReport, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return I0Layout{}, I0LayoutReport{}, err
+		return profile.I0Layout{}, I0LayoutReport{}, err
 	}
 	return DetectI0LayoutOf(film)
 }

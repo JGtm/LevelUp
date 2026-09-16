@@ -34,6 +34,7 @@ import (
 
 	"levelup/go-api/internal/analysis/digest"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // miniFilmDigestsPath est le fichier de digests figes de la mini-bobine, a cote de ceux du
@@ -130,7 +131,7 @@ func digestsMiniBobine() ([]string, error) {
 	// production (cf. installWorldObjectPrecision). Depuis le lot 2.3 elles voyagent avec le
 	// contexte du film, pose ci-dessous — rien ne subsiste d'un test a l'autre.
 	profilCarte := grammar.ProfilDeBalayageParDefaut()
-	profilCarte.PoserLargeursObjetDuMondeDepuisDecoupage(grammar.I0Layout{AxisW: entry.AxisWidths})
+	profilCarte.PoserLargeursObjetDuMondeDepuisDecoupage(profile.I0Layout{AxisW: entry.AxisWidths})
 	wr := entry.Range()
 	dir := MiniFilmDir
 

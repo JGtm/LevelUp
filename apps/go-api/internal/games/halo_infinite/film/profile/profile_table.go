@@ -1,4 +1,4 @@
-package grammar
+package profile
 
 // profile_table.go — LA TABLE DU PROFIL : UNE LIGNE PAR CLE ECRITE DANS LE FILM.
 //
@@ -319,15 +319,22 @@ func tableProfilInvariants() []LigneProfil {
 	}
 }
 
-// implantationGamertag est le NOM de l implantation du gamertag pour une version majeure.
-type implantationGamertag string
+// ImplantationGamertag est le NOM de l implantation du gamertag pour une version majeure.
+//
+// EXPORTEE AU LOT 2.5.b, ET LA RAISON EST MECANIQUE : c est le type du champ PUBLIC
+// [HighlightProfile.Implantation]. Tant que le type et son lecteur vivaient dans le meme paquet,
+// le champ se comparait a `implantationEnTete` sans que le type soit nommable de l exterieur ;
+// depuis que le profil est une couche a part, un appelant qui lit ce champ ne pouvait plus
+// nommer ce a quoi il le compare. Un champ exporte dont le type ne l est pas est un champ qu on
+// ne peut que regarder.
+type ImplantationGamertag string
 
 // Les deux implantations mesurees sur le cache (cf. [tableProfilMajeure]).
 const (
-	// implantationEnTete : le gamertag occupe `b[0:32]` du bloc d evenement.
-	implantationEnTete implantationGamertag = "gamertag_en_tete"
-	// implantationDecale12 : le gamertag occupe `b[12:44]`.
-	implantationDecale12 implantationGamertag = "gamertag_decale_12"
+	// ImplantationEnTete : le gamertag occupe `b[0:32]` du bloc d evenement.
+	ImplantationEnTete ImplantationGamertag = "gamertag_en_tete"
+	// ImplantationDecale12 : le gamertag occupe `b[12:44]`.
+	ImplantationDecale12 ImplantationGamertag = "gamertag_decale_12"
 )
 
 // majeureDecalageBascule / majeureDecalageFin bornent la plage de versions majeures qui
@@ -345,9 +352,9 @@ const (
 // LA VERSION INCONNUE (`0`, film sans registre) TOMBE EN TETE, et c est le comportement
 // historique que `analysis.ParseHighlightEvents` lui applique deja : le profil le NOMME au lieu
 // de le laisser implicite, et [HighlightProfile.Lue] dit que la cle n a pas ete lue.
-func implantationDuGamertag(majeure int) (implantationGamertag, int) {
+func implantationDuGamertag(majeure int) (ImplantationGamertag, int) {
 	if majeure >= majeureDecalageBascule && majeure <= majeureDecalageFin {
-		return implantationDecale12, gamertagDecalageOctets
+		return ImplantationDecale12, gamertagDecalageOctets
 	}
-	return implantationEnTete, 0
+	return ImplantationEnTete, 0
 }

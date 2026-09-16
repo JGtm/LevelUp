@@ -35,6 +35,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -160,7 +161,7 @@ func TestV10MasqueDeadState(t *testing.T) {
 // dead-state lourd resout l'arme du kill), alors « 0 record ti=40 porte i11 » ne dirait rien du
 // vehicule et tout de l'ancre. Ce temoin mesure donc le meme i11 sur la bande `ti=35` du MEME
 // film, avec la MEME ancre.
-func v10ControlBiped(t *testing.T, dir, short8 string, entry MapQuantEntry) {
+func v10ControlBiped(t *testing.T, dir, short8 string, entry profile.MapQuantEntry) {
 	nRec, nI11 := 0, 0
 	occur := map[int]int{}
 	prev := observateur.RecordMaskHook
@@ -244,12 +245,12 @@ func v10Root() string {
 	return `C:\Users\Guillaume\Projects\LevelUp\data\cache`
 }
 
-func v10LoadBounds(t *testing.T) *MapQuantCatalog {
+func v10LoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	path := os.Getenv("V10_BOUNDS")
 	if path == "" {
 		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
 	}
-	cat, err := LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}

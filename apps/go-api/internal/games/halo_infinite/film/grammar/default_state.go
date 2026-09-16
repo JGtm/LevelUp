@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/profile"
+
 // Biped (#35) default-state deserializer, ported bit-exact from FUN_140F44C38
 // (= vtable[0x60] of the runtime biped archetype-descriptor, confirmed live via
 // Cheat Engine on 8 biped records). This is the deser the engine runs in
@@ -430,3 +432,12 @@ func consumeBipedDefaultStateTail(br *Lecteur) {
 		br.Skip(bipedDefaultStateTailBits)
 	}
 }
+
+// mppWidths rend le découpage du bloc MPP que ce lecteur porte.
+//
+// REVENUE ICI AU LOT 2.5.b, avec la fin de `mpp_widths.go`. Ce fichier avait ete scinde au lot
+// 2.2.e pour repasser sous le seuil de 500 lignes ; le lot 2.5.b a fait descendre le TYPE et
+// les deux largeurs par defaut en `profile`, et il ne restait de l autre cote que cet
+// accesseur d une ligne — un fichier qui ne porte plus sa responsabilite n est pas une
+// frontiere, c est un reste.
+func (b *Lecteur) mppWidths() profile.MPPWidths { return b.p.MPP }

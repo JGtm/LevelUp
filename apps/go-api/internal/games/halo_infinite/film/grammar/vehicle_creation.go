@@ -32,6 +32,7 @@ package grammar
 import (
 	"fmt"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -40,8 +41,8 @@ import (
 // deux archetypes qui portent cette forme (biped ti=35, vehicule ti=40). Rejette : porte non nulle
 // (spine+useDefault), region inattendue, ou axe sature (quantum de garde). Chaque brique est celle
 // du decodeur biped de V1a (matchBipedHeader, saturatedQuantum, DequantBipedAxis).
-func decodeBipedI0Pos(pay []byte, at int, lay I0Layout, wr *Vec3Range) ([3]float32, bool) {
-	const preGate = i0SpineBits + i0UseDefaultBits // 4 bits nuls = chemin absolu
+func decodeBipedI0Pos(pay []byte, at int, lay profile.I0Layout, wr *profile.Vec3Range) ([3]float32, bool) {
+	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits // 4 bits nuls = chemin absolu
 	total := len(pay) * 8
 	if at < 0 || at+lay.TotalBits() > total {
 		return [3]float32{}, false
@@ -95,7 +96,7 @@ func runCreationWalk(
 // ScanFilmVehicleCreations est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanVehicleCreations].
 func ScanFilmVehicleCreations(
-	dir string, wr *Vec3Range,
+	dir string, wr *profile.Vec3Range,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -108,7 +109,7 @@ func ScanFilmVehicleCreations(
 // bande de slots de `ti=40` lue dans les images-cles, avec le default-state porte
 // (consumeDefaultStateTI40) et le gate i0 dyn.-prec.
 func ScanVehicleCreations(
-	fc *FilmContext, wr *Vec3Range,
+	fc *FilmContext, wr *profile.Vec3Range,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if len(fc.ChunkNumbers()) == 0 {
@@ -131,7 +132,7 @@ func ScanVehicleCreations(
 // (lot 3 de PLAN_CUISSON_PERF). Deux decoupages differents entre la creation et la trajectoire
 // d'un meme vehicule rendraient un gate incoherent avec le nuage qu'il est cense qualifier.
 func ScanVehicleCreationsForBand(
-	fc *FilmContext, wr *Vec3Range, band map[uint32]bool,
+	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if wr == nil {

@@ -24,6 +24,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV0Composants -v -timeout 60m
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"strings"
@@ -179,7 +180,7 @@ func v0ScanPayload(pay []byte, band map[uint32]bool) (int, map[int]int) {
 	posBits := projPosBits(lg)
 	// Bornes du monde neutres : la position ne sert ici qu'au filtre de porte / quantum sature,
 	// pas a une coordonnee publiee. Un intervalle [0,1] par axe suffit et ne change aucun rejet.
-	wr := Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
+	wr := profile.Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
 	limit := len(pay)*8 - (worldObjectHeaderBits + worldObjectIndexBits + posBits)
 	for p := 0; p <= limit; p++ {
 		rec, ok := matchWorldObjectRecord(pay, p, band)

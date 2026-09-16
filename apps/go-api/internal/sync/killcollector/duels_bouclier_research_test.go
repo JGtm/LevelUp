@@ -60,6 +60,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/platform/duckdb"
@@ -309,7 +310,7 @@ func duelsBLireFilm(
 	if err != nil {
 		t.Fatalf("film %s illisible : %v", dir, err)
 	}
-	cat, err := grammar.LoadMapQuantCatalog(bornesPath)
+	cat, err := profile.LoadMapQuantCatalog(bornesPath)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", bornesPath, err)
 	}

@@ -50,6 +50,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // SEUILS, ecrits AVANT toute mesure.
@@ -102,7 +103,7 @@ func TestV2VehicleDeathDating(t *testing.T) {
 	}
 }
 
-func v2dProcessFilm(t *testing.T, dir string, entry grammar.MapQuantEntry, ag *v2dMapAgg) {
+func v2dProcessFilm(t *testing.T, dir string, entry profile.MapQuantEntry, ag *v2dMapAgg) {
 	worldRange := entry.Range()
 	lay := entry.Layout()
 
@@ -300,7 +301,7 @@ func v2dReport(t *testing.T, mapKey string, ag *v2dMapAgg) {
 
 // ------------------------------------------------------------------ helpers
 
-func v2dPlayerPositions(dir string, wr grammar.Vec3Range, lay grammar.I0Layout) ([]grammar.BipedPosition, error) {
+func v2dPlayerPositions(dir string, wr profile.Vec3Range, lay profile.I0Layout) ([]grammar.BipedPosition, error) {
 	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange = &wr
 	if lay.Valid() {
@@ -310,7 +311,7 @@ func v2dPlayerPositions(dir string, wr grammar.Vec3Range, lay grammar.I0Layout) 
 	return grammar.ScanFilmBipedPositions(dir, scan)
 }
 
-func v2dVehicleTracks(dir string, band map[uint32]bool, wr grammar.Vec3Range, lay grammar.I0Layout) map[uint32]slotTrack {
+func v2dVehicleTracks(dir string, band map[uint32]bool, wr profile.Vec3Range, lay profile.I0Layout) map[uint32]slotTrack {
 	opt := grammar.ScanFilmOptions{WorldRange: &wr, RequireTag1: false, DropSaturated: true}
 	if lay.Valid() {
 		opt.Layout = &lay
@@ -381,12 +382,12 @@ func v2dDir(short8 string) string {
 	return root + `\film_chunks\` + short8
 }
 
-func v2dLoadBounds(t *testing.T) *grammar.MapQuantCatalog {
+func v2dLoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	path := os.Getenv("V2D_BOUNDS")
 	if path == "" {
 		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
 	}
-	cat, err := grammar.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}

@@ -22,6 +22,7 @@ package grammar
 // GARDES : `R8_FILMS`, `R8_BOUNDS`, `R8_IDS`. CGO_ENABLED=0.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"sort"
 	"testing"
 )
@@ -54,7 +55,7 @@ type r8MobSetup struct {
 	dir      string
 	chunks   []int
 	slots    SlotBand
-	lay      I0Layout
+	lay      profile.I0Layout
 	arch     Archetype
 	i54Index int
 }

@@ -8,7 +8,7 @@ package grammar
 //
 // Les deux sites qui installent le decoupage du bloc `object-multiplayer-properties` resolvaient
 // le profil par [BuildProfileFromFilm], donc par la cle BUILD (table de sept builds en dur dans
-// `personnalisationOctets`). Le registre des replis, lui, declare la condition
+// `profile.PersonnalisationOctets`). Le registre des replis, lui, declare la condition
 // `format_sans_profil_relu` : la cle est la VERSION DE FORMAT (`chunk_00+4`).
 //
 // LES DEUX CLES NE COINCIDENT PAS. Un film dont le FORMAT porte sa largeur relue (27 -> 9/5)
@@ -29,6 +29,7 @@ import (
 	"sort"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -80,9 +81,9 @@ func mesurerMPPUnFilm(t *testing.T, dir string, b *bilanMPP) {
 	} else if errors.Is(errID, ErrNoFilmIdentity) {
 		b.sansSection++
 	}
-	_, buildConnu := personnalisationOctets(build)
-	largeurs, formatConnu := mppWidthsPourFormat(format)
-	_, errProfil := BuildProfileFor(build, format)
+	_, buildConnu := profile.PersonnalisationOctets(build)
+	largeurs, formatConnu := profile.MPPPourFormat(format)
+	_, errProfil := profile.BuildProfileFor(build, format)
 	c := cleMPP{
 		build: build, format: format,
 		buildConnu:    buildConnu,

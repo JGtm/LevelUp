@@ -36,12 +36,13 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // glSetup porte les entrees communes aux trois mesures, decodees une fois par test.
 type glSetup struct {
 	dir string
-	wr  grammar.Vec3Range
+	wr  profile.Vec3Range
 	pos map[uint32][]grammar.BipedPosition
 }
 
@@ -53,7 +54,7 @@ func glResolve(t *testing.T) glSetup {
 	}
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
-	cat, err := grammar.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

@@ -20,6 +20,7 @@ package grammar
 import (
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -37,7 +38,7 @@ func TestTI42_PointSixPublieSaReference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("mini-bobine illisible : %v", err)
 	}
-	wr := &Vec3Range{{Min: -100, Max: 100}, {Min: -100, Max: 100}, {Min: -100, Max: 100}}
+	wr := &profile.Vec3Range{{Min: -100, Max: 100}, {Min: -100, Max: 100}, {Min: -100, Max: 100}}
 	cre, st, err := ScanGroundWeaponCreations(NewFilmContext(film), wr)
 	if err != nil {
 		t.Fatalf("balayage ti=42 : %v", err)

@@ -45,6 +45,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -105,7 +106,7 @@ func TestV2bCooldown(t *testing.T) {
 	}
 }
 
-func v2cProcessFilm(t *testing.T, dir, short8 string, entry grammar.MapQuantEntry, ag *v2cMapAgg) {
+func v2cProcessFilm(t *testing.T, dir, short8 string, entry profile.MapQuantEntry, ag *v2cMapAgg) {
 	wr := entry.Range()
 	cre, st, err := grammar.ScanFilmVehicleCreations(dir, &wr)
 	if err != nil {
@@ -332,12 +333,12 @@ func v2cRoot() string {
 	return `C:\Users\Guillaume\Projects\LevelUp\data\cache`
 }
 
-func v2cLoadBounds(t *testing.T) *grammar.MapQuantCatalog {
+func v2cLoadBounds(t *testing.T) *profile.MapQuantCatalog {
 	path := os.Getenv("V2B_CD_BOUNDS")
 	if path == "" {
 		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
 	}
-	cat, err := grammar.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}

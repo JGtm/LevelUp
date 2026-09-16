@@ -33,13 +33,12 @@ package killcollector
 
 import (
 	"context"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // bornesDeLaCarte rend les bornes du catalogue VERSIONNE pour un nom, ou echoue.
-func bornesDeLaCarte(t *testing.T, nom string) grammar.MapQuantEntry {
+func bornesDeLaCarte(t *testing.T, nom string) profile.MapQuantEntry {
 	t.Helper()
 	e, err := catalogueDeBornesVersionne(t).Lookup(nom)
 	if err != nil {
@@ -61,7 +60,7 @@ func TestLePremierNomQuiResoutGagne(t *testing.T) {
 	cas := []struct {
 		nom     string
 		noms    []string
-		attendu grammar.MapQuantEntry
+		attendu profile.MapQuantEntry
 		perdant string
 	}{
 		{nom: "temoin d'abord", noms: []string{carteTemoinDesJumelles, jumelleDeLaCarteTemoin},

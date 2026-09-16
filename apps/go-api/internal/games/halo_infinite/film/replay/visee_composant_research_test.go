@@ -114,6 +114,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -225,7 +226,7 @@ type vfAncre struct {
 // vfSource porte ce que la collecte doit savoir du film : le decoupage d'i0 (propre a la carte,
 // LU dans le film) et l'archetype bipede du registre.
 type vfSource struct {
-	lay   grammar.I0Layout
+	lay   profile.I0Layout
 	arch  grammar.Archetype
 	blocs int
 }

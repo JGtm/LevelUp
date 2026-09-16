@@ -31,6 +31,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
@@ -83,7 +84,7 @@ func p2bScan(t *testing.T, dir string) grammar.ManagedPropertyScan {
 
 // p2bBuild assemble le document avec le calque des zones — chemin de production, calque du
 // drapeau EXCLU (cf. l'en-tete).
-func p2bBuild(t *testing.T, dir, short string, quant *grammar.MapQuantEntry, zone ZoneInput,
+func p2bBuild(t *testing.T, dir, short string, quant *profile.MapQuantEntry, zone ZoneInput,
 	caps []objectives.IdentifiedEvent,
 ) (ReplayDocument, uint64) {
 	t.Helper()

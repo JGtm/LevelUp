@@ -35,6 +35,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -115,14 +116,14 @@ func ctfReadingOnlyOwners(tracks map[uint32]slotTrack, deaths []Death,
 	return owners, lives, off
 }
 
-func loadCTFQuantCatalog(t *testing.T) *grammar.MapQuantCatalog {
+func loadCTFQuantCatalog(t *testing.T) *profile.MapQuantCatalog {
 	t.Helper()
 	root, err := title.FindRepoRoot()
 	if err != nil {
 		t.Fatalf("racine du dépôt : %v", err)
 	}
 	path := title.NewPathResolver(root).MapQuantBoundsPath(title.DefaultSlug)
-	cat, err := grammar.LoadMapQuantCatalog(path)
+	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", path, err)
 	}
@@ -130,7 +131,7 @@ func loadCTFQuantCatalog(t *testing.T) *grammar.MapQuantCatalog {
 }
 
 // analyzeCTFFilm rejoue l'enchaînement de BuildFromFilm et compte à côté de lui.
-func analyzeCTFFilm(t *testing.T, cat *grammar.MapQuantCatalog, dir, short, mapName string) filmReport {
+func analyzeCTFFilm(t *testing.T, cat *profile.MapQuantCatalog, dir, short, mapName string) filmReport {
 	t.Helper()
 	entry, err := cat.Lookup(mapName)
 	if err != nil {

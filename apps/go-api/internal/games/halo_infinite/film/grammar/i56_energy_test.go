@@ -35,6 +35,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"testing"
@@ -337,7 +338,7 @@ func i56InMask(idx []int) bool {
 // composant intermédiaire n'est pas porté ou que la marche déborde du payload — la position
 // du curseur ne serait plus digne de confiance.
 func i56WalkRecord(
-	pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype,
+	pay []byte, i0, total int, idx []int, lay profile.I0Layout, arch Archetype,
 ) (flag1 int, s i56Sample, got bool) {
 	flag1 = -1
 	for c := 0; c < i56Charges; c++ {

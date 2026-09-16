@@ -14,18 +14,21 @@ package grammar
 // CE FICHIER NE GARDE AUCUN ETAT ENTRE DEUX TESTS : ce sont deux fonctions pures, et c est la
 // propriete qui permet a deux films de se decoder en parallele.
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"testing"
+)
 
 // profilDeCarte rend le profil de balayage d une carte : l invariant, plus les largeurs d axe
 // du chemin world-object que le decoupage `lay` porte.
-func profilDeCarte(lay I0Layout) ProfilDeBalayage {
+func profilDeCarte(lay profile.I0Layout) ProfilDeBalayage {
 	p := ProfilDeBalayageParDefaut()
 	p.PoserLargeursObjetDuMondeDepuisDecoupage(lay)
 	return p
 }
 
 // contexteDuFilm est [ContexteDeFilm] avec l arret de test qui va bien.
-func contexteDuFilm(t *testing.T, dir string) (*FilmContext, I0Layout) {
+func contexteDuFilm(t *testing.T, dir string) (*FilmContext, profile.I0Layout) {
 	t.Helper()
 	fc, lay, err := ContexteDeFilm(dir)
 	if err != nil {

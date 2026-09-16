@@ -331,4 +331,4 @@ func consumeE494Position(br *Lecteur) {
 // Conserve pour rejouer cette mesure ; sans effet quand le corps est porte.
 // C'ETAIT LA VARIABLE DE PAQUET `MobilityActionExtraBits` JUSQU'AU LOT 2.2.e : le nombre de
 // bits supplementaires d'une action de mobilite vit dans le PROFIL que le lecteur porte
-// (`Movement.MobilityActionExtraBits`, ligne de [TableProfil], provenance PRESUMEE).
+// (`Movement.MobilityActionExtraBits`, ligne de [profile.TableProfil], provenance PRESUMEE).
