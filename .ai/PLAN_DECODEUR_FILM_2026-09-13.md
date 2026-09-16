@@ -97,6 +97,7 @@ bloque le gate du lot courant.
 | V9 (2026-09-14) | GO utilisateur pour la clôture de M1 : fusion dans `feat/v75`, recuisson du parc, backlog killsource — sans nouvelle demande, dès que le dernier lot de M1 est fusionné et la revue de jalon close | ok |
 | V10 (2026-09-16) | **Famille 1.9 RESSERRÉE** (question utilisateur : « j'ai l'impression qu'on part loin »). Constat du pilote : 1.9.1 bis / ter sont devenus de la rétro-ingénierie longue (état par défaut des films anciens : 12 commits, 25 découvertes, clé bornée mais non trouvée au 1.9.1 bis) et 1.9.4 a rendu un gain de production nul (passe des touches éteinte). Mesure : les builds anciens (HI_1_4_1 à HI_1_11_0, plus 5 films sans section) pèsent **82 films sur 1 351** au cache (6 %) ; HI_1_13_0 en pèse 1 123. Décision : (a) 1.9.1 ter BORNÉ à une seule passe — chargeur, condition, mesure ; ce qui ne se ferme pas chez l'écrivain passe à M3 (divergences par build) ; (b) M1 garde de 1.9.5 à 1.9.14 les items à effet visible dans le rejeu, 1.9.7 et 1.9.9 à 1.9.14 ; (c) 1.9.5, 1.9.6, 1.9.8 REPORTÉS à M2 (`[!]`, replis non câblés donc fréquence non mesurée) ; (d) puis revue de jalon et clôture M1 (V9) | « vas y continue » |
 | V11 (2026-09-17) | **M2 DÉMARRE AVANT LA CLÔTURE DE M1**, sur les seuls lots qui ne touchent que la grammaire (question utilisateur : « et le M2 peut pas commencer là ? », dans la fenêtre de parallélisation maximale). Le critère d'entrée de M2 (« M1 fusionné dans `feat/v75`, corpus re-figé ») est assoupli : les lots 2.1 (profil) et 2.7 volet grammaire (scission de `filmdec` + `collector.go`) partent de l'intégration locale `f950b7179` avec un PARTAGE DE FICHIERS écrit (2.1 tient le profil, 2.7g tient les cinq gros fichiers de `filmdec` et `collector.go` ; aucun des deux ne touche `replay/`, `killsource/`, `objectiveevents/` ni le web, où les lots 1.9.7 / 1.9.9 / 1.9.11 / 1.9.14 sont en gates) ; « un seul muteur de `filmdec` » reste vrai par fichier. Le volet publication de 2.7 (2.7p) et les lots 2.2 à 2.6 attendent la fusion de la vague 2 et le gate complet de M1. Leur fusion n'arrive qu'APRÈS le régime complet de clôture M1 (équivalence 20 films + corpus gate), pour que la recuisson du parc parte d'un décodeur M1 pur. Preuve inchangée : zéro différence d'équivalence par lot | « et le M2 peut pas commencer là ? » — go |
+| V12 (2026-09-17) | **PARALLÉLISATION ÉLARGIE À DES LOTS HORS `filmdec` / `killsource`** (instruction utilisateur, 17/09 ~09:30 : « on a le reset dans 7 h et on a utilisé que 43 % du quota hebdo, faut paralléliser davantage »). Les lots M2 qui mutent la grammaire restent SÉQUENTIELS (un seul muteur de `filmdec` / `killsource` / `replay` / `replaybuild` : 2.2 puis 2.3 puis 2.4 …). En parallèle, sous frontière de fichiers écrite, deux lots d'outillage et de persistance qui ne touchent AUCUN paquet du film : **2.8 outillage des gates** (`cmd/replay-corpus-gate`, `cmd/replay-equiv`, `internal/replaydiff` — durcissements D5 / D6 (1.9.9), D2 (clôture M1), D2 (pilote, harnais première étape seule) : prévu « au jalon M2 » par le bloc Clôture M1) et **2.9 clef de fusion killsource** (`internal/persist/kill_events_merge*.go` — D1 (clôture M1) : `(match_id, time_ms)` n'est pas unique, première occurrence mesurée). Gates de ces lots : tests + intégration `-p 1`, pas de décodage (2.8 se prouve sur des artefacts conservés et des fixtures ; 2.9 sur le témoin `9f9b19e5`). Revue adversariale OBLIGATOIRE à la fusion de 2.9 (écritures `persist/`, deux relecteurs, skill `adversarial-review`), revue de jalon pour 2.8. |
 
 ## 2. Organisation
 
@@ -3974,6 +3975,58 @@ limitée au champ `coverage.decoder`.
 - [ ] 2.7.3 `benchstat` contre `bench_baseline.txt` : +10 % au plus.
 
 Preuve : `replay-equiv` zéro différence ; baseline lint non accrue.
+
+#### Lot 2.8 (parallèle, V12) — Outillage des gates : ce qu'ils ne montrent pas encore — M, high
+
+Hors grammaire : `cmd/replay-corpus-gate/`, `cmd/replay-equiv/`, `internal/replaydiff/` et leurs tests
+SEULEMENT. Aucun décodage de gate n'est requis : la preuve se fait sur des artefacts conservés
+(`--keep-work`) et des fixtures de rapport. Un seul muteur de ces trois dossiers.
+
+- [ ] 2.8.1 **`changements` nommés** (D5 (1.9.9)) : le rapport JSON du corpus gate porte un
+      `changementsDetail` (axe, métrique, ancien, nouveau) symétrique de `pertesDetail`, et le
+      tableau imprimé les liste sous « DETAIL DES CHANGEMENTS » ; un témoin qui porte un
+      changement sort `CHANGEMENT` (statut distinct de `PERTE`, code de sortie non nul).
+- [ ] 2.8.2 **Export des faits robuste** (D2 (clôture M1)) : réessai borné (3 × 2 s) quand la base
+      partagée est tenue en écriture ; un témoin toujours absent sort `ABSENT` avec un code de
+      sortie DISTINCT de la perte (documenté dans l'en-tête) ; option `--temoins a,b` pour rejouer
+      les seuls témoins nommés sans manifeste réduit.
+- [ ] 2.8.3 **`--mem-gib` transmis à `replay-build`** (D6 (1.9.9)) : le plafond mémoire du gate
+      arme celui des enfants ; test nommé sur la ligne de commande construite.
+- [ ] 2.8.4 **`replay-equiv` liste TOUTES les étapes divergentes** d'un film (D2 (pilote) : le
+      harnais ne montrait que la première), avec compte et sha attendus / obtenus par étape, et
+      conserve les TSV enfants sous `--out-dir` quand demandé ; `-update` inchangé.
+- [ ] 2.8.5 Fixtures : un rapport de paire réel conservé (`replaydiff/testdata/`) qui porte gains,
+      pertes ET changements, et un test qui rejoue `AfficherTableau` / `EcrireJSON` dessus ;
+      README des deux CLI mis à jour (`docs/COMMANDS.md` si les options y sont citées).
+
+Preuve : `go test` des trois dossiers + `./internal/archlint/` ; `golangci-lint` 0 issue nouvelle ;
+pas de `SchemaVersion`, pas de `GrammarRev` (aucun paquet du film touché — ratchet à vérifier).
+
+#### Lot 2.9 (parallèle, V12) — La clef de fusion killsource n'est pas unique — M, high
+
+Hors grammaire : `internal/persist/kill_events_merge*.go` et ses tests SEULEMENT (les tests
+d'intégration anti-ART `-tags=integration -p 1` sont OBLIGATOIRES). Témoin :
+`9f9b19e5-5df4-4268-aa32-900a4fc6725a@63757` (tranche 1 du backlog, 2026-09-17) — deux morts
+distinctes à la même milliseconde, victimes `2535413577167650` (crédit) et `2535427572079378`
+(film) ; `verifierConcordance` a refusé le film entier (« 0 sur 73 589 » : c'était la première).
+
+- [ ] 2.9.1 **Mesure** : sur le parc (killsource déjà écrit, lecture `_latest`), combien d'instants
+      `(match_id, time_ms)` portent DEUX morts ou plus côté crédit ; côté film sur les 14 témoins
+      du corpus ; ordre de grandeur COLLÉ avant tout code.
+- [ ] 2.9.2 **Appariement par victime quand l'instant est partagé** : la clef reste
+      `(match_id, time_ms)` quand elle est unique ; quand plusieurs morts partagent l'instant, la
+      fusion apparie par `VictimXUID` (crédit et film le portent tous deux), et une mort de film
+      sans homologue à cet instant reste un orphelin compté — jamais une divergence rendue.
+      `verifierConcordance` garde son rôle : il ne rend l'erreur que si UNE SEULE mort partage
+      l'instant des deux côtés ET que les identités diffèrent.
+- [ ] 2.9.3 Tests nommés : le témoin rejoué (fixture des deux lignes en conflit) passe ; mutation :
+      inverser l'appariement rougit ; le cas « une mort, identités différentes » rend TOUJOURS
+      l'erreur (non-régression du garde-fou).
+- [ ] 2.9.4 Le film `9f9b19e5` est redécodé par `backfill-killsource --force` sur ce seul match à
+      la fusion (pilote), et le compteur d'échecs de la tranche 1 retombe à 0.
+
+Preuve : `go test ./internal/persist/` + `-tags=integration -p 1 ./internal/persist/` verts ;
+`no_art_patterns_test.go` inchangé ; revue adversariale à deux relecteurs (L1 anti-ART, L6 tests).
 
 **Clôture M2** : ADR 0034 amendé (état atteint) ; fusion dans `feat/v75` (V3) ; recuisson sur
 signal (seul 2.6.3 change un champ) ; `bench_baseline.txt` re-figé et consigné.
