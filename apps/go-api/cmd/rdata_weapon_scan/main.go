@@ -11,17 +11,14 @@ package main
 
 import (
 	"bufio"
-	"bytes"
-	"compress/zlib"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -29,14 +26,7 @@ const cache = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/ca
 
 func inflate(p string) []byte {
 	raw, _ := os.ReadFile(p)
-	if len(raw) >= 2 && raw[0] == 0x78 {
-		if zr, e := zlib.NewReader(bytes.NewReader(raw)); e == nil {
-			if d, e2 := io.ReadAll(zr); e2 == nil || len(d) > 0 {
-				return d
-			}
-		}
-	}
-	return raw
+	return filmsource.Inflate(raw)
 }
 
 // loadWorld parses world_dump.txt -> slot:typeIndex map and typeIndex->slots.
@@ -114,18 +104,16 @@ type packet struct {
 	payload []byte
 }
 
+// listPackets : le decoupage de [filmsource.Paquets], dans la forme locale de cet outil. Il
+// recopiait l en-tete de seize octets — un marcheur de plus — jusqu au lot 2.4.2.
 func listPackets(d []byte) []packet {
-	var out []packet
+	pks := filmsource.Paquets(d, 0)
+	out := make([]packet, 0, len(pks))
 	off := 0
-	for off+16 <= len(d) {
-		typ := binary.LittleEndian.Uint16(d[off:])
-		sz := int(binary.LittleEndian.Uint32(d[off+4:]))
-		ts := binary.LittleEndian.Uint64(d[off+8:])
-		if sz < 0 || off+16+sz > len(d) {
-			break
-		}
-		out = append(out, packet{typ, off, sz, ts, d[off+16 : off+16+sz]})
-		off += 16 + sz
+	for i := range pks {
+		taille := len(pks[i].Payload)
+		out = append(out, packet{uint16(pks[i].Type), off, taille, pks[i].TS, pks[i].Payload})
+		off += 16 + taille
 	}
 	return out
 }
@@ -254,7 +242,7 @@ func litLoc(reg *filmdec.Registry, worldPath string, chunkIdx, maxPkts int) {
 		}
 		// décode les records de ce paquet
 		w := freshWorld(reg, worldPath)
-		br := filmdec.NewBitReader(p.payload)
+		br := filmdec.LecteurSur(p.payload)
 		recs, _ := filmdec.DecodeFrameRecords(br, w, cfg)
 		// borne chaque record [startBit?, endBit]. On reconstruit les bornes via re-décodage :
 		// approxime par la séquence cumulée des EndBit (Trace.EndBit) — chaque record finit là.

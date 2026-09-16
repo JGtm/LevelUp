@@ -230,7 +230,7 @@ func deltaWitnessMeasure(t *testing.T, dir string) (deltaWitnessCounts, map[uint
 				continue
 			}
 			out.packets++
-			br := NewBitReader(pk.Payload(data))
+			br := LecteurSur(pk.Payload(data))
 			recs, _ := DecodeFrameRecords(br, w, cfg)
 			for i := range recs {
 				out.records++

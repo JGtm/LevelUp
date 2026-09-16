@@ -54,7 +54,7 @@ func sondeScanFireArme(t *testing.T, dir string, n int) (map[uint64]int, int, in
 			if pay[0] != 0xD2 {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(2)
 			if br.ReadBits(7) != 36 {
 				continue

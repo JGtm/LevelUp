@@ -93,21 +93,21 @@ func afScanTousLesIndices(data []byte) []afBloc {
 	var out []afBloc
 	seen := map[int]bool{}
 	for ms := 8; ms <= total-8; ms++ {
-		if readByteAtBit(data, ms) != 0xc0 {
+		if filmsource.OctetAuBit(data, ms) != 0xc0 {
 			continue
 		}
 		xe := ms - 8
 		if xe < 64 {
 			continue
 		}
-		if p := readByteAtBit(data, xe); p != 0x2d && p != 0x25 {
+		if p := filmsource.OctetAuBit(data, xe); p != 0x2d && p != 0x25 {
 			continue
 		}
 		xstart := xe - 64
 		if seen[xstart] {
 			continue
 		}
-		x := readU64LEAtBit(data, xstart)
+		x := filmsource.U64LEAuBit(data, xstart)
 		if x <= minXUID || x >= maxXUID {
 			continue
 		}
@@ -127,18 +127,18 @@ func afDecodeBloc(data []byte, xstart, total int) (afBloc, bool) {
 		win = total
 	}
 	for b := xstart; b <= win-32; b++ {
-		if readByteAtBit(data, b) == 0 && readByteAtBit(data, b+8) == 0 &&
-			readByteAtBit(data, b+16) == 0x2e && readByteAtBit(data, b+24) == 0xe0 {
+		if filmsource.OctetAuBit(data, b) == 0 && filmsource.OctetAuBit(data, b+8) == 0 &&
+			filmsource.OctetAuBit(data, b+16) == 0x2e && filmsource.OctetAuBit(data, b+24) == 0xe0 {
 			ebs := b - 60*8
 			if ebs < xstart {
 				return afBloc{}, false
 			}
-			t := int(readByteAtBit(data, ebs+48*8))<<24 | int(readByteAtBit(data, ebs+49*8))<<16 |
-				int(readByteAtBit(data, ebs+50*8))<<8 | int(readByteAtBit(data, ebs+51*8))
+			t := int(filmsource.OctetAuBit(data, ebs+48*8))<<24 | int(filmsource.OctetAuBit(data, ebs+49*8))<<16 |
+				int(filmsource.OctetAuBit(data, ebs+50*8))<<8 | int(filmsource.OctetAuBit(data, ebs+51*8))
 			return afBloc{
-				th:   int(readByteAtBit(data, ebs+47*8)),
+				th:   int(filmsource.OctetAuBit(data, ebs+47*8)),
 				t:    t,
-				slot: int(readByteAtBit(data, ebs+36*8)),
+				slot: int(filmsource.OctetAuBit(data, ebs+36*8)),
 			}, true
 		}
 	}

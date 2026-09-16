@@ -105,7 +105,7 @@ func TestLot1FamillesTrame(t *testing.T) {
 			f.packets++
 			// Pre-lecture du 1er en-tete AVANT le decode : un DEL delie son slot, il faut
 			// interroger le monde avant pour savoir ce qui meurt.
-			peek := NewBitReader(pay)
+			peek := LecteurSur(pay)
 			peek.Skip(cfg.PacketPreambleBits)
 			if readRecordType(peek) == recDel {
 				slot := readRecordID(peek, cfg.IDLowBits, cfg.IDBase) & 0x3fffffff
@@ -115,7 +115,7 @@ func TestLot1FamillesTrame(t *testing.T) {
 					f.delTIs["non-lie"]++
 				}
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			recs, decErr := DecodeFrameRecords(br, w, cfg)
 			if decErr == nil {
 				f.cleanEnd++
@@ -388,7 +388,7 @@ func TestLot1AmorceParFamille(t *testing.T) {
 					mesure[pay[0]][k] = cl
 				}
 				cl.packets++
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				recs, decErr := DecodeFrameRecords(br, w, cfg)
 				if decErr == nil {
 					cl.clean++

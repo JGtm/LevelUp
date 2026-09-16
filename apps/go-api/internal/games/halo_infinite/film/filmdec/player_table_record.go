@@ -29,7 +29,7 @@ func slotVacant(d []byte, p, finBit int) bool {
 	if p < 0 || p+slotVacantHorsPerso > finBit {
 		return false
 	}
-	r := &slotReader{br: NewBitReader(d), fin: finBit, ok: true}
+	r := &slotReader{br: LecteurSur(d), fin: finBit, ok: true}
 	r.br.SetBitPos(p)
 	nul := r.bits(3) == 0 && r.bits(32) == 0 && r.bits(2) == 0 && r.bits(48) == 0 &&
 		r.bits(slotXUIDBits) == 0 && r.bits(slotMaskPrefixBits+1) == 0 &&
@@ -77,7 +77,7 @@ func longueurPredite(e slotEnr, persoBits int) int {
 // borne, et ne remonte jamais — un enregistrement lu au-dela du tampon est refuse en entier,
 // jamais rendu a moitie.
 type slotReader struct {
-	br  *BitReader
+	br  *Lecteur
 	fin int
 	ok  bool
 }
@@ -106,7 +106,7 @@ func decodeSlot(d []byte, debut, finBit, persoBits int) (slotEnr, bool) {
 	if debut < 0 {
 		return e, false
 	}
-	r := &slotReader{br: NewBitReader(d), fin: finBit, ok: true}
+	r := &slotReader{br: LecteurSur(d), fin: finBit, ok: true}
 	r.br.SetBitPos(debut)
 	if r.bits(3) != slotBooleensTete {
 		return e, false

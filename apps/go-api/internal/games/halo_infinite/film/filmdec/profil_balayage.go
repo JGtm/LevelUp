@@ -7,7 +7,7 @@ package filmdec
 // # CE QUE CE FICHIER FERME
 //
 // Jusqu au 2.3, les valeurs ci-dessous vivaient dans UNE variable de paquet (`herite`) que la
-// calibration de `killsource` ecrivait et que `NewBitReader` relisait. La consequence etait
+// calibration de `killsource` ecrivait et que `LecteurSur` relisait. La consequence etait
 // ecrite noir sur blanc dans `profil_herite.go` : `replaybuild.BuildBytes` decode `killsource`
 // PUIS appelle `replay.BuildFromFilm` dans le MEME processus, et la cuisson du rejeu decodait
 // donc ses composants aux largeurs que la calibration du kill-feed avait retenues — sans que
@@ -69,7 +69,7 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMonde(d PrecisionDescriptor) {
 // PoserLargeursObjetDuMondeDepuisDecoupage installe les largeurs d axe de la CARTE pour le
 // chemin world-object. Les axes sont partages avec l absolu du bipede : c est le meme AABB de
 // BSP qui les fixe — hypothese verifiee par ses consequences le 2026-08-15 (cf.
-// [BitReader.worldObjectPrecision]).
+// [Lecteur.worldObjectPrecision]).
 //
 // SOURCE ATTENDUE : `MapQuantEntry.AxisWidths`, deduit des bornes par la loi du moteur. Le
 // decoupage lu dans le film (`DetectI0Layout`) sert de controle : s il contredit le catalogue,

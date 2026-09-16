@@ -23,9 +23,9 @@ func TestCaptureConsumesSameBitsAsDispatch(t *testing.T) {
 			for i := range buf {
 				buf[i] = byte(rng.Intn(256))
 			}
-			a := NewBitReader(buf)
+			a := LecteurSur(buf)
 			_, _, portedA := consumeByName(a, name, BipedTypeIndex, 0)
-			b := NewBitReader(buf)
+			b := LecteurSur(buf)
 			_, _, payload, portedB := consumeByNameCapturing(b, name, BipedTypeIndex, 0)
 			if portedA != portedB {
 				t.Fatalf("%s : ported diverge (dispatch=%v capture=%v)", name, portedA, portedB)
@@ -102,7 +102,7 @@ func TestDecodeShieldVitalityBitCost(t *testing.T) {
 				buf[i>>3] |= 1 << (7 - uint(i&7))
 			}
 		}
-		br := NewBitReader(buf)
+		br := LecteurSur(buf)
 		got := decodeObjectShieldVitality(br)
 		if br.BitPos() != c.want {
 			t.Fatalf("portes %v/%v/%v : %d bits consommés, attendu %d", c.presence, c.g0, c.g1, br.BitPos(), c.want)

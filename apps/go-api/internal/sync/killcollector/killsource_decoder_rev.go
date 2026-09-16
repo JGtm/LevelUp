@@ -167,6 +167,14 @@ package killcollector
 //	    BASE, avant l absorption (`killsource/testdata/chaines_evenements.golden`).
 //
 // Aucun match deja decode n est candidat au backlog.
+// 2026-09-18, LOT 2.4.2 — REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE, ET LE CHOIX EST ECRIT.
+// `killsource/` cesse de garder une COPIE des chunks du film : le type `film` portait
+// `chunks [][]byte`, il porte desormais le `*filmsource.Film` lui-meme et lit par
+// `src.Chunk(i)`. MEME tranche d octets — `filmsource.Film.Chunk` rend la tranche interne, sans
+// copie, et c est deja elle que la copie recopiait. `walk.go` construit son lecteur par
+// `filmdec.LecteurSur` (l ancien `NewBitReader`, renomme parce que le type ne lit plus, il
+// decore). Aucune largeur, aucun ordre de bits, aucune borne ne change : les lignes produites
+// sont identiques a l octet, et aucun match deja decode n est candidat au backlog.
 const KillSourceDecoderRev = "killsource-2026-09-16.2"
 
 // L EMPREINTE DES SOURCES DU DECODEUR VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :

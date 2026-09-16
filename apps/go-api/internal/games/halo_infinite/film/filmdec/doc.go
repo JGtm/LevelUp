@@ -1,9 +1,9 @@
 // Package filmdec decodes the Halo Infinite Theater film replication stream
 // (the ECS component wire format), reverse-engineered statically from
-// HaloInfinite.exe via Ghidra. It provides the bit-exact BitReader plus value
+// HaloInfinite.exe via Ghidra. It provides the bit-exact Lecteur plus value
 // codecs (layers L1/L2) and per-component record parsers (layer L4).
 //
-// Milestone M1 (this file set): the BitReader and the signed variable-width codec.
+// Milestone M1 (this file set): the Lecteur and the signed variable-width codec.
 //
 // IT NO LONGER HOLDS A STATBORG (SCORE) RECORD PARSER, and the removal is a measured
 // decision, not housekeeping (D1 of PLAN_EXPLOITATION_REGISTRE_FILM, 2026-08-18). The parser

@@ -14,13 +14,11 @@ package main
 // inconnu).
 
 import (
-	"bytes"
-	"compress/zlib"
 	"context"
 	"fmt"
-	"io"
 	"math"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
@@ -86,18 +84,10 @@ func collectPositionChunks(src *filmcache.Source) []positions.ChunkInput {
 	return out
 }
 
-// decompressZlib renvoie le contenu décompressé d'un chunk film (zlib, magic
-// 0x78). Un chunk non compressé est renvoyé tel quel.
-func decompressZlib(raw []byte) []byte {
-	if len(raw) >= 2 && raw[0] == 0x78 {
-		if z, err := zlib.NewReader(bytes.NewReader(raw)); err == nil {
-			if d, err2 := io.ReadAll(z); err2 == nil {
-				return d
-			}
-		}
-	}
-	return raw
-}
+// decompressZlib renvoie le contenu décompressé d'un chunk film. C'est [filmsource.Inflate] —
+// UN SEUL décompresseur dans le dépôt depuis le lot 2.4.2 — et la convention est la même :
+// un chunk non compressé (ou un flux tronqué) traverse tel quel.
+func decompressZlib(raw []byte) []byte { return filmsource.Inflate(raw) }
 
 // printPositionsSummary affiche le résumé d'un match : nb positions, bornes
 // x/y/z, split équipe best-effort.

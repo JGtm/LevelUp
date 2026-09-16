@@ -342,7 +342,7 @@ func ti11ResiduPayload(pay []byte, reg *Registry, ecarts map[int]int, parNb map[
 		if fin < 0 {
 			continue
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(r.Bit + keyframeRecordTIBit)
 		tr := TraverseEntity(br, reg, 0)
 		if tr.TypeIndex != ti11ArchIndex || tr.DesyncAt >= 0 || tr.Mask>>ti11Composants != 0 {

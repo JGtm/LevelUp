@@ -96,7 +96,7 @@ func ShieldOverfill(v float32) float32 {
 }
 
 // decodeObjectBodyVitality lit i4 (FUN_140fb8978) et rend ses champs.
-func decodeObjectBodyVitality(br *BitReader) BodyVitality {
+func decodeObjectBodyVitality(br *Lecteur) BodyVitality {
 	q := uint8(br.ReadBits(vitalityBodyBits))
 	return BodyVitality{
 		Health: DequantEndpoint(uint64(q), VitalityBodyMin, VitalityBodyMax, vitalityBodyBits, true, true),
@@ -108,7 +108,7 @@ func decodeObjectBodyVitality(br *BitReader) BodyVitality {
 }
 
 // decodeObjectShieldVitality lit i5 (FUN_140d50cbc) et rend ses champs.
-func decodeObjectShieldVitality(br *BitReader) ShieldVitality {
+func decodeObjectShieldVitality(br *Lecteur) ShieldVitality {
 	q := uint8(br.ReadBits(vitalityShieldBits))
 	out := ShieldVitality{
 		Shield: DequantEndpoint(uint64(q), VitalityShieldMin, VitalityShieldMax, vitalityShieldBits, false, true),
@@ -147,7 +147,7 @@ type RespawnTimer struct {
 }
 
 // decodePlayerRespawnTimer lit ti=5 i1 (FUN_140f3fb8c).
-func decodePlayerRespawnTimer(br *BitReader) RespawnTimer {
+func decodePlayerRespawnTimer(br *Lecteur) RespawnTimer {
 	return RespawnTimer{
 		Active: br.ReadBit(),
 		T0:     uint16(br.ReadBits(10)),
@@ -172,7 +172,7 @@ type RoundTimer struct {
 }
 
 // decodeGameEngineRoundTimer lit ti=0 i5 (FUN_1407ee790).
-func decodeGameEngineRoundTimer(br *BitReader) RoundTimer {
+func decodeGameEngineRoundTimer(br *Lecteur) RoundTimer {
 	qa := uint16(br.ReadBits(roundTimerBits))
 	qb := uint16(br.ReadBits(roundTimerBits))
 	return RoundTimer{

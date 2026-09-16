@@ -172,7 +172,7 @@ func TestDecodeBipedPickupOtherTypeIsCounted(t *testing.T) {
 }
 
 // TestDecodeBipedPickupTruncatedRefusesWithoutPanic : les bits au-delà du tampon se lisent à
-// ZÉRO (contrat de BitReader, calqué sur le bourrage du moteur). Un payload tronqué ne peut
+// ZÉRO (contrat de Lecteur, calqué sur le bourrage du moteur). Un payload tronqué ne peut
 // donc jamais paniquer — mais il ne doit pas non plus être PUBLIÉ : le décodeur refuse au
 // premier champ que le bourrage rend absent.
 //

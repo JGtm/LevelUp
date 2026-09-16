@@ -164,7 +164,7 @@ func marchLocate(pay []byte, w *World, cfg FrameConfig) int {
 // fait de trier, pas à la marche.
 func marchRecordsOf(pay []byte, w *World, cfg FrameConfig, start int) []FrameRecord {
 	snap := w.Snapshot()
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.poserCadre(cfg)
 	br.Skip(start)
 	var recs []FrameRecord

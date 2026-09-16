@@ -88,13 +88,6 @@ var franchissementsToleres = map[string]string{
 		"`games/halo_infinite/film/filmcache` : même motif que ci-dessus (extraction des " +
 		"événements d'objectif vérifiée sur films réels). Même portage attendu : la source " +
 		"du film devient un paramètre du test.",
-	"internal/analysis/filmsource/source_test.go": "2026-09-12, rendu visible par le " +
-		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/filmdec` : le test " +
-		"EXTERNE de `filmsource` compare les deux marcheurs de paquets sur un film réel " +
-		"(preuve d'équivalence de la grammaire, cf. `filmsource_leaf_test.go`). Le paquet " +
-		"testé, lui, reste une feuille sans aucun import du dépôt : c'est le TEST qui " +
-		"franchit. Portage attendu : la preuve d'équivalence descend avec le décodeur, sous " +
-		"`games/halo_infinite/film/`.",
 	"internal/analysis/sessionusage/usage_outcomes.go": "2026-09-12, rendu visible par le " +
 		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/replay` : SEUL " +
 		"franchissement de PRODUCTION de la liste. `sessionusage` lit les types de sortie " +

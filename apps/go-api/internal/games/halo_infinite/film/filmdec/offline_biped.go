@@ -221,7 +221,7 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilm
 	var out []BipedPosition
 	// UN SEUL lecteur de bits pour tout le payload : `scanRecordDirs` le repositionne par
 	// `SetBitPos` a chaque composant de vitalite, la ou il en allouait deux PAR RECORD.
-	br := NewBitReader(payload)
+	br := LecteurSur(payload)
 	br.PoserContexte(ctx)
 	// LA GRAMMAIRE D'ORIENTATION EST RESOLUE UNE FOIS PAR PAYLOAD, hors de la boucle : elle ne
 	// depend que des options (l'archetype decide d'i2 ET d'i3 a la fois), jamais du record.

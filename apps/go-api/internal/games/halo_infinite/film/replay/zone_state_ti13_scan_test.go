@@ -283,7 +283,7 @@ func p2aMatchRecord(pay []byte, p int, band map[uint32]bool) (p2aRecord, bool) {
 // position du bit de fin et l'aboutissement — c'est l'image exacte de `zsReplay` (phase 1), a
 // ceci pres que la grammaire est lue ici au lieu d'etre appelee dans `filmdec`.
 func p2aReplay(pay []byte, rec p2aRecord, tMS int, sc *p2aScan) (int, bool) {
-	br := filmdec.NewBitReader(pay)
+	br := filmdec.LecteurSur(pay)
 	br.SetBitPos(rec.After)
 	for _, i := range rec.Idx {
 		if i < 0 || i >= p2aPlayerIdx0+p2aPlayerN {

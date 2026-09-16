@@ -160,7 +160,7 @@ var registreFilmdec = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "component_param4.go",
-			Ancre:   "func paramForComponent(br *BitReader, name string) uint32 {",
+			Ancre:   "func paramForComponent(br *Lecteur, name string) uint32 {",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 3.6 (les composants manquants, archetype par archetype)",

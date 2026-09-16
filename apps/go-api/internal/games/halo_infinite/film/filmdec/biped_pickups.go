@@ -133,7 +133,7 @@ type BipedPickupStats struct {
 }
 
 // bipedPickupReadRef consomme une référence gardée de largeur w (plus R(2) de génération).
-func bipedPickupReadRef(br *BitReader, w uint) (uint64, bool) {
+func bipedPickupReadRef(br *Lecteur, w uint) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
@@ -209,7 +209,7 @@ func decodeBipedPickup(pay []byte, st *BipedPickupStats) (BipedPickup, bool) {
 	// (lot E, item E.3). La justification qui vivait ici — « il se lit en ligne plutôt que par
 	// une constante, celle-ci n'avait aucun lecteur et la CI l'a relevée » — était PÉRIMÉE :
 	// `eventPayloadStartBit` a deux lecteurs depuis le portage des événements véhicule.
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	h := readPacketHead(br)
 	if !h.More { // continuation : un événement suit
 		return BipedPickup{}, false // liste vide : impossible pour 0xC4, mais on ne le suppose pas

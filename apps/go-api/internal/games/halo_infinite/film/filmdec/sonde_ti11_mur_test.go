@@ -86,7 +86,7 @@ func ti11WalkArchetype(dir string, reg *Registry, wantTI int) ti11WallStats {
 					continue
 				}
 				s.records++
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.SetBitPos(r.Bit + keyframeRecordTIBit)
 				tr := TraverseEntity(br, reg, 0)
 				if int(tr.TypeIndex) != wantTI {

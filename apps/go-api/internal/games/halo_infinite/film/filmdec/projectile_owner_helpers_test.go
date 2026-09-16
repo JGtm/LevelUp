@@ -46,7 +46,7 @@ func projOwnerCollect(t *testing.T, dir string, reg *Registry, n int) projOwnerC
 	var curTS uint64
 	// LE SLOT DU RECORD EN COURS SE LIT SUR LE LECTEUR (lot 2.3) : il vivait dans la variable
 	// de paquet `accumSlot`, que ce crochet consultait comme un canal lateral.
-	var curBR *BitReader
+	var curBR *Lecteur
 	prev := observateur.ObjectParentStateHook
 	SetObjectParentStateHook(func(st ObjectParentState) {
 		if st.TypeIndex != ProjectileTypeIndex {

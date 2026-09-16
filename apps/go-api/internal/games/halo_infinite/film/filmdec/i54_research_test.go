@@ -237,7 +237,7 @@ func i54Flag1(pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype
 		if name == "" {
 			return -1
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), arch.Level(id))
 		if !ported || br.BitPos() > total {

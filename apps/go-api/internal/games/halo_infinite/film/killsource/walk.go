@@ -59,7 +59,7 @@ type walkResult struct {
 // credibilite qui trie, pas le lecteur.
 func walkFrom(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig,
 	start, views int) []filmdec.FrameRecord {
-	br := filmdec.NewBitReader(pl)
+	br := filmdec.LecteurSur(pl)
 	br.Skip(start)
 	var recs []filmdec.FrameRecord
 	for v := 0; v < views && len(pl)*8-br.BitPos() >= 8; v++ {

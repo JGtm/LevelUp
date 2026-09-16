@@ -205,7 +205,7 @@ func ScanFilmWeaponShots(dir string, n int) ([]WeaponShot, error) {
 				continue
 			}
 			s := WeaponShot{TimestampUS: pk.TimestampUS}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			// Préambule de 9 bits (readPacketHead, event_list.go). Continuation non testée :
 			// le filtre sur 0xD2 ci-dessus la pose déjà (bit 1 de l'octet de tête).
 			if readPacketHead(br).Type != 36 {
@@ -254,7 +254,7 @@ func ScanFilmWeaponDamages(dir string, reg *Registry, n int) ([]WeaponDamage, in
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, w, cfg)
 			}
 		}
@@ -274,7 +274,7 @@ func scanChunkDamages(pks []FilmPacket, data []byte, w *World, hit map[int]int, 
 		if pay[0] != 0xC0 {
 			continue
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		// Préambule de 9 bits (readPacketHead, event_list.go). Continuation non testée :
 		// le filtre sur 0xC0 ci-dessus la pose déjà (bit 1 de l'octet de tête).
 		if readPacketHead(br).Type != 0 {

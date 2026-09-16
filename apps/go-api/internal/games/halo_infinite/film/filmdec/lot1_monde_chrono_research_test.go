@@ -34,7 +34,7 @@ const lot1chReferenceBase = 512
 // ok=false si le paquet n'est pas un damage_aftermath (type 0).
 func lot1DamageRefs(pay []byte) (idx0 int, has0 bool, idx1 int, has1 bool, ok bool) {
 	idx0, idx1 = -1, -1
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(2)
 	if br.ReadBits(7) != 0 {
 		return
@@ -102,7 +102,7 @@ func TestLot1MondeChrono(t *testing.T) {
 					w.BindFull(uint32((r.Gen<<30)|r.Slot), uint32(r.TI))
 				}
 			case pk.Type == PacketTypeDelta && pk.Size >= 1 && pay[0]&0x40 == 0:
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, w, cfg) // avance le monde (tick-frame)
 			case pk.Type == PacketTypeDelta && pk.Size >= 2 && pay[0] == 0xC0:
 				idx0, has0, idx1, has1, ok := lot1DamageRefs(pay)

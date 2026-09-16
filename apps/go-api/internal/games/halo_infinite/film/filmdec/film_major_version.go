@@ -51,11 +51,7 @@ package filmdec
 // `kind` u32 du premier slot ». Le comptage etait juste, l'interpretation non : c'est la version
 // du film. Le commentaire de `looksZlib` renvoie desormais ici.
 
-import (
-	"encoding/binary"
-
-	"levelup/go-api/internal/analysis/filmsource"
-)
+import "levelup/go-api/internal/analysis/filmsource"
 
 // FilmMajorVersionUnknown : la valeur que porte une version non lue. C'est aussi celle que les
 // appelants passaient en dur avant le 2026-09-12, et le decoupage « gamertag en tete » que
@@ -77,7 +73,7 @@ func FilmMajorVersionFromHeader(chunk0 []byte) (int, bool) {
 	if len(chunk0) < filmMajorVersionOffset+4 {
 		return FilmMajorVersionUnknown, false
 	}
-	return int(binary.LittleEndian.Uint32(chunk0[filmMajorVersionOffset:])), true
+	return int(filmsource.U32LE(chunk0, filmMajorVersionOffset)), true
 }
 
 // FilmMajorVersion rend la version d'un film DEJA CHARGE, lue dans son registre.

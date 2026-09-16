@@ -49,6 +49,7 @@ import (
 	"sort"
 	"testing"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/filmproc"
 )
 
@@ -282,27 +283,27 @@ func pcMarqueurs(data []byte) []pcMarqueur {
 	total := len(data) * 8
 	var out []pcMarqueur
 	for p := 120 * 8; p+32 <= total; p++ {
-		if readByteAtBit(data, p) != 0 || readByteAtBit(data, p+8) != 0 ||
-			readByteAtBit(data, p+16) != 0x2e || readByteAtBit(data, p+24) != 0xe0 {
+		if filmsource.OctetAuBit(data, p) != 0 || filmsource.OctetAuBit(data, p+8) != 0 ||
+			filmsource.OctetAuBit(data, p+16) != 0x2e || filmsource.OctetAuBit(data, p+24) != 0xe0 {
 			continue
 		}
 		ebs := p - 60*8
-		th := int(readByteAtBit(data, ebs+47*8))
+		th := int(filmsource.OctetAuBit(data, ebs+47*8))
 		if th == 0 || th > 250 {
 			continue
 		}
-		tms := int(readByteAtBit(data, ebs+48*8))<<24 | int(readByteAtBit(data, ebs+49*8))<<16 |
-			int(readByteAtBit(data, ebs+50*8))<<8 | int(readByteAtBit(data, ebs+51*8))
+		tms := int(filmsource.OctetAuBit(data, ebs+48*8))<<24 | int(filmsource.OctetAuBit(data, ebs+49*8))<<16 |
+			int(filmsource.OctetAuBit(data, ebs+50*8))<<8 | int(filmsource.OctetAuBit(data, ebs+51*8))
 		if tms < 0 || tms > 4*3600*1000 {
 			continue
 		}
 		var m pcMarqueur
 		m.t = tms
-		m.valeur = int(readByteAtBit(data, ebs+44*8))<<24 | int(readByteAtBit(data, ebs+45*8))<<16 |
-			int(readByteAtBit(data, ebs+46*8))<<8 | th
+		m.valeur = int(filmsource.OctetAuBit(data, ebs+44*8))<<24 | int(filmsource.OctetAuBit(data, ebs+45*8))<<16 |
+			int(filmsource.OctetAuBit(data, ebs+46*8))<<8 | th
 		debut := p - 120*8
 		for i := 0; i < 120; i++ {
-			m.avant[i] = readByteAtBit(data, debut+i*8)
+			m.avant[i] = filmsource.OctetAuBit(data, debut+i*8)
 		}
 		out = append(out, m)
 	}

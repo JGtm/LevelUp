@@ -93,7 +93,7 @@ func (o *Observation) publishPlayerState(f PlayerStateField, present bool, value
 }
 
 // consumePlayerSoftKillTimer porte ti=5 i2 (FUN_140d580a8 -> FUN_140d580d0) : 3 x R(5).
-func consumePlayerSoftKillTimer(br *BitReader) {
+func consumePlayerSoftKillTimer(br *Lecteur) {
 	a := br.ReadBits(5)
 	b := br.ReadBits(5)
 	c := br.ReadBits(5)
@@ -101,14 +101,14 @@ func consumePlayerSoftKillTimer(br *BitReader) {
 }
 
 // consumePlayerTargetTracking porte ti=5 i3 (FUN_142f044f0) : R(1)+R(1).
-func consumePlayerTargetTracking(br *BitReader) {
+func consumePlayerTargetTracking(br *Lecteur) {
 	a := bit2u(br.ReadBit())
 	b := bit2u(br.ReadBit())
 	br.obs.publishPlayerState(PlayerTargetTracking, true, a, b)
 }
 
 // consumePlayerDesiredRespawnPlayer porte ti=5 i6 (FUN_1410f7330) : R(16).
-func consumePlayerDesiredRespawnPlayer(br *BitReader) {
+func consumePlayerDesiredRespawnPlayer(br *Lecteur) {
 	br.obs.publishPlayerState(PlayerDesiredRespawnPlayer, true, br.ReadBits(16))
 }
 
@@ -117,7 +117,7 @@ func consumePlayerDesiredRespawnPlayer(br *BitReader) {
 // LES HUIT OCTETS SONT PUBLIES BRUTS, dans l'ordre du flux. Ce qu'ils SIGNIFIENT — le
 // chargement de depart en clair, ou autre chose — est la question du lot P, et la plomberie
 // n'a pas a y repondre.
-func consumePlayerEngineLoadout(br *BitReader) {
+func consumePlayerEngineLoadout(br *Lecteur) {
 	v := make([]uint64, 0, 8)
 	for i := 0; i < 8; i++ {
 		v = append(v, br.ReadBits(8))
@@ -136,7 +136,7 @@ func consumePlayerEngineLoadout(br *BitReader) {
 //
 // PORTE FERMEE (bit == 0) : `present` est faux et `values` est vide — le composant etait au
 // masque, il n'a transmis aucune position. Ce n'est pas une position a l'origine.
-func consumePlayerDesiredRespawnLocation(br *BitReader, level uint32) {
+func consumePlayerDesiredRespawnLocation(br *Lecteur, level uint32) {
 	if !br.ReadBit() {
 		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)
 		return
@@ -154,29 +154,29 @@ func consumePlayerDesiredRespawnLocation(br *BitReader, level uint32) {
 }
 
 // consumePlayerLivesRemaining porte ti=5 i14 (FUN_141055734) : R(7).
-func consumePlayerLivesRemaining(br *BitReader) {
+func consumePlayerLivesRemaining(br *Lecteur) {
 	br.obs.publishPlayerState(PlayerLives, true, br.ReadBits(7))
 }
 
 // consumePlayerLastBetrayer porte ti=5 i15 (FUN_142f04158) : R(6).
-func consumePlayerLastBetrayer(br *BitReader) {
+func consumePlayerLastBetrayer(br *Lecteur) {
 	br.obs.publishPlayerState(PlayerLastBetrayer, true, br.ReadBits(6))
 }
 
 // consumePlayerControlAiming porte ti=5 i17 (FUN_142f03ea4) : R(19), direction de visee
 // encodee en cubemap. Le decodeur de cette direction EXISTE (`DecodeAimVectorChecked`,
 // `aim_vector.go`) — le brancher est le travail du lot E, pas celui de la plomberie.
-func consumePlayerControlAiming(br *BitReader) {
+func consumePlayerControlAiming(br *Lecteur) {
 	br.obs.publishPlayerState(PlayerControlAiming, true, br.ReadBits(19))
 }
 
 // consumePlayerActiveInGame porte ti=5 i18 (FUN_1411615d8) : R(1).
-func consumePlayerActiveInGame(br *BitReader) {
+func consumePlayerActiveInGame(br *Lecteur) {
 	br.obs.publishPlayerState(PlayerActiveInGame, true, bit2u(br.ReadBit()))
 }
 
 // consumePlayerPendingJoinInProgress porte ti=5 i19 (FUN_1411615b8) : R(1).
-func consumePlayerPendingJoinInProgress(br *BitReader) {
+func consumePlayerPendingJoinInProgress(br *Lecteur) {
 	br.obs.publishPlayerState(PlayerPendingJoinInProgress, true, bit2u(br.ReadBit()))
 }
 
@@ -187,7 +187,7 @@ func consumePlayerPendingJoinInProgress(br *BitReader) {
 // ne saurait pas QUELLE des six proprietes a transmis sa valeur. Forme publiee, 3 + 12 + 9 =
 // 24 entrees exactement : [f0 f1 f2] puis, pour chacune des six, [porte, valeur] (valeur = 0
 // quand la porte est a 0), puis [g0 .. g8].
-func consumePlayerMalleableProperties(br *BitReader) {
+func consumePlayerMalleableProperties(br *Lecteur) {
 	v := make([]uint64, 0, 24)
 	for i := 0; i < 3; i++ {
 		v = append(v, bit2u(br.ReadBit()))

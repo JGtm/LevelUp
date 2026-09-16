@@ -4,7 +4,7 @@ package filmdec
 //
 // Sorti de `traverse.go` par deplacement pur au lot 2.7 (scission des fichiers de plus de
 // 500 lignes) : aucune ligne de logique n'a change. Ce fichier porte les deux descripteurs
-// que le deser d'i0 consulte — le chemin DELTA du bipede (`BitReader.traversal`) et le chemin
+// que le deser d'i0 consulte — le chemin DELTA du bipede (`Lecteur.traversal`) et le chemin
 // ABSOLU des objets du monde (`WorldObjectPrecision`) — et le seul point d'installation des
 // largeurs de la carte.
 
@@ -34,10 +34,10 @@ package filmdec
 // le premier bit — mais c'est un banc de calibration propre à Cliffhanger, pas un décodeur.
 //
 // C'ÉTAIT UNE VARIABLE DE PAQUET (`TraversalPrecision`) JUSQU'AU LOT 2.2.a : elle vient
-// désormais du PROFIL que le lecteur porte ([BitReader.poserMouvement]), et son défaut est
+// désormais du PROFIL que le lecteur porte ([Lecteur.poserMouvement]), et son défaut est
 // l'invariant de [mouvementDuProfil]. Le seul écrivain de production — la calibration de
 // `killsource` — le passe maintenant par `FrameConfig.Mouvement`.
-func (b *BitReader) traversal() PrecisionDescriptor { return b.p.Mouvement.Traversal }
+func (b *Lecteur) traversal() PrecisionDescriptor { return b.p.Mouvement.Traversal }
 
 // WorldObjectPrecision est le descripteur du chemin WORLD-OBJECT d'i0
 // (`object-position-component`) : projectiles ti=41, armes au sol ti=42, équipement ti=37,
@@ -73,4 +73,4 @@ func (b *BitReader) traversal() PrecisionDescriptor { return b.p.Mouvement.Trave
 // de `replay` la pose sur le PROFIL DE BALAYAGE DU CONTEXTE du film — le canal qui atteint les
 // quarante balayages de la cuisson du rejeu, chacun construisant ses lecteurs par
 // [FilmContext.NouveauLecteur].
-func (b *BitReader) worldObjectPrecision() PrecisionDescriptor { return b.p.Mouvement.WorldObject }
+func (b *Lecteur) worldObjectPrecision() PrecisionDescriptor { return b.p.Mouvement.WorldObject }

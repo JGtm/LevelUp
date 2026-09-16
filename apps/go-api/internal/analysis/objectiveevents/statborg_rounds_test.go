@@ -106,8 +106,8 @@ func TestStatborgManche2RejeteeParLAncienneGrammaire(t *testing.T) {
 	if !ok {
 		t.Fatal("en-tete non reconnu")
 	}
-	h1 := readBitsBE(vecRound1.data, at, statHdrBits)
-	h2 := readBitsBE(vecRound1.data, at+statHdrBits, statHdrBits)
+	h1 := filmsource.BitsTronques(vecRound1.data, at, statHdrBits)
+	h2 := filmsource.BitsTronques(vecRound1.data, at+statHdrBits, statHdrBits)
 	if h1 == 0 && h2 == 0 {
 		t.Fatal("les deux en-tetes sont nuls : ce vecteur ne prouve plus rien")
 	}
@@ -123,7 +123,7 @@ func TestStatborgManche2RejeteeParLAncienneGrammaire(t *testing.T) {
 // TestStatborgListeDenseLue fige la lecture de la forme dense : masque de 64 bits, et non une
 // liste creuse de sept index au plus.
 func TestStatborgListeDenseLue(t *testing.T) {
-	if got := readBitsBE(vecDense.data, vecDense.bits+statIDBits+statGenBits, 1); got != 1 {
+	if got := filmsource.BitsTronques(vecDense.data, vecDense.bits+statIDBits+statGenBits, 1); got != 1 {
 		t.Fatalf("ce vecteur n'est pas en forme dense (gate = %d)", got)
 	}
 	_, idx, _, ok := matchRecordHeader(vecDense.data, vecDense.bits)

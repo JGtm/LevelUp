@@ -185,10 +185,10 @@ func e1911SitesDuPaquet(f filmsource.Packet) []e1911Site {
 func e1911SiteDe(f filmsource.Packet, pay []byte, b, at int, idx []int) e1911Site {
 	return e1911Site{
 		Chunk: f.Chunk, Pidx: f.Index, Bit: b, At: at,
-		Dense: readBitsBE(pay, b+statIDBits+statGenBits, 1) == 1,
+		Dense: filmsource.BitsTronques(pay, b+statIDBits+statGenBits, 1) == 1,
 		NComp: len(idx),
-		H1:    int(readBitsBE(pay, at, statHdrBits)),
-		H2:    int(readBitsBE(pay, at+statHdrBits, statHdrBits)),
+		H1:    int(filmsource.BitsTronques(pay, at, statHdrBits)),
+		H2:    int(filmsource.BitsTronques(pay, at+statHdrBits, statHdrBits)),
 		Fin:   e1911FinDe(pay, at, idx),
 		Avant: e1911Bits(pay, at-8, 8),
 		Champ: e1911Bits(pay, at, 2*statHdrBits),
@@ -236,7 +236,7 @@ func e1911Bits(pay []byte, p, n int) string {
 	}
 	var b strings.Builder
 	for i := 0; i < n; i++ {
-		fmt.Fprintf(&b, "%d", readBitsBE(pay, p+i, 1))
+		fmt.Fprintf(&b, "%d", filmsource.BitsTronques(pay, p+i, 1))
 	}
 	return b.String()
 }

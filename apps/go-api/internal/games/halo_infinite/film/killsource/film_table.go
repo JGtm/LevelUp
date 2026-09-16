@@ -105,14 +105,15 @@ func (t FilmTable) Lue() bool { return t.Refusal == FilmTableRead && len(t.Seats
 // ELLE NE REND JAMAIS D ERREUR : chaque cause d echec est TYPEE chez `filmdec` et traduite ici en
 // cause NOMMEE, portee par le resultat et journalisee par l appelant. Un refus se compte.
 func readFilmTable(f *film) FilmTable {
-	if f == nil || len(f.chunks) == 0 || len(f.chunks[0]) == 0 {
+	if f == nil || f.src.NumChunks() == 0 || len(f.src.Chunk(0)) == 0 {
 		return FilmTable{Refusal: FilmTableNoRegistry}
 	}
-	ident, err := filmdec.ReadFilmIdentity(f.chunks[0])
+	registre := f.src.Chunk(0)
+	ident, err := filmdec.ReadFilmIdentity(registre)
 	if err != nil {
 		return FilmTable{Refusal: causeIdentite(err)}
 	}
-	slots, rep, err := filmdec.ReadPlayerTable(f.chunks[0], ident)
+	slots, rep, err := filmdec.ReadPlayerTable(registre, ident)
 	if err != nil {
 		return FilmTable{Build: ident.Build, Refusal: causeTable(err)}
 	}

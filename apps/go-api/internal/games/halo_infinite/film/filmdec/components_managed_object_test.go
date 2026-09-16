@@ -20,7 +20,7 @@ import "testing"
 // alignee sur l'octet. Les vecteurs de la phase 1a sont releves a des positions de bit
 // arbitraires dans le film, mais leur CHARGE UTILE est recopiee ici cadree a zero — c'est la
 // meme suite de bits, et c'est tout ce que le deser voit.
-func zoneVecBits(t *testing.T, b ...byte) *BitReader {
+func zoneVecBits(t *testing.T, b ...byte) *Lecteur {
 	t.Helper()
 	return lecteurDInstrument(b)
 }
@@ -235,7 +235,7 @@ func TestZoneHooksConsommentLesMemesBitsSansHook(t *testing.T) {
 	octets := []byte{0x06, 0x85, 0x45, 0x40, 0x80, 0x00, 0x0C, 0x40, 0x35, 0x8B, 0x4A, 0x2B}
 	cas := []struct {
 		nom   string
-		deser func(*BitReader)
+		deser func(*Lecteur)
 	}{
 		{compNavpointRadialProgress, consumeNavpointRadialProgress},
 		{compManagedObjectBoundaryColor, consumeManagedObjectBoundaryColor},

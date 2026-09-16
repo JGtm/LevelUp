@@ -1,7 +1,13 @@
 package weaponv3
 
-// bits_word_test.go — TEST DIFFERENTIEL de la lecture de bits par mot du resolveur
+// pi_resolver_bits_test.go — TEST DIFFERENTIEL de la lecture de bits du resolveur
 // xuid -> player_index (decision D6 du plan `.ai/V7.5/PLAN_CUISSON_PERF.md`).
+//
+// IL RESTE ICI APRES LE LOT 2.4.2, ET C EST DELIBERE : les deux primitives ont descendu dans la
+// couche source ([filmsource.BitsTolerants], [filmsource.ChercherMotif64]), mais la propriete
+// que ce fichier garde est celle du RESOLVEUR — qu il lise aujourd hui ce qu il lisait avant,
+// bornes negatives comprises. Les oracles sont les implantations d AVANT, recopiees ici et
+// nulle part ailleurs.
 //
 // Deux proprietes, deux oracles, tous deux recopies ici depuis l'implementation d'AVANT :
 //   - `readBits` doit rendre la meme valeur que la lecture bit a bit, sur tout le domaine
@@ -15,6 +21,8 @@ package weaponv3
 import (
 	"math/rand"
 	"testing"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // refBit est `bitReader.bit` : zero des deux cotes du tampon.
@@ -60,8 +68,7 @@ func piFuzzBuffers() [][]byte {
 
 func TestPIReadBitsWordMatchesReference(t *testing.T) {
 	for _, buf := range piFuzzBuffers() {
-		br := newBitReader(buf)
-		total := br.total
+		total := len(buf) * 8
 		var positions []int
 		for p := -PIBits - 8; p < 40; p++ {
 			positions = append(positions, p)
@@ -74,10 +81,10 @@ func TestPIReadBitsWordMatchesReference(t *testing.T) {
 		positions = append(positions, total+7, total+64)
 		for _, bp := range positions {
 			for n := 0; n <= 64; n++ {
-				got := br.readBits(bp, n)
+				got := filmsource.BitsTolerants(buf, bp, n)
 				want := refReadBits(buf, total, bp, n)
 				if got != want {
-					t.Fatalf("readBits(len=%d, bp=%d, n=%d) = %#x, reference %#x",
+					t.Fatalf("BitsTolerants(len=%d, bp=%d, n=%d) = %#x, reference %#x",
 						len(buf), bp, n, got, want)
 				}
 			}
@@ -102,9 +109,9 @@ func TestFindPattern64MatchesReference(t *testing.T) {
 				}
 				writeBitsBE(buf, bp, 64, target)
 				wantPos, wantOK := refFindPattern64(buf, target)
-				gotPos, gotOK := findPattern64(buf, target)
+				gotPos, gotOK := filmsource.ChercherMotif64(buf, target)
 				if gotOK != wantOK || gotPos != wantPos {
-					t.Fatalf("findPattern64(size=%d, implante a bp=%d) = (%d, %v), reference (%d, %v)",
+					t.Fatalf("ChercherMotif64(size=%d, implante a bp=%d) = (%d, %v), reference (%d, %v)",
 						size, bp, gotPos, gotOK, wantPos, wantOK)
 				}
 			}
@@ -118,9 +125,9 @@ func TestFindPattern64AbsentMatchesReference(t *testing.T) {
 	for _, buf := range piFuzzBuffers() {
 		for _, target := range []uint64{0, ^uint64(0), 0x0123456789ABCDEF} {
 			wantPos, wantOK := refFindPattern64(buf, target)
-			gotPos, gotOK := findPattern64(buf, target)
+			gotPos, gotOK := filmsource.ChercherMotif64(buf, target)
 			if gotOK != wantOK || gotPos != wantPos {
-				t.Fatalf("findPattern64(len=%d, target=%#x) = (%d, %v), reference (%d, %v)",
+				t.Fatalf("ChercherMotif64(len=%d, target=%#x) = (%d, %v), reference (%d, %v)",
 					len(buf), target, gotPos, gotOK, wantPos, wantOK)
 			}
 		}

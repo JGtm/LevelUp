@@ -79,7 +79,7 @@ type zoomEvt struct {
 var zoomRefWidths = map[int]int{0: 13, 1: 13, 2: 8, 3: 8, 4: 9, 5: 8, 6: 9, 7: 13, 8: 13}
 
 // zoomLireRef consomme une reference gardee ; rend (index, presente).
-func zoomLireRef(br *filmdec.BitReader, dom int) (uint64, bool) {
+func zoomLireRef(br *filmdec.Lecteur, dom int) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
@@ -226,7 +226,7 @@ func zoomLitEvenements(t *testing.T, dir string) []zoomEvt {
 				continue
 			}
 			paquets++
-			br := filmdec.NewBitReader(pay)
+			br := filmdec.LecteurSur(pay)
 			br.Skip(1) // bit de configuration
 			if !br.ReadBit() {
 				continue // pas d'evenement en tete

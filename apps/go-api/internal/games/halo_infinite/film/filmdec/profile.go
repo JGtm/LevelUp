@@ -288,7 +288,7 @@ func highlightDuProfil(majeure int, lue bool) HighlightProfile {
 // cadreDuProfil rend le CADRE d un record d image-cle d etat complet.
 //
 // C est la SOURCE UNIQUE des deux largeurs, et elle sert aux DEUX bouts depuis le lot 2.2.c :
-// [ResolveProfile] la pose dans le profil, et [NewBitReader] la pose sur le lecteur — les
+// [ResolveProfile] la pose dans le profil, et [LecteurSur] la pose sur le lecteur — les
 // lecteurs d etat complet ne lisent donc plus les constantes du paquet, ils lisent le profil.
 // La regle reste `172 + etat(ti)`, jamais un nombre : les 172 se composent ici.
 func cadreDuProfil() KeyframeProfile {

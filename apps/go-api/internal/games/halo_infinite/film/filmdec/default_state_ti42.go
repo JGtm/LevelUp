@@ -77,7 +77,7 @@ package filmdec
 // 2 588 (92,5 %) — c'est-a-dire aussi pour ceux que le calque des armes au sol laisse
 // aujourd'hui ANONYMES. La suite (publier un proprietaire au document) est un lot a part : ici
 // on ne fait que cesser de jeter la valeur.
-func consumeDefaultStateTI42(br *BitReader) {
+func consumeDefaultStateTI42(br *Lecteur) {
 	consumeVersionPrefix(br)      // 1. V
 	consumeDefaultStateTI36(br)   // 2. FUN_1407f2224 : V + bloc MPP (FUN_14080cfe8)
 	br.ReadBits(12)               // 3. inline R(12) -> dst+0x60

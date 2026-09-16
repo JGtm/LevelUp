@@ -277,7 +277,7 @@ var registreKillsource = []Repli{
 			// `Meta()` est perdu, donc celle que ce repli decrit. Elle pointait jusque-la sur
 			// la lecture de la version majeure, voisine de hasard, qui a bouge quand cette
 			// version est passee au profil du film.
-			Ancre: "f := &film{chunks: make([][]byte, n), packets: packetsOf(src)}",
+			Ancre: "f := &film{src: src, packets: packetsOf(src)}",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 1.9.8 (cause racine de l'argmax du pied)",

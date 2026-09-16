@@ -61,7 +61,7 @@ const (
 // et son jumeau 32 bits `FUN_140b4bcb4`. Chaque « octet » est un R(8) du flux de bits : le
 // mode trame N'ALIGNE PAS sur l'octet (`FUN_1406d654c`, le slot 0 de la vtable du flux, lit
 // 8n bits a la position courante).
-func readTLVVarint(br *BitReader) uint64 {
+func readTLVVarint(br *Lecteur) uint64 {
 	var v uint64
 	for shift := uint(0); shift < 64; shift += 7 {
 		b := uint32(br.ReadBits(8))
@@ -80,7 +80,7 @@ func readTLVVarint(br *BitReader) uint64 {
 //
 // Le compte de saut ne consomme rien au-dela de ces octets d'extension et ne designe aucune
 // donnee du flux : il n'est pas rendu (il ferait du code mort).
-func readTLVTag(br *BitReader) uint32 {
+func readTLVTag(br *Lecteur) uint32 {
 	b0 := uint32(br.ReadBits(8))
 	switch b0 & 0xe0 {
 	case 0xe0:
@@ -92,7 +92,7 @@ func readTLVTag(br *BitReader) uint32 {
 }
 
 // skipTLVBytes saute count unites de `unitBits` bits, sous plafond.
-func skipTLVBytes(br *BitReader, count uint64, unitBytes uint64) {
+func skipTLVBytes(br *Lecteur, count uint64, unitBytes uint64) {
 	if count > tlvBodyMaxBytes {
 		count = tlvBodyMaxBytes
 	}
@@ -117,7 +117,7 @@ func skipTLVBytes(br *BitReader, count uint64, unitBytes uint64) {
 // LE PIEGE QUE CETTE TABLE CORRIGE : 4, 5, 6, 0xf, 0x10 et 0x11 sont des ENTIERS a longueur
 // variable, pas des corps prefixes par leur longueur. `FUN_140b4ba68` lit le LEB128 et REND
 // LA MAIN — aucun saut ne suit. Lire un corps derriere eux decale tout le reste du record.
-func skipTLVField(br *BitReader, wire uint32, depth int) {
+func skipTLVField(br *Lecteur, wire uint32, depth int) {
 	switch wire {
 	case 2, 3, 0xe:
 		br.ReadBits(8)
@@ -141,7 +141,7 @@ func skipTLVField(br *BitReader, wire uint32, depth int) {
 // skipTLVList consomme une liste homogene — en-tete `FUN_140b4bbb8` (140b4bbb8..140b4bbe4) :
 // un octet dont les 5 bits bas donnent le type des elements ; si les 3 bits hauts sont non
 // nuls ils portent (compte + 1), sinon le compte suit en LEB128.
-func skipTLVList(br *BitReader, depth int) {
+func skipTLVList(br *Lecteur, depth int) {
 	b0 := uint32(br.ReadBits(8))
 	elem := b0 & 0x1f
 	var count uint64
@@ -163,7 +163,7 @@ func skipTLVList(br *BitReader, depth int) {
 
 // skipTLVMap consomme une table de paires — en-tete `FUN_1408cc830` (1408cc830..1408cc86e) :
 // DEUX octets de type (cle puis valeur, NON masques), puis le compte en LEB128.
-func skipTLVMap(br *BitReader, depth int) {
+func skipTLVMap(br *Lecteur, depth int) {
 	keyWire := uint32(br.ReadBits(8))
 	valWire := uint32(br.ReadBits(8))
 	count := readTLVVarint(br)
@@ -181,7 +181,7 @@ func skipTLVMap(br *BitReader, depth int) {
 
 // consumeTLVMessage consomme un sous-message complet : l'en-tete LEB128 du mode 2, puis les
 // champs jusqu'au type de fil 0 ou 1 — `FUN_140c7fedc` et son fragment hors ligne 142295806.
-func consumeTLVMessage(br *BitReader) {
+func consumeTLVMessage(br *Lecteur) {
 	readTLVVarint(br) // FUN_1408ccb7c -> FUN_140b4bcb4 : en-tete, valeur jetee par le moteur
 	for i := 0; i < tlvMaxFields; i++ {
 		wire := readTLVTag(br)

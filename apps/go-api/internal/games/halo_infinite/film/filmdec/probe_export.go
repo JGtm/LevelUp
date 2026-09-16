@@ -19,7 +19,7 @@ package filmdec
 // Read-only: no World, no capture hooks touched.
 func ConsumeComponentAt(buf []byte, start int, name string, typeIndex, level uint32,
 	ctx ContexteDeLecture) (end int, ported bool) {
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.PoserContexte(ctx)
 	br.Skip(start)
 	_, _, ok := consumeByName(br, name, typeIndex, level)
@@ -39,7 +39,7 @@ func ConsumeComponentAt(buf []byte, start int, name string, typeIndex, level uin
 // comme avant, sur la porte has-components sans sauter de default-state.
 func TraverseKeyframeBipedAt(buf []byte, stateBit int, reg *Registry, ti uint32,
 	ctx ContexteDeLecture) (EntityTrace, int) {
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.PoserContexte(ctx)
 	br.SetBitPos(stateBit)
 	if ti == bipedDefaultStateTypeIndex {

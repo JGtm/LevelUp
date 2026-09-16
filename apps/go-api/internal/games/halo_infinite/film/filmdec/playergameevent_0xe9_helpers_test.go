@@ -44,7 +44,7 @@ type pgesPayload struct {
 
 // pgesRef consomme une reference gardee de largeur width : [R(1) porte ; si 1 : R(width)
 // index + R(2) generation]. Rend (index, presente).
-func pgesRef(br *BitReader, width uint) (uint64, bool) {
+func pgesRef(br *Lecteur, width uint) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
@@ -63,7 +63,7 @@ func pgesRef(br *BitReader, width uint) (uint64, bool) {
 //	3 -> R(32)                              4 -> R(1) (bool)          6 -> R(32)
 //	5 -> chaine (R(8) jusqu'a l'octet 0, max 16 octets ; FUN_1407cbc24)
 //	7 -> palette quantifiee a largeur runtime (FUN_140f04f18) : NON reproduite -> exact=false
-func pgesDecodePayload(br *BitReader) pgesPayload {
+func pgesDecodePayload(br *Lecteur) pgesPayload {
 	p := pgesPayload{exact: true}
 	p.fieldA = br.ReadBits(32)
 	p.fieldB = br.ReadBits(8)
@@ -128,7 +128,7 @@ type pgesRecord struct {
 // pgesDecodePacket decode un paquet 0xE9 : config, continuation, type (82 attendu), 3 refs
 // (domaines 0/8/7), puis la charge. Rend (record, estType82).
 func pgesDecodePacket(pay []byte, ts uint64) (pgesRecord, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(1) // bit de configuration
 	if !br.ReadBit() {
 		return pgesRecord{}, false // liste vide : impossible pour 0xE9 (bit 1 = 1)

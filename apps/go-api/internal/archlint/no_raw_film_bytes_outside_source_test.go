@@ -8,10 +8,11 @@ package archlint
 // ADR 0034 D-2 : seule la couche `source` touche les octets d un film. Tout le reste recoit
 // des valeurs deja lues. A la pose de ce ratchet c etait faux — SEPT lecteurs de bits distincts
 // vivaient dans NEUF paquets, et chacun reposait sur sa propre idee du bourrage, du
-// debordement et de l ordre des bits. Le lot 2.4 les ramene a une facade unique (`film.Source`,
-// qui nait dans `internal/analysis/filmsource/`, decision V15 (1)) : le lot 2.4.1 en a supprime
-// DEUX (`killsource.evReader` et les primitives de position de `killsource`), et la lecture par
-// mot de `filmdec` est descendue dans la couche source avec eux.
+// debordement et de l ordre des bits. Le lot 2.4 les a ramenes a une facade unique
+// (`film.Source`, nee dans `internal/analysis/filmsource/`, decision V15 (1)). IL EN RESTE DEUX
+// AU 2026-09-18, tous deux dans `internal/analysis` racine (`scanEvents` du parseur de temps
+// forts, la copie de `bitAt` d `analysis/positions`) : ils descendent au pas 5, et leurs neuf
+// entrees sont tout ce que l allowlist porte encore.
 //
 // Ce ratchet est pose AVANT ce lot, et il vaut DEJA : son allowlist EST la liste de travail de
 // 2.4, elle se vide a mesure, et elle rougit des qu une entree devient perimee. Pose apres, il
@@ -85,9 +86,9 @@ package archlint
 // # L ALLOWLIST, ET COMMENT ELLE SE VIDE
 //
 // 78 entrees a la pose : 77 le 2026-09-17, une par couple (fichier, motif), plus une le
-// 2026-09-18 a la fusion du lot 2.3 (`filmdec/film_context.go`, datee sur sa ligne), chacune
-// avec le lot qui la retire. La case 2.4.3 du plan ne se coche que quand il ne reste que les
-// neuf entrees du lot 2.5.c (V15 (2) et (4) : elles descendent au pas 5).
+// 2026-09-18 a la fusion du lot 2.3 (`filmdec/film_context.go`). IL EN RESTE NEUF — celles du
+// lot 2.5.c, que V15 (2) et (4) font descendre au pas 5. Les soixante-neuf autres sont tombees
+// aux lots 2.4.1 et 2.4.2, chacune dans le commit qui a fait son portage.
 //
 //	2.4.1 (6)   VIDEE le 2026-09-18. `killsource.evReader` est absorbe par le lecteur canonique
 //	            de la couche source ([filmsource.Bits]) ; le type, sa structure et les
@@ -97,16 +98,25 @@ package archlint
 //	            par appel sur 109 168 positions reelles des dix bobines versionnees
 //	            (`killsource/equivalence_lecteur_test.go`) et de bout en bout par le golden des
 //	            triplets fige AVANT l absorption (`chaines_evenements_test.go`).
-//	2.4.2 (59)  la facade `film.Source` : `filmdec` (declaration du lecteur, 33 sites de
-//	            construction, quatre sections de `chunk_00`, second marcheur de paquets),
-//	            `killsource` (chunks, feed, table de joueurs, monde, walk), `objectiveevents`
-//	            (film.go, statborg.go), `weaponv3` (pi_resolver, bits_word, timing),
-//	            `sync/haloclient` (inflate du blob CDN) et les cinq outils `cmd/`. QUATRE de ses
-//	            63 entrees sont deja tombees au 2.4.1, parce que le lecteur canonique ne
-//	            pouvait pas naitre sans elles : `filmdec/bits_word.go` (la lecture par mot, qui
-//	            descend en `source` sous le nom [filmsource.BitsAt] — une seule implantation,
-//	            jamais deux) et ses deux derniers appelants directs, `grenade_events.go` et
-//	            `keyframe_world.go`.
+//	2.4.2 (63)  VIDEE le 2026-09-18. La facade EST `internal/analysis/filmsource` (V15 (1)), et
+//	            elle porte desormais TOUT ce qui touche un octet de film :
+//	              - le lecteur canonique [filmsource.Bits] et ses quatre conventions de bord
+//	                nommees (`BitsAt`, `BitAt`, `BitsTolerants`, `BitsTronques`) ;
+//	              - les entiers du film (`U16LE` / `U32LE` / `U64LE`), l octet et le u64 a
+//	                offset BIT (`OctetAuBit`, `U64LEAuBit`), le balayage de motif
+//	                (`ChercherMotif64`) ;
+//	              - LE marcheur de paquets ([filmsource.Paquets]) : les QUATRE copies de
+//	                l en-tete de seize octets (`filmdec.WalkPackets`, `weaponv3/timing.go`,
+//	                `cmd/rdata_weapon_scan`) n en sont plus que des traductions, et le temoin
+//	                `filmsource.TestDeuxMarcheursDePaquetsSAccordent` oppose les deux grammaires
+//	                sur des chunks reels ;
+//	              - LE decompresseur, en deux contrats ecrits : `Inflate` (tolerant, un chunk
+//	                peut etre deja clair) et `Decompresser` (strict, un telechargement CDN doit
+//	                etre du zlib).
+//	            `filmdec.BitReader` / `NewBitReader` ont DISPARU : le type s appelle `Lecteur`,
+//	            il EMBARQUE `*filmsource.Bits` et n ajoute que la grammaire (profil, capture,
+//	            observateur, `ReadSignedVarWidth`). Les deux anciens noms restent listes
+//	            ci-dessous, en RATCHET ANTI-RESURRECTION.
 //	2.5.c (9)   descente de la grammaire de film posee dans `internal/analysis` racine
 //	            (V15 (2) et V15 (4)) : `highlight_event_parser.go`, `weapon_scanner.go`,
 //	            `weapon_data.go`, `positions/positions.go`, plus leurs deux consommateurs
@@ -233,81 +243,22 @@ type lectureToleree struct {
 	lot     string
 }
 
-// lecturesTolerees — LES 77 COUPLES MESURES LE 2026-09-17 sur `24b67e339`, plus le couple ne de la
-// fusion du lot 2.3 (2026-09-18), MOINS les DIX retires par le lot 2.4.1 (2026-09-18) : il en
-// reste 68. Chacun disparait dans le commit qui fait le portage ; la case 2.4.3 du plan se coche
-// quand il ne reste que les neuf entrees du lot 2.5.c.
+// lecturesTolerees — LES 77 COUPLES MESURES LE 2026-09-17 sur `24b67e339`, plus le couple ne de
+// la fusion du lot 2.3 (2026-09-18), MOINS les SOIXANTE-NEUF portes par les lots 2.4.1 et 2.4.2
+// (2026-09-18) : IL EN RESTE NEUF, tous du lot 2.5.c. La case 2.4.3 du plan est cochee. Chaque
+// entree restante disparait dans le commit qui fera son portage.
 var lecturesTolerees = []lectureToleree{
 	{fichier: "cmd/diag_film/main.go", motif: motifBinaire, lot: "2.5.c"},
-	{fichier: "cmd/diag_weapons_v3/positions.go", motif: motifInflate, lot: "2.4.2"},
-	{fichier: "cmd/fetch_film_chunks/main.go", motif: motifInflate, lot: "2.4.2"},
-	{fichier: "cmd/rdata_weapon_scan/main.go", motif: motifInflate, lot: "2.4.2"},
-	{fichier: "cmd/rdata_weapon_scan/main.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "cmd/rdata_weapon_scan/main.go", motif: motifBinaire, lot: "2.4.2"},
-	{fichier: "cmd/replay-worker/job.go", motif: motifInflate, lot: "2.4.2"},
 	{fichier: "internal/analysis/highlight_event_parser.go", motif: motifInflate, lot: "2.5.c"},
 	{fichier: "internal/analysis/highlight_event_parser.go", motif: motifLecteur, lot: "2.5.c"},
 	{fichier: "internal/analysis/highlight_event_parser.go", motif: motifBinaire, lot: "2.5.c"},
-	{fichier: "internal/analysis/objectiveevents/film.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/analysis/objectiveevents/statborg.go", motif: motifLecteur, lot: "2.4.2"},
 	{fichier: "internal/analysis/positions/positions.go", motif: motifLecteur, lot: "2.5.c"},
 	{fichier: "internal/analysis/positions/positions.go", motif: motifBinaire, lot: "2.5.c"},
 	{fichier: "internal/analysis/weapon_data.go", motif: motifBinaire, lot: "2.5.c"},
 	{fichier: "internal/analysis/weapon_scanner.go", motif: motifBinaire, lot: "2.5.c"},
-	{fichier: "internal/analysis/weaponv3/bits_word.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/analysis/weaponv3/bits_word.go", motif: motifBinaire, lot: "2.4.2"},
-	{fichier: "internal/analysis/weaponv3/pi_resolver.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/analysis/weaponv3/pi_resolver.go", motif: motifBinaire, lot: "2.4.2"},
-	{fichier: "internal/analysis/weaponv3/timing.go", motif: motifBinaire, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/ability_rank.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/biped_creation.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/biped_pickups.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/bitreader.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/default_state.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/equipment_creation.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/equipment_state.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/event_list.go", motif: motifLecteur, lot: "2.4.2"},
 	// 2026-09-18, fusion du lot 2.3 : `FilmContext.NouveauLecteur` construit LE lecteur qui porte le
 	// profil du contexte (plus de variable de paquet). C est la forme que la facade 2.4.2 absorbe :
 	// le lecteur canonique naitra dans `film.Source`, contexte compris, et ce site disparait avec lui.
-	{fichier: "internal/games/halo_infinite/film/filmdec/film_context.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/film_format_version.go", motif: motifChunk, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/film_format_version.go", motif: motifBinaire, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/film_identity.go", motif: motifChunk, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/film_identity.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/film_identity.go", motif: motifBinaire, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/film_major_version.go", motif: motifChunk, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/film_major_version.go", motif: motifBinaire, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/film_packets.go", motif: motifBinaire, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/fire_aim_modal.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/frame_chain_infer.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/frame_harvest.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/frame_infer.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/frame_records.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/ground_weapon_ammo.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/keyframe_entity_queue.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/keyframe_fullstate_loop.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/keyframe_record_walk.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/navpoint_radial_scan.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/object_deaths_march.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/objective_scan.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/offline_aim_only.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/offline_biped.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/player_table.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/player_table_record.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/player_teams.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/probe_export.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/registry.go", motif: motifBinaire, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/transloc_events.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/weapon_hits.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/zone_state_scan.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/filmdec/zoom_events.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/killsource/chunks.go", motif: motifChunk, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/killsource/feed.go", motif: motifChunk, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/killsource/film_table.go", motif: motifChunk, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/killsource/walk.go", motif: motifLecteur, lot: "2.4.2"},
-	{fichier: "internal/games/halo_infinite/film/killsource/world.go", motif: motifChunk, lot: "2.4.2"},
-	{fichier: "internal/sync/haloclient/halo_client_http.go", motif: motifInflate, lot: "2.4.2"},
 	{fichier: "internal/sync/killcollector/shots.go", motif: motifBinaire, lot: "2.5.c"},
 }
 
