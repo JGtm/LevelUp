@@ -22,7 +22,8 @@ import (
 
 // decodeKillSource décode killsource UNE SEULE FOIS par match. neutralDeaths ET killRefs en
 // dérivent tous les deux — avant le lot F.1, seul neutralDeaths décodait ; lui ajouter un
-// second appel aurait payé une DEUXIÈME fois le verrou filmdec partagé pour le même fait.
+// second appel aurait payé une DEUXIÈME fois le décodage du film pour le même fait (le verrou
+// de paquet qui le rendait coûteux a disparu au lot 2.3 ; le décodage, lui, coûte toujours).
 // nil = décodage impossible (film absent ou source non décodable), déjà journalisé ici :
 // les deux appelants n'ont qu'à tester le nil.
 //
@@ -31,6 +32,16 @@ import (
 // balayages. `film` nil (chunks illisibles, déjà journalisé par `chargerFilm`) n'est plus une
 // lecture ratée ici mais un refus en amont — `killsource.Decode` rend alors `ErrNoChunk`, et le
 // journal en Info ci-dessous reste la SEULE trace côté cuisson, au même niveau qu'avant.
+func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *killsource.Result {
+	res, err := killsource.Decode(context.Background(), matchID, film, nil)
+	if err != nil {
+		slog.Info("replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
+			"err", err, "match_id", matchID)
+		return nil
+	}
+	return res
+}
+
 // profilDeBalayageDeLaCuisson rend le PROFIL que la cuisson du rejeu doit porter apres le
 // decodage du kill-feed.
 //
@@ -53,16 +64,6 @@ func profilDeBalayageDeLaCuisson(res *killsource.Result) *filmdec.ProfilDeBalaya
 	}
 	p := killsource.ProfilDeDepart()
 	return &p
-}
-
-func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *killsource.Result {
-	res, err := killsource.Decode(context.Background(), matchID, film, nil)
-	if err != nil {
-		slog.Info("replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
-			"err", err, "match_id", matchID)
-		return nil
-	}
-	return res
 }
 
 // killRefs résout, pour chaque frag publié par killsource, l'identité du TUEUR, de l'ASSISTANT
