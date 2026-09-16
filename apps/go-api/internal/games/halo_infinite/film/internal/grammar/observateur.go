@@ -96,7 +96,7 @@ type Observation struct {
 	// (depuis `components_managed_object.go`)
 	// ManagedObjectHook, si non nil, recoit chaque lecture d'un champ de ti=10.
 	//
-	// PAS DE `present` ICI : aucun de ces composants n'a de porte de tete. Global de paquet :
+	// PAS DE `present` ICI : aucun de ces composants n'a de porte de tete.
 	ManagedObjectHook func(f ManagedObjectField, values []uint64)
 
 	// (depuis `components_managed_object.go`)
@@ -107,7 +107,7 @@ type Observation struct {
 	// ObjectiveHook, si non nil, recoit chaque lecture d'un champ publie de ti=11.
 	//
 	// PAS DE `present` ICI : aucun de ces composants n'a de porte de tete — leur presence est le bit
-	// de MASQUE, que l'appelant connait deja. Global de paquet : l'appelant detient
+	// de MASQUE, que l'appelant connait deja.
 	ObjectiveHook func(f ObjectiveField, values []uint64)
 
 	// (depuis `components_managed_property.go`)
@@ -150,21 +150,21 @@ type Observation struct {
 	// d'absence, et c'est déjà celui que le reste du paquet teste.
 	// HeldWeaponHook, si non nil, reçoit CHAQUE lecture d'i43..i46 (l'arme portée), y compris
 	// les lectures d'emplacement ABSENT (variant == noVariant) : c'est la transition
-	// présent/absent qui porte le lâcher, la retirer rendrait le signal borgne. Global de
-	// sondes (SetAbilitySetHook, SetObjectParentStateHook, SetGrenadeCountsHook).
+	// présent/absent qui porte le lâcher, la retirer rendrait le signal borgne. Même contrat que
+	// les autres sondes (SetAbilitySetHook, SetObjectParentStateHook, SetGrenadeCountsHook).
 	HeldWeaponHook func(idHigh, idLow uint32)
 
 	// (depuis `components_object_state.go`)
-	// ObjectParentStateHook, si non nil, reçoit CHAQUE lecture d'i10. Global de paquet, donc
+	// ObjectParentStateHook, si non nil, reçoit CHAQUE lecture d'i10.
 	ObjectParentStateHook func(ObjectParentState)
 
 	// (depuis `components_player.go`)
 	// PlayerStateHook, si non nil, recoit CHAQUE lecture d'un des onze composants. Meme contrat de
-	// `values` / `present` que `GameEngineHook` (cf. son commentaire). Global de paquet : l'appelant
+	// `values` / `present` que `GameEngineHook` (cf. son commentaire).
 	PlayerStateHook func(f PlayerStateField, values []uint64, present bool)
 
 	// (depuis `components_probe.go`)
-	// ProbeHook, si non nil, recoit les valeurs des composants sondes. Global de paquet :
+	// ProbeHook, si non nil, recoit les valeurs des composants sondes.
 	//
 	// PAS DE `present` ICI, a la difference des trois autres hooks : aucun des quatre composants
 	// n'a de porte de tete. Ajouter un booleen toujours vrai serait un champ qui mentirait le jour
@@ -223,7 +223,7 @@ type Observation struct {
 	GrenadeCountsHook func(count uint64, values []uint64)
 
 	// (depuis `unit_weaponstate.go`)
-	// UnitEquipmentHook, si non nil, reçoit CHAQUE lecture d'i26. Global de paquet, même contrat
+	// UnitEquipmentHook, si non nil, reçoit CHAQUE lecture d'i26. Même contrat
 	// que les autres sondes (SetAbilitySetHook, SetObjectParentStateHook).
 	UnitEquipmentHook func(UnitEquipmentRead)
 
@@ -250,8 +250,9 @@ type Observation struct {
 	//	FUN_1406d00ec = R(1)+optR(2).
 	//
 	// DesiredWeaponSetHook, si non nil, reçoit CHAQUE lecture d'i42 avec la valeur du R(3) de
-	// tête (l'emplacement d'arme désiré). Global de paquet, donc UN SEUL décodage filmdec à la
-	// fois par process — même règle que les autres sondes.
+	// tête (l'emplacement d'arme désiré). Même règle que les autres sondes : l'observateur est
+	// PORTÉ par le lecteur, et deux films se décodent donc en parallèle
+	// (`TestDeuxFilmsEnParallele`).
 	DesiredWeaponSetHook func(sel uint32)
 
 	// (depuis `unit_weaponstate.go`)

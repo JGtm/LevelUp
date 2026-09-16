@@ -560,4 +560,12 @@
 #               chemin RELATIF A LA RACINE (arbitrage du lot 2.6.0, pose pour cela).
 #               `source.Rev` NE BOUGE PAS — la couche source est une feuille, aucun de ses
 #               fichiers de production n a change. `SchemaVersion` reste 60.
-grammar-2026-09-15.37	1d40b247c4e6529a95b39452343fe13839c2b016e2c25c398a6350e8701c19ba
+#   2026-09-17  grammar-2026-09-15.38  lot 2.5.e-d (`.37` -> `.38`) : TROIS DOCS INVERSEES
+#               CORRIGEES ET UNE DECISION ECRITE, COMMENTAIRES SEULS. `observateur.go` annoncait
+#               « Global de paquet » sur sept champs et « UN SEUL decodage a la fois par
+#               process » — l inverse de l en-tete du meme fichier depuis le lot 2.3 ;
+#               `profile_globales_test.go` decrivait des globales supprimees au meme lot ;
+#               `player_table_control.go` porte desormais la decision de D3 + D8 (le controle du
+#               calibrage DECODE, donc il reste en `grammar`). Aucune ligne de code ne change :
+#               l empreinte monte parce que le hachage porte sur les OCTETS. `SchemaVersion` 60.
+grammar-2026-09-15.38	7994ce195de82e8ca161ad32cc3ccfab5969a41aa635fb906183ecaf2c4f940e

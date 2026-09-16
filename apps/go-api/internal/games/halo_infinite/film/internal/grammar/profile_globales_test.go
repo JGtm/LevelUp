@@ -10,9 +10,13 @@ package grammar
 // [TestProfilDeQuantificationChangeLaValeurRendue] — trois tests qui mesurent la LECTURE, la ou
 // celui-ci ne comparait que deux valeurs au repos.
 //
-// Le lot 2.1 resout le profil mais ne le fait lire par AUCUN lecteur de bits : les globales de
-// paquet decident encore. Ce qui rend la bascule du lot 2.2 possible sans risque, c est la
-// PREUVE que les deux disent la meme chose, bobine par bobine. Ces tests sont cette preuve.
+// POURQUOI CES TESTS ONT EXISTE, ET CE QU ILS SONT DEVENUS. Au lot 2.1, le profil etait RESOLU
+// mais lu par aucun lecteur de bits : les variables de paquet decidaient encore, et ce qui
+// rendait la bascule du lot 2.2 possible sans risque etait la PREUVE que les deux disaient la
+// meme chose, bobine par bobine. LES VARIABLES DE PAQUET N EXISTENT PLUS (lot 2.3 : le lecteur
+// PORTE son profil, `ProfilDeBalayage`), donc il n y a plus deux ecritures a confronter — ce qui
+// reste ici mesure le profil CONTRE LE FILM, et c est desormais sa seule raison d etre.
+// (Correction de doc inversee : D2 de la revue M2, appliquee au lot 2.5.e.)
 //
 // LE JOUR OU L UN D EUX ROUGIT, la question n est pas « quel test reparer » : c est que le
 // profil et le decodeur ont diverge, et l un des deux a tort.
