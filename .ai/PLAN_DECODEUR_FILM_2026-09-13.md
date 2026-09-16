@@ -4613,7 +4613,8 @@ défont par `git revert` ; avant la recuisson, tag git du binaire précédent et
       (`version_38_build_1_9_0`), `50247b26` (`version_31_sans_identification`) — corpus gate
       **14 → 17**. Les trois conditions du gate vérifiées sur pièces avant l'ajout : chunks au
       cache, manifeste de chunks, faits exportables par `levelup replay-facts-export` (27 / 27 /
-      30 joueurs). La cuisson des 17 témoins attend le signal du pilote (régime avec décodage).
+      30 joueurs). **Gate avec décodage joué le 2026-09-17 sur « voie libre » du pilote : 17/17
+      `ok`, 0 gain / 0 perte / 0 changement, schéma 60 des deux côtés, zéro `ABSENT`** (§5).
 
 #### Lot 3.3 (P2) — La liste blanche des grenades par build — M, high
 
@@ -5118,9 +5119,47 @@ témoins, dont les huit `HI_1_13_0` et `bcb6d393` : leur registre est celui de l
 | 2026-09-16 | 3.2.3 | `a7a1d8c95` | `go test -count=1 ./cmd/replay-corpus-gate/` | **ok** — `TestLoadManifestValide` relit le manifeste réel : 17 témoins, ids uniques, chaque entrée justifiée |
 | 2026-09-16 | 3.2 | `a7a1d8c95` | `go test -count=1 -run 'TestGrammarRevSuitLaGrammaire\|TestChronique' ./…/film/grammar/ -v` | **2 PASS** — `GrammarRev` n'a pas bougé (aucun octet de `film/` touché) |
 
-**Gate AVEC décodage NON JOUÉ** : la cuisson des 17 témoins (`replay-corpus-gate --base=… --parc-root … --source-root …`,
-attendu `ok` à 0/0/0 sur les trois nouveaux — même code des deux côtés, c'est un test du
-MANIFESTE, pas du décodeur) attend le « voie libre » du pilote.
+**Gate AVEC décodage JOUÉ** (« voie libre » du pilote, lancé le 2026-09-16 à 23:45, terminé le
+2026-09-17 à 00:16 — 31 min de bout en bout, 16,3 min de cuisson cumulée sur les 17 témoins,
+un seul décodage à la fois, verrou `data/cache/film_decode.lock` du parc pris et rendu à
+chaque film) :
+
+```
+go run ./cmd/replay-corpus-gate --base=e7b9bd48e \
+  --parc-root C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+  --source-root C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-32d \
+  --json <scratch>/rapport.json --work-root <scratch>/work --keep-work
+                                                    (sans --allow-missing)
+
+temoin       famille                            base(e7b9bd48e)  HEAD  gains  pertes  chang.     duree  statut
+bcb6d393     ctf_mono_manche                         60     60       0       0       0     12.51s  ok
+fb1a1a72     ctf_multi_manche                        60     60       0       0       0    1m1.39s  ok
+d9781168     oddball                                 60     60       0       0       0     27.46s  ok
+c75f33b8     assaut_bombe                            60     60       0       0       0     15.99s  ok
+bf15f7ab     slayer                                  60     60       0       0       0     14.28s  ok
+51ebbc0f     deux_manches                            60     60       0       0       0     21.33s  ok
+084a804d     vehicules                               60     60       0       0       0   2m17.28s  ok
+0797ce72     region_index_2_bits                     60     60       0       0       0     14.49s  ok
+111fa685     version_39                              60     60       0       0       0     41.81s  ok
+e5adf7b2     version_40_build_1_11                   60     60       0       0       0     46.96s  ok
+60ae07c4     version_37                              60     60       0       0       0    1m3.18s  ok
+a349fea8     version_33_sans_identification          60     60       0       0       0   2m39.98s  ok
+a521164d     version_33_build_1_4_1                  60     60       0       0       0    1m5.78s  ok
+11de8353     version_38_build_1_9_0                  60     60       0       0       0     56.02s  ok
+50247b26     version_31_sans_identification          60     60       0       0       0   1m33.61s  ok
+bfecd02b     vehicules_v41_utilisateur               60     60       0       0       0     22.12s  ok
+4f77afc1     equipement_origine_utilisateur          60     60       0       0       0    2m2.85s  ok
+EXIT=0
+```
+
+**17/17 `ok`, 0 gain / 0 perte / 0 changement, schéma 60 des deux côtés**, `couverture_incomplete:
+false` et zéro `ABSENT` / `ERREUR` dans le rapport JSON. C'est exactement ce que ce gate-ci devait
+prouver : le lot ne touche aucun octet du décodeur, donc **le manifeste grossi de trois entrées ne
+change rien à ce qui est cuit**, et les trois grammaires neuves (`HI_1_4_1`, `HI_1_9_0`, majeure 31
+sans section) sont désormais gardées contre toute régression future. Les trois nouveaux témoins
+sont aussi les plus lents de leur classe sur la cuisson de base (`a521164d` 1m05, `11de8353` 56 s,
+`50247b26` 1m33) — le corpus passe de ~14 min à ~16 min de cuisson cumulée, à retenir pour le
+budget des gates de 3.3 et 3.4.
 
 ### Lot 2.6 (M2, pas 6) — volet FACTS + SOURCE, SANS AUCUN DÉCODAGE, 2026-09-16
 
