@@ -8842,14 +8842,6 @@
 {"Time":"2026-06-26T23:45:38.9062529+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilterCommendationsByCategory_NoMatch","Output":"=== RUN   TestFilterCommendationsByCategory_NoMatch\n"}
 {"Time":"2026-06-26T23:45:38.9062529+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilterCommendationsByCategory_NoMatch","Output":"--- PASS: TestFilterCommendationsByCategory_NoMatch (0.00s)\n"}
 {"Time":"2026-06-26T23:45:38.9062529+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilterCommendationsByCategory_NoMatch","Elapsed":0}
-{"Time":"2026-06-26T23:45:38.9062529+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestFileExists_Exists"}
-{"Time":"2026-06-26T23:45:38.9062529+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFileExists_Exists","Output":"=== RUN   TestFileExists_Exists\n"}
-{"Time":"2026-06-26T23:45:38.9078649+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFileExists_Exists","Output":"--- PASS: TestFileExists_Exists (0.00s)\n"}
-{"Time":"2026-06-26T23:45:38.9078649+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestFileExists_Exists","Elapsed":0}
-{"Time":"2026-06-26T23:45:38.9078649+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestFileExists_NotExists"}
-{"Time":"2026-06-26T23:45:38.9078649+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFileExists_NotExists","Output":"=== RUN   TestFileExists_NotExists\n"}
-{"Time":"2026-06-26T23:45:38.9083789+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFileExists_NotExists","Output":"--- PASS: TestFileExists_NotExists (0.00s)\n"}
-{"Time":"2026-06-26T23:45:38.9083789+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestFileExists_NotExists","Elapsed":0}
 {"Time":"2026-06-26T23:45:38.9083789+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestResolveCapturesDir_WithTitle"}
 {"Time":"2026-06-26T23:45:38.9083789+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestResolveCapturesDir_WithTitle","Output":"=== RUN   TestResolveCapturesDir_WithTitle\n"}
 {"Time":"2026-06-26T23:45:38.9083789+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestResolveCapturesDir_WithTitle","Output":"--- PASS: TestResolveCapturesDir_WithTitle (0.00s)\n"}
@@ -10109,11 +10101,6 @@
 {"Time":"2026-06-26T23:45:41.0174482+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSetupHandler_CreatePlayer_ManualMode_OK","Output":"=== RUN   TestSetupHandler_CreatePlayer_ManualMode_OK\n"}
 {"Time":"2026-06-26T23:45:41.0404632+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSetupHandler_CreatePlayer_ManualMode_OK","Output":"--- PASS: TestSetupHandler_CreatePlayer_ManualMode_OK (0.02s)\n"}
 {"Time":"2026-06-26T23:45:41.0404632+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestSetupHandler_CreatePlayer_ManualMode_OK","Elapsed":0.02}
-{"Time":"2026-06-26T23:45:41.0404632+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestSetupHandler_CreatePlayer_ProfileServiceError"}
-{"Time":"2026-06-26T23:45:41.0404632+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSetupHandler_CreatePlayer_ProfileServiceError","Output":"=== RUN   TestSetupHandler_CreatePlayer_ProfileServiceError\n"}
-{"Time":"2026-06-26T23:45:41.0420164+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSetupHandler_CreatePlayer_ProfileServiceError","Output":"2026/06/26 23:45:41 ERROR setup.CreatePlayer: failed gamertag=TestGT err=\"disk full\"\n"}
-{"Time":"2026-06-26T23:45:41.0425367+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSetupHandler_CreatePlayer_ProfileServiceError","Output":"--- PASS: TestSetupHandler_CreatePlayer_ProfileServiceError (0.00s)\n"}
-{"Time":"2026-06-26T23:45:41.0425367+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestSetupHandler_CreatePlayer_ProfileServiceError","Elapsed":0}
 {"Time":"2026-06-26T23:45:41.0425367+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestSyncHandler_InitialSync_NoTokens"}
 {"Time":"2026-06-26T23:45:41.0425367+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSyncHandler_InitialSync_NoTokens","Output":"=== RUN   TestSyncHandler_InitialSync_NoTokens\n"}
 {"Time":"2026-06-26T23:45:41.0461391+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSyncHandler_InitialSync_NoTokens","Output":"2026/06/26 23:45:41 INFO sync_handler: StartInitialSync démarré player_slug=test-player title_slug=halo_infinite max_matches=100 event=http.sync.initial:test-player:2d01884ca28ac1a9\n"}

@@ -48,6 +48,15 @@
 # contrôle de présence ne les voyait pas, leur retrait ne relâche donc rien — il
 # garde seulement la baseline en phase avec l'arbre.
 #
+# RETRAIT DU 2026-09-16 (lot annuaire des joueurs, ADR 0035, commit 53d19824c) : 3 tests de
+# `internal/api/handlers` retirés — TestFileExists_Exists, TestFileExists_NotExists et
+# TestSetupHandler_CreatePlayer_ProfileServiceError. Le lot a fait d Onboard le SEUL chemin de
+# création de profil : le mockProfileService et le test d erreur du ProfileService côté
+# handler n ont plus d objet (remplacés par TestSetupHandler_CreatePlayer_ViaAnnuaire /
+# _SansAnnuaire, présents dans le run courant), et les deux TestFileExists suivaient le
+# helper supprimé. 13 lignes JSONL, exactement 3 paires (Package, Test), vérifié par
+# différence avant/après. Compte PARTIEL d absences volontaires → remède prescrit ici même.
+#
 # Le contrôle 2 a été ajouté le 2026-07-26 : le `|| true` sur le `go test -json`
 # (nécessaire pour pouvoir analyser le JSONL même quand la suite échoue) rendait
 # le gate MENTEUR — un test FAIL était compté comme « présent » par le contrôle 1
