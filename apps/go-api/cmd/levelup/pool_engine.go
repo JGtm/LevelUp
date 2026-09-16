@@ -103,6 +103,10 @@ func newPooledEngine(
 // newPooledEngineForPlayer : pool + moteur poolé pour une commande MONO-JOUEUR. Rend aussi
 // le fermeur du pool, que l'appelant doit `defer`.
 //
+// `rps` = 0 laisse le défaut du pool (1 requête/s PAR TOKEN, donc `1 × taille du parc` au
+// total). C'est la posture du projet, celle de `sync-delta --all` : le débit vient du nombre
+// de jetons, pas d'un seul jeton poussé plus fort.
+//
 // Le joueur visé n'a pas besoin d'un token propre : le pool sert ses endpoints publics avec
 // n'importe quel token du parc (D1). Un parc SANS aucun token reste une erreur — il n'y a
 // alors plus personne pour parler à l'API.

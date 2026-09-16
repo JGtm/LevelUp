@@ -220,14 +220,14 @@ Infinite, `grep "PlayerCount ="` → seulement `halo_5/ingest/collect.go`, `open
 
 ## 7. Étape 4 — Clôture
 
-- [ ] 4.1 Gates complets : `cd apps/go-api && go build ./... && go vet ./... && go test ./... -timeout 30m` → 0 ;
+- [x] 4.1 Gates complets : `cd apps/go-api && go build ./... && go vet ./... && go test ./... -timeout 30m` → 0 ;
       `go test -tags=integration -p 1 ./... -timeout 30m` → 0 (codes de sortie vérifiés, pas la
       sortie filtrée ; un paquet en FAIL sans `--- FAIL:` se rejoue seul).
-- [ ] 4.2 `.ai/thought_log.md` : entrée `[2026-09-16]` Complété (constats D-A/B/C, décisions,
+- [x] 4.2 `.ai/thought_log.md` : entrée `[2026-09-16]` Complété (constats D-A/B/C, décisions,
       gates, ce qui n'a pas été fait).
-- [ ] 4.3 `docs/COMMANDS.md` FR + EN (2.9) relus ; `internal/platform/auth/pool/README.md` à jour.
-- [ ] 4.4 Revue adversariale (pilote, 2 relecteurs : auth/pool + sync/migration) et CI : `[~]`.
-- [ ] 4.5 Aucun push, aucun merge : décision utilisateur.
+- [x] 4.3 `docs/COMMANDS.md` FR + EN (2.9) relus ; `internal/platform/auth/pool/README.md` à jour.
+- [~] 4.4 Revue adversariale (pilote, 2 relecteurs : auth/pool + sync/migration) et CI : `[~]`.
+- [~] 4.5 Aucun push, aucun merge : décision utilisateur.
 
 Journal de phase : section « Avancement » en fin de fichier (date, étape, gate + code de
 sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans le worktree.
@@ -399,3 +399,36 @@ touche les mêmes fichiers ; le gate complet de l'étape 4 rejoue tout.
 → **0**, 3 paquets `ok` ; `go test -tags=integration -p 1 ./internal/persist/... ./internal/migration/... -timeout 30m`
 → **0**, 2 paquets `ok` (persist 48 s). Garde-rail ART rejoué séparément : `go test ./internal/sync/ -run ART…`
 → **0**.
+
+### Étape 4 — Clôture — 2026-09-16 14:20 — CLOSE
+
+- 4.1 `[x]` Gates complets, codes de sortie relevés (pas la sortie filtrée) :
+  `go build ./...` → **0** ; `go vet ./...` → **0** ;
+  `go test ./... -timeout 30m` → **0**, **180 paquets `ok`**, zéro `--- FAIL`, zéro `FAIL` ;
+  `go test -tags=integration -p 1 ./... -timeout 30m` → **0**, **181 paquets `ok`** (`-p 1` non
+  négociable, respecté). Aucun paquet n'a eu à être rejoué seul.
+- 4.2 `[x]` Entrée `.ai/thought_log.md` `[2026-09-16]`, statut Complété : les trois constats
+  D-A/D-B/D-C, la décision D1, les écarts (étape post-sync carrière découplée ; `ALTER COLUMN`
+  admis sur table indexée), les gates avec leurs chiffres, et ce qui n'a PAS été fait.
+- 4.3 `[x]` `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` relus côte à côte (même contenu, deux
+  langues, même commit à l'étape 2) ; section « Callers » du README du pool relue — elle liste
+  les six appelants, leur politique et l'unique exemption, et rappelle l'état d'avant.
+- 4.4 `[~]` Revue adversariale (2 relecteurs : auth/pool, sync/migration) et CI — **au pilote**,
+  hors périmètre de l'exécutant (ajustement du pilote, 2026-09-16).
+- 4.5 `[~]` Aucun push, aucun merge, aucun changement de branche — **décision utilisateur**. Les
+  5 commits restent sur `wt/sync-pool`.
+
+**Note de finition** : le choix `rps = 0` (défaut du pool, 1 requête/s PAR TOKEN) pour les
+backfills CSR passés au pool est documenté en commentaire dans `pool_engine.go` — l'ancien chemin
+poussait UN jeton à 5 rps, le nouveau tient `1 × taille du parc`, ce qui est la posture du projet
+(celle de `sync-delta --all`).
+
+### Récapitulatif des commits (branche `wt/sync-pool`, base `feat/v75` @ e4a313311)
+
+| Étape | Commit | Objet |
+|---|---|---|
+| — | `31483cb9a` | `docs(plan)` — le plan lui-même |
+| 1 | `ebba6f5d4` | `feat(sync)` — seams title-owned câblés par toutes les CLI |
+| 2 | `e0f42be18` | `feat(sync)` — le pool sert tout profil suivi |
+| 3 | `2d51b80ec` | `fix(schema)` — `match_registry` team scores en INTEGER |
+| 4 | (ce commit) | `chore(plan)` — journal, clôture, note de finition |

@@ -1,3 +1,66 @@
+## [2026-09-16] Sync d'un profil sans token propre : pool partout, seams title-owned câblés par toutes les CLI, dérive de schéma `match_registry` — Complété (branche `wt/sync-pool`, non poussée)
+
+**Trois défauts distincts, tous rencontrés sur la même passe** (premier sync d'un profil suivi
+sans token propre, Nuzzles, 2 023 matchs en 65 min). Plan exécuté :
+`.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md`, quatre étapes, quatre commits.
+
+**D-A — le pool sert tout le monde, sauf là où trois appelants disaient le contraire.** Le pool
+de tokens est conçu pour servir n'importe quel joueur sur les endpoints publics
+(`PolicyAnyPublic` : historique, stats, films, CSR) et ne réserver au propriétaire que les
+endpoints privacy-gated (`PolicyPinnedPlayer` : rang de carrière, personnalisation Spartan). Or
+`sync-delta --all`, `sync-full --all` et le cycle d'auto-sync court-circuitaient la doctrine avec
+`if !pool.HasPlayer(gt) { skip }` — un profil suivi sans refresh token propre était sauté EN
+BLOC, à vie —, et la CLI mono-joueur exigeait carrément le token du joueur visé
+(`haloTokensForPlayer`, 9 appelants). **Décision D1** : un profil suivi se synchronise par le
+pool ; la dégradation est PAR ENDPOINT, pas par joueur. Les 9 appelants sont passés au pool et
+`haloTokensForPlayer` est supprimée (0 code mort) ; la précondition du scheduler disparaît ; le
+cron Spartan garde son `HasPlayer` avec une exemption datée, gardée par un ratchet à une entrée.
+`sync.ErrNoPinnedToken` remplace le `(nil, nil)` muet de `GetCareerRank` — un skip silencieux est
+indistinguable d'un joueur sans progression, et c'est exactement ce qui avait caché le trou.
+
+**Écart consigné sur D-A** : le plan plaçait le WARN de dégradation dans « l'étape post-sync
+carrière ». Vérification sur pièces : cette étape n'existe plus, elle est DÉCOUPLÉE depuis le
+2026-05-14 (`engine_postsync.go` section 3 ; le flux XP + Spartan ID est servi par
+`service.CareerLiveService`). Le WARN est donc posé sur `syncCareerRank`, seul consommateur de
+`GetCareerRank` dans le paquet.
+
+**D-B — huit seams title-owned câblés par un seul binaire sur trente-deux.** `cmd/server` posait
+le provider d'étapes de migration, la racine des jalons h5, les traductions de rangs et les
+quatre classifiers (LUSR et famille objectif, défaut + variante h5). Aucune CLI ne posait les
+classifiers : tout `sync-delta`/`sync-full` en ligne de commande rendait
+`post-sync: PANIC récupéré … classifier LUSR non câblé` (fail-loud MT-15) puis
+`perf_scores=0 lusr=0 citations=0 dominance=0` sur toute la passe — les `backfill` masquaient le
+trou en recalculant après coup. Nouveau paquet `internal/games/titleseams` :
+`RegisterAll(prestigeConfigDir)`, zéro logique, appelé par les 32 binaires de `cmd/` qui
+importent le moteur. **Découverte du ratchet** : 9 binaires posaient déjà des classifiers à la
+main et 7 d'entre eux SANS les variantes par titre — tous les modes Halo 5 y collapsaient dans
+`arena_slayer`, en silence. Deux ratchets archlint à allowlist vide ferment les deux sens.
+
+**D-C — une DDL peut mentir, et `CREATE TABLE IF NOT EXISTS` ne le répare jamais.** Le code
+déclarait `match_registry.team_{0,1}_score INTEGER` ; les bases réelles, créées par une DDL
+antérieure, portaient SMALLINT. Deux matchs de Baptême du feu ont été REJETÉS à l'INSERT
+(`Type INT64 with value 120267 … INT16`) : un score d'équipe dépasse 32 767. Un match rejeté du
+registre est perdu POUR TOUS LES JOUEURS. Étape idempotente `widen_match_registry_team_scores`,
+helper `migration.AlterColumnTypeIfNeeded`, DDL de secours et fixture de test alignées, et un
+ratchet qui compare colonne à colonne les DEUX déclarations de `match_registry`. **Question ART
+tranchée sur pièces** : `ALTER COLUMN … SET DATA TYPE` sur une table portant sa PK (index ART)
+passe en DuckDB 1.5.5 embarquée — test sur la DDL legacy avec contrôle négatif —, la recette de
+reconstruction de l'ADR 0026 n'a pas été nécessaire.
+
+**Résultats observés (gates, codes de sortie vérifiés)** : `go build ./...` et `go vet ./...` → 0 ;
+`go test ./... -timeout 30m` → 0, **180 paquets `ok`** ; `go test -tags=integration -p 1 ./... -timeout 30m`
+→ 0, **181 paquets `ok`**. Quatre mutations vérifiées à la main (le test du câblage CLI, les
+deux ratchets, le ratchet de DDL) : chacune fait rougir le garde-rail avant d'être restaurée.
+Trois tests du scheduler ont été RETOURNÉS, aucun supprimé en silence, chacun documenté dans son
+en-tête.
+
+**Conclusion / prochaine étape** : branche `wt/sync-pool` prête, 4 commits, rien de poussé, rien
+de fusionné. Restent au pilote la revue adversariale (deux relecteurs : auth/pool, puis
+sync/migration) et la CI. Ensuite seulement, la reprise du sync de Nuzzles (annexe A du plan) :
+`replay_build_location` est à `off` depuis le 2026-09-16 et doit revenir à `local` après la
+cuisson ; les deux matchs rejetés rentreront d'eux-mêmes grâce à l'étape 3. Aucune base sous
+`data/` n'a été ouverte pendant tout le chantier.
+
 ## [2026-09-14] Captures README prises (21 pages, anglais, données réelles) + corrections SPNKr et remerciements — Complété (feat/v75, non commité)
 
 **Le mur d'authentification n'en était pas un.** Premier diagnostic erroné de ma part : j'avais conclu qu'une capture headless exigeait un `storageState` produit par l'utilisateur. La vraie cause est une seule variable. `__root.tsx` éjecte vers `/login` quand `auth_mode` vaut `password` ou `xbox` et que `current_username` est nul — or un contexte Playwright neuf n'a pas de cookie. **`LEVELUP_AUTH_MODE=none`** (le défaut du code, mais pas de ce poste) supprime la redirection, et `middleware.RequireAuth` laisse déjà passer en conséquence. Deux autres pièges franchis avant d'y arriver : l'origine CSRF est comparée en **égalité stricte** (`isAllowedOrigin`) — `http://127.0.0.1:8010` est refusée là où `http://localhost:8010` passe — et le mode démo seul ne suffit pas (`LEVELUP_WEB_DIST` sert le front en même origine, comme le service `levelup-demo` de docker-compose).
