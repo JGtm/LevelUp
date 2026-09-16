@@ -83,7 +83,7 @@ func projOwnerCollect(t *testing.T, dir string, reg *Registry, n int) projOwnerC
 			curTS = pk.TimestampUS
 			switch {
 			case pay[0]&0x40 == 0:
-				br := NewBitReader(pay)
+				br := lecteurDInstrument(pay)
 				curBR = br
 				recs, _ := DecodeFrameRecords(br, w, cfg)
 				projOwnerHarvestKills(recs, pk.TimestampUS, &out)
@@ -114,7 +114,7 @@ func projOwnerHarvestKills(recs []FrameRecord, ts uint64, out *projOwnerColl) {
 // projOwnerHarvestDamage compte les damage_aftermath a responsable non-bipede (candidat
 // explosif) et, parmi eux, ceux dont ref1 resout a un slot ti=41 vivant (pont M3).
 func projOwnerHarvestDamage(pay []byte, w *World, out *projOwnerColl) {
-	br := NewBitReader(pay)
+	br := lecteurDInstrument(pay)
 	br.Skip(2)
 	if br.ReadBits(7) != 0 {
 		return

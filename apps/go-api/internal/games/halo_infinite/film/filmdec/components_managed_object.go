@@ -73,15 +73,11 @@ func (f ManagedObjectField) String() string {
 	return champInconnu
 }
 
-// SetManagedObjectHook installe (ou retire, avec nil) la sonde des composants de ti=10.
-func SetManagedObjectHook(h func(f ManagedObjectField, values []uint64)) {
-	observateur.ManagedObjectHook = h
-}
-
-func publishManagedObject(f ManagedObjectField, values ...uint64) {
-	if observateur.ManagedObjectHook != nil {
-		observateur.ManagedObjectHook(f, values)
+func (o *Observation) publishManagedObject(f ManagedObjectField, values ...uint64) {
+	if o == nil || o.ManagedObjectHook == nil {
+		return
 	}
+	o.ManagedObjectHook(f, values)
 }
 
 // consumeManagedObjectBoundaryColor (ti=10 i1) — lecteur `FUN_142ed52b4`.
@@ -98,7 +94,7 @@ func consumeManagedObjectBoundaryColor(br *BitReader) {
 	g := br.ReadBits(8)
 	b := br.ReadBits(8)
 	a := br.ReadBits(8)
-	publishManagedObject(ManagedObjectBoundaryColor, r, g, b, a)
+	br.obs.publishManagedObject(ManagedObjectBoundaryColor, r, g, b, a)
 }
 
 // consumeManagedObjectRTPC (ti=10 i26..i29) — lecteur `FUN_140796d38`.
@@ -122,10 +118,10 @@ func consumeManagedObjectBoundaryColor(br *BitReader) {
 func consumeManagedObjectRTPC(br *BitReader) {
 	id := br.ReadBits(32)
 	if id == 0 {
-		publishManagedObject(ManagedObjectRTPC, id)
+		br.obs.publishManagedObject(ManagedObjectRTPC, id)
 		return
 	}
-	publishManagedObject(ManagedObjectRTPC, id, br.ReadBits(22))
+	br.obs.publishManagedObject(ManagedObjectRTPC, id, br.ReadBits(22))
 }
 
 // ManagedObjectRTPCValue dequantifie la valeur d'un canal RTPC (22 bits) dans sa plage
@@ -157,19 +153,11 @@ func (f NavpointField) String() string {
 	return champInconnu
 }
 
-// SetNavpointHook installe (ou retire, avec nil) la sonde des composants de ti=12.
-//
-// UN HOOK SEPARE DE CELUI DE ti=10, et non un champ de plus dans `ManagedObjectField` : les deux
-// archetypes sont distincts (`managed-object-*` contre `managed-navpoint-*`), leurs slots sont
-// disjoints, et un consommateur qui suit une zone n'ecoute pas les memes objets qu'un
-// consommateur qui suit un marqueur. C'est le modele deja etabli par le paquet — un hook nomme
-// par famille d'archetype (`GameEngineField`, `EquipmentField`, `ManagedObjectField`).
-func SetNavpointHook(h func(f NavpointField, values []uint64)) { observateur.NavpointHook = h }
-
-func publishNavpoint(f NavpointField, values ...uint64) {
-	if observateur.NavpointHook != nil {
-		observateur.NavpointHook(f, values)
+func (o *Observation) publishNavpoint(f NavpointField, values ...uint64) {
+	if o == nil || o.NavpointHook == nil {
+		return
 	}
+	o.NavpointHook(f, values)
 }
 
 // consumeNavpointRadialProgress (ti=12 i14) — lecteur `FUN_140fc8d14`.
@@ -184,7 +172,7 @@ func publishNavpoint(f NavpointField, values ...uint64) {
 // 1,2 % — et centree sur le quantum 128, qui est le ZERO de la plage [-1, +1] ; les valeurs
 // dominantes sont espacees d'environ 3. C'est une RAMPE, pas un enumere.
 func consumeNavpointRadialProgress(br *BitReader) {
-	publishNavpoint(NavpointRadialProgress, br.ReadBits(8))
+	br.obs.publishNavpoint(NavpointRadialProgress, br.ReadBits(8))
 }
 
 // NavpointRadialProgressValue dequantifie la progression radiale (8 bits) dans sa plage

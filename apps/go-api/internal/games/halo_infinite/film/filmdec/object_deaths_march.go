@@ -165,7 +165,7 @@ func marchLocate(pay []byte, w *World, cfg FrameConfig) int {
 func marchRecordsOf(pay []byte, w *World, cfg FrameConfig, start int) []FrameRecord {
 	snap := w.Snapshot()
 	br := NewBitReader(pay)
-	br.PoserProfil(cfg.Profil)
+	br.poserCadre(cfg)
 	br.Skip(start)
 	var recs []FrameRecord
 	for v := 0; v < marchViews && br.Remaining() >= 8; v++ {

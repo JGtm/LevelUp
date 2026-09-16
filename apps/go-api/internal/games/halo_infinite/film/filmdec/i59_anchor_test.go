@@ -214,7 +214,7 @@ func i59aWalkTo(pay []byte, i0, total int, idx []int, s eaFilmSetup, target int)
 		if name == "" {
 			return 0, false
 		}
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
 		br.PoserProfil(profilDeCarte(s.lay))
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), s.arch.Level(id))
@@ -233,6 +233,7 @@ func i59aWalkFull(pay []byte, i0, total int, idx []int, s eaFilmSetup,
 	// d'i59 ne touche que CE balayage.
 	prof := profilDeCarte(s.lay)
 	prof.Grammaire.CorpsAncrageCapacite = corpsPorte
+	ctx := ContexteDeLecture{Profil: prof, Obs: observateur}
 	at := i0 + s.lay.TotalBits() + i0TailBits
 	for _, id := range idx[1:] {
 		if at > total {
@@ -242,8 +243,8 @@ func i59aWalkFull(pay []byte, i0, total int, idx []int, s eaFilmSetup,
 		if name == "" {
 			return at, fmt.Sprintf("i%d(sans nom au registre)", id), false
 		}
-		br := NewBitReader(pay)
-		br.PoserProfil(prof)
+		br := lecteurDInstrument(pay)
+		br.PoserContexte(ctx)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), s.arch.Level(id))
 		if !ported || br.BitPos() > total {

@@ -134,8 +134,8 @@ func scanEquipmentRecovery(s abilityScanSetup, wins []equipRecoveryWindow) []equ
 			cMax = w.chunkMax
 		}
 	}
-	last, restore := equipRecoveryHook()
-	defer restore()
+	last, obs := equipRecoveryHook()
+	s.gram.obs = obs
 	for c := cMin; c <= cMax; c++ {
 		active := windowsOfChunk(wins, c)
 		if len(active) == 0 {
@@ -170,24 +170,24 @@ func windowsOfChunk(wins []equipRecoveryWindow, c int) []*equipRecoveryWindow {
 	return out
 }
 
-// equipRecoveryHook installe la sonde i48 du déserialiseur de production et rend (capture,
-// restauration) — même geste que walkAbilityEmissionsWith : le hook EST la grammaire, on ne
-// relit pas les bits à côté de lui.
+// equipRecoveryHook construit l OBSERVATEUR du balayage, avec la sonde i48 du déserialiseur de
+// production, et rend (capture, observateur) — même geste que walkAbilityEmissionsWith : le hook
+// EST la grammaire, on ne relit pas les bits à côté de lui.
 func equipRecoveryHook() (*struct {
 	counter uint32
 	rank    int
 	got     bool
-}, func()) {
+}, *Observation) {
 	last := &struct {
 		counter uint32
 		rank    int
 		got     bool
 	}{}
-	prev := observateur.AbilitySetHook
-	SetAbilitySetHook(func(counter uint64, rank, _ int) {
+	obs := NouvelleObservation()
+	obs.AbilitySetHook = func(counter uint64, rank, _ int) {
 		last.counter, last.rank, last.got = uint32(counter), rank, true
-	})
-	return last, func() { SetAbilitySetHook(prev) }
+	}
+	return last, obs
 }
 
 // scanEquipRecoveryPacket balaye un paquet position de bit par position de bit, SANS saut

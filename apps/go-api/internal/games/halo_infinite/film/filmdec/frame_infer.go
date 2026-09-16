@@ -17,7 +17,7 @@ package filmdec
 // successor. Falls back to a desync (returns) when inference is ambiguous/none.
 func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int) {
 	br := NewBitReader(buf)
-	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	out, inferred, _ := decodeInferLoop(br, buf, w, cfg)
 	return out, inferred
 }
@@ -161,10 +161,6 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 // aucun appelant. La table reste nil, c est-a-dire pas de recuperation par resync valide.
 var inferResyncTargets map[uint32]bool
 
-// InferResyncCount returns the number of validated-resync recoveries performed. Compteur de
-// l OBSERVATEUR depuis le lot 2.2.f.
-func InferResyncCount() int { return observateur.ResyncValides }
-
 // validatedResync scans buf forward from bit `from` for the first landing where a
 // clean delta on a target slot decodes AND the chain walker confirms that decoding
 // continues cleanly from just after it (reaching a hard-bound clean delta or a flush
@@ -174,9 +170,7 @@ func InferResyncCount() int { return observateur.ResyncValides }
 // coincidental target-slot delta that does not lead to sustained clean decode is
 // rejected — the discriminator raw resync lacked.
 func validatedResync(buf []byte, from int, w *World, cfg FrameConfig) (int, bool) {
-	savedPos, savedRef := observateur.PosCaptureHook, observateur.UnitRefHook
-	observateur.PosCaptureHook, observateur.UnitRefHook = nil, nil
-	defer func() { observateur.PosCaptureHook, observateur.UnitRefHook = savedPos, savedRef }()
+	defer cfg.Obs.neutraliserCaptures()()
 
 	frameLen := len(buf) * 8
 	c := &chainCtx{buf: buf, frameLen: frameLen, w: w, cfg: cfg,
@@ -193,7 +187,7 @@ func validatedResync(buf []byte, from int, w *World, cfg FrameConfig) (int, bool
 			return 0, false
 		}
 		if c.confirmChainAt(after, chainMaxDepth-1, chainMaxRecords) {
-			obsDuCadre(cfg).ResyncValides++
+			cfg.Obs.compterResyncValide()
 			return b, true
 		}
 	}
@@ -229,22 +223,19 @@ const inferRequireBoundSuccessor = true
 const inferRepair = false
 
 func inferUnboundArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (uint32, int, bool) {
-	saved := observateur.PosCaptureHook
-	// `observateur.UnitRefHook` rejoint la liste POUR LA MÊME RAISON que `observateur.PosCaptureHook` : ce qui suit
-	// est une lecture SPÉCULATIVE (chaque archétype du registre est essayé sur les mêmes
-	// bits), et une lecture spéculative n'est pas une lecture. Sans cette mise à nil, les
-	// tentatives abandonnées déposent des valeurs à des positions que la traversée retenue
-	// ne lit jamais — elles seraient attribuées à un composant au hasard.
-	savedRef := observateur.UnitRefHook
-	observateur.PosCaptureHook, observateur.UnitRefHook = nil, nil
-	defer func() { observateur.PosCaptureHook, observateur.UnitRefHook = saved, savedRef }()
+	// LES DEUX CROCHETS SONT NEUTRALISES POUR LA DUREE DES ESSAIS : ce qui suit est une lecture
+	// SPECULATIVE (chaque archetype du registre est essaye sur les memes bits), et une lecture
+	// speculative n est pas une lecture. Sans cette neutralisation, les tentatives abandonnees
+	// deposent des valeurs a des positions que la traversee retenue ne lit jamais — elles
+	// seraient attribuees a un composant au hasard.
+	defer cfg.Obs.neutraliserCaptures()()
 
 	var winTi uint32
 	winEnd, matches := -1, 0
 	for ti := range w.Reg.Archetypes {
 		arch := w.Reg.Archetypes[ti]
 		br := NewBitReader(buf)
-		br.PoserProfil(cfg.Profil)
+		br.poserCadre(cfg)
 		br.Skip(bitpos) // bitpos = delta body start (mask), already past type+id
 		t := decodeDeltaWithArch(br, arch, uint32(ti))
 		if t.DesyncAt != -1 {

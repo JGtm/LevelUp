@@ -139,7 +139,7 @@ const keyframeWalkBudget = 2 * kfTableCap
 //
 // LE PROFIL DE BALAYAGE EST UN PARAMETRE (lot 2.3) : c'est par lui que les largeurs du film
 // descendent jusqu'aux feuilles.
-func WalkKeyframeRecords(pay []byte, reg *Registry, prof ProfilDeBalayage) ([]KeyframeWalkRec, KeyframeWalkStop) {
+func WalkKeyframeRecords(pay []byte, reg *Registry, ctx ContexteDeLecture) ([]KeyframeWalkRec, KeyframeWalkStop) {
 	total := len(pay) * 8
 	out := make([]KeyframeWalkRec, 0, 512)
 	pos, prevSlot := keyframePrefixBits, -1
@@ -160,7 +160,7 @@ func WalkKeyframeRecords(pay []byte, reg *Registry, prof ProfilDeBalayage) ([]Ke
 		if h.Slot <= prevSlot {
 			return out, KeyframeStopSlot
 		}
-		rec, stop, done := walkOneKeyframeRecord(pay, reg, pos, h, prof)
+		rec, stop, done := walkOneKeyframeRecord(pay, reg, pos, h, ctx)
 		out = append(out, rec)
 		if done {
 			return out, stop
@@ -173,11 +173,11 @@ func WalkKeyframeRecords(pay []byte, reg *Registry, prof ProfilDeBalayage) ([]Ke
 // eventuelle et un booleen d'arret. Extrait de `WalkKeyframeRecords` pour tenir le seuil de
 // 80 lignes par fonction.
 func walkOneKeyframeRecord(pay []byte, reg *Registry, pos int, h KeyframeHeader,
-	prof ProfilDeBalayage) (
+	ctx ContexteDeLecture) (
 	KeyframeWalkRec, KeyframeWalkStop, bool,
 ) {
 	br := NewBitReader(pay)
-	br.PoserProfil(prof)
+	br.PoserContexte(ctx)
 	br.SetBitPos(pos + keyframeRecordTIBit)
 	tr := TraverseEntity(br, reg, 0)
 	rec := KeyframeWalkRec{
@@ -221,7 +221,7 @@ const keyframeChainMax = 16
 //
 // Le PROFIL DE BALAYAGE vient de l'appelant (lot 2.3).
 func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int,
-	prof ProfilDeBalayage) KeyframeChainResult {
+	ctx ContexteDeLecture) KeyframeChainResult {
 	total := len(pay) * 8
 	res := KeyframeChainResult{Stop: KeyframeStopEnd}
 	pos := from
@@ -243,7 +243,7 @@ func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int,
 			res.Stop = KeyframeStopSlot
 			return res
 		}
-		rec, stop, done := walkOneKeyframeRecord(pay, reg, pos, h, prof)
+		rec, stop, done := walkOneKeyframeRecord(pay, reg, pos, h, ctx)
 		if done {
 			res.Stop = stop
 			return res

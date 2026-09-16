@@ -26,6 +26,10 @@ type BitReader struct {
 	// commence, a quel slot il appartient, et le monde sur lequel les positions
 	// s accumulent. Cf. [captureDePosition] — six variables de paquet jusqu au lot 2.3.
 	cap captureDePosition
+	// obs est l OBSERVATEUR de ce lecteur (lot 2.3), ou nil — le cas de la PRODUCTION,
+	// qui n observe rien. Il ne change AUCUNE consommation de bits : c est la propriete
+	// qui le distingue du profil (cf. l en-tete de `observateur.go`).
+	obs *Observation
 }
 
 // NewBitReader returns a reader positioned at the first bit of buf.
@@ -49,6 +53,38 @@ func (b *BitReader) PoserProfil(p ProfilDeBalayage) ProfilDeBalayage {
 
 // Profil rend le profil de balayage que ce lecteur porte.
 func (b *BitReader) Profil() ProfilDeBalayage { return b.p }
+
+// PoserObservation installe l observateur de ce lecteur et rend le precedent. `nil` = personne
+// n observe, et c est le cas de la production.
+func (b *BitReader) PoserObservation(o *Observation) *Observation {
+	prev := b.obs
+	b.obs = o
+	return prev
+}
+
+// Observation rend l observateur que ce lecteur porte, ou nil.
+func (b *BitReader) Observation() *Observation { return b.obs }
+
+// PoserContexte installe SUR CE LECTEUR le profil et l observateur d un balayage, d un seul
+// geste — aucune des deux moities ne peut etre oubliee.
+func (b *BitReader) PoserContexte(c ContexteDeLecture) {
+	b.p = c.Profil
+	b.obs = c.Obs
+}
+
+// Contexte rend ce que ce lecteur porte.
+func (b *BitReader) Contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: b.p, Obs: b.obs}
+}
+
+// poserCadre installe SUR CE LECTEUR tout ce que le cadre d un balayage porte : le profil (qui
+// DECIDE des largeurs) et l observateur (qui ne fait que RECEVOIR). Les portes de balayage
+// passent par la — un lecteur construit au milieu d une marche hérite ainsi des deux d un seul
+// geste, et aucune des deux moities ne peut etre oubliee.
+func (b *BitReader) poserCadre(cfg FrameConfig) {
+	b.p = cfg.Profil
+	b.obs = cfg.Obs
+}
 
 // cadre rend le CADRE d image-cle d etat complet que ce lecteur porte : l en-tete par entite,
 // la largeur d un mot de taille, et la regle `172 + etat(ti)` ([KeyframeProfile.CadreBits]).

@@ -200,11 +200,6 @@ func (p BipedPosition) VelocityVector() ([3]float32, bool) {
 	return [3]float32{d[0] * m, d[1] * m, d[2] * m}, true
 }
 
-// SetRecordMaskHook installe (ou efface, nil) le hook de diagnostic du masque.
-func SetRecordMaskHook(h func(idx []int, payload []byte, afterI0 int)) {
-	observateur.RecordMaskHook = h
-}
-
 // ReadBitsAtForDiag expose la lecture MSB-first de n bits (n <= 32) à une position bit
 // absolue : réservée aux harnais de diagnostic qui balaient un payload de paquet.
 func ReadBitsAtForDiag(b []byte, pos, n int) uint32 { return readBitsAt(b, pos, n) }

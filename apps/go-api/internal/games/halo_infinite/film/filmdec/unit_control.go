@@ -53,7 +53,7 @@ func consumeUnitActorControl(br *BitReader, recordStateParam uint32) {
 	at := br.BitPos()
 	if br.ReadBit() { // present flag (FUN_1406cf008)
 		v := br.ReadBits(32) // FUN_141015740 = R(32)
-		publishUnitRef(UnitRefRead{
+		br.obs.publishUnitRef(UnitRefRead{
 			Kind: UnitRefWord32, StartBit: at, EndBit: br.BitPos(),
 			Present: true, Val: uint32(v),
 		})
@@ -340,7 +340,7 @@ func consume14058c058(br *BitReader) {
 func consume141d0f344(br *BitReader) {
 	at := br.BitPos()
 	v := br.ReadBits(32)
-	publishUnitRef(UnitRefRead{
+	br.obs.publishUnitRef(UnitRefRead{
 		Kind: UnitRefWord32Plain, StartBit: at, EndBit: br.BitPos(),
 		Present: true, Val: uint32(v),
 	})

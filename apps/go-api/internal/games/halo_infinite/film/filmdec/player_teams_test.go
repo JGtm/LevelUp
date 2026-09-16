@@ -225,7 +225,7 @@ func indexDuPremierPaquet(t *testing.T, fc *FilmContext, reg *Registry) []int {
 				if b.TI != managedPlayerTypeIndex {
 					continue
 				}
-				if idx, _, ok := lireEquipeDuRecord(pay, b.Bit, reg, ProfilDeBalayageParDefaut()); ok {
+				if idx, _, ok := lireEquipeDuRecord(pay, b.Bit, reg, ContexteParDefaut()); ok {
 					out = append(out, idx)
 				}
 			}
@@ -263,12 +263,12 @@ func TestScanPlayerTeamsTemoinDUnBit(t *testing.T) {
 					if bo.TI != managedPlayerTypeIndex {
 						continue
 					}
-					_, brut, ok := lireEquipeDuRecord(pay, bo.Bit, reg, ProfilDeBalayageParDefaut())
+					_, brut, ok := lireEquipeDuRecord(pay, bo.Bit, reg, ContexteParDefaut())
 					if !ok {
 						continue
 					}
 					bonnes++
-					tr := WalkKeyframeFullState(pay, bo.Bit, reg, ProfilDeBalayageParDefaut())
+					tr := WalkKeyframeFullState(pay, bo.Bit, reg, ContexteParDefaut())
 					voisin := int(kfReadBits(pay, tr.Comps[0].StartBit+1, teamDesignatorBits))
 					decalees++
 					if voisin != brut {
@@ -300,7 +300,7 @@ func TestScanPlayerTeamsEntreeTronquee(t *testing.T) {
 		tronque := pay[:n]
 		lus := 0
 		for _, b := range bornes {
-			if idx, brut, ok := lireEquipeDuRecord(tronque, b, reg, ProfilDeBalayageParDefaut()); ok {
+			if idx, brut, ok := lireEquipeDuRecord(tronque, b, reg, ContexteParDefaut()); ok {
 				lus++
 				if idx < 0 || idx >= playerTableSlots || brut < 0 || brut > teamDesignatorRawMax {
 					t.Errorf("coupe a %d : lecture hors domaine (index %d, brut %d)", n, idx, brut)

@@ -80,8 +80,8 @@ func e191cBalayerMPP(t *testing.T, ancres []e191cAncre, ti int) {
 	total := 0
 	for l := 1; l <= e191cN2Max; l++ {
 		for i := 1; i <= e191cN2Max; i++ {
-			bal := profilDInstrument
-			bal.MPP = MPPWidths{Lead: l, Index: i}
+			bal := contexteDInstrument()
+			bal.Profil.MPP = MPPWidths{Lead: l, Index: i}
 			part, modal, n := e191cN2Part(ancres, ti, bal)
 			total = n
 			res = append(res, e191cResultatMPP{Lead: l, Index: i, Part: part, Modal: modal})
@@ -176,8 +176,8 @@ func e191cLigneParBuild(t *testing.T, court string, ti int, ancres []e191cAncre,
 	var ref e191cResultatMPP
 	for l := 1; l <= e191cN2Max; l++ {
 		for i := 1; i <= e191cN2Max; i++ {
-			bal := profilDInstrument
-			bal.MPP = MPPWidths{Lead: l, Index: i}
+			bal := contexteDInstrument()
+			bal.Profil.MPP = MPPWidths{Lead: l, Index: i}
 			part, modal, _ := e191cN2Part(ancres, ti, bal)
 			r := e191cResultatMPP{Lead: l, Index: i, Part: part, Modal: modal}
 			if part > meilleur.Part {

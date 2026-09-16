@@ -125,9 +125,9 @@ func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
 	// pas les bits à côté de lui (même règle que ScanFilmAbilityRanks et ScanFilmCamoStates).
 	sc := &grappleScanner{st: &st, gram: grammaireRecord{lay: lay, arch: arch,
 		prof: fc.ProfilDeBalayage()}, i59idx: i59idx}
-	prev := observateur.AbilityNonPredictedHook
-	SetAbilityNonPredictedHook(func(s AbilityNonPredictedState) { sc.last, sc.got = s, true })
-	defer SetAbilityNonPredictedHook(prev)
+	obs := NouvelleObservation()
+	obs.AbilityNonPredictedHook = func(s AbilityNonPredictedState) { sc.last, sc.got = s, true }
+	sc.gram.obs = obs
 
 	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
 		st.Records++

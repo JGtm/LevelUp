@@ -35,19 +35,3 @@ type CamoState struct {
 	SubPresent [6]bool
 	SubQ       [6]uint16
 }
-
-// SetCamoStateHook installe (ou retire, avec nil) la sonde d'i28.
-func SetCamoStateHook(h func(st CamoState)) { observateur.CamoStateHook = h }
-
-// SetMobilityActionHook installe (ou retire, avec nil) la sonde d'i54.
-func SetMobilityActionHook(h func(flag1, flag2 bool)) { observateur.MobilityActionHook = h }
-
-// SetSpartanAbilityHook installe (ou retire, avec nil) la sonde d'i57.
-func SetSpartanAbilityHook(h func(tag, sub, ref uint64, hasRef bool)) {
-	observateur.SpartanAbilityHook = h
-}
-
-// SetAbilityNonPredictedHook installe (ou retire, avec nil) la sonde d'i59.
-func SetAbilityNonPredictedHook(h func(st AbilityNonPredictedState)) {
-	observateur.AbilityNonPredictedHook = h
-}

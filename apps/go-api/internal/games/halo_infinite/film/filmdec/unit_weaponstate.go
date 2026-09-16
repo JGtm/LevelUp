@@ -25,9 +25,6 @@ package filmdec
 // i22 unit-grenade-counts  (deser FUN_140f0de00 -> FUN_140f0de1c)
 // ---------------------------------------------------------------------------
 
-// SetGrenadeCountsHook installe (ou retire, avec nil) la sonde de lecture d'i22.
-func SetGrenadeCountsHook(h func(count uint64, values []uint64)) { observateur.GrenadeCountsHook = h }
-
 // consumeUnitGrenadeCounts: count = FUN_1424d0f48 = R(3); then count x R(8).
 //
 // VÉRIFIÉ AU DÉSASSEMBLAGE le 2026-07-26 (rien à corriger ici) :
@@ -47,12 +44,12 @@ func consumeUnitGrenadeCounts(br *BitReader) {
 	var vals []uint64
 	for i := uint64(0); i < count; i++ {
 		v := br.ReadBits(8)
-		if observateur.GrenadeCountsHook != nil {
+		if br.obs != nil && br.obs.GrenadeCountsHook != nil {
 			vals = append(vals, v)
 		}
 	}
-	if observateur.GrenadeCountsHook != nil {
-		observateur.GrenadeCountsHook(count, vals)
+	if br.obs != nil && br.obs.GrenadeCountsHook != nil {
+		br.obs.GrenadeCountsHook(count, vals)
 	}
 }
 
@@ -209,8 +206,8 @@ func consumeUnitEquipment(br *BitReader) {
 			Val: uint32(val), Tail: uint32(tail), Present: present,
 		})
 	}
-	if observateur.UnitEquipmentHook != nil {
-		observateur.UnitEquipmentHook(st)
+	if br.obs != nil && br.obs.UnitEquipmentHook != nil {
+		br.obs.UnitEquipmentHook(st)
 	}
 }
 
@@ -229,10 +226,6 @@ type UnitEquipmentRead struct {
 	Head    uint32
 	Entries []UnitEquipmentEntry
 }
-
-// SetUnitEquipmentHook installe (ou retire, avec nil) la sonde d'i26. L'appelant doit détenir
-// LockProcessDecode.
-func SetUnitEquipmentHook(h func(UnitEquipmentRead)) { observateur.UnitEquipmentHook = h }
 
 // consumeUnitStun porte i27, désérialiseur FUN_142ED75FC : 40 bits FIXES, sans aucune branche
 // (16 + 12 + 12). C'est cette invariabilité qui a permis d'éliminer l'ancienne affectation :
@@ -257,7 +250,7 @@ func consumeUnitStun(br *BitReader) {
 // LES VALEURS NE SONT PLUS JETÉES (2026-08-16, plan PLAN_ETAT_ACTIF_EQUIPEMENT phase A) :
 // le parcours de bits est INCHANGÉ (la boucle 6 x consume1411b1ac0 est écrite à plat pour
 // pouvoir publier — consume1411b1ac0 EST consumeGateR(12), même porte, même largeur), et
-// chaque lecture part vers observateur.CamoStateHook (cf. ability_state_hooks.go).
+// chaque lecture part vers br.obs.CamoStateHook (cf. ability_state_hooks.go).
 func consumeUnitActiveCamoState(br *BitReader) {
 	var st CamoState
 	st.C3 = uint8(br.ReadBits(3)) // comp+0x7d7
@@ -275,8 +268,8 @@ func consumeUnitActiveCamoState(br *BitReader) {
 			st.SubQ[i] = uint16(br.ReadBits(12))
 		}
 	}
-	if observateur.CamoStateHook != nil {
-		observateur.CamoStateHook(st)
+	if br.obs != nil && br.obs.CamoStateHook != nil {
+		br.obs.CamoStateHook(st)
 	}
 }
 
@@ -333,14 +326,9 @@ func consumeWeaponStateAmmo(br *BitReader) {
 	if !br.ReadBit() { // gate2 == 0 -> fraction presente
 		frac, hasFrac = br.ReadBits(12), true // FUN_1406d84b4 dequant [0,1], W=12
 	}
-	if observateur.WeaponAmmoHook != nil {
-		observateur.WeaponAmmoHook(hasMag, uint32(mag), hasFrac, uint32(frac))
+	if br.obs != nil && br.obs.WeaponAmmoHook != nil {
+		br.obs.WeaponAmmoHook(hasMag, uint32(mag), hasFrac, uint32(frac))
 	}
-}
-
-// SetWeaponAmmoHook installe (ou retire, avec nil) la sonde des chargeurs.
-func SetWeaponAmmoHook(h func(hasMag bool, mag uint32, hasFrac bool, fracQ uint32)) {
-	observateur.WeaponAmmoHook = h
 }
 
 // weaponRoundsBits est la largeur du champ de réserve de FUN_140fe4e88. Nommée parce qu'elle
@@ -352,13 +340,10 @@ const weaponRoundsBits = 11
 // LA VALEUR N'EST PLUS JETÉE (même lot, même règle) : c'est la RÉSERVE de l'emplacement.
 func consumeWeaponStateRoundsInventory(br *BitReader) {
 	rounds := br.ReadBits(weaponRoundsBits)
-	if observateur.WeaponRoundsHook != nil {
-		observateur.WeaponRoundsHook(uint32(rounds))
+	if br.obs != nil && br.obs.WeaponRoundsHook != nil {
+		br.obs.WeaponRoundsHook(uint32(rounds))
 	}
 }
-
-// SetWeaponRoundsHook installe (ou retire, avec nil) la sonde des réserves.
-func SetWeaponRoundsHook(h func(rounds uint32)) { observateur.WeaponRoundsHook = h }
 
 // consumeWeaponStateOverheated mirrors FUN_142f04c6c: dequant R(7) + R(1) + R(1).
 func consumeWeaponStateOverheated(br *BitReader) {
@@ -371,17 +356,12 @@ func consumeWeaponStateOverheated(br *BitReader) {
 // i42 biped-desired-weapon-set  (thunk -> FUN_1406d01fc)
 // ---------------------------------------------------------------------------
 
-// SetDesiredWeaponSetHook installe (ou retire, avec nil) la sonde d'i42. L'appelant restaure
-// la sonde précédente. AUCUN bit lu ne change : la sonde est appelée après les trois
-// lectures, et le déser ne branche jamais sur elle.
-func SetDesiredWeaponSetHook(h func(sel uint32)) { observateur.DesiredWeaponSetHook = h }
-
 func consumeBipedDesiredWeaponSet(br *BitReader) {
 	sel := uint32(br.ReadBits(3)) // FUN_1406d0f20
 	consumeID2(br)                // FUN_1406d00ec
 	consumeID2(br)                // FUN_1406d00ec
-	if observateur.DesiredWeaponSetHook != nil {
-		observateur.DesiredWeaponSetHook(sel)
+	if br.obs != nil && br.obs.DesiredWeaponSetHook != nil {
+		br.obs.DesiredWeaponSetHook(sel)
 	}
 }
 
@@ -428,10 +408,6 @@ func consume1407f0550(br *BitReader) {
 // ti=42 i20 weapon-ammo — les MUNITIONS d'une arme POSEE AU SOL
 // ---------------------------------------------------------------------------
 
-// SetGroundWeaponAmmoHook installe (ou retire, avec nil) la sonde d'i20. L'appelant restaure la
-// sonde précédente. AUCUN bit lu ne change : mêmes largeurs, même ordre, publication après coup.
-func SetGroundWeaponAmmoHook(h func(a, b, c uint32)) { observateur.GroundWeaponAmmoHook = h }
-
 // consumeWeaponAmmo mirrors FUN_140fc3028 : R(8) + R(11) + R(12).
 //
 // LES CHAMPS RESTENT POSITIONNELS. Le déserialiseur connaît la GRAMMAIRE, pas le SENS : nommer
@@ -441,7 +417,7 @@ func consumeWeaponAmmo(br *BitReader) {
 	a := uint32(br.ReadBits(8))
 	b := uint32(br.ReadBits(11))
 	c := uint32(br.ReadBits(12))
-	if observateur.GroundWeaponAmmoHook != nil {
-		observateur.GroundWeaponAmmoHook(a, b, c)
+	if br.obs != nil && br.obs.GroundWeaponAmmoHook != nil {
+		br.obs.GroundWeaponAmmoHook(a, b, c)
 	}
 }

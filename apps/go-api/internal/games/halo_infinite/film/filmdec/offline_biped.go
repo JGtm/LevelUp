@@ -216,13 +216,13 @@ func ScanBipedPositions(fc *FilmContext, opt ScanFilmOptions) ([]BipedPosition, 
 // décodeur. Les champs Chunk/PacketIndex/TimestampUS sont laissés à zéro (remplis par
 // l'appelant).
 func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilmOptions,
-	prof ProfilDeBalayage) []BipedPosition {
+	ctx ContexteDeLecture) []BipedPosition {
 	i0Bits := lay.TotalBits()
 	var out []BipedPosition
 	// UN SEUL lecteur de bits pour tout le payload : `scanRecordDirs` le repositionne par
 	// `SetBitPos` a chaque composant de vitalite, la ou il en allouait deux PAR RECORD.
 	br := NewBitReader(payload)
-	br.PoserProfil(prof)
+	br.PoserContexte(ctx)
 	// LA GRAMMAIRE D'ORIENTATION EST RESOLUE UNE FOIS PAR PAYLOAD, hors de la boucle : elle ne
 	// depend que des options (l'archetype decide d'i2 ET d'i3 a la fois), jamais du record.
 	g := dirsGrammar{}
@@ -250,8 +250,8 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilm
 		if opt.CaptureDirs {
 			rec.componentDirs, rec.componentVitals = scanRecordDirs(br, r.I0+i0Bits, r.Total, r.Mask, g)
 			rec.MaskBits, rec.MaskOver = maskBitsOf(r.Mask)
-			if observateur.RecordMaskHook != nil {
-				observateur.RecordMaskHook(r.Mask, payload, r.I0+i0Bits)
+			if br.obs != nil && br.obs.RecordMaskHook != nil {
+				br.obs.RecordMaskHook(r.Mask, payload, r.I0+i0Bits)
 			}
 		}
 		out = append(out, rec)

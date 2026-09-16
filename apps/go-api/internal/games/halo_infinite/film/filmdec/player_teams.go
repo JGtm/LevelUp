@@ -153,7 +153,7 @@ func ScanPlayerTeams(fc *FilmContext) (map[int]int, TeamScanReport) {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
-			scanPaquetEquipes(pk.Payload(raw), reg, &rep, parEntite, parIndex, fc.ProfilDeBalayage())
+			scanPaquetEquipes(pk.Payload(raw), reg, &rep, parEntite, parIndex, fc.ContexteDeLecture())
 		}
 	}
 	rep.Entities = len(parEntite)
@@ -167,7 +167,7 @@ func ScanPlayerTeams(fc *FilmContext) (map[int]int, TeamScanReport) {
 
 // scanPaquetEquipes lit les records ti=9 d'UN payload d'image-cle. Chaque refus est compte.
 func scanPaquetEquipes(pay []byte, reg *Registry, rep *TeamScanReport,
-	parEntite, parIndex map[int]map[int]int, prof ProfilDeBalayage) {
+	parEntite, parIndex map[int]map[int]int, ctx ContexteDeLecture) {
 	porteur := false
 	for _, b := range keyframeBornesToutes(pay) {
 		if b.TI != managedPlayerTypeIndex {
@@ -178,7 +178,7 @@ func scanPaquetEquipes(pay []byte, reg *Registry, rep *TeamScanReport,
 			rep.Packets++
 		}
 		rep.Records++
-		idx, brut, ok := lireEquipeDuRecord(pay, b.Bit, reg, prof)
+		idx, brut, ok := lireEquipeDuRecord(pay, b.Bit, reg, ctx)
 		switch {
 		case !ok:
 			rep.Unreached++
@@ -209,14 +209,14 @@ func noter(m map[int]map[int]int, cle, valeur int) {
 // defaut rejoue a `en-tete + n1` ; le designateur sort de la boucle de composants de
 // PRODUCTION, qui nomme i0 depuis le registre du film. Si la position du composant ne tombe pas
 // la ou la grammaire la place, la lecture est REFUSEE : c'est le signe qu'une largeur a bouge.
-func lireEquipeDuRecord(pay []byte, recBit int, reg *Registry, prof ProfilDeBalayage) (idx, brut int, ok bool) {
-	tr := WalkKeyframeFullState(pay, recBit, reg, prof)
+func lireEquipeDuRecord(pay []byte, recBit int, reg *Registry, ctx ContexteDeLecture) (idx, brut int, ok bool) {
+	tr := WalkKeyframeFullState(pay, recBit, reg, ctx)
 	if len(tr.Comps) == 0 || tr.Comps[0].Name != teamDesignatorComponent || !tr.Comps[0].Ported {
 		return 0, 0, false
 	}
 	i0 := tr.Comps[0].StartBit
 	br := NewBitReader(pay)
-	br.PoserProfil(prof)
+	br.PoserContexte(ctx)
 	// LE CADRE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c) : cette lecture REJOUE le cadre
 	// d'`walkKeyframeFullState` pour retrouver le premier composant, et les deux doivent donc
 	// tenir leur en-tete et leur mot de taille du MEME endroit — sinon la garde ci-dessous
@@ -225,7 +225,7 @@ func lireEquipeDuRecord(pay []byte, recBit int, reg *Registry, prof ProfilDeBala
 	br.SetBitPos(recBit + cadre.EnTeteBits + cadre.MotDeTailleBits)
 	idx = readManagedPlayerDefaultState(br)
 	attendu := br.BitPos() + cadre.MotDeTailleBits
-	if prof.Grammaire.ControleDeCorruption {
+	if ctx.Profil.Grammaire.ControleDeCorruption {
 		attendu += cadre.MotDeTailleBits
 	}
 	if attendu != i0 || i0+teamDesignatorBits > len(pay)*8 {

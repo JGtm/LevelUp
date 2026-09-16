@@ -115,7 +115,7 @@ func e191cBasculesBobine(t *testing.T, court string) (perdus, gagnes []e191cBasc
 			if b.TI != 37 && b.TI != 38 {
 				continue
 			}
-			tr := WalkKeyframeFullState(pay, b.Bit, reg, profilDInstrument)
+			tr := WalkKeyframeFullState(pay, b.Bit, reg, contexteDInstrument())
 			if tr.DesyncAt >= 0 {
 				continue
 			}

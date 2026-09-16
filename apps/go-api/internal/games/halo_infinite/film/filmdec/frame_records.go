@@ -73,6 +73,11 @@ type FrameConfig struct {
 	Obs *Observation
 }
 
+// contexte rend ce que ce cadre pose sur un lecteur : son profil et son observateur.
+func (c FrameConfig) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: c.Profil, Obs: c.Obs}
+}
+
 // DefaultPacketPreambleBits est l'amorce de paquet consommee avant le premier record.
 //
 // POURQUOI 2 ALORS QUE LE DESASSEMBLAGE N'EN MONTRE QU'UN. Le desassemblage etablit UN bit :
@@ -207,7 +212,7 @@ func decodeDelta(br *BitReader, w *World, slot uint32) EntityTrace {
 // reader is created so the caller's stream position is untouched.
 func TryDeltaAt(buf []byte, bitpos int, w *World, cfg FrameConfig) (FrameRecord, int, bool) {
 	br := NewBitReader(buf)
-	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(bitpos)
 	if br.Remaining() < 24 {
 		return FrameRecord{}, bitpos, false
@@ -233,7 +238,7 @@ func TryDeltaAt(buf []byte, bitpos int, w *World, cfg FrameConfig) (FrameRecord,
 // on a component desync it returns the records so far plus an error (the bit position
 // of the next record can no longer be trusted).
 func DecodeFrameRecords(br *BitReader, w *World, cfg FrameConfig) ([]FrameRecord, error) {
-	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3) : le lecteur vient de l'appelant
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3) : le lecteur vient de l'appelant
 	var out []FrameRecord
 	if cfg.PacketPreambleBits > 0 && br.BitPos() == 0 {
 		br.Skip(cfg.PacketPreambleBits) // amorce de paquet (cf. FrameConfig.PacketPreambleBits)

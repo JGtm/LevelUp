@@ -18,12 +18,9 @@ package filmdec
 // width to the Rosetta position oracle in isolation, without decoding a whole record.
 // Read-only: no World, no capture hooks touched.
 func ConsumeComponentAt(buf []byte, start int, name string, typeIndex, level uint32,
-	prof ProfilDeBalayage) (end int, ported bool) {
-	saved := observateur.PosCaptureHook
-	observateur.PosCaptureHook = nil
-	defer func() { observateur.PosCaptureHook = saved }()
+	ctx ContexteDeLecture) (end int, ported bool) {
 	br := NewBitReader(buf)
-	br.PoserProfil(prof)
+	br.PoserContexte(ctx)
 	br.Skip(start)
 	_, _, ok := consumeByName(br, name, typeIndex, level)
 	return br.BitPos(), ok
@@ -41,9 +38,9 @@ func ConsumeComponentAt(buf []byte, start int, name string, typeIndex, level uin
 // donc vide a jamais et la branche etait inatteignable. Un `ti` autre que le bipede tombe,
 // comme avant, sur la porte has-components sans sauter de default-state.
 func TraverseKeyframeBipedAt(buf []byte, stateBit int, reg *Registry, ti uint32,
-	prof ProfilDeBalayage) (EntityTrace, int) {
+	ctx ContexteDeLecture) (EntityTrace, int) {
 	br := NewBitReader(buf)
-	br.PoserProfil(prof)
+	br.PoserContexte(ctx)
 	br.SetBitPos(stateBit)
 	if ti == bipedDefaultStateTypeIndex {
 		consumeBipedDefaultState(br)

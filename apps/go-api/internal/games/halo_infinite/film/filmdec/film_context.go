@@ -140,6 +140,19 @@ type FilmContext struct {
 	// [FilmContext.PoserProfilDeBalayage]. C est ce qui a remplace l heritage par l etat du
 	// processus : rien ici n est partage entre deux films.
 	bal ProfilDeBalayage
+	// obs est l OBSERVATEUR de ce contexte (lot 2.3) : jamais nil, tous ses champs nuls en
+	// production. Un balayage qui publie y installe ses crochets ; un instrument aussi, et
+	// c est la seule surface qui lui reste depuis que les vingt-huit reglages publics ont
+	// disparu. Il ne change AUCUNE consommation de bits.
+	obs *Observation
+}
+
+// Observation rend l observateur de ce contexte. Jamais nil.
+func (c *FilmContext) Observation() *Observation {
+	if c.obs == nil {
+		c.obs = NouvelleObservation()
+	}
+	return c.obs
 }
 
 // ProfilDeBalayage rend le profil que les lecteurs de ce contexte portent. PAR VALEUR : un
@@ -186,6 +199,15 @@ func (c *FilmContext) PoserLargeursObjetDuMondeDepuisDecoupage(l I0Layout) {
 // PoserParamEtat force le `param_4` du moteur pour les lecteurs de ce contexte.
 func (c *FilmContext) PoserParamEtat(v uint32) { c.bal.PoserParamEtat(v) }
 
+// ContexteDeLecture rend ce que les lecteurs de ce contexte portent : son profil de balayage et
+// son observateur (nil tant qu aucun balayage n en a pose un).
+func (c *FilmContext) ContexteDeLecture() ContexteDeLecture {
+	if c == nil {
+		return ContexteParDefaut()
+	}
+	return ContexteDeLecture{Profil: c.ProfilDeBalayage(), Obs: c.Observation()}
+}
+
 // CadreDeBalayage rend le cadre de trame PAR DEFAUT, PORTANT LE PROFIL DE CE CONTEXTE.
 //
 // TOUT BALAYAGE QUI CONSTRUIT UN CADRE PASSE PAR LA. `DefaultFrameConfig()` seul rend
@@ -203,7 +225,7 @@ func (c *FilmContext) CadreDeBalayage() FrameConfig {
 // largeurs de la carte et du format jusqu aux feuilles, sans variable de paquet.
 func (c *FilmContext) NouveauLecteur(buf []byte) *BitReader {
 	br := NewBitReader(buf)
-	br.PoserProfil(c.ProfilDeBalayage())
+	br.PoserContexte(c.ContexteDeLecture())
 	return br
 }
 

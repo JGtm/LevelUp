@@ -114,9 +114,9 @@ func ScanHeldWeaponChanges(
 		high, low uint32
 		got       bool
 	}
-	prev := observateur.HeldWeaponHook
-	SetHeldWeaponHook(func(h, l uint32) { last.high, last.low, last.got = h, l, true })
-	defer SetHeldWeaponHook(prev)
+	obs := NouvelleObservation()
+	obs.HeldWeaponHook = func(h, l uint32) { last.high, last.low, last.got = h, l, true }
+	cfg.gram.obs = obs
 
 	type key struct {
 		slot uint32

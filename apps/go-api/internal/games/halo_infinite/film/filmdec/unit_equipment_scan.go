@@ -78,12 +78,11 @@ func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
 		read UnitEquipmentRead
 		got  bool
 	}
-	prev := observateur.UnitEquipmentHook
-	SetUnitEquipmentHook(func(r UnitEquipmentRead) { last.read, last.got = r, true })
-	defer SetUnitEquipmentHook(prev)
+	obs := NouvelleObservation()
+	obs.UnitEquipmentHook = func(r UnitEquipmentRead) { last.read, last.got = r, true }
 
 	var out []UnitEquipmentEmission
-	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()}
+	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage(), obs: obs}
 	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
 		if !maskHas(r.Mask, idx26) {
 			return

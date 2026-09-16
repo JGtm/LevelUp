@@ -139,7 +139,7 @@ func (pr vehProbe) scan(band map[uint32]bool, deser func(*BitReader)) (
 	}
 	var st EquipmentCreationStats
 	st.Slots = len(band)
-	defer installCreationHooks(&cur)()
+	w.obs = installCreationHooks(&cur)
 	return runCreationWalk(pr.fc, w, &st), st, nil
 }
 

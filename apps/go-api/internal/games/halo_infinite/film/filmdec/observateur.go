@@ -22,20 +22,17 @@ package filmdec
 // TOUS SES CHAMPS SONT NULS EN PRODUCTION. Les balayages de `filmdec` en posent un le temps
 // d une marche et le retirent au retour ; rien hors du paquet n en installe.
 //
-// # POURQUOI IL RESTE UN ETAT DE PROCESSUS, ET JUSQU A QUAND
+// # IL N EST PLUS UN ETAT DE PROCESSUS (lot 2.3)
 //
-// Le lecteur de bits le PORTE ([BitReader.obs]) et les portes a [FrameConfig] savent en poser
-// un autre ([FrameConfig.Obs]) : c est la forme « passe en parametre » que l item 2.2.f demande,
-// et elle est deja disponible pour la famille de l inference de chaine. Les VINGT-NEUF crochets
-// de deserialiseur, eux, sont installes par des balayages qui appellent des marcheurs
-// construisant leurs propres lecteurs — les leur passer en parametre exige la meme descente que
-// le profil, celle que le pas 5 livre. Ils partagent donc, en attendant, l observateur de
-// processus, et ils n en font plus qu UN au lieu de trente-sept.
+// Le lecteur de bits le PORTE ([BitReader.obs], `nil` en production) et les portes a
+// [FrameConfig] le posent ([FrameConfig.Obs], par [BitReader.poserCadre]). Les VINGT-NEUF
+// crochets de deserialiseur ne partagent plus un observateur de processus : chaque balayage
+// construit le SIEN ([NouvelleObservation]), l installe sur le cadre ou sur la grammaire de sa
+// marche, et le lecteur le recoit d un seul geste avec le profil.
 //
-//	BASCULE          2026-09-17 (lot 2.2.f).
-//	CIBLE DE RETRAIT lot 2.3 (« plus de globale, plus de verrou »), au plus tard le lot 2.5.
-//	CRITERE          les balayages recoivent leur observateur en parametre ; `filmdecVarsGeles`
-//	                 tombe a 0 variable mutable, et `LockProcessDecode` n a plus de raison d etre.
+// LA VARIABLE `observateur` ET SON RESTAURATEUR `poserObservateur` ONT DISPARU. C etait la
+// DERNIERE variable de paquet ECRITE de `filmdec` — et l une des deux raisons pour lesquelles
+// tout decodage passait sous `LockProcessDecode`.
 
 // Observation porte tout ce qui regarde un decodage sans le changer. Ses champs de fonction
 // sont NULS en production.
@@ -295,6 +292,9 @@ type Observation struct {
 
 // compterIndexAbsolu incremente l histogramme des index de plage absolus.
 func (o *Observation) compterIndexAbsolu(idx int) {
+	if o == nil {
+		return
+	}
 	if o.IndexAbsolus == nil {
 		o.IndexAbsolus = map[int]int{}
 	}
@@ -303,6 +303,9 @@ func (o *Observation) compterIndexAbsolu(idx int) {
 
 // prendreIndexAbsolus rend l histogramme et le remet a zero.
 func (o *Observation) prendreIndexAbsolus() map[int]int {
+	if o == nil {
+		return map[int]int{}
+	}
 	out := make(map[int]int, len(o.IndexAbsolus))
 	for k, v := range o.IndexAbsolus {
 		out[k] = v
@@ -311,35 +314,91 @@ func (o *Observation) prendreIndexAbsolus() map[int]int {
 	return out
 }
 
-// observateur : l observateur DU PROCESSUS. Jamais nil — ce sont ses CHAMPS qui sont nuls en
-// production —, pour qu un lecteur n ait pas a tester deux fois avant de publier.
-var observateur = &Observation{CompWidths: map[string]map[int]int{}}
-
-// poserObservateur installe l observateur du processus et rend le precedent, que l appelant
-// restaure. L APPELANT DOIT DETENIR `LockProcessDecode`.
-func poserObservateur(o *Observation) *Observation {
-	prev := observateur
-	observateur = o
-	return prev
-}
-
-// obsDuCadre rend l observateur que le CADRE designe, ou celui du processus a defaut.
-//
-// C EST LA PORTE DU « PASSE EN PARAMETRE » de l item 2.2.f, et elle n est ouverte que pour la
-// famille de l inference de chaine : ses compteurs — dont « la table sans verrou » — sont ecrits
-// dans des fonctions qui tiennent DEJA leur [FrameConfig]. Les vingt-neuf crochets de
-// deserialiseur, eux, sont publies par des feuilles que seul le lecteur de bits atteint, et le
-// lecteur ne recevra son observateur qu au pas 5, avec le profil. Leur donner ici un parametre
-// que les feuilles ne liraient pas serait un mensonge, pas une etape.
-func obsDuCadre(cfg FrameConfig) *Observation {
-	if cfg.Obs != nil {
-		return cfg.Obs
-	}
-	return observateur
-}
-
 // NouvelleObservation rend un observateur vide, pret a recevoir des crochets. C est la forme
 // qu un instrument passe par [FrameConfig.Obs] au lieu d ecrire dans le processus.
 func NouvelleObservation() *Observation {
 	return &Observation{CompWidths: map[string]map[int]int{}}
+}
+
+// neutraliserCaptures met a nil les DEUX crochets de capture (position, reference d unite) et
+// rend leur restauration.
+//
+// POURQUOI CES DEUX-LA, ET POURQUOI TEMPORAIREMENT. Les chemins d INFERENCE essaient une lecture
+// sur des bits qu ils abandonneront peut-etre ; une lecture speculative n est pas une lecture, et
+// sans cette neutralisation les tentatives abandonnees deposeraient des echantillons a des
+// positions que la traversee retenue ne lit jamais. Les COMPTEURS, eux, restent partages : c est
+// le meme observateur, seuls deux champs sont eteints.
+func (o *Observation) neutraliserCaptures() func() {
+	if o == nil {
+		return func() {}
+	}
+	pos, ref := o.PosCaptureHook, o.UnitRefHook
+	o.PosCaptureHook, o.UnitRefHook = nil, nil
+	return func() { o.PosCaptureHook, o.UnitRefHook = pos, ref }
+}
+
+// neutraliserCapturePosition met a nil le seul crochet de position et rend sa restauration.
+func (o *Observation) neutraliserCapturePosition() func() {
+	if o == nil {
+		return func() {}
+	}
+	pos := o.PosCaptureHook
+	o.PosCaptureHook = nil
+	return func() { o.PosCaptureHook = pos }
+}
+
+// compterResyncValide compte une reprise par resynchronisation validee (diagnostic).
+func (o *Observation) compterResyncValide() {
+	if o != nil {
+		o.ResyncValides++
+	}
+}
+
+// compterReparation compte un record sauve par l inference de largeur de composant, et range les
+// largeurs de bouchon gagnantes dans l histogramme du composant.
+func (o *Observation) compterReparation(nom string, largeurs []int) {
+	if o == nil {
+		return
+	}
+	o.ChaineReparees++
+	if o.CompWidths == nil {
+		o.CompWidths = map[string]map[int]int{}
+	}
+	if o.CompWidths[nom] == nil {
+		o.CompWidths[nom] = map[int]int{}
+	}
+	for _, w := range largeurs {
+		o.CompWidths[nom][w]++
+	}
+}
+
+// compterIssueDeChaine compte une resolution : immediate (le record suivant confirme) ou
+// PROFONDE (la marche recursive a traverse une suite de transitoires).
+func (o *Observation) compterIssueDeChaine(immediate bool) {
+	switch {
+	case o == nil:
+	case immediate:
+		o.ChaineImmediat++
+	default:
+		o.ChaineProfond++
+	}
+}
+
+// compterEchecDeChaine compte un echec : budget epuise, ou aucun alignement confirme.
+func (o *Observation) compterEchecDeChaine(budgetEpuise bool) {
+	switch {
+	case o == nil:
+	case budgetEpuise:
+		o.ChaineBudget++
+	default:
+		o.ChaineAucun++
+	}
+}
+
+// compterAmbiguiteDeChaine compte un alignement AMBIGU — plusieurs candidats survivent, et on ne
+// choisit pas.
+func (o *Observation) compterAmbiguiteDeChaine() {
+	if o != nil {
+		o.ChaineAmbigu++
+	}
 }

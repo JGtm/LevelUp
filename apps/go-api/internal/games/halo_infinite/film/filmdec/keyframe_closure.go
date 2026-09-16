@@ -137,7 +137,7 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
-			accumulerFermeture(pk.Payload(data), reg, stats, bloquants, fc.ProfilDeBalayage())
+			accumulerFermeture(pk.Payload(data), reg, stats, bloquants, fc.ContexteDeLecture())
 		}
 	}
 	for ti, parComposant := range bloquants {
@@ -155,11 +155,11 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 // denominateur d'un record par payload sans qu'aucun port ne puisse jamais le fermer.
 func accumulerFermeture(pay []byte, reg *Registry,
 	stats map[uint32]KeyframeClosureStat, bloquants map[uint32]map[string]int,
-	prof ProfilDeBalayage,
+	ctx ContexteDeLecture,
 ) {
 	for _, b := range keyframeBornes(pay) {
 		ti := uint32(b.TI) //nolint:gosec // TI est un index d'archetype, jamais negatif
-		tr := WalkKeyframeFullState(pay, b.Bit, reg, prof)
+		tr := WalkKeyframeFullState(pay, b.Bit, reg, ctx)
 		s := stats[ti]
 		s.Total++
 		switch {

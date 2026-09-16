@@ -24,13 +24,18 @@ func scanForTargetDelta(buf []byte, from int, w *World, cfg FrameConfig, targets
 	frameLen := len(buf) * 8
 	var capPos [3]float32
 	var capHas bool
-	prevHook := observateur.PosCaptureHook
-	observateur.PosCaptureHook = func(s PositionSample) {
+	prev := cfg.Obs
+	capture := NouvelleObservation()
+	if prev != nil {
+		*capture = *prev
+	}
+	capture.PosCaptureHook = func(s PositionSample) {
 		if !capHas {
 			capPos, capHas = s.Vec, true // first (i0) position of the trial record
 		}
 	}
-	defer func() { observateur.PosCaptureHook = prevHook }()
+	cfg.Obs = capture
+	defer func() { cfg.Obs = prev }()
 	for b := from; b < frameLen-24; b++ {
 		capHas = false
 		rec, _, ok := TryDeltaAt(buf, b, w, cfg)
@@ -77,8 +82,7 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 		// persistent World, not the thousands of speculative trial decodes).
 		// L ACCUMULATEUR N EST PLUS A SAUVER (lot 2.3) : il vit sur le LECTEUR, et chaque essai
 		// construit le sien. Seul le crochet d observation reste un etat de processus.
-		savedPos := observateur.PosCaptureHook
-		observateur.PosCaptureHook = nil
+		restaure := cfg.Obs.neutraliserCapturePosition()
 		rec, after, ok := TryDeltaAt(buf, b, w, cfg)
 		confirmed := false
 		if ok && targets[rec.Slot] && len(rec.Trace.Comps) >= 1 {
@@ -89,7 +93,7 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 				confirmed = harvestNextBoundClean(buf, after, w, cfg)
 			}
 		}
-		observateur.PosCaptureHook = savedPos
+		restaure()
 		if confirmed {
 			rec2, end, _ := TryDeltaAt(buf, b, w, cfg) // re-decode with hooks live -> real samples
 			out = append(out, rec2)
@@ -107,7 +111,7 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool {
 	frameLen := len(buf) * 8
 	br := NewBitReader(buf)
-	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(pos)
 	if br.Remaining() < 24 {
 		rem := frameLen - pos
@@ -144,7 +148,7 @@ func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool 
 // Returns the records and the number of views that decoded before a desync stopped it.
 func DecodeFrameViews(buf []byte, w *World, cfg FrameConfig, nViews int, skipLeadBits int) ([]FrameRecord, int) {
 	br := NewBitReader(buf)
-	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(skipLeadBits)
 	frameLen := len(buf) * 8
 	var all []FrameRecord
@@ -178,7 +182,7 @@ func DecodeFrameResync(buf []byte, w *World, cfg FrameConfig, targets map[uint32
 	var out []FrameRecord
 	frameLen := len(buf) * 8
 	br := NewBitReader(buf)
-	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	guard := 0
 	for br.BitPos() < frameLen {
 		guard++
@@ -227,17 +231,16 @@ func DecodeFrameResync(buf []byte, w *World, cfg FrameConfig, targets map[uint32
 		// DESYNC — scan forward for the next clean target delta and resync there. The scan
 		// trial-decodes every candidate bit, so SUPPRESS the position-capture hook during it
 		// (only the accepted record must emit a sample), then restore it.
-		savedHook := observateur.PosCaptureHook
-		observateur.PosCaptureHook = nil
+		restaureHook := cfg.Obs.neutraliserCapturePosition()
 		next := scanForTargetDelta(buf, startPos+1, w, cfg, targets, accept)
-		observateur.PosCaptureHook = savedHook
+		restaureHook()
 		if next < 0 {
 			return out
 		}
 		rec2, endPos, _ := TryDeltaAt(buf, next, w, cfg) // re-decodes with capture on -> real sample
 		out = append(out, rec2)
 		br = NewBitReader(buf)
-		br.PoserProfil(cfg.Profil)
+		br.poserCadre(cfg)
 		br.Skip(endPos)
 	}
 	return out
@@ -259,7 +262,7 @@ func decodeDeltaWithArch(br *BitReader, arch Archetype, typeIndex uint32) Entity
 // aligned the stream (a real bound entity, e.g. a biped, follows the transient).
 func boundDeltaCleanAt(buf []byte, p int, w *World, cfg FrameConfig) bool {
 	br := NewBitReader(buf)
-	br.PoserProfil(cfg.Profil) // EN TETE (lots 2.2.a et 2.3)
+	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(p)
 	if br.Remaining() < 24 {
 		return false

@@ -127,15 +127,14 @@ func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
 		channel bool
 		got     bool
 	}
-	prev := observateur.CamoStateHook
-	SetCamoStateHook(func(cs CamoState) {
+	obs := NouvelleObservation()
+	obs.CamoStateHook = func(cs CamoState) {
 		last.q, last.channel = cs.SubQ[camoChannelIndex], cs.SubPresent[camoChannelIndex]
 		last.got = true
-	})
-	defer SetCamoStateHook(prev)
+	}
 
 	var out []CamoRead
-	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()}
+	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage(), obs: obs}
 	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
 		st.Records++
 		if !maskHas(r.Mask, i28idx) {

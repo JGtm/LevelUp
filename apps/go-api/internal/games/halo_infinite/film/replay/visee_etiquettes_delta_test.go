@@ -54,10 +54,10 @@ func vgCollecte(dir string, s vfSource, cibles map[uint32]bool) ([]vfRecord, vfS
 	opt.CaptureDirs = true
 	opt.QuantaOnly = true
 	var ancres []vfAncre
-	filmdec.SetRecordMaskHook(func(idx []int, _ []byte, afterI0 int) {
+	obs := filmdec.NouvelleObservation()
+	obs.RecordMaskHook = func(idx []int, _ []byte, afterI0 int) {
 		ancres = append(ancres, vfAncre{idx: append([]int(nil), idx...), afterI0: afterI0})
-	})
-	defer filmdec.SetRecordMaskHook(nil)
+	}
 
 	var out []vfRecord
 	for c := 1; c <= filmdec.CountFilmChunks(dir); c++ {
@@ -72,7 +72,7 @@ func vgCollecte(dir string, s vfSource, cibles map[uint32]bool) ([]vfRecord, vfS
 			st.paquets++
 			pay := p.Payload(data)
 			ancres = ancres[:0]
-			recs := filmdec.ScanBipedRecords(pay, filmdec.NewSlotBand(cibles), s.lay, opt, filmdec.ProfilDeBalayageParDefaut())
+			recs := filmdec.ScanBipedRecords(pay, filmdec.NewSlotBand(cibles), s.lay, opt, filmdec.ContexteDeLecture{Profil: filmdec.ProfilDeBalayageParDefaut(), Obs: obs})
 			out = append(out, vgVersePaquet(&st, recs, ancres, pay, p, s)...)
 		}
 	}

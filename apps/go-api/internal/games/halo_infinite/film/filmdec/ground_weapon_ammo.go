@@ -98,7 +98,7 @@ type GroundWeaponAmmo struct {
 // archetype dont les index ne portent pas les composants attendus, ou i20 non atteint. Le refus
 // des masques portant i9 a ete RETIRE le 2026-09-11 (cf. l'en-tete) : la marche les traverse.
 func readGroundWeaponAmmo(pay []byte, compStart int, mask []int, arch Archetype,
-	prof ProfilDeBalayage) (GroundWeaponAmmo, bool) {
+	ctx ContexteDeLecture) (GroundWeaponAmmo, bool) {
 	if arch.component(groundWeaponAmmoIndex) != compWeaponAmmo ||
 		arch.component(groundWeaponMPPIndex) != compObjectMultiplayerProperties {
 		return GroundWeaponAmmo{}, false
@@ -115,7 +115,7 @@ func readGroundWeaponAmmo(pay []byte, compStart int, mask []int, arch Archetype,
 		return GroundWeaponAmmo{}, false
 	}
 	br := NewBitReader(pay)
-	br.PoserProfil(prof)
+	br.PoserContexte(ctx)
 	br.SetBitPos(compStart)
 	tr := EntityTrace{TypeIndex: GroundWeaponTypeIndex, Mask: bits, DesyncAt: -1}
 	traverseComponentLoop(br, arch, &tr)
@@ -124,7 +124,7 @@ func readGroundWeaponAmmo(pay []byte, compStart int, mask []int, arch Archetype,
 			continue
 		}
 		r := NewBitReader(pay)
-		r.PoserProfil(prof)
+		r.PoserContexte(ctx)
 		r.SetBitPos(c.StartBit)
 		return GroundWeaponAmmo{Mag: uint32(r.ReadBits(8)), Res: uint32(r.ReadBits(11))}, true
 	}

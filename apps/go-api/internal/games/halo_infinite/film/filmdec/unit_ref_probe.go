@@ -71,14 +71,10 @@ type UnitRefRead struct {
 	Probe bool
 }
 
-// SetUnitRefHook installe (ou retire, avec nil) la sonde. L'appelant détient
-// `LockProcessDecode` et restaure la valeur précédente.
-func SetUnitRefHook(h func(UnitRefRead)) { observateur.UnitRefHook = h }
-
 // publishUnitRef transmet la lecture à la sonde, si elle est posée.
-func publishUnitRef(r UnitRefRead) {
-	if observateur.UnitRefHook == nil {
+func (o *Observation) publishUnitRef(r UnitRefRead) {
+	if o == nil || o.UnitRefHook == nil {
 		return
 	}
-	observateur.UnitRefHook(r)
+	o.UnitRefHook(r)
 }

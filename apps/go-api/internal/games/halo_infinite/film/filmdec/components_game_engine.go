@@ -73,30 +73,26 @@ func (f GameEngineField) String() string {
 	return fmt.Sprintf("champ inconnu (%d)", int(f))
 }
 
-// SetGameEngineHook installe (ou retire, avec nil) la sonde des composants de ti=0.
-func SetGameEngineHook(h func(f GameEngineField, values []uint64, present bool)) {
-	observateur.GameEngineHook = h
-}
-
-func publishGameEngine(f GameEngineField, present bool, values ...uint64) {
-	if observateur.GameEngineHook != nil {
-		observateur.GameEngineHook(f, values, present)
+func (o *Observation) publishGameEngine(f GameEngineField, present bool, values ...uint64) {
+	if o == nil || o.GameEngineHook == nil {
+		return
 	}
+	o.GameEngineHook(f, values, present)
 }
 
 // consumeGameEngineCurrentState porte ti=0 i2 (FUN_14116d1d0) : R(3), sans porte.
 func consumeGameEngineCurrentState(br *BitReader) {
-	publishGameEngine(GameEngineState, true, br.ReadBits(3))
+	br.obs.publishGameEngine(GameEngineState, true, br.ReadBits(3))
 }
 
 // consumeGameEngineCurrentRound porte ti=0 i4 (FUN_14116fc70) : R(1) porte de polarite
 // INVERSEE — la manche n'est transmise que si le bit vaut 0.
 func consumeGameEngineCurrentRound(br *BitReader) {
 	if !br.ReadBit() {
-		publishGameEngine(GameEngineRound, true, br.ReadBits(5))
+		br.obs.publishGameEngine(GameEngineRound, true, br.ReadBits(5))
 		return
 	}
-	publishGameEngine(GameEngineRound, false)
+	br.obs.publishGameEngine(GameEngineRound, false)
 }
 
 // consumeGameEngineSuddenDeath porte ti=0 i6 (FUN_14116d3a4) : R(16)+R(16)+R(5), sans porte.
@@ -108,7 +104,7 @@ func consumeGameEngineSuddenDeath(br *BitReader) {
 	a := br.ReadBits(16)
 	b := br.ReadBits(16)
 	c := br.ReadBits(5)
-	publishGameEngine(GameEngineSuddenDeath, true, a, b, c)
+	br.obs.publishGameEngine(GameEngineSuddenDeath, true, a, b, c)
 }
 
 // consumeGameEngineGracePeriod porte ti=0 i7 (FUN_141165d24) : R(16)+R(16)+R(5), meme forme
@@ -117,10 +113,10 @@ func consumeGameEngineGracePeriod(br *BitReader) {
 	a := br.ReadBits(16)
 	b := br.ReadBits(16)
 	c := br.ReadBits(5)
-	publishGameEngine(GameEngineGracePeriod, true, a, b, c)
+	br.obs.publishGameEngine(GameEngineGracePeriod, true, a, b, c)
 }
 
 // consumeGameEngineRoundConditionFlags porte ti=0 i8 (FUN_141132dc0) : R(10), sans porte.
 func consumeGameEngineRoundConditionFlags(br *BitReader) {
-	publishGameEngine(GameEngineRoundConditions, true, br.ReadBits(10))
+	br.obs.publishGameEngine(GameEngineRoundConditions, true, br.ReadBits(10))
 }

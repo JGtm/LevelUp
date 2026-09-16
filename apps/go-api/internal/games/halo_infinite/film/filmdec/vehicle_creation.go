@@ -150,8 +150,9 @@ func ScanVehicleCreationsForBand(
 		return nil, st, err
 	}
 	var cur equipCreationRead
-	defer installCreationHooks(&cur)()
+	obs := installCreationHooks(&cur)
 	w := equipCreationWalk{
+		obs:   obs,
 		prof:  fc.ProfilDeBalayage(),
 		comps: len(arch.Components), wr: wr, band: band, cur: &cur,
 		ti: VehicleTypeIndex, deser: consumeDefaultStateTI40,

@@ -102,8 +102,8 @@ func (b *BitReader) poserSlotDeCapture(slot uint32) { b.cap.accumSlot = slot }
 
 // emitPos reports a decoded i0 sample to the hook if one is installed.
 func (b *BitReader) emitPos(kind PosKind, v [3]float32) {
-	if observateur.PosCaptureHook != nil {
-		observateur.PosCaptureHook(PositionSample{
+	if b.obs != nil && b.obs.PosCaptureHook != nil {
+		b.obs.PosCaptureHook(PositionSample{
 			Kind: kind, Vec: v, BitPos: b.cap.startBit, Slot: b.cap.slot})
 	}
 }
@@ -260,7 +260,7 @@ func absAxisW(br *BitReader, i int) uint {
 // futur portage viendra le lire. La largeur rendue est celle du chemin uniforme, comme avant.
 func absAxisWFor(br *BitReader, idx, i int) uint {
 	if i == 0 {
-		observateur.compterIndexAbsolu(idx)
+		br.obs.compterIndexAbsolu(idx)
 	}
 	return absAxisW(br, i)
 }
@@ -269,7 +269,6 @@ func absAxisWFor(br *BitReader, idx, i int) uint {
 //
 // C ETAIT UNE VARIABLE DE PAQUET (`absIdxHist`) JUSQU AU LOT 2.3 : un histogramme est un
 // COMPTEUR D OBSERVATION, il vit donc dans [Observation] avec les autres.
-func AbsIndexHistogram() map[int]int { return observateur.prendreIndexAbsolus() }
 
 // dequantWorldAxis dequantizes one absolute quantized axis word (width bits). Deux formes :
 //   - AbsDequantRange (défaut) : min + step*(q+0.5) via WorldPositionRange (FUN_140c1e978).

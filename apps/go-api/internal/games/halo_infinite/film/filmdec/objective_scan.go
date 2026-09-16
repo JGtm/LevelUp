@@ -193,7 +193,7 @@ func ScanObjectives(fc *FilmContext) (ObjectiveScan, error) {
 		return sc, err
 	}
 	w := objectiveWalk{prof: fc.ProfilDeBalayage(), arch: arch, reg: reg, sc: &sc}
-	defer w.install()()
+	w.obs = w.install()
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -238,6 +238,8 @@ func (c *FilmContext) objectiveArchetype() (Archetype, *Registry, error) {
 // objectiveWalk porte ce que la marche d'un record doit connaitre, et l'etat que le hook y
 // depose (regle des 5 parametres).
 type objectiveWalk struct {
+	// obs est l OBSERVATEUR de ce balayage (lot 2.3), pose sur chaque lecteur construit.
+	obs *Observation
 	// prof est le PROFIL DE BALAYAGE du contexte, pose sur chaque lecteur de cette marche
 	// (lot 2.3) : c est par lui que les largeurs de la carte et du format atteignent les feuilles.
 	prof ProfilDeBalayage
@@ -256,10 +258,15 @@ type objectiveWalk struct {
 	sc           *ObjectiveScan
 }
 
+// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
+func (w *objectiveWalk) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
+}
+
 // install pose le hook des champs d'objectif et rend sa restauration (defer).
-func (w *objectiveWalk) install() func() {
-	prev := observateur.ObjectiveHook
-	SetObjectiveHook(func(f ObjectiveField, values []uint64) {
+func (w *objectiveWalk) install() *Observation {
+	obs := NouvelleObservation()
+	obs.ObjectiveHook = func(f ObjectiveField, values []uint64) {
 		if len(values) == 0 {
 			return
 		}
@@ -273,8 +280,8 @@ func (w *objectiveWalk) install() func() {
 		if w.fromKeyframe && w.sc != nil {
 			w.sc.Reads = append(w.sc.Reads, w.cur)
 		}
-	})
-	return func() { SetObjectiveHook(prev) }
+	}
+	return obs
 }
 
 // scanPayload balaye UN payload delta : ancre les records de la bande, marche leur masque, et
@@ -342,7 +349,7 @@ func (w *objectiveWalk) walk(pay []byte, rec WorldObjectRecord, ts uint64,
 			return at, false
 		}
 		br := NewBitReader(pay)
-		br.PoserProfil(w.prof)
+		br.PoserContexte(w.contexte())
 		br.SetBitPos(at)
 		w.got = false
 		_, _, ported := consumeByName(br, name, ObjectiveTypeIndex, w.arch.Level(id))
@@ -383,7 +390,7 @@ func (w *objectiveWalk) scanKeyframe(pay []byte, ts uint64, sc *ObjectiveScan) {
 		}
 		first := len(sc.Reads)
 		w.cur.Slot, w.cur.TimestampUS = uint32(b.Slot), ts //nolint:gosec // Slot : id de 30 bits
-		tr := WalkKeyframeFullState(pay, b.Bit, w.reg, w.prof)
+		tr := WalkKeyframeFullState(pay, b.Bit, w.reg, w.contexte())
 		if tr.DesyncAt >= 0 || tr.EndBit > total {
 			sc.KeyBroken++
 			sc.Reads = sc.Reads[:first] // une marche cassee ne laisse aucune lecture

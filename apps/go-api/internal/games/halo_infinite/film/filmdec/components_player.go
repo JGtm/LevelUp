@@ -85,15 +85,11 @@ func (f PlayerStateField) String() string {
 	return fmt.Sprintf("champ inconnu (%d)", int(f))
 }
 
-// SetPlayerStateHook installe (ou retire, avec nil) la sonde des composants de ti=5.
-func SetPlayerStateHook(h func(f PlayerStateField, values []uint64, present bool)) {
-	observateur.PlayerStateHook = h
-}
-
-func publishPlayerState(f PlayerStateField, present bool, values ...uint64) {
-	if observateur.PlayerStateHook != nil {
-		observateur.PlayerStateHook(f, values, present)
+func (o *Observation) publishPlayerState(f PlayerStateField, present bool, values ...uint64) {
+	if o == nil || o.PlayerStateHook == nil {
+		return
 	}
+	o.PlayerStateHook(f, values, present)
 }
 
 // consumePlayerSoftKillTimer porte ti=5 i2 (FUN_140d580a8 -> FUN_140d580d0) : 3 x R(5).
@@ -101,19 +97,19 @@ func consumePlayerSoftKillTimer(br *BitReader) {
 	a := br.ReadBits(5)
 	b := br.ReadBits(5)
 	c := br.ReadBits(5)
-	publishPlayerState(PlayerSoftKill, true, a, b, c)
+	br.obs.publishPlayerState(PlayerSoftKill, true, a, b, c)
 }
 
 // consumePlayerTargetTracking porte ti=5 i3 (FUN_142f044f0) : R(1)+R(1).
 func consumePlayerTargetTracking(br *BitReader) {
 	a := bit2u(br.ReadBit())
 	b := bit2u(br.ReadBit())
-	publishPlayerState(PlayerTargetTracking, true, a, b)
+	br.obs.publishPlayerState(PlayerTargetTracking, true, a, b)
 }
 
 // consumePlayerDesiredRespawnPlayer porte ti=5 i6 (FUN_1410f7330) : R(16).
 func consumePlayerDesiredRespawnPlayer(br *BitReader) {
-	publishPlayerState(PlayerDesiredRespawnPlayer, true, br.ReadBits(16))
+	br.obs.publishPlayerState(PlayerDesiredRespawnPlayer, true, br.ReadBits(16))
 }
 
 // consumePlayerEngineLoadout porte ti=5 i11 (FUN_141044428) : 8 x R(8) = 64 bits.
@@ -126,8 +122,8 @@ func consumePlayerEngineLoadout(br *BitReader) {
 	for i := 0; i < 8; i++ {
 		v = append(v, br.ReadBits(8))
 	}
-	if observateur.PlayerStateHook != nil {
-		observateur.PlayerStateHook(PlayerLoadout, v, true)
+	if br.obs != nil && br.obs.PlayerStateHook != nil {
+		br.obs.PlayerStateHook(PlayerLoadout, v, true)
 	}
 }
 
@@ -142,7 +138,7 @@ func consumePlayerEngineLoadout(br *BitReader) {
 // masque, il n'a transmis aucune position. Ce n'est pas une position a l'origine.
 func consumePlayerDesiredRespawnLocation(br *BitReader, level uint32) {
 	if !br.ReadBit() {
-		publishPlayerState(PlayerDesiredRespawnLocation, false)
+		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)
 		return
 	}
 	w := quantAxisWidth(uint(level))
@@ -151,37 +147,37 @@ func consumePlayerDesiredRespawnLocation(br *BitReader, level uint32) {
 	if !ok {
 		// precHigh == 1 : le vecteur par defaut, zero bit de charge utile. L'identifiant a
 		// bien ete lu, lui : on publie ce qui existe et on ne fabrique pas de coordonnees.
-		publishPlayerState(PlayerDesiredRespawnLocation, false, id)
+		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false, id)
 		return
 	}
-	publishPlayerState(PlayerDesiredRespawnLocation, true, qx, qy, qz, id, uint64(level))
+	br.obs.publishPlayerState(PlayerDesiredRespawnLocation, true, qx, qy, qz, id, uint64(level))
 }
 
 // consumePlayerLivesRemaining porte ti=5 i14 (FUN_141055734) : R(7).
 func consumePlayerLivesRemaining(br *BitReader) {
-	publishPlayerState(PlayerLives, true, br.ReadBits(7))
+	br.obs.publishPlayerState(PlayerLives, true, br.ReadBits(7))
 }
 
 // consumePlayerLastBetrayer porte ti=5 i15 (FUN_142f04158) : R(6).
 func consumePlayerLastBetrayer(br *BitReader) {
-	publishPlayerState(PlayerLastBetrayer, true, br.ReadBits(6))
+	br.obs.publishPlayerState(PlayerLastBetrayer, true, br.ReadBits(6))
 }
 
 // consumePlayerControlAiming porte ti=5 i17 (FUN_142f03ea4) : R(19), direction de visee
 // encodee en cubemap. Le decodeur de cette direction EXISTE (`DecodeAimVectorChecked`,
 // `aim_vector.go`) — le brancher est le travail du lot E, pas celui de la plomberie.
 func consumePlayerControlAiming(br *BitReader) {
-	publishPlayerState(PlayerControlAiming, true, br.ReadBits(19))
+	br.obs.publishPlayerState(PlayerControlAiming, true, br.ReadBits(19))
 }
 
 // consumePlayerActiveInGame porte ti=5 i18 (FUN_1411615d8) : R(1).
 func consumePlayerActiveInGame(br *BitReader) {
-	publishPlayerState(PlayerActiveInGame, true, bit2u(br.ReadBit()))
+	br.obs.publishPlayerState(PlayerActiveInGame, true, bit2u(br.ReadBit()))
 }
 
 // consumePlayerPendingJoinInProgress porte ti=5 i19 (FUN_1411615b8) : R(1).
 func consumePlayerPendingJoinInProgress(br *BitReader) {
-	publishPlayerState(PlayerPendingJoinInProgress, true, bit2u(br.ReadBit()))
+	br.obs.publishPlayerState(PlayerPendingJoinInProgress, true, bit2u(br.ReadBit()))
 }
 
 // consumePlayerMalleableProperties porte ti=5 i20 (FUN_1407f0518) :
@@ -206,7 +202,7 @@ func consumePlayerMalleableProperties(br *BitReader) {
 	for i := 0; i < 9; i++ {
 		v = append(v, bit2u(br.ReadBit()))
 	}
-	if observateur.PlayerStateHook != nil {
-		observateur.PlayerStateHook(PlayerMalleableProperties, v, true)
+	if br.obs != nil && br.obs.PlayerStateHook != nil {
+		br.obs.PlayerStateHook(PlayerMalleableProperties, v, true)
 	}
 }

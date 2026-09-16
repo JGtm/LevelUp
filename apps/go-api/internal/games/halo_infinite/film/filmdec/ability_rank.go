@@ -192,11 +192,11 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) A
 		rank    int
 		got     bool
 	}
-	prev := observateur.AbilitySetHook
-	SetAbilitySetHook(func(counter uint64, rank, _ int) {
+	obs := NouvelleObservation()
+	obs.AbilitySetHook = func(counter uint64, rank, _ int) {
 		last.counter, last.rank, last.got = uint32(counter), rank, true
-	})
-	defer SetAbilitySetHook(prev)
+	}
+	gram.obs = obs
 
 	walkDeltaBipedRecords(s.fc, chunks, slots, gram.lay, func(r deltaBipedRecord) {
 		st.Records++
@@ -253,10 +253,18 @@ func maskHas(idx []int, target int) bool {
 // LES TROIS VOYAGENT ENSEMBLE parce qu ils viennent du MEME contexte de film : les separer
 // laisserait un appelant en passer deux sur trois, et une marche au profil par defaut lit des
 // largeurs qui ne sont pas celles de ce film — sans rien dire.
+// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
+func (g grammaireRecord) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: g.prof, Obs: g.obs}
+}
+
 type grammaireRecord struct {
 	lay  I0Layout
 	arch Archetype
 	prof ProfilDeBalayage
+	// obs est l OBSERVATEUR du balayage (lot 2.3), ou nil. C est par lui que les crochets
+	// qu un balayage pose atteignent les feuilles, sans variable de paquet.
+	obs *Observation
 }
 
 // walkRecordTo marche les composants du masque avec les désers de PRODUCTION jusqu'à
@@ -315,7 +323,7 @@ func walkComponentsAt(pay []byte, at, total int, ids []int, g grammaireRecord, v
 			return
 		}
 		br := NewBitReader(pay)
-		br.PoserProfil(g.prof)
+		br.PoserContexte(g.contexte())
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), g.arch.Level(id))
 		if !ported || br.BitPos() > total {

@@ -326,22 +326,17 @@ func readOpt6Signed(br *BitReader) int8 {
 	return -1
 }
 
-// SetHeldWeaponHook installe (ou retire, avec nil) la sonde d'i43..i46. L'appelant restaure
-// la sonde précédente. AUCUN bit lu ne change : la sonde est appelée en `defer`, après coup,
-// et le déser ne branche jamais sur elle.
-func SetHeldWeaponHook(h func(idHigh, idLow uint32)) { observateur.HeldWeaponHook = h }
-
 // publishHeldWeapon transmet la lecture à la sonde, si elle est posée.
-func publishHeldWeapon(idHigh, idLow *uint32) {
-	if observateur.HeldWeaponHook == nil {
+func (o *Observation) publishHeldWeapon(idHigh, idLow *uint32) {
+	if o == nil || o.HeldWeaponHook == nil {
 		return
 	}
-	observateur.HeldWeaponHook(*idHigh, *idLow)
+	o.HeldWeaponHook(*idHigh, *idLow)
 }
 
 func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32) {
 	idHigh := noVariant
-	defer publishHeldWeapon(&idHigh, &variant)
+	defer br.obs.publishHeldWeapon(&idHigh, &variant)
 	if !br.ReadBit() { // FUN_14080d69c gate
 		consumeWeaponStateTail(br) // tail still runs (FUN_1407f08bc + FUN_1406d01fc)
 		return noVariant

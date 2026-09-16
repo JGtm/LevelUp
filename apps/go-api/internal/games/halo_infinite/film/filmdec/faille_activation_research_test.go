@@ -312,7 +312,7 @@ func failleCreations(t *testing.T, dir string, wr *Vec3Range, kf failleKF, ancre
 		t.Fatalf("registre illisible : %v", err)
 	}
 	var cur equipCreationRead
-	defer installCreationHooks(&cur)()
+	obs := installCreationHooks(&cur)
 	_, lay := contexteDuFilm(t, dir)
 	for _, ti := range failleCreationTIs {
 		arch, ok := reg.Archetype(int(ti))
@@ -326,7 +326,7 @@ func failleCreations(t *testing.T, dir string, wr *Vec3Range, kf failleKF, ancre
 			t.Logf("ti=%d : deser=%v bande=%d slots : sauté", ti, deser != nil, len(band))
 			continue
 		}
-		w := equipCreationWalk{prof: profilDeCarte(lay), comps: len(arch.Components), wr: wr,
+		w := equipCreationWalk{obs: obs, prof: profilDeCarte(lay), comps: len(arch.Components), wr: wr,
 			band: band, cur: &cur, ti: ti, deser: deser}
 		failleCreationsPourTI(t, dir, w, ancres, n, ti, origine)
 	}

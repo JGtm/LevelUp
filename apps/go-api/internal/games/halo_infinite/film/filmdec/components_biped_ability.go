@@ -47,13 +47,10 @@ const GrenadeSetNoSelection = 0
 func consumeBipedDesiredGrenadeSet(br *BitReader) {
 	mask := br.ReadBits(i47MaskBits) // FUN_140c6a638 flat R(6)
 	sel := br.ReadBits(i47SelBits)   // FUN_1424d9a30 flat R(3)
-	if observateur.GrenadeSetHook != nil {
-		observateur.GrenadeSetHook(uint32(mask), int(sel))
+	if br.obs != nil && br.obs.GrenadeSetHook != nil {
+		br.obs.GrenadeSetHook(uint32(mask), int(sel))
 	}
 }
-
-// SetGrenadeSetHook installe (ou retire, avec nil) la sonde de lecture d'i47.
-func SetGrenadeSetHook(h func(mask uint32, sel int)) { observateur.GrenadeSetHook = h }
 
 // ---------------------------------------------------------------------------
 // i48 biped-desired-ability-set-component  (deser FUN_1406d0ff0)
@@ -98,13 +95,10 @@ func consumeBipedDesiredAbilitySet(br *BitReader) {
 	if !br.ReadBit() { // FUN_1406d1024 = R(1) porte, polarité INVERSÉE
 		rank = int(br.ReadBits(i48RankBits)) // R(6) = identité (rang de palette)
 	}
-	if observateur.AbilitySetHook != nil {
-		observateur.AbilitySetHook(counter, rank, br.BitPos()-start+i48CounterBits)
+	if br.obs != nil && br.obs.AbilitySetHook != nil {
+		br.obs.AbilitySetHook(counter, rank, br.BitPos()-start+i48CounterBits)
 	}
 }
-
-// SetAbilitySetHook installe (ou retire, avec nil) la sonde de lecture d'i48.
-func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { observateur.AbilitySetHook = h }
 
 // ---------------------------------------------------------------------------
 // i49 biped-control-context-component  (deser FUN_14107166c)
@@ -246,8 +240,8 @@ func consumeBipedMalleableProperty(br *BitReader) {
 func consumeBipedMobilityAction(br *BitReader) {
 	flag1 := br.ReadBit() // FUN_1406cf008 -> [0x1295] = le gate `+0x9d` de FUN_1408f02c8
 	flag2 := br.ReadBit() // FUN_1406cf008 -> [0x1296] (flag2)
-	if observateur.MobilityActionHook != nil {
-		observateur.MobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
+	if br.obs != nil && br.obs.MobilityActionHook != nil {
+		br.obs.MobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
 	}
 	if flag1 {
 		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)

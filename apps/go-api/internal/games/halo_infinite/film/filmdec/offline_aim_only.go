@@ -104,7 +104,7 @@ func ScanBipedAimOnly(fc *FilmContext) ([]BipedAim, error) {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			for _, a := range ScanBipedAimRecords(pk.Payload(data), band, fc.ProfilDeBalayage()) {
+			for _, a := range ScanBipedAimRecords(pk.Payload(data), band, fc.ContexteDeLecture()) {
 				a.Chunk, a.PacketIndex, a.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, a)
 			}
@@ -119,13 +119,13 @@ func ScanBipedAimOnly(fc *FilmContext) ([]BipedAim, error) {
 // ScanBipedAimRecords balaie un payload de paquet delta bit a bit et renvoie les visees des
 // records bipedes SANS position. PUR (aucune I/O) : c'est le coeur testable. Les champs
 // Chunk/PacketIndex/TimestampUS sont laisses a zero (remplis par l'appelant).
-func ScanBipedAimRecords(payload []byte, slots SlotBand, prof ProfilDeBalayage) []BipedAim {
+func ScanBipedAimRecords(payload []byte, slots SlotBand, ctx ContexteDeLecture) []BipedAim {
 	total := len(payload) * 8
 	var out []BipedAim
 	// UN SEUL lecteur de bits pour tout le payload : les composants de vitalite traverses avant
 	// `i21` le repositionnent par `SetBitPos`, la ou ils en allouaient un chacun PAR CANDIDAT.
 	br := NewBitReader(payload)
-	br.PoserProfil(prof)
+	br.PoserContexte(ctx)
 	for p := 0; p+bipedHeaderBits <= total; {
 		at, slot, ok := matchAimOnlyRecord(br, payload, p, total, slots)
 		if !ok {

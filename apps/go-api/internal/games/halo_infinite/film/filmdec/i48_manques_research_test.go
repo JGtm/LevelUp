@@ -326,7 +326,7 @@ func i48mWalk(s i48mSetup, pay []byte, cand *i48mCand, i0, total int) {
 		return
 	}
 	// Masque sans i0 : les composants commencent immediatement apres les indices.
-	br := NewBitReader(pay)
+	br := lecteurDInstrument(pay)
 	br.SetBitPos(cand.Off + bipedHeaderBits + bipedIndexBits*len(cand.Idx))
 	for _, id := range cand.Idx {
 		name := s.arch.component(id)
