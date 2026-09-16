@@ -49,8 +49,6 @@ func TestI28CamoActiveState(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i28FilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := eaSetupBiped(t, dir)
 	i28idx := s.arch.indicesOfFirst(arch28Name)

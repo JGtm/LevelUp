@@ -121,8 +121,6 @@ func TestEtatVivantOddballPortage(t *testing.T) {
 // d4ViesLibres balaye l'archetype `ti=42` et rend les vies LIBRES du mot elu.
 func d4ViesLibres(t *testing.T, root, id string) ([]flagFreeLife, bool) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	wr, _, ok := attBornes(t, root, id)
 	if !ok {

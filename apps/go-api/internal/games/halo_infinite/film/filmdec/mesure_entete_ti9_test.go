@@ -180,7 +180,6 @@ func mesureTypeVise(ti int) bool {
 
 func TestMesureEnteteTI9(t *testing.T) {
 	films := mesureOuvre(t)
-	defer LockProcessDecode()()
 
 	cells := map[[2]int]*mesureCell{}
 	obs := map[string]map[int]*mesureObs{} // film -> slot -> lectures (en-tete 47, ti 9)
@@ -371,7 +370,6 @@ func TestMesureEnteteTI9Balayage(t *testing.T) {
 		t.Skipf("%s absent : balayage de prefixes saute", mesureTI9BalayageEnv)
 	}
 	films := mesureOuvre(t)
-	defer LockProcessDecode()()
 	maxW := 300
 	if v, err := strconv.Atoi(os.Getenv("MESURE_TI9_MAX")); err == nil && v > 0 {
 		maxW = v

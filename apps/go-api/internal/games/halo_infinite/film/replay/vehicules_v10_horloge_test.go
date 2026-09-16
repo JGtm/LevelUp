@@ -125,8 +125,6 @@ func v10DernierPaquetUS(dir string) uint64 {
 // position moins premier paquet du chunk 1. C est le repere de validation.
 func v10OriginMs(t *testing.T, root string, f v0Film) (float64, int, bool) {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	dir := objChunkDir(root, f.ID)
 	entry, ok := v4Carte(t, root, f.Carte)
 	if !ok {

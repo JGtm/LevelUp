@@ -203,8 +203,6 @@ func (a *rpAccords) rpAjoute(b rpBloc, eq int) {
 // TestResidusPiedOctetEquipe execute P-BAL : le balayage aveugle des 60 octets du bloc contre
 // l'equipe PROUVEE de l'acteur, avec son plancher de bruit mesure.
 func TestResidusPiedOctetEquipe(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	acc := &rpAccords{}
 	films, ecartes, evts := 0, 0, 0
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
@@ -308,8 +306,6 @@ func rpHisto(m map[int]int) string {
 // par evenement, sur les premiers evenements de chaque film. C'est le releve qui permet de dire
 // ce que l'octet 55 EST, une fois etabli qu'il n'est pas l'equipe.
 func TestResidusPiedDrapeaux(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		_, d := readChunk00(t, dir)
 		eqs, _, _ := rpEquipesProuvees(dir, d)

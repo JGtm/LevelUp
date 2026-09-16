@@ -74,8 +74,6 @@ func TestVehicleCreationIdentity(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", vehicleCreationFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {

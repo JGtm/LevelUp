@@ -65,8 +65,6 @@ func v0Corpus(t *testing.T) []v0Film {
 // v0Bornes rend les bornes monde d'une carte NOMMEE et installe ses largeurs d'axe pour le
 // chemin objet du monde. Il double `attBornes` parce que celui-ci passe par un fixture
 // film -> carte (`attCartes`) que le corpus de ce lot ne peuple pas : ici la carte est donnee.
-//
-// L'APPELANT DOIT DETENIR LockProcessDecode ET RESTAURER WorldObjectPrecisionActuelle().
 func v0Bornes(t *testing.T, root, carte string) (filmdec.Vec3Range, bool) {
 	t.Helper()
 	cat, err := filmdec.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
@@ -206,8 +204,6 @@ func v0NuageDeltaFilm(t *testing.T, root string, f v0Film) {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return
@@ -280,8 +276,6 @@ func v0GrammaireUnFilm(t *testing.T, root string, f v0Film) {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 	wr, ok := v0Bornes(t, root, f.Carte)
 	if !ok {
 		return

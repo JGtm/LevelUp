@@ -70,8 +70,6 @@ func rtCompteMotif(pay []byte, motif uint64) int {
 // TestResidusTrameSentinelle execute S1 et S2 : la sentinelle du drapeau de controle est-elle
 // dans les films, et que lit-on a sa place ?
 func TestResidusTrameSentinelle(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	totSent, totRec, totBons := 0, 0, 0
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		_, d := readChunk00(t, dir)
@@ -120,8 +118,6 @@ func rtMesureFilm(v equipeVue) (sentinelles int, avant map[int]int, recs int) {
 // domaine 1..9 et partage en deux moities egales. Un decodeur robuste doit savoir departager
 // les deux formes ; ce test dit si la question se pose sur ce cache.
 func TestResidusTrameDeuxFormes(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	bons186, bons218, vus := 0, 0, 0
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {
 		v, err := equipePrepare(dir)
@@ -206,8 +202,6 @@ func rtPredParRang(xuids []uint64, orc map[uint64]int) (pred equipeVecteur, appa
 // confrontation terme a terme ecarte pour cardinaux differents, en essayant tous les recalages.
 // L'ordre des rangs vient du lecteur CORRIGE de R2 (`rsChaine`), qui enjambe les slots vacants.
 func TestResidusTrameOracleRecale(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	oracle := equipeOracleXuid(t)
 	if len(oracle) == 0 {
 		t.Skip("CHUNK00_XUID_EQUIPES absent : instrument saute")
@@ -262,8 +256,6 @@ func rtXuids(es []*s3sEnr) []uint64 {
 // la composante globale accepte le domaine -1..8. Savoir combien de valeurs distinctes un film
 // porte REELLEMENT dit si ce domaine est exerce — et c'est une mesure, pas une lecture de table.
 func TestResidusTrameCardinalite(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	global := map[int]int{}
 	cards := map[int]int{}
 	for _, dir := range chunk00Films(t, "CHUNK00_FILMS") {

@@ -52,9 +52,6 @@ func TestV10MasqueDeadState(t *testing.T) {
 	root := v10Root()
 	cat := v10LoadBounds(t)
 
-	release := LockProcessDecode()
-	defer release()
-
 	totalRec, totalI11 := 0, 0
 	patterns := map[string]int{}
 	precede := map[int]int{} // index de composant present AVANT i11 -> nb de records

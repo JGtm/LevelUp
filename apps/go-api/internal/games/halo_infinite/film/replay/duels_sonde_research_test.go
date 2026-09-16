@@ -91,9 +91,6 @@ func TestSondeDuels(t *testing.T) {
 		t.Skipf("sonde desactivee : %s et %s requis", duelsFilmEnv, duelsMapEnv)
 	}
 
-	release := filmdec.LockProcessDecode()
-	defer release()
-
 	rng := duelsBornes(t, carte)
 	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {

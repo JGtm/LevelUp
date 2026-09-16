@@ -238,7 +238,6 @@ func vfRespawnApres(lives []lifeSpan, xuid uint64, finMS int64) int64 {
 }
 
 // vfBatPont construit le pont slot -> joueur pour un gamertag. L'appelant detient
-// `LockProcessDecode` : ce balayage est un decodage filmdec de plus.
 func vfBatPont(dir, gt string) (vfPont, error) {
 	var p vfPont
 	xuid, err := vfXUID(dir, gt)

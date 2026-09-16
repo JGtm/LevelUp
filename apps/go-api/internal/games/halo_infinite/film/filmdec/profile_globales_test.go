@@ -52,8 +52,6 @@ func TestProfilEgaleGlobales(t *testing.T) {
 // EXACTEMENT ou il etait — c est ce que la calibration attend pour decider a sa place.
 func verifierMPPEgaleGlobales(t *testing.T, b bobineIdentite, film *filmsource.Film, p Profile) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
 	fc := NewFilmContext(film)
 	avant := fc.ProfilDeBalayage().MPP
 	restore, err := InstallFilmFormatMPP(fc)

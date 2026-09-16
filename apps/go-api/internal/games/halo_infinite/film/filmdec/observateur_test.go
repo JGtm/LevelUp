@@ -14,8 +14,6 @@ import "testing"
 //
 // Le jour ou ce test rougit, un champ de [Observation] est une valeur de PROFIL mal rangee.
 func TestObservateurNeChangeAucunBit(t *testing.T) {
-	release := LockProcessDecode()
-	defer release()
 
 	// Les quatre chemins que les crochets traversent le plus, sur des flux figes.
 	cas := []struct {

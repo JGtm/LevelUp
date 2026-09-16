@@ -53,7 +53,6 @@ package filmdec
 //	ameliore One Bomb en cassant Neutral est fausse.
 //
 // REGIME : garde ASSAUT_CACHE. Aucune base, aucun reseau, sentinelle memoire armee, un seul
-// decodage a la fois (LockProcessDecode).
 //
 //	go test ./internal/games/halo_infinite/film/filmdec/ -run NavpointTi12Meche -v -timeout 60m
 
@@ -126,8 +125,6 @@ func TestNavpointTi12MecheOneBomb(t *testing.T) {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
 	defer tpSentinelle(t)()
-	release := LockProcessDecode()
-	defer release()
 
 	films := mpChargerGroupe(t, cache, obFilms)
 	t.Logf("########## DETAIL PAR EXPLOSION (lecture meche pausable)")
@@ -148,8 +145,6 @@ func TestNavpointTi12MecheTemoin(t *testing.T) {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
 	defer tpSentinelle(t)()
-	release := LockProcessDecode()
-	defer release()
 
 	neutral := mpChargerGroupe(t, cache, tpFilms)
 	mpVerdict(t, "TEMOIN NEUTRAL BOMB — 13 explosions", neutral, nil)

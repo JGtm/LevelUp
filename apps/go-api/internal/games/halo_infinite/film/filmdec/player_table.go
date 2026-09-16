@@ -66,7 +66,7 @@ package filmdec
 // faite de zeros, donc le predicat de vacance y passe indefiniment et « 32 slots » seul se
 // satisfait de n importe quelle largeur (cf. chercherDepart).
 //
-// # CE LECTEUR N'A PAS DE CONSOMMATEUR (lot 1.5), et il ne prend pas `LockProcessDecode` : il
+// # CE LECTEUR N'A PAS DE CONSOMMATEUR (lot 1.5), et il ne pose aucun reglage : il
 // est une fonction pure de (octets, profil), sans variable de paquet ni crochet (D-5, ADR 0034).
 
 // ErrPlayerTableNotFound : aucun depart ne ferme la table a 32 slots.

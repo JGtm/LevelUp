@@ -49,8 +49,6 @@ func TestI54CrossI48Rank(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i54xFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := eaSetupBiped(t, dir)
 	idx54 := s.arch.indicesOfFirst("biped-mobility-action-component")

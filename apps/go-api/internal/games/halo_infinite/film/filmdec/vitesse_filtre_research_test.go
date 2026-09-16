@@ -148,8 +148,6 @@ func TestVitesseFiltre(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", vitfFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	ctx := vitfSetup(t, dir)
 	evs, spans, deltas := vitfScanEvenements(t, dir)
 	t.Logf("== FILM %s : %d paquets delta · %d têtes de type 117 ==", dir, deltas, len(evs))

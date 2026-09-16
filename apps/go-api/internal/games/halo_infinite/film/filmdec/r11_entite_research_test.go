@@ -44,8 +44,6 @@ func TestR11Entite(t *testing.T) {
 
 func r11EntiteOneFilm(t *testing.T, dir string) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
 	s := r11Prepare(t, dir)
 	xuid := r11XUID()
 

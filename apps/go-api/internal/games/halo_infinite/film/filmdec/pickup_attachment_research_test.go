@@ -136,8 +136,6 @@ func TestPickupIsAttachment(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	t.Log("CRITERE (enonce avant lecture) : une PRISE doit coincider, a moins de 0,5 s, avec " +
 		"une entite du monde passant de DETACHEE a ATTACHEE ; un LACHER avec le passage " +

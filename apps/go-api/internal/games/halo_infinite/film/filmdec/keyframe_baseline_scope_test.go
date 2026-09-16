@@ -19,7 +19,6 @@ package filmdec
 // trous neutralises. Une seule variable bouge entre les deux passes.
 //
 // LECTURE SEULE, garde par KF35_ROOT : saute partout ailleurs, CI comprise. Bascules
-// globales restaurees en defer ; LockProcessDecode tenu tout du long.
 //
 // USAGE (depuis apps/go-api) :
 //
@@ -50,8 +49,6 @@ func kf35cSetup() func() {
 // ecarts, portee baseline eteinte puis allumee.
 func TestKF35CBaselineScope(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 	defer kf35cSetup()()
 
 	for _, s := range kf35cScopes {
@@ -73,8 +70,6 @@ func TestKF35CBaselineScope(t *testing.T) {
 // deplace que la mediane.
 func TestKF35CDispersion(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 	defer kf35cSetup()()
 
 	for _, s := range kf35cScopes {
@@ -95,8 +90,6 @@ func TestKF35CDispersion(t *testing.T) {
 // consomme quoi, et ou la frontiere reelle est franchie. C'est lui qui designe la suite.
 func TestKF35CProfile(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 	defer kf35cSetup()()
 
 	for _, s := range kf35cScopes {

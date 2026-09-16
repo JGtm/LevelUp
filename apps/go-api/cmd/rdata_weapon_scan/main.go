@@ -710,8 +710,6 @@ func main() {
 	// pour toute la durée du décodage d'un film, jamais par sous-appel. Cet outil est un binaire
 	// mono-tâche ; le prendre en tête de `main` est la forme la plus simple qui satisfait le
 	// contrat, et c'est celle que le ratchet `archlint/decode_lock_held_test.go` mesure.
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	// Mode upstream : pour chaque WST gate=1 (littéral d'arme), cherche en AMONT un header
 	// de record dont le slot ∈ 512-519 (biped joueur). Teste l'attribution par remontée.

@@ -121,7 +121,6 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	// elles, la fermeture des archetypes qui portent ce bloc (ti=36, 37, 38, 39, 42, 43) est
 	// mesuree au decoupage d un AUTRE build. Un build inconnu ne change rien et n est pas une
 	// erreur ICI : la mesure continue au defaut de paquet, et c est la PRODUCTION qui doit
-	// mettre le film de cote (D-4). L appelant detient `LockProcessDecode`.
 	if restore, err := InstallFilmFormatMPP(fc); err == nil {
 		defer restore()
 	}

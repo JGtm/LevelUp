@@ -160,8 +160,6 @@ func r8I54OneFilm(t *testing.T, dir string) {
 	t.Helper()
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
-	release := LockProcessDecode()
-	defer release()
 
 	s := r8MobResolve(t, dir)
 	opt := DefaultScanFilmOptions()

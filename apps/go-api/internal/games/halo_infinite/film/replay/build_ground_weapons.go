@@ -19,7 +19,7 @@ package replay
 // et celui du 2026-08-17 (largeurs MPP a reinstaller) montre que ce correctif arrive.
 //
 // HORS LIGNE : `decodeFilmPadScans` fait de l I/O disque sur tout le film et n est appelee que
-// par `BuildFromFilm`, sous `LockProcessDecode`. `attachWeaponPads` est PUR.
+// par `BuildFromFilm`. `attachWeaponPads` est PUR.
 
 import (
 	"log/slog"
@@ -61,7 +61,7 @@ func worldEquipmentArchetype() padArchetype {
 // deux natures se publient dans le MÊME `weaponPads`, et une voie décodée sans l'autre
 // laisserait l'artefact affirmer « aucun socle de power-up » là où il faudrait dire « pas lu ».
 //
-// HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
+// HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPadScans(
 	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
 ) PadScans {
@@ -89,7 +89,7 @@ func decodeFilmPadScans(
 // dit (découverte 8 du plan des armes au sol). Largeurs non mesurées (calibration refusée) : on
 // garde le défaut, et le compteur `kept` de la couverture reste le témoin.
 //
-// HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
+// HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmPadScan(
 	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
 	arch padArchetype,

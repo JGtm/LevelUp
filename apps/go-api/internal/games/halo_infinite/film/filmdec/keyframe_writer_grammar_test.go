@@ -100,8 +100,6 @@ func kf7dLog(t *testing.T, name, tag string, r kf7dResult) {
 // PREDITE par l'ecrivain. C'est la mesure de la phase 2 du plan R7-d.
 func TestKF7DWriterI0(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
 	defer prevSim()
@@ -149,8 +147,6 @@ func kf7dOneFilm(t *testing.T, f kf35Film) {
 // « 46 contre 117 » ne se verifie pas.
 func TestKF7DWriterI0Profile(t *testing.T) {
 	films := kf35Films(t)
-	release := LockProcessDecode()
-	defer release()
 
 	prevSim := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.SimStateComplet = true })
 	defer prevSim()

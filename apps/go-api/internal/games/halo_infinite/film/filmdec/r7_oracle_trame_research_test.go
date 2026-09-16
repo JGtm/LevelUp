@@ -188,8 +188,6 @@ func r7RapportTrame(t *testing.T, titre string, s r7TrameStat) {
 func TestR7OracleTrame(t *testing.T) {
 	root, ids := r7Films(t)
 	cartes := r7Cartes(t)
-	release := LockProcessDecode()
-	defer release()
 	var parcJuste, parcTemoin r7TrameStat
 	for _, id := range ids {
 		dir := filepath.Join(root, id)

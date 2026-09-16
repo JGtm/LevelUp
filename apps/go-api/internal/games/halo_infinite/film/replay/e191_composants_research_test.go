@@ -173,8 +173,6 @@ func e191ComposantsDUnFilm(t *testing.T, root string, f e191Film) (map[string]in
 // chaine de production vient de mesurer — sans elles, aucune identite ne se resout.
 func e191Creations(dir string, e filmdec.MapQuantEntry, g *goldenInputs,
 ) ([]filmdec.EquipmentCreation, filmdec.EquipmentCreationStats, bool) {
-	release := filmdec.LockProcessDecode()
-	defer release()
 	fc, _, err := filmdec.ContexteDeFilm(dir)
 	if err != nil {
 		return nil, filmdec.EquipmentCreationStats{}, false

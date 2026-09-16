@@ -121,8 +121,6 @@ func TestR11Charges(t *testing.T) {
 
 func r11ChargesOneFilm(t *testing.T, dir, detail string) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
 	s := r11Prepare(t, dir)
 	rd := r11Collect(s.scan)
 	r11LogHeader(t, s, rd.Stat)

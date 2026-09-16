@@ -153,8 +153,6 @@ func TestBombeB3Desaccords(t *testing.T) {
 		t.Skip("mesure non demandée : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestBombeB3Desaccords")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	for _, id := range b3Films {
 		dir := filepath.Join(cache, "film_chunks", id)

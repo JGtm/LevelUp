@@ -28,7 +28,7 @@ package filmdec
 // de borner la fenêtre à l'aveugle et de ne rien conclure quand elle est trop pauvre.
 //
 // HORS LIGNE (I/O disque) — jamais depuis un chemin de requête. L'APPELANT DOIT DÉTENIR
-// LockProcessDecode : la calibration écrit le global `mppLeadBits` ; elle le restaure à la
+// La calibration pose le decoupage MPP sur SON profil ; elle le restaure a la
 // sortie, et c'est à l'appelant d'installer la largeur retenue pour son propre décodage.
 
 import (

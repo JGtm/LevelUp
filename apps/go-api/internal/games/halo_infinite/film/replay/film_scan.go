@@ -7,7 +7,7 @@ package replay
 // suit une responsabilite — la, le CHEMIN (verrou, largeurs, contexte du film, puis assemblage) ;
 // ici, ce que chaque phase LIT. DEPLACEMENT PUR : aucune ligne de logique ne change.
 //
-// PRE-REQUIS DE TOUTES LES METHODES DE CE FICHIER : `filmdec.LockProcessDecode` tenu et les
+// PRE-REQUIS DE TOUTES LES METHODES DE CE FICHIER : les
 // largeurs d axe de la carte installees. `scanFilmInputs` est leur unique appelant, et
 // `BuildFromFilm` tient les deux (cf. build_from_film.go).
 //

@@ -57,8 +57,6 @@ func TestI56DropsAreEvents(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i56DropsFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	env := i56dPrepare(t, dir)
 	var hook i56dSample

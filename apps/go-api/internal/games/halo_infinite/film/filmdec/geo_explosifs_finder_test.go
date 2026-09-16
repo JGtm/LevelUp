@@ -61,8 +61,6 @@ func TestGeoFindBTB(t *testing.T) {
 	if root == "" {
 		t.Skip("LOT1_CORPUS absent : recherche de film BTB sautee")
 	}
-	release := LockProcessDecode()
-	defer release()
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		t.Fatalf("corpus illisible : %v", err)

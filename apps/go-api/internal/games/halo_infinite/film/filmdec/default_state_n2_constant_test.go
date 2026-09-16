@@ -75,8 +75,6 @@ type n2Groupe struct {
 
 // TestEtatParDefautN2Constant : la largeur portee ne disperse pas `n2`.
 func TestEtatParDefautN2Constant(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	juges, fixes, variables, courts := 0, 0, 0, 0
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "replay", "testdata", "minifilm_"+court)

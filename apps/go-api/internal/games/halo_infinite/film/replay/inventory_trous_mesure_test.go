@@ -30,7 +30,6 @@ package replay
 // confirme, alors la cause n'est pas un defaut d'ancrage : c'est la fenetre 16..23.
 //
 // LECTURE SEULE : aucune base, aucun document, aucun fichier du depot ecrit hors INV_OUT.
-// UN SEUL decodage filmdec a la fois (LockProcessDecode), un film apres l'autre.
 //
 // USAGE (depuis apps/go-api) :
 //
@@ -177,8 +176,6 @@ func invTrousEnvInt(key string, def int) int {
 // invTrousFilm mesure UN film.
 func invTrousFilm(t *testing.T, dir string, dig int) *invTrousCompte {
 	t.Helper()
-	release := filmdec.LockProcessDecode()
-	defer release()
 	c := invTrousNewCompte(filepath.Base(dir))
 	known := loadoutFamilies()
 	diags, slotSets := invTrousWalk(t, dir, known, c)

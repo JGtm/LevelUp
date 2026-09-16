@@ -222,8 +222,6 @@ func TestMarcheurDeltaBipedeCompteSesRecordsSurLaMiniBobine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("mini-bobine versionnee illisible (%s) : %v", bobineFamilles, err)
 	}
-	release := LockProcessDecode()
-	defer release()
 	fc := NewFilmContext(film)
 
 	familles := []struct {

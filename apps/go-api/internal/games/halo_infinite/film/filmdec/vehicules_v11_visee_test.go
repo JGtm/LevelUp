@@ -69,8 +69,6 @@ func v11ViseeUnFilm(t *testing.T, dir string) {
 		t.Logf("V11 %s : film absent — saute", dir)
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	chunks := make([]int, 0, CountFilmChunks(dir))
 	for c := 1; c <= CountFilmChunks(dir); c++ {
 		chunks = append(chunks, c)
@@ -266,8 +264,6 @@ func v11OccupationUnFilm(t *testing.T, dir string) {
 	if CountFilmChunks(dir) == 0 {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	evs, err := ScanFilmVehicleEvents(dir)
 	if err != nil {
 		t.Logf("V11 OCCUPATION %s : %v", dir, err)

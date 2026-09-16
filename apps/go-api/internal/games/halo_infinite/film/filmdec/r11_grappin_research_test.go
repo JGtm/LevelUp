@@ -69,8 +69,6 @@ func TestR11Grappin(t *testing.T) {
 
 func r11GrappinOneFilm(t *testing.T, dir string) {
 	t.Helper()
-	release := LockProcessDecode()
-	defer release()
 	s := r11Prepare(t, dir)
 	lines := r11LoadGrapples(t, s.id)
 	if len(lines) == 0 {

@@ -112,8 +112,6 @@ func v5Scan(dir string) ([]v5Ref, map[string]int, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("registre illisible : %w", err)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	// La sonde écrit dans `vues`, indexée par position de bit : une position réécrite est un
 	// record re-décodé, et c'est la DERNIÈRE lecture qui vaut.

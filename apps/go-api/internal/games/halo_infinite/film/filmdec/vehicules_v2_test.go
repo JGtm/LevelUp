@@ -102,9 +102,6 @@ func TestV2SpawnsCooldowns(t *testing.T) {
 	boundsCat := v2LoadBounds(t)
 	pads := v2LoadPads(t)
 
-	release := LockProcessDecode()
-	defer release()
-
 	aggs := map[string]*v2MapAgg{}
 	for _, f := range films {
 		dir := filepath.Join(root, "film_chunks", f.short8)

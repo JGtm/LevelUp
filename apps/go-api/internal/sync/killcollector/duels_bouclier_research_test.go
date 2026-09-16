@@ -111,9 +111,6 @@ func TestSondeDuelsBouclier(t *testing.T) {
 		t.Skipf("sonde desactivee : %s, %s et %s requis", duelsBMatchEnv, duelsBMapEnv, duelsBRootEnv)
 	}
 
-	release := filmdec.LockProcessDecode()
-	defer release()
-
 	paths := title.NewPathResolver(root)
 	db, closeDB := duelsBOuvrirBase(t, paths.SharedDBPath(duelsBSlug))
 	defer closeDB()

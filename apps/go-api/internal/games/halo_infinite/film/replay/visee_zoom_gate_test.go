@@ -97,8 +97,6 @@ func TestViseeZoomGate(t *testing.T) {
 	if filepath.Base(dir) != "00162144" {
 		t.Fatalf("la chronologie relevee est celle de 00162144 ; film fourni : %s", filepath.Base(dir))
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	off := zoomDecalage(t, dir)
 	evts := zoomLitEvenements(t, dir)

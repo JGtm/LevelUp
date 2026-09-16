@@ -62,7 +62,6 @@ type r8TagRead struct {
 }
 
 // r8ScanTags balaye le film et rend toutes les lectures d'i57 et d'i59, tag compris.
-// L'appelant doit detenir LockProcessDecode : les hooks sont des globaux de paquet.
 func r8ScanTags(s r8MobSetup) (i57, i59 []r8TagRead) {
 	idx57 := r8IndexOfAny(s.arch, r8I57Names)
 	idx59 := r8IndexOfAny(s.arch, r8I59Names)
@@ -205,8 +204,6 @@ func r8I59TagsOneFilm(t *testing.T, dir string) {
 	t.Helper()
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
-	release := LockProcessDecode()
-	defer release()
 
 	s := r8MobResolve(t, dir)
 	opt := DefaultScanFilmOptions()

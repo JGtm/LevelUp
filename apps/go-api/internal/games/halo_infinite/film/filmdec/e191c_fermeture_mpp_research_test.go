@@ -43,8 +43,6 @@ var (
 
 // TestE191cFermetureMPP colle, par bobine, la fermeture obtenue pour chaque decoupage.
 func TestE191cFermetureMPP(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	t.Logf("######## PAS 3 — LA FERMETURE CONTRE LES DECOUPAGES MPP, BOBINE PAR BOBINE ########")
 	t.Logf("  (somme des archetypes qui portent le bloc MPP : ti=36, 37, 38, 39, 42, 43)")
 	for _, court := range closureMiniFilms() {

@@ -37,8 +37,6 @@ func TestViseeEtiquettes(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", vgFilmEnv)
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	debut := time.Now()
 	g, err := vgBatGrille(dir)

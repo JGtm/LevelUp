@@ -33,7 +33,6 @@ package filmdec
 // est le patron exact de `ScanFilmGrappleReads` — même composant, tag 1 au lieu de 3.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
-// L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : les hooks installés
 // sont des globaux de paquet.
 
 import "levelup/go-api/internal/analysis/filmsource"
@@ -106,7 +105,6 @@ type AbilityImpulseStats struct {
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe
 // `observateur.SpartanAbilityHook` et `observateur.AbilityNonPredictedHook`, qui sont des globaux de paquet.
-// L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait). Les hooks sont
 // restaurés à la sortie, y compris en cas d'erreur.
 //
 // ScanFilmAbilityImpulses est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un

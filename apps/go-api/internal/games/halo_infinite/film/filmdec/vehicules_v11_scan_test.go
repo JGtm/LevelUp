@@ -89,8 +89,6 @@ func v11ScanUnFilm(t *testing.T, dir string) {
 		t.Logf("V11 %s : film absent — saute", dir)
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	kf := ScanFilmWorldObjectKeyframes(dir, v11VehiculeTI)
 	if len(kf.Band) == 0 {
 		t.Logf("V11 %s : bande ti=40 vide", dir)
@@ -326,8 +324,6 @@ func v11DistinctUnFilm(t *testing.T, dir string) {
 	if CountFilmChunks(dir) == 0 {
 		return
 	}
-	release := LockProcessDecode()
-	defer release()
 	evs, err := ScanFilmVehicleEvents(dir)
 	if err != nil {
 		t.Logf("V11 DISTINCT %s : %v", dir, err)

@@ -22,7 +22,6 @@ package filmdec
 // canal, pas une condition de lecture : l'état est publié pour toute vie qui le transmet.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
-// L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : le hook installé est
 // un global de paquet.
 
 import (
@@ -81,7 +80,6 @@ type CamoStateStats struct {
 // queue[1]) dans les paquets delta du film de dir.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.CamoStateHook`,
-// qui est un global de paquet. L'appelant doit détenir LockProcessDecode (BuildFromFilm le
 // fait). Le hook est restauré à la sortie, y compris en cas d'erreur.
 //
 // ScanFilmCamoStates est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanCamoStates].

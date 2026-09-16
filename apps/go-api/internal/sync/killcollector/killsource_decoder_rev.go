@@ -136,7 +136,9 @@ package killcollector
 //
 // LES LIGNES PRODUITES SONT IDENTIQUES A L OCTET : meme espace balaye, meme critere, meme
 // vainqueur, memes valeurs pour les passes suivantes — y compris l heritage vers la cuisson du
-// rejeu, qui passe desormais par un parametre au lieu de l etat du processus. Aucun match deja
+// rejeu, qui passe desormais par un parametre au lieu de l etat du processus. Le meme lot RETIRE
+// `filmdec.LockProcessDecode` de tous ses sites d appel dans `killsource/` : un verrou ne lit
+// aucun bit, et son retrait ne change pas davantage les lignes produites. Aucun match deja
 // decode n est candidat au backlog.
 const KillSourceDecoderRev = "killsource-2026-09-16.2"
 

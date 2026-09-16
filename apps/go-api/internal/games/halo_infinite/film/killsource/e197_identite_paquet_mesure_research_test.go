@@ -47,7 +47,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // e197Temps : le temps de l hybride qui a decide l appariement. Domaine FERME.
@@ -300,8 +299,6 @@ func e197Mesurer(dir string) e197Ligne {
 		l.Err = err
 		return l
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 	o := DefaultOptions()
 	c := &decodeCtx{name: l.Film, opts: o}
 	if err := c.prepare(context.Background(), src); err != nil {
@@ -579,8 +576,6 @@ func e197MesurerAssist(dir string) e197AssistLigne {
 		l.Err = err
 		return l
 	}
-	release := filmdec.LockProcessDecode()
-	defer release()
 	c := &decodeCtx{name: l.Film, opts: DefaultOptions()}
 	if err := c.prepare(context.Background(), src); err != nil {
 		l.Err = err

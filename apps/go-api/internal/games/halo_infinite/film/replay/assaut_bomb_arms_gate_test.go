@@ -45,7 +45,7 @@ package replay
 // trois quarts. Ni l'un ni l'autre n'est au gate.
 //
 // RÉGIME : garde `ASSAUT_CACHE`. Aucune base, aucun réseau, sentinelle mémoire armée, UN SEUL
-// décodage à la fois (`filmdec.LockProcessDecode`). Jamais `cmd/replay-build`.
+// décodage à la fois sur la machine (verrou INTER-PROCESSUS `filmproc.AcquireSolo`). Jamais `cmd/replay-build`.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautBombArmsGate -v -timeout 60m
@@ -56,8 +56,6 @@ import (
 	"sort"
 	"strconv"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // baGateFilms : les cinq films du gate. `portage` marque les deux où AUCUN désaccord n'est
@@ -88,8 +86,6 @@ func TestAssautBombArmsGate(t *testing.T) {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestAssautBombArmsGate")()
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	desaccords := 0
 	for _, f := range baGateFilms {

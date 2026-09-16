@@ -34,8 +34,6 @@ const probeFenetreMS = 2000
 // TestSondesRegistre execute les quatre sondes sur UN film, en une seule passe.
 func TestSondesRegistre(t *testing.T) {
 	dir := probeDir(t)
-	release := LockProcessDecode()
-	defer release()
 
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {

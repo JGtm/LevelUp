@@ -201,8 +201,6 @@ func TestHeldWeaponDeltaCensus(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	s := hwResolve(t, dir)
 	t.Logf("film=%s chunks=%d slots_biped=%d emplacements_arme=%d index_i42=%d",
 		dir, len(s.chunks), s.slots.Count(), len(s.weaponIdx), s.selIdx)
@@ -254,8 +252,6 @@ func TestHeldWeaponChangesProduction(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	s := hwResolve(t, dir)
 	ref := hwKeyframeRef(t, dir)

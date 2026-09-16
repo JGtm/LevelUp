@@ -188,8 +188,6 @@ func (g *vgGrille) dureeMS() int64 { return int64(g.n) * g.pas }
 
 // vgBatGrille construit les etiquettes du film : evenements de lunette, vies, reconstruction de
 // production, puis erosion / dilatation aux marges declarees.
-//
-// L'appelant detient `LockProcessDecode` : le balayage des positions est un decodage filmdec.
 func vgBatGrille(dir string) (*vgGrille, error) {
 	evts := filmdec.ScanFilmZoomEvents(dir)
 	if len(evts) == 0 {

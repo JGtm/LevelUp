@@ -180,8 +180,6 @@ func v7EventTimes(dir string) map[int][]uint64 {
 // TestV7Temps — LA COINCIDENCE. Une ligne par type de tete.
 func TestV7Temps(t *testing.T) {
 	dirs := v7FilmDirs(t)
-	release := LockProcessDecode()
-	defer release()
 	acc := map[int]*v7Compte{}
 	totalLives := 0
 	for _, d := range dirs {

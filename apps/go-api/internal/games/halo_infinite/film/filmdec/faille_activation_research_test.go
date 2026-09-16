@@ -258,8 +258,6 @@ func (k failleKF) bande(ti int) map[uint32]bool {
 // TestFailleActivationEntites balaye les trois canaux d'entités dans les fenêtres des ancres.
 func TestFailleActivationEntites(t *testing.T) {
 	dir, wr, ancres, origine := failleSetup(t)
-	release := LockProcessDecode()
-	defer release()
 
 	n := CountFilmChunks(dir)
 	if n == 0 {

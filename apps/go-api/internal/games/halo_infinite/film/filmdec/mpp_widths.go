@@ -21,7 +21,6 @@ import "fmt"
 // DÉTECTÉE dans le film (cf. CalibrateMPPWidths) plutôt que devinée.
 //
 // Le défaut 9 est celui du chemin bipède, validé en live (rep = 166 ou 198 bits) : il ne bouge
-// pas tant qu'un appelant ne l'a pas mesuré. L'appelant doit détenir LockProcessDecode et
 // restaurer la valeur précédente — c'est un état de processus (le profil hérité).
 //
 // C'ÉTAIT LA VARIABLE DE PAQUET `mppLeadBits` JUSQU'AU LOT 2.2.e, puis l'héritage de

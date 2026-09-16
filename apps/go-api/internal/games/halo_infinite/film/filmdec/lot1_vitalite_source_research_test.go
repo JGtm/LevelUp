@@ -73,8 +73,6 @@ func TestLot1VitaliteSource(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	// MÊME balayage que le rejeu 2D (build.go) : QuantaOnly (pas besoin des bornes de carte
 	// pour la vitalité) + CaptureDirs (c'est CaptureDirs qui poursuit le record jusqu'à i4/i5).

@@ -335,8 +335,6 @@ func imcPublierDesyncs(t *testing.T, modele string, ti int, c *imcCompte, n int)
 // TestImageCleFermetureParArchetype EST LA MESURE : le tableau `archetype x modele`, par
 // build puis tous films confondus, avec les temoins T+ et T-.
 func TestImageCleFermetureParArchetype(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	dirs := chunk00Films(t, "CHUNK00_FILMS")
 	global := imcNouvelleTable()
 	parBuild := map[string]imcTable{}

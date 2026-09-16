@@ -86,7 +86,6 @@ func attRefDir(root string) string {
 // attBornes rend les bornes monde de la carte d'un film ET installe les largeurs d'axe de
 // cette carte pour le chemin objet du monde.
 //
-// L'APPELANT DOIT DÉTENIR `LockProcessDecode` ET RESTAURER `WorldObjectPrecision` : c'est un
 // global de paquet, et le correctif du 2026-08-15 a mesuré ce que coûte de l'oublier (tous
 // les objets déquantifiés aux largeurs de la carte précédente).
 func attBornes(t *testing.T, root, id string) (filmdec.Vec3Range, filmdec.I0Layout, bool) {

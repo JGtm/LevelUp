@@ -122,7 +122,6 @@ type EquipmentPlacementStats struct {
 // largeur devinée. C'est le gate 0 du plan, tenu par construction.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe les sondes de paquet et
-// écrit `mppLeadBits`. L'appelant doit détenir LockProcessDecode ; les globaux sont restaurés.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 //

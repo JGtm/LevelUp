@@ -95,8 +95,6 @@ func TestBuildProfileRefuseUnFormatInconnu(t *testing.T) {
 // `n2` CONSTANT sur l'archetype 37. Le fausser d'UN SEUL BIT, dans un sens ou dans l'autre, le
 // disperse. C'est ce qui rend la ligne `HI_1_13_0` du profil verifiable plutot qu'affirmee.
 func TestBuildProfileMPPMutationRougit(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	bal := ContexteParDefaut()
 
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_fb1a1a72")

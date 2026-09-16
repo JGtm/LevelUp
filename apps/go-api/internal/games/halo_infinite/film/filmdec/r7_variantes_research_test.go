@@ -45,8 +45,6 @@ type r7VarianteCas struct {
 func TestR7Variantes(t *testing.T) {
 	root, ids := r7Films(t)
 	cartes := r7Cartes(t)
-	release := LockProcessDecode()
-	defer release()
 	cas := []r7VarianteCas{
 		{"type 15 Script — prefixe R(15)", 15, &r7Var15Prefixe,
 			[2]string{"sans prefixe", "avec prefixe R(15)"}},
@@ -122,8 +120,6 @@ func TestR7CalibreCarte(t *testing.T) {
 	if len(profils) == 0 {
 		t.Skipf("definir %s (catalogue) pour la calibration de carte", r7CatEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	t.Logf("%d profils de carte distincts au catalogue", len(profils))
 	garde := func(evs []r7Ev) bool {
 		for _, e := range evs {

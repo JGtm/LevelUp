@@ -60,8 +60,6 @@ func TestInventoryDeltaCorpus(t *testing.T) {
 	if root == "" {
 		t.Skipf("%s non défini : instrument de corpus sauté", invDeltaFilmsEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	films := invDeltaCorpusFilms(t, root, invDeltaEnvInt(invDeltaMaxEnv, 0))
 	if len(films) == 0 {

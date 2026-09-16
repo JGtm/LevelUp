@@ -29,7 +29,7 @@ package replay
 //	     Il ajoute au film TROIS lectures (fil des morts, index de joueur, events de tir), qui
 //	     sont exactement celles que `BuildFromFilm` fait pour construire ce pont.
 //
-// LECTURE SEULE, aucune base. UN SEUL decodage filmdec par process (`LockProcessDecode`),
+// LECTURE SEULE, aucune base.
 // largeurs d'axe restaurees (`installWorldObjectPrecision`).
 //
 // USAGE (depuis apps/go-api) :
@@ -82,8 +82,6 @@ func TestGroundWeaponPickups(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", gwPickupEnv)
 	}
 	entry := mapQuantEntryFromEnv(t, gwPickupMapEnv, gwPickupBoundsEnv)
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	wr := entry.Range()
 	f := gwPickupRead(t, dir, &wr)

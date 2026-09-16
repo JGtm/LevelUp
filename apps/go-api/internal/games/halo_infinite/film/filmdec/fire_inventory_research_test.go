@@ -62,8 +62,6 @@ func TestFireEventsExplainedByInventory(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	t.Log("CRITERE (enonce avant lecture) : a l'instant de chaque tir, la famille de l'arme " +
 		"tiree doit appartenir a l'union des inventaires reconstitues. On compare DEUX " +

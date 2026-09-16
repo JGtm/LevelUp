@@ -132,8 +132,6 @@ func r9PousseeOneFilm(t *testing.T, dir string) {
 	t.Helper()
 	entry := r8MapEntry(t, dir)
 	wr := entry.Range()
-	release := LockProcessDecode()
-	defer release()
 
 	opt := DefaultScanFilmOptions()
 	opt.WorldRange = &wr

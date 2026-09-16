@@ -38,7 +38,8 @@ const (
 
 // CompWidthObservations returns the accumulated stub-width observations per
 // component name (width -> occurrences). Table de l OBSERVATEUR depuis le lot 2.2.f — c est
-// « la table sans verrou » que l en-tete de `decode_gate.go` nomme.
+// « la table sans verrou » que l en-tete du verrou de decodage nommait comme l une des deux
+// raisons de son existence ; le verrou est parti au lot 2.3, la table etant devenue un champ.
 
 // chainCompMaxStub bounds the stub-width sweep of component repair (bits).
 const chainCompMaxStub = 640

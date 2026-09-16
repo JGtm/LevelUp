@@ -57,8 +57,6 @@ type e191cEtatMesure struct {
 // TestE191cEtatParDefaut publie, pour chacun des cinq archetypes objet, les largeurs d etat par
 // defaut qui ferment le plus de records, et la largeur que le deserialiseur porte aujourd hui.
 func TestE191cEtatParDefaut(t *testing.T) {
-	rel := LockProcessDecode()
-	defer rel()
 	t.Logf("######## PAS 2 — LARGEUR D ETAT PAR DEFAUT IMPLIQUEE (balayage 0..%d bits) ########", e191cBalayageMax)
 	par := map[int]*e191cEtatMesure{}
 	for _, ti := range e191cCinq {

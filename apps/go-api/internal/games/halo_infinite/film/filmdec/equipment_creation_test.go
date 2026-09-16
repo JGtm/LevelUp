@@ -60,8 +60,6 @@ func TestEquipmentCreationRecord(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", equipCreationFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	fc, lay := contexteDuFilm(t, dir)
 	t.Logf("FILM %s · largeurs d'axe lues dans le film %v", dir, lay.AxisW)

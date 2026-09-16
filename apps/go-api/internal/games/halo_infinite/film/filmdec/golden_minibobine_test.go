@@ -265,8 +265,6 @@ func TestGoldenMiniBobineFamilles(t *testing.T) {
 		t.Fatalf("mini-bobine versionnee illisible (%s) : %v — elle est dans le depot, "+
 			"son absence est une panne, pas une condition d'execution", bobineFamilles, err)
 	}
-	release := LockProcessDecode()
-	defer release()
 
 	fc := NewFilmContext(film)
 	var r recueil

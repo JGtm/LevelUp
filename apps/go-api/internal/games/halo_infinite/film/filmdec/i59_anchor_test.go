@@ -118,8 +118,6 @@ func TestI59AnchorWalkProof(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59aFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	s := i59aSetup(t, dir)
 	idx59 := i59aIndex(t, s)
 
@@ -367,8 +365,6 @@ func TestI59AnchorBodyDump(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59aFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	s := i59aSetup(t, dir)
 	idx59 := i59aIndex(t, s)
 	poserBasculeDInstrument(func(g *GrammaireBalayage) { g.CorpsAncrageCapacite = false }) // marche minimale : R(2) + R(3), le corps reste à lire
@@ -441,8 +437,6 @@ func TestI59AnchorFilmInfo(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59aFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("découpage i0 illisible : %v", err)
@@ -474,8 +468,6 @@ func TestI59AnchorTemplate(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59aFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	s := i59aSetup(t, dir)
 	idx59 := i59aIndex(t, s)
 	poserBasculeDInstrument(func(g *GrammaireBalayage) { g.CorpsAncrageCapacite = false })
@@ -579,8 +571,6 @@ func TestI59AnchorControls(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", i59aFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	s := i59aSetup(t, dir)
 	idx59 := i59aIndex(t, s)
 

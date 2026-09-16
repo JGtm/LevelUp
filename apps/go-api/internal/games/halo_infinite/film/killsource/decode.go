@@ -38,7 +38,7 @@ var (
 
 func errRegistry(err error) error { return fmt.Errorf("%w: %w", ErrRegistry, err) }
 
-// La serialisation vit dans `filmdec.LockProcessDecode` (verrou de PAQUET, 2026-08-13) :
+// LA SERIALISATION DE PAQUET A DISPARU AU LOT 2.3 : il n y a plus d etat partage a proteger.
 // le rejeu 2D decode les memes globaux dans le meme process, et deux verrous locaux ne se
 // protegent pas l'un de l'autre.
 
@@ -82,9 +82,6 @@ func Decode(ctx context.Context, name string, film *filmsource.Film, opts *Optio
 		o = *opts
 	}
 	o.normalize()
-
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	c := &decodeCtx{name: name, opts: o}
 	if err := c.prepare(ctx, film); err != nil {

@@ -161,8 +161,6 @@ func reg0(cache string) (Archetype, bool) {
 // combinaison n'est retenue que si elle depasse 60 % de chainage sur les records A PLUSIEURS
 // COMPOSANTS — ceux-la, precisement, que la configuration actuelle rate a 100 %.
 //
-// LES BASCULES SONT GLOBALES AU PROCESS : ce test detient `LockProcessDecode` et les restaure.
-//
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
 //	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11Calibration -v -timeout 40m
 func TestObjectifTi11Calibration(t *testing.T) {
@@ -170,7 +168,6 @@ func TestObjectifTi11Calibration(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	defer LockProcessDecode()()
 	g := filmproc.Arm("TestObjectifTi11Calibration", filmproc.MeasureLimitGiB, func(peak uint64) {
 		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — calibration interrompue", float64(peak)/(1<<30))
 	})

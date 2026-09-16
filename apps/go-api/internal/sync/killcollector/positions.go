@@ -266,8 +266,6 @@ func buildPositionRows(
 	film *filmsource.Film, res *killsource.Result, entry filmdec.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (passePositions, materiauDIsolement, error) {
-	release := filmdec.LockProcessDecode()
-	defer release()
 
 	fc := filmdec.NewFilmContextForMap(film, &entry, nil)
 	positions, err := filmdec.ScanBipedPositions(fc, optionsDeBalayageDesPositions(fc, entry))

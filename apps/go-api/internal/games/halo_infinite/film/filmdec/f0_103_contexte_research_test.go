@@ -247,8 +247,6 @@ func f0Charge(t *testing.T, root, id string, e MapQuantEntry) f0Film {
 	if CountFilmChunks(dir) == 0 {
 		t.Fatalf("film %s : aucun chunk dans %s", id, dir)
 	}
-	release := LockProcessDecode()
-	defer release()
 	fc, _ := contexteDuFilm(t, dir)
 	fc.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout())
 
@@ -318,8 +316,6 @@ func TestF0CalibreCarte(t *testing.T) {
 	if len(profils) == 0 {
 		t.Skipf("catalogue vide (%s)", f0CatEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	t.Logf("%d profils d etendue distincts sur %d cartes du catalogue", len(profils), len(cat.Maps))
 	garde := func(evs []r7Ev) bool {
 		for _, e := range evs {

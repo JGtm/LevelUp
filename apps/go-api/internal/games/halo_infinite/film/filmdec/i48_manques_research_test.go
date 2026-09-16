@@ -398,8 +398,6 @@ func TestI48ManquesFenetre(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", i48mFilmEnv)
 	}
-	release := LockProcessDecode()
-	defer release()
 	usMin, usMax := i48mEnvUint(t, i48mMinEnv), i48mEnvUint(t, i48mMaxEnv)
 	slotFilter := uint64(0)
 	if v := os.Getenv(i48mSlotEnv); v != "" {
