@@ -4036,9 +4036,6 @@ limitée au champ `coverage.decoder`.
       `killsource/` et `analysis/objectiveevents/`, jamais `replay/` — le test reste vert sans
       toucher la révision. `SchemaVersion` inchangée (60). Restent à 2.7g : les cinq gros
       fichiers de `filmdec`, `collector.go`, `consumeByName`, ainsi que 2.7.2 et 2.7.3.
-- [ ] 2.7.2 Ratchet de taille : plafond gelé par fichier, jamais accru
-      (`archlint/film_file_size_test.go`).
-- [ ] 2.7.3 `benchstat` contre `bench_baseline.txt` : +10 % au plus.
 
 Preuve : `replay-equiv` zéro différence ; baseline lint non accrue.
 
@@ -4142,8 +4139,8 @@ distinctes à la même milliseconde, victimes `2535413577167650` (crédit) et `2
       identités, rien n'est déclaré « autre mort »), `TestFusionNApparieJamaisDeuxVictimesDifferentes`
       (ex-`TestFusionRejetteUneIdentiteDivergente`, contrat inversé). Deux mutations jouées et
       collées en §5.
-- [ ] 2.9.4 Le film `9f9b19e5` est redécodé par `backfill-killsource --force` sur ce seul match à
-      la fusion (pilote), et le compteur d'échecs de la tranche 1 retombe à 0.
+- [x] 2.9.4 Le film `9f9b19e5` est redécodé par `backfill-killsource --force` sur ce seul match à
+      la fusion (pilote), et le compteur d'échecs de la tranche 1 retombe à 0. FAIT le 2026-09-17 à la tranche 3 du backlog (binaire construit sur la fusion 2.9) : le film n'était pas « à jour », la passe l'a repris sans `--force`, `resultat=ecrit`, 0 échec sur 300 films ; tranche 4 en cours.
 
 Preuve : `go test ./internal/persist/` + `-tags=integration -p 1 ./internal/persist/` verts ;
 `no_art_patterns_test.go` inchangé ; revue adversariale à deux relecteurs (L1 anti-ART, L6 tests).
