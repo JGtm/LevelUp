@@ -34,12 +34,10 @@
 //
 // # LE RATCHET GARDE PLUSIEURS CATALOGUES (étendu le 2026-09-16, lot 3.1.2)
 //
-// `data/titles/{slug}/reference/film_profiles.json` — le catalogue des profils de film — entre
-// sous la même garde (D12 du plan décodeur : « les chemins neufs passent par `PathResolver` et
-// par un catalogue versionné jamais écrit à l'exécution »). Son cas est plus STRICT que celui
-// des socles : il n'a pas d'overlay. Le décodeur le LIT, un point c'est tout ; ce qu'il faudrait
-// y écrire à l'exécution serait une valeur de profil devinée, c'est-à-dire exactement ce que le
-// chantier interdit.
+// `film_profiles.json` — le catalogue des profils de film — entre sous la même garde (D12 du
+// plan décodeur). Son cas est plus STRICT que celui des socles : il n'a pas d'overlay. Le
+// décodeur le LIT, un point c'est tout ; ce qu'il y écrirait à l'exécution serait une valeur de
+// profil devinée, exactement ce que le chantier interdit.
 package archlint
 
 import (
@@ -56,8 +54,7 @@ import (
 )
 
 // chemsVersionnes : les méthodes du PathResolver qui rendent un chemin SUIVI PAR GIT, et la
-// consigne à rappeler quand le runtime essaie de l'écrire. Une entrée par catalogue versionné :
-// le jour où un troisième naît, il s'ajoute ici et le ratchet le garde sans autre changement.
+// consigne à rappeler quand le runtime l'écrit. Un troisième catalogue s'ajoute ici, sans plus.
 var chemsVersionnes = map[string]string{
 	"MapWeaponPadsPath": "le runtime doit écrire l'OVERLAY " +
 		"(PathResolver.MapWeaponPadsOverlayPath), jamais le fichier suivi par git",
@@ -123,8 +120,7 @@ func estVerbeDEcriture(nom string) bool {
 	return false
 }
 
-// estAppelCheminVersionne dit si l'expression EST l'appel d'une des méthodes gardées, et
-// laquelle.
+// estAppelCheminVersionne dit si l'expression appelle une méthode gardée, et laquelle.
 //
 // Le nom de l'appelé est lu par `nomAppele` (no_film_reread_test.go) — le paquet en a déjà un,
 // en écrire un second serait la 3e copie que la règle des deux copies interdit.
@@ -341,8 +337,7 @@ func TestRuntimeNEcritPasLeCatalogueVersionne(t *testing.T) {
 	}
 }
 
-// citeUnCheminVersionne : pré-filtre du ratchet — inutile d'analyser un fichier qui ne nomme
-// aucune des méthodes gardées.
+// citeUnCheminVersionne : pré-filtre — inutile d'analyser un fichier qui n'en nomme aucune.
 func citeUnCheminVersionne(source string) bool {
 	for nom := range chemsVersionnes {
 		if strings.Contains(source, nom) {
@@ -355,10 +350,8 @@ func citeUnCheminVersionne(source string) bool {
 // fichiersVersionnesGardes : les NOMS de fichier que seul le PathResolver a le droit d'écrire,
 // avec la méthode à employer à la place. Le pendant, côté littéral, de `chemsVersionnes`.
 var fichiersVersionnesGardes = map[string]string{
-	"map_weapon_pads.json": "PathResolver.MapWeaponPadsPath (lecture) ou " +
-		"MapWeaponPadsOverlayPath (écriture runtime)",
-	"film_profiles.json": "PathResolver.FilmProfilesPath (lecture par filmprofile.Charger ; " +
-		"seul cmd/film-profiles-build écrit, hors serveur)",
+	"map_weapon_pads.json": "MapWeaponPadsPath (lecture) ou MapWeaponPadsOverlayPath (runtime)",
+	"film_profiles.json":   "FilmProfilesPath (lecture ; seul cmd/film-profiles-build écrit)",
 }
 
 // TestCatalogueVersionneNommeParLeResolverSeul — LE CONTOURNEMENT PAR LE LITTÉRAL.
@@ -432,10 +425,9 @@ func f(res R, d Deps) {
 	_, _ = replay.LoadMapWeaponPadsMerged(catPath, res.MapWeaponPadsOverlayPath(d.TitleSlug))
 	ajouterCarteAuCatalogue(ctx, d, fetcher, catPath, mapID, e)
 }`,
-		// LE CATALOGUE DES PROFILS DE FILM (2026-09-16, lot 3.1.2). Son cas est plus strict
-		// que celui des socles : il n'a pas d'overlay, donc AUCUNE écriture runtime n'est
-		// licite. Le défaut qu'on ferme ici serait un décodeur qui « complète » le profil
-		// d'un build inconnu au lieu de mettre le film de côté (3.1.1).
+		// LE CATALOGUE DES PROFILS DE FILM (2026-09-16, lot 3.1.2) : pas d'overlay, donc
+		// AUCUNE écriture runtime licite. Le défaut fermé ici serait un décodeur qui
+		// « complète » le profil d'un build inconnu au lieu de mettre le film de côté (3.1.1).
 		"écriture directe du catalogue des profils": `package p
 func f(res R) { _ = os.WriteFile(res.FilmProfilesPath(slug), blob, 0o644) }`,
 		"profil complété à l'exécution via une porteuse": `package p
