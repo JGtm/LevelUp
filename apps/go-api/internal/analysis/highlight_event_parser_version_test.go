@@ -5,7 +5,7 @@ package analysis
 // CE QUE CES TESTS FIGENT. Le bloc d'event de 60 octets porte le gamertag a b[0:32] sur les
 // versions <= 38 et >= 41, et a b[12:44] sur les versions 39-40 (films de mars a novembre 2025).
 // Le parseur ne DEVINE pas laquelle s'applique : la version lui est passee, lue par l'appelant
-// dans l'en-tete du registre du film (`filmdec.FilmMajorVersionFromHeader`) ou dans le manifeste
+// dans l'en-tete du registre du film (`grammar.FilmMajorVersionFromHeader`) ou dans le manifeste
 // de l'API. Les tests ci-dessous verrouillent les trois cas qui comptent : la version 39-40 rend
 // les noms, la version >= 41 sur le meme flux rend le rembourrage (et c'est ce qui s'est
 // produit en production tant que 0 etait passe en dur), et la version 0 — film sans registre —

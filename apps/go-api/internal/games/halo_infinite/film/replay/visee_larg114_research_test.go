@@ -57,7 +57,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -86,7 +86,7 @@ func larg114ConstanteAt(pk []env114Paquet, b int) string {
 		if b >= p.nBits {
 			continue
 		}
-		uns += int(filmdec.ReadBitsAtForDiag(p.pay, b, 1))
+		uns += int(grammar.ReadBitsAtForDiag(p.pay, b, 1))
 		total++
 	}
 	switch {
@@ -106,7 +106,7 @@ func larg114Palette(pk []env114Paquet, d, w int) (int, string) {
 	comptes := map[uint32]int{}
 	for _, p := range pk {
 		if d+w <= p.nBits {
-			comptes[filmdec.ReadBitsAtForDiag(p.pay, d, w)]++
+			comptes[grammar.ReadBitsAtForDiag(p.pay, d, w)]++
 		}
 	}
 	var vs []int
@@ -175,14 +175,14 @@ func larg114Tableau(t *testing.T, nom string, pk []env114Paquet) map[int]bool {
 // c'est la reference a laquelle le critere C5 compare le type relu apres l'enveloppe.
 func larg114Types(dir string) map[uint32]int {
 	comptes := map[uint32]int{}
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 				continue
 			}
 			comptes[uint32(p.Payload(chunk)[0]>>1)]++
@@ -199,7 +199,7 @@ func larg114Fermeture(t *testing.T, nom string, pk []env114Paquet, pFin int, ref
 	relu := map[uint32]int{}
 	for _, p := range pk {
 		if fin+7 <= p.nBits {
-			relu[filmdec.ReadBitsAtForDiag(p.pay, fin, 7)]++
+			relu[grammar.ReadBitsAtForDiag(p.pay, fin, 7)]++
 		}
 	}
 	var connus, total int
@@ -267,7 +267,7 @@ func larg114Decode(p env114Paquet, w2, w3, w7 int) larg114Etat {
 		if pos+n > p.nBits {
 			return 0, false
 		}
-		return filmdec.ReadBitsAtForDiag(p.pay, pos, n), true
+		return grammar.ReadBitsAtForDiag(p.pay, pos, n), true
 	}
 	pos := 7
 	var ok bool

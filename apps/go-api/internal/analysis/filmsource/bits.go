@@ -6,7 +6,7 @@ package filmsource
 //
 // Avant le lot 2.4, SEPT lecteurs de bits distincts lisaient les memes octets de film, chacun
 // avec sa propre idee du bourrage de queue, du debordement et de l ordre des bits :
-// `filmdec.Lecteur`, `killsource.evReader`, les trois primitives de position de `killsource`
+// `grammar.Lecteur`, `killsource.evReader`, les trois primitives de position de `killsource`
 // (`bitAt` / `bits32` / `bitsN`, plus `bitsWide`), `objectives.readBitsBE`,
 // `weaponv3.bitReader`, `analysis.scanEvents` et la copie de `bitAt` d `analysis/positions`.
 // Une largeur corrigee d un cote et pas de l autre est exactement la divergence silencieuse que

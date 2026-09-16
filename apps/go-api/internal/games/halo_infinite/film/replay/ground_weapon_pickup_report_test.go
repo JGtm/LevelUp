@@ -17,7 +17,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // gwPickup21Tally compte le bornage, la datation et les deux temoins sur un sous-ensemble.
@@ -255,7 +255,7 @@ func gwPickupReport22Coverage(t *testing.T, f *gwPickupFilm) {
 
 // gwPickupAliveAt dit si le slot a un echantillon de position a `gwPickupWitnessTolUS` pres de
 // l'instant donne — le seul sens mesurable de « vivant et replique » ici.
-func gwPickupAliveAt(pts []filmdec.BipedPosition, atUS uint64) bool {
+func gwPickupAliveAt(pts []grammar.BipedPosition, atUS uint64) bool {
 	i := sort.Search(len(pts), func(i int) bool { return pts[i].TimestampUS >= atUS })
 	for _, j := range []int{i - 1, i} {
 		if j >= 0 && j < len(pts) && equipTimeGap(pts[j].TimestampUS, atUS) <= gwPickupWitnessTolUS {

@@ -32,7 +32,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // oriIdsMuets : les deux identifiants à élucider, en hexadécimal minuscule (convention de
@@ -44,10 +44,10 @@ const oriSuiteUS = 2_000_000
 
 // oriTenuApres rend les familles d'arme que le slot reçoit en main dans la fenêtre qui suit
 // `at` (décalée de decalUS pour le témoin).
-func oriTenuApres(chg []filmdec.HeldWeaponChange, slot uint32, at uint64, decalUS int64) []uint32 {
+func oriTenuApres(chg []grammar.HeldWeaponChange, slot uint32, at uint64, decalUS int64) []uint32 {
 	var out []uint32
 	for _, c := range chg {
-		if c.Slot != slot || c.Family == filmdec.NoWeaponVariant {
+		if c.Slot != slot || c.Family == grammar.NoWeaponVariant {
 			continue
 		}
 		d := int64(c.TimestampUS) + decalUS - int64(at)
@@ -64,15 +64,15 @@ func TestOrigineIdentifiantsMuets(t *testing.T) {
 		t.Skip("ORIGINE_FILM absent : instrument de mesure sauté")
 	}
 
-	pickups, _, err := filmdec.ScanFilmBipedPickups(dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
-	kf, err := filmdec.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
+	kf, err := grammar.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("images-clés illisibles : %v", err)
 	}
-	chg, _, err := filmdec.ScanFilmHeldWeaponChanges(dir, spawnSetFrom(kf))
+	chg, _, err := grammar.ScanFilmHeldWeaponChanges(dir, spawnSetFrom(kf))
 	if err != nil {
 		t.Fatalf("changements d'arme illisibles : %v", err)
 	}
@@ -82,7 +82,7 @@ func TestOrigineIdentifiantsMuets(t *testing.T) {
 	// Toutes les familles vues par i43..i46 : elles disent ce que le catalogue NOMME.
 	connues := map[uint32]int{}
 	for _, c := range chg {
-		if c.Family != filmdec.NoWeaponVariant {
+		if c.Family != grammar.NoWeaponVariant {
 			connues[c.Family]++
 		}
 	}

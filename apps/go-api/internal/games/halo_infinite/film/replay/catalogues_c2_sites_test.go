@@ -48,7 +48,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -163,7 +163,7 @@ func c2ChargeSites(t *testing.T, path, id string) []c2Site {
 
 // c2Mesure confronte chaque explosion aux sites (signal) et aux sites decales (temoin) —
 // avec la definition de PRESENCE SOUTENUE de l'en-tete (V2, amendee une fois).
-func c2Mesure(t *testing.T, id string, sites []c2Site, explosions []int64, clockUS uint64, pos []filmdec.BipedPosition) {
+func c2Mesure(t *testing.T, id string, sites []c2Site, explosions []int64, clockUS uint64, pos []grammar.BipedPosition) {
 	t.Helper()
 	var okSignal, okTemoin int
 	for _, x := range explosions {
@@ -187,7 +187,7 @@ func c2Mesure(t *testing.T, id string, sites []c2Site, explosions []int64, clock
 // c2PresenceSoutenue dit si, dans la fenetre [x-c2FenetreMS, x], UN MEME slot a tenu UN MEME
 // site (decale de dx) : >= c2PresenceMinEch echantillons a <= c2RayonM, etendue temporelle
 // >= c2PresenceMinMS.
-func c2PresenceSoutenue(pos []filmdec.BipedPosition, sites []c2Site, clockUS uint64, x int64, dx float64) bool {
+func c2PresenceSoutenue(pos []grammar.BipedPosition, sites []c2Site, clockUS uint64, x int64, dx float64) bool {
 	type cle struct {
 		slot uint32
 		site int

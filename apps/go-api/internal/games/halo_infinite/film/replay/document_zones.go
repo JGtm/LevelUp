@@ -54,7 +54,7 @@ package replay
 // D'OU VIENT CE QUI EST PUBLIE, ET DE QUOI C'EST FAIT :
 //
 //	le CANAL       l'archetype `ti=13` du film (`managed-object-property-*`), porte au lot C-bis
-//	               phase 1 et balaye par `filmdec.ScanFilmManagedProperties`. UN SLOT EST UNE
+//	               phase 1 et balaye par `grammar.ScanFilmManagedProperties`. UN SLOT EST UNE
 //	               PROPRIETE RESEAU NOMMEE, pas une zone : trois familles coexistent par zone —
 //	               la JAUGE de capture (tag 3), le PROPRIETAIRE (tag 4) et un canal neutre.
 //	la ZONE        le catalogue versionne d'objectifs de carte, fourni par l'appelant DANS

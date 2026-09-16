@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // identity_registry_exclusion_test.go — LES PROPRIETES DE L'EXCLUSION TEMPORELLE.
@@ -14,7 +14,7 @@ import (
 
 // sejour ajoute a `pos` les positions d'un sejour continu [debutS, finS] sur un slot, une
 // position toutes les 500 ms — bien en deca de `lifeGapUS`, donc un seul sejour.
-func sejour(pos []filmdec.BipedPosition, slot uint32, debutS, finS uint64) []filmdec.BipedPosition {
+func sejour(pos []grammar.BipedPosition, slot uint32, debutS, finS uint64) []grammar.BipedPosition {
 	for t := debutS * 1_000_000; t <= finS*1_000_000; t += 500_000 {
 		pos = append(pos, posAt(slot, t, float32(slot), float32(slot), 1))
 	}
@@ -28,7 +28,7 @@ func sejour(pos []filmdec.BipedPosition, slot uint32, debutS, finS uint64) []fil
 // LES DEUX JOUEURS ONT DES VIES NOMMEES : `resolveByRosterElimination` ne peut pas s'appliquer
 // (aucun xuid libre au sens du MATCH). C'est bien l'exclusion temporelle qui est exercee.
 func filmExclusion() IdentityInput {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	pos = sejour(pos, 100, 1, 4)
 	pos = sejour(pos, 100, 10, 20)
 	pos = sejour(pos, 100, 26, 34)
@@ -194,7 +194,7 @@ func TestExclusionSeTaitQuandLOccupationDepasseLeRoster(t *testing.T) {
 //
 // MUTATION : traiter « zero candidat » comme « un candidat » -> un nom sorti de nulle part, rouge.
 func TestExclusionSeTaitSansAucunCandidat(t *testing.T) {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	pos = sejour(pos, 100, 10, 20)
 	pos = sejour(pos, 200, 22, 30)
 	pos = sejour(pos, 300, 1, 17)
@@ -227,7 +227,7 @@ func TestExclusionSeTaitSansAucunCandidat(t *testing.T) {
 // MUTATION : retirer `conflitDExclusion` -> le meme joueur occupe deux corps au meme instant,
 // rouge.
 func TestExclusionSeTaitSurDeuxViesQuiSeDisputentLeMemeJoueur(t *testing.T) {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	pos = sejour(pos, 100, 10, 12)
 	pos = sejour(pos, 100, 24, 25)
 	pos = sejour(pos, 300, 18, 20)
@@ -267,7 +267,7 @@ func TestExclusionSeTaitSurDeuxViesQuiSeDisputentLeMemeJoueur(t *testing.T) {
 // MUTATION : ecraser `SlotXUID` au lieu de marquer le slot ambigu -> `PontDeSlot` sert un nom
 // arbitraire aux lecteurs du pont aplati, rouge.
 func TestExclusionRendAmbiguUnSlotQueDeuxJoueursSePartagent(t *testing.T) {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	pos = sejour(pos, 100, 1, 4)
 	pos = sejour(pos, 100, 10, 20)
 	pos = sejour(pos, 200, 1, 8)

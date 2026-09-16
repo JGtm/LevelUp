@@ -2,16 +2,16 @@ package replay
 
 import (
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // inventory_decode.go — L'INVENTAIRE COMPLET d'un biped à une image-clé : grenades portées
 // avec leur type, capacité d'armure, munitions des deux emplacements, et emplacement dégainé.
 //
-// POURQUOI CE CODE VIT DANS LA COUCHE REJEU ET NON DANS `filmdec`.
+// POURQUOI CE CODE VIT DANS LA COUCHE REJEU ET NON DANS `grammar`.
 //
-// C'est une question de COUCHES, pas de propriété. `filmdec` porte les primitives GÉNÉRIQUES du
+// C'est une question de COUCHES, pas de propriété. `grammar` porte les primitives GÉNÉRIQUES du
 // format — parcourir les paquets, borner les records d'une image-clé, déquantifier. L'inventaire,
 // lui, est un décodage SPÉCIFIQUE au rejeu, bâti sur ces primitives : il vit donc avec ce qu'il
 // sert, à côté de sa projection (inventory.go) et du fil des morts (deaths_source.go), qui
@@ -62,7 +62,7 @@ import (
 //   - la table des capacités est PARTIELLE, et propre à la PALETTE du match : un rang hors
 //     table doit s'afficher « inconnu », jamais être deviné ;
 //   - ce canal est BORGNE — il ne voit que les rangs 16 à 23 (invAbilityRankHigh). Le rang
-//     complet vient d'i48, dans les paquets delta (filmdec.ScanFilmAbilityRanks) ;
+//     complet vient d'i48, dans les paquets delta (grammar.ScanFilmAbilityRanks) ;
 //   - 51 records sur 150 admettent plusieurs parses du bloc de munitions. Le plus long est
 //     retenu et le NOMBRE DE CANDIDATS est publié, pour que le départage reste visible.
 
@@ -142,7 +142,7 @@ type KeyframeInventory struct {
 	// C'EST UN RANG, PAS UN INDEX — il l'est depuis le 2026-08-14 (cf. invAbilityRankHigh), et
 	// le champ a changé de nom parce qu'il a changé de grandeur. Ce canal ne voit QUE la
 	// fenêtre 16..23 de la palette : hors d'elle, l'ancre ne matche pas et la lecture n'existe
-	// pas. Le rang complet, sur toute la palette, vient d'i48 (filmdec.ScanFilmAbilityRanks).
+	// pas. Le rang complet, sur toute la palette, vient d'i48 (grammar.ScanFilmAbilityRanks).
 	//
 	// Le NOM ne se décide pas ici : la table est partielle ET propre à la palette du match,
 	// et la nommer est le travail de la couche qui possède le catalogue.
@@ -195,17 +195,17 @@ func ScanKeyframeInventory(
 		fb.Declenche(fallback.NomPlafondGrenadeParDefaut)
 		grenMax = DefaultGrenadeMax
 	}
-	nums := filmdec.FilmChunkNumbers(film)
+	nums := grammar.FilmChunkNumbers(film)
 	st.Chunks = len(nums)
 	var out []KeyframeInventory
 	for _, c := range nums {
-		chunk, pks, ok := filmdec.FilmChunkAt(film, c)
+		chunk, pks, ok := grammar.FilmChunkAt(film, c)
 		if !ok {
 			st.ChunksUnread++
 			continue
 		}
 		for _, p := range pks {
-			if p.Type != filmdec.PacketTypeKeyframe {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			st.Keyframes++
@@ -225,7 +225,7 @@ func ScanKeyframeInventory(
 		}
 	}
 	if st.ChunksUnread == st.Chunks {
-		return nil, st, filmdec.ErrNoReadableFilmChunk
+		return nil, st, grammar.ErrNoReadableFilmChunk
 	}
 	return out, st, nil
 }
@@ -286,7 +286,7 @@ type invRecordSpan struct {
 // invRecordSpans découpe le payload en records, bornes données par WalkKeyframeWorld — le même
 // walker que keyframe_loadout.go, déjà validé 249/250 entités et 8/8 bipeds.
 func invRecordSpans(pay []byte) []invRecordSpan {
-	recs := filmdec.WalkKeyframeWorld(pay)
+	recs := grammar.WalkKeyframeWorld(pay)
 	if len(recs) == 0 {
 		return nil
 	}

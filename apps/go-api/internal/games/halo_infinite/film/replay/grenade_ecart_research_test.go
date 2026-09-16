@@ -53,7 +53,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -117,13 +117,13 @@ func grenEcartMesureFilm(t *testing.T, parc string, f grenEcartFilm) {
 // grenEcartLectures collecte les lectures brutes que l'observateur rend — celles dont le pont
 // d'identité a besoin, et les naissances de projectile.
 type grenEcartLectures struct {
-	positions []filmdec.BipedPosition
-	creations []filmdec.BipedCreation
+	positions []grammar.BipedPosition
+	creations []grammar.BipedCreation
 	deaths    []Death
 	indices   PlayerIndexTable
-	fire      []filmdec.FireEvent
-	throws    []filmdec.GrenadeThrow
-	proj      []filmdec.ProjectileTrack
+	fire      []grammar.FireEvent
+	throws    []grammar.GrenadeThrow
+	proj      []grammar.ProjectileTrack
 }
 
 func (l *grenEcartLectures) observe(step string, v any) {
@@ -131,19 +131,19 @@ func (l *grenEcartLectures) observe(step string, v any) {
 	// garde qu'UNE ecriture de chacun, celle des litteraux `opt.observe("...")` de build.go.
 	switch step {
 	case etapePositions:
-		l.positions, _ = v.([]filmdec.BipedPosition)
+		l.positions, _ = v.([]grammar.BipedPosition)
 	case etapeCreationsBipede:
-		l.creations, _ = v.([]filmdec.BipedCreation)
+		l.creations, _ = v.([]grammar.BipedCreation)
 	case etapeMorts:
 		l.deaths, _ = v.([]Death)
 	case etapeIndicesJoueur:
 		l.indices, _ = v.(PlayerIndexTable)
 	case etapeFire:
-		l.fire, _ = v.([]filmdec.FireEvent)
+		l.fire, _ = v.([]grammar.FireEvent)
 	case etapeGrenades:
-		l.throws, _ = v.([]filmdec.GrenadeThrow)
+		l.throws, _ = v.([]grammar.GrenadeThrow)
 	case etapeProjectiles:
-		l.proj, _ = v.([]filmdec.ProjectileTrack)
+		l.proj, _ = v.([]grammar.ProjectileTrack)
 	}
 }
 
@@ -155,7 +155,7 @@ func grenEcartCas2(doc ReplayDocument, l *grenEcartLectures) []grenEcartCas {
 	if len(l.positions) == 0 || len(l.throws) == 0 {
 		return nil
 	}
-	sorted := append([]filmdec.BipedPosition(nil), l.positions...)
+	sorted := append([]grammar.BipedPosition(nil), l.positions...)
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].TimestampUS < sorted[j].TimestampUS })
 	origin := sorted[0].TimestampUS
 	step := uint64(doc.FrameIntervalMS) * 1000
@@ -189,15 +189,15 @@ func grenEcartCas2(doc ReplayDocument, l *grenEcartLectures) []grenEcartCas {
 
 // grenEcartAuteur rend la position répliquée du lanceur à l'instant du lancer, quand le pont et
 // le film la donnent tous les deux.
-func grenEcartAuteur(g filmdec.GrenadeThrow, tracks map[uint32]slotTrack,
-	owner map[uint32]int) (filmdec.BipedPosition, bool) {
+func grenEcartAuteur(g grammar.GrenadeThrow, tracks map[uint32]slotTrack,
+	owner map[uint32]int) (grammar.BipedPosition, bool) {
 	slot, reason := slotFor(tracks, owner, g.FilmIndex, g.TimestampUS)
 	if reason != reasonAttached {
-		return filmdec.BipedPosition{}, false
+		return grammar.BipedPosition{}, false
 	}
 	p, d := tracks[slot].at(g.TimestampUS)
 	if d > shotPosToleranceUS || !p.HasWorld {
-		return filmdec.BipedPosition{}, false
+		return grammar.BipedPosition{}, false
 	}
 	return p, true
 }
@@ -265,10 +265,10 @@ func grenEcartPct(n, total int) string {
 
 // grenEcartBornes charge les bornes de déquantification de la carte depuis le catalogue
 // VERSIONNÉ du parc désigné.
-func grenEcartBornes(t *testing.T, parc, carte string) filmdec.MapQuantEntry {
+func grenEcartBornes(t *testing.T, parc, carte string) grammar.MapQuantEntry {
 	t.Helper()
 	chemin := filepath.Join(parc, "data", "titles", "halo_infinite", "reference", "map_quant_bounds.json")
-	cat, err := filmdec.LoadMapQuantCatalog(chemin)
+	cat, err := grammar.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", chemin, err)
 	}

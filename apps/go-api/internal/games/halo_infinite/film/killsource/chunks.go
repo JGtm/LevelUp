@@ -6,7 +6,7 @@ package killsource
 //
 // Il portait sa propre source de chunks (`ChunkSource`, `MemoryChunks`, `DirChunks`), son propre
 // inflate zlib et son propre marcheur de paquets (`splitPackets`) — la TROISIEME copie des trois,
-// a cote de `filmdec` et d `objectives`, et les trois DIVERGEAIENT. Une cuisson d artefact
+// a cote de `grammar` et d `objectives`, et les trois DIVERGEAIENT. Une cuisson d artefact
 // payait donc une lecture disque et une decompression du film ENTIER rien que pour ce decodeur,
 // en plus de celles des balayages.
 //
@@ -32,7 +32,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // packet : un paquet de replication, tel qu il se presente dans un chunk decompresse.
@@ -83,11 +83,11 @@ func loadFilm(src *filmsource.Film) (*film, error) {
 		return nil, ErrNoChunk
 	}
 	f := &film{src: src, packets: packetsOf(src)}
-	// LA VERSION VIENT DU PROFIL DU FILM DEPUIS LE LOT 2.1.4 : `filmdec.HighlightProfileOfFilm`
+	// LA VERSION VIENT DU PROFIL DU FILM DEPUIS LE LOT 2.1.4 : `grammar.HighlightProfileOfFilm`
 	// porte la MEME valeur que `FilmMajorVersion` — c est la meme lecture — mais elle la rend
 	// avec le NOM de l implantation qu elle selectionne, et c est le profil qui en est
 	// desormais la source unique (item 2.1.4 du PLAN_DECODEUR_FILM).
-	hl := filmdec.HighlightProfileOfFilm(src)
+	hl := grammar.HighlightProfileOfFilm(src)
 	f.majorVersion, f.versionLue = hl.MajorVersion, hl.Lue
 	for i := range f.packets {
 		if f.packets[i].typ == packetType0 {
@@ -105,7 +105,7 @@ func loadFilm(src *filmsource.Film) (*film, error) {
 // packetsOf : les paquets du film dans la forme interne, LE TERMINATEUR EXCLU.
 //
 // LE FILTRE DE TYPE 7 EST LA POUR L IDENTITE, et il est le seul ecart entre les deux grammaires :
-// `filmsource` EMET le paquet CHUNK_END (regle 3 de D3 revisee, comme `filmdec` le faisait), la ou
+// `filmsource` EMET le paquet CHUNK_END (regle 3 de D3 revisee, comme `grammar` le faisait), la ou
 // l ancien `splitPackets` de ce paquet s arretait sur `taille <= 0` et ne l emettait donc jamais
 // (sur les chunks de donnees, « taille 0 » et « CHUNK_END » sont LE MEME paquet, en derniere
 // position — mesure sur 1 378 films, cf. `filmsource/doc.go`). Le filtrer ici reproduit

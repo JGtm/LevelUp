@@ -43,7 +43,7 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // oriTypesEquipement : les deux types trouvés aux positions récurrentes. Publiés en hexadécimal
@@ -136,7 +136,7 @@ func oriPadsElargis(t *testing.T, base []MapWeaponPadSpot) ([]MapWeaponPadSpot, 
 }
 
 // oriClasse compte les trois seaux pour un jeu d'emplacements donné.
-func oriClasse(pads []MapWeaponPadSpot, cre []filmdec.EquipmentCreation, ends []equipLife,
+func oriClasse(pads []MapWeaponPadSpot, cre []grammar.EquipmentCreation, ends []equipLife,
 	dx, dy float64) oriBucket {
 	var b oriBucket
 	for _, c := range cre {

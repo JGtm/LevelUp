@@ -25,7 +25,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -211,7 +211,7 @@ func TestBTB2025NonRegression(t *testing.T) {
 	}
 	if res.Roster.Humans < 20 {
 		t.Errorf("roster humain = %d, want >= 20 — la version du film n est plus LUE dans "+
-			"l en-tete de son registre (cf. filmdec.FilmMajorVersion, killsource.loadFilm)",
+			"l en-tete de son registre (cf. grammar.FilmMajorVersion, killsource.loadFilm)",
 			res.Roster.Humans)
 	}
 	if res.Coverage.RealPairs == 0 {
@@ -258,7 +258,7 @@ func TestBTB2025ParcVersions(t *testing.T) {
 			sansRegistre = append(sansRegistre, e.Name())
 			continue
 		}
-		version, ok := filmdec.FilmMajorVersionFromHeader(filmsource.Inflate(registre))
+		version, ok := grammar.FilmMajorVersionFromHeader(filmsource.Inflate(registre))
 		if !ok {
 			sansRegistre = append(sansRegistre, e.Name())
 			continue

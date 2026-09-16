@@ -39,7 +39,7 @@ package objectives
 // L'équipe 1 de `2535430195856593` sur ce match est ÉTABLIE AILLEURS QUE DANS CE BLOC, par la
 // trame d'état du film (rang de la table des slots de `chunk_00` -> xuid, i-ème entité ti=9 ->
 // désignateur d'équipe). C'est ce que publie l'oracle corpus
-// `filmdec.TestResidusPiedOctetEquipe`, qui reste la mesure de référence — 665/665 sur quatorze
+// `grammar.TestResidusPiedOctetEquipe`, qui reste la mesure de référence — 665/665 sur quatorze
 // films le 2026-09-13, rejoué le 2026-09-14 sur trois films (`53ce4390`, `64e8adfa`,
 // `7344d24f`) : 173 événements sur 173 pour l'octet 37, 84 sur 173 pour l'octet 55, et QUATRE
 // lectures en accord parfait sur cent quatre-vingts essayées.
@@ -100,7 +100,7 @@ func TestPiedEquipeOctet37(t *testing.T) {
 	if e.Team != piedAttenduTeam {
 		t.Errorf("ÉQUIPE LUE AU MAUVAIS OCTET.\n"+
 			"  équipe rendue  : %d\n  équipe prouvée : %d (trame d'état du film, oracle "+
-			"filmdec.TestResidusPiedOctetEquipe)\n  octet lu       : %d\n"+
+			"grammar.TestResidusPiedOctetEquipe)\n  octet lu       : %d\n"+
 			"L'équipe d'un événement du pied est à l'octet 37 du bloc de %d (665/665 sur "+
 			"quatorze films). Sur CE bloc, l'octet 36 vaut %d (c'est le slot) et l'octet 55 "+
 			"vaut %d : si l'un des deux est revenu dans `footerByteTeam`, c'est la régression "+

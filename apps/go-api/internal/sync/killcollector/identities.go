@@ -40,7 +40,7 @@ type MatchIdentities struct {
 	//
 	// ⚠ LA JUSTIFICATION D ORIGINE — « le film ne porte AUCUN camp (`Track.Team` vaut -1
 	// partout) » — EST FAUSSE DEPUIS LE LOT 1.7 (2026-09-14) : le designateur d equipe est ecrit
-	// dans l etat par defaut de ti=9 et `filmdec.ScanPlayerTeams` le lit ; `Track.Team` et
+	// dans l etat par defaut de ti=9 et `grammar.ScanPlayerTeams` le lit ; `Track.Team` et
 	// `roster[].team` de l artefact en viennent (ADR 0034, D-9). Ce qui reste vrai est la portee
 	// de CETTE passe, pas une propriete du film.
 	Equipes map[string]int

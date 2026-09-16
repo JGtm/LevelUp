@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // bomb_carries_test.go — LE PORTEUR DE LA BOMBE, sur des transitions synthetiques (CI, sans
@@ -12,8 +12,8 @@ import (
 // de presence ecarte et rogne comme pour le crane, et la garde `CarryScanned` retient tout.
 
 // bombChange fabrique une transition du canal des armes tenues, datee µs film.
-func bombChange(tUS uint64, slot uint32, family, previous uint32) filmdec.HeldWeaponChange {
-	return filmdec.HeldWeaponChange{TimestampUS: tUS, Slot: slot, Family: family, Previous: previous}
+func bombChange(tUS uint64, slot uint32, family, previous uint32) grammar.HeldWeaponChange {
+	return grammar.HeldWeaponChange{TimestampUS: tUS, Slot: slot, Family: family, Previous: previous}
 }
 
 const bombTestOther = uint32(0x11111111)
@@ -21,10 +21,10 @@ const bombTestOther = uint32(0x11111111)
 // TestBombHeldEventsFilterAndClock : seules les transitions de la famille bombe sortent, datees
 // sur l'horloge du MATCH (µs film / 1000 − deathOffsetMS).
 func TestBombHeldEventsFilterAndClock(t *testing.T) {
-	changes := []filmdec.HeldWeaponChange{
-		bombChange(10_000_000, 3, bombHeldFamily, filmdec.NoWeaponVariant), // prise a 10 s film
+	changes := []grammar.HeldWeaponChange{
+		bombChange(10_000_000, 3, bombHeldFamily, grammar.NoWeaponVariant), // prise a 10 s film
 		bombChange(12_000_000, 3, bombTestOther, bombHeldFamily),           // lacher (swap) a 12 s
-		bombChange(15_000_000, 5, bombTestOther, filmdec.NoWeaponVariant),  // une arme : ignoree
+		bombChange(15_000_000, 5, bombTestOther, grammar.NoWeaponVariant),  // une arme : ignoree
 	}
 	evs := bombHeldEventsOf(changes, 2_000) // horlogeFilm = horlogeMatch + 2 s
 	if len(evs) != 2 {
@@ -110,8 +110,8 @@ func TestBombCarriesBridgeAndPresence(t *testing.T) {
 // ete vu et rien n'est publie.
 func TestBombCarriesGuards(t *testing.T) {
 	doc := ReplayDocument{MatchID: "test", Coverage: &Coverage{}}
-	opt := Options{WeaponChanges: []filmdec.HeldWeaponChange{
-		bombChange(1_000_000, 3, bombHeldFamily, filmdec.NoWeaponVariant),
+	opt := Options{WeaponChanges: []grammar.HeldWeaponChange{
+		bombChange(1_000_000, 3, bombHeldFamily, grammar.NoWeaponVariant),
 	}}
 	// Garde fermee : rien, pas meme une couverture.
 	attachBombCarries(&doc, opt, IdentityRegistry{}, replayClock{origin: 0, step: 1000, frames: 100}, nil)

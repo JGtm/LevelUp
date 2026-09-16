@@ -43,7 +43,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const adsFilmsDirEnv = "ADS_FILMS_DIR"
@@ -121,7 +121,7 @@ func adsListeFilms(t *testing.T, root string) []string {
 // adsRecenseFilm lit le SEUL chunk d'evenements d'un film et compte ses medailles utiles.
 func adsRecenseFilm(root, name string) (adsMedailleFilm, bool) {
 	dir := filepath.Join(root, name)
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	if n == 0 {
 		return adsMedailleFilm{film: name, chunkIntrouvable: true}, false
 	}

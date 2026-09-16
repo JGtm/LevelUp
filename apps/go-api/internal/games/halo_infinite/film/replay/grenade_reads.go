@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // grenade_reads.go — LES GRENADES PORTÉES, sur leur propre axe, alimentées par DEUX canaux.
@@ -16,7 +16,7 @@ import (
 //	       une lecture par joueur et par image-clé — mais espacé de ~20 s, et MUET sur une
 //	       large part du corpus : 42 films sur 70 ne rendent aucune lecture de grenades.
 //	delta  les composants i22 (compteurs) et i47 (masque + sélection) des paquets DELTA
-//	       (filmdec.ScanFilmInventoryDeltas). Transmis AU CHANGEMENT — un ramassage, un
+//	       (grammar.ScanFilmInventoryDeltas). Transmis AU CHANGEMENT — un ramassage, un
 //	       lancer — donc rares (0,09 % des records) mais placés exactement là où l'état bouge.
 //
 // POURQUOI UN AXE À PART, ET NON DANS `Inventory`. Le client retient, pour un slot et une
@@ -78,7 +78,7 @@ type GrenadeRead struct {
 // l'axe, et leur en inventer une les poserait sur la première image comme si elles y avaient
 // été mesurées.
 func buildGrenadeReads(
-	kf []KeyframeInventory, deltas []filmdec.InventoryDelta, origin, step uint64,
+	kf []KeyframeInventory, deltas []grammar.InventoryDelta, origin, step uint64,
 ) []GrenadeRead {
 	out := make([]GrenadeRead, 0, len(kf)+len(deltas))
 	for _, r := range kf {
@@ -106,7 +106,7 @@ func buildGrenadeReads(
 			T: int((d.TimestampUS - origin) / step), Slot: d.Slot,
 			G: append([]uint32(nil), d.Grenades...), Src: GrenadeSrcDelta,
 		}
-		if d.SelRead && d.Sel != filmdec.InventoryDeltaNoSel {
+		if d.SelRead && d.Sel != grammar.InventoryDeltaNoSel {
 			sel := d.Sel
 			g.Gs = &sel
 		}

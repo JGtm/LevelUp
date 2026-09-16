@@ -100,7 +100,7 @@ package archlint
 //
 // # MUTATIONS QUI DOIVENT LE FAIRE ROUGIR
 //
-//   - classer `film/filmdec` en `replay` : `killsource` (facts) -> `filmdec` devient un import
+//   - classer `film/grammar` en `replay` : `killsource` (facts) -> `grammar` devient un import
 //     vers le haut, R1 rougit ;
 //   - retirer une entree d `aretesTolerees` : l arete correspondante rougit ;
 //   - ajouter une entree d allowlist sans violation reelle : « entree perimee, la retirer ».
@@ -157,17 +157,20 @@ var couchesDuDecodeur = map[string]coucheFilm{
 
 	// --- profile : VIDE AUJOURD HUI, et c est ecrit. La part profil existe (`filmdec/profile.go`,
 	// `profile_table.go`, `build_profile.go`, `map_bounds.go`, `i0_layout.go`, `mpp_widths.go`,
-	// `slot_band_dense.go`) mais elle vit DANS `filmdec` : au niveau PAQUET — la seule granularite
-	// qu un graphe d imports connaisse — `filmdec` vaut donc `grammar` tant que 2.5.b n a pas
+	// `slot_band_dense.go`) mais elle vit DANS `grammar` : au niveau PAQUET — la seule granularite
+	// qu un graphe d imports connaisse — le paquet `grammar` porte donc les DEUX tant que 2.5.b n a pas
 	// extrait ces sept fichiers. Voir `couchesVidesTolerees`.
 
 	// --- grammar : decodeurs de records et de composants, fonctions pures de (profil, bits).
-	"internal/games/halo_infinite/film/filmdec": coucheGrammar,
-	// `weaponv3` est un QUATRIEME lecteur de bits, pose sous `analysis/` : `ResolveXuidToPI` est
-	// de la grammaire de film. Le paquet ne se deplace pas en bloc, il se DISSOUT au lot 2.5.c —
-	// le resolveur descend en `grammar`, le catalogue d armes (3 symboles) remonte en
-	// `games/weapons`, qui est la lingua franca inter-titres.
-	"internal/analysis/weaponv3": coucheGrammar,
+	"internal/games/halo_infinite/film/grammar": coucheGrammar,
+	// `weaponv3` etait un QUATRIEME lecteur de bits, pose sous `analysis/` : `ResolveXuidToPI` est
+	// de la grammaire de film. DESCENDU LE 2026-09-16 (lot 2.5.c) sous `film/grammar/weaponv3`,
+	// par `git mv` PUR — il DEVAIT quitter `internal/analysis/` avant que la couche `source` n y
+	// descende (sinon D9 rougit). Sa DISSOLUTION reste a faire : le resolveur rejoint le corps de
+	// `grammar`, le catalogue d armes (3 symboles, toujours dans `internal/analysis/weapon_data.go`)
+	// remonte en `games/weapons` — c est la seule chose qui fermera l arete `weaponv3 -> analysis`
+	// ci-dessous.
+	"internal/games/halo_infinite/film/grammar/weaponv3": coucheGrammar,
 
 	// --- facts : de la chronologie brute aux faits du match (vies, identite, tirs, morts,
 	// objectifs, equipement, vehicules), chacun avec ses compteurs de couverture.
@@ -234,7 +237,7 @@ var aretesTolerees = []areteToleree{
 			"`film/internal/source`, sans autre changement que la ligne d import",
 	},
 	{
-		de: "internal/games/halo_infinite/film/filmdec", vers: "internal/analysis/filmsource",
+		de: "internal/games/halo_infinite/film/grammar", vers: "internal/analysis/filmsource",
 		pose: "2026-09-17", lot: "2.5.a",
 		coupe: "grammar -> source : le sens est deja bon, seul le lieu est faux ; " +
 			"`git mv` de `filmsource` puis re-pointage de l import",
@@ -265,13 +268,6 @@ var aretesTolerees = []areteToleree{
 			"`player_index.go`) remontent en `facts`, ou `replay` recoit un film deja charge",
 	},
 	{
-		de: "internal/games/halo_infinite/film/replay", vers: "internal/analysis/weaponv3",
-		pose: "2026-09-17", lot: "2.5.c",
-		coupe: "3 symboles cote `weaponv3` (`CommonWeaponSuffix`, `WeaponFusionMap`, " +
-			"`WeaponIDToName`) : le resolveur descend en `grammar`, le catalogue d armes remonte " +
-			"en `games/weapons`",
-	},
-	{
 		de: "internal/games/halo_infinite/film/facts/objectives", vers: "internal/analysis/filmsource",
 		pose: "2026-09-17", lot: "2.5.a puis 2.5.d.2",
 		coupe: "facts -> source : le sens est bon, les deux paquets descendent sous `film/` ; le " +
@@ -279,7 +275,7 @@ var aretesTolerees = []areteToleree{
 			"au second, quand `filmsource` descendra a son tour (2.5.a)",
 	},
 	{
-		de: "internal/analysis/weaponv3", vers: "internal/analysis/filmsource",
+		de: "internal/games/halo_infinite/film/grammar/weaponv3", vers: "internal/analysis/filmsource",
 		pose: "2026-09-18", lot: "2.5.a puis 2.5.c",
 		coupe: "NEE DU LOT 2.4.2, ET VOULUE PAR V15 (1) : la facade `film.Source` nait dans " +
 			"`internal/analysis/filmsource` precisement parce que `weaponv3` et " +
@@ -289,7 +285,7 @@ var aretesTolerees = []areteToleree{
 			"LIEU qui ne l est pas encore, et 2.5.a le corrige par `git mv` pur",
 	},
 	{
-		de: "internal/analysis/weaponv3", vers: "internal/analysis",
+		de: "internal/games/halo_infinite/film/grammar/weaponv3", vers: "internal/analysis",
 		pose: "2026-09-17", lot: "2.5.c",
 		coupe: "le catalogue d armes (3 symboles) remonte en `games/weapons` ; apres quoi " +
 			"`weaponv3` se dissout et l entree n a plus d objet",
@@ -312,22 +308,17 @@ var paquetsHorsLieuToleres = []paquetHorsLieuTolere{
 	{
 		paquet: "internal/analysis/filmsource", pose: "2026-09-17", lot: "2.5.a",
 		coupe: "`git mv` vers `film/source` (decision V5 du plan), puis `film/internal/source` " +
-			"au dernier commit du lot ; la remontee des 14 fichiers de `filmdec` qui lisent " +
+			"au dernier commit du lot ; la remontee des 14 fichiers de `grammar` qui lisent " +
 			"`chunk_00` (note de preparation §2.3) N EST PAS un deplacement pur — voir §4",
-	},
-	{
-		paquet: "internal/analysis/weaponv3", pose: "2026-09-17", lot: "2.5.c",
-		coupe: "dissolution, pas deplacement : `ResolveXuidToPI` descend en `grammar`, le " +
-			"catalogue d armes remonte en `games/weapons`",
 	},
 }
 
 // couchesVidesTolerees : une couche declaree que AUCUN paquet ne porte encore, avec le lot qui
 // la peuplera. Une couche vide ne garde rien — elle ne se tolere que datee.
 var couchesVidesTolerees = map[string]string{
-	"profile": "2026-09-17, lot 2.5.b — la part profil vit dans `filmdec` (profile.go, " +
+	"profile": "2026-09-17, lot 2.5.b — la part profil vit dans `grammar` (profile.go, " +
 		"profile_table.go, build_profile.go, map_bounds.go, i0_layout.go, mpp_widths.go, " +
-		"slot_band_dense.go, 1 695 L). Au niveau PAQUET, `filmdec` vaut donc `grammar` tant " +
+		"slot_band_dense.go, 1 695 L). Au niveau PAQUET, le paquet `grammar` porte donc les DEUX tant " +
 		"que 2.5.b n a pas extrait ces sept fichiers.",
 }
 

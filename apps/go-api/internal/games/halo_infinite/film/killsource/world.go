@@ -32,23 +32,23 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // keyframeEvent : un paquet keyframe decode, avec son horodatage.
 type keyframeEvent struct {
 	ts   uint64
-	recs []filmdec.KeyframeRec
+	recs []grammar.KeyframeRec
 }
 
 // timeline : suite chronologique des keyframes du film.
 type timeline struct {
 	events   []keyframeEvent
 	cursor   int
-	w        *filmdec.World
+	w        *grammar.World
 	gapOpen  map[int][]int
 	gapClose map[int][]int
-	initSnap filmdec.WorldSnapshot
+	initSnap grammar.WorldSnapshot
 }
 
 // newTimeline : registre depuis le chunk 0 + keyframes tries par horodatage.
@@ -56,7 +56,7 @@ func newTimeline(f *film) (*timeline, error) {
 	if f.src.NumChunks() == 0 {
 		return nil, ErrNoChunk
 	}
-	reg, err := filmdec.ParseRegistryChunk(f.src.Chunk(0))
+	reg, err := grammar.ParseRegistryChunk(f.src.Chunk(0))
 	if err != nil {
 		return nil, errRegistry(err)
 	}
@@ -67,7 +67,7 @@ func newTimeline(f *film) (*timeline, error) {
 		}
 	}
 	sort.Slice(tl.events, func(i, j int) bool { return tl.events[i].ts < tl.events[j].ts })
-	tl.w = filmdec.NewWorld(reg)
+	tl.w = grammar.NewWorld(reg)
 	tl.preload()
 	tl.buildGapWindows()
 	tl.initSnap = tl.w.Snapshot()
@@ -96,7 +96,7 @@ func (tl *timeline) rewind() {
 
 // advanceTo : applique tous les keyframes d horodatage <= ts. LES APPELS DOIVENT ETRE
 // STRICTEMENT CROISSANTS — c est un curseur, pas une recherche.
-func (tl *timeline) advanceTo(ts uint64) *filmdec.World {
+func (tl *timeline) advanceTo(ts uint64) *grammar.World {
 	for tl.cursor < len(tl.events) && tl.events[tl.cursor].ts <= ts {
 		for _, r := range tl.events[tl.cursor].recs {
 			tl.w.BindFull(uint32((r.Gen<<30)|r.Slot), uint32(r.TI))
@@ -222,8 +222,8 @@ func (tl *timeline) declaredBipeds() (map[int]bool, []int, int, int) {
 
 // keyframeRecs : mecanisme 2 — sortie du walker de keyframe COMPLETEE par le balayage restreint
 // aux ancres d archetype biped que le walker a sautees.
-func keyframeRecs(pl []byte) []filmdec.KeyframeRec {
-	recs := filmdec.WalkKeyframeWorld(pl)
+func keyframeRecs(pl []byte) []grammar.KeyframeRec {
+	recs := grammar.WalkKeyframeWorld(pl)
 	have := map[int]bool{}
 	for _, r := range recs {
 		have[r.Slot] = true
@@ -233,7 +233,7 @@ func keyframeRecs(pl []byte) []filmdec.KeyframeRec {
 			continue
 		}
 		have[a.slot] = true
-		recs = append(recs, filmdec.KeyframeRec{Slot: a.slot, TI: a.ti, Gen: a.gen, Bit: a.bit})
+		recs = append(recs, grammar.KeyframeRec{Slot: a.slot, TI: a.ti, Gen: a.gen, Bit: a.bit})
 	}
 	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
 	return recs

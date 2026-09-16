@@ -42,7 +42,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // Seuils et bornes de l'item 1, ecrits avant mesure.
@@ -59,7 +59,7 @@ const (
 
 // v1cVie est une vie de vehicule telle que le recensement la borne.
 type v1cVie struct {
-	Key         filmdec.EquipmentLifeKey
+	Key         grammar.EquipmentLifeKey
 	T0, T1      uint64 // premiere et derniere image-cle qui la recense
 	CensusCount int    // nombre d'images-cles qui la recensent
 	Cand        map[uint32]uint64
@@ -83,7 +83,7 @@ func TestV1ConducteurAttribution(t *testing.T) {
 func v1cUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
 	dir := objChunkDir(root, f.ID)
-	if filmdec.CountFilmChunks(dir) == 0 {
+	if grammar.CountFilmChunks(dir) == 0 {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
@@ -98,9 +98,9 @@ func v1cUnFilm(t *testing.T, root string, f v0Film) {
 	}
 	vies := v1cVies(dir)
 	vehTracks := v1aPistes(v1cScan(t, f, dir, bande, &wr))
-	optBip := filmdec.DefaultScanFilmOptions()
+	optBip := grammar.DefaultScanFilmOptions()
 	optBip.WorldRange = &wr
-	bip, err := filmdec.ScanFilmBipedPositions(dir, optBip)
+	bip, err := grammar.ScanFilmBipedPositions(dir, optBip)
 	if err != nil {
 		t.Logf("V1c %s : balayage des bipedes : %v", f.ID, err)
 		return
@@ -113,9 +113,9 @@ func v1cUnFilm(t *testing.T, root string, f v0Film) {
 
 // v1cScan balaie le nuage vehicule par la grammaire bipede (filtres de production armes, comme
 // V1a.4). Un echec est journalise et rend un nuage vide plutot que d'interrompre la mesure.
-func v1cScan(t *testing.T, f v0Film, dir string, band map[uint32]bool, wr *filmdec.Vec3Range) []filmdec.BipedPosition {
+func v1cScan(t *testing.T, f v0Film, dir string, band map[uint32]bool, wr *grammar.Vec3Range) []grammar.BipedPosition {
 	t.Helper()
-	pos, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(band), v1aOptions(wr, true))
+	pos, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(band), v1aOptions(wr, true))
 	if err != nil {
 		t.Logf("V1c %s : balayage du nuage vehicule : %v", f.ID, err)
 		return nil
@@ -125,7 +125,7 @@ func v1cScan(t *testing.T, f v0Film, dir string, band map[uint32]bool, wr *filmd
 
 // v1cVies construit les vies bornees depuis le recensement des images-cles.
 func v1cVies(dir string) []v1cVie {
-	k := filmdec.ScanFilmWorldObjectKeyframes(dir, int(attVehiculeTI))
+	k := grammar.ScanFilmWorldObjectKeyframes(dir, int(attVehiculeTI))
 	out := make([]v1cVie, 0, len(k.SeenUS))
 	for key, vus := range k.SeenUS {
 		out = append(out, v1cVie{
@@ -144,8 +144,8 @@ func v1cVies(dir string) []v1cVie {
 
 // v1cGapStartsNearVehicles releve les DEBUTS DE TROU (>= v1cGapMinMS) dont le dernier point est a
 // moins de attBordRayonM d'un vehicule, avec le slot de ce vehicule et la distance.
-func v1cGapStartsNearVehicles(bip []filmdec.BipedPosition, veh []filmdec.ProjectileTrack) []v1cEvent {
-	parBipede := map[uint32][]filmdec.BipedPosition{}
+func v1cGapStartsNearVehicles(bip []grammar.BipedPosition, veh []grammar.ProjectileTrack) []v1cEvent {
+	parBipede := map[uint32][]grammar.BipedPosition{}
 	for _, b := range bip {
 		if b.HasWorld {
 			parBipede[b.Slot] = append(parBipede[b.Slot], b)
@@ -168,7 +168,7 @@ func v1cGapStartsNearVehicles(bip []filmdec.BipedPosition, veh []filmdec.Project
 // v1cGapStartsDuBipede releve les debuts de trou d'UN bipede. Le predicat de proximite est
 // `attVehiculeLePlusProche` — exactement celui de l'oracle geometrique du 18/08 (1,5 m, plus
 // proche voisin temporel), pour que le signal reste comparable a V1a.4.
-func v1cGapStartsDuBipede(slot uint32, ech []filmdec.BipedPosition, veh []filmdec.ProjectileTrack) []v1cEvent {
+func v1cGapStartsDuBipede(slot uint32, ech []grammar.BipedPosition, veh []grammar.ProjectileTrack) []v1cEvent {
 	var out []v1cEvent
 	for i := 1; i < len(ech); i++ {
 		if int64(ech[i].TimestampUS-ech[i-1].TimestampUS)/1000 < v1cGapMinMS {
@@ -209,8 +209,8 @@ func v1cAttribue(events []v1cEvent, vies []v1cVie) {
 }
 
 // v1cPublie ecrit la synthese et la table vie -> conducteur(s) candidat(s).
-func v1cPublie(t *testing.T, f v0Film, vies []v1cVie, veh []filmdec.ProjectileTrack,
-	bip []filmdec.BipedPosition, events []v1cEvent) {
+func v1cPublie(t *testing.T, f v0Film, vies []v1cVie, veh []grammar.ProjectileTrack,
+	bip []grammar.BipedPosition, events []v1cEvent) {
 	t.Helper()
 	attrib, ambig, longues := 0, 0, 0
 	for _, v := range vies {
@@ -245,7 +245,7 @@ func v1cPublie(t *testing.T, f v0Film, vies []v1cVie, veh []filmdec.ProjectileTr
 
 // v1cCompteTrous compte les trous >= v1cGapMinMS, tous bipedes confondus — le denominateur du
 // rapport a la chance.
-func v1cCompteTrous(bip []filmdec.BipedPosition) int {
+func v1cCompteTrous(bip []grammar.BipedPosition) int {
 	parBipede := map[uint32][]uint64{}
 	for _, b := range bip {
 		if b.HasWorld {
@@ -296,8 +296,8 @@ func v1cTable(t *testing.T, f v0Film, vies []v1cVie) {
 
 // v1cTemoinFantome rejoue le releve de debuts-de-trou contre une bande fantome (slots jamais vus
 // porter le moindre archetype) et verdit le gate.
-func v1cTemoinFantome(t *testing.T, f v0Film, dir string, wr *filmdec.Vec3Range,
-	bip []filmdec.BipedPosition, signal int) {
+func v1cTemoinFantome(t *testing.T, f v0Film, dir string, wr *grammar.Vec3Range,
+	bip []grammar.BipedPosition, signal int) {
 	t.Helper()
 	vus, autres := attBandesKeyframe(dir)
 	fantome := attBandeFantome(vus, autres)
@@ -305,7 +305,7 @@ func v1cTemoinFantome(t *testing.T, f v0Film, dir string, wr *filmdec.Vec3Range,
 		t.Logf("V1c %s — aucun slot libre pour une bande fantome — temoin impossible", f.ID)
 		return
 	}
-	fveh, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(fantome), v1aOptions(wr, true))
+	fveh, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(fantome), v1aOptions(wr, true))
 	if err != nil {
 		t.Logf("V1c %s — bande fantome : %v", f.ID, err)
 		return

@@ -88,7 +88,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // a10Temoins : les films d'autres modes, balayes avec le meme instrument.
@@ -148,9 +148,9 @@ func TestAssautA10Jauge(t *testing.T) {
 }
 
 // a10Ligne balaie UN film, imprime son bilan, et rend le balayage (nil si illisible).
-func a10Ligne(t *testing.T, cache, id, mode string) *filmdec.ObjectiveScan {
+func a10Ligne(t *testing.T, cache, id, mode string) *grammar.ObjectiveScan {
 	t.Helper()
-	sc, err := filmdec.ScanFilmObjectives(filepath.Join(cache, "film_chunks", id))
+	sc, err := grammar.ScanFilmObjectives(filepath.Join(cache, "film_chunks", id))
 	if err != nil {
 		t.Logf("%-9s %-26s balayage impossible (%v)", id, mode, err)
 		return nil
@@ -171,8 +171,8 @@ func a10Ligne(t *testing.T, cache, id, mode string) *filmdec.ObjectiveScan {
 }
 
 // a10Cles ne garde que les lectures d'image-cle : la description STATIQUE de l'objectif.
-func a10Cles(reads []filmdec.ObjectiveRead) []filmdec.ObjectiveRead {
-	out := make([]filmdec.ObjectiveRead, 0, len(reads))
+func a10Cles(reads []grammar.ObjectiveRead) []grammar.ObjectiveRead {
+	out := make([]grammar.ObjectiveRead, 0, len(reads))
 	for _, r := range reads {
 		if r.FromKeyframe {
 			out = append(out, r)
@@ -187,8 +187,8 @@ func a10Cles(reads []filmdec.ObjectiveRead) []filmdec.ObjectiveRead {
 // chainee vient d'un record dont la largeur n'est pas confirmee. Prendre tout reviendrait a
 // mesurer du bruit avec du signal dedans, ce que la premiere passe de ce chantier a deja fait
 // une fois.
-func a10Deltas(reads []filmdec.ObjectiveRead) []filmdec.ObjectiveRead {
-	out := make([]filmdec.ObjectiveRead, 0, len(reads))
+func a10Deltas(reads []grammar.ObjectiveRead) []grammar.ObjectiveRead {
+	out := make([]grammar.ObjectiveRead, 0, len(reads))
 	for _, r := range reads {
 		if !r.FromKeyframe && r.Chained {
 			out = append(out, r)
@@ -206,8 +206,8 @@ func a10Pct(n, total int) string {
 }
 
 // a10ParChamp compte les lectures par champ publie.
-func a10ParChamp(reads []filmdec.ObjectiveRead) string {
-	n := map[filmdec.ObjectiveField]int{}
+func a10ParChamp(reads []grammar.ObjectiveRead) string {
+	n := map[grammar.ObjectiveField]int{}
 	for _, r := range reads {
 		n[r.Field]++
 	}
@@ -221,7 +221,7 @@ func a10ParChamp(reads []filmdec.ObjectiveRead) string {
 		if out != "" {
 			out += ", "
 		}
-		out += fmt.Sprintf("%s %d", filmdec.ObjectiveField(k), n[filmdec.ObjectiveField(k)])
+		out += fmt.Sprintf("%s %d", grammar.ObjectiveField(k), n[grammar.ObjectiveField(k)])
 	}
 	if out == "" {
 		return "(aucune)"
@@ -229,15 +229,15 @@ func a10ParChamp(reads []filmdec.ObjectiveRead) string {
 	return out
 }
 
-func a10Jauges(reads []filmdec.ObjectiveRead) []uint64 {
-	return a10Valeurs(reads, filmdec.ObjectiveFieldProgress)
+func a10Jauges(reads []grammar.ObjectiveRead) []uint64 {
+	return a10Valeurs(reads, grammar.ObjectiveFieldProgress)
 }
 
-func a10Seuils(reads []filmdec.ObjectiveRead) []uint64 {
-	return a10Valeurs(reads, filmdec.ObjectiveFieldRequiredProgress)
+func a10Seuils(reads []grammar.ObjectiveRead) []uint64 {
+	return a10Valeurs(reads, grammar.ObjectiveFieldRequiredProgress)
 }
 
-func a10Valeurs(reads []filmdec.ObjectiveRead, f filmdec.ObjectiveField) []uint64 {
+func a10Valeurs(reads []grammar.ObjectiveRead, f grammar.ObjectiveField) []uint64 {
 	var out []uint64
 	for _, r := range reads {
 		if r.Field == f {
@@ -264,15 +264,15 @@ func a10Plage(vs []uint64) string {
 	return fmt.Sprintf("%d lecture(s), %d valeur(s) distincte(s), brut [%d .. %d] mediane %d ; "+
 		"en flottant [%g .. %g] mediane %g",
 		len(vs), distinctes, lo, hi, med,
-		filmdec.ObjectiveProgressFloat(lo), filmdec.ObjectiveProgressFloat(hi),
-		filmdec.ObjectiveProgressFloat(med))
+		grammar.ObjectiveProgressFloat(lo), grammar.ObjectiveProgressFloat(hi),
+		grammar.ObjectiveProgressFloat(med))
 }
 
 // a10MonteesParSlot rend, par slot, les instants (ms moteur) ou la jauge a CRU.
-func a10MonteesParSlot(sc filmdec.ObjectiveScan) map[uint32][]int {
+func a10MonteesParSlot(sc grammar.ObjectiveScan) map[uint32][]int {
 	series := map[uint32]*a10Serie{}
 	for _, r := range sc.Reads {
-		if r.Field != filmdec.ObjectiveFieldProgress || r.FromKeyframe || !r.Chained {
+		if r.Field != grammar.ObjectiveFieldProgress || r.FromKeyframe || !r.Chained {
 			continue
 		}
 		s := series[r.Slot]
@@ -390,16 +390,16 @@ func TestAssautA10Detail(t *testing.T) {
 	}
 	defer amArmeSentinelle(t, "TestAssautA10Detail")()
 	for _, id := range []string{"34bb3bc8", "9f57c612", "c75f33b8", "df8fcbef"} {
-		sc, err := filmdec.ScanFilmObjectives(filepath.Join(cache, "film_chunks", id))
+		sc, err := grammar.ScanFilmObjectives(filepath.Join(cache, "film_chunks", id))
 		if err != nil {
 			t.Logf("%s : balayage impossible (%v)", id, err)
 			continue
 		}
-		slots := map[uint32][]filmdec.ObjectiveRead{}
+		slots := map[uint32][]grammar.ObjectiveRead{}
 		for _, r := range a10Deltas(sc.Reads) {
-			if r.Field == filmdec.ObjectiveFieldProgress ||
-				r.Field == filmdec.ObjectiveFieldRequiredProgress ||
-				r.Field == filmdec.ObjectiveFieldState {
+			if r.Field == grammar.ObjectiveFieldProgress ||
+				r.Field == grammar.ObjectiveFieldRequiredProgress ||
+				r.Field == grammar.ObjectiveFieldState {
 				slots[r.Slot] = append(slots[r.Slot], r)
 			}
 		}
@@ -418,7 +418,7 @@ func TestAssautA10Detail(t *testing.T) {
 }
 
 // a10Suite rend la suite datee « instant champ=valeur » d'un slot, bornee pour rester lisible.
-func a10Suite(rs []filmdec.ObjectiveRead) string {
+func a10Suite(rs []grammar.ObjectiveRead) string {
 	const max = 14
 	out := ""
 	for i, r := range rs {
@@ -428,9 +428,9 @@ func a10Suite(rs []filmdec.ObjectiveRead) string {
 		}
 		nom := "i12"
 		switch r.Field {
-		case filmdec.ObjectiveFieldRequiredProgress:
+		case grammar.ObjectiveFieldRequiredProgress:
 			nom = "i13"
-		case filmdec.ObjectiveFieldState:
+		case grammar.ObjectiveFieldState:
 			nom = "i14"
 		}
 		out += fmt.Sprintf(" %.1fs:%s=%d", float64(r.TimestampUS)/1e6, nom, r.Value)

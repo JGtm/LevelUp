@@ -95,7 +95,7 @@ func TestPrecisionNonConfigureeNeCassePas(t *testing.T) {
 
 // TestPrecisionSurFilmReel — le chemin complet, quand un repertoire de chunks est fourni.
 // Non versionne (films 107 Mo) : saute sans KILLSOURCE_HITS_FIXTURE_DIR, exactement comme les
-// instruments filmdec. La roster fixture doit rattacher au moins un xuid a un indice pour ecrire.
+// instruments grammar. La roster fixture doit rattacher au moins un xuid a un indice pour ecrire.
 //
 // LA CARTE VIENT DU NOM (lot 1.9.4) : `KILLSOURCE_HITS_MAP_NAME` remplace l ancien
 // `KILLSOURCE_HITS_MAP_BOUNDS` (un CHEMIN de catalogue, que le collecteur charge desormais une

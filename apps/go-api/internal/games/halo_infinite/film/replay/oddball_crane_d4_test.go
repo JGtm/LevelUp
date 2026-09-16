@@ -53,7 +53,7 @@ import (
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -183,12 +183,12 @@ func d4EvenementsCrane(t *testing.T, root, id string) []int64 {
 }
 
 // d4Resume regroupe les creations ecartees par mot et mesure les deux conditions.
-func d4Resume(ecartees []filmdec.EquipmentCreation, socles []PointObjective,
+func d4Resume(ecartees []grammar.EquipmentCreation, socles []PointObjective,
 	instants []int64, clockUS uint64) []d4Candidat {
-	parMot := map[uint32][]filmdec.EquipmentCreation{}
+	parMot := map[uint32][]grammar.EquipmentCreation{}
 	for _, c := range ecartees {
-		parMot[uint32(c.MPPVal[filmdec.MPPWord32])] = append(
-			parMot[uint32(c.MPPVal[filmdec.MPPWord32])], c)
+		parMot[uint32(c.MPPVal[grammar.MPPWord32])] = append(
+			parMot[uint32(c.MPPVal[grammar.MPPWord32])], c)
 	}
 	out := make([]d4Candidat, 0, len(parMot))
 	for mot, cs := range parMot {
@@ -224,7 +224,7 @@ func d4Resume(ecartees []filmdec.EquipmentCreation, socles []PointObjective,
 // d4EcartMin rend l'ecart temporel minimal (ms) entre une creation et un evenement de crane.
 //
 // LA CONVERSION EST CELLE DE L'ORIGINE LUE : matchMS = (creationUS - premierPaquetUS) / 1000.
-func d4EcartMin(c filmdec.EquipmentCreation, instants []int64, clockUS uint64) int64 {
+func d4EcartMin(c grammar.EquipmentCreation, instants []int64, clockUS uint64) int64 {
 	if c.TimestampUS < clockUS {
 		return math.MaxInt64
 	}

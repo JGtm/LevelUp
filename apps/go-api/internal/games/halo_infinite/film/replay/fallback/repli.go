@@ -129,7 +129,7 @@ const (
 	// de valeur relue — ce qui evite de dedoubler la meme condition sous deux noms. Un format
 	// FUTUR et inconnu (28 au prochain patch du jeu) y tombe egalement, et c est le point : le
 	// repli tient le parc neuf au lieu de l eteindre. Son evenement est compte a part, par
-	// `filmdec.UnknownFormatExpvarPairs` (`filmdec_unknown_format_<n>`), parce qu un patch du
+	// `grammar.UnknownFormatExpvarPairs` (`filmdec_unknown_format_<n>`), parce qu un patch du
 	// jeu doit se voir tout de suite et non au comptage differe du registre.
 	CondFormatSansProfilRelu Condition = "format_sans_profil_relu"
 	// CondChassisAbsentDeLaTable : le film ECRIT le mot d identite du chassis, parfaitement

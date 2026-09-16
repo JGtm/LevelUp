@@ -8,7 +8,7 @@
 // uniquement pour `internal/analysis/temporal`. Tout le reste d'`analysis/` pouvait donc
 // importer un paquet de titre sans que rien ne rougisse.
 //
-// Ce test est posé AVANT le déplacement du décodeur de film (`filmdec`, `replay`) d'
+// Ce test est posé AVANT le déplacement du décodeur de film (`grammar`, `replay`) d'
 // `internal/analysis/` vers `internal/games/halo_infinite/film/` (lot E du plan
 // `.ai/PLAN_FORK_ET_RELEASE_2026-09-11.md`). Sans lui, le déplacement transformerait des
 // imports internes à `analysis/` en franchissements de frontière INVISIBLES : c'est
@@ -90,7 +90,7 @@ var franchissementsToleres = map[string]string{
 	// décodeur, chez lui, et ouvrir un film du cache local y est légitime. La dette décrite par
 	// ces deux entrées disparaît donc avec sa cause, et non par contournement.
 	// RETIRÉE LE 2026-09-16 (lot 2.4, item 2.4.2) : `internal/analysis/filmsource/source_test.go`
-	// n'importe plus `filmdec` : le test compare le marcheur canonique (`filmsource.Paquets`) à une
+	// n'importe plus `grammar` : le test compare le marcheur canonique (`filmsource.Paquets`) à une
 	// COPIE DE RÉFÉRENCE de l'ancienne grammaire portée par le test lui-même (738 paquets).
 	// RETIRÉE LE 2026-09-16 (item 2.5.f) : `internal/analysis/sessionusage/usage_outcomes.go`
 	// était le SEUL franchissement de PRODUCTION de cette liste. Les quatre symboles d'usage
@@ -98,7 +98,7 @@ var franchissementsToleres = map[string]string{
 	// `internal/domain/equipmentusage` — le décodeur et l'agrégat de session les y lisent tous
 	// les deux. Reste TROIS entrées, toutes des TESTS.
 	"internal/analysis/weapon_index_equivalence_test.go": "2026-09-12, rendu visible par le " +
-		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/filmdec` : test " +
+		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/grammar` : test " +
 		"d'équivalence entre l'index d'armes d'`analysis` et celui du décodeur. Portage " +
 		"attendu : l'index d'armes est title-agnostic (`games/weapons`), la comparaison " +
 		"descend côté décodeur.",

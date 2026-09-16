@@ -43,7 +43,7 @@
 // disparu aux items 1.4/1.5, la copie ne comparait donc plus qu'a elle-meme. La mesure, elle,
 // reste : figee au §2 de `.ai/V7.5/MESURES_CUISSON_PERF.md`, et rejouee en CI en une seconde par
 // le test de la mini-bobine de `internal/analysis/filmsource` (qui compare la grammaire retenue
-// a `filmdec.WalkPackets` sur un vrai chunk). Pour re-mesurer un jour : commit `aa694442f` et
+// a `grammar.WalkPackets` sur un vrai chunk). Pour re-mesurer un jour : commit `aa694442f` et
 // anterieurs.
 //
 // Exemple (depuis apps/go-api) :

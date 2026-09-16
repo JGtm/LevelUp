@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // vgColonne est un composant transpose en colonnes de bits, avec le slot de chaque echantillon.
@@ -50,29 +50,29 @@ type vgColonne struct {
 // etiquettes deplacees, il lui faut donc tout le materiau.
 func vgCollecte(dir string, s vfSource, cibles map[uint32]bool) ([]vfRecord, vfStat) {
 	st := vfNewStat()
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.CaptureDirs = true
 	opt.QuantaOnly = true
 	var ancres []vfAncre
-	obs := filmdec.NouvelleObservation()
+	obs := grammar.NouvelleObservation()
 	obs.RecordMaskHook = func(idx []int, _ []byte, afterI0 int) {
 		ancres = append(ancres, vfAncre{idx: append([]int(nil), idx...), afterI0: afterI0})
 	}
 
 	var out []vfRecord
-	for c := 1; c <= filmdec.CountFilmChunks(dir); c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+	for c := 1; c <= grammar.CountFilmChunks(dir); c++ {
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(data) {
-			if p.Type != filmdec.PacketTypeDelta {
+		for _, p := range grammar.WalkPackets(data) {
+			if p.Type != grammar.PacketTypeDelta {
 				continue
 			}
 			st.paquets++
 			pay := p.Payload(data)
 			ancres = ancres[:0]
-			recs := filmdec.ScanBipedRecords(pay, filmdec.NewSlotBand(cibles), s.lay, opt, filmdec.ContexteDeLecture{Profil: filmdec.ProfilDeBalayageParDefaut(), Obs: obs})
+			recs := grammar.ScanBipedRecords(pay, grammar.NewSlotBand(cibles), s.lay, opt, grammar.ContexteDeLecture{Profil: grammar.ProfilDeBalayageParDefaut(), Obs: obs})
 			out = append(out, vgVersePaquet(&st, recs, ancres, pay, p, s)...)
 		}
 	}
@@ -90,8 +90,8 @@ func vgCollecte(dir string, s vfSource, cibles map[uint32]bool) ([]vfRecord, vfS
 // un record a une PERSONNE (le releve nomme un gamertag) ; ce lot n'a besoin que du SLOT, que le
 // record et l'etiquette partagent. Un slot qui migre a la reapparition emporte ses etiquettes
 // avec lui, puisqu'elles sont reconstruites du meme flux d'evenements.
-func vgVersePaquet(st *vfStat, recs []filmdec.BipedPosition, ancres []vfAncre, pay []byte,
-	p filmdec.FilmPacket, s vfSource,
+func vgVersePaquet(st *vfStat, recs []grammar.BipedPosition, ancres []vfAncre, pay []byte,
+	p grammar.FilmPacket, s vfSource,
 ) []vfRecord {
 	st.bipeds += len(recs)
 	if len(recs) != len(ancres) {

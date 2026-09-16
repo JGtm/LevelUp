@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // identity_registry_scoreboard_test.go — LES PROPRIETES DU NOMMAGE PAR LE TABLEAU DE L'API.
@@ -26,7 +26,7 @@ func tableauDe(id string, arriveeMS int64) Participant {
 // Le slot 100 porte le joueur 111 et ses morts — c'est lui qui CALE l'horloge du fil sur celle
 // du film, sans quoi aucune fenetre de participation n'est exprimable.
 func filmSiegePartage() IdentityInput {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	for t := uint64(1_000_000); t <= 4_000_000; t += 500_000 {
 		pos = append(pos, posAt(100, t, 1, 1, 1))
 	}
@@ -42,7 +42,7 @@ func filmSiegePartage() IdentityInput {
 	}
 	return IdentityInput{
 		Positions: pos,
-		BipedCreations: []filmdec.BipedCreation{
+		BipedCreations: []grammar.BipedCreation{
 			creationDe(100, 1_000_000, 0), creationDe(300, 1_000_000, 9),
 		},
 		Deaths: []Death{

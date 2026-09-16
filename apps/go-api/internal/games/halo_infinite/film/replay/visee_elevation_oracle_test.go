@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // aimCouple est un kill du fil : un tueur, une victime, un instant (horloge du fil).
@@ -37,7 +37,7 @@ type aimCouple struct {
 // point d'oracle faux, et un oracle faux vaut moins que pas d'oracle.
 func aimCouples(t *testing.T, dir string) ([]aimCouple, int, int) {
 	t.Helper()
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	raw, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", n)))
 	if err != nil {
 		t.Fatalf("chunk highlight (%d) : %v", n, err)
@@ -101,7 +101,7 @@ type aimBilan struct {
 }
 
 // aimOracle confronte le signe de l'elevation du tueur au signe de dz vers sa victime.
-func aimOracle(t *testing.T, dir string, pos []filmdec.BipedPosition) {
+func aimOracle(t *testing.T, dir string, pos []grammar.BipedPosition) {
 	t.Helper()
 	couples, nKills, ambigus := aimCouples(t, dir)
 	deaths, err := ScanFilmDeaths(dir)
@@ -209,7 +209,7 @@ func aimEvalueCouples(couples []aimCouple, tracks map[uint32]slotTrack,
 }
 
 // aimPointDe compose un point d'oracle a partir des deux echantillons contemporains.
-func aimPointDe(tueur, victime filmdec.BipedPosition) aimPoint {
+func aimPointDe(tueur, victime grammar.BipedPosition) aimPoint {
 	dz := float64(victime.Z - tueur.Z)
 	dx := float64(victime.X - tueur.X)
 	dy := float64(victime.Y - tueur.Y)
@@ -231,8 +231,8 @@ func aimSigneAccorde(pas int, dz float64) bool { return (pas > 0) == (dz > 0) }
 // aimDernierEchantillon rend le DERNIER echantillon d'un joueur dans la fenetre amont [t-300, t],
 // tous ses slots confondus (un joueur change de slot a chaque vie ; seul le slot vivant emet).
 func aimDernierEchantillon(tracks map[uint32]slotTrack, slots []uint32, tMS int64,
-	exigeVisee bool) (filmdec.BipedPosition, bool) {
-	var best filmdec.BipedPosition
+	exigeVisee bool) (grammar.BipedPosition, bool) {
+	var best grammar.BipedPosition
 	found := false
 	for _, s := range slots {
 		for _, p := range tracks[s].pts {
@@ -254,8 +254,8 @@ func aimDernierEchantillon(tracks map[uint32]slotTrack, slots []uint32, tMS int6
 // aimEchantillonProche rend l'echantillon d'un joueur le plus proche d'un instant, dans la
 // fenetre de l'oracle. La victime n'a pas a porter de visee : seule son altitude compte.
 func aimEchantillonProche(tracks map[uint32]slotTrack, slots []uint32,
-	tMS int64) (filmdec.BipedPosition, bool) {
-	var best filmdec.BipedPosition
+	tMS int64) (grammar.BipedPosition, bool) {
+	var best grammar.BipedPosition
 	bd := int64(aimWindowMS + 1)
 	found := false
 	for _, s := range slots {

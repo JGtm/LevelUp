@@ -39,7 +39,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // invPosCand est un candidat i22 : un motif R(3)=4 suivi de quatre R(8) tous bornes.
@@ -179,14 +179,14 @@ func invPosFilm(t *testing.T, dir string) (entr, cible, ancreZero []invPosObs) {
 	t.Helper()
 	known := loadoutFamilies()
 	nom := invPosBase(dir)
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for ch := 1; ch <= n; ch++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, ch)
+		chunk, err := grammar.ReadFilmChunk(dir, ch)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			pay := p.Payload(chunk)
@@ -694,14 +694,14 @@ func (b *invPosBilan) log(t *testing.T) {
 func invPosBilanFilm(dir string) invPosBilan {
 	known := loadoutFamilies()
 	var b invPosBilan
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for ch := 1; ch <= n; ch++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, ch)
+		chunk, err := grammar.ReadFilmChunk(dir, ch)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			for _, inv := range keyframeInventories(p.Payload(chunk), known, DefaultGrenadeMax) {
@@ -739,7 +739,7 @@ func (b *invPosBilan) compter(inv KeyframeInventory) {
 // TestOracleTypesPortesEtLances — L'ORACLE INDEPENDANT DE R2b.
 //
 // LE PRINCIPE. Les compteurs i22 sont lus aux IMAGES-CLES ; les lancers de grenade sont decodes
-// dans les PAQUETS DELTA, par un tout autre chemin (filmdec.ScanFilmGrenadeThrows), et ils
+// dans les PAQUETS DELTA, par un tout autre chemin (grammar.ScanFilmGrenadeThrows), et ils
 // portent le TYPE lance. Les deux canaux ne partagent aucun bit. Si R2b lisait du bruit, la
 // repartition des types PORTES n'aurait aucune raison de suivre celle des types LANCES.
 //
@@ -792,14 +792,14 @@ func TestOracleTypesPortesEtLances(t *testing.T) {
 // production) et les rangs LANCES (canal delta, totalement disjoint).
 func invPosTypes(dir string) (porte, lance [invGrenadeSlots]bool, err error) {
 	known := loadoutFamilies()
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for ch := 1; ch <= n; ch++ {
-		chunk, e := filmdec.ReadFilmChunk(dir, ch)
+		chunk, e := grammar.ReadFilmChunk(dir, ch)
 		if e != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			for _, inv := range keyframeInventories(p.Payload(chunk), known, DefaultGrenadeMax) {
@@ -814,7 +814,7 @@ func invPosTypes(dir string) (porte, lance [invGrenadeSlots]bool, err error) {
 			}
 		}
 	}
-	throws, err := filmdec.ScanFilmGrenadeThrows(dir)
+	throws, err := grammar.ScanFilmGrenadeThrows(dir)
 	if err != nil {
 		return porte, lance, err
 	}

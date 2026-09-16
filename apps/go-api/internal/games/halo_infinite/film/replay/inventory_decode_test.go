@@ -46,7 +46,7 @@ func filmDirWithBadChunk(t *testing.T, goodChunks int) string {
 	return dir
 }
 
-// chunkFileName reproduit le nommage de filmdec.ReadFilmChunk (`chunk_%02d.bin`) — non
+// chunkFileName reproduit le nommage de grammar.ReadFilmChunk (`chunk_%02d.bin`) — non
 // exporté du paquet voisin, donc redéclaré ici plutôt qu'emprunté (même règle de frontière
 // que inventory_decode.go, cf. son en-tête).
 func chunkFileName(n int) string {

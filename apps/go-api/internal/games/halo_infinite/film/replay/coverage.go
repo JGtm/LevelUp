@@ -377,7 +377,7 @@ type Coverage struct {
 	// inconnue).
 	T0Film *T0FilmCoverage `json:"t0Film,omitempty"`
 	// FilmMajorVersion est LA VERSION DU FILM qui a produit cet artefact, lue dans l'en-tête de
-	// son registre (`filmdec.FilmMajorVersionFromHeader`, u32 LE en tête de `chunk_00`).
+	// son registre (`grammar.FilmMajorVersionFromHeader`, u32 LE en tête de `chunk_00`).
 	//
 	// ELLE EST PUBLIÉE PARCE QUE LE DÉCODAGE EN DÉPEND ET QUE RIEN NE LE DISAIT. Le parc en cache
 	// porte sept versions (v31 x3, v33 x3, v37 x10, v38 x1, v39 x26, v40 x185, v41 x1123 au

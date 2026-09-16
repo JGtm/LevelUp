@@ -18,7 +18,7 @@ package replay
 
 import (
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // filmDeDir charge le film d'un repertoire, ou rend nil. Les decodeurs rendent alors leur
@@ -50,24 +50,24 @@ func buildFromFilmDir(matchID, titleSlug, dir string, opt Options) (ReplayDocume
 
 // decodeFilmPlacementsDir : [decodeFilmPlacements] depuis un repertoire.
 func decodeFilmPlacementsDir(
-	dir string, wr *filmdec.Vec3Range,
-) ([]filmdec.EquipmentPlacement, filmdec.EquipmentPlacementStats) {
-	return decodeFilmPlacements(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr)
+	dir string, wr *grammar.Vec3Range,
+) ([]grammar.EquipmentPlacement, grammar.EquipmentPlacementStats) {
+	return decodeFilmPlacements(grammar.NewFilmContext(filmDeDir(dir)), dir, wr)
 }
 
 // decodeFilmPadScansDir : [decodeFilmPadScans] depuis un repertoire.
-func decodeFilmPadScansDir(dir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths) PadScans {
-	return decodeFilmPadScans(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
+func decodeFilmPadScansDir(dir string, wr *grammar.Vec3Range, mpp grammar.MPPWidths) PadScans {
+	return decodeFilmPadScans(grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
 }
 
 // decodeFilmPadScanDir : [decodeFilmPadScan] depuis un repertoire.
 func decodeFilmPadScanDir(
-	dir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths, arch padArchetype,
+	dir string, wr *grammar.Vec3Range, mpp grammar.MPPWidths, arch padArchetype,
 ) WorldObjectScan {
-	return decodeFilmPadScan(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr, mpp, arch)
+	return decodeFilmPadScan(grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp, arch)
 }
 
 // decodeFilmVehicleScanDir : [decodeFilmVehicleScan] depuis un repertoire.
-func decodeFilmVehicleScanDir(dir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths) VehicleScan {
-	return decodeFilmVehicleScan(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
+func decodeFilmVehicleScanDir(dir string, wr *grammar.Vec3Range, mpp grammar.MPPWidths) VehicleScan {
+	return decodeFilmVehicleScan(grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
 }

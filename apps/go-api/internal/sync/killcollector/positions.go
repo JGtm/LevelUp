@@ -14,7 +14,7 @@ package killcollector
 //
 // # LE FILM EST CHARGÉ UNE FOIS, ET LE PONT DISQUE A DISPARU
 //
-// `games/halo_infinite/film/replay`/`games/halo_infinite/film/filmdec` exposent QUATRE lectures du film : ScanBipedPositions,
+// `games/halo_infinite/film/replay`/`games/halo_infinite/film/grammar` exposent QUATRE lectures du film : ScanBipedPositions,
 // ScanClockOrigin, ScanPlayerIndices, ScanDeaths. Le collecteur, lui, tient les chunks EN MÉMOIRE
 // PURE (téléchargés par `FilmChunksForMatch`) — il ne les a jamais écrits sur disque.
 //
@@ -74,7 +74,7 @@ import (
 
 	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
@@ -229,12 +229,12 @@ type passePositions struct {
 // 146 811 (`0797ce72`) — 26 enregistrements bruts sur 267 400 pour le premier.
 //
 // `entry` est passée PAR VALEUR et le contexte la lit à la construction : la règle du catalogue
-// est écrite UNE fois, dans `filmdec.NewFilmContextForMap`, et ce site la lit par
+// est écrite UNE fois, dans `grammar.NewFilmContextForMap`, et ce site la lit par
 // `ImposedLayout()` — le même endroit que la cuisson.
 func optionsDeBalayageDesPositions(
-	fc *filmdec.FilmContext, entry filmdec.MapQuantEntry,
-) filmdec.ScanFilmOptions {
-	opt := filmdec.DefaultScanFilmOptions()
+	fc *grammar.FilmContext, entry grammar.MapQuantEntry,
+) grammar.ScanFilmOptions {
+	opt := grammar.DefaultScanFilmOptions()
 	rng := entry.Range()
 	opt.WorldRange = &rng
 	opt.Layout = fc.ImposedLayout()
@@ -250,7 +250,7 @@ func optionsDeBalayageDesPositions(
 //
 // PLUS AUCUN VERROU DE DÉCODAGE (lot 2.3). Ce chemin enchaîne QUATRE balayages, et il a
 // longtemps fallu les sérialiser : les paramètres de réplication du décodeur étaient des
-// variables de paquet de `filmdec`, qu'un décodage concurrent aurait écrasées. Il n'en reste
+// variables de paquet de `grammar`, qu'un décodage concurrent aurait écrasées. Il n'en reste
 // AUCUNE d'écrite (ratchet `archlint/filmdec_package_vars_test.go`) : chaque balayage porte son
 // profil et son observation, donc son propre état. Le verrou INTER-PROCESSUS
 // `filmproc.AcquireSolo`, lui, borne la mémoire de la machine et n'est pas concerné.
@@ -259,12 +259,12 @@ func optionsDeBalayageDesPositions(
 // dans `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06,
 // constat B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
 func buildPositionRows(
-	film *filmsource.Film, res *killsource.Result, entry filmdec.MapQuantEntry, ids MatchIdentities,
+	film *filmsource.Film, res *killsource.Result, entry grammar.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (passePositions, materiauDIsolement, error) {
 
-	fc := filmdec.NewFilmContextForMap(film, &entry, nil)
-	positions, err := filmdec.ScanBipedPositions(fc, optionsDeBalayageDesPositions(fc, entry))
+	fc := grammar.NewFilmContextForMap(film, &entry, nil)
+	positions, err := grammar.ScanBipedPositions(fc, optionsDeBalayageDesPositions(fc, entry))
 	if err != nil {
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf("positions bipeds: %w", err)
 	}
@@ -302,7 +302,7 @@ func buildPositionRows(
 	// sous le MEME verrou de decodage que les positions ; sans lui, `match_lives` retomberait
 	// sur le pont par morts alors que la cuisson, elle, lit le film. Deux producteurs, un seul
 	// nommage : c'est toute la decision D11. Absence NON fatale — le registre degrade et le dit.
-	creations, cStats, err := filmdec.ScanBipedCreations(fc)
+	creations, cStats, err := grammar.ScanBipedCreations(fc)
 	if err != nil {
 		slog.Warn("killsource: creations de bipede illisibles — degradation sur le pont par morts",
 			"err", err, "match_id", matchID)
@@ -352,7 +352,7 @@ func buildPositionRows(
 // du kill. `toKillOpeningRows` n a donc AUCUNE avance a readditionner : le faire decalerait
 // toutes les lignes de 1,5 s.
 func composerPassePositions(
-	positions []filmdec.BipedPosition, reg replay.IdentityRegistry,
+	positions []grammar.BipedPosition, reg replay.IdentityRegistry,
 	kills []replay.KillRef, originUS int64, matchID string,
 ) passePositions {
 	posOut, rep := replay.BuildKillPositions(positions, reg, kills, originUS)
@@ -446,14 +446,14 @@ func toKillPositionRows(matchID string, positions []replay.KillPosition) []persi
 //
 // `FilmOf` (bridge.go) tolere des index non contigus (les trous restent des chunks VIDES,
 // `killsource.Decode` fait de l acces direct par index) ; les QUATRE balayages, eux, parcourent
-// les chunks de donnees par numero (`filmdec.FilmChunkNumbers`) et un chunk vide ne rend aucun
+// les chunks de donnees par numero (`grammar.FilmChunkNumbers`) et un chunk vide ne rend aucun
 // paquet — un film troue leur ferait donc lire un film AMPUTE, en silence, jamais une erreur. Le
 // controle ci-dessous refuse ce cas au lieu de le laisser produire une lecture partielle
 // plausible : le critere de ce chantier est qu aucune position fausse ne soit possible, un film
 // incomplet perd donc SES positions plutot que d en risquer de fausses.
 //
 // LA REGLE EST CELLE D AVANT, A L IDENTIQUE : le controle porte sur les chunks de DONNEES
-// (numeros 1..N), jamais sur l en-tete — c est ce que faisait `filmdec.CountFilmChunks`, qui
+// (numeros 1..N), jamais sur l en-tete — c est ce que faisait `grammar.CountFilmChunks`, qui
 // comptait a partir de `chunk_01.bin`. Un film reduit au seul chunk 0, ou vide, passe donc ici
 // et se fait refuser par les balayages eux-memes (`ErrNoFilmChunk`).
 func refuserSequenceTrouee(film *filmsource.Film) error {

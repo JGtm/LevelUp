@@ -83,7 +83,7 @@ var registreKillsource = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgKillsource + "walk.go",
-			Ancre:   "func locateFallback(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {",
+			Ancre:   "func locateFallback(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {",
 		}, {
 			// SECOND SITE, POSE LE 2026-09-16 (lot 1.9.10) : la marche des morts d'objet porte
 			// le MEME localisateur, donc le MEME repli — une seule entrée pour un seul fait.

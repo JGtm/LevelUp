@@ -171,7 +171,7 @@ const (
 // rien n'établit laquelle des deux est l'écriture et laquelle la copie.
 //
 // Mesure : `.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md` §6 ; instrument (oracle
-// corpus, rejouable) `filmdec.TestResidusPiedOctetEquipe`.
+// corpus, rejouable) `grammar.TestResidusPiedOctetEquipe`.
 const (
 	footerBlockBytes = 60 // taille du bloc d'événement qui précède le marqueur de fin
 	footerByteSlot   = 36 // b36 : 0..3, stable par xuid — PAS le player_index (mesuré)

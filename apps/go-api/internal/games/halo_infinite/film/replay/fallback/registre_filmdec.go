@@ -1,22 +1,22 @@
 package fallback
 
-// registre_filmdec.go — les replis des INFÉRENCES de `filmdec` qui décident en production.
+// registre_filmdec.go — les replis des INFÉRENCES de `grammar` qui décident en production.
 //
-// PÉRIMÈTRE, TEL QUE L'AUDIT 0.E L'A FERMÉ : la GRAMMAIRE de `filmdec` (largeurs de composants,
+// PÉRIMÈTRE, TEL QUE L'AUDIT 0.E L'A FERMÉ : la GRAMMAIRE de `grammar` (largeurs de composants,
 // désérialiseurs, états par défaut) est HORS AXE — elle vient du jeu et se corrige chez
 // l'écrivain, pas par un repli. N'entrent ici que les fonctions qui DÉCIDENT à la place d'une
 // lecture : découpage d'i0, bande de slots, largeurs installées, comblements, abandons de
 // chunks.
 //
 // CONTRAINTE DE CÂBLAGE : le ratchet `archlint/filmdec_package_vars_test.go` gèle le nombre de
-// variables de paquet de `filmdec`, et le critère S1 du plan vise ZÉRO variable mutable dans le
+// variables de paquet de `grammar`, et le critère S1 du plan vise ZÉRO variable mutable dans le
 // décodeur. Un compteur de replis ne s'y câble donc pas par une globale : il passera par le
 // `FilmContext` (D1 : un seul objet par film, le profil résolu à la construction) au pas 2 de
 // M2, qui est le lot où les lecteurs reçoivent ce porteur.
 
-const pkgFilmdec = "internal/games/halo_infinite/film/filmdec/"
+const pkgFilmdec = "internal/games/halo_infinite/film/grammar/"
 
-// comptageParFilmContext : la raison, écrite une fois, du câblage différé des replis `filmdec`.
+// comptageParFilmContext : la raison, écrite une fois, du câblage différé des replis `grammar`.
 const comptageParFilmContext = "pas 2 de M2 (les lecteurs recoivent le profil via FilmContext : le seul porteur par film sans variable de paquet, cf. S1)"
 
 var registreFilmdec = []Repli{
@@ -82,7 +82,7 @@ var registreFilmdec = []Repli{
 		//
 		// UN FORMAT INCONNU (28 au prochain patch du jeu) TOMBE ICI AUSSI, ET C'EST VOULU : le
 		// repli tient le parc neuf au lieu de l'eteindre. Son declenchement est compte A PART,
-		// par `filmdec.UnknownFormatExpvarPairs` (`filmdec_unknown_format_<n>`, cable dans
+		// par `grammar.UnknownFormatExpvarPairs` (`filmdec_unknown_format_<n>`, cable dans
 		// `replay/mpp_format_inconnu.go`) et signale par UN avertissement par film — parce qu'un
 		// changement de format du jeu est un EVENEMENT, pas un repli ordinaire, et qu'il ne peut
 		// pas attendre le comptage differe ci-dessous. Branche de production gardee par
@@ -116,7 +116,7 @@ var registreFilmdec = []Repli{
 		// CE QUE LE LOT 1.9.4 A FERME (2026-09-15), ET CE QUI SUBSISTE.
 		//
 		// FERME : `DetectI0Layout` n'a plus AUCUN appelant de production. Son dernier,
-		// `filmdec.DetectFilmMapEntry`, identifiait la CARTE par la signature de ses largeurs
+		// `grammar.DetectFilmMapEntry`, identifiait la CARTE par la signature de ses largeurs
 		// d'axe ; il est supprime, la carte vient du nom de match, et le ratchet est le retrait de
 		// l'entree d'allowlist dans `archlint/no_recomputed_film_context_test.go`.
 		//

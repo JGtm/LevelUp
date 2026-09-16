@@ -5,7 +5,7 @@ package filmsource_test
 // Aucune fixture binaire ici : chaque chunk est BATI dans le test a partir d'octets connus, donc
 // toutes les valeurs attendues se calculent a la main. Une fixture opaque prouverait que le code
 // fait ce qu'il fait, pas qu'il fait ce qu'il doit. (La confrontation au REEL est dans
-// source_test.go, sur la mini-bobine, et elle compare a `filmdec.WalkPackets`.)
+// source_test.go, sur la mini-bobine, et elle compare a `grammar.WalkPackets`.)
 
 import (
 	"bytes"
@@ -105,7 +105,7 @@ func TestDeuxPaquets(t *testing.T) {
 }
 
 // TestTerminateurTailleZeroEmisPuisArret — regles (2) et (3) : le CHUNK_END de taille 0 des chunks
-// de donnees EST emis (c'est ce que fait `filmdec`, et l'abandon de la candidate « arret sur
+// de donnees EST emis (c'est ce que fait `grammar`, et l'abandon de la candidate « arret sur
 // taille 0 » tient a lui), et rien de ce qui le suit ne l'est.
 func TestTerminateurTailleZeroEmisPuisArret(t *testing.T) {
 	clair := paquet(typeDelta, 10, []byte("aaaa"))

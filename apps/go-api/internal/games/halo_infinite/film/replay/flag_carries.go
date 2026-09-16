@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
@@ -142,7 +142,7 @@ type FlagCarryScan struct {
 	TeamOf map[string]int
 	// Marks est le controle independant : les records de bipede d'image-cle portant le marqueur
 	// de portage, plus les instants de TOUTES les images-cles.
-	Marks filmdec.CarrierMarkScan
+	Marks grammar.CarrierMarkScan
 	// Spawns sont les socles `flag_spawn` de la carte (catalogue versionne d'objectifs).
 	Spawns []FlagSpawn
 	// Free sont les VIES LIBRES de l'objet drapeau (cf. flag_objects.go). Elles ne PUBLIENT rien

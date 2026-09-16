@@ -14,7 +14,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // TestViseeZoomBoutEnBout verifie que le palier de lunette arrive jusqu'au document — au bon
@@ -42,15 +42,15 @@ func TestViseeZoomBoutEnBout(t *testing.T) {
 		t.Skipf("%s absent : gate saute", zoomFilmEnv)
 	}
 
-	evts := filmdec.ScanFilmZoomEvents(dir)
+	evts := grammar.ScanFilmZoomEvents(dir)
 	if len(evts) == 0 {
 		t.Fatalf("aucun evenement de lunette : le scanner de production ne rend rien")
 	}
 	t.Logf("SCANNER DE PRODUCTION — %d bascules de lunette lues", len(evts))
 
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
 	}
@@ -144,7 +144,7 @@ func TestViseeZoomDureesObservees(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : mesure sautee", zoomFilmEnv)
 	}
-	evts := filmdec.ScanFilmZoomEvents(dir)
+	evts := grammar.ScanFilmZoomEvents(dir)
 	ouv := map[uint32]uint64{}
 	var durees []float64
 	entrees, sorties := 0, 0
@@ -187,10 +187,10 @@ func TestViseeZoomEntreesOrphelines(t *testing.T) {
 		t.Skipf("%s absent : mesure sautee", zoomFilmEnv)
 	}
 
-	evts := filmdec.ScanFilmZoomEvents(dir)
-	scan := filmdec.DefaultScanFilmOptions()
+	evts := grammar.ScanFilmZoomEvents(dir)
+	scan := grammar.DefaultScanFilmOptions()
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
 	}

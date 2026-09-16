@@ -6,7 +6,7 @@ package replay
 //
 // Decision utilisateur du 2026-09-13 (V4 du PLAN_DECODEUR_FILM) : « si le decodeur est fiable,
 // pas besoin du repli ». L'equipe d'un joueur vient du DESIGNATEUR que le film ecrit
-// ([filmdec.ScanPlayerTeams]) ; la base n'en pose AUCUNE. Elle entre ici comme CONTROLE, et
+// ([grammar.ScanPlayerTeams]) ; la base n'en pose AUCUNE. Elle entre ici comme CONTROLE, et
 // uniquement comme tel : `coverage.teams.{accord, contradiction, silence}` disent ce qu'elle
 // aurait dit, sans jamais le publier. Une contradiction ne se corrige pas en silence — le film
 // fait foi, l'ecart se compte, et le relecteur le lit.
@@ -43,7 +43,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // TeamCoverage est ce que la lecture de l'equipe a couvert, et ce que la base en dit.
@@ -120,7 +120,7 @@ type teamPublication struct {
 	// slotsAmbigus : les slots que deux joueurs nommes se sont partages. `bySlot` y garde le
 	// PREMIER occupant, donc le pont s'y tait (cf. [TeamCoverage.TracksSlotAmbiguous]).
 	slotsAmbigus map[uint32]bool
-	rep          filmdec.TeamScanReport
+	rep          grammar.TeamScanReport
 	controle     map[string]int
 }
 
@@ -128,7 +128,7 @@ type teamPublication struct {
 //
 // LA PROJECTION PASSE PAR LA TABLE D'INDEX EFFECTIVE DU REGISTRE (lot 1.6) : c'est la seule
 // table du film, et deux tables du meme film divergeraient.
-func newTeamPublication(reg IdentityRegistry, byIndex map[int]int, rep filmdec.TeamScanReport,
+func newTeamPublication(reg IdentityRegistry, byIndex map[int]int, rep grammar.TeamScanReport,
 	controle map[string]int) teamPublication {
 	p := teamPublication{byIndex: byIndex, bySlot: reg.IndexParSlot(),
 		slotsAmbigus: reg.SlotsAmbigus(), rep: rep, controle: controle}
@@ -235,7 +235,7 @@ func (p teamPublication) couverture(vies, viesNommees, viesSlotAmbigu int,
 			continue
 		}
 		cov.Film++
-		if t == filmdec.TeamNone {
+		if t == grammar.TeamNone {
 			cov.NoTeam++
 		}
 		p.controler(&cov, e, t)
@@ -269,7 +269,7 @@ func (p teamPublication) tableDesEquipesPourLesDrapeaux() map[string]int {
 	}
 	out := make(map[string]int, len(p.byXUID))
 	for x, t := range p.byXUID {
-		if t == filmdec.TeamNone {
+		if t == grammar.TeamNone {
 			continue
 		}
 		out[strconv.FormatUint(x, 10)] = t

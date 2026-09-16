@@ -485,7 +485,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   n'ont aucune émission i48 du même slot à moins de 500 ms (témoin décalé 0,0 %) — elles
 	//   comblent un trou, elles ne doublonnent pas `equipmentChanges`.
 	//   Détail : internal/games/halo_infinite/film/replay/document_pickups.go, pad_pickup_dating.go,
-	//   internal/games/halo_infinite/film/filmdec/biped_pickups.go, .ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md.
+	//   internal/games/halo_infinite/film/grammar/biped_pickups.go, .ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md.
 	// v31 — LE NOM DE L'OBJET RAMASSÉ (`pickups[].family`), ET UNE NATURE À TROIS VALEURS.
 	//   Le schéma 30 publiait un identifiant BRUT que rien ne nommait pour les classes non-arme.
 	//   LE NOM VIENT DES FICHIERS DU JEU, PAS D'UNE STATISTIQUE — et c'est la raison de la
@@ -1046,7 +1046,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   c'est-à-dire le découpage « gamertag en tête » (`b[0:32]`) ; sur ces films le gamertag
 	//   vit à `b[12:44]` et la lecture ramenait du rembourrage — la même chaîne pour tous les
 	//   joueurs. La version est désormais LUE dans l'en-tête du registre du film : les quatre
-	//   premiers octets de `chunk_00.bin`, u32 little-endian (`filmdec.FilmMajorVersionFromHeader`),
+	//   premiers octets de `chunk_00.bin`, u32 little-endian (`grammar.FilmMajorVersionFromHeader`),
 	//   la même valeur que l'API publie dans `CustomData.FilmMajorVersion`.
 	//   Mesuré sur `gamertagsOf`, la table qui nomme `roster[]` : `e5adf7b2` (v40) passe de 17
 	//   identités nommées / 2 noms distincts à 26 / 26, `111fa685` (v39) de 16 / 2 à 24 / 24.

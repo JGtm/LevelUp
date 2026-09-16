@@ -38,7 +38,7 @@ const plancherEntrees = 60
 // IL ÉTAIT À 2 ET NE MORDAIT SUR RIEN (revue de jalon M1, ronde 2, constat F1) : la garde
 // `len(tranches) < 2` laissait passer 6 -> 5, donc le retrait d'un fichier de tranche entier.
 // Mesuré le 2026-09-16 : SIX familles (`replay/equipement` 14, `replay/identites` 22,
-// `killsource` 26, `killsource/carte` 2, `objectifs et construction` 21, `filmdec` 11 — 96
+// `killsource` 26, `killsource/carte` 2, `objectifs et construction` 21, `grammar` 11 — 96
 // entrées). Le plancher vaut donc la valeur réelle : une famille en moins se voit.
 const plancherTranches = 6
 

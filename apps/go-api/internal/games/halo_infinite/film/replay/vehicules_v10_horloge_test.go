@@ -37,7 +37,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // v10Cand est une candidate du § 4.3, datee sur l horloge du FILM (secondes).
@@ -78,7 +78,7 @@ func TestV10Horloge(t *testing.T) {
 	frames := map[string]int{}
 	for _, f := range v4Corpus(t) {
 		dir := objChunkDir(root, f.ID)
-		if filmdec.CountFilmChunks(dir) == 0 {
+		if grammar.CountFilmChunks(dir) == 0 {
 			t.Logf("V10 horloge %s : film absent du cache — saute", f.ID)
 			continue
 		}
@@ -107,12 +107,12 @@ func TestV10Horloge(t *testing.T) {
 // dire si une candidate tombe bien dans le match.
 func v10DernierPaquetUS(dir string) uint64 {
 	var last uint64
-	for c := 1; c <= filmdec.CountFilmChunks(dir); c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+	for c := 1; c <= grammar.CountFilmChunks(dir); c++ {
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, pk := range filmdec.WalkPackets(data) {
+		for _, pk := range grammar.WalkPackets(data) {
 			if pk.TimestampUS > last {
 				last = pk.TimestampUS
 			}

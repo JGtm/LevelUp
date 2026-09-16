@@ -19,7 +19,7 @@
 //  1. `zlib.NewReader` est INTERDIT dans les paquets de la chaine de cuisson (hors _test) —
 //     l'unique decompresseur y est `filmsource.Inflate`.
 //  2. Les lectures de disque (`os.ReadFile` / `ReadDir` / `Open` / `OpenFile` / `Stat`, et
-//     `filepath.Glob` — cf. [lecturesDisque]) sont INTERDITES dans `filmdec` (hors _test) sauf
+//     `filepath.Glob` — cf. [lecturesDisque]) sont INTERDITES dans `grammar` (hors _test) sauf
 //     dans les fichiers de l'allowlist datee ci-dessous : les chargeurs de CATALOGUE (qui ne
 //     lisent pas de film) et les enveloppes D2 declarees.
 //  3. Aucun appel d'ENVELOPPE `dir` depuis les sites de PRODUCTION de D2 (hors _test) : la
@@ -99,7 +99,7 @@ func fichiersGoNonTest(t *testing.T, pkgDir string) map[string]*ast.File {
 // inflates du depot, et son film arrive maintenant deja charge (`Decode(ctx, name, film, opts)`).
 // Le reste du depot est couvert par l'allowlist FERMEE de la regle 4.
 var paquetsSansInflate = []string{
-	"internal/games/halo_infinite/film/filmdec",
+	"internal/games/halo_infinite/film/grammar",
 	"internal/games/halo_infinite/film/facts/objectives",
 	"internal/games/halo_infinite/film/replay",
 	"internal/games/halo_infinite/film/killsource",
@@ -152,7 +152,7 @@ var fichiersFilmdecLisantLeDisque = map[string]bool{
 // et `filepath.Glob` enumere un repertoire de chunks aussi bien que `os.ReadDir`. Une allowlist
 // qui laisse le meme geste passer sous un autre nom ne mesure plus rien.
 //
-// LA REGLE NE COUVRE QUE `internal/games/halo_infinite/film/filmdec` : `filmsource` est HORS de son perimetre par
+// LA REGLE NE COUVRE QUE `internal/games/halo_infinite/film/grammar` : `filmsource` est HORS de son perimetre par
 // construction (il n'est pas dans `pkgDir`), et c'est voulu — c'est LE paquet autorise a lire un
 // film, l'unique chargeur de la chaine (D1).
 var lecturesDisque = map[string]bool{
@@ -166,7 +166,7 @@ var paquetsLecteursDeDisque = map[string]bool{"os": true, "filepath": true}
 
 // TestFilmdecNeLitPasLeDisqueHorsAllowlist — REGLE 2.
 func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/filmdec"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/grammar"))
 	var violations []string
 	for nom, f := range fichiersGoNonTest(t, pkgDir) {
 		if fichiersFilmdecLisantLeDisque[nom] {
@@ -189,7 +189,7 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 		})
 	}
 	if len(violations) > 0 {
-		t.Fatalf("`filmdec` relit le disque hors allowlist :\n  %s\n"+
+		t.Fatalf("`grammar` relit le disque hors allowlist :\n  %s\n"+
 			"Les balayages recoivent un `*filmsource.Film` DEJA CHARGE (lot 1) : un `os.ReadFile` "+
 			"ici, c'est le film relu une fois de plus — l'exact defaut que le lot a supprime. "+
 			"Si le fichier lu n'est PAS un film (catalogue, manifeste), l'ajouter a "+
@@ -202,7 +202,7 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 // production ne doit jamais appeler (regle D2 du plan). Chacune charge un film ENTIER pour un
 // seul balayage ; les appeler depuis la cuisson annulerait le lot.
 //
-// La liste couvre les enveloppes exportees de `filmdec` et de `replay`. Les formes film
+// La liste couvre les enveloppes exportees de `grammar` et de `replay`. Les formes film
 // (`ScanXxx(film, ...)`) ne sont PAS ici : ce sont elles que la production appelle.
 //
 // ELLE NE PORTE QUE DES NOMS SANS HOMONYME, ET C'EST UNE CONDITION DE VALIDITE (lot 6, constat 4).
@@ -264,7 +264,7 @@ var enveloppesInterditesEnProduction = []string{
 	"ScanFilmZoomEvents",
 	// `DetectI0Layout` N'EXISTE PLUS EN PRODUCTION depuis le 2026-09-16 (revue de jalon M1,
 	// constat C4 : plus aucun appelant de production depuis le lot 1.9.4, l'enveloppe est
-	// devenue `detectI0Layout` dans un fichier de test de `filmdec`). LE NOM RESTE ICI : cette
+	// devenue `detectI0Layout` dans un fichier de test de `grammar`). LE NOM RESTE ICI : cette
 	// liste est une liste de NOMS INTERDITS, pas un inventaire de symboles, et l'y garder fait
 	// rougir toute reintroduction en production.
 	"DetectI0Layout", "EquipmentArchetypeDir", "CalibrateMPPWidths",
@@ -375,7 +375,7 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 // du module, separateur `/`.
 //
 // POURQUOI UNE LISTE FERMEE ET PAS UNE INTERDICTION PAR PAQUET. Avant le lot 1, TROIS inflates
-// divergents cohabitaient dans la chaine de cuisson (`filmdec`, `objectives`,
+// divergents cohabitaient dans la chaine de cuisson (`grammar`, `objectives`,
 // `killsource`) — et il a fallu une mesure sur 1 378 films pour prouver qu'ils voyaient les
 // memes octets. Un quatrieme se serait ajoute sans bruit dans n'importe quel paquet : la regle
 // par paquet ne l'aurait vu que si le paquet avait ete prevu. La liste ci-dessous est donc

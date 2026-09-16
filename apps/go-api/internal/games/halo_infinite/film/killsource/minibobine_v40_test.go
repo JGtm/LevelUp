@@ -23,7 +23,7 @@ package killsource
 // # CE QU ELLE CONTIENT, ET POURQUOI EXACTEMENT CELA
 //
 //	chunk_00.bin  LE REGISTRE — c est lui qui PORTE la version (u32 LE en tete). Sans lui la
-//	              bobine ne prouverait rien : `filmdec.FilmMajorVersion` rendrait `ok=false`.
+//	              bobine ne prouverait rien : `grammar.FilmMajorVersion` rendrait `ok=false`.
 //	chunk_01.bin  LE PREMIER CHUNK DE DONNEES — [loadFilm] refuse un film sans paquet de
 //	              replication (`ErrNoPacket`) ; c est le plus petit chunk qui lui en donne.
 //	chunk_02.bin  LE CHUNK HIGHLIGHT du film (n30), trouve PAR SON CONTENU comme partout ailleurs.
@@ -54,14 +54,14 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // miniBobineV40Dir : la bobine de version 40, relative au paquet.
 //
 // ELLE A DEUX LECTEURS : ce paquet, et `internal/games/halo_infinite/film/replay` dont `ScanDeaths` est le
 // deuxieme des trois appelants qui passaient 0 (constat P1-2) — il la designe par un chemin
-// relatif, comme `filmdec` designe deja `replay/testdata/minifilm_000d5950` dans l autre sens.
+// relatif, comme `grammar` designe deja `replay/testdata/minifilm_000d5950` dans l autre sens.
 // Un second exemplaire de 876 Kio pour la meme preuve serait de la dette.
 const miniBobineV40Dir = "testdata/minibobine_e5adf7b2"
 
@@ -161,7 +161,7 @@ func TestMiniBobineV40Regenerer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("film source illisible : %v", err)
 	}
-	if v, ok := filmdec.FilmMajorVersion(src); !ok || v != miniBobineV40Version {
+	if v, ok := grammar.FilmMajorVersion(src); !ok || v != miniBobineV40Version {
 		t.Fatalf("le film %s declare la version %d (lue=%v) : la bobine doit venir d un film de "+
 			"version %d, sinon elle ne prouve rien", miniBobineV40Film, v, ok, miniBobineV40Version)
 	}

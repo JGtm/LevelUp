@@ -5,7 +5,7 @@ package killsource
 // reutilise la marche de records de ce paquet, telle qu'elle est, et se contente de ne PAS jeter
 // les dead-states dont le slot sort de la plage bipede.
 //
-// POURQUOI ICI ET PAS DANS `filmdec`. Le balayage ANCRE de `filmdec` (matchBipedHeader) n'accepte
+// POURQUOI ICI ET PAS DANS `grammar`. Le balayage ANCRE de `grammar` (matchBipedHeader) n'accepte
 // qu'un record dont le masque commence par i0 ET dont i0 est ABSOLU. Recensement V10 sur deux
 // films : sur la bande `ti=40`, 0 record sur 37 677 declare i11 ; mais sur la bande BIPEDE du
 // MEME film — ou les morts sont un fait etabli — il en voit 1 sur 207 808 et 0 sur 193 762.
@@ -41,7 +41,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // vehicleTypeIndex : l'archetype VEHICULE du registre film.
@@ -50,7 +50,7 @@ const v10VehicleTI = 40
 // v10Dead : un dead-state atteint par la marche, sans aucun filtre de plage.
 //
 // `us` est l HORODATAGE ABSOLU du paquet porteur — le MEME champ d en-tete que
-// `filmdec.BipedPosition.TimestampUS`. Il est indispensable : `ms` est relatif au premier paquet
+// `grammar.BipedPosition.TimestampUS`. Il est indispensable : `ms` est relatif au premier paquet
 // type-0 du film, donc incomparable aux fenetres de vie du calque vehicule, qui sont absolues.
 // C est ce qui permet de RECOUPER un dead-state avec la derniere lecture de vitalite d une vie.
 type v10Dead struct {
@@ -58,7 +58,7 @@ type v10Dead struct {
 	us   uint64
 	slot int
 	ti   uint32
-	dead filmdec.DeadState
+	dead grammar.DeadState
 }
 
 // v10Couverture compte, par archetype, les records PROPRES que la marche atteint — le
@@ -92,7 +92,7 @@ func v10RunFilm(t *testing.T, dir, short8 string) {
 	if err != nil {
 		t.Fatalf("%s : timeline : %v", short8, err)
 	}
-	kf := filmdec.ScanFilmWorldObjectKeyframes(dir, v10VehicleTI)
+	kf := grammar.ScanFilmWorldObjectKeyframes(dir, v10VehicleTI)
 	if len(kf.Band) == 0 {
 		t.Fatalf("%s : aucun slot ti=%d aux images-cles", short8, v10VehicleTI)
 	}
@@ -163,7 +163,7 @@ func v10RunFilm(t *testing.T, dir, short8 string) {
 // plus la COUVERTURE de la marche par archetype — le denominateur de la mesure.
 func v10Harvest(f *film, tl *timeline) ([]v10Dead, v10Couverture) {
 	tl.rewind()
-	cfg := filmdec.DefaultFrameConfig()
+	cfg := grammar.DefaultFrameConfig()
 	views := v10Views()
 	cov := v10Couverture{recs: map[uint32]int{}, withI11: map[uint32]int{}}
 	var out []v10Dead

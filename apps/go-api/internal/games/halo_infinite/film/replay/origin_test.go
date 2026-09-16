@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // origin_test.go — L'ORIGINE PUBLIEE : ce qu'elle vaut, et quand elle se TAIT.
@@ -116,8 +116,8 @@ func TestCoverageSaysWhetherOriginIsResolved(t *testing.T) {
 }
 
 // positionsPourOrigine rend deux positions d'un meme slot, assez pour qu'une trace soit publiee.
-func positionsPourOrigine() []filmdec.BipedPosition {
-	return []filmdec.BipedPosition{
+func positionsPourOrigine() []grammar.BipedPosition {
+	return []grammar.BipedPosition{
 		{Slot: 1, TimestampUS: 2_000_000, X: 1, Y: 1, Z: 1},
 		{Slot: 1, TimestampUS: 2_100_000, X: 2, Y: 2, Z: 1},
 		{Slot: 1, TimestampUS: 2_200_000, X: 3, Y: 3, Z: 1},

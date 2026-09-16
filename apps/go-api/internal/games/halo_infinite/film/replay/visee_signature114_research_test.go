@@ -51,7 +51,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -110,7 +110,7 @@ func sig114Evalue(pk []env114Paquet, d, w int, trans []int64, t0, t1 int64) sig1
 		if d+w > p.nBits {
 			continue
 		}
-		v := filmdec.ReadBitsAtForDiag(p.pay, d, w)
+		v := grammar.ReadBitsAtForDiag(p.pay, d, w)
 		cardTotal[v] = true
 		if p.tMS >= t0 && p.tMS <= t1 {
 			parValeur[v] = append(parValeur[v], p.tMS)
@@ -133,7 +133,7 @@ func sig114Evalue(pk []env114Paquet, d, w int, trans []int64, t0, t1 int64) sig1
 		}
 	}
 	for _, p := range pk {
-		if d+w <= p.nBits && filmdec.ReadBitsAtForDiag(p.pay, d, w) == best.valeur {
+		if d+w <= p.nBits && grammar.ReadBitsAtForDiag(p.pay, d, w) == best.valeur {
 			best.nPaquets++
 		}
 	}
@@ -236,7 +236,7 @@ func sig114Detaille(t *testing.T, pk []env114Paquet, r sig114Tranche, trans []in
 	t.Helper()
 	var retenus []env114Paquet
 	for _, p := range pk {
-		if r.d+r.w <= p.nBits && filmdec.ReadBitsAtForDiag(p.pay, r.d, r.w) == r.valeur {
+		if r.d+r.w <= p.nBits && grammar.ReadBitsAtForDiag(p.pay, r.d, r.w) == r.valeur {
 			retenus = append(retenus, p)
 		}
 	}
@@ -270,7 +270,7 @@ func sig114SensTranche(pk, tous []env114Paquet, d, w int, trans []int64) (bool, 
 		if i < 0 {
 			continue
 		}
-		v := filmdec.ReadBitsAtForDiag(p.pay, d, w)
+		v := grammar.ReadBitsAtForDiag(p.pay, d, w)
 		if i%2 == 0 {
 			vIn[v] = true
 			nIn++
@@ -290,7 +290,7 @@ func sig114SensTranche(pk, tous []env114Paquet, d, w int, trans []int64) (bool, 
 	card := map[uint32]bool{}
 	for _, p := range tous {
 		if d+w <= p.nBits {
-			card[filmdec.ReadBitsAtForDiag(p.pay, d, w)] = true
+			card[grammar.ReadBitsAtForDiag(p.pay, d, w)] = true
 		}
 	}
 	if len(card) > sig114CardMax {
@@ -343,7 +343,7 @@ func sig114Palette(t *testing.T, pk []env114Paquet, d, w int) {
 	comptes := map[uint32]int{}
 	for _, p := range pk {
 		if d+w <= p.nBits {
-			comptes[filmdec.ReadBitsAtForDiag(p.pay, d, w)]++
+			comptes[grammar.ReadBitsAtForDiag(p.pay, d, w)]++
 		}
 	}
 	var vs []int

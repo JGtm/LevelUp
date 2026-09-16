@@ -33,7 +33,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/himap"
 )
 
@@ -69,7 +69,7 @@ func main() {
 		slog.Info("installation détectée", "levels", dir)
 	}
 	res := title.NewPathResolver(root)
-	cat, err := filmdec.LoadMapQuantCatalog(res.MapQuantBoundsPath(*titleSlug))
+	cat, err := grammar.LoadMapQuantCatalog(res.MapQuantBoundsPath(*titleSlug))
 	if err != nil {
 		slog.Error("catalogue de bornes", "err", err)
 		os.Exit(1)
@@ -126,7 +126,7 @@ type target struct {
 }
 
 // selectModules résout la liste de cartes demandée en modules, via le catalogue de bornes.
-func selectModules(cat *filmdec.MapQuantCatalog, list string) ([]target, error) {
+func selectModules(cat *grammar.MapQuantCatalog, list string) ([]target, error) {
 	byModule := map[string][]string{}
 	for name, e := range cat.Maps {
 		byModule[e.Module] = append(byModule[e.Module], name)

@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // world_object_precision_guard_test.go — GARDE-RAIL du correctif du 2026-08-15.
 //
-// CE QU'IL GARDE. `filmdec.WorldObjectPrecision` est un GLOBAL de paquet dont le défaut EST
+// CE QU'IL GARDE. `grammar.WorldObjectPrecision` est un GLOBAL de paquet dont le défaut EST
 // l'entrée `cliffhanger` du catalogue. Pendant des mois AUCUN chemin de production ne
 // l'écrasait : toutes les autres cartes déquantifiaient leurs objets du monde aux largeurs de
 // Cliffhanger, en silence. `BuildFromFilm` installe désormais les largeurs de l'entrée de
@@ -37,19 +37,19 @@ import (
 // profil meurt avec le contexte, donc aucun film ne peut contaminer le suivant, et deux films
 // peuvent se décoder en parallèle.
 func TestInstallWorldObjectPrecision(t *testing.T) {
-	prev := filmdec.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
+	prev := grammar.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 
-	entry := filmdec.MapQuantEntry{Module: "ctf_bazaar", AxisWidths: [3]uint{17, 17, 16}}
+	entry := grammar.MapQuantEntry{Module: "ctf_bazaar", AxisWidths: [3]uint{17, 17, 16}}
 	if entry.AxisWidths == prev.AxisW {
 		t.Fatal("le cas de test doit différer de l'invariant du profil, sinon il ne mesure rien")
 	}
-	fc := filmdec.NewFilmContextForMap(nil, &entry, nil)
+	fc := grammar.NewFilmContextForMap(nil, &entry, nil)
 	installWorldObjectPrecision(fc, "testdata", fallback.NouveauCompteur())
 	if got := fc.LargeursObjetDuMonde().AxisW; got != entry.AxisWidths {
 		t.Fatalf("largeurs NON POSÉES sur le contexte : %v, attendu %v (celles de la carte du match)",
 			got, entry.AxisWidths)
 	}
-	if got := filmdec.NewFilmContext(nil).LargeursObjetDuMonde(); got != prev {
+	if got := grammar.NewFilmContext(nil).LargeursObjetDuMonde(); got != prev {
 		t.Fatalf("un AUTRE contexte a vu les largeurs de ce film (%v au lieu de %v) : le profil "+
 			"a fui hors du contexte", got.AxisW, prev.AxisW)
 	}
@@ -59,10 +59,10 @@ func TestInstallWorldObjectPrecision(t *testing.T) {
 // antérieur au champ, entrée fabriquée à la main) garde le défaut. La dégradation est LOGGÉE
 // par l'installateur — jamais silencieuse.
 func TestInstallWorldObjectPrecisionKeepsDefaultWithoutWidths(t *testing.T) {
-	prev := filmdec.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
+	prev := grammar.ProfilDeBalayageParDefaut().LargeursObjetDuMonde()
 
-	sansLargeurs := filmdec.MapQuantEntry{Module: "sans_largeurs"}
-	fc := filmdec.NewFilmContextForMap(nil, &sansLargeurs, nil)
+	sansLargeurs := grammar.MapQuantEntry{Module: "sans_largeurs"}
+	fc := grammar.NewFilmContextForMap(nil, &sansLargeurs, nil)
 	installWorldObjectPrecision(fc, "testdata", fallback.NouveauCompteur())
 	if got := fc.LargeursObjetDuMonde(); got != prev {
 		t.Fatalf("largeurs à zéro posées (%v) : le décodeur lirait des champs de 0 bit", got.AxisW)
@@ -135,7 +135,7 @@ func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
 			"(mêmes conséquences mesurées que ci-dessus)")
 	}
 	poseInstall := pose.FindStringIndex(body)[0]
-	ouverture := strings.Index(body, "filmdec.NewFilmContextForMap(")
+	ouverture := strings.Index(body, "grammar.NewFilmContextForMap(")
 	if ouverture < 0 || ouverture > poseInstall {
 		t.Fatal("les largeurs sont posées avant que le contexte du film n'existe : le profil de " +
 			"balayage est un CHAMP du contexte depuis le lot 2.3, il n'y a rien à poser avant lui")
@@ -179,20 +179,20 @@ func funcBody(src, head string) (string, bool) {
 // donc avant que `scanFilmInputs` n'ait composé ses `ScanFilmOptions`. Une divergence entre les
 // deux ferait décoder le film sous un découpage que l'appelant croyait avoir forcé, en silence.
 func TestDecoupageForceSuitLesOptions(t *testing.T) {
-	force := filmdec.I0Layout{GateBits: 7, AxisW: [3]uint{12, 12, 11}, Region: 1}
+	force := grammar.I0Layout{GateBits: 7, AxisW: [3]uint{12, 12, 11}, Region: 1}
 	cas := []struct {
 		nom     string
 		opt     Options
-		attendu *filmdec.I0Layout
+		attendu *grammar.I0Layout
 	}{
-		{"sans options de balayage", Options{}, filmdec.DefaultScanFilmOptions().Layout},
-		{"options sans découpage", Options{Scan: &filmdec.ScanFilmOptions{}}, nil},
-		{"découpage forcé", Options{Scan: &filmdec.ScanFilmOptions{Layout: &force}}, &force},
+		{"sans options de balayage", Options{}, grammar.DefaultScanFilmOptions().Layout},
+		{"options sans découpage", Options{Scan: &grammar.ScanFilmOptions{}}, nil},
+		{"découpage forcé", Options{Scan: &grammar.ScanFilmOptions{Layout: &force}}, &force},
 	}
 	for _, c := range cas {
 		// On rejoue EXACTEMENT les deux lignes par lesquelles `scanFilmInputs` compose `s.scan` :
 		// le défaut du paquet, écrasé par `*opt.Scan` quand l'appelant en fournit un.
-		attendu := filmdec.DefaultScanFilmOptions()
+		attendu := grammar.DefaultScanFilmOptions()
 		if c.opt.Scan != nil {
 			attendu = *c.opt.Scan
 		}
@@ -213,14 +213,14 @@ func TestDecoupageForceSuitLesOptions(t *testing.T) {
 // PAQUET (double écriture datée). Celle-ci a disparu ; il confronte désormais le profil du film
 // au profil de balayage du contexte, qui est ce que les lecteurs portent.
 func TestProfilEgaleGlobalesWorldObject(t *testing.T) {
-	cartes := []filmdec.MapQuantEntry{
+	cartes := []grammar.MapQuantEntry{
 		{Module: "ctf_bazaar", AxisWidths: [3]uint{17, 17, 16}},
 		{Module: "live_fire", AxisWidths: [3]uint{12, 12, 11}, Region: 1, RegionIndexBits: 2},
 		{Module: "cliffhanger", AxisWidths: [3]uint{13, 13, 14}},
 	}
 	for _, e := range cartes {
 		entry := e
-		fc := filmdec.NewFilmContextForMap(nil, &entry, nil)
+		fc := grammar.NewFilmContextForMap(nil, &entry, nil)
 		installWorldObjectPrecision(fc, "testdata", fallback.NouveauCompteur())
 		attendu, got := fc.Profile().Map().Layout(), fc.LargeursObjetDuMonde()
 		if got.AxisW != attendu.AxisW || got.Region != attendu.Region {

@@ -33,7 +33,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // v1aSeuilContinuite est le gate de fonction de V1.2, ecrit avant mesure : le cadrage a releve
@@ -59,8 +59,8 @@ const (
 // zero, aucun post-filtre ne peut etre soupconne d'avoir SELECTIONNE les echantillons qui
 // donnent raison a l'oracle — un filtre en m/s, en particulier, ecarterait par construction une
 // partie des pas que la mesure de continuite compte.
-func v1aOptions(wr *filmdec.Vec3Range, filtres bool) filmdec.ScanFilmOptions {
-	opt := filmdec.DefaultScanFilmOptions()
+func v1aOptions(wr *grammar.Vec3Range, filtres bool) grammar.ScanFilmOptions {
+	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange, opt.RequireTag1 = wr, false
 	if !filtres {
 		opt.MaxSpeedMPS, opt.IsolationGapMS = 0, 0
@@ -70,7 +70,7 @@ func v1aOptions(wr *filmdec.Vec3Range, filtres bool) filmdec.ScanFilmOptions {
 
 // v1aBandeVehicule releve la bande de slots de l'archetype vehicule aux images-cles.
 func v1aBandeVehicule(dir string) map[uint32]bool {
-	return filmdec.ScanFilmWorldObjectKeyframes(dir, int(attVehiculeTI)).Band
+	return grammar.ScanFilmWorldObjectKeyframes(dir, int(attVehiculeTI)).Band
 }
 
 // ---------------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ func TestV1aContinuiteNouvelleEntree(t *testing.T) {
 func v1aContinuiteUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
 	dir := objChunkDir(root, f.ID)
-	if filmdec.CountFilmChunks(dir) == 0 {
+	if grammar.CountFilmChunks(dir) == 0 {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
@@ -111,7 +111,7 @@ func v1aContinuiteUnFilm(t *testing.T, root string, f v0Film) {
 		nom     string
 		filtres bool
 	}{{"flux brut", false}, {"filtres par defaut", true}} {
-		pos, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(bande), v1aOptions(&wr, v.filtres))
+		pos, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(bande), v1aOptions(&wr, v.filtres))
 		if err != nil {
 			t.Logf("V1.2 %s [%s] : %v", f.ID, v.nom, err)
 			continue
@@ -171,7 +171,7 @@ func v1aCapDeg(x, y float32) float64 { return math.Atan2(float64(y), float64(x))
 // v1aVitesseMPS rend la norme de la velocite i1 d'un echantillon, en m/s. La norme passe par
 // `dist3` — l'unique ecriture de la formule euclidienne du paquet (garde-rail
 // `TestUneSeuleFormuleDeDistance3D`) : une norme est la distance a l'origine.
-func v1aVitesseMPS(p filmdec.BipedPosition) (float64, bool) {
+func v1aVitesseMPS(p grammar.BipedPosition) (float64, bool) {
 	v, ok := p.VelocityVector()
 	if !ok {
 		return 0, false
@@ -205,7 +205,7 @@ func TestV1aOracleCapI2(t *testing.T) {
 func v1aCapUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
 	dir := objChunkDir(root, f.ID)
-	if filmdec.CountFilmChunks(dir) == 0 {
+	if grammar.CountFilmChunks(dir) == 0 {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
@@ -220,7 +220,7 @@ func v1aCapUnFilm(t *testing.T, root string, f v0Film) {
 	}
 	opt := v1aOptions(&wr, false)
 	opt.CaptureDirs = true
-	pos, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(bande), opt)
+	pos, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(bande), opt)
 	if err != nil {
 		t.Logf("V1.3 %s : %v", f.ID, err)
 		return
@@ -246,8 +246,8 @@ func v1aCapUnFilm(t *testing.T, root string, f v0Film) {
 // REGLE DE SELECTION, ECRITE AVANT LA MESURE : l'echantillon porte i2 ET i1, sa velocite i1
 // depasse `v1aVitesseMinMPS`, et il existe un echantillon SUIVANT du meme slot a moins de
 // `v0PasMaxUS` dont il est separe par un deplacement horizontal non nul.
-func v1aConfronteCaps(pos []filmdec.BipedPosition) (caps, depl, vel v1aEcarts, vit []float64) {
-	parSlot := map[uint32][]filmdec.BipedPosition{}
+func v1aConfronteCaps(pos []grammar.BipedPosition) (caps, depl, vel v1aEcarts, vit []float64) {
+	parSlot := map[uint32][]grammar.BipedPosition{}
 	for _, p := range pos {
 		if p.HasWorld {
 			parSlot[p.Slot] = append(parSlot[p.Slot], p)
@@ -280,7 +280,7 @@ type v1aMesureCapPaire struct {
 
 // v1aMesureCap rend les trois caps d'une paire d'echantillons consecutifs, et dit si la paire
 // est retenue par la regle de selection.
-func v1aMesureCap(a, b filmdec.BipedPosition) (v1aMesureCapPaire, bool) {
+func v1aMesureCap(a, b grammar.BipedPosition) (v1aMesureCapPaire, bool) {
 	var m v1aMesureCapPaire
 	if !a.HasAim || !v0PasCompte(a.TimestampUS, b.TimestampUS) {
 		return m, false
@@ -383,7 +383,7 @@ func TestV1aOracleGeometrique(t *testing.T) {
 func v1aGeometriqueUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
 	dir := objChunkDir(root, f.ID)
-	if filmdec.CountFilmChunks(dir) == 0 {
+	if grammar.CountFilmChunks(dir) == 0 {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
@@ -400,15 +400,15 @@ func v1aGeometriqueUnFilm(t *testing.T, root string, f v0Film) {
 	// qu'employait l'oracle du 18/08 (`attNuages`), et le rejeu ne doit changer QUE la grammaire
 	// des positions de vehicule. Desarmer le tag ici ajouterait des faux positifs de bipede et
 	// gonflerait mecaniquement les coincidences.
-	optBip := filmdec.DefaultScanFilmOptions()
+	optBip := grammar.DefaultScanFilmOptions()
 	optBip.WorldRange = &wr
-	bip, err := filmdec.ScanFilmBipedPositions(dir, optBip)
+	bip, err := grammar.ScanFilmBipedPositions(dir, optBip)
 	if err != nil {
 		t.Logf("V1a.4 %s : balayage des bipedes : %v", f.ID, err)
 		return
 	}
 	v1aIntersectionBandes(t, f, dir, bande, bip)
-	veh, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(bande), v1aOptions(&wr, true))
+	veh, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(bande), v1aOptions(&wr, true))
 	if err != nil {
 		t.Logf("V1a.4 %s : balayage des vehicules : %v", f.ID, err)
 		return
@@ -432,7 +432,7 @@ func v1aGeometriqueUnFilm(t *testing.T, root string, f v0Film) {
 		t.Logf("V1a.4 %s : aucun slot libre pour une bande fantome", f.ID)
 		return
 	}
-	fveh, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(fantome), v1aOptions(&wr, true))
+	fveh, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(fantome), v1aOptions(&wr, true))
 	if err != nil {
 		t.Logf("V1a.4 %s : bande fantome : %v", f.ID, err)
 		return
@@ -442,7 +442,7 @@ func v1aGeometriqueUnFilm(t *testing.T, root string, f v0Film) {
 
 // v1aIntersectionBandes publie le recouvrement des deux bandes — le premier controle.
 func v1aIntersectionBandes(t *testing.T, f v0Film, dir string, bande map[uint32]bool,
-	bip []filmdec.BipedPosition) {
+	bip []grammar.BipedPosition) {
 	t.Helper()
 	slotsBip := attSlotsBipede(bip)
 	commun := 0
@@ -454,7 +454,7 @@ func v1aIntersectionBandes(t *testing.T, f v0Film, dir string, bande map[uint32]
 	t.Logf("V1a.4 %s (%s) — CONTROLE des bandes : %d slots de bipede EMIS, %d slots dans la "+
 		"bande ti=%d, %d en COMMUN (un slot commun fabrique une coincidence a distance nulle) · "+
 		"%d chunks", f.ID, f.Carte, len(slotsBip), len(bande), attVehiculeTI, commun,
-		filmdec.CountFilmChunks(dir))
+		grammar.CountFilmChunks(dir))
 }
 
 // v1aPresenceDeFond rend le nombre d'echantillons de bipede qui sont, A LEUR INSTANT, a moins
@@ -463,7 +463,7 @@ func v1aIntersectionBandes(t *testing.T, f v0Film, dir string, bande map[uint32]
 // C'EST LE DENOMINATEUR QUI MANQUAIT A L'ORACLE DU 18/08. « 46 % des trous du flux s'ouvrent
 // pres d'un vehicule » ne dit rien tant qu'on ignore quelle part du TEMPS un bipede passe pres
 // d'un vehicule : si c'est 45 %, le chiffre est du hasard ; si c'est 3 %, il est massif.
-func v1aPresenceDeFond(veh []filmdec.ProjectileTrack, bip []filmdec.BipedPosition) (int, int) {
+func v1aPresenceDeFond(veh []grammar.ProjectileTrack, bip []grammar.BipedPosition) (int, int) {
 	pres, total := 0, 0
 	for _, b := range bip {
 		if !b.HasWorld {
@@ -478,13 +478,13 @@ func v1aPresenceDeFond(veh []filmdec.ProjectileTrack, bip []filmdec.BipedPositio
 }
 
 // v1aPistes regroupe des positions par slot en pistes triees — la forme qu'attend l'oracle.
-func v1aPistes(pos []filmdec.BipedPosition) []filmdec.ProjectileTrack {
-	parSlot := map[uint32][]filmdec.ProjectileSample{}
+func v1aPistes(pos []grammar.BipedPosition) []grammar.ProjectileTrack {
+	parSlot := map[uint32][]grammar.ProjectileSample{}
 	for _, p := range pos {
 		if !p.HasWorld {
 			continue
 		}
-		parSlot[p.Slot] = append(parSlot[p.Slot], filmdec.ProjectileSample{
+		parSlot[p.Slot] = append(parSlot[p.Slot], grammar.ProjectileSample{
 			TimestampUS: p.TimestampUS, Chunk: p.Chunk, X: p.X, Y: p.Y, Z: p.Z,
 		})
 	}
@@ -493,18 +493,18 @@ func v1aPistes(pos []filmdec.BipedPosition) []filmdec.ProjectileTrack {
 		slots = append(slots, s)
 	}
 	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
-	out := make([]filmdec.ProjectileTrack, 0, len(slots))
+	out := make([]grammar.ProjectileTrack, 0, len(slots))
 	for _, s := range slots {
 		pts := parSlot[s]
 		sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimestampUS < pts[j].TimestampUS })
-		out = append(out, filmdec.ProjectileTrack{Slot: s, Pts: pts})
+		out = append(out, grammar.ProjectileTrack{Slot: s, Pts: pts})
 	}
 	return out
 }
 
 // v1aPublieOracle applique l'oracle et publie ce qu'il rend.
-func v1aPublieOracle(t *testing.T, f v0Film, quoi string, veh []filmdec.ProjectileTrack,
-	bip []filmdec.BipedPosition) {
+func v1aPublieOracle(t *testing.T, f v0Film, quoi string, veh []grammar.ProjectileTrack,
+	bip []grammar.BipedPosition) {
 	t.Helper()
 	periodes := attPeriodesABord(veh, bip)
 	med, tot := v1aDurees(periodes)

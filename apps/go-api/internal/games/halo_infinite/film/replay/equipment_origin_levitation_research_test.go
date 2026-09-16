@@ -78,7 +78,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -114,7 +114,7 @@ func levMedian(v []float64) float64 {
 
 // levGroundZ rend la hauteur de référence du sol en (x, y) : la médiane des `Z` des bipèdes
 // passés à moins de levRayonSol, et le nombre de relevés qui la fondent.
-func levGroundZ(pos map[uint32][]filmdec.BipedPosition, x, y float32) (float64, int) {
+func levGroundZ(pos map[uint32][]grammar.BipedPosition, x, y float32) (float64, int) {
 	var zs []float64
 	for _, list := range pos {
 		for _, p := range list {
@@ -309,7 +309,7 @@ func TestOriginBirthRecurrenceClusters(t *testing.T) {
 	t.Logf("carte %q · %d pose(s) ti=37 · calibration MPP : %s", module, len(poses), pst.Calibration)
 
 	// Regroupement par nature, pour R3. Le préfixe `grenade_` est la convention du manifeste.
-	parNature := map[string][]filmdec.EquipmentPlacement{}
+	parNature := map[string][]grammar.EquipmentPlacement{}
 	for _, p := range poses {
 		nature := "equipement"
 		fam, ok := familles[p.GlobalID]
@@ -361,8 +361,8 @@ type recAmasPoint struct {
 // GLOUTON ET NON ITÉRATIF, À DESSEIN : on cherche à savoir S'IL EXISTE des points réutilisés,
 // pas à produire un partitionnement optimal. Un algorithme plus fin ne changerait pas le verdict
 // et ajouterait des paramètres à justifier.
-func recAmas(poses []filmdec.EquipmentPlacement) []recAmasPoint {
-	reste := append([]filmdec.EquipmentPlacement(nil), poses...)
+func recAmas(poses []grammar.EquipmentPlacement) []recAmasPoint {
+	reste := append([]grammar.EquipmentPlacement(nil), poses...)
 	var out []recAmasPoint
 	for len(reste) > 0 {
 		meilleur, meilleurN := 0, 0
@@ -378,7 +378,7 @@ func recAmas(poses []filmdec.EquipmentPlacement) []recAmasPoint {
 			}
 		}
 		centre := reste[meilleur]
-		var garde []filmdec.EquipmentPlacement
+		var garde []grammar.EquipmentPlacement
 		for _, q := range reste {
 			if glDist(centre.X, centre.Y, centre.Z, q.X, q.Y, q.Z) > recRayonAmas {
 				garde = append(garde, q)
@@ -397,14 +397,14 @@ func recAmas(poses []filmdec.EquipmentPlacement) []recAmasPoint {
 
 // recAmasTemoin rend le nombre d'amas qu'on obtient en tirant le MÊME nombre de points
 // uniformément dans les bornes de la carte — le plancher du hasard pour R2.
-func recAmasTemoin(poses []filmdec.EquipmentPlacement, wr filmdec.Vec3Range, graine int64) int {
+func recAmasTemoin(poses []grammar.EquipmentPlacement, wr grammar.Vec3Range, graine int64) int {
 	if len(poses) == 0 {
 		return 0
 	}
 	rng := rand.New(rand.NewSource(graine))
-	faux := make([]filmdec.EquipmentPlacement, len(poses))
+	faux := make([]grammar.EquipmentPlacement, len(poses))
 	for i := range faux {
-		faux[i] = filmdec.EquipmentPlacement{
+		faux[i] = grammar.EquipmentPlacement{
 			X: recEntre(wr[0], rng),
 			Y: recEntre(wr[1], rng),
 			Z: recEntre(wr[2], rng),
@@ -414,6 +414,6 @@ func recAmasTemoin(poses []filmdec.EquipmentPlacement, wr filmdec.Vec3Range, gra
 }
 
 // recEntre tire une coordonnée uniformément dans les bornes d'un axe de la carte.
-func recEntre(a filmdec.AxisRange, rng *rand.Rand) float32 {
+func recEntre(a grammar.AxisRange, rng *rand.Rand) float32 {
 	return a.Min + float32(rng.Float64())*(a.Max-a.Min)
 }

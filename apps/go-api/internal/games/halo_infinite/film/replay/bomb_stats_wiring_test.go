@@ -51,7 +51,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // Le témoin : un joueur, un slot de biped, et son xuid en décimal — la clef que le noyau publie.
@@ -91,11 +91,11 @@ const (
 // `HasWorld` EST OBLIGATOIRE : sans les bornes de la carte, un quantum n'est pas une coordonnée
 // et `decimateTracks` n'en publie AUCUNE piste — donc aucune identité, donc aucune action
 // d'objectif publiable (`dropUnpublishedActions`). Tout le scénario en dépend.
-func bwPositions() []filmdec.BipedPosition {
-	var out []filmdec.BipedPosition
+func bwPositions() []grammar.BipedPosition {
+	var out []grammar.BipedPosition
 	for us := bwPremierePosUS; us <= bwDernierePosUS; us += 500_000 {
 		n := float32(us / 500_000)
-		out = append(out, filmdec.BipedPosition{
+		out = append(out, grammar.BipedPosition{
 			Slot: bwSlot, TimestampUS: us, X: n, Y: n, Z: 1, HasWorld: true})
 	}
 	return out
@@ -115,8 +115,8 @@ func bwIndices() PlayerIndexTable {
 // bwPortage rend les DEUX transitions du canal des armes tenues qui font UNE période fermée par
 // LÂCHER : prise à 5 s, lâcher à 6 s (horloge du film) — soit [3 000, 4 000] ms sur l'horloge du
 // match, une fois `deathOffsetMS` retranché (cf. bomb_carries.go). Une seconde de portage.
-func bwPortage() []filmdec.HeldWeaponChange {
-	return []filmdec.HeldWeaponChange{
+func bwPortage() []grammar.HeldWeaponChange {
+	return []grammar.HeldWeaponChange{
 		{TimestampUS: 5_000_000, Slot: bwSlot, Family: bombHeldFamily},
 		{TimestampUS: 6_000_000, Slot: bwSlot, Family: 0x11112222, Previous: bombHeldFamily},
 	}
@@ -126,8 +126,8 @@ func bwPortage() []filmdec.HeldWeaponChange {
 // échantillons (`NavpointRiseMinSamples`), une montée de 154 quanta (`NavpointRiseMinQuanta` = 16)
 // et une fin AU QUANTUM PLEIN (`bombArmedFullQuantum` = 254). `finMS` est l'instant ARMÉ, sur
 // l'horloge du manifeste — la même que les explosions.
-func bwAnneauArme(finMS int32) []filmdec.NavpointRadialRead {
-	return []filmdec.NavpointRadialRead{
+func bwAnneauArme(finMS int32) []grammar.NavpointRadialRead {
+	return []grammar.NavpointRadialRead{
 		{Slot: bwNavSlot, TMS: finMS - 400, Q: 100, Chained: true},
 		{Slot: bwNavSlot, TMS: finMS - 200, Q: 200, Chained: true},
 		{Slot: bwNavSlot, TMS: finMS, Q: 254, Chained: true},

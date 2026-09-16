@@ -27,7 +27,7 @@ import (
 	"unicode/utf16"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // gamertagTemoin : le nom pose dans le bloc synthetique. Il n a rien de special, sinon d etre
@@ -87,7 +87,7 @@ func TestEventsDuFilmSuitLaVersionDeclaree(t *testing.T) {
 	if err != nil || !trouve {
 		t.Fatalf("doublure de source : trouve=%v err=%v", trouve, err)
 	}
-	if film.MajorVersion == filmdec.FilmMajorVersionUnknown {
+	if film.MajorVersion == grammar.FilmMajorVersionUnknown {
 		t.Fatal("la doublure declare une version inconnue : le test ne prouverait rien")
 	}
 	events, err := eventsDuFilm(film)
@@ -123,7 +123,7 @@ func TestEventsDuFilmVersionInconnue(t *testing.T) {
 	ev := evenementFilm{xuid: 2535400000000001, typeHint: 50, timeMS: 12_345, isMedal: true, medalType: 26}
 	film := FilmHighlight{
 		Chunk:        chunkSynthetiqueV40(ev, gamertagTemoin),
-		MajorVersion: filmdec.FilmMajorVersionUnknown,
+		MajorVersion: grammar.FilmMajorVersionUnknown,
 	}
 	events, err := eventsDuFilm(film)
 	if err != nil {

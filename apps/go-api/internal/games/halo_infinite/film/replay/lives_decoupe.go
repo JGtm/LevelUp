@@ -46,7 +46,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
@@ -95,8 +95,8 @@ func buildLifeSpans(tracks map[uint32]slotTrack) []lifeSpan {
 // faitsQuiBornentUneVie porte ce que le film ECRIT et qui ferme legitimement une vie. Une
 // structure plutot que des parametres de plus : le depot en borne cinq.
 type faitsQuiBornentUneVie struct {
-	// creations : les records de creation de bipede (`filmdec.ScanBipedCreations`).
-	creations []filmdec.BipedCreation
+	// creations : les records de creation de bipede (`grammar.ScanBipedCreations`).
+	creations []grammar.BipedCreation
 	// manches : les frontieres de manche, sur l'horloge du FILM, en microsecondes.
 	manches []int64
 	// mortsParJoueur : les instants des morts ECRITES du fil, par joueur, sur l'horloge du FILM
@@ -209,7 +209,7 @@ func mortEcriteDansLeTrou(prec, suiv lifeSpan, in faitsQuiBornentUneVie) bool {
 }
 
 // creationsParSlot groupe les instants des records de creation par slot, tries.
-func creationsParSlot(creations []filmdec.BipedCreation) map[uint32][]uint64 {
+func creationsParSlot(creations []grammar.BipedCreation) map[uint32][]uint64 {
 	out := map[uint32][]uint64{}
 	for _, c := range creations {
 		out[c.Slot] = append(out[c.Slot], c.TimestampUS)

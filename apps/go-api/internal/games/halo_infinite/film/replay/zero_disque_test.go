@@ -32,7 +32,7 @@ package replay
 // racine du depot, par exemple) reussirait sans que ce test le voie. Elle est bornee par
 // construction — `BuildFromFilm(matchID, titleSlug, film, opt)` ne recoit AUCUN chemin de film,
 // et l'entree de catalogue de la carte lui est FOURNIE (`opt.MapQuant`) — et par le garde-rail
-// `archlint/no_film_reread_test.go`, qui interdit `os.*` dans `filmdec` hors allowlist datee.
+// `archlint/no_film_reread_test.go`, qui interdit `os.*` dans `grammar` hors allowlist datee.
 //
 // # POURQUOI DEUX TESTS
 //
@@ -51,7 +51,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // miniBobineChunks : les NUMEROS de fichier des chunks de la mini-bobine, dans l'ordre. Ce sont
@@ -83,7 +83,7 @@ func chargerMiniBobineEnMemoire(t *testing.T) *filmsource.Film {
 	if err != nil {
 		t.Fatalf("chargement en memoire de la mini-bobine : %v", err)
 	}
-	if got := filmdec.FilmChunkNumbers(film); len(got) != len(miniBobineChunks) {
+	if got := grammar.FilmChunkNumbers(film); len(got) != len(miniBobineChunks) {
 		t.Fatalf("chunks de donnees vus par le decodeur : %v, attendus %v — les metadonnees "+
 			"portent les NUMEROS de fichier, pas les positions", got, miniBobineChunks)
 	}
@@ -125,7 +125,7 @@ func TestZeroDisqueBuildFromFilm(t *testing.T) {
 	entrerDansUnRepertoireVide(t)
 
 	_, err = BuildFromFilm("minifilm", "halo_infinite", film, Options{MapQuant: &entry})
-	attendu := fmt.Sprintf("aucun slot biped (ti=%d) dans les keyframes du film", filmdec.BipedTypeIndex)
+	attendu := fmt.Sprintf("aucun slot biped (ti=%d) dans les keyframes du film", grammar.BipedTypeIndex)
 	switch {
 	case err == nil:
 		t.Fatal("BuildFromFilm a rendu un document sur la mini-bobine : elle n'a aucune image-cle " +
@@ -165,15 +165,15 @@ func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 
 	entrerDansUnRepertoireVide(t)
 
-	fire, err := filmdec.ScanFireEvents(film)
+	fire, err := grammar.ScanFireEvents(film)
 	if err != nil {
 		t.Fatalf("tirs : %v", err)
 	}
-	grenades, err := filmdec.ScanGrenadeThrows(film)
+	grenades, err := grammar.ScanGrenadeThrows(film)
 	if err != nil {
 		t.Fatalf("lancers de grenade : %v", err)
 	}
-	loadouts, err := filmdec.ScanKeyframeLoadouts(film, loadoutFamilies())
+	loadouts, err := grammar.ScanKeyframeLoadouts(film, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("armes portees : %v", err)
 	}
@@ -189,7 +189,7 @@ func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("indices joueur : %v", err)
 	}
-	proj, err := filmdec.ScanProjectiles(filmdec.NewFilmContext(film), &wr)
+	proj, err := grammar.ScanProjectiles(grammar.NewFilmContext(film), &wr)
 	if err != nil {
 		t.Fatalf("projectiles : %v", err)
 	}

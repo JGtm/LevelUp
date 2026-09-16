@@ -34,7 +34,7 @@ import (
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -121,7 +121,7 @@ func d3iSerieDe(t *testing.T, dir, short string) (d3iSerie, bool) {
 			"NI POUR NI CONTRE.", short)
 		return d3iSerie{}, false
 	}
-	sc, err := filmdec.ScanFilmManagedProperties(dir)
+	sc, err := grammar.ScanFilmManagedProperties(dir)
 	if err != nil {
 		t.Fatalf("%s : proprietes ti=13 illisibles : %v", short, err)
 	}

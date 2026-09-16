@@ -31,7 +31,7 @@ import (
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
@@ -163,12 +163,12 @@ func a1ClassesTemporelles(t *testing.T, id string, src *objDiskFilm) (debuts, ex
 }
 
 // a1Resume mesure les deux jambes du critere pour chaque mot ecarte.
-func a1Resume(ecartees []filmdec.EquipmentCreation, sites []PointObjective,
+func a1Resume(ecartees []grammar.EquipmentCreation, sites []PointObjective,
 	debuts, explosions []int64, clockUS uint64) []a1Candidat {
-	parMot := map[uint32][]filmdec.EquipmentCreation{}
+	parMot := map[uint32][]grammar.EquipmentCreation{}
 	for _, c := range ecartees {
-		parMot[uint32(c.MPPVal[filmdec.MPPWord32])] = append(
-			parMot[uint32(c.MPPVal[filmdec.MPPWord32])], c)
+		parMot[uint32(c.MPPVal[grammar.MPPWord32])] = append(
+			parMot[uint32(c.MPPVal[grammar.MPPWord32])], c)
 	}
 	out := make([]a1Candidat, 0, len(parMot))
 	for mot, cs := range parMot {
@@ -211,7 +211,7 @@ func a1Resume(ecartees []filmdec.EquipmentCreation, sites []PointObjective,
 // a1EcartClasse rend 0 si la creation tombe dans une classe temporelle du protocole, sinon
 // son ecart minimal (ms) au bord de la classe la plus proche — publie pour que le `[!]` se
 // chiffre, jamais pour elargir la fenetre.
-func a1EcartClasse(c filmdec.EquipmentCreation, debuts, explosions []int64, clockUS uint64) int64 {
+func a1EcartClasse(c grammar.EquipmentCreation, debuts, explosions []int64, clockUS uint64) int64 {
 	if c.TimestampUS < clockUS {
 		return math.MaxInt64
 	}

@@ -44,7 +44,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const ctfShortFilmsEnv = "CTF_SHORT_FILMS"
@@ -105,25 +105,25 @@ func ctfShortReport(t *testing.T, dir, short string) string {
 // continue de n'émettre que les longs tant que la sémantique du court n'est pas établie.
 func scanAllFireRecords(t *testing.T, dir string) []shortRec {
 	t.Helper()
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	var out []shortRec
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 				continue
 			}
 			pay := p.Payload(chunk)
-			if int(pay[0]>>1) != filmdec.FireEventType {
+			if int(pay[0]>>1) != grammar.FireEventType {
 				continue
 			}
 			r := shortRec{tUS: p.TimestampUS, long: pay[0]&1 == 0, pi: -1,
 				bits: len(pay) * 8, first: pay[0]}
-			if len(pay)*8 >= filmdec.FireHeadBits {
-				r.pi = filmdec.ReadAttackerIndex(pay)
+			if len(pay)*8 >= grammar.FireHeadBits {
+				r.pi = grammar.ReadAttackerIndex(pay)
 			}
 			out = append(out, r)
 		}

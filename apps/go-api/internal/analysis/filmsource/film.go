@@ -215,7 +215,7 @@ func Decompresser(raw []byte) ([]byte, error) {
 // Inflate decompresse UN chunk brut, exactement comme [Load] le fait pour chacun des siens : une
 // entree deja decompressee traverse telle quelle, un flux tronque rend le partiel.
 //
-// EXPOSEE POUR LES LECTEURS D'UN SEUL CHUNK — les enveloppes de compatibilite (`filmdec`) et les
+// EXPOSEE POUR LES LECTEURS D'UN SEUL CHUNK — les enveloppes de compatibilite (`grammar`) et les
 // outils de recherche qui ouvrent un `chunk_NN.bin` isole sans charger le film entier. Le chemin
 // de production, lui, ne l'appelle pas : il charge le film UNE fois par [Load].
 func Inflate(raw []byte) []byte { return inflate(raw) }
@@ -255,9 +255,9 @@ func inflate(raw []byte) []byte {
 // Paquets : les paquets d un chunk DEJA DECOMPRESSE, dans l ordre du chunk.
 //
 // C EST LE MARCHEUR UNIQUE DU DEPOT depuis le lot 2.4.2. [Load] l emploie pour chaque chunk du
-// film ; `filmdec.WalkPackets` — le SECOND marcheur, qui recopiait le meme en-tete de 16 octets
+// film ; `grammar.WalkPackets` — le SECOND marcheur, qui recopiait le meme en-tete de 16 octets
 // avec ses propres conventions d arret — n est plus qu une traduction de ce resultat dans la
-// forme `filmdec.FilmPacket`. Les deux grammaires sont opposees sur des chunks REELS par
+// forme `grammar.FilmPacket`. Les deux grammaires sont opposees sur des chunks REELS par
 // `TestDeuxMarcheursDePaquetsSAccordent` (`source_test.go`).
 //
 // `ch` est l indice de chunk a inscrire dans [Packet.Chunk] ; un appelant qui n en a pas

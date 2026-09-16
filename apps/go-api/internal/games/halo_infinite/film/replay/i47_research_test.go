@@ -32,7 +32,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const i47FilmEnv = "I47_FILM"
@@ -55,7 +55,7 @@ func TestI47LocationInKeyframeRecords(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure sauté", i47FilmEnv)
 	}
 	known := loadoutFamilies()
-	n := filmdec.CountFilmChunks(filmDir)
+	n := grammar.CountFilmChunks(filmDir)
 	if n == 0 {
 		t.Fatalf("aucun chunk film dans %s", filmDir)
 	}
@@ -69,12 +69,12 @@ func TestI47LocationInKeyframeRecords(t *testing.T) {
 	records, withI22, hitsTotal, noHit, multiHit, altHits := 0, 0, 0, 0, 0, 0
 
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(filmDir, c)
+		chunk, err := grammar.ReadFilmChunk(filmDir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			pay := p.Payload(chunk)
@@ -269,14 +269,14 @@ func i47ForEachBandHit(t *testing.T, filmDir string, known map[uint32]bool, fn f
 func i47ForEachI22Record(t *testing.T, filmDir string, known map[uint32]bool,
 	fn func(pay []byte, sp invRecordSpan, ts uint64, gren [invGrenadeSlots]uint32, types int, hits []i47Hit)) {
 	t.Helper()
-	n := filmdec.CountFilmChunks(filmDir)
+	n := grammar.CountFilmChunks(filmDir)
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(filmDir, c)
+		chunk, err := grammar.ReadFilmChunk(filmDir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			pay := p.Payload(chunk)

@@ -57,7 +57,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // gwPickup25Tally compte l'oracle par joueur sur les ramassages de socle d'un film. Chaque
@@ -221,7 +221,7 @@ func gwPickupOwners(t *testing.T, dir string, f *gwPickupFilm) map[uint32]uint64
 		return map[uint32]uint64{}
 	}
 	table, collisions := injectiveOrEmpty(idx)
-	fire, err := filmdec.ScanFilmFireEvents(dir)
+	fire, err := grammar.ScanFilmFireEvents(dir)
 	if err != nil {
 		t.Logf("2.5 PONT — events de tir illisibles (%v) : fermeture A privee de sa source", err)
 		fire = nil

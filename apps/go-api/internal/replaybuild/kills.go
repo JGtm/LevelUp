@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
@@ -57,7 +57,7 @@ func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *kills
 //	                 dont le kill-feed ne se decode pas laissait donc lui aussi sa trace sur la
 //	                 cuisson. Le reproduire ici est ce qui rend le pas STRUCTUREL (zero
 //	                 difference d octet, critere D4 du jalon).
-func profilDeBalayageDeLaCuisson(res *killsource.Result) *filmdec.ProfilDeBalayage {
+func profilDeBalayageDeLaCuisson(res *killsource.Result) *grammar.ProfilDeBalayage {
 	if res != nil {
 		p := res.ProfilCalibre
 		return &p

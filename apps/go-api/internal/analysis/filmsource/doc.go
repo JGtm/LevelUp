@@ -3,20 +3,20 @@
 // Un film Theater est une suite de chunks numerotes, chacun eventuellement compresse en zlib, et
 // chaque chunk de donnees est une suite de paquets a en-tete fixe. Avant ce paquet, la chaine de
 // cuisson d'un artefact de rejeu relisait et redecompressait le film entier ~36-40 fois, avec
-// TROIS inflates et TROIS marcheurs de paquets DIVERGENTS (`filmdec`, `killsource`,
+// TROIS inflates et TROIS marcheurs de paquets DIVERGENTS (`grammar`, `killsource`,
 // `objectives`). Ici : un chargement, un jeu de paquets, une grammaire.
 // Reference : `.ai/V7.5/PLAN_CUISSON_PERF.md` §2 (conception) et §3 D1/D3.
 //
-// # POURQUOI UN PAQUET FEUILLE, ET POURQUOI PAS `filmdec`
+// # POURQUOI UN PAQUET FEUILLE, ET POURQUOI PAS `grammar`
 //
 // Ce paquet n'importe RIEN du depot (stdlib seule) — un garde-rail le verifie
 // (`internal/archlint/filmsource_leaf_test.go`). Ce n'est pas une coquetterie d'architecture,
 // c'est la seule position possible : `filmcache` importe `objectives` (`filmcache.go`), et
-// cinq tests INTERNES de `filmdec` importent `objectives` ou `filmcache`
+// cinq tests INTERNES de `grammar` importent `objectives` ou `filmcache`
 // (`sonde_registre_verdicts_test.go`, `navpoint_ti12_radial_test.go`,
 // `objectif_ti11_minuteurs_test.go`, `ti47_annonces_test.go`, `zone_census_report_test.go`).
-// Loger la source du film dans `filmdec` ferait donc importer `filmdec` par `objectives`, ou
-// `filmcache` par `filmdec` : un cycle, en production ou en test. Une feuille n'en cree aucun.
+// Loger la source du film dans `grammar` ferait donc importer `grammar` par `objectives`, ou
+// `filmcache` par `grammar` : un cycle, en production ou en test. Une feuille n'en cree aucun.
 //
 // # LA GRAMMAIRE (D3 REVISEE DU 2026-09-02) — ET LA MESURE QUI L'A ECRITE
 //
@@ -33,10 +33,10 @@
 // paquet par paquet sur trois films, tous chunks. Sur les chunks de DONNEES, l'unique paquet de
 // taille 0 est le terminateur CHUNK_END, en DERNIERE position, sans un octet apres (27/27, 32/32,
 // 43/43 chunks) : « taille 0 » et « CHUNK_END » y sont LE MEME PAQUET. La candidate le supprimait
-// et faisait diverger tous les chunks de donnees de la vue de `filmdec` ; la grammaire retenue les
+// et faisait diverger tous les chunks de donnees de la vue de `grammar` ; la grammaire retenue les
 // rend BIT-IDENTIQUES sur tout le cache. Les en-tetes degeneres de taille 0 au MILIEU d'un chunk
 // (regle 4) n'existent que dans `chunk_00`, le REGISTRE — que personne ne marche comme un flux de
-// paquets (`filmdec.ParseRegistryChunk` le lit comme un registre ECS).
+// paquets (`grammar.ParseRegistryChunk` le lit comme un registre ECS).
 //
 // # L'INDEXATION DES CHUNKS : LA POSITION N'EST PAS LE NUMERO
 //
@@ -58,8 +58,8 @@
 //	le registre        la position dont `Meta[i].Index == 0` — absente sur une bobine partielle ;
 //	les donnees        les positions dont `Meta[i].Index >= 1`, dans l'ordre du film.
 //
-// ARRET AU PREMIER TROU DE NUMEROTATION, cote consommateur (`filmdec.FilmChunkNumbers`) : c'est ce
-// que faisait l'ancien `filmdec.CountFilmChunks`, qui s'arretait au premier `chunk_NN.bin`
+// ARRET AU PREMIER TROU DE NUMEROTATION, cote consommateur (`grammar.FilmChunkNumbers`) : c'est ce
+// que faisait l'ancien `grammar.CountFilmChunks`, qui s'arretait au premier `chunk_NN.bin`
 // manquant, et le lot 1 est un refacto PUR — les sorties doivent etre identiques a l'octet. La
 // regle est donc heritee sciemment, pas choisie : elle tombera avec les enveloppes de
 // compatibilite, quand plus aucun appelant ne dependra de l'ancien comptage. Ce paquet, lui, ne

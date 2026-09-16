@@ -41,14 +41,14 @@ package killcollector
 // cache (mars a novembre 2025) le gamertag vit 12 octets plus loin, le roster s effondrait a
 // 2 noms distincts pour 24 a 27 joueurs et les portes `indice < nPlay` rejetaient les trois
 // quarts des dead-states. `loadFilm` lit maintenant cette version dans l en-tete du registre du
-// film (`filmdec.FilmMajorVersion`, u32 LE en tete de `chunk_00`). Couverture mesuree sur cinq
+// film (`grammar.FilmMajorVersion`, u32 LE en tete de `chunk_00`). Couverture mesuree sur cinq
 // films Big Team Battle 2025 : 15.0 -> 97.1, 11.2 -> 100.0, 6.8 -> 94.8, 5.1 -> 97.0,
 // 17.3 -> 82.4 % ; temoins 2024 et 2026 inchanges au dixieme
 // (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Les lignes en base doivent etre redecodees :
 // d ou ce bump.
 //
 // DECOUVERTE, NON TRAITEE : l empreinte ci-dessous ne hache que `killsource/`. Ce correctif a
-// commence dans `internal/analysis/` (parseur) et dans `filmdec` — il n aurait PAS fait sonner
+// commence dans `internal/analysis/` (parseur) et dans `grammar` — il n aurait PAS fait sonner
 // le gate si `loadFilm`/`loadKillFeed` n avaient pas bouge aussi. Le gate couvre le decodeur,
 // pas son amont.
 //
@@ -119,7 +119,7 @@ package killcollector
 // 2026-09-17, LOT 2.2.a — LA REVISION NE BOUGE PAS, ET LE CHOIX EST EXPLICITE (c est ce que le
 // garde-rail exige quand l empreinte change sans la revision). `killsource/` change de FORME :
 // la calibration ne pose plus les deux largeurs de position dans des variables de paquet de
-// `filmdec` mais les passe par `FrameConfig.Mouvement`, RESSORT son resultat
+// `grammar` mais les passe par `FrameConfig.Mouvement`, RESSORT son resultat
 // (`calibration.Mouvement`) et le donne explicitement a `runWalk` et a `calibrateRSP` — qui en
 // heritaient par effet de bord. Les LIGNES PRODUITES sont identiques a l octet : meme espace
 // balaye (21 largeurs d axe x 3 largeurs d index), meme critere, meme vainqueur, memes largeurs
@@ -128,7 +128,7 @@ package killcollector
 // 2026-09-17, LOT 2.3 — LA REVISION NE BOUGE TOUJOURS PAS, MEME RAISON, ET LE CHOIX EST ECRIT.
 // `killsource/` change encore de FORME, plus de contenu :
 //
-//	`calibration.Mouvement` devient `calibration.Profil` ([filmdec.ProfilDeBalayage]) et porte
+//	`calibration.Mouvement` devient `calibration.Profil` ([grammar.ProfilDeBalayage]) et porte
 //	AUSSI le `param_4` retenu ; `resetGlobals` disparait au profit de [ProfilDeDepart], qui
 //	NOMME ce que `Decode` posait dans le processus (`param_4` force a zero, generation stricte
 //	levee) ; le resultat sort par [Result.ProfilCalibre], que `replaybuild` passe a
@@ -137,7 +137,7 @@ package killcollector
 // LES LIGNES PRODUITES SONT IDENTIQUES A L OCTET : meme espace balaye, meme critere, meme
 // vainqueur, memes valeurs pour les passes suivantes — y compris l heritage vers la cuisson du
 // rejeu, qui passe desormais par un parametre au lieu de l etat du processus. Le meme lot RETIRE
-// `filmdec.LockProcessDecode` de tous ses sites d appel dans `killsource/` : un verrou ne lit
+// `grammar.LockProcessDecode` de tous ses sites d appel dans `killsource/` : un verrou ne lit
 // aucun bit, et son retrait ne change pas davantage les lignes produites. Aucun match deja
 // decode n est candidat au backlog.
 // 2026-09-17, LOT 2.3.5 (revue adversariale) — REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE.
@@ -172,7 +172,7 @@ package killcollector
 // `chunks [][]byte`, il porte desormais le `*filmsource.Film` lui-meme et lit par
 // `src.Chunk(i)`. MEME tranche d octets — `filmsource.Film.Chunk` rend la tranche interne, sans
 // copie, et c est deja elle que la copie recopiait. `walk.go` construit son lecteur par
-// `filmdec.LecteurSur` (l ancien `NewBitReader`, renomme parce que le type ne lit plus, il
+// `grammar.LecteurSur` (l ancien `NewBitReader`, renomme parce que le type ne lit plus, il
 // decore). Aucune largeur, aucun ordre de bits, aucune borne ne change : les lignes produites
 // sont identiques a l octet, et aucun match deja decode n est candidat au backlog.
 const KillSourceDecoderRev = "killsource-2026-09-16.2"

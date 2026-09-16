@@ -45,7 +45,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -65,7 +65,7 @@ func obs114Prefixe(a, b env114Paquet, depuis int) int {
 		n = b.nBits
 	}
 	for i := depuis; i < n; i++ {
-		if filmdec.ReadBitsAtForDiag(a.pay, i, 1) != filmdec.ReadBitsAtForDiag(b.pay, i, 1) {
+		if grammar.ReadBitsAtForDiag(a.pay, i, 1) != grammar.ReadBitsAtForDiag(b.pay, i, 1) {
 			return i - depuis
 		}
 	}
@@ -94,8 +94,8 @@ func obs114Dump(t *testing.T, pk []env114Paquet, trans []int64, t0, t1 int64) []
 			txt = fmt.Sprintf("tr%02d %s %4dms", i, sens, ecart)
 		}
 		t.Logf("    t=%d %-20s c8=%4d c13=%3d c24=%2d  %s", p.tMS, txt,
-			filmdec.ReadBitsAtForDiag(p.pay, 8, 12), filmdec.ReadBitsAtForDiag(p.pay, 13, 7),
-			filmdec.ReadBitsAtForDiag(p.pay, 24, 6), obs114Bits(p, 0, 48))
+			grammar.ReadBitsAtForDiag(p.pay, 8, 12), grammar.ReadBitsAtForDiag(p.pay, 13, 7),
+			grammar.ReadBitsAtForDiag(p.pay, 24, 6), obs114Bits(p, 0, 48))
 	}
 	return plage
 }
@@ -112,7 +112,7 @@ func obs114Bits(p env114Paquet, depuis, long int) string {
 		if i > 0 && (depuis+i)%8 == 0 {
 			sb.WriteByte(' ')
 		}
-		sb.WriteByte('0' + byte(filmdec.ReadBitsAtForDiag(p.pay, depuis+i, 1)))
+		sb.WriteByte('0' + byte(grammar.ReadBitsAtForDiag(p.pay, depuis+i, 1)))
 	}
 	return sb.String()
 }
@@ -175,7 +175,7 @@ func obs114Horloge(t *testing.T, pk []env114Paquet, d, w int) {
 	for _, u := range unites {
 		res := map[int64]int{}
 		for _, p := range pk {
-			v := int64(filmdec.ReadBitsAtForDiag(p.pay, d, w))
+			v := int64(grammar.ReadBitsAtForDiag(p.pay, d, w))
 			r := ((v-u.k(p.tMS))%mod + mod) % mod
 			res[r]++
 		}

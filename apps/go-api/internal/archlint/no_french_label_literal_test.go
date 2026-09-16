@@ -85,7 +85,7 @@ var accentedLiteralRE = regexp.MustCompile(`[éèêàùçÉÈÊÀÙÇ]`)
 var frenchLabelAllowlist = map[string]int{
 	// L6 — narratif / prestige (D7 : ce sont des PHRASES/contenu, ADR 0028 — hors plan
 	// libellés sauf mojibake, mais comptées ici tant qu'elles restent en dur).
-	"games/halo_infinite/film/filmdec/equipment_creation_width.go": 1,
+	"games/halo_infinite/film/grammar/equipment_creation_width.go": 1,
 	"analysis/match_impact.go":                                     3,
 	"analysis/patterns/behavioral.go":                              2,
 	"analysis/patterns/behavioral_engagement.go":                   3,

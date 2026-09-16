@@ -25,7 +25,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // objRecord est un record de bipede d'image-cle, reduit a ce que la mesure consomme :
@@ -44,17 +44,17 @@ type objRecord struct {
 // sien jusqu'a celui du suivant. Une fenetre est attribuee au record qui contient son
 // DEBUT — meme regle que `familiesByRecord`, pour que les deux lectures restent comparables.
 func objScanKeyframeBipeds(dir string) ([]objRecord, int, error) {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	var out []objRecord
 	lus, images := 0, 0
 	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
 		lus++
-		for _, p := range filmdec.WalkPackets(data) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(data) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			images++
@@ -69,7 +69,7 @@ func objScanKeyframeBipeds(dir string) ([]objRecord, int, error) {
 
 // objBipedRecordsOf extrait les records de bipede d'un seul payload d'image-cle. PUR.
 func objBipedRecordsOf(pay []byte, ts uint64) []objRecord {
-	recs := filmdec.WalkKeyframeWorld(pay)
+	recs := grammar.WalkKeyframeWorld(pay)
 	if len(recs) == 0 {
 		return nil
 	}

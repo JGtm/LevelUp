@@ -16,7 +16,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 )
 
@@ -41,15 +41,15 @@ func afficherSante(r *rapport) error {
 
 // blocDomaine : un verdict n est PAS un jugement sur les etiquettes publiees. C est un jugement
 // sur le DOMAINE : ce film ressemble-t-il a ceux sur lesquels le decodeur a ete mesure ?
-func blocDomaine(h filmdec.KillSourceHealth) {
+func blocDomaine(h grammar.KillSourceHealth) {
 	fmt.Println("\nLE VERDICT PORTE SUR LE DOMAINE, PAS SUR LES ETIQUETTES")
 	fmt.Println("  Il dit << ce film ressemble-t-il a ceux sur lesquels le decodeur a ete mesure >>.")
 	fmt.Println("  Un film HORS DOMAINE n est pas casse : ses lignes se ponderent, voila tout.")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "  candidats inexpliques\t%.1f %%\tseuil de sortie de domaine %.1f %% · alerte %.1f %%\t\n",
-		100*h.UnexplainedRatio(), 100*filmdec.UnexplainedWarnRatio, 100*filmdec.UnexplainedAlertRatio)
+		100*h.UnexplainedRatio(), 100*grammar.UnexplainedWarnRatio, 100*grammar.UnexplainedAlertRatio)
 	fmt.Fprintf(w, "  couverture\t%.1f %%\tplancher %.1f %% (la serie de reference est exacte)\t\n",
-		100*h.CoverageRatio(), 100*filmdec.CoverageWarnRatio)
+		100*h.CoverageRatio(), 100*grammar.CoverageWarnRatio)
 	_ = w.Flush()
 	fmt.Println("  Seuils tires de la distribution de CINQ films, pas d une intuition :")
 	fmt.Println("     4 films a 8 joueurs : 7.0 / 9.4 / 11.6 / 17.8 % d inexpliques, couverture 100 %")
@@ -59,7 +59,7 @@ func blocDomaine(h filmdec.KillSourceHealth) {
 
 // blocVentilation : les candidats que rien ne publie. ILS NE SORTENT PAS et ne coutent rien au
 // consommateur — c est leur TAUX qui informe, jamais leur existence.
-func blocVentilation(h filmdec.KillSourceHealth) {
+func blocVentilation(h grammar.KillSourceHealth) {
 	fmt.Println("\nLES CANDIDATS QUE RIEN NE PUBLIE — ils ne sortent pas, c est leur TAUX qui informe")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "  candidats consultes\t%d\t\n", h.Candidates)
@@ -156,7 +156,7 @@ func blocPointAveugle() {
 }
 
 // blocCompteurs : la publication expvar, telle que le brancheur l ecrira.
-func blocCompteurs(h filmdec.KillSourceHealth) {
+func blocCompteurs(h grammar.KillSourceHealth) {
 	fmt.Println("\nCOMPTEURS PRETS POUR expvar (ADR 0009 — entiers, snake_case, aucun ratio publie)")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	for _, p := range h.ExpvarPairs() {

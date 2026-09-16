@@ -4,7 +4,7 @@ package killsource
 // (kill feed, medailles, evenements de mode) MESURE PAR VERSION MAJEURE DE FILM.
 //
 // LA QUESTION DU LOT H. Depuis le lot G, la version majeure du film (u32 LE en tete de
-// `chunk_00`, cf. `filmdec.FilmMajorVersion`) commande le decoupage du gamertag du bloc
+// `chunk_00`, cf. `grammar.FilmMajorVersion`) commande le decoupage du gamertag du bloc
 // d'evenement : en tete pour les versions <= 38 et >= 41, a l'octet 12 pour les versions 39-40.
 // Le lot G l'a prouve SUR LES KILLS. Il restait a savoir si les AUTRES natures d'evenement du
 // meme flux — medailles, morts, evenements de mode — divergent de la meme maniere, et si le
@@ -42,7 +42,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
 )
 
 const (

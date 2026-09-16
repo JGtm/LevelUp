@@ -54,7 +54,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // SEUILS DE CT.1.2 — ecrits avant la mesure (plan, lot C-ter volet 1).
@@ -242,16 +242,16 @@ type ctLecture2 struct {
 // ctLectures2 rend les lectures a mesurer, dans l'ordre du journal.
 func ctLectures2(e ctEntree) []ctLecture2 {
 	out := []ctLecture2{
-		{modeA: true, tag: filmdec.ManagedPropertyTagBool, flag: true, role: "candidat"},
-		{modeA: true, tag: filmdec.ManagedPropertyTagEnum, flag: true, role: "candidat"},
-		{modeA: true, tag: filmdec.ManagedPropertyTagEnum, flag: false, role: "candidat"},
-		{modeA: true, tag: filmdec.ManagedPropertyTagU32Bis, flag: false, role: "candidat"},
-		{modeA: true, tag: filmdec.ManagedPropertyTagStringID, flag: false, role: "hors liste"},
-		{modeA: true, tag: filmdec.ManagedPropertyTagU32, flag: false, role: "temoin"},
-		{modeA: true, tag: filmdec.ManagedPropertyTagQuant, flag: false, role: "temoin"},
+		{modeA: true, tag: grammar.ManagedPropertyTagBool, flag: true, role: "candidat"},
+		{modeA: true, tag: grammar.ManagedPropertyTagEnum, flag: true, role: "candidat"},
+		{modeA: true, tag: grammar.ManagedPropertyTagEnum, flag: false, role: "candidat"},
+		{modeA: true, tag: grammar.ManagedPropertyTagU32Bis, flag: false, role: "candidat"},
+		{modeA: true, tag: grammar.ManagedPropertyTagStringID, flag: false, role: "hors liste"},
+		{modeA: true, tag: grammar.ManagedPropertyTagU32, flag: false, role: "temoin"},
+		{modeA: true, tag: grammar.ManagedPropertyTagQuant, flag: false, role: "temoin"},
 	}
-	for tag := filmdec.ManagedPropertyTagQuantJ; tag <= 15; tag++ {
-		if tag == filmdec.ManagedPropertyTagBoolJ || tag >= filmdec.ManagedPropertyTagEnumJ {
+	for tag := grammar.ManagedPropertyTagQuantJ; tag <= 15; tag++ {
+		if tag == grammar.ManagedPropertyTagBoolJ || tag >= grammar.ManagedPropertyTagEnumJ {
 			out = append(out, ctLecture2{modeA: false, tag: tag, flag: true, role: "candidat"})
 		}
 		out = append(out, ctLecture2{modeA: false, tag: tag, flag: false, role: "candidat"})
@@ -280,7 +280,7 @@ func ctSeriesDuTag(e ctEntree, modeA bool, tag int) map[uint32]ctSerieSlot {
 // ctActif dit si une valeur est « active » au sens de la lecture F.
 func ctActif(tag int, v uint64) bool {
 	switch tag {
-	case filmdec.ManagedPropertyTagBool, filmdec.ManagedPropertyTagBoolJ:
+	case grammar.ManagedPropertyTagBool, grammar.ManagedPropertyTagBoolJ:
 		return v == 1
 	}
 	return v != 0 // enumere : 0 = « absent » (-1)

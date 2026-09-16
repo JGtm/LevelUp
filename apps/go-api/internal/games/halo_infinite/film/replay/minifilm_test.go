@@ -50,13 +50,13 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/weaponv3"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
 )
 
 // MiniFilmDir est le repertoire de la mini-bobine, relatif au paquet.
 //
-// EXPORTE parce que le paquet `filmdec` la lit aussi (par un chemin relatif) : ses decodeurs
+// EXPORTE parce que le paquet `grammar` la lit aussi (par un chemin relatif) : ses decodeurs
 // d evenements sont ceux que cette bobine verrouille, et dupliquer la bobine pour les servir
 // aurait cree deux verites binaires a maintenir.
 const MiniFilmDir = "testdata/minifilm_" + goldenFilm
@@ -176,7 +176,7 @@ signification. Elles sont verrouillees ailleurs, par le fixture d entrees decode
 // criteres : il n est retenu QU UNE FOIS.
 func selectMiniFilmPackets(dir string) (miniSelection, error) {
 	var sel miniSelection
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	if n == 0 {
 		return sel, fmt.Errorf("aucun chunk film dans %s", dir)
 	}
@@ -199,11 +199,11 @@ func selectMiniFilmPackets(dir string) (miniSelection, error) {
 	var kept []keep
 	srcChunks := map[int]bool{}
 	for c := 1; c < n; c++ { // les chunks de REPLICATION ; le dernier est le highlight
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
+		for _, p := range grammar.WalkPackets(chunk) {
 			kind := miniPacketKind(chunk, p, firstThrowUS)
 			if kind == "" {
 				continue
@@ -271,13 +271,13 @@ func selectMiniFilmPackets(dir string) (miniSelection, error) {
 // seul) : on ne recopie pas sa recherche, on l interroge. Un paquet est retenu des qu il resout
 // une identite ; le balayage du chunk s arrete des que les huit sont couvertes.
 func identityPackets(dir string, chunkNo int, roster []uint64) ([][]byte, error) {
-	chunk, err := filmdec.ReadFilmChunk(dir, chunkNo)
+	chunk, err := grammar.ReadFilmChunk(dir, chunkNo)
 	if err != nil {
 		return nil, err
 	}
 	var out [][]byte
 	couvert := map[uint64]bool{}
-	for _, p := range filmdec.WalkPackets(chunk) {
+	for _, p := range grammar.WalkPackets(chunk) {
 		if len(couvert) == len(roster) {
 			break
 		}
@@ -304,20 +304,20 @@ func identityPackets(dir string, chunkNo int, roster []uint64) ([][]byte, error)
 }
 
 // packetHeaderSizeMini est la taille de l en-tete d un paquet de chunk film. Elle est redeclaree
-// ici parce que `filmdec` ne l exporte pas : la bobine recopie l en-tete AVEC son payload, sans
+// ici parce que `grammar` ne l exporte pas : la bobine recopie l en-tete AVEC son payload, sans
 // quoi le paquet perdrait son type et son horodatage.
 const packetHeaderSizeMini = 16
 
 // miniPacketKind dit pourquoi un paquet est retenu, ou "" s il ne l est pas.
-func miniPacketKind(chunk []byte, p filmdec.FilmPacket, throwUS uint64) string {
-	if p.Type == filmdec.PacketTypeKeyframe {
+func miniPacketKind(chunk []byte, p grammar.FilmPacket, throwUS uint64) string {
+	if p.Type == grammar.PacketTypeKeyframe {
 		return "keyframe"
 	}
-	if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+	if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 		return ""
 	}
 	pay := p.Payload(chunk)
-	if int(pay[0]>>1) == filmdec.FireEventType && int(pay[0])&1 == 0 {
+	if int(pay[0]>>1) == grammar.FireEventType && int(pay[0])&1 == 0 {
 		return "fire"
 	}
 	if throwUS > 0 && p.TimestampUS >= throwUS && p.TimestampUS < throwUS+miniFilmWindowUS {
@@ -335,10 +335,10 @@ func miniPacketKind(chunk []byte, p filmdec.FilmPacket, throwUS uint64) string {
 func hasKnownGrenadeMarker(pay []byte) bool {
 	limit := len(pay)*8 - (24 + 32)
 	for bp := 0; bp <= limit; bp++ {
-		if filmdec.PeekBits(pay, bp, 24) != 0x4C0C00 {
+		if grammar.PeekBits(pay, bp, 24) != 0x4C0C00 {
 			continue
 		}
-		if _, ok := filmdec.GrenadeRankOf(uint32(filmdec.PeekBits(pay, bp+24, 32))); ok {
+		if _, ok := grammar.GrenadeRankOf(uint32(grammar.PeekBits(pay, bp+24, 32))); ok {
 			return true
 		}
 	}
@@ -349,7 +349,7 @@ func hasKnownGrenadeMarker(pay []byte) bool {
 // paquets consecutifs. On l ancre sur un lancer parce que c est le seul instant dont on SAIT
 // qu un projectile y nait.
 func firstGrenadeThrowUS(dir string) (uint64, error) {
-	th, err := filmdec.ScanFilmGrenadeThrows(dir)
+	th, err := grammar.ScanFilmGrenadeThrows(dir)
 	if err != nil {
 		return 0, err
 	}
@@ -389,7 +389,7 @@ func zlibBytes(b []byte) ([]byte, error) {
 // C EST LE TEST QUE L ETAGE 1 NE POUVAIT PAS ECRIRE. Le fixture d entrees porte 519 evenements
 // parce qu on les y a mis ; ici ils sont RELUS du film, avec leur arme et leur tireur.
 func TestMiniFilmDecodesTheFireEvents(t *testing.T) {
-	ev, err := filmdec.ScanFilmFireEvents(MiniFilmDir)
+	ev, err := grammar.ScanFilmFireEvents(MiniFilmDir)
 	if err != nil {
 		t.Fatalf("ScanFilmFireEvents : %v", err)
 	}
@@ -426,7 +426,7 @@ func TestMiniFilmDecodesTheFireEvents(t *testing.T) {
 
 // TestMiniFilmDecodesTheGrenadeThrows : les 70 lancers, avec leur type.
 func TestMiniFilmDecodesTheGrenadeThrows(t *testing.T) {
-	th, err := filmdec.ScanFilmGrenadeThrows(MiniFilmDir)
+	th, err := grammar.ScanFilmGrenadeThrows(MiniFilmDir)
 	if err != nil {
 		t.Fatalf("ScanFilmGrenadeThrows : %v", err)
 	}
@@ -456,8 +456,8 @@ func TestMiniFilmDecodesTheGrenadeThrows(t *testing.T) {
 // La fenetre de deux secondes est la seule partie de la bobine ou la continuite des paquets est
 // preservee ; c est donc la seule ou le decoupage en vies (`splitLives`) se mesure.
 func TestMiniFilmDecodesProjectileFlights(t *testing.T) {
-	wr := filmdec.Vec3Range{{Min: -100, Max: 100}, {Min: -100, Max: 100}, {Min: -100, Max: 100}}
-	tr, err := filmdec.ScanFilmProjectiles(MiniFilmDir, &wr)
+	wr := grammar.Vec3Range{{Min: -100, Max: 100}, {Min: -100, Max: 100}, {Min: -100, Max: 100}}
+	tr, err := grammar.ScanFilmProjectiles(MiniFilmDir, &wr)
 	if err != nil {
 		t.Fatalf("ScanFilmProjectiles : %v", err)
 	}
@@ -520,7 +520,7 @@ func TestMiniFilmDecodesTheDeathThread(t *testing.T) {
 // loadouts et 184 inventaires parce qu on les y a mis ; ici ils sont RELUS du binaire. Si les
 // deux etages divergeaient, l un des deux serait perime — et on saurait lequel.
 func TestMiniFilmDecodesTheKeyframes(t *testing.T) {
-	lo, err := filmdec.ScanFilmKeyframeLoadouts(MiniFilmDir, loadoutFamilies())
+	lo, err := grammar.ScanFilmKeyframeLoadouts(MiniFilmDir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeLoadouts : %v", err)
 	}

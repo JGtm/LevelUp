@@ -20,7 +20,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // Erreurs rendues par [Decode]. Elles se testent avec `errors.Is`.
@@ -94,7 +94,7 @@ func Decode(ctx context.Context, name string, film *filmsource.Film, opts *Optio
 // l invariant du profil, plus le `param_4` du moteur FORCE A ZERO.
 //
 // LE ZERO EST UNE VALEUR, PAS UNE ABSENCE, et c est pourquoi il est nomme ici. Hors forcage, la
-// table par composant (`filmdec.paramByComponent`) rend 1 aux composants qu elle ne liste pas ;
+// table par composant (`grammar.paramByComponent`) rend 1 aux composants qu elle ne liste pas ;
 // forcer 0 les met tous a la forme conservatrice. C est ce que `SetRecordStateParam(0)` faisait
 // en tete de [Decode] jusqu au lot 2.3, pour tout le processus — y compris pour la cuisson du
 // rejeu qui suivait. Il est desormais porte par le profil, et `replaybuild` le passe
@@ -106,8 +106,8 @@ func Decode(ctx context.Context, name string, film *filmsource.Film, opts *Optio
 //
 // `SetMobilityActionBodyPorted(true)` a disparu sans rien changer : c etait deja le defaut, et
 // le seul ecrivain contraire est un instrument de mesure qui pose desormais SON profil.
-func ProfilDeDepart() filmdec.ProfilDeBalayage {
-	p := filmdec.ProfilDeBalayageParDefaut()
+func ProfilDeDepart() grammar.ProfilDeBalayage {
+	p := grammar.ProfilDeBalayageParDefaut()
 	p.PoserParamEtat(0)
 	p.Grammaire.GenerationStricte = true
 	return p

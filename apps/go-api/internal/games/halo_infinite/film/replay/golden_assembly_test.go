@@ -105,7 +105,7 @@ const (
 	wantProjectiles = 436
 	// wantProjectileTracks / wantProjectilesTruncated : le denominateur et le chiffre qui doit
 	// rester sous les yeux. Tant que la seconde n est pas nulle, l artefact porte des vols dont
-	// la fin est INCONNUE, et la cause vit dans la dequantification (`filmdec`), pas ici.
+	// la fin est INCONNUE, et la cause vit dans la dequantification (`grammar`), pas ici.
 	// Cliffhanger est une carte PEU touchee : sur le parc, les quatre films Live Fire portent
 	// a eux seuls 634 des 947 trajectoires coupees.
 	wantProjectileTracks     = 580

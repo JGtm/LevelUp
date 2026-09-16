@@ -63,7 +63,7 @@ const suffixeIdentiteModule = "_map"
 // blancs resserrés puis remplacés par des soulignés, suffixe `_map` retiré.
 //
 // POURQUOI ELLE N'ENLÈVE NI « - Ranked » NI « Heavies », contrairement à
-// filmdec.NormalizeMapName. Ce rabotage est JUSTE pour les bornes de déquantification (même
+// grammar.NormalizeMapName. Ce rabotage est JUSTE pour les bornes de déquantification (même
 // niveau, mêmes bornes monde) et FAUX ici : sur les 84 fonds publiés, « Insolence » et
 // « Insolence Heavies » sont deux assets Forge distincts avec deux fonds distincts — idem
 // Fortitude, Thunderhead, Refuge, Obituary (Heavies) et Origin, Solitude (- Ranked). Raboter le
@@ -83,7 +83,7 @@ func NormalizeMapIdentity(s string) string {
 // suffixesVariante : suffixes de nom qui désignent une VARIANTE de playlist ou de sandbox d'une
 // carte — même géométrie, donc même calage, donc même fond.
 //
-// LES DEUX PREMIERS SONT DÉJÀ ÉTABLIS AILLEURS : `filmdec.variantSuffixes` les raboté pour les
+// LES DEUX PREMIERS SONT DÉJÀ ÉTABLIS AILLEURS : `grammar.variantSuffixes` les raboté pour les
 // bornes de déquantification, sur la preuve du `level_id` (même niveau moteur => même BSP).
 // C'est la SECONDE copie de cette liste, et la dernière permise : une troisième doit la
 // centraliser. Elle n'est pas fusionnée avec la première parce que les deux ne raboteraient pas

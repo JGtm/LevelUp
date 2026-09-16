@@ -26,7 +26,7 @@ package archlint
 //	                  `readBitsBE` / `readByteAtBit` / `readU64LEAtBit` / `scanEvents`.
 //	                  PAS la simple mention d un type : `func decodeX(br *BitReader)` fait
 //	                  circuler un lecteur construit ailleurs, il n ouvre aucune porte. Sans
-//	                  cette nuance le ratchet comptait 90 fichiers de `filmdec` qui ne lisent
+//	                  cette nuance le ratchet comptait 90 fichiers de `grammar` qui ne lisent
 //	                  rien eux-memes (mesure du 2026-09-17).
 //	motifTypeLecteur  une STRUCTURE portant a la fois un champ `[]byte` et un champ de
 //	                  position EN BITS (`bp`, `bitPos`, `bitOff`, ...). C est le motif
@@ -57,7 +57,7 @@ package archlint
 // La porte aux octets est une frontiere de PRODUCTION : ce qu on interdit, c est qu un chemin
 // servi a l utilisateur decode des bits sans passer par la source. Les tests du decodeur, eux,
 // lisent des octets par CONSTRUCTION — c est leur travail : `filmsource/source_test.go`
-// compare les deux marcheurs de paquets, les tests de `filmdec` batissent des `BitReader` sur
+// compare les deux marcheurs de paquets, les tests de `grammar` batissent des `BitReader` sur
 // des chaines forgees pour prouver une largeur, et les 23 fichiers `//go:build research` des
 // racines (TOUS des `_test.go`, mesure du 2026-09-17) mesurent la grammaire sur des films
 // reels. Interdire ces lectures interdirait les preuves, et remplirait l allowlist de

@@ -11,13 +11,13 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // TestZoneStatesCollineActivePeriodes : sans oracle nomme, la zone active se lit dans la GRAPPE
 // des positions, et les intervalles sortent marques ACTIFS et sans proprietaire.
 func TestZoneStatesCollineActivePeriodes(t *testing.T) {
-	var reads []filmdec.ManagedPropertyRead
+	var reads []grammar.ManagedPropertyRead
 	reads = append(reads, zoneRampAt(40, 100, 900)...)
 	reads = append(reads, zoneRampAt(40, 400, 900)...)
 	in := zoneTestInput(reads)
@@ -54,11 +54,11 @@ func TestZoneStatesCollineActivePeriodes(t *testing.T) {
 
 // zoneGaugeSamplesAt fabrique une rampe de jauge SUR MESURE : trois emissions croissantes aux
 // frames demandees. `zoneRampAt` en pose une de 4 frames ; ici la duree est le sujet du test.
-func zoneGaugeSamplesAt(slot uint32, t0, tMid, tPeak int, topMilli uint64) []filmdec.ManagedPropertyRead {
-	return []filmdec.ManagedPropertyRead{
-		zoneReadAt(slot, t0, filmdec.ManagedPropertyTagQuant, gaugeQ(1)),
-		zoneReadAt(slot, tMid, filmdec.ManagedPropertyTagQuant, gaugeQ(200)),
-		zoneReadAt(slot, tPeak, filmdec.ManagedPropertyTagQuant, gaugeQ(topMilli)),
+func zoneGaugeSamplesAt(slot uint32, t0, tMid, tPeak int, topMilli uint64) []grammar.ManagedPropertyRead {
+	return []grammar.ManagedPropertyRead{
+		zoneReadAt(slot, t0, grammar.ManagedPropertyTagQuant, gaugeQ(1)),
+		zoneReadAt(slot, tMid, grammar.ManagedPropertyTagQuant, gaugeQ(200)),
+		zoneReadAt(slot, tPeak, grammar.ManagedPropertyTagQuant, gaugeQ(topMilli)),
 	}
 }
 
@@ -71,7 +71,7 @@ func zoneGaugeSamplesAt(slot uint32, t0, tMid, tPeak int, topMilli uint64) []fil
 // separait de la suivante — deux recouvrantes sortaient donc toutes les deux actives, et le
 // rendu montrait deux collines.
 func TestZoneStatesCollineUneSeuleZoneActiveALaFois(t *testing.T) {
-	var reads []filmdec.ManagedPropertyRead
+	var reads []grammar.ManagedPropertyRead
 	reads = append(reads, zoneGaugeSamplesAt(40, 100, 150, 200, 900)...) // garde longue
 	reads = append(reads, zoneGaugeSamplesAt(50, 150, 170, 190, 910)...) // garde DEDANS
 	in := zoneTestInput(reads)
@@ -121,7 +121,7 @@ func TestZoneStatesCollineUneSeuleZoneActiveALaFois(t *testing.T) {
 // SANS CE COMPTE, `unpaired` restait a zero quoi qu'il arrive en methode `positions+geometry` :
 // un appariement partiel se lisait exactement comme un appariement complet.
 func TestZoneStatesCollineCompteLesRampesNonLocalisees(t *testing.T) {
-	var reads []filmdec.ManagedPropertyRead
+	var reads []grammar.ManagedPropertyRead
 	reads = append(reads, zoneRampAt(40, 100, 900)...) // gardee DANS la zone 1
 	reads = append(reads, zoneRampAt(40, 400, 910)...) // gardee loin de toute zone
 	in := zoneTestInput(reads)

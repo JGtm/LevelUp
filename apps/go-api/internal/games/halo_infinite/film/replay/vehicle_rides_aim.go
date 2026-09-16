@@ -15,7 +15,7 @@ package replay
 // n a aucune obligation de declarer `i0`. La forme de masque la plus frequente de la bande bipede
 // est `i21,i25` — un record de VISEE SANS POSITION. 22 963 lectures sur `0d76e8f1`, 222,9 par
 // slot, contre 0,9 par slot sur une bande FANTOME de meme cardinalite (x261).
-// `filmdec.ScanFilmBipedAimOnly` les lit ; ce fichier les publie.
+// `grammar.ScanFilmBipedAimOnly` les lit ; ce fichier les publie.
 //
 // # LES TROIS CHIFFRES QUI FONDENT LA PUBLICATION (V11_ORIENTATION_TOURELLE_2026-09-03)
 //
@@ -42,17 +42,17 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // vehicleAimBySlot indexe les lectures de visee par slot d occupant et TRIE chaque liste par
 // instant. Le tri n est pas cosmetique : l echantillonnage ci-dessous applique « le premier
 // observe gagne », qui n est deterministe que sur une entree ordonnee.
-func vehicleAimBySlot(aims []filmdec.BipedAim) map[uint32][]filmdec.BipedAim {
+func vehicleAimBySlot(aims []grammar.BipedAim) map[uint32][]grammar.BipedAim {
 	if len(aims) == 0 {
 		return nil
 	}
-	out := make(map[uint32][]filmdec.BipedAim, 16)
+	out := make(map[uint32][]grammar.BipedAim, 16)
 	for _, a := range aims {
 		out[a.Slot] = append(out[a.Slot], a)
 	}
@@ -76,7 +76,7 @@ func vehicleAimBySlot(aims []filmdec.BipedAim) map[uint32][]filmdec.BipedAim {
 // chemin le plus court a travers 0/360 deg, un artefact que le film ne montre pas. Une frame sans
 // lecture n en porte pas — le client maintient la derniere, ou retombe sur le cap du chassis.
 func vehicleRideAimOf(
-	aims []filmdec.BipedAim, startUS, endUS uint64, clock replayClock,
+	aims []grammar.BipedAim, startUS, endUS uint64, clock replayClock,
 ) []VehicleAim {
 	if len(aims) == 0 || clock.step == 0 || endUS < startUS {
 		return nil

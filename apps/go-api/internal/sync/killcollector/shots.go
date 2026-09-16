@@ -35,7 +35,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )

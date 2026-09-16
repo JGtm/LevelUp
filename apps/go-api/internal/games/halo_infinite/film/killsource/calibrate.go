@@ -36,7 +36,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // calibration : ce que le balayage a retenu.
@@ -50,13 +50,13 @@ type calibration struct {
 	// sur leur lecteur de bits (lot 2.2.a pour le mouvement, elargi au `param_4` au lot 2.3).
 	//
 	// AVANT CES LOTS, LE RESULTAT DE LA CALIBRATION N ETAIT NULLE PART : il etait ECRIT dans
-	// des variables de paquet de `filmdec` (`SetAbsoluteAxisW`, `TraversalPrecision`,
+	// des variables de paquet de `grammar` (`SetAbsoluteAxisW`, `TraversalPrecision`,
 	// `SetRecordStateParam`) que la passe suivante relisait sans le savoir — `runWalk`
 	// reconstruisait un `DefaultFrameConfig` et heritait pourtant des largeurs calibrees, par
 	// effet de bord du processus, et LA CUISSON DU REJEU aussi (decouverte D1 du lot 2.2.a).
 	// Il est desormais RENDU, et passe explicitement par `FrameConfig.Profil` puis par
 	// [Result.ProfilCalibre].
-	Profil filmdec.ProfilDeBalayage
+	Profil grammar.ProfilDeBalayage
 }
 
 func (c calibration) String() string {
@@ -83,7 +83,7 @@ const (
 // une timeline REMBOBINEE : le balayage la parcourt chronologiquement.
 func calibrate(f *film, tl *timeline, views int) calibration {
 	sample := calibSample(f, calibSampleSize)
-	cfg := filmdec.DefaultFrameConfig()
+	cfg := grammar.DefaultFrameConfig()
 	cfg.Profil = ProfilDeDepart()
 	saved := cfg.Profil.Mouvement.Traversal
 
@@ -95,7 +95,7 @@ func calibrate(f *film, tl *timeline, views int) calibration {
 	for iw := indexWMin; iw <= indexWMax; iw++ {
 		for aw := axisWMin; aw <= axisWMax; aw++ {
 			cfg.Profil.Mouvement.AbsoluteAxisW = aw
-			cfg.Profil.Mouvement.Traversal = filmdec.PrecisionDescriptor{IndexW: iw, AxisW: saved.AxisW}
+			cfg.Profil.Mouvement.Traversal = grammar.PrecisionDescriptor{IndexW: iw, AxisW: saved.AxisW}
 			out = append(out, cand{aw, iw, countBipedRecords(sample, tl, cfg, views)})
 		}
 	}
@@ -107,10 +107,10 @@ func calibrate(f *film, tl *timeline, views int) calibration {
 		res.AxisW, res.IndexW = 14, 1
 	}
 	cfg.Profil.Mouvement.AbsoluteAxisW = res.AxisW
-	cfg.Profil.Mouvement.Traversal = filmdec.PrecisionDescriptor{IndexW: res.IndexW, AxisW: saved.AxisW}
+	cfg.Profil.Mouvement.Traversal = grammar.PrecisionDescriptor{IndexW: res.IndexW, AxisW: saved.AxisW}
 	res.Profil = cfg.Profil
 	// PLUS AUCUNE ECRITURE D ETAT DE PROCESSUS ICI (lot 2.3). Ce site posait l heritage
-	// (`filmdec.PoserMouvementHerite`), et avant lui deux variables de paquet : la cuisson du
+	// (`grammar.PoserMouvementHerite`), et avant lui deux variables de paquet : la cuisson du
 	// rejeu, qui s execute APRES dans le meme processus, decodait alors ses composants a ces
 	// largeurs sans rien demander. Le resultat est desormais RENDU a l appelant, qui le passe.
 	calibrateRSP(f, tl, views, &res)
@@ -136,7 +136,7 @@ func calibSample(f *film, n int) []*packet {
 
 // countBipedRecords : le critere de calibration. Le monde est restaure apres chaque paquet : la
 // calibration ne doit RIEN laisser derriere elle.
-func countBipedRecords(sample []*packet, tl *timeline, cfg filmdec.FrameConfig, views int) int {
+func countBipedRecords(sample []*packet, tl *timeline, cfg grammar.FrameConfig, views int) int {
 	n := 0
 	for _, p := range sample {
 		snap := tl.w.Snapshot()
@@ -161,7 +161,7 @@ func calibrateRSP(f *film, tl *timeline, views int, res *calibration) {
 	// LE CADRE PORTE LE PROFIL DEJA CALIBRE : le balayage de `recordStateParam` doit se juger
 	// aux largeurs retenues, pas aux largeurs par defaut. C etait vrai avant le lot 2.2.a
 	// parce que les largeurs vivaient dans le processus ; c est desormais ecrit.
-	cfg := filmdec.DefaultFrameConfig()
+	cfg := grammar.DefaultFrameConfig()
 	cfg.Profil = res.Profil
 	best, bestN, worstN := uint32(0), -1, 1<<62
 	for r := uint32(0); r <= rspMax; r++ {
@@ -188,7 +188,7 @@ func calibrateRSP(f *film, tl *timeline, views int, res *calibration) {
 //	            un curseur decale n y tombe quasiment jamais.
 //	CROISSANCE  les slots d une meme boucle sont ordonnes CROISSANT ; un slot qui recule est la
 //	            signature d une lecture de bits de bourrage.
-func monotonicScore(t0 []packet, tl *timeline, cfg filmdec.FrameConfig, views int) int {
+func monotonicScore(t0 []packet, tl *timeline, cfg grammar.FrameConfig, views int) int {
 	records := 0
 	tl.rewind()
 	for i := range t0 {

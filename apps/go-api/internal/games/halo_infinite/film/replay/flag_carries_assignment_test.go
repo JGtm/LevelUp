@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // TestFlagCarriesVolPuisCapture — un vol ouvre un `carried` du BON joueur, et la capture renvoie
@@ -146,9 +146,9 @@ func TestFlagCarriesMarqueurConfirme(t *testing.T) {
 		},
 		Identity: objectives.FlatRoundIdentity(map[int]string{12: "7", 14: "8"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
-		Marks: filmdec.CarrierMarkScan{
+		Marks: grammar.CarrierMarkScan{
 			KeyframeUS: []uint64{2_000_000, 6_000_000},
-			Marks:      []filmdec.CarrierMark{{TimestampUS: 2_000_000, Slot: 10}},
+			Marks:      []grammar.CarrierMark{{TimestampUS: 2_000_000, Slot: 10}},
 		},
 	}
 	ctx := flagTestCtx(tracks, nil, 100)
@@ -181,7 +181,7 @@ func TestFlagCarriesMarqueurSurLesFermesSeuls(t *testing.T) {
 		},
 		Identity: objectives.FlatRoundIdentity(map[int]string{12: "7"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
-		Marks:    filmdec.CarrierMarkScan{KeyframeUS: []uint64{2_000_000}},
+		Marks:    grammar.CarrierMarkScan{KeyframeUS: []uint64{2_000_000}},
 	}
 	ctx := flagTestCtx(tracks, nil, 100)
 	ctx.slotXUID = map[uint32]uint64{10: 7}

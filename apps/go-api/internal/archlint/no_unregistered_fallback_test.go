@@ -83,7 +83,7 @@ import (
 )
 
 // perimetreReplis : les répertoires où un repli de production peut vivre — ceux de l'audit 0.E,
-// plus `filmdec` pour ses inférences qui décident en production.
+// plus `grammar` pour ses inférences qui décident en production.
 //
 // Chemins relatifs à `apps/go-api/`. Un répertoire neuf du décodeur s'ajoute ici : c'est le bon
 // sens de la faute (oublier d'étendre le périmètre laisse passer, l'oublier au registre rougit).
@@ -130,9 +130,9 @@ var replisDeLEcrivainDuJeu = map[string]exemptionEcrivain{
 		"la projection du rapport du compteur vers ce type publie. Meme raison."},
 	"toFallbackHits": {"internal/service/replayview/convert_coverage.go", "2026-09-14",
 		"la projection vers le document SERVI. Meme raison."},
-	"PosKindAbsFallback": {"internal/games/halo_infinite/film/filmdec/position_capture.go", "2026-09-14",
+	"PosKindAbsFallback": {"internal/games/halo_infinite/film/grammar/position_capture.go", "2026-09-14",
 		"la NATURE d'une capture de position telle que l'ecrivain du jeu la produit (absolu atteint par l'absence du delta predit). Grammaire, pas decision."},
-	"viaRepli": {"internal/games/halo_infinite/film/filmdec/position_capture.go", "2026-09-14",
+	"viaRepli": {"internal/games/halo_infinite/film/grammar/position_capture.go", "2026-09-14",
 		"le drapeau qui marque cette meme branche de l'ecrivain pendant la traversee. " +
 			"S'appelait `absViaFallback` jusqu'au lot 2.3 (2026-09-17), qui en a fait un CHAMP de " +
 			"`captureDePosition` au lieu d'une variable de paquet — meme branche, meme raison."},

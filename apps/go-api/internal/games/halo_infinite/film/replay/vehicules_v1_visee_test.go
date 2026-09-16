@@ -41,7 +41,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // Seuils de l'item 2, ecrits avant mesure.
@@ -66,7 +66,7 @@ func TestV1ViseeI21(t *testing.T) {
 func v1vUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
 	dir := objChunkDir(root, f.ID)
-	if filmdec.CountFilmChunks(dir) == 0 {
+	if grammar.CountFilmChunks(dir) == 0 {
 		t.Logf("%s : film absent du cache — saute", f.ID)
 		return
 	}
@@ -97,13 +97,13 @@ func v1vUnFilm(t *testing.T, root string, f v0Film) {
 // balayage qui declenche le hook soit celui-ci (DetectI0Layout ne le rejoue pas). Flux brut :
 // hook 1:1 positions. Rendre l'histogramme entier (pas seulement i21) prouve que le hook lit de
 // VRAIS masques : i21 absent au milieu de i1/i2/i3/i25 presents n'est alors pas un bug de hook.
-func v1vScanAvecMasque(dir string, band map[uint32]bool, wr *filmdec.Vec3Range, lay filmdec.I0Layout) (
-	[]filmdec.BipedPosition, int, map[int]int) {
+func v1vScanAvecMasque(dir string, band map[uint32]bool, wr *grammar.Vec3Range, lay grammar.I0Layout) (
+	[]grammar.BipedPosition, int, map[int]int) {
 	total := 0
 	hist := map[int]int{}
 	// LE CROCHET SE POSE SUR L OBSERVATEUR DU CONTEXTE (lot 2.3) : il n y a plus de sonde de
 	// processus, et c est le contexte qui porte ce qu un balayage observe.
-	fc, _, err := filmdec.ContexteDeFilm(dir)
+	fc, _, err := grammar.ContexteDeFilm(dir)
 	if err != nil {
 		return nil, total, hist
 	}
@@ -115,7 +115,7 @@ func v1vScanAvecMasque(dir string, band map[uint32]bool, wr *filmdec.Vec3Range, 
 	}
 	opt := v1aOptions(wr, false)
 	opt.CaptureDirs, opt.Layout = true, &lay
-	pos, err := filmdec.ScanBipedPositionsForBand(fc, filmdec.NewSlotBand(band), opt)
+	pos, err := grammar.ScanBipedPositionsForBand(fc, grammar.NewSlotBand(band), opt)
 	if err != nil {
 		return nil, total, hist
 	}
@@ -123,10 +123,10 @@ func v1vScanAvecMasque(dir string, band map[uint32]bool, wr *filmdec.Vec3Range, 
 }
 
 // v1vScanBiped balaie le bipede (reference validee) avec capture des directions.
-func v1vScanBiped(dir string, wr *filmdec.Vec3Range, lay filmdec.I0Layout) []filmdec.BipedPosition {
-	opt := filmdec.DefaultScanFilmOptions()
+func v1vScanBiped(dir string, wr *grammar.Vec3Range, lay grammar.I0Layout) []grammar.BipedPosition {
+	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange, opt.CaptureDirs, opt.Layout = wr, true, &lay
-	pos, err := filmdec.ScanFilmBipedPositions(dir, opt)
+	pos, err := grammar.ScanFilmBipedPositions(dir, opt)
 	if err != nil {
 		return nil
 	}
@@ -134,7 +134,7 @@ func v1vScanBiped(dir string, wr *filmdec.Vec3Range, lay filmdec.I0Layout) []fil
 }
 
 // v1vCompteYaw rend le nombre d'echantillons portant i21 (HasYaw).
-func v1vCompteYaw(pos []filmdec.BipedPosition) int {
+func v1vCompteYaw(pos []grammar.BipedPosition) int {
 	n := 0
 	for _, p := range pos {
 		if p.HasYaw {
@@ -145,8 +145,8 @@ func v1vCompteYaw(pos []filmdec.BipedPosition) int {
 }
 
 // v1vPresence publie la presence au masque et la capture de valeur, contre le bipede.
-func v1vPresence(t *testing.T, f v0Film, veh []filmdec.BipedPosition, total int, hist map[int]int,
-	bip []filmdec.BipedPosition) {
+func v1vPresence(t *testing.T, f v0Film, veh []grammar.BipedPosition, total int, hist map[int]int,
+	bip []grammar.BipedPosition) {
 	t.Helper()
 	masqI21 := hist[21]
 	valYaw := v1vCompteYaw(veh)
@@ -185,7 +185,7 @@ func v1vHistoLisible(hist map[int]int, total int) string {
 }
 
 // v1vPitchConc rend la part des tangages dans +/-v1vPitchWindowDeg et leur nombre.
-func v1vPitchConc(pos []filmdec.BipedPosition) (float64, int) {
+func v1vPitchConc(pos []grammar.BipedPosition) (float64, int) {
 	dans, n := 0, 0
 	for _, p := range pos {
 		pitch, ok := p.AimPitchDeg()
@@ -201,7 +201,7 @@ func v1vPitchConc(pos []filmdec.BipedPosition) (float64, int) {
 }
 
 // v1vConcentration confronte la concentration du tangage vehicule a l'uniforme et au bipede.
-func v1vConcentration(t *testing.T, f v0Film, veh, bip []filmdec.BipedPosition) {
+func v1vConcentration(t *testing.T, f v0Film, veh, bip []grammar.BipedPosition) {
 	t.Helper()
 	pv, nv := v1vPitchConc(veh)
 	pb, nb := v1vPitchConc(bip)
@@ -220,7 +220,7 @@ func v1vConcentration(t *testing.T, f v0Film, veh, bip []filmdec.BipedPosition) 
 }
 
 // v1vContinuite mesure la continuite temporelle du cap de visee, avec temoin par melange.
-func v1vContinuite(t *testing.T, f v0Film, pos []filmdec.BipedPosition) {
+func v1vContinuite(t *testing.T, f v0Film, pos []grammar.BipedPosition) {
 	t.Helper()
 	a, b := v1vPairesYawConsecutives(pos)
 	if len(a) == 0 {
@@ -246,8 +246,8 @@ func v1vContinuite(t *testing.T, f v0Film, pos []filmdec.BipedPosition) {
 }
 
 // v1vPairesYawConsecutives rend, par slot, les couples de caps de visee consecutifs (pas <= 2 s).
-func v1vPairesYawConsecutives(pos []filmdec.BipedPosition) (a, b []float64) {
-	parSlot := map[uint32][]filmdec.BipedPosition{}
+func v1vPairesYawConsecutives(pos []grammar.BipedPosition) (a, b []float64) {
+	parSlot := map[uint32][]grammar.BipedPosition{}
 	for _, p := range pos {
 		if p.HasYaw {
 			parSlot[p.Slot] = append(parSlot[p.Slot], p)
@@ -275,7 +275,7 @@ func v1vPairesYawConsecutives(pos []filmdec.BipedPosition) (a, b []float64) {
 }
 
 // v1vMouvement confronte le cap de visee a la direction de deplacement (velocite i1), informatif.
-func v1vMouvement(t *testing.T, f v0Film, pos []filmdec.BipedPosition) {
+func v1vMouvement(t *testing.T, f v0Film, pos []grammar.BipedPosition) {
 	t.Helper()
 	var caps, ref v1aEcarts
 	var vit []float64

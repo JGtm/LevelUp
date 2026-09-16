@@ -19,14 +19,14 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // objetExAequo fabrique un objet au sol qui partage SON APPARITION ENTIERE avec ses soeurs :
 // seul le reste de l'objet le distingue.
 func objetExAequo(gen uint32, familyID uint32, status string, dropper int) gwPickupObject {
 	return gwPickupObject{
-		Key: filmdec.EquipmentLifeKey{Slot: 42, Gen: gen},
+		Key: grammar.EquipmentLifeKey{Slot: 42, Gen: gen},
 		Appar: gwPadApparition{
 			Kind: gwPadKindWeapon, Family: "sniper",
 			X: 10, Y: 20, Z: 30, TUS: 1_000_000,
