@@ -72,8 +72,12 @@ func ScanDeaths(film *filmsource.Film) ([]Death, error) {
 	// elle est appelee DEUX FOIS par cuisson (`replaybuild.lireMorts` puis `BuildFromFilm`), ce
 	// qui doublait la ligne de journal pour un seul fait. [BuildFromFilm] lit deja cette meme
 	// version pour la publier dans la couverture : c est lui qui consigne, une fois, avec le match.
-	version, _ := filmdec.FilmMajorVersion(film)
-	evs, err := analysis.ParseHighlightEvents(raw, version)
+	// LA VERSION VIENT DU PROFIL DU FILM DEPUIS LE LOT 2.1.4 : `HighlightProfileOfFilm` lit le
+	// MEME u32 que `FilmMajorVersion` et NOMME l implantation qu il selectionne. La porte etroite
+	// plutot que `ResolveProfile` : cette fonction est appelee deux fois par cuisson et n a pas
+	// de carte — lui faire resoudre le profil entier couterait une analyse de registre par appel
+	// pour une valeur qui tient dans les quatre premiers octets.
+	evs, err := analysis.ParseHighlightEvents(raw, filmdec.HighlightProfileOfFilm(film).MajorVersion)
 	if err != nil {
 		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, err)
 	}

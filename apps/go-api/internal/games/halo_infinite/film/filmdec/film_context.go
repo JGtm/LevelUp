@@ -41,6 +41,28 @@ package filmdec
 // Sur les 12 autres films du corpus d'equivalence, catalogue et auto-detection donnent le MEME
 // decoupage, au bit pres — c'est pourquoi la correction ne mord que sur Live Fire.
 //
+// # LE PROFIL, LUI, EST RESOLU AU CONSTRUCTEUR (lot 2.1, D1 du PLAN_DECODEUR_FILM)
+//
+// [FilmContext.Profile] fait EXCEPTION a la paresse decrite ci-dessous, et l exception est
+// bornee a `NewFilmContextForMap` — le constructeur de la CUISSON. Trois raisons, mesurees :
+//
+//	D1 L EXIGE. « Un seul objet par film, le profil resolu a la construction, les memos
+//	   (registre, bande de slots) restent paresseux. » Un profil resolu au premier accesseur
+//	   pourrait etre resolu DEUX fois differemment si une globale bougeait entre-temps ; c est
+//	   precisement ce que « immuable » doit exclure.
+//	L ORDRE DES ETAPES NE BOUGE PAS. `replay.scanFilmInputs` construit le contexte AVANT de
+//	   demarrer l horloge des etapes (`s.opt.clock`) : la resolution tombe donc dans le meme
+//	   intervalle que l attente du verrou et la lecture du catalogue, qui ne sont le temps
+//	   d aucun balayage. Aucune etape observee ne change de date.
+//	AUCUNE ERREUR NE REMONTE PAR LE CONSTRUCTEUR. Une cle absente est portee par
+//	   [FilmContext.ProfileErr], typee, et JOURNALISEE ici ; le film n est pas mis de cote
+//	   (D-4 d ADR 0034) et les replis existants tournent comme avant.
+//
+// `NewFilmContext` (sans carte : instruments, enveloppes D2) le resout au PREMIER ACCES. Ce
+// constructeur-la ouvre des dizaines de contextes par test, et la resolution lit `chunk_00` —
+// la payer d avance pour des contextes qui ne demandent jamais leur profil coute du temps de
+// test sans rien prouver. La valeur rendue est la MEME : [ResolveProfile] est une fonction pure.
+//
 // # POURQUOI LA MEMOISATION EST PARESSEUSE, ET NON CALCULEE AU CONSTRUCTEUR
 //
 // Le lot 2 est un REFACTO PUR : les sorties doivent etre identiques a l'octet, et l'ORDRE des
@@ -70,7 +92,11 @@ package filmdec
 // gele leur compte), ni un objet partageable entre goroutines : il n'est ni verrouille ni
 // atomique, et il vit sous le meme `LockProcessDecode` que le decodage qu'il sert.
 
-import "levelup/go-api/internal/analysis/filmsource"
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // FilmContext porte les derivations d'un film qui ne dependent que de lui : les numeros de ses
 // chunks de donnees, la bande de slots bipede, le decoupage d'i0 et le registre chunk_00. Il se
@@ -100,6 +126,12 @@ type FilmContext struct {
 	reg    *Registry
 	regErr error
 	regLu  bool
+
+	// prof est le PROFIL du film, resolu UNE fois (cf. l en-tete) et immuable. `profLu` dit
+	// s il l a ete : `NewFilmContextForMap` le pose a la construction, `NewFilmContext` au
+	// premier acces.
+	prof   Profile
+	profLu bool
 }
 
 // NewFilmContext ouvre le contexte d'un film DEJA CHARGE, SANS catalogue : le decoupage d'i0 est
@@ -126,7 +158,36 @@ func NewFilmContext(film *filmsource.Film) *FilmContext {
 // decoupage tranche par [FilmContext.ImposedLayout] pour en armer les positions, et passe le
 // contexte aux six canaux delta et aux ramassages natifs — un seul decoupage pour tout le film.
 func NewFilmContextForMap(film *filmsource.Film, entry *MapQuantEntry, forced *I0Layout) *FilmContext {
-	return &FilmContext{film: film, impose: resolveI0Layout(forced, entry)}
+	c := &FilmContext{film: film, impose: resolveI0Layout(forced, entry)}
+	c.prof, c.profLu = ResolveProfile(film, entry), true
+	journaliserProfilIncomplet(film, c.prof)
+	return c
+}
+
+// journaliserProfilIncomplet emet L UNIQUE ligne du constructeur quand une cle du film manque a
+// la table de profil (principe 12 : jamais de degradation silencieuse).
+//
+// ELLE NE SE DECLENCHE QUE SI LE FILM PORTE SON REGISTRE. Une bobine partielle ou une fixture
+// sans `chunk_00` n a pas de cle a chercher : la journaliser serait du bruit a chaque instrument,
+// et l absence de chunk est deja dite par [ErrNoFilmChunk] la ou elle compte.
+//
+// `slog.Warn` et non `WarnContext` : ce constructeur ne prend pas de `ctx`, comme
+// l installateur des largeurs d axe de la carte (`replay/world_object_precision.go`) et
+// `replay.avertirFormatSansProfil`, qui journalisent de la meme facon sur le meme chemin.
+//
+// RECOUVREMENT ASSUME avec `avertirFormatSansProfil` sur le seul cas « format inconnu » : cette
+// ligne-ci nomme le PROFIL et ses deux cles, et elle couvre aussi le chemin `killcollector`, ou
+// aucun autre avertissement n existe.
+func journaliserProfilIncomplet(film *filmsource.Film, p Profile) {
+	if p.Err() == nil {
+		return
+	}
+	if _, ok := FilmRegistryChunk(film); !ok {
+		return
+	}
+	slog.Warn("profil du film INCOMPLET — une cle ecrite dans le film est absente de la table "+
+		"de profil ; le film reste decode, les replis existants decident et se comptent",
+		"err", p.Err(), "format", p.FormatVersion(), "build", p.Build())
 }
 
 // resolveI0Layout EST LA REGLE, ecrite une fois : le decoupage FORCE s'il y en a un, sinon celui
@@ -158,6 +219,27 @@ func (c *FilmContext) ImposedLayout() *I0Layout {
 	lay := *c.impose
 	return &lay
 }
+
+// Profile rend le PROFIL du film, resolu une fois (cf. l en-tete) et rendu PAR VALEUR : un
+// lecteur qui modifie ce qu il recoit ne modifie pas le profil du contexte.
+//
+// Contexte nil = le profil des INVARIANTS, sans cle et sans carte : c est ce que rend
+// [ResolveProfile] sur un film nul, et un appelant qui le lit sans verifier [FilmContext.ProfileErr]
+// obtient donc le cadre d image-cle et les quantums, jamais une largeur inventee.
+func (c *FilmContext) Profile() Profile {
+	if c == nil {
+		return ResolveProfile(nil, nil)
+	}
+	if !c.profLu {
+		c.prof, c.profLu = ResolveProfile(c.film, nil), true
+	}
+	return c.prof
+}
+
+// ProfileErr rend l erreur TYPEE des cles absentes de la table de profil ([ErrUnknownFormat],
+// [ErrUnknownBuild]), ou nil. C est par elle que l erreur REMONTE A L APPELANT : le constructeur
+// n en rend pas (cf. l en-tete), il la journalise.
+func (c *FilmContext) ProfileErr() error { return c.Profile().Err() }
 
 // Film rend le film sous-jacent, pour les balayages qui lisent des chunks sans rien deriver.
 func (c *FilmContext) Film() *filmsource.Film {

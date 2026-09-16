@@ -75,12 +75,18 @@ func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*g
 	// `MapQuantEntry.Layout()` porte toutes les trois.
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(entry, film, nil)()
 	roster, err := rosterDeLaFeuille(film)
 	if err != nil {
 		return nil, err
 	}
-	in, err := scanFilmInputs(film, charge, Options{MapQuant: &entry, RosterXUIDs: roster})
+	// L ORDRE EST CELUI DE `BuildFromFilm` DEPUIS LE LOT 2.1 : le contexte du film (donc son
+	// PROFIL, resolu a la construction) s ouvre AVANT l installation des largeurs, et c est le
+	// profil que l installateur lit. Un fixture qui garderait l ancien ordre ne mesurerait plus
+	// ce que la production fait.
+	opt := Options{MapQuant: &entry, RosterXUIDs: roster}
+	fc := filmdec.NewFilmContextForMap(charge, opt.MapQuant, decoupageForce(opt))
+	defer installWorldObjectPrecision(fc.Profile(), film, nil)()
+	in, err := scanFilmInputs(film, charge, fc, opt)
 	if err != nil {
 		return nil, err
 	}

@@ -175,7 +175,7 @@ func e191Creations(dir string, e filmdec.MapQuantEntry, g *goldenInputs,
 ) ([]filmdec.EquipmentCreation, filmdec.EquipmentCreationStats, bool) {
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(e, g.Film, nil)()
+	defer installWorldObjectPrecisionDeCarte(e, g.Film, nil)()
 	prev := filmdec.SetMPPWidths(g.PlacementStats.Calibration.Widths)
 	defer filmdec.SetMPPWidths(prev)
 	wr := e.Range()
