@@ -543,9 +543,12 @@ gate complet machine au repos.
       plan frère : note en §10 (helper de verrou + `Onboard` à utiliser en 5.3/5.4).
 - [x] 7.4 `.ai/thought_log.md` : entrée `[2026-09-15]` (statut, décisions, résultats, suite).
 - [ ] 7.5 Commit(s) sur `wt/player-directory` ; PAS de push, PAS de merge sans l'utilisateur.
-- [ ] 7.6 Prod (à la main de l'utilisateur, après merge/déploiement) : verrou déjà posé (P0) ;
-      `levelup identity purge 2533274796795729 --yes` sur le VPS ; vérifier
-      `GET /admin/identities` → 0 anomalie warning.
+- [~] 7.6 Prod (à la main de l'utilisateur, après merge/déploiement) : verrou déjà posé (P0,
+      2026-09-15 19:44 UTC). **Décision utilisateur du 2026-09-16 : l'intrus n'est PAS purgé** —
+      son identité (compte sans profil + credentials + dossier orphelin) restera visible dans
+      `GET /admin/identities` en warning ; l'outil `levelup identity purge` reste disponible si
+      la décision change. Après déploiement : vérifier que la section « Identités » liste bien
+      cette identité et ses anomalies (c'est la preuve que l'annuaire ferme le trou du 23/07).
 
 ## 10. Découvertes hors périmètre (ne pas traiter ici)
 

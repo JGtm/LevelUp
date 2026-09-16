@@ -28,9 +28,10 @@ import (
 var usersJSONLiteralRE = regexp.MustCompile(`"users\.json"`)
 
 // usersJSONAllowlist — fichiers autorisés à porter le littéral (2026-09-16) :
-// le helper canonique et le store des comptes.
+// le helper canonique (dans userstore, pour que les CLI légers n'importent pas
+// config → DuckDB) et le store des comptes qui documente le fichier.
 var usersJSONAllowlist = []string{
-	"internal/config/config_paths.go",
+	"internal/platform/userstore/paths.go",
 	"internal/platform/userstore/store.go",
 }
 

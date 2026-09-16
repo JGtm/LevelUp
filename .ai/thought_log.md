@@ -109034,8 +109034,9 @@ sur l'ancien inode), sauvegarde `app_settings.json.bak-20260915194349`, vérifi�
 
 **Conclusion / prochaine étape** : (a) commit de clôture sur `wt/player-directory` après feu vert
 (44 fichiers, 9 nouveaux) ; (b) merge dans `feat/v75` et déploiement = décision utilisateur ;
-(c) après déploiement : `levelup identity purge 2533274796795729 --yes` sur le VPS puis
-`GET /admin/identities` → 0 warning ; (d) décisions produit ouvertes : groupe dont l'identité
+(c) décision utilisateur du 2026-09-16 : l'intrus n'est PAS purgé — son identité reste visible
+en warning dans `GET /admin/identities` (l'outil `levelup identity purge` reste disponible) ;
+après déploiement, vérifier que la section « Identités » la liste avec ses anomalies ; (d) décisions produit ouvertes : groupe dont l'identité
 purgée est propriétaire, 3 fixtures `token_orphan` locales, toggle `settings.go` qui fait confiance
 à `sess.Role` (plan §10) ; (e) le plan frère « amis / invitations » doit utiliser
 `authz.InstanceLocked` et `PlayerDirectory.Onboard` (étape 5.3/5.4).
