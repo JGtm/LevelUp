@@ -24,6 +24,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -92,11 +93,10 @@ func executer(titleSlug string, check bool, out, bornes string) error {
 		return fmt.Errorf("le catalogue produit n est pas valide, rien ecrit : %w", err)
 	}
 
-	blob, err := json.MarshalIndent(cat, "", "  ")
+	blob, err := serialiser(cat)
 	if err != nil {
-		return fmt.Errorf("serialisation : %w", err)
+		return err
 	}
-	blob = append(blob, '\n')
 
 	if check {
 		return verifier(cheminProfils, blob, resume)
@@ -108,6 +108,23 @@ func executer(titleSlug string, check bool, out, bornes string) error {
 		"entrees", len(cat.Entrees), "cartes_derivees", resume.Cartes,
 		"empreinte_bornes", resume.Empreinte)
 	return nil
+}
+
+// serialiser rend le fichier tel qu il doit etre commis.
+//
+// SANS ECHAPPEMENT HTML : `json.Marshal` remplace les chevrons par leurs sequences `\uXXXX`,
+// ce qui rendrait les clefs de version majeure (`majeure<=38`) illisibles dans un fichier que
+// l on relit et que l on edite a la main. Le JSON reste valide dans les deux formes ; celle-ci
+// se lit.
+func serialiser(cat *filmprofile.Catalogue) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(cat); err != nil {
+		return nil, fmt.Errorf("serialisation : %w", err)
+	}
+	return buf.Bytes(), nil
 }
 
 // resoudreChemins rend le chemin du catalogue des profils et celui des bornes. Les deux
