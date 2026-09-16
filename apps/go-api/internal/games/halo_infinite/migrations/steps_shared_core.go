@@ -17,6 +17,7 @@ package migrations
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 
 	"levelup/go-api/internal/migration"
 )
@@ -605,6 +606,12 @@ func sharedCoreSteps() []migration.Migration {
 			},
 		},
 		{
+			Name:        "widen_match_registry_team_scores",
+			TargetDB:    migration.TargetShared,
+			Description: "match_registry.team_{0,1}_score : SMALLINT -> INTEGER (idempotent) — un score d'equipe > 32 767 (Bapteme du feu) faisait REJETER le match a l'INSERT, pour tous les joueurs",
+			ApplySchema: widenMatchRegistryTeamScores,
+		},
+		{
 			Name:        "add_weapon_accuracy",
 			TargetDB:    migration.TargetShared,
 			Description: "Table weapon_accuracy : précision par arme par joueur par match (tirs/touchés/drops), reconstruite des events WeaponDrop (Halo 5 ; carnage WeaponStats[] vide). INSERT pur sans index — ART-safe (ADR 0026).",
@@ -629,4 +636,40 @@ func sharedCoreSteps() []migration.Migration {
 			},
 		},
 	}
+}
+
+// widenMatchRegistryTeamScores porte match_registry.team_0_score / team_1_score de
+// SMALLINT a INTEGER sur les bases preexistantes.
+//
+// DERIVE DE SCHEMA MESUREE LE 2026-09-16. La DDL de creation declare INTEGER depuis
+// longtemps, mais les bases de production, creees par une DDL anterieure, portaient
+// SMALLINT — et `CREATE TABLE IF NOT EXISTS` ne corrige jamais une colonne existante.
+// Consequence observee sur le sync de Nuzzles : deux matchs de Bapteme du feu rejetes a
+// l'INSERT (`Type INT64 with value 120267 ... INT16`), donc absents du registre POUR TOUS
+// LES JOUEURS, pas seulement pour celui qui synchronisait.
+//
+// Idempotent : la colonne deja INTEGER n'est pas touchee (test du type avant l'ALTER).
+func widenMatchRegistryTeamScores(db *sql.DB) error {
+	existe, err := migration.TableExists(db, "match_registry")
+	if err != nil {
+		return fmt.Errorf("widen_match_registry_team_scores: %w", err)
+	}
+	if !existe {
+		return nil
+	}
+	var elargies []string
+	for _, colonne := range []string{"team_0_score", "team_1_score"} {
+		change, err := migration.AlterColumnTypeIfNeeded(db, "match_registry", colonne, "INTEGER")
+		if err != nil {
+			return fmt.Errorf("widen_match_registry_team_scores: %w", err)
+		}
+		if change {
+			elargies = append(elargies, colonne)
+		}
+	}
+	if len(elargies) > 0 {
+		slog.InfoContext(migration.BootCtx(), "migration: match_registry scores d'equipe elargis en INTEGER",
+			"colonnes", elargies)
+	}
+	return nil
 }

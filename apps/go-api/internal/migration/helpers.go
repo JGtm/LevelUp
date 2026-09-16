@@ -3,6 +3,7 @@ package migration
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -93,6 +94,52 @@ func addColumnIfMissing(db *sql.DB, table, column, colType string) error {
 		return fmt.Errorf("addColumnIfMissing ALTER %s.%s: %w", table, column, err)
 	}
 	return nil
+}
+
+// columnDataType rend le type declare d'une colonne (chaine vide si la table ou la
+// colonne n'existe pas). Source : information_schema.columns, le meme catalogue que
+// columnExists — donc la meme verite que ce que DuckDB applique aux INSERT.
+func columnDataType(db *sql.DB, table, column string) (string, error) {
+	var declare sql.NullString
+	err := db.QueryRowContext(
+		bootCtx(),
+		"SELECT data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ? AND column_name = ?",
+		table, column,
+	).Scan(&declare)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return declare.String, nil
+}
+
+// alterColumnTypeIfNeeded porte une colonne au type `wanted` SI son type courant en
+// differe. Rend true quand un ALTER a reellement ete execute (rejoue : no-op).
+//
+// POURQUOI CE HELPER (2026-09-16). Une DDL peut deriver de la base reelle : la DDL de
+// match_registry declarait team_{0,1}_score INTEGER alors que les bases de production,
+// creees par une DDL anterieure, portaient SMALLINT. Deux matchs a gros score d'equipe
+// (Bapteme du feu, > 32 767) ont ete REJETES a l'INSERT — perdus pour tous les joueurs.
+// `CREATE TABLE IF NOT EXISTS` ne repare jamais ce genre d'ecart : il faut un ALTER.
+func alterColumnTypeIfNeeded(db *sql.DB, table, column, wanted string) (bool, error) {
+	actuel, err := columnDataType(db, table, column)
+	if err != nil {
+		return false, fmt.Errorf("alterColumnTypeIfNeeded lecture %s.%s: %w", table, column, err)
+	}
+	if actuel == "" {
+		return false, nil // table ou colonne absente : rien a elargir
+	}
+	if strings.EqualFold(strings.TrimSpace(actuel), strings.TrimSpace(wanted)) {
+		return false, nil
+	}
+	_, err = db.ExecContext(bootCtx(),
+		fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DATA TYPE %s", table, column, wanted))
+	if err != nil {
+		return false, fmt.Errorf("alterColumnTypeIfNeeded ALTER %s.%s -> %s: %w", table, column, wanted, err)
+	}
+	return true, nil
 }
 
 // createIndexSafe cree un index en ignorant les erreurs "already exists".

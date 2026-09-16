@@ -190,7 +190,7 @@ Infinite, `grep "PlayerCount ="` → seulement `halo_5/ingest/collect.go`, `open
 
 ## 6. Étape 3 — Dérive de schéma `match_registry` (D-C, moyen, à risque : migration shared)
 
-- [ ] 3.1 `steps_shared_core.go` : nouvelle étape `widen_match_registry_team_scores`
+- [x] 3.1 `steps_shared_core.go` : nouvelle étape `widen_match_registry_team_scores`
       (même forme que `add_player_count_to_match_registry`, `:600-602`) : pour chaque colonne
       `team_0_score`, `team_1_score`, si `information_schema.columns.data_type = 'SMALLINT'`
       → `ALTER TABLE match_registry ALTER COLUMN <c> SET DATA TYPE INTEGER` ; sinon no-op.
@@ -201,18 +201,18 @@ Infinite, `grep "PlayerCount ="` → seulement `halo_5/ingest/collect.go`, `open
       `internal/migration/append_only_rebuild.go` / ADR 0026 si un `ALTER COLUMN TYPE` sur
       table indexée est admis ; sinon appliquer la recette de reconstruction de l'ADR 0026
       (table neuve + copie + swap) et le dire dans « Avancement ».
-- [ ] 3.2 `internal/sync/schema.go:196-197` et `internal/sync/testutil/fixture.go` : DDL alignée
+- [x] 3.2 `internal/sync/schema.go:196-197` et `internal/sync/testutil/fixture.go` : DDL alignée
       (`INTEGER`) — aucune fixture ne garde `SMALLINT` pour ces colonnes.
-- [ ] 3.3 Test de migration `steps_shared_core_widen_test.go` (DuckDB `:memory:` ou fichier
+- [x] 3.3 Test de migration `steps_shared_core_widen_test.go` (DuckDB `:memory:` ou fichier
       temporaire — JAMAIS une base sous `data/`) : créer `match_registry` avec la DDL legacy
       (`team_0_score SMALLINT, team_1_score SMALLINT`, PK sur `match_id`, quelques lignes),
       jouer la migration, affirmer `INTEGER` × 2, lignes intactes, puis un INSERT avec
       `team_0_score = 120267` réussit. Second passage = no-op (idempotence).
-- [ ] 3.4 Ratchet anti-dérive `internal/archlint/match_registry_ddl_types_test.go` : les types
+- [x] 3.4 Ratchet anti-dérive `internal/archlint/match_registry_ddl_types_test.go` : les types
       déclarés dans `steps_shared_core.go` (CREATE) et `schema.go` pour `match_registry` sont
       identiques colonne à colonne (parse textuel des deux DDL) — une divergence future entre
       les deux sources échoue.
-- [ ] 3.5 `no_art_patterns_test.go` : si l'étape ajoute un motif surveillé (UPDATE/ALTER sur
+- [x] 3.5 `no_art_patterns_test.go` : si l'étape ajoute un motif surveillé (UPDATE/ALTER sur
       table critique), l'allowlister avec justification datée — sinon rien.
 
 **Gate G3** : `go test ./internal/games/halo_infinite/migrations/... ./internal/migration/... ./internal/archlint/...` → 0 ;
@@ -359,3 +359,43 @@ le commentaire d'en-tête de `pool_engine_test.go` (aucun appel, aucune définit
 étape `widen_match_registry_team_scores`, alignement des DDL) ont été écrits pendant l'attente du
 gate G2 et étaient donc dans l'arbre lors de sa passe d'intégration. Aucune des deux étapes ne
 touche les mêmes fichiers ; le gate complet de l'étape 4 rejoue tout.
+
+### Étape 3 — Dérive de schéma `match_registry` — 2026-09-16 13:45 — CLOSE
+
+- 3.1 `[x]` Étape `widen_match_registry_team_scores` (`steps_shared_core.go`, fonction
+  `widenMatchRegistryTeamScores` juste après `add_player_count_to_match_registry` dans l'ordre ;
+  nom ajouté à `migration.canonicalOrder` — `order_audit_test.go` l'exige des DEUX côtés, ce que
+  la première passe a fait rougir). Gardée par `information_schema.columns` : no-op si la table
+  est absente ou si la colonne est déjà INTEGER ; `slog.InfoContext` nommant les colonnes
+  élargies. **Le helper `AlterColumnTypeIfNeeded` n'existait pas** : écrit dans
+  `internal/migration/helpers.go` (+ `columnDataType`), exporté dans `helpers_export.go` selon la
+  convention du fichier, 2 tests d'intégration (élargissement + idempotence, table/colonne
+  absente).
+  **Question ART tranchée SUR PIÈCES, pas par supposition** : `ALTER TABLE match_registry ALTER
+  COLUMN team_0_score SET DATA TYPE INTEGER` sur une table PORTANT SA PK (index ART sur
+  `match_id`) passe en DuckDB 1.5.5 embarquée — vérifié par le test 3.3, qui construit exactement
+  la DDL legacy (PK + SMALLINT) et relit les lignes après coup. La recette de reconstruction de
+  l'ADR 0026 (table neuve + copie + swap) n'a donc PAS été nécessaire.
+- 3.2 `[x]` `internal/sync/schema.go` et `internal/sync/testutil/fixture.go` : `team_{0,1}_score`
+  passent à INTEGER, avec le commentaire qui dit pourquoi (leçon « DDL de test recopiées = dérive
+  indétectable »).
+- 3.3 `[x]` `steps_shared_core_widen_test.go` (DuckDB `:memory:`, AUCUNE base sous `data/`) : DDL
+  legacy (PK + SMALLINT) + 3 lignes, **contrôle négatif** (avant migration, l'INSERT à 120 267 est
+  REJETÉ — sans lui le test ne prouverait rien), migration, puis INTEGER × 2, 3 lignes intactes,
+  valeurs relues à l'identique, INSERT à 120 267 accepté, second passage no-op. Un second test
+  couvre la base sans `match_registry`.
+- 3.4 `[x]` `internal/archlint/match_registry_ddl_types_test.go` : parse les DEUX DDL
+  (`steps_shared_core.go` et `schema.go`) et compare le type de chaque colonne COMMUNE (les deux
+  schémas n'ont jamais eu la même surface ; un plancher de 20 colonnes communes garde le parseur
+  honnête). **Mutation vérifiée** : `team_0_score SMALLINT` remis dans `schema.go` → le test
+  rougit en nommant la colonne et les deux fichiers, puis repasse vert.
+- 3.5 `[x]` **Rien à allowlister.** Vérifié sur pièces : `no_art_patterns_test.go` surveille
+  `ON CONFLICT DO UPDATE`, `INSERT OR REPLACE` et le bulk `UPDATE … FROM (VALUES …)` — aucun motif
+  `ALTER` — et son en-tête dit explicitement que `match_registry` n'est PAS dans
+  `tablesProtegees`. L'étape n'ajoute aucun motif surveillé ; la suite `internal/sync` (qui porte
+  ce garde-rail) est verte.
+
+**Gate G3** : `go test ./internal/games/halo_infinite/migrations/... ./internal/migration/... ./internal/archlint/... -timeout 30m`
+→ **0**, 3 paquets `ok` ; `go test -tags=integration -p 1 ./internal/persist/... ./internal/migration/... -timeout 30m`
+→ **0**, 2 paquets `ok` (persist 48 s). Garde-rail ART rejoué séparément : `go test ./internal/sync/ -run ART…`
+→ **0**.
