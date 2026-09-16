@@ -43,6 +43,8 @@ export const queryKeys = {
   settings: ['settings'] as const,
   // Groupes/familles (accès mutuel) — gestion end-user
   groups: ['groups'] as const,
+  // Amis d'un joueur (liste par profil, pas un réglage d'instance).
+  playerFriends: (playerSlug: string) => ['player-friends', playerSlug] as const,
 
   // Par joueur (titleSlug en 2e segment — invariant structurel, cf. en-tête).
   // Le titre courant scope la clé (même motif que `home` ci-dessous) : la
@@ -58,6 +60,9 @@ export const queryKeys = {
     ['filters-preview', playerSlug, titleSlug, filterHash] as const,
 
   // Carrière (Slice 2)
+  // Prefixe large : tout le domaine Carriere d un joueur (invalidation apres une
+  // ecriture de sa liste d amis : les rencontres « hors amis » sont filtrees serveur).
+  careerAll: (playerSlug: string) => ['career', playerSlug] as const,
   career: (playerSlug: string, titleSlug: string) => ['career', playerSlug, titleSlug] as const,
   careerEncounters: (playerSlug: string, titleSlug: string) =>
     ['career', playerSlug, titleSlug, 'encounters'] as const,
@@ -145,6 +150,9 @@ export const queryKeys = {
   // X-LevelUp-Locale à l'instant du fetch. Sans la locale dans la clé, un switch
   // de langue laissait le cache (y compris le fetch background prefetch/poll)
   // baké dans l'ancienne langue — invalidation naturelle à la bascule.
+  // Prefixe large : toutes les locales et tous les titres de l accueil d un joueur
+  // (tuiles escouade filtrees serveur sur la liste d amis).
+  homeAll: (playerSlug: string) => ['home', playerSlug] as const,
   home: (playerSlug: string, titleSlug: string, locale: string) =>
     ['home', playerSlug, titleSlug, locale] as const,
 
@@ -359,6 +367,7 @@ export const queryKeys = {
   adminTitleDiagnostic: (slug: string) => ['admin', 'titles', slug, 'diagnostic'] as const,
   // Admin — Gestion des utilisateurs (ex-adminKeys, L5)
   adminUsers: ['admin', 'users'] as const,
+  adminInvites: ['admin', 'invites'] as const,
   // Admin — Diagnostic apparence Spartan ID (volet 2). MUTATION à la demande
   // (aucune query auto/refetch au focus) : clé stable pour l'identité/devtools.
   adminAppearanceDiagMutation: ['admin', 'diag', 'appearance'] as const,

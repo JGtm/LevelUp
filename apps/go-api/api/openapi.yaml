@@ -3318,6 +3318,55 @@ paths:
       summary: Résoudre le contexte de filtres
       tags:
         - filters
+  /players/{player_slug}/friends:
+    get:
+      operationId: getPlayerFriends
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerFriends'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Friends list of the player (readable by the owner, a group co-member or an admin)
+      tags:
+        - friends
+    put:
+      operationId: putPlayerFriends
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerFriends'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Replaces the player friends list (direct owner or admin only)
+      tags:
+        - friends
   /players/{player_slug}/matches/{match_id}:
     get:
       description: |
@@ -15222,6 +15271,8 @@ components:
           type: string
         group_id:
           type: string
+        join_url:
+          type: string
         used_at:
           type:
             - string
@@ -20467,6 +20518,24 @@ components:
         - xuid
         - status
       type: object
+    PlayerFriends:
+      additionalProperties: false
+      properties:
+        can_edit:
+          type: boolean
+        gamertags:
+          items:
+            type: string
+          type: array
+        updated_at:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertags
+        - can_edit
+      type: object
     PlayerIdentity:
       additionalProperties: false
       properties:
@@ -24031,10 +24100,6 @@ components:
           type: boolean
         discord_webhook_url_present:
           type: boolean
-        friend_gamertags:
-          items:
-            type: string
-          type: array
         lang:
           enum:
             - fr

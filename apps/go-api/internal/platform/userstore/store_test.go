@@ -1,6 +1,7 @@
 package userstore
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -456,5 +457,45 @@ func TestFilePermissions(t *testing.T) {
 	}
 	if info.Mode().Perm()&0o002 != 0 {
 		t.Errorf("fichier world-writable : %o", info.Mode().Perm())
+	}
+}
+
+// ─── Droit de provisioning (D3, instance verrouillée) ───────────────────────
+
+func TestSetProvisionGrant_SetThenClear(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+	user, err := s.CreateFromXbox("Guest", "guest-x")
+	if err != nil {
+		t.Fatalf("CreateFromXbox: %v", err)
+	}
+	if user.ProvisionGrant != "" {
+		t.Errorf("provision_grant à la création = %q, want vide", user.ProvisionGrant)
+	}
+
+	if err := s.SetProvisionGrant(user.Username, "INVITE1"); err != nil {
+		t.Fatalf("SetProvisionGrant: %v", err)
+	}
+	got, err := s.GetByXUID("guest-x")
+	if err != nil {
+		t.Fatalf("GetByXUID: %v", err)
+	}
+	if got.ProvisionGrant != "INVITE1" {
+		t.Errorf("provision_grant = %q, want INVITE1", got.ProvisionGrant)
+	}
+
+	// L'effacement est ce qui rend le droit non rejouable.
+	if err := s.SetProvisionGrant(user.Username, ""); err != nil {
+		t.Fatalf("SetProvisionGrant(vide): %v", err)
+	}
+	got, _ = s.GetByXUID("guest-x")
+	if got.ProvisionGrant != "" {
+		t.Errorf("provision_grant après effacement = %q, want vide", got.ProvisionGrant)
+	}
+}
+
+func TestSetProvisionGrant_UnknownUser(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+	if err := s.SetProvisionGrant("fantome", "INVITE1"); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("= %v, want ErrUserNotFound", err)
 	}
 }

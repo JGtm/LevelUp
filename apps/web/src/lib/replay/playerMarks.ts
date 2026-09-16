@@ -7,7 +7,7 @@
  *                défaut (décision 13 du plan « frise, point de vue », 2026-09-06) — pas le
  *                compte connecté. Le disque cerclé de la carte dit « celui qu'on regarde » ;
  *                le jour où l'on regarde par les yeux d'un autre, il le suit ;
- *   - `friend` : un gamertag de `settings.friend_gamertags` du COMPTE CONNECTÉ, apparié
+ *   - `friend` : un gamertag de la liste d'amis du joueur consulté, apparié
  *                par la même clé que les charts de la Match View (`normalizeGamertagKey`).
  * Celui qu'on regarde n'est jamais marqué ami de lui-même. Un ami ADVERSE est marqué
  * aussi : la marque dit l'identité, pas le camp — le camp, c'est la couleur.
