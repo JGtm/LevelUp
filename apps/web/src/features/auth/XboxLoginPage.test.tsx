@@ -62,6 +62,19 @@ describe('XboxLoginPage', () => {
     })
   })
 
+  it('copie le user_code via le bouton icône', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    renderWithProviders(<XboxLoginPage />)
+    const button = await screen.findByRole('button', { name: /copier le code|copy code/i })
+    expect(button).not.toHaveTextContent(/\S/)
+    fireEvent.click(button)
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('ABCD-1234')
+      expect(screen.getByRole('button', { name: /code copié|code copied/i })).toBeInTheDocument()
+    })
+  })
+
   it('affiche le lien microsoft.com/link', async () => {
     renderWithProviders(<XboxLoginPage />)
     await waitFor(() => {
