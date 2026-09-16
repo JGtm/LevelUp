@@ -136,14 +136,14 @@ func (ap *appariement) apparierInstant(base, film []KillEventInsert, b, f []int)
 }
 
 // repliSurLInstantClassique : LE SEUL CAS OU L INSTANT SEUL APPARIE ENCORE — une mort de credit et
-// une ligne de film, EN TOUT, a cet instant, dont l une au moins n a pas de victime resolue.
+// une ligne de film, EN TOUT, a cet instant.
 //
 // ─── POURQUOI IL SE COMPTE SUR LE TOTAL DE L INSTANT, ET JAMAIS SUR LES RESIDUS ────────────
 //
 // La premiere version appariait « ce qu il reste des deux cotes quand il n en reste qu un de
 // chaque » : un repli PAR ELIMINATION. Il apparie alors deux lignes qui n ont AUCUNE identite
-// commune, et la revue adversariale du lot (2026-09-16, deux relecteurs, sondes rejouees) a
-// montre qu il suffit d un instant a deux morts de credit pour qu il se trompe :
+// commune, et la revue adversariale du lot (2026-09-16, ronde 1, deux relecteurs) a montre qu il
+// suffit d un instant a deux morts de credit pour qu il se trompe :
 //
 //	credit [A, B] + film [A, A]    A s apparie, le second A n est ni apparie ni « autre mort »
 //	                               (A == A), et l elimination l apparie a B -> victime
@@ -156,21 +156,47 @@ func (ap *appariement) apparierInstant(base, film []KillEventInsert, b, f []int)
 // Des que l instant porte une multiplicite d un cote, un residu que les passes 1 et 2 n ont pas
 // tranche est donc REFUSE : c est « refuser plutot que tirer au sort », applique a la lettre.
 //
-// LES DEUX VICTIMES RESOLUES NE PASSENT JAMAIS ICI, et le test le dit explicitement plutot que de
-// s en remettre aux passes precedentes : egales, la passe 1 les a appariees ; differentes, la
-// passe 2 en a fait une orpheline d instant partage (c est le temoin `9f9b19e5@63757`).
+// AU MOINS UNE VICTIME EST ABSENTE QUAND ON ARRIVE ICI, et ce sont les passes 1 et 2 qui le
+// garantissent : deux victimes resolues EGALES ont ete appariees par la passe 1 ; deux victimes
+// resolues DIFFERENTES ont fait une orpheline d instant partage en passe 2, qui marque `prisF`
+// (c est le temoin `9f9b19e5@63757`). Le garde explicite qui le re-testait ici etait donc
+// inatteignable — mutation `if false` : 18 tests verts — et la regle 7 (0 code mort) l a fait
+// retirer a la ronde 2. L invariant reste EPINGLE, mais la ou il est atteignable : le controle de
+// victime de [verifierConcordance].
+//
+// ─── LE TUEUR DIVERGENT NE FAIT PAS TOMBER UNE PAIRE DE REPLI (decision pilote, ronde 2) ───
+//
+// Sans victime resolue d un cote, la paire de repli ne repose que sur l instant. Deux tueurs
+// RESOLUS et differents y disent alors la chose la plus probable : ce ne sont pas deux lectures
+// de la meme mort, ce sont DEUX MORTS a la meme milliseconde dont le film n a pas resolu la
+// victime — la variante « victime de film non resolue » du temoin, et il y a 631 victimes dans ce
+// cas au parc. La paire est donc REFUSEE (rien d enrichi, rien d ajoute, instant compte ambigu)
+// et non rendue en erreur : refuser un enrichissement coute une arme, rendre l erreur coute LE
+// FILM ENTIER.
+//
+// L erreur `tueur divergent` reste entiere pour une paire de PASSE 1 — meme victime au meme
+// instant, donc la meme mort : deux tueurs differents y sont une vraie contradiction entre les
+// deux cotes, et elle doit tomber bruyamment (cf. [verifierConcordance]).
 func (ap *appariement) repliSurLInstantClassique(
 	base, film []KillEventInsert, b, f []int, prisB, prisF []bool,
 ) bool {
 	if len(b) != 1 || len(f) != 1 || prisB[0] || prisF[0] {
 		return false
 	}
-	if base[b[0]].VictimXUID != "" && film[f[0]].VictimXUID != "" {
+	if tueursResolusDifferents(base[b[0]], film[f[0]]) {
 		return false
 	}
 	ap.filmPourCredit[b[0]] = f[0]
 	ap.verdict[f[0]] = filmApparie
 	return true
+}
+
+// tueursResolusDifferents : les deux cotes nomment un tueur, et ce n est pas le meme. L ABSENCE
+// n en est pas une : le film ne resout pas toujours le tueur (754 lignes au parc), et une absence
+// n a jamais rien contredit.
+func tueursResolusDifferents(credit, film KillEventInsert) bool {
+	return credit.FeedKillerXUID != "" && film.FeedKillerXUID != "" &&
+		credit.FeedKillerXUID != film.FeedKillerXUID
 }
 
 // seuleMortDeLaVictime : l indice, DANS `b`, de la seule mort de credit libre dont la victime est
