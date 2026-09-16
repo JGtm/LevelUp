@@ -118,8 +118,7 @@ func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
 	}
-	restore := sc.installHooks()
-	defer restore()
+	sc.gram.obs = sc.installHooks()
 
 	walkDeltaBipedRecords(fc, sc.chunks, sc.slots, sc.gram.lay, func(r deltaBipedRecord) {
 		sc.st.Records++
@@ -258,27 +257,21 @@ func archIndexOf(arch Archetype, names ...string) int {
 }
 
 // installHooks branche les quatre sondes de déser et rend leur restauration.
-func (sc *invDeltaScanner) installHooks() func() {
-	prev22, prev47 := observateur.GrenadeCountsHook, observateur.GrenadeSetHook
-	prevAmmo, prevRounds := observateur.WeaponAmmoHook, observateur.WeaponRoundsHook
-	SetGrenadeCountsHook(func(c uint64, v []uint64) {
+func (sc *invDeltaScanner) installHooks() *Observation {
+	obs := NouvelleObservation()
+	obs.GrenadeCountsHook = func(c uint64, v []uint64) {
 		sc.last22c, sc.last22v, sc.got22 = c, v, true
-	})
-	SetGrenadeSetHook(func(mask uint32, sel int) {
+	}
+	obs.GrenadeSetHook = func(mask uint32, sel int) {
 		sc.last47mask, sc.last47sel, sc.got47 = mask, sel, true
-	})
-	SetWeaponAmmoHook(func(hasMag bool, mag uint32, hasFrac bool, fracQ uint32) {
+	}
+	obs.WeaponAmmoHook = func(hasMag bool, mag uint32, hasFrac bool, fracQ uint32) {
 		sc.lastAmmo = invDeltaAmmoAcc{
 			Read: true, HasMag: hasMag, Mag: mag, HasFrac: hasFrac, FracQ: fracQ,
 		}
-	})
-	SetWeaponRoundsHook(func(rounds uint32) { sc.lastRounds, sc.lastRoundsRead = rounds, true })
-	return func() {
-		SetGrenadeCountsHook(prev22)
-		SetGrenadeSetHook(prev47)
-		SetWeaponAmmoHook(prevAmmo)
-		SetWeaponRoundsHook(prevRounds)
 	}
+	obs.WeaponRoundsHook = func(rounds uint32) { sc.lastRounds, sc.lastRoundsRead = rounds, true }
+	return obs
 }
 
 // (L'ancrage des records d'un paquet vivait ici, en copie de huit autres. Il est passé dans

@@ -88,8 +88,8 @@ func e191cFermetureBobine(t *testing.T, court string) {
 	ligne := ""
 	for _, l := range e191cLeads {
 		for _, i := range e191cIndexes {
-			p := profilDInstrument
-			p.MPP = MPPWidths{Lead: l, Index: i}
+			p := contexteDInstrument()
+			p.Profil.MPP = MPPWidths{Lead: l, Index: i}
 			n := 0
 			for _, b := range bornes {
 				tr := WalkKeyframeFullState(b.Pay, b.Bit, reg, p)

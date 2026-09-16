@@ -145,10 +145,11 @@ func attScanI10(dir string) ([]attI10, attStat, error) {
 	// un record re-décodé (réparation de composant non porté), et c'est la DERNIÈRE lecture
 	// qui vaut — celle dont l'alignement a été retenu.
 	vues := map[int]filmdec.ObjectParentState{}
-	filmdec.SetObjectParentStateHook(func(s filmdec.ObjectParentState) { vues[s.StartBit] = s })
-	defer filmdec.SetObjectParentStateHook(nil)
+	obs := filmdec.NouvelleObservation()
+	obs.ObjectParentStateHook = func(s filmdec.ObjectParentState) { vues[s.StartBit] = s }
 
 	cfg := filmdec.DefaultFrameConfig()
+	cfg.Obs = obs
 	w := filmdec.NewWorld(reg)
 	var out []attI10
 	n := filmdec.CountFilmChunks(dir)

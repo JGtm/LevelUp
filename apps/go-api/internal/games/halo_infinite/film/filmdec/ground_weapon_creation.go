@@ -98,9 +98,10 @@ func ScanGroundWeaponCreationsForBand(
 	}
 
 	var cur equipCreationRead
-	defer installCreationHooks(&cur)()
+	obs := installCreationHooks(&cur)
 
 	w := equipCreationWalk{
+		obs:   obs,
 		prof:  fc.ProfilDeBalayage(),
 		comps: len(arch.Components), wr: wr, band: band, cur: &cur,
 		ti: GroundWeaponTypeIndex, deser: consumeDefaultStateTI42, ammoArch: &arch,

@@ -97,7 +97,7 @@ func TestBuildProfileRefuseUnFormatInconnu(t *testing.T) {
 func TestBuildProfileMPPMutationRougit(t *testing.T) {
 	rel := LockProcessDecode()
 	defer rel()
-	bal := ProfilDeBalayageParDefaut()
+	bal := ContexteParDefaut()
 
 	dir := filepath.Join("..", "replay", "testdata", "minifilm_fb1a1a72")
 	film, err := filmsource.LoadDir(dir, nil)
@@ -120,7 +120,7 @@ func TestBuildProfileMPPMutationRougit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("profil HI_1_13_0 : %v", err)
 	}
-	bal.MPP = prof.MPP
+	bal.Profil.MPP = prof.MPP
 	juste, _, _ := e191cN2Part(ancres, 37, bal)
 	if juste < 0.95 {
 		t.Fatalf("au decoupage du profil (%s), `n2` n'est constant que sur %.3f des records — "+
@@ -132,7 +132,7 @@ func TestBuildProfileMPPMutationRougit(t *testing.T) {
 		{Lead: prof.MPP.Lead, Index: prof.MPP.Index - 1},
 		{Lead: prof.MPP.Lead, Index: prof.MPP.Index + 1},
 	} {
-		bal.MPP = m
+		bal.Profil.MPP = m
 		part, _, _ := e191cN2Part(ancres, 37, bal)
 		if part >= juste {
 			t.Errorf("decoupage %s : `n2` constant sur %.3f des records, soit autant que le profil "+

@@ -305,7 +305,7 @@ func ti13VerifiePort(t *testing.T, v ti13VecteurFige) {
 		champ, vals, vu = f, append([]uint64(nil), values...), vu+1
 	})
 
-	br := NewBitReader(ti13Octets(v.raw))
+	br := lecteurDInstrument(ti13Octets(v.raw))
 	champAttendu := ManagedPropertyPerPlayer
 	if v.modeA {
 		champAttendu = ManagedPropertyScalar
@@ -372,12 +372,12 @@ func TestTi13HookConsommeLesMemesBitsSansHook(t *testing.T) {
 		octets := []byte{byte(tag << 4), 0xA5, 0x3C, 0xF0, 0x0F, 0x5A}
 		for _, c := range cas {
 			SetManagedPropertyHook(nil)
-			brSans := NewBitReader(octets)
+			brSans := lecteurDInstrument(octets)
 			c.deser(brSans)
 			sans := brSans.BitPos()
 
 			SetManagedPropertyHook(func(ManagedPropertyField, []uint64) {})
-			brAvec := NewBitReader(octets)
+			brAvec := lecteurDInstrument(octets)
 			c.deser(brAvec)
 			avec := brAvec.BitPos()
 

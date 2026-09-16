@@ -211,7 +211,7 @@ func i56dWalk(pay []byte, i0, total int, idx []int, env i56dEnv) int {
 		if name == "" {
 			return flag1
 		}
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), env.arch.Level(id))
 		if !ported || br.BitPos() > total {

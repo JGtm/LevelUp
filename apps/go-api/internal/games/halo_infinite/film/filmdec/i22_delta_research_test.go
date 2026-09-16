@@ -248,7 +248,7 @@ func walkCursorTo(pay []byte, i0, total int, idx []int, lay I0Layout, arch Arche
 		if id == target {
 			return at, true
 		}
-		br := NewBitReader(pay)
+		br := lecteurDInstrument(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), arch.Level(id))
 		if !ported || br.BitPos() > total {

@@ -193,7 +193,20 @@ import (
 // D OBSERVATION : elle rejoint [filmdec.Observation]. `lastRepVersion` et son accesseur
 // exporte `LastRepVersion()` sont SUPPRIMES — aucun appelant dans le depot, tests compris
 // (regle 7). Bilan net : -7 = 23, dont UNE SEULE encore ecrite : `observateur`.
-const filmdecVarsGeles = 23
+//
+// RESSERRE A 22 LE 2026-09-17 (lot 2.3, famille « l observateur ») — ET LE COMPTE QUI FAIT FOI
+// EST L AUTRE : **ZERO variable de paquet ECRITE**. `observateur` etait la derniere ; les
+// vingt-huit reglages publics (`SetXxxHook`) qui l ecrivaient ont disparu avec elle. Chaque
+// balayage construit desormais SON observateur ([filmdec.NouvelleObservation]) et le pose sur
+// ses lecteurs avec son profil ([filmdec.ContexteDeLecture]).
+//
+// LES VINGT-DEUX QUI RESTENT NE SONT ECRITES PAR PERSONNE : quatre erreurs sentinelles (Go n a
+// pas de `const` d erreur), seize tables de grammaire deguisees en `var` (Go n a pas de `const`
+// composite), le verrou de processus — qui part au pas suivant de ce lot — et le dedoublonneur
+// d avertissement de registre (`sync.Map`, qu aucun decodage ne lit). C est ce que le ratchet
+// mesure desormais, et c est le critere que `profil_herite.go` et `observateur.go` avaient
+// ecrit : « `filmdecVarsGeles` tombe a 0 variable mutable ».
+const filmdecVarsGeles = 22
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

@@ -446,7 +446,11 @@
 #               La CAPTURE DE POSITION (six variables decrivant UN record en cours) devient
 #               `captureDePosition`, un champ du LECTEUR ; l histogramme des index absolus
 #               rejoint `Observation` ; `lastRepVersion` et `LastRepVersion()` sont supprimes
-#               (aucun appelant). Ratchet 43 -> 23, dont UNE seule encore ecrite.
+#               (aucun appelant). L OBSERVATEUR part en dernier, avec les VINGT-HUIT reglages
+#               publics qui l ecrivaient : chaque balayage construit le sien et le pose sur ses
+#               lecteurs AVEC son profil, par `ContexteDeLecture{Profil, Obs}`. Quatre
+#               accesseurs de compteurs de processus sans appelant sont supprimes.
+#               Ratchet 43 -> 22, et ZERO variable de paquet ECRITE.
 #               AUCUN OCTET N EST LU AUTREMENT.
 #               `KillSourceDecoderRev` ne bouge PAS (golden refige) ; `SchemaVersion` reste 60.
-grammar-2026-09-15.27	27eef947eafb123f3db6462692d2af9bb1755affc42c9c70f38b6b651227acb0
+grammar-2026-09-15.27	27dd338c5c10254ad393ce3e50cb5103b120659af604bc1aba3fc5971f9cf5b3

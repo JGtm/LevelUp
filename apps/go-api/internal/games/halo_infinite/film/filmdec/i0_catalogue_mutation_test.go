@@ -125,7 +125,7 @@ func lireSousDecoupage(lu I0Layout, rng Vec3Range) []BipedPosition {
 	opt := DefaultScanFilmOptions()
 	opt.WorldRange = &rng
 	return ScanBipedRecords(payloadTemoin(), NewSlotBand(map[uint32]bool{slotTemoin: true}), lu, opt,
-		ProfilDeBalayageParDefaut())
+		ContexteParDefaut())
 }
 
 // TestI0CatalogueEstLaSourceDuDecoupage : l'entrée de catalogue de Live Fire dit EXACTEMENT ce

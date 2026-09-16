@@ -84,9 +84,9 @@ func consumeDefaultStateTI42(br *BitReader) {
 	br.ReadBits(7)                // 4. FUN_1406d84b4 R(7) -> dst+0x64
 	consumeWeaponMagazineList(br) // 5. FUN_1407f2494 (deja porte, cf. components_object.go)
 	if !br.ReadBit() {            // 6. ECS_ReadEntityRefIndex5 = consumeGate0R(br, 5) : porte INVERSEE
-		publishEquipmentCreation(EquipCreationRef, br.ReadBits(5), true)
+		br.obs.publishEquipmentCreation(EquipCreationRef, br.ReadBits(5), true)
 	} else {
-		publishEquipmentCreation(EquipCreationRef, 0, false)
+		br.obs.publishEquipmentCreation(EquipCreationRef, 0, false)
 	}
 }
 

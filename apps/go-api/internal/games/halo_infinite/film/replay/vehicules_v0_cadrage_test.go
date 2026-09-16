@@ -374,7 +374,7 @@ func v0ScanBipedeSurBande(dir string, bande map[uint32]bool, lay filmdec.I0Layou
 			if pk.Type != filmdec.PacketTypeDelta {
 				continue
 			}
-			for _, r := range filmdec.ScanBipedRecords(pk.Payload(data), filmdec.NewSlotBand(bande), lay, opt, filmdec.ProfilDeBalayageParDefaut()) {
+			for _, r := range filmdec.ScanBipedRecords(pk.Payload(data), filmdec.NewSlotBand(bande), lay, opt, filmdec.ContexteParDefaut()) {
 				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, r)
 			}

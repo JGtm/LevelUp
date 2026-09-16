@@ -91,7 +91,7 @@ func vgCollecteKF(dir string, reg *filmdec.Registry, cibles map[uint32]bool) ([]
 // vgMesureDeterministe republie le rendement du marcheur qui n'enchaine PAS par balayage. Il ne
 // sert a rien choisir : il documente si la grammaire tient de bout en bout sur ce film.
 func vgMesureDeterministe(st *vgKFStat, pay []byte, reg *filmdec.Registry) {
-	recs, stop := filmdec.WalkKeyframeRecords(pay, reg, filmdec.ProfilDeBalayageParDefaut())
+	recs, stop := filmdec.WalkKeyframeRecords(pay, reg, filmdec.ContexteParDefaut())
 	st.detArrets[stop.String()]++
 	st.detRecords += len(recs)
 	for _, r := range recs {
@@ -138,7 +138,7 @@ func vgTraverseKF(st *vgKFStat, pay []byte, reg *filmdec.Registry, r filmdec.Key
 	borne int, tMS int64,
 ) (vfRecord, bool) {
 	tr, end := filmdec.TraverseKeyframeBipedAt(pay, r.Bit+64, reg, uint32(r.TI),
-		filmdec.ProfilDeBalayageParDefaut())
+		filmdec.ContexteParDefaut())
 	if end > borne {
 		st.deborde++
 		return vfRecord{}, false

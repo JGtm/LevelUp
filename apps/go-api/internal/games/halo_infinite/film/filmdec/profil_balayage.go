@@ -201,3 +201,25 @@ func (g GrammaireBalayage) largeurBouchon(nom string) (int, bool) {
 	w, ok := g.LargeursBouchon[nom]
 	return w, ok
 }
+
+// ContexteDeLecture : CE QU UN LECTEUR DE BITS PORTE, en un seul objet (lot 2.3).
+//
+// DEUX CHAMPS, ET LEUR NATURE EST OPPOSEE — c est pour cela qu ils restent deux :
+//
+//	Profil  DECIDE des largeurs. Le fausser change les bits lus.
+//	Obs     ne fait que RECEVOIR ce que le deserialiseur a deja lu. Il ne change AUCUNE
+//	        consommation de bits ; un champ qui en changerait une serait une valeur de profil
+//	        mal rangee (cf. l en-tete de `observateur.go`).
+//
+// ILS VOYAGENT ENSEMBLE PARCE QU ILS VIENNENT DU MEME BALAYAGE, et les faire voyager separement
+// laissait un appelant en oublier un : c est exactement ce qui est arrive aux largeurs de carte
+// avant le lot 2.3, quand un instrument oubliait de les installer.
+type ContexteDeLecture struct {
+	Profil ProfilDeBalayage
+	Obs    *Observation
+}
+
+// ContexteParDefaut rend l INVARIANT : le profil par defaut, et personne qui observe.
+func ContexteParDefaut() ContexteDeLecture {
+	return ContexteDeLecture{Profil: ProfilDeBalayageParDefaut()}
+}

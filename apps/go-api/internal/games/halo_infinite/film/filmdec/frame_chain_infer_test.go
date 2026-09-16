@@ -72,7 +72,7 @@ func TestChainImmediateResolvesUnboundThenBound(t *testing.T) {
 	bw.deltaEmpty(50)  // hard-bound successor -> confirms
 	bw.end()
 
-	ResetChainStats()
+	emptyCfg.Obs = NouvelleObservation()
 	withChain(true, func() {
 		recs, inferred := DecodeFrameInfer(bw.buf, w, emptyCfg)
 		if inferred != 1 {
@@ -105,7 +105,7 @@ func TestChainNoFalseBindWhenUnconfirmed(t *testing.T) {
 		bw.bit(1)
 	}
 
-	ResetChainStats()
+	emptyCfg.Obs = NouvelleObservation()
 	withChain(true, func() {
 		recs, inferred := DecodeFrameInfer(bw.buf, w, emptyCfg)
 		if inferred != 0 {
@@ -131,7 +131,7 @@ func TestChainFlushEndConfirms(t *testing.T) {
 		bw.bit(0)
 	}
 
-	ResetChainStats()
+	emptyCfg.Obs = NouvelleObservation()
 	withChain(true, func() {
 		_, inferred := DecodeFrameInfer(bw.buf, w, emptyCfg)
 		if inferred != 1 {

@@ -243,7 +243,7 @@ func e191bAccumulerPayload(b *e191bBobine, pay []byte, reg *Registry) {
 		if borne.TI != e191bTI {
 			continue
 		}
-		tr := WalkKeyframeFullState(pay, borne.Bit, reg, profilDInstrument)
+		tr := WalkKeyframeFullState(pay, borne.Bit, reg, contexteDInstrument())
 		b.Bornes++
 		if tr.DesyncAt >= 0 {
 			b.Desync++

@@ -47,7 +47,7 @@ func bitsDe(bits string, octets int) []byte {
 // consommationI0 rend le nombre de bits que le deserialiseur d i0 consomme sur `buf`, sous le
 // profil `mv`.
 func consommationI0(mv MovementProfile, buf []byte) int {
-	br := NewBitReader(buf)
+	br := lecteurDInstrument(buf)
 	br.poserMouvement(mv)
 	consumeObjectPositionDynamicPrecisionD(br, br.traversal())
 	return br.BitPos()
@@ -156,7 +156,7 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 		precedent := observateur.PosCaptureHook
 		observateur.PosCaptureHook = func(s PositionSample) { vu = s.Vec }
 		defer func() { observateur.PosCaptureHook = precedent }()
-		br := NewBitReader(buf)
+		br := lecteurDInstrument(buf)
 		br.poserMouvement(mv)
 		consumeObjectPositionDynamicPrecisionD(br, br.traversal())
 		return vu
@@ -209,7 +209,7 @@ func TestProfilDeMobiliteChangeLaConsommationDeBits(t *testing.T) {
 	consommation := func(extra int) int {
 		mv := ResolveProfile(nil, nil).Movement()
 		mv.MobilityActionExtraBits = extra
-		br := NewBitReader(flux)
+		br := lecteurDInstrument(flux)
 		// LE HARNAIS EST DANS LE PROFIL DU LECTEUR (lot 2.3) : eteindre le portage du corps
 		// d i54 ne touche que CE balayage.
 		p := br.Profil()

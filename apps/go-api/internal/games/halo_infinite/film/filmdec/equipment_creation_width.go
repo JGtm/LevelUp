@@ -255,10 +255,10 @@ func CalibrateMPPWidthsOf(
 	}
 	defer fc.PoserMPP(fc.ProfilDeBalayage().MPP)
 	var cur equipCreationRead
-	defer installCreationHooks(&cur)()
+	obs := installCreationHooks(&cur)
 
 	pr := mppCalibProbe{
-		walk:  equipCreationWalk{prof: fc.ProfilDeBalayage(), comps: len(arch.Components), wr: wr, band: band, cur: &cur},
+		walk:  equipCreationWalk{obs: obs, prof: fc.ProfilDeBalayage(), comps: len(arch.Components), wr: wr, band: band, cur: &cur},
 		spans: spans,
 		eps:   EquipmentPosEps(wr),
 		cal:   &cal,

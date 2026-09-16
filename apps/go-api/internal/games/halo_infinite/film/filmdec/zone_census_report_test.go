@@ -251,7 +251,7 @@ func zcReportKeyframeWalk(t *testing.T, c zcCensus, reg *Registry, out, short st
 				continue
 			}
 			tables++
-			recs, stop := WalkKeyframeRecords(pk.Payload(data), reg, ProfilDeBalayageParDefaut())
+			recs, stop := WalkKeyframeRecords(pk.Payload(data), reg, ContexteParDefaut())
 			stops[stop.String()]++
 			total += len(recs)
 			for _, r := range recs {

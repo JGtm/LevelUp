@@ -166,16 +166,11 @@ func (f ObjectiveField) String() string {
 	return champInconnu
 }
 
-// SetObjectiveHook installe (ou retire, avec nil) la sonde des composants de ti=11.
-//
-// UN HOOK SEPARE de ceux de ti=10, ti=12 et ti=13, pour la meme raison qui les separait entre
-// eux : les archetypes sont distincts et leurs slots disjoints.
-func SetObjectiveHook(h func(f ObjectiveField, values []uint64)) { observateur.ObjectiveHook = h }
-
-func publishObjective(f ObjectiveField, values ...uint64) {
-	if observateur.ObjectiveHook != nil {
-		observateur.ObjectiveHook(f, values)
+func (o *Observation) publishObjective(f ObjectiveField, values ...uint64) {
+	if o == nil || o.ObjectiveHook == nil {
+		return
 	}
+	o.ObjectiveHook(f, values)
 }
 
 // consumeObjectiveTimers (i0) — FUN_142edbac8 : boucle sur huit octets par pas de quatre, donc
@@ -186,7 +181,7 @@ func consumeObjectiveTimers(br *BitReader) {
 	for i := 0; i < objectiveTimerCount; i++ {
 		vals = append(vals, br.ReadBits(objectiveTimerBits))
 	}
-	publishObjective(ObjectiveFieldTimers, vals...)
+	br.obs.publishObjective(ObjectiveFieldTimers, vals...)
 }
 
 // consumeObjectiveColor (i1) — FUN_142edb548 : quatre canaux quantifies sur huit bits
@@ -202,13 +197,13 @@ func consumeObjectiveColor(br *BitReader) {
 // l'objet physique de l'objectif (le drapeau, le crane, la bombe) : la cle qui relierait la jauge
 // a une entite du monde.
 func consumeObjectiveObjectReference(br *BitReader) {
-	publishObjective(ObjectiveFieldObjectReference, br.ReadBits(objectiveHandleBits))
+	br.obs.publishObjective(ObjectiveFieldObjectReference, br.ReadBits(objectiveHandleBits))
 }
 
 // consumeObjectiveType (i5) — FUN_142edbb00 -> FUN_1407edaf4 : R(32) plat, un enumere que le jeu
 // nomme « objective-type ».
 func consumeObjectiveType(br *BitReader) {
-	publishObjective(ObjectiveFieldType, br.ReadBits(objectiveTypeBits))
+	br.obs.publishObjective(ObjectiveFieldType, br.ReadBits(objectiveTypeBits))
 }
 
 // consumeObjectiveBool porte les quatre booleens plats de l'archetype : i6 `enabled`,
@@ -225,20 +220,20 @@ func consumeObjectiveMessageType(br *BitReader) { br.ReadBits(objectiveMessageTy
 
 // consumeObjectiveProgress (i12) — FUN_142edb8c0 : R(32) plat, sans porte. LA JAUGE.
 func consumeObjectiveProgress(br *BitReader) {
-	publishObjective(ObjectiveFieldProgress, br.ReadBits(objectiveProgressBits))
+	br.obs.publishObjective(ObjectiveFieldProgress, br.ReadBits(objectiveProgressBits))
 }
 
 // consumeObjectiveRequiredProgress (i13) — FUN_142edb960 : R(32) plat. LE SEUIL. Avec i12 il
 // donne la FRACTION de capture ; seul, il ne dit rien.
 func consumeObjectiveRequiredProgress(br *BitReader) {
-	publishObjective(ObjectiveFieldRequiredProgress, br.ReadBits(objectiveProgressBits))
+	br.obs.publishObjective(ObjectiveFieldRequiredProgress, br.ReadBits(objectiveProgressBits))
 }
 
 // consumeObjectiveState (i14) — FUN_142edba10 -> FUN_1424d121c : R(3) plat. L'etat vivant de
 // l'objectif (huit valeurs possibles) ; leur semantique n'est PAS etablie et n'est pas devinee
 // ici.
 func consumeObjectiveState(br *BitReader) {
-	publishObjective(ObjectiveFieldState, br.ReadBits(objectiveStateBits))
+	br.obs.publishObjective(ObjectiveFieldState, br.ReadBits(objectiveStateBits))
 }
 
 // consumeObjectiveEntityRef porte i15 `parent-objective` (FUN_142edb780) et les seize instances

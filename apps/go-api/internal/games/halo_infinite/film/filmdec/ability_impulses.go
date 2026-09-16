@@ -143,13 +143,12 @@ func ScanAbilityImpulses(fc *FilmContext) ([]AbilityImpulse, AbilityImpulseStats
 
 	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit pas
 	// les bits à côté de lui (même règle que ScanFilmGrappleReads et ScanFilmAbilityRanks).
-	prev57, prev59 := observateur.SpartanAbilityHook, observateur.AbilityNonPredictedHook
-	SetSpartanAbilityHook(func(tag, _, _ uint64, _ bool) { sc.tag57, sc.got57 = tag, true })
-	SetAbilityNonPredictedHook(func(s AbilityNonPredictedState) { sc.tag59, sc.got59 = uint64(s.Tag), true })
-	defer func() {
-		SetSpartanAbilityHook(prev57)
-		SetAbilityNonPredictedHook(prev59)
-	}()
+	obs := NouvelleObservation()
+	obs.SpartanAbilityHook = func(tag, _, _ uint64, _ bool) { sc.tag57, sc.got57 = tag, true }
+	obs.AbilityNonPredictedHook = func(s AbilityNonPredictedState) {
+		sc.tag59, sc.got59 = uint64(s.Tag), true
+	}
+	sc.gram.obs = obs
 
 	walkDeltaBipedRecords(s.fc, s.chunks, s.slots, s.gram.lay, func(r deltaBipedRecord) {
 		st.Records++

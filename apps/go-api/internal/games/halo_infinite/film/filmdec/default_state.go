@@ -102,9 +102,9 @@ const bipedDefaultStateTailBits = 0
 // (bipedDefaultStateDecodeMovement) is intentionally left OFF so the returned cursor
 // is the raw i0 anchor. This is the offset a caller localises i0 at (per-biped: the
 // end varies with the record's name/ref gate bits — expected).
-func BipedDefaultStateEndBit(buf []byte, stateBit int, prof ProfilDeBalayage) int {
+func BipedDefaultStateEndBit(buf []byte, stateBit int, ctx ContexteDeLecture) int {
 	br := NewBitReader(buf)
-	br.PoserProfil(prof)
+	br.PoserContexte(ctx)
 	br.SetBitPos(stateBit)
 	consumeBipedDefaultState(br)
 	return br.BitPos()
@@ -116,9 +116,9 @@ func BipedDefaultStateEndBit(buf []byte, stateBit int, prof ProfilDeBalayage) in
 // decodes the spawn position at). It also returns the has-components gate bit and the
 // number of bits the presence mask consumed, for diagnostics. r-b (media-frame quat) is
 // closed as 0-bit on a fresh keyframe decode (bipedMediaFramePresent stays false).
-func BipedMovementI0Bit(buf []byte, stateBit int, prof ProfilDeBalayage) (i0Bit, hasComp, maskBits int) {
+func BipedMovementI0Bit(buf []byte, stateBit int, ctx ContexteDeLecture) (i0Bit, hasComp, maskBits int) {
 	br := NewBitReader(buf)
-	br.PoserProfil(prof)
+	br.PoserContexte(ctx)
 	br.SetBitPos(stateBit)
 	consumeBipedDefaultState(br) // rep (movement decode left OFF here)
 	hasComp = b2i(br.ReadBit())
@@ -320,12 +320,12 @@ func consumeBipedDefaultStateMediaFrame(br *BitReader) {
 // FUN_140cc5128 per-axis position block du chemin i0 movement (hors de ce bloc) garde sa
 // dépendance runtime (DAT_1445cc9e0 axis widths) non sourçable statiquement.
 func consumeMultiplayerPropertiesBlock(br *BitReader) {
-	publishMPP(MPPWord9, br.ReadBits(uint(br.mppWidths().Lead)), true) // FUN_141fd72c0 R(9)
-	publishMPP(MPPWord32, br.ReadBits(32), true)                       // FUN_14080d6f0 R(32)
+	br.obs.publishMPP(MPPWord9, br.ReadBits(uint(br.mppWidths().Lead)), true) // FUN_141fd72c0 R(9)
+	br.obs.publishMPP(MPPWord32, br.ReadBits(32), true)                       // FUN_14080d6f0 R(32)
 	if !br.ReadBit() {
-		publishMPP(MPPVariantName, br.ReadBits(32), true) // FUN_14080dec4 "variant-name" R(32)
+		br.obs.publishMPP(MPPVariantName, br.ReadBits(32), true) // FUN_14080dec4 "variant-name" R(32)
 	} else { // FUN_14080d7cc: DST lookup, 0 bits
-		publishMPP(MPPVariantName, 0, false)
+		br.obs.publishMPP(MPPVariantName, 0, false)
 	}
 	if br.ReadBit() { // FUN_1406cf008 gate; if set -> R(18)
 		br.ReadBits(18)
@@ -347,11 +347,11 @@ func consumeMultiplayerPropertiesBlock(br *BitReader) {
 	// `mov dword[RSP+0x20],0xe` @0x14080d2fc juste avant l'appel unique @0x14080d312 —
 	// donc bit-exact ici (précédemment modélisé à 0 bit à tort).
 	if br.ReadBit() { // FUN_1406cf008 tail gate G3 (DST+0x1c)
-		publishMPP(MPPTailName, br.ReadBits(32), true) // FUN_14080dec4 R(32) -> obj+0x24
-		consumeOpt32(br)                               // FUN_14080d69c [R(1)+opt R(32)] -> obj+0x20
-		br.ReadBits(14)                                // FUN_1406d84b4 R(0xe) -> obj+0x28 (float), largeur figée @0x14080d2fc
+		br.obs.publishMPP(MPPTailName, br.ReadBits(32), true) // FUN_14080dec4 R(32) -> obj+0x24
+		consumeOpt32(br)                                      // FUN_14080d69c [R(1)+opt R(32)] -> obj+0x20
+		br.ReadBits(14)                                       // FUN_1406d84b4 R(0xe) -> obj+0x28 (float), largeur figée @0x14080d2fc
 	} else {
-		publishMPP(MPPTailName, 0, false)
+		br.obs.publishMPP(MPPTailName, 0, false)
 	}
 }
 
@@ -393,15 +393,11 @@ func (f MPPField) String() string {
 	return "mpp-champ-inconnu"
 }
 
-// SetMultiplayerPropertiesHook installe (ou retire, avec nil) la sonde du bloc MPP.
-func SetMultiplayerPropertiesHook(h func(f MPPField, value uint64, present bool)) {
-	observateur.MppHook = h
-}
-
-func publishMPP(f MPPField, value uint64, present bool) {
-	if observateur.MppHook != nil {
-		observateur.MppHook(f, value, present)
+func (o *Observation) publishMPP(f MPPField, value uint64, present bool) {
+	if o == nil || o.MppHook == nil {
+		return
 	}
+	o.MppHook(f, value, present)
 }
 
 // consumeMppD524 ports FUN_14080d524: R(1) gate; if set R(13) (0xd).

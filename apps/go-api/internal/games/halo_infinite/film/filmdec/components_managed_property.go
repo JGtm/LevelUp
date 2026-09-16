@@ -136,19 +136,11 @@ func (f ManagedPropertyField) String() string {
 	return champInconnu
 }
 
-// SetManagedPropertyHook installe (ou retire, avec nil) la sonde des composants de ti=13.
-//
-// UN HOOK SEPARE de ceux de ti=10 et ti=12, pour la meme raison qui les separait entre eux : les
-// archetypes sont distincts, leurs slots sont disjoints, et un consommateur qui suit l'etat d'une
-// propriete n'ecoute pas les memes objets qu'un consommateur qui suit une bordure ou un marqueur.
-func SetManagedPropertyHook(h func(f ManagedPropertyField, values []uint64)) {
-	observateur.ManagedPropertyHook = h
-}
-
-func publishManagedProperty(f ManagedPropertyField, values ...uint64) {
-	if observateur.ManagedPropertyHook != nil {
-		observateur.ManagedPropertyHook(f, values)
+func (o *Observation) publishManagedProperty(f ManagedPropertyField, values ...uint64) {
+	if o == nil || o.ManagedPropertyHook == nil {
+		return
 	}
+	o.ManagedPropertyHook(f, values)
 }
 
 // consumeManagedPropertyVariant lit un variant dans le mode demande et publie (tag [, quantum]).
@@ -157,10 +149,10 @@ func consumeManagedPropertyVariant(br *BitReader, f ManagedPropertyField, modeA 
 	tag := br.ReadBits(managedPropertyTagBits)
 	n := managedPropertyPayloadBits(int(tag), modeA)
 	if n == 0 {
-		publishManagedProperty(f, tag)
+		br.obs.publishManagedProperty(f, tag)
 		return
 	}
-	publishManagedProperty(f, tag, br.ReadBits(uint(n)))
+	br.obs.publishManagedProperty(f, tag, br.ReadBits(uint(n)))
 }
 
 // consumeManagedObjectProperty (ti=13 i1) — lecteur `FUN_140ce5554` puis `FUN_140ce59bc`.

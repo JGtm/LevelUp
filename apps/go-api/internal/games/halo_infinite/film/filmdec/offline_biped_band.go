@@ -89,7 +89,7 @@ func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptio
 	if err != nil {
 		return nil, err
 	}
-	out, read := scanBipedChunks(film, chunks, band, lay, opt, fc.ProfilDeBalayage())
+	out, read := scanBipedChunks(film, chunks, band, lay, opt, fc.ContexteDeLecture())
 	if read == 0 {
 		return nil, ErrNoReadableFilmChunk
 	}
@@ -132,7 +132,7 @@ func bipedI0Layout(film *filmsource.Film, opt ScanFilmOptions) (I0Layout, error)
 // scanBipedChunks déroule le balayage sur les chunks demandés et rend les positions ainsi que
 // le nombre de chunks effectivement LUS — un film partiel est licite, un film illisible non.
 func scanBipedChunks(film *filmsource.Film, chunks []int, band SlotBand, lay I0Layout,
-	opt ScanFilmOptions, prof ProfilDeBalayage) ([]BipedPosition, int) {
+	opt ScanFilmOptions, ctx ContexteDeLecture) ([]BipedPosition, int) {
 	var out []BipedPosition
 	read := 0
 	for _, c := range chunks {
@@ -145,7 +145,7 @@ func scanBipedChunks(film *filmsource.Film, chunks []int, band SlotBand, lay I0L
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			for _, r := range ScanBipedRecords(pk.Payload(data), band, lay, opt, prof) {
+			for _, r := range ScanBipedRecords(pk.Payload(data), band, lay, opt, ctx) {
 				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, r)
 			}

@@ -468,6 +468,19 @@ package filmdec
 // SUPPRIMES : aucun appelant dans le depot, tests compris. Ratchet : 30 -> 23, dont UNE SEULE
 // encore ecrite (`observateur`).
 //
+// L OBSERVATEUR EST LA DERNIERE A PARTIR (famille 4 du lot), et avec elle les VINGT-HUIT
+// reglages publics qui l ecrivaient. Chaque balayage construit le SIEN et le pose sur ses
+// lecteurs AVEC son profil, par un porteur unique — `ContexteDeLecture{Profil, Obs}` — dont les
+// deux champs ont une nature opposee et le disent : le profil DECIDE des largeurs, l observateur
+// ne fait que RECEVOIR. Les onze helpers `publishXxx` deviennent des methodes nil-safe
+// d `Observation` ; les compteurs d issue de l inference de chaine aussi. `ChainStats`,
+// `ResetChainStats`, `ChainRepairedCount`, `InferResyncCount` — quatre accesseurs de compteurs
+// DE PROCESSUS, sans aucun appelant — sont supprimes.
+//
+// RATCHET : 23 -> 22, et surtout **ZERO variable de paquet ECRITE**. Les vingt-deux qui restent
+// ne le sont par personne : quatre erreurs sentinelles, seize tables de grammaire, le verrou de
+// processus (retire au pas suivant) et le dedoublonneur d avertissement de registre.
+//
 // `KillSourceDecoderRev` ne bouge PAS : `killsource/` change de FORME (la calibration rend un
 // profil au lieu d ecrire dans le processus, `resetGlobals` disparait) mais les lignes
 // PRODUITES sont identiques a l octet — meme espace balaye, meme critere, meme vainqueur. Son golden est regenere pour

@@ -43,13 +43,13 @@ func consumeOpt32(br *BitReader) {
 	at := br.BitPos()
 	if br.ReadBit() {
 		v := br.ReadBits(32) // FUN_14080d6f0 = R(32)
-		publishUnitRef(UnitRefRead{
+		br.obs.publishUnitRef(UnitRefRead{
 			Kind: UnitRefWord32, StartBit: at, EndBit: br.BitPos(),
 			Present: true, Val: uint32(v),
 		})
 		return
 	}
-	publishUnitRef(UnitRefRead{Kind: UnitRefWord32, StartBit: at, EndBit: br.BitPos()})
+	br.obs.publishUnitRef(UnitRefRead{Kind: UnitRefWord32, StartBit: at, EndBit: br.BitPos()})
 }
 
 // consumeID2 mirrors FUN_1406d00ec: R(1); if bit==0 R(2); else nothing.
@@ -102,13 +102,13 @@ func consume1408f0ac4Probe(br *BitReader, param3 int) (val, tail uint64, present
 	if br.ReadBit() {
 		val, tail = readVarWidthInt(br, param3) // FUN_1406d3140
 		// FUN_1406cb0cc consumes 0 bits (config check).
-		publishUnitRef(UnitRefRead{
+		br.obs.publishUnitRef(UnitRefRead{
 			Kind: UnitRefVarWidth, StartBit: at, EndBit: br.BitPos(), Present: true,
 			Val: uint32(val), Tail: uint32(tail), Probe: probe,
 		})
 		return val, tail, true
 	}
-	publishUnitRef(UnitRefRead{
+	br.obs.publishUnitRef(UnitRefRead{
 		Kind: UnitRefVarWidth, StartBit: at, EndBit: br.BitPos(), Probe: probe,
 	})
 	return 0, 0, false

@@ -246,14 +246,14 @@ func consumeDefaultStateTI37(br *BitReader) {
 	consumeVersionPrefix(br)
 	consumeDefaultStateTI36(br)
 	if !br.ReadBit() { // ECS_ReadEntityRefIndex5 = consumeGate0R(br, 5) : porte INVERSEE
-		publishEquipmentCreation(EquipCreationRef, br.ReadBits(5), true)
+		br.obs.publishEquipmentCreation(EquipCreationRef, br.ReadBits(5), true)
 	} else {
-		publishEquipmentCreation(EquipCreationRef, 0, false)
+		br.obs.publishEquipmentCreation(EquipCreationRef, 0, false)
 	}
 	if br.ReadBit() { // FUN_14080dec4 "ability-enabled-id" = consumeGateR(br, 32)
-		publishEquipmentCreation(EquipCreationAbilityID, br.ReadBits(32), true)
+		br.obs.publishEquipmentCreation(EquipCreationAbilityID, br.ReadBits(32), true)
 	} else {
-		publishEquipmentCreation(EquipCreationAbilityID, 0, false)
+		br.obs.publishEquipmentCreation(EquipCreationAbilityID, 0, false)
 	}
 }
 

@@ -153,11 +153,11 @@ func ScanAbilityCharges(fc *FilmContext) ([]AbilityCharge, AbilityChargeStats, e
 
 	// Le hook est LA grammaire : c'est le désérialiseur lui-même qui publie, on ne relit
 	// pas les bits à côté de lui (même règle que ScanFilmAbilityImpulses).
-	prev := observateur.AbilityEnergyHook
-	SetAbilityEnergyHook(func(mask uint32, ch [AbilityEnergyCharges]int) {
+	obs := NouvelleObservation()
+	obs.AbilityEnergyHook = func(mask uint32, ch [AbilityEnergyCharges]int) {
 		sc.mask, sc.ch, sc.got = mask, ch, true
-	})
-	defer SetAbilityEnergyHook(prev)
+	}
+	sc.gram.obs = obs
 
 	walkDeltaBipedRecords(s.fc, s.chunks, s.slots, s.gram.lay, func(r deltaBipedRecord) {
 		st.Records++

@@ -22,7 +22,7 @@ import "testing"
 // meme suite de bits, et c'est tout ce que le deser voit.
 func zoneVecBits(t *testing.T, b ...byte) *BitReader {
 	t.Helper()
-	return NewBitReader(b)
+	return lecteurDInstrument(b)
 }
 
 // TestNavpointRadialProgressVecteurs : ti=12 i14, R(8) sur [-1, +1].

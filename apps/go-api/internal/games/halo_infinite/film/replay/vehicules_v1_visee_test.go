@@ -103,16 +103,21 @@ func v1vScanAvecMasque(dir string, band map[uint32]bool, wr *filmdec.Vec3Range, 
 	[]filmdec.BipedPosition, int, map[int]int) {
 	total := 0
 	hist := map[int]int{}
-	filmdec.SetRecordMaskHook(func(idx []int, _ []byte, _ int) {
+	// LE CROCHET SE POSE SUR L OBSERVATEUR DU CONTEXTE (lot 2.3) : il n y a plus de sonde de
+	// processus, et c est le contexte qui porte ce qu un balayage observe.
+	fc, _, err := filmdec.ContexteDeFilm(dir)
+	if err != nil {
+		return nil, total, hist
+	}
+	fc.Observation().RecordMaskHook = func(idx []int, _ []byte, _ int) {
 		total++
 		for _, id := range idx {
 			hist[id]++
 		}
-	})
-	defer filmdec.SetRecordMaskHook(nil)
+	}
 	opt := v1aOptions(wr, false)
 	opt.CaptureDirs, opt.Layout = true, &lay
-	pos, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(band), opt)
+	pos, err := filmdec.ScanBipedPositionsForBand(fc, filmdec.NewSlotBand(band), opt)
 	if err != nil {
 		return nil, total, hist
 	}

@@ -285,7 +285,7 @@ func vfMarche(pay []byte, a vfAncre, s vfSource, st *vfStat) []vfComp {
 			return out
 		}
 		end, ported := filmdec.ConsumeComponentAt(pay, at, name, filmdec.BipedTypeIndex, s.arch.Level(id),
-			filmdec.ProfilDeBalayageParDefaut())
+			filmdec.ContexteParDefaut())
 		if !ported || end > total || end <= at {
 			st.arret[id]++
 			return out
@@ -346,10 +346,10 @@ func vfCollecte(dir string, s vfSource, pont vfPont, maxChunks int) (
 	opt.CaptureDirs = true
 	opt.QuantaOnly = true
 	var ancres []vfAncre
-	filmdec.SetRecordMaskHook(func(idx []int, _ []byte, afterI0 int) {
+	obs := filmdec.NouvelleObservation()
+	obs.RecordMaskHook = func(idx []int, _ []byte, afterI0 int) {
 		ancres = append(ancres, vfAncre{idx: append([]int(nil), idx...), afterI0: afterI0})
-	})
-	defer filmdec.SetRecordMaskHook(nil)
+	}
 
 	var out []vfRecord
 	fin := filmdec.CountFilmChunks(dir)
@@ -368,7 +368,8 @@ func vfCollecte(dir string, s vfSource, pont vfPont, maxChunks int) (
 			st.paquets++
 			pay := p.Payload(data)
 			ancres = ancres[:0]
-			recs := filmdec.ScanBipedRecords(pay, filmdec.NewSlotBand(cibles), s.lay, opt, filmdec.ProfilDeBalayageParDefaut())
+			recs := filmdec.ScanBipedRecords(pay, filmdec.NewSlotBand(cibles), s.lay, opt,
+				filmdec.ContexteDeLecture{Profil: filmdec.ProfilDeBalayageParDefaut(), Obs: obs})
 			out = append(out, vfVersePaquet(&st, recs, ancres, pay, p, s, pont)...)
 		}
 	}

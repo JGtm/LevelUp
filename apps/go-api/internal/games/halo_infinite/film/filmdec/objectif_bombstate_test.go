@@ -280,7 +280,7 @@ func (w *bsWalk) payload(pay []byte, band map[uint32]bool, ts uint64) {
 				done = false
 				break
 			}
-			br := NewBitReader(pay)
+			br := lecteurDInstrument(pay)
 			br.SetBitPos(at)
 			_, _, ported := consumeByName(br, name, uint32(ManagedPropertyTypeIndex), w.arch.Level(id))
 			if !ported || br.BitPos() > total {

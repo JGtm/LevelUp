@@ -49,7 +49,7 @@ func TestConsumeBipedDesiredGrenadeSetPublieEtNeDecalePas(t *testing.T) {
 			})
 			defer SetGrenadeSetHook(prev)
 
-			br := NewBitReader(grenadeSetBits(c.mask, c.sel))
+			br := lecteurDInstrument(grenadeSetBits(c.mask, c.sel))
 			consumeBipedDesiredGrenadeSet(br)
 
 			// LA LARGEUR D'ABORD : c'est elle qui tient l'alignement du record.
@@ -72,7 +72,7 @@ func TestConsumeBipedDesiredGrenadeSetSansHookConsommeAutant(t *testing.T) {
 	SetGrenadeSetHook(nil)
 	defer SetGrenadeSetHook(prev)
 
-	br := NewBitReader(grenadeSetBits(0b001011, 3))
+	br := lecteurDInstrument(grenadeSetBits(0b001011, 3))
 	consumeBipedDesiredGrenadeSet(br)
 	if w := br.BitPos(); w != i47MaskBits+i47SelBits {
 		t.Fatalf("hook absent : largeur = %d bits, attendu %d", w, i47MaskBits+i47SelBits)
@@ -211,7 +211,7 @@ func TestConsumeWeaponStateAmmoPublieEtNeDecalePas(t *testing.T) {
 			})
 			defer SetWeaponAmmoHook(prev)
 
-			br := NewBitReader(ammoBits(c.hasMag, c.mag, c.hasFrac, c.frac))
+			br := lecteurDInstrument(ammoBits(c.hasMag, c.mag, c.hasFrac, c.frac))
 			consumeWeaponStateAmmo(br)
 
 			if w := br.BitPos(); w != c.wantWidth {
@@ -246,7 +246,7 @@ func TestConsumeWeaponStateRoundsInventoryPublieEtNeDecalePas(t *testing.T) {
 		w := &bitWriter{}
 		w.bits(v, weaponRoundsBits)
 		w.bits(0x2A, 8)
-		br := NewBitReader(w.buf)
+		br := lecteurDInstrument(w.buf)
 		consumeWeaponStateRoundsInventory(br)
 		SetWeaponRoundsHook(prev)
 
