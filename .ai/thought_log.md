@@ -1,3 +1,23 @@
+## [2026-09-17] Chantier decodeur — preparation 3.6, seconde passe par workflow (Opus) : ti=43 complet (22/22 grammaires nommees), ti=9 i9 et ti=35 i63 releves, 8 verifications, 1 discordance tranchee — Complete (intégration e369495eb)
+
+**Decision technique principale.** Meme harnais que la premiere passe (lecteurs paralleles -> un
+sceptique par note qui re-derive depuis Ghidra sans lire la note -> synthese qui tranche et commet
+une fois), repris apres un redemarrage de session avec `model: opus` pose sur les appels restants :
+le cache d un workflow est indexe par (prompt, opts), les resultats deja rendus sont conserves.
+
+**Resultats observes.** 7 agents, 0 erreur ; 13 grammaires (ti=43 i30-i40 en deux groupes, ti=9 i9 :
+R(1) porte, R(2), puis 4 emplacements « text » a 5 formes ; ti=35 i63 : corps d etiquette) ; 8
+verifiees (ti=43 : 3 + 17 elements concordants ; ti=9/ti=35 : 20 elements, 19 concordants, la
+discordance = trois adresses de slots de descripteur mal transcrites, tranchee par la synthese).
+Addendum §10 de `NOTE_3_6_SYNTHESE_2026-09-17.md`, tables §2 §3 §7 marquees perimees vers §10.
+Reste non elucide : ti=40 (preuve sur film requise avant toute decompilation), quelques corps
+d etiquette de ti=35 i63, nommes avec ce qui les leve.
+
+**Prochaine etape.** Les ports 3.6.a-e (M3, apres M2) deviennent des reports de grammaires deja
+relevees ; 2.3 en cours (seul muteur) ; tranche 4 killsource des que la base est libre.
+
+---
+
 ## [2026-09-17] Chantier decodeur — preparation 3.6 par WORKFLOW ultracode : 53 grammaires relevees par six lecteurs Ghidra en parallele, 169 elements re-derives par six sceptiques, 2 discordances tranchees — Complete (intégration d432a4913)
 
 **Decision technique principale.** Premier usage du mode ultracode sur le chantier : un script
