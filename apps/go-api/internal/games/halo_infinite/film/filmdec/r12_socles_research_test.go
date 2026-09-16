@@ -51,8 +51,8 @@ func r12SoclesOneFilm(t *testing.T, dir string) {
 	t.Helper()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecision
-	defer func() { WorldObjectPrecision = saved }()
+	saved := WorldObjectPrecisionActuelle()
+	defer func() { PoserWorldObjectPrecision(saved) }()
 	s := r12Prepare(t, dir)
 	// Bornes ARBITRAIRES : voir l'en-tete. Aucune position n'est publiee par cet instrument.
 	bidon := Vec3Range{{-1000, 1000}, {-1000, 1000}, {-1000, 1000}}

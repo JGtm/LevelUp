@@ -250,7 +250,7 @@ type r11Setup struct {
 }
 
 // r11Prepare resout un film : artefact, bornes de carte, precision monde, origine d'horloge.
-// L'appelant DOIT detenir LockProcessDecode et restaurer WorldObjectPrecision en sortie.
+// L'appelant DOIT detenir LockProcessDecode et restaurer WorldObjectPrecisionActuelle() en sortie.
 func r11Prepare(t *testing.T, dir string) r11Setup {
 	t.Helper()
 	id := filepath.Base(dir)
@@ -285,8 +285,8 @@ func r11JournalOneFilm(t *testing.T, dir string) {
 	t.Helper()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecision
-	defer func() { WorldObjectPrecision = saved }()
+	saved := WorldObjectPrecisionActuelle()
+	defer func() { PoserWorldObjectPrecision(saved) }()
 	s := r11Prepare(t, dir)
 	rd := r11Collect(s.scan)
 	xuid, all := r11XUID(), os.Getenv(r11AllEnv) == "1"

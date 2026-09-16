@@ -20,9 +20,9 @@ import "testing"
 
 // wogInstalle pose un descripteur world-object et rend sa restauration.
 func wogInstalle(indexW uint, region uint32, axisW [3]uint) func() {
-	prev := WorldObjectPrecision
-	WorldObjectPrecision = PrecisionDescriptor{IndexW: indexW, Region: region, AxisW: axisW}
-	return func() { WorldObjectPrecision = prev }
+	prev := WorldObjectPrecisionActuelle()
+	PoserWorldObjectPrecision(PrecisionDescriptor{IndexW: indexW, Region: region, AxisW: axisW})
+	return func() { PoserWorldObjectPrecision(prev) }
 }
 
 // wogRecord écrit un i0 d'objet du monde : porte (precHigh, index-sel, index de région) puis
@@ -111,11 +111,11 @@ func TestSetWorldObjectPrecisionInstalleLaRegion(t *testing.T) {
 		RegionIndexBits: 2,
 	}
 	SetWorldObjectPrecisionFromLayout(e.Layout())
-	if WorldObjectPrecision.IndexW != 2 {
-		t.Errorf("IndexW = %d, attendu 2", WorldObjectPrecision.IndexW)
+	if WorldObjectPrecisionActuelle().IndexW != 2 {
+		t.Errorf("IndexW = %d, attendu 2", WorldObjectPrecisionActuelle().IndexW)
 	}
-	if WorldObjectPrecision.Region != 1 {
+	if WorldObjectPrecisionActuelle().Region != 1 {
 		t.Errorf("Region = %d, attendue 1 — la région du catalogue n'est pas installée",
-			WorldObjectPrecision.Region)
+			WorldObjectPrecisionActuelle().Region)
 	}
 }

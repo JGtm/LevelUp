@@ -267,4 +267,27 @@ package filmdec
 // resultat au lieu de l ecrire dans le processus) mais les lignes PRODUITES sont identiques a
 // l octet — meme espace balaye, meme critere, meme vainqueur, memes largeurs pour les passes
 // qui suivent. `SchemaVersion` reste 60 : aucun champ publie ne bouge.
-const GrammarRev = "grammar-2026-09-15.20"
+// ENTREE `grammar-2026-09-15.21` (2026-09-17, lot 2.2.b — RANG PROVISOIRE) : `.20` -> `.21`.
+// AUCUN OCTET N EST LU AUTREMENT.
+//
+// LES LECTEURS DES OBJETS DU MONDE PRENNENT LEUR VALEUR AU PROFIL. Quatre variables de paquet
+// de plus le rejoignent : le descripteur world-object (largeurs d axe, largeur d index de
+// region, region attendue), la range de dequantification absolue, le quantum du chemin delta
+// et la largeur d axe du chemin delta axis-width. Trois n avaient plus d ecrivain depuis le
+// lot E ; la quatrieme est posee PAR CARTE, et son installateur
+// (`replay/world_object_precision.go`) ecrit desormais le profil HERITE au lieu d une globale
+// propre. Aucune variable neuve : le canal du lot 2.2.a suffisait.
+//
+// POURQUOI L HERITAGE ET PAS LE PROFIL DU FILM, ICI AUSSI. Les largeurs de la carte doivent
+// atteindre les quarante balayages de `replay.BuildFromFilm`, dont aucun ne recoit le profil et
+// dont chacun construit ses propres lecteurs. Tant que le profil ne descend pas jusqu a eux
+// (lot 2.5), l installateur reste le seul canal — c est la meme dette, pas une nouvelle.
+//
+// TROIS LECTEURS N ONT PAS DE LECTEUR DE BITS (`projectiles.go` : `projGateBits`, `projPosBits`,
+// `decodeWorldObjectPos`). Ils lisent par DECALAGE D OCTET sur un payload, pour LOCALISER un
+// record avant de le decoder, et prennent donc leurs largeurs a l heritage par une fonction
+// NOMMEE au lieu d une variable. Le garde-rail d allowlist les voit : il est re-cle sur les
+// TROIS formes d acces, plus sur un seul nom.
+//
+// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` reste 60.
+const GrammarRev = "grammar-2026-09-15.21"

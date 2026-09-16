@@ -136,7 +136,7 @@ func consumeAbilityAnchorBody(br *BitReader, st *AbilityNonPredictedState) bool 
 		return false
 	}
 	for ax := 0; ax < 3; ax++ {
-		st.PosQ[ax] = uint32(br.ReadBits(WorldObjectPrecision.AxisW[ax])) // largeurs de CARTE
+		st.PosQ[ax] = uint32(br.ReadBits(br.worldObjectPrecision().AxisW[ax])) // largeurs de CARTE
 	}
 	st.Mid7 = uint32(br.ReadBits(anchorMidBits))
 	if br.ReadBit() { // FUN_1407f08bc : porte à 1 -> R(8)

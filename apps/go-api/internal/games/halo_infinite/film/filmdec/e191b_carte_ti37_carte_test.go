@@ -114,8 +114,8 @@ func e191bDeuxMesures(t *testing.T, cat *MapQuantCatalog, court string) (a, b Ke
 		t.Fatalf("carte %q de la bobine %s hors catalogue : %v", e191bCarteDeBobine[court], court, err)
 	}
 	a = e191bFermetureTI37(t, film, court)
-	prev := WorldObjectPrecision
-	defer func() { WorldObjectPrecision = prev }()
+	prev := WorldObjectPrecisionActuelle()
+	defer func() { PoserWorldObjectPrecision(prev) }()
 	SetWorldObjectPrecisionFromLayout(e.Layout())
 	b = e191bFermetureTI37(t, film, court)
 	return a, b, e

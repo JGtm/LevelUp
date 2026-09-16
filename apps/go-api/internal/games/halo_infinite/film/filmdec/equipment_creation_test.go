@@ -67,8 +67,8 @@ func TestEquipmentCreationRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
 	}
-	prev := WorldObjectPrecision
-	t.Cleanup(func() { WorldObjectPrecision = prev })
+	prev := WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
 	SetWorldObjectPrecisionFromLayout(lay)
 	t.Logf("FILM %s · largeurs d'axe lues dans le film %v", dir, lay.AxisW)
 

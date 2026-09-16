@@ -96,6 +96,12 @@ func (k KeyframeProfile) EtatParDefautPorte(ti uint32) bool {
 type MovementProfile struct {
 	// Traversal est le descripteur de quantification du chemin de TRAVERSEE.
 	Traversal PrecisionDescriptor
+	// WorldObject est le descripteur du chemin WORLD-OBJECT (projectiles, armes au sol,
+	// equipement, corps rigides), dont les largeurs sont celles de la CARTE du match. Son
+	// defaut n est pas un repli neutre : c est l entree `cliffhanger` du catalogue.
+	// L installateur de `replay` y pose les largeurs de la carte jouee (lot 2.2.b).
+	// Provenance et preuve : ligne `Movement.WorldObject` de [TableProfil].
+	WorldObject PrecisionDescriptor
 	// AbsoluteAxisW est la largeur d axe uniforme du chemin ABSOLU, a defaut de table par
 	// index de plage.
 	AbsoluteAxisW uint
@@ -292,6 +298,7 @@ func highlightDuProfil(majeure int, lue bool) HighlightProfile {
 func mouvementDuProfil() MovementProfile {
 	return MovementProfile{
 		Traversal:               PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{6, 6, 6}},
+		WorldObject:             PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{13, 13, 14}},
 		AbsoluteAxisW:           14,
 		DeltaQuantum:            0.01383,
 		DeltaAxisWidth:          14,

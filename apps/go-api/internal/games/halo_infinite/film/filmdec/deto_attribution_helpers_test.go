@@ -90,9 +90,9 @@ func detoScanProjectiles(t *testing.T, dir string, wr *Vec3Range, n int) []detoD
 	// 13/13/14 (arene Cliffhanger). Sans cette installation, un projectile de carte a signature
 	// differente (Forge [15,15,17]) se decode a la mauvaise echelle. Verrou tenu par l'appelant.
 	if lay, _, err := detectI0Layout(dir); err == nil {
-		saved := WorldObjectPrecision
+		saved := WorldObjectPrecisionActuelle()
 		SetWorldObjectPrecisionFromLayout(lay)
-		defer func() { WorldObjectPrecision = saved }()
+		defer func() { PoserWorldObjectPrecision(saved) }()
 	}
 	type key struct{ slot, gen uint32 }
 	lives := map[key][]ProjectileSample{}

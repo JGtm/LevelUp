@@ -73,12 +73,12 @@ const projectileRestComponent = 18
 // `0797ce72`, contre 7 après correctif. Le jumeau bipède (`decodeBipedI0Pos`) lisait déjà
 // cette largeur dans le découpage de la carte : les deux écritures du même champ avaient
 // divergé.
-func projGateBits() int { return 2 + int(WorldObjectPrecision.IndexW) }
+func projGateBits() int { return 2 + int(largeursObjetDuMonde().IndexW) }
 
 // projPosBits est la longueur d'`object-position-component` sur le chemin dominant :
 // la porte + les trois axes + 2 de queue. Voir WorldObjectPrecision.
 func projPosBits() int {
-	p := WorldObjectPrecision
+	p := largeursObjetDuMonde()
 	return projGateBits() + int(p.AxisW[0]+p.AxisW[1]+p.AxisW[2]) + 2
 }
 
@@ -475,13 +475,14 @@ func decodeWorldObjectPos(pay []byte, at int, wr *Vec3Range) ([3]float32, bool) 
 	if PeekBits(pay, at, 2) != 0 { // precHigh et index-sel nuls = chemin dominant
 		return v, false
 	}
-	idxW := int(WorldObjectPrecision.IndexW)
-	if uint32(PeekBits(pay, at+2, idxW)) != WorldObjectPrecision.Region {
+	lg := largeursObjetDuMonde()
+	idxW := int(lg.IndexW)
+	if uint32(PeekBits(pay, at+2, idxW)) != lg.Region {
 		return v, false
 	}
 	off := at + 2 + idxW
 	for a := 0; a < 3; a++ {
-		w := WorldObjectPrecision.AxisW[a]
+		w := lg.AxisW[a]
 		q := PeekBits(pay, off, int(w))
 		if q == 0 || q == (uint64(1)<<w)-1 {
 			return v, false

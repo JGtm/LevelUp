@@ -139,7 +139,14 @@ import (
 // (`filmdec/mouvement_herite.go`), le profil qu une passe laisse a la suivante dans le meme
 // processus — kill-switch date, retrait cible lot 2.3, critere « `replay.BuildFromFilm` recoit
 // le profil de son appelant ». Bilan net : -5 +1 = 90.
-const filmdecVarsGeles = 90
+//
+// RESSERRE A 86 LE 2026-09-17 (lot 2.2.b, famille « objets du monde ») : `WorldObjectPrecision`,
+// `WorldPositionRange`, `DeltaQuantum` et `DeltaAxisWidth` rejoignent le PROFIL que le lecteur
+// porte. Trois etaient sans ecrivain depuis le lot E ; la quatrieme —
+// `WorldObjectPrecision` — est posee par carte, et son installateur
+// (`replay/world_object_precision.go`) ecrit desormais le profil HERITE au lieu d une globale
+// propre : aucune variable neuve, le canal existait deja. Bilan net : -4 = 86.
+const filmdecVarsGeles = 86
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

@@ -284,8 +284,8 @@ func i57hActivatedTransitions(t *testing.T, dir string) []i57hActEvent {
 	if err != nil {
 		t.Fatalf("découpage i0 illisible : %v", err)
 	}
-	prevPrec := WorldObjectPrecision
-	t.Cleanup(func() { WorldObjectPrecision = prevPrec })
+	prevPrec := WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { PoserWorldObjectPrecision(prevPrec) })
 	SetWorldObjectPrecisionFromLayout(lay)
 	samples, st, err := ScanFilmEquipmentState(dir)
 	if err != nil {

@@ -112,8 +112,8 @@ func v4CouvertureUnFilm(t *testing.T, root string, f v0Film) {
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
+	prev := filmdec.WorldObjectPrecisionActuelle()
+	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	ctx, ok := v4Decode(t, root, f)
 	if !ok {
 		return

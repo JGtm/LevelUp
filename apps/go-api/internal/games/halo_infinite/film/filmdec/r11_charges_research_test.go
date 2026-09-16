@@ -123,8 +123,8 @@ func r11ChargesOneFilm(t *testing.T, dir, detail string) {
 	t.Helper()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecision
-	defer func() { WorldObjectPrecision = saved }()
+	saved := WorldObjectPrecisionActuelle()
+	defer func() { PoserWorldObjectPrecision(saved) }()
 	s := r11Prepare(t, dir)
 	rd := r11Collect(s.scan)
 	r11LogHeader(t, s, rd.Stat)

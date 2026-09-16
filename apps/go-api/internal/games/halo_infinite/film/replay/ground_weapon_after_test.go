@@ -45,8 +45,8 @@ func TestGroundWeaponAfter(t *testing.T) {
 	}
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prevPrec := filmdec.WorldObjectPrecision
-	t.Cleanup(func() { filmdec.WorldObjectPrecision = prevPrec })
+	prevPrec := filmdec.WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prevPrec) })
 
 	wr, ok := gwWorldRange(t)
 	if !ok {
