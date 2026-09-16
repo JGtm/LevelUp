@@ -28,7 +28,7 @@ func e191cN2Part(ancres []e191cAncre, ti int, ctx ContexteDeLecture) (float64, u
 		for _, a := range ancres {
 			p, b := a.Pay, keyframeBorne{Bit: a.Bit, TI: ti}
 			total++
-			br := NewBitReader(p)
+			br := LecteurSur(p)
 			br.PoserContexte(ctx)
 			br.SetBitPos(b.Bit + keyframeFullStateHeaderBits)
 			n1 := int32(br.ReadBits(keyframeFullStateSizeBits)) //nolint:gosec // 32 bits

@@ -7,20 +7,21 @@ package filmsource_test
 // lot 1 remplace. C'est l'engagement de D3 (« sur les chunks de donnees, la vue est
 // bit-identique »), verifie ici sur les octets d'un vrai film et non sur une construction.
 //
-// `filmdec` est importe par le test EXTERNE (`package filmsource_test`), jamais par le paquet :
-// `filmsource` est une FEUILLE, et `internal/archlint/filmsource_leaf_test.go` le verifie sur les
-// fichiers non-test.
+// DEPUIS LE LOT 2.4.2, CE TEST N IMPORTE PLUS `filmdec` DU TOUT : il portait la comparaison des
+// deux marcheurs de paquets, et le second marcheur n existe plus — son ORACLE est recopie ici
+// ([refWalkPackets]). `filmsource` est une FEUILLE, et `internal/archlint/filmsource_leaf_test.go`
+// le verifie sur les fichiers non-test.
 
 import (
 	"bytes"
 	"compress/zlib"
+	"encoding/binary"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
 // miniBobine : la mini-bobine du film 000d5950 (Cliffhanger, Fiesta), fixture de `replay` avec sa
@@ -131,23 +132,77 @@ func TestLoadDirMiniBobine(t *testing.T) {
 		t.Fatalf("chunk highlight : %d octets decompresses, %d attendus", len(chunk), len(clair))
 	}
 
-	// LA comparaison : meme jeu de paquets que le marcheur de production.
-	attendus := filmdec.WalkPackets(clair)
-	obtenus := film.Packets(chunkHighlight)
+	// LA comparaison : meme jeu de paquets que le SECOND marcheur, celui que le lot 2.4.2 a
+	// absorbe (cf. [TestDeuxMarcheursDePaquetsSAccordent]).
+	comparerAuxDeuxMarcheurs(t, clair, film.Packets(chunkHighlight))
+}
+
+// refWalkPackets : LE SECOND MARCHEUR DE PAQUETS, tel que `filmdec.WalkPackets` le portait
+// jusqu au lot 2.4.2 — recopie ici, et nulle part ailleurs, comme oracle differentiel.
+//
+// SES DEUX ECARTS AVEC LA GRAMMAIRE DE D3 REVISEE, et c est ce que le temoin mesure : il ne
+// s arrete PAS apres un paquet CHUNK_END (regle 3) et il EMET un en-tete degenere de taille 0
+// quel que soit son type (regle 4). Sur un chunk de DONNEES les deux regles ne changent rien —
+// « taille 0 » et « CHUNK_END » y sont le MEME paquet, en derniere position, mesure sur 1 378
+// films (cf. l en-tete de paquet). C est cette mesure que le temoin re-joue a chaque CI, sur
+// tous les chunks de la bobine.
+func refWalkPackets(chunk []byte) []filmsource.Packet {
+	var out []filmsource.Packet
+	off := 0
+	for off+16 <= len(chunk) {
+		taille := int(binary.LittleEndian.Uint32(chunk[off+4:]))
+		if taille < 0 || off+16+taille > len(chunk) {
+			break
+		}
+		out = append(out, filmsource.Packet{
+			Index:   len(out),
+			Type:    int(binary.LittleEndian.Uint16(chunk[off:])),
+			TS:      binary.LittleEndian.Uint64(chunk[off+8:]),
+			Payload: chunk[off+16 : off+16+taille],
+		})
+		off += 16 + taille
+	}
+	return out
+}
+
+// TestDeuxMarcheursDePaquetsSAccordent : sur TOUS les chunks de la mini-bobine, le marcheur
+// unique et l ancien second marcheur rendent le meme jeu de paquets.
+func TestDeuxMarcheursDePaquetsSAccordent(t *testing.T) {
+	film, err := filmsource.LoadDir(miniBobine, nil)
+	if err != nil {
+		t.Fatalf("LoadDir : %v", err)
+	}
+	total := 0
+	for i := 0; i < film.NumChunks(); i++ {
+		ps := film.Packets(i)
+		total += len(ps)
+		comparerAuxDeuxMarcheurs(t, film.Chunk(i), ps)
+	}
+	if total == 0 {
+		t.Fatal("aucun paquet compare : le temoin ne garderait rien")
+	}
+	t.Logf("%d chunks, %d paquets compares", film.NumChunks(), total)
+}
+
+// comparerAuxDeuxMarcheurs oppose le decoupage obtenu a celui de [refWalkPackets].
+func comparerAuxDeuxMarcheurs(t *testing.T, chunk []byte, obtenus []filmsource.Packet) {
+	t.Helper()
+	attendus := refWalkPackets(chunk)
 	if len(attendus) == 0 {
-		t.Fatal("filmdec.WalkPackets ne rend aucun paquet : la comparaison serait vide")
+		t.Fatal("le marcheur de reference ne rend aucun paquet : la comparaison serait vide")
 	}
 	if len(obtenus) != len(attendus) {
-		t.Fatalf("%d paquets, filmdec en rend %d", len(obtenus), len(attendus))
+		t.Fatalf("%d paquets, le marcheur de reference en rend %d", len(obtenus), len(attendus))
 	}
 	for i, a := range attendus {
 		o := obtenus[i]
-		if o.Index != a.Index || o.Type != int(a.Type) || o.TS != a.TimestampUS {
-			t.Fatalf("paquet %d : (index %d, type %d, ts %d) vs filmdec (index %d, type %d, ts %d)",
-				i, o.Index, o.Type, o.TS, a.Index, a.Type, a.TimestampUS)
+		if o.Index != a.Index || o.Type != a.Type || o.TS != a.TS {
+			t.Fatalf("paquet %d : (index %d, type %d, ts %d) vs reference (index %d, type %d, ts %d)",
+				i, o.Index, o.Type, o.TS, a.Index, a.Type, a.TS)
 		}
-		if !bytes.Equal(o.Payload, a.Payload(clair)) {
-			t.Fatalf("paquet %d : payload different de celui de filmdec (%d vs %d octets)", i, len(o.Payload), a.Size)
+		if !bytes.Equal(o.Payload, a.Payload) {
+			t.Fatalf("paquet %d : payload different de celui de la reference (%d vs %d octets)",
+				i, len(o.Payload), len(a.Payload))
 		}
 	}
 }

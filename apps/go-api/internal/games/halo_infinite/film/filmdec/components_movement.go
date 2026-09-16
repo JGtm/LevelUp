@@ -53,7 +53,7 @@ type PrecisionDescriptor struct {
 	// Region est la VALEUR d'index de région attendue sur les records, sur `IndexW` bits.
 	// N'a de sens que pour le descripteur WORLD-OBJECT (`WorldObjectPrecision`), dont le
 	// lecteur compare l'index lu à cette valeur — un record d'une AUTRE région exprime ses
-	// quanta dans une autre AABB. Le chemin de TRAVERSÉE (`BitReader.traversal`) ne la lit
+	// quanta dans une autre AABB. Le chemin de TRAVERSÉE (`Lecteur.traversal`) ne la lit
 	// pas : il consomme l'index sans le juger, parce qu'il ne déquantifie pas.
 	//
 	// ELLE VIT DANS LE DESCRIPTEUR, et pas à côté, pour une raison précise :
@@ -72,7 +72,7 @@ type PrecisionDescriptor struct {
 // site du depot ne l'installait non-nil, tests compris. Il etait donc prouvablement toujours
 // nil, et sa capture — additive, sans effet sur la consommation de bits — n'emettait rien.
 // La consommation de bits de ce deser est inchangee, a la ligne pres.
-func consumeDynPrecVec3(br *BitReader, mag, scale uint) { //nolint:unparam // magnitude de grammaire ecrite au site d appel ; le lot 2.2 la porte au profil (2026-09-17, fusion 2.7g : la scission a sorti ce site de la baseline lint)
+func consumeDynPrecVec3(br *Lecteur, mag, scale uint) { //nolint:unparam // magnitude de grammaire ecrite au site d appel ; le lot 2.2 la porte au profil (2026-09-17, fusion 2.7g : la scission a sorti ce site de la baseline lint)
 	if br.ReadBit() { // FUN_14076d528 leading R(1); JNZ -> absent (0 payload bits)
 		return
 	}
@@ -87,7 +87,7 @@ func consumeDynPrecVec3(br *BitReader, mag, scale uint) { //nolint:unparam // ma
 //	if outer == 0 : consumeDynPrecVec3(mag=19, scale=10)                 [delta path]
 //
 // Bit cost: outer==1 -> 97 ; outer==0 & present -> 31 ; outer==0 & absent -> 2.
-func consumeObjectTranslationalVelocity(br *BitReader) {
+func consumeObjectTranslationalVelocity(br *Lecteur) {
 	if br.ReadBit() { // FUN_14076d45c R(1); set -> FUN_14076d4d0 mode 2 (keep)
 		br.ReadBits(rawVec3Bits) // FUN_1406d676c(...,0x60) = R(96)
 		return
@@ -103,7 +103,7 @@ func consumeObjectTranslationalVelocity(br *BitReader) {
 //	if outer == 0 : consumeDynPrecVec3(mag=19, scale=8)    [delta path]
 //
 // Bit cost: outer==1 -> 97 ; outer==0 & present -> 29 ; outer==0 & absent -> 2.
-func consumeObjectAngularVelocity(br *BitReader) {
+func consumeObjectAngularVelocity(br *Lecteur) {
 	if br.ReadBit() { // FUN_140d87740 R(1); set -> FUN_14076e1c8 mode 2 (keep)
 		br.ReadBits(rawVec3Bits) // FUN_1406d676c(...,0x60) = R(96)
 		return
@@ -123,8 +123,8 @@ func consumeObjectAngularVelocity(br *BitReader) {
 // (`FUN_14080cfe8`) — qui lisent `DAT_145121140` SEUL — ne bougent pas.
 //
 // C'ÉTAIT LA VARIABLE DE PAQUET `PositionFullPrecision` JUSQU'AU LOT 2.2.a : elle vient
-// désormais du PROFIL que le lecteur porte ([BitReader.poserMouvement]).
-func (b *BitReader) fullPrecision() bool { return b.p.Mouvement.FullPrecision }
+// désormais du PROFIL que le lecteur porte ([Lecteur.poserMouvement]).
+func (b *Lecteur) fullPrecision() bool { return b.p.Mouvement.FullPrecision }
 
 // keyframeBaselineScope mirroite `DAT_144e61ea0` : une PORTÉE, pas un réglage. Les huit
 // lecteurs d'état complet du groupe `142e2*`/`142e3*` (dont `FUN_142e2bfd0`) le lèvent à 1
@@ -145,7 +145,7 @@ func (b *BitReader) fullPrecision() bool { return b.p.Mouvement.FullPrecision }
 // LA PORTÉE ET LE RÉGLAGE VIENNENT DE DEUX ENDROITS DU PROFIL, et c'est voulu : la portée
 // (`DAT_144e61ea0`) est une BASCULE DE GRAMMAIRE que les lecteurs d'état complet lèvent autour
 // d'un appel ; le réglage (`DAT_145121140`) est une valeur de MOUVEMENT, arrivée au lot 2.2.a.
-func fullPrecisionGate(br *BitReader) bool {
+func fullPrecisionGate(br *Lecteur) bool {
 	return br.p.Grammaire.PorteeBaseline || br.fullPrecision()
 }
 
@@ -157,14 +157,14 @@ func fullPrecisionGate(br *BitReader) bool {
 // precIndex==-1 case (no tail). The CE delta capture confirms whether it ever fires.
 //
 // C'ÉTAIT LA VARIABLE DE PAQUET `PositionDeltaHasHandleTail` JUSQU'AU LOT 2.2.a.
-func (b *BitReader) deltaHasHandleTail() bool { return b.p.Mouvement.DeltaHasHandleTail }
+func (b *Lecteur) deltaHasHandleTail() bool { return b.p.Mouvement.DeltaHasHandleTail }
 
 // calibratedSkip active la calibration intelligente d'i0 (saut au total CE 47/101 selon
 // bUsePred) au lieu du deser dont la précision d'axe runtime n'est pas sourcée statiquement.
 // Harness de validation map-spécifique (Cliffhanger). Default false.
 //
 // C'ÉTAIT LA VARIABLE DE PAQUET `PositionCalibratedSkip` JUSQU'AU LOT 2.2.a.
-func (b *BitReader) calibratedSkip() bool { return b.p.Mouvement.CalibratedSkip }
+func (b *Lecteur) calibratedSkip() bool { return b.p.Mouvement.CalibratedSkip }
 
 // DeltaQuantum est le pas (unité monde) d'UN cran de position répliqué en DELTA par i0. La
 // famille delta (signed-8 ou axis-width) code un NOMBRE DE CRANS signé ; le pas physique est ce
@@ -176,7 +176,7 @@ func (b *BitReader) calibratedSkip() bool { return b.p.Mouvement.CalibratedSkip 
 // (centree 0).
 // C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : le quantum vit dans le PROFIL que le
 // lecteur porte (`Movement.DeltaQuantum`).
-func (b *BitReader) deltaQuantum() float32 { return b.p.Mouvement.DeltaQuantum }
+func (b *Lecteur) deltaQuantum() float32 { return b.p.Mouvement.DeltaQuantum }
 
 // keyframeWriterI0Grammar route le chemin ABSOLU d'i0 sur la grammaire que l'ECRIVAIN d'état
 // complet du jeu pose, et que le lecteur du jeu relit — les deux disent la même chose CONTRE

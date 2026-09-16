@@ -39,7 +39,7 @@ package filmdec
 // composants de ti=37 (equipment_state.go), ce déser consommait ses bits pour rester aligné
 // et abandonnait ce qu'il lisait. `observateur.AbilityEnergyHook` les publie ; le parcours de bits est
 // inchangé, et 0x7F reste la valeur par défaut NON transmise d'un emplacement non armé.
-func consumeBipedSpartanAbilityEnergy(br *BitReader) {
+func consumeBipedSpartanAbilityEnergy(br *Lecteur) {
 	mask := br.ReadBits(3) // FUN_140fc147c
 	var ch [AbilityEnergyCharges]int
 	for i := uint(0); i < AbilityEnergyCharges; i++ {

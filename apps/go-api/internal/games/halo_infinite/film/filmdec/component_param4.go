@@ -77,7 +77,7 @@ var paramByComponent = map[string]uint32{
 // paramForComponent rend le param_4 du composant `name`. Défaut 1 : c'est la valeur
 // mesurée pour l'écrasante majorité des composants (0 était un choix « conservateur »
 // jamais mesuré, et faux).
-func paramForComponent(br *BitReader, name string) uint32 {
+func paramForComponent(br *Lecteur, name string) uint32 {
 	if v, ok := paramByComponent[name]; ok {
 		return v
 	}
@@ -109,4 +109,4 @@ func paramMesureDuComposant(name string) uint32 {
 //
 // C'ÉTAIT LA VARIABLE DE PAQUET `recordStateParam`, avec son drapeau
 // `recordStateParamOverride`, JUSQU'AU LOT 2.2.e.
-func (b *BitReader) recordStateParam() uint32 { return b.p.ParamEtat }
+func (b *Lecteur) recordStateParam() uint32 { return b.p.ParamEtat }

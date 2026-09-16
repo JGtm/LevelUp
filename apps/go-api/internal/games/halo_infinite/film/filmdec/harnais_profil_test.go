@@ -8,7 +8,7 @@ package filmdec
 // PAQUET (`SetWorldObjectPrecisionFromLayout`, `SetMPPWidths`, `SetRecordStateParam`) et TOUS
 // les lecteurs de bits du processus les prenaient — c est ce qui obligeait le decodage a
 // passer sous un verrou. Le profil voyage desormais avec le contexte du film
-// ([FilmContext.ProfilDeBalayage]) et avec le lecteur ([BitReader.PoserProfil]) : un
+// ([FilmContext.ProfilDeBalayage]) et avec le lecteur ([Lecteur.PoserProfil]) : un
 // instrument ouvre SON contexte et y pose ce qu il mesure.
 //
 // CE FICHIER NE GARDE AUCUN ETAT ENTRE DEUX TESTS : ce sont deux fonctions pures, et c est la

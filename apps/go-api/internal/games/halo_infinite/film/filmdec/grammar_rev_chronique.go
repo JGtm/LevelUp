@@ -27,152 +27,10 @@ package filmdec
 // commit par commit sur l integration (`git log --first-parent`), la suite reelle est celle-ci —
 // un lot, un rang, dans l ordre ou les merges sont tombes.
 //
-// ENTREE `grammar-2026-09-15.12` (2026-09-16, revue de jalon M1 lentille L4, merge `99644996e`) :
-// `.11` -> `.12`. AUCUNE grammaire d octets ne change. Ce qui change est la PORTE qui decide si
-// les attributions ligne par ligne de `killsource` sont publiables : `BijectionDetermined` valait
-// « au plus un indice a inferer », il vaut desormais « une seule affectation possible »
-// (`FilmTablePinning.AffectationUnique`, indices libres ET noms libres). L empreinte hache les
-// octets des trois paquets, dont `killsource/` : elle monte donc, et la revision avec elle.
-// `KillSourceDecoderRev` MONTE aussi (`killsource-2026-09-16`) parce que la sortie persistee
-// change — la porte ne fait que se fermer, aucun film ne gagne la publication ligne par ligne.
-// `SchemaVersion` reste 59 : le document du rejeu ne porte pas cette porte.
+// LES RANGS `.12` A `.20` VIVENT DANS `grammar_rev_chronique_archive.go` : la chronique se
+// ROTATIONNE quand ce fichier atteint 500 lignes, comme `.ai/thought_log.md`. Ce qui suit est
+// la suite VIVANTE, a partir du `.21`.
 //
-// LE MEME RANG PORTE AUSSI LA CORRECTION DE DOC de `mppWidthsPourFormat` (son bloc finissait par
-// « la cle est le BUILD » alors que la fonction commute sur le FORMAT depuis le lot 1.9.1 ter) :
-// l empreinte hache les OCTETS des trois paquets, commentaires compris, donc une reformulation la
-// fait bouger. Un LOT partage sa revision (regle de la forme `.N` ci-dessus) — ces deux
-// changements sont le meme lot de revue, ils partagent donc `.12`.
-//
-// ENTREE `grammar-2026-09-15.13` (2026-09-16, revue de jalon M1 lentille D13 constat 2, merge
-// `1f478d5c3`) : `.12` -> `.13`. AUCUNE grammaire d octets n est reecrite ; ce qui change est
-// QUELLE grammaire s applique, et c est exactement ce que cette revision doit nommer (meme genre
-// de changement que `.2` et `.8`). Les DEUX sites qui installent le decoupage du bloc
-// `object-multiplayer-properties` — `ScanEquipmentPlacements` et `replay.gwWidthsForFilm` — le
-// resolvaient par `BuildProfileFromFilm`, donc par la table des SEPT builds en dur, alors que le
-// registre des replis declare la cle VERSION DE FORMAT (`format_sans_profil_relu`, lot 1.9.1
-// ter). Un film au format 27 dont le build est hors table prenait les largeurs CALIBREES devant
-// une largeur RELUE, sans compteur ni avertissement. Les deux sites passent desormais par
-// `MPPWidthsForFilm`, PORTE UNIQUE — c est le changement de comportement de ce rang.
-//
-// MESURE QUI BORNE L EFFET (cache, 657 films au 2026-09-15, `TestMPPResolutionCorpus`) : 6 films
-// portent un build hors table — 5 sans section d identification (format 20) et 1 `HI_1_5_1`
-// (format 23) —, AUCUN a un format dont la largeur est relue. Zero octet cuit ne change sur ce
-// cache ; le gain porte sur le parc NEUF. `SchemaVersion` reste 59.
-//
-// `KillSourceDecoderRev` NE BOUGE PAS A CE RANG, et la confusion vaut d etre nommee : la porte de
-// publication de `killsource` (`AffectationUnique`) releve de CETTE constante-la, et elle a ete
-// traitee au rang PRECEDENT (`.12`). `.13` ne touche que la porte MPP de `filmdec`/`replay` ;
-// `killsource/` n y est pas modifie, et son propre ratchet d empreinte fait foi.
-//
-// ENTREE `grammar-2026-09-15.14` (2026-09-16, revue de jalon M1 lentille L3, merge `29c5d6c85`) :
-// `.13` -> `.14`. AUCUNE grammaire d octets ne change, et aucun bit n est lu autrement. Trois
-// gestes, tous de SURFACE :
-//
-//	(1) `DetectI0Layout(dir)` et `ScanFilmEquipmentSpawnEvents(dir)`, deux enveloppes `dir` de
-//	    PRODUCTION sans aucun appelant de production (48 appels de test pour la premiere, 1 pour
-//	    la seconde — greps colles au compte rendu du lot), sortent du binaire : la premiere
-//	    devient `detectI0Layout` dans un fichier de test du paquet, la seconde disparait au
-//	    profit de sa forme film chez son unique appelant. Regle 7 du depot (« 0 code mort ») ;
-//	(2) `walkKeyframeBody`, la boucle de corps d image-cle que le lot 1.4 avait deja unexportee
-//	    faute d appelant de production, et sa table `keyframeBodyVariants`, passent dans un
-//	    fichier `_test.go` du meme paquet — leurs cinq appelants sont des instruments ;
-//	(3) deux en-tetes corriges (`film_major_version.go` nomme le second u32 — la VERSION DE
-//	    FORMAT — et renvoie a `film_format_version.go`, dont l imparfait fautif tombe).
-//
-// LES TROIS FORMES LUES EN PRODUCTION SONT INCHANGEES, A L OCTET : `DetectI0LayoutOf`,
-// `ScanEquipmentSpawnEvents`, `WalkKeyframeFullState`. L empreinte hache les OCTETS des trois
-// paquets (cf. `grammar_rev_fingerprint_test.go`, « il ne distingue pas un changement de
-// grammaire d une reformulation de commentaire ») : ce faux positif COUTE ce rang, et c est la
-// seule raison pour laquelle `.14` existe. `KillSourceDecoderRev` ne bouge PAS (`killsource/`
-// intact) ; `SchemaVersion` non plus.
-//
-// TOUTE ENTREE NEUVE OUVRE SUR LE MOT `ENTREE` SUIVI DE LA REVISION entre accents graves, et le
-// golden `testdata/grammar_rev.golden` porte la sienne en regard :
-// `TestChroniqueCouvreLaRevisionCourante` exige les DEUX pour la valeur ci-dessous, et c est ce
-// qui empeche la chronique de s arreter a un rang que la constante a depasse (constat F5). Les
-// entrees anterieures au 2026-09-16 n ont pas cette forme — elles ne sont pas relues par le
-// ratchet, qui ne mord que sur la valeur COURANTE.
-//
-// ENTREE `grammar-2026-09-15.15` (2026-09-16, lot 1.9.10, merge `3b5e1b465`) : UN LECTEUR NEUF
-// ENTRE DANS LE PAQUET — la MARCHE des morts d objet (`object_deaths*.go`) deroule la boucle de
-// records des paquets delta et lit le composant `object-dead-state` (ti=40) la ou aucun
-// balayage ancre ne l atteint ; le verrou `DesyncAt == -1` qui jetait des morts lues est leve
-// (accepter si `DesyncAt == -1` ou `DesyncAt > index(dead-state)`). Aucune grammaire d octets
-// existante n est reecrite ; ce qui change est CE QUE LE PAQUET SAIT LIRE. La calibration du
-// cadre (IDLowBits) ne balaye plus l amorce (propriete du format) et son cadre par defaut est
-// un repli nomme et compte. `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 59 en
-// attendant la montee unique de la vague (les champs `vehicles[].end/tEnd` et
-// `coverage.vehicles.*` arrivent avec elle).
-//
-// ENTREE `grammar-2026-09-15.16` (2026-09-16, lot 1.9.7, fusion) : L APPARIEMENT `dead-state <->
-// kill-feed` DE `killsource` SE FAIT PAR L IDENTITE DE PAQUET `(chunk, pidx)` que le film ecrit,
-// et non plus par une fenetre de 2,5 s (`killsource/paquet_identite.go`, six sites convertis, la
-// fenetre devient le repli nomme et compte `repli_appariement_par_fenetre_temporelle`). Aucune
-// grammaire d octets n est reecrite : ce qui change est QUEL enregistrement lu se rattache a quel
-// instant — et l empreinte de cette revision couvre `killsource/`, donc elle monte avec lui.
-// `KillSourceDecoderRev` monte au meme geste (`killsource-2026-09-16.2`) ; `SchemaVersion` reste 59.
-//
-// ENTREE `grammar-2026-09-15.17` (2026-09-16, lot 1.9.11, fusion) : LE DESIGNATEUR DE MANCHE EST PUBLIE TEL QU ECRIT ET LA GARDE D ORDRE
-// devient une CONTRADICTION publiee (coverage.score.roundsWritten / roundsContradicted / roundsDecreed) ; le decret de la manche 0 est un repli nomme et compte ; ResolveRounds rend le verdict complet (objectiveevents, hache par l empreinte). Aucun octet lu autrement ; SchemaVersion 59 (montee de vague).
-// ENTREE `grammar-2026-09-15.18` (2026-09-17, lot 2.1, « le profil, resolu une fois, encore
-// recopie ») : `.17` -> `.18`. AUCUNE grammaire d octets n est reecrite, et AUCUN bit n est lu
-// autrement — c est la promesse meme du jalon M2 (D4 : un pas structurel est clos a ZERO
-// difference d equivalence). L empreinte hache les OCTETS des trois paquets, commentaires
-// compris : elle monte parce que la SOURCE change, et la revision avec elle.
-//
-// CE QUI CHANGE, ET C EST DE LA STRUCTURE :
-//
-//	`filmdec.Profile` NAIT (`profile.go`, `profile_table.go`). Il porte ce qui ne se lit pas
-//	    dans le flux — identite, carte, implantation du gamertag, cadre d image-cle, mouvement,
-//	    slots, MPP — resolu UNE fois a partir des TROIS cles que le film ECRIT (version de
-//	    format, build, version majeure) et de l entree de catalogue de la carte. Champs prives,
-//	    accesseurs par valeur, table par type clonee : immuable, et prouve tel.
-//	LE CONTEXTE LE RESOUT A LA CONSTRUCTION (D1) sur le chemin de la cuisson, et il s ouvre
-//	    desormais dans `replay.BuildFromFilm` au lieu de `scanFilmInputs` — pour qu il n y ait
-//	    qu UNE resolution par cuisson. Les trois derivations memorisees restent paresseuses,
-//	    donc calculees a la meme date qu avant, et l horloge des etapes demarre au meme endroit.
-//	L INSTALLATEUR DES LARGEURS D AXE DE LA CARTE (`replay/world_object_precision.go`) LIT LE
-//	    PROFIL et ecrit ENCORE la globale de paquet : double ecriture
-//	    datee (`doubleEcritureGlobales`, bascule 2026-09-17, retrait cible lot 2.3, critere
-//	    « 0 variable de paquet mutable dans filmdec »).
-//	LES TROIS SITES DE `ParseHighlightEvents` QUI LISENT LEUR VERSION DANS LE FILM
-//	    (`killsource/chunks.go`, `replay/deaths_source.go`, `cmd/levelup` par `ops`) la prennent
-//	    a `HighlightProfileOfFilm` / `HighlightProfileFromHeader` : MEME u32, MEME valeur, source
-//	    unique et implantation NOMMEE.
-//
-// `KillSourceDecoderRev` NE BOUGE PAS, et le choix est EXPLICITE comme son ratchet l exige :
-// `killsource/` change de deux lignes — la source de la version majeure et le commentaire qui la
-// nomme — et les lignes PRODUITES sont identiques a l octet, donc aucun match deja decode n est
-// candidat au backlog. `SchemaVersion` reste 59 : le document publie ne gagne ni ne perd un champ.
-// ENTREE `grammar-2026-09-15.19` (2026-09-16, lot 2.7 volet grammaire) : `.18` -> `.19`. AUCUN
-// OCTET N EST LU AUTREMENT. Scission par DEPLACEMENT PUR des cinq fichiers de `filmdec` qui
-// depassaient 500 lignes — `traverse.go` (1 388), `unit_weaponstate.go` (956),
-// `frame_records.go` (793), `components_biped_ability.go` (699), `components_movement.go`
-// (554). Le `switch` de 815 lignes et 194 arms de `consumeByName` devient une CHAINE de sept
-// maillons relies par leur branche `default` (`dispatch_object.go` porte l explication et
-// l exemption de longueur) : un arm qui rend `ported=false` rend depuis son propre maillon, le
-// dernier maillon rend le `default` d origine mot pour mot, et l ordre des arms — celui des
-// lots de portage — est conserve. Deux extractions seulement, toutes deux un bloc recopie
-// desindente d une tabulation : `consumePredictedAbsolute` (FUN_140f7ea14, la branche
-// `predFlag == 1` d i0, qui est une fonction du moteur a part entiere) et
-// `skipCalibratedPosition` (le banc de calibration, garde par un drapeau).
-// CONTROLE DE DEPLACEMENT PUR, colle au compte rendu du lot : le multi-ensemble des lignes de
-// chaque fichier d origine est INCLUS dans celui de ses fichiers d arrivee — zero ligne perdue,
-// les seules lignes neuves sont les en-tetes de fichier, les signatures des maillons et les six
-// `return` de chainage. L empreinte hache les OCTETS des trois paquets : ce faux positif coute
-// ce rang, meme nature que `.14` et `.13` de la revue M1.
-// `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` non plus (aucun
-// octet cuit ne change, et `replay-equiv` doit rendre ZERO difference — une difference serait
-// une regression, pas une divergence).
-//
-// ENTREE `grammar-2026-09-15.20` (2026-09-17, fusion des volets 2.7g et 2.7p du lot 2.7 + correctif
-// lint) : `.19` -> `.20`. AUCUN octet n est lu autrement et AUCUNE grammaire n est reecrite : la
-// source de `filmdec/` change de deux commentaires `//nolint:unparam` dates (consume140c1e9d4 : w
-// toujours 12 ; consumeDynPrecVec3 : mag toujours 19 — largeurs de grammaire ecrites au site d appel,
-// que le lot 2.2 porte au profil), sites sortis de la baseline lint par la scission 2.7g. L empreinte
-// hache les octets, commentaires compris : elle monte, la revision avec elle. Le volet 2.7p (paquet
-// `replay`, hors empreinte) est fusionne au meme geste ; `SchemaVersion` 60 et `KillSourceDecoderRev`
-// inchangees.
 // ENTREE `grammar-2026-09-15.21` (2026-09-17, lot 2.2.a — RANG DE FUSION) : `.20` -> `.21`.
 // AUCUN OCTET N EST LU AUTREMENT.
 //
@@ -186,7 +44,7 @@ package filmdec
 // famille 2.2.a — le descripteur de quantification de TRAVERSEE, la largeur d axe des chemins
 // ABSOLUS, et les trois drapeaux de contexte (pleine precision, queue de poignee du delta,
 // saut calibre) — etaient des VARIABLES DE PAQUET de `filmdec`. Elles voyagent desormais avec
-// le LECTEUR DE BITS (`BitReader.mv`, pose par [BitReader.poserMouvement]), seul objet deja
+// le LECTEUR DE BITS (`Lecteur.mv`, pose par [Lecteur.poserMouvement]), seul objet deja
 // passe a tous les deserialiseurs : une copie par lecteur construit, jamais une lecture par bit
 // lu (budget 0.A.5). Leur source est [mouvementDuProfil], la MEME fonction que [ResolveProfile]
 // emploie — il n y a plus deux tables de valeurs.
@@ -310,7 +168,7 @@ package filmdec
 // LA REVUE ADVERSARIALE DU LOT (2.3.5) N A CHANGE AUCUN OCTET LU : 27 constats, 3 P1 et 19 P2
 // confirmes, 5 refuses, zero P0. Cote `filmdec` — ratchet des variables resserre de 22 a 21 (le
 // compte REEL ; 22 laissait une place libre), six blocs de doc INVERSEE reecrits, godoc de trois
-// symboles disparus retirees, et `BitReader.Observation` / `BitReader.Contexte`, ajoutes par ce
+// symboles disparus retirees, et `Lecteur.Observation` / `Lecteur.Contexte`, ajoutes par ce
 // lot sans aucun appelant hors test, SUPPRIMES (regle 7). Cote `replay`, la pose du profil puis
 // de la carte devient `poserProfilPuisCarte`, qu epingle
 // `TestRouteDuProfilCalibreJusquAuContexte` : la route de D1 n avait aucun test qui rougisse, ni
@@ -354,7 +212,7 @@ package filmdec
 // LE PROFIL DE BALAYAGE REMPLACE L HERITAGE PAR L ETAT DU PROCESSUS. La variable `herite`
 // (`profil_herite.go`, lots 2.2.a/b/e) — traversee, largeur d axe absolue, largeurs des objets
 // du monde, decoupage MPP, `param_4` force — disparait. Ce qu elle portait devient
-// [ProfilDeBalayage], une VALEUR : le lecteur en tient une copie (`BitReader.p`), le contexte du
+// [ProfilDeBalayage], une VALEUR : le lecteur en tient une copie (`Lecteur.p`), le contexte du
 // film celle du decodage courant, et `FrameConfig.Profil` la passe aux portes de balayage.
 //
 // LA CALIBRATION DE `killsource` VOYAGE DESORMAIS PAR LES OPTIONS (condition D1 du pilote).
@@ -431,9 +289,9 @@ package filmdec
 //
 // LE LECTEUR DE BITS DESCEND DANS LA COUCHE SOURCE. `filmsource.Bits` est desormais LE lecteur
 // du depot : MSB-first big-endian, bourrage a zero au-dela du tampon, lecture par mot de 64
-// bits. [BitReader] ne porte plus ni tampon ni position — il EMBARQUE `*filmsource.Bits` et n y
+// bits. [Lecteur] ne porte plus ni tampon ni position — il EMBARQUE `*filmsource.Bits` et n y
 // ajoute que ce qui appartient a la grammaire : le profil de largeurs, la capture de position,
-// l observateur, et le codec [BitReader.ReadSignedVarWidth]. `filmdec/bits_word.go` disparait :
+// l observateur, et le codec [Lecteur.ReadSignedVarWidth]. `filmdec/bits_word.go` disparait :
 // sa lecture par mot est [filmsource.BitsAt], et ses trois derniers appelants directs
 // (`PeekBits`, `kfReadBits`, `readBitsAt`) y passent.
 //
@@ -465,3 +323,47 @@ package filmdec
 // `KillSourceDecoderRev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet (c est
 // exactement ce que les deux preuves ci-dessus etablissent), seule sa source change. Son golden
 // est regenere pour refiger le couple (revision, empreinte). `SchemaVersion` reste 60.
+//
+// ENTREE `grammar-2026-09-15.29` (2026-09-18, lot 2.4.2 — RANG PROVISOIRE) : `.28` -> `.29`.
+// AUCUN OCTET N EST LU AUTREMENT. LA PORTE AUX OCTETS EST UNIQUE.
+//
+// CE QUI DESCEND DANS LA COUCHE SOURCE (`internal/analysis/filmsource`, decision V15 (1) ;
+// 2.5.a la deplacera sous `film/internal/source` par `git mv` pur) :
+//
+//	les quatre conventions de bord, NOMMEES    `BitsAt` (bourrage a zero du moteur), `BitAt`
+//	                                           (zero des deux cotes), `BitsTolerants` (un
+//	                                           lecteur qui RECULE devant un motif), `BitsTronques`
+//	                                           (s arrete sans bourrer — le pied de film). Elles ne
+//	                                           se fondent pas : chacune est la convention MESUREE
+//	                                           d un lecteur reel, et les fondre changerait des
+//	                                           valeurs decodees (D4).
+//	les entiers du film                        `U16LE` / `U32LE` / `U64LE`, plus `OctetAuBit` et
+//	                                           `U64LEAuBit` (offset en BITS).
+//	LE marcheur de paquets                     `Paquets`. Les QUATRE copies de l en-tete de seize
+//	                                           octets n en sont plus que des traductions.
+//	LE decompresseur                           `Inflate` (tolerant) et `Decompresser` (strict).
+//	le balayage de motif de 64 bits            `ChercherMotif64`.
+//
+// CE QUI CHANGE DE NOM PARCE QUE SA NATURE A CHANGE : `filmdec.BitReader` / `NewBitReader`
+// deviennent `Lecteur` / `LecteurSur`. Le type ne LIT plus, il DECORE — il embarque
+// `*filmsource.Bits` et n ajoute que la grammaire (profil de largeurs, capture de position,
+// observateur, `ReadSignedVarWidth`). Les deux anciens noms restent nommes dans
+// `archlint/no_raw_film_bytes_outside_source_test.go` : ratchet anti-resurrection.
+//
+// LES SIX PAQUETS QUI TRAVERSENT LA FACADE : `filmdec` (les 48 constructions de lecteur, les
+// quatre sections de `chunk_00`, le second marcheur de paquets), `killsource` (le film porte
+// desormais `*filmsource.Film` et non une COPIE de ses chunks), `analysis/objectiveevents`
+// (`film.go` et `statborg.go` : les trois lecteurs du pied de film disparaissent),
+// `analysis/weaponv3` (`bits_word.go` — la copie DIVERGENTE de la lecture par mot — est
+// supprime, `pi_resolver.go` n a plus de type `bitReader`, `timing.go` n a plus de marcheur),
+// `sync/haloclient` et cinq outils `cmd/`.
+//
+// LES TEMOINS SONT VIVANTS, PAS TAUTOLOGIQUES. Le temoin des deux marcheurs de paquets compare
+// desormais le marcheur unique a une COPIE DE REFERENCE de l ancienne grammaire de
+// `filmdec.WalkPackets`, sur tous les chunks de la mini-bobine (738 paquets) — il mesure donc
+// vraiment les deux regles qui les separaient (arret apres CHUNK_END, refus d un en-tete
+// degenere). Le differentiel du resolveur xuid -> player_index reste dans `weaponv3`, positions
+// NEGATIVES comprises, et vise desormais les primitives de la source.
+//
+// `KillSourceDecoderRev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet.
+// `SchemaVersion` reste 60.

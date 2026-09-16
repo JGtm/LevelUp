@@ -6,7 +6,7 @@ package filmsource
 //
 // Avant le lot 2.4, SEPT lecteurs de bits distincts lisaient les memes octets de film, chacun
 // avec sa propre idee du bourrage de queue, du debordement et de l ordre des bits :
-// `filmdec.BitReader`, `killsource.evReader`, les trois primitives de position de `killsource`
+// `filmdec.Lecteur`, `killsource.evReader`, les trois primitives de position de `killsource`
 // (`bitAt` / `bits32` / `bitsN`, plus `bitsWide`), `objectiveevents.readBitsBE`,
 // `weaponv3.bitReader`, `analysis.scanEvents` et la copie de `bitAt` d `analysis/positions`.
 // Une largeur corrigee d un cote et pas de l autre est exactement la divergence silencieuse que
@@ -171,4 +171,54 @@ func BitAt(d []byte, pos int) int {
 		return 0
 	}
 	return int(d[pos>>3]>>uint(7-(pos&7))) & 1
+}
+
+// BitsTolerants lit `n` bits MSB d abord a la position `pos`, ZERO DES DEUX COTES du tampon —
+// avant le premier bit comme apres le dernier.
+//
+// ELLE EXISTE POUR LES LECTEURS QUI RECULENT : `weaponv3.ResolveXuidToPI` relit les cinq bits
+// qui PRECEDENT un motif trouve, et sur un motif au tout debut du chunk elle passe sous zero.
+// [BitsAt] panique dans ce cas — c est sa convention, et elle est voulue.
+func BitsTolerants(d []byte, pos, n int) uint64 {
+	if pos >= 0 && n >= 0 && n <= 64 {
+		return BitsAt(d, pos, uint(n))
+	}
+	var v uint64
+	for i := 0; i < n; i++ {
+		v = v<<1 | uint64(BitAt(d, pos+i))
+	}
+	return v
+}
+
+// BitsTronques lit AU PLUS `n` bits MSB d abord a la position `pos` et S ARRETE a la fin du
+// tampon SANS BOURRER : la valeur rendue ne porte que les bits reellement lus, cales a droite.
+//
+// ELLE N EST PAS INTERCHANGEABLE AVEC [BitsAt], et c est tout l interet de la nommer : sur les
+// derniers bits d un bloc, `BitsAt` decale la valeur lue vers la gauche des bits manquants
+// (bourrage a zero du moteur) la ou celle-ci ne la decale pas. Les deux rendent alors des
+// valeurs DIFFERENTES. C est la convention du lecteur du PIED DE FILM (`objectiveevents`), et
+// la fondre dans celle du moteur changerait des valeurs decodees — ce que D4 interdit.
+func BitsTronques(d []byte, pos, n int) uint64 {
+	if pos >= 0 && n >= 0 && n <= 64 {
+		if reste := len(d)*8 - pos; reste < n {
+			n = max(reste, 0)
+		}
+		return BitsAt(d, pos, uint(n))
+	}
+	return bitsTronquesBoucle(d, pos, n)
+}
+
+// bitsTronquesBoucle est la boucle d origine du lecteur du pied de film : elle seule porte les
+// conventions de bord que le chemin par mot ne couvre pas (position negative, largeur > 64).
+func bitsTronquesBoucle(d []byte, pos, n int) uint64 {
+	var r uint64
+	for i := 0; i < n; i++ {
+		bi := (pos + i) / 8
+		if bi >= len(d) {
+			return r
+		}
+		off := 7 - ((pos + i) % 8)
+		r = r<<1 | uint64((d[bi]>>uint(off))&1)
+	}
+	return r
 }

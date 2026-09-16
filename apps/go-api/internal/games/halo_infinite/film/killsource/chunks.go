@@ -21,8 +21,8 @@ package killsource
 //
 // # LE CHUNK 0 EST LE PREMIER DE LA SOURCE, PAS « LE CHUNK NUMERO 0 »
 //
-// `f.chunks` est indexe par POSITION dans la source, exactement comme l ancien `ChunkSource` :
-// `f.chunks[0]` est le PREMIER chunk que la source donne, et c est lui que `newTimeline`
+// `f.src` est indexe par POSITION dans la source, exactement comme l ancien `ChunkSource` :
+// `f.src.Chunk(0)` est le PREMIER chunk que la source donne, et c est lui que `newTimeline`
 // (world.go) lit comme registre ECS. Sur un cache complet ou sur une sequence telechargee, la
 // position 0 porte bien `chunk_00`, le registre ; sur une bobine partielle qui commence a
 // `chunk_01`, elle porte un chunk de donnees — et c etait DEJA le cas avant. Le contrat est donc
@@ -58,7 +58,10 @@ const packetTypeChunkEnd = 7
 
 // film : les octets d un film, deja decompresses, prets a decoder.
 type film struct {
-	chunks  [][]byte // par POSITION de chunk dans la source, decompresses
+	// src : LE FILM CHARGE, et la SEULE porte aux octets de ce paquet (lot 2.4.2, ADR 0034
+	// D-2). Jusque-la ce champ etait un `chunks [][]byte` — une COPIE de la tranche de chunks
+	// du film, indexee a la main partout ou un chunk etait lu.
+	src     *filmsource.Film
 	packets []packet
 	t0      []packet // paquets type-0, tries par horodatage
 	tsBase  uint64
@@ -79,17 +82,13 @@ func loadFilm(src *filmsource.Film) (*film, error) {
 	if src == nil || src.NumChunks() == 0 {
 		return nil, ErrNoChunk
 	}
-	n := src.NumChunks()
-	f := &film{chunks: make([][]byte, n), packets: packetsOf(src)}
+	f := &film{src: src, packets: packetsOf(src)}
 	// LA VERSION VIENT DU PROFIL DU FILM DEPUIS LE LOT 2.1.4 : `filmdec.HighlightProfileOfFilm`
 	// porte la MEME valeur que `FilmMajorVersion` — c est la meme lecture — mais elle la rend
 	// avec le NOM de l implantation qu elle selectionne, et c est le profil qui en est
 	// desormais la source unique (item 2.1.4 du PLAN_DECODEUR_FILM).
 	hl := filmdec.HighlightProfileOfFilm(src)
 	f.majorVersion, f.versionLue = hl.MajorVersion, hl.Lue
-	for ch := 0; ch < n; ch++ {
-		f.chunks[ch] = src.Chunk(ch)
-	}
 	for i := range f.packets {
 		if f.packets[i].typ == packetType0 {
 			f.t0 = append(f.t0, f.packets[i])

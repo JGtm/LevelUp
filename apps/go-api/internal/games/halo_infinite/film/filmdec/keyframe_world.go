@@ -83,7 +83,7 @@ func kfBitAt(buf []byte, p int) uint64 {
 // (field26==0 au spawn -> le mot 32-bit vaut ti), et aucun appelant ne l'a jamais lu.
 func kfValidAnchor(buf []byte, q, prevSlot, total int) (slot, ti, gen int, ok bool) {
 	// La garde est ICI AUSSI parce qu'elle protege la LECTURE qui suit : `kfReadBits` a une
-	// position negative panique (convention preservee, cf. bits_word.go). [kfAnchorFromID] la
+	// position negative panique (convention preservee, cf. `filmsource.BitsAt`). [kfAnchorFromID] la
 	// rejoue pour son autre appelant, qui lui a deja lu l'identifiant.
 	if q < 0 || q+64 > total {
 		return

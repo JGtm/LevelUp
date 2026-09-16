@@ -64,7 +64,7 @@ type lot1mtHit struct {
 // lot1mtDecodeFire lit l'attaquant (ref0) du record 0xD2 type 36 et son drapeau MODAL (via le
 // décodeur de production). Rend ok=false si le paquet n'est pas un type 36.
 func lot1mtDecodeFire(pay []byte, ts uint64) (lot1mtFire, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(2) // config + continuation
 	if br.ReadBits(7) != 36 {
 		return lot1mtFire{}, false
@@ -80,7 +80,7 @@ func lot1mtDecodeFire(pay []byte, ts uint64) (lot1mtFire, bool) {
 // lot1mtDecodeHit lit le responsable (ref1) d'un damage_aftermath (0xC0 type 0) et si c'est un
 // soin. Rend (hit, estSoin, ok). ok=false si ce n'est pas un type 0.
 func lot1mtDecodeHit(pay []byte, ts uint64) (lot1mtHit, bool, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(2)
 	if br.ReadBits(7) != 0 { // type 1 (damage_section_response), pas damage_aftermath
 		return lot1mtHit{}, false, false

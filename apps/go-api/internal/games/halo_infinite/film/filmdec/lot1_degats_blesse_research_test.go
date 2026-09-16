@@ -153,7 +153,7 @@ func lot1WorldBaseAndEvents(t *testing.T, dir string, reg *Registry, n int) ([]l
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, w, cfg)
 			}
 		}
@@ -165,7 +165,7 @@ func lot1WorldBaseAndEvents(t *testing.T, dir string, reg *Registry, n int) ([]l
 			if pay[0] != 0xC0 {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(2)
 			if br.ReadBits(7) != 0 {
 				continue

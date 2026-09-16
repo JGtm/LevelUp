@@ -27,7 +27,7 @@ var captureNames = []string{
 // consumeByNameCapturing consomme un composant comme consumeByName, et rend en plus sa
 // valeur décodée (payload) pour les composants de captureNames. payload est nil partout
 // ailleurs — le champ CompResult.Payload est donc absent par défaut, sans coût.
-func consumeByNameCapturing(br *BitReader, name string, typeIndex, level uint32) (
+func consumeByNameCapturing(br *Lecteur, name string, typeIndex, level uint32) (
 	variant uint32, dead *DeadState, payload any, ported bool) {
 	switch name {
 	case compObjectBodyVitality: // i4

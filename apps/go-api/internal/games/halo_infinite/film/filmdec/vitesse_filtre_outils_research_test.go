@@ -114,7 +114,7 @@ func vitfScanEvenements(t *testing.T, dir string) ([]vitfEvent, []vitfSpan, int)
 			if typ := int(pay[0]&0x3F)<<1 | int(pay[1]>>7); typ != 117 {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(9)
 			if !br.ReadBit() {
 				t.Logf("  tête 117 @%d us SANS ref0 — ignorée (slot indécodable)", pk.TimestampUS)

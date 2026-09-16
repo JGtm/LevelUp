@@ -105,7 +105,7 @@ func geoCollectShots(t *testing.T, dir string, n int) []geoShot {
 			if pay[0] != 0xD2 {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(2)
 			if br.ReadBits(7) != 36 {
 				continue
@@ -163,7 +163,7 @@ func geoCollectDamageKills(t *testing.T, dir string, reg *Registry, n int) ([]ge
 			}
 			pay := pk.Payload(data)
 			if pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				recs, _ := DecodeFrameRecords(br, w, cfg)
 				kills = geoHarvestKills(recs, pk.TimestampUS, kills)
 			}
@@ -200,7 +200,7 @@ func geoRawDamageInChunk(pks []FilmPacket, data []byte, w *World, out []geoRawDm
 		if pay[0] != 0xC0 {
 			continue
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.Skip(2)
 		if br.ReadBits(7) != 0 {
 			continue

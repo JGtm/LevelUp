@@ -30,7 +30,7 @@ package filmdec
 // Leaf widths CONFIRMED bit-exact: FUN_140f582d0 = flat R(8), FUN_140f58324 = flat R(9),
 // FUN_1407ef804 = flat R(4). The mask is the 4th read (R(8) at state+6), NOT one of the
 // R(9) fields — the disasm `LEA R14,[RBX+0x6]` then `TEST word ptr [R14],AX` proves it.
-func consumeGameEngineTeamMapping(br *BitReader) {
+func consumeGameEngineTeamMapping(br *Lecteur) {
 	br.ReadBits(8)         // FUN_140f582d0 = R(8) field A (state+0)
 	br.ReadBits(9)         // FUN_140f58324 = R(9) field B (state+2)
 	br.ReadBits(9)         // FUN_140f58324 = R(9) field C (state+4)

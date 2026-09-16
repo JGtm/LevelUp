@@ -19,9 +19,9 @@ func TestObservateurNeChangeAucunBit(t *testing.T) {
 	cas := []struct {
 		nom  string
 		flux []byte
-		lire func(br *BitReader)
+		lire func(br *Lecteur)
 	}{
-		{"i0 position absolue", bitsDe("", 32), func(br *BitReader) {
+		{"i0 position absolue", bitsDe("", 32), func(br *Lecteur) {
 			consumeObjectPositionDynamicPrecisionD(br, br.traversal())
 		}},
 		{"i56 energie de capacite", bitsDe("111", 32), consumeBipedSpartanAbilityEnergy},

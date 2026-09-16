@@ -46,7 +46,7 @@ func TestZoomListesMultiples(t *testing.T) {
 			if pay[0] != zoomFamilyByte {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(1)
 			if !br.ReadBit() {
 				continue
@@ -146,7 +146,7 @@ func TestZoomStructureMultiFilms(t *testing.T) {
 					continue
 				}
 				paquets++
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.Skip(1)
 				if !br.ReadBit() {
 					horsType++

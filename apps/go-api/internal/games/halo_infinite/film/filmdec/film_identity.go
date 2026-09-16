@@ -59,8 +59,10 @@ package filmdec
 // paquet n'a plus aucune variable ecrite — mais ces lecteurs-la l'etaient deja des le lot 1.5.
 
 import (
-	"encoding/binary"
+	"math/bits"
 	"strings"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // chunk00Error : une erreur sentinelle CONSTANTE des lecteurs de `chunk_00`.
@@ -204,8 +206,8 @@ func ReadFilmIdentity(chunk0 []byte) (FilmIdentity, error) {
 		Version:        chaineDeChamp(chunk0, buildOff-identFieldBytes),
 		Build:          chaineDeChamp(chunk0, buildOff),
 		Flavor:         chaineDeChamp(chunk0, buildOff+identFieldBytes),
-		BuildID:        binary.LittleEndian.Uint32(chunk0[buildOff+identBuildIDOff:]),
-		Changelist:     binary.LittleEndian.Uint32(chunk0[buildOff+identChangelistOff:]),
+		BuildID:        filmsource.U32LE(chunk0, buildOff+identBuildIDOff),
+		Changelist:     filmsource.U32LE(chunk0, buildOff+identChangelistOff),
 		TypeVersions:   lireTableParType(chunk0, finRegistre, buildOff-identFieldBytes),
 		RegistryBlocks: len(reg.Archetypes),
 		BuildOffset:    buildOff,
@@ -231,11 +233,12 @@ func u32DuFlux(d []byte, bit int) uint32 {
 	if bit < 0 || (bit+32+7)/8 > len(d) {
 		return 0
 	}
-	br := NewBitReader(d)
+	br := LecteurSur(d)
 	br.SetBitPos(bit)
-	var tmp [4]byte
-	binary.BigEndian.PutUint32(tmp[:], uint32(br.ReadBits(32)))
-	return binary.LittleEndian.Uint32(tmp[:])
+	// Les quatre octets sortis du flux en big-endian se relisent en little-endian : c est un
+	// ECHANGE D OCTETS, pas une lecture de film (`math/bits`, pas `encoding/binary` — ce
+	// fichier ne touche plus les octets autrement que par la couche source).
+	return bits.ReverseBytes32(uint32(br.ReadBits(32)))
 }
 
 // chercherChaineBuild ancre la section d'identification sur la chaine de build.
@@ -290,7 +293,7 @@ func lireTableParType(d []byte, finRegistre, versionOff int) []uint32 {
 	}
 	out := make([]uint32, 0, (versionOff-finRegistre)/4)
 	for off := finRegistre; off+4 <= versionOff; off += 4 {
-		out = append(out, binary.LittleEndian.Uint32(d[off:]))
+		out = append(out, filmsource.U32LE(d, off))
 	}
 	return out
 }

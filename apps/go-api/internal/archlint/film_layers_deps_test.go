@@ -254,6 +254,16 @@ var aretesTolerees = []areteToleree{
 			"`film/internal/` ; l entree tombe au second des deux deplacements",
 	},
 	{
+		de: "internal/analysis/weaponv3", vers: "internal/analysis/filmsource",
+		pose: "2026-09-18", lot: "2.5.a puis 2.5.c",
+		coupe: "NEE DU LOT 2.4.2, ET VOULUE PAR V15 (1) : la facade `film.Source` nait dans " +
+			"`internal/analysis/filmsource` precisement parce que `weaponv3` et " +
+			"`objectiveevents` ne peuvent pas importer un paquet de titre sans rougir D9. " +
+			"`weaponv3` y a perdu son lecteur de bits, sa copie divergente de la lecture par " +
+			"mot et son marcheur de paquets. Le sens est bon (grammar -> source) ; c est le " +
+			"LIEU qui ne l est pas encore, et 2.5.a le corrige par `git mv` pur",
+	},
+	{
 		de: "internal/analysis/weaponv3", vers: "internal/analysis",
 		pose: "2026-09-17", lot: "2.5.c",
 		coupe: "le catalogue d armes (3 symboles) remonte en `games/weapons` ; apres quoi " +

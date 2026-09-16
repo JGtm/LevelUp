@@ -85,7 +85,7 @@ func r12In(fs []r12Fen, ms int64) (string, bool) {
 // r12Tete lit le type du PREMIER evenement de la liste d'un paquet delta. Cadrage CERTAIN :
 // rien ne precede, donc aucune derive ne peut s'y produire. Rend -1 pour une liste vide.
 func r12Tete(pay []byte) int {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	if br.Remaining() < 9 {
 		return -1
 	}

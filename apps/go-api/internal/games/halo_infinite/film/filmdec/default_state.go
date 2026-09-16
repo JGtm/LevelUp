@@ -103,7 +103,7 @@ const bipedDefaultStateTailBits = 0
 // is the raw i0 anchor. This is the offset a caller localises i0 at (per-biped: the
 // end varies with the record's name/ref gate bits — expected).
 func BipedDefaultStateEndBit(buf []byte, stateBit int, ctx ContexteDeLecture) int {
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.PoserContexte(ctx)
 	br.SetBitPos(stateBit)
 	consumeBipedDefaultState(br)
@@ -117,7 +117,7 @@ func BipedDefaultStateEndBit(buf []byte, stateBit int, ctx ContexteDeLecture) in
 // number of bits the presence mask consumed, for diagnostics. r-b (media-frame quat) is
 // closed as 0-bit on a fresh keyframe decode (bipedMediaFramePresent stays false).
 func BipedMovementI0Bit(buf []byte, stateBit int, ctx ContexteDeLecture) (i0Bit, hasComp, maskBits int) {
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.PoserContexte(ctx)
 	br.SetBitPos(stateBit)
 	consumeBipedDefaultState(br) // rep (movement decode left OFF here)
@@ -133,7 +133,7 @@ func b2i(b bool) int {
 	return 0
 }
 
-func consumeBipedDefaultState(br *BitReader) {
+func consumeBipedDefaultState(br *Lecteur) {
 	// uVar10 selector: default 13; R(1) gate, if set uVar10 = R(8).
 	uVar10 := uint32(13)
 	if br.ReadBit() { // g0 = FUN_1406cf008
@@ -219,7 +219,7 @@ const bipedDefaultStateDecodeMovement = false
 //	i2 forward-and-up (orientation).
 //	i3 angular-velocity.
 //	i4 object-body-vitality : FUN_140fb8978 = R(8) health + 3×R(1). SPAWN-exact.
-func consumeBipedDefaultStateMovement(br *BitReader) {
+func consumeBipedDefaultStateMovement(br *Lecteur) {
 	// SERIALIZER MOVEMENT porté (r-c). Après FUN_140f44c38 (la representation), le
 	// dispatcher record-NEW (FUN_1408f1aa4) / keyframe (FUN_141f86704) enchaîne :
 	//   [P1] vtable[0x88]        : 0 bit (post-process, RSI jamais passé)
@@ -245,7 +245,7 @@ func consumeBipedDefaultStateMovement(br *BitReader) {
 //
 // Le default-mask {i0} est OR'd en amont (vtable[0xa0]=FUN_14076ca20) : i0 reste forcé
 // présent quel que soit le contenu lu ici. Retourne le nombre de bits consommés.
-func consumePresenceMask(br *BitReader) int {
+func consumePresenceMask(br *Lecteur) int {
 	start := br.BitPos()
 	if br.ReadBit() { // gate==1 : masque full explicite
 		br.ReadBits(64)
@@ -266,7 +266,7 @@ func consumePresenceMask(br *BitReader) int {
 //	2× FUN_1424cd060 (R(1))
 //
 // Ordre exact de FUN_140fea4c0 : b1ac0, f08bc, b1ac0, b1ac0, b1ac0, cd060, cd060.
-func consumeBipedSpartanAbilityMalleableProperty(br *BitReader) {
+func consumeBipedSpartanAbilityMalleableProperty(br *Lecteur) {
 	r1opt12 := func() {
 		if br.ReadBit() {
 			br.ReadBits(12)
@@ -287,7 +287,7 @@ func consumeBipedSpartanAbilityMalleableProperty(br *BitReader) {
 // (@142451b3e): quat FUN_14076e494 + FUN_1407f2058. The quat (FUN_14076e524) is
 // R(1) gate; if bit==0 -> R(DAT_144632be0=1) index. Then FUN_1407f2058 = R(1);
 // if bit==0 R(5). Only reached when the DST media-frame object is non-empty.
-func consumeBipedDefaultStateMediaFrame(br *BitReader) {
+func consumeBipedDefaultStateMediaFrame(br *Lecteur) {
 	if !br.ReadBit() { // FUN_14076e524 quat gate; if bit==0 read index
 		br.ReadBits(1) // DAT_144632be0 = 1 (quat index width)
 	}
@@ -319,7 +319,7 @@ func consumeBipedDefaultStateMediaFrame(br *BitReader) {
 // les largeurs touchant stream+0x2c sont fermées (cf. bloc-preuve subFnWidths). Le
 // FUN_140cc5128 per-axis position block du chemin i0 movement (hors de ce bloc) garde sa
 // dépendance runtime (DAT_1445cc9e0 axis widths) non sourçable statiquement.
-func consumeMultiplayerPropertiesBlock(br *BitReader) {
+func consumeMultiplayerPropertiesBlock(br *Lecteur) {
 	br.obs.publishMPP(MPPWord9, br.ReadBits(uint(br.mppWidths().Lead)), true) // FUN_141fd72c0 R(9)
 	br.obs.publishMPP(MPPWord32, br.ReadBits(32), true)                       // FUN_14080d6f0 R(32)
 	if !br.ReadBit() {
@@ -401,7 +401,7 @@ func (o *Observation) publishMPP(f MPPField, value uint64, present bool) {
 }
 
 // consumeMppD524 ports FUN_14080d524: R(1) gate; if set R(13) (0xd).
-func consumeMppD524(br *BitReader) {
+func consumeMppD524(br *Lecteur) {
 	if br.ReadBit() {
 		br.ReadBits(13)
 	}
@@ -409,7 +409,7 @@ func consumeMppD524(br *BitReader) {
 
 // consumeMppD4d0 ports FUN_14080d4d0: R(1) gate; if set ->
 // FUN_1407f2034[gate0R(5)] + FUN_140cec0a0[gate1R(8)] + R(8) + R(8).
-func consumeMppD4d0(br *BitReader) {
+func consumeMppD4d0(br *Lecteur) {
 	if !br.ReadBit() {
 		return
 	}
@@ -425,7 +425,7 @@ func consumeMppD4d0(br *BitReader) {
 // AFTER vtable[0x60] and BEFORE the presence mask. The exact reads are gated by
 // runtime config globals not recoverable statically; the width is supplied via
 // bipedDefaultStateTailBits (default 0 -> no tail).
-func consumeBipedDefaultStateTail(br *BitReader) {
+func consumeBipedDefaultStateTail(br *Lecteur) {
 	if bipedDefaultStateTailBits > 0 {
 		br.Skip(bipedDefaultStateTailBits)
 	}

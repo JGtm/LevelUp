@@ -242,7 +242,7 @@ func equipEvRecense(t *testing.T, dir string) ([]equipEvOcc, map[int]int, int) {
 func equipEvRef0(pay []byte) (int, int) {
 	s8, s9 := -1, -1
 	for _, w := range []uint{8, 9} {
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.Skip(9) // config + continuation + R(7) type
 		if br.Remaining() < int(w)+3 || !br.ReadBit() {
 			continue

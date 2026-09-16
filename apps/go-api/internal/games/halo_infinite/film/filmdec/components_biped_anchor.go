@@ -120,7 +120,7 @@ type AbilityNonPredictedState struct {
 // consumeAbilityAnchorBody porte le corps tag==3 selon la grammaire mesurée. Rend false
 // sur les valeurs internes jamais observées : au-delà, le curseur ne serait plus digne de
 // confiance et la marche doit s'arrêter proprement.
-func consumeAbilityAnchorBody(br *BitReader, st *AbilityNonPredictedState) bool {
+func consumeAbilityAnchorBody(br *Lecteur, st *AbilityNonPredictedState) bool {
 	st.Inner = int(br.ReadBits(anchorInnerBits))
 	st.Zero3 = uint32(br.ReadBits(anchorZeroBits))
 	if st.Zero3 != 0 {
@@ -155,7 +155,7 @@ func consumeAbilityAnchorBody(br *BitReader, st *AbilityNonPredictedState) bool 
 // consumeAbilityAnchorVec porte FUN_142f26e9c -> FUN_14076d528(mag=0xc, dir=0x18) : même
 // porte (charge sur bit==0) et même ordre de flux (direction puis magnitude) que
 // consume14076d528 — seules les largeurs diffèrent, et les quanta sont publiés.
-func consumeAbilityAnchorVec(br *BitReader) (v AbilityAnchorVec) {
+func consumeAbilityAnchorVec(br *Lecteur) (v AbilityAnchorVec) {
 	if br.ReadBit() { // porte==1 -> vecteur constant, 0 bit de charge
 		return v
 	}

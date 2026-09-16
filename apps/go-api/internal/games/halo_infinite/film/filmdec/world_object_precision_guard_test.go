@@ -29,7 +29,7 @@ import (
 // qu'une garde qui n'en verrait qu'une laisserait passer les deux autres :
 //
 //	`orldObjectPrecision`    le champ du profil, son accesseur de lecteur
-//	                         (`BitReader.worldObjectPrecision`) et l'installateur ;
+//	                         (`Lecteur.worldObjectPrecision`) et l'installateur ;
 //	`largeursObjetDuMonde`   l'accès des trois lecteurs PAR DÉCALAGE D'OCTET (`projectiles.go`),
 //	                         qui n'ont pas de lecteur de bits à porter le profil ;
 //	`Movement.WorldObject`   la ligne de table du profil et sa godoc.

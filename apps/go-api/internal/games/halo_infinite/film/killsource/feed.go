@@ -91,8 +91,8 @@ type killFeed struct {
 func loadKillFeed(f *film) (*killFeed, error) {
 	var best []analysis.HighlightEvent
 	bestN := 0
-	for ch := range f.chunks {
-		evs, err := analysis.ParseHighlightEvents(f.chunks[ch], f.majorVersion)
+	for ch := 0; ch < f.src.NumChunks(); ch++ {
+		evs, err := analysis.ParseHighlightEvents(f.src.Chunk(ch), f.majorVersion)
 		if err != nil {
 			continue // un chunk de replication n est pas un chunk HIGHLIGHT : ce n est pas une erreur
 		}

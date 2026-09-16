@@ -22,7 +22,7 @@ package filmdec
 // PIEGE D'ORDRE : le flux porte [Ncomp][Ncib] alors que la boucle CIBLES tourne EN PREMIER.
 
 // r7Comptes lit le bloc de comptes du type 36 (FUN_14080cc68) et rend (Ncomp, Ncib).
-func r7Comptes(br *BitReader) (int, int) {
+func r7Comptes(br *Lecteur) (int, int) {
 	if br.ReadBit() { // z : les deux comptes sont nuls
 		return 0, 0
 	}
@@ -42,7 +42,7 @@ func r7Comptes(br *BitReader) (int, int) {
 
 // r7Composite consomme le bloc composite O ou P (FUN_140c9e4d8 / FUN_1408eff64) et rend la
 // valeur de sa porte. `queue` active la queue propre a O (le bloc c2/c3 puis R(15)+R(7)).
-func r7Composite(br *BitReader, queue bool, largeurA, largeurB int) bool {
+func r7Composite(br *Lecteur, queue bool, largeurA, largeurB int) bool {
 	porte := br.ReadBit()
 	if !porte {
 		return false
@@ -73,7 +73,7 @@ func r7Composite(br *BitReader, queue bool, largeurA, largeurB int) bool {
 }
 
 // r7SkipChargeLot6 : les types 36 et 35. Rend false pour tout type non ferme.
-func r7SkipChargeLot6(br *BitReader, typ int, ctx r7Ctx) bool {
+func r7SkipChargeLot6(br *Lecteur, typ int, ctx r7Ctx) bool {
 	switch typ {
 	case 36:
 		return r7Charge36(br, ctx)
@@ -84,7 +84,7 @@ func r7SkipChargeLot6(br *BitReader, typ int, ctx r7Ctx) bool {
 }
 
 // r7Charge36 consomme la charge de `action_weapon_fire`.
-func r7Charge36(br *BitReader, ctx r7Ctx) bool {
+func r7Charge36(br *Lecteur, ctx r7Ctx) bool {
 	estCourt := br.ReadBit()
 	estBloc := br.ReadBit()
 	br.Skip(8) // indice tireur (R(7) puis R(1), FUN_141fcf670)
@@ -149,7 +149,7 @@ func r7Charge36(br *BitReader, ctx r7Ctx) bool {
 }
 
 // r7Queue36 consomme la queue commune du type 36 (section R de la grammaire).
-func r7Queue36(br *BitReader, ctx r7Ctx, estBloc, blocHoro bool) bool {
+func r7Queue36(br *Lecteur, ctx r7Ctx, estBloc, blocHoro bool) bool {
 	if !blocHoro {
 		if br.ReadBit() {
 			br.Skip(6)
@@ -192,7 +192,7 @@ func r7Queue36(br *BitReader, ctx r7Ctx, estBloc, blocHoro bool) bool {
 
 // r7Charge35 consomme la charge de `request_weapon_fire` : strictement sequentiel, sans
 // variante courte, sans bloc horodatage, et avec une VISEE INCONDITIONNELLE.
-func r7Charge35(br *BitReader, ctx r7Ctx) bool {
+func r7Charge35(br *Lecteur, ctx r7Ctx) bool {
 	br.Skip(8) // indice tireur
 	r7Porte2Inv(br)
 	r7Porte32(br)

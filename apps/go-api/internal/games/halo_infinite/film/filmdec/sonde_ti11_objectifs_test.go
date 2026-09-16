@@ -194,7 +194,7 @@ func TestTI11Grammaire(t *testing.T) {
 // est porte. Sur un lecteur vide : un composant porte peut consommer 0 bit, mais il rend
 // ported=true, et c'est cette valeur seule qui gouverne l'arret du traverseur.
 func ti11ComponentIsPorted(name string, typeIndex, level uint32) bool {
-	br := NewBitReader(make([]byte, 64))
+	br := LecteurSur(make([]byte, 64))
 	_, _, ported := consumeByName(br, name, typeIndex, level)
 	return ported
 }

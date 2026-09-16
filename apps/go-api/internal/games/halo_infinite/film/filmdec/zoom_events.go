@@ -132,7 +132,7 @@ func ScanZoomEvents(film *filmsource.Film) []ZoomEvent {
 // decodeZoomHead lit l'événement de tête d'un paquet de la famille et rend sa bascule.
 // ok=false si l'en-tête n'est pas un `unit_zoom` ou si l'unité n'est pas désignée.
 func decodeZoomHead(pay []byte, tsUS uint64) (ZoomEvent, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	h := readPacketHead(br) // [config][continuation][R(7) type] — event_list.go
 	if !h.More {
 		return ZoomEvent{}, false // liste vide : pas d'événement en tête
@@ -155,7 +155,7 @@ func decodeZoomHead(pay []byte, tsUS uint64) (ZoomEvent, bool) {
 }
 
 // readZoomRef consomme une référence gardée et rend (index, présente).
-func readZoomRef(br *BitReader, dom int) (uint64, bool) {
+func readZoomRef(br *Lecteur, dom int) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}

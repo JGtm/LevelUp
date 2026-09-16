@@ -20,7 +20,7 @@ import "levelup/go-api/internal/analysis/filmsource"
 // (garde-fou : event_list_test.go rejoue le compte fire_events et l'histogramme de tête).
 //
 // ARITHMÉTIQUE DE TÊTE, prouvée sur tout le corpus par la percée : quand la liste porte un
-// événement, l'octet 0 du payload vaut `0xC0 | (type >> 1)`. En lecture MSB-first (BitReader) :
+// événement, l'octet 0 du payload vaut `0xC0 | (type >> 1)`. En lecture MSB-first (Lecteur) :
 // bit 0 = config, bit 1 = continuation, bits 2..8 = R(7) type. Le bit de poids faible du type
 // est donc le bit de poids fort de l'octet 1. Un octet de tête dans 0x80..0xBF a son bit 1 à 0
 // (liste vide = trame de records pure, cf. témoin 0xA0).
@@ -78,7 +78,7 @@ type packetHead struct {
 // Faire tester la continuation aux trois derniers serait un CHANGEMENT DE COMPORTEMENT sur une
 // entrée synthétique (le harnais `writeModalHeader` écrit `bits(0, 2)` en préfixe, continuation
 // comprise) : hors du périmètre « comportement strictement identique » du lot E-I.
-func readPacketHead(br *BitReader) packetHead {
+func readPacketHead(br *Lecteur) packetHead {
 	var h packetHead
 	h.Config = br.ReadBit()
 	h.More = br.ReadBit()
@@ -96,7 +96,7 @@ func PacketHeadEventType(pay []byte) (typ int, present bool) {
 	if len(pay) < 1 {
 		return 0, false
 	}
-	h := readPacketHead(NewBitReader(pay))
+	h := readPacketHead(LecteurSur(pay))
 	if !h.More {
 		return 0, false
 	}

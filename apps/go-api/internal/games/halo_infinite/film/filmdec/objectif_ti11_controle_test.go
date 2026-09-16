@@ -119,7 +119,7 @@ func ti11ControlePayload(pay []byte, band map[uint32]bool, arch Archetype, ti in
 				done = false
 				break
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.SetBitPos(at)
 			_, _, ported := consumeByName(br, name, uint32(ti), arch.Level(id))
 			if !ported || br.BitPos() > total {

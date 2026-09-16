@@ -8,8 +8,6 @@ package main
 // disposition-là, pas dans une mise en page à lui.
 
 import (
-	"bytes"
-	"compress/zlib"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -24,6 +22,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -444,12 +443,7 @@ func downloadChunk(ctx context.Context, client *http.Client, url string) ([]byte
 	if err != nil {
 		return nil, err
 	}
-	zr, err := zlib.NewReader(bytes.NewReader(raw))
-	if err != nil {
-		return nil, fmt.Errorf("en-tête zlib : %w", err)
-	}
-	defer func() { _ = zr.Close() }()
-	return io.ReadAll(zr)
+	return filmsource.Decompresser(raw)
 }
 
 // beatUntil bat tant que le job est en cours. C'est ce battement qui prolonge le

@@ -215,7 +215,7 @@ func lireEquipeDuRecord(pay []byte, recBit int, reg *Registry, ctx ContexteDeLec
 		return 0, 0, false
 	}
 	i0 := tr.Comps[0].StartBit
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.PoserContexte(ctx)
 	// LE CADRE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c) : cette lecture REJOUE le cadre
 	// d'`walkKeyframeFullState` pour retrouver le premier composant, et les deux doivent donc

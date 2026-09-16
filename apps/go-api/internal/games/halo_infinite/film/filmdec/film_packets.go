@@ -1,7 +1,6 @@
 package filmdec
 
 import (
-	"encoding/binary"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -54,30 +53,36 @@ func ReadFilmChunk(dir string, chunk int) ([]byte, error) {
 	return filmsource.Inflate(raw), nil
 }
 
-// WalkPackets énumère les paquets d'un chunk décompressé. S'arrête au premier en-tête
-// incohérent (fin de chunk ou padding) — les paquets déjà lus restent valides.
+// WalkPackets énumère les paquets d'un chunk décompressé, dans la forme [FilmPacket].
 //
-// MARCHEUR HORS PRODUCTION depuis le lot 1 (2026-09-02) : la grammaire de la chaine de cuisson
-// vit dans `filmsource` (une seule, mesuree sur 1 378 films), et [FilmChunkAt] rend ses paquets.
-// Celui-ci survit pour les lecteurs d'un chunk ISOLE (`FindPackets` et les instruments de
-// recherche) et comme TEMOIN : `TestFilmChunkAtEgaleWalkPackets` compare les deux vues sur un
-// vrai chunk, et c'est cette comparaison qui autorise la migration.
+// IL N Y A PLUS QU UN MARCHEUR DE PAQUETS (lot 2.4.2). Celui-ci recopiait l'en-tête de seize
+// octets — `[u16 type][2 o][u32 taille][u64 horodatage]` — avec ses PROPRES conditions d'arrêt,
+// à côté de celui de `filmsource` ; il n'est plus qu'une TRADUCTION de [filmsource.Paquets]
+// dans la forme de ce paquet. Les bornes `Start` / `Size` se reconstituent en suivant l'offset :
+// le découpage est contigu par construction (chaque paquet commence là où le précédent finit).
+//
+// Il survit pour les lecteurs d'un chunk ISOLÉ (`FindPackets`, les instruments de recherche) ;
+// la chaîne de cuisson, elle, charge le film une fois et lit [FilmChunkAt].
+//
+// LES DEUX GRAMMAIRES SONT OPPOSÉES SUR DES CHUNKS RÉELS par
+// `filmsource.TestDeuxMarcheursDePaquetsSAccordent` : le marcheur de `filmsource` ÉMET le
+// terminateur CHUNK_END puis s'arrête (règle 3 de D3 révisée) et refuse un en-tête dégénéré
+// (règle 4), là où celui-ci continuait — deux règles que la mesure sur 1 378 films a établies,
+// et dont le témoin vérifie qu'elles ne changent aucun paquet d'un chunk de données.
 func WalkPackets(chunk []byte) []FilmPacket {
-	var out []FilmPacket
+	pks := filmsource.Paquets(chunk, 0)
+	out := make([]FilmPacket, 0, len(pks))
 	off := 0
-	for off+packetHeaderSize <= len(chunk) {
-		size := int(binary.LittleEndian.Uint32(chunk[off+4:]))
-		if size < 0 || off+packetHeaderSize+size > len(chunk) {
-			break
-		}
+	for i := range pks {
+		taille := len(pks[i].Payload)
 		out = append(out, FilmPacket{
-			Index:       len(out),
-			Type:        binary.LittleEndian.Uint16(chunk[off:]),
+			Index:       i,
+			Type:        uint16(pks[i].Type),
 			Start:       off + packetHeaderSize,
-			Size:        size,
-			TimestampUS: binary.LittleEndian.Uint64(chunk[off+8:]),
+			Size:        taille,
+			TimestampUS: pks[i].TS,
 		})
-		off += packetHeaderSize + size
+		off += packetHeaderSize + taille
 	}
 	return out
 }

@@ -92,7 +92,7 @@ func r7BitsAxe(etendue float64, k int) uint {
 // Porte INVERSEE : bit 0 -> index de region R(wr) puis 3 axes aux bornes de LA region ;
 // bit 1 -> bornes par defaut du moteur. Sous r7VarPosBrute, la position est un R(96) brut et
 // aucune de ces largeurs ne s'applique.
-func r7VecteurQuantifie(br *BitReader, ctx r7Ctx, k int) bool {
+func r7VecteurQuantifie(br *Lecteur, ctx r7Ctx, k int) bool {
 	if r7VarPosBrute {
 		br.Skip(96)
 		return true
@@ -113,7 +113,7 @@ func r7VecteurQuantifie(br *BitReader, ctx r7Ctx, k int) bool {
 
 // r7SkipCharge consomme la charge du type. Rend false si le type n'a pas de grammaire fermee
 // (marche impossible au-dela) ou si la charge exige une carte absente.
-func r7SkipCharge(br *BitReader, typ int, ctx r7Ctx) bool {
+func r7SkipCharge(br *Lecteur, typ int, ctx r7Ctx) bool {
 	switch typ {
 	// --- lecteur VIDE 0x1408d8220 : 0 bit (annexe A) ---
 	case 3, 4, 23, 24, 25, 26, 33, 49, 54, 57, 59, 92, 103:

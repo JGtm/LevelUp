@@ -99,6 +99,7 @@ var updateGrammarRev = flag.Bool("update-grammar-rev", false,
 // son message etait du code mort. La constante decrit la grammaire, elle n en fait pas partie.
 var fichiersHorsGrammaire = map[string]bool{
 	"grammar_rev.go": true, "grammar_rev_chronique.go": true,
+	"grammar_rev_chronique_archive.go": true,
 }
 
 // fichierChroniqueGrammarRev : celui des deux qui porte les ENTREES de chronique.

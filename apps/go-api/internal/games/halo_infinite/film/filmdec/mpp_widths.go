@@ -46,7 +46,7 @@ const mppIndexParDefaut = 5
 func mppDuProfil() MPPWidths { return MPPWidths{Lead: mppLeadParDefaut, Index: mppIndexParDefaut} }
 
 // mppWidths rend le découpage du bloc MPP que ce lecteur porte.
-func (b *BitReader) mppWidths() MPPWidths { return b.p.MPP }
+func (b *Lecteur) mppWidths() MPPWidths { return b.p.MPP }
 
 // MPPWidths est le découpage des deux champs de largeur variable du bloc MPP.
 type MPPWidths struct {

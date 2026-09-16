@@ -64,7 +64,7 @@ func TestLot1ViseeCalibration(t *testing.T) {
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, wBase, cfg2)
 			}
 		}
@@ -89,7 +89,7 @@ func TestLot1ViseeCalibration(t *testing.T) {
 				}
 				w := NewWorld(reg)
 				w.Restore(snap)
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.Skip(p + 1) // K bits post-visee + 1 bit de continuation
 				recs, _ := DecodeFrameRecords(br, w, DefaultFrameConfig())
 				depthByK[k] += len(recs)
@@ -132,7 +132,7 @@ func TestLot1ViseeCalibration(t *testing.T) {
 // lot1Type36AimEnd decode l'en-tete + composites + visee d'un paquet 0xD2 modal et rend la
 // position de bit APRES la visee R(30), ou ok=false si le paquet n'est pas un type 36 modal.
 func lot1Type36AimEnd(pay []byte) (int, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(2)
 	if br.ReadBits(7) != 36 {
 		return 0, false

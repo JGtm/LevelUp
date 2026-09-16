@@ -111,7 +111,7 @@ func profilI0Reel(pay []byte, anchor int, reg *Registry, d *profilDecoupe) int {
 	if reg == nil {
 		return -1
 	}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(anchor + keyframeRecordTIBit)
 	tr := TraverseEntity(br, reg, 0)
 	d.Desync = tr.DesyncAt

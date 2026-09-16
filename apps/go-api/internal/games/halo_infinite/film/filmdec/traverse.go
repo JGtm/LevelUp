@@ -89,7 +89,7 @@ const objectArchetypeCount = 50
 // config-gated FUN_141f86704 tail; any residue up to defaultStateBits is skipped
 // (the residue deser is not yet identified — see the note above consumeBipedDefaultState's
 // call site). For other archetypes the legacy fixed Skip(defaultStateBits) is kept.
-func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTrace {
+func TraverseEntity(br *Lecteur, reg *Registry, defaultStateBits int) EntityTrace {
 	t := EntityTrace{DesyncAt: -1, DefaultBits: defaultStateBits}
 	t.TypeIndex = uint32(br.ReadBits(6))
 	if t.TypeIndex >= objectArchetypeCount {
@@ -155,7 +155,7 @@ func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTr
 // le repli `br.Skip(defaultStateBits)`.
 
 // consumeCorruptionCheck lit le sentinel per-composant du mode film : R(1) garde ; si 1, R(32).
-func consumeCorruptionCheck(br *BitReader) {
+func consumeCorruptionCheck(br *Lecteur) {
 	if br.p.Grammaire.ControleDeCorruption && br.ReadBit() {
 		br.ReadBits(32) // sentinel attendu 0xbcddcba
 	}
@@ -166,7 +166,7 @@ func consumeCorruptionCheck(br *BitReader) {
 // inconnue, désync propre ».
 //
 //	cVar1 = FUN_14076f91c()   garde RUNTIME (DAT_144e61ea0 / DAT_145121140), 0 bit
-//	                          = `BitReader.fullPrecision`, déjà modélisée ici.
+//	                          = `Lecteur.fullPrecision`, déjà modélisée ici.
 //	cVar1 != 0 : FUN_1411b259c -> FUN_1406d676c(br, br, dst, 0x60)   = R(96) brut.
 //	cVar1 == 0 (retail, dominant) : FUN_14076e524(dst, br, idxOut, LEVEL=0x10) =
 //	          R(1) porte d'index ; si 0 -> R(DAT_144632be0) index de région ;
@@ -175,7 +175,7 @@ func consumeCorruptionCheck(br *BitReader) {
 // C'est EXACTEMENT le lecteur absolu de `consumeAbsoluteWithGate`, MOINS son bit precHigh
 // (ici la garde est runtime, pas un bit du flux) et MOINS son R(2) « fini » de queue — que
 // FUN_14076e494 n'appelle pas.
-func consumeSimStateHandleTail(br *BitReader) {
+func consumeSimStateHandleTail(br *Lecteur) {
 	if fullPrecisionGate(br) { // FUN_14076f91c vrai -> copie brute
 		br.ReadBits(rawVec3Bits) // FUN_1406d676c(..., 0x60)
 		return
@@ -196,7 +196,7 @@ func consumeSimStateHandleTail(br *BitReader) {
 //
 // CONFIRMÉ via disasm : le bloc LAB_140c1e7f2 charge `MOV dword [RSP+0x20],0x8` avant
 // CALL 1406d84b4. L'ancien port oubliait cette magnitude R(8) (lumpée dans simStateExtra).
-func consume140c1e79c(br *BitReader) {
+func consume140c1e79c(br *Lecteur) {
 	if !br.ReadBit() { // gate==0 -> packed dir
 		br.ReadBits(19)
 	}
@@ -219,7 +219,7 @@ func consume140c1e79c(br *BitReader) {
 // ‖v1‖²≈1, ‖v2‖²≈1 et v1·v2≈0 — constantes lues dans le binaire : DAT_143cd8374 = 1.0,
 // DAT_143cd8370 = 0.0, tolérance DAT_143cd84bc = 1e-3. Une base orthonormée construite
 // satisfait les trois : la queue est donc LUE, elle n'est pas conditionnelle en pratique.
-func consumeSimulationState(br *BitReader) {
+func consumeSimulationState(br *Lecteur) {
 	if !br.ReadBit() { // FUN_1406cf008 flag ; 0 -> 0 bit
 		return
 	}
@@ -237,14 +237,14 @@ func consumeSimulationState(br *BitReader) {
 	consumeSimStateHandleTail(br) // FUN_14076e494, predicat vrai par construction
 }
 
-func traverseComponentLoop(br *BitReader, arch Archetype, t *EntityTrace) {
+func traverseComponentLoop(br *Lecteur, arch Archetype, t *EntityTrace) {
 	traverseComponentLoopFrom(br, arch, t, 0)
 }
 
 // traverseComponentLoopFrom walks the component loop starting at index `from` —
 // the resume path of component-width inference (frame_chain_infer.go), which skips
 // a failed component by a candidate width and re-decodes the remainder.
-func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, from int) {
+func traverseComponentLoopFrom(br *Lecteur, arch Archetype, t *EntityTrace, from int) {
 	for i := from; i < len(arch.Components); i++ {
 		if t.Mask&(uint64(1)<<(uint(i)&63)) == 0 {
 			continue // component absent from the mask: NO bits consumed.
@@ -294,7 +294,7 @@ func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, fr
 
 // consumeMask mirrors FUN_1406d7610: R(1) gate ; if 0 -> R(3) count + count×R(6)
 // index (sparse set) ; if 1 -> R(64) dense mask.
-func consumeMask(br *BitReader) uint64 {
+func consumeMask(br *Lecteur) uint64 {
 	if !br.ReadBit() {
 		count := uint32(br.ReadBits(3))
 		var mask uint64

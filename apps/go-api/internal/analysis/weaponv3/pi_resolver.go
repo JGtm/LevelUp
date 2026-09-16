@@ -13,8 +13,10 @@ package weaponv3
 // fausse dans .ai/RESEARCH_THEATER_RE.md / PLAN §pi-fix.
 
 import (
-	"encoding/binary"
+	"math/bits"
 	"strings"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // PIBits : largeur du champ player_index (0-31). EXPORTEE parce que la ventilation des tirs
@@ -22,48 +24,22 @@ import (
 // du 5 divergerait le jour ou l un des deux lecteurs changerait.
 const PIBits = 5
 
-// bitReader fournit un accès bit-level MSB-first à un buffer décompressé.
-type bitReader struct {
-	data  []byte
-	total int // nombre total de bits
-}
-
-func newBitReader(data []byte) bitReader {
-	return bitReader{data: data, total: len(data) * 8}
-}
-
-// bit retourne le bit à la position p (MSB-first dans chaque octet), 0 hors borne.
-func (b bitReader) bit(p int) int {
-	if p < 0 || p >= b.total {
-		return 0
-	}
-	return int((b.data[p>>3] >> uint(7-(p&7))) & 1)
-}
-
-// readBits lit n bits à partir de bp, MSB-first.
+// CE PAQUET NE LIT PLUS UN OCTET DE FILM LUI-MEME (lot 2.4.2, ADR 0034 D-2). Il portait le
+// QUATRIEME des sept lecteurs de bits du depot — un type `bitReader` et sa copie de la lecture
+// par mot (`bits_word.go`, divergente de celle de `filmdec`) — plus son propre balayage de
+// motif. Les trois vivent desormais dans la couche source :
 //
-// Lecture par MOT de 64 bits (cf. [wordBitsAt]) des que le depart est positif et la largeur
-// tient sur 64 bits ; sinon la boucle d'origine, seule a porter le bourrage a ZERO d'une
-// position NEGATIVE (`ResolveXuidToPI` relit les 5 bits qui PRECEDENT le motif : sur un motif
-// trouve au tout debut du chunk, elle recule sous zero).
-func (b bitReader) readBits(bp, n int) uint64 {
-	if bp >= 0 && n >= 0 && n <= 64 {
-		return wordBitsAt(b.data, bp, uint(n))
-	}
-	var v uint64
-	for i := 0; i < n; i++ {
-		v = (v << 1) | uint64(b.bit(bp+i))
-	}
-	return v
-}
+//	bitReader.readBits(bp, n)  ->  filmsource.BitsTolerants(chunk, bp, n)
+//	findPattern64(d, cible)    ->  filmsource.ChercherMotif64(d, cible)
+//
+// LA CONVENTION DE BORD EST PRESERVEE, ET C EST POURQUOI C EST `BitsTolerants` ET PAS
+// `BitsAt` : ce resolveur relit les cinq bits qui PRECEDENT le motif trouve, donc sur un motif
+// en tete de chunk il RECULE SOUS ZERO et doit y lire des zeros — la ou `BitsAt` panique.
 
-// xuidTargetPattern encode un xuid en 8 octets LE puis les relit en big-endian :
-// c'est le motif 64-bit à chercher au niveau bit dans le chunk.
-func xuidTargetPattern(xuid uint64) uint64 {
-	le := make([]byte, 8)
-	binary.LittleEndian.PutUint64(le, xuid)
-	return binary.BigEndian.Uint64(le)
-}
+// xuidTargetPattern encode un xuid en 8 octets LE puis les relit en big-endian : c'est le motif
+// 64-bit à chercher au niveau bit dans le chunk. C est un ECHANGE D OCTETS sur une valeur deja
+// en main, pas une lecture de film — d ou `math/bits` et non `encoding/binary`.
+func xuidTargetPattern(xuid uint64) uint64 { return bits.ReverseBytes64(xuid) }
 
 // ResolveXuidToPI cherche, pour chaque xuid du roster, son motif 64-bit dans le
 // chunk (déjà décompressé) au niveau bit, et lit les 5 bits précédents → pi.
@@ -73,10 +49,9 @@ func ResolveXuidToPI(rosterXuids []uint64, chunk []byte) map[uint64]int {
 	if len(chunk) == 0 {
 		return out
 	}
-	br := newBitReader(chunk)
 	for _, x := range rosterXuids {
-		if bp, ok := findPattern64(chunk, xuidTargetPattern(x)); ok {
-			out[x] = int(br.readBits(bp-PIBits, PIBits))
+		if bp, ok := filmsource.ChercherMotif64(chunk, xuidTargetPattern(x)); ok {
+			out[x] = int(filmsource.BitsTolerants(chunk, bp-PIBits, PIBits))
 		}
 	}
 	return out

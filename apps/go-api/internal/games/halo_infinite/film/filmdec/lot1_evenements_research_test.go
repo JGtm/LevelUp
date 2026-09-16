@@ -52,7 +52,7 @@ import (
 // lot1LireRef consomme une reference gardee du domaine dom ; rend (index, presente).
 // Le domaine 1 porterait une sonde R(1) qui reduit la largeur a 9 — aucun des types testes
 // ici ne l'utilise, la sonde n'est pas modelisee.
-func lot1LireRef(br *BitReader, dom int) (uint64, bool) {
+func lot1LireRef(br *Lecteur, dom int) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
@@ -108,7 +108,7 @@ func TestLot1EvenementZoom(t *testing.T) {
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, wBase, cfg2)
 			}
 		}
@@ -122,7 +122,7 @@ func TestLot1EvenementZoom(t *testing.T) {
 				continue
 			}
 			paquets++
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(1)         // bit de configuration
 			if !br.ReadBit() { // continuation : un evenement suit
 				continue // impossible pour 0xCA (bit 1 = 1 par construction)

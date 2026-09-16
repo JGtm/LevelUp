@@ -30,7 +30,8 @@ package filmdec
 
 import (
 	"bytes"
-	"encoding/binary"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 const (
@@ -377,5 +378,5 @@ func entryLevel(data []byte, off int) uint32 {
 	if p < 0 || p+4 > len(data) {
 		return 0
 	}
-	return binary.LittleEndian.Uint32(data[p:])
+	return filmsource.U32LE(data, p)
 }

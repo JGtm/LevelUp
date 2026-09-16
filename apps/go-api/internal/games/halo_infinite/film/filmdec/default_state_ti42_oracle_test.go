@@ -203,7 +203,7 @@ func ti42Sample(w []int) string {
 // ti42Deser porte un candidat de deserialiseur et son nom, pour la mesure et pour ses temoins.
 type ti42Deser struct {
 	name string
-	fn   func(*BitReader)
+	fn   func(*Lecteur)
 }
 
 // ti42LogLanding est LA mesure : sur les records NEW de la capture, le deserialiseur porte
@@ -215,7 +215,7 @@ func ti42LogLanding(t *testing.T, buf []byte, recs []ti42CaptureRecord, widths, 
 		{"ti42 porte (FUN_1407f0c68)", consumeDefaultStateTI42},
 		{"TEMOIN ti37 (FUN_1407f105c)", consumeDefaultStateTI37},
 		{"TEMOIN ti36 (FUN_1407f2224)", consumeDefaultStateTI36},
-		{"TEMOIN saut fixe 80 bits", func(br *BitReader) { br.Skip(GroundWeaponDefaultStateMinBits) }},
+		{"TEMOIN saut fixe 80 bits", func(br *Lecteur) { br.Skip(GroundWeaponDefaultStateMinBits) }},
 	}
 	for _, c := range cands {
 		exact, total := ti42CountLandings(buf, recs, widths, tis, c.fn)
@@ -230,7 +230,7 @@ func ti42LogLanding(t *testing.T, buf []byte, recs []ti42CaptureRecord, widths, 
 }
 
 func ti42CountLandings(
-	buf []byte, recs []ti42CaptureRecord, widths, tis []int, fn func(*BitReader),
+	buf []byte, recs []ti42CaptureRecord, widths, tis []int, fn func(*Lecteur),
 ) (exact, total int) {
 	return ti42CountLandingsTI(buf, recs, widths, tis, fn, GroundWeaponTypeIndex)
 }
@@ -241,13 +241,13 @@ func ti42CountLandings(
 // ouverte portent un masque et des composants dont les largeurs dependent de la carte de la
 // capture, inconnue : ils sont exclus du denominateur au lieu d'etre devines.
 func ti42CountLandingsTI(
-	buf []byte, recs []ti42CaptureRecord, widths, tis []int, fn func(*BitReader), want int,
+	buf []byte, recs []ti42CaptureRecord, widths, tis []int, fn func(*Lecteur), want int,
 ) (exact, total int) {
 	for i := range recs {
 		if tis[i] != want || widths[i] < 0 {
 			continue
 		}
-		br := NewBitReader(buf)
+		br := LecteurSur(buf)
 		br.SetBitPos(recs[i].bitPos + 6) // R(6) typeIndex deja lu
 		fn(br)
 		if br.BitPos() > len(buf)*8 {

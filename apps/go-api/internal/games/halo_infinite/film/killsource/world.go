@@ -53,10 +53,10 @@ type timeline struct {
 
 // newTimeline : registre depuis le chunk 0 + keyframes tries par horodatage.
 func newTimeline(f *film) (*timeline, error) {
-	if len(f.chunks) == 0 {
+	if f.src.NumChunks() == 0 {
 		return nil, ErrNoChunk
 	}
-	reg, err := filmdec.ParseRegistryChunk(f.chunks[0])
+	reg, err := filmdec.ParseRegistryChunk(f.src.Chunk(0))
 	if err != nil {
 		return nil, errRegistry(err)
 	}

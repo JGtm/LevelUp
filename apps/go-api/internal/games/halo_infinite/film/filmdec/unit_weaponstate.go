@@ -39,7 +39,7 @@ package filmdec
 // jeu), et la borne de jeu « au plus 2 types, 2 unités » porte sur les VALEURS, pas sur
 // le compteur. Une lecture qui rend count != 4 est donc, à elle seule, la signature d'un
 // curseur mal placé.
-func consumeUnitGrenadeCounts(br *BitReader) {
+func consumeUnitGrenadeCounts(br *Lecteur) {
 	count := br.ReadBits(3) // FUN_1424d0f48
 	var vals []uint64
 	for i := uint64(0); i < count; i++ {
@@ -63,7 +63,7 @@ func consumeUnitGrenadeCounts(br *BitReader) {
 //	if recordStateParam>2: FUN_1424cd060 = R(1).
 //	FUN_1407eee40 (see consume1407eee40, record-state dependent).
 //	4x FUN_1411b1ac0 (R1+optR12).
-func consumeUnitMalleableProperty(br *BitReader, recordStateParam uint32) {
+func consumeUnitMalleableProperty(br *Lecteur, recordStateParam uint32) {
 	consume1411b1ac0(br)
 	if recordStateParam > 2 {
 		br.ReadBit() // FUN_1424cd060
@@ -76,7 +76,7 @@ func consumeUnitMalleableProperty(br *BitReader, recordStateParam uint32) {
 
 // consume1407eee40 mirrors FUN_1407eee40: 7x FUN_1411b1ac0 (R1+optR12) + 4x R(1);
 // if param_3>2: +R(1); if param_3>3: +R(1).
-func consume1407eee40(br *BitReader, p uint32) {
+func consume1407eee40(br *Lecteur, p uint32) {
 	for i := 0; i < 7; i++ {
 		consume1411b1ac0(br)
 	}
@@ -103,7 +103,7 @@ func consume1407eee40(br *BitReader, p uint32) {
 //	R(1).
 //	count = FUN_1424e1d48 = R(4); count x FUN_1408f0ac4.
 //	FUN_140f72efc = R(2).
-func consumeUnitLowFrequency(br *BitReader) {
+func consumeUnitLowFrequency(br *Lecteur) {
 	br.ReadBit()            // comp+0x724 bit2
 	consume1408f0ac4(br, 0) // comp+0x780
 	br.ReadBits(3)          // FUN_1424d9a30
@@ -169,7 +169,7 @@ func consumeUnitLowFrequency(br *BitReader) {
 //	R(1) g1 ; si 0 -> deux champs par défaut, aucune lecture. Sinon :
 //	  R(1) g2 ; FUN_140cec0a0 une ou deux fois (g2 sélectionne) ; chacun = R(1) + optR(8).
 //	  R(1) g3 ; si 0 : R(1) ; R(1).
-func consumeUnitCommandTick(br *BitReader) {
+func consumeUnitCommandTick(br *Lecteur) {
 	consumeGateR(br, 8) // FUN_140c50d1c
 	if br.ReadBit() {   // g1 ; 1 -> présent
 		g2 := br.ReadBit()  // FUN_1406cf008
@@ -196,7 +196,7 @@ func consumeUnitCommandTick(br *BitReader) {
 // LES VALEURS NE SONT PLUS JETÉES (2026-08-30, sonde i26) : chaque entrée de la liste est un
 // optionnel `porte(1) + valeur(13) + queue(2)` — les largeurs exactes d'un SLOT d'entité et
 // d'une GÉNÉRATION, ce que la sonde existe pour vérifier. Le parcours de bits est INCHANGÉ.
-func consumeUnitEquipment(br *BitReader) {
+func consumeUnitEquipment(br *Lecteur) {
 	var st UnitEquipmentRead
 	st.Head = uint32(br.ReadBits(3)) // FUN_1406d0f20
 	count := br.ReadBits(3)          // FUN_1424d0f48
@@ -231,7 +231,7 @@ type UnitEquipmentRead struct {
 // (16 + 12 + 12). C'est cette invariabilité qui a permis d'éliminer l'ancienne affectation :
 // un composant mesuré à 22 bits ne peut pas être servi par un désérialiseur qui en lit toujours
 // 40.
-func consumeUnitStun(br *BitReader) {
+func consumeUnitStun(br *Lecteur) {
 	br.ReadBits(16)
 	br.ReadBits(12)
 	br.ReadBits(12)
@@ -251,7 +251,7 @@ func consumeUnitStun(br *BitReader) {
 // le parcours de bits est INCHANGÉ (la boucle 6 x consume1411b1ac0 est écrite à plat pour
 // pouvoir publier — consume1411b1ac0 EST consumeGateR(12), même porte, même largeur), et
 // chaque lecture part vers br.obs.CamoStateHook (cf. ability_state_hooks.go).
-func consumeUnitActiveCamoState(br *BitReader) {
+func consumeUnitActiveCamoState(br *Lecteur) {
 	var st CamoState
 	st.C3 = uint8(br.ReadBits(3)) // comp+0x7d7
 	st.Flag0 = br.ReadBit()
@@ -278,7 +278,7 @@ func consumeUnitActiveCamoState(br *BitReader) {
 // ---------------------------------------------------------------------------
 
 // consumeUnitCrouch: R(1) + dequant R(10).
-func consumeUnitCrouch(br *BitReader) {
+func consumeUnitCrouch(br *Lecteur) {
 	br.ReadBit()    // comp+0x7e8
 	br.ReadBits(10) // FUN_1406d84b4 dequant (0xa)
 }
@@ -317,7 +317,7 @@ func consumeUnitCrouch(br *BitReader) {
 // et la fraction de charge — les mêmes grandeurs que `AmmoSlot.Mag` / `AmmoSlot.Gauge`, que le
 // canal des images-clés ne rafraîchit que toutes les ~20 s. Le parcours de bits est INCHANGÉ :
 // le hook ne fait que publier ce que le déser lisait déjà.
-func consumeWeaponStateAmmo(br *BitReader) {
+func consumeWeaponStateAmmo(br *Lecteur) {
 	var mag, frac uint64
 	hasMag, hasFrac := false, false
 	if !br.ReadBit() { // gate1 == 0 -> chargeur present
@@ -338,7 +338,7 @@ const weaponRoundsBits = 11
 // consumeWeaponStateRoundsInventory mirrors FUN_140fe4e88: fixed R(11).
 //
 // LA VALEUR N'EST PLUS JETÉE (même lot, même règle) : c'est la RÉSERVE de l'emplacement.
-func consumeWeaponStateRoundsInventory(br *BitReader) {
+func consumeWeaponStateRoundsInventory(br *Lecteur) {
 	rounds := br.ReadBits(weaponRoundsBits)
 	if br.obs != nil && br.obs.WeaponRoundsHook != nil {
 		br.obs.WeaponRoundsHook(uint32(rounds))
@@ -346,7 +346,7 @@ func consumeWeaponStateRoundsInventory(br *BitReader) {
 }
 
 // consumeWeaponStateOverheated mirrors FUN_142f04c6c: dequant R(7) + R(1) + R(1).
-func consumeWeaponStateOverheated(br *BitReader) {
+func consumeWeaponStateOverheated(br *Lecteur) {
 	br.ReadBits(7) // FUN_1406d84b4 dequant (7)
 	br.ReadBit()   // comp+0x872 bit1
 	br.ReadBit()   // comp+0x872 bit2
@@ -356,7 +356,7 @@ func consumeWeaponStateOverheated(br *BitReader) {
 // i42 biped-desired-weapon-set  (thunk -> FUN_1406d01fc)
 // ---------------------------------------------------------------------------
 
-func consumeBipedDesiredWeaponSet(br *BitReader) {
+func consumeBipedDesiredWeaponSet(br *Lecteur) {
 	sel := uint32(br.ReadBits(3)) // FUN_1406d0f20
 	consumeID2(br)                // FUN_1406d00ec
 	consumeID2(br)                // FUN_1406d00ec
@@ -384,7 +384,7 @@ func consumeBipedDesiredWeaponSet(br *BitReader) {
 //	FUN_14080d69c = R(1); if set: R(32) + FUN_1407f061c (count R(6); count x R(1)).
 //	loop 3x: FUN_1406d1024 (R1+optR6) + R(1) g1 [if g1: dequant R(12)]
 //	                                  + R(1) g2 [if g2: dequant R(12)].
-func consume1407f0550(br *BitReader) {
+func consume1407f0550(br *Lecteur) {
 	if br.ReadBit() { // FUN_14080d69c gate
 		br.ReadBits(32)         // FUN_14080d6f0
 		count := br.ReadBits(6) // FUN_1407f061c -> FUN_1424cd07c = R(6) (value+1 used as count)
@@ -413,7 +413,7 @@ func consume1407f0550(br *BitReader) {
 // LES CHAMPS RESTENT POSITIONNELS. Le déserialiseur connaît la GRAMMAIRE, pas le SENS : nommer
 // ici l'un des trois « chargeur » ou « réserve » serait écrire une conclusion avant la mesure.
 // La table ECS dit seulement « les munitions restantes dans l'arme au sol ».
-func consumeWeaponAmmo(br *BitReader) {
+func consumeWeaponAmmo(br *Lecteur) {
 	a := uint32(br.ReadBits(8))
 	b := uint32(br.ReadBits(11))
 	c := uint32(br.ReadBits(12))
