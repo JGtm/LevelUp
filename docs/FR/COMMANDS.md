@@ -68,10 +68,12 @@ synchronise comme les autres. Il suffit que le pool tienne au moins un jeton sai
 
 Le rang de carrière ne fait PAS partie de la synchronisation : il est servi par le flux
 séparé de carrière en direct (`service.CareerLiveService`), et `career_synced` vaut toujours
-`false` dans le résumé du sync, jeton ou pas. Le client poolé garde `PolicyPinnedPlayer` sur
-`GetCareerRank` et rend `sync.ErrNoPinnedToken` pour un joueur sans jeton propre ; aucune étape
-du sync ne l appelle aujourd hui. Le cron de personnalisation Spartan est le seul appelant qui
-exige le jeton propre du joueur, et garde pour cette raison son contrôle `HasPlayer`.
+`false` dans le résumé du sync, jeton ou pas. `/careerranks` est lui-même PUBLIC : mesuré le
+2026-09-16 avec trois jetons prêteurs différents sur un xuid tiers, il rend le même rang et la
+même XP que l'appel du propriétaire — le client poolé l'acquiert donc en `PolicyAnyPublic`
+comme tout le reste (D4, plan robustesse du sync). Le cron de personnalisation Spartan est le
+seul appelant qui exige le jeton propre du joueur (403 pour un tiers, mesuré), et garde pour
+cette raison son contrôle `HasPlayer`.
 
 Les passes `backfill --csr` / `--shared-csr` et les commandes de films (`archive-films`,
 `backfill-killsource --online`, `replay-events`) suivent la même doctrine : `--gamertag` nomme le

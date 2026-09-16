@@ -260,8 +260,11 @@ sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans
   cohabitent pas (la CLI sync tient la base partagée en RW → serveur arrêté), mais la classe
   préexistante (`--all`) a une surface multipliée par N.
 - `internal/service/career_live_target.go:20-24` affirme, mesuré, que `/careerranks` n est PAS
-  soumis au joueur ; la politique `PolicyPinnedPlayer` de `GetCareerRank` repose donc sur une
-  prémisse contredite ailleurs dans le dépôt — à trancher par l utilisateur (hors périmètre).
+  soumis au joueur ; la politique `PolicyPinnedPlayer` de `GetCareerRank` reposait donc sur une
+  prémisse contredite ailleurs dans le dépôt. **TRANCHÉE PAR MESURE le 2026-09-16 (D4 du plan
+  `.ai/PLAN_ROBUSTESSE_SYNC_2026-09-16.md`)** : trois prêteurs sur un xuid tiers rendent 200 avec
+  le même rang et la même XP que le propriétaire. `GetCareerRank` est passé en `PolicyAnyPublic`
+  et `sync.ErrNoPinnedToken` a été supprimée.
 - Dix binaires de `cmd/` dépendent de `internal/sync/skill` TRANSITIVEMENT sans appeler
   `RegisterAll` ; le ratchet ne voit que l import direct. Aucun chemin vers un classifier n a été
   trouvé dans leur code.
