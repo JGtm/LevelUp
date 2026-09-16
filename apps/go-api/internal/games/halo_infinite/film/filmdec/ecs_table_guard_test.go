@@ -3,8 +3,10 @@ package filmdec
 // Garde-rails de la table ECS (`testdata/ecs_table.tsv`), la reference versionnee de la
 // grammaire archetype x composant du film. Trois controles independants :
 //
-//	G1 code <-> table   : toute etiquette `case` de consumeByName est dans la table avec le
-//	                      statut que l AST lui donne, et reciproquement. Toujours joue.
+//	G1 code <-> table   : toute etiquette `case` de la CHAINE de dispatch (consumeByName et
+//	                      les maillons que sa branche `default` enchaine, cf.
+//	                      dispatch_object.go) est dans la table avec le statut que l AST lui
+//	                      donne, et reciproquement. Toujours joue.
 //	G2 film <-> table   : archetypes, composants ET niveaux de la table = ceux du registre
 //	                      (chunk_00) des films temoins. Garde ECS_TABLE_FILM, SKIP sans film.
 //	G3 table <-> doc    : chaque champ cite en `doc_field` existe dans replay/document.go.
@@ -97,111 +99,6 @@ func loadECSTable(t *testing.T) []ecsRow {
 	return out
 }
 
-// ecsCase decrit le cas de consumeByName qui traite un composant.
-type ecsCase struct {
-	Kind string // porte | partiel
-	Line int
-}
-
-// scanConsumeByNameCases rend, par nom de composant, le cas du switch qui le traite.
-// `porte` = tous les retours du cas rendent le litteral `true` ; `partiel` sinon (retour
-// data-dependant ou garde par un drapeau : le traverseur peut desynchroniser proprement).
-func scanConsumeByNameCases(t *testing.T) map[string]ecsCase {
-	t.Helper()
-	fset := token.NewFileSet()
-	ents, err := os.ReadDir(".")
-	if err != nil {
-		t.Fatal(err)
-	}
-	consts := map[string]string{}
-	var files []*ast.File
-	for _, e := range ents {
-		n := e.Name()
-		if e.IsDir() || !strings.HasSuffix(n, ".go") || strings.HasSuffix(n, "_test.go") {
-			continue
-		}
-		f, err := parser.ParseFile(fset, filepath.Join(".", n), nil, 0)
-		if err != nil {
-			t.Fatalf("%s : %v", n, err)
-		}
-		files = append(files, f)
-	}
-	var fn *ast.FuncDecl
-	for _, f := range files {
-		for _, d := range f.Decls {
-			switch v := d.(type) {
-			case *ast.GenDecl:
-				if v.Tok == token.CONST {
-					collectStringConsts(v, consts)
-				}
-			case *ast.FuncDecl:
-				if v.Name.Name == "consumeByName" {
-					fn = v
-				}
-			}
-		}
-	}
-	if fn == nil {
-		t.Fatal("consumeByName introuvable dans le paquet")
-	}
-	return caseKinds(fn, fset, consts)
-}
-
-func collectStringConsts(gd *ast.GenDecl, out map[string]string) {
-	for _, s := range gd.Specs {
-		vs, ok := s.(*ast.ValueSpec)
-		if !ok {
-			continue
-		}
-		for i, nm := range vs.Names {
-			if i >= len(vs.Values) {
-				continue
-			}
-			if bl, ok := vs.Values[i].(*ast.BasicLit); ok && bl.Kind == token.STRING {
-				if v, err := strconv.Unquote(bl.Value); err == nil {
-					out[nm.Name] = v
-				}
-			}
-		}
-	}
-}
-
-func caseKinds(fn *ast.FuncDecl, fset *token.FileSet, consts map[string]string) map[string]ecsCase {
-	out := map[string]ecsCase{}
-	ast.Inspect(fn, func(n ast.Node) bool {
-		cc, ok := n.(*ast.CaseClause)
-		if !ok || cc.List == nil { // `default` a une List nil
-			return true
-		}
-		kind := "porte"
-		ast.Inspect(cc, func(m ast.Node) bool {
-			rs, ok := m.(*ast.ReturnStmt)
-			if !ok || len(rs.Results) != 3 {
-				return true
-			}
-			if id, ok := rs.Results[2].(*ast.Ident); !ok || id.Name != "true" {
-				kind = "partiel"
-			}
-			return true
-		})
-		line := fset.Position(cc.Pos()).Line
-		for _, e := range cc.List {
-			var name string
-			switch v := e.(type) {
-			case *ast.BasicLit:
-				name, _ = strconv.Unquote(v.Value)
-			case *ast.Ident:
-				name = consts[v.Name]
-			}
-			if name != "" {
-				out[name] = ecsCase{Kind: kind, Line: line}
-			}
-		}
-		return true
-	})
-	return out
-}
-
 // TestG1TableSuitLeCode : la table et consumeByName ne peuvent plus diverger en silence.
 func TestG1TableSuitLeCode(t *testing.T) {
 	rows := loadECSTable(t)
@@ -215,7 +112,7 @@ func TestG1TableSuitLeCode(t *testing.T) {
 	for name, c := range cases {
 		list, ok := byName[name]
 		if !ok {
-			t.Errorf("G1 : `case %q` (traverse.go:%d) n a AUCUNE ligne dans la table — porter un composant sans mettre la table a jour est interdit", name, c.Line)
+			t.Errorf("G1 : `case %q` (%s:%d) n a AUCUNE ligne dans la table — porter un composant sans mettre la table a jour est interdit", name, c.File, c.Line)
 			continue
 		}
 		for _, r := range list {
@@ -224,7 +121,7 @@ func TestG1TableSuitLeCode(t *testing.T) {
 				want = "alias"
 			}
 			if r.Status != want {
-				t.Errorf("G1 : ligne %d (ti=%d i=%d %s) statut %q, le code dit %q (traverse.go:%d)", r.LineNo, r.TI, r.I, name, r.Status, want, c.Line)
+				t.Errorf("G1 : ligne %d (ti=%d i=%d %s) statut %q, le code dit %q (%s:%d)", r.LineNo, r.TI, r.I, name, r.Status, want, c.File, c.Line)
 			}
 		}
 	}
@@ -238,7 +135,7 @@ func TestG1TableSuitLeCode(t *testing.T) {
 			}
 		case "non_porte", "deser_non_cable":
 			if isCase {
-				t.Errorf("G1 : ligne %d (%s) est declaree %q mais consumeByName la traite (traverse.go:%d)", r.LineNo, r.Component, r.Status, cases[r.Component].Line)
+				t.Errorf("G1 : ligne %d (%s) est declaree %q mais la chaine de dispatch la traite (%s:%d)", r.LineNo, r.Component, r.Status, cases[r.Component].File, cases[r.Component].Line)
 			}
 		default:
 			t.Errorf("G1 : ligne %d : statut inconnu %q", r.LineNo, r.Status)
