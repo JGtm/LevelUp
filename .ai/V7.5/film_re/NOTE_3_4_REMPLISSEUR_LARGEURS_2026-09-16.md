@@ -424,6 +424,12 @@ Aucune n'a ete corrigee ici (regle 7 : hors perimetre d'un lot de preparation).
   la table defaut vaut `22/22/22` et la table par index vaut les largeurs de la carte. L'uniforme
   14 n'est donc l'entree d'aucune des deux cases reellement lues. La phrase reste vraie et
   trompeuse : a reecrire au lot.
+- **C6 — la table `DAT_143b8c6f0` a TROIS entrees, pas cinq.** Octets relus, stride `0x18` :
+  `143b8c6f0` = `+/-3`, `143b8c708` = `+/-0,7`, `143b8c720` = `+/-100`, puis `143b8c738` n'est
+  plus une plage. L'ordre de `profile/plages_quant.go` (`QuantRangeUnit3`, `QuantRangeNorm`,
+  `QuantRangeWorld100`) est donc JUSTE ; les deux autres variables du fichier sont des captures
+  de CARTE. C'est le plan (item 2.5.b, « les cinq plages de `DAT_143b8c6f0` ») qui parle mal —
+  la correction est une ligne de prose, pas une ligne de code.
 
 ---
 
