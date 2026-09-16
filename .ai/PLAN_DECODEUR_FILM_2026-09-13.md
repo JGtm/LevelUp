@@ -4170,12 +4170,43 @@ différence ; `git diff --stat -M` ne montre que des renommages.
       `sync/killcollector` tant que la constante des faits y vit. Aucun décodage, aucune jonction ;
       `filmdec/`, `killsource/`, `killcollector/` **non touchés** (`git diff --name-only` : 12
       fichiers, tous dans la frontière du brief).
-- [ ] 2.6.1 `grammar.Rev`, `facts.Rev` (héritière de `KillSourceDecoderRev` pour le backlog) ;
+- [~] 2.6.1 `grammar.Rev`, `facts.Rev` (héritière de `KillSourceDecoderRev` pour le backlog) ;
       empreinte par couche ; règle « montée de `facts.Rev` = backlog killsource » écrite dans le
       test et dans `docs/SYNC_GUIDE` (FR + EN).
-- [ ] 2.6.2 Paquet de types de sortie sans dépendance (`film/internal/types`, à la manière de
+      **VOLET FACTS + SOURCE FAIT (2026-09-16, branche `feat/decfilm-26f`) ; VOLET GRAMMAR /
+      PROFILE APRÈS 2.5.e.** `source.Rev` NAÎT (`film/source/rev.go`, `source-2026-09-16`, golden
+      à historique, chronique godoc, gate monté sur `film/revision`) — la valeur est
+      `source-2026-09-16` et non `…​.1` : `revision.ParserRevision` REFUSE le suffixe `.1`, le
+      premier rang du jour s'écrivant sans suffixe (correctif D1 (1.2)). `facts.Rev` NAÎT en
+      `film/facts/rev.go` et **`KillSourceDecoderRev` disparaît** : `killcollector`, le backfill et
+      `conditionBacklog` la LISENT, aucun alias. Valeur reprise telle quelle
+      (`killsource-2026-09-16.2`, V15 (16)) : aucun backlog ouvert. L'empreinte passe de
+      `killsource/` seul à TOUT l'arbre `facts/` (53 fichiers) **plus les VALEURS de `source.Rev`
+      et de `GrammarRev`** (V15 (12)) — c'est le faux négatif de l'amont qui se ferme, et il est
+      prouvé par mutation. La règle du backlog vit dans le message de `TestFactsRevSuitLesFaits`
+      et dans `docs/SYNC_GUIDE` FR + EN, au présent. Allowlist
+      `no_ad_hoc_source_fingerprint_test` : 2 → 1 (l'entrée grammaire reste).
+      **RESTE** : `grammar.Rev` (l'entrée d'allowlist, le retrait de `CadreHeriteGrammaire`, la
+      renumérotation de série) et `profile.Rev` (la couche n'existe pas encore) — tous deux dans
+      `film/grammar/`, tenu par 2.5.b pendant ce lot.
+- [~] 2.6.2 Paquet de types de sortie sans dépendance (`film/internal/types`, à la manière de
       `games/canonical`) produits par `grammar` et `facts`, consommés par `facts` et `replay` ; un
       test de contrat par type (forme figée).
+      **VOLET FACTS + SOURCE FAIT (2026-09-16) ; VOLET GRAMMAR / REPLAY APRÈS 2.5.e.**
+      `film/types` naît FEUILLE (ratchet `archlint/film_types_leaf_test.go`) et reçoit **13** des
+      22 types que la note §3.2 comptait pour ces deux couches : `ChunkMeta`, `Packet` ;
+      `ApparStats`, `Assist`, `CoupleStats` ; `DeathInstant`, `FlagGrabsNetPlayer`, `FlagSpan`,
+      `FlagTrack`, `PlayerLine`, `ScorePoint`, `StatRecord`, `StatValue` (ce dernier hors liste de
+      la note : `StatRecord` le nomme). **N'Y ENTRENT PAS, et la mesure dit pourquoi** : `Kill`
+      (champ non exporté `paquet`, plus deux champs de `film/damagetag`), `Result`
+      (`grammar.ProfilDeBalayage`, `grammar.KillSourceHealth`), et huit types qui portent une
+      MÉTHODE donc une règle mesurée (`FilmTablePinning`, `FlagFilmSignals`, `NamedEvent`,
+      `IdentifiedEvent`, `RoundBounds`, `RoundIdentity`, `RoundsDecision`, `StatComponent`).
+      Golden UNIQUE `film/types/testdata/shapes.golden` (107 lignes, V15 (13)) : une section par
+      type, et les revisions `source.Rev` / `facts.Rev` en première ligne de données ; porte de
+      régénération à deux verrous, `t.Fatalf` même en réussite ; mutation de forme jouée (rouge).
+      **RESTE** : les 49 types `grammar → replay`, le retrait des trois `types_alias.go` (datés,
+      critère mesurable écrit) et le re-pointage de `replay`, `replaybuild` et `ops`.
 - [ ] 2.6.3 L'artefact publie `coverage.decoder.{grammarRev, factsRev, build}` (ajout de champ →
       montée de `SchemaVersion` 57 par l'empreinte de forme ; contenu cuit inchangé par ailleurs).
 
@@ -4950,8 +4981,46 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 
 | 2026-09-17 | 2.6.0 | **D1 (2.6.0) — LES DEUX EMPREINTES DU DÉPÔT N'ENCADRENT PAS LES OCTETS DE LA MÊME FAÇON, ET AUCUN DES DEUX GATES NE POUVAIT LE DIRE.** Mesure sur `26cf32399`, code à code : `killcollector/decoder_rev_fingerprint_test.go` écrit `<chemin relatif à la racine>\n<longueur>\n<contenu>` ; `filmdec/grammar_rev_fingerprint_test.go` écrit `<nom du dossier de racine>/<chemin>`, un octet NUL, puis le contenu — sans longueur. Deux copies du même motif, nées à deux dates, divergentes sur le seul point qui compte : **deux empreintes calculées par deux cadres différents ne se comparent pas**. La conséquence est datée du pas 5 : `git mv filmdec film/internal/grammar` change les 141 chemins hachés sous le cadre de la grammaire, donc l'empreinte, alors qu'aucun octet de grammaire n'a bougé — il faudrait soit monter `grammar.Rev` pour rien, soit régénérer le golden sur la branche « révision inchangée, empreinte différente », c'est-à-dire faire taire le ratchet dans le cas précis pour lequel il existe. NON TRAITÉ au sens du re-pointage (frontière du lot : les deux gates ne sont pas touchés) : le cadre courant est le chemin relatif à la racine, l'ancien survit en `revision.CadreHeriteGrammaire`, kill-switch daté, et l'équivalence des deux est prouvée au bit près. | lot 2.6.1, dans le commit qui bascule `grammar` sur le contrat courant : la montée de révision qui accompagne le changement de cadre est alors DÉLIBÉRÉE et écrite, pas subie à l'occasion d'un `git mv` |
 | 2026-09-17 | 2.6.0 | **D2 (2.6.0) — LA CHRONIQUE RÉELLE DE `GrammarRev` PORTE DES TROUS DE RANG, ET UNE VÉRIFICATION « SANS TROU » SUR TOUT L'HISTORIQUE SERAIT ROUGE.** Mesure sur l'HISTORIQUE de `grammar_rev.golden` (39 entrées) : la série du 2026-09-15 passe de `.6` à `.8`, puis de `.8` à `.12` — `.7` et `.9` à `.11` n'existent pas. Cause lisible dans les entrées voisines (« RANG PROVISOIRE », « RANG DE FUSION ») : des lots parallèles réservent un rang, et la fusion qui n'a pas eu lieu le laisse vacant. Le contrôle de continuité de `revision.Chronique.VerifierRangs` prend donc un PLANCHER explicite (`depuis`), et le test qui lit les artefacts réels de `filmdec` ne l'applique PAS — poser une continuité sur la chronique d'une autre couche rendrait le paquet `revision` rouge à la prochaine fusion à rang provisoire, pour une décision qui ne lui appartient pas. NON TRAITÉ : renuméroter le passé obligerait à régénérer des goldens déjà écrits, c'est-à-dire à ouvrir des backlogs pour de la comptabilité. | lot 2.6.1 : chaque couche déclare le rang à partir duquel elle tient la continuité (le premier de sa propre série, les quatre séries naissant à ce lot) ; le passé de `grammar` reste tel quel, avec ses trous, et la chronique en dit la raison |
+| 2026-09-16 | 2.6.1 | **D1 (2.6) — LA CONSTANTE A DISPARU, SES RENVOIS DE PROSE SURVIVENT DANS DES PAQUETS INTERDITS AU LOT.** `KillSourceDecoderRev` n'existe plus (elle est `facts.Rev`), mais **7 fichiers** la citent encore en commentaire, tous hors frontière : `film/grammar/grammar_rev.go`, `grammar_rev_chronique.go`, `grammar_rev_chronique_archive.go`, `grammar_rev_fingerprint_test.go` (26 occurrences à eux quatre — le fichier de gate y pose la règle à trois étages), `film/replay/document_chronicle.go` (1), `internal/replaybuild/derivations_index.go` (1). Les toucher aurait fait monter l'empreinte de grammaire pendant que 2.5.b la déplace, et deux d'entre eux SONT la chronique d'une autre révision. NON TRAITÉ (frontière). | **Volet grammaire du lot 2.6** : le commit qui fait hériter `grammar.Rev` rouvre les quatre fichiers de `grammar/` et y renomme les renvois. `document_chronicle.go` et `derivations_index.go` : au premier lot qui les rouvre — même famille que D7 (2.5) et D4 (2.5.h) |
+| 2026-09-16 | 2.6.2 | **D2 (2.6) — SORTIR UN TYPE DE SON PAQUET TRANSFORME UN LITTÉRAL NON NOMMÉ EN ERREUR `go vet`.** `PlayerLine{"z16", 16, 13, 4}` compile tant que le type est déclaré dans le paquet ; dès qu'il vient d'ailleurs, l'analyse `composites` de `go vet` le refuse. Mesure sur ce volet : **16 littéraux**, tous dans `film/facts/objectives/named_test.go`, corrigés en champs nommés (le lot ne pouvait pas les laisser : `go vet ./...` est un gate). Aucun autre paquet n'en portait pour les 13 types déplacés. | **À prévoir au volet grammaire / rejeu**, qui déplace 49 types consommés par `replay` (246 citations) et `replaybuild` (74) : le coût n'est pas le déplacement, ce sont les littéraux positionnels des tests. À mesurer AVANT d'ouvrir le lot (`go vet ./...` après un déplacement d'essai) |
+| 2026-09-16 | 2.6.2 | **D3 (2.6) — LES TROIS ALIAS DATÉS ONT 79 FICHIERS DERRIÈRE EUX, ET C'EST LA LISTE DE TRAVAIL DU VOLET SUIVANT.** Mesure du 2026-09-16 (`grep` des 13 types qualifiés, hors `facts/` et `source/`) : **79 fichiers** hors des couches d'origine citent un type déplacé par son ancien nom de paquet — `film/replay` 246 citations, `internal/replaybuild` 74, `internal/sync/killcollector` 5, `film/filmcache` 4, `film/grammar` 3, `cmd/` 21. Tous compilent par les alias de `types_alias.go`, et chacun de ces fichiers appartient à un paquet que le brief interdisait à ce lot. | **Volet grammaire / rejeu du lot 2.6** : re-pointer, puis SUPPRIMER les trois `types_alias.go`. Le critère de retrait est écrit dans chacun d'eux, et il est mesurable au `grep` |
+| 2026-09-16 | 2.6 (docs) | **D4 (2.6) — LES DEUX `SYNC_GUIDE` CITENT UN CHEMIN DE REPLI QUI N'EXISTE PLUS.** La ligne « Renvois / References » de la sous-section des révisions nomme `internal/games/halo_infinite/film/replay/fallback` ; le registre des replis a descendu en `film/facts/fallback` au lot 2.5.d.1. La phrase reste vraie sur le fond, le chemin est faux, dans les DEUX fichiers. NON TRAITÉ : le brief borne la mise à jour documentaire à la sous-section des révisions, et cette ligne parle du registre des replis. | Même famille que D7 (2.5) : au premier lot qui rouvre ces deux guides — ou au volet grammaire du 2.6, qui y reviendra pour `grammar.Rev` |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 2.6 (M2, pas 6) — volet FACTS + SOURCE, SANS AUCUN DÉCODAGE, 2026-09-16
+
+Worktree `LevelUp-wt-decfilm-26f`, branche `feat/decfilm-26f`, base `3734845d0`. Aucune jonction
+vers le cache de films, aucun film décodé, aucune écriture dans `data/`. Frontière tenue :
+`film/source/`, `film/facts/**`, `film/revision/`, le paquet neuf `film/types/`,
+`sync/killcollector/`, `cmd/levelup/cmd_backfill_killsource*`, `docs/SYNC_GUIDE` FR/EN et quatre
+fichiers d'`archlint` — plus les TROIS fichiers de `film/grammar/` qui PORTENT la révision et sa
+chronique (`grammar_rev.go`, `grammar_rev_chronique.go`, son golden), et eux seuls : ils sont
+justement EXCLUS de l'empreinte de grammaire (`fichiersHorsGrammaire`), donc ce ne sont pas des
+octets de grammaire. `film/replay/`, `replaybuild/`, `internal/analysis/` et le reste de
+`film/grammar/` : **non touchés**.
+
+| Date | Lot | Commit | Commande | Résultat |
+|---|---|---|---|---|
+| 2026-09-16 | 2.6.1 (source) | `7c35700d7` | `LEVELUP_UPDATE_SOURCE_REV=1 go test ./internal/games/halo_infinite/film/source/ -run TestSourceRevSuitLaCoucheSource -update-source-rev` | golden écrit : `source-2026-09-16` / `c09660b7…` (**5 fichiers** non-test hachés, `rev.go` exclu). La porte a rendu un ÉCHEC en réussite, comme les trois autres portes du chantier |
+| 2026-09-16 | 2.6.1 (source) | `7c35700d7` | `go test -count=1 -v -run 'SourceRev\|ChroniqueDeSource' ./internal/games/halo_infinite/film/source/` | **2 PASS** — le gate et la couverture de chronique (entrée godoc + dernière ligne du golden) |
+| 2026-09-16 | 2.6.1 (MUTATION 1 — un octet de `source/bits.go`) | `7c35700d7` | `go test -run TestSourceRevSuitLaCoucheSource ./…/source/` puis `-run TestGrammarRevSuitLaGrammaire ./…/grammar/` | **ROUGE DES DEUX CÔTÉS** : `c09660b7` → `afe124da` (5 fichiers) pour SA couche, `9d2b81ba` → `3be5bc53` (191 fichiers) pour celle qui en dépend. Mutation retirée |
+| 2026-09-16 | 2.6.1 (facts) | `2a601fb3f` | `LEVELUP_UPDATE_FACTS_REV=1 go test ./internal/games/halo_infinite/film/facts/ -run TestFactsRevSuitLesFaits -update-facts-rev` | `killsource-2026-09-16.2` / `2abeed74…` → `d4c061e8…` (**53 fichiers** : killsource + objectives + fallback, `rev.go` exclu, plus les valeurs amont). **REVISION INCHANGÉE, EMPREINTE SEULE RECOPIÉE** — le périmètre et le lieu changent, pas une ligne de décodage |
+| 2026-09-16 | 2.6.1 (MUTATION 2 — un octet d'`objectives/score.go`) | `2a601fb3f` | `go test -run TestFactsRevSuitLesFaits ./…/facts/` | **ROUGE** : `d4c061e8` → `6e18480b`. Le périmètre couvre bien tout l'arbre des faits — avant ce lot, `objectives/` n'était dans AUCUNE empreinte de faits |
+| 2026-09-16 | 2.6.1 (MUTATION 3 — la VALEUR de `GrammarRev` seule) | `2a601fb3f` | idem | **ROUGE** : `→ 9454eb65`. C'est EXACTEMENT le faux négatif consigné dans l'en-tête d'avant (« le gate couvre le décodeur, pas son amont ») |
+| 2026-09-16 | 2.6.1 (MUTATION 4 — la VALEUR de `source.Rev` seule) | `2a601fb3f` | idem | **ROUGE** : `→ b2e75b3e`. La chaîne `source → facts` est mécanique, sans qu'un octet de `facts/` bouge |
+| 2026-09-16 | 2.6.1 (le backlog reste candidat) | `2a601fb3f` | `go test -tags=integration -p 1 -run Backlog -v ./internal/sync/killcollector/` | **PASS** — `TestRunPostSync_FilmAbsent_PoseLeMarqueurEtDraineLeBacklog` : une ligne portant une révision antérieure est toujours candidate, la lecture passant désormais par `facts.Rev` |
+| 2026-09-16 | 2.6.2 (formes) | `d06c85326` | `LEVELUP_UPDATE_TYPES_SHAPES=1 go test ./…/film/types/ -run TestFormesDesTypesEgalentLeGolden -update-types-shapes` | golden écrit : **13 types, 107 lignes**, première ligne de données `revisions source=source-2026-09-16 facts=killsource-2026-09-16.2`. Porte à DEUX verrous, échec même en réussite |
+| 2026-09-16 | 2.6.2 (MUTATION 5 — un champ ajouté à `ScorePoint`) | `d06c85326` | `go test -run TestFormesDesTypesEgalentLeGolden ./…/film/types/` | **ROUGE**, section par section : `figé "Value\tint64\t-"` / `mesuré "MutationTemporaire\tint\t-"`. Mutation retirée |
+| 2026-09-16 | 2.6.2 (MUTATION 6 — un import du dépôt dans `types`) | `d06c85326` | `go test -run TestFilmTypesEstUneFeuille ./internal/archlint/` | **ROUGE** : « `film/types` n est plus une FEUILLE — 1 import(s) du dépôt ». C'est la prémisse de l'exception accordée à `film/source` : elle se garde elle-même |
+| 2026-09-16 | 2.6.2 (MUTATION 7 — un type exporté non inscrit) | `d06c85326` | `go test -run TestTousLesTypesDuPaquetSontFiges ./…/film/types/` | **ROUGE** : « types exportés par `film/types` et figés par personne : TypeNonFige ». Le golden ne peut pas rester vert en ne gardant rien |
+| 2026-09-16 | 2.6.2 (ratchet de taille) | `d06c85326` | `go test ./internal/archlint/` | `killsource/assist.go` passe de **531 à 492 lignes** (le type `Assist` a descendu) : `TestPlafondsDeTailleNeSontPasPerimes` exige le retrait de son entrée de `plafondsParFichier`. Retirée dans le même commit |
+| 2026-09-16 | 2.6 (chaque commit) | les 4 | `gofmt -l ./internal ./cmd` ; `go build ./...` ; `go vet ./...` | sortie vide ; OK ; **0 diagnostic** (les 16 littéraux non nommés de `PlayerLine` corrigés en champs nommés, cf. D2 (2.6)) |
+| 2026-09-16 | 2.6 (chaque commit) | les 4 | `go test -count=1 ./internal/games/halo_infinite/film/... ./internal/sync/... ./internal/archlint/ ./internal/replaybuild/ ./cmd/levelup/ ./cmd/replay-corpus-gate/` | **tout vert**, aucune ligne hors `ok` |
+| 2026-09-16 | 2.6 | `d06c85326` | `go test -count=1 -tags=integration -p 1 ./internal/sync/killcollector/` | `ok 24,3 s` |
+| 2026-09-16 | 2.6 | les 4 | `golangci-lint run --new-from-rev=3734845d0 ./…/film/... ./internal/archlint/... ./internal/sync/killcollector/... ./cmd/levelup/...` | **0 issue** |
+| 2026-09-16 | 2.6 (révisions à la clôture) | `d06c85326` | lecture des trois goldens | `source-2026-09-16` / `4d8427e4…` · `killsource-2026-09-16.2` / `88896267…` · `grammar-2026-09-15.34` / `70ae87e0…`. Les trois ont bougé d'EMPREINTE au geste 2.6.2 (alias à la place des déclarations), **aucune de RÉVISION** : un alias de type est le MÊME type pour le compilateur, la sortie est identique à l'octet, aucun match déjà décodé n'est candidat au backlog |
+
 
 ### Lot 2.5.h (M2, pas 5, item NEUF par V19 (2)) — le type du temps fort remonte en `domain/`, SANS AUCUN DÉCODAGE, 2026-09-16
 
