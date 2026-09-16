@@ -24,7 +24,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // v4OracleCause nomme l etat du flux du tireur au moment d un tir de l oracle.
@@ -82,7 +82,7 @@ func v4OracleMesureFilm(t *testing.T, ctx v4Ctx, tracks []VehicleTrack) {
 // v4OracleUnTir classe UN tir de l oracle.
 func v4OracleUnTir(
 	ctx v4Ctx, slotTracks map[uint32]slotTrack, rides map[uint32][]v4RideRef,
-	slots []uint32, e filmdec.FireEvent, ag *v4OracleAgg,
+	slots []uint32, e grammar.FireEvent, ag *v4OracleAgg,
 ) {
 	if v4CompteEpisodes(rides, slots, ctx.clock.frame(e.TimestampUS), 0) > 0 {
 		ag.parCause[v4OracleCouvert]++
@@ -132,7 +132,7 @@ func v4OracleEtat(
 
 // v4OracleClasse dit ce qui manque a UN silence pour devenir un episode.
 func v4OracleClasse(
-	ctx v4Ctx, last filmdec.BipedPosition, terminal bool, silenceS float64,
+	ctx v4Ctx, last grammar.BipedPosition, terminal bool, silenceS float64,
 ) (v4OracleCause, float64) {
 	slot, dist, _, ok := v4NearestHeld(ctx, last)
 	switch {

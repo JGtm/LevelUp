@@ -42,7 +42,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // a8Temoins : des films d'AUTRES modes, ou `ti=13` est le canal de production des zones et des
@@ -65,7 +65,7 @@ func TestAssautA8Ancrage(t *testing.T) {
 	defer amArmeSentinelle(t, "TestAssautA8Ancrage")()
 
 	ligne := func(id, mode string) {
-		sc, err := filmdec.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
+		sc, err := grammar.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
 		if err != nil {
 			t.Logf("%-9s %-26s balayage impossible : %v", id, mode, err)
 			return
@@ -122,19 +122,19 @@ func TestAssautA8Densite(t *testing.T) {
 
 	ligne := func(id, mode string) {
 		dir := filepath.Join(cache, "film_chunks", id)
-		sc, err := filmdec.ScanFilmManagedProperties(dir)
+		sc, err := grammar.ScanFilmManagedProperties(dir)
 		if err != nil {
 			t.Logf("%-9s %-26s balayage impossible : %v", id, mode, err)
 			return
 		}
 		paquets := 0
-		for c := 1; c <= filmdec.CountFilmChunks(dir); c++ {
-			data, err := filmdec.ReadFilmChunk(dir, c)
+		for c := 1; c <= grammar.CountFilmChunks(dir); c++ {
+			data, err := grammar.ReadFilmChunk(dir, c)
 			if err != nil {
 				continue
 			}
-			for _, pk := range filmdec.WalkPackets(data) {
-				if pk.Type == filmdec.PacketTypeDelta {
+			for _, pk := range grammar.WalkPackets(data) {
+				if pk.Type == grammar.PacketTypeDelta {
 					paquets++
 				}
 			}
@@ -185,7 +185,7 @@ func TestAssautA8Contenu(t *testing.T) {
 	defer amArmeSentinelle(t, "TestAssautA8Contenu")()
 
 	dump := func(id, mode string, exps []int) {
-		sc, err := filmdec.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
+		sc, err := grammar.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
 		if err != nil {
 			t.Logf("%s : %v", id, err)
 			return
@@ -257,7 +257,7 @@ func TestAssautA8Contenu(t *testing.T) {
 // TestAssautA8Tag3 — LA JAUGE EST LE TAG 3, ET ON LA CHERCHE LA.
 //
 // `zone_states_gauge.go` le dit sans ambiguite : la jauge de capture est la serie du TAG 3
-// (`filmdec.ManagedPropertyTagQuant`, mode A, R(24) quantifie sur [-100, +100]). Le dump
+// (`grammar.ManagedPropertyTagQuant`, mode A, R(24) quantifie sur [-100, +100]). Le dump
 // precedent groupait par (slot, tag) en ne gardant que les lectures PORTEUSES DE VALEUR, et n'a
 // vu aucun tag 3 — ni en Assaut, NI CHEZ LE TEMOIN STRONGHOLDS. Un temoin qui ne montre pas ce
 // qu'il est cense montrer accuse la sonde, pas la donnee.
@@ -273,7 +273,7 @@ func TestAssautA8Tag3(t *testing.T) {
 	defer amArmeSentinelle(t, "TestAssautA8Tag3")()
 
 	histo := func(id, mode string) {
-		sc, err := filmdec.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
+		sc, err := grammar.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
 		if err != nil {
 			t.Logf("%-9s %-24s : %v", id, mode, err)
 			return
@@ -334,7 +334,7 @@ func TestAssautA8Tag3Detail(t *testing.T) {
 	defer amArmeSentinelle(t, "TestAssautA8Tag3Detail")()
 
 	for _, id := range []string{"9f57c612", "c75f33b8", "df8fcbef", "34bb3bc8"} {
-		sc, err := filmdec.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
+		sc, err := grammar.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
 		if err != nil {
 			continue
 		}

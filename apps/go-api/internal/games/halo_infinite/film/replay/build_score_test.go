@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // build_score_test.go — LE BRANCHEMENT DU CALQUE DANS LE DOCUMENT (revue R1, 2026-08-18).
@@ -54,11 +54,11 @@ func TestDocumentCarriesScoreLayerWhenInputIsGiven(t *testing.T) {
 // scoreEntreeSynthetique : une manche, deux camps, des scores de registre qui les departagent.
 // Les instants tombent DANS la fenetre : origine du film a 1 000 ms, trois frames de 100 ms.
 func scoreEntreeSynthetique() *ScoreInput {
-	var recs []objectiveevents.StatRecord
+	var recs []objectives.StatRecord
 	for i, v := range []int64{1, 2, 3} {
-		recs = append(recs, objectiveevents.StatRecord{
+		recs = append(recs, objectives.StatRecord{
 			TimeMS: 1_000 + i*100, Slot: 6, Round: 0,
-			Comps: map[int]objectiveevents.StatValue{0: {A: v}},
+			Comps: map[int]objectives.StatValue{0: {A: v}},
 		})
 	}
 	scores := [2]int{3, 0}

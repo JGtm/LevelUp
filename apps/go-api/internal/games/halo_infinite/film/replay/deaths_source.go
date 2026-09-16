@@ -5,8 +5,8 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // deaths_source.go — LE FIL DES MORTS, LU DANS LE FILM.
@@ -33,7 +33,7 @@ import (
 // ENVELOPPE D2, HORS PRODUCTION (lot 1, 2026-09-02) : la cuisson appelle [ScanDeaths] sur un
 // film déjà chargé.
 func ScanFilmDeaths(filmDir string) ([]Death, error) {
-	film, err := filmsource.LoadDir(filmDir, nil)
+	film, err := source.LoadDir(filmDir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -54,15 +54,15 @@ func ScanFilmDeaths(filmDir string) ([]Death, error) {
 // 39-40 (mars a novembre 2025). Les `Death.Gamertag` publies dans l artefact de rejeu en
 // dependent — cf. .ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md. Film sans registre : version 0,
 // decoupage historique, et c est L APPELANT qui consigne la degradation (voir le corps).
-func ScanDeaths(film *filmsource.Film) ([]Death, error) {
-	nums := filmdec.FilmChunkNumbers(film)
+func ScanDeaths(film *source.Film) ([]Death, error) {
+	nums := grammar.FilmChunkNumbers(film)
 	if len(nums) == 0 {
-		return nil, filmdec.ErrNoReadableFilmChunk
+		return nil, grammar.ErrNoReadableFilmChunk
 	}
 	// Le chunk des highlight events est le DERNIER du manifest : c'est sa définition, pas
 	// une constante à deviner par film.
 	n := nums[len(nums)-1]
-	raw, _, ok := filmdec.FilmChunkAt(film, n)
+	raw, _, ok := grammar.FilmChunkAt(film, n)
 	if !ok {
 		return nil, fmt.Errorf("chunk highlight (%d) : absent du film", n)
 	}
@@ -77,7 +77,7 @@ func ScanDeaths(film *filmsource.Film) ([]Death, error) {
 	// plutot que `ResolveProfile` : cette fonction est appelee deux fois par cuisson et n a pas
 	// de carte — lui faire resoudre le profil entier couterait une analyse de registre par appel
 	// pour une valeur qui tient dans les quatre premiers octets.
-	evs, err := analysis.ParseHighlightEvents(raw, filmdec.HighlightProfileOfFilm(film).MajorVersion)
+	evs, err := analysis.ParseHighlightEvents(raw, grammar.HighlightProfileOfFilm(film).MajorVersion)
 	if err != nil {
 		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, err)
 	}

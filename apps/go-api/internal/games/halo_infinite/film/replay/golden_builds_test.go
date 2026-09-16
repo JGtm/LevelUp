@@ -67,7 +67,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // updateGoldenBuildsAssembly : LA PORTE DES GOLDENS D ASSEMBLAGE PAR BUILD, et d eux seuls.
@@ -111,12 +111,12 @@ func (b goldenBuild) assemblyPath() string {
 
 // mapQuant rend l entree de catalogue de la carte du film, par le MEME chemin que la production
 // (`NormalizeMapName` via `Lookup`).
-func (b goldenBuild) mapQuant() (filmdec.MapQuantEntry, error) {
+func (b goldenBuild) mapQuant() (grammar.MapQuantEntry, error) {
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles",
 		"halo_infinite", "reference", "map_quant_bounds.json")
-	cat, err := filmdec.LoadMapQuantCatalog(path)
+	cat, err := grammar.LoadMapQuantCatalog(path)
 	if err != nil {
-		return filmdec.MapQuantEntry{}, fmt.Errorf("catalogue de bornes %s : %w", path, err)
+		return grammar.MapQuantEntry{}, fmt.Errorf("catalogue de bornes %s : %w", path, err)
 	}
 	return cat.Lookup(b.Map)
 }
@@ -229,7 +229,7 @@ func TestGoldenBuildsAssemblyRegenerate(t *testing.T) {
 
 // assemblerGoldenBuild rejoue l assemblage d une entree, avec SON catalogue de carte.
 func assemblerGoldenBuild(t *testing.T, b goldenBuild, g *goldenInputs,
-	entry filmdec.MapQuantEntry,
+	entry grammar.MapQuantEntry,
 ) ReplayDocument {
 	t.Helper()
 	opt := g.options()
@@ -288,7 +288,7 @@ func TestGoldenBuildsInputsRoundTrip(t *testing.T) {
 }
 
 // chargerGoldenBuild relit le fixture d entrees d une entree et son entree de catalogue.
-func chargerGoldenBuild(t *testing.T, b goldenBuild) (*goldenInputs, filmdec.MapQuantEntry) {
+func chargerGoldenBuild(t *testing.T, b goldenBuild) (*goldenInputs, grammar.MapQuantEntry) {
 	t.Helper()
 	blob, err := os.ReadFile(b.inputsPath()) //nolint:gosec // chemin construit depuis la table
 	if err != nil {

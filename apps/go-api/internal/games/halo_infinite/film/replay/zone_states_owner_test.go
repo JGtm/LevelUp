@@ -11,7 +11,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // TestZoneStatesIntervallesSuiventLesBascules : le proprietaire change QUAND le canal change, et
@@ -115,8 +115,8 @@ func TestZoneStatesUnCanalNEstProprietaireQueDUneZone(t *testing.T) {
 	// deux zones — il concorde deux fois sur la zone 0 et deux fois sur la zone 1.
 	in.Reads = zoneReadsWithoutSlot(in.Reads, 21)
 	in.Reads = append(in.Reads,
-		zoneReadAt(11, 201, filmdec.ManagedPropertyTagU32, 1),
-		zoneReadAt(11, 401, filmdec.ManagedPropertyTagU32, 0),
+		zoneReadAt(11, 201, grammar.ManagedPropertyTagU32, 1),
+		zoneReadAt(11, 401, grammar.ManagedPropertyTagU32, 0),
 	)
 	states, cov := buildZoneStates(in, c)
 	if len(states) != 1 {
@@ -129,10 +129,10 @@ func TestZoneStatesUnCanalNEstProprietaireQueDUneZone(t *testing.T) {
 }
 
 // zoneReadsWithout retire la lecture d'un slot posee sur une frame donnee.
-func zoneReadsWithout(reads []filmdec.ManagedPropertyRead, slot uint32,
+func zoneReadsWithout(reads []grammar.ManagedPropertyRead, slot uint32,
 	frame int,
-) []filmdec.ManagedPropertyRead {
-	out := make([]filmdec.ManagedPropertyRead, 0, len(reads))
+) []grammar.ManagedPropertyRead {
+	out := make([]grammar.ManagedPropertyRead, 0, len(reads))
 	for _, r := range reads {
 		if r.Slot == slot && r.TimestampUS == uint64(frame)*100_000 {
 			continue
@@ -143,10 +143,10 @@ func zoneReadsWithout(reads []filmdec.ManagedPropertyRead, slot uint32,
 }
 
 // zoneReadsWithoutSlot retire toutes les lectures d'un slot.
-func zoneReadsWithoutSlot(reads []filmdec.ManagedPropertyRead,
+func zoneReadsWithoutSlot(reads []grammar.ManagedPropertyRead,
 	slot uint32,
-) []filmdec.ManagedPropertyRead {
-	out := make([]filmdec.ManagedPropertyRead, 0, len(reads))
+) []grammar.ManagedPropertyRead {
+	out := make([]grammar.ManagedPropertyRead, 0, len(reads))
 	for _, r := range reads {
 		if r.Slot == slot {
 			continue
@@ -175,7 +175,7 @@ func TestZoneStatesSlotNonApparieNEstPasPublie(t *testing.T) {
 // du roster ne devient PAS un proprietaire, et le refus se compte.
 func TestZoneStatesValeurInconnueNOuvreAucunIntervalle(t *testing.T) {
 	in, c := bastionCase()
-	in.Reads = append(in.Reads, zoneReadAt(11, 400, filmdec.ManagedPropertyTagU32, 7))
+	in.Reads = append(in.Reads, zoneReadAt(11, 400, grammar.ManagedPropertyTagU32, 7))
 	states, cov := buildZoneStates(in, c)
 	if cov.UnknownOwner != 1 {
 		t.Fatalf("valeurs inconnues %d, attendu 1", cov.UnknownOwner)

@@ -28,9 +28,9 @@ import (
 
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
@@ -72,9 +72,9 @@ func TestZoneEtatPhase2bTemoin(t *testing.T) {
 }
 
 // p2bScan balaye les proprietes reseau de `ti=13` par le chemin de PRODUCTION.
-func p2bScan(t *testing.T, dir string) filmdec.ManagedPropertyScan {
+func p2bScan(t *testing.T, dir string) grammar.ManagedPropertyScan {
 	t.Helper()
-	sc, err := filmdec.ScanFilmManagedProperties(dir)
+	sc, err := grammar.ScanFilmManagedProperties(dir)
 	if err != nil {
 		t.Fatalf("balayage ti=13 impossible (%s) : %v", dir, err)
 	}
@@ -83,14 +83,14 @@ func p2bScan(t *testing.T, dir string) filmdec.ManagedPropertyScan {
 
 // p2bBuild assemble le document avec le calque des zones — chemin de production, calque du
 // drapeau EXCLU (cf. l'en-tete).
-func p2bBuild(t *testing.T, dir, short string, quant *filmdec.MapQuantEntry, zone ZoneInput,
-	caps []objectiveevents.IdentifiedEvent,
+func p2bBuild(t *testing.T, dir, short string, quant *grammar.MapQuantEntry, zone ZoneInput,
+	caps []objectives.IdentifiedEvent,
 ) (ReplayDocument, uint64) {
 	t.Helper()
 	worldRange := quant.Range()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange = &worldRange
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions illisibles (%s) : %v", dir, err)
 	}
@@ -253,7 +253,7 @@ func p2bLogTaille(t *testing.T, doc ReplayDocument) {
 // Sans cet inventaire, un taux de concordance faible ne dit pas SI la regle est fausse ou si elle
 // a elu le mauvais slot.
 func p2bInventaireCanaux(t *testing.T, doc ReplayDocument, film p2aFilm,
-	sc filmdec.ManagedPropertyScan, origin uint64,
+	sc grammar.ManagedPropertyScan, origin uint64,
 ) {
 	t.Helper()
 	cat := zoneCatalogOf(p2aZones(t, film.MapID, p2aRolesDuMode(film)...))

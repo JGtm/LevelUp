@@ -37,7 +37,7 @@ package replay
 // # LES TROIS LECTURES
 //
 //  1. L'ÉVÉNEMENT 103 `EquipmentSpawnedObject` désigne la vie de l'objet -> `deployed`. Le film
-//     dit littéralement « une PIÈCE a été engendrée » ([filmdec.ScanEquipmentSpawnEvents]).
+//     dit littéralement « une PIÈCE a été engendrée » ([grammar.ScanEquipmentSpawnEvents]).
 //  2. Une MORT ÉCRITE du poseur à l'instant de la pose -> `dropped`. Le film date la mort dans
 //     son fil des morts, et le registre d'identité (lots 1.6 / 1.8) la rattache au siège.
 //  3. Une PRISE ÉCRITE (`taken` d'`equipmentChanges`) du poseur à l'instant -> `dropped` aussi.
@@ -83,8 +83,8 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // equipOwnerWindowUS est la fenêtre dans laquelle un échantillon de bipède est jugé
@@ -165,7 +165,7 @@ type equipLife struct {
 // pour 99 slots) — un contrôle gratuit qu'un second découpage du même fait ne divergeait pas.
 //
 // `positions` doit être TRIÉ par instant (c'est le cas de `sorted` dans BuildFromFilm).
-func equipmentLives(positions []filmdec.BipedPosition) map[uint32][]equipLife {
+func equipmentLives(positions []grammar.BipedPosition) map[uint32][]equipLife {
 	out := make(map[uint32][]equipLife)
 	for _, p := range positions {
 		if !p.HasWorld {
@@ -246,7 +246,7 @@ const equipmentTakenMatchUS = 50_000
 // porterait sept. Il est construit une fois par cuisson ([nouvelleSourceOrigine]) et partagé.
 type poseOrigineSource struct {
 	// spawns : par clé de vie d'objet, les instants des événements 103 qui la désignent.
-	spawns map[filmdec.EquipmentLifeKey][]uint64
+	spawns map[grammar.EquipmentLifeKey][]uint64
 	// morts : par SIÈGE, les instants des morts ÉCRITES (fil des morts apparié aux vies par le
 	// registre d'identité — lots 1.6 et 1.8, seul producteur de liens).
 	morts map[uint32][]uint64
@@ -259,10 +259,10 @@ type poseOrigineSource struct {
 
 // nouvelleSourceOrigine indexe les trois signaux écrits d'une cuisson.
 func nouvelleSourceOrigine(
-	spawns []filmdec.EquipmentSpawnEvent, vies []lifeSpan, changes []filmdec.EquipmentChange,
+	spawns []grammar.EquipmentSpawnEvent, vies []lifeSpan, changes []grammar.EquipmentChange,
 ) poseOrigineSource {
 	src := poseOrigineSource{
-		spawns: map[filmdec.EquipmentLifeKey][]uint64{},
+		spawns: map[grammar.EquipmentLifeKey][]uint64{},
 		morts:  map[uint32][]uint64{},
 		prises: map[uint32][]uint64{},
 	}
@@ -278,7 +278,7 @@ func nouvelleSourceOrigine(
 		}
 	}
 	for _, c := range changes {
-		if c.Kind == filmdec.EquipmentTaken {
+		if c.Kind == grammar.EquipmentTaken {
 			src.prises[c.Slot] = append(src.prises[c.Slot], c.TimestampUS)
 		}
 	}
@@ -287,7 +287,7 @@ func nouvelleSourceOrigine(
 
 // designeParUnEvenement dit si un événement 103 désigne la vie de CET objet : même clé
 // (slot, génération), et l'événement SUIT la création d'au plus [equipmentSpawnMatchUS].
-func (s poseOrigineSource) designeParUnEvenement(p filmdec.EquipmentPlacement) bool {
+func (s poseOrigineSource) designeParUnEvenement(p grammar.EquipmentPlacement) bool {
 	for _, at := range s.spawns[p.Life] {
 		if at >= p.T0US && at-p.T0US <= equipmentSpawnMatchUS {
 			return true
@@ -331,7 +331,7 @@ type poseOwner struct {
 //     rendent TOUTES DEUX `dropped` (décision utilisateur du 2026-09-15).
 //  4. AUCUN SIGNAL : `unknown`. Rien ne se devine.
 func origineDeLaPose(
-	p filmdec.EquipmentPlacement, id string, o poseOwner, fb *fallback.Compteur,
+	p grammar.EquipmentPlacement, id string, o poseOwner, fb *fallback.Compteur,
 ) (origine, cause string) {
 	if o.src.designeParUnEvenement(p) {
 		return OriginDeployed, CausePoseEvenementEngendre
@@ -364,13 +364,13 @@ func origineDeLaPose(
 // tombent dans la fenêtre, et retenir le plus proche en ESPACE au lieu du plus proche en
 // TEMPS ferait gagner le joueur qui passe par là au bon moment plutôt que celui qui pose.
 func equipmentOwner(
-	positions []filmdec.BipedPosition, p filmdec.EquipmentPlacement,
+	positions []grammar.BipedPosition, p grammar.EquipmentPlacement,
 ) (slot uint32, heading *float32, ok bool) {
 	lo := sort.Search(len(positions), func(k int) bool {
 		return positions[k].TimestampUS+equipOwnerWindowUS >= p.T0US
 	})
-	best := map[uint32]filmdec.BipedPosition{}
-	aim := map[uint32]filmdec.BipedPosition{}
+	best := map[uint32]grammar.BipedPosition{}
+	aim := map[uint32]grammar.BipedPosition{}
 	for k := lo; k < len(positions) && positions[k].TimestampUS <= p.T0US+equipOwnerWindowUS; k++ {
 		s := positions[k]
 		if !s.HasWorld {
@@ -391,7 +391,7 @@ func equipmentOwner(
 	// la MÊME distance de la pose — des coordonnées quantifiées, donc des égalités exactes, et un
 	// film BTB à 26 joueurs en réveille — laissaient l'ordre d'itération, tiré au sort à chaque
 	// exécution, nommer le poseur publié. Le départage vient du slot, une donnée de l'élément.
-	var near filmdec.BipedPosition
+	var near grammar.BipedPosition
 	for _, s := range best {
 		d := equipDist(p, s)
 		if d > equipOwnerMaxDist {
@@ -415,13 +415,13 @@ func equipmentOwner(
 }
 
 // equipCloser dit si a est plus proche de `at` en TEMPS que b.
-func equipCloser(a, b filmdec.BipedPosition, at uint64) bool {
+func equipCloser(a, b grammar.BipedPosition, at uint64) bool {
 	return equipTimeGap(a.TimestampUS, at) < equipTimeGap(b.TimestampUS, at)
 }
 
 // equipDist n'est qu'un ADAPTATEUR de types vers la distance canonique du paquet (`dist3`) : la
 // formule ne se réécrit pas ici, elle n'est écrite qu'une fois.
-func equipDist(p filmdec.EquipmentPlacement, s filmdec.BipedPosition) float32 {
+func equipDist(p grammar.EquipmentPlacement, s grammar.BipedPosition) float32 {
 	return float32(dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{s.X, s.Y, s.Z}))
 }
 

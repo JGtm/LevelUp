@@ -3,7 +3,7 @@ package replay
 import (
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // flag_carries_marker.go — LE CONTROLE INDEPENDANT, et les comptes qu'il alimente.
@@ -16,7 +16,7 @@ import (
 //
 // LE MARQUEUR EST UNE SECONDE CHAINE, ENTIEREMENT DISJOINTE : une suite de 32 bits presente dans
 // le record de bipede d'une image-cle quand ce joueur porte quelque chose
-// (`filmdec.ScanFilmCarrierMarks`). Elle ne partage avec la premiere ni sa source (des bits du
+// (`grammar.ScanFilmCarrierMarks`). Elle ne partage avec la premiere ni sa source (des bits du
 // dump d'etat monde contre des compteurs repliques), ni son espace de slots (bipede contre
 // statborg), ni son horloge (film contre match). Leur accord est donc une preuve.
 //
@@ -27,7 +27,7 @@ import (
 
 // markFlagCarries pose le CONTROLE du marqueur sur chaque portage : y a-t-il eu une image-cle
 // pendant qu'il durait, et cette image-cle portait-elle le marqueur sur le slot du porteur ?
-func markFlagCarries(raws []flagCarryRaw, scan filmdec.CarrierMarkScan, ctx flagCarryCtx) {
+func markFlagCarries(raws []flagCarryRaw, scan grammar.CarrierMarkScan, ctx flagCarryCtx) {
 	marked := map[string]map[int64]bool{}
 	for _, m := range scan.Marks {
 		x, ok := ctx.slotXUID[m.Slot]

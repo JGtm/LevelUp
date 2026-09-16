@@ -3,7 +3,7 @@ package replay
 // fallbacks_publication.go — CE QUE L'ARTEFACT DIT DE SES PROPRES REPLIS (schema 58, D14).
 //
 // Un REPLI est une decision de secours prise quand la lecture du film ne tranche pas. Le
-// REGISTRE (`film/replay/fallback`) les declare tous — nom stable, condition typee, date de
+// REGISTRE (`film/facts/fallback`) les declare tous — nom stable, condition typee, date de
 // pose, cible et critere de retrait — et un `fallback.Compteur` par cuisson compte ceux qui se
 // declenchent. Ce fichier est la seule porte entre ce compteur et le document publie.
 //
@@ -15,7 +15,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 )
 
 // FallbackHit est un repli et son nombre de declenchements sur CETTE cuisson.

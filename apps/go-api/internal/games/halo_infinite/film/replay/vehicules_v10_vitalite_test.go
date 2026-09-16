@@ -44,7 +44,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // SEUILS DE CLASSEMENT, ecrits AVANT toute mesure.
@@ -159,7 +159,7 @@ func v10VieDe(film string, l vehicleLife, ctx v4Ctx, rd []VehicleRide) (v10Vie, 
 	v := v10Vie{film: film, slot: l.key.Slot, gen: l.key.Gen, minFrac: 1, rides: len(rd),
 		loUS: l.loUS, hiUS: l.hiUS, vFin: -1, vMax: -1}
 	if sp, has := ctx.spawns[l.key]; has {
-		v.famille = vehicleFamilyOf(uint32(sp.MPPVal[filmdec.MPPWord32]))
+		v.famille = vehicleFamilyOf(uint32(sp.MPPVal[grammar.MPPWord32]))
 	}
 	series, vAll := v10SeriesDe(ctx.vehBySlot[l.key.Slot], l)
 	if len(series) == 0 {
@@ -183,7 +183,7 @@ func v10VieDe(film string, l vehicleLife, ctx v4Ctx, rd []VehicleRide) (v10Vie, 
 // v10SeriesDe extrait les lectures d `i4` de la fenetre de vie (triees), et A PART la serie des
 // VITESSES de la meme fenetre — la velocite `i1` est portee par bien plus de records que la
 // vitalite, et la restreindre aux records porteurs d `i4` perdrait la cinematique de fin.
-func v10SeriesDe(pts []filmdec.BipedPosition, l vehicleLife) (series []v10Ech, vAll []v10Ech) {
+func v10SeriesDe(pts []grammar.BipedPosition, l vehicleLife) (series []v10Ech, vAll []v10Ech) {
 	for _, p := range pts {
 		if p.TimestampUS < l.loUS || p.TimestampUS > l.hiUS {
 			continue

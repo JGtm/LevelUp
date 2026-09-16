@@ -23,7 +23,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // EquipmentChangeKind qualifie un changement d'équipement, tel que le document le publie.
@@ -42,7 +42,7 @@ const (
 // `spent`) ou quand le rang précédent n'est pas lisible. C'est la même sentinelle que celle
 // du décodeur ; elle est publiée telle quelle plutôt qu'omise, pour qu'un client n'ait pas à
 // distinguer « champ absent » de « rang zéro » — le rang 0 existe.
-const NoAbilityRank = filmdec.AbilitySetNoRank
+const NoAbilityRank = grammar.AbilitySetNoRank
 
 // EquipmentChange est UN changement d'équipement porté.
 type EquipmentChange struct {
@@ -111,7 +111,7 @@ type EquipmentChangeCoverage struct {
 // document. Les annonces de réapparition et les événements antérieurs à l'origine sont
 // écartés — un rejeu ne montre pas ce qui précède sa première frame.
 func buildEquipmentChanges(
-	changes []filmdec.EquipmentChange, st filmdec.EquipmentChangeStats, origin, step uint64,
+	changes []grammar.EquipmentChange, st grammar.EquipmentChangeStats, origin, step uint64,
 ) ([]EquipmentChange, EquipmentChangeCoverage) {
 	cov := EquipmentChangeCoverage{
 		Decoded: len(changes), Lives: st.Lives, MissedEstimate: st.MissedEstimate,
@@ -123,7 +123,7 @@ func buildEquipmentChanges(
 	}
 	out := make([]EquipmentChange, 0, len(changes))
 	for _, c := range changes {
-		if c.Kind == filmdec.EquipmentSpawned {
+		if c.Kind == grammar.EquipmentSpawned {
 			cov.Spawned++
 			continue
 		}
@@ -135,7 +135,7 @@ func buildEquipmentChanges(
 			T: int((c.TimestampUS - origin) / step), Slot: c.Slot,
 			R: c.Rank, From: c.Previous, Recovered: c.Recovered, Gap: c.Gap,
 		}
-		if c.Kind == filmdec.EquipmentSpent {
+		if c.Kind == grammar.EquipmentSpent {
 			e.Kind, cov.Spent = EquipmentSpent, cov.Spent+1
 		} else {
 			e.Kind, cov.Taken = EquipmentTaken, cov.Taken+1
@@ -166,7 +166,7 @@ func keepEquipmentChangesOfPublishedTracks(
 // pas le faire sans. Le nuage employé est celui des positions BRUTES, avant décimation : une
 // naissance décimée décalerait le témoin de plusieurs dixièmes de seconde, juste assez pour
 // classer un ramassage précoce en réapparition.
-func birthOfLives(positions []filmdec.BipedPosition) func(uint32) (uint64, bool) {
+func birthOfLives(positions []grammar.BipedPosition) func(uint32) (uint64, bool) {
 	if len(positions) == 0 {
 		return nil
 	}

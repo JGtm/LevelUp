@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // a9Motifs : le vocabulaire cherche dans les noms de composant du registre.
@@ -49,11 +49,11 @@ func TestAssautA9Dictionnaire(t *testing.T) {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
 	dir := filepath.Join(cache, "film_chunks", "9f57c612")
-	raw, err := filmdec.ReadFilmChunk(dir, 0)
+	raw, err := grammar.ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	reg, err := filmdec.ParseRegistryChunk(raw)
+	reg, err := grammar.ParseRegistryChunk(raw)
 	if err != nil {
 		t.Fatalf("registre invalide : %v", err)
 	}
@@ -92,11 +92,11 @@ func TestAssautA9Archetypes(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	raw, err := filmdec.ReadFilmChunk(filepath.Join(cache, "film_chunks", "9f57c612"), 0)
+	raw, err := grammar.ReadFilmChunk(filepath.Join(cache, "film_chunks", "9f57c612"), 0)
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	reg, err := filmdec.ParseRegistryChunk(raw)
+	reg, err := grammar.ParseRegistryChunk(raw)
 	if err != nil {
 		t.Fatalf("registre invalide : %v", err)
 	}
@@ -145,9 +145,9 @@ func TestAssautA9Ti11Present(t *testing.T) {
 	defer amArmeSentinelle(t, "TestAssautA9Ti11Present")()
 	ligne := func(id, mode string) {
 		dir := filepath.Join(cache, "film_chunks", id)
-		k11 := filmdec.ScanFilmWorldObjectKeyframes(dir, 11)
-		k13 := filmdec.ScanFilmWorldObjectKeyframes(dir, 13)
-		k42 := filmdec.ScanFilmWorldObjectKeyframes(dir, 42)
+		k11 := grammar.ScanFilmWorldObjectKeyframes(dir, 11)
+		k13 := grammar.ScanFilmWorldObjectKeyframes(dir, 13)
+		k42 := grammar.ScanFilmWorldObjectKeyframes(dir, 42)
 		t.Logf("%-9s %-24s ti=11 : %3d slot(s), %4d vie(s)   |   ti=13 : %3d slot(s)   |   ti=42 : %4d slot(s)",
 			id, mode, len(k11.Band), len(k11.SeenUS), len(k13.Band), len(k42.Band))
 	}
@@ -172,11 +172,11 @@ func TestAssautA9GrammaireObjectifs(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	raw, err := filmdec.ReadFilmChunk(filepath.Join(cache, "film_chunks", "9f57c612"), 0)
+	raw, err := grammar.ReadFilmChunk(filepath.Join(cache, "film_chunks", "9f57c612"), 0)
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	reg, err := filmdec.ParseRegistryChunk(raw)
+	reg, err := grammar.ParseRegistryChunk(raw)
 	if err != nil {
 		t.Fatalf("registre invalide : %v", err)
 	}

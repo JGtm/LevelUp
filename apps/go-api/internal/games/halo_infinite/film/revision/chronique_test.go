@@ -11,7 +11,7 @@ package revision_test
 //
 // # CE QUI N EST PAS VERIFIE SUR LE REEL, ET LA MESURE QUI LE DIT
 //
-// [revision.Chronique.VerifierRangs] n est PAS applique a la chronique de `filmdec` : mesure du
+// [revision.Chronique.VerifierRangs] n est PAS applique a la chronique de `grammar` : mesure du
 // 2026-09-17 sur `grammar_rev.golden`, la serie du 2026-09-15 saute `.7` puis `.9` a `.11` — des
 // rangs reserves par des lots paralleles dont la fusion n a pas eu lieu. Poser ici une
 // continuite sur la chronique d une AUTRE couche rendrait ce paquet rouge a la prochaine fusion
@@ -196,10 +196,10 @@ func TestChroniqueRefuseUnGoldenMalforme(t *testing.T) {
 // Il ne fige aucune valeur : la revision courante est celle du golden, lue au moment du test.
 // Ce que ce test prouve est que les deux formes reelles (le `// ENTREE` du godoc, la ligne de
 // donnees du golden) sont comprises, et que la revision courante est couverte des deux cotes —
-// ce que le gate de `filmdec` exige deja par ses propres moyens.
+// ce que le gate de `grammar` exige deja par ses propres moyens.
 func TestChroniqueLitLesArtefactsReelsDeFilmdec(t *testing.T) {
 	api := racineAPI(t)
-	dir := filepath.Join(api, "internal", "games", "halo_infinite", "film", "filmdec")
+	dir := filepath.Join(api, "internal", "games", "halo_infinite", "film", "grammar")
 	c, err := revision.LireChronique("grammar",
 		// Depuis le lot 2.4 (D2 (2.4)), la chronique est ROTATIONNEE : les entrees courantes vivent dans
 		// `grammar_rev_chronique.go`, les anciennes dans `grammar_rev_chronique_archive.go`.

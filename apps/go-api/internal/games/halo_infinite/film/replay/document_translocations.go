@@ -29,7 +29,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // Translocation est UNE téléportation exécutée, sur l'axe de frames du document.
@@ -79,7 +79,7 @@ type TranslocationCoverage struct {
 // buildTranslocations projette les téléportations lues dans le film sur l'axe de frames.
 // Même règle que les autres calques : rien avant l'origine, rien sans piste publiée.
 func buildTranslocations(
-	evts []filmdec.TranslocatorTeleport, tracks []Track, origin, step uint64,
+	evts []grammar.TranslocatorTeleport, tracks []Track, origin, step uint64,
 ) ([]Translocation, TranslocationCoverage) {
 	cov := TranslocationCoverage{Events: len(evts)}
 	if len(evts) == 0 || step == 0 {

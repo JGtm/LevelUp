@@ -43,7 +43,7 @@ package archlint
 // 171, 162, 162 — TOUTES des fonctions de test. La plus longue fonction de PRODUCTION des quatre
 // racines fait 146 lignes.
 //
-// Les 8 fonctions de production sont TOUTES dans `filmdec` (sept aiguillages de composants plus
+// Les 8 fonctions de production sont TOUTES dans `grammar` (sept aiguillages de composants plus
 // la table d invariants du profil) et tiennent dans la table ci-dessous. Les 93 fonctions de
 // test, elles, ne sont pas mises sous ratchet, et ce n est pas un oubli :
 //
@@ -55,7 +55,7 @@ package archlint
 //     en garde.
 //  2. LE RISQUE N EST PAS LE MEME DES DEUX COTES. Ce que la regle 5 protege, c est la fonction
 //     ou une branche ajoutee ligne 300 interagit avec un etat construit ligne 40 — les
-//     aiguillages de `filmdec` sont precisement cela. Une fonction de test longue est une suite
+//     aiguillages de `grammar` sont precisement cela. Une fonction de test longue est une suite
 //     d assertions independantes ou une table litterale : pas d etat accumule a se tromper, et
 //     quand elle casse elle le dit elle-meme, puisqu elle EST l oracle.
 //  3. LE COTE TEST EST DEJA BORNE, AU GRAIN DU FICHIER. `film_file_size_test.go` couvre les
@@ -96,7 +96,7 @@ package archlint
 // Il ne demande a personne de scinder les huit fonctions de la table. Il interdit de les
 // AGRANDIR. La scission se decide lot par lot, avec la preuve d equivalence qui va avec — le
 // lot 2.7 l a faite pour `replay/` (474 lignes ramenees a zero fonction au-dela de 80 dans tout
-// le paquet) ; les aiguillages de `filmdec` attendront le lot qui les rouvrira.
+// le paquet) ; les aiguillages de `grammar` attendront le lot qui les rouvrira.
 
 import (
 	"bytes"
@@ -137,21 +137,21 @@ const plancherFonctionsBalayees = 2300
 // table n est pas une reponse : elle est datee et fermee au 2026-09-16, elle recense la dette
 // constatee ce jour-la, pas la dette a venir.
 //
-// Les huit entrees sont dans `filmdec` et se lisent en deux familles :
+// Les huit entrees sont dans `grammar` et se lisent en deux familles :
 //   - les sept aiguillages de composants et la boucle d inference — de longues suites de `case`
 //     sur la grammaire du film, ou chaque branche consomme des bits dans un ordre impose par le
 //     format. Elles se scinderont par famille de composants, dans un lot qui portera sa preuve
 //     d equivalence (zero difference au corpus gate), jamais au fil de l eau ;
 //   - `tableProfilInvariants`, qui est une table litterale d invariants par build.
 var plafondsParFonction = map[string]int{
-	"internal/games/halo_infinite/film/filmdec/dispatch_player.go:consumeCrewFlockAndMusicComponent":       146,
-	"internal/games/halo_infinite/film/filmdec/dispatch_biped.go:consumeManagedAndObjectiveComponent":      143,
-	"internal/games/halo_infinite/film/filmdec/dispatch_item.go:consumeItemAndTacmapComponent":             139,
-	"internal/games/halo_infinite/film/filmdec/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 122,
-	"internal/games/halo_infinite/film/filmdec/dispatch_object.go:consumeByName":                           118,
-	"internal/games/halo_infinite/film/filmdec/frame_infer.go:decodeInferLoop":                             114,
-	"internal/games/halo_infinite/film/filmdec/dispatch_biped.go:consumeCaptureAndBipedComponent":          112,
-	"internal/games/halo_infinite/film/filmdec/profile_table.go:tableProfilInvariants":                     89,
+	"internal/games/halo_infinite/film/grammar/dispatch_player.go:consumeCrewFlockAndMusicComponent":       146,
+	"internal/games/halo_infinite/film/grammar/dispatch_biped.go:consumeManagedAndObjectiveComponent":      143,
+	"internal/games/halo_infinite/film/grammar/dispatch_item.go:consumeItemAndTacmapComponent":             139,
+	"internal/games/halo_infinite/film/grammar/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 122,
+	"internal/games/halo_infinite/film/grammar/dispatch_object.go:consumeByName":                           118,
+	"internal/games/halo_infinite/film/grammar/frame_infer.go:decodeInferLoop":                             114,
+	"internal/games/halo_infinite/film/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          112,
+	"internal/games/halo_infinite/film/grammar/profile_table.go:tableProfilInvariants":                     89,
 }
 
 // TestLongueurDesFonctionsDuFilmNeCroitPas : aucune fonction des racines surveillees ne depasse

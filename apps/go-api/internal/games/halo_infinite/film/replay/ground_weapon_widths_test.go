@@ -18,17 +18,17 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // TestGwInstallMPPWidthsInstalleEtRestaure : les largeurs mesurees valent pour le balayage, et
 // pour lui seul — elles se posent sur le CONTEXTE du film (lot 2.3), et les rendre reste un
 // contrat : la cuisson enchaine plusieurs archetypes sur le MEME contexte.
 func TestGwInstallMPPWidthsInstalleEtRestaure(t *testing.T) {
-	fc := filmdec.NewFilmContext(nil)
+	fc := grammar.NewFilmContext(nil)
 	avant := fc.ProfilDeBalayage().MPP
 	// Le decoupage d'un film BTB mesure (8/3), qui n'est PAS l'invariant du profil (9/5).
-	btb := filmdec.MPPWidths{Lead: 8, Index: 3}
+	btb := grammar.MPPWidths{Lead: 8, Index: 3}
 	if btb == avant {
 		t.Fatalf("le decoupage temoin %s est deja l'invariant : le test ne verifie plus rien", btb)
 	}
@@ -46,9 +46,9 @@ func TestGwInstallMPPWidthsInstalleEtRestaure(t *testing.T) {
 // rend un decoupage nul. L'installer lirait zero bit de tete et zero bit d'index — pire que le
 // defaut, qui a au moins ete mesure ailleurs.
 func TestGwInstallMPPWidthsIgnoreUnDecoupageNonMesure(t *testing.T) {
-	fc := filmdec.NewFilmContext(nil)
+	fc := grammar.NewFilmContext(nil)
 	avant := fc.ProfilDeBalayage().MPP
-	restore := gwInstallMPPWidths(fc, filmdec.MPPWidths{})
+	restore := gwInstallMPPWidths(fc, grammar.MPPWidths{})
 	if got := fc.ProfilDeBalayage().MPP; got != avant {
 		t.Fatalf("un decoupage non mesure a ete installe : %s", got)
 	}
@@ -68,12 +68,12 @@ func TestGwInstallMPPWidthsIgnoreUnDecoupageNonMesure(t *testing.T) {
 func TestCouvertureAvertitQuandAucuneIdentiteNeResout(t *testing.T) {
 	fausse := WorldObjectScan{
 		Scanned: true,
-		Stats:   filmdec.EquipmentCreationStats{Slots: 8, Anchors: 400, Accepted: 12},
-		Creations: []filmdec.EquipmentCreation{
+		Stats:   grammar.EquipmentCreationStats{Slots: 8, Anchors: 400, Accepted: 12},
+		Creations: []grammar.EquipmentCreation{
 			gwTestCreation(60, 0, 1_000_000, 0xDEADBEEF, 1, 1),
 			gwTestCreation(61, 0, 2_000_000, 0xBADC0FFE, 2, 2),
 		},
-		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
+		Keyframes: grammar.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
 	_, _, cov, _ := buildWeaponPads(PadScans{Weapons: fausse}, nil, gwTestClock(), padCatalogs{})
 	if cov.Kept != 0 || cov.Accepted == 0 {

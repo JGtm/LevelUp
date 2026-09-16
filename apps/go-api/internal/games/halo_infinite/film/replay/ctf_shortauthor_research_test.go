@@ -42,7 +42,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const ctfShortAuthorFilmsEnv = "CTF_SHORTAUTHOR_FILMS"
@@ -118,7 +118,7 @@ func ctfScanShortAuthor(t *testing.T, dir string) []authorCand {
 	// Profil de référence : combien de tirs LONGS par index de joueur.
 	ref := make([]float64, 8)
 	for _, pay := range longs {
-		if pi := filmdec.ReadAttackerIndex(pay); pi >= 0 && pi < 8 {
+		if pi := grammar.ReadAttackerIndex(pay); pi >= 0 && pi < 8 {
 			ref[pi]++
 		}
 	}
@@ -171,18 +171,18 @@ func scoreAuthorCand(shorts [][]byte, ref []float64, bit, width int, shift bool)
 // ctfSplitFireRecords rend les payloads bruts des records 105, longs et courts séparés.
 func ctfSplitFireRecords(t *testing.T, dir string) (longs, shorts [][]byte) {
 	t.Helper()
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 				continue
 			}
 			pay := p.Payload(chunk)
-			if int(pay[0]>>1) != filmdec.FireEventType {
+			if int(pay[0]>>1) != grammar.FireEventType {
 				continue
 			}
 			cp := append([]byte(nil), pay...)

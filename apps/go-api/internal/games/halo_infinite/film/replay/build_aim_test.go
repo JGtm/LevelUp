@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // build_aim_test.go — LE CONTRAT D ECRITURE DES DEUX ANGLES DE VISEE (lot E phase 1).
@@ -90,7 +90,7 @@ func TestPitchPublieEstToujoursHorsDeLaBandeDOmission(t *testing.T) {
 	var omis int
 	minAbs := float32(math.MaxFloat32)
 	for raw := uint32(0); raw < 2048; raw++ {
-		var p filmdec.BipedPosition
+		var p grammar.BipedPosition
 		p.HasYaw = true
 		p.PitchRaw = raw
 		v, ok := p.AimPitchDeg()
@@ -120,13 +120,13 @@ func TestPitchPublieEstToujoursHorsDeLaBandeDOmission(t *testing.T) {
 // signe (au-dessus de 1024 = vers le haut), la valeur, et le fait que `h` et `p` voyagent
 // ensemble.
 func TestDocumentPortePEtSonSigne(t *testing.T) {
-	mk := func(ts uint64, x float32, pitch uint32) filmdec.BipedPosition {
-		var p filmdec.BipedPosition
+	mk := func(ts uint64, x float32, pitch uint32) grammar.BipedPosition {
+		var p grammar.BipedPosition
 		p.Slot, p.TimestampUS, p.X, p.Y, p.Z, p.HasWorld = 7, ts, x, 1, 0, true
 		p.HasYaw, p.YawRaw, p.PitchRaw = true, 1024, pitch
 		return p
 	}
-	doc := BuildFromPositions("m", "halo_infinite", []filmdec.BipedPosition{
+	doc := BuildFromPositions("m", "halo_infinite", []grammar.BipedPosition{
 		mk(1_000_000, 1, 1500), // vers le HAUT
 		mk(1_200_000, 2, 500),  // vers le BAS
 		mk(1_400_000, 3, 1024), // quasi a plat, mais publie (cf. test precedent)
@@ -158,12 +158,12 @@ func TestDocumentPortePEtSonSigne(t *testing.T) {
 // Le temoin negatif du cablage : sans lui, un `pt.P = pitchForJSON(...)` pose hors du `if`
 // publierait -180 deg partout (PitchRaw valant 0 par defaut).
 func TestDocumentSansViseeNePubliePasDElevation(t *testing.T) {
-	mk := func(ts uint64, x float32) filmdec.BipedPosition {
-		var p filmdec.BipedPosition
+	mk := func(ts uint64, x float32) grammar.BipedPosition {
+		var p grammar.BipedPosition
 		p.Slot, p.TimestampUS, p.X, p.Y, p.Z, p.HasWorld = 7, ts, x, 1, 0, true
 		return p
 	}
-	doc := BuildFromPositions("m", "halo_infinite", []filmdec.BipedPosition{
+	doc := BuildFromPositions("m", "halo_infinite", []grammar.BipedPosition{
 		mk(1_000_000, 1), mk(1_200_000, 2),
 	}, nil, Options{})
 	if len(doc.Tracks) != 1 {

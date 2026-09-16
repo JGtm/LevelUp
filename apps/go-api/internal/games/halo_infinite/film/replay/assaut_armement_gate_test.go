@@ -45,9 +45,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // agFenetreMS est la tolérance du critère (b) : 4 930 ± 600 ms, la demi-fenêtre sous laquelle
@@ -58,7 +58,7 @@ import (
 const agFenetreMS = 600
 
 // agUneBombe : les trois films de la variante One Bomb du corpus (même découpage que
-// `filmdec.ti12UneBombe`, antérieur à toute mesure de ce lot), et CE QUE LA GARDE 2 EN DIT —
+// `grammar.ti12UneBombe`, antérieur à toute mesure de ce lot), et CE QUE LA GARDE 2 EN DIT —
 // FIGÉ SUR LA MESURE DU 2026-09-04, jamais sur une attente.
 //
 // UN SEUL DES TROIS PUBLIE, ET C'EST LE RÉSULTAT, PAS UN MANQUE. La garde 2 mord sur les deux
@@ -186,11 +186,11 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 	for _, c := range src.Meta() {
 		clock[c.Index] = c.StartMS
 	}
-	film, err := filmsource.LoadDir(filepath.Join(cache, "film_chunks", id), nil)
+	film, err := source.LoadDir(filepath.Join(cache, "film_chunks", id), nil)
 	if err != nil {
 		t.Fatalf("chunks du film %s illisibles : %v", id, err)
 	}
-	reads := decodeFilmBombReads(filmdec.NewFilmContext(film), id, BombInput{Scanned: true, ChunkStartMS: clock})
+	reads := decodeFilmBombReads(grammar.NewFilmContext(film), id, BombInput{Scanned: true, ChunkStartMS: clock})
 	agDiagnostiquerSegments(t, id, reads, a5ExplosionTimes(id))
 	// Grille synthétique : originMS=0, pas 100 ms, axe assez long pour tout le film — le gate
 	// juge les délais en ms, la conversion en frames est couverte par les tests unitaires.
@@ -200,10 +200,10 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 // agDiagnostiquerSegments publie CHAQUE armement dédupliqué avec ses quanta, et CHAQUE tenue
 // de désarmement avec sa pente : c'est la matière brute de la lecture pausable, montrée avant
 // tout verdict. Le marqueur `<- EXPLOSION` dit quels armements une explosion suit de près.
-func agDiagnostiquerSegments(t *testing.T, id string, reads []filmdec.NavpointRadialRead, explosions []int) {
+func agDiagnostiquerSegments(t *testing.T, id string, reads []grammar.NavpointRadialRead, explosions []int) {
 	t.Helper()
 	cov := &BombArmingsCoverage{}
-	full, pauses := classifyBombSegments(filmdec.NavpointSegments(reads), cov)
+	full, pauses := classifyBombSegments(grammar.NavpointSegments(reads), cov)
 	for _, r := range dedupPairedSegments(full, cov) {
 		lien := ""
 		for _, det := range explosions {

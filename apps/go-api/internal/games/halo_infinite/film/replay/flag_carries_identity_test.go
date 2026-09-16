@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // flag_carries_identity_test.go — QUI NOMME LE PORTEUR : ce paquet, ou son appelant ?
@@ -16,12 +16,12 @@ import (
 // flagIdentityRecs — deux slots dont le pont PAR MORTS ne nomme que le premier : le slot 10
 // aligne trois progressions du compteur de morts sur le fil de "aaa", le slot 12 n'en aligne
 // que deux (sous `deathInstantMin` = 3).
-func flagIdentityRecs() ([]objectiveevents.StatRecord, []Death) {
-	rec := func(t, slot int, kills, deaths int64) objectiveevents.StatRecord {
-		return objectiveevents.StatRecord{TimeMS: t, Slot: slot, Round: 0,
-			Comps: map[int]objectiveevents.StatValue{2: {A: kills, B: deaths}}}
+func flagIdentityRecs() ([]objectives.StatRecord, []Death) {
+	rec := func(t, slot int, kills, deaths int64) objectives.StatRecord {
+		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: 0,
+			Comps: map[int]objectives.StatValue{2: {A: kills, B: deaths}}}
 	}
-	recs := []objectiveevents.StatRecord{
+	recs := []objectives.StatRecord{
 		rec(1000, 10, 1, 1), rec(2000, 10, 2, 2), rec(3000, 10, 3, 3),
 		rec(5000, 12, 1, 1), rec(6000, 12, 2, 2),
 	}
@@ -55,7 +55,7 @@ func TestFlagIdentityOfResoutLocalementSansPontFourni(t *testing.T) {
 // tomber le plafond du calque : le slot 12 que la resolution locale laisse tomber est nomme.
 func TestFlagIdentityOfPrefereLePontDeLAppelant(t *testing.T) {
 	recs, deaths := flagIdentityRecs()
-	fourni := objectiveevents.FlatRoundIdentity(map[int]string{10: "111", 12: "222"})
+	fourni := objectives.FlatRoundIdentity(map[int]string{10: "111", 12: "222"})
 	got := flagIdentityOf(FlagInput{Records: recs, Identity: fourni}, Options{Deaths: deaths})
 	if x := got.At(12, 5000); x != "222" {
 		t.Errorf("slot 12 = %q, attendu \"222\" : le pont de l'appelant n'a pas ete retenu", x)
@@ -73,7 +73,7 @@ func TestFlagIdentityOfPrefereLePontDeLAppelant(t *testing.T) {
 // nommer — s'il retombait dessus, le slot 10 porterait un nom.
 func TestFlagIdentityOfRespecteUnPontMuet(t *testing.T) {
 	recs, deaths := flagIdentityRecs()
-	muet := objectiveevents.FlatRoundIdentity(nil)
+	muet := objectives.FlatRoundIdentity(nil)
 	if !muet.Resolved() {
 		t.Fatalf("le pont temoin doit se declarer RESOLU, sans quoi ce test ne prouve rien")
 	}
@@ -91,12 +91,12 @@ func TestFlagIdentityOfRespecteUnPontMuet(t *testing.T) {
 // C'est la mutation du lot, ecrite comme un test : le premier cas EST l'etat du schema 41.
 func TestFlagCarriesPontFourniPublieLePortage(t *testing.T) {
 	tracks := []Track{flagTestTrack(12, "222", 0, 99, 30, 40)}
-	scanDe := func(identity objectiveevents.RoundIdentity) FlagCarryScan {
+	scanDe := func(identity objectives.RoundIdentity) FlagCarryScan {
 		return FlagCarryScan{
 			Scanned: true, Signals: flagTestSignals(),
-			Events: []objectiveevents.NamedEvent{
-				{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-				{TimeMS: 4000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
+			Events: []objectives.NamedEvent{
+				{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+				{TimeMS: 4000, Slot: 12, Stat: objectives.StatFlagCaptures},
 			},
 			Identity: identity,
 			Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
@@ -112,7 +112,7 @@ func TestFlagCarriesPontFourniPublieLePortage(t *testing.T) {
 	}
 
 	// Schema 42 : le pont complete de l'appelant nomme le slot, et le portage est publie.
-	complet := objectiveevents.FlatRoundIdentity(map[int]string{12: "222"})
+	complet := objectives.FlatRoundIdentity(map[int]string{12: "222"})
 	got, cov := buildFlagCarries(scanDe(complet), flagTestCtx(tracks, nil, 100))
 	if cov.Carries != 1 || cov.NoBridge != 0 || !cov.Balanced() {
 		t.Fatalf("pont complete : couverture %+v, attendu 1 portage et 0 sans pont", *cov)

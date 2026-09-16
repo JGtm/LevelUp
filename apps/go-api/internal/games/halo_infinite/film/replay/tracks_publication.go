@@ -14,8 +14,8 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // DefaultMinPoints est le nombre minimal de points pour qu'une vie soit publiée.
@@ -81,7 +81,7 @@ type decoupeDesTraces struct {
 // SANS AUCUN COMPTEUR : un artefact publiant 90 traces là où le film en portait 95 était
 // indistinguable d'un film à 90 vies. Les deux compteurs disent combien de VIES et combien de
 // POINTS le seuil a retirés — cf. TrackCoverage, publié en `coverage.tracks`.
-func decimateTracks(sorted []filmdec.BipedPosition, in decoupeDesTraces) ([]Track, TrackCoverage) {
+func decimateTracks(sorted []grammar.BipedPosition, in decoupeDesTraces) ([]Track, TrackCoverage) {
 	origin, step := in.origin, in.step
 	bornes := bornesDesVies(sorted, in)
 	type acc struct {
@@ -175,7 +175,7 @@ func decimateTracks(sorted []filmdec.BipedPosition, in decoupeDesTraces) ([]Trac
 // décrit ne peut pas servir le critère de retrait de D14 (d). `DeclencheN` existe pour cela, et
 // un film sans aucune position rend 0 — donc ne compte rien, au lieu de compter un repli qui n'a
 // rien décidé.
-func bornesDesVies(sorted []filmdec.BipedPosition, in decoupeDesTraces) map[uint32][]lifeSpan {
+func bornesDesVies(sorted []grammar.BipedPosition, in decoupeDesTraces) map[uint32][]lifeSpan {
 	vies := in.vies
 	if len(vies) == 0 {
 		vies = buildLifeSpans(indexBySlot(sorted))
@@ -238,7 +238,7 @@ func vieDuPoint(spans []lifeSpan, courant int, tsUS uint64) int {
 // construite ici mais POSÉE plus tard, avec les autres — `doc.Coverage` n'existe qu'à partir de
 // `buildCoverage`, et l'assemblage se fait dans l'ordre des DÉPENDANCES, pas dans celui des
 // champs.
-func poserLesTraces(doc *ReplayDocument, sorted []filmdec.BipedPosition,
+func poserLesTraces(doc *ReplayDocument, sorted []grammar.BipedPosition,
 	in decoupeDesTraces) TrackCoverage {
 	tracks, trackCov := decimateTracks(sorted, in)
 	doc.Tracks = tracks
@@ -328,7 +328,7 @@ func logTrackCoverage(matchID string, c TrackCoverage) {
 // EXTRAIT DE `decimateTracks` (lot 2.7 volet publication, 2026-09-16), qui passait 80 lignes.
 // Aucune condition n'a change : la fonction est le bloc de composition du point, mot pour mot,
 // et `scoped` y entre parce que c'est la SEULE des cinq grandeurs qui ne vienne pas de `p`.
-func pointPublie(p filmdec.BipedPosition, frame, lacuneMS int,
+func pointPublie(p grammar.BipedPosition, frame, lacuneMS int,
 	scoped func(slot uint32, tsUS uint64) int,
 ) Point {
 	pt := Point{T: frame, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z), G: lacuneMS}

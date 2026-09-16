@@ -18,7 +18,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
 )
 
 // objControlePositif rend, sur un lot de records, la part de ceux dont l'emprise contient au

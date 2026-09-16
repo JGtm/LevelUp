@@ -27,7 +27,7 @@ package replay
 //
 // CE FICHIER EST PUR : il ne lit pas le film, il range ce que `VehicleScan.Deaths` a rendu.
 
-import "levelup/go-api/internal/games/halo_infinite/film/filmdec"
+import "levelup/go-api/internal/games/halo_infinite/film/grammar"
 
 // vehicleDeathTally est le bilan de l attribution des morts ecrites aux vies recensees.
 type vehicleDeathTally struct {
@@ -48,7 +48,7 @@ type vehicleDeathTally struct {
 //
 // UNE MORT QUE PERSONNE NE REPREND EST COMPTEE, JAMAIS JETEE : c est le signal qu une vie
 // manque au recensement, et le compte le dit (`VehicleCoverage.DeathsUnmatched`).
-func assignVehicleDeaths(lives []vehicleLife, deaths []filmdec.ObjectDeath) vehicleDeathTally {
+func assignVehicleDeaths(lives []vehicleLife, deaths []grammar.ObjectDeath) vehicleDeathTally {
 	t := vehicleDeathTally{read: len(deaths)}
 	if len(lives) == 0 || len(deaths) == 0 {
 		t.unmatched = len(deaths)
@@ -73,7 +73,7 @@ func assignVehicleDeaths(lives []vehicleLife, deaths []filmdec.ObjectDeath) vehi
 
 // indexOfVehicleLifeAt rend l index de la vie a qui la mort `d` appartient, ou -1. La vie doit
 // porter la MEME cle `(slot, gen)` et sa fenetre doit contenir l instant.
-func indexOfVehicleLifeAt(lives []vehicleLife, d filmdec.ObjectDeath) int {
+func indexOfVehicleLifeAt(lives []vehicleLife, d grammar.ObjectDeath) int {
 	for i := range lives {
 		l := &lives[i]
 		if l.key.Slot != d.Slot || l.key.Gen != d.Gen {

@@ -3,11 +3,11 @@ package replay
 // objectifs_phase0_statborg_test.go — LE PONT STATBORG -> JOUEUR, SUR FILMS REELS.
 //
 // CE FICHIER NE CONTIENT PLUS DE PONT : il APPELLE celui de la production
-// (`objectiveevents.SlotIdentityFromDeaths` / `SlotIdentityResolved`, slotidentity_deaths.go),
+// (`objectives.SlotIdentityFromDeaths` / `SlotIdentityResolved`, slotidentity_deaths.go),
 // porte le 2026-08-18 a l'item 1.0(a) du plan. Une seconde copie aurait diverge au premier
 // correctif, et surtout la mesure ne dirait plus rien de ce que l'artefact publie.
 //
-// CE QUE LE PONT PAR INSTANTS CORRIGE. `objectiveevents.SlotIdentity` apparie un slot statborg
+// CE QUE LE PONT PAR INSTANTS CORRIGE. `objectives.SlotIdentity` apparie un slot statborg
 // a une ligne de match par le triplet (frags, morts, assistances). C'est exact quand les
 // compteurs du film atteignent leurs valeurs finales — et c'est mesure ici que ce n'est PAS
 // toujours le cas : sur `64e8adfa` et `24dbb67d`, l'appariement rend 0 slot sur 8, alors qu'il
@@ -27,12 +27,12 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Emplacements de base du statborg, pour le seul DIAGNOSTIC des triplets ci-dessous (les
-// memes valeurs que `objectiveevents`, non exportees mais etablies : frags en A et morts en B
+// memes valeurs que `objectives`, non exportees mais etablies : frags en A et morts en B
 // de comp 2, assistances en A de comp 3).
 const (
 	objCompCoreKills   = 2
@@ -41,10 +41,10 @@ const (
 
 // objDeathInstants traduit le fil des morts du rejeu dans la forme qu'attend le pont de
 // production.
-func objDeathInstants(deaths []Death) []objectiveevents.DeathInstant {
-	out := make([]objectiveevents.DeathInstant, 0, len(deaths))
+func objDeathInstants(deaths []Death) []objectives.DeathInstant {
+	out := make([]objectives.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
-		out = append(out, objectiveevents.DeathInstant{
+		out = append(out, objectives.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS),
 		})
 	}
@@ -53,22 +53,22 @@ func objDeathInstants(deaths []Death) []objectiveevents.DeathInstant {
 
 // objIdentites rend le pont slot statborg -> xuid par les INSTANTS DE MORT, tel que la
 // PRODUCTION le calcule.
-func objIdentites(film *filmsource.Film, deaths []Death) map[int]string {
-	return objectiveevents.SlotIdentityFromDeaths(film, objDeathInstants(deaths))
+func objIdentites(film *source.Film, deaths []Death) map[int]string {
+	return objectives.SlotIdentityFromDeaths(film, objDeathInstants(deaths))
 }
 
 // objRoundIdentites rend le pont slot statborg -> xuid PAR MANCHE, tel que la production le
 // calcule desormais pour les calques d'objectifs vivants (drapeau, couronne, porteur du crane).
-func objRoundIdentites(film *filmsource.Film, deaths []Death) objectiveevents.RoundIdentity {
-	return objectiveevents.ResolveRoundIdentity(objectiveevents.StatRecords(film), objDeathInstants(deaths))
+func objRoundIdentites(film *source.Film, deaths []Death) objectives.RoundIdentity {
+	return objectives.ResolveRoundIdentity(objectives.StatRecords(film), objDeathInstants(deaths))
 }
 
 // objTriplets rend, par slot statborg, le triplet final (frags, morts, assistances).
 // Diagnostic : c'est lui qui montre POURQUOI l'appariement par totaux echoue sur un film.
-func objTriplets(recs []objectiveevents.StatRecord) map[int][3]int64 {
+func objTriplets(recs []objectives.StatRecord) map[int][3]int64 {
 	out := map[int][3]int64{}
 	for _, r := range recs {
-		if objectiveevents.IsTeamSlot(r.Slot) {
+		if objectives.IsTeamSlot(r.Slot) {
 			continue
 		}
 		tri := out[r.Slot]
@@ -112,15 +112,15 @@ func TestObjectifsPhase0PontStatborg(t *testing.T) {
 		b := objBridgeOf(t, root, id)
 		lines := objPlayerLines(f)
 		parInstants := objIdentites(src, b.Deaths)
-		parTriplets := objectiveevents.SlotIdentity(src, lines)
-		resolu, st := objectiveevents.SlotIdentityResolved(src, lines, objDeathInstants(b.Deaths))
+		parTriplets := objectives.SlotIdentity(src, lines)
+		resolu, st := objectives.SlotIdentityResolved(src, lines, objDeathInstants(b.Deaths))
 		accords, desaccords := objCompareTables(parInstants, parTriplets)
 		t.Logf("%s : pont par INSTANTS %d apparies ; pont par TRIPLETS %d apparies ; "+
 			"recoupement %d accords / %d desaccords ; PONT RESOLU (production) %d apparies, "+
 			"voie %q, %d desaccords ecartes",
 			id, len(parInstants), len(parTriplets), accords, desaccords,
 			len(resolu), st.Source, st.Conflicts)
-		for slot, tri := range objTriplets(objectiveevents.StatRecords(src)) {
+		for slot, tri := range objTriplets(objectives.StatRecords(src)) {
 			t.Logf("%s : slot %d — film (frags %d, morts %d, assist %d)", id, slot, tri[0], tri[1], tri[2])
 		}
 		if desaccords > 0 {
@@ -139,10 +139,10 @@ func TestObjectifsPhase0PontStatborg(t *testing.T) {
 
 // objPlayerLines rend les lignes de match gelees du corpus dans la forme qu'attend le pont
 // par totaux.
-func objPlayerLines(f objFilm) []objectiveevents.PlayerLine {
-	out := make([]objectiveevents.PlayerLine, 0, len(f.Players))
+func objPlayerLines(f objFilm) []objectives.PlayerLine {
+	out := make([]objectives.PlayerLine, 0, len(f.Players))
 	for _, p := range f.Players {
-		out = append(out, objectiveevents.PlayerLine{
+		out = append(out, objectives.PlayerLine{
 			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists,
 		})
 	}

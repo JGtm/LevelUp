@@ -53,8 +53,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // ouvEcartMaxMedianM : LE GATE. Écrit avant la mesure, en mètres.
@@ -87,13 +87,13 @@ func TestSondeDuelsOuverture(t *testing.T) {
 	}
 
 	rng := duelsBornes(t, carte)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("film %s illisible : %v", dir, err)
 	}
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange = &rng
-	positions, err := filmdec.ScanBipedPositions(filmdec.NewFilmContext(film), opt)
+	positions, err := grammar.ScanBipedPositions(grammar.NewFilmContext(film), opt)
 	if err != nil {
 		t.Fatalf("positions bipeds : %v", err)
 	}

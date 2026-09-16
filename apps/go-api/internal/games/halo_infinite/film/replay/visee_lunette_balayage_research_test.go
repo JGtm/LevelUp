@@ -56,7 +56,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const adsSweepDirEnv = "ADS_SWEEP_DIR"
@@ -212,10 +212,10 @@ func TestViseeLunetteBalayage(t *testing.T) {
 // aurait melange deux vies d'un meme slot.
 func adsBalayeFilm(dir string, f adsMedailleFilm, b *adsSweepBilan) {
 
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.CaptureDirs = true
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil || len(pos) == 0 {
 		b.rejetDecodage++
 		return
@@ -267,7 +267,7 @@ type adsEchantillon struct {
 }
 
 // adsIndexeMasques range les masques par slot, tries par instant.
-func adsIndexeMasques(pos []filmdec.BipedPosition, b *adsSweepBilan) map[uint32][]adsEchantillon {
+func adsIndexeMasques(pos []grammar.BipedPosition, b *adsSweepBilan) map[uint32][]adsEchantillon {
 	out := map[uint32][]adsEchantillon{}
 	for _, p := range pos {
 		if p.MaskOver {

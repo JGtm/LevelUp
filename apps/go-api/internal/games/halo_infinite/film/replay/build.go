@@ -3,7 +3,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // DefaultFrameIntervalMS est le pas de la grille de rééchantillonnage, en millisecondes.
@@ -36,8 +36,8 @@ const coordScale = 100
 //	                                  ensuite (projectiles, equipes, sieges) ;
 //	les tirs embarques APRES les vehicules, la palette AVANT les impulsions, les replis EN
 //	DERNIER (`clore`).
-func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
-	fire []filmdec.FireEvent, opt Options) ReplayDocument {
+func BuildFromPositions(matchID, titleSlug string, pos []grammar.BipedPosition,
+	fire []grammar.FireEvent, opt Options) ReplayDocument {
 	a := &assemblage{matchID: matchID, opt: opt, pos: pos, fire: fire}
 	if !a.ouvrir(titleSlug) {
 		return a.doc
@@ -73,13 +73,13 @@ type assemblage struct {
 	// `ouvrir` garantit non nil — cf. Options.Fallbacks, D14).
 	matchID string
 	opt     Options
-	pos     []filmdec.BipedPosition
-	fire    []filmdec.FireEvent
+	pos     []grammar.BipedPosition
+	fire    []grammar.FireEvent
 
 	// Le document en construction, et l'horloge sur laquelle toutes les passes posent.
 	doc      ReplayDocument
 	interval int
-	sorted   []filmdec.BipedPosition
+	sorted   []grammar.BipedPosition
 	origin   uint64
 	step     uint64
 
@@ -129,7 +129,7 @@ func (a *assemblage) ouvrir(titleSlug string) bool {
 	if len(a.pos) == 0 {
 		return false
 	}
-	a.sorted = append([]filmdec.BipedPosition(nil), a.pos...)
+	a.sorted = append([]grammar.BipedPosition(nil), a.pos...)
 	sort.SliceStable(a.sorted, func(i, j int) bool { return a.sorted[i].TimestampUS < a.sorted[j].TimestampUS })
 
 	a.origin = a.sorted[0].TimestampUS
@@ -143,7 +143,7 @@ func (a *assemblage) ouvrir(titleSlug string) bool {
 // et QUAND. L'arme et la visée sont volontairement laissées dehors — elles n'ont aucun pouvoir
 // de désignation, et les rendre visibles à la fermeture rouvrirait la porte au vote supprimé le
 // 2026-07-28.
-func fireRefs(fire []filmdec.FireEvent) []FireEventRef {
+func fireRefs(fire []grammar.FireEvent) []FireEventRef {
 	out := make([]FireEventRef, len(fire))
 	for i, e := range fire {
 		out[i] = FireEventRef{FilmIndex: e.FilmIndex, TimestampUS: e.TimestampUS}
@@ -159,7 +159,7 @@ func keepShotsOfPublishedTracks(shots []Shot, tracks []Track) []Shot {
 }
 
 // frameSpan renvoie le nombre de frames couvrant tout le film (dernier index + 1).
-func frameSpan(sorted []filmdec.BipedPosition, origin, step uint64) int {
+func frameSpan(sorted []grammar.BipedPosition, origin, step uint64) int {
 	last := sorted[len(sorted)-1].TimestampUS
 	return int((last-origin)/step) + 1
 }

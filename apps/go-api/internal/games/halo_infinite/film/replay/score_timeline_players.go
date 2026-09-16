@@ -12,7 +12,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // buildPlayerScores rend les compteurs vivants des joueurs, tries par xuid. DEUX CHEMINS, ET LE
@@ -36,16 +36,16 @@ import (
 // le pont par morts ne pouvait pas nommer — un joueur qui meurt moins de trois fois dans la
 // manche — n'etait publie NULLE PART. Mesure : `51ebbc0f`, un joueur a 0 mort en manche 0, sa
 // manche entiere absente, ecart cumule K/D/A de 9 contre la feuille.
-// [objectiveevents.RoundIdentity.CompletedByElimination] la ferme dans le cas d'unicite, controle
+// [objectives.RoundIdentity.CompletedByElimination] la ferme dans le cas d'unicite, controle
 // par le residu de la feuille, et
-// [objectiveevents.RoundIdentity.CompletedByRoundResidue] des que la manche laisse PLUSIEURS
+// [objectives.RoundIdentity.CompletedByRoundResidue] des que la manche laisse PLUSIEURS
 // slots muets (lot 6.7-B1). LA MEME CHAINE QUE LE PONT DE LA CUISSON (`replaybuild`, pontParManche) :
 // deux lecteurs du meme pont doivent dire la meme chose du meme match. `lines` vide rend
 // l'identite inchangee.
-func buildPlayerScores(recs []objectiveevents.StatRecord, flat map[int]string,
-	lines []objectiveevents.PlayerLine, deaths []Death, c scoreClock) []PlayerScore {
-	if len(objectiveevents.RealRounds(recs)) > 1 {
-		round := objectiveevents.ResolveRoundIdentity(recs, deathInstantsOf(deaths)).
+func buildPlayerScores(recs []objectives.StatRecord, flat map[int]string,
+	lines []objectives.PlayerLine, deaths []Death, c scoreClock) []PlayerScore {
+	if len(objectives.RealRounds(recs)) > 1 {
+		round := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths)).
 			CompletedByElimination(recs, lines).
 			CompletedByRoundResidue(recs, lines)
 		return buildPlayerScoresByRound(recs, round, c)
@@ -55,14 +55,14 @@ func buildPlayerScores(recs []objectiveevents.StatRecord, flat map[int]string,
 
 // buildPlayerScoresFlat est le chemin MONO-MANCHE : un PlayerScore par slot apparie par le pont
 // des totaux, total lu tel quel dans `SeriesTotal`. Comportement d'avant la migration, inchange.
-func buildPlayerScoresFlat(recs []objectiveevents.StatRecord, identity map[int]string, c scoreClock) []PlayerScore {
+func buildPlayerScoresFlat(recs []objectives.StatRecord, identity map[int]string, c scoreClock) []PlayerScore {
 	if len(identity) == 0 {
 		return nil
 	}
-	personal := loadScoreSeries(recs, objectiveevents.PersonalScoreComponent, false)
-	kills := loadScoreSeries(recs, objectiveevents.KillsComponent, false)
-	deaths := loadScoreSeries(recs, objectiveevents.DeathsComponent, false)
-	assists := loadScoreSeries(recs, objectiveevents.AssistsComponent, false)
+	personal := loadScoreSeries(recs, objectives.PersonalScoreComponent, false)
+	kills := loadScoreSeries(recs, objectives.KillsComponent, false)
+	deaths := loadScoreSeries(recs, objectives.DeathsComponent, false)
+	assists := loadScoreSeries(recs, objectives.AssistsComponent, false)
 
 	slots := make([]int, 0, len(identity))
 	for slot := range identity {
@@ -94,12 +94,12 @@ func buildPlayerScoresFlat(recs []objectiveevents.StatRecord, identity map[int]s
 // buildPlayerScoresByRound est le chemin MULTI-MANCHE : la courbe de chaque slot est decoupee par
 // manche, chaque segment rattache au joueur de SA manche (`AtRound`), les segments d'un meme xuid
 // fusionnes en une entree — courbe recomposee dans l'ordre du temps.
-func buildPlayerScoresByRound(recs []objectiveevents.StatRecord,
-	round objectiveevents.RoundIdentity, c scoreClock) []PlayerScore {
-	personal := playerRoundsByXUID(recs, objectiveevents.PersonalScoreComponent, round)
-	kills := playerRoundsByXUID(recs, objectiveevents.KillsComponent, round)
-	deaths := playerRoundsByXUID(recs, objectiveevents.DeathsComponent, round)
-	assists := playerRoundsByXUID(recs, objectiveevents.AssistsComponent, round)
+func buildPlayerScoresByRound(recs []objectives.StatRecord,
+	round objectives.RoundIdentity, c scoreClock) []PlayerScore {
+	personal := playerRoundsByXUID(recs, objectives.PersonalScoreComponent, round)
+	kills := playerRoundsByXUID(recs, objectives.KillsComponent, round)
+	deaths := playerRoundsByXUID(recs, objectives.DeathsComponent, round)
+	assists := playerRoundsByXUID(recs, objectives.AssistsComponent, round)
 
 	out := make([]PlayerScore, 0)
 	for _, xuid := range sortedXUIDs(personal, kills, deaths, assists) {
@@ -126,17 +126,17 @@ func buildPlayerScoresByRound(recs []objectiveevents.StatRecord,
 // xuid -> manche -> points (valeurs propres a la manche, deja triees et filtrees par
 // `SeriesByRound`). L'identite par manche garantit qu'aucun xuid n'est revendique par deux slots
 // dans la meme manche (`withoutContestedXUID`) : chaque (xuid, manche) recoit au plus un segment.
-func playerRoundsByXUID(recs []objectiveevents.StatRecord, comp objectiveevents.StatComponent,
-	round objectiveevents.RoundIdentity) map[string]map[int][]objectiveevents.ScorePoint {
-	out := map[string]map[int][]objectiveevents.ScorePoint{}
-	for slot, byRound := range objectiveevents.SeriesByRound(recs, comp, false) {
+func playerRoundsByXUID(recs []objectives.StatRecord, comp objectives.StatComponent,
+	round objectives.RoundIdentity) map[string]map[int][]objectives.ScorePoint {
+	out := map[string]map[int][]objectives.ScorePoint{}
+	for slot, byRound := range objectives.SeriesByRound(recs, comp, false) {
 		for r, pts := range byRound {
 			xuid := round.AtRound(r, slot)
 			if xuid == "" {
 				continue
 			}
 			if out[xuid] == nil {
-				out[xuid] = map[int][]objectiveevents.ScorePoint{}
+				out[xuid] = map[int][]objectives.ScorePoint{}
 			}
 			out[xuid][r] = pts
 		}
@@ -147,13 +147,13 @@ func playerRoundsByXUID(recs []objectiveevents.StatRecord, comp objectiveevents.
 // seriesOfRounds pose sur la grille les segments par manche d'un xuid : `Rounds` (les manches
 // telles quelles) et `Total` (le cumul recompose dans l'ordre des manches).
 //
-// LE CUMUL PASSE PAR [objectiveevents.ChronologicalTotal] : concatener les manches dans l'ordre
+// LE CUMUL PASSE PAR [objectives.ChronologicalTotal] : concatener les manches dans l'ordre
 // des MANCHES ne donne une courbe chronologique que si la decoupe par manche est juste. Le
 // controle refuse de publier une courbe qui recule dans le temps, et le dit au journal.
-func seriesOfRounds(byRound map[int][]objectiveevents.ScorePoint, c scoreClock) ScoreSeries {
+func seriesOfRounds(byRound map[int][]objectives.ScorePoint, c scoreClock) ScoreSeries {
 	return ScoreSeries{
 		Rounds: scoreRoundsOf(byRound, c),
-		Total:  scoreTicksOf(objectiveevents.ChronologicalTotal(cumulateXUIDRounds(byRound)), c),
+		Total:  scoreTicksOf(objectives.ChronologicalTotal(cumulateXUIDRounds(byRound)), c),
 	}
 }
 
@@ -161,21 +161,21 @@ func seriesOfRounds(byRound map[int][]objectiveevents.ScorePoint, c scoreClock) 
 // chaque manche, dans l'ordre, decalee du total des manches precedentes. Les segments viennent de
 // `SeriesByRound` (deja tries par instant et filtres par la plus longue sous-suite non
 // decroissante — les quatre composants joueur sont tous NON stricts), donc leur dernier point est
-// le total de la manche. C'est `cumulateRounds` d'`objectiveevents`, applique par JOUEUR : un
+// le total de la manche. C'est `cumulateRounds` d'`objectives`, applique par JOUEUR : un
 // joueur qui garde son slot retrouve exactement `SeriesTotal`, un joueur reassigne voit ses
 // manches fusionner dans l'ordre du temps.
-func cumulateXUIDRounds(byRound map[int][]objectiveevents.ScorePoint) []objectiveevents.ScorePoint {
+func cumulateXUIDRounds(byRound map[int][]objectives.ScorePoint) []objectives.ScorePoint {
 	rounds := make([]int, 0, len(byRound))
 	for r := range byRound {
 		rounds = append(rounds, r)
 	}
 	sort.Ints(rounds)
-	var out []objectiveevents.ScorePoint
+	var out []objectives.ScorePoint
 	var offset int64
 	for _, r := range rounds {
 		pts := byRound[r]
 		for _, p := range pts {
-			out = append(out, objectiveevents.ScorePoint{TimeMS: p.TimeMS, Slot: p.Slot, Value: p.Value + offset})
+			out = append(out, objectives.ScorePoint{TimeMS: p.TimeMS, Slot: p.Slot, Value: p.Value + offset})
 		}
 		if len(pts) > 0 {
 			offset += pts[len(pts)-1].Value
@@ -185,7 +185,7 @@ func cumulateXUIDRounds(byRound map[int][]objectiveevents.ScorePoint) []objectiv
 }
 
 // sortedXUIDs rend l'union triee des xuids presents dans les composants fournis.
-func sortedXUIDs(maps ...map[string]map[int][]objectiveevents.ScorePoint) []string {
+func sortedXUIDs(maps ...map[string]map[int][]objectives.ScorePoint) []string {
 	seen := map[string]bool{}
 	for _, m := range maps {
 		for xuid := range m {

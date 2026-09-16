@@ -24,8 +24,8 @@ import (
 	"sort"
 	"strconv"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // objRecord est un record de bipede d'image-cle, reduit a ce que la mesure consomme :
@@ -44,17 +44,17 @@ type objRecord struct {
 // sien jusqu'a celui du suivant. Une fenetre est attribuee au record qui contient son
 // DEBUT — meme regle que `familiesByRecord`, pour que les deux lectures restent comparables.
 func objScanKeyframeBipeds(dir string) ([]objRecord, int, error) {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	var out []objRecord
 	lus, images := 0, 0
 	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
 		lus++
-		for _, p := range filmdec.WalkPackets(data) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(data) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			images++
@@ -69,7 +69,7 @@ func objScanKeyframeBipeds(dir string) ([]objRecord, int, error) {
 
 // objBipedRecordsOf extrait les records de bipede d'un seul payload d'image-cle. PUR.
 func objBipedRecordsOf(pay []byte, ts uint64) []objRecord {
-	recs := filmdec.WalkKeyframeWorld(pay)
+	recs := grammar.WalkKeyframeWorld(pay)
 	if len(recs) == 0 {
 		return nil
 	}
@@ -138,7 +138,7 @@ type objWindow struct {
 // LE LACHER VOLONTAIRE N'EST PAS OBSERVABLE et n'est donc PAS borne : une fenetre qui le
 // contient est trop longue, ce qui ABAISSE le taux mesure. Le biais joue contre le signal,
 // jamais en sa faveur — c'est le sens dans lequel on veut se tromper.
-func objPortageWindows(evs []objectiveevents.IdentifiedEvent, deaths []Death, finMS int64) ([]objWindow, int) {
+func objPortageWindows(evs []objectives.IdentifiedEvent, deaths []Death, finMS int64) ([]objWindow, int) {
 	prises := map[uint64][]objWindow{}
 	captures, morts := map[uint64][]int64{}, map[uint64][]int64{}
 	for _, e := range evs {
@@ -147,11 +147,11 @@ func objPortageWindows(evs []objectiveevents.IdentifiedEvent, deaths []Death, fi
 			continue
 		}
 		switch e.Stat {
-		case objectiveevents.StatFlagGrabs:
+		case objectives.StatFlagGrabs:
 			prises[x] = append(prises[x], objWindow{XUID: x, Kind: "prise", T0: int64(e.TimeMS)})
-		case objectiveevents.StatFlagSteals:
+		case objectives.StatFlagSteals:
 			prises[x] = append(prises[x], objWindow{XUID: x, Kind: "vol", T0: int64(e.TimeMS)})
-		case objectiveevents.StatFlagCaptures:
+		case objectives.StatFlagCaptures:
 			captures[x] = append(captures[x], int64(e.TimeMS))
 		}
 	}
@@ -316,7 +316,7 @@ func objCandidats(t objTable) []objCandidat {
 }
 
 // objFinMatch borne la derniere fenetre : le dernier fait date du match.
-func objFinMatch(evs []objectiveevents.IdentifiedEvent, deaths []Death) int64 {
+func objFinMatch(evs []objectives.IdentifiedEvent, deaths []Death) int64 {
 	var fin int64
 	for _, e := range evs {
 		if int64(e.TimeMS) > fin {

@@ -3,7 +3,7 @@
 // # POURQUOI CE PAQUET EST DEHORS
 //
 // Le profil d un film — ce que le depot sait de sa grammaire — vivait jusqu ici en DUR dans
-// `filmdec` (table du lot 2.1, `filmdec/profile_table.go`). Le lot 3.1 en fait une DONNEE :
+// `grammar` (table du lot 2.1, `filmdec/profile_table.go`). Le lot 3.1 en fait une DONNEE :
 // un fichier de reference versionne, `data/titles/{slug}/reference/film_profiles.json`, resolu
 // par `title.PathResolver.FilmProfilesPath` (D12 du plan decodeur). Ce paquet-ci est le seul
 // lecteur de ce fichier, et il N IMPORTE AUCUN paquet du film : un consommateur qui n a pas le
@@ -46,9 +46,9 @@ const SchemaVersionCourante = 1
 // Provenance dit d ou vient une valeur du catalogue.
 //
 // Les trois valeurs sont EXACTEMENT celles de la table du lot 2.1
-// (`filmdec.Provenance`) : le catalogue est la meme donnee, deplacee dans un fichier. Le test
+// (`grammar.Provenance`) : le catalogue est la meme donnee, deplacee dans un fichier. Le test
 // de conformite ([TestCatalogueConformeALaTableDuLot21]) tient les deux vocabulaires egaux tant
-// qu ils coexistent ; le lot 3.1.1 supprime la copie en faisant lire ce paquet a `filmdec`.
+// qu ils coexistent ; le lot 3.1.1 supprime la copie en faisant lire ce paquet a `grammar`.
 type Provenance string
 
 // Les trois provenances, et rien d autre.
@@ -101,7 +101,7 @@ const (
 // ClesLues sont les trois clefs telles qu elles ont ete LUES dans un film donne.
 //
 // `Majeure` a 0 pour « non lue » (film sans registre), comme le fait deja
-// `filmdec.implantationDuGamertag` : c est un etat, pas une valeur manquante a deviner.
+// `grammar.implantationDuGamertag` : c est un etat, pas une valeur manquante a deviner.
 type ClesLues struct {
 	Format  int
 	Build   string
@@ -219,7 +219,7 @@ func contientEntier(liste []int, v int) bool {
 }
 
 // Entree est UNE ligne du catalogue : une valeur, sa clef, sa provenance et sa preuve. Les
-// champs sont ceux de `filmdec.LigneProfil`, un pour un.
+// champs sont ceux de `grammar.LigneProfil`, un pour un.
 type Entree struct {
 	// Cle est la clef ECRITE qui selectionne cette entree (`format=27`, `build=HI_1_13_0`,
 	// `majeure>=41`, `toutes`).

@@ -15,7 +15,7 @@ package replay
 //	apparition     un record de CREATION de bipede pour ce slot y tombe : le film ecrit qu'un
 //	               corps NEUF commence ici (cf. identity_registry_creation.go, mesure du lot E2 :
 //	               aucun record de creation ne tombe DANS l'intervalle d'une vie, il la precede)
-//	fin de manche  une frontiere de manche (`objectiveevents.RoundBounds.Starts`) y tombe
+//	fin de manche  une frontiere de manche (`objectives.RoundBounds.Starts`) y tombe
 //	fin de film    le trou atteint le dernier instant replique du film
 //	RIEN           le film ne dit RIEN — la vie est coupee A TORT, et c'est la population que
 //	               le lot 1.9.13 convertit en LACUNE d'une seule et meme vie
@@ -37,7 +37,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // Les quatre classes d'une coupure, et rien d'autre.
@@ -180,7 +180,7 @@ func classerLesCoupures(reg IdentityRegistry, opt Options) bilanCoupures {
 // parametres : le depot en borne cinq.
 type coupureEntrees struct {
 	deaths    []Death
-	creations []filmdec.BipedCreation
+	creations []grammar.BipedCreation
 	offUS     int64
 	manches   []int64
 	finDuFilm int64

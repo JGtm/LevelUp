@@ -15,7 +15,7 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
@@ -188,10 +188,10 @@ func TestAvecCapture_CableLesDeuxOuAucune(t *testing.T) {
 }
 
 // positionsDUneVie : une trajectoire continue de dix secondes sur un slot.
-func positionsDUneVie() []filmdec.BipedPosition {
-	pos := []filmdec.BipedPosition{}
+func positionsDUneVie() []grammar.BipedPosition {
+	pos := []grammar.BipedPosition{}
 	for t := int64(0); t <= 10_000; t += 100 {
-		pos = append(pos, filmdec.BipedPosition{
+		pos = append(pos, grammar.BipedPosition{
 			Slot: 1, TimestampUS: uint64(t) * 1000, HasWorld: true,
 		})
 	}
@@ -202,7 +202,7 @@ func positionsDUneVie() []filmdec.BipedPosition {
 // une mort du fil qui la clôt, une table d'index. `desaccords` injecte un désaccord de lecture
 // par la table d'index — la seule entrée publique qui le porte, et celle que la production
 // alimente (`replay.ScanPlayerIndices`).
-func registreDeTest(pos []filmdec.BipedPosition, desaccords int) replay.IdentityRegistry {
+func registreDeTest(pos []grammar.BipedPosition, desaccords int) replay.IdentityRegistry {
 	return replay.BuildIdentityRegistry(replay.IdentityInput{
 		Positions: pos,
 		Deaths:    []replay.Death{{XUID: 111, TimeMS: 10_000}},
@@ -226,11 +226,11 @@ func registreDeTest(pos []filmdec.BipedPosition, desaccords int) replay.Identity
 // anonyme, `ViesNommees()` n'en porte qu'une, ROUGE.
 func TestRegistreDuCollecteurNommeParElimination(t *testing.T) {
 	// Slot 1 : une vie que la mort de 111 termine. Slot 2 : une vie continue, jamais terminee.
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	for t := int64(0); t <= 10_000; t += 100 {
 		pos = append(pos,
-			filmdec.BipedPosition{Slot: 1, TimestampUS: uint64(t) * 1000, HasWorld: true},
-			filmdec.BipedPosition{Slot: 2, TimestampUS: uint64(t) * 1000, HasWorld: true})
+			grammar.BipedPosition{Slot: 1, TimestampUS: uint64(t) * 1000, HasWorld: true},
+			grammar.BipedPosition{Slot: 2, TimestampUS: uint64(t) * 1000, HasWorld: true})
 	}
 	entree := replay.IdentityInput{
 		Positions: pos,
@@ -270,11 +270,11 @@ func TestRegistreDuCollecteurNommeParElimination(t *testing.T) {
 // TestRegistreDuCollecteurSeTaitADeuxCandidats — LA CONTRE-EPREUVE : deux joueurs du roster sans
 // aucune vie, l'unicite disparait, et rien n'est nomme. On n'invente jamais un occupant.
 func TestRegistreDuCollecteurSeTaitADeuxCandidats(t *testing.T) {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	for t := int64(0); t <= 10_000; t += 100 {
 		pos = append(pos,
-			filmdec.BipedPosition{Slot: 1, TimestampUS: uint64(t) * 1000, HasWorld: true},
-			filmdec.BipedPosition{Slot: 2, TimestampUS: uint64(t) * 1000, HasWorld: true})
+			grammar.BipedPosition{Slot: 1, TimestampUS: uint64(t) * 1000, HasWorld: true},
+			grammar.BipedPosition{Slot: 2, TimestampUS: uint64(t) * 1000, HasWorld: true})
 	}
 	reg := replay.BuildIdentityRegistry(replay.IdentityInput{
 		Positions:     pos,

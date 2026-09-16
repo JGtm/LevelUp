@@ -14,7 +14,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 )
 
 // natureFR : la nature de la source, en clair.

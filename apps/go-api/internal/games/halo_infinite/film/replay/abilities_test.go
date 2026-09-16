@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // TestInvAbilityRankHighEstLaQueueDuMotif verrouille la DERIVATION, pas la valeur.
@@ -34,7 +34,7 @@ func TestInvAbilityRankHighEstLaQueueDuMotif(t *testing.T) {
 
 func TestBuildAbilityReadsFusionneLesDeuxCanaux(t *testing.T) {
 	const origin, step = 1_000_000, 100_000
-	ranks := []filmdec.AbilityRank{
+	ranks := []grammar.AbilityRank{
 		{TimestampUS: 500_000, Slot: 512, Rank: 8},   // avant l'origine : ecarte
 		{TimestampUS: 1_300_000, Slot: 512, Rank: 8}, // camouflage — invisible du canal kf
 	}

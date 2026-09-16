@@ -9,14 +9,14 @@ import (
 	"reflect"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // manche2SansManche1Records reproduit le motif mesure sur `fb1a1a72` et 23 autres films du cache
 // (lot 1.9.11) : manche 0 pleine, manche 1 ABSENTE, designateur 2 materiel.
-func manche2SansManche1Records() []objectiveevents.StatRecord {
-	var recs []objectiveevents.StatRecord
+func manche2SansManche1Records() []objectives.StatRecord {
+	var recs []objectives.StatRecord
 	recs = append(recs, manchesRecordsDeSlotJoueur(0, 1_000, 900, 200)...)
 	recs = append(recs, manchesRecordsDeSlotJoueur(2, 60_000, 148, 0)...)
 	return recs
@@ -24,16 +24,16 @@ func manche2SansManche1Records() []objectiveevents.StatRecord {
 
 // manchesRecordsDeSlotJoueur fabrique une manche MATERIELLE : n enregistrements repartis sur les
 // huit slots de joueur, un point de score de mode a la fin pour le slot qui marque.
-func manchesRecordsDeSlotJoueur(round, startMS, n int, scoreFinal int64) []objectiveevents.StatRecord {
-	out := make([]objectiveevents.StatRecord, 0, n)
+func manchesRecordsDeSlotJoueur(round, startMS, n int, scoreFinal int64) []objectives.StatRecord {
+	out := make([]objectives.StatRecord, 0, n)
 	for i := 0; i < n; i++ {
-		out = append(out, objectiveevents.StatRecord{
+		out = append(out, objectives.StatRecord{
 			TimeMS: startMS + i*100, Slot: 10 + 2*(i%8), Round: round,
-			Comps: map[int]objectiveevents.StatValue{0: {A: 0}},
+			Comps: map[int]objectives.StatValue{0: {A: 0}},
 		})
 	}
 	if n > 0 && scoreFinal > 0 {
-		out[n-1].Comps = map[int]objectiveevents.StatValue{0: {A: scoreFinal}}
+		out[n-1].Comps = map[int]objectives.StatValue{0: {A: scoreFinal}}
 	}
 	return out
 }

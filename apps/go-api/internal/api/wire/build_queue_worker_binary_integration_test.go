@@ -158,7 +158,7 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 //
 // CE QUE « 92 » ÉTAIT, ET POURQUOI CETTE LIGNE A MENTI HUIT JOURS. Elle a dit jusqu'au 2026-09-06
 // « 92 actions d'objectif nommées (famille flag) ». Le 92 est bien réel, mais c'est le compteur de
-// JOURNAL `nommees` — les émissions d'emplacement de statistique que `objectiveevents.NamedEvents`
+// JOURNAL `nommees` — les émissions d'emplacement de statistique que `objectives.NamedEvents`
 // reconnaît, AVANT le pont d'identité. Le document, lui, n'en portait alors AUCUNE (le calque
 // `objectives` était vide en production à cette date). Confondre le compteur amont avec le contenu
 // publié a fait passer pour une régression, le 2026-09-05, un chiffre qui n'avait jamais été celui

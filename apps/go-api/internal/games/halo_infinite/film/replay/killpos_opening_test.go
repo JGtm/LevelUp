@@ -17,7 +17,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 func TestShiftKillRefsDecaleSansMuterLEntree(t *testing.T) {
@@ -56,7 +56,7 @@ func TestBuildKillOpeningsRendLaPositionDAvantEtLInstantDuKill(t *testing.T) {
 	// posAt(slot, tUS, x, y, cap) : le dernier nombre est un CAP DE VISÉE, pas une altitude —
 	// seul l'écart en X porte la mesure ici. Les deux joueurs apparaissent à t = 0 et vivent
 	// sans interruption jusqu'au coup fatal : une seule vie chacun.
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		posAt(1, 0, 0, 0, 0), posAt(2, 0, 20, 0, 0),
 		posAt(1, uint64(mortMS-OpeningLeadMS)*1000, 10, 0, 0),
 		posAt(2, uint64(mortMS-OpeningLeadMS)*1000, 20, 0, 0),
@@ -89,7 +89,7 @@ func TestBuildKillOpeningsRendLaPositionDAvantEtLInstantDuKill(t *testing.T) {
 // donc l'instant décalé (50 ms) est DANS la tolérance de 120 ms du point d'apparition. Le
 // placement nu y répond par les deux points d'apparition ; l'entame doit refuser.
 func TestBuildKillOpeningsRefuseUnPointDApparition(t *testing.T) {
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		posAt(1, 0, 0, 0, 0),
 		posAt(2, 0, 800, 800, 0),
 	}
@@ -118,7 +118,7 @@ func TestBuildKillOpeningsRefuseUnPointDApparition(t *testing.T) {
 // vie. Le tueur, lui, vit sans interruption : son entame reste publiée.
 func TestBuildKillOpeningsRefuseLaVieSuivante(t *testing.T) {
 	const mortMS = 21_450
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		// tueur : une seule vie, pas de trou supérieur à 5 s.
 		posAt(1, 0, 0, 0, 0), posAt(1, 4_000_000, 1, 0, 0), posAt(1, 8_000_000, 2, 0, 0),
 		posAt(1, 12_000_000, 3, 0, 0), posAt(1, 16_000_000, 4, 0, 0),
@@ -158,7 +158,7 @@ func TestBuildKillOpeningsRefuseLaVieSuivante(t *testing.T) {
 // première position, un joueur n'existe pas.
 func TestBuildKillOpeningsInstantNegatifNeDonneAucunePosition(t *testing.T) {
 	const offsetUS = 200_000 // l'origine du film précède celle du fil des morts de 200 ms
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		posAt(1, 200_000, 1, 2, 0), posAt(2, 200_000, 4, 5, 0),
 		posAt(1, 700_000, 1, 2, 0), posAt(2, 700_000, 4, 5, 0),
 		posAt(1, 1_600_000, 1, 2, 0), posAt(2, 1_600_000, 4, 5, 0),

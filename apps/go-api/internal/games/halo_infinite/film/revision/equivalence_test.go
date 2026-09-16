@@ -48,7 +48,7 @@ const fichierPorteurDeRevision = "grammar_rev.go"
 // `sync/killcollector/testdata/killsource_decoder_rev.golden`.
 func TestEmpreinteEgaleLeGoldenDeKillsource(t *testing.T) {
 	api := racineAPI(t)
-	racine := filepath.Join(api, "internal", "games", "halo_infinite", "film", "killsource")
+	racine := filepath.Join(api, "internal", "games", "halo_infinite", "film", "facts", "killsource")
 	golden := filepath.Join(api, "internal", "sync", "killcollector", "testdata",
 		"killsource_decoder_rev.golden")
 
@@ -71,18 +71,18 @@ func TestEmpreinteEgaleLeGoldenDeKillsource(t *testing.T) {
 
 // TestEmpreinteHeriteeEgaleLeGoldenDeGrammaire : le cadre herite rend l empreinte figee par
 // `filmdec/testdata/grammar_rev.golden`, sur les QUATRE racines (le lot 2.4 a fait entrer
-// `analysis/filmsource`, la couche source, dans l empreinte) et avec la meme exclusion. L ORDRE
+// `film/source`, la couche source, dans l empreinte) et avec la meme exclusion. L ORDRE
 // des racines est celui de `racinesGrammaire` (filmdec/grammar_rev_fingerprint_test.go).
 func TestEmpreinteHeriteeEgaleLeGoldenDeGrammaire(t *testing.T) {
 	api := racineAPI(t)
 	film := filepath.Join(api, "internal", "games", "halo_infinite", "film")
 	racines := []string{
-		filepath.Join(api, "internal", "analysis", "filmsource"),
-		filepath.Join(film, "filmdec"),
-		filepath.Join(film, "killsource"),
-		filepath.Join(api, "internal", "analysis", "objectiveevents"),
+		filepath.Join(film, "source"),
+		filepath.Join(film, "grammar"),
+		filepath.Join(film, "facts", "killsource"),
+		filepath.Join(film, "facts", "objectives"),
 	}
-	golden := filepath.Join(film, "filmdec", "testdata", "grammar_rev.golden")
+	golden := filepath.Join(film, "grammar", "testdata", "grammar_rev.golden")
 
 	// L exclusion du gate de la grammaire porte sur le NOM du fichier, a n importe quelle
 	// profondeur ; `path.Base` du chemin relatif la reproduit exactement.

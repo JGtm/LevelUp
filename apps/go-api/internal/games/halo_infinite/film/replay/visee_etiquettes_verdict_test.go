@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // vgIdxSentinelle : index d archetype fictif de la colonne sentinelle. POSITIF a dessein :
@@ -80,12 +80,12 @@ func vgVoletDelta(t *testing.T, dir string, src vfSource, g *vgGrille,
 // vgVoletKeyframe deroule G3 : collecte d'image-cle, sous-dimensionnement eventuel, verdicts.
 func vgVoletKeyframe(t *testing.T, dir string, g *vgGrille, cibles map[uint32]bool, deltas []int64) {
 	t.Logf("========== G3 — IMAGES-CLES ==========")
-	brut, err := filmdec.ReadFilmChunk(dir, 0)
+	brut, err := grammar.ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Logf("  registre (chunk_00) illisible : %v — volet image-cle impossible", err)
 		return
 	}
-	reg, err := filmdec.ParseRegistryChunk(brut)
+	reg, err := grammar.ParseRegistryChunk(brut)
 	if err != nil {
 		t.Logf("  registre illisible : %v — volet image-cle impossible", err)
 		return

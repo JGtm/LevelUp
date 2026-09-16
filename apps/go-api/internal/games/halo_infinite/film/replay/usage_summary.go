@@ -56,7 +56,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 )
 
 // UsageSummaryRev — révision des RÈGLES DE PROJECTION de ce fichier (attribution par
@@ -163,7 +163,7 @@ type UsageMatchSummary struct {
 	// (post-sync `sync/replayartifacts/usage.go`, backfill `cmd/levelup`).
 	EquipmentChanges UsageChangeCoverage
 	// Fallbacks : LES REPLIS QUE CETTE PROJECTION A DÉCLENCHÉS, par nom du registre
-	// (`film/replay/fallback`), triés, les zéros absents. NON PERSISTÉ, hors de toute
+	// (`film/facts/fallback`), triés, les zéros absents. NON PERSISTÉ, hors de toute
 	// métrique : même statut de témoin qu'[UsageMatchSummary.EquipmentChanges].
 	//
 	// IL EXISTE PARCE QUE CE COMPTE NE PEUT PAS VOYAGER DANS `coverage.fallbacks[]`

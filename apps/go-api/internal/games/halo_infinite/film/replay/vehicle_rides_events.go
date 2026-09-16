@@ -44,7 +44,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // vehicleEventAnchorRadiusM est la distance EN PLAN sous laquelle l ancre d un episode
@@ -89,7 +89,7 @@ type vehicleEpisode struct {
 	// si elle existe, sinon a la fin de vie du vehicule (SILENCE TERMINAL vrai).
 	openEnd bool
 	// vehSlot / vehValid / vehAtUS : LE VEHICULE NOMME PAR L EVENEMENT, et l instant ou il le
-	// nomme. Ils viennent de la SORTIE (`filmdec.VehicleEvent.VehicleSlot`, reference 1 de
+	// nomme. Ils viennent de la SORTIE (`grammar.VehicleEvent.VehicleSlot`, reference 1 de
 	// domaine 1) ; un EMBARQUEMENT n en porte pas — ses trois references sont en domaines 2/3/7
 	// et AUCUNE ne resout un slot `ti=40` (0/15 sur 12 films, rapport V8 § 2). Un episode ferme
 	// par un second embarquement, ou un SILENCE TERMINAL, sort donc sans nom : c est exactement
@@ -116,12 +116,12 @@ type vehicleEpisode struct {
 // vehicleEventEpisodes deroule la machine d etats, occupant par occupant. Les episodes sortent
 // tries (occupant, instant de debut) : la sortie est deterministe.
 func vehicleEventEpisodes(
-	boards, exits map[uint32][]filmdec.VehicleEvent,
-	bySlot map[uint32][]filmdec.BipedPosition,
+	boards, exits map[uint32][]grammar.VehicleEvent,
+	bySlot map[uint32][]grammar.BipedPosition,
 ) []vehicleEpisode {
 	slots := make([]uint32, 0, len(boards)+len(exits))
 	seen := map[uint32]bool{}
-	for _, m := range []map[uint32][]filmdec.VehicleEvent{boards, exits} {
+	for _, m := range []map[uint32][]grammar.VehicleEvent{boards, exits} {
 		for s := range m {
 			if !seen[s] {
 				seen[s], slots = true, append(slots, s)
@@ -142,8 +142,8 @@ func vehicleEventEpisodes(
 // mergeVehicleEvents fusionne deux listes DEJA triees par instant en une seule, stable. A instant
 // egal la SORTIE passe avant l EMBARQUEMENT : descendre puis remonter est le seul ordre qui ait
 // un sens physique, et l inverse fabriquerait un episode de duree nulle.
-func mergeVehicleEvents(boards, exits []filmdec.VehicleEvent) []filmdec.VehicleEvent {
-	out := make([]filmdec.VehicleEvent, 0, len(boards)+len(exits))
+func mergeVehicleEvents(boards, exits []grammar.VehicleEvent) []grammar.VehicleEvent {
+	out := make([]grammar.VehicleEvent, 0, len(boards)+len(exits))
 	i, j := 0, 0
 	for i < len(boards) && j < len(exits) {
 		if exits[j].TimestampUS <= boards[i].TimestampUS {
@@ -158,12 +158,12 @@ func mergeVehicleEvents(boards, exits []filmdec.VehicleEvent) []filmdec.VehicleE
 
 // vehicleEpisodesOfOccupant deroule la machine pour UN occupant.
 func vehicleEpisodesOfOccupant(
-	slot uint32, evs []filmdec.VehicleEvent, pts []filmdec.BipedPosition,
+	slot uint32, evs []grammar.VehicleEvent, pts []grammar.BipedPosition,
 ) []vehicleEpisode {
 	var out []vehicleEpisode
 	open, hasOpen := vehicleEpisode{}, false
 	for _, ev := range evs {
-		if ev.Kind == filmdec.EventBipedBoardVehicle {
+		if ev.Kind == grammar.EventBipedBoardVehicle {
 			if hasOpen {
 				// Deux embarquements sans sortie entre eux : le premier episode se termine ou le
 				// second commence. Le film n en dit pas plus, et supposer autre chose serait
@@ -208,7 +208,7 @@ func vehicleEpisodesOfOccupant(
 
 // vehicleLastPointBefore rend l instant du DERNIER echantillon de `pts` (TRIE) strictement
 // anterieur a `atUS`, ou `atUS` lui-meme quand il n y en a aucun.
-func vehicleLastPointBefore(pts []filmdec.BipedPosition, atUS uint64) uint64 {
+func vehicleLastPointBefore(pts []grammar.BipedPosition, atUS uint64) uint64 {
 	i := sort.Search(len(pts), func(k int) bool { return pts[k].TimestampUS >= atUS })
 	if i == 0 {
 		return atUS
@@ -241,8 +241,8 @@ func vehicleEpisodeCovers(eps []vehicleEpisode, g vehicleGap) bool {
 // position de debarquement). La seconde n existe pas pour un silence terminal, et c est justement
 // pour cela que la premiere passe d abord.
 func vehicleRideFromEpisode(
-	ep vehicleEpisode, bySlot map[uint32][]filmdec.BipedPosition, in vehicleRideInputs,
-) (filmdec.EquipmentLifeKey, VehicleRide, vehicleEpisode, bool) {
+	ep vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition, in vehicleRideInputs,
+) (grammar.EquipmentLifeKey, VehicleRide, vehicleEpisode, bool) {
 	pts := bySlot[ep.slot]
 	life, src := vehicleLifeFromEvent(ep, in)
 	if src == vehicleResolvedNone {
@@ -252,7 +252,7 @@ func vehicleRideFromEpisode(
 		}
 	}
 	if src == vehicleResolvedNone {
-		return filmdec.EquipmentLifeKey{}, VehicleRide{}, vehicleEpisode{}, false
+		return grammar.EquipmentLifeKey{}, VehicleRide{}, vehicleEpisode{}, false
 	}
 	ep.resolvedBy = src
 	if ep.openEnd {
@@ -376,7 +376,7 @@ func vehicleLifeNamedByEvent(
 
 // vehicleLifeFromGeometry est le REPLI : le vehicule le plus proche d une des deux ancres.
 func vehicleLifeFromGeometry(
-	ep vehicleEpisode, pts []filmdec.BipedPosition, in vehicleRideInputs,
+	ep vehicleEpisode, pts []grammar.BipedPosition, in vehicleRideInputs,
 ) (vehicleLife, bool) {
 	a0, ok0 := vehicleAnchorAt(pts, ep.startUS, false)
 	life, ok := vehicleLifeForAnchor(a0, ok0, ep.startUS, in)
@@ -402,17 +402,17 @@ func vehicleRideSrcOf(borders int) string {
 // vehicleAnchorAt rend l echantillon d ancrage : le dernier AVANT `atUS` (after=false) ou le
 // premier APRES (after=true).
 func vehicleAnchorAt(
-	pts []filmdec.BipedPosition, atUS uint64, after bool,
-) (filmdec.BipedPosition, bool) {
+	pts []grammar.BipedPosition, atUS uint64, after bool,
+) (grammar.BipedPosition, bool) {
 	i := sort.Search(len(pts), func(k int) bool { return pts[k].TimestampUS >= atUS })
 	if after {
 		if i >= len(pts) {
-			return filmdec.BipedPosition{}, false
+			return grammar.BipedPosition{}, false
 		}
 		return pts[i], true
 	}
 	if i == 0 {
-		return filmdec.BipedPosition{}, false
+		return grammar.BipedPosition{}, false
 	}
 	return pts[i-1], true
 }
@@ -420,7 +420,7 @@ func vehicleAnchorAt(
 // vehicleLifeForAnchor resout le vehicule le plus proche d une ancre, puis la vie qui porte cet
 // instant. Rayon `vehicleEventAnchorRadiusM` en plan, fraicheur 1 s (celle de la production).
 func vehicleLifeForAnchor(
-	anchor filmdec.BipedPosition, has bool, atUS uint64, in vehicleRideInputs,
+	anchor grammar.BipedPosition, has bool, atUS uint64, in vehicleRideInputs,
 ) (vehicleLife, bool) {
 	if !has {
 		return vehicleLife{}, false

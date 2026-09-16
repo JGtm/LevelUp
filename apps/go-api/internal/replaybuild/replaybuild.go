@@ -16,7 +16,7 @@
 //
 // Il décode le film à DEUX endroits, et pour deux grammaires différentes : `games/halo_infinite/film/replay`
 // pour les positions et les événements de réplication (sérialisé par le verrou process de
-// `filmdec`), `analysis/objectiveevents` pour les enregistrements d'entité d'où sortent la
+// `grammar`), `film/facts/objectives` pour les enregistrements d'entité d'où sortent la
 // courbe de score et les actions d'objectif (cf. matchfacts.go).
 package replaybuild
 
@@ -31,12 +31,12 @@ import (
 	"strconv"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/games/mappings"
@@ -61,7 +61,7 @@ var ErrNoTracks = errors.New("replaybuild: aucune trajectoire décodée — arte
 type Builder struct {
 	repoRoot  string
 	titleSlug string
-	catalog   *filmdec.MapQuantCatalog
+	catalog   *grammar.MapQuantCatalog
 	labels    replay.LabelCatalog
 	// geometries : cache par MODULE des props Forge de la carte. PAR CARTE depuis le
 	// 2026-09-11 : un repertoire unique servait ses props a TOUS les matchs, cartes confondues
@@ -114,7 +114,7 @@ type Outcome struct {
 // cmd/replay-build). Les props Forge, eux, sont optionnels (journalisé).
 func NewBuilder(repoRoot, titleSlug string) (*Builder, error) {
 	pr := title.NewPathResolver(repoRoot)
-	cat, err := filmdec.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titleSlug))
+	cat, err := grammar.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titleSlug))
 	if err != nil {
 		return nil, fmt.Errorf("catalogue de bornes du titre %s: %w", titleSlug, err)
 	}
@@ -212,7 +212,7 @@ func (b *Builder) geometryFor(module string) []replay.MapObject {
 // ResolveMapEntry résout la première identité de carte candidate qui existe au catalogue
 // de bornes. Les candidats s'essaient DANS L'ORDRE (du plus fiable au moins fiable, cf.
 // ReplayMapRepo) ; aucun ne résout → ErrMapNotInCatalog.
-func (b *Builder) ResolveMapEntry(mapNames []string) (filmdec.MapQuantEntry, error) {
+func (b *Builder) ResolveMapEntry(mapNames []string) (grammar.MapQuantEntry, error) {
 	for _, name := range mapNames {
 		if name == "" {
 			continue
@@ -221,7 +221,7 @@ func (b *Builder) ResolveMapEntry(mapNames []string) (filmdec.MapQuantEntry, err
 			return entry, nil
 		}
 	}
-	return filmdec.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", ErrMapNotInCatalog, mapNames)
+	return grammar.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", ErrMapNotInCatalog, mapNames)
 }
 
 // BuildBytes décode le film de filmDir et rend l'artefact SÉRIALISÉ — il n'écrit RIEN.
@@ -337,7 +337,7 @@ type entreesCatalogue struct {
 // lui-meme (item 1.4 du plan). `deaths` est l'unique lecture du fil des morts, partagee avec
 // `readFilmStats`.
 func (b *Builder) collecterEntreesCatalogue(
-	matchID string, film *filmsource.Film, facts port.MatchFacts, mapNames []string,
+	matchID string, film *source.Film, facts port.MatchFacts, mapNames []string,
 	stats *filmStats, deaths filmDeaths,
 ) entreesCatalogue {
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
@@ -430,7 +430,7 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 //
 // POURQUOI CE DÉCODAGE-CI VIT DANS `replaybuild`, ET PAS DANS `games/halo_infinite/film/replay`. La source du
 // dégât fatal se lit dans le composant dead-state du film, et ce décodage a UN seul
-// propriétaire dans le dépôt (`film/killsource`, avec ses golden et ses ancres Theater).
+// propriétaire dans le dépôt (`film/facts/killsource`, avec ses golden et ses ancres Theater).
 // `analysis/` est title-agnostic et n'a pas à le connaître ; ce paquet, lui, est la couche
 // d'ASSEMBLAGE — il compose déjà les libellés du titre de la même façon. Deux décodeurs du
 // même fait divergeraient.

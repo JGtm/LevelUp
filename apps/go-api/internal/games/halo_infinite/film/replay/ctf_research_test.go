@@ -34,7 +34,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -115,14 +115,14 @@ func ctfReadingOnlyOwners(tracks map[uint32]slotTrack, deaths []Death,
 	return owners, lives, off
 }
 
-func loadCTFQuantCatalog(t *testing.T) *filmdec.MapQuantCatalog {
+func loadCTFQuantCatalog(t *testing.T) *grammar.MapQuantCatalog {
 	t.Helper()
 	root, err := title.FindRepoRoot()
 	if err != nil {
 		t.Fatalf("racine du dépôt : %v", err)
 	}
 	path := title.NewPathResolver(root).MapQuantBoundsPath(title.DefaultSlug)
-	cat, err := filmdec.LoadMapQuantCatalog(path)
+	cat, err := grammar.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", path, err)
 	}
@@ -130,20 +130,20 @@ func loadCTFQuantCatalog(t *testing.T) *filmdec.MapQuantCatalog {
 }
 
 // analyzeCTFFilm rejoue l'enchaînement de BuildFromFilm et compte à côté de lui.
-func analyzeCTFFilm(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapName string) filmReport {
+func analyzeCTFFilm(t *testing.T, cat *grammar.MapQuantCatalog, dir, short, mapName string) filmReport {
 	t.Helper()
 	entry, err := cat.Lookup(mapName)
 	if err != nil {
 		t.Fatalf("bornes de %s : %v", mapName, err)
 	}
 	world := entry.Range()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange, scan.CaptureDirs = &world, true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions %s : %v", short, err)
 	}
-	fire, err := filmdec.ScanFilmFireEvents(dir)
+	fire, err := grammar.ScanFilmFireEvents(dir)
 	if err != nil {
 		t.Fatalf("tirs %s : %v", short, err)
 	}
@@ -157,7 +157,7 @@ func analyzeCTFFilm(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapN
 	}
 	table, _ := injectiveOrEmpty(idx)
 
-	sorted := append([]filmdec.BipedPosition(nil), pos...)
+	sorted := append([]grammar.BipedPosition(nil), pos...)
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].TimestampUS < sorted[j].TimestampUS })
 	tracks := indexBySlot(sorted)
 	// Pont de LECTURE SEULE : cet instrument mesure l'état antérieur aux fermetures, qui est le
@@ -199,7 +199,7 @@ func analyzeCTFFilm(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapN
 
 // ctfClassify porte un verdict sur chaque tir : rattaché, ambigu, ou rejeté avec sa cause.
 func ctfClassify(tracks map[uint32]slotTrack, owner map[uint32]int,
-	unnamed []lifeSpan, fire []filmdec.FireEvent) []shotDiag {
+	unnamed []lifeSpan, fire []grammar.FireEvent) []shotDiag {
 	bySlots := map[int][]uint32{}
 	for slot, pi := range owner {
 		bySlots[pi] = append(bySlots[pi], slot)

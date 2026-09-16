@@ -50,7 +50,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -89,11 +89,11 @@ func TestViseeCameraPOV(t *testing.T) {
 		t.Skipf("%s absent : instrument saute", camFilmEnv)
 	}
 
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.CaptureDirs = true
 	scan.QuantaOnly = true
 	debut := time.Now()
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
 	}
@@ -201,7 +201,7 @@ func camScoreV2(t *testing.T, paquets []camPaquet, visees []camVisee) {
 }
 
 // camVisees extrait les echantillons i21 par instant, tries.
-func camVisees(pos []filmdec.BipedPosition) []camVisee {
+func camVisees(pos []grammar.BipedPosition) []camVisee {
 	var out []camVisee
 	for _, p := range pos {
 		if !p.HasYaw {
@@ -220,15 +220,15 @@ func camVisees(pos []filmdec.BipedPosition) []camVisee {
 
 // camPaquets rend les paquets type 97 du film (payload copie).
 func camPaquets(dir string) []camPaquet {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	var out []camPaquet
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 4 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 4 {
 				continue
 			}
 			pay := p.Payload(chunk)
@@ -248,8 +248,8 @@ func camAngles(pay []byte, o int) (tngDeg, capDeg float64, ok bool) {
 	if (o+2*camAngleBits+7)/8 > len(pay) {
 		return 0, 0, false
 	}
-	qt := filmdec.ReadBitsAtForDiag(pay, o, camAngleBits)
-	qc := filmdec.ReadBitsAtForDiag(pay, o+camAngleBits, camAngleBits)
+	qt := grammar.ReadBitsAtForDiag(pay, o, camAngleBits)
+	qc := grammar.ReadBitsAtForDiag(pay, o+camAngleBits, camAngleBits)
 	span := float64(int64(1)<<camAngleBits - 1)
 	tng := camPitchMinRad + (camPitchMaxRad-camPitchMinRad)*float64(qt)/span
 	cap := camYawMaxRad * float64(qc) / span

@@ -703,7 +703,7 @@ package replay
 //
 // Ce qui a été réparé : depuis `d173b1a8c` (2026-08-28), le calque des actions d'objectif
 // résolvait l'identité slot -> joueur par les seuls INSTANTS DE MORT, qui en exigent trois
-// (`objectiveevents.deathInstantMin`). Un joueur qui meurt moins de trois fois — c'est-à-dire
+// (`objectives.deathInstantMin`). Un joueur qui meurt moins de trois fois — c'est-à-dire
 // le meilleur du match, celui qui porte le drapeau — n'était plus nommé, et ses actions
 // disparaissaient du document. Mesuré sur `c0a82e88` : 17 actions avant la bascule, 12 après,
 // les DEUX seules actions de famille `flag` du match perdues avec leur auteur (7 frags,
@@ -720,7 +720,7 @@ package replay
 // s'applique, et non l'exception du lot P5 (schéma 38 maintenu), qui ne valait que parce
 // qu'AUCUN artefact 38 n'existait alors hors témoins de gate. Ici la reprise doit re-cuire tout
 // artefact < 40.
-// Détail : internal/analysis/objectiveevents/slotidentity_rounds.go (CompletedByLines) et
+// Détail : internal/games/halo_infinite/film/facts/objectives/slotidentity_rounds.go (CompletedByLines) et
 // .ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md section 9.
 //
 // v41 (2026-09-06) : TROIS CALQUES RATTRAPENT « UNE TRACK = UNE VIE ». Aucun champ n'est
@@ -766,7 +766,7 @@ package replay
 // dise.
 //
 // LE PLAFOND, ET IL FRAPPAIT LES MEILLEURS JOUEURS. Le calque nommait son porteur par le pont
-// d'identité PAR MORTS (`objectiveevents.ResolveRoundIdentity`), qui exige `deathInstantMin` = 3
+// d'identité PAR MORTS (`objectives.ResolveRoundIdentity`), qui exige `deathInstantMin` = 3
 // instants de mort coïncidents pour attribuer un slot d'entité. Un joueur qui MEURT MOINS DE
 // TROIS FOIS lui échappe PAR CONSTRUCTION — et ce sont, par définition, ceux qui portent le
 // drapeau. Leurs prises étaient comptées `coverage.flagCarries.noBridge` et AUCUN intervalle
@@ -806,7 +806,7 @@ package replay
 // portage : elle n'est servie que s'il y a un drapeau à entourer.
 // Détail : internal/games/halo_infinite/film/replay/build_objectives_live.go (`FlagInput.Identity`,
 // `flagIdentityOf`), internal/replaybuild/matchfacts.go (`pontParManche`),
-// internal/analysis/objectiveevents/slotidentity_rounds.go (`CompletedByLines`) et
+// internal/games/halo_infinite/film/facts/objectives/slotidentity_rounds.go (`CompletedByLines`) et
 // .ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md.
 //
 // v43 (2026-09-06) : UNE VIE ANONYME N'EST PAS UNE ABSENCE. Aucun champ n'est ajouté ; c'est le
@@ -860,7 +860,7 @@ package replay
 // La version monte pour la raison des montées v39 à v43 : un artefact 1 à 43 d'un film
 // multi-manche porte des compteurs gonflés sans que sa forme le dise, et `backfill-replay` saute
 // un artefact à la version courante. Détail :
-// internal/analysis/objectiveevents/round_bounds.go et .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
+// internal/games/halo_infinite/film/facts/objectives/round_bounds.go et .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
 //
 // v45 (2026-09-06) : UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE. Aucun champ n'est
 // ajouté ; c'est le CONTENU d'`equipmentEpisodes` et de `flagCarries` qui change. Même cause
@@ -1071,7 +1071,7 @@ package replay
 // de joueur : aucune identité dans `BipedPosition` » — EST FAIT, et par une LECTURE.
 //
 //	ce qui change   1. le record de CRÉATION d'un bipède (`ti=35`) porte l'index de participant
-//	                   de son propriétaire, à `+67` bits de l'en-tête NEW (`filmdec.ScanBipedCreations`).
+//	                   de son propriétaire, à `+67` bits de l'en-tête NEW (`grammar.ScanBipedCreations`).
 //	                   `identity.bipedSlots[].link.source` passe de `deduit` à **`direct`**, voie
 //	                   `creation_bipede` — ou `creation_bipede_propagee` pour les autres séjours
 //	                   du MÊME corps, qu'une découpe à `lifeGapUS` a séparés.
@@ -1180,7 +1180,7 @@ package replay
 //	                (médiane 31,89 m pour 63,775 m) avec |Δx| médian 0,20 m : le bit de poids
 //	                fort de Y bascule, 3 907 pas sur 4 901. Sur les cartes Forge l'axe touché est
 //	                plutôt X et le bit plus bas (étendue / 2^7 majoritaire). Le chantier appartient
-//	                à `filmdec` : `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+//	                à `grammar` : `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
 //
 //	le contrat      `coverage.projectiles` est ADDITIF et optionnel. `grenades[].slot` et
 //	                `projectiles[].p` existaient déjà : ce sont leurs VALEURS qui changent, et
@@ -1275,7 +1275,7 @@ package replay
 //	l'indicateur    Il existait et personne ne le lisait : les quatre premiers octets de
 //	                `chunk_00.bin` (u32 little-endian) sont le FilmMajorVersion, la meme valeur
 //	                que l'API publie dans `CustomData.FilmMajorVersion`. Helper canonique :
-//	                `filmdec.FilmMajorVersionFromHeader`. Parc : 1 351 films, 0 registre
+//	                `grammar.FilmMajorVersionFromHeader`. Parc : 1 351 films, 0 registre
 //	                illisible — v31 x3, v33 x3, v37 x10, v38 x1, v39 x26, v40 x185, v41 x1123.
 //
 //	ce qui change   `gamertagsOf(deaths)` est la table qui nomme `roster[]` et qui rattache les
@@ -1437,7 +1437,7 @@ package replay
 //	le champ       `coverage.fallbacks` est NEUF : une liste `{name, hits}`, triee par nom, des
 //	ajoute         seuls replis DECLENCHES pendant cette cuisson. Absente quand aucun ne s'est
 //	               declenche. Le nom est stable et se joint au REGISTRE DES REPLIS
-//	               (`film/replay/fallback`), qui porte pour chacun sa condition typee, sa date de
+//	               (`film/facts/fallback`), qui porte pour chacun sa condition typee, sa date de
 //	               pose, sa cible et son critere de retrait (decision D14, ADR 0034).
 //
 //	une liste      les replis ne se repartissent pas sur les calques existants — celui des
@@ -1521,7 +1521,7 @@ package replay
 //	               fin de manche ou a la fin du film ; un trou de replication est une LACUNE de la
 //	               meme vie (lot 1.9.13 : 212 coupures par trou -> 4, 208 lacunes, 14 vies
 //	               orphelines -> 0 sur les 8 builds) ; (2) une vie de vehicule finit au DEAD-STATE
-//	               ecrit (`ti=40`, marche de `filmdec.ScanObjectDeaths`), a la fin du film sinon
+//	               ecrit (`ti=40`, marche de `grammar.ScanObjectDeaths`), a la fin du film sinon
 //	               (lot 1.9.10 : sur `084a804d`, 19 fins lues sur 97, dead-states a 87 ms et 406 ms
 //	               des medailles datees) ; (3) un chassis est NOMME par sa piece ecrite (manifeste
 //	               de la chaine de destruction : un meme vehicule porte un identifiant PAR MODULE du

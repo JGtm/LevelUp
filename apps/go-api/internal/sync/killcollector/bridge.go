@@ -3,7 +3,7 @@ package killcollector
 // bridge.go — PONT ENTRE LE TELECHARGEMENT DE FILM ET LE DECODEUR `killsource`.
 //
 // Il fait UNE chose : rendre, pour un match, la SEQUENCE de chunks que le decodeur attend. Il ne
-// decode pas (c est `games/halo_infinite/film/killsource`), il n ecrit pas (c est
+// decode pas (c est `games/halo_infinite/film/facts/killsource`), il n ecrit pas (c est
 // `internal/persist`), et il ne decide pas QUAND telecharger (c est le collecteur).
 //
 // # QUELS CHUNKS, ET POURQUOI LA SYNCHRO NE SUFFISAIT PAS TELLE QUELLE
@@ -25,7 +25,7 @@ package killcollector
 //   - il lit TOUS les chunks du film qu on lui donne, sans borne d index (piege historique :
 //     l outillage de RE bornait au chunk 41, et le HIGHLIGHT d un film BTB est le n62 — le
 //     kill-feed y etait purement introuvable). La decompression et le decoupage en paquets, eux,
-//     sont faits UNE fois par `filmsource` avant l appel (lot 1 de PLAN_CUISSON_PERF) ;
+//     sont faits UNE fois par `source` avant l appel (lot 1 de PLAN_CUISSON_PERF) ;
 //   - il localise le HIGHLIGHT PAR SON CONTENU (le chunk qui produit le plus d evenements
 //     `kill`), donc sa position dans la sequence est libre ;
 //   - il n a pas besoin de l en-tete. Le lui donner est sans effet pour lui, et c est ce que le
@@ -42,7 +42,7 @@ import (
 	"context"
 	"fmt"
 
-	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/sync/haloclient"
 )
 
@@ -64,7 +64,7 @@ type filmChunkFetcher interface {
 // pour que le diagnostic soit lisible cote appelant.
 func FilmForMatch(
 	ctx context.Context, client filmChunkFetcher, matchID string,
-) (*filmsource.Film, bool, error) {
+) (*source.Film, bool, error) {
 	chunks, found, err := FilmChunksForMatch(ctx, client, matchID)
 	if err != nil || !found {
 		return nil, found, err
@@ -80,7 +80,7 @@ func FilmForMatch(
 //
 // C est le point d entree du collecteur, parce que lui a besoin du TYPE : les morts se
 // decodent sur la sequence complete, les tirs sur la REPLICATION_DATA seule. Rendre
-// un `*filmsource.Film` ici perdrait cette information — d ou deux fonctions et pas une.
+// un `*source.Film` ici perdrait cette information — d ou deux fonctions et pas une.
 func FilmChunksForMatch(
 	ctx context.Context, client filmChunkFetcher, matchID string,
 ) ([]haloclient.FilmChunk, bool, error) {
@@ -95,7 +95,7 @@ func FilmChunksForMatch(
 }
 
 // FilmOf CHARGE le film a partir de chunks DEJA telecharges : decompression et decoupage en
-// paquets, une fois pour toutes (`filmsource`, lot 1 de PLAN_CUISSON_PERF).
+// paquets, une fois pour toutes (`source`, lot 1 de PLAN_CUISSON_PERF).
 //
 // Elle existe separement parce qu une passe de collecte lit le film PLUSIEURS FOIS — les morts
 // (`killsource`), les tirs (`analysis.ScanFireEventsB5`) et les positions (quatre balayages) — et
@@ -108,9 +108,9 @@ func FilmChunksForMatch(
 // sequence part du chunk 0 : `film.Chunk(0)` est donc l en-tete, celui que `killsource` lit comme
 // registre ECS. Les index ne sont pas garantis contigus : on dimensionne sur le maximum observe
 // plutot que sur le nombre d entrees, et on laisse les trous VIDES (un chunk vide ne rend aucun
-// paquet). Les metadonnees rendues sont POSITIONNELLES, comme `filmsource.Load` les attend, et
+// paquet). Les metadonnees rendues sont POSITIONNELLES, comme `source.Load` les attend, et
 // portent le type et le debut que le manifeste donne a chaque chunk present.
-func FilmOf(chunks []haloclient.FilmChunk) (*filmsource.Film, error) {
+func FilmOf(chunks []haloclient.FilmChunk) (*source.Film, error) {
 	maxIdx := 0
 	for _, c := range chunks {
 		if c.Index > maxIdx {
@@ -118,17 +118,17 @@ func FilmOf(chunks []haloclient.FilmChunk) (*filmsource.Film, error) {
 		}
 	}
 	seq := make([][]byte, maxIdx+1)
-	meta := make([]filmsource.ChunkMeta, maxIdx+1)
+	meta := make([]source.ChunkMeta, maxIdx+1)
 	for i := range meta {
-		meta[i] = filmsource.ChunkMeta{Index: i}
+		meta[i] = source.ChunkMeta{Index: i}
 	}
 	for _, c := range chunks {
 		if c.Index >= 0 {
 			seq[c.Index] = c.Data
-			meta[c.Index] = filmsource.ChunkMeta{Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS}
+			meta[c.Index] = source.ChunkMeta{Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS}
 		}
 	}
-	return filmsource.Load(filmsource.MemoryChunks(seq), meta)
+	return source.Load(source.MemoryChunks(seq), meta)
 }
 
 // ReplicationChunks : les seuls chunks que la passe de TIRS a le droit de scanner.

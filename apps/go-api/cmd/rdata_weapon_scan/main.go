@@ -18,15 +18,15 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const cache = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950`
 
 func inflate(p string) []byte {
 	raw, _ := os.ReadFile(p)
-	return filmsource.Inflate(raw)
+	return source.Inflate(raw)
 }
 
 // loadWorld parses world_dump.txt -> slot:typeIndex map and typeIndex->slots.
@@ -104,10 +104,10 @@ type packet struct {
 	payload []byte
 }
 
-// listPackets : le decoupage de [filmsource.Paquets], dans la forme locale de cet outil. Il
+// listPackets : le decoupage de [source.Paquets], dans la forme locale de cet outil. Il
 // recopiait l en-tete de seize octets — un marcheur de plus — jusqu au lot 2.4.2.
 func listPackets(d []byte) []packet {
-	pks := filmsource.Paquets(d, 0)
+	pks := source.Paquets(d, 0)
 	out := make([]packet, 0, len(pks))
 	off := 0
 	for i := range pks {
@@ -199,11 +199,11 @@ func litScan(chunkIdx int) {
 // typeIndex, type) et à quelle position relative il tombe. But : les armes complètes
 // vivent-elles dans des records NEW d'entité-arme (ti=42) ou loadout (ti=5), ou dans
 // les bipeds (ti=35), ou hors de tout record décodé ?
-func litLoc(reg *filmdec.Registry, worldPath string, chunkIdx, maxPkts int) {
+func litLoc(reg *grammar.Registry, worldPath string, chunkIdx, maxPkts int) {
 	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
 	pkts := listPackets(d)
-	cfg := filmdec.FrameConfig{HasExtraFields: false, IDLowBits: 11,
-		Profil: filmdec.ProfilDeBalayageParDefaut()}
+	cfg := grammar.FrameConfig{HasExtraFields: false, IDLowBits: 11,
+		Profil: grammar.ProfilDeBalayageParDefaut()}
 	cfg.Profil.PoserParamEtat(2)
 	// stub i63 pour franchir le dernier composant biped et enchaîner les records.
 	cfg.Profil.Grammaire.LargeursBouchon = map[string]int{"biped-action-component": 48}
@@ -242,8 +242,8 @@ func litLoc(reg *filmdec.Registry, worldPath string, chunkIdx, maxPkts int) {
 		}
 		// décode les records de ce paquet
 		w := freshWorld(reg, worldPath)
-		br := filmdec.LecteurSur(p.payload)
-		recs, _ := filmdec.DecodeFrameRecords(br, w, cfg)
+		br := grammar.LecteurSur(p.payload)
+		recs, _ := grammar.DecodeFrameRecords(br, w, cfg)
 		// borne chaque record [startBit?, endBit]. On reconstruit les bornes via re-décodage :
 		// approxime par la séquence cumulée des EndBit (Trace.EndBit) — chaque record finit là.
 		type span struct {
@@ -608,7 +608,7 @@ func ratio(a, b int) float64 {
 // idLowBits=11) et, pour chaque littéral d'arme, le contexte de bits autour (les 32
 // bits avant le high32, le high32, le low32, et les bits après) pour comprendre la
 // structure du record qui le porte (NEW d'entité-arme ? autre ?).
-func litCtx(reg *filmdec.Registry, chunkIdx, pktIdx int) {
+func litCtx(reg *grammar.Registry, chunkIdx, pktIdx int) {
 	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
 	pkts := listPackets(d)
 	var t0 []packet
@@ -667,9 +667,9 @@ func litCtx(reg *filmdec.Registry, chunkIdx, pktIdx int) {
 	}
 }
 
-func freshWorld(reg *filmdec.Registry, path string) *filmdec.World {
+func freshWorld(reg *grammar.Registry, path string) *grammar.World {
 	raw, _ := os.ReadFile(path)
-	w := filmdec.NewWorld(reg)
+	w := grammar.NewWorld(reg)
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -732,7 +732,7 @@ func main() {
 	// Mode litctx : dump du contexte de bits autour des littéraux d'un paquet précis.
 	// usage: litctx <chunk> <pktIndex>
 	if len(os.Args) >= 2 && os.Args[1] == "litctx" {
-		reg, _ := filmdec.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+		reg, _ := grammar.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
 		chunkIdx, _ := strconv.Atoi(os.Args[2])
 		pktIdx, _ := strconv.Atoi(os.Args[3])
 		litCtx(reg, chunkIdx, pktIdx)
@@ -741,7 +741,7 @@ func main() {
 
 	// Mode litloc : localise les littéraux dans les records décodés.
 	if len(os.Args) >= 2 && os.Args[1] == "litloc" {
-		reg, err := filmdec.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+		reg, err := grammar.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
 		if err != nil {
 			panic(err)
 		}
@@ -774,7 +774,7 @@ func main() {
 		return
 	}
 
-	reg, err := filmdec.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+	reg, err := grammar.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
 	if err != nil {
 		panic(err)
 	}

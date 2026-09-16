@@ -8,13 +8,13 @@ package analysis_test
 //   - DENOMINATEUR (tirs)   : analysis.ScanFireEventsB5 -> FireEvent.PlayerIndex5 (event_start+31,
 //                             5 bits). C'est l'indice qu'ecrit match_weapon_shots, et le pont
 //                             resolvePlayerIndices(indice->xuid) est keye dessus.
-//   - NUMERATEUR (touches)  : filmdec.decodeFireEvent -> FilmIndex (bits 36..39, soit le champ
+//   - NUMERATEUR (touches)  : grammar.decodeFireEvent -> FilmIndex (bits 36..39, soit le champ
 //                             attaquant x2 >>1 = 4 bits). AVANT le correctif, le mapper resolvait
 //                             piToXUID[FilmIndex] : un 4 bits contre un pont keye sur 5 bits.
 //
 // Sous 17 joueurs (arene) les deux lectures RENDENT LA MEME VALEUR (le bit 35 est 0). Au-dela
 // (BTB, >16 joueurs), le 4 bits SATURE a 15 et fusionne deux tireurs -> num et denom pointent
-// des joueurs DIFFERENTS. Le correctif expose filmdec.ShooterIndex5 (bits 35..39, R(5) sans >>1)
+// des joueurs DIFFERENTS. Le correctif expose grammar.ShooterIndex5 (bits 35..39, R(5) sans >>1)
 // et key le numerateur dessus. Ce test MESURE que ShooterIndex5 == PlayerIndex5 record par record,
 // sur arene ET BTB 4f77afc1 (le film ou >16 joueurs revele la saturation).
 //
@@ -31,7 +31,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // idxEqZeroTS : la mesure ne depend pas de l'horodatage (on correle par octet, pas par temps).
@@ -111,9 +111,9 @@ func TestWeaponIndexNumDenomEquivalence(t *testing.T) {
 func measureFilmIndexEquivalence(t *testing.T, dir string) *idxEqStats {
 	t.Helper()
 	st := newIdxEqStats()
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue // film partiel : chunk illisible ignore, comme les scanners de production
 		}
@@ -121,16 +121,16 @@ func measureFilmIndexEquivalence(t *testing.T, dir string) *idxEqStats {
 		for _, ev := range analysis.ScanFireEventsB5(data, idxEqZeroTS) {
 			byByte[ev.BytePos] = ev.PlayerIndex5
 		}
-		for _, pk := range filmdec.WalkPackets(data) {
-			if pk.Type != filmdec.PacketTypeDelta || pk.Size < 5 {
+		for _, pk := range grammar.WalkPackets(data) {
+			if pk.Type != grammar.PacketTypeDelta || pk.Size < 5 {
 				continue
 			}
 			pay := pk.Payload(data)
 			if pay[0] != 0xD2 { // type 36 (105) variante LONGUE (porte l'arme)
 				continue
 			}
-			idx5 := filmdec.ReadShooterIndex5(pay) // NUMERATEUR (5 bits, corrige)
-			idx4 := filmdec.ReadAttackerIndex(pay) // ancien numerateur (4 bits, tronque)
+			idx5 := grammar.ReadShooterIndex5(pay) // NUMERATEUR (5 bits, corrige)
+			idx4 := grammar.ReadAttackerIndex(pay) // ancien numerateur (4 bits, tronque)
 			if idx5 < 0 || idx4 < 0 {
 				continue
 			}

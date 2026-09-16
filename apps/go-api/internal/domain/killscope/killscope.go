@@ -50,7 +50,7 @@ const (
 //
 // ─── POURQUOI ELLES ATTERRISSENT ICI LE 2026-08-03 ─────────────────────────────────────────
 //
-// Leur propriétaire typé est `games/halo_infinite/film/killsource` (`Path`) — un paquet
+// Leur propriétaire typé est `games/halo_infinite/film/facts/killsource` (`Path`) — un paquet
 // title-specific, que ni `persist` ni `migration` ne peuvent importer. `persist` en portait donc
 // une copie brute (`FilmReadPaths`), non datée et non verrouillée (dette H3), et l'inversion de
 // préséance en aurait ajouté une TROISIÈME dans `migration`. À la 3e copie, la règle du dépôt
@@ -93,7 +93,7 @@ func FilmReadPaths() []string { return []string{ReadPathFilmWalk, ReadPathFilmSc
 // CHUTER l'accord à 84,4 % (rapport G.0, 2026-08-29). Ce n'est pas une nuance à raffiner plus
 // tard : c'est la mesure qui tranche, et elle tranche pour l'exclusion.
 //
-// Propriétaire typé : `games/halo_infinite/film/killsource` (`Category`, énumération gelée par
+// Propriétaire typé : `games/halo_infinite/film/facts/killsource` (`Category`, énumération gelée par
 // le format de film — même raison d'être que les voies de lecture ci-dessus, même paquet
 // title-specific que `persist`/`migration`/`platform/duckdb` ne peuvent pas importer). Le
 // verrou d'égalité avec le décodeur vit dans `sync/killcollector` (le seul paquet qui importe

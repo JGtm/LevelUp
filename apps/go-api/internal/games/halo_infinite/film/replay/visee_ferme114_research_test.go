@@ -49,7 +49,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -89,19 +89,19 @@ func ferme114Mesure(pk []env114Paquet, k, w2 int) ferme114Profil {
 		}
 		pr.decodes++
 		if k > 0 {
-			pr.champNonModelise[filmdec.ReadBitsAtForDiag(p.pay, 8, k)]++
+			pr.champNonModelise[grammar.ReadBitsAtForDiag(p.pay, 8, k)]++
 		}
-		idx := filmdec.ReadBitsAtForDiag(p.pay, posIdx, w2)
+		idx := grammar.ReadBitsAtForDiag(p.pay, posIdx, w2)
 		if idx < pr.idxMin {
 			pr.idxMin = idx
 		}
 		if idx > pr.idxMax {
 			pr.idxMax = idx
 		}
-		pr.genPalette[filmdec.ReadBitsAtForDiag(p.pay, posGen, 2)]++
-		uns1 += int(filmdec.ReadBitsAtForDiag(p.pay, posP1, 1))
-		uns2 += int(filmdec.ReadBitsAtForDiag(p.pay, posP2, 1))
-		pr.payload[filmdec.ReadBitsAtForDiag(p.pay, posPay, larg114Payload)]++
+		pr.genPalette[grammar.ReadBitsAtForDiag(p.pay, posGen, 2)]++
+		uns1 += int(grammar.ReadBitsAtForDiag(p.pay, posP1, 1))
+		uns2 += int(grammar.ReadBitsAtForDiag(p.pay, posP2, 1))
+		pr.payload[grammar.ReadBitsAtForDiag(p.pay, posPay, larg114Payload)]++
 	}
 	pr.porte1, pr.porte2 = ferme114Const(uns1, pr.decodes), ferme114Const(uns2, pr.decodes)
 	pr.idxCard = ferme114CardIdx(pk, posIdx, w2)
@@ -126,7 +126,7 @@ func ferme114CardIdx(pk []env114Paquet, pos, w int) int {
 	vus := map[uint32]bool{}
 	for _, p := range pk {
 		if pos+w <= p.nBits {
-			vus[filmdec.ReadBitsAtForDiag(p.pay, pos, w)] = true
+			vus[grammar.ReadBitsAtForDiag(p.pay, pos, w)] = true
 		}
 	}
 	return len(vus)
@@ -211,7 +211,7 @@ func ferme105Ancre(t *testing.T, noms []string, lots map[string][]env114Paquet) 
 		pk := lots[nom]
 		var longs []env114Paquet
 		for _, p := range pk {
-			if p.nBits > 41 && filmdec.ReadBitsAtForDiag(p.pay, 7, 1) == 0 {
+			if p.nBits > 41 && grammar.ReadBitsAtForDiag(p.pay, 7, 1) == 0 {
 				longs = append(longs, p)
 			}
 		}
@@ -252,7 +252,7 @@ func ferme105Taux(pk []env114Paquet, pos int) float64 {
 			continue
 		}
 		total++
-		v := filmdec.ReadBitsAtForDiag(p.pay, pos, 5)
+		v := grammar.ReadBitsAtForDiag(p.pay, pos, 5)
 		if v%2 == 0 && v < 16 {
 			ok++
 		}
@@ -284,7 +284,7 @@ func ferme114Attribution(t *testing.T, pk []env114Paquet, posIdx, w int) {
 			continue
 		}
 		enPlage++
-		idx := filmdec.ReadBitsAtForDiag(p.pay, posIdx, w)
+		idx := grammar.ReadBitsAtForDiag(p.pay, posIdx, w)
 		if par[idx] == nil {
 			par[idx] = &ligne{idx: idx, couv: map[int]bool{}}
 		}

@@ -61,7 +61,7 @@ type RegulationSet struct {
 	scoreTimelineTokens []string
 	// flagJuggleWindowS : la FENÊTRE DE JONGLAGE du drapeau, en secondes. Un porteur qui
 	// lance le drapeau devant lui puis le reprend dans cette fenêtre a fait UN geste, pas
-	// deux prises (`objectiveevents.NetFlagGrabs`).
+	// deux prises (`objectives.NetFlagGrabs`).
 	//
 	// SCALAIRE ET NON TABLE PAR VARIANTE, et c'est une conséquence de la mesure : la coupure
 	// vit dans le GESTE (la durée d'un jet de drapeau suivi d'une reprise à la course), pas

@@ -5,8 +5,8 @@ package replay
 // Trois entrees se rejoignent ici, et chacune vient d'une source DISTINCTE :
 //
 //	les FORMES     `data/titles/halo_infinite/reference/map_objectives.json` (donnee versionnee) ;
-//	les POSITIONS  le film, decode par `filmdec` puis assemble par `BuildFromPositions` ;
-//	les INSTANTS   les evenements nommes du statborg (`objectiveevents`), identifies par xuid.
+//	les POSITIONS  le film, decode par `grammar` puis assemble par `BuildFromPositions` ;
+//	les INSTANTS   les evenements nommes du statborg (`objectives`), identifies par xuid.
 //
 // AUCUNE BASE N'EST OUVERTE. Le pont slot statborg -> xuid exige les lignes de match (frags,
 // morts, assistances) et l'equipe exige le roster : les deux sont GELES ci-dessous, releves une
@@ -28,12 +28,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // p2aPlayer est la ligne de match d'un joueur, telle que l'export TSV la donne.
@@ -47,7 +47,7 @@ type p2aPlayer struct {
 type p2aFilm struct {
 	// Mode est le libelle du mode, pour le rapport.
 	Mode string
-	// ObjType est la famille d'objectif au sens d'`objectiveevents` : seul `zone` a une table
+	// ObjType est la famille d'objectif au sens d'`objectives` : seul `zone` a une table
 	// d'emplacements nommes. KOTH n'en a pas — c'est pourquoi CB.2a.3 se mesure sur les
 	// positions et non sur un oracle d'evenements.
 	ObjType string
@@ -63,7 +63,7 @@ type p2aFilm struct {
 // (lecture seule, aucune base ouverte). `1b1e380f` est HORS corpus par consigne.
 var p2aCorpus = map[string]p2aFilm{
 	// Les deux Strongholds de Vagabond : le coeur de CB.2a.1 et CB.2a.2 (oracle nomme).
-	"7344d24f": {Mode: "Strongholds", ObjType: objectiveevents.ObjectiveTypeZone,
+	"7344d24f": {Mode: "Strongholds", ObjType: objectives.ObjectiveTypeZone,
 		Carte: "vagabond", MapID: "105f5d84-8de1-4908-af3a-1c4f3bf9d642", Players: []p2aPlayer{
 			{"2533274819954312", 17, 13, 2, 0},
 			{"2533274823110022", 16, 14, 7, 0},
@@ -74,7 +74,7 @@ var p2aCorpus = map[string]p2aFilm{
 			{"2535449981534849", 9, 14, 8, 1},
 			{"2535460550991892", 14, 18, 5, 1},
 		}},
-	"696a9d7c": {Mode: "Strongholds", ObjType: objectiveevents.ObjectiveTypeZone,
+	"696a9d7c": {Mode: "Strongholds", ObjType: objectives.ObjectiveTypeZone,
 		Carte: "vagabond", MapID: "105f5d84-8de1-4908-af3a-1c4f3bf9d642", Players: []p2aPlayer{
 			{"2533274989524964", 8, 12, 8, 0},
 			{"2535429028393121", 15, 9, 10, 0},
@@ -158,10 +158,10 @@ func p2aFilmOf(t *testing.T, dir string) (string, p2aFilm) {
 }
 
 // p2aLines rend les lignes de match qui fondent le pont slot statborg -> xuid.
-func (f p2aFilm) p2aLines() []objectiveevents.PlayerLine {
-	out := make([]objectiveevents.PlayerLine, 0, len(f.Players))
+func (f p2aFilm) p2aLines() []objectives.PlayerLine {
+	out := make([]objectives.PlayerLine, 0, len(f.Players))
 	for _, p := range f.Players {
-		out = append(out, objectiveevents.PlayerLine{
+		out = append(out, objectives.PlayerLine{
 			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists,
 		})
 	}
@@ -180,9 +180,9 @@ func (f p2aFilm) p2aTeams() map[string]int {
 
 // p2aBobine charge le FILM du repertoire de chunks par la porte canonique du cache
 // (`filmcache`) — jamais une disposition reconstituee sur place. C'est lui que prennent les
-// points d'entree d'`objectiveevents` depuis l'item 1.5 : une decompression, pas une par
+// points d'entree d'`objectives` depuis l'item 1.5 : une decompression, pas une par
 // balayage. Il remplace `p2aSource`, qui n'ouvrait que le manifeste et n'a plus d'appelant.
-func p2aBobine(t *testing.T, dir string) *filmsource.Film {
+func p2aBobine(t *testing.T, dir string) *source.Film {
 	t.Helper()
 	film, ok, err := filmcache.LoadFilmDir(dir)
 	if err != nil || !ok {
@@ -193,7 +193,7 @@ func p2aBobine(t *testing.T, dir string) *filmsource.Film {
 
 // p2aStartMS rend l'instant de depart de chaque chunk, sur l'horloge du manifeste — que le
 // film charge porte deja (`Meta()`), sans rouvrir le manifeste.
-func p2aStartMS(film *filmsource.Film) map[int]int {
+func p2aStartMS(film *source.Film) map[int]int {
 	out := map[int]int{}
 	for _, m := range film.Meta() {
 		out[m.Index] = m.StartMS
@@ -209,9 +209,9 @@ func p2aRefDir(t *testing.T) string {
 
 // p2aQuant rend l'entree de bornes de quantification de la carte. Sans elle, les positions
 // restent des quanta et aucune distance n'a de sens : la mesure s'arrete.
-func p2aQuant(t *testing.T, carte string) *filmdec.MapQuantEntry {
+func p2aQuant(t *testing.T, carte string) *grammar.MapQuantEntry {
 	t.Helper()
-	cat, err := filmdec.LoadMapQuantCatalog(filepath.Join(p2aRefDir(t), "map_quant_bounds.json"))
+	cat, err := grammar.LoadMapQuantCatalog(filepath.Join(p2aRefDir(t), "map_quant_bounds.json"))
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}
@@ -263,12 +263,12 @@ func p2aZones(t *testing.T, mapID string, roles ...mapvar.Role) []Zone {
 // C'est le chemin de `BuildFromFilm` reduit a ce que la phase 2a consomme (positions, fil des
 // morts, index de joueur, origine d'horloge) : ni tirs, ni armes, ni projectiles. La machine de
 // l'utilisateur paie chaque balayage — on ne decode pas ce qu'on ne mesure pas.
-func p2aDoc(t *testing.T, dir, short string, quant *filmdec.MapQuantEntry) ReplayDocument {
+func p2aDoc(t *testing.T, dir, short string, quant *grammar.MapQuantEntry) ReplayDocument {
 	t.Helper()
 	worldRange := quant.Range()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange = &worldRange
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions illisibles (%s) : %v", dir, err)
 	}
@@ -318,19 +318,19 @@ func p2aFrameOf(doc ReplayDocument, tMS int) (int, bool) {
 // p2aZoneStats : les statistiques d'objectif du mode a zones. Les frags et assistances sont
 // nommes par le meme decodeur mais ne sont PAS des actions de zone.
 var p2aZoneStats = map[string]bool{
-	objectiveevents.StatZoneCaptures: true,
-	objectiveevents.StatZoneSecures:  true,
+	objectives.StatZoneCaptures: true,
+	objectives.StatZoneSecures:  true,
 }
 
 // p2aCaptures rend les captures et securisations de zone, identifiees par xuid.
-func p2aCaptures(film *filmsource.Film, f p2aFilm) []objectiveevents.IdentifiedEvent {
-	if f.ObjType != objectiveevents.ObjectiveTypeZone {
+func p2aCaptures(film *source.Film, f p2aFilm) []objectives.IdentifiedEvent {
+	if f.ObjType != objectives.ObjectiveTypeZone {
 		return nil // KOTH, Oddball, Slayer : aucun emplacement nomme (cf. named.go)
 	}
-	named := objectiveevents.NamedEvents(film, f.ObjType)
-	identity := objectiveevents.SlotIdentity(film, f.p2aLines())
-	out := make([]objectiveevents.IdentifiedEvent, 0, len(named))
-	for _, e := range objectiveevents.IdentifyNamedEvents(named, identity) {
+	named := objectives.NamedEvents(film, f.ObjType)
+	identity := objectives.SlotIdentity(film, f.p2aLines())
+	out := make([]objectives.IdentifiedEvent, 0, len(named))
+	for _, e := range objectives.IdentifyNamedEvents(named, identity) {
 		if p2aZoneStats[e.Stat] {
 			out = append(out, e)
 		}

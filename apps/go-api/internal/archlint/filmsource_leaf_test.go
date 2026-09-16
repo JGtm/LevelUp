@@ -1,20 +1,20 @@
-// filmsource_leaf_test.go — `internal/analysis/filmsource` EST UNE FEUILLE, ET ELLE DOIT LE RESTER.
+// filmsource_leaf_test.go — `internal/games/halo_infinite/film/source` EST UNE FEUILLE, ET ELLE DOIT LE RESTER.
 //
 // # POURQUOI CE GARDE-RAIL EXISTE, ET IL A UNE DATE
 //
 // 2026-09-02, lot 1 de PLAN_CUISSON_PERF (§2 et §3 D1). La source du film (decompression + une
-// grammaire de decoupage unique) devait vivre quelque part, et `filmdec` etait le candidat
+// grammaire de decoupage unique) devait vivre quelque part, et `grammar` etait le candidat
 // naturel. Il est INTERDIT, et l'argument est un cycle d'import VERIFIE, pas une preference :
 //
 //	`filmcache` importe `objectiveevents` (filmcache.go) ;
-//	cinq tests INTERNES de `filmdec` importent `objectiveevents` ou `filmcache`
+//	cinq tests INTERNES de `grammar` importent `objectiveevents` ou `filmcache`
 //	(sonde_registre_verdicts_test.go, navpoint_ti12_radial_test.go, objectif_ti11_minuteurs_test.go,
 //	ti47_annonces_test.go, zone_census_report_test.go).
 //
-// Donc : faire importer `filmdec` par `objectiveevents` — ou `filmcache` par `filmdec` — ferme un
+// Donc : faire importer `grammar` par `objectiveevents` — ou `filmcache` par `grammar` — ferme un
 // cycle, en production ou en test. La seule position tenable est une FEUILLE que tout le monde
 // peut importer : stdlib seule, zero import du depot. Le jour ou quelqu'un ajoutera « juste un
-// petit import » de `title`, `canonical` ou `filmdec` dans ce paquet, il rouvrira la porte que ce
+// petit import » de `title`, `canonical` ou `grammar` dans ce paquet, il rouvrira la porte que ce
 // lot a fermee — et il l'apprendra ici plutot qu'a la premiere compilation cyclique d'un
 // consommateur, trois lots plus loin.
 //
@@ -23,7 +23,7 @@
 // Il PARSE les imports (go/parser, ImportsOnly) des fichiers non-test du paquet : un test grep se
 // ferait tromper par un chemin cite dans un commentaire — et ce paquet en cite plusieurs, y
 // compris ceux du cycle ci-dessus. Les `_test.go` sont HORS PERIMETRE, deliberement : le test
-// EXTERNE `filmsource_test` importe `filmdec` pour comparer les deux marcheurs de paquets sur un
+// EXTERNE `filmsource_test` importe `grammar` pour comparer les deux marcheurs de paquets sur un
 // film reel, ce qui ne cree aucun cycle (un paquet de test externe n'est importe par personne) et
 // constitue la preuve d'equivalence de la grammaire.
 package archlint
@@ -39,7 +39,7 @@ import (
 )
 
 // filmsourceLeafPkg : le paquet feuille, relatif a apps/go-api.
-const filmsourceLeafPkg = "internal/analysis/filmsource"
+const filmsourceLeafPkg = "internal/games/halo_infinite/film/source"
 
 // filmsourceLeafPrefix : le prefixe du module. Tout import qui commence par la est un import DU
 // DEPOT, et il est interdit ici. La stdlib (et elle seule) est autorisee.

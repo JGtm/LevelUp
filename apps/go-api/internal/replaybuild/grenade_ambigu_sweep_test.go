@@ -32,8 +32,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // tailleDuBalayage lit `FILM_SWEEP`, ou saute le test.
@@ -87,7 +87,7 @@ func TestPhase0Bis_BalayageLargeDesTagsAmbigus(t *testing.T) {
 // balayerUnFilm decode un film et ventile ses morts. Un echec n'arrete pas le balayage : un
 // film tronque est le cas NOMINAL d'un cache partiel, et il est COMPTE plutot que tu.
 func balayerUnFilm(b *balayage, cache, court string) {
-	src, err := filmsource.LoadDir(filepath.Join(cache, court), nil)
+	src, err := source.LoadDir(filepath.Join(cache, court), nil)
 	if err != nil {
 		b.echecs++
 		return

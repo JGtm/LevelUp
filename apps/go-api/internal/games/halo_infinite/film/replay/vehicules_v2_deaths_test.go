@@ -11,12 +11,12 @@ package replay
 // destruction, bien mieux que la borne du recensement.
 //
 // CE QUE CET INSTRUMENT REUTILISE, sans rien recopier :
-//   - positions JOUEUR : filmdec.ScanFilmBipedPositions (chemin de production, monde en metres) ;
+//   - positions JOUEUR : grammar.ScanFilmBipedPositions (chemin de production, monde en metres) ;
 //   - fil des morts : ScanFilmDeaths ; index joueur : ScanFilmPlayerIndices + injectiveOrEmpty ;
 //   - PONT slot->xuid + CALAGE d'horloge : buildOwners (own.PontEpure(), own.DeathOffsetMS()). Le calage
 //     est celui, PROUVE, du pont de production : horlogeFilm_ms = death.TimeMS + DeathOffsetMS ;
-//   - vies + trajectoires VEHICULE : filmdec.ScanFilmWorldObjectKeyframes (recensement, bornes de
-//     vie) et filmdec.ScanFilmBipedPositionsForBand (grammaire dyn.-prec., monde en metres).
+//   - vies + trajectoires VEHICULE : grammar.ScanFilmWorldObjectKeyframes (recensement, bornes de
+//     vie) et grammar.ScanFilmBipedPositionsForBand (grammaire dyn.-prec., monde en metres).
 //
 // LA MESURE, LES SEUILS ECRITS AVANT LE CODE.
 //   - fin de vie SERREE : dernier echantillon de trajectoire du slot vehicule dans [firstSeen,goneBy]
@@ -49,7 +49,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // SEUILS, ecrits AVANT toute mesure.
@@ -102,7 +102,7 @@ func TestV2VehicleDeathDating(t *testing.T) {
 	}
 }
 
-func v2dProcessFilm(t *testing.T, dir string, entry filmdec.MapQuantEntry, ag *v2dMapAgg) {
+func v2dProcessFilm(t *testing.T, dir string, entry grammar.MapQuantEntry, ag *v2dMapAgg) {
 	worldRange := entry.Range()
 	lay := entry.Layout()
 
@@ -123,7 +123,7 @@ func v2dProcessFilm(t *testing.T, dir string, entry filmdec.MapQuantEntry, ag *v
 	own := regDe(buildOwnersDeTest(tracks, deaths, table, nil))
 	xuidSlots := v2dInvertSlotXUID(own.PontEpure())
 
-	kf := filmdec.ScanFilmWorldObjectKeyframes(dir, filmdec.VehicleTypeIndex)
+	kf := grammar.ScanFilmWorldObjectKeyframes(dir, grammar.VehicleTypeIndex)
 	vtracks := v2dVehicleTracks(dir, kf.Band, worldRange, lay)
 
 	fr := v2dScoreFilm(kf, vtracks, tracks, deaths, xuidSlots, own.DeathOffsetMS())
@@ -160,7 +160,7 @@ type v2dFilmResult struct {
 }
 
 // v2dScoreFilm classe chaque vie de vehicule : DETRUIT (mort coincidente) vs DESPAWN.
-func v2dScoreFilm(kf filmdec.WorldObjectKeyframes, vtracks, ptracks map[uint32]slotTrack,
+func v2dScoreFilm(kf grammar.WorldObjectKeyframes, vtracks, ptracks map[uint32]slotTrack,
 	deaths []Death, xuidSlots map[uint64][]uint32, off int64) v2dFilmResult {
 	var fr v2dFilmResult
 	for key, seen := range kf.SeenUS {
@@ -300,22 +300,22 @@ func v2dReport(t *testing.T, mapKey string, ag *v2dMapAgg) {
 
 // ------------------------------------------------------------------ helpers
 
-func v2dPlayerPositions(dir string, wr filmdec.Vec3Range, lay filmdec.I0Layout) ([]filmdec.BipedPosition, error) {
-	scan := filmdec.DefaultScanFilmOptions()
+func v2dPlayerPositions(dir string, wr grammar.Vec3Range, lay grammar.I0Layout) ([]grammar.BipedPosition, error) {
+	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange = &wr
 	if lay.Valid() {
 		scan.Layout = &lay
 	}
 	scan.CaptureDirs = true
-	return filmdec.ScanFilmBipedPositions(dir, scan)
+	return grammar.ScanFilmBipedPositions(dir, scan)
 }
 
-func v2dVehicleTracks(dir string, band map[uint32]bool, wr filmdec.Vec3Range, lay filmdec.I0Layout) map[uint32]slotTrack {
-	opt := filmdec.ScanFilmOptions{WorldRange: &wr, RequireTag1: false, DropSaturated: true}
+func v2dVehicleTracks(dir string, band map[uint32]bool, wr grammar.Vec3Range, lay grammar.I0Layout) map[uint32]slotTrack {
+	opt := grammar.ScanFilmOptions{WorldRange: &wr, RequireTag1: false, DropSaturated: true}
 	if lay.Valid() {
 		opt.Layout = &lay
 	}
-	pos, err := filmdec.ScanFilmBipedPositionsForBand(dir, filmdec.NewSlotBand(band), opt)
+	pos, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(band), opt)
 	if err != nil {
 		return map[uint32]slotTrack{}
 	}
@@ -381,12 +381,12 @@ func v2dDir(short8 string) string {
 	return root + `\film_chunks\` + short8
 }
 
-func v2dLoadBounds(t *testing.T) *filmdec.MapQuantCatalog {
+func v2dLoadBounds(t *testing.T) *grammar.MapQuantCatalog {
 	path := os.Getenv("V2D_BOUNDS")
 	if path == "" {
 		path = `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_quant_bounds.json`
 	}
-	cat, err := filmdec.LoadMapQuantCatalog(path)
+	cat, err := grammar.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)
 	}

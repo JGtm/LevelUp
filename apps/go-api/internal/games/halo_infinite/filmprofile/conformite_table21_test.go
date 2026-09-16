@@ -4,27 +4,27 @@ package filmprofile_test
 //
 // # CE QUE CE TEST GARDE
 //
-// Le lot 3.1 sort le profil du code : la table `filmdec.TableProfil()` (lot 2.1) devient un
+// Le lot 3.1 sort le profil du code : la table `grammar.TableProfil()` (lot 2.1) devient un
 // fichier de reference, `data/titles/halo_infinite/reference/film_profiles.json`. Tant que les
-// deux coexistent — le lot 3.1.1 supprime la copie en faisant LIRE le fichier a `filmdec` —
+// deux coexistent — le lot 3.1.1 supprime la copie en faisant LIRE le fichier a `grammar` —
 // une divergence entre elles serait un profil a deux verites, dont personne ne saurait laquelle
 // le decodeur applique. Ce test les tient egales : meme ordre, memes clefs, memes valeurs,
 // memes provenances, memes preuves, memes dates.
 //
-// # POURQUOI IL LIT LE FICHIER GO AU LIEU D IMPORTER `filmdec`
+// # POURQUOI IL LIT LE FICHIER GO AU LIEU D IMPORTER `grammar`
 //
 // Trois raisons, dans l ordre de leur poids :
 //
 //  1. LE PAQUET RESTE DEHORS. `filmprofile` ne doit rien devoir au film — c est sa raison
 //     d etre : un consommateur qui n a pas le decodeur (un outil, une verification de
 //     livraison, un futur titre) doit pouvoir lire ce que le depot sait d un build. Un import
-//     dans le test ferait entrer `filmdec` dans la compilation du paquet de test, et la
+//     dans le test ferait entrer `grammar` dans la compilation du paquet de test, et la
 //     frontiere ne serait plus verifiable d un coup d oeil sur les imports.
-//  2. LE SENS DE LA DEPENDANCE S INVERSE AU LOT 3.1.1. Quand `filmdec` importera `filmprofile`,
+//  2. LE SENS DE LA DEPENDANCE S INVERSE AU LOT 3.1.1. Quand `grammar` importera `filmprofile`,
 //     un import en sens inverse dans le test de `filmprofile` serait un cycle passant par le
 //     paquet de test externe : legal en Go, mais une dette posee sciemment a un lot d ici.
 //  3. LA PREUVE PORTE SUR CE QUI EST DANS L ARBRE. Le test lit le FICHIER commis, pas le
-//     binaire compile : il dit vrai meme si `filmdec` ne compile plus.
+//     binaire compile : il dit vrai meme si `grammar` ne compile plus.
 //
 // Le prix est une petite analyse syntaxique (constantes de fichier, concatenations). Elle est
 // bornee par [lignesAttenduesParTable] : une analyse qui rendrait moins de lignes que la table
@@ -52,7 +52,7 @@ import (
 
 // cheminTableProfil : le fichier de la table du lot 2.1, relatif a la racine du depot.
 var cheminTableProfil = filepath.Join("apps", "go-api", "internal", "games", "halo_infinite",
-	"film", "filmdec", "profile_table.go")
+	"film", "grammar", "profile_table.go")
 
 // tablesDuProfil : les sous-tables de la table, DANS L ORDRE ou `TableProfil()` les concatene,
 // avec le nombre de lignes mesure le 2026-09-16. Le compte est ecrit pour que l ajout d une
@@ -259,7 +259,7 @@ func evaluerChaine(e ast.Expr, constantes map[string]string) (string, bool) {
 // VERT — la table du lot 2.1 gagnait des lignes que le catalogue commis ne portait pas, et la
 // divergence que tout ce fichier existe pour interdire passait inapercue. La liste attendue se
 // lit desormais dans le corps de `TableProfil`, par la MEME analyse syntaxique que les lignes
-// (raisons du §2 de l en-tete : pas d import de `filmdec`).
+// (raisons du §2 de l en-tete : pas d import de `grammar`).
 //
 // L ORDRE compte autant que l appartenance : c est lui qui fait l ordre des entrees du
 // catalogue, compare rang par rang par [TestCatalogueConformeALaTableDuLot21].

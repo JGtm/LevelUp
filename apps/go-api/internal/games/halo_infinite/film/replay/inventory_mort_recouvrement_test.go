@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // invRespawnWindowsMS est l'echelle de fenetres balayee. La reapparition mesuree a une mediane
@@ -59,7 +59,7 @@ func (s *invMortStat) taux(w int64) float64 {
 // (OwnerReport.DeathOffsetMS). On l'applique dans le meme sens que nameLivesByDeaths :
 // instant_film = instant_match + offset.
 func invMortMeasure(
-	pos []filmdec.BipedPosition, fire []filmdec.FireEvent,
+	pos []grammar.BipedPosition, fire []grammar.FireEvent,
 	inv []KeyframeInventory, deaths []Death, idx PlayerIndexTable,
 ) (vide, plein *invMortStat, own IdentityRegistry) {
 	own = BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths,
@@ -216,17 +216,17 @@ func invMortAccumulate(dst, src *invMortStat) {
 // les seules entrees que la mesure consomme.
 func invMortFilm(t *testing.T, dir string) (*invMortStat, *invMortStat, IdentityRegistry) {
 	t.Helper()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	// QUANTA SEULS, et c'est suffisant : la mesure ne lit d'une position que son SLOT et son
 	// HORODATAGE (indexBySlot, buildLifeSpans). Exiger les bornes de carte n'ajouterait aucune
 	// information et bornerait le corpus aux seules cartes du catalogue.
 	scan.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Logf("%s : positions illisibles : %v", dir, err)
 		return nil, nil, IdentityRegistry{}
 	}
-	fire, err := filmdec.ScanFilmFireEvents(dir)
+	fire, err := grammar.ScanFilmFireEvents(dir)
 	if err != nil {
 		// LA SEULE BRANCHE QUI CONTINUE SANS SES PIECES, et elle doit le DIRE. Les tirs
 		// alimentent `fireRefs` -> `buildOwners` : sans eux le pont slot->joueur est plus

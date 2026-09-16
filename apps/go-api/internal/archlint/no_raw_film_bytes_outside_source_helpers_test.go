@@ -8,7 +8,7 @@ package archlint
 // Tout passe par `go/parser` : un ident est un ident, jamais du texte. C est la raison d etre
 // de ce fichier — les chemins, les noms de fonctions interdites et les extraits de grammaire
 // abondent dans les COMMENTAIRES et les chroniques du decodeur, et un grep les compterait tous.
-// `replay/fallback/registre_killsource.go` en est la preuve vivante : il cite
+// `facts/fallback/registre_killsource.go` en est la preuve vivante : il cite
 // `"func evBody(r *curseurEv"` dans une CHAINE, et ce balayage ne le compte pas.
 
 import (

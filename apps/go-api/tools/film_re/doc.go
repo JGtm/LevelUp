@@ -11,7 +11,7 @@
 // CE QUE CE N'EST PAS : du code de production. Tous les fichiers portent le tag de compilation
 // `research` : `go build ./...`, `go vet ./...` et la CI ne les voient pas. Aucun paquet de
 // `internal/` ni de `cmd/` ne l'importe, et aucun ne doit l'importer — le jour ou une de ces
-// grammaires est portee, elle vit dans `internal/games/halo_infinite/film/filmdec/` et sa ligne
+// grammaires est portee, elle vit dans `internal/games/halo_infinite/film/grammar/` et sa ligne
 // de `ecs_table.tsv` est mise a jour DANS LE MEME COMMIT (garde-rails `ecs_table_guard_test.go`).
 // Ce paquet, lui, ne bouge plus : il est le releve date, pas la verite courante.
 //

@@ -3,7 +3,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // killpos.go — OÙ CHAQUE MORT A EU LIEU.
@@ -137,7 +137,7 @@ type KillPosReport struct {
 // ELLE NE CONNAÎT AUCUNE FRONTIÈRE DE VIE, et c'est licite ICI : l'instant demandé est celui du
 // coup fatal, donc à l'intérieur des deux vies concernées par construction. Pour un instant
 // DÉCALÉ — l'entame — cette ignorance devient un piège, d'où `BuildKillOpenings`.
-func BuildKillPositions(pos []filmdec.BipedPosition, reg IdentityRegistry,
+func BuildKillPositions(pos []grammar.BipedPosition, reg IdentityRegistry,
 	kills []KillRef, offsetUS int64) ([]KillPosition, KillPosReport) {
 	p := placeKillPositions(pos, reg, kills, offsetUS)
 	return p.positions, p.report
@@ -160,7 +160,7 @@ type killPlacement struct {
 }
 
 // placeKillPositions est LE placement, et le seul.
-func placeKillPositions(pos []filmdec.BipedPosition, reg IdentityRegistry,
+func placeKillPositions(pos []grammar.BipedPosition, reg IdentityRegistry,
 	kills []KillRef, offsetUS int64) killPlacement {
 	out := killPlacement{report: KillPosReport{Kills: len(kills)}}
 	if len(pos) == 0 || !reg.PontEtabli() || len(kills) == 0 {
@@ -261,7 +261,7 @@ func siegesDe(reg IdentityRegistry, sieges []uint32, xuid uint64, tUS uint64) []
 // dans la tolérance, on ne tranche pas — deux corps pour un joueur signifie que le découpage des
 // vies est faux à cet instant, et poser la mort sur l'un des deux serait un coup de dé.
 func positionOf(tracks map[uint32]slotTrack, slots []uint32, tUS uint64) (*Vec3, uint32) {
-	var found filmdec.BipedPosition
+	var found grammar.BipedPosition
 	var slot uint32
 	n := 0
 	for _, s := range slots {

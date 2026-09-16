@@ -14,7 +14,7 @@ package replay
 //	                            possession du crane (`extractFromTh10`).
 //	3. ARCHETYPE `ti=13`        les PROPRIETES D'OBJET GERE : la JAUGE de capture, le
 //	                            proprietaire d'une zone, la colline active
-//	                            (`filmdec.ScanFilmManagedProperties`).
+//	                            (`grammar.ScanFilmManagedProperties`).
 //
 // Les jauges et les minuteurs que l'utilisateur cite vivent dans la TROISIEME, pas dans le
 // statborg. Les deux premieres ont ete balayees pour l'Assaut, et rendues negatives :
@@ -63,7 +63,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // a7ExigeChainage : le filtre de fiabilite. MIS A FAUX le 2026-08-31 apres une premiere passe
@@ -99,7 +99,7 @@ func TestAssautA7Ti13(t *testing.T) {
 	couverts := map[a7Cle]int{}
 	total := 0
 	for _, id := range films {
-		sc, err := filmdec.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
+		sc, err := grammar.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
 		if err != nil {
 			t.Logf("%s : balayage ti=13 impossible (%v)", id, err)
 			continue
@@ -115,7 +115,7 @@ func TestAssautA7Ti13(t *testing.T) {
 		prog := map[a7Cle][]int{}
 		dernier := map[a7Cle]uint64{}
 		vus := map[a7Cle]bool{}
-		lect := append([]filmdec.ManagedPropertyRead(nil), sc.Reads...)
+		lect := append([]grammar.ManagedPropertyRead(nil), sc.Reads...)
 		sort.SliceStable(lect, func(i, j int) bool { return lect[i].TimestampUS < lect[j].TimestampUS })
 		for _, r := range lect {
 			if !r.HasValue || (a7ExigeChainage && !r.Chained) {

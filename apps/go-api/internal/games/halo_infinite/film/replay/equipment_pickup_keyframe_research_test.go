@@ -55,7 +55,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // eqkLabels rend les etiquettes que le passage d'un releve a l'autre fait APPARAITRE.
@@ -99,7 +99,7 @@ func TestEquipmentPickupKeyframeNaming(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
 	}
 
-	pickups, _, err := filmdec.ScanFilmBipedPickups(dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
@@ -137,7 +137,7 @@ func TestEquipmentPickupKeyframeNaming(t *testing.T) {
 	temoin := make([]int, len(eqnDecalages))
 	parClasse := map[uint8][2]int{}
 	for _, p := range pickups {
-		if filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if grammar.BipedPickupIsWeaponClass(p.Class) {
 			continue
 		}
 		nonArmes++

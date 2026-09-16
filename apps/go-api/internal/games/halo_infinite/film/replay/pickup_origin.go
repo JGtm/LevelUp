@@ -1,6 +1,6 @@
 package replay
 
-import "levelup/go-api/internal/games/halo_infinite/film/filmdec"
+import "levelup/go-api/internal/games/halo_infinite/film/grammar"
 
 // pickup_origin.go — D'OU VIENT L'OBJET QU'UN JOUEUR RAMASSE.
 //
@@ -202,7 +202,7 @@ func (j *pickupOriginJudge) positionDe(slot uint32, tsUS uint64) (x, y, z float3
 // IL REND TOUJOURS UN JUGE, jamais nil : un juge sans point et sans pose rend systematiquement
 // l'abstention, ce qui est le comportement voulu, alors qu'un nil obligerait chaque appelant a
 // se souvenir du cas. La couverture, elle, distingue bien « carte absente » de « carte vide ».
-func newPickupOriginJudge(opt Options, pos []filmdec.BipedPosition,
+func newPickupOriginJudge(opt Options, pos []grammar.BipedPosition,
 	placements []EquipmentPlacement,
 ) *pickupOriginJudge {
 	etat := opt.SpawnPointsState

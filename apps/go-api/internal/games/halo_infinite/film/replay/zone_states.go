@@ -22,9 +22,9 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // SEUILS DE L'APPARIEMENT — repris TELS QUELS de la mesure (lot C-bis phase 2a). Les faire
@@ -57,7 +57,7 @@ type ZoneInput struct {
 	Scanned bool
 	// Reads sont les lectures de proprietes reseau, deposees par `BuildFromFilm`. L'appelant ne
 	// les remplit pas.
-	Reads []filmdec.ManagedPropertyRead
+	Reads []grammar.ManagedPropertyRead
 	// Zones est le catalogue de zones de la carte, DANS L'ORDRE OU LE SERVICE SERT
 	// `mapObjectives.zones` (role par role de la table du titre, puis rang spatial). C'est cet
 	// ordre qui donne son sens a `ZoneState.ZoneRef` — d'ou `Roles`, publie a cote.
@@ -69,7 +69,7 @@ type ZoneInput struct {
 	// la remplace pas. Vide : seuls les camps 0 et 1 — les deux valeurs mesurees — sont acceptes.
 	TeamByXUID map[string]int
 	// Hill dit que le mode du match est un mode a COLLINE — la famille d'objectif `hill` au sens
-	// d'`objectiveevents.ObjectiveTypeOf(game_variant_name)`. L'appelant la resout ; ce paquet ne
+	// d'`objectives.ObjectiveTypeOf(game_variant_name)`. L'appelant la resout ; ce paquet ne
 	// connait pas la variante.
 	//
 	// C'EST LA SEULE PORTE DU REPLI PAR LES POSITIONS, ET ELLE EST FERMEE PAR DEFAUT (revue R1,
@@ -119,7 +119,7 @@ type zoneSeries struct {
 	//
 	// LE FILTRE RESTE UTILE APRES LE PASSAGE A LA BANDE OBSERVEE (2026-09-01). Il a ete ecrit
 	// contre les slots que le COMBLEMENT de la bande d'ancrage inventait ; ceux-la ont disparu
-	// avec lui (`filmdec.observedSlotBand`), et un des quatre films du corpus voyait justement
+	// avec lui (`grammar.observedSlotBand`), et un des quatre films du corpus voyait justement
 	// son 5e slot de designation s'en aller. Mais le chainage de `ti=13` plafonne encore a
 	// 77 % : la contamination n'est pas eteinte, seulement reduite.
 	desig map[uint32][]zoneSample
@@ -178,7 +178,7 @@ func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 // LES LECTURES PAR JOUEUR SONT ECARTEES : en mode a zones, leur trafic apparent est de la
 // CONTAMINATION d'ancrage (0,6 a 1,5 % de chainage, au niveau de la bande fantome — mesure de la
 // phase 2a). Les retenir ferait entrer du bruit dans les series.
-func zoneSeriesOf(reads []filmdec.ManagedPropertyRead, c zoneCtx) zoneSeries {
+func zoneSeriesOf(reads []grammar.ManagedPropertyRead, c zoneCtx) zoneSeries {
 	out := zoneSeries{gauge: map[uint32][]zoneSample{}, owner: map[uint32][]zoneSample{},
 		keys: map[uint32]uint32{}, desig: map[uint32][]zoneSample{}}
 	// L'ensemble des slots QUI PARLENT. Ce sont les slots de l'archetype 13, PAS les slots de
@@ -186,7 +186,7 @@ func zoneSeriesOf(reads []filmdec.ManagedPropertyRead, c zoneCtx) zoneSeries {
 	// sens — d'ou l'ensemble local plutot qu'un appel au helper des pistes publiees.
 	seen := map[uint32]struct{}{}
 	for _, r := range reads {
-		if r.Field != filmdec.ManagedPropertyScalar || !r.HasValue {
+		if r.Field != grammar.ManagedPropertyScalar || !r.HasValue {
 			continue
 		}
 		seen[r.Slot] = struct{}{}
@@ -195,11 +195,11 @@ func zoneSeriesOf(reads []filmdec.ManagedPropertyRead, c zoneCtx) zoneSeries {
 			continue
 		}
 		switch r.Tag {
-		case filmdec.ManagedPropertyTagQuant:
+		case grammar.ManagedPropertyTagQuant:
 			out.gauge[r.Slot] = append(out.gauge[r.Slot], zoneSample{t: t, v: r.Value})
-		case filmdec.ManagedPropertyTagU32:
+		case grammar.ManagedPropertyTagU32:
 			out.owner[r.Slot] = append(out.owner[r.Slot], zoneSample{t: t, v: r.Value})
-		case filmdec.ManagedPropertyTagStringID:
+		case grammar.ManagedPropertyTagStringID:
 			out.keys[r.Slot] = uint32(r.Value)
 			if r.Chained {
 				out.desig[r.Slot] = append(out.desig[r.Slot], zoneSample{t: t, v: r.Value})
@@ -245,7 +245,7 @@ func zoneWindowFrames(intervalMS int) int {
 func zoneCapturesOf(actions []ObjectiveAction) []ObjectiveAction {
 	out := make([]ObjectiveAction, 0, len(actions))
 	for _, a := range actions {
-		if a.Stat == objectiveevents.StatZoneCaptures || a.Stat == objectiveevents.StatZoneSecures {
+		if a.Stat == objectives.StatZoneCaptures || a.Stat == objectives.StatZoneSecures {
 			out = append(out, a)
 		}
 	}

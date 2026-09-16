@@ -105,7 +105,7 @@ type Track struct {
 	// huit camps de l'énumération `mp_team_designator` du jeu, `-1` est « aucune équipe ».
 	//
 	// D'OÙ IL VIENT : le composant i0 de l'archétype ti=9 de la trame d'état, sur quatre bits,
-	// à une position DÉRIVÉE de la grammaire (cf. `filmdec.ScanPlayerTeams`). Le film est la
+	// à une position DÉRIVÉE de la grammaire (cf. `grammar.ScanPlayerTeams`). Le film est la
 	// SEULE source — décision utilisateur du 2026-09-13 : « si le décodeur est fiable, pas
 	// besoin du repli ». La base ne pose aucune équipe ; elle CONTRÔLE, et
 	// `coverage.teams.{accord, contradiction, silence}` disent ce qu'elle en pense.

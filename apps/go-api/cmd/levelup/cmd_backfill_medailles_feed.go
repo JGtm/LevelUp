@@ -47,11 +47,11 @@ import (
 	"fmt"
 	"os"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/medalname"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/haloclient"
@@ -172,15 +172,15 @@ func (c chunksHighlightDuCache) ChunkHighlight(_ context.Context, matchID string
 // versionDuFilm lit la version majeure du film au PROFIL (lot 2.1.4) : `HighlightProfileFromHeader`
 // lit le MEME u32 en tete du registre et NOMME l implantation du gamertag qu il selectionne.
 // Registre absent du cache :
-// [filmdec.FilmMajorVersionUnknown], sans erreur — c est le cas d une bobine partielle, et
-// l appelant le consigne. `filmsource.Inflate` rend le tampon inchange quand il n est pas zlib.
+// [grammar.FilmMajorVersionUnknown], sans erreur — c est le cas d une bobine partielle, et
+// l appelant le consigne. `source.Inflate` rend le tampon inchange quand il n est pas zlib.
 func (c chunksHighlightDuCache) versionDuFilm(matchID string) (int, error) {
 	registre, err := c.cache.LoadChunk(matchID, 0)
 	if err != nil {
-		return filmdec.FilmMajorVersionUnknown, fmt.Errorf("registre du film %s: %w", matchID, err)
+		return grammar.FilmMajorVersionUnknown, fmt.Errorf("registre du film %s: %w", matchID, err)
 	}
 	if len(registre) == 0 {
-		return filmdec.FilmMajorVersionUnknown, nil
+		return grammar.FilmMajorVersionUnknown, nil
 	}
-	return filmdec.HighlightProfileFromHeader(filmsource.Inflate(registre)).MajorVersion, nil
+	return grammar.HighlightProfileFromHeader(source.Inflate(registre)).MajorVersion, nil
 }

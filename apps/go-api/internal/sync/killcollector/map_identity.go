@@ -7,7 +7,7 @@ package killcollector
 //
 // Le collecteur avait DEUX règles pour la même question. La passe des POSITIONS lisait le nom de
 // carte du match dans la base (`port.ReplayMapNameRepo`) et cherchait l'entrée du catalogue par
-// ce nom. La passe des TOUCHES, elle, appelait `filmdec.DetectFilmMapEntry(dir, catalogue, "")` :
+// ce nom. La passe des TOUCHES, elle, appelait `grammar.DetectFilmMapEntry(dir, catalogue, "")` :
 // elle DEVINAIT la carte en lisant le découpage d'i0 du film et en retenant l'entrée du catalogue
 // dont les largeurs d'axe coïncidaient — le paramètre `mapNameOverride` existait et lui était
 // passé VIDE, alors que le même collecteur tenait le nom.
@@ -36,13 +36,13 @@ import (
 	"errors"
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // ErrSansNomDeCarte : ce match n'a AUCUNE identité de carte exploitable — la base ne le connaît
 // pas, ou sa ligne de registre ne porte aucun nom.
 //
-// ELLE EST DISTINCTE DE [filmdec.ErrUnknownMapBounds], et la distinction est le point : « je ne
+// ELLE EST DISTINCTE DE [grammar.ErrUnknownMapBounds], et la distinction est le point : « je ne
 // sais pas quelle carte » et « je sais quelle carte, elle n'est pas au catalogue » appellent deux
 // gestes différents — instruire le registre du match d'un côté, étendre le catalogue de bornes de
 // l'autre. Les confondre ferait chercher la correction du mauvais côté de la frontière.
@@ -55,10 +55,10 @@ var ErrSansNomDeCarte = errors.New("killcollector: aucun nom de carte pour ce ma
 //
 // LE COLLECTEUR DOIT AVOIR REÇU `WithPositionCapture` : `mapNames` et `mapBounds` sont vérifiés
 // par les appelants (positions et touches), chacun avec son propre compteur de câblage.
-func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID string) (filmdec.MapQuantEntry, error) {
+func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID string) (grammar.MapQuantEntry, error) {
 	noms, err := c.nomsDeCarteDuMatch(ctx, matchID)
 	if err != nil {
-		return filmdec.MapQuantEntry{}, err
+		return grammar.MapQuantEntry{}, err
 	}
 	return c.entreeDeCatalogueParNom(noms)
 }
@@ -83,18 +83,18 @@ func (c *KillSourceCollector) nomsDeCarteDuMatch(ctx context.Context, matchID st
 }
 
 // entreeDeCatalogueParNom rend l'entrée de la PREMIÈRE identité candidate qui résout au
-// catalogue. [filmdec.ErrUnknownMapBounds] quand aucune ne résout : le nom est connu, la carte
+// catalogue. [grammar.ErrUnknownMapBounds] quand aucune ne résout : le nom est connu, la carte
 // n'est pas au catalogue (D-4 d'ADR 0034 — elle se COMPTE, elle ne se devine pas).
 //
 // `repli_carte_premier_nom_resolu` (registre des replis) : les candidats sont essayés DANS
 // L'ORDRE et le premier qui résout gagne, sans arbitrage. Ce n'est pas un ordre arbitraire —
 // `MapKeysForMatch` les rend « du plus fiable au moins fiable » et documente pourquoi il y en a
 // plusieurs (nom d'asset canonique contre libellé brut, l'un ou l'autre pouvant manquer).
-func (c *KillSourceCollector) entreeDeCatalogueParNom(noms []string) (filmdec.MapQuantEntry, error) {
+func (c *KillSourceCollector) entreeDeCatalogueParNom(noms []string) (grammar.MapQuantEntry, error) {
 	for _, name := range noms {
 		if entry, err := c.mapBounds.Lookup(name); err == nil {
 			return entry, nil
 		}
 	}
-	return filmdec.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", filmdec.ErrUnknownMapBounds, noms)
+	return grammar.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", grammar.ErrUnknownMapBounds, noms)
 }

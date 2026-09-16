@@ -19,7 +19,7 @@ package replay
 //
 //	les DESIGNATEURS  les slots `ti=13` a serie de tag 5 CHAINEE (le tag 5 non chaine est de la
 //	                  contamination d'ancrage — meme predicat que le volet colline).
-//	les MANCHES       `objectiveevents.RealRounds` sur les enregistrements d'entite.
+//	les MANCHES       `objectives.RealRounds` sur les enregistrements d'entite.
 //
 // LES DEUX HORLOGES SONT RAMENEES A CELLE DU MOTEUR. Les lectures `ti=13` portent un horodatage
 // MOTEUR ; les enregistrements d'entite sont dates depuis le PREMIER PAQUET du film.
@@ -36,8 +36,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -70,14 +70,14 @@ func TestTotalControlDesignateurParManche(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", short, err)
 	}
-	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
+	recs := objectives.StatRecords(p2aBobine(t, dir))
 	manches := tcManchesOf(recs)
 	if len(manches) == 0 {
 		t.Logf("NON EXPLOITABLE %s : aucune manche lisible — ce film ne compte ni pour ni contre", short)
 		return
 	}
 
-	sc, err := filmdec.ScanFilmManagedProperties(dir)
+	sc, err := grammar.ScanFilmManagedProperties(dir)
 	if err != nil {
 		t.Fatalf("%s : proprietes ti=13 illisibles : %v", short, err)
 	}
@@ -126,8 +126,8 @@ func TestTotalControlDesignateurParManche(t *testing.T) {
 //
 // LES MANCHES FANTOMES SONT ECARTEES par `RealRounds` — les cumuler ferait exploser les
 // compteurs (mesure du lot A : un score d'equipe passait de 1 a 2 104).
-func tcManchesOf(recs []objectiveevents.StatRecord) []tcManche {
-	reelles := objectiveevents.RealRounds(recs)
+func tcManchesOf(recs []objectives.StatRecord) []tcManche {
+	reelles := objectives.RealRounds(recs)
 	bornes := map[int][2]int{}
 	for _, r := range recs {
 		if !reelles[r.Round] {
@@ -159,13 +159,13 @@ func tcManchesOf(recs []objectiveevents.StatRecord) []tcManche {
 // LE CHAINAGE EST LA GARDE : sur un KOTH de reference, le canal par joueur chaine a 33 % contre
 // 97 % pour le canal scalaire — le tag 5 non chaine des slots combles est de la contamination
 // d'ancrage, pas une designation.
-func tcDesignateurs(reads []filmdec.ManagedPropertyRead) map[uint32][]filmdec.ManagedPropertyRead {
-	out := map[uint32][]filmdec.ManagedPropertyRead{}
+func tcDesignateurs(reads []grammar.ManagedPropertyRead) map[uint32][]grammar.ManagedPropertyRead {
+	out := map[uint32][]grammar.ManagedPropertyRead{}
 	for _, r := range reads {
-		if r.Field != filmdec.ManagedPropertyScalar || !r.HasValue || !r.Chained {
+		if r.Field != grammar.ManagedPropertyScalar || !r.HasValue || !r.Chained {
 			continue
 		}
-		if r.Tag != filmdec.ManagedPropertyTagStringID {
+		if r.Tag != grammar.ManagedPropertyTagStringID {
 			continue
 		}
 		out[r.Slot] = append(out[r.Slot], r)
@@ -177,7 +177,7 @@ func tcDesignateurs(reads []filmdec.ManagedPropertyRead) map[uint32][]filmdec.Ma
 // confondus — c'est l'ensemble dont on compte le cardinal.
 //
 // LA VALEUR ZERO N'EST PAS UNE DESIGNATION : un slot qui emet zero ne nomme rien.
-func tcEnsembleDesigne(desig map[uint32][]filmdec.ManagedPropertyRead, t0, t1 uint64) []uint64 {
+func tcEnsembleDesigne(desig map[uint32][]grammar.ManagedPropertyRead, t0, t1 uint64) []uint64 {
 	vu := map[uint64]bool{}
 	for _, serie := range desig {
 		for _, r := range serie {

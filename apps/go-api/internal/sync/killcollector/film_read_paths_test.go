@@ -4,7 +4,7 @@ package killcollector
 //
 // Les voies de lecture d un decodage de film ont DEUX domiciles, et c est structurel :
 //
-//	games/halo_infinite/film/killsource   `Path` — le TYPE, chez le decodeur qui les produit.
+//	games/halo_infinite/film/facts/killsource   `Path` — le TYPE, chez le decodeur qui les produit.
 //	                                      Paquet title-specific : ni `persist` ni `migration`
 //	                                      ne peuvent l importer.
 //	domain/killscope                      les CHAINES, dans une feuille sans import, lisibles
@@ -32,7 +32,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/persist"
 )
 
@@ -195,7 +195,7 @@ func nomsDe(vs *ast.ValueSpec) []string {
 const nomDuTypeVoie = "Path"
 
 // cheminSourceDecodeur : le paquet du decodeur, RELATIF a ce fichier de test.
-const cheminSourceDecodeur = "../../games/halo_infinite/film/killsource"
+const cheminSourceDecodeur = "../../games/halo_infinite/film/facts/killsource"
 
 // sourceDuDecodeur : le repertoire du source de `killsource`, resolu depuis l emplacement de
 // CE fichier — pas depuis le repertoire de travail, qui varie selon l invocation.

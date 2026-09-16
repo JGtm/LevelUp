@@ -9,7 +9,7 @@ package archlint
 // des valeurs deja lues. A la pose de ce ratchet c etait faux — SEPT lecteurs de bits distincts
 // vivaient dans NEUF paquets, et chacun reposait sur sa propre idee du bourrage, du
 // debordement et de l ordre des bits. Le lot 2.4 les a ramenes a une facade unique
-// (`film.Source`, nee dans `internal/analysis/filmsource/`, decision V15 (1)). IL EN RESTE DEUX
+// (`film.Source`, nee dans `internal/games/halo_infinite/film/source/`, decision V15 (1)). IL EN RESTE DEUX
 // AU 2026-09-18, tous deux dans `internal/analysis` racine (`scanEvents` du parseur de temps
 // forts, la copie de `bitAt` d `analysis/positions`) : ils descendent au pas 5, et leurs neuf
 // entrees sont tout ce que l allowlist porte encore.
@@ -26,7 +26,7 @@ package archlint
 //	                  `readBitsBE` / `readByteAtBit` / `readU64LEAtBit` / `scanEvents`.
 //	                  PAS la simple mention d un type : `func decodeX(br *BitReader)` fait
 //	                  circuler un lecteur construit ailleurs, il n ouvre aucune porte. Sans
-//	                  cette nuance le ratchet comptait 90 fichiers de `filmdec` qui ne lisent
+//	                  cette nuance le ratchet comptait 90 fichiers de `grammar` qui ne lisent
 //	                  rien eux-memes (mesure du 2026-09-17).
 //	motifTypeLecteur  une STRUCTURE portant a la fois un champ `[]byte` et un champ de
 //	                  position EN BITS (`bp`, `bitPos`, `bitOff`, ...). C est le motif
@@ -43,11 +43,11 @@ package archlint
 //	                  les fichiers d installation du jeu sont declares hors racines. Mesure du
 //	                  2026-09-17 : aucun usage non lie au film dans le perimetre.
 //	motifInflate      import de `compress/zlib` ou `compress/flate`. La decompression est au
-//	                  source, et rien qu a lui (`filmsource.Inflate`).
+//	                  source, et rien qu a lui (`source.Inflate`).
 //
 // # LA CIBLE
 //
-// La couche `source` — aujourd hui `internal/analysis/filmsource/`, demain
+// La couche `source` — aujourd hui `internal/games/halo_infinite/film/source/`, demain
 // `film/internal/source` (lot 2.5.a) — est le SEUL lieu autorise. Elle est exclue du balayage.
 // Tout autre site des racines surveillees est une violation, toleree seulement par une entree
 // datee de `lecturesTolerees` qui nomme le lot qui la retire.
@@ -56,8 +56,8 @@ package archlint
 //
 // La porte aux octets est une frontiere de PRODUCTION : ce qu on interdit, c est qu un chemin
 // servi a l utilisateur decode des bits sans passer par la source. Les tests du decodeur, eux,
-// lisent des octets par CONSTRUCTION — c est leur travail : `filmsource/source_test.go`
-// compare les deux marcheurs de paquets, les tests de `filmdec` batissent des `BitReader` sur
+// lisent des octets par CONSTRUCTION — c est leur travail : `source/source_test.go`
+// compare les deux marcheurs de paquets, les tests de `grammar` batissent des `BitReader` sur
 // des chaines forgees pour prouver une largeur, et les 23 fichiers `//go:build research` des
 // racines (TOUS des `_test.go`, mesure du 2026-09-17) mesurent la grammaire sur des films
 // reels. Interdire ces lectures interdirait les preuves, et remplirait l allowlist de
@@ -76,7 +76,7 @@ package archlint
 //   - un SEPTIEME lecteur de bits, absent de la note : `internal/analysis/positions/` porte sa
 //     propre copie de `bitAt` (`positions.go:179`) et son propre marcheur de paquets 16 octets
 //     (`positions.go:127-128`). Consigne en §4 du plan.
-//   - `objectiveevents/statborg.go` appelle `readBitsBE` 13 fois ; la note ne citait que
+//   - `objectives/statborg.go` appelle `readBitsBE` 13 fois ; la note ne citait que
 //     `film.go` pour ce lecteur. Le paquet en a donc deux fichiers, pas un.
 //
 // Trois faux positifs de la note, mecaniquement ecartes ici et non par une exception :
@@ -91,30 +91,30 @@ package archlint
 // aux lots 2.4.1 et 2.4.2, chacune dans le commit qui a fait son portage.
 //
 //	2.4.1 (6)   VIDEE le 2026-09-18. `killsource.evReader` est absorbe par le lecteur canonique
-//	            de la couche source ([filmsource.Bits]) ; le type, sa structure et les
+//	            de la couche source ([source.Bits]) ; le type, sa structure et les
 //	            primitives `bitAt` / `bits32` / `bitsN` / `bitsWide` sont SUPPRIMES. Ce que le
 //	            drapeau `over` gardait reste au marcheur de chaine (`killsource.curseurEv`), qui
 //	            teste `Remaining()` avant chaque lecture. Equivalence bit a bit prouvee appel
 //	            par appel sur 109 168 positions reelles des dix bobines versionnees
 //	            (`killsource/equivalence_lecteur_test.go`) et de bout en bout par le golden des
 //	            triplets fige AVANT l absorption (`chaines_evenements_test.go`).
-//	2.4.2 (63)  VIDEE le 2026-09-18. La facade EST `internal/analysis/filmsource` (V15 (1)), et
+//	2.4.2 (63)  VIDEE le 2026-09-18. La facade EST `internal/games/halo_infinite/film/source` (V15 (1)), et
 //	            elle porte desormais TOUT ce qui touche un octet de film :
-//	              - le lecteur canonique [filmsource.Bits] et ses quatre conventions de bord
+//	              - le lecteur canonique [source.Bits] et ses quatre conventions de bord
 //	                nommees (`BitsAt`, `BitAt`, `BitsTolerants`, `BitsTronques`) ;
 //	              - les entiers du film (`U16LE` / `U32LE` / `U64LE`), l octet et le u64 a
 //	                offset BIT (`OctetAuBit`, `U64LEAuBit`), le balayage de motif
 //	                (`ChercherMotif64`) ;
-//	              - LE marcheur de paquets ([filmsource.Paquets]) : les QUATRE copies de
-//	                l en-tete de seize octets (`filmdec.WalkPackets`, `weaponv3/timing.go`,
+//	              - LE marcheur de paquets ([source.Paquets]) : les QUATRE copies de
+//	                l en-tete de seize octets (`grammar.WalkPackets`, `weaponv3/timing.go`,
 //	                `cmd/rdata_weapon_scan`) n en sont plus que des traductions, et le temoin
-//	                `filmsource.TestDeuxMarcheursDePaquetsSAccordent` oppose les deux grammaires
+//	                `source.TestDeuxMarcheursDePaquetsSAccordent` oppose les deux grammaires
 //	                sur des chunks reels ;
 //	              - LE decompresseur, en deux contrats ecrits : `Inflate` (tolerant, un chunk
 //	                peut etre deja clair) et `Decompresser` (strict, un telechargement CDN doit
 //	                etre du zlib).
-//	            `filmdec.BitReader` / `NewBitReader` ont DISPARU : le type s appelle `Lecteur`,
-//	            il EMBARQUE `*filmsource.Bits` et n ajoute que la grammaire (profil, capture,
+//	            `grammar.BitReader` / `NewBitReader` ont DISPARU : le type s appelle `Lecteur`,
+//	            il EMBARQUE `*source.Bits` et n ajoute que la grammaire (profil, capture,
 //	            observateur, `ReadSignedVarWidth`). Les deux anciens noms restent listes
 //	            ci-dessous, en RATCHET ANTI-RESURRECTION.
 //	2.5.c (9)   descente de la grammaire de film posee dans `internal/analysis` racine
@@ -191,7 +191,7 @@ var racinesOctetsBruts = []string{
 type exclusionOctets struct{ chemin, raison string }
 
 var exclusionsOctetsBruts = []exclusionOctets{
-	{chemin: "internal/analysis/filmsource", raison: "LA COUCHE SOURCE : le seul lieu " +
+	{chemin: "internal/games/halo_infinite/film/source", raison: "LA COUCHE SOURCE : le seul lieu " +
 		"autorise (ADR 0034 D-2). Passe sous `film/internal/source` au lot 2.5.a ; ce " +
 		"deplacement se repercute ICI, sur cette ligne."},
 	{chemin: "cmd/weapon-sounds", raison: "lit les banques Wwise de l INSTALLATION DU JEU, " +
@@ -344,7 +344,7 @@ func verifierExclusionsDOctets(t *testing.T) {
 		if !repertoireExisteSousAPI(t, ex.chemin) {
 			t.Errorf("l exclusion %q ne designe aucun repertoire : le paquet a ete deplace ou "+
 				"supprime, mettre la ligne a jour (c est le cas prevu au lot 2.5.a pour "+
-				"`filmsource`).", ex.chemin)
+				"`source`).", ex.chemin)
 		}
 	}
 }

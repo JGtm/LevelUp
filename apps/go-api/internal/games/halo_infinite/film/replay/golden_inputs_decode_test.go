@@ -7,10 +7,10 @@ package replay
 import (
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
-func decodeGoldenInputs(blob []byte, entry filmdec.MapQuantEntry) (*goldenInputs, error) {
+func decodeGoldenInputs(blob []byte, entry grammar.MapQuantEntry) (*goldenInputs, error) {
 	g, r, lay, world, err := decodeGoldenEntete(blob, entry)
 	if err != nil {
 		return nil, err
@@ -39,17 +39,17 @@ func decodeGoldenInputs(blob []byte, entry filmdec.MapQuantEntry) (*goldenInputs
 }
 
 // decodeGoldenEntete relit l en-tete, verifie carte et decoupage, et rend le lecteur arme.
-func decodeGoldenEntete(blob []byte, entry filmdec.MapQuantEntry) (
-	*goldenInputs, *greader, filmdec.I0Layout, filmdec.Vec3Range, error,
+func decodeGoldenEntete(blob []byte, entry grammar.MapQuantEntry) (
+	*goldenInputs, *greader, grammar.I0Layout, grammar.Vec3Range, error,
 ) {
 	if len(blob) < len(goldenInputsMagic) || string(blob[:len(goldenInputsMagic)]) != goldenInputsMagic {
-		return nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf("fixture d entrees : magie absente ou version inconnue — regenerer")
+		return nil, nil, grammar.I0Layout{}, grammar.Vec3Range{}, fmt.Errorf("fixture d entrees : magie absente ou version inconnue — regenerer")
 	}
 	r := &greader{b: blob, off: len(goldenInputsMagic)}
 	g := &goldenInputs{Film: r.str()}
 	g.MapModule = r.str()
 	if g.MapModule != entry.Module {
-		return nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf("%w : fixture cuit pour %q, entree de catalogue fournie %q",
+		return nil, nil, grammar.I0Layout{}, grammar.Vec3Range{}, fmt.Errorf("%w : fixture cuit pour %q, entree de catalogue fournie %q",
 			errGoldenInputsCarte, g.MapModule, entry.Module)
 	}
 	for a := 0; a < 3; a++ {
@@ -69,20 +69,20 @@ func decodeGoldenEntete(blob []byte, entry filmdec.MapQuantEntry) (
 	// tranche aujourd hui ; un fixture qui se dit « detecte » doit venir d une carte dont
 	// l entree est INVALIDE — sinon il a ete cuit hors de la regle, et ses quanta se
 	// dequantifieraient avec un autre pas sans que rien ne le dise.
-	impose := filmdec.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
+	impose := grammar.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
 	switch {
 	case !g.LayoutDetected && (impose == nil || impose.AxisW != g.AxisW):
-		return nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf("%w : fixture au decoupage %v (dit du CATALOGUE), catalogue %v",
+		return nil, nil, grammar.I0Layout{}, grammar.Vec3Range{}, fmt.Errorf("%w : fixture au decoupage %v (dit du CATALOGUE), catalogue %v",
 			errGoldenInputsDecoupage, g.AxisW, imposeAxisW(impose))
 	case g.LayoutDetected && impose != nil:
-		return nil, nil, filmdec.I0Layout{}, filmdec.Vec3Range{}, fmt.Errorf(
+		return nil, nil, grammar.I0Layout{}, grammar.Vec3Range{}, fmt.Errorf(
 			"%w : fixture dit son decoupage %v AUTO-DETECTE, or le catalogue en impose un (%v)",
 			errGoldenInputsDecoupage, g.AxisW, impose.AxisW)
 	}
 	// LE DECOUPAGE VIENT DU BLOB, LES BORNES DU CATALOGUE : le premier dit comment le film a
 	// quantifie, le second ou la carte commence et finit. Melanger les deux sources est ce qui
 	// rendait des coordonnees fausses sur Live Fire.
-	lay, world := filmdec.I0Layout{AxisW: g.AxisW}, entry.Range()
+	lay, world := grammar.I0Layout{AxisW: g.AxisW}, entry.Range()
 	g.FilmClockOriginUS = r.u()
 	return g, r, lay, world, nil
 }
@@ -91,10 +91,10 @@ func decodeGoldenEntete(blob []byte, entry filmdec.MapQuantEntry) (
 func decodeGoldenEvenements(r *greader, g *goldenInputs) {
 	var lastTS uint64
 	n := int(r.u())
-	g.Fire = make([]filmdec.FireEvent, 0, n)
+	g.Fire = make([]grammar.FireEvent, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
-		var e filmdec.FireEvent
+		var e grammar.FireEvent
 		lastTS += r.u()
 		e.TimestampUS = lastTS
 		e.FilmIndex = int(r.i())
@@ -108,9 +108,9 @@ func decodeGoldenEvenements(r *greader, g *goldenInputs) {
 	}
 
 	n = int(r.u())
-	g.Loadouts = make([]filmdec.KeyframeLoadout, 0, n)
+	g.Loadouts = make([]grammar.KeyframeLoadout, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		l := filmdec.KeyframeLoadout{TimestampUS: r.u(), Slot: uint32(r.u())}
+		l := grammar.KeyframeLoadout{TimestampUS: r.u(), Slot: uint32(r.u())}
 		nf := int(r.u())
 		for j := 0; j < nf && r.err == nil; j++ {
 			l.Families = append(l.Families, uint32(r.u()))
@@ -119,9 +119,9 @@ func decodeGoldenEvenements(r *greader, g *goldenInputs) {
 	}
 
 	n = int(r.u())
-	g.Grenades = make([]filmdec.GrenadeThrow, 0, n)
+	g.Grenades = make([]grammar.GrenadeThrow, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		g.Grenades = append(g.Grenades, filmdec.GrenadeThrow{
+		g.Grenades = append(g.Grenades, grammar.GrenadeThrow{
 			TimestampUS: r.u(), FilmIndex: int(r.i()), TypeID: uint32(r.u()),
 		})
 	}
@@ -153,11 +153,11 @@ func decodeGoldenInventaire(r *greader, g *goldenInputs) {
 	}
 
 	n = int(r.u())
-	g.InventoryDeltas = make([]filmdec.InventoryDelta, 0, n)
+	g.InventoryDeltas = make([]grammar.InventoryDelta, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		d := filmdec.InventoryDelta{TimestampUS: lastTS, Slot: uint32(r.u())}
+		d := grammar.InventoryDelta{TimestampUS: lastTS, Slot: uint32(r.u())}
 		if gn := int(r.u()); gn > 0 {
 			d.Grenades = make([]uint32, 0, gn)
 			for j := 0; j < gn && r.err == nil; j++ {
@@ -176,29 +176,29 @@ func decodeGoldenInventaire(r *greader, g *goldenInputs) {
 func decodeGoldenCanauxDelta(r *greader, g *goldenInputs) {
 	var lastTS uint64
 	n := int(r.u())
-	g.AbilityRanks = make([]filmdec.AbilityRank, 0, n)
+	g.AbilityRanks = make([]grammar.AbilityRank, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
 		g.AbilityRanks = append(g.AbilityRanks,
-			filmdec.AbilityRank{TimestampUS: lastTS, Slot: uint32(r.u()), Rank: int(r.i())})
+			grammar.AbilityRank{TimestampUS: lastTS, Slot: uint32(r.u()), Rank: int(r.i())})
 	}
 
 	n = int(r.u())
-	g.CamoStates = make([]filmdec.CamoRead, 0, n)
+	g.CamoStates = make([]grammar.CamoRead, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
 		g.CamoStates = append(g.CamoStates,
-			filmdec.CamoRead{TimestampUS: lastTS, Slot: uint32(r.u()), Q: uint16(r.u())})
+			grammar.CamoRead{TimestampUS: lastTS, Slot: uint32(r.u()), Q: uint16(r.u())})
 	}
 
 	n = int(r.u())
-	g.GrappleReads = make([]filmdec.GrappleRead, 0, n)
+	g.GrappleReads = make([]grammar.GrappleRead, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		gr := filmdec.GrappleRead{TimestampUS: lastTS, Slot: uint32(r.u()), Heavy: r.bool8()}
+		gr := grammar.GrappleRead{TimestampUS: lastTS, Slot: uint32(r.u()), Heavy: r.bool8()}
 		for a := 0; a < 3; a++ {
 			gr.PosQ[a] = uint32(r.u())
 		}
@@ -206,11 +206,11 @@ func decodeGoldenCanauxDelta(r *greader, g *goldenInputs) {
 	}
 
 	n = int(r.u())
-	g.Translocations = make([]filmdec.TranslocatorTeleport, 0, n)
+	g.Translocations = make([]grammar.TranslocatorTeleport, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		tr := filmdec.TranslocatorTeleport{TimestampUS: lastTS, Slot: uint32(r.u())}
+		tr := grammar.TranslocatorTeleport{TimestampUS: lastTS, Slot: uint32(r.u())}
 		tr.HasPositions = r.bool8()
 		for a := 0; a < 3; a++ {
 			tr.From[a] = r.f32()
@@ -227,29 +227,29 @@ func decodeGoldenCanauxDelta(r *greader, g *goldenInputs) {
 func decodeGoldenCapacites(r *greader, g *goldenInputs) {
 	var lastTS uint64
 	n := int(r.u())
-	g.AbilityImpulses = make([]filmdec.AbilityImpulse, 0, n)
+	g.AbilityImpulses = make([]grammar.AbilityImpulse, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		g.AbilityImpulses = append(g.AbilityImpulses, filmdec.AbilityImpulse{
+		g.AbilityImpulses = append(g.AbilityImpulses, grammar.AbilityImpulse{
 			TimestampUS: lastTS, Slot: uint32(r.u()), Predicted: r.bool8()})
 	}
-	g.AbilityImpulseStats = filmdec.AbilityImpulseStats{
+	g.AbilityImpulseStats = grammar.AbilityImpulseStats{
 		Records: int(r.u()), WithI57: int(r.u()), WithI59: int(r.u()),
 		Read: int(r.u()), Unread: int(r.u()), Tag1: int(r.u()), Absent: r.bool8(),
 		Scanned: r.bool8(),
 	}
 
 	n = int(r.u())
-	g.AbilityCharges = make([]filmdec.AbilityCharge, 0, n)
+	g.AbilityCharges = make([]grammar.AbilityCharge, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		g.AbilityCharges = append(g.AbilityCharges, filmdec.AbilityCharge{
+		g.AbilityCharges = append(g.AbilityCharges, grammar.AbilityCharge{
 			TimestampUS: lastTS, Slot: uint32(r.u()),
 			Emplacement: int(r.u()), Charges: int(r.u()), Low: int(r.u())})
 	}
-	g.AbilityChargeStats = filmdec.AbilityChargeStats{
+	g.AbilityChargeStats = grammar.AbilityChargeStats{
 		Records: int(r.u()), WithI56: int(r.u()),
 		Read: int(r.u()), Unread: int(r.u()), Armed: int(r.u()),
 		Absent: r.bool8(), Scanned: r.bool8(),
@@ -261,18 +261,18 @@ func decodeGoldenCapacites(r *greader, g *goldenInputs) {
 func decodeGoldenMonde(r *greader, g *goldenInputs) {
 	var lastTS uint64
 	n := int(r.u())
-	g.Placements = make([]filmdec.EquipmentPlacement, 0, n)
+	g.Placements = make([]grammar.EquipmentPlacement, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		p := filmdec.EquipmentPlacement{T0US: lastTS, T1US: r.u()}
-		p.Life = filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		p := grammar.EquipmentPlacement{T0US: lastTS, T1US: r.u()}
+		p.Life = grammar.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		p.X, p.Y, p.Z = r.f32(), r.f32(), r.f32()
 		p.GlobalID, p.Points = uint32(r.u()), int(r.u())
 		g.Placements = append(g.Placements, p)
 	}
-	g.PlacementStats = filmdec.EquipmentPlacementStats{ByID: map[uint32]int{}}
-	g.PlacementStats.Calibration.Widths = filmdec.MPPWidths{Lead: int(r.i()), Index: int(r.i())}
+	g.PlacementStats = grammar.EquipmentPlacementStats{ByID: map[uint32]int{}}
+	g.PlacementStats.Calibration.Widths = grammar.MPPWidths{Lead: int(r.i()), Index: int(r.i())}
 	g.PlacementStats.Calibration.Agree = int(r.i())
 	g.PlacementStats.Lives = int(r.u())
 	g.PlacementStats.Anchors = int(r.u())
@@ -290,20 +290,20 @@ func decodeGoldenMonde(r *greader, g *goldenInputs) {
 // decodeGoldenSpawnEvents relit les evenements 103 et leurs denominateurs.
 func decodeGoldenSpawnEvents(r *greader, g *goldenInputs) {
 	n := int(r.u())
-	g.SpawnEvents = make([]filmdec.EquipmentSpawnEvent, 0, n)
+	g.SpawnEvents = make([]grammar.EquipmentSpawnEvent, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		e := filmdec.EquipmentSpawnEvent{TimestampUS: lastTS}
+		e := grammar.EquipmentSpawnEvent{TimestampUS: lastTS}
 		e.Chunk, e.PacketIndex = int(r.i()), int(r.i())
-		e.Spawned = filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		e.Spawned = grammar.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		e.SpawnedValid = r.bool8()
-		e.Source = filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		e.Source = grammar.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		e.SourceValid = r.bool8()
 		e.Ref2Present = r.bool8()
 		g.SpawnEvents = append(g.SpawnEvents, e)
 	}
-	g.SpawnStats = filmdec.EquipmentSpawnStats{
+	g.SpawnStats = grammar.EquipmentSpawnStats{
 		Chunks: int(r.u()), Packets: int(r.u()), Lists: int(r.u()), Events: int(r.u()),
 		WithSpawned: int(r.u()), WithSource: int(r.u()), Ref2: int(r.u()),
 	}
@@ -331,7 +331,7 @@ func decodeGoldenQueue(r *greader, g *goldenInputs) {
 }
 
 // decodePlayerTeams relit l EQUIPE DE CHAQUE JOUEUR et le rapport de sa lecture (v21, lot 1.7).
-func decodePlayerTeams(r *greader) (map[int]int, filmdec.TeamScanReport) {
+func decodePlayerTeams(r *greader) (map[int]int, grammar.TeamScanReport) {
 	var teams map[int]int
 	if n := int(r.u()); n > 0 {
 		teams = make(map[int]int, n)
@@ -340,7 +340,7 @@ func decodePlayerTeams(r *greader) (map[int]int, filmdec.TeamScanReport) {
 			teams[i] = int(r.i())
 		}
 	}
-	rep := filmdec.TeamScanReport{
+	rep := grammar.TeamScanReport{
 		ArchetypeAbsent: r.bool8(), ComponentMismatch: r.bool8(), Component: r.str(),
 	}
 	for _, p := range []*int{&rep.Packets, &rep.Records, &rep.Read, &rep.Unreached,
