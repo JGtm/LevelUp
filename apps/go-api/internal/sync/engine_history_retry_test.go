@@ -38,7 +38,7 @@ func (c *clientHistoriqueEnEchec) GetMatchHistory(
 func TestPaginateAndPersistHistory_429Persistant_ErreurEtStatutFailure(t *testing.T) {
 	originalSleep := historyretry.Sleep
 	attentes := 0
-	historyretry.Sleep = func(time.Duration) { attentes++ }
+	historyretry.Sleep = func(context.Context, time.Duration) error { attentes++; return nil }
 	t.Cleanup(func() { historyretry.Sleep = originalSleep })
 
 	client := &clientHistoriqueEnEchec{

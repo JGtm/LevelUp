@@ -273,7 +273,7 @@ func decouperChamps(corps string) []string {
 // deriveFixturesGelees — DÉRIVE PRÉEXISTANTE, GELÉE LE 2026-09-16, QUI NE PEUT QUE DIMINUER.
 //
 // Le ratchet ci-dessus, appliqué pour la première fois à toutes les fixtures, a mesuré 45
-// divergences de type dans 25 fichiers de test — AUCUNE ne porte sur les scores d'équipe (le
+// divergences de type dans 30 fichiers de test — AUCUNE ne porte sur les scores d'équipe (le
 // sujet du lot) : ce sont les horodatages (`TIMESTAMP` vs `TIMESTAMPTZ`, dans les DEUX sens),
 // `backfill_completed` (BIGINT vs INTEGER) et `player_count` (INTEGER vs SMALLINT). Les
 // réaligner touche la sémantique de fuseau de chaque test concerné : c'est un chantier en soi,

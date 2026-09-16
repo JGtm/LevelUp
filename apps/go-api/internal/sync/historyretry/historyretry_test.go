@@ -23,7 +23,7 @@ func captureSleeps(t *testing.T) *[]time.Duration {
 	t.Helper()
 	waits := make([]time.Duration, 0, 4)
 	original := Sleep
-	Sleep = func(d time.Duration) { waits = append(waits, d) }
+	Sleep = func(_ context.Context, d time.Duration) error { waits = append(waits, d); return nil }
 	t.Cleanup(func() { Sleep = original })
 	return &waits
 }
@@ -142,5 +142,32 @@ func TestPage_Erreur503_NonRejoueeIci(t *testing.T) {
 	}
 	if len(*waits) != 0 {
 		t.Errorf("aucune attente attendue, durées : %v", *waits)
+	}
+}
+
+// Revue adversariale du 2026-09-16 (P2) : l attente « pool sans slot sain » est ANNULABLE —
+// un contexte annule pendant le sommeil rend ctx.Err() sans troisieme tentative, au lieu de
+// tenir le writer de la base partagee jusqu au bout des 30 s.
+func TestPage_AttenteAnnuleeParLeContexte(t *testing.T) {
+	original := Sleep
+	Sleep = func(ctx context.Context, _ time.Duration) error { <-ctx.Done(); return ctx.Err() }
+	t.Cleanup(func() { Sleep = original })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	appels := 0
+	fetch := func() ([]int, error) {
+		appels++
+		if appels == 1 {
+			cancel() // annulation pendant l attente qui suit ce premier echec
+			return nil, fmt.Errorf("pooled: Acquire failed: %w", pool.ErrNoHealthySlot)
+		}
+		return []int{1}, nil
+	}
+	_, err := Page(ctx, "gt", 0, fetch)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, attendu context.Canceled", err)
+	}
+	if appels != 1 {
+		t.Fatalf("appels = %d, attendu 1 (aucune tentative apres l annulation)", appels)
 	}
 }

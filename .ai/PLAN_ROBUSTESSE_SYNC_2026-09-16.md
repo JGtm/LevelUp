@@ -581,3 +581,28 @@ Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire
   `..._NoPinnedToken`. En-tête de `scripts/check_test_baseline.sh` daté (retrait du
   2026-09-16, lot robustesse, étape 3, D4).
 - 6.3 — entrée `.ai/thought_log.md` du 2026-09-16, statut Complété.
+
+### Revue adversariale (6.4), ronde 1 — 2026-09-16 soir — pilote
+
+Deux relecteurs aveugles (moteur/pool/CLI ; migrations CLI/post-sync/hygiène), contrat écrit
+incluant la règle de baseline, filtre de recevabilité. 3 constats recevables, 0 jeté ;
+35 conditions vérifiées qui tiennent (16 + 19), dont : sentinelle `ErrNoHealthySlot` traverse
+`doPublic` et `cachedHaloClient` ; pool à un slot → 429 → `ErrNoHealthySlot` → attente → 3e
+tentative ; delta/flush intacts ; six appelants de `NewPooledHaloClient` ; seuls pinned = cron
+Spartan + live-sync H5 ; `reportSyncResult` en `--all` compte un `partial_success` en `failed`
+et sort ≠ 0 ; handle metadata `rw:` partagé (refcount) — le serveur garde le sien ; ordre des
+leases ; `applySharedMigrationsForTitle` dans les quatre runners via `PathResolver` +
+`RunForTitleDB` ; un seul journal pour le token absent ; carte gelée du ratchet DDL ;
+`RegisterAll("")` sûr ; baseline = exactement les 2 paires attendues.
+
+- **P1 (corrigé)** : `loadMedalExploitMap` (`engine_backfills.go`) ouvrait `metadata.duckdb` par
+  `OpenReadOnly` alors que le moteur le tient désormais en `rw:` partagé → « different
+  configuration », `nil` en Debug, `medal_exploit = 0` pour tous les matchs (LUSR v1, défaut
+  de la CLI). Passage par `OpenReadForQuery` (handle réutilisé), journal en Warn ; test de
+  non-régression sous handle `rw:` tenu, **prouvé par mutation** (OpenReadOnly → rouge).
+- **P2 (corrigé)** : l'attente « pool sans slot sain » n'était pas annulable par le contexte
+  (jusqu'à 30 s en tenant le writer partagé à l'arrêt) → seam `Sleep(ctx, d) error` avec
+  `select` sur `ctx.Done()`, test d'annulation.
+- **P2 (corrigé)** : commentaire de la carte gelée « 25 fichiers » → 30 (compte réel).
+- Non recevable, noté : le plafond de hot-add `pool.go` (`AddOrUpdateSource`) compte tous les
+  slots, sains ou non — sans appelant à `MaxSize > 0` aujourd'hui.
