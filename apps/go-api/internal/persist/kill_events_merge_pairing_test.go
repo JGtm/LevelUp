@@ -123,13 +123,19 @@ func TestFusionRefuseDeuxMortsDeCreditDeLaMemeVictime(t *testing.T) {
 	}
 }
 
-// TestFusionNApparieJamaisSurDeuxVictimesVides — SONDE (C3) DU RELECTEUR L6.
+// TestFusionNApparieJamaisSurDeuxVictimesVidesQuandLInstantEstPartage — SONDE (C3) DU RELECTEUR L6.
 //
-// Deux victimes vides ne sont pas « la meme victime » : ce sont deux ABSENCES. Sur un instant qui
-// porte deja une autre mort de credit, apparier sur cette absence serait apparier sur rien.
+// CE QU IL EPINGLE, EXACTEMENT : la PASSE 1 sur un instant PARTAGE. Deux victimes vides ne sont
+// pas « la meme victime » — ce sont deux ABSENCES — et l instant porte ici une seconde mort de
+// credit : apparier sur cette absence reviendrait a choisir entre deux morts sur la foi de rien.
+//
+// IL NE DIT RIEN DU CAS 1-1, et son ancien nom (« …SurDeuxVictimesVides », sans plus) promettait
+// un universel que le repli contredit : un instant classique aux deux victimes vides EST apparie,
+// et c est le contrat (cf. [TestFusionApparieUnInstantClassiqueAuxDeuxVictimesVides]). Renomme a
+// la ronde 2 de la revue.
 //
 // MUTATION QUI DOIT ROUGIR : dans `seuleMortDeLaVictime`, `if victime == ""` devient `if false`.
-func TestFusionNApparieJamaisSurDeuxVictimesVides(t *testing.T) {
+func TestFusionNApparieJamaisSurDeuxVictimesVidesQuandLInstantEstPartage(t *testing.T) {
 	sansXUID := mortCreditDe(1000, "Inconnue", "")
 	autre := mortCreditDe(1000, "A", "xuid(a)")
 
@@ -140,6 +146,70 @@ func TestFusionNApparieJamaisSurDeuxVictimesVides(t *testing.T) {
 	if st.Enriched != 0 || st.AmbiguousInstants != 1 {
 		t.Errorf("%d enrichies / %d instants ambigus, attendu 0 / 1 — deux victimes VIDES ont ete "+
 			"prises pour la meme victime", st.Enriched, st.AmbiguousInstants)
+	}
+}
+
+// TestFusionRefuseUnTueurDivergentSurUnePaireDeRepli — P1 DE LA RONDE 2.
+//
+// L instant est classique (une mort de chaque cote) mais le film N A PAS RESOLU la victime : la
+// paire ne reposerait alors que sur l instant. Les deux tueurs sont resolus et DIFFERENTS —
+// autrement dit ce sont, bien plus probablement, DEUX MORTS a la meme milliseconde dont le film ne
+// nomme pas la victime : le temoin `9f9b19e5@63757` dans sa variante « victime de film non
+// resolue », et il y a 631 victimes dans ce cas au parc.
+//
+// Jusqu a la ronde 2 la paire se formait et `verifierConcordance` rendait « tueur divergent » :
+// LE FILM ENTIER REFUSE, avec `AmbiguousInstants` a 0. Elle doit etre REFUSEE, sans erreur.
+//
+// MUTATION QUI DOIT ROUGIR : retirer le garde `tueursResolusDifferents` de
+// `repliSurLInstantClassique` (soit : rendre de nouveau l erreur en passe 3).
+func TestFusionRefuseUnTueurDivergentSurUnePaireDeRepli(t *testing.T) {
+	credit := mortCreditDe(1000, "A", "xuid(a)")
+	credit.FeedKillerXUID = "xuid(1)"
+
+	filmSansVictime := mortFilm(1000) // le film n a pas resolu la victime
+	filmSansVictime.FeedKillerXUID = "xuid(99)"
+
+	out, st, err := MergeCreditAndFilm(batchCredit(credit), batchFilm(filmSansVictime))
+	if err != nil {
+		t.Fatalf("MergeCreditAndFilm: %v\nune paire de REPLI a tueurs divergents fait tomber LE "+
+			"FILM ENTIER — c est le temoin, avec une victime de film non resolue", err)
+	}
+	if st.Enriched != 0 || st.AmbiguousInstants != 1 || st.Orphans != 0 {
+		t.Errorf("%d enrichies / %d instants ambigus / %d orphelins, attendu 0 / 1 / 0 — la paire "+
+			"de repli s est formee sur le seul instant alors que les deux tueurs la contredisent",
+			st.Enriched, st.AmbiguousInstants, st.Orphans)
+	}
+	if len(out.Deaths) != 1 || out.Deaths[0].SourceTag != 0 {
+		t.Errorf("%d morts, arme %#x, attendu 1 mort sans arme — la mort de credit a recu la "+
+			"mesure d une mort qui n est pas la sienne", len(out.Deaths), out.Deaths[0].SourceTag)
+	}
+}
+
+// TestFusionApparieUnInstantClassiqueAuxDeuxVictimesVides — LE REPLI, DANS SON CAS NOMINAL.
+//
+// Une mort de credit sans xuid de victime, une ligne de film sans xuid de victime, seules a leur
+// instant : la paire SE FORME. C est le comportement d avant le lot 2.9 et il est conserve tel
+// quel — c est meme la raison d etre du repli, sans lequel les 1 252 lignes de film sans victime
+// resolue perdraient leur arme.
+//
+// Il est epingle parce que la ronde 2 a releve qu aucun test ne le tenait : le test voisin
+// (instant PARTAGE) promettait un universel « deux victimes vides ne s apparient jamais » que ce
+// cas-ci contredit.
+func TestFusionApparieUnInstantClassiqueAuxDeuxVictimesVides(t *testing.T) {
+	credit := mortCreditDe(1000, "Inconnue", "")
+
+	out, st, err := MergeCreditAndFilm(batchCredit(credit), batchFilm(mortFilm(1000)))
+	if err != nil {
+		t.Fatalf("MergeCreditAndFilm: %v", err)
+	}
+	if st.Enriched != 1 || st.AmbiguousInstants != 0 || st.Orphans != 0 {
+		t.Fatalf("%d enrichies / %d instants ambigus / %d orphelins, attendu 1 / 0 / 0 — le repli "+
+			"sur l instant ne joue plus, et les 1 252 lignes de film sans victime resolue perdent "+
+			"leur arme", st.Enriched, st.AmbiguousInstants, st.Orphans)
+	}
+	if len(out.Deaths) != 1 || out.Deaths[0].SourceTag == 0 {
+		t.Errorf("%d morts, arme %#x — la mesure du film n a pas ete recopiee",
+			len(out.Deaths), out.Deaths[0].SourceTag)
 	}
 }
 
