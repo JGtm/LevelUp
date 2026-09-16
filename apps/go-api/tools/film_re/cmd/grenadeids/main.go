@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"levelup/go-api/internal/filmproc"
@@ -41,6 +42,9 @@ func main() {
 	apparier := flag.Bool("apparier", false, "jouer la passe D : appariement aux decrements i22 (question 2)")
 	toleranceMS := flag.Int("tolerance-ms", 0, "tolerance temporelle, en millisecondes, autour de chaque intervalle de decrement")
 	temoinMS := flag.Int("temoin-ms", 0, "temoin de hasard : rejoue la passe D avec les instants decales de N millisecondes ; 0 = pas de temoin")
+	dump := flag.String("dump", "", "identifiant (hexadecimal, ex. 0x764ACFA8) dont on releve les bits autour du marqueur")
+	fenetreIndex := flag.Int("fenetre-index", 0, "demi-largeur, en bits, du balayage de la position du champ d index auteur ; 0 = pas de balayage")
+	dumpMax := flag.Int("dump-max", 4, "nombre maximal de tranches relevees par film")
 	ti := flag.Int("ti", -1, "restreint la passe D aux naissances de cet archetype (41 = projectile, 9 = managed-player) ; -1 = toutes")
 	plafond := flag.Int("plafond-gib", plafondParDefautGiB, "plafond memoire du banc ; 0 desarme")
 	flag.Parse()
@@ -60,7 +64,18 @@ func main() {
 	})
 	defer garde.Disarm()
 
-	opt := grenadeids.Options{Fenetre: *fenetre, Voisinage: *voisinage}
+	cible, err := strconv.ParseUint(strings.TrimPrefix(strings.TrimPrefix(*dump, "0x"), "0X"), 16, 32)
+	if *dump != "" && err != nil {
+		fmt.Fprintf(os.Stderr, "-dump %q : %v\n", *dump, err)
+		os.Exit(2)
+	}
+	opt := grenadeids.Options{
+		Fenetre:      *fenetre,
+		Voisinage:    *voisinage,
+		Dump:         uint32(cible),
+		DumpMax:      *dumpMax,
+		FenetreIndex: *fenetreIndex,
+	}
 	echecs := 0
 	for _, id := range ids {
 		if err := traiter(*racine, id, opt, reglages{
@@ -99,6 +114,8 @@ func traiter(racine, id string, opt grenadeids.Options, rg reglages) error {
 	grenadeids.EcrireEntete(os.Stdout, b)
 	rel := grenadeids.Balayer(b, opt)
 	grenadeids.EcrireReleve(os.Stdout, rel, rg.top)
+	grenadeids.EcrireTranches(os.Stdout, rel)
+	grenadeids.EcrireIndexAuteur(os.Stdout, rel, rg.top)
 	if !rg.apparier {
 		return nil
 	}

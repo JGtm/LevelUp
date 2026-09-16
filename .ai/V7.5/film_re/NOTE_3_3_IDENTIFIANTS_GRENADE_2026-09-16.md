@@ -2,9 +2,9 @@
 
 > Ouverte le 2026-09-16, branche `feat/decfilm-33r`, base `e7b9bd48e`. Instrument sous
 > `apps/go-api/tools/film_re/grenadeids/` et `tools/film_re/cmd/grenadeids/`, tag `research`.
-> Etat au 2026-09-16 : instrument ECRIT, COMPILE et VERIFIE sur ses invariants ; **mesure 0
-> JOUEE** (les sept mini-bobines, autorisation du pilote — §4) ; les mesures 1 a 6 sur les films
-> du cache attendent la « voie libre » (un seul decodage a la fois sur ce poste).
+> Etat au 2026-09-17 : CLOS. Instrument ecrit, compile, valide sur temoin positif ; **mesure 0
+> JOUEE** (sept mini-bobines) ET **mesures 1 a 6 JOUEES** sur les six films du cache a la voie
+> libre du pilote. VERDICT : la GRAMMAIRE a bouge d UN BIT, les identifiants n ont pas bouge (§8).
 >
 > Source de la question : V17 du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md` §1.4 (hypothese de
 > l utilisateur du 2026-09-18 etiquete, soit le 2026-09-16 reel par V18) et
@@ -163,7 +163,7 @@ dans ce processus.
 
 ---
 
-## 4. LE PLAN DE MESURE (a jouer a la voie libre, un film a la fois, dans cet ordre)
+## 4. LE PLAN DE MESURE (joue le 2026-09-17 ; resultats en §6 bis)
 
 ### Mesure 0 — JOUEE LE 2026-09-16 (autorisation du pilote) : LE MARQUEUR N A PAS BOUGE
 
@@ -254,7 +254,7 @@ go run -tags=research ./tools/film_re/cmd/grenadeids \
 
 ---
 
-## 5. LES CRITERES DE VERDICT, ECRITS AVANT LA MESURE
+## 5. LES CRITERES DE VERDICT, ECRITS AVANT LA MESURE (c est (1a) qui sort — §8)
 
 Ils sont poses ici pour qu aucun ne soit choisi apres coup.
 
@@ -320,24 +320,166 @@ C est la forme preferable — elle attend la mesure, elle ne la remplace pas.
 
 ---
 
-## 7. ETAT
+
+---
+
+## 6 bis. LES MESURES 1 A 6 — JOUEES LE 2026-09-17 (« voie libre » du pilote)
+
+Six films, UN A LA FOIS, dans l ordre impose. Lecture seule, rien ecrit sous `data/`, verrou non
+pris (la serialisation est celle de l operateur). Duree : 0,26 s a 1,2 s par film.
+
+### 6 bis.1 Le temoin positif valide l instrument
+
+`bcb6d393` (`HI_1_12_0`) : 312 marqueurs, et au decalage **+0** les quatre identifiants —
+`0xB0171062` 37, `0xC0E34C44` 7, `0x3B2567D4` 7, `0x9212E428` 4, soit **55**. C est EXACTEMENT
+le `grenades.available = 55` publie par l artefact cuit de ce temoin (note M3 §2.5). L instrument
+reproduit la production au lancer pres ; ce qu il dira des films anciens est donc lisible.
+
+### 6 bis.2 Le fait brut : un decalage d UN BIT, stable sur cinq films et cinq builds
+
+Sur les cinq films anciens, AUCUN des quatre identifiants n apparait au decalage 0. Un seul y
+apparait a un decalage stable : `0x3B2567D4` (rang 2) au decalage **-1**, `hors_marqueur = 0`,
+sur quatre films (42, 66, 41, 5 occurrences). Les trois autres n ont AUCUN decalage stable dans
++/- 512 bits, tout en etant presents 13 a 287 fois ailleurs dans le flux — contre **0,07 a 0,26**
+occurrence attendue par hasard. Ils sont donc ECRITS dans le film, hors de portee du marqueur.
+
+Deux observations ont ferme l enigme.
+
+1. **Sur les builds anciens, les neuf identifiants de la famille derriere le marqueur ont tous
+   leur bit de poids faible a ZERO** (9 sur 9, `e5adf7b2`), alors que le build recent en melange
+   pairs et impairs (6 pairs, 5 impairs). Un bit de poids faible toujours nul est la signature
+   d une fenetre lue UN BIT TROP TARD.
+2. **La suite de bits, relevee et posee cote a cote.** Un lancer de `bcb6d393` et un de
+   `111fa685`, alignes sur le debut du marqueur :
+
+```
+bcb6d393  +0..23  01001100 00001100 00000000                   (0x4C0C00)
+          +24..55 10110000 00010111 00010000 01100010          (0xB0171062 = frag)
+          +56..87 01000010 11001001 01100111 10011111          (0x42C9679F)
+
+111fa685  +0..23  01001100 00001100 00000000                   (0x4C0C00)
+          +24..55 01110110 01001010 11001111 10101000          (0x764ACFA8)
+          +56..87 10000101 10010010 11001111 00111110          (0x8592CF3E == 0x42C9679F << 1)
+```
+
+Le bloc de 32 bits qui SUIT l identifiant est, au bit pres, celui du build recent **decale d un
+bit a gauche**. Autrement dit : `ancien[23..] == recent[24..]`.
+
+### 6 bis.3 La consequence, et la prediction qu elle impose
+
+Sur les builds anciens, l amorce fait **23 bits** (`0x260600`) et l identifiant commence a
+**+23**. La production, elle, compare **24 bits** a `0x4C0C00` : son vingt-quatrieme bit n est
+pas de l amorce, c est **le bit de poids fort de l identifiant**. Elle ne peut donc reconnaitre
+un lancer ancien QUE si ce bit vaut 0 — et elle lit ensuite `identifiant << 1`, qui n est jamais
+dans la liste blanche. Des quatre identifiants, un seul a son bit de poids fort a 0 :
+`0x3B2567D4`. D ou les 42, 66, 41 et 5 occurrences observees au decalage -1, et rien d autre.
+
+**Prediction falsifiable** : les lancers des trois autres grenades portent donc le motif de
+24 bits `0x4C0C00` avec son dernier bit a 1, soit **`0x4C0C01`**, et leur identifiant se lit a
+**+23**.
+
+### 6 bis.4 La prediction est verifiee, sur les cinq films et les quatre rangs
+
+| film | build | marqueurs `0x4C0C00` | marqueurs `0x4C0C01` | position | frag (0) | plasma (1) | dynamo (2) | spike (3) | **total** |
+|---|---|---|---|---|---|---|---|---|---|
+| `bcb6d393` | `HI_1_12_0` | 312 | 67 | **+24** | 37 | 7 | 7 | 4 | **55** |
+| `e5adf7b2` | `HI_1_11_0` | 1 082 | 1 021 | **+23** | 27 | 39 | 42 | 30 | **138** |
+| `111fa685` | `HI_1_10_0` | 1 792 | 998 | **+23** | 37 | 26 | 66 | 30 | **159** |
+| `084a804d` | `HI_1_10_0` | 1 807 | 571 | **+23** | 207 | 28 | 41 | 13 | **289** |
+| `60ae07c4` | `HI_1_8_0` | 245 | 668 | **+23** | 270 | 18 | 0 | 22 | **310** |
+| `a349fea8` | v33, sans section | 763 | 1 092 | **+23** | 287 | 56 | 5 | 38 | **386** |
+
+**1 282 lancers sur les cinq films qui en publiaient ZERO**, les quatre rangs presents (dynamo
+seul manque sur `60ae07c4`). Controle negatif : sur le build recent, le marqueur `0x4C0C01` ne
+porte AUCUN identifiant de la liste blanche (67 occurrences, zero reconnu) — la grammaire a
+24 bits y est bien la bonne.
+
+Controle croise : derriere le marqueur impair de `111fa685`, la lecture a +24 rend `0x602E20C4`
+(37), `0x2425C850` (30), `0x81C69888` (26) — soit exactement `frag << 1`, `spike << 1`,
+`plasma << 1`, aux memes comptes que la lecture a +23. Les deux lectures decrivent le meme
+evenement.
+
+---
+
+## 7 bis. LA QUESTION (2) : ELLE NE SE POSE PLUS, ET SON INSTRUMENT NE DISCRIMINE PAS
+
+La question (2) ne devait etre jouee que si (1) etait negative. (1) est POSITIVE. La passe D a
+neanmoins ete jouee, et son resultat merite d etre consigne parce qu il ferme une voie que la
+note M3 §2.3 presentait comme « la voie praticable ».
+
+**Elle ne discrimine pas, et le temoin de hasard le prouve — y compris sur le temoin positif.**
+Sur `bcb6d393`, ou les 55 lancers et leurs rangs sont connus : `0xB0171062` (frag, rang 0)
+s apparie 24 fois sur 25 au rang 0 — mais le TEMOIN (memes appariements, instants decales de
+37 s) le fait 13 fois sur 13. `0x3B2567D4` (dynamo, rang 2) s apparie **zero** fois au rang 2.
+Sur `111fa685` les deux colonnes sont indiscernables (`0x764ACFA8` : 37 apparies, rangs
+[5, 0, 31, 1] contre temoin 30 apparies, rangs [2, 0, 28, 0]).
+
+**La cause est mesuree** : le canal i22 des paquets delta rend **87 lectures sur 1 481 records**
+(`bcb6d393`) et **265 sur 5 982** (`111fa685`), soit 4 a 6 %. Avec 25 a 121 porteurs, les
+intervalles entre deux lectures consecutives d un meme porteur durent des dizaines de secondes :
+tout instant tombe dans plusieurs decrements a la fois, et l appariement par appartenance ne
+designe aucun rang. C est le critere **(2 bis)** ecrit avant la mesure — a ceci pres qu il ne
+vise pas les builds anciens, mais **la methode elle-meme, sur tous les builds**.
+
+La note M3 §2.5 disait de `111fa685` qu il « porte 476 images-cles d inventaire de grenades et
+0 lancer publie : c est exactement le materiau d appariement dont la methode d origine a besoin ».
+Les 476 sont des lectures d IMAGE-CLE (`replay/inventory_decode.go`) ; le canal DELTA, seul a
+porter un instant, en rend 265. La phrase est donc a corriger.
+
+---
+
+## 8. VERDICT (3)
+
+**LA GRAMMAIRE A BOUGE, PAS LES IDENTIFIANTS. L hypothese de l utilisateur est CONFIRMEE**, et
+de la facon la plus economique qu elle envisageait : ni le nombre, ni l ordre, ni les valeurs des
+types de grenade n ont change depuis la sortie du jeu. Ce qui a change tient en **UN BIT** :
+
+| build | amorce | identifiant | index auteur |
+|---|---|---|---|
+| >= `HI_1_12_0` | 24 bits, `0x4C0C00` | a **+24** | a **+103** (54 sur 55 dans 0..7) |
+| <= `HI_1_11_0` (et v31 / v33 sans section) | **23 bits**, `0x260600` | a **+23** | **NON ETABLI** (point 6 ci-dessous) |
+
+Ce que le critere (1a) prescrivait est donc ce qui s applique : **3.3.1 code une POSITION par
+build, pas une liste blanche par build.** Precisement :
+
+1. `GrenadeTypeIDsByRank` **reste une constante du titre** — aucune entree de profil, aucune
+   liste « ancienne », aucun rang devine. La ligne de profil esquissee par la note M3 §2.4 ne
+   doit PAS etre ecrite.
+2. L entree de profil est la LARGEUR DE L AMORCE (23 ou 24 bits) et, solidairement, la position
+   de l identifiant (+23 ou +24). Cle `build=`, provenance `mesuree`, preuve = ce document.
+3. `grenadeMarker` cesse d etre une constante de paquet : il se derive de l amorce de 19 bits et
+   du `ti` projectile LU DANS LE FILM (`marqueur(ti) = ((ti & 31) << 19) | 0x40C00`, verifie sur
+   les sept builds, mesure 0), tronque a 23 ou 24 bits selon le build.
+4. Le compteur `grenadeThrowsUnranked` de M3-Q5 reste a **ZERO** sur ces builds : chaque lancer
+   recupere porte un rang connu. La decision B (« un lancer identifie ou rien ») est tenue sans
+   rien mettre de cote.
+5. Le sixieme bit d index (a `marqueur - 1`) DOIT etre lu : sans lui le balayage ramasse aussi
+   les naissances de `managed-player` (`ti = 9`, meme marqueur) — 3 a 26 par film mesurees.
+6. **Ce qui n est PAS etabli, et que 3.3.1 devra mesurer : la position du champ d INDEX AUTEUR
+   sur les builds anciens.** Le decalage d un bit ne s y propage pas mecaniquement : les 47 bits
+   qui separent l identifiant de l index sont un TOTAL mesure, pas une suite de champs lue
+   (`grammar/grenade_events.go` le dit lui-meme). Mesure : a +103, `bcb6d393` rend 54 index sur
+   55 dans 0..7 (position juste) et `111fa685` **49 sur 159** (position fausse) ; mais le seul
+   critere « toutes les valeurs dans 0..7 » ne tranche pas — **18 decalages sur 49** le
+   satisfont sur les deux films. Il faut un critere plus fort (recoupement avec la table des
+   joueurs du film, ou avec le pont index / slot de `replay`). Tant qu il n est pas pose, les
+   lancers anciens sont publiables avec leur TYPE et sans auteur — ce que la couverture distingue
+   deja (`grenadesDisponibles` contre `grenadesRattachees`).
+
+Gain attendu au corpus gate (item 3.3.2) : **1 282 lancers sur les cinq temoins anciens**, zero
+perte sur les neuf autres (la grammaire a 24 bits est inchangee). Rapporte aux 82 films de builds
+anciens du parc, l ordre de grandeur est de **20 000 lancers**, au-dela des « 5 000 a 10 000 »
+que le plan annoncait.
+
+---
+## 9. ETAT — CLOS
 
 | Question | Etat |
 |---|---|
-| mesure 0 — le marqueur a-t-il bouge ? | **JOUEE le 2026-09-16 : NON.** `ti` projectile = 41 sur les sept builds (4/4 noms a chaque fois), marqueur derive `0x4C0C00` partout. Critere (1b) ECARTE |
-| (1) les 4 identifiants actuels ailleurs dans les films anciens | instrument PRET, non joue — attend la voie libre. La question se reduit desormais au DECALAGE (passe A) et au CHAMP (passe B) |
-| (2) appariement aux decrements i22 | instrument PRET, non joue — ne se joue que si (1) est negative |
-| (3) verdict | non prononce |
+| mesure 0 — le marqueur a-t-il bouge ? | **NON** (2026-09-16). `ti` projectile = 41 sur les sept builds, marqueur derive `0x4C0C00` partout. Critere (1b) ecarte |
+| (1) les 4 identifiants actuels ailleurs dans les films anciens | **OUI, a +23** (2026-09-17). Un seul les revele au marqueur PAIR (`0x3B2567D4`, le seul dont le bit de poids fort est a 0) ; les quatre au marqueur IMPAIR `0x4C0C01`. 1 282 lancers sur cinq films qui en publiaient zero |
+| (2) appariement aux decrements i22 | **JOUEE malgre tout, et NEGATIVE POUR LA METHODE** : le temoin de hasard egale la mesure, y compris sur le temoin positif dont les rangs sont connus. Le canal i22 des paquets delta rend 4 a 6 % de lectures : les intervalles sont trop larges pour designer un rang (critere 2 bis) |
+| (3) verdict | **LA GRAMMAIRE A BOUGE, PAS LES IDENTIFIANTS.** Un bit : amorce de 23 bits et identifiant a +23 jusqu a `HI_1_11_0`, 24 bits et +24 a partir de `HI_1_12_0`. §8 dit ce que 3.3.1 code |
 
-Ce qui est acquis a cette heure :
-
-1. **Le marqueur n a pas bouge** sur les sept builds connus (mesure 0), et l archetype projectile
-   est au rang 41 partout, identifie par ses quatre noms de composant.
-2. La derivation `marqueur(ti) = ((ti & 31) << 19) | 0x40C00` est verifiee, et elle fait de
-   `ti=9` (`managed-player`) un HOMONYME de `ti=41` — l ambiguite se leve par la lecture du
-   sixieme bit d index a `marqueur - 1`, que l instrument fait desormais.
-3. Les sept mini-bobines NE PORTENT PAS de paquet delta : elles ne peuvent pas servir les passes
-   A a D, seulement la mesure 0.
-
-Ce qui reste ouvert : la POSITION lue apres le marqueur, et le CHAMP. C est exactement ce que
-l hypothese de l utilisateur designe comme le plus vraisemblable une fois le marqueur ecarte.
+Un seul point reste ouvert, et il est nomme : la position du champ d INDEX AUTEUR sur les builds
+anciens (§8, point 6). Elle ne bloque pas la publication du TYPE, qui est ce que M3-Q5 exige.

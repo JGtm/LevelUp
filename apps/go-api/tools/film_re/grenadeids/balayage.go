@@ -29,6 +29,13 @@ const (
 	MarqueurProduction SourceMarqueur = iota
 	// MarqueurRegistre : le marqueur derive de l archetype projectile LU DANS CE FILM.
 	MarqueurRegistre
+
+	// MarqueurImpair : le marqueur de production dont le DERNIER bit vaut 1 — c est-a-dire
+	// l amorce de 23 bits suivie d un champ d identifiant dont le bit de poids fort est a 1.
+	// Voir `.ai/V7.5/film_re/NOTE_3_3_IDENTIFIANTS_GRENADE_2026-09-16.md` §6 : sur les builds
+	// anciens le champ commence un bit plus tot, si bien que le vingt-quatrieme bit filtre par
+	// la production N EST PAS de l amorce mais le premier bit de l identifiant.
+	MarqueurImpair
 )
 
 // Options regle les trois passes.
@@ -36,6 +43,13 @@ type Options struct {
 	// Fenetre : demi-largeur, en bits, du balayage de decalage autour de la position de
 	// production (`marqueur + 24`). Zero = pas de passe A.
 	Fenetre int
+	// FenetreIndex : demi-largeur du balayage de la position du champ d index. 0 = pas de
+	// balayage.
+	FenetreIndex int
+	// Dump : identifiant dont on releve la suite de bits autour du marqueur ; 0 = aucun releve.
+	Dump uint32
+	// DumpMax : nombre maximal de tranches relevees par film.
+	DumpMax int
 	// Voisinage : distance maximale, en bits, pour rattacher une occurrence absolue au
 	// marqueur le plus proche. Au-dela, l occurrence est comptee « hors marqueur ».
 	Voisinage int
@@ -56,6 +70,11 @@ type Occurrence struct {
 	// bit etait hors du payload : seul `TypeIndex mod 32` est alors connu.
 	TypeIndex     int
 	TiIndetermine bool
+	// IndexAlt est le meme champ de 5 bits lu UN BIT PLUS TOT (+102). Si tout le record est
+	// decale d un bit sur les builds anciens, c est LUI qui porte l index joueur plausible.
+	IndexAlt int
+	// IDAlt est la valeur de 32 bits lue a +23 — la position des builds anciens.
+	IDAlt uint32
 }
 
 // Candidat est une valeur observee derriere un marqueur, et ce qu on en sait.
@@ -66,6 +85,9 @@ type Candidat struct {
 	Connu              bool
 	IndexMin, IndexMax int
 	IndexHors8         int
+	// AltMin / AltMax / AltHors8 : les memes bornes pour la lecture a +102.
+	AltMin, AltMax int
+	AltHors8       int
 }
 
 // Releve porte la mesure d UN film.
@@ -89,14 +111,22 @@ type Releve struct {
 	// FamilleRegistre : le meme histogramme pour le marqueur derive du registre, quand il
 	// differe de celui de production.
 	FamilleRegistre []Candidat
+	// FamilleImpair : l histogramme derriere le marqueur IMPAIR (amorce de 23 bits + bit de
+	// poids fort d un identifiant a 1). Sur ces occurrences, l identifiant se lit a +23.
+	FamilleImpair []Candidat
 	// ParTypeIndex[ti] : combien de marqueurs appartiennent REELLEMENT a l archetype ti. Sur le
 	// marqueur de production, `41` et `9` s y separent (decouverte D2 (3.3r)).
 	ParTypeIndex map[int]int
 	// FamilleParTi[ti] : l histogramme de la passe C restreint aux naissances de ti — ce qui
 	// suit une naissance de `managed-player` n a rien a faire dans la famille des grenades.
 	FamilleParTi map[int][]Candidat
+	// IndexParDecalage / LancersConfirmes : le balayage de la position du champ d index.
+	IndexParDecalage map[int]*CompteIndex
+	LancersConfirmes int
 	// TiIndetermines : marqueurs en tete de payload, dont le sixieme bit d index manque.
 	TiIndetermines int
+	// Tranches : les suites de bits relevees autour des marqueurs portant `Options.Dump`.
+	Tranches []Tranche
 	// Occurrences : les marqueurs, conserves pour la passe D (appariement a i22).
 	Occurrences []Occurrence
 	// PaquetsDelta et OctetsDelta disent la matiere balayee.
@@ -122,6 +152,7 @@ func Balayer(b *Bobine, opt Options) *Releve {
 	f := familles{
 		prod:     map[uint32]*Candidat{},
 		registre: map[uint32]*Candidat{},
+		impair:   map[uint32]*Candidat{},
 		parTi:    map[int]map[uint32]*Candidat{},
 	}
 	for _, c := range grammar.FilmChunkNumbers(b.Film()) {
@@ -141,6 +172,7 @@ func Balayer(b *Bobine, opt Options) *Releve {
 	}
 	r.Famille = trierFamille(f.prod)
 	r.FamilleRegistre = trierFamille(f.registre)
+	r.FamilleImpair = trierFamille(f.impair)
 	for ti, compte := range f.parTi {
 		r.FamilleParTi[ti] = trierFamille(compte)
 	}
@@ -150,8 +182,8 @@ func Balayer(b *Bobine, opt Options) *Releve {
 // familles porte les histogrammes de la passe C, pour tenir la regle des cinq parametres : les
 // deux par SOURCE de marqueur, et celui par ARCHETYPE reellement en train de naitre.
 type familles struct {
-	prod, registre map[uint32]*Candidat
-	parTi          map[int]map[uint32]*Candidat
+	prod, registre, impair map[uint32]*Candidat
+	parTi                  map[int]map[uint32]*Candidat
 }
 
 // noterTypeIndex compte le marqueur sous l archetype qui nait VRAIMENT derriere lui, et
@@ -182,6 +214,10 @@ func balayerPayload(pay []byte, b *Bobine, chunk int, p grammar.FilmPacket, r *R
 	marqueurs, absolus := lireLesDeuxSignaux(pay, b, chunk, p, r, f)
 	for _, m := range marqueurs {
 		compterDecalages(pay, m, opt.Fenetre, r)
+		balayerIndexAuteur(pay, m, opt.FenetreIndex, r)
+		if opt.Dump != 0 && m.ID == opt.Dump && len(r.Tranches) < opt.DumpMax {
+			r.Tranches = append(r.Tranches, releverTranche(pay, m))
+		}
 	}
 	rattacherAbsolus(marqueurs, absolus, opt.Voisinage, r)
 }
@@ -217,6 +253,12 @@ func lireLesDeuxSignaux(pay []byte, b *Bobine, chunk int, p grammar.FilmPacket, 
 			noterCandidat(f.registre, o)
 			noterTypeIndex(r, f, o)
 			marqueurs = append(marqueurs, o)
+		case m == b.MarqueurProd|1:
+			o := occurrenceAu(pay, bp, chunk, p, MarqueurImpair)
+			r.Marqueurs[MarqueurImpair]++
+			noterCandidat(f.impair, o)
+			noterTypeIndex(r, f, o)
+			marqueurs = append(marqueurs, o)
 		}
 	}
 	r.Occurrences = append(r.Occurrences, marqueurs...)
@@ -241,6 +283,8 @@ func occurrenceAu(pay []byte, bp, chunk int, p grammar.FilmPacket, src SourceMar
 		TimestampUS:   p.TimestampUS,
 		ID:            uint32(grammar.PeekBits(pay, bp+24, 32)),
 		Index:         int(grammar.PeekBits(pay, bp+24+32+47, 5)),
+		IndexAlt:      int(grammar.PeekBits(pay, bp+24+32+47-1, 5)),
+		IDAlt:         uint32(grammar.PeekBits(pay, bp+23, 32)),
 		TypeIndex:     ti,
 		TiIndetermine: indetermine,
 	}
@@ -333,7 +377,8 @@ func noterCandidat(compte map[uint32]*Candidat, o Occurrence) {
 	c := compte[o.ID]
 	if c == nil {
 		rang, connu := grammar.GrenadeRankOf(o.ID)
-		c = &Candidat{ID: o.ID, Rang: rang, Connu: connu, IndexMin: o.Index, IndexMax: o.Index}
+		c = &Candidat{ID: o.ID, Rang: rang, Connu: connu, IndexMin: o.Index, IndexMax: o.Index,
+			AltMin: o.IndexAlt, AltMax: o.IndexAlt}
 		compte[o.ID] = c
 	}
 	c.N++
@@ -345,6 +390,15 @@ func noterCandidat(compte map[uint32]*Candidat, o Occurrence) {
 	}
 	if o.Index > 7 {
 		c.IndexHors8++
+	}
+	if o.IndexAlt < c.AltMin {
+		c.AltMin = o.IndexAlt
+	}
+	if o.IndexAlt > c.AltMax {
+		c.AltMax = o.IndexAlt
+	}
+	if o.IndexAlt > 7 {
+		c.AltHors8++
 	}
 }
 
