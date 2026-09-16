@@ -31,6 +31,10 @@
 //
 // Les valeurs 3-5 utilisent l'algo ComputeDominanceFlag (analysis/comeback.go)
 // avec la sensibilité "standard", quelle que soit la source de courbe.
+//
+// Dernier recours, modes à objectifs seulement : si aucun badge n'est attribué,
+// SABORDAGE (6) / ABNÉGATION (7) confrontent le résultat à la domination aux frags
+// dans la durée (analysis.ComputeFragContrastDominance, timeline dédoublonnée).
 package sync
 
 import (
@@ -100,12 +104,85 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 	// CTF : la courbe de captures prime quand elle existe. Les autres modes à
 	// objectif (zone/hill/skull) marquent au tick, pas à l'event : leur courbe de
 	// score reste non décodée en live, ils passent directement au repli.
-	if objectiveevents.ObjectiveTypeOf(gameVariant) == objectiveevents.ObjectiveTypeFlag {
-		if flag, ok := objectiveCurveDominanceFlag(ctx, db, matchID, myTeamID, outcome); ok {
-			return flag, nil
+	objectiveType := objectiveevents.ObjectiveTypeOf(gameVariant)
+	flag, curveOK := 0, false
+	if objectiveType == objectiveevents.ObjectiveTypeFlag {
+		flag, curveOK = objectiveCurveDominanceFlag(ctx, db, matchID, myTeamID, outcome)
+	}
+	if !curveOK {
+		flag, err = computeHistoricalDominanceFlag(ctx, db, matchID, gameVariant, myTeamID, outcome)
+		if err != nil {
+			return 0, err
 		}
 	}
-	return computeHistoricalDominanceFlag(ctx, db, matchID, gameVariant, myTeamID, outcome)
+	// SABORDAGE / ABNÉGATION : modes à objectifs seulement (en Slayer frags et
+	// score se confondent), et seulement si aucun autre badge ne s'applique.
+	if flag == analysis.DominanceFlagNone && objectiveType != "" {
+		return fragContrastDominanceFlag(ctx, db, matchID, myTeamID, outcome), nil
+	}
+	return flag, nil
+}
+
+// fragContrastDominanceFlag applique SABORDAGE / ABNÉGATION depuis la timeline
+// de frags dédoublonnée et la durée du match. Limité aux 2-équipes (0/1). Sans
+// timeline (film non décodé, titre sans kill-feed) : pas de badge — les frags
+// finaux seuls ne distinguent rien (mesure du 2026-09-16, cf. analysis).
+func fragContrastDominanceFlag(ctx context.Context, db *sql.DB, matchID string, myTeamID, outcome int) int {
+	if myTeamID != 0 && myTeamID != 1 {
+		return analysis.DominanceFlagNone
+	}
+	events, err := loadDistinctTeamKillEvents(ctx, db, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: lecture de la timeline de frags",
+			"match_id", matchID, "err", err)
+		return analysis.DominanceFlagNone
+	}
+	if len(events) == 0 {
+		return analysis.DominanceFlagNone
+	}
+	var durationS sql.NullInt64
+	if err := db.QueryRowContext(ctx,
+		`SELECT duration_seconds FROM match_registry WHERE match_id = ? LIMIT 1`, matchID,
+	).Scan(&durationS); err != nil {
+		// La dernière frag sert de fin de match : dégradation tracée, pas bloquante.
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: lecture de la durée",
+			"match_id", matchID, "err", err)
+	}
+	return analysis.ComputeFragContrastDominance(events, durationS.Int64*1000, myTeamID, outcome)
+}
+
+// loadDistinctTeamKillEvents charge les frags des équipes 0/1, DÉDOUBLONNÉES sur
+// (xuid, time_ms) : highlight_events porte des doublons exacts sur certains
+// matchs (jusqu'à 2x le total officiel, mesuré le 2026-09-16 ; une fois
+// dédoublonnée la timeline égale SUM(kills) sur les 364 matchs à objectifs
+// mesurés). loadKillEventsWithTeam ne dédoublonne pas : écart relevé, non
+// traité ici (hors périmètre).
+func loadDistinctTeamKillEvents(ctx context.Context, db *sql.DB, matchID string) ([]analysis.KillEvent, error) {
+	rows, err := db.QueryContext(ctx, `
+SELECT DISTINCT he.xuid, he.time_ms, mp.team_id
+FROM highlight_events he
+JOIN match_participants mp
+    ON mp.match_id = he.match_id AND mp.xuid = he.xuid
+WHERE he.match_id = ?
+  AND he.event_type = 'kill'
+  AND he.xuid IS NOT NULL
+  AND mp.team_id IN (0, 1)
+ORDER BY he.time_ms ASC, he.xuid ASC`, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []analysis.KillEvent
+	for rows.Next() {
+		var xuid string
+		var e analysis.KillEvent
+		if err := rows.Scan(&xuid, &e.TimeMS, &e.TeamID); err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, rows.Err()
 }
 
 // computeHistoricalDominanceFlag applique le chemin historique : médaille

@@ -157,6 +157,8 @@ func TestBuildHomeNarrativeBadges_AllFlags(t *testing.T) {
 		homeDominanceRemontada:        "remontada",
 		homeDominanceDebacle:          "debacle",
 		homeDominanceCounterRemontada: "contre_remontada",
+		homeDominanceSabordage:        "sabordage",
+		homeDominanceAbnegation:       "abnegation",
 	}
 	for flag, want := range cases {
 		got := buildHomeNarrativeBadges(flag)

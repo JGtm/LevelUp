@@ -126,6 +126,10 @@ export const okabePalette: Palette = {
   'narrative-debacle-text':          '#FFFFFF', // blanc sur vermillion sombre (6.2) — noir tombe à 3.40
   'narrative-contre-remontada':      '#E69F00', // Orange (remplace cyan #33D6FF trop proche)
   'narrative-contre-remontada-text': '#000000', // noir sur orange
+  'narrative-sabordage':             '#0072B2', // Blue (seule teinte Okabe-Ito libre avec le jaune)
+  'narrative-sabordage-text':        '#FFFFFF',
+  'narrative-abnegation':            '#F0E442', // Yellow
+  'narrative-abnegation-text':       '#000000',
 
   // ── Badges encounter — axe blue/vermillion daltonisme-safe ────────────────
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts ;

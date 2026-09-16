@@ -120,6 +120,7 @@ var canonicalOrder = []string{
 	"rebuild_career_progression_defeat_art_corruption", // player
 	"repair_player_match_enrichment_primary_key",       // player
 	"repair_match_citations_primary_key",               // player
+	"player_dominance_flag_reset_none_v1",              // player (2026-09-16 : recalcul des flags 0 pour SABORDAGE/ABNÉGATION)
 	"create_personal_score_awards_player_v1",           // player (autorité de schéma unique 2026-08-05 : table ex-Ensure-only)
 	"create_player_csr_snapshots_player_v1",            // player (idem — cf. steps_player_schema_authority.go)
 	"drop_career_xuid_art_index_v1",                    // player (DERNIER du bloc : doit suivre tout créateur de l'index, dont la baseline)
