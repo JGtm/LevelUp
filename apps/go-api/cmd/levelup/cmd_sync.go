@@ -57,26 +57,7 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("run delta: %w", err)
 	}
 
-	postSync := false
-	careerSynced := false
-	if syncResult.PostSync != nil {
-		postSync = true
-		careerSynced = syncResult.PostSync.CareerSynced
-	}
-	fmt.Printf(
-		"sync delta OK: gamertag=%s inserted=%d skipped=%d status=%s post_sync=%t career_synced=%t duration=%.2fs\n",
-		player.Gamertag,
-		syncResult.MatchesInserted,
-		syncResult.MatchesSkipped,
-		syncResult.Status(),
-		postSync,
-		careerSynced,
-		syncResult.DurationSeconds,
-	)
-	if len(syncResult.Warnings) > 0 {
-		fmt.Printf("warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
-	}
-	return nil
+	return reportSyncResult(os.Stdout, "delta", player.Gamertag, &syncResult)
 }
 
 func runSyncDeltaAll(
@@ -140,20 +121,13 @@ func runSyncDeltaAll(
 			continue
 		}
 
-		synced++
-		careerSynced := syncResult.PostSync != nil && syncResult.PostSync.CareerSynced
-		fmt.Printf(
-			"sync delta OK: gamertag=%s inserted=%d skipped=%d status=%s career_synced=%t duration=%.2fs (pool)\n",
-			player.Gamertag,
-			syncResult.MatchesInserted,
-			syncResult.MatchesSkipped,
-			syncResult.Status(),
-			careerSynced,
-			syncResult.DurationSeconds,
-		)
-		if len(syncResult.Warnings) > 0 {
-			fmt.Printf("  warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
+		// Un joueur dont la passe s'est arrêtée sur une erreur compte dans `failed` :
+		// le compte rendu du lot doit dire la même chose que le verdict par joueur.
+		if reportErr := reportSyncResult(os.Stdout, "delta", player.Gamertag, &syncResult); reportErr != nil {
+			failed++
+			continue
 		}
+		synced++
 	}
 
 	fmt.Printf("sync delta batch: total=%d synced=%d skipped=%d failed=%d\n", total, synced, skipped, failed)
@@ -206,26 +180,7 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("run full: %w", err)
 	}
 
-	postSync := false
-	careerSynced := false
-	if syncResult.PostSync != nil {
-		postSync = true
-		careerSynced = syncResult.PostSync.CareerSynced
-	}
-	fmt.Printf(
-		"sync full OK: gamertag=%s inserted=%d skipped=%d status=%s post_sync=%t career_synced=%t duration=%.2fs\n",
-		player.Gamertag,
-		syncResult.MatchesInserted,
-		syncResult.MatchesSkipped,
-		syncResult.Status(),
-		postSync,
-		careerSynced,
-		syncResult.DurationSeconds,
-	)
-	if len(syncResult.Warnings) > 0 {
-		fmt.Printf("warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
-	}
-	return nil
+	return reportSyncResult(os.Stdout, "full", player.Gamertag, &syncResult)
 }
 
 func runSyncFullAll(
@@ -280,20 +235,12 @@ func runSyncFullAll(
 			continue
 		}
 
-		synced++
-		careerSynced := syncResult.PostSync != nil && syncResult.PostSync.CareerSynced
-		fmt.Printf(
-			"sync full OK: gamertag=%s inserted=%d skipped=%d status=%s career_synced=%t duration=%.2fs (pool)\n",
-			player.Gamertag,
-			syncResult.MatchesInserted,
-			syncResult.MatchesSkipped,
-			syncResult.Status(),
-			careerSynced,
-			syncResult.DurationSeconds,
-		)
-		if len(syncResult.Warnings) > 0 {
-			fmt.Printf("  warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
+		// Idem `--all` delta : une passe au statut non-`success` compte dans `failed`.
+		if reportErr := reportSyncResult(os.Stdout, "full", player.Gamertag, &syncResult); reportErr != nil {
+			failed++
+			continue
 		}
+		synced++
 	}
 
 	fmt.Printf("sync full batch: total=%d synced=%d skipped=%d failed=%d\n", total, synced, skipped, failed)

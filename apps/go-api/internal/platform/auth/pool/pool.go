@@ -226,6 +226,14 @@ func (p *poolImpl) Acquire(ctx context.Context, policy AcquirePolicy, pinnedGame
 	}
 }
 
+// ErrNoHealthySlot — aucun slot sain n'est disponible pour PolicyAnyPublic : tous les
+// tokens du parc sont soit malsains (401/403 en attente de refresh), soit en cooldown
+// AIMD après un 429. Sentinelle typée (et non message nu) parce que l'appelant en tire
+// une DÉCISION : la pagination d'historique attend le cooldown puis rejoue la page au
+// lieu d'abandonner la passe (D1, plan robustesse 2026-09-16). Le texte est inchangé :
+// des tests et des journaux le citent.
+var ErrNoHealthySlot = errors.New("pool: aucun slot sain disponible (PolicyAnyPublic)")
+
 // acquireAnyPublic : round-robin parmi les slots sains.
 func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 	maxRetries := len(p.slots) // Éviter boucle infinie si tous les slots sont malsains.
@@ -266,7 +274,7 @@ func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 	}
 
 	// Tous les slots essayés sont malsains.
-	return nil, fmt.Errorf("pool: aucun slot sain disponible (PolicyAnyPublic)")
+	return nil, ErrNoHealthySlot
 }
 
 // acquirePinnedPlayer : lookup par gamertag, retourne ErrNoTokenForPlayer si absent ou malsain.

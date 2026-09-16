@@ -142,10 +142,10 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
 
 ## 4. Étape 1 — Verdict fidèle et rejeu du 429 (C-A, D1 ; moyen, cœur du plan)
 
-- [ ] 1.1 `internal/platform/auth/pool/pool.go:269` : `var ErrNoHealthySlot = errors.New("pool: aucun slot sain disponible (PolicyAnyPublic)")`,
+- [x] 1.1 `internal/platform/auth/pool/pool.go:269` : `var ErrNoHealthySlot = errors.New("pool: aucun slot sain disponible (PolicyAnyPublic)")`,
       rendu par `acquireAnyPublic` ; `pooled_client.go:146-162` `doPublic` : `fmt.Errorf("pooled: Acquire failed: %w", err)`
       (vérifier que c'est déjà `%w`). Test : `errors.Is(err, pool.ErrNoHealthySlot)` traverse `doPublic`.
-- [ ] 1.2 Nouveau fichier `internal/sync/engine_history_retry.go` (le fichier `engine.go` dépasse
+- [x] 1.2 Nouveau fichier `internal/sync/engine_history_retry.go` (le fichier `engine.go` dépasse
       500 L : ne pas l'accroître) : `var historyRetrySleep = time.Sleep` ;
       `func (e *SyncEngine) fetchHistoryPage(ctx context.Context, in *historyPaginationInputs, start int) ([]domain.MatchHistoryEntry, error)`
       (≤ 5 paramètres — `historyPaginationInputs` existe, `engine.go:206-213` ; vérifier le type
@@ -154,22 +154,22 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
       puis rejeu, `cooldown` = `pool.GlobalCooldown` si accessible depuis le client (sinon 30 s
       constante nommée) ; autre erreur → retour immédiat. `slog.WarnContext` à chaque rejeu
       (`start`, `attempt`, `cause`).
-- [ ] 1.3 `engine.go:245-251` : appel remplacé par `fetchHistoryPage` ; en cas d'erreur définitive
+- [x] 1.3 `engine.go:245-251` : appel remplacé par `fetchHistoryPage` ; en cas d'erreur définitive
       `result.AddError(fmt.Sprintf("historique interrompu à start=%d: %v", start, err))` puis
       `break`. `SyncResult.Status()` non modifié.
-- [ ] 1.4 `cmd/levelup/cmd_sync.go` : fonction pure `reportSyncResult(w io.Writer, mode string, r *domain.SyncResult) error`
+- [x] 1.4 `cmd/levelup/cmd_sync.go` : fonction pure `reportSyncResult(w io.Writer, mode string, r *domain.SyncResult) error`
       dans `cmd/levelup/sync_report.go` : imprime `sync <mode> <STATUT>: …` (+ `first_error=` si
       `Errors` non vide) et rend une erreur quand `r.Status() != "success"`. Les quatre runners
       (`runSyncDelta`, `runSyncFull`, `runSyncDeltaAll`, `runSyncFullAll`) l'appellent ; en `--all`
       un joueur en `failure` compte dans `failed`.
-- [ ] 1.5 Tests (aucun sommeil réel : `historyRetrySleep` remplacé dans le test, durées demandées
+- [x] 1.5 Tests (aucun sommeil réel : `historyRetrySleep` remplacé dans le test, durées demandées
       enregistrées) : `engine_history_retry_test.go` — (a) 429 puis 200 → page obtenue, 0 attente ;
       (b) `ErrNoHealthySlot` puis 200 → une attente = `min(cooldown, 60 s)`, page obtenue ; (c) 429
       × 3 → erreur, `AddError`, `Status()=failure` si rien inséré (via la boucle de pagination avec
       client factice) ; (d) 500 → erreur immédiate, 0 rejeu, 0 attente ; (e) 503 → pas rejoué ici.
       `sync_report_test.go` — `success` → nil ; `failure` → erreur et texte contenant
       `first_error`. Chaque test rougit si la correction est retirée (le noter dans le test).
-- [ ] 1.6 Baseline : paires renommées/supprimées retirées (commande du contrat) — a priori aucune.
+- [x] 1.6 Baseline : paires renommées/supprimées retirées (commande du contrat) — a priori aucune.
 
 **Gate G1** : `go test ./internal/sync/ -run 'History|Pagin|Retry' -count=1 -timeout 30m` → 0 ;
 `go test ./cmd/levelup/ ./internal/platform/auth/pool/ -count=1` → 0 ; `go vet ./internal/sync/ ./cmd/levelup/ ./internal/platform/auth/pool/` → 0 ;
@@ -321,3 +321,38 @@ Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire
   `haloclient_reexport.go:23`) et NON `[]domain.MatchHistoryEntry` comme écrit en 1.2 —
   variante appliquée à l'écriture du code ; l'interface `pool.Pool` n'expose PAS `GlobalCooldown`
   (types.go:118-175) → la constante nommée prévue par 1.2 sera utilisée.
+
+### Étape 1 — Verdict fidèle et rejeu du 429 — CLOSE le 2026-09-16 22:10
+
+- Items : 1.1 `[x]`, 1.2 `[x]`, 1.3 `[x]`, 1.4 `[x]`, 1.5 `[x]`, 1.6 `[x]`.
+- Gate G1 (codes de sortie vérifiés) :
+  - `go test ./internal/sync/ -run 'History|Pagin|Retry' -count=1 -timeout 30m` → 0
+    (20 tests exécutés, dont les 5 neufs) ;
+  - `go test ./cmd/levelup/ ./internal/platform/auth/pool/ -count=1` → 0 (2 paquets `ok`) ;
+  - `go vet ./internal/sync/ ./cmd/levelup/ ./internal/platform/auth/pool/` → 0 ;
+  - `wc -l internal/sync/engine.go` = 897 = valeur de base (`ab7fc5695`) ;
+  - en plus du gate : `go test ./internal/sync/ -count=1 -timeout 30m` → 0 (66,7 s), pour
+    prouver qu'aucun test existant ne dépendait de l'ancien `AddWarning`.
+- Vérification par MUTATION (chaque correction retirée fait rougir son test, puis restaurée) :
+  - 429 non rejoué → `TestFetchHistoryPage_429PuisSucces_RejoueSansAttendre` et
+    `TestPaginateAndPersistHistory_429Persistant_ErreurEtStatutFailure` FAIL ;
+  - `AddError` redevenu `AddWarning` → `TestPaginateAndPersistHistory_429Persistant_*` FAIL ;
+  - verdict CLI toujours `nil` → `TestReportSyncResult_Failure_*` et `_PartialSuccess_*` FAIL.
+- Écarts par rapport à la lettre du plan (assumés, vérifiés sur pièces) :
+  1. `fetchHistoryPage` rend `[]MatchHistoryEntry` (alias `haloclient.MatchHistoryEntry`) et non
+     `[]domain.MatchHistoryEntry` : c'est le type réellement rendu par `HaloClient.GetMatchHistory`.
+  2. L'attente du cas « aucun slot sain » vient de deux constantes nommées
+     (`historyNoSlotCooldown` = 30 s, défaut de `PoolOptions.GlobalCooldown`, et
+     `historyNoSlotWaitCap` = 60 s) : l'interface `pool.Pool` n'expose PAS la valeur configurée,
+     la variante prévue par 1.2 s'applique.
+  3. `reportSyncResult(w io.Writer, mode, gamertag string, r *domain.SyncResult) error` prend
+     QUATRE paramètres (le plan en écrivait trois) : `domain.SyncResult` ne porte pas le
+     gamertag, et les variantes `--all` émettent une ligne par joueur — sans ce paramètre le
+     compte rendu de lot perdait l'identité du joueur. Toujours pure, ≤ 5 paramètres.
+  4. Les quatre runners passent `&syncResult` : `RunDelta`/`RunFull` rendent une VALEUR.
+- Effet CLI : la ligne devient `sync <mode> SUCCESS|PARTIAL_SUCCESS|FAILURE: gamertag=… status=…`
+  (+ `errors=N first_error=…`), et le code de sortie est non nul dès que le statut n'est pas
+  `success` ; en `--all`, un joueur non-`success` compte désormais dans `failed`.
+- Baseline de tests : aucune paire `Package::Test` retirée (commande du préambule exécutée,
+  sortie VIDE ; aucun test renommé ni supprimé — 6 tests ajoutés).
+- Découvertes hors périmètre : aucune nouvelle.
