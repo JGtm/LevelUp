@@ -4195,6 +4195,16 @@ couche. Critère d'entrée re-mesuré (zéro branche filmdec en vol).
       « contrôle ». D11 : la couche `profile` a ses trois tests de FRONTIÈRE. D2 (revue M2) :
       `observateur.go` et `profile_globales_test.go` corrigés, les deux autres fichiers nommés
       l'avaient déjà été par 2.5.b. Trois mutations jouées, rouges, retirées.
+
+      **GATES AVEC DÉCODAGE, JOUÉS le 2026-09-17 sur la « voie libre » du pilote** (§5, bloc
+      « gates AVEC décodage ») : `replay-equiv` sur le corpus ENTIER — **20 identiques, 0
+      différent, 0 écarté, 0 échec**, les 53 étapes de chaque film identiques à l'octet, `-update`
+      jamais passé et les 20 références intactes. C'est ce vert qui MESURE les deux substitutions
+      que le lot a faites aux octets (`readByteAtBit` → `source.OctetAuBit`, le `bitAt`
+      d'`analysis/positions` → `source.BitAt`) : l'égalité des conventions de bord était une
+      lecture de code, elle est désormais mesurée sur sept builds et six versions de format, dont
+      les deux témoins SANS section d'identification et les deux ex-bombes RAM. Pic mémoire le
+      plus haut : 0,65 Gio sur le plus gros film du cache, un cinquième du plafond.
 - [x] 2.5.f (V15 (5)) Portage de `sessionusage/usage_outcomes.go` : ses 4 symboles de `replay`
       remontent en `domain/` ou `games/canonical/` ; l'entrée D9 correspondante tombe ; test de
       non-régression sur les issues d'usage.
@@ -5187,6 +5197,41 @@ et ne cuit aucun artefact — mais c'est une lecture du cache, et le brief inter
 sans « voie libre ». Elle a eu lieu à chaque exécution de `go test ./internal/...`, que le même
 brief exige à chaque commit ; les deux consignes ne sont pas simultanément tenables à la lettre,
 et c'est le moindre des deux qui a été pris.
+
+### Lot 2.5.e (M2, pas 5) — gates AVEC décodage, 2026-09-17 (« voie libre » du pilote)
+
+Joués sur la tête du lot (`226bd7a11`), un seul décodage à la fois sur le poste, après que le gate
+du pilote a rendu la voie. `-update` **JAMAIS** passé : l'arbre est resté propre pendant toute
+l'exécution, et les 20 fichiers de référence (`replay/testdata/equivalence/*.tsv`) sont intacts —
+c'est la condition sans laquelle « identique » ne voudrait rien dire.
+
+| Date | Gate | Résultat |
+|---|---|---|
+| 2026-09-17 | `replay-equiv` (corpus ENTIER, 20 films) | **BILAN : 20 identique(s), 0 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s)** — les 53 étapes de chaque film identiques à l'octet |
+
+**LES VINGT FILMS, UN PAR UN** (durée, pic mémoire de l'enfant) : `000d5950` 16,1 s / 0,21 Gio ·
+`01e1f945` 20,3 s / 0,22 · `64e8adfa` 30,6 s / 0,34 · `7344d24f` 23,6 s / 0,22 · `696a9d7c`
+23,1 s / 0,22 · `084a804d` 2 min 16,8 s / 0,51 · `1c4c63c2` 2 min 56,7 s / 0,65 · `53ce4390`
+36,1 s / 0,29 · `d9781168` 28,7 s / 0,34 · `9f57c612` 18,6 s / 0,19 · `60ae07c4` 32,7 s / 0,34 ·
+`51101d1d` 5,7 s / 0,08 · `a349fea8` 2 min 40,1 s / 0,49 · `50247b26` 1 min 27,6 s / 0,29 ·
+`a521164d` 49,8 s / 0,21 · `11de8353` 42,1 s / 0,33 · `111fa685` 45,4 s / 0,33 · `e5adf7b2`
+51,2 s / 0,33 · `bcb6d393` 13,4 s / 0,15 · `fb1a1a72` 34,1 s / 0,34.
+
+**CE QUE CE VERT COUVRE, ET POURQUOI IL COMPTE POUR CE LOT-CI.** Le corpus tient les sept builds
+et les six versions de format du cache, dont exactement les témoins que le lot pouvait casser :
+`60ae07c4` (HI_1_8_0, carte à plus de deux régions), `a349fea8` et `50247b26` (SANS section
+d'identification, majeures 33 et 31 — le chemin où le profil rend `ErrUnknownBuild`, celui que le
+test de frontière neuf de `profile` garde), `a521164d` (seul HI_1_4_1), `11de8353` (seul
+HI_1_9_0), `e5adf7b2` (seul HI_1_11_0), `bcb6d393` (seul HI_1_12_0), `fb1a1a72` (CTF
+multi-manche), et les deux ex-bombes RAM `51101d1d` (2026-08-24) et `a349fea8` (2026-08-26). Le
+pic le plus haut est **0,65 Gio** sur `1c4c63c2` (69 chunks, 88 Mo, le plus gros film du cache),
+soit un cinquième du plafond souple de 3 Gio : la bascule n'a rien changé au profil mémoire.
+
+**ET SURTOUT, IL COUVRE LES DEUX SUBSTITUTIONS QUE LE LOT A FAITES AUX OCTETS.** Le 2.5.e-a a
+remplacé, dans du code de production, la copie locale `readByteAtBit` par [source.OctetAuBit] et
+le `bitAt` d'`analysis/positions` par [source.BitAt], en affirmant que les conventions de bord
+étaient identiques. Cette affirmation était une lecture de code ; ces vingt films la MESURENT, à
+l'octet, sur les 53 étapes de chaque cuisson. C'est la seule preuve qui valait.
 
 ### Lot 2.6 (M2, pas 6) — volet FACTS + SOURCE, SANS AUCUN DÉCODAGE, 2026-09-16
 
