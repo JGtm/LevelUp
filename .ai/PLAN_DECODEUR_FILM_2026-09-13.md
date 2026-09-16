@@ -4057,14 +4057,35 @@ défont par `git revert` ; avant la recuisson, tag git du binaire précédent et
 - [ ] 3.1.1 Politique active en production : `ErrUnknownBuild` → film mis de côté par
       `killcollector` et `replaybuild` (journal `slog.WarnContext` + expvar par build), jamais un
       décodage au profil précédent (S7) ; test unitaire nommé.
-- [ ] 3.1.2 Données de profil dans `data/titles/halo_infinite/reference/film_profiles.json`
+- [x] 3.1.2 Données de profil dans `data/titles/halo_infinite/reference/film_profiles.json`
       (PathResolver, D12) : ce qui se dérive des fichiers du jeu (bornes de carte, déjà par
       `cmd/mapquant-build`) est produit par l'outil ; ce qui vient de l'exe (largeurs d'état,
       implantations) est une entrée de données avec provenance Ghidra (fonction, date), statut
       `présumé` / `prouvé` ; test `gamefiles` « catalogue commis = catalogue régénéré » pour la
       part fabriquée ; ratchet `no_runtime_versioned_catalog_write_test` étendu.
-- [ ] 3.1.3 Procédure d'ajout d'un build (`docs/RUNBOOK`, EN) : outil, témoin au corpus, entrée
-      présumée puis prouvée.
+      **FAIT (2026-09-16, `eb85eb6f4` + `60451fe01` + `5a32b580c`).** 23 entrées, une par ligne de la table du
+      lot 2.1 (`filmdec/profile_table.go`), mêmes clés / valeurs / provenances / preuves / dates ;
+      correspondance des statuts : `relue` = prouvé chez l'écrivain (6 lignes), `mesuree` =
+      prouvé sur témoin par oracle interne (11), `presumee` = présumé (6). Chemin
+      `title.PathResolver.FilmProfilesPath`. Part DÉRIVÉE : le profil ne recopie PAS les bornes
+      (elles restent dans `map_quant_bounds.json`), il en porte l'empreinte structurelle
+      (79 cartes, sha256 `e77e4ffc…`) produite par `cmd/film-profiles-build` — outil NEUF, et non
+      une extension de `cmd/mapquant-build`, qui dérive les `.module` et n'a rien à voir avec les
+      trois clés du film. Lecteur hors du film : `internal/games/halo_infinite/filmprofile/`
+      (aucun import de `film/...`, y compris dans ses tests — la conformité se prouve par lecture
+      du fichier Go). Tests : `TestCatalogueConformeALaTableDuLot21`,
+      `TestCatalogueCommisEstValide`, `TestBlocDeriveSolidaireDesBornesCommises`,
+      `TestEmpreinteDesBornesIgnoreLaTraceDeFabrication`, `TestCatalogueCommisEgaleCatalogueRegenere`
+      (`gamefiles`), plus la grammaire des clés et 15 cas de refus. Ratchet étendu : il garde
+      désormais N catalogues (`chemsVersionnes`, `fichiersVersionnesGardes`), le profil étant le
+      cas STRICT (aucun overlay) ; 4 cas de morsure ajoutés.
+- [x] 3.1.3 Procédure d'ajout d'un build (`docs/RUNBOOK`, EN) : outil, témoin au corpus, entrée
+      présumée puis prouvée. **FAIT (2026-09-16).** `docs/RUNBOOK_FILM_PROFILES.md` (EN-only) :
+      les quatre formes de clé, les deux natures d'entrée, les trois provenances et ce que
+      `proof` doit contenir, la procédure en quatre temps (témoin au corpus → ligne `presumee` →
+      promotion `relue` / `mesuree` → chaîne + gates), le tableau de ce que chaque gate prouve, et
+      ce que l'outil NE fait pas. Commande référencée dans `docs/COMMANDS.md` ET `docs/FR/COMMANDS.md`
+      (règle 15 : guide majeur bilingue, même PR).
 
 #### Lot 3.2 (P1) — Le registre par build — M, high
 
@@ -4418,6 +4439,11 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-16 | 2.7 (grammaire) | **D2 (2.7g) — `(e chunk00Error) Error()` fait 101 lignes** (`filmdec/film_identity.go`), au-dela du seuil de 80. Releve par le meme instrument que les autres fonctions du lot. NON TRAITE : `film_identity.go` est l'un des cinq fichiers que le lot 2.1 (profil) tenait EN MEME TEMPS, le partage des fichiers de la vague l'interdisait. | le lot 2.1, ou le premier lot qui rouvre `film_identity.go` |
 | 2026-09-16 | 2.7 (grammaire) | **D3 (2.7g) — deux constats `unparam` latents du paquet, reveles par le ratchet de lint sans appartenir au lot** : `consume140c1e9d4 - w always receives 12` (`components_biped_ability.go`) et `consumeDynPrecVec3 - mag always receives 19` (`components_movement.go`). Ils n'apparaissent PAS contre la base du lot (`--new-from-rev=f950b7179` : 0 issue) mais apparaissent contre `origin/main`, parce que ces deux fichiers sont touches par la vague. NON TRAITE : retirer un parametre est un changement de signature, pas un deplacement. | le lot qui rouvre ces deux deserialiseurs (3.6) |
 | 2026-09-16 | 2.7 (grammaire) | **D4 (2.7g) — un lot de DEPLACEMENT PUR paie la dette `goconst` latente du paquet, et c'est structurel.** Le gate de lint est un ratchet `--new-from-merge-base=origin/main` : deplacer une ligne la rend NEUVE, donc un constat que le ratchet cachait depuis des mois se met a rougir sans qu'une seule ligne ait change de sens. Mesure : 10 constats `goconst` sur les seules etiquettes de composant deplacees. Traites DANS le lot (six etiquettes nommees dans le bloc de `registry.go`, copies du paquet migrees — regle 6), mais le cout est a connaitre avant le volet 2.7p, qui deplacera autant de lignes cote publication. | methode : a citer dans le brief du lot 2.7p |
+
+| 2026-09-16 | 3.1.2 (données) | **D1 (3.1.2) — `make go-api-test-gamefiles` NE JOUE QUE `./internal/himap/` : les tests `gamefiles` hors de ce paquet ne sont joués par AUCUNE commande du dépôt.** Mesure sur pièces : la cible du `Makefile` est `go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v`. Trois fichiers tagués vivent ailleurs — `cmd/mapstruct-build/equivalence_gamefiles_test.go`, `cmd/mapfond-build/` et, depuis ce lot, `cmd/film-profiles-build/regeneration_gamefiles_test.go`. Le ratchet `archlint.TestCorpusGamefilesEstTague` garantit qu'ils portent le tag, personne ne garantit qu'ils TOURNENT. Antérieur à ce lot (les deux premiers datent du 2026-09-05). NON TRAITÉ (`Makefile` hors frontière de fichiers du lot). | élargir la cible à `./internal/himap/ ./cmd/...` au premier lot qui touche le `Makefile` ; d'ici là, la commande ciblée est écrite dans `docs/COMMANDS.md` et dans le runbook |
+| 2026-09-16 | 3.1.2 (données) | **D2 (3.1.2) — `map_quant_bounds.json`, fichier VERSIONNÉ, porte dans son champ `source` le chemin d'installation ABSOLU de la machine qui l'a produit.** Mesure : le fichier commis cite `D:\SteamLibrary\steamapps\common\Halo Infinite\deploy\ds\levels\multi`. Conséquence : deux postes qui régénèrent le MÊME catalogue produisent deux fichiers différents alors qu'aucune borne n'a bougé — un gate « commis = régénéré » à l'octet serait rouge pour une trace de fabrication. Contourné ici (l'empreinte du profil porte sur `maps` seul et ignore `source`, `TestEmpreinteDesBornesIgnoreLaTraceDeFabrication`), la CAUSE reste. NON TRAITÉ (`cmd/mapquant-build` hors périmètre du volet données). | au prochain passage sur `cmd/mapquant-build` : `source` décrit la MÉTHODE (« world bounds x/y/z du tag sbsp de la région 0 »), pas le chemin de la machine |
+| 2026-09-16 | 3.1.2 (données) | **D3 (3.1.2) — une valeur de profil INDÉTERMINÉE s'écrit aujourd'hui en prose, pas en donnée.** La ligne `format=20,21,24,25` / `MPP` de la table du lot 2.1 porte `Valeur = "INDETERMINEE (aucune largeur posee)"`, avec provenance `mesuree` et une preuve qui dit que les deux oracles se contredisent. La validation du catalogue exige un `value` NON VIDE : l'absence de valeur se dit donc par une chaîne, qu'aucun consommateur ne peut distinguer d'une valeur posée sans la relire. C'est sans effet aujourd'hui (personne ne lit encore le fichier) mais c'est une décision de schéma que 3.1.1 devra trancher. NON TRAITÉ. | lot 3.1.1 : soit un statut `indeterminee` au même rang que les trois provenances, soit un champ `value` absent que la validation autorise quand la preuve l'explique |
+| 2026-09-16 | 3.1.2 (données) | **D4 (3.1.2) — les outils de fabrication de catalogues ne trouvent PAS la racine du dépôt depuis un worktree.** `title.FindRepoRoot` cherche `db_profiles.json`, gitignoré, qui n'existe que dans le checkout principal : `go run ./cmd/film-profiles-build` sort en 1 (sortie collée au §5) tant que `LEVELUP_REPO_ROOT` n'est pas posé. Le défaut est celui de TOUS les outils de catalogue (`mapquant-build`, `replay-build`…), pas de ce lot ; le plan §2.2 interdit par ailleurs de pointer cette variable sur le checkout principal. Contourné par la documentation (runbook §4.4, `docs/COMMANDS.md`) et par les drapeaux `--out` / `--bounds` que le test `gamefiles` emploie. NON TRAITÉ. | au prochain passage sur `title/repo_root.go` : un marqueur VERSIONNÉ (`config/titles/`) comme celui de `testutil.RepoRoot`, au lieu d'un fichier gitignoré |
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
@@ -5364,6 +5390,33 @@ indépendants.
 | 2026-09-17 | 2.1 | — | **`-update` NON JOUÉ**, délibérément | Trois raisons : (1) la divergence n'est pas produite par ce lot — la re-figer absorberait le changement d'un AUTRE lot dans mon commit ; (2) le pilote a écrit noir sur blanc que le re-figeage est **unique, au gate de fin de vague** ; (3) l'intégration a bougé (vague 2 + schéma 60), une référence re-figée sur ma base serait périmée à la fusion. D4 dit « jamais re-figer une différence » : ici il n'y en a aucune à moi |
 | 2026-09-17 | 2.1 (régime complet) | `512305a54` | `go run ./cmd/replay-corpus-gate --base=f950b7179 --parc-root …LevelUp-go-migration --source-root …-decfilm-21 --json <fichier>` (SANS `--manifest`) | **code 0. 14 témoins sur 14 `ok` : 0 gain, 0 perte, 0 changement**, schéma 59 des deux côtés partout. Vérifié au JSON, pas seulement au tableau : 14 entrées, `gains`/`pertes`/`changements` toutes vides, aucun témoin hors `ok`. Les 14 familles : `ctf_mono_manche` 11,62 s · `ctf_multi_manche` 29,81 s · `oddball` 23,99 s · `assaut_bombe` 14,24 s · `slayer` 15,86 s · `deux_manches` 18,11 s · `vehicules` 2 min 27,77 s · `region_index_2_bits` 13,54 s · `version_39` 37,28 s · `version_40_build_1_11` 41,85 s · `version_37` 27,60 s · `version_33_sans_identification` 2 min 18,77 s · `vehicules_v41_utilisateur` 1 min 0,74 s · `equipement_origine_utilisateur` 2 min 32,68 s |
 | 2026-09-17 | 2.1 | — | contrôle de cohérence des deux gates | Le corpus gate CUIT les deux côtés (base `f950b7179` et HEAD) et les compare entre eux : il ne dépend d'aucune référence versionnée. Son zéro absolu et l'égalité base/branche de l'équivalence disent la MÊME chose par deux chemins indépendants — **le lot ne change aucun octet cuit**. C'est ce qui rend l'écart de l'étape `killsource` imputable à la référence, et à elle seule |
+
+### Lot 3.1 (M3) — volet DONNÉES (3.1.2 et 3.1.3), gates SANS décodage, 2026-09-16
+
+Aucun décodage de film : le lot ne touche aucun paquet du film. `TestGrammarRevSuitLaGrammaire`
+est joué comme témoin de non-intrusion (aucun paquet haché modifié).
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-16 | 3.1.2 (mesure AVANT) | `79a3f7eb7` | `gofmt -l ./internal ./cmd` ; `go test ./internal/archlint/ -count=1` | sortie vide ; `ok levelup/go-api/internal/archlint 16.571s` — base saine avant le premier changement |
+| 2026-09-16 | 3.1.2 (mesure AVANT) | `79a3f7eb7` | `go test ./…/filmdec/ -run TestGrammarRevSuitLaGrammaire -count=1` | `ok … 0.070s` |
+| 2026-09-16 | 3.1.2 (mesure AVANT) | `79a3f7eb7` | `CGO_ENABLED=1 go run ./cmd/mapquant-build --out <scratchpad>` puis `diff` avec le fichier commis | **`catalogue écrit … cartes=79`, 8,436 s** ; `diff` → **IDENTIQUE**. Le catalogue de bornes commis EST celui du jeu installé : la part dérivée du profil part d'une base prouvée |
+| 2026-09-16 | 3.1.2 | `eb85eb6f4` | `gofmt -l ./internal ./cmd` | sortie vide |
+| 2026-09-16 | 3.1.2 | `eb85eb6f4` | `go vet ./internal/games/halo_infinite/filmprofile/ ./cmd/film-profiles-build/ ./internal/domain/title/` | sortie vide |
+| 2026-09-16 | 3.1.2 | `eb85eb6f4` | `go test ./internal/games/halo_infinite/filmprofile/ -count=1` | `ok … 0.360s` |
+| 2026-09-16 | 3.1.2 | `eb85eb6f4` | `go test ./internal/archlint/ ./internal/domain/title/ -count=1` | `ok … archlint 17.165s` ; `ok … domain/title 6.694s` |
+| 2026-09-16 | 3.1.2 | `eb85eb6f4` | `golangci-lint run --timeout 5m` sur `filmprofile/…`, `cmd/film-profiles-build/…`, `domain/title/…` | **0 issues**, 5,4 s |
+| 2026-09-16 | 3.1.2 (MORSURE) | `eb85eb6f4` | `"value": "1852"` → `"1853"` dans le catalogue commis, puis `go test -run TestCatalogueConformeALaTableDuLot21` | **FAIL** sur `entries[2]` ET `entries[3]`, les deux lignes citées valeur contre valeur. Arbre restauré, test revert au vert |
+| 2026-09-16 | 3.1.2 | `60451fe01` | `CGO_ENABLED=1 go test -tags=gamefiles ./cmd/film-profiles-build/ -count=1 -v` | `--- PASS: TestCatalogueCommisEgaleCatalogueRegenere (1.70s)` — bornes régénérées depuis les `.module`, empreinte égale, puis `--check` du catalogue des profils à l'octet |
+| 2026-09-16 | 3.1.2 (MORSURE) | `60451fe01` | `"maps": 79` → `78` dans le catalogue commis, puis le même test `gamefiles` | **FAIL** : `… n est PAS le fichier que cet outil produit (bornes : 79 cartes, empreinte e77e4ffc…)`. Arbre restauré |
+| 2026-09-16 | 3.1.2 | `60451fe01` | `go test ./internal/archlint/ -count=1 -run 'Catalogue\|Ratchet\|Gamefiles\|Tague\|Installation' -v` | tous verts, dont les **12 cas de morsure** du ratchet (8 refusés, 4 acceptés) et `TestCorpusGamefilesEstTague` (le nouveau fichier tagué entre au corpus) |
+| 2026-09-16 | 3.1.2 | `60451fe01` | `go test ./internal/archlint/ ./…/filmprofile/ -count=1` ; `golangci-lint run` sur `archlint/…` et `cmd/film-profiles-build/…` | `ok … archlint 16.719s` ; `ok … filmprofile 0.192s` ; **0 issues** |
+| 2026-09-16 | 3.1.2 (TÉMOIN de non-intrusion) | ce commit | `go test ./…/filmdec/ -run TestGrammarRevSuitLaGrammaire -count=1` | `ok … 0.070s` — inchangé, aucun paquet haché touché |
+| 2026-09-16 | 3.1.2 (découverte D4) | `eb85eb6f4` | `go run ./cmd/film-profiles-build` depuis le worktree, SANS `LEVELUP_REPO_ROOT` | **exit 1** : `racine du depot : LEVELUP_REPO_ROOT non défini et db_profiles.json introuvable en remontant depuis le cwd`. Contournement documenté (runbook §4.4) ; le test `gamefiles` passe `--out` / `--bounds` et n'en dépend pas |
+| 2026-09-16 | 3.1.2 (contenu) | ce commit | `grep -o '"provenance": "[a-z]*"' film_profiles.json \| sort \| uniq -c` | **11 `mesuree`, 6 `presumee`, 6 `relue`** = 23 entrées, une par ligne de la table du lot 2.1 (2 `format`, 7 `build`, 3 `majeure`, 11 `toutes`) |
+| 2026-09-16 | 3.1.2 | `5a32b580c` | `go run ./cmd/film-profiles-build` apres passage a `json.Encoder` + `SetEscapeHTML(false)`, puis `--check` et le test `gamefiles` | diff du fichier commis : **5 lignes** (les 5 clefs a chevrons, desormais en clair) ; 23 entrees et empreinte `e77e4ffc…` inchangees ; `--- PASS: TestCatalogueCommisEgaleCatalogueRegenere (1.02s)` |
+| 2026-09-16 | 3.1.2 (seuil de fichier) | ce commit | `wc -l` sur les fichiers du lot | `no_runtime_versioned_catalog_write_test.go` etait passe a **507 lignes** au-dela du seuil de 500 (regle 5 : ne pas accroitre la dette) — commentaires du lot resserres, **499** ; ratchet rejoue vert et `golangci-lint` **0 issues**. Autres fichiers : `catalogue.go` 293, `conformite_table21_test.go` 244, `main.go` 193, tous sous le seuil |
+| 2026-09-16 | 3.1.3 | ce commit | relecture de `docs/RUNBOOK_FILM_PROFILES.md` (EN-only) et des deux `COMMANDS.md` | procédure en quatre temps, tableau de ce que chaque gate prouve ; entrée `film-profiles-build` ajoutée en EN **et** en FR (règle 15) |
 
 ## 6. Protocole de reprise de session
 

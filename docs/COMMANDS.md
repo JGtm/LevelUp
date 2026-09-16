@@ -228,6 +228,28 @@ CGO_ENABLED=1 go run ./cmd/mapquant-build [--levels DIR] [--title slug] [--out F
   design (refuses to publish a guessed coordinate).
 - Replay when: a new map's module link is established, or the game changes its modules/BSP.
 
+#### film-profiles-build
+
+```bash
+go run ./cmd/film-profiles-build [--title slug] [--check] [--out FILE] [--bounds FILE]
+```
+
+- Output: `data/titles/{slug}/reference/film_profiles.json` — the film profiles catalogue
+  (what the repository knows about a film's grammar, indexed by the three keys the film
+  *writes*). The tool produces the `derived` block **only** — the fingerprint of
+  `map_quant_bounds.json`, so the profile says which game-file derivation it is tied to. The
+  `entries` block is entered by hand, with provenance, and is copied through untouched.
+- Prereq: no game install, no network, no cgo. `--check` writes nothing and exits 1 if the
+  committed file is not the one the tool would produce. From a worktree, export
+  `LEVELUP_REPO_ROOT=<the worktree>` or pass `--out`/`--bounds` (`db_profiles.json` is
+  gitignored and only exists in the main checkout).
+- Replay when: after `mapquant-build` (a game update, a new map), or after adding a profile
+  entry. Procedure for adding a build: `docs/RUNBOOK_FILM_PROFILES.md`.
+- Gate with the game installed:
+  `CGO_ENABLED=1 go test -tags=gamefiles ./cmd/film-profiles-build/ -count=1` — replays the
+  whole chain (bounds regenerated from the `.module` files, then committed catalogue byte-for-byte
+  equal to what the chain produces). Skips where Halo Infinite is not installed.
+
 #### mapcallouts-build
 
 ```bash
