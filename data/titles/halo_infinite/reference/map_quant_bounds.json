@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "source": "world bounds x/y/z du tag sbsp de la RÉGION 0 (ordre du bloc structure-BSP du tag de niveau), lus dans D:\\SteamLibrary\\steamapps\\common\\Halo Infinite\\deploy\\ds\\levels\\multi",
+  "source": "world bounds x/y/z du tag sbsp de la RÉGION 0 (ordre du bloc structure-BSP du tag de niveau), lus dans ds/levels/multi (relatif à la racine de l'installation)",
   "maps": {
     "944396dd-5661-4a16-b1d8-a6053f762c55": {
       "module": "fo13_frost",

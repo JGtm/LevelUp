@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
@@ -295,6 +296,37 @@ func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (f
 	return e, nil
 }
 
+// methodeDesBornes : la MÉTHODE de dérivation, invariante d'un poste à l'autre. C'est elle qui
+// vaut provenance dans le fichier commis ; le dossier n'est qu'une précision.
+const methodeDesBornes = "world bounds x/y/z du tag sbsp de la RÉGION 0 " +
+	"(ordre du bloc structure-BSP du tag de niveau), lus dans "
+
+// sourceDuCatalogue rend la valeur du champ `source` du catalogue : la méthode, puis le dossier
+// des niveaux RELATIF à la racine de l'installation (`ds/levels/multi`).
+//
+// POURQUOI RELATIF (découverte D2 (3.1.2), 2026-09-16) : le fichier est VERSIONNÉ, et il portait
+// le chemin d'installation ABSOLU du poste qui l'a produit
+// (`D:\SteamLibrary\steamapps\common\Halo Infinite\deploy\ds\levels\multi`). Deux postes qui
+// régénèrent le MÊME catalogue rendaient donc deux fichiers différents alors qu'aucune borne
+// n'avait bougé — un gate « commis = régénéré » à l'octet rougissait pour une trace de
+// fabrication. Le lot 3.1.2 l'avait contourné en excluant `source` de l'empreinte du profil
+// (`TestEmpreinteDesBornesIgnoreLaTraceDeFabrication`) ; ceci en retire la cause.
+//
+// Quand le dossier n'est PAS sous l'installation détectée (`--levels` pointé ailleurs, ou aucune
+// installation), aucun chemin n'est écrit : mieux vaut une provenance qui ne dit que la méthode
+// qu'une provenance qui dit le disque de quelqu'un.
+func sourceDuCatalogue(levels string) string {
+	root, err := himap.DeployRoot()
+	if err != nil {
+		return methodeDesBornes + "le dossier des niveaux passé par --levels"
+	}
+	rel, err := filepath.Rel(root, levels)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return methodeDesBornes + "le dossier des niveaux passé par --levels"
+	}
+	return methodeDesBornes + filepath.ToSlash(rel) + " (relatif à la racine de l'installation)"
+}
+
 func main() {
 	levels := flag.String("levels", "", "racine des dossiers de cartes (.module) ; vide = installation détectée")
 	titleSlug := flag.String("title", title.DefaultSlug, "slug du titre")
@@ -323,9 +355,8 @@ func main() {
 
 	cat := filmdec.MapQuantCatalog{
 		SchemaVersion: filmdec.MapQuantSchemaVersion,
-		Source: "world bounds x/y/z du tag sbsp de la RÉGION 0 (ordre du bloc structure-BSP " +
-			"du tag de niveau), lus dans " + *levels,
-		Maps: map[string]filmdec.MapQuantEntry{},
+		Source:        sourceDuCatalogue(*levels),
+		Maps:          map[string]filmdec.MapQuantEntry{},
 	}
 	names := make([]string, 0, len(mapModule))
 	for n := range mapModule {
