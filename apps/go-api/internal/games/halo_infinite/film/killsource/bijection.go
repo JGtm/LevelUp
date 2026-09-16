@@ -87,6 +87,43 @@ func voteMatrix(nr *nearIndex, pairs []feedEvent, names []string, nPlay int) [][
 	return m
 }
 
+// controlerEpinglage : LE CONTROLE DE LA PART LUE PAR LE KILL-FEED — un CONTROLE, jamais une
+// decision (D14 b). Les votes ne corrigent pas la table du film ; ils disent si le feed la
+// confirme, la contredit, ou se tait.
+//
+//	Agree       le joueur que la table assoit sur cet indice est celui que les votes designent
+//	            le plus (ex aequo compris : un ex aequo n est pas une contradiction).
+//	Contradict  un AUTRE joueur est STRICTEMENT plus vote. La valeur publiee ne bouge pas ;
+//	            le compteur monte, et un relecteur le lit.
+//	Silent      aucun vote sur cet indice — ce joueur n a ni tue ni n est mort dans la fenetre
+//	            d appariement. C est le cas normal des sieges que le feed ne nomme pas.
+func (r *roster) controlerEpinglage(votes [][]int) {
+	for i := 0; i < r.nPlay && i < len(votes); i++ {
+		if !r.seatPin[i] {
+			continue
+		}
+		pos, ok := r.pin[i]
+		if !ok || pos >= len(votes[i]) {
+			continue
+		}
+		meilleur, total := 0, 0
+		for _, v := range votes[i] {
+			total += v
+			if v > meilleur {
+				meilleur = v
+			}
+		}
+		switch {
+		case total == 0:
+			r.table.Silent++
+		case votes[i][pos] == meilleur:
+			r.table.Agree++
+		default:
+			r.table.Contradict++
+		}
+	}
+}
+
 func addVote(m [][]int, idx map[string]int, slot int, name string, nPlay int) {
 	if slot < 0 || slot >= nPlay {
 		return
@@ -123,13 +160,39 @@ func refine(nr *nearIndex, pairs []feedEvent, names []string, perm, free []int) 
 
 // hungarianStart : affectation initiale sur le sous-probleme LIBRE, puis reinsertion des
 // positions epinglees.
+//
+// LE PROBLEME N EST PLUS CARRE DEPUIS LE LOT 1.8, et c est la table du film qui l a rendu
+// rectangulaire : elle ajoute au roster les joueurs que le kill-feed ne nomme pas, donc il peut y
+// avoir PLUS de noms libres que d indices libres (`111fa685` : 25 joueurs pour 24 indices — un
+// remplacant partage l indice d un partant). La matrice est donc PADDEE a un carre `k = max(n, m)` :
+//
+//	lignes reelles x colonnes fictives   cout +1, pire que tout cout reel (qui vaut -votes <= 0)
+//	                                     -> un indice reel prend TOUJOURS un nom reel quand il y
+//	                                        en a assez, donc le resultat est identique a celui
+//	                                        d avant le lot quand n == m ;
+//	lignes fictives x toute colonne      cout 0 -> elles absorbent les noms en trop sans preferer
+//	                                        aucun d eux.
+//
+// Un nom que rien n affecte n est porte par aucun indice : c est exact, et c est mieux que de le
+// faire entrer de force a la place d un joueur que la table a lu.
 func hungarianStart(votes [][]int, r *roster, free, freeNames []int) []int {
-	n := len(free)
-	cost := make([][]int, n)
-	for a := 0; a < n; a++ {
-		cost[a] = make([]int, n)
-		for b := 0; b < n; b++ {
-			cost[a][b] = -votes[free[a]][freeNames[b]]
+	n, m := len(free), len(freeNames)
+	k := n
+	if m > k {
+		k = m
+	}
+	cost := make([][]int, k)
+	for a := 0; a < k; a++ {
+		cost[a] = make([]int, k)
+		for b := 0; b < k; b++ {
+			switch {
+			case a >= n:
+				cost[a][b] = 0
+			case b >= m:
+				cost[a][b] = 1
+			default:
+				cost[a][b] = -votes[free[a]][freeNames[b]]
+			}
 		}
 	}
 	sub := hungarian(cost)
@@ -138,23 +201,31 @@ func hungarianStart(votes [][]int, r *roster, free, freeNames []int) []int {
 		perm[i] = p
 	}
 	for a := 0; a < n; a++ {
-		perm[free[a]] = freeNames[sub[a]]
+		if sub[a] < m {
+			perm[free[a]] = freeNames[sub[a]]
+		}
 	}
 	return perm
 }
 
-// solveBijection : LE chemin unique. Rend la bijection et son score quadratique.
+// solveBijection : LE chemin unique. Rend la bijection et son score quadratique, et REMPLIT les
+// compteurs de provenance du roster (part lue, part inferee, controle de la part lue).
 func solveBijection(r *roster, pairs []feedEvent, cs []candidate, restarts int) ([]int, int) {
 	nr := buildNear(pairs, cs)
 	free, freeNames := r.freeSlots()
+	votes := voteMatrix(nr, pairs, r.names, r.nPlay)
+	r.controlerEpinglage(votes)
+	r.table.Inferred = len(free)
+	r.table.FreeNames = len(freeNames)
 	if len(free) == 0 {
+		// TOUT EST LU : rien a inferer. Le score quadratique n a pas de sens ici — il mesure
+		// l accord d une INFERENCE avec le kill-feed, et il n y a pas d inference.
 		perm := make([]int, r.nPlay)
 		for i, p := range r.pin {
 			perm[i] = p
 		}
 		return perm, 0
 	}
-	votes := voteMatrix(nr, pairs, r.names, r.nPlay)
 	bestPerm, bestScore := refine(nr, pairs, r.names, hungarianStart(votes, r, free, freeNames), free)
 	rng := newRNG()
 	for i := 0; i < restarts; i++ {

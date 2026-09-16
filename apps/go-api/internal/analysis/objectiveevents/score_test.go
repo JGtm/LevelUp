@@ -81,7 +81,7 @@ func TestScoreCurveMatchesCTFCaptures(t *testing.T) {
 	if !ok {
 		t.Skipf("film 530820e5 absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
-	events := Extract("530820e5", "CTF:Arena", bobine, MapRoster{})
+	events, _ := Extract("530820e5", "CTF:Arena", bobine, MapRoster{})
 	teamPts := []ScorePoint{}
 	for _, p := range ScoreCurve(bobine) {
 		if IsTeamSlot(p.Slot) {

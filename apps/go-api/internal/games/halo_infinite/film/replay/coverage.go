@@ -135,6 +135,24 @@ func (c LayerCoverage) warnIfLossy(layer string) {
 type Coverage struct {
 	Shots    LayerCoverage `json:"shots"`
 	Grenades LayerCoverage `json:"grenades"`
+	// Tracks est ce que le SEUIL DE PUBLICATION des traces a retenu et refusé (schéma 55, cf.
+	// TrackCoverage). Absente quand le film ne porte aucune position : il n'y a alors pas de
+	// seuil à appliquer, et publier des zéros laisserait croire à une mesure.
+	Tracks *TrackCoverage `json:"tracks,omitempty"`
+	// Teams est CE QUE LE FILM DIT DES ÉQUIPES et ce que la base en pense (schéma 57, cf.
+	// TeamCoverage) : les joueurs dont le film donne l'équipe, ceux qu'il laisse sans, et les
+	// trois compteurs du CONTRÔLE (accord / contradiction / silence).
+	//
+	// ELLE EST LA SEULE FAÇON DE LIRE UN `team: -1`. Le champ ne dit pas si le mode n'a pas de
+	// camps ou si le film n'a pas nommé ce joueur ; `noTeam` et `unread` le disent. Absente
+	// quand le film ne porte aucune position : il n'y a alors ni roster ni vie à couvrir.
+	Teams *TeamCoverage `json:"teams,omitempty"`
+	// Seats est CE QUE LA POSE DES SIÈGES A LU ET CE QU'ELLE A APPARIÉ (lot 1.9.14, cf.
+	// SeatCoverage) : combien d'entrées tiennent leur siège du film, combien le tiennent du
+	// repli ordinal, et — le chiffre qui a ouvert le lot — combien d'occupants le film porte
+	// AU PLUS EN MÊME TEMPS face au nombre d'entrées du roster. Absente quand le roster est
+	// vide : il n'y a alors aucun siège à couvrir.
+	Seats *SeatCoverage `json:"seats,omitempty"`
 	// Projectiles est la couverture des TRAJECTOIRES DE PROJECTILE (cf. projectiles.go) :
 	// pistes décodées, trajectoires publiées, et celles qu'un PAS IMPOSSIBLE a coupées.
 	//
@@ -378,6 +396,21 @@ type Coverage struct {
 	// Bridge décrit sur quoi repose le pont slot -> joueur. Un calque peut être complet et
 	// néanmoins reposer sur une résolution fragile : les deux se jugent séparément.
 	Bridge BridgeHealth `json:"bridge"`
+	// Fallbacks dit QUELLE PART DE CE DOCUMENT VIENT D'UN REPLI (schéma 58, décision D14 du plan
+	// du décodeur, ADR 0034). Un repli est une décision de secours prise quand la lecture du film
+	// ne tranche pas ; chacun porte un nom stable, une condition et un critère de retrait, tous
+	// déclarés dans `film/replay/fallback`.
+	//
+	// UNE LISTE PLATE, ET PAS UN BLOC PAR FAIT. Les replis ne se répartissent pas sur les calques
+	// existants — `repli_largeurs_axe_par_defaut_conservees` touche TOUT le décodage, et les
+	// trois quarts des faits repliés n'ont pas de bloc de couverture à eux. Une liste
+	// `{name, hits}` se lit sans connaître la carte des calques, se joint au registre par le seul
+	// nom, et n'oblige aucun des vingt blocs existants à changer de forme.
+	//
+	// SEULS LES REPLIS DÉCLENCHÉS Y FIGURENT, triés par nom : ce que le document porte est ce qui
+	// s'est PRODUIT. Ce qui PEUT se produire est au registre, qui est du code versionné. Absente
+	// quand aucun repli ne s'est déclenché, ou quand la cuisson ne portait pas de compteur.
+	Fallbacks []FallbackHit `json:"fallbacks,omitempty"`
 }
 
 // ProjectileCoverage est la couverture du calque des projectiles.

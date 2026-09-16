@@ -196,7 +196,7 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 	agDiagnostiquerSegments(t, id, reads, a5ExplosionTimes(id))
 	// Grille synthétique : originMS=0, pas 100 ms, axe assez long pour tout le film — le gate
 	// juge les délais en ms, la conversion en frames est couverte par les tests unitaires.
-	return buildBombArmings(reads, a5ExplosionTimes(id), scoreClock{intervalMS: 100, frames: 1 << 20})
+	return buildBombArmings(reads, a5ExplosionTimes(id), scoreClock{intervalMS: 100, frames: 1 << 20}, nil)
 }
 
 // agDiagnostiquerSegments publie CHAQUE armement dédupliqué avec ses quanta, et CHAQUE tenue

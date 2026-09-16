@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // score_timeline.go — L'ASSEMBLAGE DE LA COURBE DE SCORE, PUR.
@@ -168,7 +169,8 @@ func scoreRoundsOf(byRound map[int][]objectiveevents.ScorePoint, c scoreClock) [
 // Rend (nil, nil) quand l'appelant n'a rien fourni : un artefact construit sans acces aux
 // enregistrements du film ne porte AUCUNE couverture de score, ce qui le distingue d'un film
 // dont la lecture n'a rien donne (couverture presente, courbes vides).
-func buildScoreTimeline(in *ScoreInput, deaths []Death, c scoreClock) (*ScoreTimeline, *ScoreCoverage) {
+func buildScoreTimeline(in *ScoreInput, deaths []Death, c scoreClock,
+	fb *fallback.Compteur) (*ScoreTimeline, *ScoreCoverage) {
 	if in == nil {
 		return nil, nil
 	}
@@ -198,16 +200,39 @@ func buildScoreTimeline(in *ScoreInput, deaths []Death, c scoreClock) (*ScoreTim
 	}
 	cov := &ScoreCoverage{
 		TeamIdentity:  method,
-		Rounds:        len(objectiveevents.RealRounds(recs)),
 		ModeSupported: len(teamScore.total) > 0,
 		Truncated:     in.Truncated,
 		Oracle:        ScoreOracleDisplayed,
 		Points:        countScorePoints(tl),
 	}
+	attachRoundsCoverage(cov, objectiveevents.ResolveRounds(recs), fb)
 	if len(tl.Teams) == 0 && len(tl.Players) == 0 {
 		tl = nil
 	}
 	return tl, cov
+}
+
+// attachRoundsCoverage porte le verdict de la lecture des designateurs de manche dans la
+// couverture, et compte le seul REPLI de cette chaine.
+//
+// LES TROIS FORMES DE D14 (c) EN UN SEUL ENDROIT : la grammaire (`RoundsWritten`), la
+// contradiction (`RoundsContradicted` et ses enregistrements), le repli (`RoundsDecreed`, qui
+// se compte AUSSI au registre pour apparaitre en `coverage.fallbacks[]`). `Rounds` reste le
+// COMPTE des manches retenues, inchange — c'est la grandeur que le rejeu consomme.
+//
+// `RoundsWritten` n'est publie qu'a partir de DEUX designateurs : sur un film mono-manche il
+// rendrait `[0]`, ce que `Rounds = 1` dit deja, au prix d'un champ sur les 1 300 films du parc.
+func attachRoundsCoverage(cov *ScoreCoverage, d objectiveevents.RoundsDecision, fb *fallback.Compteur) {
+	cov.Rounds = len(d.Real)
+	if len(d.Written) > 1 {
+		cov.RoundsWritten = d.Written
+	}
+	cov.RoundsContradicted = d.Contradicted
+	cov.RoundsContradictedRecords = d.ContradictedRecords
+	cov.RoundsDecreed = d.Decreed
+	if d.Decreed {
+		fb.Declenche(fallback.NomReplayMancheZeroDecretee)
+	}
 }
 
 // publishableTarget applique la garde de la cible de victoire (cf. ScoreTimeline.TargetScore) :

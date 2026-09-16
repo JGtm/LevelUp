@@ -80,7 +80,7 @@ func TestWorldObjectPrecisionLayout(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
 
-	lay, rep, err := DetectI0Layout(dir)
+	lay, rep, err := detectI0Layout(dir)
 	if err != nil {
 		t.Logf("LAYOUT %s : NON DÉTECTÉ (%v) · %d records · %d paires · frontières %v",
 			dir, err, rep.Records, rep.Pairs, rep.Boundaries)
@@ -163,7 +163,7 @@ func worldPrecCatalogEntry(t *testing.T) (MapQuantEntry, bool) {
 // (c'est celui sous lequel `ScanFilmBipedPositions` produit ses quanta).
 func worldPrecCoherence(t *testing.T, dir string, entry MapQuantEntry, ok bool) I0Layout {
 	t.Helper()
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
 	}

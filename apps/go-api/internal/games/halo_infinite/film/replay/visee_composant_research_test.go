@@ -233,7 +233,7 @@ type vfSource struct {
 // vfOuvre lit le decoupage d'i0 et l'archetype bipede.
 func vfOuvre(dir string) (vfSource, error) {
 	var s vfSource
-	lay, _, err := filmdec.DetectI0Layout(dir)
+	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
 		return s, fmt.Errorf("decoupage d'i0 : %w", err)
 	}

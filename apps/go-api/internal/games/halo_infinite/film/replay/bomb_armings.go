@@ -64,6 +64,8 @@ import (
 
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/observability"
 )
 
 // BombFuseMS est la mèche de RÉFÉRENCE : celle des variantes à mèche courte, mesurée à 4,93 s
@@ -172,8 +174,28 @@ func decodeFilmBombReads(fc *filmdec.FilmContext, matchID string, in BombInput) 
 	slog.Info("armement : anneau ti=12 balaye",
 		"match_id", matchID, "slots", sc.SlotsObserved, "records", sc.Records,
 		"marches", sc.Walked, "chainees", sc.Chained, "lectures", len(sc.Reads),
-		"paquetsSansHorloge", sc.PacketsNoClock)
+		"paquetsSansHorloge", sc.PacketsNoClock,
+		"imageCleRecords", sc.KeyRecords, "imageCleFermees", sc.KeyClosed,
+		"imageCleBornees", sc.KeyBounded)
+	publierFermetureImageCle(sc)
 	return sc.Reads
+}
+
+// publierFermetureImageCle expose sur `/debug/vars` la FERMETURE de la table d'image-cle du
+// balayage de production (ADR 0009, lot 1.4.3).
+//
+// CE QUE CE COMPTEUR REPARE. Jusqu'au 2026-09-14 il n'existait, dans tout le depot, AUCUN
+// compteur de production disant « la table d'image-cle a deraille » (releve du 2026-09-13,
+// section C.1 de `NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md`) : la seule voie de production qui
+// parse le corps d'un record d'image-cle est celle-ci, et sa sante ne sortait pas du processus.
+// Un cadre corrige qu'on ne peut pas observer en production n'est pas un cadre tenu.
+//
+// `filmdec` NOMME ses compteurs et ne depend pas d'`observability` — meme patron que
+// `KillSourceHealth.ExpvarPairs`, cable par `killcollector`.
+func publierFermetureImageCle(sc *filmdec.NavpointRadialScan) {
+	for _, p := range sc.KeyframeExpvarPairs() {
+		observability.AddInt(p.Name, p.Value)
+	}
 }
 
 // attachBombArmings pose le calque de l'armement sur le document, avec sa couverture et son
@@ -183,7 +205,7 @@ func attachBombArmings(doc *ReplayDocument, opt Options, c scoreClock) {
 	if !opt.Bomb.Scanned {
 		return
 	}
-	armings, cov, verdict := buildBombArmings(opt.Bomb.Reads, bombDetonationTimes(doc.Objectives), c)
+	armings, cov, verdict := buildBombArmings(opt.Bomb.Reads, bombDetonationTimes(doc.Objectives), c, opt.Fallbacks)
 	doc.BombArmings = armings
 	if doc.Coverage != nil {
 		doc.Coverage.BombArmings = cov
@@ -195,7 +217,7 @@ func attachBombArmings(doc *ReplayDocument, opt Options, c scoreClock) {
 // déduplication de paire -> confrontation locale (mèche MESURÉE) -> grille de frames. Pur,
 // testable sans film.
 func buildBombArmings(reads []filmdec.NavpointRadialRead, detonations []int,
-	c scoreClock) ([]BombArming, *BombArmingsCoverage, bombFuseVerdict) {
+	c scoreClock, fb *fallback.Compteur) ([]BombArming, *BombArmingsCoverage, bombFuseVerdict) {
 	cov := &BombArmingsCoverage{Scanned: true, Reads: len(reads), Detonations: len(detonations)}
 	segments := filmdec.NavpointSegments(reads)
 	cov.Rises = len(segments)
@@ -222,6 +244,8 @@ func buildBombArmings(reads []filmdec.NavpointRadialRead, detonations []int,
 		}
 		startT, ok := c.frameOf(int(r.StartMS))
 		if !ok {
+			// REPLI NOMME ET COMPTE (D14) : l'origine du rejeu ne couvre pas ce debut de hold.
+			fb.Declenche(fallback.NomArmementBombeDebutAZero)
 			startT = 0 // début de hold avant la frame 0 : le compte à rebours, lui, tient
 		}
 		out = append(out, BombArming{T: t, TimeMS: int(r.EndMS),

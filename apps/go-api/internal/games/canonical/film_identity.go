@@ -116,6 +116,14 @@ const (
 	MethodFilmFooter LinkMethod = "pied_de_film"
 	// MethodPlayerIndexTable : les 5 bits precedant le xuid dans les chunks de replication.
 	MethodPlayerIndexTable LinkMethod = "PlayerIndexTable"
+	// MethodFilmPlayerTable : LA TABLE DES JOUEURS QUE LE FILM ECRIT — les 32 enregistrements de
+	// slot du corps de `chunk_00`, chacun portant un rang, un XUID et un gamertag (lot 1.5).
+	//
+	// C'est le lien DIRECT au sens le plus fort du mot : le jeu l'ECRIT, il ne se deduit de rien.
+	// Elle passe AVANT [MethodPlayerIndexTable], qui reste la voie des joueurs dont la table du
+	// film est muette — elle est ecrite au DEBUT du film, donc un joueur arrive en cours de
+	// partie n'y a pas de siege.
+	MethodFilmPlayerTable LinkMethod = "film_table"
 	// MethodBotID : le BotID du paquet BOT_METADATA, qui EST le N de `bid(N.0)`.
 	MethodBotID LinkMethod = "bid"
 	// MethodDeathBridge : le pont par morts — la mort qui TERMINE une vie la nomme.
@@ -301,4 +309,51 @@ func (c *UnresolvedCauses) AddCause(m LinkMethod) {
 	case MethodDivergentReadings:
 		c.DivergentReadings++
 	}
+}
+
+// FilmTableRefusalInterleavedVacant : la cause d'abstention que le registre d'identite ajoute aux
+// causes de `filmdec` — la table est LUE, mais son rang est ambigu (cf. FilmTableCounts.Refusal).
+const FilmTableInterleavedVacant = "vacant_intercale"
+
+// FilmTableCounts est ce que la TABLE DES JOUEURS DU FILM a donne, et ce que le controle en dit.
+//
+// # POURQUOI ELLE N'EST PAS UN [LinkCounts]
+//
+// `LinkCounts` compte des liens par PROVENANCE ; celle-ci decrit UNE SOURCE — combien de liens
+// elle a posee, combien le repli a du completer, et ce que le controle en pense. Les deux se
+// lisent ensemble : `coverage.identity.filmIndex` dit d'ou viennent les liens publies,
+// `coverage.identity.filmTable` dit ce que la lecture du film a couvert et ce qu'elle a laisse.
+//
+// # LE CONTROLE EST « LA TABLE DE LA BASE », ET C'EST EXACT
+//
+// Le controle est la table lue dans les chunks de replication, dont le roster d'entree vient de
+// la feuille de match : sans base, elle ne connait que les joueurs qui meurent. Accord,
+// contradiction et silence portent donc sur le couple (xuid, index), jamais sur une valeur que
+// la base imposerait — la base ne DECIDE rien ici (regle V4 du chantier, portee a l'identite).
+type FilmTableCounts struct {
+	// Read dit si la table du film a ete EMPLOYEE. Faux quand elle n'a pas ete lue, ou quand un
+	// vacant intercale rend son rang ambigu.
+	Read bool `json:"lu"`
+	// Refusal nomme la cause quand `Read` est faux : `sans_registre`, `sans_section`,
+	// `build_inconnu`, `tronque`, `table_introuvable`, `vacant_intercale`. Vide sinon.
+	Refusal string `json:"refus,omitempty"`
+	// Seats est le nombre de sieges OCCUPES de la table — la taille reelle de l'escouade au
+	// debut du film, publiee comme DONNEE. Aucune regle d'affichage ne s'en sert (le plan §1.2
+	// le dit : la densite BTB reste le mode, jamais un compte de sieges).
+	Seats int `json:"sieges"`
+	// Direct est le nombre de liens que la table du film a poses.
+	Direct int `json:"direct"`
+	// Fallback est le nombre de liens que la lecture des chunks a du completer parce que la
+	// table du film est MUETTE sur ce xuid — le repli nomme, declenche sur ce diagnostic seul.
+	Fallback int `json:"repli"`
+	// Accord / Contradiction / Silence : ce que le controle dit des liens de la table du film.
+	Accord        int `json:"accord"`
+	Contradiction int `json:"contradiction"`
+	Silence       int `json:"silence"`
+	// IndexCollisions : les INDEX que deux xuids se disputaient dans la table composee, et que
+	// la composition a donc retires POUR LES DEUX (revue de jalon M1, lentille L4). Un index
+	// partage placerait deux joueurs sur la meme trace, et le choix se ferait a l'ordre
+	// d'iteration d'une map — non deterministe d'une cuisson a l'autre. Absent du document
+	// quand il vaut zero ; `Direct` et `Fallback` ne comptent que ce qui RESTE publie.
+	IndexCollisions int `json:"collisionsIndex,omitempty"`
 }

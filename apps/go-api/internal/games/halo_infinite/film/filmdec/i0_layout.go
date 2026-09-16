@@ -12,15 +12,18 @@ package filmdec
 // La position d'objet utilise L = 16 câblé au site d'appel (MOV R9D,0x10 en 1406d008a), donc
 // 2*q = 1/60 et W = min(26, ceilLog2(ceil(60*extent))). Ni les largeurs ni les bornes ne
 // transitent par le bitstream, et le REGISTRE chunk_00 n'y contribue pas : il est
-// BIT-À-BIT IDENTIQUE d'un film à l'autre (vérifié Cliffhanger vs Catalyst, FNV des 1067
-// slots noms+flags = a413610cd08e4355 des deux côtés). Le flags=0 du composant i0 de
-// l'archétype biped n'est donc PAS un niveau de précision exploitable.
+// BIT-À-BIT IDENTIQUE d'un film à l'autre DANS UN BUILD (vérifié Cliffhanger vs Catalyst,
+// FNV des 1 067 entrées identique des deux côtés — la valeur citée ici jusqu'au lot 1.2,
+// a413610cd08e4355, portait sur un domaine de hachage qui n'existe plus ; l'empreinte vivante
+// est KnownRegistryFingerprint). Le niveau que le registre porte pour le composant i0 de
+// l'archétype biped — 0 sous l'ancien cadrage, 1 sous celui du jeu (lot 1.2) — n'est donc PAS
+// un niveau de précision exploitable, ni dans un cas ni dans l'autre.
 //
 // CE QUI EST DISPONIBLE HORS LIGNE : la LONGUEUR des champs se lit directement dans le
 // bitstream. Pour un champ quantifié de largeur W dont la valeur bouge peu d'une frame à la
 // suivante, le TAUX DE BASCULE par position de bit vaut ~50 % sur le LSB et DOUBLE du MSB
 // vers le LSB. Le profil sur trois champs contigus est une DENT DE SCIE : montée
-// géométrique puis effondrement au MSB du champ suivant. DetectI0Layout lit les trois
+// géométrique puis effondrement au MSB du champ suivant. DetectI0LayoutOf lit les trois
 // frontières sur ce profil, sans aucun a priori de largeur.
 //
 // Preuve de chaînage (le critère qui départage les lectures rivales — une statistique de pas
@@ -140,20 +143,11 @@ type i0Sample struct {
 
 func (s i0Sample) bit(k int) uint64 { return (s.bits[k>>6] >> (63 - uint(k&63))) & 1 }
 
-// DetectI0Layout lit le découpage d'i0 DANS le film de dir. Retourne le découpage, le
-// rapport de mesure, et une erreur si le profil ne fait pas apparaître trois frontières
-// nettes (film trop court, ou grammaire de record différente).
-// DetectI0Layout est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle
-// [DetectI0LayoutOf]. La cuisson passe un film deja charge.
-func DetectI0Layout(dir string) (I0Layout, I0LayoutReport, error) {
-	film, err := filmsource.LoadDir(dir, nil)
-	if err != nil {
-		return I0Layout{}, I0LayoutReport{}, err
-	}
-	return DetectI0LayoutOf(film)
-}
-
-// DetectI0LayoutOf lit le découpage d'i0 DANS un film DEJA CHARGE. Cf. [DetectI0Layout].
+// DetectI0LayoutOf lit le découpage d'i0 DANS un film DEJA CHARGE.
+//
+// L'ENVELOPPE `dir` A ETE DEPLACEE EN TEST LE 2026-09-16 (revue de jalon M1, constat C4) : elle
+// n'avait plus aucun appelant de production depuis le lot 1.9.4. Cf.
+// `i0_layout_instrument_helpers_test.go`.
 func DetectI0LayoutOf(film *filmsource.Film) (I0Layout, I0LayoutReport, error) {
 	nums := FilmChunkNumbers(film)
 	if len(nums) == 0 {

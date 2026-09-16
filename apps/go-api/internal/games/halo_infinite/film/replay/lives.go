@@ -100,9 +100,12 @@ type lifeSpan struct {
 //	                   médiane mesurée 34 ms). LA SEULE QUI DISE « CE JOUEUR EST MORT ».
 //	CauseVieFinFilm    la réplication du slot s'arrête et ne reprend jamais : la vie court
 //	                   jusqu'au bout de ce que le film montre. C'est le cas du SURVIVANT.
-//	CauseVieCoupure    un trou de plus de lifeGapUS (5 s) a fermé la vie et aucune mort ne
-//	                   l'apparie. Le cas typique est l'embarquement en véhicule : le biped
-//	                   cesse d'être répliqué, le joueur est bien vivant.
+//	CauseVieCoupure    la vie se ferme sans qu'aucune MORT ne la borne. DEPUIS LE LOT 1.9.13
+//	                   (2026-09-15) ce n'est PLUS « un trou de plus de lifeGapUS » : un trou de
+//	                   réplication est devenu une LACUNE de la même vie (cf. lives_decoupe.go),
+//	                   et cette cause ne subsiste que sur ce que le film ÉCRIT d'autre — une
+//	                   apparition de corps (slot recyclé) ou une fin de manche — ou sur le repli
+//	                   compté des joueurs dont le film n'écrit aucune mort.
 const (
 	CauseVieMort    = "death"
 	CauseVieFinFilm = "film_end"
@@ -121,38 +124,6 @@ const (
 	NomParMort      = "death"
 	NomParFermeture = "closure"
 )
-
-// buildLifeSpans découpe les trajectoires en vies. Un slot qui disparaît plus de lifeGapUS
-// puis revient est une NOUVELLE vie : le slot migre aux réapparitions.
-func buildLifeSpans(tracks map[uint32]slotTrack) []lifeSpan {
-	slots := make([]uint32, 0, len(tracks))
-	for s := range tracks {
-		slots = append(slots, s)
-	}
-	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
-	var out []lifeSpan
-	for _, s := range slots {
-		pts := tracks[s].pts
-		if len(pts) == 0 {
-			continue
-		}
-		start, last := int64(pts[0].TimestampUS), int64(pts[0].TimestampUS)
-		for _, p := range pts[1:] {
-			t := int64(p.TimestampUS)
-			if t-last > lifeGapUS {
-				// TROU AU-DELÀ DU SEUIL : la vie se ferme ici. C'est la cause STRUCTURELLE,
-				// que le nommage écrasera s'il sait mieux (une mort, une fermeture).
-				out = append(out, lifeSpan{slot: s, from: start, to: last, cause: CauseVieCoupure})
-				start = t
-			}
-			last = t
-		}
-		// LA DERNIÈRE VIE DU SLOT N'EST FERMÉE PAR AUCUN TROU : ses points sont simplement
-		// épuisés. C'est la fin de ce que le film montre de ce slot — pas une coupure.
-		out = append(out, lifeSpan{slot: s, from: start, to: last, cause: CauseVieFinFilm})
-	}
-	return out
-}
 
 // deathOffsetStepMS est le pas du balayage fin du calage, et la grille reste ancrée sur la
 // PREMIÈRE FIN DE VIE — celle sur laquelle le balayage linéaire d'avant 2026-09-07 était déjà

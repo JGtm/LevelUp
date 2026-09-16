@@ -2,7 +2,6 @@ package replay
 
 import (
 	"log/slog"
-	"math"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
@@ -12,10 +11,6 @@ import (
 // Les records du film arrivent à ~60 Hz par entité : à 100 ms (10 Hz) le rendu reste
 // fluide (le client interpole) tout en divisant le volume de points par ~4.
 const DefaultFrameIntervalMS = 100
-
-// DefaultMinPoints est le nombre minimal de points pour qu'une vie soit publiée : une
-// track d'un seul échantillon n'est pas une trajectoire.
-const DefaultMinPoints = 2
 
 // coordScale arrondit les coordonnées au centimètre : le quantum du décodeur est de
 // ~1,4 cm, deux décimales ne perdent donc rien et allègent nettement le JSON.
@@ -30,6 +25,7 @@ const coordScale = 100
 func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	fire []filmdec.FireEvent, opt Options) ReplayDocument {
 	interval := opt.frameIntervalMS()
+	opt.Fallbacks = opt.compteurDeReplis() // cf. Options.Fallbacks (D14) : jamais nil a partir d'ici
 	doc := ReplayDocument{
 		SchemaVersion:   SchemaVersion,
 		MatchID:         matchID,
@@ -48,18 +44,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	origin := sorted[0].TimestampUS
 	step := uint64(interval) * 1000
-	doc.Tracks = decimateTracks(sorted, origin, step, opt.minPoints(), opt.Scoped)
 	doc.FrameCount = frameSpan(sorted, origin, step)
 	doc.DurationMS = doc.FrameCount * interval
-	var ecartes int
-	doc.Bounds, ecartes = boundsOf(doc.Tracks)
-	if ecartes > 0 {
-		// JOURNALISE, JAMAIS AVALE (regle n°3 du depot). Un artefact de decodage qui passe la
-		// porte des bornes n est pas un detail : il decadre la scene et fait disparaitre le fond
-		// de carte. Le compte doit se voir en production, meme quand le correctif marche.
-		slog.Info("rejeu : echantillons aberrants ecartes des bornes",
-			"match_id", doc.MatchID, "ecartes", ecartes, "seuil_etendues", boundsRejectSpreads)
-	}
 	// Les tirs sont rattachés sur les positions NON décimées (le rattachement se joue à
 	// ~120 ms, la grille du rejeu est à 100 ms : décimer d'abord perdrait des tireurs).
 	// LE PONT slot -> joueur vient du seul fil des morts (cf. owners.go). Il conditionne les
@@ -74,21 +60,28 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// leurs gardes — aucun calque ne reconstruit son propre pont (garde-rail `archlint`).
 	reg := BuildIdentityRegistry(IdentityInput{
 		Positions: sorted, BipedCreations: opt.BipedCreations,
-		Deaths: opt.Deaths, PlayerIndices: opt.PlayerIndices,
+		Deaths: opt.Deaths, PlayerIndices: opt.PlayerIndices, FilmTable: opt.FilmTable,
 		Bots: opt.Bots, Fire: refs, RosterXUIDs: opt.RosterXUIDs,
 		Participants: opt.Participants,
 		Statborg: StatborgIdentityInput{
 			Identity: opt.StatborgIdentity, Records: scoreRecordsOf(opt.Score)},
-		Clock:   IdentityClock{OriginUS: origin, StepUS: step, FrameCount: doc.FrameCount},
-		MatchID: matchID,
+		Clock:     IdentityClock{OriginUS: origin, StepUS: step, FrameCount: doc.FrameCount},
+		MatchID:   matchID,
+		Fallbacks: opt.Fallbacks,
 	})
 	if !reg.Section.Empty() {
 		doc.Identity = &reg.Section
 	}
+	// LA POSE DES TRACES ET DES BORNES vit dans `tracks_publication.go` (lot 1.9.13) : la
+	// découpe vient des VIES du registre, et ce fichier-ci est déjà au-delà du seuil de 500 L.
+	trackCov := poserLesTraces(&doc, sorted, decoupeDesTraces{
+		origin: origin, step: step, minPoints: opt.minPoints(), scoped: opt.Scoped,
+		vies: reg.Vies(), fb: opt.Fallbacks,
+	})
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
 	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.
-	nameTracksByLives(doc.Tracks, reg.Vies(), origin, step)
+	nameTracksByLives(doc.Tracks, reg.Vies(), origin, step, opt.Fallbacks)
 	// LES BOTS ENTRENT APRÈS LES HUMAINS : une vie nommée par un xuid n'est jamais écrasée,
 	// et seuls les slots que le pont attribue à un index de bot prennent son nom.
 	nameBotTracks(doc.Tracks, reg.IndexParSlot(), opt.Bots)
@@ -109,7 +102,19 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		unnamed.deduced[i] = true
 	}
 	logUnnamedLives(matchID, doc.Tracks, unnamed)
-	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths), opt.Bots)
+	// LE ROSTER VIENT DE LA TABLE EFFECTIVE DU REGISTRE, PAS DES OPTIONS (lot 1.6.2) : la table du
+	// film y a deja pose ses sieges, et ses gamertags nomment les joueurs a ZERO MORT, que le fil
+	// des morts ne peut pas nommer. Relire `opt.PlayerIndices` ici republierait la table d'AVANT la
+	// composition — deux tables du meme film, ce que le registre existe pour empecher.
+	// L'EQUIPE VIENT DU FILM, ET DE LUI SEUL (lot 1.7, decision utilisateur V4). Elle se pose
+	// sur les vies ET sur le roster ; la base n'entre que dans `coverage.teams` comme CONTROLE.
+	// Posee APRES le nommage : le xuid d'une vie est ce qui la relie a son index de joueur.
+	equipes := newTeamPublication(reg, opt.PlayerTeams, opt.TeamScan, opt.ScoreboardTeams)
+	viesTotal, viesNommees, viesSlotAmbigu := equipes.poserSurLesTraces(doc.Tracks)
+	doc.Roster = buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, opt.Deaths), opt.Bots, equipes)
+	// LE SIEGE APRES LE ROSTER ET APRES LES TRACES, parce qu'il a besoin des deux : l'index lu
+	// pour le siege, les vies publiees pour savoir qui libere et qui arrive (cf. sieges.go).
+	siegeCov := poserLesSieges(doc.Roster, doc.Tracks, opt.FilmTable, doc.FrameCount, opt.Fallbacks)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, reg.DeathOffsetMS(), reg.DeathOffsetMatches())
 	reg.logRegistry(matchID)
@@ -152,9 +157,14 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	grenCov.Attached = len(doc.Grenades)
 	grenCov.warnIfLossy("grenades")
 
+	// LA COUVERTURE DES EQUIPES SE CONSTRUIT ICI mais SE POSE plus bas, avec les autres :
+	// `doc.Coverage` n'existe qu'a partir de `buildCoverage`. Elle a besoin du roster, qui est
+	// son denominateur.
+	teamCov := equipes.couverture(viesTotal, viesNommees, viesSlotAmbigu, doc.Roster)
+	logTeamCoverage(matchID, teamCov)
 	clock := replayScoreClock(&doc, interval, matchID)
 	objCov := attachObjectiveActions(&doc, opt, reg, clock)
-	scoreCov := attachScoreTimeline(&doc, opt.Score, opt.Deaths, clock, matchID)
+	scoreCov := attachScoreTimeline(&doc, opt, clock, matchID)
 
 	// L'ETAT ACTIF des deux familles mesurees (camo, surbouclier) : episodes dates par
 	// vie, fermes a la mort quand rien n'a mesure la fin (cf. equipment_episodes.go).
@@ -175,10 +185,19 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// Les FRAGS SOUS EFFET ACTIF : jointure des episodes avec les kills resolus par
 	// l'appelant (cf. equipment_episode_kills.go). AVANT la couverture, qui publie
 	// killsRead a cote des compteurs.
-	killsRead := attachAllEquipmentKills(doc.EquipmentEpisodes, opt.Kills, occupantParFrame(reg, replayClock{origin: origin, step: step}), doc.OriginMs, interval)
+	killsRead := attachAllEquipmentKills(doc.EquipmentEpisodes, opt.Kills, occupantParFrame(reg, replayClock{origin: origin, step: step, fb: opt.Fallbacks}), doc.OriginMs, interval)
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, reg, doc.OriginMs != nil, scoreCov)
 	doc.Coverage.Projectiles = projCov
+	// CE QUE LE SEUIL DE PUBLICATION A REFUSE (schema 55) : mesure faite en tete de fonction,
+	// posee ici. Sans elle, un artefact publiant 90 traces la ou le film en porte 95 etait
+	// indistinguable d'un film a 90 vies.
+	doc.Coverage.Tracks = &trackCov
+	// CE QUE LE FILM DIT DES EQUIPES, et ce que la base en pense (lot 1.7) : mesure faite
+	// ci-dessus, posee ici.
+	doc.Coverage.Teams = &teamCov
+	// CE QUE LA POSE DES SIEGES A LU ET APPARIE (lot 1.9.14) : mesure faite ci-dessus, posee ici.
+	doc.Coverage.Seats = &siegeCov
 	// La version du film est une DIMENSION du décodage : elle voyage avec l'artefact plutôt que
 	// d'exiger une relecture du film pour la retrouver (cf. Coverage.FilmMajorVersion).
 	doc.Coverage.FilmMajorVersion = opt.FilmMajorVersion
@@ -224,10 +243,18 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// perdrait le record contemporain qui designe le poseur). La FIN OBSERVEE (schema 28)
 	// vient du recensement ti=37 deja lu par la chaine des socles (opt.Pads.Powerups).
 	doc.EquipmentPlacements, doc.Coverage.Placements = buildEquipmentPlacements(
-		opt.Placements, opt.PlacementStats, sorted,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount,
-			families: opt.Labels.EquipmentFamilies},
-		opt.Pads.Powerups.Keyframes)
+		equipmentInputs{
+			Raw: opt.Placements, Stats: opt.PlacementStats, Positions: sorted,
+			Census: opt.Pads.Powerups.Keyframes,
+			Spawns: opt.SpawnEvents, SpawnStats: opt.SpawnStats,
+			// LES DEUX SIGNAUX ECRITS DE L'ORIGINE (lot 1.9.1, D13) : la MORT du poseur, que le
+			// registre d'identite apparie aux vies (lots 1.6 / 1.8, seul producteur de liens),
+			// et sa PRISE d'equipement (`equipmentChanges.taken`). Ni l'une ni l'autre ne se
+			// reconstruit ici : on passe la lecture deja faite.
+			Lives: reg.Vies(), Changes: opt.EquipmentChanges,
+		},
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks,
+			families: opt.Labels.EquipmentFamilies})
 	logPlacementCoverage(doc.Coverage.Placements)
 	// LES PRISES ET LES LACHERS d'arme, sur l'axe de frames du document. Les re-annonces d'une
 	// arme deja portee au spawn sont ECARTEES ici : ce ne sont pas des ramassages.
@@ -244,7 +271,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	var pkCov PickupCoverage
 	judge := newPickupOriginJudge(opt, pos, doc.EquipmentPlacements)
 	doc.Pickups, pkCov = buildPickups(opt.Pickups,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks,
 			families: opt.Labels.EquipmentFamilies},
 		pickupInputs{occupant: reg.XUIDNumAt, st: opt.PickupStats,
 			weaponKeys: opt.Labels.Keys, judge: judge})
@@ -261,7 +288,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		"refuses", pkCov.Refused)
 	// Les SOCLES — armes au sol ET power-ups —, sur le meme nuage NON decime (build_ground_weapons.go).
 	gwObjs := attachWeaponPads(&doc, opt.Pads, sorted,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount}, opt.Labels)
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks}, opt.Labels)
 	// DATATION DES OCCUPATIONS DE SOCLE par l'evenement natif : l'intervalle de vingt secondes
 	// devient un instant, et `xuid` cesse d'etre `null`, QUAND un ramassage natif de la meme
 	// famille tombe dans la fenetre. Rien n'est efface : une occupation non couverte garde son
@@ -276,46 +303,47 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// jamais par une table de durees (document_ground_weapon_items.go).
 	var gwiCov GroundWeaponItemsCoverage
 	doc.GroundWeapons, gwiCov = buildGroundWeaponItems(gwObjs, opt.WeaponChanges, sorted,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	doc.Coverage.GroundWeaponItems = &gwiCov
 	logGroundWeaponItems(gwiCov)
 	// LES VEHICULES, sur le MEME nuage NON decime de bipedes (ce sont ses TROUS qui portent les
 	// episodes d'occupation) et le MEME pont slot -> xuid que les tirs — cf. build_vehicles.go.
 	// Pose APRES la couverture : il publie la sienne.
 	attachVehicles(&doc, opt.Vehicles, sorted, reg,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	// LES TIRS DES JOUEURS EMBARQUES : la SECONDE porte des tirs, celle que la premiere ne
 	// pouvait pas franchir (un occupant attache ne replique plus sa position de bipede, donc
 	// `slotFor` n'a rien a poser sur la carte). Elle exige les episodes d'occupation ET les
 	// trajectoires de vehicule : elle vient donc APRES `attachVehicles`, et elle met a jour la
 	// couverture des tirs deja publiee — cf. vehicle_shots.go.
 	attachVehicleShots(&doc, shotOrphans, reg,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
-	attachFlagCarries(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachFlagCarries(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks},
+		equipes)
 	// LA COURONNE VIP, sur les pistes PUBLIEES (la couronne est a la position de son porteur) —
 	// gardee de mode par l'appelant (opt.Vip.Scanned), cf. vip_crown.go.
-	attachVipCrown(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachVipCrown(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	// LE PORTEUR DU CRANE d'Oddball, sur les pistes PUBLIEES (le crane est a la position de son
 	// porteur) — garde de mode par l'appelant (opt.Skull.Scanned), cf. skull_carries.go. Le crane
 	// LIBRE (attachObjectiveObjects, ci-dessous) reste la couche POSITION ; ce calque-ci est la
 	// couche VIVANTE par-dessus.
-	attachSkullCarries(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount},
+	attachSkullCarries(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks},
 		unnamed.deduced)
 	// LE PORTEUR DE LA BOMBE d'Assaut, sur les pistes PUBLIEES (la bombe est a la position de
 	// son porteur) — garde de mode par l'appelant (opt.Bomb.CarryScanned, TOUTES les variantes
 	// de la famille bomb), source : le canal des armes tenues DEJA balaye (opt.WeaponChanges),
 	// cf. bomb_carries.go.
 	bombCarry := attachBombCarries(&doc, opt, reg,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount}, unnamed.deduced)
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks}, unnamed.deduced)
 	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
 	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
 	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.
-	attachObjectiveObjects(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachObjectiveObjects(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	// L'ETAT DES ZONES, sur la MEME horloge que les positions et sur les captures DEJA posees
 	// (`doc.Objectives`) — cf. build_zones.go.
-	attachZoneStates(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachZoneStates(&doc, opt, reg, replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks})
 	// L'ARMEMENT DE LA BOMBE, sur la meme horloge que les actions d'objectif et confronte aux
 	// explosions DEJA posees (`doc.Objectives`) — garde de mode par l'appelant
 	// (opt.Bomb.Scanned), cf. bomb_armings.go.
@@ -360,7 +388,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// ICI, où les morts et leur decalage d'horloge existent — pas dans le projecteur
 	// (cf. inventory_dead_readings.go).
 	logInventoryEmptyCoverage(doc.Inventory, markInventoryDeadReadings(doc.Inventory, opt.Deaths, reg,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount}))
+		replayClock{origin: origin, step: step, frames: doc.FrameCount, fb: opt.Fallbacks}))
 	// LES GRENADES ONT LEUR PROPRE AXE, alimente par les deux canaux (cf. grenade_reads.go) :
 	// ils n'ont pas la meme cadence, et les verser dans `Inventory` ferait masquer une lecture
 	// pleine par une lecture partielle — la cellule de munitions se viderait.
@@ -465,6 +493,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		"verdictTirs", doc.Coverage.Verdict["shots"],
 		"verdictGrenades", doc.Coverage.Verdict["grenades"],
 		"verdictPont", doc.Coverage.Verdict["bridge"])
+	attachFallbackCoverage(&doc, opt.Fallbacks) // EN DERNIER : cf. fallbacks_publication.go
 	return doc
 }
 
@@ -487,121 +516,8 @@ func keepShotsOfPublishedTracks(shots []Shot, tracks []Track) []Shot {
 		func(s Shot, published map[uint32]bool) bool { return published[s.Slot] })
 }
 
-// decimateTracks projette les positions sur la grille de frames (un point par slot et par
-// frame, le premier observé gagne) et produit UNE TRACK PAR VIE — un slot qui disparaît plus
-// de `lifeGapUS` puis revient ouvre une nouvelle track, la MÊME règle de découpe que
-// `buildLifeSpans` (lot identité des vies, 2026-09-02).
-//
-// POURQUOI PAR VIE ET PLUS PAR SLOT. Une track unique par slot fusionnait les vies d'un slot
-// RECYCLÉ (partant remplacé par un arrivant ou un bot) : le premier porteur nommé gardait
-// tout l'intervalle, le second n'avait aucune vie — sa fiche restait « Éliminé /
-// Réapparition ? » pendant que son corps se déplaçait sous le nom du premier. Le contrat
-// client (buildSlotOwnership, résolveurs frame-aware par slot) attend des vies disjointes.
-// L'ordre reste celui de première apparition du slot, les vies d'un slot en ordre
-// chronologique — déterministe, artefact diffable.
-func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoints int,
-	scoped func(slot uint32, tsUS uint64) int) []Track {
-	type acc struct {
-		done      [][]Point // les vies CLOSES de ce slot, dans l'ordre
-		pts       []Point
-		lastFrame int
-		lastUS    uint64
-	}
-	accs := map[uint32]*acc{}
-	var order []uint32
-	for _, p := range sorted {
-		if !p.HasWorld { // quantum sans bornes de carte : pas une coordonnée, on ne publie pas
-			continue
-		}
-		frame := int((p.TimestampUS - origin) / step)
-		a := accs[p.Slot]
-		if a == nil {
-			a = &acc{lastFrame: -1}
-			accs[p.Slot] = a
-			order = append(order, p.Slot)
-		}
-		// Trou au-delà de lifeGapUS = NOUVELLE VIE : la track courante se clôt, la suivante
-		// s'ouvre. Même seuil que buildLifeSpans — deux découpes divergentes rendraient le
-		// nommage par vie inappariable.
-		if len(a.pts) > 0 && int64(p.TimestampUS)-int64(a.lastUS) > lifeGapUS {
-			a.done = append(a.done, a.pts)
-			a.pts = nil
-			a.lastFrame = -1
-		}
-		a.lastUS = p.TimestampUS
-		if frame == a.lastFrame {
-			continue
-		}
-		a.lastFrame = frame
-		pt := Point{T: frame, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z)}
-		if h, ok := p.AimHeadingDeg(); ok { // cap de visée du MÊME record (i21), si répliqué
-			pt.H = headingForJSON(h)
-		}
-		// ÉLÉVATION du MÊME record et du MÊME composant que le cap (le R(11) qui suit le
-		// R(12) d'i21) : les deux angles arrivent ensemble ou pas du tout, `AimPitchDeg`
-		// partageant la validité `HasYaw` avec `AimHeadingDeg`. Publier l'un sans l'autre
-		// n'a donc aucun sens — et l'absence de `p` sur un point qui porte `h` dit « à
-		// plat », pas « inconnu » (cf. Point.P).
-		if pitch, ok := p.AimPitchDeg(); ok {
-			pt.P = pitchForJSON(pitch)
-		}
-		// LUNETTE : etat a bascule, d'une AUTRE source que les deux angles ci-dessus — on le
-		// consulte a l'instant du point au lieu de le lire dedans (cf. Point.S, zoom_state.go).
-		if scoped != nil {
-			pt.S = scoped(p.Slot, p.TimestampUS)
-		}
-		// Vitalité du MÊME record que la position (i4 / i5). La décimation garde le PREMIER
-		// échantillon de chaque frame : si deux records du même slot tombent dans la même
-		// frame de 100 ms et que seul le second porte le bouclier, il est perdu. Cela
-		// n'invente rien — c'est une perte, pas une erreur — et le témoin publié est mesuré
-		// sur les positions NON décimées.
-		// Témoin : P(bouclier nul | 500 ms avant une mort connue) = 50,49 % contre 38,18 %
-		// chez un vivant à plus de 5 s d'une mort, soit un rapport de 1,32x — FAIBLE, et
-		// c'est normal : le film ne réplique le bouclier que lorsqu'il CHANGE, donc une
-		// mesure de bouclier est déjà une mesure de combat. Ce qui porte le rendu est le
-		// témoin de FORME (27 404/27 404 quanta dans [0,64]), pas ce rapport.
-		if sh, ok := p.ShieldAt(); ok {
-			pt.Sh = fractionForJSON(sh)
-		}
-		if hp, ok := p.HealthAt(); ok {
-			pt.Hp = fractionForJSON(hp)
-		}
-		a.pts = append(a.pts, pt)
-	}
-	tracks := make([]Track, 0, len(order))
-	for _, slot := range order {
-		a := accs[slot]
-		for _, pts := range append(a.done, a.pts) {
-			if len(pts) < minPoints {
-				continue
-			}
-			tracks = append(tracks, Track{
-				Slot:       slot,
-				Team:       -1,
-				Points:     pts,
-				StartFrame: pts[0].T,
-				EndFrame:   pts[len(pts)-1].T,
-			})
-		}
-	}
-	return tracks
-}
-
 // frameSpan renvoie le nombre de frames couvrant tout le film (dernier index + 1).
 func frameSpan(sorted []filmdec.BipedPosition, origin, step uint64) int {
 	last := sorted[len(sorted)-1].TimestampUS
 	return int((last-origin)/step) + 1
-}
-
-// round2 arrondit au centième (cf. coordScale).
-func round2(v float32) float32 {
-	return float32(math.Round(float64(v)*coordScale) / coordScale)
-}
-
-// fractionForJSON arrondit une fraction [0,1] au millième et la rend par POINTEUR : c'est
-// ce pointeur qui permet de publier un ZÉRO (bouclier brisé) sans qu'omitempty le confonde
-// avec une absence de mesure. Cf. Point.Sh.
-func fractionForJSON(v float32) *float32 {
-	r := float32(math.Round(float64(v)*1000) / 1000)
-	return &r
 }

@@ -6,6 +6,7 @@ import (
 
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // flag_carries.go — LA REGLE : de quoi est faite la vie d'un drapeau, et ou elle s'arrete.
@@ -56,10 +57,12 @@ import (
 // # A quel DRAPEAU un portage appartient
 //
 // En CTF on ne porte jamais son propre drapeau : on le RENVOIE, et c'est `flag_returns`. Un
-// portage appartient donc toujours au drapeau adverse — mais « adverse » suppose de connaitre
-// l'equipe du porteur, et **l'equipe n'est pas dans le film** (cf. `Track.Team`). L'attribution
-// passe donc par la GEOMETRIE : la regle, ses trois cas et l'ordre dans lequel ils se lisent
-// vivent dans `flag_assign.go`, avec la mesure qui les fonde.
+// portage appartient donc toujours au drapeau adverse — et « adverse » suppose de connaitre
+// l'equipe du porteur, QUE LE FILM PORTE DEPUIS LE LOT 1.7 (cf. `Track.Team`). Ce qui manque
+// encore est l'identite de l'OBJET drapeau : l'attribution passe donc toujours par la GEOMETRIE,
+// mais l'invariant « jamais son propre drapeau » la FILTRE, et il tient desormais sur une
+// cuisson hors ligne. La regle, ses trois cas et leur ordre vivent dans `flag_assign.go`, avec
+// la mesure qui les fonde.
 //
 // LE RENVOI N'EST PAS INSTANTANE, ET LA PHRASE LE DISAIT A TORT jusqu'au 2026-08-31 (« le toucher
 // le RENVOIE »). Le renvoi demande de SE TENIR dans la zone du drapeau tombe pendant ~3,1 s seul,
@@ -133,8 +136,9 @@ type FlagCarryScan struct {
 	// manche a l'autre ; une prise est nommee par l'identite de sa manche, choisie sur son
 	// instant). Sur un film mono-manche c'est le pont plat, a l'octet pres.
 	Identity objectiveevents.RoundIdentity
-	// TeamOf est la table xuid -> equipe fournie par l'appelant (cf. [FlagInput.TeamOf]) : elle
-	// porte l'invariant « jamais son propre drapeau ». Vide : l'invariant se tait.
+	// TeamOf est la table xuid -> equipe LUE DANS LE FILM (lot 1.7) : elle porte l'invariant
+	// « jamais son propre drapeau ». Les joueurs a « aucune equipe » n'y entrent pas — l'invariant
+	// ne refuse que sur une equipe REELLE. Vide : l'invariant se tait.
 	TeamOf map[string]int
 	// Marks est le controle independant : les records de bipede d'image-cle portant le marqueur
 	// de portage, plus les instants de TOUTES les images-cles.
@@ -169,6 +173,8 @@ type flagCarryCtx struct {
 	// slot que le pont n'a jamais nomme, et `coverage.flagCarries.ambiguousSlot` retomberait a
 	// zero en silence (revue DUREES-R1, C1 — le compteur est servi jusqu'au contrat).
 	slotAmbiguous map[uint32]bool
+	// fb compte les REPLIS de cette cuisson (D14). Nil ne compte rien.
+	fb *fallback.Compteur
 }
 
 // flagOpening est une prise, avant tout bornage.
@@ -388,7 +394,7 @@ func closeByCarrierKills(raws []flagCarryRaw, evs []objectiveevents.NamedEvent,
 func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCarriesCoverage) []flagCarryRaw {
 	// LE REFUS DU REPLI EST COMPTE ET DIT : la matiere existe, le calque renonce a s'en servir
 	// parce que le slot est partage (cf. flag_carrier_tracks.go, garde du constat C1).
-	idx, ambigus := tracksByXUID(ctx.tracks, ctx.slotXUID, ctx.slotAmbiguous)
+	idx, ambigus := tracksByXUID(ctx.tracks, ctx.slotXUID, ctx.slotAmbiguous, ctx.fb)
 	cov.AmbiguousSlot = len(ambigus)
 	logFlagAmbiguousSlots(ambigus)
 	out := raws[:0:0]
@@ -407,6 +413,11 @@ func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCa
 		r.x1, r.y1 = p0.X, p0.Y
 		if p1, ok1 := pointOfXUIDAt(idx[r.xuid], clampFrame(ctx.frameOfMatchMS(r.t1), ctx.frames)); ok1 {
 			r.x1, r.y1 = p1.X, p1.Y
+		} else {
+			// REPLI NOMME ET COMPTE (D14) : aucun point publie a la frame de fin, le LACHER prend
+			// la position de la PRISE. Deux points identiques se lisent sur la carte comme un
+			// portage immobile — le repli fabrique une donnee plausible, d'ou son compte.
+			ctx.fb.Declenche(fallback.NomPositionLacherPrendLaPrise)
 		}
 		out = append(out, r)
 	}

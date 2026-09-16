@@ -371,8 +371,8 @@ export function ReplayCanvas({
   // resolvent le texte de la fleche ICI (langue de la page) — le calque, lui, ne connait
   // aucune locale (meme convention que `offscreenLabelOf` du calque des pions ci-dessous).
   const vehicles = useReplayVehicles({
-    doc, view: canvasView, enabled: showVehicles, showNames: true, showAim, colorOfSlot, colorOfXuid,
-    nameOfSlot, nameOfXuid,
+    doc, view: canvasView, enabled: showVehicles, locale, showNames: true, showAim, colorOfSlot,
+    colorOfXuid, nameOfSlot, nameOfXuid,
     offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
     offscreenGroupLabelOf: (n, meters) => REPLAY_TEXT[locale].offscreenGroupMarkerFmt(n, meters),
     neutralInk, labelStroke, explosionInk: fxInk, reducedMotion, redraw,

@@ -8,11 +8,15 @@ package replay
 // bornage par le recensement des images-cles, meme refus de publier une fin que le film ne
 // montre pas.
 //
-// CE QUE LE CALQUE REFUSE DE DIRE, ET C EST LE POINT LE PLUS IMPORTANT DE CE FICHIER : POURQUOI
-// un vehicule cesse d exister. Le lot V3 a mesure la voie « destruction datee par la mort du
-// conducteur » sur 460 vies et 12 films, avec huit gates ecrits avant mesure
-// (`V3_DESTRUCTION_DATEE_2026-09-02.md`). Sept echouent, et le seul qui passe est le CONTROLE.
-// Les trois faits qui ferment la question :
+// POURQUOI UN VEHICULE CESSE D EXISTER : LE FILM L ECRIT, ET C EST UNE LECTURE DEPUIS LE LOT
+// 1.9.10. Le composant `object-dead-state` de `ti=40` porte la mort de l entite ; il se lit par
+// la MARCHE (`filmdec.ScanObjectDeaths`), la seule voie qui atteigne `i11`. `VehicleTrack.End`
+// prend donc trois valeurs — `destroyed` (datee par `TEnd`), `film_end`, `unknown` — et les
+// trois sont des faits (cf. vehicle_end.go).
+//
+// CE QUI RESTE REFUTE, ET QU IL NE FAUT PAS RE-CREUSER : dater la destruction par la MORT DU
+// CONDUCTEUR. Le lot V3 l a mesure sur 460 vies et 12 films avec huit gates ecrits avant mesure
+// (`V3_DESTRUCTION_DATEE_2026-09-02.md`) ; sept echouent, et le seul qui passe est le CONTROLE :
 //
 //	1. AUCUNE des 460 vies n a d occupant encore a bord a la fin serree de son flux (0 sur 64
 //	   vies a candidat) — un vehicule replique sa position 13 a 36 s (mediane par lot) APRES
@@ -22,23 +26,34 @@ package replay
 //	3. la mort JUSTE APRES la sortie ne depasse pas le hasard : +7,5 points sur le corpus, sous
 //	   le seuil de 10, et un seul lot sur trois au-dessus.
 //
-// `VehicleTrack.End` vaut donc `unknown`, et RIEN d autre. Publier `destruction` sur ce corpus
-// serait affirmer ce qui a ete refute. La valeur est ANGLAISE comme toutes les enumerations du
-// contrat (`pickup`/`seen`/`open`, `OriginUnknown = "unknown"`, `event`/`mixed`/`gap`) — revue
-// adversariale 2026-09-02 : une seule valeur francaise aurait coute un changement de contrat
-// apres backfill.
+// La conclusion du lot V3 tenait donc, et elle tient toujours : la destruction ne s INFERE pas.
+// Elle se LIT.
 
-import "log/slog"
+import (
+	"log/slog"
 
-// VehicleEndUnknown est la SEULE valeur que `VehicleTrack.End` prend aujourd hui.
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+)
+
+// Les TROIS valeurs de `VehicleTrack.End`. Elles sont ANGLAISES comme toutes les enumerations du
+// contrat (`pickup`/`seen`/`open`, `OriginUnknown`, `event`/`mixed`/`gap`) : une valeur francaise
+// couterait un changement de contrat apres backfill (revue adversariale du 2026-09-02).
 //
-// LE CHAMP EXISTE QUAND MEME, et ce n est pas un champ mort : il est le contrat par lequel le
-// client sait qu il ne doit PAS lire la disparition du sprite comme une destruction. Sans lui,
-// « le sprite s efface » se lirait naturellement « le vehicule a explose » — exactement l erreur
-// que la mesure interdit. D autres valeurs s ajouteront le jour ou un signal les datera : les
-// deux voies restent ouvertes et sont ecrites au rapport V3 § 6 (la grammaire de bits d `i2`/`i3`
-// pour `ti=40`, et l evenement de degat de type 0 de la liste, jamais decode).
-const VehicleEndUnknown = "unknown"
+// LE CHAMP N A PAS CHANGE DE ROLE, IL A GAGNE SES LECTURES. Il reste le contrat par lequel le
+// client sait qu il ne doit PAS lire la disparition du sprite comme une destruction ; il dit
+// desormais, quand le film l ecrit, que c en EST une.
+const (
+	// VehicleEndDestroyed : le film ECRIT la mort de cette vie (`object-dead-state` de `ti=40`,
+	// lu par la marche — cf. `filmdec.ScanObjectDeaths`). `TEnd` porte l instant.
+	VehicleEndDestroyed = "destroyed"
+	// VehicleEndFilmEnd : la DERNIERE image-cle du film recense encore cette vie. Le vehicule
+	// est la quand le film s arrete ; sa fin n est pas un evenement du match.
+	VehicleEndFilmEnd = "film_end"
+	// VehicleEndUnknown : la vie cesse d etre recensee et le film n ecrit pas sa mort. C est le
+	// RESTE, et il se compte (`VehicleCoverage.EndUnknown`) : ni une destruction, ni une fin de
+	// film — une disparition non datee.
+	VehicleEndUnknown = "unknown"
+)
 
 // VehicleTrack est LA VIE D UN VEHICULE, de sa naissance a la derniere preuve de sa presence.
 //
@@ -74,9 +89,20 @@ type VehicleTrack struct {
 	T0    int `json:"t0"`
 	T1    int `json:"t1"`
 	T1Max int `json:"t1max"`
-	// End est la CAUSE de la fin de vie. Voir `VehicleEndUnknown` : une seule valeur aujourd hui,
-	// et c est une mesure, pas une lacune.
+	// End est la CAUSE de la fin de vie : `destroyed`, `film_end` ou `unknown` (cf. les
+	// constantes ci-dessus et vehicle_end.go). Toujours present.
 	End string `json:"end"`
+	// TEnd est la FRAME de la fin ECRITE, present pour le seul `destroyed` — c est l instant du
+	// composant dead-state, date a la milliseconde la ou `T1Max` borne a ~20 s.
+	//
+	// POINTEUR, PAS int : une fin a la frame 0 serait omise par `omitempty` et relue comme
+	// « pas de fin datee ». ABSENT veut dire, et seulement : le film n ecrit pas la mort de
+	// cette vie.
+	//
+	// IL NE COUPE PAS LA TRAJECTOIRE. Un echantillon posterieur reste publie et la
+	// contradiction se compte (`VehicleCoverage.SamplesAfterEnd`) : couper en silence
+	// masquerait le desaccord qui dirait que l attribution est fausse.
+	TEnd *int `json:"tEnd,omitempty"`
 	// Spawn est la position de NAISSANCE, en metres monde, lue dans le record de creation.
 	// Absente quand ce record n a pas ete lu.
 	//
@@ -165,14 +191,11 @@ type VehicleRide struct {
 	// exactement comme pour une trajectoire de joueur.
 	//
 	// ET IL N Y A PAS DE CHAMP `team` A COTE, ce qui a ete demande et mesure le 2026-09-02.
-	// L EQUIPE N EST PAS DANS LE FILM — c est le meme fait que celui ecrit sur `Track.Team`, qui
-	// vaut -1 pour tout le monde : le film ne porte ni camp, ni couleur, ni score par camp. Elle
-	// vit dans la BASE, avec le gamertag, et le document est HORS LIGNE par construction (il se
-	// cuit depuis les seuls chunks, sans ouvrir la moindre DuckDB — c est ce qui le rend
-	// backfillable). Publier `team` ici obligerait soit a ouvrir la base dans le chemin de
-	// cuisson (ce que tout le calque refuse), soit a la remplir A LA REQUETE cote service, ou le
-	// CLIENT tient deja le scoreboard : ce serait une seconde source pour la meme jointure, et
-	// c est l anti-patron n°8 du depot. LA JOINTURE RESTE DONC CHEZ LE CLIENT — et pour qu elle
+	// LA RAISON A CHANGE AU SCHEMA 57 (lot 1.7) ET LA CONCLUSION NON. L equipe EST dans le film
+	// depuis ce lot — `Track.Team` et `roster[].team` la portent, lue au composant i0 de ti=9 —
+	// mais elle y est PAR JOUEUR, pas par vehicule : un vehicule n a pas de camp, il a des
+	// occupants. La poser ici dupliquerait une jointure que l occupant porte deja, et ce serait
+	// l anti-patron n°8 du depot. LA JOINTURE RESTE DONC CHEZ LE CLIENT — et pour qu elle
 	// tienne la promesse ci-dessus, elle passe par le XUID (`colorByXuidResolver`) et non plus par
 	// le pont slot -> joueur, qui est MUET pendant l episode puisque le bipede ne replique plus.
 	XUID string `json:"xuid,omitempty"`
@@ -269,6 +292,31 @@ type VehicleCoverage struct {
 	// un cap. Un vehicule jamais conduit n a ni l un ni l autre.
 	Samples     int `json:"samples"`
 	WithHeading int `json:"withHeading"`
+	// LA COUVERTURE DE LA FIN DE VIE (lot 1.9.10). Les quatre premiers comptent la LECTURE, les
+	// trois suivants ce qu elle DECIDE, et le dernier ce qu elle CONTREDIT.
+	//
+	//	DeathsRead        morts `ti=40` rendues par la marche, dedupliquees. A zero alors que des
+	//	                  vies existent : soit le film n en ecrit aucune, soit la marche n a rien
+	//	                  lu — `DeathStats` (journalise) tranche par le controle de masque.
+	//	DeathsMatched     celles qu une vie recensee reprend ; DeathsUnmatched celles qu AUCUNE ne
+	//	                  reprend — une vie manque alors au recensement, et c est un CONSTAT, pas
+	//	                  un detail : la mort est lue, la vie ne l est pas.
+	//	DeathsTailDesync  parmi `DeathsMatched`, celles dont le record a rompu APRES le dead-state
+	//	                  (tete lue, queue non modelisee). Qualite comptee a part, jamais fondue.
+	DeathsRead       int `json:"deathsRead"`
+	DeathsMatched    int `json:"deathsMatched"`
+	DeathsUnmatched  int `json:"deathsUnmatched"`
+	DeathsTailDesync int `json:"deathsTailDesync"`
+	// EndDestroyed / EndFilmEnd / EndUnknown ventilent les vies PUBLIEES par cause de fin. Leur
+	// somme vaut `Published`. `EndUnknown` est le RESTE A FAIRE du lot 1.9.10 : la part des vies
+	// dont la disparition n est pas datee.
+	EndDestroyed int `json:"endDestroyed"`
+	EndFilmEnd   int `json:"endFilmEnd"`
+	EndUnknown   int `json:"endUnknown"`
+	// SamplesAfterEnd compte les points de trajectoire POSTERIEURS a une fin datee. C est une
+	// CONTRADICTION publiee : un vehicule que le film declare mort ne devrait plus repliquer sa
+	// position. La trajectoire n est pas coupee pour autant — couper masquerait le desaccord.
+	SamplesAfterEnd int `json:"samplesAfterEnd"`
 	// Rides est le nombre d episodes d occupation ; VehiclesRidden les vies qui en portent au
 	// moins un ; RidesNamed ceux dont l occupant est nomme par le pont.
 	Rides          int `json:"rides"`
@@ -330,7 +378,14 @@ type VehicleCoverage struct {
 
 // tallyVehicleCoverage compte, sur les vies PUBLIEES, ce que la couverture annonce. Un compteur
 // qui se remplirait ailleurs qu ici finirait par diverger du tableau qu il decrit.
-func tallyVehicleCoverage(tracks []VehicleTrack, cov *VehicleCoverage) {
+//
+// `fb` (nil-safe) EST LE COMPTEUR DE REPLIS DE LA CUISSON (lot 1.9.9, D14 (c)) : une vie dont le
+// chassis est LU mais absent de la table des familles declenche
+// `repli_chassis_vehicule_marqueur_neutre`. Il se compte ICI et pas au site de la lecture
+// (`vehicleTrackOf`) pour deux raisons : la limite de cinq parametres du depot y est deja
+// atteinte, et surtout la couverture decrit les vies PUBLIEES — une vie assemblee puis fondue
+// dans un relais (`mergeVehicleRelays`) ne doit pas compter un repli que l artefact ne porte pas.
+func tallyVehicleCoverage(tracks []VehicleTrack, cov *VehicleCoverage, fb *fallback.Compteur) {
 	cov.Published = len(tracks)
 	for _, tr := range tracks {
 		if tr.Spawn != nil {
@@ -343,6 +398,9 @@ func tallyVehicleCoverage(tracks []VehicleTrack, cov *VehicleCoverage) {
 			} else {
 				cov.FamilyUnknown++
 				cov.UnknownChassis[tr.Chassis]++
+				// D14 (b) : la LECTURE a eu lieu (`tr.Chassis` est le mot d identite lu dans le
+				// record de creation) et c est la TABLE qui se tait — le repli entre APRES elle.
+				fb.Declenche(fallback.NomChassisVehiculeMarqueurNeutre)
 			}
 		}
 		cov.Samples += len(tr.Samples)
@@ -423,9 +481,21 @@ func logVehicleCoverage(c *VehicleCoverage) {
 			" retombe partout sur le cap du chassis",
 			"episodes", c.Rides, "lecturesBrutes", c.AimReads)
 	}
+	// UN CHASSIS INCONNU EST UN AVERTISSEMENT DEPUIS LE LOT 1.9.9 (2026-09-16), une ligne par
+	// chassis et par cuisson. Decision utilisateur du 2026-09-14 : le parc d assets vehicules est
+	// COMPLET, donc un chassis absent de la table est un MISMATCH a nommer — pas une information
+	// de routine. Ce journal est le pendant lisible du repli
+	// `repli_chassis_vehicule_marqueur_neutre`, compte par `tallyVehicleCoverage`.
+	//
+	// `slog.Warn` ET NON `slog.WarnContext` : toute la chaine d assemblage du calque est PURE et
+	// ne porte aucun `context.Context` (meme convention que les douze autres journaux de ce
+	// fichier et de `build_vehicles.go`). Lui en faire traverser un pour cette seule ligne
+	// changerait la signature de six fonctions du lot voisin 1.9.10.
 	for id, n := range c.UnknownChassis {
-		slog.Info("rejeu : chassis de vehicule NON RESOLU — vies publiees sans sprite",
-			"chassis", id, "vies", n)
+		slog.Warn("rejeu : chassis de vehicule ABSENT DE LA TABLE DES FAMILLES — vies publiees"+
+			" sans sprite, dessinees en marqueur neutre ; le mot d identite est LU, c est la table"+
+			" qui ne le nomme pas",
+			"chassis", id, "vies", n, "repli", string(fallback.NomChassisVehiculeMarqueurNeutre))
 	}
 	if c.WithChassis > 0 && c.FamilyResolved == 0 {
 		slog.Warn("rejeu : AUCUN chassis de vehicule resolu alors que le mot d identite a ete lu"+

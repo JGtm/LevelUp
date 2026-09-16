@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"sort"
 	"strconv"
+
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // flag_carrier_tracks.go — LA POSITION DU PORTEUR SUR LES PISTES PUBLIEES.
@@ -63,7 +65,7 @@ import (
 // de A coupee par un trou de replication ; le trancher demanderait de dater le pont, ce que
 // `OwnerReport` ne fait pas.
 func tracksByXUID(tracks []Track, slotXUID map[uint32]uint64,
-	slotAmbiguous map[uint32]bool) (map[string][]Track, []uint32) {
+	slotAmbiguous map[uint32]bool, fb *fallback.Compteur) (map[string][]Track, []uint32) {
 	nommes := namedXUIDsBySlot(tracks)
 	out := map[string][]Track{}
 	var ambigus []uint32
@@ -77,6 +79,10 @@ func tracksByXUID(tracks []Track, slotXUID map[uint32]uint64,
 		}
 		xuid := xuidOfPublishedTrack(t, slotXUID)
 		if xuid == "" {
+			// REPLI NOMME ET COMPTE (D14) : distinct du refus NOMME voisin (`ambigus`), qui dit
+			// « deux vies se partagent le slot ». Ici le pont ne nomme RIEN, et la piste sort du
+			// calque sans laisser de trace : c'est ce silence que le compte rompt.
+			fb.Declenche(fallback.NomPisteDrapeauSansPontEcartee)
 			continue // le pont ne nomme pas ce slot : aucun porteur a inventer
 		}
 		out[xuid] = append(out[xuid], t)

@@ -7,7 +7,16 @@ package filmdec
 // before each FUN_1406d84b4 CALL). i15 low-frequency is DEEP/data-dependent and
 // modeled to its confirmed core only (re-validate before trusting its tail).
 
-// consumeObjectRegionState (i6) mirrors FUN_140e1bfa0.
+// consumeObjectRegionState (i6 `object-region-state-component`) porte FUN_140e1bfa0.
+//
+// ADRESSE RESOLUE PAR LE REGISTRE ECS DU BINAIRE le 2026-09-15 (lot 1.9.1 bis, pas 2) :
+// chaine de nom 143c99280 -> thunk 14064c720 -> vtable 143d0b8b0, slot +0x30 = FUN_140e1bfa0.
+// GRAMMAIRE RELUE : R(1) present -> [dst+0xc5] ; R(6) compte -> [dst+0xc6] ; compte x R(3)
+// -> [dst+0x148+i] ; si present ET compte != 0 : compte x R(10) -> [dst+0xc8+]. La seconde
+// boucle est gardee par le R(1) DE TETE, pas par une valeur lue dans la premiere.
+// AUCUNE LARGEUR N A CHANGE ; largeurs figees par TestConsumeObjectRegionStateLargeurs.
+// Le maximum theorique (compte = 63) vaut 826 bits, exactement le maximum observe au pas 1 —
+// le jeu, lui, marque ses comptes > 32 comme INVALIDES (140e1bfa0 : bVar14 = bVar10 < 0x21).
 func consumeObjectRegionState(br *BitReader) {
 	present := br.ReadBit()
 	count := br.ReadBits(6)
@@ -21,7 +30,13 @@ func consumeObjectRegionState(br *BitReader) {
 	}
 }
 
-// consumeObjectDamageSections (i7) mirrors FUN_142f03c80 (dequant width 7).
+// consumeObjectDamageSections (i7 `object-damage-sections-component`) porte FUN_142f03c80.
+//
+// ADRESSE RESOLUE PAR LE REGISTRE ECS DU BINAIRE le 2026-09-15 (lot 1.9.1 bis, pas 2) :
+// chaine de nom 143c992c0 -> thunk 14064c710 -> vtable 143d0b860, slot +0x30 = FUN_142f03c80.
+// GRAMMAIRE RELUE : R(6) compte -> [dst+0x168] ; compte x { R(1) ; si 1 : R(7) dequantifie
+// (142f03dac : MOV dword ptr [RSP + 0x20],0x7) puis R(16) (142f03dd0) }.
+// AUCUNE LARGEUR N A CHANGE ; largeurs figees par TestConsumeObjectDamageSectionsLargeurs.
 func consumeObjectDamageSections(br *BitReader) {
 	count := br.ReadBits(6)
 	for i := uint64(0); i < count; i++ {
@@ -60,7 +75,7 @@ type ObjectParentState struct {
 	StartBit, EndBit int
 
 	// --- branche Attached == true -------------------------------------------------
-	// Quant16 est le champ à largeur variable lu par readQuantStat(1, 13) : 1 bit de
+	// Quant16 est le champ à largeur variable lu par readQuantStat(1) : 1 bit de
 	// sonde + R(13) + R(2) de poids fort, rendus assemblés comme partout ailleurs.
 	Quant16 uint32
 	// Word16 est le R(16) inconditionnel qui le suit ; Opt16 le R(16) derrière une porte.
@@ -137,14 +152,14 @@ func consumeObjectParentState(br *BitReader, recordStateParam uint32, typeIndex 
 		if recordStateParam < 2 {
 			st.FreeRead = true
 			at := br.BitPos()
-			st.HasFreeID, st.FreeID = consume1408f0ac4(br)
+			st.HasFreeID, st.FreeID = consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0) @1423ce7d8
 			st.FreeBits = br.BitPos() - at
 			if br.ReadBit() {
 				st.HasAlt11, st.Alt11 = true, uint32(br.ReadBits(11))
 			}
 		}
 	} else {
-		st.Quant16 = br.readQuantStat(1, quantStatDefaultWidth) // probe1+13+2 = 16b
+		st.Quant16 = br.readQuantStat(1) // FUN_1406d3140(...,1,...) @140c1e51d : sonde + 13 ou 9 + 2
 		st.Word16 = uint32(br.ReadBits(16))
 		if br.ReadBit() {
 			st.HasOpt16, st.Opt16 = true, uint32(br.ReadBits(16))
@@ -285,14 +300,35 @@ func consumeObjectPhysicsFlags(br *BitReader) {
 	br.ReadBit()
 }
 
-// consumeObjectFrameConfiguration (i17) mirrors FUN_1407f0534 -> FUN_1407f0550
-// (identical to the held-weapon 3-element float block).
+// consumeObjectFrameConfiguration (i17 `object-frame-configuration-component`) porte
+// FUN_1407f0534 -> FUN_1407f0550 (le meme bloc de trois flottants que l arme tenue).
+//
+// ADRESSE RESOLUE PAR LE REGISTRE ECS DU BINAIRE le 2026-09-15 (lot 1.9.1 bis, pas 2) :
+// chaine de nom 143c991a0 -> thunk 14064c670 -> vtable 143d0be80, slot +0x30 = FUN_1407f0534,
+// qui appelle FUN_1407f0550 sur [dst+0x4f8]. GRAMMAIRE RELUE : FUN_1404d343c est une
+// INITIALISATION (zero bit) ; FUN_14080d69c = R(1)[si 1 : R(32)] ; si ce bit est mis,
+// FUN_1407f061c lit R(6) par FUN_1424cd07c — qui rend la valeur PLUS UN — puis ce nombre de
+// R(1) ; puis TROIS iterations, et c est la BORNE DU TABLEAU qui le dit (la boucle part de
+// param_1+0x10 par pas de 12 octets et s arrete quand puVar4+2 atteint param_1+0x30).
+// AUCUNE LARGEUR N A CHANGE ; largeurs figees par TestConsumeObjectFrameConfigurationLargeurs.
 func consumeObjectFrameConfiguration(br *BitReader) {
 	consume1407f0550(br)
 }
 
-// consumeObjectLowFrequency (i15) = FUN_1407ef088 (vtable[0x28] du composant i15 biped,
-// CONFIRMÉ par la table ECS runtime live + le workflow port-i15-lowfreq-fun1407ef088 qui a
+// consumeObjectLowFrequency (i15 `object-low-frequency-component`) = FUN_1407ef088.
+//
+// ADRESSE RE-CONFIRMEE PAR LE REGISTRE ECS DU BINAIRE le 2026-09-15 (lot 1.9.1 bis, pas 2) :
+// chaine de nom 143c99340 -> thunk 14064c690 -> vtable 143d0bf28, slot +0x30 = FUN_1407ef088.
+// TOUTES LES LARGEURS RELUES SUR LE DESASSEMBLAGE, sans qu aucune change : R(2) tete
+// (1407ef0ba) ; thunk 1424cd058 -> 140e9fadc = R(7) et R(8) inline (1407ef106) ; FUN_1407ef804
+// = R(4) (1407ef829) ; FUN_1407ef724 = R(6) (1407ef749) ; R(6) compte (1407ef171) ; les deux
+// lectures quantifiees de la boucle sont a LARGEUR 12 (1407ef2db et 1407ef2f8 :
+// MOV dword ptr [RSP + 0x20],0xc) ; 1409684dc = R(1)[si 0 : R(4)] ; 1407ef520 -> FUN_1407ef8e4
+// = R(3), 142af27f8 = R(2), 1424ccc74 = R(5), puis 3 x R(8) ; 1407ef4c8 = R(1)[si 1 :
+// 1424d9a30 R(3) + 141015740 R(32) + 14080d69c R(1)[si 1 : R(32)] + R(14) (142325e41 :
+// MOV dword ptr [RSP + 0x20],0xe)]. Largeurs figees par TestConsumeObjectLowFrequencyLargeurs.
+//
+// La note historique confirmait deja l adresse par la table ECS runtime live + le workflow port-i15-lowfreq-fun1407ef088 qui a
 // re-décompilé chaque sous-deser). La note historique 2026-06-14 (« FUN_1407ef088 = mauvaise
 // fonction ») était ELLE-MÊME erronée : la grammaire ci-dessous matche FUN_1407ef088 au bit près.
 // Header R(2)f [+R(7) thunk_140e9fadc +R(8) si f<2] + R(4)−1 (ef804) + R(6)−1 (ef724) ;

@@ -121,7 +121,7 @@ func TestPowerupSocleCreations(t *testing.T) {
 			}
 			release := filmdec.LockProcessDecode()
 			defer release()
-			defer installWorldObjectPrecision(entry, dir)()
+			defer installWorldObjectPrecision(entry, dir, nil)()
 			wr := entry.Range()
 			c := psCible{P: socleP, Z: socleZ, T0Film: psPremierPaquetUS(dir)}
 			psMesureCreations(t, dir, &wr, familles, c)

@@ -156,8 +156,11 @@ func TestDocumentShapeRegenerate(t *testing.T) {
 	if err := os.WriteFile(documentShapePath(), []byte(documentShapeGolden()), 0o600); err != nil {
 		t.Fatalf("ecriture de %s : %v", documentShapePath(), err)
 	}
-	t.Logf("golden de forme reecrit : %s (schema %d, empreinte %s)",
-		documentShapePath(), SchemaVersion, nouvelle)
+	// UNE PORTE DE REGENERATION NE REND JAMAIS `ok` (revue R1 constat R1-8, parite achevee a la
+	// ronde 2) : `go test` jette la sortie d un paquet qui PASSE, donc un `t.Logf` est invisible
+	// avec la commande documentee.
+	t.Fatalf("golden de forme reecrit : %s (schema %d, empreinte %s) ; relancer sans -update "+
+		"pour verifier", documentShapePath(), SchemaVersion, nouvelle)
 }
 
 // documentShapeGolden : le contenu complet du golden — l'en-tete, puis la forme en clair.

@@ -101,6 +101,7 @@ func toPoint(v replay.Point) replaydoc.Point {
 		X:  v.X,
 		Y:  v.Y,
 		Z:  v.Z,
+		G:  v.G,
 		H:  v.H,
 		P:  v.P,
 		Sh: v.Sh,
@@ -111,11 +112,14 @@ func toPoint(v replay.Point) replaydoc.Point {
 
 func toRosterEntry(v replay.RosterEntry) replaydoc.RosterEntry {
 	return replaydoc.RosterEntry{
-		XUID:      v.XUID,
-		FilmIndex: v.FilmIndex,
-		Name:      v.Name,
-		Bot:       v.Bot,
-		Bid:       v.Bid,
+		XUID:       v.XUID,
+		FilmIndex:  v.FilmIndex,
+		Name:       v.Name,
+		Team:       v.Team,
+		Bot:        v.Bot,
+		Bid:        v.Bid,
+		Seat:       v.Seat,
+		SeatSource: v.SeatSource,
 	}
 }
 
@@ -197,5 +201,8 @@ func toVehicleLabel(v replay.VehicleLabel) replaydoc.VehicleLabel {
 	return replaydoc.VehicleLabel{
 		Img:    v.Img,
 		Tinted: v.Tinted,
+		Kind:   v.Kind,
+		En:     v.En,
+		Fr:     v.Fr,
 	}
 }

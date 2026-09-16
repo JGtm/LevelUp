@@ -6,52 +6,64 @@
 
 ## AXE DE TEMPS
 3397 frames · intervalle 100 ms · duree 339700 ms
-schema 54 · titre halo_infinite
+schema 60 · titre halo_infinite
+version majeure du film : 33
 origine de la frame 0 sur l horloge du fil : 27811 ms
-coup d envoi date par le film : 45311 ms · 160/179 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 17500 ms
+coup d envoi date par le film : 45311 ms · 125/128 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 17500 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
-179 trace(s) · 46407 point(s) de grille
-133 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
-occupation du slot dans le TEMPS) · 46 sans identite — un DEFAUT de nommage a instruire,
+130 trace(s) · 46413 point(s) de grille
+seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si le film ecrit une position, elle se publie
+55 lacune(s) de replication DANS une vie, 756013 ms au total — un trou n'est pas une fin de vie, la piste ne s'y interpole simplement pas
+130 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
+occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
-27338 point(s) portent un cap de visee · 27338 une elevation de visee · 6196 un bouclier · 169 une fraction de vie
+27338 point(s) portent un cap de visee · 27338 une elevation de visee · 6197 un bouclier · 169 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
-26 joueur(s)
-  2533274808061956  idx=0  "DaniyalBrolaigh"
-  2535439688275895  idx=1  "GET FREE NOW"
-  2535443465079408  idx=2  "Pabloluis20"
-  2535433346848485  idx=3  "UndatedLamb92"
-  2533274858283686  idx=4  "Madina97294"
-  2533274838421311  idx=5  "HALODAN12"
-  2535444385698662  idx=6  "Jaydeniscool338"
-  2535438935722042  idx=7  "OVERLORDsdlg"
-  2535422072474669  idx=8  "INDUS GAMER"
-  2535460944841591  idx=9  "Twinblade103610"
-  2535444357123310  idx=10  "CmdData123"
-  2533274814445315  idx=11  "Hernandocon"
-  2535432775980993  idx=12  "DenimDude6035"
-  2533274889663512  idx=13  "doc frosty1"
-  2535453770350361  idx=14  "DeviousVix"
-  2535411415528070  idx=15  "JisGaming8"
-  2533274939189952  idx=16  "Marrero1987"
-  2533274885125728  idx=17  "Commander Neko"
-  2535448984006609  idx=19  "Holzkopf9"
-  2535461819321323  idx=20  "SpooneyBread998"
-  2535467391662381  idx=21  "Leepaton420"
-  2535444067363801  idx=22  "AndrewCA117"
-  2535439208563665  idx=23  "MS 82 gamer"
-  2535464945196103  idx=24  "Julianmz7124"
-  2535413578965816  idx=25  "ItsWindlol"
-  2533274866668915  idx=26  "U2 Sam Fisher"
+28 joueur(s)
+  2533274808061956  idx=0  equipe=0  "DaniyalBrolaigh"
+  2535439688275895  idx=1  equipe=0  "GET FREE NOW"
+  2535443465079408  idx=2  equipe=0  "Pabloluis20"
+  2535433346848485  idx=3  equipe=1  "UndatedLamb92"
+  2533274858283686  idx=4  equipe=1  "Madina97294"
+  2533274838421311  idx=5  equipe=1  "HALODAN12"
+  2535444385698662  idx=6  equipe=0  "Jaydeniscool338"
+  2535438935722042  idx=7  equipe=0  "OVERLORDsdlg"
+  2535422072474669  idx=8  equipe=0  "INDUS GAMER"
+  2535460944841591  idx=9  equipe=1  "Twinblade103610"
+  2535444357123310  idx=10  equipe=1  "CmdData123"
+  2533274814445315  idx=11  equipe=1  "Hernandocon"
+  2535432775980993  idx=12  equipe=1  "DenimDude6035"
+  2533274889663512  idx=13  equipe=0  "doc frosty1"
+  2535453770350361  idx=14  equipe=0  "DeviousVix"
+  2535411415528070  idx=15  equipe=0  "JisGaming8"
+  2533274939189952  idx=16  equipe=1  "Marrero1987"
+  2533274885125728  idx=17  equipe=1  "Commander Neko"
+  2533274806117335  idx=18  equipe=1  "manistoff"
+  2535448984006609  idx=19  equipe=0  "Holzkopf9"
+  2535461819321323  idx=20  equipe=0  "SpooneyBread998"
+  2535467391662381  idx=21  equipe=0  "Leepaton420"
+  2535444067363801  idx=22  equipe=1  "AndrewCA117"
+  2535439208563665  idx=23  equipe=1  "MS 82 gamer"
+  2535464945196103  idx=24  equipe=1  "Julianmz7124"
+  2535413578965816  idx=25  equipe=0  "ItsWindlol"
+  2533274866668915  idx=26  equipe=1  "U2 Sam Fisher"
+  2533274813083991  idx=27  equipe=1  ""
+
+### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
+lue=true refus="" · 449 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+roster : 28 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
+controle (feuille de match) : accord=0 contradiction=0 silence=28
+vies : 130/130 portent une equipe du film
+repartition des vies par designateur : 0 x55 · 1 x75
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-874 rattache(s) / 1476 disponible(s) = 59.2 %
-rejets : slot introuvable=602 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1202 rattache(s) / 1476 disponible(s) = 81.4 %
+rejets : slot introuvable=274 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1476 = 1476 (equilibre : true)
-verdict : partiel : moins des deux tiers rattachés
-874 tir(s) publie(s) · 644 avec un cap de visee lisible · 874 avec une arme nommee
+verdict : nominal
+1202 tir(s) publie(s) · 848 avec un cap de visee lisible · 1202 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 0 rattache(s) / 0 disponible(s) = aucune donnee
@@ -70,14 +82,14 @@ couverture : 174 piste(s) decodee(s) · 169 publiee(s) · 8 coupee(s) a un pas i
 372 etat(s) publie(s) · 305 avec grenades lues · 305 avec munitions lues
 27 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-67 lecture(s) VIDE(S) : 37 corroboree(s) par le fil des morts (`dead`), 30 inexpliquee(s)
+67 lecture(s) VIDE(S) : 49 corroboree(s) par le fil des morts (`dead`), 18 inexpliquee(s)
 couverture : 380 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 8 ecartee(s) faute de piste publiee -> 372 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
 496 lecture(s) · 305 par image-cle (~20 s) · 191 par delta (transmis AU CHANGEMENT)
-379 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 305 image-cle · 191 delta · 0 ecartee(s) sans piste · canal munitions refuse : false
+75 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
+couverture : 305 image-cle · 191 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
 56 lecture(s) · 56 par i48 (rang complet, paquets delta) · 0 par image-cle (fenetre 16..23)
@@ -88,7 +100,7 @@ couverture : 56 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) san
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 10 episode(s) publie(s) · par famille : camo=7 · overshield=3 · 9 fin(s) MESUREE(s) (le reste ferme a la mort)
-couverture : 179 vie(s) publiee(s) · camo 3 vie(s) / 7 episode(s) · surbouclier 3 vie(s) / 3 episode(s)
+couverture : 130 vie(s) publiee(s) · camo 3 vie(s) / 7 episode(s) · surbouclier 3 vie(s) / 3 episode(s)
 
 ## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
@@ -97,7 +109,7 @@ couverture : 179 vie(s) publiee(s) · camo 3 vie(s) / 7 episode(s) · surbouclie
 0 lecture(s) -> 0 geste(s) -> 0 publiee(s) · 0 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
 
 ## CHARGES D EQUIPEMENT — les lectures du film, jamais un compte d usages derive
-28 lecture(s) -> 26 publiee(s) · 2 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+28 lecture(s) -> 26 publiee(s) · 0 sans identite · 2 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
   slot=532 t=931 grapple charges=4
   slot=532 t=953 grapple charges=3
   slot=532 t=962 grapple charges=3
@@ -147,7 +159,13 @@ couverture : 179 vie(s) publiee(s) · camo 3 vie(s) / 7 episode(s) · surbouclie
 ## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine
 calibre=true decoupage="8/3" · 405 vie(s) d objet · 14236 ancre(s) -> 274 confirmee(s) par l oracle de position -> 274 pose(s)
 274 nommee(s) · 0 `other` (nature non etablie : le manifeste ne les revendique pas) · 226 avec poseur mesure · 195 avec cap de visee
-origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur · 48 sans poseur
+origine lue : 2 deployee(s) (piece engendree) · 210 lachee(s) · 62 inconnue(s)
+provenance : 0 evenement(s) 103 lu(s) sur 4956 liste(s) d evenements non vides
+  par cause death_written    208
+  par cause manifest_piece   2
+  par cause no_owner         48
+  par cause none             14
+  par cause taken_written    2
   famille grapple  17
   famille grenade_dynamo 8
   famille grenade_frag 159
@@ -156,22 +174,20 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   famille repulsor 13
   famille shroud_screen 4
   famille wall     11
-  famille x origine grapple/deployed             1
-  famille x origine grapple/dropped              15
+  famille x origine grapple/dropped              16
   famille x origine grapple/unknown              1
   famille x origine grenade_dynamo/dropped       4
   famille x origine grenade_dynamo/unknown       4
-  famille x origine grenade_frag/deployed        10
-  famille x origine grenade_frag/dropped         112
-  famille x origine grenade_frag/unknown         37
+  famille x origine grenade_frag/dropped         108
+  famille x origine grenade_frag/unknown         51
   famille x origine grenade_plasma/dropped       28
   famille x origine grenade_spike/dropped        30
   famille x origine grenade_spike/unknown        4
   famille x origine repulsor/dropped             13
   famille x origine shroud_screen/dropped        3
   famille x origine shroud_screen/unknown        1
-  famille x origine wall/deployed                3
-  famille x origine wall/dropped                 7
+  famille x origine wall/deployed                2
+  famille x origine wall/dropped                 8
   famille x origine wall/unknown                 1
   grenade_frag dropped 0xbcabbe43 t=[432, 470] pos=(44.91, -16.88, 5.32) poseur=513 cap=114.9 deg
   grenade_frag dropped 0xbcabbe43 t=[432, 462] pos=(44.87, -16.86, 5.32) poseur=513 cap=114.9 deg
@@ -198,8 +214,8 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   grenade_frag dropped 0xbcabbe43 t=[648, 831] pos=(63.20, 1.68, 4.95) poseur=512 cap=aucun
   grenade_plasma dropped 0xcaaadcb0 t=[648, 836] pos=(63.20, 1.68, 4.95) poseur=512 cap=aucun
   grenade_plasma dropped 0xcaaadcb0 t=[648, 701] pos=(63.20, 1.68, 4.95) poseur=512 cap=aucun
-  grenade_frag deployed 0xbcabbe43 t=[654, 777] pos=(63.08, 3.89, 5.00) poseur=535 cap=196.9 deg
-  grenade_frag deployed 0xbcabbe43 t=[654, 658] pos=(63.04, 3.96, 5.01) poseur=535 cap=196.9 deg
+  grenade_frag unknown 0xbcabbe43 t=[654, 777] pos=(63.08, 3.89, 5.00) poseur=535 cap=196.9 deg
+  grenade_frag unknown 0xbcabbe43 t=[654, 658] pos=(63.04, 3.96, 5.01) poseur=535 cap=196.9 deg
   grenade_frag unknown 0xbcabbe43 t=[699, 746] pos=(61.33, 11.15, 4.49) poseur=-1 cap=aucun
   grenade_frag unknown 0xbcabbe43 t=[699, 764] pos=(61.29, 11.13, 4.48) poseur=-1 cap=aucun
   grenade_spike dropped 0x0f5716ff t=[710, 719] pos=(28.95, -7.48, 6.68) poseur=533 cap=315.6 deg
@@ -214,7 +230,7 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   grenade_spike dropped 0x0f5716ff t=[733, 754] pos=(37.26, -27.45, 8.02) poseur=536 cap=22.0 deg
   grenade_frag dropped 0xbcabbe43 t=[733, 760] pos=(37.26, -27.45, 8.02) poseur=536 cap=22.0 deg
   grenade_frag dropped 0xbcabbe43 t=[733, 762] pos=(37.26, -27.45, 8.02) poseur=536 cap=22.0 deg
-  grapple deployed 0x273fe0eb t=[778, 789] pos=(42.12, -10.98, 4.97) poseur=525 cap=aucun
+  grapple dropped 0x273fe0eb t=[778, 789] pos=(42.12, -10.98, 4.97) poseur=525 cap=aucun
   grenade_frag unknown 0xbcabbe43 t=[810, 896] pos=(40.08, -4.84, 4.33) poseur=-1 cap=aucun
   grenade_frag unknown 0xbcabbe43 t=[810, 880] pos=(40.13, -4.86, 4.33) poseur=-1 cap=aucun
   grapple dropped 0x273fe0eb t=[917, 924] pos=(50.01, 7.21, 4.83) poseur=534 cap=2.9 deg
@@ -224,8 +240,8 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   grenade_frag dropped 0xbcabbe43 t=[944, 976] pos=(41.28, 1.22, 4.34) poseur=518 cap=aucun
   grenade_frag dropped 0xbcabbe43 t=[944, 979] pos=(41.28, 1.22, 4.34) poseur=518 cap=aucun
   grenade_plasma dropped 0xcaaadcb0 t=[1002, 1033] pos=(54.67, -7.43, 4.37) poseur=520 cap=233.6 deg
-  grenade_frag dropped 0xbcabbe43 t=[1030, 1100] pos=(40.18, 41.77, 0.94) poseur=548 cap=195.0 deg
-  grenade_frag dropped 0xbcabbe43 t=[1030, 1095] pos=(40.18, 41.76, 0.92) poseur=548 cap=195.0 deg
+  grenade_frag unknown 0xbcabbe43 t=[1030, 1100] pos=(40.18, 41.77, 0.94) poseur=548 cap=195.0 deg
+  grenade_frag unknown 0xbcabbe43 t=[1030, 1095] pos=(40.18, 41.76, 0.92) poseur=548 cap=195.0 deg
   repulsor dropped 0x7ca85adc t=[1052, 1068] pos=(37.55, 10.99, 3.44) poseur=550 cap=6.9 deg
   grapple dropped 0x273fe0eb t=[1058, 1060] pos=(46.26, -7.99, 5.64) poseur=532 cap=294.8 deg
   grenade_frag dropped 0xbcabbe43 t=[1058, 1120] pos=(46.27, -7.93, 5.39) poseur=532 cap=294.8 deg
@@ -253,8 +269,8 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   grenade_frag dropped 0xbcabbe43 t=[1167, 1206] pos=(39.00, 12.16, 3.21) poseur=540 cap=234.5 deg
   grenade_plasma dropped 0xcaaadcb0 t=[1167, 1200] pos=(39.00, 12.16, 3.21) poseur=540 cap=234.5 deg
   grenade_plasma dropped 0xcaaadcb0 t=[1167, 1200] pos=(39.00, 12.16, 3.21) poseur=540 cap=234.5 deg
-  grenade_frag dropped 0xbcabbe43 t=[1234, 1272] pos=(40.98, -51.79, 3.17) poseur=554 cap=aucun
-  grenade_frag dropped 0xbcabbe43 t=[1234, 1276] pos=(40.94, -51.75, 3.17) poseur=554 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[1234, 1272] pos=(40.98, -51.79, 3.17) poseur=554 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[1234, 1276] pos=(40.94, -51.75, 3.17) poseur=554 cap=aucun
   grenade_frag dropped 0xbcabbe43 t=[1258, 1310] pos=(23.55, 22.69, 7.53) poseur=543 cap=219.4 deg
   grenade_frag dropped 0xbcabbe43 t=[1258, 1277] pos=(23.60, 22.69, 7.53) poseur=543 cap=219.4 deg
   grapple dropped 0x273fe0eb t=[1261, 1270] pos=(40.82, -9.03, 4.60) poseur=551 cap=305.3 deg
@@ -262,7 +278,7 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   grenade_dynamo dropped 0xaada07f3 t=[1261, 1272] pos=(40.81, -9.08, 4.49) poseur=551 cap=305.3 deg
   grenade_frag dropped 0xbcabbe43 t=[1261, 1351] pos=(40.81, -9.08, 4.49) poseur=551 cap=305.3 deg
   grenade_frag dropped 0xbcabbe43 t=[1261, 1361] pos=(40.81, -9.08, 4.49) poseur=551 cap=305.3 deg
-  wall deployed 0x2974c233 t=[1351, 1357] pos=(40.76, -9.77, 4.60) poseur=519 cap=96.7 deg
+  wall dropped 0x2974c233 t=[1351, 1357] pos=(40.76, -9.77, 4.60) poseur=519 cap=96.7 deg
   grenade_spike dropped 0x0f5716ff t=[1363, 1375] pos=(39.73, -6.33, 4.34) poseur=519 cap=105.3 deg
   grapple dropped 0x273fe0eb t=[1363, 1371] pos=(39.75, -6.31, 4.51) poseur=519 cap=105.3 deg
   grenade_dynamo dropped 0xaada07f3 t=[1363, 1383] pos=(39.69, -6.33, 4.34) poseur=519 cap=105.3 deg
@@ -283,7 +299,7 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   grenade_spike dropped 0x0f5716ff t=[1626, 1647] pos=(60.12, -18.79, 5.03) poseur=563 cap=179.4 deg
   grenade_frag dropped 0xbcabbe43 t=[1626, 1681] pos=(60.12, -18.80, 5.03) poseur=563 cap=179.4 deg
   grenade_frag dropped 0xbcabbe43 t=[1626, 1684] pos=(60.13, -18.79, 5.03) poseur=563 cap=179.4 deg
-  grenade_frag deployed 0xbcabbe43 t=[1678, 2073] pos=(27.97, 29.22, 0.95) poseur=578 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[1678, 2073] pos=(27.97, 29.22, 0.95) poseur=578 cap=aucun
   wall dropped 0x2974c233 t=[1685, 1693] pos=(49.38, -4.43, 4.57) poseur=557 cap=243.7 deg
   repulsor dropped 0x7ca85adc t=[1688, 1723] pos=(40.12, 17.72, 5.71) poseur=576 cap=aucun
   grenade_frag dropped 0xbcabbe43 t=[1688, 1724] pos=(39.89, 17.50, 5.64) poseur=576 cap=aucun
@@ -296,8 +312,8 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   shroud_screen unknown 0x4396db42 t=[1887, 1905] pos=(49.78, 14.78, 3.01) poseur=-1 cap=aucun
   grenade_frag dropped 0xbcabbe43 t=[1938, 1985] pos=(87.19, -58.95, 3.29) poseur=572 cap=74.3 deg
   grenade_frag dropped 0xbcabbe43 t=[1938, 1995] pos=(87.19, -58.95, 3.29) poseur=572 cap=74.3 deg
-  grenade_frag deployed 0xbcabbe43 t=[1946, 2045] pos=(37.00, 3.08, 4.89) poseur=579 cap=36.7 deg
-  grenade_frag deployed 0xbcabbe43 t=[1946, 2011] pos=(36.98, 3.08, 4.89) poseur=579 cap=36.7 deg
+  grenade_frag unknown 0xbcabbe43 t=[1946, 2045] pos=(37.00, 3.08, 4.89) poseur=579 cap=36.7 deg
+  grenade_frag unknown 0xbcabbe43 t=[1946, 2011] pos=(36.98, 3.08, 4.89) poseur=579 cap=36.7 deg
   grenade_frag unknown 0xbcabbe43 t=[1989, 2020] pos=(45.27, 1.55, 4.81) poseur=-1 cap=aucun
   grenade_frag unknown 0xbcabbe43 t=[1989, 2043] pos=(45.83, 2.23, 5.13) poseur=-1 cap=aucun
   grenade_frag unknown 0xbcabbe43 t=[1989, 2030] pos=(45.82, 2.23, 5.13) poseur=-1 cap=aucun
@@ -347,8 +363,8 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   grapple dropped 0x273fe0eb t=[2405, 2413] pos=(44.47, 10.42, 3.01) poseur=588 cap=320.3 deg
   grenade_frag dropped 0xbcabbe43 t=[2405, 2431] pos=(44.31, 10.42, 2.77) poseur=588 cap=320.3 deg
   grenade_frag dropped 0xbcabbe43 t=[2405, 2446] pos=(44.35, 10.43, 2.77) poseur=588 cap=320.3 deg
-  grenade_frag deployed 0xbcabbe43 t=[2410, 2452] pos=(35.77, 26.20, 0.11) poseur=600 cap=aucun
-  grenade_frag deployed 0xbcabbe43 t=[2410, 2453] pos=(35.75, 26.20, 0.11) poseur=600 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[2410, 2452] pos=(35.77, 26.20, 0.11) poseur=600 cap=aucun
+  grenade_frag unknown 0xbcabbe43 t=[2410, 2453] pos=(35.75, 26.20, 0.11) poseur=600 cap=aucun
   grapple dropped 0x273fe0eb t=[2453, 2464] pos=(38.25, -1.89, 5.07) poseur=602 cap=258.9 deg
   grenade_frag dropped 0xbcabbe43 t=[2453, 2504] pos=(38.05, -2.07, 4.95) poseur=602 cap=258.9 deg
   grenade_frag dropped 0xbcabbe43 t=[2453, 2507] pos=(38.05, -2.07, 4.95) poseur=602 cap=258.9 deg
@@ -415,7 +431,7 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   wall dropped 0x2974c233 t=[3048, 3056] pos=(25.02, 0.29, 7.97) poseur=618 cap=57.7 deg
   grenade_frag dropped 0xbcabbe43 t=[3048, 3271] pos=(25.12, 0.28, 7.91) poseur=618 cap=57.7 deg
   grenade_frag dropped 0xbcabbe43 t=[3048, 3093] pos=(25.12, 0.28, 7.91) poseur=618 cap=57.7 deg
-  grenade_frag deployed 0xbcabbe43 t=[3050, 3200] pos=(44.60, 36.28, 3.24) poseur=619 cap=41.0 deg
+  grenade_frag unknown 0xbcabbe43 t=[3050, 3200] pos=(44.60, 36.28, 3.24) poseur=619 cap=41.0 deg
   shroud_screen dropped 0x4396db42 t=[3065, 3083] pos=(67.67, 20.36, 5.90) poseur=626 cap=285.0 deg
   grenade_frag dropped 0xbcabbe43 t=[3065, 3221] pos=(67.63, 20.33, 5.79) poseur=626 cap=285.0 deg
   grenade_frag dropped 0xbcabbe43 t=[3065, 3151] pos=(67.63, 20.33, 5.79) poseur=626 cap=285.0 deg
@@ -441,8 +457,8 @@ origine mesuree : 14 deployee(s) · 212 lachee(s) a la fin de la vie du poseur �
   grenade_frag dropped 0xbcabbe43 t=[3264, 3309] pos=(26.47, 0.32, 7.88) poseur=600 cap=157.4 deg
   grenade_dynamo unknown 0xaada07f3 t=[3289, 3310] pos=(28.87, 25.57, 7.18) poseur=-1 cap=aucun
   grenade_dynamo unknown 0xaada07f3 t=[3289, 3309] pos=(28.87, 25.57, 7.18) poseur=-1 cap=aucun
-  grenade_frag deployed 0xbcabbe43 t=[3289, 3343] pos=(34.62, 40.08, 1.18) poseur=641 cap=315.4 deg
-  grenade_frag deployed 0xbcabbe43 t=[3289, 3343] pos=(34.63, 40.08, 1.18) poseur=641 cap=315.4 deg
+  grenade_frag unknown 0xbcabbe43 t=[3289, 3343] pos=(34.62, 40.08, 1.18) poseur=641 cap=315.4 deg
+  grenade_frag unknown 0xbcabbe43 t=[3289, 3343] pos=(34.63, 40.08, 1.18) poseur=641 cap=315.4 deg
   grenade_frag unknown 0xbcabbe43 t=[3289, 3313] pos=(28.87, 25.54, 7.18) poseur=-1 cap=aucun
   grenade_frag unknown 0xbcabbe43 t=[3289, 3319] pos=(28.87, 25.54, 7.18) poseur=-1 cap=aucun
   grenade_frag unknown 0xbcabbe43 t=[3307, 3336] pos=(5.63, 21.51, 3.41) poseur=-1 cap=aucun
@@ -582,18 +598,34 @@ POWER-UPS (voie ti=37) — balaye=true · 688 creation(s) acceptee(s) -> 14 rete
     presence t0=1375 prouvee jusqu a 1923, absente a 2124
     presence t0=2273 prouvee jusqu a 2524, absente a 2724
     presence t0=2576 prouvee jusqu a 3325, absente a 3396
-69 occupation(s) achevee(s) publiee(s) · 0 datee(s) a l instant exact par l evenement natif · 0 avec un ramasseur nomme
+69 occupation(s) achevee(s) publiee(s) · 40 datee(s) a l instant exact par l evenement natif · 40 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 311 loadout(s) publie(s) · 17 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
-93 entree(s) · 85 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
-fermetures : 0 par le corps disponible · 8 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
-refus des fermetures : 61 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 1 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
-86 vie(s) nommee(s) / 185 — un rapport publie sans son denominateur ne se juge pas
-19 chunk(s) de replication concordants · 0 desaccord(s) d identite · 1 collision(s) de slot
-verdict : non publiable : un slot change de porteur
+128 entree(s) · 128 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
+fermetures : 0 par le corps disponible · 0 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
+refus des fermetures : 0 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 0 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
+85 vie(s) nommee(s) / 130 — un rapport publie sans son denominateur ne se juge pas
+19 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
+verdict : nominal
+
+## REGISTRE D IDENTITE — la PROVENANCE de chaque lien, et ce que la table du film couvre
+index de joueur : 28 direct · 0 externe · 0 deduit · 0 non resolu
+slot de bipede : 130 direct (dont 2 propages) · 0 deduit · 0 non resolu (index hors table=0 · sans record=0 · lectures divergentes=0)
+table du film : lue=true refus="" · 24 siege(s) · 24 lien(s) direct(s) · 4 par repli
+controle (lecture des chunks) : 23 accord · 0 contradiction · 1 silence — la table du film fait foi, l ecart se compte
+voies des liens d index : PlayerIndexTable=4 · film_table=24
+
+## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
+entrees 28 · sieges 25 · lus 25 · apparies 3 · reprises ecrites 0
+arrivants 4 · presences closes 22 · sans presence 1 · occupants au plus 24 · sans table false
+
+## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
+repli_chassis_vehicule_marqueur_neutre           5
+repli_piece_engendree_sans_evenement             2
+repli_siege_du_remplacant_par_appariement_ordinal 3
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 17 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et

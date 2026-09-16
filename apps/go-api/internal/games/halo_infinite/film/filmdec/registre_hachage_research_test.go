@@ -6,9 +6,10 @@ package filmdec
 // composant, eux, se trouvent). Reste l'autre moitie de la question : le film pourrait declarer
 // ses evenements par une EMPREINTE plutot que par un nom.
 //
-// LA RECETTE DU REGISTRE NE HACHE RIEN — c'est mesure, pas suppose. Le champ `kind` (u32 a
-// slot+0), seul candidat d'empreinte du format de slot, vaut 0 sur 1 066 des 1 067 slots nommes
-// (TestChunk00Kind). Le registre de composants est donc en CLAIR, sans empreinte accompagnante :
+// LA RECETTE DU REGISTRE NE HACHE RIEN — c est mesure, pas suppose. Le u32 a `slot+0`, seul
+// candidat d empreinte du format de slot, vaut 0 sur 1 066 des 1 067 slots nommes
+// (TestChunk00Kind) — et le lot 1.2 a dit pourquoi : ce n est pas un champ, c est la queue de
+// bourrage du nom voisin. Le registre de composants est donc en CLAIR, sans empreinte accompagnante :
 // « meme recette » signifie « en clair », et le volet hache n'a pas de precedent a imiter.
 //
 // ON LE TESTE QUAND MEME, ET AVEC UN TAUX DE FAUX POSITIFS MESURE, PAS CALCULE. Pour chacune de
@@ -212,7 +213,7 @@ func TestD1NomsHaches(t *testing.T) {
 func nomsDeComposants(data []byte) []string {
 	vus := map[string]bool{}
 	for _, s := range parsedSpans(data) {
-		vus[slotName(data, s.off)] = true
+		vus[entryName(data, s.off)] = true
 	}
 	out := make([]string, 0, len(vus))
 	for n := range vus {

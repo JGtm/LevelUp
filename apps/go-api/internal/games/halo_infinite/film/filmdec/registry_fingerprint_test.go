@@ -14,25 +14,26 @@ import (
 	"time"
 )
 
-// registryFixture fabrique un chunk_00 INFLATE d'un seul bloc portant les slots nommes.
-func registryFixture(kinds, flags []uint32, names []string) []byte {
-	data := make([]byte, archetypeBlockSize)
+// registryFixture fabrique un chunk_00 INFLATE d'un seul bloc portant les entrees nommees,
+// au cadrage du jeu : en-tete de `registryEntryBase` octets, puis des entrees de
+// `registrySlotSize` octets `[nom @ +0][u32 niveau @ +0x100]`.
+func registryFixture(levels []uint32, names []string) []byte {
+	data := make([]byte, registryEntryBase+archetypeBlockSize)
 	for i, n := range names {
-		off := i * registrySlotSize
-		binary.LittleEndian.PutUint32(data[off:], kinds[i])
-		binary.LittleEndian.PutUint32(data[off+4:], flags[i])
-		copy(data[off+8:], n)
+		off := registryEntryBase + i*registrySlotSize
+		copy(data[off:], n)
+		binary.LittleEndian.PutUint32(data[off+registryEntryLevelOffset:], levels[i])
 	}
 	return data
 }
 
 // TestRegistryFingerprintDomain — CE QUE L'EMPREINTE COUVRE, ET CE QU'ELLE IGNORE.
 //
-// Elle doit bouger sur chacun des trois champs haches (`kind`, `flags`, nom) et sur l'ORDRE
-// des slots ; elle doit rester STABLE quand seul le bourrage change. Sans le cas du bourrage,
-// une empreinte qui hacherait tout le bloc passerait ce test tout en alertant a chaque film.
+// Elle doit bouger sur chacun des deux champs haches (niveau, nom) et sur l'ORDRE des
+// entrees ; elle doit rester STABLE quand seul le BOURRAGE change. Sans le cas du bourrage,
+// une empreinte qui hacherait toute l'entree passerait ce test tout en alertant a chaque film.
 func TestRegistryFingerprintDomain(t *testing.T) {
-	base := registryFixture([]uint32{1, 2}, []uint32{7, 8}, []string{"alpha-component", "beta-component"})
+	base := registryFixture([]uint32{7, 8}, []string{"alpha-component", "beta-component"})
 	ref := RegistryFingerprint(parseRegistry(base))
 	if ref == 0 {
 		t.Fatal("empreinte nulle sur un registre non vide")
@@ -42,10 +43,9 @@ func TestRegistryFingerprintDomain(t *testing.T) {
 		nom  string
 		data []byte
 	}{
-		{"kind different", registryFixture([]uint32{9, 2}, []uint32{7, 8}, []string{"alpha-component", "beta-component"})},
-		{"flags different", registryFixture([]uint32{1, 2}, []uint32{7, 9}, []string{"alpha-component", "beta-component"})},
-		{"nom different", registryFixture([]uint32{1, 2}, []uint32{7, 8}, []string{"alpha-component", "gamma-component"})},
-		{"ordre echange", registryFixture([]uint32{2, 1}, []uint32{8, 7}, []string{"beta-component", "alpha-component"})},
+		{"niveau different", registryFixture([]uint32{7, 9}, []string{"alpha-component", "beta-component"})},
+		{"nom different", registryFixture([]uint32{7, 8}, []string{"alpha-component", "gamma-component"})},
+		{"ordre echange", registryFixture([]uint32{8, 7}, []string{"beta-component", "alpha-component"})},
 	}
 	for _, c := range bouge {
 		if got := RegistryFingerprint(parseRegistry(c.data)); got == ref {
@@ -54,12 +54,14 @@ func TestRegistryFingerprintDomain(t *testing.T) {
 		}
 	}
 
-	// Le flags du slot de terminaison (0x01/0x02 sur les films reels, decalage R7-e) : il fait
-	// partie du bourrage LICITE d'un bloc et n'entre pas dans l'empreinte.
-	term := append([]byte(nil), base...)
-	binary.LittleEndian.PutUint32(term[2*registrySlotSize+4:], 2)
-	if got := RegistryFingerprint(parseRegistry(term)); got != ref {
-		t.Errorf("le flags du slot de terminaison change l'empreinte (%#016x != %#016x)", got, ref)
+	// Le bourrage d'une entree NOMMEE — les octets entre le NUL de fin de nom et le u32 de
+	// niveau — ne dit rien de la grammaire et n'entre pas dans l'empreinte.
+	bourre := append([]byte(nil), base...)
+	for i := registryEntryBase + len("alpha-component") + 1; i < registryEntryBase+registryEntryLevelOffset; i++ {
+		bourre[i] = 0xa5
+	}
+	if got := RegistryFingerprint(parseRegistry(bourre)); got != ref {
+		t.Errorf("le bourrage d'une entree nommee change l'empreinte (%#016x != %#016x)", got, ref)
 	}
 
 	// La section qui SUIT le registre (bloc entier de bruit) : elle n'entre ni dans les
@@ -70,11 +72,11 @@ func TestRegistryFingerprintDomain(t *testing.T) {
 			len(reg.Archetypes), RegistryFingerprint(reg), ref)
 	}
 
-	// Du bruit DANS le bourrage d'un bloc (hors flags de terminaison) : ce n'est plus un bloc
-	// de registre — le parse s'arrete AVANT lui (regle « suite nommee puis zeros », verifiee
-	// sur les 1 367 films du corpus, lot3_registre_compte_research_test.go).
+	// Du bruit DANS le bourrage d'un bloc, apres la suite nommee : ce n'est plus un bloc de
+	// registre — le parse s'arrete AVANT lui (regle « suite nommee puis zeros », verifiee sur
+	// les 1 367 films du corpus, lot3_registre_compte_research_test.go).
 	bruite := append([]byte(nil), base...)
-	for i := 2*registrySlotSize + 8; i < len(bruite); i++ {
+	for i := registryEntryBase + 2*registrySlotSize; i < len(bruite); i++ {
 		bruite[i] = 0xa5
 	}
 	if reg := parseRegistry(bruite); len(reg.Archetypes) != 0 {
@@ -92,7 +94,7 @@ func TestRegistryFingerprintDomain(t *testing.T) {
 // parse serait du bruit. La garde est `registryWarned`, et le test la verifie EN OBSERVANT
 // l'etat de la carte (pas le journal, qui n'est pas interrogeable).
 func TestRegistryFingerprintWarnsOnce(t *testing.T) {
-	data := registryFixture([]uint32{3}, []uint32{5}, []string{"temoin-de-deduplication"})
+	data := registryFixture([]uint32{5}, []string{"temoin-de-deduplication"})
 	fp := RegistryFingerprint(parseRegistry(data))
 	if fp == KnownRegistryFingerprint {
 		t.Fatalf("la fixture porte l'empreinte CONNUE (%#016x) : le test ne mesurerait rien", fp)

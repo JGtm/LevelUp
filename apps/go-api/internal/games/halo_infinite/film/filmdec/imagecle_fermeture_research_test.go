@@ -88,15 +88,6 @@ const (
 // imcModeles est l'ordre de publication des colonnes.
 func imcModeles() []string { return []string{imcEtatComplet, imcEtatDecale, imcProduction} }
 
-// imcOptEtatComplet rend la BONNE FORME : en-tete de 108 bits, les deux mots de taille, et
-// l'etat par defaut de l'archetype joue par le deserialiseur porte. Aucun masque (la boucle
-// d'etat complet n'en a pas : `WalkKeyframeFullState` pose `Mask = ^0`).
-func imcOptEtatComplet() KeyframeFullStateOpt {
-	return KeyframeFullStateOpt{
-		HeaderBits: keyframeFullStateHeaderBits, SizeWords: true, DefaultState: true,
-	}
-}
-
 // imcCompte est le comptage d'UN archetype sous UN modele.
 type imcCompte struct {
 	Total, Ferme, Desync, Sous, Sur int
@@ -174,32 +165,20 @@ func imcCharger(t *testing.T, dir string) (imcFilm, bool) {
 	return f, len(f.Pays) > 0
 }
 
-// imcBorne est un record BORNE : son ancre, son archetype, et la frontiere visee.
-type imcBorne struct {
-	Bit, TI, Want int
-	Voisin        bool // le slot suivant est le slot + 1
-}
-
-// imcBornes rend les records bornes d'un payload, dans l'ordre des positions croissantes.
-func imcBornes(pay []byte) []imcBorne {
-	recs := WalkKeyframeWorld(pay)
-	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
-	out := make([]imcBorne, 0, len(recs))
-	for i := 0; i+1 < len(recs); i++ {
-		out = append(out, imcBorne{
-			Bit: recs[i].Bit, TI: recs[i].TI, Want: recs[i+1].Bit,
-			Voisin: recs[i+1].Slot == recs[i].Slot+1,
-		})
-	}
-	return out
-}
+// imcBornes : LA MEME POPULATION QUE LA PRODUCTION. Depuis le lot 1.4 (2026-09-14),
+// l appariement « record i, frontiere i+1 » vit dans `keyframeBornes` (keyframe_closure.go) et
+// les trois lecteurs — la mesure, cet oracle et les deux balayages de production — comptent sur
+// exactement les memes bornes.
+var imcBornes = keyframeBornes
 
 // imcMarcher rejoue UN record sous le modele demande et rend la position de fin et l'index
 // du premier composant non porte (-1 si la marche va au bout).
 //
-// LE MODELE DE PRODUCTION EST REJOUE PAR SON PROPRE CODE : `readKeyframeHeader` puis
-// `walkOneKeyframeRecord`, les deux fonctions de `keyframe_record_walk.go` que
-// `WalkKeyframeRecords` enchaine. Rien n'est recopie ni reinterprete.
+// LA COLONNE `imcProduction` EST REJOUEE PAR LE CADRE DELTA (`readKeyframeHeader` puis
+// `walkOneKeyframeRecord`) — depuis le lot 1.4 (2026-09-14) ce n'est plus ce que la production
+// lit : les deux balayages de production sont passes au cadre d'etat complet. La colonne garde
+// son nom de cle de tableau, mais elle mesure desormais L'ANCIENNE lecture, et c'est a ce titre
+// qu'elle reste publiee : sans elle, le gain du lot 1.4 ne se compare a rien.
 func imcMarcher(modele string, pay []byte, reg *Registry, bit int) (end, desync int) {
 	switch modele {
 	case imcProduction:
@@ -210,17 +189,16 @@ func imcMarcher(modele string, pay []byte, reg *Registry, bit int) (end, desync 
 		rec, _, _ := walkOneKeyframeRecord(pay, reg, bit, h)
 		return rec.BitEnd, rec.DesyncAt
 	case imcEtatDecale:
-		o := imcOptEtatComplet()
-		o.HeaderBits = keyframeFullStateHeaderBits + 1
-		tr := WalkKeyframeFullState(pay, bit, reg, o)
+		tr := walkKeyframeFullState(pay, bit, reg,
+			keyframeFullStateTemoin{EnTeteBits: keyframeFullStateHeaderBits + 1})
 		return tr.EndBit, tr.DesyncAt
 	}
-	tr := WalkKeyframeFullState(pay, bit, reg, imcOptEtatComplet())
+	tr := WalkKeyframeFullState(pay, bit, reg)
 	return tr.EndBit, tr.DesyncAt
 }
 
 // imcClasser range UNE marche dans le comptage de son archetype.
-func imcClasser(c *imcCompte, b imcBorne, end, desync int, nom string) {
+func imcClasser(c *imcCompte, b keyframeBorne, end, desync int, nom string) {
 	c.Total++
 	if b.Voisin {
 		c.VoisinTotal++

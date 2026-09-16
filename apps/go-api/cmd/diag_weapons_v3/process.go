@@ -34,8 +34,13 @@ func processMatch(ctx context.Context, c *conn, cfg runConfig, m matchRef) error
 		return err
 	}
 
-	events := objectiveevents.Extract(m.full, reg.variant, film, objectiveevents.MapRoster(roster))
+	events, ctl := objectiveevents.Extract(m.full, reg.variant, film, objectiveevents.MapRoster(roster))
 	printSummary(m, reg, events)
+	// L'EQUIPE VIENT DU PIED DU FILM (lot 1.7.3) : le roster ci-dessus n'en est que le controle,
+	// et ces trois comptes sont ce que la feuille de match en dit. Les taire ferait passer un
+	// basculement de source pour une affirmation.
+	fmt.Printf("  [equipes] %d event(s) du film · accord=%d contradiction=%d silence=%d\n",
+		ctl.Film, ctl.Accord, ctl.Contradiction, ctl.Silence)
 
 	if cfg.write {
 		if err := writeEvents(ctx, c, m.full, events); err != nil {

@@ -398,11 +398,14 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "generic-rigid-body-transforms-component": // ti=38 i18 (FUN_142f036f0)
 		consumeGenericRigidBodyTransforms(br)
 		return variant, nil, true
-	case "equipment-control-signal-component": // ti=37 i22 (FUN_14101cd94) — R(4)+R(1)[+readQuantStat]
+	case "equipment-control-signal-component": // ti=37 i22 (FUN_14101cd94)
+		// GRAMMAIRE RELUE le 2026-09-15 (lot 1.9.1 bis, pas 2 bis) : le deser est
+		// `FUN_14101d200` (R(4), 14101d21d) puis `FUN_1408f0ac4(dst+0x58c, br, 4)`
+		// (14101cdc3). La CATEGORIE est 4 : pas de bit de sonde, et 9 bits de valeur —
+		// le portage precedent lisait `readQuantStat(1, 13)`, soit une sonde de trop ET
+		// quatre bits de valeur de trop, cinq bits sur chaque record qui ouvre la porte.
 		br.ReadBits(4)
-		if br.ReadBit() {
-			br.readQuantStat(1, quantStatDefaultWidth)
-		}
+		consume1408f0ac4(br, 4)
 		return variant, nil, true
 	case compEquipmentCreator: // ti=37 i23 (FUN_142ed45f4) — R(1)[si0:R(5)]
 		consumeEquipmentCreator(br)
@@ -545,7 +548,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "crew-order-component": // ti=14 i0 (FUN_142ed4274) — R(3)+R(1)gate1[si1: vec3 quant 6+level]
 		br.ReadBits(3)
 		if br.ReadBit() { // gate1 == présence du vecteur
-			consumeQuantVec3(br, quantAxisWidth(uint(level))) // PISTE 1 : largeur = 6+flags(registre)
+			consumeQuantVec3(br, quantAxisWidth(uint(level))) // PISTE 1 : largeur = 6+niveau(registre)
 		}
 		return variant, nil, true
 	case "tacmap-poiiconoffset": // ti=30 i1 — vec3 quant pur (6+level)
@@ -998,9 +1001,14 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// getName 141178040 -> descripteur 143d08c18 -> +0x20 thunk -> +0x28 = FUN_142ed3c64).
 		// Corps = 5 x FUN_142ed9530, chacune = FUN_14076e494(...,0x1e,0,0,0) -> FUN_14076e524 :
 		//   R(1) gate ; si gate==0 -> R(DAT_144632be0 = 1) index ; puis 3 x R(6+L) (FUN_140cc5128).
-		// L = niveau de precision du composant dans chunk_00 (ti44 i0 = L0 -> 6 bits/axe), la
-		// largeur venant de la table DAT_1445cc9e0 indexee par le niveau (largeur = 6+L, verifie
-		// sur le dump ce_prec_widths_1445cc9e0.bin).
+		// L = niveau de precision du composant dans chunk_00, la largeur venant de la table
+		// DAT_1445cc9e0 indexee par le niveau (largeur = 6+L, verifie sur le dump
+		// ce_prec_widths_1445cc9e0.bin).
+		//
+		// ti44 i0 EST A L1, PAS A L0 (lot 1.2, 2026-09-14) : cette ligne disait « L0 -> 6 bits
+		// par axe » parce que le registre se lisait un cran trop tot et servait le niveau du
+		// composant PRECEDENT. Sous le cadrage du jeu le niveau est 1, donc 7 bits par axe, et
+		// le budget passe de 5 x (1+1+3x6) = 100 bits a 5 x (1+1+3x7) = 115.
 		for i := 0; i < 5; i++ {
 			consumeQuantVec3WithGate(br, quantAxisWidth(uint(level)))
 		}

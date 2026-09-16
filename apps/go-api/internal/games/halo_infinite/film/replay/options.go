@@ -17,6 +17,7 @@ package replay
 import (
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // Options règle l'assemblage du document de rejeu.
@@ -126,6 +127,11 @@ type Options struct {
 	Translocations []filmdec.TranslocatorTeleport
 	Placements     []filmdec.EquipmentPlacement
 	PlacementStats filmdec.EquipmentPlacementStats
+	// SpawnEvents / SpawnStats : les evenements type 103 `EquipmentSpawnedObject` lus dans la
+	// liste de tete des paquets delta — « une PIECE a ete engendree ». Entree de DONNEES, comme
+	// Placements : absente, l'origine d'une pose retombe sur ses replis nommes (lot 1.9.1).
+	SpawnEvents []filmdec.EquipmentSpawnEvent
+	SpawnStats  filmdec.EquipmentSpawnStats
 	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
@@ -157,6 +163,31 @@ type Options struct {
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.
 	PlayerIndices PlayerIndexTable
+	// FilmTable est la TABLE DES JOUEURS que le film écrit lui-même (`chunk_00`), lue par
+	// [ScanFilmPlayerTable] : le lien DIRECT `index <-> xuid <-> gamertag`.
+	//
+	// ELLE PRÉCÈDE `PlayerIndices`, ELLE NE LA REMPLACE PAS (cf. film_player_table.go) : la
+	// table du film est celle du DÉBUT du film. Vide = le registre retombe entièrement sur
+	// `PlayerIndices`, et le publie (`coverage.identity.filmTable.refus`).
+	FilmTable FilmPlayerTable
+	// PlayerTeams est l'ÉQUIPE DE CHAQUE JOUEUR telle que le film l'écrit : `index de joueur ->
+	// désignateur` (`-1` = aucune équipe), lue par [filmdec.ScanPlayerTeams] dans le composant
+	// i0 de ti=9.
+	//
+	// C'EST LA SEULE SOURCE D'ÉQUIPE DU DOCUMENT (décision utilisateur du 2026-09-13, V4 du
+	// PLAN_DECODEUR_FILM) : la base n'en pose aucune, elle CONTRÔLE (cf. `ScoreboardTeams`).
+	// Vide = le film n'a pas été lu, et `coverage.teams.refusal` dit pourquoi.
+	PlayerTeams map[int]int
+	// TeamScan est le rapport de cette lecture : records, rejets par domaine, divergences. Il
+	// voyage avec la table parce qu'une table vide et une lecture refusée ne disent pas la même
+	// chose, et que la couverture publie la différence.
+	TeamScan filmdec.TeamScanReport
+	// ScoreboardTeams est la table `xuid -> équipe` de la FEUILLE DE MATCH, et elle n'est qu'un
+	// CONTRÔLE : aucune équipe publiée n'en sort. Elle alimente
+	// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle ne
+	// se corrige pas en silence. Vide (CLI hors ligne, ouvrier sans faits) : le contrôle se tait
+	// et le document est le même, à l'octet près.
+	ScoreboardTeams map[string]int
 	// BipedCreations : les records de CRÉATION de bipède du film (`filmdec.ScanBipedCreations`).
 	// C'est le lien DIRECT corps -> joueur : le film écrit l'index de participant du
 	// propriétaire dans le default-state du record (lot E2, 2026-09-08).
@@ -320,6 +351,18 @@ type Options struct {
 	// mais EN PRODUCTION IL N'EST JAMAIS NIL : `replaybuild.BuildBytes` passe toujours sa
 	// methode `b.observe`, qui teste elle-meme si un observateur est branche (cf. observe.go).
 	Observe Observer
+	// Fallbacks compte les declenchements de REPLIS de CETTE cuisson (cf. le paquet `fallback`,
+	// decision D14 du plan du decodeur). Le rapport est publie dans `coverage.fallbacks`.
+	//
+	// NIL EST VALIDE ET NE COMPTE RIEN : toutes les methodes du compteur acceptent un recepteur
+	// nil. `BuildFromFilm` en pose un avant le premier balayage (pour que les replis du BALAYAGE
+	// et ceux de l'ASSEMBLAGE tombent dans le meme compte), et `BuildFromPositions` en cree un
+	// s'il n'en trouve pas — de sorte que tout document cuit dise ce qu'il doit a un repli, quel
+	// que soit le point d'entree.
+	//
+	// PAR CUISSON, JAMAIS PAR PAQUET : deux films decodes en parallele melangeraient leurs
+	// comptes, et le critere S1 du plan retire les variables de paquet du decodeur.
+	Fallbacks *fallback.Compteur
 	// clock date la fin du balayage precedent, pour la duree Debug par balayage (cf. observe.go).
 	// NON EXPORTE ET SANS REGLAGE : c'est BuildFromFilm qui l'arme, au moment ou le decodage
 	// commence — un appelant qui le fournirait daterait le premier balayage depuis sa propre
@@ -332,6 +375,16 @@ func (o Options) frameIntervalMS() int {
 		return o.FrameIntervalMS
 	}
 	return DefaultFrameIntervalMS
+}
+
+// compteurDeReplis rend le compteur de la cuisson, en creant le sien quand l'appelant n'en a pas
+// fourni. MEME PATRON QUE `frameIntervalMS` / `minPoints` : le defaut vit ici, une seule fois,
+// et l'assemblage n'a pas a le connaitre.
+func (o Options) compteurDeReplis() *fallback.Compteur {
+	if o.Fallbacks != nil {
+		return o.Fallbacks
+	}
+	return fallback.NouveauCompteur()
 }
 
 func (o Options) minPoints() int {

@@ -23,6 +23,7 @@ import type {
   ReplayProjectile,
   ReplaySurface,
   ReplayTrack,
+  ReplayVehicleLabel,
   ReplayVehicleRide,
   ReplayVehicleTrack,
   ReplayWeaponPad,
@@ -40,6 +41,8 @@ export type ReplayStep = [number, number, number]
 type Filled<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> }
 
 export type ReplayTrackReady = Filled<ReplayTrack, 'points'>
+/** La couverture dont la liste des replis déclenchés (schéma 58) est comblée. */
+export type ReplayCoverageReady = Filled<NonNullable<ReplayDocument['coverage']>, 'fallbacks'>
 type ReplayLoadoutReady = Filled<ReplayLoadout, 'w'>
 export type ReplayInventoryReady = Filled<ReplayInventory, 'am' | 'g'>
 export type ReplayGrenadeReadReady = Filled<ReplayGrenadeRead, 'g'>
@@ -138,6 +141,7 @@ export type ReplayBombStatsReady = Filled<NonNullable<ReplayDocument['bombStats'
 export type ReplayDocumentReady = Omit<
   ReplayDocument,
   | 'abilities'
+  | 'coverage'
   | 'abilityCharges'
   | 'abilityImpulses'
   | 'bombArmings'
@@ -170,6 +174,7 @@ export type ReplayDocumentReady = Omit<
   | 'tracks'
   | 'translocations'
   | 'vehicles'
+  | 'vehicleLabels'
   | 'vipCrown'
   | 'pickups'
   | 'weaponChanges'
@@ -177,6 +182,16 @@ export type ReplayDocumentReady = Omit<
   | 'zoneStates'
 > & {
   abilities: NonNullable<ReplayDocument['abilities']>
+  /**
+   * LA COUVERTURE, dont la liste des REPLIS est comblée (schéma 58).
+   *
+   * L'OBJET GARDE LE DROIT D'ÊTRE ABSENT (même régime que `identity` et `scoreTimeline`) : un
+   * artefact sans couverture n'est pas un artefact dont la couverture serait vide. Son tableau
+   * `fallbacks`, lui, est comblé — un document qui ne doit RIEN à un repli et un document dont
+   * personne n'a compté les replis se lisent alors pareil côté rendu, ce qui est exact : la
+   * distinction vit dans la version de schéma, pas dans le calque.
+   */
+  coverage?: ReplayCoverageReady
   /**
    * LES IMPULSIONS DE CAPACITÉ (schéma 38) : une entrée PLATE par geste — (t, slot, family) —
    * l'usage MESURÉ du propulseur, daté par le corps `tag == 1` des composants i57/i59 du film
@@ -331,6 +346,19 @@ export type ReplayDocumentReady = Omit<
    * table, pas un tableau) nomme les familles employées et pointe leur sprite.
    */
   vehicles: ReplayVehicleTrackReady[]
+  /**
+   * LA TABLE DES FAMILLES DE CHÂSSIS employées par le document : sprite, teinte, et — depuis le
+   * lot 1.9.9 — la NATURE d'une famille qui n'est PAS un véhicule (`kind`) avec son libellé
+   * bilingue. Non comblée (c'est une table, pas un tableau) : absente quand aucune vie ne résout
+   * de famille.
+   *
+   * ELLE EST RÉ-DÉCLARÉE ICI, et c'est le même procédé que `ReplayVehicleTrack.tEnd` : le type
+   * généré (`generated.ts`) ne porte pas encore `kind`/`en`/`fr`, le numéro de schéma ne montant
+   * qu'une fois, à la fusion de la vague de lots qui touchent le document. `ReplayVehicleLabel`
+   * les ajoute à la main, en tolérant ; sans cette ligne, le calque lirait la forme générée et
+   * ne verrait jamais la nature.
+   */
+  vehicleLabels?: Record<string, ReplayVehicleLabel>
   weaponPads: ReplayWeaponPadReady[]
   zoneStates: ReplayZoneStateReady[]
   /**

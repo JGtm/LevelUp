@@ -86,7 +86,7 @@ func lastRoundValue(s ScoreSeries, round int) int {
 //	B = slot 20 manche 0 (40,80,120)   puis slot 22 manche 1 (50,150,250 decale de 120) -> 370
 func TestScoreTimelineReassignedSlotAttributesToRoundOwner(t *testing.T) {
 	recs, deaths := reassignFixture()
-	tl, cov := buildScoreTimeline(&ScoreInput{Records: recs}, deaths, multiRoundClock())
+	tl, cov := buildScoreTimeline(&ScoreInput{Records: recs}, deaths, multiRoundClock(), nil)
 	if tl == nil {
 		t.Fatal("aucun calque publie")
 	}
@@ -151,7 +151,7 @@ func TestScoreTimelineReassignedContreEpreuve(t *testing.T) {
 	}
 
 	// Le chemin par manche corrige : A = 560, B = 370. Il DIFFERE du pont plat.
-	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs}, deaths, c)
+	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs}, deaths, c, nil)
 	pa := playerByXUID(tl.Players, "1001")
 	pb := playerByXUID(tl.Players, "1002")
 	if pa == nil || pb == nil {
@@ -170,7 +170,7 @@ func TestScoreTimelineReassignedContreEpreuve(t *testing.T) {
 // mais deux entrees seulement — chacune portant ses DEUX manches, courbe recomposee.
 func TestScoreTimelineXUIDFusionSingleEntry(t *testing.T) {
 	recs, deaths := reassignFixture()
-	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs}, deaths, multiRoundClock())
+	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs}, deaths, multiRoundClock(), nil)
 
 	seen := map[string]int{}
 	for _, p := range tl.Players {

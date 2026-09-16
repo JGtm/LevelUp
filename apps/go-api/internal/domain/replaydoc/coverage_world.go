@@ -23,6 +23,9 @@ type EquipmentPlacementCoverage struct {
 	EndSeen        int            `json:"endSeen"`
 	EndOpen        int            `json:"endOpen"`
 	ByFamilyOrigin map[string]int `json:"byFamilyOrigin,omitempty"`
+	SpawnEvents    int            `json:"spawnEvents"`
+	SpawnLists     int            `json:"spawnLists"`
+	ByCause        map[string]int `json:"byCause,omitempty"`
 }
 
 // GroundWeaponCoverage dit ce que le calque a lu, ce qu'il a retenu, et ce qu'il a écarté.
@@ -97,6 +100,14 @@ type VehicleCoverage struct {
 	UnknownChassis     map[string]int `json:"unknownChassis,omitempty"`
 	Samples            int            `json:"samples"`
 	WithHeading        int            `json:"withHeading"`
+	DeathsRead         int            `json:"deathsRead"`
+	DeathsMatched      int            `json:"deathsMatched"`
+	DeathsUnmatched    int            `json:"deathsUnmatched"`
+	DeathsTailDesync   int            `json:"deathsTailDesync"`
+	EndDestroyed       int            `json:"endDestroyed"`
+	EndFilmEnd         int            `json:"endFilmEnd"`
+	EndUnknown         int            `json:"endUnknown"`
+	SamplesAfterEnd    int            `json:"samplesAfterEnd"`
 	Rides              int            `json:"rides"`
 	VehiclesRidden     int            `json:"vehiclesRidden"`
 	RidesNamed         int            `json:"ridesNamed"`

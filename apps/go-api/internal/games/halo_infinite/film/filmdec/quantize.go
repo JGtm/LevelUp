@@ -62,8 +62,9 @@ func BitLenExport(v uint32) int { return bitLen(v) }
 // DEPLACE ICI le 2026-09-05 (lot E, item E.2) depuis `entity.go`, supprime avec
 // `entity_quant.go` : les deux decodeurs de record qu'ils portaient n'avaient aucun
 // appelant et visaient, de l'aveu du depot (`components_batch7.go:6-8`), une AUTRE
-// fonction du jeu. Trois helpers seulement etaient vivants : celui-ci, `readQuantStat`
-// et `quantStatDefaultWidth`.
+// fonction du jeu. Deux helpers seulement sont vivants : celui-ci et `readQuantStat`
+// (la constante `quantStatDefaultWidth` est morte le 2026-09-15 : la largeur se derive
+// desormais de la CATEGORIE, cf. `varwidth.go`).
 func bitLen(x uint32) int {
 	if x == 0 {
 		return 0
@@ -75,35 +76,28 @@ func bitLen(x uint32) int {
 	return h
 }
 
-// quantStatDefaultWidth is the value-field width for the default config range
-// DAT_144706100 = 0x1fff (bitLen 13). Used by the nested parent-mode reads in
-// FUN_140c9e990 where the runtime table slot is statically zero.
-const quantStatDefaultWidth = 13
-
-// readQuantStat mirrors FUN_1406d3140: a variable-width quantized integer read.
-// param3 selects the runtime table slot; statWidth is the value-field width W
-// (= bitLen(range)). Bit cost: [probe 1 bit when param3==1] + W value bits + 2
-// trailing bits. Result layout: bits[31:30] = trailing2, bits[29:0] = base+value
-// (base is DAT_1451f98d0[param3*2], statically 0).
+// readQuantStat porte FUN_1406d3140 quand l appelant veut la VALEUR : meme lecture que
+// `readVarWidthInt`, rendue au format du jeu.
 //
-// POURQUOI `param3` RESTE UN PARAMETRE alors que les quatre sites de production passent 1 :
-// il MODELISE `param_3` de FUN_1406d3140, dont depend le COUT EN BITS de la lecture (la sonde
-// d'un bit n'est depensee que pour param3==1). Le figer effacerait cette part de la grammaire
-// portee. Le second lecteur, qui passait une autre valeur, vivait dans `entity_quant.go` —
-// supprime le 2026-09-05 (lot E, item E.2) parce qu'il n'avait aucun appelant ; c'est cette
-// suppression, et elle seule, qui rend le parametre uniforme aujourd'hui.
+// `param3` est la CATEGORIE (`param_3` du jeu) : elle choisit la plage dans la table de
+// `FUN_140d10bb0`, donc la largeur du champ de valeur (cf. `varwidth.go`). Cout en bits :
+// [sonde R(1) si param3 == 1] + `varWidthBits` bits de valeur + R(2) de queue. Quand la sonde
+// de la categorie 1 rend 1, le jeu BASCULE sur l entree 4 et ne lit plus que 9 bits de valeur.
 //
-//nolint:unparam // cf. le paragraphe ci-dessus : param_3 est une grandeur de la grammaire.
-func (b *BitReader) readQuantStat(param3 int, statWidth uint) uint32 {
-	// param3==1 always spends 1 probe bit (the && chain tests param3==1 first).
-	if param3 == 1 {
-		_ = b.ReadBit() // probe (FUN_1406cf008); selects a special range slot at runtime
+// Format rendu : bits[31:30] = les deux bits de queue, bits[29:0] = la valeur.
+//
+// LA BASE DE LA TABLE N EST PAS AJOUTEE, ET C EST DELIBERE : `FUN_1406d3140` rend
+// `(queue << 30) | (base + valeur)` avec une base de 0x200 / 0x300 / 0x400 selon la categorie.
+// Elle ne change AUCUN bit lu, elle decale des IDENTIFIANTS publies — un changement qui se juge
+// au gate de decodage, indisponible pour ce lot. Consigne au §4 du PLAN_DECODEUR_FILM.
+func (b *BitReader) readQuantStat(param3 int) uint32 {
+	if param3 == varWidthProbeCategory && b.ReadBit() { // sonde : param_3 == 1 SEULEMENT
+		param3 = varWidthProbeSlot
 	}
 	var value uint32
-	if statWidth >= 1 {
-		value = uint32(b.ReadBits(statWidth)) // W value bits MSB-first
+	if w := varWidthBits(param3); w >= 1 {
+		value = uint32(b.ReadBits(w)) // W bits de valeur, MSB en tete
 	}
-	top2 := uint32(b.ReadBits(2)) // always 2 trailing bits
-	const base = 0                // DAT_1451f98d0[param3*2], statically 0
-	return (top2 << 30) | (uint32(base) + value)
+	top2 := uint32(b.ReadBits(2)) // toujours deux bits de queue
+	return (top2 << 30) | value
 }

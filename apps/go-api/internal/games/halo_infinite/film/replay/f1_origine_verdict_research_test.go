@@ -106,7 +106,7 @@ func f1PosesEtPositions(t *testing.T, dir string, e *filmdec.MapQuantEntry) (
 	}
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(*e, dir)()
+	defer installWorldObjectPrecision(*e, dir, nil)()
 	wr := e.Range()
 	raw, st, err := filmdec.ScanFilmEquipmentPlacements(dir, &wr)
 	if err != nil || !st.Calibration.Widths.Valid() {
@@ -135,7 +135,7 @@ func f1Compare(id string, raw []filmdec.EquipmentPlacement, positions []filmdec.
 			slot, vies = s, lives[s]
 		}
 		a := f1OrigineAvant(vies, p)
-		b := equipmentOrigin(vies, p)
+		b := f1OrigineParFenetre(vies, p)
 		avant[a]++
 		apres[b]++
 		if a == b {

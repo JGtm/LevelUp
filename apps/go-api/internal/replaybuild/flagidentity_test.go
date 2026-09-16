@@ -151,38 +151,31 @@ func TestPontParMancheNeResoutQuUneFois(t *testing.T) {
 	}
 }
 
-// TestFlagInputPorteLesEquipesDesLignesDeMatch — LE CABLAGE DE L'INVARIANT DUR (DRAPEAUX-R1, C1).
+// TestScoreboardTeamsEstUnControle — LA FEUILLE DE MATCH NE POSE PLUS D'EQUIPE (lot 1.7).
 //
-// L'invariant « un portage n'est JAMAIS pose sur le drapeau de l'equipe de son porteur » vit dans
-// le calque, mais il est MUET sans la table xuid -> equipe : c'est ce cablage-ci qui l'allume, et
-// il s'est deja tu une fois faute d'etre pose jusqu'au bout. Une equipe INCONNUE (-1 en base)
-// n'entre pas : l'invariant ne doit refuser que sur une equipe LUE.
-func TestFlagInputPorteLesEquipesDesLignesDeMatch(t *testing.T) {
+// L'invariant « un portage n'est JAMAIS pose sur le drapeau de l'equipe de son porteur » tirait
+// son equipe de `FlagInput.TeamOf`, une table fournie par CE paquet depuis les lignes de match.
+// Depuis le lot 1.7 (decision utilisateur V4), l'equipe vient du FILM et cette table n'est plus
+// qu'un CONTROLE : elle alimente `coverage.teams.{accord, contradiction, silence}` par
+// `Options.ScoreboardTeams`, et rien d'autre. Ce test garde ce qu'elle doit contenir — une
+// equipe INCONNUE (-1 en base) n'entre pas, sans quoi le controle compterait une contradiction
+// contre une absence.
+func TestScoreboardTeamsEstUnControle(t *testing.T) {
 	facts := port.MatchFacts{Players: []domain.MatchPlayerFact{
 		{XUID: "aaa", TeamID: 0},
 		{XUID: "bbb", TeamID: 1},
 		{XUID: "ccc", TeamID: -1}, // equipe absente de la base
-		{XUID: "", TeamID: 0},     // ligne sans xuid
 	}}
-	got := equipesParXUID(facts)
+	got := teamByXUID(facts)
 	if len(got) != 2 || got["aaa"] != 0 || got["bbb"] != 1 {
-		t.Fatalf("table des equipes %v, attendu {aaa:0, bbb:1} — une equipe inconnue n'entre pas", got)
+		t.Fatalf("table de controle %v, attendu {aaa:0, bbb:1} — une equipe inconnue n'entre pas", got)
 	}
 	if _, ok := got["ccc"]; ok {
-		t.Errorf("l'equipe -1 de « ccc » ne doit pas entrer : l'invariant refuserait sur une absence")
+		t.Errorf("l'equipe -1 de « ccc » ne doit pas entrer : le controle compterait une " +
+			"contradiction contre une absence")
 	}
-	if equipesParXUID(port.MatchFacts{}) != nil {
-		t.Errorf("sans lignes de match la table est nil : l'invariant se tait, le calque reste hors ligne")
+	if teamByXUID(port.MatchFacts{}) != nil {
+		t.Errorf("sans lignes de match la table est nil : le controle se tait, et le document " +
+			"est le meme a l'octet pres")
 	}
-}
-
-// TestFlagInputDescendLesEquipesJusquAuScan — la table traverse `FlagInput` jusqu'au calque.
-func TestFlagInputDescendLesEquipesJusquAuScan(t *testing.T) {
-	recs, _, _, bursts := monoRoundCTFFixture()
-	facts := port.MatchFacts{Players: []domain.MatchPlayerFact{{XUID: "aaa", TeamID: 1}}}
-	in := flagInput(recs, nil, &pontParManche{}, facts)
-	if in.TeamOf["aaa"] != 1 {
-		t.Fatalf("FlagInput.TeamOf = %v, attendu {aaa:1} — sans elle l'invariant dur est muet", in.TeamOf)
-	}
-	_ = bursts
 }

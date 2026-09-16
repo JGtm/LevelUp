@@ -280,7 +280,7 @@ type i57hActEvent struct {
 // transitions d'`equipment-activated` par vie d'objet (le protocole du 15/08).
 func i57hActivatedTransitions(t *testing.T, dir string) []i57hActEvent {
 	t.Helper()
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := detectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("découpage i0 illisible : %v", err)
 	}

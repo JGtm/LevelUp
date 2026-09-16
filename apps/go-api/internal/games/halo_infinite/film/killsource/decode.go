@@ -50,9 +50,15 @@ type decodeCtx struct {
 	roster    *roster
 	walkRes   *walkResult
 	scanCands []candidate
-	mult      map[multKey]int
-	calib     calibration
-	bijScore  int
+	// killEvents : les kill-events (code 85) du film, localises UNE fois. Ils servent DEUX
+	// lectures qui ne se ressemblent pas : le COUPLE (tueur, victime) d un kill sans mort en
+	// face (lot 1.9.3, `feed_couples.go`) et l ASSISTANT (`assist.go`).
+	killEvents *assistScan
+	// couples : d ou vient le couple de chaque instant du kill-feed.
+	couples  CoupleStats
+	mult     map[multKey]int
+	calib    calibration
+	bijScore int
 }
 
 // Decode : LA fonction publique. Elle lit un film DEJA CHARGE et rend, pour chaque mort, LES
@@ -118,7 +124,22 @@ func (c *decodeCtx) prepare(ctx context.Context, src *filmsource.Film) error {
 	if c.feed, err = loadKillFeed(c.film); err != nil {
 		return err
 	}
-	c.roster = buildRoster(c.feed, loadBotMeta(c.film), c.opts.Bots)
+	// LA TABLE DU FILM AVANT LE ROSTER : c est elle qui porte le lien direct
+	// `index de joueur <-> gamertag` (lot 1.8, film_table.go). Un refus est NOMME, journalise
+	// ici, et le decodeur retombe alors sur l inference entiere.
+	table := readFilmTable(c.film)
+	if table.Refusal != FilmTableRead {
+		slog.WarnContext(ctx, "killsource: table des joueurs du film NON LUE — la bijection "+
+			"retombe entierement sur l inference par les votes du kill-feed",
+			"film", c.name, "build", table.Build, "cause", string(table.Refusal))
+	}
+	c.roster = buildRoster(c.feed, loadBotMeta(c.film), c.opts.Bots, table)
+	// LE COUPLE (TUEUR, VICTIME) SE LIT AU KILL-EVENT 85 (lot 1.9.3), et il se lit ICI : la
+	// decomposition du kill-feed exige les kill-events et le roster EPINGLE, et la bijection
+	// exige la decomposition. L ordre est donc force, et il est le resultat — resoudre les
+	// couples APRES la bijection les ferait dependre de l inference qu ils alimentent.
+	c.killEvents = scanKillEvents(c.film)
+	c.couples = c.feed.resoudreCouples(c.killEvents.recs, c.roster)
 
 	tl, err := newTimeline(c.film)
 	if err != nil {
@@ -151,7 +172,8 @@ func (c *decodeCtx) finish() *Result {
 	// L ASSISTANT SE LIT AILLEURS QUE LA SOURCE, et le decodage reste separe jusqu au bout : la
 	// liste d evenements pour l assistant, la boucle de records pour la source. Un echec de l un
 	// ne doit rien retirer a l autre.
-	stats.Assist = c.attachAssists(kills, scanKillEvents(c.film))
+	stats.Assist = c.attachAssists(kills, c.killEvents)
+	stats.Couples = c.couples
 	res := &Result{
 		Kills:           kills,
 		UnclaimedDeaths: p.unclaimed,
@@ -160,6 +182,10 @@ func (c *decodeCtx) finish() *Result {
 		Roster:          c.roster.public(),
 		Calibration:     c.calib.String(),
 		BijectionMargin: bijectionMargin(c.roster, c.feed.pairs, c.scanCands, c.bijScore),
+		// DETERMINEE quand l inference n avait qu UNE SEULE affectation a rendre — ce que
+		// `Inferred <= 1` ne suffisait pas a dire des lors qu il peut rester plus de noms libres
+		// que d indices libres (cf. [FilmTablePinning.AffectationUnique]).
+		BijectionDetermined: c.roster.table.AffectationUnique(),
 	}
 	res.Health = c.health(p, cov)
 	// La sonde a porte relachee ne tourne QUE si la couverture est incomplete : c est le seul

@@ -204,7 +204,16 @@ func TestKillSourceDecoderRevSuitLeDecodeur(t *testing.T) {
 	}
 	if *updateDecoderRevGolden {
 		ecrireGoldenDecoderRev(t, KillSourceDecoderRev, empreinte)
-		return
+		// UNE PORTE DE REGENERATION NE REND JAMAIS `ok` (revue R2, C1 ; alignement de la revue de
+		// jalon M1, lentille L6). `go test` JETTE la sortie d un paquet qui PASSE : le `t.Logf`
+		// d `ecrireGoldenDecoderRev` est INVISIBLE avec la commande documentee (sans `-v`), si bien
+		// qu une reecriture du couple (revision, empreinte) se lisait `ok` — exactement ce que les
+		// deux autres portes du chantier (`-update-keyframe-closure`, `-update-grammar-rev`)
+		// refusent depuis la revue R2. Terminer en ECHEC rend la reecriture visible ET empeche de
+		// confondre une regeneration avec un run vert.
+		t.Fatalf("1 reference(s) reecrite(s) : %s (revision %s, empreinte %s) ; "+
+			"relancer sans -update pour verifier",
+			cheminGoldenDecoderRev, KillSourceDecoderRev, empreinte)
 	}
 	revisionGolden, empreinteGolden := lireGoldenDecoderRev(t)
 	if empreinte != empreinteGolden {

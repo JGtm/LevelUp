@@ -33,10 +33,45 @@ package replay
 // vers l une d elles : les entrees `rockethog` / `razorback` / `warthog_gauss` / `gungoose` de
 // l index de sprites restent donc SANS cle ici, plutot que devinees.
 //
-// VALEUR INCONNUE = FAMILLE VIDE. Le vehicule reste publie (sa trajectoire est vraie), sans
-// sprite : le client dessine un marqueur neutre. Emprunter la famille d un voisin donnerait un
-// Warthog dessine en Banshee, ce qui est pire qu un marqueur. Le compteur
-// `Coverage.Vehicles.UnknownChassis` et le journal du calque rompent le silence.
+// UN MEME VEHICULE PORTE PLUSIEURS `vehi`, ET CE N EST PAS UNE VARIANTE : C EST LE MODULE.
+//
+// Le jeu range ses tags dans des MODULES (`pc/globals`, `any/globals`, `any/globals/common`...),
+// et un meme vehicule y est declare PLUSIEURS FOIS, sous un GlobalID different par module. Le
+// manifeste de la chaine de destruction l ecrit noir sur blanc pour le Scorpion
+// (`.ai/V7.5/film_re/sons_v3_reconstruits/manifeste_v3.json`, entree « Scorpion (M808) ») :
+// « f6f54e56 (any/globals) = chassis 0000d3db (pc/globals), meme hlmt ».
+//
+// CONSEQUENCE MESUREE, ET ELLE A COUTE DEUX FAMILLES (lot 1.9.9, 2026-09-16). Les releves qui
+// ont peuple cette table (V4_RAPPORT_SPRITES, ASSEMBLAGE_*, REWORK_WARTHOG_GUNGOOSE) balayaient
+// `pc/globals` ; les FILMS, eux, ecrivent l identifiant du module que la partie charge. Sur les
+// 76 artefacts du parc, AUCUN identifiant de base d une famille Covenant ou UNSC n apparait
+// jamais (`00002705`, `000025aa`, `0000d3db`, `0000d3dc`, `000026ed`, `00002706`, `002ba902`) —
+// seul le SECOND identifiant est observe (`fe32c0f4` 63 vies, `af31ab1a` 60, `5b80c406` 45,
+// `c6e79dcc` 16, `3d4a8a5a` 13). Les deux familles qui n avaient QUE leur identifiant de base —
+// Wraith et Scorpion — ne se resolvaient donc JAMAIS : leurs vies sortaient sans sprite ET sans
+// occupant (cf. `vehicleFamilyIsRideable`, qui refuse tout episode sur une famille vide).
+//
+// LA REGLE QUI EN DECOULE : une famille n est completement nommee que lorsque TOUS les `vehi`
+// que le manifeste lui rattache sont en table. Chaque entree ci-dessous cite sa piece.
+//
+// CE QUI N ENTRE PAS ICI : les tags `vehi` ENFANTS (tourelles et canons montes — `0000d4ff`,
+// `0000d500`, `64b925eb`, `bcfb852f`, `dd7f9102`), que le manifeste range sous « Falcon
+// (tourelle LMG) et autres objets-enfants » avec le verdict « PAS DE SON DE DESTRUCTION
+// PROPRE ». Un enfant n est pas un chassis : lui donner une famille ferait dessiner un vehicule
+// la ou il n y a qu une piece d armement. Aucun n a d ailleurs ete observe au parc.
+//
+// VALEUR INCONNUE = FAMILLE VIDE, ET C EST UN REPLI NOMME (D14 du plan decodeur). Le vehicule
+// reste publie (sa trajectoire est vraie), sans sprite : le client dessine un marqueur neutre.
+// Emprunter la famille d un voisin donnerait un Warthog dessine en Banshee, ce qui est pire
+// qu un marqueur. Depuis le lot 1.9.9 (2026-09-16) ce refus porte son nom au registre des
+// replis — `repli_chassis_vehicule_marqueur_neutre`, condition `chassis_absent_de_la_table`
+// (le film N EST PAS muet : il ecrit le mot d identite, c est NOTRE table qui ne le nomme pas),
+// ordre `apres_lecture` — et son compteur est CABLE par cuisson (`tallyVehicleCoverage`), en
+// plus du compteur publie `Coverage.Vehicles.UnknownChassis` et du journal du calque.
+//
+// DECISION UTILISATEUR DU 2026-09-14 : le parc d assets vehicules est COMPLET. Un chassis
+// absent de cette table n est donc PAS un vehicule dont l image manquerait — c est un MISMATCH
+// a nommer, et le nommer est le seul geste qui retire le repli.
 
 import (
 	"fmt"
@@ -66,6 +101,10 @@ const (
 	familleSkiff    = "skiff"
 	familleShade    = "shade"
 	familleFalcon   = "falcon"
+	// familleTourelleAutoBannie n est PAS un vehicule : c est un ELEMENT DE CARTE (lot 1.9.9,
+	// decision utilisateur du 2026-09-14). Voir la table ci-dessous pour la preuve, et
+	// `config/titles/{slug}/mappings/replay_labels.toml` pour son libelle et sa nature publies.
+	familleTourelleAutoBannie = "tourelle_auto_bannie"
 )
 
 // vehicleFamilyByChassis associe le `MPPWord32` d un record de creation `ti=40` a la FAMILLE de
@@ -123,6 +162,94 @@ var vehicleFamilyByChassis = map[uint32]string{
 	0xfe32c0f4: familleWarthog,
 	// Meme preuve, meme hlmt daf7f543 (V3D, meme table) ; non observe en film a ce jour.
 	0xcb96ca07: familleWarthog,
+
+	// --- ELEMENT DE CARTE, pas un vehicule (lot 1.9.9, 2026-09-16) ---
+	//
+	// LA TOURELLE AUTOMATIQUE BANNIE. `labels.tsv` la nomme sur TROIS tags de degat a porteur
+	// `vehi 038df01a` (3b3b3d40, aed08680, e1ea6e65) et deux d entre eux ne citent qu UNE banque,
+	// `sb_003_lvl_moments_ge_shared_autoturret_banished` (+ son `_fire`) : le prefixe `sb_003_lvl`
+	// dit deja la NATURE — banque de NIVEAU (`lvl`), pas banque de vehicule (`sb_010_veh`), et
+	// « moments_ge_shared » est le vocabulaire des mises en scene de carte.
+	//
+	// LA MESURE LE CONFIRME (instrument `TestInventaireChassisDesArtefacts`, 76 artefacts du
+	// parc) : 18 vies sur deux films (`bfecd02b` 9, `2cf24f30` 9), 17 des 18 SANS AUCUN
+	// echantillon de trajectoire, et les 18 avec une fenetre qui couvre LE MATCH ENTIER. Un
+	// vehicule pilotable n a ni l une ni l autre de ces signatures.
+	//
+	// DECISION UTILISATEUR DU 2026-09-14 : « ce sont des elements de la map » — un objet qui
+	// interdit la sortie de la zone de jeu, PAS un vehicule jouable. Il entre donc en table sous
+	// une famille NOMMEE, il est publie, il est dessine par un pictogramme dedie cote client, et
+	// il ne porte JAMAIS d occupant (cf. `vehicleFamillesNonPilotables`).
+	0x038df01a: familleTourelleAutoBannie,
+
+	// --- LES SECONDS `vehi` DU MANIFESTE, un module plus loin (lot 1.9.9, 2026-09-16) ---
+	//
+	// TOUS viennent de la MEME piece, celle que la table cite deja pour `fe32c0f4` et
+	// `cb96ca07` : `.ai/V7.5/film_re/sons_v3_reconstruits/manifeste_v3.json`, section
+	// `par_vehicule`, recoupee par `V3D_DESTRUCTION_SONS_2026-09-02.md` § 2. Chaque ligne du
+	// manifeste donne le `hlmt` de la famille et la banque d explosion qu il atteint ; les
+	// identifiants entre parentheses de sa colonne `vehi` sont les declarations du MEME
+	// vehicule dans un autre module. Aucun n est devine.
+	//
+	// CONFIRME PAR LA KILLSOURCE LE 2026-09-16, par une SECONDE SOURCE INDEPENDANTE de la chaine
+	// de destruction. Le kill-feed date chaque mort et porte le tag de degat de l arme
+	// (`match_kill_events_latest.source_tag`, oracle `pre-chaine-2026-09-09` en lecture seule).
+	// Les deux tags dont `labels.tsv` ne cite QU UNE banque, `sb_010_veh_cv_wraith` — `7c4f8a28`
+	// et `deffdc6b` — rendent 40 kills sur trois films, et **37 tombent DANS une vie de
+	// `ae845375`** publiee par le constructeur (horloge : `time_ms` est l instant depuis le debut
+	// du FILM, cf. `killsource/kill.go`, donc frame = (time_ms - originMs) / frameIntervalMs) :
+	// `4f77afc1` 17/20, `5676a9ba` 12/12, `0a44c6cc` 8/8. Un char qui tue depuis les vies d un
+	// chassis EST ce chassis.
+	//
+	// LES TROIS KILLS HORS VIE NE REFUTENT RIEN, ET ILS MESURENT AUTRE CHOSE : les trois sont du
+	// MEME tueur (`Shiloh0209`) qui tuait deja a 14:45.7 DANS la vie du slot 986, et ils tombent
+	// 6,5 s et 22,8 s APRES la fin publiee de cette vie (frame 8943). C est le defaut que le lot
+	// 1.9.10 est charge de corriger — `VehicleTrack.End` est une BORNE DE RECENSEMENT qui coupe
+	// un vehicule encore pilote —, mesure ici sur un second film et avec un conducteur nomme.
+	//
+	// SCORPION : memes tags a banque unique (`0bece71e`, `19bd6810`, « canon principal »,
+	// `sb_010_veh_un_scorpion`), 4 kills sur `0a44c6cc`, **4 sur 4 dans la vie de `f6f54e56`**.
+	// Les quatre autres tags qui citent cette banque la PARTAGENT avec
+	// `sb_020_prototype_weapon_lightrifle` : ecartes, ils ne prouveraient rien.
+	// RESERVE ECRITE : la BANQUE seule ne separe pas Wraith, Banshee et Phantom (ils partagent
+	// `2eaae6d7 large_covenant` et l evenement `1bf6fdde`, dit par le manifeste lui-meme). Ce
+	// qui les separe est le `hlmt`, et c est sur lui que chaque entree ci-dessous est rangee —
+	// exactement le critere que la table applique deja a `fe32c0f4` (« un vehi qui partage le
+	// hlmt du Warthog est un chassis Warthog »).
+
+	// Manifeste, « Wraith » : `vehi` = « 00002706 (+ ae845375) », hlmt `5b5c960d`, foot
+	// `48669cd9`, banque `2eaae6d7 (large_covenant)`, event `1bf6fdde`, confiance HAUTE.
+	// OBSERVE : 18 vies MOBILES sur quatre films du parc (`4f77afc1` 11, `5676a9ba` 4,
+	// `0a44c6cc` 2, `8a485699` 1), 376 a 2 352 echantillons de trajectoire, naissances en
+	// relais sur deux socles par carte. C est le chassis Wraith des films ; `00002706` n a
+	// JAMAIS ete observe.
+	0xae845375: familleWraith,
+
+	// Manifeste, « Scorpion (M808) » : `vehi` = « f6f54e56 (any/globals) = chassis 0000d3db
+	// (pc/globals), meme hlmt » — l egalite est ECRITE. hlmt `e7fe7564`, deja documente comme
+	// le hlmt du chassis Scorpion (`ASSEMBLAGE_ENFANTS_2026-09-01.md` § « Chassis seul »),
+	// banque `94d43e95 (large_unsc)`. OBSERVE : 3 vies mobiles sur trois films.
+	0xf6f54e56: familleScorpion,
+
+	// Manifeste, « Ghost » : `vehi` = « 0000d3dc (+ 5b80c406, 9af9e693) », hlmt `3b3038e6`,
+	// banque `b1f8608b (small_covenant)`. `5b80c406` est deja en table (45 vies observees) ;
+	// `9af9e693` est son troisieme module. NON OBSERVE au parc a ce jour — il entre parce que
+	// la piece le nomme, pas parce qu on l a vu.
+	0x9af9e693: familleGhost,
+
+	// Manifeste, « Banshee » : `vehi` = « 000026ed (+ 0001530a, c6e79dcc) », hlmt `df38bc96`,
+	// banque `2eaae6d7 (large_covenant)`. `c6e79dcc` est deja en table (16 vies observees).
+	// NON OBSERVE au parc.
+	0x0001530a: familleBanshee,
+
+	// Manifeste, « Warthog (toute la famille : warthog, razorback, rockethog) » : `vehi` =
+	// « 00002705, cb96ca07, fe32c0f4 (+ 5159c8ef, 75312e51, 7617ff6e dans any/globals/common) »,
+	// hlmt `daf7f543`, banque `c468fb55 (med_unsc)`. Les trois derniers sont les declarations
+	// du module `any/globals/common`. NON OBSERVES au parc — meme raison d entrer : la piece.
+	// Ils partagent le hlmt du Warthog, donc la famille (cf. la note de `fe32c0f4`).
+	0x5159c8ef: familleWarthog,
+	0x75312e51: familleWarthog,
+	0x7617ff6e: familleWarthog,
 }
 
 // vehicleFamilyOf rend la famille de chassis d un `MPPWord32`, ou la chaine VIDE quand la table

@@ -10,18 +10,18 @@ package filmdec
 // `00162144` (bloc 71 « B », 1 068 slots, empreinte inconnue) — il ne verifiait donc pas le
 // compte de blocs, seulement les slots nommes, et il n'avait jamais vu ce film.
 //
-// LA REGLE STRUCTURELLE TESTEE : un bloc de registre est « une suite de slots nommes en tete,
-// puis un slot de terminaison dont seul le champ flags (run*260+4) peut etre non nul, puis des
-// zeros jusqu'au bout du bloc » (bloc vide = zero slot, ex. bloc 8). Le premier bloc qui viole
-// cette regle marque la fin du registre.
+// LA REGLE STRUCTURELLE TESTEE : un bloc de registre est « une suite d'ENTREES nommees en
+// tete, puis des zeros jusqu'au bout du bloc » (bloc vide = zero entree, ex. bloc 8). Le
+// premier bloc qui viole cette regle marque la fin du registre.
 //
-// AFFINAGE DOCUMENTE (2026-08-30, premiere passe de cette mesure) : la regle initiale « que
-// des zeros apres la suite nommee » est REFUTEE par le corpus entier (structEnd=0 partout) —
-// le slot de terminaison porte un u32 non nul en flags sur ~40 des 50 blocs du build de
-// reference (0x01 ou 0x02, jamais autre chose, kind et zone de nom nuls). C'est coherent avec
-// le decalage R7-e (« le jeu lit le niveau un cran plus loin ») : le flags du slot de
-// terminaison est le niveau du dernier composant sous la lecture decalee. La regle a ete
-// affinee pour exempter ces 4 octets, et RIEN d'autre ; les criteres C1..C3 sont inchanges.
+// L'EXEMPTION DE QUATRE OCTETS A DISPARU AU LOT 1.2 (2026-09-14), ET C'EST UN RESULTAT. La
+// premiere passe de cette mesure (2026-08-30) avait du exempter les 4 octets a `run*260+4` :
+// le « slot de terminaison » y portait un u32 non nul sur ~40 des 50 blocs du build de
+// reference (0x01 ou 0x02, jamais autre chose). L'explication supposee — « le jeu lit le niveau
+// un cran plus loin » — est devenue la LECTURE : le registre commence a l'octet 8 et ces quatre
+// octets sont le NIVEAU de la derniere entree nommee, pas du bourrage. Sous le cadrage du jeu
+// la regle redevient « suite nommee puis zeros », sans exception, et l'entree de terminaison
+// est entierement nulle. Les criteres C1..C3 sont inchanges.
 //
 // CRITERES ECRITS AVANT LA MESURE (verdict binaire par critere ; un critere rate = le
 // correctif de parseRegistry est refuse) :
@@ -72,19 +72,16 @@ type lot3Scan struct {
 func lot3ScanChunk(data []byte) lot3Scan {
 	s := lot3Scan{oldBlocks: len(data) / archetypeBlockSize, structEnd: -1, violOff: -1}
 	for b := 0; b < s.oldBlocks; b++ {
-		base := b * archetypeBlockSize
+		base := registryEntryBase + b*archetypeBlockSize
 		run := 0
 		for ; run < archetypeBlockSlots; run++ {
-			if slotName(data, base+run*registrySlotSize) == "" {
+			if entryName(data, base+run*registrySlotSize) == "" {
 				break
 			}
 		}
 		viole := false
 		term := base + run*registrySlotSize
-		for off := term; off < base+archetypeBlockSize; off++ {
-			if off >= term+4 && off < term+8 {
-				continue // flags du slot de terminaison : exempte (regle affinee, cf. en-tete)
-			}
+		for off := term; off < base+archetypeBlockSize && off < len(data); off++ {
 			if data[off] != 0 {
 				viole = true
 				if s.structEnd < 0 {

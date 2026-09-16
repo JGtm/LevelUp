@@ -40,13 +40,10 @@ package replay
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/binary"
+	"errors"
 	"flag"
-	"fmt"
-	"math"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 
@@ -75,6 +72,66 @@ func goldenInputsPath() string {
 // autre version par la garde, et le decodage decale meurt plus loin sur un « uvarint illisible »
 // a un offset arbitraire : bruyant par chance, pas par construction, et le message ne dit pas
 // quoi faire. [TestGoldenInputsVersionGuard] verrouille le refus explicite.
+//
+// v21 (2026-09-14, lot 1.7) : le fixture porte L EQUIPE DE CHAQUE JOUEUR (`FilmInputs.PlayerTeams`,
+// `index de joueur -> designateur`, lue par `filmdec.ScanPlayerTeams` dans le composant i0 de
+// ti=9) ET le RAPPORT de cette lecture (`FilmInputs.TeamScan`). Les deux, parce qu une table vide
+// et une lecture REFUSEE ne disent pas la meme chose : `coverage.teams` publie la difference, et
+// un fixture qui ne porterait que la table figerait un refus comme un film sans equipes.
+//
+// v20 (2026-09-14, lot 1.6) : le fixture porte LA TABLE DES JOUEURS DU FILM (`FilmInputs.FilmTable`,
+// lue par `ScanFilmPlayerTable` dans `chunk_00`) — le lien DIRECT `index <-> xuid <-> gamertag`
+// dont le registre d identite fait sa source premiere. Elle porte son REFUS comme elle porte ses
+// sieges : une table non lue n est pas une table vide, et le document publie la difference.
+// Les neuf champs courts et le jeton de session que `filmdec.PlayerSlot` expose N ENTRENT PAS —
+// aucun assemblage ne les lit, et la doctrine de ce fichier est que le fixture porte ce que
+// l assemblage CONSOMME.
+//
+// v19 (2026-09-14, lot 1.0) : LE FIXTURE PORTE LE TYPE DE LA PRODUCTION. `goldenInputs` embarque
+// desormais [FilmInputs] — ce que `scanFilmInputs` rend et ce que `BuildFromPositions` consomme —
+// au lieu de redeclarer la liste a la main. SIX CANAUX y entrent du meme geste, parce que le
+// chemin du fixture appelle enfin l etage de production au lieu de le recopier :
+// `BipedCreations`, `WeaponChanges`, `Pickups` (+ stats), `EquipmentChanges` (+ stats),
+// `ZoomEvents` (d ou sort `Options.Scoped`) et `Vehicles` (cf. golden_inputs_canaux_test.go).
+// Les huit goldens d assemblage cessent donc d affirmer des calques VIDES que la production
+// publie. La suite des sections change en deux points de plus : la table des slots descend de
+// l en-tete dans la section des positions (un SEUL codec de positions, partage avec le nuage des
+// vehicules — cf. encodePositionSection), et les six nouvelles sections s intercalent chacune
+// pres de sa famille.
+//
+// v18 (2026-09-14, lot 0.D revue R1) : le fixture porte les VERDICTS DE BALAYAGE que
+// l assemblage publie — `InventoryDeltaAmmoRefused` (« canal munitions refuse », publie en
+// `coverage.grenadeReads.ammoRefused`) et `FilmMajorVersion` (publie en
+// `coverage.filmMajorVersion`). Sans eux ces deux lignes etaient des CONSTANTES dans les huit
+// goldens et les huit fixtures, et la fidelite ne pouvait pas les contredire — meme piege que
+// le temoin `Scanned` de v13. Au meme geste, RETRAIT de deux champs que le codec portait sans
+// qu aucun assemblage ne les lise : `InventoryDelta.Ammo` (entre en v15) et
+// `KeyframeInventory.GrenadesByPosition` — la doctrine de ce fichier est que le fixture porte
+// ce que l assemblage CONSOMME, ni plus ni moins.
+//
+// v17 (2026-09-14, lot 0.D.7) : le decoupage d i0 vient du CATALOGUE, par la fonction de la
+// production (`NewFilmContextForMap(...).ImposedLayout()`), et le blob porte un drapeau
+// `LayoutDetected` qui NOMME le repli d auto-detection — que la production n emploie que sur
+// une entree de carte invalide. Une contradiction entre le blob et le catalogue, dans les DEUX
+// sens, est une erreur typee (`errGoldenInputsDecoupage`). Sur `60ae07c4` la detection rendait
+// `13/12/11` la ou le catalogue rend `12/12/11` : le golden y affirmait des coordonnees que la
+// production ne produit pas.
+//
+// v16 (2026-09-14, lot 0.D.3 bis) : les positions portent les QUANTA du film (`BipedPosition.Q`,
+// delta-varint par slot) et non plus les flottants derives ; la relecture re-dequantifie par
+// `filmdec.DequantBipedAxis`, avec les bornes de l entree de catalogue passee en PARAMETRE. Le
+// blob ouvre sur le MODULE de la carte et refuse une entree qui ne correspond pas
+// (`errGoldenInputsCarte`), parce que les bornes d une autre carte rendent des coordonnees
+// FAUSSES et non approximatives. Le blob porte aussi les trois largeurs d axe employees. Prix :
+// les huit fixtures passent de 10,35 a 9,86 Mio — MOINS que les flottants ronds d avant.
+//
+// v15 (2026-09-14, lot 0.D.3) : le fixture a porte enfin ce que l assemblage lit —
+// `KeyframeInventory.SelectedGrenadeRank` (il vaut -1 quand rien n est selectionne ; relu 0, il
+// inventait une selection sur les huit builds) et des coordonnees EXACTES au lieu d un arrondi
+// au centimetre (`equipmentOwner` choisit le poseur d une pose a la plus courte distance :
+// l arrondi faisait basculer trois poses de `fb1a1a72`). `InventoryDelta.Ammo` y est entre AU
+// MEME GESTE, mais A TORT : la revue de ronde 1 a montre le 2026-09-14 qu aucun assemblage ne
+// le lit, et il est RETIRE en v18.
 //
 // v14 (2026-09-04, lot P5) : le fixture porte les CHARGES D'EQUIPEMENT RESTANTES (les
 // emplacements ARMES du composant i56, quartet haut = charges entieres — rapport R11) et
@@ -156,7 +213,11 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS14\n"
+// v22 (2026-09-15, lot 1.9.1) : le fixture porte les EVENEMENTS 103 `EquipmentSpawnedObject` et
+// les denominateurs de leur balayage. Ils sont LE SIGNAL ECRIT de l origine d une pose de
+// panneau (D13) : sans eux, un golden d assemblage figerait des poses dont l origine vient d un
+// repli alors que la production la LIT.
+const goldenInputsMagic = "REPLAYINPUTS22\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -177,106 +238,62 @@ const goldenInputsMagic = "REPLAYINPUTS14\n"
 //	Death             XUID · Gamertag · TimeMS
 //	PlayerIndexTable  entier
 //	ClockOriginUS     l horodatage du premier paquet du film (l origine publiee en depend)
-type goldenInputs struct {
-	Film        string
-	Positions   []filmdec.BipedPosition
-	Fire        []filmdec.FireEvent
-	Loadouts    []filmdec.KeyframeLoadout
-	Grenades    []filmdec.GrenadeThrow
-	Projectiles []filmdec.ProjectileTrack
-	Inventory   []KeyframeInventory
-	// AbilityRanks : les identites de capacite lues dans les paquets delta (i48). Elles sont
-	// DANS le fixture parce que l assemblage les consomme — sans elles, le golden verrouillerait
-	// un document dont les capacites se limitent a la fenetre 16..23 des images-cles.
-	AbilityRanks []filmdec.AbilityRank
-	// CamoStates : les transmissions de la voie d etat du camouflage (i28 queue[1]). MEME
-	// raison : l assemblage en fait les episodes d equipement — sans elles le golden
-	// verrouillerait un document sans camo, donc pas celui que la production sert. Le film
-	// de reference (Fiesta) en porte 698, strictement binaires (0:617 · 4095:81) : le
-	// DASH du mode Fiesta allume le canal, PAS un power-up ramasse — ce mode ne pose
-	// aucun equipement au sol (enseignement utilisateur du 2026-08-16, cf. la
-	// distribution des durees verrouillee par camo_duration_distribution_test.go). i28
-	// est l etat de l unite, pas celui du seul equipement rang 8 (controle du
-	// 2026-08-16, cf. renderEquipment).
-	CamoStates []filmdec.CamoRead
-	// InventoryDeltas : les lectures d inventaire des paquets DELTA (grenades). Second canal de
-	// l axe `grenadeReads` — cf. grenade_reads.go.
-	InventoryDeltas []filmdec.InventoryDelta
-	// GrappleReads : les evenements de grappin (corps tag==3 d i59, tir et accroche avec
-	// leurs quanta d ancre). MEME raison : l assemblage en fait les tractions du schema 8 —
-	// sans elles le golden verrouillerait un document sans grappin, donc pas celui que la
-	// production sert.
-	GrappleReads []filmdec.GrappleRead
-	// Translocations : les teleportations du translocateur (evenements type 117). MEME
-	// raison : l assemblage en fait le calque du schema 38 — et la production les passe
-	// AUSSI au filtre de vitesse (exemption D2), ce que decodeFilmInputs rejoue.
-	Translocations []filmdec.TranslocatorTeleport
-	// AbilityImpulses / AbilityImpulseStats : les IMPULSIONS DE CAPACITE (corps tag==1 des
-	// MEMES composants i57/i59 que le grappin). MEME raison que les precedents : l assemblage
-	// en fait le calque `abilityImpulses` du schema 38 — et le film de reference (famille B,
-	// ou le propulseur est le rang 21) en porte, donc sans elles le golden verrouillerait un
-	// document que la production ne sert pas. Les stats voyagent avec parce qu elles portent
-	// le temoin `Absent` que la couverture publie.
-	AbilityImpulses     []filmdec.AbilityImpulse
-	AbilityImpulseStats filmdec.AbilityImpulseStats
-	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES (emplacements ARMES d i56,
-	// quartet haut — rapport R11). MEME raison que les impulsions : l assemblage en fait le
-	// calque `abilityCharges` du schema 38 enrichi, et le film de reference (famille B :
-	// grappin rang 20, propulseur rang 21) en porte — sans elles le golden verrouillerait un
-	// document que la production ne sert pas. Les stats voyagent avec parce qu elles portent
-	// les temoins `Absent` et `Scanned` que la couverture consulte.
-	AbilityCharges     []filmdec.AbilityCharge
-	AbilityChargeStats filmdec.AbilityChargeStats
-	// Placements / PlacementStats : les POSES d equipement et la CALIBRATION du bloc de
-	// replication. MEME raison que les deux precedents : l assemblage en fait le calque du
-	// schema 9. La calibration voyage avec la liste parce que la couverture la publie.
-	Placements     []filmdec.EquipmentPlacement
-	PlacementStats filmdec.EquipmentPlacementStats
-	// Pads : ce que le film rend sur les SOCLES — la voie des ARMES AU SOL (creations ti=42) et
-	// celle des POWER-UPS (creations ti=37), chacune avec le recensement des images-cles qui
-	// borne les presences et les pistes de position qui disent si l objet a bouge. MEME raison
-	// que les precedents : l assemblage en fait le calque des socles (schemas 11 puis 17).
-	//
-	// LES DEUX VOIES SONT DANS LE FIXTURE, et il le faut : c est la SECONDE qui decide si un
-	// power-up de socle est publie. Sans elle, le golden verrouillerait un document que la
-	// production ne sert plus.
-	Pads    PadScans
-	Deaths  []Death
-	Indices PlayerIndexTable
-	// ClockOriginUS est l horodatage moteur du premier paquet du film, c est-a-dire le zero de
-	// l horloge des highlight events (cf. origin.go). Il est DANS le fixture parce que
-	// l origine publiee est une entree de l assemblage comme une autre — sans lui, le golden
-	// verrouillerait un document sans origine, donc pas celui que la production sert.
-	ClockOriginUS uint64
+//
+// errGoldenInputsCarte : le fixture a ete cuit pour UNE carte, et on le relit avec une autre.
+//
+// ERREUR TYPEE parce que la confusion est SILENCIEUSE autrement : les positions du fixture sont
+// des quanta, et `DequantBipedAxis` les rendrait avec les bornes de la mauvaise carte sans rien
+// signaler — des coordonnees FAUSSES, pas approximatives (cf. son en-tete).
+var errGoldenInputsCarte = errors.New("fixture d entrees : carte du catalogue differente")
+
+// errGoldenInputsDecoupage : le fixture dit tenir son decoupage du catalogue, et le catalogue
+// n en dit plus autant. Les quanta se dequantifieraient avec un AUTRE pas — silencieusement.
+var errGoldenInputsDecoupage = errors.New("fixture d entrees : decoupage d i0 en contradiction avec le catalogue")
+
+// imposeAxisW rend les largeurs d un decoupage impose, ou un marqueur quand il n y en a pas.
+func imposeAxisW(impose *filmdec.I0Layout) any {
+	if impose == nil {
+		return "aucun (entree de carte invalide)"
+	}
+	return impose.AxisW
 }
 
-// options rend les Options d assemblage portees par le fixture. La geometrie et la structure
-// sont volontairement absentes (cf. l en-tete).
+// goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
+//
+// IL EMBARQUE LE TYPE DE LA PRODUCTION (lot 1.0, 2026-09-14). Avant, il REDECLARAIT champ par
+// champ ce que l assemblage consomme, et la liste devait etre maintenue en parallele de celle
+// de `BuildFromFilm` — elle ne l a pas ete (decouverte D7 : cinq canaux absents). Le fixture
+// porte desormais un [FilmInputs], c est-a-dire EXACTEMENT le type que l etage de balayage rend
+// et que l assemblage consomme, plus les trois champs d en-tete qui n en font pas partie (le
+// film, sa carte, son decoupage d i0). Un canal ajoute a `FilmInputs` apparait ici tout seul —
+// et [TestCodecCouvreFilmInputs] exige qu il soit soit serialise, soit NOMME comme non
+// transporte.
+type goldenInputs struct {
+	Film string
+	// MapModule est le module de l entree de catalogue qui a dequantifie les positions
+	// (`MapQuantEntry.Module`). Il ouvre le blob et se verifie a la relecture.
+	MapModule string
+	// AxisW est le decoupage d axe qui a produit les quanta — celui que le balayage a EMPLOYE,
+	// pas celui du catalogue. Les deux different sur Live Fire (detecte [13 12 11], catalogue
+	// [12 12 11]) : un bit d ecart sur X double le pas de quantification, donc l etendue des
+	// coordonnees. Le porter est la seule facon de redequantifier a l identique.
+	AxisW [3]uint
+	// LayoutDetected dit que le decoupage ci-dessus vient de l AUTO-DETECTION et non du
+	// catalogue. La production ne s y rabat que sur une entree de carte invalide
+	// (`resolveI0Layout`) ; le drapeau existe pour que ce repli soit NOMME dans le fixture au
+	// lieu de se confondre avec une lecture du catalogue.
+	LayoutDetected bool
+	// FilmInputs porte le reste : tout ce que l etage de balayage rend a l assemblage.
+	FilmInputs
+}
+
+// options rend les Options d assemblage portees par le fixture, PAR LA FONCTION DE LA PRODUCTION
+// (`FilmInputs.applyTo`). La geometrie et la structure sont volontairement absentes (cf.
+// l en-tete) : elles ne viennent pas du film.
 func (g *goldenInputs) options() Options {
-	return Options{
-		Loadouts:        g.Loadouts,
-		Grenades:        g.Grenades,
-		Projectiles:     g.Projectiles,
-		Inventory:       g.Inventory,
-		AbilityRanks:    g.AbilityRanks,
-		CamoStates:      g.CamoStates,
-		InventoryDeltas: g.InventoryDeltas,
-		GrappleReads:    g.GrappleReads,
-		Translocations:  g.Translocations,
-
-		AbilityImpulses:     g.AbilityImpulses,
-		AbilityImpulseStats: g.AbilityImpulseStats,
-
-		AbilityCharges:     g.AbilityCharges,
-		AbilityChargeStats: g.AbilityChargeStats,
-
-		Placements:        g.Placements,
-		PlacementStats:    g.PlacementStats,
-		Pads:              g.Pads,
-		Deaths:            g.Deaths,
-		PlayerIndices:     g.Indices,
-		FilmClockOriginUS: g.ClockOriginUS,
-	}
+	var opt Options
+	g.FilmInputs.applyTo(&opt)
+	return opt
 }
 
 // ---------------------------------------------------------------------------
@@ -289,836 +306,6 @@ func (g *goldenInputs) options() Options {
 // par `round2` (arrondi au centieme), sans exception — traces, tirs, lancers, projectiles. Le
 // centimetre entier est donc exactement la precision que la sortie porte. Coder un float32 brut
 // couterait 12 octets par position pour une decimale que personne ne lit.
-const cmScale = 100
-
-// gwriter accumule un flux binaire. Les entiers sont en varint : les deltas d horodatage et de
-// position tiennent sur un a deux octets, ce qui fait tout le poids du fixture.
-type gwriter struct{ b []byte }
-
-func (w *gwriter) u(v uint64)   { w.b = binary.AppendUvarint(w.b, v) }
-func (w *gwriter) i(v int64)    { w.b = binary.AppendVarint(w.b, v) }
-func (w *gwriter) byte8(v byte) { w.b = append(w.b, v) }
-func (w *gwriter) f32(v float32) {
-	w.b = binary.LittleEndian.AppendUint32(w.b, math.Float32bits(v))
-}
-func (w *gwriter) str(s string) {
-	w.u(uint64(len(s)))
-	w.b = append(w.b, s...)
-}
-func (w *gwriter) bool8(v bool) {
-	if v {
-		w.byte8(1)
-		return
-	}
-	w.byte8(0)
-}
-
-// greader relit le flux. Toute incoherence est une ERREUR remontee, jamais une valeur nulle
-// servie en silence.
-type greader struct {
-	b   []byte
-	off int
-	err error
-}
-
-func (r *greader) u() uint64 {
-	if r.err != nil {
-		return 0
-	}
-	v, n := binary.Uvarint(r.b[r.off:])
-	if n <= 0 {
-		r.err = fmt.Errorf("uvarint illisible a l offset %d", r.off)
-		return 0
-	}
-	r.off += n
-	return v
-}
-
-func (r *greader) i() int64 {
-	if r.err != nil {
-		return 0
-	}
-	v, n := binary.Varint(r.b[r.off:])
-	if n <= 0 {
-		r.err = fmt.Errorf("varint illisible a l offset %d", r.off)
-		return 0
-	}
-	r.off += n
-	return v
-}
-
-func (r *greader) byte8() byte {
-	if r.err != nil {
-		return 0
-	}
-	if r.off >= len(r.b) {
-		r.err = fmt.Errorf("fin de flux prematuree a l offset %d", r.off)
-		return 0
-	}
-	v := r.b[r.off]
-	r.off++
-	return v
-}
-
-func (r *greader) f32() float32 {
-	if r.err != nil {
-		return 0
-	}
-	if r.off+4 > len(r.b) {
-		r.err = fmt.Errorf("float32 tronque a l offset %d", r.off)
-		return 0
-	}
-	v := math.Float32frombits(binary.LittleEndian.Uint32(r.b[r.off:]))
-	r.off += 4
-	return v
-}
-
-func (r *greader) str() string {
-	n := int(r.u())
-	if r.err != nil {
-		return ""
-	}
-	if r.off+n > len(r.b) {
-		r.err = fmt.Errorf("chaine tronquee a l offset %d", r.off)
-		return ""
-	}
-	s := string(r.b[r.off : r.off+n])
-	r.off += n
-	return s
-}
-
-func (r *greader) bool8() bool { return r.byte8() == 1 }
-
-// Drapeaux de presence d une position, sur un octet.
-const (
-	gpHasWorld  byte = 1 << 0
-	gpHasYaw    byte = 1 << 1
-	gpHasBody   byte = 1 << 2
-	gpHasShield byte = 1 << 3
-)
-
-// encodeGoldenInputs serialise les entrees. Format decrit en tete de fichier.
-func encodeGoldenInputs(g *goldenInputs) []byte {
-	w := &gwriter{b: []byte(goldenInputsMagic)}
-	w.str(g.Film)
-	w.u(g.ClockOriginUS)
-
-	// Table des slots : un slot tient sur 13 bits, mais un film n en emploie qu une centaine.
-	// L indirection ramene 2 octets a 1 sur chaque position.
-	slotIdx := map[uint32]int{}
-	var slots []uint32
-	for _, p := range g.Positions {
-		if _, ok := slotIdx[p.Slot]; !ok {
-			slotIdx[p.Slot] = len(slots)
-			slots = append(slots, p.Slot)
-		}
-	}
-	w.u(uint64(len(slots)))
-	for _, s := range slots {
-		w.u(uint64(s))
-	}
-
-	w.u(uint64(len(g.Positions)))
-	var lastTS uint64
-	lastXYZ := map[uint32][3]int64{}
-	for _, p := range g.Positions {
-		w.u(p.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
-		lastTS = p.TimestampUS
-		w.u(uint64(slotIdx[p.Slot]))
-		var fl byte
-		if p.HasWorld {
-			fl |= gpHasWorld
-		}
-		if p.HasYaw {
-			fl |= gpHasYaw
-		}
-		if p.HasBody {
-			fl |= gpHasBody
-		}
-		if p.HasShield {
-			fl |= gpHasShield
-		}
-		w.byte8(fl)
-		if p.HasWorld {
-			cur := [3]int64{cmOf(p.X), cmOf(p.Y), cmOf(p.Z)}
-			prev := lastXYZ[p.Slot]
-			for a := 0; a < 3; a++ {
-				w.i(cur[a] - prev[a])
-			}
-			lastXYZ[p.Slot] = cur
-		}
-		if p.HasYaw {
-			// LES DEUX ANGLES D I21, ensemble : le cap et l elevation viennent du MEME
-			// composant et partagent leur validite. En serialiser un seul rendrait un
-			// fixture ou toutes les visees sont a plat.
-			w.u(uint64(p.YawRaw))
-			w.u(uint64(p.PitchRaw))
-		}
-		if p.HasBody {
-			w.f32(p.Body.Health)
-		}
-		if p.HasShield {
-			w.f32(p.Shield.Shield)
-			w.byte8(p.Shield.Q) // le QUANTUM : la regle du surbouclier (q > 64) le lit, pas la valeur clampee
-		}
-	}
-
-	w.u(uint64(len(g.Fire)))
-	lastTS = 0
-	for _, e := range g.Fire {
-		w.u(e.TimestampUS - lastTS)
-		lastTS = e.TimestampUS
-		w.i(int64(e.FilmIndex))
-		w.u(e.WeaponID)
-		w.bool8(e.HasAim)
-		if e.HasAim {
-			for a := 0; a < 3; a++ {
-				w.f32(e.Aim[a])
-			}
-		}
-	}
-
-	w.u(uint64(len(g.Loadouts)))
-	for _, l := range g.Loadouts {
-		w.u(l.TimestampUS)
-		w.u(uint64(l.Slot))
-		w.u(uint64(len(l.Families)))
-		for _, f := range l.Families {
-			w.u(uint64(f))
-		}
-	}
-
-	w.u(uint64(len(g.Grenades)))
-	for _, t := range g.Grenades {
-		w.u(t.TimestampUS)
-		w.i(int64(t.FilmIndex))
-		w.u(uint64(t.TypeID))
-	}
-
-	encodeTracks(w, g.Projectiles)
-
-	w.u(uint64(len(g.Inventory)))
-	for _, inv := range g.Inventory {
-		w.u(inv.TimestampUS)
-		w.u(uint64(inv.Slot))
-		w.bool8(inv.GrenadesRead)
-		for _, c := range inv.Grenades {
-			w.u(uint64(c))
-		}
-		w.i(int64(inv.AbilityRank))
-		w.i(int64(inv.DrawnSlot))
-		w.u(uint64(inv.AmmoCandidates))
-		w.bool8(inv.AmmoRead)
-		for _, a := range inv.Ammo {
-			encodeAmmo(w, a)
-		}
-	}
-
-	w.u(uint64(len(g.InventoryDeltas)))
-	lastTS = 0
-	for _, d := range g.InventoryDeltas {
-		w.u(d.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
-		lastTS = d.TimestampUS
-		w.u(uint64(d.Slot))
-		w.u(uint64(len(d.Grenades)))
-		for _, c := range d.Grenades {
-			w.u(uint64(c))
-		}
-		w.bool8(d.SelRead)
-		w.i(int64(d.Sel))
-		w.u(uint64(d.Mask))
-	}
-
-	w.u(uint64(len(g.AbilityRanks)))
-	lastTS = 0
-	for _, a := range g.AbilityRanks {
-		w.u(a.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
-		lastTS = a.TimestampUS
-		w.u(uint64(a.Slot))
-		w.i(int64(a.Rank))
-	}
-
-	w.u(uint64(len(g.CamoStates)))
-	lastTS = 0
-	for _, cr := range g.CamoStates {
-		w.u(cr.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
-		lastTS = cr.TimestampUS
-		w.u(uint64(cr.Slot))
-		w.u(uint64(cr.Q))
-	}
-
-	w.u(uint64(len(g.GrappleReads)))
-	lastTS = 0
-	for _, gr := range g.GrappleReads {
-		w.u(gr.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
-		lastTS = gr.TimestampUS
-		w.u(uint64(gr.Slot))
-		w.bool8(gr.Heavy)
-		for a := 0; a < 3; a++ {
-			w.u(uint64(gr.PosQ[a]))
-		}
-	}
-
-	w.u(uint64(len(g.Translocations)))
-	lastTS = 0
-	for _, tr := range g.Translocations {
-		w.u(tr.TimestampUS - lastTS) // le scan rend les evenements tries par instant
-		lastTS = tr.TimestampUS
-		w.u(uint64(tr.Slot))
-		// LE VA-ET-VIENT VOYAGE AVEC SON TEMOIN (v12) : sans lui, un saut sans position
-		// serait indistinguable d un saut vers l origine du monde.
-		w.bool8(tr.HasPositions)
-		for a := 0; a < 3; a++ {
-			w.f32(tr.From[a])
-		}
-		for a := 0; a < 3; a++ {
-			w.f32(tr.To[a])
-		}
-	}
-
-	// LES IMPULSIONS DE CAPACITE (v13) : le scan les rend TRIEES par instant, d ou le delta.
-	// Les STATS suivent la liste — c est le temoin `Absent` qui distingue « ce film ne
-	// transmet pas le composant » de « personne ne s en est servi ».
-	w.u(uint64(len(g.AbilityImpulses)))
-	lastTS = 0
-	for _, im := range g.AbilityImpulses {
-		w.u(im.TimestampUS - lastTS)
-		lastTS = im.TimestampUS
-		w.u(uint64(im.Slot))
-		w.bool8(im.Predicted)
-	}
-	w.u(uint64(g.AbilityImpulseStats.Records))
-	w.u(uint64(g.AbilityImpulseStats.WithI57))
-	w.u(uint64(g.AbilityImpulseStats.WithI59))
-	w.u(uint64(g.AbilityImpulseStats.Read))
-	w.u(uint64(g.AbilityImpulseStats.Unread))
-	w.u(uint64(g.AbilityImpulseStats.Tag1))
-	w.bool8(g.AbilityImpulseStats.Absent)
-	// `Scanned` VOYAGE AVEC LES AUTRES : sans lui, un fixture rendrait une couverture de zeros
-	// indistinguable d un balayage qui n a jamais tourne (constat H1 de la revue de ronde 1).
-	w.bool8(g.AbilityImpulseStats.Scanned)
-
-	// LES CHARGES RESTANTES (v14) : le scan les rend TRIEES par instant, d ou le delta. Les
-	// STATS suivent la liste, `Absent` et `Scanned` compris — memes temoins, memes raisons
-	// que les impulsions ci-dessus.
-	w.u(uint64(len(g.AbilityCharges)))
-	lastTS = 0
-	for _, ac := range g.AbilityCharges {
-		w.u(ac.TimestampUS - lastTS)
-		lastTS = ac.TimestampUS
-		w.u(uint64(ac.Slot))
-		w.u(uint64(ac.Emplacement))
-		w.u(uint64(ac.Charges))
-		w.u(uint64(ac.Low))
-	}
-	w.u(uint64(g.AbilityChargeStats.Records))
-	w.u(uint64(g.AbilityChargeStats.WithI56))
-	w.u(uint64(g.AbilityChargeStats.Read))
-	w.u(uint64(g.AbilityChargeStats.Unread))
-	w.u(uint64(g.AbilityChargeStats.Armed))
-	w.bool8(g.AbilityChargeStats.Absent)
-	w.bool8(g.AbilityChargeStats.Scanned)
-
-	// Les POSES, puis la CALIBRATION qui les rend lisibles. Les deux vont ensemble : une
-	// liste vide ne dit pas la meme chose selon que le film a tranche sa largeur ou non.
-	w.u(uint64(len(g.Placements)))
-	lastTS = 0
-	for _, p := range g.Placements {
-		w.u(p.T0US - lastTS) // les poses sont triees par instant de creation
-		lastTS = p.T0US
-		w.u(p.T1US)
-		w.u(uint64(p.Life.Slot))
-		w.u(uint64(p.Life.Gen))
-		w.f32(p.X)
-		w.f32(p.Y)
-		w.f32(p.Z)
-		w.u(uint64(p.GlobalID))
-		w.u(uint64(p.Points))
-	}
-	w.i(int64(g.PlacementStats.Calibration.Widths.Lead))
-	w.i(int64(g.PlacementStats.Calibration.Widths.Index))
-	w.i(int64(g.PlacementStats.Calibration.Agree))
-	w.u(uint64(g.PlacementStats.Lives))
-	w.u(uint64(g.PlacementStats.Anchors))
-	w.u(uint64(g.PlacementStats.Accepted))
-	w.u(uint64(g.PlacementStats.Confirmed))
-
-	encodeWorldObjectScan(w, g.Pads.Weapons)
-	encodeWorldObjectScan(w, g.Pads.Powerups)
-
-	w.u(uint64(len(g.Deaths)))
-	for _, d := range g.Deaths {
-		w.u(d.XUID)
-		w.str(d.Gamertag)
-		w.i(d.TimeMS)
-	}
-
-	w.u(uint64(g.Indices.Readings))
-	w.u(uint64(g.Indices.Disagreements))
-	xuids := make([]uint64, 0, len(g.Indices.ByXUID))
-	for x := range g.Indices.ByXUID {
-		xuids = append(xuids, x)
-	}
-	sort.Slice(xuids, func(i, j int) bool { return xuids[i] < xuids[j] })
-	w.u(uint64(len(xuids)))
-	for _, x := range xuids {
-		w.u(x)
-		w.i(int64(g.Indices.ByXUID[x]))
-	}
-	return w.b
-}
-
-// encodeTracks / decodeTracks serialisent une liste de pistes d objet du monde (positions
-// delta-codees au centimetre, comme tout le reste du fixture).
-//
-// ELLES SONT EXTRAITES PARCE QUE DEUX LISTES LES EMPRUNTENT : les trajectoires de projectile
-// (schema 3) et les pistes d armes au sol (schema 11, qui disent si un objet a BOUGE). Une
-// seconde copie du codec aurait diverge au premier champ ajoute, et un fixture qui se relit de
-// travers rend des chiffres plausibles — c est le pire des defauts pour un golden.
-func encodeTracks(w *gwriter, tracks []filmdec.ProjectileTrack) {
-	w.u(uint64(len(tracks)))
-	for _, tr := range tracks {
-		w.u(uint64(tr.Slot))
-		w.u(uint64(tr.Gen))
-		w.u(uint64(len(tr.Pts)))
-		var pts uint64
-		var prev [3]int64
-		for _, s := range tr.Pts {
-			w.u(s.TimestampUS - pts)
-			pts = s.TimestampUS
-			cur := [3]int64{cmOf(s.X), cmOf(s.Y), cmOf(s.Z)}
-			for a := 0; a < 3; a++ {
-				w.i(cur[a] - prev[a])
-			}
-			prev = cur
-			w.bool8(s.AtRest)
-		}
-	}
-}
-
-func decodeTracks(r *greader) []filmdec.ProjectileTrack {
-	n := int(r.u())
-	out := make([]filmdec.ProjectileTrack, 0, n)
-	for k := 0; k < n && r.err == nil; k++ {
-		tr := filmdec.ProjectileTrack{Slot: uint32(r.u()), Gen: uint32(r.u())}
-		np := int(r.u())
-		var ts uint64
-		var prev [3]int64
-		for j := 0; j < np && r.err == nil; j++ {
-			ts += r.u()
-			var cur [3]int64
-			for a := 0; a < 3; a++ {
-				cur[a] = prev[a] + r.i()
-			}
-			prev = cur
-			tr.Pts = append(tr.Pts, filmdec.ProjectileSample{
-				TimestampUS: ts, X: fromCM(cur[0]), Y: fromCM(cur[1]), Z: fromCM(cur[2]),
-				AtRest: r.bool8(),
-			})
-		}
-		out = append(out, tr)
-	}
-	return out
-}
-
-// encodeWorldObjectScan / decodeWorldObjectScan serialisent ce que le film rend sur UN archetype
-// d objet du monde : les records de CREATION (position i0, instant, identite MPP), le
-// RECENSEMENT des images-cles qui borne les disparitions, et les pistes de position qui disent
-// si l objet a bouge.
-//
-// UN SEUL CODEC POUR LES DEUX VOIES (armes `ti=42`, power-ups `ti=37`) : elles ont la meme
-// forme, et un second codec aurait diverge du premier au premier champ ajoute.
-//
-// LA BANDE DE SLOTS N EST PAS SERIALISEE, et c est deliberé : l assemblage ne la lit pas (elle
-// sert au seul balayage, qui a deja eu lieu). Le fixture porte ce que l assemblage CONSOMME,
-// pas ce que le decodage a traverse.
-func encodeWorldObjectScan(w *gwriter, s WorldObjectScan) {
-	w.bool8(s.Scanned)
-	w.u(uint64(len(s.Creations)))
-	var lastTS uint64
-	for _, c := range s.Creations {
-		w.u(c.TimestampUS - lastTS) // les creations sortent du balayage dans l ordre du film
-		lastTS = c.TimestampUS
-		w.u(uint64(c.Slot))
-		w.u(uint64(c.Gen))
-		w.f32(c.X)
-		w.f32(c.Y)
-		w.f32(c.Z)
-		w.bool8(c.MPPPresent[filmdec.MPPWord32])
-		w.u(c.MPPVal[filmdec.MPPWord32])
-	}
-	w.u(uint64(s.Stats.Slots))
-	w.u(uint64(s.Stats.Anchors))
-	w.u(uint64(s.Stats.Accepted))
-	w.u(uint64(len(s.Keyframes.TimesUS)))
-	lastTS = 0
-	for _, t := range s.Keyframes.TimesUS {
-		w.u(t - lastTS)
-		lastTS = t
-	}
-	// L ORDRE DES CLES EST RENDU TOTAL : une map Go s itere au hasard, et un fixture dont les
-	// octets changent a chaque regeneration n est plus un fixture.
-	keys := make([]filmdec.EquipmentLifeKey, 0, len(s.Keyframes.SeenUS))
-	for k := range s.Keyframes.SeenUS {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].Slot != keys[j].Slot {
-			return keys[i].Slot < keys[j].Slot
-		}
-		return keys[i].Gen < keys[j].Gen
-	})
-	w.u(uint64(len(keys)))
-	for _, k := range keys {
-		w.u(uint64(k.Slot))
-		w.u(uint64(k.Gen))
-		seen := s.Keyframes.SeenUS[k]
-		w.u(uint64(len(seen)))
-		lastTS = 0
-		for _, t := range seen {
-			w.u(t - lastTS)
-			lastTS = t
-		}
-	}
-	encodeTracks(w, s.Tracks)
-}
-
-func decodeWorldObjectScan(r *greader) WorldObjectScan {
-	s := WorldObjectScan{Scanned: r.bool8()}
-	n := int(r.u())
-	s.Creations = make([]filmdec.EquipmentCreation, 0, n)
-	var lastTS uint64
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		c := filmdec.EquipmentCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Gen: uint32(r.u())}
-		c.X, c.Y, c.Z = r.f32(), r.f32(), r.f32()
-		c.MPPPresent[filmdec.MPPWord32] = r.bool8()
-		c.MPPVal[filmdec.MPPWord32] = r.u()
-		s.Creations = append(s.Creations, c)
-	}
-	s.Stats.Slots, s.Stats.Anchors, s.Stats.Accepted = int(r.u()), int(r.u()), int(r.u())
-	n = int(r.u())
-	s.Keyframes.TimesUS = make([]uint64, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		s.Keyframes.TimesUS = append(s.Keyframes.TimesUS, lastTS)
-	}
-	n = int(r.u())
-	s.Keyframes.SeenUS = make(map[filmdec.EquipmentLifeKey][]uint64, n)
-	for k := 0; k < n && r.err == nil; k++ {
-		key := filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
-		np := int(r.u())
-		seen := make([]uint64, 0, np)
-		lastTS = 0
-		for j := 0; j < np && r.err == nil; j++ {
-			lastTS += r.u()
-			seen = append(seen, lastTS)
-		}
-		s.Keyframes.SeenUS[key] = seen
-	}
-	s.Tracks = decodeTracks(r)
-	return s
-}
-
-// encodeAmmo serialise un emplacement de munitions. LES TROIS CAS SONT DISTINCTS (chargeur,
-// jauge, rien) : un drapeau par pointeur, jamais un zero qui vaudrait absence.
-func encodeAmmo(w *gwriter, a SlotAmmo) {
-	w.bool8(a.Mag != nil)
-	if a.Mag != nil {
-		w.u(uint64(*a.Mag))
-	}
-	w.bool8(a.Res != nil)
-	if a.Res != nil {
-		w.u(uint64(*a.Res))
-	}
-	w.bool8(a.Gauge != nil)
-	if a.Gauge != nil {
-		w.b = binary.LittleEndian.AppendUint64(w.b, math.Float64bits(*a.Gauge))
-	}
-	w.u(uint64(a.Overheat))
-	w.u(uint64(a.Flags))
-}
-
-func decodeAmmo(r *greader) SlotAmmo {
-	var a SlotAmmo
-	if r.bool8() {
-		v := uint32(r.u())
-		a.Mag = &v
-	}
-	if r.bool8() {
-		v := uint32(r.u())
-		a.Res = &v
-	}
-	if r.bool8() {
-		if r.off+8 > len(r.b) {
-			r.err = fmt.Errorf("jauge tronquee a l offset %d", r.off)
-			return a
-		}
-		v := math.Float64frombits(binary.LittleEndian.Uint64(r.b[r.off:]))
-		r.off += 8
-		a.Gauge = &v
-	}
-	a.Overheat = uint32(r.u())
-	a.Flags = uint32(r.u())
-	return a
-}
-
-// decodeGoldenInputs relit le fixture.
-func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
-	if len(blob) < len(goldenInputsMagic) || string(blob[:len(goldenInputsMagic)]) != goldenInputsMagic {
-		return nil, fmt.Errorf("fixture d entrees : magie absente ou version inconnue — regenerer")
-	}
-	r := &greader{b: blob, off: len(goldenInputsMagic)}
-	g := &goldenInputs{Film: r.str()}
-	g.ClockOriginUS = r.u()
-
-	nSlots := int(r.u())
-	slots := make([]uint32, 0, nSlots)
-	for k := 0; k < nSlots && r.err == nil; k++ {
-		slots = append(slots, uint32(r.u()))
-	}
-
-	n := int(r.u())
-	g.Positions = make([]filmdec.BipedPosition, 0, n)
-	var lastTS uint64
-	lastXYZ := map[uint32][3]int64{}
-	for k := 0; k < n && r.err == nil; k++ {
-		var p filmdec.BipedPosition
-		lastTS += r.u()
-		p.TimestampUS = lastTS
-		si := int(r.u())
-		if si >= len(slots) {
-			return nil, fmt.Errorf("index de slot %d hors table (%d)", si, len(slots))
-		}
-		p.Slot = slots[si]
-		fl := r.byte8()
-		if fl&gpHasWorld != 0 {
-			p.HasWorld = true
-			prev := lastXYZ[p.Slot]
-			var cur [3]int64
-			for a := 0; a < 3; a++ {
-				cur[a] = prev[a] + r.i()
-			}
-			lastXYZ[p.Slot] = cur
-			p.X, p.Y, p.Z = fromCM(cur[0]), fromCM(cur[1]), fromCM(cur[2])
-		}
-		if fl&gpHasYaw != 0 {
-			p.HasYaw = true
-			p.YawRaw = uint32(r.u())
-			p.PitchRaw = uint32(r.u())
-		}
-		if fl&gpHasBody != 0 {
-			p.HasBody = true
-			p.Body.Health = r.f32()
-		}
-		if fl&gpHasShield != 0 {
-			p.HasShield = true
-			p.Shield.Shield = r.f32()
-			p.Shield.Q = r.byte8()
-		}
-		g.Positions = append(g.Positions, p)
-	}
-
-	n = int(r.u())
-	g.Fire = make([]filmdec.FireEvent, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		var e filmdec.FireEvent
-		lastTS += r.u()
-		e.TimestampUS = lastTS
-		e.FilmIndex = int(r.i())
-		e.WeaponID = r.u()
-		if e.HasAim = r.bool8(); e.HasAim {
-			for a := 0; a < 3; a++ {
-				e.Aim[a] = r.f32()
-			}
-		}
-		g.Fire = append(g.Fire, e)
-	}
-
-	n = int(r.u())
-	g.Loadouts = make([]filmdec.KeyframeLoadout, 0, n)
-	for k := 0; k < n && r.err == nil; k++ {
-		l := filmdec.KeyframeLoadout{TimestampUS: r.u(), Slot: uint32(r.u())}
-		nf := int(r.u())
-		for j := 0; j < nf && r.err == nil; j++ {
-			l.Families = append(l.Families, uint32(r.u()))
-		}
-		g.Loadouts = append(g.Loadouts, l)
-	}
-
-	n = int(r.u())
-	g.Grenades = make([]filmdec.GrenadeThrow, 0, n)
-	for k := 0; k < n && r.err == nil; k++ {
-		g.Grenades = append(g.Grenades, filmdec.GrenadeThrow{
-			TimestampUS: r.u(), FilmIndex: int(r.i()), TypeID: uint32(r.u()),
-		})
-	}
-
-	g.Projectiles = decodeTracks(r)
-
-	n = int(r.u())
-	g.Inventory = make([]KeyframeInventory, 0, n)
-	for k := 0; k < n && r.err == nil; k++ {
-		inv := KeyframeInventory{TimestampUS: r.u(), Slot: uint32(r.u())}
-		inv.GrenadesRead = r.bool8()
-		for j := 0; j < invGrenadeSlots; j++ {
-			inv.Grenades[j] = uint32(r.u())
-		}
-		inv.AbilityRank = int(r.i())
-		inv.DrawnSlot = int(r.i())
-		inv.AmmoCandidates = int(r.u())
-		inv.AmmoRead = r.bool8()
-		for j := 0; j < invGrenadeSlots; j++ {
-			inv.Ammo[j] = decodeAmmo(r)
-		}
-		g.Inventory = append(g.Inventory, inv)
-	}
-
-	n = int(r.u())
-	g.InventoryDeltas = make([]filmdec.InventoryDelta, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		d := filmdec.InventoryDelta{TimestampUS: lastTS, Slot: uint32(r.u())}
-		if gn := int(r.u()); gn > 0 {
-			d.Grenades = make([]uint32, 0, gn)
-			for j := 0; j < gn && r.err == nil; j++ {
-				d.Grenades = append(d.Grenades, uint32(r.u()))
-			}
-		}
-		d.SelRead = r.bool8()
-		d.Sel = int(r.i())
-		d.Mask = uint32(r.u())
-		g.InventoryDeltas = append(g.InventoryDeltas, d)
-	}
-
-	n = int(r.u())
-	g.AbilityRanks = make([]filmdec.AbilityRank, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		g.AbilityRanks = append(g.AbilityRanks,
-			filmdec.AbilityRank{TimestampUS: lastTS, Slot: uint32(r.u()), Rank: int(r.i())})
-	}
-
-	n = int(r.u())
-	g.CamoStates = make([]filmdec.CamoRead, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		g.CamoStates = append(g.CamoStates,
-			filmdec.CamoRead{TimestampUS: lastTS, Slot: uint32(r.u()), Q: uint16(r.u())})
-	}
-
-	n = int(r.u())
-	g.GrappleReads = make([]filmdec.GrappleRead, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		gr := filmdec.GrappleRead{TimestampUS: lastTS, Slot: uint32(r.u()), Heavy: r.bool8()}
-		for a := 0; a < 3; a++ {
-			gr.PosQ[a] = uint32(r.u())
-		}
-		g.GrappleReads = append(g.GrappleReads, gr)
-	}
-
-	n = int(r.u())
-	g.Translocations = make([]filmdec.TranslocatorTeleport, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		tr := filmdec.TranslocatorTeleport{TimestampUS: lastTS, Slot: uint32(r.u())}
-		tr.HasPositions = r.bool8()
-		for a := 0; a < 3; a++ {
-			tr.From[a] = r.f32()
-		}
-		for a := 0; a < 3; a++ {
-			tr.To[a] = r.f32()
-		}
-		g.Translocations = append(g.Translocations, tr)
-	}
-
-	n = int(r.u())
-	g.AbilityImpulses = make([]filmdec.AbilityImpulse, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		g.AbilityImpulses = append(g.AbilityImpulses, filmdec.AbilityImpulse{
-			TimestampUS: lastTS, Slot: uint32(r.u()), Predicted: r.bool8()})
-	}
-	g.AbilityImpulseStats = filmdec.AbilityImpulseStats{
-		Records: int(r.u()), WithI57: int(r.u()), WithI59: int(r.u()),
-		Read: int(r.u()), Unread: int(r.u()), Tag1: int(r.u()), Absent: r.bool8(),
-		Scanned: r.bool8(),
-	}
-
-	n = int(r.u())
-	g.AbilityCharges = make([]filmdec.AbilityCharge, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		g.AbilityCharges = append(g.AbilityCharges, filmdec.AbilityCharge{
-			TimestampUS: lastTS, Slot: uint32(r.u()),
-			Emplacement: int(r.u()), Charges: int(r.u()), Low: int(r.u())})
-	}
-	g.AbilityChargeStats = filmdec.AbilityChargeStats{
-		Records: int(r.u()), WithI56: int(r.u()),
-		Read: int(r.u()), Unread: int(r.u()), Armed: int(r.u()),
-		Absent: r.bool8(), Scanned: r.bool8(),
-	}
-
-	n = int(r.u())
-	g.Placements = make([]filmdec.EquipmentPlacement, 0, n)
-	lastTS = 0
-	for k := 0; k < n && r.err == nil; k++ {
-		lastTS += r.u()
-		p := filmdec.EquipmentPlacement{T0US: lastTS, T1US: r.u()}
-		p.Life = filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
-		p.X, p.Y, p.Z = r.f32(), r.f32(), r.f32()
-		p.GlobalID, p.Points = uint32(r.u()), int(r.u())
-		g.Placements = append(g.Placements, p)
-	}
-	g.PlacementStats = filmdec.EquipmentPlacementStats{ByID: map[uint32]int{}}
-	g.PlacementStats.Calibration.Widths = filmdec.MPPWidths{Lead: int(r.i()), Index: int(r.i())}
-	g.PlacementStats.Calibration.Agree = int(r.i())
-	g.PlacementStats.Lives = int(r.u())
-	g.PlacementStats.Anchors = int(r.u())
-	g.PlacementStats.Accepted = int(r.u())
-	g.PlacementStats.Confirmed = int(r.u())
-	g.PlacementStats.Placements = len(g.Placements)
-
-	g.Pads.Weapons = decodeWorldObjectScan(r)
-	g.Pads.Powerups = decodeWorldObjectScan(r)
-
-	n = int(r.u())
-	g.Deaths = make([]Death, 0, n)
-	for k := 0; k < n && r.err == nil; k++ {
-		g.Deaths = append(g.Deaths, Death{XUID: r.u(), Gamertag: r.str(), TimeMS: r.i()})
-	}
-
-	g.Indices = PlayerIndexTable{ByXUID: map[uint64]int{}}
-	g.Indices.Readings = int(r.u())
-	g.Indices.Disagreements = int(r.u())
-	n = int(r.u())
-	for k := 0; k < n && r.err == nil; k++ {
-		x := r.u()
-		g.Indices.ByXUID[x] = int(r.i())
-	}
-	if r.err != nil {
-		return nil, r.err
-	}
-	if r.off != len(r.b) {
-		return nil, fmt.Errorf("fixture d entrees : %d octet(s) non consomme(s) — format desynchronise",
-			len(r.b)-r.off)
-	}
-	return g, nil
-}
-
-func cmOf(v float32) int64 { return int64(math.Round(float64(v) * cmScale)) }
-
-func fromCM(v int64) float32 { return float32(float64(v) / cmScale) }
 
 // loadGoldenInputs relit le fixture versionne. AUCUN OCTET DE FILM.
 func loadGoldenInputs(t *testing.T) *goldenInputs {
@@ -1137,7 +324,11 @@ func loadGoldenInputs(t *testing.T) *goldenInputs {
 	if _, err := buf.ReadFrom(zr); err != nil {
 		t.Fatalf("fixture d entrees : decompression : %v", err)
 	}
-	g, err := decodeGoldenInputs(buf.Bytes())
+	entry, err := goldenMapQuant()
+	if err != nil {
+		t.Fatalf("entree de catalogue du film de reference : %v", err)
+	}
+	g, err := decodeGoldenInputs(buf.Bytes(), entry)
 	if err != nil {
 		t.Fatalf("fixture d entrees : %v", err)
 	}
@@ -1154,7 +345,7 @@ func loadGoldenInputs(t *testing.T) *goldenInputs {
 func TestGoldenInputsRoundTrip(t *testing.T) {
 	g := loadGoldenInputs(t)
 	blob := encodeGoldenInputs(g)
-	again, err := decodeGoldenInputs(blob)
+	again, err := decodeGoldenInputs(blob, goldenEntryPourTest(t))
 	if err != nil {
 		t.Fatalf("second decodage : %v", err)
 	}
@@ -1179,13 +370,13 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 // d octets alors que le probleme est une version. Le test relit le corps COURANT precede de la
 // magie PRECEDENTE : la seule reponse acceptable est le refus de version.
 func TestGoldenInputsVersionGuard(t *testing.T) {
-	const previousMagic = "REPLAYINPUTS13\n"
+	const previousMagic = "REPLAYINPUTS21\n"
 	if previousMagic == goldenInputsMagic {
 		t.Fatal("la magie precedente et la courante sont identiques : le test ne prouve plus rien")
 	}
 	body := encodeGoldenInputs(loadGoldenInputs(t))[len(goldenInputsMagic):]
 	stale := append([]byte(previousMagic), body...)
-	_, err := decodeGoldenInputs(stale)
+	_, err := decodeGoldenInputs(stale, goldenEntryPourTest(t))
 	if err == nil {
 		t.Fatal("un fixture d une autre version a ete accepte : la garde de version ne sert a rien")
 	}
@@ -1229,129 +420,15 @@ func TestGoldenInputsRegenerate(t *testing.T) {
 	if err := os.WriteFile(goldenInputsPath(), buf.Bytes(), 0o600); err != nil {
 		t.Fatalf("ecriture du fixture : %v", err)
 	}
-	t.Logf("fixture reecrit : %s (%d octets brut, %d compresse) — %d positions, %d tirs, "+
+	// UNE PORTE DE REGENERATION NE REND JAMAIS `ok` (revue R1, constat R1-8).
+	t.Fatalf("fixture reecrit : %s (%d octets brut, %d compresse) — %d positions, %d tirs, "+
 		"%d loadouts, %d lancers, %d projectiles, %d inventaires, %d lectures grappin, "+
 		"%d impulsions de capacite, %d lectures de charge, %d morts, %d index",
 		goldenInputsPath(), len(blob), buf.Len(), len(g.Positions), len(g.Fire), len(g.Loadouts),
 		len(g.Grenades), len(g.Projectiles), len(g.Inventory), len(g.GrappleReads),
-		len(g.AbilityImpulses), len(g.AbilityCharges), len(g.Deaths), len(g.Indices.ByXUID))
+		len(g.AbilityImpulses), len(g.AbilityCharges), len(g.Deaths), len(g.PlayerIndices.ByXUID))
 }
 
 // decodeFilmInputs rejoue EXACTEMENT la sequence de decodage de BuildFromFilm — c est ce qui
 // garantit que le fixture porte les memes entrees que la production. Les bornes de carte sont
 // celles de Cliffhanger, lues dans le catalogue versionne du titre.
-func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
-	entry, err := goldenMapQuant()
-	if err != nil {
-		return nil, err
-	}
-	return decodeFilmInputsForEntry(film, dir, entry)
-}
-
-// decodeFilmInputsForEntry est le MEME decodage, pour une carte quelconque (lot 0.A.2 : un
-// fixture d entrees par build, donc une carte par build). `decodeFilmInputs` en est le cas
-// particulier de Cliffhanger, et le seul chemin qui change est la LECTURE DU CATALOGUE.
-func decodeFilmInputsForEntry(film, dir string, entry filmdec.MapQuantEntry) (*goldenInputs, error) {
-	var err error
-	// MEME GESTE QUE LA PRODUCTION (cf. installWorldObjectPrecision) : les largeurs d'axe du
-	// chemin world-object viennent de l'entree de catalogue, pas du defaut de paquet. Sur
-	// Cliffhanger les deux coincident — c'est precisement pourquoi l'oubli avait survecu des
-	// mois : le film de reference est le SEUL sur lequel il ne se voit pas.
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: entry.AxisWidths})
-	wr := entry.Range()
-	scan := filmdec.DefaultScanFilmOptions()
-	scan.WorldRange = &wr
-	scan.CaptureDirs = true
-	// MEME GESTE QUE LA PRODUCTION (BuildFromFilm) : les teleportations se lisent AVANT les
-	// positions, parce qu elles exemptent le filtre de vitesse (decision D2), et AVEC l entree
-	// de catalogue, parce que leur charge porte le va-et-vient quantifie aux bornes de la
-	// carte. Sans ce geste, le fixture porterait des positions que la production ne decode plus.
-	translocs := filmdec.ScanFilmTranslocatorTeleports(dir, &entry)
-	scan.TeleportExemptions = filmdec.TeleportExemptionsOf(translocs)
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
-	if err != nil {
-		return nil, err
-	}
-	g := &goldenInputs{Film: film, Positions: pos, Translocations: translocs}
-	if g.Fire, err = filmdec.ScanFilmFireEvents(dir); err != nil {
-		return nil, err
-	}
-	if g.Loadouts, err = filmdec.ScanFilmKeyframeLoadouts(dir, loadoutFamilies()); err != nil {
-		return nil, err
-	}
-	if g.Inventory, _, err = ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0); err != nil {
-		return nil, err
-	}
-	if g.AbilityRanks, _, err = filmdec.ScanFilmAbilityRanks(dir); err != nil {
-		return nil, err
-	}
-	if g.InventoryDeltas, _, err = filmdec.ScanFilmInventoryDeltas(dir); err != nil {
-		return nil, err
-	}
-	if g.CamoStates, _, err = filmdec.ScanFilmCamoStates(dir); err != nil {
-		return nil, err
-	}
-	if g.GrappleReads, _, err = filmdec.ScanFilmGrappleReads(dir); err != nil {
-		return nil, err
-	}
-	// MEME COMPOSANT, AUTRE TAG : les impulsions de capacite passent par LA MEME fonction que
-	// BuildFromFilm — le fixture porte ce que la production decode, pas une variante.
-	if g.AbilityImpulses, g.AbilityImpulseStats, err = filmdec.ScanFilmAbilityImpulses(dir); err != nil {
-		return nil, err
-	}
-	// LES CHARGES RESTANTES (v14) : la MEME fonction que BuildFromFilm, meme raison.
-	if g.AbilityCharges, g.AbilityChargeStats, err = filmdec.ScanFilmAbilityCharges(dir); err != nil {
-		return nil, err
-	}
-	if g.Placements, g.PlacementStats, err = filmdec.ScanFilmEquipmentPlacements(dir, &wr); err != nil {
-		return nil, err
-	}
-	// Les armes au sol passent par LA MEME fonction que BuildFromFilm : le fixture porte ce que
-	// la production decode, pas une variante de lecture — largeurs MPP calibrees comprises.
-	g.Pads = decodeFilmPadScansDir(dir, &wr, g.PlacementStats.Calibration.Widths)
-	if g.Grenades, err = filmdec.ScanFilmGrenadeThrows(dir); err != nil {
-		return nil, err
-	}
-	if g.Projectiles, err = filmdec.ScanFilmProjectiles(dir, &wr); err != nil {
-		return nil, err
-	}
-	if g.Deaths, err = ScanFilmDeaths(dir); err != nil {
-		return nil, err
-	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(g.Deaths))
-	if err != nil {
-		return nil, err
-	}
-	table, collisions := injectiveOrEmpty(idx)
-	if collisions > 0 {
-		return nil, fmt.Errorf("index de joueur non injectif (%d collisions) — fixture refuse", collisions)
-	}
-	g.Indices = table
-	// L origine d horloge est lue par la MEME fonction que BuildFromFilm : le fixture porte
-	// l entree, pas une valeur recopiee a la main.
-	if g.ClockOriginUS, err = ScanFilmClockOrigin(dir); err != nil {
-		return nil, err
-	}
-	return g, nil
-}
-
-// goldenMapQuant rend l'ENTREE DE CATALOGUE de Cliffhanger : bornes ET largeurs d'axe, comme
-// `replay.Options.MapQuant` les recoit en production. Les dissocier laisserait la regeneration
-// armer les bornes en oubliant les largeurs — l'erreur meme que le lot du 2026-08-15 corrige.
-//
-// Si le catalogue change, [TestGoldenAssembly] tombe et le diff dit exactement ce qui a bouge.
-func goldenMapQuant() (filmdec.MapQuantEntry, error) {
-	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
-	cat, err := filmdec.LoadMapQuantCatalog(path)
-	if err != nil {
-		return filmdec.MapQuantEntry{}, fmt.Errorf("catalogue de bornes %s : %w", path, err)
-	}
-	entry, err := cat.Lookup("Cliffhanger")
-	if err != nil {
-		return filmdec.MapQuantEntry{}, err
-	}
-	return entry, nil
-}

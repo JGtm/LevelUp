@@ -48,6 +48,21 @@ type Point struct {
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
 	Z float32 `json:"z,omitempty"`
+	// G (optionnel) est la DUREE DE LA LACUNE qui precede ce point, en millisecondes ; absent ou
+	// 0 = le point suit le precedent sans interruption (lot 1.9.13).
+	//
+	// CE QU'IL DIT AU CLIENT, ET C'EST LA SEULE CHOSE QU'IL DIT : entre le point precedent et
+	// celui-ci, le film n'a RIEN replique pendant `g` millisecondes — la piste ne doit donc pas
+	// etre interpolee au travers (ni segment, ni position intermediaire). Le joueur n'est pas
+	// mort pour autant : une vie finit a une mort ECRITE, a une apparition de corps, a une fin de
+	// manche ou a la fin du film ; un silence de replication n'est aucune des quatre, et c'est
+	// precisement pourquoi il ne coupe plus la vie (cf. lives_decoupe.go).
+	//
+	// EN MILLISECONDES ET PAS EN BOOLEEN : « il manque 6 s » et « il manque trois minutes » ne se
+	// dessinent pas pareil, et le compte de `coverage.tracks.gaps` ne dit pas laquelle des deux
+	// on a. La valeur est mesuree sur les instants BRUTS des deux positions, pas sur la grille de
+	// frames, donc elle ne depend pas du pas de reechantillonnage.
+	G int `json:"g,omitempty"`
 	// H (optionnel) est le CAP DE VISÉE en degrés dans le plan XY, même origine et même
 	// sens que atan2(Y, X) : 0 = +X, 90 = +Y. Décodé du composant i21
 	// (unit-desired-aiming-vector) du même record que la position, donc au même instant.

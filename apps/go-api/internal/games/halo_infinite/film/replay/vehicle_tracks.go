@@ -17,12 +17,16 @@ package replay
 // LA FUSION DES VIES EN RELAIS vit dans vehicle_relays.go — un DEPLACEMENT du 2026-09-05, sans
 // une ligne de logique changee, pour repasser sous le seuil de 500 lignes. Elle ne lit rien du
 // film : elle travaille sur les vies deja assemblees ici.
+//
+// LA FIN DE VIE, ELLE, VIT DANS vehicle_end.go (lot 1.9.10) : le recensement BORNE la vie, le
+// composant `object-dead-state` la DATE. Ce fichier ne fait que poser la fenetre et appeler.
 
 import (
 	"math"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // vehicleCensusTolUS est la TOLERANCE de la fenetre d une vie, de part et d autre de son
@@ -95,6 +99,12 @@ type vehicleLife struct {
 	// loUS / hiUS bornent la fenetre dans laquelle le nuage de positions appartient a CETTE vie.
 	loUS, hiUS uint64
 	census     int
+	// deathUS est l instant de la MORT QUE LE FILM ECRIT pour cette vie (composant
+	// `object-dead-state` de `ti=40`), zero quand il n en ecrit pas. C est lui, et lui seul, qui
+	// DATE la fin — cf. vehicle_end.go. `deathTailDesync` retient la QUALITE du record qui l a
+	// rendu (rupture apres le dead-state), pour que la couverture ne melange pas les deux.
+	deathUS         uint64
+	deathTailDesync bool
 }
 
 // buildVehicleTracks assemble les vies publiables, leur couverture et le bilan de rattachement.
@@ -107,8 +117,16 @@ func buildVehicleTracks(
 	if !scan.Scanned || clock.step == 0 {
 		return nil, cov, vehicleRideStats{}
 	}
-	lives := vehicleLives(scan.Keyframes)
+	// REPLI NOMME ET COMPTE (D14) : le cadre de la marche n a pas ete confirme par le balayage
+	// (profil plat), la lecture des morts a donc tourne sur la largeur par defaut. Le compte
+	// voyage avec l artefact — il dit que ce calque repose sur un cadre non confirme.
+	if scan.Scanned && scan.DeathStats.CadreParDefaut {
+		clock.fb.Declenche(fallback.NomCadreDeMarcheParDefautConserve)
+	}
+	lives, deathTally := vehicleLives(scan.Keyframes, scan.Deaths)
 	cov.Lives = len(lives)
+	cov.DeathsRead, cov.DeathsMatched = deathTally.read, deathTally.matched
+	cov.DeathsUnmatched, cov.DeathsTailDesync = deathTally.unmatched, deathTally.tailDesync
 	spawns := vehicleSpawnsByLife(scan.Creations)
 	bySlot := vehiclePositionsBySlot(scan.Positions)
 	rides, st := buildVehicleRides(vehicleRideInputs{
@@ -129,14 +147,19 @@ func buildVehicleTracks(
 	// LES RELAIS SE FUSIONNENT AVANT LE COMPTAGE : la couverture doit decrire ce qui est PUBLIE,
 	// pas ce qui a ete assemble. `Published` baisse donc exactement de `Merged`.
 	out, cov.Merged = mergeVehicleRelays(out)
-	tallyVehicleCoverage(out, &cov)
+	tallyVehicleCoverage(out, &cov, clock.fb)
+	tallyVehicleEnds(out, &cov)
 	return out, cov, st
 }
 
-// vehicleLives construit les vies bornees a partir du recensement, et DECOUPE les vies
-// successives d un meme slot : sans ce decoupage, la fenetre de tolerance de l une mordrait sur
-// l autre et le nuage de positions serait attribue deux fois.
-func vehicleLives(kf filmdec.WorldObjectKeyframes) []vehicleLife {
+// vehicleLives construit les vies bornees a partir du recensement, DECOUPE les vies successives
+// d un meme slot — sans ce decoupage, la fenetre de tolerance de l une mordrait sur l autre et
+// le nuage de positions serait attribue deux fois — puis pose sur chacune la MORT QUE LE FILM
+// ECRIT (cf. vehicle_end.go). L ordre est celui de D14 (b) : les fenetres d abord, la lecture
+// ensuite, parce que c est la fenetre qui departage deux vies de meme `(slot, gen)`.
+func vehicleLives(
+	kf filmdec.WorldObjectKeyframes, deaths []filmdec.ObjectDeath,
+) ([]vehicleLife, vehicleDeathTally) {
 	out := make([]vehicleLife, 0, len(kf.SeenUS))
 	for key, seen := range kf.SeenUS {
 		if len(seen) == 0 {
@@ -153,19 +176,26 @@ func vehicleLives(kf filmdec.WorldObjectKeyframes) []vehicleLife {
 		return out[i].firstUS < out[j].firstUS
 	})
 	assignVehicleWindows(out)
-	return out
+	return out, assignVehicleDeaths(out, deaths)
 }
 
 // assignVehicleWindows pose `loUS` / `hiUS` sur des vies DEJA triees par (slot, premier
 // recensement). Deux vies consecutives d un meme slot se partagent la frontiere : la fenetre de
 // l une s arrete ou celle de l autre commence.
+//
+// UNE VIE QUE LE RECENSEMENT NE FERME JAMAIS N A PAS DE BORNE HAUTE, et c est le correctif du
+// lot 1.9.10. `goneByUS == 0` veut dire EXACTEMENT une chose : la derniere image-cle du film
+// recense encore cette vie — elle finit donc AVEC le film. L ancienne borne « dernier
+// recensement + 20 s » etait un repli qui COUPAIT le nuage de positions d un vehicule vivant,
+// jusqu a 20 s avant la fin du film alors que rien ne le justifiait ; le seul decoupage
+// legitime est celui de la vie SUIVANTE du meme slot, applique juste en dessous.
 func assignVehicleWindows(lives []vehicleLife) {
 	for i := range lives {
 		l := &lives[i]
 		l.loUS = subUS(l.firstUS, vehicleCensusTolUS)
 		l.hiUS = l.goneByUS
 		if l.hiUS == 0 {
-			l.hiUS = l.lastUS + vehicleCensusTolUS
+			l.hiUS = ^uint64(0)
 		}
 		if i > 0 && lives[i-1].key.Slot == l.key.Slot && lives[i-1].hiUS > l.loUS {
 			l.loUS = lives[i-1].hiUS
@@ -220,7 +250,8 @@ func vehicleTrackOf(
 	if !hasSpawn && len(samples) == 0 {
 		return VehicleTrack{}, false
 	}
-	tr := VehicleTrack{Slot: l.key.Slot, Gen: l.key.Gen, End: VehicleEndUnknown}
+	tr := VehicleTrack{Slot: l.key.Slot, Gen: l.key.Gen}
+	tr.End, tr.TEnd = vehicleEndOf(l, clock)
 	if hasSpawn {
 		tr.Spawn = &VehicleSpawn{X: round2(spawn.X), Y: round2(spawn.Y), Z: round2(spawn.Z)}
 		if spawn.MPPPresent[filmdec.MPPWord32] {
@@ -258,6 +289,12 @@ var vehicleFamillesNonPilotables = map[string]bool{
 	famillePelican: true,
 	famillePhantom: true,
 	familleSkiff:   true,
+	// LA TOURELLE AUTOMATIQUE BANNIE (lot 1.9.9, decision utilisateur du 2026-09-14) : un
+	// ELEMENT DE CARTE, immobile, que personne ne conduit. Elle est ici pour la meme raison que
+	// les transports ci-dessus — refuser l OCCUPANT, qui serait une affirmation fausse — mais
+	// PAS pour la meme consequence cote client : le decor n est pas dessine, elle SI (pictogramme
+	// dedie, cf. `replay_labels.toml` et `vehiclesLayer.VEHICLE_MAP_ELEMENT_RENDER`).
+	familleTourelleAutoBannie: true,
 }
 
 // vehicleFamilyIsRideable dit si une famille peut porter un episode d occupation. Une famille
@@ -326,6 +363,15 @@ func vehicleBounds(
 	t1max = clock.frames - 1
 	if l.goneByUS > 0 {
 		t1max = clock.frame(l.goneByUS)
+	}
+	// LA MORT ECRITE EST UNE PREUVE D ABSENCE PLUS SERREE que l image-cle qui ne recense plus :
+	// elle est datee a la milliseconde la ou le recensement borne a ~20 s. Elle ne remplace pas
+	// `T1` (la derniere preuve de PRESENCE) et ne coupe pas la trajectoire : un echantillon
+	// posterieur reste publie, et la contradiction est comptee (`SamplesAfterEnd`).
+	if l.deathUS > 0 {
+		if d := clock.frame(l.deathUS); d < t1max {
+			t1max = d
+		}
 	}
 	if t1max < t1 {
 		t1max = t1

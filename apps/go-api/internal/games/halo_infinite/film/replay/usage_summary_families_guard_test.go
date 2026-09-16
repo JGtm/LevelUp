@@ -104,27 +104,30 @@ func TestUsageFamiliesMatchManifestValidator(t *testing.T) {
 	}
 }
 
-// famillesEngendrantUnePieceDuManifeste lit le manifeste des libellés de rejeu et rend
-// les familles dont AU MOINS UN objet porte `kind = "deployed"` — la nature « n'existe
-// qu'une fois déployé », que le valideur n'autorise qu'avec la provenance `sofa_parent`.
+// objetEquipementManifeste est UN bloc `[[equipment_objects]]` du manifeste, reduit aux trois
+// champs dont les garde-rails ont besoin.
+type objetEquipementManifeste struct{ ID, Famille, Nature string }
+
+// manifesteObjetsEquipement lit les blocs `[[equipment_objects]]` du manifeste des libelles de
+// rejeu et rend, par IDENTIFIANT, sa famille et sa nature (`carried` / `deployed`).
 //
-// Lecture LIGNE À LIGNE et non par expression sur tout le fichier : l'en-tête du
-// manifeste cite `[[equipment_objects]]` dans ses commentaires, et un découpage sur le
-// littéral y ouvrirait un bloc fantôme.
-func famillesEngendrantUnePieceDuManifeste(t *testing.T, raw []byte) map[string]bool {
+// C EST LA SEULE LECTURE DU MANIFESTE DE CE PAQUET, et elle est partagee par les deux
+// garde-rails (familles a piece engendree, identifiants de panneau) et par les instruments de
+// mesure : une seconde decoupe du meme TOML divergerait au premier champ ajoute.
+//
+// LECTURE LIGNE A LIGNE ET NON PAR EXPRESSION SUR TOUT LE FICHIER : l en-tete du manifeste cite
+// `[[equipment_objects]]` dans ses commentaires, et un decoupage sur le litteral y ouvrirait un
+// bloc fantome — c est arrive au garde-rail web le 2026-09-03.
+func manifesteObjetsEquipement(t *testing.T, raw []byte) map[string]objetEquipementManifeste {
 	t.Helper()
-	champ := regexp.MustCompile(`^\s*(family|kind)\s*=\s*"([a-z0-9_]+)"`)
-	out, objets := map[string]bool{}, 0
-	var famille, nature string
+	champ := regexp.MustCompile(`^\s*(id|family|kind)\s*=\s*"([0-9a-zx_]+)"`)
+	out := map[string]objetEquipementManifeste{}
+	var cur objetEquipementManifeste
 	ferme := func() {
-		if famille == "" {
-			return
+		if cur.ID != "" {
+			out[cur.ID] = cur
 		}
-		objets++
-		if nature == "deployed" {
-			out[famille] = true
-		}
-		famille, nature = "", ""
+		cur = objetEquipementManifeste{}
 	}
 	for _, ligne := range strings.Split(string(raw), "\n") {
 		switch {
@@ -133,20 +136,98 @@ func famillesEngendrantUnePieceDuManifeste(t *testing.T, raw []byte) map[string]
 		case strings.HasPrefix(strings.TrimSpace(ligne), "["):
 			ferme() // une autre table commence : le bloc courant est clos
 		default:
-			if m := champ.FindStringSubmatch(ligne); m != nil {
-				if m[1] == "family" {
-					famille = m[2]
-				} else {
-					nature = m[2]
-				}
+			m := champ.FindStringSubmatch(ligne)
+			if m == nil {
+				continue
+			}
+			switch m[1] {
+			case "id":
+				cur.ID = m[2]
+			case "family":
+				cur.Famille = m[2]
+			default:
+				cur.Nature = m[2]
 			}
 		}
 	}
 	ferme()
-	if objets < 15 {
-		t.Fatalf("le garde-rail n'a lu que %d objets d'équipement — extraction cassée ?", objets)
+	if len(out) < 15 {
+		t.Fatalf("le garde-rail n a lu que %d objets d equipement — extraction cassee ?", len(out))
 	}
 	return out
+}
+
+// famillesEngendrantUnePieceDuManifeste rend les familles dont AU MOINS UN objet porte
+// `kind = "deployed"` — la nature « n existe qu une fois deploye », que le valideur n autorise
+// qu avec la provenance `sofa_parent`.
+func famillesEngendrantUnePieceDuManifeste(t *testing.T, raw []byte) map[string]bool {
+	t.Helper()
+	out := map[string]bool{}
+	for _, o := range manifesteObjetsEquipement(t, raw) {
+		if o.Nature == "deployed" {
+			out[o.Famille] = true
+		}
+	}
+	return out
+}
+
+// TestPanneauxDuMurMatchManifest — LE GARDE-RAIL AU NIVEAU DES IDENTIFIANTS (decouverte D-H2 de
+// la revue des finitions G/H, 2026-09-13 ; pose par le lot 1.9.1).
+//
+// `usageWallPanelIDs` transcrit les objets `kind = "deployed"` du manifeste, et depuis l item
+// H.2 cette table decide de l ORIGINE PUBLIEE d une pose. Rien cote Go ne la recollait au
+// manifeste : le garde-rail existant recolle les FAMILLES (`usageFamiliesWithSpawnedPiece`), et
+// seul le garde WEB (`placementPanels.guard.test.ts`) verifiait les identifiants — il nomme la
+// table du web, pas celle-ci, et un depot qui ne jouerait que ses tests Go ne verrait rien.
+//
+// CE QU IL FAIT ECHOUER, DANS LES DEUX SENS :
+//   - un TROISIEME objet `kind = "deployed"` ajoute au manifeste (nouvelle palette de mur) que le
+//     Go ignorerait : sa pose ne serait pas promue `deployed`, en silence ;
+//   - un identifiant du Go qui cesserait d etre `kind = "deployed"` : le Go promouvrait un objet
+//     PORTE, c est-a-dire lache a la mort de son porteur.
+func TestPanneauxDuMurMatchManifest(t *testing.T) {
+	objets := manifesteObjetsEquipement(t, lireManifesteRejeu(t))
+	duManifeste := map[string]bool{}
+	for id, o := range objets {
+		if o.Nature == "deployed" {
+			duManifeste[id] = true
+		}
+	}
+	if len(duManifeste) == 0 {
+		t.Fatal("aucun objet `kind = deployed` au manifeste — le garde-rail doit etre adapte, " +
+			"pas supprime : `equipmentIsSpawnedPiece` n aurait plus de source")
+	}
+	for id := range duManifeste {
+		if !usageWallPanelIDs[id] {
+			t.Errorf("l objet %q est `kind = deployed` au manifeste mais absent de "+
+				"usageWallPanelIDs : sa pose ne serait jamais promue `deployed` (H.2)", id)
+		}
+	}
+	for id := range usageWallPanelIDs {
+		o, vu := objets[id]
+		switch {
+		case !vu:
+			t.Errorf("l identifiant %q de usageWallPanelIDs n est pas au manifeste", id)
+		case o.Nature != "deployed":
+			t.Errorf("l identifiant %q de usageWallPanelIDs porte `kind = %q` au manifeste : "+
+				"le Go promouvrait un objet PORTE en `deployed`", id, o.Nature)
+		case o.Famille != usageFamilyWall:
+			t.Errorf("l identifiant %q de usageWallPanelIDs est de famille %q au manifeste, "+
+				"pas %q", id, o.Famille, usageFamilyWall)
+		}
+	}
+}
+
+// lireManifesteRejeu rend les octets de `replay_labels.toml` du titre.
+func lireManifesteRejeu(t *testing.T) []byte {
+	t.Helper()
+	path := filepath.Join(repoRootForTest(t), "config", "titles", "halo_infinite", "mappings",
+		"replay_labels.toml")
+	raw, err := os.ReadFile(path) //nolint:gosec // chemin construit depuis la racine du depot
+	if err != nil {
+		t.Fatalf("lecture du manifeste des libelles de rejeu: %v", err)
+	}
+	return raw
 }
 
 // TestUsageFamiliesWithSpawnedPieceMatchManifest — CINQUIÈME LISTE ÉCRITE (lot 5.5) :
@@ -161,19 +242,7 @@ func famillesEngendrantUnePieceDuManifeste(t *testing.T, raw []byte) map[string]
 // consommations alors que ses poses la mesurent. L'inverse aussi : retirer le `kind`
 // des panneaux du mur ferait basculer le mur sur `spent` sans que rien ne le dise.
 func TestUsageFamiliesWithSpawnedPieceMatchManifest(t *testing.T) {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Getwd: %v", err)
-	}
-	// internal/games/halo_infinite/film/replay -> games -> internal -> go-api -> apps -> racine du dépôt.
-	manifest := filepath.Join(wd, "..", "..", "..", "..", "..", "..", "..",
-		"config", "titles", "halo_infinite", "mappings", "replay_labels.toml")
-	raw, err := os.ReadFile(manifest)
-	if err != nil {
-		t.Fatalf("lecture du manifeste des libellés de rejeu: %v", err)
-	}
-
-	duManifeste := famillesEngendrantUnePieceDuManifeste(t, raw)
+	duManifeste := famillesEngendrantUnePieceDuManifeste(t, lireManifesteRejeu(t))
 	if len(duManifeste) == 0 {
 		t.Fatal("aucune famille `kind = deployed` au manifeste — le garde-rail doit être " +
 			"adapté, pas supprimé : la règle d'usage_summary_outcomes.go n'aurait plus de source")

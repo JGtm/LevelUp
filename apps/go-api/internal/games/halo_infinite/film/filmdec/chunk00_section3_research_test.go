@@ -178,14 +178,10 @@ func premierBlocDense(data []byte, debut, n int) int {
 }
 
 // dernierNonNul rend l'offset du dernier octet non nul, ou -1.
-func dernierNonNul(data []byte) int {
-	for i := len(data) - 1; i >= 0; i-- {
-		if data[i] != 0 {
-			return i
-		}
-	}
-	return -1
-}
+// DELEGUE DEPUIS LE LOT 1.5 : la meme lecture est devenue une borne de PRODUCTION
+// (`dernierOctetNonNul`, film_identity.go). Deux copies auraient pu diverger — celle des
+// instruments est l'oracle de celle du lecteur, donc elles doivent etre la MEME.
+func dernierNonNul(data []byte) int { return dernierOctetNonNul(data) }
 
 // entropieOctet rend l'entropie de Shannon par octet.
 func entropieOctet(b []byte) float64 {

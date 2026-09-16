@@ -4,14 +4,17 @@ package replaydoc
 
 // VehicleTrack est LA VIE D UN VEHICULE, de sa naissance a la derniere preuve de sa presence.
 type VehicleTrack struct {
-	Slot    uint32          `json:"slot"`
-	Gen     uint32          `json:"gen"`
-	Chassis string          `json:"chassis,omitempty"`
-	Family  string          `json:"family,omitempty"`
-	T0      int             `json:"t0"`
-	T1      int             `json:"t1"`
-	T1Max   int             `json:"t1max"`
-	End     string          `json:"end"`
+	Slot    uint32 `json:"slot"`
+	Gen     uint32 `json:"gen"`
+	Chassis string `json:"chassis,omitempty"`
+	Family  string `json:"family,omitempty"`
+	T0      int    `json:"t0"`
+	T1      int    `json:"t1"`
+	T1Max   int    `json:"t1max"`
+	End     string `json:"end"`
+	// TEnd est la frame de la fin ECRITE (composant dead-state), presente pour le seul
+	// `end == "destroyed"`. Absente = le film n ecrit pas la mort de cette vie.
+	TEnd    *int            `json:"tEnd,omitempty"`
 	Spawn   *VehicleSpawn   `json:"spawn,omitempty"`
 	Samples []VehicleSample `json:"samples,omitempty"`
 	Rides   []VehicleRide   `json:"rides,omitempty"`

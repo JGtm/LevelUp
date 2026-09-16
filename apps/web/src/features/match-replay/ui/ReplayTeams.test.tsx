@@ -59,7 +59,7 @@ const TRACK = {
 
 function renderTeams(over: Partial<ReplayDocument>, frame = 10) {
   const doc = testReplayDoc({
-    roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+    roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
     tracks: [TRACK],
     ...over,
   })
@@ -371,7 +371,7 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
     // de rangées vivant (frame 10) et mort (frame 140, aucune vie suivante). Les zones
     // fantômes réservent la place ; l'égalité au pixel se vérifie au gate visuel user.
     const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
       tracks: [{ ...TRACK, points: [{ t: 0, x: 0, y: 0, sh: 1, hp: 1 }] }],
       loadouts: [{ t: 0, slot: 512, w: ['0xAAAA'] }],
       inventory: [{ t: 0, slot: 512, g: [1, 0] }],
@@ -405,7 +405,7 @@ describe('ReplayTeams — mort et réapparition', () => {
 
   const docAvecRetour = () =>
     testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
       tracks: [
         TRACK,
         { slot: 514, team: -1, xuid: 'A', startFrame: 180, endFrame: 260, points: [{ t: 180, x: 0, y: 0 }] },
@@ -542,7 +542,7 @@ describe('ReplayTeams — vitalité : plein d’apparition', () => {
     // retransmet que ce qui change : « rien d'arrivé » = « plein », pas « inconnu »
     // (décision utilisateur 2026-08-12, doctrine du POC).
     const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
       tracks: [
         TRACK, // la vie affichée : aucun point ne porte sh/hp
         {
@@ -780,7 +780,7 @@ describe('ReplayTeams — nom d’équipe des colonnes (D8)', () => {
 
   it('numérote une équipe hors référentiel plutôt que d’inventer un nom', () => {
     const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
       tracks: [TRACK],
     })
     render(<ReplayTeams doc={doc} scoreboard={[sbRow('A', 'Alpha', 't12')]} frame={10} locale="fr" />)
@@ -1000,7 +1000,7 @@ describe('ReplayTeams — la fiche unique', () => {
 
   function renderCard(over: Partial<ReplayDocument>, frame = 10) {
     const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
       tracks: [TRACK],
       ...over,
     })
