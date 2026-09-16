@@ -13501,6 +13501,12 @@ components:
           type:
             - array
             - "null"
+        top_medals_local:
+          items:
+            $ref: '#/components/schemas/MedalDigestItem'
+          type:
+            - array
+            - "null"
       required:
         - auth_available
         - live_status

@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
-import type { ExplorerTargetRecentMatch } from '@/lib/api/types'
+import type { ExplorerTargetRecentMatch, MedalDigestItem } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 
 import { ExplorerCombatProfile } from './ExplorerCombatProfile'
@@ -42,6 +42,10 @@ function match(over: Partial<ExplorerTargetRecentMatch> & { match_id: string }):
     max_killing_spree: over.max_killing_spree ?? 3,
     perfect_kills: over.perfect_kills ?? 1,
   }
+}
+
+function medal(label: string, medalId: number, totalCount = 4): MedalDigestItem {
+  return { medal_id: medalId, label, match_count: 1, total_count: totalCount }
 }
 
 describe('ExplorerCombatProfile', () => {
@@ -122,5 +126,49 @@ describe('ExplorerCombatProfile', () => {
     stubs = await screen.findAllByTestId('echarts-stub')
     donut = stubs.find((el) => el.textContent?.includes('"type":"pie"'))
     expect(donut?.textContent).toContain('Behemoth')
+  })
+
+  // Le bloc "Top médailles" suit le même toggle que les graphes : lifetime en
+  // "En direct", agrégat local en "Local" — jamais un mélange des deux.
+  it('fait suivre le top médailles au toggle de source', async () => {
+    renderWithProviders(
+      <ExplorerCombatProfile
+        liveMatches={[match({ match_id: 'L1' })]}
+        localMatches={[match({ match_id: 'C1' })]}
+        locale="fr"
+        t={t}
+        topMedals={[medal('Tueur en serie', 11)]}
+        topMedalsLocal={[medal('Frag parfait', 22)]}
+      />,
+    )
+
+    // Défaut = live → médailles lifetime seules.
+    expect(await screen.findByText('Tueur en serie')).toBeInTheDocument()
+    expect(screen.queryByText('Frag parfait')).toBeNull()
+
+    // Bascule sur local → médailles locales, les lifetime disparaissent.
+    fireEvent.click(screen.getByTestId('combat-source-local'))
+    expect(await screen.findByText('Frag parfait')).toBeInTheDocument()
+    expect(screen.queryByText('Tueur en serie')).toBeNull()
+  })
+
+  // Source sans médaille → bloc masqué (et non un cadre vide) ; l'autre source
+  // en ayant ne doit pas fuiter.
+  it('masque le bloc médailles quand la source choisie n en a aucune', async () => {
+    renderWithProviders(
+      <ExplorerCombatProfile
+        liveMatches={[match({ match_id: 'L1' })]}
+        localMatches={[match({ match_id: 'C1' })]}
+        locale="fr"
+        t={t}
+        topMedals={[medal('Tueur en serie', 11)]}
+        topMedalsLocal={[]}
+      />,
+    )
+
+    expect(await screen.findByTestId('explorer-target-medals')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('combat-source-local'))
+    expect(screen.queryByTestId('explorer-target-medals')).toBeNull()
   })
 })

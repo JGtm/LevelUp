@@ -1,10 +1,14 @@
 /**
- * ExplorerTargetMedals — top médailles lifetime du joueur cible.
+ * ExplorerTargetMedals — top médailles du joueur cible.
  *
  * Affiche les 18 médailles les plus gagnées (image + titre + compteur), avec un
  * expander discret pour voir le reste (cap 20 côté backend). La description
- * s'affiche en tooltip (title). Données : ExplorerTargetProfile.top_medals
- * (déjà triées par count décroissant) + images statiques /static/medals/.
+ * s'affiche en tooltip (title). Images statiques /static/medals/.
+ *
+ * Composant agnostique de la source : l'appelant fournit la liste (déjà triée
+ * par count décroissant) correspondant au toggle du profil de combat —
+ * ExplorerTargetProfile.top_medals (lifetime, « En direct ») ou
+ * top_medals_local (agrégat sur les matchs locaux, « Local »).
  */
 import { useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'

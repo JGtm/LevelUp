@@ -6638,6 +6638,7 @@ export interface components {
             sample_stats?: components["schemas"]["ExplorerTargetSampleStats"];
             season_csrs?: components["schemas"]["CareerPlaylistCSR"][] | null;
             top_medals?: components["schemas"]["MedalDigestItem"][] | null;
+            top_medals_local?: components["schemas"]["MedalDigestItem"][] | null;
         };
         ExplorerTargetRecentMatch: {
             /** Format: int64 */
