@@ -96,7 +96,7 @@ func TestBlocDeriveSolidaireDesBornesCommises(t *testing.T) {
 // seule borne ait bouge — et on l aurait « corrige » en le desactivant.
 func TestEmpreinteDesBornesIgnoreLaTraceDeFabrication(t *testing.T) {
 	const carte = `{"module":"ctf_aquarius","min":[-1,-2,-3],"max":[1,2,3],"axisWidths":[15,15,17]}`
-	avec := []byte(`{"schemaVersion":1,"source":"D:\\SteamLibrary\\...","maps":{"aquarius":` + carte + `}}`)
+	avec := []byte(`{"schemaVersion":1,"source":"D:\\Jeux\\...","maps":{"aquarius":` + carte + `}}`)
 	sans := []byte(`{"schemaVersion":1,"source":"C:\\ailleurs","maps":{"aquarius":` + carte + `}}`)
 	reindente := []byte("{\n \"schemaVersion\": 1,\n \"maps\": {\n  \"aquarius\": " + carte + "\n }\n}")
 
