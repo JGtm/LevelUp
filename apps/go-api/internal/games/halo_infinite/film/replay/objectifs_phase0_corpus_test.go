@@ -18,7 +18,7 @@ package replay
 //
 // LES DEUX ESPACES DE SLOTS, ET POURQUOI IL FAUT DEUX PONTS. Les evenements nommes portent
 // un slot d'entite STATBORG (10..24 pairs) ; les loadouts et les trajectoires portent un
-// slot de BIPED. Rien ne garantit qu'ils coincident (`objectiveevents/slotidentity.go` le
+// slot de BIPED. Rien ne garantit qu'ils coincident (`objectives/slotidentity.go` le
 // dit et refuse de le supposer). Le seul pont licite est le XUID, et il se compose de deux
 // lectures independantes :
 //
@@ -29,7 +29,7 @@ package replay
 // aucune DuckDB (regle du depot) et la phase 0 n'en ouvre pas davantage : les triplets
 // ci-dessous sont releves une fois pour toutes dans l'instantane parquet
 // `data/backups/staging/halo_infinite/shared_matches_v2/match_participants_20260711_090652.parquet`
-// et figes ici — meme convention que l'oracle a huit joueurs d'`objectiveevents/named_test.go`.
+// et figes ici — meme convention que l'oracle a huit joueurs d'`objectives/named_test.go`.
 //
 // GARDE : `OBJ_FILM` porte la RACINE du cache film (le repertoire qui contient
 // `film_chunks/` et `film_manifests/`). Sans elle, tous les tests de la phase 0 se sautent
@@ -46,7 +46,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
@@ -68,7 +68,7 @@ type objPlayer struct {
 
 // objFilm decrit un film du corpus de la phase 0.
 type objFilm struct {
-	// Mode est la famille d'objectif au sens d'`objectiveevents` (flag / skull).
+	// Mode est la famille d'objectif au sens d'`objectives` (flag / skull).
 	Mode string
 	// Carte sert au rapport, jamais au decodage (aucune borne de carte n'est requise :
 	// la phase 0 travaille en QUANTA, cf. objBuildBridge).
@@ -84,7 +84,7 @@ type objFilm struct {
 // `TestObjectifsPhase0Pont`.
 var objCorpus = map[string]objFilm{
 	// Les trois films CTF du corpus (plan §digest, ligne « Corpus »).
-	"64e8adfa": {Mode: objectiveevents.ObjectiveTypeFlag, Carte: "Catalyst", Players: []objPlayer{
+	"64e8adfa": {Mode: objectives.ObjectiveTypeFlag, Carte: "Catalyst", Players: []objPlayer{
 		{"2533274792763167", 18, 12, 5, 1},
 		{"2533274808613055", 15, 15, 9, 1},
 		{"2533274823110022", 20, 16, 1, 0},
@@ -94,7 +94,7 @@ var objCorpus = map[string]objFilm{
 		{"2535456378021162", 24, 9, 4, 1},
 		{"2535465820713037", 8, 19, 3, 0},
 	}},
-	"530820e5": {Mode: objectiveevents.ObjectiveTypeFlag, Carte: "Catalyst", Players: []objPlayer{
+	"530820e5": {Mode: objectives.ObjectiveTypeFlag, Carte: "Catalyst", Players: []objPlayer{
 		{"2533274823110022", 11, 15, 4, 0},
 		{"2533274830798809", 9, 12, 1, 1},
 		{"2533274858283686", 17, 8, 5, 0},
@@ -104,7 +104,7 @@ var objCorpus = map[string]objFilm{
 		{"2535435137320355", 7, 13, 3, 1},
 		{"2535469190789936", 15, 11, 6, 0},
 	}},
-	"53ce4390": {Mode: objectiveevents.ObjectiveTypeFlag, Carte: "Behemoth", Players: []objPlayer{
+	"53ce4390": {Mode: objectives.ObjectiveTypeFlag, Carte: "Behemoth", Players: []objPlayer{
 		{"2533274803754807", 23, 17, 8, 1},
 		{"2533274823110022", 6, 12, 3, 1},
 		{"2533274830881544", 25, 13, 2, 1},
@@ -115,7 +115,7 @@ var objCorpus = map[string]objFilm{
 		{"2535462641971683", 10, 14, 5, 0},
 	}},
 	// Le film Oddball, pour la generalisation au crane (item 0.3).
-	"24dbb67d": {Mode: objectiveevents.ObjectiveTypeSkull, Carte: "Recharge", Players: []objPlayer{
+	"24dbb67d": {Mode: objectives.ObjectiveTypeSkull, Carte: "Recharge", Players: []objPlayer{
 		{"2533274815819321", 9, 10, 4, 0},
 		{"2533274822068549", 7, 11, 12, 0},
 		{"2533274823110022", 5, 12, 5, 1},
@@ -135,7 +135,7 @@ var objCTFFilms = []string{"64e8adfa", "530820e5", "53ce4390"}
 const objBallFilm = "24dbb67d"
 
 // objDiskFilm est LE FILM CHARGE depuis le cache disque : chunks decompresses et paquets
-// decoupes une fois (`filmsource`), c'est ce que prennent les points d'entree d'`objectiveevents`
+// decoupes une fois (`filmsource`), c'est ce que prennent les points d'entree d'`objectives`
 // depuis l'item 1.5 de PLAN_CUISSON_PERF. Il valait `filmcache.Source` — la source BRUTE — tant
 // que ces points d'entree decompressaient eux-memes, a chaque appel.
 type objDiskFilm = filmsource.Film

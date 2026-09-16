@@ -367,3 +367,30 @@ package filmdec
 //
 // `KillSourceDecoderRev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet.
 // `SchemaVersion` reste 60.
+//
+// ENTREE `grammar-2026-09-15.30` (2026-09-16, lot 2.5.d.2 — RANG PROVISOIRE) : `.29` -> `.30`.
+// DEPLACEMENT PUR, SORTIE IDENTIQUE.
+//
+// `internal/analysis/objectiveevents` descend sous
+// `internal/games/halo_infinite/film/facts/objectives` : c est la couche `facts` de l ADR 0034
+// D-1 qui rentre DANS le decodeur. Le paquet change de nom (`objectiveevents` -> `objectives`)
+// et de chemin, RIEN D AUTRE — aucune ligne de corps n est ajoutee ni retiree, seuls la clause
+// `package`, les imports et les mentions du nom en commentaire bougent (`git diff -M` ne montre
+// que des renommages).
+//
+// L EMPREINTE MONTE PARCE QU ELLE HACHE DES OCTETS DE SOURCE, et c est ecrit dans son en-tete :
+// la clause `package` de 27 fichiers de production a change. AUCUN OCTET DE FILM N EST LU
+// AUTREMENT — la grammaire du pied de film (`scanTh10Events`, `decodeTh10Block`) est identique a
+// l octet, seul son LIEU a change. `racinesGrammaire` (grammar_rev_fingerprint_test.go) et le
+// cadre herite (`film/revision/equivalence_test.go`) suivent la racine.
+//
+// L ORDRE DES COMMITS DE 2.5 CHANGE, ET LA MESURE LE DIT. La note de preparation (§2.7) faisait
+// descendre `filmsource` en PREMIER. Mesure du 2026-09-16 : ce premier pas fait rougir D9
+// (`no_title_package_in_analysis_test.go`) sur DIX-SEPT fichiers, parce que `objectiveevents` et
+// `weaponv3` vivent sous `internal/analysis/` et importent `filmsource` — la facade de 2.4 etait
+// nee la precisement pour l eviter (V15 (1)). Les paquets de couche quittent donc
+// `internal/analysis/` AVANT la couche `source`. Deux entrees de l allowlist D9 tombent ici, par
+// le deplacement lui-meme.
+//
+// `KillSourceDecoderRev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet (seul
+// un commentaire y nomme desormais `objectives`). `SchemaVersion` reste 60.

@@ -41,7 +41,7 @@ func (p FilmPacket) Payload(chunk []byte) []byte { return chunk[p.Start : p.Star
 // ENVELOPPE D2, HORS PRODUCTION (lot 1 de PLAN_CUISSON_PERF, 2026-09-02). Le chemin de cuisson
 // charge le film UNE fois par `filmsource.LoadDir` et lit ses chunks par [FilmChunkAt] : plus
 // aucune relecture disque par balayage. Cette fonction ne survit que pour les LECTEURS D'UN SEUL
-// CHUNK — instruments de recherche et tests de `filmdec`, `replay`, `objectiveevents` — et pour
+// CHUNK — instruments de recherche et tests de `filmdec`, `replay`, `objectives` — et pour
 // `FindPackets`, qui balaye une RACINE de films et n'a pas de film a charger. L'inflate lui-meme
 // vit desormais dans `filmsource` : un seul decompresseur dans le depot.
 func ReadFilmChunk(dir string, chunk int) ([]byte, error) {

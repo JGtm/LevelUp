@@ -179,7 +179,7 @@ func TestContexteFilmCalculeUneFois(t *testing.T) {
 var paquetsSansAnalyseDeRegistre = []string{
 	"internal/games/halo_infinite/film/replay",
 	"internal/replaybuild",
-	"internal/analysis/objectiveevents",
+	"internal/games/halo_infinite/film/facts/objectives",
 	"internal/games/halo_infinite/film/killsource",
 	"internal/sync/killcollector",
 	"internal/api/wire",

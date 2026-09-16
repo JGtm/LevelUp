@@ -6,7 +6,7 @@ package killsource
 //
 // Il portait sa propre source de chunks (`ChunkSource`, `MemoryChunks`, `DirChunks`), son propre
 // inflate zlib et son propre marcheur de paquets (`splitPackets`) — la TROISIEME copie des trois,
-// a cote de `filmdec` et d `objectiveevents`, et les trois DIVERGEAIENT. Une cuisson d artefact
+// a cote de `filmdec` et d `objectives`, et les trois DIVERGEAIENT. Une cuisson d artefact
 // payait donc une lecture disque et une decompression du film ENTIER rien que pour ce decodeur,
 // en plus de celles des balayages.
 //

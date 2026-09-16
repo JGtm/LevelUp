@@ -7,10 +7,10 @@ package filmdec
 // l'equipe d'un evenement d'objectif lu dans le pied de film (chunk de type 3, blocs de
 // 60 octets) :
 //
-//	`objectiveevents/film.go` lisait l'octet 55 sous le nom `teamRaw` et le commentait
+//	`objectives/film.go` lisait l'octet 55 sous le nom `teamRaw` et le commentait
 //	  « NON fiable sur certains matchs -> a confirmer via roster » — IL LIT L'OCTET 37 DEPUIS
 //	  LE 2026-09-14, et le champ s'appelle `FooterEvent.Team` ;
-//	`objectiveevents/extract.go` tranchait : « le champ team du film etant non fiable, l'equipe
+//	`objectives/extract.go` tranchait : « le champ team du film etant non fiable, l'equipe
 //	  d'un event vient TOUJOURS du roster via le xuid de l'acteur » — le roster reste la source
 //	  de `TeamID` jusqu'au lot 1.7.3, mais plus pour cette raison-la : elle est REFUTEE ;
 //	`.ai/archive/V7/RESEARCH_THEATER_RE.md:534` identifie l'equipe a `b37`/`b38`
@@ -31,7 +31,7 @@ package filmdec
 // sort, le negatif est publie avec ce plancher.
 //
 // LE BLOC EST CELUI DE LA PRODUCTION, transcrit sans changement depuis
-// `objectiveevents/film.go` (`scanTh10Events` / `decodeTh10Block`, 2026-09-13) : on localise un
+// `objectives/film.go` (`scanTh10Events` / `decodeTh10Block`, 2026-09-13) : on localise un
 // XUID (prefixe 0x2d ou 0x25, suffixe 0xc0), on cherche le marqueur de fin `00 00 2e e0` de son
 // bloc, on recule de 60 octets, on exige `type_hint == 10` a l'octet 47. Aucun code de
 // production n'est appele : `scanTh10Events` et `decodeTh10Block` restent non exportes (le

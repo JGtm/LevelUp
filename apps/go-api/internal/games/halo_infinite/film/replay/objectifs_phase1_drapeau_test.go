@@ -31,7 +31,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
@@ -185,8 +185,8 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 		Deaths: b.Deaths, PlayerIndices: table, MapQuant: quant,
 		Labels: goldenCatalog(t), Pads: PadScans{Weapons: gw},
 		Flag: FlagInput{
-			Scanned: true, Records: objectiveevents.StatRecords(src),
-			Bursts: objectiveevents.CaptureBurstTimes(src), Spawns: objFlagSpawns(t, id), Marks: marks,
+			Scanned: true, Records: objectives.StatRecords(src),
+			Bursts: objectives.CaptureBurstTimes(src), Spawns: objFlagSpawns(t, id), Marks: marks,
 		},
 	})
 	out := objDoc{doc: doc, originUS: pos[0].TimestampUS, gw: gw}
@@ -322,7 +322,7 @@ func objVerifieOracle(t *testing.T, root, id string, src *objDiskFilm, res objPo
 		return
 	}
 	b := objBridgeOf(t, root, id)
-	evs := objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag)
+	evs := objectives.NamedEvents(src, objectives.ObjectiveTypeFlag)
 	identity := objRoundIdentites(src, b.Deaths)
 	porteurs := map[string]int{}
 	for _, f := range carries {

@@ -51,7 +51,7 @@ package filmdec
 // La doctrine du chantier dit de ne juger que la DISPERSION, l'ecart moteur/manifeste etant
 // inconnu et constant. Cet instrument fait mieux quand il le peut : il date les lectures sur
 // l'horloge du MANIFESTE (`start_ms` par chunk, `filmcache`), la MEME base que
-// `objectiveevents.StatRecords` — donc que l'oracle. Les delais absolus sont alors lisibles et
+// `objectives.StatRecords` — donc que l'oracle. Les delais absolus sont alors lisibles et
 // sont publies. LE VERDICT RESTE CELUI DE LA DISPERSION : si la conversion d'horloge etait
 // fausse d'un decalage constant, la dispersion, elle, ne bougerait pas.
 //

@@ -4,7 +4,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // vip_crown_rounds_test.go — LA PREUVE DE LA CORRECTION MULTI-MANCHE, AU NIVEAU DU CALQUE.
@@ -17,19 +17,19 @@ import (
 // twoRoundVipRecs fabrique un film synthetique a deux manches : le slot 22 est le joueur "A" en
 // manche 0 puis "B" en manche 1 (le compteur de morts `comp 2 B` repart de zero par manche, et le
 // score de mode `comp 0 A` fait reconnaitre les deux manches).
-func twoRoundVipRecs() ([]objectiveevents.StatRecord, []objectiveevents.DeathInstant) {
-	rec := func(t, slot, round, comp int, a, b int64) objectiveevents.StatRecord {
-		return objectiveevents.StatRecord{TimeMS: t, Slot: slot, Round: round,
-			Comps: map[int]objectiveevents.StatValue{comp: {A: a, B: b}}}
+func twoRoundVipRecs() ([]objectives.StatRecord, []objectives.DeathInstant) {
+	rec := func(t, slot, round, comp int, a, b int64) objectives.StatRecord {
+		return objectives.StatRecord{TimeMS: t, Slot: slot, Round: round,
+			Comps: map[int]objectives.StatValue{comp: {A: a, B: b}}}
 	}
-	recs := []objectiveevents.StatRecord{
+	recs := []objectives.StatRecord{
 		rec(900, 22, 0, 0, 10, 0), rec(1900, 22, 0, 0, 20, 0), rec(2900, 22, 0, 0, 30, 0),
 		rec(10900, 22, 1, 0, 10, 0), rec(11900, 22, 1, 0, 20, 0), rec(12900, 22, 1, 0, 30, 0),
 		rec(1000, 22, 0, 2, 0, 1), rec(2000, 22, 0, 2, 0, 2), rec(3000, 22, 0, 2, 0, 3),
 		rec(11000, 22, 1, 2, 0, 1), rec(12000, 22, 1, 2, 0, 2), rec(13000, 22, 1, 2, 0, 3),
 	}
 	sort.SliceStable(recs, func(i, j int) bool { return recs[i].TimeMS < recs[j].TimeMS })
-	deaths := []objectiveevents.DeathInstant{
+	deaths := []objectives.DeathInstant{
 		{XUID: "A", TimeMS: 1000}, {XUID: "A", TimeMS: 2000}, {XUID: "A", TimeMS: 3000},
 		{XUID: "B", TimeMS: 11000}, {XUID: "B", TimeMS: 12000}, {XUID: "B", TimeMS: 13000},
 	}
@@ -39,13 +39,13 @@ func twoRoundVipRecs() ([]objectiveevents.StatRecord, []objectiveevents.DeathIns
 func TestVipCrownRoundReassignedSlot(t *testing.T) {
 	recs, deaths := twoRoundVipRecs()
 	// Deux selections VIP du meme slot : une par manche.
-	events := []objectiveevents.NamedEvent{
-		{Slot: 22, TimeMS: 2000, Stat: objectiveevents.StatVipSelected},
-		{Slot: 22, TimeMS: 12000, Stat: objectiveevents.StatVipSelected},
+	events := []objectives.NamedEvent{
+		{Slot: 22, TimeMS: 2000, Stat: objectives.StatVipSelected},
+		{Slot: 22, TimeMS: 12000, Stat: objectives.StatVipSelected},
 	}
 
 	// PAR MANCHE (production) : la selection de la manche 1 nomme B.
-	byRound := vipReconstructPeriods(events, objectiveevents.ResolveRoundIdentity(recs, deaths), nil, 20000)
+	byRound := vipReconstructPeriods(events, objectives.ResolveRoundIdentity(recs, deaths), nil, 20000)
 	if len(byRound) != 2 {
 		t.Fatalf("periodes par manche : %d, attendu 2", len(byRound))
 	}
@@ -58,7 +58,7 @@ func TestVipCrownRoundReassignedSlot(t *testing.T) {
 
 	// PONT PLAT (avant le lot) : les deux selections nommeraient le meme joueur — la manche 1
 	// serait FAUSSE. On le montre pour que la correction soit lisible.
-	flat := objectiveevents.FlatRoundIdentity(objectiveevents.SlotIdentityByDeaths(recs, deaths))
+	flat := objectives.FlatRoundIdentity(objectives.SlotIdentityByDeaths(recs, deaths))
 	plat := vipReconstructPeriods(events, flat, nil, 20000)
 	if plat[1].xuid == "B" {
 		t.Errorf("le pont plat aurait deja nomme B en manche 1 — la fixture ne prouve rien")

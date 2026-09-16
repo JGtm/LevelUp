@@ -74,7 +74,7 @@ const ti10ArchIndex = 10
 const ti10MaxLectures = 3_000_000
 
 // ti10Read est UNE lecture de `managed-object-rtpc-component`, datee sur l'horloge du MANIFESTE
-// (la meme que `objectiveevents.StatRecords`, donc que l'oracle des explosions).
+// (la meme que `objectives.StatRecords`, donc que l'oracle des explosions).
 type ti10Read struct {
 	Slot uint32
 	TMS  int32
@@ -190,7 +190,7 @@ func (s *ti10Scan) ajouter(r ti10Read) {
 //
 // LA BASE DE L'HORLOGE EST LE PREMIER PAQUET DELTA DU CHUNK, exactement comme `zcScan` et comme
 // l'instrument ti=12 : c'est ce qui met les lectures sur la MEME base que
-// `objectiveevents.StatRecords`, donc que l'oracle des explosions.
+// `objectives.StatRecords`, donc que l'oracle des explosions.
 func (w *ti10Walk) scanChunk(data []byte, startMS map[int]int, c int) {
 	pks := WalkPackets(data)
 	base, ok := navpointRadialBaseChunk(pks)

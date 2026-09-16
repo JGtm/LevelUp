@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // flag_reprise_test.go — LA REPRISE DU MEME PORTEUR NE POSE PAS LE DRAPEAU AU SOL.
@@ -22,12 +22,12 @@ func TestFlagRepriseNePubliePasDeLacher(t *testing.T) {
 	tracks := []Track{flagTestTrack(12, "1", 0, 99, 2, 2)}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 3000, Slot: 12, Stat: objectiveevents.StatFlagGrabs},
-			{TimeMS: 5000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 3000, Slot: 12, Stat: objectives.StatFlagGrabs},
+			{TimeMS: 5000, Slot: 12, Stat: objectives.StatFlagCaptures},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   []FlagSpawn{{Team: 1, X: 0, Y: 0}, {Team: 0, X: 100, Y: 100}},
 	}
 
@@ -60,11 +60,11 @@ func TestFlagRepriseSurUnAutreDrapeauLacheBien(t *testing.T) {
 	tracks := []Track{flagTestPath(12, "1", 0, 99, 30, 2, 2, 98, 98)}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 3000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 3000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   []FlagSpawn{{Team: 1, X: 0, Y: 0}, {Team: 0, X: 100, Y: 100}},
 	}
 

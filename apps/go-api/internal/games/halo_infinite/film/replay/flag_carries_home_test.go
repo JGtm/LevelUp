@@ -14,7 +14,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // flagHomeScan monte un portage de « 1 » a 1 000 ms, ferme par sa mort a 6 000 ms (frame 60), et
@@ -22,11 +22,11 @@ import (
 func flagHomeScan(teams map[string]int, free []flagFreeLife) FlagCarryScan {
 	return FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 3000, Slot: 14, Stat: objectiveevents.StatFlagReturns},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 3000, Slot: 14, Stat: objectives.StatFlagReturns},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
 		Spawns:   flagInvariantSpawns(), // [0] equipe 1 en (0,0), [1] equipe 0 en (100,100)
 		TeamOf:   teams,
 		Free:     free,
@@ -115,7 +115,7 @@ func TestUneRentreeAmbigueNeFermeRien(t *testing.T) {
 	// « 2 » (equipe 1) porte le drapeau de l'equipe 0 et meurt a la frame 20 : sa chute peut
 	// avoir produit la naissance lue au socle de l'equipe 1.
 	scan.Events = append(scan.Events,
-		objectiveevents.NamedEvent{TimeMS: 500, Slot: 14, Stat: objectiveevents.StatFlagSteals})
+		objectives.NamedEvent{TimeMS: 500, Slot: 14, Stat: objectives.StatFlagSteals})
 	tracks := []Track{
 		flagTestTrack(12, "1", 0, 99, 50, 50),
 		flagTestTrack(14, "2", 0, 99, 0, 0),

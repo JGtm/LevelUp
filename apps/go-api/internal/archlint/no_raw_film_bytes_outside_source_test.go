@@ -76,7 +76,7 @@ package archlint
 //   - un SEPTIEME lecteur de bits, absent de la note : `internal/analysis/positions/` porte sa
 //     propre copie de `bitAt` (`positions.go:179`) et son propre marcheur de paquets 16 octets
 //     (`positions.go:127-128`). Consigne en §4 du plan.
-//   - `objectiveevents/statborg.go` appelle `readBitsBE` 13 fois ; la note ne citait que
+//   - `objectives/statborg.go` appelle `readBitsBE` 13 fois ; la note ne citait que
 //     `film.go` pour ce lecteur. Le paquet en a donc deux fichiers, pas un.
 //
 // Trois faux positifs de la note, mecaniquement ecartes ici et non par une exception :

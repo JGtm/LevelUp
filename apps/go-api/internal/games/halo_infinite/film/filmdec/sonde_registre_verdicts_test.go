@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
@@ -130,7 +130,7 @@ func probeTopIndices(parIndex map[int]int, a *probeArch, top int) string {
 // NOMMES. La famille d'objectif est FOURNIE, jamais devinee : appliquer la table `flag` a un
 // film KOTH fabrique 267 « evenements de drapeau » sur un match qui n'a jamais vu de drapeau
 // (mesure du lot C). Sans elle, F2 se limite aux valeurs et n'a pas d'oracle.
-func probeOracleObjectif(t *testing.T) (probeHorloge, []objectiveevents.NamedEvent) {
+func probeOracleObjectif(t *testing.T) (probeHorloge, []objectives.NamedEvent) {
 	t.Helper()
 	root, short := os.Getenv(probeCacheEnv), os.Getenv(probeShortEnv)
 	if root == "" || short == "" {
@@ -160,11 +160,11 @@ func probeOracleObjectif(t *testing.T) (probeHorloge, []objectiveevents.NamedEve
 		t.Logf("ORACLE : film illisible (%v) — F2 se limite aux valeurs.", err)
 		return hor, nil
 	}
-	all := objectiveevents.NamedEvents(bobine, objType)
-	var evs []objectiveevents.NamedEvent
+	all := objectives.NamedEvents(bobine, objType)
+	var evs []objectives.NamedEvent
 	combat := 0
 	for _, e := range all {
-		if e.Stat == objectiveevents.StatKills || e.Stat == objectiveevents.StatAssists {
+		if e.Stat == objectives.StatKills || e.Stat == objectives.StatAssists {
 			combat++
 			continue
 		}
@@ -180,7 +180,7 @@ func probeOracleObjectif(t *testing.T) (probeHorloge, []objectiveevents.NamedEve
 
 // sondeF2 publie les valeurs des deux composants portes de ti=47, leurs instants, et leur
 // densite autour des evenements d'objectif.
-func sondeF2(t *testing.T, dir string, m *probeMoisson, evs []objectiveevents.NamedEvent) {
+func sondeF2(t *testing.T, dir string, m *probeMoisson, evs []objectives.NamedEvent) {
 	t.Helper()
 	t.Logf("=== F2 — ti=47 splash-message : QUELLES VALEURS, ET QUAND ===")
 	for _, comp := range []ProbeComponent{ProbeSplashStatic, ProbeSplashDynamic} {
@@ -255,7 +255,7 @@ func probeCorrelation(es []probeEmission) float64 {
 // fenetre de +/- 2 s autour d'un evenement d'objectif, et compare cette densite a celle du
 // reste du match. C'est la question de F2 : ces valeurs sont-elles les messages plein ecran ?
 func probeDensiteParValeur(t *testing.T, vals []probeValeur, es []probeEmission,
-	evs []objectiveevents.NamedEvent) {
+	evs []objectives.NamedEvent) {
 	t.Helper()
 	if len(evs) == 0 {
 		t.Logf("    (pas d'evenement d'objectif fourni : densite non mesurable)")

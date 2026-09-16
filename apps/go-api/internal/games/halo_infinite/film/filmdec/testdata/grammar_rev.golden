@@ -480,4 +480,14 @@
 #               supprimee), sync/haloclient et cinq outils cmd/. Allowlist du ratchet 2.4.3 :
 #               68 -> 9 (les seules entrees du lot 2.5.c). AUCUN OCTET N EST LU AUTREMENT.
 #               `KillSourceDecoderRev` ne bouge PAS (golden refige) ; `SchemaVersion` reste 60.
-grammar-2026-09-15.29	52cbae7eab4a3de73d350f9a7ebc129fbf52c915cae64fe71c7cf4497503fac1
+#   2026-09-16  grammar-2026-09-15.30  lot 2.5.d.2 (`.29` -> `.30`, RANG PROVISOIRE) : DEPLACEMENT
+#               PUR, SORTIE IDENTIQUE. `internal/analysis/objectiveevents` descend sous
+#               `internal/games/halo_infinite/film/facts/objectives` — la couche `facts` de
+#               l ADR 0034 D-1 rentre DANS le decodeur. Le paquet change de nom et de chemin,
+#               RIEN D AUTRE : aucune ligne de corps ajoutee ni retiree. L empreinte monte parce
+#               qu elle hache des octets de source (clause `package` de 27 fichiers). AUCUN OCTET
+#               DE FILM N EST LU AUTREMENT. L ordre des commits de 2.5 change (mesure : descendre
+#               `filmsource` en premier faisait rougir D9 sur 17 fichiers) ; deux entrees de
+#               l allowlist D9 tombent par ce deplacement. `KillSourceDecoderRev` ne bouge PAS ;
+#               `SchemaVersion` reste 60.
+grammar-2026-09-15.30	0a9615eacf55f6015d3dc3c24d2f92d4018a7b68609fe2f492c836fa9c03ec54

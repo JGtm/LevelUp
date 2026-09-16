@@ -50,7 +50,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -137,10 +137,10 @@ func bwAnneauArme(finMS int32) []filmdec.NavpointRadialRead {
 // bwExplosion rend l'action d'objectif qui porte UNE explosion de bombe, nommée par le témoin.
 // Sans armement pour la précéder, elle fait ÉCHOUER la confrontation locale et retenir le calque
 // entier — c'est le seul levier de production pour l'état `Suppressed`.
-func bwExplosion(timeMS int) []objectiveevents.IdentifiedEvent {
-	return []objectiveevents.IdentifiedEvent{{
-		NamedEvent: objectiveevents.NamedEvent{
-			TimeMS: timeMS, Slot: 10, Stat: objectiveevents.StatBombDetonations},
+func bwExplosion(timeMS int) []objectives.IdentifiedEvent {
+	return []objectives.IdentifiedEvent{{
+		NamedEvent: objectives.NamedEvent{
+			TimeMS: timeMS, Slot: 10, Stat: objectives.StatBombDetonations},
 		XUID: bwXUIDDec,
 	}}
 }

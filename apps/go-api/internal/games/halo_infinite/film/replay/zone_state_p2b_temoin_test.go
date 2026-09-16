@@ -28,8 +28,8 @@ import (
 
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
@@ -84,7 +84,7 @@ func p2bScan(t *testing.T, dir string) filmdec.ManagedPropertyScan {
 // p2bBuild assemble le document avec le calque des zones — chemin de production, calque du
 // drapeau EXCLU (cf. l'en-tete).
 func p2bBuild(t *testing.T, dir, short string, quant *filmdec.MapQuantEntry, zone ZoneInput,
-	caps []objectiveevents.IdentifiedEvent,
+	caps []objectives.IdentifiedEvent,
 ) (ReplayDocument, uint64) {
 	t.Helper()
 	worldRange := quant.Range()

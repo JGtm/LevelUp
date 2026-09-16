@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // flag_invariant_test.go — L'INVARIANT DUR ET LES RETOURS (revue DRAPEAUX-R1).
@@ -31,12 +31,12 @@ func TestFlagInvariantJamaisSonPropreDrapeau(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 2000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 5000, Slot: 16, Stat: objectiveevents.StatFlagGrabs},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 2000, Slot: 14, Stat: objectives.StatFlagSteals},
+			{TimeMS: 5000, Slot: 16, Stat: objectives.StatFlagGrabs},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
 		Spawns:   flagInvariantSpawns(),
 		TeamOf:   map[string]int{"1": 0, "2": 1, "3": 0},
 	}
@@ -80,12 +80,12 @@ func TestFlagInvariantSansEquipeConnueSeTait(t *testing.T) {
 	}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 2000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 5000, Slot: 16, Stat: objectiveevents.StatFlagGrabs},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 2000, Slot: 14, Stat: objectives.StatFlagSteals},
+			{TimeMS: 5000, Slot: 16, Stat: objectives.StatFlagGrabs},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
 		Spawns:   flagInvariantSpawns(),
 	}
 
@@ -106,10 +106,10 @@ func TestFlagInvariantSansCandidatNInventeRien(t *testing.T) {
 	tracks := []Track{flagTestTrack(12, "1", 0, 99, 2, 2)}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}},
 		TeamOf:   map[string]int{"1": 0},
 	}
@@ -147,10 +147,10 @@ func TestFlagInvariantAPlusDeDeuxSoclesRejoueLesRegles(t *testing.T) {
 	tracks := []Track{flagTestTrack(12, "1", 0, 99, 2, 2)}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns: []FlagSpawn{
 			{Team: 0, X: 0, Y: 0}, {Team: 0, X: 10, Y: 0},
 			{Team: 1, X: 100, Y: 100}, {Team: 1, X: 300, Y: 300},
@@ -208,12 +208,12 @@ func TestFlagRetourRemetLeSolEtEnJeu(t *testing.T) {
 	deaths := []Death{{XUID: 1, TimeMS: 2000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 3000, Slot: 12, Stat: objectiveevents.StatFlagReturns},
-			{TimeMS: 5000, Slot: 14, Stat: objectiveevents.StatFlagGrabs},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 3000, Slot: 12, Stat: objectives.StatFlagReturns},
+			{TimeMS: 5000, Slot: 14, Stat: objectives.StatFlagGrabs},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
 		Spawns:   flagInvariantSpawns(),
 	}
 
@@ -250,11 +250,11 @@ func TestFlagOverlapsComptesParDrapeau(t *testing.T) {
 	deaths := []Death{{XUID: 1, TimeMS: 6000}, {XUID: 2, TimeMS: 7000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
-			{TimeMS: 2000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+			{TimeMS: 2000, Slot: 14, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
 		Spawns:   flagInvariantSpawns(),
 	}
 
@@ -302,9 +302,9 @@ func TestFlagOverlapsComptesParDrapeau(t *testing.T) {
 // verifie que l'invariant A REFUSE. Il ne peut refuser que si la table est arrivee.
 func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
 	// Un compteur du statborg qui monte a 1 : c'est l'increment que l'oracle date.
-	rec := func(ms, slot, comp int) objectiveevents.StatRecord {
-		return objectiveevents.StatRecord{TimeMS: ms, Slot: slot, Round: 0,
-			Comps: map[int]objectiveevents.StatValue{comp: {A: 1}}}
+	rec := func(ms, slot, comp int) objectives.StatRecord {
+		return objectives.StatRecord{TimeMS: ms, Slot: slot, Round: 0,
+			Comps: map[int]objectives.StatValue{comp: {A: 1}}}
 	}
 	const (
 		compCaptures = 21
@@ -313,7 +313,7 @@ func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
 	)
 	in := FlagInput{
 		Scanned: true,
-		Records: []objectiveevents.StatRecord{
+		Records: []objectives.StatRecord{
 			rec(1000, 12, compSteals),   // « 1 » (equipe 0) vole le drapeau de l'equipe 1
 			rec(2000, 14, compSteals),   // « 2 » (equipe 1) vole celui de l'equipe 0
 			rec(5000, 16, compGrabs),    // « 3 » (equipe 0) ramasse A SON PROPRE SOCLE
@@ -321,7 +321,7 @@ func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
 		},
 		Bursts:   []int{9000},
 		Spawns:   flagInvariantSpawns(),
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
 	}
 	// L'EQUIPE VIENT DU FILM : la table est celle que `ScanPlayerTeams` aurait rendue, projetee
 	// sur les xuids par le registre d'identite.

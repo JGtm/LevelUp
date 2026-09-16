@@ -26,7 +26,7 @@
 //     ensembles est un fait, pas une définition.
 //   - LES COMPTEURS DE JOUEUR, NON. Le pont d'identité apparie un slot d'entité à un xuid par
 //     ÉGALITÉ EXACTE du triplet frags/morts/assistances contre la ligne de l'API
-//     (`objectiveevents/slotidentity.go` : `l.Kills == kills[slot] && l.Deaths == ... && ...`).
+//     (`objectives/slotidentity.go` : `l.Kills == kills[slot] && l.Deaths == ... && ...`).
 //     Le TRIPLET-CLÉ de tout joueur publié dans `ScoreTimeline.Players` égale donc, PAR
 //     CONSTRUCTION, celui de l'API. C'EST LA CLÉ, PAS LA SÉRIE PUBLIÉE : une régression DE LA
 //     CLÉ (le compte d'incréments) ne produit pas un écart de valeur, elle fait DISPARAÎTRE le
@@ -314,7 +314,7 @@ func assertRoster(t *testing.T, doc replaydoc.ReplayDocument) {
 //
 //  2. LA COHÉRENCE INTERNE À LA CHAÎNE DU FILM entre les DEUX dérivations du même compteur :
 //     la clé d'appariement est le NOMBRE D'INCRÉMENTS lus des enregistrements
-//     (`objectiveevents.countsOf` → `len(incrementTimes(...))`), tandis que la valeur publiée
+//     (`objectives.countsOf` → `len(incrementTimes(...))`), tandis que la valeur publiée
 //     est la DERNIÈRE de la série posée sur la grille de frames (`replay.scoreTicksOf`, qui
 //     écarte les émissions hors fenêtre et aplatit les paliers). Rien n'oblige ces deux
 //     dérivations à coïncider : un point de score perdu par la fenêtre, une origine décalée ou

@@ -4,7 +4,7 @@ package filmdec
 // items C.0.1 et C.0.3). Le balayage vit dans zone_census_scan_test.go ; ici on charge le
 // film, on joue les quatre mesures dans l'ordre du plan, on ecrit les TSV et on journalise.
 //
-// L'ORACLE DES EVENEMENTS D'OBJECTIF vient d'`objectiveevents.NamedEvents` sur la source
+// L'ORACLE DES EVENEMENTS D'OBJECTIF vient d'`objectives.NamedEvents` sur la source
 // disque canonique (`filmcache.Open`) — et NON d'une implementation locale de `FilmSource`,
 // que le garde-rail `filmcache_guard_test.go` interdit. Cet import n'existe que dans un
 // fichier de test : aucun code de production d'`analysis/` ne prend de dependance vers
@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
@@ -91,8 +91,8 @@ type zcOracle struct {
 // zcCombatStats sont les statistiques de COMBAT que la table nommee porte aussi, et qui ne
 // sont pas des evenements d'objectif.
 var zcCombatStats = map[string]bool{
-	objectiveevents.StatKills:   true,
-	objectiveevents.StatAssists: true,
+	objectives.StatKills:   true,
+	objectives.StatAssists: true,
 }
 
 // zcLoadOracle charge les evenements nommes du film pour la famille declaree. `none` (ou une
@@ -105,10 +105,10 @@ func zcLoadOracle(t *testing.T, dir string) zcOracle {
 	if fam == "" {
 		t.Fatalf("%s absent : declarer la famille d'objectif du film (zone | flag | none)", zcObjTypeEnv)
 	}
-	if fam != objectiveevents.ObjectiveTypeZone && fam != objectiveevents.ObjectiveTypeFlag {
+	if fam != objectives.ObjectiveTypeZone && fam != objectives.ObjectiveTypeFlag {
 		return o // `none`, KOTH, Oddball, Slayer : aucune table nommee
 	}
-	for _, e := range objectiveevents.NamedEvents(zcOpenFilm(t, dir), fam) {
+	for _, e := range objectives.NamedEvents(zcOpenFilm(t, dir), fam) {
 		o.counts[e.Stat]++
 		if zcCombatStats[e.Stat] {
 			o.nCombat++

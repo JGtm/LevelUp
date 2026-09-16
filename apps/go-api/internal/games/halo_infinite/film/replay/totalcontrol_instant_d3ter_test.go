@@ -32,8 +32,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -114,7 +114,7 @@ func d3iSerieDe(t *testing.T, dir, short string) (d3iSerie, bool) {
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", short, err)
 	}
-	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
+	recs := objectives.StatRecords(p2aBobine(t, dir))
 	debut, fin, ok := d3iBornesMatch(recs)
 	if !ok {
 		t.Logf("NON EXPLOITABLE %s : aucun enregistrement d'entite — le match n'a pas de duree. "+
@@ -153,7 +153,7 @@ func d3iSerieDe(t *testing.T, dir, short string) (d3iSerie, bool) {
 }
 
 // d3iBornesMatch rend les bornes du match sur l'horloge des enregistrements d'entite.
-func d3iBornesMatch(recs []objectiveevents.StatRecord) (int64, int64, bool) {
+func d3iBornesMatch(recs []objectives.StatRecord) (int64, int64, bool) {
 	if len(recs) == 0 {
 		return 0, 0, false
 	}

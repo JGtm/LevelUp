@@ -49,15 +49,19 @@ const seuilLignesParFichier = 500
 
 // racinesSurveilleesTaille : les arborescences que ce ratchet couvre, relatives a `apps/go-api`.
 // Ce sont celles du chantier du decodeur de film — le perimetre du lot 2.7.
+//
+// LA QUATRIEME RACINE A DISPARU LE 2026-09-16 (lot 2.5.d.2) : `internal/analysis/objectiveevents`
+// est descendu sous `internal/games/halo_infinite/film/facts/objectives`, donc SOUS la premiere
+// racine. La garder aurait fait compter ses fichiers DEUX FOIS dans le plancher — un plancher
+// qu on gonfle est un plancher qui ne mesure plus rien.
 var racinesSurveilleesTaille = []string{
 	"internal/games/halo_infinite/film",
 	"internal/replaybuild",
 	"internal/sync/killcollector",
-	"internal/analysis/objectiveevents",
 }
 
 // plancherFichiersBalayesTaille : LE PLANCHER CONTRE UN BALAYAGE MUET. 1 298 fichiers `.go`
-// mesures le 2026-09-16 dans les quatre racines ci-dessus ; un balayage qui en rend nettement
+// mesures le 2026-09-16 dans les racines ci-dessus ; un balayage qui en rend nettement
 // moins n a pas trouve l arborescence (racine renommee, chemin relatif casse) et ne garde plus
 // rien. Il doit ECHOUER bruyamment, pas rendre vert sur du vide.
 const plancherFichiersBalayesTaille = 1200
@@ -104,8 +108,8 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/killsource/assist.go":                                    531,
 	"internal/games/halo_infinite/film/replay/document_shape_test.go":                           511,
 	"internal/games/halo_infinite/film/killsource/e197_identite_paquet_mesure_research_test.go": 654,
-	"internal/analysis/objectiveevents/e1911_manches_mesure_research_test.go":                   523,
-	"internal/analysis/objectiveevents/statborg.go":                                             687,
+	"internal/games/halo_infinite/film/facts/objectives/e1911_manches_mesure_research_test.go":  523,
+	"internal/games/halo_infinite/film/facts/objectives/statborg.go":                            687,
 	"internal/replaybuild/replaybuild.go":                                                       577,
 	"internal/games/halo_infinite/film/filmdec/equipment_creation.go":                           508,
 	// --- tests et instruments de mesure : tables de fixtures et balayages de recherche.
@@ -126,7 +130,7 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/replay/minifilm_test.go":                          581,
 	"internal/games/halo_infinite/film/filmdec/ground_weapon_lifecycle_research_test.go": 574,
 	"internal/games/halo_infinite/film/replay/equipment_uses_join_test.go":               570,
-	"internal/analysis/objectiveevents/assaut_pied_ancre_test.go":                        558,
+	"internal/games/halo_infinite/film/facts/objectives/assaut_pied_ancre_test.go":       558,
 	"internal/sync/killcollector/positions_test.go":                                      557,
 	"internal/games/halo_infinite/film/filmdec/golden_minibobine_test.go":                553,
 	"internal/games/halo_infinite/film/filmdec/vehicules_v2_items_test.go":               533,

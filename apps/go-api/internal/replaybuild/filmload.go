@@ -13,7 +13,7 @@ package replaybuild
 // Ici, trois lectures, une fois chacune :
 //
 //	le MANIFESTE   ouvrirManifeste  — l'index des chunks (type, debut) ; il sert au statborg
-//	               (`objectiveevents.StatRecordsCtx`) ET aux metadonnees du film ;
+//	               (`objectives.StatRecordsCtx`) ET aux metadonnees du film ;
 //	les CHUNKS     chargerFilm      — decompresses et decoupes en paquets par `filmsource` ;
 //	les MORTS      lireMorts        — le chunk highlight, parse UNE fois pour les deux
 //	               consommateurs de cet etage.
@@ -24,7 +24,7 @@ package replaybuild
 // `archlint/filmsource_leaf_test.go`), donc il ne connait ni `filmcache` ni le format du
 // manifeste. C'est `filmcache` qui lit le manifeste et le rend DEJA dans la forme de
 // `filmsource` ([filmcache.Source.Meta]) — la traduction manuelle qui vivait ici a disparu a
-// l'item 1.5, quand `filmcache` a cesse d'importer `objectiveevents`. Cette couche
+// l'item 1.5, quand `filmcache` a cesse d'importer `objectives`. Cette couche
 // d'ASSEMBLAGE, elle, reste celle qui sait ou vit le cache du titre.
 
 import (
@@ -79,7 +79,7 @@ func chargerFilm(ctx context.Context, matchID, filmDir string, src *filmcache.So
 //
 // MANIFESTE ABSENT N'EST PAS FATAL : `filmsource.LoadDir` synthetise alors les NUMEROS de chunk
 // depuis les noms de fichiers, ce qui suffit aux balayages de `filmdec`. Ce qui manque, ce sont
-// le TYPE et le DEBUT de chaque chunk — donc les enregistrements d'entite (`objectiveevents`
+// le TYPE et le DEBUT de chaque chunk — donc les enregistrements d'entite (`objectives`
 // ne balaie que les chunks decrits par le manifeste) et l'horloge de l'armement de la bombe.
 // `readFilmStats` le dit et le journalise plutot que de publier une courbe vide.
 func metaDuManifeste(src *filmcache.Source) []filmsource.ChunkMeta {

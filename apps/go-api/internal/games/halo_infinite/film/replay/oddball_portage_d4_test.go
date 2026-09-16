@@ -36,8 +36,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -100,13 +100,13 @@ func TestEtatVivantOddballPortage(t *testing.T) {
 	}
 
 	src, _ := objOpenFilm(t, root, id)
-	recs := objectiveevents.StatRecords(src)
+	recs := objectives.StatRecords(src)
 	deaths, err := ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
-	identity := objectiveevents.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
-	perso := objectiveevents.SeriesTotal(recs, objectiveevents.PersonalScoreComponent, false)
+	identity := objectives.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
+	perso := objectives.SeriesTotal(recs, objectives.PersonalScoreComponent, false)
 	t.Logf("%s : pont %d slot(s) nomme(s) ; score personnel sur %d slot(s)",
 		id, len(identity), len(perso))
 	if len(perso) < 2 {
@@ -194,7 +194,7 @@ func (v d4Verdict) taux() float64 {
 
 // d4Mesure applique le predicat aux trous, publie le diagnostic, puis le verdict et son temoin.
 func d4Mesure(t *testing.T, id string, trous, libres []d4Intervalle,
-	perso map[int][]objectiveevents.ScorePoint) {
+	perso map[int][]objectives.ScorePoint) {
 	t.Helper()
 	mes := d4Passe(trous, perso)
 	t.Logf("%s : %d trou(s) dont %d exploitable(s) (>= %d ms) — %d a porteur UNIQUE, %d sans "+
@@ -239,7 +239,7 @@ func d4Mesure(t *testing.T, id string, trous, libres []d4Intervalle,
 }
 
 // d4Passe applique le predicat a une liste d'intervalles.
-func d4Passe(ivs []d4Intervalle, perso map[int][]objectiveevents.ScorePoint) d4Verdict {
+func d4Passe(ivs []d4Intervalle, perso map[int][]objectives.ScorePoint) d4Verdict {
 	var v d4Verdict
 	for _, iv := range ivs {
 		if iv.dureeMS() < d4TrancheMS {
@@ -263,7 +263,7 @@ func d4Passe(ivs []d4Intervalle, perso map[int][]objectiveevents.ScorePoint) d4V
 }
 
 // d4Qualifiants rend les slots dont le score personnel croit STRICTEMENT dans CHAQUE tranche.
-func d4Qualifiants(iv d4Intervalle, perso map[int][]objectiveevents.ScorePoint) []int {
+func d4Qualifiants(iv d4Intervalle, perso map[int][]objectives.ScorePoint) []int {
 	var out []int
 	for slot := range perso {
 		if d4CroitPartout(perso[slot], iv) {
@@ -278,7 +278,7 @@ func d4Qualifiants(iv d4Intervalle, perso map[int][]objectiveevents.ScorePoint) 
 //
 // LA DERNIERE TRANCHE INCOMPLETE EST FUSIONNEE A LA PRECEDENTE : une tranche d'une seconde
 // n'attend qu'un increment, et l'exiger ferait echouer sur du bruit d'echantillonnage.
-func d4CroitPartout(pts []objectiveevents.ScorePoint, iv d4Intervalle) bool {
+func d4CroitPartout(pts []objectives.ScorePoint, iv d4Intervalle) bool {
 	n := iv.dureeMS() / d4TrancheMS
 	if n == 0 {
 		return false
@@ -299,7 +299,7 @@ func d4CroitPartout(pts []objectiveevents.ScorePoint, iv d4Intervalle) bool {
 // d4Delta rend la croissance du score sur un intervalle : dernier point dedans moins dernier
 // point AVANT le debut. Sans le point d'avant, un intervalle sans emission initiale rendrait une
 // croissance imaginaire egale a la valeur absolue du score.
-func d4Delta(pts []objectiveevents.ScorePoint, iv d4Intervalle) int64 {
+func d4Delta(pts []objectives.ScorePoint, iv d4Intervalle) int64 {
 	var avant, dedans int64
 	vuAvant, vuDedans := false, false
 	for _, p := range pts {
@@ -324,7 +324,7 @@ func d4Delta(pts []objectiveevents.ScorePoint, iv d4Intervalle) int64 {
 // LE TIRAGE EST DETERMINISTE (graine fixe) : un temoin qui bouge d'une execution a l'autre ne se
 // confronte a rien.
 func d4Temoin(trous, libres []d4Intervalle,
-	perso map[int][]objectiveevents.ScorePoint) (unSeul, joueur, essais int) {
+	perso map[int][]objectives.ScorePoint) (unSeul, joueur, essais int) {
 	if len(libres) == 0 {
 		return 0, 0, 0
 	}

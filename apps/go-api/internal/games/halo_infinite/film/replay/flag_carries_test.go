@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // flag_carries_test.go — LES REGLES DU DRAPEAU, sans film.
@@ -29,9 +29,9 @@ func flagTestTrack(slot uint32, xuid string, from, to int, x, y float32) Track {
 }
 
 // flagTestSignals rend des signaux qui tiennent la regle de mode (le verdict n'est pas le sujet
-// de ces tests-ci : il a les siens, dans `objectiveevents/flagfilm_test.go`).
-func flagTestSignals() objectiveevents.FlagFilmSignals {
-	return objectiveevents.FlagFilmSignals{Bursts: 3, Captures: 3, Steals: 2, Grabs: 4}
+// de ces tests-ci : il a les siens, dans `objectives/flagfilm_test.go`).
+func flagTestSignals() objectives.FlagFilmSignals {
+	return objectives.FlagFilmSignals{Bursts: 3, Captures: 3, Steals: 2, Grabs: 4}
 }
 
 // flagComptePar rend le nombre de portages dont le fermoir EN VIGUEUR est celui-ci. C'est la

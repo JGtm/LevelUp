@@ -211,7 +211,7 @@ const (
 	// CE QUE « NETTE » VEUT DIRE : le compteur officiel `flag_grabs` compte chaque ramassage,
 	// donc aussi le JONGLAGE — un porteur qui lance le drapeau devant lui pour courir plus
 	// vite et le reprend une seconde plus tard gagne une prise à chaque aller-retour. Les
-	// prises nettes replient ces allers-retours (`objectiveevents.NetFlagGrabs`) ; la mesure
+	// prises nettes replient ces allers-retours (`objectives.NetFlagGrabs`) ; la mesure
 	// du 2026-09-13 chiffre l'écart à 40 % du compteur officiel.
 	//
 	// POURQUOI UNE CLÉ NEUVE PLUTÔT QUE `match.objective.stats`. Même raison que

@@ -1,18 +1,18 @@
 package fallback
 
 // registre_objectifs.go — les replis du lecteur d'ACTIONS D'OBJECTIF
-// (`internal/analysis/objectiveevents/`) et du CONSTRUCTEUR d'artefacts
+// (`internal/games/halo_infinite/film/facts/objectives/`) et du CONSTRUCTEUR d'artefacts
 // (`internal/replaybuild/`).
 //
 // NOTE D'ARCHITECTURE : `internal/analysis/` n'importe JAMAIS `internal/games/{slug}/`
 // (décision D9 du plan, garde-rail `archlint/no_title_package_in_analysis_test.go`, dont
-// l'allowlist doit se VIDER au pas 5 de M2). Les replis d'`objectiveevents` sont donc DÉCLARÉS
+// l'allowlist doit se VIDER au pas 5 de M2). Les replis d'`objectives` sont donc DÉCLARÉS
 // ici et leur compteur ne peut pas être câblé depuis ce paquet : il viendra par inversion de
 // dépendance (un port défini côté `analysis/`, l'implémentation injectée par l'appelant) au lot
 // qui convertit le fait. C'est écrit entrée par entrée dans CibleComptage.
 
 const (
-	pkgObjectiveEvents = "internal/analysis/objectiveevents/"
+	pkgObjectiveEvents = "internal/games/halo_infinite/film/facts/objectives/"
 	pkgReplaybuild     = "internal/replaybuild/"
 	// comptageStatborg : la cible de cablage commune aux replis du lecteur statborg — un port
 	// defini cote `analysis/`, dont l'appelant fournit l'implementation (cf. note d'architecture).

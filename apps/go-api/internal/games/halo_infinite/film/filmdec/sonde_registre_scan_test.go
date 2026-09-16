@@ -390,7 +390,7 @@ func probeMarche(pay []byte, rec WorldObjectRecord, a *probeArch, total int) boo
 func probeHookCourant() func(uint32, ProbeComponent, []uint64) { return observateur.ProbeHook }
 
 // probeHorloge convertit l'horodatage d'un paquet en horloge du MATCH, quand le manifeste du
-// film est disponible. Meme formule que `objectiveevents.StatRecords` — la seule qui aligne les
+// film est disponible. Meme formule que `objectives.StatRecords` — la seule qui aligne les
 // emissions sur les evenements d'objectif :
 //
 //	tMS = debut du chunk (manifeste) + (us du paquet − us du premier paquet delta du chunk)/1000

@@ -5,7 +5,7 @@ package replay
 //
 // # Ce qu'il imprime, et pourquoi ces trois colonnes
 //
-// Il rend, par manche REELLE d'un film, ce dont `objectiveevents.ResolveRoundBounds` a besoin
+// Il rend, par manche REELLE d'un film, ce dont `objectives.ResolveRoundBounds` a besoin
 // et rien d'autre :
 //
 //	SLOTS + DEBUTS   le premier instant ou CHAQUE slot declare la manche. C'est la table qui a
@@ -25,7 +25,7 @@ package replay
 //	manche PARASITE  declaree par UN seul slot (`a4083bd2` manche 1 : 1 enregistrement) ou par
 //	                 AUCUN (`fb1a1a72` et `72b0a25e` manche 1, admises par la tolerance de trou
 //	                 de `RealRounds`) ;
-//	ecartes          fourchette nominale : `objectiveevents.OutliersNominalMax` (seule ecriture) ;
+//	ecartes          fourchette nominale : `objectives.OutliersNominalMax` (seule ecriture) ;
 //	                 ZERO sur les films dont l'etiquetage ne suit pas l'horloge (aucune borne posable).
 //
 // REGIME : garde `MANCHES_CACHE` (racine du cache film) + `MANCHES_FILMS` (liste de prefixes de
@@ -42,7 +42,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
@@ -62,15 +62,15 @@ func TestManchesBornesReleve(t *testing.T) {
 			t.Logf("FILM %s ABSENT (%v) — saute", film, err)
 			continue
 		}
-		recs, tronque := objectiveevents.StatRecordsCtx(context.Background(), src, film)
+		recs, tronque := objectives.StatRecordsCtx(context.Background(), src, film)
 		mbReleveFilm(t, film, recs, tronque)
 	}
 }
 
 // mbReleveFilm imprime le releve d'un film.
-func mbReleveFilm(t *testing.T, film string, recs []objectiveevents.StatRecord, tronque bool) {
+func mbReleveFilm(t *testing.T, film string, recs []objectives.StatRecord, tronque bool) {
 	t.Helper()
-	real := objectiveevents.RealRounds(recs)
+	real := objectives.RealRounds(recs)
 	rounds := make([]int, 0, len(real))
 	for r, ok := range real {
 		if ok {
@@ -78,7 +78,7 @@ func mbReleveFilm(t *testing.T, film string, recs []objectiveevents.StatRecord, 
 		}
 	}
 	sort.Ints(rounds)
-	bornes := objectiveevents.ResolveRoundBounds(recs)
+	bornes := objectives.ResolveRoundBounds(recs)
 	t.Logf("FILM %s : %d enregistrements, tronque=%v, manches reelles=%v, ECARTES=%d, EXEMPTES=%d",
 		film, len(recs), tronque, rounds, bornes.Outliers(recs), len(bornes.KeptSegments()))
 	for _, s := range bornes.KeptSegments() {
@@ -94,7 +94,7 @@ func mbReleveFilm(t *testing.T, film string, recs []objectiveevents.StatRecord, 
 
 // mbColonnes rend, pour une manche : le premier instant de chaque slot (trie) et tous les
 // instants de la manche (tries).
-func mbColonnes(recs []objectiveevents.StatRecord, round int) (debuts, instants []int) {
+func mbColonnes(recs []objectives.StatRecord, round int) (debuts, instants []int) {
 	premier := map[int]int{}
 	for _, r := range recs {
 		if r.Round != round {

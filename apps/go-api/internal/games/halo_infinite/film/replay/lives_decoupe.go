@@ -45,7 +45,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
@@ -232,14 +232,14 @@ func mortsParJoueur(deaths []Death, offsetMS int64) map[uint64][]int64 {
 
 // manchesEnFilmUS pose les frontieres de manche sur l'horloge du FILM, en microsecondes.
 //
-// LES BORNES VIENNENT D'`objectiveevents`, QUI LES MESURE DEJA (`ResolveRoundBounds`) : les
+// LES BORNES VIENNENT D'`objectives`, QUI LES MESURE DEJA (`ResolveRoundBounds`) : les
 // re-mesurer ici ferait deux mesures de la meme grandeur, qui divergeraient.
-func manchesEnFilmUS(records []objectiveevents.StatRecord, offsetMS int64) []int64 {
+func manchesEnFilmUS(records []objectives.StatRecord, offsetMS int64) []int64 {
 	if len(records) == 0 {
 		return nil
 	}
 	var out []int64
-	for _, ms := range objectiveevents.ResolveRoundBounds(records).Starts() {
+	for _, ms := range objectives.ResolveRoundBounds(records).Starts() {
 		out = append(out, (int64(ms)+offsetMS)*1000)
 	}
 	return out

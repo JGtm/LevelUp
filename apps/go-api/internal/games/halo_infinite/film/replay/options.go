@@ -15,7 +15,7 @@ package replay
 // cinq arguments du depot — c'est ecrit champ par champ, a chaque fois que le cas se pose.
 
 import (
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
@@ -237,7 +237,7 @@ type Options struct {
 	// où le slot d'entité est réattribué) — comme la couronne VIP et le drapeau vivant, à cette
 	// nuance près qu'eux se résolvent dans ce paquet parce qu'ils lisent `opt.Deaths` déjà scanné
 	// ici. Absente = rejeu sans calque d'objectifs.
-	Objectives []objectiveevents.IdentifiedEvent
+	Objectives []objectives.IdentifiedEvent
 	// ObjectivesUnnamed est le nombre d'actions d'objectif que le film NOMMAIT et que le pont
 	// d'identité de l'appelant n'a PAS su attribuer — celles qui n'arrivent donc jamais dans
 	// `Objectives`.
@@ -251,7 +251,7 @@ type Options struct {
 	ObjectivesUnnamed int
 	// ObjectivesRefused est le nombre d'actions que le film NOMMAIT et que la GARDE D'EFFECTIF
 	// de l'appelant refuse de publier : l'effectif du match dépasse les huit slots d'entité de
-	// joueur du statborg (`objectiveevents.RosterFitsStatborg`). Le calque est alors VIDE, et
+	// joueur du statborg (`objectives.RosterFitsStatborg`). Le calque est alors VIDE, et
 	// ce compte est son dénominateur — il devient `coverage.objectives.refusedByRoster`.
 	ObjectivesRefused int
 	// StatborgIdentity est le pont slot d'entité statborg -> xuid PAR MANCHE, résolu par
@@ -261,7 +261,7 @@ type Options struct {
 	// (`identity.statborgSlots`) ; il ne le recalcule pas — un second déroulage complet du
 	// compteur de morts par cuisson est précisément ce que la mémorisation de `pontParManche`
 	// existe pour éviter. Résolveur vide = aucun lien de statborg publié.
-	StatborgIdentity objectiveevents.RoundIdentity
+	StatborgIdentity objectives.RoundIdentity
 	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
 	Score *ScoreInput
 	// Flag : de quoi construire LA VIE DES DRAPEAUX de CTF (entrée de DONNÉES comme Score ; cf.

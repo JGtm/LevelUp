@@ -26,7 +26,7 @@ package filmsource
 //	                 passe sous zero.
 //	[BitsTronques]   s ARRETE a la fin du tampon SANS bourrer : la valeur rendue ne porte que
 //	                 les bits reellement lus, cales a droite. C est la convention du lecteur du
-//	                 PIED DE FILM (`objectiveevents`), et elle n est pas interchangeable avec
+//	                 PIED DE FILM (`objectives`), et elle n est pas interchangeable avec
 //	                 [BitsAt] — sur les derniers bits d un bloc, les deux rendent des valeurs
 //	                 DIFFERENTES.
 

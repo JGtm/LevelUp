@@ -27,7 +27,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -103,9 +103,9 @@ func attOracleCTF(t *testing.T, root, id string) attOracle {
 		t.Fatalf("%s : film absent du cache", id)
 	}
 	b := objBridgeOf(t, root, id)
-	identity := objectiveevents.SlotIdentityFromDeaths(src, objDeathInstants(b.Deaths))
-	evs := objectiveevents.IdentifyNamedEvents(
-		objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), identity)
+	identity := objectives.SlotIdentityFromDeaths(src, objDeathInstants(b.Deaths))
+	evs := objectives.IdentifyNamedEvents(
+		objectives.NamedEvents(src, objectives.ObjectiveTypeFlag), identity)
 	wins, _ := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
 	inv := map[uint64]map[uint32]bool{}
 	for slot, x := range b.SlotXUID {

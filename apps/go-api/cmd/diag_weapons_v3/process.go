@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -21,7 +21,7 @@ func processMatch(ctx context.Context, c *conn, cfg runConfig, m matchRef) error
 		return fmt.Errorf("absent de match_registry")
 	}
 	// LE FILM EST CHARGE UNE FOIS (chunks decompresses, paquets decoupes) : c'est ce que prend
-	// desormais `objectiveevents` (item 1.5 de PLAN_CUISSON_PERF).
+	// desormais `objectives` (item 1.5 de PLAN_CUISSON_PERF).
 	film, ok, err := filmcache.LoadFilm(cfg.cacheDir, m.short)
 	if err != nil {
 		return err
@@ -34,7 +34,7 @@ func processMatch(ctx context.Context, c *conn, cfg runConfig, m matchRef) error
 		return err
 	}
 
-	events, ctl := objectiveevents.Extract(m.full, reg.variant, film, objectiveevents.MapRoster(roster))
+	events, ctl := objectives.Extract(m.full, reg.variant, film, objectives.MapRoster(roster))
 	printSummary(m, reg, events)
 	// L'EQUIPE VIENT DU PIED DU FILM (lot 1.7.3) : le roster ci-dessus n'en est que le controle,
 	// et ces trois comptes sont ce que la feuille de match en dit. Les taire ferait passer un
@@ -151,7 +151,7 @@ func teamSplit(events []domain.ObjectiveEvent) (t0, t1, unknown int) {
 func countCaptures(events []domain.ObjectiveEvent) int {
 	n := 0
 	for _, e := range events {
-		if e.EventType == objectiveevents.EventTypeCapture {
+		if e.EventType == objectives.EventTypeCapture {
 			n++
 		}
 	}

@@ -77,7 +77,7 @@ package filmdec
 // # L'HORLOGE
 //
 // Les lectures sont datees sur l'horloge du MANIFESTE (`start_ms` par chunk, `filmcache`), la
-// MEME base que `objectiveevents.StatRecords` — donc que l'oracle. Les delais absolus sont alors
+// MEME base que `objectives.StatRecords` — donc que l'oracle. Les delais absolus sont alors
 // lisibles, et publies. LE VERDICT RESTE CELUI DE LA DISPERSION : un decalage constant de
 // conversion ne la ferait pas bouger.
 //

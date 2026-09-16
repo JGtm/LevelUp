@@ -15,7 +15,7 @@ package replay
 //	apparition     un record de CREATION de bipede pour ce slot y tombe : le film ecrit qu'un
 //	               corps NEUF commence ici (cf. identity_registry_creation.go, mesure du lot E2 :
 //	               aucun record de creation ne tombe DANS l'intervalle d'une vie, il la precede)
-//	fin de manche  une frontiere de manche (`objectiveevents.RoundBounds.Starts`) y tombe
+//	fin de manche  une frontiere de manche (`objectives.RoundBounds.Starts`) y tombe
 //	fin de film    le trou atteint le dernier instant replique du film
 //	RIEN           le film ne dit RIEN — la vie est coupee A TORT, et c'est la population que
 //	               le lot 1.9.13 convertit en LACUNE d'une seule et meme vie

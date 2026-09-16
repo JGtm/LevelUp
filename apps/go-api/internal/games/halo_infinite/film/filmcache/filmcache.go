@@ -11,7 +11,7 @@
 // # Pourquoi ce paquet existe
 //
 // La meme source disque etait ecrite une fois dans `cmd/diag_weapons_v3` et une fois dans
-// les tests d'`objectiveevents`. Un troisieme outil en avait besoin : a la troisieme
+// les tests d'`objectives`. Un troisieme outil en avait besoin : a la troisieme
 // copie, la regle du depot impose de centraliser ET de poser un garde-rail. Une disposition
 // de cache dupliquee derive en silence — le jour ou le nom des chunks change, deux lecteurs
 // sur trois cessent de trouver le film et se contentent de rendre « rien a decoder ».
@@ -19,15 +19,15 @@
 // LE GARDE-RAIL EST DEVENU UNE ASSERTION DE COMPILATION (2026-09-02, item 1.5 de
 // PLAN_CUISSON_PERF) : `var _ filmsource.Source = (*Source)(nil)` plus bas. L'ancien
 // `filmcache_guard_test.go` cherchait par expression reguliere les implementations d'une
-// interface `objectiveevents.FilmSource` qui n'existe plus, et son allowlist etait justifiee
-// par un cycle d'import (`filmcache` -> `objectiveevents`) que ce lot a supprime : les trois
+// interface `objectives.FilmSource` qui n'existe plus, et son allowlist etait justifiee
+// par un cycle d'import (`filmcache` -> `objectives`) que ce lot a supprime : les trois
 // entrees etaient donc caduques d'un coup. La forme d'une source de film est desormais celle
 // du paquet FEUILLE `analysis/filmsource`, que tout le monde peut importer sans cycle.
 //
 // # Ce paquet ne decode rien
 //
 // Il rend des octets, un index et — par [LoadFilm] — un film DEJA CHARGE (`filmsource`, une
-// decompression par film). Le decodage, lui, vit dans `analysis/objectiveevents` et
+// decompression par film). Le decodage, lui, vit dans `film/facts/objectives` et
 // `games/halo_infinite/film/filmdec`.
 package filmcache
 

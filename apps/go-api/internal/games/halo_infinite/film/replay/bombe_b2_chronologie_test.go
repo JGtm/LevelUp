@@ -72,7 +72,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
@@ -177,23 +177,23 @@ func b2Detonateurs(t *testing.T, cache, id string) map[int]string {
 	if err != nil || !ok {
 		t.Fatalf("%s : film absent du cache : %v", id, err)
 	}
-	recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, id)
-	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb)
+	recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
+	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
 	dir := filepath.Join(cache, "film_chunks", id)
 	deaths, err := ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
-	di := make([]objectiveevents.DeathInstant, 0, len(deaths))
+	di := make([]objectives.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
-		di = append(di, objectiveevents.DeathInstant{
+		di = append(di, objectives.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
 	}
-	identity := objectiveevents.ResolveRoundIdentity(recs, di)
+	identity := objectives.ResolveRoundIdentity(recs, di)
 	out := map[int]string{}
-	ident, _ := objectiveevents.IdentifyNamedEventsByRound(named, identity)
+	ident, _ := objectives.IdentifyNamedEventsByRound(named, identity)
 	for _, e := range ident {
-		if e.Stat == objectiveevents.StatBombDetonations {
+		if e.Stat == objectives.StatBombDetonations {
 			out[e.TimeMS] = e.XUID
 		}
 	}
@@ -395,9 +395,9 @@ func TestBombeB2TemoinOddball(t *testing.T) {
 	}
 	carries, couverts, accords := 0, 0, 0
 	tueurs, sansIdentite := 0, 0
-	evenements, _ := objectiveevents.Extract(b1Temoin, "Oddball:Arena", src, objectiveevents.MapRoster{})
+	evenements, _ := objectives.Extract(b1Temoin, "Oddball:Arena", src, objectives.MapRoster{})
 	for _, ev := range evenements {
-		if ev.EventType != objectiveevents.EventTypeSkullCarry || ev.TimeMS == nil || len(ev.Players) == 0 {
+		if ev.EventType != objectives.EventTypeSkullCarry || ev.TimeMS == nil || len(ev.Players) == 0 {
 			continue
 		}
 		carries++
