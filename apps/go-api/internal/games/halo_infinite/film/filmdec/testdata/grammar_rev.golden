@@ -337,4 +337,15 @@
 #               profil. AUCUN bit n est lu autrement (D4 : M2 = revision a zero difference).
 #               `KillSourceDecoderRev` ne bouge PAS (choix explicite : lignes produites identiques,
 #               deux lignes de source changees) ; `SchemaVersion` reste 59.
-grammar-2026-09-15.18	67c4437f71a3002405f56661a45db65aab771ed5fa90b0936fd5a873e1cf2cae
+#   2026-09-16  grammar-2026-09-15.19  lot 2.7 volet grammaire (`.18` -> `.19`) : SCISSION PAR
+#               DEPLACEMENT PUR des cinq fichiers de `filmdec` de plus de 500 lignes. Le switch
+#               de 815 lignes de `consumeByName` devient une CHAINE de sept maillons relies par
+#               leur `default` (cf. `dispatch_object.go`) ; deux blocs sortent en fonction du
+#               moteur qu ils sont deja (`consumePredictedAbsolute` = FUN_140f7ea14,
+#               `skipCalibratedPosition` = le banc de calibration). AUCUN OCTET N EST LU
+#               AUTREMENT : le controle colle au compte rendu montre zero ligne perdue, les
+#               seules lignes neuves etant les en-tetes, les signatures et les six `return` de
+#               chainage. Faux positif d empreinte, meme nature que `.13` et `.14`.
+#               `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` non plus : le corpus gate
+#               rend schema 59 -> 59 et 0 gain / 0 perte / 0 changement sur les 14 temoins.
+grammar-2026-09-15.19	caa007f928cec9bcce58bda4dfe084869a12c351365b35436a4305fde92c670e
