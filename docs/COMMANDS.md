@@ -67,14 +67,27 @@ Xbox SSO is synced like any other. The pool must simply hold at least one health
 
 The career rank is NOT part of the sync at all: it is served by the separate live career flow
 (`service.CareerLiveService`), and `career_synced` is always `false` in the sync summary, token
-or no token. The pooled client still keeps `PolicyPinnedPlayer` on `GetCareerRank` and returns
-`sync.ErrNoPinnedToken` for a player without their own token; no sync step calls it today. The
-Spartan customization cron is the one caller that needs the player s own token, and keeps its
-`HasPlayer` guard for that reason.
+or no token. `/careerranks` itself is PUBLIC: measured on 2026-09-16 with three different lender
+tokens on a third-party xuid, it returns the same rank and XP as the owner own call, so the
+pooled client acquires it in `PolicyAnyPublic` like everything else (D4, sync robustness plan).
+The Spartan customization cron is the one caller that needs the player s own token (403 for a
+third party, measured), and keeps its `HasPlayer` guard for that reason.
 
 The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-films`,
 `backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the
 player being processed, not a token lender.
+
+**Operational note.** A sync CLI pass holds the shared database in WRITE mode and applies the
+shared migrations of the title before its first insert: run it with the **server stopped**
+(single writer, ADR 0013). It also refreshes the refresh tokens of the WHOLE fleet through the
+pool — never rotate the fleet tokens while a server is running, or that server keeps the old
+tokens in memory and ends up in `reauth_required` on N accounts.
+
+`--token-pool-size N` caps the number of HEALTHY slots, not the number of sources tried: the
+scan is walked in full, in alphabetical gamertag order, and a source whose refresh token fails
+to resolve does not consume the quota. `0` takes every healthy token of the fleet. Before
+2026-09-16 the cap truncated the scan BEFORE resolving, so `--token-pool-size 1` could pick a
+single revoked account and fail with "aucun slot cree".
 
 ### Backfill (mostly local, Go-only; CSR/weapons need Halo tokens)
 

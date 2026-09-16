@@ -1,3 +1,80 @@
+## [2026-09-16] Robustesse du sync par le pool : verdict fidèle, rejeu du 429, plafond de slots sains, migrations CLI, rang de carrière public — Complété (branche `wt/sync-robustesse`, non poussée)
+
+**Six défauts d'une même passe réelle** (premier `sync-full` servi par le pool, Nuzzles,
+6 slots x 3 req/s). Plan exécuté : `.ai/PLAN_ROBUSTESSE_SYNC_2026-09-16.md`, six étapes, six
+commits sur `wt/sync-robustesse`.
+
+**C-A — un `429` terminait la passe, qui se déclarait réussie.** Le pool appliquait bien son
+cooldown AIMD au slot fautif, mais `paginateAndPersistHistory` faisait `AddWarning` + `break`
+sur la première erreur d'historique, et `SyncResult.Status()` ne regarde que `Errors` : sortie
+`sync full OK … status=success inserted=0`. **Décision D1** : rejeu borné — 429 rejoué
+IMMÉDIATEMENT (le pool sert un autre slot), `pool.ErrNoHealthySlot` (sentinelle neuve, traversant
+l'enveloppe `%w` de `doPublic`) attend `min(cooldown, 60 s)` puis rejoue, 3 tentatives ; 503 PAS
+rejoué ici (déjà retenté par `doGet` — un second étage doublerait la charge d'une API dégradée).
+Une page perdue compte désormais en `Errors` : `Status()` rend `partial_success`/`failure` et la
+CLI sort en code non nul (`reportSyncResult`, source unique du verdict, testée sans base ni
+réseau). **Écart de dernière minute imposé par un ratchet** : le fichier neuf posé à la racine de
+`internal/sync/` a fait rougir `TestSyncRootPackageFrozen` (K3c / ADR 0027, 80 → 81 fichiers) ;
+le rejeu vit donc dans le sous-paquet `internal/sync/historyretry` et `engine.go` reste à 897
+lignes. Le ratchet a fait exactement son travail, comme le 2026-08-14.
+
+**C-B — `--token-pool-size N` comptait les sources, pas les slots sains.** `NewPool` tronquait
+`sources[:MaxSize]` AVANT de résoudre : avec `1`, la première source du scan (Chocoboflor,
+révoquée) était la seule tentée → « aucun slot créé ». Le scan vient d'une map, donc l'ordre
+changeait à chaque exécution. **D2** : copie triée par gamertag, parcours complet, sortie quand
+le nombre de slots RÉSOLUS atteint le plafond.
+
+**C-D — le rang de carrière n'est pas privé : mesure contre prémisse.** `GET /careerranks`
+interrogé pour un xuid TIERS avec trois prêteurs (JGtm, DankerGlue, Trimbutton) rend 200 avec le
+MÊME rang et la MÊME XP que l'appel du propriétaire (JGtm `rank=202 xp=2555` vu par deux
+prêteurs ; Nuzzles `rank=272 xp=0`, 272 = rang maximal). `PolicyPinnedPlayer` reposait sur une
+prémisse fausse, déjà contredite par `career_live_target.go`. **D4** : `GetCareerRank` passe en
+`PolicyAnyPublic`, `ErrNoPinnedToken` et les champs `pinned*` disparaissent, six appelants de
+production retouchés — et le code mort qui en découlait (`newPooledClient` perdait l'usage de son
+paramètre `gamertag` et d'une boucle de résolution de xuid) est parti avec. L'épinglage ne
+subsiste que là où un endpoint l'exige vraiment : cron de personnalisation Spartan (403 mesuré
+pour un tiers) et live-sync Halo 5 — le grep du gate les montre seuls.
+
+**C-C / C-E — la CLI ne migrait pas, et se marchait sur les pieds.** `sync-full`/`sync-delta`
+n'appliquaient AUCUNE migration : l'élargissement `match_registry.team_{0,1}_score` est resté non
+appliqué pendant 83 min de sync et deux matchs à gros score ont été rejetés une seconde fois (un
+match rejeté du registre est perdu POUR TOUS). Les quatre runners appellent maintenant
+`applySharedMigrationsForTitle` (`RunForTitleDB`, jamais `RunForDB` qui force le slug par défaut)
+avant même de créer le pool. Le post-sync CLI ouvrait metadata en `ro:` puis en `rw:` dans le
+MÊME process (« different configuration » → seed de catalogue désactivé) : le run ouvre désormais
+en `OpenReadWriteShared` et le post-sync réutilise `e.metaDB` — deux de ses lecteurs ÉCRIVENT, la
+lecture seule n'a jamais été un besoin. Enfin, un profil sans fichier de tokens produisait un
+ERROR par passe côté auth ET un Debug côté sync : la sentinelle `ErrUserTokensNotFound` rend
+`("", nil)` sans ERROR, et le post-sync journalise UNE fois en Info.
+
+**Ce que le gate a attrapé, et qui valait le détour.** (1) Un test d'intégration existant,
+`TestE2E_SyncEngine_MockClientError_ProviderRecovers_integration`, exigeait `warnings ≥ 1` et un
+statut `success` sur un historique échoué — c'était le défaut C-A lui-même, écrit noir sur blanc
+dans la suite. Test RETOURNÉ (nom inchangé, donc baseline intacte), pas supprimé. (2) Le nouveau
+ratchet de fixtures `match_registry`, appliqué pour la première fois à tout le module, a mesuré
+45 divergences de type dans 25 fichiers — toutes sur les horodatages, `backfill_completed` et
+`player_count`, aucune sur les scores d'équipe. Hors périmètre : gelées dans une carte datée qui
+ne peut que RÉTRÉCIR (une entrée réalignée rougit aussi), découverte consignée en §10.
+
+**Résultats observés (codes de sortie vérifiés)** : `go build ./...` → 0 ; `go vet ./...` → 0 ;
+`gofmt -l ./cmd ./internal` → vide ; `go test ./... -count=1 -timeout 30m` → **181 paquets `ok`**,
+un seul échec, le flake Windows préexistant `internal/mapcatalog` (verrou `Accès refusé` sous
+concurrence), rejoué seul `-count=3` → vert ; `go test -tags=integration -p 1 ./... -timeout 30m`
+→ 0, **183 paquets `ok`** (1 339 s). Neuf mutations vérifiées à la main (429 non rejoué, AddError
+redevenu AddWarning, verdict CLI toujours nil, troncature du pool sans tri, GetCareerRank
+re-épinglé, sentinelle de token remise dans la branche AU3, DDL SMALLINT dans une fixture non
+marquée, entrée gelée périmée, câblage titleseams retiré d'un binaire transitif) : chacune fait
+rougir son test avant restauration. **Baseline de tests** : exactement 2 paires retirées
+(`TestPooledHaloClientGetCareerRank_PinnedToken` / `_NoPinnedToken`, renommés en
+`_AcquiertEnPublic`), en-tête de `scripts/check_test_baseline.sh` daté.
+
+**Conclusion / prochaine étape** : branche `wt/sync-robustesse` prête, 7 commits, rien de poussé,
+rien de fusionné. Restent au pilote la revue adversariale (deux relecteurs : pool/moteur ;
+post-sync/migrations/hygiène) et la CI. Aucune base sous `data/` n'a été ouverte, aucun serveur
+démarré, aucun `time.Sleep` réel ajouté à la suite. Note d'exploitation ajoutée à COMMANDS.md
+FR + EN : la CLI de sync tient la base partagée en écriture ET applique les migrations — serveur
+arrêté, et ne pas faire tourner les jetons du parc pendant qu'un serveur tourne.
+
 ## [2026-09-16] Sync d'un profil sans token propre : pool partout, seams title-owned câblés par toutes les CLI, dérive de schéma `match_registry` — Complété (branche `wt/sync-pool`, non poussée)
 
 **Trois défauts distincts, tous rencontrés sur la même passe** (premier sync d'un profil suivi
@@ -110445,3 +110522,39 @@ la `feat/v75` locale (b4de1fc16, SchemaVersion 54) est 33 commits devant / 192 d
 `origin/feat/v75` (da258bf76, jalon M1, SchemaVersion 60) ; à `local`, une simple ouverture de
 match dans l'UI aurait recuit un artefact au schéma 54 par-dessus le parc au schéma 60. Aucune
 cuisson entre 17:51 et 17:58. Fusion d'`origin/feat/v75` dans le local = décision utilisateur.
+
+## [2026-09-16] Robustesse du sync par le pool — revue adversariale deux rondes, correctifs, mesure /careerranks — Complété
+
+**Statut** : Complété (revue + correctifs). Branche `wt/sync-robustesse`, base `feat/v75` @
+ab7fc5695, 10 commits, ni poussée ni fusionnée. Aucune base sous `data/` ouverte.
+
+**Décision technique principale** : (1) mesure avant décision — `/careerranks` lu pour un xuid
+tiers avec trois prêteurs distincts (JGtm, DankerGlue, Trimbutton) rend rang ET XP identiques à
+l'appel du propriétaire (JGtm 202/2 555 ; Nuzzles 272/0, 272 = rang maximal) : l'endpoint est
+public, `PolicyPinnedPlayer` retiré de `GetCareerRank` avec son épinglage (D4). (2) Plan écrit
+puis relu par un contexte frais (8 P1 / 7 P2 intégrés avant exécution : rejeu du 429 qui ratait
+le cas « pool entier en pause », sommeils réels dans les tests, variante 4.2 qui aurait éteint
+quatre étapes en silence, gate G3 inatteignable, ratchet des fixtures contredisant le test de
+l'élargissement). (3) Exécution par un agent (8 commits), puis revue adversariale : ronde 1 →
+1 P1 (`loadMedalExploitMap` ouvrait metadata en `ro:` alors que le moteur le tient désormais en
+`rw:` → `medal_exploit = 0` en silence ; corrigé par `OpenReadForQuery`, test sous handle `rw:`
+prouvé par mutation) + 2 P2 (attente non annulable → seam `Sleep(ctx, d)` ; commentaire) ;
+ronde 2 → 0 P0/P1, 1 P2 (capteur de journal filtré sur Warn → tous niveaux, mutation exacte
+rejouée). Règle de baseline appliquée : 2 paires retirées (`TestPooledHaloClientGetCareerRank_
+{PinnedToken,NoPinnedToken}`), vérifiées par `comm`.
+
+**Résultats observés** : un `sync-full` interrompu par une erreur d'historique n'est plus
+`success` (statut `partial_success`/`failure`, code de sortie ≠ 0, `Errors` exposé au
+monitoring serveur sans basculer de job) ; rejeu borné d'une page sur 429 / pool sans slot sain ;
+`--token-pool-size` plafonne les slots sains ; `sync-full`/`sync-delta` appliquent les migrations
+shared ; un seul handle metadata par run ; plus d'ERROR pour un profil sans token propre aux
+succès Xbox Live ; ratchets DDL (carte gelée de 45 divergences dans 30 fichiers) et titleseams
+(transitif) durcis. Gates : build, vet, gofmt → 0 ; `go test ./...` → 0 ; intégration `-p 1`
+→ voir le commit de clôture. Un test d'intégration qui figeait le défaut (warnings ≥ 1 +
+success sur historique échoué) a été retourné, pas supprimé.
+
+**Conclusion / prochaine étape** : décision de fusion dans `feat/v75` et push par l'utilisateur.
+Découvertes consignées au plan §10 : le serveur ne bascule jamais un job de sync en échec
+(décision produit) ; `PolicyPinnedPlayer` du live-sync Halo 5 non instruit ; trois sites
+`citations_*` ouvrent metadata en `ro:` hors run (préexistant) ; plafond de hot-add du pool
+compte tous les slots (sans appelant à `MaxSize > 0`).

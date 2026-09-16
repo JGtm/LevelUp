@@ -89,7 +89,7 @@ func passeDesFilmsEnLigne(ctx context.Context, cfg *config.AppConfig, db *sql.DB
 	// authentification vivante pour dire qu elle n a rien a faire.
 	// Endpoint PUBLIC (chunks de film) : le pool le sert avec n'importe quel token du parc
 	// (PolicyAnyPublic, D1 du plan 2026-09-16) — plus besoin du token du gamertag nomme.
-	client, closePool, err := newPooledClient(ctx, cfg, o.gamertag, o.rps)
+	client, closePool, err := newPooledClient(ctx, cfg, o.rps)
 	if err != nil {
 		return fmt.Errorf("passe en ligne (%s): %w", o.gamertag, err)
 	}

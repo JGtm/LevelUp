@@ -53583,14 +53583,6 @@
 {"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetMatchStats","Output":"=== RUN   TestPooledHaloClientGetMatchStats\n"}
 {"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetMatchStats","Output":"--- PASS: TestPooledHaloClientGetMatchStats (0.00s)\n"}
 {"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetMatchStats","Elapsed":0}
-{"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_PinnedToken"}
-{"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_PinnedToken","Output":"=== RUN   TestPooledHaloClientGetCareerRank_PinnedToken\n"}
-{"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_PinnedToken","Output":"--- PASS: TestPooledHaloClientGetCareerRank_PinnedToken (0.00s)\n"}
-{"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_PinnedToken","Elapsed":0}
-{"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_NoPinnedToken"}
-{"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_NoPinnedToken","Output":"=== RUN   TestPooledHaloClientGetCareerRank_NoPinnedToken\n"}
-{"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_NoPinnedToken","Output":"--- PASS: TestPooledHaloClientGetCareerRank_NoPinnedToken (0.00s)\n"}
-{"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_NoPinnedToken","Elapsed":0}
 {"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_PoolError"}
 {"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_PoolError","Output":"=== RUN   TestPooledHaloClientGetCareerRank_PoolError\n"}
 {"Time":"2026-06-26T23:53:40.5912605+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestPooledHaloClientGetCareerRank_PoolError","Output":"--- PASS: TestPooledHaloClientGetCareerRank_PoolError (0.00s)\n"}

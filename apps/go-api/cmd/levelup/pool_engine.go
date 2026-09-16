@@ -2,12 +2,13 @@ package main
 
 // pool_engine.go — construction du pool de tokens et du moteur de sync poolé pour la CLI.
 //
-// DOCTRINE (D1, plan 2026-09-16). Un profil suivi se synchronise par le POOL, qu'il ait ou non
-// son propre refresh token : l'historique, les stats, les films et les CSR sont des endpoints
-// PUBLICS que n'importe quel token du parc sert (PolicyAnyPublic). Seuls les endpoints soumis
-// à la vie privée exigent le token du joueur (PolicyPinnedPlayer) : la personnalisation Spartan
-// (sautée par son cron) et GetCareerRank (ErrNoPinnedToken — qu aucune étape du sync n appelle :
-// le rang de carrière est servi par service.CareerLiveService, hors sync).
+// DOCTRINE (D1, plan 2026-09-16 ; amendée par D4, plan robustesse du 2026-09-16 au soir).
+// Un profil suivi se synchronise par le POOL, qu'il ait ou non son propre refresh token :
+// l'historique, les stats, les films, les CSR — et le rang de carrière, mesuré public le
+// 2026-09-16 — sont des endpoints PUBLICS que n'importe quel token du parc sert
+// (PolicyAnyPublic). Aucune commande de cette CLI n'épingle plus un joueur ; l'épinglage ne
+// subsiste que là où un endpoint l'exige vraiment : le cron de personnalisation Spartan
+// (`/customization/appearance`, 403 pour un tiers) et le live-sync Halo 5.
 //
 // Avant le 2026-09-16, la CLI mono-joueur exigeait le refresh token du joueur visé
 // (haloTokensForPlayer) et la CLI `--all` sautait en bloc tout joueur absent du pool
@@ -17,7 +18,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
@@ -93,7 +93,7 @@ func newPooledEngine(
 	if cache != nil {
 		engine.SetLocalFilmCache(cache)
 	}
-	pooledClient := go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID, 0) // 0 = defaultPooledRPS
+	pooledClient := go_sync.NewPooledHaloClient(pool, 0) // 0 = defaultPooledRPS
 	if cache != nil {
 		pooledClient.WithLocalFilmCache(cache)
 	}
@@ -133,14 +133,13 @@ func newPooledEngineForPlayer(
 // d'un moteur de sync complet (archivage de films, passe kill-source en ligne, rejeu des
 // événements de surbrillance). Rend aussi le fermeur du pool, à `defer`.
 //
-// `gamertag` n'est plus un « prêteur de token » : il ne sert qu'à épingler les endpoints
-// privacy-gated (aucun n'est appelé par ces commandes) et à nommer le joueur dans les
-// journaux. Les chunks de film, les stats et l'historique sont publics (PolicyAnyPublic),
-// donc servis par n'importe quel token du parc — un gamertag sans token propre passe.
+// Le client ne prend AUCUN joueur : tous ses endpoints sont publics et servis par
+// n'importe quel token du parc (PolicyAnyPublic) — chunks de film, stats, historique, et
+// depuis la mesure du 2026-09-16 le rang de carrière lui aussi (D4, plan robustesse). Le
+// joueur traité est nommé par la commande appelante, pas par le client.
 func newPooledClient(
 	ctx context.Context,
 	cfg *config.AppConfig,
-	gamertag string,
 	rps int,
 ) (*go_sync.PooledHaloClient, func(), error) {
 	players, err := cfg.LoadPlayers()
@@ -152,12 +151,5 @@ func newPooledClient(
 	if err != nil {
 		return nil, nil, err
 	}
-	xuid := ""
-	for _, p := range players {
-		if strings.EqualFold(p.Gamertag, gamertag) || strings.EqualFold(p.PlayerSlug, gamertag) {
-			xuid = p.XUID
-			break
-		}
-	}
-	return go_sync.NewPooledHaloClient(pool, gamertag, xuid, rps), pool.Close, nil
+	return go_sync.NewPooledHaloClient(pool, rps), pool.Close, nil
 }

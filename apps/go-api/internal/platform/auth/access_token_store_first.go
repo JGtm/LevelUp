@@ -21,6 +21,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 )
@@ -51,6 +52,13 @@ func ResolveMSAccessTokenStoreFirst(
 
 	user, err := store.Load(xuid)
 	if err != nil {
+		// Un joueur SANS fichier de tokens est un cas NORMAL, pas une panne : un profil
+		// suivi qui ne s'est jamais connecté par le SSO n'a pas de token propre, et il se
+		// synchronise quand même par le pool. Un ERROR par passe pour ce cas noyait le
+		// journal (C-E, 2026-09-16) ; l'appelant journalise le skip une fois, à son niveau.
+		if errors.Is(err, ErrUserTokensNotFound) {
+			return "", nil
+		}
 		// AU3 (revue 2026-07) : ne jamais AVALER l'échec de lecture du store — un
 		// store illisible/corrompu doit être visible, sinon le skip est opaque.
 		slog.ErrorContext(ctx, "auth: échec lecture store canonique — aucun access_token",

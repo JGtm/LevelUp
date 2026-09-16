@@ -2176,7 +2176,7 @@ func startWatcherDaemon(
 	// PlayerWatcher.startPoller logge un Warn-once sans paniquer.
 	var matchFetcher watcher.MatchFetcher
 	if haloPool != nil {
-		pooled := syncpkg.NewPooledHaloClient(haloPool, "", "", 5)
+		pooled := syncpkg.NewPooledHaloClient(haloPool, 5)
 		matchFetcher = watcher.NewHaloMatchFetcher(pooled)
 		slog.Info("watcher: MatchFetcher branché sur le pool auto-sync")
 	} else {
