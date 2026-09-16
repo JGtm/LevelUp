@@ -36,6 +36,18 @@ func AddColumnIfMissing(db *sql.DB, table, column, colType string) error {
 	return addColumnIfMissing(db, table, column, colType)
 }
 
+// ColumnDataType rend le type déclaré d'une colonne (vide si table/colonne absente).
+func ColumnDataType(db *sql.DB, table, column string) (string, error) {
+	return columnDataType(db, table, column)
+}
+
+// AlterColumnTypeIfNeeded porte une colonne au type voulu si son type courant en diffère
+// (idempotent). Rend true quand un ALTER a été exécuté. Exposé pour les migrations
+// title-owned qui réparent une dérive de schéma (cf. widen_match_registry_team_scores).
+func AlterColumnTypeIfNeeded(db *sql.DB, table, column, wanted string) (bool, error) {
+	return alterColumnTypeIfNeeded(db, table, column, wanted)
+}
+
 // CreateIndexSafe exécute un CREATE INDEX en tolérant l'existence préalable.
 func CreateIndexSafe(db *sql.DB, ddl string) error { return createIndexSafe(db, ddl) }
 

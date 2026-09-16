@@ -275,10 +275,16 @@ var canonicalOrder = []string{
 	// append-only (id PK + written_at + vue _latest), donc aucun step de conversion à sa
 	// suite. Title-owned Halo Infinite (steps_shared_kill_openings.go) : seul son NOM
 	// figure ici, comme pour tout step title-owned (order_audit_test.go l'exige des deux côtés).
-	"shared_create_kill_openings",                     // shared
-	"shared_create_match_commendations",               // shared (commendations natives par match, ref inter-titres, AXE B)
-	"shared_match_commendations_add_progress",         // shared (total à vie absolu au match — totaux commendations)
-	"add_player_count_to_match_registry",              // shared (roster API attendu — oracle d'intégrité, fix #10)
+	"shared_create_kill_openings",             // shared
+	"shared_create_match_commendations",       // shared (commendations natives par match, ref inter-titres, AXE B)
+	"shared_match_commendations_add_progress", // shared (total à vie absolu au match — totaux commendations)
+	"add_player_count_to_match_registry",      // shared (roster API attendu — oracle d'intégrité, fix #10)
+	// Répare une DÉRIVE DE SCHÉMA, pas une évolution : la DDL disait INTEGER, les bases
+	// réelles portaient SMALLINT, et tout match à plus de 32 767 points d'équipe (Baptême
+	// du feu) était rejeté à l'INSERT — perdu pour TOUS les joueurs. Position : après tout
+	// ce qui touche match_registry en amont, avant les tables qui la lisent. Title-owned
+	// Halo Infinite (2026-09-16), seul son NOM figure ici.
+	"widen_match_registry_team_scores",                // shared (SMALLINT -> INTEGER sur team_{0,1}_score)
 	"add_weapon_accuracy",                             // shared (précision par arme/joueur/match, dérivée des events WeaponDrop H5)
 	"add_events_empty_to_match_registry",              // shared (statut distinct « chunk récupéré, 0 event légitime » — fin boucle parse_anomaly)
 	"create_season_catalog",                           // shared (C2 : noms+traductions des saisons CSR Waypoint, source scrape)
