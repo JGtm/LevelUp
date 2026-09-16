@@ -40,7 +40,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
@@ -103,7 +104,7 @@ func TestVersionEvenements(t *testing.T) {
 }
 
 // hverMemeDecoupage dit si `decoupage` est celui que la production applique a un film de
-// version `version`. La regle est celle d'`analysis.ParseHighlightEvents` : gamertag decale
+// version `version`. La regle est celle d'`grammar.ParseHighlightEvents` : gamertag decale
 // sur 39 et 40, en tete partout ailleurs (y compris version inconnue).
 func hverMemeDecoupage(decoupage, version int) bool {
 	decale := version == 39 || version == 40
@@ -119,7 +120,7 @@ func hverMesure(f *film, decoupage int) hverStats {
 	var best hverStats
 	best.chunk = -1
 	for ch := 0; ch < f.src.NumChunks(); ch++ {
-		evs, err := analysis.ParseHighlightEvents(f.src.Chunk(ch), decoupage)
+		evs, err := grammar.ParseHighlightEvents(f.src.Chunk(ch), decoupage)
 		if err != nil || len(evs) == 0 {
 			continue
 		}
@@ -133,21 +134,21 @@ func hverMesure(f *film, decoupage int) hverStats {
 }
 
 // hverCompte ventile une liste d'evenements par nature et rend les cardinaux distincts.
-func hverCompte(evs []analysis.HighlightEvent) hverStats {
+func hverCompte(evs []highlightevent.HighlightEvent) hverStats {
 	var s hverStats
 	s.events = len(evs)
 	hints, medals := map[int]bool{}, map[int]bool{}
 	xu, gt := map[uint64]bool{}, map[string]bool{}
 	for _, e := range evs {
 		switch e.EventType {
-		case analysis.EventTypeKill:
+		case highlightevent.EventTypeKill:
 			s.kills++
-		case analysis.EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			s.morts++
-		case analysis.EventTypeMedal:
+		case highlightevent.EventTypeMedal:
 			s.medailles++
 			medals[e.MedalType] = true
-		case analysis.EventTypeMode:
+		case highlightevent.EventTypeMode:
 			s.modes++
 		}
 		hints[e.TypeHint] = true
@@ -242,9 +243,9 @@ func hverRosterDuFilm(f *film) []uint64 {
 	if f.majorVersion == 39 || f.majorVersion == 40 {
 		decoupage = versionGamertagDecaleTest
 	}
-	var best []analysis.HighlightEvent
+	var best []highlightevent.HighlightEvent
 	for ch := 0; ch < f.src.NumChunks(); ch++ {
-		evs, err := analysis.ParseHighlightEvents(f.src.Chunk(ch), decoupage)
+		evs, err := grammar.ParseHighlightEvents(f.src.Chunk(ch), decoupage)
 		if err != nil || len(evs) <= len(best) {
 			continue
 		}

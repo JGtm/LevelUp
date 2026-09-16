@@ -54,7 +54,7 @@ type WeaponShot struct {
 	// FilmIndex est l'index de tireur INTERNE AU FILM, SUR SA LARGEUR REELLE (5 bits, ShooterIndex5) :
 	// l'identite reste le xuid, resolu par l'appelant (Lot 3) via resolvePlayerIndices, LUI AUSSI
 	// keye sur ce 5 bits. C'est le DENOMINATEUR (shared.match_weapon_shots) qui impose la largeur :
-	// il key sur analysis.PlayerIndex5 (5 bits). Un 4 bits (ancien decodeFireEvent.FilmIndex) SATURE
+	// il key sur weaponscan.FireEvent.FilmIndex5 (5 bits). Un 4 bits (ancien decodeFireEvent.FilmIndex) SATURE
 	// a 15 au-dela de 16 joueurs (BTB) et pointerait un AUTRE joueur que le denominateur -> precision
 	// fausse. Num et denom keyent desormais IDENTIQUE (Lot 3, reserve levee).
 	FilmIndex int

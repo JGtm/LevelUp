@@ -71,8 +71,8 @@ match et le KPI « arme favorite » de l'accueil.
 |-------|-------------|
 | Orchestration pipeline (par match / tous participants / batch) | `internal/sync/backfill_weapons.go` |
 | Écriture DB (INSERT append-only) | `internal/sync/writes.go` — `InsertWeaponKills`, `MarkWeaponKillsDone` |
-| Scan des chunks (fire events, timeline arme tenue) | `internal/analysis/weapon_scanner.go`, `internal/analysis/weapon_parser.go` |
-| Map des Weapon IDs, timings, fusions, sentinels | `internal/analysis/weapon_data.go` |
+| Scan des chunks (fire events, timeline arme tenue) | `internal/games/halo_infinite/film/grammar/weaponscan/scanner.go`, `internal/analysis/weapon_parser.go` |
+| Map des Weapon IDs, timings, fusions, sentinels | `internal/games/weapons/filmshell/catalogue.go` |
 | Corrélation kill -> arme | `internal/analysis/weapon_correlation.go` |
 | Réconciliation API | `internal/analysis/weapon_reconciliation.go` |
 | Struct résultat d'attribution | `internal/analysis/kill_attribution.go` |
@@ -149,7 +149,7 @@ de `match_participants` (cf. [Lecture](#lecture--v_weapon_kills-et-labels)).
 
 Constantes dans `internal/analysis/weapon_correlation.go`
 (`confidenceHigh/Medium/Low/None`). `ComputeConfidence(weaponID, deltaMS)`
-utilise la fenêtre de timing de l'arme (`GetTiming`, depuis `weapon_data.go`) :
+utilise la fenêtre de timing de l'arme (`GetTiming`, depuis `filmshell/catalogue.go`) :
 
 | Valeur | Signification |
 |--------|---------------|
@@ -168,7 +168,7 @@ autoritatifs de l'API.
 ## Structure d'un Weapon ID (WID)
 
 Un WID, ce sont les 8 octets d'arme filmshell lus comme un **`uint64`
-big-endian** (`hexToUint64` dans `internal/analysis/weapon_data.go`). DuckDB le
+big-endian** (`hexToUint64` dans `internal/games/weapons/filmshell/catalogue.go`). DuckDB le
 stocke en `UBIGINT` — certains WID réels (ex. `f408190f42c9679f`) ont le bit 63
 activé et dépassent `2^63`, raison pour laquelle l'écriture caste une chaîne
 décimale en `UBIGINT` plutôt que de binder un `uint64` Go (le driver duckdb-go
@@ -179,7 +179,7 @@ Structure des 8 octets :
 - **Octets 1-4 (32 bits de poids fort) : l'identité de l'arme** — unique par
   type/variante.
 - **Octets 5-8 (32 bits de poids faible) : un suffixe famille/variante.** Le
-  suffixe commun `42c9679f` (`CommonWeaponSuffix` dans `weapon_data.go`) couvre
+  suffixe commun `42c9679f` (`CommonWeaponSuffix` dans `filmshell/catalogue.go`) couvre
   la plupart des armes standard ; les familles spéciales partagent leurs octets
   de poids fort mais diffèrent par le suffixe :
 
@@ -193,7 +193,7 @@ Les variantes cosmétiques sont repliées sur leur arme canonique via
 `1` (melee), `2` (véhicule) sont réservés et exclus de l'agrégation des armes.
 
 La liste autoritative des WID (hex confirmé -> nom) vit dans `weaponEntries` au
-sein de `weapon_data.go`, et est dupliquée en notes de recherche dans
+sein de `filmshell/catalogue.go`, et est dupliquée en notes de recherche dans
 `.ai/REFERENCE_WEAPON_IDS.md`.
 
 ---
@@ -331,7 +331,7 @@ Quand une nouvelle arme arrive, ou qu'un WID non résolu est positivement
 identifié :
 
 1. Ajouter l'entrée dans `weaponEntries` dans
-   `apps/go-api/internal/analysis/weapon_data.go` (hex -> nom). La placer dans
+   `apps/go-api/internal/games/weapons/filmshell/catalogue.go` (hex -> nom). La placer dans
    le bon groupe (standard / famille Energy Sword / famille Gravity Hammer /
    grenade). Si la classe d'arme est nouvelle, ajouter une entrée
    `WeaponTimingByName`.

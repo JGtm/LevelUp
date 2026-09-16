@@ -225,7 +225,7 @@ func (p passeMedailles) traiterMatch(
 // `TestEventsDuFilmSuitLaVersionDeclaree` lit le gamertag d un bloc de version 40 et rougit des
 // que la version cesse d etre transmise.
 func eventsDuFilm(film FilmHighlight) ([]highlightevent.HighlightEvent, error) {
-	return analysis.ParseHighlightEvents(film.Chunk, film.MajorVersion)
+	return grammar.ParseHighlightEvents(film.Chunk, film.MajorVersion)
 }
 
 // correction est ce qu on ecrit sur une ligne : le type_hint TOUJOURS (quantite

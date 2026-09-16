@@ -126,7 +126,7 @@ s effondre, et les portes « indice < nPlay » du decodeur de source de degat re
 quarts des morts (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
 
 Verifier que loadFilm pose majorVersion/versionLue et que loadKillFeed passe f.majorVersion
-a analysis.ParseHighlightEvents.`,
+a grammar.ParseHighlightEvents.`,
 			miniBobineV40Dir, miniBobineV40Film, f.majorVersion,
 			len(kf.names), gamertags, miniBobineV40Plancher)
 	}

@@ -36,7 +36,7 @@ package grammar
 //
 // # CE QU'IL CORRIGE
 //
-// `analysis.ParseHighlightEvents(chunk, version)` decoupe le gamertag du bloc d'event a l'octet 0
+// `grammar.ParseHighlightEvents(chunk, version)` decoupe le gamertag du bloc d'event a l'octet 0
 // (`version <= 38 || version >= 41`) ou a l'octet 12 (versions 39-40). Trois appelants passaient
 // 0 en dur faute de manifeste : sur les films 39-40 — 211 des 1 351 du cache, mars a novembre
 // 2025 — ils lisaient du rembourrage, le roster humain s'effondrait a 2 noms distincts pour 24 a
@@ -55,7 +55,7 @@ import "levelup/go-api/internal/games/halo_infinite/film/source"
 
 // FilmMajorVersionUnknown : la valeur que porte une version non lue. C'est aussi celle que les
 // appelants passaient en dur avant le 2026-09-12, et le decoupage « gamertag en tete » que
-// `analysis.ParseHighlightEvents` lui applique reste le comportement historique.
+// `grammar.ParseHighlightEvents` lui applique reste le comportement historique.
 const FilmMajorVersionUnknown = 0
 
 // filmMajorVersionOffset : l'octet ou commence l'u32 de version, en tete du registre inflate.

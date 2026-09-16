@@ -98,7 +98,7 @@ func FilmChunksForMatch(
 // paquets, une fois pour toutes (`source`, lot 1 de PLAN_CUISSON_PERF).
 //
 // Elle existe separement parce qu une passe de collecte lit le film PLUSIEURS FOIS — les morts
-// (`killsource`), les tirs (`analysis.ScanFireEventsB5`) et les positions (quatre balayages) — et
+// (`killsource`), les tirs (`weaponscan.ScanFireEventsB5`) et les positions (quatre balayages) — et
 // que telecharger plusieurs fois serait payer plusieurs fois le seul cout reseau du chantier.
 // L appelant recupere les chunks TYPES une fois, en derive CE film pour les morts et les
 // positions, et selectionne lui-meme la REPLICATION_DATA pour les tirs (qui scanne des octets

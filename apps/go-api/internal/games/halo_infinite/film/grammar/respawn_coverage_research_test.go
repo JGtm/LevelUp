@@ -37,7 +37,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 const (
@@ -172,7 +172,7 @@ func respawnGroupObs(obs []respawnObs) []respawnEpisodeObs {
 // respawnDeathsAndOffset — COPIE D'INSTRUMENT (canon : replay/deaths_source.go +
 // replay/lives.go) : les morts du dernier chunk, les fins de vie des positions, et le
 // plateau qui cale les deux horloges.
-func respawnDeathsAndOffset(t *testing.T, dir string) (deaths []analysis.HighlightEvent, off int64, matched int) {
+func respawnDeathsAndOffset(t *testing.T, dir string) (deaths []highlightevent.HighlightEvent, off int64, matched int) {
 	t.Helper()
 	n := CountFilmChunks(dir)
 	if n == 0 {
@@ -182,12 +182,12 @@ func respawnDeathsAndOffset(t *testing.T, dir string) (deaths []analysis.Highlig
 	if err != nil {
 		t.Fatalf("chunk highlight : %v", err)
 	}
-	evs, err := analysis.ParseHighlightEvents(raw, 0)
+	evs, err := ParseHighlightEvents(raw, 0)
 	if err != nil {
 		t.Fatalf("parse highlight : %v", err)
 	}
 	for _, e := range evs {
-		if e.EventType == analysis.EventTypeDeath {
+		if e.EventType == highlightevent.EventTypeDeath {
 			deaths = append(deaths, e)
 		}
 	}
@@ -224,7 +224,7 @@ func respawnLifeEndsMS(pos []BipedPosition) []int64 {
 }
 
 // respawnBestOffset : le plateau du calage (copie d'instrument de bestDeathOffset).
-func respawnBestOffset(ends []int64, deaths []analysis.HighlightEvent) (int64, int) {
+func respawnBestOffset(ends []int64, deaths []highlightevent.HighlightEvent) (int64, int) {
 	if len(ends) == 0 || len(deaths) == 0 {
 		return 0, 0
 	}
@@ -250,7 +250,7 @@ func respawnBestOffset(ends []int64, deaths []analysis.HighlightEvent) (int64, i
 	return plateau[len(plateau)/2], bestN
 }
 
-func respawnCountMatches(ends []int64, deaths []analysis.HighlightEvent, off int64) int {
+func respawnCountMatches(ends []int64, deaths []highlightevent.HighlightEvent, off int64) int {
 	used := make([]bool, len(ends))
 	n := 0
 	for _, d := range deaths {
@@ -278,7 +278,7 @@ func respawnCountMatches(ends []int64, deaths []analysis.HighlightEvent, off int
 
 // respawnJoinReport apparie chaque épisode cohérent à l'unique mort de sa fenêtre, et
 // publie les dénominateurs : morts couvertes, contestations, orphelins, partage 8/10 s.
-func respawnJoinReport(t *testing.T, episodes []respawnEpisodeObs, deaths []analysis.HighlightEvent, off int64) {
+func respawnJoinReport(t *testing.T, episodes []respawnEpisodeObs, deaths []highlightevent.HighlightEvent, off int64) {
 	t.Helper()
 	matched, contested, orphan, incoherent := 0, 0, 0, 0
 	coveredDeaths := map[int]bool{}

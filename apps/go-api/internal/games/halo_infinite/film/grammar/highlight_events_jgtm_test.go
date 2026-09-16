@@ -3,7 +3,7 @@
 //
 // Le fixture est gitignored — si absent localement, ces tests se skip
 // automatiquement via testfixtures.JGtmFullMatchAvailable().
-package analysis
+package grammar
 
 import (
 	"testing"

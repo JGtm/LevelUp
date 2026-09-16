@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
@@ -151,17 +151,17 @@ func TestBTB2025KillFeedNoms(t *testing.T) {
 }
 
 // meilleurHighlight : le chunk qui produit le plus de kills, sous la version demandee.
-func meilleurHighlight(f *film, ver int) ([]analysis.HighlightEvent, int) {
-	var best []analysis.HighlightEvent
+func meilleurHighlight(f *film, ver int) ([]highlightevent.HighlightEvent, int) {
+	var best []highlightevent.HighlightEvent
 	bestN := 0
 	for ch := 0; ch < f.src.NumChunks(); ch++ {
-		evs, err := analysis.ParseHighlightEvents(f.src.Chunk(ch), ver)
+		evs, err := grammar.ParseHighlightEvents(f.src.Chunk(ch), ver)
 		if err != nil {
 			continue
 		}
 		nk := 0
 		for _, e := range evs {
-			if e.EventType == analysis.EventTypeKill {
+			if e.EventType == highlightevent.EventTypeKill {
 				nk++
 			}
 		}
@@ -173,7 +173,7 @@ func meilleurHighlight(f *film, ver int) ([]analysis.HighlightEvent, int) {
 }
 
 // statsNoms : XUID distincts, gamertags distincts non vides, events sans gamertag.
-func statsNoms(evs []analysis.HighlightEvent) (xuids, tags, vides int) {
+func statsNoms(evs []highlightevent.HighlightEvent) (xuids, tags, vides int) {
 	sx, st := map[uint64]bool{}, map[string]bool{}
 	for _, e := range evs {
 		sx[e.XUID] = true
@@ -295,11 +295,11 @@ func decoupageMesure(dir string) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	evs, err := analysis.ParseHighlightEvents(brut, versionGamertagEnTeteTest)
+	evs, err := grammar.ParseHighlightEvents(brut, versionGamertagEnTeteTest)
 	if err != nil || len(evs) == 0 {
 		return 0, false
 	}
-	alt, err := analysis.ParseHighlightEvents(brut, versionGamertagDecaleTest)
+	alt, err := grammar.ParseHighlightEvents(brut, versionGamertagDecaleTest)
 	if err != nil {
 		return 0, false
 	}

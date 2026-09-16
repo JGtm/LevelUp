@@ -45,7 +45,26 @@ package source
 // depend aussi de la facon dont les octets sont atteints ». Ce rang pose la constante, son
 // golden a historique et son gate ; il ne change AUCUNE lecture, et aucun match deja decode
 // n est candidat a quoi que ce soit.
-const Rev = "source-2026-09-16"
+//
+// ENTREE `source-2026-09-16.2` (2026-09-16, lot 2.5.e) : DEUX ENTREES NEUVES A LA PORTE,
+// AUCUNE LECTURE CHANGEE.
+//
+// La descente de la grammaire restee dans `internal/analysis` (decision V15 (4)) a amene ici
+// deux conventions qui vivaient dans le lecteur des temps forts :
+//
+//	[U32BE]         le seul entier BIG-endian du film — l horodatage du bloc d evenement du
+//	                chunk des temps forts, que la forme d origine lisait en `uint:32`. Il
+//	                s ecrivait `binary.BigEndian.Uint32` dans `internal/analysis`.
+//	[ErrEnTeteZlib] la sentinelle qui separe les DEUX echecs de [Decompresser]. Le lecteur des
+//	                temps forts recoit son chunk clair du CDN et compresse du cache : il doit
+//	                traverser sur l en-tete et remonter l erreur sur la casse EN COURS de flux.
+//	                Sans sentinelle, ce choix serait un test de chaine de caracteres.
+//
+// [Decompresser] enveloppe desormais son erreur d en-tete dans cette sentinelle : le TEXTE de
+// l erreur change, la valeur rendue non. AUCUN OCTET N EST LU AUTREMENT — aucun appelant de
+// [Load], de [Paquets] ni des lecteurs de bits ne voit une valeur differente, et rien n est
+// candidat a un redecodage.
+const Rev = "source-2026-09-16.2"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/source_rev.golden` porte le couple (revision, empreinte) avec son historique, et

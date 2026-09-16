@@ -25,7 +25,6 @@ import (
 	"testing"
 	"unicode/utf16"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
@@ -114,7 +113,7 @@ func verifierCadreEgaleConstantes(t *testing.T) {
 }
 
 // TestProfilHighlightEgaleLeParseur : l implantation que le profil NOMME est celle que
-// `analysis.ParseHighlightEvents` APPLIQUE.
+// `grammar.ParseHighlightEvents` APPLIQUE.
 //
 // LA BRANCHE VIT DANS `analysis`, LE NOM DANS LE PROFIL : deux endroits, donc une divergence
 // possible. Ce test la ferme sans dedoubler la grammaire — il plante un gamertag a l offset que
@@ -124,7 +123,7 @@ func TestProfilHighlightEgaleLeParseur(t *testing.T) {
 		h := profile.HighlightDepuisMajeure(majeure, majeure != 0)
 		const tag = "TemoinDuProfil"
 		chunk := chunkTempsFortTemoin(tag, h.GamertagOffsetBytes)
-		evs, err := analysis.ParseHighlightEvents(chunk, majeure)
+		evs, err := ParseHighlightEvents(chunk, majeure)
 		if err != nil {
 			t.Fatalf("majeure %d : %v", majeure, err)
 		}

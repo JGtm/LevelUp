@@ -69,7 +69,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -215,13 +216,13 @@ func chunkHighlight(t *testing.T, src *source.Film) int {
 	for i := 0; i < src.NumChunks(); i++ {
 		// Le chunk arrive DECOMPRESSE (`source` l a inflate au chargement) ;
 		// `ParseHighlightEvents` accepte les deux formes depuis l incident du 2026-05-22.
-		evs, err := analysis.ParseHighlightEvents(src.Chunk(i), 0)
+		evs, err := grammar.ParseHighlightEvents(src.Chunk(i), 0)
 		if err != nil {
 			continue
 		}
 		n := 0
 		for _, e := range evs {
-			if e.EventType == analysis.EventTypeKill {
+			if e.EventType == highlightevent.EventTypeKill {
 				n++
 			}
 		}

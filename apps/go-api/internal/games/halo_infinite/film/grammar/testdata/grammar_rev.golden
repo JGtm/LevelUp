@@ -538,4 +538,16 @@
 #               des declarations, et parce que la racine `film/profile` du rang precedent y est
 #               desormais. AUCUN OCTET N EST LU AUTREMENT ; `SchemaVersion` reste 60, aucun match
 #               deja decode n est candidat au backlog.
-grammar-2026-09-15.35	4732afb0c45bbbdf4ea8855777c03aa5f27c2e58052dab0da65f34788f6e9d5e
+#   2026-09-16  grammar-2026-09-15.36  lot 2.5.e-a (`.35` -> `.36`) : LA GRAMMAIRE RESTEE DANS
+#               `internal/analysis` DESCEND ICI, SORTIE IDENTIQUE. Le lecteur des temps forts
+#               (`highlight_events.go`), les deux balayages d armes (`grammar/weaponscan`) et le
+#               decodeur de positions (`grammar/positions`) quittent le paquet title-agnostic ;
+#               leurs lectures d octets passent par la couche source (`Decompresser` +
+#               `ErrEnTeteZlib`, `OctetAuBit`, `BitAt`, `U16LE` / `U32LE` / `U32BE`), et le
+#               catalogue d armes part en `games/weapons/filmshell`, hors des racines hachees.
+#               `PlayerPosition` remonte en `domain/playerposition` et le pont transitoire du lot
+#               2.5.h est supprime. Deux changements de FORME sans changement de sortie :
+#               `PlayerIndex*` -> `FilmIndex*` (ratchet d identite) et l extraction de
+#               `decodeFireEventAt` (seuil de 80 lignes). AUCUN OCTET N EST LU AUTREMENT ;
+#               `SchemaVersion` reste 60, aucun match deja decode n est candidat au backlog.
+grammar-2026-09-15.36	261994896814789a7ed3c57163c3d43563ea67caa635c86a20e06fceba45cfc4

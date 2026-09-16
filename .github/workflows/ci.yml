@@ -195,7 +195,7 @@ jobs:
           cache-dependency-path: apps/go-api/go.sum
 
       - name: go vet (domain + analysis — sans CGo)
-        run: go vet ./internal/domain/... ./internal/analysis/... ./internal/games/halo_infinite/film/profile/... ./internal/games/halo_infinite/film/grammar/... ./internal/games/halo_infinite/film/facts/... ./internal/games/halo_infinite/film/replay/...
+        run: go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/profile/... ./internal/games/halo_infinite/film/grammar/... ./internal/games/halo_infinite/film/facts/... ./internal/games/halo_infinite/film/replay/...
         env:
           CGO_ENABLED: "0"
 
@@ -255,7 +255,7 @@ jobs:
       # de couverture) a la fusion du lot 1.9.1 bis, puis les instruments lourds sont passes
       # sous le tag `research` (etape ci-dessus) : le budget reste, il n'est plus la defense.
       - name: go test (unit, no CGo DB)
-        run: go test ./internal/domain/... ./internal/analysis/... ./internal/games/halo_infinite/film/profile/... ./internal/games/halo_infinite/film/grammar/... ./internal/games/halo_infinite/film/facts/... ./internal/games/halo_infinite/film/replay/... ./contracttest/... -timeout 600s -count=1
+        run: go test ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/profile/... ./internal/games/halo_infinite/film/grammar/... ./internal/games/halo_infinite/film/facts/... ./internal/games/halo_infinite/film/replay/... ./contracttest/... -timeout 600s -count=1
         env:
           CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"

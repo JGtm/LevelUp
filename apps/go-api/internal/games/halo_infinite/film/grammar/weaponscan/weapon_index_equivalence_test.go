@@ -1,11 +1,11 @@
-package analysis_test
+package weaponscan_test
 
 // weapon_index_equivalence_test.go — LA PREUVE que la CLE DE TIREUR du NUMERATEUR de precision
-// (film, filmdec) et celle du DENOMINATEUR (shared.match_weapon_shots, analysis) sont LE MEME
+// (film, grammar) et celle du DENOMINATEUR (shared.match_weapon_shots, weaponscan) sont LE MEME
 // CHAMP, au bit pres, sur les memes records de tir 0xD2.
 //
 // CONTEXTE DU BUG (Lot 3). La precision par arme = touches / tirs par joueur.
-//   - DENOMINATEUR (tirs)   : analysis.ScanFireEventsB5 -> FireEvent.PlayerIndex5 (event_start+31,
+//   - DENOMINATEUR (tirs)   : weaponscan.ScanFireEventsB5 -> FireEvent.FilmIndex5 (event_start+31,
 //                             5 bits). C'est l'indice qu'ecrit match_weapon_shots, et le pont
 //                             resolvePlayerIndices(indice->xuid) est keye dessus.
 //   - NUMERATEUR (touches)  : grammar.decodeFireEvent -> FilmIndex (bits 36..39, soit le champ
@@ -15,13 +15,13 @@ package analysis_test
 // Sous 17 joueurs (arene) les deux lectures RENDENT LA MEME VALEUR (le bit 35 est 0). Au-dela
 // (BTB, >16 joueurs), le 4 bits SATURE a 15 et fusionne deux tireurs -> num et denom pointent
 // des joueurs DIFFERENTS. Le correctif expose grammar.ShooterIndex5 (bits 35..39, R(5) sans >>1)
-// et key le numerateur dessus. Ce test MESURE que ShooterIndex5 == PlayerIndex5 record par record,
+// et key le numerateur dessus. Ce test MESURE que ShooterIndex5 == FilmIndex5 record par record,
 // sur arene ET BTB 4f77afc1 (le film ou >16 joueurs revele la saturation).
 //
-// LECTURE : marqueur universel d'analysis (11 bits) place le champ a event_start+31 ; l'ancre
-// paquet de filmdec place le champ a bit 35 du payload. Pour un record 0xD2 dont le marqueur
+// LECTURE : marqueur universel de weaponscan (11 bits) place le champ a event_start+31 ; l'ancre
+// paquet de grammar place le champ a bit 35 du payload. Pour un record 0xD2 dont le marqueur
 // s'aligne sur le bit 1 du payload (event_start = bit 4), event_start+31 == bit 35 : MEMES BITS.
-// On correle par position en octet (analysis.FireEvent.BytePos == filmdec paquet Start) et on
+// On correle par position en octet (weaponscan.FireEvent.BytePos == grammar paquet Start) et on
 // verifie l'egalite. Env PRECISION_CORPUS = repertoire de base des films (data/cache/film_chunks).
 
 import (
@@ -30,8 +30,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponscan"
 )
 
 // idxEqZeroTS : la mesure ne depend pas de l'horodatage (on correle par octet, pas par temps).
@@ -54,8 +54,8 @@ var idxEqCorpus = []idxEqFilm{
 // idxEqStats : l'accumulateur d'un film.
 type idxEqStats struct {
 	records     int // records 0xD2 longs decodes (numerateur)
-	matched     int // records correles a un event analysis (meme octet)
-	mismatch    int // records ou ShooterIndex5 != PlayerIndex5 (DOIT rester 0)
+	matched     int // records correles a un event weaponscan (meme octet)
+	mismatch    int // records ou ShooterIndex5 != FilmIndex5 (DOIT rester 0)
 	invariantKO int // records ou ShooterIndex5 & 0x0F != FilmIndex (DOIT rester 0)
 	ge16        int // records dont ShooterIndex5 >= 16 (revele la saturation 4 bits)
 	maxIdx5     int
@@ -85,7 +85,7 @@ func TestWeaponIndexNumDenomEquivalence(t *testing.T) {
 		logIdxEqFilm(t, f, st)
 
 		if st.mismatch != 0 {
-			t.Errorf("film %s : %d records ou ShooterIndex5 != PlayerIndex5 (num-cle != denom-cle)",
+			t.Errorf("film %s : %d records ou ShooterIndex5 != FilmIndex5 (num-cle != denom-cle)",
 				f.id, st.mismatch)
 		}
 		if st.invariantKO != 0 {
@@ -93,7 +93,7 @@ func TestWeaponIndexNumDenomEquivalence(t *testing.T) {
 				f.id, st.invariantKO)
 		}
 		if st.matched == 0 {
-			t.Errorf("film %s : aucun record correle analysis<->filmdec (correlation cassee)", f.id)
+			t.Errorf("film %s : aucun record correle weaponscan<->grammar (correlation cassee)", f.id)
 		}
 		if f.btb && st.ge16 == 0 {
 			t.Errorf("film BTB %s : aucun indice de tireur >= 16 — la saturation 4 bits ne serait "+
@@ -106,8 +106,8 @@ func TestWeaponIndexNumDenomEquivalence(t *testing.T) {
 	}
 }
 
-// measureFilmIndexEquivalence parcourt les chunks : lecture DENOMINATEUR (analysis.ScanFireEventsB5)
-// indexee par octet, puis lecture NUMERATEUR (filmdec, paquets 0xD2) correlee au meme octet.
+// measureFilmIndexEquivalence parcourt les chunks : lecture DENOMINATEUR (weaponscan.ScanFireEventsB5)
+// indexee par octet, puis lecture NUMERATEUR (grammar, paquets 0xD2) correlee au meme octet.
 func measureFilmIndexEquivalence(t *testing.T, dir string) *idxEqStats {
 	t.Helper()
 	st := newIdxEqStats()
@@ -117,9 +117,9 @@ func measureFilmIndexEquivalence(t *testing.T, dir string) *idxEqStats {
 		if err != nil {
 			continue // film partiel : chunk illisible ignore, comme les scanners de production
 		}
-		byByte := map[int]int{} // BytePos -> PlayerIndex5 (denominateur)
-		for _, ev := range analysis.ScanFireEventsB5(data, idxEqZeroTS) {
-			byByte[ev.BytePos] = ev.PlayerIndex5
+		byByte := map[int]int{} // BytePos -> FilmIndex5 (denominateur)
+		for _, ev := range weaponscan.ScanFireEventsB5(data, idxEqZeroTS) {
+			byByte[ev.BytePos] = ev.FilmIndex5
 		}
 		for _, pk := range grammar.WalkPackets(data) {
 			if pk.Type != grammar.PacketTypeDelta || pk.Size < 5 {

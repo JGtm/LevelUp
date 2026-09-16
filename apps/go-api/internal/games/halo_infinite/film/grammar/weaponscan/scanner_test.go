@@ -1,5 +1,5 @@
-// Package analysis — weapon_scanner_test.go : tests des fonctions de scan d'armes.
-package analysis
+// Package weaponscan — scanner_test.go : tests des fonctions de scan d'armes.
+package weaponscan
 
 import "testing"
 

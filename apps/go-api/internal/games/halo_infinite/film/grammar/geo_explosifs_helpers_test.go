@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // geoActiveBase : base bipede DETECTEE du film courant (ref dom1 -> slot absolu = base+idx).
@@ -83,7 +83,7 @@ func geoIsDirect(name string) bool {
 
 // geoWeaponName : nom d'arme par WeaponID (table statique) ou l'hexa.
 func geoWeaponName(wid uint64) string {
-	if nm, ok := analysis.WeaponIDToName[wid]; ok {
+	if nm, ok := filmshell.WeaponIDToName[wid]; ok {
 		return nm
 	}
 	return attribWeaponName(wid)

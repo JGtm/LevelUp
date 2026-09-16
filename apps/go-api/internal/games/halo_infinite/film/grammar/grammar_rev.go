@@ -92,4 +92,4 @@ package grammar
 // entree par rang, et rien qu une. Elle EST la documentation de cette constante — elle en a
 // seulement ete sortie le 2026-09-18 (lot 2.4.1) parce que ce fichier avait atteint le seuil
 // de 500 lignes et qu une chronique qui ne peut plus grandir cesse d etre tenue.
-const GrammarRev = "grammar-2026-09-15.35"
+const GrammarRev = "grammar-2026-09-15.36"

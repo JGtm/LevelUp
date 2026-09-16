@@ -96,7 +96,7 @@ func TestProfilSansCleRendUneErreurTypeeEtPoseQuandMeme(t *testing.T) {
 			p.Slots(), p.MPP())
 	}
 	// L implantation du gamertag TOMBE EN TETE, et la NOMME : c est le comportement historique
-	// que `analysis.ParseHighlightEvents` applique a la version 0, pas un silence.
+	// que `grammar.ParseHighlightEvents` applique a la version 0, pas un silence.
 	if h := p.Highlight(); h.Lue || h.Implantation != profile.ImplantationEnTete || h.GamertagOffsetBytes != 0 {
 		t.Errorf("version majeure non lue : implantation attendue %q a l octet 0, obtenu %+v",
 			profile.ImplantationEnTete, h)

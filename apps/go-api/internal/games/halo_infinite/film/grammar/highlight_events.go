@@ -1,4 +1,17 @@
-// Package analysis — highlight_event_parser.go : parsing binaire du chunk highlight events.
+// Package grammar — highlight_events.go : lecture binaire du chunk des temps forts.
+//
+// # D OU IL VIENT (lot 2.5.e, 2026-09-16, decision V15 (4))
+//
+// Ce lecteur vivait dans `internal/analysis/highlight_event_parser.go`, c est-a-dire dans le
+// paquet title-agnostic : de la grammaire de film posee la ou aucun octet de film n a sa place.
+// L ADR 0034 veut une seule porte aux octets et une seule maison pour la grammaire ; il descend
+// donc ici SANS QU AUCUN APPELANT NE CHANGE DE TYPE — le lot 2.5.h avait deja fait remonter
+// `HighlightEvent` en `domain/highlightevent`, ce qui etait son prerequis mesure (§4 D4).
+//
+// Ce qu il ne fait plus lui-meme : DECOMPRESSER et LIRE DES OCTETS. Le zlib passe par
+// [source.Decompresser], l octet a un offset de bit par [source.OctetAuBit], les entiers par
+// [source.U16LE] et [source.U32BE]. Il ne restait que ce fichier et son voisin `weaponscan` a
+// porter leur propre copie.
 //
 // Port Go de spnkr/film/highlight_events.py (acurtis166/SPNKr).
 // Le chunk highlight events (ChunkType=3) est le dernier chunk du manifest film Halo.
@@ -18,17 +31,15 @@
 //     bit près dans une fenêtre de 20_000 bits qui suit, lire les 60 octets
 //     d'event qui le précèdent (au bit près également).
 //  4. Décoder l'event selon la version du film.
-package analysis
+package grammar
 
 import (
-	"bytes"
-	"compress/zlib"
-	"encoding/binary"
+	"errors"
 	"fmt"
-	"io"
 	"unicode/utf16"
 
 	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // Constantes du parseur binaire film Halo.
@@ -94,23 +105,21 @@ func ParseHighlightEvents(data []byte, filmMajorVersion int) ([]highlightevent.H
 		return nil, nil
 	}
 
+	// [source.Decompresser] distingue les deux échecs par une sentinelle, et c'est exactement
+	// la distinction que ce lecteur faisait lui-même : un EN-TÊTE qui n'est pas du zlib veut
+	// dire « data est déjà en clair » et se traverse ; un flux zlib valide qui casse EN COURS
+	// est une erreur à remonter.
 	payload := data
-	if r, err := zlib.NewReader(bytes.NewReader(data)); err == nil {
-		// Path cache : data était zlib-compressé, on décompresse.
-		defer r.Close()
-		inflated, inflErr := io.ReadAll(r)
-		if inflErr != nil {
-			return nil, fmt.Errorf("ParseHighlightEvents decompress: %w", inflErr)
-		}
+	if inflated, err := source.Decompresser(data); err == nil {
 		payload = inflated
+	} else if !errors.Is(err, source.ErrEnTeteZlib) {
+		return nil, fmt.Errorf("ParseHighlightEvents decompress: %w", err)
 	}
-	// Sinon (err != nil sur zlib.NewReader = pas un header zlib) : data est
-	// déjà en clair (path fresh download post-fix 9cc4c2bb). Pas d'erreur.
 
-	return scanEvents(payload, filmMajorVersion), nil
+	return scanHighlightEvents(payload, filmMajorVersion), nil
 }
 
-// scanEvents identifie chaque XUID dans le flux binaire (au bit près) et
+// scanHighlightEvents identifie chaque XUID dans le flux binaire (au bit près) et
 // parse l'event associé. Retourne tous les events reconnus, ignore les non
 // reconnus.
 //
@@ -122,7 +131,7 @@ func ParseHighlightEvents(data []byte, filmMajorVersion int) ([]highlightevent.H
 //
 // `version` = 0 signifie « le film ne porte pas son registre » : le découpage historique
 // « gamertag en tête » s'applique, et l'appelant a consigné la dégradation.
-func scanEvents(data []byte, version int) []highlightevent.HighlightEvent {
+func scanHighlightEvents(data []byte, version int) []highlightevent.HighlightEvent {
 	totalBits := len(data) * 8
 	if totalBits < 80 {
 		return nil
@@ -136,14 +145,14 @@ func scanEvents(data []byte, version int) []highlightevent.HighlightEvent {
 	//   bits[markerStart-8 : markerStart] = 0x2d ou 0x25
 	//   bits[markerStart-72 : markerStart-8] = uint64 LE dans [minXUID..maxXUID]
 	for markerStart := 8; markerStart <= totalBits-8; markerStart++ {
-		if readByteAtBit(data, markerStart) != 0xc0 {
+		if source.OctetAuBit(data, markerStart) != 0xc0 {
 			continue
 		}
 		xuidEnd := markerStart - 8
 		if xuidEnd < 64 {
 			continue
 		}
-		prefix := readByteAtBit(data, xuidEnd)
+		prefix := source.OctetAuBit(data, xuidEnd)
 		if prefix != 0x2d && prefix != 0x25 {
 			continue
 		}
@@ -240,7 +249,7 @@ func decodeEventBytes(b []byte, xuid uint64, version int) (highlightevent.Highli
 
 	typeHint := int(b[47])
 	// time_ms est un uint32 big-endian (bitstring.Bits.unpack("uint:32") = big-endian).
-	timeMS := int(binary.BigEndian.Uint32(b[48:52]))
+	timeMS := int(source.U32BE(b, 48))
 	isMedal := b[55] == 1
 	medalType := int(b[59])
 
@@ -286,7 +295,7 @@ func decodeUTF16LE(b []byte) string {
 	}
 	u16 := make([]uint16, len(b)/2)
 	for i := range u16 {
-		u16[i] = binary.LittleEndian.Uint16(b[i*2 : i*2+2])
+		u16[i] = source.U16LE(b, i*2)
 	}
 	for i, c := range u16 {
 		if c == 0 {
@@ -298,27 +307,12 @@ func decodeUTF16LE(b []byte) string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bit-level reader — équivalent minimal de Python `bitstring.Bits`.
-// Les positions s'expriment en bits ; la lecture d'un octet à un bit-offset
-// arbitraire concatène les bits hauts de data[byteIdx] et les bits bas de
-// data[byteIdx+1] (convention MSB-first, identique à bitstring).
+// Lectures au bit — équivalent minimal de Python `bitstring.Bits`.
+// Les positions s'expriment en bits ; l'octet à un bit-offset arbitraire est
+// [source.OctetAuBit], qui porte EXACTEMENT la convention d'ici (MSB-first,
+// ZÉRO quand l'octet ne tient pas entièrement dans le tampon). Ce fichier en
+// portait sa propre copie jusqu'au lot 2.5.e.
 // ─────────────────────────────────────────────────────────────────────────────
-
-// readByteAtBit lit 8 bits consécutifs commençant à la position `bit` (MSB-first).
-// Retourne 0 si la position est hors limites.
-func readByteAtBit(data []byte, bit int) byte {
-	if bit < 0 || bit+8 > len(data)*8 {
-		return 0
-	}
-	byteIdx := bit / 8
-	off := uint(bit % 8)
-	if off == 0 {
-		return data[byteIdx]
-	}
-	hi := data[byteIdx] << off
-	lo := data[byteIdx+1] >> (8 - off)
-	return hi | lo
-}
 
 // readBytesAtBit lit n octets consécutifs à partir du bit-offset `bit`.
 // Retourne nil si la lecture déborde.
@@ -328,7 +322,7 @@ func readBytesAtBit(data []byte, bit, n int) []byte {
 	}
 	out := make([]byte, n)
 	for i := 0; i < n; i++ {
-		out[i] = readByteAtBit(data, bit+i*8)
+		out[i] = source.OctetAuBit(data, bit+i*8)
 	}
 	return out
 }
@@ -366,7 +360,7 @@ func findBitMarker(data []byte, startBit, endBit int, pattern []byte) int {
 	for bit := startBit; bit <= endBit-patBits; bit++ {
 		match := true
 		for i := 0; i < len(pattern); i++ {
-			if readByteAtBit(data, bit+i*8) != pattern[i] {
+			if source.OctetAuBit(data, bit+i*8) != pattern[i] {
 				match = false
 				break
 			}

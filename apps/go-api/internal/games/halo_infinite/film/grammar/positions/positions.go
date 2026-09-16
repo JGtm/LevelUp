@@ -15,11 +15,23 @@
 // (delta-compression, index non fixe). v1 = MATCH-LEVEL : toutes les positions
 // full-state, sans attribution xuid. Un team-split best-effort est tenté quand
 // un clustering spatial net en 2 groupes émerge ; sinon Team = -1.
+// DEPLACE LE 2026-09-16 (lot 2.5.e, decision V15 (4)) d `internal/analysis/positions` : ce
+// paquet LIT des bits de film — il portait sa propre copie de `bitAt` et son propre marcheur de
+// paquets de seize octets (§4 D1 (2.4) du plan) — donc il descend dans la couche `grammar`. Ses
+// lectures d octets passent desormais par la couche `source` : [source.BitAt] pour le bit,
+// [source.U16LE] et [source.U32LE] pour l en-tete de bloc. Son marcheur, lui, n est PAS fondu
+// dans [source.Paquets] : les deux grammaires d arret different (terminateur emis, taille nulle)
+// et les opposer est un changement de CONTENU, hors d un lot de descente — consigne au §4 du
+// plan. Le TYPE qu il rend,
+// `PlayerPosition`, est remonte en `domain/playerposition` le meme jour : ses lecteurs (ports,
+// service, DuckDB, corps HTTP) n ont rien a savoir d un titre.
 package positions
 
 import (
-	"encoding/binary"
 	"math"
+
+	"levelup/go-api/internal/domain/playerposition"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // combOffsetBits est le recul en bits depuis le début du comb jusqu'au premier
@@ -34,19 +46,6 @@ const deltaMagnitudeThreshold = 1.0
 // full-state où vivent les positions.
 const chunkTypeSnapshot = 2
 
-// TeamUnknown marque une position dont l'équipe n'a pas pu être inférée.
-const TeamUnknown = -1
-
-// PlayerPosition est une position full-state décodée d'une keyframe.
-//
-// Team vaut -1 (TeamUnknown) tant qu'aucun clustering spatial net ne permet de
-// l'attribuer ; 0 ou 1 sinon (best-effort, non garanti).
-type PlayerPosition struct {
-	TimeMS  int
-	X, Y, Z float32
-	Team    int
-}
-
 // ChunkInput est un chunk film déjà décompressé fourni au décodeur.
 //
 // Data doit être le contenu DÉCOMPRESSÉ du chunk (le décodeur en extrait le
@@ -60,8 +59,8 @@ type ChunkInput struct {
 // DecodeKeyframePositions décode toutes les positions joueurs full-state des
 // chunks TYPE_2 fournis. Les positions sont match-level (pas d'attribution
 // xuid) ; un team-split best-effort est tenté par chunk.
-func DecodeKeyframePositions(chunks []ChunkInput) []PlayerPosition {
-	var out []PlayerPosition
+func DecodeKeyframePositions(chunks []ChunkInput) []playerposition.PlayerPosition {
+	var out []playerposition.PlayerPosition
 	for _, c := range chunks {
 		if c.ChunkType != chunkTypeSnapshot {
 			continue
@@ -79,9 +78,9 @@ func DecodeKeyframePositions(chunks []ChunkInput) []PlayerPosition {
 
 // decodeChunkPositions extrait les positions full-state d'un payload TYPE_2.
 // Toutes les positions retournées ont Team = TeamUnknown (assignation déférée).
-func decodeChunkPositions(payload []byte, startMS int) []PlayerPosition {
+func decodeChunkPositions(payload []byte, startMS int) []playerposition.PlayerPosition {
 	combs := findCombs(payload)
-	out := make([]PlayerPosition, 0, len(combs))
+	out := make([]playerposition.PlayerPosition, 0, len(combs))
 	for _, cb := range combs {
 		o := cb - combOffsetBits
 		x := readFloat32LE(payload, o)
@@ -97,8 +96,8 @@ func decodeChunkPositions(payload []byte, startMS int) []PlayerPosition {
 		if isStructuralArtifact(x, y, z) {
 			continue // (0,2,0) ou (-2.1,0,0) — entité non-joueur récurrente
 		}
-		out = append(out, PlayerPosition{
-			TimeMS: startMS, X: x, Y: y, Z: z, Team: TeamUnknown,
+		out = append(out, playerposition.PlayerPosition{
+			TimeMS: startMS, X: x, Y: y, Z: z, Team: playerposition.TeamUnknown,
 		})
 	}
 	return out
@@ -124,8 +123,8 @@ func isStructuralArtifact(x, y, z float32) bool {
 func type2Payload(d []byte) []byte {
 	off := 0
 	for off+16 <= len(d) {
-		typ := int(binary.LittleEndian.Uint16(d[off:]))
-		size := int(binary.LittleEndian.Uint32(d[off+4:]))
+		typ := int(source.U16LE(d, off))
+		size := int(source.U32LE(d, off+4))
 		if size < 0 || off+16+size > len(d) {
 			break
 		}
@@ -162,12 +161,12 @@ func combAt(p []byte, bp int) bool {
 	for rep := 0; rep < 4; rep++ {
 		base := bp + rep*24
 		for i := 0; i < 8; i++ {
-			if bitAt(p, base+i) != 1 {
+			if source.BitAt(p, base+i) != 1 {
 				return false
 			}
 		}
 		for i := 8; i < 24; i++ {
-			if bitAt(p, base+i) != 0 {
+			if source.BitAt(p, base+i) != 0 {
 				return false
 			}
 		}
@@ -175,20 +174,12 @@ func combAt(p []byte, bp int) bool {
 	return true
 }
 
-// bitAt renvoie le bit (MSB-first) à l'index i, ou 0 hors borne.
-func bitAt(p []byte, i int) int {
-	if i < 0 || i>>3 >= len(p) {
-		return 0
-	}
-	return int((p[i>>3] >> uint(7-(i&7))) & 1)
-}
-
 // readFloat32LE lit 32 bits MSB-first à l'offset bit o, byteswap, puis
 // interprète en float32 (little-endian).
 func readFloat32LE(p []byte, o int) float32 {
 	var v uint32
 	for i := 0; i < 32; i++ {
-		v = (v << 1) | uint32(bitAt(p, o+i))
+		v = (v << 1) | uint32(source.BitAt(p, o+i))
 	}
 	sw := (v&0xff)<<24 | (v&0xff00)<<8 | (v&0xff0000)>>8 | (v&0xff000000)>>24
 	return math.Float32frombits(sw)

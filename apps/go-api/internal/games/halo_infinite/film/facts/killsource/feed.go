@@ -3,7 +3,7 @@ package killsource
 // feed.go — LA VERITE KILL-FEED : ce que le JEU affiche.
 //
 // Le chunk HIGHLIGHT (celui qui produit le plus d evenements `kill`) porte les kills et les
-// morts horodates, avec XUID et gamertag. Il est deja decode par `analysis.ParseHighlightEvents`
+// morts horodates, avec XUID et gamertag. Il est deja decode par `grammar.ParseHighlightEvents`
 // — il n y avait rien a craquer, et le parseur n a AUCUN correctif a recevoir.
 //
 // IL EST HUMAIN SEUL, ET C EST MESURE SANS AUCUNE ANCRE : une enumeration exhaustive des
@@ -26,7 +26,8 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // feedEvent : un instant du kill-feed. `killer` et `victim` peuvent etre vides separement
@@ -89,16 +90,16 @@ type killFeed struct {
 // (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Film sans registre : `f.versionLue` est faux,
 // `f.majorVersion` vaut 0 et le comportement historique tient — l appelant l a consigne.
 func loadKillFeed(f *film) (*killFeed, error) {
-	var best []analysis.HighlightEvent
+	var best []highlightevent.HighlightEvent
 	bestN := 0
 	for ch := 0; ch < f.src.NumChunks(); ch++ {
-		evs, err := analysis.ParseHighlightEvents(f.src.Chunk(ch), f.majorVersion)
+		evs, err := grammar.ParseHighlightEvents(f.src.Chunk(ch), f.majorVersion)
 		if err != nil {
 			continue // un chunk de replication n est pas un chunk HIGHLIGHT : ce n est pas une erreur
 		}
 		nk := 0
 		for _, e := range evs {
-			if e.EventType == analysis.EventTypeKill {
+			if e.EventType == highlightevent.EventTypeKill {
 				nk++
 			}
 		}
@@ -125,7 +126,7 @@ func loadKillFeed(f *film) (*killFeed, error) {
 const XUIDNamePrefix = "xuid:"
 
 // buildFeed : regroupe les events par instant et resout les XUID en gamertags.
-func buildFeed(evs []analysis.HighlightEvent) *killFeed {
+func buildFeed(evs []highlightevent.HighlightEvent) *killFeed {
 	gt := map[uint64]string{}
 	for _, e := range evs {
 		if e.Gamertag != "" {
@@ -146,10 +147,10 @@ func buildFeed(evs []analysis.HighlightEvent) *killFeed {
 			name = fmt.Sprintf("%s%d", XUIDNamePrefix, e.XUID)
 		}
 		switch e.EventType {
-		case analysis.EventTypeKill:
+		case highlightevent.EventTypeKill:
 			kf.nKills++
 			at(e.TimeMS).killer = name
-		case analysis.EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			kf.nDeaths++
 			ev := at(e.TimeMS)
 			ev.victim = name

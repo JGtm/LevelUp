@@ -31,7 +31,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 const (
@@ -42,7 +42,7 @@ const (
 
 // attribWeaponName nomme une arme par son WeaponID (metadata weapon_labels) ; a defaut, l'hexa.
 func attribWeaponName(wid uint64) string {
-	if n, ok := analysis.WeaponIDToName[wid]; ok {
+	if n, ok := filmshell.WeaponIDToName[wid]; ok {
 		return n
 	}
 	return fmt.Sprintf("wid#%016x", wid)

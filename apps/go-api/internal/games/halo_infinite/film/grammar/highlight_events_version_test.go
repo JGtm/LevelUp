@@ -1,4 +1,4 @@
-package analysis
+package grammar
 
 // highlight_event_parser_version_test.go — LE DECOUPAGE DU GAMERTAG SUIT LA VERSION DECLAREE.
 //

@@ -311,7 +311,7 @@ func TestEventsConvergence_MarkEventsEmptyFailure_Counted(t *testing.T) {
 // film (fixture v41), les events sont écrits, events_loaded passe TRUE, et la
 // passe suivante ne détecte plus rien (idempotence/convergence).
 func TestEventsConvergence_HappyPath_WritesEventsAndConverges(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "analysis", "testdata", "v41_chunk_he.bin"))
+	data, err := os.ReadFile(filepath.Join("..", "games", "halo_infinite", "film", "grammar", "testdata", "v41_chunk_he.bin"))
 	if err != nil {
 		t.Skipf("fixture film absente: %v", err)
 	}

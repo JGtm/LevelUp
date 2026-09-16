@@ -1,6 +1,10 @@
 package positions
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/domain/playerposition"
+)
 
 // minClusterSize : nb minimal de positions par groupe pour qu'un team-split soit
 // crédible (évite de couper du bruit). Spawn = 4 joueurs / équipe (§N).
@@ -16,7 +20,7 @@ const minGapRatio = 0.35
 //
 // Honnête : aucune attribution forcée. Sans clustering net (mêlée générale,
 // trop peu de points), tout reste TeamUnknown.
-func assignTeamsBestEffort(ps []PlayerPosition) {
+func assignTeamsBestEffort(ps []playerposition.PlayerPosition) {
 	if len(ps) < 2*minClusterSize {
 		return
 	}
@@ -49,7 +53,7 @@ func assignTeamsBestEffort(ps []PlayerPosition) {
 // grand vide entre deux X consécutifs. Renvoie le rang de coupe (taille du
 // groupe bas) et true si le vide est assez franc ET que les deux groupes
 // atteignent minClusterSize.
-func largestGapSplit(ps []PlayerPosition, idx []int, span float64) (int, bool) {
+func largestGapSplit(ps []playerposition.PlayerPosition, idx []int, span float64) (int, bool) {
 	bestGap := 0.0
 	bestRank := -1
 	for rank := 1; rank < len(idx); rank++ {

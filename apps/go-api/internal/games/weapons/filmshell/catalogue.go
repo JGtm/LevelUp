@@ -1,6 +1,32 @@
-package analysis
+// Package filmshell PORTE LE CATALOGUE DES ARMES TEL QUE LE FILM LES NOMME : les huit octets
+// « filmshell » de chaque arme, leur nom canonique, et les tables qui s en derivent (fusions de
+// variantes, minutages, medailles de melee et de grenade, sentinelles non-arme).
+//
+// # POURQUOI IL VIT ICI, ET PLUS DANS `internal/analysis` (lot 2.5.e, 2026-09-16)
+//
+// Il vivait dans `internal/analysis/weapon_data.go`, c est-a-dire dans le paquet title-agnostic
+// — alors que ces huit octets sont une DONNEE DE TITRE, lue dans le flux de replication d un
+// film Halo Infinite. Deux garde-rails le disaient : le ratchet des lectures brutes
+// (`archlint/no_raw_film_bytes_outside_source_test.go`) comptait son `binary.BigEndian` parmi
+// les portes aux octets a fermer, et le ratchet des couches signalait l arete
+// `film/grammar/weaponv3 -> internal/analysis` — un paquet du decodeur qui remonte vers
+// `analysis` pour lire un catalogue.
+//
+// # POURQUOI IL N EST PAS DANS `film/`, ET POURQUOI IL N EST PAS DANS `weapons` NON PLUS
+//
+// Ce n est PAS de la grammaire : aucune de ces tables ne lit un octet de film, elles le
+// NOMMENT. Les poser dans une couche du decodeur les rendrait inaccessibles a leurs lecteurs
+// hors decodeur (`platform/duckdb`, `persist`, `sync/killcollector`) le jour ou les couches
+// passent sous `film/internal/`.
+//
+// Ce n est pas non plus le REFERENTIEL `games/weapons` : celui-ci parle a `metadata.duckdb`
+// (`database/sql`, `internal/migration`), et le faire importer par `film/grammar` mettrait tout
+// l outillage de migration dans les dependances du decodeur. `filmshell` est donc un
+// sous-paquet FEUILLE du referentiel : il n importe rien du depot, et le decodeur comme les
+// lecteurs de base peuvent le citer sans rien trainer.
+package filmshell
 
-// weapon_data.go — Données statiques armes Halo Infinite (IDs filmshell, timings, fusions).
+// catalogue.go — Donnees statiques armes Halo Infinite (IDs filmshell, timings, fusions).
 //
 // Port de src/analysis/_weapon_data.py.
 // Toutes les constantes sont des uint64 (big-endian) pour les 8 bytes filmshell.
@@ -35,6 +61,25 @@ const (
 
 // hexToUint64 convertit un hex littéral 8-bytes en uint64 big-endian.
 func hexToUint64(b [8]byte) uint64 { return binary.BigEndian.Uint64(b[:]) }
+
+// IDFromBytes rend l identifiant d arme porte par huit octets filmshell, et [BytesFromID] fait
+// l inverse. Les deux sens sont la MEME convention que [hexToUint64] : big-endian, l octet de
+// tete en poids fort.
+//
+// ELLES SONT EXPORTEES PARCE QUE LA CONVERSION SE FAISAIT AILLEURS (lot 2.5.e) : le scanner de
+// tirs (`film/grammar/weaponscan`), la ventilation des tirs (`sync/killcollector/shots.go`) et
+// `cmd/diag_film` appliquaient chacun leur `binary.BigEndian` a un tableau d octets d arme —
+// quatre sites pour une seule regle, et autant de portes aux octets que le ratchet
+// `archlint/no_raw_film_bytes_outside_source_test.go` comptait. L ordre des octets d un
+// identifiant d arme se lit ou il est DEFINI : ici.
+func IDFromBytes(b [8]byte) uint64 { return hexToUint64(b) }
+
+// BytesFromID : cf. [IDFromBytes].
+func BytesFromID(id uint64) [8]byte {
+	var b [8]byte
+	binary.BigEndian.PutUint64(b[:], id)
+	return b
+}
 
 // WeaponEntry associe bytes filmshell + nom.
 type WeaponEntry struct {
