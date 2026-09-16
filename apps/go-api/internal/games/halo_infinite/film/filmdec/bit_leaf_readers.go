@@ -19,7 +19,7 @@ package filmdec
 //
 // NOTE: FUN_1406d1024 (w=6) is NOT in this group despite a similar shape — its gate
 // polarity is INVERTED (payload present on bit==0). Use consumeGate0R for it.
-func consumeGateR(br *BitReader, width uint) {
+func consumeGateR(br *Lecteur, width uint) {
 	if br.ReadBit() {
 		br.ReadBits(width)
 	}
@@ -32,14 +32,14 @@ func consumeGateR(br *BitReader, width uint) {
 // the bit==1 branch returns 0xffffffff without reading. Same polarity as consumeID2
 // (FUN_1406d00ec). Used by the held-weapon i43 float block (consume1407f0550) and the
 // i48 biped-desired-ability-set deser (consumeBipedDesiredAbilitySet).
-func consumeGate0R(br *BitReader, width uint) {
+func consumeGate0R(br *Lecteur, width uint) {
 	if !br.ReadBit() {
 		br.ReadBits(width)
 	}
 }
 
 // consumeOpt32 mirrors FUN_14080d69c: R(1) gate; if set R(32) (FUN_14080d6f0).
-func consumeOpt32(br *BitReader) {
+func consumeOpt32(br *Lecteur) {
 	at := br.BitPos()
 	if br.ReadBit() {
 		v := br.ReadBits(32) // FUN_14080d6f0 = R(32)
@@ -53,7 +53,7 @@ func consumeOpt32(br *BitReader) {
 }
 
 // consumeID2 mirrors FUN_1406d00ec: R(1); if bit==0 R(2); else nothing.
-func consumeID2(br *BitReader) {
+func consumeID2(br *Lecteur) {
 	if !br.ReadBit() {
 		br.ReadBits(2)
 	}
@@ -71,7 +71,7 @@ func consumeID2(br *BitReader) {
 //
 // LES RETOURS ONT ETE AJOUTES LE 2026-08-30 (sonde i26) SANS CHANGER UN BIT : la valeur et
 // les deux bits de queue etaient consommes puis jetes.
-func readVarWidthInt(br *BitReader, param3 int) (val uint64, tail uint64) {
+func readVarWidthInt(br *Lecteur, param3 int) (val uint64, tail uint64) {
 	if param3 == varWidthProbeCategory && br.ReadBit() { // FUN_1406cf008, param_3 == 1 SEULEMENT
 		param3 = varWidthProbeSlot
 	}
@@ -89,14 +89,14 @@ func readVarWidthInt(br *BitReader, param3 int) (val uint64, tail uint64) {
 // site d appel porte le sien, relu sur le desassemblage (tableau au §4 du plan). Un defaut
 // implicite remettrait 13 bits partout, c est-a-dire le defaut que ce lot corrige.
 // `FUN_1406cb0cc`, appele ensuite par le jeu, ne consomme AUCUN bit (controle de config).
-func consume1408f0ac4(br *BitReader, param3 int) (bool, uint64) {
+func consume1408f0ac4(br *Lecteur, param3 int) (bool, uint64) {
 	val, _, present := consume1408f0ac4Probe(br, param3)
 	return present, val
 }
 
 // consume1408f0ac4Probe est FUN_1408f0ac4 avec sa CATEGORIE explicite, et rend les trois
 // valeurs que la sonde d i26 lit. Memes bits que `consume1408f0ac4`, rien de plus ni de moins.
-func consume1408f0ac4Probe(br *BitReader, param3 int) (val, tail uint64, present bool) {
+func consume1408f0ac4Probe(br *Lecteur, param3 int) (val, tail uint64, present bool) {
 	probe := param3 == varWidthProbeCategory
 	at := br.BitPos()
 	if br.ReadBit() {
@@ -115,4 +115,4 @@ func consume1408f0ac4Probe(br *BitReader, param3 int) (val, tail uint64, present
 }
 
 // consume1411b1ac0 mirrors FUN_1411b1ac0 -> FUN_140e82b84: R(1); if set R(12).
-func consume1411b1ac0(br *BitReader) { consumeGateR(br, 12) }
+func consume1411b1ac0(br *Lecteur) { consumeGateR(br, 12) }

@@ -10,7 +10,7 @@ package filmdec
 // remontee a l'appelant (obje, arme tenue, vitalites de corps et de bouclier, etat de mort —
 // cf. `capture.go`), puis les composants d'ARME, de BIPEDE (i47 a i63) et d'ETAT DE
 // SIMULATION. C'est le seul maillon qui rend un `variant` non nul et un `dead` non nil.
-func consumeCaptureAndBipedComponent(br *BitReader, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
 	variant = noVariant
 	switch name {
 	case compObjectMultiplayerProperties: // i9 = the 'obje' (FUN_1407d4c94 TLV blob)
@@ -130,7 +130,7 @@ func consumeCaptureAndBipedComponent(br *BitReader, name string, typeIndex uint3
 //
 // Il ne prend PAS `typeIndex` : aucun de ses arms ne le lit, et il n'a plus de maillon a qui
 // le passer.
-func consumeManagedAndObjectiveComponent(br *BitReader, name string, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32) (variant uint32, dead *DeadState, ported bool) {
 	variant = noVariant
 	switch name {
 	case compManagedObjectBoundaryVisibility: // ti=10 i0 (FUN_141169e90 -> FUN_14080ae28) — 32xR(1), publie

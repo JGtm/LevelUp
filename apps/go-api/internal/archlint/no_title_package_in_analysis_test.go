@@ -88,18 +88,14 @@ var franchissementsToleres = map[string]string{
 		"`games/halo_infinite/film/filmcache` : même motif que ci-dessus (extraction des " +
 		"événements d'objectif vérifiée sur films réels). Même portage attendu : la source " +
 		"du film devient un paramètre du test.",
-	"internal/analysis/filmsource/source_test.go": "2026-09-12, rendu visible par le " +
-		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/filmdec` : le test " +
-		"EXTERNE de `filmsource` compare les deux marcheurs de paquets sur un film réel " +
-		"(preuve d'équivalence de la grammaire, cf. `filmsource_leaf_test.go`). Le paquet " +
-		"testé, lui, reste une feuille sans aucun import du dépôt : c'est le TEST qui " +
-		"franchit. Portage attendu : la preuve d'équivalence descend avec le décodeur, sous " +
-		"`games/halo_infinite/film/`.",
-	// RETIRÉE LE 2026-09-17 (item 2.5.f) : `internal/analysis/sessionusage/usage_outcomes.go`
+	// RETIRÉE LE 2026-09-16 (lot 2.4, item 2.4.2) : `internal/analysis/filmsource/source_test.go`
+	// n'importe plus `filmdec` : le test compare le marcheur canonique (`filmsource.Paquets`) à une
+	// COPIE DE RÉFÉRENCE de l'ancienne grammaire portée par le test lui-même (738 paquets).
+	// RETIRÉE LE 2026-09-16 (item 2.5.f) : `internal/analysis/sessionusage/usage_outcomes.go`
 	// était le SEUL franchissement de PRODUCTION de cette liste. Les quatre symboles d'usage
 	// d'équipement qu'il lisait dans `games/halo_infinite/film/replay` vivent désormais dans
 	// `internal/domain/equipmentusage` — le décodeur et l'agrégat de session les y lisent tous
-	// les deux. Reste QUATRE entrées, toutes des TESTS.
+	// les deux. Reste TROIS entrées, toutes des TESTS.
 	"internal/analysis/weapon_index_equivalence_test.go": "2026-09-12, rendu visible par le " +
 		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/filmdec` : test " +
 		"d'équivalence entre l'index d'armes d'`analysis` et celui du décodeur. Portage " +

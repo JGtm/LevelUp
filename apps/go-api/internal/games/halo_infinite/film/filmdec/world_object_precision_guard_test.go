@@ -29,7 +29,7 @@ import (
 // qu'une garde qui n'en verrait qu'une laisserait passer les deux autres :
 //
 //	`orldObjectPrecision`    le champ du profil, son accesseur de lecteur
-//	                         (`BitReader.worldObjectPrecision`) et l'installateur ;
+//	                         (`Lecteur.worldObjectPrecision`) et l'installateur ;
 //	`largeursObjetDuMonde`   l'accès des trois lecteurs PAR DÉCALAGE D'OCTET (`projectiles.go`),
 //	                         qui n'ont pas de lecteur de bits à porter le profil ;
 //	`Movement.WorldObject`   la ligne de table du profil et sa godoc.
@@ -39,10 +39,11 @@ import (
 
 // worldObjectPrecisionReaders — ALLOWLIST DATÉE (2026-08-15). Chemin relatif à apps/go-api.
 var worldObjectPrecisionReaders = map[string]string{
-	"internal/games/halo_infinite/film/filmdec/grammar_rev.go": "CITATION dans l'ENTRÉE DE " +
-		"CHRONIQUE du lot 2.3 (2026-09-17) : elle dit ce que le profil de balayage a remplacé, " +
-		"donc elle nomme les largeurs world-object. Aucune lecture de la valeur — ce fichier " +
-		"ne porte que la révision de grammaire et son historique",
+	"internal/games/halo_infinite/film/filmdec/grammar_rev_chronique.go": "CITATION dans " +
+		"l'ENTRÉE DE CHRONIQUE du lot 2.3 (2026-09-17) : elle dit ce que le profil de balayage " +
+		"a remplacé, donc elle nomme les largeurs world-object. Aucune lecture de la valeur — " +
+		"ce fichier ne porte QUE la chronique de la révision de grammaire (sortie de " +
+		"`grammar_rev.go` le 2026-09-18, lot 2.4.1, au seuil des 500 lignes)",
 	"internal/games/halo_infinite/film/filmdec/profil_balayage.go": "le PORTEUR (2026-09-17, " +
 		"lot 2.3) : le champ `Mouvement.WorldObject` du profil de balayage, son accesseur et " +
 		"les deux poses (brute, et depuis le découpage d'une carte). C'est ici que vivaient " +

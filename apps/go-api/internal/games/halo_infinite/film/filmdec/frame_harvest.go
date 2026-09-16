@@ -110,7 +110,7 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 // confirmation for ScanFrameTargets.
 func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool {
 	frameLen := len(buf) * 8
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(pos)
 	if br.Remaining() < 24 {
@@ -147,7 +147,7 @@ func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool 
 // from all views are concatenated. Uses chain inference per view when `Grammaire.InferenceChaine` is on.
 // Returns the records and the number of views that decoded before a desync stopped it.
 func DecodeFrameViews(buf []byte, w *World, cfg FrameConfig, nViews int, skipLeadBits int) ([]FrameRecord, int) {
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(skipLeadBits)
 	frameLen := len(buf) * 8
@@ -181,7 +181,7 @@ func DecodeFrameViews(buf []byte, w *World, cfg FrameConfig, nViews int, skipLea
 func DecodeFrameResync(buf []byte, w *World, cfg FrameConfig, targets map[uint32]bool, accept AcceptResyncFunc) []FrameRecord {
 	var out []FrameRecord
 	frameLen := len(buf) * 8
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	guard := 0
 	for br.BitPos() < frameLen {
@@ -239,7 +239,7 @@ func DecodeFrameResync(buf []byte, w *World, cfg FrameConfig, targets map[uint32
 		}
 		rec2, endPos, _ := TryDeltaAt(buf, next, w, cfg) // re-decodes with capture on -> real sample
 		out = append(out, rec2)
-		br = NewBitReader(buf)
+		br = LecteurSur(buf)
 		br.poserCadre(cfg)
 		br.Skip(endPos)
 	}
@@ -249,7 +249,7 @@ func DecodeFrameResync(buf []byte, w *World, cfg FrameConfig, targets map[uint32
 // decodeDeltaWithArch decodes a delta body (mask + present components) at br using an
 // EXPLICIT archetype (not resolved from the World). Used by unbound-slot archetype
 // inference. Mirrors decodeDelta minus the World lookup.
-func decodeDeltaWithArch(br *BitReader, arch Archetype, typeIndex uint32) EntityTrace {
+func decodeDeltaWithArch(br *Lecteur, arch Archetype, typeIndex uint32) EntityTrace {
 	t := EntityTrace{DesyncAt: -1, TypeIndex: typeIndex}
 	t.Mask = consumeMask(br)
 	traverseComponentLoop(br, arch, &t)
@@ -261,7 +261,7 @@ func decodeDeltaWithArch(br *BitReader, arch Archetype, typeIndex uint32) Entity
 // cleanly starting at bit `p` — the confirmation signal that an inferred archetype
 // aligned the stream (a real bound entity, e.g. a biped, follows the transient).
 func boundDeltaCleanAt(buf []byte, p int, w *World, cfg FrameConfig) bool {
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(p)
 	if br.Remaining() < 24 {

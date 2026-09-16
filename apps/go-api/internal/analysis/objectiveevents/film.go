@@ -139,43 +139,17 @@ const (
 	maxXUID = uint64(3e15)
 )
 
-// readBitsBE lit n bits big-endian (MSB-first) à partir de bitPos. Adapté de
-// tmp_film_explore (identique dans filmx/ctfcap/t2score).
-func readBitsBE(data []byte, bitPos, n int) uint64 {
-	var r uint64
-	for i := 0; i < n; i++ {
-		bi := (bitPos + i) / 8
-		if bi >= len(data) {
-			return r
-		}
-		off := 7 - ((bitPos + i) % 8)
-		bit := uint64((data[bi] >> uint(off)) & 1)
-		r = (r << 1) | bit
-	}
-	return r
-}
-
-// readByteAtBit lit un octet à un offset BIT arbitraire (gère le non-alignement).
-func readByteAtBit(data []byte, bit int) byte {
-	if bit < 0 || bit+8 > len(data)*8 {
-		return 0
-	}
-	bi := bit / 8
-	off := uint(bit % 8)
-	if off == 0 {
-		return data[bi]
-	}
-	return data[bi]<<off | data[bi+1]>>(8-off)
-}
-
-// readU64LEAtBit lit un uint64 little-endian à un offset bit arbitraire.
-func readU64LEAtBit(data []byte, bit int) uint64 {
-	var x uint64
-	for i := 0; i < 8; i++ {
-		x |= uint64(readByteAtBit(data, bit+i*8)) << (uint(i) * 8)
-	}
-	return x
-}
+// LES TROIS LECTEURS DU PIED DE FILM ONT DESCENDU DANS LA COUCHE SOURCE (lot 2.4.2, ADR 0034
+// D-2). Ils formaient le TROISIEME des sept lecteurs de bits du depot ; ce paquet ne touche plus
+// un octet de film autrement que par `filmsource` :
+//
+//	filmsource.BitsTronques(data, bitPos, n)  ->  filmsource.BitsTronques(data, bitPos, n)
+//	filmsource.OctetAuBit(data, bit)     ->  filmsource.OctetAuBit(data, bit)
+//	filmsource.U64LEAuBit(data, bit)    ->  filmsource.U64LEAuBit(data, bit)
+//
+// LA CONVENTION DE BORD EST PRESERVEE, ET ELLE EST NOMMEE : ce lecteur-ci S ARRETE a la fin du
+// tampon SANS bourrer — [filmsource.BitsTronques], et surtout PAS [filmsource.BitsAt], qui porte
+// le bourrage a zero du moteur et rendrait d autres valeurs sur les derniers bits d un bloc.
 
 // Offsets, EN OCTETS DEPUIS LE DÉBUT DU BLOC DE 60, des champs du bloc d'événement du pied.
 //
@@ -256,21 +230,21 @@ func scanTh10Events(data []byte) []FooterEvent {
 	var out []FooterEvent
 	seen := map[int]bool{}
 	for ms := 8; ms <= total-8; ms++ {
-		if readByteAtBit(data, ms) != 0xc0 {
+		if filmsource.OctetAuBit(data, ms) != 0xc0 {
 			continue
 		}
 		xe := ms - 8
 		if xe < 64 {
 			continue
 		}
-		if p := readByteAtBit(data, xe); p != 0x2d && p != 0x25 {
+		if p := filmsource.OctetAuBit(data, xe); p != 0x2d && p != 0x25 {
 			continue
 		}
 		xstart := xe - 64
 		if seen[xstart] {
 			continue
 		}
-		x := readU64LEAtBit(data, xstart)
+		x := filmsource.U64LEAuBit(data, xstart)
 		if x <= minXUID || x >= maxXUID {
 			continue
 		}
@@ -293,19 +267,19 @@ func decodeTh10Block(data []byte, xstart, total int) (FooterEvent, bool) {
 		win = total
 	}
 	for b := xstart; b <= win-32; b++ {
-		if readByteAtBit(data, b) == 0 && readByteAtBit(data, b+8) == 0 &&
-			readByteAtBit(data, b+16) == 0x2e && readByteAtBit(data, b+24) == 0xe0 {
+		if filmsource.OctetAuBit(data, b) == 0 && filmsource.OctetAuBit(data, b+8) == 0 &&
+			filmsource.OctetAuBit(data, b+16) == 0x2e && filmsource.OctetAuBit(data, b+24) == 0xe0 {
 			ebs := b - footerBlockBytes*8
 			if ebs < xstart {
 				return FooterEvent{}, false
 			}
-			if int(readByteAtBit(data, ebs+footerByteType*8)) != 10 {
+			if int(filmsource.OctetAuBit(data, ebs+footerByteType*8)) != 10 {
 				return FooterEvent{}, false
 			}
 			return FooterEvent{
 				TimeMS: footerTimeMS(data, ebs),
-				Slot:   int(readByteAtBit(data, ebs+footerByteSlot*8)),
-				Team:   int(readByteAtBit(data, ebs+footerByteTeam*8)),
+				Slot:   int(filmsource.OctetAuBit(data, ebs+footerByteSlot*8)),
+				Team:   int(filmsource.OctetAuBit(data, ebs+footerByteTeam*8)),
 			}, true
 		}
 	}
@@ -314,10 +288,10 @@ func decodeTh10Block(data []byte, xstart, total int) (FooterEvent, bool) {
 
 // footerTimeMS lit l'horloge du match (ms) aux octets 48 à 51 du bloc, gros-boutiste.
 func footerTimeMS(data []byte, ebs int) int {
-	return int(readByteAtBit(data, ebs+footerByteTime*8))<<24 |
-		int(readByteAtBit(data, ebs+(footerByteTime+1)*8))<<16 |
-		int(readByteAtBit(data, ebs+(footerByteTime+2)*8))<<8 |
-		int(readByteAtBit(data, ebs+(footerByteTime+3)*8))
+	return int(filmsource.OctetAuBit(data, ebs+footerByteTime*8))<<24 |
+		int(filmsource.OctetAuBit(data, ebs+(footerByteTime+1)*8))<<16 |
+		int(filmsource.OctetAuBit(data, ebs+(footerByteTime+2)*8))<<8 |
+		int(filmsource.OctetAuBit(data, ebs+(footerByteTime+3)*8))
 }
 
 // ladderTiers = têtes des 6 records de l'échelle de score-contribution CTF (la

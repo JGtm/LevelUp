@@ -186,6 +186,32 @@ func alignMetaOnNumbers(nums []int, meta []ChunkMeta) []ChunkMeta {
 	return out
 }
 
+// Decompresser decompresse un flux zlib et REFUSE ce qui n en est pas un — la variante STRICTE
+// de [Inflate].
+//
+// LES DEUX EXISTENT PARCE QUE DEUX SITUATIONS DIFFERENTES LES DEMANDENT, et c est la seule
+// raison : [Inflate] traverse un tampon deja clair (le cache porte les deux formes), ce qui est
+// le bon defaut pour un CHUNK ; un TELECHARGEMENT depuis le CDN, lui, doit rendre du zlib, et
+// un corps qui n en est pas est un incident de transport a signaler — le taire rendrait des
+// octets de HTML d erreur au decodeur. Les appelants du telechargement (`sync/haloclient`,
+// `cmd/replay-worker`, `cmd/fetch_film_chunks`) passent donc par ici.
+//
+// UN SEUL DECOMPRESSEUR DANS LE DEPOT (lot 2.4.2) : le ratchet
+// `archlint/no_raw_film_bytes_outside_source_test.go` refuse `compress/zlib` dans les racines
+// du film.
+func Decompresser(raw []byte) ([]byte, error) {
+	zr, err := zlib.NewReader(bytes.NewReader(raw))
+	if err != nil {
+		return nil, fmt.Errorf("filmsource: en-tete zlib: %w", err)
+	}
+	defer func() { _ = zr.Close() }()
+	out, err := io.ReadAll(zr)
+	if err != nil {
+		return nil, fmt.Errorf("filmsource: decompression zlib: %w", err)
+	}
+	return out, nil
+}
+
 // Inflate decompresse UN chunk brut, exactement comme [Load] le fait pour chacun des siens : une
 // entree deja decompressee traverse telle quelle, un flux tronque rend le partiel.
 //
@@ -225,6 +251,18 @@ func inflate(raw []byte) []byte {
 	}
 	return out
 }
+
+// Paquets : les paquets d un chunk DEJA DECOMPRESSE, dans l ordre du chunk.
+//
+// C EST LE MARCHEUR UNIQUE DU DEPOT depuis le lot 2.4.2. [Load] l emploie pour chaque chunk du
+// film ; `filmdec.WalkPackets` — le SECOND marcheur, qui recopiait le meme en-tete de 16 octets
+// avec ses propres conventions d arret — n est plus qu une traduction de ce resultat dans la
+// forme `filmdec.FilmPacket`. Les deux grammaires sont opposees sur des chunks REELS par
+// `TestDeuxMarcheursDePaquetsSAccordent` (`source_test.go`).
+//
+// `ch` est l indice de chunk a inscrire dans [Packet.Chunk] ; un appelant qui n en a pas
+// (lecteur d un chunk isole) passe 0.
+func Paquets(chunk []byte, ch int) []Packet { return appendPackets(nil, chunk, ch) }
 
 // appendPackets : decoupe un chunk decompresse et ajoute ses paquets a `dst`. UNE tranche pour
 // tout le film (les vues par chunk sont des sous-tranches), donc une seule croissance amortie.

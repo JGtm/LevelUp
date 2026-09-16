@@ -206,7 +206,7 @@ func ti11MarcheRecord(pay []byte, rec WorldObjectRecord, arch Archetype, total i
 		if name == "" || at > total {
 			return at, false
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, ObjectiveTypeIndex, arch.Level(id))
 		if !ported || br.BitPos() > total {

@@ -44,7 +44,7 @@ package filmdec
 // UN SEUL LECTEUR POUR TOUS LES ARCHETYPES. i9 est un composant d'objet GENERIQUE : la meme
 // fonction sert le bipede, l'equipement, l'arme au sol et le vehicule. Il n'existe donc qu'un
 // lecteur, et aucune variante par archetype.
-func consumeObjectMultiplayerProperties(br *BitReader) {
+func consumeObjectMultiplayerProperties(br *Lecteur) {
 	if br.ReadBit() { // FUN_1406cf008 ; bit==1 -> bloc ABSENT (0 bit de charge)
 		return
 	}
@@ -53,7 +53,7 @@ func consumeObjectMultiplayerProperties(br *BitReader) {
 }
 
 // tacmap-backmenu-openoverride (FUN_142ed3d64): 32 × ( R(1)[si0:R(5)] handle + R(1) + R(1) ).
-func consumeTacmapBackmenuOpenoverride(br *BitReader) {
+func consumeTacmapBackmenuOpenoverride(br *Lecteur) {
 	for i := 0; i < 32; i++ {
 		if !br.ReadBit() {
 			br.ReadBits(5)
@@ -64,7 +64,7 @@ func consumeTacmapBackmenuOpenoverride(br *BitReader) {
 }
 
 // tacmap-queuedreplaymission (FUN_1407f24f8): 32 × ( R(1)[si0:R(5)] handle + R(32) id + R(1) ).
-func consumeTacmapQueuedReplayMission(br *BitReader) {
+func consumeTacmapQueuedReplayMission(br *Lecteur) {
 	for i := 0; i < 32; i++ {
 		if !br.ReadBit() {
 			br.ReadBits(5)
@@ -75,7 +75,7 @@ func consumeTacmapQueuedReplayMission(br *BitReader) {
 }
 
 // tacmap-cooptetherarea (FUN_142ed4198): pos(e524) + R(12) + R(12).
-func consumeTacmapCoopTetherArea(br *BitReader) {
+func consumeTacmapCoopTetherArea(br *Lecteur) {
 	consumeE524PositionBody(br)
 	br.ReadBits(12)
 	br.ReadBits(12)
@@ -83,7 +83,7 @@ func consumeTacmapCoopTetherArea(br *BitReader) {
 
 // equipment-tracked-object-handles-stack-component (FUN_140f72dec): R(4)=count, then
 // (count+1) entries, each R(1) present [si1: readQuantStat(1,13) + handle resolve 0-bit].
-func consumeEquipmentTrackedStack2(br *BitReader) {
+func consumeEquipmentTrackedStack2(br *Lecteur) {
 	count := br.ReadBits(4)
 	for i := uint64(0); i <= count; i++ {
 		if br.ReadBit() {
@@ -94,7 +94,7 @@ func consumeEquipmentTrackedStack2(br *BitReader) {
 
 // track-frame-component (FUN_142ed740c): R(6) signed + R(1) flag1 + R(1) flag2 +
 // [si flag1==0: R(12)=w + R(w)]. w is read from the stream (data-dependent but reproducible).
-func consumeTrackFrameComponent(br *BitReader) {
+func consumeTrackFrameComponent(br *Lecteur) {
 	br.ReadBits(6)
 	flag1 := br.ReadBit()
 	br.ReadBit()
@@ -112,7 +112,7 @@ func consumeTrackFrameComponent(br *BitReader) {
 // rendre un agregat de tout cela obligerait a inventer une structure pour une donnee dont le
 // sens est inconnu. La sonde du lot F recoit donc un scalaire honnete plutot qu'un objet
 // arbitraire. Le nombre de bits consommes est INCHANGE.
-func consumeManagedSplashMessage(br *BitReader) (r24 uint64) {
+func consumeManagedSplashMessage(br *Lecteur) (r24 uint64) {
 	refElem := func() {
 		switch br.ReadBits(3) {
 		case 1:

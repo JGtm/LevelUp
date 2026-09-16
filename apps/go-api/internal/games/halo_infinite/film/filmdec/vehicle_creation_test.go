@@ -56,7 +56,7 @@ const (
 // vehCand est un deserialiseur candidat nomme.
 type vehCand struct {
 	name string
-	fn   func(*BitReader)
+	fn   func(*Lecteur)
 }
 
 // vehProbe porte l'etat d'une campagne de balayage : film, decoupage i0, nuage de positions reelles
@@ -119,7 +119,7 @@ func TestVehicleCreationIdentity(t *testing.T) {
 }
 
 // scan balaye `band` avec `deser` : gate i0 dyn.-prec. DURCI par le nuage des positions reelles.
-func (pr vehProbe) scan(band map[uint32]bool, deser func(*BitReader)) (
+func (pr vehProbe) scan(band map[uint32]bool, deser func(*Lecteur)) (
 	[]EquipmentCreation, EquipmentCreationStats, error) {
 	var cur equipCreationRead
 	w := equipCreationWalk{

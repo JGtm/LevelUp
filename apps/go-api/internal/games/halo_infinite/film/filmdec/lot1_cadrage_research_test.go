@@ -94,7 +94,7 @@ func TestLot1EnteteParPaquet(t *testing.T) {
 				cfg.PacketPreambleBits = k
 				w := NewWorld(reg)
 				w.Restore(snap)
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				recs, decErr := DecodeFrameRecords(br, w, cfg)
 				if decErr != nil {
 					continue
@@ -232,7 +232,7 @@ func TestLot1PremierRecordSousK(t *testing.T) {
 			cfg.PacketPreambleBits = k
 			w := NewWorld(reg)
 			w.Restore(snap)
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			recs, _ := DecodeFrameRecords(br, w, cfg)
 			if len(recs) == 0 {
 				f.r0["trame-vide"]++
@@ -343,7 +343,7 @@ func TestLot1InferenceParFamille(t *testing.T) {
 				cl.packets++
 				w := NewWorld(reg)
 				w.Restore(snap)
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.Skip(k)
 				recs, inferred, hitEnd := decodeInferLoop(br, pay, w, cfg)
 				deb := br.BitPos() > frameLen

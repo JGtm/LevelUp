@@ -66,7 +66,7 @@ func TestLot1VictimeSlot(t *testing.T) {
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, wBase, cfg2)
 			}
 		}
@@ -79,7 +79,7 @@ func TestLot1VictimeSlot(t *testing.T) {
 			if pay[0] != 0xC0 {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(2)
 			if br.ReadBits(7) != 0 {
 				continue

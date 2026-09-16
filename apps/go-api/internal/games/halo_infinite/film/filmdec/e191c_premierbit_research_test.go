@@ -115,7 +115,7 @@ func e191cJournalRecord(t *testing.T, pay []byte, reg *Registry, b keyframeBorne
 	t.Helper()
 	n1 := kfReadBits(pay, b.Bit+keyframeFullStateHeaderBits, 32)
 	// n2 se lit APRES l etat par defaut : on rejoue le bloc pour le localiser.
-	br2 := NewBitReader(pay)
+	br2 := LecteurSur(pay)
 	br2.SetBitPos(b.Bit + keyframeFullStateHeaderBits)
 	br2.ReadBits(keyframeFullStateSizeBits)
 	if int32(n1) > 0 { //nolint:gosec // 32 bits

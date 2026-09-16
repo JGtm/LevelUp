@@ -2,7 +2,7 @@ package filmdec
 
 import "testing"
 
-// bitWriter is the MSB-first counterpart of BitReader, for crafting synthetic frames.
+// bitWriter is the MSB-first counterpart of Lecteur, for crafting synthetic frames.
 type bitWriter struct {
 	buf []byte
 	n   int

@@ -31,6 +31,7 @@ package killsource
 import (
 	"sort"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
 )
 
@@ -58,7 +59,7 @@ type walkResult struct {
 // credibilite qui trie, pas le lecteur.
 func walkFrom(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig,
 	start, views int) []filmdec.FrameRecord {
-	br := filmdec.NewBitReader(pl)
+	br := filmdec.LecteurSur(pl)
 	br.Skip(start)
 	var recs []filmdec.FrameRecord
 	for v := 0; v < views && len(pl)*8-br.BitPos() >= 8; v++ {
@@ -83,7 +84,7 @@ func signature123(pl []byte, s int, w *filmdec.World, cfg filmdec.FrameConfig) b
 func locateStrict(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 	nb := len(pl) * 8
 	for s := 2; s+35 < nb; s++ {
-		if bitAt(pl, s-1) != 0 {
+		if filmsource.BitAt(pl, s-1) != 0 {
 			continue
 		}
 		if signature123(pl, s, w, cfg) {
@@ -98,7 +99,7 @@ func locateStrict(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 func locateFallback(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 	nb := len(pl) * 8
 	for s := 2; s+16 < nb; s++ {
-		if bitAt(pl, s-1) != 0 {
+		if filmsource.BitAt(pl, s-1) != 0 {
 			continue
 		}
 		rec, _, ok := filmdec.TryDeltaAt(pl, s, w, cfg)

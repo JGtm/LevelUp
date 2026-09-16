@@ -36,7 +36,7 @@ func TestConsumeObjectDissolverLargeurs(t *testing.T) {
 		for i := 0; i < 16; i++ {
 			w.put(0xa5, 8)
 		}
-		br := NewBitReader(append(w.buf, make([]byte, 16)...))
+		br := LecteurSur(append(w.buf, make([]byte, 16)...))
 		consumeObjectDissolver(br)
 		if br.BitPos() != c.bits {
 			t.Errorf("%s : %d bits consommes, %d attendus", c.nom, br.BitPos(), c.bits)
@@ -56,7 +56,7 @@ func TestConsumeObjectDissolverNeutreEstExclusif(t *testing.T) {
 		for i := 0; i < 16; i++ {
 			w.put(0x5a, 8)
 		}
-		br := NewBitReader(append(w.buf, make([]byte, 16)...))
+		br := LecteurSur(append(w.buf, make([]byte, 16)...))
 		consumeObjectDissolver(br)
 		return br.BitPos()
 	}

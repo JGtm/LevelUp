@@ -196,7 +196,7 @@ func ti11RecenserFilm(dir string, reg *Registry) *ti11Bilan {
 
 // ti11ReleverRecord rejoue le prologue d'UN record et range son masque.
 func ti11ReleverRecord(b *ti11Bilan, pay []byte, reg *Registry, bit int) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(bit + keyframeRecordTIBit)
 	tr := TraverseEntity(br, reg, 0)
 	if tr.TypeIndex != ti11ArchIndex {

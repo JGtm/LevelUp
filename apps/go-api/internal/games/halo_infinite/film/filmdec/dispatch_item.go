@@ -8,7 +8,7 @@ package filmdec
 // consumeItemAndTacmapComponent porte les composants d'EQUIPEMENT et d'OBJET POSE (ti=37,
 // ti=42), de PROJECTILE (ti=41) et de TACMAP (ti=32/33/34), plus les arms de scene et de
 // corps rigide portes dans les memes lots.
-func consumeItemAndTacmapComponent(br *BitReader, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumeItemAndTacmapComponent(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
 	variant = noVariant
 	switch name {
 	case "change-scene-component": // ti=16 i0 (FUN_142ed3fcc)

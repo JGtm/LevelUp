@@ -7,7 +7,7 @@ package filmdec
 
 // consumePlayerAndSceneComponent porte le debut des composants de JOUEUR (ti=5 i0 a i9), plus
 // les arms de scene, de statborg, de physique et de nuee portes dans les memes lots.
-func consumePlayerAndSceneComponent(br *BitReader, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumePlayerAndSceneComponent(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
 	variant = noVariant
 	switch name {
 	case "player-waypoint-component": // ti=5 i0 (FUN_1410665dc) — R(3)
@@ -88,7 +88,7 @@ func consumePlayerAndSceneComponent(br *BitReader, name string, typeIndex uint32
 // consumeCrewFlockAndMusicComponent porte les composants d'EQUIPAGE (ti=14), de NUEE (ti=21),
 // de MUSIQUE (ti=17) et d'EFFET (ti=18) — la tranche ou se concentrent les vec3 quantifies a
 // la largeur du registre (6 + niveau) — plus les premiers arms du moteur de partie (ti=0).
-func consumeCrewFlockAndMusicComponent(br *BitReader, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumeCrewFlockAndMusicComponent(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
 	variant = noVariant
 	switch name {
 	case "biped-emp-timer-component": // ti=35 i51 (FUN_142f02830) — R(8) (timer quant 0..10s)
@@ -238,7 +238,7 @@ func consumeCrewFlockAndMusicComponent(br *BitReader, name string, typeIndex uin
 // consumePlayerTailAndGameEngineComponent porte la QUEUE des composants de joueur (ti=5 i10 a
 // i26), le JOUEUR GERE (ti=9) et la fin du MOTEUR DE PARTIE (ti=0), plus les derniers arms de
 // tacmap et d'equipement portes dans les memes lots.
-func consumePlayerTailAndGameEngineComponent(br *BitReader, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumePlayerTailAndGameEngineComponent(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
 	variant = noVariant
 	switch name {
 	// LOW safe-prefix : cas dominant (gate==0 = absent) avance ; gate==1 (largeur runtime) desync propre.

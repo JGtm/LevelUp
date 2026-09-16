@@ -44,7 +44,7 @@ const GrenadeSetNoSelection = 0
 // types de grenade portés et le type SÉLECTIONNÉ — la même grandeur que
 // `Inventory.Gs`, que le canal des images-clés ne rafraîchit que toutes les ~20 s. Le
 // parcours de bits est INCHANGÉ : le hook ne fait que publier ce que le déser lisait déjà.
-func consumeBipedDesiredGrenadeSet(br *BitReader) {
+func consumeBipedDesiredGrenadeSet(br *Lecteur) {
 	mask := br.ReadBits(i47MaskBits) // FUN_140c6a638 flat R(6)
 	sel := br.ReadBits(i47SelBits)   // FUN_1424d9a30 flat R(3)
 	if br.obs != nil && br.obs.GrenadeSetHook != nil {
@@ -88,7 +88,7 @@ const (
 // compteur, octet 0xA35 = identité). La lecture ci-dessous est le MÊME parcours de bits que
 // `consumeGate0R(br, 6)`, écrit à plat pour pouvoir publier ce qu'il lit : la porte est
 // INVERSÉE (le rang n'est présent que si son bit vaut 0), et le coût reste 4 ou 10 bits.
-func consumeBipedDesiredAbilitySet(br *BitReader) {
+func consumeBipedDesiredAbilitySet(br *Lecteur) {
 	counter := br.ReadBits(i48CounterBits) // FUN_1406d0f20 = R(3) compteur de rotation
 	start := br.BitPos()
 	rank := AbilitySetNoRank
@@ -117,7 +117,7 @@ func consumeBipedDesiredAbilitySet(br *BitReader) {
 // keep it false -> w=2, total 3 bits.
 // CONFIRMED bit-exact from the decompile (iVar10 = (DAT_145121140=='\x01')*2+2; the
 // trailing block reads exactly one more bit).
-func consumeBipedControlContext(br *BitReader) {
+func consumeBipedControlContext(br *Lecteur) {
 	w := uint(2)
 	if br.fullPrecision() { // DAT_145121140 == 1 -> 4-bit field
 		w = 4
@@ -135,7 +135,7 @@ func consumeBipedControlContext(br *BitReader) {
 // consumeBipedMapEditorFlag mirrors FUN_142f02854: a flat R(8) read (stored to
 // state+0xa32). No gate, no runtime width. CONFIRMED bit-exact from the decompile
 // (single 8-bit refill/fast-path, identical primitive shape to FUN_1407f08f8).
-func consumeBipedMapEditorFlag(br *BitReader) {
+func consumeBipedMapEditorFlag(br *Lecteur) {
 	br.ReadBits(8) // FUN_142f02854 flat R(8)
 }
 
@@ -155,7 +155,7 @@ func consumeBipedMapEditorFlag(br *BitReader) {
 // Total: 4 bits (gate==0) or 4 + 32 + 32 = 68 bits (gate==1). The handle-resolve
 // (FUN_140821f44/FUN_14080d61c) operates on RAM, not the bitstream (0 bits).
 // CONFIRMED bit-exact from the decompile.
-func consumeBipedLowFrequencyData(br *BitReader) {
+func consumeBipedLowFrequencyData(br *Lecteur) {
 	br.ReadBit()      // flag -> a37 bit1
 	br.ReadBit()      // flag -> a37 bit2
 	br.ReadBit()      // flag -> a37 bit4
@@ -181,7 +181,7 @@ func consumeBipedLowFrequencyData(br *BitReader) {
 //
 // CONFIRMED bit-exact from the decompile (the 11 FUN_140e82b84 calls each fill a
 // ushort low-12; the 7 then +1/+1 single-bit flags are FUN_1406cf008).
-func consumeBipedMalleablePropertyBlock(br *BitReader, recordStateParam uint32) {
+func consumeBipedMalleablePropertyBlock(br *Lecteur, recordStateParam uint32) {
 	consumeGateR(br, 8) // FUN_1407f08bc = R(1)+optR(8)
 	for i := 0; i < 11; i++ {
 		consume1411b1ac0(br) // FUN_140e82b84 = R(1)+optR(12)
@@ -203,7 +203,7 @@ func consumeBipedMalleablePropertyBlock(br *BitReader, recordStateParam uint32) 
 //
 // CONFIRMED bit-exact: FUN_1424e2f20 is a flat 5-bit reader returning the width n;
 // the subsequent inline read consumes exactly n bits (0 when n==0).
-func consumeBipedMalleableProperty(br *BitReader) {
+func consumeBipedMalleableProperty(br *Lecteur) {
 	consumeBipedMalleablePropertyBlock(br, br.recordStateParam())
 	n := uint(br.ReadBits(5)) // FUN_1424e2f20 = R(5) -> width n
 	if n > 0 {
@@ -237,7 +237,7 @@ func consumeBipedMalleableProperty(br *BitReader) {
 // param_1 de FUN_1408f02c8 vaut `lVar1 + 0x11f8`, donc `param_1 + 0x9d` EST `lVar1 + 0x1295`,
 // c est-a-dire flag1, lu DEUX LIGNES PLUS HAUT par le meme deserialiseur. Le corps est donc
 // entierement determine par le flux : present si et seulement si flag1 == 1.
-func consumeBipedMobilityAction(br *BitReader) {
+func consumeBipedMobilityAction(br *Lecteur) {
 	flag1 := br.ReadBit() // FUN_1406cf008 -> [0x1295] = le gate `+0x9d` de FUN_1408f02c8
 	flag2 := br.ReadBit() // FUN_1406cf008 -> [0x1296] (flag2)
 	if br.obs != nil && br.obs.MobilityActionHook != nil {
@@ -278,7 +278,7 @@ func consumeBipedMobilityAction(br *BitReader) {
 // l intervalle balaye**. Le negatif de 7ter.40 (<< histogramme diffus, aucun pic >>) ne dit
 // donc pas que la contrainte est non discriminante : il dit que la largeur cherchee n etait
 // pas dans le domaine de recherche.
-func consumeMobilityActionBody(br *BitReader) {
+func consumeMobilityActionBody(br *Lecteur) {
 	if br.ReadBit() { // FUN_1406cf008 (@1408f02f8)
 		br.ReadBits(10) // FUN_1406d310c(0x400) = 10
 	}
@@ -304,7 +304,7 @@ func consumeMobilityActionBody(br *BitReader) {
 }
 
 // consume140c1e9d4 mirroite FUN_140c1e9d4 : TROIS champs consecutifs de `w` bits.
-func consume140c1e9d4(br *BitReader, w uint) { //nolint:unparam // largeur de grammaire ecrite au site d appel pour la lisibilite de la lecture ; le lot 2.2 la porte au profil (2026-09-17, fusion 2.7g : la scission a sorti ce site de la baseline lint)
+func consume140c1e9d4(br *Lecteur, w uint) { //nolint:unparam // largeur de grammaire ecrite au site d appel pour la lisibilite de la lecture ; le lot 2.2 la porte au profil (2026-09-17, fusion 2.7g : la scission a sorti ce site de la baseline lint)
 	br.ReadBits(w)
 	br.ReadBits(w)
 	br.ReadBits(w)
@@ -316,7 +316,7 @@ func consume140c1e9d4(br *BitReader, w uint) { //nolint:unparam // largeur de gr
 //
 // CORRIGE le 2026-08-17 (lot R7-c) : ce site rendait ZERO bit. Le vecteur ecrit est bien un
 // NaN de conservation, mais le CURSEUR avance de 96 bits.
-func consumeE494Position(br *BitReader) {
+func consumeE494Position(br *Lecteur) {
 	if fullPrecisionGate(br) {
 		br.ReadBits(rawVec3Bits)
 		return

@@ -201,12 +201,14 @@ func TestChroniqueLitLesArtefactsReelsDeFilmdec(t *testing.T) {
 	api := racineAPI(t)
 	dir := filepath.Join(api, "internal", "games", "halo_infinite", "film", "filmdec")
 	c, err := revision.LireChronique("grammar",
-		filepath.Join(dir, "grammar_rev.go"), filepath.Join(dir, "testdata", "grammar_rev.golden"))
+		// Depuis le lot 2.4 (D2 (2.4)), la chronique est ROTATIONNEE : les entrees courantes vivent dans
+		// `grammar_rev_chronique.go`, les anciennes dans `grammar_rev_chronique_archive.go`.
+		filepath.Join(dir, "grammar_rev_chronique.go"), filepath.Join(dir, "testdata", "grammar_rev.golden"))
 	if err != nil {
 		t.Fatalf("lecture de la chronique reelle : %v", err)
 	}
 	if len(c.Godoc) == 0 {
-		t.Fatal("aucune entree de godoc lue dans grammar_rev.go — la forme `// ENTREE` a change")
+		t.Fatal("aucune entree de godoc lue dans grammar_rev_chronique.go — la forme `// ENTREE` a change")
 	}
 	courante := c.Courante()
 	t.Logf("chronique reelle : %d entrees de godoc, revision courante %s (golden ligne %d)",

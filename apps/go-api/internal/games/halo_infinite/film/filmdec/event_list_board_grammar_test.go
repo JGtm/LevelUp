@@ -9,7 +9,7 @@ import "testing"
 // --- CAS BOARD : garde-rail de grammaire, SANS environnement ni film ---------------------------
 
 // evbEcritBits sérialise une suite de champs (valeur, largeur) en MSB-first, la convention du
-// BitReader. C'est l'inverse exact de readBitsAt : il fabrique un payload synthétique.
+// Lecteur. C'est l'inverse exact de readBitsAt : il fabrique un payload synthétique.
 func evbEcritBits(champs [][2]uint32) []byte {
 	total := 0
 	for _, c := range champs {

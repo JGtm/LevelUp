@@ -252,7 +252,7 @@ func i57Walk(
 		if name == "" {
 			return val, flag1, fmt.Sprintf("i%d(sans nom au registre)", id), false
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), arch.Level(id))
 		if !ported || br.BitPos() > total {

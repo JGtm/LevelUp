@@ -24,8 +24,8 @@ package filmdec
 //
 // # IL N EST PLUS UN ETAT DE PROCESSUS (lot 2.3)
 //
-// Le lecteur de bits le PORTE ([BitReader.obs], `nil` en production) et les portes a
-// [FrameConfig] le posent ([FrameConfig.Obs], par [BitReader.poserCadre]). Les VINGT-NEUF
+// Le lecteur de bits le PORTE ([Lecteur.obs], `nil` en production) et les portes a
+// [FrameConfig] le posent ([FrameConfig.Obs], par [Lecteur.poserCadre]). Les VINGT-NEUF
 // crochets de deserialiseur ne partagent plus un observateur de processus : chaque balayage
 // construit le SIEN ([NouvelleObservation]), l installe sur le cadre ou sur la grammaire de sa
 // marche, et le lecteur le recoit d un seul geste avec le profil.

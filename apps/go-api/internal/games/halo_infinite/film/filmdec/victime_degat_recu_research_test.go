@@ -204,7 +204,7 @@ func vdrCountDamageEvents(t *testing.T, dir string, n int) int {
 			if pay[0] != 0xC0 {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(2)
 			if br.ReadBits(7) != 0 {
 				continue // type 1 (damage_section_response), pas type 0

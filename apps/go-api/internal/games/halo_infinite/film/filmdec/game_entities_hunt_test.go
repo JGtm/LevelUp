@@ -253,7 +253,7 @@ func (h *clockHunt) walk(pay []byte, at, total int, idx []int) (RoundTimer, bool
 		if name == "" {
 			return RoundTimer{}, false
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(at)
 		_, _, payload, ported := consumeByNameCapturing(br, name, GameEngineTypeIndex, h.arch.Level(id))
 		if !ported || br.BitPos() > total {

@@ -131,7 +131,7 @@ func failleRapport117(t *testing.T, t117 []failleEvOcc, origine uint64) {
 	t.Helper()
 	t.Logf("== TYPE 117 (EquipmentTranslocatorTeleportEffects) FILM ENTIER : %d têtes ==", len(t117))
 	for _, o := range t117 {
-		br := NewBitReader(o.tete)
+		br := LecteurSur(o.tete)
 		br.Skip(9)
 		if !br.ReadBit() {
 			t.Logf("  @%d ms : ref0 ABSENTE · tête % X", failleMS(o.ts, origine), o.tete)
@@ -246,7 +246,7 @@ func failleRefsHypotheses(t *testing.T, o failleEvOcc, a failleAncre) {
 	t.Helper()
 	widths := []uint{8, 9, 13}
 	for _, w0 := range widths {
-		br := NewBitReader(o.tete)
+		br := LecteurSur(o.tete)
 		br.Skip(9) // bit config + bit continuation + R(7) type
 		if !br.ReadBit() {
 			t.Logf("      refs : ref0 ABSENTE (porte 0) — aucune unité désignée en ref0")
@@ -276,7 +276,7 @@ func failleSondePosition(t *testing.T, o failleEvOcc, a failleAncre, wr Vec3Rang
 	}
 	max := len(o.tete)*8 - 48
 	for p := 9; p <= max; p++ {
-		br := NewBitReader(o.tete)
+		br := LecteurSur(o.tete)
 		br.SetBitPos(p)
 		x := deq(br.ReadBits(16), 0)
 		y := deq(br.ReadBits(16), 1)
