@@ -238,7 +238,9 @@ go run ./cmd/film-profiles-build [--title slug] [--check] [--out FILE] [--bounds
   (what the repository knows about a film's grammar, indexed by the three keys the film
   *writes*). The tool produces the `derived` block **only** — the fingerprint of
   `map_quant_bounds.json`, so the profile says which game-file derivation it is tied to. The
-  `entries` block is entered by hand, with provenance, and is copied through untouched.
+  entered blocks — `entries` and `registryFingerprints` (one ECS registry fingerprint per
+  written key: the build, or the major version for films with no identification section) — are
+  written by hand, with provenance, and are copied through untouched.
 - Prereq: no game install, no network, no cgo. `--check` writes nothing and exits 1 if the
   committed file is not the one the tool would produce. From a worktree, export
   `LEVELUP_REPO_ROOT=<the worktree>` or pass `--out`/`--bounds` (`db_profiles.json` is
