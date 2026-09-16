@@ -34,31 +34,6 @@ const (
 	inflateHintCap = 64 << 20
 )
 
-// ChunkMeta : metadonnees d'un chunk, telles que le manifeste du film les porte. Ce paquet ne les
-// LIT pas (il ne connait ni le cache ni le manifeste) : l'appelant les FOURNIT a [Load].
-type ChunkMeta struct {
-	Index     int
-	ChunkType int
-	StartMS   int
-}
-
-// Packet : un paquet de replication dans un chunk decompresse.
-//
-// Payload est une SOUS-TRANCHE du buffer du chunk, JAMAIS une copie. Deux consequences a
-// connaitre : ecrire dans le payload modifie le chunk (et reciproquement), et garder un seul
-// Packet retient tout le chunk decompresse. C'est le choix qui rend le decodage unique abordable
-// en memoire — copier les payloads doublerait le pic.
-type Packet struct {
-	// Chunk : indice du chunk dans la source ; Index : rang du paquet dans ce chunk (0-based).
-	Chunk, Index int
-	// Type : le type du paquet (0 = delta/replication, 2 = image-cle, 7 = CHUNK_END...).
-	Type int
-	// TS : horodatage moteur du paquet, en microsecondes (horloge du film).
-	TS uint64
-	// Payload : les octets du paquet, sous-tranche du chunk decompresse.
-	Payload []byte
-}
-
 // Film : un film Theater charge — chunks decompresses et paquets decoupes, une fois pour toutes.
 // Un Film est en LECTURE SEULE apres [Load] : ses accesseurs rendent les tranches internes sans
 // copie, et personne ne doit y ecrire. Il n'est pas protege contre l'usage concurrent en ecriture,

@@ -45,6 +45,22 @@ const filmsourceLeafPkg = "internal/games/halo_infinite/film/source"
 // DEPOT, et il est interdit ici. La stdlib (et elle seule) est autorisee.
 const filmsourceLeafPrefix = "levelup/go-api/"
 
+// filmsourceLeafImportAutorise : LA SEULE EXCEPTION, ET ELLE EST DEMONTREE (lot 2.6.2,
+// 2026-09-16).
+//
+// `film/types` porte les types de DONNEES qui traversent les frontieres de couche —
+// `ChunkMeta` et `Packet` y ont descendu, cette couche n en garde que des alias dates
+// (`source/types_alias.go`). L argument de ce ratchet est un CYCLE VERIFIE, pas une preference :
+// il interdit les imports qui peuvent en fermer un. Or `types` est LUI-MEME une feuille a zero
+// import du depot, et c est teste (`film_types_leaf_test.go`, pose au meme commit) : une feuille
+// importee par une feuille ne ferme aucun cycle, quel que soit le graphe au-dessus.
+//
+// L exception est donc DEMONTREE, pas accordee, et elle est NOMMEE : un autre import du depot,
+// meme d un paquet qui « ne fait rien », rougit comme avant. Si `film/types` cessait d etre une
+// feuille, c est son propre ratchet qui le dirait — et cette ligne-ci deviendrait fausse au meme
+// instant, ce qui est la raison pour laquelle les deux tests vivent cote a cote.
+const filmsourceLeafImportAutorise = "levelup/go-api/internal/games/halo_infinite/film/types"
+
 func TestFilmsourceEstUneFeuille(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -74,6 +90,9 @@ func TestFilmsourceEstUneFeuille(t *testing.T) {
 		}
 		for _, imp := range f.Imports {
 			chemin := strings.Trim(imp.Path.Value, `"`)
+			if chemin == filmsourceLeafImportAutorise {
+				continue
+			}
 			if strings.HasPrefix(chemin, filmsourceLeafPrefix) {
 				violations = append(violations, name+" -> "+chemin)
 			}

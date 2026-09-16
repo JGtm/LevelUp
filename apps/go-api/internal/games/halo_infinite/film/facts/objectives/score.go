@@ -28,16 +28,6 @@ const (
 	personalScoreComp = 1
 )
 
-// ScorePoint est une emission de score par une entite du match.
-type ScorePoint struct {
-	// TimeMS est l'instant de l'emission sur l'horloge du film.
-	TimeMS int
-	// Slot identifie l'entite : 6 et 8 sont les deux equipes, 10..24 les huit joueurs.
-	Slot int
-	// Value est le score a cet instant.
-	Value int64
-}
-
 // StatComponent designe un emplacement de statistique repliquee : l'index du composant, le
 // cote (A ou B) de sa paire de valeurs, et la stricte croissance attendue de sa suite.
 //

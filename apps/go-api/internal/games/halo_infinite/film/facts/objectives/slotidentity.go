@@ -52,15 +52,6 @@ const (
 	coreAssistsComp = 3
 )
 
-// PlayerLine est la ligne de match d'un joueur, telle que `match_participants` la donne.
-// L'appelant la fournit : ce paquet ne touche jamais la base.
-type PlayerLine struct {
-	// XUID en decimal, meme forme que la base et que le rejeu 2D.
-	XUID string
-	// Kills, Deaths, Assists sont les compteurs du match.
-	Kills, Deaths, Assists int
-}
-
 // SlotIdentity resout, pour un film, le slot d'entite statborg de chaque joueur.
 //
 // Le resultat s'utilise pour traduire le Slot d'un [NamedEvent] en XUID, seule cle sur

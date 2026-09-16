@@ -42,39 +42,39 @@ var oracle8 = map[string][]playerStat{
 	// 696a9d7c — Strongholds. Les xuid ne sont pas necessaires ici : le triplet suffit a
 	// designer chaque joueur, et le test porte sur l'appariement, pas sur la forme de la cle.
 	"696a9d7c": {
-		{PlayerLine{"z16", 16, 13, 4}, map[string]int{StatZoneCaptures: 10, StatZoneSecures: 6}},
-		{PlayerLine{"z15a", 15, 14, 3}, map[string]int{StatZoneCaptures: 4, StatZoneSecures: 2}},
-		{PlayerLine{"z15b", 15, 17, 4}, map[string]int{StatZoneCaptures: 9, StatZoneSecures: 1}},
-		{PlayerLine{"z15c", 15, 9, 10}, map[string]int{StatZoneCaptures: 6, StatZoneSecures: 3}},
-		{PlayerLine{"madina", 15, 11, 5}, map[string]int{StatZoneCaptures: 10, StatZoneSecures: 0}},
-		{PlayerLine{"z9a", 9, 12, 4}, map[string]int{StatZoneCaptures: 6, StatZoneSecures: 1}},
-		{PlayerLine{"z9b", 9, 15, 7}, map[string]int{StatZoneCaptures: 7, StatZoneSecures: 2}},
-		{PlayerLine{"z8", 8, 12, 8}, map[string]int{StatZoneCaptures: 9, StatZoneSecures: 1}},
+		{PlayerLine{XUID: "z16", Kills: 16, Deaths: 13, Assists: 4}, map[string]int{StatZoneCaptures: 10, StatZoneSecures: 6}},
+		{PlayerLine{XUID: "z15a", Kills: 15, Deaths: 14, Assists: 3}, map[string]int{StatZoneCaptures: 4, StatZoneSecures: 2}},
+		{PlayerLine{XUID: "z15b", Kills: 15, Deaths: 17, Assists: 4}, map[string]int{StatZoneCaptures: 9, StatZoneSecures: 1}},
+		{PlayerLine{XUID: "z15c", Kills: 15, Deaths: 9, Assists: 10}, map[string]int{StatZoneCaptures: 6, StatZoneSecures: 3}},
+		{PlayerLine{XUID: "madina", Kills: 15, Deaths: 11, Assists: 5}, map[string]int{StatZoneCaptures: 10, StatZoneSecures: 0}},
+		{PlayerLine{XUID: "z9a", Kills: 9, Deaths: 12, Assists: 4}, map[string]int{StatZoneCaptures: 6, StatZoneSecures: 1}},
+		{PlayerLine{XUID: "z9b", Kills: 9, Deaths: 15, Assists: 7}, map[string]int{StatZoneCaptures: 7, StatZoneSecures: 2}},
+		{PlayerLine{XUID: "z8", Kills: 8, Deaths: 12, Assists: 8}, map[string]int{StatZoneCaptures: 9, StatZoneSecures: 1}},
 	},
 	// 1bc77d2e — CTF, avec les vrais xuid.
 	"1bc77d2e": {
-		{PlayerLine{"2533274823110022", 24, 13, 2}, map[string]int{ // JGtm
+		{PlayerLine{XUID: "2533274823110022", Kills: 24, Deaths: 13, Assists: 2}, map[string]int{ // JGtm
 			StatFlagCaptures: 1, StatFlagReturns: 2, StatFlagSteals: 4,
 			StatFlagCaptureAssists: 0, StatFlagCarriersKilled: 2, StatFlagGrabs: 3}},
-		{PlayerLine{"2535433601851512", 20, 15, 7}, map[string]int{
+		{PlayerLine{XUID: "2535433601851512", Kills: 20, Deaths: 15, Assists: 7}, map[string]int{
 			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 2,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 3, StatFlagGrabs: 3}},
-		{PlayerLine{"2535421262359392", 16, 13, 5}, map[string]int{
+		{PlayerLine{XUID: "2535421262359392", Kills: 16, Deaths: 13, Assists: 5}, map[string]int{
 			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 0,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 3, StatFlagGrabs: 13}},
-		{PlayerLine{"2535469190789936", 16, 15, 7}, map[string]int{ // Chocoboflor
+		{PlayerLine{XUID: "2535469190789936", Kills: 16, Deaths: 15, Assists: 7}, map[string]int{ // Chocoboflor
 			StatFlagCaptures: 1, StatFlagReturns: 1, StatFlagSteals: 0,
 			StatFlagCaptureAssists: 2, StatFlagCarriersKilled: 1, StatFlagGrabs: 6}},
-		{PlayerLine{"2535415145546162", 11, 11, 2}, map[string]int{
+		{PlayerLine{XUID: "2535415145546162", Kills: 11, Deaths: 11, Assists: 2}, map[string]int{
 			StatFlagCaptures: 0, StatFlagReturns: 3, StatFlagSteals: 1,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 2, StatFlagGrabs: 2}},
-		{PlayerLine{"2533274858283686", 11, 12, 13}, map[string]int{ // Madina97294
+		{PlayerLine{XUID: "2533274858283686", Kills: 11, Deaths: 12, Assists: 13}, map[string]int{ // Madina97294
 			StatFlagCaptures: 0, StatFlagReturns: 0, StatFlagSteals: 2,
 			StatFlagCaptureAssists: 2, StatFlagCarriersKilled: 1, StatFlagGrabs: 16}},
-		{PlayerLine{"2535436340554308", 10, 18, 5}, map[string]int{
+		{PlayerLine{XUID: "2535436340554308", Kills: 10, Deaths: 18, Assists: 5}, map[string]int{
 			StatFlagCaptures: 0, StatFlagReturns: 1, StatFlagSteals: 3,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 1, StatFlagGrabs: 1}},
-		{PlayerLine{"2535456897775421", 6, 17, 4}, map[string]int{
+		{PlayerLine{XUID: "2535456897775421", Kills: 6, Deaths: 17, Assists: 4}, map[string]int{
 			StatFlagCaptures: 1, StatFlagReturns: 0, StatFlagSteals: 2,
 			StatFlagCaptureAssists: 1, StatFlagCarriersKilled: 0, StatFlagGrabs: 2}},
 	},

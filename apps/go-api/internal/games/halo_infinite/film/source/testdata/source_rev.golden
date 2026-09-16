@@ -32,4 +32,12 @@
 #               et n etait hachee que dans l empreinte de la GRAMMAIRE : aucune revision ne lui
 #               etait propre, et `facts` ne pouvait pas dire que ce qu il publie depend aussi de
 #               la facon dont les octets sont atteints. Aucune lecture ne change a ce rang.
-source-2026-09-16	c09660b7f269ae7d9b87c7fb550d7abf14cd116b993b7d352f8f5552630de95a
+
+#   2026-09-16  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.6.2). Les types de DONNEES
+#               purs qui traversent une frontiere de couche ont DESCENDU dans `film/types`
+#               (feuille sans import du depot) ; la couche n en garde que des ALIAS DATES, et un
+#               alias de type est LE MEME type pour le compilateur. Aucune lecture, aucune
+#               largeur, aucune borne ne change : la sortie est identique a l octet et aucun
+#               match deja decode n est candidat au backlog. La FORME de ces types est desormais
+#               figee par `film/types/testdata/shapes.golden`, a cote de cette revision.
+source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913

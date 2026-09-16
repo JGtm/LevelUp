@@ -214,6 +214,13 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// preparation §3.1). Le classer dans une couche serait faux dans les deux sens — il ne
 	// depend d aucune couche, et les quatre couches l importeront toutes.
 	"internal/games/halo_infinite/film/revision": horsCoucheFilm,
+	// `types` : LES TYPES DE CONTRAT qui traversent les frontieres de couche (lot 2.6.2,
+	// 2026-09-16). Feuille SANS AUCUN import du depot (`film_types_leaf_test.go`), importable par
+	// les cinq couches — donc sans rang : lui en donner un serait faux dans les deux sens (il ne
+	// depend d aucune couche, et toutes le nommeront). C est exactement le rangement de
+	// `revision` ci-dessus, pour la meme raison : il ne lit aucun octet de film et ne publie
+	// rien, il DECLARE des formes.
+	"internal/games/halo_infinite/film/types": horsCoucheFilm,
 }
 
 // areteToleree : une arete qui viole une regle AUJOURD HUI, avec la date de sa mise en table, le
