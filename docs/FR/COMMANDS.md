@@ -233,6 +233,29 @@ CGO_ENABLED=1 go run ./cmd/mapquant-build [--levels DIR] [--title slug] [--out F
 - À rejouer : quand le lien module d'une nouvelle carte est établi, ou si le jeu change ses
   modules/BSP.
 
+#### film-profiles-build
+
+```bash
+go run ./cmd/film-profiles-build [--title slug] [--check] [--out FILE] [--bounds FILE]
+```
+
+- Sortie : `data/titles/{slug}/reference/film_profiles.json` — le catalogue des profils de film
+  (ce que le dépôt sait de la grammaire d'un film, indexé par les trois clefs que le film
+  *écrit*). L'outil produit le bloc `derived` **seulement** — l'empreinte de
+  `map_quant_bounds.json`, pour que le profil dise de quelle dérivation des fichiers du jeu il
+  est solidaire. Le bloc `entries` est saisi à la main, avec provenance, et recopié tel quel.
+- Prérequis : ni jeu installé, ni réseau, ni cgo. `--check` n'écrit rien et sort en 1 si le
+  fichier commis n'est pas celui que l'outil produirait. Depuis un worktree, exporter
+  `LEVELUP_REPO_ROOT=<le worktree>` ou passer `--out`/`--bounds` (`db_profiles.json` est
+  gitignoré et n'existe que dans le checkout principal).
+- À rejouer : après `mapquant-build` (mise à jour du jeu, nouvelle carte), ou après l'ajout
+  d'une entrée de profil. Procédure d'ajout d'un build : `docs/RUNBOOK_FILM_PROFILES.md`
+  (EN, les runbooks sont EN-only).
+- Gate avec le jeu installé :
+  `CGO_ENABLED=1 go test -tags=gamefiles ./cmd/film-profiles-build/ -count=1` — rejoue la chaîne
+  entière (bornes régénérées depuis les `.module`, puis catalogue commis égal à l'octet à ce que
+  la chaîne produit). Skip là où Halo Infinite n'est pas installé.
+
 #### mapcallouts-build
 
 ```bash
