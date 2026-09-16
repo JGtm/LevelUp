@@ -236,4 +236,13 @@ package filmdec
 // `KillSourceDecoderRev` ne bouge PAS (`killsource/` intact) ; `SchemaVersion` non plus (aucun
 // octet cuit ne change, et `replay-equiv` doit rendre ZERO difference — une difference serait
 // une regression, pas une divergence).
-const GrammarRev = "grammar-2026-09-15.19"
+//
+// ENTREE `grammar-2026-09-15.20` (2026-09-17, fusion des volets 2.7g et 2.7p du lot 2.7 + correctif
+// lint) : `.19` -> `.20`. AUCUN octet n est lu autrement et AUCUNE grammaire n est reecrite : la
+// source de `filmdec/` change de deux commentaires `//nolint:unparam` dates (consume140c1e9d4 : w
+// toujours 12 ; consumeDynPrecVec3 : mag toujours 19 — largeurs de grammaire ecrites au site d appel,
+// que le lot 2.2 porte au profil), sites sortis de la baseline lint par la scission 2.7g. L empreinte
+// hache les octets, commentaires compris : elle monte, la revision avec elle. Le volet 2.7p (paquet
+// `replay`, hors empreinte) est fusionne au meme geste ; `SchemaVersion` 60 et `KillSourceDecoderRev`
+// inchangees.
+const GrammarRev = "grammar-2026-09-15.20"

@@ -87,13 +87,12 @@ const plancherFichiersBalayesTaille = 1200
 // n est pas une montee, c est la date reelle d entree en table. A partir de ce commit, la regle
 // s applique sans exception nouvelle.
 var plafondsParFichier = map[string]int{
-	// --- publication du rejeu : le volet 2.7p les scindera, apres la fusion des lots
-	// 1.9.9 / 1.9.11 / 1.9.14 qui les tiennent aujourd hui.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1541,
-	"internal/games/halo_infinite/film/replay/document.go":           627,
-	"internal/games/halo_infinite/film/replay/lives.go":              536,
-	"internal/games/halo_infinite/film/replay/build.go":              532,
-	"internal/games/halo_infinite/film/replay/zone_states_hill.go":   526,
+	// --- publication du rejeu : SCINDES par le volet 2.7p (fusion 2026-09-17 : document 585 -> 444,
+	// lives 536 -> 184, build 523 -> 165, zone_states_hill 526 -> 363, score_timeline 524 -> 329,
+	// document_vehicles 505 -> 371 — tous sous le seuil, sortis de la table). La chronique porte
+	// desormais son exemption ECRITE EN TETE (item 2.7.1, 28 lignes de commentaire) : 1541 -> 1569,
+	// la seule montee admise par cette exemption hors montee de SchemaVersion.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1569,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// --- entres en table A LA FUSION DU LOT 2.7g DANS L INTEGRATION (2026-09-17) : ces sept
@@ -101,8 +100,6 @@ var plafondsParFichier = map[string]int{
 	// vague 2 de la famille 1.9 et le schema 60, avant que le ratchet n existe ici. Meme regle :
 	// chaque valeur ne peut que descendre. `document_vehicles.go` et `score_timeline.go` sont dans
 	// le perimetre du volet 2.7p (scission en cours) et sortiront de la table a sa fusion.
-	"internal/games/halo_infinite/film/replay/document_vehicles.go":                             505,
-	"internal/games/halo_infinite/film/replay/score_timeline.go":                                524,
 	"internal/games/halo_infinite/film/replay/fallback/registre_killsource.go":                  555,
 	"internal/games/halo_infinite/film/killsource/assist.go":                                    531,
 	"internal/games/halo_infinite/film/replay/document_shape_test.go":                           511,
