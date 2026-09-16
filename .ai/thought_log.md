@@ -1,3 +1,31 @@
+## [2026-09-17] Chantier decodeur — M1 CLOS : feat/v75 avance a da258bf76, parc recuit au schema 60, backlog killsource tranche 1 — Complete
+
+**Decision technique principale.** Fusion en deux temps : `origin/feat/v75` d abord DANS l integration
+(da258bf76, un conflit — golden de forme — regenere par son port ; tests, typecheck, lint, vitest,
+equivalence 20/20 apres fusion, CI verte), puis avance rapide de `feat/v75` vers cette tete (CI
+verte a nouveau) apres une fenetre de 5 min aux cinq sessions voisines (aucune objection). Le
+checkout principal N est PAS avance : il porte un journal et un plan non commites d une autre
+session (« amis par joueur et invitations », 15/09), laisses a l arbitrage de l utilisateur ; le
+serveur local est reconstruit depuis le worktree d integration au meme commit. Recuisson du parc
+serveur ARRETE (le CLI killsource exige la base partagee en ecriture, meme en `--dry-run`, et la
+resolution des noms EN se degrade si le serveur tient metadata) ; artefacts precedents conserves
+(`replays_schema54_avant_M1_2026-09-17`) et binaire precedent tague (`parc-schema54-avant-M1-2026-09-17`
+sur 2ddef392c) jusqu a validation.
+
+**Resultats observes.** 76/76 artefacts construits (schema 54 -> 60, code 0, 6 s a 1 min 47 par film,
+pic 518 Mio). Backlog killsource mesure au `--dry-run` : 1 386 films, 41 723 chunks, 1 967 matchs en
+credit seul ; tranche 1 (`--limit 250`) : 249 films ecrits, UN refus — `9f9b19e5@63757`, « victime
+divergente entre credit et film » : la clef `(match_id, time_ms)` de la fusion a apparie deux morts
+distinctes a la meme milliseconde, PREMIERE occurrence (le garde-fou disait 0 sur 73 589) ;
+consigne D1 (cloture M1), hors lot. Plan : « M1 CLOS » sous le titre, bloc « CLOTURE M1 EXECUTEE »
+point par point. Critere d entree de M2 tenu (M1 fusionne, corpus re-fige). Lot 2.1 renumerote a
+`grammar-2026-09-15.18` par son executeur (d1d6f76ef), pret a fusionner.
+
+**Prochaine etape.** Serveur relance ; fusion 2.1 puis gates zero difference (equivalence 20 +
+corpus gate vs da258bf76) ; voie au 2.7g ; tranches killsource suivantes entre les gates.
+
+---
+
 ## [2026-09-17] Chantier decodeur — CLOTURE M1, gate de jalon en regime complet (equivalence 20 films + corpus gate vs base de fusion feat/v75), re-figeage unique des references — Complete (intégration 170ecaab5)
 
 **Decision technique principale.** Le gate de jalon se joue contre la BASE DE FUSION avec feat/v75

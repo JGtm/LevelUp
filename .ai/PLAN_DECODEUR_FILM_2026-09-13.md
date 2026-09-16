@@ -1025,6 +1025,8 @@ monter `SchemaVersion` s'ils concluent au défaut.
 
 ### M1 — Les correctifs courts, un par un, sous gate (valeur visible)
 
+**M1 CLOS le 2026-09-17** (fusionné dans `feat/v75` à da258bf76, parc recuit au schéma 60 ; détail au bloc « CLÔTURE M1 EXÉCUTÉE » en fin de section).
+
 Critère d'entrée : M0 fusionné dans l'intégration. Lots strictement séquentiels (même paquet) ;
 le second agent est le relecteur du lot précédent. Chaque lot monte `GrammarRev` ; les lots qui
 changent le contenu cuit montent `SchemaVersion` (une entrée de chronique chacun) ; UNE
@@ -3698,6 +3700,27 @@ l'oracle de M2.
 changement sort `PERTE` — et non plus par une inspection du seul `--json`. Avant ce lot, la
 catégorie était jetée par `bilanDepuisRapport` et aucun des deux chemins ne la montrait.
 
+
+**CLÔTURE M1 EXÉCUTÉE (2026-09-17, pilote, V9)** — les cinq points, dans l'ordre : 1. revue
+adversariale de jalon : deux rondes (11 -> 2 bloquants), corrections fusionnées (journal du
+17/09) ; 2. régime complet : équivalence 20 films (10 identiques, 10 références du lot 1.2
+re-figées après classification par diff des tsv) + corpus gate `--base=8f35efb72` (base de
+fusion feat/v75, plus stricte que 783ae680d) : 14/14 `PERTE` au sens du gate, 979 gains, 496
+pertes TOUTES classées dans des familles déjà consignées, les deux pertes attendues de
+`c75f33b8` retrouvées telles quelles, 7 `changements` NOMMÉS par `replay-diff` (§5, trois
+lignes « CLÔTURE M1 ») ; 3. fusion : `origin/feat/v75` (2ddef392c) fusionné dans l'intégration
+(da258bf76, un conflit : golden de forme, régénéré par son port), tests + typecheck + lint +
+vitest + équivalence 20/20 après fusion, CI verte au niveau job, puis avance rapide de
+`feat/v75` vers da258bf76 (CI verte à nouveau) — fenêtre de 5 min aux cinq sessions voisines,
+aucune objection ; le checkout principal N'EST PAS avancé (deux fichiers non commités d'une
+autre session, laissés à l'utilisateur) ; 4. recuisson du parc : 76 artefacts 54 -> 60
+(`backfill-replay --only-existing`, serveur arrêté, 76/76 construits, code 0), artefacts
+précédents conservés sous `data/cache/replays_schema54_avant_M1_2026-09-17`, tag
+`parc-schema54-avant-M1-2026-09-17` sur 2ddef392c ; backlog killsource : 1 386 films / 41 723
+chunks (`--dry-run`), joué PAR TRANCHES `--limit` entre les gates de M2 (tranche 1 = 250 films
+dans la même fenêtre serveur arrêté ; le CLI exige la base partagée en écriture, même en
+`--dry-run`) ; 5. corpus d'équivalence re-figé UNE fois (536f9b61f) : les 20 références sont
+l'oracle de M2. **Critère d'entrée de M2 tenu** : M1 fusionné, corpus re-figé.
 ---
 
 ### M2 — La révision à zéro différence (pas 1 à 7)
@@ -4194,6 +4217,7 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-16 | 1.9.9 | **D4 (1.9.9) — LE GARDE-RAIL DES SPRITES NE VÉRIFIAIT QUE LA PRÉSENCE D'UNE CLÉ, PAS CELLE D'UN FICHIER.** `TestVehicleFamillesServiesParLeLotA` (paquet `replay`) lit `index.json` et ne retient que la colonne `famille` : une entrée SANS `file` y suffisait déjà, alors que son message annonce « l'URL composée serait morte ». Le trou est refermé de côté par le garde-rail neuf `TestVehicleFamiliesQualifieesAccordeesALIndexDesSprites` (paquet `replaylabels`), qui confronte `sprite` du TOML au `file` de l'index dans les DEUX sens — mais uniquement pour les familles QUALIFIÉES. Une famille de véhicule ordinaire dont le PNG disparaîtrait de `static/` sans que sa ligne d'index parte passerait toujours. NON TRAITÉ. | le lot qui touchera la table des sprites : faire lire le `file` (et son existence sur disque) par le garde-rail du paquet `replay` |
 | 2026-09-16 | 1.9.9 | **D5 (1.9.9) — LE RAPPORT JSON DU CORPUS GATE ENREGISTRE UN TÉMOIN EN ERREUR COMME `0` GAIN / `0` PERTE / `0` CHANGEMENT, DONC COMME UN TÉMOIN PROPRE.** Sur ce run, `e5adf7b2` et `4f77afc1` ont échoué à la cuisson de référence (plafond mémoire côté binaire de BASE) ; le tableau texte les marque `ERREUR`, mais `--json` leur écrit `{"gains":0,"pertes":0,"changements":0}` sans aucun champ d'erreur ni de statut. Un lecteur qui n'aurait que le JSON — un agrégateur, une CI, un relecteur pressé — compterait 14 témoins conclus dont 8 inchangés au lieu de 12 conclus dont 6 inchangés. C'est le même genre de silence que la D25 du lot 1.9.1 bis (`BilanAxe.Changements` jeté par `bilanDepuisRapport`). NON TRAITÉ (règle 7). | le lot qui touchera `cmd/replay-corpus-gate/report.go` : porter le statut et la cause d'erreur dans le JSON, et distinguer « 0 différence » de « pas comparé » |
 | 2026-09-16 | 1.9.9 | **D6 (1.9.9) — LE CORPUS GATE NE TRANSMET AUCUN PLAFOND MÉMOIRE À `replay-build`, ET LES DEUX PLUS GROS TÉMOINS BTB SONT SUR LE FIL.** `bake.go:131` construit les arguments en dur (`--map`, `--title`, `--facts`, matchID) : le `--mem-gib` de `replay-build` n'est ni passé ni surchargeable par l'environnement, donc le plafond vaut toujours `filmproc.DefaultLimitGiB` = 3 Gio souple / 3,75 Gio dur. `e5adf7b2` culmine à 3,779 Gio et `4f77afc1` à 3,807 Gio CÔTÉ BASE : ils échouent par marge de quelques dizaines de mébioctets, donc de façon instable d'un run à l'autre (le même gate les avait conclus le 2026-09-16 au lot 1.9.1 bis). Un gate dont deux témoins tombent au hasard de la pression mémoire n'est pas un gate reproductible. NON TRAITÉ. | le lot qui touchera le gate : exposer un `--mem-gib` et le transmettre aux deux cuissons, ou abaisser la consommation de pointe des films BTB à 36 joueurs |
+| 2026-09-17 | clôture M1 (backlog killsource, tranche 1) | **D1 (clôture M1) — LA CLEF `(match_id, time_ms)` DE LA FUSION KILLSOURCE N'EST PAS UNIQUE : PREMIÈRE OCCURRENCE MESURÉE.** `persist/kill_events_merge.go` `verifierConcordance` rend l'erreur « victime divergente entre credit (2535413577167650) et film (2535427572079378) — la clef (match_id, time_ms) a apparie deux morts differentes » sur `9f9b19e5-5df4-4268-aa32-900a4fc6725a@63757`, et son commentaire dit « ne s'est jamais produite (0 sur 73 589 lignes appariées) ». Elle s'est produite : deux morts distinctes à la même milliseconde (deux victimes différentes, même instant — une mort double). Conséquence : le film ENTIER est refusé par la passe (`resultat=echec`), 249 films sur 250 écrits dans la tranche 1. Le garde-fou a fait son travail (échouer bruyamment) ; le défaut est la clef, pas le décodeur. HORS LOT, à traiter au chantier killsource (M2 ou finitions) : clef `(match_id, time_ms, victime)` ou appariement par victime quand deux morts partagent l'instant, avec ce match comme témoin. |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
