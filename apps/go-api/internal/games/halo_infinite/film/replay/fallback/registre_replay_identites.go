@@ -217,7 +217,7 @@ var registreReplayIdentites = []Repli{
 				Ancre:   "VALEUR INCONNUE = FAMILLE VIDE",
 			},
 			{
-				Fichier: pkgReplay + "document_vehicles.go",
+				Fichier: pkgReplay + "document_vehicles_coverage.go",
 				Ancre:   "fb.Declenche(fallback.NomChassisVehiculeMarqueurNeutre)",
 			},
 		},
@@ -392,7 +392,7 @@ var registreReplayIdentites = []Repli{
 		Condition: CondFilmMuet,
 		Ordre:     OrdreSansLecture,
 		Sites: []Site{{
-			Fichier: pkgReplay + "zone_states_hill.go",
+			Fichier: pkgReplay + "zone_states_hill_owners.go",
 			Ancre:   "t1 := int(^uint(0) >> 1)",
 		}},
 		DatePose:        dateAudit0E,
