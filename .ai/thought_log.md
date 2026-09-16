@@ -1,3 +1,40 @@
+## [2026-09-17] Chantier decodeur — lot 2.2 (M2, pas 2 : les lecteurs recoivent le profil) FUSIONNE ; V14 (D4 = zero difference de CONTENU) ; lots paralleles 2.8, 2.9, 3.1-donnees, preparation M3 fusionnes ; ultracode active — Complete (intégration 39190ae2f + refs)
+
+**Decision technique principale.** V14 : l equivalence hache aussi la FORME des structures observees
+(`digest.Of`, champs exportes ou non) ; quand un pas structurel change la forme d un type de balayage
+sans qu un octet cuit bouge, la difference se CLASSE au type et au champ pres (digest par type imbrique,
+base contre tete) et la seule ligne d etape se re-fige a la fusion sous controle des tsv ; le corpus gate
+(base contre tete, 14 temoins) est la preuve du contenu. Cas 2.2 : `filmdec.FrameConfig` 5 -> 7 champs
+(`Mouvement`, `Obs`), recopie par `ObjectDeathStats.Config` dans `VehicleScan` -> etape `vehicles`
+differente sur 20 films, corpus gate 0/0/0. Le premier classement de l executeur (« reference perimee »)
+etait FAUX et a ete conteste sur pieces (20/20 identiques a quatre tetes) ; la cause a ete prouvee par
+digest a la base et a la tete. V12 / V13 : parallelisation hors grammaire (2.8 outillage des gates, 2.9
+clef de fusion killsource avec revue adversariale a deux rondes, 3.1 volet donnees, preparation M3 par
+Ghidra) pendant que la chaine 2.2 -> 2.3 reste a un muteur. Ultracode active par l utilisateur : les
+releves 3.6 tournent en workflow (6 lecteurs Ghidra + 6 sceptiques + synthese).
+
+**Resultats observes.** 2.2 : ratchet `filmdecVarsGeles` 94 -> 43, GrammarRev .21 -> .26, corpus gate
+14/14 a 0, equivalence 20/20 identiques apres re-figeage de `vehicles` seul. 2.9 : la clef
+`(match_id, time_ms)` est unique DANS chaque cote (0 instant multi sur 138 807 sur Infinite), jamais
+ENTRE les deux ; appariement par la victime, repli restreint a l instant classique 1-1 avec une victime
+absente et des tueurs non contradictoires ; deux rondes de revue (P1 convergent des deux relecteurs
+sur le repli par elimination, corrige ; ronde 2 : 1 P1 de documentation + exposition residuelle, tranche
+par le pilote : tueur divergent sur une paire de repli = refus, l erreur reste sur une paire a meme
+victime — conforme a la mecanique « un tueur par victime a l instant T », 0 tueur divergent observe sur
+844 films). 2.8 : changements nommes, codes de sortie 0/1/2/3/4, reessai d export, `--temoins`,
+`--mem-gib`, replay-equiv toutes etapes. 3.1 donnees : catalogue `film_profiles.json` = table 2.1 (23
+entrees), paquet `filmprofile`, outil, runbook. Preparation M3 : 3.5 clos (constante de code, bande
+[512, 767], 7808/8064/128 = records fautifs combles sans borne), 57 ecrivains nommes, 2 bloquants
+resolus, ti=42 negatif mesure. Backlog killsource : 844 / 1 386 films, temoin 9f9b19e5 ecrit.
+Incidents de pilotage consignes : commit de fusion parti rouge (grep etroit), golden abime par un
+`sed i\` mal adresse, ratchets rougis en CI (taille, lint, chemin du jeu) et corriges par commits
+suivants — CI verte au niveau job sur ff80ec59c.
+
+**Prochaine etape.** 2.3 en cours (seul muteur) ; tranche 4 killsource (~540 films) ; synthese des
+releves 3.6 ; puis 2.4, 2.5, 2.6 et cloture M2 (ADR 0034 amende, fusion feat/v75).
+
+---
+
 ## [2026-09-17] Chantier decodeur — lot 2.7 (M2, pas 7 : scission des fichiers > 500 L) FUSIONNE en deux volets paralleles, gate groupe a zero difference — Complete (intégration c6305127b)
 
 **Decision technique principale.** Le lot 2.7 a ete execute par DEUX executeurs en parallele avec une
