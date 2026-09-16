@@ -55,7 +55,7 @@
  * événement « manche terminée », alors sur quoi s'appuie-t-on vraiment ?
  *
  * Sur le fait que le film ÉTIQUETTE CHACUN DE SES ENREGISTREMENTS PAR UNE MANCHE
- * (`StatRecord.Round`, statborg — cf. `analysis/objectiveevents/statborg.go`). Toutes les séries
+ * (`StatRecord.Round`, statborg — cf. `film/facts/objectives/statborg.go`). Toutes les séries
  * que l'artefact en tire sont donc bornées par la manche : le score de MODE de chaque camp, et
  * les quatre compteurs de CHAQUE joueur (score personnel, frags, morts, assistances). Mesure du
  * 2026-08-29 sur les 4 films multi-manches du dossier d'artefacts, 5 bascules :

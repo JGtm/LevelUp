@@ -38,7 +38,7 @@ import type { Equals, Expect } from '@/lib/types/typeEquality'
 
 const REPO = racineDuDepot()
 const GO = resolve(REPO, 'apps/go-api/internal/games/halo_infinite/film/replay')
-const FILMDEC = resolve(REPO, 'apps/go-api/internal/games/halo_infinite/film/filmdec')
+const FILMDEC = resolve(REPO, 'apps/go-api/internal/games/halo_infinite/film/grammar')
 
 /** Les balises `json:` d'une structure Go nommée, dans l'ordre de déclaration. */
 function goJSONTags(file: string, struct: string): string[] {
