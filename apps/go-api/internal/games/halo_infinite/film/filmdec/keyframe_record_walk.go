@@ -176,7 +176,7 @@ func walkOneKeyframeRecord(pay []byte, reg *Registry, pos int, h KeyframeHeader,
 	ctx ContexteDeLecture) (
 	KeyframeWalkRec, KeyframeWalkStop, bool,
 ) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.PoserContexte(ctx)
 	br.SetBitPos(pos + keyframeRecordTIBit)
 	tr := TraverseEntity(br, reg, 0)
@@ -261,7 +261,7 @@ func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int,
 // consumeKeyframeDefaultState joue l'etat par defaut de l'archetype, par le MEME routage que
 // le lecteur de record NEW de production (biped a part, table `defaultStateDeserByTI`
 // ensuite, stub 0 bit sinon).
-func consumeKeyframeDefaultState(br *BitReader, ti uint32) {
+func consumeKeyframeDefaultState(br *Lecteur, ti uint32) {
 	if ti == bipedDefaultStateTypeIndex {
 		consumeBipedDefaultState(br)
 		consumeBipedDefaultStateTail(br)

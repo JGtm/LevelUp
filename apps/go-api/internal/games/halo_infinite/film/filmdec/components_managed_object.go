@@ -89,7 +89,7 @@ func (o *Observation) publishManagedObject(f ManagedObjectField, values ...uint6
 // tous deux charges UNE fois et jamais recharges entre les appels.
 //
 // Largeur totale : 32 bits. Aucune porte, aucune dependance a un etat runtime.
-func consumeManagedObjectBoundaryColor(br *BitReader) {
+func consumeManagedObjectBoundaryColor(br *Lecteur) {
 	r := br.ReadBits(8)
 	g := br.ReadBits(8)
 	b := br.ReadBits(8)
@@ -115,7 +115,7 @@ func consumeManagedObjectBoundaryColor(br *BitReader) {
 // (`0x06854540` et `0x7CBF0066` mesures sur les deux films Strongholds, phase 1a section 5).
 // Publier l'identifiant plutot qu'un index de registre est donc a la fois plus juste et conforme
 // a la regle « enumeration nommee, jamais un index de registre ».
-func consumeManagedObjectRTPC(br *BitReader) {
+func consumeManagedObjectRTPC(br *Lecteur) {
 	id := br.ReadBits(32)
 	if id == 0 {
 		br.obs.publishManagedObject(ManagedObjectRTPC, id)
@@ -171,7 +171,7 @@ func (o *Observation) publishNavpoint(f NavpointField, values ...uint64) {
 // singleton) : la distribution est lisse — 159 et 128 valeurs distinctes, aucune au-dela de
 // 1,2 % — et centree sur le quantum 128, qui est le ZERO de la plage [-1, +1] ; les valeurs
 // dominantes sont espacees d'environ 3. C'est une RAMPE, pas un enumere.
-func consumeNavpointRadialProgress(br *BitReader) {
+func consumeNavpointRadialProgress(br *Lecteur) {
 	br.obs.publishNavpoint(NavpointRadialProgress, br.ReadBits(8))
 }
 

@@ -13,7 +13,7 @@ package weaponv3
 // la contient et convertit son écart µs en ms. Cela remplace le bucketing
 // grossier v2 par un timestamp fin (levier P2 vers 90% de confiance).
 
-import "encoding/binary"
+import "levelup/go-api/internal/analysis/filmsource"
 
 const (
 	packetHeaderSize = 16 // [Type u16][b2][b3][Size u32][µs u64]
@@ -28,29 +28,22 @@ type frame struct {
 	us    uint64
 }
 
-// frameIndex parcourt les paquets 16 octets et collecte les FRAMES (Type==0).
-// Stoppe sur Type==7 ou si un paquet déborde du buffer (header ou payload).
+// frameIndex collecte les FRAMES (Type==0) d un chunk et leurs bornes d octets.
+//
+// IL NE MARCHE PLUS LES PAQUETS LUI-MEME (lot 2.4.2) : il recopiait l en-tete de seize octets
+// — le TROISIEME marcheur du depot, a cote de `filmsource` et de `filmdec.WalkPackets` — et
+// prend desormais le decoupage de [filmsource.Paquets], le marcheur unique. Les bornes
+// d octets se reconstituent en suivant l offset : le decoupage est contigu par construction.
 func frameIndex(d []byte) []frame {
 	var frames []frame
 	off := 0
-	for off+packetHeaderSize <= len(d) {
-		typ := int(binary.LittleEndian.Uint16(d[off:]))
-		size := int(binary.LittleEndian.Uint32(d[off+4:]))
-		us := binary.LittleEndian.Uint64(d[off+8:])
-		if size < 0 || off+packetHeaderSize+size > len(d) {
-			break
+	for _, p := range filmsource.Paquets(d, 0) {
+		debut := off + packetHeaderSize
+		fin := debut + len(p.Payload)
+		if p.Type == frameType {
+			frames = append(frames, frame{start: debut, end: fin, us: p.TS})
 		}
-		if typ == frameType {
-			frames = append(frames, frame{
-				start: off + packetHeaderSize,
-				end:   off + packetHeaderSize + size,
-				us:    us,
-			})
-		}
-		off += packetHeaderSize + size
-		if typ == chunkEndType {
-			break
-		}
+		off = fin
 	}
 	return frames
 }

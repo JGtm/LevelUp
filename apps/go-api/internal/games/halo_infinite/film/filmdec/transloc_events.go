@@ -170,7 +170,7 @@ func ScanTranslocatorTeleports(film *filmsource.Film, entry *MapQuantEntry) []Tr
 // CHARGE, elle, ne conditionne rien : elle échoue en positions absentes, pas en événement
 // perdu (l'instant et le slot sont déjà lus).
 func decodeTranslocHead(pay []byte, tsUS uint64, entry *MapQuantEntry) (TranslocatorTeleport, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	h := readPacketHead(br) // [config][continuation][R(7) type] — event_list.go
 	if !h.More {
 		return TranslocatorTeleport{}, false // liste vide : pas d'événement en tête
@@ -190,7 +190,7 @@ func decodeTranslocHead(pay []byte, tsUS uint64, entry *MapQuantEntry) (Transloc
 
 // decodeTranslocJump lit la CHARGE de l'événement après ref0 : les portes des refs 1-2, le
 // mot d'effet gardé, puis les DEUX positions quantifiées. Rend (départ, arrivée, lues).
-func decodeTranslocJump(br *BitReader, entry *MapQuantEntry) ([3]float32, [3]float32, bool) {
+func decodeTranslocJump(br *Lecteur, entry *MapQuantEntry) ([3]float32, [3]float32, bool) {
 	var none [3]float32
 	// LES DEUX PORTES SE LISENT, PAS UNE. Un `||` court-circuitait la seconde (SA4000) : sans
 	// conséquence ici — le chemin sort aussitôt et le lecteur de bits est abandonné — mais
@@ -215,7 +215,7 @@ func decodeTranslocJump(br *BitReader, entry *MapQuantEntry) ([3]float32, [3]flo
 	}
 	// PAS DE SECOND CONTRÔLE DE DÉBORDEMENT ICI, et c'est délibéré : `readTranslocVec` est la
 	// SEULE garde, et elle refuse déjà tout vecteur dont les bits dépassent le tampon (le
-	// BitReader lit des zéros au-delà — padding de queue du moteur). Un `br.Remaining() < 0`
+	// Lecteur lit des zéros au-delà — padding de queue du moteur). Un `br.Remaining() < 0`
 	// ajouté après coup serait INATTEIGNABLE, et sa présence masquerait la disparition de la
 	// vraie garde (revue P1bis ronde 1, G4 : la redondance rendait les deux mutations vertes).
 	return from, to, true
@@ -224,7 +224,7 @@ func decodeTranslocJump(br *BitReader, entry *MapQuantEntry) ([3]float32, [3]flo
 // readTranslocVec lit UNE position quantifiée de la charge et la déquantifie en coordonnées
 // monde. PORTE INVERSÉE (cf. l'en-tête, piège n°1) : bit à 0 -> index de région puis bornes
 // de la carte ; bit à 1 -> bornes par défaut du moteur.
-func readTranslocVec(br *BitReader, entry *MapQuantEntry) ([3]float32, bool) {
+func readTranslocVec(br *Lecteur, entry *MapQuantEntry) ([3]float32, bool) {
 	var out [3]float32
 	widths := [3]uint{translocDefaultAxisBits, translocDefaultAxisBits, translocDefaultAxisBits}
 	rng := Vec3Range{

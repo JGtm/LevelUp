@@ -24,7 +24,7 @@ package filmdec
 // CE QUE CES 32 DRAPEAUX SONT, ET CE QU'ILS NE SONT PAS : la visibilite de bordure de l'objet
 // SCRIPTE du mode (ti=10). Ce qu'ils signifient est la question du lot C ; ici, on les rend
 // lisibles, sans les interpreter.
-func consumeManagedObjectBoundaryVisibility(br *BitReader) {
+func consumeManagedObjectBoundaryVisibility(br *Lecteur) {
 	var flags uint64
 	for i := 0; i < 32; i++ {
 		if br.ReadBit() {
@@ -38,7 +38,7 @@ func consumeManagedObjectBoundaryVisibility(br *BitReader) {
 //
 //	FUN_1406d84b4(reader, ..., width=0xe, ...)  = R(14) scalaire dequantifie
 //	FUN_1406cf008                               = R(1) flag (state+0x582 bit 4)
-func consumeDevicePosition(br *BitReader) { br.Skip(15) }
+func consumeDevicePosition(br *Lecteur) { br.Skip(15) }
 
 // consumeGameEngineCampaignTimer (ti2) — deser FUN_1407ee764 -> FUN_140d580d0(dst, reader,
 // width=0x10, table) = R(16) + R(16) + FUN_1407f0354 = R(5). Meme forme que
@@ -48,8 +48,8 @@ func consumeDevicePosition(br *BitReader) { br.Skip(15) }
 // un port anterieur attribuait ce composant a FUN_14076e744 — mauvaise fonction, et mort
 // faute d'appelant. La chaine statique nom -> getName -> descripteur -> bloc+0x40 donne
 // FUN_1407ee764, porte ci-dessous.
-func consumeGameEngineCampaignTimer(br *BitReader) { br.Skip(37) }
+func consumeGameEngineCampaignTimer(br *Lecteur) { br.Skip(37) }
 
 // consumeBipedPosturePhysics (ti35 i55) — deser FUN_142f0293c -> FUN_142f1f630 : R(2) puis
 // FUN_141fd997c (resolution d'etat, 0 bit lu).
-func consumeBipedPosturePhysics(br *BitReader) { br.Skip(2) }
+func consumeBipedPosturePhysics(br *Lecteur) { br.Skip(2) }

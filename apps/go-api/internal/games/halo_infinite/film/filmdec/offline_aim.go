@@ -229,8 +229,8 @@ func ReadBitsAtForDiag(b []byte, pos, n int) uint32 { return readBitsAt(b, pos, 
 // au lieu d'en allouer un chacun. C'etaient deux allocations PAR RECORD BIPEDE, sur un
 // balayage qui en reconnait des dizaines de milliers par film. `br` doit etre lie au
 // payload balaye.
-func scanRecordDirs(br *BitReader, at, total int, idx []int, g dirsGrammar) (componentDirs, componentVitals) {
-	pay := br.buf
+func scanRecordDirs(br *Lecteur, at, total int, idx []int, g dirsGrammar) (componentDirs, componentVitals) {
+	pay := br.Octets()
 	var out componentDirs
 	var vit componentVitals
 	at += i0TailBits // queue d'i0 (handleSel + regionPresent)
@@ -289,9 +289,9 @@ func readAngularVelocityComponent(pay []byte, at, total int) (int, bool) {
 }
 
 // readBodyVitalityComponent consomme i4 et capture la santé. La GRAMMAIRE n'est pas
-// réécrite ici : on positionne un BitReader sur le payload et on appelle le décodeur
+// réécrite ici : on positionne un Lecteur sur le payload et on appelle le décodeur
 // canonique (vitality.go), seul détenteur de la forme du composant.
-func readBodyVitalityComponent(br *BitReader, at, total int, vit *componentVitals) (int, bool) {
+func readBodyVitalityComponent(br *Lecteur, at, total int, vit *componentVitals) (int, bool) {
 	if at+bodyVitalityBits > total {
 		return at, false
 	}
@@ -305,7 +305,7 @@ func readBodyVitalityComponent(br *BitReader, at, total int, vit *componentVital
 // 55 bits selon deux portes internes) : on exige d'abord le minimum lisible, puis on
 // vérifie après coup que le décodage n'a pas débordé — un décodage qui déborde rendrait des
 // zéros de bourrage, c'est-à-dire un bouclier faux.
-func readShieldVitalityComponent(br *BitReader, at, total int, vit *componentVitals) (int, bool) {
+func readShieldVitalityComponent(br *Lecteur, at, total int, vit *componentVitals) (int, bool) {
 	if at+shieldVitalityMinBits > total {
 		return at, false
 	}
@@ -381,7 +381,7 @@ func readForwardComponent(pay []byte, at, total int, out *componentDirs) (int, b
 // readForwardComponentDynPrec consomme i2 `object-forward-and-up-DYNAMIC-PRECISION-component`
 // (FUN_140c5f7ec, ti=38/39/40/43). La grammaire n'est PAS réécrite ici : on repositionne le
 // lecteur de l'appelant et on appelle son unique détenteur (components_dynprec_orientation.go).
-func readForwardComponentDynPrec(br *BitReader, at, total int, out *componentDirs, param uint32) (int, bool) {
+func readForwardComponentDynPrec(br *Lecteur, at, total int, out *componentDirs, param uint32) (int, bool) {
 	br.SetBitPos(at)
 	v, ok := decodeObjectForwardAndUpDynPrec(br, param)
 	if !ok || br.BitPos() > total {
@@ -400,7 +400,7 @@ func readForwardComponentDynPrec(br *BitReader, at, total int, out *componentDir
 // copie brute, soit le vec3 dyn.-préc. habituel. Aucune valeur capturée : ce composant
 // n'est traversé que pour atteindre i4/i5. Le lecteur vient de l'appelant : une allocation de
 // moins par record, comme pour i4 et i5.
-func readAngularVelocityComponentDynPrec(br *BitReader, at, total int) (int, bool) {
+func readAngularVelocityComponentDynPrec(br *Lecteur, at, total int) (int, bool) {
 	br.SetBitPos(at)
 	consumeObjectAngularVelocityDynPrec(br)
 	if br.BitPos() > total {

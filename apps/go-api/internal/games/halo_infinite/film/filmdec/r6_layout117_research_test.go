@@ -267,7 +267,7 @@ func r6FromTo(pts []r6Point, frame int64) (r6Point, r6Point, float64, bool) {
 // r6Decode decode une tete 117 sous une hypothese (entree de catalogue, largeur wr).
 func r6Decode(pay []byte, e r6CatEntry, wr uint) r6Decoded {
 	d := r6Decoded{}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(9) // config + continuation + R(7) type
 	if !br.ReadBit() {
 		d.motif = "ref0 absente"

@@ -143,7 +143,7 @@ type r7RefVal struct {
 }
 
 // r7Ref lit UNE reference gardee du domaine dom. Rend (valeur, decodable).
-func r7Ref(br *BitReader, dom int) (r7RefVal, bool) {
+func r7Ref(br *Lecteur, dom int) (r7RefVal, bool) {
 	v := r7RefVal{Dom: dom}
 	if !br.ReadBit() {
 		return v, true
@@ -160,7 +160,7 @@ func r7Ref(br *BitReader, dom int) (r7RefVal, bool) {
 
 // r7Refs3 consomme les 3 references d'en-tete du type et les REND TOUTES. Rend false si le
 // cadrage est refute par un type sans table de domaines.
-func r7Refs3(br *BitReader, typ int) ([3]r7RefVal, bool) {
+func r7Refs3(br *Lecteur, typ int) ([3]r7RefVal, bool) {
 	var out [3]r7RefVal
 	doms, ok := r7Domains[typ]
 	if !ok {

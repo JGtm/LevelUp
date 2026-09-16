@@ -13,7 +13,7 @@ package filmdec
 
 // consumeFlockCurrentDestination : ti21 i17, chaine 143c95778 -> getName 141177be0 ->
 // vtable 143d07dc0 -> +0x28 = FUN_142ed4668 -> FUN_142ed0674 = R(4) puis `valeur - 1`.
-func consumeFlockCurrentDestination(br *BitReader) {
+func consumeFlockCurrentDestination(br *Lecteur) {
 	br.ReadBits(4)
 }
 
@@ -26,7 +26,7 @@ func consumeFlockCurrentDestination(br *BitReader) {
 //
 // L'octet teste est CELUI QUI VIENT D'ETRE LU (les 3 bits) : la largeur est donc entierement
 // determinee par le flux — 11 bits si la valeur est nulle, 30 sinon.
-func consumeFlockRememberedDanger(br *BitReader) {
+func consumeFlockRememberedDanger(br *Lecteur) {
 	v := br.ReadBits(3)
 	br.ReadBits(8)
 	if v != 0 {
@@ -36,7 +36,7 @@ func consumeFlockRememberedDanger(br *BitReader) {
 
 // consumeFlockFleeing : ti21 i14, chaine 143c95690 -> getName 141177c30 -> vtable 143d07c30
 // -> +0x28 = FUN_142ed4704 = un unique FUN_1406cf008 = R(1) (drapeau, bit 2 de etat+0xe8).
-func consumeFlockFleeing(br *BitReader) {
+func consumeFlockFleeing(br *Lecteur) {
 	br.ReadBits(1)
 }
 
@@ -53,7 +53,7 @@ func consumeFlockFleeing(br *BitReader) {
 // CORRIGE le 2026-08-17 (lot R7-c) : `FUN_1411b259c` n'est PAS un remplissage a zero bit,
 // c'est `FUN_1406d676c(br, br, dst, 0x60)` = R(96). L'ancien commentaire lisait le RESULTAT
 // (un NaN de conservation) et non le CURSEUR.
-func consumeFlockPosition(br *BitReader, level uint) {
+func consumeFlockPosition(br *Lecteur, level uint) {
 	if fullPrecisionGate(br) {
 		br.ReadBits(rawVec3Bits) // FUN_1411b259c -> FUN_1406d676c(..., 0x60)
 		return

@@ -43,7 +43,7 @@ var (
 // ReadQuantizedVec3 reads a 3-component vector, each component on bits bits
 // (MSB-first), then dequantizes through rng. Mirrors FUN_140c1e9d4 (read) +
 // FUN_140c1e978 (dequantize).
-func (b *BitReader) ReadQuantizedVec3(bits uint, rng Vec3Range) [3]float32 {
+func (b *Lecteur) ReadQuantizedVec3(bits uint, rng Vec3Range) [3]float32 {
 	var out [3]float32
 	scale := float32(uint64(1) << bits)
 	for i := 0; i < 3; i++ {
@@ -90,7 +90,7 @@ func bitLen(x uint32) int {
 // `(queue << 30) | (base + valeur)` avec une base de 0x200 / 0x300 / 0x400 selon la categorie.
 // Elle ne change AUCUN bit lu, elle decale des IDENTIFIANTS publies — un changement qui se juge
 // au gate de decodage, indisponible pour ce lot. Consigne au §4 du PLAN_DECODEUR_FILM.
-func (b *BitReader) readQuantStat(param3 int) uint32 {
+func (b *Lecteur) readQuantStat(param3 int) uint32 {
 	if param3 == varWidthProbeCategory && b.ReadBit() { // sonde : param_3 == 1 SEULEMENT
 		param3 = varWidthProbeSlot
 	}

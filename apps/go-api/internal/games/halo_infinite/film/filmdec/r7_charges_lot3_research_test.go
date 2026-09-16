@@ -26,7 +26,7 @@ var (
 )
 
 // r7Porte32 consomme `R(1) g ; si g : R(32)` (primitive 0x14080d69c).
-func r7Porte32(br *BitReader) {
+func r7Porte32(br *Lecteur) {
 	if br.ReadBit() {
 		br.Skip(32)
 	}
@@ -34,7 +34,7 @@ func r7Porte32(br *BitReader) {
 
 // r7BlocVariante consomme le bloc `si g==0 : [R(1);si 1:R(32)] + R(32) variant-name`
 // (POLARITE INVERSEE) commun aux types 5, 6 et 7.
-func r7BlocVariante(br *BitReader) {
+func r7BlocVariante(br *Lecteur) {
 	if !br.ReadBit() {
 		r7Porte32(br)
 		br.Skip(32) // variant-name
@@ -42,7 +42,7 @@ func r7BlocVariante(br *BitReader) {
 }
 
 // r7SkipChargeLot3 est la suite de r7SkipChargeLot2. Rend false pour tout type non ferme.
-func r7SkipChargeLot3(br *BitReader, typ int, ctx r7Ctx) bool {
+func r7SkipChargeLot3(br *Lecteur, typ int, ctx r7Ctx) bool {
 	switch typ {
 	// --- 5 projectile_detonate (lecteur 0x1408096f8) ---
 	//

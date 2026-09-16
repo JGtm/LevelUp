@@ -2,8 +2,9 @@
 #
 # Une seule ligne de donnees : `revision<TAB>empreinte`.
 #   revision   filmdec.GrammarRev (forme grammar-AAAA-MM-JJ)
-#   empreinte  sha256 des sources .go hors _test.go de filmdec/ ET killsource/, chemin relatif
-#              compris, fins de ligne normalisees en LF.
+#   empreinte  sha256 des sources .go hors _test.go des QUATRE racines de grammaire —
+#              analysis/filmsource/, filmdec/, killsource/, analysis/objectiveevents/ —
+#              chemin relatif compris, fins de ligne normalisees en LF.
 #
 # LA REGLE A TROIS ETAGES :
 #   GrammarRev            monte a TOUT changement de grammaire (largeur, cadre, ordre, lecteur).
@@ -453,4 +454,30 @@
 #               Ratchet 43 -> 22, et ZERO variable de paquet ECRITE.
 #               AUCUN OCTET N EST LU AUTREMENT.
 #               `KillSourceDecoderRev` ne bouge PAS (golden refige) ; `SchemaVersion` reste 60.
-grammar-2026-09-15.27	0323a9d0c92f191e2e8eb9f80fff05b180b16933a13d1514a32cd5fe3db2f3b3
+#   2026-09-18  grammar-2026-09-15.28  lot 2.4.1 (`.27` -> `.28`, RANG PROVISOIRE) : UNE SEULE
+#               PORTE AUX BITS. `filmsource.Bits` devient LE lecteur du depot ; `BitReader` ne
+#               porte plus ni tampon ni position, il l EMBARQUE et n y ajoute que la grammaire
+#               (profil, capture, observateur, ReadSignedVarWidth). `filmdec/bits_word.go`
+#               disparait au profit de `filmsource.BitsAt`. `killsource.evReader` est ABSORBE,
+#               avec `bitsWide`, `bitAt`, `bits32` et `bitsN` : 23 sites passent par les
+#               primitives de la source. Le drapeau de debordement reste au MARCHEUR de chaine
+#               (`curseurEv`, qui teste Remaining() avant chaque lecture), pas au lecteur —
+#               arbitrage V15 (3). AUCUN OCTET N EST LU AUTREMENT, prouve appel par appel sur
+#               109 168 positions reelles et de bout en bout par un golden de triplets fige
+#               AVANT l absorption. L EMPREINTE HACHE UNE QUATRIEME RACINE
+#               (analysis/filmsource), sans quoi ce lot aurait ouvert un trou.
+#               `KillSourceDecoderRev` ne bouge PAS (golden refige) ; `SchemaVersion` reste 60.
+#   2026-09-18  grammar-2026-09-15.29  lot 2.4.2 (`.28` -> `.29`, RANG PROVISOIRE) : LA PORTE AUX
+#               OCTETS EST UNIQUE. Descendent dans `filmsource` : les quatre conventions de bord
+#               nommees (BitsAt / BitAt / BitsTolerants / BitsTronques), les entiers du film
+#               (U16LE / U32LE / U64LE, OctetAuBit, U64LEAuBit), LE marcheur de paquets (Paquets),
+#               LE decompresseur (Inflate tolerant, Decompresser strict) et le balayage de motif
+#               (ChercherMotif64). `filmdec.BitReader`/`NewBitReader` deviennent `Lecteur`/
+#               `LecteurSur` — le type ne lit plus, il decore — et les deux anciens noms restent
+#               en ratchet anti-resurrection. Six paquets traversent la facade : filmdec,
+#               killsource (qui porte le *filmsource.Film, plus une copie de ses chunks),
+#               objectiveevents, weaponv3 (la copie divergente de la lecture par mot est
+#               supprimee), sync/haloclient et cinq outils cmd/. Allowlist du ratchet 2.4.3 :
+#               68 -> 9 (les seules entrees du lot 2.5.c). AUCUN OCTET N EST LU AUTREMENT.
+#               `KillSourceDecoderRev` ne bouge PAS (golden refige) ; `SchemaVersion` reste 60.
+grammar-2026-09-15.29	52cbae7eab4a3de73d350f9a7ebc129fbf52c915cae64fe71c7cf4497503fac1

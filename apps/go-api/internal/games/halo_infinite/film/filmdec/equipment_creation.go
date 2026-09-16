@@ -282,7 +282,7 @@ type equipCreationWalk struct {
 	// ti est le typeIndex exigé de l'en-tête NEW ; zéro vaut `EquipmentTypeIndex`.
 	ti uint32
 	// deser est le déserialiseur du default-state de cet archétype ; nil vaut celui de `ti=37`.
-	deser func(*BitReader)
+	deser func(*Lecteur)
 	// posDecode décode et VALIDE le composant i0 à l'offset donné (gate de sélectivité). nil vaut
 	// le chemin OBJET DU MONDE (decodeWorldObjectPos, porte 2 + IndexW bits). L'archétype VÉHICULE (`ti=40`)
 	// porte un i0 en PRÉCISION-DYNAMIQUE (porte 5 bits, biped) : il passe ici decodeBipedI0Pos
@@ -312,7 +312,7 @@ func (w equipCreationWalk) archetype() uint32 {
 func (w equipCreationWalk) contexte() ContexteDeLecture {
 	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
 }
-func (w equipCreationWalk) defaultState() func(*BitReader) {
+func (w equipCreationWalk) defaultState() func(*Lecteur) {
 	if w.deser == nil {
 		return consumeDefaultStateTI37
 	}
@@ -430,7 +430,7 @@ func (w equipCreationWalk) readCreation(
 ) (EquipmentCreation, bool) {
 	var cre EquipmentCreation
 	*w.cur = equipCreationRead{}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.PoserContexte(w.contexte())
 	br.PoserObservation(w.obs)
 	start := p + woNewHeaderBits
@@ -474,7 +474,7 @@ func (w equipCreationWalk) readCreation(
 // de l'entité, donc souvent plus de sept composants — au-delà, le compte de 3 bits de la
 // branche éparse ne suffit plus et le moteur bascule sur le masque explicite. La refuser
 // perdait la majorité des créations (mesuré : 58 records retenus contre 351 une fois acceptée).
-func readMaskIndices(br *BitReader, comps int) (idx []int, full, ok bool) {
+func readMaskIndices(br *Lecteur, comps int) (idx []int, full, ok bool) {
 	if br.ReadBit() { // gate==1 : masque plein explicite R(64)
 		// Le composant i est le bit i du mot rendu par ReadBits(64) — la convention de
 		// consumeMask, dont la branche éparse pose `mask |= 1 << idx` et que

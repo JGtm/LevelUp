@@ -41,7 +41,7 @@ type r7Pos117 struct {
 // r7Decode117 lit la charge d'un evenement 117 a partir du bit qui suit son R(7) de type.
 // Rend le slot (ref0, domaine 2, base 512), les deux positions, et si la lecture a tenu.
 func r7Decode117(pay []byte, bitApresType int, e r6CatEntry) (int, r7Pos117, r7Pos117, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(bitApresType)
 	var slot int
 	if !br.ReadBit() {

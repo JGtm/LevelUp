@@ -125,7 +125,7 @@ func pgesRunFrame(o *pgesOracle, pay []byte, r pgesRecord, reg *Registry, snap W
 	if !r.payload.exact {
 		return
 	}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(r.bitAfter)
 	if br.ReadBit() { // continuation : un autre evenement suit -> on ne juge pas
 		return
@@ -142,7 +142,7 @@ func pgesRunFrame(o *pgesOracle, pay []byte, r pgesRecord, reg *Registry, snap W
 	if p := pos + 3; p+16 < len(pay)*8 { // temoin negatif : +3 bits
 		w2 := NewWorld(reg)
 		w2.Restore(snap)
-		cbr := NewBitReader(pay)
+		cbr := LecteurSur(pay)
 		cbr.Skip(p)
 		crecs, cerr := DecodeFrameRecords(cbr, w2, DefaultFrameConfig())
 		o.deltasTemoin += len(crecs)
@@ -197,7 +197,7 @@ func TestPlayerGameEventSmall(t *testing.T) {
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, wBase, cfg)
 			}
 		}
@@ -232,7 +232,7 @@ func TestPlayerGameEventSmall(t *testing.T) {
 
 // pgesIsType83 rend vrai si le paquet 0xE9 porte le type 83 (TeamGameEvent).
 func pgesIsType83(pay []byte) bool {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(1)
 	return br.ReadBit() && br.ReadBits(7) == 83
 }

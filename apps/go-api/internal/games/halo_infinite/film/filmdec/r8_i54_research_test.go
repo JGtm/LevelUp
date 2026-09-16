@@ -110,7 +110,7 @@ func (s r8MobSetup) r8MobOffset(pay []byte, i0, total int, idx []int) int {
 		if name == "" {
 			return -1
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), s.arch.Level(id))
 		if !ported || br.BitPos() > total {
@@ -127,7 +127,7 @@ func r8ReadMobility(pay []byte, at, total int) (r8MobEvent, bool) {
 	if at+2 > total {
 		return r8MobEvent{}, false
 	}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(at)
 	ev := r8MobEvent{Flag1: br.ReadBit(), Flag2: br.ReadBit()}
 	if !ev.Flag1 {
@@ -146,7 +146,7 @@ func r8ReadMobility(pay []byte, at, total int) (r8MobEvent, bool) {
 // r8MirrorBody est le MIROIR de `consumeMobilityActionBody` (components_biped_ability.go) :
 // meme sequence, memes primitives de production, mais les six champs terminaux sont RETENUS
 // au lieu d'etre jetes. Toute divergence de largeur avec la production se voit sur `Bits`.
-func r8MirrorBody(br *BitReader, ev *r8MobEvent) {
+func r8MirrorBody(br *Lecteur, ev *r8MobEvent) {
 	if br.ReadBit() {
 		br.ReadBits(10)
 	}

@@ -18,7 +18,7 @@ package filmdec
 // item E.3 : `refDomWidth` d'event_list.go est la seule table du paquet.)
 
 // lot1RefDom consomme une reference gardee du domaine dom (sans sonde). Rend (index, presente).
-func lot1RefDom(br *BitReader, dom int) (uint64, bool) {
+func lot1RefDom(br *Lecteur, dom int) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
@@ -29,7 +29,7 @@ func lot1RefDom(br *BitReader, dom int) (uint64, bool) {
 
 // lot1RefDom1 consomme une reference du domaine 1 (AVEC sonde : R(1) sonde ; largeur 9 si
 // sonde==1, sinon 13 ; puis R(2) generation).
-func lot1RefDom1(br *BitReader) (uint64, bool) {
+func lot1RefDom1(br *Lecteur) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
@@ -70,7 +70,7 @@ func lot1Dequant(raw uint64, width uint, vmin, vmax float64) float64 {
 // lot1DecodeDamageAftermath consomme la charge damage_aftermath EXACTEMENT (grammaire du
 // workflow damage-aftermath-reader). Les dequantifications float sont 0 bit ; seuls les codes
 // sont lus.
-func lot1DecodeDamageAftermath(br *BitReader) lot1DmgResult {
+func lot1DecodeDamageAftermath(br *Lecteur) lot1DmgResult {
 	var r lot1DmgResult
 	// (1) source : R(1) porte ; si 1 : R(32) (id de tag global)
 	if br.ReadBit() {

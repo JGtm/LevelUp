@@ -212,7 +212,7 @@ func rbHasEvents(pay []byte) bool { return kfBitAt(pay, 1) != 0 }
 // PROPRES et credibles. Reproduit killsource/walk.go:walkPacket + selectCredible.
 func rbHarvestPacket(pay []byte, w *World, cfg FrameConfig, start, bipLo, bipHi, nRoster int, ts uint64, kills []geoKill) []geoKill {
 	snap := w.Snapshot()
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(start)
 	var recs []FrameRecord
 	for v := 0; v < rbViews && len(pay)*8-br.BitPos() >= 8; v++ {

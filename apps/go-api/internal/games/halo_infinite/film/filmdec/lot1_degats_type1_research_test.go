@@ -45,7 +45,7 @@ type lot1Type1Result struct {
 }
 
 // lot1DecodeDamageSectionResponse consomme la charge type 1 EXACTEMENT (FUN_140968368).
-func lot1DecodeDamageSectionResponse(br *BitReader) lot1Type1Result {
+func lot1DecodeDamageSectionResponse(br *Lecteur) lot1Type1Result {
 	var r lot1Type1Result
 	r.p0 = br.ReadBits(5)
 	if !br.ReadBit() { // g1 : polarite inversee (bit 0 -> champ present)
@@ -95,7 +95,7 @@ func lot1ScanType1(t *testing.T, dir string, reg *Registry, n int) ([]lot1Type1E
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, w, cfg)
 			}
 		}
@@ -107,7 +107,7 @@ func lot1ScanType1(t *testing.T, dir string, reg *Registry, n int) ([]lot1Type1E
 			if pay[0] != 0xC0 {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(2)
 			if br.ReadBits(7) != 1 {
 				continue // type 0 (damage_aftermath) ou autre : ignore
@@ -186,7 +186,7 @@ func TestLot1DegatsType1(t *testing.T) {
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, wBase, cfg)
 			}
 		}
@@ -199,7 +199,7 @@ func TestLot1DegatsType1(t *testing.T) {
 			if pay[0] != 0xC0 {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(2)
 			if br.ReadBits(7) != 1 {
 				continue
@@ -247,7 +247,7 @@ func TestLot1DegatsType1(t *testing.T) {
 			if p := pos + 3; p+16 < len(pay)*8 {
 				w2 := NewWorld(reg)
 				w2.Restore(snap)
-				cbr := NewBitReader(pay)
+				cbr := LecteurSur(pay)
 				cbr.Skip(p)
 				crecs, cerr := DecodeFrameRecords(cbr, w2, DefaultFrameConfig())
 				ctrlDeltas += len(crecs)

@@ -52,7 +52,7 @@ import (
 // n'est pas un type 36 modal. C'est le point de mesure qui isole les composites : fire_events
 // place la visee 5 bits (les drapeaux) apres un point equivalent, sans aucun composite.
 func lot1HeaderPostCounts(pay []byte, flipD bool) (int, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(2)
 	if br.ReadBits(7) != 36 {
 		return 0, false
@@ -127,7 +127,7 @@ func lot1HeaderAimStart(pay []byte, flipD bool) (int, bool) {
 	if !ok {
 		return 0, false
 	}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(pos)
 	lot1SkipCd5b8(br)
 	lot1SkipEff64(br)

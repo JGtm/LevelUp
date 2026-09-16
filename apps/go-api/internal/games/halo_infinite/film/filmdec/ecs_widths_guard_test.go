@@ -180,7 +180,7 @@ func ecsLargeurConsommee(r ecsRow) (int, bool) {
 		for i := range buf {
 			buf[i] = motif
 		}
-		br := NewBitReader(buf)
+		br := LecteurSur(buf)
 		if _, _, ported := consumeByName(br, r.Component, uint32(r.TI), r.Level); !ported {
 			return 0, false // non porte : aucune largeur a confronter
 		}
@@ -296,7 +296,7 @@ func ecsLargeursParMotif(r ecsRow) [3]int {
 		for i := range buf {
 			buf[i] = motif
 		}
-		br := NewBitReader(buf)
+		br := LecteurSur(buf)
 		if _, _, ported := consumeByName(br, r.Component, uint32(r.TI), r.Level); !ported {
 			out[k] = -1
 			continue

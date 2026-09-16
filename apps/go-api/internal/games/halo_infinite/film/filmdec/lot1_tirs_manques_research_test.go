@@ -44,7 +44,7 @@ func TestLot1TirsManques(t *testing.T) {
 			pay := pk.Payload(data)
 			switch pay[0] {
 			case 0xD2: // action_weapon_fire
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.Skip(2)
 				if br.ReadBits(7) != 36 {
 					continue
@@ -55,7 +55,7 @@ func TestLot1TirsManques(t *testing.T) {
 					parTireur[uint64(readBitsAt(pay, 36, 5))>>1]++
 				}
 			case 0xC0: // damage_aftermath (type 0)
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.Skip(2)
 				if br.ReadBits(7) == 0 {
 					degats++

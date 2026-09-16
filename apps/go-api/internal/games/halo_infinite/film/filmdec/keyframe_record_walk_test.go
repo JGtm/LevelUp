@@ -217,7 +217,7 @@ func kfGramMeasure(reg *Registry, pays [][]byte, ti int) kfGramTally {
 
 // kfGramOne mesure UN record : sa marche, puis le chainage vers `want`.
 func kfGramOne(reg *Registry, pay []byte, r KeyframeRec, want int, tal *kfGramTally) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(r.Bit + keyframeRecordTIBit)
 	tr := TraverseEntity(br, reg, 0)
 	if tr.DesyncAt >= 0 {
@@ -326,7 +326,7 @@ func kfGramSweep(reg *Registry, pays [][]byte, ti int) (
 				if int(kfReadBits(pay, r.Bit+off, 6)) == ti {
 					tiOK[off]++
 				}
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.SetBitPos(r.Bit + off)
 				if tr := TraverseEntity(br, reg, 0); tr.DesyncAt < 0 && tr.EndBit == want {
 					exact[off]++

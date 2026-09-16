@@ -265,7 +265,7 @@ func (w bipedCreationWalk) readCreation(pay []byte, p, total int) (BipedCreation
 		st.Truncated++
 		return cre, false
 	}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.PoserContexte(w.contexte())
 	br.SetBitPos(start)
 	// g0 : la porte de version. Les records mesurés l'ouvrent et écrivent 13 EXPLICITEMENT ;

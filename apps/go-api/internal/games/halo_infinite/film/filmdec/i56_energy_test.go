@@ -373,7 +373,7 @@ func i56WalkRecord(
 		if name == "" {
 			return flag1, s, false
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), arch.Level(id))
 		if !ported || br.BitPos() > total {

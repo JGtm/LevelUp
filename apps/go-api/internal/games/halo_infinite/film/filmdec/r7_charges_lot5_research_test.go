@@ -25,7 +25,7 @@ package filmdec
 // Reste a savoir s'ils apparaissent dans le flux : c'est la mesure, pas la grammaire.
 
 // r7RefCharge consomme une reference var-int A L'INTERIEUR d'une charge (sans bit de porte).
-func r7RefCharge(br *BitReader, dom int) {
+func r7RefCharge(br *Lecteur, dom int) {
 	w := r7DomWidth[dom]
 	if dom == 1 && br.ReadBit() { // sonde
 		w = 9
@@ -35,12 +35,12 @@ func r7RefCharge(br *BitReader, dom int) {
 
 // r7Direction19 consomme une direction unitaire quantifiee (FUN_14076dc04 R9D=0x13 puis
 // FUN_1406d8288, 0 bit) — le codec commun au repulseur, au propulseur et a la requete.
-func r7Direction19(br *BitReader) { br.Skip(19) }
+func r7Direction19(br *Lecteur) { br.Skip(19) }
 
 // r7ORI consomme le bloc d'orientation par defaut (FUN_140c5fa84) : `R(1) g ; si g==0 :
 // R(19)` puis `R(8)`. La variante `DAT_145121140 == 1` (R(30) au lieu de R(19)) n'est pas
 // modelisee : elle rendrait le type concerne opaque, et aucun de ces types n'apparait.
-func r7ORI(br *BitReader) {
+func r7ORI(br *Lecteur) {
 	if !br.ReadBit() {
 		br.Skip(19)
 	}
@@ -48,7 +48,7 @@ func r7ORI(br *BitReader) {
 }
 
 // r7SkipChargeLot5 : les types d'equipement. Rend false pour tout type non ferme.
-func r7SkipChargeLot5(br *BitReader, typ int, ctx r7Ctx) bool {
+func r7SkipChargeLot5(br *Lecteur, typ int, ctx r7Ctx) bool {
 	switch typ {
 	// --- 104 EquipmentKnockbackPlayer : LE REPULSEUR (lecteur 0x14116c344) ---
 	// FUN_14076d528(flux, .., 0.05f, 20.0f, 10, 19) : R(1) ; si 0 : R(19) + R(10).

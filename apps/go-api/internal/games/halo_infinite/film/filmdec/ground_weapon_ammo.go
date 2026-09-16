@@ -114,7 +114,7 @@ func readGroundWeaponAmmo(pay []byte, compStart int, mask []int, arch Archetype,
 	if !hasAmmo {
 		return GroundWeaponAmmo{}, false
 	}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.PoserContexte(ctx)
 	br.SetBitPos(compStart)
 	tr := EntityTrace{TypeIndex: GroundWeaponTypeIndex, Mask: bits, DesyncAt: -1}
@@ -123,7 +123,7 @@ func readGroundWeaponAmmo(pay []byte, compStart int, mask []int, arch Archetype,
 		if c.Index != groundWeaponAmmoIndex {
 			continue
 		}
-		r := NewBitReader(pay)
+		r := LecteurSur(pay)
 		r.PoserContexte(ctx)
 		r.SetBitPos(c.StartBit)
 		return GroundWeaponAmmo{Mag: uint32(r.ReadBits(8)), Res: uint32(r.ReadBits(11))}, true

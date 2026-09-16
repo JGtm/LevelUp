@@ -43,7 +43,7 @@ package filmdec
 // for components whose deser is not yet bit-exact.
 //
 // Premier maillon : composants d'OBJET (i0 a i17), unite-acteur, et le chemin WORLD-OBJECT.
-func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
+func consumeByName(br *Lecteur, name string, typeIndex uint32, level uint32) (variant uint32, dead *DeadState, ported bool) {
 	variant = noVariant
 	switch name {
 	case "object-position-dynamic-precision-component": // i0

@@ -151,7 +151,7 @@ type FrameRecord struct {
 }
 
 // readRecordType ports the record-type PREFIX CODE: R(1); set -> DELTA; else R(2).
-func readRecordType(br *BitReader) int {
+func readRecordType(br *Lecteur) int {
 	if br.ReadBit() {
 		return recDelta
 	}
@@ -160,7 +160,7 @@ func readRecordType(br *BitReader) int {
 
 // readRecordID ports FUN_1406d3140(_,_,7,_): low = R(idLowBits)+idBase ; tag = R(2)
 // in bits 30-31. The slot (id & 0x3fffffff) indexes the World; the tag is generation.
-func readRecordID(br *BitReader, idLowBits int, idBase uint32) uint32 {
+func readRecordID(br *Lecteur, idLowBits int, idBase uint32) uint32 {
 	var low uint32
 	if idLowBits > 0 {
 		low = uint32(br.ReadBits(uint(idLowBits)))
@@ -179,7 +179,7 @@ func readRecordID(br *BitReader, idLowBits int, idBase uint32) uint32 {
 // Il manquait a ce port ; sa presence est prouvee contre l'oracle Rosette du film 000d5950
 // (mode `oracle` de cmd/tmp_ecsschema) : eid + indices du masque + position de fin d'en-tete
 // concordent 54760/54760 AVEC ce bit, et le bit vaut 0 sur 54760/54760 (jamais le R(7)).
-func decodeDelta(br *BitReader, w *World, slot uint32) EntityTrace {
+func decodeDelta(br *Lecteur, w *World, slot uint32) EntityTrace {
 	br.poserSlotDeCapture(slot) // cible d'accumulation i0 pour ce record (no-op sans World accumulateur)
 	t := EntityTrace{DesyncAt: -1}
 	if br.ReadBit() { // baseline selector
@@ -211,7 +211,7 @@ func decodeDelta(br *BitReader, w *World, slot uint32) EntityTrace {
 // target record after a desync WITHOUT binding the intervening unknown slots. A fresh
 // reader is created so the caller's stream position is untouched.
 func TryDeltaAt(buf []byte, bitpos int, w *World, cfg FrameConfig) (FrameRecord, int, bool) {
-	br := NewBitReader(buf)
+	br := LecteurSur(buf)
 	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
 	br.Skip(bitpos)
 	if br.Remaining() < 24 {
@@ -237,7 +237,7 @@ func TryDeltaAt(buf []byte, bitpos int, w *World, cfg FrameConfig) (FrameRecord,
 // the World (entity-id -> archetype, held-weapon cache). Returns the records decoded;
 // on a component desync it returns the records so far plus an error (the bit position
 // of the next record can no longer be trusted).
-func DecodeFrameRecords(br *BitReader, w *World, cfg FrameConfig) ([]FrameRecord, error) {
+func DecodeFrameRecords(br *Lecteur, w *World, cfg FrameConfig) ([]FrameRecord, error) {
 	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3) : le lecteur vient de l'appelant
 	var out []FrameRecord
 	if cfg.PacketPreambleBits > 0 && br.BitPos() == 0 {

@@ -89,7 +89,7 @@ func WalkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDe
 // avec un temoin nomme ; la production passe par `WalkKeyframeFullState`, donc par le temoin nul.
 func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDeLecture,
 	tem keyframeFullStateTemoin) EntityTrace {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.PoserContexte(ctx)
 	// L EN-TETE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c) ; le temoin negatif, quand il
 	// est pose, le remplace — c est sa seule raison d etre (cf. `keyframeFullStateTemoin`).
@@ -139,7 +139,7 @@ func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDe
 // `default_state_n2_constant_test.go` ecarte « trois a quinze records par groupe dont le `n1`
 // s'ecarte du modal (en pratique 0) » en les appelant des ANCRES FORTUITES. L'ecrivain dit
 // qu'un `n1` nul est un record LEGITIME sans etat par defaut.
-func consumeFullStateDefaultBlock(br *BitReader, ti uint32, sansEtatParDefaut bool) bool {
+func consumeFullStateDefaultBlock(br *Lecteur, ti uint32, sansEtatParDefaut bool) bool {
 	// LA LARGEUR DU MOT DE TAILLE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c).
 	mot := uint(br.cadre().MotDeTailleBits) //nolint:gosec // largeur de profil, bornee a 32
 	n1 := int32(br.ReadBits(mot))           //nolint:gosec // 32 bits lus, compares SIGNES

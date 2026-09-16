@@ -259,7 +259,7 @@ func TestConsumeObjectMultiplayerPropertiesGrammaire(t *testing.T) {
 		w := &bitw{}
 		c.ecr(w)
 		buf := append(w.buf, make([]byte, 16)...)
-		br := NewBitReader(buf)
+		br := LecteurSur(buf)
 		consumeObjectMultiplayerProperties(br)
 		if br.BitPos() != c.bits {
 			t.Errorf("%s : %d bits consommes, %d attendus", c.nom, br.BitPos(), c.bits)
@@ -290,9 +290,9 @@ func TestConsumeObjectMultiplayerPropertiesGateIsExclusive(t *testing.T) {
 	present.put(0, 1)
 	suffixe(present)
 
-	brA := NewBitReader(append(absent.buf, make([]byte, 16)...))
+	brA := LecteurSur(append(absent.buf, make([]byte, 16)...))
 	consumeObjectMultiplayerProperties(brA)
-	brP := NewBitReader(append(present.buf, make([]byte, 16)...))
+	brP := LecteurSur(append(present.buf, make([]byte, 16)...))
 	consumeObjectMultiplayerProperties(brP)
 
 	if brA.BitPos() != 1 {
@@ -321,7 +321,7 @@ func TestTLVVarintNAPasDeCorps(t *testing.T) {
 		w.put(0x04, 8)
 		w.put(longueur, 8)
 		i9Terminator(w)
-		br := NewBitReader(append(w.buf, make([]byte, 256)...))
+		br := LecteurSur(append(w.buf, make([]byte, 256)...))
 		consumeObjectMultiplayerProperties(br)
 		return br.BitPos()
 	}

@@ -220,14 +220,14 @@ func killEventsIn(pl []byte, gate15 bool) []killEventRec {
 	var out []killEventRec
 	nb := len(pl) * 8
 	for x := 1; x+8 <= nb; x++ {
-		if bitAt(pl, x-1) != 1 || bitsN(pl, x, 7) != killEventCode {
+		if !estAncreDeKillEvent(pl, x) {
 			continue
 		}
-		r := &evReader{pl: pl, bp: x + 7}
+		r := nouveauCurseurEv(pl, x+7)
 		if !evPresence(r, killEventCode) {
 			continue
 		}
-		k := readKillEvent(pl, r.bp)
+		k := readKillEvent(pl, r.pos())
 		if !killEventPlausible(k) {
 			continue
 		}

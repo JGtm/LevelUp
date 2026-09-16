@@ -47,7 +47,7 @@ package filmdec
 // dans la table (on ne devine pas : un skip faux vaut mieux mesure qu'un skip invente).
 
 // consumeVersionPrefix porte le prologue « version » commun : R(1) gate ; si 1 -> R(8).
-func consumeVersionPrefix(br *BitReader) {
+func consumeVersionPrefix(br *Lecteur) {
 	if br.ReadBit() {
 		br.ReadBits(8)
 	}
@@ -74,7 +74,7 @@ func consumeVersionPrefix(br *BitReader) {
 // archetype (`testdata/keyframe_closure.golden`, lot 0.A.3) dit, bobine par bobine, ce que
 // chaque repli coute ; le repli est retire quand la grammaire est lue, pas quand le compte est
 // bas.
-var defaultStateDeserByTI = map[uint32]func(*BitReader){
+var defaultStateDeserByTI = map[uint32]func(*Lecteur){
 	3:  consumeDefaultStateTI3,
 	5:  consumeDefaultStateTI5,
 	6:  consumeDefaultStateTI6,
@@ -106,7 +106,7 @@ var defaultStateDeserByTI = map[uint32]func(*BitReader){
 //
 //	V ; FUN_1408f0ac4(dst, br, 0) ; FUN_1407f08bc [R(1) ; si 1 R(8)] ;
 //	FUN_142af28d8 [R(1)] ; R(8)
-func consumeDefaultStateTI3(br *BitReader) {
+func consumeDefaultStateTI3(br *Lecteur) {
 	consumeVersionPrefix(br)
 	consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0) @142eea359
 	consumeGateR(br, 8)     // FUN_1407f08bc -> FUN_1407f08f8 = R(8)
@@ -116,21 +116,21 @@ func consumeDefaultStateTI3(br *BitReader) {
 
 // consumeDefaultStateTI5 porte FUN_140fed600 (archetype 5, « player-waypoint ») :
 // V ; R(6) (index de joueur, valide < 0x20 par la valeur de retour).
-func consumeDefaultStateTI5(br *BitReader) {
+func consumeDefaultStateTI5(br *Lecteur) {
 	consumeVersionPrefix(br)
 	br.ReadBits(6)
 }
 
 // consumeDefaultStateTI6 porte FUN_140ff7f44 (archetype 6, « statborg ») : R(6) SEC,
 // sans prefixe de version (valide < 0x30 par la valeur de retour).
-func consumeDefaultStateTI6(br *BitReader) { br.ReadBits(6) }
+func consumeDefaultStateTI6(br *Lecteur) { br.ReadBits(6) }
 
 // consumeDefaultStateTI8 porte FUN_142f14688 (archetype 8, sans composant) :
 //
 //	g = R(1)
 //	si g : v = R(8) ; si v > 1 -> R(16) et FIN
 //	sinon (ou v <= 1) : R(8)
-func consumeDefaultStateTI8(br *BitReader) {
+func consumeDefaultStateTI8(br *Lecteur) {
 	if br.ReadBit() {
 		if v := br.ReadBits(8); v > 1 {
 			br.ReadBits(16)
@@ -144,7 +144,7 @@ func consumeDefaultStateTI8(br *BitReader) {
 // V ; R(6) ; R(6) ; R(1). Elle JETTE ce que [readManagedPlayerDefaultState] publie : la table
 // `defaultStateDeserByTI` n'a qu'une signature, et le seul lecteur qui ait besoin de la valeur
 // (l'equipe, lot 1.7) appelle l'autre.
-func consumeDefaultStateTI9(br *BitReader) { readManagedPlayerDefaultState(br) }
+func consumeDefaultStateTI9(br *Lecteur) { readManagedPlayerDefaultState(br) }
 
 // readManagedPlayerDefaultState porte la MEME grammaire et REND le premier `R(6)`.
 //
@@ -157,7 +157,7 @@ func consumeDefaultStateTI9(br *BitReader) { readManagedPlayerDefaultState(br) }
 // Meme forme que le `R(6)` de ti=5 (`player-waypoint`), que l'executable borne a `< 0x20`.
 //
 // La largeur du champ n'est pas devinee : elle vient de `FUN_1410d7540`, comme les deux autres.
-func readManagedPlayerDefaultState(br *BitReader) (playerIndex int) {
+func readManagedPlayerDefaultState(br *Lecteur) (playerIndex int) {
 	consumeVersionPrefix(br)
 	playerIndex = int(br.ReadBits(6))
 	br.ReadBits(6)
@@ -167,7 +167,7 @@ func readManagedPlayerDefaultState(br *BitReader) (playerIndex int) {
 
 // consumeDefaultStateTI10 porte FUN_141020244 (archetype 10, « managed-object ») :
 // V ; FUN_1408f0ac4(dst, br, 0).
-func consumeDefaultStateTI10(br *BitReader) {
+func consumeDefaultStateTI10(br *Lecteur) {
 	consumeVersionPrefix(br)
 	consume1408f0ac4(br, 0)
 }
@@ -176,7 +176,7 @@ func consumeDefaultStateTI10(br *BitReader) {
 //
 //	V ; FUN_14080dec4 "propertyName" = R(32) ;
 //	g = R(1) ; si g == 0 -> 1 x FUN_140ce59bc [R(4)] ; sinon 32 x FUN_140ce59bc.
-func consumeDefaultStateTI13(br *BitReader) {
+func consumeDefaultStateTI13(br *Lecteur) {
 	consumeVersionPrefix(br)
 	br.ReadBits(32) // FUN_14080dec4 "propertyName"
 	n := 1
@@ -194,14 +194,14 @@ func consumeDefaultStateTI13(br *BitReader) {
 // `< 0x20` par la valeur de retour — exactement la forme de ti5, a la largeur pres.
 //
 // FUN_1410f44f8 (ti47) a la meme forme, au bit pres, et partage donc ce porteur.
-func consumeDefaultStateTI14(br *BitReader) {
+func consumeDefaultStateTI14(br *Lecteur) {
 	consumeVersionPrefix(br)
 	br.ReadBits(5)
 }
 
 // consumeDefaultStateTI17 porte FUN_14101a0a4 (archetype 17) : V ; R(7).
 // La feuille fait `*(reader+0x2c) += 7` et la fonction rend 1 sans borner la valeur.
-func consumeDefaultStateTI17(br *BitReader) {
+func consumeDefaultStateTI17(br *Lecteur) {
 	consumeVersionPrefix(br)
 	br.ReadBits(7)
 }
@@ -209,22 +209,22 @@ func consumeDefaultStateTI17(br *BitReader) {
 // consumeDefaultStateTI21 porte FUN_141133c24 (archetype 21, `flock-*-component`) :
 // un unique `R(0x12)` = R(18), SANS prefixe de version. C'est le seul des cinq etats du lot
 // 1.3 a ne pas commencer par `FUN_1406cf008` : le decompile n'appelle rien avant sa feuille.
-func consumeDefaultStateTI21(br *BitReader) { br.ReadBits(18) }
+func consumeDefaultStateTI21(br *Lecteur) { br.ReadBits(18) }
 
 // consumeDefaultStateTI24 porte FUN_142eea5b4 (archetype 24, « state-checksum ») :
 // FUN_1406d00ec [R(1) ; si 0 -> R(2)] ; FUN_140c1e31c [R(3)]. Pas de prefixe de version.
-func consumeDefaultStateTI24(br *BitReader) {
+func consumeDefaultStateTI24(br *Lecteur) {
 	consumeID2(br)
 	br.ReadBits(3) // FUN_140c1e31c = R(3)
 }
 
 // consumeDefaultStateTI28 porte FUN_142eea4d8 (archetype 28, « narrative-moment ») : R(32) sec.
-func consumeDefaultStateTI28(br *BitReader) { br.ReadBits(32) }
+func consumeDefaultStateTI28(br *Lecteur) { br.ReadBits(32) }
 
 // consumeDefaultStateTI36 porte FUN_1407f2224 (archetype 36, « object-position ») :
 // V ; FUN_14080cfe8 (bloc object-multiplayer-properties, deja porte bit-exact).
 // FUN_140fe7630 (ti43) a exactement la meme forme.
-func consumeDefaultStateTI36(br *BitReader) {
+func consumeDefaultStateTI36(br *Lecteur) {
 	consumeVersionPrefix(br)
 	consumeMultiplayerPropertiesBlock(br)
 }
@@ -242,7 +242,7 @@ func consumeDefaultStateTI36(br *BitReader) {
 // jeter — meme correction qu'i48 le 2026-08-14 et que les quatre champs d'equipment_state.go
 // le 2026-08-16. Les largeurs sont INCHANGEES : `consumeGate0R(br, 5)` et
 // `consumeGateR(br, 32)` sont deroules a l'identique, porte comprise.
-func consumeDefaultStateTI37(br *BitReader) {
+func consumeDefaultStateTI37(br *Lecteur) {
 	consumeVersionPrefix(br)
 	consumeDefaultStateTI36(br)
 	if !br.ReadBit() { // ECS_ReadEntityRefIndex5 = consumeGate0R(br, 5) : porte INVERSEE
@@ -259,7 +259,7 @@ func consumeDefaultStateTI37(br *BitReader) {
 
 // consumeDefaultStateTI38 porte FUN_1408f0b48 (archetypes 38 ET 39, « object-position ») :
 // V ; FUN_14080cfe8 (MPP) ; FUN_1408f0ac4(dst+0x60, br, 0).
-func consumeDefaultStateTI38(br *BitReader) {
+func consumeDefaultStateTI38(br *Lecteur) {
 	consumeVersionPrefix(br)
 	consumeMultiplayerPropertiesBlock(br)
 	consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0) @1408f0bae
@@ -267,4 +267,4 @@ func consumeDefaultStateTI38(br *BitReader) {
 
 // consumeDefaultStateTI48 porte FUN_142f14668 (archetype 48, « forge-player-data ») :
 // ECS_ReadEntityRefIndex5 seul (FUN_1407f2058 = R(1) ; si 0 -> R(5)).
-func consumeDefaultStateTI48(br *BitReader) { consumeGate0R(br, 5) }
+func consumeDefaultStateTI48(br *Lecteur) { consumeGate0R(br, 5) }

@@ -7,7 +7,7 @@ import "testing"
 // FUN_140c18794). Buffers are padded to 8 bytes so the full-word path is exercised.
 
 func TestReadBits_V1(t *testing.T) {
-	br := NewBitReader([]byte{0xB5, 0x6A, 0xFF, 0x00, 0x12, 0x34, 0x56, 0x78})
+	br := LecteurSur([]byte{0xB5, 0x6A, 0xFF, 0x00, 0x12, 0x34, 0x56, 0x78})
 	ns := []uint{4, 4, 8, 3, 13, 16}
 	want := []uint64{0xB, 0x5, 0x6A, 0x7, 0x1F00, 0x1234}
 	for i, n := range ns {
@@ -18,7 +18,7 @@ func TestReadBits_V1(t *testing.T) {
 }
 
 func TestReadBit_V2(t *testing.T) {
-	br := NewBitReader([]byte{0xB5, 0x6A, 0xFF, 0, 0, 0, 0, 0})
+	br := LecteurSur([]byte{0xB5, 0x6A, 0xFF, 0, 0, 0, 0, 0})
 	want := []bool{true, false, true, true, false, true, false, true, false}
 	for i, w := range want {
 		if got := br.ReadBit(); got != w {
@@ -43,7 +43,7 @@ func TestReadSignedVarWidth(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := NewBitReader(c.buf).ReadSignedVarWidth(); got != c.want {
+			if got := LecteurSur(c.buf).ReadSignedVarWidth(); got != c.want {
 				t.Fatalf("ReadSignedVarWidth = %d, want %d", got, c.want)
 			}
 		})

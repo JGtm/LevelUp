@@ -39,7 +39,7 @@ var (
 )
 
 // r7Porte5 consomme `R(1) g ; si g==0 : R(5)` (primitive 0x1407f2058, POLARITE INVERSEE).
-func r7Porte5(br *BitReader) {
+func r7Porte5(br *Lecteur) {
 	if !br.ReadBit() {
 		br.Skip(5)
 	}
@@ -56,7 +56,7 @@ var (
 
 // r7ValeurTagA consomme la valeur d'une propriete du sac principal du type 82
 // (union etiquetee 0x14080eff0, tag = R(3) deja lu).
-func r7ValeurTagA(br *BitReader, tag uint64, ctx r7Ctx) bool {
+func r7ValeurTagA(br *Lecteur, tag uint64, ctx r7Ctx) bool {
 	if r7CompteTags {
 		r7TagsA[tag]++
 	}
@@ -85,7 +85,7 @@ func r7ValeurTagA(br *BitReader, tag uint64, ctx r7Ctx) bool {
 }
 
 // r7ValeurTagB consomme la valeur d'un element du sous-sac du type 82 (union 0x1407f0ebc).
-func r7ValeurTagB(br *BitReader, tag uint64) {
+func r7ValeurTagB(br *Lecteur, tag uint64) {
 	if r7CompteTags {
 		r7TagsB[tag]++
 	}
@@ -106,7 +106,7 @@ func r7ValeurTagB(br *BitReader, tag uint64) {
 }
 
 // r7SkipChargeLot2 est la suite de r7SkipCharge. Rend false pour tout type non ferme.
-func r7SkipChargeLot2(br *BitReader, typ int, ctx r7Ctx) bool {
+func r7SkipChargeLot2(br *Lecteur, typ int, ctx r7Ctx) bool {
 	switch typ {
 	// --- 82 PlayerGameEventSmall (lecteur 0x14080add8) ---
 	case 82:

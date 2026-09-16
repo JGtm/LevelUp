@@ -91,14 +91,14 @@ func (o *Observation) publishEquipment(f EquipmentField, value uint64, present b
 }
 
 // consumeEquipmentDeployed mirroite FUN_142ed4618 (ti=37 i20) : R(1), sans porte.
-func consumeEquipmentDeployed(br *BitReader) {
+func consumeEquipmentDeployed(br *Lecteur) {
 	br.obs.publishEquipment(EquipDeployed, br.ReadBits(1), true)
 }
 
 // consumeEquipmentActivated mirroite le déser de ti=37 i21 : R(1) porte de polarité INVERSÉE
 // (la valeur R(3) n'est présente que si le bit vaut 0) ; sinon le corps FUN_1408f0ac4.
 // Coût : 4 bits (porte à 0) ou 1 + celui de FUN_1408f0ac4 (porte à 1) — inchangé.
-func consumeEquipmentActivated(br *BitReader) {
+func consumeEquipmentActivated(br *Lecteur) {
 	if !br.ReadBit() {
 		br.obs.publishEquipment(EquipActivated, br.ReadBits(3), true)
 		return
@@ -108,7 +108,7 @@ func consumeEquipmentActivated(br *BitReader) {
 }
 
 // consumeEquipmentCreator mirroite FUN_142ed45f4 (ti=37 i23) : R(1) porte INVERSÉE, puis R(5).
-func consumeEquipmentCreator(br *BitReader) {
+func consumeEquipmentCreator(br *Lecteur) {
 	if !br.ReadBit() {
 		br.obs.publishEquipment(EquipCreator, br.ReadBits(5), true)
 		return
@@ -117,19 +117,19 @@ func consumeEquipmentCreator(br *BitReader) {
 }
 
 // consumeEquipmentEnergy mirroite FUN_141087bec (ti=37 i24) : R(14), sans porte.
-func consumeEquipmentEnergy(br *BitReader) {
+func consumeEquipmentEnergy(br *Lecteur) {
 	br.obs.publishEquipment(EquipEnergy, br.ReadBits(14), true)
 }
 
 // consumeEquipmentEnergyDelay mirroite FUN_140dda128 (ti=37 i26) : R(10), sans porte — le délai
 // de tics avant que l'énergie ne reparte. Lu-jeté en ligne dans `traverse.go` jusqu'au lot 0.
-func consumeEquipmentEnergyDelay(br *BitReader) {
+func consumeEquipmentEnergyDelay(br *Lecteur) {
 	br.obs.publishEquipment(EquipEnergyDelay, br.ReadBits(10), true)
 }
 
 // consumeEquipmentCharges mirroite FUN_142ed4518 (ti=37 i27) : R(8), sans porte — les charges
 // restantes. C'est le canal que le lot D veut : une charge qui décroît DATE un usage.
-func consumeEquipmentCharges(br *BitReader) {
+func consumeEquipmentCharges(br *Lecteur) {
 	br.obs.publishEquipment(EquipCharges, br.ReadBits(8), true)
 }
 
@@ -389,7 +389,7 @@ func (w equipmentWalk) walk(pay []byte, at, total int, idx []int, last int) bool
 		if name == "" {
 			return false
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.PoserContexte(w.contexte())
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(EquipmentTypeIndex), w.arch.Level(id))

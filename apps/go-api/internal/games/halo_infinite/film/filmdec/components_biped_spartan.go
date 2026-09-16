@@ -36,7 +36,7 @@ package filmdec
 // internes jamais observées — même contrat de désync propre que consumeBipedSpartanAbility
 // (i57). Le hook publie la lecture complète, tag externe compris, pour TOUTES les
 // lectures (le corps désactivé ou cassé se voit : BodyWalked/BodyOK).
-func consumeBipedSpartanAbilityNonPredictedState(br *BitReader, rsp uint32) bool {
+func consumeBipedSpartanAbilityNonPredictedState(br *Lecteur, rsp uint32) bool {
 	st := AbilityNonPredictedState{Inner: -1}
 	st.Tag = uint32(br.ReadBits(2)) // FUN_142f2679c: FUN_1406d310c(4)=2 -> flat R(2) tag.
 	ok := true
@@ -75,7 +75,7 @@ func consumeBipedSpartanAbilityNonPredictedState(br *BitReader, rsp uint32) bool
 // disasm confirms gate==0 takes the FUN_14058d2a4 branch (RCX=ctx, no bitstream read).
 //
 // Total: 1 bit (gate==0) or 1+4+32+32 = 69 bits (gate==1). CONFIRMED bit-exact.
-func consumeSimulationStatePlayback(br *BitReader) {
+func consumeSimulationStatePlayback(br *Lecteur) {
 	if br.ReadBit() { // FUN_1406cf008 = R(1) gate
 		br.ReadBits(4)  // FUN_142e29cf8 = R(4)
 		br.ReadBits(32) // FUN_1406d676c(w=0x20) = R(32)
@@ -104,7 +104,7 @@ func consumeSimulationStatePlayback(br *BitReader) {
 // (0x13 then 0x0a); FUN_1406d8288 is pure dequant arithmetic (0 bits). Polarity:
 // `TEST DL,DL; JNZ copy` means bit==1 -> skip (0 bits), bit==0 -> read (consumeGate0R
 // shape, here a composite 19+10 body). CONFIRMED bit-exact from the FUN_14076d528 disasm.
-func consumeBipedSlideQuantNormal(br *BitReader) {
+func consumeBipedSlideQuantNormal(br *Lecteur) {
 	if !br.ReadBit() { // R(1) MSB gate; bit==0 -> body
 		br.ReadBits(19) // R(0x13) packed dir/mag
 		br.ReadBits(10) // FUN_14076d6dc = R(10) magnitude
@@ -123,7 +123,7 @@ func consumeBipedSlideQuantNormal(br *BitReader) {
 // param_4 (EBP=R9D) == recordStateParam. With recordStateParam==2 (>=1) the second
 // dequant R(8) IS taken. Common totals: 1 bit (gate==0) or 1+(1+{0|29})+8+8+8 =
 // 26 / 55 bits (gate==1). CONFIRMED bit-exact from the FUN_142f26ce8 disasm.
-func consumeBipedSlide(br *BitReader) {
+func consumeBipedSlide(br *Lecteur) {
 	if br.ReadBit() { // FUN_1406cf008 = R(1) gate
 		consumeBipedSlideQuantNormal(br) // FUN_14076d4d0 -> FUN_14076d528
 		br.ReadBits(8)                   // FUN_1406d84b4(w=8) = R(8)
@@ -168,7 +168,7 @@ const bipedActionLoop2Count = 0
 // base+3 uint words). NO gate, NO runtime count: 3*32 = 96 bits, unconditional.
 // CONFIRMED bit-exact from the FUN_142f21b10 disasm (3 dwords) and both call sites in
 // FUN_142f26a20 (start @142f26a56, tail-call end @142f26cd7).
-func consumeBipedActionSubBlock(br *BitReader) {
+func consumeBipedActionSubBlock(br *Lecteur) {
 	br.ReadBits(32) // word[0]  FUN_142f21b10 inner R(0x20)
 	br.ReadBits(32) // word[1]
 	br.ReadBits(32) // word[2]
@@ -197,7 +197,7 @@ func consumeBipedActionSubBlock(br *BitReader) {
 //	tag5 FUN_1431a2f10 = FUN_14080dec4[R(32)] + FUN_1407f08bc[R1+optR8] + R(16) + R(8)
 //
 // tag >= 6 hits FUN_142ef01c4 (error path, 0 bits) — treat as unported.
-func consumeBipedActionLoop1Item(br *BitReader) (ported bool) {
+func consumeBipedActionLoop1Item(br *Lecteur) (ported bool) {
 	br.ReadBits(7)        // inline R(7)
 	tag := br.ReadBits(5) // FUN_142ef1734 inline R(5) = tag (0..11)
 	return consumeBipedActionTag(br, tag)
@@ -211,12 +211,12 @@ func consumeBipedActionLoop1Item(br *BitReader) (ported bool) {
 
 // gate8 = FUN_1407f08bc: R(1); if set R(8). The shared "R(1)+optR(8)" leaf reached by
 // several i63-dispatch branches (its payload reader FUN_1407f08f8 is a flat R(8)).
-func gate8(br *BitReader) { consumeGateR(br, 8) }
+func gate8(br *Lecteur) { consumeGateR(br, 8) }
 
 // consume1431a3a50 mirrors FUN_1431a3a50 = a single FUN_1406d84b4(...,0xf,...) = R(15)
 // then pure float reconstruction (the DAT_143cd8920/8918 args are dequant min/scale
 // constants, 0 stream bits). CONFIRMED: width literal 0xf, no runtime table.
-func consume1431a3a50(br *BitReader) { br.ReadBits(15) }
+func consume1431a3a50(br *Lecteur) { br.ReadBits(15) }
 
 // (consume1432026f4, corps annonce pour les tags 9/10 d'i63, a ete retire le 2026-08-01 —
 // lot C. Sa premisse est REFUTEE : la verite EXE du 2026-06-13, inscrite dans le `default`
@@ -225,7 +225,7 @@ func consume1431a3a50(br *BitReader) { br.ReadBits(15) }
 // exposait a re-cabler une lecture connue fausse.)
 
 // consumeBipedActionTag dispatches FUN_141fd4814(tag) — see consumeBipedActionLoop1Item.
-func consumeBipedActionTag(br *BitReader, tag uint64) (ported bool) {
+func consumeBipedActionTag(br *Lecteur, tag uint64) (ported bool) {
 	switch tag {
 	case 0: // FUN_1408f0ac4(...,0) + FUN_1407f08bc
 		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
@@ -274,7 +274,7 @@ func consumeBipedActionTag(br *BitReader, tag uint64) (ported bool) {
 //	FUN_142f21b10(end)                       -> R(32)x3 = 96 bits
 //
 // Common case (count1==0, count2==0): 96 + 4 + 96 = 196 bits. CONFIRMED bit-exact.
-func consumeBipedAction(br *BitReader) (ported bool) {
+func consumeBipedAction(br *Lecteur) (ported bool) {
 	consumeBipedActionSubBlock(br) // FUN_142f21b10 start: 96 bits
 	count1 := int(br.ReadBits(4))  // inline R(4)
 	for i := 0; i < count1; i++ {
@@ -316,7 +316,7 @@ func consumeBipedAction(br *BitReader) (ported bool) {
 // LA BRANCHE v==1 N'EST PLUS JETÉE (2026-08-16, plan PLAN_ETAT_ACTIF_EQUIPEMENT phase C) :
 // le R(2) interne et le R(24) partent vers br.obs.SpartanAbilityHook, le parcours de bits est
 // INCHANGÉ (cf. ability_state_hooks.go).
-func consumeBipedSpartanAbility(br *BitReader) bool {
+func consumeBipedSpartanAbility(br *Lecteur) bool {
 	tag := br.ReadBits(2)
 	switch tag {
 	case 1:
@@ -355,7 +355,7 @@ func consumeBipedSpartanAbility(br *BitReader) bool {
 // La branche `a == 0` est donc ENTIEREMENT portable, et c'est elle qu'on porte : R(1) nul,
 // puis la porte de queue et, si elle est ouverte, le lecteur absolu de `consumeSimStateHandleTail`.
 // La branche `a != 0` rend false — desync propre plutot qu'une largeur devinee.
-func consumeSpartanAbilityTag3(br *BitReader) bool {
+func consumeSpartanAbilityTag3(br *Lecteur) bool {
 	if br.ReadBit() { // a != 0 : FUN_14297ea84 + porte sur octet d'etat runtime
 		return false
 	}

@@ -17,10 +17,10 @@ package filmdec
 var observateur = NouvelleObservation()
 
 // lecteurDInstrument construit un lecteur portant le profil ET l observateur du harnais. C est
-// ce que `NewBitReader` faisait implicitement avant le lot 2.3, quand les deux etaient des
+// ce que `LecteurSur` faisait implicitement avant le lot 2.3, quand les deux etaient des
 // variables de paquet.
-func lecteurDInstrument(buf []byte) *BitReader {
-	br := NewBitReader(buf)
+func lecteurDInstrument(buf []byte) *Lecteur {
+	br := LecteurSur(buf)
 	br.PoserContexte(ContexteDeLecture{Profil: profilDInstrument, Obs: observateur})
 	return br
 }

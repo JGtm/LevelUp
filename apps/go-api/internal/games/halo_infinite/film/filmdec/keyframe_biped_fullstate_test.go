@@ -341,7 +341,7 @@ func TestKF35Inventory(t *testing.T) {
 	t.Logf("== archetype ti=%d : %d composants ==", bipedDefaultStateTypeIndex, len(arch.Components))
 	unported := 0
 	for i, name := range arch.Components {
-		zero := NewBitReader(make([]byte, 512))
+		zero := LecteurSur(make([]byte, 512))
 		_, _, ported := consumeByName(zero, name, bipedDefaultStateTypeIndex, arch.Level(i))
 		mark := "porte"
 		if !ported {

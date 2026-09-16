@@ -28,7 +28,7 @@ package filmdec
 //     jeu — tout film qui se lit a la garde vraie. On lit donc la branche complete.
 
 // r7Porte2Inv consomme `R(1) g ; si g==0 : R(2)` (primitive 0x1406d00ec, POLARITE INVERSEE).
-func r7Porte2Inv(br *BitReader) {
+func r7Porte2Inv(br *Lecteur) {
 	if !br.ReadBit() {
 		br.Skip(2)
 	}
@@ -36,13 +36,13 @@ func r7Porte2Inv(br *BitReader) {
 
 // r7VariantArme consomme le motif commun aux types 11, 37, 40, 45, 46, 47 :
 // `[R(1) g ; si g : R(32)]` puis `R(32) variant-name`.
-func r7VariantArme(br *BitReader) {
+func r7VariantArme(br *Lecteur) {
 	r7Porte32(br)
 	br.Skip(32)
 }
 
 // r7SkipChargeLot4 est la suite de r7SkipChargeLot3. Rend false pour tout type non ferme.
-func r7SkipChargeLot4(br *BitReader, typ int, ctx r7Ctx) bool {
+func r7SkipChargeLot4(br *Lecteur, typ int, ctx r7Ctx) bool {
 	switch typ {
 	// --- 38 weapon_reload : 4 x R(1) puis [R(1);si 0:R(5)] ---
 	case 38:

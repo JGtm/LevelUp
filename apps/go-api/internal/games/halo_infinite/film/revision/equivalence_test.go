@@ -32,6 +32,7 @@ package revision_test
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -69,11 +70,14 @@ func TestEmpreinteEgaleLeGoldenDeKillsource(t *testing.T) {
 }
 
 // TestEmpreinteHeriteeEgaleLeGoldenDeGrammaire : le cadre herite rend l empreinte figee par
-// `filmdec/testdata/grammar_rev.golden`, sur les TROIS racines et avec la meme exclusion.
+// `filmdec/testdata/grammar_rev.golden`, sur les QUATRE racines (le lot 2.4 a fait entrer
+// `analysis/filmsource`, la couche source, dans l empreinte) et avec la meme exclusion. L ORDRE
+// des racines est celui de `racinesGrammaire` (filmdec/grammar_rev_fingerprint_test.go).
 func TestEmpreinteHeriteeEgaleLeGoldenDeGrammaire(t *testing.T) {
 	api := racineAPI(t)
 	film := filepath.Join(api, "internal", "games", "halo_infinite", "film")
 	racines := []string{
+		filepath.Join(api, "internal", "analysis", "filmsource"),
 		filepath.Join(film, "filmdec"),
 		filepath.Join(film, "killsource"),
 		filepath.Join(api, "internal", "analysis", "objectiveevents"),
@@ -82,9 +86,10 @@ func TestEmpreinteHeriteeEgaleLeGoldenDeGrammaire(t *testing.T) {
 
 	// L exclusion du gate de la grammaire porte sur le NOM du fichier, a n importe quelle
 	// profondeur ; `path.Base` du chemin relatif la reproduit exactement.
-	exclure := func(rel string) bool {
-		return rel == fichierPorteurDeRevision || strings.HasSuffix(rel, "/"+fichierPorteurDeRevision)
-	}
+	// Depuis le lot 2.4, le gate exclut TROIS fichiers (la constante, la chronique courante et son
+	// archive) : `fichiersHorsGrammaire` dans grammar_rev_fingerprint_test.go.
+	hors := map[string]bool{fichierPorteurDeRevision: true, "grammar_rev_chronique.go": true, "grammar_rev_chronique_archive.go": true}
+	exclure := func(rel string) bool { return hors[path.Base(rel)] }
 	res, err := revision.Calculer(revision.CadreHeriteGrammaire, racines, exclure)
 	if err != nil {
 		t.Fatalf("empreinte heritee : %v", err)

@@ -154,8 +154,8 @@ func TestBTB2025KillFeedNoms(t *testing.T) {
 func meilleurHighlight(f *film, ver int) ([]analysis.HighlightEvent, int) {
 	var best []analysis.HighlightEvent
 	bestN := 0
-	for ch := range f.chunks {
-		evs, err := analysis.ParseHighlightEvents(f.chunks[ch], ver)
+	for ch := 0; ch < f.src.NumChunks(); ch++ {
+		evs, err := analysis.ParseHighlightEvents(f.src.Chunk(ch), ver)
 		if err != nil {
 			continue
 		}

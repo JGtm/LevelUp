@@ -16,25 +16,21 @@ package killsource
 
 // evBody : avance le curseur de la longueur du CORPS de l evenement `code`. Faux = corps non
 // modelise ou debordement : la chaine s arrete la.
-func evBody(r *evReader, code int, gate15 bool) bool {
+func evBody(r *curseurEv, code int, gate15 bool) bool {
 	if evStub[code] {
 		return true
 	}
 	if n, ok := evFixed[code]; ok {
-		if r.bp+n > len(r.pl)*8 {
-			r.over = true
-			return false
-		}
-		r.bp += n
-		return true
+		r.skip(n)
+		return !r.over
 	}
 	if code == killEventCode {
-		k := readKillEvent(r.pl, r.bp)
+		k := readKillEvent(r.octets(), r.pos())
 		if k.end < 0 {
 			r.over = true
 			return false
 		}
-		r.bp = k.end
+		r.aller(k.end)
 		return true
 	}
 	switch code {
@@ -59,7 +55,7 @@ const killEventCode = 85
 
 // evBody1 : corps du code 1 (FUN_140968368). 10 a 33 bits. Le << +16 >> qu on lisait autrefois
 // n est PAS ici : c est la boucle de presence du dispatcher, donc de l encadrement.
-func evBody1(r *evReader) {
+func evBody1(r *curseurEv) {
 	r.rd(5)
 	if r.g1() == 0 {
 		r.rd(4)
@@ -73,7 +69,7 @@ func evBody1(r *evReader) {
 // evBody15 : corps du code 15 (FUN_14080bb4c). `gate15` est un etat RUNTIME du jeu, pas un bit du
 // flux : il se tranche par film. Le compteur R(10) est une LONGUEUR EN BITS, pas un nombre
 // d enregistrements — confirme au desassemblage.
-func evBody15(r *evReader, gate15 bool) {
+func evBody15(r *curseurEv, gate15 bool) {
 	if gate15 {
 		r.rd(15)
 	}
@@ -83,7 +79,7 @@ func evBody15(r *evReader, gate15 bool) {
 }
 
 // evBody0 : corps du code 0 (FUN_1407f15a4). Modele bit-exact, plancher 84 bits, maximum 241.
-func evBody0(r *evReader) {
+func evBody0(r *curseurEv) {
 	if r.g1() != 0 {
 		r.rd(32)
 	}
@@ -129,7 +125,7 @@ func evBody0(r *evReader) {
 }
 
 // evBody82 : corps du code 82. Deux listes de variantes, chacune dispatchee sur un tag de 3 bits.
-func evBody82(r *evReader) bool {
+func evBody82(r *curseurEv) bool {
 	r.rd(32)
 	r.rd(8)
 	n1 := int(r.rd(3))
@@ -152,7 +148,7 @@ func evBody82(r *evReader) bool {
 
 // evVariantA : FUN_14080ef08. Le tag 7 est un vecteur monde quantifie par une configuration
 // RUNTIME : il n est pas modelisable statiquement, et la chaine s arrete plutot que de deviner.
-func evVariantA(r *evReader) bool {
+func evVariantA(r *curseurEv) bool {
 	switch int(r.rd(3)) {
 	case 0: // ecrit un octet de sortie, zero bit lu
 	case 1, 2, 3, 6:
@@ -168,7 +164,7 @@ func evVariantA(r *evReader) bool {
 }
 
 // evVariantB : FUN_1407f0ebc.
-func evVariantB(r *evReader) {
+func evVariantB(r *curseurEv) {
 	switch int(r.rd(3)) {
 	case 0: // ecrit un octet, zero bit
 	case 1:
