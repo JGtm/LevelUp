@@ -98,6 +98,11 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 		}
 	}
 
+	// 3-bis. Badge « Voleur » : calculé sur l'escouade SEULE (tueur ET assistant amis),
+	//    depuis le journal des morts du film — hors périmètre team-wide de
+	//    ComputeMatchImpactFull, d'où un calcul à part.
+	thiefByMatch := s.loadThiefBadgesByMatch(ctx, matchIDOrder, xuidToGT)
+
 	// 4. Pour chaque match, calculer les badges via analysis.ComputeMatchImpactFull
 	//    et collecter les badges des joueurs de l'escouade uniquement.
 	cells := []domain.SquadImpactCell{}
@@ -128,6 +133,9 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 		badges := analysis.ComputeMatchImpactFull(analysis.MatchImpactInput{
 			Events: evs, Participants: snaps,
 		})
+		if tb := thiefByMatch[mid]; tb != nil {
+			badges = append(badges, *tb)
+		}
 		// Filtrer aux badges des joueurs de l'escouade ET aux 8 badges du
 		// scoreboard impact (parité Python : top_gun n'est pas inclus dans
 		// la matrice impact même s'il est calculé). Les badges qui tombent
