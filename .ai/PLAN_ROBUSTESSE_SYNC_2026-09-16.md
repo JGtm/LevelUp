@@ -177,12 +177,12 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
 
 ## 5. Étape 2 — Plafond de slots sains (C-B, D2 ; rapide)
 
-- [ ] 2.1 `pool.go:137-183` : `sort.Slice(sources, by Gamertag)` ; boucle sur TOUTES les sources,
+- [x] 2.1 `pool.go:137-183` : `sort.Slice(sources, by Gamertag)` ; boucle sur TOUTES les sources,
       `continue` sur échec (journal inchangé), `break` quand `MaxSize > 0 && len(slots) == MaxSize`.
       « aucun slot créé » conservé pour 0 slot.
-- [ ] 2.2 Doc `PoolOptions.MaxSize` (`pool.go:114`), aide `--token-pool-size` (`cmd_sync.go`),
+- [x] 2.2 Doc `PoolOptions.MaxSize` (`pool.go:114`), aide `--token-pool-size` (`cmd_sync.go`),
       `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` : « nombre maximal de slots SAINS ».
-- [ ] 2.3 Tests `pool_test.go` : sources [révoquée, saine, saine] (résolveur factice) — `MaxSize 1`
+- [x] 2.3 Tests `pool_test.go` : sources [révoquée, saine, saine] (résolveur factice) — `MaxSize 1`
       → 1 slot = première saine par ordre alphabétique ; `2` → 2 ; `0` → toutes ; même résultat
       quel que soit l'ordre d'entrée.
 
@@ -356,3 +356,24 @@ Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire
 - Baseline de tests : aucune paire `Package::Test` retirée (commande du préambule exécutée,
   sortie VIDE ; aucun test renommé ni supprimé — 6 tests ajoutés).
 - Découvertes hors périmètre : aucune nouvelle.
+
+### Étape 2 — Plafond de slots sains — CLOSE le 2026-09-16 22:35
+
+- Items : 2.1 `[x]`, 2.2 `[x]`, 2.3 `[x]`.
+- 2.1 : `NewPool` copie les sources, les trie par gamertag, parcourt TOUT le scan et sort
+  quand `MaxSize > 0 && len(slots) == MaxSize`. « aucune source de credential » est rendu sur
+  une liste vide, « aucun slot créé » quand rien ne se résout (messages inchangés).
+- 2.2 : doc de `PoolOptions.MaxSize` (`types.go`, et non `pool.go:114` — le champ vit dans
+  `types.go`), doc de `NewPool`, aide des deux drapeaux `--token-pool-size`
+  (`sync-delta` et `sync-full`), `docs/COMMANDS.md` et `docs/FR/COMMANDS.md`.
+- 2.3 : `internal/platform/auth/pool/pool_maxsize_test.go` (5 tests, résolveur factice qui
+  refuse les comptes « révoqués ») : `MaxSize 1` → 1 slot = première SAINE par ordre
+  alphabétique (la révoquée est première alphabétiquement et ne consomme pas le quota) ;
+  `2` → 2 ; `0` → toutes les saines ; même parc pour trois ordres d'entrée différents ;
+  toutes révoquées → erreur explicite.
+- Gate G2 : `go test ./internal/platform/auth/pool/... -count=1` → 0 (`ok`). En plus :
+  `go vet ./internal/platform/auth/pool/ ./cmd/levelup/` → 0, `go build ./...` → 0,
+  `gofmt -l cmd internal` → vide.
+- Vérification par MUTATION : retour à `sources[:capacity]` sans tri → trois des cinq tests
+  FAIL (`_MaxSize1_`, `_MaxSize2_`, `_MemeParcQuelQueSoitLOrdreDEntree`), restauré ensuite.
+- Écart : aucun. Baseline de tests : aucune paire retirée (5 tests ajoutés, aucun renommé).

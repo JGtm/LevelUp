@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync"
 	"time"
 
@@ -111,7 +112,9 @@ func poolTitleOf(sources []CredentialSource) string {
 }
 
 // NewPool crée un Pool à partir d'une liste de CredentialSources découvertes.
-// opts.MaxSize = 0 → utiliser tous les sources. opts.PerTokenRPS = 0 → défaut 1 RPS.
+// opts.MaxSize = nombre maximal de slots SAINS (0 = tous ceux que les sources permettent) ;
+// les sources sont parcourues en entier, dans l'ordre alphabétique des gamertags, et une
+// résolution en échec ne consomme pas le quota. opts.PerTokenRPS = 0 → défaut 1 RPS.
 //
 // Constructeur : câblage cohésif des dépendances du pool (sources, rate limiter,
 // refresher, cooldown) ; découper fragmenterait l'assemblage DI (K3f, exemption).
@@ -134,28 +137,40 @@ func NewPool(
 		opts.GlobalCooldown = 30 * time.Second
 	}
 
-	// Limiter à MaxSize.
-	poolSize := len(sources)
-	if opts.MaxSize > 0 && poolSize > opts.MaxSize {
-		poolSize = opts.MaxSize
-	}
-
-	if poolSize == 0 {
+	if len(sources) == 0 {
 		return nil, fmt.Errorf("pool: aucune source de credential pour créer un pool")
 	}
 
 	// Titre propriétaire du pool (Phase 1.6) — compose la clé des slots.
 	poolTitle := poolTitleOf(sources)
 
+	// MaxSize plafonne les slots SAINS, pas les sources TENTÉES (D2, plan robustesse
+	// 2026-09-16). L'ancienne troncature `sources[:MaxSize]` coupait AVANT de résoudre :
+	// avec `--token-pool-size 1`, la première source du scan (Chocoboflor, dont le refresh
+	// token est révoqué) était la seule tentée et le pool échouait sur « aucun slot créé ».
+	// Le scan vient d'une map : son ordre change d'une exécution à l'autre, d'où le tri par
+	// gamertag — un plafond doit donner le MÊME parc à chaque passe.
+	sorted := make([]CredentialSource, len(sources))
+	copy(sorted, sources)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Gamertag < sorted[j].Gamertag })
+
+	capacity := len(sorted)
+	if opts.MaxSize > 0 && capacity > opts.MaxSize {
+		capacity = opts.MaxSize
+	}
+
 	// Créer les slots. Une source en échec est SKIPPÉE et on passe à la
 	// SUIVANTE (fix 2026-06-11 : l'ancienne boucle `i--` + `poolSize--`
 	// retentait le même index en boucle et abandonnait silencieusement toutes
 	// les sources situées après la première en échec — cf. burst de 7
 	// tentatives DankerGlue au boot, .ai/PLAN_AUTH_WARNING_NOISE.md).
-	slots := make([]*slot, 0, poolSize)
+	slots := make([]*slot, 0, capacity)
 	slotsByKey := make(map[string]int)
 
-	for _, src := range sources[:poolSize] {
+	for _, src := range sorted {
+		if opts.MaxSize > 0 && len(slots) == opts.MaxSize {
+			break
+		}
 		resolved, err := resolver.Resolve(ctx, src)
 		if err != nil {
 			slog.WarnContext(ctx, "pool: impossible de résoudre token au boot, skip slot",
@@ -176,7 +191,7 @@ func NewPool(
 			lastRefresh: time.Now(),
 		})
 	}
-	poolSize = len(slots)
+	poolSize := len(slots)
 
 	if poolSize == 0 {
 		return nil, fmt.Errorf("pool: aucun slot créé (toutes les résolutions ont échoué)")

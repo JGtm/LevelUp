@@ -77,6 +77,13 @@ Les passes `backfill --csr` / `--shared-csr` et les commandes de films (`archive
 `backfill-killsource --online`, `replay-events`) suivent la même doctrine : `--gamertag` nomme le
 joueur traité, pas un prêteur de jeton.
 
+`--token-pool-size N` plafonne le nombre de slots SAINS, pas le nombre de sources tentées : le
+scan est parcouru en entier, dans l'ordre alphabétique des gamertags, et une source dont le
+jeton de rafraîchissement ne se résout pas ne consomme pas le quota. `0` prend tous les jetons
+sains du parc. Avant le 2026-09-16, le plafond tronquait le scan AVANT de résoudre : avec
+`--token-pool-size 1`, un seul compte révoqué pouvait être tenté et la commande échouait sur
+« aucun slot créé ».
+
 ### Backfill (local Go ; CSR/weapons nécessitent des tokens Halo)
 
 ```bash

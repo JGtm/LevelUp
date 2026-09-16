@@ -76,6 +76,12 @@ The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-fil
 `backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the
 player being processed, not a token lender.
 
+`--token-pool-size N` caps the number of HEALTHY slots, not the number of sources tried: the
+scan is walked in full, in alphabetical gamertag order, and a source whose refresh token fails
+to resolve does not consume the quota. `0` takes every healthy token of the fleet. Before
+2026-09-16 the cap truncated the scan BEFORE resolving, so `--token-pool-size 1` could pick a
+single revoked account and fail with "aucun slot cree".
+
 ### Backfill (mostly local, Go-only; CSR/weapons need Halo tokens)
 
 ```bash
