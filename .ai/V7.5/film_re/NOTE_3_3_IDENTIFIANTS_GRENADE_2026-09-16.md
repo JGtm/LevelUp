@@ -2,9 +2,9 @@
 
 > Ouverte le 2026-09-16, branche `feat/decfilm-33r`, base `e7b9bd48e`. Instrument sous
 > `apps/go-api/tools/film_re/grenadeids/` et `tools/film_re/cmd/grenadeids/`, tag `research`.
-> AUCUN film ouvert a l ecriture de cette section : l instrument est ECRIT, COMPILE et VERIFIE
-> sur ses invariants internes, la mesure attend la « voie libre » du pilote (un seul decodage a
-> la fois sur ce poste).
+> Etat au 2026-09-16 : instrument ECRIT, COMPILE et VERIFIE sur ses invariants ; **mesure 0
+> JOUEE** (les sept mini-bobines, autorisation du pilote — §4) ; les mesures 1 a 6 sur les films
+> du cache attendent la « voie libre » (un seul decodage a la fois sur ce poste).
 >
 > Source de la question : V17 du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md` §1.4 (hypothese de
 > l utilisateur du 2026-09-18 etiquete, soit le 2026-09-16 reel par V18) et
@@ -56,7 +56,26 @@ l index. Sur un registre de 49 ou 50 blocs, `ti=41` et `ti=9` produisent donc LE
 et `ti=9` est `managed-player` (`grammar/player_teams.go:61`). Le balayage de production ne
 reconnait pas « une naissance de projectile » : il reconnait « une naissance d une entite dont
 l index vaut 9 modulo 32 ». C est une ambiguite structurelle de l heureux accident, et
-l instrument la publie film par film (champ `ambiguites`).
+l instrument la publie film par film (champ `ambiguites`). Mesure 0 : `ambiguites=[9]` sur les
+SEPT builds, sans exception.
+
+**ET ELLE SE LEVE PAR UNE LECTURE, PAS PAR UNE HEURISTIQUE** (ajout du 2026-09-16 sur demande du
+pilote). Le typeIndex d un record fait SIX bits — `grammar/traverse.go:94`
+(`t.TypeIndex = uint32(br.ReadBits(6))`) et `grammar/keyframe_fullstate_loop.go:88`
+(`kfReadBits(pay, recBit+keyframeRecordTIBit, 6)`). Le marqueur commence au DEUXIEME de ces six
+bits : le bit de poids fort (valeur 32) est donc a `marqueur - 1`.
+
+```
+41 = 0b101001  -> bit a marqueur-1 : 1
+ 9 = 0b001001  -> bit a marqueur-1 : 0
+```
+
+L instrument lit ce bit (`typeindex.go`), compte les marqueurs PAR ARCHETYPE REEL et publie
+l histogramme de la passe C **restreint a chaque archetype** : ce qui suit une naissance de
+`managed-player` ne pollue donc plus la famille des grenades. La seule position ou le bit manque
+(`marqueur = 0`, debut de payload) est comptee a part (`indetermines=`) et n entre dans AUCUN
+histogramme par archetype — jamais devinee a zero en silence. La passe D accepte le meme filtre
+(`-ti 41`).
 
 ### 2.2 L archetype projectile se resout PAR LE NOM, sans cabler 41
 
@@ -104,7 +123,7 @@ en place, un a la fois.
 |---|---|---|
 | A | pour CHAQUE marqueur, la valeur de 32 bits lue a `marqueur + 24 + d` pour tout `d` de `[-F, +F]` (F = 64 par defaut), comptee quand elle tombe dans la liste blanche actuelle | un decalage `d != 0` STABLE = la POSITION a bouge |
 | B | un balayage ABSOLU : toute occurrence d un des quatre identifiants actuels a n importe quelle position de bit du flux delta, avec sa distance au marqueur le plus proche et le compte de celles qu aucun marqueur ne borde | les identifiants actuels vivent-ils dans un AUTRE champ, ou pas du tout ? |
-| C | l histogramme SANS liste blanche de ce qui suit le marqueur, avec le champ d index joueur de 5 bits a +103 — la mesure que `version_grenade_tags_research_test.go` rendait deja, refaite ici pour les DEUX marqueurs (production et registre) | la famille de huit est-elle la meme ? le marqueur du registre en rend-il une autre ? |
+| C | l histogramme SANS liste blanche de ce qui suit le marqueur, avec le champ d index joueur de 5 bits a +103, pour les DEUX marqueurs (production et registre) **et separement PAR ARCHETYPE REEL** — le sixieme bit d index, lu a `marqueur - 1`, separe `ti=41` de `ti=9` (§2.1) | la famille de huit est-elle la meme ? combien de ses valeurs viennent en realite d une naissance de `managed-player` ? |
 | D | l appariement de chaque candidat de la passe C aux decrements UNITAIRES du compteur i22 du meme instant, rang par rang, avec un TEMOIN DE HASARD (memes appariements, instants decales) | question (2) |
 
 Les passes A, B et C tiennent en UNE lecture du flux : a chaque position de bit, une seule
@@ -146,7 +165,49 @@ dans ce processus.
 
 ## 4. LE PLAN DE MESURE (a jouer a la voie libre, un film a la fois, dans cet ordre)
 
-### Mesure 0 — GRATUITE, dans l arbre git, aucun film du cache
+### Mesure 0 — JOUEE LE 2026-09-16 (autorisation du pilote) : LE MARQUEUR N A PAS BOUGE
+
+Commande, 0,52 s, aucun film du cache touche :
+
+```
+go run -tags=research ./tools/film_re/cmd/grenadeids -fenetre 0 -voisinage 0 \
+  -racine internal/games/halo_infinite/film/replay/testdata \
+  -films minifilm_a521164d,minifilm_60ae07c4,minifilm_11de8353,minifilm_111fa685,minifilm_e5adf7b2,minifilm_bcb6d393,minifilm_fb1a1a72
+```
+
+Resultat colle, une ligne par build :
+
+| mini-bobine | version | build | blocs de registre | `ti` projectile (noms trouves) | marqueur derive | ambiguites |
+|---|---|---|---|---|---|---|
+| `a521164d` | 33 | `HI_1_4_1` | 49 | **41** (4/4) | `0x4C0C00` | `[9]` |
+| `60ae07c4` | 37 | `HI_1_8_0` | 49 | **41** (4/4) | `0x4C0C00` | `[9]` |
+| `11de8353` | 38 | `HI_1_9_0` | 49 | **41** (4/4) | `0x4C0C00` | `[9]` |
+| `111fa685` | 39 | `HI_1_10_0` | 49 | **41** (4/4) | `0x4C0C00` | `[9]` |
+| `e5adf7b2` | 40 | `HI_1_11_0` | 49 | **41** (4/4) | `0x4C0C00` | `[9]` |
+| `bcb6d393` | 40 | `HI_1_12_0` | 50 | **41** (4/4) | `0x4C0C00` | `[9]` |
+| `fb1a1a72` | 41 | `HI_1_13_0` | 50 | **41** (4/4) | `0x4C0C00` | `[9]` |
+
+**VERDICT DE LA MESURE 0 : le critere (1b) est ECARTE.** L archetype projectile est au rang 41
+sur les SEPT builds, identifie par ses QUATRE noms de composant a chaque fois (aucune resolution
+douteuse), et le marqueur derive vaut `0x4C0C00` partout. **Le marqueur n a pas bouge**, donc la
+question (1) se reduit a la POSITION (passe A) et au CHAMP (passe B). Une entree de profil
+`Grenade.Marqueur` serait aujourd hui une constante deguisee : elle ne s ecrira que si un build
+futur deplace l archetype.
+
+**Deux observations de bord, non traitees.**
+
+1. Le cardinal du registre passe de **49 a 50 blocs** exactement entre `HI_1_11_0` et
+   `HI_1_12_0` — c est-a-dire a la MEME frontiere que les lancers publies (0 avant, 55 a 395
+   apres). C est une correlation, pas une cause : `ti` projectile vaut 41 des deux cotes, donc le
+   bloc gagne est APRES le rang 41. A verser au lot 3.2 (le registre par build), pas ici.
+2. Quatre des sept bobines font sonner `warnUnknownRegistry` (empreintes `4635077086892953806`
+   pour `HI_1_4_1`, `3731204960007589061` pour `HI_1_8_0`, `11196959896536408664` pour
+   `HI_1_9_0`, `9834140534605324359` pour `HI_1_10_0`, contre la connue
+   `3948122217672317832`). C est exactement la matiere de l item 3.2.1 (« table des empreintes de
+   registre connues PAR BUILD »), et ces quatre valeurs sont mesurees sur le domaine de hachage
+   COURANT — ce que les huit empreintes du rapport H ne sont pas (F2 de la note M3).
+
+### Mesure 0 — comment elle se rejoue
 
 Les sept mini-bobines portent leur `chunk_00` COMMIS, donc leur registre. Passer l instrument
 dessus avec `-fenetre 0` ne lit que l entete : build, nombre d archetypes, **ti projectile resolu
@@ -164,8 +225,9 @@ n a pas bouge et la question (1) se reduit au DECALAGE. S il differe sur un buil
 reponse est acquise sans ouvrir un seul film du cache — et la ligne de profil a ecrire est
 `Grenade.Marqueur`, derive du `ti` lu dans le film, pas une liste blanche.
 
-Cette mesure ouvre quand meme un film (les mini-bobines sont des films) : elle attend donc la
-meme voie libre, mais elle coute des secondes et ne touche pas le parc.
+Arbitrage du pilote du 2026-09-16 : la contrainte « un decodage a la fois » est une contrainte de
+RAM et de base partagee, elle ne s applique pas a ces bobines (1 Mio chacune, dans l arbre git,
+hors parc). La mesure a donc ete jouee immediatement — resultat ci-dessus.
 
 ### Mesures 1 a 6 — les films du cache, un a la fois
 
@@ -203,7 +265,7 @@ entree de profil `Grenade.DecalageIdentifiant` par build, PAS une liste blanche,
 `GrenadeTypeIDsByRank` reste une constante du titre. L ordre des rangs n a jamais bouge : le
 compteur `grenadeThrowsUnranked` de M3-Q5 reste a zero sur ces builds.
 
-**(1b) LE MARQUEUR A BOUGE.** La mesure 0 rend un `ti projectile` different de 41 sur un build
+**(1b) LE MARQUEUR A BOUGE — ECARTE LE 2026-09-16 PAR LA MESURE 0** (`ti` projectile = 41 sur les sept builds, marqueur derive `0x4C0C00` partout). Le critere reste ecrit pour qu on sache ce qui l a ferme, et il se rouvrira le jour ou un build deplacera l archetype. Enonce d origine : la mesure 0 rend un `ti projectile` different de 41 sur un build
 ancien, ET la passe A du marqueur DERIVE DU REGISTRE rend les quatre identifiants au decalage 0.
 Verdict : **grammaire**, encore. 3.3.1 code `Grenade.Marqueur = marqueur(ti projectile lu dans le
 film)` — ce qui rend le lot solidaire de 3.2 (le registre par build), comme la note M3 §2.2 le
@@ -262,11 +324,20 @@ C est la forme preferable — elle attend la mesure, elle ne la remplace pas.
 
 | Question | Etat |
 |---|---|
-| (1) les 4 identifiants actuels ailleurs dans les films anciens | instrument PRET, non joue — attend la voie libre |
+| mesure 0 — le marqueur a-t-il bouge ? | **JOUEE le 2026-09-16 : NON.** `ti` projectile = 41 sur les sept builds (4/4 noms a chaque fois), marqueur derive `0x4C0C00` partout. Critere (1b) ECARTE |
+| (1) les 4 identifiants actuels ailleurs dans les films anciens | instrument PRET, non joue — attend la voie libre. La question se reduit desormais au DECALAGE (passe A) et au CHAMP (passe B) |
 | (2) appariement aux decrements i22 | instrument PRET, non joue — ne se joue que si (1) est negative |
 | (3) verdict | non prononce |
 
-Rien n est conclu. Ce qui est acquis a cette heure tient en trois lignes : la derivation du
-marqueur est verifiee et fait de `ti=9` un homonyme de `ti=41` ; l archetype projectile se resout
-par le nom dans n importe quel registre ; et les sept mini-bobines NE PORTENT PAS de paquet
-delta, donc ne peuvent pas servir les passes A a D.
+Ce qui est acquis a cette heure :
+
+1. **Le marqueur n a pas bouge** sur les sept builds connus (mesure 0), et l archetype projectile
+   est au rang 41 partout, identifie par ses quatre noms de composant.
+2. La derivation `marqueur(ti) = ((ti & 31) << 19) | 0x40C00` est verifiee, et elle fait de
+   `ti=9` (`managed-player`) un HOMONYME de `ti=41` — l ambiguite se leve par la lecture du
+   sixieme bit d index a `marqueur - 1`, que l instrument fait desormais.
+3. Les sept mini-bobines NE PORTENT PAS de paquet delta : elles ne peuvent pas servir les passes
+   A a D, seulement la mesure 0.
+
+Ce qui reste ouvert : la POSITION lue apres le marqueur, et le CHAMP. C est exactement ce que
+l hypothese de l utilisateur designe comme le plus vraisemblable une fois le marqueur ecarte.
