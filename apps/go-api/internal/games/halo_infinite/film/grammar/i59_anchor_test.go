@@ -47,6 +47,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"os"
 	"path/filepath"
@@ -622,7 +623,7 @@ func TestI59AnchorControls(t *testing.T) {
 
 // i59aDequantPos déquantifie les trois quanta de position du corps avec les bornes de la
 // carte (mêmes largeurs que le découpage i0 du film — vérifié par i59aWorldRange).
-func i59aDequantPos(q [3]uint32, s eaFilmSetup, wr Vec3Range) [3]float64 {
+func i59aDequantPos(q [3]uint32, s eaFilmSetup, wr profile.Vec3Range) [3]float64 {
 	var out [3]float64
 	for ax := 0; ax < 3; ax++ {
 		out[ax] = float64(DequantBipedAxis(q[ax], ax, s.lay, wr))
@@ -635,7 +636,7 @@ func i59aDequantPos(q [3]uint32, s eaFilmSetup, wr Vec3Range) [3]float64 {
 // n'ont aucune raison de porter la même chose), plus la FIXITÉ entre membres d'une paire
 // (une ancre est un point monde fixe ; la position du joueur, elle, bouge entre les deux
 // membres — le déplacement du joueur est publié comme référence).
-func i59aPosVerdict(t *testing.T, s eaFilmSetup, wr Vec3Range, tracks map[uint32][]BipedPosition,
+func i59aPosVerdict(t *testing.T, s eaFilmSetup, wr profile.Vec3Range, tracks map[uint32][]BipedPosition,
 	box [3][2]float32, events []i59aEvent, pairs []i59aPair) {
 	t.Helper()
 	names := map[int]string{anchorInnerLight: "LÉGER (tir)", anchorInnerHeavy: "LOURD (accroche)"}
@@ -781,7 +782,7 @@ func i59aCollect(s eaFilmSetup, idx59 int) (events []i59aEvent, read, unread int
 // l'entrée du catalogue dont AxisWidths == le découpage i0 LU DANS LE FILM (le contrôle de
 // cohérence du catalogue, map_bounds.go). I59A_MAP force le choix si plusieurs cartes
 // partagent la signature.
-func i59aWorldRange(t *testing.T, s eaFilmSetup) Vec3Range {
+func i59aWorldRange(t *testing.T, s eaFilmSetup) profile.Vec3Range {
 	t.Helper()
 	path := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")

@@ -42,6 +42,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"testing"
@@ -109,7 +110,7 @@ func equipLogArchetype(t *testing.T, dir string) Archetype {
 // equipSetPrecision rend le découpage d'i0 LU DANS LE FILM. Depuis le lot 2.3 il n'y a plus
 // rien à installer : les enveloppes D2 (`ScanFilm*`) posent ce découpage sur LEUR contexte,
 // et la cuisson prend, elle, les largeurs du CATALOGUE de la carte.
-func equipSetPrecision(t *testing.T, dir string) I0Layout {
+func equipSetPrecision(t *testing.T, dir string) profile.I0Layout {
 	t.Helper()
 	lay, _, err := detectI0Layout(dir)
 	if err != nil {
@@ -313,8 +314,8 @@ func equipVerdict(ok bool) string {
 // POURQUOI DES COORDONNÉES NORMALISÉES ET PAS MONDE : les bornes monde exigent le nom de la
 // carte, donc une base. La normalisation par l'AABB suffit au contrôle demandé — les deux
 // nuages sont quantifiés sur le MÊME repère, lu dans le film.
-func equipPositions(t *testing.T, dir string, lay I0Layout) {
-	unit := Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
+func equipPositions(t *testing.T, dir string, lay profile.I0Layout) {
+	unit := profile.Vec3Range{{Min: 0, Max: 1}, {Min: 0, Max: 1}, {Min: 0, Max: 1}}
 	tracks, err := ScanFilmWorldObjects(dir, &unit, EquipmentTypeIndex)
 	if err != nil {
 		t.Logf("MESURE A3 : trajectoires ti=%d indisponibles : %v", EquipmentTypeIndex, err)
@@ -355,7 +356,7 @@ func equipPositions(t *testing.T, dir string, lay I0Layout) {
 
 // equipBipedBox lit le nuage des bipèdes en QUANTA et le normalise par 2^W, axe par axe —
 // le même repère que celui des objets du monde.
-func equipBipedBox(t *testing.T, dir string, lay I0Layout) equipBox {
+func equipBipedBox(t *testing.T, dir string, lay profile.I0Layout) equipBox {
 	t.Helper()
 	opt := DefaultScanFilmOptions()
 	opt.QuantaOnly = true

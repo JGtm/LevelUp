@@ -1,6 +1,9 @@
 package grammar
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"testing"
+)
 
 // components_position_i0_profil_test.go — LE DESERIALISEUR D i0 CONSULTE BIEN LE PROFIL QUE SON
 // LECTEUR PORTE (lots 2.2.a et 2.2.b du PLAN_DECODEUR_FILM).
@@ -159,7 +162,7 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 	}
 
 	faussee := profil
-	faussee.Range = QuantRangeWorld100
+	faussee.Range = profile.QuantRangeWorld100
 	if avant, apres := lire(profil, absolu), lire(faussee, absolu); avant == apres {
 		t.Errorf("la range faussee dans le profil rend la MEME coordonnee absolue %v — le "+
 			"deserialiseur ne lit donc pas la range au profil", avant)

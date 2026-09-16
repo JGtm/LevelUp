@@ -43,6 +43,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // Seuils et bornes de l'item 1, ecrits avant mesure.
@@ -113,7 +114,7 @@ func v1cUnFilm(t *testing.T, root string, f v0Film) {
 
 // v1cScan balaie le nuage vehicule par la grammaire bipede (filtres de production armes, comme
 // V1a.4). Un echec est journalise et rend un nuage vide plutot que d'interrompre la mesure.
-func v1cScan(t *testing.T, f v0Film, dir string, band map[uint32]bool, wr *grammar.Vec3Range) []grammar.BipedPosition {
+func v1cScan(t *testing.T, f v0Film, dir string, band map[uint32]bool, wr *profile.Vec3Range) []grammar.BipedPosition {
 	t.Helper()
 	pos, err := grammar.ScanFilmBipedPositionsForBand(dir, grammar.NewSlotBand(band), v1aOptions(wr, true))
 	if err != nil {
@@ -296,7 +297,7 @@ func v1cTable(t *testing.T, f v0Film, vies []v1cVie) {
 
 // v1cTemoinFantome rejoue le releve de debuts-de-trou contre une bande fantome (slots jamais vus
 // porter le moindre archetype) et verdit le gate.
-func v1cTemoinFantome(t *testing.T, f v0Film, dir string, wr *grammar.Vec3Range,
+func v1cTemoinFantome(t *testing.T, f v0Film, dir string, wr *profile.Vec3Range,
 	bip []grammar.BipedPosition, signal int) {
 	t.Helper()
 	vus, autres := attBandesKeyframe(dir)

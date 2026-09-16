@@ -30,6 +30,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"math"
 	"os"
 	"sort"
@@ -83,7 +84,7 @@ type equipOwnerSample struct {
 // nuages sont dans le même repère, ce qui suffit à comparer une distance à son témoin — mais
 // pas à l'énoncer en mètres, et le seuil du plan est en mètres. On le dit plutôt que de
 // convertir avec une échelle devinée.
-func equipOwnerRange(t *testing.T) (Vec3Range, string) {
+func equipOwnerRange(t *testing.T) (profile.Vec3Range, string) {
 	t.Helper()
 	nom, chemin := os.Getenv("EQUIP_MAP"), os.Getenv("EQUIP_BOUNDS")
 	if nom == "" || chemin == "" {
@@ -104,7 +105,7 @@ func equipOwnerRange(t *testing.T) (Vec3Range, string) {
 
 // equipOwnerBipeds lit le nuage des bipèdes en QUANTA et le déquantifie avec les MÊMES bornes
 // que les objets du monde. Trié par instant pour la recherche par fenêtre.
-func equipOwnerBipeds(t *testing.T, dir string, lay I0Layout, wr Vec3Range) []equipOwnerSample {
+func equipOwnerBipeds(t *testing.T, dir string, lay profile.I0Layout, wr profile.Vec3Range) []equipOwnerSample {
 	t.Helper()
 	opt := DefaultScanFilmOptions()
 	opt.QuantaOnly = true

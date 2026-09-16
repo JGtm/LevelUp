@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -179,11 +180,11 @@ func funcBody(src, head string) (string, bool) {
 // donc avant que `scanFilmInputs` n'ait composé ses `ScanFilmOptions`. Une divergence entre les
 // deux ferait décoder le film sous un découpage que l'appelant croyait avoir forcé, en silence.
 func TestDecoupageForceSuitLesOptions(t *testing.T) {
-	force := grammar.I0Layout{GateBits: 7, AxisW: [3]uint{12, 12, 11}, Region: 1}
+	force := profile.I0Layout{GateBits: 7, AxisW: [3]uint{12, 12, 11}, Region: 1}
 	cas := []struct {
 		nom     string
 		opt     Options
-		attendu *grammar.I0Layout
+		attendu *profile.I0Layout
 	}{
 		{"sans options de balayage", Options{}, grammar.DefaultScanFilmOptions().Layout},
 		{"options sans découpage", Options{Scan: &grammar.ScanFilmOptions{}}, nil},

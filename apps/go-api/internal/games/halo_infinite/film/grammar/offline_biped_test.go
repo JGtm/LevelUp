@@ -2,6 +2,7 @@ package grammar
 
 import (
 	"errors"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -9,11 +10,11 @@ import (
 
 // cliffLayout est le découpage d'i0 de la carte de 000d5950 (Cliffhanger), établi par
 // DetectI0Layout sur le film et recoupé avec la table de largeurs live (13/13/14).
-var cliffLayout = I0Layout{GateBits: DefaultI0GateBits, AxisW: [3]uint{13, 13, 14}}
+var cliffLayout = profile.I0Layout{GateBits: profile.DefaultI0GateBits, AxisW: [3]uint{13, 13, 14}}
 
 // cliffRange est l'AABB monde du BSP de Cliffhanger (module `ridgeline`), lue avec
 // internal/himap. Les bornes sont PROPRES À LA CARTE : le décodeur les exige désormais.
-var cliffRange = QuantRangeCEBiped
+var cliffRange = profile.QuantRangeCEBiped
 
 // scanOptWorld : réglages par défaut + bornes de carte (le décodeur refuse d'émettre des
 // coordonnées monde sans elles).

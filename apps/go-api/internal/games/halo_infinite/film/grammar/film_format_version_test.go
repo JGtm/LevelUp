@@ -63,7 +63,7 @@ func TestFilmFormatVersionDesBobines(t *testing.T) {
 			continue
 		}
 		if id.FormatVersion != got {
-			t.Errorf("%s : FilmIdentity.FormatVersion = %d, %d attendu — les deux lectures de la "+
+			t.Errorf("%s : profile.FilmIdentity.FormatVersion = %d, %d attendu — les deux lectures de la "+
 				"MEME valeur ont diverge", c.court, id.FormatVersion, got)
 		}
 	}

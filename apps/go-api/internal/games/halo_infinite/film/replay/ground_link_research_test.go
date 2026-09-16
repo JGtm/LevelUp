@@ -36,12 +36,13 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // glSetup porte les entrees communes aux trois mesures, decodees une fois par test.
 type glSetup struct {
 	dir string
-	wr  grammar.Vec3Range
+	wr  profile.Vec3Range
 	pos map[uint32][]grammar.BipedPosition
 }
 

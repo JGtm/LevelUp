@@ -31,6 +31,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI54MobilityActionUsage$' -timeout 10m -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"testing"
@@ -221,7 +222,7 @@ func i54InMask(idx []int) bool {
 // comprise, même chemin que scanRecordDirs). Rend -1 quand un composant intermédiaire
 // n'est pas porté ou que la marche déborde du payload : la position du curseur ne
 // serait plus digne de confiance.
-func i54Flag1(pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype) int {
+func i54Flag1(pay []byte, i0, total int, idx []int, lay profile.I0Layout, arch Archetype) int {
 	at := i0 + lay.TotalBits() + i0TailBits
 	for _, id := range idx[1:] {
 		if at > total {

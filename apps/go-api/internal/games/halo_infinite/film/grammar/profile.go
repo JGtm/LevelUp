@@ -15,7 +15,7 @@ package grammar
 // Les champs sont PRIVES et les accesseurs rendent des VALEURS. Un [Profile] se copie a chaque
 // lecture, donc un appelant qui modifie ce qu il a recu ne modifie pas le profil du film — c est
 // le meme geste que [FilmContext.ImposedLayout]. Le seul champ porteur d une tranche
-// ([FilmIdentity.TypeVersions]) est CLONE par son accesseur : sans cela « immuable » serait un
+// ([profile.FilmIdentity.TypeVersions]) est CLONE par son accesseur : sans cela « immuable » serait un
 // mot, pas une propriete.
 //
 // # CE QU IL N EST PAS ENCORE, ET C EST LE TITRE DU LOT
@@ -37,6 +37,7 @@ package grammar
 import (
 	"errors"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -95,13 +96,13 @@ func (k KeyframeProfile) EtatParDefautPorte(ti uint32) bool {
 // 2.1 les RECOPIE ici avec leur provenance et PROUVE l egalite, le lot 2.2 les fait lire ici.
 type MovementProfile struct {
 	// Traversal est le descripteur de quantification du chemin de TRAVERSEE.
-	Traversal PrecisionDescriptor
+	Traversal profile.PrecisionDescriptor
 	// WorldObject est le descripteur du chemin WORLD-OBJECT (projectiles, armes au sol,
 	// equipement, corps rigides), dont les largeurs sont celles de la CARTE du match. Son
 	// defaut n est pas un repli neutre : c est l entree `cliffhanger` du catalogue.
 	// L installateur de `replay` y pose les largeurs de la carte jouee (lot 2.2.b).
 	// Provenance et preuve : ligne `Movement.WorldObject` de [TableProfil].
-	WorldObject PrecisionDescriptor
+	WorldObject profile.PrecisionDescriptor
 	// AbsoluteAxisW est la largeur d axe uniforme du chemin ABSOLU, a defaut de table par
 	// index de plage.
 	AbsoluteAxisW uint
@@ -111,7 +112,7 @@ type MovementProfile struct {
 	DeltaAxisWidth uint
 	// Range est la range de dequantification par defaut du paquet. La range du MATCH vient de
 	// la carte ([Profile.Map]) ; celle-ci ne sert que lorsqu aucune carte n est fournie.
-	Range Vec3Range
+	Range profile.Vec3Range
 	// FullPrecision mirroite le global de configuration `DAT_145121140`.
 	FullPrecision bool
 	// DeltaHasHandleTail mirroite le champ d execution `bVar16 = (precIndex != -1)`. Ce n est
@@ -139,13 +140,13 @@ type SlotsProfile struct {
 //
 // Les champs sont PRIVES : un profil se lit par ses accesseurs, qui rendent des valeurs.
 type Profile struct {
-	identity  FilmIdentity
+	identity  profile.FilmIdentity
 	mapEntry  MapQuantEntry
 	highlight HighlightProfile
 	keyframe  KeyframeProfile
 	movement  MovementProfile
 	slots     SlotsProfile
-	mpp       MPPWidths
+	mpp       profile.MPPWidths
 	format    int
 	build     string
 	err       error
@@ -153,7 +154,7 @@ type Profile struct {
 
 // Identity rend la section 2 de `chunk_00`, CLONEE : sa table par type est une tranche, et la
 // rendre telle quelle laisserait un lecteur reecrire le profil du film.
-func (p Profile) Identity() FilmIdentity {
+func (p Profile) Identity() profile.FilmIdentity {
 	id := p.identity
 	if id.TypeVersions != nil {
 		id.TypeVersions = append([]uint32(nil), id.TypeVersions...)
@@ -179,7 +180,7 @@ func (p Profile) Slots() SlotsProfile { return p.slots }
 
 // MPP rend le decoupage du bloc `object-multiplayer-properties`. Non valide quand la version de
 // format est connue mais sa largeur indeterminee (formats 20, 21, 24, 25).
-func (p Profile) MPP() MPPWidths { return p.mpp }
+func (p Profile) MPP() profile.MPPWidths { return p.mpp }
 
 // FormatVersion rend la cle de FORMAT (`chunk_00+4`), ou [FilmFormatVersionUnknown].
 func (p Profile) FormatVersion() int { return p.format }
@@ -307,12 +308,12 @@ func cadreDuProfil() KeyframeProfile {
 // [TestProfilEgaleGlobales] — c est ce qui autorise le lot 2.2 a basculer les lecteurs.
 func mouvementDuProfil() MovementProfile {
 	return MovementProfile{
-		Traversal:               PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{6, 6, 6}},
-		WorldObject:             PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{13, 13, 14}},
+		Traversal:               profile.PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{6, 6, 6}},
+		WorldObject:             profile.PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{13, 13, 14}},
 		AbsoluteAxisW:           14,
 		DeltaQuantum:            0.01383,
 		DeltaAxisWidth:          14,
-		Range:                   QuantRangeCEBiped,
+		Range:                   profile.QuantRangeCEBiped,
 		FullPrecision:           false,
 		DeltaHasHandleTail:      false,
 		CalibratedSkip:          false,

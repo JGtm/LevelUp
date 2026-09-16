@@ -45,6 +45,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 const (
@@ -104,7 +105,7 @@ func TestGroundWeaponPickups(t *testing.T) {
 
 // gwPickupRead lit le film : nuage des bipedes, recensement et instants des images-cles,
 // loadouts d'image-cle, pistes delta `ti=42`.
-func gwPickupRead(t *testing.T, dir string, wr *grammar.Vec3Range) *gwPickupFilm {
+func gwPickupRead(t *testing.T, dir string, wr *profile.Vec3Range) *gwPickupFilm {
 	t.Helper()
 	pos, err := grammar.ScanFilmBipedPositions(dir, gwPadsScanOptions(wr))
 	if err != nil {
@@ -182,7 +183,7 @@ func gwPickupHasFamily(in []string, want string) bool {
 // PRODUCTION (`padObjects`), celle-la meme que l'artefact de rejeu publie. Cet
 // instrument n'ajoute que les denominateurs au journal.
 func gwPickupObjects(
-	t *testing.T, dir string, wr *grammar.Vec3Range, f *gwPickupFilm,
+	t *testing.T, dir string, wr *profile.Vec3Range, f *gwPickupFilm,
 ) []gwPickupObject {
 	t.Helper()
 	cre, st, err := grammar.ScanFilmGroundWeaponCreationsForBand(dir, wr, f.keyframes.Band)

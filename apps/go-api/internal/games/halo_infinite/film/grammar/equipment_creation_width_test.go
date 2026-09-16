@@ -22,6 +22,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"sort"
 	"testing"
@@ -129,8 +130,8 @@ func equipWidthChunkList(n int) []int {
 	return out
 }
 
-func equipWidthScores(byWidths map[MPPWidths]int) string {
-	ws := make([]MPPWidths, 0, len(byWidths))
+func equipWidthScores(byWidths map[profile.MPPWidths]int) string {
+	ws := make([]profile.MPPWidths, 0, len(byWidths))
 	for w, n := range byWidths {
 		if n > 0 {
 			ws = append(ws, w)

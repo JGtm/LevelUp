@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"strings"
 )
@@ -66,19 +67,19 @@ func (e MapQuantEntry) EffectiveRegionIndexBits() uint {
 // largeurs d'axe déduites des bornes. C'est la source d'autorité du décodage — le découpage
 // lu dans le film (DetectI0Layout) reste le CONTRÔLE, jamais l'entrée (la même doctrine que
 // celle du descripteur world-object, traverse.go).
-func (e MapQuantEntry) Layout() I0Layout {
-	return I0Layout{
-		GateBits: i0SpineBits + i0UseDefaultBits + int(e.EffectiveRegionIndexBits()),
+func (e MapQuantEntry) Layout() profile.I0Layout {
+	return profile.I0Layout{
+		GateBits: profile.I0SpineBits + profile.I0UseDefaultBits + int(e.EffectiveRegionIndexBits()),
 		AxisW:    e.AxisWidths,
 		Region:   e.Region,
 	}
 }
 
 // Range convertit l'entrée en plage de déquantification.
-func (e MapQuantEntry) Range() Vec3Range {
-	var r Vec3Range
+func (e MapQuantEntry) Range() profile.Vec3Range {
+	var r profile.Vec3Range
 	for ax := 0; ax < 3; ax++ {
-		r[ax] = AxisRange{Min: e.Min[ax], Max: e.Max[ax]}
+		r[ax] = profile.AxisRange{Min: e.Min[ax], Max: e.Max[ax]}
 	}
 	return r
 }

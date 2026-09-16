@@ -28,6 +28,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR8ChargesIdentite$' -timeout 60m -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -85,7 +86,7 @@ func r8MapEntry(t *testing.T, dir string) MapQuantEntry {
 	return got[0]
 }
 
-func r8HasRange(all []MapQuantEntry, r Vec3Range) bool {
+func r8HasRange(all []MapQuantEntry, r profile.Vec3Range) bool {
 	for _, x := range all {
 		if x.Range() == r {
 			return true

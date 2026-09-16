@@ -107,4 +107,14 @@
 #               filmdec.LecteurSur (l ancien NewBitReader, renomme : le type decore, il ne lit plus).
 #               Aucune largeur ni borne ne change ; lignes identiques a l octet, aucun backlog.
 
-killsource-2026-09-16.2	2abeed74ab683c6f77eb227868292bb2e8a7ea8834055bc6b82f03c87b3bf432
+#   2026-09-16  killsource-2026-09-16.2  lot 2.5.b : REVISION INCHANGEE, GOLDEN REGENERE. La
+#               couche `film/profile` nait par extraction ; `calibrate.go` et `film_table.go`
+#               qualifient desormais `profile.PrecisionDescriptor` et `profile.MPPWidths` au lieu
+#               de `grammar.*`, et gagnent une ligne d import. AUCUNE largeur, aucune borne,
+#               aucun ordre de lecture ne change : les lignes de kill sont identiques a l octet,
+#               donc AUCUN backlog de redecodage. Le gate hache les OCTETS de source du
+#               decodeur, pas sa sortie : c est exactement le cas que sa doctrine nomme
+#               (« si le changement ne touche PAS les lignes produites, laisser la revision et
+#               l ecrire dans le commit »).
+
+killsource-2026-09-16.2	4d26a558bc29800f01dc0b911fe819f0f05e7021622dc17a60e62b31e6e5197a

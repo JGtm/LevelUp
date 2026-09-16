@@ -16,12 +16,15 @@ package grammar
 // champ, et l'une des deux avait divergé. Ce fichier est le garde-rail qui interdit le retour du
 // littéral.
 
-import "testing"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
+	"testing"
+)
 
 // wogDescripteur rend un descripteur world-object. Depuis le lot 2.3 il n'y a plus rien a
 // installer ni a restaurer : le descripteur se passe au lecteur, il ne vit plus dans le paquet.
-func wogDescripteur(indexW uint, region uint32, axisW [3]uint) PrecisionDescriptor {
-	return PrecisionDescriptor{IndexW: indexW, Region: region, AxisW: axisW}
+func wogDescripteur(indexW uint, region uint32, axisW [3]uint) profile.PrecisionDescriptor {
+	return profile.PrecisionDescriptor{IndexW: indexW, Region: region, AxisW: axisW}
 }
 
 // wogRecord écrit un i0 d'objet du monde : porte (precHigh, index-sel, index de région) puis
@@ -46,7 +49,7 @@ func TestPorteWorldObjectSuitLaLargeurDIndexDeRegion(t *testing.T) {
 	if got, want := projPosBits(lg), 4+12+12+11+2; got != want {
 		t.Fatalf("projPosBits() = %d, attendu %d : la porte ne suit pas l'index de région", got, want)
 	}
-	wr := Vec3Range{{Min: 0, Max: 4096}, {Min: 0, Max: 4096}, {Min: 0, Max: 2048}}
+	wr := profile.Vec3Range{{Min: 0, Max: 4096}, {Min: 0, Max: 4096}, {Min: 0, Max: 2048}}
 	q := [3]uint64{1000, 2000, 500}
 	pay := wogRecord(1, 2, axisW, q)
 	v, ok := decodeWorldObjectPos(pay, 0, &wr, lg)
@@ -68,7 +71,7 @@ func TestPorteWorldObjectSuitLaLargeurDIndexDeRegion(t *testing.T) {
 func TestPorteWorldObjectRefuseUneAutreRegion(t *testing.T) {
 	axisW := [3]uint{12, 12, 11}
 	lg := wogDescripteur(2, 1, axisW)
-	wr := Vec3Range{{Min: 0, Max: 4096}, {Min: 0, Max: 4096}, {Min: 0, Max: 2048}}
+	wr := profile.Vec3Range{{Min: 0, Max: 4096}, {Min: 0, Max: 4096}, {Min: 0, Max: 2048}}
 	for _, region := range []uint32{0, 2, 3} {
 		pay := wogRecord(region, 2, axisW, [3]uint64{1000, 2000, 500})
 		if _, ok := decodeWorldObjectPos(pay, 0, &wr, lg); ok {
@@ -86,7 +89,7 @@ func TestPorteWorldObjectResteTroisBitsQuandLIndexEnFaitUn(t *testing.T) {
 	if got, want := projPosBits(lg), 3+13+13+14+2; got != want {
 		t.Fatalf("projPosBits() = %d, attendu %d", got, want)
 	}
-	wr := Vec3Range{{Min: 0, Max: 8192}, {Min: 0, Max: 8192}, {Min: 0, Max: 16384}}
+	wr := profile.Vec3Range{{Min: 0, Max: 8192}, {Min: 0, Max: 8192}, {Min: 0, Max: 16384}}
 	pay := wogRecord(0, 1, axisW, [3]uint64{100, 200, 300})
 	v, ok := decodeWorldObjectPos(pay, 0, &wr, lg)
 	if !ok {

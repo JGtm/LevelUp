@@ -47,6 +47,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -115,13 +116,13 @@ func decodeFilmInputsForEntry(film, dir string, entry grammar.MapQuantEntry) (*g
 // L AUTO-DETECTION NE SURVIT QUE LA OU LA PRODUCTION L EMPLOIE — entree de carte invalide
 // (`axisWidths` absent, cf. resolveI0Layout). Elle est alors NOMMEE dans le fixture, pour qu un
 // lecteur sache que ces quanta ne viennent pas du catalogue.
-func decoupageDuFixture(charge *source.Film, entry grammar.MapQuantEntry) (grammar.I0Layout, bool, error) {
+func decoupageDuFixture(charge *source.Film, entry grammar.MapQuantEntry) (profile.I0Layout, bool, error) {
 	if impose := grammar.NewFilmContextForMap(nil, &entry, nil).ImposedLayout(); impose != nil {
 		return *impose, false, nil
 	}
 	lay, _, err := grammar.DetectI0LayoutOf(charge)
 	if err != nil {
-		return grammar.I0Layout{}, true, fmt.Errorf("decoupage i0 auto-detecte : %w", err)
+		return profile.I0Layout{}, true, fmt.Errorf("decoupage i0 auto-detecte : %w", err)
 	}
 	return lay, true, nil
 }

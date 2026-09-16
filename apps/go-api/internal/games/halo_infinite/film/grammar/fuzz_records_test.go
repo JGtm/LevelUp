@@ -29,6 +29,7 @@ package grammar
 import (
 	"flag"
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -73,7 +74,7 @@ const fuzzMaxSeed = 4096
 func FuzzFilmRecordReaders(f *testing.F) {
 	f.Add([]byte{})
 	f.Add([]byte{0xD2})
-	wr := Vec3Range{{Min: -100, Max: 100}, {Min: -100, Max: 100}, {Min: -100, Max: 100}}
+	wr := profile.Vec3Range{{Min: -100, Max: 100}, {Min: -100, Max: 100}, {Min: -100, Max: 100}}
 	band := map[uint32]bool{}
 	for s := uint32(1400); s < 1500; s++ {
 		band[s] = true

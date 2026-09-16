@@ -31,6 +31,7 @@ package grammar
 import (
 	"encoding/binary"
 	"hash/fnv"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -219,13 +220,13 @@ func TestV1aNonRegressionBipede(t *testing.T) {
 }
 
 // v1aBornesTemoin rend les bornes de la carte du film temoin, si elles sont demandees.
-func v1aBornesTemoin(t *testing.T) (Vec3Range, bool) {
+func v1aBornesTemoin(t *testing.T) (profile.Vec3Range, bool) {
 	t.Helper()
 	chemin, carte := os.Getenv(v1aBornesEnv), os.Getenv(v1aCarteEnv)
 	if chemin == "" || carte == "" {
 		t.Logf("V1.2 non-regression — %s ou %s vide : variantes a bornes non mesurees",
 			v1aBornesEnv, v1aCarteEnv)
-		return Vec3Range{}, false
+		return profile.Vec3Range{}, false
 	}
 	cat, err := LoadMapQuantCatalog(chemin)
 	if err != nil {

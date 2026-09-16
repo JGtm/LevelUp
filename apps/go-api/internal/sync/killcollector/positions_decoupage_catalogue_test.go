@@ -31,6 +31,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 )
 
 // catalogueDeBornesVersionne charge le catalogue de bornes RÉEL du dépôt — DONNÉE DE RÉFÉRENCE
@@ -108,7 +109,7 @@ func TestMutationDuCatalogueChangeLeDecoupageDesPositions(t *testing.T) {
 	// plus près des bits : `filmdec/i0_catalogue_mutation_test.go`,
 	// `decoupageDeReferenceLiveFire` ; les deux se mettent à jour ensemble le jour où le
 	// découpage de cette carte change VOLONTAIREMENT.
-	attendu := grammar.I0Layout{GateBits: 6, AxisW: [3]uint{12, 12, 11}, Region: 1}
+	attendu := profile.I0Layout{GateBits: 6, AxisW: [3]uint{12, 12, 11}, Region: 1}
 	if *reference.Layout != attendu {
 		t.Fatalf("le catalogue donne %s a Live Fire, attendu %s (valeur du 2026-09-15). "+
 			"Si le changement est voulu, reecrire cette reference et son jumeau `grammar."+

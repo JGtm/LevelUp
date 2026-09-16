@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/profile"
+
 // Position capture (ADDITIVE, PARTIE 1 victim-position pipeline). This file lets a
 // probe observe the i0 object-position-dynamic-precision payload WITHOUT changing
 // any bit-consumption: consumeObjectPositionDynamicPrecisionD reads exactly the same
@@ -18,9 +20,9 @@ package grammar
 // WORLD RANGE for the absolute/keyframe quantized path: the i0 axis widths come from
 // le descripteur de traversée (IndexW=1, AxisW=6/6/6, measured via Cheat Engine). The dequant
 // RANGE is the engine world-position range DAT_143b8c6f0 precision-2 = +/-100 per axis
-// (QuantRangeWorld100, validated by quantize_test.go::TestReadQuantizedVec3_World100).
+// (profile.QuantRangeWorld100, validated by quantize_test.go::TestReadQuantizedVec3_World100).
 // Halo Infinite ships maps inside a normalized [-100,100]^3 replication box for the
-// dynamic-precision position component, so QuantRangeWorld100 is the right table slot
+// dynamic-precision position component, so profile.QuantRangeWorld100 is the right table slot
 // for 000d5950. The raw (96-bit) path is in absolute engine world units (un-quantized
 // float32), a different magnitude scale than the quantized box — they are NOT mixed.
 
@@ -151,14 +153,14 @@ func (b *Lecteur) keepBaseline() {
 // WorldPositionRange is the dequant range used for the i0 absolute/keyframe quantized
 // path. Exposed (var, not const) so a probe can A/B alternative range-table slots
 // (Unit3 / Norm / World100 / Cliffhanger) against known sane coordinates. DEFAULT =
-// QuantRangeCEBiped, the live-captured DAT_14462cbe0[0] small map-local biped box (span
-// X~113 => 0.0138 oracle quantum). The old QuantRangeCliffhanger [-974,179]... scattered
+// profile.QuantRangeCEBiped, the live-captured DAT_14462cbe0[0] small map-local biped box (span
+// X~113 => 0.0138 oracle quantum). The old profile.QuantRangeCliffhanger [-974,179]... scattered
 // absolutes hundreds of units off-box (the range WAS the bug); it stays selectable for
 // the before/after proof.
 // C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : la range vit dans le PROFIL que le
 // lecteur porte (`Movement.Range`), et l'A/B de sonde se fait en posant un profil sur le
 // lecteur, plus en écrivant dans le processus.
-func (b *Lecteur) worldPositionRange() Vec3Range { return b.p.Mouvement.Range }
+func (b *Lecteur) worldPositionRange() profile.Vec3Range { return b.p.Mouvement.Range }
 
 // AbsDequantMode sélectionne la FORME de déquantification d'un axe absolu i0.
 type AbsDequantMode int

@@ -12,7 +12,7 @@ package grammar
 // la jauge elle-meme : une reapparition datee n'est pas un etat de rechargement.
 //
 // LES BORNES METRIQUES SONT PASSEES ARBITRAIRES, ET C'EST LEGITIME ICI.
-// `ScanFilmEquipmentCreations` exige un `*Vec3Range` — mais il ne s'en sert QUE pour convertir
+// `ScanFilmEquipmentCreations` exige un `*profile.Vec3Range` — mais il ne s'en sert QUE pour convertir
 // les quanta en metres. Les LARGEURS de bits, elles, viennent de `WorldObjectPrecision`, pose
 // depuis le layout du film par `r12Prepare`. Cet instrument ne publie AUCUNE position : il ne
 // publie que des INSTANTS et des identifiants. Les X/Y/Z rendus sont donc faux et ne sont
@@ -24,6 +24,7 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR12Socles$' -count=1 -timeout 60m -v
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"sort"
 	"testing"
 )
@@ -51,7 +52,7 @@ func r12SoclesOneFilm(t *testing.T, dir string) {
 	t.Helper()
 	s := r12Prepare(t, dir)
 	// Bornes ARBITRAIRES : voir l'en-tete. Aucune position n'est publiee par cet instrument.
-	bidon := Vec3Range{{-1000, 1000}, {-1000, 1000}, {-1000, 1000}}
+	bidon := profile.Vec3Range{{Min: -1000, Max: 1000}, {Min: -1000, Max: 1000}, {Min: -1000, Max: 1000}}
 	cre, st, err := ScanFilmEquipmentCreations(dir, &bidon)
 	if err != nil {
 		t.Fatalf("%s : creations ti=37 illisibles : %v", s.id, err)

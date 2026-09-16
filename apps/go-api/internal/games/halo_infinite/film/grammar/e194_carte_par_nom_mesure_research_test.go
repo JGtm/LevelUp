@@ -59,6 +59,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -143,7 +144,7 @@ type e194Ligne struct {
 	// ParNom : l'entrée que le NOM DE MATCH donne, et son erreur.
 	ParNom    MapQuantEntry
 	ErrNom    error
-	Detecte   I0Layout
+	Detecte   profile.I0Layout
 	ErrDetect error
 	// Candidats : les cartes du catalogue dont les largeurs égalent la signature détectée.
 	Candidats []string

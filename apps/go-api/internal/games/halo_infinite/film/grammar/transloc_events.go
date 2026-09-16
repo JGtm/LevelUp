@@ -55,6 +55,7 @@ package grammar
 import (
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
@@ -227,7 +228,7 @@ func decodeTranslocJump(br *Lecteur, entry *MapQuantEntry) ([3]float32, [3]float
 func readTranslocVec(br *Lecteur, entry *MapQuantEntry) ([3]float32, bool) {
 	var out [3]float32
 	widths := [3]uint{translocDefaultAxisBits, translocDefaultAxisBits, translocDefaultAxisBits}
-	rng := Vec3Range{
+	rng := profile.Vec3Range{
 		{Min: -translocDefaultBound, Max: translocDefaultBound},
 		{Min: -translocDefaultBound, Max: translocDefaultBound},
 		{Min: -translocDefaultBound, Max: translocDefaultBound},
@@ -239,12 +240,12 @@ func readTranslocVec(br *Lecteur, entry *MapQuantEntry) ([3]float32, bool) {
 		if uint32(br.ReadBits(entry.EffectiveRegionIndexBits())) != entry.Region {
 			// Une AUTRE région : ses quanta sont exprimés dans une autre AABB, et les
 			// déquantifier avec ces bornes produirait une position fausse silencieuse —
-			// exactement le refus que porte I0Layout.Region sur le chemin du bipède.
+			// exactement le refus que porte profile.I0Layout.Region sur le chemin du bipède.
 			return out, false
 		}
 		widths, rng = entry.AxisWidths, entry.Range()
 	}
-	lay := I0Layout{AxisW: widths}
+	lay := profile.I0Layout{AxisW: widths}
 	for ax := 0; ax < 3; ax++ {
 		out[ax] = DequantBipedAxis(uint32(br.ReadBits(widths[ax])), ax, lay, rng)
 	}
