@@ -3914,9 +3914,11 @@ limitée au champ `coverage.decoder`.
       `decodeInferLoop` reste à 114 avec une exemption écrite (boucle à sorties multiples).
       Le volet PUBLICATION (`document.go`, `build.go`, `lives.go`, `zone_states_hill.go`,
       `equipment_placements.go`, `tracks_publication.go`, `document_chronicle.go`, et les deux
-      fonctions `BuildFromPositions` / `decimateTracks`) est `[!]` **non traité ici** : les lots
-      1.9.9 / 1.9.11 / 1.9.14 tenaient ces fichiers en gates au moment du lot. Il part au lot
-      **2.7p**, après leur fusion ; d'ici là le ratchet 2.7.2 les gèle à leur taille du jour.
+      fonctions `BuildFromPositions` / `decimateTracks`) était `[!]` au rendu du volet grammaire
+      (les lots 1.9.9 / 1.9.11 / 1.9.14 tenaient ces fichiers en gates) ; il a été TRAITÉ le même
+      jour par le volet **2.7p**, exécuté en parallèle sous frontière de fichiers écrite et
+      fusionné (c6305127b) : les six fichiers sont sous 500 L, plus aucune fonction > 80 L dans
+      `replay`, gate groupé à zéro différence au §5. `[x]` pour les deux volets (2026-09-17).
       **GATES DE DÉCODAGE (§5)** : `replay-corpus-gate` rend **14 témoins sur 14 à 0 gain,
       0 perte, 0 changement, schéma 59 → 59** ; `replay-equiv` rend 10 écarts, tous à la SEULE
       étape `killsource`, classés « référence de base périmée » (le lot ne touche aucun fichier
