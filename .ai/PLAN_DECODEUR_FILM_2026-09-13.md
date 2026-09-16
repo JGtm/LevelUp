@@ -3876,10 +3876,13 @@ valeur faussée DANS LE PROFIL rougit désormais la lecture.
 Preuve par famille : `replay-equiv` zéro différence ; ratchet descendu ; mutation rouge.
 GATES SANS DÉCODAGE : verts à chaque commit (§5). GATES AVEC DÉCODAGE : **JOUÉS le 2026-09-17**
 sur la tête renumérotée `7508af3c0` (§5, bloc « gates AVEC décodage ») — corpus gate **14/14 à
-0 gain / 0 perte / 0 changement**, schéma 60 des deux côtés ; les vingt écarts d'équivalence sont
-une référence périmée héritée de la base, à **une seule étape des 53** (`vehicles`), établie sans
-redécoder : le pas observé y est la valeur ZÉRO de `VehicleScan`, dont le digest ne dépend que de
-la FORME, et le diff du lot ne change AUCUN champ de struct. `-update` non joué.
+0 gain / 0 perte / 0 changement**, schéma 60 des deux côtés : **aucun octet cuit ne change**.
+L'équivalence rend 20/20 différents à la SEULE étape `vehicles`, et la cause est le lot :
+`filmdec.FrameConfig` passe de 5 à 7 champs (`Mouvement` au 2.2.a, `Obs` au 2.2.f) et
+`ObjectDeathStats.Config` en recopie le cadre dans les stats de balayage que l'oracle observe —
+`digest` hachant les champs exportés OU NON. Différence de FORME, pas de contenu.
+**Arbitrage au pilote** : forme acceptée et référence re-figée à la fusion, ou forme à rétablir.
+`-update` non joué.
 
 #### Lot 2.3 (pas 3) — Plus de globale, plus de verrou — M, high
 
@@ -5315,25 +5318,34 @@ machine d'un seul décodage à la fois, en attente de la « voie libre » du pil
 
 ### Lot 2.2 (M2, pas 2) — gates AVEC décodage, 2026-09-17 (« voie libre » du pilote)
 
-**VERDICT : le lot a ZÉRO différence propre.** Les vingt écarts de l'équivalence sont une
-RÉFÉRENCE PÉRIMÉE HÉRITÉE DE LA BASE, à **une seule étape des 53**, et le corpus gate — qui ne
-dépend d'AUCUNE référence versionnée, puisqu'il cuit les deux côtés et les compare entre eux —
-rend **zéro gain, zéro perte, zéro changement sur les 14 témoins**, schéma 60 des deux côtés.
-Les deux gates disent la même chose par deux chemins indépendants.
+**VERDICT : le lot ne change AUCUN OCTET CUIT, mais il change la FORME d'une entrée de balayage
+que l'oracle d'équivalence observe.** Le corpus gate — qui cuit les deux côtés et les compare
+entre eux, sans référence versionnée — rend **0 gain / 0 perte / 0 changement sur les 14
+témoins**, schéma 60 des deux côtés. L'équivalence, elle, rend **20/20 différents à la seule
+étape `vehicles`** : `filmdec.FrameConfig` gagne deux champs dans ce lot, et `digest` hache les
+champs d'un struct **exportés ou non**.
+
+> **CORRECTIF DU CLASSEMENT — une première version de ce bloc concluait « référence périmée
+> héritée de la base ». C'ÉTAIT FAUX, et la mesure ci-dessous le montre.** L'erreur tenait à deux
+> raccourcis : (1) avoir daté le FICHIER de référence (`git log` sur le `.tsv`) au lieu d'avoir
+> daté sa VALIDATION — une ligne non réécrite depuis la vague 2 reste juste tant que rien ne
+> change la forme ; (2) avoir comparé les types par un grep sur les champs EXPORTÉS, aveugle par
+> construction au mécanisme même de `digest`, dont l'en-tête dit que « ce que `encoding/json` ne
+> voit pas est justement ce qu'un refacto peut casser en silence ». Le pilote a opposé la pièce
+> qui tranche : les 20 références ont rendu 20/20 IDENTIQUES à quatre têtes successives de
+> l'intégration, dont `c6305127b`.
 
 | Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
 |---|---|---|---|---|
-| 2026-09-17 | 2.2 (régime complet) | `7508af3c0` | `go run ./cmd/replay-equiv -repo-root …-decfilm-22` (corpus entier, 20 films) | **0 identique, 20 différents**, 0 écarté, 0 échec, 0 illisible ; ~16 min. Rejoué une seconde fois avec la sortie INTÉGRALE capturée (le premier passage était tronqué par un `tail`) : **20 films, 20 écarts, TOUS à l'étape `vehicles`** — aucune des 52 autres étapes ne bouge sur aucun film |
-| 2026-09-17 | 2.2 (classement) | — | forme des écarts | **10 films sur 20 partagent le MÊME sha attendu** (`5d65f534…`) **et le MÊME sha obtenu** (`354dfab5…`) : sur ces dix-là le calque est une CONSTANTE. Les dix autres (films À véhicules) ont des shas distincts des deux côtés. Un changement de FORME du type observé change les vingt, vides ou non — c'est la signature attendue |
-| 2026-09-17 | 2.2 (classement) | — | `digest.Of(replay.VehicleScan{})` calculé à MA TÊTE, sans décoder | **`compte=1 sha=354dfab5b53eeee9562cc7c82ce7f797ffd63d930bcdde71114a774475db3bc6`** — EXACTEMENT le sha OBTENU sur les dix films sans `ti=40`. Le pas observé y est donc la VALEUR ZÉRO de `VehicleScan` : aucun octet décodé n'y entre, et son digest ne dépend que de la FORME du type |
-| 2026-09-17 | 2.2 (classement) | — | trois variantes de plus (`Scanned=true`, tranches vides, les deux) | `598ebc5b…`, `fe85ab06…`, `caba5e15…` — **aucune n'égale la référence** `5d65f534…`. Le drapeau `Scanned` n'a donc PAS basculé : c'est bien la forme du type qui a changé depuis le figeage, pas une valeur décodée |
-| 2026-09-17 | 2.2 (classement) | — | `git diff 8d05aa6b7..HEAD -- film/ ':(exclude)*_test.go'`, filtré sur les champs de struct | **ZÉRO champ ajouté, zéro champ retiré, zéro type changé.** Le seul `type` neuf du lot est `filmdec.Observation` (l'observateur, hors de la chaîne du calque) et `MPPWidths` n'apparaît en `±` que parce que le lot 2.2.e l'a DÉPLACÉ dans `mpp_widths.go`, corps identique. Mon diff ne peut donc pas avoir changé le digest de `VehicleScan{}` |
-| 2026-09-17 | 2.2 (classement) | — | `VehicleScan` et ses sept types imbriqués, `d8d63461e` contre HEAD | `VehicleScan`, `EquipmentCreationStats`, `EquipmentCreation`, `WorldObjectKeyframes`, `VehicleEvent`, `BipedAim`, `BipedPosition`, `SlotBand` : **tous identiques**. Le paquet `analysis/digest` est INCHANGÉ depuis la vague 2, et la ligne de grammaire des références (`# digest-grammar: 2`) est celle de la tête — le rendu du digest n'est pas en cause non plus |
-| 2026-09-17 | 2.2 (cause) | — | historique de la ligne `vehicles` de `bcb6d393.tsv`, commit par commit | Dernière écriture : **`d8d63461e` (vague 2, 2026-09-16 00:19)**, « références re-figées au gate unique de l'intégration — killsource, placements.stats (forme), **vehicles (forme)**, artifact (contenu, schéma 60) ; **10/10** après re-figeage ». La clôture M1 (`536f9b61f`, 02:49) a re-figé DIX références du lot 1.2 et **n'a pas retouché cette ligne**. Entre cette date et ma base, l'intégration a bougé de **76 fichiers / 5 539 insertions** dans `filmdec/` + `replay/` (dont le merge `da258bf76` de `feat/v75`, « golden de forme régénéré par son port ») sans re-figer `vehicles` sur les vingt |
-| 2026-09-17 | 2.2 | — | **`-update` NON JOUÉ**, délibérément | Trois raisons, les mêmes qu'au lot 2.1 : (1) la divergence n'est pas produite par ce lot — la re-figer absorberait le changement d'un AUTRE lot dans mon commit ; (2) le re-figeage est un geste UNIQUE du pilote, au gate de fin de vague ; (3) le brief l'interdit explicitement. D4 dit « une différence arrête le pas, elle ne se justifie pas » : ici il n'y en a aucune qui soit mienne, et c'est PROUVÉ, pas affirmé |
-| 2026-09-17 | 2.2 (régime complet) | `7508af3c0` | `go run ./cmd/replay-corpus-gate --base=8d05aa6b7 --parc-root …LevelUp-go-migration --source-root …-decfilm-22 --json … --work-root <hors dépôt> --keep-work` | **code 0. 14 témoins sur 14 `ok` : 0 gain, 0 perte, 0 changement**, `schemaReference` 60 et `schemaHead` 60 partout. **Aucun témoin ABSENT** (l'aléa D2 ne s'est pas produit). Vérifié au JSON et pas seulement au tableau : 14 entrées, sommes `gains`/`pertes`/`changements` = 0 / 0 / 0, aucune entrée hors 0/0/0 ni hors 60/60 |
+| 2026-09-17 | 2.2 (régime complet) | `7508af3c0` | `go run ./cmd/replay-corpus-gate --base=8d05aa6b7 --parc-root …LevelUp-go-migration --source-root …-decfilm-22 --json … --work-root <hors dépôt> --keep-work` | **code 0. 14 témoins sur 14 `ok` : 0 gain, 0 perte, 0 changement**, `schemaReference` 60 et `schemaHead` 60 partout. **Aucun témoin ABSENT** (l'aléa D2 ne s'est pas produit). Vérifié au JSON : 14 entrées, sommes 0/0/0, aucune entrée hors 0/0/0 ni hors 60/60 |
 | 2026-09-17 | 2.2 (corpus gate) | — | les 14 familles et leurs durées | `ctf_mono_manche` 12,28 s · `ctf_multi_manche` 31,17 s · `oddball` 58,15 s · `assaut_bombe` 14,81 s · `slayer` 13,64 s · `deux_manches` 17,98 s · `vehicules` 2 min 2,36 s · `region_index_2_bits` 16,72 s · `version_39` 38,61 s · `version_40_build_1_11` 44,72 s · `version_37` 29,08 s · `version_33_sans_identification` 3 min 6,42 s · `vehicules_v41_utilisateur` 21,03 s · `equipement_origine_utilisateur` 2 min 27,91 s |
-| 2026-09-17 | 2.2 | — | contrôle de cohérence des deux gates | **LE TÉMOIN QUI TRANCHE EST `vehicules` (084a804d, 2 min 2 s) — et il rend 0 changement.** Si le lot touchait le calque des véhicules, c'est lui qui le montrerait, puisque le corpus gate cuit la base ET la tête et les compare entre elles sans référence figée. Son zéro et l'unicité de l'étape en écart à l'équivalence disent la MÊME chose : **le lot ne change aucun octet cuit**, et l'écart de l'étape `vehicles` est imputable à la référence, à elle seule |
+| 2026-09-17 | 2.2 (régime complet) | `7508af3c0` | `go run ./cmd/replay-equiv -repo-root …-decfilm-22` (corpus entier, 20 films) | **0 identique, 20 différents**, 0 écarté, 0 échec, 0 illisible ; ~16 min. Rejoué avec la sortie INTÉGRALE capturée (le premier passage était tronqué par un `tail`) : **20 films, 20 écarts, TOUS à l'étape `vehicles`**, une seule étape par film, aucune des 52 autres ne bouge |
+| 2026-09-17 | 2.2 (cause, MESURÉE) | base `8d05aa6b7` contre tête `6c19b123e` | instrument jetable (non commis) : forme récursive de `replay.VehicleScan` — pour chaque type atteignable, le digest de sa valeur ZÉRO et ses champs, **exportés ou non** ; joué à la tête, puis sur un worktree DÉTACHÉ à `8d05aa6b7` (sans jonction : le test est pur) | **`digest.Of(VehicleScan{})` vaut `5d65f534…` à la base — EXACTEMENT le sha ATTENDU — et `354dfab5…` à ma tête — EXACTEMENT le sha OBTENU.** La référence est donc JUSTE et la différence est CELLE DU LOT. Trois types diffèrent, et un seul est la source : `filmdec.FrameConfig` |
+| 2026-09-17 | 2.2 (cause) | — | `filmdec.FrameConfig`, champ par champ | **base : 5 champs** (`HasExtraFields`, `IDBase`, `IDLowBits`, `NewDefaultStateBits`, `PacketPreambleBits`), zéro `a06e699d…`. **tête : 7 champs**, les cinq mêmes plus **`Mouvement filmdec.MovementProfile`** (ajouté au lot 2.2.a) et **`Obs *filmdec.Observation`** (ajouté au lot 2.2.f), zéro `a41181701e…` |
+| 2026-09-17 | 2.2 (cause) | — | la chaîne exacte, en trois maillons | `replay.VehicleScan` → champ **`DeathStats filmdec.ObjectDeathStats`** → champ **`Config filmdec.FrameConfig`** (`filmdec/object_deaths.go:70`) → mes deux champs neufs. `ObjectDeathStats` est entré dans `VehicleScan` au **lot 1.9.10** (les morts écrites des `ti=40`) : c'est ce qui rend le cadre de balayage OBSERVABLE par l'oracle, et pourquoi aucun lot antérieur n'avait vu la question |
+| 2026-09-17 | 2.2 (cause) | — | quatre types NEUFS deviennent atteignables | `filmdec.MovementProfile`, `filmdec.PrecisionDescriptor`, `filmdec.AxisRange` et `filmdec.Observation` (37 champs) n'étaient atteignables depuis aucune entrée observée à la base : les valeurs qu'ils portent vivaient dans des variables de paquet, que `digest` ne voit pas. Les faire entrer dans le cadre les rend visibles — c'est le PRIX, attendu, de la dé-globalisation |
+| 2026-09-17 | 2.2 (portée) | — | la valeur décodée peut-elle changer ? | **NON, et c'est mesuré, pas déduit : le corpus gate est à 0/0/0 sur 14 témoins, dont `vehicules` (084a804d, 2 min 2 s) et `vehicules_v41_utilisateur`.** `ObjectDeathStats.Config` est une COPIE du cadre employé, publiée dans les STATS DE BALAYAGE que `replay-equiv` observe — elle n'entre dans aucun octet du document cuit, et `SchemaVersion` reste 60. La différence est de FORME, pas de contenu |
+| 2026-09-17 | 2.2 | — | **`-update` NON JOUÉ** | La différence est RÉELLE et elle est mienne : la re-figer serait absorber dans mon commit une décision qui n'est pas la mienne. **ARBITRAGE AU PILOTE**, entre (a) forme acceptée et référence re-figée à la fusion — le cadre de balayage porte désormais le profil, c'est le but du pas 2 —, et (b) forme à rétablir, en sortant `Mouvement` et `Obs` de `FrameConfig` au profit d'un canal que `ObjectDeathStats` ne recopie pas |
 
 ### Lot 2.1 (M2, pas 1) — gates SANS décodage, 2026-09-17
 
