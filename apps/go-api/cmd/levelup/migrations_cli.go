@@ -75,7 +75,7 @@ func applySharedMigrationsForTitle(cfg *config.AppConfig, titleSlug string) erro
 // jamais une condition — il ne doit pas faire échouer une passe de sync.
 func countAppliedMigrations(db *sql.DB) int {
 	var n int
-	if err := db.QueryRow(`SELECT count(*) FROM schema_migrations`).Scan(&n); err != nil {
+	if err := db.QueryRowContext(context.Background(), `SELECT count(*) FROM schema_migrations`).Scan(&n); err != nil {
 		slog.DebugContext(context.Background(), "migrations: comptage indisponible", "err", err)
 		return 0
 	}
