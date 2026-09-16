@@ -108742,3 +108742,34 @@ l'utilisateur. Lot 1 (`feat/quantum-projectiles`) et lot 2 (`feat/mapquant-forge
 indépendants et parallélisables en worktrees dédiés. Le sous-lot 1C décide du sort de la précision
 par arme pour les armes à projectile : succès vers un plan séparé, échec vers le registre des
 reports, la remise du 01/09 restant en l'état.
+
+## [2026-09-15] Amis par joueur et invitations « sans groupe » sur instance verrouillée — plan écrit, non exécuté
+
+**Statut** : Complété (analyse et plan, aucun code touché — exécution refusée par l'utilisateur
+pour cette session).
+
+**Décision technique principale** : vérification sur pièces du modèle multi-utilisateur (ADR
+0029 + `groupstore`) à la question « un utilisateur hors de mon groupe voit-il mes amis ? ». Réponse :
+non, l'accès est cloisonné par propriété + co-membres de groupe (`authz.CanAccessPlayer`,
+`RequirePlayerOwnership`, `familyXUIDResolver` câblé sur `CoMemberXUIDs`). Deux défauts relevés et
+tranchés avec l'utilisateur : (1) `app_settings.friend_gamertags` est global à l'instance ET lu par
+le front via `GET /settings` sous `RequireAdmin` — un utilisateur standard n'a aujourd'hui aucune
+fonctionnalité « amis » ; (2) sur instance verrouillée, seule l'invitation DE GROUPE lève le verrou
+(`xbox_auth_service.go:222` rejette `GroupID == ""`), l'invitation admin sans groupe est inopérante
+en SSO Xbox et n'a plus d'UI ; tout invité reste ensuite coincé sur `POST /setup/players` (403
+`instance_locked`). Décisions D1-D6 : amis par profil joueur (xuid) dans
+`data/global/player_friends.json` (store miroir de groupstore), champ global supprimé après
+migration idempotente ; UI sur `/groups` renommée « Amis et groupes » ; invitation (groupe ou non)
+lève le verrou de compte et porte un droit à usage unique de provisioning du profil, porté par
+`users.json` (`User.ProvisionGrant`) ; édition des amis par le propriétaire direct ou l'admin ;
+invitation sans groupe = admin, page `/admin/management`.
+
+**Résultats observés** : `users.json` local ne contient qu'un compte (admin) — les profils amis
+n'ont jamais été des utilisateurs ; le commentaire de `middleware.FamilyXUIDResolver` parle
+encore de `FriendGamertags` alors que le câblage réel est `groupstore.CoMemberXUIDs` ; la CLI
+`sync-full --gamertag` exige le refresh token DU joueur alors que le serveur emprunte au pool
+(pertinent pour l'ajout de Nuzzles, procédure en annexe du plan).
+
+**Conclusion / prochaine étape** : plan `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`
+(7 étapes, gates, décisions tranchées, annexe Nuzzles). Exécution dans un worktree dédié
+`wt/amis-invitations` sur signal de l'utilisateur. Rien committé.
