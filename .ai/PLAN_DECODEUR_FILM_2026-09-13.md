@@ -4581,12 +4581,40 @@ défont par `git revert` ; avant la recuisson, tag git du binaire précédent et
 
 #### Lot 3.2 (P1) — Le registre par build — M, high
 
-- [ ] 3.2.1 Table des empreintes de registre connues PAR BUILD (8 empreintes mesurées sur 1 351
+- [~] 3.2.1 Table des empreintes de registre connues PAR BUILD (8 empreintes mesurées sur 1 351
       films) dans le profil ; `warnUnknownRegistry` devient une classification typée (connue /
       présumée / inconnue) publiée dans `coverage.decoder`.
+      **VOLET DONNÉES FAIT (2026-09-16, `66b63772e`).** La parenthèse de cet item est FAUSSE et
+      reste écrite pour mémoire : les « 8 empreintes » du lot H portaient sur 16 cuissons dans un
+      domaine de hachage MORT (F1/F2 de la note M3) ; les 1 351 sont l'inventaire du parc. Ce qui
+      est au catalogue est MESURÉ dans le domaine courant : **9 clefs, 5 empreintes distinctes**,
+      section `registryFingerprints` de `data/titles/halo_infinite/reference/film_profiles.json`
+      — les 7 builds, lus sur les 7 mini-bobines commises, plus les DEUX familles de films sans
+      section d'identification (`majeure=31`, `majeure=33`), lues sur `50247b26` et `a349fea8`.
+      Aucun film décodé : `chunk_00` seul. Lecture hors du film :
+      `filmprofile.EmpreinteRegistre` + `EmpreinteRegistrePour` (clef la plus spécifique),
+      validation (empreinte `0x`+16 hex minuscules, sorte de clef, build présent dans la table
+      des builds, unicité de la CLEF, témoin obligatoire) et 22 cas de refus, 2 mutations
+      vérifiées. Section à part et non lignes d'`entries` : Q3 (des grandeurs, pas une phrase) et
+      `TestCatalogueConformeALaTableDuLot21`, qui exigerait de toucher
+      `film/profile/profile_table.go` — hors périmètre de ce lot.
+      **VOLET CODE NON FAIT, et c'est le `[~]`** : la classification typée
+      (connue / présumée / inconnue) vit dans le décodeur et attend **2.6.3**, qui crée
+      `coverage.decoder` (il n'existe pas : mesure §1.5 de la note M3). La table de données que
+      ce volet-là consommera est en place.
 - [ ] 3.2.2 Audit des 17 sites qui adressent un composant par index littéral (`indicesOf`,
       `component(i)`) : par NOM, jamais par rang ; ratchet grep.
-- [ ] 3.2.3 Témoin par build au corpus gate (déjà fait pour 4 ; compléter à 7).
+- [x] 3.2.3 Témoin par build au corpus gate (déjà fait pour 4 ; compléter à 7).
+      **FAIT (2026-09-16, `a7a1d8c95`) — et l'énoncé était faux.** Mesure à l'entrée : CINQ des
+      sept builds avaient déjà un témoin, deux manquaient (`HI_1_4_1`, `HI_1_9_0`), et une
+      NEUVIÈME famille existait que personne n'avait nommée — la majeure 31 sans section
+      d'identification. La règle écrite au manifeste est désormais **un témoin par clef de
+      registre** (les 9 clefs de 3.2.1) : `a521164d` (`version_33_build_1_4_1`), `11de8353`
+      (`version_38_build_1_9_0`), `50247b26` (`version_31_sans_identification`) — corpus gate
+      **14 → 17**. Les trois conditions du gate vérifiées sur pièces avant l'ajout : chunks au
+      cache, manifeste de chunks, faits exportables par `levelup replay-facts-export` (27 / 27 /
+      30 joueurs). **Gate avec décodage joué le 2026-09-17 sur « voie libre » du pilote : 17/17
+      `ok`, 0 gain / 0 perte / 0 changement, schéma 60 des deux côtés, zéro `ABSENT`** (§5).
 
 #### Lot 3.3 (P2) — La liste blanche des grenades par build — M, high
 
@@ -5034,8 +5062,108 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-16 | 3.4 (préparation Ghidra) | **D2 (3.4) — LA LOI DU MOTEUR PORTE DEUX GARDES QUE `himap` NE MODÉLISE PAS.** `FUN_140be9b88` borne le compte de casiers à `2^22` (`DAT_143cd975c`) avant le `ceilLog2`, et rend `26/26/26` sans regarder les bornes quand le pas est sous `1e-4` (`DAT_143cd837c`, donc dès le niveau 23). `internal/himap/sbsp.go` (`Bounds.AxisWidths`) n'a ni l'un ni l'autre. **Sans effet mesurable aujourd'hui** : au niveau 16 le premier garde se déclenche à une étendue de 69 905,1 unités monde, quand la plus grande du catalogue est 2 707,4 (`recharge`) — c'est pourquoi l'accord loi / catalogue est de 79 sur 79 ; le second ne concerne que des niveaux que le composant de position n'utilise pas. NON TRAITÉ. | **lot 3.4.1**, avec les autres corrections de `himap` : compléter la loi pendant qu'on y est, un canevas Forge plus grand la ferait diverger en silence |
 | 2026-09-16 | 3.4 (préparation Ghidra) | **D3 (3.4) — DEUX ÉNONCÉS DU DÉPÔT SONT VRAIS ET TROMPEURS.** (a) `film/profile/i0_layout.go` écrit « `DAT_144632be0` = ceilLog2(nb de BSP **valides**) » ; le désassemblage relit le compte BRUT (`MOV ECX,dword ptr [RSI + 0x7bc]` en `140be9afb`) et le champ de bits des plages valides (`DAT_1445ccb60`) n'alimente pas cette largeur — sans conséquence tant que toute plage déclarée a une AABB valide, mais l'énoncé doit être exact. (b) `film/grammar/position_capture.go` justifie l'uniforme `AbsoluteAxisW = 14` par « 14 est une entrée RÉELLE de la table du .exe » : exact, mais au **niveau 8** de la table DÉFAUT, alors que le composant de position lit au **niveau 16**, où la table défaut vaut `22/22/22` et la table par index vaut les largeurs de la carte. 14 n'est donc l'entrée d'aucune des deux cases réellement lues. NON TRAITÉ. | **lot 3.4.1** : les deux commentaires se réécrivent dans le commit qui fait lire les largeurs au catalogue — une doc qui survit à la valeur qu'elle justifiait est le « doc inversée » du diagnostic |
 | 2026-09-16 | 3.4 (préparation Ghidra) | **D4 (3.4) — LA TABLE `DAT_143b8c6f0` A TROIS ENTRÉES, PAS CINQ.** Le plan (item 2.5.b, « `Vec3Range` + les cinq plages de `DAT_143b8c6f0` ») laisse croire que les cinq variables de `film/profile/plages_quant.go` viennent de cette table. Octets relus (stride `0x18`) : `143b8c6f0` = `±3`, `143b8c708` = `±0,7`, `143b8c720` = `±100`, et `143b8c738` n'est plus une plage (valeurs aberrantes). L'ordre `QuantRangeUnit3` / `QuantRangeNorm` / `QuantRangeWorld100` du dépôt est donc JUSTE ; les deux autres variables (`QuantRangeCliffhanger`, `QuantRangeCEBiped`) sont des captures de CARTE, pas des entrées de cette table — et `QuantRangeCliffhanger` est d'ailleurs documentée comme fausse. Constat de vocabulaire, aucun défaut de code. | Ligne à corriger dans le plan (item 2.5.b) au premier lot qui le rouvre ; `plages_quant.go` n'a rien à changer |
+| 2026-09-16 | 3.2.1 | **D1 (3.2) — LA MAJEURE 31 SANS SECTION A UN REGISTRE QUE PERSONNE N'AVAIT JAMAIS MESURÉ.** `50247b26` (majeure 31, format 20, 3 films au cache) rend `0xba34fa35f781d1a7`, **49 blocs, 1 029 slots nommés** — le plus petit registre connu, et une neuvième grammaire qui n'apparaît dans aucune note. Les cinq empreintes distinctes du dépôt sont donc : `0xba34fa35f781d1a7` (majeure 31), `0x40531a0d86ce90ce` (HI_1_4_1 et majeure 33, 1 033 slots), `0x33c7e724716d8cc5` (HI_1_8_0 et HI_1_9_0), `0x9b6397b3ad58e258` (HI_1_10_0), `0x8879e2b6746ba047` (HI_1_11_0), `0x36ca8c3d2a2f9b88` (HI_1_12_0 et HI_1_13_0). CONSIGNÉE et TRAITÉE dans ce lot (elle EST la donnée de 3.2.1) | — |
+| 2026-09-16 | 3.2.1 | **D2 (3.2) — L'EMPREINTE DE REGISTRE NE SÉPARE PAS LES BUILDS : TROIS PAIRES PARTAGENT LA LEUR.** `HI_1_8_0` = `HI_1_9_0` ; `HI_1_12_0` = `HI_1_13_0` (déjà vu par la note M3, confirmé sur la mini-bobine) ; et **`HI_1_4_1` = la majeure 33 sans section** — ce qui NOMME enfin la grammaire de composants des films sans identification de cette version. Conséquence directe : l'unicité validée au catalogue porte sur la CLEF, jamais sur l'empreinte ; et une empreinte égale n'autorise AUCUNE conclusion sur les tailles de structures, qui diffèrent entre ces mêmes builds (`Slots.PersoBytes` 1 312 pour 8_0 et 9_0, mais 2 052 pour 4_1 contre 1 033 slots partagés avec la majeure 33) | lots 3.3 et 3.4 : le registre ne peut pas servir de clef de substitution au build |
+| 2026-09-16 | 3.2.3 | **D3 (3.2) — « UN TÉMOIN SANS ARTEFACT DANS LE PARC NE PEUT PAS ÊTRE GATÉ » EST FAUX.** Mesure du 2026-09-16 : `data/cache/replays/halo_infinite/` porte l'artefact d'UN SEUL des 14 témoins en place (`fb1a1a72`). Le gate en régime `--reference base` cuit les DEUX côtés lui-même ; ce qu'il exige d'un témoin est (1) les chunks au cache, (2) le manifeste de chunks — sans lui `replaybuild` rend un score NUL sans erreur — et (3) des faits exportables par `levelup replay-facts-export`. Écrit dans `docs/RUNBOOK_FILM_PROFILES.md` §4.1 | — (correction de doctrine, faite dans ce lot) |
+| 2026-09-16 | 3.2.1 | **D4 (3.2) — `ReadFilmIdentity` CALCULE L'EMPREINTE DU REGISTRE PUIS LA JETTE.** `grammar/film_identity.go` re-parse le registre entier pour trouver l'ancre de la chaîne de build : `reg.fingerprint` est sous la main et n'est pas rendu. Lui ajouter un champ `RegistryFingerprint` ne coûte pas un cycle et donne au volet code sa valeur sans seconde passe. NON TRAITÉ : `film/` est hors du périmètre de ce lot (un autre exécuteur y travaille) | volet CODE de 3.2.1 (après 2.6.3) |
+| 2026-09-16 | 3.2 (docs) | **D5 (3.2) — LE RUNBOOK DES PROFILS CITAIT `filmdec/profile_table.go`, CHEMIN MORT DEPUIS 2.5.b.** La table du lot 2.1 vit en `film/profile/profile_table.go` depuis l'extraction de la couche `profile`. Corrigé DANS ce lot (le runbook est dans son périmètre), avec la précision que `TestCatalogueConformeALaTableDuLot21` ne couvre PAS la section neuve `registryFingerprints` — elle n'a aucune copie dans le décodeur | — |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 3.2 (M3) — volet DONNÉES (3.2.1 données et 3.2.3), SANS AUCUN DÉCODAGE, 2026-09-16
+
+Worktree `LevelUp-wt-decfilm-32d`, branche `feat/decfilm-32d`, base `e7b9bd48e`. Aucune
+jonction, aucun film décodé, aucune écriture dans `data/cache/`. Frontière tenue :
+`data/titles/halo_infinite/reference/film_profiles.json`,
+`internal/games/halo_infinite/filmprofile/` (+ tests), `cmd/film-profiles-build/main.go`
+(godoc et `about` seulement), `config/replay_corpus.toml`, `docs/RUNBOOK_FILM_PROFILES.md`,
+`docs/COMMANDS.md` FR/EN. **`film/`, `replaybuild/`, `sync/`, `persist/`, `cmd/levelup/` :
+non touchés** (2.5.e mute `film/`).
+
+MESURE, et comment elle a été prise sans décoder : `chunk_00` seul, par un instrument NON
+SUIVI (supprimé à la clôture) qui appelle `grammar.ReadFilmChunk(dir, 0)` →
+`ParseRegistryChunk` → `RegistryFingerprint` + `ReadFilmIdentity` +
+`FilmMajorVersionFromHeader` / `FilmFormatVersionFromHeader`. Sept mini-bobines COMMISES
+(`film/replay/testdata/minifilm_<id8>/chunk_00.bin`) et quatre `chunk_00` du cache lus en
+place (`a521164d`, `11de8353`, `50247b26`, `a349fea8`) — les deux premiers pour vérifier que
+la mini-bobine rend bien le registre de son film complet, les deux derniers parce qu'aucune
+mini-bobine ne couvre les films sans section d'identification.
+
+```
+minifilm_a521164d  majeure=33 format=21 build=HI_1_4_1   empreinte=0x40531a0d86ce90ce blocs=49 slots=1033
+minifilm_60ae07c4  majeure=37 format=24 build=HI_1_8_0   empreinte=0x33c7e724716d8cc5 blocs=49 slots=1031
+minifilm_11de8353  majeure=38 format=24 build=HI_1_9_0   empreinte=0x33c7e724716d8cc5 blocs=49 slots=1031
+minifilm_111fa685  majeure=39 format=24 build=HI_1_10_0  empreinte=0x9b6397b3ad58e258 blocs=49 slots=1031
+minifilm_e5adf7b2  majeure=40 format=25 build=HI_1_11_0  empreinte=0x8879e2b6746ba047 blocs=49 slots=1031
+minifilm_bcb6d393  majeure=40 format=27 build=HI_1_12_0  empreinte=0x36ca8c3d2a2f9b88 blocs=50 slots=1067
+minifilm_fb1a1a72  majeure=41 format=27 build=HI_1_13_0  empreinte=0x36ca8c3d2a2f9b88 blocs=50 slots=1067
+cache/a521164d     majeure=33 format=21 build=HI_1_4_1   empreinte=0x40531a0d86ce90ce blocs=49 slots=1033
+cache/11de8353     majeure=38 format=24 build=HI_1_9_0   empreinte=0x33c7e724716d8cc5 blocs=49 slots=1031
+cache/50247b26     majeure=31 format=20 SANS SECTION     empreinte=0xba34fa35f781d1a7 blocs=49 slots=1029
+cache/a349fea8     majeure=33 format=20 SANS SECTION     empreinte=0x40531a0d86ce90ce blocs=49 slots=1033
+```
+
+Corroboration par le journal de cuisson du corpus gate des 14 témoins du 2026-09-16
+(`work_m1_cloture/logs/general.log`, conservé hors dépôt) : quatre valeurs d'alerte, toutes
+égales aux mesures ci-dessus (`0x33c7e724716d8cc5` sur `60ae07c4`, `0x9b6397b3ad58e258`
+DEUX fois — un processus par témoin, donc `111fa685` et `084a804d` —, `0x8879e2b6746ba047`
+sur `e5adf7b2`, `0x40531a0d86ce90ce` sur `a349fea8`), et SILENCE sur les neuf autres
+témoins, dont les huit `HI_1_13_0` et `bcb6d393` : leur registre est celui de la référence.
+
+| Date | Lot | Commit | Commande | Résultat |
+|---|---|---|---|---|
+| 2026-09-16 | 3.2.1 | `66b63772e` | `gofmt -l ./internal ./cmd` | **vide** |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `CGO_ENABLED=1 go build ./... && go vet ./...` | **0 diagnostic** |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `go test -count=1 ./internal/games/halo_infinite/filmprofile/ ./internal/archlint/ ./cmd/replay-corpus-gate/ ./cmd/film-profiles-build/` | **ok 0,25 s / ok 25,4 s / ok 1,3 s / no test files** |
+| 2026-09-16 | 3.2.1 (MUTATION 1 — `fingerprint` de `HI_1_11_0` tronquée à `0x8879e2b6`) | `66b63772e` | `go test -count=1 ./…/filmprofile/` | **ROUGE** : `fingerprint "0x8879e2b6" : 8 chiffre(s) après "0x", 16 attendus` sur les quatre tests qui chargent le catalogue commis |
+| 2026-09-16 | 3.2.1 (MUTATION 2 — la clef `build=HI_1_9_0` retirée de `registryFingerprints`) | `66b63772e` | `go test -count=1 -run TestEmpreintesCommises ./…/filmprofile/` | **ROUGE** : `le catalogue connait le build "HI_1_9_0" (entree "Slots.PersoBytes") mais pas son registre` |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `LEVELUP_REPO_ROOT=<worktree> go run ./cmd/film-profiles-build --check` | **conforme** (79 cartes, empreinte de bornes `e77e4ffc…` inchangée) |
+| 2026-09-16 | 3.2.1 | `66b63772e` | `golangci-lint run ./…/filmprofile/... ./cmd/film-profiles-build/... ./cmd/replay-corpus-gate/...` | **0 issues** |
+| 2026-09-16 | 3.2.3 | `a7a1d8c95` | `CGO_ENABLED=1 LEVELUP_REPO_ROOT=<parc> go run ./cmd/levelup replay-facts-export --out <tmp> --title halo_infinite <id>` (×3) | **3 `.facts.json` écrits** : `a521164d` 27 joueurs / BTB Heavies:Total Control / Fragmentation Heavies ; `11de8353` 27 / BTB:Fiesta Slayer / Thunderhead ; `50247b26` 30 / BTB:Slayer / Oasis |
+| 2026-09-16 | 3.2.3 | `a7a1d8c95` | `go test -count=1 ./cmd/replay-corpus-gate/` | **ok** — `TestLoadManifestValide` relit le manifeste réel : 17 témoins, ids uniques, chaque entrée justifiée |
+| 2026-09-16 | 3.2 | `a7a1d8c95` | `go test -count=1 -run 'TestGrammarRevSuitLaGrammaire\|TestChronique' ./…/film/grammar/ -v` | **2 PASS** — `GrammarRev` n'a pas bougé (aucun octet de `film/` touché) |
+
+**Gate AVEC décodage JOUÉ** (« voie libre » du pilote, lancé le 2026-09-16 à 23:45, terminé le
+2026-09-17 à 00:16 — 31 min de bout en bout, 16,3 min de cuisson cumulée sur les 17 témoins,
+un seul décodage à la fois, verrou `data/cache/film_decode.lock` du parc pris et rendu à
+chaque film) :
+
+```
+go run ./cmd/replay-corpus-gate --base=e7b9bd48e \
+  --parc-root C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+  --source-root C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-32d \
+  --json <scratch>/rapport.json --work-root <scratch>/work --keep-work
+                                                    (sans --allow-missing)
+
+temoin       famille                            base(e7b9bd48e)  HEAD  gains  pertes  chang.     duree  statut
+bcb6d393     ctf_mono_manche                         60     60       0       0       0     12.51s  ok
+fb1a1a72     ctf_multi_manche                        60     60       0       0       0    1m1.39s  ok
+d9781168     oddball                                 60     60       0       0       0     27.46s  ok
+c75f33b8     assaut_bombe                            60     60       0       0       0     15.99s  ok
+bf15f7ab     slayer                                  60     60       0       0       0     14.28s  ok
+51ebbc0f     deux_manches                            60     60       0       0       0     21.33s  ok
+084a804d     vehicules                               60     60       0       0       0   2m17.28s  ok
+0797ce72     region_index_2_bits                     60     60       0       0       0     14.49s  ok
+111fa685     version_39                              60     60       0       0       0     41.81s  ok
+e5adf7b2     version_40_build_1_11                   60     60       0       0       0     46.96s  ok
+60ae07c4     version_37                              60     60       0       0       0    1m3.18s  ok
+a349fea8     version_33_sans_identification          60     60       0       0       0   2m39.98s  ok
+a521164d     version_33_build_1_4_1                  60     60       0       0       0    1m5.78s  ok
+11de8353     version_38_build_1_9_0                  60     60       0       0       0     56.02s  ok
+50247b26     version_31_sans_identification          60     60       0       0       0   1m33.61s  ok
+bfecd02b     vehicules_v41_utilisateur               60     60       0       0       0     22.12s  ok
+4f77afc1     equipement_origine_utilisateur          60     60       0       0       0    2m2.85s  ok
+EXIT=0
+```
+
+**17/17 `ok`, 0 gain / 0 perte / 0 changement, schéma 60 des deux côtés**, `couverture_incomplete:
+false` et zéro `ABSENT` / `ERREUR` dans le rapport JSON. C'est exactement ce que ce gate-ci devait
+prouver : le lot ne touche aucun octet du décodeur, donc **le manifeste grossi de trois entrées ne
+change rien à ce qui est cuit**, et les trois grammaires neuves (`HI_1_4_1`, `HI_1_9_0`, majeure 31
+sans section) sont désormais gardées contre toute régression future. Les trois nouveaux témoins
+sont aussi les plus lents de leur classe sur la cuisson de base (`a521164d` 1m05, `11de8353` 56 s,
+`50247b26` 1m33) — le corpus passe de ~14 min à ~16 min de cuisson cumulée, à retenir pour le
+budget des gates de 3.3 et 3.4.
 
 ### Lot 2.6 (M2, pas 6) — volet FACTS + SOURCE, SANS AUCUN DÉCODAGE, 2026-09-16
 

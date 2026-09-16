@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "titleSlug": "halo_infinite",
-  "about": "Catalogue des profils de film : ce que le depot sait de la grammaire d un film, indexe par les TROIS clefs que le film ECRIT (format chunk_00+4, build de la section 2, version majeure chunk_00+0). `derived` est fabrique par `go run ./cmd/film-profiles-build` ; `entries` est SAISI, chaque ligne avec sa provenance (relue / mesuree / presumee), sa preuve et sa date. Procedure : docs/RUNBOOK_FILM_PROFILES.md.",
+  "about": "Catalogue des profils de film : ce que le depot sait de la grammaire d un film, indexe par les TROIS clefs que le film ECRIT (format chunk_00+4, build de la section 2, version majeure chunk_00+0). `derived` est fabrique par `go run ./cmd/film-profiles-build` ; `entries` est SAISI, chaque ligne avec sa provenance (relue / mesuree / presumee), sa preuve et sa date ; `registryFingerprints` est SAISI lui aussi — une empreinte de registre ECS par clef ecrite (le build, ou la version majeure pour les films sans section d identification), avec ses films temoins et son statut (connue / presumee). Procedure : docs/RUNBOOK_FILM_PROFILES.md.",
   "derived": {
     "catalogue": "map_quant_bounds.json",
     "schemaVersion": 1,
@@ -201,6 +201,133 @@
       "provenance": "presumee",
       "proof": "bits supplementaires d action de mobilite ; zero par defaut, aucune lecture chez l ecrivain",
       "date": "2026-09-17"
+    }
+  ],
+  "registryFingerprints": [
+    {
+      "key": "build=HI_1_13_0",
+      "fingerprint": "0x36ca8c3d2a2f9b88",
+      "blocks": 50,
+      "namedSlots": 1067,
+      "status": "connue",
+      "provenance": "mesuree",
+      "witnesses": [
+        "fb1a1a72",
+        "0797ce72",
+        "4f77afc1",
+        "51ebbc0f",
+        "bf15f7ab",
+        "bfecd02b",
+        "c75f33b8",
+        "d9781168"
+      ],
+      "proof": "build de REFERENCE (grammar.KnownRegistryFingerprint). Lecture directe de chunk_00 de la mini-bobine commise film/replay/testdata/minifilm_fb1a1a72 (ParseRegistryChunk + RegistryFingerprint) : 0x36ca8c3d2a2f9b88, 50 blocs, 1067 slots nommes. Corrobore par le SILENCE de l alerte sur les huit temoins HI_1_13_0 du corpus gate du 2026-09-16 (journal de cuisson work_m1_cloture/logs/general.log : aucun WARN `empreinte du registre ECS du film INCONNUE` pour ces huit match_id, dont le build est ecrit en clair dans le meme journal) — 1 123 films de ce build au cache (lot H)",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_12_0",
+      "fingerprint": "0x36ca8c3d2a2f9b88",
+      "blocks": 50,
+      "namedSlots": 1067,
+      "status": "presumee",
+      "provenance": "mesuree",
+      "witnesses": [
+        "bcb6d393"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_bcb6d393 : MEME empreinte que HI_1_13_0, 50 blocs, 1067 slots. Corrobore par le silence de l alerte sur bcb6d393 au corpus gate du 2026-09-16. FAIT NOUVEAU : la frontiere du registre n est pas celle des grenades — HI_1_12_0 est CONFORME au registre de reference, la population `grammaire inconnue` s arrete donc avant HI_1_12_0. `presumee` : un seul film lu sur les 146 de ce build au cache (lot H)",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_11_0",
+      "fingerprint": "0x8879e2b6746ba047",
+      "blocks": 49,
+      "namedSlots": 1031,
+      "status": "presumee",
+      "provenance": "mesuree",
+      "witnesses": [
+        "e5adf7b2"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_e5adf7b2 : 0x8879e2b6746ba047, 49 blocs, 1031 slots. Meme valeur au corpus gate du 2026-09-16 (WARN empreinte=9834140534605324359, blocs=49, slots_non_vides=1031, temoin e5adf7b2). `presumee` : un seul film lu sur les 39 de ce build au cache (lot H)",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_10_0",
+      "fingerprint": "0x9b6397b3ad58e258",
+      "blocks": 49,
+      "namedSlots": 1031,
+      "status": "connue",
+      "provenance": "mesuree",
+      "witnesses": [
+        "111fa685",
+        "084a804d"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_111fa685 : 0x9b6397b3ad58e258, 49 blocs, 1031 slots. DEUX films distincts au corpus gate du 2026-09-16 rendent la meme valeur (WARN empreinte=11196959896536408664 compte DEUX fois — la deduplication est par processus, et chaque temoin est cuit dans le sien ; les deux match_id de build HI_1_10_0 du journal sont 111fa685 et 084a804d). 26 films de ce build au cache (lot H)",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_9_0",
+      "fingerprint": "0x33c7e724716d8cc5",
+      "blocks": 49,
+      "namedSlots": 1031,
+      "status": "connue",
+      "provenance": "mesuree",
+      "witnesses": [
+        "11de8353"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_11de8353 ET du film complet 11de8353 du cache : 0x33c7e724716d8cc5, 49 blocs, 1031 slots — valeur IDENTIQUE a celle de HI_1_8_0, mesure neuve (aucun temoin HI_1_9_0 n avait jamais ete cuit au corpus gate). `connue` : le cache ne porte qu UN film de ce build (lot H) et il est lu",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_8_0",
+      "fingerprint": "0x33c7e724716d8cc5",
+      "blocks": 49,
+      "namedSlots": 1031,
+      "status": "presumee",
+      "provenance": "mesuree",
+      "witnesses": [
+        "60ae07c4"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_60ae07c4 : 0x33c7e724716d8cc5, 49 blocs, 1031 slots. Meme valeur au corpus gate du 2026-09-16 (WARN empreinte=3731204960007589061, temoin 60ae07c4). `presumee` : un seul film lu sur les 10 de ce build au cache (lot H)",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "build=HI_1_4_1",
+      "fingerprint": "0x40531a0d86ce90ce",
+      "blocks": 49,
+      "namedSlots": 1033,
+      "status": "connue",
+      "provenance": "mesuree",
+      "witnesses": [
+        "a521164d"
+      ],
+      "proof": "lecture directe de chunk_00 de la mini-bobine commise minifilm_a521164d ET du film complet a521164d du cache : 0x40531a0d86ce90ce, 49 blocs, 1033 slots — le SEUL registre du corpus a 1 033 slots nommes. `connue` : le cache ne porte qu UN film de ce build (lot H) et il est lu. Mesure neuve : aucun temoin HI_1_4_1 n avait jamais ete cuit au corpus gate",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "majeure=33",
+      "fingerprint": "0x40531a0d86ce90ce",
+      "blocks": 49,
+      "namedSlots": 1033,
+      "status": "presumee",
+      "provenance": "mesuree",
+      "witnesses": [
+        "a349fea8"
+      ],
+      "proof": "films de version majeure 33 dont chunk_00 ne porte AUCUNE section d identification : ils n ecrivent pas de build, la majeure est leur seule clef. Lecture directe de chunk_00 du film a349fea8 du cache : 0x40531a0d86ce90ce, 49 blocs, 1033 slots — MEME registre que HI_1_4_1, ce qui NOMME enfin la grammaire de ces films. Meme valeur au corpus gate du 2026-09-16 (WARN empreinte=4635077086892953806, blocs=49, slots_non_vides=1033, temoin a349fea8). `presumee` : un seul des deux films sans section de cette majeure est lu (lot H). Cette clef selectionne aussi a521164d, qui ecrit HI_1_4_1 : meme empreinte, aucune contradiction, et l entree `build=` prime",
+      "date": "2026-09-16"
+    },
+    {
+      "key": "majeure=31",
+      "fingerprint": "0xba34fa35f781d1a7",
+      "blocks": 49,
+      "namedSlots": 1029,
+      "status": "presumee",
+      "provenance": "mesuree",
+      "witnesses": [
+        "50247b26"
+      ],
+      "proof": "films de version majeure 31 sans section d identification — la plus ancienne grammaire du cache. Lecture directe de chunk_00 du film 50247b26 : 0xba34fa35f781d1a7, 49 blocs, 1029 slots : une empreinte JAMAIS mesuree avant ce lot (aucun temoin de cette famille n a jamais ete cuit au corpus gate) et le seul registre du corpus a 1 029 slots. `presumee` : un seul des trois films de cette majeure est lu (lot H)",
+      "date": "2026-09-16"
     }
   ]
 }
