@@ -266,6 +266,35 @@ sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans
   `RegisterAll` ; le ratchet ne voit que l import direct. Aucun chemin vers un classifier n a été
   trouvé dans leur code.
 
+### Découvertes de la première passe réelle par le pool (2026-09-16 14:23, Nuzzles, 6 slots × 3 req/s)
+
+- **Un seul `HTTP 429` sur `GetMatchHistory` (start=225) a mis fin à toute la passe** : le pool a
+  bien appliqué son cooldown AIMD au token, mais `paginateAndPersistHistory` (`internal/sync/engine.go`)
+  fait `break` sur la première erreur d historique et la passe se termine `status=success,
+  inserted=0` — un `sync-full` « réussi » qui n a rien fait. À corriger : relancer la page après le
+  cooldown / sur un autre slot, et ne pas déclarer `success` quand la pagination s est arrêtée sur
+  une erreur. Contournement immédiat : `--token-pool-size 1 --rps 3` (configuration qui a tenu
+  65 min ce matin sans 429 : le débit agrégé de 6 slots × 3 req/s dépasse la tolérance de
+  l endpoint d historique quand les pages sont toutes connues et s enchaînent sans fetch de détail).
+- Post-sync CLI : `catalog seed désactivé (metadata inaccessible)` — « Can t open a connection to
+  same database file with a different configuration than existing connections » : le même process
+  ouvre `metadata.duckdb` en RO puis en RW. Préexistant à ce lot.
+- Post-sync CLI : `ERROR auth: échec lecture store canonique — aucun access_token xuid=Nuzzles`
+  juste après le seed de catalogue : une étape résout encore le token PROPRE du joueur hors du
+  pool (à identifier — `grep "store canonique"`), non fatale.
+- Le sync CLI n applique pas les migrations shared (`sync-full` ne passe pas par
+  `applyMigrationsOnDB`) : l élargissement `team_{0,1}_score` joue au premier `backfill` ou au boot
+  du serveur ; les deux matchs à gros score se réinsèrent par un re-parcours `sync-full` ensuite.
+- `--token-pool-size N` compte les SOURCES tentées, pas les slots résolus : avec `1`, le pool a pris
+  la première source du scan (Chocoboflor, révoquée) et a abandonné (« aucun slot créé »). Le
+  plafond devrait porter sur les slots sains, en continuant le scan après un échec.
+- `backfill-killsource --online` : le texte d aide du drapeau `--gamertag` dit encore « joueur dont
+  les tokens servent la passe » alors que la passe sélectionne désormais les films DU joueur nommé
+  (vérifié sur pièces : les 200 candidats sont des matchs de Nuzzles, du plus récent au plus vieux)
+  et emprunte au pool. Aide à aligner sur `docs/COMMANDS.md`.
+- Post-sync réel du 16/09 15:52 : `snapshot: matchs marqués ready DE FORCE (grâce dépassée,
+  dérivation bloquée) count=5140` — à instruire (quelle dérivation, pourquoi bloquée).
+
 ## Annexe A — Reprise du sync de Nuzzles (utilisateur + pilote, APRÈS ce plan et quand la base est libre)
 
 1. `replay_build_location` est actuellement à **`off`** dans `app_settings.json` (posé le
