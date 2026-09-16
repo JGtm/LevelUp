@@ -185,12 +185,14 @@ func TestPooledHaloClientGetCareerRank_NoPinnedToken(t *testing.T) {
 
 	ctx := context.Background()
 	result, err := client.GetCareerRank(ctx, "xuid_alice")
-	// Doit retourner (nil, nil) sans appeler le pool.
+	// Doit rendre ErrNoPinnedToken sans appeler le pool : l'appelant dégrade (WARN +
+	// career_synced=false), il n'échoue pas. Un `(nil, nil)` muet est indistinguable d'un
+	// joueur sans progression — c'est ce qui a caché le trou (2026-09-16).
 	if result != nil {
 		t.Errorf("expected nil result, got %v", result)
 	}
-	if err != nil {
-		t.Errorf("expected nil error, got %v", err)
+	if !errors.Is(err, ErrNoPinnedToken) {
+		t.Errorf("expected ErrNoPinnedToken, got %v", err)
 	}
 }
 
@@ -204,12 +206,12 @@ func TestPooledHaloClientGetCareerRank_PoolError(t *testing.T) {
 
 	ctx := context.Background()
 	result, err := client.GetCareerRank(ctx, "xuid_alice")
-	// Doit retourner (nil, nil) si le pool échoue.
+	// Pool en échec sur l'acquisition épinglée = même dégradation typée.
 	if result != nil {
 		t.Errorf("expected nil result, got %v", result)
 	}
-	if err != nil {
-		t.Errorf("expected nil error on pool failure, got %v", err)
+	if !errors.Is(err, ErrNoPinnedToken) {
+		t.Errorf("expected ErrNoPinnedToken on pool failure, got %v", err)
 	}
 }
 

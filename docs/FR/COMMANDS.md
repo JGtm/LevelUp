@@ -60,6 +60,21 @@ go run ./cmd/levelup sync-full --gamertag MonGamertag --max-matches 500
 go run ./cmd/levelup sync-achievements --all [--dry-run]
 ```
 
+**Aucun joueur n'a besoin de son propre jeton.** Tous les chemins de synchronisation —
+`--gamertag` comme `--all` — passent par le pool de jetons : l'historique des matchs, les
+statistiques, les films et les CSR sont des points d'accès PUBLICS que n'importe quel jeton du
+parc sert (`PolicyAnyPublic`). Un profil suivi qui ne s'est jamais connecté par le SSO Xbox se
+synchronise comme les autres. Il suffit que le pool tienne au moins un jeton sain.
+
+Seule exception : le **rang de carrière**, réservé à son propriétaire (`PolicyPinnedPlayer`).
+Sans le jeton propre du joueur il est sauté, avec un AVERTISSEMENT unique par passe, et la
+commande affiche `career_synced=false` — la synchronisation, elle, reste en succès. Même règle
+pour le cron de personnalisation Spartan, qui garde pour cette raison son contrôle `HasPlayer`.
+
+Les passes `backfill --csr` / `--shared-csr` et les commandes de films (`archive-films`,
+`backfill-killsource --online`, `replay-events`) suivent la même doctrine : `--gamertag` nomme le
+joueur traité, pas un prêteur de jeton.
+
 ### Backfill (local Go ; CSR/weapons nécessitent des tokens Halo)
 
 ```bash

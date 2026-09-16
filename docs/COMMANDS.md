@@ -60,6 +60,20 @@ go run ./cmd/levelup sync-full --gamertag YourGamertag --max-matches 500
 go run ./cmd/levelup sync-achievements --all [--dry-run]
 ```
 
+**No player needs their own token.** Every sync path — `--gamertag` as well as `--all` — goes
+through the token pool: match history, match stats, films and CSR are PUBLIC endpoints that any
+token in the fleet can serve (`PolicyAnyPublic`). A followed profile that never signed in via
+Xbox SSO is synced like any other. The pool must simply hold at least one healthy token.
+
+The single exception is the **career rank**, which is privacy-gated to its owner
+(`PolicyPinnedPlayer`). Without the player's own token it is skipped with one WARN per pass and
+the run reports `career_synced=false` — the sync itself still succeeds. Same rule for the
+Spartan customization cron, which keeps its own `HasPlayer` guard for that reason.
+
+The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-films`,
+`backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the
+player being processed, not a token lender.
+
 ### Backfill (mostly local, Go-only; CSR/weapons need Halo tokens)
 
 ```bash

@@ -137,47 +137,47 @@ Infinite, `grep "PlayerCount ="` → seulement `halo_5/ingest/collect.go`, `open
 
 ## 5. Étape 2 — Le pool sert tout profil suivi (D-A, lourd)
 
-- [ ] 2.1 CLI mono-joueur : `runSyncDelta` et `runSyncFull` (`cmd/levelup/cmd_sync.go`)
+- [x] 2.1 CLI mono-joueur : `runSyncDelta` et `runSyncFull` (`cmd/levelup/cmd_sync.go`)
       construisent le pool (`buildCLITokenPool`, déjà utilisé par `--all`) et un
       `go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID, 0)` posé par
       `engine.SetCustomClient`, avec `&domain.HaloTokens{}` comme le fait `runSyncDeltaAll`
       (`cmd_sync.go:146-175`). Extraire le code commun `--all` / mono-joueur dans une fonction
       ≤ 80 L (`newPooledEngine(...)`) pour ne pas dupliquer (règle ≤ 2 copies : il y a déjà
       deux copies `--all`, la troisième impose le helper).
-- [ ] 2.2 Supprimer les deux `if !pool.HasPlayer(...) { skip }` de `cmd_sync.go` (`:138`,
+- [x] 2.2 Supprimer les deux `if !pool.HasPlayer(...) { skip }` de `cmd_sync.go` (`:138`,
       `:298`) et leur commentaire périmé. `sync full SKIP … no_player_db` reste (une base
       absente est créée par le sync mono-joueur, pas par `--all` : décision inchangée, la
       justifier en commentaire daté).
-- [ ] 2.3 `haloTokensForPlayer` : lister ses 9 appelants (`grep -n "haloTokensForPlayer(" cmd/levelup/`).
+- [x] 2.3 `haloTokensForPlayer` : lister ses 9 appelants (`grep -n "haloTokensForPlayer(" cmd/levelup/`).
       Ceux qui servent un endpoint **public** passent au pool ; ceux qui servent un endpoint
       **privé** (à vérifier sur pièces dans `internal/sync/pooled_client.go` : `GetCareerRank`,
       et tout appel non listé par le client poolé) gardent le token du joueur avec un
       commentaire daté. Si aucun appelant ne reste : supprimer la fonction et son test.
-- [ ] 2.4 Auto-sync : `checkSyncPreconditions` (`internal/scheduler/auto_sync_run.go:423-429`)
+- [x] 2.4 Auto-sync : `checkSyncPreconditions` (`internal/scheduler/auto_sync_run.go:423-429`)
       perd la précondition `HasPlayer` ; la précondition `pool == nil` reste. Le message
       « authentifier le joueur (SSO Xbox) » disparaît avec elle. Vérifier que `BuildEngine`
       passe bien par `NewPooledHaloClient` pour ce joueur (`auto_sync_engine.go`).
-- [ ] 2.5 Rang de carrière : dans le client poolé (`pooled_client.go:287-300`,
+- [~] 2.5 Rang de carrière : dans le client poolé (`pooled_client.go:287-300`,
       `PolicyPinnedPlayer`), l'erreur « n'a pas de token pinné » devient une erreur typée
       `ErrNoPinnedToken` ; l'étape post-sync carrière (`internal/sync/career.go`) la journalise
       **une fois** en `slog.WarnContext(ctx, "career: rang non synchronisé — aucun token propre", "gamertag", …)`
       et pose `career_synced=false` sans compter d'erreur fatale. Vérifier sur pièces qu'aucune
       autre étape du post-sync n'utilise `PolicyPinnedPlayer`.
-- [ ] 2.6 Cron Spartan (`spartan_customization_cron.go:327`) : `HasPlayer` CONSERVÉ ;
+- [x] 2.6 Cron Spartan (`spartan_customization_cron.go:327`) : `HasPlayer` CONSERVÉ ;
       commentaire daté 2026-09-16 : « endpoint privé (PolicyPinnedPlayer) — seule exemption
       légitime à D1 ».
-- [ ] 2.7 Ratchet `internal/archlint/no_pool_hasplayer_gate_test.go` : `HasPlayer(` n'apparaît
+- [x] 2.7 Ratchet `internal/archlint/no_pool_hasplayer_gate_test.go` : `HasPlayer(` n'apparaît
       hors du paquet `pool` et de ses tests que dans `spartan_customization_cron.go` (allowlist
       datée d'une entrée). Message d'échec : « un profil sans token propre se synchronise par
       le pool (D1, plan 2026-09-16) ».
-- [ ] 2.8 Tests : (a) `cmd/levelup` : pool de fixture à un slot (JGtm), joueur `X` absent du
+- [x] 2.8 Tests : (a) `cmd/levelup` : pool de fixture à un slot (JGtm), joueur `X` absent du
       pool → `sync-delta --gamertag X` construit un client poolé (pas d'appel à
       `haloTokensForPlayer`) ; (b) `scheduler` : `checkSyncPreconditions` accepte un joueur hors
       pool quand le pool existe, refuse toujours `pool == nil` ; (c) `sync` : post-sync carrière
       avec `ErrNoPinnedToken` → `career_synced=false`, un WARN, statut `success` ; (d) le test
       existant qui affirmait `not_in_pool` est retourné (documenté dans le test, pas supprimé
       en silence).
-- [ ] 2.9 Docs bilingues : `docs/COMMANDS.md` (FR + EN dans le même commit) — sémantique de
+- [x] 2.9 Docs bilingues : `docs/COMMANDS.md` (FR + EN dans le même commit) — sémantique de
       `sync-delta/sync-full --gamertag` (pool, aucun token propre requis, rang de carrière
       dégradé) ; `internal/platform/auth/pool/README.md` : section « Appelants » listant les
       trois sites et l'exemption Spartan.
@@ -287,3 +287,75 @@ sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans
 - 1.6 `[x]` `cmd/levelup/main_seams_test.go` exerce `wireStartupSeams` (le chemin de démarrage de `main`) après `SetLUSRChainClassifier(nil)`. **Mutation vérifiée** : en remplaçant l'appel par `_ = titleseams.PrestigeConfigDir(cfg.RepoRoot)`, le test ROUGIT (`GetLUSRChain a paniqué …`), puis repasse vert une fois restauré.
 
 **Gate G1** : `go build ./...` → **0** ; `go vet ./cmd/... ./internal/games/titleseams/... ./internal/archlint/...` → **0** ; `go test ./internal/games/titleseams/... ./internal/archlint/... ./cmd/levelup/... ./cmd/server/... -timeout 30m` → **0**, 4 paquets `ok` ; `grep -rn "SetLUSRChainClassifier(" cmd/` (hors tests) → **0 ligne** ; `gofmt -l` sur les fichiers touchés → vide.
+
+### Étape 2 — Le pool sert tout profil suivi — 2026-09-16 13:05 — CLOSE
+
+- 2.1 `[x]` Nouveau fichier `cmd/levelup/pool_engine.go` (la doctrine D1 y est écrite) :
+  `buildCLITokenPool` (déplacé depuis `cmd_sync.go`), `newPooledEngine(cfg, provider, pool, player)`
+  — source unique des TROIS chemins (mono-joueur, `--all` delta, `--all` full, il y avait deux
+  copies) —, `newPooledEngineForPlayer(...)` (pool + moteur + fermeur, pour les commandes
+  mono-joueur) et `newPooledClient(...)` (client seul, pour les commandes de films). Toutes ≤ 80 L,
+  ≤ 5 paramètres. `cmd_sync.go` passe de 446 à 306 lignes.
+- 2.2 `[x]` Les deux `if !pool.HasPlayer(...) { skip }` de `cmd_sync.go` et le commentaire périmé
+  (« pas d'env var, pas de sync_meta », antérieur à l'ADR 0023) ont disparu. Le skip
+  `no_player_db` reste, avec la justification datée en commentaire aux DEUX endroits.
+- 2.3 `[x]` **Les 9 appelants de `haloTokensForPlayer` sont passés au pool ; la fonction est
+  SUPPRIMÉE** (0 code mort) : `cmd_sync.go` ×2 (2.1), `cmd_backfill.go` ×4 (CSR et CSR partagé,
+  `--all` et mono-joueur — endpoint public `GetMatchSkill`), `cmd_archive_films.go`,
+  `cmd_backfill_killsource_online.go`, `cmd_replay_events.go` (chunks de film et d'événements,
+  tous `PolicyAnyPublic` — vérifié sur pièces dans `internal/sync/pooled_client.go`). Aucun
+  appelant restant : `grep -rn "haloTokensForPlayer(" cmd/` ne rend qu'une MENTION dans le
+  commentaire d'en-tête d'un test. Le SEUL `PolicyPinnedPlayer` du client poolé est
+  `GetCareerRank` (vérifié ligne à ligne). `archiverUnFilm` prend désormais une interface locale
+  `telechargeurDeFilm` (une méthode) au lieu du type concret `*HaloAPIClient`.
+- 2.4 `[x]` `checkSyncPreconditions` (`internal/scheduler/auto_sync_run.go`) perd la précondition
+  `HasPlayer` et le message « authentifier le joueur (SSO Xbox) » ; `pool == nil` reste. Vérifié
+  sur pièces : `BuildEngine` (`auto_sync_engine.go:66-68`) pose `NewPooledHaloClient` pour
+  N'IMPORTE quel gamertag dès que `s.pool != nil`.
+- 2.5 `[~]` **Écart assumé, la prémisse du plan est périmée.** `ErrNoPinnedToken` est bien créé
+  (`internal/sync/pooled_client.go`) et `GetCareerRank` le rend au lieu de `(nil, nil)` — un skip
+  muet est indistinguable d'un joueur sans progression. En revanche l'**étape post-sync carrière
+  n'existe plus** : elle est DÉCOUPLÉE depuis le 2026-05-14 (`engine_postsync.go`, section 3 —
+  « `CareerSynced` reste dans le struct mais n'est plus jamais positionné à true ici ») ; le flux
+  XP + Spartan ID est servi par `service.CareerLiveService`. Le WARN unique est donc posé sur le
+  SEAM carrière du paquet, `syncCareerRank` (`internal/sync/career.go`), seul consommateur de
+  `GetCareerRank` : `ErrNoPinnedToken` → un `slog.WarnContext` + `(nil, nil)`, toute AUTRE erreur
+  remonte. `career_synced=false` est déjà l'état par défaut. Couvert par 2.8 (c).
+- 2.6 `[x]` `spartan_customization_cron.go` : `HasPlayer` CONSERVÉ, commentaire daté 2026-09-16
+  (« SEULE exemption légitime à D1 : l'appel qui suit est PolicyPinnedPlayer »).
+- 2.7 `[x]` `internal/archlint/no_pool_hasplayer_gate_test.go` : allowlist d'UNE entrée datée
+  (`spartan_customization_cron.go`). **Mutation vérifiée** : allowlist vidée → le test rougit en
+  nommant le fichier, puis repasse vert une fois restaurée.
+- 2.8 `[x]` Tests : (a) `cmd/levelup/pool_engine_test.go` — pool de fixture à un slot (JGtm) ;
+  `newPooledEngine` construit le moteur pour Nuzzles, ABSENT du pool ; le client poolé n'acquiert
+  que des leases `PolicyAnyPublic` sur un endpoint public ; le rang de carrière rend
+  `ErrNoPinnedToken`. (b) `internal/scheduler/auto_sync_pool_gate_test.go` (test INTERNE, la
+  fonction n'est pas exportée) — `checkSyncPreconditions` accepte un joueur hors pool quand sa
+  player DB existe, refuse toujours `pool == nil`. (c) `internal/sync/career_no_pinned_token_test.go`
+  — `syncCareerRank` dégrade sur `ErrNoPinnedToken` sans erreur, et ne mange AUCUNE autre erreur.
+  (d) **Trois tests retournés, aucun supprimé en silence**, chacun documenté dans son en-tête :
+  `TestRunOnce_PlayerNotInPool_Skipped` → `..._PlusDeSkipPool` (affirme désormais que la raison
+  « absent du pool » n'apparaît plus) ; `TestRunOnce_Parallel_MixedOutcomes_Counted` (la cause de
+  skip de SKIP_NOPOOL passe de « hors pool » à « player DB absente ») ;
+  `TestConsecutiveZeroInserts_PreservedOnSkipped` (le skip est désormais provoqué en retirant la
+  player DB). Les deux tests de `pooled_client_test.go` sur la carrière attendent maintenant
+  `ErrNoPinnedToken` au lieu de `(nil, nil)`.
+- 2.9 `[x]` `docs/COMMANDS.md` **et** `docs/FR/COMMANDS.md` (même commit) : bloc « aucun joueur n'a
+  besoin de son propre jeton », exception du rang de carrière, et la note que `--gamertag` nomme le
+  joueur traité et non un prêteur de jeton. `internal/platform/auth/pool/README.md` : section
+  « Callers » (tableau appelant × politique × besoin d'un token propre) + le rappel de l'état
+  d'avant.
+
+**Gate G2** : `go build ./...` → **0** ; `go vet ./...` → **0** ;
+`go test ./cmd/levelup/... ./internal/scheduler/... ./internal/sync/... ./internal/archlint/... -timeout 30m`
+→ **0**, 15 paquets `ok` (sync 67 s, scheduler 31 s, archlint 20 s) ;
+`go test -tags=integration -p 1 ./internal/sync/... -timeout 30m` → **0**, 12 paquets `ok`
+(sync 159 s, replayartifacts 26 s, killcollector 14 s) ;
+`grep -rn "HasPlayer(" apps/go-api --include=*.go | grep -v "auth/pool/" | grep -v _test` → **1 ligne**
+(`spartan_customization_cron.go:331`) ; `grep -rn "haloTokensForPlayer(" cmd/` → **1 mention**, dans
+le commentaire d'en-tête de `pool_engine_test.go` (aucun appel, aucune définition).
+
+**Écart de procédure à signaler** : les fichiers de l'étape 3 (helper `AlterColumnTypeIfNeeded`,
+étape `widen_match_registry_team_scores`, alignement des DDL) ont été écrits pendant l'attente du
+gate G2 et étaient donc dans l'arbre lors de sa passe d'intégration. Aucune des deux étapes ne
+touche les mêmes fichiers ; le gate complet de l'étape 4 rejoue tout.
