@@ -40,6 +40,15 @@ export interface UsageCountsRowInput {
   /** Absent = pas de troisième issue mesurée à ce grain (armes spéciales, P5/E6.1) :
    *  la barre rend un aplat simple, jamais un zéro inventé. */
   outcomes?: UsageCountsOutcomesLike | null
+  /**
+   * DÉTAIL AU SURVOL de la ligne, en une phrase déjà composée par l'appelant (donc déjà
+   * traduite : ce modèle ne parle aucune langue). Absent = le survol montre le libellé, comme
+   * avant — c'est le comportement de toutes les lignes qui n'ont rien de plus à dire.
+   *
+   * Premier usage : le détail PAR ARME d'un niveau du contrôle des armes (« S7 Sniper 4,
+   * M41 SPNKr 2 »), que la ligne du niveau ne peut pas porter sans devenir illisible.
+   */
+  hint?: string
 }
 
 export interface UsageCountsRowModel {
@@ -47,6 +56,8 @@ export interface UsageCountsRowModel {
   label: string
   taken: number
   gauge: UsageGaugeModel
+  /** Le détail au survol, transporté verbatim depuis l'entrée. */
+  hint?: string
 }
 
 export interface UsageCountsGridModel {
@@ -138,7 +149,7 @@ function buildCountsRow(
     teammatesRatePct,
     opponentsRatePct,
   }
-  return { key: input.key, label: input.label, taken: input.taken, gauge }
+  return { key: input.key, label: input.label, taken: input.taken, gauge, hint: input.hint }
 }
 
 /**

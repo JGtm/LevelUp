@@ -388,3 +388,64 @@ func TestTacticalRepo_Univers_ToutesCartes(t *testing.T) {
 			matchIDs(got.Matchs), matchIDs(surUneCarte.Matchs))
 	}
 }
+
+// TestTacticalRepo_MapsPlayed_ExclutFirefight : UNE CARTE PvE N'EST PAS UNE CARTE DE LA
+// PORTEE TACTIQUE (decision utilisateur 2026-09-14).
+//
+// L'application ne traite pas le Firefight : sa carte n'a pas de fond publie (« Cole
+// Protocol » tombait en 404 dans la grille) et n'a aucun adversaire humain a mesurer. Le
+// match PvE est retire par le drapeau du registre `is_firefight`, jamais par un nom de carte
+// — un nom ne dirait rien du titre voisin.
+func TestTacticalRepo_MapsPlayed_ExclutFirefight(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+
+	// Une carte PvE jouee DEUX fois : sans exclusion elle passerait meme en tete de grille.
+	base := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	for i, id := range []string{"mff1", "mff2", "mff3"} {
+		tacExec(t, pdb, `INSERT INTO match_registry
+			(match_id, map_id, map_name, start_time, start_time_utc, playlist_name, pair_name, is_firefight)
+			VALUES (?, ?, ?, ?, ?, 'Firefight', 'Firefight:King', TRUE)`,
+			id, tacCartePvE, tacCartePvE+"_en", base.Add(time.Duration(i)*time.Hour),
+			base.Add(time.Duration(i)*time.Hour))
+		tacParticipant(t, pdb, id, tacXUIDMoi, 0, 2)
+	}
+
+	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(),
+		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	if err != nil {
+		t.Fatalf("MapsPlayed: %v", err)
+	}
+	for _, r := range rows {
+		if r.MapID == tacCartePvE {
+			t.Fatalf("la carte Firefight %q est dans la grille : %+v", tacCartePvE, rows)
+		}
+	}
+	if len(rows) != 2 {
+		t.Fatalf("cartes = %d, want 2 (les deux cartes PvP du corpus) : %+v", len(rows), rows)
+	}
+}
+
+// TestTacticalRepo_Univers_ExclutFirefight : la meme exclusion vaut pour l'UNIVERS, sinon la
+// grille serait propre et les mesures compteraient quand meme les matchs PvE.
+func TestTacticalRepo_Univers_ExclutFirefight(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+
+	base := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	tacExec(t, pdb, `INSERT INTO match_registry
+		(match_id, map_id, map_name, start_time, start_time_utc, playlist_name, pair_name, is_firefight)
+		VALUES ('mff1', ?, ?, ?, ?, 'Firefight', 'Firefight:King', TRUE)`,
+		tacCarteA, tacCarteA+"_en", base, base)
+	tacParticipant(t, pdb, "mff1", tacXUIDMoi, 0, 2)
+
+	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), tacQuery(tacCarteA))
+	if err != nil {
+		t.Fatalf("KillEvents: %v", err)
+	}
+	for _, m := range got.Univers.Matchs {
+		if m.MatchID == "mff1" {
+			t.Fatalf("le match Firefight est dans l'univers : %+v", got.Univers.Matchs)
+		}
+	}
+}

@@ -111,11 +111,11 @@ func TestEquipmentUsageBlock_ErreurDeLectureDegradeSansEchouer(t *testing.T) {
 // n'ont changé.
 func TestTimeseriesPage_AttacheLeBlocEquipement(t *testing.T) {
 	svc := NewTimeseriesService(nil).
-		WithEquipmentUsage(overviewRepoMock(), func(context.Context) []string { return []string{"Alpha"} })
+		WithEquipmentUsage(overviewRepoMock(), func(context.Context) []string { return []string{"Alpha"} }, "")
 	svc.playerXUID = "P"
 
 	var resp domain.TimeseriesPageResponse
-	svc.attachMigratedSections(context.Background(), &resp, eqUsageCanonRows("m1"))
+	svc.attachMigratedSections(context.Background(), &resp, eqUsageCanonRows("m1"), "fr")
 
 	block := resp.EquipmentUsage
 	if block == nil || !block.Available {
@@ -151,7 +151,7 @@ func TestTimeseriesPage_SansCapabiliteLeBlocDitPourquoi(t *testing.T) {
 	svc.playerXUID = "P"
 
 	var resp domain.TimeseriesPageResponse
-	svc.attachMigratedSections(context.Background(), &resp, eqUsageCanonRows("m1"))
+	svc.attachMigratedSections(context.Background(), &resp, eqUsageCanonRows("m1"), "fr")
 
 	if resp.EquipmentUsage == nil || resp.EquipmentUsage.Available ||
 		resp.EquipmentUsage.UnavailableReason != domain.SessionUsageUnsupported {
@@ -169,4 +169,53 @@ func eqUsageCanonRows(ids ...string) []canonical.PlayerMatchRow {
 		rows = append(rows, canonical.PlayerMatchRow{Summary: canonical.MatchSummary{MatchID: id}})
 	}
 	return rows
+}
+
+// TestEquipmentUsageBlock_LitLesNiveauxDArmes — LE SECOND CHEMIN DE LECTURE, PROUVE.
+//
+// Constat de revue (2026-09-14) : ce chemin n'etait garde que par un GREP sur le source. Une
+// mutation en no-op (`attacherNiveauxDArmes` qui ne fait rien) laissait `squadagg` et
+// `teammates` verts, et les pages Escouade et Timeseries n auraient jamais montre un niveau.
+//
+// Ce test passe par le VRAI producteur avec un repo qui rend des lignes, et verifie que le
+// bloc arrive au contrat avec SES propres denominateurs.
+func TestEquipmentUsageBlock_LitLesNiveauxDArmes(t *testing.T) {
+	repo := overviewRepoMock()
+	repo.padTiers = []sessionusage.PadTierRow{
+		{
+			MatchID: "m1", XUID: "P", Tier: domain.PadTierPower,
+			WeaponFamily: "9d6aaed2", Pickups: 3, PadsConfirmed: 4, PadsTotal: 5,
+		},
+		{MatchID: "m1", XUID: "A", Tier: domain.PadTierNoPickup, PadsConfirmed: 4, PadsTotal: 5},
+	}
+	block := buildEquipmentUsageBlock(context.Background(), equipmentUsageQuery{
+		Repo: repo, PlayerXUID: "P", MatchIDs: []string{"m1"},
+	})
+	if block == nil || block.PadTiers == nil {
+		t.Fatal("le bloc des niveaux d'armes n'est pas publie sur le chemin Escouade/Timeseries : " +
+			"la lecture produit y est debranchee, et la table se remplirait sans qu'aucun de ces " +
+			"deux ecrans ne la lise")
+	}
+	// LES DENOMINATEURS SONT LES SIENS, jamais ceux du resume d'usage voisin.
+	if block.PadTiers.MatchesTotal != 1 || block.PadTiers.MatchesMeasured != 1 {
+		t.Errorf("couverture des niveaux = %d/%d, attendu 1/1",
+			block.PadTiers.MatchesMeasured, block.PadTiers.MatchesTotal)
+	}
+	if len(block.PadTiers.Tiers) != 1 || block.PadTiers.Tiers[0].Tier != domain.PadTierPower {
+		t.Fatalf("niveaux publies : %+v", block.PadTiers.Tiers)
+	}
+	if block.PadTiers.Tiers[0].PlayerTotal != 3 {
+		t.Errorf("prises du joueur = %v, attendu 3", block.PadTiers.Tiers[0].PlayerTotal)
+	}
+}
+
+// TestEquipmentUsageBlock_SansLigneAucunBlocDeNiveaux — « pas encore mesure » ne se publie pas
+// comme « zero ».
+func TestEquipmentUsageBlock_SansLigneAucunBlocDeNiveaux(t *testing.T) {
+	block := buildEquipmentUsageBlock(context.Background(), equipmentUsageQuery{
+		Repo: overviewRepoMock(), PlayerXUID: "P", MatchIDs: []string{"m1"},
+	})
+	if block != nil && block.PadTiers != nil {
+		t.Errorf("bloc de niveaux servi sans aucune ligne : %+v", block.PadTiers)
+	}
 }

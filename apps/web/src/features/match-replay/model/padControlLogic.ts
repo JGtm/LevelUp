@@ -42,6 +42,7 @@ import { displayPlayerName } from '@/lib/players/displayName'
 import { isGameChangerFamily, isGameChangerWeaponKey } from './gameChangers'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { buildPlayers, groupByTeam, playerName, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import { buildPadTierMatch, padTierOf, PAD_TIER_ORDER, type PadTier } from './weaponTier'
 import { padEquipmentFamilyOf } from './weaponPadFamilies'
 
 /** Les prises comptées, sans identité — la ligne d'un joueur comme le total d'un camp. */
@@ -117,6 +118,29 @@ export interface PadControl {
   unnamedByWeapon: Record<string, number>
   /** Faux = aucune prise attribuée : l'écran ne doit rien rendre (double porte). */
   hasData: boolean
+  /**
+   * LE NIVEAU DE CHAQUE ARME (`weaponTier.ts`) : base, terrain, puissance, non classé.
+   *
+   * UNE ARME, UN NIVEAU, ET LE PLUS SERVI L'EMPORTE. Une arme peut en théorie se trouver sur
+   * deux emplacements de natures différentes dans le même match ; c'est mesuré, et c'est rare :
+   * UNE arme sur 59 matchs et 2 881 prises (0,17 %), et le conflit était `terrain` contre
+   * `non classé`, jamais `terrain` contre `puissance`. La ligne du bloc reste donc une ligne
+   * par arme, et son niveau est celui qui porte le plus de prises ; à égalité, l'ordre écrit
+   * `PAD_TIER_ORDER` départage, pour que deux relectures donnent le même bloc.
+   *
+   * IL N'Y A PAS DE SOUS-TOTAUX PAR NIVEAU ICI, ET C'EST VOULU (revue du 2026-09-14). Le bloc
+   * en publiait, personne ne les lisait, et l'écran additionnait ses propres lignes : deux
+   * vérités pour un même chiffre. C'est la SOMME DES LIGNES AFFICHÉES qui doit se recomposer
+   * sous les yeux du lecteur — elle seule est vérifiable à l'écran.
+   */
+  tierOfWeapon: Record<string, PadTier>
+  /** Le mode distribue des départs aléatoires : le niveau « base » n'est pas publié. */
+  randomStarts: boolean
+  /**
+   * FAUX quand aucun emplacement de la carte n'a confirmé de socle : le bloc doit dire que les
+   * niveaux ne sont PAS ÉTABLIS, et surtout pas ranger tout le match sous « Non classé ».
+   */
+  tiersMeasured: boolean
 }
 
 /** Un compteur vide. Chaque appel rend un NOUVEL objet : les tables ne se partagent pas. */
@@ -140,6 +164,12 @@ export function buildPadControl(
   doc: ReplayDocumentReady,
   scoreboard: MatchScoreboardRow[] | undefined,
 ): PadControl {
+  // LE CLASSEMENT DU MATCH, une fois pour toutes : nature de chaque socle et armes de départ.
+  // Le caractère ALÉATOIRE des départs vient du SERVEUR (`doc.weaponTiers`), pas d'une liste de
+  // catégories tenue ici — la règle vit dans le TOML du titre et gouverne aussi l'écriture en
+  // base (revue du 2026-09-14).
+  const tiers = buildPadTierMatch(doc)
+  const tierPicks = new Map<string, Map<PadTier, number>>()
   // SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ont une ligne, même règle que le bilan
   // d'équipement : une entrée de roster sans aucune vie n'a pu prendre aucun socle, et une
   // ligne de zéros la ferait passer pour quelqu'un qui n'en a pris aucun.
@@ -171,6 +201,14 @@ export function buildPadControl(
     }
     addPick(tally, pad.weapon)
     matchTotal[pad.weapon] = (matchTotal[pad.weapon] ?? 0) + 1
+    // Le niveau se lit SUR LE SOCLE de la prise, pas sur l'arme : c'est la carte qui décide.
+    const tier = padTierOf(tiers, pick.pad, pad.weapon)
+    let parNiveau = tierPicks.get(pad.weapon)
+    if (!parNiveau) {
+      parNiveau = new Map<PadTier, number>()
+      tierPicks.set(pad.weapon, parNiveau)
+    }
+    parNiveau.set(tier, (parNiveau.get(tier) ?? 0) + 1)
   }
 
   const byTeam = teamsOf(players, tallies)
@@ -183,8 +221,30 @@ export function buildPadControl(
     unjoined,
     unnamedByWeapon,
     hasData: attributed > 0,
+    tierOfWeapon: tierOfWeaponOf(tierPicks),
+    randomStarts: tiers.randomStarts,
+    tiersMeasured: tiers.tiersMeasured,
   }
 }
+
+/** Le niveau retenu pour chaque arme : le plus servi, `PAD_TIER_ORDER` départageant. */
+function tierOfWeaponOf(picks: ReadonlyMap<string, Map<PadTier, number>>): Record<string, PadTier> {
+  const out: Record<string, PadTier> = {}
+  for (const [weapon, parNiveau] of picks) {
+    let meilleur: PadTier = 'unclassified'
+    let n = -1
+    for (const tier of PAD_TIER_ORDER) {
+      const c = parNiveau.get(tier) ?? 0
+      if (c > n) {
+        meilleur = tier
+        n = c
+      }
+    }
+    out[weapon] = meilleur
+  }
+  return out
+}
+
 
 /**
  * teamsOf range les joueurs par camp, somme chaque camp, et TRIE PAR TOTAL DÉCROISSANT — à

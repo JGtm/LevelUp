@@ -102,6 +102,14 @@ const (
 	// majoritaire du parc (63 artefacts sur 76 au releve du 2026-09-13).
 	CompteurPrisesNettesEcrites = "postsync_replay_flag_grabs_net_ecrites_total"
 	CompteurPrisesNettesEchecs  = "postsync_replay_flag_grabs_net_echecs_total"
+	// Niveaux d armes projetes des artefacts ranges, ecrits dans `match_pad_pickups_by_tier`
+	// (cf. padtiers.go). CompteurNiveauxArmesEcrits : passes persistees ;
+	// CompteurNiveauxArmesEchecs : writer indisponible, capabilities, reference des
+	// emplacements ou regulation illisibles, ou INSERT refuse — un defaut, jamais un etat
+	// normal. UN ARTEFACT ANTERIEUR AU SCHEMA 30 NE COMPTE NI DANS L UN NI DANS L AUTRE : il
+	// ne porte aucun ramasseur nomme, et c est dit en DEBUG.
+	CompteurNiveauxArmesEcrits = "postsync_replay_pad_tiers_ecrites_total"
+	CompteurNiveauxArmesEchecs = "postsync_replay_pad_tiers_echecs_total"
 	// Positions joueurs projetees des artefacts ranges, ecrites dans `match_player_positions`
 	// (cf. positions.go, decision utilisateur 1). CompteurPositionsEcrites : passes persistees ;
 	// CompteurPositionsEchecs : writer indisponible, absent du cablage, ou INSERT refuse — un

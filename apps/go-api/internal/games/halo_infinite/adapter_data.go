@@ -242,6 +242,7 @@ func fallbackCapabilities() games.CapabilityMap {
 		// cartes d objectif. ⚠ LA CLE NE SUFFIT PAS : le titre doit AUSSI declarer sa
 		// fenetre de jonglage dans regulation.toml (cf. capabilities.toml).
 		games.CapFilmFlagGrabsNet: games.CapSupported,
+		games.CapFilmWeaponTiers:  games.CapSupported,
 		// L ARTEFACT DE REJEU 2D lui-meme (data/cache/replays/{slug}/{match}.json) : la
 		// SOURCE dont les quatre cles film.* ci-dessus sont des projections. Gouverne la
 		// PRODUCTION (etape post-sync replayartifacts : sans la cle, rien n est mis en

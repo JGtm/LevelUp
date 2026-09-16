@@ -344,3 +344,56 @@ describe('buildPadControl — la double porte', () => {
     expect(control.hasData).toBe(true)
   })
 })
+
+/**
+ * LES NIVEAUX D'ARMES (2026-09-14) — le bloc range ses lignes en base / terrain / puissance /
+ * non classé. La règle elle-même est éprouvée chez `weaponTier.test.ts` ; ici on éprouve son
+ * RATTACHEMENT aux lignes : un niveau par arme, des sous-totaux qui bouclent sur le total
+ * attribué, et les deux drapeaux que l'écran lit pour savoir quoi dire.
+ */
+describe('buildPadControl — les niveaux', () => {
+  const CROISEMENT = {
+    catalogN: 5,
+    pads: [
+      { x: 0, y: 0, pad: 0, family: 'power' },
+      { x: 1, y: 0, pad: 1, family: 'rack' },
+      { x: 2, y: 0, pad: 2, family: 'powerup' },
+    ],
+  }
+
+  it('pose un niveau par arme, et le niveau vient de la CARTE', () => {
+    const control = buildPadControl(
+      temoin({
+        mapWeaponPads: CROISEMENT,
+        padPickups: [prise(0, 'a1', 10), prise(0, 'b1', 30), prise(1, 'a2', 50)],
+      } as unknown as Partial<ReplayDocument>),
+      SB,
+    )
+    expect(control.tierOfWeapon[SNIPER]).toBe('power')
+    expect(control.tierOfWeapon[EPEE]).toBe('ground')
+    expect(control.tiersMeasured).toBe(true)
+    expect(control.randomStarts).toBe(false)
+  })
+
+  it('range tout en « non classé » et le SIGNALE quand aucun emplacement ne confirme', () => {
+    const control = buildPadControl(
+      temoin({ padPickups: [prise(0, 'a1'), prise(1, 'b1')] } as unknown as Partial<ReplayDocument>),
+      SB,
+    )
+    expect(control.tiersMeasured).toBe(false)
+    expect(control.tierOfWeapon[SNIPER]).toBe('unclassified')
+  })
+
+  it('n’attribue aucun niveau « base » sur un mode à départs aléatoires', () => {
+    const loadouts = Array.from({ length: 20 }, (_, i) => ({ t: 0, slot: 512 + i, w: [SNIPER] }))
+    const doc = { mapWeaponPads: CROISEMENT, loadouts, padPickups: [prise(0, 'a1')] }
+    const regulier = buildPadControl(temoin(doc as unknown as Partial<ReplayDocument>), SB)
+    expect(regulier.tierOfWeapon[SNIPER]).toBe('base')
+    const aleatoire = buildPadControl(
+      temoin({ ...doc, weaponTiers: { randomStarts: true } } as unknown as Partial<ReplayDocument>),
+      SB,
+    )
+    expect(aleatoire.randomStarts).toBe(true)
+    expect(aleatoire.tierOfWeapon[SNIPER]).toBe('power')
+  })
+})

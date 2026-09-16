@@ -44,13 +44,18 @@ type MapWeaponPads struct {
 	CatalogN int               `json:"catalogN"`
 }
 
-// MapWeaponPadDTO est UN emplacement allumé : la position du fichier de carte, et le socle
-// du match qui l'a confirmé.
+// MapWeaponPadDTO est UN emplacement allumé : la position du fichier de carte, le socle du
+// match qui l'a confirmé, et LA NATURE DE L'EMPLACEMENT.
 type MapWeaponPadDTO struct {
 	X   float32 `json:"x"`
 	Y   float32 `json:"y"`
 	Z   float32 `json:"z,omitempty"`
 	Pad int     `json:"pad"`
+	// Family : `rack` (arme de terrain), `power` (arme de puissance) ou `powerup` (bonus).
+	// Elle vient du fichier de carte Forge, JAMAIS du nom de l'arme : la même Hydra est de
+	// terrain sur une carte et de puissance sur une autre. Un socle du match sans entrée ici
+	// n'est confirmé par aucun emplacement — son niveau est « non classé ».
+	Family string `json:"family"`
 }
 
 // MapObject est un prop Forge projeté en 2D : centre orienté + emprise de sa bounding box.
@@ -161,4 +166,12 @@ type CalloutZone struct {
 	Polygon     [][2]float64   `json:"polygon,omitempty"`
 	Parts       [][][2]float64 `json:"parts,omitempty"`
 	Holes       [][][2]float64 `json:"holes,omitempty"`
+}
+
+// WeaponTiersInfo — ce que le match dit des NIVEAUX D'ARME, résolu à la requête.
+// Jumeau de `replay.WeaponTiersInfo`.
+type WeaponTiersInfo struct {
+	// RandomStarts : le mode distribue les équipements de début de vie AU HASARD. Le niveau
+	// « arme de base » n'y est pas publié.
+	RandomStarts bool `json:"randomStarts"`
 }

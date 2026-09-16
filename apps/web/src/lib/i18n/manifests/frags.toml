@@ -20,6 +20,13 @@ en = "Kills by weapon"
 fr = "Outils de destruction"
 en = "Tools of destruction"
 
+# Tranche de REGROUPEMENT de l'anneau externe du sunburst (seuil OUTER_RING_MIN_SHARE,
+# fragSunburstModel.ts) : les rôles trop petits pour porter une étiquette lisible sont fondus
+# en une tranche par classe, qui les NOMME au survol. Le nombre est celui des tranches fondues.
+[frags.charts.others_slice]
+fr = "Autres ({n, plural, one {# arme} other {# armes}})"
+en = "Others ({n, plural, one {# weapon} other {# weapons}})"
+
 [frags.charts.center_total_label]
 fr = "Frags"
 en = "Kills"

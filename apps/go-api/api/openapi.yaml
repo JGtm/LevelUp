@@ -12481,6 +12481,8 @@ components:
         matches_total:
           format: int64
           type: integer
+        pad_tiers:
+          $ref: '#/components/schemas/SessionUsagePadTiersBlock'
         players:
           items:
             $ref: '#/components/schemas/EquipmentUsagePlayerLine'
@@ -16381,6 +16383,8 @@ components:
     MapWeaponPadDTO:
       additionalProperties: false
       properties:
+        family:
+          type: string
         pad:
           format: int64
           type: integer
@@ -16397,6 +16401,7 @@ components:
         - x
         - "y"
         - pad
+        - family
       type: object
     MapWeaponPads:
       additionalProperties: false
@@ -22284,6 +22289,8 @@ components:
           type:
             - array
             - "null"
+        weaponTiers:
+          $ref: '#/components/schemas/WeaponTiersInfo'
         zoneStates:
           items:
             $ref: '#/components/schemas/ZoneState'
@@ -23743,6 +23750,8 @@ components:
           type:
             - array
             - "null"
+        pad_tiers:
+          $ref: '#/components/schemas/SessionUsagePadTiersBlock'
         pad_unnamed_total:
           format: int64
           type: integer
@@ -23905,6 +23914,101 @@ components:
         - family_key
         - player_total
         - lobby_total
+      type: object
+    SessionUsagePadTier:
+      additionalProperties: false
+      properties:
+        lobby_total:
+          format: double
+          type: number
+        player_per_match:
+          format: double
+          type: number
+        player_share_of_lobby_pct:
+          format: double
+          type: number
+        player_share_of_team_pct:
+          format: double
+          type: number
+        player_total:
+          format: double
+          type: number
+        team_share_of_lobby_pct:
+          format: double
+          type: number
+        team_total:
+          format: double
+          type: number
+        tier:
+          type: string
+        weapons:
+          items:
+            $ref: '#/components/schemas/SessionUsagePadTierWeapon'
+          type:
+            - array
+            - "null"
+      required:
+        - tier
+        - player_total
+        - lobby_total
+      type: object
+    SessionUsagePadTierWeapon:
+      additionalProperties: false
+      properties:
+        family_key:
+          type: string
+        family_label:
+          type: string
+        lobby_pickups:
+          format: double
+          type: number
+        player_pickups:
+          format: double
+          type: number
+      required:
+        - family_key
+        - player_pickups
+        - lobby_pickups
+      type: object
+    SessionUsagePadTiersBlock:
+      additionalProperties: false
+      properties:
+        lobby_parity_pct:
+          format: double
+          type: number
+        matches_measured:
+          format: int64
+          type: integer
+        matches_random_starts:
+          format: int64
+          type: integer
+        matches_tiers_established:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        matches_with_pads:
+          format: int64
+          type: integer
+        team_of_lobby_parity_pct:
+          format: double
+          type: number
+        team_parity_pct:
+          format: double
+          type: number
+        tiers:
+          items:
+            $ref: '#/components/schemas/SessionUsagePadTier'
+          type:
+            - array
+            - "null"
+      required:
+        - matches_total
+        - matches_measured
+        - matches_with_pads
+        - matches_tiers_established
+        - matches_random_starts
       type: object
     SessionUsagePowerup:
       additionalProperties: false
@@ -29236,6 +29340,14 @@ components:
         - above_pct
         - level_pct
         - below_pct
+      type: object
+    WeaponTiersInfo:
+      additionalProperties: false
+      properties:
+        randomStarts:
+          type: boolean
+      required:
+        - randomStarts
       type: object
     WinLossPoint:
       additionalProperties: false

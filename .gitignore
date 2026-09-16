@@ -196,6 +196,9 @@ tests/fixtures/ref_player/*.duckdb
 # `bash scripts/demo-visual-harness.sh` (ou `levelup seed-demo --synthetic --out …`).
 # Déterministe à graine fixe, donc reproductible à l'identique par tout le monde.
 tests/fixtures/demo-root/
+# Captures candidates pour le README (e2e/visual/readme-shots.visual.spec.ts, README_SHOTS=1).
+# Ce sont des PROPOSITIONS : les retenues sont copiees a la main sous docs/screenshots/.
+tests/readme-shots/
 # Logs des serveurs du harnais démo (hors outputDir Playwright, qui est vidé à chaud)
 tests/demo-harness-logs/
 data/warehouse/match_facts/

@@ -57,7 +57,7 @@ SELECT map_id, match_id, victim_x, victim_y FROM (
   JOIN match_participants mp ON mp.match_id = mr.match_id AND mp.xuid = ?
   WHERE e.publishable
     AND kp.victim_x IS NOT NULL AND kp.victim_y IS NOT NULL
-    AND mr.map_id IS NOT NULL AND mr.map_id <> ''` + campaignExclusionToken
+    AND mr.map_id IS NOT NULL AND mr.map_id <> ''` + clausePvEExclu + campaignExclusionToken
 
 // MortsParCarte rend MES morts localisees du perimetre, groupees par carte.
 //

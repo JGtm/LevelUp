@@ -1062,6 +1062,84 @@ fixe au calque vehicules ; fin de vie des vehicules lue dans le dead-state (1.9.
 session sur le designateur de manche ; vie d'un seul echantillon.
 
 **Prochaine etape.** Push + CI ; lot 1.0 ; puis 1.1 (octet 37).
+## [2026-09-14] Captures README prises (21 pages, anglais, données réelles) + corrections SPNKr et remerciements — Complété (feat/v75, non commité)
+
+**Le mur d'authentification n'en était pas un.** Premier diagnostic erroné de ma part : j'avais conclu qu'une capture headless exigeait un `storageState` produit par l'utilisateur. La vraie cause est une seule variable. `__root.tsx` éjecte vers `/login` quand `auth_mode` vaut `password` ou `xbox` et que `current_username` est nul — or un contexte Playwright neuf n'a pas de cookie. **`LEVELUP_AUTH_MODE=none`** (le défaut du code, mais pas de ce poste) supprime la redirection, et `middleware.RequireAuth` laisse déjà passer en conséquence. Deux autres pièges franchis avant d'y arriver : l'origine CSRF est comparée en **égalité stricte** (`isAllowedOrigin`) — `http://127.0.0.1:8010` est refusée là où `http://localhost:8010` passe — et le mode démo seul ne suffit pas (`LEVELUP_WEB_DIST` sert le front en même origine, comme le service `levelup-demo` de docker-compose).
+
+**Décision : captures sur les VRAIES données (JGtm), pas sur la fixture démo.** Instruction utilisateur : la démo synthétique n'a ni pass de combat ni personnalisation, elle sous-vend l'app. Les gamertags de coéquipiers et d'adversaires apparaissent donc dans les captures — arbitré par l'utilisateur, deux fois, explicitement.
+
+**Procédure suivie sur le serveur de l'utilisateur** (`tmp/server.exe`, lancé en détaché par PowerShell — pas d'air qui le relancerait) : arrêt, relance du MÊME binaire sur les MÊMES données avec `LEVELUP_AUTH_MODE=none` (un seul writer DuckDB à tout instant, ADR 0013 respecté), passe Playwright, puis **restauration à l'identique** (vérifié : `auth_mode=xbox`). Aucune donnée touchée.
+
+**Outil livré** : `apps/web/e2e/visual/readme-shots.visual.spec.ts` — 21 pages + vue de match + rejeu, gardé par `README_SHOTS=1` pour ne jamais tourner avec la régression visuelle, sortie dans `tests/readme-shots/` (ajouté au `.gitignore`). Réutilise le projet Playwright `visual` (thème figé, aléatoire neutralisé, attente de stabilité des canvas ECharts).
+
+**Résultats observés** :
+- 21 captures, **1600 px de large**, **en anglais** (le segment de langue de l'URL `/{-$lang}/` le pilote : `/en/t/...` ; `playerPath` n'en pose pas et l'app retombait sur `fr`).
+- Le rejeu 2D est capturé **en cours de match** (5:10 / 18:05) et non au coup d'envoi : 30 clics sur « Forward 10 s » puis lecture, sinon le peloton est groupé au spawn. Cadre resserré à 1600×1150 — la page tient dedans, le cadre commun de 2200 la noyait.
+- Timeout porté à 180 s : les deux pages Escouade dépassent les 30 s par défaut (échec mesuré à la première passe).
+- Deux routes n'existaient pas sous le nom supposé : `ascension/profil` → `ascension` (le Profil est l'index). Corrigé après une capture « Not Found ».
+- **Défaut visible sur la vue de match en anglais** : « Tourelle LMG du Falcon » et « Apparition » s'affichent en FR — c'est le chantier ouvert `.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md`, ici pris sur le fait par une capture.
+
+**Corrections de fond demandées par l'utilisateur, vérifiées avant d'écrire** :
+- **SPNKr n'est plus utilisé.** Contrôlé : **aucune dépendance Halo dans `go.mod`**. Ce qui reste est (a) un portage de référence (`highlight_event_parser.go` : « Port Go de spnkr/film/highlight_events.py »), (b) le nom d'une arme (`M41 SPNKr`), (c) des clés de réglages héritées (`spnkr_auto_sync_*`). Les deux README affirmaient « dépend de SPNKr » dans la stack ET dans les limitations : remplacé par le client Go maison, et les remerciements requalifiés en **antériorité dont on a appris, pas code embarqué**.
+- **`docs/ACKNOWLEDGMENTS.md` était en français** alors qu'il vit à la racine EN de `docs/` : réécrit en anglais, et `docs/FR/ACKNOWLEDGMENTS.md` créé (le README FR pointait vers le fichier EN).
+
+**Conclusion / prochaine étape** : les 21 candidates sont dans `tests/readme-shots/`. L'utilisateur choisit lesquelles retenir ; la section « Captures d'écran » des deux README est la dernière partie non traitée, et c'est un choix éditorial (5 visuels + galerie `docs/SCREENSHOTS.md`, ou tout en ligne). La mention « (toujours en bêta) » de la médiathèque disparaîtra avec cette section — les armes et les médias sont fiables (utilisateur, 14/09).
+
+## [2026-09-14] README — parties techniques périmées corrigées, et pourquoi les captures ne peuvent pas être prises sans l'utilisateur — Complété (feat/v75, non commité)
+
+**Constat de départ (question utilisateur)** : les captures et les parties techniques des README « datent de la v6 ». Mesuré : `docs/screenshots/` = 27 PNG, 6,2 Mo, dernier commit **2026-03-18**. À cette date l'interface était **Streamlit/Python** — le changelog le dit lui-même à propos de la collision de numéros 7.0.0 (« the two 7.0.0 labels denote different products »). Les captures du README public ne montrent donc pas une version antérieure du produit : elles montrent **un autre produit**. Deux légendes décrivent en plus des surfaces supprimées depuis (la « Sidebar », remplacée par NavL1/NavL2 en v7 ; les histogrammes « Time-to-First-Kill », supprimés en v7.3 parce qu'ils se contredisaient).
+
+**Corrigé dans les deux README** (faits vérifiés sur pièces, pas sur mémoire) :
+- badge et tableau de stack : `DuckDB 1.4+` → `1.5+` (embarquée 1.5.5, `duckdb-go/v2 v2.10505.0`) ;
+- prérequis du démarrage rapide : ajout de la **chaîne C** — le pilote DuckDB est en CGO et, sous Windows, un `gcc` absent du `PATH` fait servir à Air un binaire périmé sans le dire. Le FAQ le disait déjà, le README non ;
+- étiquette « **v6** — Zéro configuration » retirée, et `ARCHITECTURE_V6.md` n'est plus décrit comme « architecture v6 » mais comme l'architecture **courante** ;
+- table Documentation : 10 entrées → 18 (EN) / 16 (FR). Étaient invisibles : `ADD_TITLE`, `FOUNDATIONS_GUIDE`, `COMMANDS`, `CITATIONS`, `WEAPONS`, `CHANGELOG`, `RELEASE_NOTES`, les 5 runbooks, `ACKNOWLEDGMENTS`, et surtout **`docs/adr/` (34 ADR)** — le *pourquoi* du projet n'était lié de nulle part ;
+- stack : ajout du décodeur de film maison (Go) et de WebCodecs/mediabunny (export vidéo).
+
+**Décision technique principale — les captures pour un README PUBLIC doivent venir de la fixture démo, pas du poste.** Une capture des pages réelles porte les gamertags de coéquipiers et d'adversaires, alors que le dépôt a justement durci l'anonymisation du seed de démo (jusqu'à la colonne `xuid`). Chaîne montée pour ça : construction du front (le `dist` avait **257 commits** de retard), binaires Go en CGO, `seed-demo --synthetic` (60 matchs, 5 sessions, 3 joueurs, déterministe) dans une racine isolée `tests/fixtures/demo-root`, API démo sur **:8010**, Vite sur **:5183**, et une spec Playwright `e2e/visual/readme-shots.visual.spec.ts` (16 pages, viewport 1600×2200, gardée par `README_SHOTS=1`).
+
+**RÉSULTAT : ÉCHEC, et la cause est identifiée.** Le front rend « **Authentification indisponible en mode démo.** » sur les 16 pages : `LEVELUP_DEMO_MODE=true` ne suffit pas à amorcer la session côté navigateur (le pool de jetons ne résout aucun slot, `demo mode: external fetch skipped`). Contre le serveur de l'utilisateur (autorisé en cours de tâche), une session est également absente : un contexte Playwright neuf déclenche le **Device Code Flow** (code affiché, expire seul, aucun effet). Conclusion : une capture authentifiée exige un `storageState` que seul l'utilisateur peut produire (une connexion réelle) — c'est une limite de méthode, pas un défaut de l'outillage.
+
+**Deux découvertes de terrain à consigner** :
+1. **`curl http://127.0.0.1:5173` ment.** Vite écoute sur `localhost`, qui résout `::1` avant `127.0.0.1` sous Windows : la sonde IPv4 a rendu « libre » un port où tournait **le serveur de développement de l'utilisateur depuis le 13/09 17:26**. Sonder le WEB par nom d'hôte (`http://localhost:PORT`), l'API par IP — c'est exactement ce que fait `scripts/demo-visual-harness.sh`, et la raison en est désormais vécue. Sans ce contrôle, les captures auraient été prises sur les **vraies données**.
+2. **Espace disque** : `disk_watch` journalise « espace disque CRITIQUE sur le volume data » au démarrage. Mesure : `C:` à **95 % (53 Go libres sur 931)**.
+
+**Conclusion / prochaine étape** : la section « Captures d'écran » des deux README est la **seule** partie encore périmée, et elle est bloquée sur des images que l'utilisateur doit produire. Procédure remise : `npx playwright codegen --save-storage=tests/auth-state.json http://localhost:5173` pour se connecter une fois, puis rejouer la spec avec `storageState`. Décision utilisateur attendue : 5 visuels dans le README + galerie `docs/SCREENSHOTS.md`, ou tout en ligne.
+
+## [2026-09-14] Documentation de sortie v7.5 — « Dernières nouveautés », changelogs et notes de version de l'app — Complété (feat/v75, non commité)
+
+**Demande** : mettre à jour les sections « What's new » / « Dernières nouveautés » des deux README, les deux changelogs, et le fichier qui alimente les notes de version dans l'application, avec tout ce qui a été fait depuis la `v7.3.0`. Public différent selon la cible : les notes de version et les README sont orientés utilisateur final, les changelogs restent techniques.
+
+**Périmètre mesuré** : `v7.3.0` = tag `a2719a68c` (2026-08-04), pas la date de l'entrée `[7.3.0] - 2026-07-26` du changelog. Depuis ce tag : 2 791 commits sans fusion, 453 fusions, 6 773 fichiers, +3 197 394 / −48 255. Sources de la synthèse : la liste des 453 messages de fusion, les titres d'entrées de `.ai/thought_log.md` du 04/08 au 14/09, `.ai/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` pour le cadrage, et les libellés FR/EN lus **à leur source** (`features/match-replay/i18n`, `features/_shared/usage/usageI18n.ts`, `lib/i18n/manifests/tactical.toml`, `model/weaponTier.ts`) plutôt que reformulés.
+
+**Numéro de version retenu : 7.5.0**, conformément au régime « branche unique `feat/v75`, un seul merge final + tag v7.5.0 ». L'entrée de changelog est datée `Unreleased` / `Non publié` — la branche n'est pas fusionnée, et inventer une date aurait été faux. Précédent dans le dépôt : `## [5.3.0] - Non publié` côté FR.
+
+**Décision technique principale — les tags `v7.3.1` et `v7.3.2` n'avaient aucune entrée de changelog** : elles sont créées (correctif du Classement mondial, collections jamais `null`, seed de démo sans identifiant, vague de dépendances dont js-yaml 4.3.1 / CVE-2026-59870).
+
+**Piège attrapé avant livraison** : `service.extractVersionKey` tronque un titre de bloc à `majeur.mineur` et `flushCurrent` garde la **première** occurrence d'une clé. Un bloc `**v7.3.1 — …**` placé avant `**v7.3 — …**` dans `RELEASE_NOTES.md` aurait donc pris la clé `v7.3` et **fait disparaître le bloc v7.3 des notes servies dans l'app**. Les deux points de la 7.3.1 sont donc repliés dans le bloc v7.5 avec la mention « livrée en v7.3.1 », et aucun bloc `v7.3.1` n'est créé dans les notes de version. Vérifié en rejouant le parseur (`extractWhatsNewBlocks`) sur les deux fichiers réels : 10 blocs extraits, `v7.5` en tête, `v7.3` intact.
+
+**Résultats observés** :
+- `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md` : bloc `v7.5` de 66 lignes chacun, orienté utilisateur (rejeu 2D, ce que le film sait, équipement servi ou gâché, onglet Tactique, escouade/sessions, fiche de match, cartes/médailles/médias, réparations, projet, dégradation Halo 5).
+- `README.md` + `docs/FR/README.md` : « Dernières nouveautés » réécrite en version condensée (5 blocs), **et les sections « Fonctionnalités » / « Features » réécrites intégralement** — elles ne mentionnaient ni le rejeu 2D, ni la Tactique, ni rien de ce qui vient du film. Nouvelle structure calquée sur la navigation réelle de l'app (lue dans `common.toml` `nav.section_*` / `nav.tab_*` et `NavL2.tsx`) : rejeu 2D, lire un match, carrière, analyser ses matchs, équipement/armes/objectifs, escouade, Ascension (profil/objectifs/entraînement/réalisations/tactique), communauté, médias, notifications. Chapeau de section rappelant que tout ce qui vient du film est Halo Infinite seulement.
+- **Deux sections voisines corrigées parce qu'elles étaient devenues fausses** : « Limitations connues » affirmait encore « couverture POV ~87,5 % » avec l'arme du frag extraite du binaire — remplacée par les vraies contraintes (le film est la source, les films expirent côté Microsoft, un build inconnu est un refus typé, film = Halo Infinite seulement) ; « Stack technique » gagne le décodeur de film maison et WebCodecs/mediabunny.
+- **Badges de version** : le `chore(release)` de la v7.3.2 n'avait pas bumpé le badge (racine restée à 7.3.1, FR resté à 7.2.0). Les deux passent à **7.3.2**, la version réellement taguée. Point relevé par l'utilisateur.
+- `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` : entrées `7.5.0`, `7.3.2`, `7.3.1`. La 7.5.0 est structurée Ajouté (décodeur + artefact, puis pages et blocs) / Modifié / Corrigé / Ops, et cite les ADR 0032, 0033, 0034 comme les seuls écrits depuis la `v7.3.0`.
+- Chiffres vérifiés sur pièces et non recopiés des messages de fusion : `SchemaVersion = 54` (`film/replay/document.go`), 109 fonds de carte `.webp`, 1 549 emplacements sur 76 cartes (`map_weapon_pads.json`), 128 cartes au catalogue d'objectifs, 177 sons sous `static/sounds/halo_infinite`, 8 capabilities `film.*` + la clé de titre `replay`, `BaseShareMin = 0,05`.
+- Aucune séquence mojibake (`no_mojibake_test.go` ne balaye que le Go et `config/titles/`, mais le contrôle a été fait sur les six fichiers). `go test ./internal/api/handlers/ -run 'Help|Changelog'` vert.
+
+**Conclusion / prochaine étape** : les six fichiers de documentation de sortie sont à jour et cohérents entre eux. Reste au `chore(release)` du tag v7.5.0 : les deux badges de version, et la date de l'entrée `[7.5.0]` qui remplacera `Unreleased` / `Non publié`. **Leçon à retenir du 14/09** : le bump de badge du `chore(release)` a été oublié en v7.3.2 — le vérifier dans la liste de livraison.
+
+## [2026-09-14] Suites des ajustements pré-v7.5 — décisions utilisateur, médailles, niveaux d'armes — Complété (feat/v75, poussé, CI verte)
+
+**Décisions utilisateur du 14/09 appliquées** : badges « À vérifier » retirés (tournée du 25/07 close, mécanisme inerte) ; aucun pied sous « Usages d'équipement » ; « Répartition des frags » = armes ≥ 5 % + « Autres (N armes) » par classe ; Cole Protocol = Firefight → PvE exclu des 4 lectures tactiques ; ré-ancrage Escouade = fonction voulue ; prises nettes = « oui avec ta reco » (livré, rattrapé, vérifié) ; niveaux d'armes = « à faire ».
+
+**Médailles** : la VIP « Clash of Kings » manquait (nom + PNG) ; source officielle = gamecms `Waypoint/file/medals/metadata.json` + sprite sheet (article den.dev, indiqué par l'utilisateur). DÉCOUVERTE MAJEURE : sur une base héritée de Python, `medal_definitions` n'a pas de PK → `ON CONFLICT` d'une étape préexistante cassait TOUTES les migrations metadata suivantes (jamais appliquées sur ce poste, probablement en prod). Corrigé (seeds WHERE NOT EXISTS, réparation inconditionnelle, ratchet). Référentiel non reproductible (base neuve = 2 médailles / 164) : chantier à ouvrir.
+
+**Niveaux d'armes (base / terrain / puissance / bonus / non classé)** : étape 0 = couverture suffisante (97 %, 0 carte absente) ; livré : famille des emplacements à la requête, paquet pur `weapontier`, match view par niveau, table `match_pad_pickups_by_tier` append-only par passe (motif prises nettes), projection d'artefacts sous `film.weapon_tiers`, CLI `backfill-pad-tiers`, agrégats sur 3 pages. Deux revues adversariales, 19 constats corrigés — dont la détection des modes à départs aléatoires, fausse deux fois (préfixe, puis catégorie : `Slayer:Arena Super Fiesta` n'est reconnu par aucune), désormais un jeton déclaré par le titre avec la mesure du négatif figée. Rattrapage local exécuté (76 matchs, 1 495 prises).
+
+**Incidents** : un commit de docs d'une autre session (`482852646`) était posé sur le checkout principal et est parti dans mon push ; la fusion a d'abord échoué sur des plans modifiés non commités (commit préalable). Le serveur avait été reconstruit AVANT ma marque d'attente (horodatage), boucle d'attente tuée.
+
+**Prochaine étape** : verdict de la passe visuelle 6 (niveaux sur données réelles) ; à la release v7.5 : `backfill-flag-grabs-net` + `backfill-pad-tiers` en prod, vérifier `schema_migrations` metadata en prod, auditer les autres `ON CONFLICT` sur tables héritées.
 
 ---
 
@@ -109689,3 +109767,42 @@ l'autre session) — libellé de fixture remplacé par « Cliffside » pour déb
 
 **Conclusion** : chantier des finitions clos ; à la main de l'utilisateur : recuisson du parc
 (F.4, D.2, H.2), item Notion « retrait migration boot », P2 consignés.
+
+## [2026-09-14] Revue du fork ChaseWoodhams (commits du 11 au 13/09) et plan quantum des projectiles + bornes des cartes Forge — Complété (analyse et plan, aucun code touché)
+
+**Décisions** : sur les dix commits du fork postérieurs à la revue du 05/09, un seul est retenu —
+`a900c5ba3`, le repli du quantum sur les trajectoires de projectile — et il sera ré-écrit en
+français aux chemins v75, jamais cherry-piqué (sa pile est posée sur `chore/english-only`, qui
+supprime tout `docs/FR/`). Rejetés sur pièces : son `team_designators.go` (en-tête ti=9 deviné à
+47 bits, lien vers le joueur non établi — notre `NOTE_EQUIPE_FILM_2026-09-12.md` donne le champ à
+186 bits, la convention « designateur plus un », deux chaînes de preuve et l'oracle à 16 films sur
+18) ; ses deux commits `mapquant` (valeurs identiques aux nôtres au bit près, et son `mainBSP`
+heuristique est notre critère moteur `himap.BSPQuantification` depuis le 16/08) ; son
+`lives_start.go` (chantier décodeur en cours, autre session) ; tout `cmd/study-archiver` et
+`apps/study`. Plan écrit :
+`.ai/PLAN_QUANTUM_PROJECTILES_ET_BORNES_FORGE_2026-09-14.md`, deux lots indépendants, décisions
+D1 à D7 tranchées d'avance. La re-cuisson du parc reste une décision utilisateur (report).
+
+**Résultats observés** : le résidu de trajectoires coupées est RÉEL et postérieur à notre propre
+correctif — 338 pistes coupées sur 20 750, dans 64 films sur 76, mesurées sur des artefacts cuits
+le 12/09 à 22h, soit dix-neuf heures après `fb71e9b3c` (porte d'i0 suivant la carte, 03h04).
+La réserve « et si le repli venait d'un record d'une autre région ? » est fermée par le code :
+`decodeWorldObjectPos` rejette tout record dont l'index de région n'est pas celui de la carte —
+un tel record n'est jamais mal déquantifié, il est jeté. Côté précision par arme, le correctif ne
+lève aucun des deux verrous du 01/09 (V1 automatiques, V2 dégât projectile invisible au type 0) :
+un quantum ne se replie que si l'objet SORT de la boîte, et un projectile qui touche s'arrête
+dedans — d'où le sous-lot 1C, qui teste l'autre canal (fin de vol certifiée contre bipède ennemi,
+vérité terrain = les kills d'armes à projectile), avec ses deux témoins et son critère de succès
+fixés avant la mesure. Découverte incidente, plus large que le point de départ : en confrontant
+`himap.CartesForge` (87 cartes) au catalogue de bornes, **24 cartes Forge n'ont aucune entrée**
+(Argyle et Vacancy n'étaient que les deux que son commit nommait) — `Lookup` n'ayant aucun repli,
+ces cartes n'ont aucune coordonnée monde. Cause : `cmd/mapquant-build` porte sa propre table
+`mapModule` en dur, indépendante du registre, et le catalogue n'a pas été régénéré depuis le
+27/08 alors que le registre a grossi jusqu'au 03/09. Un seul module n'a jamais été lu :
+`fo10_deadland` (Ivory Tower).
+
+**Conclusion / prochaine étape** : plan committé sur `feat/v75`, exécution en attente du signal de
+l'utilisateur. Lot 1 (`feat/quantum-projectiles`) et lot 2 (`feat/mapquant-forge-registre`) sont
+indépendants et parallélisables en worktrees dédiés. Le sous-lot 1C décide du sort de la précision
+par arme pour les armes à projectile : succès vers un plan séparé, échec vers le registre des
+reports, la remise du 01/09 restant en l'état.

@@ -257,3 +257,106 @@ describe('MatchPadControlSection — ce que l’écran dit de sa mesure', () => 
     expect(vue.queryByText(t.padControl.unnamedFmt(1))).toBeNull()
   })
 })
+
+/**
+ * LES NIVEAUX D'ARMES (2026-09-14). Le bloc range ses lignes en base / terrain / puissance /
+ * non classé, et le niveau vient de la CARTE — l'emplacement Forge qui confirme le socle — plus
+ * de l'équipement de départ du film. Jamais du nom ni du rôle de l'arme.
+ */
+describe('MatchPadControlSection — les niveaux d’armes', () => {
+  const AR = '0xBBBB2222'
+
+  /** Le témoin des niveaux : le sniper sur un socle de PUISSANCE, l'AR sur un RÂTELIER. */
+  function temoinNiveaux(over: Partial<ReplayDocument> = {}) {
+    return {
+      ...TEMOIN,
+      weaponLabels: {
+        [SNIPER]: { fr: 'S7 Sniper', en: 'S7 Sniper', key: 'hinf_s7_sniper' },
+        [AR]: { fr: 'MA40 AR', en: 'MA40 AR', key: 'hinf_ma40_ar' },
+      },
+      weaponPads: [
+        { weapon: SNIPER, x: 0, y: 0, spawns: [], presence: [] },
+        { weapon: AR, x: 1, y: 0, spawns: [], presence: [] },
+      ],
+      mapWeaponPads: {
+        catalogN: 4,
+        pads: [
+          { x: 0, y: 0, pad: 0, family: 'power' },
+          { x: 1, y: 0, pad: 1, family: 'rack' },
+        ],
+      },
+      padPickups: [
+        { pad: 0, t: 10, tLow: 5, tHigh: 15, xuid: 'a1' },
+        { pad: 1, t: 40, tLow: 35, tHigh: 45, xuid: 'b1' },
+      ],
+      ...over,
+    } as unknown as Partial<ReplayDocument>
+  }
+
+  it('écrit un intertitre par niveau, avec son sous-total', () => {
+    poserArtefact(temoinNiveaux())
+    const vue = afficher('fr')
+    expect(vue.getByText(t.padControl.tierLabels.power)).toBeTruthy()
+    expect(vue.getByText(t.padControl.tierLabels.ground)).toBeTruthy()
+    // Une prise par niveau : deux sous-totaux « 1 prise ».
+    expect(vue.getAllByText(t.padControl.tierSubtotalFmt(1)).length).toBe(2)
+    // Aucun niveau vide n'a d'intertitre.
+    expect(vue.queryByText(t.padControl.tierLabels.base)).toBeNull()
+    expect(vue.queryByText(t.padControl.tierLabels.unclassified)).toBeNull()
+  })
+
+  it('promeut en « base » l’arme de l’équipement de départ, sur son râtelier même', () => {
+    poserArtefact(
+      temoinNiveaux({
+        loadouts: Array.from({ length: 20 }, (_, i) => ({ t: 74, slot: 512 + i, w: [AR] })),
+      } as unknown as Partial<ReplayDocument>),
+    )
+    const vue = afficher('fr')
+    expect(vue.getByText(t.padControl.tierLabels.base)).toBeTruthy()
+    // L'AR quitte le râtelier pour la base ; il n'y a plus de groupe « terrain ».
+    expect(vue.queryByText(t.padControl.tierLabels.ground)).toBeNull()
+  })
+
+  it('écrit la note « départs aléatoires » quand le SERVEUR le dit, et n’y publie aucun niveau de base', () => {
+    // Le caractère aléatoire vient de la RÉPONSE (`weaponTiers.randomStarts`), plus d'une liste
+    // de catégories tenue côté web — celle-ci a divergé en une semaine (revue 2026-09-14).
+    poserArtefact(
+      temoinNiveaux({
+        loadouts: Array.from({ length: 20 }, (_, i) => ({ t: 74, slot: 512 + i, w: [AR] })),
+        weaponTiers: { randomStarts: true },
+      } as unknown as Partial<ReplayDocument>),
+    )
+    const vue = afficher('fr')
+    expect(vue.getByText(t.padControl.randomStartsNote)).toBeTruthy()
+    expect(vue.queryByText(t.padControl.tierLabels.base)).toBeNull()
+    // Les deux autres niveaux restent lisibles.
+    expect(vue.getByText(t.padControl.tierLabels.ground)).toBeTruthy()
+    expect(vue.getByText(t.padControl.tierLabels.power)).toBeTruthy()
+  })
+
+  it('dit « niveaux non établis » quand la carte n’est pas dans la référence, et n’écrit AUCUN intertitre', () => {
+    poserArtefact(temoinNiveaux({ mapWeaponPads: undefined } as unknown as Partial<ReplayDocument>))
+    const vue = afficher('fr')
+    expect(vue.getByText(t.padControl.tiersUnmeasuredNote)).toBeTruthy()
+    // Surtout pas un bandeau « Emplacement non identifié » au-dessus de tout le bloc : une
+    // absence de mesure n'est pas un résultat de mesure.
+    expect(vue.queryByText(t.padControl.tierLabels.unclassified)).toBeNull()
+    // Les lignes, elles, restent toutes rendues : rien n'est retiré.
+    expect(vue.getByText('S7 Sniper')).toBeTruthy()
+    expect(vue.getByText('MA40 AR')).toBeTruthy()
+  })
+
+  it('n’écrit aucune de ces notes quand la carte est connue et le mode régulier', () => {
+    poserArtefact(temoinNiveaux())
+    const vue = afficher('fr')
+    expect(vue.queryByText(t.padControl.tiersUnmeasuredNote)).toBeNull()
+    expect(vue.queryByText(t.padControl.randomStartsNote)).toBeNull()
+  })
+
+  it('publie les intertitres en anglais aussi', () => {
+    poserArtefact(temoinNiveaux())
+    const vue = afficher('en')
+    expect(vue.getByText(REPLAY_TEXT.en.padControl.tierLabels.power)).toBeTruthy()
+    expect(vue.getByText(REPLAY_TEXT.en.padControl.tierLabels.ground)).toBeTruthy()
+  })
+})

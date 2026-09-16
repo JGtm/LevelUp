@@ -29,6 +29,7 @@ const LABELS: FragSunburstLabels = {
   roleLabel: (r) => `role:${r}`,
   formatValue: (n) => String(n),
   formatShare: (n) => `${n}%`,
+  othersLabel: (n) => `autres:${n}`,
   locale: 'fr',
 }
 
@@ -218,5 +219,85 @@ describe('FragSunburst (composant SVG)', () => {
     expect(svg.getAttribute('class')).toContain('h-auto')
     const svgContainer = svg.parentElement!
     expect(svgContainer.style.height).toBe('')
+  })
+})
+
+// ── Seuil de l'anneau externe : les miettes ne s'étiquettent plus (2026-09-14) ──
+describe('buildSunburstModel — regroupement des petites tranches', () => {
+  it('fond les tranches sous le seuil en UNE tranche « Autres » par classe, somme exacte', () => {
+    const dist: FragDistribution = {
+      total_kills: 100,
+      classes: [
+        {
+          class: 'shoulder',
+          kills: 60,
+          authoritative: false,
+          roles: [
+            { role: 'automatic', kills: 40 }, // 40 % — gardée
+            { role: 'precision', kills: 12 }, // 12 % — gardée
+            { role: 'sniper', kills: 4 }, //      4 % — fondue
+            { role: 'shotgun', kills: 3 }, //     3 % — fondue
+            { role: 'dynamo', kills: 1 }, //      1 % — fondue
+          ],
+        },
+        {
+          class: 'grenade',
+          kills: 40,
+          authoritative: true,
+          roles: [
+            { role: 'grenade_frag', kills: 38 }, // 38 % — gardée
+            { role: 'grenade_other', kills: 2 }, //  2 % — fondue (seule de sa classe)
+          ],
+        },
+      ],
+    }
+    const model = buildSunburstModel(dist.classes ?? [], dist.total_kills, COLORS, LABELS)
+
+    // Épaule : 2 tranches gardées + 1 regroupement ; grenade : 1 gardée + 1 regroupement.
+    const epaule = model.arcs.filter((a) => a.kind === 'role' && a.classKey === 'shoulder')
+    expect(epaule).toHaveLength(3)
+    const groupe = epaule.find((a) => a.key.endsWith('-autres'))!
+    expect(groupe.tipTitle).toBe('class:shoulder · autres:3')
+    // Le survol NOMME ce qui a été fondu — rien ne disparaît sans être dit.
+    expect(groupe.tipSub).toContain('role:sniper')
+    expect(groupe.tipSub).toContain('role:shotgun')
+    expect(groupe.tipSub).toContain('role:dynamo')
+    // Somme exacte : 4 + 3 + 1.
+    expect(groupe.tipSub.startsWith('8 · ')).toBe(true)
+
+    // La règle vaut aussi pour UNE seule petite tranche.
+    const grenade = model.arcs.filter((a) => a.kind === 'role' && a.classKey === 'grenade')
+    expect(grenade).toHaveLength(2)
+    expect(grenade[1].tipTitle).toBe('class:grenade · autres:1')
+
+    // Étiquettes à laisse : les tranches GARDÉES, et elles seules — ni les fondues, ni le
+    // regroupement qui les porte (il se lit au survol).
+    expect(model.callouts.map((c) => c.label).sort()).toEqual([
+      'role:automatic',
+      'role:grenade_frag',
+      'role:precision',
+    ])
+  })
+
+  it('ne regroupe RIEN quand toutes les tranches atteignent le seuil', () => {
+    const dist: FragDistribution = {
+      total_kills: 100,
+      classes: [
+        {
+          class: 'shoulder',
+          kills: 100,
+          authoritative: false,
+          roles: [
+            { role: 'automatic', kills: 50 },
+            { role: 'precision', kills: 45 },
+            { role: 'sniper', kills: 5 }, // exactement 5 % : le seuil est INCLUSIF
+          ],
+        },
+      ],
+    }
+    const model = buildSunburstModel(dist.classes ?? [], dist.total_kills, COLORS, LABELS)
+    const roles = model.arcs.filter((a) => a.kind === 'role')
+    expect(roles).toHaveLength(3)
+    expect(roles.some((a) => a.key.endsWith('-autres'))).toBe(false)
   })
 })

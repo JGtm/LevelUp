@@ -134,6 +134,8 @@ export interface UsageGaugeRowModel {
    * elle se lisait comme une grandeur de plus.
    */
   isTotal?: boolean
+  /** Le détail au survol, transporté verbatim depuis l'entrée. */
+  hint?: string
 }
 
 /** Le sous-ensemble « parts » commun aux grandeurs, familles d'arme et rôles. */
@@ -156,6 +158,15 @@ export interface UsageGaugeRowInput {
   teamOfLobbyParityPct: number | null | undefined
   /** Cette grandeur est le total des lignes qui la précèdent (cf. `UsageGaugeRowModel`). */
   isTotal?: boolean
+  /**
+   * DÉTAIL AU SURVOL de la ligne, en une phrase déjà composée par l'appelant (donc déjà
+   * traduite : ce modèle ne parle aucune langue). Absent = le survol montre le libellé, comme
+   * avant.
+   *
+   * Premier usage : le détail PAR ARME d'un niveau du contrôle des armes, que la ligne du
+   * niveau ne peut pas porter sans devenir illisible.
+   */
+  hint?: string
   /**
    * Les trois issues DU JOUEUR et les deux repères de taux (étape E4, contrat étendu
    * en E3). Absent pour toute grandeur hors bilan d'équipement (armes spéciales,
@@ -236,6 +247,7 @@ export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
     key: input.key,
     label: input.label,
     isTotal: input.isTotal,
+    hint: input.hint,
     gauges: [
       gauge(
         'team-of-lobby',

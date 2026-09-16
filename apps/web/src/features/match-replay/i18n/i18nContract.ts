@@ -11,6 +11,7 @@
  * `i18n.ts` refuse toute langue à laquelle il manque un champ.
  */
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
+import type { PadTier } from '../model/weaponTier'
 
 /**
  * Les munitions de l'ARME EN MAIN telles que la tuile compacte les dit en infobulle (I9 du plan
@@ -38,10 +39,10 @@ export type AmmoHint =
  *     retransmission près, et le camo SEUL est sous le seuil de mesure en lecture large
  *     (26,2 % des épisodes avec ≥ 1 frag) — un même groupe, une seule infobulle, parce que les
  *     colonnes de frags sont des SOUS-COLONNES du même état mesuré, pas un calque à part.
- *  2. `powerupPadsHint` — les vidages de socle de bonus sont ANONYMES PAR MESURE
- *     (`padPickups[].xuid` est publié depuis le schéma 30 mais cet écran ne l'exploite pas) :
- *     la ligne reste au niveau du MATCH, et aucun
- *     libellé ne doit laisser croire qu'on connaît le ramasseur.
+ *  2. `coverageReserveFmt` — les gestes que le film mesure sans en nommer l'auteur ni l'origine
+ *     n'entrent dans aucune des deux vues. La réserve NE SE CACHE PAS (décision utilisateur
+ *     2026-09-09) : depuis le 2026-09-14 elle tient en UNE phrase, au survol du TITRE de la
+ *     carte, le pied de carte ayant été supprimé (aucun texte de pied sous ce bloc).
  *  3. `notMeasured` — le RÉPULSEUR n'a aucun canal d'activation dans le film (neuf canaux
  *     fouillés, négatif mesuré le 2026-09-03). Pas de colonne vide (elle se lirait « zéro
  *     utilisation ») : une phrase qui le dit. LE PROPULSEUR EN EST SORTI le même jour — son
@@ -124,21 +125,13 @@ export interface EquipmentUsageText {
   outcomeDroppedFmt: (count: number) => string
   outcomeTotalTakenFmt: (count: number) => string
   /**
-   * LA RÉSERVE DE COUVERTURE, sous le tableau (P13) : les poses d'origine INCONNUE (existant,
-   * ~5 % du parc) et les objets pris dont le rang n'a pas de famille connue (AMENDEMENT du
-   * 2026-09-09 à la sortie de E0 — décision utilisateur : on garde les trois issues, la
-   * réserve se montre au lieu de disqualifier la troisième).
+   * LA RÉSERVE DE COUVERTURE, EN UNE PHRASE ET DANS L'INFOBULLE DU TITRE (2026-09-14) : les
+   * gestes mesurés sans propriétaire et les poses d'origine inconnue, additionnés. Ils ont eu
+   * lieu, aucune des deux vues ne peut les compter — la réserve ne se cache pas (décision
+   * utilisateur 2026-09-09), elle ne s'écrit simplement plus en pied de carte (décision
+   * utilisateur 2026-09-14 : AUCUN texte de pied sous ce bloc).
    */
-  coverageUnknownOriginFmt: (count: number) => string
-  /** La ligne ANONYME, au niveau du match — jamais rattachée à un joueur. */
-  powerupPads: string
-  powerupPadsHint: string
-  powerupPadsDenomFmt: (pads: number) => string
-  /** Dénominateurs repris de `doc.coverage` : « N épisodes » ne se juge pas sans eux. */
-  coverageActiveFmt: (lives: number) => string
-  coverageGrappleFmt: (pulls: number, lives: number) => string
-  /** Gestes mesurés dont le film ne nomme pas l'auteur : comptés hors tableau, jamais versés. */
-  unattributedFmt: (count: number) => string
+  coverageReserveFmt: (count: number) => string
   /**
    * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`, LOT F.3) : « N frags
    * sous camouflage » / « N frags sous surbouclier », le nombre RÉEL du meilleur épisode du
@@ -179,6 +172,20 @@ export interface PadControlText {
    * dire « ce socle a changé de mains plus souvent que la ligne ne le montre » sans inventer.
    */
   unnamedFmt: (count: number) => string
+  /**
+   * LES INTERTITRES DE NIVEAU (2026-09-14). Le bloc range ses armes en base / terrain /
+   * puissance / non classé — le niveau vient de la CARTE (l'emplacement Forge qui confirme le
+   * socle) et de l'équipement de départ du film, jamais du nom de l'arme. Le niveau `powerup`
+   * existe pour l'exhaustivité du type : un socle de bonus n'ayant jamais de ramasseur nommé,
+   * son groupe est toujours vide à l'écran.
+   */
+  tierLabels: Record<PadTier, string>
+  /** Le sous-total d'un niveau, écrit à côté de son intertitre. */
+  tierSubtotalFmt: (count: number) => string
+  /** Mode à équipements de départ aléatoires (Fiesta) : le niveau « base » n'est pas publié. */
+  randomStartsNote: string
+  /** Aucun emplacement de la carte n'a confirmé de socle : les niveaux ne sont pas établis. */
+  tiersUnmeasuredNote: string
 }
 
 export interface ReplayText {

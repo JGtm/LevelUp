@@ -152,6 +152,14 @@ var tablesProtegees = []string{
 	// allowlistRawDelete. Remplacer une passe = en écrire une nouvelle ; la vue
 	// match_flag_grabs_net_latest ne rend que la dernière ligne par (match_id, xuid).
 	"match_flag_grabs_net",
+	// match_pad_pickups_by_tier (niveaux d'armes, 2026-09-14) : table append-only NET-NEUVE
+	// (prises de socle par joueur/niveau/arme, lues de l'artefact rangé et croisées à la
+	// référence des emplacements de la carte). Son persister
+	// (internal/persist/pad_tiers_persister.go) n'émet que des INSERT dans une transaction
+	// unique — aucune entrée d'allowlist à prévoir. Remplacer une passe = en écrire une
+	// nouvelle ; la vue match_pad_pickups_by_tier_latest ne rend que la dernière PASSE
+	// ENTIÈRE par match.
+	"match_pad_pickups_by_tier",
 	// kill_positions / match_weapon_hit_distance (G4 du registre v2, enrôlement 2026-09-05) :
 	// les deux dernières tables du film restées HORS des deux listes anti-ART alors qu'elles
 	// sont append-only avec vue _latest depuis leur migration. Vérifié sur pièces avant
