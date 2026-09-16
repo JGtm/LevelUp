@@ -476,7 +476,7 @@ package filmdec
 // dedoublonneur d avertissement de registre.
 //
 // LE VERROU DE PROCESSUS DISPARAIT (famille 5, item 2.3.1) : `LockProcessDecode` et son fichier
-// `decode_gate.go` sont SUPPRIMES, avec les 269 sites d appel qui le prenaient. Son en-tete
+// `decode_gate.go` sont SUPPRIMES, avec les 373 sites d appel (276 fichiers) qui le prenaient. Son en-tete
 // nommait DEUX raisons d exister — l etat de paquet du decodeur de bits, et « la table sans
 // verrou » des largeurs de bouchon ; les quatre familles precedentes ont retire l une (devenue
 // VALEUR du lecteur) et l autre (devenue CHAMP de l observation). Un verrou prive de ses deux
