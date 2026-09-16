@@ -3824,6 +3824,16 @@ Preuve par famille : `replay-equiv` zéro différence ; ratchet descendu ; mutat
 
 - [ ] 2.3.1 Suppression des globales restantes, des `install` / `restore`, de la double écriture
       (kill-switch retiré à sa date cible), de `LockProcessDecode` et de `decode_gate.go`.
+      **CONDITION AJOUTÉE LE 2026-09-17 (D1 (2.2), pilote)** : la calibration de `killsource`
+      (descripteur de traversée et largeur d'axe absolue, 17/2, 16/2, 17/1 selon le film, 14/1
+      par défaut) FUIT aujourd'hui vers `replay.BuildFromFilm` par l'état du processus —
+      `killsource.Decode` calibre et ne restaure pas, `replaybuild.BuildBytes` enchaîne dans le
+      même processus (`filmdec/profil_herite.go`, kill-switch daté). L'héritage PAR L'ÉTAT n'est
+      pas voulu ; les largeurs CALIBRÉES SUR LE FILM le sont (la grammaire mesurée prime sur le
+      défaut). Retirer la globale sans porter la calibration changerait chaque i0 de la cuisson :
+      2.3.1 porte donc le résultat de la calibration EXPLICITEMENT dans le profil du contexte
+      (calibration -> `Profile` -> `BuildFromFilm`), et le prouve par `replay-equiv` à zéro
+      différence. Le kill-switch `profil_herite.go` se retire dans le même commit.
 - [ ] 2.3.2 Ratchets : `filmdec_package_vars_test.go` gelé à 0 variable mutable (les `const`
       restent) ; `decode_lock_held_test.go` INVERSÉ (toute prise de verrou est interdite) ;
       `no_recomputed_film_context_test.go` inchangé.
