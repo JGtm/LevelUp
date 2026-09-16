@@ -23,6 +23,6 @@ package filmdec
 
 // spawn-filter-weight-component (FUN_142ed70b8 -> FUN_1406d84b4 width 0x10): quantized float,
 // 16 bits consumed (dequant bounds are globals that don't change the bit count).
-func consumeSpawnFilterWeight(br *BitReader) {
+func consumeSpawnFilterWeight(br *Lecteur) {
 	br.ReadBits(16)
 }

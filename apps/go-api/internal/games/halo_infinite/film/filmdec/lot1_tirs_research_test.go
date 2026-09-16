@@ -146,7 +146,7 @@ func TestLot1TirsEtCibles(t *testing.T) {
 				continue
 			}
 			paquets++
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(2) // config + continuation
 			if br.ReadBits(7) != 36 {
 				mauvaisType++
@@ -189,7 +189,7 @@ func TestLot1TirsEtCibles(t *testing.T) {
 			// tout champ categoriel). Un champ categoriel (l'arme) rend PEU de distinctes
 			// avec forte repetition ; le bruit en rend presque autant que d'evenements.
 			if 300+32 <= len(pay)*8 {
-				cb := NewBitReader(pay)
+				cb := LecteurSur(pay)
 				cb.Skip(300)
 				armesFaux[cb.ReadBits(32)]++
 			}
@@ -245,7 +245,7 @@ func TestLot1TirsEtCibles(t *testing.T) {
 			// logique que l'arme (le vecteur unitaire, lui, est non discriminant a 30 bits).
 			viseeCodes[aimCode]++
 			if p := aimPos + 7; p+30 <= len(pay)*8 {
-				cb := NewBitReader(pay)
+				cb := LecteurSur(pay)
 				cb.Skip(p)
 				viseeFaux[cb.ReadBits(30)]++
 			}
@@ -342,7 +342,7 @@ func TestLot1Vehicules(t *testing.T) {
 				if !ok {
 					continue
 				}
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.Skip(2) // config + continuation
 				if int(br.ReadBits(7)) != v.typ {
 					continue
@@ -393,7 +393,7 @@ func TestLot1Vehicules(t *testing.T) {
 // FUN_140c9eabc [g0=R(1) ; si 1 : tag=R(2) ; tag 1 : R(32)+[R(1);si1:R(6)] · tag 2 : R(32)]
 // puis si A : R(4)+R(4) ; R(3) drapeaux ; si (drapeaux&2) : g=R(1) ; si g==0 : R(20)+R(14) ;
 // enfin si A : C=R(1) ; si C : R(5).
-func lot1SkipCd5b8(br *BitReader) {
+func lot1SkipCd5b8(br *Lecteur) {
 	a := br.ReadBit()
 	b := br.ReadBit()
 	if b {
@@ -428,7 +428,7 @@ func lot1SkipCd5b8(br *BitReader) {
 // lot1SkipEff64 consomme les bits du lecteur composite B (FUN_1408eff64) du type 36, en
 // mode film (p5==0). main=R(1) ; si main : tag=R(2) ; tag 1 : R(32)+[R(1);si1:R(6)] ·
 // tag 2 : R(32). Grammaire du workflow, confirmee decompile + desassemblage.
-func lot1SkipEff64(br *BitReader) {
+func lot1SkipEff64(br *Lecteur) {
 	if br.ReadBit() { // main
 		switch br.ReadBits(2) { // tag
 		case 1:

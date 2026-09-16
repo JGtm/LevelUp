@@ -9,7 +9,7 @@ package archlint
 // de ce fichier — les chemins, les noms de fonctions interdites et les extraits de grammaire
 // abondent dans les COMMENTAIRES et les chroniques du decodeur, et un grep les compterait tous.
 // `replay/fallback/registre_killsource.go` en est la preuve vivante : il cite
-// `"func evBody(r *evReader"` dans une CHAINE, et ce balayage ne le compte pas.
+// `"func evBody(r *curseurEv"` dans une CHAINE, et ce balayage ne le compte pas.
 
 import (
 	"go/ast"

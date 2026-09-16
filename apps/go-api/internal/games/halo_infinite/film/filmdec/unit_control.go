@@ -14,7 +14,7 @@ package filmdec
 
 // consumeUnitControl: R(1) g1; if g1 { R(5); R(1) f; if f R(6) }; then R(1) g2;
 // if g2 R(32). (Tail FUN_14080d69c runs in both branches.)
-func consumeUnitControl(br *BitReader) {
+func consumeUnitControl(br *Lecteur) {
 	if br.ReadBit() { // FUN_1406cf008 gate
 		br.ReadBits(5) // field1 (validity-checked <=0x20)
 		if br.ReadBit() {
@@ -45,7 +45,7 @@ func consumeUnitControl(br *BitReader) {
 // recordStateParam (param_4 = R9D) is the actor-tick/weapon-set count supplied by
 // the component loop; it ONLY gates the optional second slot id at the tail
 // (1408f094d: CMP ESI,2 / JC). All other reads are unconditional or self-gated.
-func consumeUnitActorControl(br *BitReader, recordStateParam uint32) {
+func consumeUnitActorControl(br *Lecteur, recordStateParam uint32) {
 	sel := uint32(br.ReadBits(3))
 	if sel == 1 {
 		return
@@ -81,7 +81,7 @@ func consumeUnitActorControl(br *BitReader, recordStateParam uint32) {
 //
 // Widths are loop-invariant stack constants set by the FUN_1408f0778 call site
 // (0x13 and 0xa); they are NOT parameters of this sub-reader's first read path.
-func consume14076d528(br *BitReader) {
+func consume14076d528(br *Lecteur) {
 	if !br.ReadBit() { // gate==0 -> read
 		br.ReadBits(19) // FUN_1406d8288 packed dir (width [rsp+0x30]=0x13)
 		br.ReadBits(10) // FUN_14076d6dc magnitude (width [rsp+0x28]=0xa)
@@ -110,7 +110,7 @@ func consume14076d528(br *BitReader) {
 // bytes [0]/[2] from FUN_1431ab1ec, [4]/[5] from FUN_1431ab1cc), NOT
 // unconditional. recordStateParam is irrelevant here (the tail's param_3 const
 // is hard-coded 0 at the call site 1406d05f, see consume142f26740).
-func consume1406d025c(br *BitReader) {
+func consume1406d025c(br *Lecteur) {
 	if !br.ReadBit() { // gate==0 -> early return (FUN_1406cf008)
 		return
 	}
@@ -151,11 +151,11 @@ func consume1406d025c(br *BitReader) {
 
 // consumeOpt1431a0bbc mirrors FUN_1431a0bbc: R(1) gate; if set R(8).
 // CONFIRMED by decompile (refill test "0x40-x < 8", shift 0x38, *(p+0x2c)+=8).
-func consumeOpt1431a0bbc(br *BitReader) { consumeGateR(br, 8) }
+func consumeOpt1431a0bbc(br *Lecteur) { consumeGateR(br, 8) }
 
 // consumeOpt1431a0abc mirrors FUN_1431a0abc: R(1) gate; if set R(10).
 // CONFIRMED by decompile (refill test "0x40-x < 10", shift 0x36, *(p+0x2c)+=10).
-func consumeOpt1431a0abc(br *BitReader) { consumeGateR(br, 10) }
+func consumeOpt1431a0abc(br *Lecteur) { consumeGateR(br, 10) }
 
 // consume142f26740 mirrors the orientation-block tail FUN_142f26740, a one-line
 // thunk that tail-calls FUN_140c9e4d8(struct+0x28, br, /*param_3=*/0). Ported from
@@ -174,7 +174,7 @@ func consumeOpt1431a0abc(br *BitReader) { consumeGateR(br, 10) }
 // FUN_140c9e738 runs iff (f0==1) OR (f0==0 && f1==1). recordState param_3 is the
 // hard-coded 0 from the call site, so FUN_140c9e738 uses the non-"==1" widths
 // (uVar1=0xf=15, uVar2=7), NOT (0x14/0xe).
-func consume142f26740(br *BitReader) {
+func consume142f26740(br *Lecteur) {
 	if !br.ReadBit() { // FUN_1406cf008 gate; bit==0 -> no body
 		return
 	}
@@ -207,7 +207,7 @@ const dequant140c9e4d8Width = 4
 // FUN_1406d3140 is called with param_3 != 1 here (no probe bit). Its range is the
 // default DAT_144706100 = 0x1FFF -> W = bitLen(0x1FFF) = 13, plus the 2 trailing
 // bits, total 15. (Same primitive as readVarWidthInt(br, 0x1FFF, false).)
-func consume140c9e990(br *BitReader) {
+func consume140c9e990(br *Lecteur) {
 	mode := br.ReadBits(2) // FUN_1407f0278 = R(2)
 	switch mode {
 	case 1:
@@ -227,7 +227,7 @@ func consume140c9e990(br *BitReader) {
 //	if bit==0: R(widthDir) packed dir + R(widthMag) magnitude.
 //	  param_3==1 -> widthDir=0x14(20), widthMag=0xe(14).
 //	  else (our case, param_3==0) -> widthDir=0xf(15), widthMag=7.
-func consume140c9e738(br *BitReader, recordStateIsOne bool) {
+func consume140c9e738(br *Lecteur, recordStateIsOne bool) {
 	if br.ReadBit() { // gate==1 -> constant, no read
 		return
 	}
@@ -243,7 +243,7 @@ func consume140c9e738(br *BitReader, recordStateIsOne bool) {
 // index). Delta branch unverified. (Une copie de ce coeur vivait dans `entity.go` sous le
 // nom `decodeQuatBlock` ; ce fichier a ete supprime le 2026-09-05, lot E, item E.2 : il
 // portait deux decodeurs de record sans appelant. Celui-ci est le seul restant.)
-func consumeQuatBlock1431a0cbc(br *BitReader) {
+func consumeQuatBlock1431a0cbc(br *Lecteur) {
 	if br.ReadBit() {
 		return
 	}
@@ -262,7 +262,7 @@ func consumeQuatBlock1431a0cbc(br *BitReader) {
 //	R(W(param_4)) selected from table {(>=4)->12,(3)->11,(2)->10,(1)->8, def 0xc}.
 //	R(bitLen(10)=4).
 //	FUN_14058c058 (per-aiming-slot loop, 5 iterations — see consume14058c058).
-func consumeUnitActorState(br *BitReader, recordStateParam uint32) {
+func consumeUnitActorState(br *Lecteur, recordStateParam uint32) {
 	br.ReadBits(32) // FUN_14058c110 [0]
 	br.ReadBits(32) // FUN_14058c110 [1]
 	br.ReadBits(actorStateWidth(recordStateParam))
@@ -305,7 +305,7 @@ func actorStateWidth(p uint32) uint {
 // aiming dequants are R(10) (not R(12)); the b!=0 path also calls FUN_1408f0ac4
 // (param_3=0, no probe) before merging. Quat width confirmed 16 by the R8D=0x10
 // arg at the FUN_14076e494 call site.
-func consume14058c058(br *BitReader) {
+func consume14058c058(br *Lecteur) {
 	for i := 0; i < 5; i++ {
 		if !br.ReadBit() { // present
 			continue
@@ -337,7 +337,7 @@ func consume14058c058(br *BitReader) {
 
 // consume141d0f344 mirrors FUN_141d0f344 = unconditional R(32) (*(param_1+0x2c)+=0x20).
 // CONFIRMED by decompile: it is a flat 32-bit read, NOT a gated single bit.
-func consume141d0f344(br *BitReader) {
+func consume141d0f344(br *Lecteur) {
 	at := br.BitPos()
 	v := br.ReadBits(32)
 	br.obs.publishUnitRef(UnitRefRead{
@@ -348,7 +348,7 @@ func consume141d0f344(br *BitReader) {
 
 // consumeQuat16 models FUN_14076e494 16-bit quat: R(16) core (gate/index variants
 // collapse to a 16-bit field in the common exact case).
-func consumeQuat16(br *BitReader) { br.ReadBits(16) }
+func consumeQuat16(br *Lecteur) { br.ReadBits(16) }
 
 // ---------------------------------------------------------------------------
 // i21 unit-desired-aiming-vector  (deser FUN_14076df7c)
@@ -360,7 +360,7 @@ func consumeQuat16(br *BitReader) { br.ReadBits(16) }
 //	FUN_14076e0ec = R(12)+R(11) = 23 bits (2-component dir + magnitude).
 //	R(1) flag1.
 //	if flag0==0: FUN_14076e0ec (23 bits) + R(1).
-func consumeUnitDesiredAimingVector(br *BitReader) {
+func consumeUnitDesiredAimingVector(br *Lecteur) {
 	flag0 := br.ReadBit() // comp+0x724 bit0
 	consume14076e0ec(br)
 	br.ReadBit() // comp+0x724 bit1
@@ -372,7 +372,7 @@ func consumeUnitDesiredAimingVector(br *BitReader) {
 
 // consume14076e0ec mirrors FUN_14076e0ec: FUN_1406d84b4 R(12) + FUN_1406d84b4 R(11)
 // [+ FUN_14052e810 math, 0 bits].
-func consume14076e0ec(br *BitReader) {
+func consume14076e0ec(br *Lecteur) {
 	br.ReadBits(12) // dequant width 0xc
 	br.ReadBits(11) // dequant width 0xb
 }

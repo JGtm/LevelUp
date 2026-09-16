@@ -393,15 +393,18 @@ var sitesZlibAutorises = map[string]string{
 	"internal/analysis/highlight_event_parser.go": "Parseur autonome du fil des morts, appele " +
 		"sur des blobs BRUTS ou zlib (sync/collect.go, engine_highlight_events.go, " +
 		"convergence_backfill_events.go) : sa double tolerance date de l'incident du 2026-05-22.",
-	"internal/sync/haloclient/halo_client_http.go": "Validation d'un chunk AU TELECHARGEMENT, " +
-		"avant tout stockage : ce n'est pas un decodage de film.",
-	"cmd/replay-worker/job.go": "Meme validation au telechargement, cote ouvrier.",
 	"internal/hinavmesh/conteneur.go": "AUTRE DOMAINE (conteneurs de navmesh du jeu), " +
 		"aucun rapport avec les chunks de film.",
-	"cmd/fetch_film_chunks/main.go":    "Outil de RECHERCHE : telecharge et inspecte des chunks.",
-	"cmd/diag_weapons_v3/positions.go": "Outil de DIAGNOSTIC des armes v3.",
-	"cmd/rdata_weapon_scan/main.go":    "Outil de RECHERCHE (balayage de rdata).",
 }
+
+// CINQ ENTREES SONT TOMBEES LE 2026-09-18 (lot 2.4.2) : `sync/haloclient/halo_client_http.go`,
+// `cmd/replay-worker/job.go`, `cmd/fetch_film_chunks/main.go`, `cmd/diag_weapons_v3/positions.go`
+// et `cmd/rdata_weapon_scan/main.go` n importent plus `compress/zlib` du tout. Il n y a plus
+// qu UN decompresseur dans le depot, dans la couche source, en deux contrats ECRITS —
+// `filmsource.Inflate` (tolerant : un chunk peut etre deja clair) et `filmsource.Decompresser`
+// (strict : un telechargement CDN qui n est pas du zlib est un incident de transport). Le
+// ratchet `no_raw_film_bytes_outside_source_test.go` interdit desormais `compress/zlib` dans
+// toutes les racines du film.
 
 // dossiersIgnoresPourZlib : ce que le balayage du depot ne parse pas.
 var dossiersIgnoresPourZlib = map[string]bool{

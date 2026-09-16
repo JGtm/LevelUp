@@ -106,7 +106,7 @@ func (c *chainCount) packet(pk FilmPacket, data []byte) {
 		c.world = WorldFromKeyframe(c.reg, pay)
 	case PacketTypeDelta:
 		c.frames++
-		recs, err := DecodeFrameRecords(NewBitReader(pay), c.world, DefaultFrameConfig())
+		recs, err := DecodeFrameRecords(LecteurSur(pay), c.world, DefaultFrameConfig())
 		if err != nil {
 			c.desyncFrames++
 		} else {

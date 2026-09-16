@@ -34,7 +34,7 @@ func v6FrameScore(pay []byte, S int, w *World, cfg FrameConfig) (walked int, cle
 	}
 	snap := w.Snapshot()
 	defer w.Restore(snap)
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(S)
 	recs, err := DecodeFrameRecords(br, w, cfg)
 	for i := range recs {
@@ -66,7 +66,7 @@ func v6Depth(pay []byte, S int, w *World, cfg FrameConfig) int {
 	}
 	snap := w.Snapshot()
 	defer w.Restore(snap)
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(S)
 	recs, _ := DecodeFrameRecords(br, w, cfg)
 	d := 0

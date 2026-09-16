@@ -288,7 +288,7 @@ func (w *managedPropertyWalk) walk(pay []byte, rec WorldObjectRecord, ts uint64,
 		if name == "" || at > total {
 			return at, false
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.PoserContexte(w.contexte())
 		br.SetBitPos(at)
 		w.got = false

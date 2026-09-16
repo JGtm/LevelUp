@@ -196,7 +196,7 @@ func TestControleParLeKillFeedNeCorrigeJamais(t *testing.T) {
 // rejeu. La cause premiere est bien la troncature ; le diagnostic, lui, nomme ce qui a echoue.
 func TestRefusDeTableNommeEtRepliComplet(t *testing.T) {
 	f := chargerBobine(t, miniBobineDir)
-	sain := f.chunks[0]
+	sain := f.src.Chunk(0)
 	cas := []struct {
 		nom     string
 		chunk0  []byte
@@ -209,7 +209,13 @@ func TestRefusDeTableNommeEtRepliComplet(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			mute := &film{chunks: [][]byte{c.chunk0}}
+			// Le film mute passe par la SOURCE, comme le film reel : `filmsource.MemoryChunks`
+			// est l implantation en memoire de la porte aux octets (lot 2.4.2).
+			src, err := filmsource.Load(filmsource.MemoryChunks{c.chunk0}, nil)
+			if err != nil {
+				t.Fatalf("chargement du chunk mute : %v", err)
+			}
+			mute := &film{src: src}
 			var tab FilmTable
 			func() {
 				defer func() {

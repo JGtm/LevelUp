@@ -121,7 +121,7 @@ func e191cUnRecord(pay []byte, reg *Registry, b keyframeBorne, m *e191cEtatMesur
 // consomme sur ce record : la difference entre les deux marches, l une avec l etat par defaut,
 // l autre avec un decalage nul a sa place.
 func e191cLargeurPortee(pay []byte, reg *Registry, bit int) int {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.SetBitPos(bit + keyframeFullStateHeaderBits)
 	ti := uint32(kfReadBits(pay, bit+keyframeRecordTIBit, 6)) //nolint:gosec // 6 bits
 	avant := br.BitPos()

@@ -336,7 +336,7 @@ func duelsRecensementC0(t *testing.T, dir string) {
 				continue
 			}
 			c0++
-			br := filmdec.NewBitReader(pay)
+			br := filmdec.LecteurSur(pay)
 			br.Skip(2)
 			parType[br.ReadBits(7)]++
 		}

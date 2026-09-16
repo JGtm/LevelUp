@@ -6,7 +6,7 @@ package filmdec
 // Each consume<Name> mirrors the component's deserializer in HaloInfinite.exe.
 // The component loop FUN_14076cb60 gates every component by the presence mask
 // (FUN_1406d7610); when a component's mask bit is set, its deser (vtable+0x30)
-// is invoked with the BitReader as param_2. These functions consume EXACTLY the
+// is invoked with the Lecteur as param_2. These functions consume EXACTLY the
 // bits that deser consumes, so the spine stays byte-aligned up to i43..46.
 //
 // Reader-primitive cross-reference (all MSB-first, big-endian accumulator):
@@ -40,13 +40,13 @@ package filmdec
 //	R(1) gate (cVar5)
 //	if gate == 0: R(19)   (0x13: packed forward+up direction index)
 //	R(8)                  (always: trailing magnitude/roll word)
-func consumeObjectForwardAndUp(br *BitReader) { _, _ = decodeObjectForwardAndUp(br) }
+func consumeObjectForwardAndUp(br *Lecteur) { _, _ = decodeObjectForwardAndUp(br) }
 
 // decodeObjectForwardAndUp lit EXACTEMENT les mêmes bits que consumeObjectForwardAndUp et
 // rend la direction packée quand elle est présente (gate == 0). Même contrat que
 // decodeObjectBodyVitality : la grammaire ne vit qu'ici, le sauteur de bits n'en est que
 // la façade.
-func decodeObjectForwardAndUp(br *BitReader) (dir uint32, has bool) {
+func decodeObjectForwardAndUp(br *Lecteur) (dir uint32, has bool) {
 	gate := br.ReadBit() // FUN_140c5fa84 leading R(1)
 	if !gate {
 		dir = uint32(br.ReadBits(19)) // 0x13 packed direction
@@ -63,7 +63,7 @@ func decodeObjectForwardAndUp(br *BitReader) (dir uint32, has bool) {
 //
 // La GRAMMAIRE vit dans decodeObjectBodyVitality (vitality.go) : ce sauteur de bits n'en
 // est que la façade « sans valeur », pour ne pas avoir deux copies qui divergent.
-func consumeObjectBodyVitality(br *BitReader) {
+func consumeObjectBodyVitality(br *Lecteur) {
 	_ = decodeObjectBodyVitality(br)
 }
 
@@ -90,7 +90,7 @@ func consumeObjectBodyVitality(br *BitReader) {
 //
 // La GRAMMAIRE vit dans decodeObjectShieldVitality (vitality.go) : ce sauteur de bits n'en
 // est que la façade « sans valeur », pour ne pas avoir deux copies qui divergent.
-func consumeObjectShieldVitality(br *BitReader) {
+func consumeObjectShieldVitality(br *Lecteur) {
 	_ = decodeObjectShieldVitality(br)
 }
 
@@ -108,7 +108,7 @@ func consumeObjectShieldVitality(br *BitReader) {
 // Use consumeObjectDeadStateBiped for archetype #35; consumeObjectDeadState
 // (R(1)-only) is correct ONLY for archetypes whose typeIndex is neither 0x23
 // nor 0x28.
-func consumeObjectDeadState(br *BitReader) (mort bool) {
+func consumeObjectDeadState(br *Lecteur) (mort bool) {
 	return br.ReadBit() // comp+0x70 (non-0x23/0x28 archetypes)
 }
 
@@ -174,7 +174,7 @@ const deadStatePreSkip = 0
 // consumeObjectDeadStateBipedTI est la forme lourde parametree par le typeIndex :
 // FUN_140c1dce0 lit [R(1) Mort] puis, si typeIndex vaut 0x23 (35) OU 0x28 (40), le corps
 // FUN_140c1dd44 ; le R(1) de queue (comp+0xc4) n'est lu que si typeIndex == 0x23.
-func consumeObjectDeadStateBipedTI(br *BitReader, typeIndex uint32) DeadState {
+func consumeObjectDeadStateBipedTI(br *Lecteur, typeIndex uint32) DeadState {
 	ds := DeadState{GlobalID: 0xFFFFFFFF, EnumA: -1, EnumB: -1, Val14: 0, Val18: -1, SrcTag0: 0xFFFFFFFF, SrcTag4c: 0xFFFFFFFF}
 	if deadStatePreSkip != 0 {
 		br.Skip(deadStatePreSkip)
@@ -239,7 +239,7 @@ func consumeObjectDeadStateBipedTI(br *BitReader, typeIndex uint32) DeadState {
 // Plasma=3,Hardlight=4,Shock=5,Power=6,Melee) and NO killbreakdown category
 // (weapon/grenade/melee/other). The damage class is resolved at REPLAY from the
 // DamageReport pipeline (param_3, FUN_1407e00ac), not stored per-kill in the film.
-func consumeDeadStateAnimBlock(br *BitReader, ds *DeadState) {
+func consumeDeadStateAnimBlock(br *Lecteur, ds *DeadState) {
 	// anim handle (comp+0x00) — srcTag#1 (captured; same tag space as firearm family)
 	if br.ReadBit() { // FUN_14080d69c
 		ds.SrcTag0 = uint32(br.ReadBits(32))
@@ -310,7 +310,7 @@ const deadStateVelocityPresent = false
 
 // readOpt5Signed mirrors FUN_1407f2058: R(1) present bit; if CLEAR -> R(5) payload
 // (returned as a non-negative value); if SET -> -1 sentinel (no payload).
-func readOpt5Signed(br *BitReader) int32 {
+func readOpt5Signed(br *Lecteur) int32 {
 	if !br.ReadBit() {
 		return int32(br.ReadBits(5))
 	}
@@ -319,7 +319,7 @@ func readOpt5Signed(br *BitReader) int32 {
 
 // readOpt6Signed mirrors FUN_1406d1024: R(1) present bit; if CLEAR -> R(6) payload;
 // if SET -> -1 sentinel (no payload).
-func readOpt6Signed(br *BitReader) int8 {
+func readOpt6Signed(br *Lecteur) int8 {
 	if !br.ReadBit() {
 		return int8(br.ReadBits(6))
 	}
@@ -334,7 +334,7 @@ func (o *Observation) publishHeldWeapon(idHigh, idLow *uint32) {
 	o.HeldWeaponHook(*idHigh, *idLow)
 }
 
-func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32) {
+func consumeWeaponStateTypeInfoVariant(br *Lecteur) (variant uint32) {
 	idHigh := noVariant
 	defer br.obs.publishHeldWeapon(&idHigh, &variant)
 	if !br.ReadBit() { // FUN_14080d69c gate
@@ -357,7 +357,7 @@ func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32) {
 }
 
 // consumeWeaponStateTail mirrors the unconditional tail of FUN_1407f06bc.
-func consumeWeaponStateTail(br *BitReader) {
+func consumeWeaponStateTail(br *Lecteur) {
 	if br.ReadBit() { // FUN_1407f08bc gate
 		br.ReadBits(8)
 	}
@@ -368,14 +368,14 @@ func consumeWeaponStateTail(br *BitReader) {
 }
 
 // consumeOpt2 mirrors FUN_1406d00ec: R(1); if 0 -> R(2), else absent.
-func consumeOpt2(br *BitReader) {
+func consumeOpt2(br *Lecteur) {
 	if !br.ReadBit() {
 		br.ReadBits(2)
 	}
 }
 
 // consumeOpt5 mirrors FUN_1407f2058: R(1); if 0 -> R(5), else absent.
-func consumeOpt5(br *BitReader) {
+func consumeOpt5(br *Lecteur) {
 	if !br.ReadBit() {
 		br.ReadBits(5)
 	}
@@ -387,7 +387,7 @@ func consumeOpt5(br *BitReader) {
 
 // consumeVarWidthMinus1 mirrors the FUN_140e9fadc / FUN_1406d0f20 family:
 // an unconditional R(width) read whose value is returned minus 1.
-func consumeVarWidthMinus1(br *BitReader, width uint) {
+func consumeVarWidthMinus1(br *Lecteur, width uint) {
 	br.ReadBits(width)
 }
 
@@ -396,7 +396,7 @@ func consumeVarWidthMinus1(br *BitReader, width uint) {
 // FUN_1407ef804 is R(1)+[payload]; the bit-cost is data-shaped. Modeled here as
 // the confirmed R(1) gate; re-validate against a record where the optional shot
 // id is present.
-func consumeShotID(br *BitReader) {
+func consumeShotID(br *Lecteur) {
 	// CORRIGÉ (workflow RE 2026-06-10, FUN_141001f50) : shot-id = R(4)+R(6) = 10 bits (était R(1)).
 	br.ReadBits(4)
 	br.ReadBits(6)
@@ -407,7 +407,7 @@ func consumeShotID(br *BitReader) {
 //	R(1) gate
 //	if 0: FUN_14080d69c (R(1)+[R(32)])
 //	if 1: R(4) count (FUN_1424e1d48), then count x (R(1)+[R(32)])
-func consumeWeaponMagazineList(br *BitReader) {
+func consumeWeaponMagazineList(br *Lecteur) {
 	if !br.ReadBit() { // gate
 		if br.ReadBit() { // FUN_14080d69c inner gate
 			br.ReadBits(32)

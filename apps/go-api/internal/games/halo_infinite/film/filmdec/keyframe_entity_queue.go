@@ -135,7 +135,7 @@ type KFQWalk struct {
 	CleanNew int
 	// EndBit est la position atteinte, TotalBits la taille du paquet en bits.
 	EndBit, TotalBits int
-	// Overrun dit que la marche a lu AU-DELA de la fin du tampon. Le BitReader rend des
+	// Overrun dit que la marche a lu AU-DELA de la fin du tampon. Le Lecteur rend des
 	// zeros passe la fin (rembourrage de queue du moteur) : une marche qui deborde ne
 	// progresse pas, elle broute du vide. Sans ce drapeau une combinaison absurde gagne le
 	// balayage (mesure du 2026-08-17 sur `0014603f` : 12 317 % de « couverture »).
@@ -182,7 +182,7 @@ func WalkPacketRecordsWithWorld(w *World, pay []byte, v KFQVariant) KFQWalk {
 	cfg.IDLowBits = v.IDLowBits
 	cfg.PacketPreambleBits = v.Preamble
 	cfg.HasExtraFields = v.ExtraFields
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	recs, err := DecodeFrameRecords(br, w, cfg)
 
 	out := KFQWalk{

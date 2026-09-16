@@ -63,7 +63,7 @@ const fwdUpDynPrecMode2Bits = 2 * rawVec3Bits // 0xc0 = 192
 //
 // Les deux corps ont la MÊME sélection de charge utile par `mode` (désassemblage
 // `@0x140c5f947..0x140c5f9b1` et `@0x140c5f8b7..0x140c5f920`), gouvernée par le
-// global de configuration `DAT_145121140` (déjà modélisé par `BitReader.fullPrecision`,
+// global de configuration `DAT_145121140` (déjà modélisé par `Lecteur.fullPrecision`,
 // components_movement.go — faux en retail) :
 //
 //	mode == 2                      : R(96) + R(96)                    (192 bits)
@@ -81,7 +81,7 @@ const fwdUpDynPrecMode2Bits = 2 * rawVec3Bits // 0xc0 = 192
 // S'il l'était, la fonction rend `false` (non porté) plutôt que de consommer une
 // largeur inventée — FUN_142e29bac vaut R(1) ; si 0 -> R(30) ; puis FUN_1406d84b4
 // dont la largeur n'est PAS figée au call-site.
-func consumeObjectForwardAndUpDynPrec(br *BitReader, param uint32) bool {
+func consumeObjectForwardAndUpDynPrec(br *Lecteur, param uint32) bool {
 	_, ok := decodeObjectForwardAndUpDynPrec(br, param)
 	return ok
 }
@@ -100,7 +100,7 @@ type FwdUpDynPrec struct {
 // decodeObjectForwardAndUpDynPrec est le SEUL détenteur de la grammaire d'i2 dyn.-préc. ;
 // les deux sauteurs de bits (dispatch et balayage offline) l'appellent. Rend ok=false
 // quand le chemin config-dépendant non porté est atteint (cf. la limite ci-dessus).
-func decodeObjectForwardAndUpDynPrec(br *BitReader, param uint32) (FwdUpDynPrec, bool) {
+func decodeObjectForwardAndUpDynPrec(br *Lecteur, param uint32) (FwdUpDynPrec, bool) {
 	var out FwdUpDynPrec
 	if br.ReadBit() { // A
 		out.Mode = 2
@@ -140,7 +140,7 @@ func decodeObjectForwardAndUpDynPrec(br *BitReader, param uint32) (FwdUpDynPrec,
 // Les trois chemins convergent sur `JMP 0x14076e828` (g1 == 1 par `@0x14076e8d2`,
 // g2 == 0 par LAB_14076e8cd) : la queue R(1)[+R(4)] est INCONDITIONNELLE.
 // Coût : 2 (g1=1, t=0) à 26 bits (g1=0, g2=0, t=1).
-func decodeFwdUpDynPrecDelta(br *BitReader) (dir uint32, has bool) {
+func decodeFwdUpDynPrecDelta(br *Lecteur) (dir uint32, has bool) {
 	if !br.ReadBit() { // g1
 		if !br.ReadBit() { // g2
 			dir = uint32(br.ReadBits(19)) // 0x13 : direction packée absolue
@@ -168,7 +168,7 @@ func decodeFwdUpDynPrecDelta(br *BitReader) (dir uint32, has bool) {
 //	FUN_1406d8678 : math pure, 0 bit             JMP 0x1406d8678 @0x142e29cf3
 //
 // Coût : 31 bits (g == 1) ou 61 bits (g == 0).
-func consumeFwdUpDynPrecConfig(br *BitReader) {
+func consumeFwdUpDynPrecConfig(br *Lecteur) {
 	if !br.ReadBit() { // g
 		br.ReadBits(30) // 0x1e : direction packée
 	}
@@ -191,6 +191,6 @@ func consumeFwdUpDynPrecConfig(br *BitReader) {
 // le bipède porte `object-angular-velocity-component` -> FUN_140d70998, sans le
 // gate externe. La correction de 2026-07 était juste pour ti=35 et a cassé ti=40,
 // qui est le SEUL archétype du registre à porter la variante dyn.-préc.
-func consumeObjectAngularVelocityDynPrec(br *BitReader) {
+func consumeObjectAngularVelocityDynPrec(br *Lecteur) {
 	consumeObjectAngularVelocity(br)
 }

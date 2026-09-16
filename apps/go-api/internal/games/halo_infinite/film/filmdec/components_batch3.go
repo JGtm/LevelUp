@@ -22,7 +22,7 @@ package filmdec
 // `FUN_142c70d5c` — R(1) de présence, puis R(32) (FUN_1407edaf4), puis R(3) de compte, puis
 // autant d'éléments taggés sur R(3) (FUN_142c70e88). La forme portée depuis le workflow
 // port-ecs-deathchains coïncide ; seule la charge par tag reste issue de ce workflow.
-func consumeObjectiveFormattedText(br *BitReader) {
+func consumeObjectiveFormattedText(br *Lecteur) {
 	if !br.ReadBit() {
 		return
 	}
@@ -52,7 +52,7 @@ func consumeObjectiveFormattedText(br *BitReader) {
 // désormais la valeur qu'il consommait sans la rendre — même grammaire, mêmes bits.)
 
 // equipment-command-tick-component: R(1) flag; if 0: 2x optU8; else: 1x optU8.
-func consumeEquipmentCommandTick(br *BitReader) {
+func consumeEquipmentCommandTick(br *Lecteur) {
 	if !br.ReadBit() {
 		if br.ReadBit() {
 			br.ReadBits(8)
@@ -68,7 +68,7 @@ func consumeEquipmentCommandTick(br *BitReader) {
 }
 
 // statborg-finalized-rounds-values-stat-component: R(32) mask + per set bit 2x{R(1)[if0:varwidth]}.
-func consumeStatborgFinalized(br *BitReader) {
+func consumeStatborgFinalized(br *Lecteur) {
 	mask := uint32(br.ReadBits(32))
 	for i := uint(0); i < 32; i++ {
 		if (mask>>i)&1 != 0 {

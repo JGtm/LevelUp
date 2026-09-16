@@ -99,7 +99,7 @@ func ti11OracleTable(pay []byte, reg *Registry,
 		if r.TI != ti11ArchIndex {
 			continue
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(r.Bit + keyframeRecordTIBit)
 		tr := TraverseEntity(br, reg, 0)
 		if tr.TypeIndex != ti11ArchIndex || tr.DesyncAt >= 0 || tr.Mask>>ti11Composants != 0 {
@@ -230,7 +230,7 @@ func ti11CalibPayload(pay []byte, reg *Registry, un, unC, plus, plusC *int) {
 		if r.TI != ti11ArchIndex {
 			continue
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(r.Bit + keyframeRecordTIBit)
 		tr := TraverseEntity(br, reg, 0)
 		if tr.TypeIndex != ti11ArchIndex || tr.DesyncAt >= 0 || tr.Mask>>ti11Composants != 0 {

@@ -21,8 +21,8 @@ package killsource
 //
 // # LE CHUNK 0 EST LE PREMIER DE LA SOURCE, PAS « LE CHUNK NUMERO 0 »
 //
-// `f.chunks` est indexe par POSITION dans la source, exactement comme l ancien `ChunkSource` :
-// `f.chunks[0]` est le PREMIER chunk que la source donne, et c est lui que `newTimeline`
+// `f.src` est indexe par POSITION dans la source, exactement comme l ancien `ChunkSource` :
+// `f.src.Chunk(0)` est le PREMIER chunk que la source donne, et c est lui que `newTimeline`
 // (world.go) lit comme registre ECS. Sur un cache complet ou sur une sequence telechargee, la
 // position 0 porte bien `chunk_00`, le registre ; sur une bobine partielle qui commence a
 // `chunk_01`, elle porte un chunk de donnees — et c etait DEJA le cas avant. Le contrat est donc
@@ -58,7 +58,10 @@ const packetTypeChunkEnd = 7
 
 // film : les octets d un film, deja decompresses, prets a decoder.
 type film struct {
-	chunks  [][]byte // par POSITION de chunk dans la source, decompresses
+	// src : LE FILM CHARGE, et la SEULE porte aux octets de ce paquet (lot 2.4.2, ADR 0034
+	// D-2). Jusque-la ce champ etait un `chunks [][]byte` — une COPIE de la tranche de chunks
+	// du film, indexee a la main partout ou un chunk etait lu.
+	src     *filmsource.Film
 	packets []packet
 	t0      []packet // paquets type-0, tries par horodatage
 	tsBase  uint64
@@ -79,17 +82,13 @@ func loadFilm(src *filmsource.Film) (*film, error) {
 	if src == nil || src.NumChunks() == 0 {
 		return nil, ErrNoChunk
 	}
-	n := src.NumChunks()
-	f := &film{chunks: make([][]byte, n), packets: packetsOf(src)}
+	f := &film{src: src, packets: packetsOf(src)}
 	// LA VERSION VIENT DU PROFIL DU FILM DEPUIS LE LOT 2.1.4 : `filmdec.HighlightProfileOfFilm`
 	// porte la MEME valeur que `FilmMajorVersion` — c est la meme lecture — mais elle la rend
 	// avec le NOM de l implantation qu elle selectionne, et c est le profil qui en est
 	// desormais la source unique (item 2.1.4 du PLAN_DECODEUR_FILM).
 	hl := filmdec.HighlightProfileOfFilm(src)
 	f.majorVersion, f.versionLue = hl.MajorVersion, hl.Lue
-	for ch := 0; ch < n; ch++ {
-		f.chunks[ch] = src.Chunk(ch)
-	}
 	for i := range f.packets {
 		if f.packets[i].typ == packetType0 {
 			f.t0 = append(f.t0, f.packets[i])
@@ -136,34 +135,10 @@ func packetsOf(src *filmsource.Film) []packet {
 func (f *film) ms(p *packet) int { return int((p.ts - f.tsBase) / 1000) }
 
 // hasEvents : le paquet porte-t-il une liste d evenements ? Le bit 1 du payload le dit.
-func hasEvents(p *packet) bool { return bitAt(p.payload, 1) != 0 }
-
-// bitAt : lecture MSB-first d un bit. Hors tampon = 0, comme le lecteur de bits du moteur.
-func bitAt(d []byte, p int) int {
-	if p < 0 || p>>3 >= len(d) {
-		return 0
-	}
-	return int(d[p>>3]>>uint(7-(p&7))) & 1
-}
-
-// bits32 : lecture MSB-first de 32 bits a la position `p`.
-func bits32(d []byte, p int) uint32 {
-	i, sh := p>>3, uint(p&7)
-	var v uint64
-	for k := 0; k < 5; k++ {
-		v <<= 8
-		if i+k < len(d) {
-			v |= uint64(d[i+k])
-		}
-	}
-	return uint32(v >> (8 - sh))
-}
-
-// bitsN : lecture MSB-first de n bits (n <= 8) a la position `p`.
-func bitsN(d []byte, p, n int) int {
-	v := 0
-	for k := 0; k < n; k++ {
-		v = v<<1 | bitAt(d, p+k)
-	}
-	return v
-}
+//
+// LES TROIS PRIMITIVES DE POSITION DU PAQUET ONT DISPARU AU LOT 2.4.1 (`bitAt`, `bits32`,
+// `bitsN`) : elles formaient, avec `evReader` et `bitsWide`, le deuxieme des sept lecteurs de
+// bits du depot. Les 23 sites qui les appelaient passent par les primitives de la couche source
+// ([filmsource.BitAt], [filmsource.BitsAt]), dont l equivalence bit a bit est prouvee par
+// `equivalence_lecteur_test.go`.
+func hasEvents(p *packet) bool { return filmsource.BitAt(p.payload, 1) != 0 }

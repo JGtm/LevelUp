@@ -51,10 +51,10 @@ func modalAimBit(pay []byte) (int, bool) {
 
 // modalPostCountsBit avance dans la grammaire Ghidra du record type 36 jusqu'à la position APRÈS
 // les comptes cibles/composantes, pour le seul cas MODAL (0 cible, 0 composante). Rend ok=false
-// si le paquet n'est pas un type 36 modal borné. Le BitReader est borné : les bits hors tampon se
+// si le paquet n'est pas un type 36 modal borné. Le Lecteur est borné : les bits hors tampon se
 // lisent en 0 (pas de panique) ; l'appelant borne la lecture de visée elle-même.
 func modalPostCountsBit(pay []byte) (int, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	// Préambule de 9 bits, lu par le SEUL lecteur du paquet (`readPacketHead`, event_list.go).
 	// La continuation n'est PAS testée ici — comme avant le 2026-09-05 : ce chemin est atteint
 	// derrière un filtre sur l'octet de tête (0xD2), dont le bit 1 vaut 1 par construction.

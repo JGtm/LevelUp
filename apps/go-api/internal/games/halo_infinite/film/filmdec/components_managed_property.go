@@ -145,7 +145,7 @@ func (o *Observation) publishManagedProperty(f ManagedPropertyField, values ...u
 
 // consumeManagedPropertyVariant lit un variant dans le mode demande et publie (tag [, quantum]).
 // C'est le coeur partage, image de `FUN_140ce59bc` puis `FUN_140ce5aa4`.
-func consumeManagedPropertyVariant(br *BitReader, f ManagedPropertyField, modeA bool) {
+func consumeManagedPropertyVariant(br *Lecteur, f ManagedPropertyField, modeA bool) {
 	tag := br.ReadBits(managedPropertyTagBits)
 	n := managedPropertyPayloadBits(int(tag), modeA)
 	if n == 0 {
@@ -167,7 +167,7 @@ func consumeManagedPropertyVariant(br *BitReader, f ManagedPropertyField, modeA 
 // record CHAINE (un en-tete de record valide commence exactement au bit de fin calcule) a 87,0 a
 // 99,3 %, contre 94-97 % pour le meilleur temoin du corpus et 2-3 % pour la bande fantome : la
 // largeur n'est pas une hypothese, le flux la confirme.
-func consumeManagedObjectProperty(br *BitReader) {
+func consumeManagedObjectProperty(br *Lecteur) {
 	consumeManagedPropertyVariant(br, ManagedPropertyScalar, true)
 }
 
@@ -186,7 +186,7 @@ func consumeManagedObjectProperty(br *BitReader) {
 // RESERVE UTILE A L'APPELANT : en Strongholds, le trafic apparent de ces composants est de la
 // CONTAMINATION d'ancrage (0 % de chainage, sous la bande fantome). Ils ne parlent reellement
 // qu'en KOTH sur le corpus mesure.
-func consumeManagedObjectPlayerMaskedProperty(br *BitReader) {
+func consumeManagedObjectPlayerMaskedProperty(br *Lecteur) {
 	consumeManagedPropertyVariant(br, ManagedPropertyPerPlayer, false)
 }
 

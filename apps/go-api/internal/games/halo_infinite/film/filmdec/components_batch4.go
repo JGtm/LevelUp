@@ -11,7 +11,7 @@ package filmdec
 // sont pas décodés et ne sont planifiés nulle part).
 
 // statborg-round-outcomes-component (FUN_142ed71a4): 32x R(2).
-func consumeStatborgRoundOutcomes(br *BitReader) {
+func consumeStatborgRoundOutcomes(br *Lecteur) {
 	for i := 0; i < 32; i++ {
 		br.ReadBits(2)
 	}

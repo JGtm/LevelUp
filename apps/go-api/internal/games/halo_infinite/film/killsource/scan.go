@@ -41,6 +41,8 @@ package killsource
 // exclure ce regime du scan, seulement refuser de melanger les deux dans une mesure.
 
 // deadStateBits : longueur du gabarit balaye, en bits.
+import "levelup/go-api/internal/analysis/filmsource"
+
 const deadStateBits = 58
 
 // candidate : un dead-state i11 accepte par les quatre tests. C est l unite commune aux DEUX
@@ -60,10 +62,10 @@ func scanPayload(pl []byte, nParticipants int) []candidate {
 	var out []candidate
 	nb := len(pl) * 8
 	for p := 0; p+deadStateBits <= nb; p++ {
-		if bitAt(pl, p) == 0 || bitAt(pl, p+1) == 0 { // Mort + gate du tag
+		if filmsource.BitAt(pl, p) == 0 || filmsource.BitAt(pl, p+1) == 0 { // Mort + gate du tag
 			continue
 		}
-		tag := bits32(pl, p+2)
+		tag := uint32(filmsource.BitsAt(pl, p+2, 32))
 		if !isCatalogued(tag) { // T4
 			continue
 		}
@@ -82,21 +84,21 @@ func scanPayload(pl []byte, nParticipants int) []candidate {
 // divergerait en silence, et la sonde cesserait de mesurer ce qu elle croit mesurer.
 func readIndices(pl []byte, p, nParticipants int) (candidate, bool) {
 	q := p + 42
-	if bitAt(pl, q) != 0 { // gate victime
+	if filmsource.BitAt(pl, q) != 0 { // gate victime
 		return candidate{}, false
 	}
-	vic := bitsN(pl, q+1, 5)
+	vic := int(filmsource.BitsAt(pl, q+1, 5))
 	if vic >= nParticipants { // T1
 		return candidate{}, false
 	}
-	if bitAt(pl, q+6) != 0 { // gate tueur
+	if filmsource.BitAt(pl, q+6) != 0 { // gate tueur
 		return candidate{}, false
 	}
-	kil := bitsN(pl, q+7, 5)
+	kil := int(filmsource.BitsAt(pl, q+7, 5))
 	if kil >= nParticipants { // T2
 		return candidate{}, false
 	}
-	cat := bitsN(pl, q+12, 4)
+	cat := int(filmsource.BitsAt(pl, q+12, 4))
 	if cat > 9 { // T3
 		return candidate{}, false
 	}
@@ -183,14 +185,14 @@ func scanRelaxedPayload(pl []byte, nParticipants int) []candidate {
 	var out []candidate
 	nb := len(pl) * 8
 	for p := 0; p+deadStateBits <= nb; p++ {
-		if bitAt(pl, p) == 0 || bitAt(pl, p+1) == 0 {
+		if filmsource.BitAt(pl, p) == 0 || filmsource.BitAt(pl, p+1) == 0 {
 			continue
 		}
 		c, ok := readIndices(pl, p, nParticipants)
 		if !ok {
 			continue
 		}
-		c.tag = bits32(pl, p+2)
+		c.tag = uint32(filmsource.BitsAt(pl, p+2, 32))
 		out = append(out, c)
 	}
 	return out

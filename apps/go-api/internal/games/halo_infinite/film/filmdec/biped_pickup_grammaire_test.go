@@ -56,7 +56,7 @@ type bpkEvent struct {
 
 // bpkDecode consomme UN evenement type 9 a partir d'un lecteur place juste apres le champ de
 // type, puis le bit de fin de liste. La grammaire est celle lue dans l'exe (ci-dessus).
-func bpkDecode(br *BitReader) bpkEvent {
+func bpkDecode(br *Lecteur) bpkEvent {
 	var e bpkEvent
 	e.Ref0, e.Ref0Present = bpkRef(br, 2)
 	_, e.Ref1Present = bpkRef(br, 8)
@@ -158,7 +158,7 @@ func TestBipedPickupGrammaire(t *testing.T) {
 		if typ != bpkTypePickup {
 			return
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.Skip(bpkHeaderBits)
 		e := bpkDecode(br)
 		e.TimestampUS = tsUS
@@ -231,7 +231,7 @@ func TestBipedPickupPlafondEvenement(t *testing.T) {
 			if pay[0] != 0xCA {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(1)
 			if !br.ReadBit() || br.ReadBits(7) != 21 {
 				continue // type 20 (incident) : charge variable, hors controle
@@ -298,7 +298,7 @@ func TestBipedPickupEchecs(t *testing.T) {
 		if typ != bpkTypePickup {
 			return
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.Skip(bpkHeaderBits)
 		e := bpkDecode(br)
 		if e.Suite {
@@ -356,7 +356,7 @@ func TestBipedPickupEchecs(t *testing.T) {
 // ref0, puis soumet le cadrage obtenu a l'oracle. Alimente les compteurs du balayage.
 func bpkEssaieLargeur(f bpkFilm, snap WorldSnapshot, pay []byte, w int, cfg FrameConfig,
 	exact, seuls []int, idx map[uint64]int) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(bpkHeaderBits)
 	if !br.ReadBit() {
 		return // ref0 absente : la largeur ne change rien

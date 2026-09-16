@@ -150,7 +150,7 @@ func gwNewLanding() *gwLanding {
 func (l *gwLanding) record(pay []byte, hdr, mask int) {
 	l.total++
 	for i, c := range l.cands {
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(hdr + woNewHeaderBits)
 		c.fn(br)
 		if br.BitPos()+1 == mask {

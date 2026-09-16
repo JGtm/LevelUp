@@ -124,7 +124,7 @@ func ScanBipedAimRecords(payload []byte, slots SlotBand, ctx ContexteDeLecture) 
 	var out []BipedAim
 	// UN SEUL lecteur de bits pour tout le payload : les composants de vitalite traverses avant
 	// `i21` le repositionnent par `SetBitPos`, la ou ils en allouaient un chacun PAR CANDIDAT.
-	br := NewBitReader(payload)
+	br := LecteurSur(payload)
 	br.PoserContexte(ctx)
 	for p := 0; p+bipedHeaderBits <= total; {
 		at, slot, ok := matchAimOnlyRecord(br, payload, p, total, slots)
@@ -150,7 +150,7 @@ func ScanBipedAimRecords(payload []byte, slots SlotBand, ctx ContexteDeLecture) 
 // La seule difference avec `matchBipedHeaderRaw` est l'ABSENCE de la contrainte « premier index
 // du masque = 0 » ; tout le reste (prefixe, slot, tag == 1, couple de zeros, compteur) est
 // identique, et c'est ce qui rend le plancher de faux positifs mesurable par une bande fantome.
-func matchAimOnlyRecord(br *BitReader, pay []byte, p, total int, slots SlotBand) (int, uint32, bool) {
+func matchAimOnlyRecord(br *Lecteur, pay []byte, p, total int, slots SlotBand) (int, uint32, bool) {
 	if readBitsAt(pay, p, 1) != 1 {
 		return 0, 0, false
 	}
@@ -202,7 +202,7 @@ func ascendingMask(pay []byte, at, count int) ([]int, bool) {
 // ou `i21` commence. Chaque composant est consomme par SON detenteur existant : aucune largeur
 // n'est reecrite ici. Un index non modelise avant `i21` arrete la lecture (le curseur ne serait
 // plus fiable) — c'est la meme regle que `scanRecordDirs`.
-func aimOnlyCursorToI21(br *BitReader, pay []byte, at, total int, idx []int) (int, bool) {
+func aimOnlyCursorToI21(br *Lecteur, pay []byte, at, total int, idx []int) (int, bool) {
 	var d componentDirs
 	var v componentVitals
 	for _, id := range idx {

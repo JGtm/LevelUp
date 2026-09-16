@@ -77,7 +77,7 @@ func r7Marche(pay []byte, ctx r7Ctx) ([]r7Ev, r7Stop, int, int) {
 // Place apres la charge, il attaque exactement ce que ce lot pretend avoir etabli : la
 // LARGEUR des charges. decale=0 est la marche reelle.
 func r7MarcheDecalee(pay []byte, ctx r7Ctx, decale int) ([]r7Ev, r7Stop, int, int) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(1) // bit de configuration
 	var evs []r7Ev
 	for pos := 1; ; pos++ {

@@ -74,7 +74,7 @@ func r7CalibreIDLow(reg *Registry, chunks [][]byte) (int, float64) {
 				if pay[0]&0x40 != 0 {
 					continue // liste non vide : hors calibration
 				}
-				r, _ := DecodeFrameRecords(NewBitReader(pay), wd, cfg)
+				r, _ := DecodeFrameRecords(LecteurSur(pay), wd, cfg)
 				n++
 				recs += len(r)
 			}
@@ -131,7 +131,7 @@ func r7OracleFilm(reg *Registry, chunks [][]byte, ctx r7Ctx, cfg FrameConfig,
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				_, _ = DecodeFrameRecords(NewBitReader(pay), wBase, cfg)
+				_, _ = DecodeFrameRecords(LecteurSur(pay), wBase, cfg)
 			}
 		}
 		snap := wBase.Snapshot()
@@ -164,7 +164,7 @@ func r7Juge(reg *Registry, snap WorldSnapshot, pay []byte, bit int, cfg FrameCon
 	}
 	w := NewWorld(reg)
 	w.Restore(snap)
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(bit)
 	recs, err := DecodeFrameRecords(br, w, cfg)
 	st.paquets++

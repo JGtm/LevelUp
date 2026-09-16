@@ -361,7 +361,7 @@ func ti11MarcheAvecPresence(pay []byte, rec WorldObjectRecord, arch Archetype, t
 		if name == "" || at > total {
 			return at, false
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(at)
 		lire := true
 		if mode != ti11PresAucun {

@@ -164,7 +164,7 @@ func e191bMasqueDUnChunk(data []byte, reg *Registry, neufs, deltas *e191bComptes
 			continue
 		}
 		neufs.Paquets++
-		br := NewBitReader(pk.Payload(data))
+		br := LecteurSur(pk.Payload(data))
 		recs, _ := DecodeFrameRecords(br, w, cfg)
 		neufs.Tous += len(recs)
 		for i := range recs {

@@ -117,7 +117,7 @@ func TestPiedEquipeOctet37(t *testing.T) {
 func TestPiedBlocSepareLesChamps(t *testing.T) {
 	bloc := lirePiedFixture(t)
 	ebs := piedDebutBlocBits(t, bloc)
-	lire := func(octet int) int { return int(readByteAtBit(bloc, ebs+octet*8)) }
+	lire := func(octet int) int { return int(filmsource.OctetAuBit(bloc, ebs+octet*8)) }
 	equipe := lire(footerByteTeam)
 	if equipe != piedAttenduTeam {
 		t.Fatalf("octet %d = %d, attendu %d", footerByteTeam, equipe, piedAttenduTeam)
@@ -295,10 +295,10 @@ func piedDebutBlocBits(t *testing.T, bloc []byte) int {
 	t.Helper()
 	total := len(bloc) * 8
 	for b := 0; b <= total-32; b++ {
-		if readByteAtBit(bloc, b) == 0 && readByteAtBit(bloc, b+8) == 0 &&
-			readByteAtBit(bloc, b+16) == 0x2e && readByteAtBit(bloc, b+24) == 0xe0 {
+		if filmsource.OctetAuBit(bloc, b) == 0 && filmsource.OctetAuBit(bloc, b+8) == 0 &&
+			filmsource.OctetAuBit(bloc, b+16) == 0x2e && filmsource.OctetAuBit(bloc, b+24) == 0xe0 {
 			ebs := b - footerBlockBytes*8
-			if ebs >= 0 && int(readByteAtBit(bloc, ebs+footerByteType*8)) == 10 {
+			if ebs >= 0 && int(filmsource.OctetAuBit(bloc, ebs+footerByteType*8)) == 10 {
 				return ebs
 			}
 		}

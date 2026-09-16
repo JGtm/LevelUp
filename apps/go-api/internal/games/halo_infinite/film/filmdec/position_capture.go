@@ -98,10 +98,10 @@ type captureDePosition struct {
 }
 
 // poserSlotDeCapture fixe le slot cible pour le record courant (appele par les decodeurs).
-func (b *BitReader) poserSlotDeCapture(slot uint32) { b.cap.accumSlot = slot }
+func (b *Lecteur) poserSlotDeCapture(slot uint32) { b.cap.accumSlot = slot }
 
 // emitPos reports a decoded i0 sample to the hook if one is installed.
-func (b *BitReader) emitPos(kind PosKind, v [3]float32) {
+func (b *Lecteur) emitPos(kind PosKind, v [3]float32) {
 	if b.obs != nil && b.obs.PosCaptureHook != nil {
 		b.obs.PosCaptureHook(PositionSample{
 			Kind: kind, Vec: v, BitPos: b.cap.startBit, Slot: b.cap.slot})
@@ -111,7 +111,7 @@ func (b *BitReader) emitPos(kind PosKind, v [3]float32) {
 // seedAbsolute pose une position ABSOLUE fraîche (keyframe / predFlag==1 / fallback) : c'est le
 // point d'ancrage à partir duquel les deltas ultérieurs s'accumulent. Écrit dans le World
 // accumulateur si présent, puis émet.
-func (b *BitReader) seedAbsolute(kind PosKind, v [3]float32) {
+func (b *Lecteur) seedAbsolute(kind PosKind, v [3]float32) {
 	if b.cap.accum != nil {
 		b.cap.accum.SetPos(b.cap.accumSlot, v)
 	}
@@ -121,7 +121,7 @@ func (b *BitReader) seedAbsolute(kind PosKind, v [3]float32) {
 // applyDelta accumule un delta signé (centré-zéro) sur la dernière position résolue du slot.
 // Sans World accumulateur : émet le delta brut (borné, PAS une coordonnée). Avec World mais sans
 // seed préalable : n'émet RIEN (trou attendu — deltas antérieurs à la 1re absolue d'un slot).
-func (b *BitReader) applyDelta(kind PosKind, d [3]float32) {
+func (b *Lecteur) applyDelta(kind PosKind, d [3]float32) {
 	if b.cap.accum == nil {
 		b.emitPos(kind, d)
 		return
@@ -139,7 +139,7 @@ func (b *BitReader) applyDelta(kind PosKind, d [3]float32) {
 // 96 bits lus NE SONT PAS une coordonnée (réutilisation de la baseline, cf FUN_1406cfe44). On
 // ré-émet la position courante résolue du slot (si connue) au lieu du float garbage (fin de
 // l'aberrant ~1e28). Sans World accumulateur : rien à ré-émettre.
-func (b *BitReader) keepBaseline() {
+func (b *Lecteur) keepBaseline() {
 	if b.cap.accum == nil {
 		return
 	}
@@ -158,7 +158,7 @@ func (b *BitReader) keepBaseline() {
 // C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : la range vit dans le PROFIL que le
 // lecteur porte (`Movement.Range`), et l'A/B de sonde se fait en posant un profil sur le
 // lecteur, plus en écrivant dans le processus.
-func (b *BitReader) worldPositionRange() Vec3Range { return b.p.Mouvement.Range }
+func (b *Lecteur) worldPositionRange() Vec3Range { return b.p.Mouvement.Range }
 
 // AbsDequantMode sélectionne la FORME de déquantification d'un axe absolu i0.
 type AbsDequantMode int
@@ -199,9 +199,9 @@ const absDequantMode = AbsDequantRange
 // porte de i25 finit exactement a la fin vraie sur 100.0% de 3 090 records.
 // C'ÉTAIT LA VARIABLE DE PAQUET `absoluteAxisW` (et son réglage public `SetAbsoluteAxisW`)
 // JUSQU'AU LOT 2.2.a : la largeur vient désormais du PROFIL que le lecteur porte
-// ([BitReader.poserMouvement]), et le balayage de calibration de `killsource` la passe par
+// ([Lecteur.poserMouvement]), et le balayage de calibration de `killsource` la passe par
 // `FrameConfig.Mouvement` au lieu de l'écrire dans le processus entier.
-func (b *BitReader) absoluteAxisW() uint { return b.p.Mouvement.AbsoluteAxisW }
+func (b *Lecteur) absoluteAxisW() uint { return b.p.Mouvement.AbsoluteAxisW }
 
 // absAxisW retourne la largeur d'axe effective d'un chemin ABSOLU i0.
 //
@@ -230,7 +230,7 @@ func (b *BitReader) absoluteAxisW() uint { return b.p.Mouvement.AbsoluteAxisW }
 // largeurs le long de chaque branche, et non régler une globale. »
 // (Le descripteur de précision n'entre PAS dans ce choix : la largeur absolue vient soit
 // du réglage global, soit de WorldObjectPrecision — jamais du descripteur de l'appelant.)
-func absAxisW(br *BitReader, i int) uint {
+func absAxisW(br *Lecteur, i int) uint {
 	if w := br.absoluteAxisW(); w > 0 {
 		return w
 	}
@@ -258,7 +258,7 @@ func absAxisW(br *BitReader, i int) uint {
 // `SetAbsPerIndexAxisW`, n avait aucun appelant et est parti au lot E.2. Elle ne portait AUCUNE
 // valeur mesuree, seulement le modele ci-dessus, qui reste donc ecrit ici, a l endroit ou un
 // futur portage viendra le lire. La largeur rendue est celle du chemin uniforme, comme avant.
-func absAxisWFor(br *BitReader, idx, i int) uint {
+func absAxisWFor(br *Lecteur, idx, i int) uint {
 	if i == 0 {
 		br.obs.compterIndexAbsolu(idx)
 	}
@@ -268,7 +268,7 @@ func absAxisWFor(br *BitReader, idx, i int) uint {
 // dequantWorldAxis dequantizes one absolute quantized axis word (width bits). Deux formes :
 //   - AbsDequantRange (défaut) : min + step*(q+0.5) via WorldPositionRange (FUN_140c1e978).
 //   - AbsDequantCenteredQuantum : (q - 2^(bits-1)) * DeltaQuantum — grille fine centrée sur 0.
-func dequantWorldAxis(br *BitReader, q uint64, bits uint, axis int) float32 {
+func dequantWorldAxis(br *Lecteur, q uint64, bits uint, axis int) float32 {
 	if absDequantMode == AbsDequantCenteredQuantum {
 		half := float32(uint64(1) << (bits - 1))
 		return (float32(q) - half) * br.deltaQuantum()
@@ -296,7 +296,7 @@ func signed8(b uint64) int32 {
 // C'EST POURQUOI RIEN N'EST RENDU : la fonction n'existe que pour AVANCER le curseur, et
 // rendre un [3]float32 invitait à lire ces bits comme une coordonnée — ce que le NB
 // ci-dessus interdit. Aucun appelant ne l'a jamais fait.
-func readRawVec3(br *BitReader) {
+func readRawVec3(br *Lecteur) {
 	for i := 0; i < 3; i++ {
 		br.ReadBits(32)
 	}

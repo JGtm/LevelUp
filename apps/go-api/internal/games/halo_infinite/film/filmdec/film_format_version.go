@@ -73,7 +73,6 @@ package filmdec
 // CONTRE la mesure, ce que D13 interdit dans les deux sens.
 
 import (
-	"encoding/binary"
 	"strconv"
 
 	"levelup/go-api/internal/analysis/filmsource"
@@ -96,7 +95,7 @@ func FilmFormatVersionFromHeader(chunk0 []byte) (int, bool) {
 	if len(chunk0) < filmFormatVersionOffset+4 {
 		return FilmFormatVersionUnknown, false
 	}
-	return int(binary.LittleEndian.Uint32(chunk0[filmFormatVersionOffset:])), true
+	return int(filmsource.U32LE(chunk0, filmFormatVersionOffset)), true
 }
 
 // FilmFormatVersion rend la version de format d un film DEJA CHARGE, lue dans son registre.

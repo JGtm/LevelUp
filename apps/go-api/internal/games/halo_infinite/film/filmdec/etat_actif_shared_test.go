@@ -62,7 +62,7 @@ func eaWalkThrough(pay []byte, i0, total int, idx []int, s eaFilmSetup, target i
 		if name == "" {
 			return false
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), s.arch.Level(id))
 		if id == target {

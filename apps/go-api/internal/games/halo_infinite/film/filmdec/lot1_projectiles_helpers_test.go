@@ -15,7 +15,7 @@ import "testing"
 
 // projRef0 lit la reference d'en-tete du slot 0 (domaine 5) a une largeur DONNEE : R(1)
 // presence ; si presente R(width) index + R(2) generation. Rend (index, presente).
-func projRef0(br *BitReader, width uint) (int, bool) {
+func projRef0(br *Lecteur, width uint) (int, bool) {
 	if !br.ReadBit() {
 		return -1, false
 	}
@@ -37,8 +37,8 @@ type projEvt struct {
 }
 
 // projDecodeHeader consomme les 3 slots de reference (domaine 5, largeur width) et rend ref0 +
-// presence des slots 1/2. Le BitReader est positionne APRES l'en-tete, au debut de la charge.
-func projDecodeHeader(br *BitReader, width uint) (ref0 int, has1, has2 bool) {
+// presence des slots 1/2. Le Lecteur est positionne APRES l'en-tete, au debut de la charge.
+func projDecodeHeader(br *Lecteur, width uint) (ref0 int, has1, has2 bool) {
 	ref0, _ = projRef0(br, width)
 	_, has1 = projRef0(br, width)
 	_, has2 = projRef0(br, width)
@@ -50,7 +50,7 @@ func projPacketType(pay []byte) (impact bool, ok bool) {
 	if pay[0] != 0xC2 && pay[0] != 0xC3 {
 		return false, false
 	}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(2)
 	typ := br.ReadBits(7)
 	switch {
@@ -90,7 +90,7 @@ func projCalibrateWidth(t *testing.T, dir string, n int) uint {
 					by[w] = a
 				}
 				a.tot++
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.Skip(9) // 2 (config) + 7 (type)
 				_, h1, h2 := projDecodeHeader(br, w)
 				if !h1 && !h2 {
@@ -118,7 +118,7 @@ func projCalibrateWidth(t *testing.T, dir string, n int) uint {
 // projVariantAfterGate lit "variant-name" R(32) apres la porte de charge (commune aux deux
 // evenements) : R(1) porte ; si porte!=0 -> pas de variante ; sinon [R(1) g ; si g : R(32)]
 // puis R(32). Rend aussi la valeur lue a +3 bits (temoin d'offset) prise AVANT consommation.
-func projVariantAfterGate(br *BitReader) (variant uint64, has bool, witness uint64) {
+func projVariantAfterGate(br *Lecteur) (variant uint64, has bool, witness uint64) {
 	witness = br.peekBits3(3 + 32) // valeur decalee de 3 bits, meme longueur nominale (temoin)
 	if br.ReadBit() {              // porte : variant-name absente si porte==1
 		return 0, false, witness
@@ -131,11 +131,11 @@ func projVariantAfterGate(br *BitReader) (variant uint64, has bool, witness uint
 
 // peekBits3 lit n bits a partir de 3 bits APRES la position courante, sans avancer — le temoin
 // d'offset (+3) de l'oracle de tag. Prend les 32 bits de poids faible.
-func (b *BitReader) peekBits3(n uint) uint64 {
-	save := b.pos
-	b.pos += 3
+func (b *Lecteur) peekBits3(n uint) uint64 {
+	save := b.BitPos()
+	b.SetBitPos(save + 3)
 	v := b.ReadBits(n - 3)
-	b.pos = save
+	b.SetBitPos(save)
 	return v & 0xffffffff
 }
 
@@ -166,7 +166,7 @@ func projScan(t *testing.T, dir string, reg *Registry, n int, width uint) ([]pro
 				continue
 			}
 			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, w, cfg)
 			}
 		}
@@ -198,7 +198,7 @@ func projDecodeOne(pay []byte, ts uint64, width uint) (projEvt, bool) {
 	if !ok {
 		return projEvt{}, false
 	}
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(9) // 2 (config) + 7 (type)
 	ev := projEvt{ts: ts, impact: impact}
 	ev.ref0, ev.has1, ev.has2 = projDecodeHeader(br, width)
@@ -249,7 +249,7 @@ func projCollectFireVariants(t *testing.T, dir string, n int) []projFireVariant 
 // projDecodeFireVariant lit att + variant_name (grammaire type 36 de sondeScanFireArme) et le
 // WeaponID (decodeFireEvent, offsets fixes) d'un paquet 0xD2 long.
 func projDecodeFireVariant(pay []byte, ts uint64) (projFireVariant, bool) {
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(2)
 	if br.ReadBits(7) != 36 {
 		return projFireVariant{}, false

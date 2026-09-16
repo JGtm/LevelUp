@@ -52,7 +52,7 @@ var bpkDomWidths = map[int]int{0: 13, 1: 13, 2: 8, 3: 8, 4: 9, 5: 8, 6: 9, 7: 13
 
 // bpkRef consomme une reference gardee du domaine dom. Le domaine 1 porte une sonde R(1)
 // qui ramene la largeur a 9. Rend (index, presente).
-func bpkRef(br *BitReader, dom int) (uint64, bool) {
+func bpkRef(br *Lecteur, dom int) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
@@ -165,7 +165,7 @@ func bpkChunkWorld(reg *Registry, data []byte, pks []FilmPacket, cfg FrameConfig
 			continue
 		}
 		if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			_, _ = DecodeFrameRecords(br, w, cfg)
 		}
 	}
@@ -177,7 +177,7 @@ func bpkChunkWorld(reg *Registry, data []byte, pks []FilmPacket, cfg FrameConfig
 func bpkTrameExacte(reg *Registry, snap WorldSnapshot, pay []byte, bit int, cfg FrameConfig) (bool, int) {
 	w := NewWorld(reg)
 	w.Restore(snap)
-	br := NewBitReader(pay)
+	br := LecteurSur(pay)
 	br.Skip(bit)
 	recs, err := DecodeFrameRecords(br, w, cfg)
 	return err == nil && len(pay)*8-br.BitPos() < 8, len(recs)
@@ -256,7 +256,7 @@ func bpkEachEvent(t *testing.T, f bpkFilm, fn func(typ int, pay []byte, snap Wor
 			if pay[0] != bpkOctet {
 				continue
 			}
-			br := NewBitReader(pay)
+			br := LecteurSur(pay)
 			br.Skip(1)
 			if !br.ReadBit() {
 				continue // liste vide : impossible pour 0xC4, mais on ne le suppose pas
@@ -357,13 +357,13 @@ func TestBipedPickupRecensement(t *testing.T) {
 			return
 		}
 		tailles[uint64(len(pay))]++
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.Skip(bpkHeaderBits)
 		if br.ReadBit() {
 			ref0Porte++
 		}
 		if len(echantillon) < 12 {
-			br3 := NewBitReader(pay)
+			br3 := LecteurSur(pay)
 			br3.Skip(bpkHeaderBits)
 			bits := ""
 			for i := 0; i < 64 && bpkHeaderBits+i < len(pay)*8; i++ {

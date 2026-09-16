@@ -316,7 +316,7 @@ func (w *navpointRadialWalk) walk(pay []byte, rec WorldObjectRecord, ms int32) (
 			sc.Blocked[id]++
 			return at, false
 		}
-		br := NewBitReader(pay)
+		br := LecteurSur(pay)
 		br.PoserContexte(w.contexte())
 		br.SetBitPos(at)
 		w.got, w.key = false, false

@@ -317,10 +317,10 @@ func exploM6Chrono(t *testing.T, dir string, reg *Registry, n int) {
 					w.BindFull(uint32((r.Gen<<30)|r.Slot), uint32(r.TI))
 				}
 			case pk.Type == PacketTypeDelta && pk.Size >= 1 && pay[0]&0x40 == 0:
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				_, _ = DecodeFrameRecords(br, w, cfg)
 			case pk.Type == PacketTypeDelta && pk.Size >= 2 && pay[0] == 0xC0:
-				br := NewBitReader(pay)
+				br := LecteurSur(pay)
 				br.Skip(2)
 				if br.ReadBits(7) != 0 {
 					continue
