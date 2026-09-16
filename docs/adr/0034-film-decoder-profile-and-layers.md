@@ -59,8 +59,19 @@ Ratchets guard only what the compiler cannot express: sibling-layer dependencies
 (`archlint/film_layers_deps_test.go`, to be added at step 2.5.0), the raw-bytes rule below, file
 size (`archlint/film_file_size_test.go`, to be added at step 2.7.2). Existing ratchets in the
 family: `archlint/{filmsource_leaf_test.go, no_film_reread_test.go,
-no_title_package_in_analysis_test.go}` — the last one's single dated allowlist entry
-(`analysis/sessionusage/usage_outcomes.go`) empties at step 2.5.e.
+no_title_package_in_analysis_test.go}` — the last one's dated allowlist
+(`franchissementsToleres`) empties at step 2.5.e.
+
+**Corrected on 2026-09-17** (measured while preparing step 2.6): that allowlist carries **five**
+entries, not the single one this paragraph claimed. `analysis/sessionusage/usage_outcomes.go` is
+the only *production* crossing; the four others are tests —
+`analysis/objectiveevents/{assaut_footer_research_test.go, extract_test.go}` and
+`analysis/filmsource/source_test.go` (films opened from the local cache) and
+`analysis/weapon_index_equivalence_test.go`. Three of the five fall out mechanically with the
+moves of step 2.5; the two that need a port are `sessionusage` (its equipment-usage output types
+rise to `domain/` or `games/canonical/`) and `weapon_index_equivalence_test.go` (the comparison
+goes down to the decoder side). The count matters because "one entry" made the emptying sound
+like a rename: it is five ports, two of them real.
 
 ### D-2 — One gate to the bytes
 
@@ -326,6 +337,14 @@ Found on the tree during lot 0.B (2026-09-13), written here so the wrong sentenc
    with no `_test.go` file. Its shape is guarded from `film/replay` (the shape fingerprint, D-8.4)
    and its field-by-field parity from `service/replayview/parity_test.go`. That is enough while
    both guards exist, and it is why neither may move without moving its subject.
+4. **`weaponv3` does not live under `games/halo_infinite/`.** Added 2026-09-17, measured while
+   preparing step 2.6. The plan (item 2.4.2) and the briefs derived from it name
+   `internal/games/halo_infinite/weaponv3/`; that directory does not exist. The package is
+   `internal/analysis/weaponv3/` (`bits_word.go`, `canon.go`, `pi_resolver.go`, `timing.go`).
+   The location is not a detail: it sits under `analysis/`, where D-1 forbids importing a title
+   package, so the gate of D-2 cannot simply be imported from there — which is why its own bit
+   reader (`pi_resolver.go`) and its divergent copy of `wordBitsAt` are a perimeter question of
+   step 2.4, not a licence to leave them outside the single gate to the bytes.
 
 ## Non-goals
 
