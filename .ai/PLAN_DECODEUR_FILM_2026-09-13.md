@@ -3999,6 +3999,23 @@ et les DEUX descendent dans `filmsource.Bits`.
       2026-09-18 (rouges, retirées) : un lecteur réintroduit dans un paquet surveillé (2
       violations, dont le motif STRUCTUREL), une entrée d'allowlist sans violation réelle, une
       entrée retirée sans portage.
+      **ALLOWLIST VIDE LE 2026-09-16 (lot 2.5.e-a) — LA CASE SE LIT DÉSORMAIS COMME ELLE EST
+      ÉCRITE.** Les NEUF dernières entrées sont tombées avec la descente de la grammaire restée
+      dans `internal/analysis` (V15 (2) et (4)) : `highlight_event_parser.go` → `film/grammar`
+      (zlib par `source.Decompresser` + la sentinelle NEUVE `source.ErrEnTeteZlib`, octet au bit
+      par `source.OctetAuBit`, entiers par `source.U16LE` / `U32BE`), `weapon_scanner.go` →
+      `film/grammar/weaponscan`, `analysis/positions/` → `film/grammar/positions` (`bitAt` par
+      `source.BitAt`), `weapon_data.go` → `games/weapons/filmshell` (hors des racines : il NOMME
+      les armes, il ne lit aucun octet), `sync/killcollector/shots.go` et `cmd/diag_film` par
+      `filmshell.IDFromBytes` et `bits.ReverseBytes64`. **LE MÉCANISME D'ALLOWLIST EST SUPPRIMÉ
+      AVEC SA DERNIÈRE ENTRÉE** (`lectureToleree`, `lecturesTolerees`, `poseDesLecturesTolerees`,
+      `indexDesLecturesTolerees`, et le test de péremption devenu sans objet) — même geste qu'au
+      2.5.a pour la tolérance de lieu du ratchet des couches, et pour la même raison : une table
+      vide qu'on garde « au cas où » invite à la remplir. Il ne reste que les EXCLUSIONS, qui
+      disent « ces octets ne sont pas ceux d'un film », gardées par
+      `TestExclusionsDesLecturesBrutesSontMotiveesEtVivantes`. La mutation qui vaut désormais (un
+      lecteur jetable dans un paquet surveillé) a été rejouée le 2026-09-16 sur l'arborescence
+      SANS allowlist : rouge sur ses deux motifs, et plus aucune ligne ne peut le taire.
 
 Preuve : `replay-equiv` zéro différence ; `TestKillSourceDecoderRevSuitLeDecodeur` (révision
 montée, sortie identique) ; corpus gate zéro différence.
@@ -4112,13 +4129,72 @@ couche. Critère d'entrée re-mesuré (zéro branche filmdec en vol).
       paquet ne changent pas pour 2.5.d.1, seuls les chemins. Le registre des replis se classe
       désormais `facts`, là où il est produit. Équivalence 10/10 aux deux commits.
       Les deux entrées D9 d'`objectiveevents` tombent PAR le déplacement ; il en reste UNE.
-- [!] 2.5.e Façades exportées + bascule `film/<couche>` → `film/internal/<couche>` — **NON
-      TRAITÉ**, et il ne l'aurait pas été proprement : il DÉPEND de 2.5.b (le ratchet ne peut
-      passer strict tant que la couche `profile` est vide et datée) et du portage de
-      `weapon_index_equivalence_test.go`, dernière entrée D9, qui ne tombe qu'avec la dissolution
-      de `weaponv3`. Mesure de la surface à re-exporter, refaite le 2026-09-16 par `grep` des
-      qualifieurs hors `film/` : ~78 (`grammar`) + 38 (`killsource`) + 47 (`objectives`) + 14
-      (`source`) symboles exportés, à arbitrer selon V15 (7).
+- [x] 2.5.e Façades exportées + bascule `film/<couche>` → `film/internal/<couche>` + ratchet des
+      couches STRICT + règle neuve pour D6 + D7 (chemins morts des docs).
+      **FAIT les 2026-09-16 et 2026-09-17 (branche `feat/decfilm-25e`, base `e7b9bd48e`, quatre
+      commits de code).** L'item DÉPENDAIT de 2.5.b et du portage de la dernière entrée D9 : les
+      deux étaient faits à l'entrée, et le lot les a consommés dans l'ordre.
+
+      **2.5.e-a — LES DESCENTES RESTANTES (V15 (2) et (4)), `7de7c54a8`.** Plus aucun octet de
+      film dans `internal/analysis`. Les neuf entrées du ratchet 2.4.3 tombent, les trois arêtes
+      du ratchet des couches aussi, et D9 passe de 1 à 0 : `internal/analysis/` n'importe plus
+      AUCUN paquet de titre, production ET test. Le pont transitoire de 2.5.h
+      (`highlight_event_pont_film.go`) est SUPPRIMÉ avec son ratchet de péremption, les onze
+      fichiers de `film/` lisant `domain/highlightevent` en direct. `PlayerPosition` /
+      `TeamUnknown` remontent en `domain/playerposition` (feuille, sur le modèle de 2.5.h — dix
+      lecteurs title-agnostic : ports, service de vue de match, DuckDB, un corps HTTP), AUCUN
+      alias laissé derrière. Deux changements de FORME sans changement de sortie, tous deux
+      imposés : `FireEvent.PlayerIndex*` → `FilmIndex*` (le ratchet
+      `no_player_index_identity_test.go` interdit ce nom dans le périmètre du film, SANS
+      allowlist) et l'extraction de `decodeFireEventAt` (seuil de 80 lignes). `source.Rev`
+      `source-2026-09-16` → `.2` (deux entrées neuves à la porte : `U32BE` et `ErrEnTeteZlib`),
+      `GrammarRev` `.35` → `.36`, `facts.Rev` `killsource-2026-09-16.2` → `.3` (PREMIÈRE montée
+      MÉCANIQUE par les valeurs amont, V15 (12)). Golden des temps forts INCHANGÉ.
+
+      **2.5.e-b — LA FAÇADE (V15 (7)), `d802aeeb7`.** Un paquet re-exporte ce que les paquets
+      hors du décodeur citent. **MESURE COLLÉE du 2026-09-16** (`grep` des qualifieurs hors
+      `film/`, par paquet et par consommateur — détail en §4) : `source` 8, `profile` 7,
+      `grammar` 46, `weaponscan` 5, `positions` 2, `weaponv3` 4, `killsource` 36, `objectives`
+      43, `fallback` 11, `facts` 1 = **163 symboles**. La note de préparation §2.4 en comptait
+      127 et le plan 177 : les deux portaient sur une arborescence d'avant 2.4 et 2.5 (`grammar`
+      pesait 78, il en pèse 46). **LE CHIFFRE EST LE POINT, et il est écrit dans le godoc du
+      paquet : une façade de 163 symboles n'est PAS une frontière, c'est un ALIAS.** V15 (7)
+      l'assume pour ce lot et renvoie la réduction à M4, sur cette mesure. Types par ALIAS,
+      constantes et variables par valeur, fonctions par RENVOI D'UNE LIGNE dont la signature
+      NOMME les types de la couche — ceux-là restent inaccessibles à l'appelant, qui ne peut que
+      faire CIRCULER la valeur, et c'est exactement la frontière voulue. UNE exception mesurée,
+      consignée en §4 : `BuildBipedTracks` est re-exportée comme VALEUR de fonction, sa signature
+      nommant un type non exporté de `grammar`.
+
+      **2.5.e-c — LA BASCULE (V15 (6)), `f14c7e496`.** `source`, `profile`, `grammar` et `facts`
+      passent sous `film/internal/` : ADR 0034 principe 11 est tenu au sens littéral — ce n'est
+      plus un ratchet qui interdit l'import, c'est le COMPILATEUR, et il ne peut pas être
+      allowlisté. `git mv` purs ; 582 fichiers de `film/` re-pointent leurs imports internes, 94
+      fichiers extérieurs passent par la façade. **`film/replay` RESTE EXPORTÉE, et c'est la
+      décision écrite** : couche de PUBLICATION, 239 de ses symboles cités hors du décodeur
+      (`sync/replayartifacts`, `sync/killcollector`, `service/*`, `api/*`, `replaybuild`, `ops`),
+      et le document de rejeu EST le contrat public ; `types`, `revision`, `filmcache` et les
+      trois catalogues de libellés restent exportés pour la même raison de nature.
+      **LA FAÇADE VIT EN `film/decfilm/` ET NON À LA RACINE** — écart au brief, mesuré à la
+      compilation et consigné en §4 : l'identifiant `film` est LE nom du film chargé dans 45
+      fichiers consommateurs, un paquet du même nom y est shadowé, et 30 fichiers ne compilent
+      plus. Re-pointés avec : 19 ratchets `archlint`, les racines des deux empreintes, 29
+      fichiers de test aux chemins relatifs, les goldens qui CITENT un chemin, le fixture v41,
+      `Makefile` + `ci.yml`, **la baseline de tests** (le champ `Package` de 271 événements, sans
+      re-capture — le remède que le script prescrit lui-même), **les docs (D7)** et **le front**
+      (`deltaLayersContract.guard.test.ts` lit un fichier Go par `readFileSync`). `GrammarRev`
+      `.36` → `.37`, `facts.Rev` `.3` → `.4` ; **`source.Rev` NE BOUGE PAS**, et c'est la preuve
+      que le geste est propre : la couche est une feuille, aucun de ses fichiers de production
+      n'a changé.
+
+      **2.5.e-d — LE RATCHET STRICT ET LES `[!]`, `226bd7a11`.** L'allowlist d'arêtes disparaît
+      avec son MÉCANISME (R1 et R2 n'ont plus aucune table) ; R4 naît — « la couche de
+      PUBLICATION ne CHARGE pas le film » — avec une allowlist datée des quatre enveloppes D2, et
+      la forme large de V19 (3) est refusée SUR MESURE (§4). D3 + D8 sont statués : le contrôle
+      du calibrage reste en `grammar` parce qu'il DÉCODE, et V15 (8) est périmé sur sa moitié
+      « contrôle ». D11 : la couche `profile` a ses trois tests de FRONTIÈRE. D2 (revue M2) :
+      `observateur.go` et `profile_globales_test.go` corrigés, les deux autres fichiers nommés
+      l'avaient déjà été par 2.5.b. Trois mutations jouées, rouges, retirées.
 - [x] 2.5.f (V15 (5)) Portage de `sessionusage/usage_outcomes.go` : ses 4 symboles de `replay`
       remontent en `domain/` ou `games/canonical/` ; l'entrée D9 correspondante tombe ; test de
       non-régression sur les issues d'usage.
@@ -4142,13 +4218,35 @@ couche. Critère d'entrée re-mesuré (zéro branche filmdec en vol).
       ré-ajoutée). Non-régression : golden `usage_outcomes_golden_test.go` figé AVANT le
       déplacement (huit familles, canal lu par valeur sentinelle), INCHANGÉ après. `GrammarRev`
       ne bouge pas (aucun paquet haché touché).
-- [!] 2.5.g (V15 (10), après les déplacements purs) Les 29 crochets d'observation (`Set*Hook`,
+- [~] 2.5.g (V15 (10), après les déplacements purs) Les 29 crochets d'observation (`Set*Hook`,
       `unitRefHook`) reçoivent leur paramètre `Observer` (suite de 2.2.f) ; `filmdecVarsGeles`
       descend d'autant ; item distinct pour que 2.5.a-e restent des déplacements purs.
       **NON TRAITÉ le 2026-09-16** : l'item est explicitement « APRÈS les déplacements purs », et
       deux de ceux-ci (2.5.b, la part restante de 2.5.c) ne sont pas faits — le traiter ici aurait
       mêlé un changement de signature à un lot qui doit rester à sortie identique. Statut à revoir
       avec 2.5.b et 2.5.e.
+      **[~] COUVERT AILLEURS, ET L'ITEM EST PÉRIMÉ — RE-MESURÉ LE 2026-09-17 (lot 2.5.e).** Le
+      geste que l'item décrit a été fait par les lots 2.2.f et 2.3, et le ratchet des variables de
+      paquet le raconte rang par rang dans sa propre godoc :
+      - **2.2.f** a fait des VINGT-NEUF crochets de désérialiseur et des HUIT compteurs de
+        l'inférence de chaîne les CHAMPS d'un seul objet, `grammar.Observation` —
+        `filmdecVarsGeles` 79 → 43, « la plus grosse baisse de la série » ;
+      - **2.3** a supprimé la variable `observateur` elle-même « et les vingt-huit réglages
+        publics (`SetXxxHook`) qui l'écrivaient » — 43 → 22, puis 21 à la revue adversariale.
+      Mesure du 2026-09-17 sur pièces : `grammar/observateur.go` déclare **29 champs `Hook func`**,
+      `filmdecVarsGeles` vaut **21**, et le compte qui fait foi est l'autre — **ZÉRO variable de
+      paquet ÉCRITE**. Chaque balayage construit SON observateur (`NouvelleObservation`) et le pose
+      avec son profil (`ContexteDeLecture`). Il n'existe plus un seul `Set*Hook` ni `unitRefHook`
+      de production : **la promesse « `filmdecVarsGeles` descend d'autant » est arithmétiquement
+      sans objet, la descente a déjà eu lieu.**
+      **CE QU'IL RESTE, ET POURQUOI IL N'EST PAS PRIS ICI** (consigné en §4) : un HARNAIS de test,
+      `grammar/harnais_observation_test.go`, garde un `observateur` de paquet et 28 setters — pour
+      les INSTRUMENTS, qui installent un crochet puis appellent un désérialiseur de bas niveau.
+      Il est borné à un `_test.go`, donc hors du périmètre du ratchet (qui ne compte que les
+      fichiers non-test), et le lot 2.3 l'a écrit comme tel dans l'en-tête du fichier. Le convertir
+      demanderait de passer l'observateur en paramètre à 163 sites d'appel dans 39 fichiers, pour
+      un compte de ratchet qui ne peut pas bouger : c'est un lot de test à part, pas une part de
+      2.5.e.
 - [x] 2.5.h (V19 (2), prérequis de V15 (4) mesuré au §4 D4) Le TYPE `analysis.HighlightEvent` et
       son vocabulaire remontent en `domain/` ; les consommateurs title-agnostic le suivent ; golden
       de non-régression figé AVANT le mouvement.
@@ -5030,8 +5128,65 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-16 | 2.6.2 | **D2 (2.6) — SORTIR UN TYPE DE SON PAQUET TRANSFORME UN LITTÉRAL NON NOMMÉ EN ERREUR `go vet`.** `PlayerLine{"z16", 16, 13, 4}` compile tant que le type est déclaré dans le paquet ; dès qu'il vient d'ailleurs, l'analyse `composites` de `go vet` le refuse. Mesure sur ce volet : **16 littéraux**, tous dans `film/facts/objectives/named_test.go`, corrigés en champs nommés (le lot ne pouvait pas les laisser : `go vet ./...` est un gate). Aucun autre paquet n'en portait pour les 13 types déplacés. | **À prévoir au volet grammaire / rejeu**, qui déplace 49 types consommés par `replay` (246 citations) et `replaybuild` (74) : le coût n'est pas le déplacement, ce sont les littéraux positionnels des tests. À mesurer AVANT d'ouvrir le lot (`go vet ./...` après un déplacement d'essai) |
 | 2026-09-16 | 2.6.2 | **D3 (2.6) — LES TROIS ALIAS DATÉS ONT 79 FICHIERS DERRIÈRE EUX, ET C'EST LA LISTE DE TRAVAIL DU VOLET SUIVANT.** Mesure du 2026-09-16 (`grep` des 13 types qualifiés, hors `facts/` et `source/`) : **79 fichiers** hors des couches d'origine citent un type déplacé par son ancien nom de paquet — `film/replay` 246 citations, `internal/replaybuild` 74, `internal/sync/killcollector` 5, `film/filmcache` 4, `film/grammar` 3, `cmd/` 21. Tous compilent par les alias de `types_alias.go`, et chacun de ces fichiers appartient à un paquet que le brief interdisait à ce lot. | **Volet grammaire / rejeu du lot 2.6** : re-pointer, puis SUPPRIMER les trois `types_alias.go`. Le critère de retrait est écrit dans chacun d'eux, et il est mesurable au `grep` |
 | 2026-09-16 | 2.6 (docs) | **D4 (2.6) — LES DEUX `SYNC_GUIDE` CITENT UN CHEMIN DE REPLI QUI N'EXISTE PLUS.** La ligne « Renvois / References » de la sous-section des révisions nomme `internal/games/halo_infinite/film/replay/fallback` ; le registre des replis a descendu en `film/facts/fallback` au lot 2.5.d.1. La phrase reste vraie sur le fond, le chemin est faux, dans les DEUX fichiers. NON TRAITÉ : le brief borne la mise à jour documentaire à la sous-section des révisions, et cette ligne parle du registre des replis. | Même famille que D7 (2.5) : au premier lot qui rouvre ces deux guides — ou au volet grammaire du 2.6, qui y reviendra pour `grammar.Rev` |
+| 2026-09-16 | 2.5.e-a | **D1 (2.5.e) — LE MARCHEUR DE PAQUETS D'`analysis/positions` EST UN CINQUIÈME, ET IL N'EST PAS FONDU ICI.** `type2Payload` (`positions.go`) parcourt les blocs de seize octets du chunk avec sa PROPRE grammaire d'arrêt : il borne sur `off+16+size > len(d)`, retourne le payload du PREMIER bloc `TYPE_2`, et s'arrête sur `typ == 7` APRÈS avoir avancé. `source.Paquets` (le marcheur unique, D3 révisée) émet le terminateur PUIS s'arrête, et traite la taille nulle autrement. Les fondre changerait des valeurs décodées sur les chunks de bord, ce que D4 interdit à un pas structurel : la descente a donc porté les LECTURES (`source.U16LE` / `U32LE`, `source.BitAt`), pas le marcheur. NON TRAITÉ (règle 7). | lot 2.7 ou M3 : opposer les deux marcheurs sur des chunks réels (comme `source.TestDeuxMarcheursDePaquetsSAccordent` le fait déjà pour les deux autres), PUIS fondre si l'accord est mesuré |
+| 2026-09-16 | 2.5.e-a | **D2 (2.5.e) — LE CATALOGUE D'ARMES NE POUVAIT PAS ALLER DANS `games/weapons`, ET L'ARÊTE DU RATCHET LE PRESCRIVAIT.** L'entrée d'allowlist `weaponv3 -> analysis` annonçait « le catalogue d'armes remonte en `games/weapons` ». Mesure du 2026-09-16 (`go list -deps ./internal/games/weapons`) : ce paquet dépend de `database/sql`, `internal/migration` ET, transitivement, d'`internal/analysis` — l'y poser ferait entrer tout l'outillage de migration dans les dépendances du décodeur, et ramènerait `analysis` dans son arbre par la porte de derrière. Le catalogue vit donc dans `internal/games/weapons/filmshell`, sous-paquet FEUILLE (aucun import du dépôt), hors des racines surveillées par le ratchet 2.4.3 puisqu'il NOMME les armes sans lire un octet. | sans objet — tranché dans le lot, et la raison est écrite dans le godoc du paquet |
+| 2026-09-16 | 2.5.e-b | **D3 (2.5.e) — LA FAÇADE NE PEUT PAS RE-EXPORTER `BuildBipedTracks` PAR UN RENVOI ÉCRIT.** Sa signature rend `map[uint32][]hitPosSample`, et `hitPosSample` est un type NON EXPORTÉ de `grammar`. Un renvoi d'une ligne doit NOMMER le type ; l'écrire exigerait d'exporter `hitPosSample`, c'est-à-dire un changement de contenu dans un lot de déplacements. La façade la re-exporte donc comme VALEUR de fonction (`var BuildBipedTracks = grammar.BuildBipedTracks`), seule exception de ses 163 symboles, et son godoc le dit. NON TRAITÉ (règle 7). | M4, avec la réduction de la façade : soit le type s'exporte (il décrit une position de touche, rien de secret), soit l'appelant (`sync/killcollector/hits.go`) reçoit une forme déjà publiée |
+| 2026-09-16 | 2.5.e-b | **D4 (2.5.e) — LA SURFACE RE-EXPORTÉE, PAR CONSOMMATEUR : LA MATIÈRE DE LA RÉDUCTION DE M4.** Mesure du 2026-09-16, `grep` des qualifieurs hors `film/`. **163 symboles.** Par paquet : `grammar` 46, `objectives` 43, `killsource` 36, `fallback` 11, `source` 8, `profile` 7, `weaponscan` 5, `weaponv3` 4, `positions` 2, `facts` 1. Par CONSOMMATEUR, les cinq qui pèsent : `sync/killcollector` (source 4, profile 8, grammar 28, killsource 12, weaponv3 3, weaponscan 1, facts 1) ; `internal/replaybuild` (source 3, profile 3, grammar 1, killsource 7, objectives 24) ; les outils `cmd/` (`cmd/killsource` 25 symboles de la couche du même nom, `zone-attribution` 15 d'`objectives`, `rdata_weapon_scan` 8 de `grammar`, `statnames-sweep` 7, `oddball-terrain` 6, `diag_film` 5 de `weaponscan`) ; `internal/ops` (grammar 2, killsource 2) ; `internal/sync` racine (grammar 1, objectives 2). **DEUX CONSTATS POUR M4** : (1) `sync/killcollector` à lui seul cite une cinquantaine de symboles de six couches — c'est un SECOND décodeur posé hors du décodeur, et c'est là que la réduction paie ; (2) les outils `cmd/` pèsent environ soixante-dix symboles dont la plupart ne servent qu'à IMPRIMER — une façade de diagnostic (un type de rapport, pas trente accesseurs) les absorberait. | lot M4 (« la publication »), sur cette mesure. Le godoc de `film/decfilm` porte le chiffre et la phrase qui compte : une façade de 163 symboles est un ALIAS, pas une frontière |
+| 2026-09-17 | 2.5.e-c | **D5 (2.5.e) — LA FAÇADE NE PEUT PAS S'APPELER `film`, ET C'EST LE DOMAINE QUI L'INTERDIT.** Le brief la voulait à la RACINE de `film/`, donc en `package film`. Mesure à la compilation (2026-09-17) : l'identifiant `film` est LE nom du film chargé dans **45 fichiers consommateurs** (`film *source.Film`, `film.Chunk(i)`, `film.Meta()`, `film.MatchID`) — un paquet du même nom y est SHADOWÉ, et les **30 fichiers** qui ont besoin des deux ne compilent pas (`film.LoadDir undefined (type *source.Film has no field or method LoadDir)`). Les deux issues étaient pires que le mal : renommer la variable du domaine partout est un changement de contenu massif dans un lot de déplacements ; aliaser l'import dans la moitié des fichiers laisse deux orthographes pour un même paquet. La façade vit donc en `film/decfilm/` (`package decfilm`) : nom de paquet et nom de dossier coïncident, aucun alias, aucune collision. ÉCART AU BRIEF, assumé et mesuré. | sans objet — tranché dans le lot. À rouvrir seulement si M4 réduit la façade au point qu'une racine `film` redevienne tenable, ce qui supposerait de renommer la variable du domaine |
+| 2026-09-17 | 2.5.e-d | **D6 (2.5.e) — LA FORME LARGE DE V19 (3) N'EST PAS PRENABLE : `replay` IMPORTE `grammar` DANS 59 FICHIERS DE PRODUCTION.** V19 (3) demandait « une couche n'importe que la couche IMMÉDIATEMENT inférieure (et `source` pour la lecture) », c'est-à-dire l'interdiction du saut de plus d'une couche, y compris vers le bas. Mesure du 2026-09-17 : `replay` (rang 4) importe `grammar` (rang 2) dans **59 fichiers de production** et `profile` (rang 1) dans plusieurs autres ; `facts` (rang 3) importe `profile` (rang 1). La règle telle qu'écrite rougirait sur ces trois arêtes, pas sur « 4 sites » — le brief anticipait 4, et les 4 sont ceux du CHARGEMENT. R4 pose donc la moitié mesurable : « `replay` ne CHARGE pas le film », qui rougit sur exactement les quatre `source.LoadDir` des enveloppes D2. Couper les 59 demanderait de faire transiter par `facts` tout ce que `replay` lit de la grammaire : un chantier de contenu. NON TRAITÉ (règle 7). | M4 ou un lot d'architecture dédié : mesurer ce que `replay` lit VRAIMENT de `grammar` (types de record, tables de composants ?) avant de décider si la coupe a un sens, ou si `grammar` est la lingua franca légitime du décodeur |
+| 2026-09-17 | 2.5.e-d | **D7 (2.5.e) — LE HARNAIS D'OBSERVATION DES INSTRUMENTS GARDE UN OBSERVATEUR DE PAQUET, ET C'EST LE DERNIER ÉTAT PARTAGÉ DU DÉCODEUR.** `grammar/harnais_observation_test.go` déclare `var observateur = NouvelleObservation()` et **28 setters `Set*Hook`** qui écrivent dedans. La production n'en a plus un seul (lots 2.2.f et 2.3, `filmdecVarsGeles` 79 → 21 et ZÉRO variable écrite), et le fichier est un `_test.go`, donc hors du périmètre du ratchet — c'est écrit dans son en-tête depuis le lot 2.3. Reste que deux instruments du même paquet qui tourneraient en parallèle partageraient cet observateur. Le convertir en paramètre demande de toucher **163 sites d'appel dans 39 fichiers**, pour un compte de ratchet qui ne peut pas bouger. NON TRAITÉ : c'est ce qui rend l'item 2.5.g `[~]` et non `[x]`. | un lot de TEST à part (pas M2) : `Set*Hook(o *Observation, h ...)` ou un harnais par test, avec un ratchet qui interdit la résurrection du `var observateur` |
+| 2026-09-17 | 2.5.e-c | **D8 (2.5.e) — LA BASELINE DE TESTS SUIT LES PAQUETS PAR SON CHAMP `Package`, ET AUCUN LOT DE DÉPLACEMENT NE L'AVAIT DIT.** `.ai/baselines/tests_pre_migration.jsonl` apparie sur le couple (Package, Test) : tout `git mv` de paquet fait donc disparaître d'un coup TOUS les tests concernés du contrôle de présence, et le script diagnostique alors « compilation impossible » — un faux positif qui masque les vrais. Le remède est écrit dans le script lui-même (« ajouter les nouvelles entrées dans le même commit », jamais une re-capture), mais aucun des lots 2.5.a à 2.5.d ne l'a consigné, alors que tous ont déplacé des paquets de la baseline. Ce lot a re-pointé 271 événements (185 d'`internal/analysis` vers `grammar` et `weaponscan`, 86 de `film/facts/objectives`) et vérifié statiquement que les **8 355** paires de la baseline désignent toutes une fonction de test EXISTANTE au chemin déclaré. | sans objet — traité ici. **À ajouter à la clôture de lot du §2.4 du plan** : « un lot qui déplace un paquet re-pointe le champ `Package` de la baseline dans le même commit », pour que le prochain n'ait pas à le redécouvrir |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Lot 2.5.e (M2, pas 5) — façade, bascule sous `film/internal/`, ratchet STRICT, SANS AUCUN DÉCODAGE, 2026-09-16 / 2026-09-17
+
+Branche `feat/decfilm-25e`, base `e7b9bd48e`. **Quatre commits de code, un par point du brief**, plus
+le commit de clôture (cases, §4, §5). Les gates ci-dessous sont ceux SANS décodage ; les gates AVEC
+décodage (`replay-equiv`, `replay-corpus-gate`) attendent la « voie libre » du pilote, un gate du
+pilote tournant sur la tête `e7b9bd48e` pendant tout le lot — un seul décodage à la fois sur ce poste.
+
+| Date | Item | Commit | Gate | Résultat |
+|---|---|---|---|---|
+| 2026-09-16 | 2.5.e-a | `7de7c54a8` | `gofmt -l ./internal ./cmd` · `go build ./...` · `go vet ./...` (+ `-tags=research` sur `film/`) | sortie VIDE ; build OK ; vet **0 diagnostic** dans les deux régimes |
+| 2026-09-16 | 2.5.e-a | `7de7c54a8` | `go test -count=1 ./internal/... ./cmd/...` (CGO) | **exit 0**, batterie complète |
+| 2026-09-16 | 2.5.e-a | `7de7c54a8` | `go test -race -count=1` sur `grammar`, `facts/killsource`, `weaponscan`, `positions`, `filmshell` | `ok` partout — grammar 318 s, killsource 20,6 s, weaponscan 1,1 s, positions 2,5 s, filmshell 1,1 s |
+| 2026-09-16 | 2.5.e-a | `7de7c54a8` | `golangci-lint run --new-from-rev=e7b9bd48e` | **0 issues** |
+| 2026-09-16 | 2.5.e-a | `7de7c54a8` | ratchet 2.4.3 (`no_raw_film_bytes_outside_source_test.go`) | **9 → 0 couples**, table `lecturesTolerees` et son MÉCANISME supprimés ; il ne reste que les exclusions, gardées par `TestExclusionsDesLecturesBrutesSontMotiveesEtVivantes` |
+| 2026-09-16 | 2.5.e-a | `7de7c54a8` | ratchet des couches (`film_layers_deps_test.go`) | **3 → 0 arêtes** ; `weaponscan` et `positions` classés `grammar` |
+| 2026-09-16 | 2.5.e-a | `7de7c54a8` | ratchet D9 (`no_title_package_in_analysis_test.go`) | **1 → 0** : `internal/analysis/` n'importe plus AUCUN paquet de titre, production ET test |
+| 2026-09-16 | 2.5.e-a | `7de7c54a8` | allowlist zlib (`no_film_reread_test.go`) | **3 → 2** : un seul décompresseur dans le dépôt |
+| 2026-09-16 | 2.5.e-a | `7de7c54a8` | goldens des révisions | `source.Rev` `source-2026-09-16` → `.2` ; `GrammarRev` `.35` → `.36` ; `facts.Rev` `killsource-2026-09-16.2` → `.3`. Golden des temps forts (`highlight_event_golden.txt`, 275 événements) **INCHANGÉ** — la preuve que la descente n'a rien changé à la sortie |
+| 2026-09-16 | 2.5.e-b | `d802aeeb7` | mesure de la façade, par `grep` des qualifieurs hors `film/` | **163 symboles** : grammar 46, objectives 43, killsource 36, fallback 11, source 8, profile 7, weaponscan 5, weaponv3 4, positions 2, facts 1. Détail par consommateur en §4 (D4) |
+| 2026-09-16 | 2.5.e-b | `d802aeeb7` | `gofmt` · `go build ./...` · `go vet ./...` · `go test ./internal/... ./cmd/...` · `golangci-lint --new-from-rev` | gofmt vide ; vet 0 ; **exit 0** ; **0 issues** |
+| 2026-09-16 | 2.5.e-b | `d802aeeb7` | les quatre empreintes | **INCHANGÉES** : la racine `film/` n'est pas une racine hachée, la façade ne touche aucune couche |
+| 2026-09-17 | 2.5.e-c | `f14c7e496` | `gofmt` · `go build ./...` · `go vet ./...` (+ `-tags=research`, `-tags=integration`) | sortie vide, **0 diagnostic** dans les trois régimes |
+| 2026-09-17 | 2.5.e-c | `f14c7e496` | `go test -count=1 ./internal/... ./cmd/...` | **exit 0** après correction de 29 fichiers aux chemins relatifs, du fixture v41 (4 tests de `sync` + `cmd/refresh_golden_fixture`) et de `filmprofile/conformite_table21_test.go` |
+| 2026-09-17 | 2.5.e-c | `f14c7e496` | `go test -tags=integration -p 1 ./internal/persist/... ./internal/sync/...` | `ok internal/persist 40,8 s` |
+| 2026-09-17 | 2.5.e-c | `f14c7e496` | baseline de tests — contrôle de présence STATIQUE | les **8 355** paires (Package, Test) de `.ai/baselines/tests_pre_migration.jsonl` désignent toutes une fonction de test EXISTANTE au chemin déclaré. 271 événements re-pointés (185 d'`internal/analysis` vers `grammar` / `weaponscan`, dont les trois tests renommés `TestReadByteAtBit_*`, et 86 de `film/facts/objectives`) — AUCUNE re-capture |
+| 2026-09-17 | 2.5.e-c | `f14c7e496` | garde-rail web `grep -rn "apps/go-api/internal" apps/web/src` | **0 chemin mort** : `deltaLayersContract.guard.test.ts` (constante `GRAMMAR`) et `lib/players/displayName.ts` suivent la couche. Le `vitest` n'est PAS jouable dans ce worktree (pas de `node_modules`) — la CI le joue |
+| 2026-09-17 | 2.5.e-c | `f14c7e496` | `golangci-lint run --new-from-rev=e7b9bd48e` | **0 issues** (trois `goimports` corrigés en cours de route) |
+| 2026-09-17 | 2.5.e-c | `f14c7e496` | goldens des révisions | `GrammarRev` `.36` → `.37`, `facts.Rev` `.3` → `.4`. **`source.Rev` INCHANGÉE** : la couche est une feuille, aucun de ses fichiers de production n'a changé |
+| 2026-09-17 | 2.5.e-d | `226bd7a11` | `go test -count=1 ./internal/archlint/` | `ok 13,7 s` — R1/R2/R3 sans aucune table, R4 posée avec son allowlist datée de 4 entrées |
+| 2026-09-17 | 2.5.e-d | `226bd7a11` | **MUTATION 1** — `replay/mutation_jetable.go` portant `source.LoadDir` | **ROUGE** : « la couche de PUBLICATION charge le film elle-meme (1 site) : … mutation_jetable.go : source.LoadDir(...) ligne 7 ». Fichier retiré |
+| 2026-09-17 | 2.5.e-d | `226bd7a11` | **MUTATION 2** — entrée d'allowlist R4 déplacée sur `replay/killpos.go` (qui ne charge pas) | **DEUX rouges** : l'entrée périmée (« qui ne charge plus le film : entree perimee, la retirer ») ET la violation qu'elle ne couvre plus (`origin.go`). Table restaurée |
+| 2026-09-17 | 2.5.e-d | `226bd7a11` | **MUTATION 3** — import d'`internal/analysis` jetable dans `grammar` | **ROUGE** sur R2, avec le message neuf : « IL N Y A PLUS DE TABLE OU INSCRIRE UN SURSIS ». Fichier retiré |
+| 2026-09-17 | 2.5.e-d | `226bd7a11` | `go test -count=1 ./internal/games/halo_infinite/film/internal/profile/ -v` | **3 tests, 3 PASS** (D11) : la couche est une FEUILLE, une clé inconnue rend une erreur TYPÉE, la table est lisible d'elle-même |
+| 2026-09-17 | 2.5.e-d | `226bd7a11` | `go test -race` sur `killsource` et `profile` | `ok` — 19,2 s et 1,1 s |
+| 2026-09-17 | 2.5.e-d | `226bd7a11` | `gofmt` · `go build` · `go vet` · `go test ./internal/... ./cmd/...` · `golangci-lint --new-from-rev` | sortie vide ; **exit 0** ; **0 issues** |
+| 2026-09-17 | 2.5.e-d | `226bd7a11` | goldens des révisions | `GrammarRev` `.37` → `.38`, `facts.Rev` `.4` → `.5` — des octets de COMMENTAIRE, faux positif assumé du mécanisme |
+| 2026-09-17 | 2.5.g | (ce commit) | re-mesure sur pièces | `grammar/observateur.go` déclare **29 champs `Hook func`** ; `filmdecVarsGeles` vaut **21** ; **ZÉRO variable de paquet ÉCRITE** ; aucun `Set*Hook` ni `unitRefHook` de PRODUCTION. L'item est `[~]` : son geste a été fait par 2.2.f (79 → 43) et 2.3 (43 → 21). Le résidu est un harnais de TEST (§4 D7) |
+
+**LE BUDGET DE `grammar` SANS TAG : 19,3 s** (`go test -count=1 ./internal/games/halo_infinite/film/internal/grammar/`), sous le plafond de 30 s du brief.
+
+**UN TEST DE LA BATTERIE OUVRE LE CACHE DE FILMS, ET IL FAUT LE DIRE** :
+`grammar/positions/positions_test.go` (`TestDecodeKeyframePositions_Ref`) lit deux chunks de
+`000d5950` et décode 76 positions en **0,59 s**. Il faisait déjà partie de la batterie standard
+avant ce lot (sous `internal/analysis/positions`), il ne prend aucun verrou `filmproc.AcquireSolo`
+et ne cuit aucun artefact — mais c'est une lecture du cache, et le brief interdit d'en faire une
+sans « voie libre ». Elle a eu lieu à chaque exécution de `go test ./internal/...`, que le même
+brief exige à chaque commit ; les deux consignes ne sont pas simultanément tenables à la lettre,
+et c'est le moindre des deux qui a été pris.
 
 ### Lot 2.6 (M2, pas 6) — volet FACTS + SOURCE, SANS AUCUN DÉCODAGE, 2026-09-16
 
