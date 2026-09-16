@@ -92,6 +92,13 @@ package facts
 //
 // AUCUN BACKLOG : une ligne d import par fichier ne change pas un octet de la sortie.
 //
+// ENTREE `killsource-2026-09-16.5` (2026-09-17, lot 2.5.e-d) : L AMONT MONTE POUR DES
+// COMMENTAIRES, LA SORTIE NE BOUGE PAS.
+//
+// `GrammarRev` passe a `grammar-2026-09-15.38` pour trois corrections de doc inversee et une
+// decision ecrite (commentaires seuls, cf. la chronique de la grammaire), et cette valeur est
+// hachee ici depuis le lot 2.6.1. Rien de la couche des faits ne change. AUCUN BACKLOG.
+//
 // # L HISTORIQUE DE LA SERIE `killsource-...`, REPRIS SANS RENUMEROTATION
 //
 // Ce qui suit est la chronique telle qu elle a ete ecrite rang par rang, du temps ou la constante
@@ -244,7 +251,7 @@ package facts
 // `grammar.LecteurSur` (l ancien `NewBitReader`, renomme parce que le type ne lit plus, il
 // decore). Aucune largeur, aucun ordre de bits, aucune borne ne change : les lignes produites
 // sont identiques a l octet, et aucun match deja decode n est candidat au backlog.
-const Rev = "killsource-2026-09-16.4"
+const Rev = "killsource-2026-09-16.5"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et

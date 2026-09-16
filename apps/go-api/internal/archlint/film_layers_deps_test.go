@@ -9,37 +9,42 @@ package archlint
 //
 //	source -> profile -> grammar -> facts -> replay
 //
-// Le lot 2.5 les mettra en place par deplacements purs. Mais un ratchet pose APRES le
+// Le lot 2.5 les a mis en place par deplacements purs. Mais un ratchet pose APRES le
 // deplacement n aurait rien garde PENDANT le deplacement, qui est justement le moment ou l on
-// casse des choses : la methode du lot E est « ratchets de dependance poses AVANT le premier
-// `git mv` ». Celui-ci vaut donc DEJA sur l arborescence d aujourd hui, ou les couches sont des
-// paquets aux noms d avant (`filmdec`, `killsource`, `objectiveevents`, `source`), et il
-// guide 2.5 : son allowlist EST la liste des coupes a faire, et elle se vide a mesure.
+// casse des choses : la methode du lot E etait « ratchets de dependance poses AVANT le premier
+// `git mv` ». Celui-ci valait donc DEJA sur l arborescence d avant, ou les couches etaient des
+// paquets aux noms d alors (`filmdec`, `killsource`, `objectiveevents`, `filmsource`), et il a
+// guide 2.5 : son allowlist ETAIT la liste des coupes a faire, et elle s est videe a mesure.
 //
-// # LA TABLE COUCHE -> PAQUETS, ET CE QUI CHANGERA EN 2.5
+// # LA TABLE COUCHE -> PAQUETS
 //
-// `couchesDuDecodeur` ci-dessous nomme, pour chaque paquet d AUJOURD HUI, sa couche CIBLE.
-// Quand 2.5 deplacera les paquets, SEULE CETTE TABLE changera (les chemins), pas les regles.
+// `couchesDuDecodeur` ci-dessous nomme, pour chaque paquet, sa couche. C est le seul endroit a
+// changer le jour ou un paquet du decodeur nait ou demenage.
 //
-// # LES REGLES, EN TROIS LIGNES
+// # LES REGLES, EN QUATRE LIGNES
 //
 //	R1 (le sens)  un paquet de couche N n importe aucun paquet de couche M > N.
 //	              Jamais l inverse du sens ci-dessus, jamais un saut de deux couches vers le HAUT.
 //	R2 (le lieu)  aucun paquet du decodeur (tout ce qui vit sous `film/`, plus tout paquet classe
 //	              dans une couche) n importe `internal/analysis` ni `internal/analysis/*`.
 //	R3 (peuplement) une couche declaree porte au moins un paquet ; une couche vide ne garde rien.
-//	                STRICT depuis le 2026-09-16 (lot 2.5.b) : plus aucune tolerance datee.
+//	R4 (le chargement) `replay`, la couche de PUBLICATION, ne CHARGE pas le film : elle le
+//	              RECOIT. Aucun appel a un chargeur de `source` dans ses fichiers de production.
 //
-// Mesure a la pose (2026-09-17, `go list -f` sur les paquets surveilles) : **R1 est deja tenue —
-// zero import vers le haut**. C est le point remarquable du graphe actuel : a l INTERIEUR du
-// decodeur, tout descend deja. Ce qui est a l envers est le LIEU : quatre paquets de couche
-// vivent encore hors du decodeur, ou en dependent (R2, 10 aretes).
+// LES QUATRE AXES SONT STRICTS SAUF R4. R1 n a jamais eu d exception ; la tolerance de LIEU (R2)
+// a ete supprimee au lot 2.5.a avec sa derniere entree, celle de COUCHE VIDE (R3) au lot 2.5.b,
+// celle d ARETE au lot 2.5.e-d. R4 nait au lot 2.5.e-d avec une allowlist DATEE de quatre
+// entrees, et son critere de retrait est celui, deja ecrit, des enveloppes D2.
 //
-// RE-MESURE DU 2026-09-16, a la cloture du lot 2.5.b : il reste **3 aretes** (toutes R2, toutes
-// rattachees a la descente de `analysis.ParseHighlightEvents` et a la dissolution de
-// `weaponv3`), **0 paquet hors lieu** et **0 couche vide** — les cinq couches sont peuplees, la
-// derniere (`profile`) par ce lot. Deux des trois axes n ont plus de mecanisme de tolerance du
-// tout ; le troisieme n a plus que ces trois lignes datees.
+// # L HISTOIRE DE CE RATCHET, EN TROIS MESURES
+//
+// A la pose (2026-09-17) : R1 deja tenue, zero import vers le haut — le point remarquable du
+// graphe d alors. Ce qui etait a l envers etait le LIEU : quatre paquets de couche vivaient hors
+// du decodeur, ou en dependaient (R2, 10 aretes), plus 3 paquets hors lieu et 1 couche vide.
+// A la cloture du lot 2.5.b (2026-09-16) : 3 aretes, 0 paquet hors lieu, 0 couche vide.
+// A la cloture du lot 2.5.e (2026-09-17) : ZERO arete, et les cinq couches sont en place —
+// `source`, `profile`, `grammar` et `facts` sous `film/internal/`, `replay` exportee parce
+// qu elle publie le contrat public.
 //
 // # CE QUE CE RATCHET NE GARDE PAS, ET QUI LE GARDE
 //
@@ -62,40 +67,24 @@ package archlint
 // Interdire ces imports interdirait la preuve. La frontiere des tests, elle, est tenue la ou
 // elle a un sens : cote `analysis/`, par D9, qui parse tests compris.
 //
-// # LES 12 ARETES DE LA NOTE DE PREPARATION, ET CE QUE CE RATCHET EN PORTE
+// # LES 12 ARETES DE LA NOTE DE PREPARATION, ET CE QU IL EN RESTE
 //
-// `.ai/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` §2.2 liste 12 aretes a casser. Re-mesure du
-// 2026-09-17 sur `1e246b209` : ce ratchet en porte 8, en ajoute 2 que la note n avait pas
-// comptees, et en laisse 4 a D9. Correspondance, pour que personne ne cherche les manquantes :
+// `.ai/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` §2.2 listait 12 aretes a casser ; ce ratchet en a
+// porte 8, en a ajoute 2 que la note n avait pas comptees (elle regardait le SENS, ce ratchet
+// regarde aussi le LIEU), et en a laisse 4 a D9. TOUTES SONT TOMBEES, chacune dans le commit du
+// deplacement qui la resolvait — les trois dernieres au lot 2.5.e-a, avec la descente de
+// `ParseHighlightEvents` en `grammar` et du catalogue d armes en `games/weapons/filmshell`.
 //
-//	note #1  replay -> objectiveevents        -> aretesTolerees[7]
-//	note #2  killsource -> filmsource         -> aretesTolerees[4]
-//	note #3  filmdec -> filmsource            -> aretesTolerees[2]
-//	note #4  replay -> filmsource             -> aretesTolerees[6]
-//	note #5  replay -> weaponv3               -> aretesTolerees[8]
-//	note #6  replay -> analysis (racine)      -> aretesTolerees[5]
-//	note #7  killsource -> analysis (racine)  -> aretesTolerees[3]
-//	note #8  weaponv3 -> analysis (racine)    -> aretesTolerees[10]
-//	note #9  sessionusage -> replay           -> D9 (production, hors du decodeur)
-//	note #10 filmsource/source_test.go        -> D9 (test)
-//	note #11 objectiveevents/*_test.go (x2)   -> D9 (tests)
-//	note #12 analysis/weapon_index_equiv_test -> D9 (test)
-//	EN PLUS : filmcache -> filmsource         -> aretesTolerees[1]
-//	EN PLUS : objectiveevents -> filmsource   -> aretesTolerees[9]
-//
-// Les deux « en plus » sont reelles et tombent au meme lot que les autres : la note regardait le
-// SENS des aretes (celles-la sont dans le bon sens), ce ratchet regarde aussi le LIEU.
-//
-// # L ORDRE DES COMMITS DE 2.5, ET POURQUOI IL N EST PAS CELUI DE LA NOTE
+// # L ORDRE DES COMMITS DE 2.5, ET POURQUOI IL N ETAIT PAS CELUI DE LA NOTE
 //
 // MESURE DU 2026-09-16, a l entree du lot : deplacer `source` EN PREMIER (ordre §2.7 de la
-// note) fait rougir D9 sur DIX-SEPT fichiers. La cause est mecanique : `objectiveevents` et
-// `weaponv3` vivent sous `internal/analysis/` et importent `source` ; le jour ou `source`
+// note) faisait rougir D9 sur DIX-SEPT fichiers. La cause est mecanique : `objectiveevents` et
+// `weaponv3` vivaient sous `internal/analysis/` et importaient `source` ; le jour ou `source`
 // descend sous `film/`, ces imports deviennent « `internal/analysis/` importe un paquet de
 // titre ». La facade de 2.4 etait nee dans `internal/analysis/filmsource` precisement pour
-// l eviter (V15 (1)) — la note ne l a pas reporte sur l ordre des commits de 2.5.
+// l eviter (V15 (1)) — la note ne l avait pas reporte sur l ordre des commits de 2.5.
 //
-// L ordre suivi est donc celui qu impose la dependance : les paquets de couche quittent
+// L ordre suivi a donc ete celui qu imposait la dependance : les paquets de couche quittent
 // `internal/analysis/` AVANT la couche `source`.
 //
 //	2.5.d.2  objectiveevents -> film/facts/objectives   (vide analysis/ de la couche facts)
@@ -103,19 +92,25 @@ package archlint
 //	2.5.a    filmsource -> film/source                  (plus aucun consommateur dans analysis/)
 //	2.5.d.1  killsource -> film/facts/killsource, fallback -> film/facts/fallback
 //	2.5.b    la couche profile (EXTRACTION, pas `git mv` : la donnee descend, la detection reste)
-//	2.5.e    facade, bascule film/<couche> -> film/internal/<couche>, ratchet STRICT
+//	2.5.e    facade `film/decfilm`, bascule film/<couche> -> film/internal/<couche>, ratchet STRICT
 //
 // # MUTATIONS QUI DOIVENT LE FAIRE ROUGIR
 //
-//   - faire importer `grammar` par `film/profile` (par exemple en y ramenant `DetectI0LayoutOf`) :
-//     `profile` (rang 1) -> `grammar` (rang 2) est un import VERS LE HAUT, R1 rougit. C est la
-//     regle que le lot 2.5.b a rendue tenable, et celle qu une rechute romprait en premier ;
-//   - classer `film/grammar` en `replay` : `killsource` (facts) -> `grammar` devient un import
-//     vers le haut, R1 rougit ;
-//   - retirer une entree d `aretesTolerees` : l arete correspondante rougit ;
-//   - ajouter une entree d allowlist sans violation reelle : « entree perimee, la retirer ».
+//   - faire importer `grammar` par `film/internal/profile` (par exemple en y ramenant
+//     `DetectI0LayoutOf`) : `profile` (rang 1) -> `grammar` (rang 2) est un import VERS LE HAUT,
+//     R1 rougit. C est la regle que le lot 2.5.b a rendue tenable, et celle qu une rechute
+//     romprait en premier ;
+//   - classer `film/internal/grammar` en `replay` : `killsource` (facts) -> `grammar` devient un
+//     import vers le haut, R1 rougit ;
+//   - faire importer `internal/analysis` par une couche : R2 rougit, et il n y a plus de table
+//     ou l inscrire ;
+//   - ajouter un `source.LoadDir(...)` dans un fichier de production de `replay` : R4 rougit ;
+//   - retirer une entree de `chargementsToleresDansReplay` sans porter son enveloppe : la
+//     violation rougit. Y ajouter une entree sans violation reelle : « entree perimee, la
+//     retirer ».
 
 import (
+	"sort"
 	"strings"
 	"testing"
 )
@@ -261,40 +256,28 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	"internal/games/halo_infinite/film/types": horsCoucheFilm,
 }
 
-// areteToleree : une arete qui viole une regle AUJOURD HUI, avec la date de sa mise en table, le
-// lot de 2.5 qui doit la casser et la FORME de la coupe. Ce n est pas un blanc-seing : c est la
-// liste de travail de 2.5, et le test refuse toute entree devenue sans objet.
-type areteToleree struct {
-	de    string // paquet importateur, relatif a apps/go-api
-	vers  string // paquet importe
-	pose  string // date de mise en table
-	lot   string // le lot qui casse l arete
-	coupe string // la forme de la coupe
-}
-
-// aretesTolerees — LES 10 ARETES MESUREES LE 2026-09-17 sur `1e246b209`
-// (`go list -f '{{.ImportPath}} {{.Imports}}'`, production seule ; aucun fichier de production de
-// ces paquets ne porte de build tag, la mesure est donc exhaustive). Toutes violent R2 (le lieu) ;
-// AUCUNE ne viole R1 (le sens) — a l interieur du decodeur, tout descend deja. Chaque entree
-// disparait dans le commit qui fait le deplacement : une entree qui survit a sa violation fait
-// rougir `TestAllowlistsDesCouchesNeSontPasPerimees`.
-// LES TROIS DERNIERES SONT TOMBEES LE 2026-09-16 (lot 2.5.e, decision V15 (4)), chacune par le
-// deplacement qu elle annoncait :
+// LA TOLERANCE D ARETE A ETE SUPPRIMEE LE 2026-09-17 (lot 2.5.e-d), AVEC SA DERNIERE ENTREE.
+// `areteToleree` / `aretesTolerees` dataient le sursis d une arete hors regle, et la table ETAIT
+// la liste de travail du lot 2.5 : elle s est videe a mesure. Les trois dernieres sont tombees
+// au 2.5.e-a, chacune par le deplacement qu elle annoncait :
 //
-//	killsource -> analysis   `ParseHighlightEvents` est descendue en `film/grammar`
+//	killsource -> analysis   `ParseHighlightEvents` est descendue en `grammar`
 //	                         (`highlight_events.go`) et les quatre symboles du temps fort sont
 //	                         lus chez `domain/highlightevent` — le pont transitoire de 2.5.h est
 //	                         supprime ;
-//	replay -> analysis       mêmes symboles, meme coupe ;
+//	replay -> analysis       memes symboles, meme coupe ;
 //	weaponv3 -> analysis     le catalogue d armes a quitte `internal/analysis/weapon_data.go`
 //	                         pour `games/weapons/filmshell`, feuille sans aucun import du depot
 //	                         (et non `games/weapons` lui-meme, qui tire `database/sql` et
 //	                         `internal/migration` — les mettre dans les dependances du decodeur
 //	                         aurait ete un autre import a rebours).
 //
-// La table reste VIDE : le mecanisme part au commit du ratchet STRICT, comme la tolerance de
-// lieu au 2.5.a et celle de couche vide au 2.5.b.
-var aretesTolerees = []areteToleree{}
+// LE MECANISME PART AVEC ELLES, comme la tolerance de LIEU au 2.5.a et celle de COUCHE VIDE au
+// 2.5.b : une table vide qu on garde « au cas ou » invite a la remplir, alors qu une arete hors
+// regle re-devient une DECISION a ecrire. LES QUATRE AXES DU RATCHET SONT DESORMAIS STRICTS —
+// R1 (le sens) n a jamais eu d exception, R2 (le lieu) n en a plus depuis le 2.5.a, R3 (le
+// peuplement) depuis le 2.5.b, et R1/R2 n ont plus AUCUNE table. Seule R4, posee ci-dessous,
+// porte encore une allowlist, et elle est datee avec son critere de retrait.
 
 // LA TOLERANCE DE LIEU A ETE SUPPRIMEE LE 2026-09-16 (lot 2.5.a), AVEC SA DERNIERE ENTREE.
 // `paquetHorsLieuTolere` / `paquetsHorsLieuToleres` dataient le sursis d un paquet de couche
@@ -325,15 +308,11 @@ func TestCouchesDuDecodeurRespectentLeSensEtLeLieu(t *testing.T) {
 			"ratchet ne garde plus rien et doit echouer bruyamment.",
 			fichiers, len(graphe), plancherFichiersCouches)
 	}
-	tolerees := indexDesAretesTolerees()
 	var violations []string
 	for _, de := range clesTrieesFilm(graphe) {
 		for _, vers := range graphe[de] {
 			motifs := motifsDeViolationDeCouche(de, vers)
 			if len(motifs) == 0 {
-				continue
-			}
-			if _, ok := tolerees[cleArete(de, vers)]; ok {
 				continue
 			}
 			violations = append(violations,
@@ -347,9 +326,9 @@ func TestCouchesDuDecodeurRespectentLeSensEtLeLieu(t *testing.T) {
 		"Le sens est source -> profile -> grammar -> facts -> replay, jamais l inverse, et "+
 		"aucune couche ne depend d `internal/analysis`.\n"+
 		"QUOI FAIRE : passer la donnee en ARGUMENT depuis la couche du dessus, ou faire "+
-		"descendre le symbole dans la couche qui le produit. Ajouter une entree a "+
-		"`aretesTolerees` N EST PAS une reponse : cette table est datee au 2026-09-17 et "+
-		"recense les coupes que le lot 2.5 doit faire, pas la dette a venir.",
+		"descendre le symbole dans la couche qui le produit. IL N Y A PLUS DE TABLE OU "+
+		"INSCRIRE UN SURSIS : l allowlist d aretes a ete supprimee au lot 2.5.e-d avec sa "+
+		"derniere entree, et une arete hors regle re-devient une DECISION a ecrire.",
 		len(violations), strings.Join(violations, "\n  "))
 }
 
@@ -402,24 +381,115 @@ func verifierPeuplementDesCouches(t *testing.T) {
 	}
 }
 
-// TestAllowlistsDesCouchesNeSontPasPerimees : une entree qui ne decrit plus une violation reelle
-// se RETIRE, dans le commit meme qui la resout. Une allowlist perimee finit par autoriser autre
-// chose que ce qu elle nommait (meme regle que les autres ratchets de ce paquet).
-func TestAllowlistsDesCouchesNeSontPasPerimees(t *testing.T) {
-	graphe, _ := balayerPaquetsDuDecodeur(t)
-	vivantes := map[string]bool{}
-	for de, imports := range graphe {
-		for _, vers := range imports {
-			if len(motifsDeViolationDeCouche(de, vers)) > 0 {
-				vivantes[cleArete(de, vers)] = true
-			}
-		}
+// ── R4 : LA COUCHE DE PUBLICATION NE CHARGE PAS LE FILM ────────────────────────────────────
+//
+// POURQUOI CETTE REGLE (lot 2.5.e-d, V19 (3)). `replay` PUBLIE le document versionne : il recoit
+// des faits et les met en forme. Un `source.LoadDir` dans `replay` est donc un SAUT de trois
+// couches vers le bas, et surtout le retour du defaut que le lot 1 de PLAN_CUISSON_PERF a
+// ferme — le film relu et redecompresse par chaque etage pour son propre compte (~94 % du temps
+// de cuisson avant correction). Le film se charge UNE fois, en amont, et circule par valeur.
+//
+// CE QUE LA REGLE N EST PAS. Elle n interdit pas a `replay` de NOMMER `*source.Film` : recevoir
+// un film charge est exactement ce qu on veut. Quatre de ses huit fichiers de production qui
+// importent `source` ne font que cela, et ils sont en regle.
+//
+// POURQUOI ELLE N EST PAS PLUS LARGE. La formulation d origine de V19 (3) — « une couche
+// n importe que la couche IMMEDIATEMENT inferieure » — n est PAS takeable en l etat : mesure du
+// 2026-09-17, `replay` importe `grammar` dans 59 fichiers de production et `profile` dans
+// plusieurs autres, `facts` importe `profile`. La couper demanderait de faire transiter par
+// `facts` tout ce que `replay` lit de la grammaire : un chantier de contenu, pas un
+// deplacement. Consigne au §4 du plan.
+var chargeursDeSource = map[string]bool{
+	"LoadDir": true, "Load": true, "LoadIntoDir": true, "DirSource": true, "MemoryChunks": true,
+}
+
+// coucheQuiNeChargePas : le paquet soumis a R4, relatif a `apps/go-api`.
+//
+// `grammar` n y est PAS, et c est mesure : il porte une quarantaine d enveloppes D2
+// (`ScanFilmXxx(dir)`) qui chargent le film pour les instruments et les tests. Elles sont
+// gardees ailleurs, par la regle 3 de `no_film_reread_test.go`, qui interdit a la PRODUCTION de
+// les appeler. Les doubler ici serait la copie de garde-rail que CLAUDE.md regle 6 interdit.
+const coucheQuiNeChargePas = "internal/games/halo_infinite/film/replay"
+
+// chargementToleré : une enveloppe D2 de `replay` qui charge encore le film elle-meme.
+type chargementTolere struct {
+	fichier   string // chemin relatif a `apps/go-api`
+	enveloppe string // la fonction qui charge
+	pose      string // date de mise en table
+	retrait   string // le critere mesurable de retrait
+}
+
+// chargementsToleresDansReplay — LES QUATRE ENVELOPPES D2 MESUREES LE 2026-09-17.
+//
+// Toutes les quatre sont des `ScanFilmXxx(dir)` declarees HORS PRODUCTION dans leur propre
+// godoc : la cuisson appelle leur jumelle qui prend un `*source.Film` deja charge. Les
+// supprimer est un changement de CONTENU (elles ont une soixantaine d appelants — tests de
+// recherche et `cmd/diag_deaths`), hors d un lot de deplacements : elles portent donc le
+// critere de retrait DEJA ECRIT par `no_film_reread_test.go` pour toute la famille D2.
+var chargementsToleresDansReplay = []chargementTolere{
+	{
+		fichier:   "internal/games/halo_infinite/film/replay/deaths_source.go",
+		enveloppe: "ScanFilmDeaths", pose: "2026-09-17",
+		retrait: "avec la famille D2 : quand `grep -r 'ScanFilm[A-Za-z]*(' --include=*.go` ne " +
+			"rend plus que leurs definitions (critere de `no_film_reread_test.go`, lot 6)",
+	},
+	{
+		fichier:   "internal/games/halo_infinite/film/replay/inventory_decode.go",
+		enveloppe: "ScanFilmKeyframeInventory", pose: "2026-09-17",
+		retrait: "idem",
+	},
+	{
+		fichier:   "internal/games/halo_infinite/film/replay/origin.go",
+		enveloppe: "ScanFilmClockOrigin", pose: "2026-09-17",
+		retrait: "idem",
+	},
+	{
+		fichier:   "internal/games/halo_infinite/film/replay/player_index.go",
+		enveloppe: "ScanFilmPlayerIndices", pose: "2026-09-17",
+		retrait: "idem",
+	},
+}
+
+// TestCoucheDePublicationNeChargePasLeFilm : R4.
+func TestCoucheDePublicationNeChargePasLeFilm(t *testing.T) {
+	sites := chargementsDeSourceDansReplay(t)
+	tolere := map[string]bool{}
+	for _, c := range chargementsToleresDansReplay {
+		tolere[c.fichier] = true
 	}
-	for _, a := range aretesTolerees {
-		if vivantes[cleArete(a.de, a.vers)] {
+	var violations []string
+	for _, s := range sites {
+		if tolere[s.fichier] {
 			continue
 		}
-		t.Errorf("`aretesTolerees` cite %s (pose %s, lot %s), qui n est plus une violation : "+
-			"entree perimee, la retirer.", cleArete(a.de, a.vers), a.pose, a.lot)
+		violations = append(violations, s.fichier+" : "+s.detail)
+	}
+	if len(violations) == 0 {
+		return
+	}
+	sort.Strings(violations)
+	t.Errorf("la couche de PUBLICATION charge le film elle-meme (%d site(s)) :\n  %s\n"+
+		"`replay` RECOIT un `*source.Film` ; il ne l ouvre pas. Le film se charge UNE fois par "+
+		"cuisson (lot 1 de PLAN_CUISSON_PERF : ~94 %% du temps de cuisson avant correction), en "+
+		"amont, et circule par valeur.",
+		len(violations), strings.Join(violations, "\n  "))
+}
+
+// TestAllowlistDeChargementNEstPasPerimee : une entree qui ne decrit plus un chargement reel se
+// RETIRE, dans le commit meme qui la resout.
+func TestAllowlistDeChargementNEstPasPerimee(t *testing.T) {
+	vivants := map[string]bool{}
+	for _, s := range chargementsDeSourceDansReplay(t) {
+		vivants[s.fichier] = true
+	}
+	for _, c := range chargementsToleresDansReplay {
+		if strings.TrimSpace(c.retrait) == "" {
+			t.Errorf("`chargementsToleresDansReplay` cite %s sans critere de retrait : une "+
+				"tolerance sans cible est une dette anonyme.", c.fichier)
+		}
+		if !vivants[c.fichier] {
+			t.Errorf("`chargementsToleresDansReplay` cite %s (%s, pose %s), qui ne charge plus "+
+				"le film : entree perimee, la retirer.", c.fichier, c.enveloppe, c.pose)
+		}
 	}
 }

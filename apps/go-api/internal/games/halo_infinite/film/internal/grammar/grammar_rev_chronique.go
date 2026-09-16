@@ -428,3 +428,31 @@ package grammar
 // une FEUILLE (son seul import du depot est `film/types`, qui ne bouge pas), donc aucun de ses
 // fichiers de production n a change. `SchemaVersion` reste 60 ; aucun match deja decode n est
 // candidat au backlog.
+//
+// ENTREE `grammar-2026-09-15.38` (2026-09-17, lot 2.5.e-d) : `.37` -> `.38`.
+// TROIS DOCS INVERSEES CORRIGEES, ET UNE DECISION ECRITE. COMMENTAIRES SEULS.
+//
+// AUCUNE LIGNE DE CODE NE CHANGE dans cette entree : ce sont des octets de commentaire, et ils
+// font monter l empreinte parce que le hachage porte sur les OCTETS — c est le faux positif
+// assume du mecanisme, et il coute une ligne.
+//
+//	`observateur.go`           SEPT champs annoncaient « Global de paquet », dont un
+//	                           « UN SEUL decodage filmdec a la fois par process » — l inverse de
+//	                           l en-tete du meme fichier depuis le lot 2.3, qui dit que le
+//	                           LECTEUR porte l observateur et que deux films se decodent en
+//	                           parallele (`TestDeuxFilmsEnParallele`). Quatre de ces phrases
+//	                           etaient en outre TRONQUEES, coupees au deplacement des champs.
+//	`profile_globales_test.go` son en-tete annoncait « le lot 2.1 resout le profil mais ne le
+//	                           fait lire par AUCUN lecteur de bits : les globales de paquet
+//	                           decident encore » — elles n existent plus depuis le lot 2.3, et
+//	                           le paragraphe se contredisait avec le sien propre.
+//	`player_table_control.go`  la DECISION de D3 + D8 est ecrite a l endroit qu elle concerne :
+//	                           le controle du calibrage RESTE en `grammar` parce qu il DECODE
+//	                           des enregistrements de slot (`decodeSlot`, `slotVacant`), donc
+//	                           c est un LECTEUR. V15 (8) est perime sur sa moitie « controle ».
+//
+// `grammar/profile.go` et `profile/mpp_widths.go`, les deux autres docs inversees nommees par D2
+// de la revue M2, avaient deja ete reecrites par le lot 2.5.b : verifiees sur pieces, elles ne
+// portent plus les phrases citees.
+//
+// `SchemaVersion` reste 60 ; aucun match deja decode n est candidat au backlog.

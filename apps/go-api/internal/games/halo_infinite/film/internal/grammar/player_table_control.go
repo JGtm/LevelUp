@@ -9,6 +9,32 @@ package grammar
 // controle contredisait le profil, la table serait lue quand meme, et la contradiction comptee.
 //
 // Sorti de `player_table.go` au passage des 500 lignes (CLAUDE.md, seuil 5) : deplacement PUR.
+//
+// # POURQUOI CE FICHIER RESTE EN `grammar`, ET CE QUI A ETE MESURE (lot 2.5.e-d, D3 + D8)
+//
+// LA DECISION V15 (8) DISAIT « la LECTURE en `source`, le CONTROLE en `profile` ». Elle lisait la
+// carte de la note de preparation §2.3, ou les trois `player_table*.go` etaient deja descendus en
+// `source` — ce qui n a pas eu lieu (§4 D3 : la mesure du 2.5.a a montre que ce n etait pas un
+// deplacement pur, 76 des 159 declarations de ces fichiers etant referencees ailleurs). Les deux
+// `[!]` ont donc la meme cause, et une seule mesure les tranche.
+//
+// MESURE DU 2026-09-16 (sonde `go/parser`, croisement des references) : les SEPT declarations de
+// ce fichier lisent HUIT symboles de `grammar` — `PlayerSlot`, `PlayerTableReport`
+// (`player_table.go`), `decodeSlot`, `gamertagImprimable`, `longueurPredite`, `slotEnr`,
+// `slotVacant`, `slotVacantBits` (`player_table_record.go`).
+//
+// ET LA CAUSE EST PLUS PROFONDE QU UN CHEMIN : `controlerCalibrage(d []byte, ...)` DECODE des
+// enregistrements de slot dans le payload (`decodeSlot(d, c, ...)`, `slotVacant(ctl.d, ...)`).
+// C est un BALAYAGE, donc de la GRAMMAIRE au sens exact de V19 (« tout ce qui LIT des octets du
+// film RESTE en `grammar` »). Le descendre en `profile` ferait `profile -> grammar`, l import vers
+// le haut que la couche existe pour supprimer, et il ferait entrer une lecture d octets dans une
+// couche qui n en lit aucun.
+//
+// V15 (8) EST DONC PERIME SUR SA MOITIE « CONTROLE » : le controle du calibrage est un LECTEUR,
+// pas une valeur. Ce qui descend en `profile`, c est ce que le controle PUBLIE (une largeur, une
+// transposition modale), et c est deja fait — `ImplantationGamertag` et les largeurs d en-tete y
+// vivent depuis le lot 2.5.b. A revoir seulement le jour ou `ReadPlayerTable` et `decodeSlot`
+// descendraient en `source` : le controle pourrait alors se poser au-dessus d eux.
 
 // controlerCalibrage confronte le PROFIL a ce que le FILM mesure, et ne decide rien.
 //
