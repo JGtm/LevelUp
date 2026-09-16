@@ -465,3 +465,25 @@ package grammar
 // `killsource` a change de place. AUCUN OCTET DE FILM N EST LU AUTREMENT ; la SORTIE de
 // `killsource` est identique a l octet, donc `KillSourceDecoderRev` ne bouge pas (son golden est
 // refige, son ancre de racine suit le paquet). `SchemaVersion` reste 60.
+//
+// ENTREE `grammar-2026-09-15.34` (2026-09-16, lot 2.6 volet facts + source) : `.33` -> `.34`.
+// REVISIONS PAR COUCHE ET TYPES DE CONTRAT, SORTIE IDENTIQUE.
+//
+// TROIS GESTES, ET AUCUN NE LIT UN OCTET AUTREMENT. (1) `source.Rev` NAIT (`source/rev.go`,
+// golden a historique `source/testdata/source_rev.golden`) : la couche qui porte la porte aux
+// octets a desormais sa revision propre, sur le mecanisme central `film/revision`. (2)
+// `facts.Rev` NAIT (`facts/rev.go`) et REPREND la valeur de `KillSourceDecoderRev`
+// (`killsource-2026-09-16.2`, V15 (16)) : la constante quitte `sync/killcollector`, qui la LIT,
+// son empreinte couvre TOUT l arbre `facts/` (killsource, objectives, fallback) plus les VALEURS
+// de `source.Rev` et de cette constante-ci (V15 (12)), et le backlog de redecodage reste un
+// geste de PRODUCTION sur signal utilisateur (D6). (3) `film/types` NAIT, feuille sans aucun
+// import du depot : les types de DONNEES purs qui traversent une frontiere de couche depuis
+// `source` et `facts` y sont declares, et les paquets d origine gardent un ALIAS DATE le temps
+// que les volets grammaire et rejeu re-pointent leurs consommateurs.
+//
+// L EMPREINTE MONTE parce que les racines hachees portent des fichiers neufs (`rev.go`) et,
+// pour le geste (3), des alias a la place des declarations. La SORTIE est identique a l octet :
+// aucune largeur, aucun cadre, aucun ordre de composants ne change, et un alias de type est le
+// MEME type pour le compilateur. `SchemaVersion` reste 60 ; aucun match deja decode n est
+// candidat au backlog, et c est la condition meme de V15 (16) — M2 est un jalon a ZERO
+// difference de contenu.
