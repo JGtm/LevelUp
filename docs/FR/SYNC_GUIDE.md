@@ -138,6 +138,27 @@ Sélecteurs (un ou plusieurs requis) :
 
 Le backfill est aussi exposé en HTTP (`POST /backfill/start`) ; la CLI est la voie locale sans serveur.
 
+#### Révisions du décodeur de film et backlog killsource
+
+Le décodeur de film est fait de cinq couches (ADR 0034, D-1), et quatre d'entre elles portent leur propre révision (D-6). Une révision est une chaîne figée dans un golden à côté de l'empreinte des sources non-test de sa couche : une source qui change sans sa révision fait rougir le test d'empreinte, et une révision qui change sans sa source le fait rougir aussi.
+
+| Révision | Ce qu'elle hache | Elle monte quand |
+|---|---|---|
+| `source.Rev` | la couche source : chargement, décompression, découpage en chunks et paquets, lecteur de bits canonique | la façon d'atteindre les octets change |
+| `profile.Rev` | la couche profil : la table par build et par carte | une ligne de la table du profil change |
+| `grammar.Rev` | la couche grammaire, plus les deux révisions ci-dessus | une largeur, un cadre, un ordre de composants, un lecteur neuf |
+| `facts.Rev` | la couche des faits, plus la **valeur** de `grammar.Rev` | la sortie des faits peut changer |
+
+`facts.Rev` hache la valeur de `grammar.Rev` à dessein, et c'est le seul lien qui ne va pas de soi. Le défaut qu'il ferme est mesuré : une correction de grammaire peut changer la sortie de la source de kill sans toucher un octet de la couche des faits, la révision restait alors immobile, et les lignes déjà écrites portaient la révision courante — exclues du backlog à vie. Un faux positif coûte un redécodage ; un faux négatif coûte un parc de lignes fausses.
+
+**Ce qu'est le backlog.** Chaque ligne de `match_kill_events` porte dans `decoder_rev` la révision qui l'a produite. Un match dont la passe courante — lue par la vue `match_kill_events_latest`, jamais la table brute (ADR 0026) — ne porte pas la révision courante redevient candidat (`conditionBacklog`, `internal/sync/killcollector/postsync.go`). L'étape de post-sync rattrape à cadence bornée (8 films par cycle, budget de cinq minutes) et publie le reste dans l'expvar `killsource_postsync_backlog_restant` ; `levelup backfill-killsource --online` le vide délibérément. La recuisson du parc entier reste un geste à part, pris sur signal de l'utilisateur, jamais par lot.
+
+**Ce qui n'ouvre pas de backlog.** Déplacer un fichier, en scinder un, passer une valeur par paramètre au lieu d'une variable de paquet : les empreintes voient les sources, donc les révisions montent, mais une montée n'ouvre le backlog que si la *sortie* peut changer — et un pas structurel se clôt à zéro différence de contenu, prouvée par le corpus gate. À sa naissance, `facts.Rev` **reprend la valeur de `KillSourceDecoderRev`** au lieu d'ouvrir une nouvelle série, précisément parce que rien du décodage n'a changé : il n'y a rien à redécoder, et aucun backlog ne s'ouvre. La règle « une montée de `facts.Rev` ouvre le backlog killsource » vaut à partir du premier changement de sortie qui suit.
+
+**Lire les révisions sur un artefact.** À partir du schéma 61, un document de rejeu cuit porte `coverage.decoder.{grammarRev, factsRev, build}` (`GET /players/{player_slug}/matches/{match_id}/replay`) : l'artefact dit sous quelles révisions il a été cuit, au lieu de se deviner à sa version de schéma. `build` est la clé du profil, lue en clair dans `chunk_00` (D-3) ; sur un build inconnu (`ErrUnknownBuild`) elle vaut la chaîne vide et le bloc reste présent. L'**absence** du bloc signifie « artefact cuit avant le schéma 61 », jamais « build inconnu ».
+
+Renvois : [../adr/0034-film-decoder-profile-and-layers.md](../adr/0034-film-decoder-profile-and-layers.md) — D-1 (les cinq couches et leur dépendance à sens unique), D-6 (une révision par chose qui peut changer), D-10 et D-10 bis (la grammaire décide, un repli est nommé, compté et retiré) — et le registre des replis lui-même, `internal/games/halo_infinite/film/replay/fallback`, qui porte pour chaque repli sa condition typée, sa date de pose, sa cible et son critère de retrait.
+
 ## Auth
 
 Les tokens proviennent de la source unique décrite dans [../adr/0023-auth-tokens-single-source.md](../adr/0023-auth-tokens-single-source.md) : `data/auth/watcher_tokens/{xuid}.json` via `MultiUserTokenStore`. Le joueur doit d'abord être déclaré dans `db_profiles.json` (avec `xuid`).
