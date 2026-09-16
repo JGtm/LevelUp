@@ -3,7 +3,7 @@ package grammar
 // object_deaths_test.go — LA MARCHE DES MORTS D OBJET, eprouvee sur une bobine REELLE et sur des
 // entrees degradees.
 //
-// LA BOBINE EST CELLE DE `killsource` (`../killsource/testdata/minibobine_000d5950`), et c est
+// LA BOBINE EST CELLE DE `killsource` (`../facts/killsource/testdata/minibobine_000d5950`), et c est
 // voulu : c est la SEULE fixture versionnee du depot qui porte un PREFIXE CONTIGU de chunks avec
 // leurs paquets delta. Les sept mini-bobines de `replay/testdata` ne portent que des paquets
 // d image-cle et le pied — une marche n y a rien a derouler, et une bobine de paquets
@@ -20,7 +20,7 @@ import (
 
 // bobineMarcheDir : la bobine a paquets delta, chez `killsource`.
 func bobineMarcheDir() string {
-	return filepath.Join("..", "killsource", "testdata", "minibobine_000d5950")
+	return filepath.Join("..", "facts", "killsource", "testdata", "minibobine_000d5950")
 }
 
 // TestScanObjectDeathsSurBobineReelle : la marche rend-elle des morts BIPEDES sur une bobine qui
@@ -212,7 +212,7 @@ func TestProfilDuCadreEstDomineOuDeclare(t *testing.T) {
 	}{
 		{bobineMarcheDir(), false,
 			"profil franc mesure le 2026-09-16 : idLow=13 localise 142/147, le dauphin 23/147 (facteur 6,2)"},
-		{filepath.Join("..", "killsource", "testdata", "minibobine_e5adf7b2"), true,
+		{filepath.Join("..", "facts", "killsource", "testdata", "minibobine_e5adf7b2"), true,
 			"profil PLAT mesure le 2026-09-16 : les six largeurs localisent 0 paquet sur 54"},
 	} {
 		film, err := source.LoadDir(cas.dir, nil)

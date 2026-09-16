@@ -174,20 +174,20 @@ var couchesDuDecodeur = map[string]coucheFilm{
 
 	// --- facts : de la chronologie brute aux faits du match (vies, identite, tirs, morts,
 	// objectifs, equipement, vehicules), chacun avec ses compteurs de couverture.
-	"internal/games/halo_infinite/film/killsource": coucheFacts,
+	"internal/games/halo_infinite/film/facts/killsource": coucheFacts,
+	// `fallback` (le REGISTRE des replis, D10 bis) etait une feuille de `replay` ; il descend en
+	// `facts/fallback` au lot 2.5.d.1 (2026-09-16) et se classe DESORMAIS `facts`, avec son
+	// arborescence. Le reclassement ne change aucune arete : la feuille n importe rien du depot,
+	// et `replay -> facts` reste descendant.
+	"internal/games/halo_infinite/film/facts/fallback": coucheFacts,
 	// DESCENDU LE 2026-09-16 (lot 2.5.d.2) d `internal/analysis/objectiveevents` : le paquet vit
 	// desormais sous `film/facts/`, et passera sous `film/internal/facts/` au dernier commit du lot.
 	"internal/games/halo_infinite/film/facts/objectives": coucheFacts,
 
 	// --- replay : publie le document versionne. NE DECODE RIEN (ADR 0034 D-1).
 	"internal/games/halo_infinite/film/replay": coucheReplay,
-	// `fallback` et `mapvar` sont deux feuilles de `replay` (registre des replis, variantes de
-	// carte), sans aucun import du depot. Classees `replay` avec leur parent : la note de
-	// preparation §2.7 prevoit que `fallback` descende en `facts/fallback` au lot 2.5.d.1 — le
-	// reclassement ne changera AUCUNE arete (une feuille n importe rien, et `replay -> facts`
-	// reste descendant), il ne touchera que la ligne ci-dessous.
-	"internal/games/halo_infinite/film/replay/fallback": coucheReplay,
-	"internal/games/halo_infinite/film/replay/mapvar":   coucheReplay,
+	// `mapvar` est une feuille de `replay` (variantes de carte), sans aucun import du depot.
+	"internal/games/halo_infinite/film/replay/mapvar": coucheReplay,
 
 	// --- hors couches : ni decodage, ni publication. Sans rang, R1 ne les contraint pas ; R2 (le
 	// lieu) si, parce qu ils vivent sous `film/`.
@@ -231,7 +231,7 @@ type areteToleree struct {
 // rougir `TestAllowlistsDesCouchesNeSontPasPerimees`.
 var aretesTolerees = []areteToleree{
 	{
-		de: "internal/games/halo_infinite/film/killsource", vers: "internal/analysis",
+		de: "internal/games/halo_infinite/film/facts/killsource", vers: "internal/analysis",
 		pose: "2026-09-17", lot: "2.5.c",
 		coupe: "4 symboles (`EventTypeDeath`, `EventTypeKill`, `HighlightEvent`, " +
 			"`ParseHighlightEvents`) : `ParseHighlightEvents` est de la grammaire de film posee " +

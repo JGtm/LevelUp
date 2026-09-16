@@ -1,10 +1,10 @@
 package fallback
 
-// registre_killsource.go — les replis du décodeur de morts (`film/killsource/`) et du
+// registre_killsource.go — les replis du décodeur de morts (`film/facts/killsource/`) et du
 // collecteur qui l'écrit en base (`internal/sync/killcollector/`).
 
 const (
-	pkgKillsource    = "internal/games/halo_infinite/film/killsource/"
+	pkgKillsource    = "internal/games/halo_infinite/film/facts/killsource/"
 	pkgKillcollector = "internal/sync/killcollector/"
 )
 

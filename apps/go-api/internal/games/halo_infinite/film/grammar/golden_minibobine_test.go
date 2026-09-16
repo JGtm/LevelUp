@@ -186,7 +186,7 @@ import (
 
 // bobineFamilles est la mini-bobine versionnee de `killsource`, vue depuis `filmdec`. Elle n'est
 // pas dupliquee ici : deux verites binaires du meme film seraient deux verites a maintenir.
-const bobineFamilles = "../killsource/testdata/minibobine_000d5950"
+const bobineFamilles = "../facts/killsource/testdata/minibobine_000d5950"
 
 // bobineChunks est le nombre de chunks de replication de la bobine (chunk_01 a chunk_06).
 const bobineChunks = 6

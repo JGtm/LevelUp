@@ -10,7 +10,7 @@ package grammar
 // explosif relie.
 //
 // CE QUE FAIT CE FICHIER. Il reproduit, avec les primitives EXPORTEES de filmdec, LA MARCHE du
-// decodeur de source de degat valide (internal/games/halo_infinite/film/killsource, gate (b)
+// decodeur de source de degat valide (internal/games/halo_infinite/film/facts/killsource, gate (b)
 // 98.2 %, part localisee 95.8-97.6 %). killsource importe filmdec ET internal/analysis : il ne
 // peut PAS etre importe ici (cycle). On porte donc son ALGORITHME — ce n'est pas une recolte
 // maison, c'est le meme scan, cablant les memes fonctions (World.Snapshot/Restore/

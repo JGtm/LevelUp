@@ -3,8 +3,8 @@ package replay
 import (
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // world_object_precision.go — LES LARGEURS D'AXE DU CHEMIN WORLD-OBJECT, POSÉES DEPUIS LA

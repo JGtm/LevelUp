@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 

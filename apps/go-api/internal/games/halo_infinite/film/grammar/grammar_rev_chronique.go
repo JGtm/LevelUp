@@ -419,7 +419,7 @@ package grammar
 // (`filmdec_unknown_build_*`, `filmdec_unknown_format_*`, `filmdec_keyframe_ti*`) et les prefixes
 // d erreur `"filmdec: ..."`. Un compteur est un CONTRAT D EXPLOITATION (ADR 0009) ; le renommer
 // serait un changement de sortie, exactement ce qu un deplacement pur s interdit. La tranche
-// `"filmdec"` du registre des replis (`replay/fallback/registre.go`) est une CLE publiee du meme
+// `"filmdec"` du registre des replis (`facts/fallback/registre.go`) est une CLE publiee du meme
 // ordre. Leur renommage se decidera avec les consommateurs, pas ici.
 //
 // `KillSourceDecoderRev` ne bouge PAS : la SORTIE de `killsource` est identique a l octet.
@@ -451,3 +451,17 @@ package grammar
 // L EMPREINTE MONTE parce que la clause `package` de cinq fichiers de production a change et que
 // la racine hachee suit le paquet. AUCUN OCTET DE FILM N EST LU AUTREMENT.
 // `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` reste 60.
+//
+// ENTREE `grammar-2026-09-15.33` (2026-09-16, lot 2.5.d.1 — RANG PROVISOIRE) : `.32` -> `.33`.
+// DEPLACEMENT PUR, SORTIE IDENTIQUE.
+//
+// LA COUCHE `facts` EST COMPLETE. `film/killsource` devient `film/facts/killsource` et
+// `film/replay/fallback` devient `film/facts/fallback` (le REGISTRE des replis, ADR 0034 D-10
+// bis, qui etait classe `replay` avec son parent et se classe desormais `facts`, ou il est
+// produit). Les NOMS de paquet ne changent PAS — seuls les chemins bougent : le diff ne porte que
+// des lignes d import.
+//
+// L EMPREINTE MONTE parce qu elle hache le CHEMIN RELATIF a cote du contenu et que la racine
+// `killsource` a change de place. AUCUN OCTET DE FILM N EST LU AUTREMENT ; la SORTIE de
+// `killsource` est identique a l octet, donc `KillSourceDecoderRev` ne bouge pas (son golden est
+// refige, son ancre de racine suit le paquet). `SchemaVersion` reste 60.

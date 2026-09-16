@@ -31,7 +31,7 @@ package killsource
 //
 //	HVER_ROOT=<parc>/data/cache/film_chunks \
 //	HVER_IDS=bcb6d393,000d5950,60ae07c4 \
-//	  go test ./internal/games/halo_infinite/film/killsource/ -run TestVersionEvenements -v -timeout 3600s
+//	  go test ./internal/games/halo_infinite/film/facts/killsource/ -run TestVersionEvenements -v -timeout 3600s
 
 import (
 	"os"
@@ -204,7 +204,7 @@ func hverTriees(m map[int]bool) []int {
 // USAGE :
 //
 //	HVER_ROOT=<parc>/data/cache/film_chunks HVER_IDS=13b00e35,a349fea8,000d5950 \
-//	  go test ./internal/games/halo_infinite/film/killsource/ -run TestVersionIndexJoueur -v -timeout 3600s
+//	  go test ./internal/games/halo_infinite/film/facts/killsource/ -run TestVersionIndexJoueur -v -timeout 3600s
 func TestVersionIndexJoueur(t *testing.T) {
 	root := os.Getenv(hverRootEnv)
 	ids := strings.Split(os.Getenv(hverIDsEnv), ",")

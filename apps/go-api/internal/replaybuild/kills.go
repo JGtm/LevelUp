@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 )

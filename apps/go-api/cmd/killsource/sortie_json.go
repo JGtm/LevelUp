@@ -16,7 +16,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 )
 
 // sortieJSON : la racine du document.

@@ -55,12 +55,12 @@ package killsource
 //
 // REGENERATION DU GOLDEN (aucune fixture requise) :
 //
-//	go test ./internal/games/halo_infinite/film/killsource/ -run TestGoldenMiniBobine -update
+//	go test ./internal/games/halo_infinite/film/facts/killsource/ -run TestGoldenMiniBobine -update
 //
 // REGENERATION DE LA BOBINE ELLE-MEME (fixture requise, jamais d edition a la main) :
 //
 //	KILLSOURCE_FIXTURES=<racine des films> \
-//	  go test ./internal/games/halo_infinite/film/killsource/ -run TestMiniBobineRegenerer -update
+//	  go test ./internal/games/halo_infinite/film/facts/killsource/ -run TestMiniBobineRegenerer -update
 
 import (
 	"fmt"
@@ -153,7 +153,7 @@ const enteteMiniBobine = `# GOLDEN killsource — MINI-BOBINE (prefixe du film %
 # balayage. Seul TestGoldenFilms verrouille le balayage, sur les films entiers.
 #
 # REGENERATION :
-#   go test ./internal/games/halo_infinite/film/killsource/ -run TestGoldenMiniBobine -update
+#   go test ./internal/games/halo_infinite/film/facts/killsource/ -run TestGoldenMiniBobine -update
 `
 
 // sectionLignesMiniBobine : LES LIGNES PUBLIEES, TOUTES, avec tout ce qui les qualifie.

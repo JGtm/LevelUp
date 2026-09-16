@@ -6,13 +6,13 @@ package killcollector
 // # LE TROU QUE CE FICHIER FERME, ET IL A ETE MESURE
 //
 // [KillSourceCollector.entreeDeCatalogueParNom] EST le repli `repli_carte_premier_nom_resolu`
-// (registre des replis, `replay/fallback/registre_killsource_carte.go`) : « les identites
+// (registre des replis, `facts/fallback/registre_killsource_carte.go`) : « les identites
 // candidates sont essayees dans l'ordre et la PREMIERE qui resout gagne, sans arbitrage ».
 // Mutation jouee le 2026-09-15 sur la base `34fa53da5` — la boucle parcourue A L'ENVERS — et TOUT
 // restait vert : `killcollector`, `film/...` et `archlint` compris. Deux raisons, et il faut les
 // dire ensemble : aucun temoin de `hits_carte_par_nom_test.go` ne donne DEUX noms qui resolvent
 // (le seul a deux candidats commence par une carte absente du catalogue), et l'empreinte de
-// `TestKillSourceDecoderRevSuitLeDecodeur` ne hache que `film/killsource`, jamais `killcollector`.
+// `TestKillSourceDecoderRevSuitLeDecodeur` ne hache que `film/facts/killsource`, jamais `killcollector`.
 //
 // Le mecanisme d'un repli non teste est un repli dont personne ne verra changer la reponse.
 //

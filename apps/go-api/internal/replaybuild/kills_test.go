@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 

@@ -29,7 +29,7 @@ package killsource
 // USAGE :
 //
 //	CGO_ENABLED=0 V10_FILM_ROOT=<repo>/data/cache V10_FILMS="0d76e8f1,fccc61cd" \
-//	  go test ./internal/games/halo_infinite/film/killsource/ -run '^TestV10DeadStateVehicules$' -v
+//	  go test ./internal/games/halo_infinite/film/facts/killsource/ -run '^TestV10DeadStateVehicules$' -v
 
 import (
 	"fmt"

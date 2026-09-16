@@ -202,7 +202,7 @@ func TestCompteurEstSurEtNilSafe(t *testing.T) {
 // TestRapportDuRegistre n'est PAS une assertion : c'est la SORTIE HUMAINE du registre, exigée
 // par l'item 1.9.0 (« les déclenchements se lisent dans l'artefact ET dans une sortie humaine »).
 //
-//	go test ./internal/games/halo_infinite/film/replay/fallback/ -run RapportDuRegistre -v
+//	go test ./internal/games/halo_infinite/film/facts/fallback/ -run RapportDuRegistre -v
 //
 // Elle liste, par paquet, chaque repli avec sa condition, son ordre, l'état de son compteur et
 // sa cible de retrait — de quoi préparer une revue de jalon sans ouvrir un fichier.

@@ -104,14 +104,14 @@ var plafondsParFichier = map[string]int{
 	// vague 2 de la famille 1.9 et le schema 60, avant que le ratchet n existe ici. Meme regle :
 	// chaque valeur ne peut que descendre. `document_vehicles.go` et `score_timeline.go` sont dans
 	// le perimetre du volet 2.7p (scission en cours) et sortiront de la table a sa fusion.
-	"internal/games/halo_infinite/film/replay/fallback/registre_killsource.go":                  555,
-	"internal/games/halo_infinite/film/killsource/assist.go":                                    531,
-	"internal/games/halo_infinite/film/replay/document_shape_test.go":                           511,
-	"internal/games/halo_infinite/film/killsource/e197_identite_paquet_mesure_research_test.go": 654,
-	"internal/games/halo_infinite/film/facts/objectives/e1911_manches_mesure_research_test.go":  523,
-	"internal/games/halo_infinite/film/facts/objectives/statborg.go":                            687,
-	"internal/replaybuild/replaybuild.go":                                                       577,
-	"internal/games/halo_infinite/film/grammar/equipment_creation.go":                           508,
+	"internal/games/halo_infinite/film/facts/fallback/registre_killsource.go":                         555,
+	"internal/games/halo_infinite/film/facts/killsource/assist.go":                                    531,
+	"internal/games/halo_infinite/film/replay/document_shape_test.go":                                 511,
+	"internal/games/halo_infinite/film/facts/killsource/e197_identite_paquet_mesure_research_test.go": 654,
+	"internal/games/halo_infinite/film/facts/objectives/e1911_manches_mesure_research_test.go":        523,
+	"internal/games/halo_infinite/film/facts/objectives/statborg.go":                                  687,
+	"internal/replaybuild/replaybuild.go":                                                             577,
+	"internal/games/halo_infinite/film/grammar/equipment_creation.go":                                 508,
 	// --- tests et instruments de mesure : tables de fixtures et balayages de recherche.
 	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":                   1202,
 	"internal/games/halo_infinite/film/grammar/i59_anchor_test.go":                       1152,

@@ -55,7 +55,7 @@ package grammar
 // match. AUCUN BIT LU NE CHANGE, et l empreinte monte quand meme parce qu elle hache des octets
 // de source (c est ecrit dans son en-tete) : ce qui change est QUELLE carte, donc quelles bornes
 // et quel decoupage, s appliquent a un film — le meme genre de changement que la revision `.2`
-// nommait au lot 1.9.2. `KillSourceDecoderRev` ne bouge PAS (`film/killsource/` n a pas bouge,
+// nommait au lot 1.9.2. `KillSourceDecoderRev` ne bouge PAS (`film/facts/killsource/` n a pas bouge,
 // et son propre ratchet d empreinte fait foi) ; `SchemaVersion` non plus (le chemin de cuisson
 // n appelait pas cette fonction — verifie le 2026-09-15 : equivalence 10/10 identiques,
 // corpus gate 14 temoins a 0 gain / 0 perte / 0 changement).
@@ -92,4 +92,4 @@ package grammar
 // entree par rang, et rien qu une. Elle EST la documentation de cette constante — elle en a
 // seulement ete sortie le 2026-09-18 (lot 2.4.1) parce que ce fichier avait atteint le seuil
 // de 500 lignes et qu une chronique qui ne peut plus grandir cesse d etre tenue.
-const GrammarRev = "grammar-2026-09-15.32"
+const GrammarRev = "grammar-2026-09-15.33"

@@ -52,7 +52,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 )
 
 // cheminDuPlanDecodeur : le plan est la SOURCE des cases. Chemin depuis `apps/go-api`.

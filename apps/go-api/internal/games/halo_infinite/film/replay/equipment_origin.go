@@ -83,8 +83,8 @@ package replay
 import (
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // equipOwnerWindowUS est la fenêtre dans laquelle un échantillon de bipède est jugé

@@ -9,7 +9,7 @@ package grammar
 // dont les morts sont un fait du corpus (temoin `v10ControlBiped`).
 //
 // Il existe un lecteur qui ne passe PAS par l'ancre : la marche du decodeur de source de degat
-// (`internal/games/halo_infinite/film/killsource`, gate (b) 98,2 %). Elle a fait passer un film
+// (`internal/games/halo_infinite/film/facts/killsource`, gate (b) 98,2 %). Elle a fait passer un film
 // de 5 a 26 morts detectees. Ce fichier la porte ici, avec les primitives EXPORTEES de filmdec —
 // c'est le MEME algorithme, cablant les memes fonctions (World.Snapshot/Restore/
 // GenerationMatches, TryDeltaAt, DecodeFrameRecords). Quatre elements font sa robustesse :

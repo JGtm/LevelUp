@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // manche2SansManche1Records reproduit le motif mesure sur `fb1a1a72` et 23 autres films du cache

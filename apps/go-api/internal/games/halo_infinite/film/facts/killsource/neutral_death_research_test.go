@@ -27,7 +27,7 @@ package killsource
 //
 // # LECTURE SEULE, AUCUNE ECRITURE, AUCUNE BASE
 //
-//	NEUTRAL_DEATH_FILMS="<dir1>,<dir2>" go test ./internal/games/halo_infinite/film/killsource/ \
+//	NEUTRAL_DEATH_FILMS="<dir1>,<dir2>" go test ./internal/games/halo_infinite/film/facts/killsource/ \
 //	    -run TestNeutralDeathNatureCoverage -timeout 30m -v
 //
 // Sans la variable : SKIP (la CI n'a pas les films, ils ne sont pas versionnes — meme regime que

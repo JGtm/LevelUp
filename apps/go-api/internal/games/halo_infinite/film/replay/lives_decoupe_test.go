@@ -8,8 +8,8 @@ package replay
 import (
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // Les instants de la figure commune : un slot replique de 1 s a 4 s, se tait 6 s (au-dela de

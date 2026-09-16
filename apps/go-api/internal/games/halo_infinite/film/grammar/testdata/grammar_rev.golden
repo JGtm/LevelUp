@@ -512,4 +512,11 @@
 #               la note §2.3 prevoyait : la mesure dit que ce n est pas un deplacement pur
 #               (76 declarations sur 159 referencees ailleurs, et `source` importerait `profile`
 #               et `grammar`). `KillSourceDecoderRev` ne bouge PAS ; `SchemaVersion` 60.
-grammar-2026-09-15.32	d8a21cbc94399b71f535c51f6a7aac0773de1ec1f5c69b8a2252e0be18730983
+#   2026-09-16  grammar-2026-09-15.33  lot 2.5.d.1 (`.32` -> `.33`, RANG PROVISOIRE) : DEPLACEMENT
+#               PUR, SORTIE IDENTIQUE. La couche `facts` est complete : `film/killsource` ->
+#               `film/facts/killsource` et `film/replay/fallback` -> `film/facts/fallback` (le
+#               registre des replis, classe `facts` la ou il est produit). Les NOMS de paquet ne
+#               changent pas, seuls les chemins. L empreinte monte parce qu elle hache le chemin
+#               relatif a cote du contenu. `KillSourceDecoderRev` ne bouge PAS (sortie identique a
+#               l octet, ancre de racine suivie, golden refige) ; `SchemaVersion` 60.
+grammar-2026-09-15.33	6b60980b451b8bca06f6bdd8eb5d60c33c216b5823d58c820ce115973695a458

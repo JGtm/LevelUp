@@ -109,7 +109,7 @@ const (
 	// DU DÉGÂT FATAL (lue dans le dead-state de la victime). Gouverne le
 	// collecteur `internal/sync` qui remplit `shared.match_kill_events`.
 	//
-	// Halo Infinite : supported (décodeur `games/halo_infinite/film/killsource`).
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/facts/killsource`).
 	// Halo 5 : ABSENTE — son format de film est différent ET ses mécaniques de
 	// kill sont natives dans le carnage (CapNativeKillMechanics), donc il n'a
 	// aucun besoin d'un décodeur de film pour la même information.

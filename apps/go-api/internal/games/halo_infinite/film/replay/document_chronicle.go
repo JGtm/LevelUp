@@ -1437,7 +1437,7 @@ package replay
 //	le champ       `coverage.fallbacks` est NEUF : une liste `{name, hits}`, triee par nom, des
 //	ajoute         seuls replis DECLENCHES pendant cette cuisson. Absente quand aucun ne s'est
 //	               declenche. Le nom est stable et se joint au REGISTRE DES REPLIS
-//	               (`film/replay/fallback`), qui porte pour chacun sa condition typee, sa date de
+//	               (`film/facts/fallback`), qui porte pour chacun sa condition typee, sa date de
 //	               pose, sa cible et son critere de retrait (decision D14, ADR 0034).
 //
 //	une liste      les replis ne se repartissent pas sur les calques existants — celui des

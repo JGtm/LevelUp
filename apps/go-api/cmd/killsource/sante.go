@@ -16,8 +16,8 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 )
 
 func afficherSante(r *rapport) error {

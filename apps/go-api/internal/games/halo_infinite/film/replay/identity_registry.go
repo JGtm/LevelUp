@@ -30,9 +30,9 @@ package replay
 import (
 	"strconv"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // IdentityClock est l'axe de frames du document, quand l'appelant en a un.

@@ -33,8 +33,8 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
@@ -430,7 +430,7 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 //
 // POURQUOI CE DÉCODAGE-CI VIT DANS `replaybuild`, ET PAS DANS `games/halo_infinite/film/replay`. La source du
 // dégât fatal se lit dans le composant dead-state du film, et ce décodage a UN seul
-// propriétaire dans le dépôt (`film/killsource`, avec ses golden et ses ancres Theater).
+// propriétaire dans le dépôt (`film/facts/killsource`, avec ses golden et ses ancres Theater).
 // `analysis/` est title-agnostic et n'a pas à le connaître ; ce paquet, lui, est la couche
 // d'ASSEMBLAGE — il compose déjà les libellés du titre de la même façon. Deux décodeurs du
 // même fait divergeraient.

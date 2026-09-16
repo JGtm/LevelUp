@@ -31,7 +31,7 @@ import (
 )
 
 // miniBobineV40 : la bobine de version 40, relative a CE paquet.
-const miniBobineV40 = "../killsource/testdata/minibobine_e5adf7b2"
+const miniBobineV40 = "../facts/killsource/testdata/minibobine_e5adf7b2"
 
 // miniBobineV40Version : la version que son registre declare.
 const miniBobineV40Version = 40

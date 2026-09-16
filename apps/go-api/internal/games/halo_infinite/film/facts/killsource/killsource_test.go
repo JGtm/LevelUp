@@ -9,7 +9,7 @@ package killsource
 //     repertoire de films. Les chiffres de reference vivaient dans un journal ; ils vivent
 //     desormais dans un test. Sans fixture, `t.Skip` — pas de faux vert, pas de gate casse.
 //
-//	KILLSOURCE_FIXTURES=<dir> go test ./internal/games/halo_infinite/film/killsource/ -run Reference -v
+//	KILLSOURCE_FIXTURES=<dir> go test ./internal/games/halo_infinite/film/facts/killsource/ -run Reference -v
 
 import (
 	"context"

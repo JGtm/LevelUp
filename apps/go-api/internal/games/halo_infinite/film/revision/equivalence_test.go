@@ -48,7 +48,7 @@ const fichierPorteurDeRevision = "grammar_rev.go"
 // `sync/killcollector/testdata/killsource_decoder_rev.golden`.
 func TestEmpreinteEgaleLeGoldenDeKillsource(t *testing.T) {
 	api := racineAPI(t)
-	racine := filepath.Join(api, "internal", "games", "halo_infinite", "film", "killsource")
+	racine := filepath.Join(api, "internal", "games", "halo_infinite", "film", "facts", "killsource")
 	golden := filepath.Join(api, "internal", "sync", "killcollector", "testdata",
 		"killsource_decoder_rev.golden")
 
@@ -79,7 +79,7 @@ func TestEmpreinteHeriteeEgaleLeGoldenDeGrammaire(t *testing.T) {
 	racines := []string{
 		filepath.Join(film, "source"),
 		filepath.Join(film, "grammar"),
-		filepath.Join(film, "killsource"),
+		filepath.Join(film, "facts", "killsource"),
 		filepath.Join(film, "facts", "objectives"),
 	}
 	golden := filepath.Join(film, "grammar", "testdata", "grammar_rev.golden")

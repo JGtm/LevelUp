@@ -22,8 +22,8 @@ package replay
 import (
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
 )
 
 // lecPose fabrique une pose brute avec une CLE DE VIE choisie — c'est elle que l'evenement 103

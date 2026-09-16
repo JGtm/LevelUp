@@ -24,7 +24,7 @@ import (
 // ELLE REECRIT PUIS ECHOUE, comme les autres portes du paquet : une regeneration ne rend jamais
 // `ok`, sans quoi elle se confond avec un run vert.
 //
-//	ECS_TABLE_FILM=../killsource/testdata/minibobine_000d5950 \
+//	ECS_TABLE_FILM=../facts/killsource/testdata/minibobine_000d5950 \
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run G2 -update-ecs-table-level
 var updateNiveauxECS = flag.Bool("update-ecs-table-level", false,
 	"reecrire la colonne `level` de testdata/ecs_table.tsv depuis le registre du PREMIER film "+
