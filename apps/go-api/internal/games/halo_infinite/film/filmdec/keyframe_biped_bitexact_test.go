@@ -14,7 +14,7 @@ package filmdec
 //
 //	AbsoluteAxisW = 14 UNIFORME (position_capture.go) ; la capture CE donne
 //	  3 + 1 + 1 + (13+13+14) + 2 = 47 bits sur Cliffhanger, l'uniforme en rend 49 ;
-//	WorldObjectPrecision (traverse.go), defaut {13,13,14} = l'entree `cliffhanger` du
+//	WorldObjectPrecisionActuelle() (traverse.go), defaut {13,13,14} = l'entree `cliffhanger` du
 //	  catalogue — donc FAUSSE sur toute autre carte, et lue aussi par le corps tag==3 d'i59.
 //
 // i0 est le PREMIER composant de 100 % des records : une largeur fausse la plafonne toute
@@ -66,8 +66,8 @@ func kf35bDir(name string) string {
 // et le seul qui atteigne les lecteurs que ces mesures construisent au fil de la marche.
 func kf35bInstallPrecision(t *testing.T, name string) (I0Layout, func()) {
 	t.Helper()
-	prevW, prevMv := WorldObjectPrecision, MouvementHerite()
-	restore := func() { WorldObjectPrecision = prevW; PoserMouvementHerite(prevMv) }
+	prevW, prevMv := WorldObjectPrecisionActuelle(), MouvementHerite()
+	restore := func() { PoserWorldObjectPrecision(prevW); PoserMouvementHerite(prevMv) }
 	lay, rep, err := detectI0Layout(kf35bDir(name))
 	if err != nil {
 		t.Logf("      [%s] decoupage i0 NON detecte (%v) — largeurs par defaut conservees", name, err)
@@ -77,7 +77,7 @@ func kf35bInstallPrecision(t *testing.T, name string) (I0Layout, func()) {
 		name, lay, rep.Pairs, rep.Boundaries)
 	SetWorldObjectPrecisionFromLayout(lay)
 	mv := prevMv
-	mv.AbsoluteAxisW = 0 // 0 => absAxisW retombe sur WorldObjectPrecision.AxisW
+	mv.AbsoluteAxisW = 0 // 0 => absAxisW retombe sur WorldObjectPrecisionActuelle().AxisW
 	PoserMouvementHerite(mv)
 	return lay, restore
 }

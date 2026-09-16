@@ -68,9 +68,9 @@ func r9I54OneFilm(t *testing.T, dir string) {
 	wr := entry.Range()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecision
+	saved := WorldObjectPrecisionActuelle()
 	SetWorldObjectPrecisionFromLayout(entry.Layout())
-	defer func() { WorldObjectPrecision = saved }()
+	defer func() { PoserWorldObjectPrecision(saved) }()
 
 	s := r8MobResolve(t, dir)
 	opt := DefaultScanFilmOptions()

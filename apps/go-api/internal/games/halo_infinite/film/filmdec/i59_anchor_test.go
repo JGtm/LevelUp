@@ -76,10 +76,10 @@ type i59aEvent struct {
 func i59aSetup(t *testing.T, dir string) eaFilmSetup {
 	t.Helper()
 	s := eaSetupBiped(t, dir)
-	prev := WorldObjectPrecision
+	prev := WorldObjectPrecisionActuelle()
 	SetWorldObjectPrecisionFromLayout(s.lay)
-	t.Cleanup(func() { WorldObjectPrecision = prev })
-	t.Logf("précision world-object installée depuis le film : %v", WorldObjectPrecision.AxisW)
+	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
+	t.Logf("précision world-object installée depuis le film : %v", WorldObjectPrecisionActuelle().AxisW)
 	return s
 }
 

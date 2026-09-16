@@ -225,7 +225,7 @@ func consumeSimStateHandleTail(br *BitReader) {
 	}
 	idx := -1
 	if !br.ReadBit() { // FUN_14076e524 : porte d'index ; 0 -> lit l'index de région
-		idx = int(br.ReadBits(WorldObjectPrecision.IndexW))
+		idx = int(br.ReadBits(br.worldObjectPrecision().IndexW))
 	}
 	for i := 0; i < 3; i++ {
 		br.ReadBits(absAxisWFor(br, idx, i)) // FUN_140cc5128 axe i

@@ -146,8 +146,8 @@ func consumePredictedAbsolute(br *BitReader, pd PrecisionDescriptor) {
 		}
 		var v [3]float32
 		for i := 0; i < 3; i++ {
-			w := absAxisWFor(br, pidx, i)                 // largeur par index (7ter.54) ou uniforme
-			v[i] = dequantWorldAxis(br.ReadBits(w), w, i) // FUN_140cc5128 axe i
+			w := absAxisWFor(br, pidx, i)                     // largeur par index (7ter.54) ou uniforme
+			v[i] = dequantWorldAxis(br, br.ReadBits(w), w, i) // FUN_140cc5128 axe i
 		}
 		seedAbsolute(PosKindAbsolute, v) // predFlag==1 = position absolue = seed d'accumulation
 	}
@@ -169,7 +169,7 @@ func consumePredictedDelta(br *BitReader, pd PrecisionDescriptor) {
 		var d [3]float32
 		for i := 0; i < 3; i++ {
 			n := signed8(br.ReadBits(8))
-			d[i] = float32(n) * DeltaQuantum
+			d[i] = float32(n) * br.deltaQuantum()
 		}
 		applyDelta(PosKindDelta8, d)
 		return
@@ -180,10 +180,10 @@ func consumePredictedDelta(br *BitReader, pd PrecisionDescriptor) {
 	// DeltaQuantum*2^AxisW). AxisW = pd.AxisW[i] (6 par défaut ; ambiguïté 6 vs 14 sweepable).
 	var d [3]float32
 	for i := 0; i < 3; i++ {
-		w := deltaAxisW(pd, i)
+		w := deltaAxisW(br, pd, i)
 		q := br.ReadBits(w)
 		half := float32(uint64(1) << (w - 1))
-		d[i] = (float32(q) - half) * DeltaQuantum // multiple ENTIER de Q, centré (q==half -> 0)
+		d[i] = (float32(q) - half) * br.deltaQuantum() // multiple ENTIER de Q, centré (q==half -> 0)
 	}
 	applyDelta(PosKindDeltaAxis, d)
 }
@@ -229,12 +229,13 @@ func consumeQuantVec3WithGate(br *BitReader, axisW uint) {
 // différence de masques) est **47 bits = 2+1+1+1+3x14** : i1 tombe juste sur 100.0% des
 // records et i21 sur 100.0%. Toute autre largeur retombe à 0-52%. 47 recoupe en outre la
 // mesure Cheat Engine indépendante de §7ter.27 (i0=47, 134767/134767).
-var DeltaAxisWidth uint = 14
-
-// deltaAxisW retourne la largeur d'axe du chemin delta (DeltaAxisWidth si > 0, sinon pd).
-func deltaAxisW(pd PrecisionDescriptor, i int) uint {
-	if DeltaAxisWidth > 0 {
-		return DeltaAxisWidth
+// C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : la largeur vit dans le PROFIL que le
+// lecteur porte (`Movement.DeltaAxisWidth`).
+//
+// deltaAxisW retourne la largeur d'axe du chemin delta (celle du profil si > 0, sinon pd).
+func deltaAxisW(br *BitReader, pd PrecisionDescriptor, i int) uint {
+	if w := br.mv.DeltaAxisWidth; w > 0 {
+		return w
 	}
 	return pd.AxisW[i]
 }
@@ -288,8 +289,8 @@ func consumeAbsolutePayload(br *BitReader, pd PrecisionDescriptor) {
 		// la table de région 13/13/14 qui ferme le compte à 47 bits — quand aucune table
 		// par index n'est installée, ce qui est le défaut. La mesure du rejeu est donc
 		// préservée telle quelle, et le chemin par index reste disponible.
-		w := absAxisWFor(br, idx, i)                  // par index (7ter.54), sinon région 13/13/14
-		v[i] = dequantWorldAxis(br.ReadBits(w), w, i) // FUN_140cc5128 axis i
+		w := absAxisWFor(br, idx, i)                      // par index (7ter.54), sinon région 13/13/14
+		v[i] = dequantWorldAxis(br, br.ReadBits(w), w, i) // FUN_140cc5128 axis i
 	}
 	// Only index-0 positions are in the map bounds (real player positions). index!=0
 	// dequantizes against ±20000 (off-map) and is noise for a trajectory -> don't emit.

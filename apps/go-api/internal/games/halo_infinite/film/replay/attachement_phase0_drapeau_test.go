@@ -83,8 +83,8 @@ func attCreationsEcartees(t *testing.T, root, id, roleSocle string) (
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
+	prev := filmdec.WorldObjectPrecisionActuelle()
+	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	wr, _, ok := attBornes(t, root, id)
 	if !ok {
 		t.Logf("%s : bornes de carte indisponibles — volet objet non mesurable sur ce film", id)

@@ -81,8 +81,8 @@ func TestGroundWeaponCoverage(t *testing.T) {
 	// du 2026-08-15 a mesuré sur la production.
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prevPrec := filmdec.WorldObjectPrecision
-	t.Cleanup(func() { filmdec.WorldObjectPrecision = prevPrec })
+	prevPrec := filmdec.WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prevPrec) })
 	known := loadoutFamilies()
 
 	// --- IDENTITÉ -----------------------------------------------------------------------

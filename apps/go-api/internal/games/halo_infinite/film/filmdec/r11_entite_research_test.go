@@ -46,8 +46,8 @@ func r11EntiteOneFilm(t *testing.T, dir string) {
 	t.Helper()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecision
-	defer func() { WorldObjectPrecision = saved }()
+	saved := WorldObjectPrecisionActuelle()
+	defer func() { PoserWorldObjectPrecision(saved) }()
 	s := r11Prepare(t, dir)
 	xuid := r11XUID()
 

@@ -112,11 +112,13 @@ func verifierCadreEgaleConstantes(t *testing.T) {
 // IL LIT LES GLOBALES TELLES QU ELLES SONT, et c est voulu : un test du paquet qui les laisserait
 // sales est lui-meme un defaut, et ce test est l endroit ou il se voit.
 //
-// IL A MAIGRI DE CINQ LIGNES AU LOT 2.2.a : le descripteur de traversee, la largeur d axe
-// absolue et les trois drapeaux de position ne sont plus des variables de paquet — les lecteurs
-// les prennent au profil que porte le lecteur de bits, ce que prouve
-// [TestLecteurPorteLeProfilDeMouvement]. Ne restent ici que les valeurs des familles 2.2.b et
-// 2.2.e, encore en globales.
+// IL A MAIGRI DE CINQ LIGNES AU LOT 2.2.a puis de QUATRE AU LOT 2.2.b : le descripteur de
+// traversee, la largeur d axe absolue, les trois drapeaux de position, le descripteur
+// world-object, le quantum de delta, la largeur d axe de delta et la range de dequantification
+// ne sont plus des variables de paquet — les lecteurs les prennent au profil que porte le
+// lecteur de bits, ce que prouvent [TestLecteurPorteLeProfilDeMouvement] et
+// [TestProfilDePositionChangeLaConsommationDeBits]. Ne reste ici que la valeur de la famille
+// 2.2.e, encore en globale.
 func verifierMouvementEgaleGlobales(t *testing.T) {
 	t.Helper()
 	m := ResolveProfile(nil, nil).Movement()
@@ -124,9 +126,6 @@ func verifierMouvementEgaleGlobales(t *testing.T) {
 		nom             string
 		profil, globale any
 	}{
-		{"DeltaQuantum", m.DeltaQuantum, DeltaQuantum},
-		{"DeltaAxisWidth", m.DeltaAxisWidth, DeltaAxisWidth},
-		{"Range", m.Range, WorldPositionRange},
 		{"MobilityActionExtraBits", m.MobilityActionExtraBits, MobilityActionExtraBits},
 	}
 	for _, e := range ecarts {
@@ -164,6 +163,8 @@ func TestLecteurPorteLeProfilDeMouvement(t *testing.T) {
 	pose.Traversal = PrecisionDescriptor{IndexW: 3, AxisW: [3]uint{11, 12, 13}}
 	pose.AbsoluteAxisW, pose.FullPrecision = 19, true
 	pose.DeltaHasHandleTail, pose.CalibratedSkip = true, true
+	pose.WorldObject = PrecisionDescriptor{IndexW: 2, AxisW: [3]uint{17, 17, 16}, Region: 1}
+	pose.DeltaQuantum, pose.DeltaAxisWidth, pose.Range = 0.5, 9, QuantRangeWorld100
 	br.poserMouvement(pose)
 	switch {
 	case br.traversal() != pose.Traversal:
@@ -173,6 +174,14 @@ func TestLecteurPorteLeProfilDeMouvement(t *testing.T) {
 	case !br.fullPrecision() || !br.deltaHasHandleTail() || !br.calibratedSkip():
 		t.Errorf("les trois drapeaux poses ne sont pas rendus : %v/%v/%v", br.fullPrecision(),
 			br.deltaHasHandleTail(), br.calibratedSkip())
+	case br.worldObjectPrecision() != pose.WorldObject:
+		t.Errorf("worldObjectPrecision() rend %+v, pose %+v", br.worldObjectPrecision(),
+			pose.WorldObject)
+	case br.deltaQuantum() != pose.DeltaQuantum || br.mv.DeltaAxisWidth != pose.DeltaAxisWidth:
+		t.Errorf("quantum/largeur de delta : %v/%d, poses %v/%d", br.deltaQuantum(),
+			br.mv.DeltaAxisWidth, pose.DeltaQuantum, pose.DeltaAxisWidth)
+	case br.worldPositionRange() != pose.Range:
+		t.Errorf("worldPositionRange() rend %+v, pose %+v", br.worldPositionRange(), pose.Range)
 	case temoin.mv != invariant:
 		t.Errorf("poser le profil sur un lecteur a change un AUTRE lecteur : %+v", temoin.mv)
 	}

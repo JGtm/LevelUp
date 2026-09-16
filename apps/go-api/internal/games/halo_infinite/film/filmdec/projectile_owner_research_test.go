@@ -59,8 +59,8 @@ func TestProjectileOwner(t *testing.T) {
 	// Precision des objets du monde (largeurs de position ti=41) : sans elle les records
 	// projectile desynchronisent plus tot et la sonde i10 rend moins.
 	if lay, _, err := detectI0Layout(dir); err == nil {
-		prev := WorldObjectPrecision
-		t.Cleanup(func() { WorldObjectPrecision = prev })
+		prev := WorldObjectPrecisionActuelle()
+		t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
 		SetWorldObjectPrecisionFromLayout(lay)
 	}
 

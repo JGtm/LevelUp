@@ -3,7 +3,7 @@ package filmdec
 import "testing"
 
 // components_position_i0_profil_test.go — LE DESERIALISEUR D i0 CONSULTE BIEN LE PROFIL QUE SON
-// LECTEUR PORTE (lot 2.2.a du PLAN_DECODEUR_FILM).
+// LECTEUR PORTE (lots 2.2.a et 2.2.b du PLAN_DECODEUR_FILM).
 //
 // # POURQUOI CE FICHIER EXISTE
 //
@@ -11,7 +11,8 @@ import "testing"
 // Il ne prouve PAS que le deserialiseur les appelle : un `consume*` qui aurait garde une
 // constante en dur passerait ce test-la sans broncher.
 //
-// Ce que ce fichier mesure est la seule chose qui compte pour la famille « positions » : le
+// Ce que ce fichier mesure est la seule chose qui compte pour les familles « positions » et
+// « objets du monde » : le
 // NOMBRE DE BITS que `consumeObjectPositionDynamicPrecisionD` consomme sur un flux FIGE change
 // quand, et seulement quand, la valeur du profil change. Chaque cas donne son compte attendu
 // par sa DERIVATION, jamais par relevé — un compte recopie d une execution ne dirait rien le
@@ -19,11 +20,17 @@ import "testing"
 //
 // # LE CAS QUI A MOTIVE LE FICHIER
 //
-// A la mutation obligatoire du lot, quatre des cinq valeurs avaient deja un temoin nomme
+// A la mutation obligatoire du lot 2.2.a, quatre des cinq valeurs avaient deja un temoin nomme
 // (`TestScanObjectDeathsSurBobineReelle`, `TestKeyframeClosureRatchet`,
 // `killsource.TestGoldenMiniBobine`). La cinquieme — la queue de poignee du chemin delta
 // predit — n en avait AUCUN : la fausser ne rougissait que l empreinte de grammaire, c est-a-dire
 // le fait que la source a change, pas le fait que le decodage a change. Elle en a un ici.
+//
+// MEME CONSTAT AU LOT 2.2.b sur TROIS des quatre valeurs des objets du monde : seul le
+// descripteur world-object avait un temoin (`TestG5MesuresCiteesParLaTable`,
+// `TestGoldenMiniBobineFamilles`). La largeur d axe du chemin delta axis-width entre dans la
+// table de comptes ci-dessous ; la range de dequantification et le quantum de delta, qui ne
+// deplacent AUCUN curseur, ont leur propre temoin en fin de fichier.
 
 // bitsDe fabrique un tampon a partir d une chaine de bits MSB-first ; les bits manquants pour
 // completer `octets` valent zero. Un tampon large evite qu une lecture morde le rembourrage.
@@ -46,7 +53,8 @@ func consommationI0(mv MovementProfile, buf []byte) int {
 	return br.BitPos()
 }
 
-// TestProfilDePositionChangeLaConsommationDeBits — LE TEMOIN DE MUTATION DES CINQ VALEURS.
+// TestProfilDePositionChangeLaConsommationDeBits — LE TEMOIN DE MUTATION DES VALEURS QUI
+// CHANGENT UN COMPTE DE BITS.
 func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
 	release := LockProcessDecode()
 	defer release()
@@ -60,6 +68,9 @@ func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
 	// trois deltas de 8 bits. Derivation : 3 + 2 + 24 = 29 sans queue de poignee ; avec elle,
 	// deux bits de plus (selecteur de poignee a 0, presence de region a 0).
 	delta := bitsDe("01001", 32)
+	// LE FLUX DELTA AXIS-WIDTH : meme en-tete, masque a 0 — trois axes de `DeltaAxisWidth`
+	// bits au lieu des trois deltas de 8 bits. Derivation : 3 + 2 + 3x14 = 47.
+	deltaAxe := bitsDe("01000", 32)
 
 	profil := ResolveProfile(nil, nil).Movement()
 	cas := []struct {
@@ -88,6 +99,20 @@ func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
 			m.DeltaHasHandleTail = true
 			return m
 		}},
+		{"WorldObject.AxisW", absolu, 49, 49, func(m MovementProfile) MovementProfile {
+			// LE CHEMIN ABSOLU NE LIT LES LARGEURS DE CARTE QUE PAR LE REPLI d `absAxisW`,
+			// eteint tant que la largeur uniforme est posee. Le compte ne bouge donc PAS
+			// ici — et c est la mesure, pas une lacune : le temoin du descripteur
+			// world-object est `TestG5MesuresCiteesParLaTable`, qui mesure le chemin
+			// `object-position-component` du dispatch. La ligne reste pour que la
+			// prochaine main qui allume ce repli voie le compte changer.
+			m.WorldObject.AxisW = [3]uint{17, 17, 16}
+			return m
+		}},
+		{"DeltaAxisWidth", deltaAxe, 47, 41, func(m MovementProfile) MovementProfile {
+			m.DeltaAxisWidth = 12 // 3x12 au lieu de 3x14 : -6 bits
+			return m
+		}},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
@@ -102,5 +127,61 @@ func TestProfilDePositionChangeLaConsommationDeBits(t *testing.T) {
 					got, c.mutante)
 			}
 		})
+	}
+}
+
+// TestProfilDeQuantificationChangeLaValeurRendue — LE TEMOIN DES DEUX VALEURS QUI NE CHANGENT
+// AUCUN COMPTE DE BITS.
+//
+// La range de dequantification et le quantum du chemin delta ne deplacent pas le curseur : ils
+// changent la COORDONNEE que le deserialiseur rend. Un temoin en bits ne peut donc rien en
+// dire, et c est la raison d etre de ce second test — mesurer la valeur, pas la longueur.
+//
+// CE QU IL REVELE AU PASSAGE, et qui est consigne au plan : ces deux valeurs n atteignent la
+// production que par le crochet de capture de position, nul partout sauf dans le balayage de
+// resynchronisation. Le rejeu 2D, lui, dequantifie ailleurs (`ScanBipedPositions`, sur le
+// decoupage d i0 de la carte). Leur mutation ne pouvait donc rougir aucun test de bout en bout.
+func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
+	release := LockProcessDecode()
+	defer release()
+	defer AbsIndexHistogram()
+
+	profil := ResolveProfile(nil, nil).Movement()
+	// Flux ABSOLU (trois axes quantifies a zero) et flux DELTA-8 (trois crans de +1).
+	absolu := bitsDe("", 32)
+	delta8 := bitsDe("01001"+"00000001"+"00000001"+"00000001", 32)
+
+	lire := func(mv MovementProfile, buf []byte) [3]float32 {
+		var vu [3]float32
+		precedent := posCaptureHook
+		posCaptureHook = func(s PositionSample) { vu = s.Vec }
+		defer func() { posCaptureHook = precedent }()
+		br := NewBitReader(buf)
+		br.poserMouvement(mv)
+		consumeObjectPositionDynamicPrecisionD(br, br.traversal())
+		return vu
+	}
+
+	faussee := profil
+	faussee.Range = QuantRangeWorld100
+	if avant, apres := lire(profil, absolu), lire(faussee, absolu); avant == apres {
+		t.Errorf("la range faussee dans le profil rend la MEME coordonnee absolue %v — le "+
+			"deserialiseur ne lit donc pas la range au profil", avant)
+	}
+	faussee = profil
+	faussee.DeltaQuantum = profil.DeltaQuantum * 2
+	avant, apres := lire(profil, delta8), lire(faussee, delta8)
+	// LA VALEUR ATTENDUE EST EPINGLEE, PAS RELATIVE, et c est ce qui fait de ce test un temoin
+	// de MUTATION : un delta d un cran vaut EXACTEMENT le quantum, et le quantum du profil est
+	// `0.01383` (ligne `Movement.DeltaQuantum` de [TableProfil], provenance MESUREE). Une
+	// comparaison « apres = 2 x avant » ne dirait rien si quelqu un faussait la table : les deux
+	// cotes bougeraient ensemble.
+	const quantumDeLaTable = float32(0.01383)
+	if avant[0] != quantumDeLaTable {
+		t.Errorf("un cran de delta rend %v, la table du profil annonce %v", avant[0],
+			quantumDeLaTable)
+	}
+	if apres[0] != avant[0]*2 {
+		t.Errorf("quantum double : delta %v, attendu le double de %v", apres, avant)
 	}
 }

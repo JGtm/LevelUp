@@ -259,6 +259,15 @@ func tableProfilInvariants() []LigneProfil {
 			Date: dateProfilPose,
 		},
 		{
+			Cle: cleToutes, Champ: "Movement.WorldObject", Valeur: "IndexW=1 AxisW=13/13/14 Region=0",
+			Source: ProvenanceMesuree,
+			Preuve: "largeurs du chemin world-object : le defaut EST l entree `cliffhanger` de " +
+				"`map_quant_bounds.json` (verifie par `map_bounds_test.go`) ; la carte du match " +
+				"les remplace par `SetWorldObjectPrecisionFromLayout`, depuis les bornes du " +
+				"catalogue et non l auto-detection (accord catalogue / film : 7 films sur 7)",
+			Date: "2026-08-15",
+		},
+		{
 			Cle: cleToutes, Champ: "Movement.DeltaQuantum", Valeur: "0.01383",
 			Source: ProvenanceMesuree,
 			Preuve: "pas d un cran de position repliquee en DELTA par i0, mesure sur le film ; " +

@@ -127,8 +127,8 @@ func v10OriginMs(t *testing.T, root string, f v0Film) (float64, int, bool) {
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
-	prev := filmdec.WorldObjectPrecision
-	defer func() { filmdec.WorldObjectPrecision = prev }()
+	prev := filmdec.WorldObjectPrecisionActuelle()
+	defer func() { filmdec.PoserWorldObjectPrecision(prev) }()
 	dir := objChunkDir(root, f.ID)
 	entry, ok := v4Carte(t, root, f.Carte)
 	if !ok {

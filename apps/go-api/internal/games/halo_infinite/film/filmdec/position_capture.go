@@ -165,7 +165,10 @@ func keepBaseline() {
 // X~113 => 0.0138 oracle quantum). The old QuantRangeCliffhanger [-974,179]... scattered
 // absolutes hundreds of units off-box (the range WAS the bug); it stays selectable for
 // the before/after proof.
-var WorldPositionRange = QuantRangeCEBiped
+// C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : la range vit dans le PROFIL que le
+// lecteur porte (`Movement.Range`), et l'A/B de sonde se fait en posant un profil sur le
+// lecteur, plus en écrivant dans le processus.
+func (b *BitReader) worldPositionRange() Vec3Range { return b.mv.Range }
 
 // AbsDequantMode sélectionne la FORME de déquantification d'un axe absolu i0.
 type AbsDequantMode int
@@ -241,7 +244,7 @@ func absAxisW(br *BitReader, i int) uint {
 	if w := br.absoluteAxisW(); w > 0 {
 		return w
 	}
-	return WorldObjectPrecision.AxisW[i]
+	return br.worldObjectPrecision().AxisW[i]
 }
 
 // absAxisWFor retourne la largeur de l axe i pour l index de plage idx.
@@ -291,14 +294,15 @@ func AbsIndexHistogram() map[int]int {
 // dequantWorldAxis dequantizes one absolute quantized axis word (width bits). Deux formes :
 //   - AbsDequantRange (défaut) : min + step*(q+0.5) via WorldPositionRange (FUN_140c1e978).
 //   - AbsDequantCenteredQuantum : (q - 2^(bits-1)) * DeltaQuantum — grille fine centrée sur 0.
-func dequantWorldAxis(q uint64, bits uint, axis int) float32 {
+func dequantWorldAxis(br *BitReader, q uint64, bits uint, axis int) float32 {
 	if absDequantMode == AbsDequantCenteredQuantum {
 		half := float32(uint64(1) << (bits - 1))
-		return (float32(q) - half) * DeltaQuantum
+		return (float32(q) - half) * br.deltaQuantum()
 	}
+	wr := br.worldPositionRange()
 	scale := float32(uint64(1) << bits)
-	step := (WorldPositionRange[axis].Max - WorldPositionRange[axis].Min) / scale
-	return float32(q)*step + WorldPositionRange[axis].Min + step*quantCenter
+	step := (wr[axis].Max - wr[axis].Min) / scale
+	return float32(q)*step + wr[axis].Min + step*quantCenter
 }
 
 // signed8 reinterprets an 8-bit field as a signed delta count.

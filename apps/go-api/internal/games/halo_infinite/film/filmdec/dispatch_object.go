@@ -139,10 +139,10 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 			br.ReadBits(59) // precHigh=1 : FUN_141f85880 AABB + handle-tail + R(2) (total 60 mesuré)
 		} else {
 			if !br.ReadBit() { // FUN_14076e524 index-sel ; si 0 -> lit l'index de région
-				br.ReadBits(WorldObjectPrecision.IndexW)
+				br.ReadBits(br.worldObjectPrecision().IndexW)
 			}
 			for a := 0; a < 3; a++ {
-				br.ReadBits(WorldObjectPrecision.AxisW[a]) // FUN_140cc5128 axe a
+				br.ReadBits(br.worldObjectPrecision().AxisW[a]) // FUN_140cc5128 axe a
 			}
 			br.ReadBits(2) // FUN_14076e304 R(2) finite (handle-tail = 0 bit quand precHigh=0)
 		}

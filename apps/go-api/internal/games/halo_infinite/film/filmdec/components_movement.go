@@ -179,7 +179,9 @@ func (b *BitReader) calibratedSkip() bool { return b.mv.CalibratedSkip }
 // slots). Le reglage public `SetDeltaQuantum` a ete supprime le 2026-09-05 (lot E, item E.2) :
 // aucun appelant. La range delta pour le chemin axis-width vaut DeltaQuantum * 2^AxisW
 // (centree 0).
-var DeltaQuantum float32 = 0.01383
+// C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : le quantum vit dans le PROFIL que le
+// lecteur porte (`Movement.DeltaQuantum`).
+func (b *BitReader) deltaQuantum() float32 { return b.mv.DeltaQuantum }
 
 // keyframeWriterI0Grammar route le chemin ABSOLU d'i0 sur la grammaire que l'ECRIVAIN d'état
 // complet du jeu pose, et que le lecteur du jeu relit — les deux disent la même chose CONTRE
