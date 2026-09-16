@@ -1,3 +1,27 @@
+## [2026-09-17] Chantier decodeur — VALIDATION DE LA RECUISSON M1 sur le parc entier (76 artefacts) par workflow Opus : 2 221 pertes sur 2 235 adossees a une piece, 14 residuelles sur un seul canal, sauvegarde conservee — Complete
+
+**Decision technique principale.** Le corpus gate de cloture ne voyait que 14 temoins base contre
+tete ; la recuisson du parc compare des artefacts cuits AVANT les finitions v7.5 (13/09, jamais
+recuites) a la tete M1. Un workflow (replay-diff sur 76 couples -> 4 classeurs par quart -> 4
+sceptiques -> synthese) classe chaque perte dans les sept familles ecrites de la cloture M1 ou la
+declare hors famille ; la synthese tranche les desaccords sur piece (journal du 13/09, notes de
+recherche, artefacts).
+
+**Resultats observes.** 76/76 couples, 54 -> 60, 4 030 gains, 2 235 pertes, 24 changements.
+Deux familles LEGITIMES absentes du bloc de cloture, venues des finitions : H = denominateur des
+objectifs assaini (D10 du 13/09 : `8bc6074f` 218 -> 99 et `32d9a94f` 148 -> 55 retrouves a
+l unite, publication identique au bit pres) ; I = socles de drapeau neutres (`bc60b4d9` perd
+exactement ses 2 spans « au socle » d un troisieme drapeau inexistant, aucun span de portage perdu
+sur le parc). Zero perte sur points, tirs, kills, grenades, objectifs publies, score, projectiles,
+roster, horloges. Residu : 14 lignes / 7 artefacts — 8 lectures brutes d impulsion de capacite en
+moins sur 6 films (non publiees) = D1 (validation), mesure a faire base vs M1 sur `a6ae19fb` ; et
+`coverage.vehicles.shotsNoRide` a polarite inverse non declaree = D2 (validation), deux lignes de
+`polarite.go`. Verdict : sauvegarde `replays_schema54_avant_M1_2026-09-17` CONSERVEE jusqu a D1.
+
+**Prochaine etape.** Mesure D1 avec la voie (instruction bornee) ; D2 au prochain lot d outillage.
+
+---
+
 ## [2026-09-17] Chantier decodeur — preparation 3.6, seconde passe par workflow (Opus) : ti=43 complet (22/22 grammaires nommees), ti=9 i9 et ti=35 i63 releves, 8 verifications, 1 discordance tranchee — Complete (intégration e369495eb)
 
 **Decision technique principale.** Meme harnais que la premiere passe (lecteurs paralleles -> un
