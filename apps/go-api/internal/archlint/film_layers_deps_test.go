@@ -177,6 +177,15 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// stockage local au-dessus de `source`, pas une etape de decodage — meme rangement par la
 	// note §2.2, et il reste hors de `film/internal/` pour rester accessible a ses appelants.
 	"internal/games/halo_infinite/film/filmcache": horsCoucheFilm,
+	// `revision` : L OUTILLAGE D EMPREINTE partage par les revisions de couche (lot 2.6.0,
+	// 2026-09-17). Il ne lit AUCUN octet de film — il hache des octets de SOURCE — donc il n est
+	// ni une etape de decodage ni une publication : meme rangement que les trois catalogues de
+	// libelles ci-dessus. C est une feuille sans aucun import du depot, et elle reste hors de
+	// `film/internal/` DELIBEREMENT : `sync/killcollector` doit pouvoir l importer tant que la
+	// constante de revision des faits y vit (elle descend en `facts/` au lot 2.6.1, note de
+	// preparation §3.1). Le classer dans une couche serait faux dans les deux sens — il ne
+	// depend d aucune couche, et les quatre couches l importeront toutes.
+	"internal/games/halo_infinite/film/revision": horsCoucheFilm,
 }
 
 // areteToleree : une arete qui viole une regle AUJOURD HUI, avec la date de sa mise en table, le
