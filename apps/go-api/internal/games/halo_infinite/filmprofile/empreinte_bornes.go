@@ -12,7 +12,7 @@ package filmprofile
 //
 //	L EMPREINTE PORTE SUR `maps` SEUL, pas sur le fichier entier. Le champ `source` du
 //	catalogue de bornes cite le chemin d installation de la machine qui l a produit
-//	(`D:\SteamLibrary\...`) : c est une trace de fabrication, pas une donnee du jeu, et la faire
+//	(`D:\Jeux\...`) : c est une trace de fabrication, pas une donnee du jeu, et la faire
 //	entrer dans l empreinte rendrait le gate rouge d un poste a l autre sans qu aucune borne
 //	n ait bouge.
 //
