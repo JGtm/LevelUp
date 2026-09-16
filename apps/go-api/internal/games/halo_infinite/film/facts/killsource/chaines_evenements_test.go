@@ -32,7 +32,7 @@ package killsource
 //
 // Un golden qui fige un AVANT ne se regenere pas : le regenerer reviendrait a declarer que la
 // consommation de bits a le droit de bouger. S il rougit, c est que la grammaire a change — et
-// c est alors `GrammarRev` et `KillSourceDecoderRev` qu il faut rouvrir, pas ce fichier.
+// c est alors `GrammarRev` et `facts.Rev` qu il faut rouvrir, pas ce fichier.
 
 import (
 	"fmt"
@@ -88,7 +88,7 @@ func TestChainesDEvenementsIdentiquesAuGolden(t *testing.T) {
 	}
 	t.Errorf("LA CHAINE D EVENEMENTS NE CONSOMME PLUS LES MEMES BITS QU AVANT L ABSORPTION.\n%s\n"+
 		"Ce golden fige l ANCIEN lecteur (base 88f1a1115) : il n a pas de porte -update. "+
-		"Rouvrir GrammarRev et KillSourceDecoderRev avant toute autre chose.",
+		"Rouvrir GrammarRev et facts.Rev avant toute autre chose.",
 		premiereDifference(attendu, obtenu))
 }
 
