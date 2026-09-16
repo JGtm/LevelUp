@@ -131,7 +131,9 @@ export const cividisPalette: Palette = {
   // Reddish Purple × 0.60, même valeur que sur Okabe-Ito.
   'narrative-sabordage':             '#7A4964',
   'narrative-sabordage-text':        '#FFFFFF',
-  'narrative-abnegation':            CIVIDIS_T90,      // jaune doré
+  // Couleur PROPRE : les jaunes de la rampe sont tous affectés ; Bluish Green
+  // Okabe-Ito, absent de cette palette, se lit par sa luminosité (6.1 sur noir).
+  'narrative-abnegation':            '#009E73',
   'narrative-abnegation-text':       '#000000',
 
   // ── Badges encounter — axe blue/vermillion ────────────────────────────────

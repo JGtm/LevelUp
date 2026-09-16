@@ -132,7 +132,8 @@ export const okabePalette: Palette = {
   // pas se confondre avec narrative-humiliation (Reddish Purple brut).
   'narrative-sabordage':             '#7A4964', // Reddish Purple assombri (× 0.60)
   'narrative-sabordage-text':        '#FFFFFF',
-  'narrative-abnegation':            '#F0E442', // Yellow
+  // Yellow BRUT est outcome-draw : couleur propre par la même technique (× 0.75).
+  'narrative-abnegation':            '#B4AB32', // Yellow assombri (× 0.75)
   'narrative-abnegation-text':       '#000000',
 
   // ── Badges encounter — axe blue/vermillion daltonisme-safe ────────────────

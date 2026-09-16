@@ -105,8 +105,8 @@ export const defaultPalette: Palette = {
   'narrative-contre-remontada-text':'#082F49',
   'narrative-sabordage':            '#BE185D', // rose-700 — défaite au score, domination aux frags
   'narrative-sabordage-text':       '#FFFFFF',
-  'narrative-abnegation':           '#F59E0B', // ambre-500 — victoire au score, écrasés aux frags
-  'narrative-abnegation-text':      '#451A03',
+  'narrative-abnegation':           '#A3E635', // lime-400 — victoire au score, écrasés aux frags (couleur propre)
+  'narrative-abnegation-text':      '#1A2E05',
 
   // ── Badges encounter (source : narrative/encounter.go ColorToken) ──────────
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts)
