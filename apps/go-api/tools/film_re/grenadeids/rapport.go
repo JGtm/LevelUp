@@ -38,11 +38,14 @@ func EcrireEntete(w io.Writer, b *Bobine) {
 func EcrireReleve(w io.Writer, r *Releve, top int) {
 	fmt.Fprintf(w, "   paquets_delta=%d octets_delta=%d marqueurs_production=%d marqueurs_registre=%d\n",
 		r.PaquetsDelta, r.OctetsDelta, r.Marqueurs[MarqueurProduction], r.Marqueurs[MarqueurRegistre])
+	fmt.Fprintf(w, "   marqueurs_impairs=%d\n", r.Marqueurs[MarqueurImpair])
 	ecrirePasseA(w, r, MarqueurProduction, "production")
 	ecrirePasseA(w, r, MarqueurRegistre, "registre")
+	ecrirePasseA(w, r, MarqueurImpair, "impair")
 	ecrirePasseB(w, r)
 	ecrirePasseC(w, "passe C  apres le marqueur de production", r.Famille, top)
 	ecrirePasseC(w, "passe C  apres le marqueur du registre", r.FamilleRegistre, top)
+	ecrirePasseC(w, "passe C  apres le marqueur IMPAIR (identifiant lu a +23)", r.FamilleImpair, top)
 	ecrirePasseCParArchetype(w, r, top)
 }
 
@@ -119,8 +122,9 @@ func ecrirePasseC(w io.Writer, titre string, fam []Candidat, top int) {
 		if c.Connu {
 			etiquette = fmt.Sprintf("rang=%d", c.Rang)
 		}
-		fmt.Fprintf(w, "     0x%08X n=%d %s index[%d..%d] hors_0_7=%d\n",
-			c.ID, c.N, etiquette, c.IndexMin, c.IndexMax, c.IndexHors8)
+		fmt.Fprintf(w, "     0x%08X n=%d %s index103[%d..%d] hors=%d  index102[%d..%d] hors=%d\n",
+			c.ID, c.N, etiquette, c.IndexMin, c.IndexMax, c.IndexHors8,
+			c.AltMin, c.AltMax, c.AltHors8)
 	}
 }
 
