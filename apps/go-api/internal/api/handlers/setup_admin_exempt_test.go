@@ -70,9 +70,9 @@ func newGuardRouter(t *testing.T, locked, canSelfProvision bool, svc *mockDirect
 	return r
 }
 
-// postCreatePlayer joue POST /setup/players avec une session portant `role`
+// postCreatePlayerExempt joue POST /setup/players avec une session portant `role`
 // ("" = pas de session du tout).
-func postCreatePlayer(r *chi.Mux, role string) *httptest.ResponseRecorder {
+func postCreatePlayerExempt(r *chi.Mux, role string) *httptest.ResponseRecorder {
 	body := `{"gamertag":"AmiDuFoyer","profile_mode":"manual"}`
 	req := httptest.NewRequest(http.MethodPost, "/setup/players", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
@@ -122,7 +122,7 @@ func TestSetupHandler_CreatePlayer_GuardMatrix(t *testing.T) {
 			svc := &mockDirectory{playerKey: "AmiDuFoyer"}
 			r := newGuardRouter(t, tc.locked, tc.canSelfProvision, svc)
 
-			w := postCreatePlayer(r, tc.role)
+			w := postCreatePlayerExempt(r, tc.role)
 
 			if w.Code != tc.wantStatus {
 				t.Fatalf("statut %d attendu, reçu %d : %s", tc.wantStatus, w.Code, w.Body.String())
@@ -163,7 +163,7 @@ func TestSetupHandler_CreatePlayer_AdminFromUserStore(t *testing.T) {
 	h.Mount(r)
 
 	// La session prétend "admin" mais le store rend un compte rétrogradé.
-	w := postCreatePlayer(r, string(domain.RoleAdmin))
+	w := postCreatePlayerExempt(r, string(domain.RoleAdmin))
 
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("403 attendu (rôle du store = user), reçu %d : %s", w.Code, w.Body.String())

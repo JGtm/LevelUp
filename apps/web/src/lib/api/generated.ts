@@ -1949,6 +1949,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/friends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Friends list of the player (readable by the owner, a group co-member or an admin) */
+        get: operations["getPlayerFriends"];
+        /** Replaces the player friends list (direct owner or admin only) */
+        put: operations["putPlayerFriends"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/matches/{match_id}": {
         parameters: {
             query?: never;
@@ -7429,6 +7447,7 @@ export interface components {
             created_by: string;
             expires_at: string;
             group_id?: string;
+            join_url?: string;
             used_at: string | null;
             used_by: string | null;
         };
@@ -9692,6 +9711,12 @@ export interface components {
             sync_age_seconds?: number;
             xuid: string;
         };
+        PlayerFriends: {
+            can_edit: boolean;
+            gamertags: string[];
+            updated_at?: string;
+            xuid: string;
+        };
         PlayerIdentity: {
             AvatarURL: string;
             EmblemURL: string;
@@ -11102,7 +11127,6 @@ export interface components {
             discord_notify_new_version?: boolean;
             discord_notify_sync?: boolean;
             discord_webhook_url_present?: boolean;
-            friend_gamertags?: string[];
             /** @enum {string} */
             lang: "fr" | "en";
             media_captures_base_dir?: string;
@@ -17329,6 +17353,68 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPlayerFriends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFriends"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    putPlayerFriends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFriends"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {

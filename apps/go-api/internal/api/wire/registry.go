@@ -44,6 +44,7 @@ import (
 	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -110,7 +111,8 @@ type ServiceRegistry struct {
 	remoteStats          *service.CachedStatsProvider         // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
 	recentMatches        *service.CachedRecentMatchesProvider // cache TTL process-level 20 derniers matchs live (20 min), partagé Explorer/Compare (cibles non-locales)
 	liveGamertagResolver service.GamertagXUIDResolver         // nil (démo/offline) → pas de fallback live ; résout gamertag→xuid pour un joueur jamais croisé (partagé Explorer/Compare + recherche)
-	settingsStore        *settings_platform.Store             // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
+	settingsStore        *settings_platform.Store             // nil → services qui dépendent des settings tournent en mode legacy
+	friendStore          *friendstore.FriendStore             // amis PAR JOUEUR (data/global/player_friends.json) ; nil → friendGamertagsResolver rend nil et le filtre amis est désactivé
 	seasonsCatalog       *service.SeasonsCatalog              // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
 	rankCatalog          *mappings.RankCatalog                // nil → CareerService.next_rank_name reste vide
 	rankImageURLsByTitle map[string]map[int]*string           // PAR TITRE (slug → rank_id → imageURL) ; map manquante/nil → CareerService.rank_image_url et next_rank_image_url absents pour ce titre. Title-agnostic : les images HINF (keyées 1..272) ne fuient plus sur un SR Halo 5 (D.2)
@@ -399,6 +401,14 @@ func (r *ServiceRegistry) retentionMoisRejeu() int {
 // filtre amis-only du dropdown) le récupèrent via r.settingsStore.
 func (r *ServiceRegistry) WithSettingsStore(store *settings_platform.Store) *ServiceRegistry {
 	r.settingsStore = store
+	return r
+}
+
+// WithFriendStore attache le store des amis PAR JOUEUR. Les services qui
+// filtrent sur les amis (TeammatesService, SessionUsage, Career encounters) le
+// récupèrent via r.friendGamertagsResolver(xuid).
+func (r *ServiceRegistry) WithFriendStore(store *friendstore.FriendStore) *ServiceRegistry {
+	r.friendStore = store
 	return r
 }
 

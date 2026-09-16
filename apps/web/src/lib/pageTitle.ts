@@ -123,9 +123,9 @@ const STATIC_ROUTE_TITLES: RouteTitleRule[] = [
   },
   { pattern: '/admin', title: { fr: 'Administration', en: 'Administration' } },
   { pattern: '/changelog', title: { fr: 'Changelog', en: 'Changelog' } },
-  { pattern: '/groups', title: { fr: 'Mes groupes', en: 'My groups' } },
+  { pattern: '/groups', title: { fr: 'Amis et groupes', en: 'Friends and groups' } },
   { pattern: '/help', title: { fr: 'Aide', en: 'Help' } },
-  { pattern: '/join', title: { fr: 'Rejoindre un groupe', en: 'Join a group' } },
+  { pattern: '/join', title: { fr: 'Rejoindre LevelUp', en: 'Join LevelUp' } },
   // Sandbox dev interne, jamais lié depuis la nav prod (cf. ChartsShowcasePage) —
   // conservé pour que l'onglet ne reste pas nu si on y accède en direct.
   { pattern: '/lab/charts', title: { fr: 'Aperçu graphiques', en: 'Charts gallery' } },

@@ -1,6 +1,6 @@
 // Tests purs (sans DB) pour newFriendsAdded — §6 plan Squad/Sessions overhaul.
 //
-// La fonction calcule le diff prev → next sur friend_gamertags pour identifier
+// La fonction calcule le diff prev → next sur la liste d'amis pour identifier
 // quels gamertags sont nouveaux et déclencher la notif friend_added.
 // Couplé à friendGamertagsChanged (déjà testé) qui détermine si le diff existe.
 package handlers

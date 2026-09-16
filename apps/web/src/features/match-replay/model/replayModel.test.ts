@@ -138,7 +138,7 @@ describe('buildReplayModel — l’identité et les marques', () => {
   })
 
   it('marque « moi » depuis le scoreboard et « ami » depuis les réglages', () => {
-    const { marks } = buildReplayModel(doc(), matchView(), { friend_gamertags: ['Autre'] })
+    const { marks } = buildReplayModel(doc(), matchView(), { friendGamertags: ['Autre'] })
     expect(marks.get('me')).toBe('me')
     expect(marks.get('adv')).toBe('friend')
   })
@@ -265,7 +265,7 @@ describe('buildReplayModel — le point de vue', () => {
     // jointure, pas sur l'égalité structurelle de deux artefacts fabriqués séparément.
     const d = doc()
     const mv = matchView()
-    const reglages = { friend_gamertags: ['Autre'] }
+    const reglages = { friendGamertags: ['Autre'] }
     const parDefaut = buildReplayModel(d, mv, reglages)
     const explicite = buildReplayModel(d, mv, reglages, 'me')
     // `clock` PORTE DES FONCTIONS (conversions d'axes) : deux fermetures distinctes ne sont

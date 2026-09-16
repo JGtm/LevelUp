@@ -109040,3 +109040,165 @@ après déploiement, vérifier que la section « Identités » la liste avec ses
 purgée est propriétaire, 3 fixtures `token_orphan` locales, toggle `settings.go` qui fait confiance
 à `sess.Role` (plan §10) ; (e) le plan frère « amis / invitations » doit utiliser
 `authz.InstanceLocked` et `PlayerDirectory.Onboard` (étape 5.3/5.4).
+## [2026-09-15] Amis par joueur et invitations « sans groupe » sur instance verrouillée — plan écrit, non exécuté
+
+**Statut** : Complété (analyse et plan, aucun code touché — exécution refusée par l'utilisateur
+pour cette session).
+
+**Décision technique principale** : vérification sur pièces du modèle multi-utilisateur (ADR
+0029 + `groupstore`) à la question « un utilisateur hors de mon groupe voit-il mes amis ? ». Réponse :
+non, l'accès est cloisonné par propriété + co-membres de groupe (`authz.CanAccessPlayer`,
+`RequirePlayerOwnership`, `familyXUIDResolver` câblé sur `CoMemberXUIDs`). Deux défauts relevés et
+tranchés avec l'utilisateur : (1) `app_settings.friend_gamertags` est global à l'instance ET lu par
+le front via `GET /settings` sous `RequireAdmin` — un utilisateur standard n'a aujourd'hui aucune
+fonctionnalité « amis » ; (2) sur instance verrouillée, seule l'invitation DE GROUPE lève le verrou
+(`xbox_auth_service.go:222` rejette `GroupID == ""`), l'invitation admin sans groupe est inopérante
+en SSO Xbox et n'a plus d'UI ; tout invité reste ensuite coincé sur `POST /setup/players` (403
+`instance_locked`). Décisions D1-D6 : amis par profil joueur (xuid) dans
+`data/global/player_friends.json` (store miroir de groupstore), champ global supprimé après
+migration idempotente ; UI sur `/groups` renommée « Amis et groupes » ; invitation (groupe ou non)
+lève le verrou de compte et porte un droit à usage unique de provisioning du profil, porté par
+`users.json` (`User.ProvisionGrant`) ; édition des amis par le propriétaire direct ou l'admin ;
+invitation sans groupe = admin, page `/admin/management`.
+
+**Résultats observés** : `users.json` local ne contient qu'un compte (admin) — les profils amis
+n'ont jamais été des utilisateurs ; le commentaire de `middleware.FamilyXUIDResolver` parle
+encore de `FriendGamertags` alors que le câblage réel est `groupstore.CoMemberXUIDs` ; la CLI
+`sync-full --gamertag` exige le refresh token DU joueur alors que le serveur emprunte au pool
+(pertinent pour l'ajout de Nuzzles, procédure en annexe du plan).
+
+**Conclusion / prochaine étape** : plan `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`
+(7 étapes, gates, décisions tranchées, annexe Nuzzles). Exécution dans un worktree dédié
+`wt/amis-invitations` sur signal de l'utilisateur. Rien committé.
+## [2026-09-15] Amis par joueur + invitation sans groupe sur instance verrouillée — Complété (étapes 0 à 7, recette navigateur au pilote)
+
+**Statut** : Complété — branche `wt/amis-invitations` (worktree dédié
+`LevelUp-wt-amis-invitations`, base `feat/v75` @ 2ddef392c), 8 commits, non poussée,
+non mergée. Plan exécuté : `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`
+(section « Avancement » : items statués + sorties de gates).
+
+**Décision technique principale** — deux défauts, une même cause : une donnée de PERSONNE
+traitée comme un réglage d'INSTANCE.
+
+1. *La liste d'amis était globale.* `app_settings.friend_gamertags` était UNE liste pour
+   toute l'instance : elle pilotait `is_with_friends` dans toutes les player DBs, et n'était
+   lisible que par un admin (`GET /settings` sous `RequireAdmin`) — un utilisateur standard
+   n'avait donc AUCUNE fonctionnalité « amis ». Elle devient une liste PAR PROFIL (clé xuid,
+   `data/global/player_friends.json`, `platform/friendstore` calqué sur `groupstore`),
+   servie par `GET|PUT /players/{slug}/friends` sous le chokepoint d'ownership (ADR 0029).
+   Deux portes distinctes et assumées : le middleware décide de l'ACCÈS (un co-membre de
+   groupe lit), `can_edit` décide de l'ÉCRITURE (propriétaire direct ou admin, D4) — et
+   `can_edit` est porté par la réponse, de sorte que le front n'interprète jamais un 403
+   pour décider de son affichage. Le champ global est SUPPRIMÉ (domaine, store, contrat
+   OpenAPI, types web) derrière une migration de boot idempotente et un ratchet archlint à
+   allowlist vide.
+2. *L'invitation sans groupe ne passait pas le verrou.* Sur instance verrouillée, seule une
+   invitation DE GROUPE créait un compte : `POST /admin/invites` était inopérant en SSO Xbox.
+   Désormais toute invitation valide lève le verrou ; le groupe n'est rejoint que s'il y en a
+   un ; et le compte AINSI CRÉÉ porte un droit à usage unique (`User.ProvisionGrant`) de créer
+   SON profil joueur, sans quoi l'invité atterrissait sur le Setup et prenait un 403
+   `instance_locked`. Le droit vit sur le COMPTE (il survit à une déconnexion entre le login
+   et le Setup), il est refusé si un profil porte déjà son xuid, et il est effacé après usage.
+   Le contrôle « xuid = identité liée » reste la vraie barrière : le droit ne dispense pas
+   d'être soi.
+
+**Écart consigné** : la gate G2.0 (existence de `data/auth/groups.json` en prod) n'a PAS été
+validée. Variante D6 appliquée : la migration de groupe par défaut est conservée, simplement
+re-sourcée depuis le store d'amis (`friendStore.Get(xuid de l'admin)`), et ordonnée après la
+migration des amis. Les deux restent idempotentes.
+
+**Résultats observés**
+- Go : `go build ./...`, `go vet ./...`, `go test ./...` → 0. Intégration
+  `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` → 0.
+- Web : typecheck (cache `node_modules/.tmp` purgé) → 0 ; `npm run lint` → 0 erreur
+  (25 avertissements préexistants) ; `npm run test:run` → 716 fichiers, 7681 tests verts.
+- Ajouts : 37 tests Go (friendstore, domaine, handler amis, setup, userstore, service SSO) et
+  22 tests web (hooks, section, flux d'ajout, table d'erreurs).
+
+**Trois pièges rencontrés, à retenir**
+- *Fins de ligne.* Réécrire un fichier du dépôt via un script Python en mode texte sous
+  Windows le convertit en CRLF — invisible dans `git diff` (normalisation à l'index), mais
+  trois garde-rails du dépôt LISENT LA SOURCE et découpent sur `"\n}\n"` :
+  `wire/home_factories_parity_test.go` a viré au rouge pour cette seule raison, en accusant
+  un câblage parfaitement correct. Réflexe : `gofmt -l ./cmd ./internal` après toute
+  réécriture scriptée.
+- *Le champ écrit deux fois dans le contrat.* `friend_gamertags` figurait dans le struct Go ET
+  à la main dans `api/openapi_manual_fragment.yaml` : régénérer sans toucher au fragment
+  laissait le champ dans `openapi.yaml`. Les autres champs du fragment méritent un audit.
+- *Le ratchet des libellés FR.* `no_french_label_literal_test.go` interdit tout littéral
+  accentué dans un fichier NEUF de `api/handlers`. Plutôt que d'agrandir son allowlist (ce
+  que le ratchet interdit précisément), le nouveau handler applique la décision D6 du plan
+  « libellés en dur » : il ne renvoie qu'un CODE machine, et la table FR/EN vit côté web
+  (`features/friends/errors.ts`). Le motif de refus d'une liste est porté par le code
+  (`invalid_friends_too_many`, `invalid_friends_gamertag_too_long`), pas par une phrase.
+
+**Conclusion / prochaine étape** : la branche est prête pour la revue adversariale et la CI,
+toutes deux à la main du pilote, ainsi que la recette navigateur (elle exige un second compte
+Xbox de test, le basculement d'`instance_locked` et l'arrêt du serveur principal — un worktree
+ne peut pas démarrer de serveur sans violer le mono-process, ADR 0013). Merge dans `feat/v75`
+sur signal de l'utilisateur uniquement ; jamais dans `main`. Deux découvertes hors périmètre
+sont consignées en §10 du plan : l'ADR 0029 décrit encore un 404 sur slug inconnu là où le
+middleware répond un 403 uniforme depuis le durcissement S7, et d'autres réglages lus par le
+front pour un utilisateur standard peuvent souffrir du même 403 que `GET /settings`.
+
+## [2026-09-16] Amis par joueur et invitations sans groupe — revue adversariale du lot, deux rondes — Complété
+
+**Statut** : Complété (revue + correctifs). Branche `wt/amis-invitations`, 12 commits au-dessus de
+`feat/v75`, ni poussée ni mergée. Recette navigateur NON faite (exige l'arrêt du serveur local et
+un second compte Xbox : la première connexion de Nuzzles la jouera).
+
+**Décision technique principale** : revue adversariale conforme au skill — deux relecteurs
+aveugles en parallèle (contrôle d'accès + couverture ; migration/sync/front + anti-patterns),
+contrat écrit, filtre de recevabilité, triage par le pilote, ronde 2 sur les seules corrections.
+Dix constats recevables, zéro jeté. Deux P0 : (1) le droit de provisioning à usage unique
+(`setup.go`) laissait passer `profile_mode` différent de xbox et un xuid vide, donc un invité
+pouvait écrire dans `db_profiles.json` un profil pour un gamertag/xuid étrangers — trou
+PRÉEXISTANT que le nouveau droit rendait atteignable ; la requête est désormais épinglée à
+l'identité du porteur quel que soit le mode ; (2) `RecomputeForPlayer`/`RecomputeAll`
+retournaient tôt sur liste vide, donc le retrait du dernier ami ne démotait jamais
+`is_with_friends` — le recalcul est convergent depuis le 19/06, c'était la doc (« additive »,
+« vide → no-op ») qui mentait et qui a justifié le court-circuit ; les deux docs sont remises à
+l'endroit. Cinq P1 corrigés (invalidations Carrière/Accueil après PUT via préfixes
+`careerAll`/`homeAll` + garde-rail ; rejeu 2D reconstruit à chaque tick par un objet non
+mémoïsé et un `?? []` neuf ; quatre clés i18n mortes ; `slog.Warn` nu). Quatre P2 consignés
+au plan §10, non corrigés (consommation du code best-effort après création ; titre vide dans le
+recalcul des sessions, préexistant ; branches non testées ; pas de test propre d'orchestrateur).
+
+**Résultats observés** : ronde 2 → 0 P0, 0 P1, C1..C6 fermés, 19 conditions tenues ; P0+P1 de
+7 à 0, boucle close. Gates finaux : `go test ./...` → 0 ; `go build` serveur/CLI/`internal` →
+0 ; typecheck cache purgé → 0 ; lint → 0 erreur (25 avertissements préexistants) ; vitest
+716 fichiers / 7 681 tests → 0. Côté prod (lecture seule VPS) : `data/auth/groups.json`
+ABSENT du volume persistant (les deux trouvés étaient les couches du conteneur démo),
+`friend_gamertags` = 4 gamertags, `instance_locked: false` — la variante D6 (migration de
+groupe conservée, re-sourcée depuis le friendstore) était la bonne.
+
+**Conclusion / prochaine étape** : lot prêt pour décision de fusion dans `feat/v75` par
+l'utilisateur. Restent à lui : recette navigateur (admin : lien d'invitation, page Rejoindre,
+Amis et groupes, recoloration vue match ; invité : première connexion de Nuzzles), bascule
+`instance_locked` en prod si l'early access doit être fermé, procédure Nuzzles (annexe A).
+
+## [2026-09-16] Annuaire des joueurs — jonction avec le plan amis/invitations à la fusion de feat/v75
+
+**Statut** : Complété (fusion `feat/v75` → `wt/player-directory`, quatre conflits résolus à la main,
+gates complets relancés sur l'arbre fusionné).
+
+**Décision technique principale** : le plan frère (amis par joueur + invitations sans groupe +
+droit de provisioning, fusionné dans `feat/v75` en `13c4b6c61`) avait été écrit contre l'ancien
+`setup.go`. Jonction sémantique plutôt que juxtaposition : (1) `guardProvisioning` rend le porteur
+d'un droit de provisioning — le droit ne lève QUE le verrou d'instance, jamais
+`can_self_provision`, et l'admin reste exempté des deux ; (2) une seule résolution du compte
+courant (`userLookup`) sert l'exemption admin ET le droit (`WithProvisionGrant` l'alimente) ;
+(3) la création reste `PlayerDirectory.Onboard` — l'épinglage de la requête à l'identité du
+porteur et l'effacement du droit après usage (constat P0 de leur revue) sont conservés autour ;
+(4) `port.ProfileService` (mort chez nous) et `port.FriendsOrchestrator` (mort chez eux) sont
+tous deux retirés ; (5) `xbox_auth_service.go` : porte profil (nous) + invitation sans groupe
+(eux) coexistent ; (6) tests : `mockProfileService` → `mockDirectory`, rig verrouillé câblé sur
+`WithInstanceLock` (le verrou env est résolu au câblage, plus lu par le handler), assertion
+d'épinglage portée sur `OnboardRequest.XUID`.
+
+**Résultats observés** : suite `internal/api/handlers` verte avec les tests des deux plans ;
+ratchets verts ; OpenAPI/`generated.ts` régénérés ; gates complets Go + web relancés sur l'arbre
+fusionné (résultat consigné au commit de fusion).
+
+**Conclusion / prochaine étape** : commit de fusion sur `wt/player-directory`, puis
+`feat/v75` avancée en fast-forward, puis fusion de `wt/explorer-medals-local` (aucun conflit).

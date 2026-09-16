@@ -28,7 +28,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
-		WithSquadSessionTeammates(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
+		WithSquadSessionTeammates(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver(pdb.XUID)).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
 		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
 		// Score en MANCHES des tuiles d'accueil : MÊME table que la vue match, l'historique
@@ -189,7 +189,7 @@ func (r *ServiceRegistry) MatchExclusion(ctx context.Context, slug string) (port
 
 // TeammatesCtx retourne un TeammatesService + identifiants joueur.
 //
-// Le resolver friend_gamertags est branché sur r.settingsStore quand le
+// Le resolver des amis est branché sur r.friendStore quand le
 // store est attaché (cf. WithSettingsStore). Sans store → comportement
 // legacy : top dropdown brut sans filtre amis.
 func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.TeammatesService, string, string, error) {
@@ -203,7 +203,7 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	briefingLoader := duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)
 	briefingLoader.SetWeaponKillsRepoFactory(r.weaponKillsRepoFor)
 	briefingLoader.SetDefaultGamertag(pdb.Gamertag)
-	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
+	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver(pdb.XUID)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithSquadLoader(briefingLoader).
 		WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb)).
@@ -252,20 +252,22 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
-// friendGamertagsResolver construit un resolver lisant app_settings.friend_gamertags
-// à chaque appel. Retourne nil si aucun settings store n'est attaché — le
-// service tourne alors en mode legacy.
-func (r *ServiceRegistry) friendGamertagsResolver() teammates.FriendGamertagsResolver {
-	if r.settingsStore == nil {
+// friendGamertagsResolver construit un resolver lisant, à chaque appel, la liste
+// d'amis DU JOUEUR consulté (data/global/player_friends.json). Le xuid est celui
+// du profil résolu (`pdb.XUID`) : deux joueurs de la même instance n'ont plus la
+// même liste. Retourne nil si aucun store d'amis n'est attaché ou si le profil
+// n'a pas de xuid — le service tourne alors sans filtre amis.
+func (r *ServiceRegistry) friendGamertagsResolver(xuid string) teammates.FriendGamertagsResolver {
+	if r.friendStore == nil || xuid == "" {
 		return nil
 	}
 	return func(ctx context.Context) []string {
-		s, err := r.settingsStore.Load()
+		friends, err := r.friendStore.Get(xuid)
 		if err != nil {
-			slog.WarnContext(ctx, "friend_gamertags_load_failed", "err", err)
+			slog.WarnContext(ctx, "player_friends_load_failed", "err", err, "xuid", xuid)
 			return nil
 		}
-		return s.FriendGamertags
+		return friends
 	}
 }
 

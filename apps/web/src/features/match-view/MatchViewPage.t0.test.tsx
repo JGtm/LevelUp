@@ -62,8 +62,8 @@ vi.mock('./queries', () => ({
   useMatchPositions: () => ({ data: undefined }),
 }))
 
-vi.mock('@/features/settings/queries', () => ({
-  useSettings: () => ({ data: { friend_gamertags: [] } }),
+vi.mock('@/features/friends/queries', () => ({
+  useFriendGamertags: () => [],
 }))
 
 vi.mock('@/stores/appShellStore', () => ({

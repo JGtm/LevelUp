@@ -61,10 +61,22 @@ type SetupHandler struct {
 	// verrouillé : même convention que XboxSSOLinkStrategy/UserAuthHandler, et
 	// seam des tests unitaires.
 	instanceLocked func() bool
-	// userLookup résout l'utilisateur courant derrière la session pour l'exemption
-	// admin (ajouter le profil d'un ami est un acte d'administration). nil ⇒ repli
-	// sur le rôle porté par la session, comme middleware.RequireAdmin.
+	// userLookup résout l'utilisateur courant derrière la session : exemption
+	// admin (ajouter le profil d'un ami est un acte d'administration, ADR 0035 D5)
+	// ET porteur d'un droit de provisioning (invitation, plan amis/invitations D3).
+	// nil ⇒ repli sur le rôle porté par la session pour l'admin, et aucun invité
+	// ne passe le verrou.
 	userLookup authz.UserLookup
+	// grantClearer efface le droit de provisioning après usage (à usage unique).
+	// nil ⇒ le droit n'est jamais effacé (tests) — le câblage passe toujours
+	// WithProvisionGrant.
+	grantClearer ProvisionGrantClearer
+}
+
+// ProvisionGrantClearer efface le droit de provisioning d'un compte après usage.
+// Satisfait par *userstore.Store.SetProvisionGrant(username, "").
+type ProvisionGrantClearer interface {
+	SetProvisionGrant(username, code string) error
 }
 
 // NewSetupHandler crée un SetupHandler.
@@ -97,9 +109,19 @@ func (h *SetupHandler) WithInstanceLock(fn func() bool) *SetupHandler {
 }
 
 // WithUserLookup injecte la résolution de l'utilisateur courant (exemption admin
-// sur POST /setup/players).
+// sur POST /setup/players, porteur d'un droit de provisioning).
 func (h *SetupHandler) WithUserLookup(lookup authz.UserLookup) *SetupHandler {
 	h.userLookup = lookup
+	return h
+}
+
+// WithProvisionGrant branche la résolution du compte courant et l'effacement du
+// droit de provisioning (même lookup que l'exemption admin : une seule source du
+// compte courant). Sans ce câblage, le verrou d'instance reste absolu pour un
+// invité.
+func (h *SetupHandler) WithProvisionGrant(users authz.UserLookup, clearer ProvisionGrantClearer) *SetupHandler {
+	h.userLookup = users
+	h.grantClearer = clearer
 	return h
 }
 
@@ -152,9 +174,13 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
 	// Gardes d'ouverture. Un ADMIN en est exempté des DEUX : ajouter le profil
-	// d'un ami est un acte d'administration, pas de l'auto-provisioning (ADR 0035 D5).
+	// d'un ami est un acte d'administration, pas de l'auto-provisioning (ADR 0035
+	// D5). Un INVITÉ porteur d'un droit de provisioning non consommé passe le
+	// verrou d'instance — et lui seul (plan amis/invitations D3) ; la vraie
+	// barrière reste l'épinglage à son identité, plus bas.
 	actorIsAdmin := h.actorIsAdmin(ctx)
-	if err := h.guardProvisioning(ctx, appCfg.CanSelfProvision, actorIsAdmin); err != nil {
+	grantHolder, err := h.guardProvisioning(ctx, appCfg.CanSelfProvision, actorIsAdmin)
+	if err != nil {
 		return nil, err
 	}
 
@@ -172,6 +198,24 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 	}
 	if actorIsAdmin {
 		slog.InfoContext(ctx, "setup: création profil par admin", "gamertag", req.Gamertag)
+	}
+
+	// Verrou levé par un droit de provisioning : la requête est ÉPINGLÉE à
+	// l identité du porteur, quel que soit profile_mode. Sans cela un invité
+	// pouvait envoyer profile_mode "azure_manual" (ou un xuid vide) et sauter le
+	// bloc d identité ci-dessous, donc écrire dans db_profiles.json un profil pour
+	// un gamertag et un xuid étrangers (constat P0 de revue, 2026-09-16). Le droit
+	// ne vaut que pour SON premier profil : gamertag et xuid du compte, mode xbox.
+	if grantHolder != nil {
+		if !strings.EqualFold(req.Gamertag, grantHolder.Gamertag) ||
+			(req.XUID != "" && req.XUID != grantHolder.XUID) {
+			slog.WarnContext(ctx, "setup: droit de provisioning refusé — identité étrangère",
+				"username", grantHolder.Username, "gamertag", req.Gamertag, "xuid", req.XUID)
+			return nil, humacore.NewError(http.StatusConflict, "identity_mismatch",
+				"Le droit de provisioning ne vaut que pour votre propre compte Xbox.")
+		}
+		req.XUID = grantHolder.XUID
+		req.ProfileMode = authModeXbox
 	}
 
 	// Titre cible : priorité au body (onboarding multi-titre — le front crée un
@@ -209,6 +253,15 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 		slog.ErrorContext(ctx, "setup.Onboard: failed", "gamertag", req.Gamertag, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "profile_create_error",
 			"Impossible de créer le profil joueur.")
+	}
+
+	// Le droit de provisioning a servi : l'effacer pour qu'il ne soit pas
+	// rejouable. Échec journalisé — la création, elle, reste acquise.
+	if grantHolder != nil && h.grantClearer != nil {
+		if err := h.grantClearer.SetProvisionGrant(grantHolder.Username, ""); err != nil {
+			slog.ErrorContext(ctx, "setup: effacement du droit de provisioning échoué",
+				"username", grantHolder.Username, "err", err)
+		}
 	}
 
 	// Mettre à jour la session avec le joueur courant
@@ -291,24 +344,65 @@ func (h *SetupHandler) actorIsAdmin(ctx context.Context) bool {
 
 // guardProvisioning applique les deux gardes d'ouverture de l'instance :
 // auto-provisioning autorisé, puis verrou « instance fermée ». Un admin en est
-// exempté (ADR 0035 D5). Retourne nil quand la création peut continuer.
-func (h *SetupHandler) guardProvisioning(ctx context.Context, canSelfProvision, actorIsAdmin bool) error {
+// exempté des deux (ADR 0035 D5). Un invité porteur d'un droit de provisioning
+// non consommé (et sans profil) passe le VERROU seulement — pas la garde
+// d'auto-provisioning (plan amis/invitations D3) ; il est alors rendu, pour que
+// l'appelant épingle la requête à son identité et efface le droit après usage.
+// Rend (nil, nil) quand la création peut continuer sans droit.
+func (h *SetupHandler) guardProvisioning(ctx context.Context, canSelfProvision, actorIsAdmin bool) (*domain.User, error) {
 	if actorIsAdmin {
-		return nil
+		return nil, nil
 	}
 	if !canSelfProvision {
 		slog.WarnContext(ctx, "setup: création profil refusée — auto-provisioning désactivé")
-		return humacore.NewError(http.StatusForbidden, "provisioning_disabled",
+		return nil, humacore.NewError(http.StatusForbidden, "provisioning_disabled",
 			"L'auto-provisioning est désactivé sur cette instance.")
 	}
 	// Verrou effectif = env (LEVELUP_INSTANCE_LOCKED) OU app_settings.instance_locked,
 	// résolu par le point de décision unique injecté au câblage.
-	if h.instanceLocked != nil && h.instanceLocked() {
-		slog.WarnContext(ctx, "setup: création profil refusée — instance verrouillée")
-		return humacore.NewError(http.StatusForbidden, "instance_locked",
-			"Cette instance est fermée : la création de nouveaux profils est désactivée.")
+	if h.instanceLocked == nil || !h.instanceLocked() {
+		return nil, nil
 	}
-	return nil
+	if holder := h.provisionGrantHolder(ctx); holder != nil {
+		slog.InfoContext(ctx, "setup: verrou levé par un droit de provisioning",
+			"username", holder.Username)
+		return holder, nil
+	}
+	slog.WarnContext(ctx, "setup: création profil refusée — instance verrouillée")
+	return nil, humacore.NewError(http.StatusForbidden, "instance_locked",
+		"Cette instance est fermée : la création de nouveaux profils est désactivée.")
+}
+
+// provisionGrantHolder retourne l'utilisateur de la session S'IL porte un droit
+// de provisioning non consommé ET qu'aucun profil de db_profiles.json ne porte
+// déjà son xuid. Sinon nil : le verrou d'instance s'applique.
+//
+// La double condition est le point : le droit sert UNE fois, pour SON premier
+// profil. Un invité qui a déjà un profil n'a plus rien à provisionner.
+func (h *SetupHandler) provisionGrantHolder(ctx context.Context) *domain.User {
+	if h.userLookup == nil {
+		return nil
+	}
+	user := authz.CurrentUser(middleware.GetSession(ctx), h.userLookup)
+	if user == nil || user.ProvisionGrant == "" || user.XUID == "" {
+		return nil
+	}
+	players, err := h.cfg.LoadPlayers()
+	if err != nil {
+		// Ne pas lever le verrou sur une lecture ratée : on ne peut pas prouver
+		// que l'invité n'a pas déjà un profil.
+		slog.ErrorContext(ctx, "setup: lecture des profils impossible — droit de provisioning ignoré",
+			"username", user.Username, "err", err)
+		return nil
+	}
+	for i := range players {
+		if players[i].XUID == user.XUID {
+			slog.WarnContext(ctx, "setup: droit de provisioning ignoré — le compte a déjà un profil",
+				"username", user.Username, "player_slug", players[i].PlayerSlug)
+			return nil
+		}
+	}
+	return user
 }
 
 // handleSmokeTest lance un job de vérification basique de l'environnement.
