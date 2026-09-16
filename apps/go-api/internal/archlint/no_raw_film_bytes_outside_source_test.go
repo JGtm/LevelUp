@@ -141,6 +141,11 @@ package archlint
 //     retirer », par `TestAllowlistDesLecturesBrutesNEstPasPerimee` ;
 //   - retirer une entree d allowlist sans faire le portage : la violation correspondante
 //     rougit (c est le meme chemin de code que la premiere mutation).
+//
+// LES TROIS ONT ETE REJOUEES LE 2026-09-18 A LA CLOTURE DU LOT 2.4 (rouges, retirees), sur la
+// table REDUITE a ses neuf entrees : un ratchet qui vient de perdre 69 entrees doit prouver
+// qu il mord encore, sans quoi « allowlist vide » ne voudrait rien dire. La troisieme a ete
+// jouee sur `analysis/positions/positions.go`, l une des neuf.
 
 import (
 	"sort"

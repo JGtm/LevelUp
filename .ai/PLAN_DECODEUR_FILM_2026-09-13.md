@@ -3945,15 +3945,64 @@ Preuve : `replay-equiv` zéro différence ; `-race` propre ; corpus gate zéro d
 
 #### Lot 2.4 (pas 4) — Une seule porte aux octets — M, high
 
-- [ ] 2.4.1 `killsource.evReader` absorbé par `filmdec.BitReader` (même consommation de bits,
+CLOS le 2026-09-18 pour ses gates SANS décodage (branche `feat/decfilm-24`, base `88f1a1115`,
+trois commits `2326de9f4`, `6b85f19e5`, le commit de clôture). **LE LECTEUR CANONIQUE EST CELUI DE
+LA COUCHE SOURCE, ET LA RÉVISION NE MONTE PAS POUR AUTANT** : `KillSourceDecoderRev` reste
+`killsource-2026-09-16.2`, parce que la sortie est identique à l'octet — c'est prouvé, pas déduit
+(cf. 2.4.1). L'item écrivait « `evReader` absorbé par `filmdec.BitReader` » ; la mesure a corrigé la
+cible : c'est `BitReader` LUI-MÊME qui n'était pas canonique (il portait son tampon et sa position),
+et les DEUX descendent dans `filmsource.Bits`.
+
+- [x] 2.4.1 `killsource.evReader` absorbé par `filmdec.BitReader` (même consommation de bits,
       test d'équivalence bit à bit sur les chaînes d'événements des mini-films).
-- [ ] 2.4.2 Façade unique de lecture brute (`film.Source` : chunks, paquets, lecteur de bits) ;
+      FAIT (`2326de9f4`). Le lecteur canonique est `filmsource.Bits` — MSB-first, bourrage à zéro,
+      lecture par mot de 64 bits ; `filmdec.BitReader` l'EMBARQUE au lieu de porter son propre
+      tampon, et `filmdec/bits_word.go` disparaît (sa lecture par mot EST `filmsource.BitsAt`).
+      `evReader`, `bitsWide`, `bitAt`, `bits32` et `bitsN` sont SUPPRIMÉS ; leurs 23 sites passent
+      par les primitives de la source. **LE DRAPEAU `over` RESTE AU MARCHEUR, PAS AU LECTEUR**
+      (arbitrage V15 (3)) : `killsource.curseurEv` teste `Remaining()` AVANT chaque lecture, et
+      `bp+n > len(pl)*8` et `Remaining() < n` sont la même condition — donc `Skip` reste borné
+      exactement là où `evReader.skip` le bornait. DEUX PREUVES : appel par appel sur les
+      positions RÉELLES des chaînes des dix bobines versionnées (1 114 paquets à events,
+      109 168 positions, 72 largeurs par position, `equivalence_lecteur_test.go`), puis les
+      triplets (code, bit de début, bit de fin) de chaque chaîne et les six champs de chaque
+      kill-event, IDENTIQUES à un golden produit **par le code de la base `88f1a1115`**, avant
+      l'absorption (`testdata/chaines_evenements.golden`, sans porte `-update` : un golden qui
+      fige un AVANT ne se régénère pas).
+- [x] 2.4.2 Façade unique de lecture brute (`film.Source` : chunks, paquets, lecteur de bits) ;
       `killsource/{chunks,feed,walk,world}.go`, `weaponv3/pi_resolver.go`,
       `filmcache/filmcache.go`, `objectiveevents/film.go` la traversent.
-- [ ] 2.4.3 Ratchet `archlint/no_raw_film_bytes_outside_source_test.go`, allowlist VIDE.
+      FAIT (`6b85f19e5`), dans `internal/analysis/filmsource` (V15 (1)). Elle porte LE lecteur et
+      ses QUATRE conventions de bord NOMMÉES (`BitsAt` moteur, `BitAt` deux côtés,
+      `BitsTolerants` pour un lecteur qui recule, `BitsTronques` sans bourrage — le pied de film) ;
+      les entiers du film (`U16LE`/`U32LE`/`U64LE`, `OctetAuBit`, `U64LEAuBit`) ; LE marcheur de
+      paquets (`Paquets`) ; LE décompresseur en deux contrats écrits (`Inflate` tolérant,
+      `Decompresser` strict) ; le balayage de motif 64 bits (`ChercherMotif64`). Les quatre
+      conventions NE SE FONDENT PAS : chacune est la convention mesurée d'un lecteur réel, et les
+      fondre changerait des valeurs décodées (D4). `filmdec.BitReader`/`NewBitReader` DISPARAISSENT
+      au profit de `Lecteur`/`LecteurSur` — le type ne lit plus, il DÉCORE ; les deux anciens noms
+      restent au ratchet, en anti-résurrection. `[~]` `filmcache/filmcache.go` : rien à porter,
+      c'est une implantation de `filmsource.Source` (aucune entrée d'allowlist, vérifié sur
+      pièces). **UN PAQUET DE PLUS QUE L'ITEM** : `objectiveevents/statborg.go` (13 appels, D1 de
+      la préparation) et `weaponv3/{bits_word,timing}.go`.
+- [x] 2.4.3 Ratchet `archlint/no_raw_film_bytes_outside_source_test.go`, allowlist VIDE.
+      FAIT : **78 → 9 couples**, et les neuf restants sont les entrées du lot 2.5.c que V15 (2)
+      et (4) font descendre au pas 5 — le périmètre déclaré, écrit dans l'en-tête du ratchet. Le
+      ratchet a conduit le lot commit par commit : il nomme les entrées devenues périmées, et
+      c'est lui qui a dit quand chaque portage était fini. TROIS AUTRES ALLOWLISTS MAIGRISSENT
+      AVEC : `sitesZlibAutorises` perd cinq entrées mortes, `franchissementsToleres` de D9 en perd
+      une (5 → 4), le registre des replis voit deux ancres mises à jour. Mutations rejouées le
+      2026-09-18 (rouges, retirées) : un lecteur réintroduit dans un paquet surveillé (2
+      violations, dont le motif STRUCTUREL), une entrée d'allowlist sans violation réelle, une
+      entrée retirée sans portage.
 
 Preuve : `replay-equiv` zéro différence ; `TestKillSourceDecoderRevSuitLeDecodeur` (révision
 montée, sortie identique) ; corpus gate zéro différence.
+GATES SANS DÉCODAGE : verts à chaque commit (§5). **GATES AVEC DÉCODAGE : NON JOUÉS** — contrainte
+machine d'un seul décodage à la fois, en attente de la « voie libre » du pilote. La révision
+`KillSourceDecoderRev` NE MONTE PAS, et l'item disait l'inverse : son golden d'empreinte bouge
+(la source de `killsource` change), la révision non, parce que la sortie est identique à l'octet.
+Le choix est écrit dans sa godoc, comme son garde-rail l'exige.
 
 #### Lot 2.5 (pas 5) — Les cinq couches, par déplacements purs — L, high
 
@@ -4755,6 +4804,9 @@ d'équivalence propre à ce jalon (oracle = « document rejoué depuis les faits
 | 2026-09-17 | 2.10.1 | **D3 (2.10) — `CLAUDE.md` DÉCRIT ENCORE LA CIBLE `gamefiles` COMME « corpus cartes internal/himap ».** La ligne 176 du fichier d'instructions dit `make go-api-test-gamefiles  # corpus cartes internal/himap (tag gamefiles, EXIGE Halo installe, ~6 min)`, ce qui n'est plus vrai depuis 2.10.1 (quatre paquets, dont trois catalogues commis). NON TRAITÉ : `CLAUDE.md` est hors de la frontière de fichiers du lot. | le prochain lot qui touche `CLAUDE.md` : aligner la ligne 176 sur `docs/COMMANDS.md` §corpus gamefiles |
 | 2026-09-17 | 2.10.1 | **D4 (2.10) — `TestBancCliffhanger` EST TOUJOURS ROUGE, ET LA CIBLE MAKEFILE LE REND ENFIN VISIBLE EN SORTIE NON NULLE.** La passe complète (7 min 3 s, 203 tests) rend **un seul échec**, aux chiffres IDENTIQUES à la mesure du 2026-09-05 consignée au `REGISTRE_REPORTS.md` : 5 102 instances dessinées, 859 écartées, manquants 9,9 %, excès 39,8 %, **ACCORD 64,4 %** contre une référence re-basée à 64,7 %. Préexistant, `internal/himap` n'a pas été touché par ce lot et est hors de sa frontière. Conséquence pratique : `make go-api-test-gamefiles` sort en **erreur 1** — elle sortait déjà en erreur avant le lot (himap seul suffisait), l'élargissement n'y change rien, mais quiconque câblerait cette cible dans un gate doit le savoir. | le lot dédié déjà inscrit au `REGISTRE_REPORTS.md` (trancher entre dérive réelle, oracle absent et seuil trop serré) |
 | 2026-09-17 | 2.4.3 (préparation) | **D1 (2.4) — IL Y A UN SEPTIÈME LECTEUR DE BITS, ET UN QUATRIÈME MARCHEUR DE PAQUETS, QUE LA NOTE DE PRÉPARATION NE COMPTE PAS.** La re-mesure de l'inventaire §1.1 par le ratchet `no_raw_film_bytes_outside_source_test.go` (analyse AST, production seule, 1 084 fichiers) trouve deux sites que le tableau H de la note n'a pas : (a) **`internal/analysis/positions/positions.go` porte sa PROPRE copie de `bitAt` (l. 179) et son PROPRE marcheur de paquets 16 octets (l. 127-128, `binary.LittleEndian` sur `d[off:]`)** — c'est un septième lecteur, à côté des six de la note, dans le paquet title-agnostic `analysis/positions` ; (b) **`objectiveevents/statborg.go` appelle `readBitsBE` 13 fois** alors que la note ne citait que `film.go` pour ce lecteur — le paquet en a donc deux fichiers. Corollaire sur le bilan chiffré de la note (« marcheurs de paquets distincts : 2 ») : `weaponv3/timing.go:37-39` et `positions/positions.go:127-128` recopient le MÊME en-tête de 16 octets que `filmsource.appendPackets` et `filmdec/film_packets.go` — cela fait **quatre**, pas deux. Les sites sont inscrits à l'allowlist datée du ratchet. NON TRAITÉ (règle 7) : la préparation ne touche aucun paquet du film. | lot 2.4.2 pour `statborg.go` et `weaponv3/timing.go` (ils traversent la façade avec `film.go` et `pi_resolver.go`) ; lot 2.5.c pour `analysis/positions`, avec la descente de la grammaire de film posée dans `internal/analysis` racine (V15 (4)) |
+| 2026-09-18 | 2.4.2 | **D2 (2.4) — LA CHRONIQUE DE `GrammarRev` NE PEUT PLUS TENIR DANS UN FICHIER, ET CE N'EST PAS UN ACCIDENT.** `grammar_rev.go` a atteint 500 lignes en écrivant l'entrée `.28` (lot 2.4.1), et le fichier de chronique qui en est sorti a repassé le seuil deux rangs plus loin, en écrivant `.29`. La cause est structurelle : la chronique ne peut QUE grandir — un lot, un rang, une entrée — et le ratchet de taille n'a qu'une exception écrite, `replay/document_chronicle.go`, dont l'entrée MONTE dans le commit qui monte `SchemaVersion`. TRAITÉ DANS LE LOT parce que le gate le bloquait (règle 7, exception « bloque le gate courant ») : la chronique SE ROTATIONNE, comme `.ai/thought_log.md` — `grammar_rev_chronique_archive.go` prend les rangs `.12` à `.20`, `grammar_rev_chronique.go` garde le vivant, et la règle est écrite dans les deux en-têtes. Les trois fichiers sont exclus de l'empreinte (`fichiersHorsGrammaire`) : ils DÉCRIVENT la grammaire. | Aucune suite — constat et geste. Le geste se refait quand `grammar_rev_chronique.go` repasse 500 lignes ; il est écrit dans son en-tête pour que le lot suivant n'ait pas à le redécouvrir |
+| 2026-09-18 | 2.4.2 | **D3 (2.4) — `TestFilmChunkAtEgaleWalkPackets` ET LE TÉMOIN DE `filmsource` NE MESURAIENT PLUS LA MÊME CHOSE APRÈS LA FUSION DES MARCHEURS.** Les deux comparaient `filmdec.WalkPackets` au découpage de `filmsource` ; `WalkPackets` n'étant plus qu'une TRADUCTION de `filmsource.Paquets`, la comparaison devenait tautologique — un témoin vert qui ne garde rien, exactement le motif que le plan appelle « un gate optionnel est un garde qui ne peut pas échouer ». TRAITÉ DANS LE LOT (le témoin est dans son périmètre) : `filmsource.TestDeuxMarcheursDePaquetsSAccordent` oppose désormais le marcheur unique à une COPIE DE RÉFÉRENCE de l'ancienne grammaire de `WalkPackets`, sur TOUS les chunks de la mini-bobine (738 paquets), et il mesure donc vraiment les deux règles qui les séparaient (arrêt après CHUNK_END, refus d'un en-tête dégénéré). `TestFilmChunkAtEgaleWalkPackets`, lui, garde un objet propre : le chemin des OCTETS (disque relu contre film chargé) et la reconstitution des bornes `Start`/`Size` par contiguïté. | Aucune suite — constat et geste |
+| 2026-09-18 | 2.4 | **D4 (2.4) — D2 (2.3) N'EST PAS TRAITÉE PAR CE LOT, ET LE DIRE COÛTE UNE LIGNE.** `BipedDefaultStateEndBit` et `BipedMovementI0Bit` n'ont toujours aucun appelant (re-vérifié sur pièces le 2026-09-18) ; l'entrée D2 (2.3) les envoyait « lot 2.4 ou 2.5, qui rouvre la façade de lecture ». La façade que 2.4 rouvre est celle des OCTETS ; ces deux fonctions sont des points d'entrée de GRAMMAIRE sans consommateur, et les supprimer coûterait un rang de `GrammarRev` de plus pour un geste sans rapport avec la porte aux octets. NON TRAITÉ (règle 7). | lot 2.5.e, qui re-coupe la surface exportée du décodeur : c'est là que « 0 code mort » se mesure sur la façade, pas au milieu d'un portage de lecture |
 
 | 2026-09-17 | 2.5.0 | **D1 (2.5.0) — LA NOTE DE PRÉPARATION §2.2 A OMIS DEUX ARÊTES RÉELLES, PARCE QU'ELLE NE REGARDAIT QUE LE SENS.** Re-mesure `go list -f '{{.ImportPath}} {{.Imports}}'` du 2026-09-17 sur `1e246b209` (production seule ; aucun fichier de production de ces paquets ne porte de build tag, la mesure est donc exhaustive) : les 8 arêtes de production du décodeur listées par la note (#1 à #8) sont confirmées telles quelles, mais **`filmcache` -> `analysis/filmsource`** et **`objectiveevents` -> `analysis/filmsource`** en sont absentes. Ces deux-là sont dans le bon SENS (hors-couche -> source, facts -> source), ce que la note mesurait ; elles sont au mauvais LIEU, ce qu'elle ne mesurait pas. Elles tombent au même lot que les autres (2.5.a, le `git mv` de `filmsource`), donc aucune charge nouvelle — mais un lot qui se fierait au compte « 12 » croirait avoir fini avec deux arêtes debout. Les 4 arêtes restantes de la note (#9 `sessionusage` -> `replay`, production, et #10 à #12, tests) relèvent de D9 et NE SONT PAS re-gardées ici (copie de garde-rail interdite, CLAUDE.md règle 6). Total porté par le ratchet : **10 arêtes + 3 paquets hors lieu + 1 couche vide**. NON TRAITÉ au sens des coupes : ce lot ne déplace rien, il rend la liste exécutable. | lot 2.5.a à 2.5.e : chaque entrée d'allowlist nomme son lot et la forme de sa coupe, et le ratchet rougit sur toute entrée devenue sans objet — la liste se vide mécaniquement |
 | 2026-09-17 | 3.6-prep (workflow) | **D1 (3.6-prep) — LE `param_4` DES LECTEURS DE COMPOSANT EST LE NIVEAU DU REGISTRE DU FILM, ET LE DÉPÔT LE TABULE À LA MAIN.** Preuve au binaire (`NOTE_3_6_TI12_GRAMMAIRES_B_2026-09-17.md` §1.1, `_A` §2, `NOTE_3_6_TI11_GRAMMAIRES_2026-09-17.md` §1.3) : le slot `descripteur + 0x10` est une fonction `MOV EAX, k ; RET` ; le dispatcheur `FUN_14076cb60` (`14076cc6f CALL [RAX]` puis `14076cd11 MOV [RSP+0x20],R13D`) et le thunk `+0x38` (`MOV R9D,[RSP+0x28] ; JMP [RAX+0x30]`) passent cette valeur en `R9D` au lecteur `+0x40` ; elle concorde 4/4 avec les mesures live de `component_param4.go` (`object-maximum-vitalities` 3, `object-frame-configuration` 0, `unit-malleable-property` 4, `object-low-frequency` 2) ET avec la colonne `level` du registre lue dans le film (`registry.go:79`). Conséquence : `paramByComponent` est remplaçable par `Archetype.Level(i)` (le film est autoportant) ; les portes `1 < param_4` / `2 < param_4` de ti=11 `i4` et ti=12 `i2`..`i6`, `i19` sont des portes de VERSION décidées par le film, jamais une constante. Découvertes annexes du même relevé, NON traitées : (a) `FUN_1406d84b4` en mode `b7 = 1` déquantifie sur `N - 2` pas (`1406d858c LEA EAX,[RCX-2]`, `1406d859d LEA EAX,[R9-1]`) avec saturation aux codes `0` et `N - 1` — `dequantMidpoint` d'i14 (`(q + 0,5) / N`, « convention RETENUE ») ne le fait pas, et le code `255` d'un `R(8)` en `b6 = 1` tombe hors plage ; (b) `ti=43 i2` : `ecs_table.tsv` et la godoc disent « mode C=1 NON porté » alors que `decodeObjectForwardAndUpDynPrec` appelle `consumeFwdUpDynPrecConfig` pour `Mode == 1` et que `paramByComponent` vaut 2 — doc et table en retard sur le code ; la branche `DAT_145121140 == 1` n'y est pas modélisée ; (c) `consumeBipedActionTag` (`default` « tag >= 6 -> 0 bit ») contredit par `FUN_142ef01c4` (continuation de dispatch, corps 6..16 lisent des bits) et `bipedActionLoop2Count = 0` alors que `n2 = pop(m0) + pop(m1) + pop(m2 & 0x1ff)` des 96 premiers bits ; (d) `i57` : l'« octet d'état RUNTIME » est un `R(6)` du flux ; (e) `TI11_SPEC_10_FEUILLES.md` (« sel6..15 assert », « sel5 recursion ») et la note de méthode (constantes `0x14049b600` / `0x141c8f880` transposées, `+0x10` pris pour une constante de famille, `+0x40` dit « écrivain » quand c'est le lecteur, `FUN_1406d49c4` dit « R(1) rendu » quand c'est l'écrivain d'un bit) sont à corriger ; (f) les adresses de sous-lecteurs citées dans `consumeObjectLowFrequency` ne sont pas celles de cette image. | lot 3.6 (ports, dans le commit qui porte chaque composant) ; 3.1.1 (profil : `level` lu au registre) ; note de méthode et `TI11_SPEC_10_FEUILLES.md` au premier port de ti=11 ; `HANDOFF_FRAME_DECODER_L3.md` l.230 |
@@ -5728,6 +5780,37 @@ décide seule. Sur treize films les deux régimes coïncident ; sur `c75f33b8`, 
 cette carte » sur les 14 films (colonne `positions` à -1 des DEUX côtés) : sans `WorldRange` ni
 `QuantaOnly`, l'enveloppe D2 refuse. En production `FilmWeaponHitDistance` passe l'entrée de
 CATALOGUE, donc les bornes existent et ce canal vit. À reprendre avec `QuantaOnly: true`.
+
+### Lot 2.4 (M2, pas 4) — gates SANS décodage, 2026-09-18
+
+Base `88f1a1115` (branche `feat/decfilm-24`, worktree `LevelUp-wt-decfilm-24`). **AUCUN GATE DE
+DÉCODAGE JOUÉ** : contrainte machine d'un seul décodage à la fois, en attente de la « voie libre »
+du pilote. Trois commits : `2326de9f4` (2.4.1), `6b85f19e5` (2.4.2), le commit de clôture (2.4.3).
+
+| Date | Lot | Commit | Commande | Résultat (compte, empreinte, durée) |
+|---|---|---|---|---|
+| 2026-09-18 | 2.4 (mesure AVANT) | base `88f1a1115` | `go test ./internal/archlint/ -run 'TestAucuneLectureDOctetsBrutsHorsDeLaSource\|TestAllowlistDesLecturesBrutesNEstPasPerimee'` | `ok 4,249 s` — **78 couples (fichier, motif)** en allowlist, aucun périmé, aucune violation hors table. C'est l'inventaire du lot, re-vérifié sur pièces au lieu d'être refait : 6 ciblés 2.4.1, 63 ciblés 2.4.2, 9 ciblés 2.5.c |
+| 2026-09-18 | 2.4.1 | `2326de9f4` | `go test ./internal/games/halo_infinite/film/killsource/ -run TestEquivalenceLecteurEvBitAbit -v` | **PASS 1,19 s** — `1114 paquets a events, 109168 positions reelles, 72 largeurs par position`. Les copies de référence d'`evReader` / `bitsWide` / `bitAt` / `bits32` / `bitsN` et le lecteur canonique rendent la MÊME valeur, la MÊME position de sortie et le MÊME drapeau `over`, aux positions RÉELLES des chaînes des dix bobines versionnées, plus les 80 derniers bits de chaque paquet (la fin de flux est l'écart que l'absorption devait traiter) |
+| 2026-09-18 | 2.4.1 | `2326de9f4` | `go test ./internal/games/halo_infinite/film/killsource/ -run TestChainesDEvenementsIdentiquesAuGolden` | **ok 0,340 s** — 1 121 lignes, triplets (code, début, fin) de chaque chaîne + les six champs de 1 528 kill-events, IDENTIQUES au golden produit par le code de la BASE (copie jetable du paquet entier, supprimée après usage) |
+| 2026-09-18 | 2.4.1 | `2326de9f4` | ratchet 2.4.3 | **78 → 68 couples** : les 6 du lot 2.4.1, plus 4 du 2.4.2 que le lecteur canonique ne pouvait pas laisser derrière lui (`filmdec/bits_word.go` ×2, `grenade_events.go`, `keyframe_world.go`) |
+| 2026-09-18 | 2.4.2 | `6b85f19e5` | ratchet 2.4.3 | **68 → 9 couples.** Il ne reste que les neuf entrées du lot 2.5.c. La case 2.4.3 se coche |
+| 2026-09-18 | 2.4.2 | `6b85f19e5` | `go test ./internal/analysis/filmsource/ -run TestDeuxMarcheursDePaquetsSAccordent -v` | **PASS** — `3 chunks, 738 paquets compares` entre le marcheur unique et une copie de référence de l'ancienne grammaire de `filmdec.WalkPackets` : les deux règles qui les séparaient (arrêt après CHUNK_END, refus d'un en-tête dégénéré) ne changent aucun paquet d'un chunk de données |
+| 2026-09-18 | 2.4.2 | `6b85f19e5` | allowlists voisines | `sitesZlibAutorises` **−5 entrées mortes** (il n'y a plus qu'un décompresseur) ; `franchissementsToleres` de D9 **5 → 4** (`filmsource/source_test.go` n'importe plus `filmdec` du tout) ; registre des replis **2 ancres** mises à jour ; `film_layers_deps` **+1 arête datée** (`weaponv3 -> filmsource`, cible 2.5.a — c'est l'arête que V15 (1) accepte de créer) |
+| 2026-09-18 | 2.4.1 puis 2.4.2 | les deux | `gofmt -l ./internal ./cmd` | **sortie vide** à chaque commit |
+| 2026-09-18 | 2.4.1 puis 2.4.2 | les deux | `go vet` sur les 13 paquets du gate (+ `haloclient`, `rdata_weapon_scan`, `fetch_film_chunks`, `diag_weapons_v3`, `replay-worker`) | **0 diagnostic** |
+| 2026-09-18 | 2.4.1 | `2326de9f4` | `go test -count=1` sur les 13 paquets du gate | tout vert. `filmdec` **18,878 s** (budget 30 s), `killsource` 3,4 s, `replay` 21,6 s, `archlint` 19,1 s, `api` 23,3 s |
+| 2026-09-18 | 2.4.2 | `6b85f19e5` | `go test -count=1` sur les 13 paquets du gate + `haloclient`, `replay-worker`, `analysis` | tout vert. `filmdec` **22,716 s** (budget 30 s), `killsource` 4,1 s, `replay` 19,7 s, `archlint` 18,1 s |
+| 2026-09-18 | 2.4.1 | `2326de9f4` | `go test -race` sur `filmdec` et `killsource` | **ok** 298,2 s et 24,2 s |
+| 2026-09-18 | 2.4.2 | `6b85f19e5` | `go test -race` sur `filmdec` et `killsource` | **ok** 277,6 s et 18,6 s |
+| 2026-09-18 | 2.4.1 | `2326de9f4` | `golangci-lint run` sur les paquets touchés | **0 issues** |
+| 2026-09-18 | 2.4.2 | `6b85f19e5` | `golangci-lint run` sur les paquets touchés | **3 issues, TOUTES ANTÉRIEURES** — `haloclient/halo_client_career.go` (goconst ×2) et `objectiveevents/extract.go` (prealloc), trois fichiers que le diff du lot ne touche pas (vérifié par `git diff --name-only`). 0 issue nouvelle |
+| 2026-09-18 | 2.4.1 | `2326de9f4` | `-update-grammar-rev` puis relecture | `grammar-2026-09-15.28` / `70863de0aaee913c05120372835969ff54030153361c79213ef8ffd0dd22e9cf`. **L'empreinte hache une QUATRIÈME racine** (`internal/analysis/filmsource`) : sans elle le lot ouvrait un trou — la lecture de bits qui vient d'y descendre aurait pu changer sans que la révision bouge |
+| 2026-09-18 | 2.4.2 | `6b85f19e5` | `-update-grammar-rev` puis relecture | `grammar-2026-09-15.29`, entrée de chronique des deux côtés, `TestChroniqueCouvreLaRevisionCourante` vert |
+| 2026-09-18 | 2.4.1 puis 2.4.2 | les deux | `go test ./internal/sync/killcollector/ -run TestKillSourceDecoderRevSuitLeDecodeur -update` puis relecture | **RÉVISION INCHANGÉE** (`killsource-2026-09-16.2`), empreinte seule refigée aux deux commits, choix écrit dans la godoc de la constante ET dans l'historique du golden : la sortie de `killsource` est identique à l'octet, aucun match déjà décodé n'entre au backlog |
+| 2026-09-18 | 2.4.3 | ce commit | **MUTATION 1** — `internal/replaybuild/mutation_jetable.go` portant `func bitAt(d []byte, p int) int` ET `type lecteurNeuf struct{ pl []byte; bp int }` | **ROUGE, 2 violations** : `lecteur-de-bits` (`vu : func bitAt`) et `type-lecteur-de-bits` (`vu : struct{[]byte + position en bits}`). La seconde prouve que le motif STRUCTUREL attrape un lecteur inventé sous un nom que personne n'a listé. Fichier retiré |
+| 2026-09-18 | 2.4.3 | ce commit | **MUTATION 2** — entrée d'allowlist sans violation réelle (`internal/replaybuild/facts_file.go \| lecteur-de-bits`) | **ROUGE** : « entrée périmée, la retirer ». Retirée |
+| 2026-09-18 | 2.4.3 | ce commit | **MUTATION 3** — retrait d'une des 9 entrées restantes sans portage (`analysis/positions/positions.go \| lecteur-de-bits`) | **ROUGE** : « 1 lecture d'octets bruts hors de la couche source ». Remise |
+| 2026-09-18 | 2.4.3 | ce commit | `go test -count=1 ./internal/archlint/` (les 68 ratchets) | **ok 13,9 s** — dont `TestAucuneLectureDOctetsBrutsHorsDeLaSource`, `TestAllowlistDesLecturesBrutesNEstPasPerimee`, `TestCouchesDuDecodeurRespectentLeSensEtLeLieu`, `TestAllowlistZlibFermee`, `TestAnalysisImporteAucunPaquetDeTitre`, `TestToutSiteDuRegistreExiste`, `TestTailleDesFichiersDuFilmNeCroitPas` |
 
 ### Lot 2.3 (M2, pas 3) — gates SANS décodage, 2026-09-17
 
