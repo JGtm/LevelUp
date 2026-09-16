@@ -22,17 +22,13 @@ package filmdec
 // brut vaut mieux que publier une seconde inventée.
 const EmpTimerQuantMax = 255
 
-// empTimerHook, si non nil, reçoit le quantum R(8) de CHAQUE lecture d'i51 par le déser de
-// production. Global de paquet : un seul décodage filmdec par process (cf. decode_gate.go).
-var empTimerHook func(quant uint32)
-
 // SetEmpTimerHook installe (ou retire, avec nil) la sonde d'i51.
-func SetEmpTimerHook(h func(quant uint32)) { empTimerHook = h }
+func SetEmpTimerHook(h func(quant uint32)) { observateur.EmpTimerHook = h }
 
 // publishEmpTimer est appelé par le déserialiseur d'i51 (traverse.go) juste après la lecture
 // de ses 8 bits. Le parcours de bits est inchangé.
 func publishEmpTimer(quant uint64) {
-	if empTimerHook != nil {
-		empTimerHook(uint32(quant))
+	if observateur.EmpTimerHook != nil {
+		observateur.EmpTimerHook(uint32(quant))
 	}
 }

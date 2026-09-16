@@ -71,7 +71,7 @@ func TestV10MasqueDeadState(t *testing.T) {
 			t.Fatalf("%s : aucun slot ti=%d aux images-cles", f.short8, VehicleTypeIndex)
 		}
 		nRec, nI11 := 0, 0
-		prev := recordMaskHook
+		prev := observateur.RecordMaskHook
 		SetRecordMaskHook(func(idx []int, _ []byte, _ int) {
 			nRec++
 			sizes[len(idx)]++
@@ -166,7 +166,7 @@ func TestV10MasqueDeadState(t *testing.T) {
 func v10ControlBiped(t *testing.T, dir, short8 string, entry MapQuantEntry) {
 	nRec, nI11 := 0, 0
 	occur := map[int]int{}
-	prev := recordMaskHook
+	prev := observateur.RecordMaskHook
 	SetRecordMaskHook(func(idx []int, _ []byte, _ int) {
 		nRec++
 		for _, id := range idx {

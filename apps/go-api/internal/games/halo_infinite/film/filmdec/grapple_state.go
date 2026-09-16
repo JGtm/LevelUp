@@ -77,7 +77,7 @@ type GrappleStats struct {
 // paquets delta du film de dir.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe
-// `abilityNonPredictedHook`, qui est un global de paquet. L'appelant doit détenir
+// `observateur.AbilityNonPredictedHook`, qui est un global de paquet. L'appelant doit détenir
 // LockProcessDecode (BuildFromFilm le fait). Le hook est restauré à la sortie, y compris
 // en cas d'erreur.
 //
@@ -124,7 +124,7 @@ func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
 	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit
 	// pas les bits à côté de lui (même règle que ScanFilmAbilityRanks et ScanFilmCamoStates).
 	sc := &grappleScanner{st: &st, lay: lay, arch: arch, i59idx: i59idx}
-	prev := abilityNonPredictedHook
+	prev := observateur.AbilityNonPredictedHook
 	SetAbilityNonPredictedHook(func(s AbilityNonPredictedState) { sc.last, sc.got = s, true })
 	defer SetAbilityNonPredictedHook(prev)
 

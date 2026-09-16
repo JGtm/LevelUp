@@ -249,9 +249,9 @@ func f0Charge(t *testing.T, root, id string, e MapQuantEntry) f0Film {
 	}
 	release := LockProcessDecode()
 	defer release()
-	prevPrec := WorldObjectPrecision
+	prevPrec := WorldObjectPrecisionActuelle()
 	SetWorldObjectPrecisionFromLayout(e.Layout())
-	defer func() { WorldObjectPrecision = prevPrec }()
+	defer func() { PoserWorldObjectPrecision(prevPrec) }()
 
 	f := f0Film{ID: id, Dir: dir, Entry: e, BaseUS: f0BaseUS(t, dir)}
 	f.Ev103, f.Listes, f.ListesPropres = f0Marche103(t, id, dir, f0Ctx(e))

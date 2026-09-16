@@ -326,50 +326,17 @@ func readOpt6Signed(br *BitReader) int8 {
 	return -1
 }
 
-// consumeWeaponStateTypeInfoVariant (i43..46 = HELD WEAPON) mirrors FUN_1407f06bc.
-// Returns the variant-name string-id (the WEAPON) and whether the slot is present.
-//
-// Gate (FUN_14080d69c): R(1). If 0 -> slot absent (field = 0xFFFFFFFF), no more
-// reads. If 1 -> FUN_14080d6f0 reads R(32) (the optional local-handle id) THEN:
-//
-//	variant   = R(32)   FUN_14080dec4 "variant-name"   <-- THE WEAPON
-//	R(12)               inline (comp+0x7c)
-//	FUN_140e9fadc       R(7)
-//	gate2 = R(1); if 1 -> FUN_141001f50 (R(?) shot-id; ~2 bytes XOR-decoded)
-//	R(1)                (comp+0x82 low bit)
-//	FUN_1407f2494       R(1); if 1 -> R(4) count + count*(R(1)+[R(32)])
-//	FUN_1407f0550       FUN_1404d343c + R(1)+[R(32)] + 3*(R(8)+R(1)+[dequant]+R(1)+[dequant])
-//	FUN_1407f2058       R(1); if 0 -> R(5)
-//	FUN_140e958c4       (handle lookup, 0 bits)
-//
-// Then unconditionally (both gate branches):
-//
-//	FUN_1407f08bc       R(1); if 1 -> R(8)
-//	FUN_1406d01fc       R(3) + 2*(R(1);if 0 -> R(2))
-//
-// The variant string-id is read at a FIXED position: gateR1 + R(32 handle) +
-// R(32 variant). Downstream sub-reads are data-dependent (loops); only the
-// variant itself is load-bearing for weapon attribution.
-// Le drapeau « présent » n'est pas rendu : noVariant (0xFFFFFFFF) EST le témoin
-// d'absence, et c'est déjà celui que le reste du paquet teste.
-// heldWeaponHook, si non nil, reçoit CHAQUE lecture d'i43..i46 (l'arme portée), y compris
-// les lectures d'emplacement ABSENT (variant == noVariant) : c'est la transition
-// présent/absent qui porte le lâcher, la retirer rendrait le signal borgne. Global de
-// paquet, donc UN SEUL décodage filmdec à la fois par process — même règle que les autres
-// sondes (SetAbilitySetHook, SetObjectParentStateHook, SetGrenadeCountsHook).
-var heldWeaponHook func(idHigh, idLow uint32)
-
 // SetHeldWeaponHook installe (ou retire, avec nil) la sonde d'i43..i46. L'appelant restaure
 // la sonde précédente. AUCUN bit lu ne change : la sonde est appelée en `defer`, après coup,
 // et le déser ne branche jamais sur elle.
-func SetHeldWeaponHook(h func(idHigh, idLow uint32)) { heldWeaponHook = h }
+func SetHeldWeaponHook(h func(idHigh, idLow uint32)) { observateur.HeldWeaponHook = h }
 
 // publishHeldWeapon transmet la lecture à la sonde, si elle est posée.
 func publishHeldWeapon(idHigh, idLow *uint32) {
-	if heldWeaponHook == nil {
+	if observateur.HeldWeaponHook == nil {
 		return
 	}
-	heldWeaponHook(*idHigh, *idLow)
+	observateur.HeldWeaponHook(*idHigh, *idLow)
 }
 
 func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32) {

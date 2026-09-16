@@ -2,6 +2,14 @@ package filmdec
 
 // profile_globales_test.go — LA DOUBLE ECRITURE, PROUVEE (item 2.1.3 du PLAN_DECODEUR_FILM).
 //
+// LE VOLET MOUVEMENT A DISPARU AU LOT 2.2.e, ET C EST SA REUSSITE : il confrontait le profil aux
+// NEUF variables de paquet du chemin de position, une ligne chacune. Les neuf ont ete migrees
+// (2.2.a en a pris cinq, 2.2.b quatre) ; il ne restait plus rien a confronter. Ce que les
+// lecteurs lisent vraiment est desormais prouve par [TestLecteurPorteLeProfilDeMouvement],
+// [TestProfilDePositionChangeLaConsommationDeBits] et
+// [TestProfilDeQuantificationChangeLaValeurRendue] — trois tests qui mesurent la LECTURE, la ou
+// celui-ci ne comparait que deux valeurs au repos.
+//
 // Le lot 2.1 resout le profil mais ne le fait lire par AUCUN lecteur de bits : les globales de
 // paquet decident encore. Ce qui rend la bascule du lot 2.2 possible sans risque, c est la
 // PREUVE que les deux disent la meme chose, bobine par bobine. Ces tests sont cette preuve.
@@ -24,7 +32,6 @@ import (
 // TestProfilEgaleGlobales : sur chaque bobine par build, le profil resolu et les globales que la
 // production installe rendent les MEMES valeurs.
 func TestProfilEgaleGlobales(t *testing.T) {
-	verifierMouvementEgaleGlobales(t)
 	verifierCadreEgaleConstantes(t)
 	for _, b := range bobinesIdentite() {
 		film := bobineFilm(t, b.film)
@@ -102,37 +109,6 @@ func verifierCadreEgaleConstantes(t *testing.T) {
 		if k.EtatParDefautPorte(ti) != attendu {
 			t.Errorf("ti=%d : EtatParDefautPorte=%v, table des deserialiseurs %v", ti,
 				k.EtatParDefautPorte(ti), attendu)
-		}
-	}
-}
-
-// verifierMouvementEgaleGlobales confronte `Profile.Movement` aux variables de paquet que les
-// lecteurs de position lisent aujourd hui.
-//
-// IL LIT LES GLOBALES TELLES QU ELLES SONT, et c est voulu : un test du paquet qui les laisserait
-// sales est lui-meme un defaut, et ce test est l endroit ou il se voit.
-func verifierMouvementEgaleGlobales(t *testing.T) {
-	t.Helper()
-	m := ResolveProfile(nil, nil).Movement()
-	ecarts := []struct {
-		nom             string
-		profil, globale any
-	}{
-		{"Traversal", m.Traversal, TraversalPrecision},
-		{"AbsoluteAxisW", m.AbsoluteAxisW, absoluteAxisW},
-		{"DeltaQuantum", m.DeltaQuantum, DeltaQuantum},
-		{"DeltaAxisWidth", m.DeltaAxisWidth, DeltaAxisWidth},
-		{"Range", m.Range, WorldPositionRange},
-		{"FullPrecision", m.FullPrecision, PositionFullPrecision},
-		{"DeltaHasHandleTail", m.DeltaHasHandleTail, PositionDeltaHasHandleTail},
-		{"CalibratedSkip", m.CalibratedSkip, PositionCalibratedSkip},
-		{"MobilityActionExtraBits", m.MobilityActionExtraBits, MobilityActionExtraBits},
-	}
-	for _, e := range ecarts {
-		if e.profil != e.globale {
-			t.Errorf("Movement.%s : profil %v, globale de paquet %v — le lot 2.2 basculerait "+
-				"les lecteurs sur une valeur differente de celle qu ils lisent", e.nom,
-				e.profil, e.globale)
 		}
 	}
 }

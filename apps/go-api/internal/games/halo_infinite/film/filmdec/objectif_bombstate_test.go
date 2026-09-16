@@ -240,7 +240,7 @@ type bsWalk struct {
 // install pose les DEUX hooks — le nom vient de la sonde generique, la valeur du hook de ti=13 —
 // et rend leur restauration.
 func (w *bsWalk) install() func() {
-	prevProbe, prevProp := probeHook, managedPropertyHook
+	prevProbe, prevProp := observateur.ProbeHook, observateur.ManagedPropertyHook
 	SetProbeHook(func(ti uint32, comp ProbeComponent, values []uint64) {
 		if comp != ProbeManagedObjectPropertyName || len(values) == 0 {
 			return

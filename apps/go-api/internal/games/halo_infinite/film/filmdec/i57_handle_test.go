@@ -4,7 +4,7 @@ package filmdec
 // .ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : les DÉPLOYABLES (mur rang 19,
 // capteur rang 22 — relevé Theater du 27/07) — trois signaux datés à croiser.
 //
-// C.1 — publier la branche v==1 d'i57 par hook (spartanAbilityHook) : tag R(2), R(2)
+// C.1 — publier la branche v==1 d'i57 par hook (observateur.SpartanAbilityHook) : tag R(2), R(2)
 // interne et R(24), par slot et horodatage — la SEULE branche qui paie 24 bits, jamais
 // publiée. 75 occurrences attendues sur 000d5950 (14/08 : 0:693 · 1:75 · 2:613 · 3:33).
 //
@@ -99,7 +99,7 @@ func i57hScan(t *testing.T, s eaFilmSetup, idx57 int) ([]i57hSample, i57hStats) 
 		samples []i57hSample
 		st      i57hStats
 	)
-	prev := spartanAbilityHook
+	prev := observateur.SpartanAbilityHook
 	SetSpartanAbilityHook(func(tag, sub, ref uint64, hasRef bool) {
 		capt.tag, capt.sub, capt.ref, capt.hasRef, capt.got = tag, sub, ref, hasRef, true
 	})
@@ -284,8 +284,8 @@ func i57hActivatedTransitions(t *testing.T, dir string) []i57hActEvent {
 	if err != nil {
 		t.Fatalf("découpage i0 illisible : %v", err)
 	}
-	prevPrec := WorldObjectPrecision
-	t.Cleanup(func() { WorldObjectPrecision = prevPrec })
+	prevPrec := WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { PoserWorldObjectPrecision(prevPrec) })
 	SetWorldObjectPrecisionFromLayout(lay)
 	samples, st, err := ScanFilmEquipmentState(dir)
 	if err != nil {

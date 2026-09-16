@@ -33,23 +33,23 @@ import (
 // TestInstallWorldObjectPrecision : le mécanisme. Installe les largeurs de l'entrée, les rend
 // visibles pendant l'appel, et les restaure ensuite.
 func TestInstallWorldObjectPrecision(t *testing.T) {
-	prev := filmdec.WorldObjectPrecision
-	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
+	prev := filmdec.WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prev) })
 
 	entry := filmdec.MapQuantEntry{Module: "ctf_bazaar", AxisWidths: [3]uint{17, 17, 16}}
 	if entry.AxisWidths == prev.AxisW {
 		t.Fatal("le cas de test doit différer du défaut de paquet, sinon il ne mesure rien")
 	}
 	restore := installWorldObjectPrecision(filmdec.ResolveProfile(nil, &entry), "testdata", nil)
-	if got := filmdec.WorldObjectPrecision.AxisW; got != entry.AxisWidths {
+	if got := filmdec.WorldObjectPrecisionActuelle().AxisW; got != entry.AxisWidths {
 		t.Fatalf("largeurs NON INSTALLÉES : %v, attendu %v (celles de la carte du match)",
 			got, entry.AxisWidths)
 	}
 	restore()
-	if filmdec.WorldObjectPrecision != prev {
+	if filmdec.WorldObjectPrecisionActuelle() != prev {
 		t.Fatalf("largeurs NON RESTAURÉES : %v, attendu %v — un global non rendu contamine le "+
 			"film suivant décodé dans le même process",
-			filmdec.WorldObjectPrecision.AxisW, prev.AxisW)
+			filmdec.WorldObjectPrecisionActuelle().AxisW, prev.AxisW)
 	}
 }
 
@@ -57,19 +57,19 @@ func TestInstallWorldObjectPrecision(t *testing.T) {
 // antérieur au champ, entrée fabriquée à la main) garde le défaut. La dégradation est LOGGÉE
 // par l'installateur — jamais silencieuse.
 func TestInstallWorldObjectPrecisionKeepsDefaultWithoutWidths(t *testing.T) {
-	prev := filmdec.WorldObjectPrecision
-	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
+	prev := filmdec.WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prev) })
 
 	sansLargeurs := filmdec.MapQuantEntry{Module: "sans_largeurs"}
 	restore := installWorldObjectPrecision(filmdec.ResolveProfile(nil, &sansLargeurs), "testdata", nil)
-	if filmdec.WorldObjectPrecision != prev {
+	if filmdec.WorldObjectPrecisionActuelle() != prev {
 		t.Fatalf("largeurs à zéro installées (%v) : le décodeur lirait des champs de 0 bit",
-			filmdec.WorldObjectPrecision.AxisW)
+			filmdec.WorldObjectPrecisionActuelle().AxisW)
 	}
 	restore()
-	if filmdec.WorldObjectPrecision != prev {
+	if filmdec.WorldObjectPrecisionActuelle() != prev {
 		t.Fatalf("restauration fautive : %v, attendu %v",
-			filmdec.WorldObjectPrecision.AxisW, prev.AxisW)
+			filmdec.WorldObjectPrecisionActuelle().AxisW, prev.AxisW)
 	}
 }
 
@@ -203,8 +203,8 @@ func TestProfilEgaleGlobalesWorldObject(t *testing.T) {
 	if !doubleEcritureGlobales {
 		t.Skip("double écriture retirée (lot 2.3) : ce test devient le critère « 0 globale »")
 	}
-	prev := filmdec.WorldObjectPrecision
-	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
+	prev := filmdec.WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prev) })
 	cartes := []filmdec.MapQuantEntry{
 		{Module: "ctf_bazaar", AxisWidths: [3]uint{17, 17, 16}},
 		{Module: "live_fire", AxisWidths: [3]uint{12, 12, 11}, Region: 1, RegionIndexBits: 2},
@@ -214,7 +214,7 @@ func TestProfilEgaleGlobalesWorldObject(t *testing.T) {
 		entry := e
 		prof := filmdec.ResolveProfile(nil, &entry)
 		restore := installWorldObjectPrecision(prof, "testdata", nil)
-		attendu, got := prof.Map().Layout(), filmdec.WorldObjectPrecision
+		attendu, got := prof.Map().Layout(), filmdec.WorldObjectPrecisionActuelle()
 		restore()
 		if got.AxisW != attendu.AxisW || got.Region != attendu.Region {
 			t.Errorf("%s : le profil dit {axes %v région %d}, la globale installée dit "+

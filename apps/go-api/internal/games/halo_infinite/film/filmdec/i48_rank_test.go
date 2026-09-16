@@ -58,7 +58,7 @@ type i48Sample struct {
 	rank    int
 }
 
-// i48HookCapture retient la DERNIÈRE publication d'`abilitySetHook`. L'instrument lit i48
+// i48HookCapture retient la DERNIÈRE publication d'`observateur.AbilitySetHook`. L'instrument lit i48
 // deux fois par record — une fois À LA MAIN (readBitsAt sur la grammaire écrite ici), une
 // fois PAR LE DÉSERIALISEUR DE PRODUCTION (consumeByName, qui déclenche le hook) — et exige
 // que les deux disent la même chose. C'est en cela qu'il est le témoin de non-régression du
@@ -97,7 +97,7 @@ func TestI48PaletteRank(t *testing.T) {
 
 	// Le hook de production publie pendant la marche ; la lecture à la main le contrôle.
 	cap := &i48HookCapture{}
-	prev := abilitySetHook
+	prev := observateur.AbilitySetHook
 	SetAbilitySetHook(func(counter uint64, rank, width int) {
 		cap.counter, cap.rank, cap.width, cap.got = uint32(counter), rank, width, true
 	})

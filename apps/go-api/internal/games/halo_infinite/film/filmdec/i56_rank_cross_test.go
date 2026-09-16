@@ -7,7 +7,7 @@ package filmdec
 //
 // OÙ IL VIT, ET POURQUOI PAS OÙ LE PLAN L'ANNONÇAIT. Le plan nomme
 // `internal/games/halo_infinite/film/replay/i56_capacity_episodes_research_test.go`. Il ne peut pas y
-// vivre : la mesure a besoin du hook non exporté d'i56 (`abilityEnergyHook`), du détecteur
+// vivre : la mesure a besoin du hook non exporté d'i56 (`observateur.AbilityEnergyHook`), du détecteur
 // de records (`matchBipedHeader`) et des désers de production (`consumeByName`), tous
 // internes à `filmdec`. Le nom retenu suit le patron du croisement voisin
 // (`i54_rank_cross_test.go`), qui pose exactement la même jointure par vie.
@@ -88,7 +88,7 @@ func i56xScan(t *testing.T, s eaFilmSetup) (out []i56xSample, records, with56, r
 		hook i56xSample
 		got  bool
 	)
-	prev := abilityEnergyHook
+	prev := observateur.AbilityEnergyHook
 	SetAbilityEnergyHook(func(_ uint32, ch [AbilityEnergyCharges]int) {
 		hook.ch, got = ch, true
 	})

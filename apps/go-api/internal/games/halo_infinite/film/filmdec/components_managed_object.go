@@ -73,18 +73,14 @@ func (f ManagedObjectField) String() string {
 	return champInconnu
 }
 
-// managedObjectHook, si non nil, recoit chaque lecture d'un champ de ti=10.
-//
-// PAS DE `present` ICI : aucun de ces composants n'a de porte de tete. Global de paquet :
-// l'appelant detient `LockProcessDecode`.
-var managedObjectHook func(f ManagedObjectField, values []uint64)
-
 // SetManagedObjectHook installe (ou retire, avec nil) la sonde des composants de ti=10.
-func SetManagedObjectHook(h func(f ManagedObjectField, values []uint64)) { managedObjectHook = h }
+func SetManagedObjectHook(h func(f ManagedObjectField, values []uint64)) {
+	observateur.ManagedObjectHook = h
+}
 
 func publishManagedObject(f ManagedObjectField, values ...uint64) {
-	if managedObjectHook != nil {
-		managedObjectHook(f, values)
+	if observateur.ManagedObjectHook != nil {
+		observateur.ManagedObjectHook(f, values)
 	}
 }
 
@@ -161,10 +157,6 @@ func (f NavpointField) String() string {
 	return champInconnu
 }
 
-// navpointHook, si non nil, recoit chaque lecture d'un champ de ti=12. Pas de `present` : le
-// composant n'a pas de porte de tete. Global de paquet : l'appelant detient `LockProcessDecode`.
-var navpointHook func(f NavpointField, values []uint64)
-
 // SetNavpointHook installe (ou retire, avec nil) la sonde des composants de ti=12.
 //
 // UN HOOK SEPARE DE CELUI DE ti=10, et non un champ de plus dans `ManagedObjectField` : les deux
@@ -172,11 +164,11 @@ var navpointHook func(f NavpointField, values []uint64)
 // disjoints, et un consommateur qui suit une zone n'ecoute pas les memes objets qu'un
 // consommateur qui suit un marqueur. C'est le modele deja etabli par le paquet — un hook nomme
 // par famille d'archetype (`GameEngineField`, `EquipmentField`, `ManagedObjectField`).
-func SetNavpointHook(h func(f NavpointField, values []uint64)) { navpointHook = h }
+func SetNavpointHook(h func(f NavpointField, values []uint64)) { observateur.NavpointHook = h }
 
 func publishNavpoint(f NavpointField, values ...uint64) {
-	if navpointHook != nil {
-		navpointHook(f, values)
+	if observateur.NavpointHook != nil {
+		observateur.NavpointHook(f, values)
 	}
 }
 

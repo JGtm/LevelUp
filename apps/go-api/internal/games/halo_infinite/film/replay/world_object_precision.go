@@ -60,8 +60,14 @@ const doubleEcritureGlobales = true
 // ECRIT n a pas change — la globale de paquet — et c est la double ecriture que
 // [doubleEcritureGlobales] date.
 //
-// PRÉ-REQUIS : l'appelant détient `filmdec.LockProcessDecode` — le descripteur est un global
-// de paquet, et deux films décodés en parallèle se voleraient leurs largeurs.
+// PRÉ-REQUIS : l'appelant détient `filmdec.LockProcessDecode` — les largeurs vivent dans le
+// PROFIL HÉRITÉ du processus (lot 2.2.b : ce n'est plus une globale de paquet, mais c'est
+// toujours un état de processus), et deux films décodés en parallèle se voleraient les leurs.
+//
+// POURQUOI L'HÉRITAGE ET PAS LE PROFIL DU FILM (lot 2.2.b). Les largeurs doivent atteindre les
+// quarante balayages de `BuildFromFilm`, dont chacun construit ses propres lecteurs de bits
+// sans recevoir de profil. Tant que le profil ne descend pas jusqu'à eux — lot 2.5 —, le seul
+// canal est celui que cet installateur pose et restaure autour de la cuisson.
 //
 // Largeurs absentes de l'entrée (catalogue antérieur au champ, entrée fabriquée à la main) :
 // le défaut est CONSERVÉ et l'écart est LOGGÉ. Jamais de dégradation silencieuse.
@@ -76,16 +82,16 @@ func installWorldObjectPrecision(prof filmdec.Profile, matchID string, fb *fallb
 		fb.Declenche(fallback.NomLargeursAxeParDefautConservees)
 		slog.Warn("largeurs d'axe absentes de l'entrée de catalogue — objets du monde déquantifiés aux largeurs par défaut",
 			"module", e.Module, "match_id", matchID,
-			"defaut", filmdec.WorldObjectPrecision.AxisW)
+			"defaut", filmdec.WorldObjectPrecisionActuelle().AxisW)
 		return func() {}
 	}
 	if !doubleEcritureGlobales {
 		// Lot 2.3 : les lecteurs prennent le profil, il n y a plus rien a installer.
 		return func() {}
 	}
-	prev := filmdec.WorldObjectPrecision
+	prev := filmdec.WorldObjectPrecisionActuelle()
 	// e.Layout() porte les largeurs d'axe ET la largeur de l'index de région (2 bits sur
 	// Live Fire — lot C catalogues, 2026-08-27) : les deux sont des constantes par carte.
 	filmdec.SetWorldObjectPrecisionFromLayout(e.Layout())
-	return func() { filmdec.WorldObjectPrecision = prev }
+	return func() { filmdec.PoserWorldObjectPrecision(prev) }
 }

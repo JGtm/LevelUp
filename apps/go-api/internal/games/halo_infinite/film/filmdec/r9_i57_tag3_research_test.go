@@ -91,7 +91,7 @@ func r9Scan(s r8MobSetup) (i57 []r9Read, i59 []r8TagRead, masked int) {
 	var got57 bool
 	var last59 AbilityNonPredictedState
 	var got59 bool
-	prev57, prev59 := spartanAbilityHook, abilityNonPredictedHook
+	prev57, prev59 := observateur.SpartanAbilityHook, observateur.AbilityNonPredictedHook
 	SetSpartanAbilityHook(func(tag, sub, ref uint64, hasRef bool) {
 		last57 = r9Read{Tag: uint32(tag), Sub: sub, HasR: hasRef}
 		got57 = true
@@ -155,9 +155,9 @@ func r9OneFilm(t *testing.T, dir string) {
 	wr := entry.Range()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecision
+	saved := WorldObjectPrecisionActuelle()
 	SetWorldObjectPrecisionFromLayout(entry.Layout())
-	defer func() { WorldObjectPrecision = saved }()
+	defer func() { PoserWorldObjectPrecision(saved) }()
 
 	s := r8MobResolve(t, dir)
 	opt := DefaultScanFilmOptions()

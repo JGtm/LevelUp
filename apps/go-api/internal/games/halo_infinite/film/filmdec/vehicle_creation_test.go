@@ -191,8 +191,8 @@ func vehicleCalibrateMPP(t *testing.T, dir string, lay I0Layout) {
 		t.Logf("champ de tete MPP FORCE : %d bits", w)
 		return
 	}
-	prevPrec := WorldObjectPrecision
-	t.Cleanup(func() { WorldObjectPrecision = prevPrec })
+	prevPrec := WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { PoserWorldObjectPrecision(prevPrec) })
 	SetWorldObjectPrecisionFromLayout(lay)
 	n := CountFilmChunks(dir)
 	band37 := worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)

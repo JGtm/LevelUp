@@ -85,7 +85,7 @@ func TestV1aQualificationCorpus(t *testing.T) {
 	root, films := v1aCorpus(t)
 	t.Logf("V1.1 — seuil ecrit avant mesure : %d records delta ti=%d acceptes ; largeurs d'axe "+
 		"du chemin objet du monde laissees au defaut %v (cf. reserve en tete de fichier)",
-		v1aSeuilRecords, v0VehiculeTI, WorldObjectPrecision.AxisW)
+		v1aSeuilRecords, v0VehiculeTI, WorldObjectPrecisionActuelle().AxisW)
 	retenus, horsSeuil, vides, absents := 0, 0, 0, 0
 	for _, f := range films {
 		dir := filepath.Join(root, "film_chunks", f.ID)

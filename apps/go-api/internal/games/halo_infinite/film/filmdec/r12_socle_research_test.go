@@ -227,8 +227,8 @@ func r12Collect(s r12Setup) r12Reads {
 		slot uint32
 		ms   int64
 	}
-	prev48, prev56 := abilitySetHook, abilityEnergyHook
-	prev57, prev59 := spartanAbilityHook, abilityNonPredictedHook
+	prev48, prev56 := observateur.AbilitySetHook, observateur.AbilityEnergyHook
+	prev57, prev59 := observateur.SpartanAbilityHook, observateur.AbilityNonPredictedHook
 	SetAbilitySetHook(func(counter uint64, rank, _ int) {
 		out.Stat["i48"]++
 		out.Ranks = append(out.Ranks, r12RankRead{cur.slot, cur.ms, uint32(counter), rank})
@@ -338,8 +338,8 @@ func r12AncrageOneFilm(t *testing.T, dir string) {
 	t.Helper()
 	release := LockProcessDecode()
 	defer release()
-	saved := WorldObjectPrecision
-	defer func() { WorldObjectPrecision = saved }()
+	saved := WorldObjectPrecisionActuelle()
+	defer func() { PoserWorldObjectPrecision(saved) }()
 	s := r12Prepare(t, dir)
 	rd := r12Collect(s)
 

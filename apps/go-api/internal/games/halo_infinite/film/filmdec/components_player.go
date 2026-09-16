@@ -85,19 +85,14 @@ func (f PlayerStateField) String() string {
 	return fmt.Sprintf("champ inconnu (%d)", int(f))
 }
 
-// playerStateHook, si non nil, recoit CHAQUE lecture d'un des onze composants. Meme contrat de
-// `values` / `present` que `gameEngineHook` (cf. son commentaire). Global de paquet : l'appelant
-// detient `LockProcessDecode`.
-var playerStateHook func(f PlayerStateField, values []uint64, present bool)
-
 // SetPlayerStateHook installe (ou retire, avec nil) la sonde des composants de ti=5.
 func SetPlayerStateHook(h func(f PlayerStateField, values []uint64, present bool)) {
-	playerStateHook = h
+	observateur.PlayerStateHook = h
 }
 
 func publishPlayerState(f PlayerStateField, present bool, values ...uint64) {
-	if playerStateHook != nil {
-		playerStateHook(f, values, present)
+	if observateur.PlayerStateHook != nil {
+		observateur.PlayerStateHook(f, values, present)
 	}
 }
 
@@ -131,8 +126,8 @@ func consumePlayerEngineLoadout(br *BitReader) {
 	for i := 0; i < 8; i++ {
 		v = append(v, br.ReadBits(8))
 	}
-	if playerStateHook != nil {
-		playerStateHook(PlayerLoadout, v, true)
+	if observateur.PlayerStateHook != nil {
+		observateur.PlayerStateHook(PlayerLoadout, v, true)
 	}
 }
 
@@ -211,7 +206,7 @@ func consumePlayerMalleableProperties(br *BitReader) {
 	for i := 0; i < 9; i++ {
 		v = append(v, bit2u(br.ReadBit()))
 	}
-	if playerStateHook != nil {
-		playerStateHook(PlayerMalleableProperties, v, true)
+	if observateur.PlayerStateHook != nil {
+		observateur.PlayerStateHook(PlayerMalleableProperties, v, true)
 	}
 }

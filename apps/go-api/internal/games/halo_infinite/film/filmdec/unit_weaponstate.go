@@ -25,12 +25,8 @@ package filmdec
 // i22 unit-grenade-counts  (deser FUN_140f0de00 -> FUN_140f0de1c)
 // ---------------------------------------------------------------------------
 
-// grenadeCountsHook, si non nil, reçoit le compteur et les valeurs lues par i22.
-// Sonde de mesure uniquement (cmd/tmp_i22check) : le déser est inchangé.
-var grenadeCountsHook func(count uint64, values []uint64)
-
 // SetGrenadeCountsHook installe (ou retire, avec nil) la sonde de lecture d'i22.
-func SetGrenadeCountsHook(h func(count uint64, values []uint64)) { grenadeCountsHook = h }
+func SetGrenadeCountsHook(h func(count uint64, values []uint64)) { observateur.GrenadeCountsHook = h }
 
 // consumeUnitGrenadeCounts: count = FUN_1424d0f48 = R(3); then count x R(8).
 //
@@ -51,12 +47,12 @@ func consumeUnitGrenadeCounts(br *BitReader) {
 	var vals []uint64
 	for i := uint64(0); i < count; i++ {
 		v := br.ReadBits(8)
-		if grenadeCountsHook != nil {
+		if observateur.GrenadeCountsHook != nil {
 			vals = append(vals, v)
 		}
 	}
-	if grenadeCountsHook != nil {
-		grenadeCountsHook(count, vals)
+	if observateur.GrenadeCountsHook != nil {
+		observateur.GrenadeCountsHook(count, vals)
 	}
 }
 
@@ -213,8 +209,8 @@ func consumeUnitEquipment(br *BitReader) {
 			Val: uint32(val), Tail: uint32(tail), Present: present,
 		})
 	}
-	if unitEquipmentHook != nil {
-		unitEquipmentHook(st)
+	if observateur.UnitEquipmentHook != nil {
+		observateur.UnitEquipmentHook(st)
 	}
 }
 
@@ -234,13 +230,9 @@ type UnitEquipmentRead struct {
 	Entries []UnitEquipmentEntry
 }
 
-// unitEquipmentHook, si non nil, reçoit CHAQUE lecture d'i26. Global de paquet, même contrat
-// que les autres sondes (SetAbilitySetHook, SetObjectParentStateHook).
-var unitEquipmentHook func(UnitEquipmentRead)
-
 // SetUnitEquipmentHook installe (ou retire, avec nil) la sonde d'i26. L'appelant doit détenir
 // LockProcessDecode.
-func SetUnitEquipmentHook(h func(UnitEquipmentRead)) { unitEquipmentHook = h }
+func SetUnitEquipmentHook(h func(UnitEquipmentRead)) { observateur.UnitEquipmentHook = h }
 
 // consumeUnitStun porte i27, désérialiseur FUN_142ED75FC : 40 bits FIXES, sans aucune branche
 // (16 + 12 + 12). C'est cette invariabilité qui a permis d'éliminer l'ancienne affectation :
@@ -265,7 +257,7 @@ func consumeUnitStun(br *BitReader) {
 // LES VALEURS NE SONT PLUS JETÉES (2026-08-16, plan PLAN_ETAT_ACTIF_EQUIPEMENT phase A) :
 // le parcours de bits est INCHANGÉ (la boucle 6 x consume1411b1ac0 est écrite à plat pour
 // pouvoir publier — consume1411b1ac0 EST consumeGateR(12), même porte, même largeur), et
-// chaque lecture part vers camoStateHook (cf. ability_state_hooks.go).
+// chaque lecture part vers observateur.CamoStateHook (cf. ability_state_hooks.go).
 func consumeUnitActiveCamoState(br *BitReader) {
 	var st CamoState
 	st.C3 = uint8(br.ReadBits(3)) // comp+0x7d7
@@ -283,8 +275,8 @@ func consumeUnitActiveCamoState(br *BitReader) {
 			st.SubQ[i] = uint16(br.ReadBits(12))
 		}
 	}
-	if camoStateHook != nil {
-		camoStateHook(st)
+	if observateur.CamoStateHook != nil {
+		observateur.CamoStateHook(st)
 	}
 }
 
@@ -341,22 +333,14 @@ func consumeWeaponStateAmmo(br *BitReader) {
 	if !br.ReadBit() { // gate2 == 0 -> fraction presente
 		frac, hasFrac = br.ReadBits(12), true // FUN_1406d84b4 dequant [0,1], W=12
 	}
-	if weaponAmmoHook != nil {
-		weaponAmmoHook(hasMag, uint32(mag), hasFrac, uint32(frac))
+	if observateur.WeaponAmmoHook != nil {
+		observateur.WeaponAmmoHook(hasMag, uint32(mag), hasFrac, uint32(frac))
 	}
 }
 
-// weaponAmmoHook, si non nil, reçoit CHAQUE lecture d'un `weapon-state-ammo` : le chargeur
-// R(8) et sa présence (porte ACTIVE-BAS), puis le quantum R(12) de fraction et sa présence.
-//
-// LE HOOK NE SAIT PAS DE QUEL EMPLACEMENT IL PARLE : le déser est le même pour les quatre
-// occurrences (i30/i33/i36/i39). C'est l'APPELANT qui associe la publication à l'emplacement,
-// depuis l'index de composant que la marche vient de consommer (cf. inventory_delta.go).
-var weaponAmmoHook func(hasMag bool, mag uint32, hasFrac bool, fracQ uint32)
-
 // SetWeaponAmmoHook installe (ou retire, avec nil) la sonde des chargeurs.
 func SetWeaponAmmoHook(h func(hasMag bool, mag uint32, hasFrac bool, fracQ uint32)) {
-	weaponAmmoHook = h
+	observateur.WeaponAmmoHook = h
 }
 
 // weaponRoundsBits est la largeur du champ de réserve de FUN_140fe4e88. Nommée parce qu'elle
@@ -368,17 +352,13 @@ const weaponRoundsBits = 11
 // LA VALEUR N'EST PLUS JETÉE (même lot, même règle) : c'est la RÉSERVE de l'emplacement.
 func consumeWeaponStateRoundsInventory(br *BitReader) {
 	rounds := br.ReadBits(weaponRoundsBits)
-	if weaponRoundsHook != nil {
-		weaponRoundsHook(uint32(rounds))
+	if observateur.WeaponRoundsHook != nil {
+		observateur.WeaponRoundsHook(uint32(rounds))
 	}
 }
 
-// weaponRoundsHook, si non nil, reçoit CHAQUE lecture d'un `weapon-state-rounds-inventory`.
-// Même remarque que weaponAmmoHook : l'emplacement vient de l'appelant, pas du déser.
-var weaponRoundsHook func(rounds uint32)
-
 // SetWeaponRoundsHook installe (ou retire, avec nil) la sonde des réserves.
-func SetWeaponRoundsHook(h func(rounds uint32)) { weaponRoundsHook = h }
+func SetWeaponRoundsHook(h func(rounds uint32)) { observateur.WeaponRoundsHook = h }
 
 // consumeWeaponStateOverheated mirrors FUN_142f04c6c: dequant R(7) + R(1) + R(1).
 func consumeWeaponStateOverheated(br *BitReader) {
@@ -391,29 +371,17 @@ func consumeWeaponStateOverheated(br *BitReader) {
 // i42 biped-desired-weapon-set  (thunk -> FUN_1406d01fc)
 // ---------------------------------------------------------------------------
 
-// consumeBipedDesiredWeaponSet mirrors FUN_1406d01fc (the thunk at 0x14109d298
-// adjusts the pointer to recordState[0x10]+0x13d8 then tail-jumps here):
-//
-//	FUN_1406d0f20 = R(3).
-//	FUN_1406d00ec = R(1)+optR(2).
-//	FUN_1406d00ec = R(1)+optR(2).
-//
-// desiredWeaponSetHook, si non nil, reçoit CHAQUE lecture d'i42 avec la valeur du R(3) de
-// tête (l'emplacement d'arme désiré). Global de paquet, donc UN SEUL décodage filmdec à la
-// fois par process — même règle que les autres sondes.
-var desiredWeaponSetHook func(sel uint32)
-
 // SetDesiredWeaponSetHook installe (ou retire, avec nil) la sonde d'i42. L'appelant restaure
 // la sonde précédente. AUCUN bit lu ne change : la sonde est appelée après les trois
 // lectures, et le déser ne branche jamais sur elle.
-func SetDesiredWeaponSetHook(h func(sel uint32)) { desiredWeaponSetHook = h }
+func SetDesiredWeaponSetHook(h func(sel uint32)) { observateur.DesiredWeaponSetHook = h }
 
 func consumeBipedDesiredWeaponSet(br *BitReader) {
 	sel := uint32(br.ReadBits(3)) // FUN_1406d0f20
 	consumeID2(br)                // FUN_1406d00ec
 	consumeID2(br)                // FUN_1406d00ec
-	if desiredWeaponSetHook != nil {
-		desiredWeaponSetHook(sel)
+	if observateur.DesiredWeaponSetHook != nil {
+		observateur.DesiredWeaponSetHook(sel)
 	}
 }
 
@@ -460,14 +428,9 @@ func consume1407f0550(br *BitReader) {
 // ti=42 i20 weapon-ammo — les MUNITIONS d'une arme POSEE AU SOL
 // ---------------------------------------------------------------------------
 
-// groundWeaponAmmoHook, si non nil, reçoit chaque lecture d'i20 sur l'archétype ARME AU SOL.
-// Global de paquet, donc UN SEUL décodage filmdec à la fois par process — même règle que les
-// autres sondes.
-var groundWeaponAmmoHook func(a, b, c uint32)
-
 // SetGroundWeaponAmmoHook installe (ou retire, avec nil) la sonde d'i20. L'appelant restaure la
 // sonde précédente. AUCUN bit lu ne change : mêmes largeurs, même ordre, publication après coup.
-func SetGroundWeaponAmmoHook(h func(a, b, c uint32)) { groundWeaponAmmoHook = h }
+func SetGroundWeaponAmmoHook(h func(a, b, c uint32)) { observateur.GroundWeaponAmmoHook = h }
 
 // consumeWeaponAmmo mirrors FUN_140fc3028 : R(8) + R(11) + R(12).
 //
@@ -478,7 +441,7 @@ func consumeWeaponAmmo(br *BitReader) {
 	a := uint32(br.ReadBits(8))
 	b := uint32(br.ReadBits(11))
 	c := uint32(br.ReadBits(12))
-	if groundWeaponAmmoHook != nil {
-		groundWeaponAmmoHook(a, b, c)
+	if observateur.GroundWeaponAmmoHook != nil {
+		observateur.GroundWeaponAmmoHook(a, b, c)
 	}
 }

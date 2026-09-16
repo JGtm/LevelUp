@@ -121,9 +121,14 @@ func locateRecords(pl []byte, w *filmdec.World, cfg filmdec.FrameConfig) int {
 }
 
 // runWalk : la passe de marche complete sur tous les paquets type-0, dans l ordre du temps.
-func runWalk(f *film, tl *timeline, r *roster, views int) *walkResult {
+//
+// `mv` est le PROFIL DE MOUVEMENT que la calibration a retenu (lot 2.2.a). Il arrive en
+// PARAMETRE depuis le 2.2.a : avant, la marche reconstruisait un cadre par defaut et heritait
+// des largeurs calibrees par effet de bord des variables de paquet de `filmdec`.
+func runWalk(f *film, tl *timeline, r *roster, views int, mv filmdec.MovementProfile) *walkResult {
 	tl.rewind()
 	cfg := filmdec.DefaultFrameConfig()
+	cfg.Mouvement = mv
 	res := &walkResult{}
 	res.bipLo, res.bipHi = tl.bipedRange()
 	for i := range f.t0 {

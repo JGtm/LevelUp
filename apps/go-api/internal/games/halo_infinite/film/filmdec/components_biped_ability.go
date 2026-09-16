@@ -47,18 +47,13 @@ const GrenadeSetNoSelection = 0
 func consumeBipedDesiredGrenadeSet(br *BitReader) {
 	mask := br.ReadBits(i47MaskBits) // FUN_140c6a638 flat R(6)
 	sel := br.ReadBits(i47SelBits)   // FUN_1424d9a30 flat R(3)
-	if grenadeSetHook != nil {
-		grenadeSetHook(uint32(mask), int(sel))
+	if observateur.GrenadeSetHook != nil {
+		observateur.GrenadeSetHook(uint32(mask), int(sel))
 	}
 }
 
-// grenadeSetHook, si non nil, reçoit d'i47 : le masque R(6) des types portés et la sélection
-// R(3) — GrenadeSetNoSelection quand aucun type n'est désigné. Le déser reste inchangé bit
-// pour bit.
-var grenadeSetHook func(mask uint32, sel int)
-
 // SetGrenadeSetHook installe (ou retire, avec nil) la sonde de lecture d'i47.
-func SetGrenadeSetHook(h func(mask uint32, sel int)) { grenadeSetHook = h }
+func SetGrenadeSetHook(h func(mask uint32, sel int)) { observateur.GrenadeSetHook = h }
 
 // ---------------------------------------------------------------------------
 // i48 biped-desired-ability-set-component  (deser FUN_1406d0ff0)
@@ -103,18 +98,13 @@ func consumeBipedDesiredAbilitySet(br *BitReader) {
 	if !br.ReadBit() { // FUN_1406d1024 = R(1) porte, polarité INVERSÉE
 		rank = int(br.ReadBits(i48RankBits)) // R(6) = identité (rang de palette)
 	}
-	if abilitySetHook != nil {
-		abilitySetHook(counter, rank, br.BitPos()-start+i48CounterBits)
+	if observateur.AbilitySetHook != nil {
+		observateur.AbilitySetHook(counter, rank, br.BitPos()-start+i48CounterBits)
 	}
 }
 
-// abilitySetHook, si non nil, reçoit d'i48 : la valeur R(3) (compteur de rotation), le RANG
-// de palette R(6) — ou AbilitySetNoRank quand la porte est fermée — et la largeur totale
-// consommée. Le déser reste inchangé bit pour bit : le hook ne fait que publier.
-var abilitySetHook func(counter uint64, rank int, width int)
-
 // SetAbilitySetHook installe (ou retire, avec nil) la sonde de lecture d'i48.
-func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { abilitySetHook = h }
+func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { observateur.AbilitySetHook = h }
 
 // ---------------------------------------------------------------------------
 // i49 biped-control-context-component  (deser FUN_14107166c)
@@ -127,7 +117,7 @@ func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { abilitySet
 //	R(w) ; w = 4 if DAT_145121140 == 1 else 2   (-> ctx+0xa33)
 //	R(1) flag                                   (-> ctx+0xa36)
 //
-// DAT_145121140 is the process-wide high-precision setting — PositionFullPrecision, and
+// DAT_145121140 is the process-wide high-precision setting — `fullPrecision` du profil, and
 // it ALONE (this reader does NOT consult the baseline scope DAT_144e61ea0 : verifie sur
 // piece le 2026-08-17, `iVar10 = (DAT_145121140 == '\x01') * 2 + 2`). Retail offline films
 // keep it false -> w=2, total 3 bits.
@@ -135,7 +125,7 @@ func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { abilitySet
 // trailing block reads exactly one more bit).
 func consumeBipedControlContext(br *BitReader) {
 	w := uint(2)
-	if PositionFullPrecision { // DAT_145121140 == 1 -> 4-bit field
+	if br.fullPrecision() { // DAT_145121140 == 1 -> 4-bit field
 		w = 4
 	}
 	br.ReadBits(w) // R(2|4) -> ctx+0xa33
@@ -220,7 +210,7 @@ func consumeBipedMalleablePropertyBlock(br *BitReader, recordStateParam uint32) 
 // CONFIRMED bit-exact: FUN_1424e2f20 is a flat 5-bit reader returning the width n;
 // the subsequent inline read consumes exactly n bits (0 when n==0).
 func consumeBipedMalleableProperty(br *BitReader) {
-	consumeBipedMalleablePropertyBlock(br, recordStateParam)
+	consumeBipedMalleablePropertyBlock(br, br.recordStateParam())
 	n := uint(br.ReadBits(5)) // FUN_1424e2f20 = R(5) -> width n
 	if n > 0 {
 		br.ReadBits(n) // R(n) malleable field
@@ -256,15 +246,15 @@ func consumeBipedMalleableProperty(br *BitReader) {
 func consumeBipedMobilityAction(br *BitReader) {
 	flag1 := br.ReadBit() // FUN_1406cf008 -> [0x1295] = le gate `+0x9d` de FUN_1408f02c8
 	flag2 := br.ReadBit() // FUN_1406cf008 -> [0x1296] (flag2)
-	if mobilityActionHook != nil {
-		mobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
+	if observateur.MobilityActionHook != nil {
+		observateur.MobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
 	}
 	if flag1 {
 		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		if MobilityActionBodyPorted {
 			consumeMobilityActionBody(br) // FUN_1408f02c8, corps
-		} else if MobilityActionExtraBits > 0 {
-			br.Skip(MobilityActionExtraBits)
+		} else if extra := br.mv.MobilityActionExtraBits; extra > 0 {
+			br.Skip(extra)
 		}
 	}
 }
@@ -333,7 +323,7 @@ func consume140c1e9d4(br *BitReader, w uint) { //nolint:unparam // largeur de gr
 // CORRIGE le 2026-08-17 (lot R7-c) : ce site rendait ZERO bit. Le vecteur ecrit est bien un
 // NaN de conservation, mais le CURSEUR avance de 96 bits.
 func consumeE494Position(br *BitReader) {
-	if fullPrecisionGate() {
+	if fullPrecisionGate(br) {
 		br.ReadBits(rawVec3Bits)
 		return
 	}
@@ -349,4 +339,6 @@ func SetMobilityActionBodyPorted(b bool) { MobilityActionBodyPorted = b }
 
 // MobilityActionExtraBits : ancien harnais de balayage de largeur (7ter.40, mode `cvmob`).
 // Conserve pour rejouer cette mesure ; sans effet quand le corps est porte.
-var MobilityActionExtraBits int
+// C'ETAIT LA VARIABLE DE PAQUET `MobilityActionExtraBits` JUSQU'AU LOT 2.2.e : le nombre de
+// bits supplementaires d'une action de mobilite vit dans le PROFIL que le lecteur porte
+// (`Movement.MobilityActionExtraBits`, ligne de [TableProfil], provenance PRESUMEE).

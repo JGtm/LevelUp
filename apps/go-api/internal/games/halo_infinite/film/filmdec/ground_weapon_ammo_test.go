@@ -39,11 +39,11 @@ func munAmmoArch() Archetype {
 // munI0 ecrit le composant i0 par le chemin objet du monde, porte a zero. UNE SEULE copie : les
 // deux payloads de ce fichier le partagent.
 func munI0(w *bitWriter) {
-	w.bit(0)                                    // i0 precHigh = 0
-	w.bit(0)                                    // i0 index-sel = 0 -> lit l'index de region
-	w.bits(0, int(WorldObjectPrecision.IndexW)) // index de region
-	for a := 0; a < 3; a++ {                    // les trois axes
-		w.bits(0, int(WorldObjectPrecision.AxisW[a]))
+	w.bit(0)                                              // i0 precHigh = 0
+	w.bit(0)                                              // i0 index-sel = 0 -> lit l'index de region
+	w.bits(0, int(WorldObjectPrecisionActuelle().IndexW)) // index de region
+	for a := 0; a < 3; a++ {                              // les trois axes
+		w.bits(0, int(WorldObjectPrecisionActuelle().AxisW[a]))
 	}
 	w.bits(0, 2) // i0 queue R(2)
 }

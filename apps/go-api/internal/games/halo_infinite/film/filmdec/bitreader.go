@@ -16,10 +16,67 @@ const signExtendMaxWidth = 32
 type BitReader struct {
 	buf []byte
 	pos int // bit offset of the next bit to read
+	// mv est le PROFIL DE MOUVEMENT que ce lecteur porte (lot 2.2.a du PLAN_DECODEUR_FILM).
+	// Cf. l en-tete de [BitReader.poserMouvement] pour ce qu il remplace et pourquoi il vit
+	// ici plutot qu en variable de paquet.
+	mv MovementProfile
+	// kf est le CADRE d image-cle que ce lecteur porte (lot 2.2.c). Il ne se pose jamais : ses
+	// deux largeurs sont des INVARIANTS du format, relus chez l ecrivain, que rien n installe
+	// par film. Il voyage quand meme avec le lecteur pour que les marches d etat complet
+	// prennent leur cadre AU PROFIL et non a une constante du paquet — c est la seule forme
+	// sous laquelle « fausser la valeur dans le profil » rougit leur lecture.
+	kf KeyframeProfile
+	// mpp est le decoupage du bloc `object-multiplayer-properties` que ce lecteur porte
+	// (lot 2.2.e). Il vient de la VERSION DE FORMAT du film, posee par `InstallFilmFormatMPP`.
+	mpp MPPWidths
+	// rsp / rspImpose : le `param_4` du moteur qu un harnais de balayage a force, et le
+	// drapeau qui dit qu il l a force (lot 2.2.e). Hors balayage, la table par composant
+	// (`paramByComponent`) decide seule et ces deux champs ne sont jamais consultes.
+	rsp       uint32
+	rspImpose bool
 }
 
 // NewBitReader returns a reader positioned at the first bit of buf.
-func NewBitReader(buf []byte) *BitReader { return &BitReader{buf: buf} }
+//
+// LE LECTEUR NAIT AVEC LE PROFIL DE MOUVEMENT HERITE, dont la valeur AU REPOS est l invariant
+// de [mouvementDuProfil] — la MEME fonction que [ResolveProfile] emploie, jamais une seconde
+// table de valeurs. L heritage (`mouvement_herite.go`) reproduit a l identique ce que les cinq
+// variables de paquet du chemin de position portaient avant le lot 2.2.a. Un balayage qui tient
+// son propre profil l installe EN TETE ([BitReader.poserMouvement]) et n en depend plus.
+func NewBitReader(buf []byte) *BitReader {
+	return &BitReader{buf: buf, mv: herite.mouvement, kf: cadreDuProfil(),
+		mpp: herite.mpp, rsp: herite.rsp, rspImpose: herite.rspImpose}
+}
+
+// cadre rend le CADRE d image-cle d etat complet que ce lecteur porte : l en-tete par entite,
+// la largeur d un mot de taille, et la regle `172 + etat(ti)` ([KeyframeProfile.CadreBits]).
+func (b *BitReader) cadre() KeyframeProfile { return b.kf }
+
+// poserMouvement installe le profil de mouvement du balayage, EN TETE de celui-ci.
+//
+// # CE QU IL REMPLACE
+//
+// Jusqu au lot 2.2.a, les cinq valeurs du chemin de position (`TraversalPrecision`,
+// `absoluteAxisW`, `PositionFullPrecision`, `PositionDeltaHasHandleTail`,
+// `PositionCalibratedSkip`) etaient des VARIABLES DE PAQUET : le seul ecrivain de production
+// (la calibration de `killsource`) les posait pour tout le processus, ce qui obligeait tout
+// decodage a passer sous `LockProcessDecode`. Elles voyagent desormais avec le lecteur.
+//
+// # POURQUOI SUR LE LECTEUR, ET PAS EN PARAMETRE
+//
+// Le budget 0.A.5 interdit de lire un champ de profil PAR BIT LU. Le lecteur de bits est le
+// seul objet deja passe a TOUS les deserialiseurs : y poser le profil coute une copie par
+// lecteur construit (jamais par bit), et rend la valeur a portee de chaque feuille sans
+// ajouter un parametre a la centaine de `consume*`. C est aussi la direction du lot 2.4
+// (« une seule porte aux octets »).
+//
+// # QUI L APPELLE
+//
+// Les portes de balayage qui tiennent un [FrameConfig] (`DecodeFrameRecords`, `TryDeltaAt`,
+// `DecodeFrameViews`, `DecodeFrameResync`, `DecodeFrameInfer`, `ScanFrameTargets`), avec
+// `cfg.Mouvement`. Partout ailleurs, le profil herite pose par [NewBitReader] est EXACTEMENT
+// la valeur que les variables de paquet portaient au meme instant.
+func (b *BitReader) poserMouvement(m MovementProfile) { b.mv = m }
 
 // BitPos returns the bit offset of the next bit to read.
 func (b *BitReader) BitPos() int { return b.pos }

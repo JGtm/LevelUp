@@ -203,7 +203,7 @@ type navpointRadialWalk struct {
 
 // install pose le hook de ti=12 et rend sa restauration (defer).
 func (w *navpointRadialWalk) install() func() {
-	prev := navpointHook
+	prev := observateur.NavpointHook
 	SetNavpointHook(func(f NavpointField, values []uint64) {
 		if f != NavpointRadialProgress || len(values) == 0 {
 			return

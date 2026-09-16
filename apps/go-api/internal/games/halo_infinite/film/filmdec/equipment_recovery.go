@@ -183,7 +183,7 @@ func equipRecoveryHook() (*struct {
 		rank    int
 		got     bool
 	}{}
-	prev := abilitySetHook
+	prev := observateur.AbilitySetHook
 	SetAbilitySetHook(func(counter uint64, rank, _ int) {
 		last.counter, last.rank, last.got = uint32(counter), rank, true
 	})

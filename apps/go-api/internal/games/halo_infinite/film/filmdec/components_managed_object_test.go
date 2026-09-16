@@ -47,7 +47,7 @@ func TestNavpointRadialProgressVecteurs(t *testing.T) {
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			var got []uint64
-			prev := navpointHook
+			prev := observateur.NavpointHook
 			SetNavpointHook(func(f NavpointField, values []uint64) {
 				if f != NavpointRadialProgress {
 					t.Fatalf("champ publie %v, attendu %v", f, NavpointRadialProgress)
@@ -94,7 +94,7 @@ func TestManagedObjectBoundaryColorVecteurs(t *testing.T) {
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			var got []uint64
-			prev := managedObjectHook
+			prev := observateur.ManagedObjectHook
 			SetManagedObjectHook(func(f ManagedObjectField, values []uint64) {
 				if f != ManagedObjectBoundaryColor {
 					t.Fatalf("champ publie %v, attendu %v", f, ManagedObjectBoundaryColor)
@@ -152,7 +152,7 @@ func TestManagedObjectRTPCVecteurs(t *testing.T) {
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			var got []uint64
-			prev := managedObjectHook
+			prev := observateur.ManagedObjectHook
 			SetManagedObjectHook(func(f ManagedObjectField, values []uint64) {
 				if f != ManagedObjectRTPC {
 					t.Fatalf("champ publie %v, attendu %v", f, ManagedObjectRTPC)
@@ -205,7 +205,7 @@ func TestManagedObjectRTPCIdentifiantConstant(t *testing.T) {
 
 	var ids []uint64
 	var valeurs []uint64
-	prev := managedObjectHook
+	prev := observateur.ManagedObjectHook
 	SetManagedObjectHook(func(_ ManagedObjectField, values []uint64) {
 		ids = append(ids, values[0])
 		if len(values) > 1 {
@@ -254,7 +254,7 @@ func TestZoneHooksConsommentLesMemesBitsSansHook(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			prevM, prevN := managedObjectHook, navpointHook
+			prevM, prevN := observateur.ManagedObjectHook, observateur.NavpointHook
 			SetManagedObjectHook(nil)
 			SetNavpointHook(nil)
 			brSans := zoneVecBits(t, octets...)

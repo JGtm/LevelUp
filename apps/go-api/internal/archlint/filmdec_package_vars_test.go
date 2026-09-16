@@ -129,7 +129,43 @@ import (
 // table de variantes qui l accompagne quittent la production avec `walkKeyframeBody` — zero
 // appelant de production depuis le lot 1.4 — pour un fichier `_test.go` du paquet. Le ratchet ne
 // DESCEND que, et son en-tete le demande explicitement des qu une baisse est mesuree.
-const filmdecVarsGeles = 94
+//
+// RESSERRE A 90 LE 2026-09-17 (lot 2.2.a du PLAN_DECODEUR_FILM, famille « positions ») : les CINQ
+// valeurs du chemin de position — `TraversalPrecision`, `absoluteAxisW`, `PositionFullPrecision`,
+// `PositionDeltaHasHandleTail`, `PositionCalibratedSkip` — ne sont plus des variables de paquet :
+// elles voyagent avec le LECTEUR DE BITS (`BitReader.mv`), semees par le profil
+// (`filmdec.mouvementDuProfil`) et posees EN TETE de balayage par les portes a `FrameConfig`.
+// UNE variable NEUVE les remplace, et elle est nommee : `mouvementHerite`
+// (`filmdec/mouvement_herite.go`), le profil qu une passe laisse a la suivante dans le meme
+// processus — kill-switch date, retrait cible lot 2.3, critere « `replay.BuildFromFilm` recoit
+// le profil de son appelant ». Bilan net : -5 +1 = 90.
+//
+// RESSERRE A 86 LE 2026-09-17 (lot 2.2.b, famille « objets du monde ») : `WorldObjectPrecision`,
+// `WorldPositionRange`, `DeltaQuantum` et `DeltaAxisWidth` rejoignent le PROFIL que le lecteur
+// porte. Trois etaient sans ecrivain depuis le lot E ; la quatrieme —
+// `WorldObjectPrecision` — est posee par carte, et son installateur
+// (`replay/world_object_precision.go`) ecrit desormais le profil HERITE au lieu d une globale
+// propre : aucune variable neuve, le canal existait deja. Bilan net : -4 = 86.
+//
+// RESSERRE A 79 LE 2026-09-17 (lot 2.2.e, famille « equipement et mobilite ») : SEPT de moins.
+// Les deux largeurs du bloc `object-multiplayer-properties` (`mppLeadBits`, `mppIndexBits`), le
+// `param_4` force par un harnais et son drapeau (`recordStateParam`,
+// `recordStateParamOverride`) et les bits supplementaires d une action de mobilite
+// (`MobilityActionExtraBits`) rejoignent le PROFIL que le lecteur porte ; les deux listes de
+// candidats de la calibration MPP (`mppLeadCandidates`, `mppIndexCandidates`) redeviennent des
+// FONCTIONS — c etaient des tables de grammaire deguisees en `var`, que rien n ecrivait (meme
+// geste qu au lot E.3 du 2026-09-05). Aucune variable neuve : l heritage du lot 2.2.a les
+// accueille toutes, et c est desormais UNE structure (`filmdec.profilHerite`) au lieu d une
+// valeur. Bilan net : -7 = 79.
+//
+// RESSERRE A 43 LE 2026-09-17 (lot 2.2.f, famille « crochets d observation ») : TRENTE-SIX de
+// moins, la plus grosse baisse de la serie. Les VINGT-NEUF crochets de deserialiseur et les
+// HUIT compteurs de l inference de chaine — dont `compWidthObs`, « la table sans verrou » que
+// l en-tete de `decode_gate.go` nomme comme l une des deux raisons du verrou de processus —
+// deviennent les CHAMPS d un seul objet, `filmdec.Observation`. Un observateur ne change aucune
+// consommation de bits : c est la propriete qui le distingue du profil, et elle est ecrite en
+// tete de `observateur.go`. Bilan net : -36 = 43.
+const filmdecVarsGeles = 43
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

@@ -81,7 +81,7 @@ func TestUnitRefProbePublieSansChangerLesBits(t *testing.T) {
 	posSans := sans.BitPos()
 
 	var vues []UnitRefRead
-	prev := unitRefHook
+	prev := observateur.UnitRefHook
 	SetUnitRefHook(func(r UnitRefRead) { vues = append(vues, r) })
 	defer SetUnitRefHook(prev)
 

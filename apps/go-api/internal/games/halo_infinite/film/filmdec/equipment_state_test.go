@@ -120,8 +120,8 @@ func equipSetPrecision(t *testing.T, dir string) I0Layout {
 	if err != nil {
 		t.Fatalf("découpage i0 illisible dans %s : %v", dir, err)
 	}
-	prev := WorldObjectPrecision
-	t.Cleanup(func() { WorldObjectPrecision = prev })
+	prev := WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { PoserWorldObjectPrecision(prev) })
 	SetWorldObjectPrecisionFromLayout(lay)
 	t.Logf("largeurs d'axe LUES DANS LE FILM : %v (défaut du paquet : %v)",
 		lay.AxisW, prev.AxisW)

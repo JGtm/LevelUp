@@ -387,7 +387,7 @@ func probeMarche(pay []byte, rec WorldObjectRecord, a *probeArch, total int) boo
 }
 
 // probeHookCourant rend le hook installe, pour le restaurer a la sortie.
-func probeHookCourant() func(uint32, ProbeComponent, []uint64) { return probeHook }
+func probeHookCourant() func(uint32, ProbeComponent, []uint64) { return observateur.ProbeHook }
 
 // probeHorloge convertit l'horodatage d'un paquet en horloge du MATCH, quand le manifeste du
 // film est disponible. Meme formule que `objectiveevents.StatRecords` — la seule qui aligne les

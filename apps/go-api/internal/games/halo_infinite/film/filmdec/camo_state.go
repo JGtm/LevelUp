@@ -80,7 +80,7 @@ type CamoStateStats struct {
 // ScanFilmCamoStates décode les transmissions de la voie d'état du camouflage (i28
 // queue[1]) dans les paquets delta du film de dir.
 //
-// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `camoStateHook`,
+// UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `observateur.CamoStateHook`,
 // qui est un global de paquet. L'appelant doit détenir LockProcessDecode (BuildFromFilm le
 // fait). Le hook est restauré à la sortie, y compris en cas d'erreur.
 //
@@ -127,7 +127,7 @@ func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
 		channel bool
 		got     bool
 	}
-	prev := camoStateHook
+	prev := observateur.CamoStateHook
 	SetCamoStateHook(func(cs CamoState) {
 		last.q, last.channel = cs.SubQ[camoChannelIndex], cs.SubPresent[camoChannelIndex]
 		last.got = true

@@ -36,35 +36,18 @@ type CamoState struct {
 	SubQ       [6]uint16
 }
 
-// camoStateHook, si non nil, reçoit CHAQUE lecture d'i28 par le déser de production.
-var camoStateHook func(st CamoState)
-
 // SetCamoStateHook installe (ou retire, avec nil) la sonde d'i28.
-func SetCamoStateHook(h func(st CamoState)) { camoStateHook = h }
-
-// mobilityActionHook, si non nil, reçoit les deux drapeaux de tête de CHAQUE lecture d'i54
-// (flag1 est le gate du corps — cf. consumeBipedMobilityAction, « une action est transmise
-// à cet instant » quand il vaut 1).
-var mobilityActionHook func(flag1, flag2 bool)
+func SetCamoStateHook(h func(st CamoState)) { observateur.CamoStateHook = h }
 
 // SetMobilityActionHook installe (ou retire, avec nil) la sonde d'i54.
-func SetMobilityActionHook(h func(flag1, flag2 bool)) { mobilityActionHook = h }
-
-// spartanAbilityHook, si non nil, reçoit CHAQUE lecture d'i57 : le tag R(2), et — sur la
-// SEULE branche tag==1, la seule qui paie une charge utile — le R(2) interne
-// (FUN_142f25d78) et le R(24) (FUN_14076dc04, 0x18). hasRef est faux sur les autres
-// branches : Sub et Ref n'y existent pas dans le flux.
-var spartanAbilityHook func(tag, sub, ref uint64, hasRef bool)
+func SetMobilityActionHook(h func(flag1, flag2 bool)) { observateur.MobilityActionHook = h }
 
 // SetSpartanAbilityHook installe (ou retire, avec nil) la sonde d'i57.
-func SetSpartanAbilityHook(h func(tag, sub, ref uint64, hasRef bool)) { spartanAbilityHook = h }
-
-// abilityNonPredictedHook, si non nil, reçoit CHAQUE lecture d'i59 : le tag externe R(2)
-// et — depuis le port du corps tag==3 (2026-08-16, plan PLAN_GRAPPIN_LIGNE) — la lecture
-// complète du bloc FUN_142f25e90 (tag interne, ids, les trois vecteurs quantifiés, queue).
-// Cf. AbilityNonPredictedState (components_biped_anchor.go) : BodyWalked/BodyOK disent si
-// le corps a été parcouru et s'il est allé au bout.
-var abilityNonPredictedHook func(st AbilityNonPredictedState)
+func SetSpartanAbilityHook(h func(tag, sub, ref uint64, hasRef bool)) {
+	observateur.SpartanAbilityHook = h
+}
 
 // SetAbilityNonPredictedHook installe (ou retire, avec nil) la sonde d'i59.
-func SetAbilityNonPredictedHook(h func(st AbilityNonPredictedState)) { abilityNonPredictedHook = h }
+func SetAbilityNonPredictedHook(h func(st AbilityNonPredictedState)) {
+	observateur.AbilityNonPredictedHook = h
+}

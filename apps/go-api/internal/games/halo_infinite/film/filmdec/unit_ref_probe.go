@@ -71,17 +71,14 @@ type UnitRefRead struct {
 	Probe bool
 }
 
-// unitRefHook, si non nil, reçoit CHAQUE lecture de champ de référence.
-var unitRefHook func(UnitRefRead)
-
 // SetUnitRefHook installe (ou retire, avec nil) la sonde. L'appelant détient
 // `LockProcessDecode` et restaure la valeur précédente.
-func SetUnitRefHook(h func(UnitRefRead)) { unitRefHook = h }
+func SetUnitRefHook(h func(UnitRefRead)) { observateur.UnitRefHook = h }
 
 // publishUnitRef transmet la lecture à la sonde, si elle est posée.
 func publishUnitRef(r UnitRefRead) {
-	if unitRefHook == nil {
+	if observateur.UnitRefHook == nil {
 		return
 	}
-	unitRefHook(r)
+	observateur.UnitRefHook(r)
 }

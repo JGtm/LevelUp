@@ -55,20 +55,12 @@ func (p ProbeComponent) String() string {
 	return fmt.Sprintf("sonde inconnue (%d)", int(p))
 }
 
-// probeHook, si non nil, recoit les valeurs des composants sondes. Global de paquet :
-// l'appelant detient `LockProcessDecode`.
-//
-// PAS DE `present` ICI, a la difference des trois autres hooks : aucun des quatre composants
-// n'a de porte de tete. Ajouter un booleen toujours vrai serait un champ qui mentirait le jour
-// ou l'un d'eux en gagnerait une.
-var probeHook func(ti uint32, comp ProbeComponent, values []uint64)
-
 // SetProbeHook installe (ou retire, avec nil) la sonde generique.
-func SetProbeHook(h func(ti uint32, comp ProbeComponent, values []uint64)) { probeHook = h }
+func SetProbeHook(h func(ti uint32, comp ProbeComponent, values []uint64)) { observateur.ProbeHook = h }
 
 func publishProbe(ti uint32, comp ProbeComponent, values ...uint64) {
-	if probeHook != nil {
-		probeHook(ti, comp, values)
+	if observateur.ProbeHook != nil {
+		observateur.ProbeHook(ti, comp, values)
 	}
 }
 

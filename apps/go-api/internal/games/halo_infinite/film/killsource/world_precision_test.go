@@ -73,7 +73,7 @@ func TestKillSourceWorldPrecisionImpact(t *testing.T) {
 		t.Skipf("%s absent : instrument de mesure saute", ksPrecFilmEnv)
 	}
 	entry := ksPrecEntry(t)
-	def := filmdec.WorldObjectPrecision.AxisW
+	def := filmdec.WorldObjectPrecisionActuelle().AxisW
 	t.Logf("== FILM %s ==", dir)
 	t.Logf("  largeurs par DEFAUT du paquet : %v · largeurs DU CATALOGUE : %v (module %s)",
 		def, entry.AxisWidths, entry.Module)
@@ -148,8 +148,8 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 	release := filmdec.LockProcessDecode()
 	defer release()
 	resetGlobals()
-	prev := filmdec.WorldObjectPrecision
-	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
+	prev := filmdec.WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prev) })
 
 	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
@@ -176,7 +176,11 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 
 	hs := make([]ksPrecHist, 0, len(largeurs))
 	for _, w := range largeurs {
-		filmdec.WorldObjectPrecision.AxisW = w
+		{
+			wop := filmdec.WorldObjectPrecisionActuelle()
+			wop.AxisW = w
+			filmdec.PoserWorldObjectPrecision(wop)
+		}
 		h := ksPrecWalkHistogram(f, tl, DefaultOptions().Views)
 		hs = append(hs, h)
 		t.Logf("  -- largeurs %v --", w)
@@ -334,9 +338,13 @@ type ksPrecLine struct {
 // l installation se fait AVANT l appel, et le test est le seul decodeur du process.
 func ksPrecRun(t *testing.T, dir string, axisW [3]uint) ksPrecMeasure {
 	t.Helper()
-	prev := filmdec.WorldObjectPrecision
-	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
-	filmdec.WorldObjectPrecision.AxisW = axisW
+	prev := filmdec.WorldObjectPrecisionActuelle()
+	t.Cleanup(func() { filmdec.PoserWorldObjectPrecision(prev) })
+	{
+		wop := filmdec.WorldObjectPrecisionActuelle()
+		wop.AxisW = axisW
+		filmdec.PoserWorldObjectPrecision(wop)
+	}
 
 	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {

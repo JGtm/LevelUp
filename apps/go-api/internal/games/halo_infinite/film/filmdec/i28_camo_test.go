@@ -4,7 +4,7 @@ package filmdec
 // .ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : le composant i28
 // `unit-active-camo-state` — LE composant NOMMÉ camouflage — est-il l'ÉTAT ACTIF ?
 //
-// CE QU'IL PUBLIE : chaque lecture d'i28 par le déser de PRODUCTION (camoStateHook,
+// CE QU'IL PUBLIE : chaque lecture d'i28 par le déser de PRODUCTION (observateur.CamoStateHook,
 // cf. ability_state_hooks.go) — le R(3), les deux portes, le quantum R(12) principal et
 // les six champs optionnels de queue — par slot et horodatage, avec les dénominateurs
 // (records / masque∋i28 / lectures / illisibles).
@@ -69,7 +69,7 @@ func TestI28CamoActiveState(t *testing.T) {
 		records, with28, read, unread int
 		samples                       []i28Sample
 	)
-	prev := camoStateHook
+	prev := observateur.CamoStateHook
 	SetCamoStateHook(func(st CamoState) { capt.st, capt.got = st, true })
 	defer SetCamoStateHook(prev)
 

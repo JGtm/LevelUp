@@ -21,15 +21,18 @@ package filmdec
 // optional slot / flag reads are absent. When a real descriptor count is known it
 // must be supplied (it cannot be recovered from the bits alone).
 //
-// Exposed as a package var (not const) so a calibration harness can sweep {0,1,2,3}
-// to find the value that re-synchronises the component AFTER a recordStateParam-
-// dependent one (i10 object-parent-state, i19/i20/i23 unit-*). Verdict from the
-// deser-fix workflow: i10's keyframe desync is THIS parameter, not a code bug.
-var recordStateParam uint32 = 0
+// IL VIT DANS LE PROFIL HERITE DEPUIS LE LOT 2.2.e (`profil_herite.go`), plus dans deux
+// variables de paquet : un harnais de calibration peut toujours balayer {0,1,2,3} pour trouver
+// la valeur qui resynchronise le composant APRES un composant qui en depend (i10
+// object-parent-state, i19/i20/i23 unit-*), mais ce qu il pose voyage desormais avec le lecteur.
+// Verdict du workflow deser-fix : la desynchronisation d i10 en image-cle est CE parametre, pas
+// un defaut de code.
 
 // SetRecordStateParam lets a harness sweep the runtime actor-tick/weapon-set count
-// (param_4) that varies the bit width of i10/i19/i20/i23. See recordStateParam.
-func SetRecordStateParam(v uint32) { recordStateParam, recordStateParamOverride = v, true }
+// (param_4) that varies the bit width of i10/i19/i20/i23. See paramForComponent.
+//
+// L APPELANT DOIT DETENIR `LockProcessDecode` : il ecrit le profil herite du processus.
+func SetRecordStateParam(v uint32) { herite.rsp, herite.rspImpose = v, true }
 
 // paramByComponent porte le VRAI param_4, par composant, tel que la capture live le
 // mesure (colonne `param4` de .ai/V7.5/dumps/ce_capture_delta.csv). Extraction sur
@@ -80,16 +83,36 @@ var paramByComponent = map[string]uint32{
 // paramForComponent rend le param_4 du composant `name`. Défaut 1 : c'est la valeur
 // mesurée pour l'écrasante majorité des composants (0 était un choix « conservateur »
 // jamais mesuré, et faux).
-func paramForComponent(name string) uint32 {
+func paramForComponent(br *BitReader, name string) uint32 {
 	if v, ok := paramByComponent[name]; ok {
 		return v
 	}
-	if recordStateParamOverride {
-		return recordStateParam // un harnais de balayage a forcé la valeur
+	// LE REPLI DU HARNAIS N'EST CONSULTE QUE HORS TABLE, et c'est ce qui rend
+	// [paramMesureDuComposant] equivalent pour un nom TABULE — cf. sa godoc.
+	if br.rspImpose { // un harnais de balayage a forcé la valeur, et le lecteur la porte
+		return br.rsp
 	}
 	return 1
 }
 
-// recordStateParamOverride passe à true dès qu'un harnais appelle SetRecordStateParam :
-// le balayage manuel garde alors la main sur les composants hors table.
-var recordStateParamOverride = false
+// paramMesureDuComposant rend le `param_4` MESURÉ d'un composant, sans le repli du harnais.
+//
+// POUR LES APPELANTS QUI N'ONT PAS DE LECTEUR DE BITS — un seul, la grammaire d'orientation
+// des archétypes `ti=38/39/40/43` (`offline_aim.go`), qui compose une grammaire AVANT d'ouvrir
+// le moindre lecteur. Le nom qu'elle passe (`object-forward-and-up-dynamic-precision`) est DANS
+// la table : `paramForComponent` rend donc la même valeur par la même branche, et le repli du
+// harnais — la seule chose que cette fonction n'a pas — lui est inatteignable.
+func paramMesureDuComposant(name string) uint32 {
+	if v, ok := paramByComponent[name]; ok {
+		return v
+	}
+	return 1
+}
+
+// recordStateParam rend le `param_4` que le harnais a forcé sur ce lecteur, 0 sinon. Les deux
+// seuls désérialiseurs qui le lisent SANS passer par la table par composant
+// (`consumeBipedMalleableProperty`, `consumeBipedSlide`) le prennent ici.
+//
+// C'ÉTAIT LA VARIABLE DE PAQUET `recordStateParam`, avec son drapeau
+// `recordStateParamOverride`, JUSQU'AU LOT 2.2.e.
+func (b *BitReader) recordStateParam() uint32 { return b.rsp }
