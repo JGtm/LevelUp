@@ -40,8 +40,13 @@
 //
 //	cd apps/go-api && go run ./cmd/replay-corpus-gate \
 //	  [--reference=base|parc] [--base REV] [--strict] [--allow-missing] \
-//	  [--manifest config/replay_corpus.toml] [--parc-root DIR] [--lock-root DIR] \
-//	  [--source-root DIR] [--work-root DIR] [--keep-work] [--json rapport.json]
+//	  [--manifest config/replay_corpus.toml] [--temoins a,b] [--parc-root DIR] \
+//	  [--lock-root DIR] [--source-root DIR] [--work-root DIR] [--keep-work] \
+//	  [--json rapport.json]
+//
+// --temoins rejoue les SEULS temoins nommes, sans fabriquer de manifeste reduit (D2 (cloture
+// M1)) : le corpus versionne reste le seul corpus. Un id inconnu est une erreur (codeUsage),
+// jamais un manifeste ampute en silence.
 //
 // Racines (cf. roots.go et base.go pour le detail) : --source-root = le depot ou ce binaire
 // tourne (code + config au HEAD teste, defaut : git rev-parse --show-toplevel) ; --parc-root =
@@ -109,13 +114,14 @@ func main() {
 	keepWork := flag.Bool("keep-work", false, "conserver la racine de travail apres l'execution (debug)")
 	sortieJSON := flag.String("json", "", "fichier ou ecrire le rapport JSON complet (vide = aucun)")
 	allowMissing := flag.Bool("allow-missing", false, "tolerer un temoin ABSENT (avertissement seul, code 0 possible) au lieu de refuser la couverture incomplete (code 4, defaut)")
+	temoinsFlag := flag.String("temoins", "", "rejouer les SEULS temoins nommes (ids separes par des virgules) — le manifeste versionne reste le corpus, aucun manifeste reduit a ecrire ; un id inconnu est une erreur")
 	flag.Parse()
 
 	opts := executerOptions{
 		Reference: *reference, Base: *baseFlag, Strict: *strict, AllowMissing: *allowMissing,
 		ManifestPath: *manifestPath, ParcRootFlag: *parcRootFlag, LockRootFlag: *lockRootFlag,
 		SourceRootFlag: *sourceRootFlag, WorkRootFlag: *workRootFlag, KeepWork: *keepWork,
-		SortieJSON: *sortieJSON,
+		SortieJSON: *sortieJSON, Temoins: *temoinsFlag,
 	}
 
 	// signal.NotifyContext, PAS un handler qui appellerait os.Exit lui-meme : ce gate dure 13 a
@@ -139,6 +145,9 @@ type executerOptions struct {
 	Reference, Base                                                                    string
 	Strict, KeepWork, AllowMissing                                                     bool
 	ManifestPath, ParcRootFlag, LockRootFlag, SourceRootFlag, WorkRootFlag, SortieJSON string
+	// Temoins : la valeur brute de --temoins (ids separes par des virgules, vide = tout le
+	// manifeste). Decoupee par NomsDemandes, appliquee par FiltrerTemoins.
+	Temoins string
 }
 
 // environnementGate regroupe la resolution des racines et du manifeste — un struct plutot
@@ -219,6 +228,10 @@ func chargerEnvironnement(ctx context.Context, o executerOptions) (environnement
 		manifestPath = filepath.Join(sourceRoot, "config", "replay_corpus.toml")
 	}
 	manifest, err := LoadManifest(manifestPath)
+	if err != nil {
+		return environnementGate{}, err
+	}
+	manifest, err = FiltrerTemoins(manifest, NomsDemandes(o.Temoins))
 	if err != nil {
 		return environnementGate{}, err
 	}

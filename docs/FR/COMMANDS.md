@@ -718,6 +718,16 @@ et une erreur de cuisson se confondait avec une perte sous le `1`.
 | 3 | `codeErreurCuisson` | le gate a démarré, mais un témoin CUIT a échoué à la cuisson ou à la comparaison — distinct du 1 : la question n'a pas pu être posée, la réponse n'est pas « il a perdu » |
 | 4 | `codeCouvertureIncomplete` | au moins un témoin ABSENT sans `--allow-missing` (CORPUS-R1 C3) — distinct du 1 ET du 2 : le manifeste est valide, aucun témoin n'a perdu, il en manque |
 
+**Export des faits robuste (2026-09-17, D2)** : `levelup replay-facts-export` ouvre la base
+partagée en lecture seule, et échoue quand le serveur local la tient en écriture à cette
+seconde-là (« `… serveur en ecriture ? reessayer` »). Au gate du lot 2.1, cela a coûté deux
+témoins sur quatorze — `2/14 absent(s)` pour un aléa de quelques secondes, rejoué à la main
+avec un manifeste réduit à ces deux-là. Le gate **réessaie désormais 3 fois, à 2 s d'écart**,
+un échec qui porte le marqueur de base tenue, et ne réessaie JAMAIS un échec permanent (id
+inconnu du registre, faits vides) : re-poser une question dont la réponse ne peut pas changer
+ne fait qu'allonger un gate de 25 min. Un témoin toujours manquant ensuite sort `ABSENT` en
+code 4, distinct d'une perte ; `--temoins a,b` rejoue les seuls concernés.
+
 **Changements nommés dans le rapport JSON (2026-09-17, D5)** : le JSON porte désormais un
 `changementsDetail` (axe, métrique, ancien, nouveau) symétrique de `pertesDetail`, plus un
 `statut` et un `absentCause` sur chaque ligne, et le tableau imprimé gagne une section
@@ -736,6 +746,7 @@ jour) :
 | `--strict` | `false` | en mode `--reference=parc`, une perte ou un changement sort aussi en code 1 (sans effet en mode base, déjà bloquant) |
 | `--allow-missing` | `false` | tolérer un témoin ABSENT (avertissement seul) au lieu de sortir en code 4 |
 | `--manifest` | `<source-root>/config/replay_corpus.toml` | chemin du manifeste |
+| `--temoins` | (aucun) | rejouer les SEULS témoins nommés (ids séparés par des virgules) — le manifeste versionné reste le corpus, aucun manifeste réduit à écrire. Un id inconnu est une erreur (code 2), jamais une exécution tronquée en silence. |
 | `--source-root` | `git rev-parse --show-toplevel` | dépôt dont le code/la config AU HEAD est testé — **pas** basé sur `db_profiles.json` : fonctionne depuis n'importe quel worktree, y compris un sans copie locale de ce fichier |
 | `--parc-root` | `source-root` s'il porte déjà la base partagée du titre, sinon auto-détecté via le `.git` commun | le parc de développement (chunks de film, artefacts `--reference=parc`) |
 | `--lock-root` | `CacheRootDir()` du parc | où vit le verrou de décodage partagé |
