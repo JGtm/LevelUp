@@ -375,18 +375,19 @@ func loadMedalExploitMap(ctx context.Context, metadataDBPath string, sharedDB *s
 	if metadataDBPath == "" {
 		return nil
 	}
-	// Phase 2 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 (site residuel detecte
-	// par audit grep 2026-05-25) : passage par le cache duckdbpkg.OpenReadOnly
-	// pour aligner le DSN avec les autres sites RO du sync engine. Empeche
-	// le bug "Can't open a connection with a different configuration"
-	// lorsque loadMedalExploitMap tourne en concurrence avec engine.go:249.
-	metaHandle, err := duckdbpkg.OpenReadOnly(metadataDBPath)
+	// OpenReadForQuery reutilise le handle deja tenu par le process (le moteur ouvre
+	// metadata en `rw:` partage depuis le 2026-09-16, engine.go ; le serveur le tient en
+	// `rw:` depuis toujours) et n ouvre en lecture seule qu a defaut. Un OpenReadOnly
+	// direct ici echouait (« different configuration ») des que le moteur tenait `rw:`,
+	// et rendait nil en Debug : medal_exploit = 0 pour tous les matchs, en silence
+	// (revue adversariale du 2026-09-16, P1). Journal en Warn : la degradation ne se
+	// tait plus.
+	metaDB, releaseMeta, err := duckdbpkg.OpenReadForQuery(metadataDBPath)
 	if err != nil {
-		slog.DebugContext(ctx, "loadMedalExploitMap: ouverture metaDB échouée", "err", err)
+		slog.WarnContext(ctx, "loadMedalExploitMap: ouverture metaDB échouée — medal_exploit à 0 pour cette passe", "err", err)
 		return nil
 	}
-	defer metaHandle.Close()
-	metaDB := metaHandle.SQLDb()
+	defer releaseMeta()
 
 	diffMap, err := LoadMedalDifficultyFromMeta(ctx, metaDB)
 	if err != nil || len(diffMap) == 0 {

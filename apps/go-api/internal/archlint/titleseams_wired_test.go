@@ -19,19 +19,30 @@ package archlint
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
 )
 
-// importsMoteurSync : les chemins d'import qui font entrer le moteur de sync (et donc les seams
-// title-owned) dans un binaire. Le second motif couvre les sous-paquets (`internal/sync/skill`,
-// `internal/sync/v2`, …) dont les fail-loud sont les mêmes.
-var importsMoteurSync = []string{
-	`"levelup/go-api/internal/sync"`,
-	`"levelup/go-api/internal/sync/`,
+// paquetsFailLoud : les paquets dont la présence dans les dépendances TRANSITIVES d.un binaire
+// y fait entrer un fail-loud title-owned — le moteur lui-même (étapes de migration title-owned,
+// post-sync) et la chaîne de classification LUSR (panic MT-15,
+// `internal/sync/skill/skill_chain_provider.go`).
+//
+// La correspondance est EXACTE, pas par préfixe : 42 binaires dépendent de ces deux paquets,
+// 84 d.un sous-paquet quelconque de `internal/sync/`. Les 42 autres ne tirent que des briques
+// sans seam (`haloclient`, `matchflags`, `schemadrift`, …) : leur imposer `RegisterAll` ne
+// protégerait de rien et diluerait le ratchet en bruit (mesuré le 2026-09-16).
+var paquetsFailLoud = []string{
+	"levelup/go-api/internal/sync",
+	"levelup/go-api/internal/sync/skill",
 }
+
+// prefixeCmd : préfixe des chemins d.import des binaires du module.
+const prefixeCmd = "levelup/go-api/cmd/"
 
 // appelSeams : la forme exacte attendue dans le binaire.
 const appelSeams = "titleseams.RegisterAll("
@@ -42,14 +53,79 @@ const appelSeams = "titleseams.RegisterAll("
 var binairesSansSeamsAutorises = map[string]bool{}
 
 // TestBinairesSyncCablentLesSeams — LE RATCHET.
+//
+// CRITÈRE : les dépendances TRANSITIVES, mesurées par un seul `go list` (2,7 s mesuré le
+// 2026-09-16, Windows compris). L'ancien critère ne regardait que l'import DIRECT de
+// `internal/sync` dans les fichiers de `cmd/<binaire>/` : dix binaires embarquaient le moteur
+// par un intermédiaire (`internal/ops`, `internal/games/halo_5/...`, `internal/api/...`) et
+// passaient sous le radar — ils ont reçu `titleseams.RegisterAll("")` avec ce changement.
 func TestBinairesSyncCablentLesSeams(t *testing.T) {
 	racine := racineGoAPI(t)
-	cmdRacine := filepath.Join(racine, "cmd")
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("`go` absent du PATH : le critère transitif exige `go list` (ratchet non exécuté)")
+	}
 
-	// dossier -> importe le moteur ; dossier -> câble les seams.
+	// UNE SEULE exécution pour tout cmd/. `-e` tolère les paquets dont les contraintes de
+	// build excluent tous les fichiers sur cette plateforme : ils rendent une ligne sans
+	// dépendances, ce qui est le verdict correct (ils n'embarquent rien).
+	cmd := exec.Command("go", "list", "-e", "-f", "{{.ImportPath}} {{.Name}} {{.Deps}}", "./cmd/...")
+	cmd.Dir = racine
+	sortie, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("go list ./cmd/... : %v", err)
+	}
+
 	importe := map[string]bool{}
-	cable := map[string]bool{}
+	for _, ligne := range strings.Split(string(sortie), "\n") {
+		champs := strings.Fields(strings.TrimSpace(ligne))
+		if len(champs) < 2 || champs[1] != "main" {
+			continue
+		}
+		dossier := strings.TrimPrefix(champs[0], prefixeCmd)
+		if dossier == champs[0] {
+			continue // paquet main hors de cmd/
+		}
+		if i := strings.Index(dossier, "/"); i >= 0 {
+			dossier = dossier[:i]
+		}
+		for _, dep := range champs[2:] {
+			dep = strings.Trim(dep, "[]")
+			if slices.Contains(paquetsFailLoud, dep) {
+				importe[dossier] = true
+				break
+			}
+		}
+	}
 
+	cable := binairesQuiCablent(t, filepath.Join(racine, "cmd"))
+
+	if len(importe) == 0 {
+		t.Fatal("aucun binaire de cmd/ ne dépend du moteur de sync — le balayage s'est cassé")
+	}
+
+	var fautifs []string
+	for dossier := range importe {
+		if cable[dossier] || binairesSansSeamsAutorises[dossier] {
+			continue
+		}
+		fautifs = append(fautifs, dossier)
+	}
+	sort.Strings(fautifs)
+	for _, dossier := range fautifs {
+		t.Errorf("cmd/%s dépend du moteur de sync (transitivement ou non) sans câbler les seams "+
+			"title-owned — ajouter `titleseams.RegisterAll(\"\")` (ou la racine config/titles/{slug} "+
+			"si le binaire seed des catalogues) au début de main(), import "+
+			"\"levelup/go-api/internal/games/titleseams\" (plan 2026-09-16, étape 1 ; critère "+
+			"transitif : plan robustesse, étape 5)", dossier)
+	}
+	t.Logf("binaires de cmd/ dépendant du moteur de sync : %d (tous câblent les seams)", len(importe))
+}
+
+// binairesQuiCablent rend l'ensemble des dossiers de cmd/ dont un fichier non-test appelle
+// titleseams.RegisterAll(.
+func binairesQuiCablent(t *testing.T, cmdRacine string) map[string]bool {
+	t.Helper()
+	cable := map[string]bool{}
 	entrees, err := os.ReadDir(cmdRacine)
 	if err != nil {
 		t.Fatalf("lecture de cmd/ : %v", err)
@@ -72,36 +148,12 @@ func TestBinairesSyncCablentLesSeams(t *testing.T) {
 			if err != nil {
 				t.Fatalf("lecture de cmd/%s/%s : %v", dossier, nom, err)
 			}
-			texte := string(brut)
-			for _, imp := range importsMoteurSync {
-				if strings.Contains(texte, imp) {
-					importe[dossier] = true
-				}
-			}
-			if strings.Contains(texte, appelSeams) {
+			if strings.Contains(string(brut), appelSeams) {
 				cable[dossier] = true
 			}
 		}
 	}
-
-	if len(importe) == 0 {
-		t.Fatal("aucun binaire de cmd/ n'importe le moteur de sync — le balayage s'est cassé")
-	}
-
-	var fautifs []string
-	for dossier := range importe {
-		if cable[dossier] || binairesSansSeamsAutorises[dossier] {
-			continue
-		}
-		fautifs = append(fautifs, dossier)
-	}
-	sort.Strings(fautifs)
-	for _, dossier := range fautifs {
-		t.Errorf("cmd/%s importe le moteur de sync sans câbler les seams title-owned — "+
-			"ajouter `titleseams.RegisterAll(\"\")` (ou la racine config/titles/{slug} si le "+
-			"binaire seed des catalogues) au début de main(), import "+
-			"\"levelup/go-api/internal/games/titleseams\" (plan 2026-09-16, étape 1)", dossier)
-	}
+	return cable
 }
 
 // TestSeamsPosesUniquementParTitleseams — aucun binaire ne repose les seams à la main.

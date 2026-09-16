@@ -66,6 +66,15 @@
 # remplaçants sont dans le run courant. Exactement 2 paires (Package, Test), vérifié par
 # différence avant/après.
 #
+# RETRAIT DU 2026-09-16 (lot robustesse du sync, etape 3, D4) : 2 tests RENOMMES de
+# `internal/sync` — TestPooledHaloClientGetCareerRank_PinnedToken et
+# TestPooledHaloClientGetCareerRank_NoPinnedToken. La mesure du 2026-09-16 (trois preteurs sur
+# un xuid TIERS rendent le meme rang et la meme XP que le proprietaire) a fait passer
+# GetCareerRank en PolicyAnyPublic : il n y a plus de token « epingle », donc plus de branche a
+# tester. Remplaces par TestPooledHaloClientGetCareerRank_AcquiertEnPublic, present dans le run
+# courant. 8 lignes JSONL, exactement 2 paires (Package, Test), verifie par difference
+# avant/apres. Compte PARTIEL d absences volontaires -> remede prescrit ici meme.
+#
 # Le contrôle 2 a été ajouté le 2026-07-26 : le `|| true` sur le `go test -json`
 # (nécessaire pour pouvoir analyser le JSONL même quand la suite échoue) rendait
 # le gate MENTEUR — un test FAIL était compté comme « présent » par le contrôle 1

@@ -21,7 +21,7 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 	maxMatches := fs.Int("max-matches", 25, "Nombre max de nouveaux matchs à insérer")
 	matchType := fs.String("match-type", "matchmaking", "Type de match: all|matchmaking|custom|local")
 	rps := fs.Int("rps", 1, "Nombre max de requêtes API par seconde")
-	tokenPoolSize := fs.Int("token-pool-size", 0, "Taille du pool de tokens (0=auto-detect, 1=désactiver)")
+	tokenPoolSize := fs.Int("token-pool-size", 0, "Nombre maximal de slots SAINS du pool de tokens (0=tous les jetons sains du parc)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -37,13 +37,20 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 		return runSyncDeltaAll(ctx, cfg, *maxMatches, *matchType, *rps, *tokenPoolSize)
 	}
 
+	// Les migrations shared AVANT de synchroniser : une passe qui insère sur un schéma
+	// périmé rejette des matchs pour TOUS les joueurs (C-C, 2026-09-16).
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
+	}
+
 	player, err := loadPlayerSummary(cfg, *gamertag)
 	if err != nil {
 		return err
 	}
-	// Le joueur visé n a PAS besoin de son propre token : ses endpoints sont publics et
-	// servis par n importe quel token du pool (D1, plan 2026-09-16). Le rang de carrière
-	// n est pas synchronisé ici (flux CareerLiveService) : career_synced vaut false pour tous.
+	// Le joueur visé n a PAS besoin de son propre token : TOUS ses endpoints sont publics et
+	// servis par n importe quel token du pool (D1 du plan 2026-09-16, étendu au rang de
+	// carrière par D4 du plan robustesse). Le rang de carrière n est pas synchronisé ici
+	// (flux CareerLiveService) : career_synced vaut false pour tous.
 	engine, closePool, err := newPooledEngineForPlayer(ctx, cfg, *player, *tokenPoolSize, *rps)
 	if err != nil {
 		return err
@@ -57,26 +64,7 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("run delta: %w", err)
 	}
 
-	postSync := false
-	careerSynced := false
-	if syncResult.PostSync != nil {
-		postSync = true
-		careerSynced = syncResult.PostSync.CareerSynced
-	}
-	fmt.Printf(
-		"sync delta OK: gamertag=%s inserted=%d skipped=%d status=%s post_sync=%t career_synced=%t duration=%.2fs\n",
-		player.Gamertag,
-		syncResult.MatchesInserted,
-		syncResult.MatchesSkipped,
-		syncResult.Status(),
-		postSync,
-		careerSynced,
-		syncResult.DurationSeconds,
-	)
-	if len(syncResult.Warnings) > 0 {
-		fmt.Printf("warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
-	}
-	return nil
+	return reportSyncResult(os.Stdout, "delta", player.Gamertag, &syncResult)
 }
 
 func runSyncDeltaAll(
@@ -93,6 +81,11 @@ func runSyncDeltaAll(
 	}
 	if len(players) == 0 {
 		return fmt.Errorf("aucun joueur configuré")
+	}
+
+	// Idem mono-joueur : le schéma partagé est mis à niveau avant la première insertion.
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
 	}
 
 	provider := auth_platform.NewSISUProvider()
@@ -140,20 +133,13 @@ func runSyncDeltaAll(
 			continue
 		}
 
-		synced++
-		careerSynced := syncResult.PostSync != nil && syncResult.PostSync.CareerSynced
-		fmt.Printf(
-			"sync delta OK: gamertag=%s inserted=%d skipped=%d status=%s career_synced=%t duration=%.2fs (pool)\n",
-			player.Gamertag,
-			syncResult.MatchesInserted,
-			syncResult.MatchesSkipped,
-			syncResult.Status(),
-			careerSynced,
-			syncResult.DurationSeconds,
-		)
-		if len(syncResult.Warnings) > 0 {
-			fmt.Printf("  warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
+		// Un joueur dont la passe s'est arrêtée sur une erreur compte dans `failed` :
+		// le compte rendu du lot doit dire la même chose que le verdict par joueur.
+		if reportErr := reportSyncResult(os.Stdout, "delta", player.Gamertag, &syncResult); reportErr != nil {
+			failed++
+			continue
 		}
+		synced++
 	}
 
 	fmt.Printf("sync delta batch: total=%d synced=%d skipped=%d failed=%d\n", total, synced, skipped, failed)
@@ -170,7 +156,7 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 	maxMatches := fs.Int("max-matches", 150, "Nombre de matchs API à parcourir (défaut 150 = 6 pages)")
 	matchType := fs.String("match-type", "matchmaking", "Type de match: all|matchmaking|custom|local")
 	rps := fs.Int("rps", 1, "Nombre max de requêtes API par seconde")
-	tokenPoolSize := fs.Int("token-pool-size", 0, "Taille du pool de tokens (0=auto-detect)")
+	tokenPoolSize := fs.Int("token-pool-size", 0, "Nombre maximal de slots SAINS du pool de tokens (0=tous les jetons sains du parc)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -186,13 +172,20 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 		return runSyncFullAll(ctx, cfg, *maxMatches, *matchType, *rps, *tokenPoolSize)
 	}
 
+	// Les migrations shared AVANT de synchroniser : une passe qui insère sur un schéma
+	// périmé rejette des matchs pour TOUS les joueurs (C-C, 2026-09-16).
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
+	}
+
 	player, err := loadPlayerSummary(cfg, *gamertag)
 	if err != nil {
 		return err
 	}
-	// Le joueur visé n a PAS besoin de son propre token : ses endpoints sont publics et
-	// servis par n importe quel token du pool (D1, plan 2026-09-16). Le rang de carrière
-	// n est pas synchronisé ici (flux CareerLiveService) : career_synced vaut false pour tous.
+	// Le joueur visé n a PAS besoin de son propre token : TOUS ses endpoints sont publics et
+	// servis par n importe quel token du pool (D1 du plan 2026-09-16, étendu au rang de
+	// carrière par D4 du plan robustesse). Le rang de carrière n est pas synchronisé ici
+	// (flux CareerLiveService) : career_synced vaut false pour tous.
 	engine, closePool, err := newPooledEngineForPlayer(ctx, cfg, *player, *tokenPoolSize, *rps)
 	if err != nil {
 		return err
@@ -206,26 +199,7 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("run full: %w", err)
 	}
 
-	postSync := false
-	careerSynced := false
-	if syncResult.PostSync != nil {
-		postSync = true
-		careerSynced = syncResult.PostSync.CareerSynced
-	}
-	fmt.Printf(
-		"sync full OK: gamertag=%s inserted=%d skipped=%d status=%s post_sync=%t career_synced=%t duration=%.2fs\n",
-		player.Gamertag,
-		syncResult.MatchesInserted,
-		syncResult.MatchesSkipped,
-		syncResult.Status(),
-		postSync,
-		careerSynced,
-		syncResult.DurationSeconds,
-	)
-	if len(syncResult.Warnings) > 0 {
-		fmt.Printf("warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
-	}
-	return nil
+	return reportSyncResult(os.Stdout, "full", player.Gamertag, &syncResult)
 }
 
 func runSyncFullAll(
@@ -242,6 +216,11 @@ func runSyncFullAll(
 	}
 	if len(players) == 0 {
 		return fmt.Errorf("aucun joueur configuré")
+	}
+
+	// Idem mono-joueur : le schéma partagé est mis à niveau avant la première insertion.
+	if err := applySharedMigrationsForTitle(cfg, titlePkg.DefaultSlug); err != nil {
+		return err
 	}
 
 	provider := auth_platform.NewSISUProvider()
@@ -280,20 +259,12 @@ func runSyncFullAll(
 			continue
 		}
 
-		synced++
-		careerSynced := syncResult.PostSync != nil && syncResult.PostSync.CareerSynced
-		fmt.Printf(
-			"sync full OK: gamertag=%s inserted=%d skipped=%d status=%s career_synced=%t duration=%.2fs (pool)\n",
-			player.Gamertag,
-			syncResult.MatchesInserted,
-			syncResult.MatchesSkipped,
-			syncResult.Status(),
-			careerSynced,
-			syncResult.DurationSeconds,
-		)
-		if len(syncResult.Warnings) > 0 {
-			fmt.Printf("  warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
+		// Idem `--all` delta : une passe au statut non-`success` compte dans `failed`.
+		if reportErr := reportSyncResult(os.Stdout, "full", player.Gamertag, &syncResult); reportErr != nil {
+			failed++
+			continue
 		}
+		synced++
 	}
 
 	fmt.Printf("sync full batch: total=%d synced=%d skipped=%d failed=%d\n", total, synced, skipped, failed)
