@@ -16,7 +16,7 @@ package sessionusage
 //
 // Ce que la divergence rendait possible : une liste de familles RECOPIÉE ici. Le
 // garde-rail interdit la recopie et exige l'accès partagé
-// ([replay.UsageFamilySpawnsPiece], recollée au manifeste par le garde-rail du
+// ([equipmentusage.UsageFamilySpawnsPiece], recollée au manifeste par le garde-rail du
 // paquet replay), plus la branche de repli sur les consommations.
 //
 // # POURQUOI UN GREP ET PAS UN TEST DE COMPORTEMENT
@@ -41,8 +41,8 @@ func TestBasculeUtiliseLitLaSourceUniqueDesFamilles(t *testing.T) {
 	src := string(raw)
 
 	// 1. LA CONNAISSANCE VIENT DU PAQUET replay, jamais d'une liste réécrite.
-	if !strings.Contains(src, "replay.UsageFamilySpawnsPiece(") {
-		t.Error("la bascule « utilisé » n'appelle plus replay.UsageFamilySpawnsPiece : " +
+	if !strings.Contains(src, "equipmentusage.UsageFamilySpawnsPiece(") {
+		t.Error("la bascule « utilisé » n'appelle plus equipmentusage.UsageFamilySpawnsPiece : " +
 			"la liste des familles à pièce engendrée est recollée au manifeste dans le paquet " +
 			"replay, une seconde écriture ici re-divergerait au premier objet `kind = deployed` ajouté")
 	}
@@ -64,7 +64,7 @@ func TestBasculeUtiliseLitLaSourceUniqueDesFamilles(t *testing.T) {
 	interdits := regexp.MustCompile(`"(wall|sensor|shroud_screen|threat_seeker|repair_field|translocator_beacon)"`)
 	if m := interdits.FindString(sansCommentaires(src)); m != "" {
 		t.Errorf("famille %s écrite en dur dans usage_outcomes.go — le périmètre du bilan vient "+
-			"de replay.EquipmentOutcomeFamilies et la bascule de replay.UsageFamilySpawnsPiece", m)
+			"de equipmentusage.EquipmentOutcomeFamilies et la bascule de equipmentusage.UsageFamilySpawnsPiece", m)
 	}
 }
 

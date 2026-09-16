@@ -95,13 +95,11 @@ var franchissementsToleres = map[string]string{
 		"testé, lui, reste une feuille sans aucun import du dépôt : c'est le TEST qui " +
 		"franchit. Portage attendu : la preuve d'équivalence descend avec le décodeur, sous " +
 		"`games/halo_infinite/film/`.",
-	"internal/analysis/sessionusage/usage_outcomes.go": "2026-09-12, rendu visible par le " +
-		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/replay` : SEUL " +
-		"franchissement de PRODUCTION de la liste. `sessionusage` lit les types de sortie " +
-		"d'usage d'équipement produits par le décodeur. Portage attendu : ces types " +
-		"remontent en `domain/` (ou `games/canonical/`), comme `domain/replaydoc` l'a déjà " +
-		"fait pour le document de rejeu au lot A — après quoi `sessionusage` n'importera " +
-		"plus rien d'un titre.",
+	// RETIRÉE LE 2026-09-17 (item 2.5.f) : `internal/analysis/sessionusage/usage_outcomes.go`
+	// était le SEUL franchissement de PRODUCTION de cette liste. Les quatre symboles d'usage
+	// d'équipement qu'il lisait dans `games/halo_infinite/film/replay` vivent désormais dans
+	// `internal/domain/equipmentusage` — le décodeur et l'agrégat de session les y lisent tous
+	// les deux. Reste QUATRE entrées, toutes des TESTS.
 	"internal/analysis/weapon_index_equivalence_test.go": "2026-09-12, rendu visible par le " +
 		"déplacement du décodeur (commit E.2) — `games/halo_infinite/film/filmdec` : test " +
 		"d'équivalence entre l'index d'armes d'`analysis` et celui du décodeur. Portage " +
