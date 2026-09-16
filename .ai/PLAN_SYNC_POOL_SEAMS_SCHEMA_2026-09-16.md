@@ -1,0 +1,270 @@
+# PLAN — Sync d'un profil sans token propre : pool partout, seams title-owned câblés par toutes les CLI, dérive de schéma `match_registry`
+
+> Créé le 2026-09-16. Branche : `wt/sync-pool`. Worktree dédié :
+> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-sync-pool` (règle « worktree dédié »).
+> Base : `feat/v75` @ `e4a313311`. **Push sur `main` = déploiement prod : interdit.**
+>
+> **Contrat d'exécution : skill `plan-execution` fait foi.** Ordre strict, une étape à la
+> fois, aucun report d'étape exécutable, chaque item statué `[x]` / `[~]` (référence) /
+> `[!]` (justification écrite), zéro fix hors périmètre (découvertes en §7). Vérifier sur
+> pièces avant de coder et avant de cocher : les numéros de ligne datent du 2026-09-16.
+>
+> **Interdits absolus pendant l'exécution** : aucun démarrage de serveur, aucune ouverture
+> des bases sous `data/` (une autre session les tient pour le chantier du décodeur — un
+> second process = violation mono-process ADR 0013). Tout se prouve par tests sur fixtures,
+> build, vet, grep.
+
+---
+
+## 1. Constat (vérifié sur pièces le 2026-09-16, premier profil suivi sans token : Nuzzles)
+
+Le pool de tokens (`internal/platform/auth/pool`, README) est conçu pour servir **n'importe quel
+joueur** : `PolicyAnyPublic` (tokens à tour de rôle) pour l'historique, les stats, les films,
+les CSR ; `PolicyPinnedPlayer` (le token du joueur lui-même) seulement pour les endpoints
+soumis à la vie privée (rang de carrière, personnalisation Spartan). Trois défauts, tous
+observés sur le sync de Nuzzles (2 023 matchs insérés le 2026-09-16, 65 min) :
+
+**D-A — Trois appelants court-circuitent la doctrine du pool** avec `if !pool.HasPlayer(gt) {
+skip }` — un joueur sans *son propre* token est sauté en bloc, alors que seul le rang de
+carrière lui est inaccessible :
+
+| Appelant | Ligne (2026-09-16) | Effet |
+|---|---|---|
+| CLI `sync-delta --all` | `cmd/levelup/cmd_sync.go:138` | `SKIP reason=not_in_pool` |
+| CLI `sync-full --all` | `cmd/levelup/cmd_sync.go:298` | idem |
+| Auto-sync serveur | `internal/scheduler/auto_sync_run.go:423` (`checkSyncPreconditions`) | jamais synchronisé par le cycle |
+| Cron personnalisation Spartan | `internal/scheduler/spartan_customization_cron.go:327` | **légitime** : l'appel suivant est `PolicyPinnedPlayer` (endpoint privé) — CONSERVÉ |
+
+Le commentaire de la CLI (« cas où Discovery n'a rien trouvé pour lui : pas d'env var, pas de
+sync_meta ») date du pool-par-joueur d'avant ADR 0023 : périmé. En outre la CLI **mono-joueur**
+(`sync-delta/sync-full --gamertag X`) n'utilise pas le pool : `haloTokensForPlayer` (9
+appelants dans `cmd/levelup`) exige le refresh token de X.
+
+**D-B — Le post-sync des CLI panique à l'étape LUSR.** `cmd/server/main.go:1697-1725` câble
+huit *seams* title-owned au boot (provider des étapes de migration, racine des jalons H5,
+`halo5migrations.Register`, traductions de rangs, classifiers LUSR Infinite + H5, classifiers
+de famille objectif Infinite + H5). `cmd/levelup/main.go:65` n'en câble qu'un
+(`SetTitleStepsProvider`), `cmd/backfill_all/main.go` aucun. Résultat observé :
+`post-sync: PANIC récupéré … classifier LUSR non câblé` (`internal/sync/skill/skill_chain_provider.go:63`,
+fail-loud MT-15) → `perf_scores=0 lusr=0 citations=0 dominance=0` sur toute la passe. Tout
+sync CLI a ce trou depuis MT-15 ; les `backfill` le masquaient.
+
+**D-C — Dérive de schéma `match_registry`.** La DDL du code déclare `team_0_score` /
+`team_1_score INTEGER` (`internal/games/halo_infinite/migrations/steps_shared_core.go:56-57`,
+`internal/sync/schema.go`), la base réelle porte **`SMALLINT`** (lu sur la sauvegarde
+`data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb` — `information_schema.columns`).
+Deux matchs de Nuzzles rejetés à l'INSERT (`Type INT64 with value 120267 … INT16` ;
+`26764b9c-4b98-43f1-8d32-73abb3e5a3c8`, `7a5af767-0b8e-4d81-9e75-071359e3736a`) : scores
+d'équipe > 32 767 (Baptême du feu). Tout match à gros score d'équipe est **perdu pour tous
+les joueurs**. La colonne `player_count SMALLINT` n'est pas en cause (jamais renseignée côté
+Infinite, `grep "PlayerCount ="` → seulement `halo_5/ingest/collect.go`, `openspartan/mapper`).
+
+## 2. Décisions tranchées
+
+- **D1** — Un profil suivi sans token propre se synchronise par le pool (`PolicyAnyPublic`).
+  Les seuls appels qui exigent le token du joueur (`PolicyPinnedPlayer`) se **dégradent par
+  endpoint** : rang de carrière sauté avec un `slog.WarnContext` unique par passe et
+  `career_synced=false` (déjà le comportement quand l'endpoint refuse) ; le cron de
+  personnalisation garde son `HasPlayer` (exemption datée en commentaire).
+- **D2** — La CLI mono-joueur passe par le pool comme `--all` et le serveur. Plus aucun chemin
+  n'exige le token du joueur synchronisé. `haloTokensForPlayer` disparaît si plus d'appelant
+  (0 code mort) ; sinon ses appelants restants sont listés et justifiés (`token-capture`,
+  `sync-achievements` si l'endpoint est privé — à vérifier sur pièces).
+- **D3** — Les seams title-owned sont câblés par **une fonction unique**
+  `titleseams.RegisterAll(prestigeConfigDir string)` (nouveau paquet
+  `internal/games/titleseams`, sans logique : uniquement les appels `Set*`/`Register()` du bloc
+  serveur) appelée par **tout `package main` qui importe `internal/sync`**. Ratchet archlint.
+- **D4** — Dérive de schéma : migration idempotente `widen_match_registry_team_scores`
+  (`ALTER TABLE match_registry ALTER COLUMN team_{0,1}_score SET DATA TYPE INTEGER`, gardée par
+  `information_schema.columns`), dans `steps_shared_core.go` à la suite des étapes existantes.
+  Garde-rail : un test qui construit `match_registry` avec la DDL **legacy** (SMALLINT), joue
+  les migrations, et affirme `INTEGER` ; plus la fixture de test (`sync/testutil/fixture.go`)
+  alignée sur la DDL courante (mémoire « DDL de test recopiées = dérive indétectable »).
+- **D5** — Aucun rejeu de données dans ce plan (les deux matchs rejetés se resynchronisent à
+  la reprise du sync de Nuzzles, annexe A). Aucune ouverture de base réelle.
+
+## 3. Étape 0 — Préparation (rapide)
+
+- [ ] 0.1 Worktree `../LevelUp-wt-sync-pool` sur `wt/sync-pool` (créé par le pilote) ;
+      vérifier `git branch --show-current`. `apps/web` n'est pas touché : pas de `npm install`.
+- [ ] 0.2 Lire `CLAUDE.md`, ce plan, `internal/platform/auth/pool/README.md`, skills
+      `plan-execution`, `arch-rules`. Lire `docs/adr/0023-*.md` (tokens) et `0035-*.md`
+      (annuaire : `ProfileGate`, `Onboard`) pour ne pas recroiser leur périmètre.
+- [ ] 0.3 Baseline : `cd apps/go-api && go build ./... && go test ./cmd/levelup/... ./internal/scheduler/... ./internal/sync/skill/... ./internal/platform/auth/pool/... ./internal/games/halo_infinite/migrations/... ./internal/archlint/...` → code de sortie 0 (noter la durée). `go test ./internal/sync/` seul dure ~500 s à froid : toujours `-timeout 30m`.
+
+**Gate G0** : branche correcte, baseline verte notée dans « Avancement ».
+
+## 4. Étape 1 — Seams title-owned câblés par toutes les CLI (D-B, moyen)
+
+- [ ] 1.1 `internal/games/titleseams/titleseams.go` (nouveau) : `func RegisterAll(prestigeConfigDir string)`
+      qui exécute, dans cet ordre et sans autre logique, les huit appels du bloc
+      `cmd/server/main.go:1697-1725` : `migration.SetTitleStepsProvider(halomigrations.StepsFor)` ;
+      `halo5migrations.SetMilestonesSeedRoot(filepath.Dir(prestigeConfigDir))` (si
+      `prestigeConfigDir != ""`, même garde que le serveur) ; `halo5migrations.Register()` ;
+      `migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)` ;
+      `syncpkg.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)` ;
+      `syncpkg.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)` ;
+      `syncpkg.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)` ;
+      `syncpkg.SetObjectiveFamilyClassifierForTitle(halo5.TitleSlug, halo5.IsObjectiveSubMode)`.
+      Doc d'en-tête : pourquoi (panic MT-15 sur les CLI, 2026-09-16), qui doit l'appeler.
+      Vérifier d'abord qu'aucun import cyclique n'apparaît (`titleseams` importe `sync`,
+      `migration`, les paquets `halo_infinite`/`halo_5` ; aucun d'eux ne doit importer
+      `titleseams`).
+- [ ] 1.2 `cmd/server/main.go` : le bloc est remplacé par l'appel `titleseams.RegisterAll(prestigeConfigDir)`
+      (les commentaires MT-07/MT-15/D-A déménagent dans le paquet). Comportement byte-identique.
+- [ ] 1.3 `cmd/levelup/main.go:65` : `migration.SetTitleStepsProvider` remplacé par
+      `titleseams.RegisterAll(<racine config prestige résolue comme le serveur — vérifier
+      comment `prestigeConfigDir` est calculé dans cmd/server et réutiliser la même source>)`.
+      `cmd/backfill_all/main.go` : idem. Tout autre `main` de `cmd/` qui importe
+      `levelup/go-api/internal/sync` (lister par `grep -rl '"levelup/go-api/internal/sync"' cmd/`)
+      reçoit l'appel — la liste est écrite dans « Avancement ».
+- [ ] 1.4 Ratchet `internal/archlint/titleseams_wired_test.go` : pour chaque répertoire de
+      `cmd/` dont un fichier non-test importe `levelup/go-api/internal/sync` (ou
+      `internal/sync/skill`), un fichier non-test du même répertoire contient
+      `titleseams.RegisterAll(`. Allowlist VIDE ; message d'échec = le nom du `main` fautif et
+      la ligne à ajouter.
+- [ ] 1.5 Test `internal/games/titleseams/titleseams_test.go` : après `RegisterAll("")`,
+      `skill.GetLUSRChain("arena:slayer")` (ou l'appel public exact du provider) ne panique pas
+      et retourne une chaîne non vide ; la variante titre H5 est routée (`GetLUSRChainForTitle`).
+- [ ] 1.6 Test de non-régression CLI : `cmd/levelup/main_seams_test.go` — invoque le même
+      chemin de démarrage que `main` (fonction extraite si nécessaire, ≤ 80 L) puis
+      `skill.GetLUSRChain(...)` sans panic. Un test qui passe avec ET sans 1.3 est refusé.
+
+**Gate G1** : `go build ./... && go vet ./cmd/... ./internal/games/titleseams/... ./internal/archlint/...` → 0 ;
+`go test ./internal/games/titleseams/... ./internal/archlint/... ./cmd/levelup/... ./cmd/server/...` → 0 ;
+`grep -rn "SetLUSRChainClassifier(" cmd/` → une seule occurrence hors `titleseams` : AUCUNE
+(tout passe par `RegisterAll`).
+
+## 5. Étape 2 — Le pool sert tout profil suivi (D-A, lourd)
+
+- [ ] 2.1 CLI mono-joueur : `runSyncDelta` et `runSyncFull` (`cmd/levelup/cmd_sync.go`)
+      construisent le pool (`buildCLITokenPool`, déjà utilisé par `--all`) et un
+      `go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID, 0)` posé par
+      `engine.SetCustomClient`, avec `&domain.HaloTokens{}` comme le fait `runSyncDeltaAll`
+      (`cmd_sync.go:146-175`). Extraire le code commun `--all` / mono-joueur dans une fonction
+      ≤ 80 L (`newPooledEngine(...)`) pour ne pas dupliquer (règle ≤ 2 copies : il y a déjà
+      deux copies `--all`, la troisième impose le helper).
+- [ ] 2.2 Supprimer les deux `if !pool.HasPlayer(...) { skip }` de `cmd_sync.go` (`:138`,
+      `:298`) et leur commentaire périmé. `sync full SKIP … no_player_db` reste (une base
+      absente est créée par le sync mono-joueur, pas par `--all` : décision inchangée, la
+      justifier en commentaire daté).
+- [ ] 2.3 `haloTokensForPlayer` : lister ses 9 appelants (`grep -n "haloTokensForPlayer(" cmd/levelup/`).
+      Ceux qui servent un endpoint **public** passent au pool ; ceux qui servent un endpoint
+      **privé** (à vérifier sur pièces dans `internal/sync/pooled_client.go` : `GetCareerRank`,
+      et tout appel non listé par le client poolé) gardent le token du joueur avec un
+      commentaire daté. Si aucun appelant ne reste : supprimer la fonction et son test.
+- [ ] 2.4 Auto-sync : `checkSyncPreconditions` (`internal/scheduler/auto_sync_run.go:423-429`)
+      perd la précondition `HasPlayer` ; la précondition `pool == nil` reste. Le message
+      « authentifier le joueur (SSO Xbox) » disparaît avec elle. Vérifier que `BuildEngine`
+      passe bien par `NewPooledHaloClient` pour ce joueur (`auto_sync_engine.go`).
+- [ ] 2.5 Rang de carrière : dans le client poolé (`pooled_client.go:287-300`,
+      `PolicyPinnedPlayer`), l'erreur « n'a pas de token pinné » devient une erreur typée
+      `ErrNoPinnedToken` ; l'étape post-sync carrière (`internal/sync/career.go`) la journalise
+      **une fois** en `slog.WarnContext(ctx, "career: rang non synchronisé — aucun token propre", "gamertag", …)`
+      et pose `career_synced=false` sans compter d'erreur fatale. Vérifier sur pièces qu'aucune
+      autre étape du post-sync n'utilise `PolicyPinnedPlayer`.
+- [ ] 2.6 Cron Spartan (`spartan_customization_cron.go:327`) : `HasPlayer` CONSERVÉ ;
+      commentaire daté 2026-09-16 : « endpoint privé (PolicyPinnedPlayer) — seule exemption
+      légitime à D1 ».
+- [ ] 2.7 Ratchet `internal/archlint/no_pool_hasplayer_gate_test.go` : `HasPlayer(` n'apparaît
+      hors du paquet `pool` et de ses tests que dans `spartan_customization_cron.go` (allowlist
+      datée d'une entrée). Message d'échec : « un profil sans token propre se synchronise par
+      le pool (D1, plan 2026-09-16) ».
+- [ ] 2.8 Tests : (a) `cmd/levelup` : pool de fixture à un slot (JGtm), joueur `X` absent du
+      pool → `sync-delta --gamertag X` construit un client poolé (pas d'appel à
+      `haloTokensForPlayer`) ; (b) `scheduler` : `checkSyncPreconditions` accepte un joueur hors
+      pool quand le pool existe, refuse toujours `pool == nil` ; (c) `sync` : post-sync carrière
+      avec `ErrNoPinnedToken` → `career_synced=false`, un WARN, statut `success` ; (d) le test
+      existant qui affirmait `not_in_pool` est retourné (documenté dans le test, pas supprimé
+      en silence).
+- [ ] 2.9 Docs bilingues : `docs/COMMANDS.md` (FR + EN dans le même commit) — sémantique de
+      `sync-delta/sync-full --gamertag` (pool, aucun token propre requis, rang de carrière
+      dégradé) ; `internal/platform/auth/pool/README.md` : section « Appelants » listant les
+      trois sites et l'exemption Spartan.
+
+**Gate G2** : `go build ./... && go vet ./...` → 0 ; `go test ./cmd/levelup/... ./internal/scheduler/... ./internal/sync/... -timeout 30m` → 0 ;
+`go test -tags=integration -p 1 ./internal/sync/... -timeout 30m` → 0 (`-p 1` non négociable) ;
+`grep -rn "HasPlayer(" apps/go-api --include=*.go | grep -v "auth/pool/" | grep -v _test`
+→ exactement une ligne (`spartan_customization_cron.go`) ; `grep -rn "haloTokensForPlayer(" cmd/`
+→ 0 ou uniquement les appelants justifiés en 2.3.
+
+## 6. Étape 3 — Dérive de schéma `match_registry` (D-C, moyen, à risque : migration shared)
+
+- [ ] 3.1 `steps_shared_core.go` : nouvelle étape `widen_match_registry_team_scores`
+      (même forme que `add_player_count_to_match_registry`, `:600-602`) : pour chaque colonne
+      `team_0_score`, `team_1_score`, si `information_schema.columns.data_type = 'SMALLINT'`
+      → `ALTER TABLE match_registry ALTER COLUMN <c> SET DATA TYPE INTEGER` ; sinon no-op.
+      Journal `slog.InfoContext` avec les colonnes élargies. Vérifier sur pièces (doc DuckDB
+      1.5.5 embarquée, `internal/migration` helpers) la syntaxe et l'existence d'un helper
+      `AlterColumnType` ; s'il n'existe pas, l'écrire dans `internal/migration` (≤ 80 L, test).
+      **Contrainte ART** : `match_registry` porte une PK (index ART). Vérifier dans
+      `internal/migration/append_only_rebuild.go` / ADR 0026 si un `ALTER COLUMN TYPE` sur
+      table indexée est admis ; sinon appliquer la recette de reconstruction de l'ADR 0026
+      (table neuve + copie + swap) et le dire dans « Avancement ».
+- [ ] 3.2 `internal/sync/schema.go:196-197` et `internal/sync/testutil/fixture.go` : DDL alignée
+      (`INTEGER`) — aucune fixture ne garde `SMALLINT` pour ces colonnes.
+- [ ] 3.3 Test de migration `steps_shared_core_widen_test.go` (DuckDB `:memory:` ou fichier
+      temporaire — JAMAIS une base sous `data/`) : créer `match_registry` avec la DDL legacy
+      (`team_0_score SMALLINT, team_1_score SMALLINT`, PK sur `match_id`, quelques lignes),
+      jouer la migration, affirmer `INTEGER` × 2, lignes intactes, puis un INSERT avec
+      `team_0_score = 120267` réussit. Second passage = no-op (idempotence).
+- [ ] 3.4 Ratchet anti-dérive `internal/archlint/match_registry_ddl_types_test.go` : les types
+      déclarés dans `steps_shared_core.go` (CREATE) et `schema.go` pour `match_registry` sont
+      identiques colonne à colonne (parse textuel des deux DDL) — une divergence future entre
+      les deux sources échoue.
+- [ ] 3.5 `no_art_patterns_test.go` : si l'étape ajoute un motif surveillé (UPDATE/ALTER sur
+      table critique), l'allowlister avec justification datée — sinon rien.
+
+**Gate G3** : `go test ./internal/games/halo_infinite/migrations/... ./internal/migration/... ./internal/archlint/...` → 0 ;
+`go test -tags=integration -p 1 ./internal/persist/... ./internal/migration/... -timeout 30m` → 0.
+
+## 7. Étape 4 — Clôture
+
+- [ ] 4.1 Gates complets : `cd apps/go-api && go build ./... && go vet ./... && go test ./... -timeout 30m` → 0 ;
+      `go test -tags=integration -p 1 ./... -timeout 30m` → 0 (codes de sortie vérifiés, pas la
+      sortie filtrée ; un paquet en FAIL sans `--- FAIL:` se rejoue seul).
+- [ ] 4.2 `.ai/thought_log.md` : entrée `[2026-09-16]` Complété (constats D-A/B/C, décisions,
+      gates, ce qui n'a pas été fait).
+- [ ] 4.3 `docs/COMMANDS.md` FR + EN (2.9) relus ; `internal/platform/auth/pool/README.md` à jour.
+- [ ] 4.4 Revue adversariale (pilote, 2 relecteurs : auth/pool + sync/migration) et CI : `[~]`.
+- [ ] 4.5 Aucun push, aucun merge : décision utilisateur.
+
+Journal de phase : section « Avancement » en fin de fichier (date, étape, gate + code de
+sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans le worktree.
+
+---
+
+## 8. Découvertes hors périmètre (ne pas traiter ici)
+
+- `sync full SKIP reason=no_player_db` : `--all` ne crée pas la base d'un profil neuf, seul le
+  sync mono-joueur le fait (`OpenPlayerDB`). Décision inchangée dans ce plan (2.2).
+- Les trois refresh tokens `revoked` (`AADSTS70000` : Chocoboflor, Madina97294, XxDaemonGamerxX,
+  constaté au boot du 2026-09-16) — diagnostic ADR 0023 (rotation perdue / RT étranger), pas
+  de re-capture. Hors plan.
+- `cmd/levelup` : `sync-full --gamertag` téléchargeait des morceaux de film (`downloadBlob …
+  filmChunkN 404`) alors que `replay_build_location=off` et que la CLI ne câble pas les
+  artefacts de rejeu : identifier l'étape post-sync qui lit les films en CLI (événements de
+  surbrillance ?) et documenter ce qu'elle produit.
+
+## Annexe A — Reprise du sync de Nuzzles (utilisateur + pilote, APRÈS ce plan et quand la base est libre)
+
+1. `replay_build_location` est actuellement à **`off`** dans `app_settings.json` (posé le
+   2026-09-16 pour le sync initial) : le remettre à `local` **après** la cuisson (étape 4).
+2. `levelup sync-full --gamertag Nuzzles --max-matches 6500 --rps 3` avec la CLI réparée : les
+   2 023 matchs connus sont filtrés page par page (~30 s), les ~4 000 restants insérés, le
+   post-sync complet joue (LUSR, perf, citations, dominance) — les deux matchs rejetés
+   (`26764b9c…`, `7a5af767…`) rentrent grâce à l'étape 3.
+3. Rattrapage des enrichissements des 2 023 premiers : `levelup backfill --gamertag Nuzzles --perf`,
+   `--citations`, `--csr`, `--lusr` (chaque commande passe désormais par `titleseams`).
+4. Films des 200 plus récents : `levelup backfill-killsource --online --limit 200 --gamertag JGtm --dry-run`
+   (contrôler que la liste est bien celle de Nuzzles — `--gamertag` = prêteur de token,
+   sélection = tout le parc, plus récents d'abord), puis sans `--dry-run`.
+5. Cuisson : `levelup backfill-replay --dry-run` puis `--limit 200`, en fond, journal + Monitor.
+6. `replay_build_location` → `local` ; redémarrer le serveur (`air` depuis Git Bash ou avec
+   `CGO_ENABLED=1` et `C:\msys64\ucrt64\bin` dans le PATH, sinon il sert un binaire périmé).
+
+---
+
+## Avancement
+
+(vide — plan non exécuté au 2026-09-16 12:00)
