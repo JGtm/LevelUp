@@ -1,3 +1,13 @@
+## [2026-09-16] Chantier décodeur — fusion du volet facts + source de 2.6, gates à zéro, trois tranches M3 en parallèle
+
+**Statut** : Complété (fusion 2.6 facts, 3.4 prep) / En cours (2.5.e, 3.2 données, 3.3 recherche).
+
+**Décision technique principale.** Le volet facts + source du lot 2.6 (`feat/decfilm-26f`, réconcilié sur 2.5.b au rang `GrammarRev` .35) fusionne en e7b9bd48e : `source.Rev` (`film/source/rev.go`, `source-2026-09-16`) et `facts.Rev` (`film/facts/rev.go`, reprend `killsource-2026-09-16.2` — V15 (16), aucun backlog ; hache tout `film/facts` plus les VALEURS de `source.Rev` et de `GrammarRev` — V15 (12)) naissent sur le mécanisme de 2.6.0 ; `KillSourceDecoderRev` disparaît, `killcollector`, `postsync` et le backfill lisent `facts.Rev` ; `film/types` naît, feuille, avec 13 types purs et un golden unique de formes à porte double (9 types refusés sur mesure : méthodes ou dépendances ; alias datés par couche pour les 79 fichiers de `replay` / `replaybuild` / `cmd` encore derrière, à retirer au volet grammar/replay). Sept mutations de preuve. Gates sur la tête fusionnée : équivalence 20/20 identiques, corpus gate 14/14 à zéro.
+
+**M3 en parallèle (question de l'utilisateur).** Trois tranches sans toucher `film/` : 3.4 préparation Ghidra (fusionnée 6a360201b) — les largeurs d'axe sont un CALCUL (loi L=16, C=1/120, plafond 26, garde 2^22, eps 1e-4) sur les bornes de carte, LEVEL immédiat 0x10, accord loi / catalogue 79 cartes sur 79, verdict Q6 = (b) `map_quant_bounds.json` tel quel, 3.4.1 = branchement sans saisie + une ligne de profil sur la loi ; D1 (3.4) : `consumeAbsolutePayload` jette les positions valides des cartes à région (Live Fire) — correctif de contenu en 3.4.1 ; 3.2 données (livré, gate 17 témoins à la voie) — section `registryFingerprints` du catalogue, 9 clefs / 5 empreintes, statut connue / présumée, témoins 14 -> 17 ; D2 (3.2) : l'empreinte de registre ne sépare pas les builds ; 3.3 recherche (instrument prêt, mesure 0 en cours) — D2 (3.3r) : le marqueur de lancer ne porte que cinq bits d'index, `ti=41` et `ti=9` produisent les mêmes 24 bits.
+
+**Prochaine étape** : gate 3.2 (17 témoins) puis six films de 3.3 sur la voie ; 2.5.e + 2.5.g en cours ; puis 2.6 volet grammar/profile/replay, 2.6.3, clôture M2 ; M3 production ensuite (3.4.1 branchement, 3.3.1 selon le verdict de la recherche, 3.2.1 volet code, 3.1.1, 3.6).
+
 ## [2026-09-16] Chantier décodeur — fusion du lot 2.5.b (la couche profile, données seulement), les cinq couches existent
 
 **Statut** : Complété (fusion) / En cours (réconciliation 2.6 volet facts).
