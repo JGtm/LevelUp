@@ -4145,6 +4145,37 @@ distinctes à la même milliseconde, victimes `2535413577167650` (crédit) et `2
 Preuve : `go test ./internal/persist/` + `-tags=integration -p 1 ./internal/persist/` verts ;
 `no_art_patterns_test.go` inchangé ; revue adversariale à deux relecteurs (L1 anti-ART, L6 tests).
 
+#### Lot 2.10 (parallèle, V12) — Finitions d'outillage nées des découvertes du 17/09 — S, high
+
+Hors grammaire : `Makefile`, `cmd/mapquant-build/` + `data/titles/halo_infinite/reference/map_quant_bounds.json`,
+`internal/domain/title/` (racine du dépôt), `internal/platform/duckdb/` (erreur typée) et les sites qui
+la consomment dans `cmd/levelup/cmd_backfill_replay*.go` et `cmd/replay-corpus-gate/`. INTERDITS : tout
+paquet du film, `replaybuild`, `killcollector`, `persist`. Aucun décodage.
+
+- [ ] 2.10.1 (D1 (3.1)) `make go-api-test-gamefiles` joue TOUS les tests `gamefiles` du module (pas
+      seulement `internal/himap/`) : cible Makefile + `docs/COMMANDS.md` EN/FR ; le test
+      `TestCatalogueCommisEgaleCatalogueRegenere` de `filmprofile` y passe.
+- [ ] 2.10.2 (D2 (3.1)) `map_quant_bounds.json` ne porte plus le chemin d'installation absolu du
+      poste dans `source` (chemin relatif au dossier du jeu, ou omis) : outil + fichier régénéré +
+      test qui interdit un chemin absolu dans un catalogue versionné.
+- [ ] 2.10.3 (D4 (3.1)) `title.FindRepoRoot` trouve la racine depuis un worktree git : repli sur un
+      marqueur toujours versionné (`go.mod` du module + `.git` fichier ou dossier) quand
+      `db_profiles.json` manque ; test avec un arbre temporaire sans `db_profiles.json`.
+- [ ] 2.10.4 (D3 (2.8)) Erreur typée `duckdb.ErrBaseTenueEnEcriture` (ou sentinelle équivalente,
+      nom FR cohérent avec le paquet) exportée depuis `internal/platform/duckdb`, portée par
+      `OpenReadForQuery` / `OpenReadWrite` quand le fichier est tenu par un autre process ; les
+      quatre sites qui reconnaissent le littéral « serveur en ecriture ? reessayer » (le gate et
+      `cmd_backfill_replay*.go`) passent par `errors.Is` ; test-grep interdisant le littéral hors du
+      paquet ; le garde-fou du lot 2.8 (`TestMarqueurBaseTenueExisteChezLevelup`) est remplacé par le
+      test de l'erreur typée.
+- [!] 2.10.5 (D1 (2.7p)) `funlen.ignore-comments: false` — NON TRAITÉ ICI : le seuil de 80 L de
+      CLAUDE.md n'est gardé par aucun instrument, mais basculer l'option rougirait la baseline lint
+      sur tout le dépôt ; décision utilisateur (bascule + baseline datée, ou instrument dédié à la
+      taille physique des fonctions dans `archlint`).
+
+Preuve : `go test` des paquets touchés + `./internal/archlint/` ; `golangci-lint` 0 issue nouvelle ;
+`TestGrammarRevSuitLaGrammaire` vert sans bouger ; `make go-api-test-gamefiles` joué (jeu installé).
+
 **Clôture M2** : ADR 0034 amendé (état atteint) ; fusion dans `feat/v75` (V3) ; recuisson sur
 signal (seul 2.6.3 change un champ) ; `bench_baseline.txt` re-figé et consigné.
 
