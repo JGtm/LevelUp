@@ -6,7 +6,7 @@ package replay
 // CE QUE LA PHASE 0 CHERCHE. Le composant `object-parent-state-component` (i10) est porté
 // par le bipède (ti=35), l'équipement (37), le corps rigide (38), le véhicule (40), l'arme
 // au sol (42) et trois archétypes inconnus. Son déserialiseur EXISTE et est bit-exact
-// (`filmdec.consumeObjectParentState`, miroir de `FUN_140c1e4d0`) — mais il consommait et
+// (`grammar.consumeObjectParentState`, miroir de `FUN_140c1e4d0`) — mais il consommait et
 // JETAIT chacune de ses valeurs. La phase 0 les fait sortir et demande à deux oracles si
 // l'une d'elles est le lien parent-enfant : le drapeau de CTF tenu par son porteur, le
 // Spartan assis dans un véhicule.
@@ -32,7 +32,7 @@ package replay
 //
 // LECTURE SEULE : aucun de ces fichiers n'écrit quoi que ce soit, n'ouvre aucune base et ne
 // touche à aucun chemin de production. La seule modification de production de la phase 0 est
-// la sonde elle-même (`filmdec.SetObjectParentStateHook`), qui ne lit pas un bit de plus.
+// la sonde elle-même (`grammar.SetObjectParentStateHook`), qui ne lit pas un bit de plus.
 
 import (
 	"fmt"
@@ -40,7 +40,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // attFilmEnv — la garde d'environnement de toute la phase 0 attachement.
@@ -75,7 +75,7 @@ type attI10 struct {
 	// TI est l'archétype résolu par le World pour ce slot.
 	TI uint32
 	// St est la lecture brute publiée par la sonde.
-	St filmdec.ObjectParentState
+	St grammar.ObjectParentState
 
 	// ParentSlot est `Quant16 & 0x1FFF` : le champ de 13 bits de `readQuantStat`, lu comme un
 	// slot d'entité. C'est L'HYPOTHÈSE, pas un fait — elle vaut par ce qui suit.
@@ -127,11 +127,11 @@ func attNewStat() attStat {
 // attScanI10 déroule la marche stateful sur tout le film et rend chaque lecture d'i10.
 func attScanI10(dir string) ([]attI10, attStat, error) {
 	st := attNewStat()
-	brut, err := filmdec.ReadFilmChunk(dir, 0)
+	brut, err := grammar.ReadFilmChunk(dir, 0)
 	if err != nil {
 		return nil, st, fmt.Errorf("registre (chunk_00) illisible : %w", err)
 	}
-	reg, err := filmdec.ParseRegistryChunk(brut)
+	reg, err := grammar.ParseRegistryChunk(brut)
 	if err != nil {
 		return nil, st, fmt.Errorf("registre illisible : %w", err)
 	}
@@ -139,34 +139,34 @@ func attScanI10(dir string) ([]attI10, attStat, error) {
 	// La sonde écrit dans `vues`, indexée PAR POSITION DE BIT : une position réécrite est
 	// un record re-décodé (réparation de composant non porté), et c'est la DERNIÈRE lecture
 	// qui vaut — celle dont l'alignement a été retenu.
-	vues := map[int]filmdec.ObjectParentState{}
-	obs := filmdec.NouvelleObservation()
-	obs.ObjectParentStateHook = func(s filmdec.ObjectParentState) { vues[s.StartBit] = s }
+	vues := map[int]grammar.ObjectParentState{}
+	obs := grammar.NouvelleObservation()
+	obs.ObjectParentStateHook = func(s grammar.ObjectParentState) { vues[s.StartBit] = s }
 
-	cfg := filmdec.DefaultFrameConfig()
+	cfg := grammar.DefaultFrameConfig()
 	cfg.Obs = obs
-	w := filmdec.NewWorld(reg)
+	w := grammar.NewWorld(reg)
 	var out []attI10
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(data) {
+		for _, p := range grammar.WalkPackets(data) {
 			pay := p.Payload(data)
-			if p.Type == filmdec.PacketTypeKeyframe {
-				w = filmdec.WorldFromKeyframe(reg, pay)
+			if p.Type == grammar.PacketTypeKeyframe {
+				w = grammar.WorldFromKeyframe(reg, pay)
 				continue
 			}
-			if p.Type != filmdec.PacketTypeDelta {
+			if p.Type != grammar.PacketTypeDelta {
 				continue
 			}
 			st.Paquets++
 			for k := range vues {
 				delete(vues, k)
 			}
-			recs, vues0 := filmdec.DecodeFrameViews(pay, w, cfg, attVuesParPaquet, cfg.PacketPreambleBits)
+			recs, vues0 := grammar.DecodeFrameViews(pay, w, cfg, attVuesParPaquet, cfg.PacketPreambleBits)
 			out = append(out, attCollecte(recs, vues, &st, p, c, w, attPaquetPropre(recs, vues0))...)
 		}
 	}
@@ -182,8 +182,8 @@ func attScanI10(dir string) ([]attI10, attStat, error) {
 // entre la lecture et la fin du paquet ne peut que faire passer un handle pour lié alors
 // qu'il ne l'était pas encore — jamais l'inverse. L'écart est d'un paquet (~0,5 s mesuré).
 func attCollecte(
-	recs []filmdec.FrameRecord, vues map[int]filmdec.ObjectParentState,
-	st *attStat, p filmdec.FilmPacket, chunk int, w *filmdec.World, propre bool,
+	recs []grammar.FrameRecord, vues map[int]grammar.ObjectParentState,
+	st *attStat, p grammar.FilmPacket, chunk int, w *grammar.World, propre bool,
 ) []attI10 {
 	var out []attI10
 	reclamees := 0
@@ -231,7 +231,7 @@ func attCollecte(
 }
 
 // attSlotMask est le masque du champ de slot d'un identifiant de record : `IDLowBits` = 13
-// bits (cf. `filmdec.DefaultFrameConfig`), les deux bits de poids fort étant la génération.
+// bits (cf. `grammar.DefaultFrameConfig`), les deux bits de poids fort étant la génération.
 const attSlotMask = uint32(1<<13) - 1
 
 // attPaquetPropre dit qu'un paquet est BIT-EXACT : au moins une vue a atteint son marqueur
@@ -242,7 +242,7 @@ const attSlotMask = uint32(1<<13) - 1
 // largeur : rien dans le record lui-même ne le dit. Le marqueur de fin de vue, lui, ne tombe
 // à sa place que si TOUTES les largeurs qui le précèdent étaient justes — un seul bit de
 // trop ou de moins et le décodeur lit un type de record au lieu du marqueur.
-func attPaquetPropre(recs []filmdec.FrameRecord, vuesDone int) bool {
+func attPaquetPropre(recs []grammar.FrameRecord, vuesDone int) bool {
 	if vuesDone < 1 {
 		return false
 	}

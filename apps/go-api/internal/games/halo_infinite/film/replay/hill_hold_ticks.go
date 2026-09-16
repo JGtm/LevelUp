@@ -46,25 +46,25 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // holdTicksComponent est l'emplacement du compteur de garde : composant 23, valeur A.
-var holdTicksComponent = objectiveevents.StatComponent{Comp: 23}
+var holdTicksComponent = objectives.StatComponent{Comp: 23}
 
 // buildHoldTicks rend la serie CUMULATIVE de tics de garde par camp, en escalier sur l'axe de
 // frames du document. Nil quand aucun camp n'est situable ou qu'aucun tic n'est lu.
 //
 // `teamByXUID` vient du ROSTER, jamais du film (meme regle que le proprietaire de zone) : le
 // film numerote ses entites, il ne dit pas quel camp elles servent.
-func buildHoldTicks(recs []objectiveevents.StatRecord, identity map[int]string,
+func buildHoldTicks(recs []objectives.StatRecord, identity map[int]string,
 	teamByXUID map[string]int, c scoreClock,
 ) []TeamHold {
 	slotsParCamp := holdSlotsByTeam(identity, teamByXUID)
 	if len(slotsParCamp) == 0 {
 		return nil
 	}
-	series := objectiveevents.SeriesTotal(recs, holdTicksComponent, false)
+	series := objectives.SeriesTotal(recs, holdTicksComponent, false)
 	instants := holdInstants(series, slotsParCamp)
 	if len(instants) == 0 {
 		return nil
@@ -103,7 +103,7 @@ func buildHoldTicks(recs []objectiveevents.StatRecord, identity map[int]string,
 
 // holdCursor lit une serie cumulative en avancant, et rend l'increment depuis le dernier appel.
 type holdCursor struct {
-	pts []objectiveevents.ScorePoint
+	pts []objectives.ScorePoint
 	i   int
 	val int
 }
@@ -139,7 +139,7 @@ func holdSlotsByTeam(identity map[int]string, teamByXUID map[string]int) map[int
 
 // holdInstants rend les instants d'emission du compteur, tous camps confondus, tries et
 // dedoublonnes. Ce sont les bornes des tranches sur lesquelles l'union se calcule.
-func holdInstants(series map[int][]objectiveevents.ScorePoint, slotsParCamp map[int][]int) []int {
+func holdInstants(series map[int][]objectives.ScorePoint, slotsParCamp map[int][]int) []int {
 	vus := map[int]bool{}
 	for _, slots := range slotsParCamp {
 		for _, slot := range slots {

@@ -15,8 +15,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/analysis/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
 )
 
 // objSeuilFenetres / objSeuilTemoin — les deux seuils du plan.
@@ -60,7 +60,7 @@ func objMesureFilm(t *testing.T, root, id string, src *objDiskFilm) objCtx {
 	f := objCorpus[id]
 	b := objBridgeOf(t, root, id)
 	identity := objIdentites(src, b.Deaths)
-	evs := objectiveevents.IdentifyNamedEvents(objectiveevents.NamedEvents(src, f.Mode), identity)
+	evs := objectives.IdentifyNamedEvents(objectives.NamedEvents(src, f.Mode), identity)
 	recs, images := objRecordsOf(t, root, id)
 	wins, fusions := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
 	tab := objConfronte(recs, b, wins)

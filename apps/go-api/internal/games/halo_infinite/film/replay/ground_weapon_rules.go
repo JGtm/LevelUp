@@ -18,7 +18,7 @@ package replay
 // mesures publiées au plan (lignes `PAD`, `PICKUP`, `PADSTATE`, `PADCYCLE`) désignent les mêmes
 // fonctions que le code qui publie l'artefact.
 //
-// PUR (aucune I/O, aucun accès film) : le décodage vit dans `filmdec`, l'assemblage dans
+// PUR (aucune I/O, aucun accès film) : le décodage vit dans `grammar`, l'assemblage dans
 // `ground_weapon_pads.go`.
 
 import (
@@ -26,8 +26,8 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/analysis/weaponv3"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar/weaponv3"
 )
 
 // LES SEUILS, ÉCRITS AVANT LA MESURE (plan, items 1.2-1.4, 2.1, et décisions 2-4).
@@ -385,11 +385,11 @@ func gwPadsClass(lives map[uint32][]equipLife, a gwPadApparition) (string, int) 
 // balayage de créations n'est PAS discriminant à lui seul (sur `00162144`, la bande fantôme rend
 // 398 créations acceptées contre 366 pour la bande réelle). Après le filtre d'identité : 13
 // fantômes croisées contre 1 785 réelles sur huit films, un facteur 137.
-func gwPadsIdentity(c filmdec.EquipmentCreation) (uint32, bool) {
-	if !c.MPPPresent[filmdec.MPPWord32] {
+func gwPadsIdentity(c grammar.EquipmentCreation) (uint32, bool) {
+	if !c.MPPPresent[grammar.MPPWord32] {
 		return 0, false
 	}
-	return uint32(c.MPPVal[filmdec.MPPWord32]), true
+	return uint32(c.MPPVal[grammar.MPPWord32]), true
 }
 
 // gwPadsWeaponFamily rend le nom CANONIQUE de l'arme — le repli des alias, sans quoi un même

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // objectives_test.go — le calque des actions d'objectif.
@@ -14,9 +14,9 @@ import (
 // action peut disparaitre sans bruit.
 
 // ident construit un evenement identifie, pour alleger les cas de test.
-func ident(timeMS int, xuid, stat string) objectiveevents.IdentifiedEvent {
-	return objectiveevents.IdentifiedEvent{
-		NamedEvent: objectiveevents.NamedEvent{TimeMS: timeMS, Stat: stat},
+func ident(timeMS int, xuid, stat string) objectives.IdentifiedEvent {
+	return objectives.IdentifiedEvent{
+		NamedEvent: objectives.NamedEvent{TimeMS: timeMS, Stat: stat},
 		XUID:       xuid,
 	}
 }
@@ -24,10 +24,10 @@ func ident(timeMS int, xuid, stat string) objectiveevents.IdentifiedEvent {
 // TestBuildObjectiveActionsMapsOntoFrameAxis — la conversion vers l'index de frame est une
 // simple division : meme horloge des deux cotes, donc ni appariement ni tolerance.
 func TestBuildObjectiveActionsMapsOntoFrameAxis(t *testing.T) {
-	evs := []objectiveevents.IdentifiedEvent{
-		ident(0, "a", objectiveevents.StatFlagCaptures),
-		ident(250, "b", objectiveevents.StatFlagReturns),
-		ident(1_050, "a", objectiveevents.StatFlagGrabs),
+	evs := []objectives.IdentifiedEvent{
+		ident(0, "a", objectives.StatFlagCaptures),
+		ident(250, "b", objectives.StatFlagReturns),
+		ident(1_050, "a", objectives.StatFlagGrabs),
 	}
 	got, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 20})
 	if len(got) != 3 || cov.Attached != 3 {
@@ -50,9 +50,9 @@ func TestBuildObjectiveActionsMapsOntoFrameAxis(t *testing.T) {
 // Le cas est reel : le film continue apres la derniere position rendue, donc les actions de
 // fin de partie tombent au-dela de l'axe.
 func TestBuildObjectiveActionsCountsOutOfWindow(t *testing.T) {
-	evs := []objectiveevents.IdentifiedEvent{
-		ident(500, "a", objectiveevents.StatZoneCaptures),
-		ident(999_000, "a", objectiveevents.StatZoneSecures),
+	evs := []objectives.IdentifiedEvent{
+		ident(500, "a", objectives.StatZoneCaptures),
+		ident(999_000, "a", objectives.StatZoneSecures),
 	}
 	got, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 10})
 	if len(got) != 1 {
@@ -70,9 +70,9 @@ func TestBuildObjectiveActionsCountsOutOfWindow(t *testing.T) {
 // Le rattacher a un slot arbitraire serait exactement l'erreur que le pont existe pour
 // eviter (etat de l'art §20.1).
 func TestBuildObjectiveActionsRefusesUnidentified(t *testing.T) {
-	evs := []objectiveevents.IdentifiedEvent{
-		ident(100, "", objectiveevents.StatFlagSteals),
-		ident(200, "a", objectiveevents.StatFlagSteals),
+	evs := []objectives.IdentifiedEvent{
+		ident(100, "", objectives.StatFlagSteals),
+		ident(200, "a", objectives.StatFlagSteals),
 	}
 	got, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 10})
 	if len(got) != 1 || cov.NoSlot != 1 {
@@ -94,17 +94,17 @@ func TestBuildObjectiveActionsRefusesUnidentified(t *testing.T) {
 // MUTATION : reintroduire le filtre -> l'action « fantome » disparait, rouge.
 func TestActionsSansTrajectoirePubliéeSontQuandMemePubliees(t *testing.T) {
 	actions := []ObjectiveAction{
-		{T: 1, XUID: "a", Stat: objectiveevents.StatFlagCaptures},
-		{T: 2, XUID: "fantome", Stat: objectiveevents.StatFlagReturns},
+		{T: 1, XUID: "a", Stat: objectives.StatFlagCaptures},
+		{T: 2, XUID: "fantome", Stat: objectives.StatFlagReturns},
 	}
 	if n := countActionsWithoutTrack(actions, []Track{{XUID: "a"}}, nil); n != 1 {
 		t.Fatalf("actions sans trajectoire = %d, attendu 1", n)
 	}
 	doc := ReplayDocument{Tracks: []Track{{XUID: "a"}}}
 	cov := attachObjectiveActions(&doc, Options{
-		Objectives: []objectiveevents.IdentifiedEvent{
-			ident(100, "a", objectiveevents.StatFlagCaptures),
-			ident(200, "fantome", objectiveevents.StatFlagReturns),
+		Objectives: []objectives.IdentifiedEvent{
+			ident(100, "a", objectives.StatFlagCaptures),
+			ident(200, "fantome", objectives.StatFlagReturns),
 		},
 	}, IdentityRegistry{}, scoreClock{intervalMS: 100, frames: 10})
 	if len(doc.Objectives) != 2 {
@@ -122,7 +122,7 @@ func TestActionsSansTrajectoirePubliéeSontQuandMemePubliees(t *testing.T) {
 // sont verrouillees ici, un renommage silencieux casserait le rendu.
 func TestObjectiveActionJSONShape(t *testing.T) {
 	raw, err := json.Marshal(ObjectiveAction{
-		T: 3, XUID: "2533274823110022", Stat: objectiveevents.StatFlagGrabs, TimeMS: 350,
+		T: 3, XUID: "2533274823110022", Stat: objectives.StatFlagGrabs, TimeMS: 350,
 	})
 	if err != nil {
 		t.Fatalf("marshal : %v", err)
@@ -156,9 +156,9 @@ func TestDocumentOmitsEmptyObjectives(t *testing.T) {
 // le premier paquet de POSITION. Sans la soustraction, une action de 10 500 ms de film tombait a
 // la frame 105 au lieu de 5 — soit 10 s trop tard, donc frequemment sur la mauvaise zone.
 func TestBuildObjectiveActionsSubtractsOrigin(t *testing.T) {
-	evs := []objectiveevents.IdentifiedEvent{
-		ident(10_500, "a", objectiveevents.StatFlagCaptures),
-		ident(20_000, "a", objectiveevents.StatFlagReturns),
+	evs := []objectives.IdentifiedEvent{
+		ident(10_500, "a", objectives.StatFlagCaptures),
+		ident(20_000, "a", objectives.StatFlagReturns),
 	}
 	clock := scoreClock{intervalMS: 100, frames: 200, originMS: 10_000}
 	got, cov := buildObjectiveActions(evs, 0, 0, clock)
@@ -180,9 +180,9 @@ func TestBuildObjectiveActionsSubtractsOrigin(t *testing.T) {
 // TestBuildObjectiveActionsRefusesBeforeFrameZero — une action ANTERIEURE a la frame 0 (mise en
 // place du match) est comptee hors fenetre, jamais ecrasee sur la frame 0.
 func TestBuildObjectiveActionsRefusesBeforeFrameZero(t *testing.T) {
-	evs := []objectiveevents.IdentifiedEvent{
-		ident(9_950, "a", objectiveevents.StatFlagGrabs),
-		ident(10_100, "a", objectiveevents.StatFlagGrabs),
+	evs := []objectives.IdentifiedEvent{
+		ident(9_950, "a", objectives.StatFlagGrabs),
+		ident(10_100, "a", objectives.StatFlagGrabs),
 	}
 	got, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 200, originMS: 10_000})
 	if len(got) != 1 || cov.OutOfWindow != 1 {
@@ -205,9 +205,9 @@ func TestBuildObjectiveActionsRefusesBeforeFrameZero(t *testing.T) {
 // MUTATION : rendre `cov := LayerCoverage{Available: len(evs)}` (sans `unnamed`) rougit sur
 // les deux assertions — `disponibles = 2, attendu 5` et `sansSlot = 0, attendu 3`.
 func TestCouvertureCompteCeQueLePontNaPasNomme(t *testing.T) {
-	evs := []objectiveevents.IdentifiedEvent{
-		ident(100, "a", objectiveevents.StatFlagCaptures),
-		ident(200, "b", objectiveevents.StatFlagGrabs),
+	evs := []objectives.IdentifiedEvent{
+		ident(100, "a", objectives.StatFlagCaptures),
+		ident(200, "b", objectives.StatFlagGrabs),
 	}
 	got, cov := buildObjectiveActions(evs, 3, 0, scoreClock{intervalMS: 100, frames: 20})
 	if len(got) != 2 {
@@ -250,7 +250,7 @@ func TestCouvertureCompteCeQueLePontNaPasNomme(t *testing.T) {
 //
 // MUTATION : revenir a l'index bati sur `tr.XUID != ""` rougit (« sansTrajectoire = 1, attendu 0 »).
 func TestActionDunJoueurSansVieNommeeEstPubliee(t *testing.T) {
-	actions := []ObjectiveAction{{T: 1, XUID: "42", Stat: objectiveevents.StatFlagCaptures}}
+	actions := []ObjectiveAction{{T: 1, XUID: "42", Stat: objectives.StatFlagCaptures}}
 	tracks := []Track{{Slot: 536}} // la piste est PUBLIEE, son nommage a echoue
 	if n := countActionsWithoutTrack(actions, tracks, map[uint32]uint64{536: 42}); n != 0 {
 		t.Fatalf("sansTrajectoire = %d, attendu 0 : le pont nomme le slot 536", n)
@@ -261,7 +261,7 @@ func TestActionDunJoueurSansVieNommeeEstPubliee(t *testing.T) {
 // l'action reste PUBLIEE (doctrine R1) mais elle est COMPTEE — le defaut du calque des positions
 // doit rester visible au journal, et on n'invente aucun joueur pour le masquer.
 func TestActionSansPontEstComptee(t *testing.T) {
-	actions := []ObjectiveAction{{T: 1, XUID: "42", Stat: objectiveevents.StatFlagCaptures}}
+	actions := []ObjectiveAction{{T: 1, XUID: "42", Stat: objectives.StatFlagCaptures}}
 	tracks := []Track{{Slot: 536}}
 	for nom, pont := range map[string]map[uint32]uint64{
 		"pont muet":           nil,
@@ -289,11 +289,11 @@ func TestActionSansPontEstComptee(t *testing.T) {
 //
 // MUTATION : recompter `len(evs)` -> `available` remonte a 4, rouge.
 func TestCouvertureNeCompteQueLesFamillesDObjectif(t *testing.T) {
-	evs := []objectiveevents.IdentifiedEvent{
-		ident(100, "a", objectiveevents.StatKills),
-		ident(200, "a", objectiveevents.StatZoneCaptures),
-		ident(300, "b", objectiveevents.StatAssists),
-		ident(400, "b", objectiveevents.StatFlagGrabs),
+	evs := []objectives.IdentifiedEvent{
+		ident(100, "a", objectives.StatKills),
+		ident(200, "a", objectives.StatZoneCaptures),
+		ident(300, "b", objectives.StatAssists),
+		ident(400, "b", objectives.StatFlagGrabs),
 	}
 	got, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 10})
 	if len(got) != 4 {
@@ -311,11 +311,11 @@ func TestCouvertureNeCompteQueLesFamillesDObjectif(t *testing.T) {
 // TestCouvertureFamillesRejetsEtHorloge — les REJETS suivent la meme regle que le
 // denominateur : un frag hors fenetre ou sans identite ne grossit aucune categorie.
 func TestCouvertureFamillesRejetsEtHorloge(t *testing.T) {
-	evs := []objectiveevents.IdentifiedEvent{
-		ident(999_000, "a", objectiveevents.StatKills),       // hors fenetre, hors objectif
-		ident(999_000, "a", objectiveevents.StatZoneSecures), // hors fenetre, objectif
-		ident(100, "", objectiveevents.StatAssists),          // sans identite, hors objectif
-		ident(200, "", objectiveevents.StatFlagReturns),      // sans identite, objectif
+	evs := []objectives.IdentifiedEvent{
+		ident(999_000, "a", objectives.StatKills),       // hors fenetre, hors objectif
+		ident(999_000, "a", objectives.StatZoneSecures), // hors fenetre, objectif
+		ident(100, "", objectives.StatAssists),          // sans identite, hors objectif
+		ident(200, "", objectives.StatFlagReturns),      // sans identite, objectif
 	}
 	_, cov := buildObjectiveActions(evs, 0, 0, scoreClock{intervalMS: 100, frames: 10})
 	if cov.Available != 2 || cov.OutOfWindow != 1 || cov.NoSlot != 1 || !cov.Balanced() {

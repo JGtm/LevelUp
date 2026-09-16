@@ -64,7 +64,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // epoFenetreUS est la fenêtre du juge temporel : la fin de vie doit tomber à moins de 500 ms
@@ -108,7 +108,7 @@ func (b epoBilan) String() string {
 // est-il injectif là où la distance seule ne l'est pas ?
 func TestEquipmentPickupOrigin(t *testing.T) {
 	s := glResolve(t)
-	pickups, _, err := filmdec.ScanFilmBipedPickups(s.dir)
+	pickups, _, err := grammar.ScanFilmBipedPickups(s.dir)
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
@@ -130,7 +130,7 @@ func TestEquipmentPickupOrigin(t *testing.T) {
 	temoin := map[int64]*epoBilan{}
 	sansPos := 0
 	for _, p := range pickups {
-		if filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if grammar.BipedPickupIsWeaponClass(p.Class) {
 			continue
 		}
 		pos, ok := glAt(s.pos, p.Slot, p.TimestampUS)
@@ -199,7 +199,7 @@ func TestEquipmentPickupOrigin(t *testing.T) {
 
 // epoCandidatsTemporels compte les vies ti=37 dont la FIN tombe dans la fenêtre autour de `at`
 // ET qui reposent à portée du ramasseur. C'est la conjonction des deux juges.
-func epoCandidatsTemporels(lives []eqlLife, p filmdec.BipedPosition, at uint64) int {
+func epoCandidatsTemporels(lives []eqlLife, p grammar.BipedPosition, at uint64) int {
 	n := 0
 	for _, l := range lives {
 		if epoEcart(l.tEnd, at) > epoFenetreUS {
@@ -214,7 +214,7 @@ func epoCandidatsTemporels(lives []eqlLife, p filmdec.BipedPosition, at uint64) 
 
 // epoCandidatsSpatiaux compte les vies VIVANTES à l'instant `at` et à portée — le juge du
 // lot 4, reproduit ici au même rayon pour que la comparaison soit lisible.
-func epoCandidatsSpatiaux(lives []eqlLife, p filmdec.BipedPosition, at uint64) int {
+func epoCandidatsSpatiaux(lives []eqlLife, p grammar.BipedPosition, at uint64) int {
 	n := 0
 	for _, l := range lives {
 		if at < l.t0 || at > l.tEnd {
@@ -264,7 +264,7 @@ func epoCompte(b *epoBilan, n int) {
 // de grenade. La question « la prise vient-elle d'un point d'apparition ? » n'est donc pas
 // testable en propre : ce qui suit ne mesure que la proximité aux socles de POWER-UP, et un
 // taux nul y sera un manque de données, pas une réfutation.
-func epoSoclesDeCarte(t *testing.T, s glSetup, pickups []filmdec.BipedPickup, familles map[uint32]string) {
+func epoSoclesDeCarte(t *testing.T, s glSetup, pickups []grammar.BipedPickup, familles map[uint32]string) {
 	t.Helper()
 	nom := os.Getenv("PICKUP_MAP")
 	cat, err := LoadMapWeaponPads(filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles",
@@ -304,7 +304,7 @@ func epoSoclesDeCarte(t *testing.T, s glSetup, pickups []filmdec.BipedPickup, fa
 	}
 	pres, presTemoin, n := 0, 0, 0
 	for _, p := range pickups {
-		if filmdec.BipedPickupIsWeaponClass(p.Class) {
+		if grammar.BipedPickupIsWeaponClass(p.Class) {
 			continue
 		}
 		pos, ok := glAt(s.pos, p.Slot, p.TimestampUS)
@@ -332,7 +332,7 @@ func epoSoclesDeCarte(t *testing.T, s glSetup, pickups []filmdec.BipedPickup, fa
 }
 
 // epoPresDunSocle dit si une position est à portée de l'un des socles.
-func epoPresDunSocle(socles []MapWeaponPadSpot, p filmdec.BipedPosition) bool {
+func epoPresDunSocle(socles []MapWeaponPadSpot, p grammar.BipedPosition) bool {
 	for _, s := range socles {
 		if glDist(p.X, p.Y, p.Z, float32(s.Pos.X), float32(s.Pos.Y), float32(s.Pos.Z)) <= epoRayon {
 			return true

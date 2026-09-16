@@ -4,25 +4,25 @@ import (
 	"math"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // posAt fabrique un échantillon de position portant un cap de visée i21.
-func posAt(slot uint32, tUS uint64, x, y float32, headingDeg float64) filmdec.BipedPosition {
-	p := filmdec.BipedPosition{Slot: slot, TimestampUS: tUS, X: x, Y: y, HasWorld: true}
+func posAt(slot uint32, tUS uint64, x, y float32, headingDeg float64) grammar.BipedPosition {
+	p := grammar.BipedPosition{Slot: slot, TimestampUS: tUS, X: x, Y: y, HasWorld: true}
 	p.HasYaw = true
 	// AimHeadingDeg = 360*(q+0.5)/4096 : on inverse pour poser le cap voulu.
 	p.YawRaw = uint32(headingDeg/360*4096 - 0.5)
 	return p
 }
 
-func fireAt(tUS uint64, playerIdx int, headingDeg float64) filmdec.FireEvent {
-	e := filmdec.FireEvent{TimestampUS: tUS, FilmIndex: playerIdx, WeaponID: 0x6ACDC44D42C9679F}
-	code, ok := filmdec.EncodeAimVector(unitFromHeading(headingDeg), filmdec.FireAimBits)
+func fireAt(tUS uint64, playerIdx int, headingDeg float64) grammar.FireEvent {
+	e := grammar.FireEvent{TimestampUS: tUS, FilmIndex: playerIdx, WeaponID: 0x6ACDC44D42C9679F}
+	code, ok := grammar.EncodeAimVector(unitFromHeading(headingDeg), grammar.FireAimBits)
 	if !ok {
 		panic("largeur de visée refusée")
 	}
-	v, ok := filmdec.DecodeAimVectorChecked(code, filmdec.FireAimBits)
+	v, ok := grammar.DecodeAimVectorChecked(code, grammar.FireAimBits)
 	if !ok {
 		panic("visée non décodable")
 	}
@@ -43,13 +43,13 @@ func unitFromHeading(deg float64) [3]float32 {
 // Cette fonction est supprimée. La construction du pont est testée là où elle vit désormais
 // (lives_test.go, à partir du fil des morts) ; ici on teste ce que buildShots en fait.
 func TestBuildShots_PlacesShotOnItsOwnerSlot(t *testing.T) {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	for i := uint64(0); i < 20; i++ {
 		ts := 1_000_000 + i*50_000
 		pos = append(pos, posAt(10, ts, 1, 1, 90))  // slot 10 regarde vers +Y
 		pos = append(pos, posAt(11, ts, 5, 5, 270)) // slot 11 regarde vers -Y
 	}
-	events := []filmdec.FireEvent{
+	events := []grammar.FireEvent{
 		fireAt(1_200_000, 3, 90),
 		fireAt(1_300_000, 3, 90),
 		{TimestampUS: 1_400_000, FilmIndex: 3, WeaponID: 1}, // sans visée : le pont suffit
@@ -82,13 +82,13 @@ func TestBuildShots_PlacesShotOnItsOwnerSlot(t *testing.T) {
 // TestBuildShots_RejectsAmbiguous : deux bipeds au même cap -> aucune désignation, donc
 // aucun tir publié. Un tir placé au mauvais endroit serait pire que pas de tir.
 func TestBuildShots_RejectsAmbiguous(t *testing.T) {
-	var pos []filmdec.BipedPosition
+	var pos []grammar.BipedPosition
 	for i := uint64(0); i < 20; i++ {
 		ts := 1_000_000 + i*50_000
 		pos = append(pos, posAt(10, ts, 1, 1, 90))
 		pos = append(pos, posAt(11, ts, 5, 5, 90)) // même cap : ambigu
 	}
-	events := []filmdec.FireEvent{fireAt(1_200_000, 3, 90), fireAt(1_300_000, 3, 90)}
+	events := []grammar.FireEvent{fireAt(1_200_000, 3, 90), fireAt(1_300_000, 3, 90)}
 	// DEUX slots pour le MEME joueur au meme instant : le rattachement est ambigu, et rien ne
 	// doit etre publie. C'est le cas que la categorie `Ambiguous` existe pour nommer.
 	shots, _, cov := buildShots(pos, events, 1_000_000, 100_000, map[uint32]int{10: 3, 11: 3})

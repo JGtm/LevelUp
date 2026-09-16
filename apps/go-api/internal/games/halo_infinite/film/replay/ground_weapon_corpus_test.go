@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const gwCorpusEnv = "GW_CORPUS" // liste de répertoires de films, séparés par des virgules
@@ -44,12 +44,12 @@ func TestGroundWeaponCorpusCensus(t *testing.T) {
 			continue
 		}
 		c := gwCensusOnly(dir)
-		band := filmdec.GroundWeaponSlotBand(dir)
+		band := grammar.GroundWeaponSlotBand(dir)
 		t.Logf("%-64s images-clés %3d · records ti=42 %5d · slots ti=42 %4d · bande %4d"+
 			" · records ti=37 %5d · records ti=35 %5d",
-			dir, c.keyframes, c.recordsTI[filmdec.GroundWeaponTypeIndex],
-			len(c.slotsTI[filmdec.GroundWeaponTypeIndex]), len(band),
-			c.recordsTI[filmdec.EquipmentTypeIndex], c.recordsTI[35])
+			dir, c.keyframes, c.recordsTI[grammar.GroundWeaponTypeIndex],
+			len(c.slotsTI[grammar.GroundWeaponTypeIndex]), len(band),
+			c.recordsTI[grammar.EquipmentTypeIndex], c.recordsTI[35])
 	}
 }
 
@@ -57,18 +57,18 @@ func TestGroundWeaponCorpusCensus(t *testing.T) {
 // recensement de corpus ne doit pas s'arrêter sur un film illisible, il doit le dire.
 func gwCensusOnly(dir string) gwCensus {
 	c := gwCensus{recordsTI: map[int]int{}, slotsTI: map[int]map[uint32]bool{}, allSlots: map[uint32]bool{}}
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for i := 1; i <= n; i++ {
-		data, err := filmdec.ReadFilmChunk(dir, i)
+		data, err := grammar.ReadFilmChunk(dir, i)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(data) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(data) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			c.keyframes++
-			for _, r := range filmdec.WalkKeyframeWorld(p.Payload(data)) {
+			for _, r := range grammar.WalkKeyframeWorld(p.Payload(data)) {
 				c.recordsTI[r.TI]++
 				if c.slotsTI[r.TI] == nil {
 					c.slotsTI[r.TI] = map[uint32]bool{}

@@ -39,7 +39,7 @@ import (
 	"strconv"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // b3Films : les trois films porteurs des quatre désaccords de B2-V1.
@@ -59,14 +59,14 @@ const (
 )
 
 // b3Pos est l'index des positions QuantaOnly d'un film, par slot.
-type b3Pos map[uint32][]filmdec.BipedPosition
+type b3Pos map[uint32][]grammar.BipedPosition
 
 // b3ChargerPositions indexe les positions du film par slot, datées ms match.
 func b3ChargerPositions(t *testing.T, dir string) (b3Pos, uint64) {
 	t.Helper()
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.QuantaOnly = true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, opt)
+	pos, err := grammar.ScanFilmBipedPositions(dir, opt)
 	if err != nil {
 		t.Fatalf("%s : positions illisibles : %v", dir, err)
 	}

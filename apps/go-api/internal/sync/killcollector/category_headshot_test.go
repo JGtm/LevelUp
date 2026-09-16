@@ -4,7 +4,7 @@ package killcollector
 // (G.1, 2026-08-30). Même montage que film_read_paths_test.go, pour la MÊME raison : la valeur
 // a deux domiciles structurels —
 //
-//	games/halo_infinite/film/killsource   `Category` — l'énumération, chez le décodeur qui la
+//	games/halo_infinite/film/facts/killsource   `Category` — l'énumération, chez le décodeur qui la
 //	                                      produit. Paquet title-specific : ni `persist` ni
 //	                                      `platform/duckdb` ne peuvent l'importer.
 //	domain/killscope                      la CHAÎNE, dans une feuille sans import, lisible par
@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 )
 
 func TestCategoryHeadshotEgaleAuDecodeur(t *testing.T) {

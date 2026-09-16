@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // manches_segments_test.go — LA GARDE PAR SLOT, ET LE JOURNAL DES BORNES DE MANCHE.
@@ -22,7 +22,7 @@ import (
 // la borne a 70 s, et tout le bloc de manche 1 des trois slots precoces (12 enregistrements) tombe
 // hors fenetre — sans la garde par slot il disparaissait, `rounds[1]` restait VIDE pour eux et le
 // total d'assistances passait de 8 a 5.
-func manchesFixtureRelecteur() []objectiveevents.StatRecord {
+func manchesFixtureRelecteur() []objectives.StatRecord {
 	precoces, tardifs := manchesSlots[:3], manchesSlots[3:]
 	recs := manchesCorps(0, manchesDebutR0)
 	recs = append(recs, modeRamp(6, 1, 70_000, 500, 1, 2, 3)...)
@@ -40,7 +40,7 @@ func manchesFixtureRelecteur() []objectiveevents.StatRecord {
 // la manche 1 des trois slots precoces.
 func TestSegmentEntierDUnSlotNEstJamaisJete(t *testing.T) {
 	recs := manchesFixtureRelecteur()
-	bornes := objectiveevents.ResolveRoundBounds(recs)
+	bornes := objectives.ResolveRoundBounds(recs)
 	if n := bornes.Outliers(recs); n != 0 {
 		t.Errorf("%d enregistrements ecartes : un bloc entier de slot a ete jete", n)
 	}
@@ -114,7 +114,7 @@ func manchesMortsRelecteur() []Death {
 // revenir les assistances de l'egare (cf. [manchesEgareAssists]).
 func TestEgareSeulResteEcarteMalgreLaGardeParSlot(t *testing.T) {
 	recs := deuxManchesFixture(true)
-	bornes := objectiveevents.ResolveRoundBounds(recs)
+	bornes := objectives.ResolveRoundBounds(recs)
 	if n := len(bornes.KeptSegments()); n != 0 {
 		t.Errorf("%d bloc(s) exempte(s) : l'egare de `51ebbc0f` a un bloc DANS la fenetre, il est "+
 			"contredit et ne doit pas etre exempte", n)
@@ -135,7 +135,7 @@ func manchesClocheRelecteur() scoreClock {
 
 // journalDeCuisson capte les lignes que `logRoundBounds` emet pour un jeu d'enregistrements, en
 // detournant le journal par defaut le temps de l'appel.
-func journalDeCuisson(t *testing.T, recs []objectiveevents.StatRecord, manches int) string {
+func journalDeCuisson(t *testing.T, recs []objectives.StatRecord, manches int) string {
 	t.Helper()
 	var tampon bytes.Buffer
 	precedent := slog.Default()
@@ -200,12 +200,12 @@ const (
 // mode par manche (sans lui `RealRounds` n'en reconnait aucune, et la fixture ne prouverait rien),
 // un slot minoritaire qui declare la manche 1 en avance, et un slot REATTRIBUE d'une manche a
 // l'autre.
-func identiteFixture() ([]objectiveevents.StatRecord, []Death) {
+func identiteFixture() ([]objectives.StatRecord, []Death) {
 	recs := manchesCorps(0, manchesDebutR0)
 	recs = append(recs, manchesCorps(1, identiteDebutR1)...)
 	// LE FAUX POSITIF : un enregistrement isole, slot 10, qui declare la manche 1 a 85 s.
 	recs = append(recs, statRec(identiteEgarePre, 10, 1,
-		map[int]objectiveevents.StatValue{3: {A: 0}}))
+		map[int]objectives.StatValue{3: {A: 0}}))
 
 	var deaths []Death
 	for j, slot := range manchesSlots {
@@ -237,7 +237,7 @@ func TestIdentiteParMancheSuitLeDebutConsensuel(t *testing.T) {
 	recs, deaths := identiteFixture()
 
 	// La divergence que le correctif ferme : minimum declare contre debut consensuel.
-	if debut := objectiveevents.RoundStartsMS(recs)[1]; debut != identiteDebutR1 {
+	if debut := objectives.RoundStartsMS(recs)[1]; debut != identiteDebutR1 {
 		t.Fatalf("debut consensuel de la manche 1 = %d, attendu %d — la fixture ne pose pas le "+
 			"probleme", debut, identiteDebutR1)
 	}
@@ -251,7 +251,7 @@ func TestIdentiteParMancheSuitLeDebutConsensuel(t *testing.T) {
 		t.Fatalf("minimum declare de la manche 1 = %d, attendu %d", minDeclare, identiteEgarePre)
 	}
 
-	ri := objectiveevents.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
+	ri := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
 	// Le slot reattribue doit etre nomme dans les DEUX manches, sinon le test ne mesure rien.
 	if got := ri.AtRound(0, identiteSlotReattribue); got != identiteXUIDManche0 {
 		t.Fatalf("manche 0, slot %d : %q, attendu %q", identiteSlotReattribue, got, identiteXUIDManche0)

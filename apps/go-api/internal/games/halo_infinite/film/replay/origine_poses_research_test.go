@@ -39,7 +39,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -89,17 +89,17 @@ func TestOriginePosesDistribution(t *testing.T) {
 	entry := origineMapEntry(t)
 
 	worldRange := entry.Range()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange = &worldRange
 	scan.CaptureDirs = true
-	positions, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	positions, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("nuage des bipedes indisponible : %v", err)
 	}
 	sort.Slice(positions, func(i, j int) bool {
 		return positions[i].TimestampUS < positions[j].TimestampUS
 	})
-	raw, st, err := filmdec.ScanFilmEquipmentPlacements(dir, &worldRange)
+	raw, st, err := grammar.ScanFilmEquipmentPlacements(dir, &worldRange)
 	if err != nil {
 		t.Fatalf("balayage des poses impossible : %v", err)
 	}
@@ -122,7 +122,7 @@ func TestOriginePosesDistribution(t *testing.T) {
 // LE CHARGEMENT EST PARTAGE (`mapQuantEntryFromEnv`, ground_weapon_pads_research_test.go) : la
 // phase 1 des socles avait besoin du meme, et deux copies du meme chargement de catalogue
 // re-divergent (regle du depot).
-func origineMapEntry(t *testing.T) filmdec.MapQuantEntry {
+func origineMapEntry(t *testing.T) grammar.MapQuantEntry {
 	t.Helper()
 	return mapQuantEntryFromEnv(t, origineMapEnv, origineBoundsEnv)
 }
@@ -141,7 +141,7 @@ func origineFamilles(t *testing.T) map[uint32]string {
 
 // origineVies decoupe le nuage en vies par slot : trou de plus de lifeGapUS = nouvelle vie.
 // `positions` doit etre trie par instant.
-func origineVies(positions []filmdec.BipedPosition) map[uint32][]origineVie {
+func origineVies(positions []grammar.BipedPosition) map[uint32][]origineVie {
 	out := map[uint32][]origineVie{}
 	for _, p := range positions {
 		if !p.HasWorld {
@@ -172,7 +172,7 @@ func origineNbVies(vies map[uint32][]origineVie) int {
 
 // origineMesure croise chaque pose avec la vie de son poseur.
 func origineMesure(
-	raw []filmdec.EquipmentPlacement, positions []filmdec.BipedPosition,
+	raw []grammar.EquipmentPlacement, positions []grammar.BipedPosition,
 	familles map[uint32]string, vies map[uint32][]origineVie,
 ) []originePose {
 	out := make([]originePose, 0, len(raw))
@@ -223,7 +223,7 @@ func origineVieDe(vs []origineVie, at uint64) (origineVie, bool) {
 
 // origineDist : un ADAPTATEUR de types vers la distance canonique du paquet, jamais une seconde
 // ecriture de la formule (garde-rail `TestUneSeuleFormuleDeDistance3D`).
-func origineDist(p filmdec.EquipmentPlacement, x, y, z float32) float64 {
+func origineDist(p grammar.EquipmentPlacement, x, y, z float32) float64 {
 	return dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{x, y, z})
 }
 

@@ -3,18 +3,18 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // hhRecs fabrique des enregistrements de statistiques porteurs du seul composant 23, valeur A :
 // `slot -> instant -> valeur cumulee`. Aucune I/O, aucun film.
-func hhRecs(vals map[int]map[int]int) []objectiveevents.StatRecord {
-	var out []objectiveevents.StatRecord
+func hhRecs(vals map[int]map[int]int) []objectives.StatRecord {
+	var out []objectives.StatRecord
 	for slot, byTime := range vals {
 		for t, v := range byTime {
-			out = append(out, objectiveevents.StatRecord{
+			out = append(out, objectives.StatRecord{
 				TimeMS: t, Slot: slot,
-				Comps: map[int]objectiveevents.StatValue{23: {A: int64(v)}},
+				Comps: map[int]objectives.StatValue{23: {A: int64(v)}},
 			})
 		}
 	}

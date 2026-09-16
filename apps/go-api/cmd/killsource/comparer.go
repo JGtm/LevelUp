@@ -19,7 +19,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 )
 
 func comparer(args []string, o options) error {

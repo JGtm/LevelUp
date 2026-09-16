@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 	"levelup/go-api/internal/port"
 )
 
@@ -30,13 +30,13 @@ func rosterDe(n int) port.MatchFacts {
 
 // TestGardeDEffectifRefuseUnFilmAuDelaDeHuitJoueurs — LE POINT DU LOT.
 //
-// MUTATION : retirer l'appel a `objectiveevents.RosterFitsStatborg` dans [identifiedEvents]
+// MUTATION : retirer l'appel a `objectives.RosterFitsStatborg` dans [identifiedEvents]
 // rougit ce test — les actions ressortent alors publiees, exactement comme avant ce lot.
 func TestGardeDEffectifRefuseUnFilmAuDelaDeHuitJoueurs(t *testing.T) {
 	recs := recordsCTFDeTest()
 	pont := func() *pontParManche { return &pontParManche{recs: recs} }
 
-	nommees := len(objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeFlag))
+	nommees := len(objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeFlag))
 	if nommees == 0 {
 		t.Fatal("la fixture ne nomme aucune action : le test ne prouverait rien")
 	}
@@ -44,15 +44,15 @@ func TestGardeDEffectifRefuseUnFilmAuDelaDeHuitJoueurs(t *testing.T) {
 	// TEMOIN — a huit joueurs, le calque n'est PAS refuse : ce que le film nomme lui parvient
 	// (ici sans pont d'identite, donc tout part en `nonNommes` — le sujet est le REFUS).
 	_, nonNommes, refuses := identifiedEvents(context.Background(), "m", filmDeaths{}, recs,
-		rosterDe(objectiveevents.StatPlayerSlots), pont())
+		rosterDe(objectives.StatPlayerSlots), pont())
 	if refuses != 0 || nonNommes != nommees {
 		t.Fatalf("temoin : %d refusee(s), %d non nommee(s) sur %d — attendu 0 refus a "+
-			"%d joueurs", refuses, nonNommes, nommees, objectiveevents.StatPlayerSlots)
+			"%d joueurs", refuses, nonNommes, nommees, objectives.StatPlayerSlots)
 	}
 
 	// LA REGLE — un joueur de plus, et le calque se tait ENTIEREMENT.
 	got, nonNommes, refuses := identifiedEvents(context.Background(), "m", filmDeaths{}, recs,
-		rosterDe(objectiveevents.StatPlayerSlots+1), pont())
+		rosterDe(objectives.StatPlayerSlots+1), pont())
 	if len(got) != 0 {
 		t.Errorf("%d action(s) publiee(s), attendu aucune : l'effectif depasse le format",
 			len(got))
@@ -90,14 +90,14 @@ func TestGardeDEffectifNeRefuseRienSansFaitsDeMatch(t *testing.T) {
 //
 // MUTATION : compter `len(facts.Players)` au lieu des sieges rougit ce test.
 func TestSiegesAuCoupDEnvoiNeCompteNiBotNiRemplacant(t *testing.T) {
-	f := rosterDe(objectiveevents.StatPlayerSlots) // huit joueurs au coup d'envoi
+	f := rosterDe(objectives.StatPlayerSlots) // huit joueurs au coup d'envoi
 	f.Players = append(f.Players,
 		port.MatchPlayerFact{XUID: "bid(7.0)"},                                 // le bot qui tient la place
 		port.MatchPlayerFact{XUID: "2535461109438273", JoinedInProgress: true}) // le remplacant
 
-	if got := siegesAuCoupDEnvoi(f); got != objectiveevents.StatPlayerSlots {
+	if got := siegesAuCoupDEnvoi(f); got != objectives.StatPlayerSlots {
 		t.Errorf("%d sieges pour %d lignes, attendu %d", got, len(f.Players),
-			objectiveevents.StatPlayerSlots)
+			objectives.StatPlayerSlots)
 	}
 	// Et le calque n'est donc PAS refuse.
 	_, _, refuses := identifiedEvents(context.Background(), "m", filmDeaths{}, recordsCTFDeTest(),
@@ -110,17 +110,17 @@ func TestSiegesAuCoupDEnvoiNeCompteNiBotNiRemplacant(t *testing.T) {
 // TestRosterFitsStatborgSuitLesConstantesDeFormat — le seuil est DERIVE de la bande de slots du
 // statborg, pas ecrit en dur.
 func TestRosterFitsStatborgSuitLesConstantesDeFormat(t *testing.T) {
-	if objectiveevents.StatPlayerSlots != 8 {
+	if objectives.StatPlayerSlots != 8 {
 		t.Fatalf("StatPlayerSlots = %d, attendu 8 (slots 10, 12, ... 24)",
-			objectiveevents.StatPlayerSlots)
+			objectives.StatPlayerSlots)
 	}
 	for _, n := range []int{0, 1, 8} {
-		if !objectiveevents.RosterFitsStatborg(n) {
+		if !objectives.RosterFitsStatborg(n) {
 			t.Errorf("un effectif de %d refuse alors qu'il tient", n)
 		}
 	}
 	for _, n := range []int{9, 26, 36} {
-		if objectiveevents.RosterFitsStatborg(n) {
+		if objectives.RosterFitsStatborg(n) {
 			t.Errorf("un effectif de %d accepte alors qu'il ne tient pas", n)
 		}
 	}
@@ -129,13 +129,13 @@ func TestRosterFitsStatborgSuitLesConstantesDeFormat(t *testing.T) {
 // recordsCTFDeTest fabrique des enregistrements de statborg qui portent des prises de drapeau
 // (`comp 22 A`) sur deux slots de joueur, plus les progressions du compteur de morts qui les
 // nomment.
-func recordsCTFDeTest() []objectiveevents.StatRecord {
-	var out []objectiveevents.StatRecord
+func recordsCTFDeTest() []objectives.StatRecord {
+	var out []objectives.StatRecord
 	for i := 1; i <= 4; i++ {
 		for _, slot := range []int{10, 12} {
-			out = append(out, objectiveevents.StatRecord{
+			out = append(out, objectives.StatRecord{
 				TimeMS: i * 1_000, Slot: slot,
-				Comps: map[int]objectiveevents.StatValue{22: {A: int64(i)}},
+				Comps: map[int]objectives.StatValue{22: {A: int64(i)}},
 			})
 		}
 	}

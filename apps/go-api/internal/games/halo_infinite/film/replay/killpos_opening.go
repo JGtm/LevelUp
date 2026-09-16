@@ -1,6 +1,6 @@
 package replay
 
-import "levelup/go-api/internal/games/halo_infinite/film/filmdec"
+import "levelup/go-api/internal/games/halo_infinite/film/grammar"
 
 // killpos_opening.go — OÙ L'ENGAGEMENT A COMMENCÉ, ET POURQUOI CE N'EST QU'UN PROXY.
 //
@@ -95,7 +95,7 @@ func ShiftKillRefs(kills []KillRef, deltaMS int64) []KillRef {
 // LE RAPPORT EST RECOMPTÉ après le filtre : retirer un côté change la classe de la mort
 // (`Both` -> `KillerOnly`, et une mort dont les deux côtés tombent n'est pas écrite du tout,
 // elle passe en `Dropped`). `OpeningOutOfLife` compte les CÔTÉS écartés par le filtre de vie.
-func BuildKillOpenings(pos []filmdec.BipedPosition, reg IdentityRegistry,
+func BuildKillOpenings(pos []grammar.BipedPosition, reg IdentityRegistry,
 	kills []KillRef, offsetUS int64) ([]KillPosition, KillPosReport) {
 	p := placeKillPositions(pos, reg, ShiftKillRefs(kills, -OpeningLeadMS), offsetUS)
 	rep := p.report

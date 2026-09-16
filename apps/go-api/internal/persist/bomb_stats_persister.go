@@ -62,7 +62,7 @@ import (
 
 // Vocabulaire des faits dates de la bombe. Ces quatre valeurs sont des RECOPIES de constantes
 // qui appartiennent a `analysis` (`replay.BombEventArmed` / `replay.BombEventDetonated`,
-// `objectiveevents.ObjectiveTypeBomb` / `objectiveevents.RoleScorer`). La recopie est volontaire
+// `objectives.ObjectiveTypeBomb` / `objectives.RoleScorer`). La recopie est volontaire
 // — faire dependre `persist` du decodeur de film pour quatre chaines serait un couplage
 // disproportionne — et elle est TENUE par un garde-rail : bomb_stats_sentinels_test.go echoue le
 // jour ou l'une des quatre diverge de sa source (meme dispositif que weaponSentinelMax).
@@ -117,10 +117,10 @@ type BombEventRow struct {
 	// TeamID : l'equipe creditee. nil = inconnue (colonne NULL).
 	TeamID *int `json:"team_id,omitempty"`
 	// Source : la provenance du decodage, en toutes lettres (vocabulaire de
-	// `objectiveevents.Source*`). Obligatoire : un fait qui ne dit pas d'ou il vient laisse un
+	// `objectives.Source*`). Obligatoire : un fait qui ne dit pas d'ou il vient laisse un
 	// lecteur lui preter la precision qu'il veut.
 	Source string `json:"source"`
-	// Confidence : la precision temporelle (vocabulaire de `objectiveevents.Confidence*`).
+	// Confidence : la precision temporelle (vocabulaire de `objectives.Confidence*`).
 	// Obligatoire, pour la meme raison.
 	Confidence string `json:"confidence"`
 }

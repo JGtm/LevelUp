@@ -11,7 +11,7 @@ package replay
 import (
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 )
 
 // tallyVehicleCoverage compte, sur les vies PUBLIEES, ce que la couverture annonce. Un compteur

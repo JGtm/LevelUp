@@ -13,27 +13,27 @@ package replaybuild
 // Ici, trois lectures, une fois chacune :
 //
 //	le MANIFESTE   ouvrirManifeste  — l'index des chunks (type, debut) ; il sert au statborg
-//	               (`objectiveevents.StatRecordsCtx`) ET aux metadonnees du film ;
-//	les CHUNKS     chargerFilm      — decompresses et decoupes en paquets par `filmsource` ;
+//	               (`objectives.StatRecordsCtx`) ET aux metadonnees du film ;
+//	les CHUNKS     chargerFilm      — decompresses et decoupes en paquets par `source` ;
 //	les MORTS      lireMorts        — le chunk highlight, parse UNE fois pour les deux
 //	               consommateurs de cet etage.
 //
 // # OU VIT LA CONNAISSANCE DU MANIFESTE
 //
-// `filmsource` est un paquet FEUILLE : il n'importe rien du depot (garde-rail
+// `source` est un paquet FEUILLE : il n'importe rien du depot (garde-rail
 // `archlint/filmsource_leaf_test.go`), donc il ne connait ni `filmcache` ni le format du
 // manifeste. C'est `filmcache` qui lit le manifeste et le rend DEJA dans la forme de
-// `filmsource` ([filmcache.Source.Meta]) — la traduction manuelle qui vivait ici a disparu a
-// l'item 1.5, quand `filmcache` a cesse d'importer `objectiveevents`. Cette couche
+// `source` ([filmcache.Source.Meta]) — la traduction manuelle qui vivait ici a disparu a
+// l'item 1.5, quand `filmcache` a cesse d'importer `objectives`. Cette couche
 // d'ASSEMBLAGE, elle, reste celle qui sait ou vit le cache du titre.
 
 import (
 	"context"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // ouvrirManifeste ouvre le manifeste du film et JOURNALISE ce qu'il en est.
@@ -65,8 +65,8 @@ func ouvrirManifeste(ctx context.Context, matchID, filmDir string) *filmcache.So
 // son propre journal, exactement comme un repertoire vide le faisait avant. Echouer ici priverait
 // la cuisson des etapes qui ne dependent pas du film (catalogues, killsource) et changerait
 // l'ordre des etapes observees.
-func chargerFilm(ctx context.Context, matchID, filmDir string, src *filmcache.Source) *filmsource.Film {
-	film, err := filmsource.LoadDir(filmDir, metaDuManifeste(src))
+func chargerFilm(ctx context.Context, matchID, filmDir string, src *filmcache.Source) *source.Film {
+	film, err := source.LoadDir(filmDir, metaDuManifeste(src))
 	if err != nil {
 		slog.WarnContext(ctx, "replaybuild: chunks du film illisibles — aucun balayage ne lira ce film",
 			"err", err, "match_id", matchID, "filmDir", filmDir)
@@ -77,12 +77,12 @@ func chargerFilm(ctx context.Context, matchID, filmDir string, src *filmcache.So
 
 // metaDuManifeste rend l'index du manifeste, ou nil s'il n'y en a pas.
 //
-// MANIFESTE ABSENT N'EST PAS FATAL : `filmsource.LoadDir` synthetise alors les NUMEROS de chunk
-// depuis les noms de fichiers, ce qui suffit aux balayages de `filmdec`. Ce qui manque, ce sont
-// le TYPE et le DEBUT de chaque chunk — donc les enregistrements d'entite (`objectiveevents`
+// MANIFESTE ABSENT N'EST PAS FATAL : `source.LoadDir` synthetise alors les NUMEROS de chunk
+// depuis les noms de fichiers, ce qui suffit aux balayages de `grammar`. Ce qui manque, ce sont
+// le TYPE et le DEBUT de chaque chunk — donc les enregistrements d'entite (`objectives`
 // ne balaie que les chunks decrits par le manifeste) et l'horloge de l'armement de la bombe.
 // `readFilmStats` le dit et le journalise plutot que de publier une courbe vide.
-func metaDuManifeste(src *filmcache.Source) []filmsource.ChunkMeta {
+func metaDuManifeste(src *filmcache.Source) []source.ChunkMeta {
 	if src == nil {
 		return nil
 	}
@@ -102,7 +102,7 @@ type filmDeaths struct {
 
 // lireMorts lit le fil des morts du film charge. Le chunk highlight est deja decompresse : ce
 // qui reste est le parse, fait une fois pour les deux consommateurs.
-func lireMorts(film *filmsource.Film) filmDeaths {
+func lireMorts(film *source.Film) filmDeaths {
 	list, err := replay.ScanDeaths(film)
 	return filmDeaths{list: list, err: err}
 }

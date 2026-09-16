@@ -47,7 +47,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 var updateGolden = flag.Bool("update", false, "reecrire les fichiers figes de testdata/")
@@ -74,7 +74,7 @@ func goldenInputsPath() string {
 // quoi faire. [TestGoldenInputsVersionGuard] verrouille le refus explicite.
 //
 // v21 (2026-09-14, lot 1.7) : le fixture porte L EQUIPE DE CHAQUE JOUEUR (`FilmInputs.PlayerTeams`,
-// `index de joueur -> designateur`, lue par `filmdec.ScanPlayerTeams` dans le composant i0 de
+// `index de joueur -> designateur`, lue par `grammar.ScanPlayerTeams` dans le composant i0 de
 // ti=9) ET le RAPPORT de cette lecture (`FilmInputs.TeamScan`). Les deux, parce qu une table vide
 // et une lecture REFUSEE ne disent pas la meme chose : `coverage.teams` publie la difference, et
 // un fixture qui ne porterait que la table figerait un refus comme un film sans equipes.
@@ -83,7 +83,7 @@ func goldenInputsPath() string {
 // lue par `ScanFilmPlayerTable` dans `chunk_00`) — le lien DIRECT `index <-> xuid <-> gamertag`
 // dont le registre d identite fait sa source premiere. Elle porte son REFUS comme elle porte ses
 // sieges : une table non lue n est pas une table vide, et le document publie la difference.
-// Les neuf champs courts et le jeton de session que `filmdec.PlayerSlot` expose N ENTRENT PAS —
+// Les neuf champs courts et le jeton de session que `grammar.PlayerSlot` expose N ENTRENT PAS —
 // aucun assemblage ne les lit, et la doctrine de ce fichier est que le fixture porte ce que
 // l assemblage CONSOMME.
 //
@@ -119,7 +119,7 @@ func goldenInputsPath() string {
 //
 // v16 (2026-09-14, lot 0.D.3 bis) : les positions portent les QUANTA du film (`BipedPosition.Q`,
 // delta-varint par slot) et non plus les flottants derives ; la relecture re-dequantifie par
-// `filmdec.DequantBipedAxis`, avec les bornes de l entree de catalogue passee en PARAMETRE. Le
+// `grammar.DequantBipedAxis`, avec les bornes de l entree de catalogue passee en PARAMETRE. Le
 // blob ouvre sur le MODULE de la carte et refuse une entree qui ne correspond pas
 // (`errGoldenInputsCarte`), parce que les bornes d une autre carte rendent des coordonnees
 // FAUSSES et non approximatives. Le blob porte aussi les trois largeurs d axe employees. Prix :
@@ -165,7 +165,7 @@ func goldenInputsPath() string {
 // NON DETERMINISTE EN AMONT, mesuree ici : deux regenerations SUCCESSIVES du meme film
 // rendent des fixtures differentes (verifie le 2026-09-03 — copie, `-update`, `cmp`). Ce n est
 // donc PAS une regression de donnees de ce lot, mais un fixture non reproductible : la piste
-// est `filmdec.lessTrack` (`projectiles.go`), qui ordonne des SEGMENTS sur (naissance, slot,
+// est `grammar.lessTrack` (`projectiles.go`), qui ordonne des SEGMENTS sur (naissance, slot,
 // gen) alors que `splitLives` en produit plusieurs par cle, avec un `sort.Slice` NON STABLE
 // derriere. Consigne au plan (Decouvertes, G2), NON traitee dans ce lot — hors perimetre.
 //
@@ -251,7 +251,7 @@ var errGoldenInputsCarte = errors.New("fixture d entrees : carte du catalogue di
 var errGoldenInputsDecoupage = errors.New("fixture d entrees : decoupage d i0 en contradiction avec le catalogue")
 
 // imposeAxisW rend les largeurs d un decoupage impose, ou un marqueur quand il n y en a pas.
-func imposeAxisW(impose *filmdec.I0Layout) any {
+func imposeAxisW(impose *grammar.I0Layout) any {
 	if impose == nil {
 		return "aucun (entree de carte invalide)"
 	}

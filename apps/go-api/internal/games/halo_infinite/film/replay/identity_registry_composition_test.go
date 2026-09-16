@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // identity_registry_composition_test.go — LE REGISTRE COMPOSE DES LECTURES, ET RIEN D'AUTRE.
@@ -19,7 +19,7 @@ import (
 // fixture deja eprouvee traversee par le nouveau chemin d'entree.
 
 func TestRegistreComposeLaLectureSeule(t *testing.T) {
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		posAt(512, 1_000_000, 0, 0, 0), posAt(512, 2_000_000, 0, 0, 0),
 		posAt(513, 20_000_000, 0, 0, 0), posAt(513, 21_000_000, 0, 0, 0),
 	}
@@ -41,7 +41,7 @@ func TestRegistreComposeLaLectureSeule(t *testing.T) {
 // TestRegistreSansMortsRendUnPontVide — PAS DE REPLI : sans fil des morts, le pont est vide,
 // jamais devine.
 func TestRegistreSansMortsRendUnPontVide(t *testing.T) {
-	pos := []filmdec.BipedPosition{posAt(512, 1_000_000, 0, 0, 0)}
+	pos := []grammar.BipedPosition{posAt(512, 1_000_000, 0, 0, 0)}
 	idx := PlayerIndexTable{ByXUID: map[uint64]int{111: 0}}
 
 	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, PlayerIndices: idx})
@@ -56,7 +56,7 @@ func TestRegistreSansMortsRendUnPontVide(t *testing.T) {
 
 // TestRegistreSansIndexDeJoueurRendUnPontVide — meme regle, second maillon absent.
 func TestRegistreSansIndexDeJoueurRendUnPontVide(t *testing.T) {
-	pos := []filmdec.BipedPosition{posAt(512, 1_000_000, 0, 0, 0), posAt(512, 2_000_000, 0, 0, 0)}
+	pos := []grammar.BipedPosition{posAt(512, 1_000_000, 0, 0, 0), posAt(512, 2_000_000, 0, 0, 0)}
 	deaths := []Death{{XUID: 111, TimeMS: 1_500}}
 
 	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths})

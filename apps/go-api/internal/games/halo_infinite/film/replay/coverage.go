@@ -50,7 +50,7 @@ type LayerCoverage struct {
 	Unpublished int `json:"unpublished"`
 	// RefusedByRoster : événements que le calque REFUSE DE PUBLIER parce que l'effectif du
 	// match dépasse ce que le format peut porter — huit slots d'entité de joueur au statborg
-	// (cf. objectiveevents.RosterFitsStatborg). Le calque se tait ENTIÈREMENT, et ce compteur
+	// (cf. objectives.RosterFitsStatborg). Le calque se tait ENTIÈREMENT, et ce compteur
 	// dit combien d'actions ce silence coûte : un calque muet dont personne ne sait pourquoi
 	// il est muet est pire que le calque faux qu'il remplace.
 	//
@@ -377,7 +377,7 @@ type Coverage struct {
 	// inconnue).
 	T0Film *T0FilmCoverage `json:"t0Film,omitempty"`
 	// FilmMajorVersion est LA VERSION DU FILM qui a produit cet artefact, lue dans l'en-tête de
-	// son registre (`filmdec.FilmMajorVersionFromHeader`, u32 LE en tête de `chunk_00`).
+	// son registre (`grammar.FilmMajorVersionFromHeader`, u32 LE en tête de `chunk_00`).
 	//
 	// ELLE EST PUBLIÉE PARCE QUE LE DÉCODAGE EN DÉPEND ET QUE RIEN NE LE DISAIT. Le parc en cache
 	// porte sept versions (v31 x3, v33 x3, v37 x10, v38 x1, v39 x26, v40 x185, v41 x1123 au
@@ -399,7 +399,7 @@ type Coverage struct {
 	// Fallbacks dit QUELLE PART DE CE DOCUMENT VIENT D'UN REPLI (schéma 58, décision D14 du plan
 	// du décodeur, ADR 0034). Un repli est une décision de secours prise quand la lecture du film
 	// ne tranche pas ; chacun porte un nom stable, une condition et un critère de retrait, tous
-	// déclarés dans `film/replay/fallback`.
+	// déclarés dans `film/facts/fallback`.
 	//
 	// UNE LISTE PLATE, ET PAS UN BLOC PAR FAIT. Les replis ne se répartissent pas sur les calques
 	// existants — `repli_largeurs_axe_par_defaut_conservees` touche TOUT le décodage, et les

@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 )
 
@@ -38,11 +38,11 @@ const formatHorsTable = 28
 // decodable, et (b) incrementer `filmdec_unknown_format_28`, donc rester VISIBLE.
 func TestFormatInconnuTombeSurLesLargeursCalibrees(t *testing.T) {
 	film := bobineAuFormat(t, "fb1a1a72", formatHorsTable)
-	fc := filmdec.NewFilmContext(film)
+	fc := grammar.NewFilmContext(film)
 
 	// Un decoupage volontairement DISTINCT du profil relu (9/5) : si la branche prenait le
 	// profil au lieu du repli, la comparaison le verrait.
-	calibrees := filmdec.MPPWidths{Lead: 7, Index: 4}
+	calibrees := grammar.MPPWidths{Lead: 7, Index: 4}
 	const compteur = "filmdec_unknown_format_28"
 	avant := observability.LoadCounter(compteur)
 
@@ -67,11 +67,11 @@ func TestFormatInconnuTombeSurLesLargeursCalibrees(t *testing.T) {
 func TestFormatConnuNeCompteRien(t *testing.T) {
 	// La bobine INTACTE : `a521164d` (HI_1_4_1) porte le format 21 — connu de la table, sans
 	// largeur relue. C'est le parc ancien tel qu'il est, aucune reecriture.
-	film, err := filmsource.LoadDir(filepath.Join("testdata", "minifilm_a521164d"), nil)
+	film, err := source.LoadDir(filepath.Join("testdata", "minifilm_a521164d"), nil)
 	if err != nil {
 		t.Fatalf("chargement de la bobine a521164d : %v", err)
 	}
-	if format, _ := filmdec.FilmFormatVersion(film); format != 21 {
+	if format, _ := grammar.FilmFormatVersion(film); format != 21 {
 		t.Fatalf("a521164d porte le format %d, 21 attendu — la bobine a change", format)
 	}
 	if format, sansProfil := formatSansProfil(film); sansProfil {
@@ -81,23 +81,23 @@ func TestFormatConnuNeCompteRien(t *testing.T) {
 }
 
 // bobineAuFormat recopie une bobine versionnee dans un repertoire temporaire et y REECRIT la
-// version de format, aux quatre octets que `filmdec` designe (`chunk_00+4`).
+// version de format, aux quatre octets que `grammar` designe (`chunk_00+4`).
 //
-// Le `chunk_00` est ecrit DECOMPRESSE : `filmsource.Inflate` rend le tampon inchange quand il
+// Le `chunk_00` est ecrit DECOMPRESSE : `source.Inflate` rend le tampon inchange quand il
 // n'est pas zlib, et les 1 351 `chunk_00` du cache sont dans ce cas — la bobine reecrite est
 // donc de la meme forme que la production, pas un cas de figure invente pour le test.
-func bobineAuFormat(t *testing.T, court string, format int) *filmsource.Film {
+func bobineAuFormat(t *testing.T, court string, format int) *source.Film {
 	t.Helper()
 	src := filepath.Join("testdata", "minifilm_"+court)
-	origine, err := filmsource.LoadDir(src, nil)
+	origine, err := source.LoadDir(src, nil)
 	if err != nil {
 		t.Fatalf("chargement de %s : %v", src, err)
 	}
-	chunk0, ok := filmdec.FilmRegistryChunk(origine)
+	chunk0, ok := grammar.FilmRegistryChunk(origine)
 	if !ok {
 		t.Fatalf("%s : la bobine ne porte pas son chunk_00", court)
 	}
-	if avant, _ := filmdec.FilmFormatVersionFromHeader(chunk0); avant == format {
+	if avant, _ := grammar.FilmFormatVersionFromHeader(chunk0); avant == format {
 		t.Fatalf("%s porte deja le format %d : la mutation ne prouverait rien", court, format)
 	}
 	dst := t.TempDir()
@@ -121,11 +121,11 @@ func bobineAuFormat(t *testing.T, court string, format int) *filmsource.Film {
 			t.Fatalf("ecriture de %s : %v", e.Name(), err)
 		}
 	}
-	mute, err := filmsource.LoadDir(dst, nil)
+	mute, err := source.LoadDir(dst, nil)
 	if err != nil {
 		t.Fatalf("rechargement de la bobine reecrite : %v", err)
 	}
-	relu, ok := filmdec.FilmFormatVersion(mute)
+	relu, ok := grammar.FilmFormatVersion(mute)
 	if !ok || relu != format {
 		t.Fatalf("format relu %d (ok=%v), %d attendu — la reecriture n'a pas porte", relu, ok, format)
 	}

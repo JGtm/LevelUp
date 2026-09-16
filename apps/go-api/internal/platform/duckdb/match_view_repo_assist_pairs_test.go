@@ -20,7 +20,7 @@ import (
 
 // filmCreditOrigin : l'origine `read_origin` d'une ligne produite par le DÉCODEUR DE FILM
 // quand le crédit qu'il lit concorde avec celui du titre. Son propriétaire typé est
-// `games/halo_infinite/film/killsource.OriginCredit` — un paquet TITLE-SPECIFIC, que
+// `games/halo_infinite/film/facts/killsource.OriginCredit` — un paquet TITLE-SPECIFIC, que
 // `platform/duckdb` n'a pas à importer. Elle n'est pas non plus dans `killscope` (qui ne
 // porte que les valeurs partagées par les écrivains crédit) ni dans le ratchet J4R-3 :
 // même traitement que les dix autres fixtures du dépôt qui l'écrivent en clair

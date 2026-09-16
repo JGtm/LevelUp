@@ -45,8 +45,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 const (
@@ -68,8 +68,8 @@ const duelsKillWindowUS = 10_000_000
 const duelsShiftUS = 37_000_000
 
 // duelsPosTolUS : tolerance evenement <-> echantillon de position. MEME valeur que
-// filmdec.WeaponHitPosToleranceUS et shots.go (120 ms).
-const duelsPosTolUS = filmdec.WeaponHitPosToleranceUS
+// grammar.WeaponHitPosToleranceUS et shots.go (120 ms).
+const duelsPosTolUS = grammar.WeaponHitPosToleranceUS
 
 // duelDmg : un degat direct, ses deux slots deja resolus.
 type duelDmg struct {
@@ -92,16 +92,16 @@ func TestSondeDuels(t *testing.T) {
 	}
 
 	rng := duelsBornes(t, carte)
-	film, err := filmsource.LoadDir(dir, nil)
+	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("film %s illisible : %v", dir, err)
 	}
-	opt := filmdec.DefaultScanFilmOptions()
+	opt := grammar.DefaultScanFilmOptions()
 	opt.WorldRange = &rng
 	// CaptureDirs poursuit le MEME record de deux composants de plus (i4 vie, i5 bouclier) :
 	// c'est ce qui donne M5, et ca ne change aucune position emise (cf. ScanFilmOptions).
 	opt.CaptureDirs = true
-	positions, err := filmdec.ScanBipedPositions(filmdec.NewFilmContext(film), opt)
+	positions, err := grammar.ScanBipedPositions(grammar.NewFilmContext(film), opt)
 	if err != nil {
 		t.Fatalf("positions bipeds : %v", err)
 	}
@@ -127,11 +127,11 @@ func TestSondeDuels(t *testing.T) {
 }
 
 // duelsBornes charge les bornes de dequantification de la carte depuis le catalogue VERSIONNE.
-func duelsBornes(t *testing.T, carte string) filmdec.Vec3Range {
+func duelsBornes(t *testing.T, carte string) grammar.Vec3Range {
 	t.Helper()
 	chemin := filepath.Join("..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
-	cat, err := filmdec.LoadMapQuantCatalog(chemin)
+	cat, err := grammar.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", chemin, err)
 	}
@@ -145,7 +145,7 @@ func duelsBornes(t *testing.T, carte string) filmdec.Vec3Range {
 // duelsMorts rend les fins de vie APPARIEES a une mort du fil : la population des vraies morts.
 // Compose les fonctions eprouvees de lives.go — aucune seconde lecture du fil des morts (la
 // regle « deux decodeurs du meme fait divergeraient », cf. l'en-tete de killpos_bridge.go).
-func duelsMorts(t *testing.T, film *filmsource.Film, lives []lifeSpan) []duelMort {
+func duelsMorts(t *testing.T, film *source.Film, lives []lifeSpan) []duelMort {
 	t.Helper()
 	deaths, err := ScanDeaths(film)
 	if err != nil {
@@ -169,17 +169,17 @@ func duelsMorts(t *testing.T, film *filmsource.Film, lives []lifeSpan) []duelMor
 
 // duelsScanDegats decode les damage_aftermath du film. Le decodage est PRODUCTIONISE
 // (ScanFilmWeaponDamages) : cet adaptateur ne fait que fournir le registre et le nombre de chunks.
-func duelsScanDegats(t *testing.T, dir string) ([]filmdec.WeaponDamage, int) {
+func duelsScanDegats(t *testing.T, dir string) ([]grammar.WeaponDamage, int) {
 	t.Helper()
-	raw, err := filmdec.ReadFilmChunk(dir, 0)
+	raw, err := grammar.ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)
 	}
-	reg, err := filmdec.ParseRegistryChunk(raw)
+	reg, err := grammar.ParseRegistryChunk(raw)
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	dmg, base, err := filmdec.ScanFilmWeaponDamages(dir, reg, filmdec.CountFilmChunks(dir))
+	dmg, base, err := grammar.ScanFilmWeaponDamages(dir, reg, grammar.CountFilmChunks(dir))
 	if err != nil {
 		t.Fatalf("collecte des degats : %v", err)
 	}
@@ -216,7 +216,7 @@ func duelsVivant(vies map[uint32][]lifeSpan, slot uint32, ts uint64) bool {
 // sur des slots morts ou pas encore nes, et son score s'effondre. C'est la meme logique que le
 // plateau de bestDeathOffset — on cherche un maximum QUI SE DETACHE, pas un maximum.
 func duelsResoudreBase(
-	t *testing.T, brut []filmdec.WeaponDamage, vies map[uint32][]lifeSpan,
+	t *testing.T, brut []grammar.WeaponDamage, vies map[uint32][]lifeSpan,
 ) (int, []duelDmg) {
 	t.Helper()
 	scores := make([]int, 2049)
@@ -245,7 +245,7 @@ func duelsResoudreBase(
 // duelsDegatsResolus projette les degats sur les slots pour la base retenue. Ecarte le soin
 // (Negative), le degat sur soi et tout couple dont un slot n'etait pas vivant a l'instant.
 func duelsDegatsResolus(
-	brut []filmdec.WeaponDamage, vies map[uint32][]lifeSpan, base int,
+	brut []grammar.WeaponDamage, vies map[uint32][]lifeSpan, base int,
 ) []duelDmg {
 	out := make([]duelDmg, 0, len(brut))
 	for _, d := range brut {

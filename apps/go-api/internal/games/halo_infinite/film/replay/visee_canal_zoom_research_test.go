@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // TestViseeTypesDePaquet recense les TYPES D'EVENT des paquets delta d'un film (payload[0]>>1,
@@ -42,17 +42,17 @@ func TestViseeTypesDePaquet(t *testing.T) {
 	if dir == "" {
 		t.Skipf("TIR_TYPES_FILM absent : recensement saute")
 	}
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	compte := map[int]int{}
 	tailles := map[int]int{}
 	octets := map[int]int{}
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 				continue
 			}
 			pay := p.Payload(chunk)
@@ -117,14 +117,14 @@ func TestViseeCensusTypesCorpus(t *testing.T) {
 				dir := filepath.Join(root, d)
 				var loc [128]int
 				var zoomHex []string
-				n := filmdec.CountFilmChunks(dir)
+				n := grammar.CountFilmChunks(dir)
 				for c := 1; c <= n; c++ {
-					chunk, err := filmdec.ReadFilmChunk(dir, c)
+					chunk, err := grammar.ReadFilmChunk(dir, c)
 					if err != nil {
 						continue
 					}
-					for _, p := range filmdec.WalkPackets(chunk) {
-						if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+					for _, p := range grammar.WalkPackets(chunk) {
+						if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 							continue
 						}
 						pay := p.Payload(chunk)
@@ -321,23 +321,23 @@ func canalAutresKills(f tirFeed, max int) []int64 {
 // canalLitTypes rend (type, instant) de tous les paquets delta, et la sous-liste des records
 // 105 longs au format attendu par tirRecale.
 func canalLitTypes(dir string) ([][2]int64, []tirRecord) {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	var types [][2]int64
 	var records []tirRecord
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 1 {
 				continue
 			}
 			pay := p.Payload(chunk)
 			ty := int64(pay[0] >> 1)
 			tMS := int64(p.TimestampUS / 1000)
 			types = append(types, [2]int64{ty, tMS})
-			if ty == int64(filmdec.FireEventType) && int(pay[0])&1 == 0 {
+			if ty == int64(grammar.FireEventType) && int(pay[0])&1 == 0 {
 				records = append(records, tirRecord{tMS: tMS})
 			}
 		}
@@ -393,17 +393,17 @@ func TestViseeCanal97Enveloppe(t *testing.T) {
 	if dir == "" {
 		t.Skipf("TIR_TYPES_FILM absent : saute")
 	}
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	hist := map[int]int{}
 	tailles := map[int]int{}
 	total := 0
 	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		chunk, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeDelta || p.Size < 6 {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeDelta || p.Size < 6 {
 				continue
 			}
 			pay := p.Payload(chunk)
@@ -411,7 +411,7 @@ func TestViseeCanal97Enveloppe(t *testing.T) {
 				continue
 			}
 			total++
-			hist[filmdec.ReadAttackerIndex(pay)]++
+			hist[grammar.ReadAttackerIndex(pay)]++
 			tailles[len(pay)]++
 		}
 	}

@@ -29,7 +29,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 )
 
 // compteDeRepli lit le compte d'un repli dans le rapport d'une projection.

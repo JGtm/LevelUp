@@ -33,7 +33,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/digest"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // miniFilmDigestsPath est le fichier de digests figes de la mini-bobine, a cote de ceux du
@@ -129,20 +129,20 @@ func digestsMiniBobine() ([]string, error) {
 	// LES LARGEURS D'AXE DU CHEMIN WORLD-OBJECT viennent de l'entree de catalogue, comme en
 	// production (cf. installWorldObjectPrecision). Depuis le lot 2.3 elles voyagent avec le
 	// contexte du film, pose ci-dessous — rien ne subsiste d'un test a l'autre.
-	profilCarte := filmdec.ProfilDeBalayageParDefaut()
-	profilCarte.PoserLargeursObjetDuMondeDepuisDecoupage(filmdec.I0Layout{AxisW: entry.AxisWidths})
+	profilCarte := grammar.ProfilDeBalayageParDefaut()
+	profilCarte.PoserLargeursObjetDuMondeDepuisDecoupage(grammar.I0Layout{AxisW: entry.AxisWidths})
 	wr := entry.Range()
 	dir := MiniFilmDir
 
-	fire, err := filmdec.ScanFilmFireEvents(dir)
+	fire, err := grammar.ScanFilmFireEvents(dir)
 	if err != nil {
 		return nil, fmt.Errorf("tirs : %w", err)
 	}
-	grenades, err := filmdec.ScanFilmGrenadeThrows(dir)
+	grenades, err := grammar.ScanFilmGrenadeThrows(dir)
 	if err != nil {
 		return nil, fmt.Errorf("lancers de grenade : %w", err)
 	}
-	loadouts, err := filmdec.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
+	loadouts, err := grammar.ScanFilmKeyframeLoadouts(dir, loadoutFamilies())
 	if err != nil {
 		return nil, fmt.Errorf("armes portees : %w", err)
 	}
@@ -158,7 +158,7 @@ func digestsMiniBobine() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("indices joueur : %w", err)
 	}
-	proj, err := filmdec.ScanFilmProjectiles(dir, &wr)
+	proj, err := grammar.ScanFilmProjectiles(dir, &wr)
 	if err != nil {
 		return nil, fmt.Errorf("projectiles : %w", err)
 	}

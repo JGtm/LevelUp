@@ -4,7 +4,7 @@ package replay
 //
 // Ce que ces tests prouvent, et rien d'autre :
 //
-//	T-LUE     les sept bobines par build rendent une table lue, aux comptes de `filmdec` ;
+//	T-LUE     les sept bobines par build rendent une table lue, aux comptes de `grammar` ;
 //	T-REFUS   chaque cause d'echec rend une cause NOMMEE, jamais une table partielle ni un panic ;
 //	T-CABLE   le compteur expvar `filmdec_unknown_build_<build>` est INCREMENTE quand la table
 //	          refuse un build — c'est le cablage que le lot 1.5 a nomme sans le poser.
@@ -15,19 +15,19 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 	"levelup/go-api/internal/observability"
 )
 
 // chunk00DeLaBobine rend les octets DEJA DECOMPRESSES du `chunk_00` d'une bobine par build.
 func chunk00DeLaBobine(t *testing.T, b buildMiniFilm) []byte {
 	t.Helper()
-	film, err := filmsource.LoadDir(b.Dir(), nil)
+	film, err := source.LoadDir(b.Dir(), nil)
 	if err != nil {
 		t.Fatalf("chargement de %s : %v", b.Dir(), err)
 	}
-	chunk0, ok := filmdec.FilmRegistryChunk(film)
+	chunk0, ok := grammar.FilmRegistryChunk(film)
 	if !ok {
 		t.Fatalf("%s : la bobine ne porte pas son chunk_00", b.Short8)
 	}
@@ -68,7 +68,7 @@ func TestScanFilmPlayerTableSurLesBobines(t *testing.T) {
 // TestScanFilmPlayerTableSansRegistre (T-REFUS) : la bobine historique n'a PAS de `chunk_00`, et
 // c'est le cas le plus simple d'un film qui ne porte pas sa table. Cause NOMMEE, aucun panic.
 func TestScanFilmPlayerTableSansRegistre(t *testing.T) {
-	film, err := filmsource.LoadDir(filepath.Join(goldenDir, "minifilm_"+goldenFilm), nil)
+	film, err := source.LoadDir(filepath.Join(goldenDir, "minifilm_"+goldenFilm), nil)
 	if err != nil {
 		t.Fatalf("chargement de la bobine historique : %v", err)
 	}
@@ -137,10 +137,10 @@ func TestScanFilmPlayerTableSansSection(t *testing.T) {
 }
 
 // TestScanFilmPlayerTableCableLeCompteurDeBuildInconnu (T-CABLE) : un build hors table de profil
-// rend la cause `build_inconnu` ET incremente le compteur expvar que `filmdec` NOMME.
+// rend la cause `build_inconnu` ET incremente le compteur expvar que `grammar` NOMME.
 //
 // CE TEST EST LA RAISON D'ETRE DE L'ITEM 1.6.0. Le lot 1.5 a nomme
-// `filmdec.UnknownBuildExpvarPairs` en ecrivant, dans son en-tete, que son cableur viendrait au
+// `grammar.UnknownBuildExpvarPairs` en ecrivant, dans son en-tete, que son cableur viendrait au
 // lot 1.6 et que « si ce lot passe sans qu'elle soit cablee, c'est un defaut de 1.6 ». La
 // mutation est la SEULE facon de le prouver : aucun des 1 351 films du cache n'a de build hors
 // profil (mesure du 2026-09-14).
@@ -165,18 +165,18 @@ func TestScanFilmPlayerTableCableLeCompteurDeBuildInconnu(t *testing.T) {
 	}
 }
 
-// offsetDeLaChaineDeBuild retrouve l'offset de la chaine de build par la lecture de `filmdec`,
+// offsetDeLaChaineDeBuild retrouve l'offset de la chaine de build par la lecture de `grammar`,
 // pour que la mutation porte sur l'octet que la grammaire designe et non sur une recherche a nous.
 func offsetDeLaChaineDeBuild(t *testing.T, chunk0 []byte) int {
 	t.Helper()
 	return identiteDeLaBobine(t, chunk0).BuildOffset
 }
 
-// identiteDeLaBobine rend la section d'identification lue par `filmdec`, pour que les mutations
+// identiteDeLaBobine rend la section d'identification lue par `grammar`, pour que les mutations
 // portent sur les octets que la GRAMMAIRE designe et non sur une recherche a nous.
-func identiteDeLaBobine(t *testing.T, chunk0 []byte) filmdec.FilmIdentity {
+func identiteDeLaBobine(t *testing.T, chunk0 []byte) grammar.FilmIdentity {
 	t.Helper()
-	ident, err := filmdec.ReadFilmIdentity(chunk0)
+	ident, err := grammar.ReadFilmIdentity(chunk0)
 	if err != nil {
 		t.Fatalf("identite du film illisible : %v", err)
 	}

@@ -39,7 +39,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const ctfFatalFilmsEnv = "CTF_FATAL_FILMS"
@@ -85,20 +85,20 @@ func TestCTFFatalShots(t *testing.T) {
 	}
 }
 
-func ctfFatalReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapName string) string {
+func ctfFatalReport(t *testing.T, cat *grammar.MapQuantCatalog, dir, short, mapName string) string {
 	t.Helper()
 	entry, err := cat.Lookup(mapName)
 	if err != nil {
 		t.Fatalf("bornes de %s : %v", mapName, err)
 	}
 	world := entry.Range()
-	scan := filmdec.DefaultScanFilmOptions()
+	scan := grammar.DefaultScanFilmOptions()
 	scan.WorldRange, scan.CaptureDirs = &world, true
-	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	pos, err := grammar.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("positions : %v", err)
 	}
-	fire, err := filmdec.ScanFilmFireEvents(dir)
+	fire, err := grammar.ScanFilmFireEvents(dir)
 	if err != nil {
 		t.Fatalf("tirs : %v", err)
 	}
@@ -147,7 +147,7 @@ func ctfFatalReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapN
 // tir : il suffit de la position des deux joueurs à cet instant, donc du seul pont. C'est ce que
 // `BuildKillPositions` produit, et c'est ce que cette mesure chiffre — à ne pas confondre avec
 // la localisation du TIR fatal (maillons 3 et 4 ci-dessous), qui exige en plus un record de tir.
-func ctfWriteKillPositions(b *strings.Builder, pos []filmdec.BipedPosition,
+func ctfWriteKillPositions(b *strings.Builder, pos []grammar.BipedPosition,
 	tracks map[uint32]slotTrack, owner map[uint32]int, lives []lifeSpan,
 	tbl PlayerIndexTable, pairs []ctfKillPair, off int64) {
 	named := map[uint32]uint64{}
@@ -175,7 +175,7 @@ func ctfWriteKillPositions(b *strings.Builder, pos []filmdec.BipedPosition,
 // ScanFilmDeaths ne garde que les morts.
 func ctfHighlightEvents(t *testing.T, filmDir string) []analysis.HighlightEvent {
 	t.Helper()
-	n := filmdec.CountFilmChunks(filmDir)
+	n := grammar.CountFilmChunks(filmDir)
 	raw, err := os.ReadFile(filepath.Join(filmDir, fmt.Sprintf("chunk_%02d.bin", n)))
 	if err != nil {
 		t.Fatalf("chunk highlight : %v", err)
@@ -229,7 +229,7 @@ func ctfPairKills(evs []analysis.HighlightEvent, off int64) ([]ctfKillPair, int,
 
 // ctfWriteFatalDelays mesure l'écart entre la mort et le tir du tueur le plus proche en amont.
 // Publié AVANT tout critère : la fenêtre doit se lire dans la donnée.
-func ctfWriteFatalDelays(b *strings.Builder, pairs []ctfKillPair, fire []filmdec.FireEvent,
+func ctfWriteFatalDelays(b *strings.Builder, pairs []ctfKillPair, fire []grammar.FireEvent,
 	tbl PlayerIndexTable) {
 	var d []int64
 	for _, p := range pairs {
@@ -262,7 +262,7 @@ func ctfWriteFatalDelays(b *strings.Builder, pairs []ctfKillPair, fire []filmdec
 
 // ctfWriteFatalCoverage chiffre les maillons 3 et 4 pour un pont donné.
 func ctfWriteFatalCoverage(b *strings.Builder, label string, pairs []ctfKillPair,
-	fire []filmdec.FireEvent, tracks map[uint32]slotTrack, owner map[uint32]int, tbl PlayerIndexTable) {
+	fire []grammar.FireEvent, tracks map[uint32]slotTrack, owner map[uint32]int, tbl PlayerIndexTable) {
 	var noIndex, noShot, placed, unplaced int
 	for _, p := range pairs {
 		pi, ok := tbl.ByXUID[p.killerXUID]
@@ -287,7 +287,7 @@ func ctfWriteFatalCoverage(b *strings.Builder, label string, pairs []ctfKillPair
 }
 
 // ctfFatalStatus rend le statut d'une mort pour le pont donné, en un mot joignable.
-func ctfFatalStatus(p ctfKillPair, fire []filmdec.FireEvent, tracks map[uint32]slotTrack,
+func ctfFatalStatus(p ctfKillPair, fire []grammar.FireEvent, tracks map[uint32]slotTrack,
 	owner map[uint32]int, tbl PlayerIndexTable) string {
 	pi, ok := tbl.ByXUID[p.killerXUID]
 	if !ok {
@@ -304,8 +304,8 @@ func ctfFatalStatus(p ctfKillPair, fire []filmdec.FireEvent, tracks map[uint32]s
 }
 
 // ctfLastShotBefore rend le tir du joueur pi le plus proche en amont de tUS, dans la fenêtre.
-func ctfLastShotBefore(fire []filmdec.FireEvent, pi int, tUS uint64) (filmdec.FireEvent, bool) {
-	var best filmdec.FireEvent
+func ctfLastShotBefore(fire []grammar.FireEvent, pi int, tUS uint64) (grammar.FireEvent, bool) {
+	var best grammar.FireEvent
 	found := false
 	for _, e := range fire {
 		if e.FilmIndex != pi || e.TimestampUS > tUS {

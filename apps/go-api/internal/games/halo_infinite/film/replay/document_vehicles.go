@@ -10,7 +10,7 @@ package replay
 //
 // POURQUOI UN VEHICULE CESSE D EXISTER : LE FILM L ECRIT, ET C EST UNE LECTURE DEPUIS LE LOT
 // 1.9.10. Le composant `object-dead-state` de `ti=40` porte la mort de l entite ; il se lit par
-// la MARCHE (`filmdec.ScanObjectDeaths`), la seule voie qui atteigne `i11`. `VehicleTrack.End`
+// la MARCHE (`grammar.ScanObjectDeaths`), la seule voie qui atteigne `i11`. `VehicleTrack.End`
 // prend donc trois valeurs — `destroyed` (datee par `TEnd`), `film_end`, `unknown` — et les
 // trois sont des faits (cf. vehicle_end.go).
 //
@@ -38,7 +38,7 @@ package replay
 // desormais, quand le film l ecrit, que c en EST une.
 const (
 	// VehicleEndDestroyed : le film ECRIT la mort de cette vie (`object-dead-state` de `ti=40`,
-	// lu par la marche — cf. `filmdec.ScanObjectDeaths`). `TEnd` porte l instant.
+	// lu par la marche — cf. `grammar.ScanObjectDeaths`). `TEnd` porte l instant.
 	VehicleEndDestroyed = "destroyed"
 	// VehicleEndFilmEnd : la DERNIERE image-cle du film recense encore cette vie. Le vehicule
 	// est la quand le film s arrete ; sa fin n est pas un evenement du match.
@@ -211,7 +211,7 @@ type VehicleRide struct {
 	// CE QU ELLE EST : la visee de l HOMME, pas l orientation du vehicule ni celle de la
 	// tourelle. Chaque occupant — conducteur, artilleur, passager — garde son slot bipede
 	// pendant tout l episode et continue d y emettre `i21`, dans des records qui ne portent
-	// AUCUNE position (`filmdec.ScanFilmBipedAimOnly`). Un vehicule a donc autant de visees que
+	// AUCUNE position (`grammar.ScanFilmBipedAimOnly`). Un vehicule a donc autant de visees que
 	// d occupants, et elles sont independantes.
 	//
 	// CE QU ELLE REMPLACE : le cap du CHASSIS, que le client employait faute de mieux pour le
@@ -226,7 +226,7 @@ type VehicleRide struct {
 // VehicleAim est UNE lecture de visee d occupant, posee sur l axe de frames.
 //
 // LES DEUX ANGLES SONT CEUX DU PION (`Point.H` / `Point.P`), au bit pres : ils sortent du MEME
-// composant `i21` et du MEME accesseur (`filmdec.aimHeadingDegFromRaw` / `aimPitchDegFromRaw`,
+// composant `i21` et du MEME accesseur (`grammar.aimHeadingDegFromRaw` / `aimPitchDegFromRaw`,
 // detenteur unique depuis le lot V11). Le client n a donc qu une convention d angle a connaitre,
 // qu il dessine le cone d un pion a pied ou celui d un occupant de vehicule.
 type VehicleAim struct {
@@ -328,7 +328,7 @@ type VehicleCoverage struct {
 	// pannes differentes que « 0 visee publiee » confondrait :
 	//
 	//	AimReads       lectures BRUTES rendues par le balayage du film, tous slots bipedes
-	//	               confondus (`filmdec.ScanFilmBipedAimOnly`). A zero alors que des episodes
+	//	               confondus (`grammar.ScanFilmBipedAimOnly`). A zero alors que des episodes
 	//	               existent : c est le DECODEUR qui n a rien lu — grammaire d en-tete qui a
 	//	               bouge, ou bande de slots vide —, pas le film qui serait muet. Ordre de
 	//	               grandeur mesure : 4 832 a 24 050 par film (5 films, lot V11).

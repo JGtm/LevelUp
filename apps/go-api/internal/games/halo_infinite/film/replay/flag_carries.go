@@ -4,9 +4,9 @@ import (
 	"sort"
 	"strconv"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // flag_carries.go — LA REGLE : de quoi est faite la vie d'un drapeau, et ou elle s'arrete.
@@ -124,25 +124,25 @@ type FlagSpawn struct {
 type FlagCarryScan struct {
 	Scanned bool
 	// Signals porte le verdict de mode et les trois comptes qui le fondent.
-	Signals objectiveevents.FlagFilmSignals
+	Signals objectives.FlagFilmSignals
 	// Events sont les evenements de la table DRAPEAU, PAR SLOT statborg (non identifies).
 	//
 	// POURQUOI PAS DEJA IDENTIFIES : `IdentifyNamedEvents` ECARTE silencieusement les slots que
 	// le pont n'a pas nommes. En partant des evenements bruts, la couverture peut compter
 	// exactement combien de prises sont perdues faute de pont (`NoBridge`) — un calque qui ne le
 	// dirait pas annoncerait une exhaustivite qu'il n'a pas.
-	Events []objectiveevents.NamedEvent
+	Events []objectives.NamedEvent
 	// Identity est le pont slot statborg -> xuid, PAR MANCHE (le slot est reattribue d'une
 	// manche a l'autre ; une prise est nommee par l'identite de sa manche, choisie sur son
 	// instant). Sur un film mono-manche c'est le pont plat, a l'octet pres.
-	Identity objectiveevents.RoundIdentity
+	Identity objectives.RoundIdentity
 	// TeamOf est la table xuid -> equipe LUE DANS LE FILM (lot 1.7) : elle porte l'invariant
 	// « jamais son propre drapeau ». Les joueurs a « aucune equipe » n'y entrent pas — l'invariant
 	// ne refuse que sur une equipe REELLE. Vide : l'invariant se tait.
 	TeamOf map[string]int
 	// Marks est le controle independant : les records de bipede d'image-cle portant le marqueur
 	// de portage, plus les instants de TOUTES les images-cles.
-	Marks filmdec.CarrierMarkScan
+	Marks grammar.CarrierMarkScan
 	// Spawns sont les socles `flag_spawn` de la carte (catalogue versionne d'objectifs).
 	Spawns []FlagSpawn
 	// Free sont les VIES LIBRES de l'objet drapeau (cf. flag_objects.go). Elles ne PUBLIENT rien
@@ -279,11 +279,11 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 }
 
 // flagOpenings rend les prises de l'oracle, par SLOT statborg, fusionnees et triees.
-func flagOpenings(evs []objectiveevents.NamedEvent, identity objectiveevents.RoundIdentity) []flagOpening {
+func flagOpenings(evs []objectives.NamedEvent, identity objectives.RoundIdentity) []flagOpening {
 	bySlot := map[int][]flagOpening{}
 	for _, e := range evs {
-		steal := e.Stat == objectiveevents.StatFlagSteals
-		if e.Stat != objectiveevents.StatFlagGrabs && !steal {
+		steal := e.Stat == objectives.StatFlagSteals
+		if e.Stat != objectives.StatFlagGrabs && !steal {
 			continue
 		}
 		bySlot[e.Slot] = append(bySlot[e.Slot],
@@ -318,8 +318,8 @@ func sortFlagOpenings(ops []flagOpening) {
 }
 
 // boundFlagCarries ferme chaque prise au PREMIER des faits qui l'interrompent.
-func boundFlagCarries(ops []flagOpening, evs []objectiveevents.NamedEvent, ctx flagCarryCtx) []flagCarryRaw {
-	captures := timesBySlot(evs, objectiveevents.StatFlagCaptures)
+func boundFlagCarries(ops []flagOpening, evs []objectives.NamedEvent, ctx flagCarryCtx) []flagCarryRaw {
+	captures := timesBySlot(evs, objectives.StatFlagCaptures)
 	deaths := deathTimesByXUID(ctx.deaths)
 	next := nextOpeningOfSlot(ops)
 	end := flagMatchEnd(evs, ctx)
@@ -359,11 +359,11 @@ func nextOpeningOfSlot(ops []flagOpening) map[int]int64 {
 // closeByCarrierKills raccourcit un portage quand `flag_carriers_killed` date une chute que le
 // fil des morts n'a pas vue. Ne s'applique QUE si un seul portage est ouvert a cet instant :
 // sinon rien ne dit lequel, et l'evenement se compte en incoherence.
-func closeByCarrierKills(raws []flagCarryRaw, evs []objectiveevents.NamedEvent,
-	identity objectiveevents.RoundIdentity) ([]flagCarryRaw, int) {
+func closeByCarrierKills(raws []flagCarryRaw, evs []objectives.NamedEvent,
+	identity objectives.RoundIdentity) ([]flagCarryRaw, int) {
 	ambiguous := 0
 	for _, e := range evs {
-		if e.Stat != objectiveevents.StatFlagCarriersKilled {
+		if e.Stat != objectives.StatFlagCarriersKilled {
 			continue
 		}
 		at, killer := int64(e.TimeMS), identity.At(e.Slot, e.TimeMS)
@@ -431,7 +431,7 @@ func sqDist(ax, ay, bx, by float32) float64 {
 }
 
 // timesBySlot rend, par slot statborg, les instants tries d'une statistique.
-func timesBySlot(evs []objectiveevents.NamedEvent, stat string) map[int][]int64 {
+func timesBySlot(evs []objectives.NamedEvent, stat string) map[int][]int64 {
 	out := map[int][]int64{}
 	for _, e := range evs {
 		if e.Stat == stat {
@@ -470,7 +470,7 @@ func firstAfter(series []int64, t0 int64) (int64, bool) {
 // flagMatchEnd rend une borne STRICTEMENT posterieure a tout fait date du match ET a la derniere
 // frame publiee. Elle sert de fermeture par defaut : un portage qui l atteint n a ete ferme par
 // rien, et son `closed` reste faux.
-func flagMatchEnd(evs []objectiveevents.NamedEvent, ctx flagCarryCtx) int64 {
+func flagMatchEnd(evs []objectives.NamedEvent, ctx flagCarryCtx) int64 {
 	end := ctx.matchMSOfFrame(ctx.frames - 1)
 	for _, e := range evs {
 		if int64(e.TimeMS) > end {

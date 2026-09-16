@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/filmsource"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/source"
 )
 
 // TestGwWidthsForFilmSuitLaVersionDeFormat — LE TEMOIN DU CONSTAT 2, COTE SOCLES.
@@ -34,8 +34,8 @@ import (
 // build, il les rendrait.
 func TestGwWidthsForFilmSuitLaVersionDeFormat(t *testing.T) {
 	film := filmFormat27BuildInconnu(t)
-	calibrees := filmdec.MPPWidths{Lead: 8, Index: 3}
-	got := gwWidthsForFilm(filmdec.NewFilmContext(film), calibrees)
+	calibrees := grammar.MPPWidths{Lead: 8, Index: 3}
+	got := gwWidthsForFilm(grammar.NewFilmContext(film), calibrees)
 	if got.Lead != 9 || got.Index != 5 {
 		t.Fatalf("largeurs installees = %d/%d, 9/5 attendues (les relues du format 27) — le site "+
 			"consulte-t-il encore le nom de build ?", got.Lead, got.Index)
@@ -49,8 +49,8 @@ func TestGwWidthsForFilmSuitLaVersionDeFormat(t *testing.T) {
 func TestGwWidthsForFilmSeReplieQuandLaLargeurEstIndeterminee(t *testing.T) {
 	d0 := chunk00Brut(t, "11de8353") // HI_1_9_0, format 24
 	film := filmDUnChunk(t, d0)
-	calibrees := filmdec.MPPWidths{Lead: 8, Index: 3}
-	got := gwWidthsForFilm(filmdec.NewFilmContext(film), calibrees)
+	calibrees := grammar.MPPWidths{Lead: 8, Index: 3}
+	got := gwWidthsForFilm(grammar.NewFilmContext(film), calibrees)
 	if got != calibrees {
 		t.Fatalf("largeurs installees = %d/%d, les calibrees %d/%d attendues : le format 24 n a "+
 			"pas de largeur relue", got.Lead, got.Index, calibrees.Lead, calibrees.Index)
@@ -61,11 +61,11 @@ func TestGwWidthsForFilmSeReplieQuandLaLargeurEstIndeterminee(t *testing.T) {
 //
 // `BuildProfileFromFilm` resout le profil par le NOM DE BUILD (table de sept builds en dur). Il
 // n a plus aucun appelant de production : la grammaire du bloc MPP est keyee par la version de
-// format, et [filmdec.MPPWidthsForFilm] en est la porte. Un appel neuf ici serait le retour du
+// format, et [grammar.MPPWidthsForFilm] en est la porte. Un appel neuf ici serait le retour du
 // defaut — et il ne se verrait pas, puisqu il ne change rien sur les builds connus.
 func TestAucuneResolutionMPPParLeProfilComplet(t *testing.T) {
 	fichiersVus := 0
-	for _, dir := range []string{".", filepath.Join("..", "filmdec")} {
+	for _, dir := range []string{".", filepath.Join("..", "grammar")} {
 		parcourirProductionGo(t, dir, func(rel string, appels []string) {
 			fichiersVus++
 			for _, a := range appels {
@@ -73,7 +73,7 @@ func TestAucuneResolutionMPPParLeProfilComplet(t *testing.T) {
 					continue
 				}
 				t.Errorf("%s appelle `BuildProfileFromFilm` : la resolution du decoupage MPP "+
-					"passe par `filmdec.MPPWidthsForFilm` (version de format), jamais par le "+
+					"passe par `grammar.MPPWidthsForFilm` (version de format), jamais par le "+
 					"nom de build (constat 2 de la revue M1, 2026-09-15)", rel)
 			}
 		})
@@ -113,8 +113,8 @@ func parcourirProductionGo(t *testing.T, dir string, visite func(rel string, app
 }
 
 // appelsQualifiesDuFichier rend le nom de la fonction appelee de chaque appel du fichier, que
-// l appel soit QUALIFIE (`filmdec.Xxx(...)`, depuis `replay/`) ou NU (`Xxx(...)`, depuis
-// `filmdec/` lui-meme). Les DEUX formes comptent : le site de `filmdec` appelait
+// l appel soit QUALIFIE (`grammar.Xxx(...)`, depuis `replay/`) ou NU (`Xxx(...)`, depuis
+// `filmdec/` lui-meme). Les DEUX formes comptent : le site de `grammar` appelait
 // `BuildProfileFromFilm` sans qualificateur, et un ratchet qui n aurait vu que la forme qualifiee
 // aurait laisse passer exactement la moitie du defaut.
 //
@@ -144,7 +144,7 @@ func appelsQualifiesDuFichier(t *testing.T, chemin string) []string {
 
 // filmFormat27BuildInconnu : la bobine `bcb6d393` (format 27) dont le nom de build est remplace
 // par un build HORS TABLE, de meme longueur — la substitution ne deplace aucun octet.
-func filmFormat27BuildInconnu(t *testing.T) *filmsource.Film {
+func filmFormat27BuildInconnu(t *testing.T) *source.Film {
 	t.Helper()
 	d0 := chunk00Brut(t, "bcb6d393")
 	patche := append([]byte(nil), d0...)
@@ -166,13 +166,13 @@ func chunk00Brut(t *testing.T, court string) []byte {
 	if err != nil {
 		t.Fatalf("lecture de %s : %v", chemin, err)
 	}
-	return filmsource.Inflate(b)
+	return source.Inflate(b)
 }
 
 // filmDUnChunk charge un film d un seul chunk deja inflate (le registre en position 0).
-func filmDUnChunk(t *testing.T, chunk []byte) *filmsource.Film {
+func filmDUnChunk(t *testing.T, chunk []byte) *source.Film {
 	t.Helper()
-	f, err := filmsource.Load(filmsource.MemoryChunks{chunk}, nil)
+	f, err := source.Load(source.MemoryChunks{chunk}, nil)
 	if err != nil {
 		t.Fatalf("chargement du temoin : %v", err)
 	}

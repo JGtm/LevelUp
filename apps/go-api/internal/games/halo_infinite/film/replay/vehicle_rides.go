@@ -41,7 +41,7 @@ package replay
 import (
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // CES SEUILS ONT ETE REMIS EN CAUSE LE 2026-09-02, ET LA MESURE LES A CONFIRMES. Le calque
@@ -111,14 +111,14 @@ const (
 // six parametres — regle des 5 parametres du depot, et ces six-la voyagent toujours ensemble.
 type vehicleRideInputs struct {
 	// vehBySlot est le nuage des positions de VEHICULE, indexe par slot et trie par instant.
-	vehBySlot map[uint32][]filmdec.BipedPosition
+	vehBySlot map[uint32][]grammar.BipedPosition
 	// bipeds est le nuage NON decime des BIPEDES, d ou sortent les trous.
-	bipeds []filmdec.BipedPosition
+	bipeds []grammar.BipedPosition
 	// events sont les embarquements et les sorties.
-	events []filmdec.VehicleEvent
+	events []grammar.VehicleEvent
 	// aimBySlot porte la VISEE de chaque occupant, indexee par SON slot bipede et triee par
 	// instant (cf. vehicle_rides_aim.go). Vide : les episodes sortent sans serie de visee.
-	aimBySlot map[uint32][]filmdec.BipedAim
+	aimBySlot map[uint32][]grammar.BipedAim
 	// reg est le REGISTRE D IDENTITE : il donne l occupant d un slot A UN INSTANT. Vide : les
 	// episodes sortent anonymes, pas supprimes.
 	reg IdentityRegistry
@@ -130,7 +130,7 @@ type vehicleRideInputs struct {
 	// est ici parce que le nom porte par un evenement peut designer une vie que le calque ne
 	// publie pas — la TOURELLE d un Warthog, entite `ti=40` attachee qui ne replique jamais sa
 	// position (cf. `vehicleLifeFromEvent`).
-	drawable map[filmdec.EquipmentLifeKey]bool
+	drawable map[grammar.EquipmentLifeKey]bool
 	clock    replayClock
 }
 
@@ -140,10 +140,10 @@ type vehicleRideInputs struct {
 // l assemblage — un nom d evenement qui designe une vie non dessinable ferait disparaitre
 // l occupant (cf. `vehicleLifeFromEvent`, et la tourelle du Warthog qui l a revele).
 func vehicleDrawableLives(
-	lives []vehicleLife, spawns map[filmdec.EquipmentLifeKey]filmdec.EquipmentCreation,
-	bySlot map[uint32][]filmdec.BipedPosition,
-) map[filmdec.EquipmentLifeKey]bool {
-	out := make(map[filmdec.EquipmentLifeKey]bool, len(lives))
+	lives []vehicleLife, spawns map[grammar.EquipmentLifeKey]grammar.EquipmentCreation,
+	bySlot map[uint32][]grammar.BipedPosition,
+) map[grammar.EquipmentLifeKey]bool {
+	out := make(map[grammar.EquipmentLifeKey]bool, len(lives))
 	for _, l := range lives {
 		if sp, ok := spawns[l.key]; ok && sp.TimestampUS > 0 {
 			out[l.key] = true
@@ -161,7 +161,7 @@ type vehicleGap struct {
 	slot           uint32
 	startUS, endUS uint64
 	// last est le DERNIER echantillon avant l interruption : c est la position d embarquement.
-	last filmdec.BipedPosition
+	last grammar.BipedPosition
 }
 
 // vehicleRideStats compte PAR QUELLE VOIE chaque episode a trouve son vehicule. Il n est PAS
@@ -187,14 +187,14 @@ type vehicleRideStats struct {
 // qu en REPLI, pour les episodes qu aucun evenement n atteste — aux memes portes qu avant.
 func buildVehicleRides(
 	in vehicleRideInputs,
-) (map[filmdec.EquipmentLifeKey][]VehicleRide, vehicleRideStats) {
+) (map[grammar.EquipmentLifeKey][]VehicleRide, vehicleRideStats) {
 	var st vehicleRideStats
 	if in.clock.step == 0 || len(in.lives) == 0 {
 		return nil, st
 	}
 	boards, exits := vehicleEventsByOccupant(in.events)
 	bySlot := vehiclePositionsBySlot(in.bipeds)
-	out := map[filmdec.EquipmentLifeKey][]VehicleRide{}
+	out := map[grammar.EquipmentLifeKey][]VehicleRide{}
 	var kept []vehicleEpisode
 	for _, ep := range vehicleEventEpisodes(boards, exits, bySlot) {
 		st.episodes++
@@ -251,7 +251,7 @@ func buildVehicleRides(
 // vehicleRideOf assemble UN episode : les bornes du trou, affinees par les evenements quand ils
 // tombent dessus, et l identite de l occupant quand le pont la donne.
 func vehicleRideOf(
-	g vehicleGap, boards, exits []filmdec.VehicleEvent, in vehicleRideInputs,
+	g vehicleGap, boards, exits []grammar.VehicleEvent, in vehicleRideInputs,
 ) VehicleRide {
 	r := VehicleRide{Slot: g.slot, Src: VehicleRideSrcGap}
 	startUS, endUS := g.startUS, g.endUS
@@ -299,7 +299,7 @@ func vehicleRideOf(
 // porter. POINTEUR, et il le faut : le siege 0 est le CONDUCTEUR, c est-a-dire la valeur la plus
 // frequente et la plus utile du champ — `omitempty` sur un entier l effacerait exactement comme
 // une absence de lecture.
-func vehicleSeatOf(ev filmdec.VehicleEvent) *int {
+func vehicleSeatOf(ev grammar.VehicleEvent) *int {
 	if !ev.SeatValid {
 		return nil
 	}
@@ -309,8 +309,8 @@ func vehicleSeatOf(ev filmdec.VehicleEvent) *int {
 
 // vehicleGaps releve les interruptions >= vehicleGapMinMS du flux de position de chaque bipede.
 // L ordre de sortie est deterministe (slots tries, echantillons tries par instant).
-func vehicleGaps(bipeds []filmdec.BipedPosition) []vehicleGap {
-	bySlot := map[uint32][]filmdec.BipedPosition{}
+func vehicleGaps(bipeds []grammar.BipedPosition) []vehicleGap {
+	bySlot := map[uint32][]grammar.BipedPosition{}
 	for _, b := range bipeds {
 		if b.HasWorld {
 			bySlot[b.Slot] = append(bySlot[b.Slot], b)
@@ -341,7 +341,7 @@ func vehicleGaps(bipeds []filmdec.BipedPosition) []vehicleGap {
 // EN PLAN, tolerance temporelle bornee : c est exactement l oracle geometrique du 2026-08-18,
 // celui sous lequel le signal a ete mesure.
 func vehicleNearestTo(
-	e filmdec.BipedPosition, vehBySlot map[uint32][]filmdec.BipedPosition,
+	e grammar.BipedPosition, vehBySlot map[uint32][]grammar.BipedPosition,
 ) (uint32, bool) {
 	return vehicleNearestWithin(e, vehBySlot, vehicleBoardRadiusM)
 }
@@ -351,7 +351,7 @@ func vehicleNearestTo(
 // (`vehicleEventAnchorRadiusM`) ne sont pas le meme chiffre, mais ils lisent le meme nuage avec
 // la meme regle de fraicheur.
 func vehicleNearestWithin(
-	e filmdec.BipedPosition, vehBySlot map[uint32][]filmdec.BipedPosition, radiusM float64,
+	e grammar.BipedPosition, vehBySlot map[uint32][]grammar.BipedPosition, radiusM float64,
 ) (uint32, bool) {
 	slots := make([]uint32, 0, len(vehBySlot))
 	for s := range vehBySlot {
@@ -375,10 +375,10 @@ func vehicleNearestWithin(
 // vehicleSampleNear rend l echantillon le plus proche d un instant dans une liste TRIEE, et
 // l ecart.
 func vehicleSampleNear(
-	pts []filmdec.BipedPosition, atUS uint64,
-) (filmdec.BipedPosition, uint64, bool) {
+	pts []grammar.BipedPosition, atUS uint64,
+) (grammar.BipedPosition, uint64, bool) {
 	if len(pts) == 0 {
-		return filmdec.BipedPosition{}, 0, false
+		return grammar.BipedPosition{}, 0, false
 	}
 	i := sort.Search(len(pts), func(k int) bool { return pts[k].TimestampUS >= atUS })
 	best := i
@@ -396,13 +396,13 @@ func vehicleSampleNear(
 // reponse est donc unique.
 func vehicleLifeAt(
 	lives []vehicleLife, slot uint32, atUS uint64,
-) (filmdec.EquipmentLifeKey, bool) {
+) (grammar.EquipmentLifeKey, bool) {
 	for _, l := range lives {
 		if l.key.Slot == slot && atUS >= l.loUS && atUS <= l.hiUS {
 			return l.key, true
 		}
 	}
-	return filmdec.EquipmentLifeKey{}, false
+	return grammar.EquipmentLifeKey{}, false
 }
 
 // vehicleEventsByOccupant range les evenements par slot d occupant, embarquements d un cote et
@@ -412,21 +412,21 @@ func vehicleLifeAt(
 // n est pas un joueur, c est une lecture qui a rate. La mesure les compte a zero sur le corpus
 // (68/68 en bande apres le portage du 2026-09-02) ; le filtre est la pour que ca reste vrai.
 func vehicleEventsByOccupant(
-	events []filmdec.VehicleEvent,
-) (boards, exits map[uint32][]filmdec.VehicleEvent) {
-	boards, exits = map[uint32][]filmdec.VehicleEvent{}, map[uint32][]filmdec.VehicleEvent{}
+	events []grammar.VehicleEvent,
+) (boards, exits map[uint32][]grammar.VehicleEvent) {
+	boards, exits = map[uint32][]grammar.VehicleEvent{}, map[uint32][]grammar.VehicleEvent{}
 	for _, ev := range events {
 		if !ev.OccupantPresent || !ev.OccupantInBand {
 			continue
 		}
 		switch ev.Kind {
-		case filmdec.EventBipedBoardVehicle:
+		case grammar.EventBipedBoardVehicle:
 			boards[ev.OccupantSlot] = append(boards[ev.OccupantSlot], ev)
-		case filmdec.EventUnitExitVehicle:
+		case grammar.EventUnitExitVehicle:
 			exits[ev.OccupantSlot] = append(exits[ev.OccupantSlot], ev)
 		}
 	}
-	for _, m := range []map[uint32][]filmdec.VehicleEvent{boards, exits} {
+	for _, m := range []map[uint32][]grammar.VehicleEvent{boards, exits} {
 		for s := range m {
 			v := m[s]
 			sort.SliceStable(v, func(i, j int) bool { return v[i].TimestampUS < v[j].TimestampUS })
@@ -437,9 +437,9 @@ func vehicleEventsByOccupant(
 
 // vehicleEventNear rend l evenement le plus proche d un instant dans la tolerance, s il y en a un.
 func vehicleEventNear(
-	evs []filmdec.VehicleEvent, atUS uint64,
-) (filmdec.VehicleEvent, bool) {
-	best, found, bestGap := filmdec.VehicleEvent{}, false, uint64(0)
+	evs []grammar.VehicleEvent, atUS uint64,
+) (grammar.VehicleEvent, bool) {
+	best, found, bestGap := grammar.VehicleEvent{}, false, uint64(0)
 	for _, ev := range evs {
 		g := gapUS(ev.TimestampUS, atUS)
 		if g/1000 > vehicleEventTolMS {

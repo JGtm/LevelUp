@@ -6,7 +6,7 @@ package replay
 // # LE FAIT (audit du 2026-09-10, cause C5)
 //
 // L'API publie `flag_secures` par joueur. Le rejeu n'en publie AUCUNE : l'emplacement n'est dans
-// aucune table (`objectiveevents/named.go`, famille `ObjectiveTypeFlag`). 264 actions a l'oracle
+// aucune table (`objectives/named.go`, famille `ObjectiveTypeFlag`). 264 actions a l'oracle
 // sur les 13 films CTF d'arene du parc, 0 publiee, jamais nommee.
 //
 // # LE PROTOCOLE EST CELUI QUI A NOMME `flag_grabs`, ET IL N'EST PAS NEGOCIE ICI
@@ -47,7 +47,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // fsJoueur est la ligne d'oracle d'un joueur : ce que l'API dit de ses securisations, le
@@ -65,7 +65,7 @@ type fsJoueur struct {
 // LES 13 FILMS SONT LES CTF D'ARENE DU PARC QUI ONT DES CHUNKS. Les trois CTF de BTB
 // (`4f77afc1` 36 lignes, `879a4dba` 26, `1c4c63c2` 24) sont EXCLUS et ce n'est pas un choix de
 // confort : au-dela de huit sieges le statborg n'a plus de place pour dire de qui il parle
-// (`objectiveevents/rosterfit.go`), et leurs series ne correspondent a personne de facon
+// (`objectives/rosterfit.go`), et leurs series ne correspondent a personne de facon
 // reproductible. Les y inclure fabriquerait des desaccords qui ne diraient rien du composant.
 var fsOracle = map[string][]fsJoueur{
 	// 16ea3668 — CTF:Arena sur Aquarius : 7 securisation(s) a l oracle.
@@ -242,10 +242,10 @@ type fsCandidat struct {
 //
 // Un slot SANS EMISSION est la lecture « zero » du compteur, pas une absence de mesure.
 func fsVerdict(
-	recs []objectiveevents.StatRecord, identity map[int]string,
-	c objectiveevents.StatComponent, cible map[string]int,
+	recs []objectives.StatRecord, identity map[int]string,
+	c objectives.StatComponent, cible map[string]int,
 ) fsCandidat {
-	series := objectiveevents.SeriesTotal(recs, c, false)
+	series := objectives.SeriesTotal(recs, c, false)
 	v := fsCandidat{nom: fmt.Sprintf("comp %d %s%s", c.Comp, fsSide(c.SideB), fsStrict(c.Strict))}
 	for slot, xuid := range identity {
 		publie := 0
@@ -286,21 +286,21 @@ func fsStrict(s bool) string {
 }
 
 // fsIdentity construit le pont slot -> xuid par le triplet, et la cible par xuid.
-func fsIdentity(recs []objectiveevents.StatRecord, oracle []fsJoueur,
+func fsIdentity(recs []objectives.StatRecord, oracle []fsJoueur,
 	cible func(fsJoueur) int,
 ) (map[int]string, map[string]int) {
-	lines := make([]objectiveevents.PlayerLine, 0, len(oracle))
+	lines := make([]objectives.PlayerLine, 0, len(oracle))
 	par := map[string]int{}
 	for _, j := range oracle {
 		par[j.xuid] = cible(j)
 		if j.kills < 0 {
 			continue // bot sans ligne de match : aucun pont possible, et c'est dit
 		}
-		lines = append(lines, objectiveevents.PlayerLine{
+		lines = append(lines, objectives.PlayerLine{
 			XUID: j.xuid, Kills: j.kills, Deaths: j.deaths, Assists: j.assists,
 		})
 	}
-	return objectiveevents.SlotIdentityFrom(recs, lines), par
+	return objectives.SlotIdentityFrom(recs, lines), par
 }
 
 // TestFlagSecuresSweep — LE BALAYAGE. Un film par processus, via `ZONE_FILM`.
@@ -315,7 +315,7 @@ func TestFlagSecuresSweep(t *testing.T) {
 	if !ok {
 		t.Skipf("film %s hors corpus `flag_secures` (aucun oracle gele pour lui)", short)
 	}
-	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
+	recs := objectives.StatRecords(p2aBobine(t, dir))
 	if len(recs) == 0 {
 		t.Fatalf("%s : aucun enregistrement de statistiques — rien a balayer", short)
 	}
@@ -323,7 +323,7 @@ func TestFlagSecuresSweep(t *testing.T) {
 	// TEMOIN POSITIF : le balayage doit retrouver `flag_grabs` a `comp 22 A`, sans desaccord.
 	idGrabs, cibleGrabs := fsIdentity(recs, oracle, func(j fsJoueur) int { return j.grabs })
 	temoin := fsVerdict(recs, idGrabs,
-		objectiveevents.StatComponent{Comp: 22, SideB: false}, cibleGrabs)
+		objectives.StatComponent{Comp: 22, SideB: false}, cibleGrabs)
 	t.Logf("FLAGSEC-TEMOIN\t%s\t%s (flag_grabs) : %d exact(s), %d desaccord(s)",
 		short, temoin.nom, temoin.exacts, temoin.desaccords)
 	// UN PONT VIDE N'EST PAS UN TEMOIN QUI TOMBE, et les deux ne doivent pas se confondre :
@@ -357,7 +357,7 @@ func TestFlagSecuresSweep(t *testing.T) {
 	for comp := 0; comp <= fsMaxComp; comp++ {
 		for _, sideB := range []bool{false, true} {
 			for _, strict := range []bool{false, true} {
-				c := objectiveevents.StatComponent{Comp: comp, SideB: sideB, Strict: strict}
+				c := objectives.StatComponent{Comp: comp, SideB: sideB, Strict: strict}
 				v := fsVerdict(recs, identity, c, cible)
 				switch {
 				case v.desaccords == 0:
@@ -394,7 +394,7 @@ func TestFlagSecuresSweep(t *testing.T) {
 
 // fsSecuresSlot est l'emplacement NOMME de `flag_secures` — la meme cle que
 // `namedStatSlots[ObjectiveTypeFlag][{23, sideB}]`, ecrite ici une fois pour la garde.
-var fsSecuresSlot = objectiveevents.StatComponent{Comp: 23, SideB: true}
+var fsSecuresSlot = objectives.StatComponent{Comp: 23, SideB: true}
 
 // fsProcheMax borne la liste des QUASI-candidats journalises. Sans borne, le balayage
 // recracherait ses 260 emplacements a chaque film et la liste ne se lirait plus. Deux

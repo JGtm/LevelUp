@@ -6,7 +6,7 @@
 // film ENTIER une trentaine de fois : chaque `ScanFilm*(dir)` ouvrait le repertoire de chunks
 // pour son propre compte, avec TROIS inflates et TROIS marcheurs de paquets divergents dans le
 // depot. Le decodage pesait ~94 % du temps de cuisson (mesure 0.8). Le lot a fait passer tous
-// les balayages a un `*filmsource.Film` charge UNE fois par `replaybuild.BuildBytes`.
+// les balayages a un `*source.Film` charge UNE fois par `replaybuild.BuildBytes`.
 //
 // Rien de tout cela ne tient si un balayage rajoute demain un `os.ReadFile` « juste pour lire un
 // petit chunk », ou si un appelant de production reprend une enveloppe `ScanFilmXxx(dir)` parce
@@ -17,9 +17,9 @@
 // # LES QUATRE REGLES
 //
 //  1. `zlib.NewReader` est INTERDIT dans les paquets de la chaine de cuisson (hors _test) —
-//     l'unique decompresseur y est `filmsource.Inflate`.
+//     l'unique decompresseur y est `source.Inflate`.
 //  2. Les lectures de disque (`os.ReadFile` / `ReadDir` / `Open` / `OpenFile` / `Stat`, et
-//     `filepath.Glob` — cf. [lecturesDisque]) sont INTERDITES dans `filmdec` (hors _test) sauf
+//     `filepath.Glob` — cf. [lecturesDisque]) sont INTERDITES dans `grammar` (hors _test) sauf
 //     dans les fichiers de l'allowlist datee ci-dessous : les chargeurs de CATALOGUE (qui ne
 //     lisent pas de film) et les enveloppes D2 declarees.
 //  3. Aucun appel d'ENVELOPPE `dir` depuis les sites de PRODUCTION de D2 (hors _test) : la
@@ -87,11 +87,11 @@ func fichiersGoNonTest(t *testing.T, pkgDir string) map[string]*ast.File {
 // paquetsSansInflate : les paquets de la chaine de cuisson qui n'ont plus le droit de
 // decompresser eux-memes, relatifs a apps/go-api.
 //
-// `objectiveevents` y est entre a l'item 1.5 (2026-09-02) : il portait le TROISIEME inflate et
+// `objectives` y est entre a l'item 1.5 (2026-09-02) : il portait le TROISIEME inflate et
 // le TROISIEME marcheur de paquets du depot (`decompressChunk`, `walkFrames`), et c'est celui
 // dont la grammaire divergeait le plus — il n'emettait que le type 0, s'arretait sur CHUNK_END
 // sans l'emettre, bornait la taille SANS l'offset, et marchait le BRUT COMPRESSE quand
-// l'inflate echouait. Ses neuf points d'entree prennent desormais un `*filmsource.Film`.
+// l'inflate echouait. Ses neuf points d'entree prennent desormais un `*source.Film`.
 //
 // `killsource` y est entre a l'item 1.9 (2026-09-02), apres que l'item 1.4 lui a retire son
 // `inflate` (`io.ReadAll` sur un `zlib.NewReader`, `chunks.go:90`) en meme temps que
@@ -99,10 +99,10 @@ func fichiersGoNonTest(t *testing.T, pkgDir string) map[string]*ast.File {
 // inflates du depot, et son film arrive maintenant deja charge (`Decode(ctx, name, film, opts)`).
 // Le reste du depot est couvert par l'allowlist FERMEE de la regle 4.
 var paquetsSansInflate = []string{
-	"internal/games/halo_infinite/film/filmdec",
-	"internal/analysis/objectiveevents",
+	"internal/games/halo_infinite/film/grammar",
+	"internal/games/halo_infinite/film/facts/objectives",
 	"internal/games/halo_infinite/film/replay",
-	"internal/games/halo_infinite/film/killsource",
+	"internal/games/halo_infinite/film/facts/killsource",
 }
 
 // TestPasDeZlibDansLaChaineDeCuisson — REGLE 1.
@@ -120,9 +120,9 @@ func TestPasDeZlibDansLaChaineDeCuisson(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Fatalf("`compress/zlib` importe dans la chaine de cuisson :\n  %s\n"+
-			"Le film est decompresse UNE fois, par `filmsource` (lot 1 de PLAN_CUISSON_PERF). "+
-			"Un chunk isole se lit par `filmsource.Inflate` ou `filmdec.ReadFilmChunk` ; un film "+
-			"entier par `filmsource.LoadDir`. Trois inflates divergents ont deja coute une mesure "+
+			"Le film est decompresse UNE fois, par `source` (lot 1 de PLAN_CUISSON_PERF). "+
+			"Un chunk isole se lit par `source.Inflate` ou `grammar.ReadFilmChunk` ; un film "+
+			"entier par `source.LoadDir`. Trois inflates divergents ont deja coute une mesure "+
 			"sur 1 378 films pour prouver qu'ils voyaient les memes octets.",
 			strings.Join(violations, "\n  "))
 	}
@@ -152,7 +152,7 @@ var fichiersFilmdecLisantLeDisque = map[string]bool{
 // et `filepath.Glob` enumere un repertoire de chunks aussi bien que `os.ReadDir`. Une allowlist
 // qui laisse le meme geste passer sous un autre nom ne mesure plus rien.
 //
-// LA REGLE NE COUVRE QUE `internal/games/halo_infinite/film/filmdec` : `filmsource` est HORS de son perimetre par
+// LA REGLE NE COUVRE QUE `internal/games/halo_infinite/film/grammar` : `source` est HORS de son perimetre par
 // construction (il n'est pas dans `pkgDir`), et c'est voulu — c'est LE paquet autorise a lire un
 // film, l'unique chargeur de la chaine (D1).
 var lecturesDisque = map[string]bool{
@@ -166,7 +166,7 @@ var paquetsLecteursDeDisque = map[string]bool{"os": true, "filepath": true}
 
 // TestFilmdecNeLitPasLeDisqueHorsAllowlist — REGLE 2.
 func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/filmdec"))
+	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/grammar"))
 	var violations []string
 	for nom, f := range fichiersGoNonTest(t, pkgDir) {
 		if fichiersFilmdecLisantLeDisque[nom] {
@@ -189,8 +189,8 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 		})
 	}
 	if len(violations) > 0 {
-		t.Fatalf("`filmdec` relit le disque hors allowlist :\n  %s\n"+
-			"Les balayages recoivent un `*filmsource.Film` DEJA CHARGE (lot 1) : un `os.ReadFile` "+
+		t.Fatalf("`grammar` relit le disque hors allowlist :\n  %s\n"+
+			"Les balayages recoivent un `*source.Film` DEJA CHARGE (lot 1) : un `os.ReadFile` "+
 			"ici, c'est le film relu une fois de plus — l'exact defaut que le lot a supprime. "+
 			"Si le fichier lu n'est PAS un film (catalogue, manifeste), l'ajouter a "+
 			"`fichiersFilmdecLisantLeDisque` avec sa justification et sa date.",
@@ -202,12 +202,12 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 // production ne doit jamais appeler (regle D2 du plan). Chacune charge un film ENTIER pour un
 // seul balayage ; les appeler depuis la cuisson annulerait le lot.
 //
-// La liste couvre les enveloppes exportees de `filmdec` et de `replay`. Les formes film
+// La liste couvre les enveloppes exportees de `grammar` et de `replay`. Les formes film
 // (`ScanXxx(film, ...)`) ne sont PAS ici : ce sont elles que la production appelle.
 //
 // ELLE NE PORTE QUE DES NOMS SANS HOMONYME, ET C'EST UNE CONDITION DE VALIDITE (lot 6, constat 4).
 // Le test compare des NOMS d'appeles : il parse l'AST et ne type rien, donc `fc.Xxx()` et
-// `filmdec.Xxx()` lui sont indiscernables. Une enveloppe homonyme d'une methode rendrait la regle
+// `grammar.Xxx()` lui sont indiscernables. Une enveloppe homonyme d'une methode rendrait la regle
 // NON DISCRIMINANTE — elle interdirait l'appel legitime. Un seul cas existait,
 // `EquipmentArchetype` (enveloppe `dir`) contre `FilmContext.EquipmentArchetype` (la methode que
 // la cuisson appelle) : l'enveloppe s'appelle desormais `EquipmentArchetypeDir`. Avant d'ajouter
@@ -228,7 +228,7 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 //
 //	ScanFilmVehicleCreationsForBand  son APPELANT DE PRODUCTION A ETE MIGRE vers la forme film
 //	                                 (`replay/build_vehicles.go` appelle desormais
-//	                                 `filmdec.ScanVehicleCreationsForBand(fc, wr, band)`).
+//	                                 `grammar.ScanVehicleCreationsForBand(fc, wr, band)`).
 //	                                 L'enveloppe `dir` n'avait plus d'appelant DU TOUT : elle
 //	                                 se supprime, elle ne s'interdit pas ;
 //	ScanFilmKeyframeRecordSpans      arrivee SANS AUCUN APPELANT ;
@@ -264,7 +264,7 @@ var enveloppesInterditesEnProduction = []string{
 	"ScanFilmZoomEvents",
 	// `DetectI0Layout` N'EXISTE PLUS EN PRODUCTION depuis le 2026-09-16 (revue de jalon M1,
 	// constat C4 : plus aucun appelant de production depuis le lot 1.9.4, l'enveloppe est
-	// devenue `detectI0Layout` dans un fichier de test de `filmdec`). LE NOM RESTE ICI : cette
+	// devenue `detectI0Layout` dans un fichier de test de `grammar`). LE NOM RESTE ICI : cette
 	// liste est une liste de NOMS INTERDITS, pas un inventaire de symboles, et l'y garder fait
 	// rougir toute reintroduction en production.
 	"DetectI0Layout", "EquipmentArchetypeDir", "CalibrateMPPWidths",
@@ -281,16 +281,16 @@ var enveloppesInterditesEnProduction = []string{
 //
 //	internal/games/halo_infinite/film/replay        BuildFromFilm et les balayages du document
 //	internal/replaybuild            la cuisson (BuildBytes / BuildMatch)
-//	internal/analysis/objectiveevents  ses neuf points d'entree prennent un *filmsource.Film
-//	internal/games/halo_infinite/film/killsource  Decode recoit le film deja charge
+//	internal/games/halo_infinite/film/facts/objectives  ses neuf points d'entree prennent un *source.Film
+//	internal/games/halo_infinite/film/facts/killsource  Decode recoit le film deja charge
 //	internal/sync/killcollector     positions.go : le pont disque a disparu a l'item 1.6
 //	internal/api/wire               registry_replay_build.go : le cablage de l'API
 //	cmd/zone-attribution            measure.go : charge le film UNE fois (item 1.6)
 var paquetsDeProduction = []string{
 	"internal/games/halo_infinite/film/replay",
 	"internal/replaybuild",
-	"internal/analysis/objectiveevents",
-	"internal/games/halo_infinite/film/killsource",
+	"internal/games/halo_infinite/film/facts/objectives",
+	"internal/games/halo_infinite/film/facts/killsource",
 	"internal/sync/killcollector",
 	"internal/api/wire",
 	"cmd/zone-attribution",
@@ -361,7 +361,7 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 		t.Errorf("la production appelle une enveloppe `dir` :\n  %s\n"+
 			"Ces enveloppes chargent un film ENTIER par appel (regle D2 de PLAN_CUISSON_PERF) : "+
 			"elles existent pour les tests et les instruments de recherche. La cuisson recoit un "+
-			"`*filmsource.Film` deja charge et appelle la forme film (`ScanXxx(film, ...)`).",
+			"`*source.Film` deja charge et appelle la forme film (`ScanXxx(film, ...)`).",
 			strings.Join(violations, "\n  "))
 	}
 	if len(morts) > 0 {
@@ -375,7 +375,7 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 // du module, separateur `/`.
 //
 // POURQUOI UNE LISTE FERMEE ET PAS UNE INTERDICTION PAR PAQUET. Avant le lot 1, TROIS inflates
-// divergents cohabitaient dans la chaine de cuisson (`filmdec`, `objectiveevents`,
+// divergents cohabitaient dans la chaine de cuisson (`grammar`, `objectives`,
 // `killsource`) — et il a fallu une mesure sur 1 378 films pour prouver qu'ils voyaient les
 // memes octets. Un quatrieme se serait ajoute sans bruit dans n'importe quel paquet : la regle
 // par paquet ne l'aurait vu que si le paquet avait ete prevu. La liste ci-dessous est donc
@@ -388,7 +388,7 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 // donc plus qu'a elle-meme. La mesure reste figee au §2 de `MESURES_CUISSON_PERF.md`. Les entrees
 // restantes sont PERMANENTES : aucune ne decompresse un film de cuisson.
 var sitesZlibAutorises = map[string]string{
-	"internal/analysis/filmsource/film.go": "L'UNIQUE inflate de la chaine de cuisson (D1). " +
+	"internal/games/halo_infinite/film/source/film.go": "L'UNIQUE inflate de la chaine de cuisson (D1). " +
 		"Rend le PARTIEL sur flux tronque : un film Theater se termine parfois net.",
 	"internal/analysis/highlight_event_parser.go": "Parseur autonome du fil des morts, appele " +
 		"sur des blobs BRUTS ou zlib (sync/collect.go, engine_highlight_events.go, " +
@@ -401,7 +401,7 @@ var sitesZlibAutorises = map[string]string{
 // `cmd/replay-worker/job.go`, `cmd/fetch_film_chunks/main.go`, `cmd/diag_weapons_v3/positions.go`
 // et `cmd/rdata_weapon_scan/main.go` n importent plus `compress/zlib` du tout. Il n y a plus
 // qu UN decompresseur dans le depot, dans la couche source, en deux contrats ECRITS —
-// `filmsource.Inflate` (tolerant : un chunk peut etre deja clair) et `filmsource.Decompresser`
+// `source.Inflate` (tolerant : un chunk peut etre deja clair) et `source.Decompresser`
 // (strict : un telechargement CDN qui n est pas du zlib est un incident de transport). Le
 // ratchet `no_raw_film_bytes_outside_source_test.go` interdit desormais `compress/zlib` dans
 // toutes les racines du film.
@@ -464,7 +464,7 @@ func TestAllowlistZlibFermee(t *testing.T) {
 	sort.Strings(disparus)
 	if len(enTrop) > 0 {
 		t.Errorf("NOUVEL inflate hors allowlist :\n  %s\n"+
-			"Le film se decompresse UNE fois, par `filmsource` (lot 1 de PLAN_CUISSON_PERF). "+
+			"Le film se decompresse UNE fois, par `source` (lot 1 de PLAN_CUISSON_PERF). "+
 			"Si ce site ne decompresse PAS un film (telechargement, autre domaine, outil de "+
 			"recherche), l'ajouter a `sitesZlibAutorises` avec sa justification et sa date.",
 			strings.Join(enTrop, "\n  "))

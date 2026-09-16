@@ -19,7 +19,7 @@
 // simulation du lot 0. Les autres entrées de la liste ("total control",
 // "land grab", "king of the hill", "stockpile"…) sont volontairement HORS
 // détection : elles vivent légitimement dans 3 catalogues de modes voisins
-// (analysis/objectiveevents/extract.go, games/halo_infinite/catalog_adapter.go,
+// (film/facts/objectives/extract.go, games/halo_infinite/catalog_adapter.go,
 // ops/catalog_refresh.go) et les allowlister noierait le signal. Toute recopie de
 // la liste de classification embarque les variantes CTF — c'est la signature.
 //

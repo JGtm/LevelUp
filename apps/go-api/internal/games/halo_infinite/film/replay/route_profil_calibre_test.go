@@ -11,7 +11,7 @@ package replay
 //
 //	(1) `BuildFromFilm` ignore `Options.ProfilDeBalayage`  la cuisson redecode a l'invariant,
 //	    et l'heritage que le lot a rendu explicite disparait en silence ;
-//	(2) l'ordre des deux poses est inverse                 [filmdec.FilmContext.PoserProfilDeBalayage]
+//	(2) l'ordre des deux poses est inverse                 [grammar.FilmContext.PoserProfilDeBalayage]
 //	    remplace le profil ENTIER, donc poser la carte d'abord et le profil ensuite EFFACE les
 //	    largeurs de la carte — les objets du monde se dequantifient alors aux largeurs par
 //	    defaut, celles d'UNE carte, sur toutes les autres.
@@ -30,7 +30,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // TestRouteDuProfilCalibreJusquAuContexte — LE PROFIL CALIBRE ARRIVE, ET LES LARGEURS DE CARTE
@@ -46,7 +46,7 @@ func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 	// (descripteur de traversee, largeur d'axe absolue, `param_4`), reglees sur des valeurs QUE
 	// NI L'INVARIANT NI LE CATALOGUE NE PRODUISENT : leur presence apres coup ne peut venir que
 	// de la route.
-	calibre := filmdec.ProfilDeBalayageParDefaut()
+	calibre := grammar.ProfilDeBalayageParDefaut()
 	calibre.Mouvement.AbsoluteAxisW = 17
 	calibre.Mouvement.Traversal.IndexW = 2
 	calibre.PoserParamEtat(3)
@@ -57,7 +57,7 @@ func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 	// c'est que le profil a ete pose APRES la carte et l'a effacee.
 	calibre.Mouvement.WorldObject.AxisW = [3]uint{7, 7, 7}
 
-	fc := filmdec.NewFilmContextForMap(film, &entry, nil)
+	fc := grammar.NewFilmContextForMap(film, &entry, nil)
 	poserProfilPuisCarte(fc, "route-du-profil", Options{ProfilDeBalayage: &calibre})
 
 	got := fc.ProfilDeBalayage()
@@ -95,7 +95,7 @@ func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 
 	// (3) SANS PROFIL DANS LES OPTIONS, le contexte garde le sien et la carte s'installe quand
 	// meme : un appelant qui n'a pas decode le kill-feed n'est pas puni.
-	fc2 := filmdec.NewFilmContextForMap(film, &entry, nil)
+	fc2 := grammar.NewFilmContextForMap(film, &entry, nil)
 	poserProfilPuisCarte(fc2, "route-sans-profil", Options{})
 	wo2 := fc2.LargeursObjetDuMonde()
 	if wo2.AxisW != attendu.AxisW || wo2.Region != attendu.Region {

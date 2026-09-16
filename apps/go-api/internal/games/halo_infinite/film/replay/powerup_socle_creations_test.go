@@ -35,7 +35,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // padPowerupPrefix — le prefixe de famille du manifeste qui designe un power-up
@@ -79,16 +79,16 @@ func psBandeFantome(kfs []psKF, taille int) map[uint32]bool {
 // psRetientCreations projette les creations sur le catalogue d'identite et rend celles qui s'y
 // resolvent, plus le compte de celles qui ne s'y resolvent pas.
 func psRetientCreations(
-	cre []filmdec.EquipmentCreation, familles map[uint32]string, c psCible,
+	cre []grammar.EquipmentCreation, familles map[uint32]string, c psCible,
 ) ([]psCreationVue, int) {
 	var out []psCreationVue
 	rejetees := 0
 	for _, k := range cre {
-		if !k.MPPPresent[filmdec.MPPWord32] {
+		if !k.MPPPresent[grammar.MPPWord32] {
 			rejetees++
 			continue
 		}
-		id := uint32(k.MPPVal[filmdec.MPPWord32])
+		id := uint32(k.MPPVal[grammar.MPPWord32])
 		fam, connu := familles[id]
 		if !connu {
 			rejetees++
@@ -116,7 +116,7 @@ func TestPowerupSocleCreations(t *testing.T) {
 	for _, f := range psFilmsCatalyst {
 		t.Run(f.ID+"_"+f.Mode, func(t *testing.T) {
 			dir := filepath.Join(root, "film_chunks", f.ID)
-			if filmdec.CountFilmChunks(dir) == 0 {
+			if grammar.CountFilmChunks(dir) == 0 {
 				t.Skipf("aucun chunk dans %s", dir)
 			}
 			wr := entry.Range()
@@ -129,10 +129,10 @@ func TestPowerupSocleCreations(t *testing.T) {
 // psMesureCreations enchaine les trois lectures d'un film : la chaine de PRODUCTION (pour le
 // rappel du negatif et la calibration), le balayage BRUT des creations, et le temoin fantome.
 func psMesureCreations(
-	t *testing.T, dir string, wr *filmdec.Vec3Range, familles map[uint32]string, c psCible,
+	t *testing.T, dir string, wr *grammar.Vec3Range, familles map[uint32]string, c psCible,
 ) {
 	t.Helper()
-	_, pst, err := filmdec.ScanFilmEquipmentPlacements(dir, wr)
+	_, pst, err := grammar.ScanFilmEquipmentPlacements(dir, wr)
 	if err != nil {
 		t.Logf("=== 3.2 chaine de production : %v", err)
 		return
@@ -143,13 +143,13 @@ func psMesureCreations(
 		pst.Calibration.Widths, pst.Calibration.Widths.Valid(), pst.Lives, pst.Anchors,
 		pst.Accepted, pst.Confirmed, pst.Placements)
 
-	fc, _, err := filmdec.ContexteDeFilm(dir)
+	fc, _, err := grammar.ContexteDeFilm(dir)
 	if err != nil {
 		t.Logf("=== 3.3 contexte du film : %v", err)
 		return
 	}
 	fc.PoserMPP(pst.Calibration.Widths)
-	cre, cst, err := filmdec.ScanEquipmentCreations(fc, wr)
+	cre, cst, err := grammar.ScanEquipmentCreations(fc, wr)
 	if err != nil {
 		t.Logf("=== 3.3 balayage brut : %v", err)
 		return
@@ -162,7 +162,7 @@ func psMesureCreations(
 
 	kfs := psRecenseKF(dir)
 	fant := psBandeFantome(kfs, cst.Slots)
-	fcre, fst, err := filmdec.ScanFilmEquipmentCreationsForBand(dir, wr, fant)
+	fcre, fst, err := grammar.ScanFilmEquipmentCreationsForBand(dir, wr, fant)
 	if err != nil {
 		t.Logf("=== 3.3 temoin fantome : %v", err)
 		return

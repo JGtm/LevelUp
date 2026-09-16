@@ -4,7 +4,7 @@ package killcollector
 // et c est TOUT ce qu il fait. Chacune des trois responsabilites vit ailleurs et n a pas le
 // droit de migrer ici :
 //
-//	decoder un film        games/halo_infinite/film/killsource   ne touche ni base ni reseau
+//	decoder un film        games/halo_infinite/film/facts/killsource   ne touche ni base ni reseau
 //	telecharger les chunks killsource_bridge.go                  ne decode pas
 //	ecrire les lignes      persist.KillSourcePersister           ne decide pas QUOI ecrire
 //	enchainer les trois    CE FICHIER                            ne contient aucune logique de decodage
@@ -21,14 +21,14 @@ package killcollector
 //
 //	4v4 (8-10 joueurs)      1 a 10 s par film
 //	le plus gros du corpus  47 s (69 chunks)   — mesures du 2026-08-01, APRES le correctif
-//	                        du mur de cout (`filmdec.consumeObjectMultiplayerProperties`)
+//	                        du mur de cout (`grammar.consumeObjectMultiplayerProperties`)
 //
 // Consequences, toutes tenues ici :
 //   - TACHE DE FOND, jamais dans le chemin d une requete HTTP. Le type ne fournit aucun
 //     handler et aucune methode ne doit etre appelee depuis `api/` ;
 //   - UNE LIMITE DE TEMPS PAR MATCH + un compteur d abandons. Sans limite, un seul film
 //     pathologique bloque la passe entiere ;
-//   - UN SEUL DECODAGE A LA FOIS DANS LE PROCESS. Les parametres de replication de `filmdec`
+//   - UN SEUL DECODAGE A LA FOIS DANS LE PROCESS. Les parametres de replication de `grammar`
 //     sont des GLOBAUX DE PAQUET ; `killsource.Decode` serialise deja par un verrou et remet
 //     ces globaux a zero a chaque entree. **Ne pas contourner** : paralleliser deux films
 //     n accelere rien et contaminerait les deux. Le collecteur traite donc les matchs EN SERIE,
@@ -46,7 +46,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
 )
@@ -63,7 +63,7 @@ import (
 //	  69           1 145 s           46,7 s      <- x24,5
 //
 // LE MUR A ETE PROFILE PUIS CORRIGE (J4 session 2) : 78 % du temps partait dans
-// `filmdec.consumeObjectMultiplayerProperties`, qui sautait le corps d un TLV en lisant un octet
+// `grammar.consumeObjectMultiplayerProperties`, qui sautait le corps d un TLV en lisant un octet
 // a la fois, plafonne a 1 048 576 iterations — sur une traversee mal alignee, la longueur lue est
 // du bruit et declenchait ce million de lectures. Le cout par chunk allait de 0,20 s a 16,6 s
 // (facteur 83) ; il va desormais de 0,13 s a 0,68 s.
@@ -106,7 +106,7 @@ type KillSourceCollector struct {
 	// degradation journalisee PAR MATCH (configuration, pas panne). DEUX passes les partagent
 	// depuis le lot 1.9.4 : les positions (G.2bis) ET les distances de touche (`map_identity.go`).
 	mapNames  port.ReplayMapNameRepo
-	mapBounds *filmdec.MapQuantCatalog
+	mapBounds *grammar.MapQuantCatalog
 	// filmDir : la CONFIGURATION du numerateur film (precision par arme + distance, collectHits
 	// — acquis du chantier precision remis le 2026-09-01, exposition API retiree). nil = passe
 	// non configuree (chemin live sans cache) -> precision ignoree. Voir ConfigureFilmAccuracy.
@@ -114,7 +114,7 @@ type KillSourceCollector struct {
 }
 
 // FilmDirResolver rend le repertoire disque des chunks d un film (chunk_NN.bin, format
-// filmdec.ReadFilmChunk), ou "" si le film n est pas sur disque pour ce match. Le numerateur de
+// grammar.ReadFilmChunk), ou "" si le film n est pas sur disque pour ce match. Le numerateur de
 // precision par arme (collectHits) est DIR-BASE : il rejoue le film avec les scanners filmdec
 // (positions bipedes, damage_aftermath) qui lisent des fichiers chunk. Le cache disque local
 // (data/cache/film_chunks/{matchID}) satisfait ce format ; le chemin live (chunks en memoire,
@@ -178,13 +178,13 @@ func (c *KillSourceCollector) WithBudget(d time.Duration) *KillSourceCollector {
 // LES DEUX ARGUMENTS SONT NECESSAIRES ENSEMBLE. `mapNames` resout les identites de carte
 // candidates d un match (meme port que le rejeu 2D, `port.ReplayMapNameRepo` — implemente par
 // `platform/duckdb.ReplayMapRepo`) ; `mapBounds` est le catalogue de bornes de dequantification
-// (`filmdec.LoadMapQuantCatalog`, meme fichier que replaybuild). Passer l un sans l autre revient
+// (`grammar.LoadMapQuantCatalog`, meme fichier que replaybuild). Passer l un sans l autre revient
 // a ne rien cabler : [collectPositions] verifie les deux et degrade proprement (Debug, pas
 // d erreur) si l un des deux manque.
 //
 // nil, nil DESACTIVE explicitement la capture (retour a l etat par defaut du constructeur).
 func (c *KillSourceCollector) WithPositionCapture(
-	mapNames port.ReplayMapNameRepo, mapBounds *filmdec.MapQuantCatalog,
+	mapNames port.ReplayMapNameRepo, mapBounds *grammar.MapQuantCatalog,
 ) *KillSourceCollector {
 	c.mapNames, c.mapBounds = mapNames, mapBounds
 	return c

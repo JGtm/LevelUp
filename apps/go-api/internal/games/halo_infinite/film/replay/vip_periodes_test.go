@@ -36,8 +36,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 const (
@@ -84,7 +84,7 @@ func TestVIPPeriodes(t *testing.T) {
 	if !okF {
 		t.Fatalf("%s : film absent du cache", id)
 	}
-	recs, truncated := objectiveevents.StatRecordsCtx(context.Background(), src, id)
+	recs, truncated := objectives.StatRecordsCtx(context.Background(), src, id)
 	if truncated {
 		t.Logf("%s : enregistrements TRONQUES — periodes partielles, et cela se dit", id)
 	}
@@ -95,9 +95,9 @@ func TestVIPPeriodes(t *testing.T) {
 	// LE PONT PLAT sert le TEMOIN (attribution aleatoire), la reconstruction reelle passe par
 	// l'identite PAR MANCHE. Sur ces films VIP mono-manche les deux coincident ; le temoin reste
 	// donc exactement celui du protocole.
-	flat := objectiveevents.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
-	identity := objectiveevents.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
-	events := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeVip)
+	flat := objectives.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
+	identity := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
+	events := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeVip)
 	t.Logf("%s : %d record(s), %d selection(s) VIP, %d slot(s) nomme(s), %d mort(s), oracle sur "+
 		"%d joueur(s)", id, len(recs), vipCompte(events), identity.NamedCount(), len(deaths), len(oracle))
 
@@ -110,7 +110,7 @@ func TestVIPPeriodes(t *testing.T) {
 	rec := vipParJoueur(vipReconstructPeriods(events, identity, deaths, matchEnd))
 	rng := rand.New(rand.NewSource(vipPeriodesGraine)) //nolint:gosec // temoin reproductible
 	tem := vipParJoueur(vipReconstructPeriods(events,
-		objectiveevents.FlatRoundIdentity(vipTemoinIdentity(flat, rng)), deaths, matchEnd))
+		objectives.FlatRoundIdentity(vipTemoinIdentity(flat, rng)), deaths, matchEnd))
 	vipPeriodesVerdict(t, id, rec, tem, oracle)
 }
 
@@ -142,10 +142,10 @@ func vipTimeOracle(t *testing.T, id string) (map[string]float64, bool) {
 }
 
 // vipCompte compte les selections VIP parmi les evenements nommes.
-func vipCompte(events []objectiveevents.NamedEvent) int {
+func vipCompte(events []objectives.NamedEvent) int {
 	n := 0
 	for _, e := range events {
-		if e.Stat == objectiveevents.StatVipSelected {
+		if e.Stat == objectives.StatVipSelected {
 			n++
 		}
 	}
@@ -154,11 +154,11 @@ func vipCompte(events []objectiveevents.NamedEvent) int {
 
 // vipDatesDiag imprime, par slot, l'etalement des instants d'increment de comp 22 A. Si tout un
 // slot a ses selections au MEME instant (span 0), le compteur ne DATE pas — le dire.
-func vipDatesDiag(t *testing.T, id string, events []objectiveevents.NamedEvent) {
+func vipDatesDiag(t *testing.T, id string, events []objectives.NamedEvent) {
 	t.Helper()
 	bySlot := map[int][]int64{}
 	for _, e := range events {
-		if e.Stat == objectiveevents.StatVipSelected {
+		if e.Stat == objectives.StatVipSelected {
 			bySlot[e.Slot] = append(bySlot[e.Slot], int64(e.TimeMS))
 		}
 	}

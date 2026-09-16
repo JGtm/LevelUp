@@ -50,7 +50,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 const (
@@ -197,11 +197,11 @@ func invTrousWalk(
 	t *testing.T, dir string, known map[uint32]bool, c *invTrousCompte,
 ) ([]invTrousDiag, []map[uint32]bool) {
 	t.Helper()
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	var diags []invTrousDiag
 	var slotSets []map[uint32]bool
 	for ch := 1; ch <= n; ch++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, ch)
+		chunk, err := grammar.ReadFilmChunk(dir, ch)
 		if err != nil {
 			// UN CHUNK ILLISIBLE N'EST PAS UNE MESURE : il est compte, et le film qui en
 			// porte est ecarte de l'agregat par l'appelant. Sans ce compteur, une lecture
@@ -209,8 +209,8 @@ func invTrousWalk(
 			c.chunksIllisibles++
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
-			if p.Type != filmdec.PacketTypeKeyframe {
+		for _, p := range grammar.WalkPackets(chunk) {
+			if p.Type != grammar.PacketTypeKeyframe {
 				continue
 			}
 			c.keyframes++
@@ -457,14 +457,14 @@ func invTrousJoinI48(t *testing.T, dir string, diags []invTrousDiag) {
 	if invTrousEnvInt(invTrousI48Env, 1) == 0 {
 		return
 	}
-	ranks, st, err := filmdec.ScanFilmAbilityRanks(dir)
+	ranks, st, err := grammar.ScanFilmAbilityRanks(dir)
 	if err != nil {
 		t.Logf("    i48 illisible (%v) — controle croise saute", err)
 		return
 	}
 	t.Logf("    i48 : %d lectures (records %d, masque %d, illisibles %d)",
 		len(ranks), st.Records, st.WithI48, st.Unread)
-	bySlot := map[uint32][]filmdec.AbilityRank{}
+	bySlot := map[uint32][]grammar.AbilityRank{}
 	for _, r := range ranks {
 		bySlot[r.Slot] = append(bySlot[r.Slot], r)
 	}
@@ -478,7 +478,7 @@ func invTrousJoinI48(t *testing.T, dir string, diags []invTrousDiag) {
 	}
 }
 
-func invTrousPlusProche(v []filmdec.AbilityRank, ts uint64) int {
+func invTrousPlusProche(v []grammar.AbilityRank, ts uint64) int {
 	best, bestD := -1, uint64(1)<<62
 	for _, r := range v {
 		d := r.TimestampUS - ts

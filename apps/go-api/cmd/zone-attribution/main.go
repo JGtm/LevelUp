@@ -5,7 +5,7 @@
 // PUBLIE le taux obtenu avec son temoin negatif.
 //
 //	les formes    data/titles/{slug}/reference/map_objectives.json (replay.LoadMapObjectives)
-//	les instants  les evenements nommes du statborg, identifies par xuid (objectiveevents)
+//	les instants  les evenements nommes du statborg, identifies par xuid (objectives)
 //	les positions les trajectoires decodees du film (replay.BuildFromFilm)
 //
 // # Pourquoi un binaire et pas un test
@@ -35,7 +35,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/platform/duckdb"
@@ -121,7 +121,7 @@ func run(slug, cacheDir, matchArg string, tune runTuning) (int, error) {
 	}
 	paths := title.NewPathResolver(repoRoot)
 
-	bounds, err := filmdec.LoadMapQuantCatalog(paths.MapQuantBoundsPath(slug))
+	bounds, err := grammar.LoadMapQuantCatalog(paths.MapQuantBoundsPath(slug))
 	if err != nil {
 		return 0, err
 	}

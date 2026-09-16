@@ -15,7 +15,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/killsource"
 	"levelup/go-api/internal/migration"
 
 	_ "github.com/duckdb/duckdb-go/v2"

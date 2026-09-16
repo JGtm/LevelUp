@@ -51,7 +51,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
 )
 
 // ctfzRayons — les rayons candidats, en metres monde. La borne haute (15 m) est volontairement
@@ -243,9 +243,9 @@ func ctfzVarianteStr(neutre bool) string {
 // reviendrait a confronter la chaine objet a elle-meme. On repart donc des evenements bruts.
 func ctfzRetoursCredites(src *objDiskFilm, offsetMS int64, originUS, step uint64) []int {
 	var out []int
-	evs := objectiveevents.NamedEventsFrom(objectiveevents.StatRecords(src), objectiveevents.ObjectiveTypeFlag)
+	evs := objectives.NamedEventsFrom(objectives.StatRecords(src), objectives.ObjectiveTypeFlag)
 	for _, e := range evs {
-		if e.Stat != objectiveevents.StatFlagReturns {
+		if e.Stat != objectives.StatFlagReturns {
 			continue
 		}
 		filmUS := (int64(e.TimeMS) + offsetMS) * 1000

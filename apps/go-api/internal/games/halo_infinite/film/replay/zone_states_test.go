@@ -15,13 +15,13 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // zoneReadAt fabrique une lecture scalaire de `ti=13` posee sur une frame de la grille.
-func zoneReadAt(slot uint32, frame, tag int, value uint64) filmdec.ManagedPropertyRead {
-	return filmdec.ManagedPropertyRead{
-		Slot: slot, TimestampUS: uint64(frame) * 100_000, Field: filmdec.ManagedPropertyScalar,
+func zoneReadAt(slot uint32, frame, tag int, value uint64) grammar.ManagedPropertyRead {
+	return grammar.ManagedPropertyRead{
+		Slot: slot, TimestampUS: uint64(frame) * 100_000, Field: grammar.ManagedPropertyScalar,
 		FilmIndex: -1, Tag: tag, Value: value, HasValue: true,
 	}
 }
@@ -34,11 +34,11 @@ func gaugeQ(milli uint64) uint64 {
 
 // zoneRampAt fabrique une rampe de jauge culminant a `peak` : trois emissions croissantes (0,001,
 // 0,2 puis `topMilli` milliemes) et une amplitude tres au-dessus du seuil (4 096 quanta).
-func zoneRampAt(slot uint32, peak int, topMilli uint64) []filmdec.ManagedPropertyRead {
-	return []filmdec.ManagedPropertyRead{
-		zoneReadAt(slot, peak-4, filmdec.ManagedPropertyTagQuant, gaugeQ(1)),
-		zoneReadAt(slot, peak-2, filmdec.ManagedPropertyTagQuant, gaugeQ(200)),
-		zoneReadAt(slot, peak, filmdec.ManagedPropertyTagQuant, gaugeQ(topMilli)),
+func zoneRampAt(slot uint32, peak int, topMilli uint64) []grammar.ManagedPropertyRead {
+	return []grammar.ManagedPropertyRead{
+		zoneReadAt(slot, peak-4, grammar.ManagedPropertyTagQuant, gaugeQ(1)),
+		zoneReadAt(slot, peak-2, grammar.ManagedPropertyTagQuant, gaugeQ(200)),
+		zoneReadAt(slot, peak, grammar.ManagedPropertyTagQuant, gaugeQ(topMilli)),
 	}
 }
 
@@ -49,7 +49,7 @@ func zoneTestCtx(actions []ObjectiveAction, tracks []Track) zoneCtx {
 }
 
 // zoneTestInput monte l'entree d'un cas a deux zones.
-func zoneTestInput(reads []filmdec.ManagedPropertyRead) ZoneInput {
+func zoneTestInput(reads []grammar.ManagedPropertyRead) ZoneInput {
 	return ZoneInput{
 		Scanned:    true,
 		Reads:      reads,
@@ -67,19 +67,19 @@ func zoneTestInput(reads []filmdec.ManagedPropertyRead) ZoneInput {
 // zone prise une seule fois dans tout le match n'a pas de proprietaire publie — c'est la regle,
 // et le cas nominal doit la franchir plutot que de vivre dessous.
 func bastionCase() (ZoneInput, zoneCtx) {
-	var reads []filmdec.ManagedPropertyRead
+	var reads []grammar.ManagedPropertyRead
 	reads = append(reads, zoneRampAt(10, 100, 900)...) // zone 101, prise par l'equipe 0
 	reads = append(reads, zoneRampAt(10, 300, 950)...) // zone 101, reprise par l'equipe 1
 	reads = append(reads, zoneRampAt(20, 200, 800)...) // zone 102, prise par l'equipe 1
 	reads = append(reads, zoneRampAt(20, 400, 820)...) // zone 102, reprise par l'equipe 0
 	reads = append(reads,
-		zoneReadAt(11, 0, filmdec.ManagedPropertyTagU32, zoneNeutralOwner),
-		zoneReadAt(11, 101, filmdec.ManagedPropertyTagU32, 0),
-		zoneReadAt(11, 301, filmdec.ManagedPropertyTagU32, 1),
-		zoneReadAt(21, 0, filmdec.ManagedPropertyTagU32, zoneNeutralOwner),
-		zoneReadAt(21, 201, filmdec.ManagedPropertyTagU32, 1),
-		zoneReadAt(21, 401, filmdec.ManagedPropertyTagU32, 0),
-		zoneReadAt(10, 5, filmdec.ManagedPropertyTagStringID, 0x67F43AC3),
+		zoneReadAt(11, 0, grammar.ManagedPropertyTagU32, zoneNeutralOwner),
+		zoneReadAt(11, 101, grammar.ManagedPropertyTagU32, 0),
+		zoneReadAt(11, 301, grammar.ManagedPropertyTagU32, 1),
+		zoneReadAt(21, 0, grammar.ManagedPropertyTagU32, zoneNeutralOwner),
+		zoneReadAt(21, 201, grammar.ManagedPropertyTagU32, 1),
+		zoneReadAt(21, 401, grammar.ManagedPropertyTagU32, 0),
+		zoneReadAt(10, 5, grammar.ManagedPropertyTagStringID, 0x67F43AC3),
 	)
 	actions := []ObjectiveAction{action("2533", 100), action("2535", 200), action("2535", 300),
 		action("2533", 400)}
@@ -175,7 +175,7 @@ func TestZoneStatesNonBalayeNePublieAucuneCouverture(t *testing.T) {
 // quadratique, ce test ne rend plus la main.
 func TestZoneStatesTientLeVolumeDUnVraiFilm(t *testing.T) {
 	const frames, captures = 5000, 246
-	var reads []filmdec.ManagedPropertyRead
+	var reads []grammar.ManagedPropertyRead
 	for slot := uint32(10); slot < 15; slot++ { // 5 slots de jauge, ~1 000 emissions chacun
 		for i := 0; i < 330; i++ {
 			reads = append(reads, zoneRampAt(slot, 8+i*15, uint64(500+i))...)
@@ -187,7 +187,7 @@ func TestZoneStatesTientLeVolumeDUnVraiFilm(t *testing.T) {
 			if i%7 == 0 {
 				v = zoneNeutralOwner
 			}
-			reads = append(reads, zoneReadAt(slot, 20+i*120, filmdec.ManagedPropertyTagU32, v))
+			reads = append(reads, zoneReadAt(slot, 20+i*120, grammar.ManagedPropertyTagU32, v))
 		}
 	}
 	in := zoneTestInput(reads)

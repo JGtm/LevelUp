@@ -13,7 +13,7 @@ package archlint
 // deplacement n aurait rien garde PENDANT le deplacement, qui est justement le moment ou l on
 // casse des choses : la methode du lot E est « ratchets de dependance poses AVANT le premier
 // `git mv` ». Celui-ci vaut donc DEJA sur l arborescence d aujourd hui, ou les couches sont des
-// paquets aux noms d avant (`filmdec`, `killsource`, `objectiveevents`, `filmsource`), et il
+// paquets aux noms d avant (`filmdec`, `killsource`, `objectiveevents`, `source`), et il
 // guide 2.5 : son allowlist EST la liste des coupes a faire, et elle se vide a mesure.
 //
 // # LA TABLE COUCHE -> PAQUETS, ET CE QUI CHANGERA EN 2.5
@@ -79,9 +79,28 @@ package archlint
 // Les deux « en plus » sont reelles et tombent au meme lot que les autres : la note regardait le
 // SENS des aretes (celles-la sont dans le bon sens), ce ratchet regarde aussi le LIEU.
 //
+// # L ORDRE DES COMMITS DE 2.5, ET POURQUOI IL N EST PAS CELUI DE LA NOTE
+//
+// MESURE DU 2026-09-16, a l entree du lot : deplacer `source` EN PREMIER (ordre §2.7 de la
+// note) fait rougir D9 sur DIX-SEPT fichiers. La cause est mecanique : `objectiveevents` et
+// `weaponv3` vivent sous `internal/analysis/` et importent `source` ; le jour ou `source`
+// descend sous `film/`, ces imports deviennent « `internal/analysis/` importe un paquet de
+// titre ». La facade de 2.4 etait nee dans `internal/analysis/filmsource` precisement pour
+// l eviter (V15 (1)) — la note ne l a pas reporte sur l ordre des commits de 2.5.
+//
+// L ordre suivi est donc celui qu impose la dependance : les paquets de couche quittent
+// `internal/analysis/` AVANT la couche `source`.
+//
+//	2.5.d.2  objectiveevents -> film/facts/objectives   (vide analysis/ de la couche facts)
+//	2.5.c    weaponv3 dissous, grammaire d analysis/ descendue, filmdec -> film/grammar
+//	2.5.a    filmsource -> film/source                  (plus aucun consommateur dans analysis/)
+//	2.5.d.1  killsource -> film/facts/killsource, fallback -> film/facts/fallback
+//	2.5.b    la couche profile
+//	2.5.e    facade, bascule film/<couche> -> film/internal/<couche>, ratchet STRICT
+//
 // # MUTATIONS QUI DOIVENT LE FAIRE ROUGIR
 //
-//   - classer `film/filmdec` en `replay` : `killsource` (facts) -> `filmdec` devient un import
+//   - classer `film/grammar` en `replay` : `killsource` (facts) -> `grammar` devient un import
 //     vers le haut, R1 rougit ;
 //   - retirer une entree d `aretesTolerees` : l arete correspondante rougit ;
 //   - ajouter une entree d allowlist sans violation reelle : « entree perimee, la retirer ».
@@ -132,38 +151,43 @@ var (
 // la faute (classer un paquet coute une ligne, l oublier ouvrirait un trou).
 var couchesDuDecodeur = map[string]coucheFilm{
 	// --- source : charger, decompresser, decouper, lire l en-tete, tenir le lecteur de bits.
-	// `filmsource` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)
+	// `source` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)
 	// et passe sous `film/internal/source` au lot 2.5.a (decision V5 du plan).
-	"internal/analysis/filmsource": coucheSource,
+	"internal/games/halo_infinite/film/source": coucheSource,
 
 	// --- profile : VIDE AUJOURD HUI, et c est ecrit. La part profil existe (`filmdec/profile.go`,
 	// `profile_table.go`, `build_profile.go`, `map_bounds.go`, `i0_layout.go`, `mpp_widths.go`,
-	// `slot_band_dense.go`) mais elle vit DANS `filmdec` : au niveau PAQUET — la seule granularite
-	// qu un graphe d imports connaisse — `filmdec` vaut donc `grammar` tant que 2.5.b n a pas
+	// `slot_band_dense.go`) mais elle vit DANS `grammar` : au niveau PAQUET — la seule granularite
+	// qu un graphe d imports connaisse — le paquet `grammar` porte donc les DEUX tant que 2.5.b n a pas
 	// extrait ces sept fichiers. Voir `couchesVidesTolerees`.
 
 	// --- grammar : decodeurs de records et de composants, fonctions pures de (profil, bits).
-	"internal/games/halo_infinite/film/filmdec": coucheGrammar,
-	// `weaponv3` est un QUATRIEME lecteur de bits, pose sous `analysis/` : `ResolveXuidToPI` est
-	// de la grammaire de film. Le paquet ne se deplace pas en bloc, il se DISSOUT au lot 2.5.c —
-	// le resolveur descend en `grammar`, le catalogue d armes (3 symboles) remonte en
-	// `games/weapons`, qui est la lingua franca inter-titres.
-	"internal/analysis/weaponv3": coucheGrammar,
+	"internal/games/halo_infinite/film/grammar": coucheGrammar,
+	// `weaponv3` etait un QUATRIEME lecteur de bits, pose sous `analysis/` : `ResolveXuidToPI` est
+	// de la grammaire de film. DESCENDU LE 2026-09-16 (lot 2.5.c) sous `film/grammar/weaponv3`,
+	// par `git mv` PUR — il DEVAIT quitter `internal/analysis/` avant que la couche `source` n y
+	// descende (sinon D9 rougit). Sa DISSOLUTION reste a faire : le resolveur rejoint le corps de
+	// `grammar`, le catalogue d armes (3 symboles, toujours dans `internal/analysis/weapon_data.go`)
+	// remonte en `games/weapons` — c est la seule chose qui fermera l arete `weaponv3 -> analysis`
+	// ci-dessous.
+	"internal/games/halo_infinite/film/grammar/weaponv3": coucheGrammar,
 
 	// --- facts : de la chronologie brute aux faits du match (vies, identite, tirs, morts,
 	// objectifs, equipement, vehicules), chacun avec ses compteurs de couverture.
-	"internal/games/halo_infinite/film/killsource": coucheFacts,
-	"internal/analysis/objectiveevents":            coucheFacts,
+	"internal/games/halo_infinite/film/facts/killsource": coucheFacts,
+	// `fallback` (le REGISTRE des replis, D10 bis) etait une feuille de `replay` ; il descend en
+	// `facts/fallback` au lot 2.5.d.1 (2026-09-16) et se classe DESORMAIS `facts`, avec son
+	// arborescence. Le reclassement ne change aucune arete : la feuille n importe rien du depot,
+	// et `replay -> facts` reste descendant.
+	"internal/games/halo_infinite/film/facts/fallback": coucheFacts,
+	// DESCENDU LE 2026-09-16 (lot 2.5.d.2) d `internal/analysis/objectiveevents` : le paquet vit
+	// desormais sous `film/facts/`, et passera sous `film/internal/facts/` au dernier commit du lot.
+	"internal/games/halo_infinite/film/facts/objectives": coucheFacts,
 
 	// --- replay : publie le document versionne. NE DECODE RIEN (ADR 0034 D-1).
 	"internal/games/halo_infinite/film/replay": coucheReplay,
-	// `fallback` et `mapvar` sont deux feuilles de `replay` (registre des replis, variantes de
-	// carte), sans aucun import du depot. Classees `replay` avec leur parent : la note de
-	// preparation §2.7 prevoit que `fallback` descende en `facts/fallback` au lot 2.5.d.1 — le
-	// reclassement ne changera AUCUNE arete (une feuille n importe rien, et `replay -> facts`
-	// reste descendant), il ne touchera que la ligne ci-dessous.
-	"internal/games/halo_infinite/film/replay/fallback": coucheReplay,
-	"internal/games/halo_infinite/film/replay/mapvar":   coucheReplay,
+	// `mapvar` est une feuille de `replay` (variantes de carte), sans aucun import du depot.
+	"internal/games/halo_infinite/film/replay/mapvar": coucheReplay,
 
 	// --- hors couches : ni decodage, ni publication. Sans rang, R1 ne les contraint pas ; R2 (le
 	// lieu) si, parce qu ils vivent sous `film/`.
@@ -207,28 +231,11 @@ type areteToleree struct {
 // rougir `TestAllowlistsDesCouchesNeSontPasPerimees`.
 var aretesTolerees = []areteToleree{
 	{
-		de: "internal/games/halo_infinite/film/filmcache", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a",
-		coupe: "le cache ouvre la source ; l import suit `filmsource` sous " +
-			"`film/internal/source`, sans autre changement que la ligne d import",
-	},
-	{
-		de: "internal/games/halo_infinite/film/filmdec", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a",
-		coupe: "grammar -> source : le sens est deja bon, seul le lieu est faux ; " +
-			"`git mv` de `filmsource` puis re-pointage de l import",
-	},
-	{
-		de: "internal/games/halo_infinite/film/killsource", vers: "internal/analysis",
+		de: "internal/games/halo_infinite/film/facts/killsource", vers: "internal/analysis",
 		pose: "2026-09-17", lot: "2.5.c",
 		coupe: "4 symboles (`EventTypeDeath`, `EventTypeKill`, `HighlightEvent`, " +
 			"`ParseHighlightEvents`) : `ParseHighlightEvents` est de la grammaire de film posee " +
 			"dans un paquet title-agnostic ; elle descend en `grammar` avec son type",
-	},
-	{
-		de: "internal/games/halo_infinite/film/killsource", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a",
-		coupe: "facts -> source : meme coupe que l arete 2, par le `git mv` de `filmsource`",
 	},
 	{
 		de: "internal/games/halo_infinite/film/replay", vers: "internal/analysis",
@@ -237,84 +244,27 @@ var aretesTolerees = []areteToleree{
 			"`EventTypeDeath`) : ils suivent la descente de l arete 3",
 	},
 	{
-		de: "internal/games/halo_infinite/film/replay", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a",
-		coupe: "`replay` NE DECODE RIEN (ADR 0034 D-1) : les quatre sites qui chargent le film " +
-			"eux-memes (`deaths_source.go`, `inventory_decode.go`, `origin.go`, " +
-			"`player_index.go`) remontent en `facts`, ou `replay` recoit un film deja charge",
-	},
-	{
-		de: "internal/games/halo_infinite/film/replay", vers: "internal/analysis/objectiveevents",
-		pose: "2026-09-17", lot: "2.5.d",
-		coupe: "`objectiveevents` descend en `facts` ; l arete devient replay -> facts, au bon " +
-			"lieu comme au bon sens",
-	},
-	{
-		de: "internal/games/halo_infinite/film/replay", vers: "internal/analysis/weaponv3",
-		pose: "2026-09-17", lot: "2.5.c",
-		coupe: "3 symboles cote `weaponv3` (`CommonWeaponSuffix`, `WeaponFusionMap`, " +
-			"`WeaponIDToName`) : le resolveur descend en `grammar`, le catalogue d armes remonte " +
-			"en `games/weapons`",
-	},
-	{
-		de: "internal/analysis/objectiveevents", vers: "internal/analysis/filmsource",
-		pose: "2026-09-17", lot: "2.5.a puis 2.5.d",
-		coupe: "facts -> source : le sens est bon, les deux paquets descendent sous " +
-			"`film/internal/` ; l entree tombe au second des deux deplacements",
-	},
-	{
-		de: "internal/analysis/weaponv3", vers: "internal/analysis/filmsource",
-		pose: "2026-09-18", lot: "2.5.a puis 2.5.c",
-		coupe: "NEE DU LOT 2.4.2, ET VOULUE PAR V15 (1) : la facade `film.Source` nait dans " +
-			"`internal/analysis/filmsource` precisement parce que `weaponv3` et " +
-			"`objectiveevents` ne peuvent pas importer un paquet de titre sans rougir D9. " +
-			"`weaponv3` y a perdu son lecteur de bits, sa copie divergente de la lecture par " +
-			"mot et son marcheur de paquets. Le sens est bon (grammar -> source) ; c est le " +
-			"LIEU qui ne l est pas encore, et 2.5.a le corrige par `git mv` pur",
-	},
-	{
-		de: "internal/analysis/weaponv3", vers: "internal/analysis",
+		de: "internal/games/halo_infinite/film/grammar/weaponv3", vers: "internal/analysis",
 		pose: "2026-09-17", lot: "2.5.c",
 		coupe: "le catalogue d armes (3 symboles) remonte en `games/weapons` ; apres quoi " +
 			"`weaponv3` se dissout et l entree n a plus d objet",
 	},
 }
 
-// paquetHorsLieuTolere : un paquet classe dans une couche mais qui ne vit pas encore sous
-// `film/`. C est la cause RACINE de la plupart des aretes ci-dessus ; la table le dit separement
-// parce que c est le deplacement du PAQUET qui les casse toutes d un coup.
-type paquetHorsLieuTolere struct {
-	paquet string
-	pose   string
-	lot    string
-	coupe  string
-}
-
-// paquetsHorsLieuToleres — 3 paquets mesures le 2026-09-17.
-var paquetsHorsLieuToleres = []paquetHorsLieuTolere{
-	{
-		paquet: "internal/analysis/filmsource", pose: "2026-09-17", lot: "2.5.a",
-		coupe: "`git mv` vers `film/internal/source` (decision V5 du plan), plus la remontee des " +
-			"14 fichiers de `filmdec` qui lisent `chunk_00` (note de preparation §2.3)",
-	},
-	{
-		paquet: "internal/analysis/objectiveevents", pose: "2026-09-17", lot: "2.5.d",
-		coupe: "`git mv` vers `film/internal/facts` ; les trois helpers de lecture de bits de " +
-			"`film.go` appartiennent a `source` et disparaissent avant, au lot 2.4",
-	},
-	{
-		paquet: "internal/analysis/weaponv3", pose: "2026-09-17", lot: "2.5.c",
-		coupe: "dissolution, pas deplacement : `ResolveXuidToPI` descend en `grammar`, le " +
-			"catalogue d armes remonte en `games/weapons`",
-	},
-}
+// LA TOLERANCE DE LIEU A ETE SUPPRIMEE LE 2026-09-16 (lot 2.5.a), AVEC SA DERNIERE ENTREE.
+// `paquetHorsLieuTolere` / `paquetsHorsLieuToleres` dataient le sursis d un paquet de couche
+// vivant hors de `film/` ; les trois qui en avaient un y sont rentres (`objectiveevents` au
+// 2.5.d.2, `weaponv3` au 2.5.c, `filmsource` au 2.5.a). La regle R2 (le lieu) n a plus AUCUNE
+// exception, et le mecanisme qui les portait est supprime avec elles : une table vide dont
+// personne ne lit plus les champs est du code mort, et un sursis re-devient une DECISION a
+// ecrire, pas une ligne a remplir.
 
 // couchesVidesTolerees : une couche declaree que AUCUN paquet ne porte encore, avec le lot qui
 // la peuplera. Une couche vide ne garde rien — elle ne se tolere que datee.
 var couchesVidesTolerees = map[string]string{
-	"profile": "2026-09-17, lot 2.5.b — la part profil vit dans `filmdec` (profile.go, " +
+	"profile": "2026-09-17, lot 2.5.b — la part profil vit dans `grammar` (profile.go, " +
 		"profile_table.go, build_profile.go, map_bounds.go, i0_layout.go, mpp_widths.go, " +
-		"slot_band_dense.go, 1 695 L). Au niveau PAQUET, `filmdec` vaut donc `grammar` tant " +
+		"slot_band_dense.go, 1 695 L). Au niveau PAQUET, le paquet `grammar` porte donc les DEUX tant " +
 		"que 2.5.b n a pas extrait ces sept fichiers.",
 }
 
@@ -374,18 +324,14 @@ func TestCouchesDuDecodeurSontPeupleesEtALeurPlace(t *testing.T) {
 // verifierLieuDesCouches : un paquet de couche vit sous `film/`, ou bien son sursis est date.
 func verifierLieuDesCouches(t *testing.T) {
 	t.Helper()
-	horsLieu := indexDesPaquetsHorsLieu()
 	for _, rel := range clesTrieesFilm(couchesDuDecodeur) {
 		c := couchesDuDecodeur[rel]
 		if c.rang < 0 || souscheminDeFilm(rel, racineDecodeurFilm) {
 			continue
 		}
-		if _, ok := horsLieu[rel]; ok {
-			continue
-		}
 		t.Errorf("%s porte la couche %q mais ne vit pas sous %s : une couche du decodeur vit "+
-			"DANS le decodeur (ADR 0034 D-1). La deplacer, ou dater son sursis dans "+
-			"`paquetsHorsLieuToleres` avec le lot qui la deplacera.",
+			"DANS le decodeur (ADR 0034 D-1), sans exception — la tolerance datee a ete "+
+			"supprimee au lot 2.5.a avec sa derniere entree. La deplacer.",
 			rel, c.nom, racineDecodeurFilm)
 	}
 }
@@ -431,25 +377,7 @@ func TestAllowlistsDesCouchesNeSontPasPerimees(t *testing.T) {
 		t.Errorf("`aretesTolerees` cite %s (pose %s, lot %s), qui n est plus une violation : "+
 			"entree perimee, la retirer.", cleArete(a.de, a.vers), a.pose, a.lot)
 	}
-	verifierAllowlistDeLieu(t)
 	verifierAllowlistDesCouchesVides(t)
-}
-
-// verifierAllowlistDeLieu : un paquet rentre a sa place sort de la table.
-func verifierAllowlistDeLieu(t *testing.T) {
-	t.Helper()
-	for _, p := range paquetsHorsLieuToleres {
-		c, classe := couchesDuDecodeur[p.paquet]
-		if !classe {
-			t.Errorf("`paquetsHorsLieuToleres` cite %s, qui n est plus dans aucune couche : "+
-				"entree perimee, la retirer.", p.paquet)
-			continue
-		}
-		if souscheminDeFilm(p.paquet, racineDecodeurFilm) || c.rang < 0 {
-			t.Errorf("`paquetsHorsLieuToleres` cite %s, qui est rentre a sa place (lot %s) : "+
-				"entree perimee, la retirer.", p.paquet, p.lot)
-		}
-	}
 }
 
 // verifierAllowlistDesCouchesVides : une couche peuplee sort de la table des couches vides.

@@ -5,7 +5,7 @@ package killcollector
 //
 // # CE QUE CE FICHIER TIENT
 //
-// La passe des touches appelait `filmdec.DetectFilmMapEntry(dir, catalogue, "")` : elle
+// La passe des touches appelait `grammar.DetectFilmMapEntry(dir, catalogue, "")` : elle
 // IDENTIFIAIT la carte par la SIGNATURE de ses largeurs d'axe, lues dans le film. Elle lit
 // desormais le NOM DE MATCH que le collecteur resout deja pour les positions. Ce fichier
 // verrouille les quatre sorties de cette resolution — la bonne carte, et les trois refus.
@@ -38,7 +38,7 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 	"levelup/go-api/internal/port"
 )
 
@@ -122,7 +122,7 @@ func TestCarteDesTouchesRefuseUnNomHorsCatalogue(t *testing.T) {
 		t.Fatal("une carte hors catalogue a produit une entree : la signature a-t-elle repris la main ?")
 	}
 	_, err := c.entreeDeCatalogueParNom([]string{carteAbsenteDuCatalogue})
-	if !errors.Is(err, filmdec.ErrUnknownMapBounds) {
+	if !errors.Is(err, grammar.ErrUnknownMapBounds) {
 		t.Errorf("erreur %v, attendue ErrUnknownMapBounds", err)
 	}
 }

@@ -73,7 +73,7 @@ type empreinteAdHocToleree struct {
 // `film/revision/equivalence_test.go` : la reprise de 2.6.1 ne renumerote aucune revision.
 var empreintesAdHocTolerees = []empreinteAdHocToleree{
 	{
-		fichier: "internal/games/halo_infinite/film/filmdec/grammar_rev_fingerprint_test.go",
+		fichier: "internal/games/halo_infinite/film/grammar/grammar_rev_fingerprint_test.go",
 		pose:    "2026-09-17", lot: "2.6.1",
 		reprise: "`grammar.Rev` passe par `revision.Empreinte` et `revision.Chronique` ; le cadre " +
 			"herite (`revision.CadreHeriteGrammaire`) disparait avec lui, dans le commit qui " +

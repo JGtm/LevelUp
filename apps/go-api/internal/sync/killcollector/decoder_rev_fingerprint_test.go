@@ -6,7 +6,7 @@ package killcollector
 //
 // [KillSourceDecoderRev] porte depuis sa creation le contrat « LA FAIRE EVOLUER a chaque
 // changement de decodage ». Mesure du 2026-09-05 : 14 commits sur
-// `internal/games/halo_infinite/film/killsource/` depuis v7.3.0, ZERO bump. Une consigne ecrite
+// `internal/games/halo_infinite/film/facts/killsource/` depuis v7.3.0, ZERO bump. Une consigne ecrite
 // dans un commentaire ne se tient pas toute seule — les lignes deja ecrites portaient la
 // revision courante et etaient donc exclues A VIE du backlog de redecodage.
 //
@@ -126,7 +126,7 @@ func cheminPaquetKillsource(t *testing.T) string {
 	}
 	// internal/sync/killcollector -> internal/sync -> internal -> apps/go-api
 	racine := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ici))))
-	return filepath.Join(racine, "internal", "games", "halo_infinite", "film", "killsource")
+	return filepath.Join(racine, "internal", "games", "halo_infinite", "film", "facts", "killsource")
 }
 
 // empreinteSourcesGo hache les sources Go NON-TEST d un arbre, dans un ordre stable.
@@ -219,7 +219,7 @@ func TestKillSourceDecoderRevSuitLeDecodeur(t *testing.T) {
 	if empreinte != empreinteGolden {
 		t.Fatalf(`LE DECODEUR A CHANGE.
 
-  paquet    : internal/games/halo_infinite/film/killsource (%d fichiers non-test)
+  paquet    : internal/games/halo_infinite/film/facts/killsource (%d fichiers non-test)
   attendue  : %s
   mesuree   : %s
   revision  : KillSourceDecoderRev = %q (golden : %q)
@@ -249,7 +249,7 @@ l ancien decodage, sans compteur et sans reprise possible.`,
 Deux lectures possibles, et aucune ne se regle en laissant le test vert :
 
   - la revision a ete bumpee pour un changement qui vit AILLEURS que dans
-    internal/games/halo_infinite/film/killsource/ (le parseur d events, filmdec, une source de
+    internal/games/halo_infinite/film/facts/killsource/ (le parseur d events, filmdec, une source de
     chunk). C est legitime — le gate ne hache que le decodeur, pas son amont : regenerer le
     golden avec -update, et le dire dans le commit.
   - la revision a ete modifiee par megarde, ou remise a une valeur anterieure. La remettre.

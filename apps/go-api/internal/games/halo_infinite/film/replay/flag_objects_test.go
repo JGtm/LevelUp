@@ -22,14 +22,14 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // flagTestLife fabrique une vie libre a l'echelle du contexte de test (100 ms/frame, origine 0) :
 // `frame` est la frame de sa creation, les points suivent toutes les 5 frames.
 func flagTestLife(frame int, pts ...[2]float32) flagFreeLife {
-	l := flagFreeLife{ID: 0x2a392328, Key: filmdec.EquipmentLifeKey{Slot: 7}}
+	l := flagFreeLife{ID: 0x2a392328, Key: grammar.EquipmentLifeKey{Slot: 7}}
 	for i, p := range pts {
 		at := uint64(frame+i*5) * 100_000
 		l.Pts = append(l.Pts, flagFreeSample{TUS: at, X: p[0], Y: p[1]})
@@ -47,10 +47,10 @@ func flagTestSpawns() []FlagSpawn {
 func flagTestOpenScan(free []flagFreeLife) FlagCarryScan {
 	return FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   flagTestSpawns(),
 		Free:     free,
 	}
@@ -127,10 +127,10 @@ func TestLeLacherPrendLaPositionDeLaPisteLibre(t *testing.T) {
 	deaths := []Death{{XUID: 1, TimeMS: 4000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
-		Events: []objectiveevents.NamedEvent{
-			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+		Events: []objectives.NamedEvent{
+			{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
 		},
-		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
+		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   flagTestSpawns(),
 	}
 	ctx := flagTestCtx(tracks, deaths, 100)
@@ -166,12 +166,12 @@ func TestFlagFreeLivesApparieCreationEtPiste(t *testing.T) {
 	arme := gwTestFamily(t, 0)
 	scan := WorldObjectScan{
 		Scanned: true,
-		Creations: []filmdec.EquipmentCreation{
+		Creations: []grammar.EquipmentCreation{
 			gwTestCreation(7, 0, 1_000_000, drapeau, 10, 10),
 			gwTestCreation(8, 0, 2_000_000, arme, 20, 20),
 		},
-		Tracks: []filmdec.ProjectileTrack{{
-			Slot: 7, Gen: 0, Pts: []filmdec.ProjectileSample{
+		Tracks: []grammar.ProjectileTrack{{
+			Slot: 7, Gen: 0, Pts: []grammar.ProjectileSample{
 				{TimestampUS: 1_000_000, X: 10, Y: 10},
 				{TimestampUS: 1_500_000, X: 12, Y: 11},
 			},

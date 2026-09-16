@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/facts/fallback"
 )
 
 // TestToutDeclenchementEstAUnSiteDuRegistre — DIRECTION (C) : déclenchement -> site.
@@ -175,7 +175,7 @@ func nomsDuPaquetFallback(t *testing.T, racine string) map[string]fallback.Nom {
 }
 
 // cheminNomsFallback : le fichier des constantes de noms, relatif a `apps/go-api/`.
-const cheminNomsFallback = "internal/games/halo_infinite/film/replay/fallback/noms.go"
+const cheminNomsFallback = "internal/games/halo_infinite/film/facts/fallback/noms.go"
 
 // fichiersDesSites : `nom de repli -> ensemble des fichiers que ses sites citent`.
 func fichiersDesSites() map[fallback.Nom]map[string]bool {

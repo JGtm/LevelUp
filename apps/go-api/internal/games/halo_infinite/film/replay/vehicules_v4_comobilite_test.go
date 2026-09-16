@@ -23,7 +23,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // Seuils de l etage 3, ecrits avant mesure.
@@ -104,7 +104,7 @@ func v4CoMesure(
 // v4CoArg porte les entrees d UN instant (regle des 5 parametres du depot).
 type v4CoArg struct {
 	life  vehicleLife
-	veh   filmdec.BipedPosition
+	veh   grammar.BipedPosition
 	decal uint64
 }
 
@@ -139,8 +139,8 @@ func v4CoUnInstant(
 }
 
 // v4CoInstants rend les instants EN MOUVEMENT d une vie, sous-echantillonnes.
-func v4CoInstants(pts []filmdec.BipedPosition, l vehicleLife) []filmdec.BipedPosition {
-	var out []filmdec.BipedPosition
+func v4CoInstants(pts []grammar.BipedPosition, l vehicleLife) []grammar.BipedPosition {
+	var out []grammar.BipedPosition
 	var dernier uint64
 	for _, p := range pts {
 		if p.TimestampUS < l.loUS || p.TimestampUS > l.hiUS {

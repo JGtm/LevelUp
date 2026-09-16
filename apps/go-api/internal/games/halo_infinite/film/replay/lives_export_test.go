@@ -9,17 +9,17 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // posDe pose un point de réplication d'un slot à un instant, en microsecondes.
-func posDe(slot uint32, tUS uint64) filmdec.BipedPosition {
-	return filmdec.BipedPosition{Slot: slot, TimestampUS: tUS, HasWorld: true}
+func posDe(slot uint32, tUS uint64) grammar.BipedPosition {
+	return grammar.BipedPosition{Slot: slot, TimestampUS: tUS, HasWorld: true}
 }
 
 // pisteContinue pose une piste échantillonnée toutes les 100 ms de `deUS` à `aUS` inclus.
-func pisteContinue(slot uint32, deUS, aUS uint64) []filmdec.BipedPosition {
-	out := []filmdec.BipedPosition{}
+func pisteContinue(slot uint32, deUS, aUS uint64) []grammar.BipedPosition {
+	out := []grammar.BipedPosition{}
 	for t := deUS; t <= aUS; t += 100_000 {
 		out = append(out, posDe(slot, t))
 	}

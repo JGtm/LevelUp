@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // equipment_episodes_test.go — l'assembleur d'épisodes d'état actif, sur données
@@ -19,12 +19,12 @@ const (
 // eqTS rend l'horodatage film de la frame f.
 func eqTS(f int) uint64 { return eqOrigin + uint64(f)*eqStep }
 
-func camoRead(slot uint32, frame int, q uint16) filmdec.CamoRead {
-	return filmdec.CamoRead{Slot: slot, TimestampUS: eqTS(frame), Q: q}
+func camoRead(slot uint32, frame int, q uint16) grammar.CamoRead {
+	return grammar.CamoRead{Slot: slot, TimestampUS: eqTS(frame), Q: q}
 }
 
-func shieldPos(slot uint32, frame int, q uint8) filmdec.BipedPosition {
-	p := filmdec.BipedPosition{Slot: slot, TimestampUS: eqTS(frame)}
+func shieldPos(slot uint32, frame int, q uint8) grammar.BipedPosition {
+	p := grammar.BipedPosition{Slot: slot, TimestampUS: eqTS(frame)}
 	p.HasShield = true
 	p.Shield.Q = q
 	return p
@@ -32,11 +32,11 @@ func shieldPos(slot uint32, frame int, q uint8) filmdec.BipedPosition {
 
 func TestCamoEpisodeOuvreEtFermeSurLesTransitionsMesurees(t *testing.T) {
 	tracks := []Track{{Slot: 512, StartFrame: 0, EndFrame: 100}}
-	camo := []filmdec.CamoRead{
-		camoRead(512, 2, filmdec.CamoInactiveQ),
-		camoRead(512, 10, filmdec.CamoActiveQ),
-		camoRead(512, 20, filmdec.CamoActiveQ), // même état : ne rouvre rien
-		camoRead(512, 34, filmdec.CamoInactiveQ),
+	camo := []grammar.CamoRead{
+		camoRead(512, 2, grammar.CamoInactiveQ),
+		camoRead(512, 10, grammar.CamoActiveQ),
+		camoRead(512, 20, grammar.CamoActiveQ), // même état : ne rouvre rien
+		camoRead(512, 34, grammar.CamoInactiveQ),
 	}
 	eps, nonBinary := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if nonBinary != 0 {
@@ -53,7 +53,7 @@ func TestCamoEpisodeOuvreEtFermeSurLesTransitionsMesurees(t *testing.T) {
 
 func TestCamoEpisodeOuvertALaMortSeFermeALaFinDeLaVie(t *testing.T) {
 	tracks := []Track{{Slot: 512, StartFrame: 5, EndFrame: 42}}
-	camo := []filmdec.CamoRead{camoRead(512, 30, filmdec.CamoActiveQ)}
+	camo := []grammar.CamoRead{camoRead(512, 30, grammar.CamoActiveQ)}
 	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 1 {
 		t.Fatalf("attendu 1 épisode, obtenu %d : %+v", len(eps), eps)
@@ -66,9 +66,9 @@ func TestCamoEpisodeOuvertALaMortSeFermeALaFinDeLaVie(t *testing.T) {
 
 func TestCamoActivationAnterieureALOrigineSeClampeAuDebutDeLaVie(t *testing.T) {
 	tracks := []Track{{Slot: 512, StartFrame: 0, EndFrame: 42}}
-	camo := []filmdec.CamoRead{
-		{Slot: 512, TimestampUS: eqOrigin - 500_000, Q: filmdec.CamoActiveQ}, // avant la frame 0
-		camoRead(512, 8, filmdec.CamoInactiveQ),
+	camo := []grammar.CamoRead{
+		{Slot: 512, TimestampUS: eqOrigin - 500_000, Q: grammar.CamoActiveQ}, // avant la frame 0
+		camoRead(512, 8, grammar.CamoInactiveQ),
 	}
 	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 1 {
@@ -81,10 +81,10 @@ func TestCamoActivationAnterieureALOrigineSeClampeAuDebutDeLaVie(t *testing.T) {
 
 func TestCamoLectureNonBinaireCompteeMaisSansEffet(t *testing.T) {
 	tracks := []Track{{Slot: 512, StartFrame: 0, EndFrame: 42}}
-	camo := []filmdec.CamoRead{
-		camoRead(512, 10, filmdec.CamoActiveQ),
+	camo := []grammar.CamoRead{
+		camoRead(512, 10, grammar.CamoActiveQ),
 		camoRead(512, 15, 2048), // jamais observée sur le corpus : ni ouvre, ni ferme
-		camoRead(512, 20, filmdec.CamoInactiveQ),
+		camoRead(512, 20, grammar.CamoInactiveQ),
 	}
 	eps, nonBinary := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if nonBinary != 1 {
@@ -97,7 +97,7 @@ func TestCamoLectureNonBinaireCompteeMaisSansEffet(t *testing.T) {
 
 func TestCamoVieNonPublieeNeProduitAucunEpisode(t *testing.T) {
 	tracks := []Track{{Slot: 512, StartFrame: 0, EndFrame: 42}}
-	camo := []filmdec.CamoRead{camoRead(999, 10, filmdec.CamoActiveQ)}
+	camo := []grammar.CamoRead{camoRead(999, 10, grammar.CamoActiveQ)}
 	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if eps != nil {
 		t.Errorf("un slot sans trajectoire publiée n'a aucune fiche où poser l'épisode : %+v", eps)
@@ -106,7 +106,7 @@ func TestCamoVieNonPublieeNeProduitAucunEpisode(t *testing.T) {
 
 func TestOvershieldEpisodeSuitLaRegleQSup64(t *testing.T) {
 	tracks := []Track{{Slot: 700, StartFrame: 0, EndFrame: 100}}
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		shieldPos(700, 3, 60),  // bouclier normal
 		shieldPos(700, 12, 64), // plein EXACT : pas un surbouclier (règle stricte q > 64)
 		shieldPos(700, 18, 223),
@@ -125,7 +125,7 @@ func TestOvershieldEpisodeSuitLaRegleQSup64(t *testing.T) {
 
 func TestOvershieldMortEnSurboucliersFermeALaFinDeLaVie(t *testing.T) {
 	tracks := []Track{{Slot: 700, StartFrame: 0, EndFrame: 60}}
-	pos := []filmdec.BipedPosition{shieldPos(700, 50, 200)}
+	pos := []grammar.BipedPosition{shieldPos(700, 50, 200)}
 	eps, _ := buildEquipmentEpisodes(pos, nil, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 1 {
 		t.Fatalf("attendu 1 épisode, obtenu %d : %+v", len(eps), eps)
@@ -141,13 +141,13 @@ func TestEquipmentEpisodesTriesEtCouvertureComptee(t *testing.T) {
 		{Slot: 700, StartFrame: 0, EndFrame: 100},
 		{Slot: 800, StartFrame: 0, EndFrame: 100},
 	}
-	camo := []filmdec.CamoRead{
-		camoRead(512, 40, filmdec.CamoActiveQ),
-		camoRead(512, 44, filmdec.CamoInactiveQ),
-		camoRead(512, 60, filmdec.CamoActiveQ),
-		camoRead(512, 70, filmdec.CamoInactiveQ),
+	camo := []grammar.CamoRead{
+		camoRead(512, 40, grammar.CamoActiveQ),
+		camoRead(512, 44, grammar.CamoInactiveQ),
+		camoRead(512, 60, grammar.CamoActiveQ),
+		camoRead(512, 70, grammar.CamoInactiveQ),
 	}
-	pos := []filmdec.BipedPosition{
+	pos := []grammar.BipedPosition{
 		shieldPos(700, 10, 200),
 		shieldPos(700, 25, 60),
 	}
@@ -171,7 +171,7 @@ func TestEquipmentEpisodesSansDonneesRendNil(t *testing.T) {
 	if eps, _ := buildEquipmentEpisodes(nil, nil, eqOrigin, eqStep, tracks, nil); eps != nil {
 		t.Errorf("sans lecture, rien n'est inventé : %+v", eps)
 	}
-	if eps, _ := buildEquipmentEpisodes(nil, []filmdec.CamoRead{camoRead(512, 10, filmdec.CamoActiveQ)},
+	if eps, _ := buildEquipmentEpisodes(nil, []grammar.CamoRead{camoRead(512, 10, grammar.CamoActiveQ)},
 		eqOrigin, eqStep, nil, nil); eps != nil {
 		t.Errorf("sans trajectoire publiée, rien n'est publié : %+v", eps)
 	}
@@ -193,9 +193,9 @@ func TestEpisodeDUneVieAnterieureEstPublie(t *testing.T) {
 		{Slot: 512, StartFrame: 0, EndFrame: 50},
 		{Slot: 512, StartFrame: 200, EndFrame: 260},
 	}
-	camo := []filmdec.CamoRead{
-		camoRead(512, 10, filmdec.CamoActiveQ), camoRead(512, 20, filmdec.CamoInactiveQ),
-		camoRead(512, 210, filmdec.CamoActiveQ), camoRead(512, 230, filmdec.CamoInactiveQ),
+	camo := []grammar.CamoRead{
+		camoRead(512, 10, grammar.CamoActiveQ), camoRead(512, 20, grammar.CamoInactiveQ),
+		camoRead(512, 210, grammar.CamoActiveQ), camoRead(512, 230, grammar.CamoInactiveQ),
 	}
 	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 2 {
@@ -224,7 +224,7 @@ func TestEpisodeOuvertEnFinDeVieAnterieureSeFermeSurSaPropreVie(t *testing.T) {
 		{Slot: 512, StartFrame: 0, EndFrame: 50},
 		{Slot: 512, StartFrame: 200, EndFrame: 260},
 	}
-	camo := []filmdec.CamoRead{camoRead(512, 40, filmdec.CamoActiveQ)}
+	camo := []grammar.CamoRead{camoRead(512, 40, grammar.CamoActiveQ)}
 	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 1 {
 		t.Fatalf("%d épisode(s), attendu 1 : %+v", len(eps), eps)
@@ -282,9 +282,9 @@ func TestEpisodeAChevalSurDeuxViesGardeSesBornesMesurees(t *testing.T) {
 		{Slot: 620, StartFrame: 60, EndFrame: 300},
 		{Slot: 620, StartFrame: 400, EndFrame: 500}, // vie NON recouverte : elle ne doit rien elargir
 	}
-	camo := []filmdec.CamoRead{
-		camoRead(620, 45, filmdec.CamoActiveQ),
-		camoRead(620, 250, filmdec.CamoInactiveQ),
+	camo := []grammar.CamoRead{
+		camoRead(620, 45, grammar.CamoActiveQ),
+		camoRead(620, 250, grammar.CamoInactiveQ),
 	}
 	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 1 {
@@ -317,9 +317,9 @@ func TestEpisodeNEnjambePasUneMort(t *testing.T) {
 	// LES TROIS VIES SE TERMINENT PAR UNE MORT LUE — c'est le registre qui le dit
 	// (`TracesCloturesParMort`), plus le nom porte par la piste (correctif E2-bis).
 	mortelles := map[int]bool{0: true, 1: true, 2: true}
-	camo := []filmdec.CamoRead{
-		camoRead(620, 20, filmdec.CamoActiveQ),
-		camoRead(620, 450, filmdec.CamoInactiveQ),
+	camo := []grammar.CamoRead{
+		camoRead(620, 20, grammar.CamoActiveQ),
+		camoRead(620, 450, grammar.CamoInactiveQ),
 	}
 	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, mortelles)
 	if len(eps) != 1 {
@@ -345,9 +345,9 @@ func TestEpisodeFranchitUnTrouAnonymeMaisPasLaMortSuivante(t *testing.T) {
 		{Slot: 620, XUID: "111", StartFrame: 400, EndFrame: 500}, // la vie d'apres
 	}
 	mortelles := map[int]bool{1: true, 2: true}
-	camo := []filmdec.CamoRead{
-		camoRead(620, 45, filmdec.CamoActiveQ),
-		camoRead(620, 450, filmdec.CamoInactiveQ),
+	camo := []grammar.CamoRead{
+		camoRead(620, 45, grammar.CamoActiveQ),
+		camoRead(620, 450, grammar.CamoInactiveQ),
 	}
 	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, mortelles)
 	if len(eps) != 1 {

@@ -23,7 +23,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // attDrapeauRayonM : au-delà, une création n'est plus « au socle ». Trois mètres est la
@@ -66,9 +66,9 @@ func attDrapeauObjetFilm(t *testing.T, root, id string) {
 
 // attCreations porte le tri d'un balayage de créations `ti=42`.
 type attCreations struct {
-	connues, ecartees []filmdec.EquipmentCreation
+	connues, ecartees []grammar.EquipmentCreation
 	mots              map[uint32]int
-	st                filmdec.EquipmentCreationStats
+	st                grammar.EquipmentCreationStats
 }
 
 // attCreationsEcartees balaye les créations `ti=42` d'un film et les trie par le croisement
@@ -86,7 +86,7 @@ func attCreationsEcartees(t *testing.T, root, id, roleSocle string) (
 		t.Logf("%s : bornes de carte indisponibles — volet objet non mesurable sur ce film", id)
 		return attCreations{}, nil, false
 	}
-	cres, st, err := filmdec.ScanFilmGroundWeaponCreations(objChunkDir(root, id), &wr)
+	cres, st, err := grammar.ScanFilmGroundWeaponCreations(objChunkDir(root, id), &wr)
 	if err != nil {
 		t.Logf("%s : balayage des créations ti=42 : %v", id, err)
 		return attCreations{}, nil, false
@@ -94,10 +94,10 @@ func attCreationsEcartees(t *testing.T, root, id, roleSocle string) (
 	cat := loadoutFamilies()
 	out := attCreations{mots: map[uint32]int{}, st: st}
 	for _, c := range cres {
-		if !c.MPPPresent[filmdec.MPPWord32] {
+		if !c.MPPPresent[grammar.MPPWord32] {
 			continue
 		}
-		mot := uint32(c.MPPVal[filmdec.MPPWord32])
+		mot := uint32(c.MPPVal[grammar.MPPWord32])
 		if cat[mot] {
 			out.connues = append(out.connues, c)
 			continue
@@ -110,12 +110,12 @@ func attCreationsEcartees(t *testing.T, root, id, roleSocle string) (
 
 // attLogDistances publie, pour chaque mot de 32 bits écarté, sa distance minimale à un socle
 // et son écart temporel minimal à un événement de drapeau.
-func attLogDistances(t *testing.T, id string, ecartees []filmdec.EquipmentCreation,
+func attLogDistances(t *testing.T, id string, ecartees []grammar.EquipmentCreation,
 	socles []PointObjective, o attOracle) {
 	t.Helper()
-	parMot := map[uint32][]filmdec.EquipmentCreation{}
+	parMot := map[uint32][]grammar.EquipmentCreation{}
 	for _, c := range ecartees {
-		m := uint32(c.MPPVal[filmdec.MPPWord32])
+		m := uint32(c.MPPVal[grammar.MPPWord32])
 		parMot[m] = append(parMot[m], c)
 	}
 	mots := make([]uint32, 0, len(parMot))
@@ -142,7 +142,7 @@ func attLogDistances(t *testing.T, id string, ecartees []filmdec.EquipmentCreati
 
 // attResumeMot rend, pour les créations d'un même mot : combien naissent au socle, la
 // distance minimale à un socle, et l'écart temporel minimal à un événement de drapeau.
-func attResumeMot(cs []filmdec.EquipmentCreation, socles []PointObjective, o attOracle) (
+func attResumeMot(cs []grammar.EquipmentCreation, socles []PointObjective, o attOracle) (
 	auSocle int, dMin float64, tMin int64) {
 	dMin, tMin = math.MaxFloat64, int64(math.MaxInt64)
 	for _, c := range cs {
@@ -165,7 +165,7 @@ func attResumeMot(cs []filmdec.EquipmentCreation, socles []PointObjective, o att
 // LA DISTANCE EST PRISE EN PLAN, et c'est délibéré : la hauteur d'un socle du fichier de
 // carte et celle de l'objet répliqué ne se réfèrent pas au même point (pied contre centre),
 // et mêler les deux ferait passer un écart de convention pour un écart de position.
-func attDistSocleMin(c filmdec.EquipmentCreation, socles []PointObjective) float64 {
+func attDistSocleMin(c grammar.EquipmentCreation, socles []PointObjective) float64 {
 	best := math.MaxFloat64
 	for _, s := range socles {
 		if d := math.Hypot(float64(c.X)-float64(s.Center.X), float64(c.Y)-float64(s.Center.Y)); d < best {
@@ -177,7 +177,7 @@ func attDistSocleMin(c filmdec.EquipmentCreation, socles []PointObjective) float
 
 // attEcartEvenementMin rend l'écart temporel minimal (ms) entre une création et un événement
 // de l'oracle — prise ou fin de portage.
-func attEcartEvenementMin(c filmdec.EquipmentCreation, o attOracle) int64 {
+func attEcartEvenementMin(c grammar.EquipmentCreation, o attOracle) int64 {
 	at := int64(c.TimestampUS/1000) - o.Bridge.OffsetMS
 	best := int64(math.MaxInt64)
 	for _, w := range o.Fenetres {
@@ -193,7 +193,7 @@ func attEcartEvenementMin(c filmdec.EquipmentCreation, o attOracle) int64 {
 // attLogI10SurEcartees confronte les lectures d'i10 portées par les SLOTS des créations
 // écartées à la frontière de portage de l'oracle.
 func attLogI10SurEcartees(t *testing.T, root, id string,
-	ecartees []filmdec.EquipmentCreation, o attOracle) {
+	ecartees []grammar.EquipmentCreation, o attOracle) {
 	t.Helper()
 	slots := map[uint32]bool{}
 	for _, c := range ecartees {
@@ -206,7 +206,7 @@ func attLogI10SurEcartees(t *testing.T, root, id string,
 	}
 	var dedans, dehors, ouvDedans, ouvDehors int
 	for _, l := range lectures {
-		if l.TI != uint32(filmdec.GroundWeaponTypeIndex) || !slots[l.Slot] {
+		if l.TI != uint32(grammar.GroundWeaponTypeIndex) || !slots[l.Slot] {
 			continue
 		}
 		if attPorteEnCours(parXUID, attMatchMS(l, o.Bridge)) {

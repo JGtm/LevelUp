@@ -33,7 +33,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // psTIBalayes — les archetypes d'objet du monde du balayage, temoin compris.
@@ -92,7 +92,7 @@ func psDist3(x, y, z float32, cible psPoint, cz float32) float64 {
 }
 
 // psVieDansLaBoite resume une vie et dit si elle passe par la boite large autour de `cible`.
-func psVieDansLaBoite(ti int, tr filmdec.ProjectileTrack, cible psPoint, cz float32) (psVieBoite, bool) {
+func psVieDansLaBoite(ti int, tr grammar.ProjectileTrack, cible psPoint, cz float32) (psVieBoite, bool) {
 	if len(tr.Pts) == 0 {
 		return psVieBoite{}, false
 	}
@@ -127,9 +127,9 @@ type psStatTI struct {
 }
 
 // psBalayeTI balaye un archetype et rend les vies retenues, plus les compteurs.
-func psBalayeTI(dir string, wr *filmdec.Vec3Range, ti int, c psCible) ([]psVieBoite, psStatTI) {
+func psBalayeTI(dir string, wr *grammar.Vec3Range, ti int, c psCible) ([]psVieBoite, psStatTI) {
 	st := psStatTI{D3Min: math.Inf(1)}
-	tracks, err := filmdec.ScanFilmWorldObjects(dir, wr, ti)
+	tracks, err := grammar.ScanFilmWorldObjects(dir, wr, ti)
 	if err != nil {
 		st.Err = err
 		return nil, st
@@ -181,7 +181,7 @@ func TestPowerupSocleArchetypes(t *testing.T) {
 	for _, f := range psFilmsCatalyst {
 		t.Run(f.ID+"_"+f.Mode, func(t *testing.T) {
 			dir := filepath.Join(root, "film_chunks", f.ID)
-			if filmdec.CountFilmChunks(dir) == 0 {
+			if grammar.CountFilmChunks(dir) == 0 {
 				t.Skipf("aucun chunk dans %s", dir)
 			}
 			wr := entry.Range()
@@ -234,13 +234,13 @@ func psFmtPoint(p psPoint) string { return fmt.Sprintf("(%.3f ; %.3f)", p.X, p.Y
 // secondes de cet instrument. Ce n'est PAS l'origine de la grille du document (qui compte
 // depuis le premier paquet de POSITION) : les deux axes ne se comparent pas ici.
 func psPremierPaquetUS(dir string) uint64 {
-	n := filmdec.CountFilmChunks(dir)
+	n := grammar.CountFilmChunks(dir)
 	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
+		data, err := grammar.ReadFilmChunk(dir, c)
 		if err != nil {
 			continue
 		}
-		for _, pk := range filmdec.WalkPackets(data) {
+		for _, pk := range grammar.WalkPackets(data) {
 			return pk.TimestampUS
 		}
 	}

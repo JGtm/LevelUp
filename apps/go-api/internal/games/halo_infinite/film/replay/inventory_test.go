@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmdec"
+	"levelup/go-api/internal/games/halo_infinite/film/grammar"
 )
 
 // inventory_test.go — les propriétés de l'inventaire, pas ses valeurs de sortie.
@@ -242,7 +242,7 @@ func TestInventoryCoverageBalances(t *testing.T) {
 func TestInventoryCoverageAbsentWhenNothingToRead(t *testing.T) {
 	// Deux points sur un slot : le minimum pour que le document soit assemble jusqu'au bout
 	// (sans position, BuildFromPositions rend un document nu, sans aucune couverture).
-	in := []filmdec.BipedPosition{pos(512, 0, 10, 20, 1), pos(512, 100, 11, 21, 1)}
+	in := []grammar.BipedPosition{pos(512, 0, 10, 20, 1), pos(512, 100, 11, 21, 1)}
 	sans := BuildFromPositions("m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
 	if sans.Coverage == nil {
 		t.Fatal("document sans couverture : rien a juger")
