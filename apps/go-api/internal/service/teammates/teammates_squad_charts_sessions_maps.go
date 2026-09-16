@@ -397,12 +397,13 @@ const (
 	impactBadgeFalseBrother    = "false_brother"
 	impactBadgeKamikaze        = "kamikaze"
 	impactBadgeTopKiller       = "top_killer"
+	impactBadgeThief           = analysis.BadgeKeyThief
 )
 
 // impactBadgeOrd est l'ordre canonique des colonnes agrégat du scoreboard.
 var impactBadgeOrd = []string{
 	impactBadgeFirstBlood, impactBadgeClutchFinisher, impactBadgeLastCasualty, impactBadgeLastGroupKill,
-	impactBadgeFirstGroupDeath, impactBadgeSilentHero, impactBadgeFalseBrother, impactBadgeKamikaze, impactBadgeTopKiller,
+	impactBadgeFirstGroupDeath, impactBadgeSilentHero, impactBadgeFalseBrother, impactBadgeKamikaze, impactBadgeThief, impactBadgeTopKiller,
 }
 
 // impactScoreWeights mappe chaque badge à son poids dans le score global du
@@ -416,6 +417,7 @@ var impactScoreWeights = map[string]float64{
 	impactBadgeLastGroupKill:   -1.0,
 	impactBadgeFirstGroupDeath: -1.0,
 	impactBadgeKamikaze:        -1.0,
+	impactBadgeThief:           -1.0,
 	impactBadgeTopKiller:       1.0,
 }
 

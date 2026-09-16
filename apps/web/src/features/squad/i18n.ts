@@ -567,6 +567,7 @@ const FR_TEXT: SquadText = {
       top_killer: 'Bourreau (top frags)',
       top_gun: 'Top Gun',
       kamikaze: 'Kamikaze',
+      thief: 'Voleur',
     },
     badgeDescriptions: {
       first_blood: 'Premier frag du match, toutes équipes confondues',
@@ -579,6 +580,7 @@ const FR_TEXT: SquadText = {
       top_killer: 'Joueur avec le plus grand nombre de frags du match',
       top_gun: 'Premier membre de l\'équipe à atteindre 10 frags',
       kamikaze: 'Joueur le plus tué dans les 1,5 s qui suivent ses frags',
+      thief: 'Joueur avec le plus de frags volés à un ami : assisté par cet ami, 10 % des dégâts ou moins, ami vivant juste avant et juste après le frag',
     },
   },
   perMinute: {
@@ -918,6 +920,7 @@ const EN_TEXT: SquadText = {
       top_killer: 'Top killer',
       top_gun: 'Top Gun',
       kamikaze: 'Kamikaze',
+      thief: 'Thief',
     },
     badgeDescriptions: {
       first_blood: 'First kill of the match, across all teams',
@@ -930,6 +933,7 @@ const EN_TEXT: SquadText = {
       top_killer: 'Player with the highest kill count in the match',
       top_gun: 'First squad member to reach 10 kills',
       kamikaze: 'Player killed within 1.5 s after one of their own frags (most frequent in the match)',
+      thief: 'Player with the most kills stolen from a friend: assisted by that friend, 10% of the damage or less, friend alive just before and just after the kill',
     },
   },
   perMinute: {
