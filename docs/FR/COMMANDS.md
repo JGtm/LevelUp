@@ -79,6 +79,13 @@ Les passes `backfill --csr` / `--shared-csr` et les commandes de films (`archive
 `backfill-killsource --online`, `replay-events`) suivent la même doctrine : `--gamertag` nomme le
 joueur traité, pas un prêteur de jeton.
 
+**Note d exploitation.** Une passe de synchronisation en ligne de commande tient la base
+partagée en ÉCRITURE et applique les migrations shared du titre avant sa première insertion :
+à lancer **serveur arrêté** (un seul writer, ADR 0013). Elle fait aussi tourner les jetons de
+rafraîchissement de TOUT le parc via le pool — ne jamais faire tourner les jetons du parc
+pendant qu un serveur tourne, sinon ce serveur garde les anciens jetons en mémoire et finit en
+`reauth_required` sur N comptes.
+
 `--token-pool-size N` plafonne le nombre de slots SAINS, pas le nombre de sources tentées : le
 scan est parcouru en entier, dans l'ordre alphabétique des gamertags, et une source dont le
 jeton de rafraîchissement ne se résout pas ne consomme pas le quota. `0` prend tous les jetons

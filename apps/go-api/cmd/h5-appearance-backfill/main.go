@@ -26,10 +26,17 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/auth"
 )
 
 func main() {
+	// Seams title-owned : ce binaire embarque le moteur de sync TRANSITIVEMENT (ratchet
+	// titleseams_wired_test.go, 2026-09-16). Sans ce câblage, tout chemin qui atteindrait un
+	// classifier ou une étape de migration title-owned partirait en panic fail-loud MT-15 ou
+	// en scores muets.
+	titleseams.RegisterAll("")
+
 	gt := "JGtm"
 	if len(os.Args) > 1 {
 		gt = os.Args[1]

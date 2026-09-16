@@ -77,6 +77,12 @@ The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-fil
 `backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the
 player being processed, not a token lender.
 
+**Operational note.** A sync CLI pass holds the shared database in WRITE mode and applies the
+shared migrations of the title before its first insert: run it with the **server stopped**
+(single writer, ADR 0013). It also refreshes the refresh tokens of the WHOLE fleet through the
+pool — never rotate the fleet tokens while a server is running, or that server keeps the old
+tokens in memory and ends up in `reauth_required` on N accounts.
+
 `--token-pool-size N` caps the number of HEALTHY slots, not the number of sources tried: the
 scan is walked in full, in alphabetical gamertag order, and a source whose refresh token fails
 to resolve does not consume the quota. `0` takes every healthy token of the fleet. Before

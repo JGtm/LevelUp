@@ -48,6 +48,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/auth"
 )
 
@@ -58,6 +59,12 @@ import (
 const h5RefetchMode = "arena"
 
 func main() {
+	// Seams title-owned : ce binaire embarque le moteur de sync TRANSITIVEMENT (ratchet
+	// titleseams_wired_test.go, 2026-09-16). Sans ce câblage, tout chemin qui atteindrait un
+	// classifier ou une étape de migration title-owned partirait en panic fail-loud MT-15 ou
+	// en scores muets.
+	titleseams.RegisterAll("")
+
 	commit := flag.Bool("commit", false, "écrit réellement (défaut false = DRY-RUN, n'écrit rien)")
 	matchID := flag.String("match", "", "cible un seul match (optionnel, détail complet)")
 	limit := flag.Int("limit", 0, "ne traite que N matchs candidats (0 = tous ; test progressif)")

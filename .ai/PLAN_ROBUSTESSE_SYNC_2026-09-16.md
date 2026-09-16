@@ -255,9 +255,9 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
 
 ## 8. Étape 5 — Hygiène (C-F, D6 ; rapide)
 
-- [ ] 5.1 `cmd/levelup/cmd_backfill_killsource.go:152` : aide de `--gamertag` = « joueur dont
+- [x] 5.1 `cmd/levelup/cmd_backfill_killsource.go:152` : aide de `--gamertag` = « joueur dont
       les films sont traités (les plus récents d'abord) ; les tokens viennent du pool ».
-- [ ] 5.2 Fixtures : `internal/migration/steps_shared_rebuild_match_participants_test.go:106-107`
+- [x] 5.2 Fixtures : `internal/migration/steps_shared_rebuild_match_participants_test.go:106-107`
       et `internal/sync/art_rebuild_regression_test.go:110-111` → `INTEGER`. Le test de
       l'élargissement (`steps_shared_core_widen_test.go`) et tout autre test qui DOIT porter la
       DDL legacy reçoivent le marqueur `// match_registry-ddl: legacy — <raison>` sur la ligne
@@ -265,11 +265,11 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
       pour chaque `*_test.go` contenant `CREATE TABLE match_registry` SANS marqueur, les colonnes
       communes avec la DDL de production ont le même type ; aucun plancher de colonnes.
       Lister les 12 fichiers touchés dans « Avancement » (alignés vs marqués).
-- [ ] 5.3 `internal/archlint/titleseams_wired_test.go` : critère = dépendances transitives
+- [x] 5.3 `internal/archlint/titleseams_wired_test.go` : critère = dépendances transitives
       (`go list -f '{{.ImportPath}} {{.Deps}}' ./cmd/...`, une seule exécution, `t.Skip` si `go`
       absent du PATH avec message), allowlist toujours vide ; les 10 binaires listés en C-F
       reçoivent `titleseams.RegisterAll("")` s'ils rougissent.
-- [ ] 5.4 `docs/COMMANDS.md` FR + EN, note d'exploitation : « la CLI de sync tient la base
+- [x] 5.4 `docs/COMMANDS.md` FR + EN, note d'exploitation : « la CLI de sync tient la base
       partagée en écriture : serveur arrêté ; ne pas faire tourner les tokens du parc pendant
       qu'un serveur tourne ».
 
@@ -483,3 +483,53 @@ Journal de phase : section « Avancement » en fin de fichier. Reprise : la lire
   restaurée. Le retrait des quatre appels de migration compile (aucun test ne le voit) — c'est
   le sous-point `[~]` ci-dessus, consigné tel quel.
 - Baseline de tests : AUCUNE paire retirée à cette étape (aucun test renommé ni supprimé).
+
+### Étape 5 — Hygiène — CLOSE le 2026-09-16 22:35
+
+- Items : 5.1 `[x]`, 5.2 `[x]`, 5.3 `[x]`, 5.4 `[x]`.
+- 5.1 : aide de `--gamertag` de `backfill-killsource` = « joueur dont les films sont traités,
+  les plus récents d'abord ; les jetons viennent du pool » ; le message d'erreur de
+  `--online` sans `--gamertag` disait la même chose périmée, aligné dans la foulée.
+- 5.2 : fixtures alignées sur INTEGER —
+  `internal/migration/steps_shared_rebuild_match_participants_test.go:106-107` et
+  `internal/sync/art_rebuild_regression_test.go:110-111`. DDL legacy VOLONTAIRE marquée :
+  `internal/games/halo_infinite/migrations/steps_shared_core_widen_test.go`
+  (`// match_registry-ddl: legacy — c'est le SUJET du test`). Ratchet
+  `internal/archlint/match_registry_ddl_types_test.go` étendu (`TestMatchRegistryFixturesDeTestAlignees`) :
+  colonnes communes seulement, aucun plancher, parseur tolérant à la mise en forme (une
+  fixture écrit sa DDL sur une seule ligne), **68 fixtures examinées**.
+  **ÉCART MAJEUR, SIGNALÉ** : appliqué pour la première fois à tout le module, le ratchet a
+  mesuré **45 divergences dans 25 fichiers**, AUCUNE sur les scores d'équipe — horodatages
+  (`TIMESTAMP` vs `TIMESTAMPTZ`, dans les DEUX sens), `backfill_completed` (BIGINT/INTEGER),
+  `player_count` (INTEGER/SMALLINT). Les réaligner touche la sémantique de fuseau de chaque
+  test : hors périmètre (découverte §10). Elles sont GELÉES dans `deriveFixturesGelees`, une
+  carte datée (fichier → colonne → type toléré) qui NE PEUT QUE RÉTRÉCIR : une divergence
+  nouvelle rougit, et une entrée dont la fixture a été réalignée rougit aussi (« entrée
+  périmée »). Deux mutations vérifiées : `team_0_score SMALLINT` remis dans une fixture non
+  marquée → FAIL ; entrée gelée devenue périmée → FAIL.
+- 5.3 : `internal/archlint/titleseams_wired_test.go` — critère = dépendances TRANSITIVES par
+  UNE seule exécution `go list -e -f '{{.ImportPath}} {{.Name}} {{.Deps}}' ./cmd/...` (≈ 1 s
+  mesuré ici), `t.Skip` si `go` est absent du PATH, allowlist toujours VIDE. Les 10 binaires
+  annoncés en C-F rougissaient et ont reçu `titleseams.RegisterAll("")` :
+  `backfill-world-player-stats`, `h5-appearance-backfill`, `h5-csr-backfill`,
+  `h5-events-backfill`, `h5-kill-kind-backfill`, `h5-roster-refetch`, `levelup-titles`,
+  `openapi-gen`, `populate-playlists-catalog`, `replay-worker`. Le ratchet compte désormais
+  **42 binaires** dépendant du moteur, tous câblés.
+  **Précision de critère (documentée dans le test)** : la correspondance est EXACTE sur
+  `internal/sync` ET `internal/sync/skill` (les deux paquets porteurs d'un fail-loud), pas par
+  préfixe : 42 binaires en dépendent, contre 84 pour un sous-paquet quelconque de
+  `internal/sync/` — imposer `RegisterAll` à un binaire qui ne tire que `haloclient` ou
+  `matchflags` ne protégerait de rien et diluerait le ratchet. Mutation vérifiée : câblage
+  retiré de `replay-worker` (dépendance transitive pure) → FAIL nominatif.
+- 5.4 : note d'exploitation ajoutée dans `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` (base
+  partagée tenue en écriture + migrations appliquées → serveur arrêté ; ne pas faire tourner
+  les jetons du parc pendant qu'un serveur tourne).
+- Gate G5 (codes de sortie vérifiés) :
+  - `go test ./internal/archlint/ ./internal/migration/ ./internal/sync/ ./internal/games/halo_infinite/migrations/ -run 'Ddl|DDL|Seams|Titleseams|ART_Rebuild|RebuildMatchParticipants|Widen' -count=1 -timeout 30m`
+    → 0 ; **écart de commande assumé** : le filtre du plan (`ArtRebuild`, `internal/migration`)
+    ne matchait RIEN (les tests s'appellent `TestART_Rebuild*` et les deux fixtures modifiées
+    sont sous `//go:build integration`). Complément exécuté :
+    `go test -tags=integration -p 1 ./internal/migration/ ./internal/sync/ -run 'ART_Rebuild|RebuildMatchParticipants'`
+    → 0 (2 paquets `ok`) — les fixtures touchées sont donc réellement exercées ;
+  - `go build ./cmd/...` → 0 ; `gofmt -l cmd internal` → vide.
+- Baseline de tests : AUCUNE paire retirée (un test ajouté, aucun renommé ni supprimé).

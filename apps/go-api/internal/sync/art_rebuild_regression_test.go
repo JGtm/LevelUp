@@ -107,8 +107,8 @@ func seedFullSchemaForARTRebuild(t *testing.T, db *sql.DB) {
 			is_firefight BOOLEAN DEFAULT FALSE,
 			duration_seconds INTEGER,
 			playable_duration_seconds INTEGER,
-			team_0_score SMALLINT,
-			team_1_score SMALLINT,
+			team_0_score INTEGER,
+			team_1_score INTEGER,
 			team_0_ps_score INTEGER,
 			team_1_ps_score INTEGER,
 			player_count INTEGER
